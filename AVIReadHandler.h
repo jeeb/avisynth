@@ -1,8 +1,5 @@
-// Packaged with Avisynth v1.0 beta.
-// http://www.math.berkeley.edu/~benrg/avisynth.html
-
 //	VirtualDub - Video processing and capture application
-//	Copyright (C) 1998-2000 Avery Lee
+//	Copyright (C) 1998-2001 Avery Lee
 //
 //	This program is free software; you can redistribute it and/or modify
 //	it under the terms of the GNU General Public License as published by
@@ -44,6 +41,9 @@ public:
 	virtual HRESULT FormatSize(long lFrame, long *plSize)=0;
 	virtual HRESULT ReadFormat(long lFrame, void *pFormat, long *plSize)=0;
 	virtual bool isStreaming()=0;
+	virtual bool isKeyframeOnly()=0;
+
+	virtual bool getVBRInfo(double& bitrate_mean, double& bitrate_stddev, double& maxdev)=0;
 };
 
 class IAVIReadHandler {
@@ -55,6 +55,7 @@ public:
 	virtual bool isOptimizedForRealtime()=0;
 	virtual bool isStreaming()=0;
 	virtual bool isIndexFabricated()=0;
+	virtual bool AppendFile(const char *pszFile)=0;
 	virtual bool getSegmentHint(const char **ppszPath)=0;
 };
 

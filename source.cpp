@@ -25,13 +25,15 @@
 
 #include "internal.h"
 #include "convert.h"
+#include "AudioSource.h"
+#include "VD_Audio.h"
 
 #include "AVIReadHandler.h"
 
 
 class AVISource : public IClip {
   IAVIReadHandler *pfile;
-  IAVIReadStream *pvideo, *paudio;
+  IAVIReadStream *pvideo;
   HIC hic;
   VideoInfo vi;
   BYTE* srcbuffer;
@@ -42,6 +44,10 @@ class AVISource : public IClip {
   PVideoFrame last_frame;
   int last_frame_no;
 
+  AudioSource* aSrc;
+  AudioStreamSource* audioStreamSource;
+  int audio_stream_pos;
+
   LRESULT DecompressBegin(LPBITMAPINFOHEADER lpbiSrc, LPBITMAPINFOHEADER lpbiDst);
   LRESULT DecompressFrame(int n, bool preroll, BYTE* buf);
 
@@ -51,7 +57,7 @@ class AVISource : public IClip {
 
 public:
 
-  AVISource::AVISource(const char filename[], int mode, IScriptEnvironment* env);  // mode: 0=detect, 1=avifile, 2=opendml
+  AVISource::AVISource(const char filename[], bool fAudio, int mode, IScriptEnvironment* env);  // mode: 0=detect, 1=avifile, 2=opendml
   ~AVISource();
   const VideoInfo& __stdcall GetVideoInfo();
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
@@ -59,11 +65,10 @@ public:
   bool __stdcall GetParity(int n);
 
   static AVSValue __cdecl Create(AVSValue args, void* user_data, IScriptEnvironment* env) {
-    args = args[0];
     const int mode = int(user_data);
-    PClip result = new AVISource(args[0].AsString(), mode, env);
-    for (int i=1; i<args.ArraySize(); ++i)
-      result = new_Splice(result, new AVISource(args[i].AsString(), mode, env), false, env);
+    PClip result = new AVISource(args[0][0].AsString(), args[1].AsBool(true), mode, env);
+    for (int i=1; i<args[0].ArraySize(); ++i)
+      result = new_Splice(result, new AVISource(args[0][i].AsString(), args[1].AsBool(true), mode, env), false, env);
     return result;
   }
 };
@@ -196,12 +201,14 @@ void AVISource::LocateVideoCodec(IScriptEnvironment* env) {
 }
 
 
-AVISource::AVISource(const char filename[], int mode, IScriptEnvironment* env) {
+AVISource::AVISource(const char filename[], bool fAudio, int mode, IScriptEnvironment* env) {
   srcbuffer = 0; srcbuffer_size = 0;
   memset(&vi, 0, sizeof(vi));
   ex = false;
   last_frame_no = -1;
   pbiSrc = 0;
+  aSrc = 0;
+  audioStreamSource = 0;
 
   AVIFileInit();
 
@@ -265,17 +272,22 @@ AVISource::AVISource(const char filename[], int mode, IScriptEnvironment* env) {
     }
   }
 
-  paudio = pfile->GetStream(streamtypeAUDIO, 0);
-  if (paudio) {
-    AVISTREAMINFO asi;
-    WAVEFORMATEX wfx;
-    LONG size = sizeof(wfx);
-    if (SUCCEEDED(paudio->Info(&asi, sizeof(asi))) && SUCCEEDED(paudio->ReadFormat(0, &wfx, &size)) && wfx.wFormatTag == 1) {
-      vi.num_audio_samples = asi.dwLength;
-      vi.audio_samples_per_second = wfx.nSamplesPerSec;
-      vi.stereo = (wfx.nChannels == 2);
-      vi.sixteen_bit = (wfx.wBitsPerSample == 16);
-    }
+  // check for audio stream
+  if (fAudio && pfile->GetStream(streamtypeAUDIO, 0)) {
+    aSrc = new AudioSourceAVI(pfile, true);
+    aSrc->init();
+    audioStreamSource = new AudioStreamSource(aSrc,
+                                              aSrc->lSampleFirst, 
+                                              aSrc->lSampleLast - aSrc->lSampleFirst,
+                                              true);
+    WAVEFORMATEX* pwfx;
+    pwfx = audioStreamSource->GetFormat();
+    vi.audio_samples_per_second = pwfx->nSamplesPerSec;
+    vi.stereo = (pwfx->nChannels == 2);
+    vi.sixteen_bit = (pwfx->wBitsPerSample == 16);
+    vi.num_audio_samples = audioStreamSource->GetLength();
+
+    audio_stream_pos = 0;
   }
 }
 
@@ -284,8 +296,9 @@ AVISource::~AVISource() {
     !ex ? ICDecompressEnd(hic) : ICDecompressExEnd(hic);
     ICClose(hic);
   }
-  delete paudio;
   delete pvideo;
+  delete aSrc;
+  delete audioStreamSource;
   if (pfile)
     pfile->Release();
   AVIFileExit();
@@ -340,8 +353,12 @@ void AVISource::GetAudio(void* buf, int start, int count, IScriptEnvironment* en
     start = 0;
   }
 
-  if (paudio)
-    paudio->Read(start, count, buf, vi.BytesFromAudioSamples(count), &bytes_read, &samples_read);
+  if (audioStreamSource) {
+    if (start != audio_stream_pos)
+        audioStreamSource->Seek(start);
+    samples_read = audioStreamSource->Read(buf, count, &bytes_read);
+    audio_stream_pos = start + samples_read;
+  }
 
   if (samples_read < count)
     memset((char*)buf + bytes_read, 0, vi.BytesFromAudioSamples(count) - bytes_read);
@@ -1276,7 +1293,7 @@ AVSValue __cdecl Create_SegmentedSource(AVSValue args, void* use_directshow, ISc
       wsprintf(filename, "%s.%02d.%s", basename, j, extension);
       if (GetFileAttributes(filename) != (DWORD)-1) {   // check if file exists
         PClip clip = use_directshow ? (IClip*)(new DirectShowSource(filename, avg_time_per_frame, env))
-                                    : (IClip*)(new AVISource(filename, 0, env));
+                                    : (IClip*)(new AVISource(filename, args[1].AsBool(true), 0, env));
         result = !result ? clip : new_Splice(result, clip, false, env);
       }
     }
@@ -1287,7 +1304,7 @@ AVSValue __cdecl Create_SegmentedSource(AVSValue args, void* use_directshow, ISc
 }
 
 AVSValue __cdecl Create_Version(AVSValue args, void*, IScriptEnvironment* env) {
-  return Create_MessageClip("Avisynth v2.0.3, 06 Aug. 2002\n"
+  return Create_MessageClip("Avisynth v2.0.1, 04 June 2002\n"
 			    "\xA9 2000 Ben Rudiak-Gould, et al.\n"
 			    "http://www.avisynth.org",
   -1, -1, VideoInfo::BGR24, false, 0x22AA22, 0, 0x402200, env);
@@ -1295,12 +1312,12 @@ AVSValue __cdecl Create_Version(AVSValue args, void*, IScriptEnvironment* env) {
 
 
 AVSFunction Source_filters[] = {
-  { "AVISource", "s+", AVISource::Create, (void*)0 },
-  { "AVIFileSource", "s+", AVISource::Create, (void*)1 },
-  { "WAVSource", "s+", AVISource::Create, (void*)1 },
-  { "OpenDMLSource", "s+", AVISource::Create, (void*)2 },
+  { "AVISource", "s+[audio]b", AVISource::Create, (void*)0 },
+  { "AVIFileSource", "s+[audio]b", AVISource::Create, (void*)1 },
+  { "WAVSource", "s+[audio]b", AVISource::Create, (void*)1 },
+  { "OpenDMLSource", "s+[audio]b", AVISource::Create, (void*)2 },
   { "DirectShowSource", "s+[fps]f", Create_DirectShowSource },
-  { "SegmentedAVISource", "s+", Create_SegmentedSource, (void*)0 },
+  { "SegmentedAVISource", "s+[audio]b", Create_SegmentedSource, (void*)0 },
   { "SegmentedDirectShowSource", "s+[fps]f", Create_SegmentedSource, (void*)1 },
 //  { "QuickTimeSource", "s", QuickTimeSource::Create },
   { "BlankClip", "[clip]c[length]i[width]i[height]i[pixel_type]s[fps]f[fps_denominator]i[audio_rate]i[stereo]b[sixteen_bit]b[color]i", Create_BlankClip },

@@ -55,7 +55,7 @@ BSC32=bscmake.exe
 # ADD BSC32 /nologo
 LINK32=link.exe
 # ADD BASE LINK32 kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib /nologo /dll /machine:I386
-# ADD LINK32 quartz.lib ddraw.lib amstrmid.lib vfw32.lib kernel32.lib advapi32.lib version.lib user32.lib gdi32.lib ole32.lib uuid.lib /nologo /dll /machine:I386
+# ADD LINK32 msacm32.lib quartz.lib ddraw.lib amstrmid.lib vfw32.lib kernel32.lib advapi32.lib version.lib user32.lib gdi32.lib ole32.lib uuid.lib winmm.lib /nologo /dll /machine:I386
 # SUBTRACT LINK32 /pdb:none
 # Begin Special Build Tool
 SOURCE="$(InputPath)"
@@ -87,7 +87,7 @@ BSC32=bscmake.exe
 # ADD BSC32 /nologo
 LINK32=link.exe
 # ADD BASE LINK32 kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib /nologo /dll /debug /machine:I386 /pdbtype:sept
-# ADD LINK32 quartz.lib ddraw.lib amstrmid.lib vfw32.lib kernel32.lib advapi32.lib version.lib user32.lib gdi32.lib ole32.lib uuid.lib /nologo /dll /debug /machine:I386 /out:"$(SystemRoot)\system32\avisynth.dll" /pdbtype:sept
+# ADD LINK32 msacm32.lib quartz.lib ddraw.lib amstrmid.lib vfw32.lib kernel32.lib advapi32.lib version.lib user32.lib gdi32.lib ole32.lib uuid.lib winmm.lib /nologo /dll /debug /machine:I386 /out:"$(SystemRoot)\system32\avisynth.dll" /pdbtype:sept
 # SUBTRACT LINK32 /pdb:none /incremental:no /nodefaultlib
 
 !ELSEIF  "$(CFG)" == "avisynth - Win32 Profile"
@@ -116,7 +116,7 @@ BSC32=bscmake.exe
 LINK32=link.exe
 # ADD BASE LINK32 msvcrt.lib c:\p\mm\mpeg2dll\release\mpeg2dll.lib ddraw.lib amstrmid.lib vfw32.lib kernel32.lib advapi32.lib version.lib user32.lib gdi32.lib ole32.lib uuid.lib /nologo /dll /machine:I386
 # SUBTRACT BASE LINK32 /pdb:none /debug /nodefaultlib
-# ADD LINK32 penter.lib msvcrt.lib quartz.lib ddraw.lib amstrmid.lib vfw32.lib kernel32.lib advapi32.lib version.lib user32.lib gdi32.lib ole32.lib uuid.lib /nologo /dll /debug /machine:I386 /nodefaultlib
+# ADD LINK32 penter.lib msvcrt.lib msacm32.lib quartz.lib ddraw.lib amstrmid.lib vfw32.lib kernel32.lib advapi32.lib version.lib user32.lib gdi32.lib ole32.lib uuid.lib winmm.lib /nologo /dll /debug /machine:I386 /nodefaultlib
 # SUBTRACT LINK32 /pdb:none
 # Begin Special Build Tool
 SOURCE="$(InputPath)"
@@ -134,6 +134,14 @@ PostBuild_Cmds=copy Profile\avisynth.dll $(SystemRoot)\system32
 # Begin Group "VirtualDub files"
 
 # PROP Default_Filter ""
+# Begin Source File
+
+SOURCE=.\AudioSource.cpp
+# End Source File
+# Begin Source File
+
+SOURCE=.\AudioSource.h
+# End Source File
 # Begin Source File
 
 SOURCE=.\AVIIndex.cpp
@@ -156,15 +164,15 @@ SOURCE=.\cpuaccel.cpp
 # End Source File
 # Begin Source File
 
+SOURCE=.\DubSource.cpp
+# End Source File
+# Begin Source File
+
+SOURCE=.\DubSource.h
+# End Source File
+# Begin Source File
+
 SOURCE=.\Error.h
-# End Source File
-# Begin Source File
-
-SOURCE=.\FastReadStream.cpp
-# End Source File
-# Begin Source File
-
-SOURCE=.\FastReadStream.h
 # End Source File
 # Begin Source File
 
@@ -186,6 +194,22 @@ SOURCE=.\list.cpp
 
 SOURCE=.\list.h
 # End Source File
+# Begin Source File
+
+SOURCE=.\VD_Audio.cpp
+# End Source File
+# Begin Source File
+
+SOURCE=.\VD_Audio.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\VD_misc.cpp
+# End Source File
+# Begin Source File
+
+SOURCE=.\VD_misc.h
+# End Source File
 # End Group
 # Begin Group "Avisynth core"
 
@@ -205,6 +229,10 @@ SOURCE=.\avisynth.h
 # Begin Source File
 
 SOURCE=.\avisynth.rc
+# End Source File
+# Begin Source File
+
+SOURCE=.\clip_info.h
 # End Source File
 # Begin Source File
 
@@ -354,6 +382,17 @@ SOURCE=.\field.h
 # Begin Source File
 
 SOURCE=.\focus.cpp
+
+!IF  "$(CFG)" == "avisynth - Win32 Release"
+
+# ADD CPP /FAcs
+
+!ELSEIF  "$(CFG)" == "avisynth - Win32 Debug"
+
+!ELSEIF  "$(CFG)" == "avisynth - Win32 Profile"
+
+!ENDIF 
+
 # End Source File
 # Begin Source File
 
@@ -422,6 +461,19 @@ SOURCE=.\resize.h
 # Begin Source File
 
 SOURCE=".\text-overlay.cpp"
+
+!IF  "$(CFG)" == "avisynth - Win32 Release"
+
+# ADD CPP /FAcs
+
+!ELSEIF  "$(CFG)" == "avisynth - Win32 Debug"
+
+# ADD CPP /FAcs
+
+!ELSEIF  "$(CFG)" == "avisynth - Win32 Profile"
+
+!ENDIF 
+
 # End Source File
 # Begin Source File
 
@@ -462,6 +514,22 @@ SOURCE=.\merge.cpp
 # Begin Source File
 
 SOURCE=.\merge.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\scene_change.cpp
+# End Source File
+# Begin Source File
+
+SOURCE=.\scene_change.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\tempsmoother.cpp
+# End Source File
+# Begin Source File
+
+SOURCE=.\tempsmoother.h
 # End Source File
 # End Group
 # End Group
