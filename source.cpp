@@ -208,7 +208,8 @@ AVISource::AVISource(const char filename[], bool fAudio, int mode, IScriptEnviro
   pbiSrc = 0;
   aSrc = 0;
   audioStreamSource = 0;
-
+  pvideo=0;
+  
   AVIFileInit();
 
   if (mode == 0) {
@@ -296,9 +297,9 @@ AVISource::~AVISource() {
     !ex ? ICDecompressEnd(hic) : ICDecompressExEnd(hic);
     ICClose(hic);
   }
-  delete pvideo;
-  delete aSrc;
-  delete audioStreamSource;
+  if (pvideo) delete pvideo;
+  if (aSrc) delete aSrc;
+  if (audioStreamSource) delete audioStreamSource;
   if (pfile)
     pfile->Release();
   AVIFileExit();
