@@ -32,27 +32,9 @@
 // which is not derived from or based on Avisynth, such as 3rd-party filters,
 // import and export plugins, or graphical user interfaces.
 
-
 #include "internal.h"
 
-void isse_yv12_i_to_yuy2(const BYTE* srcY, const BYTE* srcU, const BYTE* srcV, int src_rowsize, int src_pitch, int src_pitch_uv, 
-                    BYTE* dst, int dst_pitch,
-                    int height);
 
+void mmx_ConvertRGB32toYUY2(unsigned int *src,unsigned int *dst,int src_pitch, int dst_pitch,int w, int h);
+void mmx_ConvertRGB32toYUY2_Dup(unsigned int *src,unsigned int *dst,int src_pitch, int dst_pitch,int w, int h);
 
-void isse_yv12_to_yuy2(const BYTE* srcY, const BYTE* srcU, const BYTE* srcV, int src_rowsize, int src_pitch, int src_pitch_uv, 
-                    BYTE* dst, int dst_pitch,
-                    int height);
-
-void mmx_yv12_i_to_yuy2(const BYTE* srcY, const BYTE* srcU, const BYTE* srcV, int src_rowsize, int src_pitch, int src_pitch_uv, 
-                    BYTE* dst, int dst_pitch,
-                    int height);
-
-void mmx_yv12_to_yuy2(const BYTE* srcY, const BYTE* srcU, const BYTE* srcV, int src_rowsize, int src_pitch, int src_pitch_uv, 
-                    BYTE* dst, int dst_pitch,
-                    int height);
-
-
-void isse_yuy2_i_to_yv12(const BYTE* src, int src_rowsize, int src_pitch, 
-                    BYTE* dstY, BYTE* dstU, BYTE* dstV, int dst_pitch,
-                    int height);

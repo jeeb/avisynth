@@ -303,52 +303,6 @@ SOURCE=.\convert.h
 # End Source File
 # Begin Source File
 
-SOURCE=.\convert_a.asm
-
-!IF  "$(CFG)" == "avisynth - Win32 Release"
-
-# PROP Ignore_Default_Tool 1
-# Begin Custom Build - Assembling $(InputPath)...
-IntDir=.\Release
-InputPath=.\convert_a.asm
-InputName=convert_a
-
-"$(IntDir)\$(InputName).obj" : $(SOURCE) "$(INTDIR)" "$(OUTDIR)"
-	ml.exe -c -coff -Cx -Fo$(IntDir)\$(InputName).obj $(InputName).asm
-
-# End Custom Build
-
-!ELSEIF  "$(CFG)" == "avisynth - Win32 Debug"
-
-# PROP Ignore_Default_Tool 1
-# Begin Custom Build - Assembling $(InputPath)...
-IntDir=.\Debug
-InputPath=.\convert_a.asm
-InputName=convert_a
-
-"$(IntDir)\$(InputName).obj" : $(SOURCE) "$(INTDIR)" "$(OUTDIR)"
-	ml.exe -c -coff -Cx -Zi -Fo$(IntDir)\$(InputName).obj $(InputName).asm
-
-# End Custom Build
-
-!ELSEIF  "$(CFG)" == "avisynth - Win32 Profile"
-
-# PROP Ignore_Default_Tool 1
-# Begin Custom Build - Assembling $(InputPath)...
-IntDir=.\Profile
-InputPath=.\convert_a.asm
-InputName=convert_a
-
-"$(IntDir)\$(InputName).obj" : $(SOURCE) "$(INTDIR)" "$(OUTDIR)"
-	ml.exe -c -coff -Cx -Fo$(IntDir)\$(InputName).obj $(InputName).asm
-
-# End Custom Build
-
-!ENDIF 
-
-# End Source File
-# Begin Source File
-
 SOURCE=.\edit.cpp
 # End Source File
 # Begin Source File
@@ -485,22 +439,6 @@ SOURCE=.\Color.h
 # End Source File
 # Begin Source File
 
-SOURCE=.\convert_xvid.cpp
-# End Source File
-# Begin Source File
-
-SOURCE=.\convert_xvid.h
-# End Source File
-# Begin Source File
-
-SOURCE=.\convert_yv12.cpp
-# End Source File
-# Begin Source File
-
-SOURCE=.\convert_yv12.h
-# End Source File
-# Begin Source File
-
 SOURCE=.\convolution.cpp
 # End Source File
 # Begin Source File
@@ -574,6 +512,80 @@ SOURCE=.\ImageSeq.cpp
 # Begin Source File
 
 SOURCE=.\ImageSeq.h
+# End Source File
+# End Group
+# Begin Group "Conversion"
+
+# PROP Default_Filter ""
+# Begin Source File
+
+SOURCE=.\convert_a.asm
+
+!IF  "$(CFG)" == "avisynth - Win32 Release"
+
+# PROP Ignore_Default_Tool 1
+# Begin Custom Build - Assembling $(InputPath)...
+IntDir=.\Release
+InputPath=.\convert_a.asm
+InputName=convert_a
+
+"$(IntDir)\$(InputName).obj" : $(SOURCE) "$(INTDIR)" "$(OUTDIR)"
+	ml.exe -c -coff -Cx -Fo$(IntDir)\$(InputName).obj $(InputName).asm
+
+# End Custom Build
+
+!ELSEIF  "$(CFG)" == "avisynth - Win32 Debug"
+
+# PROP Ignore_Default_Tool 1
+# Begin Custom Build - Assembling $(InputPath)...
+IntDir=.\Debug
+InputPath=.\convert_a.asm
+InputName=convert_a
+
+"$(IntDir)\$(InputName).obj" : $(SOURCE) "$(INTDIR)" "$(OUTDIR)"
+	ml.exe -c -coff -Cx -Zi -Fo$(IntDir)\$(InputName).obj $(InputName).asm
+
+# End Custom Build
+
+!ELSEIF  "$(CFG)" == "avisynth - Win32 Profile"
+
+# PROP Ignore_Default_Tool 1
+# Begin Custom Build - Assembling $(InputPath)...
+IntDir=.\Profile
+InputPath=.\convert_a.asm
+InputName=convert_a
+
+"$(IntDir)\$(InputName).obj" : $(SOURCE) "$(INTDIR)" "$(OUTDIR)"
+	ml.exe -c -coff -Cx -Fo$(IntDir)\$(InputName).obj $(InputName).asm
+
+# End Custom Build
+
+!ENDIF 
+
+# End Source File
+# Begin Source File
+
+SOURCE=.\convert_xvid.cpp
+# End Source File
+# Begin Source File
+
+SOURCE=.\convert_xvid.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\convert_yuy2.cpp
+# End Source File
+# Begin Source File
+
+SOURCE=.\convert_yuy2.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\convert_yv12.cpp
+# End Source File
+# Begin Source File
+
+SOURCE=.\convert_yv12.h
 # End Source File
 # End Group
 # End Group

@@ -170,7 +170,6 @@ class ConvertToYUY2 : public GenericVideoFilter
 {
 public:
   ConvertToYUY2(PClip _child, bool _interlaced, IScriptEnvironment* env);
-	void mmx_ConvertRGB32toYUY2(unsigned int *src,unsigned int *dst,int src_pitch, int dst_pitch,int w, int h);
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
 
   static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env);
@@ -187,7 +186,6 @@ class ConvertBackToYUY2 : public GenericVideoFilter
 {
 public:
   ConvertBackToYUY2(PClip _child, IScriptEnvironment* env);
-	void mmx_ConvertRGB32toYUY2(unsigned int *src,unsigned int *dst,int src_pitch, int dst_pitch,int w, int h);
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
 
   static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env);
