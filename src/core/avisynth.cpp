@@ -143,6 +143,7 @@ VideoFrameBuffer::~VideoFrameBuffer() {
 //  _ASSERTE(refcount == 0);
   InterlockedIncrement(&sequence_number); // HACK : Notify any children with a pointer, this buffer has changed!!!
   delete[] data;
+  (BYTE*)data = 0; // and mark it invalid!!
 }
 
 
