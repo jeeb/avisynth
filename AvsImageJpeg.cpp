@@ -86,7 +86,7 @@ img_JPEG::~img_JPEG()
 
 
 void img_JPEG::compress(ostream & bufWriter, const BYTE * srcPtr, const int pitch, IScriptEnvironment * env)
-{
+{  
   // check some things
   if (!vi.IsRGB24())
     env->ThrowError("JPEG: requires RGB24 input");

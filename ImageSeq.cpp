@@ -44,7 +44,7 @@
 ********************************************************************/
 
 AVSFunction Image_filters[] = {
-  { "ImageWriter", "c[file]s[type]s[compression]i", ImageWriter::Create }, // clip, filename
+  { "ImageWriter", "c[file]s[type]s[compression]i", ImageWriter::Create }, // clip, base filename, image format, compression level
   { 0 }
 };
 
@@ -127,5 +127,5 @@ PVideoFrame ImageWriter::GetFrame(int n, IScriptEnvironment* env)
 
 AVSValue __cdecl ImageWriter::Create(AVSValue args, void*, IScriptEnvironment* env) 
 {
-  return new ImageWriter(args[0].AsClip(), args[1].AsString(""), args[2].AsString("png"), args[3].AsInt(0));
+  return new ImageWriter(args[0].AsClip(), args[1].AsString("c:\\"), args[2].AsString("png"), args[3].AsInt(0));
 }

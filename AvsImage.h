@@ -125,6 +125,12 @@ void __cdecl writePng(png_structp png_ptr, png_bytep data,
                 png_size_t length);
 void __cdecl flushPng(png_structp png_ptr);
 
+// custom ostream holder
+typedef struct
+{
+  ostream * bufWriter;
+} ostream_struct;
+
 
 
 // free functions for libJPEG callbacks

@@ -116,7 +116,9 @@ void img_PNG::compress(ostream & bufWriter, const BYTE * srcPtr, const int pitch
 
 
   // Override write I/O functions to use ostream
-  png_set_write_fn(png_ptr, &bufWriter, writePng, flushPng);
+  ostream_struct my_ostream;
+  my_ostream.bufWriter = &bufWriter;
+  png_set_write_fn(png_ptr, &my_ostream, writePng, flushPng);
 
   // Write the file header
   png_write_info(png_ptr, info_ptr);  
@@ -141,14 +143,14 @@ void img_PNG::decompress(const istream & bufReader, BYTE * dstPtr)
 void PNGAPI writePng(png_structp png_ptr, png_bytep data, 
               png_size_t length)
 {
-  ostream * bufWriter = reinterpret_cast<ostream *> ( png_get_io_ptr(png_ptr) );
-  bufWriter->write( reinterpret_cast<const char *> ( data ), length);
+  ostream_struct * my_ostream = reinterpret_cast<ostream_struct *> ( png_get_io_ptr(png_ptr) );
+  my_ostream->bufWriter->write( reinterpret_cast<const char *> ( data ), length);
 }
 
 
 
 void PNGAPI flushPng(png_structp png_ptr)
 {
-  ostream * bufWriter = reinterpret_cast<ostream *> ( png_get_io_ptr(png_ptr) );
-  bufWriter->flush();
+  ostream_struct * my_ostream = reinterpret_cast<ostream_struct *> ( png_get_io_ptr(png_ptr) );
+  my_ostream->bufWriter->flush();
 }
