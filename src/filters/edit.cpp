@@ -664,9 +664,6 @@ Loop::Loop(PClip _child, int _times, int _start, int _end, IScriptEnvironment* e
   }
 
   if (vi.audio_samples_per_second) {
-    if (vi.SampleType()!=SAMPLE_INT16)   // FIXME: Implement better handling!!!
-      env->ThrowError("Loop: Sound must be 16 bits, use ConvertAudioTo16bit() or KillAudio()");
-
     start_samples = (((start*vi.audio_samples_per_second)*vi.fps_denominator)/ vi.fps_numerator);
     loop_ends_at_sample = (((end*vi.audio_samples_per_second)*vi.fps_denominator)/ vi.fps_numerator);
     loop_len_samples = (__int64)(0.5+(double)(loop_ends_at_sample-start_samples)/(double)times);
@@ -700,9 +697,10 @@ void Loop::GetAudio(void* buf, __int64 s_start, __int64 count, IScriptEnvironmen
     return;
   } 
 
-  signed short* samples = (signed short*)buf;
+  char* samples = (char*)buf;
+  int bps = vi.BytesPerChannelSample();
+
   int s_pitch=vi.AudioChannels();
-//  if (vi.stereo) s_pitch=2;
  
   __int64 in_loop_start=s_start-start_samples;  // This is the offset within the loop
   __int64 fetch_at_sample = (in_loop_start%loop_len_samples); // This is the first sample to get.
@@ -716,7 +714,7 @@ void Loop::GetAudio(void* buf, __int64 s_start, __int64 count, IScriptEnvironmen
       if (get_count>count) get_count=count;  // Just to be safe
       if (get_count+s_start>loop_ends_at_sample) get_count=loop_ends_at_sample-(get_count+s_start); // Just to be safe
       child->GetAudio(samples,start_samples+fetch_at_sample,get_count,env);
-      samples+=get_count*s_pitch;  // update dest start pointer
+      samples+=get_count*s_pitch*bps;  // update dest start pointer
       count-=get_count;
       s_start+=get_count;
       if (s_start>=loop_ends_at_sample) { // Continue on after the loop
