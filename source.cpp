@@ -1276,7 +1276,7 @@ public:
 
 AVSValue __cdecl Create_SegmentedSource(AVSValue args, void* use_directshow, IScriptEnvironment* env) {
   int avg_time_per_frame = (use_directshow && args[1].Defined()) ? int(10000000 / args[1].AsFloat() + 0.5) : 0;
-
+	bool bAudio = !use_directshow && args[1].AsBool(true);
   args = args[0];
   PClip result = 0;
 
@@ -1293,7 +1293,7 @@ AVSValue __cdecl Create_SegmentedSource(AVSValue args, void* use_directshow, ISc
       wsprintf(filename, "%s.%02d.%s", basename, j, extension);
       if (GetFileAttributes(filename) != (DWORD)-1) {   // check if file exists
         PClip clip = use_directshow ? (IClip*)(new DirectShowSource(filename, avg_time_per_frame, env))
-                                    : (IClip*)(new AVISource(filename, args[1].AsBool(true), 0, env));
+                                    : (IClip*)(new AVISource(filename, bAudio, 0, env));
         result = !result ? clip : new_Splice(result, clip, false, env);
       }
     }
