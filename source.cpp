@@ -58,6 +58,8 @@ class AVISource : public IClip {
   BITMAPINFOHEADER biDst;
   bool ex;
   bool dropped_frame;
+  bool bIsType1;
+
   PVideoFrame last_frame;
   int last_frame_no;
   AudioSource* aSrc;
@@ -175,17 +177,42 @@ bool AVISource::AttemptCodecNegotiation(DWORD fccHandler, BITMAPINFOHEADER* bmih
 
 void AVISource::LocateVideoCodec(IScriptEnvironment* env) {
   AVISTREAMINFO asi;
-  long size = sizeof(BITMAPINFOHEADER);
   CheckHresult(pvideo->Info(&asi, sizeof(asi)), "couldn't get video info", env);
-  CheckHresult(pvideo->ReadFormat(0, 0, &size), "couldn't get video format size", env);
-  pbiSrc = (LPBITMAPINFOHEADER)malloc(size);
-  CheckHresult(pvideo->ReadFormat(0, pbiSrc, &size), "couldn't get video format", env);
+  long size = sizeof(BITMAPINFOHEADER);
+
+  // Read video format.  If it's a
+	// type-1 DV, we're going to have to fake it.
+
+	if (bIsType1) {
+		if (!(pbiSrc = (BITMAPINFOHEADER *)malloc(size))) env->ThrowError("AviSource: Could not allocate BITMAPINFOHEADER.");
+
+		pbiSrc->biSize			= sizeof(BITMAPINFOHEADER);
+		pbiSrc->biWidth			= 720;
+
+		if (asi.dwRate > asi.dwScale*26i64)
+			pbiSrc->biHeight			= 480;
+		else
+			pbiSrc->biHeight			= 576;
+
+		pbiSrc->biPlanes			= 1;
+		pbiSrc->biBitCount		= 24;
+		pbiSrc->biCompression		= 'dsvd';
+		pbiSrc->biSizeImage		= asi.dwSuggestedBufferSize;
+		pbiSrc->biXPelsPerMeter	= 0;
+		pbiSrc->biYPelsPerMeter	= 0;
+		pbiSrc->biClrUsed			= 0;
+		pbiSrc->biClrImportant	= 0;
+
+  } else {  
+    CheckHresult(pvideo->ReadFormat(0, 0, &size), "couldn't get video format size", env);
+    pbiSrc = (LPBITMAPINFOHEADER)malloc(size);
+    CheckHresult(pvideo->ReadFormat(0, pbiSrc, &size), "couldn't get video format", env);
+  }
 
   vi.width = pbiSrc->biWidth;
   vi.height = pbiSrc->biHeight;
   vi.SetFPS(asi.dwRate, asi.dwScale);
   vi.num_frames = asi.dwLength;
-//  vi.field_based = false;
 
   // see if we can handle the video format directly
   if (pbiSrc->biCompression == '2YUY') {
@@ -231,7 +258,8 @@ AVISource::AVISource(const char filename[], bool fAudio, const char pixel_type[]
   audioStreamSource = 0;
   pvideo=0;
   pfile=0;
-  
+  bIsType1 = false;
+    
   AVIFileInit();
   
   if (mode == 0) {
@@ -261,6 +289,12 @@ AVISource::AVISource(const char filename[], bool fAudio, const char pixel_type[]
   if (mode != 3) { // check for video stream
     hic = 0;
     pvideo = pfile->GetStream(streamtypeVIDEO, 0);
+
+    if (!pvideo) { // Attempt DV type 1 video.
+    	pvideo = pfile->GetStream('svai', 0);
+      bIsType1 = true;
+    }
+
     if (pvideo) {
       LocateVideoCodec(env);
       if (hic) {
@@ -324,6 +358,8 @@ AVISource::AVISource(const char filename[], bool fAudio, const char pixel_type[]
         }
         DecompressBegin(pbiSrc, &biDst);
       }
+    } else {
+      env->ThrowError("AviSource: Could not locate video stream.");
     }
   }
 

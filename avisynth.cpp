@@ -292,7 +292,7 @@ public:
 // *** Make Plugin Functions readable for external apps            ***
 // *** Tobias Minich, Mar 2003                                     ***
 // BEGIN *************************************************************
-#if 0 
+#if 1 
     AVSValue fnplugin;
     char *fnpluginnew;
     try {
