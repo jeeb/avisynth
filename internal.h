@@ -99,7 +99,7 @@ extern _PixelClip PixelClip;
 
 
 template<class ListNode>
-static inline void Relink(ListNode* newprev, ListNode* me, ListNode* newnext) {
+static __inline void Relink(ListNode* newprev, ListNode* me, ListNode* newnext) {
   if (me == newprev || me == newnext) return;
   me->next->prev = me->prev;
   me->prev->next = me->next;
@@ -113,12 +113,12 @@ static inline void Relink(ListNode* newprev, ListNode* me, ListNode* newnext) {
 /*** Inline helper methods ***/
 
 
-static inline BYTE ScaledPixelClip(int i) {
+static __inline BYTE ScaledPixelClip(int i) {
   return PixelClip((i+32768) >> 16);
 }
 
 
-static inline bool IsClose(int a, int b, unsigned threshold) 
+static __inline bool IsClose(int a, int b, unsigned threshold) 
   { return (unsigned(a-b+threshold) <= threshold*2); }
 
 

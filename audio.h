@@ -210,7 +210,7 @@ private:
     return (short)n;
   }
 
-  static inline double dBtoScaleFactor(double dB) 
+  static __inline double dBtoScaleFactor(double dB) 
     { return pow(10.0, dB/10.0); }
 };
 
@@ -269,13 +269,13 @@ public:
 
   static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env);
   static AVSValue __cdecl Create_dB(AVSValue args, void*, IScriptEnvironment* env);
-
+  
 
 private:
   int left_factor, right_factor;
   int max_volume;
 
-  static inline short Saturate(int n) {
+  static __inline short Saturate(int n) {
     if (n <= -32768) return -32768;
     if (n >= 32767) return 32767;
     return (short)n;
@@ -308,7 +308,7 @@ private:
     return (short)n;
   }
 
-  static inline double dBtoScaleFactor(double dB) 
+  static __inline double dBtoScaleFactor(double dB) 
     { return pow(10.0, dB/10.0); }
 };
 
