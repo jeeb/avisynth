@@ -188,15 +188,19 @@ yloop:
 xloop:
     mov edx, src_pitch_uv2
     movq mm0,[eax]          // mm0 = Y current line
-     pxor mm7,mm7
     movd mm2,[ebx+edx]            // mm2 = U top field
      movd mm3, [ecx+edx]          // mm3 = V top field
-    movd mm4,[ebx]        // U prev top field
+    movd mm4,[ebx]            // U prev top field
      movq mm1,mm0             // mm1 = Y current line
-    movd mm5,[ecx]        // V prev top field
+    movd mm5,[ecx]            // V prev top field    
+    movq mm6,mm4
+     movq mm7,mm5
      pavgb mm4,mm2            // interpolate chroma U 
-    pavgb mm5,mm3             // interpolate chroma V
-     punpcklbw mm0,mm7        // Y low
+    pavgb mm5,mm3             // interpolate chroma V    
+     pavgb mm4,mm6            // interpolate chroma U 
+    pavgb mm5,mm7             // interpolate chroma V    
+     pxor mm7,mm7
+    punpcklbw mm0,mm7        // Y low
     punpckhbw mm1,mm7         // Y high*
      punpcklbw mm4,mm7        // U 00uu 00uu 00uu 00uu
     punpcklbw mm5,mm7         // V 00vv 00vv 00vv 00vv
@@ -218,15 +222,16 @@ xloop:
 
     //Next line in same field
      
+     pxor mm7,mm7
     movd mm4,[ebx+edx]        // U next top field
      movd mm5,[ecx+edx]       // V prev top field
     mov edx, [src_pitch2]
-     pxor mm7,mm7
-    movq mm0,[eax+edx]        // Next U-line
-     pavgb mm4,mm2            // interpolate chroma U 
+     movq mm0,[eax+edx]        // Next U-line
+    pavgb mm4,mm2            // interpolate chroma U
+     pavgb mm5,mm3             // interpolate chroma V
+    pavgb mm4,mm2            // interpolate chroma U
+     pavgb mm5,mm3             // interpolate chroma V
     movq mm1,mm0             // mm1 = Y current line
-
-    pavgb mm5,mm3             // interpolate chroma V
      punpcklbw mm0,mm7        // Y low
     punpckhbw mm1,mm7         // Y high*
      punpcklbw mm4,mm7        // U 00uu 00uu 00uu 00uu
@@ -536,7 +541,7 @@ yloop_test:
 void mmx_yv12_i_to_yuy2(const BYTE* srcY, const BYTE* srcU, const BYTE* srcV, int src_rowsize, int src_pitch, int src_pitch_uv, 
                     BYTE* dst, int dst_pitch,
                     int height) {
-  __int64 add_64=0x0001000100010001;
+  __declspec(align(8)) static __int64 add_64=0x0002000200020002;
   const BYTE** srcp= new const BYTE*[3];
   int src_pitch_uv2 = src_pitch_uv*2;
   int src_pitch_uv4 = src_pitch_uv*4;
@@ -690,12 +695,19 @@ xloop:
      punpcklbw mm3,mm7         // V 00vv 00vv 00vv 00vv
     punpcklbw mm4,mm7        // U 00uu 00uu 00uu 00uu
      punpcklbw mm5,mm7         // V 00vv 00vv 00vv 00vv
+    movq mm6,mm4
+     movq mm7,mm5
     paddusw mm4,mm2
      paddusw mm5,mm3
+    paddusw mm4,mm6
+     paddusw mm5,mm7
+    paddusw mm4,mm6
+     paddusw mm5,mm7
     paddusw mm4, [add_64]
      paddusw mm5, [add_64]
-    psrlw mm4,1
-     psrlw mm5,1
+    psrlw mm4,2
+     pxor mm7,mm7
+    psrlw mm5,2
 
      punpcklbw mm0,mm7        // Y low
     punpckhbw mm1,mm7         // Y high*
@@ -728,10 +740,15 @@ xloop:
      punpcklbw mm5,mm7         // V 00vv 00vv 00vv 00vv
     paddusw mm4,mm2
      paddusw mm5,mm3
+    paddusw mm4,mm2
+     paddusw mm5,mm3
+    paddusw mm4,mm2
+     paddusw mm5,mm3
     paddusw mm4, [add_64]
      paddusw mm5, [add_64]
-    psrlw mm4,1
-     psrlw mm5,1
+    psrlw mm4,2
+     pxor mm7,mm7
+    psrlw mm5,2
 
      punpcklbw mm0,mm7        // Y low
     punpckhbw mm1,mm7         // Y high*
@@ -810,7 +827,7 @@ yloop_test:
 void mmx_yv12_to_yuy2(const BYTE* srcY, const BYTE* srcU, const BYTE* srcV, int src_rowsize, int src_pitch, int src_pitch_uv, 
                     BYTE* dst, int dst_pitch,
                     int height) {
-  __int64 add_64=0x0001000100010001;
+  __declspec(align(8)) static __int64 add_64=0x0001000100010001;
   const BYTE** srcp= new const BYTE*[3];
   int src_pitch_uv2 = src_pitch_uv*2;
   int skipnext = 0;
