@@ -46,13 +46,15 @@
 ********************************************************************/
 
 AVSFunction Fps_filters[] = {
-  { "AssumeFPS", "ci[]i[sync_audio]b", AssumeFPS::Create },     // dst framerate, sync audio?
-  { "AssumeFPS", "cf[sync_audio]b", AssumeFPS::CreateFloat },   // dst framerate, sync audio?
+  { "AssumeFPS", "ci[]i[sync_audio]b", AssumeFPS::Create },      // dst framerate, sync audio?
+  { "AssumeFPS", "cf[sync_audio]b", AssumeFPS::CreateFloat },    // dst framerate, sync audio?
   { "AssumeFPS", "cc[sync_audio]b", AssumeFPS::CreateFromClip }, // clip with dst framerate, sync audio?
-  { "ChangeFPS", "ci[]i[linear]b", ChangeFPS::Create },                  // dst framerate
-  { "ChangeFPS", "cf[linear]b", ChangeFPS::CreateFloat },                // dst framerate
-  { "ConvertFPS", "ci[]i[zone]i[vbi]i", ConvertFPS::Create },   // dst framerate, zone lines, vbi lines
-  { "ConvertFPS", "cf[zone]i[vbi]i", ConvertFPS::CreateFloat }, // dst framerate, zone lines, vbi lines
+  { "ChangeFPS", "ci[]i[linear]b", ChangeFPS::Create },     // dst framerate, fetch all frames
+  { "ChangeFPS", "cf[linear]b", ChangeFPS::CreateFloat },   // dst framerate, fetch all frames
+  { "ChangeFPS", "cc[linear]b", ChangeFPS::CreateFromClip },// clip with dst framerate, fetch all frames
+  { "ConvertFPS", "ci[]i[zone]i[vbi]i", ConvertFPS::Create },      // dst framerate, zone lines, vbi lines
+  { "ConvertFPS", "cf[zone]i[vbi]i", ConvertFPS::CreateFloat },    // dst framerate, zone lines, vbi lines
+  { "ConvertFPS", "cc[zone]i[vbi]i", ConvertFPS::CreateFromClip }, // clip with dst framerate, zone lines, vbi lines
   { 0 }
 };
 
@@ -90,10 +92,13 @@ AVSValue __cdecl AssumeFPS::Create(AVSValue args, void*, IScriptEnvironment* env
 
 AVSValue __cdecl AssumeFPS::CreateFloat(AVSValue args, void*, IScriptEnvironment* env)
 {
+	try {	// HIDE DAMN SEH COMPILER BUG!!!
   double n = args[1].AsFloat();
   int d = 1;
   while (n < 16777216 && d < 16777216) { n*=2; d*=2; }
   return new AssumeFPS(args[0].AsClip(), int(n+0.5), d, args[2].AsBool(false), env);
+	}
+	catch (...) { throw; }
 }
 
 AVSValue __cdecl AssumeFPS::CreateFromClip(AVSValue args, void*, IScriptEnvironment* env)
@@ -117,9 +122,12 @@ AVSValue __cdecl AssumeFPS::CreateFromClip(AVSValue args, void*, IScriptEnvironm
  ************************************/
 
 
-ChangeFPS::ChangeFPS(PClip _child, int new_numerator, int new_denominator, bool _linear)
+ChangeFPS::ChangeFPS(PClip _child, int new_numerator, int new_denominator, bool _linear, IScriptEnvironment* env)
   : GenericVideoFilter(_child), linear(_linear)
 {
+  if (new_denominator == 0)
+    env->ThrowError("ChangeFPS: Denominator cannot be 0 (zero).");
+
   a = __int64(vi.fps_numerator) * new_denominator;
   b = __int64(vi.fps_denominator) * new_numerator;
   vi.SetFPS(new_numerator, new_denominator);
@@ -154,16 +162,31 @@ bool __stdcall ChangeFPS::GetParity(int n)
 
 AVSValue __cdecl ChangeFPS::Create(AVSValue args, void*, IScriptEnvironment* env) 
 {
-  return new ChangeFPS( args[0].AsClip(), args[1].AsInt(), args[2].AsInt(1), args[3].AsBool(true) );
+  return new ChangeFPS( args[0].AsClip(), args[1].AsInt(), args[2].AsInt(1), args[3].AsBool(true), env);
 }
 
 
 AVSValue __cdecl ChangeFPS::CreateFloat(AVSValue args, void*, IScriptEnvironment* env) 
 {
+	try {	// HIDE DAMN SEH COMPILER BUG!!!
   double n = args[1].AsFloat();
   int d = 1;
   while (n < 16777216 && d < 16777216) { n*=2; d*=2; }
-  return new ChangeFPS(args[0].AsClip(), int(n+0.5), d, args[2].AsBool(true));
+  return new ChangeFPS(args[0].AsClip(), int(n+0.5), d, args[2].AsBool(true), env);
+	}
+	catch (...) { throw; }
+}
+
+AVSValue __cdecl ChangeFPS::CreateFromClip(AVSValue args, void*, IScriptEnvironment* env)
+{
+  const VideoInfo& vi = args[1].AsClip()->GetVideoInfo();
+
+  if (!vi.HasVideo()) {
+    env->ThrowError("ChangeFPS: The clip supplied to get the FPS from must contain video.");
+  }
+
+  return new ChangeFPS( args[0].AsClip(), vi.fps_numerator, vi.fps_denominator,
+                        args[2].AsBool(true), env);
 }
 
 
@@ -192,10 +215,11 @@ ConvertFPS::ConvertFPS( PClip _child, int new_numerator, int new_denominator, in
 		if( zone > lps )
 			env->ThrowError("ConvertFPS: 'zone' too large. Maximum allowed %d", lps);
 	} 
-  else if( 3*fb < (fa<<1) )
-      env->ThrowError("ConvertFPS: New frame rate too small. Must be greater than %d. "
-				"Increase or use 'zone='", int((fa<<1)/3));
-
+  else if( 3*fb < (fa<<1) ) {
+	  int dec = MulDiv(vi.fps_numerator, 20000, vi.fps_denominator);
+      env->ThrowError("ConvertFPS: New frame rate too small. Must be greater than %d.%04d "
+				"Increase or use 'zone='", dec/30000, (dec/3)%10000);
+	}
 	vi.SetFPS(new_numerator, new_denominator);
 	vi.num_frames = int((vi.num_frames * fb + (fa>>1)) / fa);
 }
@@ -327,6 +351,7 @@ AVSValue __cdecl ConvertFPS::Create(AVSValue args, void*, IScriptEnvironment* en
 
 AVSValue __cdecl ConvertFPS::CreateFloat(AVSValue args, void*, IScriptEnvironment* env) 
 {
+	try {	// HIDE DAMN SEH COMPILER BUG!!!
   double n = args[1].AsFloat();
   int d = 1;
   while (n < 16777216 && d < 16777216) 
@@ -336,4 +361,18 @@ AVSValue __cdecl ConvertFPS::CreateFloat(AVSValue args, void*, IScriptEnvironmen
   }
   return new ConvertFPS( args[0].AsClip(), int(n+0.5), d, args[2].AsInt(-1), 
                          args[3].AsInt(0), env );
+	}
+	catch (...) { throw; }
+}
+
+AVSValue __cdecl ConvertFPS::CreateFromClip(AVSValue args, void*, IScriptEnvironment* env)
+{
+  const VideoInfo& vi = args[1].AsClip()->GetVideoInfo();
+
+  if (!vi.HasVideo()) {
+    env->ThrowError("ConvertFPS: The clip supplied to get the FPS from must contain video.");
+  }
+
+  return new ConvertFPS( args[0].AsClip(), vi.fps_numerator, vi.fps_denominator,
+                         args[2].AsInt(-1), args[3].AsInt(0), env );
 }

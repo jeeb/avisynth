@@ -59,12 +59,13 @@ class ChangeFPS : public GenericVideoFilter
  **/
 {
 public:
-  ChangeFPS(PClip _child, int new_numerator, int new_denominator, bool linear);
+  ChangeFPS(PClip _child, int new_numerator, int new_denominator, bool linear, IScriptEnvironment* env);
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
   bool __stdcall GetParity(int n);
 
   static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env);
   static AVSValue __cdecl CreateFloat(AVSValue args, void*, IScriptEnvironment* env);
+  static AVSValue __cdecl CreateFromClip(AVSValue args, void*, IScriptEnvironment* env);
 
 private:
   __int64 a, b;
@@ -87,6 +88,7 @@ public:
 
   static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env);
   static AVSValue __cdecl CreateFloat(AVSValue args, void*, IScriptEnvironment* env);
+  static AVSValue __cdecl CreateFromClip(AVSValue args, void*, IScriptEnvironment* env);
 
 private:
   __int64 fa, fb;
