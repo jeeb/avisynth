@@ -252,14 +252,20 @@ class ColorBars : public IClip {
 
 public:
 
-  ColorBars(int w, int h, IScriptEnvironment* env) {
+  ColorBars(int w, int h, const char* pixel_type, IScriptEnvironment* env) {
     memset(&vi, 0, sizeof(VideoInfo));
     vi.width = w;
     vi.height = h;
     vi.fps_numerator = 2997;
     vi.fps_denominator = 100;
     vi.num_frames = 107892;   // 1 hour
-    vi.pixel_type = VideoInfo::CS_BGR32;
+    if (lstrcmpi(pixel_type, "RGB") == 0) {
+        vi.pixel_type = VideoInfo::CS_BGR32;
+    } else if (lstrcmpi(pixel_type, "YUY2") == 0) { // YUY2
+        vi.pixel_type = VideoInfo::CS_YUY2;
+    } else {
+      env->ThrowError("BlankClip: pixel_type must be \"RGB\" or \"YUY2\"");
+    }
     vi.sample_type = SAMPLE_FLOAT;
     vi.nchannels = 2;
     vi.audio_samples_per_second = 48000;
@@ -270,44 +276,82 @@ public:
     const int pitch = frame->GetPitch()/4;
 
     int y = 0;
+    
+	if (lstrcmpi(pixel_type, "RGB") == 0) {
+		// these values are taken from http://www.greatdv.com/video/smptebars3.htm
+		// note we go bottom->top
+		static const int bottom_quarter[] = { 0x001d42, 0xebebeb, 0x2c005c, 0x101010,  0x070707, 0x101010, 0x181818,  0x101010 };
+		for (; y < h/4; ++y) {
+			int x = 0;
+			for (int i=0; i<4; ++i) {
+				for (; x < (w*(i+1)*5+14)/28; ++x)
+					p[x] = bottom_quarter[i];
+			}
+			for (int j=4; j<7; ++j) {
+				for (; x < (w*(j+12)+10)/21; ++x)
+					p[x] = bottom_quarter[j];
+			}
+			for (; x < w; ++x)
+				p[x] = bottom_quarter[7];
+			p += pitch;
+		}
+		
+		static const int two_thirds_to_three_quarters[] = { 0x0f0fb4, 0x101010, 0xb410b4, 0x101010, 0x0db4b4, 0x101010, 0xb4b4b4 };
+		for (; y < h/3; ++y) {
+			int x = 0;
+			for (int i=0; i<7; ++i) {
+				for (; x < (w*(i+1)+3)/7; ++x)
+					p[x] = two_thirds_to_three_quarters[i];
+			}
+			p += pitch;
+		}
+		
+		static const int top_two_thirds[] = { 0xb4b4b4, 0xb4b40c, 0x0db4b4, 0x0db40c, 0xb410b4, 0xb40f0e, 0x0f0fb4 };
+		for (; y < h; ++y) {
+			int x = 0;
+			for (int i=0; i<7; ++i) {
+				for (; x < (w*(i+1)+3)/7; ++x)
+					p[x] = top_two_thirds[i];
+			}
+			p += pitch;
+		}
+	} else { // YUY2; [16,235] RGB -> [16,235] YUV from http://www.greatdv.com/video/smptebars3.htm
+		static const int top_two_thirds[] = { 0x80b480b4, 0x8ea12ca1, 0x2c829c82, 0x3b6f486f, 0xc454b754, 0xd3406440, 0x7222d222 }; //VYUY
+		for (; y < 0.667*h; ++y) {
+			int x = 0;
+			for (int i=0; i<7; i++) {
+				for (; x < 0.5*w*(i+1)/7; ++x)
+					p[x] = top_two_thirds[i];
+			}
+			p += pitch;
+		}
 
-    // these values are taken from http://www.greatdv.com/video/smptebars3.htm
-    // note we go bottom->top
-    static const int bottom_quarter[] = { 0x001d42, 0xebebeb, 0x2c005c, 0x101010,  0x070707, 0x101010, 0x181818,  0x101010 };
-    for (; y < h/4; ++y) {
-      int x = 0;
-      for (int i=0; i<4; ++i) {
-        for (; x < (w*(i+1)*5+14)/28; ++x)
-          p[x] = bottom_quarter[i];
-      }
-      for (int j=4; j<7; ++j) {
-        for (; x < (w*(j+12)+10)/21; ++x)
-          p[x] = bottom_quarter[j];
-      }
-      for (; x < w; ++x)
-        p[x] = bottom_quarter[7];
-      p += pitch;
-    }
+		static const int two_thirds_to_three_quarters[] = { 0x7222d222, 0x80108010, 0xc454b754, 0x80108010, 0x2c829c82, 0x80108010, 0x80b480b4 }; //VYUY
+		for (; y < 0.75*h; ++y) {
+			int x = 0;
+			for (int i=0; i<7; i++) {
+				for (; x < 0.5*w*(i+1)/7; ++x)
+					p[x] = two_thirds_to_three_quarters[i];
+			}
+			p += pitch;
+		}
 
-    static const int two_thirds_to_three_quarters[] = { 0x0f0fb4, 0x101010, 0xb410b4, 0x101010, 0x0db4b4, 0x101010, 0xb4b4b4 };
-    for (; y < h/3; ++y) {
-      int x = 0;
-      for (int i=0; i<7; ++i) {
-        for (; x < (w*(i+1)+3)/7; ++x)
-          p[x] = two_thirds_to_three_quarters[i];
-      }
-      p += pitch;
-    }
-
-    static const int top_two_thirds[] = { 0xb4b4b4, 0xb4b40c, 0x0db4b4, 0x0db40c, 0xb410b4, 0xb40f0e, 0x0f0fb4 };
-    for (; y < h; ++y) {
-      int x = 0;
-      for (int i=0; i<7; ++i) {
-        for (; x < (w*(i+1)+3)/7; ++x)
-          p[x] = top_two_thirds[i];
-      }
-      p += pitch;
-    }
+		static const int bottom_quarter[] = { 0x6f189818, 0x80eb80eb, 0x8f17a717, 0x80eb80eb, 0x80078007, 0x80108010, 0x80188018, 0x80108010 };
+		for (; y < h; ++y) {
+			int x = 0;
+			for (int i=0; i<4; ++i) {
+				for (; x < (0.5*w*(i+1)*5+14)/28; ++x)
+					p[x] = bottom_quarter[i];
+			}
+			for (int j=4; j<7; ++j) {
+				for (; x < (0.5*w*(j+12)+5)/21; ++x)
+					p[x] = bottom_quarter[j];
+			}
+			for (; x < 0.5*w; ++x)
+				p[x] = bottom_quarter[7];
+			p += pitch;
+		}
+	}
   }
 
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env) { return frame; }
@@ -341,7 +385,7 @@ public:
   }
 
   static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env) {
-    return new ColorBars(args[0].AsInt(640), args[1].AsInt(480), env);
+    return new ColorBars(args[0].AsInt(640), args[1].AsInt(480), args[2].AsString("YUY2"), env);
   }
 };
 
@@ -584,7 +628,7 @@ AVSFunction Source_filters[] = {
   { "BlankClip", "[clip]c[length]i[width]i[height]i[pixel_type]s[fps]f[fps_denominator]i[audio_rate]i[stereo]b[sixteen_bit]b[color]i[color_yuv]i", Create_BlankClip },
   { "Blackness", "[clip]c[length]i[width]i[height]i[pixel_type]s[fps]f[fps_denominator]i[audio_rate]i[stereo]b[sixteen_bit]b[color]i[color_yuv]i", Create_BlankClip },
   { "MessageClip", "s[width]i[height]i[shrink]b[text_color]i[halo_color]i[bg_color]i", Create_MessageClip },
-  { "ColorBars", "[width]i[height]i", ColorBars::Create },
+  { "ColorBars", "[width]i[height]i[pixel_type]s", ColorBars::Create },
   { "Tone", "[length]f[frequency]f[samplerate]i[channels]i[type]s", Tone::Create },
 
   { "Version", "", Create_Version },
