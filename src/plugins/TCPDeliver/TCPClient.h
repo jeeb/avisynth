@@ -46,6 +46,17 @@
 
 AVSValue __cdecl Create_TCPClient(AVSValue args, void* user_data, IScriptEnvironment* env);
 
+class ServerToClientReply {
+public:
+  ServerToClientReply(ServerToClientReply* push_me = 0) {
+    pushed_reply = push_me;
+    last_reply = new char[1];
+  }
+  ServerToClientReply* pushed_reply;
+  char* last_reply;
+  unsigned int last_reply_bytes;
+  char last_reply_type;
+};
 
 class TCPClientThread {
 public:
@@ -60,13 +71,13 @@ public:
   HANDLE evtClientReadyForRequest;   // Client is ready to recieve a new request.
   HANDLE evtClientReplyReady;        // Client has finished processing the last request.
   HANDLE evtClientProcesRequest;     // Client should process the passed request
-  char* last_reply;
-  unsigned int last_reply_bytes;
-  char last_reply_type;
+  ServerToClientReply* reply;
   bool disconnect;
   bool thread_running;
 
 private:
+  void PushReply();
+  void PopReply();
   void RecievePacket();
   char* client_request;
   unsigned int client_request_bytes;

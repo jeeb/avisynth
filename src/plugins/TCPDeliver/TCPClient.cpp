@@ -47,7 +47,6 @@
   further processing, or the client-app is compressing frames or similar.
  ********************************************************************/
 
-//FIXME: If client application requests audio at the same time as requesting audio, data transfer might fail
 
 TCPClient::TCPClient(const char* _hostname, int _port, IScriptEnvironment* env) : hostname(_hostname), port(_port) {
   LPDWORD ThreadId = 0;
@@ -62,17 +61,17 @@ TCPClient::TCPClient(const char* _hostname, int _port, IScriptEnvironment* env) 
 
 const VideoInfo& TCPClient::GetVideoInfo() {
   if (client->IsDataPending()) {  // Ignore any pending data
-    client->GetReply();
+    client->GetReply();  // Kill it.
   }
   _RPT0(0, "TCPClient: Requesting VideoInfo.\n");
   memset(&vi, 0, sizeof(VideoInfo));
   client->SendRequest(CLIENT_SEND_VIDEOINFO, 0, 0);
   client->GetReply();
-  if (client->last_reply_type == SERVER_VIDEOINFO) {
-    if (client->last_reply_bytes != sizeof(VideoInfo)) {
+  if (client->reply->last_reply_type == SERVER_VIDEOINFO) {
+    if (client->reply->last_reply_bytes != sizeof(VideoInfo)) {
       _RPT0(1,"TCPClient: Internal error - VideoInfo was not right size!");
     }
-    memcpy(&vi, client->last_reply, sizeof(VideoInfo));
+    memcpy(&vi, client->reply->last_reply, sizeof(VideoInfo));
       
   } else {
     _RPT0(1,"TCPClient: Did not recieve expected packet (SERVER_VIDEOINFO)");
@@ -91,8 +90,8 @@ PVideoFrame __stdcall TCPClient::GetFrame(int n, IScriptEnvironment* env) {
 
   if (client->IsDataPending()) {
     client->GetReply();
-    if (client->last_reply_type == SERVER_SENDING_FRAME) {
-      ServerFrameInfo* fi = (ServerFrameInfo *)client->last_reply;
+    if (client->reply->last_reply_type == SERVER_SENDING_FRAME) {
+      ServerFrameInfo* fi = (ServerFrameInfo *)client->reply->last_reply;
       if ((int)fi->framenumber == n) {
         ready = true;
         _RPT1(0, "TCPClient: Frame was PreRequested (hit!). Found frame %d.\n", n);
@@ -109,8 +108,8 @@ PVideoFrame __stdcall TCPClient::GetFrame(int n, IScriptEnvironment* env) {
   int incoming_pitch;
   unsigned int incoming_bytes;
 
-  if (client->last_reply_type == SERVER_SENDING_FRAME) {
-    ServerFrameInfo* fi = (ServerFrameInfo *)client->last_reply;
+  if (client->reply->last_reply_type == SERVER_SENDING_FRAME) {
+    ServerFrameInfo* fi = (ServerFrameInfo *)client->reply->last_reply;
     frame = env->NewVideoFrame(vi);  
 
     if((unsigned int)frame->GetRowSize() != fi->row_size)
@@ -134,7 +133,7 @@ PVideoFrame __stdcall TCPClient::GetFrame(int n, IScriptEnvironment* env) {
     env->MakeWritable(&frame);
 
     BYTE* dstp = frame->GetWritePtr();
-    BYTE* srcp = (unsigned char*)client->last_reply + sizeof(ServerFrameInfo);
+    BYTE* srcp = (unsigned char*)client->reply->last_reply + sizeof(ServerFrameInfo);
 
     env->BitBlt(dstp, frame->GetPitch(), srcp, incoming_pitch, frame->GetRowSize(), frame->GetHeight());
     if (vi.IsYV12()) {
@@ -161,9 +160,6 @@ PVideoFrame __stdcall TCPClient::GetFrame(int n, IScriptEnvironment* env) {
 }
 
 void __stdcall TCPClient::GetAudio(void* buf, __int64 start, __int64 count, IScriptEnvironment* env) {
-  if (client->IsDataPending()) {  // Ignore any pending data
-    client->GetReply();
-  }
   ClientRequestAudio a;
   memset(&a, 0 , sizeof(ClientRequestAudio));
   a.start = start;
@@ -172,12 +168,12 @@ void __stdcall TCPClient::GetAudio(void* buf, __int64 start, __int64 count, IScr
 
   client->SendRequest(CLIENT_REQUEST_AUDIO, &a, sizeof(ClientRequestAudio));
   client->GetReply();
-  if (client->last_reply_type != SERVER_SENDING_AUDIO) {
+  if (client->reply->last_reply_type != SERVER_SENDING_AUDIO) {
     env->ThrowError("TCPClient: Did not recieve expected packet (SERVER_SENDING_AUDIO)");
     return;
   }
 
-  ServerAudioInfo* ai = (ServerAudioInfo *)client->last_reply;
+  ServerAudioInfo* ai = (ServerAudioInfo *)client->reply->last_reply;
   switch (ai->compression) {
     case ServerAudioInfo::COMPRESSION_NONE:
       break;
@@ -186,7 +182,7 @@ void __stdcall TCPClient::GetAudio(void* buf, __int64 start, __int64 count, IScr
   }
 
   _RPT1(0,"TCPClient: Got %d bytes of audio (GetAudio)\n", a.bytes);
-  memcpy(buf, client->last_reply+sizeof(ClientRequestAudio), a.bytes);
+  memcpy(buf, client->reply->last_reply+sizeof(ClientRequestAudio), a.bytes);  // TODO: Check size
 }
 
 
@@ -225,6 +221,8 @@ TCPClientThread::TCPClientThread(const char* hostname, int port, IScriptEnvironm
   disconnect = false;
   data_waiting = false;
   thread_running = false;
+  client_request = 0;
+  reply = new ServerToClientReply();
 
   evtClientReadyForRequest = ::CreateEvent (NULL,	FALSE, FALSE, NULL);
   evtClientReplyReady = ::CreateEvent (NULL,	FALSE, FALSE, NULL);
@@ -261,11 +259,12 @@ TCPClientThread::TCPClientThread(const char* hostname, int port, IScriptEnvironm
 
 // To be called from external interface
 void TCPClientThread::SendRequest(char requestId, void* data, unsigned int bytes) {
-    _RPT0(0, "TCPClient: Waiting for ready for request.\n");
     if (data_waiting) {
-      _RPT0(1, "TCPClient: Data already waiting.\n");
-      return;
+      PushReply();
     }
+
+    _RPT0(0, "TCPClient: Waiting for ready for request.\n");
+
     data_waiting = true;
     HRESULT wait_result = WAIT_TIMEOUT;
     while (wait_result == WAIT_TIMEOUT) {
@@ -286,32 +285,62 @@ void TCPClientThread::SendRequest(char requestId, void* data, unsigned int bytes
 
 // The data is only valid until SendRequest is called.
 void TCPClientThread::GetReply() {
-    if (!data_waiting)
-      return;
-
-    _RPT0(0, "TCPClient: Waiting for reply.\n");    
-    HRESULT wait_result = WAIT_TIMEOUT;
-
-    while (wait_result == WAIT_TIMEOUT) {
-      wait_result = WaitForSingleObject(evtClientReplyReady, 1000);
-    }
-
-    if (client_request)
-      delete[] client_request;  // The request data can now be freed.
+  if (!data_waiting) {
+    if (reply->pushed_reply)
+      PopReply();
 
     data_waiting = false;
+    return;
+  }
+
+  _RPT0(0, "TCPClient: Waiting for reply.\n");    
+  HRESULT wait_result = WAIT_TIMEOUT;
+
+  while (wait_result == WAIT_TIMEOUT) {
+    wait_result = WaitForSingleObject(evtClientReplyReady, 1000);
+  }
+
+  if (client_request) {
+    delete[] client_request;  // The request data can now be freed.
+    client_request = 0;
+  }
+
+  data_waiting = false;
 }
 
 bool TCPClientThread::IsDataPending() {
-  return data_waiting;
+  if (data_waiting) return true;
+  if (reply->pushed_reply) return true;
+  return false;
 }
 
+void TCPClientThread::PushReply() {
+  if (!data_waiting)
+    return;  // Nothing to push
+
+  GetReply();  // Wait for request to finish.
+
+  reply = new ServerToClientReply(reply); // Create new and push old.
+  data_waiting = false;
+  _RPT0(0, "TCPClient: Pushed reply.\n");
+}
+
+void TCPClientThread::PopReply() {
+  if (reply->pushed_reply) {
+    delete[] reply->last_reply;
+    ServerToClientReply* STCRpushed = reply->pushed_reply;
+    delete reply;
+    reply = STCRpushed;
+    data_waiting = true;
+    _RPT0(0, "TCPClient: Popped reply.\n");
+  }
+}
 
 // Main thread for sending and recieving data
 
 void TCPClientThread::StartRequestLoop() {
   _RPT0(0, "TCPClient: Thread starting.\n");
-  last_reply = new char[1];
+
   while (!disconnect) {
 
     HRESULT wait_result = WAIT_TIMEOUT;
@@ -323,9 +352,9 @@ void TCPClientThread::StartRequestLoop() {
 
     _RPT0(0, "TCPClient: Processing request.\n");    
 
-    delete[] last_reply;
-    last_reply_bytes = 0;
-    last_reply_type = 0;
+    delete[] reply->last_reply;
+    reply->last_reply_bytes = 0;
+    reply->last_reply_type = 0;
 
     int bytesSent = send(m_socket, client_request, client_request_bytes, 0);
 
@@ -341,7 +370,7 @@ void TCPClientThread::StartRequestLoop() {
     _RPT0(0, "TCPClient: Returning reply.\n");    
 
     if (disconnect) {
-      last_reply_type = INTERNAL_DISCONNECTED;
+      reply->last_reply_type = INTERNAL_DISCONNECTED;
     }
     SetEvent(evtClientReplyReady);  // FIXME: Could give deadlocks, if client is waiting for reply.
   } //end while
@@ -353,7 +382,12 @@ void TCPClientThread::StartRequestLoop() {
   closesocket(m_socket);
   WSACleanup();
 
-  delete[] client_request;  // The request data can now be freed.
+  if (client_request) {
+    delete[] client_request;  // The request data can now be freed.
+    client_request = 0;
+  }
+  delete[] reply->last_reply;
+  delete reply;
   thread_running = false;
   _RPT0(0, "TCPClient: Client thread no longer running.\n");
 }
@@ -385,10 +419,10 @@ void TCPClientThread::RecievePacket() {
     }
     recieved += bytesRecv;
   }
-  last_reply = new char[dataSize - 1];  // Freed in StartRequestLoop
-  last_reply_bytes = dataSize - 1;
-  last_reply_type = data[0];
-  memcpy(last_reply, &data[1], last_reply_bytes);
+  reply->last_reply = new char[dataSize - 1];  // Freed in StartRequestLoop
+  reply->last_reply_bytes = dataSize - 1;
+  reply->last_reply_type = data[0];
+  memcpy(reply->last_reply, &data[1], reply->last_reply_bytes);
   delete[] data;
 }
 
