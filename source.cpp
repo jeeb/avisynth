@@ -209,7 +209,8 @@ AVISource::AVISource(const char filename[], bool fAudio, int mode, IScriptEnviro
   aSrc = 0;
   audioStreamSource = 0;
   pvideo=0;
-  
+  pfile=0;
+
   AVIFileInit();
 
   if (mode == 0) {
@@ -1297,7 +1298,7 @@ AVSValue __cdecl Create_SegmentedSource(AVSValue args, void* use_directshow, ISc
 }
 
 AVSValue __cdecl Create_Version(AVSValue args, void*, IScriptEnvironment* env) {
-  return Create_MessageClip("Avisynth v2.0.4, 07 Aug. 2002\n"
+  return Create_MessageClip("Avisynth v2.0.5, 22 Aug. 2002\n"
           "\xA9 2000 Ben Rudiak-Gould, et al.\n"
           "http://www.avisynth.org",
   -1, -1, VideoInfo::BGR24, false, 0x22AA22, 0, 0x402200, env);

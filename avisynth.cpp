@@ -494,7 +494,7 @@ private:
 ScriptEnvironment::ScriptEnvironment() : at_exit(This()), function_table(This()), global_var_table(0, 0) {
   MEMORYSTATUS memstatus;
   GlobalMemoryStatus(&memstatus);
-  memory_max = min(memstatus.dwTotalPhys / 4,5*1024*1024);
+  memory_max = max(memstatus.dwAvailPhys / 4,16*1024*1024);   // Minimum 16MB, otherwise available physical memory/4, no maximum
   memory_used = 0;
   var_table = new VarTable(0, &global_var_table);
   global_var_table.Set("true", true);
