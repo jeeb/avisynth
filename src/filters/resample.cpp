@@ -487,6 +487,7 @@ PVideoFrame __stdcall FilteredResizeH::GetFrame(int n, IScriptEnvironment* env)
         int x = dst_width / 4;
 
         __asm {  // 
+		push ebx    // stupid compiler forgets to save ebx!!
         mov         edi, this
         mov         ecx, org_width
         mov         edx, [edi].tempY;
@@ -681,6 +682,7 @@ out_yv_aloopY:
         add         temp_dst,4
         dec         x
         jnz         yv_xloopYUV
+		  pop ebx
         }// end asm
         srcp += src_pitch;
         dstp += dst_pitch;
@@ -691,6 +693,7 @@ out_yv_aloopY:
         int x = dst_width / 4;
 
         __asm {  // 
+		push ebx    // stupid compiler forgets to save ebx!!
         mov         edi, this
         mov         ecx, org_width
         mov         edx, [edi].tempY;
@@ -764,6 +767,7 @@ out_yv_aloopY:
         add         temp_dst,4
         dec         x
         jnz         yv_xloopYUV_mmx
+		  pop ebx
         }// end asm
         srcp += src_pitch;
         dstp += dst_pitch;
@@ -794,6 +798,7 @@ out_yv_aloopY:
         int x = vi.width / 2;
 
         __asm {
+		push ebx    // stupid compiler forgets to save ebx!!
         mov         edi, this
         mov         ecx, [edi].original_width
         mov         edx, [edi].tempY
@@ -1013,6 +1018,7 @@ out_i_aloopUV:
         add         edx, 4
         dec         x
         jnz         i_xloopYUV
+		  pop ebx
         }
         srcp += src_pitch;
         dstp += dst_pitch;
@@ -1025,6 +1031,7 @@ out_i_aloopUV:
         int x = vi.width / 2;
 
         __asm {
+		push ebx    // stupid compiler forgets to save ebx!!
         mov         edi, this
         mov         ecx, [edi].original_width
         mov         edx, [edi].tempY
@@ -1104,6 +1111,7 @@ out_i_aloopUV:
         add         edx, 4
         dec         x
         jnz         xloopYUV
+		  pop ebx
         }
         srcp += src_pitch;
         dstp += dst_pitch;
@@ -1121,6 +1129,7 @@ out_i_aloopUV:
     int* pattern_lumaP1 = pattern_luma+1 - fir_filter_size;
     static const __int64 xFF000000 = 0xFF000000;
     __asm {
+	  push        ebx
       mov         esi, srcp
       mov         edi, dstp
       pxor        mm2, mm2
@@ -1179,6 +1188,7 @@ out_i_aloopUV:
       dec         y
       jnz         yloop24
       emms
+	  pop         ebx
     }
   }
   else
@@ -1190,6 +1200,7 @@ out_i_aloopUV:
     int* pattern_lumaP1 = &pattern_luma[1] - fir_filter_size;
 
     __asm {
+	  push        ebx
       mov         esi, srcp
       mov         edi, dstp
       pxor        mm2, mm2
@@ -1241,6 +1252,7 @@ out_i_aloopUV:
       dec         y
       jnz         yloop32
       emms
+	  pop         ebx
     }
   }
   return dst;
@@ -1359,6 +1371,7 @@ PVideoFrame __stdcall FilteredResizeV::GetFrame(int n, IScriptEnvironment* env)
     }
   __asm {
 //    emms
+	push        ebx
     mov         edx, cur
     pxor        mm0, mm0
     mov         edi, fir_filter_size
@@ -1529,6 +1542,7 @@ out_bloop:
     dec         y
     jnz         yloop
     emms
+	pop         ebx
   }
   } // end while
   return dst;

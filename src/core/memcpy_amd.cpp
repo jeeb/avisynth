@@ -72,6 +72,12 @@ MEMCPY_AMD.CPP
 
 void memcpy_amd(void *dest, const void *src, size_t n)
 {
+  // Warning! : If you modify this routine, check the generated assembler to make sure
+  //            the stupid compiler is saving the ebx register in the entry prologue.
+  //            And don't just add an extra push/pop ebx pair around the code, try to
+  //            convince the compiler to do the right thing, it's not hard, usually a
+  //            slight shuffle or a well placed "__asm mov ebx,ebx" does the trick.
+
   __asm {
 
 	mov		ecx, [n]		; number of bytes to copy

@@ -135,6 +135,7 @@ int AveragePlane::isse_average_plane(const BYTE* c_plane, int height, int width,
   int hp=height;
   int returnvalue=0xbadbad00;
   __asm {
+	push ebx
     xor ebx,ebx     // Height
     mov edx, c_pitch    //copy pitch
     pxor mm5,mm5  // Cleared
@@ -168,6 +169,7 @@ endframe:
     paddd mm7,mm6
     movd returnvalue,mm7
     emms
+	pop ebx
   }
   return returnvalue;
 }
@@ -557,6 +559,7 @@ int ComparePlane::isse_scenechange_16(const BYTE* c_plane, const BYTE* tplane, i
   int hp=height;
   int returnvalue=0xbadbad00;
   __asm {
+	push ebx
     xor ebx,ebx     // Height
     pxor mm5,mm5  // Maximum difference
     mov edx, c_pitch    //copy pitch
@@ -595,6 +598,7 @@ endframe:
     paddd mm7,mm6
     movd returnvalue,mm7
     emms
+	pop ebx
   }
   return returnvalue;
 }
@@ -623,6 +627,7 @@ int ComparePlane::isse_scenechange_rgb_16(const BYTE* c_plane, const BYTE* tplan
   int hp=height;
   int returnvalue=0xbadbad00;
   __asm {
+	push ebx
     xor ebx,ebx     // Height
     movq mm5,[Mask1]  // Mask for RGB32
     mov edx, c_pitch    //copy pitch
@@ -665,6 +670,7 @@ endframe:
     paddd mm7,mm6
     movd returnvalue,mm7
     emms
+	pop ebx
   }
   return returnvalue;
 }

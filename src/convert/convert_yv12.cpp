@@ -36,6 +36,15 @@
 
 #include "convert_yv12.h"
 
+/**************************************************************************
+ * WARNING! : These routines are typical of when the compiler forgets to save
+ * the ebx register. They have just enough C++ code to cause a slight need for
+ * using the ebx register but not enough to stop the optimizer from restructuring
+ * the code to avoid using the ebx register. The optimizer having done this 
+ * very smugly removes the push ebx from the prologue. It seems totally oblivious
+ * that there is still __asm code using the ebx register.
+ **************************************************************************/
+
 /*************************************
  * Interlaced YV12 -> YUY2 conversion
  *
@@ -109,6 +118,7 @@ void isse_yv12_i_to_yuy2(const BYTE* srcY, const BYTE* srcU, const BYTE* srcV, i
     }
 
     __asm {
+	push ebx    // stupid compiler forgets to save ebx!!
     mov edi, [_dst]
     mov eax, [_srcY]
     mov ebx, [_srcU]
@@ -149,6 +159,7 @@ xloop_p:
 xloop_test_p:
       cmp edx,[src_rowsize]
       jl xloop_p
+	  pop ebx
     }
   }
 
@@ -176,6 +187,7 @@ xloop_test_p:
   int x=0;
   
   __asm {
+  push ebx    // stupid compiler forgets to save ebx!!
     mov esi, [srcp]
     mov edi, [dst]
 
@@ -302,6 +314,7 @@ yloop_test:
     jl yloop
     sfence
     emms
+    pop ebx
   }
    delete[] srcp;
 }
@@ -356,6 +369,7 @@ void isse_yv12_to_yuy2(const BYTE* srcY, const BYTE* srcU, const BYTE* srcV, int
     }
 
     __asm {
+	push ebx    // stupid compiler forgets to save ebx!!
     mov edi, [_dst]
     mov eax, [_srcY]
     mov ebx, [_srcU]
@@ -396,6 +410,7 @@ xloop_p:
 xloop_test_p:
       cmp edx,[src_rowsize]
       jl xloop_p
+	  pop ebx
     }
   }
 
@@ -423,6 +438,7 @@ xloop_test_p:
   int x=0;
 
   __asm {
+  push ebx    // stupid compiler forgets to save ebx!!
     mov esi, [srcp]
     mov edi, [dst]
 
@@ -538,6 +554,7 @@ yloop_test:
     jl yloop
     sfence
     emms
+    pop ebx
   }
    delete[] srcp;
 }
@@ -616,6 +633,7 @@ void mmx_yv12_i_to_yuy2(const BYTE* srcY, const BYTE* srcU, const BYTE* srcV, in
     }
 
     __asm {
+	push ebx    // stupid compiler forgets to save ebx!!
     mov edi, [_dst]
     mov eax, [_srcY]
     mov ebx, [_srcU]
@@ -656,6 +674,7 @@ xloop_p:
 xloop_test_p:
       cmp edx,[src_rowsize]
       jl xloop_p
+	  pop ebx
     }
   }
 
@@ -683,6 +702,7 @@ xloop_test_p:
   int x=0;
 
   __asm {
+  push ebx    // stupid compiler forgets to save ebx!!
     mov esi, [srcp]
     mov edi, [dst]
 
@@ -823,6 +843,7 @@ yloop_test:
     mov [y],edx
     jl yloop
     emms
+    pop ebx
   }
    delete[] srcp;
 }
@@ -879,6 +900,7 @@ void mmx_yv12_to_yuy2(const BYTE* srcY, const BYTE* srcU, const BYTE* srcV, int 
 
 
     __asm {
+	push ebx    // stupid compiler forgets to save ebx!!
     mov edi, [_dst]
     mov eax, [_srcY]
     mov ebx, [_srcU]
@@ -919,6 +941,7 @@ xloop_p:
 xloop_test_p:
       cmp edx,[src_rowsize]
       jl xloop_p
+	  pop ebx
     }
   }
 
@@ -946,6 +969,7 @@ xloop_test_p:
   int x=0;
 
   __asm {
+  push ebx    // stupid compiler forgets to save ebx!!
     mov esi, [srcp]
     mov edi, [dst]
 
@@ -1073,6 +1097,7 @@ yloop_test:
     mov [y],edx
     jl yloop
     emms
+    pop ebx
   }
    delete[] srcp;
 }
@@ -1106,6 +1131,7 @@ __declspec(align(8)) static __int64 mask2	= 0xff00ff00ff00ff00;
   int x=0;
   src_rowsize = (src_rowsize+3)/4;
   __asm {
+  push ebx    // stupid compiler forgets to save ebx!!
     movq mm7,[mask2]
     movq mm4,[mask1]
     mov edx,0
@@ -1185,6 +1211,7 @@ yloop_test:
     jl yloop
     sfence
     emms
+    pop ebx
   }
    delete[] dstp;
 }
@@ -1222,6 +1249,7 @@ __declspec(align(8)) static __int64 mask2	= 0xff00ff00ff00ff00;
   int x=0;
   src_rowsize = (src_rowsize+3)/4;
   __asm {
+  push ebx    // stupid compiler forgets to save ebx!!
     movq mm7,[mask2]
     movq mm4,[mask1]
     mov edx,0
@@ -1376,6 +1404,7 @@ yloop_test:
     jl yloop
     sfence
     emms
+    pop ebx
   }
    delete[] dstp;
 }
@@ -1412,6 +1441,7 @@ __declspec(align(8)) static __int64 add_1	= 0x0001000100010001;
   int x=0;
   src_rowsize = (src_rowsize+3)/4;
   __asm {
+  push ebx    // stupid compiler forgets to save ebx!!
     mov edx,0
     mov esi, src
     mov edi, dstp
@@ -1500,6 +1530,7 @@ yloop_test:
     mov [y],edx
     jl yloop
     emms
+    pop ebx
   }
    delete[] dstp;
 }
@@ -1539,6 +1570,7 @@ __declspec(align(8)) static __int64 add_2	= 0x0002000200020002;
   int x=0;
   src_rowsize = (src_rowsize+3)/4;
   __asm {
+  push ebx    // stupid compiler forgets to save ebx!!
     mov edx,0
     mov esi, src
     mov edi, dstp
@@ -1716,6 +1748,7 @@ yloop_test:
     mov [y],edx
     jl yloop
     emms
+    pop ebx
   }
    delete[] dstp;
 }

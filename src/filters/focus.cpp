@@ -183,9 +183,9 @@ void AFV_MMX(const uc* l, const uc* p, const int height, const int pitch, const 
 	for (int y = height-1; y>0; --y) {
 
 	__asm {
-		mov			ebx,p			; frame buffer
+		mov			edx,p			; frame buffer
 		mov			ecx,pitch
-		mov			eax,ebx
+		mov			eax,edx
 		add			eax,ecx
 		mov			p,eax			; p += pitch;
 		mov			eax,l			; line buffer
@@ -194,12 +194,12 @@ void AFV_MMX(const uc* l, const uc* p, const int height, const int pitch, const 
 		align		16
 row_loop:
 		movq		mm4,[eax]		; 8 Upper pixels (buffered)
-		 movq		mm5,[ebx+ecx]	; 8 Lower pixels
+		 movq		mm5,[edx+ecx]	; 8 Lower pixels
 		movq		mm1,mm4			; Duplicate uppers
 		 movq		mm3,mm5			; Duplicate lowers
 		punpcklbw	mm4,mm0			; unpack 4 low bytes uppers
 		 punpcklbw	mm5,mm0			; unpack 4 low bytes lowers
-		movq		mm2,[ebx]		; 8 Centre pixels
+		movq		mm2,[edx]		; 8 Centre pixels
 		 paddsw		mm5,mm4			; Uppers + Lowers				-- low
 		movq		mm4,mm2			; Duplicate centres
 		 pmullw		mm5,mm6			; *= outer weight				-- low
@@ -223,24 +223,24 @@ row_loop:
 		 psraw		mm2,6			; /= 16384						-- high
 		add			eax,8			; upper += 8
 		 paddsw		mm2,mm1			; Weighted centres + outers		-- high
-		add			ebx,8			; centre += 8
+		add			edx,8			; centre += 8
 		 packuswb	mm4,mm2			; pack 4 lows with 4 highs
 		dec			edi				; count--
-		 movq		[ebx-8],mm4		; Update 8 pixels
+		 movq		[edx-8],mm4		; Update 8 pixels
 		jnle		row_loop		; 
 		}
 
 	} // for (int y = height
 
 	__asm { // Last row - map centre as lower
-		mov			ebx,p			; frame buffer
+		mov			edx,p			; frame buffer
 		mov			eax,l			; line buffer
 		mov			edi,nloops
 
 		align		16
 lrow_loop:
 		movq		mm5,[eax]		; 8 Upper pixels (buffered)
-		 movq		mm4,[ebx]		; 8 Centre pixels as lowers
+		 movq		mm4,[edx]		; 8 Centre pixels as lowers
 		movq		mm1,mm5			; Duplicate uppers
 		 movq		mm3,mm4			; Duplicate lowers (centres)
 		punpcklbw	mm5,mm0			; unpack 4 low bytes uppers
@@ -264,10 +264,10 @@ lrow_loop:
 		psraw		mm1,7			; /= 32768						-- high
 		 add		eax,8			; upper += 8
 		paddsw		mm3,mm1			; Weighted centres + outers		-- high
-		 add		ebx,8			; centre += 8
+		 add		edx,8			; centre += 8
 		packuswb	mm4,mm3			; pack 4 lows with 4 highs
 		 dec		edi				; count--
-		movq		[ebx-8],mm4		; Update 8 pixels
+		movq		[edx-8],mm4		; Update 8 pixels
 		 jnle		lrow_loop		; 
 	}
 	__asm emms
@@ -1207,6 +1207,7 @@ void TemporalSoften::mmx_accumulate_line(const BYTE* c_plane, const BYTE** plane
   int* _div_line=div_line;
 
   __asm {
+	push ebx
     mov esi,c_plane;
     xor eax,eax          // EAX will be plane offset (all planes).
     mov ecx,[_accum_line]
@@ -1273,6 +1274,7 @@ kernel_loop:
     jmp testplane
 outloop:
     emms
+	pop ebx
   }
 }
 
@@ -1284,6 +1286,7 @@ void TemporalSoften::isse_accumulate_line(const BYTE* c_plane, const BYTE** plan
   int* _div_line=div_line;
 
   __asm {
+	push ebx
     mov esi,c_plane;
     xor eax,eax          // EAX will be plane offset (all planes).
     mov ecx,[_accum_line]
@@ -1349,6 +1352,7 @@ kernel_loop:
     jmp testplane
 outloop:
     emms
+	pop ebx
   }
 }
 
@@ -1361,6 +1365,7 @@ void TemporalSoften::isse_accumulate_line_mode2(const BYTE* c_plane, const BYTE*
   div>>=1;
 
   __asm {
+	push ebx
     mov esi,c_plane;
     xor eax,eax          // EAX will be plane offset (all planes).
     align 16
@@ -1455,6 +1460,7 @@ kernel_loop:
     jmp testplane
 outloop:
     emms
+	pop ebx
   }
 }
 
@@ -1468,6 +1474,7 @@ void TemporalSoften::mmx_accumulate_line_mode2(const BYTE* c_plane, const BYTE**
   div>>=1;
 
   __asm {
+	push ebx
     mov esi,c_plane;
     xor eax,eax          // EAX will be plane offset (all planes).
     align 16
@@ -1566,6 +1573,7 @@ kernel_loop:
     jmp testplane
 outloop:
     emms
+	pop ebx
   }
 }
 
@@ -1576,6 +1584,7 @@ int TemporalSoften::isse_scenechange(const BYTE* c_plane, const BYTE* tplane, in
   int hp=height;
   int returnvalue=0xbadbad00;
   __asm {
+	push ebx
     xor ebx,ebx     // Height
     pxor mm5,mm5  // Maximum difference
     mov edx, c_pitch    //copy pitch
@@ -1622,6 +1631,7 @@ endframe:
     paddd mm7,mm6
     movd returnvalue,mm7
     emms
+	pop ebx
   }
   return returnvalue;
 }

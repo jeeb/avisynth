@@ -56,6 +56,7 @@ void mmx_weigh_planar(BYTE *p1, const BYTE *p2, int p1_pitch, int p2_pitch,int r
   __int64 rounder = 0x0000400000004000;   // (0.5)<<15 in each dword
 
   __asm {
+	  push ebx
       movq mm5,[rounder]
       pxor mm6,mm6
       movq mm7,[weight64]
@@ -105,6 +106,7 @@ outloop:
       jmp yloopback
 outy:
       emms
+	  pop ebx
   } // end asm
 }
 
@@ -118,6 +120,7 @@ void MMerge_MMX(unsigned char *dstp, const unsigned char *srcp,
   static const __int64 Addi = 0x0080008000800080i64;
 
   __asm {
+	push    ebx
     mov     eax,[dstp]
     mov     ebx,[srcp]
     mov     ecx,[maskp]
@@ -177,6 +180,7 @@ loopx:
     jnz     loopx
 
     emms
+	pop     ebx
   }
 }
 
@@ -187,6 +191,7 @@ void mmx_darken_planar(BYTE *p1, BYTE *p1U, BYTE *p1V, const BYTE *p2, const BYT
   bpp[0] = p1; bpp[1] = p2; bpp[2] = p1U; bpp[3] = p2U; bpp[4] = p1V; bpp[5] = p2V;
 
   __asm {
+	  push ebx
       movq mm7,[AllOnes]
       pxor mm6,mm6
       mov ebx,[rowsize]
@@ -265,6 +270,7 @@ outloop:
       jmp yloopback
 outy:
       emms
+	  pop ebx
   } // end asm
 }
 
@@ -274,6 +280,7 @@ void mmx_lighten_planar(BYTE *p1, BYTE *p1U, BYTE *p1V, const BYTE *p2, const BY
   bpp[0] = p1; bpp[1] = p2; bpp[2] = p1U; bpp[3] = p2U; bpp[4] = p1V; bpp[5] = p2V;
 
   __asm {
+	  push ebx
       movq mm7,[AllOnes]
       pxor mm6,mm6
       mov ebx,[rowsize]
@@ -352,5 +359,6 @@ outloop:
       jmp yloopback
 outy:
       emms
+	  pop ebx
   } // end asm
 }

@@ -119,6 +119,7 @@ PVideoFrame __stdcall Mask::GetFrame(int n, IScriptEnvironment* env)
   }
 */
  		__asm {
+		push        ebx
 		mov			edi, src1p
 		mov			esi, src2p
 		mov			ebx, myy
@@ -166,6 +167,7 @@ PVideoFrame __stdcall Mask::GetFrame(int n, IScriptEnvironment* env)
 		dec		ebx
 		jnz		mask_mmxloop
 		emms
+		pop     ebx
 		}
  return src1;
 }
@@ -436,6 +438,7 @@ void Invert::ConvertFrame
           int height,
           int mask) {
 __asm {
+    push ebx
     movd mm7,[mask]
 
     mov eax,[pitch]
@@ -492,6 +495,7 @@ outw:
     dec edi//sub height,1
     jne yloopback
     emms
+	pop ebx
   };
 }
 
@@ -714,6 +718,7 @@ PVideoFrame __stdcall Layer::GetFrame(int n, IScriptEnvironment* env)
 			if (chroma)
 			{
 				__asm {
+				push ebx    // stupid compiler forgets to save ebx!!
 				mov			edi, src1p
 				mov			esi, src2p
 				mov			ebx, myy
@@ -781,9 +786,11 @@ PVideoFrame __stdcall Layer::GetFrame(int n, IScriptEnvironment* env)
 				dec		ebx
 				jnz		mulyuy32loop
 				emms
+				  pop ebx
 				}
 			} else {
 				__asm {
+				push ebx    // stupid compiler forgets to save ebx!!
 				mov			edi, src1p
 				mov			esi, src2p
 				mov			ebx, myy
@@ -853,6 +860,7 @@ PVideoFrame __stdcall Layer::GetFrame(int n, IScriptEnvironment* env)
 				dec		ebx
 				jnz		muly032loop
 				emms
+				  pop ebx
 				}
 			}
 		}
@@ -861,6 +869,7 @@ PVideoFrame __stdcall Layer::GetFrame(int n, IScriptEnvironment* env)
 			if (chroma)
 			{
 				__asm {
+				push ebx    // stupid compiler forgets to save ebx!!
 				mov			edi, src1p
 				mov			esi, src2p
 				mov			ebx, myy
@@ -925,9 +934,11 @@ PVideoFrame __stdcall Layer::GetFrame(int n, IScriptEnvironment* env)
 				dec		ebx
 				jnz		addyuy32loop
 				emms
+				  pop ebx
 				}
 			} else {
 				__asm {
+				push ebx    // stupid compiler forgets to save ebx!!
 				mov			edi, src1p
 				mov			esi, src2p
 				mov			ebx, myy
@@ -990,6 +1001,7 @@ PVideoFrame __stdcall Layer::GetFrame(int n, IScriptEnvironment* env)
 				dec		ebx
 				jnz		addy032loop
 				emms
+				  pop ebx
 				}
 			}
 		}
@@ -998,6 +1010,7 @@ PVideoFrame __stdcall Layer::GetFrame(int n, IScriptEnvironment* env)
 			if (chroma)
 			{
 				__asm {
+				push ebx    // stupid compiler forgets to save ebx!!
 				mov			edi, src1p
 				mov			esi, src2p
 				mov			ebx, myy
@@ -1041,6 +1054,7 @@ PVideoFrame __stdcall Layer::GetFrame(int n, IScriptEnvironment* env)
 				dec		ebx
 				jnz		fastyuy32loop
 				emms
+				  pop ebx
 				}
 			} else {
 			      env->ThrowError("Layer: this mode not allowed in FAST; use ADD instead");
@@ -1051,6 +1065,7 @@ PVideoFrame __stdcall Layer::GetFrame(int n, IScriptEnvironment* env)
 			if (chroma)
 			{
 				__asm {
+				push ebx    // stupid compiler forgets to save ebx!!
 				mov			edi, src1p
 				mov			esi, src2p
 				mov			ebx, myy
@@ -1116,9 +1131,11 @@ PVideoFrame __stdcall Layer::GetFrame(int n, IScriptEnvironment* env)
 				dec		ebx
 				jnz		subyuy32loop
 				emms
+				  pop ebx
 				}
 			} else {
 				__asm {
+				push ebx    // stupid compiler forgets to save ebx!!
 				mov			edi, src1p
 				mov			esi, src2p
 				mov			ebx, myy
@@ -1184,6 +1201,7 @@ PVideoFrame __stdcall Layer::GetFrame(int n, IScriptEnvironment* env)
 				dec		ebx
 				jnz		suby032loop
 				emms
+				  pop ebx
 				}
 			}
 		}
@@ -1192,6 +1210,7 @@ PVideoFrame __stdcall Layer::GetFrame(int n, IScriptEnvironment* env)
 			if (chroma)
 			{
 				__asm {
+				push ebx    // stupid compiler forgets to save ebx!!
 				mov			edi, src1p
 				mov			esi, src2p
 				mov			ebx, myy
@@ -1260,6 +1279,7 @@ PVideoFrame __stdcall Layer::GetFrame(int n, IScriptEnvironment* env)
 				dec		ebx
 				jnz		lightenyuy32loop
 				emms
+				  pop ebx
 				}
 			} else {
 			      env->ThrowError("Layer: monochrome lighten illegal op");
@@ -1270,6 +1290,7 @@ PVideoFrame __stdcall Layer::GetFrame(int n, IScriptEnvironment* env)
 			if (chroma)
 			{
 				__asm {
+				push ebx    // stupid compiler forgets to save ebx!!
 				mov			edi, src1p
 				mov			esi, src2p
 				mov			ebx, myy
@@ -1338,6 +1359,7 @@ PVideoFrame __stdcall Layer::GetFrame(int n, IScriptEnvironment* env)
 				dec		ebx
 				jnz		darkenyuy32loop
 				emms
+				  pop ebx
 				}
 			} else {
 			      env->ThrowError("Layer: monochrome darken illegal op");
@@ -1365,6 +1387,7 @@ PVideoFrame __stdcall Layer::GetFrame(int n, IScriptEnvironment* env)
 			if (chroma)
 			{
 				__asm {
+				push ebx    // stupid compiler forgets to save ebx!!
 				mov			edi, src1p
 				mov			esi, src2p
 				mov			ebx, myy
@@ -1422,9 +1445,11 @@ PVideoFrame __stdcall Layer::GetFrame(int n, IScriptEnvironment* env)
 				dec		ebx
 				jnz		mul32loop
 				emms
+				  pop ebx
 				}
 			} else {
 				__asm {
+				push ebx    // stupid compiler forgets to save ebx!!
 				mov			edi, src1p
 				mov			esi, src2p
 				mov			ebx, myy
@@ -1495,6 +1520,7 @@ PVideoFrame __stdcall Layer::GetFrame(int n, IScriptEnvironment* env)
 				dec		ebx
 				jnz		mul32yloop
 				emms
+				  pop ebx
 				}
 			}
 		}
@@ -1503,6 +1529,7 @@ PVideoFrame __stdcall Layer::GetFrame(int n, IScriptEnvironment* env)
 			if (chroma)
 			{
 				__asm {
+				push ebx    // stupid compiler forgets to save ebx!!
 				mov			edi, src1p
 				mov			esi, src2p
 				mov			ebx, myy
@@ -1558,9 +1585,11 @@ PVideoFrame __stdcall Layer::GetFrame(int n, IScriptEnvironment* env)
 				dec		ebx
 				jnz		add32loop
 				emms
+				  pop ebx
 				}
 			} else {
 				__asm {
+				push ebx    // stupid compiler forgets to save ebx!!
 				mov			edi, src1p
 				mov			esi, src2p
 				mov			ebx, myy
@@ -1623,6 +1652,7 @@ PVideoFrame __stdcall Layer::GetFrame(int n, IScriptEnvironment* env)
 				dec		ebx
 				jnz		add32yloop
 				emms
+				  pop ebx
 				}
 			}
 		}
@@ -1631,6 +1661,7 @@ PVideoFrame __stdcall Layer::GetFrame(int n, IScriptEnvironment* env)
 			if (chroma)
 			{
 				__asm {
+				push ebx    // stupid compiler forgets to save ebx!!
 				mov			edi, src1p
 				mov			esi, src2p
 				mov			ebx, myy
@@ -1714,6 +1745,7 @@ PVideoFrame __stdcall Layer::GetFrame(int n, IScriptEnvironment* env)
 				dec		ebx
 				jnz		lighten32loop
 				emms
+				  pop ebx
 				}
 			} else {
 			      env->ThrowError("Layer: monochrome lighten illegal op");
@@ -1724,6 +1756,7 @@ PVideoFrame __stdcall Layer::GetFrame(int n, IScriptEnvironment* env)
 			if (chroma)
 			{
 				__asm {
+				push ebx    // stupid compiler forgets to save ebx!!
 				mov			edi, src1p
 				mov			esi, src2p
 				mov			ebx, myy
@@ -1807,6 +1840,7 @@ PVideoFrame __stdcall Layer::GetFrame(int n, IScriptEnvironment* env)
 				dec		ebx
 				jnz		darken32loop
 				emms
+				  pop ebx
 				}
 			} else {
 			      env->ThrowError("Layer: monochrome darken illegal op");
@@ -1817,6 +1851,7 @@ PVideoFrame __stdcall Layer::GetFrame(int n, IScriptEnvironment* env)
 			if (chroma)
 			{
 				__asm {
+				push ebx    // stupid compiler forgets to save ebx!!
 				mov			edi, src1p
 				mov			esi, src2p
 				mov			ebx, myy
@@ -1859,6 +1894,7 @@ PVideoFrame __stdcall Layer::GetFrame(int n, IScriptEnvironment* env)
 				dec		ebx
 				jnz		fastrgb32loop
 				emms
+				  pop ebx
 				}
 			} else {
 			      env->ThrowError("Layer: this mode not allowed in FAST; use ADD instead");
@@ -1869,6 +1905,7 @@ PVideoFrame __stdcall Layer::GetFrame(int n, IScriptEnvironment* env)
 			if (chroma)
 			{
 				__asm {
+				push ebx    // stupid compiler forgets to save ebx!!
 				mov			edi, src1p
 				mov			esi, src2p
 				mov			ebx, myy
@@ -1924,9 +1961,11 @@ PVideoFrame __stdcall Layer::GetFrame(int n, IScriptEnvironment* env)
 				dec		ebx
 				jnz		sub32loop
 				emms
+				  pop ebx
 				}
 			} else {
 				__asm {
+				push ebx    // stupid compiler forgets to save ebx!!
 				mov			edi, src1p
 				mov			esi, src2p
 				mov			eax, src2p
@@ -1992,6 +2031,7 @@ PVideoFrame __stdcall Layer::GetFrame(int n, IScriptEnvironment* env)
 				dec		ebx
 				jnz		sub32yloop
 				emms
+				  pop ebx
 				}
 			}
 		}

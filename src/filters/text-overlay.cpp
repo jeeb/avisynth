@@ -957,6 +957,7 @@ PVideoFrame __stdcall Compare::GetFrame(int n, IScriptEnvironment* env)
     unsigned __int64 pos_D8 = 0, neg_D8 = 0;
 
     __asm {
+	  push    ebx
       mov     esi, f1ptr
       mov     edi, f2ptr
       add     esi, rowsize
@@ -1022,6 +1023,7 @@ comp_loopx:
       mov     DWORD PTR [iSSD], eax
       mov     DWORD PTR [iSSD+4], edx
       emms
+	  pop     ebx
     }
     SSD = (double)iSSD;
     for (int i=0; i<8; i++) {

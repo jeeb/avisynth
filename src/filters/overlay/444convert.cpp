@@ -48,6 +48,7 @@ void ConvertYV12ChromaTo444(unsigned char *dstp, const unsigned char *srcp,
 {
   int dst_pitch2 = dst_pitch * 2;
   __asm {
+	push    ebx
     mov     eax,[dstp]
     mov     ebx,[srcp]
     mov     ecx, eax
@@ -83,6 +84,7 @@ loopx:
     jnz     loopx
 
     emms
+	pop     ebx
   }
 }
 
@@ -191,6 +193,7 @@ void ISSE_Convert444ChromaToYV12(unsigned char *dstp, const unsigned char *srcp,
   static const __int64 onesD = 0x0000000100000001;
   int src_pitch2 = src_pitch * 2;
   __asm {
+	push    ebx
     mov     eax,[dstp]
     mov     ebx,[srcp]
     mov     ecx, ebx
@@ -260,6 +263,7 @@ loopx:
     jnz     loopx
 
     emms
+	pop     ebx
   }
 }
 

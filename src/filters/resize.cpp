@@ -143,7 +143,8 @@ void VerticalReduceBy2::mmx_process(const BYTE* srcp, int src_pitch, int row_siz
   }
   if ((row_size&3)==0) {  // row width divideable with 4 (one dword per loop)
     __asm {
-				add [srcp],-4
+	    push ebx  // avoid compiler bug
+		add [srcp],-4
         mov R_XOFFSET,0
         mov R_SRC,srcp
         mov R_DST,dstp
@@ -196,6 +197,7 @@ loopback_last:
         cmp  R_XOFFSET,[row_size]
         jl loopback_last						; Jump back
         emms
+		pop ebx
     }
   }
 }
