@@ -53,6 +53,8 @@ public:
   static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env);
 
 private:
+OverlayFunction* SelectFunction(const char* name, IScriptEnvironment* env);
+  
   VideoInfo overlayVi;
   VideoInfo maskVi;
   ConvertFrom444* outputConv;

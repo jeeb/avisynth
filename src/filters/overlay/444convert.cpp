@@ -60,7 +60,7 @@ void Convert444FromYV12::ConvertImage(PVideoFrame src, Image444* dst, IScriptEnv
     BYTE u = srcU[0];
     BYTE v = srcV[0];
     for (int x=0; x<w-1; x++) {
-      int x2 = (x)<<1;
+      int x2 = x<<1;
       dstU[x2] = u;
       dstV[x2] = v;
       dstU[x2+dstUVpitch] = (u + srcU[x+srcUVpitch]+1)>>1;
@@ -74,22 +74,22 @@ void Convert444FromYV12::ConvertImage(PVideoFrame src, Image444* dst, IScriptEnv
       u = u2;
       v = v2;
     }
-    dstU[w*2-2] = dstU[w*2-1] = u;
-    dstV[w*2-2] = dstV[w*2-1] = v;
+    dstU[w*2-2] = dstU[w*2-1] = dstU[w*2-2+dstUVpitch] = dstU[w*2-1+dstUVpitch] = u;
+    dstV[w*2-2] = dstV[w*2-1] = dstV[w*2-2+dstUVpitch] = dstV[w*2-1+dstUVpitch] = v;
     srcU+=srcUVpitch;
     srcV+=srcUVpitch;
     dstU+=dstUVpitch*2;
     dstV+=dstUVpitch*2;
   }
   for (int x=0;x<(w-1); x++) {  // Last line - point upsize
-    int x2 = (x)<<1;
+    int x2 = x<<1;
     BYTE u = dstU[x2] = dstU[x2+dstUVpitch] = srcU[x];
     BYTE v = dstV[x2] = dstV[x2+dstUVpitch] = srcV[x];
     dstU[x2+1] = dstU[x2+dstUVpitch+1] = (u + srcU[x+1] + 1)>>1;
-    dstV[x2+1] = dstU[x2+dstUVpitch+1] = (v + srcV[x+1] + 1)>>1;
+    dstV[x2+1] = dstV[x2+dstUVpitch+1] = (v + srcV[x+1] + 1)>>1;
   }
-  dstU[w*2-2] = dstU[w*2-1] = srcU[w-1];
-  dstV[w*2-2] = dstV[w*2-1] = srcV[w-1];
+  dstU[w*2-2] = dstU[w*2-1] = dstU[w*2-2+dstUVpitch] = dstU[w*2-1+dstUVpitch] = srcU[w-1];
+  dstV[w*2-2] = dstV[w*2-1] = dstU[w*2-2+dstUVpitch] = dstU[w*2-1+dstUVpitch] = srcV[w-1];
 }
 
 void Convert444FromYV12::ConvertImageLumaOnly(PVideoFrame src, Image444* dst, IScriptEnvironment* env) {

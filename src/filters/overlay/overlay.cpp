@@ -102,7 +102,7 @@ Overlay::Overlay(PClip _child, AVSValue args, IScriptEnvironment *env) :
   img = new Image444(vi.width, vi.height);
   overlayImg = new Image444(overlayVi.width, overlayVi.height);
 
-  func = new OL_BlendImage();
+  func = SelectFunction(args[4].AsString("Blend"), env);
 
 }
 
@@ -122,9 +122,11 @@ PVideoFrame __stdcall Overlay::GetFrame(int n, IScriptEnvironment *env) {
   // Fetch current frame and convert it.
   PVideoFrame frame = child->GetFrame(n, env);
   inputConv->ConvertImage(frame, img, env);
+
   // Fetch current overlay and convert it
   PVideoFrame Oframe = overlay->GetFrame(n, env);
   overlayConv->ConvertImage(Oframe, overlayImg, env);
+
   // fetch current mask (if given)
   if (mask) {
     PVideoFrame Mframe = mask->GetFrame(n, env);
@@ -150,6 +152,17 @@ PVideoFrame __stdcall Overlay::GetFrame(int n, IScriptEnvironment *env) {
   return frame;
 }
 
+OverlayFunction* Overlay::SelectFunction(const char* name, IScriptEnvironment* env) {
+
+  if (!lstrcmpi(name, "Blend"))
+    return new OL_BlendImage();
+
+  if (!lstrcmpi(name, "Add"))
+    return new OL_AddImage();
+
+  env->ThrowError("Overlay: Invalid 'Mode' specified.");
+  return 0;
+}
 
 AVSValue __cdecl Overlay::Create(AVSValue args, void*, IScriptEnvironment* env) {
    return new Overlay(args[0].AsClip(), args, env);
