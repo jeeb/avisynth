@@ -1238,6 +1238,8 @@ AVSValue __cdecl Create_DirectShowSource(AVSValue args, void*, IScriptEnvironmen
   try {
     DS_video = new DirectShowSource(filename, avg_time_per_frame, args[2].AsBool(true), false, video, env);
   } catch (AvisynthError e) {
+    if (!lstrcmpi(e.msg, "DirectShowSource: I can't determine the frame rate of\nthe video; you must use the \"fps\" parameter"))
+      env->ThrowError(e.msg);
     v_e_msg = e.msg;
     video_success = false;
   }
