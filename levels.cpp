@@ -74,17 +74,28 @@ Levels::Levels( PClip _child, int in_min, double gamma, int in_max, int out_min,
   {
     for (int i=0; i<256; ++i) 
     {
-      double p = ((i-16)*(255.0/219.0) - in_min) / divisor;
+      double p;
+
+      if (coring) 
+        p = ((i-16)*(255.0/219.0) - in_min) / divisor;
+      else 
+        p = double(i - in_min) / divisor;
+      
       p = pow(min(max(p, 0.0), 1.0), gamma);
       p = p * (out_max - out_min) + out_min;
-      int pp = int(p*(219.0/255.0)+16.5);
+      int pp;
+
+      if (coring) 
+        pp = int(p*(219.0/255.0)+16.5);
+      else 
+        pp = int(p+0.5);
+
       map[i] = min(max(pp, (coring) ? 16 : 0), (coring) ? 235 : 255);
 
       int q = ((i-128) * (out_max-out_min) + (divisor>>1)) / divisor + 128;
       mapchroma[i] = min(max(q, (coring) ? 16 : 0), (coring) ? 240 : 255);
     }
-  } 
-  else {
+  } else if (vi.IsRGB()) {
     for (int i=0; i<256; ++i) 
     {
       double p = double(i - in_min) / divisor;
@@ -110,7 +121,7 @@ PVideoFrame __stdcall Levels::GetFrame(int n, IScriptEnvironment* env)
       p += pitch;
     }
   } 
-  else if (vi.IsYV12()){
+  else if (vi.IsPlanar()){
     for (int y=0; y<vi.height; ++y) {
       for (int x=0; x<vi.width; ++x) {
         p[x] = map[p[x]];
