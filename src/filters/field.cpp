@@ -106,7 +106,7 @@ AVSValue __cdecl SeparateFields::Create(AVSValue args, void*, IScriptEnvironment
 {
   PClip clip = args[0].AsClip();
   if (clip->GetVideoInfo().IsFieldBased())
-    env->ThrowError("SeparateFields: Clip is already Field Separated! Use AssumeFrameBased()");
+    env->ThrowError("SeparateFields: SeparateFields should be applied on frame-based material: use AssumeFrameBased() beforehand");
 //    return clip;
 //  else
     return new SeparateFields(clip, env);
@@ -345,7 +345,7 @@ AVSValue __cdecl Create_Weave(AVSValue args, void*, IScriptEnvironment* env)
 {
   PClip clip = args[0].AsClip();
   if (!clip->GetVideoInfo().IsFieldBased())
-    env->ThrowError("Weave: Clip is not Field Separated! Use AssumeFieldBased()");
+    env->ThrowError("Weave: Weave should be applied on field-based material: use AssumeFieldBased() beforehand");
   return new SelectEvery(Create_DoubleWeave(args, 0, env).AsClip(), 2, 0);
 }
 
