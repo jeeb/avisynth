@@ -481,12 +481,12 @@ PVideoFrame ImageReader::GetFrame(int n, IScriptEnvironment* env)
     file.close();
   }
 
+  // Flip now (null-op, if not needed)
+  frame = FlipFrame(frame, env);
+
   // undecorated filename means they want a single, static image
   if( strcmp(filename, base_name) == 0 ) 
     static_frame = frame;
-
-  // Flip now (null-op, if not needed)
-  frame = FlipFrame(frame, env);
 
   if (info) {    
     // overlay on video output: progress indicator
