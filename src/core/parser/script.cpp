@@ -357,7 +357,7 @@ AVSValue Rand(AVSValue args, void* user_data, IScriptEnvironment* env)
    if (args[2].AsBool(false)) srand( (unsigned) time(NULL) ); //seed
 
    if (scale_mode) {
-      double f = 1.0 / RAND_MAX;
+      double f = 1.0 / (RAND_MAX + 1.0);
       return int(f * rand() * limit); }
     else { //modulus mode
       int s = (limit < 0 ? -1 : 1);

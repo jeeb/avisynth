@@ -170,7 +170,7 @@ struct VideoInfo {
   bool Is(int property) const { return ((pixel_type & property)==property ); }
   bool IsPlanar() const { return !!(pixel_type & CS_PLANAR); }
   bool IsFieldBased() const { return !!(image_type & IT_FIELDBASED); }
-  bool IsParityKnown() const { return ((image_type & IT_FIELDBASED)&&(image_type & (IT_BFF||IT_TFF))); }
+  bool IsParityKnown() const { return ((image_type & IT_FIELDBASED)&&(image_type & (IT_BFF|IT_TFF))); }
   bool IsBFF() const { return !!(image_type & IT_BFF); }
   bool IsTFF() const { return !!(image_type & IT_TFF); }
   
@@ -242,24 +242,6 @@ struct VideoInfo {
 
 };
 
-enum {
-  FILTER_TYPE=1,
-  FILTER_INPUT_COLORSPACE=2,
-  FILTER_OUTPUT_TYPE=9,
-  FILTER_NAME=4,
-  FILTER_AUTHOR=5,
-  FILTER_VERSION=6,
-  FILTER_ARGS=7,
-  FILTER_ARGS_INFO=8,
-  FILTER_ARGS_DESCRIPTION=10,
-  FILTER_DESCRIPTION=11,
-};
-enum {  //SUBTYPES
-  FILTER_TYPE_AUDIO=1,
-  FILTER_TYPE_VIDEO=2,
-  FILTER_OUTPUT_TYPE_SAME=3,
-  FILTER_OUTPUT_TYPE_DIFFERENT=4,
-};
 
 
 
