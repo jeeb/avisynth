@@ -699,14 +699,6 @@ InputName=convert_a
 # End Source File
 # Begin Source File
 
-SOURCE=.\convert\convert_xvid.cpp
-# End Source File
-# Begin Source File
-
-SOURCE=.\convert\convert_xvid.h
-# End Source File
-# Begin Source File
-
 SOURCE=.\convert\convert_yuy2.cpp
 # End Source File
 # Begin Source File

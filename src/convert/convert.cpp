@@ -36,7 +36,6 @@
 #include "stdafx.h"
 
 #include "convert.h"
-#include "convert_xvid.h"
 #include "convert_yv12.h"
 #include "convert_yuy2.h"
 
@@ -386,18 +385,9 @@ ConvertToYV12::ConvertToYV12(PClip _child, bool _interlaced, IScriptEnvironment*
 }
 
 PVideoFrame __stdcall ConvertToYV12::GetFrame(int n, IScriptEnvironment* env) {
-  PVideoFrame src = child->GetFrame(n, env);
-  if (isRGB32) {
-    PVideoFrame dst = env->NewVideoFrame(vi,-8);
-    rgb32_to_yv12_mmx(dst->GetWritePtr(PLANAR_Y),dst->GetWritePtr(PLANAR_U),dst->GetWritePtr(PLANAR_V),src->GetReadPtr(),src->GetRowSize()/4,src->GetHeight(),src->GetPitch()/4);
-    return dst;
-  } else if (isRGB24) {
-    PVideoFrame dst = env->NewVideoFrame(vi,-8);
-    rgb24_to_yv12_mmx(dst->GetWritePtr(PLANAR_Y),dst->GetWritePtr(PLANAR_U),dst->GetWritePtr(PLANAR_V),src->GetReadPtr(),src->GetRowSize()/3,src->GetHeight(),src->GetPitch()/3);
-    return dst;
-  }
-  
+  PVideoFrame src = child->GetFrame(n, env);  
   PVideoFrame dst = env->NewVideoFrame(vi);
+
   if (isYUY2) {
     if (interlaced) {
 		  if ((env->GetCPUFlags() & CPUF_INTEGER_SSE)) {
