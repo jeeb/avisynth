@@ -45,6 +45,7 @@
 
 AVSFunction Image_filters[] = {
   { "ImageWriter", "c[file]s[type]s[compression]i", ImageWriter::Create }, // clip, base filename, image format, compression level
+  { "ImageReader", "[file]s[type]s", ImageReader::Create }, // base filename, image format
   { 0 }
 };
 
@@ -128,4 +129,70 @@ PVideoFrame ImageWriter::GetFrame(int n, IScriptEnvironment* env)
 AVSValue __cdecl ImageWriter::Create(AVSValue args, void*, IScriptEnvironment* env) 
 {
   return new ImageWriter(args[0].AsClip(), args[1].AsString("c:\\"), args[2].AsString("png"), args[3].AsInt(0));
+}
+
+
+
+
+/*****************************
+ *******   Image Reader ******
+ ****************************/
+
+ImageReader::ImageReader(const char * _base_name, const char * _ext)
+ : base_name(_base_name), ext(_ext)
+{  
+  if (!lstrcmpi(ext, "bmp")) 
+  {
+    image = new img_BMP(vi);
+  } else if (!lstrcmpi(ext, "png")) 
+  {
+    image = new img_PNG(vi, 0);
+  } else if (!lstrcmpi(ext, "jpeg")) 
+  {
+    image = new img_JPEG(vi, 0);
+  }
+}
+
+
+ImageReader::~ImageReader()
+{
+  delete image;
+}
+
+
+
+PVideoFrame ImageReader::GetFrame(int n, IScriptEnvironment* env) 
+{
+  // check some things  
+  if (image == NULL)
+    env->ThrowError("ImageReader: invalid format");
+  
+
+  // construct filename
+  ostringstream fn_oss;
+  fn_oss << base_name << setfill('0') << setw(6) << n << '.' << ext;
+  string filename = fn_oss.str();
+
+  
+  // initialize file object
+  ifstream file(filename.c_str(), ios::binary);  
+  if (!file)
+    env->ThrowError("ImageReader: could not open file");
+
+  
+  // do it
+  PVideoFrame frame = env->NewVideoFrame(vi);
+  image->decompress(file, frame->GetWritePtr(), env);
+  
+   
+  // cleanup
+  file.close();
+  
+  return frame;
+}
+
+
+AVSValue __cdecl ImageReader::Create(AVSValue args, void*, IScriptEnvironment* env) 
+{
+  return new ImageReader(args[1].AsString("c:\\"), args[2].AsString("png"));
 }

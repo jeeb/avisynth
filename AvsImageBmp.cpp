@@ -84,7 +84,7 @@ void img_BMP::compress(ostream & bufWriter, const BYTE * srcPtr, const int pitch
 }
 
 
-void img_BMP::decompress(const istream & bufReader, BYTE * dstPtr)
+void img_BMP::decompress(const istream & bufReader, BYTE * dstPtr, IScriptEnvironment * env)
 {
   return;
 }

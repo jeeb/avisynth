@@ -116,9 +116,9 @@ void img_PNG::compress(ostream & bufWriter, const BYTE * srcPtr, const int pitch
 
 
   // Override write I/O functions to use ostream
-  ostream_struct my_ostream;
-  my_ostream.bufWriter = &bufWriter;
-  png_set_write_fn(png_ptr, &my_ostream, writePng, flushPng);
+  ostream_struct * my_ostream = new ostream_struct;
+  my_ostream->bufWriter = &bufWriter;
+  png_set_write_fn(png_ptr, my_ostream, writePng, flushPng);
 
   // Write the file header
   png_write_info(png_ptr, info_ptr);  
@@ -130,11 +130,13 @@ void img_PNG::compress(ostream & bufWriter, const BYTE * srcPtr, const int pitch
   // Do yo thing
   png_write_image(png_ptr, row_pointers);   
   png_write_end(png_ptr, info_ptr); 
+  
+  delete my_ostream;
 }
 
 
 
-void img_PNG::decompress(const istream & bufReader, BYTE * dstPtr)
+void img_PNG::decompress(const istream & bufReader, BYTE * dstPtr, IScriptEnvironment * env)
 {
 }
 

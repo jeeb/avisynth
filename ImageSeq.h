@@ -70,6 +70,35 @@ private:
 };
 
 
+class ImageReader : public IClip
+/**
+  * Class to read image sequences into video buffers
+ **/
+{
+public:
+  ImageReader(const char * _base_name, const char * _ext);
+  ~ImageReader();
+
+  PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
+  
+  void __stdcall GetAudio(void* buf, __int64 start, __int64 count, IScriptEnvironment* env) {
+    memset(buf, 0, vi.BytesFromAudioSamples(count));
+  }
+  const VideoInfo& __stdcall GetVideoInfo() { return vi; }
+  bool __stdcall GetParity(int n) { return vi.IsFieldBased() ? (n&1) : false; }
+  void __stdcall SetCacheHints(int cachehints,int frame_range) { };
+  
+  
+  static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env);
+
+private:
+  const char * base_name;
+  const char * ext;
+  
+  AvsImage * image;
+
+  VideoInfo vi;
+};
 
 
 #endif // __Image_Sequence_H__

@@ -119,7 +119,7 @@ void img_JPEG::compress(ostream & bufWriter, const BYTE * srcPtr, const int pitc
 }
 
 
-void img_JPEG::decompress(const istream & bufReader, BYTE * dstPtr)
+void img_JPEG::decompress(const istream & bufReader, BYTE * dstPtr, IScriptEnvironment * env)
 {
 }
 

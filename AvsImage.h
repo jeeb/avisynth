@@ -53,7 +53,7 @@ public:
   virtual ~AvsImage() {};
   
   virtual void compress(ostream & bufWriter, const BYTE * srcPtr, const int pitch, IScriptEnvironment * env) = 0;
-  virtual void decompress(const istream & bufReader, BYTE * dstPtr) = 0;
+  virtual void decompress(const istream & bufReader, BYTE * dstPtr, IScriptEnvironment * env) = 0;
 
 protected:
   VideoInfo vi;
@@ -70,7 +70,7 @@ public:
   virtual ~img_PNG();
   
   void compress(ostream & bufWriter, const BYTE * srcPtr, const int pitch, IScriptEnvironment * env);
-  void decompress(const istream & bufReader, BYTE * dstPtr);
+  void decompress(const istream & bufReader, BYTE * dstPtr, IScriptEnvironment * env);
 private:
   int compression;  // 0..9
 
@@ -88,7 +88,7 @@ public:
   virtual ~img_JPEG();
 
   void compress(ostream & bufWriter, const BYTE * srcPtr, const int pitch, IScriptEnvironment * env);
-  void decompress(const istream & bufReader, BYTE * dstPtr);
+  void decompress(const istream & bufReader, BYTE * dstPtr, IScriptEnvironment * env);
 private:
   int quality;      // 0..100
 
@@ -111,7 +111,7 @@ public:
   virtual ~img_BMP() {};
 
   void compress(ostream & bufWriter, const BYTE * srcPtr, const int pitch, IScriptEnvironment * env);
-  void decompress(const istream & bufReader, BYTE * dstPtr);
+  void decompress(const istream & bufReader, BYTE * dstPtr, IScriptEnvironment * env);
 
 protected:
   BITMAPFILEHEADER fileHeader;
