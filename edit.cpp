@@ -37,6 +37,8 @@ AVSFunction Edit_filters[] = {
   { "Reverse", "c", Reverse::Create },                      // plays backwards
   { "FadeOut", "ci", Create_FadeOut },                      // # frames
   { "FadeOut2", "ci", Create_FadeOut2 },                    // # frames
+  { "FadeIn", "ci", Create_FadeIn },                      // # frames
+  { "FadeIn2", "ci", Create_FadeIn2 },                    // # frames
   { "Loop", "c[times]i[start]i[end]i", Loop::Create },      // number of loops, first frame, last frames
   { 0 }
 };
@@ -664,6 +666,24 @@ AVSValue __cdecl Create_FadeOut2(AVSValue args, void*, IScriptEnvironment* env)
   AVSValue blackness_args[] = { a, duration+2 };
   PClip b = env->Invoke("Blackness", AVSValue(blackness_args, 2)).AsClip();
   return new Dissolve(a, b, duration, env);
+}
+
+AVSValue __cdecl Create_FadeIn(AVSValue args, void*, IScriptEnvironment* env) 
+{
+  int duration = args[1].AsInt();
+  PClip a = args[0].AsClip();
+  AVSValue blackness_args[] = { a, duration+1 };
+  PClip b = env->Invoke("Blackness", AVSValue(blackness_args, 2)).AsClip();
+  return new Dissolve(b, a, duration, env);
+}
+
+AVSValue __cdecl Create_FadeIn2(AVSValue args, void*, IScriptEnvironment* env) 
+{
+  int duration = args[1].AsInt();
+  PClip a = args[0].AsClip();
+  AVSValue blackness_args[] = { a, duration+2 };
+  PClip b = env->Invoke("Blackness", AVSValue(blackness_args, 2)).AsClip();
+  return new Dissolve(b, a, duration, env);
 }
 
 
