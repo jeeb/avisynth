@@ -62,18 +62,27 @@ Histogram::Histogram(PClip _child, int _mode, IScriptEnvironment* env)
 {
   if (!vi.IsYUV())
     env->ThrowError("Histogram: YUV data only");
-  vi.width += 256;
 
+  if (mode ==0) {
+    vi.width += 256;
+  }
   if (mode ==1) {
     if (!vi.IsPlanar())
       env->ThrowError("Histogram: Mode 1 only available in YV12.");
+    vi.width += 256;
     vi.height = max(256,vi.height);
   }
 
   if (mode ==2) {
     if (!vi.IsPlanar())
       env->ThrowError("Histogram: Mode 2 only available in YV12.");
+    vi.width += 256;
     vi.height = max(256,vi.height);
+  }
+
+  if (mode ==3) {
+    if (!vi.IsYUV())
+      env->ThrowError("Histogram: Mode 3 only available in YUV.");
   }
 }
 
@@ -86,8 +95,41 @@ PVideoFrame __stdcall Histogram::GetFrame(int n, IScriptEnvironment* env)
     return DrawMode1(n, env);
   case 2:
     return DrawMode2(n, env);
+  case 3:
+    return DrawMode3(n, env);
   }
   return DrawMode0(n, env);
+}
+
+PVideoFrame Histogram::DrawMode3(int n, IScriptEnvironment* env) {
+  PVideoFrame src = child->GetFrame(n, env);
+  env->MakeWritable(&src);
+  int w = src->GetRowSize();
+  int h = src->GetHeight();
+  int imgsize = h*src->GetPitch();
+  BYTE* srcp = src->GetWritePtr();
+  if (vi.IsYUY2()) {
+    for (int i=0; i<imgsize; i+=2) {
+      int p = srcp[i];
+      p<<=4;
+      srcp[i+1] = 127;
+      srcp[i] = (p&256) ? (255-(p&0xff)) : p&0xff;
+    }
+  } else {
+    for (int i=0; i<imgsize; i++) {
+      int p = srcp[i];
+      p<<=4;
+      srcp[i] = (p&256) ? (255-(p&0xff)) : p&0xff;
+    }
+  }
+  if (vi.IsPlanar()) {
+    srcp = src->GetWritePtr(PLANAR_U);
+    imgsize = src->GetHeight(PLANAR_U) * src->GetRowSize(PLANAR_U);
+    memset(srcp, 127, imgsize);
+    srcp = src->GetWritePtr(PLANAR_V);
+    memset(srcp, 127, imgsize);
+  }
+  return src;
 }
 
 PVideoFrame Histogram::DrawMode2(int n, IScriptEnvironment* env) {
@@ -431,6 +473,9 @@ AVSValue __cdecl Histogram::Create(AVSValue args, void*, IScriptEnvironment* env
 
   if (!lstrcmpi(st_m, "color"))
     mode = 2;
+
+  if (!lstrcmpi(st_m, "luma"))
+    mode = 3;
 
   return new Histogram(args[0].AsClip(), mode, env);
 }
