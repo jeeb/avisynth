@@ -144,6 +144,9 @@ AVSValue AudioRate(AVSValue args, void*, IScriptEnvironment* env);
 AVSValue AudioLength(AVSValue args, void*, IScriptEnvironment* env);
 AVSValue AudioChannels(AVSValue args, void*, IScriptEnvironment* env);
 AVSValue AudioBits(AVSValue args, void*, IScriptEnvironment* env);
+AVSValue IsAudioFloat(AVSValue args, void*, IScriptEnvironment* env);
+AVSValue IsAudioInt(AVSValue args, void*, IScriptEnvironment* env);
+
 AVSValue IsRGB(AVSValue args, void*, IScriptEnvironment* env);
 AVSValue IsYV12(AVSValue args, void*, IScriptEnvironment* env);
 AVSValue IsYUY2(AVSValue args, void*, IScriptEnvironment* env);

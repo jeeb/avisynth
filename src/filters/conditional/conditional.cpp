@@ -42,7 +42,7 @@
 
 AVSFunction Conditional_filters[] = {
   {  "ConditionalFilter","cccsss[show]b", ConditionalFilter::Create },
-  {  "ScriptClip", "cs[show]b", ScriptClip::Create },
+  {  "ScriptClip", "cs[show]b[after_frame]b", ScriptClip::Create },
   {  "ConditionalReader", "css[show]b", ConditionalReader::Create },
   {  "FrameEvaluate", "cs[show]b[after_frame]b", ScriptClip::Create_eval },
   {  "WriteFile",   "c[filename]ss+[append]b[flush]b", Write::Create },
@@ -260,7 +260,7 @@ PVideoFrame __stdcall ScriptClip::GetFrame(int n, IScriptEnvironment* env) {
   AVSValue result;
   PVideoFrame eval_return;   // Frame to be returned if script should be evaluated AFTER frame has been fetched. Otherwise not used.
 
-  if (only_eval && eval_after) eval_return = child->GetFrame(n,env);
+  if (eval_after) eval_return = child->GetFrame(n,env);
 
   try {
     ScriptParser parser(env, script.AsString(), "[ScriptClip]");
@@ -278,7 +278,7 @@ PVideoFrame __stdcall ScriptClip::GetFrame(int n, IScriptEnvironment* env) {
 
   env->SetVar("last",prev_last);       // Restore implicit last
 
-  if (only_eval && eval_after) return eval_return;
+  if (eval_after && only_eval) return eval_return;
   if (only_eval) return child->GetFrame(n,env);
   
   const char* error = NULL;
@@ -286,7 +286,7 @@ PVideoFrame __stdcall ScriptClip::GetFrame(int n, IScriptEnvironment* env) {
   if (!result.IsClip()) {
     error = "ScriptClip: Function did not return a video clip!";
   } else {
-    vi2=result.AsClip()->GetVideoInfo();
+    vi2 = result.AsClip()->GetVideoInfo();
     if (!vi.IsSameColorspace(vi2)) { 
       error = "ScriptClip: Function did not return a video clip of the same colorspace as the source clip!";
     } else if (vi2.width != vi.width) {
@@ -311,7 +311,7 @@ PVideoFrame __stdcall ScriptClip::GetFrame(int n, IScriptEnvironment* env) {
 
 AVSValue __cdecl ScriptClip::Create(AVSValue args, void* user_data, IScriptEnvironment* env)
 {
-  return new ScriptClip(args[0].AsClip(), args[1], args[2].AsBool(false),false, false, env);
+  return new ScriptClip(args[0].AsClip(), args[1], args[2].AsBool(false),false, args[3].AsBool(false), env);
 }
 
 

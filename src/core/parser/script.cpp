@@ -86,6 +86,8 @@ AVSFunction Script_functions[] = {
   { "audiolength", "c", AudioLength },  // Fixme: Add int64 to script
   { "audiochannels", "c", AudioChannels },
   { "audiobits", "c", AudioBits },
+  { "IsAudioFloat", "c", IsFloat },
+  { "IsAudioInt", "c", IsInt },
   { "IsRGB", "c", IsRGB },
   { "IsYUY2", "c", IsYUY2 },
   { "IsYUV", "c", IsYUV },
@@ -503,7 +505,10 @@ AVSValue FrameRate(AVSValue args, void*, IScriptEnvironment* env) { const VideoI
 AVSValue AudioRate(AVSValue args, void*, IScriptEnvironment* env) { return VI(args[0]).audio_samples_per_second; }
 AVSValue AudioLength(AVSValue args, void*, IScriptEnvironment* env) { return (int)VI(args[0]).num_audio_samples; }  // Truncated to int
 AVSValue AudioChannels(AVSValue args, void*, IScriptEnvironment* env) { return VI(args[0]).nchannels; }
-AVSValue AudioBits(AVSValue args, void*, IScriptEnvironment* env) { return VI(args[0]).BytesPerChannelSample(); }
+AVSValue AudioBits(AVSValue args, void*, IScriptEnvironment* env) { return VI(args[0]).BytesPerChannelSample()*8; }
+AVSValue IsAudioFloat(AVSValue args, void*, IScriptEnvironment* env) { return VI(args[0]).IsSampleType(SAMPLE_FLOAT); }
+AVSValue IsAudioInt(AVSValue args, void*, IScriptEnvironment* env) { return !VI(args[0]).IsSampleType(SAMPLE_FLOAT); }
+
 AVSValue IsRGB(AVSValue args, void*, IScriptEnvironment* env) { return VI(args[0]).IsRGB(); }
 AVSValue IsRGB24(AVSValue args, void*, IScriptEnvironment* env) { return VI(args[0]).IsRGB24(); }
 AVSValue IsRGB32(AVSValue args, void*, IScriptEnvironment* env) { return VI(args[0]).IsRGB32(); }
