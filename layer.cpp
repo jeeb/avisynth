@@ -51,6 +51,8 @@ AVSFunction Layer_filters[] = {
   { "Mask", "cc", Mask::Create },     // clip, mask
   { "ColorKeyMask", "cii", ColorKeyMask::Create },    // clip, color, tolerance
   { "ResetMask", "c", ResetMask::Create },
+  { "Invert", "c[channels]s", Invert::Create },
+  { "ShowAlpha", "c", ShowAlpha::Create },
   { "Layer", "cc[op]s[level]i[x]i[y]i[threshold]i[use_chroma]b", Layer::Create },
   /**
     * Layer(clip, overlayclip, operation, amount, xpos, ypos, [threshold=0], [use_chroma=true])
@@ -323,6 +325,115 @@ AVSValue ResetMask::Create(AVSValue args, void*, IScriptEnvironment* env)
 
 
 
+/********************************
+ ******  Invert filter  ******
+ ********************************/
+
+
+Invert::Invert(PClip _child, const char * _channels, IScriptEnvironment* env)
+  : GenericVideoFilter(_child), channels(_channels)
+{
+  if (!vi.IsRGB32())
+    env->ThrowError("ResetMask: RGB32 data only");
+}
+
+
+PVideoFrame Invert::GetFrame(int n, IScriptEnvironment* env)
+{
+  PVideoFrame f = child->GetFrame(n, env);
+  env->MakeWritable(&f);
+
+  BYTE* pf = f->GetWritePtr();
+  int pitch = f->GetPitch();
+  int rowsize = f->GetRowSize();
+  int height = f->GetHeight();
+
+  
+  bool doB = false;
+  bool doG = false;
+  bool doR = false;
+  bool doA = false;
+  char ch = 1;
+  for (int k=0; ch!='\0'; ++k) {
+    ch = tolower(channels[k]);
+    if (ch == 'b')
+      doB = true;
+    if (ch == 'g')
+      doG = true;
+    if (ch == 'r')
+      doR = true;
+    if (ch == 'a')
+      doA = true;
+  }
+
+
+  for (int i=0; i<height; ++i) {
+    for (int j=0; j<rowsize; j+=4) {
+      if (doB)
+        pf[j] = 255 - pf[j];
+      if (doG)
+        pf[j+1] = 255 - pf[j+1];
+      if (doR)
+        pf[j+2] = 255 - pf[j+2];
+      if (doA)
+        pf[j+3] = 255 - pf[j+3];
+    }
+    pf += pitch;
+  }
+
+  return f;
+}
+
+
+AVSValue Invert::Create(AVSValue args, void*, IScriptEnvironment* env)
+{
+  return new Invert(args[0].AsClip(), args[1].AsString("RGBA"), env);
+}
+
+
+
+
+/********************************
+ ******  ShowAlpha filter  ******
+ ********************************/
+
+
+ShowAlpha::ShowAlpha(PClip _child, IScriptEnvironment* env)
+  : GenericVideoFilter(_child)
+{
+  if (!vi.IsRGB32())
+    env->ThrowError("ResetMask: RGB32 data only");
+}
+
+
+PVideoFrame ShowAlpha::GetFrame(int n, IScriptEnvironment* env)
+{
+  PVideoFrame f = child->GetFrame(n, env);
+  env->MakeWritable(&f);
+
+  BYTE* pf = f->GetWritePtr();
+  int pitch = f->GetPitch();
+  int rowsize = f->GetRowSize();
+  int height = f->GetHeight();
+
+  for (int i=0; i<height; i++) {
+    for (int j=0; j<rowsize; j+=4) {
+      char alpha = pf[j+3];
+      pf[j + 0] = alpha;
+      pf[j + 1] = alpha;
+      pf[j + 2] = alpha;
+    }
+    pf += pitch;
+  }
+
+  return f;
+}
+
+
+AVSValue ShowAlpha::Create(AVSValue args, void*, IScriptEnvironment* env)
+{
+  return new ShowAlpha(args[0].AsClip(), env);
+}
 
 
 

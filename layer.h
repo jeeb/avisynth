@@ -103,8 +103,39 @@ public:
   ResetMask(PClip _child, IScriptEnvironment* env);
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
 
-  static AVSValue __cdecl Create(AVSValue arsg, void*, IScriptEnvironment* env);
+  static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env);
 };
+
+
+
+class Invert : public GenericVideoFilter
+/**
+  * Class to invert selected RGBA channels
+**/
+{
+public:
+  Invert(PClip _child, const char * _channels, IScriptEnvironment* env);
+  PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
+
+  static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env);
+private:
+  const char * channels;
+};
+
+
+
+class ShowAlpha : public GenericVideoFilter
+/**
+  * Class to set the RGB components to the alpha mask
+**/
+{
+public:
+  ShowAlpha(PClip _child, IScriptEnvironment* env);
+  PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
+
+  static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env);
+};
+
 
 
 
