@@ -53,6 +53,10 @@ void mmx_yv12_to_yuy2(const BYTE* srcY, const BYTE* srcU, const BYTE* srcV, int 
                     int height);
 
 
+void isse_yuy2_to_yv12(const BYTE* src, int src_rowsize, int src_pitch, 
+                    BYTE* dstY, BYTE* dstU, BYTE* dstV, int dst_pitch, int dst_pitchUV,
+                    int height);
+
 void isse_yuy2_i_to_yv12(const BYTE* src, int src_rowsize, int src_pitch, 
-                    BYTE* dstY, BYTE* dstU, BYTE* dstV, int dst_pitch,
+                    BYTE* dstY, BYTE* dstU, BYTE* dstV, int dst_pitch, int dst_pitchUV,
                     int height);

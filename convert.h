@@ -153,13 +153,13 @@ class ConvertToYV12 : public GenericVideoFilter
  **/
 {
 public:
-  ConvertToYV12(PClip _child, IScriptEnvironment* env);
+  ConvertToYV12(PClip _child, bool _interlaced, IScriptEnvironment* env);
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
 
   static AVSValue __cdecl Create(AVSValue args,void*, IScriptEnvironment* env);
 
 private:
-  bool isYUY2, isRGB32, isRGB24;
+  bool isYUY2, isRGB32, isRGB24, interlaced;
 };
 
 

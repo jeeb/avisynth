@@ -48,7 +48,7 @@ AVSFunction Convert_filters[] = {
 { "ConvertToRGB", "c[matrix]s", ConvertToRGB::Create },       // matrix can be "rec709"
   { "ConvertToRGB24", "c[matrix]s", ConvertToRGB::Create24 },
   { "ConvertToRGB32", "c[matrix]s", ConvertToRGB::Create32 },
-  { "ConvertToYV12", "c", ConvertToYV12::Create },  
+  { "ConvertToYV12", "c[interlaced]b", ConvertToYV12::Create },  
   { "ConvertToYUY2", "c[interlaced]b", ConvertToYUY2::Create },  
   { "ConvertBackToYUY2", "c", ConvertBackToYUY2::Create },  
   { "Greyscale", "c", Greyscale::Create },
@@ -381,12 +381,13 @@ AVSValue __cdecl ConvertToRGB::Create24(AVSValue args, void*, IScriptEnvironment
  *********************************/
 
 
-ConvertToYV12::ConvertToYV12(PClip _child, IScriptEnvironment* env)
-  : GenericVideoFilter(_child)
+ConvertToYV12::ConvertToYV12(PClip _child, bool _interlaced, IScriptEnvironment* env)
+  : GenericVideoFilter(_child), 
+  interlaced(_interlaced)
 {
   if (vi.width & 1)
     env->ThrowError("ConvertToYV12: image width must be multiple of 2");
-  if (vi.IsFieldBased() && (vi.height & 3))
+  if (interlaced && (vi.height & 3))
     env->ThrowError("ConvertToYV12: Interlaced image height must be multiple of 4");
   if ((!vi.IsFieldBased()) && (vi.height & 1))
     env->ThrowError("ConvertToYV12: image height must be multiple of 2");
@@ -411,37 +412,21 @@ PVideoFrame __stdcall ConvertToYV12::GetFrame(int n, IScriptEnvironment* env) {
     return dst;
   }
   
-  PVideoFrame dst = env->NewVideoFrame(vi,-8);
-  yuyv_to_yv12_mmx(dst->GetWritePtr(PLANAR_Y),dst->GetWritePtr(PLANAR_U),dst->GetWritePtr(PLANAR_V),src->GetReadPtr(),src->GetRowSize()/2,src->GetHeight(),src->GetRowSize()/2);
-  return dst;
-/*
-  int* srcp = (int*)src->GetReadPtr();
-  int* dstpY = (int*)dst->GetWritePtr(PLANAR_Y);
-  short* dstpV = (short*)dst->GetWritePtr(PLANAR_V);
-  short* dstpU = (short*)dst->GetWritePtr(PLANAR_U);
-  int xloops=src->GetRowSize()/8;  // One loop = four pixels = two int32
-  int yloops=src->GetHeight()/2;   // One loops = 2 lines  (should be 4 for proper chroma interpolation on fieldbased)  
-  int src_pitch=src->GetPitch()/4;
-  int dst_pitchY=dst->GetPitch(PLANAR_Y)/4;
-  int dst_pitchUV=dst->GetPitch(PLANAR_V)/2;
-  for (int y=0;y<yloops;y++) {
-    for (int x=0;x<xloops;x++) {
-      unsigned int s0=srcp[x*2]; // 2 pixels
-      unsigned int s1=srcp[x*2+1];
-      unsigned int s2=srcp[x*2+src_pitch];
-      unsigned int s3=srcp[x*2+src_pitch+1];
-      dstpY[x] = (s0&0xff) | ((s0>>8)&0xff00) | ((s1<<16)&0xff0000) | ((s1<<8)&0xff000000);
-      dstpY[x+dst_pitchY] = (s2&0xff) | ((s2>>8)&0xff00) | ((s3<<16)&0xff0000) | ((s3<<8)&0xff000000);
-      dstpU[x] = (unsigned short)(((s0&0xff00) + (s2&0xff00))>>9) | ((((s1&0xff00)+(s3&0xff00))>>9)<<8);
-      dstpV[x] = (unsigned short)(((s0>>24)+(s2>>24))>>1) | ((((s1>>24)+(s3>>24))>>1)<<8);
+  PVideoFrame dst = env->NewVideoFrame(vi);
+  if (isYUY2) {
+//  yuyv_to_yv12_mmx(dst->GetWritePtr(PLANAR_Y),dst->GetWritePtr(PLANAR_U),dst->GetWritePtr(PLANAR_V),src->GetReadPtr(),src->GetRowSize()/2,src->GetHeight(),src->GetRowSize()/2);
+    if (interlaced) {
+      isse_yuy2_i_to_yv12(src->GetReadPtr(), src->GetRowSize(), src->GetPitch(), 
+        dst->GetWritePtr(PLANAR_Y), dst->GetWritePtr(PLANAR_U), dst->GetWritePtr(PLANAR_V), dst->GetPitch(PLANAR_Y),dst->GetPitch(PLANAR_U),
+        src->GetHeight());
+    } else {
+      isse_yuy2_to_yv12(src->GetReadPtr(), src->GetRowSize(), src->GetPitch(), 
+        dst->GetWritePtr(PLANAR_Y), dst->GetWritePtr(PLANAR_U), dst->GetWritePtr(PLANAR_V), dst->GetPitch(PLANAR_Y),dst->GetPitch(PLANAR_U),
+        src->GetHeight());
     }
-    srcp+=(src_pitch*2);
-    dstpY+=(dst_pitchY*2);
-    dstpU+=(dst_pitchUV);
-    dstpV+=(dst_pitchUV);
   }
+
   return dst;
-  */
 
 }
 
@@ -450,14 +435,17 @@ AVSValue __cdecl ConvertToYV12::Create(AVSValue args, void*, IScriptEnvironment*
   PClip clip = args[0].AsClip();
   const VideoInfo& vi = clip->GetVideoInfo();
   if (!vi.IsYV12()) {
-    if (vi.width&7) {
-      int xtra = 8 - (vi.width&7);
-      return new Crop(0,0,-xtra,0, AlignPlanar::Create(new ConvertToYV12(new AddBorders(0,0,xtra,0,0,clip),env)),env);
+    if (vi.IsRGB()) {
+      if (vi.width&7) {
+        int xtra = 8 - (vi.width&7);
+        return new Crop(0,0,-xtra,0, AlignPlanar::Create(new ConvertToYV12(new AddBorders(0,0,xtra,0,0,clip),args[1].AsBool(false),env)),env);
+      }
+      return AlignPlanar::Create(new ConvertToYV12(clip,args[1].AsBool(false),env));
+    } else if (vi.IsYUY2()) {
+      return  new ConvertToYV12(clip,args[1].AsBool(false),env);
     }
-    return AlignPlanar::Create(new ConvertToYV12(clip,env));
   }
-  else
-    return clip;
+  return clip;
 }
 
 
@@ -493,20 +481,20 @@ PVideoFrame __stdcall ConvertToYUY2::GetFrame(int n, IScriptEnvironment* env)
         env->ThrowError("ConvertToYUY2 (interlaced): Pitch was not properly aligned - please report this!");
 
 		  if ((env->GetCPUFlags() & CPUF_INTEGER_SSE)) {
-        isse_yv12_i_to_yuy2(src->GetReadPtr(PLANAR_Y), src->GetReadPtr(PLANAR_U), src->GetReadPtr(PLANAR_V), src->GetRowSize(PLANAR_Y_ALIGNED), src->GetPitch(PLANAR_Y), src->GetRowSize(PLANAR_U), 
+        isse_yv12_i_to_yuy2(src->GetReadPtr(PLANAR_Y), src->GetReadPtr(PLANAR_U), src->GetReadPtr(PLANAR_V), src->GetRowSize(PLANAR_Y_ALIGNED), src->GetPitch(PLANAR_Y), src->GetPitch(PLANAR_U), 
                       yuv, dst->GetPitch() ,src->GetHeight());
       } else {
-        mmx_yv12_i_to_yuy2(src->GetReadPtr(PLANAR_Y), src->GetReadPtr(PLANAR_U), src->GetReadPtr(PLANAR_V), src->GetRowSize(PLANAR_Y_ALIGNED), src->GetPitch(PLANAR_Y), src->GetRowSize(PLANAR_U), 
+        mmx_yv12_i_to_yuy2(src->GetReadPtr(PLANAR_Y), src->GetReadPtr(PLANAR_U), src->GetReadPtr(PLANAR_V), src->GetRowSize(PLANAR_Y_ALIGNED), src->GetPitch(PLANAR_Y), src->GetPitch(PLANAR_U), 
                     yuv, dst->GetPitch() ,src->GetHeight());
       }
     } else {
       if (((src->GetPitch()&7)||(dst->GetPitch())&15)) 
         env->ThrowError("ConvertToYUY2 (progressive): Pitch was not properly aligned - please report this!");
 		  if ((env->GetCPUFlags() & CPUF_INTEGER_SSE)) {
-        isse_yv12_to_yuy2(src->GetReadPtr(PLANAR_Y), src->GetReadPtr(PLANAR_U), src->GetReadPtr(PLANAR_V), src->GetRowSize(PLANAR_Y_ALIGNED), src->GetPitch(PLANAR_Y), src->GetRowSize(PLANAR_U), 
+        isse_yv12_to_yuy2(src->GetReadPtr(PLANAR_Y), src->GetReadPtr(PLANAR_U), src->GetReadPtr(PLANAR_V), src->GetRowSize(PLANAR_Y_ALIGNED), src->GetPitch(PLANAR_Y), src->GetPitch(PLANAR_U), 
                       yuv, dst->GetPitch() ,src->GetHeight());
       } else {
-        mmx_yv12_to_yuy2(src->GetReadPtr(PLANAR_Y), src->GetReadPtr(PLANAR_U), src->GetReadPtr(PLANAR_V), src->GetRowSize(PLANAR_Y_ALIGNED), src->GetPitch(PLANAR_Y), src->GetRowSize(PLANAR_U), 
+        mmx_yv12_to_yuy2(src->GetReadPtr(PLANAR_Y), src->GetReadPtr(PLANAR_U), src->GetReadPtr(PLANAR_V), src->GetRowSize(PLANAR_Y_ALIGNED), src->GetPitch(PLANAR_Y), src->GetPitch(PLANAR_U), 
                       yuv, dst->GetPitch() ,src->GetHeight());
       }
 //      yv12_to_yuyv_mmx(yuv,dst->GetPitch()/2,src->GetReadPtr(PLANAR_Y),src->GetReadPtr(PLANAR_U),src->GetReadPtr(PLANAR_V), src->GetPitch(PLANAR_Y), src->GetPitch(PLANAR_U), src->GetRowSize(PLANAR_Y), src->GetHeight(PLANAR_Y));
