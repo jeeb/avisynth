@@ -519,6 +519,22 @@ SOURCE=.\merge.cpp
 
 SOURCE=.\merge.h
 # End Source File
+# Begin Source File
+
+SOURCE=.\turn.cpp
+# End Source File
+# Begin Source File
+
+SOURCE=.\turn.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\turnfunc.cpp
+# End Source File
+# Begin Source File
+
+SOURCE=.\turnfunc.h
+# End Source File
 # End Group
 # Begin Group "Image"
 
