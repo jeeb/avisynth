@@ -37,6 +37,7 @@
 
 #include "Error.h"    // which includes "internal.h"
 
+const char* loadplugin_prefix;
 
 /********************************************************************
 * Native plugin support
@@ -79,6 +80,13 @@ static bool MyLoadLibrary(const char* filename, HMODULE* hmod, bool quiet, IScri
       return false;
     }
     if (loaded_plugins[j] == 0) {
+      char result[512] = "\0";
+      char* t_string = _strrev(_strdup(filename));
+      int len = strlen(filename);
+      int pos = len-strcspn(t_string, ".");
+      int pos2 = len-strcspn(t_string, "\\");
+      strncat(result, filename+pos2, pos-pos2-1);
+      loadplugin_prefix = _strdup(result);
       loaded_plugins[j] = *hmod;
       return true;
     }
@@ -128,6 +136,7 @@ AVSValue LoadPlugin(AVSValue args, void* user_data, IScriptEnvironment* env) {
       }
     }
   }
+  loadplugin_prefix = 0;
   return result ? AVSValue(result) : AVSValue();
 }
 

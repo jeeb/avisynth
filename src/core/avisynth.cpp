@@ -81,10 +81,13 @@ const HKEY RegRootKey = HKEY_LOCAL_MACHINE;
 const char RegAvisynthKey[] = "Software\\Avisynth";
 const char RegPluginDir[] = "PluginDir2_5";
 
+extern const char* loadplugin_prefix;
+
 // in plugins.cpp
 AVSValue LoadPlugin(AVSValue args, void* user_data, IScriptEnvironment* env);
 void FreeLibraries(void* loaded_plugins, IScriptEnvironment* env);
 
+//extern const char* loadplugin_prefix;  // in plugin.cpp
 
 
 class LinkedVideoFrame {
@@ -277,6 +280,7 @@ public:
     if (prescanning && !plugins)
       env->ThrowError("FunctionTable in prescanning state but no plugin has been set");
     LocalFunction* f = new LocalFunction;
+    const char* alt_name = 0;
     if (!prescanning) {
       f->name = name;
       f->param_types = params;
@@ -285,11 +289,29 @@ public:
       f->prev = local_functions;
       local_functions = f;
     } else {
-      _RPT1(0, "  function %s (prescan)\n", name);
+      _RPT1(0, "  Function %s (prescan)\n", name);
       f->name = strdup(name);     // needs to copy here since the plugin will be unloaded
       f->param_types = strdup(params);
       f->prev = plugins->plugin_functions;
       plugins->plugin_functions = f;
+    }
+
+    if (loadplugin_prefix) {
+      _RPT1(0, "  Plugin name %s\n", loadplugin_prefix);
+      char result[512];
+      strcpy(result, loadplugin_prefix);
+      strcat(result, "_");
+      strcat(result, name);
+      LocalFunction* f2 = new LocalFunction;
+      memcpy(f2, f, sizeof(LocalFunction));
+      f2->name = strdup(result);     // needs to copy here since the plugin will be unloaded
+      f2->param_types = strdup(params);     // needs to copy here since the plugin will be unloaded
+      alt_name =f2->name;
+      if (prescanning) {
+        plugins->plugin_functions = f2;
+      } else {
+        local_functions = f2;
+      }
     }
 // *******************************************************************
 // *** Make Plugin Functions readable for external apps            ***
@@ -302,11 +324,18 @@ public:
     try {
       fnplugin = env->GetVar("$PluginFunctions$");
       int string_len = strlen(fnplugin.AsString())+strlen(name)+2;
+
+      if (alt_name)
+        string_len += strlen(alt_name)+1;
+
       fnpluginnew = new char[string_len];
       strcpy(fnpluginnew, fnplugin.AsString());
       strcat(fnpluginnew, " ");
       strcat(fnpluginnew, name);
-      
+      if (alt_name) {
+        strcat(fnpluginnew, " ");
+        strcat(fnpluginnew, alt_name);
+      }
       env->SetGlobalVar("$PluginFunctions$", AVSValue(env->SaveString(fnpluginnew, string_len)));
       delete[] fnpluginnew;
 
@@ -1282,6 +1311,7 @@ void ScriptEnvironment::ThrowError(const char* fmt, ...) {
 
 
 IScriptEnvironment* __stdcall CreateScriptEnvironment(int version) {
+  loadplugin_prefix = 0;
   if (version <= AVISYNTH_INTERFACE_VERSION)
     return new ScriptEnvironment;
   else
