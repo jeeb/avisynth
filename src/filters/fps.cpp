@@ -48,6 +48,7 @@
 AVSFunction Fps_filters[] = {
   { "AssumeFPS", "ci[]i[sync_audio]b", AssumeFPS::Create },     // dst framerate, sync audio?
   { "AssumeFPS", "cf[sync_audio]b", AssumeFPS::CreateFloat },   // dst framerate, sync audio?
+  { "AssumeFPS", "cc[sync_audio]b", AssumeFPS::CreateFromClip }, // clip with dst framerate, sync audio?
   { "ChangeFPS", "ci[]i[linear]b", ChangeFPS::Create },                  // dst framerate
   { "ChangeFPS", "cf[linear]b", ChangeFPS::CreateFloat },                // dst framerate
   { "ConvertFPS", "ci[]i[zone]i[vbi]i", ConvertFPS::Create },   // dst framerate, zone lines, vbi lines
@@ -92,7 +93,12 @@ AVSValue __cdecl AssumeFPS::CreateFloat(AVSValue args, void*, IScriptEnvironment
   return new AssumeFPS(args[0].AsClip(), int(n+0.5), d, args[2].AsBool(false));
 }
 
-
+AVSValue __cdecl AssumeFPS::CreateFromClip(AVSValue args, void*, IScriptEnvironment* env)
+{
+  const VideoInfo& vi = args[1].AsClip()->GetVideoInfo();
+  return new AssumeFPS( args[0].AsClip(), vi.fps_numerator,
+                        vi.fps_denominator, args[2].AsBool(false) );
+}
 
 
 

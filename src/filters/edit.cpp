@@ -663,13 +663,19 @@ Loop::Loop(PClip _child, int _times, int _start, int _end, IScriptEnvironment* e
     end = start + times * frames - 1;
   }
 
-  if (vi.audio_samples_per_second) {
-    start_samples = (((start*vi.audio_samples_per_second)*vi.fps_denominator)/ vi.fps_numerator);
-    loop_ends_at_sample = (((end*vi.audio_samples_per_second)*vi.fps_denominator)/ vi.fps_numerator);
-    loop_len_samples = (__int64)(0.5+(double)(loop_ends_at_sample-start_samples)/(double)times);
-
+  if (vi.HasAudio()) {
+    if (vi.HasVideo()) {
+      start_samples = (((start*vi.audio_samples_per_second)*vi.fps_denominator)/ vi.fps_numerator);
+      loop_ends_at_sample = (((end*vi.audio_samples_per_second)*vi.fps_denominator)/ vi.fps_numerator);
+      loop_len_samples = (__int64)(0.5+(double)(loop_ends_at_sample-start_samples)/(double)times);
+    } else {
+        // start and end frame numbers are meaningless without video
+        start_samples = 0;
+        loop_ends_at_sample = loop_len_samples = vi.num_audio_samples;
+    }
     vi.num_audio_samples+=(loop_len_samples*times);
   }
+
 }
 
 
@@ -685,7 +691,6 @@ bool Loop::GetParity(int n)
 }
  
 void Loop::GetAudio(void* buf, __int64 s_start, __int64 count, IScriptEnvironment* env) {
-
 
   if (s_start+count<start_samples) {
     child->GetAudio(buf,s_start,count,env);
@@ -736,6 +741,10 @@ __inline int Loop::convert(int n)
 
 AVSValue __cdecl Loop::Create(AVSValue args, void*, IScriptEnvironment* env)
 {
+  if (!args[0].AsClip()->GetVideoInfo().HasVideo() &&
+       (args[2].Defined() || args[3].Defined())) {
+    env->ThrowError("Loop: cannot use start or end frame numbers without a video track");
+  }
 	return new Loop(args[0].AsClip(), args[1].AsInt(-1), args[2].AsInt(0), args[3].AsInt(10000000),env);
 }
 
