@@ -399,6 +399,7 @@ SelectRangeEvery::SelectRangeEvery(PClip _child, int _every, int _length, int _o
 		vi.num_frames = (n/every)*length+(n%every<length?n%every:length);
 
     if (vi.HasAudio()) {
+      vi.num_audio_samples = vi.AudioSamplesFromFrames(vi.num_frames);
     }
 
 	}
