@@ -60,7 +60,7 @@ class AVISource : public IClip {
   int last_frame_no;
   AudioSource* aSrc;
   AudioStreamSource* audioStreamSource;
-  int audio_stream_pos;
+  __int64 audio_stream_pos;
 
   LRESULT DecompressBegin(LPBITMAPINFOHEADER lpbiSrc, LPBITMAPINFOHEADER lpbiDst);
   LRESULT DecompressFrame(int n, bool preroll, BYTE* buf);
@@ -486,7 +486,7 @@ PVideoFrame AVISource::GetFrame(int n, IScriptEnvironment* env) {
 }
 
 void AVISource::GetAudio(void* buf, __int64 start, __int64 count, IScriptEnvironment* env) {
-  LONG bytes_read=0, samples_read=0;
+  __int64 bytes_read=0, samples_read=0;
 
   if (start < 0) {
     int bytes = vi.BytesFromAudioSamples(min(-start, count));
@@ -499,7 +499,7 @@ void AVISource::GetAudio(void* buf, __int64 start, __int64 count, IScriptEnviron
   if (audioStreamSource) {
     if (start != audio_stream_pos)
         audioStreamSource->Seek(start);
-    samples_read = audioStreamSource->Read(buf, count, &bytes_read);
+    samples_read = audioStreamSource->Read(buf, count, (long *)&bytes_read);
     audio_stream_pos = start + samples_read;
   }
 

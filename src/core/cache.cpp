@@ -267,6 +267,10 @@ void __stdcall Cache::SetCacheHints(int cachehints,int frame_range) {
   _RPT2(0, "Cache: Setting cache hints (hints:%d, range:%d )\n", cachehints, frame_range);
 
   if (cachehints == CACHE_AUDIO) {
+
+    if (!vi.HasAudio())
+      return;
+
     // Range means for audio.
     // 0 == Create a default buffer (64kb).
     // Positive. Allocate X bytes for cache.
