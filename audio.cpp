@@ -251,6 +251,8 @@ AssumeRate::AssumeRate(PClip _clip, int _rate)
 {
   if (_rate<0) 
     _rate=0;
+  if (vi.SamplesPerSecond()==0)  // Don't add audio if none is present.
+    _rate=0;
 
     vi.audio_samples_per_second=_rate;
 } 
