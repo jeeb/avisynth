@@ -484,10 +484,13 @@ public:
 
 
 static PVideoFrame CreateBlankFrame(const VideoInfo& vi, int color, IScriptEnvironment* env) {
+
   if (!vi.HasVideo()) return 0;
+
   PVideoFrame frame = env->NewVideoFrame(vi);
   BYTE* p = frame->GetWritePtr();
   int size = frame->GetPitch() * frame->GetHeight();
+
   if (vi.IsYV12()) {
     int color_yuv = RGB2YUV(color);
     int Cval = (color_yuv>>16)&0xff;
@@ -536,13 +539,16 @@ static AVSValue __cdecl Create_BlankClip(AVSValue args, void*, IScriptEnvironmen
   vi_default.audio_samples_per_second=44100; vi_default.nchannels=1; vi_default.num_audio_samples=44100*10; vi_default.sample_type=SAMPLE_INT16;
 
   VideoInfo vi;
+
   if (args[0].Defined()) {
     vi_default = args[0].AsClip()->GetVideoInfo();
   }
+
   vi.num_frames = args[1].AsInt(vi_default.num_frames);
   vi.width = args[2].AsInt(vi_default.width);
   vi.height = args[3].AsInt(vi_default.height);
   vi.pixel_type = vi_default.pixel_type;
+
   if (args[4].Defined()) {
     const char* pixel_type_string = args[4].AsString();
     if (!lstrcmpi(pixel_type_string, "YUY2")) {
@@ -557,7 +563,9 @@ static AVSValue __cdecl Create_BlankClip(AVSValue args, void*, IScriptEnvironmen
       env->ThrowError("BlankClip: pixel_type must be \"RGB32\", \"RGB24\", \"YV12\" or \"YUY2\"");
     }
   }
+
   double n = args[5].AsFloat(double(vi_default.fps_numerator));
+
   if (args[5].Defined() && !args[6].Defined()) {
     unsigned d = 1;
     while (n < 16777216 && d < 16777216) { n*=2; d*=2; }
@@ -565,11 +573,13 @@ static AVSValue __cdecl Create_BlankClip(AVSValue args, void*, IScriptEnvironmen
   } else {
     vi.SetFPS(int(n+0.5), args[6].AsInt(vi_default.fps_denominator));
   }
+
   if (!vi.pixel_type)
     vi.pixel_type = vi_default.pixel_type;
 
   vi.SetFieldBased(false);
   vi.audio_samples_per_second = args[7].AsInt(vi_default.audio_samples_per_second);
+
   if (args[8].Defined())
     vi.nchannels = args[8].AsBool() ? 2 : 1;
   else
@@ -1023,6 +1033,7 @@ public:
   }
   HRESULT __stdcall Disconnect() {
     if (a_allocated_buffer) { 
+      a_allocated_buffer = 0;
       delete[] a_buffer;
     }
     source_pin = 0;
@@ -1419,7 +1430,7 @@ public:
 
     CheckHresult(gb->RenderFile(filenameW, NULL), "couldn't open file ", filename);
 
-    if (!get_sample.IsConnected()) {
+    if (!get_sample.IsConnected() && !get_audio_sample.IsConnected()) {
       env->ThrowError("DirectShowSource: the filter graph manager won't talk to me");
     }
 
@@ -1441,37 +1452,43 @@ public:
     if (FAILED(ms->GetDuration(&duration)) || duration == 0) {
       env->ThrowError("DirectShowSource: unable to determine the duration of the video");
     }
+    bool audio_time = SUCCEEDED(ms->SetTimeFormat(&TIME_FORMAT_MEDIA_TIME));
+    __int64 audio_dur;
+    if (FAILED(ms->GetDuration(&audio_dur)) || audio_dur == 0) {
+      env->ThrowError("DirectShowSource: unable to determine the duration of the audio");
+    }
+
     ms->Release();
 
     vi = get_sample.GetVideoInfo();
     VideoInfo a_vi = get_audio_sample.GetVideoInfo();
 
-    if (_avg_time_per_frame) {
-      avg_time_per_frame = _avg_time_per_frame;
-      vi.SetFPS(10000000, avg_time_per_frame);
-    } else {
-      // this is exact (no rounding needed) because of the way the fps is set in GetSample
-      avg_time_per_frame = 10000000 / vi.fps_numerator * vi.fps_denominator;
-    }
-    if (avg_time_per_frame == 0) {
-      gb->Release();
-      env->ThrowError("DirectShowSource: I can't determine the frame rate of\nthe video; you must use the \"fps\" parameter");
+    if (vi.HasVideo()) {
+      if (_avg_time_per_frame) {
+        avg_time_per_frame = _avg_time_per_frame;
+        vi.SetFPS(10000000, avg_time_per_frame);
+      } else {
+        // this is exact (no rounding needed) because of the way the fps is set in GetSample
+        avg_time_per_frame = 10000000 / vi.fps_numerator * vi.fps_denominator;
+      }
+      if (avg_time_per_frame == 0) {
+        gb->Release();
+        env->ThrowError("DirectShowSource: I can't determine the frame rate of\nthe video; you must use the \"fps\" parameter");
+      }
+      vi.num_frames = int(frame_units ? duration : duration / avg_time_per_frame);
+      get_sample.StartGraph();
     }
 
-    if (vi.HasVideo()) {
-      vi.num_frames = int(frame_units ? duration : duration / avg_time_per_frame);
-    }
 
 
     vi.nchannels = a_vi.nchannels;
     vi.sample_type = a_vi.sample_type;
     vi.audio_samples_per_second =  a_vi.audio_samples_per_second;
     if (a_vi.HasAudio()) {
-      vi.num_audio_samples = vi.AudioSamplesFromFrames(int(frame_units ? duration : duration / avg_time_per_frame));
+      vi.num_audio_samples = (__int64)((double)audio_dur * (double)a_vi.audio_samples_per_second / 10000000.0);
+      get_audio_sample.StartGraph();
     }
-
-    get_sample.StartGraph();
-    get_audio_sample.StartGraph();
+// dur = 100ns / 1/10 ms = 1/10000 s
 
     cur_frame = 0;
     base_sample_time = 0;
@@ -1579,7 +1596,6 @@ public:
 
         memcpy(&samples[bytes_filled], &get_audio_sample.a_buffer[ds_offset], available_bytes);
 
-//        available_bytes -= ds_offset;
         bytes_left -= available_bytes;
         bytes_filled += available_bytes;
         audio_bytes_read += available_bytes;
