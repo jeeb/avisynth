@@ -134,7 +134,7 @@ public:
   bool load_video;
 
 
-  GetSample(IScriptEnvironment* _env, bool _load_audio, bool _load_video) : env(_env), load_audio(_load_audio) {
+  GetSample(IScriptEnvironment* _env, bool _load_audio, bool _load_video) : env(_env), load_audio(_load_audio), load_video(_load_video) {
     refcnt = 1;
     source_pin = 0;
     filter_graph = 0;
@@ -924,7 +924,7 @@ public:
     WCHAR filenameW[MAX_PATH];
     MultiByteToWideChar(CP_ACP, 0, filename, -1, filenameW, MAX_PATH);
 
-    CheckHresult(gb->AddFilter(static_cast<IBaseFilter*>(&get_sample), L"GetSample Video"), "couldn't add Video GetSample filter");
+    CheckHresult(gb->AddFilter(static_cast<IBaseFilter*>(&get_sample), L"GetSample"), "couldn't add Video GetSample filter");
 
     bool load_grf = !strcmpi(filename+strlen(filename)-3,"grf");  // Detect ".GRF" extension and load as graph if so.
 
@@ -1212,10 +1212,11 @@ AVSValue __cdecl Create_DirectShowSource(AVSValue args, void*, IScriptEnvironmen
     env->ThrowError("DirectShowSource: Both video and audio was disabled!");
 
   if (!(audio && video)) { // Hey - simple!!
-    if (audio) 
-      return AlignPlanar::Create(new DirectShowSource(filename, avg_time_per_frame, args[2].AsBool(true), audio , false, env));
-    else
+    if (audio) {
+      return AlignPlanar::Create(new DirectShowSource(filename, avg_time_per_frame, args[2].AsBool(true), true , false, env));
+    } else {
       return AlignPlanar::Create(new DirectShowSource(filename, avg_time_per_frame, args[2].AsBool(true), false , true, env));
+    }
   }
 
   PClip DS_audio;
