@@ -1,5 +1,6 @@
 // Avisynth v1.0 beta.  Copyright 2000 Ben Rudiak-Gould.
 // http://www.math.berkeley.edu/~benrg/avisynth.html
+//This module Copyright 2001,2002 "poptones" (poptones@myrealbox.com)
 
 // This program is free software; you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -173,8 +174,6 @@ Layer::Layer( PClip _child1, PClip _child2, const char _op[], int _lev, int _x, 
 
   vi = vi1;
 
-//	ofsY = vi.height-vi2.height-ofsY; //RGB is upside down
-
 	if (vi.IsRGB32()) ofsY = vi.height-vi2.height-ofsY; //RGB is upside down
 	else ofsX = ofsX & 0xFFFFFFFE; //YUV must be aligned on even pixels
 
@@ -188,12 +187,6 @@ Layer::Layer( PClip _child1, PClip _child2, const char _op[], int _lev, int _x, 
 	ycount = (vi.height <  (ofsY + vi2.height))? (vi.height-ydest) : (vi2.height - ysrc);
 
   overlay_frames = vi2.num_frames;
-
-	for (int A=0; A<256; A++)
-		map1[A] = levelA * A;	
-
-	for (int B=0; B<256; B++)
-		map2[B] = levelB * B;	
 }
 
 PVideoFrame __stdcall Layer::GetFrame(int n, IScriptEnvironment* env) 
@@ -219,7 +212,6 @@ PVideoFrame __stdcall Layer::GetFrame(int n, IScriptEnvironment* env)
 		__int64 oxoo80oo80oo80oo80=0x0080008000800080;  // Null Chroma
 		__int64 ox7f7f7f7f7f7f7f7f=0x7f7f7f7f7f7f7f7f;  // FAST shift mask
 		__int64	 ox0101010101010101=0x0101010101010101;// FAST lsb mask
-		__int64	 thresh=0x0000000000000000 | (T & 0xFF);
 
 	if(vi.IsYUV()){
 
@@ -229,15 +221,8 @@ PVideoFrame __stdcall Layer::GetFrame(int n, IScriptEnvironment* env)
 		src2p += (src2_pitch * ysrc) + (xsrc * 2);
 		const int myx = xcount >> 1;
 
-		  __asm {
-				movq mm3, oxffooffooffooffoo     ; Chroma mask
-				movq mm2, oxooffooffooffooff     ; Luma mask
-				movd		mm1, mylevel			;alpha
-				punpcklwd		mm1,mm1	  ;mm1= 0000|0000|00aa*|00aa*
-				punpckldq		mm1, mm1	;mm1= 00aa*|00aa*|00aa*|00aa*
-				movq					mylevel, mm1
-				pxor		mm0,mm0
-		}
+		__int64	 thresh=0x0000000000000000 | ((T & 0xFF) <<48)| ((T & 0xFF) <<32)| ((T & 0xFF) <<16)| (T & 0xFF);
+
 		if (!lstrcmpi(Op, "Mul"))
 		{
 			if (chroma)
@@ -247,10 +232,18 @@ PVideoFrame __stdcall Layer::GetFrame(int n, IScriptEnvironment* env)
 				mov			esi, src2p
 				mov			ebx, myy
 				
+				movq mm3, oxffooffooffooffoo     ; Chroma mask
+				movq mm2, oxooffooffooffooff     ; Luma mask
+				movd		mm1, mylevel			;alpha
+				punpcklwd		mm1,mm1	  ;mm1= 0000|0000|00aa*|00aa*
+				punpckldq		mm1, mm1	;mm1= 00aa*|00aa*|00aa*|00aa*
+				movq					mylevel, mm1
+				pxor		mm0,mm0
+
 				mulyuy32loop:
 						mov         edx, myx
 						xor         ecx, ecx
-
+		align 16
 						mulyuy32xloop:
 							//---- fetch src1/dest
 									
@@ -260,23 +253,32 @@ PVideoFrame __stdcall Layer::GetFrame(int n, IScriptEnvironment* env)
 							pand		mm7,mm2					;mask for luma
 							pand		mm4,mm3					;mask for chroma
 							movq		mm5,mm6					;temp mm5=mm6
-							psrlw		mm4,8							;line up chroma
 							pand		mm6,mm2					;mask for luma
-							pand		mm5,mm3					;mask for chroma
-							psrlw		mm5,8							;line'em up
 
 							//----- begin the fun (luma) stuff
 							pmullw	mm6,mm7
+
+							pand		mm5,mm3					;mask for chroma
+							psrlw		mm5,8							;line'em up
+
 							psrlw		mm6,8
 							psubsw	mm6, mm7
 							pmullw	mm6, mm1 	  	;mm6=scaled difference*255
+
+							psrlw		mm4,8							;line up chroma
+							psubsw	mm5, mm4
+
 							psrlw		mm6, 8		    ;scale result
 							paddb		mm6, mm7		  ;add src1
 							//----- end the fun stuff...
 
 							//----- begin the fun (chroma) stuff
-							psubsw	mm5, mm4
 							pmullw	mm5, mm1 	  	;mm5=scaled difference*255
+
+							mov		eax, ecx
+							inc         ecx
+							cmp         ecx, edx
+
 							psrlw		mm5, 8		    ;scale result
 							paddb		mm5, mm4		  ;add src1
 							//----- end the fun stuff...
@@ -284,10 +286,8 @@ PVideoFrame __stdcall Layer::GetFrame(int n, IScriptEnvironment* env)
 							psllw		mm5,8				;line up chroma
 							por			mm6,mm5		;and merge'em back	
 
-							movd        [edi + ecx*4],mm6
+							movd        [edi + eax*4],mm6
 
-							inc         ecx
-							cmp         ecx, edx
 						jnz         mulyuy32xloop
 
 						add			edi, src1_pitch
@@ -302,10 +302,19 @@ PVideoFrame __stdcall Layer::GetFrame(int n, IScriptEnvironment* env)
 				mov			esi, src2p
 				mov			ebx, myy
 						
+				movq mm3, oxffooffooffooffoo     ; Chroma mask
+				movq mm2, oxooffooffooffooff     ; Luma mask
+				movd		mm1, mylevel			;alpha
+				punpcklwd		mm1,mm1	  ;mm1= 0000|0000|00aa*|00aa*
+				punpckldq		mm1, mm1	;mm1= 00aa*|00aa*|00aa*|00aa*
+				movq					mylevel, mm1
+				pxor		mm0,mm0
+
 				muly032loop:
 						mov         edx, myx
 						xor         ecx, ecx
 
+				align 16
 						muly032xloop:
 							//---- fetch src1/dest
 									
@@ -313,17 +322,21 @@ PVideoFrame __stdcall Layer::GetFrame(int n, IScriptEnvironment* env)
 							movd		mm6, [esi + ecx*4] ;src2
 							movq		mm4,mm7					;temp mm4=mm7
 							pand		mm7,mm2					;mask for luma
-							pand		mm4,mm3					;mask for chroma
 							movq		mm5,mm6					;temp mm5=mm6
-							psrlw		mm4,8							;line up chroma
 							pand		mm6,mm2					;mask for luma
-							movq		mm5,oxoo80oo80oo80oo80	 					;get null chroma
 
 							//----- begin the fun (luma) stuff
 							pmullw	mm6,mm7
+							
+							pand		mm4,mm3					;mask for chroma
+
 							psrlw		mm6,8
 							psubsw	mm6, mm7
 							pmullw	mm6, mm1 	  	;mm6=scaled difference*255
+
+							psrlw		mm4,8							;line up chroma
+							movq		mm5,oxoo80oo80oo80oo80	 					;get null chroma
+
 							psrlw		mm6, 8		    ;scale result
 							paddb		mm6, mm7		  ;add src1
 							//----- end the fun stuff...
@@ -333,6 +346,11 @@ PVideoFrame __stdcall Layer::GetFrame(int n, IScriptEnvironment* env)
 							psrlw		mm7,1
 							psubsw	mm5, mm4
 							pmullw	mm5, mm7 	  	;mm5=scaled difference*255
+
+							mov		eax, ecx
+							inc         ecx
+							cmp         ecx, edx
+
 							psrlw		mm5, 8		    ;scale result
 							paddb		mm5, mm4		  ;add src1
 							//----- end the fun stuff...
@@ -340,10 +358,8 @@ PVideoFrame __stdcall Layer::GetFrame(int n, IScriptEnvironment* env)
 							psllw		mm5,8				;line up chroma
 							por			mm6,mm5		;and merge'em back	
 
-							movd        [edi + ecx*4],mm6
+							movd        [edi + eax*4],mm6
 
-							inc         ecx
-							cmp         ecx, edx
 						jnz         muly032xloop
 
 						add			edi, src1_pitch
@@ -363,10 +379,19 @@ PVideoFrame __stdcall Layer::GetFrame(int n, IScriptEnvironment* env)
 				mov			esi, src2p
 				mov			ebx, myy
 				
+				movq mm3, oxffooffooffooffoo     ; Chroma mask
+				movq mm2, oxooffooffooffooff     ; Luma mask
+				movd		mm1, mylevel			;alpha
+				punpcklwd		mm1,mm1	  ;mm1= 0000|0000|00aa*|00aa*
+				punpckldq		mm1, mm1	;mm1= 00aa*|00aa*|00aa*|00aa*
+				movq					mylevel, mm1
+				pxor		mm0,mm0
+
 				addyuy32loop:
 						mov         edx, myx
 						xor         ecx, ecx
 
+				align 16
 						addyuy32xloop:
 							//---- fetch src1/dest
 									
@@ -378,12 +403,14 @@ PVideoFrame __stdcall Layer::GetFrame(int n, IScriptEnvironment* env)
 							movq		mm5,mm6					;temp mm5=mm6
 							psrlw		mm4,8							;line up chroma
 							pand		mm6,mm2					;mask for luma
-							pand		mm5,mm3					;mask for chroma
-							psrlw		mm5,8							;line'em up
 
 							//----- begin the fun (luma) stuff
 							psubsw	mm6, mm7
 							pmullw	mm6, mm1 	  	;mm6=scaled difference*255
+
+							pand		mm5,mm3					;mask for chroma
+							psrlw		mm5,8							;line'em up
+							
 							psrlw		mm6, 8		    ;scale result
 							paddb		mm6, mm7		  ;add src1
 							//----- end the fun stuff...
@@ -391,6 +418,11 @@ PVideoFrame __stdcall Layer::GetFrame(int n, IScriptEnvironment* env)
 							//----- begin the fun (chroma) stuff
 							psubsw	mm5, mm4
 							pmullw	mm5, mm1 	  	;mm5=scaled difference*255
+
+							mov		eax, ecx
+							inc         ecx
+							cmp         ecx, edx
+
 							psrlw		mm5, 8		    ;scale result
 							paddb		mm5, mm4		  ;add src1
 							//----- end the fun stuff...
@@ -398,10 +430,8 @@ PVideoFrame __stdcall Layer::GetFrame(int n, IScriptEnvironment* env)
 							psllw		mm5,8				;line up chroma
 							por			mm6,mm5		;and merge'em back	
 
-							movd        [edi + ecx*4],mm6
+							movd        [edi + eax*4],mm6
 
-							inc         ecx
-							cmp         ecx, edx
 						jnz         addyuy32xloop
 
 						add			edi, src1_pitch
@@ -416,6 +446,14 @@ PVideoFrame __stdcall Layer::GetFrame(int n, IScriptEnvironment* env)
 				mov			esi, src2p
 				mov			ebx, myy
 						
+				movq mm3, oxffooffooffooffoo     ; Chroma mask
+				movq mm2, oxooffooffooffooff     ; Luma mask
+				movd		mm1, mylevel			;alpha
+				punpcklwd		mm1,mm1	  ;mm1= 0000|0000|00aa*|00aa*
+				punpckldq		mm1, mm1	;mm1= 00aa*|00aa*|00aa*|00aa*
+				movq					mylevel, mm1
+				pxor		mm0,mm0
+
 				addy032loop:
 						mov         edx, myx
 						xor         ecx, ecx
@@ -423,19 +461,22 @@ PVideoFrame __stdcall Layer::GetFrame(int n, IScriptEnvironment* env)
 						addy032xloop:
 							//---- fetch src1/dest
 									
+				align 16
 							movd		mm7, [edi + ecx*4] ;src1/dest;
 							movd		mm6, [esi + ecx*4] ;src2
 							movq		mm4,mm7					;temp mm4=mm7
 							pand		mm7,mm2					;mask for luma
 							pand		mm4,mm3					;mask for chroma
 							movq		mm5,mm6					;temp mm5=mm6
-							psrlw		mm4,8							;line up chroma
 							pand		mm6,mm2					;mask for luma
-							movq		mm5,oxoo80oo80oo80oo80	 					;get null chroma
 
 							//----- begin the fun (luma) stuff
 							psubsw	mm6, mm7
 							pmullw	mm6, mm1 	  	;mm6=scaled difference*255
+
+							movq		mm5,oxoo80oo80oo80oo80	 					;get null chroma
+							psrlw		mm4,8							;line up chroma
+							
 							psrlw		mm6, 8		    ;scale result
 							paddb		mm6, mm7		  ;add src1
 							//----- end the fun stuff...
@@ -443,6 +484,11 @@ PVideoFrame __stdcall Layer::GetFrame(int n, IScriptEnvironment* env)
 							//----- begin the fun (chroma) stuff
 							psubsw	mm5, mm4
 							pmullw	mm5, mm1 	  	;mm5=scaled difference*255
+
+							mov		eax, ecx
+							inc         ecx
+							cmp         ecx, edx
+
 							psrlw		mm5, 8		    ;scale result
 							paddb		mm5, mm4		  ;add src1
 							//----- end the fun stuff...
@@ -450,10 +496,7 @@ PVideoFrame __stdcall Layer::GetFrame(int n, IScriptEnvironment* env)
 							psllw		mm5,8				;line up chroma
 							por			mm6,mm5		;and merge'em back	
 
-							movd        [edi + ecx*4],mm6
-
-							inc         ecx
-							cmp         ecx, edx
+							movd        [edi + eax*4],mm6
 						jnz         addy032xloop
 
 						add			edi, src1_pitch
@@ -474,7 +517,9 @@ PVideoFrame __stdcall Layer::GetFrame(int n, IScriptEnvironment* env)
 				mov			ebx, myy
 				movq			mm0, ox7f7f7f7f7f7f7f7f	;get shift mask
 				movq			mm1, ox0101010101010101 ;lsb mask
-				
+				movq			mm3, oxffooffooffooffoo     ; Chroma mask
+				movq			mm2, oxooffooffooffooff     ; Luma mask
+
 				fastyuy32loop:
 						mov         edx, myx
 						xor         ecx, ecx
@@ -483,6 +528,7 @@ PVideoFrame __stdcall Layer::GetFrame(int n, IScriptEnvironment* env)
 						fastyuy32xloop:
 							//---- fetch src1/dest
 									
+				align 16
 							movq		mm7, [edi + ecx*8] ;src1/dest;
 							movq		mm6, [esi + ecx*8] ;src2
 							movq		mm3, mm1
@@ -523,6 +569,14 @@ PVideoFrame __stdcall Layer::GetFrame(int n, IScriptEnvironment* env)
 				mov			esi, src2p
 				mov			ebx, myy
 				
+				movq mm3, oxffooffooffooffoo     ; Chroma mask
+				movq mm2, oxooffooffooffooff     ; Luma mask
+				movd		mm1, mylevel			;alpha
+				punpcklwd		mm1,mm1	  ;mm1= 0000|0000|00aa*|00aa*
+				punpckldq		mm1, mm1	;mm1= 00aa*|00aa*|00aa*|00aa*
+				movq					mylevel, mm1
+				pxor		mm0,mm0
+
 				subyuy32loop:
 						mov         edx, myx
 						xor         ecx, ecx
@@ -530,6 +584,7 @@ PVideoFrame __stdcall Layer::GetFrame(int n, IScriptEnvironment* env)
 						subyuy32xloop:
 							//---- fetch src1/dest
 									
+				align 16
 							movd		mm7, [edi + ecx*4] ;src1/dest;
 							movd		mm6, [esi + ecx*4] ;src2
 							movq		mm4,mm7					;temp mm4=mm7
@@ -540,12 +595,14 @@ PVideoFrame __stdcall Layer::GetFrame(int n, IScriptEnvironment* env)
 							psubb		mm5, mm6					;mm5 = 255-mm6
 							movq		mm6,mm5					;temp mm6=mm5
 							pand		mm6,mm2					;mask for luma
-							pand		mm5,mm3					;mask for chroma
-							psrlw		mm5,8							;line'em up
 
 							//----- begin the fun (luma) stuff
 							psubsw	mm6, mm7
 							pmullw	mm6, mm1 	  	;mm6=scaled difference*255
+
+							pand		mm5,mm3					;mask for chroma
+							psrlw		mm5,8							;line'em up
+							
 							psrlw		mm6, 8		    ;scale result
 							paddb		mm6, mm7		  ;add src1
 							//----- end the fun stuff...
@@ -553,6 +610,11 @@ PVideoFrame __stdcall Layer::GetFrame(int n, IScriptEnvironment* env)
 							//----- begin the fun (chroma) stuff
 							psubsw	mm5, mm4
 							pmullw	mm5, mm1 	  	;mm5=scaled difference*255
+
+							mov		eax, ecx
+							inc         ecx
+							cmp         ecx, edx
+
 							psrlw		mm5, 8		    ;scale result
 							paddb		mm5, mm4		  ;add src1
 							//----- end the fun stuff...
@@ -560,10 +622,7 @@ PVideoFrame __stdcall Layer::GetFrame(int n, IScriptEnvironment* env)
 							psllw		mm5,8				;line up chroma
 							por			mm6,mm5		;and merge'em back	
 
-							movd        [edi + ecx*4],mm6
-
-							inc         ecx
-							cmp         ecx, edx
+							movd        [edi + eax*4],mm6
 						jnz        subyuy32xloop
 
 						add			edi, src1_pitch
@@ -578,6 +637,14 @@ PVideoFrame __stdcall Layer::GetFrame(int n, IScriptEnvironment* env)
 				mov			esi, src2p
 				mov			ebx, myy
 						
+				movq mm3, oxffooffooffooffoo     ; Chroma mask
+				movq mm2, oxooffooffooffooff     ; Luma mask
+				movd		mm1, mylevel			;alpha
+				punpcklwd		mm1,mm1	  ;mm1= 0000|0000|00aa*|00aa*
+				punpckldq		mm1, mm1	;mm1= 00aa*|00aa*|00aa*|00aa*
+				movq					mylevel, mm1
+				pxor		mm0,mm0
+
 				suby032loop:
 						mov         edx, myx
 						xor         ecx, ecx
@@ -585,21 +652,24 @@ PVideoFrame __stdcall Layer::GetFrame(int n, IScriptEnvironment* env)
 						suby032xloop:
 							//---- fetch src1/dest
 									
+				align 16
 							movd		mm7, [edi + ecx*4] ;src1/dest;
 							movd		mm6, [esi + ecx*4] ;src2
 							movq		mm4,mm7					;temp mm4=mm7
 							pand		mm7,mm2					;mask for luma
 							pand		mm4,mm3					;mask for chroma
 							pcmpeqb	mm5, mm5					;mm5 will be sacrificed 
-							psrlw		mm4,8							;line up chroma
 							psubb		mm5, mm6					;mm5 = 255-mm6
 							movq		mm6,mm5					;temp mm6=mm5
 							pand		mm6,mm2					;mask for luma
-							movq		mm5,oxoo80oo80oo80oo80	 					;get null chroma
 
 							//----- begin the fun (luma) stuff
 							psubsw	mm6, mm7
 							pmullw	mm6, mm1 	  	;mm6=scaled difference*255
+							
+							psrlw		mm4,8							;line up chroma
+							movq		mm5,oxoo80oo80oo80oo80	 					;get null chroma
+
 							psrlw		mm6, 8		    ;scale result
 							paddb		mm6, mm7		  ;add src1
 							//----- end the fun stuff...
@@ -607,6 +677,11 @@ PVideoFrame __stdcall Layer::GetFrame(int n, IScriptEnvironment* env)
 							//----- begin the fun (chroma) stuff
 							psubsw	mm5, mm4
 							pmullw	mm5, mm1 	  	;mm5=scaled difference*255
+
+							mov		eax, ecx
+							inc         ecx
+							cmp         ecx, edx
+
 							psrlw		mm5, 8		    ;scale result
 							paddb		mm5, mm4		  ;add src1
 							//----- end the fun stuff...
@@ -614,10 +689,8 @@ PVideoFrame __stdcall Layer::GetFrame(int n, IScriptEnvironment* env)
 							psllw		mm5,8				;line up chroma
 							por			mm6,mm5		;and merge'em back	
 
-							movd        [edi + ecx*4],mm6
+							movd        [edi + eax*4],mm6
 
-							inc         ecx
-							cmp         ecx, edx
 						jnz         suby032xloop
 
 						add			edi, src1_pitch
@@ -628,13 +701,161 @@ PVideoFrame __stdcall Layer::GetFrame(int n, IScriptEnvironment* env)
 				}
 			}
 		}
-		if (!lstrcmpi(Op, "Window"))
+		if (!lstrcmpi(Op, "Lighten"))
+		{
+			if (chroma)
 			{
-			      env->ThrowError("Layer: this mode not presently supported in YUY; use RGB");
+				__asm {
+				mov			edi, src1p
+				mov			esi, src2p
+				mov			ebx, myy
+				
+				movq mm3, oxffooffooffooffoo    ; Chroma mask
+				movq mm2, oxooffooffooffooff    ; Luma mask
+				movd		mm0, mylevel				;alpha
+				punpcklwd		mm0,mm0			;mm0= 0000|0000|00aa*|00aa*
+				punpckldq		mm0, mm0			;mm0= 00aa*|00aa*|00aa*|00aa*
+
+				lightenyuy32loop:
+						mov         edx, myx
+						xor         ecx, ecx
+
+						lightenyuy32xloop:
+							//---- fetch src1/dest
+									
+				align 16
+							movd		mm7, [edi + ecx*4] ;src1/dest;
+							movd		mm6, [esi + ecx*4] ;src2
+							movq		mm1, thresh				;we'll need this in a minute
+							movq		mm4,mm7					;temp mm4=mm7
+							pand		mm7,mm2					;mask for luma	src1__YY__YY__YY__YY
+							movq		mm5,mm6					;temp mm5=mm6
+							pand		mm6,mm2					;mask for luma	src2__YY__YY__YY__YY
+
+							paddw		mm1, mm6	 			;add threshold + lum into temporary home
+							pand		mm5,mm3					;mask for chroma	src2VV__UU__VV__UU__
+							psrlw		mm5,8							;line'em up	src2__VV__UU__VV__UU
+
+							pcmpgtw	mm1, mm7				;see which is greater
+							pand			mm1, mm0				;mm1 now has alpha mask	
+
+							//----- begin the fun (luma) stuff
+							psubsw	mm6, mm7
+							pmullw	mm6, mm1 	  	;mm6=scaled difference*255
+							
+							pand		mm4,mm3					;mask for chroma	src1VV__UU__VV__UU__
+							psrlw		mm4,8							;line up chroma	src1__VV__UU__VV__UU
+
+							psrlw		mm6, 8		    ;scale result
+							paddb		mm6, mm7		  ;add src1
+							//----- end the fun stuff...
+
+							//----- begin the fun (chroma) stuff
+							psubsw	mm5, mm4
+							pmullw	mm5, mm1 	  	;mm5=scaled difference*255
+
+							mov		eax, ecx
+							inc         ecx
+							cmp         ecx, edx
+
+							psrlw		mm5, 8		    ;scale result
+							paddb		mm5, mm4		  ;add src1
+							//----- end the fun stuff...
+
+							psllw		mm5,8				;line up chroma
+							por			mm6,mm5		;and merge'em back	
+
+							movd        [edi + eax*4],mm6
+
+						jnz         lightenyuy32xloop
+
+						add			edi, src1_pitch
+						add			esi, src2_pitch
+				dec		ebx
+				jnz		lightenyuy32loop
+				emms
+				}
+			} else {
+			      env->ThrowError("Layer: monochrome lighten illegal op");
+			}
 		}
 		if (!lstrcmpi(Op, "Darken"))
 		{
-			      env->ThrowError("Layer: this mode not presently supported in YUY; use RGB");
+			if (chroma)
+			{
+				__asm {
+				mov			edi, src1p
+				mov			esi, src2p
+				mov			ebx, myy
+				
+				movq mm3, oxffooffooffooffoo     ; Chroma mask
+				movq mm2, oxooffooffooffooff     ; Luma mask
+				movd		mm0, mylevel				;alpha
+				punpcklwd		mm0,mm0			;mm0= 0000|0000|00aa*|00aa*
+				punpckldq		mm0, mm0			;mm0= 00aa*|00aa*|00aa*|00aa*
+
+				darkenyuy32loop:
+						mov         edx, myx
+						xor         ecx, ecx
+
+						darkenyuy32xloop:
+							//---- fetch src1/dest
+									
+				align 16
+							movd		mm7, [edi + ecx*4] ;src1/dest;
+							movd		mm6, [esi + ecx*4] ;src2
+							movq		mm1, thresh				;we'll need this in a minute
+							movq		mm4,mm7					;temp mm4=mm7
+							pand		mm7,mm2					;mask for luma	src1__YY__YY__YY__YY
+							pand		mm4,mm3					;mask for chroma	src1VV__UU__VV__UU__
+							movq		mm5,mm6					;temp mm5=mm6
+							pand		mm6,mm2					;mask for luma	src2__YY__YY__YY__YY
+							psrlw		mm4,8							;line up chroma	src1__VV__UU__VV__UU
+
+							paddw		mm1, mm7	 			;add threshold + lum into temporary home
+
+							pcmpgtw	mm1, mm6				;see which is greater
+							pand			mm1, mm0				;mm1 now has alpha mask	
+
+							//----- begin the fun (luma) stuff
+							psubsw	mm6, mm7
+							pmullw	mm6, mm1 	  	;mm6=scaled difference*255
+							
+							pand		mm5,mm3					;mask for chroma	src2VV__UU__VV__UU__
+							psrlw		mm5,8							;line'em up	src2__VV__UU__VV__UU
+
+							psrlw		mm6, 8		    ;scale result
+							paddb		mm6, mm7		  ;add src1
+							//----- end the fun stuff...
+
+							//----- begin the fun (chroma) stuff
+							psubsw	mm5, mm4
+							pmullw	mm5, mm1 	  	;mm5=scaled difference*255
+
+							mov		eax, ecx
+							inc         ecx
+							cmp         ecx, edx
+
+							psrlw		mm5, 8		    ;scale result
+							paddb		mm5, mm4		  ;add src1
+							//----- end the fun stuff...
+
+							psllw		mm5,8				;line up chroma
+							por			mm6,mm5		;and merge'em back	
+
+							movd        [edi + eax*4],mm6
+
+						jnz         darkenyuy32xloop
+
+						add			edi, src1_pitch
+						add			esi, src2_pitch
+				dec		ebx
+				jnz		darkenyuy32loop
+				emms
+				}
+			} else {
+			      env->ThrowError("Layer: monochrome darken illegal op");
+			}
 		}
 	}
 	else if (vi.IsRGB32())
@@ -651,6 +872,8 @@ PVideoFrame __stdcall Layer::GetFrame(int n, IScriptEnvironment* env)
 		src1p += (src1_pitch * ydest) + (xdest * 4);
 		src2p += (src2_pitch * ysrc) + (xsrc * 4);
 
+		__int64	 thresh=0x0000000000000000 | (T & 0xFF);
+
 		if (!lstrcmpi(Op, "Mul"))
 		{
 			if (chroma)
@@ -666,20 +889,23 @@ PVideoFrame __stdcall Layer::GetFrame(int n, IScriptEnvironment* env)
 						mov         edx, myx
 						xor         ecx, ecx
 
+				align 16
 						mul32xloop:
 								movd		mm6, [esi + ecx*4] ;src2
+								movd		mm7, [edi + ecx*4] ;src1/dest
 								movq		mm2,mm6
-								movd		mm7, [edi + ecx*4] ;src1/dest		;what a mess...
 
 						//----- extract alpha into four channels
 
 								psrlq		mm2,24		    ;mm2= 0000|0000|0000|00aa
 								pmullw	mm2,mm1		    ;mm2= pixel alpha * script alpha
-								
-								psrlw		mm2,8		      ;mm2= 0000|0000|0000|00aa*
+
 								punpcklbw		mm6,mm0		;mm6= 00aa|00bb|00gg|00rr [src2]
 								punpcklbw		mm7, mm0	;mm7= 00aa|00bb|00gg|00rr [src1]
+								
+								psrlw		mm2,8		      ;mm2= 0000|0000|0000|00aa*
 								pmullw				mm6,mm7
+
 								punpcklwd		mm2,mm2	  ;mm2= 0000|0000|00aa*|00aa*
 								punpckldq		mm2, mm2	;mm2= 00aa*|00aa*|00aa*|00aa*
 
@@ -691,16 +917,18 @@ PVideoFrame __stdcall Layer::GetFrame(int n, IScriptEnvironment* env)
 								
 								psubsw	mm6, mm7
 								pmullw	mm6, mm2 	  	;mm6=scaled difference*255
+
+								mov		eax, ecx
+								inc         ecx
+								cmp         ecx, edx
+
 								psrlw		mm6, 8		    ;scale result
 								paddb		mm6, mm7		  ;add src1
 
 						//----- end the fun stuff...
 
 								packuswb			mm6,mm0
-								movd        [edi + ecx*4],mm6
-
-								inc         ecx
-								cmp         ecx, edx
+								movd        [edi + eax*4],mm6
 						jnz         mul32xloop
 
 						add			edi, src1_pitch
@@ -721,15 +949,16 @@ PVideoFrame __stdcall Layer::GetFrame(int n, IScriptEnvironment* env)
 						mov         edx, myx
 						xor         ecx, ecx
 
+				align 16
 						mul32yxloop:
 								movd		mm6, [esi + ecx*4] ;src2
-								movq		mm2,mm6
-								movd		mm7, [edi + ecx*4] ;src1/dest		;what a mess...
+								movd		mm7, [edi + ecx*4] ;src1/dest
+								movq		mm3, rgb2lum
 
 						//----- extract alpha into four channels
 
+								movq		mm2,mm6
 								psrlq		mm2,24		      ;mm2= 0000|0000|0000|00aa
-								movq			mm3, rgb2lum	;another spaced out load
 								pmullw		mm2,mm1		    ;mm2= pixel alpha * script alpha
 
 								punpcklbw		mm6,mm0		  ;mm6= 00aa|00bb|00gg|00rr [src2]
@@ -737,6 +966,9 @@ PVideoFrame __stdcall Layer::GetFrame(int n, IScriptEnvironment* env)
 
 						//----- start rgb -> monochrome
 								pmaddwd			mm6,mm3			;partial monochrome result
+
+								psrlw		mm2,8		        ;mm2= 0000|0000|0000|00aa*
+								
 								punpckldq		mm3,mm6			;ready to add
 								paddd			mm6, mm3		  ;32 bit result
 								psrlq			mm6, 47				;8 bit result
@@ -746,7 +978,6 @@ PVideoFrame __stdcall Layer::GetFrame(int n, IScriptEnvironment* env)
 
 								pmullw				mm6,mm7
 
-								psrlw		mm2,8		        ;mm2= 0000|0000|0000|00aa*
 								punpcklwd		mm2,mm2		  ;mm2= 0000|0000|00aa*|00aa*
 								punpckldq		mm2, mm2		;mm2= 00aa*|00aa*|00aa*|00aa*
 
@@ -758,16 +989,19 @@ PVideoFrame __stdcall Layer::GetFrame(int n, IScriptEnvironment* env)
 
 								psubsw		mm6, mm7
 								pmullw		mm6,mm2		;mm6=scaled difference*255
+
+								mov		eax, ecx
+								inc         ecx
+								cmp         ecx, edx
+
 								psrlw		  mm6,8		  ;scale result
 								paddb		  mm6,mm7		;add src1
 
 						//----- end the fun stuff...
 
 								packuswb		mm6,mm0
-								movd        [edi + ecx*4],mm6
+								movd        [edi + eax*4],mm6
 
-								inc         ecx
-								cmp         ecx, edx
 						jnz         mul32yxloop
 
 						add				edi, src1_pitch
@@ -793,15 +1027,19 @@ PVideoFrame __stdcall Layer::GetFrame(int n, IScriptEnvironment* env)
 						mov         edx, myx
 						xor         ecx, ecx
 
+				align 16
 						add32xloop:
 								movd		mm6, [esi + ecx*4] ;src2
+								movd		mm7, [edi + ecx*4] ;src1/dest
 								movq		mm2,mm6
-								movd		mm7, [edi + ecx*4] ;src1/dest		;what a mess...
 
 						//----- extract alpha into four channels
 
 								psrlq		mm2,24		    ;mm2= 0000|0000|0000|00aa
 								pmullw	mm2,mm1		    ;mm2= pixel alpha * script alpha
+
+								punpcklbw		mm6,mm0		;mm6= 00aa|00bb|00gg|00rr [src2]
+								punpcklbw		mm7, mm0	;mm7= 00aa|00bb|00gg|00rr [src1]
 								
 								psrlw		mm2,8		      ;mm2= 0000|0000|0000|00aa*
 								punpcklwd		mm2,mm2	  ;mm2= 0000|0000|00aa*|00aa*
@@ -809,23 +1047,24 @@ PVideoFrame __stdcall Layer::GetFrame(int n, IScriptEnvironment* env)
 
 						//----- alpha mask now in all four channels of mm2
 
-								punpcklbw		mm6,mm0		;mm6= 00aa|00bb|00gg|00rr [src2]
-								punpcklbw		mm7, mm0	;mm7= 00aa|00bb|00gg|00rr [src1]
 
 						//----- begin the fun stuff
 								
 								psubsw	mm6, mm7
 								pmullw	mm6, mm2 	  	;mm6=scaled difference*255
+
+								mov		eax, ecx
+								inc         ecx
+								cmp         ecx, edx
+
 								psrlw		mm6, 8		    ;scale result
 								paddb		mm6, mm7		  ;add src1
 
 						//----- end the fun stuff...
 
 								packuswb			mm6,mm0
-								movd        [edi + ecx*4],mm6
+								movd        [edi + eax*4],mm6
 
-								inc         ecx
-								cmp         ecx, edx
 						jnz         add32xloop
 
 						add			edi, src1_pitch
@@ -846,31 +1085,29 @@ PVideoFrame __stdcall Layer::GetFrame(int n, IScriptEnvironment* env)
 						mov         edx, myx
 						xor         ecx, ecx
 
+				align 16
 						add32yxloop:
 								movd		mm6, [esi + ecx*4] ;src2
+								movd		mm7, [edi + ecx*4] ;src1/dest
+								movq		mm3, rgb2lum
 								movq		mm2,mm6
-								movd		mm7, [edi + ecx*4] ;src1/dest		;what a mess...
 
 						//----- extract alpha into four channels
 
 								psrlq		mm2,24		      ;mm2= 0000|0000|0000|00aa
 								pmullw		mm2,mm1		    ;mm2= pixel alpha * script alpha
 
-								psrlw		mm2,8		        ;mm2= 0000|0000|0000|00aa*
-								punpcklwd		mm2,mm2		  ;mm2= 0000|0000|00aa*|00aa*
-								punpckldq		mm2, mm2		;mm2= 00aa*|00aa*|00aa*|00aa*
-
-								movq			mm3, rgb2lum	;another spaced out load
-
-						//----- alpha mask now in all four channels of mm3
-
 								punpcklbw		mm6,mm0		  ;mm6= 00aa|00bb|00gg|00rr [src2]
 								punpcklbw		mm7,mm0		  ;mm7= 00aa|00bb|00gg|00rr [src1]
 
-						//----- begin the fun stuff
+								psrlw		mm2,8		        ;mm2= 0000|0000|0000|00aa*
 
 						//----- start rgb -> monochrome
 								pmaddwd			mm6,mm3			;partial monochrome result
+
+								punpcklwd		mm2,mm2		  ;mm2= 0000|0000|00aa*|00aa*
+								punpckldq		mm2, mm2		;mm2= 00aa*|00aa*|00aa*|00aa*
+
 								punpckldq		mm3,mm6			;ready to add
 								paddd			mm6, mm3		  ;32 bit result
 								psrlq			mm6, 47				;8 bit result
@@ -880,16 +1117,19 @@ PVideoFrame __stdcall Layer::GetFrame(int n, IScriptEnvironment* env)
 
 								psubsw		mm6, mm7
 								pmullw		mm6,mm2		;mm6=scaled difference*255
+
+								mov		eax, ecx
+								inc         ecx
+								cmp         ecx, edx
+
 								psrlw		  mm6,8		  ;scale result
 								paddb		  mm6,mm7		;add src1
 
 						//----- end the fun stuff...
 
 								packuswb		mm6,mm0
-								movd        [edi + ecx*4],mm6
+								movd        [edi + eax*4],mm6
 
-								inc         ecx
-								cmp         ecx, edx
 						jnz         add32yxloop
 
 						add				edi, src1_pitch
@@ -915,6 +1155,7 @@ PVideoFrame __stdcall Layer::GetFrame(int n, IScriptEnvironment* env)
 						mov         edx, myx
 						xor         ecx, ecx
 
+				align 16
 						lighten32xloop:
 								movd		mm6, [esi + ecx*4] ;src2
 								movd		mm7, [edi + ecx*4] ;src1/dest		;what a mess...
@@ -989,7 +1230,7 @@ PVideoFrame __stdcall Layer::GetFrame(int n, IScriptEnvironment* env)
 				emms
 				}
 			} else {
-			      env->ThrowError("Layer: monochrome lighten not added yet");
+			      env->ThrowError("Layer: monochrome lighten illegal op");
 			}
 		}
 		if (!lstrcmpi(Op, "Darken"))
@@ -1007,6 +1248,7 @@ PVideoFrame __stdcall Layer::GetFrame(int n, IScriptEnvironment* env)
 						mov         edx, myx
 						xor         ecx, ecx
 
+				align 16
 						darken32xloop:
 								movd		mm6, [esi + ecx*4] ;src2
 								movd		mm7, [edi + ecx*4] ;src1/dest		;what a mess...
@@ -1081,7 +1323,7 @@ PVideoFrame __stdcall Layer::GetFrame(int n, IScriptEnvironment* env)
 				emms
 				}
 			} else {
-			      env->ThrowError("Layer: monochrome darken not added yet");
+			      env->ThrowError("Layer: monochrome darken illegal op");
 			}
 		}
 		if (!lstrcmpi(Op, "Fast"))
@@ -1101,6 +1343,7 @@ PVideoFrame __stdcall Layer::GetFrame(int n, IScriptEnvironment* env)
 						xor         ecx, ecx
 						shr			edx,1
 
+				align 16
 						fastrgb32xloop:
 							//---- fetch src1/dest
 									
@@ -1152,40 +1395,42 @@ PVideoFrame __stdcall Layer::GetFrame(int n, IScriptEnvironment* env)
 						mov         edx, myx
 						xor         ecx, ecx
 
+				align 16
 						sub32xloop:
 								movd	  mm6, [esi + ecx*4] ;src2	
+								movd		mm7, [edi + ecx*4] ;src1/dest
 								movq		mm2,mm6
-								movd		mm7, [edi + ecx*4] ;src1/dest		;what a mess...
 
 						//----- extract alpha into four channels
 
 								psrlq		mm2,24		  ;mm2= 0000|0000|0000|00aa
 								pmullw		mm2,mm1		;mm2= pixel alpha * script alpha
+
+								punpcklbw		mm6,mm0		;mm6= 00aa|00bb|00gg|00rr [src2]
+								pandn				mm6, mm4	;mm6 = mm6*
+								punpcklbw		mm7,mm0		;mm7= 00aa|00bb|00gg|00rr [src1]
 								
 								psrlw		mm2,8		        ;mm2= 0000|0000|0000|00aa*
 								punpcklwd		mm2,mm2		  ;mm2= 0000|0000|00aa*|00aa*
 								punpckldq		mm2, mm2		;mm2=00aa*|00aa*|00aa*|00aa*
 
-						//----- alpha mask now in all four channels of mm2
-
-								punpcklbw		mm6,mm0		;mm6= 00aa|00bb|00gg|00rr [src2]
-								pandn				mm6, mm4	;mm6 = mm6*
-								punpcklbw		mm7,mm0		;mm7= 00aa|00bb|00gg|00rr [src1]
-
 						//----- begin the fun stuff
 								
 								psubsw	mm6, mm7
 								pmullw	mm6,mm2		;mm6=scaled difference*255
+
+								mov		eax, ecx
+								inc         ecx
+								cmp         ecx, edx
+
 								psrlw		mm6,8		  ;scale result
 								paddb		mm6,mm7		;add src1
 
 						//----- end the fun stuff...
 
 								packuswb			mm6,mm0
-								movd        [edi + ecx*4],mm6
+								movd        [edi + eax*4],mm6
 
-								inc         ecx
-								cmp         ecx, edx
 						jnz         sub32xloop
 
 						add				edi, src1_pitch
@@ -1209,32 +1454,30 @@ PVideoFrame __stdcall Layer::GetFrame(int n, IScriptEnvironment* env)
 						mov         edx, myx
 						xor         ecx, ecx
 
+				align 16
 						sub32yxloop:
 								movd		mm6, [esi + ecx*4] ;src2
-								movq		mm2,mm6
-								movd		mm7, [edi + ecx*4] ;src1/dest		;what a mess...
+								movd		mm7, [edi + ecx*4] ;src1/dest
+								movq		mm3, rgb2lum
 								
 						//----- extract alpha into four channels
 
+								movq		mm2,mm6
 								psrlq		mm2,24		;mm2= 0000|0000|0000|00aa
 								pmullw	mm2,mm1		;mm2= pixel alpha * script alpha
-
-								psrlw		mm2,8		        ;mm2= 0000|0000|0000|00aa*
-								punpcklwd		mm2,mm2		  ;mm2= 0000|0000|00aa*|00aa*
-								punpckldq		mm2, mm2		;mm2=00aa*|00aa*|00aa*|00aa*
-
-								movq			mm3, rgb2lum		;another spaced out load
-
-						//----- alpha mask now in all four channels of mm3
 
 								punpcklbw		mm6,mm0		;mm6= 00aa|00bb|00gg|00rr [src2]
 								pandn				mm6, mm4	;mm6 = mm6*
 								punpcklbw		mm7,mm0		;mm7= 00aa|00bb|00gg|00rr [src1]
 
-						//----- begin the fun stuff
+								psrlw		mm2,8		        ;mm2= 0000|0000|0000|00aa*
 
 						//----- start rgb -> monochrome
 								pmaddwd			mm6,mm3			;partial monochrome result
+								
+								punpcklwd		mm2,mm2		  ;mm2= 0000|0000|00aa*|00aa*
+								punpckldq		mm2, mm2		;mm2=00aa*|00aa*|00aa*|00aa*
+
 								punpckldq		mm3,mm6			;ready to add
 								paddd			mm6, mm3		  ;32 bit result
 								psrlq			mm6, 47				;8 bit result
@@ -1244,15 +1487,18 @@ PVideoFrame __stdcall Layer::GetFrame(int n, IScriptEnvironment* env)
 
 								psubsw		mm6, mm7
 								pmullw		mm6,mm2		;mm6=scaled difference*255
+
+								mov		eax, ecx
+								inc         ecx
+								cmp         ecx, edx
+
 								psrlw		  mm6,8		  ;scale result
 								paddb		  mm6,mm7		;add src1
 
 								packuswb		mm6,mm0
-								movd        [edi + ecx*4],mm6
+								movd        [edi + eax*4],mm6
 						//----- end the fun stuff...
 
-								inc         ecx
-								cmp         ecx, edx
 						jnz         sub32yxloop
 
 						add				edi, src1_pitch
