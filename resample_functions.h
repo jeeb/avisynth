@@ -70,7 +70,7 @@ class PointFilter : public ResamplingFunction
 {
 public:
   double f(double x);  
-  double support() { return 0.5; }  // 0.0 crashes it.
+  double support() { return 0.0001; }  // 0.0 crashes it.
 };
 
 

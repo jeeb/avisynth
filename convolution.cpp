@@ -293,6 +293,7 @@ PVideoFrame __stdcall GeneralConvolution::GetFrame(int n, IScriptEnvironment* en
 			iB += i11 * pbyB1[x1] + i21 * pbyB1[x2] + i31 * pbyB1[x3] +
 					i12 * pbyB2[x1] + i32 * pbyB2[x3] +
 			  	i13 * pbyB3[x1] + i23 * pbyB3[x2] + i33 * pbyB3[x3];
+// Only do 5x5 ring of pixel if needed
       if(nSize == 25)
 			{
 				iR += i00 * pbyR0[x0] + i10 * pbyR0[x1] + i20 * pbyR0[x2] + i30 * pbyR0[x3] + i40 * pbyR0[x4] +

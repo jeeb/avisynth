@@ -50,7 +50,7 @@
 double PointFilter::f(double x)
 { 
   x = fabs(x);
-  return (x<1.0) ? x : 0.0;  // Can somebody confirm this function?
+  return (x<1.0) ? (x) : 0.0;  // Can somebody confirm this function?
 }
 
 
