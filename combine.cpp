@@ -377,6 +377,15 @@ Animate::Animate( PClip context, int _first, int _last, const char* _name, const
   const VideoInfo& vi2 = cache[1]->GetVideoInfo();
   if (vi1.width != vi2.width || vi1.height != vi2.height)
     env->ThrowError("Animate: initial and final video frame sizes must match");
+  if (range_limit) {
+    VideoInfo vi = context->GetVideoInfo();
+    if (vi.width != vi1.width || vi.height != vi1.height)
+     env->ThrowError("ApplyRange: Filtered and unfiltered video frame sizes must match");
+    if (vi.pixel_type != vi1.pixel_type) {
+      if (!(vi.IsYV12()&&vi1.IsYV12()))
+       env->ThrowError("ApplyRange: Filtered and unfiltered video colorspace must match");
+    }
+  }
 }
 
 
