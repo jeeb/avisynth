@@ -697,7 +697,7 @@ AVSValue __cdecl Create_Blur(AVSValue args, void*, IScriptEnvironment* env)
  **************************/
 
  /**
- * YV12 code (c) by Klaus Post // sh0dan 2002
+ *  YV12 / YUY2 code (c) by Klaus Post // sh0dan 2002
  *
  * - All frames are loaded (we rely on the cache for this, which is why it has to be rewritten)
  * - Pointer array is given to the mmx function for planes.
@@ -727,6 +727,7 @@ TemporalSoften::TemporalSoften( PClip _child, unsigned radius, unsigned luma_thr
     env->ThrowError("TemporalSoften: requires YUV input");
 
   child->SetCacheHints(CACHE_RANGE,kernel);
+
   if ((vi.IsYUY2()) && (vi.width&7)) {
     env->ThrowError("TemporalSoften: YUY2 source must be multiple of 8 in width.");
   }
@@ -800,9 +801,6 @@ PVideoFrame TemporalSoften::GetFrame(int n, IScriptEnvironment* env)
       planeP[d++] = tframe->GetReadPtr(planes[c]);
     }
 
-//    if (planes[c] == PLANAR_Y)
-//      env->MakeWritable(&frame);
-
     BYTE* c_plane= frame->GetWritePtr(planes[c]);
 
     for (i = 1;i<=radius;i++) { // Fetch all planes sequencially
@@ -815,18 +813,6 @@ PVideoFrame TemporalSoften::GetFrame(int n, IScriptEnvironment* env)
     int h = frame->GetHeight(planes[c]);
     int w=frame->GetRowSize(planes[c]); // Non-aligned
     int pitch = frame->GetPitch(planes[c]);
-
-/*
-    if (planes[c]==PLANAR_Y) {
-      int scenevalues = isse_scenechange(c_plane, planeP[radius-1], h, w, pitch, pitch);
-      char text[400];
-      float divisor = (float)(w*h);
-      float fchangep = (float)scenevalues / divisor;
-      sprintf(text,"Scenechange: %7.2f.",fchangep);
-      ApplyMessage(&frame, vi, text, vi.width/4, 0xa0a0a0,0,0 , env );
-    }
-*/
-
 
     if (scenechange>0) {
       int d2=0;
@@ -1031,9 +1017,9 @@ kernel_loop:
      pminub mm1,mm0
     psubusb mm2,mm1
      movq mm3,[t2]          // Using t also gives funny results
-    PSUBUSB mm2,mm3         // Subtrack threshold (unsigned, so all below threshold will give 0)
+    psubusb mm2,mm3         // Subtrack threshold (unsigned, so all below threshold will give 0)
      movq mm1,mm5
-    PCMPEQB mm2,mm4         // Compare values to 0
+    pcmpeqb mm2,mm4         // Compare values to 0
      prefetchnta [edx+eax+64]
     movq mm3,mm2
      movq mm6,mm2           // Store mask for accumulation
@@ -1075,14 +1061,6 @@ void TemporalSoften::isse_accumulate_line_mode2(const BYTE* c_plane, const BYTE*
   div>>=1;
   __int64 add64 = (__int64)(div) | ((__int64)(div)<<32);
 
-  /*
-  __declspec(align(8)) static __int64 div64 = (__int64)(div) | ((__int64)(div)<<16) | ((__int64)(div)<<32) | ((__int64)(div)<<48);
-  div>>=1;
-  __declspec(align(8)) static __int64 add64 = (__int64)(div) | ((__int64)(div)<<32);
-
-*/
-  int* _accum_line=accum_line;
-
   __asm {
     mov esi,c_plane;
     xor eax,eax          // EAX will be plane offset (all planes).
@@ -1096,8 +1074,8 @@ testplane:
      pxor mm2,mm2        // Clear mm2
     movq mm6,mm0
      movq mm7,mm0
-    PUNPCKlbw mm6,mm2    // mm0 = lower 4 pixels  (exhanging h/l in these two give funny results)
-     PUNPCKhbw mm7,mm2     // mm1 = upper 4 pixels
+    punpcklbw mm6,mm2    // mm0 = lower 4 pixels  (exhanging h/l in these two give funny results)
+     punpckhbw mm7,mm2     // mm1 = upper 4 pixels
 
     mov edi,[planeP];  // Adress of planeP array is now in edi
     mov ebx,[planes]   // How many planes (this will be our counter)
@@ -1111,12 +1089,12 @@ kernel_loop:
      pxor mm4,mm4
     pmaxub mm2,mm1          // Calc abs difference
      pminub mm1,mm0
-    psubusb mm2,mm1
+    psubusb mm2,mm1         // mm2 = ads difference (packed bytes)
      movq mm3,[t2]          // Using t also gives funny results
-    PSUBUSB mm2,mm3         // Subtrack threshold (unsigned, so all below threshold will give 0)
+    psubusb mm2,mm3         // Subtrack threshold (unsigned, so all below threshold will give 0)
      movq mm1,mm5
-    PCMPEQB mm2,mm4         // Compare values to 0
-     prefetchnta [edx+eax+64]
+    pcmpeqb mm2,mm4         // Compare values to 0
+     prefetchnta [edx+eax+64]  // it might just help - and we have an idle CPU here anyway ;)
     movq mm3,mm2
      pxor mm2,[full]       // mm2 inverse mask
     movq mm4, mm0
@@ -1133,7 +1111,7 @@ kernel_loop:
     sub edi,4
     dec ebx
     jnz kernel_loop
-     // Multiply (or in reality divides) added values
+     // Multiply (or in reality divides) added values, repack and store.
     movq mm4,[add64]
     pxor mm5,mm5
      movq mm0,mm6
@@ -1142,7 +1120,7 @@ kernel_loop:
     movq mm6,[div64]
     punpckhwd mm1,mm5         // low,high
      movq mm2,mm7
-    pmaddwd mm0,mm6
+    pmaddwd mm0,mm6            // pmaddwd is used due to it's better rounding.
      punpcklwd mm2,mm5         // high,low
      movq mm3,mm7
      paddd mm0,mm4
@@ -1177,6 +1155,7 @@ kernel_loop:
     add eax,8   // Next 8 pixels
     jmp testplane
 outloop:
+    sfence
     emms
   }
 }
@@ -1185,22 +1164,14 @@ void TemporalSoften::mmx_accumulate_line_mode2(const BYTE* c_plane, const BYTE**
   __declspec(align(8)) static __int64 full = 0xffffffffffffffffi64;
   __declspec(align(8)) static __int64 low_ffff = 0x000000000000ffffi64;
   const __int64 t2 = *t;
+
   __int64 div64 = (__int64)(div) | ((__int64)(div)<<16) | ((__int64)(div)<<32) | ((__int64)(div)<<48);
   div>>=1;
   __int64 add64 = (__int64)(div) | ((__int64)(div)<<32);
 
-  /*
-  __declspec(align(8)) static __int64 div64 = (__int64)(div) | ((__int64)(div)<<16) | ((__int64)(div)<<32) | ((__int64)(div)<<48);
-  div>>=1;
-  __declspec(align(8)) static __int64 add64 = (__int64)(div) | ((__int64)(div)<<32);
-
-*/
-//  int* _accum_line=accum_line;
-
   __asm {
     mov esi,c_plane;
     xor eax,eax          // EAX will be plane offset (all planes).
-//    mov ecx,[_accum_line]
     align 16
 testplane:
     mov ebx,[rowsize]
@@ -1211,8 +1182,8 @@ testplane:
      pxor mm2,mm2        // Clear mm2
     movq mm6,mm0
      movq mm7,mm0
-    PUNPCKlbw mm6,mm2    // mm0 = lower 4 pixels  (exhanging h/l in these two give funny results)
-     PUNPCKhbw mm7,mm2     // mm1 = upper 4 pixels
+    punpcklbw mm6,mm2    // mm0 = lower 4 pixels  (exhanging h/l in these two give funny results)
+     punpckhbw mm7,mm2     // mm1 = upper 4 pixels
 
     mov edi,[planeP];  // Adress of planeP array is now in edi
     mov ebx,[planes]   // How many planes (this will be our counter)
@@ -1249,7 +1220,7 @@ kernel_loop:
     sub edi,4
     dec ebx
     jnz kernel_loop
-     // Multiply (or in reality divides) added values
+     // Multiply (or in reality divides) added values, repack and store.
     movq mm4,[add64]
     pxor mm5,mm5
      movq mm0,mm6
@@ -1285,17 +1256,15 @@ kernel_loop:
     pand mm0, mm4;
      pand mm1, mm4;
     pand mm2, mm4;
-     pand mm3, mm4;
-    psllq mm1, 16
+     psllq mm1, 16
     psllq mm2, 32
-    psllq mm3, 48
      por mm0,mm1
+    psllq mm3, 48
     por mm2,mm3
     por mm0,mm2
-    movntq [esi+eax],mm0
+    movq [esi+eax],mm0
 
     add eax,8   // Next 8 pixels
-///    add ecx,16  // Next 8 accumulated pixels
     jmp testplane
 outloop:
     emms
