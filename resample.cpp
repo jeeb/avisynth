@@ -148,12 +148,25 @@ DynamicAssembledCode FilteredResizeH::GenerateResizer(int gen_plane, IScriptEnvi
     prefetchevery = 4;
   }
 
+  bool unroll_fetch = false;
+  // Unroll fetch loop on Athlon. P4 has a very small l1 cache, so unrolling will not give performance benefits here.
+  if ((env->GetCPUFlags() & CPUF_3DNOW_EXT)) {
+    unroll_fetch = true;
+  }
+  // We forcibly does not unroll fetch, if image width is more than 512
+  if (vi_src_width > 512) {
+    unroll_fetch = false;
+  }
+
   bool avoid_stlf = false;
   if (env->GetCPUFlags() & CPUF_3DNOW_EXT) {
     // We have an Athlon.
     // Avoid Store->Load forward penalty (8 to 4 mismatch)
     // NOT faster on Athlon!
-    avoid_stlf = false;
+//    avoid_stlf = false;
+    if (!isse) {
+      avoid_stlf = false;
+    }
   }
 
   int* array = (gen_plane == PLANAR_Y) ? pattern_luma : pattern_chroma;
@@ -186,11 +199,17 @@ DynamicAssembledCode FilteredResizeH::GenerateResizer(int gen_plane, IScriptEnvi
     x86.mov(dword_ptr [&gen_x],(1+vi_dst_width)/6);
     x86.mov(edi, dword_ptr[&tempY]);
     x86.mov(esi, dword_ptr[&gen_srcp]);
+
     for (int i=0;i<mod16_w;i++) {
-      if ((!(i%prefetchevery)) && (i*16+256<vi_src_width) && isse) {
+      if (!unroll_fetch) {  // Should we create a loop instead of unrolling?
+        x86.mov(ebx, mod16_w);
+        i = mod16_w;  // Jump out of loop
+      }
+      if ((!(i%prefetchevery)) && (i*16+256<vi_src_width) && isse && unroll_fetch) {
          //Prefetch only once per cache line
        x86.prefetchnta(dword_ptr [esi+256]);
       }
+      x86.label("fetch_loopback");
       x86.movq(mm0,esi);        // Move pixels into mmx-registers
        x86.movq(mm1,esi+8);
       x86.movq(mm2,mm0);
@@ -220,6 +239,10 @@ DynamicAssembledCode FilteredResizeH::GenerateResizer(int gen_plane, IScriptEnvi
       }
       x86.add(esi,16);
       x86.add(edi,32);
+      if (!unroll_fetch) {  // Loop on if not unrolling
+        x86.dec(ebx);
+        x86.jnz("fetch_loopback");
+      }
     }
     for (i=0;i<mod16_remain;i++) {
       x86.movd(mm0,dword_ptr [esi+(i*4)]);
@@ -292,7 +315,6 @@ DynamicAssembledCode FilteredResizeH::GenerateResizer(int gen_plane, IScriptEnvi
 
     // Process any remaining pixels
 
-//      if (gen_plane != PLANAR_Y) x86.int3();
     int remainy = vi_dst_width%6;
     if (remainy<=1) remainy=0;
     if (remainy) {
@@ -341,7 +363,6 @@ DynamicAssembledCode FilteredResizeH::GenerateResizer(int gen_plane, IScriptEnvi
         }
         x86.mov(eax,dword_ptr[&gen_temp_destp]);
       }
-  //  if (gen_plane == PLANAR_Y) x86.int3();
       if (!remainy) { // Two pixels
         x86.movd(mm0,dword_ptr[eax]);
         x86.pand(mm3,qword_ptr[(int)&Mask3]);
