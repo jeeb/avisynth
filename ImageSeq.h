@@ -47,13 +47,15 @@ using namespace std;
 
 
 
-class ImageSequence : public GenericVideoFilter 
+class ImageWriter : public GenericVideoFilter 
 /**
-  * Class to write video as an image sequence
+  * Class to write video as a sequence of images
  **/
 {  
 public:
-  ImageSequence(PClip _child, const char * _base_name, const char * _ext);
+  ImageWriter(PClip _child, const char * _base_name, const char * _ext, const int compression);
+  ~ImageWriter();
+
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
 
   static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env);
@@ -62,6 +64,9 @@ private:
   Antialiaser antialiaser;
   const char * base_name;
   const char * ext;
+  const int compression;
+
+  AvsImage * image;
 };
 
 

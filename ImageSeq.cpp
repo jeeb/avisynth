@@ -44,40 +44,65 @@
 ********************************************************************/
 
 AVSFunction Image_filters[] = {
-  { "ImageSequence", "c[file]s[type]s", ImageSequence::Create }, // clip, filename
+  { "ImageWriter", "c[file]s[type]s[compression]i", ImageWriter::Create }, // clip, filename
   { 0 }
 };
 
 
 
-/**********************************
- *******   Image Sequence    ******
- *********************************/
+/*****************************
+ *******   Image Writer ******
+ ****************************/
 
-ImageSequence::ImageSequence(PClip _child, const char * _base_name, const char * _ext)
+ImageWriter::ImageWriter(PClip _child, const char * _base_name, const char * _ext, const int _compression)
  : GenericVideoFilter(_child), antialiaser(vi.width, vi.height, "Arial", 192),
-   base_name(_base_name), ext(_ext) {}
+   base_name(_base_name), ext(_ext), compression(_compression) 
+{  
+  if (!lstrcmpi(ext, "bmp")) 
+  {
+    image = new img_BMP(vi);
+  } else if (!lstrcmpi(ext, "png")) 
+  {
+    image = new img_PNG(vi, compression);
+  } else if (!lstrcmpi(ext, "jpeg")) 
+  {
+    image = new img_JPEG(vi, compression);
+  }
+}
 
 
-PVideoFrame ImageSequence::GetFrame(int n, IScriptEnvironment* env) 
+ImageWriter::~ImageWriter()
 {
-  PVideoFrame frame = child->GetFrame(n, env);
-  env->MakeWritable(&frame);
+  delete image;
+}
+
+
+
+PVideoFrame ImageWriter::GetFrame(int n, IScriptEnvironment* env) 
+{
+  // check some things
+  if (vi.IsPlanar())
+    env->ThrowError("ImageWriter: cannot export planar formats");
+  
+  if (image == NULL)
+    env->ThrowError("ImageWriter: invalid format");
+  
 
   // construct filename
   ostringstream fn_oss;
   fn_oss << base_name << setfill('0') << setw(6) << n << '.' << ext;
   string filename = fn_oss.str();
-  
-  // construct file & image objects appropriately
-  ofstream file(filename.c_str(), ios::out | ios::trunc | ios::binary);
-  AvsImage * image;
-  if (!lstrcmpi(ext, "bmp")) {
-    image = new img_BMP(vi);
-  }
 
+  
+  // initialize file object
+  ofstream file(filename.c_str(), ios::out | ios::trunc | ios::binary);  
+  if (!file)
+    env->ThrowError("ImageWriter: could not create file");
+
+  
   // do it
-  image->compress(file, frame->GetReadPtr(), frame->GetPitch());
+  PVideoFrame frame = child->GetFrame(n, env);
+  image->compress(file, frame->GetReadPtr(), frame->GetPitch(), env);
   
   
   // overlay on video output: progress indicator
@@ -89,19 +114,18 @@ PVideoFrame ImageSequence::GetFrame(int n, IScriptEnvironment* env)
   DrawText(hdc, text.str().c_str(), -1, &r, 0);
   GdiFlush();
 
+  env->MakeWritable(&frame);
   antialiaser.Apply(vi, &frame, frame->GetPitch(),
     vi.IsYUV() ? 0xD21092 : 0xFFFF00, vi.IsYUV() ? 0x108080 : 0);
 
-
   // cleanup
   file.close();
-  delete image;
-
+  
   return frame;
 }
 
 
-AVSValue __cdecl ImageSequence::Create(AVSValue args, void*, IScriptEnvironment* env) 
+AVSValue __cdecl ImageWriter::Create(AVSValue args, void*, IScriptEnvironment* env) 
 {
-  return new ImageSequence(args[0].AsClip(), args[1].AsString(""), args[2].AsString("bmp"));
+  return new ImageWriter(args[0].AsClip(), args[1].AsString(""), args[2].AsString("png"), args[3].AsInt(0));
 }

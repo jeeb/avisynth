@@ -41,13 +41,9 @@
 
 img_BMP::img_BMP (const VideoInfo & _vi) 
   : AvsImage(_vi)
-{}
-
-
-void img_BMP::compress(ostream & bufWriter, const BYTE * srcPtr, const int pitch) 
-{  
+{
   // construct file header  
-  fileHeader.bfType = ('M' << 8) + 'B'; // little-endian sucks my balls
+  fileHeader.bfType = ('M' << 8) + 'B'; // I hate little-endian
   fileHeader.bfSize = vi.height * (vi.RowSize() + (vi.RowSize() % 4)); // don't forget padding
   fileHeader.bfReserved1 = 0;
   fileHeader.bfReserved2 = 0;
@@ -66,7 +62,11 @@ void img_BMP::compress(ostream & bufWriter, const BYTE * srcPtr, const int pitch
   infoHeader.biYPelsPerMeter = 0;
   infoHeader.biClrUsed = 0;
   infoHeader.biClrImportant = 0;
+}
 
+
+void img_BMP::compress(ostream & bufWriter, const BYTE * srcPtr, const int pitch, IScriptEnvironment * env) 
+{ 
   // write headers
   bufWriter.write(reinterpret_cast<char *>( &fileHeader ), sizeof(BITMAPFILEHEADER));
   bufWriter.write(reinterpret_cast<char *>( &infoHeader ), sizeof(BITMAPINFOHEADER));

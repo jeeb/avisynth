@@ -41,6 +41,9 @@ using namespace std;
 
 #include "internal.h"
 
+#include "..\libpng\png.h"
+#include "..\libjpeg\include\jpeglib.h"
+
 
 // abstract base class for reading/writing images to/from Avisynth buffers
 class AvsImage
@@ -49,7 +52,7 @@ public:
   AvsImage(const VideoInfo & _vi) : vi(_vi) {};
   virtual ~AvsImage() {};
   
-  virtual void compress(ostream & bufWriter, const BYTE * srcPtr, const int pitch) = 0;
+  virtual void compress(ostream & bufWriter, const BYTE * srcPtr, const int pitch, IScriptEnvironment * env) = 0;
   virtual void decompress(const istream & bufReader, BYTE * dstPtr) = 0;
 
 protected:
@@ -57,33 +60,43 @@ protected:
 };
 
 
-/*
+
 ///// Compressed formats /////
 
 class img_PNG : public AvsImage
 {
 public:  
-  img_PNG();
-  img_PNG(int compression);
-  virtual ~img_PNG() {};
-  bool compress(ostream & bufWriter, const char * srcPtr);
+  img_PNG(const VideoInfo & _vi, const int compression);
+  virtual ~img_PNG();
+  
+  void compress(ostream & bufWriter, const BYTE * srcPtr, const int pitch, IScriptEnvironment * env);
+  void decompress(const istream & bufReader, BYTE * dstPtr);
 private:
   int compression;  // 0..9
+
+  png_structp png_ptr;
+  png_infop info_ptr; 
+
+  BYTE ** row_pointers;
 };
 
 
-class img_JPG : public AvsImage
+class img_JPEG : public AvsImage
 {
 public:  
-  img_JPG();
-  img_JPG(int quality);
-  virtual ~img_JPG() {};
-  bool compress(ostream & bufWriter, const char * srcPtr);
+  img_JPEG(const VideoInfo & _vi, const int quality);
+  virtual ~img_JPEG();
+
+  void compress(ostream & bufWriter, const BYTE * srcPtr, const int pitch, IScriptEnvironment * env);
+  void decompress(const istream & bufReader, BYTE * dstPtr);
 private:
   int quality;      // 0..100
-};
 
-*/
+  jpeg_compress_struct cinfo;
+  jpeg_error_mgr jerr;
+  
+  BYTE ** row_pointers;
+};
 
 
 
@@ -97,7 +110,7 @@ public:
   img_BMP(const VideoInfo & _vi);
   virtual ~img_BMP() {};
 
-  void compress(ostream & bufWriter, const BYTE * srcPtr, const int pitch);
+  void compress(ostream & bufWriter, const BYTE * srcPtr, const int pitch, IScriptEnvironment * env);
   void decompress(const istream & bufReader, BYTE * dstPtr);
 
 protected:
@@ -106,7 +119,7 @@ protected:
 };
 
 
-#if 0
+
 // free functions for libPNG callbacks
 void __cdecl writePng(png_structp png_ptr, png_bytep data, 
                 png_size_t length);
@@ -115,22 +128,24 @@ void __cdecl flushPng(png_structp png_ptr);
 
 
 // free functions for libJPEG callbacks
-void __cdecl jpeg_ostream_dest (j_compress_ptr cinfo, ostream bufWriter);
+void jpeg_ostream_dest_init (j_compress_ptr cinfo, ostream * bufWriter, IScriptEnvironment * env);
 void __cdecl init_destination (j_compress_ptr cinfo);
-int __cdecl empty_output_buffer (j_compress_ptr cinfo);
+boolean __cdecl empty_output_buffer (j_compress_ptr cinfo);
 void __cdecl term_destination (j_compress_ptr cinfo);
 
 // custom data destination object for libJPEG -> ostream output
 typedef struct {
-  jpeg_destination_mgr pub; /* public fields */
+  struct jpeg_destination_mgr pub; /* public fields */
 
-  ostream bufWriter;		/* target stream */
-  CPVideoFrame vf;		/* start of buffer */
+  ostream * bufWriter;		/* target stream */
+  JOCTET * buffer;		/* start of buffer */
+  
+  IScriptEnvironment * env;
+
 } my_destination_mgr;
 
-typedef my_destination_mgr* my_dest_ptr;
+typedef my_destination_mgr * my_dest_ptr;
 
-#endif
 
 
 
