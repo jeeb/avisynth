@@ -37,7 +37,7 @@
 #include "resample.h"
 
 
-#define USE_DYNAMIC_COMPILER false
+#define USE_DYNAMIC_COMPILER true
 
 
 /********************************************************************

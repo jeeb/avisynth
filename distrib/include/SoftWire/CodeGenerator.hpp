@@ -12,6 +12,7 @@ namespace SoftWire
 
 		const OperandREG32 &r32(const OperandREF &ref, bool copy = true);
 		const OperandREG32 &x32(const OperandREF &ref, bool copy = false);
+		const OperandREG32 &t32(int i);
 		const OperandR_M32 m32(const OperandREF &ref);
 		const OperandREG32 &allocate(const OperandREG32 &reg, const OperandREF &ref, bool copy = false);
 		const OperandREG32 &assign(const OperandREG32 &reg, const OperandREF &ref, bool copy = true);
@@ -21,6 +22,7 @@ namespace SoftWire
 
 		const OperandMMREG &r64(const OperandREF &ref, bool copy = true);
 		const OperandMMREG &x64(const OperandREF &ref, bool copy = false);
+		const OperandMMREG &t64(int i);
 		const OperandR_M64 m64(const OperandREF &ref);
 		const OperandMMREG &allocate(const OperandMMREG &reg, const OperandREF &ref, bool copy = false);
 		const OperandMMREG &assign(const OperandMMREG &reg, const OperandREF &ref, bool copy = true);
@@ -30,6 +32,7 @@ namespace SoftWire
 
 		const OperandXMMREG &r128(const OperandREF &ref, bool copy = true);
 		const OperandXMMREG &x128(const OperandREF &ref, bool copy = false);
+		const OperandXMMREG &t128(int i);
 		const OperandR_M128 m128(const OperandREF &ref);
 		const OperandXMMREG &allocate(const OperandXMMREG &reg, const OperandREF &ref, bool copy = false);
 		const OperandXMMREG &assign(const OperandXMMREG &reg, const OperandREF &ref, bool copy = true);

@@ -95,6 +95,7 @@ PVideoFrame __stdcall Cache::GetFrame(int n, IScriptEnvironment* env)
           notfound = false;
         }
       }  
+      _RPT1(0, "Cache2: Miss! Now locking frame frame %d in memory\n", n);
     } else {   // Frame was found - copy
       VideoFrame* copy = new VideoFrame(result->vfb, result->offset, result->pitch, result->row_size, result->height, result->offsetU, result->offsetV, result->pitchUV);
       _RPT1(0, "Cache2: using cached copy of frame %d\n", n);

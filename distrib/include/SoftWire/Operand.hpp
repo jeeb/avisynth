@@ -33,7 +33,11 @@ namespace SoftWire
 		};
 
 		Type type;
-		const char *notation;
+		union
+		{
+			const char *reference;
+			const char *notation;
+		};
 
 		static Specifier::Type scan(const char *string);
 
@@ -117,7 +121,11 @@ namespace SoftWire
 		};
 
 		Type type;
-		const char *notation;
+		union
+		{
+			const char *reference;
+			const char *notation;
+		};
 
 		union
 		{
@@ -195,7 +203,7 @@ namespace SoftWire
 		{
 			type = Operand::IMM;
 			value = imm;
-			notation = 0;
+			reference = 0;
 		}
 	};
 
@@ -208,13 +216,13 @@ namespace SoftWire
 			indexReg = Encoding::REG_UNKNOWN;
 			scale = 0;
 			displacement = (int)ref;
-			notation = 0;
+			reference = 0;
 		}
 
 		OperandREF(const char *ref)
 		{
 			type = Operand::IMM;
-			notation = ref;
+			reference = ref;
 		}
 
 		OperandREF(int ref)
@@ -224,7 +232,7 @@ namespace SoftWire
 			indexReg = Encoding::REG_UNKNOWN;
 			scale = 0;
 			displacement = ref;
-			notation = 0;
+			reference = 0;
 		}
 
 		const OperandREF operator+(const void *disp) const
@@ -286,7 +294,7 @@ namespace SoftWire
 			indexReg = Encoding::REG_UNKNOWN;
 			scale = 0;
 			displacement = 0;
-			notation = 0;
+			reference = 0;
 		}
 
 		OperandMEM(const OperandREF &ref)
@@ -296,7 +304,7 @@ namespace SoftWire
 			indexReg = ref.indexReg;
 			scale = ref.scale;
 			displacement = ref.displacement;
-			notation = ref.notation;
+			reference = ref.reference;
 		}
 
 		OperandMEM operator[](const OperandREF &ref) const
@@ -316,7 +324,7 @@ namespace SoftWire
 			indexReg = ref.indexReg;
 			scale = ref.scale;
 			displacement = ref.displacement;
-			notation = ref.notation;
+			reference = ref.reference;
 		}
 
 		OperandMEM8 operator[](const OperandREF &ref) const
@@ -336,7 +344,7 @@ namespace SoftWire
 			indexReg = ref.indexReg;
 			scale = ref.scale;
 			displacement = ref.displacement;
-			notation = ref.notation;
+			reference = ref.reference;
 		}
 
 		OperandMEM16 operator[](const OperandREF &ref) const
@@ -356,7 +364,7 @@ namespace SoftWire
 			indexReg = ref.indexReg;
 			scale = ref.scale;
 			displacement = ref.displacement;
-			notation = ref.notation;
+			reference = ref.reference;
 		}
 
 		OperandMEM32 operator[](const OperandREF &ref) const
@@ -376,7 +384,7 @@ namespace SoftWire
 			indexReg = ref.indexReg;
 			scale = ref.scale;
 			displacement = ref.displacement;
-			notation = ref.notation;
+			reference = ref.reference;
 		}
 
 		OperandMEM64 operator[](const OperandREF &ref) const
@@ -396,7 +404,7 @@ namespace SoftWire
 			indexReg = ref.indexReg;
 			scale = ref.scale;
 			displacement = ref.displacement;
-			notation = ref.notation;
+			reference = ref.reference;
 		}
 
 		OperandMEM128 operator[](const OperandREF &ref) const
@@ -414,7 +422,7 @@ namespace SoftWire
 			indexReg = Encoding::REG_UNKNOWN;
 			scale = 0;
 			displacement = 0;
-			notation = 0;
+			reference = 0;
 		}
 
 		OperandR_M8(const OperandMEM8 &mem)
@@ -424,7 +432,7 @@ namespace SoftWire
 			indexReg = mem.indexReg;
 			scale = mem.scale;
 			displacement = mem.displacement;
-			notation = mem.notation;
+			reference = mem.reference;
 		}
 	};
 
@@ -437,7 +445,7 @@ namespace SoftWire
 			indexReg = Encoding::REG_UNKNOWN;
 			scale = 0;
 			displacement = 0;
-			notation = 0;
+			reference = 0;
 		}
 
 		OperandR_M16(const OperandMEM16 &mem)
@@ -447,7 +455,7 @@ namespace SoftWire
 			indexReg = mem.indexReg;
 			scale = mem.scale;
 			displacement = mem.displacement;
-			notation = mem.notation;
+			reference = mem.reference;
 		}
 	};
 
@@ -460,7 +468,7 @@ namespace SoftWire
 			indexReg = Encoding::REG_UNKNOWN;
 			scale = 0;
 			displacement = 0;
-			notation = 0;
+			reference = 0;
 		}
 
 		OperandR_M32(const OperandMEM32 &mem)
@@ -470,7 +478,7 @@ namespace SoftWire
 			indexReg = mem.indexReg;
 			scale = mem.scale;
 			displacement = mem.displacement;
-			notation = mem.notation;
+			reference = mem.reference;
 		}
 	};
 
@@ -483,7 +491,7 @@ namespace SoftWire
 			indexReg = Encoding::REG_UNKNOWN;
 			scale = 0;
 			displacement = 0;
-			notation = 0;
+			reference = 0;
 		}
 
 		OperandR_M64(const OperandMEM64 &mem)
@@ -493,7 +501,7 @@ namespace SoftWire
 			indexReg = mem.indexReg;
 			scale = mem.scale;
 			displacement = mem.displacement;
-			notation = mem.notation;
+			reference = mem.reference;
 		}
 	};
 
@@ -506,7 +514,7 @@ namespace SoftWire
 			indexReg = Encoding::REG_UNKNOWN;
 			scale = 0;
 			displacement = 0;
-			notation = 0;
+			reference = 0;
 		}
 
 		OperandR_M128(const OperandMEM128 &mem)
@@ -516,7 +524,7 @@ namespace SoftWire
 			indexReg = mem.indexReg;
 			scale = mem.scale;
 			displacement = mem.displacement;
-			notation = mem.notation;
+			reference = mem.reference;
 		}
 	};
 
@@ -529,7 +537,7 @@ namespace SoftWire
 			indexReg = Encoding::REG_UNKNOWN;
 			scale = 0;
 			displacement = 0;
-			notation = 0;
+			reference = 0;
 		}
 
 		OperandXMM32(const OperandMEM32 &mem)
@@ -539,7 +547,7 @@ namespace SoftWire
 			indexReg = mem.indexReg;
 			scale = mem.scale;
 			displacement = mem.displacement;
-			notation = mem.notation;
+			reference = mem.reference;
 		}
 	};
 
@@ -552,7 +560,7 @@ namespace SoftWire
 			indexReg = Encoding::REG_UNKNOWN;
 			scale = 0;
 			displacement = 0;
-			notation = 0;
+			reference = 0;
 		}
 
 		OperandXMM64(const OperandMEM64 &mem)
@@ -562,7 +570,7 @@ namespace SoftWire
 			indexReg = mem.indexReg;
 			scale = mem.scale;
 			displacement = mem.displacement;
-			notation = mem.notation;
+			reference = mem.reference;
 		}
 	};
 
@@ -572,7 +580,7 @@ namespace SoftWire
 		{
 			type = reg.type;
 			this->reg = reg.reg;
-			notation = reg.notation;
+			reference = reg.reference;
 		}
 	};
 
@@ -582,7 +590,7 @@ namespace SoftWire
 		{
 			type = Operand::REG8;
 			this->reg = reg;
-			notation = 0;
+			reference = 0;
 		}
 	};
 
@@ -592,7 +600,7 @@ namespace SoftWire
 		{
 			type = Operand::REG16;
 			this->reg = reg;
-			notation = 0;
+			reference = 0;
 		}
 	};
 
@@ -607,7 +615,7 @@ namespace SoftWire
 			indexReg = Encoding::REG_UNKNOWN;
 			scale = 0;
 			displacement = 0;
-			notation = 0;
+			reference = 0;
 		}
 
 		friend const OperandREF operator+(const OperandREGxX &ref1, const OperandREG32 &ref2);
@@ -630,7 +638,7 @@ namespace SoftWire
 			indexReg = Encoding::REG_UNKNOWN;
 			scale = 0;
 			displacement = 0;
-			notation = 0;
+			reference = 0;
 		}
 
 		friend const OperandREF operator+(const OperandREG32 ref, const OperandREG32 &ref2);
@@ -652,7 +660,7 @@ namespace SoftWire
 		{
 			type = Operand::FPUREG;
 			this->reg = reg;
-			notation = 0;
+			reference = 0;
 		}
 	};
 
@@ -662,7 +670,7 @@ namespace SoftWire
 		{
 			type = Operand::MMREG;
 			this->reg = reg;
-			notation = 0;
+			reference = 0;
 		}
 	};
 
@@ -672,7 +680,7 @@ namespace SoftWire
 		{
 			type = Operand::XMMREG;
 			this->reg = reg;
-			notation = 0;
+			reference = 0;
 		}
 	};
 
@@ -682,7 +690,7 @@ namespace SoftWire
 		{
 			type = Operand::AL;
 			reg = Encoding::AL;
-			notation = "al";
+			reference = 0;
 		}
 	};
 
@@ -692,7 +700,7 @@ namespace SoftWire
 		{
 			type = Operand::CL;
 			reg = Encoding::CL;
-			notation = "cl";
+			reference = 0;
 		}
 	};
 
@@ -702,7 +710,7 @@ namespace SoftWire
 		{
 			type = Operand::AX;
 			reg = Encoding::AX;
-			notation = "ax";
+			reference = 0;
 		}
 	};
 
@@ -712,7 +720,7 @@ namespace SoftWire
 		{
 			type = Operand::DX;
 			reg = Encoding::DX;
-			notation = "dx";
+			reference = 0;
 		}
 	};
 
@@ -722,7 +730,7 @@ namespace SoftWire
 		{
 			type = Operand::CX;
 			reg = Encoding::CX;
-			notation = "cx";
+			reference = 0;
 		}
 	};
 
@@ -732,7 +740,7 @@ namespace SoftWire
 		{
 			type = Operand::EAX;
 			reg = Encoding::EAX;
-			notation = "eax";
+			reference = 0;
 		}
 	};
 
@@ -742,7 +750,7 @@ namespace SoftWire
 		{
 			type = Operand::ECX;
 			reg = Encoding::ECX;
-			notation = "ecx";
+			reference = 0;
 		}
 	};
 
@@ -752,7 +760,7 @@ namespace SoftWire
 		{
 			type = Operand::ST0;
 			reg = Encoding::ST0;
-			notation = "st0";
+			reference = 0;
 		}
 	};
 
@@ -761,7 +769,7 @@ namespace SoftWire
 		OperandSTR(const char *string)
 		{
 			type = Operand::STR;
-			notation = string;
+			reference = string;
 		}
 	};
 
