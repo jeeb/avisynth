@@ -850,6 +850,7 @@ void ScriptEnvironment::ExportFilters()
   for (int i = 0; i < sizeof(builtin_functions)/sizeof(builtin_functions[0]); ++i) {
     for (AVSFunction* j = builtin_functions[i]; j->name; ++j) {
       builtin_names += j->name;
+      builtin_names += " ";
       
       string param_id = string("$Plugin!") + j->name + "!Param$";
       SetGlobalVar( SaveString(param_id.c_str(), param_id.length() + 1), AVSValue(j->param_types) );
