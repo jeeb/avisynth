@@ -351,6 +351,17 @@ ImageReader::ImageReader(const char * _base_name, const int _start, const int _e
       vi.height = 480;
     }
   }
+    // work around DevIL upside-down bug with compressed images
+  should_flip = false;
+  const char * ext = strrchr(_base_name, '.') + 1;
+  if (  !lstrcmpi(ext, "jpeg") || !lstrcmpi(ext, "jpg") || !lstrcmpi(ext, "jpe") || !lstrcmpi(ext, "dds") || 
+        !lstrcmpi(ext, "pal") || !lstrcmpi(ext, "pal") || !lstrcmpi(ext, "pcx") || !lstrcmpi(ext, "png") || 
+        !lstrcmpi(ext, "pbm") || !lstrcmpi(ext, "pgm") || !lstrcmpi(ext, "ppm") || !lstrcmpi(ext, "tga")    ) {
+    if (use_DevIL && (constructor_err == "")) {
+      should_flip = true;
+    }
+  }
+
 }
 
 
@@ -388,14 +399,6 @@ PVideoFrame ImageReader::GetFrame(int n, IScriptEnvironment* env)
     return static_frame;
   }
   
-  // check range
-/*  if (n < start || n > end) {
-    memset(frame->GetWritePtr(), 0, frame->GetPitch() * frame->GetHeight()); 
-    ostringstream ss;
-    ss << "ImageReader: frame " << n << " not in range";
-    ApplyMessage(&frame, vi, ss.str().c_str(), vi.width/4, 0xf0f0f0,0,0 , env);
-    return frame;
-  }  */
 
   if (use_DevIL)  /* read using DevIL */
   {    
@@ -445,7 +448,7 @@ PVideoFrame ImageReader::GetFrame(int n, IScriptEnvironment* env)
     {
       memset(frame->GetWritePtr(), 0, frame->GetPitch() * frame->GetHeight()); 
       ostringstream ss;
-      ss << "ImageReader: error '" << getErrStr(err) << "' in DevIL library\n reading file " << filename;
+      ss << "ImageReader: error '" << getErrStr(err) << "' in DevIL library\n reading file \"" << filename << "\"";
       ApplyMessage(&frame, vi, ss.str().c_str(), vi.width/4, 0xf0f0f0,0,0 , env);
       return frame;
     }
@@ -482,10 +485,13 @@ PVideoFrame ImageReader::GetFrame(int n, IScriptEnvironment* env)
   if( strcmp(filename, base_name) == 0 ) 
     static_frame = frame;
 
+  // Flip now (null-op, if not needed)
+  frame = FlipFrame(frame, env);
+
   if (info) {    
     // overlay on video output: progress indicator
     ostringstream text;
-    text << "Frame " << n << " read from: " << filename;
+    text << "Frame " << n << ".\nRead from \"" << filename << "\"";
     ApplyMessage(&frame, vi, text.str().c_str(), vi.width/4, 0xf0f0f0,0,0 , env);
   }
 
@@ -556,28 +562,40 @@ bool ImageReader::checkProperties(istream & file, PVideoFrame & frame, IScriptEn
   }
 
   return true;
-}   
+}
 
+PVideoFrame ImageReader::FlipFrame(PVideoFrame src, IScriptEnvironment * env) {
+  if (!should_flip)
+    return src;
+
+  PVideoFrame dst = env->NewVideoFrame(vi);
+  const BYTE* srcp = src->GetReadPtr();
+  BYTE* dstp = dst->GetWritePtr();
+  int row_size = src->GetRowSize();
+  int src_pitch = src->GetPitch();
+  int dst_pitch = dst->GetPitch();
+  env->BitBlt(dstp, dst_pitch, srcp + (vi.height-1) * src_pitch, -src_pitch, row_size, vi.height);
+  if (vi.IsPlanar()) {
+    srcp = src->GetReadPtr(PLANAR_U);
+    dstp = dst->GetWritePtr(PLANAR_U);
+    row_size = src->GetRowSize(PLANAR_U);
+    src_pitch = src->GetPitch(PLANAR_U);
+    dst_pitch = dst->GetPitch(PLANAR_U);
+    env->BitBlt(dstp, dst_pitch, srcp + (src->GetHeight(PLANAR_U)-1) * src_pitch, -src_pitch, row_size, src->GetHeight(PLANAR_U));
+    srcp = src->GetReadPtr(PLANAR_V);
+    dstp = dst->GetWritePtr(PLANAR_V);
+    env->BitBlt(dstp, dst_pitch, srcp + (src->GetHeight(PLANAR_U)-1) * src_pitch, -src_pitch, row_size, src->GetHeight(PLANAR_U));
+  }
+  return dst;
+}
 
 AVSValue __cdecl ImageReader::Create(AVSValue args, void*, IScriptEnvironment* env) 
 {
   const char * path = args[0].AsString("c:\\%06d.ebmp");
 
-  AVSValue image = new ImageReader(path, args[1].AsInt(0), args[2].AsInt(1000), args[3].AsFloat(24), 
+  return new ImageReader(path, args[1].AsInt(0), args[2].AsInt(1000), args[3].AsFloat(24), 
                          args[4].AsBool(false), args[5].AsBool(false));
 
-  // work around DevIL upside-down bug with compressed images
-  const char * ext = strrchr(path, '.') + 1;
-  if (  !lstrcmpi(ext, "jpeg") || !lstrcmpi(ext, "jpg") || !lstrcmpi(ext, "jpe") || !lstrcmpi(ext, "dds") || 
-        !lstrcmpi(ext, "pal") || !lstrcmpi(ext, "pal") || !lstrcmpi(ext, "pcx") || !lstrcmpi(ext, "png") || 
-        !lstrcmpi(ext, "pbm") || !lstrcmpi(ext, "pgm") || !lstrcmpi(ext, "ppm") || !lstrcmpi(ext, "tga")    )
-  {
-    return new FlipVertical(image.AsClip());
-  }
-  else
-  {
-    return image;
-  }
 }
 
 
