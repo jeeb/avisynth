@@ -100,4 +100,24 @@ class OL_DarkenImage : public OverlayFunction {
   void BlendImageMask(Image444* base, Image444* overlay, Image444* mask);
 };
 
+class OL_SoftLightImage : public OverlayFunction {
+  void BlendImage(Image444* base, Image444* overlay);
+  void BlendImageMask(Image444* base, Image444* overlay, Image444* mask);
+};
+
+class OL_HardLightImage : public OverlayFunction {
+  void BlendImage(Image444* base, Image444* overlay);
+  void BlendImageMask(Image444* base, Image444* overlay, Image444* mask);
+};
+
+class OL_DifferenceImage : public OverlayFunction {
+  void BlendImage(Image444* base, Image444* overlay);
+  void BlendImageMask(Image444* base, Image444* overlay, Image444* mask);
+};
+
+class OL_ExclusionImage : public OverlayFunction {
+  void BlendImage(Image444* base, Image444* overlay);
+  void BlendImageMask(Image444* base, Image444* overlay, Image444* mask);
+};
+
 #endif  // Overlay_funcs_h

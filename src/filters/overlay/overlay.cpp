@@ -245,6 +245,18 @@ OverlayFunction* Overlay::SelectFunction(const char* name, IScriptEnvironment* e
   if (!lstrcmpi(name, "Darken"))
     return new OL_DarkenImage();
 
+  if (!lstrcmpi(name, "SoftLight"))
+    return new OL_SoftLightImage();
+
+  if (!lstrcmpi(name, "HardLight"))
+    return new OL_HardLightImage();
+
+  if (!lstrcmpi(name, "Difference"))
+    return new OL_DifferenceImage();
+
+  if (!lstrcmpi(name, "Exclusion"))
+    return new OL_ExclusionImage();
+
   env->ThrowError("Overlay: Invalid 'Mode' specified.");
   return 0;
 }

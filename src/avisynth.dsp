@@ -295,6 +295,14 @@ SOURCE=.\filters\overlay\OF_darken.cpp
 # End Source File
 # Begin Source File
 
+SOURCE=.\filters\overlay\OF_difference.cpp
+# End Source File
+# Begin Source File
+
+SOURCE=.\filters\overlay\OF_exclusion.cpp
+# End Source File
+# Begin Source File
+
 SOURCE=.\filters\overlay\OF_lighten.cpp
 # End Source File
 # Begin Source File
@@ -304,6 +312,10 @@ SOURCE=.\filters\overlay\OF_lumaChroma.cpp
 # Begin Source File
 
 SOURCE=.\filters\overlay\OF_multiply.cpp
+# End Source File
+# Begin Source File
+
+SOURCE=.\filters\overlay\OF_softhardlight.cpp
 # End Source File
 # Begin Source File
 
