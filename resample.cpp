@@ -94,12 +94,103 @@ PVideoFrame __stdcall FilteredResizeH::GetFrame(int n, IScriptEnvironment* env)
       movq        mm6, FPround
       movq        mm5, xFFFF0000FFFF0000
     }
-    for (int y=0; y<vi.height; ++y)
-    {
-      int* cur_luma = pattern_luma+2;
-      int* cur_chroma = pattern_chroma+2;
-      int x = vi.width / 2;
-      __asm {
+    if (env->GetCPUFlags() & CPUF_INTEGER_SSE) {
+     for (int y=0; y<vi.height; ++y)
+      {
+        int* cur_luma = pattern_luma+2;
+        int* cur_chroma = pattern_chroma+2;
+        int x = vi.width / 2;
+
+        __asm {
+        mov         edi, this
+        mov         ecx, [edi].original_width
+        mov         edx, [edi].tempY
+        mov         ebx, [edi].tempUV
+        mov         esi, srcp
+        mov         eax, -1
+      // deinterleave current line
+        align 16
+      i_deintloop:
+        prefetchnta [esi+256]
+        movd        mm1, [esi]          ;mm1 = 00 00 VY UY
+        inc         eax
+        movq        mm2, mm1
+        punpcklbw   mm2, mm0            ;mm2 = 0V 0Y 0U 0Y
+        pand        mm1, mm7            ;mm1 = 00 00 0Y 0Y
+        movd        [edx+eax*4], mm1
+        psrld       mm2, 16             ;mm2 = 00 0V 00 0U
+        add         esi, 4
+        movq        [ebx+eax*8], mm2
+        sub         ecx, 2
+        jnz         i_deintloop
+      // use this as source from now on
+        mov         eax, cur_luma
+        mov         ebx, cur_chroma
+        mov         edx, dstp
+        align 16
+      i_xloopYUV:
+        mov         esi, [eax]          ;esi=&tempY[ofs0]
+        movq        mm1, mm0
+        mov         edi, [eax+4]        ;edi=&tempY[ofs1]
+        movq        mm3, mm0
+        mov         ecx, fir_filter_size_luma
+        add         eax, 8              ;cur_luma++
+        align 16
+      i_aloopY:
+        // Identifiers:
+        // Ya, Yb: Y values in srcp[ofs0]
+        // Ym, Yn: Y values in srcp[ofs1]
+        movd        mm2, [esi]          ;mm2 =  0| 0|Yb|Ya
+        add         esi, 4
+        punpckldq   mm2, [edi]          ;mm2 = Yn|Ym|Yb|Ya
+                                        ;[eax] = COn|COm|COb|COa
+        add         edi, 4
+        pmaddwd     mm2, [eax]          ;mm2 = Y1|Y0 (DWORDs)
+        add         eax, 8              ;cur_luma++
+        dec         ecx
+        paddd       mm1, mm2            ;accumulate
+        jnz         i_aloopY
+
+        mov         esi, [ebx]          ;esi=&tempUV[ofs]
+        add         ebx, 8              ;cur_chroma++
+        mov         ecx, fir_filter_size_chroma
+        align 16
+      i_aloopUV:
+        movq        mm2, [esi]          ;mm2 = 0|V|0|U
+                                        ;[ebx] = 0|COv|0|COu
+        add         esi, 8
+        pmaddwd     mm2, [ebx]          ;mm2 = V|U (DWORDs)
+        add         ebx, 8              ;cur_chroma++
+        dec         ecx
+        paddd       mm3, mm2            ;accumulate
+        jnz         i_aloopUV
+
+        paddd       mm3, mm6            ; V| V| U| U  (round)
+         paddd       mm1, mm6            ;Y1|Y1|Y0|Y0  (round)
+        pslld       mm3, 2              ; Shift up from 14 bits fraction to 16 bit fraction
+         pxor        mm4,mm4             ;Clear mm4 - utilize shifter stall
+        psrld       mm1, 14             ;mm1 = 0|y1|0|y0
+         pmaxsw      mm3,mm4             ;Clamp at 0
+
+        pand        mm3, mm5            ;mm3 = v| 0|u| 0
+        por         mm3,mm1
+        packuswb    mm3, mm3            ;mm3 = ...|v|y1|u|y0
+        movd        [edx], mm3
+        add         edx, 4
+        dec         x
+        jnz         i_xloopYUV
+        }
+        srcp += src_pitch;
+        dstp += dst_pitch;
+      }
+    } else {  // MMX 
+      for (int y=0; y<vi.height; ++y)
+      {
+        int* cur_luma = pattern_luma+2;
+        int* cur_chroma = pattern_chroma+2;
+        int x = vi.width / 2;
+
+        __asm {
         mov         edi, this
         mov         ecx, [edi].original_width
         mov         edx, [edi].tempY
@@ -113,9 +204,9 @@ PVideoFrame __stdcall FilteredResizeH::GetFrame(int n, IScriptEnvironment* env)
         movd        mm1, [esi]          ;mm1 = 0000VYUY
         movq        mm2, mm1
         punpcklbw   mm2, mm0            ;mm2 = 0V0Y0U0Y
-        pand        mm1, mm7            ;mm1 = 00000Y0Y
-        psrld       mm2, 16             ;mm2 = 000V000U
+         pand        mm1, mm7            ;mm1 = 00000Y0Y
         movd        [edx+eax*4], mm1
+         psrld       mm2, 16             ;mm2 = 000V000U
         add         esi, 4
         movq        [ebx+eax*8], mm2
         sub         ecx, 2
@@ -179,9 +270,10 @@ PVideoFrame __stdcall FilteredResizeH::GetFrame(int n, IScriptEnvironment* env)
         add         edx, 4
         dec         x
         jnz         xloopYUV
+        }
+        srcp += src_pitch;
+        dstp += dst_pitch;
       }
-      srcp += src_pitch;
-      dstp += dst_pitch;
     }
     __asm { emms }
   }
@@ -395,23 +487,23 @@ PVideoFrame __stdcall FilteredResizeV::GetFrame(int n, IScriptEnvironment* env)
     xor         ebx, ebx                ;ebx = b = 0
     align 16
   bloop:
-    movd        mm2, [eax]              ;mm2 = *srcp2 = 0|0|0|0|d|c|b|a
+    movd        mm2, [eax]              ;mm2 = *srcp2 = 0|0|0|0|d|c|b|a     
     movd        mm3, [edx+ebx*4]        ;mm3 = cur[b] = 0|co
     punpcklbw   mm2, mm0                ;mm2 = 0d|0c|0b|0a
+     inc         ebx
     punpckldq   mm3, mm3                ;mm3 = co|co
-    movq        mm4, mm2
+     movq        mm4, mm2
     punpcklwd   mm2, mm0                ;mm2 = 00|0b|00|0a
-    punpckhwd   mm4, mm0                ;mm4 = 00|0d|00|0c
+     add         eax, src_pitch          ;srcp2 += src_pitch
     pmaddwd     mm2, mm3                ;mm2 =  b*co|a*co
+     punpckhwd   mm4, mm0                ;mm4 = 00|0d|00|0c
     pmaddwd     mm4, mm3                ;mm4 =  d*co|c*co
-    paddd       mm1, mm2
+     paddd       mm1, mm2
     paddd       mm7, mm4                ;accumulate
-    inc         ebx
-    add         eax, src_pitch          ;srcp2 += src_pitch
     cmp         ebx, edi
     jnz         bloop
     mov         eax, dstp
-    pslld       mm1, 2
+    pslld       mm1, 2                  ;14 bits -> 16bit fraction
     pslld       mm7, 2                  ;compensate the fact that FPScale = 16384
     packuswb    mm1, mm7                ;mm1 = d|_|c|_|b|_|a|_
     psrlw       mm1, 8                  ;mm1 = 0|d|0|c|0|b|0|a
