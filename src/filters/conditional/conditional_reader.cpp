@@ -21,6 +21,7 @@
 #include "stdafx.h"
 
 #include "conditional_reader.h"
+#include "../text-overlay.h"
 
 
 ConditionalReader::ConditionalReader(PClip _child, const char* filename, const char* _varname, bool _show, IScriptEnvironment* _env) :
@@ -257,8 +258,16 @@ void ConditionalReader::ThrowLine(const char* err, int line) {
 
 PVideoFrame __stdcall ConditionalReader::GetFrame(int n, IScriptEnvironment* env)
 {
-  env->SetGlobalVar(variableName, GetFrameValue(n));
+  AVSValue v = GetFrameValue(n);
+  env->SetGlobalVar(variableName, v);
+
   PVideoFrame src = child->GetFrame(n,env);
+
+  if (show) {
+    AVSValue v2 = env->Invoke("String", v);
+    env->MakeWritable(&src);
+    ApplyMessage(&src, vi, v2.AsString(""), vi.width/2, 0xa0a0a0,0,0 , env );
+  }
   return src;
 }
 

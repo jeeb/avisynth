@@ -514,6 +514,14 @@ SOURCE=.\filters\conditional\conditional_functions.cpp
 
 SOURCE=.\filters\conditional\conditional_functions.h
 # End Source File
+# Begin Source File
+
+SOURCE=.\filters\conditional\conditional_reader.cpp
+# End Source File
+# Begin Source File
+
+SOURCE=.\filters\conditional\conditional_reader.h
+# End Source File
 # End Group
 # Begin Group "Other"
 
