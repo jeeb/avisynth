@@ -557,16 +557,7 @@ AVSValue __cdecl ConvertToYUY2::Create(AVSValue args, void*, IScriptEnvironment*
   PClip clip = args[0].AsClip();
   if (clip->GetVideoInfo().IsYUY2())
     return clip;
-  const VideoInfo vi = clip->GetVideoInfo();
   bool i=args[1].AsBool(false);
-  if (!i) {
-    if (vi.IsYV12()) {
-      if (vi.width&7) {
-        int xtra = 8 - (vi.width&7);
-        return new Crop(0,0,-xtra,0,(new ConvertToYUY2(new AddBorders(0,0,xtra,0,0,clip),i,env)),env);
-      }
-    }
-  }
   return new ConvertToYUY2(clip, i, env);
 }
 
