@@ -57,6 +57,7 @@ namespace SoftWire
 		};
 
 		TokenLink *head;
+		TokenLink *tail;
 		TokenLink *pointer;
 	};
 }

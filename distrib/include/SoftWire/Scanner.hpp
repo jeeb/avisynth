@@ -16,6 +16,7 @@ namespace SoftWire
 		~Scanner();
 
 		void scanFile(const char *fileName, bool doPreprocessing = true);
+		void scanString(const char *sourceString, bool doPreprocessing = true);
 
 		static void defineSymbol(int value, const char *name);
 		static void clearSymbols();
@@ -36,6 +37,7 @@ namespace SoftWire
 		typedef Link<Symbol> SymbolTable;
 		static SymbolTable *symbols;
 
+		void scanBuffer(char *source, bool doPreprocessing);
 		void preprocess();
 		void includeFiles();
 		void substituteSymbols();

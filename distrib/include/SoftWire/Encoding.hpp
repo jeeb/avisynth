@@ -4,6 +4,7 @@
 namespace SoftWire
 {
 	class Synthesizer;
+	class Instruction;
 
 	class Encoding
 	{
@@ -24,7 +25,7 @@ namespace SoftWire
 			BH = 7, DI = 7, EDI = 7, ST7 = 7, MM7 = 7, XMM7 = 7
 		};
 
-		Encoding();
+		Encoding(const Instruction *instruction = 0);
 		Encoding(const Encoding &encoding);
 
 		~Encoding();
@@ -59,9 +60,23 @@ namespace SoftWire
 		void setAddress(const unsigned char *address);
 		const unsigned char *getAddress() const;
 
+		// Prevent or enable writing to output
+		Encoding *reserve();
+		void retain();
+
 		int printCode(char *buffer) const;
 
-	private:
+	protected:
+		const Instruction *instruction;
+
+		char *label;
+		union
+		{
+			char *reference;
+			char *literal;
+		};
+		bool relative;
+
 		enum Mod
 		{
 			MOD_NO_DISP = 0,
@@ -78,14 +93,6 @@ namespace SoftWire
 			SCALE_4 = 2,
 			SCALE_8 = 3
 		};
-
-		char *label;
-		union
-		{
-			char *reference;
-			char *literal;
-		};
-		bool relative;
 
 		struct
 		{
@@ -167,6 +174,8 @@ namespace SoftWire
 		};
 
 		const unsigned char *address;
+
+		bool emit;  // false for eliminated instructions
 
 		static int align(unsigned char *output, int alignment, bool write);
 	};

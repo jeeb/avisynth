@@ -4,10 +4,11 @@
 #include "Error.hpp"
 
 #include <stdio.h>
-#include <io.h>
 
 #ifdef __unix__
 	#include <sys/stat.h>
+#else
+	#include <io.h>
 #endif
 
 namespace SoftWire

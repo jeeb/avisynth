@@ -644,10 +644,10 @@ DynamicAssembledCode Limiter::create_emulator(int row_size, int height, IScriptE
          //Prefetch only once per cache line
        x86.prefetchnta(dword_ptr [ebx+256]);
       }
-      x86.movq(mm0,ebx);
-      x86.movq(mm1,ebx+8);
-      x86.movq(mm2,ebx+16);
-      x86.movq(mm3,ebx+24);
+      x86.movq(mm0, qword_ptr[ebx]);
+      x86.movq(mm1, qword_ptr[ebx+8]);
+      x86.movq(mm2, qword_ptr[ebx+16]);
+      x86.movq(mm3, qword_ptr[ebx+24]);
       x86.pminub(mm0,mm7);
       x86.pminub(mm1,mm7);
       x86.pminub(mm2,mm7);
@@ -657,10 +657,10 @@ DynamicAssembledCode Limiter::create_emulator(int row_size, int height, IScriptE
       x86.pmaxub(mm2,mm6);
       x86.pmaxub(mm3,mm6);
       if (!use_movntq) {
-        x86.movq(ebx,mm0);
-        x86.movq(ebx+8,mm1);
-        x86.movq(ebx+16,mm2);
-        x86.movq(ebx+24,mm3);
+        x86.movq(qword_ptr[ebx],mm0);
+        x86.movq(qword_ptr[ebx+8],mm1);
+        x86.movq(qword_ptr[ebx+16],mm2);
+        x86.movq(qword_ptr[ebx+24],mm3);
       } else {
         x86.movntq(qword_ptr [ebx],mm0);
         x86.movntq(qword_ptr [ebx+8],mm1);

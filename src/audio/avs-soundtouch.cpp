@@ -197,11 +197,147 @@ void __stdcall AVSsoundtouch::GetAudio(void* buf, __int64 start, __int64 count, 
     delete[] passbuffer;
 		samplers.delete_all();
 }
+};
+
+
+/*********** Separate Class for Stereo only material *******************/
+
+class AVSStereoSoundTouch : public GenericVideoFilter 
+{
+private:
+	SoundTouch* sampler;
+
+  int dstbuffer_size;
+  int dst_samples_filled;
+
+  SFLOAT* dstbuffer;
+  SFLOAT* passbuffer;
+  __int64 next_sample;
+  __int64 inputReadOffset;
+  double sample_multiplier;
+  double tempo;
+  double rate;
+  double pitch;
+  bool assume_one_to_one;
+
+public:
+static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env);
+
+
+AVSStereoSoundTouch(PClip _child, double _tempo, double _rate, double _pitch, IScriptEnvironment* env)
+: GenericVideoFilter(ConvertAudio::Create(_child, SAMPLE_FLOAT, SAMPLE_FLOAT)), 
+  tempo(_tempo), rate(_rate), pitch(_pitch)
+{
+//  last_nch = vi.AudioChannels();
+  
+  dstbuffer = new SFLOAT[BUFFERSIZE * vi.AudioChannels()];  // Our buffer can minimum contain one second.
+  passbuffer = new SFLOAT[BUFFERSIZE  * vi.AudioChannels()];  // Our buffer can minimum contain one second. One channel at the time.
+  dstbuffer_size = vi.audio_samples_per_second;
+
+  sample_multiplier = 100.0 / tempo;
+  sample_multiplier *= 100.0 / rate;
+
+  assume_one_to_one = (fabs(sample_multiplier - 1.0) < 0.0000001) ? true : false;
+  
+    sampler = new SoundTouch();
+
+  sampler->setRate(rate/100.0);
+  sampler->setTempo(tempo/100.0);
+  sampler->setPitch(pitch/100.0);
+  sampler->setChannels(2);
+  sampler->setSampleRate(vi.audio_samples_per_second);
+
+  if (!assume_one_to_one) 
+    vi.num_audio_samples = (double)vi.num_audio_samples * sample_multiplier;
+
+  sample_multiplier = 1.0 / sample_multiplier;  // We need the inserse to use it for sample offsets in the GetAudio loop.
+
+  next_sample = 0;  // Next output sample
+  inputReadOffset = 0;  // Next input sample
+  dst_samples_filled = 0;
+
+}
+
+void __stdcall AVSStereoSoundTouch::GetAudio(void* buf, __int64 start, __int64 count, IScriptEnvironment* env)
+{
+
+  if (start != next_sample) {  // Reset on seek
+
+    sampler->clear();
+
+    next_sample = start;
+
+    if (assume_one_to_one) {
+      inputReadOffset = start;  // Reset at new read position.
+    } else {
+      inputReadOffset = (__int64)(sample_multiplier * (double)start);  // Reset at new read position (NOT sample exact :( ).
+    }
+
+    dst_samples_filled=0;
+  }
+
+  bool buffer_full = false;
+  int samples_filled = 0;
+
+  do {
+    // Empty buffer if something is still left.
+    if (dst_samples_filled) {
+      int copysamples = min((int)count-samples_filled, dst_samples_filled);
+      // Copy finished samples
+      if (copysamples) { 
+        env->BitBlt((BYTE*)buf+vi.BytesFromAudioSamples(samples_filled),0,
+          (BYTE*)dstbuffer,0,vi.BytesFromAudioSamples(copysamples),1);
+
+        dst_samples_filled -= copysamples;
+        // Move non-used samples
+        memcpy(dstbuffer, &dstbuffer[copysamples*2], vi.BytesFromAudioSamples(dst_samples_filled));
+        samples_filled += copysamples;
+      }
+      if (samples_filled >= count)
+        buffer_full = true;
+    }
+
+    // If buffer empty - refill
+    if (dst_samples_filled==0) {
+      // Read back samples from filter
+		  int samples_out = 0;
+      int gotsamples = 0;
+      do {
+        gotsamples = sampler->receiveSamples(&dstbuffer[vi.BytesFromAudioSamples(samples_out)], BUFFERSIZE - samples_out);
+        samples_out += gotsamples;
+      } while (gotsamples > 0);
+
+			dst_samples_filled = samples_out;
+
+      if (!dst_samples_filled) {  // We didn't get any samples
+          // Feed new samples to filter
+        child->GetAudio(dstbuffer, inputReadOffset, BUFFERSIZE, env);
+        inputReadOffset += BUFFERSIZE;
+        sampler->putSamples(dstbuffer, BUFFERSIZE);
+      } // End if no samples
+		} // end if empty buffer
+  } while (!buffer_full);
+  next_sample += count;
+}
+
+~AVSStereoSoundTouch()
+	{
+    delete[] dstbuffer;
+    delete[] passbuffer;
+    delete sampler;
+}
 
 
 };
 
 AVSValue __cdecl AVSsoundtouch::Create(AVSValue args, void*, IScriptEnvironment* env) {
+  if (args[0].AsClip()->GetVideoInfo().AudioChannels() == 2) {
+    return new AVSStereoSoundTouch(args[0].AsClip(), 
+      args[1].AsFloat(100.0), 
+      args[2].AsFloat(100.0), 
+      args[3].AsFloat(100.0), 
+      env);
+  }
   return new AVSsoundtouch(args[0].AsClip(), 
     args[1].AsFloat(100.0), 
     args[2].AsFloat(100.0), 

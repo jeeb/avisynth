@@ -13,6 +13,7 @@ namespace SoftWire
 
 		Link *append(const T &t);
 		Link *next() const;
+		Link *tail() const;
 
 	private:
 		Link *n;   // Next
@@ -32,22 +33,35 @@ namespace SoftWire
 	template<class T>
 	Link<T>::~Link()
 	{
-		delete n;
+		// Avoid call stack overflow
+		while(n)
+		{
+			Link *nextNext = n->n;
+			n->n = 0;
+			delete n;
+			n = nextNext;
+		}
 		n = 0;
+		t = 0;
 	}
 
 	template<class T>
 	Link<T> *Link<T>::append(const T &e)
 	{
-		if(t)
+		if(t == 0)   // Empty chain
+		{
+			*(T*)this = e;
+			t = this;
+		}
+		else if(t != this)
 		{
 			t = t->append(e);
 		}
 		else
 		{
-			*(T*)this = e;
-
 			t = n = new Link();
+			*(T*)t = e;
+			t->t = t;
 		}
 
 		return t;
@@ -57,6 +71,12 @@ namespace SoftWire
 	Link<T> *Link<T>::next() const
 	{
 		return n;
+	}
+
+	template<class T>
+	Link<T> *Link<T>::tail() const
+	{
+		return t;
 	}
 }
 

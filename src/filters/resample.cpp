@@ -186,7 +186,7 @@ DynamicAssembledCode FilteredResizeH::GenerateResizer(int gen_plane, IScriptEnvi
 
     // Initialize registers.
     x86.mov(eax,(int)&FPround);
-    x86.movq(mm7,eax);  // Rounder for final division. Not touched!
+    x86.movq(mm7, qword_ptr[eax]);  // Rounder for final division. Not touched!
     x86.pxor(mm6,mm6);  // Cleared mmx register - Not touched!
     
     x86.mov(dword_ptr [&gen_h],vi_height);  // This is our y counter.
@@ -210,8 +210,8 @@ DynamicAssembledCode FilteredResizeH::GenerateResizer(int gen_plane, IScriptEnvi
        x86.prefetchnta(dword_ptr [esi+256]);
       }
       x86.label("fetch_loopback");
-      x86.movq(mm0,esi);        // Move pixels into mmx-registers
-       x86.movq(mm1,esi+8);
+      x86.movq(mm0, qword_ptr[esi]);        // Move pixels into mmx-registers
+       x86.movq(mm1, qword_ptr[esi+8]);
       x86.movq(mm2,mm0);
        x86.movq(mm3,mm1);
       x86.punpcklbw(mm0,mm6);     // Unpack bytes -> words
@@ -219,10 +219,10 @@ DynamicAssembledCode FilteredResizeH::GenerateResizer(int gen_plane, IScriptEnvi
       x86.punpckhbw(mm2,mm6);
        x86.punpckhbw(mm3,mm6);
       if ((!avoid_stlf) || (!isse)) {          
-        x86.movq(edi,mm0);        // Store pixels in temporary space.
-        x86.movq(edi+8,mm2);
-        x86.movq(edi+16,mm1);
-        x86.movq(edi+24,mm3);
+        x86.movq(qword_ptr[edi],mm0);        // Store pixels in temporary space.
+        x86.movq(qword_ptr[edi+8],mm2);
+        x86.movq(qword_ptr[edi+16],mm1);
+        x86.movq(qword_ptr[edi+24],mm3);
       } else {  // Code to avoid store->load forward size mismatch.
         x86.movd(dword_ptr [edi],mm0);
         x86.movd(dword_ptr [edi+8],mm2);
@@ -247,12 +247,12 @@ DynamicAssembledCode FilteredResizeH::GenerateResizer(int gen_plane, IScriptEnvi
     for (i=0;i<mod16_remain;i++) {
       x86.movd(mm0,dword_ptr [esi+(i*4)]);
       x86.punpcklbw(mm0,mm6);
-      x86.movq(edi+(i*8),mm0);
+      x86.movq(qword_ptr[edi+(i*8)],mm0);
     }
 
     x86.mov(edi, (int)cur_luma);  // First there are offsets into the tempY planes, defining where the filter starts
                                   // After that there is (filter_size) constants for multiplying.
-                                  // Next pixel pair is put after (filter_offset) bytes.
+                                  // Next pixel pair is put after (filter_offset) bytes. 
 
     x86.align(16);
     x86.label("xloop");
@@ -268,16 +268,16 @@ DynamicAssembledCode FilteredResizeH::GenerateResizer(int gen_plane, IScriptEnvi
     x86.add(edi,8); // cur_luma++
 
     for (i=0;i<fir_filter_size;i++) {       // Unroll filter inner loop based on the filter size.
-        x86.movd(mm0, dword_ptr [eax+i*4]);
-        x86.movd(mm1, dword_ptr [ecx+i*4]);
-        x86.punpckldq(mm0, ebx+i*4);
-        x86.punpckldq(mm1, edx+i*4);
-        x86.pmaddwd(mm0,edi+i*8);
-        x86.movd(mm2, dword_ptr [esi+i*4]);
-        x86.pmaddwd(mm1,edi+filter_offset+(i*8));
-        x86.punpckldq(mm2, ebp+i*4);
+        x86.movd(mm0, dword_ptr[eax+i*4]);
+        x86.movd(mm1, dword_ptr[ecx+i*4]);
+        x86.punpckldq(mm0, qword_ptr[ebx+i*4]);
+        x86.punpckldq(mm1, qword_ptr[edx+i*4]);
+        x86.pmaddwd(mm0, qword_ptr[edi+i*8]);
+        x86.movd(mm2, dword_ptr[esi+i*4]);
+        x86.pmaddwd(mm1,qword_ptr[edi+filter_offset+(i*8)]);
+        x86.punpckldq(mm2, qword_ptr[ebp+i*4]);
         x86.paddd(mm3, mm0);
-        x86.pmaddwd(mm2,edi+(filter_offset*2)+(i*8));
+        x86.pmaddwd(mm2, qword_ptr[edi+(filter_offset*2)+(i*8)]);
         x86.paddd(mm4, mm1);
         x86.paddd(mm5, mm2);
     }
@@ -333,10 +333,10 @@ DynamicAssembledCode FilteredResizeH::GenerateResizer(int gen_plane, IScriptEnvi
       for (i=0;i<fir_filter_size;i++) {
         x86.movd(mm0, dword_ptr [eax+i*4]);
         if (remainy) x86.movd(mm1, dword_ptr [ecx+i*4]);
-        x86.punpckldq(mm0, ebx+i*4);
-        if (remainy) x86.punpckldq(mm1, edx+i*4);
-        x86.pmaddwd(mm0,edi+i*8);
-        if (remainy) x86.pmaddwd(mm1,edi+filter_offset+(i*8));
+        x86.punpckldq(mm0, qword_ptr[ebx+i*4]);
+        if (remainy) x86.punpckldq(mm1, qword_ptr[edx+i*4]);
+        x86.pmaddwd(mm0, qword_ptr[edi+i*8]);
+        if (remainy) x86.pmaddwd(mm1, qword_ptr[edi+filter_offset+(i*8)]);
         x86.paddd(mm3, mm0);
         if (remainy) x86.paddd(mm4, mm1);
       }

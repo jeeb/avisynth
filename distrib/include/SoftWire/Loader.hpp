@@ -19,7 +19,7 @@ namespace SoftWire
 		void (*finalize(const char *entryLabel = 0))();
 		void *acquire();
 
-		void appendEncoding(const Encoding &encoding);
+		Encoding *appendEncoding(const Encoding &encoding);
 
 		const char *getListing();
 		void clearListing();
@@ -36,8 +36,8 @@ namespace SoftWire
 		bool finalized;
 
 		void loadCode(const char *entryLabel = 0);
-		const unsigned char *resolveReference(const char *name) const;
-		const unsigned char *resolveLocal(const char *name) const;
+		const unsigned char *resolveReference(const char *name, const Instruction *position) const;
+		const unsigned char *resolveLocal(const char *name, const Instruction *position) const;
 		const unsigned char *resolveExternal(const char *name) const;
 		int codeLength() const;
 	};

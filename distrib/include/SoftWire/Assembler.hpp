@@ -18,12 +18,13 @@ namespace SoftWire
 	{
 	public:
 		Assembler(const char *fileName = 0);
+		Assembler(const char *sourceString, const char *entryPoint);
 
 		~Assembler();
 
 		// Run-time intrinsics
 		void label(const char *label);
-		#include "Intrinsics.hpp"
+	#include "Intrinsics.hpp"
 
 		// Methods for passing data references
 		static void defineExternal(void *pointer, const char *name);
@@ -40,6 +41,15 @@ namespace SoftWire
 		void clearListing() const;
 		void setEchoFile(const char *echoFile, const char *mode = "wt");
 		void annotate(const char *format, ...);
+
+		static void enableListing();   // Default on
+		static void disableListing();
+
+	protected:
+		virtual Encoding *x86(int instructionID,
+		                      const Operand &firstOperand = VOID,
+		                      const Operand &secondOperand = VOID,
+		                      const Operand &thirdOperand = VOID);   // Assemble run-time intrinsic
 
 	private:
 		char *entryLabel;
@@ -59,12 +69,9 @@ namespace SoftWire
 		void assembleFile();
 		void assembleLine();
 
-		int x86(int instructionID,
-		        const Operand &firstOperand = VOID,
-		        const Operand &secondOperand = VOID,
-		        const Operand &thirdOperand = VOID);   // Assemble run-time intrinsic
-
 		void handleError(const char *error);
+
+		static bool listingEnabled;
 	};
 
 	#define ASM_EXPORT(x) Assembler::defineExternal((void*)&x, #x);

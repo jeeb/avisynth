@@ -15,7 +15,7 @@ namespace SoftWire
 		return _vsnprintf(buffer, count, format, argptr);
 	}
 
-	static (*snprintf)(char *buffer, size_t count, const char *format, ...) = _snprintf;
+	static int (*snprintf)(char *buffer, size_t count, const char *format, ...) = _snprintf;
 #endif
 
 #ifdef __GNUG__
