@@ -55,6 +55,9 @@ Cache::Cache(PClip _child)
   h_policy = CACHE_NOTHING;  // Since hints are not used per default, this is solely to describe the lowest default cache mode.
   h_audiopolicy = CACHE_NOTHING;  // Don't cache audio per default.
 
+  ac_expected_next = 0;
+  ac_currentscore = 100;
+
  }
 
 
@@ -188,19 +191,48 @@ void __stdcall Cache::GetAudio(void* buf, __int64 start, __int64 count, IScriptE
     count = (vi.num_audio_samples - start);
   }
 
-  if (h_audiopolicy == CACHE_NOTHING) {
+  if (start != ac_expected_next)
+    ac_currentscore-=25;
+  else
+    ac_currentscore +=5;
+
+  ac_currentscore = max(min(ac_currentscore, 250), -10000000);
+
+  if (h_audiopolicy == CACHE_NOTHING && ac_currentscore <=0) {
+    SetCacheHints(CACHE_AUDIO, 0);
+    _RPT0(0, "CacheAudio: Automatically adding audiocache!\n");
+  }
+
+  if (h_audiopolicy == CACHE_AUDIO  && (ac_currentscore>200) ) {
+    SetCacheHints(CACHE_AUDIO_NONE, 0);
+    _RPT0(0, "CacheAudio: Automatically deleting cache!\n");
+  }
+
+  ac_expected_next = start + count;
+
+  if (h_audiopolicy == CACHE_NOTHING) { 
     child->GetAudio(buf, start, count, env);
     return;  // We are ok to return now!
   }
 	int shiftsamples;
 
 #ifdef _DEBUG
-	sprintf(dbgbuf, "CA:Get %.6d %.6d %.6d %.6d\n", int(start), int(count), int(cache_start), int(cache_count));	
+	sprintf(dbgbuf, "CA:Get st:%.6d co:%.6d .cst:%.6d cco:%.6d, sc:%d\n", int(start), int(count), int(cache_start), int(cache_count), int(ac_currentscore));	
 	_RPT0(0,dbgbuf);
 #endif
 
 	if (count>maxsamplecount) {		//is cache big enough?
 		_RPT0(0, "CA:Cache too small->caching last audio\n");
+    ac_too_small_count++;
+
+    if (ac_too_small_count > 2 && (maxsamplecount < vi.AudioSamplesFromBytes(4095*1024))) {  // Max size = 4MB!
+      //automatically upsize cache!
+      int new_size = vi.BytesFromAudioSamples(count)+1024;
+      new_size = min(4096*1024, new_size);
+      _RPT1(0, "CacheAudio: Autoupsizing buffer to %d bytes!", new_size);
+      SetCacheHints(CACHE_AUDIO, new_size);
+    }
+
 		child->GetAudio(buf, start, count, env);
 
 		cache_start = start+count-maxsamplecount;
@@ -246,15 +278,19 @@ void __stdcall Cache::SetCacheHints(int cachehints,int frame_range) {
 
   if (cachehints == CACHE_AUDIO) {
     // Range means for audio.
-    // 0 == Cache last request only.
+    // 0 == Create a default buffer (64kb).
     // Positive. Allocate X bytes for cache.
+
+    if (h_audiopolicy != CACHE_NOTHING && frame_range)   // We already have a policy - no need for a default one.
+      return;
+
     if (h_audiopolicy != CACHE_NOTHING) 
-      delete[] cache;       // FIXME: Allocate largest requested cache.
+      delete[] cache;       
 
     h_audiopolicy = CACHE_AUDIO;
 
     if (!frame_range)
-      frame_range=256*1024;
+      frame_range=64*1024;
 
     if (frame_range) {
 		  cache = new char[frame_range];
@@ -262,11 +298,17 @@ void __stdcall Cache::SetCacheHints(int cachehints,int frame_range) {
 		  maxsamplecount = frame_range/samplesize - 1;
 		  cache_start=0;
 		  cache_count=0;  
-    } else {
-      //FIXME: Implement me!!
+      ac_too_small_count = 0;
     }
     return;
   }
+
+  if (cachehints == CACHE_AUDIO_NONE) {
+    if (h_audiopolicy != CACHE_NOTHING) 
+      delete[] cache;
+    h_audiopolicy = CACHE_NOTHING;
+  }
+
   if (cachehints == CACHE_ALL) {
     // This is default operation, so if another filter
     h_policy = CACHE_ALL;

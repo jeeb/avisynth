@@ -41,7 +41,7 @@
 #include "avs-soundtouch.h"
 
 
-#define BUFFERSIZE 4096
+#define BUFFERSIZE 8192
 
 using namespace soundtouch;
 

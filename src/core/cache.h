@@ -94,6 +94,10 @@ private:
 	__int64 cache_count;
 	char dbgbuf[255];
 
+  // For audio cache prediction
+  __int64 ac_expected_next;
+  int ac_currentscore;
+  int ac_too_small_count;
 
   enum {CACHE_ST_USED = 1<<0,
         CACHE_ST_DELETEME = 1<<1,
