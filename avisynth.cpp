@@ -846,13 +846,36 @@ LinkedVideoFrameBuffer* ScriptEnvironment::GetFrameBuffer2(int size) {
   if (memory_used + size < memory_max)
     return NewFrameBuffer(size);
   // Plan B: look for an existing buffer of the appropriate size
+
   for (LinkedVideoFrameBuffer* i = video_frame_buffers.prev; i != &video_frame_buffers; i = i->prev) {
     if (i->GetRefcount() == 0 && i->GetDataSize() == size)
       return i;
   }
+  // Plan C:
+  // Before we allocate a new frame, check our memory usage, and perhaps delete any unreferenced frames.
 
-  // Plan C: allocate a new buffer, regardless of current memory usage  
-  // FIXME: Could lead to massive allocation on memory thrashing, perhaps a plan D which deallocates all unused frames and reallocates memory would be better, if more than 2*allowed memory is used.
+  if (memory_used >  memory_max + (memory_max/4) ) {  // Are we more than 25% above allowed usage?
+    int freed = 0;
+    int freed_count = 0;
+    // Deallocate all unused frames.
+    for (LinkedVideoFrameBuffer* i = video_frame_buffers.prev; i != &video_frame_buffers; i = i->prev) {
+      if (i->GetRefcount() == 0) {
+        if (i->next != i->prev) {  
+          // Relink
+          i->prev->next = i->next;
+          i->next->prev = i->prev;
+          // Store size.
+          freed += i->data_size;
+          freed_count++;
+          // Delete data;
+          i->~LinkedVideoFrameBuffer();
+        }
+      }
+    }
+    _RPT2(0,"Freed %d frames, consisting of %d bytes.\n",freed_count, freed);
+    memory_used -= freed;
+  }
+  // Plan D: allocate a new buffer, regardless of current memory usage  
   return NewFrameBuffer(size);
 }
 

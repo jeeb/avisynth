@@ -36,64 +36,6 @@
 #include "stdafx.h"
 
 #include "cache.h"
-/*
-FrameCache::CachedVideoFrame::CachedVideoFrame(int _n, const PVideoFrame& _frame)
-: n(_n), frame(_frame) { seq_number = frame->GetFrameBuffer()->GetSequenceNumber(); }
-
-bool FrameCache::CachedVideoFrame::isValid() const { return frame && seq_number == frame->GetFrameBuffer()->GetSequenceNumber(); }
-
-                                               
-PVideoFrame __stdcall RangeCache::fetch(int n)
-{
-  CacheVector::iterator it = cache.begin();
-  while(it != cache.end())
-    if (it->isValid()) 
-      if (it->n == n)
-        return it->frame;
-      else ++it;
-    else it = cache.erase(it);
-  return PVideoFrame();
-}  
-
-void __stdcall RangeCache::store(int n, const PVideoFrame& frame)
-{
-  CacheVector::iterator it = cache.begin();
-  int range = cache.capacity(); //ie the cache hint provided
-  //tries to find a CachedVideoFrame to overwrite
-  while(it != cache.end() && it->isValid() && abs(it->n - n) < range) { ++it; }
-  if (it == cache.end())
-    cache.push_back(CachedVideoFrame(n, frame));
-  else it->set(n, frame);
-
-}
-
-//NB: for better efficiency of rotate code, a swap member should be added in PVideoFrame
-//    and used to create a swap method in CachedVideoFrame
-
-PVideoFrame __stdcall QueueCache::fetch(int n)
-{
-  CacheVector::iterator it = cache.begin();
-  while(it != cache.end() && it->n != n) { ++it; }
-  if (it == cache.end() || ! it->isValid())
-    return PVideoFrame();  //cache miss
-  rotate<CacheVector::iterator>(it, it + 1, cache.end()); //make it last;
-  return cache.back().frame;
-}
-
-void __stdcall QueueCache::store(int n, const PVideoFrame& frame)
-{
-  CacheVector::iterator it = cache.begin();
-  //tries to find a invalid one to overwrite
-  while(it != cache.end() && it->isValid()) { ++it; }
-  if (it == cache.end())
-    if (cache.size() < cache.capacity()) { //we have not filled the cache
-      cache.push_back(CachedVideoFrame(n, frame));
-      return;
-    } else it = cache.begin();  //the last one will go
-  rotate<CacheVector::iterator>(it, it + 1, cache.end()); //place at the end
-  cache.back().set(n, frame);    //and update value
-}
-*/
 
 
 /*******************************
@@ -102,13 +44,24 @@ void __stdcall QueueCache::store(int n, const PVideoFrame& frame)
 
 
 Cache::Cache(PClip _child) 
-: GenericVideoFilter(_child) { use_hints=false;}
+: GenericVideoFilter(_child) { 
+
+  use_hints=false;   // Default policy is to cache all frames
+  h_policy = CACHE_NOTHING;  // Since hints are not used per default, this is solely to describe the lowest default cache mode.
+
+ }
 
 
 PVideoFrame __stdcall Cache::GetFrame(int n, IScriptEnvironment* env) 
 { 
   n = min(vi.num_frames-1, max(0,n));  // Inserted to avoid requests beyond framerange.
+
   if (use_hints) {
+
+    if (h_policy == CACHE_NOTHING) {
+      return child->GetFrame(n,env);
+    }
+
     PVideoFrame result;
     bool foundframe = false;
     for (int i = 0; i<h_total_frames; i++) {
@@ -120,6 +73,10 @@ PVideoFrame __stdcall Cache::GetFrame(int n, IScriptEnvironment* env)
       // Check if if can be used for deletion
       if ((h_status[i] & CACHE_ST_USED) && (abs(h_frame_nums[i]-n)>h_radius) ) {
         h_status[i] |= CACHE_ST_DELETEME;
+        if (!(h_status[i] & CACHE_ST_HAS_BEEN_RELEASED)) {  // Has this framebuffer been released?
+          InterlockedDecrement(&h_vfb[i]->refcount);  // We can now release this vfb.
+          h_status[i] |= CACHE_ST_HAS_BEEN_RELEASED;
+        }
       }
     }
     if (!foundframe) {
@@ -143,25 +100,28 @@ PVideoFrame __stdcall Cache::GetFrame(int n, IScriptEnvironment* env)
       _RPT1(0, "Cache2: using cached copy of frame %d\n", n);
       return copy;
     }// Store it
-      h_vfb[i] = result->vfb;
-      h_frame_nums[i] = n;
-      h_video_frames[i]->offset = result->offset;
-      h_video_frames[i]->offsetU = result->offsetU;
-      h_video_frames[i]->offsetV = result->offsetV;
-      h_video_frames[i]->pitch = result->pitch;
-      h_video_frames[i]->pitchUV = result->pitchUV;
-      h_video_frames[i]->row_size = result->row_size;
-      h_video_frames[i]->height = result->height;
-      h_status[i] = CACHE_ST_USED;
+
+    h_vfb[i] = result->vfb;
+    h_frame_nums[i] = n;
+    h_video_frames[i]->offset = result->offset;
+    h_video_frames[i]->offsetU = result->offsetU;
+    h_video_frames[i]->offsetV = result->offsetV;
+    h_video_frames[i]->pitch = result->pitch;
+    h_video_frames[i]->pitchUV = result->pitchUV;
+    h_video_frames[i]->row_size = result->row_size;
+    h_video_frames[i]->height = result->height;
+    h_status[i] = CACHE_ST_USED;
+    InterlockedIncrement(&result->vfb->refcount);  // Keep this vfb to ourselves!
 
     return result;
   }
+
   // look for a cached copy of the frame
   int c=0;
   for (CachedVideoFrame* i = video_frames.next; i != &video_frames; i = i->next) {
     ++c;
     if (i->frame_number == n) {
-      InterlockedIncrement(&i->vfb->refcount);
+      InterlockedIncrement(&i->vfb->refcount);  // Increment to be sure this frame isn't used.
       if (i->sequence_number == i->vfb->GetSequenceNumber()) {
         _RPT1(0, "Cache: using cached copy of frame %d\n", n);
         // move the matching cache entry to the front of the list
@@ -180,25 +140,64 @@ PVideoFrame __stdcall Cache::GetFrame(int n, IScriptEnvironment* env)
   return result;
 }
 
-void __stdcall Cache::SetCacheHints(int cachehints,int frame_range) {   //TODO: Implement me!
+void __stdcall Cache::SetCacheHints(int cachehints,int frame_range) {   
   _RPT2(0, "Cache: Setting cache hints (hints:%d, range:%d )\n", cachehints, frame_range);
-  h_radius = frame_range;
-  h_total_frames = frame_range*2+1;
-  h_video_frames = (CachedVideoFrame **)malloc(sizeof(CachedVideoFrame*)*h_total_frames);
-  h_vfb = (VideoFrameBuffer**)malloc(sizeof(VideoFrameBuffer*)*h_total_frames);
-  h_frame_nums = new int[h_total_frames];
-  h_status = new int[h_total_frames];
-  for (int i = 0; i<h_total_frames; i++) {
-    h_video_frames[i]=new CachedVideoFrame;
-    h_frame_nums[i]=-1;
-    h_status[i]=0;
+
+  /*
+  if (cachehints == CACHE_CLIENT_ID) {
+    h_lastID = frame_range;
+    return;
   }
-  use_hints=true;
+  */
+
+  if (cachehints == CACHE_ALL) {
+    // This is default operation, so if another filter
+    h_policy = CACHE_ALL;
+  }
+
+  if ((cachehints == CACHE_NOTHING) || (!frame_range)) {
+    if (h_policy == CACHE_NOTHING) {  // no other filter set hints, or other filter requested no caching.
+      use_hints=true;  // Enable hints.
+      return;
+    }
+  }
+
+  if (cachehints == CACHE_RANGE) {
+    if (h_policy == CACHE_RANGE) {  // Do we already have a filter below us, that requested a cache range?
+      if (use_hints) { // Has hints data not been erased yet?
+        for (int i = 0; i<h_total_frames; i++) free(h_video_frames[i]);
+        free(h_vfb);
+        delete[] h_frame_nums;
+        delete[] h_status;
+      }
+      use_hints=false;
+      return;
+    }
+
+    h_radius = frame_range;
+    h_total_frames = frame_range*2+1;
+    h_video_frames = (CachedVideoFrame **)malloc(sizeof(CachedVideoFrame*)*h_total_frames);
+    h_vfb = (VideoFrameBuffer**)malloc(sizeof(VideoFrameBuffer*)*h_total_frames);
+    h_frame_nums = new int[h_total_frames];
+    h_status = new int[h_total_frames];
+
+    for (int i = 0; i<h_total_frames; i++) {
+      h_video_frames[i]=new CachedVideoFrame;
+      h_frame_nums[i]=-1;
+      h_status[i]=0;
+    }
+    h_policy = CACHE_RANGE;
+    use_hints = true;
+  }
 } 
 
 Cache::~Cache() {
   if (use_hints) {
-    for (int i = 0; i<h_total_frames; i++) free(h_video_frames[i]);
+    for (int i = 0; i<h_total_frames; i++) {
+      if ((h_status[i] & CACHE_ST_USED) && (!(h_status[i] & CACHE_ST_HAS_BEEN_RELEASED)))
+        InterlockedDecrement(&h_vfb[i]->refcount);  // We can now release this vfb.
+      free(h_video_frames[i]);
+    }
     free(h_vfb);
     delete[] h_frame_nums;
     delete[] h_status;
@@ -238,41 +237,26 @@ found_old_frame:
   Relink(&video_frames, i, video_frames.next);
 }
 
+// Currently not implemented.
 
-/**********************************************************************
- *******   Replacement code for when using FrameCache         *********
- **********************************************************************
+/*
 
-Cache::Cache(PClip _child)
-: GenericVideoFilter(_child), cache(new RangeCache(5)) { }
+CacheClient::CacheClient(PClip _child) 
+: GenericVideoFilter(_child) { clientID = rand();}
 
-PVideoFrame __stdcall Cache::GetFrame(int n, IScriptEnvironment* env) 
-{
-  PVideoFrame result(cache.fetch(n));
-  if (! result) {
-    result = child->GetFrame(n, env);
-    cache.store(result);
-  }
-  return result;
+PVideoFrame __stdcall CacheClient::GetFrame(int n, IScriptEnvironment* env)  {
+  n = min(vi.num_frames-1, max(0,n));  // Inserted to avoid requests beyond framerange.
+  child->SetCacheHints(CACHE_CLIENT_ID,clientID);
+  return child->GetFrame(n,env);
 }
 
-void __stdcall Cache::SetCacheHints(int cachehints,int frame_range)
-{
-  delete cache;
-  switch(cachehints) {
-  case CACHE_RANGE:
-    cache = new RangeCache(frame_range);
-    break;
-  case CACHE_NOTHING:
-    cache = new FrameCache();
-    break;
-  case CACHE_ALL:   //seems I made a typo here
-    //cache = ... unspecified yet... 
-    break;
- // case CACHE_LAST:  add this possibility
-    //cache = new QueueCache(frame_range);
-    //break;
-  }
+void __stdcall CacheClient::SetCacheHints(int cachehints,int frame_range) {   
+  child->SetCacheHints(CACHE_CLIENT_ID,clientID);
+  child->SetCacheHints(cachehints, frame_range);
 }
 
-~Cache(){ delete cache; }   */
+AVSValue __cdecl CacheClient::Create_Cache(AVSValue args, void*, IScriptEnvironment* env) 
+{
+  return new Cache(args[0].AsClip());
+}
+*/

@@ -41,55 +41,9 @@ using namespace std;
 /********************************************************************
 ********************************************************************/
 
-
-//polymorphic frame cache for use by the Cache Filter
-class FrameCache {
-
-public:
-  virtual PVideoFrame __stdcall  fetch(int n) { return PVideoFrame(); }
-  virtual void __stdcall  store(int n, const PVideoFrame& frame) { }
-  virtual ~FrameCache() { }
-
-protected:
-	struct CachedVideoFrame {
-	  int n;
-	  long seq_number;
-	  PVideoFrame frame;
-    CachedVideoFrame() : n(-1) { }
-    CachedVideoFrame(int _n, const PVideoFrame& _frame);
-    void set(int _n, const PVideoFrame& _frame);
-    bool isValid() const ;
-  };
-  typedef vector<CachedVideoFrame> CacheVector;
-
-};  
-
-//frame cache who keeps frames within a fixed range
-//frames out of range are likely to be uncached
-class RangeCache : public FrameCache {
-
-  CacheVector cache;
-
-public:
-  RangeCache(int scale) : cache(scale) { }
-  
-  virtual PVideoFrame __stdcall fetch(int n);
-  virtual void __stdcall store(int n, const PVideoFrame& frame);
-};
-
-//frame cache who keeps the last used frames
-//(fetched frames restart at the beginning of the queue)
-class QueueCache : public FrameCache {
-
-  CacheVector cache;
-
-public:
-  QueueCache(int scale) : cache(scale) { }
-
-  virtual PVideoFrame __stdcall fetch(int n);
-  virtual void __stdcall store(int n, const PVideoFrame& frame);
-};
-
+enum {
+  CACHE_CLIENT_ID=256+1,
+ };
 
 
 class Cache : public GenericVideoFilter 
@@ -117,6 +71,7 @@ private:
     CachedVideoFrame() { next=prev=this; }
   };
   CachedVideoFrame video_frames;
+
 // hint vars:
   CachedVideoFrame** h_video_frames;
   VideoFrameBuffer** h_vfb;
@@ -125,19 +80,31 @@ private:
   int h_total_frames;
   bool use_hints;
   int h_radius;
+  int h_policy;
+  int h_lastID;
   enum {CACHE_ST_USED = 1<<0,
         CACHE_ST_DELETEME = 1<<1,
-        CACHE_ST_BEING_GENERATED = 1<<2
+        CACHE_ST_BEING_GENERATED = 1<<2,
+        CACHE_ST_HAS_BEEN_RELEASED = 1<<3
   };
-
-
-/* Replacement code of the private section when using FrameCache
-  
-  FrameCache* cache;
-
- */
-
 };
 
+//class CacheClient : public GenericVideoFilter 
+/**
+  * Manages a video frame cache
+  * The client 
+ **/
+/*
+{
+public:
+  CacheClient(PClip _child);
+  PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
+  void __stdcall SetCacheHints(int cachehints,int frame_range);
+  static AVSValue __cdecl Create_Cache(AVSValue args, void*, IScriptEnvironment* env);
 
+private:
+  int clientID;
+};
+
+*/
 #endif  // __Cache_H__

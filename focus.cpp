@@ -699,7 +699,7 @@ AVSValue __cdecl Create_Blur(AVSValue args, void*, IScriptEnvironment* env)
  **************************/
 
  /**
- *  YV12 / YUY2 code (c) by Klaus Post // sh0dan 2002
+ *  YV12 / YUY2 code (c) by Klaus Post // sh0dan 2002 - 2003
  *
  * - All frames are loaded (we rely on the cache for this, which is why it has to be rewritten)
  * - Pointer array is given to the mmx function for planes.
@@ -762,6 +762,7 @@ TemporalSoften::TemporalSoften( PClip _child, unsigned radius, unsigned luma_thr
   planes[c]=0;
   accum_line=(int*)_aligned_malloc(((vi.width*vi.BytesFromPixels(1)+FRAME_ALIGN-1)/8)*16,8);
   div_line=(int*)_aligned_malloc(((vi.width*vi.BytesFromPixels(1)+FRAME_ALIGN-1)/8)*16,8);
+  frames = new PVideoFrame[kernel];
 }
 
 
@@ -776,6 +777,7 @@ TemporalSoften::~TemporalSoften(void)
     delete[] planePitch2;
     _aligned_free(accum_line);
     _aligned_free(div_line);
+    delete[] frames;
 }
 
 
@@ -783,45 +785,48 @@ TemporalSoften::~TemporalSoften(void)
 PVideoFrame TemporalSoften::GetFrame(int n, IScriptEnvironment* env) 
 {
   __int64 i64_thresholds = 0x1000010000100001i64;
-  PVideoFrame frame;
+//  PVideoFrame frame;
   int radius = (kernel-1) / 2 ;
   int c=0;
-  PVideoFrame dst;
+  
 
   for (int p=0;p<16;p++)
     planeDisabled[p]=false;
 
-  frame = child->GetFrame(n, env);          // get the new frame
-  env->MakeWritable(&frame);
+  
+  for (p=n-radius;p<=n+radius;p++) {
+    frames[p+radius-n] = child->GetFrame(min(vi.num_frames-1,max(p,0)), env);
+  }
+
+  env->MakeWritable(&frames[radius]);
 
   do {
     int c_thresh = planes[c+1];  // Threshold for current plane.
     int d=0;
-    for (int i = radius;i>=1;i--) { // Fetch all planes sequencially
-      PVideoFrame tframe = child->GetFrame(min(vi.num_frames-1,max(n-i,1)), env);
-      planePitch[d] = tframe->GetPitch(planes[c]);
-      planeP[d++] = tframe->GetReadPtr(planes[c]);
+    for (int i = 0;i< radius; i++) { // Fetch all planes sequencially
+      planePitch[d] = frames[i]->GetPitch(planes[c]);
+      planeP[d++] = frames[i]->GetReadPtr(planes[c]);
     }
 
-    BYTE* c_plane= frame->GetWritePtr(planes[c]);
+    BYTE* c_plane= frames[radius]->GetWritePtr(planes[c]);
+//    BYTE* c_plane= env->NewVideoFrame(vi)->GetWritePtr(planes[c]);
 
     for (i = 1;i<=radius;i++) { // Fetch all planes sequencially
-      PVideoFrame tframe = child->GetFrame(min(vi.num_frames-1,max(n+i,1)), env);
-      planePitch[d] = tframe->GetPitch(planes[c]);
-      planeP[d++] = tframe->GetReadPtr(planes[c]);
+      planePitch[d] = frames[radius+i]->GetPitch(planes[c]);
+      planeP[d++] = frames[radius+i]->GetReadPtr(planes[c]);
     }
     
-    int rowsize=frame->GetRowSize(planes[c]|PLANAR_ALIGNED);
-    int h = frame->GetHeight(planes[c]);
-    int w=frame->GetRowSize(planes[c]); // Non-aligned
-    int pitch = frame->GetPitch(planes[c]);
+    int rowsize=frames[radius]->GetRowSize(planes[c]|PLANAR_ALIGNED);
+    int h = frames[radius]->GetHeight(planes[c]);
+    int w=frames[radius]->GetRowSize(planes[c]); // Non-aligned
+    int pitch = frames[radius]->GetPitch(planes[c]);
 
     if (scenechange>0) {
       int d2=0;
       bool skiprest = false;
       for (int i = radius-1;i>=0;i--) { // Check frames backwards
         if ((!skiprest) && (!planeDisabled[i])) {
-          int scenevalues = isse_scenechange(c_plane, planeP[i], h, frame->GetRowSize(planes[c]), pitch, planePitch[i]);
+          int scenevalues = isse_scenechange(c_plane, planeP[i], h, frames[radius]->GetRowSize(planes[c]), pitch, planePitch[i]);
           if (scenevalues < scenechange) {
             if (scenevalues)  { // If not completely the same
               planePitch2[d2] =  planePitch[i];
@@ -838,7 +843,7 @@ PVideoFrame TemporalSoften::GetFrame(int n, IScriptEnvironment* env)
       skiprest = false;
       for (i = 0;i<radius;i++) { // Check forward frames
         if ((!skiprest)  && (!planeDisabled[i+radius]) ) {   // Disable this frame on next plane (so that Y can affect UV)
-          int scenevalues = isse_scenechange(c_plane, planeP[i+radius], h, frame->GetRowSize(planes[c]), pitch,  planePitch[i+radius]);
+          int scenevalues = isse_scenechange(c_plane, planeP[i+radius], h, frames[radius]->GetRowSize(planes[c]), pitch,  planePitch[i+radius]);
           if (scenevalues < scenechange) {
             if (scenevalues) { // If not completely the same
               planePitch2[d2] =  planePitch[i+radius];
@@ -861,14 +866,9 @@ PVideoFrame TemporalSoften::GetFrame(int n, IScriptEnvironment* env)
       d = d2;
     }
     if (d<=1) 
-      return frame;
-/*
-//isse_average_plane(const BYTE* c_plane, int height, int width, int c_pitch)
-    int detectfade=10;
-    if (detectfade) {
+      return frames[radius];
 
-    }
-  */  
+    
     i64_thresholds = (__int64)c_thresh | (__int64)(c_thresh<<8) | (((__int64)c_thresh)<<16) | (((__int64)c_thresh)<<24);
     if (vi.IsYUY2()) { 
       i64_thresholds = (__int64)luma_threshold | (__int64)(chroma_threshold<<8) | ((__int64)(luma_threshold)<<16) | ((__int64)(chroma_threshold)<<24);
@@ -904,7 +904,8 @@ PVideoFrame TemporalSoften::GetFrame(int n, IScriptEnvironment* env)
     }
     c+=2;
   } while (planes[c]);
-  return frame;
+//  PVideoFrame dst = frames[radius];
+  return frames[radius];
 }
 
 
@@ -1325,52 +1326,6 @@ xloop:
      paddd mm7,mm2
 
     add eax,32
-    jmp xloop
-endframe:
-    paddd mm7,mm6
-    movd returnvalue,mm7
-    emms
-  }
-  return returnvalue;
-}
-
-// Average plane
-
-int TemporalSoften::isse_average_plane(const BYTE* c_plane, int height, int width, int c_pitch) {
-  __declspec(align(8)) static __int64 full = 0xffffffffffffffffi64;
-  int wp=(width/16)*16;
-  int hp=height;
-  int returnvalue=0xbadbad00;
-  __asm {
-    xor ebx,ebx     // Height
-    pxor mm5,mm5  // Maximum difference
-    mov edx, c_pitch    //copy pitch
-    pxor mm5,mm5  // Cleared
-    pxor mm6,mm6   // We maintain two sums, for better pairablility
-    pxor mm7,mm7
-    mov esi, c_plane
-    jmp yloopover
-    align 16
-yloop:
-    inc ebx
-    add esi,edx  // add pitch
-yloopover:
-    cmp ebx,[hp]
-    jge endframe
-    xor eax,eax     // Width
-    align 16
-xloop:
-    cmp eax,[wp]    
-    jge yloop
-
-    movq mm0,[esi+eax]
-    movq mm2,[esi+eax+8]
-    psadbw mm0,mm4    // Sum of absolute difference (= sum of all pixels)
-     psadbw mm2,mm4
-    paddd mm6,mm0     // Add...
-     paddd mm7,mm2
-
-    add eax,16
     jmp xloop
 endframe:
     paddd mm7,mm6

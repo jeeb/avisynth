@@ -269,6 +269,7 @@ class VideoFrameBuffer {
 
   friend class VideoFrame;
   friend class Cache;
+  friend class ScriptEnvironment;
   long refcount;
 
 public:
@@ -353,7 +354,7 @@ public:
   BYTE* GetWritePtr() const {
     if (vfb->GetRefcount()>1) {
       _ASSERT(FALSE);
-//      throw AvisynthError("Error!");
+      //throw AvisynthError("Internal Error - refcount was more than one!");
     }
     return IsWritable() ? (vfb->GetWritePtr() + offset) : 0;
   }
@@ -362,7 +363,7 @@ public:
     if (plane==PLANAR_Y) {
       if (vfb->GetRefcount()>1) {
         _ASSERT(FALSE);
-//        throw AvisynthError("Error!");
+//        throw AvisynthError("Internal Error - refcount was more than one!");
       }
       return IsWritable() ? vfb->GetWritePtr() + GetOffset(plane) : 0;
     }
@@ -463,7 +464,7 @@ public:
   operator void*() const { return p; }
   bool operator!() const { return !p; }
 
-  ~PVideoFrame() { if (p) p->Release(); }
+  ~PVideoFrame() { if (p) p->Release();}
 };
 
 
