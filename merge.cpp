@@ -265,9 +265,9 @@ PVideoFrame __stdcall MergeChroma::GetFrame(int n, IScriptEnvironment* env)
     }
   } else {
     if (vi.IsYUY2()) {
+      env->MakeWritable(&src);
       unsigned int* srcp = (unsigned int*)src->GetWritePtr();
-      env->MakeWritable(&chroma);
-      unsigned int* chromap = (unsigned int*)chroma->GetWritePtr();
+      unsigned int* chromap = (unsigned int*)chroma->GetReadPtr();
       
       const int isrc_pitch = (src->GetPitch())>>2;  // int pitch (one pitch=two pixels)
       const int ichroma_pitch = (chroma->GetPitch())>>2;  // Ints
