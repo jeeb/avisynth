@@ -81,12 +81,20 @@ CreateDirectory  "$SMPROGRAMS\AviSynth 2.5"
   WriteINIStr    "$SMPROGRAMS\AviSynth 2.5\Download Plugins.url" "InternetShortcut" "URL" "http://www.avisynth.org/index.php?page=Section+3%3A+Filters+and+colorspaces#q3.4"
 
 Delete $INSTDIR\Uninstall.exe 
-WriteUninstaller $INSTDIR\Uninstall.exe
-goto dll_ok
+  WriteUninstaller $INSTDIR\Uninstall.exe
+  goto dll_ok
 dll_not_ok:
-MessageBox MB_OK "Could not copy avisynth.dll to system directory - Close down all applications that use Avisynth, and sure to have write permission to the system directory, and try again."
-Abort
+  MessageBox MB_OK "Could not copy avisynth.dll to system directory - Close down all applications that use Avisynth, and sure to have write permission to the system directory, and try again."
+  Abort
 dll_ok:
+
+MessageBox MB_YESNO|MB_ICONQUESTION  "Do you want to install ffvfw light?  ffvfw decodes AviSynth content, and allows AviSynth scripts to be served to applications as AVI files." IDNo NoAbort
+  SetOutPath $TEMP
+	File "ffvfwAVIS.exe"
+	ExecWait "$TEMP\ffvfwAVIS.exe"
+	Delete "$TEMP\ffvfwAVIS.exe"
+NoAbort:
+
 
 SectionEnd
 
@@ -150,7 +158,7 @@ SectionEnd
 !define ass_mediaplayer 5
 
 Function .onInit
-;  MessageBox MB_YESNO|MB_ICONQUESTION   "This will install AviSynth 2.5.0 beta. Do you wish to continue ?" IDYES NoAbort
+;  MessageBox MB_YESNO|MB_ICONQUESTION   "This will install AviSynth 2.5.0 beta. Do you wish to continue ?" IDNo NoAbort
 ;		Abort
 ;	NoAbort:
   SectionGetFlags ${ass_notepad} $6
@@ -211,6 +219,4 @@ dontremoveplug:
   Delete "$INSTDIR\Docs_ger\*.*"
   RMDir  "$INSTDIR\Docs_ger"
   Delete "$INSTDIR\Uninstall.exe"
-
-
 SectionEnd
