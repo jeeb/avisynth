@@ -78,7 +78,16 @@ AVSFunction* builtin_functions[] = {
                    SSRC_filters, SuperEq_filters, Overlay_filters,
                    Soundtouch_filters };
 
-
+// Global statistics counters
+struct {
+  unsigned long CleanUps;
+  unsigned long PlanA1;
+  unsigned long PlanA2;
+  unsigned long PlanB;
+  unsigned long PlanC;
+  unsigned long PlanD;
+  char tag[32];
+} g_Mem_stats = {0, 0, 0, 0, 0, 0, "CleanUps, Plan[A1,A2,B,C,D]"};
 
 const HKEY RegRootKey = HKEY_LOCAL_MACHINE;
 const char RegAvisynthKey[] = "Software\\Avisynth";
@@ -134,24 +143,60 @@ VideoFrame* VideoFrame::Subframe(int rel_offset, int new_pitch, int new_row_size
 }
 
 
-VideoFrameBuffer::VideoFrameBuffer(int size)
- : refcount(0), data(new BYTE[size]), data_size(size), sequence_number(0) { InterlockedIncrement(&sequence_number); }
-
 VideoFrameBuffer::VideoFrameBuffer() : refcount(0), data(0), data_size(0), sequence_number(0) {}
+
+
+#ifdef _DEBUG  // Add 64 guard bytes front and back -- cache can check them after every GetFrame() call
+VideoFrameBuffer::VideoFrameBuffer(int size) : 
+  refcount(0), 
+  data((new BYTE[size+32])+16), 
+  data_size(size), 
+  sequence_number(0) {
+  InterlockedIncrement(&sequence_number); 
+  int *p=(int *)data;
+  p[-4] = 0xDEADBEAF;
+  p[-3] = 0xDEADBEAF;
+  p[-2] = 0xDEADBEAF;
+  p[-1] = 0xDEADBEAF;
+  p=(int *)(data+size);
+  p[0] = 0xDEADBEAF;
+  p[1] = 0xDEADBEAF;
+  p[2] = 0xDEADBEAF;
+  p[3] = 0xDEADBEAF;
+}
 
 VideoFrameBuffer::~VideoFrameBuffer() {
 //  _ASSERTE(refcount == 0);
   InterlockedIncrement(&sequence_number); // HACK : Notify any children with a pointer, this buffer has changed!!!
-  delete[] data;
+  if (data) delete[] (BYTE*)(data-16);
   (BYTE*)data = 0; // and mark it invalid!!
+  (int)data_size = 0;   // and don't forget to set the size to 0 as well!
 }
+
+#else
+
+VideoFrameBuffer::VideoFrameBuffer(int size)
+ : refcount(0), data(new BYTE[size]), data_size(size), sequence_number(0) { InterlockedIncrement(&sequence_number); }
+
+VideoFrameBuffer::~VideoFrameBuffer() {
+//  _ASSERTE(refcount == 0);
+  InterlockedIncrement(&sequence_number); // HACK : Notify any children with a pointer, this buffer has changed!!!
+  if (data) delete[] data;
+  (BYTE*)data = 0; // and mark it invalid!!
+  (int)data_size = 0;   // and don't forget to set the size to 0 as well!
+}
+#endif
 
 
 class LinkedVideoFrameBuffer : public VideoFrameBuffer {
 public:
+  enum {ident = 0x00AA5500};
   LinkedVideoFrameBuffer *prev, *next;
-  LinkedVideoFrameBuffer(int size) : VideoFrameBuffer(size) { next=prev=this; }
-  LinkedVideoFrameBuffer() { next=prev=this; }
+  bool returned;
+  const int signature; // Used by ManageCache to ensure that the VideoFrameBuffer 
+                         // it casts is really a LinkedVideoFrameBuffer
+  LinkedVideoFrameBuffer(int size) : VideoFrameBuffer(size), signature(ident) { next=prev=this; }
+  LinkedVideoFrameBuffer() : signature(ident) { next=prev=this; }
 };
 
 
@@ -661,6 +706,7 @@ public:
   PVideoFrame __stdcall Subframe(PVideoFrame src, int rel_offset, int new_pitch, int new_row_size, int new_height);
   int __stdcall SetMemoryMax(int mem);
   int __stdcall SetWorkingDir(const char * newdir);
+  void* __stdcall ManageCache(int key, void* data);
   __stdcall ~ScriptEnvironment();
 
 private:
@@ -674,7 +720,7 @@ private:
   VarTable global_var_table;
   VarTable* var_table;
 
-  LinkedVideoFrameBuffer video_frame_buffers;
+  LinkedVideoFrameBuffer video_frame_buffers, lost_video_frame_buffers;
   __int64 memory_max, memory_used;
 
   LinkedVideoFrameBuffer* NewFrameBuffer(int size);
@@ -718,6 +764,12 @@ ScriptEnvironment::~ScriptEnvironment() {
     PopContext();
   LinkedVideoFrameBuffer* i = video_frame_buffers.prev;
   while (i != &video_frame_buffers) {
+    LinkedVideoFrameBuffer* prev = i->prev;
+    delete i;
+    i = prev;
+  }
+  i = lost_video_frame_buffers.prev;
+  while (i != &lost_video_frame_buffers) {
     LinkedVideoFrameBuffer* prev = i->prev;
     delete i;
     i = prev;
@@ -911,7 +963,7 @@ PVideoFrame ScriptEnvironment::NewPlanarVideoFrame(int width, int height, int al
 PVideoFrame ScriptEnvironment::NewVideoFrame(int row_size, int height, int align) {
   int pitch = (row_size+align-1) / align * align;
   int size = pitch * height;
-  VideoFrameBuffer* vfb = GetFrameBuffer(size+(align*4));
+  VideoFrameBuffer* vfb = GetFrameBuffer(size+(FRAME_ALIGN*4));
 #ifdef _DEBUG
   {
     static const BYTE filler[] = { 0x0A, 0x11, 0x0C, 0xA7, 0xED };
@@ -1007,77 +1059,128 @@ PVideoFrame __stdcall ScriptEnvironment::Subframe(PVideoFrame src, int rel_offse
   return src->Subframe(rel_offset, new_pitch, new_row_size, new_height);
 }
 
+
+void* ScriptEnvironment::ManageCache(int key, void* data){
+// An extensible interface for providing system or user access to the
+// ScriptEnvironment class without extending the IScriptEnvironment
+// definition.
+
+  switch (key)
+  {
+  // Allow the cache to designate a VideoFrameBuffer as expired thus
+  // allowing it to be reused in favour of any of it's older siblings.
+  case MC_ReturnVideoFrameBuffer:
+  {
+    LinkedVideoFrameBuffer *lvfb = (LinkedVideoFrameBuffer*)data;
+
+	// The Cache volunteers VFB's it no longer tracks for reuse. This closes the loop
+	// for Memory Management. GetFrameBuffer moves new VideoFrameBuffer's to the head
+	// of the list and here we move unloved VideoFrameBuffer's to the end.
+
+	// Check to make sure the vfb wasn't discarded and is really a LinkedVideoFrameBuffer.
+	if ((lvfb->data == 0) || (lvfb->signature != LinkedVideoFrameBuffer::ident)) break;
+
+	// Move unloved VideoFrameBuffer's to the end of the video_frame_buffers LRU list.
+	Relink(video_frame_buffers.prev, (LinkedVideoFrameBuffer*)lvfb, &video_frame_buffers);
+
+	// Flag it as returned, i.e. for immediate reuse.
+	lvfb->returned = true;
+
+	return (void*)1;
+  }
+  default:
+    break;
+  }
+  return 0;
+}
+
+
 LinkedVideoFrameBuffer* ScriptEnvironment::NewFrameBuffer(int size) {
   memory_used += size;
   _RPT1(0, "Frame buffer memory used: %I64d\n", memory_used);
   return new LinkedVideoFrameBuffer(size);
 }
 
+
 LinkedVideoFrameBuffer* ScriptEnvironment::GetFrameBuffer2(int size) {
-  // Plan A: are we below our memory usage?  If so, allocate a new buffer
-  if (memory_used + size < memory_max)
-    return NewFrameBuffer(size);
-/*
- * Temporarily remove Plan B. Because of the way video frame buffers are
- * mismanaged finding one of the correct size most likely ends up smacking
- * a buffer that will be needed soon. Defering to a modified Plan C that
- * stops when memory_used is just below memory_max gives markedly improved
- * performance, but still falls far short of what could be expected from
- * the LRU model we should be using.
- * 
- * Performance with this hack is close to what would be expected from
- * a random candidate selection model. (i.e. pick a buffer at random)
- * 
- * Ian Brabham, 11 July 2004
+  LinkedVideoFrameBuffer *i, *j;
  
- * Exercising Plan C exclusively caused problems with uncontrolled memory
- * usage, probably with heap fragmentation. Restore Plan B until a better
- * overall model can be developed. This should restore the prior level of
- * stability and Plan C can now at least be used when required without the
- * fatality previously experienced.
- *
- * Ian Brabham 24 July 2004
-*/
-  // Plan B: look for an existing buffer of the appropriate size
-
-  for (LinkedVideoFrameBuffer* i = video_frame_buffers.prev; i != &video_frame_buffers; i = i->prev) {
-    if (i->GetRefcount() == 0 && i->GetDataSize() == size)
-      return i;
-  }
-
-  // Plan C:
-  // Before we allocate a new frame, check our memory usage, and perhaps delete some unreferenced frames.
-
-  if (memory_used >  memory_max + (memory_max >> 3) ) {  // Are we more than 12.5% above allowed usage?
+  // Before we allocate a new framebuffer, check our memory usage, and if we
+  // are more than 12.5% above allowed usage discard some unreferenced frames.
+  if (memory_used >  memory_max + (memory_max >> 3) ) {
+	++g_Mem_stats.CleanUps;
     int freed = 0;
     int freed_count = 0;
     // Deallocate enough unused frames.
-    for (LinkedVideoFrameBuffer* i = video_frame_buffers.prev; i != &video_frame_buffers; i = i->prev) {
+    for (i = video_frame_buffers.prev; i != &video_frame_buffers; i = i->prev) {
       if (i->GetRefcount() == 0) {
         if (i->next != i->prev) {
-          // Relink
+          // Unlink this one
           i->prev->next = i->next;
           i->next->prev = i->prev;
           // Store size.
           freed += i->data_size;
           freed_count++;
           // Delete data;
-          i->~LinkedVideoFrameBuffer();
-	  if ((memory_used - freed) < memory_max)
-	    break; // Stop, we are below 100% utilization
+          i->~LinkedVideoFrameBuffer();  // Can't delete me because caches have pointers to me
+          // Link onto tail of lost_video_frame_buffers chain.
+          j = i;
+		  i = i -> next; // step back one
+          Relink(lost_video_frame_buffers.prev, j, &lost_video_frame_buffers);
+          if ((memory_used+size - freed) < memory_max)
+            break; // Stop, we are below 100% utilization
         }
+		else break;
       }
     }
     _RPT2(0,"Freed %d frames, consisting of %d bytes.\n",freed_count, freed);
     memory_used -= freed;
+  } 
+
+  // Plan A: When we are below our memory usage :-
+  if (memory_used + size < memory_max) {
+    //   Part 1: look for a returned free buffer of the same size and reuse it
+    for (i = video_frame_buffers.prev; i != &video_frame_buffers; i = i->prev) {
+      if (i->returned && (i->GetRefcount() == 0) && (i->GetDataSize() == size)) {
+		++g_Mem_stats.PlanA1;
+        return i;
+	  }
+    }
+    //   Part 2: else just allocate a new buffer
+	++g_Mem_stats.PlanA2;
+    return NewFrameBuffer(size);
   }
-  // Plan D: allocate a new buffer, regardless of current memory usage
+  
+  // Plan B: Steal the oldest existing free buffer of the same size
+  j = 0;
+  for (i = video_frame_buffers.prev; i != &video_frame_buffers; i = i->prev) {
+    if (i->GetRefcount() == 0) {
+	  if (i->GetDataSize() == size) {
+		++g_Mem_stats.PlanB;
+		return i;
+	  }
+	  if (i->GetDataSize() > size) {
+		if ((j == 0) || (i->GetDataSize() < j->GetDataSize())) j = i;
+	  }
+	}
+  }
+
+  // Plan C: Steal the oldest, smallest free buffer that is greater in size
+  if (j) {
+	++g_Mem_stats.PlanC;
+	return j;
+  }
+
+  // Plan D: Allocate a new buffer, regardless of current memory usage
+  ++g_Mem_stats.PlanD;
   return NewFrameBuffer(size);
 }
 
 VideoFrameBuffer* ScriptEnvironment::GetFrameBuffer(int size) {
   LinkedVideoFrameBuffer* result = GetFrameBuffer2(size);
+  // Link onto head of video_frame_buffers chain.
   Relink(&video_frame_buffers, result, video_frame_buffers.next);
+  result->returned = false;
   return result;
 }
 
@@ -1213,6 +1316,12 @@ void BitBlt(BYTE* dstp, int dst_pitch, const BYTE* srcp, int src_pitch, int row_
 
 
 void asm_BitBlt_ISSE(BYTE* dstp, int dst_pitch, const BYTE* srcp, int src_pitch, int row_size, int height) {
+
+  // Warning! : If you modify this routine, check the generated assembler to make sure
+  //            the stupid compiler is saving the ebx register in the entry prologue.
+  //            And don't just add an extra push/pop ebx pair around the code, try to
+  //            convince the compiler to do the right thing, it's not hard, usually a
+  //            slight shuffle or a well placed "__asm mov ebx,ebx" does the trick.
 
   if(row_size==0 || height==0) return; //abort on goofs
   //move backwards for easier looping and to disable hardware prefetch

@@ -482,8 +482,12 @@ bool CAVIFileSynth::DelayInit() {
         if (!env) return false;
         AVSValue return_val = env->Invoke("Import", szScriptName);
         // store the script's return value (a video clip)
-        if (return_val.IsClip())
+        if (return_val.IsClip()) {
+
+          return_val.AsClip()->SetCacheHints(CACHE_ALL, 999); // Give the top level cache a big head start!!
+
           filter_graph = ConvertAudio::Create(return_val.AsClip(), SAMPLE_INT8|SAMPLE_INT16|SAMPLE_INT24|SAMPLE_INT32, SAMPLE_INT16);  // Ensure samples are int     [filter_graph = return_val.AsClip();]
+		}
         else
           throw AvisynthError("The script's return value was not a video clip");
         if (!filter_graph)

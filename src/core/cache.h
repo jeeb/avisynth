@@ -60,8 +60,19 @@ public:
   void __stdcall GetAudio(void* buf, __int64 start, __int64 count, IScriptEnvironment* env);
 
 private:
-  void RegisterVideoFrame(const PVideoFrame& frame, int n, IScriptEnvironment*);
-  void Cache::FillZeros(void* buf, int start_offset, int count);
+  struct CachedVideoFrame;
+  void RegisterVideoFrame(CachedVideoFrame *i, const PVideoFrame& frame, int n, IScriptEnvironment* env);
+  void FillZeros(void* buf, int start_offset, int count);
+  void ReleaseHintCache();
+  void ResetCache(IScriptEnvironment* env);
+  void ReturnVideoFrameBuffer(CachedVideoFrame *i, IScriptEnvironment* env);
+  CachedVideoFrame* GetACachedVideoFrame(const PVideoFrame& frame);
+  VideoFrame* BuildVideoFrame(CachedVideoFrame *i, int n);
+  void LockVFB(CachedVideoFrame *i);
+  void UnlockVFB(CachedVideoFrame *i);
+#ifdef _DEBUG
+  PVideoFrame __stdcall childGetFrame(int n, IScriptEnvironment* env);
+#endif
 
   struct CachedVideoFrame 
   {
@@ -70,17 +81,23 @@ private:
     int sequence_number;
     int offset, pitch, row_size, height, offsetU, offsetV, pitchUV;
     int frame_number;
-    CachedVideoFrame() { next=prev=this; }
+	int faults;  // the number of times this frame was requested and found to be stale(modified)
+	bool vfb_locked;
+    int status;
+
+    CachedVideoFrame() { 
+		next=prev=this; 
+		vfb=0; 
+		frame_number=-1; 
+		vfb_locked=false;
+		status=0;
+	}
   };
   CachedVideoFrame video_frames;
 
 // hint vars:
   CachedVideoFrame** h_video_frames;
-  VideoFrameBuffer** h_vfb;
-  int* h_frame_nums;
-  int* h_status;
   int h_total_frames;
-  bool use_hints;
   int h_radius;
   int h_policy;
   int h_lastID;
@@ -99,11 +116,19 @@ private:
   int ac_currentscore;
   int ac_too_small_count;
 
+  // Cached range limits
+  int minframe, maxframe;
+  int cache_init;   // The Initial cache size
+  int cache_limit;  // 16 time the current maximum number of CachedVideoFrame entries
+  int fault_rate;   // A decaying average of 100 times the peak fault count, used to control vfb auto-locking
+  int miss_count;   // Count of consecutive cache misses
+  
   enum {CACHE_ST_USED = 1<<0,
         CACHE_ST_DELETEME = 1<<1,
         CACHE_ST_BEING_GENERATED = 1<<2,
         CACHE_ST_HAS_BEEN_RELEASED = 1<<3
   };
+
 };
 
 #endif  // __Cache_H__

@@ -40,6 +40,12 @@
 #define AVS_VERSTR "AviSynth 2.56, build:"__DATE__" ["__TIME__"]"
 
 
+// env->ManageCache() Non user keys definition
+// Define user accessible keys in avisynth.h
+//
+#define MC_ReturnVideoFrameBuffer 0xFFFF0001
+
+
 #include "core/avisynth.h"
 
 
