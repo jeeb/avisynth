@@ -51,6 +51,7 @@ AVSFunction Audio_filters[] = {
   { "ResampleAudio", "ci", ResampleAudio::Create },
   { "ConvertAudioTo16bit", "c", ConvertAudio::Create_16bit },
   { "ConvertAudioTo8bit", "c", ConvertAudio::Create_8bit },
+  { "ConvertAudioTo24bit", "c", ConvertAudio::Create_24bit },
   { "ConvertAudioTo32bit", "c", ConvertAudio::Create_32bit },
   { "ConvertAudioToFloat", "c", ConvertAudio::Create_float },
   { "ConvertToMono", "c", ConvertToMono::Create },
@@ -93,6 +94,10 @@ AVSValue __cdecl ConvertAudio::Create_float(AVSValue args, void*, IScriptEnviron
   return Create(args[0].AsClip(),SAMPLE_FLOAT,SAMPLE_FLOAT);
 }
 
+AVSValue __cdecl ConvertAudio::Create_24bit(AVSValue args, void*, IScriptEnvironment*) 
+{
+  return Create(args[0].AsClip(),SAMPLE_INT24,SAMPLE_INT24);
+}
 
 
 /*******************************************
@@ -164,6 +169,14 @@ void ConvertAudio::convertToFloat(char* inbuf, float* outbuf, char sample_type, 
         outbuf[i]=samples[i];
       break;     
     }
+    case SAMPLE_INT24: {
+      unsigned char* samples = (unsigned char*)inbuf;
+      for (i=0;i<count;i++) {
+        signed int tval = (samples[i*3]<<8) | (samples[i*3+1] << 16) | (samples[i*3+2] << 24); 
+        outbuf[i] = (float)(tval / 256) / (float)(1<<23);
+      }
+      break;
+    }
     default: { 
       for (i=0;i<count;i++) 
         outbuf[i]=0.0f;
@@ -194,6 +207,16 @@ void ConvertAudio::convertFromFloat(float* inbuf,void* outbuf, char sample_type,
         samples[i]= Saturate_int32(inbuf[i] * (float)(MAX_INT));
       break;     
     }
+    case SAMPLE_INT24: {
+      unsigned char* samples = (unsigned char*)outbuf;
+      for (i=0;i<count;i++) {
+        signed int tval = Saturate_int24(inbuf[i] * (float)(1<<23));
+        samples[i*3] = tval & 0xff;
+        samples[i*3+1] = (tval & 0xff00)>>8;
+        samples[i*3+2] = (tval & 0xff0000)>>16;
+      }
+      break;
+    }
     case SAMPLE_FLOAT: {
       SFLOAT* samples = (SFLOAT*)outbuf;
       for (i=0;i<count;i++) 
@@ -204,6 +227,7 @@ void ConvertAudio::convertFromFloat(float* inbuf,void* outbuf, char sample_type,
     }
   }
 }
+
 __inline int ConvertAudio::Saturate_int8(float n) {
     if (n <= -128.0f) return -128;
     if (n >= 127.0f) return 127;
@@ -219,8 +243,8 @@ __inline short ConvertAudio::Saturate_int16(float n) {
 
 __inline int ConvertAudio::Saturate_int24(float n) {
     if (n <= (float)-(1<<23)) return -(1<<23);
-    if (n >= (float)(1<<23)) return (1<<23);
-    return (short)(n+0.5f);
+    if (n >= (float)((1<<23)-1)) return ((1<<23)-1);
+    return (int)(n+0.5f);
 }
 
 __inline int ConvertAudio::Saturate_int32(float n) {
