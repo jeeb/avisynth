@@ -56,9 +56,9 @@ void OL_SoftLightImage::BlendImageMask(Image444* base, Image444* overlay, Image4
   if (opacity == 256) {
     for (int y = 0; y < h; y++) {
       for (int x = 0; x < w; x++) {
-        int Y = (int)baseY[x] + (int)ovY[x] - 127;
-        int U = baseU[x] + ovU[x] - 127;
-        int V = baseV[x] + ovV[x] - 127;
+        int Y = (int)baseY[x] + (int)ovY[x] - 128;
+        int U = baseU[x] + ovU[x] - 128;
+        int V = baseV[x] + ovV[x] - 128;
         int mY = maskY[x];
         int mU = maskU[x];
         int mV = maskV[x];
@@ -67,13 +67,13 @@ void OL_SoftLightImage::BlendImageMask(Image444* base, Image444* overlay, Image4
         V = ((V*mV) + ((256-mV)*baseV[x]))>>8;
         if (Y>255) {  // Apply overbrightness to UV
           int multiplier = max(0,288-Y);  // 0 to 32
-          U = ((U*multiplier) + (127*(32-multiplier)))>>5;
-          V = ((V*multiplier) + (127*(32-multiplier)))>>5;
+          U = ((U*multiplier) + (128*(32-multiplier)))>>5;
+          V = ((V*multiplier) + (128*(32-multiplier)))>>5;
           Y = 255;
         } else if (Y<0) {  // Apply superdark to UV
           int multiplier = min(-Y,32);  // 0 to 32
-          U = ((U*(32-multiplier)) + (127*(multiplier)))>>5;
-          V = ((V*(32-multiplier)) + (127*(multiplier)))>>5;
+          U = ((U*(32-multiplier)) + (128*(multiplier)))>>5;
+          V = ((V*(32-multiplier)) + (128*(multiplier)))>>5;
           Y = 0;
         }
     
@@ -96,9 +96,9 @@ void OL_SoftLightImage::BlendImageMask(Image444* base, Image444* overlay, Image4
   } else {
     for (int y = 0; y < h; y++) {
       for (int x = 0; x < w; x++) {
-        int Y = (int)baseY[x] + (int)ovY[x] - 127;
-        int U = baseU[x] + ovU[x] - 127;
-        int V = baseV[x] + ovV[x] - 127;
+        int Y = (int)baseY[x] + (int)ovY[x] - 128;
+        int U = baseU[x] + ovU[x] - 128;
+        int V = baseV[x] + ovV[x] - 128;
         int mY = (maskY[x]*opacity)>>8;
         int mU = (maskU[x]*opacity)>>8;
         int mV = (maskV[x]*opacity)>>8;
@@ -107,13 +107,13 @@ void OL_SoftLightImage::BlendImageMask(Image444* base, Image444* overlay, Image4
         V = ((V*mV) + ((256-mV)*baseV[x]))>>8;
         if (Y>255) {  // Apply overbrightness to UV
           int multiplier = max(0,288-Y);  // 0 to 32
-          U = ((U*multiplier) + (127*(32-multiplier)))>>5;
-          V = ((V*multiplier) + (127*(32-multiplier)))>>5;
+          U = ((U*multiplier) + (128*(32-multiplier)))>>5;
+          V = ((V*multiplier) + (128*(32-multiplier)))>>5;
           Y = 255;
         } else if (Y<0) {  // Apply superdark to UV
           int multiplier = min(-Y,32);  // 0 to 32
-          U = ((U*(32-multiplier)) + (127*(multiplier)))>>5;
-          V = ((V*(32-multiplier)) + (127*(multiplier)))>>5;
+          U = ((U*(32-multiplier)) + (128*(multiplier)))>>5;
+          V = ((V*(32-multiplier)) + (128*(multiplier)))>>5;
           Y = 0;
         }    
         baseY[x] = (BYTE)Y;
@@ -150,18 +150,18 @@ void OL_SoftLightImage::BlendImage(Image444* base, Image444* overlay) {
   if (opacity == 256) {
     for (int y = 0; y < h; y++) {
       for (int x = 0; x < w; x++) {       
-        int Y = (int)baseY[x] + (int)ovY[x] - 127;
-        int U = baseU[x] + ovU[x] - 127;
-        int V = baseV[x] + ovV[x] - 127;
+        int Y = (int)baseY[x] + (int)ovY[x] - 128;
+        int U = baseU[x] + ovU[x] - 128;
+        int V = baseV[x] + ovV[x] - 128;
         if (Y>255) {  // Apply overbrightness to UV
           int multiplier = max(0,288-Y);  // 0 to 32
-          U = ((U*multiplier) + (127*(32-multiplier)))>>5;
-          V = ((V*multiplier) + (127*(32-multiplier)))>>5;
+          U = ((U*multiplier) + (128*(32-multiplier)))>>5;
+          V = ((V*multiplier) + (128*(32-multiplier)))>>5;
           Y = 255;
         } else if (Y<0) {  // Apply superdark to UV
           int multiplier = min(-Y,32);  // 0 to 32
-          U = ((U*(32-multiplier)) + (127*(multiplier)))>>5;
-          V = ((V*(32-multiplier)) + (127*(multiplier)))>>5;
+          U = ((U*(32-multiplier)) + (128*(multiplier)))>>5;
+          V = ((V*(32-multiplier)) + (128*(multiplier)))>>5;
           Y = 0;
         }
         baseY[x] = (BYTE)Y;
@@ -179,21 +179,21 @@ void OL_SoftLightImage::BlendImage(Image444* base, Image444* overlay) {
   } else {
     for (int y = 0; y < h; y++) {
      for (int x = 0; x < w; x++) {
-        int Y = (int)baseY[x] + (int)ovY[x] - 127;
-        int U = baseU[x] + ovU[x] - 127;
-        int V = baseV[x] + ovV[x] - 127;
+        int Y = (int)baseY[x] + (int)ovY[x] - 128;
+        int U = baseU[x] + ovU[x] - 128;
+        int V = baseV[x] + ovV[x] - 128;
         Y = ((Y*opacity) + (inv_opacity*baseY[x]))>>8;
         U = ((U*opacity) + (inv_opacity*baseU[x]))>>8;
         V = ((V*opacity) + (inv_opacity*baseV[x]))>>8;
         if (Y>255) {  // Apply overbrightness to UV
           int multiplier = max(0,288-Y);  // 0 to 32
-          U = ((U*multiplier) + (127*(32-multiplier)))>>5;
-          V = ((V*multiplier) + (127*(32-multiplier)))>>5;
+          U = ((U*multiplier) + (128*(32-multiplier)))>>5;
+          V = ((V*multiplier) + (128*(32-multiplier)))>>5;
           Y = 255;
         } else if (Y<0) {  // Apply superdark to UV
           int multiplier = min(-Y,32);  // 0 to 32
-          U = ((U*(32-multiplier)) + (127*(multiplier)))>>5;
-          V = ((V*(32-multiplier)) + (127*(multiplier)))>>5;
+          U = ((U*(32-multiplier)) + (128*(multiplier)))>>5;
+          V = ((V*(32-multiplier)) + (128*(multiplier)))>>5;
           Y = 0;
         }
         baseY[x] = (BYTE)Y;
@@ -234,8 +234,8 @@ void OL_HardLightImage::BlendImageMask(Image444* base, Image444* overlay, Image4
     for (int y = 0; y < h; y++) {
       for (int x = 0; x < w; x++) {
         int Y = (int)baseY[x] + ((int)ovY[x])*2 - 256;
-        int U = baseU[x] + ovU[x] - 127;
-        int V = baseV[x] + ovV[x] - 127;
+        int U = baseU[x] + ovU[x] - 128;
+        int V = baseV[x] + ovV[x] - 128;
         int mY = maskY[x];
         int mU = maskU[x];
         int mV = maskV[x];
@@ -244,13 +244,13 @@ void OL_HardLightImage::BlendImageMask(Image444* base, Image444* overlay, Image4
         V = ((V*mV) + ((256-mV)*baseV[x]))>>8;
         if (Y>255) {  // Apply overbrightness to UV
           int multiplier = max(0,288-Y);  // 0 to 32
-          U = ((U*multiplier) + (127*(32-multiplier)))>>5;
-          V = ((V*multiplier) + (127*(32-multiplier)))>>5;
+          U = ((U*multiplier) + (128*(32-multiplier)))>>5;
+          V = ((V*multiplier) + (128*(32-multiplier)))>>5;
           Y = 255;
         } else if (Y<0) {  // Apply superdark to UV
           int multiplier = min(-Y,32);  // 0 to 32
-          U = ((U*(32-multiplier)) + (127*(multiplier)))>>5;
-          V = ((V*(32-multiplier)) + (127*(multiplier)))>>5;
+          U = ((U*(32-multiplier)) + (128*(multiplier)))>>5;
+          V = ((V*(32-multiplier)) + (128*(multiplier)))>>5;
           Y = 0;
         }
     
@@ -274,8 +274,8 @@ void OL_HardLightImage::BlendImageMask(Image444* base, Image444* overlay, Image4
     for (int y = 0; y < h; y++) {
       for (int x = 0; x < w; x++) {
         int Y = (int)baseY[x] + ((int)ovY[x])*2 - 256;
-        int U = baseU[x] + ovU[x] - 127;
-        int V = baseV[x] + ovV[x] - 127;
+        int U = baseU[x] + ovU[x] - 128;
+        int V = baseV[x] + ovV[x] - 128;
         int mY = (maskY[x]*opacity)>>8;
         int mU = (maskU[x]*opacity)>>8;
         int mV = (maskV[x]*opacity)>>8;
@@ -284,13 +284,13 @@ void OL_HardLightImage::BlendImageMask(Image444* base, Image444* overlay, Image4
         V = ((V*mV) + ((256-mV)*baseV[x]))>>8;
         if (Y>255) {  // Apply overbrightness to UV
           int multiplier = max(0,288-Y);  // 0 to 32
-          U = ((U*multiplier) + (127*(32-multiplier)))>>5;
-          V = ((V*multiplier) + (127*(32-multiplier)))>>5;
+          U = ((U*multiplier) + (128*(32-multiplier)))>>5;
+          V = ((V*multiplier) + (128*(32-multiplier)))>>5;
           Y = 255;
         } else if (Y<0) {  // Apply superdark to UV
           int multiplier = min(-Y,32);  // 0 to 32
-          U = ((U*(32-multiplier)) + (127*(multiplier)))>>5;
-          V = ((V*(32-multiplier)) + (127*(multiplier)))>>5;
+          U = ((U*(32-multiplier)) + (128*(multiplier)))>>5;
+          V = ((V*(32-multiplier)) + (128*(multiplier)))>>5;
           Y = 0;
         }    
         baseY[x] = (BYTE)Y;
@@ -327,18 +327,18 @@ void OL_HardLightImage::BlendImage(Image444* base, Image444* overlay) {
   if (opacity == 256) {
     for (int y = 0; y < h; y++) {
       for (int x = 0; x < w; x++) {       
-        int Y = (int)baseY[x] + ((int)ovY[x])*2 - 255;
-        int U = baseU[x] + ovU[x] - 127;
-        int V = baseV[x] + ovV[x] - 127;
+        int Y = (int)baseY[x] + ((int)ovY[x])*2 - 256;
+        int U = baseU[x] + ovU[x] - 128;
+        int V = baseV[x] + ovV[x] - 128;
         if (Y>255) {  // Apply overbrightness to UV
           int multiplier = max(0,288-Y);  // 0 to 32
-          U = ((U*multiplier) + (127*(32-multiplier)))>>5;
-          V = ((V*multiplier) + (127*(32-multiplier)))>>5;
+          U = ((U*multiplier) + (128*(32-multiplier)))>>5;
+          V = ((V*multiplier) + (128*(32-multiplier)))>>5;
           Y = 255;
         } else if (Y<0) {  // Apply superdark to UV
           int multiplier = min(-Y,32);  // 0 to 32
-          U = ((U*(32-multiplier)) + (127*(multiplier)))>>5;
-          V = ((V*(32-multiplier)) + (127*(multiplier)))>>5;
+          U = ((U*(32-multiplier)) + (128*(multiplier)))>>5;
+          V = ((V*(32-multiplier)) + (128*(multiplier)))>>5;
           Y = 0;
         }
         baseY[x] = (BYTE)Y;
@@ -356,21 +356,21 @@ void OL_HardLightImage::BlendImage(Image444* base, Image444* overlay) {
   } else {
     for (int y = 0; y < h; y++) {
      for (int x = 0; x < w; x++) {
-        int Y = (int)baseY[x] + ((int)ovY[x])*2 - 255;
-        int U = baseU[x] + ovU[x] - 127;
-        int V = baseV[x] + ovV[x] - 127;
+        int Y = (int)baseY[x] + ((int)ovY[x])*2 - 256;
+        int U = baseU[x] + ovU[x] - 128;
+        int V = baseV[x] + ovV[x] - 128;
         Y = ((Y*opacity) + (inv_opacity*baseY[x]))>>8;
         U = ((U*opacity) + (inv_opacity*baseU[x]))>>8;
         V = ((V*opacity) + (inv_opacity*baseV[x]))>>8;
         if (Y>255) {  // Apply overbrightness to UV
           int multiplier = max(0,288-Y);  // 0 to 32
-          U = ((U*multiplier) + (127*(32-multiplier)))>>5;
-          V = ((V*multiplier) + (127*(32-multiplier)))>>5;
+          U = ((U*multiplier) + (128*(32-multiplier)))>>5;
+          V = ((V*multiplier) + (128*(32-multiplier)))>>5;
           Y = 255;
         } else if (Y<0) {  // Apply superdark to UV
           int multiplier = min(-Y,32);  // 0 to 32
-          U = ((U*(32-multiplier)) + (127*(multiplier)))>>5;
-          V = ((V*(32-multiplier)) + (127*(multiplier)))>>5;
+          U = ((U*(32-multiplier)) + (128*(multiplier)))>>5;
+          V = ((V*(32-multiplier)) + (128*(multiplier)))>>5;
           Y = 0;
         }
         baseY[x] = (BYTE)Y;

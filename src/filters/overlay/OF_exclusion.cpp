@@ -67,13 +67,13 @@ void OL_ExclusionImage::BlendImageMask(Image444* base, Image444* overlay, Image4
         V = ((V*mV) + ((256-mV)*baseV[x]))>>8;
         if (Y>255) {  // Apply overbrightness to UV
           int multiplier = max(0,288-Y);  // 0 to 32
-          U = ((U*multiplier) + (127*(32-multiplier)))>>5;
-          V = ((V*multiplier) + (127*(32-multiplier)))>>5;
+          U = ((U*multiplier) + (128*(32-multiplier)))>>5;
+          V = ((V*multiplier) + (128*(32-multiplier)))>>5;
           Y = 255;
         } else if (Y<0) {  // Apply superdark to UV
           int multiplier = min(-Y,32);  // 0 to 32
-          U = ((U*(32-multiplier)) + (127*(multiplier)))>>5;
-          V = ((V*(32-multiplier)) + (127*(multiplier)))>>5;
+          U = ((U*(32-multiplier)) + (128*(multiplier)))>>5;
+          V = ((V*(32-multiplier)) + (128*(multiplier)))>>5;
           Y = 0;
         }    
         baseY[x] = (BYTE)Y;
@@ -106,13 +106,13 @@ void OL_ExclusionImage::BlendImageMask(Image444* base, Image444* overlay, Image4
         V = ((V*mV) + ((256-mV)*baseV[x]))>>8;
         if (Y>255) {  // Apply overbrightness to UV
           int multiplier = max(0,288-Y);  // 0 to 32
-          U = ((U*multiplier) + (127*(32-multiplier)))>>5;
-          V = ((V*multiplier) + (127*(32-multiplier)))>>5;
+          U = ((U*multiplier) + (128*(32-multiplier)))>>5;
+          V = ((V*multiplier) + (128*(32-multiplier)))>>5;
           Y = 255;
         } else if (Y<0) {  // Apply superdark to UV
           int multiplier = min(-Y,32);  // 0 to 32
-          U = ((U*(32-multiplier)) + (127*(multiplier)))>>5;
-          V = ((V*(32-multiplier)) + (127*(multiplier)))>>5;
+          U = ((U*(32-multiplier)) + (128*(multiplier)))>>5;
+          V = ((V*(32-multiplier)) + (128*(multiplier)))>>5;
           Y = 0;
         }    
         baseY[x] = (BYTE)Y;
@@ -154,13 +154,13 @@ void OL_ExclusionImage::BlendImage(Image444* base, Image444* overlay) {
         int V = ((int)(baseV[x]^0xff)*ovY[x] + (int)(ovY[x]^0xff)*baseV[x])>>8;
         if (Y>255) {  // Apply overbrightness to UV
           int multiplier = max(0,288-Y);  // 0 to 32
-          U = ((U*multiplier) + (127*(32-multiplier)))>>5;
-          V = ((V*multiplier) + (127*(32-multiplier)))>>5;
+          U = ((U*multiplier) + (128*(32-multiplier)))>>5;
+          V = ((V*multiplier) + (128*(32-multiplier)))>>5;
           Y = 255;
         } else if (Y<0) {  // Apply superdark to UV
           int multiplier = min(-Y,32);  // 0 to 32
-          U = ((U*(32-multiplier)) + (127*(multiplier)))>>5;
-          V = ((V*(32-multiplier)) + (127*(multiplier)))>>5;
+          U = ((U*(32-multiplier)) + (128*(multiplier)))>>5;
+          V = ((V*(32-multiplier)) + (128*(multiplier)))>>5;
           Y = 0;
         }
         baseY[x] = (BYTE)Y;
@@ -186,13 +186,13 @@ void OL_ExclusionImage::BlendImage(Image444* base, Image444* overlay) {
         V = ((V*opacity) + (inv_opacity*baseV[x]))>>8;
         if (Y>255) {  // Apply overbrightness to UV
           int multiplier = max(0,288-Y);  // 0 to 32
-          U = ((U*multiplier) + (127*(32-multiplier)))>>5;
-          V = ((V*multiplier) + (127*(32-multiplier)))>>5;
+          U = ((U*multiplier) + (128*(32-multiplier)))>>5;
+          V = ((V*multiplier) + (128*(32-multiplier)))>>5;
           Y = 255;
         } else if (Y<0) {  // Apply superdark to UV
           int multiplier = min(-Y,32);  // 0 to 32
-          U = ((U*(32-multiplier)) + (127*(multiplier)))>>5;
-          V = ((V*(32-multiplier)) + (127*(multiplier)))>>5;
+          U = ((U*(32-multiplier)) + (128*(multiplier)))>>5;
+          V = ((V*(32-multiplier)) + (128*(multiplier)))>>5;
           Y = 0;
         }
         baseY[x] = (BYTE)Y;

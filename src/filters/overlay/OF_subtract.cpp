@@ -55,13 +55,13 @@ void OL_SubtractImage::BlendImageMask(Image444* base, Image444* overlay, Image44
     for (int y = 0; y < h; y++) {
       for (int x = 0; x < w; x++) {
         int Y = baseY[x] - ((ovY[x]*maskY[x])>>8);
-        int U = baseU[x] + (((127*(256-maskU[x]))+(maskU[x]*(ovU[x])))>>8) - 127;
-        int V = baseV[x] + (((127*(256-maskV[x]))+(maskU[x]*(ovV[x])))>>8) - 127;
+        int U = baseU[x] - (((128*(256-maskU[x]))+(maskU[x]*(ovU[x])))>>8) + 128;
+        int V = baseV[x] - (((128*(256-maskV[x]))+(maskU[x]*(ovV[x])))>>8) + 128;
 
         if (Y<0) {  // Apply overbrightness to UV
           int multiplier = min(-Y,32);  // 0 to 32
-          U = ((U*(32-multiplier)) + (127*(multiplier)))>>5;
-          V = ((V*(32-multiplier)) + (127*(multiplier)))>>5;
+          U = ((U*(32-multiplier)) + (128*(multiplier)))>>5;
+          V = ((V*(32-multiplier)) + (128*(multiplier)))>>5;
           Y = 0;
         }
         baseU[x] = (BYTE)U;
@@ -87,13 +87,13 @@ void OL_SubtractImage::BlendImageMask(Image444* base, Image444* overlay, Image44
         int Y = baseY[x] - (((maskY[x]*opacity*ovY[x])>>16));
         int mU = (maskU[x] * opacity)>>8;
         int mV = (maskV[x] * opacity)>>8;
-        int U = baseU[x] + (((127*(256-mU))+(mU*(ovU[x])))>>8) - 127;
-        int V = baseV[x] + (((127*(256-mV))+(mV*(ovV[x])))>>8) - 127;
+        int U = baseU[x] - (((128*(256-mU))+(mU*(ovU[x])))>>8) + 128;
+        int V = baseV[x] - (((128*(256-mV))+(mV*(ovV[x])))>>8) + 128;
 
         if (Y<0) {  // Apply overbrightness to UV
           int multiplier = min(-Y,32);  // 0 to 32
-          U = ((U*(32-multiplier)) + (127*(multiplier)))>>5;
-          V = ((V*(32-multiplier)) + (127*(multiplier)))>>5;
+          U = ((U*(32-multiplier)) + (128*(multiplier)))>>5;
+          V = ((V*(32-multiplier)) + (128*(multiplier)))>>5;
           Y = 0;
         }
         baseU[x] = (BYTE)U;
@@ -132,12 +132,12 @@ void OL_SubtractImage::BlendImage(Image444* base, Image444* overlay) {
     for (int y = 0; y < h; y++) {
       for (int x = 0; x < w; x++) {
         int Y = baseY[x] - ovY[x];
-        int U = baseU[x] + ((opacity * ovU[x])>>8) - 127;
-        int V = baseV[x] + ((opacity * ovV[x])>>8) - 127;
+        int U = baseU[x] - ovU[x] + 128;
+        int V = baseV[x] - ovV[x] + 128;
         if (Y<0) {  // Apply underbrightness to UV
           int multiplier = min(-Y,32);  // 0 to 32
-          U = ((U*(32-multiplier)) + (127*(multiplier)))>>5;
-          V = ((V*(32-multiplier)) + (127*(multiplier)))>>5;
+          U = ((U*(32-multiplier)) + (128*(multiplier)))>>5;
+          V = ((V*(32-multiplier)) + (128*(multiplier)))>>5;
           Y = 0;
         }
         baseU[x] = U;
@@ -157,13 +157,13 @@ void OL_SubtractImage::BlendImage(Image444* base, Image444* overlay) {
     for (int y = 0; y < h; y++) {
       for (int x = 0; x < w; x++) {
         int Y = baseY[x] - ((opacity*ovY[x])>>8);
-        int U = baseU[x] + (((127*inv_opacity)+(opacity*(ovU[x])))>>8) - 127;
-        int V = baseV[x] + (((127*inv_opacity)+(opacity*(ovV[x])))>>8) - 127;
+        int U = baseU[x] - (((128*inv_opacity) - (opacity*(ovU[x])))>>8) + 128;
+        int V = baseV[x] - (((128*inv_opacity) - (opacity*(ovV[x])))>>8) + 128;
 
         if (Y<0) {  // Apply underbrightness to UV
           int multiplier = min(-Y,32);  // 0 to 32
-          U = ((U*(32-multiplier)) + (127*(multiplier)))>>5;
-          V = ((V*(32-multiplier)) + (127*(multiplier)))>>5;
+          U = ((U*(32-multiplier)) + (128*(multiplier)))>>5;
+          V = ((V*(32-multiplier)) + (128*(multiplier)))>>5;
           Y = 0;
         }
         baseU[x] = (BYTE)U;
