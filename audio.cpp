@@ -892,13 +892,14 @@ AVSValue __cdecl MixAudio::Create(AVSValue args, void*, IScriptEnvironment* env)
 ResampleAudio::ResampleAudio(PClip _child, int _target_rate, IScriptEnvironment* env)
   : GenericVideoFilter(ConvertAudio::Create(_child,SAMPLE_INT16,SAMPLE_INT16)), target_rate(_target_rate)
 {
+  srcbuffer=0;
+
   if ((target_rate==vi.audio_samples_per_second)||(vi.audio_samples_per_second==0)) {
 		skip_conversion=true;
 		return;
 	} 
 	skip_conversion=false;
 	factor = double(target_rate) / vi.audio_samples_per_second;
-  srcbuffer=0;
 
   vi.num_audio_samples = MulDiv(vi.num_audio_samples, target_rate, vi.audio_samples_per_second);
   vi.audio_samples_per_second = target_rate;
@@ -930,20 +931,24 @@ void __stdcall ResampleAudio::GetAudio(void* buf, __int64 start, __int64 count, 
 		return;
 	}
   __int64 src_start = __int64(start / factor * (1<<Np) + 0.5);
-  __int64 src_end = __int64((start+count) / factor * (1<<Np) + 0.5);
-  const int source_samples = int(src_end>>Np)-int(src_start>>Np)+2*Xoff+1;
+  __int64 src_end = __int64(((start+count) / factor) * (1<<Np) + 0.5);
+  const __int64 source_samples = (src_end>>Np)-(src_start>>Np)+2*Xoff+1;
   const int source_bytes = vi.BytesFromAudioSamples(source_samples);
   if (!srcbuffer || source_bytes > srcbuffer_size) 
   {
-    delete[] srcbuffer;
+    if (srcbuffer) delete[] srcbuffer;
     srcbuffer = new short[source_bytes>>1];
     srcbuffer_size = source_bytes;
   }
-  child->GetAudio(srcbuffer, int(src_start>>Np)-Xoff, source_samples, env);
+  child->GetAudio(srcbuffer, (src_start>>Np)-Xoff, source_samples, env);
 
-  int pos = (int(src_start) & Pmask) + (Xoff << Np);
-  int pos_end = int(src_end) - (int(src_start) & ~Pmask) + (Xoff << Np);
+  int pos = (int(src_start & Pmask)) + (Xoff << Np);
+  int pos_end = ( int(src_end - (src_start& ~(__int64)Pmask))) + (Xoff << Np);
+
+//  int pos_end = int(src_end) - (int(src_start) & ~Pmask) + (Xoff << Np);
   short* dst = (short*)buf;
+
+  _ASSERT(pos_end - pos <= count*dtb);
 
   while (pos < pos_end)  {
     int ch = vi.AudioChannels();

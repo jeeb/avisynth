@@ -1541,7 +1541,7 @@ PClip CreateResizeH(PClip clip, double subrange_left, double subrange_width, int
   } else if (subrange_left == int(subrange_left) && subrange_width == target_width
              && subrange_left >= 0 && subrange_left + subrange_width <= vi.width) 
   {
-    return new Crop(int(subrange_left), 0, int(subrange_width), vi.height, clip, env);
+    return new Crop(int(subrange_left), 0, int(subrange_width), vi.height, 0, clip, env);
   } else {
     return new FilteredResizeH(clip, subrange_left, subrange_width, target_width, func, env);
   }
@@ -1557,7 +1557,7 @@ PClip CreateResizeV(PClip clip, double subrange_top, double subrange_height, int
   } else if (subrange_top == int(subrange_top) && subrange_height == target_height
              && subrange_top >= 0 && subrange_top + subrange_height <= vi.height) 
   {
-    return new Crop(0, int(subrange_top), vi.width, int(subrange_height), clip, env);
+    return new Crop(0, int(subrange_top), vi.width, int(subrange_height), 0, clip, env);
   } else {
     return new FilteredResizeV(clip, subrange_top, subrange_height, target_height, func, env);
   }

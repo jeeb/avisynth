@@ -647,8 +647,8 @@ void Loop::GetAudio(void* buf, __int64 s_start, __int64 count, IScriptEnvironmen
   int s_pitch=vi.AudioChannels();
 //  if (vi.stereo) s_pitch=2;
  
-  int in_loop_start=s_start-start_samples;  // This is the offset within the loop
-  int fetch_at_sample = (in_loop_start%loop_len_samples); // This is the first sample to get.
+  __int64 in_loop_start=s_start-start_samples;  // This is the offset within the loop
+  __int64 fetch_at_sample = (in_loop_start%loop_len_samples); // This is the first sample to get.
 
   while (count>0) {
     if (count+fetch_at_sample<loop_len_samples) {  // All samples can be fetched within loop

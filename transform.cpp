@@ -47,7 +47,7 @@
 AVSFunction Transform_filters[] = {
   { "FlipVertical", "c", FlipVertical::Create },     
   { "FlipHorizontal", "c", FlipHorizontal::Create },     
-  { "Crop", "ciiii", Crop::Create },              // left, top, width, height *OR*
+  { "Crop", "ciiii[align]b", Crop::Create },              // left, top, width, height *OR*
                                                   //  left, top, -right, -bottom (VDub style)
   { "CropBottom", "ci", Create_CropBottom },      // bottom amount
   { "AddBorders", "ciiii[color]i", AddBorders::Create },  // left, top, right, bottom [,color]
@@ -182,8 +182,8 @@ AVSValue __cdecl FlipHorizontal::Create(AVSValue args, void*, IScriptEnvironment
  *******   Crop Filter   ******
  *****************************/
 
-Crop::Crop(int _left, int _top, int _width, int _height, PClip _child, IScriptEnvironment* env)
- : GenericVideoFilter(_child)
+Crop::Crop(int _left, int _top, int _width, int _height, int _align, PClip _child, IScriptEnvironment* env)
+ : GenericVideoFilter(_child), align(_align)
 {
   /* Negative values -> VDub-style syntax
      Namely, Crop(a, b, -c, -d) will crop c pixels from the right and d pixels from the bottom.  
@@ -201,7 +201,6 @@ Crop::Crop(int _left, int _top, int _width, int _height, PClip _child, IScriptEn
 
   if (_height<=0)
     env->ThrowError("Crop: Destination height is 0 or less.");
-
   if (vi.IsYUV()) {
     // YUY2 can only crop to even pixel boundaries horizontally
     if (_left&1)
@@ -227,13 +226,42 @@ Crop::Crop(int _left, int _top, int _width, int _height, PClip _child, IScriptEn
   top = _top;
   vi.width = _width;
   vi.height = _height;
-//  child->SetCacheHints(CACHE_NOTHING,0);
+
+  if (align) {
+    align = 8;
+
+    if (env->GetCPUFlags() & CPUF_SSE2)
+      align = 16;
+
+    if (!(left_bytes & (align-1)))  // We already have alignment.
+      align=0;
+  }
+
 }
 
 
 PVideoFrame Crop::GetFrame(int n, IScriptEnvironment* env) 
 {
   PVideoFrame frame = child->GetFrame(n, env);
+
+  if (align) {
+    PVideoFrame dst = env->NewVideoFrame(vi, align);
+
+    env->BitBlt(dst->GetWritePtr(PLANAR_Y), dst->GetPitch(PLANAR_Y),
+      frame->GetReadPtr(PLANAR_Y) + top *  frame->GetPitch(PLANAR_Y) + left_bytes,
+      dst->GetPitch(PLANAR_Y), dst->GetRowSize(PLANAR_Y), dst->GetHeight(PLANAR_Y));
+
+    env->BitBlt(dst->GetWritePtr(PLANAR_U), dst->GetPitch(PLANAR_U),
+      frame->GetReadPtr(PLANAR_U) + (top>>1) *  frame->GetPitch(PLANAR_U) + (left_bytes>>1),
+      dst->GetPitch(PLANAR_U), dst->GetRowSize(PLANAR_U), dst->GetHeight(PLANAR_U));
+
+    env->BitBlt(dst->GetWritePtr(PLANAR_V), dst->GetPitch(PLANAR_V),
+      frame->GetReadPtr(PLANAR_V) + (top>>1) *  frame->GetPitch(PLANAR_V) + (left_bytes>>1),
+      dst->GetPitch(PLANAR_V), dst->GetRowSize(PLANAR_V), dst->GetHeight(PLANAR_V));
+
+    return dst;
+  }
+
   if (!vi.IsPlanar())
     return frame->Subframe(top * frame->GetPitch() + left_bytes, frame->GetPitch(), vi.RowSize(), vi.height);
   else
@@ -243,7 +271,7 @@ PVideoFrame Crop::GetFrame(int n, IScriptEnvironment* env)
 
 AVSValue __cdecl Crop::Create(AVSValue args, void*, IScriptEnvironment* env) 
 {
-  return new Crop( args[1].AsInt(), args[2].AsInt(), args[3].AsInt(), args[4].AsInt(), 
+  return new Crop( args[1].AsInt(), args[2].AsInt(), args[3].AsInt(), args[4].AsInt(), args[5].AsBool(false) ? 1 : 0, 
                    args[0].AsClip(), env );
 }
 
@@ -543,7 +571,7 @@ AVSValue __cdecl Create_Letterbox(AVSValue args, void*, IScriptEnvironment* env)
   if (vi.IsYUY2() && (right&1))
     env->ThrowError("LetterBox: Width must be divideable with 2 (Right side)");
 
-  return new AddBorders(left, top, right, bot, color, new Crop(left, top, vi.width-left-right, vi.height-top-bot, clip, env));
+  return new AddBorders(left, top, right, bot, color, new Crop(left, top, vi.width-left-right, vi.height-top-bot, 0, clip, env));
 }
 
 
@@ -551,5 +579,5 @@ AVSValue __cdecl Create_CropBottom(AVSValue args, void*, IScriptEnvironment* env
 {
   PClip clip = args[0].AsClip();
   const VideoInfo& vi = clip->GetVideoInfo();
-  return new Crop(0, 0, vi.width, vi.height - args[1].AsInt(), clip, env);
+  return new Crop(0, 0, vi.width, vi.height - args[1].AsInt(), 0, clip, env);
 }

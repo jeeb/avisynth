@@ -75,13 +75,13 @@ class Crop : public GenericVideoFilter
  **/
 {  
 public:
-  Crop(int _left, int _top, int _width, int _height, PClip _child, IScriptEnvironment* env);
+  Crop(int _left, int _top, int _width, int _height, int _align, PClip _child, IScriptEnvironment* env);
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
 
   static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env);
 
 private:
-  /*const*/ int left_bytes, top;
+  /*const*/ int left_bytes, top, align;
 };
 
 
