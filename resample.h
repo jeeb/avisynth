@@ -79,6 +79,8 @@ static PClip CreateResizeV( PClip clip, double subrange_top, double subrange_hei
 static PClip CreateResize( PClip clip, int target_width, int target_height, const AVSValue* args, 
                            ResamplingFunction* f, IScriptEnvironment* env );
 
+static AVSValue __cdecl Create_PointResize(AVSValue args, void*, IScriptEnvironment* env);
+
 static AVSValue __cdecl Create_BilinearResize(AVSValue args, void*, IScriptEnvironment* env);
 
 static AVSValue __cdecl Create_BicubicResize(AVSValue args, void*, IScriptEnvironment* env);

@@ -47,6 +47,16 @@ public:
   virtual double support() = 0;
 };
 
+class PointFilter : public ResamplingFunction 
+/**
+  * Nearest neighbour (point sampler), used in PointResize
+ **/
+{
+public:
+  double f(double x);  
+  double support() { return 0.5; }  // 0.0 crashes it.
+};
+
 
 class TriangleFilter : public ResamplingFunction 
 /**

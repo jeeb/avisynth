@@ -27,6 +27,7 @@
 ********************************************************************/
 
 AVSFunction Resample_filters[] = {  
+  { "PointResize", "cii[src_left]f[src_top]f[src_width]f[src_height]f", Create_PointResize },
   { "BilinearResize", "cii[src_left]f[src_top]f[src_width]f[src_height]f", Create_BilinearResize },
   { "BicubicResize", "cii[b]f[c]f[src_left]f[src_top]f[src_width]f[src_height]f", Create_BicubicResize },
   { "LanczosResize", "cii[src_left]f[src_top]f[src_width]f[src_height]f", Create_Lanczos3Resize},
@@ -64,7 +65,7 @@ FilteredResizeH::FilteredResizeH( PClip _child, double subrange_left, double sub
     tempY = (BYTE*) _aligned_malloc(original_width*2+4, 64);   // aligned for Athlon cache line
     tempUV = (BYTE*) _aligned_malloc(original_width*4+8, 64);  // aligned for Athlon cache line
     pattern_chroma = GetResamplingPatternYUV( vi.width>>1, subrange_left/2, subrange_width/2,
-                                              target_width>>1, func, false, tempUV );
+      target_width>>1, func, false, tempUV );
     pattern_luma = GetResamplingPatternYUV(vi.width, subrange_left, subrange_width, target_width, func, true, tempY);
   }
   else
@@ -859,6 +860,12 @@ PClip CreateResize(PClip clip, int target_width, int target_height, const AVSVal
       result = CreateResizeV(result, subrange_top, subrange_height, target_height, f, env);
   }
   return result;
+}
+
+AVSValue __cdecl Create_PointResize(AVSValue args, void*, IScriptEnvironment* env) 
+{
+  return CreateResize( args[0].AsClip(), args[1].AsInt(), args[2].AsInt(), &args[3], 
+                       &PointFilter(), env );
 }
 
 
