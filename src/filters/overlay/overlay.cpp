@@ -280,6 +280,10 @@ ConvertTo444* Overlay::SelectInputCS(VideoInfo* VidI, IScriptEnvironment* env) {
     ConvertTo444* c = new Convert444FromYUY2();
     c->SetVideoInfo(VidI);
     return c;
+  } else if (VidI->IsRGB()) {
+    ConvertTo444* c = new Convert444FromRGB();
+    c->SetVideoInfo(VidI);
+    return c;
   } 
   return 0;
 }

@@ -218,3 +218,75 @@ PVideoFrame Convert444ToYUY2::ConvertImage(Image444* src, PVideoFrame dst, IScri
 }
 
 
+void Convert444FromRGB::ConvertImageLumaOnly(PVideoFrame src, Image444* dst, IScriptEnvironment* env) {
+  const BYTE* srcP = src->GetReadPtr();
+  int srcPitch = src->GetPitch();
+
+  BYTE* dstY = dst->GetPtr(PLANAR_Y);
+
+  int dstPitch = dst->pitch;
+
+  int w = dst->w();
+  int h = dst->h();
+
+  int bpp = src->GetRowSize()/w;
+  srcP += h*srcPitch-srcPitch;
+
+  for (int y=0; y<h; y++) {
+    int RGBx = 0;
+    for (int x=0; x<w; x++) {
+      dstY[x] = srcP[RGBx];
+      RGBx+=bpp;
+    }
+    srcP-=srcPitch;
+    dstY+=dstPitch;
+  }
+
+}
+
+void Convert444FromRGB::ConvertImage(PVideoFrame src, Image444* dst, IScriptEnvironment* env) {
+  const int cyb = int(0.114*219/255*65536+0.5);
+  const int cyg = int(0.587*219/255*65536+0.5);
+  const int cyr = int(0.299*219/255*65536+0.5);
+
+  const BYTE* srcP = src->GetReadPtr();
+  int srcPitch = src->GetPitch();
+
+  BYTE* dstY = dst->GetPtr(PLANAR_Y);
+  BYTE* dstU = dst->GetPtr(PLANAR_U);
+  BYTE* dstV = dst->GetPtr(PLANAR_V);
+
+  int dstPitch = dst->pitch;
+
+  int w = dst->w();
+  int h = dst->h();
+
+  int bpp = src->GetRowSize()/w;
+  srcP += h*srcPitch-srcPitch;
+
+  for (int y=0; y<h; y++) {
+    int RGBx = 0;
+    for (int x=0; x<w; x++) {
+      int b = srcP[RGBx];
+      int g = srcP[RGBx+1];
+      int r = srcP[RGBx+2];
+
+      int y = (cyb*b + cyg*g + cyr*r + 0x108000) >> 16;
+      int scaled_y = (y - 16) * int(255.0/219.0*65536+0.5);
+      int b_y = (b << 16) - scaled_y;
+      int r_y = (r << 16) - scaled_y;
+
+      dstY[x] = y;
+      dstU[x] = ((b_y >> 10) * int(1/2.018*1024+0.5) + 0x800000)>>16;
+      dstV[x] = ((r_y >> 10) * int(1/1.596*1024+0.5) + 0x800000)>>16;
+
+      RGBx+=bpp;
+    }
+
+    srcP-=srcPitch;
+
+    dstY+=dstPitch;
+    dstU+=dstPitch;
+    dstV+=dstPitch;
+  }
+}

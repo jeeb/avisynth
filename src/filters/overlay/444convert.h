@@ -79,6 +79,14 @@ public:
   void ConvertImageLumaOnly(PVideoFrame src_frame, Image444* dst_frame, IScriptEnvironment* env);
 };
 
+class Convert444FromRGB : public ConvertTo444 {
+private:
+
+public:
+  void ConvertImage(PVideoFrame src_frame, Image444* dst_frame, IScriptEnvironment* env);
+  void ConvertImageLumaOnly(PVideoFrame src_frame, Image444* dst_frame, IScriptEnvironment* env);
+};
+
 class Convert444ToYV12 : public ConvertFrom444 {
 public:
   PVideoFrame ConvertImage(Image444* src_frame, PVideoFrame dst_frame, IScriptEnvironment* env);
