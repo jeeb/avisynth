@@ -336,16 +336,19 @@ public:
 };
 
 
-// For GetCPUFlags.  These are the same as in VirtualDub.
-enum {
-  CPUF_FORCE			= 0x01,
-  CPUF_FPU			= 0x02,
-  CPUF_MMX			= 0x04,
-  CPUF_INTEGER_SSE	= 0x08,		// Athlon MMX extensions or Intel SSE
-  CPUF_SSE			= 0x10,		// Full SSE (PIII)
-  CPUF_SSE2			= 0x20,		// (PIV)
-  CPUF_3DNOW			= 0x40,
-  CPUF_3DNOW_EXT		= 0x80,		// Athlon 3DNow! extensions
+// For GetCPUFlags.  These are backwards-compatible with those in VirtualDub.
+enum {                    
+                    /* slowest CPU to support extension */
+  CPUF_FORCE			  = 0x01,   // N/A
+  CPUF_FPU			    = 0x02,   // 386/486DX
+  CPUF_MMX			    = 0x04,   // P55C, K6, PII
+  CPUF_INTEGER_SSE	= 0x08,		// PIII, Athlon
+  CPUF_SSE			    = 0x10,		// PIII, Athlon XP/MP
+  CPUF_SSE2			    = 0x20,		// PIV, Hammer
+  CPUF_3DNOW			  = 0x40,   // K6-2
+  CPUF_3DNOW_EXT		= 0x80,		// Athlon
+  CPUF_X86_64       = 0xA0,   // Hammer (note: equiv. to 3DNow + SSE2, which only Hammer
+                              //         will have anyway)
 };
 
 

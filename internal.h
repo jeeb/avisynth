@@ -56,8 +56,8 @@ typedef	long			PixOffset;
 #endif
 
 
-
 #include "avisynth.h"
+#include "fastlib.h"
 
 
 struct AVSFunction {
@@ -119,7 +119,7 @@ static inline BYTE ScaledPixelClip(int i) {
 }
 
 
-static inline IsClose(int a, int b, unsigned threshold) 
+static inline bool IsClose(int a, int b, unsigned threshold) 
   { return (unsigned(a-b+threshold) <= threshold*2); }
 
 
