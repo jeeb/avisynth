@@ -100,6 +100,21 @@ private:
   int tempbuffer_size;
 };
 
+class EnsureVBRMP3Sync : public GenericVideoFilter 
+/**
+  * Class to convert audio to mono
+ **/
+{
+public:
+  EnsureVBRMP3Sync(PClip _clip);
+
+  void __stdcall GetAudio(void* buf, int start, int count, IScriptEnvironment* env);
+  static PClip Create(PClip clip);
+  static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment*);
+
+private:
+  int last_end;
+};
 
 class MonoToStereo : public GenericVideoFilter 
 /**

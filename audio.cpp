@@ -36,6 +36,7 @@ AVSFunction Audio_filters[] = {
   { "HighPassAudio", "ci[]f", FilterAudio::Create_HighPass },
   { "ConvertAudioTo16bit", "c", ConvertAudioTo16bit::Create },
   { "ConvertToMono", "c", ConvertToMono::Create },
+  { "EnsureVBRMP3Sync", "c", EnsureVBRMP3Sync::Create },
   { "MonoToStereo", "cc", MonoToStereo::Create },
   { "GetLeftChannel", "c", GetChannel::Create_left },
   { "GetRightChannel", "c", GetChannel::Create_right },
@@ -127,6 +128,49 @@ PClip ConvertToMono::Create(PClip clip)
 }
 
 AVSValue __cdecl ConvertToMono::Create(AVSValue args, void*, IScriptEnvironment*) 
+{
+  return Create(args[0].AsClip());
+}
+
+/******************************************
+ *******   Ensure VBR mp3 sync,      ******
+ *******    by always reading audio  ******
+ *******    sequencial.              ******             
+ *****************************************/
+
+EnsureVBRMP3Sync::EnsureVBRMP3Sync(PClip _clip) 
+  : GenericVideoFilter(_clip)
+{	
+  last_end=0;
+}
+
+
+void __stdcall EnsureVBRMP3Sync::GetAudio(void* buf, int start, int count, IScriptEnvironment* env) 
+{
+  signed short* samples = (signed short*)buf;
+
+  if (start!=last_end) { // Reread from sample 0!
+    int offset=0;
+    while (offset+count<start) { // Read whole blocks of 'count' samples
+      child->GetAudio(samples, offset, count, env);
+      offset+=count;
+    } // Read until 'start'
+      child->GetAudio(samples, offset, start-offset, env);  // Now we're at 'start'
+      offset+=start-offset;
+      if (offset!=start)
+        env->ThrowError("EnsureVBRMP3Sync [Internal error]: Offset should be %i, but is %i",start,offset);
+  }
+  child->GetAudio(samples, start, count, env);
+  last_end=start+count;
+}
+
+
+PClip EnsureVBRMP3Sync::Create(PClip clip) 
+{
+    return new EnsureVBRMP3Sync(clip);
+}
+
+AVSValue __cdecl EnsureVBRMP3Sync::Create(AVSValue args, void*, IScriptEnvironment*) 
 {
   return Create(args[0].AsClip());
 }
