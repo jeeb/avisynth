@@ -1,5 +1,5 @@
-// Avisynth v1.0 beta.  Copyright 2000 Ben Rudiak-Gould.
-// http://www.math.berkeley.edu/~benrg/avisynth.html
+// Avisynth v2.5.  Copyright 2002 Ben Rudiak-Gould et al.
+// http://www.avisynth.org
 
 // This program is free software; you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -15,7 +15,22 @@
 // along with this program; if not, write to the Free Software
 // Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA, or visit
 // http://www.gnu.org/copyleft/gpl.html .
-
+//
+// Linking Avisynth statically or dynamically with other modules is making a
+// combined work based on Avisynth.  Thus, the terms and conditions of the GNU
+// General Public License cover the whole combination.
+//
+// As a special exception, the copyright holders of Avisynth give you
+// permission to link Avisynth with independent modules that communicate with
+// Avisynth solely through the interfaces defined in avisynth.h, regardless of the license
+// terms of these independent modules, and to copy and distribute the
+// resulting combined work under terms of your choice, provided that
+// every copy of the combined work is accompanied by a complete copy of
+// the source code of Avisynth (the version of Avisynth used to produce the
+// combined work), being distributed under the terms of the GNU General
+// Public License plus this exception.  An independent module is a module
+// which is not derived from or based on Avisynth, such as 3rd-party filters,
+// import and export plugins, or graphical user interfaces.
 #ifndef __Audio_H__
 #define __Audio_H__
 
@@ -29,6 +44,7 @@
 
 #define MAX_SHORT (32767)
 #define MIN_SHORT (-32768)
+
 
 /* Conversion constants */
 #define Nhc       8
@@ -68,19 +84,17 @@ static int makeFilter(short Imp[], int *LpScl, unsigned short Nwing, double Frol
 /********************************************************************
 ********************************************************************/
 
-
-class ConvertAudioTo16bit : public GenericVideoFilter 
+class AssumeRate : public GenericVideoFilter 
 /**
-  * Class to convert audio to 16-bit
+  * Changes the sample rate of a clip
  **/
 {
 public:
-  ConvertAudioTo16bit(PClip _clip);
-  void __stdcall GetAudio(void* buf, int start, int count, IScriptEnvironment* env);
-
-  static PClip Create(PClip clip);
+  AssumeRate(PClip _clip, int _rate);
   static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment*);
 };
+
+
 
 class ConvertToMono : public GenericVideoFilter 
 /**
@@ -92,12 +106,12 @@ public:
   virtual ~ConvertToMono()
   {if (tempbuffer_size) {delete[] tempbuffer;tempbuffer_size=0;}}
 
-  void __stdcall GetAudio(void* buf, int start, int count, IScriptEnvironment* env);
+  void __stdcall GetAudio(void* buf, __int64 start, __int64 count, IScriptEnvironment* env);
   static PClip Create(PClip clip);
   static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment*);
 
 private:
-  signed short *tempbuffer;
+  char *tempbuffer;
   int tempbuffer_size;
 };
 
@@ -109,7 +123,7 @@ class EnsureVBRMP3Sync : public GenericVideoFilter
 public:
   EnsureVBRMP3Sync(PClip _clip);
 
-  void __stdcall GetAudio(void* buf, int start, int count, IScriptEnvironment* env);
+  void __stdcall GetAudio(void* buf, __int64 start, __int64 count, IScriptEnvironment* env);
   static PClip Create(PClip clip);
   static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment*);
 
@@ -117,24 +131,31 @@ private:
   int last_end;
 };
 
-class MonoToStereo : public GenericVideoFilter 
+class MergeChannels : public GenericVideoFilter 
 /**
   * Class to convert two mono sources to stereo
  **/
 {
 public:
-  MonoToStereo(PClip _child,PClip _clip, IScriptEnvironment* env);
-  virtual ~MonoToStereo()
-  {if (tempbuffer_size) {delete[] tempbuffer;tempbuffer_size=0;}}
+  MergeChannels(PClip _clip, int _num_children, PClip* _child_array, IScriptEnvironment* env);
+  virtual ~MergeChannels()
+   {if (tempbuffer_size) {delete[] tempbuffer;tempbuffer_size=0;}}
 
-  void __stdcall GetAudio(void* buf, int start, int count, IScriptEnvironment* env);
+  void __stdcall GetAudio(void* buf, __int64 start, __int64 count, IScriptEnvironment* env);
   static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment*);
 
 private:
-	PClip right;
-  signed short *tempbuffer;
+  int* clip_channels;
+  signed char** clip_offset;
+  signed char *tempbuffer;
   int tempbuffer_size;
-	bool left_stereo,right_stereo;
+	int clip1_channels;
+
+  const int num_children;
+  PClip* child_array;
+  PClip tclip;
+
+  VideoInfo vi2;
 };
 
 
@@ -144,20 +165,27 @@ class GetChannel : public GenericVideoFilter
  **/
 {
 public:
-  GetChannel(PClip _clip, bool _left);
+  GetChannel(PClip _clip, int* _channel, int numchannels);
   virtual ~GetChannel()
    {if (tempbuffer_size) {delete[] tempbuffer;tempbuffer_size=0;}}
 
-  void __stdcall GetAudio(void* buf, int start, int count, IScriptEnvironment* env);
+  void __stdcall GetAudio(void* buf, __int64 start, __int64 count, IScriptEnvironment* env);
   static PClip Create_left(PClip clip);
   static PClip Create_right(PClip clip);
+  static PClip Create_n(PClip clip, int* n, int numchannels);
   static AVSValue __cdecl Create_left(AVSValue args, void*, IScriptEnvironment*);
   static AVSValue __cdecl Create_right(AVSValue args, void*, IScriptEnvironment*);
+  static AVSValue __cdecl Create_n(AVSValue args, void*, IScriptEnvironment* env);
 
 private:
-  signed short *tempbuffer;
+  char *tempbuffer;
   int tempbuffer_size;
-	bool left;
+	int* channel;
+  int numchannels;
+  int src_bps;
+  int src_cbps;
+  int dst_bps;
+  int dst_cbps;
 };
 
 class KillAudio : public GenericVideoFilter 
@@ -171,15 +199,6 @@ public:
   static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment*);
 };
 
-class AssumeRate : public GenericVideoFilter 
-/**
-  * Changes the sample rate of a clip
- **/
-{
-public:
-  AssumeRate(PClip _clip, int _rate);
-  static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment*);
-};
 
 class DelayAudio : public GenericVideoFilter 
 /**
@@ -188,7 +207,7 @@ class DelayAudio : public GenericVideoFilter
 {  
 public:
   DelayAudio(double delay, PClip _child);
-  virtual void __stdcall GetAudio(void* buf, int start, int count, IScriptEnvironment* env);
+  void __stdcall GetAudio(void* buf, __int64 start, __int64 count, IScriptEnvironment* env);
 
   static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env);
 
@@ -204,15 +223,15 @@ class Amplify : public GenericVideoFilter
  **/
 {
 public:
-  Amplify(PClip _child, double _left_factor, double _right_factor);
-  void __stdcall GetAudio(void* buf, int start, int count, IScriptEnvironment* env);
+  Amplify(PClip _child, float* _volumes);
+  void __stdcall GetAudio(void* buf, __int64 start, __int64 count, IScriptEnvironment* env);
 
   static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env);
   static AVSValue __cdecl Create_dB(AVSValue args, void*, IScriptEnvironment* env);
 
 
 private:
-  const int left_factor, right_factor;
+  const float* volumes;
 
   static __inline short Saturate(int n) {
     if (n <= -32768) return -32768;
@@ -220,8 +239,14 @@ private:
     return (short)n;
   }
 
+  static __inline int Saturate_int32(__int64 n) {
+    if (n <= MIN_INT) return MIN_INT;  
+    if (n >= MAX_INT) return MAX_INT;
+    return (int)n;
+  }
+
  static __inline double dBtoScaleFactor(double dB)
- { return pow(10.0, dB/20.0); };
+ { return pow(10.0, dB/20.0);};
 };
 
 
@@ -232,7 +257,7 @@ class FilterAudio : public GenericVideoFilter
 {
 public:
   FilterAudio(PClip _child, int _cutoff, float _rez, int lowpass);
-  void __stdcall GetAudio(void* buf, int start, int count, IScriptEnvironment* env);
+  void __stdcall GetAudio(void* buf, __int64 start, __int64 count, IScriptEnvironment* env);
   virtual ~FilterAudio()
   {if (tempbuffer_size) {delete[] tempbuffer;tempbuffer_size=0;}}
 
@@ -274,17 +299,16 @@ class Normalize : public GenericVideoFilter
  **/
 {
 public:
-  Normalize(PClip _child, double _left_factor, double _right_factor, bool showvalues);
-  void __stdcall GetAudio(void* buf, int start, int count, IScriptEnvironment* env);
+  Normalize(PClip _child, double _max_factor, bool _showvalues);
+  void __stdcall GetAudio(void* buf, __int64 start, __int64 count, IScriptEnvironment* env);
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
 
   static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env);
-  static AVSValue __cdecl Create_dB(AVSValue args, void*, IScriptEnvironment* env);
   
 
 private:
-  int left_factor, right_factor;
-  int max_volume;
+  float max_factor;
+  float max_volume;
   bool showvalues;
 
   static __inline short Saturate(int n) {
@@ -302,17 +326,17 @@ class MixAudio : public GenericVideoFilter
 {
 public:
   MixAudio(PClip _child, PClip _clip, double _track1_factor, double _track2_factor, IScriptEnvironment* env);
-  void __stdcall GetAudio(void* buf, int start, int count, IScriptEnvironment* env);
+  void __stdcall GetAudio(void* buf, __int64 start, __int64 count, IScriptEnvironment* env);
 
   static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env);
-  virtual ~MixAudio() {delete[] tempbuffer;tempbuffer_size=0;}
+  virtual ~MixAudio() {if (tempbuffer_size) delete[] tempbuffer;tempbuffer_size=0;}
 
 
 private:
   const int track1_factor, track2_factor;
 	int tempbuffer_size;
-  signed short *tempbuffer;
-	PClip clip;
+  signed char *tempbuffer;
+	PClip tclip,clip;
 
   static __inline short Saturate(int n) {
     if (n <= -32768) return -32768;
@@ -321,9 +345,9 @@ private:
   }
 
  static __inline double dBtoScaleFactor(double dB)
- { return pow(10.0, dB/20.0); }
-
+ { return pow(10.0, dB/20.0);};
 };
+
 
 class ResampleAudio : public GenericVideoFilter 
 /**
@@ -334,7 +358,7 @@ public:
   ResampleAudio(PClip _child, int _target_rate, IScriptEnvironment* env);
   virtual ~ResampleAudio() 
     { delete[] srcbuffer; }
-  void __stdcall GetAudio(void* buf, int start, int count, IScriptEnvironment* env);
+  void __stdcall GetAudio(void* buf, __int64 start, __int64 count, IScriptEnvironment* env);
 
   static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env);
 
@@ -343,13 +367,14 @@ private:
 
   enum { Nwing = 8192, Nmult = 65 };
   short Imp[Nwing+1];
+  SFLOAT fImp[Nwing+1];
   const int target_rate;
   double factor;
   int Xoff, dtb, dhb;
   int LpScl;
   short* srcbuffer;
   int srcbuffer_size;
-  int skip_conversion;
+  bool skip_conversion;
 };
 
 

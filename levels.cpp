@@ -1,5 +1,5 @@
-// Avisynth v1.0 beta.  Copyright 2000 Ben Rudiak-Gould.
-// http://www.math.berkeley.edu/~benrg/avisynth.html
+// Avisynth v2.5.  Copyright 2002 Ben Rudiak-Gould et al.
+// http://www.avisynth.org
 
 // This program is free software; you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -15,6 +15,22 @@
 // along with this program; if not, write to the Free Software
 // Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA, or visit
 // http://www.gnu.org/copyleft/gpl.html .
+//
+// Linking Avisynth statically or dynamically with other modules is making a
+// combined work based on Avisynth.  Thus, the terms and conditions of the GNU
+// General Public License cover the whole combination.
+//
+// As a special exception, the copyright holders of Avisynth give you
+// permission to link Avisynth with independent modules that communicate with
+// Avisynth solely through the interfaces defined in avisynth.h, regardless of the license
+// terms of these independent modules, and to copy and distribute the
+// resulting combined work under terms of your choice, provided that
+// every copy of the combined work is accompanied by a complete copy of
+// the source code of Avisynth (the version of Avisynth used to produce the
+// combined work), being distributed under the terms of the GNU General
+// Public License plus this exception.  An independent module is a module
+// which is not derived from or based on Avisynth, such as 3rd-party filters,
+// import and export plugins, or graphical user interfaces.
 
 
 #include "levels.h"
@@ -32,6 +48,7 @@ AVSFunction Levels_filters[] = {
   { "HSIAdjust", "cffifi", HSIAdjust::Create },  // H, S, min, gamma, max
   { "RGBAdjust", "cffff", RGBAdjust::Create },   // R, G, B, A
   { "Tweak", "c[hue]f[sat]f[bright]f[cont]f", Tweak::Create },  // hue, sat, bright, contrast
+  { "Limiter", "c[min_luma]i[max_luma]i[min_chroma]i[max_chroma]i", Limiter::Create },
   { 0 }
 };
 
@@ -51,7 +68,7 @@ Levels::Levels( PClip _child, int in_min, double gamma, int in_max, int out_min,
     env->ThrowError("Levels: gamma must be positive");
   gamma = 1/gamma;
   int divisor = in_max - in_min + (in_max == in_min);
-  if (vi.IsYUY2()) 
+  if (vi.IsYUV()) 
   {
     for (int i=0; i<256; ++i) 
     {
@@ -81,7 +98,7 @@ PVideoFrame __stdcall Levels::GetFrame(int n, IScriptEnvironment* env)
   PVideoFrame frame = child->GetFrame(n, env);
   env->MakeWritable(&frame);
   BYTE* p = frame->GetWritePtr();
-  const int pitch = frame->GetPitch();
+  int pitch = frame->GetPitch();
   if (vi.IsYUY2()) {
     for (int y=0; y<vi.height; ++y) {
       for (int x=0; x<vi.width; ++x) {
@@ -91,7 +108,32 @@ PVideoFrame __stdcall Levels::GetFrame(int n, IScriptEnvironment* env)
       p += pitch;
     }
   } 
-  else {
+  else if (vi.IsYV12()){
+    for (int y=0; y<vi.height; ++y) {
+      for (int x=0; x<vi.width; ++x) {
+        p[x] = map[p[x]];
+      }
+      p += pitch;
+    }
+    pitch = frame->GetPitch(PLANAR_U);
+    p = frame->GetWritePtr(PLANAR_U);
+    int w=frame->GetRowSize(PLANAR_U);
+    int h=frame->GetHeight(PLANAR_U);
+    for (y=0; y<h; ++y) {
+      for (int x=0; x<w; ++x) {
+        p[x] = mapchroma[p[x]];
+      }
+      p += pitch;
+    }
+    p = frame->GetWritePtr(PLANAR_V);
+    for (y=0; y<h; ++y) {
+      for (int x=0; x<w; ++x) {
+        p[x] = mapchroma[p[x]];
+      }
+      p += pitch;
+    }
+
+  } else if (vi.IsRGB()) {
     const int row_size = frame->GetRowSize();
     for (int y=0; y<vi.height; ++y) {
       for (int x=0; x<row_size; ++x) {
@@ -122,7 +164,7 @@ HSIAdjust::HSIAdjust( PClip _child, double h, double s, int min, double gamma, i
                       IScriptEnvironment* env )
   : GenericVideoFilter(_child)
 {
-  if (!vi.IsYUY2())
+  if (!vi.IsYUV())
     env->ThrowError("HSIAdjust requires YUV input");
 	BYTE p;
 	double x;
@@ -153,19 +195,44 @@ PVideoFrame __stdcall HSIAdjust::GetFrame(int n, IScriptEnvironment* env)
   PVideoFrame frame = child->GetFrame(n, env);
   env->MakeWritable(&frame);
   BYTE* p = frame->GetWritePtr();
-  const int pitch = frame->GetPitch();
-	const int row_size = frame->GetRowSize();
-
-	for (int y=0; y<vi.height; ++y) 
-  {
-    for (int x=0; x<vi.width; x+=2) 
+  int pitch = frame->GetPitch();
+  if (vi.IsYUY2()) {
+	  for (int y=0; y<vi.height; ++y) 
     {
-      p[x*2] = mapY[p[x*2]];
-      p[x*2+1] = mapU[p[x*2+1]];
-      p[x*2+2] = mapY[p[x*2+2]];
-      p[x*2+3] = mapV[p[x*2+3]];
+      for (int x=0; x<vi.width; x+=2) 
+      {
+        p[x*2] = mapY[p[x*2]];
+        p[x*2+1] = mapU[p[x*2+1]];
+        p[x*2+2] = mapY[p[x*2+2]];
+        p[x*2+3] = mapV[p[x*2+3]];
+      }
+   	  p += pitch;
     }
-   	p += pitch;
+  } else if (vi.IsYV12()) {
+    for (int y=0; y<vi.height; ++y) {
+      for (int x=0; x<vi.width; ++x) {
+        p[x] = mapY[p[x]];
+      }
+      p += pitch;
+    }
+    pitch = frame->GetPitch(PLANAR_U);
+    p = frame->GetWritePtr(PLANAR_U);
+    int w = frame->GetRowSize(PLANAR_U);
+    int h = frame->GetHeight(PLANAR_U);
+    for (y=0; y<h; ++y) {
+      for (int x=0; x<w; ++x) {
+        p[x] = mapU[p[x]];
+      }
+      p += pitch;
+    }
+    p = frame->GetWritePtr(PLANAR_V);
+    for (y=0; y<h; ++y) {
+      for (int x=0; x<w; ++x) {
+        p[x] = mapV[p[x]];
+      }
+      p += pitch;
+    }
+
   }
   return frame;
 }
@@ -189,7 +256,7 @@ AVSValue __cdecl HSIAdjust::Create(AVSValue args, void*, IScriptEnvironment* env
 RGBAdjust::RGBAdjust(PClip _child, double r, double g, double b, double a, IScriptEnvironment* env)
   : GenericVideoFilter(_child)
 {
-  if (vi.IsYUY2())
+  if (!vi.IsRGB())
     env->ThrowError("RGBAdjust requires RGB input");
   int p;
   for (int i=0; i<256; ++i) 
@@ -266,8 +333,8 @@ Tweak::Tweak( PClip _child, double _hue, double _sat, double _bright, double _co
               IScriptEnvironment* env ) 
   : GenericVideoFilter(_child), hue(_hue), sat(_sat), bright(_bright), cont(_cont)
 {
-  if (!vi.IsYUY2())
-		env->ThrowError("Tweak: YUY2 data only (no RGB); use ConvertToYUY2");
+  if (vi.IsRGB())
+		env->ThrowError("Tweak: YUV data only (no RGB)");
 }
 
 
@@ -275,21 +342,25 @@ PVideoFrame __stdcall Tweak::GetFrame(int n, IScriptEnvironment* env)
 {
 	double Hue;
 	int Sin, Cos;
-	int y1, y2, u, v, u2, v2;
+	int y1, y2, u, v, ux;
 	int Sat = (int) (sat * 512);
 	int Cont = (int) (cont * 512);
 	int Bright = (int) bright;
 
-    PVideoFrame src = child->GetFrame(n, env);
-    env->MakeWritable(&src);
+  PVideoFrame src = child->GetFrame(n, env);
+  env->MakeWritable(&src);
 
-    BYTE* srcp = src->GetWritePtr();
+  BYTE* srcp = src->GetWritePtr();
 
-    const int src_pitch = src->GetPitch();
-    const int row_size = src->GetRowSize();
-	if (row_size % 4)
-		env->ThrowError("Tweak: width must be a multiple of 2; use Crop");
-    const int height = src->GetHeight();
+  int src_pitch = src->GetPitch();
+  int height = src->GetHeight();
+  int row_size = src->GetRowSize();
+	
+  if (row_size % 2 && vi.IsYUY2())
+		env->ThrowError("Tweak: YUY2 width must be a multiple of 2; use Crop");
+  if (row_size % 4 && vi.IsYV12())
+		env->ThrowError("Tweak: YV12 width must be a multiple of 4; use Crop");
+  
 
  	Hue = (hue * 3.1415926) / 180.0;
 	Sin = (int) (sin(Hue) * 4096);
@@ -300,10 +371,17 @@ PVideoFrame __stdcall Tweak::GetFrame(int n, IScriptEnvironment* env)
 		__int64 satcont64 = (in64 Sat<<48) + (in64 Cont<<32) + (in64 Sat<<16) + in64 Cont;
 		__int64 bright64 = (in64 Bright<<32) + in64 Bright;
 
-		asm_tweak_ISSE(srcp, row_size>>2, height, src_pitch-row_size, hue64, satcont64, bright64);
+    if (vi.IsYUY2()) {
+      asm_tweak_ISSE_YUY2(srcp, row_size>>2, height, src_pitch-row_size, hue64, satcont64, bright64);   
+      return src;
+    }
+    else if (vi.IsYV12()) {
+      //TODO: asm_tweak_ISSE_YV12
+      //return src;
+    }
 	}
-	else {
 
+	if (vi.IsYUY2()) {
 		for (int y = 0; y < height; y++)
 		{
 			for (int x = 0; x < row_size; x+=4)
@@ -317,34 +395,63 @@ PVideoFrame __stdcall Tweak::GetFrame(int n, IScriptEnvironment* env)
 				y2 += (int) Bright;
 				y1 += 16;
 				y2 += 16;
-				if (y1 < 0) y1 = 0;
-				else if (y1 > 255) y1 = 255;
-				if (y2 < 0) y2 = 0;
-				else if (y2 > 255) y2 = 255;
+				y1 = min(max(y1,0),255);
+        y2 = min(max(y2,0),255);
 				srcp[x] = (int) y1;
 				srcp[x+2] = (int) y2;
 
 				/* hue and saturation */
 				u = srcp[x+1] - 128;
 				v = srcp[x+3] - 128;
-				u2 = (u * Cos + v * Sin) >> 12;
-				v2 = (v * Cos - u * Sin) >> 12;
-				u = ((u2 * Sat) >> 9) + 128;
-				v = ((v2 * Sat) >> 9) + 128;
-				if (u < 0) u = 0;
-				if (u > 255) u = 255;
-				if (v < 0) v = 0;
-				if (v > 255) v = 255;
+				ux = (u * Cos + v * Sin) >> 12;
+				v = (v * Cos - u * Sin) >> 12;
+				u = ((ux * Sat) >> 9) + 128;
+				v = ((v * Sat) >> 9) + 128;
+				u = min(max(u,0),255);
+        v = min(max(v,0),255);
 				srcp[x+1] = u;
 				srcp[x+3] = v;
 			}
 			srcp += src_pitch;
 		}
-	}
+  } else if (vi.IsYV12()) {
+    int y;  // VC6 scoping sucks - Yes!
+    for (y=0; y<height; ++y) {
+      for (int x=0; x<row_size; ++x) {
+        /* brightness and contrast */
+				y1 = srcp[x] - 16;
+				y1 = (Cont * y1) >> 9;				
+				y1 += (int) Bright;
+				y1 += 16;				
+				y1 = min(max(y1,15),235);
+				srcp[x] = (int) y1;
+      }
+      srcp += src_pitch;
+    }
+    src_pitch = src->GetPitch(PLANAR_U);
+    BYTE * srcpu = src->GetWritePtr(PLANAR_U);
+    BYTE * srcpv = src->GetWritePtr(PLANAR_V);
+    row_size = src->GetRowSize(PLANAR_U);
+    height = src->GetHeight(PLANAR_U);
+    for (y=0; y<height; ++y) {
+      for (int x=0; x<row_size; ++x) {
+        /* hue and saturation */
+				u = srcpu[x] - 128;
+				v = srcpv[x] - 128;
+				ux = (u * Cos + v * Sin) >> 12;
+				v = (v * Cos - u * Sin) >> 12;
+				u = ((ux * Sat) >> 9) + 128;
+				v = ((v * Sat) >> 9) + 128;
+				srcpu[x] = min(max(u,16),240);
+        srcpv[x] = min(max(v,16),240);				
+      }
+      srcpu += src_pitch;
+      srcpv += src_pitch;
+    }
+  }
 
   return src;
 }
-
 
 AVSValue __cdecl Tweak::Create(AVSValue args, void* user_data, IScriptEnvironment* env)
 {
@@ -359,7 +466,7 @@ AVSValue __cdecl Tweak::Create(AVSValue args, void* user_data, IScriptEnvironmen
 
 
 // Integer SSE optimization by "Dividee".
-void __declspec(naked) asm_tweak_ISSE( BYTE *srcp, int w, int h, int modulo, __int64 hue, 
+void __declspec(naked) asm_tweak_ISSE_YUY2( BYTE *srcp, int w, int h, int modulo, __int64 hue, 
                                        __int64 satcont, __int64 bright ) 
 {
 	static const __int64 norm = 0x0080001000800010i64;
@@ -415,3 +522,191 @@ x_loop:
 	};
 }
 
+AVSValue __cdecl Tweak::FilterInfo(int request) {
+  switch (request) {
+    case FILTER_INPUT_COLORSPACE:
+      return AVSValue(VideoInfo::CS_YUY2|VideoInfo::CS_YV12);
+
+    case FILTER_NAME:
+      return AVSValue("Tweak Filter");
+
+    case FILTER_AUTHOR:
+      return AVSValue("Donald Graft");
+
+    case FILTER_VERSION:
+      return AVSValue("1.1");
+
+    case FILTER_ARGS:
+      return AVSValue("c[hue]f[sat]f[bright]f[cont]f");
+
+    case FILTER_ARGS_INFO:
+      return AVSValue(";0.0,1.0,0.0;0.0,2.0,1.0;0.0,1.0,0.0;0.0,2.0,1.0");  // For floats and integers, use "Min, max, default" ';'delimits parameters
+
+    case FILTER_ARGS_DESCRIPTION:
+      return AVSValue("Input clip;Hue offset;Saturation;Brightness;Contrast");  // Description. Use ';' to delimit.
+
+    case FILTER_DESCRIPTION:
+      return AVSValue("Adjusts color and light levels of your picture depending on your parameters."); 
+  }
+  return AVSValue(-1);
+}
+
+
+
+Limiter::Limiter(PClip _child, int _min_luma, int _max_luma, int _min_chroma, int _max_chroma, IScriptEnvironment* env)
+	: GenericVideoFilter(_child),
+  min_luma(_min_luma),
+  max_luma(_max_luma),
+  min_chroma(_min_chroma),
+  max_chroma(_max_chroma) {
+	if(!vi.IsYUV())
+		env->ThrowError("Limiter: Source must be YUV");
+
+  if ((min_luma<0)||(min_luma>255))
+      env->ThrowError("Limiter: Invalid minimum luma");
+  if ((max_luma<0)||(max_luma>255))
+      env->ThrowError("Limiter: Invalid maximum luma");
+  if ((min_chroma<0)||(min_chroma>255))
+      env->ThrowError("Limiter: Invalid minimum chroma");
+  if ((max_chroma<0)||(max_chroma>255))
+      env->ThrowError("Limiter: Invalid maximum chroma");
+}
+
+PVideoFrame __stdcall Limiter::GetFrame(int n, IScriptEnvironment* env) {
+	PVideoFrame frame = child->GetFrame(n, env);
+	env->MakeWritable(&frame);
+	unsigned char* srcp = frame->GetWritePtr();
+	int pitch = frame->GetPitch();
+  int row_size = frame->GetRowSize();
+  int height = frame->GetHeight();
+  if (vi.IsYUY2()) {
+    if (env->GetCPUFlags() & CPUF_INTEGER_SSE) {
+      if (frame->GetRowSize()&7) {
+        isse_limiter((BYTE*)srcp, row_size, height, pitch-row_size, min_luma|(min_chroma<<8), max_luma|(max_chroma<<8));
+      } else {
+        isse_limiter_mod8((BYTE*)srcp, row_size, height, pitch-row_size, min_luma|(min_chroma<<8), max_luma|(max_chroma<<8));
+      }
+    }
+	  for(int y = 0; y < height; y++) {
+      for(int x = 0; x < row_size; x++) {
+        if(srcp[x] < min_luma )
+          srcp[x++] = min_luma;
+        else if(srcp[x] > max_luma)
+          srcp[x++] = max_luma;
+        else
+          x++;
+        if(srcp[x] < min_chroma)
+          srcp[x] = min_chroma;
+        else if(srcp[x] > max_chroma)
+          srcp[x] = max_chroma;
+      }
+      srcp += pitch;
+    }  
+  } else if(vi.IsYV12()) {
+  if (env->GetCPUFlags() & CPUF_INTEGER_SSE) {
+    isse_limiter_mod8((BYTE*)srcp, frame->GetRowSize(PLANAR_Y_ALIGNED), height, pitch-frame->GetRowSize(PLANAR_Y_ALIGNED), min_luma|(min_luma<<8), max_luma|(max_luma<<8));
+
+    srcp = frame->GetWritePtr(PLANAR_U);
+    row_size = frame->GetRowSize(PLANAR_U_ALIGNED);
+    pitch = frame->GetPitch(PLANAR_U);
+    height = frame->GetHeight(PLANAR_U);
+
+    isse_limiter_mod8((BYTE*)srcp, row_size, height, pitch-row_size, min_chroma|(min_chroma<<8), max_chroma|(max_chroma<<8));
+
+    srcp = frame->GetWritePtr(PLANAR_V);
+    isse_limiter_mod8((BYTE*)srcp, row_size, height, pitch-row_size, min_chroma|(min_chroma<<8), max_chroma|(max_chroma<<8));
+    return frame;
+  }
+
+  for(int y = 0; y < height; y++) {
+      for(int x = 0; x < row_size; x++) {
+        if(srcp[x] < min_luma )
+          srcp[x] = min_luma;
+        else if(srcp[x] > max_luma)
+          srcp[x] = max_luma;        
+      }
+      srcp += pitch;
+    }
+    srcp = frame->GetWritePtr(PLANAR_U);
+	  unsigned char* srcpV = frame->GetWritePtr(PLANAR_V);
+    row_size = frame->GetRowSize(PLANAR_U);
+    height = frame->GetHeight(PLANAR_U);
+    pitch = frame->GetPitch(PLANAR_U);
+	  for(y = 0; y < height; y++) {
+      for(int x = 0; x < row_size; x++) {
+        if(srcp[x] < min_chroma)
+          srcp[x] = min_chroma;
+        else if(srcp[x] > max_chroma)
+          srcp[x] = max_chroma;
+        if(srcpV[x] < min_chroma)
+          srcpV[x] = min_chroma;
+        else if(srcpV[x] > max_chroma)
+          srcpV[x] = max_chroma;
+      }
+      srcp += pitch;
+      srcpV += pitch;
+    }
+  }
+    return frame;
+}
+
+void Limiter::isse_limiter(BYTE* p, int row_size, int height, int modulo, int cmin, int cmax) {
+  __asm {
+    mov eax, [height]
+    mov ebx, p
+    mov ecx, modulo
+    movd mm7,[cmax]
+    movd mm6,[cmin]
+    pshufw mm7,mm7,0
+    pshufw mm6,mm6,0
+yloop:
+    mov edx,[row_size]
+    align 16
+xloop:
+    prefetchnta [ebx+256]
+    movd mm0,[ebx]
+    pminub mm0,mm7
+    pmaxub mm0,mm6
+    movd [ebx],mm0
+    add ebx,4
+    sub edx,4
+    jnz xloop
+    add ebx,ecx;
+    dec height
+    jnz yloop
+    emms
+  }
+}
+
+void Limiter::isse_limiter_mod8(BYTE* p, int row_size, int height, int modulo, int cmin, int cmax) {
+  __asm {
+    mov eax, [height]
+    mov ebx, p
+    mov ecx, modulo
+    movd mm7,[cmax]
+    movd mm6,[cmin]
+    pshufw mm7,mm7,0
+    pshufw mm6,mm6,0
+yloop:
+    mov edx,[row_size]
+    align 16
+xloop:
+    prefetchnta [ebx+256]
+    movq mm0,[ebx]
+    pminub mm0,mm7
+    pmaxub mm0,mm6
+    movq [ebx],mm0
+    add ebx,8
+    sub edx,8
+    jnz xloop
+    add ebx,ecx;
+    dec height
+    jnz yloop
+    emms
+  }
+}
+
+AVSValue __cdecl Limiter::Create(AVSValue args, void* user_data, IScriptEnvironment* env)
+{
+	return new Limiter(args[0].AsClip(), args[1].AsInt(16), args[2].AsInt(236), args[3].AsInt(16), args[4].AsInt(240), env);
+}

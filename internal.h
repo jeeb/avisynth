@@ -1,5 +1,5 @@
-// Avisynth v1.0 beta.  Copyright 2000 Ben Rudiak-Gould.
-// http://www.math.berkeley.edu/~benrg/avisynth.html
+// Avisynth v2.5.  Copyright 2002 Ben Rudiak-Gould et al.
+// http://www.avisynth.org
 
 // This program is free software; you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -15,13 +15,29 @@
 // along with this program; if not, write to the Free Software
 // Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA, or visit
 // http://www.gnu.org/copyleft/gpl.html .
+//
+// Linking Avisynth statically or dynamically with other modules is making a
+// combined work based on Avisynth.  Thus, the terms and conditions of the GNU
+// General Public License cover the whole combination.
+//
+// As a special exception, the copyright holders of Avisynth give you
+// permission to link Avisynth with independent modules that communicate with
+// Avisynth solely through the interfaces defined in avisynth.h, regardless of the license
+// terms of these independent modules, and to copy and distribute the
+// resulting combined work under terms of your choice, provided that
+// every copy of the combined work is accompanied by a complete copy of
+// the source code of Avisynth (the version of Avisynth used to produce the
+// combined work), being distributed under the terms of the GNU General
+// Public License plus this exception.  An independent module is a module
+// which is not derived from or based on Avisynth, such as 3rd-party filters,
+// import and export plugins, or graphical user interfaces.
 
-#define AVS_VERSION 2.08
-#define AVS_VERSTR "AviSynth 2.08 (avisynth.org) 09 Jan. 2003"
 
 #ifndef __Internal_H__
 #define __Internal_H__
 
+#define AVS_VERSION 2.50
+#define AVS_VERSTR "AviSynth 2.50 beta (avisynth.org) 28 jan. 2003"
 
 #define WIN32_LEAN_AND_MEAN
 #include <objbase.h>
@@ -31,33 +47,6 @@
 #include <malloc.h>
 #include <math.h>
 #include <vector>
-
-#define in64 (__int64)(unsigned short)
-
-#define ATHLON  // comment this out if using the Intel compiler, or you need Pentium/K6 support
-
-typedef unsigned long	Pixel;
-typedef unsigned long	Pixel32;
-typedef unsigned char Pixel8;
-typedef long			PixCoord;
-typedef	long			PixDim;
-typedef	long			PixOffset;
-
-#pragma hdrstop
-
-#ifndef _MSC_VER
-  #define _RPT0(a,b) ((void)0)
-  #define _RPT1(a,b,c) ((void)0)
-  #define _RPT2(a,b,c,d) ((void)0)
-  #define _RPT3(a,b,c,d,e) ((void)0)
-  #define _RPT4(a,b,c,d,e,f) ((void)0)
-  
-  #define _ASSERTE(x) assert(x)
-  #include <assert.h>
-#else  
-  #include <crtdbg.h>
-#endif
-
 
 #include "avisynth.h"
 
@@ -82,6 +71,9 @@ PClip new_AssumeFrameBased(PClip _child);
 
 void BitBlt(BYTE* dstp, int dst_pitch, const BYTE* srcp, 
             int src_pitch, int row_size, int height);
+
+  void asm_BitBlt(BYTE* dstp, int dst_pitch, const BYTE* srcp, int src_pitch, int row_size, int height);
+  void asm_BitBltNC(BYTE* dstp, int dst_pitch, const BYTE* srcp, int src_pitch, int row_size, int height);
 
 long GetCPUFlags();
 

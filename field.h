@@ -1,5 +1,5 @@
-// Avisynth v1.0 beta.  Copyright 2000 Ben Rudiak-Gould.
-// http://www.math.berkeley.edu/~benrg/avisynth.html
+// Avisynth v2.5.  Copyright 2002 Ben Rudiak-Gould et al.
+// http://www.avisynth.org
 
 // This program is free software; you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -15,6 +15,22 @@
 // along with this program; if not, write to the Free Software
 // Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA, or visit
 // http://www.gnu.org/copyleft/gpl.html .
+//
+// Linking Avisynth statically or dynamically with other modules is making a
+// combined work based on Avisynth.  Thus, the terms and conditions of the GNU
+// General Public License cover the whole combination.
+//
+// As a special exception, the copyright holders of Avisynth give you
+// permission to link Avisynth with independent modules that communicate with
+// Avisynth solely through the interfaces defined in avisynth.h, regardless of the license
+// terms of these independent modules, and to copy and distribute the
+// resulting combined work under terms of your choice, provided that
+// every copy of the combined work is accompanied by a complete copy of
+// the source code of Avisynth (the version of Avisynth used to produce the
+// combined work), being distributed under the terms of the GNU General
+// Public License plus this exception.  An independent module is a module
+// which is not derived from or based on Avisynth, such as 3rd-party filters,
+// import and export plugins, or graphical user interfaces.
 
 #ifndef __Field_H__
 #define __Field_H__
@@ -49,7 +65,7 @@ class AssumeParity : public GenericVideoFilter
 public:
   AssumeParity(PClip _child, bool _parity) : GenericVideoFilter(_child), parity(_parity) {}
   inline bool __stdcall GetParity(int n)
-    { return parity ^ (vi.field_based && (n & 1)); }
+    { return parity ^ (vi.IsFieldBased() && (n & 1)); }
 
 	inline static AVSValue __cdecl Create(AVSValue args, void* user_data, IScriptEnvironment* env)
 		{ return new AssumeParity(args[0].AsClip(), user_data!=0); }
@@ -65,7 +81,7 @@ class AssumeFieldBased : public GenericVideoFilter
 {
 public:
   AssumeFieldBased(PClip _child) : GenericVideoFilter(_child) 
-    { vi.field_based = true; }
+  { vi.SetFieldBased(true); }
   inline bool __stdcall GetParity(int n) 
     { return n&1; }
 
@@ -81,7 +97,7 @@ class AssumeFrameBased : public GenericVideoFilter
 {
 public:
   AssumeFrameBased(PClip _child) : GenericVideoFilter(_child) 
-    { vi.field_based = false; }
+  { vi.SetFieldBased(false); }
   inline bool __stdcall GetParity(int n) 
     { return false; }
 
@@ -148,13 +164,15 @@ public:
     { return vi; }
   inline PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env)
     { return child_array[n % num_children]->GetFrame(n / num_children, env); }
-  inline void __stdcall GetAudio(void* buf, int start, int count, IScriptEnvironment* env) 
+  inline void __stdcall GetAudio(void* buf, __int64 start, __int64 count, IScriptEnvironment* env) 
     { child_array[0]->GetAudio(buf, start, count, env);  }
   inline bool __stdcall GetParity(int n) 
     { return child_array[n % num_children]->GetParity(n / num_children); }
   virtual ~Interleave() 
     { delete[] child_array; }
   static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env);
+
+  void __stdcall SetCacheHints(int cachehints,int frame_range) { };
 
 private:
   const int num_children;
@@ -200,6 +218,15 @@ private:
   PClip child2;
 };
 
+class SelectRangeEvery : public GenericVideoFilter {
+	int every, length;
+public:
+	SelectRangeEvery(PClip _child, int _every, int _length, int _offset, IScriptEnvironment* env);
+	PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
+	bool __stdcall GetParity(int n);
+  static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env);
+
+};
 
 
 /**** Factory methods ****/

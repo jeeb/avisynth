@@ -1,5 +1,5 @@
-// Avisynth v1.0 beta.  Copyright 2000 Ben Rudiak-Gould.
-// http://www.math.berkeley.edu/~benrg/avisynth.html
+// Avisynth v2.5.  Copyright 2002 Ben Rudiak-Gould et al.
+// http://www.avisynth.org
 
 // This program is free software; you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -15,7 +15,22 @@
 // along with this program; if not, write to the Free Software
 // Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA, or visit
 // http://www.gnu.org/copyleft/gpl.html .
-
+//
+// Linking Avisynth statically or dynamically with other modules is making a
+// combined work based on Avisynth.  Thus, the terms and conditions of the GNU
+// General Public License cover the whole combination.
+//
+// As a special exception, the copyright holders of Avisynth give you
+// permission to link Avisynth with independent modules that communicate with
+// Avisynth solely through the interfaces defined in avisynth.h, regardless of the license
+// terms of these independent modules, and to copy and distribute the
+// resulting combined work under terms of your choice, provided that
+// every copy of the combined work is accompanied by a complete copy of
+// the source code of Avisynth (the version of Avisynth used to produce the
+// combined work), being distributed under the terms of the GNU General
+// Public License plus this exception.  An independent module is a module
+// which is not derived from or based on Avisynth, such as 3rd-party filters,
+// import and export plugins, or graphical user interfaces.
 
 #include "combine.h"
 
@@ -75,19 +90,53 @@ PVideoFrame __stdcall StackVertical::GetFrame(int n, IScriptEnvironment* env)
   PVideoFrame src2 = child2->GetFrame(n, env);
   PVideoFrame dst = env->NewVideoFrame(vi);
   const BYTE* src1p = src1->GetReadPtr();
+  const BYTE* src1pU = src1->GetReadPtr(PLANAR_U);
+  const BYTE* src1pV = src1->GetReadPtr(PLANAR_V);
   const BYTE* src2p = src2->GetReadPtr();
+  const BYTE* src2pU = src2->GetReadPtr(PLANAR_U);
+  const BYTE* src2pV = src2->GetReadPtr(PLANAR_V);
   BYTE* dstp = dst->GetWritePtr();
+  BYTE* dstpU = dst->GetWritePtr(PLANAR_U);
+  BYTE* dstpV = dst->GetWritePtr(PLANAR_V);
   const int src1_pitch = src1->GetPitch();
+  const int src1_pitchUV = src1->GetPitch(PLANAR_U);
   const int src2_pitch = src2->GetPitch();
+  const int src2_pitchUV = src2->GetPitch(PLANAR_U);
   const int dst_pitch = dst->GetPitch();
+  const int dst_pitchUV = dst->GetPitch(PLANAR_V);
   const int src1_height = src1->GetHeight();
+  const int src1_heightUV = src1->GetHeight(PLANAR_U);
   const int src2_height = src2->GetHeight();
+  const int src2_heightUV = src2->GetHeight(PLANAR_U);
   const int row_size = dst->GetRowSize();
+  const int row_sizeUV = dst->GetRowSize(PLANAR_U);
+
   BYTE* dstp2 = dstp + dst_pitch * src1->GetHeight();
+  BYTE* dstp2U = dstpU + dst_pitchUV * src1->GetHeight(PLANAR_U);
+  BYTE* dstp2V = dstpV + dst_pitchUV * src1->GetHeight(PLANAR_V);
 
-  BitBlt(dstp, dst_pitch, src1p, src1_pitch, row_size, src1_height);
-  BitBlt(dstp2, dst_pitch, src2p, src2_pitch, row_size, src2_height);
+  if (vi.IsYV12())
+  {
+    // Copy YV12 upside-down
+    BitBlt(dstp, dst_pitch, src2p, src1_pitch, row_size, src1_height);
+    BitBlt(dstp2, dst_pitch, src1p, src2_pitch, row_size, src2_height);
 
+    BitBlt(dstpU, dst_pitchUV, src2pU, src1_pitchUV, row_sizeUV, src1_heightUV);
+    BitBlt(dstp2U, dst_pitchUV, src1pU, src2_pitchUV, row_sizeUV, src2_heightUV);
+
+    BitBlt(dstpV, dst_pitchUV, src2pV, src1_pitchUV, row_sizeUV, src1_heightUV);
+    BitBlt(dstp2V, dst_pitchUV, src1pV, src2_pitchUV, row_sizeUV, src2_heightUV);
+  } else {
+    // I'll leave the planar BitBlts (no-ops) in for compatibility with future planar formats
+    BitBlt(dstp, dst_pitch, src1p, src1_pitch, row_size, src1_height);
+    BitBlt(dstp2, dst_pitch, src2p, src2_pitch, row_size, src2_height);
+
+    BitBlt(dstpU, dst_pitchUV, src1pU, src1_pitchUV, row_sizeUV, src1_heightUV);
+    BitBlt(dstp2U, dst_pitchUV, src2pU, src2_pitchUV, row_sizeUV, src2_heightUV);
+
+    BitBlt(dstpV, dst_pitchUV, src1pV, src1_pitchUV, row_sizeUV, src1_heightUV);
+    BitBlt(dstp2V, dst_pitchUV, src2pV, src2_pitchUV, row_sizeUV, src2_heightUV);
+  }
   return dst;
 }
 
@@ -134,18 +183,45 @@ PVideoFrame __stdcall StackHorizontal::GetFrame(int n, IScriptEnvironment* env)
   PVideoFrame src1 = child1->GetFrame(n, env);
   PVideoFrame src2 = child2->GetFrame(n, env);
   PVideoFrame dst = env->NewVideoFrame(vi);
+
   const BYTE* src1p = src1->GetReadPtr();
+  const BYTE* src1pU = src1->GetReadPtr(PLANAR_U);
+  const BYTE* src1pV = src1->GetReadPtr(PLANAR_V);
+
   const BYTE* src2p = src2->GetReadPtr();
+  const BYTE* src2pU = src2->GetReadPtr(PLANAR_U);
+  const BYTE* src2pV = src2->GetReadPtr(PLANAR_V);
+
   BYTE* dstp = dst->GetWritePtr();
+  BYTE* dstpU = dst->GetWritePtr(PLANAR_U);
+  BYTE* dstpV = dst->GetWritePtr(PLANAR_V);
+
   const int src1_pitch = src1->GetPitch();
   const int src2_pitch = src2->GetPitch();
+  const int src1_pitchUV = src1->GetPitch(PLANAR_U);
+  const int src2_pitchUV = src2->GetPitch(PLANAR_U);
+
   const int dst_pitch = dst->GetPitch();
+  const int dst_pitchUV = dst->GetPitch(PLANAR_U);
+
   const int src1_row_size = src1->GetRowSize();
   const int src2_row_size = src2->GetRowSize();
+  const int src1_row_sizeUV = src1->GetRowSize(PLANAR_U);
+  const int src2_row_sizeUV = src2->GetRowSize(PLANAR_V);
+
   BYTE* dstp2 = dstp + src1_row_size;
+  BYTE* dstp2U = dstpU + src1_row_sizeUV;
+  BYTE* dstp2V = dstpV + src1_row_sizeUV;
+  const int dst_heightUV = dst->GetHeight(PLANAR_U);
 
   BitBlt(dstp, dst_pitch, src1p, src1_pitch, src1_row_size, vi.height);
   BitBlt(dstp2, dst_pitch, src2p, src2_pitch, src2_row_size, vi.height);
+
+  BitBlt(dstpU, dst_pitchUV, src1pU, src1_pitchUV, src1_row_sizeUV, dst_heightUV);
+  BitBlt(dstp2U, dst_pitchUV, src2pU, src2_pitchUV, src2_row_sizeUV, dst_heightUV);
+
+  BitBlt(dstpV, dst_pitchUV, src1pV, src1_pitchUV, src1_row_sizeUV, dst_heightUV);
+  BitBlt(dstp2V, dst_pitchUV, src2pV, src2_pitchUV, src2_row_sizeUV, dst_heightUV);
 
   return dst;
 }

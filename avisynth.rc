@@ -54,8 +54,8 @@ END
 //
 
 VS_VERSION_INFO VERSIONINFO
- FILEVERSION 2,0,8,0
- PRODUCTVERSION 2,0,8,0
+ FILEVERSION 2,5,0,0
+ PRODUCTVERSION 2,5,0,0
  FILEFLAGSMASK 0x3fL
 #ifdef _DEBUG
  FILEFLAGS 0x1L
@@ -73,14 +73,14 @@ BEGIN
             VALUE "Comments", "Homepage: http://www.avisynth.org\0"
             VALUE "CompanyName", "The Public\0"
             VALUE "FileDescription", "Avisynth video processing scripting language\0"
-            VALUE "FileVersion", "2, 0, 8, 0\0"
-            VALUE "InternalName", "avisynth\0"
-            VALUE "LegalCopyright", "© 2000-2002 Ben Rudiak-Gould and others\0"
+            VALUE "FileVersion", "2, 5, 0, 0\0"
+            VALUE "InternalName", "AviSynth 2.5.0 beta \0"
+            VALUE "LegalCopyright", "© 2000-2003 Ben Rudiak-Gould and others\0"
             VALUE "LegalTrademarks", "\0"
             VALUE "OriginalFilename", "avisynth.dll\0"
             VALUE "PrivateBuild", "\0"
-            VALUE "ProductName", "Avisynth\0"
-            VALUE "ProductVersion", "2, 0, 8, 0\0"
+            VALUE "ProductName", "Avisynth 2.5\0"
+            VALUE "ProductVersion", "2, 5, 0, 0\0"
             VALUE "SpecialBuild", "\0"
         END
     END
@@ -93,6 +93,27 @@ END
 #endif    // !_MAC
 
 #endif    // English (U.S.) resources
+/////////////////////////////////////////////////////////////////////////////
+
+
+/////////////////////////////////////////////////////////////////////////////
+// Neutral (Sys. Default) resources
+
+#if !defined(AFX_RESOURCE_DLL) || defined(AFX_TARG_NEUSD)
+#ifdef _WIN32
+LANGUAGE LANG_NEUTRAL, SUBLANG_SYS_DEFAULT
+#pragma code_page(1252)
+#endif //_WIN32
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// Icon
+//
+
+// Icon with lowest ID value placed first to ensure application icon
+// remains consistent on all systems.
+IDI_ICON                ICON    DISCARDABLE     "distrib\\AviSynth.ico"
+#endif    // Neutral (Sys. Default) resources
 /////////////////////////////////////////////////////////////////////////////
 
 

@@ -1,5 +1,5 @@
-// Avisynth v1.0 beta.  Copyright 2000 Ben Rudiak-Gould.
-// http://www.math.berkeley.edu/~benrg/avisynth.html
+// Avisynth v2.5.  Copyright 2002 Ben Rudiak-Gould et al.
+// http://www.avisynth.org
 
 // This program is free software; you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -11,10 +11,26 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 //
-// You should have received a copy of the GNU General Publsic License
+// You should have received a copy of the GNU General Public License
 // along with this program; if not, write to the Free Software
 // Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA, or visit
 // http://www.gnu.org/copyleft/gpl.html .
+//
+// Linking Avisynth statically or dynamically with other modules is making a
+// combined work based on Avisynth.  Thus, the terms and conditions of the GNU
+// General Public License cover the whole combination.
+//
+// As a special exception, the copyright holders of Avisynth give you
+// permission to link Avisynth with independent modules that communicate with
+// Avisynth solely through the interfaces defined in avisynth.h, regardless of the license
+// terms of these independent modules, and to copy and distribute the
+// resulting combined work under terms of your choice, provided that
+// every copy of the combined work is accompanied by a complete copy of
+// the source code of Avisynth (the version of Avisynth used to produce the
+// combined work), being distributed under the terms of the GNU General
+// Public License plus this exception.  An independent module is a module
+// which is not derived from or based on Avisynth, such as 3rd-party filters,
+// import and export plugins, or graphical user interfaces.
 
 
 #include <windows.h>
@@ -71,6 +87,8 @@ static bool MyLoadLibrary(const char* filename, HMODULE* hmod, bool quiet, IScri
   return false;
 }
 
+// TODO: Implement rejection of 1.x and 2.0x plugins
+
 AVSValue LoadPlugin(AVSValue args, void* user_data, IScriptEnvironment* env) {
   bool quiet = (user_data != 0);
   args = args[0];
@@ -80,23 +98,27 @@ AVSValue LoadPlugin(AVSValue args, void* user_data, IScriptEnvironment* env) {
     const char* plugin_name = args[i].AsString();
     if (MyLoadLibrary(plugin_name, &plugin, quiet, env)) {
       typedef const char* (__stdcall *AvisynthPluginInitFunc)(IScriptEnvironment* env);
-      AvisynthPluginInitFunc AvisynthPluginInit = (AvisynthPluginInitFunc)GetProcAddress(plugin, "AvisynthPluginInit");
-      if (!AvisynthPluginInit)
-        AvisynthPluginInit = (AvisynthPluginInitFunc)GetProcAddress(plugin, "_AvisynthPluginInit@4");
+      AvisynthPluginInitFunc AvisynthPluginInit = (AvisynthPluginInitFunc)GetProcAddress(plugin, "AvisynthPluginInit2");   // TODO: Change this to reject 1.0!!
       if (!AvisynthPluginInit) {
-        if (GetProcAddress(plugin, "AvisynthPluginGetInfo"))
-          env->ThrowError("LoadPlugin: \"%s\" is an Avisynth 0.x plugin, and is not compatible with version 1.x", plugin_name);
-        else if (quiet) {
+        AvisynthPluginInit = (AvisynthPluginInitFunc)GetProcAddress(plugin, "_AvisynthPluginInit2@4");
+        if (!AvisynthPluginInit) {  // Older version
           FreeLibrary(plugin);
-          // remove the last handle from the list
-          HMODULE* loaded_plugins = (HMODULE*)env->GetVar("$Plugins$").AsString();
-          int j=0;
-          while (loaded_plugins[j+1]) j++;
-          loaded_plugins[j] = 0;
-        } else
-          env->ThrowError("LoadPlugin: \"%s\" is not an Avisynth 1.0 plugin", plugin_name);
-      } else
+          if (quiet) {
+//            FreeLibrary(plugin);
+            // remove the last handle from the list
+            HMODULE* loaded_plugins = (HMODULE*)env->GetVar("$Plugins$").AsString();
+            int j=0;
+            while (loaded_plugins[j+1]) j++;
+            loaded_plugins[j] = 0;
+          } else {
+            env->ThrowError("Plugin %s is not an AviSynth 2.5 plugin.",plugin_name);
+          }
+        } else {
+          result = AvisynthPluginInit(env);
+        }
+      } else {
         result = AvisynthPluginInit(env);
+      }
     }
   }
   return result ? AVSValue(result) : AVSValue();
@@ -208,33 +230,33 @@ public:
     if (file_info.dwHasStreams & VF_STREAM_VIDEO) {
       VF_StreamInfo_Video stream_info = { sizeof(VF_StreamInfo_Video) };
       CheckHresult(env, plugin_func->GetStreamInfo(h, VF_STREAM_VIDEO, &stream_info));
-      if (stream_info.dwBitCount == 24)
-        vi.pixel_type = VideoInfo::BGR24;
-      else if (stream_info.dwBitCount == 32)
-        vi.pixel_type = VideoInfo::BGR32;
-      else
+      if (stream_info.dwBitCount == 24) {
+        vi.pixel_type = VideoInfo::CS_BGR24;
+      } else if (stream_info.dwBitCount == 32) {
+        vi.pixel_type = VideoInfo::CS_BGR32;
+      } else {
         env->ThrowError("VFAPIPluginProxy: plugin returned invalid bit depth (%d)", stream_info.dwBitCount);
+      }
       vi.width = stream_info.dwWidth;
       vi.height = stream_info.dwHeight;
       vi.num_frames = stream_info.dwLengthL;
       vi.SetFPS(stream_info.dwRate, stream_info.dwScale);
-      vi.field_based = false;
     }
     if (file_info.dwHasStreams & VF_STREAM_AUDIO) {
       VF_StreamInfo_Audio stream_info = { sizeof(VF_StreamInfo_Audio) };
       CheckHresult(env, plugin_func->GetStreamInfo(h, VF_STREAM_AUDIO, &stream_info));
       vi.audio_samples_per_second = stream_info.dwRate / stream_info.dwScale;
       vi.num_audio_samples = stream_info.dwLengthL;
-      if (stream_info.dwChannels == 1)
-        vi.stereo = false;
-      else if (stream_info.dwChannels == 2)
-        vi.stereo = true;
-      else
-        env->ThrowError("VFAPIPluginProxy: plugin returned invalid number of audio channels (%d)", stream_info.dwChannels);
+      vi.nchannels = stream_info.dwChannels;
+
       if (stream_info.dwBitsPerSample == 8)
-        vi.sixteen_bit = false;
+        vi.sample_type = SAMPLE_INT8;
       else if (stream_info.dwBitsPerSample == 16)
-        vi.sixteen_bit = true;
+        vi.sample_type = SAMPLE_INT16;
+      else if (stream_info.dwBitsPerSample == 24)
+        vi.sample_type = SAMPLE_INT24;
+      else if (stream_info.dwBitsPerSample == 32)
+        vi.sample_type = SAMPLE_INT32;
       else
         env->ThrowError("VFAPIPluginProxy: plugin returned invalid audio sample depth (%d)", stream_info.dwBitsPerSample);
     }
@@ -253,7 +275,7 @@ public:
     return result;
   }
 
-  void __stdcall GetAudio(void* buf, int start, int count, IScriptEnvironment* env) {
+  void __stdcall GetAudio(void* buf, __int64 start, __int64 count, IScriptEnvironment* env) {
     if (start < 0) {
       int bytes = vi.BytesFromAudioSamples(-start);
       memset(buf, 0, bytes);
@@ -270,6 +292,7 @@ public:
   }
 
   bool __stdcall GetParity(int n) { return false; }
+  void __stdcall SetCacheHints(int cachehints,int frame_range) { };
 
   static AVSValue __cdecl Create(AVSValue args, void* user_data, IScriptEnvironment* env) {
     args = args[0];

@@ -1,5 +1,5 @@
-// Avisynth v1.0 beta.  Copyright 2000 Ben Rudiak-Gould.
-// http://www.math.berkeley.edu/~benrg/avisynth.html
+// Avisynth v2.5.  Copyright 2002 Ben Rudiak-Gould et al.
+// http://www.avisynth.org
 
 // This program is free software; you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -15,7 +15,22 @@
 // along with this program; if not, write to the Free Software
 // Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA, or visit
 // http://www.gnu.org/copyleft/gpl.html .
-
+//
+// Linking Avisynth statically or dynamically with other modules is making a
+// combined work based on Avisynth.  Thus, the terms and conditions of the GNU
+// General Public License cover the whole combination.
+//
+// As a special exception, the copyright holders of Avisynth give you
+// permission to link Avisynth with independent modules that communicate with
+// Avisynth solely through the interfaces defined in avisynth.h, regardless of the license
+// terms of these independent modules, and to copy and distribute the
+// resulting combined work under terms of your choice, provided that
+// every copy of the combined work is accompanied by a complete copy of
+// the source code of Avisynth (the version of Avisynth used to produce the
+// combined work), being distributed under the terms of the GNU General
+// Public License plus this exception.  An independent module is a module
+// which is not derived from or based on Avisynth, such as 3rd-party filters,
+// import and export plugins, or graphical user interfaces.
 
 #include "edit.h"
 
@@ -47,6 +62,7 @@ AVSFunction Edit_filters[] = {
 
 
 
+ 
 
 /******************************
  *******   Trim Filter   ******
@@ -58,7 +74,7 @@ Trim::Trim(int _firstframe, int _lastframe, PClip _child) : GenericVideoFilter(_
   firstframe = min(max(_firstframe, 0), vi.num_frames-1);
   int lastframe=_lastframe;
   if (_lastframe<0)
-    lastframe = firstframe - _lastframe - 1;
+    lastframe = firstframe - _lastframe;
   lastframe = min(max(lastframe, firstframe), vi.num_frames-1);
   audio_offset = vi.AudioSamplesFromFrames(firstframe);
   vi.num_frames = lastframe+1 - firstframe;
@@ -72,7 +88,7 @@ PVideoFrame Trim::GetFrame(int n, IScriptEnvironment* env)
 }
 
 
-void Trim::GetAudio(void* buf, int start, int count, IScriptEnvironment* env) 
+void __stdcall Trim::GetAudio(void* buf, __int64 start, __int64 count, IScriptEnvironment* env) 
 {
   child->GetAudio(buf, start+audio_offset, count, env);
 }
@@ -210,7 +226,7 @@ Splice::Splice(PClip _child1, PClip _child2, bool realign_sound, IScriptEnvironm
       env->ThrowError("Splice: video formats don't match");
   }
   if (vi.HasAudio()) {
-    if (vi.stereo != vi2.stereo || vi.sixteen_bit != vi2.sixteen_bit)
+    if (vi.AudioChannels() != vi2.AudioChannels() || vi.SampleType() != vi2.SampleType())
       env->ThrowError("Splice: sound formats don't match");
   }
 
@@ -235,14 +251,14 @@ PVideoFrame Splice::GetFrame(int n, IScriptEnvironment* env)
 }
 
 
-void Splice::GetAudio(void* buf, int start, int count, IScriptEnvironment* env) 
+void Splice::GetAudio(void* buf, __int64 start, __int64 count, IScriptEnvironment* env) 
 {
   if (start+count <= audio_switchover_point)
     child->GetAudio(buf, start, count, env);
   else if (start >= audio_switchover_point)
     child2->GetAudio(buf, start - audio_switchover_point, count, env);
   else {
-    const int count1 = audio_switchover_point - start;
+    const __int64 count1 = audio_switchover_point - start;
     child->GetAudio(buf, start, count1, env);
     child2->GetAudio((char*)buf+vi.BytesFromAudioSamples(count1), 0, count-count1, env);
   }
@@ -293,6 +309,8 @@ AVSValue __cdecl Splice::CreateAligned(AVSValue args, void*, IScriptEnvironment*
  *******   Dissolve Filter  ******
  *********************************/
 
+// Fixme: Add float samples
+
 AVSValue __cdecl Dissolve::Create(AVSValue args, void*, IScriptEnvironment* env) 
 {
   const int overlap = args[2].AsInt();
@@ -304,7 +322,7 @@ AVSValue __cdecl Dissolve::Create(AVSValue args, void*, IScriptEnvironment* env)
 
 
 Dissolve::Dissolve(PClip _child1, PClip _child2, int _overlap, IScriptEnvironment* env)
- : GenericVideoFilter(_child1), child2(_child2), overlap(_overlap), audbuffer(0), audbufsize(0)
+ : GenericVideoFilter(ConvertAudio::Create(_child1,SAMPLE_INT16,SAMPLE_INT16)), child2(ConvertAudio::Create(_child2,SAMPLE_INT16, SAMPLE_INT16)), overlap(_overlap), audbuffer(0), audbufsize(0)
 {
   const VideoInfo& vi2 = child2->GetVideoInfo();
 
@@ -320,7 +338,7 @@ Dissolve::Dissolve(PClip _child1, PClip _child2, int _overlap, IScriptEnvironmen
       env->ThrowError("Dissolve: video formats don't match");
   }
   if (vi.HasAudio()) {
-    if (vi.stereo != vi2.stereo || vi.sixteen_bit != vi2.sixteen_bit)
+    if (vi.AudioChannels() != vi2.AudioChannels() || vi.SampleType() != vi2.SampleType())
       env->ThrowError("Dissolve: sound formats don't match");
   }
 
@@ -349,25 +367,44 @@ PVideoFrame Dissolve::GetFrame(int n, IScriptEnvironment* env)
   PVideoFrame c;
   if (!a->IsWritable())
     c = env->NewVideoFrame(vi);
+  if (vi.IsPlanar()) {
+    for (int i=0;i<3;i++) {
+      int p = (i==0) ? PLANAR_Y : PLANAR_U;      
+      p = (i==1) ? PLANAR_V : p;      
+      const BYTE *src1 = a->GetReadPtr(p), *src2 = b->GetReadPtr(p);
+      BYTE* dst = (c?c:a)->GetWritePtr(p);
+      int src1_pitch = a->GetPitch(p), src2_pitch = b->GetPitch(p), dst_pitch = (c?c:a)->GetPitch(p);
+      const int row_size = a->GetRowSize(p), height = a->GetHeight(p);
 
-  const BYTE *src1 = a->GetReadPtr(), *src2 = b->GetReadPtr();
-  BYTE* dst = (c?c:a)->GetWritePtr();
-  int src1_pitch = a->GetPitch(), src2_pitch = b->GetPitch(), dst_pitch = (c?c:a)->GetPitch();
-  const int row_size = a->GetRowSize(), height = a->GetHeight();
+      for (int y=height; y>0; --y) {
+        for (int x=0; x<row_size; ++x)
+          dst[x] = src1[x] + ((src2[x]-src1[x]) * multiplier + (overlap>>1)) / (overlap+1);
+        dst += dst_pitch;
+        src1 += src1_pitch;
+        src2 += src2_pitch;
+      }
+    }    
+  } else {
+    const BYTE *src1 = a->GetReadPtr(), *src2 = b->GetReadPtr();
+    BYTE* dst = (c?c:a)->GetWritePtr();
+    int src1_pitch = a->GetPitch(), src2_pitch = b->GetPitch(), dst_pitch = (c?c:a)->GetPitch();
+    const int row_size = a->GetRowSize(), height = a->GetHeight();
 
-  for (int y=height; y>0; --y) {
-    for (int x=0; x<row_size; ++x)
-      dst[x] = src1[x] + ((src2[x]-src1[x]) * multiplier + (overlap>>1)) / (overlap+1);
-    dst += dst_pitch;
-    src1 += src1_pitch;
-    src2 += src2_pitch;
+    for (int y=height; y>0; --y) {
+      for (int x=0; x<row_size; ++x)
+        dst[x] = src1[x] + ((src2[x]-src1[x]) * multiplier + (overlap>>1)) / (overlap+1);
+      dst += dst_pitch;
+      src1 += src1_pitch;
+      src2 += src2_pitch;
+    }
   }
 
   return (c?c:a);
 }
 
 
-void Dissolve::GetAudio(void* buf, int start, int count, IScriptEnvironment* env) 
+
+void Dissolve::GetAudio(void* buf, __int64 start, __int64 count, IScriptEnvironment* env) 
 {
   if (start+count <= audio_fade_start)
     child->GetAudio(buf, start, count, env);
@@ -388,9 +425,9 @@ void Dissolve::GetAudio(void* buf, int start, int count, IScriptEnvironment* env
 
     int denominator = (audio_fade_end - audio_fade_start);
     int numerator = (audio_fade_end - start);
-    if (vi.sixteen_bit) {
+    if (vi.SampleType()==SAMPLE_INT16) {
       short *a = (short*)buf, *b = (short*)audbuffer;
-      if (vi.stereo) {
+      if (vi.AudioChannels()==2) {
         for (int i=0; i<count*2; i+=2) {
           if (numerator <= 0) {
             a[i] = b[i];
@@ -401,7 +438,7 @@ void Dissolve::GetAudio(void* buf, int start, int count, IScriptEnvironment* env
           }
           numerator--;
         }
-      } else {
+      } else if (vi.AudioChannels()==1) {
         for (int i=0; i<count; ++i) {
           if (numerator <= 0)
             a[i] = b[i];
@@ -410,14 +447,14 @@ void Dissolve::GetAudio(void* buf, int start, int count, IScriptEnvironment* env
           numerator--;
         }
       }
-    } else {
+    } else if (vi.SampleType()==SAMPLE_INT8) { 
       BYTE *a = (BYTE*)buf, *b = (BYTE*)audbuffer;
       for (int i=0; i<count; ++i) {
         if (numerator <= 0)
           a[i] = b[i];
         else if (numerator < denominator)
           a[i] = b[i] + MulDiv(a[i]-b[i], numerator, denominator);
-        numerator -= ((i&1) | !vi.stereo);
+        numerator -= ((i&1) | (vi.AudioChannels()==1));
       }
     }
   }
@@ -459,8 +496,8 @@ AudioDub::AudioDub(PClip child1, PClip child2, IScriptEnvironment* env)
   vi = *vi_video;
   vi.audio_samples_per_second = vi_audio->audio_samples_per_second;
   vi.num_audio_samples = vi_audio->num_audio_samples;
-  vi.sixteen_bit = vi_audio->sixteen_bit;
-  vi.stereo = vi_audio->stereo;
+  vi.sample_type = vi_audio->sample_type;
+  vi.nchannels = vi_audio->nchannels;
 }
 
 
@@ -482,7 +519,7 @@ bool AudioDub::GetParity(int n)
 }
 
 
-void AudioDub::GetAudio(void* buf, int start, int count, IScriptEnvironment* env) 
+void AudioDub::GetAudio(void* buf, __int64 start, __int64 count, IScriptEnvironment* env) 
 {
   achild->GetAudio(buf, start, count, env);
 }
@@ -502,7 +539,7 @@ AVSValue __cdecl AudioDub::Create(AVSValue args, void*, IScriptEnvironment* env)
 
 
 /*******************************
- *******   Revese Filter  ******
+ *******   Reverse Filter  ******
  *******************************/
 
 Reverse::Reverse(PClip _child) : GenericVideoFilter(_child) {}
@@ -520,7 +557,7 @@ bool Reverse::GetParity(int n)
 }
 
 
-void Reverse::GetAudio(void* buf, int start, int count, IScriptEnvironment* env) 
+void Reverse::GetAudio(void* buf, __int64 start, __int64 count, IScriptEnvironment* env) 
 {
   child->GetAudio(buf, vi.num_audio_samples - start - count, count, env);
   int xor = vi.BytesPerAudioSample() - 1;
@@ -564,12 +601,12 @@ Loop::Loop(PClip _child, int _times, int _start, int _end, IScriptEnvironment* e
   }
 
   if (vi.audio_samples_per_second) {
-    if (!vi.sixteen_bit)
+    if (vi.SampleType()!=SAMPLE_INT16)   // FIXME: Implement better handling!!!
       env->ThrowError("Loop: Sound must be 16 bits, use ConvertAudioTo16bit() or KillAudio()");
 
     start_samples = (((start*vi.audio_samples_per_second)*vi.fps_denominator)/ vi.fps_numerator);
     loop_ends_at_sample = (((end*vi.audio_samples_per_second)*vi.fps_denominator)/ vi.fps_numerator);
-    loop_len_samples = (int)(0.5+(double)(loop_ends_at_sample-start_samples)/(double)times);
+    loop_len_samples = (__int64)(0.5+(double)(loop_ends_at_sample-start_samples)/(double)times);
 
     vi.num_audio_samples+=(loop_len_samples*times);
   }
@@ -587,7 +624,7 @@ bool Loop::GetParity(int n)
   return child->GetParity(convert(n));
 }
  
-void Loop::GetAudio(void* buf, int s_start, int count, IScriptEnvironment* env) {
+void Loop::GetAudio(void* buf, __int64 s_start, __int64 count, IScriptEnvironment* env) {
 
 
   if (s_start+count<start_samples) {
@@ -601,8 +638,8 @@ void Loop::GetAudio(void* buf, int s_start, int count, IScriptEnvironment* env) 
   } 
 
   signed short* samples = (signed short*)buf;
-  int s_pitch=1;
-  if (vi.stereo) s_pitch=2;
+  int s_pitch=vi.AudioChannels();
+//  if (vi.stereo) s_pitch=2;
  
   int in_loop_start=s_start-start_samples;  // This is the offset within the loop
   int fetch_at_sample = (in_loop_start%loop_len_samples); // This is the first sample to get.
@@ -612,7 +649,7 @@ void Loop::GetAudio(void* buf, int s_start, int count, IScriptEnvironment* env) 
       child->GetAudio(samples,start_samples+fetch_at_sample,count,env);
       return;
     } else {  // Get as many as possible without getting over the length of the loop 
-      int get_count=loop_len_samples-fetch_at_sample;
+      __int64 get_count=loop_len_samples-fetch_at_sample;
       if (get_count>count) get_count=count;  // Just to be safe
       if (get_count+s_start>loop_ends_at_sample) get_count=loop_ends_at_sample-(get_count+s_start); // Just to be safe
       child->GetAudio(samples,start_samples+fetch_at_sample,get_count,env);
@@ -646,9 +683,11 @@ AVSValue __cdecl Loop::Create(AVSValue args, void*, IScriptEnvironment* env)
 
 
 
+
 /******************************
  ** Assorted factory methods **
  *****************************/
+
 
 PClip __cdecl ColorClip(PClip a, int duration, int color, IScriptEnvironment* env) {
   AVSValue blackness_args[] = { a, duration, color };
@@ -705,6 +744,9 @@ AVSValue __cdecl Create_FadeIO2(AVSValue args, void*, IScriptEnvironment* env) {
   AVSValue dissolve_args[] = { b, a, b, duration };
   return env->Invoke("Dissolve", AVSValue(dissolve_args,4)).AsClip();
 }
+
+
+
 
 
 PClip new_Splice(PClip _child1, PClip _child2, bool realign_sound, IScriptEnvironment* env) 

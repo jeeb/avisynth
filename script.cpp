@@ -1,5 +1,5 @@
-// Avisynth v1.0 beta.  Copyright 2000 Ben Rudiak-Gould.
-// http://www.math.berkeley.edu/~benrg/avisynth.html
+// Avisynth v2.5.  Copyright 2002 Ben Rudiak-Gould et al.
+// http://www.avisynth.org
 
 // This program is free software; you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -15,13 +15,29 @@
 // along with this program; if not, write to the Free Software
 // Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA, or visit
 // http://www.gnu.org/copyleft/gpl.html .
+//
+// Linking Avisynth statically or dynamically with other modules is making a
+// combined work based on Avisynth.  Thus, the terms and conditions of the GNU
+// General Public License cover the whole combination.
+//
+// As a special exception, the copyright holders of Avisynth give you
+// permission to link Avisynth with independent modules that communicate with
+// Avisynth solely through the interfaces defined in avisynth.h, regardless of the license
+// terms of these independent modules, and to copy and distribute the
+// resulting combined work under terms of your choice, provided that
+// every copy of the combined work is accompanied by a complete copy of
+// the source code of Avisynth (the version of Avisynth used to produce the
+// combined work), being distributed under the terms of the GNU General
+// Public License plus this exception.  An independent module is a module
+// which is not derived from or based on Avisynth, such as 3rd-party filters,
+// import and export plugins, or graphical user interfaces.
 
 
 #include "script.h"
 #include <stdlib.h>
 #include <io.h>
 #include <time.h>
-
+ 
 #ifdef _MSC_VER
   #define itoa(a,b,c) _itoa(a,b,c)
 #endif
@@ -67,7 +83,7 @@ AVSFunction Script_functions[] = {
   { "framecount", "c", FrameCount },
   { "framerate", "c", FrameRate },
   { "audiorate", "c", AudioRate },
-  { "audiolength", "c", AudioLength },
+//  { "audiolength", "c", AudioLength },  // Fixme: Add int64 to script
   { "audiochannels", "c", AudioChannels },
   { "audiobits", "c", AudioBits },
   { "IsRGB", "c", IsRGB },
@@ -113,7 +129,6 @@ AVSFunction Script_functions[] = {
   { "VersionString", "", VersionString }, 
   { 0 }
 };
-
 
 
 
@@ -367,28 +382,16 @@ AVSValue Height(AVSValue args, void*, IScriptEnvironment* env) { return VI(args[
 AVSValue FrameCount(AVSValue args, void*, IScriptEnvironment* env) { return VI(args[0]).num_frames; }
 AVSValue FrameRate(AVSValue args, void*, IScriptEnvironment* env) { const VideoInfo& vi = VI(args[0]); return float(vi.fps_numerator) / float(vi.fps_denominator); }
 AVSValue AudioRate(AVSValue args, void*, IScriptEnvironment* env) { return VI(args[0]).audio_samples_per_second; }
-AVSValue AudioLength(AVSValue args, void*, IScriptEnvironment* env) { return VI(args[0]).num_audio_samples; }
-AVSValue AudioChannels(AVSValue args, void*, IScriptEnvironment* env) { return VI(args[0]).stereo ? 2 : 1; }
-AVSValue AudioBits(AVSValue args, void*, IScriptEnvironment* env) { return VI(args[0]).sixteen_bit ? 16 : 8; }
+//AVSValue AudioLength(AVSValue args, void*, IScriptEnvironment* env) { return VI(args[0]).num_audio_samples; }
+AVSValue AudioChannels(AVSValue args, void*, IScriptEnvironment* env) { return VI(args[0]).nchannels; }
+AVSValue AudioBits(AVSValue args, void*, IScriptEnvironment* env) { return VI(args[0]).BytesPerChannelSample(); }
 AVSValue IsRGB(AVSValue args, void*, IScriptEnvironment* env) { return VI(args[0]).IsRGB(); }
-AVSValue IsYUY2(AVSValue args, void*, IScriptEnvironment* env) { return VI(args[0]).IsYUY2(); }
 AVSValue IsRGB24(AVSValue args, void*, IScriptEnvironment* env) { return VI(args[0]).IsRGB24(); }
 AVSValue IsRGB32(AVSValue args, void*, IScriptEnvironment* env) { return VI(args[0]).IsRGB32(); }
-AVSValue IsFieldBased(AVSValue args, void*, IScriptEnvironment* env) { return VI(args[0]).field_based; }
-AVSValue IsFrameBased(AVSValue args, void*, IScriptEnvironment* env) { return !VI(args[0]).field_based; }
+AVSValue IsYUY2(AVSValue args, void*, IScriptEnvironment* env) { return VI(args[0]).IsYUY2(); }
+AVSValue IsFieldBased(AVSValue args, void*, IScriptEnvironment* env) { return VI(args[0]).IsFieldBased(); }
+AVSValue IsFrameBased(AVSValue args, void*, IScriptEnvironment* env) { return !VI(args[0]).IsFieldBased(); }
 AVSValue GetParity(AVSValue args, void*, IScriptEnvironment* env) { return args[0].AsClip()->GetParity(args[1].AsInt(0)); }
-
-AVSValue VersionNumber(AVSValue args, void*, IScriptEnvironment* env) { return AVS_VERSION; }
-AVSValue VersionString(AVSValue args, void*, IScriptEnvironment* env) { return AVS_VERSTR; }
-
-AVSValue Int(AVSValue args, void*, IScriptEnvironment* env) { return int(args[0].AsFloat()); }
-AVSValue Frac(AVSValue args, void*, IScriptEnvironment* env) { return args[0].AsFloat() - int(args[0].AsFloat()); }
-AVSValue Float(AVSValue args, void*,IScriptEnvironment* env) { return args[0].AsFloat(); }
-
-AVSValue Value(AVSValue args, void*, IScriptEnvironment* env) { char *stopstring; return strtod(args[0].AsString(),&stopstring); }
-AVSValue HexValue(AVSValue args, void*, IScriptEnvironment* env) { char *stopstring; return strtol(args[0].AsString(),&stopstring,16); }
-
-
 
 AVSValue String(AVSValue args, void*, IScriptEnvironment* env)
 {
@@ -404,7 +407,7 @@ AVSValue String(AVSValue args, void*, IScriptEnvironment* env)
     return s;
   }
   return "";
-}
+} 
 
 AVSValue IsBool(AVSValue args, void*, IScriptEnvironment* env) { return args[0].IsBool(); }
 AVSValue IsInt(AVSValue args, void*, IScriptEnvironment* env) { return args[0].IsInt(); }
@@ -414,3 +417,12 @@ AVSValue IsClip(AVSValue args, void*, IScriptEnvironment* env) { return args[0].
 AVSValue Defined(AVSValue args, void*, IScriptEnvironment* env) { return args[0].Defined(); }
 
 AVSValue Default(AVSValue args, void*, IScriptEnvironment* env) { return args[0].Defined() ? args[0] : args[1]; }
+AVSValue VersionNumber(AVSValue args, void*, IScriptEnvironment* env) { return AVS_VERSION; }
+AVSValue VersionString(AVSValue args, void*, IScriptEnvironment* env) { return AVS_VERSTR; }
+
+AVSValue Int(AVSValue args, void*, IScriptEnvironment* env) { return int(args[0].AsFloat()); }
+AVSValue Frac(AVSValue args, void*, IScriptEnvironment* env) { return args[0].AsFloat() - int(args[0].AsFloat()); }
+AVSValue Float(AVSValue args, void*,IScriptEnvironment* env) { return args[0].AsFloat(); }
+
+AVSValue Value(AVSValue args, void*, IScriptEnvironment* env) { char *stopstring; return strtod(args[0].AsString(),&stopstring); }
+AVSValue HexValue(AVSValue args, void*, IScriptEnvironment* env) { char *stopstring; return strtol(args[0].AsString(),&stopstring,16); }

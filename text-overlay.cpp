@@ -1,5 +1,5 @@
-/// Avisynth v1.0 beta.  Copyright 2000 Ben Rudiak-Gould.
-// http://www.math.berkeley.edu/~benrg/avisynth.html
+// Avisynth v2.5.  Copyright 2002 Ben Rudiak-Gould et al.
+// http://www.avisynth.org
 
 // This program is free software; you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -15,6 +15,22 @@
 // along with this program; if not, write to the Free Software
 // Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA, or visit
 // http://www.gnu.org/copyleft/gpl.html .
+//
+// Linking Avisynth statically or dynamically with other modules is making a
+// combined work based on Avisynth.  Thus, the terms and conditions of the GNU
+// General Public License cover the whole combination.
+//
+// As a special exception, the copyright holders of Avisynth give you
+// permission to link Avisynth with independent modules that communicate with
+// Avisynth solely through the interfaces defined in avisynth.h, regardless of the license
+// terms of these independent modules, and to copy and distribute the
+// resulting combined work under terms of your choice, provided that
+// every copy of the combined work is accompanied by a complete copy of
+// the source code of Avisynth (the version of Avisynth used to produce the
+// combined work), being distributed under the terms of the GNU General
+// Public License plus this exception.  An independent module is a module
+// which is not derived from or based on Avisynth, such as 3rd-party filters,
+// import and export plugins, or graphical user interfaces.
 
 
 #include "text-overlay.h"
@@ -30,9 +46,9 @@
 AVSFunction Text_filters[] = {
   { "ShowFrameNumber", "c[scroll]b", ShowFrameNumber::Create }, // clip, scroll?
   { "ShowSMPTE", "cf", ShowSMPTE::Create },                     // clip, fps
+  { "Info", "c", FilterInfo::Create },                     // clip
   { "Subtitle", "cs[x]i[y]i[first_frame]i[last_frame]i[font]s[size]i[text_color]i[halo_color]i[align]i[spc]i", 
     Subtitle::Create },       // see docs!
-//  { "Subtitle", "cs[x]i[y]i[first_frame]i[last_frame]i[font]s[size]i[text_color]i[halo_color]i", 
   { "Compare", "cc[channels]s[logfile]s[show_graph]b", Compare::Create },
   { 0 }
 };
@@ -104,17 +120,46 @@ HDC Antialiaser::GetDC() {
 }
 
 
-void Antialiaser::Apply( const VideoInfo& vi, BYTE* buf, int pitch, int textcolor, 
+void Antialiaser::Apply( const VideoInfo& vi, PVideoFrame* frame, int pitch, int textcolor, 
                          int halocolor ) 
 {
   if (vi.IsRGB32())
-    ApplyRGB32(buf, pitch, textcolor, halocolor);
+    ApplyRGB32((*frame)->GetWritePtr(), pitch, textcolor, halocolor);
   else if (vi.IsRGB24())
-    ApplyRGB24(buf, pitch, textcolor, halocolor);
+    ApplyRGB24((*frame)->GetWritePtr(), pitch, textcolor, halocolor);
   else if (vi.IsYUY2())
-    ApplyYUY2(buf, pitch, textcolor, halocolor);
+    ApplyYUY2((*frame)->GetWritePtr(), pitch, textcolor, halocolor);
+  else if (vi.IsYV12())
+    ApplyYV12((*frame)->GetWritePtr(), pitch, textcolor, halocolor, (*frame)->GetPitch(PLANAR_U),(*frame)->GetWritePtr(PLANAR_U),(*frame)->GetWritePtr(PLANAR_V));
 }
 
+void Antialiaser::ApplyYV12(BYTE* buf, int pitch, int textcolor, int halocolor, int pitchUV,BYTE* bufU,BYTE* bufV) {
+  if (dirty) GetAlphaRect();
+  int Ytext = ((textcolor>>16)&255), Utext = ((textcolor>>8)&255), Vtext = (textcolor&255);
+  int Yhalo = ((halocolor>>16)&255), Uhalo = ((halocolor>>8)&255), Vhalo = (halocolor&255);
+  int w2=w*2;
+  char* alpha = alpha_bits;
+  for (int y=0; y<(h>>1); y++) {
+    for (int x=0; x<w; x+=2) {
+      if (*(__int32*)&alpha[x*2] || *(__int32*)&alpha[x*2+w2]) {
+        buf[x+0] = (buf[x+0] * (64-alpha[x*2+0]-alpha[x*2+1]) + Ytext * alpha[x*2+0] + Yhalo * alpha[x*2+1]) >> 6;
+        buf[x+1] = (buf[x+1] * (64-alpha[x*2+2]-alpha[x*2+3]) + Ytext * alpha[x*2+2] + Yhalo * alpha[x*2+3]) >> 6;
+        buf[x+0+pitch] = (buf[x+0+pitch] * (64-alpha[x*2+0+((w2))]-alpha[x*2+1+(w2)]) + Ytext * alpha[x*2+0+(w2)] + Yhalo * alpha[x*2+1+(w2)]) >> 6;
+        buf[x+1+pitch] = (buf[x+1+pitch] * (64-alpha[x*2+2+(w2)]-alpha[x*2+3+(w2)]) + Ytext * alpha[x*2+2+(w2)] + Yhalo * alpha[x*2+3+(w2)]) >> 6;
+
+        int auv1 = (alpha[x*2]+alpha[x*2+2]+alpha[x*2+(w2)]+alpha[x*2+2+(w2)])>>1;
+        int auv2 = (alpha[x*2+1]+alpha[x*2+3]+alpha[x*2+1+(w2)]+alpha[x*2+3+(w2)])>>1;
+
+        bufU[x>>1] = (bufU[x>>1] * (128-auv1-auv2) + Utext * auv1 + Uhalo * auv2) >> 7;
+        bufV[x>>1] = (bufV[x>>1] * (128-auv1-auv2) + Vtext * auv1 + Vhalo * auv2) >> 7;
+      }
+    }
+    buf += pitch*2;
+    bufU += pitchUV;
+    bufV += pitchUV;
+    alpha += w*4;
+  }
+}
 
 
 void Antialiaser::ApplyYUY2(BYTE* buf, int pitch, int textcolor, int halocolor) {
@@ -370,7 +415,7 @@ PVideoFrame ShowFrameNumber::GetFrame(int n, IScriptEnvironment* env) {
   char text[40];
   wsprintf(text, "%05d", n);
   if( scroll ) {
-    int n1 = vi.field_based ? (n/2) : n;
+    int n1 = vi.IsFieldBased() ? (n/2) : n;
     int y = 192 + (192*n1)%(vi.height*8);
     TextOut(hdc, child->GetParity(n) ? 32 : vi.width*8-512, y, text, strlen(text));
   } else {
@@ -379,8 +424,8 @@ PVideoFrame ShowFrameNumber::GetFrame(int n, IScriptEnvironment* env) {
   }
   GdiFlush();
 
-  antialiaser.Apply(vi, frame->GetWritePtr(), frame->GetPitch(),
-    vi.IsYUY2() ? 0xD21092 : 0xFFFF00, vi.IsYUY2() ? 0x108080 : 0);
+  antialiaser.Apply(vi, &frame, frame->GetPitch(),
+    vi.IsYUV() ? 0xD21092 : 0xFFFF00, vi.IsYUV() ? 0x108080 : 0);
 
   return frame;
 }
@@ -454,8 +499,8 @@ PVideoFrame __stdcall ShowSMPTE::GetFrame(int n, IScriptEnvironment* env)
   TextOut(hdc, vi.width*4, vi.height*8-32, text, strlen(text));
   GdiFlush();
 
-  antialiaser.Apply( vi, frame->GetWritePtr(), frame->GetPitch(),
-                     vi.IsYUY2() ? 0xD21092 : 0xFFFF00, vi.IsYUY2() ? 0x108080 : 0 );
+  antialiaser.Apply( vi, &frame, frame->GetPitch(),
+                     vi.IsYUV() ? 0xD21092 : 0xFFFF00, vi.IsYUY2() ? 0x108080 : 0 );
 
   return frame;
 }
@@ -484,7 +529,7 @@ Subtitle::Subtitle( PClip _child, const char _text[], int _x, int _y, int _first
  : GenericVideoFilter(_child), antialiaser(0), text(_text), x(_x), y(_y), 
    firstframe(_firstframe), lastframe(_lastframe), fontname(MyStrdup(_fontname)), size(_size*8)
 {
-  if (vi.IsYUY2()) {
+  if (vi.IsYUV()) {
     textcolor = RGB2YUV(_textcolor);
     halocolor = RGB2YUV(_halocolor);
   } else {
@@ -496,10 +541,12 @@ Subtitle::Subtitle( PClip _child, const char _text[], int _x, int _y, int _first
 }
 
 
+
 Subtitle::~Subtitle(void) 
 {
   delete antialiaser;
 }
+
 
 
 PVideoFrame Subtitle::GetFrame(int n, IScriptEnvironment* env) 
@@ -510,7 +557,7 @@ PVideoFrame Subtitle::GetFrame(int n, IScriptEnvironment* env)
   if (n >= firstframe && n <= lastframe) {
     if (!antialiaser)
       InitAntialiaser();
-    antialiaser->Apply(vi, frame->GetWritePtr(), frame->GetPitch(), textcolor, halocolor);
+    antialiaser->Apply(vi, &frame, frame->GetPitch(), textcolor, halocolor);
   } else {
     // if we get far enough away from the frames we're supposed to
     // subtitle, then junk the buffered drawing information
@@ -587,6 +634,111 @@ void Subtitle::InitAntialiaser()
   TextOut(hdcAntialias, real_x*8+16, real_y*8+16, text, strlen(text));
   GdiFlush();
 }
+
+
+
+
+
+
+/***********************************
+ *******   FilterInfo Filter    ******
+ **********************************/
+
+
+FilterInfo::FilterInfo( PClip _child)
+: GenericVideoFilter(_child),
+antialiaser(vi.width, vi.height, "Courier New", 128) {
+}
+
+
+
+FilterInfo::~FilterInfo(void) 
+{
+}
+
+const char* t_YV12="YV12";
+const char* t_YUY2="YUY2";
+const char* t_RGB32="RGB32";
+const char* t_RGB24="RGB24";
+const char* t_INT8="Integer 8 bit";
+const char* t_INT16="Integer 16 bit";
+const char* t_INT24="Integer 24 bit";
+const char* t_INT32="Integer 32 bit";
+const char* t_FLOAT32="Float 32 bit";
+const char* t_YES="YES";
+const char* t_NO="NO";
+const char* t_NONE="NONE";
+const char* t_PUNKNOWN="Parity unknown";
+const char* t_TFF="Top Field First";
+const char* t_BFF="Bottom Field First";
+
+
+PVideoFrame FilterInfo::GetFrame(int n, IScriptEnvironment* env) 
+{
+  PVideoFrame frame = child->GetFrame(n, env);
+  env->MakeWritable(&frame);
+  hdcAntialias = antialiaser.GetDC();
+    const char* c_space;
+    const char* s_type = t_NONE;
+    const char* s_parity;
+    if (vi.IsRGB24()) c_space=t_RGB24;
+    if (vi.IsRGB32()) c_space=t_RGB32;
+    if (vi.IsYV12()) c_space=t_YV12;
+    if (vi.IsYUY2()) c_space=t_YUY2;
+    if (vi.SampleType()==SAMPLE_INT8) s_type=t_INT8;
+    if (vi.SampleType()==SAMPLE_INT16) s_type=t_INT16;
+    if (vi.SampleType()==SAMPLE_INT24) s_type=t_INT24;
+    if (vi.SampleType()==SAMPLE_INT32) s_type=t_INT32;
+    if (vi.SampleType()==SAMPLE_FLOAT) s_type=t_FLOAT32;
+    if (vi.IsParityKnown()) {
+      s_parity = vi.IsBFF() ? t_BFF : t_TFF;
+    } else {s_parity=t_PUNKNOWN;}
+    char text[400];
+    RECT r= { 32, 16, min(3440,vi.width*8), 768*2 };
+    sprintf(text,
+      "Frame: %-8u\n"
+      "ColorSpace: %s\n"
+      "Width:%4u pixels, Height:%4u pixels.\n"
+      "Frames per second: %7.4f\n"
+      "FieldBased Video: %s\n"
+      "Parity: %s\n"
+      "Video Pitch: %4u bytes.\n"
+      "Has Audio: %s\n"
+      "Audio Channels: %-8u\n"
+      "Sample Type: %s\n"
+      "Samples Per Second: %4d\n"
+      ,n
+      ,c_space
+      ,vi.width,vi.height
+      ,(float)vi.fps_numerator/(float)vi.fps_denominator
+      ,vi.IsFieldBased() ? t_YES : t_NO
+      ,s_parity
+      ,frame->GetPitch()
+      ,vi.HasAudio() ? t_YES : t_NO
+      ,vi.AudioChannels()
+      ,s_type
+      ,vi.audio_samples_per_second
+    );
+
+    DrawText(hdcAntialias, text, -1, &r, 0);
+    GdiFlush();
+
+    env->MakeWritable(&frame);
+    BYTE* dstp = frame->GetWritePtr();
+    int dst_pitch = frame->GetPitch();
+    antialiaser.Apply(vi, &frame, dst_pitch, vi.IsYUV() ? 0xD21092 : 0xFFFF00, vi.IsYUV() ? 0x108080 : 0 );
+
+  return frame;
+}
+
+AVSValue __cdecl FilterInfo::Create(AVSValue args, void*, IScriptEnvironment* env) 
+{
+    PClip clip = args[0].AsClip();
+    return new FilterInfo(clip);
+}
+
+
+
 
 
 
@@ -872,7 +1024,7 @@ comp_loopx:
     env->MakeWritable(&f1);
     BYTE* dstp = f1->GetWritePtr();
     int dst_pitch = f1->GetPitch();
-    antialiaser.Apply( vi, dstp, dst_pitch, vi.IsYUY2() ? 0xD21092 : 0xFFFF00, vi.IsYUY2() ? 0x108080 : 0 );
+    antialiaser.Apply( vi, &f1, dst_pitch, vi.IsYUV() ? 0xD21092 : 0xFFFF00, vi.IsYUV() ? 0x108080 : 0 );
 
     if (show_graph) {
       // original idea by Marc_FD
@@ -986,10 +1138,10 @@ void ApplyMessage( PVideoFrame* frame, const VideoInfo& vi, const char* message,
   RECT r = { 4*8, 4*8, (vi.width-4)*8, (vi.height-4)*8 };
   DrawText(hdcAntialias, message, lstrlen(message), &r, DT_NOPREFIX|DT_CENTER);
   GdiFlush();
-  if (vi.IsYUY2()) {
+  if (vi.IsYUV()) {
     textcolor = RGB2YUV(textcolor);
     halocolor = RGB2YUV(halocolor);
   }
-  antialiaser.Apply(vi, (*frame)->GetWritePtr(), (*frame)->GetPitch(), textcolor, halocolor);
+  antialiaser.Apply(vi, frame, (*frame)->GetPitch(), textcolor, halocolor);
 }
 

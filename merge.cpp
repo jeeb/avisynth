@@ -1,9 +1,41 @@
-// Avisynth filter: YUV merge
+// Avisynth v2.5.  Copyright 2002 Ben Rudiak-Gould et al.
+// http://www.avisynth.org
+
+// This program is free software; you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation; either version 2 of the License, or
+// (at your option) any later version.
+//
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with this program; if not, write to the Free Software
+// Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA, or visit
+// http://www.gnu.org/copyleft/gpl.html .
+//
+// Linking Avisynth statically or dynamically with other modules is making a
+// combined work based on Avisynth.  Thus, the terms and conditions of the GNU
+// General Public License cover the whole combination.
+//
+// As a special exception, the copyright holders of Avisynth give you
+// permission to link Avisynth with independent modules that communicate with
+// Avisynth solely through the interfaces defined in avisynth.h, regardless of the license
+// terms of these independent modules, and to copy and distribute the
+// resulting combined work under terms of your choice, provided that
+// every copy of the combined work is accompanied by a complete copy of
+// the source code of Avisynth (the version of Avisynth used to produce the
+// combined work), being distributed under the terms of the GNU General
+// Public License plus this exception.  An independent module is a module
+// which is not derived from or based on Avisynth, such as 3rd-party filters,
+// import and export plugins, or graphical user interfaces.
+
+
+// Avisynth filter: YUV merge / Swap planes
 // by Klaus Post (kp@interact.dk)
 // adapted by Richard Berg (avisynth-dev@richardberg.net)
-//
-// Released under the GNU Public License
-// See http://www.gnu.org/copyleft/gpl.html for details
 
 
 #include "merge.h"
@@ -15,11 +47,127 @@
 AVSFunction Merge_filters[] = {
   { "MergeChroma", "cc[chromaweight]f", MergeChroma::Create },  // src, chroma src, weight
   { "MergeLuma", "cc[lumaweight]f", MergeLuma::Create },      // src, luma src, weight
+  {  "SwapUV","c", Swap::CreateUV },
+  {  "UToY","c", Swap::CreateUToY },
+  {  "VToY","c", Swap::CreateVToY },
+  {  "YToUV","cc", Swap::CreateYToUV },
   { 0 }
 };
 
 
+/**************************************
+ *  Swap - swaps UV on planar maps
+ **************************************/
 
+
+AVSValue __cdecl Swap::CreateUV(AVSValue args, void* user_data, IScriptEnvironment* env) {
+  return new Swap(args[0].AsClip(), args[0].AsClip(), 1 , env);
+}
+
+AVSValue __cdecl Swap::CreateUToY(AVSValue args, void* user_data, IScriptEnvironment* env) {
+  return new Swap(args[0].AsClip(), args[0].AsClip(), 2 , env);
+}
+
+AVSValue __cdecl Swap::CreateVToY(AVSValue args, void* user_data, IScriptEnvironment* env) {
+  return new Swap(args[0].AsClip(), args[0].AsClip(), 3 , env);
+}
+
+AVSValue __cdecl Swap::CreateYToUV(AVSValue args, void* user_data, IScriptEnvironment* env) {
+  return new Swap(args[0].AsClip(), args[1].AsClip(), 4 , env);
+}
+
+Swap::Swap(PClip _child, PClip _clip, int _mode, IScriptEnvironment* env) 
+  : GenericVideoFilter(_child), clip(_clip), mode(_mode) {
+    VideoInfo vi2=clip->GetVideoInfo();
+  if (!vi.IsYV12() || !vi2.IsYV12()) 
+    env->ThrowError("Plane swapper: YV12 data only!");  // Todo: report correct filter
+  switch (mode) {
+  case 1:
+    break;
+  case 2:
+  case 3:
+    vi.height >>=1;
+    vi.width >>=1;
+    break;
+  case 4:
+    if (vi.height!=vi2.height)
+      env->ThrowError("YToUV: Clips does not have the same height!");
+    if (vi.width!=vi2.width)
+      env->ThrowError("YToUV: Clips does not have the same width!");
+    vi.height <<=1;
+    vi.width <<=1;
+    break;
+  }
+}
+
+PVideoFrame __stdcall Swap::GetFrame(int n, IScriptEnvironment* env) {
+  PVideoFrame src = child->GetFrame(n, env);
+  if (mode==1) {  // SwapUV
+    env->MakeWritable(&src);
+    const int xpixels=src->GetRowSize(PLANAR_U_ALIGNED)>>2; // Ints
+    const int yloops=src->GetHeight(PLANAR_U);
+    int* srcpY=(int*)src->GetWritePtr(PLANAR_Y);  // Y Plane must be touched!
+    int* srcpV=(int*)src->GetWritePtr(PLANAR_V);
+    int* srcpU=(int*)src->GetWritePtr(PLANAR_U);
+    
+    for (int y=0;y<yloops;y++) { //todo: mmx me
+      for (int x=0;x<xpixels;x++) {
+        int t=srcpU[x];
+        srcpU[x]=srcpV[x];
+        srcpV[x]=t;
+      }
+      srcpU+=src->GetPitch(PLANAR_U)/4;
+      srcpV+=src->GetPitch(PLANAR_U)/4;
+    }
+    return src;
+  }
+  if (mode==2 || mode ==3) {  // U to Y or V to Y
+    PVideoFrame dst = env->NewVideoFrame(vi);
+    if (mode==2) {  // U To Y
+      env->BitBlt(dst->GetWritePtr(PLANAR_Y),dst->GetPitch(PLANAR_Y),src->GetReadPtr(PLANAR_U),src->GetPitch(PLANAR_U),dst->GetRowSize(),dst->GetHeight());
+    } else if (mode==3) {
+      env->BitBlt(dst->GetWritePtr(PLANAR_Y),dst->GetPitch(PLANAR_Y),src->GetReadPtr(PLANAR_V),src->GetPitch(PLANAR_V),dst->GetRowSize(),dst->GetHeight());
+    }
+    // Clear chroma
+    int pitch = dst->GetPitch(PLANAR_U)/4;
+    int *srcpUV = (int*)dst->GetWritePtr(PLANAR_U);
+    int myx = dst->GetRowSize(PLANAR_U_ALIGNED)/4;
+    int myy = dst->GetHeight(PLANAR_U);
+	  for (int y=0; y<myy; y++) {
+      for (int x=0; x<myx; x++) {
+		    srcpUV[x] = 0x7f7f7f7f;  // mod 8
+      }
+		  srcpUV += pitch;
+	  }
+    srcpUV = (int*)dst->GetWritePtr(PLANAR_V);
+	  for (y=0; y<myy; ++y) {
+      for (int x=0; x<myx; x++) {
+		    srcpUV[x] = 0x7f7f7f7f;  // mod 8
+      }
+		  srcpUV += pitch;
+	  }
+    return dst;
+  }
+  if (mode==4) {  // Merge UV  U=child V=clip
+    PVideoFrame dst = env->NewVideoFrame(vi);
+    env->BitBlt(dst->GetWritePtr(PLANAR_U),dst->GetPitch(PLANAR_U),src->GetReadPtr(PLANAR_Y),src->GetPitch(PLANAR_Y),src->GetRowSize(PLANAR_Y),src->GetHeight(PLANAR_Y));
+    src = clip->GetFrame(n, env);
+    env->BitBlt(dst->GetWritePtr(PLANAR_V),dst->GetPitch(PLANAR_V),src->GetReadPtr(PLANAR_Y),src->GetPitch(PLANAR_Y),src->GetRowSize(PLANAR_Y),src->GetHeight(PLANAR_Y));
+    // Luma = 128
+    int pitch = dst->GetPitch(PLANAR_Y)/4;
+    int *srcpY = (int*)dst->GetWritePtr(PLANAR_Y);
+    int myx = dst->GetRowSize(PLANAR_Y_ALIGNED)/4;
+    int myy = dst->GetHeight(PLANAR_Y);
+	  for (int y=0; y<myy; y++) {
+      for (int x=0; x<myx; x++) {
+		    srcpY[x] = 0x80808080;  // mod 4
+      }
+		  srcpY += pitch;
+	  }
+    return dst;
+  }
+  return src;
+}
 
 
 /****************************
@@ -31,11 +179,14 @@ MergeChroma::MergeChroma(PClip _child, PClip _clip, float _weight, IScriptEnviro
 {
   const VideoInfo& vi2 = clip->GetVideoInfo();
 
-  if (!vi.IsYUY2() || !vi2.IsYUY2())
-		env->ThrowError("MergeChroma: YUY2 data only (no RGB); use ConvertToYUY2");
+  if (!vi.IsYUV() || !vi2.IsYUV())
+    env->ThrowError("MergeLuma: YUV data only (no RGB); use ConvertToYUY2 or ConvertToYV12");
+
+  if (!((vi.IsYV12()==vi2.IsYV12()) || (vi.IsYUY2()==vi2.IsYUY2())))
+    env->ThrowError("MergeLuma: YUV data is not same type. Both must be YV12 or YUY2");
 
   if (vi.width!=vi2.width || vi.height!=vi2.height)
-    env->ThrowError("MergeChroma: Images must have same width and height!");
+    env->ThrowError("MergeLuma: Images must have same width and height!");
 
   if (weight<0.0f) weight=0.0f;
   if (weight>1.0f) weight=1.0f;
@@ -50,38 +201,86 @@ PVideoFrame __stdcall MergeChroma::GetFrame(int n, IScriptEnvironment* env)
 {
   
   PVideoFrame src = child->GetFrame(n, env);
-
+  
   if (weight<0.0001f) return src;
-
+  
   PVideoFrame chroma = clip->GetFrame(n, env);
-
+  
   const int h = src->GetHeight();
   const int w = src->GetRowSize()>>1; // width in pixels
   
   if (weight<0.9999f) {
-    env->MakeWritable(&src);
-    unsigned int* srcp = (unsigned int*)src->GetWritePtr();
-    unsigned int* chromap = (unsigned int*)chroma->GetReadPtr();
+    if (vi.IsYUY2()) {
+      env->MakeWritable(&src);
+      unsigned int* srcp = (unsigned int*)src->GetWritePtr();
+      unsigned int* chromap = (unsigned int*)chroma->GetReadPtr();
+      
+      const int isrc_pitch = (src->GetPitch())>>2;  // int pitch (one pitch=two pixels)
+      const int ichroma_pitch = (chroma->GetPitch())>>2;  // Ints
+      
+      (env->GetCPUFlags() & CPUF_INTEGER_SSE ? isse_weigh_chroma : weigh_chroma)
+        (srcp,chromap,isrc_pitch,ichroma_pitch,w,h,(int)(weight*32768.0f),32768-(int)(weight*32768.0f));
+    } else {
+      env->MakeWritable(&src);
+      int* srcp = (int*)src->GetReadPtr(PLANAR_Y);
 
-    const int isrc_pitch = (src->GetPitch())>>2;  // int pitch (one pitch=two pixels)
-    const int ichroma_pitch = (chroma->GetPitch())>>2;  // Ints
-  
-    (env->GetCPUFlags() & CPUF_INTEGER_SSE ? isse_weigh_chroma : weigh_chroma)
-							(srcp,chromap,isrc_pitch,ichroma_pitch,w,h,(int)(weight*32768.0f),32768-(int)(weight*32768.0f));
+      int iweight=(int)(weight*65536.0f);
+      int invweight = 65536-(int)(weight*65536.0f);
+
+      int* srcpU = (int*)src->GetReadPtr(PLANAR_U);
+      int* chromapU = (int*)chroma->GetWritePtr(PLANAR_U);
+      int* srcpV = (int*)src->GetReadPtr(PLANAR_V);
+      int* chromapV = (int*)chroma->GetWritePtr(PLANAR_V);
+      if (env->GetCPUFlags() & CPUF_MMX) {
+        mmx_weigh_yv12((BYTE*)srcpU,(BYTE*)chromapU,src->GetPitch(PLANAR_U),chroma->GetPitch(PLANAR_U),src->GetRowSize(PLANAR_U_ALIGNED),src->GetHeight(PLANAR_U),(int)(weight*32767.0f),32767-(int)(weight*32767.0f));
+        mmx_weigh_yv12((BYTE*)srcpV,(BYTE*)chromapV,src->GetPitch(PLANAR_U),chroma->GetPitch(PLANAR_U),src->GetRowSize(PLANAR_V_ALIGNED),src->GetHeight(PLANAR_U),(int)(weight*32767.0f),32767-(int)(weight*32767.0f));
+        return src;
+      }
+      const int isrc_pitch = (src->GetPitch(PLANAR_U))>>2;  // int pitch (one pitch=two pixels)
+      const int ichroma_pitch = (chroma->GetPitch(PLANAR_U))>>2;  // Ints
+      const int xpixels=src->GetRowSize(PLANAR_U_ALIGNED)>>2; // Ints
+      const int yloops=src->GetHeight(PLANAR_U);
+      
+      for (int y=0;y<yloops;y++) {
+        for (int x=0;x<xpixels;x++) {
+          int srcU = srcpU[x];
+          int chromU = chromapU[x];
+          int srcV = srcpV[x];
+          int chromV = chromapV[x];
+          srcpU[x] = (((srcU&0xff)*invweight + ((chromU&0xff)*iweight))>>16) |
+            ( ((((srcU&0xff00)>>8)*invweight + (((chromU&0xff00)>>8)*iweight))>>8)&0xff00) |
+            ( ((((srcU&0xff0000)>>16)*invweight + (((chromU&0xff0000)>>16)*iweight)))&0xff0000) |
+            ( ((((srcU&0xff000000)>>24)*invweight + (((chromU&0xff000000)>>24)*iweight))<<8)&0xff000000) ;
+          
+          srcpV[x] = (((srcV&0xff)*invweight + ((chromV&0xff)*iweight))>>16) |
+            ( ((((srcV&0xff00)>>8)*invweight + (((chromV&0xff00)>>8)*iweight))>>8)&0xff00) |
+            ( ((((srcV&0xff0000)>>16)*invweight + (((chromV&0xff0000)>>16)*iweight)))&0xff0000) |
+            ( ((((srcV&0xff000000)>>24)*invweight + (((chromV&0xff000000)>>24)*iweight))<<8)&0xff000000) ;
+        }
+        chromapU+=ichroma_pitch;
+        chromapV+=ichroma_pitch;
+        srcpU+=isrc_pitch;
+        srcpV+=isrc_pitch;
+      }      
+    }
+  } else {
+    if (vi.IsYUY2()) {
+      unsigned int* srcp = (unsigned int*)src->GetWritePtr();
+      env->MakeWritable(&chroma);
+      unsigned int* chromap = (unsigned int*)chroma->GetWritePtr();
+      
+      const int isrc_pitch = (src->GetPitch())>>2;  // int pitch (one pitch=two pixels)
+      const int ichroma_pitch = (chroma->GetPitch())>>2;  // Ints
+      
+      mmx_merge_luma(chromap,srcp,ichroma_pitch,isrc_pitch,w,h);  // Just swap luma/chroma
+      return chroma;
+    } else {
+      env->MakeWritable(&src);
+      unsigned int* srcp = (unsigned int*)src->GetWritePtr(); //Must be requested
+      env->BitBlt(src->GetWritePtr(PLANAR_U),src->GetPitch(PLANAR_U),chroma->GetReadPtr(PLANAR_U),chroma->GetPitch(PLANAR_U),chroma->GetRowSize(PLANAR_U),chroma->GetHeight(PLANAR_U));
+      env->BitBlt(src->GetWritePtr(PLANAR_V),src->GetPitch(PLANAR_V),chroma->GetReadPtr(PLANAR_V),chroma->GetPitch(PLANAR_V),chroma->GetRowSize(PLANAR_V),chroma->GetHeight(PLANAR_U));
+    }
   }
-  else
-  {
-    unsigned int* srcp = (unsigned int*)src->GetReadPtr();
-    env->MakeWritable(&chroma);
-    unsigned int* chromap = (unsigned int*)chroma->GetWritePtr();
-
-    const int isrc_pitch = (src->GetPitch())>>2;  // int pitch (one pitch=two pixels)
-    const int ichroma_pitch = (chroma->GetPitch())>>2;  // Ints
-
-    mmx_merge_luma(chromap,srcp,ichroma_pitch,isrc_pitch,w,h);  // Just swap luma/chroma
-    return chroma;
-  }
-
   return src;
 }
 
@@ -107,17 +306,22 @@ MergeLuma::MergeLuma(PClip _child, PClip _clip, float _weight, IScriptEnvironmen
 {
   const VideoInfo& vi2 = clip->GetVideoInfo();
 
-  if (!vi.IsYUY2() || !vi2.IsYUY2())
-    env->ThrowError("MergeLuma: YUY2 data only (no RGB); use ConvertToYUY2");
+  if (!vi.IsYUV() || !vi2.IsYUV())
+    env->ThrowError("MergeLuma: YUV data only (no RGB); use ConvertToYUY2 or ConvertToYV12");
+
+  if ((vi.IsYV12()!=vi2.IsYV12()) || (vi.IsYUY2()!=vi2.IsYUY2()))
+    env->ThrowError("MergeLuma: YUV data is not same type. Both must be YV12 or YUY2");
 
   if (vi.width!=vi2.width || vi.height!=vi2.height)
     env->ThrowError("MergeLuma: Images must have same width and height!");
 
   if (weight<0.0f) weight=0.0f;
   if (weight>1.0f) weight=1.0f;
+  if (vi.IsYUY2()) {
+    if (weight>=0.9999f && !(env->GetCPUFlags() & CPUF_MMX))
+        env->ThrowError("MergeLuma: MMX required (K6, K7, P5 MMX, P-II, P-III or P4)");
+  }
 
-  if (weight>=0.9999f && !(env->GetCPUFlags() & CPUF_MMX))
-      env->ThrowError("MergeLuma: MMX required (K6, K7, P5 MMX, P-II, P-III or P4)");
 }
     
 
@@ -130,21 +334,58 @@ PVideoFrame __stdcall MergeLuma::GetFrame(int n, IScriptEnvironment* env)
 
   PVideoFrame luma = clip->GetFrame(n, env);
   
-  env->MakeWritable(&src);
-  unsigned int* srcp = (unsigned int*)src->GetWritePtr();
-  unsigned int* lumap = (unsigned int*)luma->GetReadPtr();
+  if (vi.IsYUY2()) {
+    env->MakeWritable(&src);
+    unsigned int* srcp = (unsigned int*)src->GetWritePtr();
+    unsigned int* lumap = (unsigned int*)luma->GetReadPtr();
 
-  const int isrc_pitch = (src->GetPitch())>>2;  // int pitch (one pitch=two pixels)
-  const int iluma_pitch = (luma->GetPitch())>>2;  // Ints
+    const int isrc_pitch = (src->GetPitch())>>2;  // int pitch (one pitch=two pixels)
+    const int iluma_pitch = (luma->GetPitch())>>2;  // Ints
   
-  const int h = src->GetHeight();
-  const int w = src->GetRowSize()>>1; // width in pixels
+    const int h = src->GetHeight();
+    const int w = src->GetRowSize()>>1; // width in pixels
     
-  if (weight<0.9999f)
-    (env->GetCPUFlags() & CPUF_INTEGER_SSE ? isse_weigh_luma : weigh_luma)
-							(srcp,lumap,isrc_pitch,iluma_pitch,w,h,(int)(weight*32768.0f),32768-(int)(weight*32768.0f));
-  else
-		mmx_merge_luma(srcp,lumap,isrc_pitch,iluma_pitch,w,h);
+    if (weight<0.9999f)
+      (env->GetCPUFlags() & CPUF_INTEGER_SSE ? isse_weigh_luma : weigh_luma)
+							  (srcp,lumap,isrc_pitch,iluma_pitch,w,h,(int)(weight*32768.0f),32768-(int)(weight*32768.0f));
+    else
+		  mmx_merge_luma(srcp,lumap,isrc_pitch,iluma_pitch,w,h);    
+    return src;
+  }
+  if (weight>0.9999f) {
+    env->MakeWritable(&luma);
+    env->BitBlt(luma->GetWritePtr(PLANAR_U),luma->GetPitch(PLANAR_U),src->GetReadPtr(PLANAR_U),src->GetPitch(PLANAR_U),src->GetRowSize(PLANAR_U),src->GetHeight(PLANAR_U));
+    env->BitBlt(luma->GetWritePtr(PLANAR_V),luma->GetPitch(PLANAR_V),src->GetReadPtr(PLANAR_V),src->GetPitch(PLANAR_V),src->GetRowSize(PLANAR_V),src->GetHeight(PLANAR_V));
+    return luma;
+  } else {
+    env->MakeWritable(&src);
+    int iweight=(int)(weight*65535.0f);
+    int invweight = 65535-(int)(weight*65535.0f);
+    int* srcpY = (int*)src->GetWritePtr(PLANAR_Y);
+    int* lumapY = (int*)luma->GetReadPtr(PLANAR_Y);
+    if (env->GetCPUFlags() & CPUF_MMX) {
+      mmx_weigh_yv12((BYTE*)srcpY,(BYTE*)lumapY,src->GetPitch(PLANAR_Y),luma->GetPitch(PLANAR_Y),src->GetRowSize(PLANAR_Y_ALIGNED),src->GetHeight(PLANAR_Y),(int)(weight*32767.0f),32767-(int)(weight*32767.0f));
+      return src;
+    }
+
+    const int isrc_pitch = (src->GetPitch())>>2;  // int pitch (one pitch=two pixels)
+    const int iluma_pitch = (luma->GetPitch())>>2;  // Ints
+    const int xpixels=src->GetRowSize(PLANAR_Y_ALIGNED)>>2; // Ints
+    const int yloops=src->GetHeight(PLANAR_Y);
+    for (int y=0;y<yloops;y++) {
+      for (int x=0;x<xpixels;x++) {
+        int srcY = srcpY[x];
+        int lumY = lumapY[x];
+        srcpY[x] = (((srcY&0xff)*invweight + ((lumY&0xff)*iweight))>>16) | 
+          ( ((((srcY&0xff00)>>8)*invweight + (((lumY&0xff00)>>8)*iweight))>>8)&0xff00) | 
+          ( ((((srcY&0xff0000)>>16)*invweight + (((lumY&0xff0000)>>16)*iweight)))&0xff0000) |
+          ( ((((srcY&0xff000000)>>24)*invweight + (((lumY&0xff000000)>>24)*iweight))<<8)&0xff000000) ;
+      }
+      lumapY+=iluma_pitch;
+      srcpY+=isrc_pitch;
+    }
+  }
+  
   return src;
 }
 
@@ -243,7 +484,7 @@ void mmx_merge_luma( unsigned int *src, unsigned int *luma, int pitch,
 		
 	__asm {
 		mov eax,src
-		mov ecx,0
+		xor ecx,ecx
 		mov ebx,luma
 		jmp afterloop
 		align 16
@@ -320,7 +561,7 @@ void isse_weigh_luma(unsigned int *src,unsigned int *luma, int pitch,
 		
 	__asm {
 		mov eax,src
-		mov ecx,0
+		xor ecx,ecx
 		mov ebx,luma
 		jmp afterloop
 		align 16
@@ -380,7 +621,6 @@ exitloop:
 
 
 
-
 void isse_weigh_chroma( unsigned int *src,unsigned int *chroma, int pitch, 
                      int chroma_pitch,int width, int height, int weight, int invweight ) 
 {
@@ -407,7 +647,7 @@ void isse_weigh_chroma( unsigned int *src,unsigned int *chroma, int pitch,
 		
 	__asm {
 		mov eax,src
-		mov ecx,0
+		xor ecx,ecx
 		mov ebx,chroma
 		jmp afterloop
 		align 16
@@ -464,4 +704,71 @@ exitloop:
 		chroma += chroma_pitch;
 	} // end for y
   __asm {emms};
+}
+
+/*******************
+ * Blends two planes.
+ * A weight between the two planes are given.
+ * Has rather ok pairing, 
+ * and has very little memory usage.
+ * Processes four pixels per loop, so rowsize must be mod 4.
+ * Thanks to ARDA for squeezing out a bit more performance.
+ * (c) 2002 by sh0dan.
+ ********/
+
+void mmx_weigh_yv12(BYTE *p1,BYTE *p2, int p1_pitch, int p2_pitch,int rowsize, int height, int weight, int invweight) {
+  __int64 weight64  = (__int64)weight | (((__int64)invweight)<<16) | (((__int64)weight)<<32) |(((__int64)invweight)<<48);
+	__int64 rounder = 0x0000400000004000;		// (0.5)<<15 in each dword
+
+  __asm {
+      movq mm5,[rounder]
+      pxor mm6,mm6
+      movq mm7,[weight64]
+      mov ebx,[rowsize]
+      mov esi,[p1]
+      mov edi,[p2]
+      xor ecx, ecx  // Height
+      mov edx,[height]
+      align 16
+yloopback:
+      cmp ecx, edx
+      jge outy
+      xor eax, eax
+      align 16 
+testloop:
+      cmp ebx, eax
+      jle outloop
+      punpcklbw mm0,[esi+eax]  // 4 pixels
+       pxor mm3,mm3
+      punpcklbw mm1,[edi+eax]  // y300 y200 y100 y000
+       psrlw mm0,8              // 00y3 00y2 00y1 00y0
+      psrlw mm1,8              // 00y3 00y2 00y1 00y0  
+       pxor mm2,mm2
+      movq mm4,mm1
+       punpcklwd mm2,mm0
+      punpckhwd mm3,mm0  
+       punpcklwd mm4,mm6
+      punpckhwd mm1,mm6
+       por mm2,mm4
+      por mm3,mm1
+       pmaddwd mm2,mm7     // Multiply pixels by weights.  pixel = img1*weight + img2*invweight (twice)
+      pmaddwd mm3,mm7      // Stalls 1 cycle (multiply unit stall)
+       paddd mm2,mm5       // Add rounder
+      paddd mm3,mm5
+       psrld mm2,15        // Shift down, so there is no fraction.
+      psrld mm3,15        
+      packssdw mm2,mm3
+      packuswb mm2,mm6 
+      movd [esi+eax],mm2
+      add eax,4
+      jmp testloop
+      align 16
+outloop:
+      inc ecx
+      add esi, [p1_pitch];
+      add edi, [p2_pitch];
+      jmp yloopback
+outy:
+      emms
+  } // end asm
 }

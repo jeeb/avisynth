@@ -1,12 +1,5 @@
-// Avisynth v1.0 beta3.  Copyright 2000 Ben Rudiak-Gould.
-// http://www.math.berkeley.edu/~benrg/avisynth.html
-//
-// While ben is away, please send any good modification to me (edwinvaneggelen@softhome.net)
-// so I can put them on my website
-//
-// If you run into problem compiling this source please download the Windows SDK
-// for microsoft. The full version is around 600MB !!!
-// On most environments, the DirectX 8.1 SDK is enough - other also require the Platform SDK.
+// Avisynth v2.5.  Copyright 2002 Ben Rudiak-Gould et al.
+// http://www.avisynth.org
 
 // This program is free software; you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -22,10 +15,27 @@
 // along with this program; if not, write to the Free Software
 // Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA, or visit
 // http://www.gnu.org/copyleft/gpl.html .
- 
+//
+// Linking Avisynth statically or dynamically with other modules is making a
+// combined work based on Avisynth.  Thus, the terms and conditions of the GNU
+// General Public License cover the whole combination.
+//
+// As a special exception, the copyright holders of Avisynth give you
+// permission to link Avisynth with independent modules that communicate with
+// Avisynth solely through the interfaces defined in avisynth.h, regardless of the license
+// terms of these independent modules, and to copy and distribute the
+// resulting combined work under terms of your choice, provided that
+// every copy of the combined work is accompanied by a complete copy of
+// the source code of Avisynth (the version of Avisynth used to produce the
+// combined work), being distributed under the terms of the GNU General
+// Public License plus this exception.  An independent module is a module
+// which is not derived from or based on Avisynth, such as 3rd-party filters,
+// import and export plugins, or graphical user interfaces.
+
 
 #include "internal.h"
 #include "convert.h"
+#include "transform.h"
 #include "AudioSource.h"
 #include "VD_Audio.h"
 
@@ -62,8 +72,9 @@ public:
   ~AVISource();
   const VideoInfo& __stdcall GetVideoInfo();
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
-  void __stdcall GetAudio(void* buf, int start, int count, IScriptEnvironment* env);
+  void __stdcall GetAudio(void* buf, __int64 start, __int64 count, IScriptEnvironment* env) ;
   bool __stdcall GetParity(int n);
+  void __stdcall SetCacheHints(int cachehints,int frame_range) { };
 
   static AVSValue __cdecl Create(AVSValue args, void* user_data, IScriptEnvironment* env) {
     const int mode = int(user_data);
@@ -72,7 +83,7 @@ public:
     PClip result = new AVISource(args[0][0].AsString(), fAudio, pixel_type, mode, env);
     for (int i=1; i<args[0].ArraySize(); ++i)
       result = new_Splice(result, new AVISource(args[0][i].AsString(), fAudio, pixel_type, mode, env), false, env);
-    return result;
+    return AlignPlanar::Create(result);
   }
 };
 
@@ -167,15 +178,17 @@ void AVISource::LocateVideoCodec(IScriptEnvironment* env) {
   vi.height = pbiSrc->biHeight;
   vi.SetFPS(asi.dwRate, asi.dwScale);
   vi.num_frames = asi.dwLength;
-  vi.field_based = false;
+//  vi.field_based = false;
 
   // see if we can handle the video format directly
   if (pbiSrc->biCompression == '2YUY') {
-    vi.pixel_type = VideoInfo::YUY2;
+    vi.pixel_type = VideoInfo::CS_YUY2;
+  } else if (pbiSrc->biCompression == 'YV12') {
+    vi.pixel_type = VideoInfo::CS_YV12;
   } else if (pbiSrc->biCompression == BI_RGB && pbiSrc->biBitCount == 32) {
-    vi.pixel_type = VideoInfo::BGR32;
+    vi.pixel_type = VideoInfo::CS_BGR32;
   } else if (pbiSrc->biCompression == BI_RGB && pbiSrc->biBitCount == 24) {
-    vi.pixel_type = VideoInfo::BGR24;
+    vi.pixel_type = VideoInfo::CS_BGR24;
 
   // otherwise, find someone who will decompress it
   } else {
@@ -211,14 +224,14 @@ AVISource::AVISource(const char filename[], bool fAudio, const char pixel_type[]
   audioStreamSource = 0;
   pvideo=0;
   pfile=0;
-
+  
   AVIFileInit();
-
+  
   if (mode == 0) {
     // if it looks like an AVI file, open in OpenDML mode; otherwise AVIFile mode
     HANDLE h = CreateFile(filename, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, 0, NULL);
-    if (h == INVALID_HANDLE_VALUE) {      
-      env->ThrowError("AVISource autodetect: couldn't open file\nError code: %d", GetLastError());
+    if (h == INVALID_HANDLE_VALUE) {
+      env->ThrowError("AVISource autodetect: couldn't open file\nError code: %d", GetLastError()); 
     }
     unsigned buf[3];
     DWORD bytes_read;
@@ -228,7 +241,7 @@ AVISource::AVISource(const char filename[], bool fAudio, const char pixel_type[]
       mode = 1;
     CloseHandle(h);
   }
-
+  
   if (mode == 1 || mode == 3) {    // AVIFile mode
     PAVIFILE paf;
     if (FAILED(AVIFileOpen(&paf, filename, OF_READ, 0)))
@@ -237,52 +250,68 @@ AVISource::AVISource(const char filename[], bool fAudio, const char pixel_type[]
   } else {              // OpenDML mode
     pfile = CreateAVIReadHandler(filename);
   }
-
+  
   if (mode != 3) { // check for video stream
     hic = 0;
     pvideo = pfile->GetStream(streamtypeVIDEO, 0);
     if (pvideo) {
       LocateVideoCodec(env);
       if (hic) {
+        bool fYV12  = lstrcmpi(pixel_type, "YV12" ) == 0 || pixel_type[0] == 0;
         bool fYUY2  = lstrcmpi(pixel_type, "YUY2" ) == 0 || pixel_type[0] == 0;
         bool fRGB32 = lstrcmpi(pixel_type, "RGB32") == 0 || pixel_type[0] == 0;
         bool fRGB24 = lstrcmpi(pixel_type, "RGB24") == 0 || pixel_type[0] == 0;       
-        if (!(fYUY2 || fRGB32 || fRGB24))
-          env->ThrowError("AVISource: requested format should be YUY2, RGB32 or RGB24");
-
-        // try to decompress to YUY2, RGB32, and RGB24 in turn
+        if (!(fYV12 || fYUY2 || fRGB32 || fRGB24))
+          env->ThrowError("AVISource: requested format should be YV12, YUY2, RGB32 or RGB24");
+        
+        // try to decompress to YV12, YUY2, RGB32, and RGB24 in turn
         memset(&biDst, 0, sizeof(BITMAPINFOHEADER));
         biDst.biSize = sizeof(BITMAPINFOHEADER);
         biDst.biWidth = vi.width;
         biDst.biHeight = vi.height;
-        biDst.biCompression = '2YUY';
-        biDst.biBitCount = 16;
-        biDst.biPlanes = 1;
-        biDst.biSizeImage = ((vi.width*2+3)&~3) * vi.height;
-        if (fYUY2 && ICERR_OK == ICDecompressQuery(hic, pbiSrc, &biDst)) {
-          vi.pixel_type = VideoInfo::YUY2;
+        biDst.biCompression = '21VY';
+        biDst.biBitCount = 12;
+        biDst.biPlanes = 1;  
+        int xwidth=(vi.width+3)&(~3);
+        biDst.biSizeImage = xwidth * vi.height + ((xwidth>>1) * vi.height);
+
+        if (fYV12 && ICERR_OK == ICDecompressQuery(hic, pbiSrc, &biDst)) {  
+          vi.pixel_type = VideoInfo::CS_YV12;
+          _RPT0(0,"AVISource: Opening as YV12.\n");
         } else {
-          biDst.biCompression = BI_RGB;
-          biDst.biBitCount = 32;
-          biDst.biSizeImage = vi.width*vi.height*4;
-          if (fRGB32 && ICERR_OK == ICDecompressQuery(hic, pbiSrc, &biDst)) {
-            vi.pixel_type = VideoInfo::BGR32;
+          biDst.biSizeImage = ((vi.width*2+3)&~3) * vi.height;
+          biDst.biCompression = '2YUY';
+          biDst.biBitCount = 16;
+          if (fYUY2 && ICERR_OK == ICDecompressQuery(hic, pbiSrc, &biDst)) {
+            vi.pixel_type = VideoInfo::CS_YUY2;
+            _RPT0(0,"AVISource: Opening as YUY2.\n");
           } else {
-            biDst.biBitCount = 24;
-            biDst.biSizeImage = ((vi.width*3+3)&~3) * vi.height;
-            if (fRGB24 && ICERR_OK == ICDecompressQuery(hic, pbiSrc, &biDst)) {
-              vi.pixel_type = VideoInfo::BGR24;
+            biDst.biCompression = BI_RGB;
+            biDst.biBitCount = 32;
+            biDst.biSizeImage = vi.width*vi.height*4;
+            if (fRGB32 && ICERR_OK == ICDecompressQuery(hic, pbiSrc, &biDst)) {
+              vi.pixel_type = VideoInfo::CS_BGR32;
+              _RPT0(0,"AVISource: Opening as RGB32.\n");
             } else {
-              if (fYUY2 && (fRGB32 || fRGB24))
-                env->ThrowError("AVISource: the video decompressor couldn't produce YUY2 or RGB output");
-              else if (fYUY2)
-                env->ThrowError("AVISource: the video decompressor couldn't produce YUY2 output");
-              else if (fRGB32)
-                env->ThrowError("AVISource: the video decompressor couldn't produce RGB32 output");
-              else if (fRGB24)
-                env->ThrowError("AVISource: the video decompressor couldn't produce RGB24 output");
-              else
-                env->ThrowError("AVISource: internal error");
+              biDst.biBitCount = 24;
+              biDst.biSizeImage = ((vi.width*3+3)&~3) * vi.height;
+              if (fRGB24 && ICERR_OK == ICDecompressQuery(hic, pbiSrc, &biDst)) {
+                vi.pixel_type = VideoInfo::CS_BGR24;
+                _RPT0(0,"AVISource: Opening as RGB24.\n");
+              } else {
+                if (fYUY2 && (fRGB32 || fRGB24) && fYV12)
+                  env->ThrowError("AVISource: the video decompressor couldn't produce YUY2 or RGB output");
+                else if (fYV12)
+                  env->ThrowError("AVISource: the video decompressor couldn't produce YV12 output");
+                else if (fYUY2)
+                  env->ThrowError("AVISource: the video decompressor couldn't produce YUY2 output");
+                else if (fRGB32)
+                  env->ThrowError("AVISource: the video decompressor couldn't produce RGB32 output");
+                else if (fRGB24)
+                  env->ThrowError("AVISource: the video decompressor couldn't produce RGB24 output");
+                else
+                  env->ThrowError("AVISource: internal error");
+              }
             }
           }
         }
@@ -302,8 +331,16 @@ AVISource::AVISource(const char filename[], bool fAudio, const char pixel_type[]
     WAVEFORMATEX* pwfx; 
     pwfx = audioStreamSource->GetFormat();
     vi.audio_samples_per_second = pwfx->nSamplesPerSec;
-    vi.stereo = (pwfx->nChannels == 2);
-    vi.sixteen_bit = (pwfx->wBitsPerSample == 16);
+    vi.nchannels = pwfx->nChannels;
+    if (pwfx->wBitsPerSample == 16) {
+      vi.sample_type = SAMPLE_INT16;
+    } else if (pwfx->wBitsPerSample == 8) {
+      vi.sample_type = SAMPLE_INT8;
+    } else if (pwfx->wBitsPerSample == 24) {
+      vi.sample_type = SAMPLE_INT24;
+    } else if (pwfx->wBitsPerSample == 32) {
+      vi.sample_type = SAMPLE_INT32;
+    }
     vi.num_audio_samples = audioStreamSource->GetLength();
 
     audio_stream_pos = 0;
@@ -311,7 +348,7 @@ AVISource::AVISource(const char filename[], bool fAudio, const char pixel_type[]
   // try to decompress frame 0 if not audio only.
   if (mode!=3) {
     int keyframe = pvideo->NearestKeyFrame(0);
-    PVideoFrame frame = env->NewVideoFrame(vi, 4);
+    PVideoFrame frame = env->NewVideoFrame(vi, -4);
     LRESULT error = DecompressFrame(keyframe, true, frame->GetWritePtr());
     if (error != ICERR_OK || (!frame)||(dropped_frame)) {   // shutdown, if init not succesful.
       if (hic) {
@@ -365,7 +402,7 @@ PVideoFrame AVISource::GetFrame(int n, IScriptEnvironment* env) {
     bool not_found_yet=false;
     do {
       for (int i = keyframe; i <= n; ++i) {
-        PVideoFrame frame = env->NewVideoFrame(vi, 4);
+        PVideoFrame frame = env->NewVideoFrame(vi, -4);
         LRESULT error = DecompressFrame(i, i != n, frame->GetWritePtr());
         // we don't want dropped frames to throw an error
         // Experiment to remove ALL error reporting, so it will always return last valid frame.
@@ -389,7 +426,7 @@ PVideoFrame AVISource::GetFrame(int n, IScriptEnvironment* env) {
   return last_frame;
 }
 
-void AVISource::GetAudio(void* buf, int start, int count, IScriptEnvironment* env) {
+void AVISource::GetAudio(void* buf, __int64 start, __int64 count, IScriptEnvironment* env) {
   LONG bytes_read=0, samples_read=0;
 
   if (start < 0) {
@@ -427,25 +464,44 @@ public:
   StaticImage(const VideoInfo& _vi, const PVideoFrame& _frame)
     : vi(_vi), frame(_frame) {}
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env) { return frame; }
-  void __stdcall GetAudio(void* buf, int start, int count, IScriptEnvironment* env) {
+  void __stdcall GetAudio(void* buf, __int64 start, __int64 count, IScriptEnvironment* env) {
     memset(buf, 0, vi.BytesFromAudioSamples(count));
   }
   const VideoInfo& __stdcall GetVideoInfo() { return vi; }
-  bool __stdcall GetParity(int n) { return vi.field_based ? (n&1) : false; }
+  bool __stdcall GetParity(int n) { return vi.IsFieldBased() ? (n&1) : false; }
+  void __stdcall SetCacheHints(int cachehints,int frame_range) { };
 };
 
- 
+
 static PVideoFrame CreateBlankFrame(const VideoInfo& vi, int color, IScriptEnvironment* env) {
   if (!vi.HasVideo()) return 0;
   PVideoFrame frame = env->NewVideoFrame(vi);
   BYTE* p = frame->GetWritePtr();
-  const int size = frame->GetPitch() * frame->GetHeight();
-  if (vi.IsYUY2()) {
+  int size = frame->GetPitch() * frame->GetHeight();
+  if (vi.IsYV12()) {
+    int color_yuv = RGB2YUV(color);
+    int Cval = (color_yuv>>16)&0xff;
+    Cval |= (Cval<<8)|(Cval<<16)|(Cval<<24);
+    for (int i=0; i<size; i+=4)
+      *(unsigned*)(p+i) = Cval;
+    p = frame->GetWritePtr(PLANAR_U);
+    size = frame->GetPitch(PLANAR_U) * frame->GetHeight(PLANAR_U);
+    Cval = (color_yuv>>8)&0xff;
+    Cval |= (Cval<<8)|(Cval<<16)|(Cval<<24);
+    for (i=0; i<size; i+=4)
+      *(unsigned*)(p+i) = Cval;
+    size = frame->GetPitch(PLANAR_V) * frame->GetHeight(PLANAR_V);
+    p = frame->GetWritePtr(PLANAR_V);
+    Cval = (color_yuv)&0xff;
+    Cval |= (Cval<<8)|(Cval<<16)|(Cval<<24);
+    for (i=0; i<size; i+=4)
+      *(unsigned*)(p+i) = Cval;
+  } else if (vi.IsYUY2()) {
     int color_yuv = RGB2YUV(color);
     unsigned d = (color_yuv>>16) * 0x010001 + ((color_yuv>>8)&255) * 0x0100 + (color_yuv&255) * 0x01000000;
     for (int i=0; i<size; i+=4)
       *(unsigned*)(p+i) = d;
-} else if (vi.IsRGB24()) {
+  } else if (vi.IsRGB24()) {
     const unsigned char clr0 = (color & 0xFF);
     const unsigned short clr1 = (color >> 8);
     const int gr = frame->GetRowSize();
@@ -464,7 +520,11 @@ static PVideoFrame CreateBlankFrame(const VideoInfo& vi, int color, IScriptEnvir
 }
 
 static AVSValue __cdecl Create_BlankClip(AVSValue args, void*, IScriptEnvironment* env) {
-  VideoInfo vi_default = { 640, 480, 24, 1, 240, VideoInfo::BGR32, false, 44100, 0, true, true };
+  VideoInfo vi_default;
+  memset(&vi_default, 0, sizeof(VideoInfo));
+  vi_default.fps_denominator=1; vi_default.fps_numerator=24; vi_default.height=480; vi_default.pixel_type=VideoInfo::CS_BGR32; vi_default.num_frames=240; vi_default.width=640;
+  vi_default.audio_samples_per_second=44100; vi_default.nchannels=1; vi_default.num_audio_samples=44100*10; vi_default.sample_type=SAMPLE_INT16;
+
   VideoInfo vi;
   if (args[0].Defined()) {
     vi_default = args[0].AsClip()->GetVideoInfo();
@@ -475,14 +535,17 @@ static AVSValue __cdecl Create_BlankClip(AVSValue args, void*, IScriptEnvironmen
   vi.pixel_type = vi_default.pixel_type;
   if (args[4].Defined()) {
     const char* pixel_type_string = args[4].AsString();
-    if (!lstrcmpi(pixel_type_string, "YUY2"))
-      vi.pixel_type = VideoInfo::YUY2;
-    else if (!lstrcmpi(pixel_type_string, "RGB24"))
-      vi.pixel_type = VideoInfo::BGR24;
-    else if (!lstrcmpi(pixel_type_string, "RGB32"))
-      vi.pixel_type = VideoInfo::BGR32;
-    else
-      env->ThrowError("BlankClip: pixel_type must be \"RGB32\", \"RGB24\", or \"YUY2\"");
+    if (!lstrcmpi(pixel_type_string, "YUY2")) {
+      vi.pixel_type = VideoInfo::CS_YUY2;
+    } else if (!lstrcmpi(pixel_type_string, "YV12")) {
+      vi.pixel_type = VideoInfo::CS_YV12;
+    } else if (!lstrcmpi(pixel_type_string, "RGB24")) {
+      vi.pixel_type = VideoInfo::CS_BGR24;
+    } else if (!lstrcmpi(pixel_type_string, "RGB32")) {
+      vi.pixel_type = VideoInfo::CS_BGR32;
+    } else {
+      env->ThrowError("BlankClip: pixel_type must be \"RGB32\", \"RGB24\", \"YV12\" or \"YUY2\"");
+    }
   }
   double n = args[5].AsFloat(double(vi_default.fps_numerator));
   if (args[5].Defined() && !args[6].Defined()) {
@@ -492,10 +555,13 @@ static AVSValue __cdecl Create_BlankClip(AVSValue args, void*, IScriptEnvironmen
   } else {
     vi.SetFPS(int(n+0.5), args[6].AsInt(vi_default.fps_denominator));
   }
-  vi.field_based = vi_default.field_based;
+  if (!vi.pixel_type)
+    vi.pixel_type = vi_default.pixel_type;
+
+  vi.SetFieldBased(false);
   vi.audio_samples_per_second = args[7].AsInt(vi_default.audio_samples_per_second);
-  vi.stereo = args[8].AsBool(vi_default.stereo);
-  vi.sixteen_bit = args[9].AsBool(vi_default.sixteen_bit);
+  vi.nchannels = args[8].AsInt(vi_default.nchannels);
+  vi.sample_type = args[9].AsInt(vi_default.sample_type);
   vi.num_audio_samples = vi.AudioSamplesFromFrames(vi.num_frames);
   int color = args[10].AsInt(0);
   return new StaticImage(vi, CreateBlankFrame(vi, color, env));
@@ -538,7 +604,6 @@ PClip Create_MessageClip(const char* message, int width, int height, int pixel_t
   vi.fps_numerator = 24;
   vi.fps_denominator = 1;
   vi.num_frames = 240;
-  vi.field_based = false;
 
   PVideoFrame frame = CreateBlankFrame(vi, bgcolor, env);
   ApplyMessage(&frame, vi, message, size, textcolor, halocolor, bgcolor, env);
@@ -548,7 +613,7 @@ PClip Create_MessageClip(const char* message, int width, int height, int pixel_t
 
 AVSValue __cdecl Create_MessageClip(AVSValue args, void*, IScriptEnvironment* env) {
   return Create_MessageClip(args[0].AsString(), args[1].AsInt(-1),
-      args[2].AsInt(-1), VideoInfo::BGR24, args[3].AsBool(false),
+      args[2].AsInt(-1), VideoInfo::CS_BGR32, args[3].AsBool(false),
       args[4].AsInt(0xFFFFFF), args[5].AsInt(0), args[6].AsInt(0), env);
 }
 
@@ -572,10 +637,9 @@ public:
     vi.fps_numerator = 2997;
     vi.fps_denominator = 100;
     vi.num_frames = 107892;   // 1 hour
-    vi.pixel_type = VideoInfo::BGR32;
-    vi.field_based = false;
-    vi.sixteen_bit = true;
-    vi.stereo = true;
+    vi.pixel_type = VideoInfo::CS_BGR32;
+    vi.sample_type = SAMPLE_INT16;
+    vi.nchannels = 2;
     vi.audio_samples_per_second = 48000;
     vi.num_audio_samples=(60*60)*vi.audio_samples_per_second;
 
@@ -619,7 +683,7 @@ public:
       for (int i=0; i<7; ++i) {
         for (; x < (w*(i+1)+3)/7; ++x)
           p[x] = top_two_thirds[i];
-      }
+      } 
       p += pitch;
     }
   }
@@ -627,8 +691,9 @@ public:
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env) { return frame; }
   bool __stdcall GetParity(int n) { return false; }
   const VideoInfo& __stdcall GetVideoInfo() { return vi; }
+  void __stdcall SetCacheHints(int cachehints,int frame_range) { };
 
-  void __stdcall GetAudio(void* buf, int start, int count, IScriptEnvironment*) {
+  void __stdcall GetAudio(void* buf, __int64 start, __int64 count, IScriptEnvironment* env) {
     double Hz=440;
     double add_per_sample=Hz/(double)vi.audio_samples_per_second;
     double second_offset=(double)start*add_per_sample;
@@ -974,12 +1039,14 @@ public:
       return S_FALSE;
     }
 
-    if (pmt->subtype == MEDIASUBTYPE_YUY2) {
-      vi.pixel_type = VideoInfo::YUY2;
+    if (pmt->subtype == MEDIASUBTYPE_YV12) {  // Not tested, but it is accepted
+      vi.pixel_type = VideoInfo::CS_YV12;
+    } else if (pmt->subtype == MEDIASUBTYPE_YUY2) {
+      vi.pixel_type = VideoInfo::CS_YUY2;
     } else if (pmt->subtype == MEDIASUBTYPE_RGB24) {
-      vi.pixel_type = VideoInfo::BGR24;
+      vi.pixel_type = VideoInfo::CS_BGR24;
     } else if (pmt->subtype == MEDIASUBTYPE_RGB32) {
-      vi.pixel_type = VideoInfo::BGR32;
+      vi.pixel_type = VideoInfo::CS_BGR32;
     } else {
       _RPT0(0, "*** subtype rejected\n");
       return S_FALSE;
@@ -991,12 +1058,13 @@ public:
       VIDEOINFOHEADER* vih = (VIDEOINFOHEADER*)pmt->pbFormat;
       avg_time_per_frame = unsigned(vih->AvgTimePerFrame);
       pbi = &vih->bmiHeader;
-      vi.field_based = false;
     } else if (pmt->formattype == FORMAT_VideoInfo2) {
       VIDEOINFOHEADER2* vih = (VIDEOINFOHEADER2*)pmt->pbFormat;
       avg_time_per_frame = unsigned(vih->AvgTimePerFrame);
       pbi = &vih->bmiHeader;
-      vi.field_based = !!(vih->dwInterlaceFlags & AMINTERLACE_1FieldPerSample);
+      if (vih->dwInterlaceFlags & AMINTERLACE_1FieldPerSample) {
+        vi.SetFieldBased(true);
+      }
     } else {
       _RPT0(0, "*** format rejected\n");
       return S_FALSE;
@@ -1075,11 +1143,20 @@ public:
         DWORD(sample_end_time>>32), DWORD(sample_end_time));
       _RPT1(0," (%d)\n", DWORD(sample_end_time - sample_start_time));
     }
-    pvf = env->NewVideoFrame(vi, 4);
+    pvf = env->NewVideoFrame(vi,-4);
     PBYTE buf;
     pSamples->GetPointer(&buf);
-    env->BitBlt(pvf->GetWritePtr(), pvf->GetPitch(), buf,
-      pvf->GetPitch(), pvf->GetRowSize(), pvf->GetHeight());
+    if (!vi.IsPlanar()) {
+      env->BitBlt(pvf->GetWritePtr(), pvf->GetPitch(), buf,
+        pvf->GetPitch(), pvf->GetRowSize(), pvf->GetHeight());
+    } else {
+    env->BitBlt(pvf->GetWritePtr(PLANAR_Y), pvf->GetPitch(PLANAR_Y), buf,
+      pvf->GetPitch(PLANAR_Y), pvf->GetRowSize(PLANAR_Y), pvf->GetHeight(PLANAR_Y));
+    env->BitBlt(pvf->GetWritePtr(PLANAR_U), pvf->GetPitch(PLANAR_U), buf + pvf->GetOffset(PLANAR_U) - pvf->GetOffset(PLANAR_Y),
+      pvf->GetPitch(PLANAR_U), pvf->GetRowSize(PLANAR_U), pvf->GetHeight(PLANAR_U));
+    env->BitBlt(pvf->GetWritePtr(PLANAR_V), pvf->GetPitch(PLANAR_V), buf+ pvf->GetOffset(PLANAR_V) - pvf->GetOffset(PLANAR_Y),
+      pvf->GetPitch(PLANAR_V), pvf->GetRowSize(PLANAR_V), pvf->GetHeight(PLANAR_V));
+    }
     if (state == State_Running) {
       SetEvent(evtNewSampleReady);
       WaitForSingleObject(evtDoneWithSample, INFINITE);
@@ -1224,9 +1301,9 @@ class DirectShowSource : public IClip {
 
 public:
 
-  DirectShowSource(const char* filename, int _avg_time_per_frame, bool _seek,IScriptEnvironment* _env) : env(_env), get_sample(_env) {
+  DirectShowSource(const char* filename, int _avg_time_per_frame, IScriptEnvironment* _env) : env(_env), get_sample(_env) {
     CheckHresult(CoCreateInstance(CLSID_FilterGraphNoThread, 0, CLSCTX_INPROC_SERVER, IID_IGraphBuilder, (void**)&gb), "couldn't create filter graph");
-    no_search=!_seek;
+
     WCHAR filenameW[MAX_PATH];
     MultiByteToWideChar(CP_ACP, 0, filename, -1, filenameW, MAX_PATH);
     CheckHresult(gb->AddFilter(static_cast<IBaseFilter*>(&get_sample), L"GetSample"), "couldn't add GetSample filter");
@@ -1277,6 +1354,7 @@ public:
 
     cur_frame = 0;
     base_sample_time = 0;
+    no_search = true;   // FIXME: Seeking manually disabled
   }
 
   ~DirectShowSource() { get_sample.StopGraph(); gb->Release(); }
@@ -1307,7 +1385,7 @@ public:
     } else {
       __int64 sample_time = __int64(n) * avg_time_per_frame + (avg_time_per_frame>>1);
       if (n > cur_frame || n > cur_frame+10) {
-        if (no_search || get_sample.SeekTo(sample_time)!=S_OK) {
+        if (get_sample.SeekTo(sample_time)!=S_OK) {
           no_search=true;
           if (cur_frame<n) {  // seek manually
             while (get_sample.GetSampleEndTime()+base_sample_time <= sample_time) {
@@ -1333,9 +1411,9 @@ public:
     }
     return v;
   }
-  bool __stdcall GetParity(int n) { return vi.field_based ? (n&1) : false; }
-
-  void __stdcall GetAudio(void*, int, int, IScriptEnvironment*) {}
+  bool __stdcall GetParity(int n) { return vi.IsFieldBased() ? (n&1) : false; }
+  void __stdcall SetCacheHints(int cachehints,int frame_range) { };
+  void __stdcall GetAudio(void*, __int64, __int64, IScriptEnvironment*) {}
 };
 
 
@@ -1353,7 +1431,7 @@ void DirectShowSource::CheckHresult(HRESULT hr, const char* msg, const char* msg
 AVSValue __cdecl Create_DirectShowSource(AVSValue args, void*, IScriptEnvironment* env) {
   const char* filename = args[0][0].AsString();
   int avg_time_per_frame = args[1].Defined() ? int(10000000 / args[1].AsFloat() + 0.5) : 0;
-  return new DirectShowSource(filename, avg_time_per_frame, args[2].AsBool(true), env);
+  return AlignPlanar::Create(new DirectShowSource(filename, avg_time_per_frame, env));
 }
 
 
@@ -1368,7 +1446,7 @@ public:
 //    foo();
   }
   PVideoFrame GetFrame(int n, IScriptEnvironment* env) {}
-  void GetAudio(void* buf, int start, int count, IScriptEnvironment* env) {}
+  void GetAudio(void* buf, __int64 start, __int64 count, IScriptEnvironment* env) {}
   const VideoInfo& GetVideoInfo() {}
   bool GetParity(int n) { return false; }
 
@@ -1402,7 +1480,7 @@ AVSValue __cdecl Create_SegmentedSource(AVSValue args, void* use_directshow, ISc
       wsprintf(filename, "%s.%02d.%s", basename, j, extension);
       if (GetFileAttributes(filename) != (DWORD)-1) {   // check if file exists
         try {
-          PClip clip = use_directshow ? (IClip*)(new DirectShowSource(filename, avg_time_per_frame, args[2].AsBool(true),env))
+          PClip clip = use_directshow ? (IClip*)(new DirectShowSource(filename, avg_time_per_frame, env))
                                     : (IClip*)(new AVISource(filename, bAudio, pixel_type, 0, env));
           result = !result ? clip : new_Splice(result, clip, false, env);
         } catch (AvisynthError e) {
@@ -1412,7 +1490,7 @@ AVSValue __cdecl Create_SegmentedSource(AVSValue args, void* use_directshow, ISc
     }
   }
   if (!result) {
-    if (!error_msg) { 
+    if (!error_msg) {
       env->ThrowError("Segmented%sSource: no files found!", use_directshow ? "DirectShow" : "AVI");
     } else {
       env->ThrowError("Segmented%sSource: decompressor returned error:\n%s!", use_directshow ? "DirectShow" : "AVI",error_msg);
@@ -1425,7 +1503,7 @@ AVSValue __cdecl Create_Version(AVSValue args, void*, IScriptEnvironment* env) {
   return Create_MessageClip(AVS_VERSTR
           "\n\xA9 2000-2002 Ben Rudiak-Gould, et al.\n"
           "http://www.avisynth.org",
-  -1, -1, VideoInfo::BGR24, false, 0xECF2BF, 0, 0x404040, env);
+  -1, -1, VideoInfo::CS_BGR24, false, 0xECF2BF, 0, 0x404040, env);
 }
  
 
@@ -1434,9 +1512,9 @@ AVSFunction Source_filters[] = {
   { "AVIFileSource", "s+[audio]b[pixel_type]s", AVISource::Create, (void*)1 },
   { "WAVSource", "s+", AVISource::Create, (void*)3 },
   { "OpenDMLSource", "s+[audio]b[pixel_type]s", AVISource::Create, (void*)2 },
-  { "DirectShowSource", "s+[fps]f[seek]b", Create_DirectShowSource },
+  { "DirectShowSource", "s+[fps]f", Create_DirectShowSource },
   { "SegmentedAVISource", "s+[audio]b[pixel_type]s", Create_SegmentedSource, (void*)0 },
-  { "SegmentedDirectShowSource", "s+[fps]f[seek]b", Create_SegmentedSource, (void*)1 },
+  { "SegmentedDirectShowSource", "s+[fps]f", Create_SegmentedSource, (void*)1 },
 //  { "QuickTimeSource", "s", QuickTimeSource::Create },
   { "BlankClip", "[clip]c[length]i[width]i[height]i[pixel_type]s[fps]f[fps_denominator]i[audio_rate]i[stereo]b[sixteen_bit]b[color]i", Create_BlankClip },
   { "Blackness", "[clip]c[length]i[width]i[height]i[pixel_type]s[fps]f[fps_denominator]i[audio_rate]i[stereo]b[sixteen_bit]b[color]i", Create_BlankClip },

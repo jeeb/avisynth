@@ -1,5 +1,5 @@
-// Avisynth v1.0 beta.  Copyright 2000 Ben Rudiak-Gould.
-// http://www.math.berkeley.edu/~benrg/avisynth.html
+// Avisynth v2.5.  Copyright 2002 Ben Rudiak-Gould et al.
+// http://www.avisynth.org
 
 // This program is free software; you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -15,6 +15,22 @@
 // along with this program; if not, write to the Free Software
 // Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA, or visit
 // http://www.gnu.org/copyleft/gpl.html .
+//
+// Linking Avisynth statically or dynamically with other modules is making a
+// combined work based on Avisynth.  Thus, the terms and conditions of the GNU
+// General Public License cover the whole combination.
+//
+// As a special exception, the copyright holders of Avisynth give you
+// permission to link Avisynth with independent modules that communicate with
+// Avisynth solely through the interfaces defined in avisynth.h, regardless of the license
+// terms of these independent modules, and to copy and distribute the
+// resulting combined work under terms of your choice, provided that
+// every copy of the combined work is accompanied by a complete copy of
+// the source code of Avisynth (the version of Avisynth used to produce the
+// combined work), being distributed under the terms of the GNU General
+// Public License plus this exception.  An independent module is a module
+// which is not derived from or based on Avisynth, such as 3rd-party filters,
+// import and export plugins, or graphical user interfaces.
 
 #ifndef __Resize_H__
 #define __Resize_H__
@@ -32,7 +48,8 @@ class VerticalReduceBy2 : public GenericVideoFilter
 {  
 public:
   VerticalReduceBy2(PClip _child, IScriptEnvironment* env);
-  void mmx_process(PVideoFrame src,BYTE* dstp, int dst_pitch);
+  void mmx_process(PVideoFrame src,BYTE* dstp, int dst_pitch, int plane);
+  void mmx_process(const BYTE* srcp, int src_pitch, int row_size, BYTE* dstp, int dst_pitch, int height) ;
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
   static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env)  { 
     return new VerticalReduceBy2(args[0].AsClip(),env); 

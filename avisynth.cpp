@@ -1,5 +1,5 @@
-// Avisynth v1.0 beta.  Copyright 2000 Ben Rudiak-Gould.
-// http://www.math.berkeley.edu/~benrg/avisynth.html
+// Avisynth v2.5.  Copyright 2002 Ben Rudiak-Gould et al.
+// http://www.avisynth.org
 
 // This program is free software; you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -15,6 +15,22 @@
 // along with this program; if not, write to the Free Software
 // Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA, or visit
 // http://www.gnu.org/copyleft/gpl.html .
+//
+// Linking Avisynth statically or dynamically with other modules is making a
+// combined work based on Avisynth.  Thus, the terms and conditions of the GNU
+// General Public License cover the whole combination.
+//
+// As a special exception, the copyright holders of Avisynth give you
+// permission to link Avisynth with independent modules that communicate with
+// Avisynth solely through the interfaces defined in avisynth.h, regardless of the license
+// terms of these independent modules, and to copy and distribute the
+// resulting combined work under terms of your choice, provided that
+// every copy of the combined work is accompanied by a complete copy of
+// the source code of Avisynth (the version of Avisynth used to produce the
+// combined work), being distributed under the terms of the GNU General
+// Public License plus this exception.  An independent module is a module
+// which is not derived from or based on Avisynth, such as 3rd-party filters,
+// import and export plugins, or graphical user interfaces.
 
 
 #include <stdio.h>
@@ -23,7 +39,6 @@
 
 #include "internal.h"
 #include "script.h"
-
 
 #ifdef _MSC_VER
   #define strnicmp(a,b,c) _strnicmp(a,b,c)
@@ -39,7 +54,8 @@ extern AVSFunction Audio_filters[], Combine_filters[], Convert_filters[],
                    Layer_filters[], Levels_filters[], Misc_filters[], 
                    Plugin_functions[], Resample_filters[], Resize_filters[], 
                    Script_functions[], Source_filters[], Text_filters[],
-                   Transform_filters[], Merge_filters[];
+                   Transform_filters[], Merge_filters[], Color_filters[],
+                   Debug_filters[];
                    
 
 AVSFunction* builtin_functions[] = {  
@@ -49,13 +65,14 @@ AVSFunction* builtin_functions[] = {
                    Layer_filters, Levels_filters, Misc_filters, 
                    Resample_filters, Resize_filters, 
                    Script_functions, Source_filters, Text_filters,
-                   Transform_filters, Merge_filters, Plugin_functions };
+                   Transform_filters, Merge_filters, Color_filters, 
+                   Debug_filters, Plugin_functions };
 
 
 
 const HKEY RegRootKey = HKEY_LOCAL_MACHINE;
 const char RegAvisynthKey[] = "Software\\Avisynth";
-const char RegPluginDir[] = "PluginDir";
+const char RegPluginDir[] = "PluginDir2_5";
 
 // in plugins.cpp
 AVSValue LoadPlugin(AVSValue args, void* user_data, IScriptEnvironment* env);
@@ -84,13 +101,23 @@ void* VideoFrame::operator new(unsigned) {
 
 
 VideoFrame::VideoFrame(VideoFrameBuffer* _vfb, int _offset, int _pitch, int _row_size, int _height)
-  : refcount(0), vfb(_vfb), offset(_offset), pitch(_pitch), row_size(_row_size), height(_height)
+  : refcount(0), vfb(_vfb), offset(_offset), pitch(_pitch), row_size(_row_size), height(_height),offsetU(_offset),offsetV(_offset),pitchUV(0)  // PitchUV=0 so this doesn't take up additional space
+{
+  InterlockedIncrement(&vfb->refcount);
+}
+
+VideoFrame::VideoFrame(VideoFrameBuffer* _vfb, int _offset, int _pitch, int _row_size, int _height, int _offsetU, int _offsetV, int _pitchUV)
+  : refcount(0), vfb(_vfb), offset(_offset), pitch(_pitch), row_size(_row_size), height(_height),offsetU(_offsetU),offsetV(_offsetV),pitchUV(_pitchUV)
 {
   InterlockedIncrement(&vfb->refcount);
 }
 
 VideoFrame* VideoFrame::Subframe(int rel_offset, int new_pitch, int new_row_size, int new_height) const {
   return new VideoFrame(vfb, offset+rel_offset, new_pitch, new_row_size, new_height);
+}
+
+VideoFrame* VideoFrame::Subframe(int rel_offset, int new_pitch, int new_row_size, int new_height, int rel_offsetU, int rel_offsetV, int new_pitchUV) const {
+  return new VideoFrame(vfb, offset+rel_offset, new_pitch, new_row_size, new_height, rel_offsetU+offsetU, rel_offsetV+offsetV, new_pitchUV);
 }
 
 
@@ -100,7 +127,7 @@ VideoFrameBuffer::VideoFrameBuffer(int size)
 VideoFrameBuffer::VideoFrameBuffer() : refcount(0), data(0), data_size(0) {}
 
 VideoFrameBuffer::~VideoFrameBuffer() {
-  _ASSERTE(refcount == 0);
+//  _ASSERTE(refcount == 0);
   delete[] data;
 }
 
@@ -457,6 +484,7 @@ public:
   void __stdcall PopContext();
   PVideoFrame __stdcall NewVideoFrame(const VideoInfo& vi, int align);
   PVideoFrame NewVideoFrame(int row_size, int height, int align);
+  PVideoFrame NewPlanarVideoFrame(int width, int height, int align, bool U_first);
   bool __stdcall MakeWritable(PVideoFrame* pvf);
   void __stdcall BitBlt(BYTE* dstp, int dst_pitch, const BYTE* srcp, int src_pitch, int row_size, int height);
   void __stdcall AtExit(IScriptEnvironment::ShutdownFunc function, void* user_data);
@@ -491,6 +519,7 @@ private:
   const char* GetPluginDirectory();
   bool LoadPluginsMatching(const char* pattern);
   void PrescanPlugins();
+
 };
 
 
@@ -646,11 +675,14 @@ void ScriptEnvironment::PrescanPlugins()
   }
 }
 
-
-PVideoFrame ScriptEnvironment::NewVideoFrame(int row_size, int height, int align) {
-  int pitch = (row_size+align-1) / align * align;
-  int size = pitch * height;
-  VideoFrameBuffer* vfb = GetFrameBuffer(size+32);
+PVideoFrame ScriptEnvironment::NewPlanarVideoFrame(int width, int height, int align, bool U_first) {
+  int pitch = (width+align-1) / align * align;  // Y plane, width = 1 byte per pixel
+//  int UVpitch = ((width>>1)+align-1) / align * align;  // UV plane, width = 1/2 byte per pixel - can't align UV planes seperately.
+  int UVpitch = pitch>>1;  // UV plane, width = 1/2 byte per pixel
+  int size = pitch * height + UVpitch * height;
+  VideoFrameBuffer* vfb = GetFrameBuffer(size+(FRAME_ALIGN*4));
+  if (!vfb)
+    ThrowError("NewPlanarVideoFrame: Returned 0 size image!"); 
 #ifdef _DEBUG
   {
     static const BYTE filler[] = { 0x0A, 0x11, 0x0C, 0xA7, 0xED };
@@ -661,12 +693,76 @@ PVideoFrame ScriptEnvironment::NewVideoFrame(int row_size, int height, int align
     }
   }
 #endif
-  int offset = (-int(vfb->GetWritePtr())) & 7;
+//  int offset = (-int(vfb->GetWritePtr())) & (align-1);  // align first line offset
+  int offset = int(vfb->GetWritePtr()) & (FRAME_ALIGN-1);  // align first line offset
+  offset = (FRAME_ALIGN - offset)%FRAME_ALIGN;
+  int Uoffset, Voffset;
+  if (U_first) {
+    Uoffset = offset + pitch * height;
+    Voffset = offset + pitch * height + UVpitch * (height>>1);
+  } else {
+    Voffset = offset + pitch * height;
+    Uoffset = offset + pitch * height + UVpitch * (height>>1);
+  }
+  return new VideoFrame(vfb, offset, pitch, width, height, Uoffset, Voffset, UVpitch);
+}
+
+
+PVideoFrame ScriptEnvironment::NewVideoFrame(int row_size, int height, int align) {
+  int pitch = (row_size+align-1) / align * align;
+  int size = pitch * height;
+  VideoFrameBuffer* vfb = GetFrameBuffer(size+(align*4));
+#ifdef _DEBUG
+  {
+    static const BYTE filler[] = { 0x0A, 0x11, 0x0C, 0xA7, 0xED };
+    BYTE* p = vfb->GetWritePtr();
+    BYTE* q = p + vfb->GetDataSize()/5*5;
+    for (; p<q; p+=5) {
+      p[0]=filler[0]; p[1]=filler[1]; p[2]=filler[2]; p[3]=filler[3]; p[4]=filler[4];
+    }
+  }
+#endif
+  int offset = int(vfb->GetWritePtr()) & (FRAME_ALIGN-1);  // align first line offset
+  offset = (FRAME_ALIGN - offset)%FRAME_ALIGN;
+//  int offset = (-int(vfb->GetWritePtr())) & (align-1);  // align first line offset  (alignment is free here!)
   return new VideoFrame(vfb, offset, pitch, row_size, height);
 }
 
-PVideoFrame __stdcall ScriptEnvironment::NewVideoFrame(const VideoInfo& vi, int align) {
-  return ScriptEnvironment::NewVideoFrame(vi.RowSize(), vi.height, align);
+
+PVideoFrame __stdcall ScriptEnvironment::NewVideoFrame(const VideoInfo& vi, int align) { 
+  // Check requested pixel_type:
+  switch (vi.pixel_type) {
+    case VideoInfo::CS_BGR24:
+    case VideoInfo::CS_BGR32:
+    case VideoInfo::CS_YUY2:
+    case VideoInfo::CS_YV12:
+    case VideoInfo::CS_I420:
+      break;
+    default:
+      ThrowError("Filter Error: Filter attempted to create VideoFrame with invalid pixel_type.");
+  }
+  // If align is negative, it will be forced, if not it may be made bigger
+  if (vi.IsPlanar()) { // Planar requires different math ;)
+    if (align<0) {
+      align *= -1;
+    } else {
+      align = max(align,FRAME_ALIGN);
+    }
+    if ((vi.height&1)||(vi.width&1))
+      ThrowError("Filter Error: Attempted to request an YV12 frame that wasn't mod2 in width and height!");
+    if ((vi.height&3)&&vi.IsFieldBased())
+      ThrowError("Filter Error: Attempted to request a fieldbased YV12 frame that wasn't mod4 in height!");
+    return ScriptEnvironment::NewPlanarVideoFrame(vi.width, vi.height, align, !vi.IsVPlaneFirst());  // If planar, maybe swap U&V
+  } else {
+    if ((vi.width&1)&&(vi.IsYUY2()))
+      ThrowError("Filter Error: Attempted to request an YUY2 frame that wasn't mod2 in width.");
+    if (align<0) {
+      align *= -1;
+    } else {
+      align = max(align,FRAME_ALIGN);
+    }
+    return ScriptEnvironment::NewVideoFrame(vi.RowSize(), vi.height, align);
+  }
 }
 
 bool ScriptEnvironment::MakeWritable(PVideoFrame* pvf) {
@@ -675,18 +771,27 @@ bool ScriptEnvironment::MakeWritable(PVideoFrame* pvf) {
   if (vf->IsWritable()) {
     return false;
   }
+
   // Otherwise, allocate a new frame (using NewVideoFrame) and
   // copy the data into it.  Then modify the passed PVideoFrame
   // to point to the new buffer.
-  else {
-    const int row_size = vf->GetRowSize();
+    const int row_size = vf->GetRowSize(); 
     const int height = vf->GetHeight();
-    PVideoFrame dst = NewVideoFrame(row_size, height, FRAME_ALIGN);
+    PVideoFrame dst;
+    if (vf->GetPitch(PLANAR_U)) {  // we have no videoinfo, so we can only assume that it is Planar
+      dst = NewPlanarVideoFrame(row_size, height, FRAME_ALIGN,false);  // Always V first on internal images
+    } else {
+      dst = NewVideoFrame(row_size, height, FRAME_ALIGN);
+    }
     BitBlt(dst->GetWritePtr(), dst->GetPitch(), vf->GetReadPtr(), vf->GetPitch(), row_size, height);
+    // Blit More planes (pitch, rowsize and height should be 0, if none is present)
+    BitBlt(dst->GetWritePtr(PLANAR_V), dst->GetPitch(PLANAR_V), vf->GetReadPtr(PLANAR_V), vf->GetPitch(PLANAR_V), vf->GetRowSize(PLANAR_V), vf->GetHeight(PLANAR_V));
+    BitBlt(dst->GetWritePtr(PLANAR_U), dst->GetPitch(PLANAR_U), vf->GetReadPtr(PLANAR_U), vf->GetPitch(PLANAR_U), vf->GetRowSize(PLANAR_U), vf->GetHeight(PLANAR_U));
+
     *pvf = dst;
     return true;
-  }
 }
+
 
 void ScriptEnvironment::AtExit(IScriptEnvironment::ShutdownFunc function, void* user_data) {
   at_exit.Add(function, user_data);
@@ -719,7 +824,9 @@ LinkedVideoFrameBuffer* ScriptEnvironment::GetFrameBuffer2(int size) {
     if (i->GetRefcount() == 0 && i->GetDataSize() == size)
       return i;
   }
-  // Plan C: allocate a new buffer, regardless of current memory usage
+
+  // Plan C: allocate a new buffer, regardless of current memory usage  
+  // FIXME: Could lead to massive allocation on memory thrashing, perhaps a plan D which deallocates all unused frames and reallocates memory would be better, if more than 2*allowed memory is used.
   return NewFrameBuffer(size);
 }
 
@@ -834,8 +941,11 @@ bool ScriptEnvironment::FunctionExists(const char* name) {
   return function_table.Exists(name);
 }
 
-
 void BitBlt(BYTE* dstp, int dst_pitch, const BYTE* srcp, int src_pitch, int row_size, int height) {
+  if (GetCPUFlags() & CPUF_MMX) {
+    asm_BitBlt(dstp,dst_pitch,srcp,src_pitch,row_size,height);
+    return;
+  }
   if (dst_pitch == src_pitch && src_pitch == row_size) {
     memcpy(dstp, srcp, src_pitch * height);
   } else {
@@ -847,8 +957,331 @@ void BitBlt(BYTE* dstp, int dst_pitch, const BYTE* srcp, int src_pitch, int row_
   }
 }
 
+  /*****************************
+  * Assembler bitblit by Steady
+   *****************************/
+
+#if 0
+
+void asm_BitBlt(BYTE* dstp, int dst_pitch, const BYTE* srcp, int src_pitch, int row_size, int height) {
+	if(row_size==0 || height==0) return; //abort on goofs
+	//move backwards for easier looping and to disable hardware prefetch
+	const BYTE* srcStart=srcp+src_pitch*(height-1);
+	BYTE* dstStart=dstp+dst_pitch*(height-1);
+
+	if(row_size < 16) {//to small to optimize
+		_asm {
+			mov 	esi,srcStart	//move rows from bottom up
+			mov 	edi,dstStart
+			mov 	edx,row_size
+			dec		edx
+			mov 	ebx,height
+			align 16
+memoptS_rowloop:
+			mov 	ecx,edx
+//			rep movsb
+memoptS_byteloop:
+			mov		AL,[esi+ecx]
+			mov		[edi+ecx],AL
+			sub		ecx,1
+			jnc		memoptS_byteloop
+			sub 	esi,src_pitch
+			sub 	edi,dst_pitch
+			dec 	ebx
+			jne 	memoptS_rowloop
+		};
+		return;
+	}//end small version
+
+	else if( (int(dstp) | row_size) & 7) {//not QW aligned
+		//unaligned version makes no assumptions on alignment
+		//other than pitch is QW aligned
+		int preBytes;// 0-7 bytes before first QW
+
+		_asm {
+//****** initialize
+			mov		esi,srcStart	//bottom row
+			mov		AL,[esi]
+			mov		edi,dstStart
+			mov		edx,row_size
+			mov		ecx,edi
+			neg		ecx
+			and		ecx,7		//bytes before first QWord in dest
+			mov		preBytes,ecx
+			mov		ebx,height
+
+//********** loop starts here ***********
+
+			align 16
+memoptU_rowloop:
+			mov		ecx,edx			//row_size
+			dec		ecx					//offset to last byte in row
+			add		ecx,esi			//ecx= ptr last byte in row
+			and		ecx,~63			//align to first byte in cache line
+memoptU_prefetchloop:
+			mov		AX,[ecx]		//tried AL,AX,EAX, AX a tiny bit faster
+			sub		ecx,64
+			cmp		ecx,esi
+			jae		memoptU_prefetchloop
+
+//************ write *************
+
+			movq		mm6,[esi]			//move the first unaligned bytes
+			movntq	[edi],mm6			//if preBytes!=0, overlaps with QW aligned below
+//************************
+			mov		eax,edi
+			mov		ecx,preBytes		//preBytes=offset from edi(dstp) to next QW (0-7)
+			neg		eax
+			and		eax,63				//eax=bytes from edi to start of next 64 byte cache line
+			align	16
+memoptU_prewrite8loop:   //write out odd QW's so 64bit write is cache line aligned
+			cmp		ecx,eax				//start of cache line ?
+			jz		memoptU_pre8done	//if not, write single QW
+			movq		mm7,[esi+ecx]
+			movntq	[edi+ecx],mm7
+			add		ecx,8
+			jmp		memoptU_prewrite8loop
+
+			align	16
+memoptU_write64loop:
+			movntq	[edi+ecx-64],mm0
+			movntq	[edi+ecx-56],mm1
+			movntq	[edi+ecx-48],mm2
+			movntq	[edi+ecx-40],mm3
+			movntq	[edi+ecx-32],mm4
+			movntq	[edi+ecx-24],mm5
+			movntq	[edi+ecx-16],mm6
+			movntq	[edi+ecx- 8],mm7
+memoptU_pre8done:
+			add		ecx,64
+			cmp		ecx,edx		//while(offset <= row_size) do {...
+			ja		memoptU_done64
+			movq		mm0,[esi+ecx-64]
+			movq		mm1,[esi+ecx-56]
+			movq		mm2,[esi+ecx-48]
+			movq		mm3,[esi+ecx-40]
+			movq		mm4,[esi+ecx-32]
+			movq		mm5,[esi+ecx-24]
+			movq		mm6,[esi+ecx-16]
+			movq		mm7,[esi+ecx- 8]
+			jmp		memoptU_write64loop
+memoptU_done64:
+
+			sub			ecx,64		//went to far
+			align	16
+memoptU_write8loop:
+			add			ecx,8		//next QW
+			cmp			ecx,edx	//any QW's left in row ?
+			ja			memoptU_done8
+			movq		mm0,[esi+ecx-8]
+			movntq	[edi+ecx-8],mm0
+			jmp		memoptU_write8loop
+memoptU_done8:
+
+			movq		mm1,[esi+edx-8]
+			movntq	[edi+edx-8],mm1
+			sub		esi,src_pitch
+			sub		edi,dst_pitch
+			dec		ebx							//row counter (=height at start)
+			jne		memoptU_rowloop
+
+			sfence
+			emms
+		};
+		return;
+	}//end unaligned version
+
+	else {//QW aligned version (fastest)
+	//else dstp and row_size QW aligned - hope for the best from srcp
+	//QW aligned version should generally be true when copying full rows
+		_asm {
+			mov		esi,srcStart	//start of bottom row
+			mov		edi,dstStart
+			mov		ebx,height
+			mov		edx,row_size
+			align	16
+memoptA_rowloop:
+			mov		ecx,edx	//row_size
+			dec		ecx			//offset to last byte in row
+
+//********forward routine
+			add		ecx,esi
+			and		ecx,~63		//align prefetch to first byte in cache line(~3-4% faster)
+			align	16
+memoptA_prefetchloop:
+			mov		AX,[ecx]
+			sub		ecx,64
+			cmp		ecx,esi
+			jae		memoptA_prefetchloop
+
+			mov		eax,edi
+			xor		ecx,ecx
+			neg		eax
+			and		eax,63		//eax=bytes from edi to start of cache line
+			align	16
+memoptA_prewrite8loop:   //write out odd QW's so 64bit write is cache line aligned
+			cmp		ecx,eax				//start of cache line ?
+			jz		memoptA_pre8done	//if not, write single QW
+			movq		mm7,[esi+ecx]
+			movntq	[edi+ecx],mm7
+			add		ecx,8
+			jmp		memoptA_prewrite8loop
+
+			align	16
+memoptA_write64loop:
+			movntq	[edi+ecx-64],mm0
+			movntq	[edi+ecx-56],mm1
+			movntq	[edi+ecx-48],mm2
+			movntq	[edi+ecx-40],mm3
+			movntq	[edi+ecx-32],mm4
+			movntq	[edi+ecx-24],mm5
+			movntq	[edi+ecx-16],mm6
+			movntq	[edi+ecx- 8],mm7
+memoptA_pre8done:
+			add		ecx,64
+			cmp		ecx,edx
+			ja		memoptA_done64  //less than 64 bytes left
+			movq		mm0,[esi+ecx-64]
+			movq		mm1,[esi+ecx-56]
+			movq		mm2,[esi+ecx-48]
+			movq		mm3,[esi+ecx-40]
+			movq		mm4,[esi+ecx-32]
+			movq		mm5,[esi+ecx-24]
+			movq		mm6,[esi+ecx-16]
+			movq		mm7,[esi+ecx- 8]
+			jmp		memoptA_write64loop
+
+memoptA_done64:
+			sub		ecx,64
+
+			align	16
+memoptA_write8loop:		//less than 8 QW's left
+			add		ecx,8
+			cmp		ecx,edx
+			ja		memoptA_done8	//no QW's left
+			movq		mm7,[esi+ecx-8]
+			movntq	[edi+ecx-8],mm7
+			jmp		memoptA_write8loop
+
+memoptA_done8:
+			sub		esi,src_pitch
+			sub		edi,dst_pitch
+			dec		ebx		//row counter (height)
+			jne		memoptA_rowloop
+
+			sfence
+			emms
+		};
+		return;
+	}//end aligned version
+
+}//end BitBlt_memopt()
+
+#else
+
+void asm_BitBlt(BYTE* dstp, int dst_pitch, const BYTE* srcp, int src_pitch, int row_size, int height) {
+  int bytesleft=0;
+  if (row_size&15) {
+    int a=(row_size+15)&(~15);
+    if ((a<=src_pitch) && (a<=dst_pitch)) {
+      row_size=a;
+    } else {
+      bytesleft=(row_size&15);
+      row_size&=~15;
+    }
+  }
+  int src_modulo = src_pitch - (row_size+bytesleft);
+  int dst_modulo = dst_pitch - (row_size+bytesleft);
+  if (height==0 || row_size==0) return;
+  if ((GetCPUFlags() & CPUF_INTEGER_SSE)) {  // ISSE ~10-15% faster on K7 in reallife tests
+    __asm {
+      mov edi,[dstp]
+      mov esi,[srcp]
+      xor eax, eax;  // Height counter
+      xor ebx, ebx;  // Row counter
+      mov edx, [row_size]
+new_line_sse:
+      mov ecx,[bytesleft]
+      cmp ebx,edx
+      jge nextline_sse
+      align 16
+nextpixels_sse:
+      prefetchnta [esi+ebx+256]  // Prefetch a few cache lines ahead (~1% faster)
+      movq mm0,[esi+ebx]
+      movq mm1,[esi+ebx+8]
+      movntq [edi+ebx],mm0      // Is faster in reallife on K7 (~4 %)
+      movntq [edi+ebx+8],mm1
+      add ebx,16
+      cmp ebx,edx
+      jl nextpixels_sse
+      align 16
+nextline_sse:
+      add esi,ebx
+      add edi,ebx
+      cmp ecx,0
+      jz do_next_line_sse
+      rep movsb         ; the last 1-15 bytes
+
+      align 16
+do_next_line_sse:
+      add esi, [src_modulo]
+      add edi, [dst_modulo]
+      xor ebx, ebx;  // Row counter
+      inc eax
+      cmp eax,[height]
+      jl new_line_sse
+      sfence
+    }
+  } else {  // Plain MMX ~ 5% faster on K7 in real life
+    __asm {
+      mov edi,[dstp]
+      mov esi,[srcp]
+      xor eax, eax;  // Height counter
+      xor ebx, ebx;  // Row counter
+      mov edx, [row_size]
+new_line_mmx:
+      mov ecx,[bytesleft]
+      cmp ebx,edx
+      jge nextline_mmx
+      align 16
+nextpixels_mmx:
+      movq mm0,[esi+ebx]
+      movq mm1,[esi+ebx+8]
+      movq [edi+ebx],mm0
+      movq [edi+ebx+8],mm1
+      add ebx,16
+      cmp ebx,edx
+      jl nextpixels_mmx
+      align 16
+nextline_mmx:
+      add esi,edx
+      add edi,edx
+      cmp ecx,0
+      jz do_next_line_mmx
+      rep movsb         ; the last 1-7 bytes
+
+      align 16
+do_next_line_mmx:
+      add esi, [src_modulo]
+      add edi, [dst_modulo]
+      xor ebx, ebx;  // Row counter
+      inc eax
+      cmp eax,[height]
+      jl new_line_mmx
+    }
+  }
+  __asm {emms};
+}
+#endif
+
+void asm_BitBltNC(BYTE* dstp, int dst_pitch, const BYTE* srcp, int src_pitch, int row_size, int height) {
+}
 
 void ScriptEnvironment::BitBlt(BYTE* dstp, int dst_pitch, const BYTE* srcp, int src_pitch, int row_size, int height) {
+  if (height<0)
+    ThrowError("Filter Error: Attempting to blit an image with negative height.");
+  if (row_size<0)
+    ThrowError("Filter Error: Attempting to blit an image with negative row size.");
   ::BitBlt(dstp, dst_pitch, srcp, src_pitch, row_size, height);
 }
 

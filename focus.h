@@ -1,5 +1,5 @@
-// Avisynth v1.0 beta.  Copyright 2000 Ben Rudiak-Gould.
-// http://www.math.berkeley.edu/~benrg/avisynth.html
+// Avisynth v2.5.  Copyright 2002 Ben Rudiak-Gould et al.
+// http://www.avisynth.org
 
 // This program is free software; you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -15,6 +15,22 @@
 // along with this program; if not, write to the Free Software
 // Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA, or visit
 // http://www.gnu.org/copyleft/gpl.html .
+//
+// Linking Avisynth statically or dynamically with other modules is making a
+// combined work based on Avisynth.  Thus, the terms and conditions of the GNU
+// General Public License cover the whole combination.
+//
+// As a special exception, the copyright holders of Avisynth give you
+// permission to link Avisynth with independent modules that communicate with
+// Avisynth solely through the interfaces defined in avisynth.h, regardless of the license
+// terms of these independent modules, and to copy and distribute the
+// resulting combined work under terms of your choice, provided that
+// every copy of the combined work is accompanied by a complete copy of
+// the source code of Avisynth (the version of Avisynth used to produce the
+// combined work), being distributed under the terms of the GNU General
+// Public License plus this exception.  An independent module is a module
+// which is not derived from or based on Avisynth, such as 3rd-party filters,
+// import and export plugins, or graphical user interfaces.
 
 #ifndef __Focus_H__
 #define __Focus_H__
@@ -25,6 +41,9 @@
 _PixelClip PixelClip;
 
 
+
+
+#define uc unsigned char
 
 class AdjustFocusV : public GenericVideoFilter 
 /**
@@ -37,10 +56,15 @@ public:
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
 
 private:
+  bool chroma;
   const int amount;
-  BYTE* line;
+  uc* line;
 
 };
+
+/* Helpers for AdjustFocusV */
+void AFV_C(uc* l, uc* p, const int height, const int pitch, const int row_size, const int amount);
+void AFV_MMX(const uc* l, const uc* p, const int height, const int pitch, const int row_size, const int amount);
 
 
 class AdjustFocusH : public GenericVideoFilter 
@@ -53,15 +77,26 @@ public:
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
 
 private:
+  bool chroma;
   const int amount;
 
 };
 
+/* Helpers for AdjustFocusH */
+void AFH_YUY2_C(uc* p, int height, const int pitch, const int width, const int amount);
+void AFH_YUY2_MMX(const uc* p, const int height, const int pitch, const int width, const int amount);
+void AFH_RGB32_C(uc* p, int height, const int pitch, const int width, const int amount);
+void AFH_RGB32_MMX(const uc* p, const int height, const int pitch, const int width, const int amount);
+void AFH_YV12_C(uc* p, int height, const int pitch, const int row_size, const int amount);
+void AFH_YV12_MMX(uc* p, int height, const int pitch, const int row_size, const int amount);
+
+void AFH_RGB24_C(uc* p, int height, const int pitch, const int width, const int amount);
+// no mmx version. to be honest, who would intensively use this ?
 
 /*** Sharpen/Blur Factory methods ***/
 
-static AVSValue __cdecl Create_Sharpen(AVSValue args, void*, IScriptEnvironment* env);
-static AVSValue __cdecl Create_Blur(AVSValue args, void*, IScriptEnvironment* env);
+AVSValue __cdecl Create_Sharpen(AVSValue args, void*, IScriptEnvironment* env);
+AVSValue __cdecl Create_Blur(AVSValue args, void*, IScriptEnvironment* env);
 
 
 
@@ -74,13 +109,30 @@ class TemporalSoften : public GenericVideoFilter
  **/
 {
 public:
-  TemporalSoften( PClip _child, unsigned radius, unsigned luma_thresh, unsigned chroma_thresh,
-                  IScriptEnvironment* env );
+  TemporalSoften( PClip _child, unsigned radius, unsigned luma_thresh, unsigned chroma_thresh,int _scenechange, int _mode ,IScriptEnvironment* env );
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
   virtual ~TemporalSoften(void);
   static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env);
 
 private:
+// YV12:
+    int* planes;
+    int* divtab;
+    const BYTE** planeP;
+    const BYTE** planeP2;
+    int* planePitch;
+    int* planePitch2;
+    int* accum_line;
+    int* div_line;
+    bool* planeDisabled;
+    int scenechange;
+    int mode;
+  void TemporalSoften::mmx_accumulate_line(const BYTE* c_plane, const BYTE** planeP, int planes, int rowsize, __int64* t);
+  void TemporalSoften::isse_accumulate_line(const BYTE* c_plane, const BYTE** planeP, int planes, int rowsize, __int64* t);
+  void TemporalSoften::isse_accumulate_line_mode2(const BYTE* c_plane, const BYTE** planeP, int planes, int rowsize, __int64* t, int div);
+  void TemporalSoften::mmx_accumulate_line_mode2(const BYTE* c_plane, const BYTE** planeP, int planes, int rowsize, __int64* t, int div);
+  int TemporalSoften::isse_scenechange(const BYTE* c_plane, const BYTE* tplane, int height, int width, int c_pitch, int t_pitch);
+// YUY2:
   const unsigned luma_threshold, chroma_threshold;
   DWORD* accu;
   const int kernel;
@@ -91,12 +143,6 @@ private:
 
   enum { MAX_RADIUS=7 };
 
-  PVideoFrame LoadFrame(int n,int offset, IScriptEnvironment* env);
-  void FillBuffer(int n, int offset, IScriptEnvironment* env);
-
-  typedef void run_func(DWORD *pframe, int rowsize, int height, int modulo, int noffset, int coffset);
-  run_func run_C;
-  run_func run_MMX;
 };
 
 
