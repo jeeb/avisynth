@@ -516,6 +516,14 @@ SOURCE=.\merge.h
 # End Source File
 # Begin Source File
 
+SOURCE=".\ssrc-convert.cpp"
+# End Source File
+# Begin Source File
+
+SOURCE=".\ssrc-convert.h"
+# End Source File
+# Begin Source File
+
 SOURCE=.\turn.cpp
 # End Source File
 # Begin Source File
@@ -623,6 +631,44 @@ SOURCE=.\convert_yv12.cpp
 # Begin Source File
 
 SOURCE=.\convert_yv12.h
+# End Source File
+# End Group
+# Begin Group "ssrc"
+
+# PROP Default_Filter ""
+# Begin Source File
+
+SOURCE=.\fftsg_fl.cpp
+
+!IF  "$(CFG)" == "avisynth - Win32 Release"
+
+!ELSEIF  "$(CFG)" == "avisynth - Win32 Debug"
+
+# SUBTRACT CPP /YX /Yc /Yu
+
+!ELSEIF  "$(CFG)" == "avisynth - Win32 Profile"
+
+!ENDIF 
+
+# End Source File
+# Begin Source File
+
+SOURCE=.\ssrc.cpp
+
+!IF  "$(CFG)" == "avisynth - Win32 Release"
+
+!ELSEIF  "$(CFG)" == "avisynth - Win32 Debug"
+
+# SUBTRACT CPP /YX /Yc /Yu
+
+!ELSEIF  "$(CFG)" == "avisynth - Win32 Profile"
+
+!ENDIF 
+
+# End Source File
+# Begin Source File
+
+SOURCE=.\ssrc.h
 # End Source File
 # End Group
 # End Group
