@@ -525,7 +525,7 @@ bool ImageReader::checkProperties(istream & file, PVideoFrame & frame, IScriptEn
 
 AVSValue __cdecl ImageReader::Create(AVSValue args, void*, IScriptEnvironment* env) 
 {
-  const char * path = args[0].AsString("c:\\");
+  const char * path = args[0].AsString("c:\\%06d.ebmp");
 
   AVSValue image = new ImageReader(path, args[1].AsInt(0), args[2].AsInt(1000), args[3].AsFloat(24), 
                          args[4].AsBool(false), args[5].AsBool(false));
