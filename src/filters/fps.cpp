@@ -247,16 +247,16 @@ PVideoFrame __stdcall ConvertFPS::GetFrame(int n, IScriptEnvironment* env)
 	PVideoFrame a = child->GetFrame(nsrc, env);
 	PVideoFrame b = child->GetFrame(nsrc+1, env);
 	const BYTE*  b_data   = b->GetReadPtr();
-	int                   a_pitch  = a->GetPitch();
-	int                   b_pitch  = b->GetPitch();
-	const int             row_size = a->GetRowSize();
-	const int             height   = a->GetHeight();
+	int          b_pitch  = b->GetPitch();
+	const int    row_size = a->GetRowSize();
+	const int    height   = a->GetHeight();
 
 	if( zone < 0 ) {
 
    	// Mode 1: Blend full frames
 		env->MakeWritable(&a);
-		BYTE* a_data = a->GetWritePtr();
+		BYTE* a_data   = a->GetWritePtr();
+		int   a_pitch  = a->GetPitch();
 		for (int y = 0; y < height; y++) {
 			for (int x = 0; x < row_size; x++)
 				a_data[x] += ((b_data[x] - a_data[x]) * mix_ratio + half) >> resolution;
@@ -273,6 +273,7 @@ PVideoFrame __stdcall ConvertFPS::GetFrame(int n, IScriptEnvironment* env)
 	
 		BYTE *pd;
 		const BYTE *pa, *pb, *a_data = a->GetReadPtr();
+		int   a_pitch = a->GetPitch();
 
 		int switch_line = (lps * (one - frac)) >> resolution;
 		int top = switch_line - (zone>>1);
