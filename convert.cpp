@@ -636,87 +636,87 @@ PVideoFrame Greyscale::GetFrame(int n, IScriptEnvironment* env)
 		  srcp[x*2+1] = 127;
 		srcp += pitch;
 	  }
-	} else if (vi.IsRGB32() && (env->GetCPUFlags() & CPUF_MMX)) {
+	} else if (vi.IsRGB32() && (env->GetCPUFlags() & CPUF_MMX) && (!myx&1) ) {
 		const int cyb = int(0.114*32768+0.5);
 		const int cyg = int(0.587*32768+0.5);
 		const int cyr = int(0.299*32768+0.5);
 		myx = myx >> 1;
 		__int64 rgb2lum = ((__int64)cyb << 32) | (cyg << 16) | cyr;
 
-		__asm {
-		mov			edi, srcp
-		pxor		mm0,mm0
-		movq		mm7,rgb2lum
-
-		xor         ecx, ecx
-		movq		mm2, [edi + ecx*8]
-		mov			ebx, myy
-		mov         edx, myx
-
-		rgb2lum_mmxloop:
-
-						movq		mm6, mm2
-						movq		mm3,mm7	;get rgb2lum
-							movq		mm5,mm6
-						punpcklbw		mm6,mm0		;mm6= 00aa|00bb|00gg|00rr [src2]
-							punpckhbw		mm5, mm0	 
-				//----- start rgb -> monochrome
-
-
-						pmaddwd			mm6,mm3			;partial monochrome result
-
-						mov		eax, ecx								;pipeline overhead - pointer to ecx-1
-						inc         ecx		;loop counter
-
-							movq		mm4, mm7	 ;get rgb2lum again
-
-						movq		mm2, [edi + ecx*8] ; split up otherwise sequential memory access
-
-							pmaddwd			mm5, mm4
-
-						
-						punpckldq		mm3,mm6			;ready to add
-							punpckldq			mm4, mm5
-						paddd			mm6, mm3		  ;32 bit result
-							paddd			mm5, mm4
-						psrlq			mm6, 47				;8 bit result
-							psrlq			mm5, 47
-						punpcklwd		mm6, mm6		;propogate words
-						punpckldq		mm6, mm6
-							punpcklwd		mm5, mm5
-							punpckldq		mm5, mm5
-
-						cmp         ecx, edx
-
-						packuswb		mm6,mm0
-							packuswb		mm5,mm0
-							psllq				mm5,32
-							por					mm6, mm5
-						movq        [edi + eax*8],mm6
-
-				jnz         rgb2lum_mmxloop
-
-		add			edi, pitch
-		mov         edx, myx
-		xor         ecx, ecx
-		dec		ebx
-		jnz		rgb2lum_mmxloop
-		emms
-		}
+    __asm {
+      mov			edi, srcp
+        pxor		mm0,mm0
+        movq		mm7,rgb2lum
+        
+        xor     ecx, ecx
+        movq		mm2, [edi + ecx*8]
+        mov			ebx, myy
+        mov     edx, myx
+        
+rgb2lum_mmxloop:
+      
+      movq		mm6, mm2
+        movq		mm3,mm7	;get rgb2lum
+        movq		mm5,mm6
+        punpcklbw		mm6,mm0		;mm6= 00aa|00bb|00gg|00rr [src2]
+        punpckhbw		mm5, mm0	 
+        //----- start rgb -> monochrome
+        
+        
+        pmaddwd			mm6,mm3			;partial monochrome result
+        
+        mov		eax, ecx								;pipeline overhead - pointer to ecx-1
+        inc         ecx		;loop counter
+        
+        movq		mm4, mm7	 ;get rgb2lum again
+        
+        movq		mm2, [edi + ecx*8] ; split up otherwise sequential memory access
+        
+        pmaddwd			mm5, mm4
+        
+        
+        punpckldq		mm3,mm6			;ready to add
+        punpckldq			mm4, mm5
+        paddd			mm6, mm3		  ;32 bit result
+        paddd			mm5, mm4
+        psrlq			mm6, 47				;8 bit result
+        psrlq			mm5, 47
+        punpcklwd		mm6, mm6		;propogate words
+        punpckldq		mm6, mm6
+        punpcklwd		mm5, mm5
+        punpckldq		mm5, mm5
+        
+        cmp         ecx, edx
+        
+        packuswb		mm6,mm0
+        packuswb		mm5,mm0
+        psllq				mm5,32
+        por					mm6, mm5
+        movq        [edi + eax*8],mm6
+        
+        jnz         rgb2lum_mmxloop
+        
+        add			edi, pitch
+        mov         edx, myx
+        xor         ecx, ecx
+        dec		ebx
+        jnz		rgb2lum_mmxloop
+        emms
+    }
   } else {  // RGB C
     BYTE* p_count = srcp;
     const int rgb_inc = vi.IsRGB32() ? 4 : 3;
-		for (int y=0; y<vi.height; ++y) {
-			for (int x=0; x<vi.width; x++) {
-//				int greyscale=((p[0]*4725)+(p[1]*46884)+(p[2]*13926))>>16;              // This is the correct brigtness calculations (standardized in Rec. 709)
-				int greyscale=((srcp[0]*7471)+(srcp[1]*38469)+(srcp[2]*19595))>>16;      // This produces similar results as YUY2 (luma calculation)
-				srcp[0]=srcp[1]=srcp[2]=greyscale;
-				srcp += rgb_inc;
-			} 
-			p_count+=pitch;
-			srcp=p_count;
-		}
-
+    for (int y=0; y<vi.height; ++y) {
+      for (int x=0; x<vi.width; x++) {
+        //				int greyscale=((p[0]*4725)+(p[1]*46884)+(p[2]*13926))>>16;              // This is the correct brigtness calculations (standardized in Rec. 709)
+        int greyscale=((srcp[0]*7471)+(srcp[1]*38469)+(srcp[2]*19595))>>16;      // This produces similar results as YUY2 (luma calculation)
+        srcp[0]=srcp[1]=srcp[2]=greyscale;
+        srcp += rgb_inc;
+      } 
+      p_count+=pitch;
+      srcp=p_count;
+    }
+    
   }
   return frame;
 }
