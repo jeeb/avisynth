@@ -1,4 +1,4 @@
-// Avisynth v2.5.  Copyright 2002 Ben Rudiak-Gould et al.
+ // Avisynth v2.5.  Copyright 2002 Ben Rudiak-Gould et al.
 // http://www.avisynth.org
 
 // This program is free software; you can redistribute it and/or modify
@@ -298,24 +298,28 @@ public:
     char *fnpluginnew;
     try {
       fnplugin = env->GetVar("$PluginFunctions$");
-      fnpluginnew = new char[strlen(fnplugin.AsString())+strlen(name)+2];
+      int string_len = strlen(fnplugin.AsString())+strlen(name)+2;
+      fnpluginnew = new char[string_len];
       strcpy(fnpluginnew, fnplugin.AsString());
       strcat(fnpluginnew, " ");
       strcat(fnpluginnew, name);
-      env->SetGlobalVar("$PluginFunctions$", AVSValue(fnpluginnew));      
+      
+      env->SetGlobalVar("$PluginFunctions$", AVSValue(env->SaveString(fnpluginnew, string_len)));
+      delete[] fnpluginnew;
+
     } catch (...) {
       fnpluginnew = new char[strlen(name)+1];
       strcpy(fnpluginnew, name);
-      env->SetGlobalVar("$PluginFunctions$", AVSValue(fnpluginnew));
+      env->SetGlobalVar("$PluginFunctions$", AVSValue(env->SaveString(fnpluginnew, strlen(name)+1)));
+      delete[] fnpluginnew;
     }
     char temp[1024] = "$Plugin!";
     strcat(temp, name);
     strcat(temp, "!Param$");
-    env->SetGlobalVar(temp, AVSValue(params));
+    env->SetGlobalVar(env->SaveString(temp, 8+strlen(name)+7+1), AVSValue(params));
     }
 #endif
 // END ***************************************************************
-
 
   }
 
