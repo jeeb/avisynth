@@ -219,6 +219,10 @@ Splice::Splice(PClip _child1, PClip _child2, bool realign_sound, IScriptEnvironm
   if (vi.HasAudio() ^ vi2.HasAudio())
     env->ThrowError("Splice: one clip has audio and the other doesn't (not allowed)");
 
+  // If sample types do not match they are both converted to float samples to avoid loss of precision.
+  child2 = ConvertAudio::Create(child2,vi.SampleType(),SAMPLE_FLOAT);  // Clip 2 should now be same type as clip 1.
+  child = ConvertAudio::Create(child,vi2.SampleType(),vi2.SampleType());  // Clip 1 should now be same type as clip 2. 
+
   if (vi.HasVideo()) {
     if (vi.width != vi2.width || vi.height != vi2.height)
       env->ThrowError("Splice: frame sizes don't match");
@@ -226,7 +230,7 @@ Splice::Splice(PClip _child1, PClip _child2, bool realign_sound, IScriptEnvironm
       env->ThrowError("Splice: video formats don't match");
   }
   if (vi.HasAudio()) {
-    if (vi.AudioChannels() != vi2.AudioChannels() || vi.SampleType() != vi2.SampleType())
+    if (vi.AudioChannels() != vi2.AudioChannels())
       env->ThrowError("Splice: sound formats don't match");
   }
 

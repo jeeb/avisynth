@@ -170,8 +170,8 @@ struct VideoInfo {
   bool IsPlanar() const { return !!(pixel_type & CS_PLANAR); }
   bool IsFieldBased() const { return !!(image_type & IT_FIELDBASED); }
   bool IsParityKnown() const { return ((image_type & IT_FIELDBASED)&&(image_type & (IT_BFF||IT_TFF))); }
-  bool IsBFF() const { return !!(pixel_type & IT_BFF); }
-  bool IsTFF() const { return !!(pixel_type & IT_TFF); }
+  bool IsBFF() const { return !!(image_type & IT_BFF); }
+  bool IsTFF() const { return !!(image_type & IT_TFF); }
   
   bool IsVPlaneFirst() const {return ((pixel_type & CS_YV12) == CS_YV12); }  // Don't use this 
   int BytesFromPixels(int pixels) const { return pixels * (BitsPerPixel()>>3); }   // Will not work on planar images, but will return only luma planes

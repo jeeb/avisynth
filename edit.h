@@ -134,7 +134,7 @@ public:
   static AVSValue __cdecl CreateAligned(AVSValue args, void*, IScriptEnvironment* env);
 
 private:
-  const PClip child2;
+  PClip child2;
   int video_switchover_point;
   __int64 audio_switchover_point;
 };
