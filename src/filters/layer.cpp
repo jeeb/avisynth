@@ -211,7 +211,7 @@ PVideoFrame __stdcall ColorKeyMask::GetFrame(int n, IScriptEnvironment *env)
 
     for (int y=0; y<vi.height; y++) {
       for (int x=0; x<rowsize; x+=4) {
-        if (IsClose(pf[x],G,tol) && IsClose(pf[x+1],B,tol) && IsClose(pf[x+2],R,tol))
+        if (IsClose(pf[x],B,tol) && IsClose(pf[x+1],G,tol) && IsClose(pf[x+2],R,tol))
           pf[x+3]=0;
       }
       pf += pitch;
