@@ -90,17 +90,9 @@ PVideoFrame SeparateFields::GetFrame(int n, IScriptEnvironment* env)
   PVideoFrame frame = child->GetFrame(n>>1, env);
   if (vi.IsPlanar()) {
     bool topfield = (child->GetParity(n)+n)&1;
-    int UVoffset = topfield ? frame->GetPitch(PLANAR_U) : 0;
-    int Yoffset = topfield ? frame->GetPitch(PLANAR_Y) : 0;
-#if 1  // For some reason the following doesn't work.
+    int UVoffset = !topfield ? frame->GetPitch(PLANAR_U) : 0;
+    int Yoffset = !topfield ? frame->GetPitch(PLANAR_Y) : 0;
     return frame->Subframe(Yoffset, frame->GetPitch()*2, frame->GetRowSize(), frame->GetHeight()>>1, UVoffset, UVoffset, frame->GetPitch(PLANAR_U)*2);
-#else // This also makes it crash :((
-    PVideoFrame dst = env->NewVideoFrame(vi);
-    env->BitBlt(dst->GetWritePtr(PLANAR_Y),dst->GetPitch(PLANAR_Y),frame->GetReadPtr(PLANAR_Y)+Yoffset,frame->GetPitch(PLANAR_Y)*2,frame->GetRowSize(PLANAR_Y),dst->GetHeight(PLANAR_Y));
-    env->BitBlt(dst->GetWritePtr(PLANAR_U),dst->GetPitch(PLANAR_U),frame->GetReadPtr(PLANAR_U)+UVoffset,frame->GetPitch(PLANAR_U)*2,frame->GetRowSize(PLANAR_U),dst->GetHeight(PLANAR_U));
-    env->BitBlt(dst->GetWritePtr(PLANAR_V),dst->GetPitch(PLANAR_V),frame->GetReadPtr(PLANAR_V)+UVoffset,frame->GetPitch(PLANAR_V)*2,frame->GetRowSize(PLANAR_V),dst->GetHeight(PLANAR_V));
-    return dst;
-#endif
   }
   return frame->Subframe((GetParity(n) ^ vi.IsYUY2()) * frame->GetPitch(),
     frame->GetPitch()*2, frame->GetRowSize(), frame->GetHeight()>>1);  
@@ -110,9 +102,9 @@ PVideoFrame SeparateFields::GetFrame(int n, IScriptEnvironment* env)
 AVSValue __cdecl SeparateFields::Create(AVSValue args, void*, IScriptEnvironment* env) 
 {
   PClip clip = args[0].AsClip();
-  if (clip->GetVideoInfo().IsFieldBased())
-    return clip;
-  else
+//  if (clip->GetVideoInfo().IsFieldBased())
+//    return clip;
+//  else
     return new SeparateFields(clip, env);
 }
 
@@ -324,7 +316,7 @@ PVideoFrame __stdcall Fieldwise::GetFrame(int n, IScriptEnvironment* env)
 AVSValue __cdecl Create_DoubleWeave(AVSValue args, void*, IScriptEnvironment* env) 
 {
   PClip clip = args[0].AsClip();
-  if (clip->GetVideoInfo().IsFieldBased())
+  if (!clip->GetVideoInfo().IsFieldBased())
     return new DoubleWeaveFields(clip);
   else
     return new DoubleWeaveFrames(clip);

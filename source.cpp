@@ -350,7 +350,7 @@ AVISource::AVISource(const char filename[], bool fAudio, const char pixel_type[]
   if (mode!=3) {
     int keyframe = pvideo->NearestKeyFrame(0);
     PVideoFrame frame = env->NewVideoFrame(vi, -4);
-    LRESULT error = DecompressFrame(keyframe, true, frame->GetWritePtr());
+    LRESULT error = DecompressFrame(keyframe, false, frame->GetWritePtr());
     if (error != ICERR_OK || (!frame)||(dropped_frame)) {   // shutdown, if init not succesful.
       if (hic) {
         !ex ? ICDecompressEnd(hic) : ICDecompressExEnd(hic);

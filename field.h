@@ -38,8 +38,36 @@
 #include "internal.h"
 
 
-/********************************************************************
-********************************************************************/
+/**********************************************************************
+ * Reverse Engineering GetParity
+ * -----------------------------
+ * Notes for self - and hopefully useful to others.
+ *
+ * AviSynth is capable of dealing with both progressive and interlaced
+ * material. The main problem is, that it often doesn't know what it
+ * recieves from source filters.
+ *
+ * The fieldbased property in VideoInfo is made to give guides to
+ * AviSynth on what to expect - unfortunately it is not that easy.
+ *
+ * GetParity is made to distinguish TFF and BFF. When a given frame is
+ * returning true, it means that this frame should be considered 
+ * top field.
+ * So an interlaced image always returning true must be interpreted as
+ * TFF.
+ *
+ * SeparateFields splits out Top and Bottom frames. It returns true on 
+ * GetParity for Top fields and false for Bottom fields.
+ *
+ * The old AviSynth had a strange setting of fieldbased. It was false
+ * on all material, except after a SeparateFields. This was used to 
+ * distinguish between material that had been separated, and 
+ * material that did not.
+ *
+ * In AviSynth 2.5 fieldbased is only true if the material is KNOWN
+ * to be fieldbased, or the source filter believes there is a reason
+ * to know if it is so.
+ **********************************************************************/
 
 
 class ComplementParity : public GenericVideoFilter 
