@@ -5,7 +5,7 @@
 BrandingText "Avisynth 2 installer."
 Name "AviSynth 2.07"
 OutFile "AviSynth207.exe"
-
+Icon AviSynth.ico
 EnabledBitmap "on.bmp"
 DisabledBitmap "off.bmp"
 
