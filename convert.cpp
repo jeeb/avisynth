@@ -561,6 +561,8 @@ ConvertBackToYUY2::ConvertBackToYUY2(PClip _child, IScriptEnvironment* env)
 {
   if (vi.width & 1)
     env->ThrowError("ConvertBackToYUY2: image width must be even");
+  if (!vi.IsRGB())
+    env->ThrowError("ConvertBackToYUY2: Use ConvertToYUY2 to convert non-RGB material to YUY2.");
   vi.pixel_type = VideoInfo::CS_YUY2;
 }
 
