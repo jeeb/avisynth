@@ -46,7 +46,7 @@
 ********************************************************************/
 
 AVSFunction Image_filters[] = {
-  { "ImageWriter", "c[file]s[start]i[end]i[type]s[compression]i", ImageWriter::Create }, // clip, base filename, image format, compression level
+  { "ImageWriter", "c[file]s[start]i[end]i[type]s", ImageWriter::Create }, // clip, base filename, image format, compression level
   { "ImageReader", "[file]s[type]s", ImageReader::Create }, // base filename, image format
   { 0 }
 };
@@ -58,11 +58,11 @@ AVSFunction Image_filters[] = {
  ****************************/
 
 ImageWriter::ImageWriter(PClip _child, const char * _base_name, const int _start, const int _end,
-                         const char * _ext, const int _compression)
+                         const char * _ext)
  : GenericVideoFilter(_child), antialiaser(vi.width, vi.height, "Arial", 192), base_name(_base_name), start(_start),
-    end(_end), ext(_ext), compression(_compression) 
+    end(_end), ext(_ext)
 {  
-  if (!lstrcmpi(ext, "bmp")) 
+  if (!lstrcmpi(ext, "ebmp")) 
   {
     // construct file header  
     fileHeader.bfType = ('M' << 8) + 'B'; // I hate little-endian
@@ -86,14 +86,19 @@ ImageWriter::ImageWriter(PClip _child, const char * _base_name, const int _start
     infoHeader.biClrImportant = 0;
   }
   else {
-    
+    ilInit();
   } 
 }
 
 
 ImageWriter::~ImageWriter()
 {
-  
+  if (!lstrcmpi(ext, "ebmp"))
+  {
+  }
+  else {
+    ilShutDown();
+  }
 }
 
 
@@ -111,7 +116,7 @@ PVideoFrame ImageWriter::GetFrame(int n, IScriptEnvironment* env)
   fn_oss << base_name << setfill('0') << setw(6) << n << '.' << ext;
   string filename = fn_oss.str();
 
-  if (!lstrcmpi(ext, "bmp"))
+  if (!lstrcmpi(ext, "ebmp"))
   {
     // initialize file object
     ofstream file(filename.c_str(), ios::out | ios::trunc | ios::binary);  
@@ -146,17 +151,24 @@ PVideoFrame ImageWriter::GetFrame(int n, IScriptEnvironment* env)
   else {
     // Check colorspace
     if (!vi.IsRGB())
-      env->ThrowError("ImageWrite: DevIL requires RGB input");
+      env->ThrowError("ImageWriter: DevIL requires RGB input");
 
-    // Set up DevIL
-    ilInit();
+    // Set up DevIL    
     ILuint myImage;
     ilGenImages(1, &myImage);
     ilBindImage(myImage);
     
     // Set image parameters
     ilTexImage(vi.width, vi.height, 1, vi.BitsPerPixel() / 8, vi.IsRGB24 ? IL_BGR : IL_BGRA, IL_UNSIGNED_BYTE, NULL);
-    ilSetData((void *) frame->GetReadPtr());
+
+    // Program actual image raster
+    const BYTE * srcPtr = frame->GetReadPtr();
+    int pitch = frame->GetPitch();
+    for (int y=0; y<vi.height; ++y)
+    {
+      ilSetPixels(0, y, 0, vi.width, 1, 1, vi.IsRGB24? IL_BGR : IL_BGRA, IL_UNSIGNED_BYTE, (void*) srcPtr);
+      srcPtr += pitch;
+    }
 
     // Save to disk (format automatically inferred from extension)
     ilSaveImage(const_cast<char * const> (filename.c_str()) );
@@ -206,7 +218,7 @@ void ImageWriter::fileWrite(ostream & file, const BYTE * srcPtr, int pitch, int 
 AVSValue __cdecl ImageWriter::Create(AVSValue args, void*, IScriptEnvironment* env) 
 {
   return new ImageWriter(args[0].AsClip(), args[1].AsString("c:\\"), args[2].AsInt(0), args[3].AsInt(0),
-                         args[4].AsString("png"), args[5].AsInt(0));
+                         args[4].AsString("ebmp"));
 }
 
 
@@ -219,7 +231,7 @@ AVSValue __cdecl ImageWriter::Create(AVSValue args, void*, IScriptEnvironment* e
 ImageReader::ImageReader(const char * _base_name, const char * _ext)
  : base_name(_base_name), ext(_ext)
 {  
-  if (!lstrcmpi(ext, "bmp")) 
+  if (!lstrcmpi(ext, "ebmp")) 
   {
     
   
@@ -262,5 +274,5 @@ PVideoFrame ImageReader::GetFrame(int n, IScriptEnvironment* env)
 
 AVSValue __cdecl ImageReader::Create(AVSValue args, void*, IScriptEnvironment* env) 
 {
-  return new ImageReader(args[1].AsString("c:\\"), args[2].AsString("png"));
+  return new ImageReader(args[1].AsString("c:\\"), args[2].AsString("ebmp"));
 }
