@@ -58,7 +58,7 @@ class AVISource : public IClip {
 
 public:
 
-  AVISource::AVISource(const char filename[], bool fAudio, int mode, IScriptEnvironment* env);  // mode: 0=detect, 1=avifile, 2=opendml
+  AVISource::AVISource(const char filename[], bool fAudio, const char pixel_type[], int mode, IScriptEnvironment* env);  // mode: 0=detect, 1=avifile, 2=opendml, 3=avifile (audio only)
   ~AVISource();
   const VideoInfo& __stdcall GetVideoInfo();
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
@@ -68,9 +68,10 @@ public:
   static AVSValue __cdecl Create(AVSValue args, void* user_data, IScriptEnvironment* env) {
     const int mode = int(user_data);
     const bool fAudio = (mode == 3) || args[1].AsBool(true);
-    PClip result = new AVISource(args[0][0].AsString(), fAudio, mode, env);
+    const char* pixel_type = (mode != 3) ? args[2].AsString("") : "";
+    PClip result = new AVISource(args[0][0].AsString(), fAudio, pixel_type, mode, env);
     for (int i=1; i<args[0].ArraySize(); ++i)
-      result = new_Splice(result, new AVISource(args[0][i].AsString(), fAudio, mode, env), false, env);
+      result = new_Splice(result, new AVISource(args[0][i].AsString(), fAudio, pixel_type, mode, env), false, env);
     return result;
   }
 };
@@ -200,7 +201,7 @@ void AVISource::LocateVideoCodec(IScriptEnvironment* env) {
 }
 
 
-AVISource::AVISource(const char filename[], bool fAudio, int mode, IScriptEnvironment* env) {
+AVISource::AVISource(const char filename[], bool fAudio, const char pixel_type[], int mode, IScriptEnvironment* env) {
   srcbuffer = 0; srcbuffer_size = 0;
   memset(&vi, 0, sizeof(vi));
   ex = false;
@@ -242,6 +243,12 @@ AVISource::AVISource(const char filename[], bool fAudio, int mode, IScriptEnviro
     if (pvideo) {
       LocateVideoCodec(env);
       if (hic) {
+        bool fYUY2  = lstrcmpi(pixel_type, "YUY2" ) == 0 || pixel_type[0] == 0;
+        bool fRGB32 = lstrcmpi(pixel_type, "RGB32") == 0 || pixel_type[0] == 0;
+        bool fRGB24 = lstrcmpi(pixel_type, "RGB24") == 0 || pixel_type[0] == 0;       
+        if (!(fYUY2 || fRGB32 || fRGB24))
+          env->ThrowError("AVISource: requested format should be YUY2, RGB32 or RGB24");
+
         // try to decompress to YUY2, RGB32, and RGB24 in turn
         memset(&biDst, 0, sizeof(BITMAPINFOHEADER));
         biDst.biSize = sizeof(BITMAPINFOHEADER);
@@ -251,21 +258,30 @@ AVISource::AVISource(const char filename[], bool fAudio, int mode, IScriptEnviro
         biDst.biBitCount = 16;
         biDst.biPlanes = 1;
         biDst.biSizeImage = ((vi.width*2+3)&~3) * vi.height;
-        if (ICERR_OK == ICDecompressQuery(hic, pbiSrc, &biDst)) {
+        if (fYUY2 && ICERR_OK == ICDecompressQuery(hic, pbiSrc, &biDst)) {
           vi.pixel_type = VideoInfo::YUY2;
         } else {
           biDst.biCompression = BI_RGB;
           biDst.biBitCount = 32;
           biDst.biSizeImage = vi.width*vi.height*4;
-          if (ICERR_OK == ICDecompressQuery(hic, pbiSrc, &biDst)) {
+          if (fRGB32 && ICERR_OK == ICDecompressQuery(hic, pbiSrc, &biDst)) {
             vi.pixel_type = VideoInfo::BGR32;
           } else {
             biDst.biBitCount = 24;
             biDst.biSizeImage = ((vi.width*3+3)&~3) * vi.height;
-            if (ICERR_OK == ICDecompressQuery(hic, pbiSrc, &biDst)) {
+            if (fRGB24 && ICERR_OK == ICDecompressQuery(hic, pbiSrc, &biDst)) {
               vi.pixel_type = VideoInfo::BGR24;
             } else {
-              env->ThrowError("AVISource: the video decompressor couldn't produce YUY2 or RGB output");
+              if (fYUY2 && (fRGB32 || fRGB24))
+                env->ThrowError("AVISource: the video decompressor couldn't produce YUY2 or RGB output");
+              else if (fYUY2)
+                env->ThrowError("AVISource: the video decompressor couldn't produce YUY2 output");
+              else if (fRGB32)
+                env->ThrowError("AVISource: the video decompressor couldn't produce RGB32 output");
+              else if (fRGB24)
+                env->ThrowError("AVISource: the video decompressor couldn't produce RGB24 output");
+              else
+                env->ThrowError("AVISource: internal error");
             }
           }
         }
@@ -1283,6 +1299,8 @@ public:
 AVSValue __cdecl Create_SegmentedSource(AVSValue args, void* use_directshow, IScriptEnvironment* env) {
   int avg_time_per_frame = (use_directshow && args[1].Defined()) ? int(10000000 / args[1].AsFloat() + 0.5) : 0;
   bool bAudio = !use_directshow && args[1].AsBool(true);
+  const char* pixel_type;
+  if (!use_directshow) pixel_type = args[2].AsString("");
   args = args[0];
   PClip result = 0;
 
@@ -1299,7 +1317,7 @@ AVSValue __cdecl Create_SegmentedSource(AVSValue args, void* use_directshow, ISc
       wsprintf(filename, "%s.%02d.%s", basename, j, extension);
       if (GetFileAttributes(filename) != (DWORD)-1) {   // check if file exists
         PClip clip = use_directshow ? (IClip*)(new DirectShowSource(filename, avg_time_per_frame, env))
-                                    : (IClip*)(new AVISource(filename, bAudio, 0, env));
+                                    : (IClip*)(new AVISource(filename, bAudio, pixel_type, 0, env));
         result = !result ? clip : new_Splice(result, clip, false, env);
       }
     }
@@ -1318,12 +1336,12 @@ AVSValue __cdecl Create_Version(AVSValue args, void*, IScriptEnvironment* env) {
  
 
 AVSFunction Source_filters[] = {
-  { "AVISource", "s+[audio]b", AVISource::Create, (void*)0 },
-  { "AVIFileSource", "s+[audio]b", AVISource::Create, (void*)1 },
+  { "AVISource", "s+[audio]b[pixel_type]s", AVISource::Create, (void*)0 },
+  { "AVIFileSource", "s+[audio]b[pixel_type]s", AVISource::Create, (void*)1 },
   { "WAVSource", "s+", AVISource::Create, (void*)3 },
-  { "OpenDMLSource", "s+[audio]b", AVISource::Create, (void*)2 },
+  { "OpenDMLSource", "s+[audio]b[pixel_type]s", AVISource::Create, (void*)2 },
   { "DirectShowSource", "s+[fps]f", Create_DirectShowSource },
-  { "SegmentedAVISource", "s+[audio]b", Create_SegmentedSource, (void*)0 },
+  { "SegmentedAVISource", "s+[audio]b[pixel_type]s", Create_SegmentedSource, (void*)0 },
   { "SegmentedDirectShowSource", "s+[fps]f", Create_SegmentedSource, (void*)1 },
 //  { "QuickTimeSource", "s", QuickTimeSource::Create },
   { "BlankClip", "[clip]c[length]i[width]i[height]i[pixel_type]s[fps]f[fps_denominator]i[audio_rate]i[stereo]b[sixteen_bit]b[color]i", Create_BlankClip },
