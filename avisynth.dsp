@@ -68,7 +68,7 @@ SOURCE="$(InputPath)"
 # End Custom Build
 # Begin Special Build Tool
 SOURCE="$(InputPath)"
-PostBuild_Cmds=copy distrib\bin\libpng13.dll $(SystemRoot)\system32	copy distrib\bin\libjpeg-bgr.dll $(SystemRoot)\system32\libjpeg.dll
+PostBuild_Cmds=copy distrib\bin\libpng13.dll $(SystemRoot)\system32	copy distrib\bin\libjpeg.dll $(SystemRoot)\system32
 # End Special Build Tool
 
 !ELSEIF  "$(CFG)" == "avisynth - Win32 Debug"
@@ -99,7 +99,7 @@ LINK32=link.exe
 # SUBTRACT LINK32 /pdb:none /incremental:no /nodefaultlib
 # Begin Special Build Tool
 SOURCE="$(InputPath)"
-PostBuild_Cmds=copy Debug\avisynth.dll $(SystemRoot)\system32	copy distrib\bin\libpng13.dll $(SystemRoot)\system32	copy distrib\bin\libjpeg-bgr.dll $(SystemRoot)\system32\libjpeg.dll
+PostBuild_Cmds=copy Debug\avisynth.dll $(SystemRoot)\system32	copy distrib\bin\libpng13.dll $(SystemRoot)\system32	copy distrib\bin\libjpeg.dll $(SystemRoot)\system32
 # End Special Build Tool
 
 !ELSEIF  "$(CFG)" == "avisynth - Win32 Profile"

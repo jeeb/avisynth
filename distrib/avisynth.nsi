@@ -40,7 +40,7 @@ SectionIn 1 2
 
   SetOutPath $SYSDIR
   File "..\release\AviSynth.dll"
-  File "bin\libjpeg-bgr.dll"
+  File "bin\libjpeg.dll"
   File "bin\libpng13.dll"
   File "bin\zlib.dll"
 IfErrors dll_not_ok
