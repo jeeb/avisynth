@@ -46,7 +46,7 @@
 ********************************************************************/
 
 AVSFunction Image_filters[] = {
-  { "ImageWriter", "c[file]s[type]s[compression]i", ImageWriter::Create }, // clip, base filename, image format, compression level
+  { "ImageWriter", "c[file]s[start]i[end]i[type]s[compression]i", ImageWriter::Create }, // clip, base filename, image format, compression level
   { "ImageReader", "[file]s[type]s", ImageReader::Create }, // base filename, image format
   { 0 }
 };
@@ -57,9 +57,10 @@ AVSFunction Image_filters[] = {
  *******   Image Writer ******
  ****************************/
 
-ImageWriter::ImageWriter(PClip _child, const char * _base_name, const char * _ext, const int _compression)
- : GenericVideoFilter(_child), antialiaser(vi.width, vi.height, "Arial", 192),
-   base_name(_base_name), ext(_ext), compression(_compression) 
+ImageWriter::ImageWriter(PClip _child, const char * _base_name, const int _start, const int _end,
+                         const char * _ext, const int _compression)
+ : GenericVideoFilter(_child), antialiaser(vi.width, vi.height, "Arial", 192), base_name(_base_name), start(_start),
+    end(_end), ext(_ext), compression(_compression) 
 {  
   if (!lstrcmpi(ext, "bmp")) 
   {
@@ -83,13 +84,17 @@ ImageWriter::~ImageWriter()
 
 PVideoFrame ImageWriter::GetFrame(int n, IScriptEnvironment* env) 
 {
+  PVideoFrame frame = child->GetFrame(n, env);
+  
   // check some things
   if (vi.IsPlanar())
     env->ThrowError("ImageWriter: cannot export planar formats");
   
   if (image == NULL)
     env->ThrowError("ImageWriter: invalid format");
-  
+
+  if (n < start || (end > 0 && n > end) )
+    return frame;  
 
   // construct filename
   ostringstream fn_oss;
@@ -103,8 +108,7 @@ PVideoFrame ImageWriter::GetFrame(int n, IScriptEnvironment* env)
     env->ThrowError("ImageWriter: could not create file");
 
   
-  // do it
-  PVideoFrame frame = child->GetFrame(n, env);
+  // do it  
   image->compress(file, frame->GetReadPtr(), frame->GetPitch(), env);
   
   
@@ -130,7 +134,8 @@ PVideoFrame ImageWriter::GetFrame(int n, IScriptEnvironment* env)
 
 AVSValue __cdecl ImageWriter::Create(AVSValue args, void*, IScriptEnvironment* env) 
 {
-  return new ImageWriter(args[0].AsClip(), args[1].AsString("c:\\"), args[2].AsString("png"), args[3].AsInt(0));
+  return new ImageWriter(args[0].AsClip(), args[1].AsString("c:\\"), args[2].AsInt(0), args[3].AsInt(0),
+                         args[4].AsString("png"), args[5].AsInt(0));
 }
 
 

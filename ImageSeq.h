@@ -53,7 +53,8 @@ class ImageWriter : public GenericVideoFilter
  **/
 {  
 public:
-  ImageWriter(PClip _child, const char * _base_name, const char * _ext, const int compression);
+  ImageWriter(PClip _child, const char * _base_name, const int start, const int end, 
+              const char * _ext, const int compression);
   ~ImageWriter();
 
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
@@ -64,6 +65,8 @@ private:
   Antialiaser antialiaser;
   const char * base_name;
   const char * ext;
+  const int start;
+  const int end;
   const int compression;
 
   AvsImage * image;
