@@ -706,8 +706,8 @@ public:
   PVideoFrame __stdcall Subframe(PVideoFrame src, int rel_offset, int new_pitch, int new_row_size, int new_height);
   int __stdcall SetMemoryMax(int mem);
   int __stdcall SetWorkingDir(const char * newdir);
-  void* __stdcall ManageCache(int key, void* data);
   __stdcall ~ScriptEnvironment();
+  void* __stdcall ManageCache(int key, void* data);
 
 private:
 
@@ -963,7 +963,8 @@ PVideoFrame ScriptEnvironment::NewPlanarVideoFrame(int width, int height, int al
 PVideoFrame ScriptEnvironment::NewVideoFrame(int row_size, int height, int align) {
   int pitch = (row_size+align-1) / align * align;
   int size = pitch * height;
-  VideoFrameBuffer* vfb = GetFrameBuffer(size+(FRAME_ALIGN*4));
+  int _align = (align < FRAME_ALIGN) ? FRAME_ALIGN : align;
+  VideoFrameBuffer* vfb = GetFrameBuffer(size+(_align*4));
 #ifdef _DEBUG
   {
     static const BYTE filler[] = { 0x0A, 0x11, 0x0C, 0xA7, 0xED };
@@ -1204,10 +1205,9 @@ int ScriptEnvironment::Flatten(const AVSValue& src, AVSValue* dst, int index, in
 
 
 AVSValue ScriptEnvironment::Invoke(const char* name, const AVSValue args, const char** arg_names) {
-  const int max_args = ScriptParser::max_args;
   // flatten unnamed args
-  AVSValue *args2 = new AVSValue[max_args]; // Don't burn stack, use heap!
-  int args2_count = Flatten(args, args2, 0, max_args, arg_names);
+  AVSValue args2[ScriptParser::max_args];
+  int args2_count = Flatten(args, args2, 0, ScriptParser::max_args, arg_names);
 
   // find matching function
   bool strict;
@@ -1216,7 +1216,7 @@ AVSValue ScriptEnvironment::Invoke(const char* name, const AVSValue args, const 
     throw NotFound();
 
   // combine unnamed args into arrays
-  AVSValue *args3 = new AVSValue[max_args]; // Don't burn stack, use heap!
+  AVSValue args3[ScriptParser::max_args];
   const char* p = f->param_types;
   int src_index=0, dst_index=0;
   while (*p) {

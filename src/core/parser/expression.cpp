@@ -64,7 +64,6 @@ AVSValue ExpSequence::Evaluate(IScriptEnvironment* env)
  */
 int ProcessSystemError(int code, _EXCEPTION_POINTERS *info, char **msg)
 {
-  
   switch (code) {
   case 0xE06D7363:                       // 0xE06D7363
     return EXCEPTION_CONTINUE_SEARCH; // C++ Exception, 0xE0000000 | "\0msc"
@@ -492,26 +491,32 @@ ExpFunctionCall::ExpFunctionCall( const char* _name, PExpression* _arg_exprs,
 
 AVSValue ExpFunctionCall::Call(IScriptEnvironment* env) 
 {
+  AVSValue result;
   AVSValue *args = new AVSValue[arg_expr_count+1];
   for (int a=0; a<arg_expr_count; ++a)
     args[a+1] = arg_exprs[a]->Evaluate(env);
   // first try without implicit "last"
   try {
-    return env->Invoke(name, AVSValue(args+1, arg_expr_count), arg_expr_names+1);
+    result = env->Invoke(name, AVSValue(args+1, arg_expr_count), arg_expr_names+1);
+    delete[] args;
+    return result;
   }
   catch (IScriptEnvironment::NotFound) {
     // if that fails, try with implicit "last" (except when OOP notation was used)
     if (!oop_notation) {
       try {
         args[0] = env->GetVar("last");
-        return env->Invoke(name, AVSValue(args, arg_expr_count+1), arg_expr_names);
+        result = env->Invoke(name, AVSValue(args, arg_expr_count+1), arg_expr_names);
+        delete[] args;
+        return result;
       }
       catch (IScriptEnvironment::NotFound) { /* see below */ }
     }
-    env->ThrowError(env->FunctionExists(name) ? "Script error: Invalid arguments to function \"%s\""
-      : "Script error: there is no function named \"%s\"", name);
-    return 0;
   }
+  delete[] args;
+  env->ThrowError(env->FunctionExists(name) ? "Script error: Invalid arguments to function \"%s\""
+    : "Script error: there is no function named \"%s\"", name);
+  return 0;
 }
 
 
