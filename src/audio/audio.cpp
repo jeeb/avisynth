@@ -49,7 +49,7 @@ AVSFunction Audio_filters[] = {
                                 { "AssumeSampleRate", "ci", AssumeRate::Create },
                                 { "Normalize", "c[volume]f[show]b", Normalize::Create },
                                 { "MixAudio", "cc[clip1_factor]f[clip2_factor]f", MixAudio::Create },
-                                { "ResampleAudio", "ci", ResampleAudio::Create },
+                                { "ResampleAudio", "ci[]i", ResampleAudio::Create },
                                 { "ConvertToMono", "c", ConvertToMono::Create },
                                 { "EnsureVBRMP3Sync", "c", EnsureVBRMP3Sync::Create },
                                 { "MergeChannels", "c+", MergeChannels::Create },
@@ -71,7 +71,7 @@ AVSFunction Audio_filters[] = {
 // Vdub can handle 8/16 bit, and reads 32bit, but cannot play/convert it. Floats doesn't make sense
 // in AVI. So for now convert back to 16 bit always.
 
-// FIXME: Most int64's are often cropped to ints - count is ok to be int, but not start
+// Always! FIXME: Most int64's are often cropped to ints - count is ok to be int, but not start
 
 // For explicit conversions
 
@@ -96,6 +96,8 @@ AVSValue __cdecl ConvertAudio::Create_24bit(AVSValue args, void*, IScriptEnviron
   return Create(args[0].AsClip(), SAMPLE_INT24, SAMPLE_INT24);
 }
 
+
+void FilterUD_mmx(short *Xp, unsigned Ph, int _inc, int _dhb, short *p_Imp, unsigned End);
 
 
 /*************************************
@@ -151,8 +153,8 @@ void __stdcall ConvertToMono::GetAudio(void* buf, __int64 start, __int64 count, 
   if (vi.IsSampleType(SAMPLE_INT16)) {
     signed short* samples = (signed short*)buf;
     signed short* tempsamples = (signed short*)tempbuffer;
-	const int rchannels = 65536 / channels;
-	
+    const int rchannels = 65536 / channels;
+    
     for (int i = 0; i < count; i++) {
       int tsample = 0;
       for (int j = i*channels ; j < i*channels+channels; j++)
@@ -162,7 +164,7 @@ void __stdcall ConvertToMono::GetAudio(void* buf, __int64 start, __int64 count, 
   } else if (vi.IsSampleType(SAMPLE_FLOAT)) {
     SFLOAT* samples = (SFLOAT*)buf;
     SFLOAT* tempsamples = (SFLOAT*)tempbuffer;
-    SFLOAT f_rchannels = 1.0f / (SFLOAT)channels;
+    const SFLOAT f_rchannels = SFLOAT(1.0 / channels);
 
     for (int i = 0; i < count; i++) {
       SFLOAT tsample = 0.0f;
@@ -203,7 +205,7 @@ void __stdcall EnsureVBRMP3Sync::GetAudio(void* buf, __int64 start, __int64 coun
 
   if (start != last_end) { // Reread!
     __int64 bcount = count;
-	__int64 offset = 0;
+    __int64 offset = 0;
     char* samples = (char*)buf;
     bool bigbuff=false;
 
@@ -226,7 +228,7 @@ void __stdcall EnsureVBRMP3Sync::GetAudio(void* buf, __int64 start, __int64 coun
     } // Read until 'start'
     child->GetAudio(samples, offset, start - offset, env);  // Now we're at 'start'
     offset += start - offset;
-	if (bigbuff) delete[] samples;
+    if (bigbuff) delete[] samples;
     if (offset != start)
       env->ThrowError("EnsureVBRMP3Sync [Internal error]: Offset should be %i, but is %i", start, offset);
   }
@@ -287,34 +289,29 @@ MergeChannels::~MergeChannels() {
 
 
 void __stdcall MergeChannels::GetAudio(void* buf, __int64 start, __int64 count, IScriptEnvironment* env) {
-  if (tempbuffer_size) {
-    if (tempbuffer_size < count) {
-      delete[] tempbuffer;
-      tempbuffer = new signed char[count * vi.BytesPerAudioSample()];
-      tempbuffer_size = count;
-    }
-  } else {
+  if (tempbuffer_size < count) {
+    if (tempbuffer_size) delete[] tempbuffer;
     tempbuffer = new signed char[count * vi.BytesPerAudioSample()];
     tempbuffer_size = count;
   }
   // Get audio:
-  int channel_offset = count * vi.BytesPerChannelSample();  // Offset per channel
-  int c_channel = 0;
+  const int channel_offset = count * vi.BytesPerChannelSample();  // Offset per channel
+  int i, c_channel = 0;
 
-  for (int i = 0;i < num_children;i++) {
+  for (i = 0;i < num_children;i++) {
     child_array[i]->GetAudio(tempbuffer + (c_channel*channel_offset), start, count, env);
     clip_offset[i] = tempbuffer + (c_channel * channel_offset);
     c_channel += clip_channels[i];
   }
 
   // Interleave channels
-  char *samples = (char*) buf;
-  int bpcs = vi.BytesPerChannelSample();
-  int bps = vi.BytesPerAudioSample();
+  char* samples = (char*) buf;
+  const int bpcs = vi.BytesPerChannelSample();
+  const int bps = vi.BytesPerAudioSample();
   int dst_offset = 0;
   for (i = 0;i < num_children;i++) {
     signed char* src_buf = clip_offset[i];
-	int bpcc = bpcs*clip_channels[i];
+	const int bpcc = bpcs*clip_channels[i];
 
 	switch (bpcc) {
 	
@@ -353,12 +350,11 @@ void __stdcall MergeChannels::GetAudio(void* buf, __int64 start, __int64 count, 
 label:
 		    movq mm0,[eax]    ; do pairs of quads
 		     movq mm1,[eax+8]
-		    movq [edi],mm0
-		     add edi,edx
 		    add eax,16
-		     movq [edi],mm1
-		    add edi,edx
-			 loop label
+		     movq [edi],mm0
+		    movq [edi+edx],mm1
+		     lea edi,[edi+edx*2]
+			loop label
 done:
 		    emms
           }
@@ -427,13 +423,8 @@ GetChannel::GetChannel(PClip _clip, int* _channel, int _numchannels)
 
 
 void __stdcall GetChannel::GetAudio(void* buf, __int64 start, __int64 count, IScriptEnvironment* env) {
-  if (tempbuffer_size) {
-    if (tempbuffer_size < count) {
-      delete[] tempbuffer;
-      tempbuffer = new char[count * src_bps];
-      tempbuffer_size = count;
-    }
-  } else {
+  if (tempbuffer_size < count) {
+    if (tempbuffer_size) delete[] tempbuffer;
     tempbuffer = new char[count * src_bps];
     tempbuffer_size = count;
   }
@@ -662,7 +653,7 @@ jloop1:
           mov	 eax, 0x80000000
           jmp	 saturate1
 notnegsat1:
-          cmp 	 edx,0x0000ffff				; if (nh >  0) return MAX_INT;
+          cmp 	 edx,0x0000ffff				; if (nh >  65535) return MAX_INT;
           jle	 notpossat1
           mov	 eax, 0x7fffffff
           jmp	 saturate1
@@ -796,7 +787,7 @@ void __stdcall Normalize::GetAudio(void* buf, __int64 start, __int64 count, IScr
       }
 	  if (bigbuff) delete[] samples;
 
-	  i_pos_volume = -i_pos_volume;
+	  i_pos_volume = -i_pos_volume; // Remember -ve has 1 more range than +ve, i.e. -32768
 	  if (i_neg_volume < i_pos_volume) {
 	    i_pos_volume = i_neg_volume;
 	    frameno = vi.FramesFromAudioSamples(negpeaksampleno / vi.AudioChannels());
@@ -804,7 +795,7 @@ void __stdcall Normalize::GetAudio(void* buf, __int64 start, __int64 count, IScr
 	  else {
 	    frameno = vi.FramesFromAudioSamples(pospeaksampleno / vi.AudioChannels());
 	  }
-      max_volume = (float)i_pos_volume * (-1.0f/32768.0f);
+      max_volume = float(i_pos_volume * (-1.0/32768.0));
       max_factor = max_factor / max_volume;
 
     } else if (vi.SampleType() == SAMPLE_FLOAT) {  // Float
@@ -1047,10 +1038,15 @@ AVSValue __cdecl MixAudio::Create(AVSValue args, void*, IScriptEnvironment* env)
  *******   Resample Audio   ******
  *******************************/
 
-ResampleAudio::ResampleAudio(PClip _child, int _target_rate, IScriptEnvironment* env)
-    : GenericVideoFilter(ConvertAudio::Create(_child, SAMPLE_INT16 | SAMPLE_FLOAT, SAMPLE_FLOAT)), target_rate(_target_rate) {
+static int Amasktab[Amask+1];
+static SFLOAT fAmasktab[Amask+1];
+
+ResampleAudio::ResampleAudio(PClip _child, int _target_rate_n, int _target_rate_d, IScriptEnvironment* env)
+    : GenericVideoFilter(ConvertAudio::Create(_child, SAMPLE_INT16 | SAMPLE_FLOAT, SAMPLE_FLOAT)),
+	  target_rate((_target_rate_n + (_target_rate_d>>1))/_target_rate_d),
+      factor(_target_rate_n / (double(_target_rate_d) * vi.audio_samples_per_second)) {
 	try {	// HIDE DAMN SEH COMPILER BUG!!!
-  srcbuffer = 0;
+  srcbuffer  = 0;
   fsrcbuffer = 0;
 
   if ((target_rate == vi.audio_samples_per_second) || (vi.audio_samples_per_second == 0)) {
@@ -1058,24 +1054,39 @@ ResampleAudio::ResampleAudio(PClip _child, int _target_rate, IScriptEnvironment*
     return ;
   }
   skip_conversion = false;
-  factor = double(target_rate) / vi.audio_samples_per_second;
 
-  vi.num_audio_samples = MulDiv(vi.num_audio_samples, target_rate, vi.audio_samples_per_second);
+//vi.num_audio_samples = MulDiv(vi.num_audio_samples, target_rate, vi.audio_samples_per_second);
+
+  // To avoid overflow, implement as (A*B+C/2)/C = (A/C)*B + ((A%C)*B+C>>1)/C
+  const __int64 den = Int32x32To64(_target_rate_d, vi.audio_samples_per_second);
+  vi.num_audio_samples = (vi.num_audio_samples/den) * _target_rate_n + ((vi.num_audio_samples%den)*_target_rate_n + (den>>1))/den;
   vi.audio_samples_per_second = target_rate;
 
   if (vi.IsSampleType(SAMPLE_INT16)) {
+	double dLpScl;
+
+	// Load interpolate ratio table
+	for (int i=0; i<=Amask; i++)
+  	  Amasktab[i] = (i<<16) | (Amask+1-i);   /* a is between 0 and 1 */
 
 	// generate filter coefficients
-	makeFilter(Imp, &LpScl, Nwing, 0.90, 9);
+	makeFilter(Imp, &dLpScl, Nwing, 0.90, 9);
 	Imp[Nwing] = 0; // for "interpolation" beyond last coefficient
-
-	// Attenuate resampler scale factor by 0.95 to reduce probability of clipping
-	LpScl = int(LpScl * 0.95);
 
 	/* Account for increased filter gain when using factors less than 1 */
 	if (factor < 1)
-	  LpScl = int(LpScl * factor + 0.5);
+	  dLpScl = dLpScl * factor;
 
+	// Attenuate resampler scale factor by 0.95 to reduce probability of clipping
+	LpScl = int(dLpScl * 0.95 + 0.5);
+
+	// Scale guard bits so intermediate result fits in short
+	mNhg   = Nhg;
+	while (dLpScl < 16384.0) {
+	  dLpScl *= 2.0;
+	  mNhg += 1;
+	}
+	mLpScl = int(dLpScl + 0.5);   // Must be 16384 <= mLpScl <= 32767
   }
   else { // SAMPLE_FLOAT
 
@@ -1085,12 +1096,10 @@ ResampleAudio::ResampleAudio(PClip _child, int _target_rate, IScriptEnvironment*
 
 	/* Account for increased filter gain when using factors less than 1 */
 	if (factor < 1)
-	  fLpScl = factor;
+	  makeFilter(fImp, factor, Nwing, 0.90, 9);  // generate filter coefficients
 	else
-	  fLpScl = 1.0f; // Clipping is not a problem with floats. The filter seems to have a gain of 0.95 already ???
+	  makeFilter(fImp, 1.0,    Nwing, 0.90, 9);  // generate filter coefficients
 
-	// generate filter coefficients
-	makeFilter(fImp, &fLpScl, Nwing, 0.90, 9);
 	fImp[Nwing] = 0.0; // for "interpolation" beyond last coefficient
 
   }
@@ -1098,12 +1107,19 @@ ResampleAudio::ResampleAudio(PClip _child, int _target_rate, IScriptEnvironment*
   /* Calc reach of LP filter wing & give some creeping room */
   Xoff = int(((Nmult + 1) / 2.0) * max(1.0, 1.0 / factor)) + 10;
 
-  double dt = 1.0 / factor;            /* Output sampling period */
-  dtb = int(dt * (1 << Np) + 0.5);
+  /* The previous algorithm was causing quite a noticable click or pop at the
+   * end of each mouthful due to accumulated creep between pos+N*dtb at the
+   * end of one call to (start/factor*(1<<Np)+0.5) in the next.
+   */
+  double dt = (1 << Np) / factor;              /* Output sampling period          */
+  dtb = int(dt);                               /* Yes! Truncated not rounded      */
+  dt -= dtb;                                   /* 0 <= SamplingPeriodDeficit < 1  */
+  dtbe = unsigned((1 << 31) * dt + 0.5);       /* Prevent creep, bump dtb every (2^31)/dtbe samples */
+
   double dh = min(double(Npc), factor * Npc);  /* Filter sampling period */
   dhb = int(dh * (1 << Na) + 0.5);
 
-  child->SetCacheHints(CACHE_AUDIO, 0);
+//  child->SetCacheHints(CACHE_AUDIO, 0); // No longer needed, we recycle our Xoff extra samples
 
 	}
 	catch (...) { throw; }
@@ -1122,6 +1138,7 @@ void __stdcall ResampleAudio::GetAudio(void* buf, __int64 start, __int64 count, 
 
   __int64 pos = (int(src_start & Pmask)) + (Xoff << Np);
   int ch = vi.AudioChannels();
+  unsigned dtberror = 0;
 
   if (vi.IsSampleType(SAMPLE_INT16)) {
 
@@ -1130,25 +1147,142 @@ void __stdcall ResampleAudio::GetAudio(void* buf, __int64 start, __int64 count, 
 		delete[] srcbuffer;
 	  srcbuffer = new short[source_bytes >> 1];
 	  srcbuffer_size = source_bytes;
+	  last_samples= 0;
+	  last_start = 0;
 	}
-	child->GetAudio(srcbuffer, (src_start >> Np) - Xoff, source_samples, env);
+
+	const int offset = int((src_start >> Np) - Xoff - last_start);  // Difference from last time
+	last_start = (src_start >> Np) - Xoff;                          // Start for next time
+	
+	int overlap = int(last_samples - offset);                       // How many samples already fetched
+	if ((offset < 0) || (overlap <= 0))                             // Is there any overlap?
+	  overlap = 0;
+	else if (offset*ch >= 2)  // Assume 32bit separation is okay    // Yes, copy to start of buffer
+	  memcpy(srcbuffer, srcbuffer+offset*ch, overlap*ch<<1);  // fast
+	else if (offset > 0)
+	  memmove(srcbuffer, srcbuffer+offset*ch, overlap*ch<<1); // slow
+
+	last_samples= max(overlap, source_samples);                     // Samples for next time
+
+    if (source_samples-overlap > 0)                                 // Get the rest of the source samples
+	  child->GetAudio(&srcbuffer[overlap*ch], last_start+overlap, source_samples-overlap, env);
 
 	short* dst = (short*)buf;
 
 	short* dst_end = &dst[count * ch];
 
-	while (dst < dst_end) {
-	  for (int q = 0; q < ch; q++) {
-		short* Xp = &srcbuffer[(pos >> Np) * ch];
-		int v = FilterUD(Xp + q, (short)(pos & Pmask), - ch);  /* Perform left-wing inner product */
-		v += FilterUD(Xp + ch + q, (short)(( -pos) & Pmask), ch);  /* Perform right-wing inner product */
-		v >>= Nhg;      /* Make guard bits */
-		v *= LpScl;     /* Normalize for unity filter gain */
-		*dst++ = IntToShort(v, NLpScl);   /* strip guard bits, deposit output */
-	  }
-	  pos += dtb;       /* Move to next sample by time increment */
-	}
+	if (env->GetCPUFlags() & CPUF_MMX) {
+	  static int r_Na     = 1 << (Na-1);
+	  static int r_Nhxn   = 1 << (Nhxn-1);
+	  static int r_NLpScl = 1 << (NLpScl-1);
+	  const int inc = ch * sizeof(short);
+	  int posNp = int(pos >> Np);
 
+// MM7 - Accumulate the left/right wing inner product of the current sample pair
+// MM6 - Rounding constant 1 << (Na-1),       (64)
+// MM5 - Rounding constant 1 << (Nhxn-1),   (8192)
+// MM4 - Scaled scaling factor, mLpScl
+// MM3 - Rounding constant 1 << (NLpScl-1), (4096)
+// MM2 - Scaled number of guard bits, mNhg
+
+	  __asm {
+		movd       mm6, [r_Na]          ; 1 << (Na - 1)
+		movd       mm5, [r_Nhxn]        ; 1 << (Nhxn - 1)
+		punpckldq  mm6, mm6             ; 00000040 00000040
+		mov        eax, this
+		punpckldq  mm5, mm5             ; 00002000 00002000
+		movd       mm4, [eax].mLpScl    ; 00000000 LpScl
+		movd       mm3, [r_NLpScl]      ; 1 << (NLpScl-1)
+		punpckldq  mm4, mm4             ; LpScl | LpScl
+		movd       mm2, [eax].mNhg      ; Number of guard bits
+		punpckldq  mm3, mm3             ; 00001000 00001000
+	  }
+
+	  while (dst < dst_end) {
+		for (int q = 0; q < ch; q+=2) { // do 2 channels at once
+		  bool single = (q+1 >= ch);
+		  short* Xp = &srcbuffer[posNp * ch];
+
+		  __asm pxor mm7, mm7;  // 2 channel samples are accumulated in MM7
+
+		  FilterUD_mmx(Xp + ch + q, (unsigned)(-pos) & Pmask,  inc, dhb, Imp, Nwing);  /* Perform right-wing inner product */
+		  FilterUD_mmx(Xp      + q, (unsigned)( pos) & Pmask, -inc, dhb, Imp, Nwing);  /* Perform left-wing inner product */
+		  
+		  __asm {
+		    psrad      mm7, mm2              ; scaled Nhg guard bits
+		     mov       eax, [dst]
+			pmaddwd    mm7, mm4              ; Normalize for unity filter gain
+			 test      byte ptr[single], 1   ; doing 1 sample or 2 samples?
+			paddd      mm7, mm3              ; round
+			 jnz       dosingle
+			psrad      mm7, NLpScl           ; strip guard bits
+			 add       eax, 4                ; dst+=2
+			packssdw   mm7, mm7              ; pack with signed saturation ready for output
+			 mov       [dst], eax
+			movd       [eax-4], mm7          ; deposit 2 output samples
+			 jmp       done1
+			align      16
+dosingle:
+			psrad      mm7, NLpScl           ; strip guard bits
+			 add       eax, 2                ; dst+=
+			packssdw   mm7, mm7              ; pack with signed saturation ready for output
+			 mov       [dst], eax
+			movd       edx, mm7
+			mov        [eax-2], dx           ; deposit 1 output sample
+			align      16
+done1:
+		  }
+		} // for (int q = 0
+		__asm { // Don't be a creep ;-)
+		  mov       edx, this
+		   mov      eax, dtberror            ; time increment error accumulator
+		  mov       ecx, [edx].dtb           ; time increment
+		   add      eax, [edx].dtbe          ; add error per cycle
+		  mov       edx, dword ptr pos+4
+		   cmp      eax, 0x80000000          ; accumulated 1 full error yet?
+		   jb       nofix
+		  inc       ecx                      ; += 1
+		   sub      eax, 0x80000000          ; -= 1 full error
+nofix:
+		  add       ecx, dword ptr pos       ; Move to next sample
+		   mov      dtberror, eax
+		  adc       edx, 0
+		   mov      dword ptr pos, ecx
+		  shrd      ecx, edx, Np             ; posNp = pos >> Np
+		   mov      dword ptr pos+4, edx
+		  mov       posNp, ecx
+		}
+	  } // while (dst
+	  __asm emms;
+	}
+	else {
+	  while (dst < dst_end) {
+		for (int q = 0; q < ch; q++) {
+		  short* Xp = &srcbuffer[(pos >> Np) * ch];
+#if 1
+		  __int64 v64 = FilterUD(Xp + q, (short)(pos & Pmask), - ch);  /* Perform left-wing inner product  */
+		  v64 += FilterUD(Xp + ch + q, (short)(( -pos) & Pmask), ch);  /* Perform right-wing inner product */
+          v64 += 1 << (Nh - 1);                                        /* Round only once!                 */
+		  int v32 = int(v64 >> Nh);                                    /* Make guard bits once!            */
+		  v32 *= LpScl;                                                /* Normalize for unity filter gain  */
+		  *dst++ = IntToShort(v32, NLpScl);                            /* strip guard bits, deposit output */
+#else
+		  int v = FilterUD(Xp + q, (short)(pos & Pmask), - ch);  /* Perform left-wing inner product */
+		  v += FilterUD(Xp + ch + q, (short)(( -pos) & Pmask), ch);  /* Perform right-wing inner product */
+		  v >>= Nhg;      /* Make guard bits */
+		  v *= LpScl;     /* Normalize for unity filter gain */
+		  *dst++ = IntToShort(v, NLpScl);   /* strip guard bits, deposit output */
+#endif
+		}
+		if ((dtberror += dtbe) >= (1 << 31)) { // Don't be a creep ;-)
+		  dtberror -= (1 << 31);
+		  pos += dtb + 1;   /* Move to next sample by time increment + error adjustment */
+		}
+		else {
+		  pos += dtb;       /* Move to next sample by time increment */
+		}
+	  }
+	}
   }
   else { // SAMPLE_FLOAT
 
@@ -1157,8 +1291,22 @@ void __stdcall ResampleAudio::GetAudio(void* buf, __int64 start, __int64 count, 
 		delete[] fsrcbuffer;
 	  fsrcbuffer = new SFLOAT[source_bytes >> 2];
 	  srcbuffer_size = source_bytes;
+	  last_samples= 0;
+	  last_start = 0;
 	}
-	child->GetAudio(fsrcbuffer, (src_start >> Np) - Xoff, source_samples, env);
+
+	const int offset = int((src_start >> Np) - Xoff - last_start);
+	last_start = (src_start >> Np) - Xoff;
+	
+	int overlap = int(last_samples - offset);
+	if ((offset < 0) || (overlap <= 0))
+	  overlap = 0;
+	else if (offset > 0)
+	  memcpy(fsrcbuffer, fsrcbuffer+offset*ch, overlap*ch<<2);
+	last_samples= max(overlap, source_samples);
+
+    if (source_samples-overlap > 0)
+	  child->GetAudio(&fsrcbuffer[overlap*ch], last_start+overlap, source_samples-overlap, env);
 
 	SFLOAT* dst = (SFLOAT*)buf;
 
@@ -1171,7 +1319,13 @@ void __stdcall ResampleAudio::GetAudio(void* buf, __int64 start, __int64 count, 
 		v       += FilterUD(Xp + ch + q, (short)(( -pos) & Pmask),   ch);  /* Perform right-wing inner product */
 		*dst++ = v;     /* deposit output */
 	  }
-	  pos += dtb;       /* Move to next sample by time increment */
+	  if ((dtberror += dtbe) >= (1 << 31)) { // Don't be a creep ;-)
+		dtberror -= (1 << 31);
+		pos += dtb + 1;   /* Move to next sample by time increment + error adjustment */
+	  }
+	  else {
+		pos += dtb;       /* Move to next sample by time increment */
+	  }
 	}
 
   }
@@ -1179,30 +1333,99 @@ void __stdcall ResampleAudio::GetAudio(void* buf, __int64 start, __int64 count, 
 
 
 AVSValue __cdecl ResampleAudio::Create(AVSValue args, void*, IScriptEnvironment* env) {
-  return new ResampleAudio(args[0].AsClip(), args[1].AsInt(), env);
+  return new ResampleAudio(args[0].AsClip(), args[1].AsInt(), args[2].AsInt(1), env);
+}
+
+
+// FilterUD MMX SAMPLE_INT16 Version -- approx 3.25 times faster than original (2.4x than new)
+/*
+ * MMx registers transfered across calls
+ * MM7 - Accumulate the left/right wing inner product of the current sample pair
+ * MM6 - Rounding constant 1 << (Na-1),     (64)
+ * MM5 - Rounding constant 1 << (Nhxn-1), (8192)
+ *
+ * Uses MM0, MM1
+ */
+void FilterUD_mmx(short *Xp, unsigned Ph, int _inc, int _dhb, short *p_Imp, unsigned End) {
+
+  unsigned Ho  = (Ph * (unsigned)_dhb) >> Np;
+  
+  if (_inc > 0) {   // If doing right wing drop extra coeff, so when Ph is
+    End--;          // 0.5, we don't do one too many mult's
+    if (Ph == 0)    // If the phase is zero then we've already skipped the
+      Ho += _dhb;   // first sample, so we must also skip ahead in Imp[]
+  }
+__asm {
+	mov			edi,[Xp]
+	mov			esi,[Ho]
+	mov			ecx,[p_Imp]
+
+	mov			edx,esi		; Fold into end for improved pairing
+	mov			eax,Amask
+	shr			edx,Na				; Ho >> Na
+	and			eax,esi				; Ho & Amask
+	cmp			edx,[End]
+	movd		mm1,Amasktab[eax*4]	; 0000 0000 eax 128-eax
+	jae			donone
+
+	align		16
+loop1:
+	 movd		mm0,[ecx+edx*2]		; 0000 0000 Imp[Ho>>Na7+1] Imp[Ho>>Na7]
+	add			esi,[_dhb]			; Ho += dhb
+	 pmaddwd	mm0,mm1				; 00000000 Imp[h+1]*a + Imp[h]*(128-a)
+	movd		mm1,[edi]			; 0000 0000 *(Xp+1) *Xp
+	 paddd		mm0,mm6				; += round
+	add			edi,[_inc]			; Xp += Inc
+	 pslld      mm0,16-Na			; <<= 16-Na
+	mov			eax,Amask
+	 psrld		mm0,16				; 0000 0000 0000 coeff
+	punpcklwd	mm1,mm1				; *(Xp+1) *(Xp+1) *Xp *Xp 
+	 mov 		edx,esi
+	punpckldq	mm0,mm0				; 0000 coeff 0000 coeff
+	 and		eax,esi				; Ho & Amask
+	pmaddwd		mm0,mm1				; *(Xp+1)*coeff | *Xp*coeff
+	 shr		edx,Na				; Ho >> Na
+	paddd		mm0,mm5				; += round
+	 movd		mm1,Amasktab[eax*4]	; 0000 0000 eax 128-eax
+	psrad		mm0,Nhxn			; >>=Nhxn
+	 cmp		edx,[End]
+	paddd		mm7,mm0				; v += t
+	 jb			loop1
+donone:
+  }
 }
 
 
 // FilterUD SAMPLE_INT16 Version
-int ResampleAudio::FilterUD(short *Xp, short Ph, short Inc) {
-  int v = 0;
+__int64 ResampleAudio::FilterUD(short *Xp, short Ph, short Inc) {
+  __int64 v = 0;
   unsigned Ho = (Ph * (unsigned)dhb) >> Np;
   unsigned End = Nwing;
-  if (Inc > 0)        /* If doing right wing...              */
-  {               /* ...drop extra coeff, so when Ph is  */
-    End--;          /*    0.5, we don't do too many mult's */
-    if (Ph == 0)        /* If the phase is zero...           */
-      Ho += dhb;        /* ...then we've already skipped the */
-  }               /*    first sample, so we must also  */
-  /*    skip ahead in Imp[] and ImpD[] */
+
+  if (Inc > 0)          /* If doing right wing...              */
+  {                     /* ...drop extra coeff, so when Ph is  */
+    End--;              /*    0.5, we don't do too many mult's */
+    if (Ph == 0)        /* If the phase is zero...             */
+      Ho += dhb;        /* ...then we've already skipped the   */
+  }                     /*    first sample, so we must also    */
+                        /*    skip ahead in Imp[] and ImpD[]   */
   while ((Ho >> Na) < End) {
-    int t = Imp[Ho >> Na];      /* Get IR sample */
+    int t = Imp[Ho >> Na];                              /* Get IR sample */
+#if 1
+	// It's 37% faster and more accurate to accumulate 64 bits
+	// than stuffing around testing, rounding and shifting
+    const int a = Ho & Amask;                           /* a is logically between 0 and 1 */
+    const int r = 1 << (Na-1);                          /* Round */
+    t += ((int(Imp[(Ho>>Na)+1]) - t) * a + r) >> Na;    /* t is now interp'd filter coeff */
+    t *= *Xp;                                           /* Mult coeff by input sample */
+#else
     int a = Ho & Amask;   /* a is logically between 0 and 1 */
     t += ((int(Imp[(Ho >> Na) + 1]) - t) * a) >> Na; /* t is now interp'd filter coeff */
     t *= *Xp;     /* Mult coeff by input sample */
     if (t & 1 << (Nhxn - 1))  /* Round, if needed */
       t += 1 << (Nhxn - 1);
     t >>= Nhxn;       /* Leave some guard bits, but come back some */
+#endif
     v += t;           /* The filter output */
     Ho += dhb;        /* IR step */
     Xp += Inc;        /* Input signal step. NO CHECK ON BOUNDS */
@@ -1210,7 +1433,7 @@ int ResampleAudio::FilterUD(short *Xp, short Ph, short Inc) {
   return (v);
 }
 
-// FilterUD SAMPLE_FLOAT Version
+// FilterUD SAMPLE_FLOAT Version  -- Approx same speed as new int16 and SSRC on P4 (40% on P2)
 SFLOAT ResampleAudio::FilterUD(SFLOAT *Xp, short Ph, short Inc) {
   SFLOAT v = 0;
   unsigned Ho = (Ph * (unsigned)dhb) >> Np;
@@ -1292,7 +1515,7 @@ void LpFilter(double c[], int N, double frq, double Beta, int Num) {
  */
 
 // makeFilter SAMPLE_INT16 Version
-int makeFilter( short Imp[], int *LpScl, unsigned short Nwing, double Froll, double Beta) {
+int makeFilter( short Imp[], double *dLpScl, unsigned short Nwing, double Froll, double Beta) {
   static const int MAXNWING = 8192;
   static double ImpR[MAXNWING];
 
@@ -1327,7 +1550,7 @@ int makeFilter( short Imp[], int *LpScl, unsigned short Nwing, double Froll, dou
     Maxh = max(Maxh, fabs(ImpR[i]));
 
   Scl = ((1 << (Nh - 1)) - 1) / Maxh;     /* Map largest coeff to 16-bit maximum */
-  *LpScl = int(fabs((1 << (NLpScl + Nh)) / (DCgain * Scl)));
+  *dLpScl = fabs((1 << (NLpScl + Nh)) / (DCgain * Scl));
 
   /* Scale filter coefficients for Nh bits and convert to integer */
   if (ImpR[0] < 0)                /* Need pos 1st value for LpScl storage */
@@ -1340,12 +1563,11 @@ int makeFilter( short Imp[], int *LpScl, unsigned short Nwing, double Froll, dou
 
 
 // makeFilter SAMPLE_FLOAT Version
-int makeFilter( SFLOAT fImp[], SFLOAT *fLpScl, unsigned short Nwing, double Froll, double Beta) {
+int makeFilter( SFLOAT fImp[], double dLpScl, unsigned short Nwing, double Froll, double Beta) {
   static const int MAXNWING = 8192;
   static double ImpR[MAXNWING];
 
   double DCgain, Scl;
-  short Dh;
   int i;
 
   if (Nwing > MAXNWING)                      /* Check for valid parameters */
@@ -1366,17 +1588,17 @@ int makeFilter( SFLOAT fImp[], SFLOAT *fLpScl, unsigned short Nwing, double Frol
    * scale factor which when multiplied by the output of the lowpass filter
    * gives unity gain. */
   DCgain = 0;
-  Dh = Npc;                       /* Filter sampling period for factors>=1 */
-  for (i = Dh; i < Nwing; i += Dh)
+  /* Npc is filter sampling period for factors>=1 */
+  for (i = Npc; i < Nwing; i += Npc)
     DCgain += ImpR[i];
   DCgain = 2 * DCgain + ImpR[0];    /* DC gain of real coefficients */
 
-  Scl = *fLpScl / DCgain;
+  Scl = dLpScl / DCgain;
 
-  /* Scale filter coefficients for Nh bits and convert to integer */
+  /* Scale filter coefficients for unity gain and convert to float */
   if (ImpR[0] < 0)                /* Need pos 1st value for LpScl storage */
     Scl = -Scl;
-  for (i = 0; i < Nwing; i++)         /* Scale & round them */
+  for (i = 0; i < Nwing; i++)         /* Scale them */
     fImp[i] = ImpR[i] * Scl;
 
   return (0);

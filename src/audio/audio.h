@@ -46,25 +46,25 @@
 #define MIN_SHORT (-32768)
 
 
-/* Conversion constants */
-#define Nhc       8
-#define Na        7
-#define Np       (Nhc+Na)
-#define Npc      (1<<Nhc)
-#define Amask    ((1<<Na)-1)
-#define Pmask    ((1<<Np)-1)
-#define Nh       16
-#define Nb       16
-#define Nhxn     14
-#define Nhg      (Nh-Nhxn)
-#define NLpScl   13
+/* Conversion constants */    // We are using fixed point binary arithmetic here
+#define Nhc       8           // Number of bits for filter points
+#define Na        7           // Number of bits for interpolating between filter points
+#define Np       (Nhc+Na)     // Total number of bits to represent fractional phase
+#define Npc      (1<<Nhc)     // Sampling period binary point scaling factor
+#define Amask    ((1<<Na)-1)  // Interpolation mask
+#define Pmask    ((1<<Np)-1)  // Phase mask
+#define Nh       16           // Number of bits to represent coefficients
+#define Nb       16           // Unused
+#define Nhxn     14           // Number of non-guard bits
+#define Nhg      (Nh-Nhxn)    // Number of guard bits
+#define NLpScl   13           // Number of overflow bits
 
 
 #define IzeroEPSILON 1E-21               /* Max error acceptable in Izero */
 
 static const long double PI = 3.14159265358979323846;
 
-static __inline short IntToShort(int v, int scl)
+static __inline short IntToShort(int v, const int scl)
 {
   v += (1<<(scl-1));  /* round */
   v >>= scl;
@@ -78,14 +78,14 @@ static __inline short IntToShort(int v, int scl)
 
 static double Izero(double x);
 static void LpFilter(double c[], int N, double frq, double Beta, int Num);
-static int makeFilter(short   Imp[], int     *LpScl, unsigned short Nwing, double Froll, double Beta);
-static int makeFilter(SFLOAT fImp[], SFLOAT *fLpScl, unsigned short Nwing, double Froll, double Beta);
+static int makeFilter(short   Imp[], double *dLpScl, unsigned short Nwing, double Froll, double Beta);
+static int makeFilter(SFLOAT fImp[], double  dLpScl, unsigned short Nwing, double Froll, double Beta);
 
 
 /********************************************************************
 ********************************************************************/
 
-class AssumeRate : public GenericVideoFilter 
+class AssumeRate : public GenericVideoFilter
 /**
   * Changes the sample rate of a clip
  **/
@@ -97,7 +97,7 @@ public:
 
 
 
-class ConvertToMono : public GenericVideoFilter 
+class ConvertToMono : public GenericVideoFilter
 /**
   * Class to convert audio to mono
  **/
@@ -117,7 +117,7 @@ private:
   int channels;
 };
 
-class EnsureVBRMP3Sync : public GenericVideoFilter 
+class EnsureVBRMP3Sync : public GenericVideoFilter
 /**
   * Class to convert audio to mono
  **/
@@ -133,7 +133,7 @@ private:
   __int64 last_end;
 };
 
-class MergeChannels : public GenericVideoFilter 
+class MergeChannels : public GenericVideoFilter
 /**
   * Class to convert two mono sources to stereo
  **/
@@ -159,7 +159,7 @@ private:
 };
 
 
-class GetChannel : public GenericVideoFilter 
+class GetChannel : public GenericVideoFilter
 /**
   * Class to get left or right channel from stereo source
  **/
@@ -187,7 +187,7 @@ private:
   int dst_bps;
 };
 
-class KillAudio : public GenericVideoFilter 
+class KillAudio : public GenericVideoFilter
 /**
   * Removes audio from clip
  **/
@@ -199,11 +199,11 @@ public:
 };
 
 
-class DelayAudio : public GenericVideoFilter 
+class DelayAudio : public GenericVideoFilter
 /**
   * Class to delay audio stream
  **/
-{  
+{
 public:
   DelayAudio(double delay, PClip _child);
   void __stdcall GetAudio(void* buf, __int64 start, __int64 count, IScriptEnvironment* env);
@@ -216,7 +216,7 @@ private:
 
 
 
-class Amplify : public GenericVideoFilter 
+class Amplify : public GenericVideoFilter
 /**
   * Amplify a clip's audio track
  **/
@@ -241,7 +241,7 @@ private:
 
 
 
-class Normalize : public GenericVideoFilter 
+class Normalize : public GenericVideoFilter
 /**
   * Normalize a clip's audio track
  **/
@@ -252,7 +252,7 @@ public:
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
 
   static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env);
-  
+
 
 private:
   float max_factor;
@@ -261,7 +261,7 @@ private:
   bool showvalues;
 };
 
-class MixAudio : public GenericVideoFilter 
+class MixAudio : public GenericVideoFilter
 /**
   * Mix audio from one clip into another.
  **/
@@ -283,42 +283,43 @@ private:
 };
 
 
-class ResampleAudio : public GenericVideoFilter 
+class ResampleAudio : public GenericVideoFilter
 /**
   * Class to resample the audio stream
  **/
 {
 public:
-  ResampleAudio(PClip _child, int _target_rate, IScriptEnvironment* env);
-  virtual ~ResampleAudio() 
-    { if  (srcbuffer) delete[]  srcbuffer;  
+  ResampleAudio(PClip _child, int _target_rate_n, int _target_rate_d, IScriptEnvironment* env);
+  virtual ~ResampleAudio()
+    { if  (srcbuffer) delete[]  srcbuffer;
       if (fsrcbuffer) delete[] fsrcbuffer; }
   void __stdcall GetAudio(void* buf, __int64 start, __int64 count, IScriptEnvironment* env);
 
   static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env);
 
 private:
-  int    FilterUD(short  *Xp, short Ph, short Inc);
-  SFLOAT FilterUD(SFLOAT *Xp, short Ph, short Inc);
+  __int64 FilterUD(short  *Xp, short Ph, short Inc);
+  SFLOAT  FilterUD(SFLOAT *Xp, short Ph, short Inc);
 
-  enum { Nwing = 8192, Nmult = 65 };
+  enum { Nwing = 8192, Nmult = 65 };   // Number of filter points, (Nwing>>Nhc)*2+1
 
   short Imp[Nwing+1];
   SFLOAT fImp[Nwing+1];
-  SFLOAT fAmasktab[Amask+1];
 
   const int target_rate;
-  double factor;
+  const double factor;
   int Xoff, dtb, dhb;
+  unsigned dtbe;
 
-  int     LpScl;
-  SFLOAT fLpScl;
+  int LpScl, mLpScl, mNhg;
 
   short*   srcbuffer;
   SFLOAT* fsrcbuffer;
 
   int srcbuffer_size;
   bool skip_conversion;
+
+  __int64 last_start, last_samples;
 };
 
 

@@ -53,6 +53,11 @@ PClip ConvertAudio::Create(PClip clip, int sample_type, int prefered_type)
 }
 
 
+void __stdcall ConvertAudio::SetCacheHints(int cachehints,int frame_range)
+{   // We do pass cache requests upwards, to the next filter.
+  child->SetCacheHints(cachehints, frame_range);
+}
+
 
 /*******************************************
  *******   Convert Audio -> Arbitrary ******
@@ -104,9 +109,10 @@ void __stdcall ConvertAudio::GetAudio(void* buf, __int64 start, __int64 count, I
 	tmp_fb = floatbuffer;
 
   if (src_format != SAMPLE_FLOAT) {  // Skip initial copy, if samples are already float
+// Someone with an AMD beast decide which code runs better SSE2 or 3DNow   :: FIXME
     if ((env->GetCPUFlags() & CPUF_3DNOW_EXT)) {
       convertToFloat_3DN(tempbuffer, tmp_fb, src_format, count*channels);
-    } else if ((env->GetCPUFlags() & CPUF_SSE2)) {
+    } else if (((int)tmp_fb & 3 == 0) && (env->GetCPUFlags() & CPUF_SSE2)) {
       convertToFloat_SSE2(tempbuffer, tmp_fb, src_format, count*channels);
     } else if ((env->GetCPUFlags() & CPUF_SSE)) {
       convertToFloat_SSE(tempbuffer, tmp_fb, src_format, count*channels);
@@ -118,6 +124,7 @@ void __stdcall ConvertAudio::GetAudio(void* buf, __int64 start, __int64 count, I
   }
 
   if (dst_format != SAMPLE_FLOAT) {  // Skip final copy, if samples are to be float
+// Someone with an AMD beast decide which code runs better SSE2 or 3DNow   :: FIXME
 	if ((env->GetCPUFlags() & CPUF_3DNOW_EXT)) {
 	  convertFromFloat_3DN(tmp_fb, buf, dst_format, count*channels);
 	} else if ((env->GetCPUFlags() & CPUF_SSE2)) {
@@ -129,6 +136,44 @@ void __stdcall ConvertAudio::GetAudio(void* buf, __int64 start, __int64 count, I
 	}
   }
 }
+
+/* SAMPLE_INT16 <-> SAMPLE_INT32
+
+ * S32 = S16 << 16
+ *
+ * short *d=dest, *s=src;
+ *
+ *   *d++ = 0;
+ *   *d++ = *s++;
+ *
+ * for (i=0; i< count*ch; i++) {
+ *   d[i*2] = 0;
+ *   d[i*2+1] = s[i];
+ * }
+
+ * S16 = (S32 + 0x8000) >> 16
+ *
+ * short *d=dest;
+ * int   *s=src;
+ * 
+ * for (i=0; i< count*ch; i++) {
+ *   d[i] = (s[i]+0x00008000) >> 16;
+ * }
+
+ *   movq    mm7,[0x0000800000008000]
+ * 
+ *   movq     mm0,[s]
+ *    movq    mm1,[s+8]
+ *   paddd    mm0,mm7
+ *    paddd   mm1,mm7
+ *   psrad    mm0,16
+ *    psrad   mm1,16
+ *   d+=8
+ *    packsdw mm0,mm1
+ *   s+=16
+ *    movq    [d-8],mm0
+
+*/
 
 //================
 // convertToFloat
@@ -226,7 +271,7 @@ c16_loop:
       break;
     }
     case SAMPLE_INT32: {
-      const float divisor = 1.0f / MAX_INT;
+      const float divisor = float(1.0 / MAX_INT);
       signed int* samples = (signed int*)inbuf;
       int c_miss = count & 3;
       int c_loop = count-c_miss; // in samples
@@ -298,6 +343,12 @@ void ConvertAudio::convertToFloat_SSE2(char* inbuf, float* outbuf, char sample_t
     case SAMPLE_INT16: {
       const float divisor = 1.0 / 32768.0;
       signed short* samples = (signed short*)inbuf;
+
+      while (((int)outbuf & 15) && count) { // dqword align outbuf
+        *outbuf++ = divisor * (float)*samples++;
+		count-=1;
+      }
+	  
       int c_miss = count & 7;
       int c_loop = (count - c_miss);  // Number of samples.
 
@@ -322,9 +373,9 @@ c16_loop:
           cvtdq2ps  xmm3, xmm1                //  - h | - g | - f | - e -> float
           mulps     xmm2, xmm7                //  *=1/MAX_SHORT
           mulps     xmm3, xmm7                //  *=1/MAX_SHORT
-          movups    [edi+eax*2-32], xmm2      //  store xd | xc | xb | xa
+          movaps    [edi+eax*2-32], xmm2      //  store xd | xc | xb | xa
           cmp       eax, edx
-          movups    [edi+eax*2-16], xmm3      //  store xh | xg | xf | xe
+          movaps    [edi+eax*2-16], xmm3      //  store xh | xg | xf | xe
           jne       c16_loop
           emms
         }
@@ -335,8 +386,14 @@ c16_loop:
       break;
     }
     case SAMPLE_INT32: {
-      const float divisor = 1.0f / MAX_INT;
+      const float divisor = float(1.0 / MAX_INT);
       signed int* samples = (signed int*)inbuf;
+
+      while (((int)outbuf & 15) && count) { // dqword align outbuf
+        *outbuf++ = divisor * (float)*samples++;
+		count-=1;
+      }
+	  
       int c_miss = count & 7;
       int c_loop = count-c_miss; // in samples
 
@@ -358,9 +415,9 @@ c32_loop:
           mulps    xmm2, xmm7             //  *=1/MAX_INT
           add      eax,32
           mulps    xmm3, xmm7             //  *=1/MAX_INT
-          movups   [edi+eax-32], xmm2     //  store xd | xc | xb | xa
+          movaps   [edi+eax-32], xmm2     //  store xd | xc | xb | xa
           cmp      eax, edx
-          movups   [edi+eax-16], xmm3     //  store xh | xg | xf | xe
+          movaps   [edi+eax-16], xmm3     //  store xh | xg | xf | xe
           jne      c32_loop
           emms
         }
@@ -536,6 +593,12 @@ c16f_loop:
             movq mm2, [esi+eax*2+8]          //  d d | c c
             pfmul mm1,mm7                  // x * 32 bit
             pfmul mm2,mm7                  // x * 32 bit
+
+// These may work better with the packssdw on a K6
+//          pf2id mm1, mm1                 //  xb=int(b) | xa=int(a)
+//          pf2id mm2, mm2                 //  xb=int(d) | xa=int(c)
+
+// K6 etc may get this wrong - wait for test results
             pf2iw mm1, mm1                 //  xb=int(b) | xa=int(a)
             pf2iw mm2, mm2                 //  xb=int(d) | xa=int(c)
             packssdw mm1,mm2
@@ -684,11 +747,12 @@ void ConvertAudio::convertFromFloat_SSE(float* inbuf,void* outbuf, char sample_t
 cf16_loop:
 		  movups   xmm0, [eax+edx*2]           // xd | xc | xb | xa         
 		  mulps    xmm0, xmm7                  // *= MAX_SHORT
+          minps    xmm0, xmm7                  // x=min(x, MAX_SHORT)  --  +ve Signed Saturation > 2^31
 		  movhlps  xmm1, xmm0                  // xx | xx | xd | xc
 		  cvtps2pi mm0, xmm0                   // float -> bb | aa
 		  cvtps2pi mm1, xmm1                   // float -> dd | cc
 		  add      edx,8
-		  packssdw mm0, mm1                    // d | c | b | a 
+		  packssdw mm0, mm1                    // d | c | b | a  --  +/-ve Signed Saturation > 2^15
 		  cmp      ecx, edx
 		  movq     [edi+edx-8], mm0            // store d | c | b | a
 		  jne      cf16_loop
@@ -707,11 +771,20 @@ cf16_loop:
       int sleft = count & 3;
       count -= sleft;
 
-      float mult[4];
-      mult[0]=mult[1]=mult[2]=mult[3] = (float)(INT_MAX);
+      float mult  = (float)(MAX_INT);  // (2^23)<<8  
+//      float limit = 2147483520.0f;     // (2^24-1)<<7
+
       if (count) {
+		int temp[7];
         _asm {
-          movups   xmm7, [mult]
+		  lea      esi, [temp]
+          movss    xmm7, [mult]
+//          movss    xmm6, [limit]
+		  add      esi, 15
+          shufps   xmm7, xmm7, 00000000b
+		  and      esi, -16                    // dqword align
+//          shufps   xmm6, xmm6, 00000000b
+
           mov      eax, inbuf
           mov      ecx, count
           xor      edx, edx
@@ -720,20 +793,32 @@ cf16_loop:
           align    16
 cf32_loop:
           movups   xmm0, [eax+edx]             // xd | xc | xb | xa
-          add      edx,16
-          mulps    xmm0, xmm7                  // *= INT_MAX
-          cmp      ecx, edx
+          mulps    xmm0, xmm7                  // *= MAX_INT
+#if 1
           movhlps  xmm1, xmm0                  // xx | xx | xd | xc
-          cvtps2pi mm0, xmm0                   // float -> bb | aa
-          cvtps2pi mm1, xmm1                   // float -> dd | cc
+          cvtps2pi mm0, xmm0                   // float -> bb | aa  --  -ve Signed Saturation
+		  cmpnltps xmm0, xmm7                  // !(xd | xc | xb | xa < MAX_INT)
+          cvtps2pi mm1, xmm1                   // float -> dd | cc  --  -ve Signed Saturation
+          movdqa   [esi], xmm0                 // md | mc | mb | ma                          -- YUCK!!!
+          add      edx,16
+		  pxor     mm0, [esi]                  // 0x80000000 -> 0x7FFFFFFF if +ve saturation
+		  pxor     mm1, [esi+8]
+#else
+          minps    xmm0, xmm6                  // x=min(x, Limit)  --  +ve Signed Saturation -- LAME!!!
+          add      edx,16
+          movhlps  xmm1, xmm0                  // xx | xx | xd | xc
+          cvtps2pi mm0, xmm0                   // float -> bb | aa  --  -ve Signed Saturation
+          cvtps2pi mm1, xmm1                   // float -> dd | cc  --  -ve Signed Saturation
+#endif
           movq     [edi+edx-16], mm0           // store bb | aa
+          cmp      ecx, edx
           movq     [edi+edx-8], mm1            // store dd | cc
           jne      cf32_loop
           emms
         }
       }
       for (i=0;i<sleft;i++) {
-        samples[count+i]=Saturate_int32(inbuf[count+i] * (float)(INT_MAX));
+        samples[count+i]=Saturate_int32(inbuf[count+i] * (float)(MAX_INT));
       }
 
       break;
@@ -772,6 +857,17 @@ void ConvertAudio::convertFromFloat_SSE2(float* inbuf,void* outbuf, char sample_
       }
     case SAMPLE_INT16: {
       signed short* samples = (signed short*)outbuf;
+
+      if ((int)samples & 1) {  // could never dqword align outbuf
+        convertFromFloat_SSE(inbuf, outbuf, sample_type, count);
+        break;
+      }
+
+      while (((int)samples & 15) && count) { // dqword align outbuf
+        *samples++ = Saturate_int16(*inbuf++ * 32768.0f);
+        count-=1;
+      }
+
       int sleft = count & 7;
       count -= sleft;
 
@@ -785,19 +881,21 @@ void ConvertAudio::convertFromFloat_SSE2(float* inbuf,void* outbuf, char sample_
 		  mov      ecx, count
 		  xor      edx, edx
 		  shl      ecx, 1
-		  mov      edi, outbuf
+		  mov      edi, samples
 		  align    16
 cf16_loop:
 		  movups   xmm0, [eax+edx*2]           // xd | xc | xb | xa         
 		  movups   xmm1, [eax+edx*2+16]        // xh | xg | xf | xe         
 		  mulps    xmm0, xmm7                  // *= MAX_SHORT
 		  mulps    xmm1, xmm7                  // *= MAX_SHORT
+		  minps    xmm0, xmm7                  // x=min(x, MAX_SHORT)  --  +ve Signed Saturation > 2^31
+		  minps    xmm1, xmm7                  // x=min(x, MAX_SHORT)  --  +ve Signed Saturation > 2^31
 		  cvtps2dq xmm2, xmm0                  // float -> dd | cc | bb | aa
 		  cvtps2dq xmm3, xmm1                  // float -> hh | gg | ff | ee
 		  add      edx,16
-		  packssdw xmm2, xmm3                  // h g | f e | d c | b a
+		  packssdw xmm2, xmm3                  // h g | f e | d c | b a  --  +/-ve Signed Saturation > 2^15
 		  cmp      ecx, edx
-		  movups   [edi+edx-16], xmm2          // store h g | f e | d c | b a
+		  movdqa   [edi+edx-16], xmm2          // store h g | f e | d c | b a
 		  jne      cf16_loop
 		  emms
 		}
@@ -811,37 +909,67 @@ cf16_loop:
 
     case SAMPLE_INT32: {
       signed int* samples = (signed int*)outbuf;
+
+      if ((int)samples & 3) {  // could never dqword align outbuf
+        convertFromFloat_SSE(inbuf, outbuf, sample_type, count);
+        break;
+      }
+
+      while (((int)samples & 15) && count) { // dqword align outbuf
+        *samples++=Saturate_int32(*inbuf++ * (float)(MAX_INT));
+        count-=1;
+      }
       int sleft = count & 7;
       count -= sleft;
 
-      float mult[4];
-      mult[0]=mult[1]=mult[2]=mult[3] = (float)(INT_MAX);
+      float mult  = (float)(MAX_INT);  // (2^23)<<8
+      float limit = 2147483520.0f;     // (2^24-1)<<7
+
       if (count) {
         _asm {
-          movups   xmm7, [mult]
+          movss    xmm7, [mult]
+          movss    xmm6, [limit]
+          shufps   xmm7, xmm7, 00000000b
+          shufps   xmm6, xmm6, 00000000b
+
           mov      eax, inbuf
           mov      ecx, count
           xor      edx, edx
           shl      ecx, 2
-          mov      edi, outbuf
+          mov      edi, samples
           align    16
 cf32_loop:
 		  movups   xmm0, [eax+edx]             // xd | xc | xb | xa         
 		  movups   xmm1, [eax+edx+16]          // xh | xg | xf | xe         
-		  mulps    xmm0, xmm7                  // *= INT_MAX
-		  mulps    xmm1, xmm7                  // *= INT_MAX
-		  cvtps2dq xmm2, xmm0                  // float -> dd | cc | bb | aa
+          mulps    xmm0, xmm7                  // *= MAX_INT
+          mulps    xmm1, xmm7                  // *= MAX_INT
+#if 1
+// Bloody Intel and their "indefinite integer value" it
+// is no use to man or beast, we need proper saturation
+// like AMD does with their 3DNow instructions. Grrr!!!
+		  cvtps2dq xmm2, xmm0                  // float -> dd | cc | bb | aa  --  -ve Signed Saturation
+		  cvtps2dq xmm3, xmm1                  // float -> hh | gg | ff | ee  --  -ve Signed Saturation
+		  cmpnltps xmm0, xmm7                  // !(xd | xc | xb | xa < MAX_INT)
+		  cmpnltps xmm1, xmm7                  // !(xh | xg | xf | xe < MAX_INT)
+          add      edx,32
+		  pxor     xmm2, xmm0                  // 0x80000000 -> 0x7FFFFFFF if +ve saturation
+		  pxor     xmm3, xmm1
+#else
+		  minps    xmm0, xmm6                  // x=min(x, Limit)  --  +ve Signed Saturation  --  LAME!!!
+		  minps    xmm1, xmm6                  // x=min(x, Limit)  --  +ve Signed Saturation
+		  cvtps2dq xmm2, xmm0                  // float -> dd | cc | bb | aa  --  -ve Signed Saturation
 		  add      edx,32
-		  cvtps2dq xmm3, xmm1                  // float -> hh | gg | ff | ee
-          movdqu   [edi+edx-32], xmm2          // store dd | cc | bb | aa
+		  cvtps2dq xmm3, xmm1                  // float -> hh | gg | ff | ee  --  -ve Signed Saturation
+#endif
+          movdqa   [edi+edx-32], xmm2          // store dd | cc | bb | aa
           cmp      ecx, edx
-          movdqu   [edi+edx-16], xmm3          // store hh | gg | ff | ee
+          movdqa   [edi+edx-16], xmm3          // store hh | gg | ff | ee
           jne      cf32_loop
           emms
         }
       }
       for (i=0;i<sleft;i++) {
-        samples[count+i]=Saturate_int32(inbuf[count+i] * (float)(INT_MAX));
+        samples[count+i]=Saturate_int32(inbuf[count+i] * (float)(MAX_INT));
       }
 
       break;
