@@ -57,14 +57,15 @@ void OL_AddImage::BlendImageMask(Image444* base, Image444* overlay, Image444* ma
         int Y = baseY[x] + ((ovY[x]*maskY[x])>>8);
         int U = baseU[x] + (((127*(256-maskU[x]))+(maskU[x]*(ovU[x])))>>8) - 127;
         int V = baseV[x] + (((127*(256-maskV[x]))+(maskV[x]*(ovV[x])))>>8) - 127;
-        if (Y>256) {  // Apply overbrightness to UV
-          int multiplier = max(0,304-Y);  // 0 to 32
+        if (Y>255) {  // Apply overbrightness to UV
+          int multiplier = min(0,304-Y);  // 0 to 32
           U = ((U*multiplier) + (127*(32-multiplier)))>>5;
           V = ((V*multiplier) + (127*(32-multiplier)))>>5;
+          Y= 255;
         }
         baseU[x] = (BYTE)min(U,255);
         baseV[x] = (BYTE)min(V,255);
-        baseY[x] = (BYTE)min(255, Y);
+        baseY[x] = (BYTE)Y;
       }
       maskY += mask->pitch;
       maskU += mask->pitch;
@@ -88,14 +89,15 @@ void OL_AddImage::BlendImageMask(Image444* base, Image444* overlay, Image444* ma
         int U = baseU[x] + (((127*(256-mU))+(mU*(ovU[x])))>>8) - 127;
         int V = baseV[x] + (((127*(256-mV))+(mV*(ovV[x])))>>8) - 127;
 
-        if (Y>256) {  // Apply overbrightness to UV
-          int multiplier = max(0,304-Y);  // 0 to 32
+        if (Y>255) {  // Apply overbrightness to UV
+          int multiplier = min(0,304-Y);  // 0 to 32
           U = ((U*multiplier) + (127*(32-multiplier)))>>5;
           V = ((V*multiplier) + (127*(32-multiplier)))>>5;
+          Y = 255;
         }
         baseU[x] = (BYTE)min(U,255);
         baseV[x] = (BYTE)min(V,255);
-        baseY[x] = (BYTE)min(255, Y);
+        baseY[x] = (BYTE)Y;
       }
       baseY += base->pitch;
       baseU += base->pitch;
@@ -131,14 +133,14 @@ void OL_AddImage::BlendImage(Image444* base, Image444* overlay) {
         int Y = baseY[x] + ovY[x];
         int U = baseU[x] + ovU[x] - 127;
         int V = baseV[x] + ovV[x] - 127;
-        if (Y>256) {  // Apply overbrightness to UV
-          int multiplier = max(0,304-Y);  // 0 to 32
+        if (Y>255) {  // Apply overbrightness to UV
+          int multiplier = min(0,304-Y);  // 0 to 32
           U = ((U*multiplier) + (127*(32-multiplier)))>>5;
           V = ((V*multiplier) + (127*(32-multiplier)))>>5;
         }
         baseU[x] = (BYTE)U;
         baseV[x] = (BYTE)V;
-        baseY[x] = (BYTE)min(255, Y);
+        baseY[x] = (BYTE)Y;
       }
       baseY += base->pitch;
       baseU += base->pitch;
@@ -155,14 +157,15 @@ void OL_AddImage::BlendImage(Image444* base, Image444* overlay) {
         int Y = baseY[x] + ((opacity*ovY[x])>>8);
         int U = baseU[x] + (((127*inv_opacity)+(opacity*(ovU[x])))>>8) - 127;
         int V = baseV[x] + (((127*inv_opacity)+(opacity*(ovV[x])))>>8) - 127;
-        if (Y>256) {  // Apply overbrightness to UV
-          int multiplier = max(0,304-Y);  // 0 to 32
+        if (Y>255) {  // Apply overbrightness to UV
+          int multiplier = min(0,304-Y);  // 0 to 32
           U = ((U*multiplier) + (127*(32-multiplier)))>>5;
           V = ((V*multiplier) + (127*(32-multiplier)))>>5;
+          Y  = 255;
         }
         baseU[x] = (BYTE)min(U,255);
         baseV[x] = (BYTE)min(V,255);
-        baseY[x] = (BYTE)min(255, Y);
+        baseY[x] = (BYTE)Y;
       }
       baseY += base->pitch;
       baseU += base->pitch;

@@ -54,16 +54,26 @@ protected:
   IScriptEnvironment *env;
 };
 
-class OL_AddImage : public OverlayFunction {
-  void BlendImage(Image444* base, Image444* overlay);
-  void BlendImageMask(Image444* base, Image444* overlay, Image444* mask);
-};
-
 class OL_BlendImage : public OverlayFunction {
   void BlendImage(Image444* base, Image444* overlay);
   void BlendImageMask(Image444* base, Image444* overlay, Image444* mask);
 private:
   void mmx_weigh_planar(BYTE *p1, const BYTE *p2, int p1_pitch, int p2_pitch,int rowsize, int height, int weight, int invweight);
+};
+
+class OL_AddImage : public OverlayFunction {
+  void BlendImage(Image444* base, Image444* overlay);
+  void BlendImageMask(Image444* base, Image444* overlay, Image444* mask);
+};
+
+class OL_SubtractImage : public OverlayFunction {
+  void BlendImage(Image444* base, Image444* overlay);
+  void BlendImageMask(Image444* base, Image444* overlay, Image444* mask);
+};
+
+class OL_MultiplyImage : public OverlayFunction {
+  void BlendImage(Image444* base, Image444* overlay);
+  void BlendImageMask(Image444* base, Image444* overlay, Image444* mask);
 };
 
 #endif  // Overlay_funcs_h

@@ -57,6 +57,7 @@ private:
   ConvertFrom444* SelectOutputCS(const char* name, IScriptEnvironment* env);
   ConvertTo444* SelectInputCS(VideoInfo* VidI, IScriptEnvironment* env);  
   void ClipFrames(Image444* input, Image444* overlay, int x, int y);
+  void FetchConditionals(IScriptEnvironment* env);
 
   VideoInfo overlayVi;
   VideoInfo maskVi;
@@ -74,8 +75,11 @@ private:
   int opacity;
   OverlayFunction* func;
   bool greymask;
+  bool ignore_conditional;
   int offset_x, offset_y;
-
+  int op_offset;
+  int con_x_offset;
+  int con_y_offset;
 };
 
 

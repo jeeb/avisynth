@@ -42,7 +42,7 @@
 ********************************************************************/
 
 AVSFunction Overlay_filters[] = {
-  { "Overlay", "cc[x]i[y]i[mask]c[opacity]f[mode]s[greymask]b[output]s", Overlay::Create },   
+  { "Overlay", "cc[x]i[y]i[mask]c[opacity]f[mode]s[greymask]b[output]s[ignore_conditional]b", Overlay::Create },   
     // 0, src clip 
     // 1, overlay clip
     // 2, x
@@ -52,6 +52,7 @@ AVSFunction Overlay_filters[] = {
     // 6, mode string, "blend", "add"
     // 7, greymask bool - true = only use luma information for mask
     // 8, output type, string
+    // 9, ignore conditional variabels
   { 0 }
 };
  
@@ -64,7 +65,8 @@ enum {
   ARG_OPACITY = 5,
   ARG_MODE = 6,
   ARG_GREYMASK = 7,
-  ARG_OUTPUT = 8
+  ARG_OUTPUT = 8,
+  ARG_IGNORE_CONDITIONAL = 9
 };
 
 Overlay::Overlay(PClip _child, AVSValue args, IScriptEnvironment *env) :
@@ -88,6 +90,7 @@ GenericVideoFilter(_child) {
   }
 
   greymask = args[ARG_GREYMASK].AsBool(true);  // Grey mask, default true
+  ignore_conditional = args[ARG_IGNORE_CONDITIONAL].AsBool(false);
 
   if (args[ARG_MASK].Defined()) {  // Mask defined
     mask = args[ARG_MASK].AsClip();
@@ -119,7 +122,7 @@ GenericVideoFilter(_child) {
   if (!inputConv) {
     env->ThrowError("Overlay: Colorspace not supported.");
   }
-
+  
   if (args[ARG_OUTPUT].Defined())
     outputConv = SelectOutputCS(args[ARG_OUTPUT].AsString(),env);
   else 
@@ -147,7 +150,10 @@ Overlay::~Overlay() {
 
 
 PVideoFrame __stdcall Overlay::GetFrame(int n, IScriptEnvironment *env) {
-  // Fetch current frame and convert it.
+
+  FetchConditionals(env);
+
+    // Fetch current frame and convert it.
   PVideoFrame frame = child->GetFrame(n, env);
   inputConv->ConvertImage(frame, img, env);
 
@@ -156,7 +162,7 @@ PVideoFrame __stdcall Overlay::GetFrame(int n, IScriptEnvironment *env) {
   overlayConv->ConvertImage(Oframe, overlayImg, env);
 
   // Clip overlay to original image
-  ClipFrames(img, overlayImg, offset_x, offset_y);
+  ClipFrames(img, overlayImg, offset_x + con_x_offset, offset_y + con_y_offset);
 
 
   if (overlayImg->IsSizeZero()) {
@@ -178,12 +184,12 @@ PVideoFrame __stdcall Overlay::GetFrame(int n, IScriptEnvironment *env) {
       maskConv->ConvertImage(Mframe, maskImg, env);
 
     img->ReturnOriginal(true);
-    ClipFrames(img, maskImg, offset_x, offset_y);
+    ClipFrames(img, maskImg, offset_x + con_x_offset, offset_y + con_y_offset);
   }
 
 
   // Process the image
-  func->setOpacity(opacity);
+  func->setOpacity(opacity + op_offset);
   func->setEnv(env);
 
   if (!mask) {
@@ -218,6 +224,12 @@ OverlayFunction* Overlay::SelectFunction(const char* name, IScriptEnvironment* e
 
   if (!lstrcmpi(name, "Add"))
     return new OL_AddImage();
+
+  if (!lstrcmpi(name, "Subtract"))
+    return new OL_SubtractImage();
+
+  if (!lstrcmpi(name, "Multiply"))
+    return new OL_MultiplyImage();
 
   env->ThrowError("Overlay: Invalid 'Mode' specified.");
   return 0;
@@ -273,6 +285,7 @@ ConvertTo444* Overlay::SelectInputCS(VideoInfo* VidI, IScriptEnvironment* env) {
   return 0;
 }
 
+
 void Overlay::ClipFrames(Image444* input, Image444* overlay, int x, int y) {
 
   input->ResetFake();
@@ -315,6 +328,32 @@ void Overlay::ClipFrames(Image444* input, Image444* overlay, int x, int y) {
     input->SubFrame(0,0, input->w(), overlay->h());
   }
 
+}
+
+void Overlay::FetchConditionals(IScriptEnvironment* env) {
+  op_offset = 0;
+  con_x_offset = 0;
+  con_y_offset = 0;
+
+  if (!ignore_conditional) {
+    try {
+		  AVSValue cv = env->GetVar("OL_opacity_offset");
+		  if (cv.IsFloat())
+        op_offset = (int)(cv.AsFloat()*256);
+    } catch (IScriptEnvironment::NotFound) {}
+
+    try {
+  		AVSValue cv = env->GetVar("OL_x_offset");
+	  	if (cv.IsFloat())
+        con_x_offset = (int)(cv.AsFloat());
+    } catch (IScriptEnvironment::NotFound) {}
+
+    try {
+  		AVSValue cv = env->GetVar("OL_y_offset");
+	  	if (cv.IsFloat())
+        con_y_offset = (int)(cv.AsFloat());
+    } catch (IScriptEnvironment::NotFound) {}
+  }
 }
 
 
