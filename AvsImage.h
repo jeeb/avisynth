@@ -41,8 +41,8 @@ using namespace std;
 
 #include "internal.h"
 
-#include "..\libpng\png.h"
-#include "..\libjpeg\include\jpeglib.h"
+#include "distrib\include\png.h"
+#include "distrib\include\jpeglib.h"
 
 
 // abstract base class for reading/writing images to/from Avisynth buffers
