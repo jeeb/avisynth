@@ -120,6 +120,16 @@ AVSValue AveragePlane::AvgPlane(AVSValue clip, void* user_data, int plane, IScri
 }
 
 // Average plane
+int AveragePlane::C_average_plane(const BYTE* c_plane, int height, int width, int c_pitch) {
+  unsigned int accum = 0;
+  for (int y = 0; y < height; y++) {
+    for (int x = 0; x < width; x++) {
+      accum += c_plane[x];
+    }
+    c_plane += c_pitch;
+  }
+  return accum;
+}
 
 int AveragePlane::isse_average_plane(const BYTE* c_plane, int height, int width, int c_pitch) {
   int hp=height;
@@ -223,8 +233,7 @@ AVSValue ComparePlane::CmpPlane(AVSValue clip, AVSValue clip2, void* user_data, 
 			env->ThrowError("Plane Difference: No clip supplied!");
 		if (!clip2.IsClip())
 			env->ThrowError("Plane Difference: Second parameter is not a clip!");
-    if (!(env->GetCPUFlags() & CPUF_INTEGER_SSE))
-      env->ThrowError("Plane Difference: Requires Integer SSE capable CPU.");
+    bool ISSE = !!(env->GetCPUFlags() & CPUF_INTEGER_SSE);
 
 		PClip child = clip.AsClip();
 		VideoInfo vi = child->GetVideoInfo();
@@ -267,9 +276,15 @@ AVSValue ComparePlane::CmpPlane(AVSValue clip, AVSValue clip2, void* user_data, 
 
 		int b;
     if (vi.IsRGB32()) {
-      b = isse_scenechange_rgb_16(srcp, srcp2, h, w, pitch, pitch2);
+      if (ISSE)
+        b = isse_scenechange_rgb_16(srcp, srcp2, h, w, pitch, pitch2);
+      else
+        b = C_scenechange_rgb_16(srcp, srcp2, h, w, pitch, pitch2);
     } else {
-      b = isse_scenechange_16(srcp, srcp2, h, w, pitch, pitch2);
+      if (ISSE)
+        b = isse_scenechange_16(srcp, srcp2, h, w, pitch, pitch2);
+      else 
+        b = C_scenechange_16(srcp, srcp2, h, w, pitch, pitch2);
     }
 
 		if (!b) b=1;
@@ -283,8 +298,8 @@ AVSValue ComparePlane::CmpPlane(AVSValue clip, AVSValue clip2, void* user_data, 
 AVSValue ComparePlane::CmpPlaneSame(AVSValue clip, void* user_data, int offset, int plane, IScriptEnvironment* env) {
 		if (!clip.IsClip())
 			env->ThrowError("Plane Difference: No clip supplied!");
-    if (!(env->GetCPUFlags() & CPUF_INTEGER_SSE))
-      env->ThrowError("Plane Difference: Requires Integer SSE capable CPU.");
+
+    bool ISSE = !!(env->GetCPUFlags() & CPUF_INTEGER_SSE);
 
 		PClip child = clip.AsClip();
 		VideoInfo vi = child->GetVideoInfo();
@@ -316,11 +331,18 @@ AVSValue ComparePlane::CmpPlaneSame(AVSValue clip, void* user_data, int offset, 
 		int pitch2 = src2->GetPitch(plane);
 		w=(w/16)*16;
 
+
 		int b;
     if (vi.IsRGB32()) {
-      b = isse_scenechange_rgb_16(srcp, srcp2, h, w, pitch, pitch2);
+      if (ISSE)
+       b = isse_scenechange_rgb_16(srcp, srcp2, h, w, pitch, pitch2);
+      else 
+       b = C_scenechange_rgb_16(srcp, srcp2, h, w, pitch, pitch2);
     } else {
-      b = isse_scenechange_16(srcp, srcp2, h, w, pitch, pitch2);
+      if (ISSE)
+        b = isse_scenechange_16(srcp, srcp2, h, w, pitch, pitch2);  
+      else
+        b = C_scenechange_16(srcp, srcp2, h, w, pitch, pitch2);  
     }
 
 		if (!b) b=1;
@@ -487,6 +509,33 @@ AVSValue MinMaxPlane::MinMax(AVSValue clip, void* user_data, float threshold, in
   return AVSValue(-1);
 }
 
+int ComparePlane::C_scenechange_16(const BYTE* c_plane, const BYTE* tplane, int height, int width, int c_pitch, int t_pitch) {
+  unsigned int accum = 0;
+  for (int y = 0; y < height; y++) {
+    for (int x = 0; x < width; x++) {
+      accum += abs(tplane[x] - c_plane[x]);
+    }
+    c_plane += c_pitch;
+    tplane += t_pitch;
+  }
+  return accum;
+
+}
+
+int ComparePlane::C_scenechange_rgb_16(const BYTE* c_plane, const BYTE* tplane, int height, int width, int c_pitch, int t_pitch) {
+  unsigned int accum = 0;
+  for (int y = 0; y < height; y++) {
+    for (int x = 0; x < width; x+=4) {
+      accum += abs(tplane[x] - c_plane[x]);
+      accum += abs(tplane[x+1] - c_plane[x+1]);
+      accum += abs(tplane[x+2] - c_plane[x+2]);
+    }
+    c_plane += c_pitch;
+    tplane += t_pitch;
+  }
+  return accum;
+
+}
 
 /*********************
  * YV12 Scenechange detection.
