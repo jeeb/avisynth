@@ -5,7 +5,7 @@
 
 !DEFINE VERSION 2.5.4
 
-!DEFINE DATE 261103
+!DEFINE DATE 191203
 
 
 SetCompressor bzip2
@@ -128,12 +128,20 @@ Section "Documentation (recommended)"
   SectionIn 1 2
   SetOutPath $INSTDIR\Docs
   File "..\Docs\*.*"
-  SetOutPath $INSTDIR\Docs\Filters
-  File "..\Docs\Filters\*.*"
+  SetOutPath $INSTDIR\Docs\english
+  File "..\Docs\english\*.*"
+  SetOutPath $INSTDIR\Docs\english\corefilters
+  File "..\Docs\english\corefilters\*.*"
+  SetOutPath $INSTDIR\Docs\english\externalfilters
+  File "..\Docs\english\externalfilters\*.*"
+  SetOutPath $INSTDIR\Docs\pictures
+  File "..\Docs\pictures\*.*"
+
+
   SetOutPath $INSTDIR\Examples
   File "Examples\*.*"
 
-  CreateShortCut "$SMPROGRAMS\AviSynth 2.5\AviSynth Documentation.lnk" "$INSTDIR\Docs\index.html"
+  CreateShortCut "$SMPROGRAMS\AviSynth 2.5\AviSynth Documentation.lnk" "$INSTDIR\Docs\english\index.htm"
   CreateShortCut "$SMPROGRAMS\AviSynth 2.5\Example Scripts.lnk" "$INSTDIR\Examples"
 
 
@@ -145,8 +153,8 @@ Section "German Documentation"
   SectionIn 2 
   SetOutPath $INSTDIR\Docs_ger
   File "..\Docs_ger\*.*"
-  SetOutPath $INSTDIR\Docs_ger\Filters
-  File "..\Docs_ger\Filters\*.*"
+  SetOutPath $INSTDIR\Docs_ger\filters
+  File "..\Docs_ger\filters\*.*"
   
 CreateShortCut "$SMPROGRAMS\AviSynth 2.5\Deutsche AviSynth Dokumentation.lnk" "$INSTDIR\Docs_ger\index.html"
 
@@ -229,13 +237,21 @@ dontremoveplug:
   Delete "$SMPROGRAMS\AviSynth 2.5\*.*"
   RMDir "$SMPROGRAMS\AviSynth 2.5"
   Delete "$INSTDIR\GPL.txt"
-  Delete "$INSTDIR\Docs\Filters\*.*"
-  RMDir  "$INSTDIR\Docs\Filters"
+  Delete "$INSTDIR\Docs\english\coreFilters\*.*"
+  RMDir  "$INSTDIR\Docs\english\coreFilters"
+  Delete "$INSTDIR\Docs\english\externalFilters\*.*"
+  RMDir  "$INSTDIR\Docs\english\externalFilters"
+  Delete "$INSTDIR\Docs\english\*.*"
+  RMDir  "$INSTDIR\Docs\english"
+  Delete "$INSTDIR\Docs\pictures\*.*"
+  RMDir  "$INSTDIR\Docs\pictures"
   Delete "$INSTDIR\Docs\*.*"
   RMDir  "$INSTDIR\Docs"
   Delete "$INSTDIR\Docs_ger\Filters\*.*"
   RMDir  "$INSTDIR\Docs_ger\Filters"
   Delete "$INSTDIR\Docs_ger\*.*"
   RMDir  "$INSTDIR\Docs_ger"
+  Delete "$INSTDIR\Examples\*.*"
+  RMDir  "$INSTDIR\Examples"
   Delete "$INSTDIR\Uninstall.exe"
 SectionEnd
