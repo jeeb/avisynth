@@ -350,7 +350,7 @@ AVSValue __cdecl Dissolve::Create(AVSValue args, void*, IScriptEnvironment* env)
 
 
 Dissolve::Dissolve(PClip _child1, PClip _child2, int _overlap, IScriptEnvironment* env)
- : GenericVideoFilter(ConvertAudio::Create(_child1,SAMPLE_INT16,SAMPLE_INT16)), child2(ConvertAudio::Create(_child2,SAMPLE_INT16, SAMPLE_INT16)), overlap(_overlap), audbuffer(0), audbufsize(0)
+ : GenericVideoFilter(ConvertAudio::Create(_child1,SAMPLE_INT16|SAMPLE_FLOAT,SAMPLE_FLOAT)), child2(ConvertAudio::Create(_child2,SAMPLE_INT16|SAMPLE_FLOAT, SAMPLE_FLOAT)), overlap(_overlap), audbuffer(0), audbufsize(0)
 {
   VideoInfo vi2 = child2->GetVideoInfo();
 
@@ -460,58 +460,67 @@ PVideoFrame Dissolve::GetFrame(int n, IScriptEnvironment* env)
 
 void Dissolve::GetAudio(void* buf, __int64 start, __int64 count, IScriptEnvironment* env) 
 {
-  if (start+count <= audio_fade_start)
+  if (start+count <= audio_fade_start) {
     child->GetAudio(buf, start, count, env);
-
-  else if (start > audio_fade_end)
-    child2->GetAudio(buf, start - audio_fade_start, count, env);
-
-  else {
-    const int bytes = vi.BytesFromAudioSamples(count);
-    if (audbufsize < bytes) {
-      delete[] audbuffer;
-      audbuffer = new BYTE[bytes];
-      audbufsize = bytes;
-    }
-
-    child->GetAudio(buf, start, count, env);
-    child2->GetAudio(audbuffer, start - audio_fade_start, count, env);
-
-    int denominator = (audio_fade_end - audio_fade_start);
-    int numerator = (audio_fade_end - start);
-    if (vi.SampleType()==SAMPLE_INT16) {
-      short *a = (short*)buf, *b = (short*)audbuffer;
-      if (vi.AudioChannels()==2) {
-        for (int i=0; i<count*2; i+=2) {
-          if (numerator <= 0) {
-            a[i] = b[i];
-            a[i+1] = b[i+1];
-          } else if (numerator < denominator) {
-            a[i] = b[i] + MulDiv(a[i]-b[i], numerator, denominator);
-            a[i+1] = b[i+1] + MulDiv(a[i+1]-b[i+1], numerator, denominator);
-          }
-          numerator--;
-        }
-      } else if (vi.AudioChannels()==1) {
-        for (int i=0; i<count; ++i) {
-          if (numerator <= 0)
-            a[i] = b[i];
-          else if (numerator < denominator)
-            a[i] = b[i] + MulDiv(a[i]-b[i], numerator, denominator);
-          numerator--;
-        }
-      }
-    } else if (vi.SampleType()==SAMPLE_INT8) { 
-      BYTE *a = (BYTE*)buf, *b = (BYTE*)audbuffer;
-      for (int i=0; i<count; ++i) {
-        if (numerator <= 0)
-          a[i] = b[i];
-        else if (numerator < denominator)
-          a[i] = b[i] + MulDiv(a[i]-b[i], numerator, denominator);
-        numerator -= ((i&1) | (vi.AudioChannels()==1));
-      }
-    }
+    return;
   }
+
+  if (start > audio_fade_end) {
+    child2->GetAudio(buf, start - audio_fade_start, count, env);
+    return;
+  }
+
+  const int bytes = vi.BytesFromAudioSamples(count);
+  if (audbufsize < bytes) {
+    delete[] audbuffer;
+    audbuffer = new BYTE[bytes];
+    audbufsize = bytes;
+  }
+  
+  child->GetAudio(buf, start, count, env);
+  child2->GetAudio(audbuffer, start - audio_fade_start, count, env);
+  
+  int denominator = (audio_fade_end - audio_fade_start);
+  int numerator = (audio_fade_end - start);
+  
+  if (vi.IsSampleType(SAMPLE_INT16)) {
+    int nch = vi.AudioChannels();
+    short *a = (short*)buf, *b = (short*)audbuffer;
+    for (int i=0; i<count*nch; i+=nch) {
+      for (int p=0; p < nch; p++) {
+        if (numerator <= 0) {
+          a[i+p] = b[i+p];
+        } else if (numerator < denominator) {
+          a[i+p] = b[i+p] + MulDiv(a[i+p]-b[i+p], numerator, denominator);
+        }
+        numerator--;
+      }
+    }
+    return;
+  } 
+
+  if (vi.IsSampleType(SAMPLE_FLOAT)) {
+    int nch = vi.AudioChannels();
+    SFLOAT denominator = SFLOAT(audio_fade_end - audio_fade_start);  // Complete length of fade.
+    SFLOAT numerator = SFLOAT(audio_fade_end - start);  // Offset into the fade
+    SFLOAT *a = (SFLOAT*)buf, *b = (SFLOAT*)audbuffer;
+
+    for (int i=0; i<count*nch; i+=nch) {
+      for (int p=0; p < nch; p++) {
+        if (numerator <= 0) {
+          a[i+p] = b[i+p];
+        } else if (numerator < denominator) {
+          SFLOAT w = numerator / denominator;  // How far into the fade are we?
+          a[i+p] = b[i+p] * w + ((1.0 - w) * a[i+p]);
+        }
+        numerator--;
+      }
+    }
+    return;
+  }
+
+  env->ThrowError("Dissolve: Wow - this should never happend!");
+
 }
 
 

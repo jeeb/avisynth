@@ -2006,7 +2006,7 @@ PVideoFrame __stdcall Subtract::GetFrame(int n, IScriptEnvironment* env)
   if (vi.IsYV12()) {
     for (int y=0; y<vi.height; y++) {
       for (int x=0; x<row_size; x++) {
-        src1p[x] = (src1p[x] - src2p[x]) + 126;
+        src1p[x] = max(0,min(255,(src1p[x] - src2p[x]) + 126));
       }
       src1p += src1->GetPitch();
       src2p += src2->GetPitch();
@@ -2020,8 +2020,8 @@ PVideoFrame __stdcall Subtract::GetFrame(int n, IScriptEnvironment* env)
 
     for (y=0; y<src1->GetHeight(PLANAR_U); y++) {
       for (int x=0; x<row_size; x++) {
-        src1p[x] = (src1p[x] - src2p[x]) + 128;
-        src1pV[x] = (src1pV[x] - src2pV[x]) + 128;
+        src1p[x] = max(0,min(255,(src1p[x] - src2p[x]) + 128));
+        src1pV[x] = max(0,min(255,(src1pV[x] - src2pV[x]) + 128));
       }
       src1p += src1->GetPitch(PLANAR_U);
       src2p += src2->GetPitch(PLANAR_U);
@@ -2036,12 +2036,12 @@ PVideoFrame __stdcall Subtract::GetFrame(int n, IScriptEnvironment* env)
     // For YUY2, 50% gray is about (126,128,128) instead of (128,128,128).  Grr...
     if (vi.IsYUY2()) {
       for (int x=0; x<row_size; x+=2) {
-        src1p[x] = src1p[x] - src2p[x] + 126;
-        src1p[x+1] = src1p[x+1] - src2p[x+1] + 128;
+        src1p[x] = max(0,min(255,src1p[x] - src2p[x] + 126));
+        src1p[x+1] = max(0,min(255,src1p[x+1] - src2p[x+1] + 128));
       }
     } else {
       for (int x=0; x<row_size; ++x)
-        src1p[x] = src1p[x] - src2p[x] + 128;
+        src1p[x] = max(0,min(255,src1p[x] - src2p[x] + 128));
     }
     src1p += src1->GetPitch();
     src2p += src2->GetPitch();

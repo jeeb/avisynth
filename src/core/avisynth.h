@@ -597,11 +597,13 @@ public:
   static AVSValue __cdecl Create_24bit(AVSValue args, void*, IScriptEnvironment*);
   static AVSValue __cdecl Create_16bit(AVSValue args, void*, IScriptEnvironment*);
   static AVSValue __cdecl Create_8bit(AVSValue args, void*, IScriptEnvironment*);
-  virtual ~ConvertAudio()
-  {if (tempbuffer_size) {delete[] tempbuffer;tempbuffer_size=0;}}
+  virtual ~ConvertAudio();
+
 private:
   void convertToFloat(char* inbuf, float* outbuf, char sample_type, int count);
+  void convertToFloat_3DN(char* inbuf, float* outbuf, char sample_type, int count);
   void convertFromFloat(float* inbuf, void* outbuf, char sample_type, int count);
+  void convertFromFloat_3DN(float* inbuf, void* outbuf, char sample_type, int count);
 
   __inline int Saturate_int8(float n);
   __inline short Saturate_int16(float n);
