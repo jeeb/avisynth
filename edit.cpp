@@ -221,19 +221,32 @@ Splice::Splice(PClip _child1, PClip _child2, bool realign_sound, IScriptEnvironm
   if (vi.HasAudio() ^ vi2.HasAudio())
     env->ThrowError("Splice: one clip has audio and the other doesn't (not allowed)");
 
-  // If sample types do not match they are both converted to float samples to avoid loss of precision.
-  child2 = ConvertAudio::Create(child2,vi.SampleType(),SAMPLE_FLOAT);  // Clip 2 should now be same type as clip 1.
-  child = ConvertAudio::Create(child,vi2.SampleType(),vi2.SampleType());  // Clip 1 should now be same type as clip 2. 
 
+  // Check video
   if (vi.HasVideo()) {
     if (vi.width != vi2.width || vi.height != vi2.height)
-      env->ThrowError("Splice: frame sizes don't match");
-    if ((vi.pixel_type != vi2.pixel_type) && (!(vi.IsYV12() && vi2.IsYV12())))  // Fix for I420.
-      env->ThrowError("Splice: video formats don't match");
+      env->ThrowError("Splice: Frame sizes don't match");
+
+    if (!vi.IsSameColorspace(vi2))  
+      env->ThrowError("Splice: Video formats don't match");
+
+    double fps_v1 = (double)vi.fps_numerator / (double)vi.fps_denominator;
+    double fps_v2 = (double)vi2.fps_numerator / (double)vi2.fps_denominator;
+    if (fabs(fps_v1-fps_v2) > 0.000001)
+      env->ThrowError("Splice: Video framerate doesn't match");
   }
+
+  // Check Audio
   if (vi.HasAudio()) {
+    // If sample types do not match they are both converted to float samples to avoid loss of precision.
+    child2 = ConvertAudio::Create(child2,vi.SampleType(),SAMPLE_FLOAT);  // Clip 1 is check to be same type as clip 1, if not, convert to float samples.
+    child = ConvertAudio::Create(child,vi2.SampleType(),vi2.SampleType());  // Clip 1 is now be same type as clip 2.
+
     if (vi.AudioChannels() != vi2.AudioChannels())
       env->ThrowError("Splice: sound formats don't match");
+
+    if (vi.SamplesPerSecond() != vi2.SamplesPerSecond())
+      env->ThrowError("Splice: The audio of the two clips have different samplerates! Use ResampleAudio()");
   }
 
   video_switchover_point = vi.num_frames;
