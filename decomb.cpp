@@ -1,5 +1,5 @@
-// Avisynth filter: YUV merge
-// by Klaus Post (kp@interact.dk)
+// Avisynth filter: Decomb
+// by Donald Graft (neuron2@interact.dk)
 // adapted by Richard Berg (avisynth-dev@richardberg.net)
 //
 // Released under the GNU Public License

@@ -1,4 +1,4 @@
-// Avisynth filter: YUV merge
+// Avisynth filter: Telecide
 // by Donald Graft (neuron2@interact.dk)
 // adapted by Richard Berg (avisynth-dev@richardberg.net)
 //
