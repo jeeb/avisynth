@@ -7,12 +7,12 @@
 ;If you choose the alternate icons see the below "or alternate lines"
 
 Name "AviSynth"
-Caption "AviSynth 2.5.0 beta"
+Caption "AviSynth 2.5.1 beta"
 Icon "AviSynth.ico"              ;or alternate16_Avs.ico
 UninstallIcon "Un_AviSynth.ico"  ;or alternate16_UnAvs.ico
 EnabledBitmap "on.bmp"
 DisabledBitmap "off.bmp"
-OutFile "AviSynth_250.exe"
+OutFile "AviSynth_251.exe"
 BrandingText "NSIS"
 InstallColors "C5DEFB" "000000"  ;or alternate "A9A8A9" "444644"
 InstProgressFlags "Colored"

@@ -34,9 +34,10 @@
 
 
 #define INITGUID
+#define FP_STATE 0x9001f
 #include "internal.h"
 #include "audio.h"
-
+#include <float.h>
 
 static long gRefCnt=0;
 
@@ -459,7 +460,10 @@ STDMETHODIMP CAVIFileSynth::Open(LPCSTR szFile, UINT mode, LPCOLESTR lpszFileNam
 }
 
 bool CAVIFileSynth::DelayInit() {
-  if (szScriptName) {
+// _RPT1(0,"Original: 0x%.4x\n", _control87( 0, 0 ) );
+ int fp_state = _control87( 0, 0 );
+ _control87( FP_STATE, 0xffffffff );
+ if (szScriptName) {
     try {
       try {
         // create a script environment and load the script into it
@@ -490,12 +494,22 @@ bool CAVIFileSynth::DelayInit() {
       }
       delete[] szScriptName;
       szScriptName = 0;
+      _clear87();
+      __asm {emms};
+      _control87( fp_state, 0xffffffff );
       return true;
     }
     catch (...) {
+	    _RPT0(0,"DelayInit() caught general exception!\n");
+      _clear87();
+    __asm {emms};
+      _control87( fp_state, 0xffffffff );
       return false;
     }
   } else {
+    _clear87();
+    __asm {emms};
+    _control87( fp_state, 0xffffffff );
     return (env && filter_graph && vi);
   }
 }
@@ -531,7 +545,7 @@ STDMETHODIMP CAVIFileSynth::Info(AVIFILEINFOW *pfi, LONG lSize) {
 	pfi->dwScale				= vi->fps_denominator;
 	pfi->dwLength				= vi->num_frames;
 
-    wcscpy(pfi->szFileType, L"Avisynth");
+  wcscpy(pfi->szFileType, L"Avisynth");
 
 	return S_OK;
 }
@@ -587,6 +601,7 @@ STDMETHODIMP CAVIFileSynth::GetStream(PAVISTREAM *ppStream, DWORD fccType, LONG 
 int __stdcall CAVIFileSynth::GetError(const char** ppszMessage) {
   if (!DelayInit())
     error_msg = "Avisynth: script open failed!";
+
 
   if (ppszMessage)
     *ppszMessage = error_msg;
@@ -701,7 +716,6 @@ STDMETHODIMP_(LONG) CAVIStreamSynth::Info(AVISTREAMINFOW *psi, LONG lSize) {
 
     memset(psi, 0, lSize);
     memcpy(psi, &asi, min(size_t(lSize), sizeof(asi)));
-
 	return 0;
 }
 
@@ -775,6 +789,8 @@ STDMETHODIMP CAVIStreamSynth::Read(LONG lStart, LONG lSamples, LPVOID lpBuffer, 
 
 //  _RPT3(0,"%p->CAVIStreamSynth::Read(%ld samples at %ld)\n", this, lSamples, lStart);
 //  _RPT2(0,"\tbuffer: %ld bytes at %p\n", cbBuffer, lpBuffer);
+  int fp_state = _control87( 0, 0 );
+  _control87( FP_STATE, 0xffffffff );
 
   if (fAudio) {
     if (lSamples == AVISTREAMREAD_CONVENIENT)
@@ -816,9 +832,15 @@ STDMETHODIMP CAVIStreamSynth::Read(LONG lStart, LONG lSamples, LPVOID lpBuffer, 
     }
   }
   catch (...) {
+    _clear87();
+    __asm {emms};
+    _control87( fp_state, 0xffffffff );
     return E_FAIL;
   }
 #endif
+  _clear87();
+    __asm {emms};
+  _control87( fp_state, 0xffffffff );
   return S_OK;
 }
 
@@ -865,7 +887,6 @@ STDMETHODIMP CAVIStreamSynth::ReadFormat(LONG lPos, LPVOID lpFormat, LONG *lpcbF
 //    bi.biSizeImage = bi.biWidth * bi.biHeight * bi.biBitCount / 8;
     memcpy(lpFormat, &bi, min(size_t(*lpcbFormat), sizeof(bi)));
   }
-
   return S_OK;
 }
 

@@ -672,7 +672,7 @@ xloop:
     sub edx,4
     jnz xloop
     add ebx,ecx;
-    dec height
+    dec eax
     jnz yloop
     emms
   }
@@ -700,7 +700,7 @@ xloop:
     sub edx,8
     jnz xloop
     add ebx,ecx;
-    dec height
+    dec eax
     jnz yloop
     emms
   }
