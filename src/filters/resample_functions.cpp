@@ -47,8 +47,7 @@
  ***** Point filter *****
  **************************/
 
-double PointFilter::f(double x)
-{ 
+double PointFilter::f(double x) {
   return 1.0;
 }
 
@@ -57,8 +56,7 @@ double PointFilter::f(double x)
  ***** Triangle filter *****
  **************************/
 
-double TriangleFilter::f(double x)
-{  
+double TriangleFilter::f(double x) {
   x = fabs(x);
   return (x<1.0) ? 1.0-x : 0.0;
 }
@@ -71,8 +69,7 @@ double TriangleFilter::f(double x)
  *** Mitchell-Netravali filter ***
  *********************************/
 
-MitchellNetravaliFilter::MitchellNetravaliFilter (double b=1./3., double c=1./3.) 
-{
+MitchellNetravaliFilter::MitchellNetravaliFilter (double b=1./3., double c=1./3.) {
   p0 = (   6. -  2.*b            ) / 6.;
   p2 = ( -18. + 12.*b +  6.*c    ) / 6.;
   p3 = (  12. -  9.*b -  6.*c    ) / 6.;
@@ -82,10 +79,9 @@ MitchellNetravaliFilter::MitchellNetravaliFilter (double b=1./3., double c=1./3.
   q3 = (      -     b -  6.*c    ) / 6.;
 }
 
-double MitchellNetravaliFilter::f (double x)
-{
-    x = fabs(x);
-    return (x<1) ? (p0+x*x*(p2+x*p3)) : (x<2) ? (q0+x*(q1+x*(q2+x*q3))) : 0.0;
+double MitchellNetravaliFilter::f (double x) {
+  x = fabs(x);
+  return (x<1) ? (p0+x*x*(p2+x*p3)) : (x<2) ? (q0+x*(q1+x*(q2+x*q3))) : 0.0;
 }
 
 
@@ -93,66 +89,50 @@ double MitchellNetravaliFilter::f (double x)
  *** Lanczos3 filter ***
  ***********************/
 
-double Lanczos3Filter::sinc(double value)
-{
-	if (value != 0.0)
-	{
-		value *= M_PI;
-		return sin(value) / value;
-	}
-	else
-	{
-		return 1.0;
-	}
+double Lanczos3Filter::sinc(double value) {
+  if (value != 0.0) {
+    value *= M_PI;
+    return sin(value) / value;
+  } else {
+    return 1.0;
+  }
 }
 
-double Lanczos3Filter::f(double value)
-{
-	if (value < 0.0)
-	{
-		value = -value;
-	}
-	if (value < 3.0)
-	{
-		return (sinc(value) * sinc(value / 3.0));
-	}
-	else
-	{
-		return 0.0;
-	}
+double Lanczos3Filter::f(double value) {
+  if (value < 0.0) {
+    value = -value;
+  }
+
+  if (value < 3.0) {
+    return (sinc(value) * sinc(value / 3.0));
+  } else {
+    return 0.0;
+  }
 }
 
 /***********************
  *** Lanczos4 filter ***
  ***********************/
 
-double Lanczos4Filter::sinc(double value)
-{
-	if (value != 0.0)
-	{
-		value *= M_PI;
-		return sin(value) / value;
-	}
-	else
-	{
-		return 1.0;
-	}
+double Lanczos4Filter::sinc(double value) {
+  if (value != 0.0) {
+    value *= M_PI;
+    return sin(value) / value;
+  } else {
+    return 1.0;
+  }
 }
 
-double Lanczos4Filter::f(double value)
-{
-	if (value < 0.0)
-	{
-		value = -value;
-	}
-	if (value < 4.0)
-	{
-		return (sinc(value) * sinc(value / 4.0));
-	}
-	else
-	{
-		return 0.0;
-	}
+double Lanczos4Filter::f(double value) {
+  if (value < 0.0) {
+    value = -value;
+  }
+
+  if (value < 4.0) {
+    return (sinc(value) * sinc(value / 4.0));
+  } else {
+    return 0.0;
+  }
 }
 
 
@@ -162,7 +142,7 @@ double Lanczos4Filter::f(double value)
 
 int* GetResamplingPatternRGB( int original_width, double subrange_start, double subrange_width,
                               int target_width, ResamplingFunction* func, IScriptEnvironment* env )
-/** 
+/**
   * This function returns a resampling "program" which is interpreted by the 
   * FilteredResize filters.  It handles edge conditions so FilteredResize    
   * doesn't have to.  
@@ -180,6 +160,11 @@ int* GetResamplingPatternRGB( int original_width, double subrange_start, double 
   double pos_step = subrange_width / target_width;
   // the following translates such that the image center remains fixed
   double pos;
+
+  if (original_width <= filter_support) {
+    env->ThrowError("Resize: Source image too small for this resize method");
+  }
+
   if (fir_filter_size == 1) // PointResize
     pos = subrange_start;
   else
@@ -187,26 +172,46 @@ int* GetResamplingPatternRGB( int original_width, double subrange_start, double 
 
   for (int i=0; i<target_width; ++i) {
     int end_pos = int(pos + filter_support);
+
     if (end_pos > original_width-1)
       end_pos = original_width-1;
+
     int start_pos = end_pos - fir_filter_size + 1;
+
     if (start_pos < 0)
       start_pos = 0;
+
     *cur++ = start_pos;
+
     // the following code ensures that the coefficients add to exactly FPScale
     double total = 0.0;
-    for (int j=0; j<fir_filter_size; ++j)
-      total += func->f((start_pos+j - pos) * filter_step);
-//    if (total == 0.0) // Just to be absolutly sure - IanB
-//      env->ThrowError("Resize: Internal error, zero coeff total.");
+
+    // Ensure that we have a valid position
+    double ok_pos = max(0.0,min(original_width - subrange_start,pos));
+
+    for (int j=0; j<fir_filter_size; ++j) {  // Accumulate all coefficients
+      total += func->f((start_pos+j - ok_pos) * filter_step);
+    }
+
+    if (total == 0.0) {
+      // Shouldn't happend for valid positions.
+#ifdef _DEBUG
+      env->ThrowError("Resizer: [Internal Error] Got Zero Coefficient");
+#endif
+      total = 1.0;
+    }
+
     double total2 = 0.0;
+
     for (int k=0; k<fir_filter_size; ++k) {
-      double total3 = total2 + func->f((start_pos+k - pos) * filter_step) / total;
+      double total3 = total2 + func->f((start_pos+k - ok_pos) * filter_step) / total;
       *cur++ = int(total3*FPScale+0.5) - int(total2*FPScale+0.5);
       total2 = total3;
     }
+
     pos += pos_step;
   }
+
   return result;
 }
 
@@ -214,7 +219,7 @@ int* GetResamplingPatternRGB( int original_width, double subrange_start, double 
 int* GetResamplingPatternYUV( int original_width, double subrange_start, double subrange_width,
                               int target_width, ResamplingFunction* func, bool luma, BYTE *temp,
                               IScriptEnvironment* env )
-/** 
+/**
   * Same as with the RGB case, but with special
   * allowances for YUV-MMX code
  **/
@@ -226,8 +231,8 @@ int* GetResamplingPatternYUV( int original_width, double subrange_start, double 
   int fir_fs_mmx = (fir_filter_size / 2) +1;  // number of loops in MMX code
   int target_width_a=(target_width+15)&(~15);
   int* result = luma ?
-    (int*) _aligned_malloc(2*4 + target_width_a*(1+fir_fs_mmx)*8, 64) :
-    (int*) _aligned_malloc(2*4 + target_width_a*(1+fir_filter_size)*8, 64);
+                (int*) _aligned_malloc(2*4 + target_width_a*(1+fir_fs_mmx)*8, 64) :
+                (int*) _aligned_malloc(2*4 + target_width_a*(1+fir_filter_size)*8, 64);
 
   int* cur[2] = { result +2, result +3 };
   *result = luma ? fir_fs_mmx : fir_filter_size;
@@ -235,66 +240,88 @@ int* GetResamplingPatternYUV( int original_width, double subrange_start, double 
   double pos_step = subrange_width / target_width;
   // the following translates such that the image center remains fixed
   double pos;
+
   if (fir_filter_size == 1) // PointResize
     pos = subrange_start;
   else
     pos = subrange_start + ((subrange_width - target_width) / (target_width*2));
 
+  if (original_width <= filter_support) {
+    env->ThrowError("Resize: Source image too small for this resize method");
+  }
+
   for (int i=0; i<target_width_a; ++i) {
     int end_pos = int(pos + filter_support);
-    if (end_pos > original_width-1)
+
+    if (end_pos > original_width-1)  //This will ensure that the filter will not end beyond the end of the line.
       end_pos = original_width-1;
-    int start_pos = end_pos - fir_filter_size + 1;
-    if (start_pos < 0)
+
+    int start_pos = end_pos - fir_filter_size + 1;  // Calculate where to start, so we don't end outside the line.
+
+    if (start_pos < 0)  // Did we get too far back?
       start_pos = 0;
+
     int ii = luma ? i&1 : 0;
-    *(cur[ii]) = luma ?
-      (int)(temp + (start_pos & -2) * 2) :
-      (int)(temp + start_pos * 8);
+
+    *(cur[ii]) = luma ?   // Write offset of first pixel.
+                 (int)(temp + (start_pos & -2) * 2) :
+                 (int)(temp + start_pos * 8);
+
     cur[ii] += 2;
+
     // the following code ensures that the coefficients add to exactly FPScale
     double total = 0.0;
-    for (int j=0; j<fir_filter_size; ++j)
-      total += func->f((start_pos+j - pos) * filter_step);
-//    if (total == 0.0) // Just to be absolutly sure - IanB
-//      env->ThrowError("Resize: Internal error, zero coeff total.");
+
+    // Ensure that we have a valid position
+    double ok_pos = max(0.0,min(original_width - subrange_start,pos));
+
+    for (int j=0; j<fir_filter_size; ++j) {  // Accumulate all coefficients
+      total += func->f((start_pos+j - ok_pos) * filter_step);
+    }
+
+    if (total == 0.0) {
+      // Shouldn't happend for valid positions.
+#ifdef _DEBUG
+      env->ThrowError("Resizer: [Internal Error] Got Zero Coefficient");
+#endif
+      total = 1.0;
+    }
+
     double total2 = 0.0;
     int oldCoeff = 0;
-    for (int k=0; k<fir_filter_size; ++k)
-    {
-      double total3 = total2 + func->f((start_pos+k - pos) * filter_step) / total;
+
+    for (int k=0; k<fir_filter_size; ++k) {
+      double total3 = total2 + func->f((start_pos+k - ok_pos) * filter_step) / total;
       int coeff = int(total3*FPScale+0.5) - int(total2*FPScale+0.5);
       total2 = total3;
-      if (luma)
-      {
-        if ((k + start_pos) & 1)
-        {
+
+      if (luma) {
+        if ((k + start_pos) & 1) {
           *(cur[ii]) = (coeff << 16) + (oldCoeff & 0xFFFF);
           cur[ii] += 2;
-        }
-        else
+        } else
           oldCoeff = coeff;
-      }
-      else
-      {
-        *(cur[0]) = coeff;  cur[0] += 1;
-        *(cur[0]) = coeff;  cur[0] += 1;
+      } else {
+        *(cur[0]) = coeff;
+        cur[0] += 1;
+        *(cur[0]) = coeff;
+        cur[0] += 1;
       }
     }
-    if (luma)
-    {
-      if ((start_pos + fir_filter_size) & 1)
-      {
+
+    if (luma) {
+      if ((start_pos + fir_filter_size) & 1) {
         *(cur[ii]) = 0 + (oldCoeff & 0xFFFF);
         cur[ii] += 2;
-      }
-      else
-      if ((fir_filter_size & 1) == 0)
-      {
-        *(cur[ii]) = 0;  cur[ii] += 2;
-      }
+      } else
+        if ((fir_filter_size & 1) == 0) {
+          *(cur[ii]) = 0;
+          cur[ii] += 2;
+        }
     }
+
     pos += pos_step;
   }
+
   return result;
 }
