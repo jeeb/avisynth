@@ -99,7 +99,7 @@ CreateDirectory  "$SMPROGRAMS\AviSynth 2.5"
   CreateShortCut "$SMPROGRAMS\AviSynth 2.5\License.lnk" "$INSTDIR\GPL.txt"
   CreateShortCut "$SMPROGRAMS\AviSynth 2.5\Plugin Directory.lnk" "$INSTDIR\Plugins"
   WriteINIStr    "$SMPROGRAMS\AviSynth 2.5\AviSynth Online.url" "InternetShortcut" "URL" "http://www.avisynth.org"
-  WriteINIStr    "$SMPROGRAMS\AviSynth 2.5\Download Plugins.url" "InternetShortcut" "URL" "http://www.avisynth.org/index.php?page=Section+3%3A+Filters+and+colorspaces#q3.4"
+  WriteINIStr    "$SMPROGRAMS\AviSynth 2.5\Download Plugins.url" "InternetShortcut" "URL" "http://www.avisynth.org/index.php?page=Section+3%3A+Filters%2C+plugins+and+colorspaces#q3.5"
 
 Delete $INSTDIR\Uninstall.exe 
   WriteUninstaller $INSTDIR\Uninstall.exe
