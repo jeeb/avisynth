@@ -112,4 +112,7 @@ private:
 };
 
 
+string getErrStr(ILenum err);
+
+
 #endif // __Image_Sequence_H__

@@ -46,8 +46,10 @@
 ********************************************************************/
 
 AVSFunction Image_filters[] = {
-  { "ImageWriter", "c[file]s[start]i[end]i[type]s[info]b", ImageWriter::Create }, // clip, base filename, start, end, image format/extension
-  { "ImageReader", "[file]s[start]i[end]i[fps]i[use_devil]b", ImageReader::Create }, // base filename (sprintf-style), start, end, frames per second, default reader to use
+  { "ImageWriter", "c[file]s[start]i[end]i[type]s[info]b", ImageWriter::Create }, 
+    // clip, base filename, start, end, image format/extension
+  { "ImageReader", "[file]s[start]i[end]i[fps]i[use_devil]b", ImageReader::Create }, 
+    // base filename (sprintf-style), start, end, frames per second, default reader to use
   { 0 }
 };
 
@@ -182,7 +184,8 @@ PVideoFrame ImageWriter::GetFrame(int n, IScriptEnvironment* env)
     // Get errors if any
     ILenum err = ilGetError();
     if (err != IL_NO_ERROR)
-      env->ThrowError("ImageWriter: error #%d encountered in DevIL library", err);
+      env->ThrowError("ImageWriter: error '%s' in DevIL library writing file %s", 
+                        getErrStr(err).c_str(), filename.c_str());
     
     // Clean up
     ilDeleteImages(1, &myImage);
@@ -332,7 +335,9 @@ PVideoFrame ImageReader::GetFrame(int n, IScriptEnvironment* env)
     // Get errors if any
     ILenum err = ilGetError();
     if (err != IL_NO_ERROR)
-      env->ThrowError("ImageReader: error #%d encountered in DevIL library", err);
+      env->ThrowError("ImageReader: error '%s' in DevIL library reading file %s", 
+                        getErrStr(err).c_str(), fileName);
+
 
     // Check some parameters
     if ( ilGetInteger(IL_IMAGE_HEIGHT) != height)
@@ -347,10 +352,11 @@ PVideoFrame ImageReader::GetFrame(int n, IScriptEnvironment* env)
       dstPtr += pitch;
     }
 
-    // Get errors if any
+    // Get errors if any    
     err = ilGetError();
     if (err != IL_NO_ERROR)
-      env->ThrowError("ImageWriter: error #%d encountered in DevIL library", err);
+      env->ThrowError("ImageReader: error '%s' in DevIL library reading file %s", 
+                        getErrStr(err).c_str(), fileName);
 
     // Cleanup
     ilDeleteImages(1, &myImage);
@@ -425,3 +431,59 @@ AVSValue __cdecl ImageReader::Create(AVSValue args, void*, IScriptEnvironment* e
   return new ImageReader(args[0].AsString("c:\\"), args[1].AsInt(0), args[2].AsInt(1000), args[3].AsInt(24), 
                          args[4].AsBool(false));
 }
+
+
+string getErrStr(ILenum err)
+{  
+  if (err == IL_INVALID_ENUM)
+    return "Invalid Enum";
+  if (err == IL_OUT_OF_MEMORY)
+    return "Out of memory";
+  if (err == IL_FORMAT_NOT_SUPPORTED)
+    return "Format not supported";
+  if (err == IL_INTERNAL_ERROR)
+    return "Internal error";
+  if (err == IL_INVALID_VALUE)
+    return "Invalid value";
+  if (err == IL_ILLEGAL_OPERATION)
+    return "Illegal operation";
+  if (err == IL_ILLEGAL_FILE_VALUE)
+    return "Illegal file";
+  if (err == IL_INVALID_FILE_HEADER)
+    return "Illegal file header";
+  if (err == IL_COULD_NOT_OPEN_FILE)
+    return "Could not open file";
+  if (err == IL_INVALID_EXTENSION)
+    return "Invalid extension";
+  if (err == IL_FILE_ALREADY_EXISTS)
+    return "File already exists";
+  if (err == IL_OUT_FORMAT_SAME)
+    return "Output format same";
+  if (err == IL_STACK_OVERFLOW)
+    return "Stack overflow";
+  if (err == IL_STACK_UNDERFLOW)
+    return "Stack underflow";
+  if (err == IL_INVALID_CONVERSION)
+    return "Invalid conversion";
+  if (err == IL_BAD_DIMENSIONS)
+    return "Bad dimensions";
+  if (err == IL_FILE_READ_ERROR)
+    return "File read error";
+  if (err == IL_FILE_WRITE_ERROR)
+    return "File write error";
+  if (err == IL_LIB_GIF_ERROR)
+    return "LibGif error";
+  if (err == IL_LIB_JPEG_ERROR)
+    return "LifJpeg error";
+  if (err == IL_LIB_PNG_ERROR)
+    return "LibPng error";
+  if (err == IL_LIB_TIFF_ERROR)
+    return "LibTiff error";
+  if (err == IL_LIB_MNG_ERROR)
+    return "LibMng error";
+  if (err == IL_UNKNOWN_ERROR)
+    return "Unknown error";
+
+  return "Unknown error";
+}
+

@@ -163,8 +163,8 @@ typedef void			ILvoid;
 // IL-specific #define's
 //
 
-#define IL_VERSION_1_6_1					1
-#define IL_VERSION							161
+#define IL_VERSION_1_6_6					1
+#define IL_VERSION							166
 
 
 // Attribute Bits
@@ -397,6 +397,7 @@ typedef void			ILvoid;
 #define IL_IMAGE_OFFX						0x0DFB
 #define IL_IMAGE_OFFY						0x0DFC
 #define IL_IMAGE_CUBEFLAGS					0x0DFD
+#define IL_IMAGE_ORIGIN	    				0x0DFE
 
 
 //
@@ -407,7 +408,7 @@ typedef void			ILvoid;
 #if (_MSC_VER >= 800) || defined(_STDCALL_SUPPORTED) || defined(__BORLANDC__) || defined(__LCC__)
 	#define ILAPIENTRY __stdcall
 	#define IL_PACKSTRUCT
-#elif linux
+#elif defined(linux) || defined(MACOSX)
 	#define ILAPIENTRY
 	#define IL_PACKSTRUCT __attribute__ ((packed))
 #else
@@ -561,6 +562,17 @@ ILAPI ILboolean		ILAPIENTRY ilSaveFromJpegStruct(ILvoid* JpegCompressorPtr);
 // For all those weirdos that spell "colour" without the 'u'.
 #define ilClearColor	ilClearColour
 #define ilKeyColor		ilKeyColour
+
+
+#ifdef ALTIVEC
+    #define imemclear(x,y) vec_memclear(x,y);
+#else
+    #define imemclear(x,y) memset(x,0,y);
+#endif
+    
+#ifdef ALTIVEC
+    void vec_memclear( ILvoid *, ILuint );
+#endif
 
 
 #ifdef __cplusplus
