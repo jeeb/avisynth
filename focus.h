@@ -74,23 +74,29 @@ class TemporalSoften : public GenericVideoFilter
  **/
 {
 public:
-  TemporalSoften( PClip _child, int _radius, unsigned _luma_threshold, unsigned _chroma_threshold, 
+  TemporalSoften( PClip _child, unsigned radius, unsigned luma_thresh, unsigned chroma_thresh,
                   IScriptEnvironment* env );
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
   virtual ~TemporalSoften(void);
-
   static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env);
 
 private:
-  void GoToFrame(int frame, IScriptEnvironment* env);
-
   const unsigned luma_threshold, chroma_threshold;
-  const int radius;
-  PVideoFrame* src;
-  int cur_frame;
-  // "srcp" and "pitch" are temporaries used in GetFrame
-  const BYTE** srcp;
-  int* pitch;  
+  DWORD* accu;
+  const int kernel;
+  int nprev;
+
+  static const short scaletab[];
+  __int64* scaletab_MMX;
+
+  enum { MAX_RADIUS=7 };
+
+  PVideoFrame LoadFrame(int n,int offset, IScriptEnvironment* env);
+  void FillBuffer(int n, int offset, IScriptEnvironment* env);
+
+  typedef void run_func(DWORD *pframe, int rowsize, int height, int modulo, int noffset, int coffset);
+  run_func run_C;
+  run_func run_MMX;
 };
 
 

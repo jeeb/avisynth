@@ -184,95 +184,265 @@ AVSValue __cdecl Create_Blur(AVSValue args, void*, IScriptEnvironment* env)
  ****  TemporalSoften  *****
  **************************/
 
-TemporalSoften::TemporalSoften( PClip _child, int _radius, unsigned _luma_threshold, 
-                                unsigned _chroma_threshold, IScriptEnvironment* env )
- : GenericVideoFilter(_child), radius(_radius), luma_threshold(_luma_threshold), 
-   chroma_threshold(_chroma_threshold), cur_frame(-32768)
+
+#define SCALE(i)    (int)((double)32768.0/(i)+0.5)
+const short TemporalSoften::scaletab[] = {
+  0,
+  32767,     // because of signed MMX multiplications
+  SCALE(2),
+  SCALE(3),
+  SCALE(4),
+  SCALE(5),
+  SCALE(6),
+  SCALE(7),
+  SCALE(8),
+  SCALE(9),
+  SCALE(10),
+  SCALE(11),
+  SCALE(12),
+  SCALE(13),
+  SCALE(14),
+  SCALE(15),
+};
+#undef SCALE
+
+
+
+TemporalSoften::TemporalSoften( PClip _child, unsigned radius, unsigned luma_thresh, 
+                                unsigned chroma_thresh, IScriptEnvironment* env )
+  : GenericVideoFilter  (_child),
+    chroma_threshold    (min(chroma_thresh,255)),
+    luma_threshold      (min(luma_thresh,255)),
+    kernel              (2*min(radius,MAX_RADIUS)+1),
+    scaletab_MMX        (NULL)
 {
   if (!vi.IsYUY2())
     env->ThrowError("TemporalSoften: requires YUY2 input");
 
-  src = new PVideoFrame[radius*2+1] + radius;
-  srcp = new const BYTE*[radius*2+1] + radius;
-  pitch = new int[radius*2+1] + radius;
+  accu = (DWORD*)new DWORD[(vi.width * vi.height * kernel * vi.BytesFromPixels(1)) >> 2];
+  if (!accu)
+    env->ThrowError("TemporalSoften: memory allocation error");
+  memset(accu, 0, vi.width * vi.height * kernel * vi.BytesFromPixels(1));
+
+  nprev = -100;
+
+  if (env->GetCPUFlags() & CPUF_MMX) {
+    scaletab_MMX = new __int64[65536]; 
+    if (!scaletab_MMX) {
+      delete[] accu;
+      env->ThrowError("TemporalSoften: memory allocation error");
+    }
+    for(int i=0; i<65536; i++)
+      scaletab_MMX[i] = ( (__int64) scaletab[ i       & 15]        ) |
+                        (((__int64) scaletab[(i >> 4) & 15]) << 16 ) |
+                        (((__int64) scaletab[(i >> 8) & 15]) << 32 ) |
+                        (((__int64) scaletab[(i >>12) & 15]) << 48 );
+  }
+
 }
+
 
 
 TemporalSoften::~TemporalSoften(void) 
 {
-  delete[] (src - radius);
-  delete[] (srcp - radius);
-  delete[] (pitch - radius);
+  delete[] accu;
+  delete[] scaletab_MMX;
 }
 
-
-void TemporalSoften::GoToFrame(int frame, IScriptEnvironment* env) 
-{
-  _RPT2(0, "GoToFrame: frame=%d  cur_frame=%d\n", frame, cur_frame);
-  const int offset = frame - cur_frame;
-  if (offset >= 0) {
-    int i;
-    for (i = -radius; i <= radius-offset; ++i)
-      src[i] = src[i+offset];
-    for (; i <= radius; ++i)
-      src[i] = 0;
-  } 
-  else {
-    int i;
-    for (i = radius; i >= -radius-offset; --i)
-      src[i] = src[i+offset];
-    for (; i >= -radius; --i)
-      src[i] = 0;
-  }
-  for (int j = -radius; j <= radius; ++j) 
-  {
-    if (!src[j]) 
-    {
-      _RPT1(0, "           reading frame %d\n", j+frame);
-      src[j] = child->GetFrame(j+frame, env);
-    }
-  }
-  cur_frame = frame;
-}
 
 
 PVideoFrame TemporalSoften::GetFrame(int n, IScriptEnvironment* env) 
 {
-  GoToFrame(n, env);
-  for (int j = -radius; j <= radius; ++j) 
-  {
-    srcp[j] = src[j]->GetReadPtr();
-    pitch[j] = src[j]->GetPitch();
-  }
-  PVideoFrame dst = env->NewVideoFrame(vi);
-  int dst_pitch = dst->GetPitch();
-  BYTE* dstp = dst->GetWritePtr();
-  for (int y = 0; y < vi.height; ++y) 
-  {
-    for (int x = 0; x < vi.width*2; x += 2) 
-    {
-      int cnt1=0, cnt2=0, yy=0, uv=0;
-      int YY=srcp[0][x], UV=srcp[0][x+1];
-      for (int a = -radius; a <= radius; ++a) 
-      {
-        if (IsClose(srcp[a][x], YY, luma_threshold)) 
-        {
-          ++cnt1; yy += srcp[a][x];
-        }
-        if (IsClose(srcp[a][x+1], UV, chroma_threshold)) 
-        {
-          ++cnt2; uv += srcp[a][x+1];
-        }
-      }
-      dstp[x+0] = (yy+(cnt1>>1)) / cnt1;
-      dstp[x+1] = (uv+(cnt2>>1)) / cnt2;
-    }
-    for (int a = -radius; a <= radius; ++a)
-      srcp[a] += pitch[a];
-    dstp += dst_pitch;
-  }
-  return dst;
+  int noffset = n % kernel;                             // offset of the frame not yet in the buffer
+  int coffset = (noffset + (kernel / 2) + 1) % kernel;  // center offset, offset of the frame to be returned 
+  
+  if (n != nprev+1)
+    FillBuffer(n, noffset, env);                        // refill buffer in case of non-linear access (slow)
+
+  nprev = n;
+
+  int i = min(n + (kernel/2), vi.num_frames-1);         // do not read past the end
+  PVideoFrame frame = child->GetFrame(i, env);          // get the new frame
+  env->MakeWritable(&frame);
+  DWORD* pframe = (DWORD*)frame->GetWritePtr();
+  const int rowsize = frame->GetRowSize();
+  int height = frame->GetHeight();
+  const int modulo = frame->GetPitch() - rowsize;
+
+  if (env->GetCPUFlags() & CPUF_MMX)
+    run_MMX(pframe, rowsize, height, modulo, noffset, coffset);
+  else
+    run_C(pframe, rowsize, height, modulo, noffset, coffset);
+
+  return frame;
 }
+
+
+
+void TemporalSoften::run_C(DWORD *pframe, int rowsize, int height, int modulo, int noffset, int coffset)
+{
+  DWORD* pbuf = accu;
+  do {
+    int x = rowsize >> 2;
+    do {
+      const DWORD center = pbuf[coffset];
+      const int v  =  center >> 24        ;
+      const int y2 = (center >> 16) & 0xff;
+      const int u  = (center >>  8) & 0xff;
+      const int y1 =  center        & 0xff;
+      unsigned int y1accum = 0, uaccum = 0, y2accum = 0, vaccum = 0;
+      unsigned int county1 = 0, county2 = 0, countu = 0, countv = 0;
+
+      pbuf[noffset] = *pframe;
+    
+      for(int i=0; i<kernel; ++i) {
+        const DWORD c = *pbuf++;
+        const int cv  =  c >> 24        ;
+        const int cy2 = (c >> 16) & 0xff;
+        const int cu  = (c >>  8) & 0xff;
+        const int cy1 =  c        & 0xff;
+      
+        if (IsClose(y1, cy1, luma_threshold  )) { y1accum += cy1; county1++; }
+        if (IsClose(y2, cy2, luma_threshold  )) { y2accum += cy2; county2++; }
+        if (IsClose(u , cu , chroma_threshold)) { uaccum  += cu ; countu++ ; }
+        if (IsClose(v , cv , chroma_threshold)) { vaccum  += cv ; countv++ ; }
+      }
+
+      y1accum = (y1accum * scaletab[county1] + 16384) >> 15;
+      y2accum = (y2accum * scaletab[county2] + 16384) >> 15;
+      uaccum  = (uaccum  * scaletab[countu ] + 16384) >> 15;
+      vaccum  = (vaccum  * scaletab[countv ] + 16384) >> 15;
+
+      *pframe++ = (vaccum<<24) + (y2accum<<16) + (uaccum<<8) + y1accum;
+        
+    } while(--x);
+
+    pframe += modulo >> 2;
+
+  } while(--height);
+}
+
+
+
+void TemporalSoften::run_MMX(DWORD *pframe, int rowsize, int height, int modulo, int noffset, int coffset)
+{
+  noffset <<= 2;
+  coffset <<= 2;
+  const DWORD tresholds = (chroma_threshold << 16) | luma_threshold;
+  DWORD* pbuf = accu;
+  const int kern = kernel;
+  const __int64 counters = (__int64)kern * 0x0001000100010001i64;
+  const int w = rowsize >> 2;
+  const __int64* scaletab = scaletab_MMX;
+  __declspec(align(8)) static const __int64 indexer = 0x1000010000100001i64;
+
+  __asm {
+    mov       esi, pframe
+    mov       edi, pbuf
+    movd      mm5, tresholds
+    punpckldq mm5, mm5
+    pxor      mm0, mm0
+    mov       eax, coffset
+    mov       ebx, noffset
+    mov       esp, scaletab
+
+TS_yloop:
+    mov       ecx, w
+TS_xloop:
+    mov       edx, [esi]          ; get new pixel
+    mov       [edi+ebx], edx      ; put into place
+    pxor      mm6, mm6            ; clear accumulators
+    movd      mm1, [edi+eax]      ; get center pixel
+    punpcklbw mm1, mm0            ; 0 Vc 0 Y2c 0 Uc 0 Y1c
+    add       esi, 4              ; pframe++
+    mov       edx, kern           ; load kernel length
+    movq      mm7, counters       ; initialize counters
+
+TS_timeloop:
+    movd      mm2, [edi]          ; *pbuf: V Y2 U Y1
+    movq      mm3, mm1            ; center pixel
+    punpcklbw mm2, mm0            ; 0 V 0 Y2 0 U 0 Y1
+    movq      mm4, mm2
+    psubusw   mm3, mm2
+    psubusw   mm2, mm1
+    por       mm3, mm2            ; |V-Vc| |Y2-Y2c| |U-Uc| |Y1-Y1c|
+    pcmpgtw   mm3, mm5
+    add       edi, 4
+    paddw     mm7, mm3            ; -1 to counter if above treshold
+    pandn     mm3, mm4            ; else add to accumulators
+    paddw     mm6, mm3
+    dec       edx
+    jne       TS_timeloop         ; kernel times
+
+    psllw     mm6, 1              ; accum *= 2
+    paddw     mm6, mm7            ; accum += count  (for rounding)
+
+    ; construct 16 bits index
+    ; mm7 = count3 count2 count1 count0 (words, each count<=15)
+    pmaddwd   mm7, indexer
+    movq      mm2, mm7
+    punpckhdq mm7, mm7
+    paddd     mm2, mm7
+    movd      edx, mm2
+
+    ; index = edx = count0+16*(count1+16*(count2+16*count3))
+
+    movq      mm7, [esp+edx*8]
+    pmulhw    mm6, mm7
+    packuswb  mm6, mm6
+    dec       ecx
+    movd      [esi-4], mm6        ; store output pixel
+    jne       TS_xloop
+
+    add       esi, modulo         ; skip to next scanline
+
+    dec       height              ; yloop (height)
+    jne       TS_yloop
+
+    emms
+  };
+}
+
+
+
+PVideoFrame TemporalSoften::LoadFrame(int n, int offset, IScriptEnvironment* env)
+/**
+  * Get a frame from child and put it at the specified offset in the interleaved buffer
+ **/
+{
+  int m=min(max(n,0),vi.num_frames-1);
+
+  const PVideoFrame frame = child->GetFrame(m, env);
+  const BYTE* srcp = frame->GetReadPtr();
+  const int pitch = frame->GetPitch();
+  const int width = frame->GetRowSize() >> 2;
+  const int height = frame->GetHeight();
+  
+  DWORD* accum = accu + offset;
+
+  for (int y = 0; y < height; y++) {
+    for (int x = 0; x < width; x++, accum += kernel)
+      *accum = ((DWORD*)srcp)[x];
+      srcp += pitch;
+  }
+
+  return frame;
+}
+
+
+
+void TemporalSoften::FillBuffer(int n, int offset, IScriptEnvironment* env)
+/**
+  * (re)initialize the interleaved buffer with necessary frames
+ **/ 
+{
+  for (int i = 1; i < kernel; i++) {
+    int numframe = n - (kernel / 2) - 1 + i;
+    int pos = (i + offset) % kernel;
+    LoadFrame(numframe, pos, env);
+  }
+}
+
 
 
 AVSValue __cdecl TemporalSoften::Create(AVSValue args, void*, IScriptEnvironment* env) 
@@ -288,7 +458,7 @@ AVSValue __cdecl TemporalSoften::Create(AVSValue args, void*, IScriptEnvironment
 
 
 /****************************
- ****  Spacial Soften   *****
+ ****  Spatial Soften   *****
  ***************************/
 
 SpatialSoften::SpatialSoften( PClip _child, int _radius, unsigned _luma_threshold, 
@@ -333,7 +503,7 @@ PVideoFrame SpatialSoften::GetFrame(int n, IScriptEnvironment* env)
         {
           int xw = (x+w) | 3;
           if (IsClose(line[h][x+w], Y, luma_threshold) && IsClose(line[h][xw-2], U,
-			                chroma_threshold) && IsClose(line[h][xw], V, chroma_threshold)) 
+                      chroma_threshold) && IsClose(line[h][xw], V, chroma_threshold)) 
           {
             ++cnt; _y += line[h][x+w]; _u += line[h][xw-2]; _v += line[h][xw];
           }
