@@ -54,12 +54,17 @@ void OL_MultiplyImage::BlendImageMask(Image444* base, Image444* overlay, Image44
   if (opacity == 256) {
     for (int y = 0; y < h; y++) {
       for (int x = 0; x < w; x++) {
-        int op = min(256, (256-maskY[x]));
-        int Y = (baseY[x] * op * ovY[x])>>16;
-        int mU = min(256, (256-maskU[x]));
-        int mV = min(256, (256-maskV[x]));
-        int U = ((baseU[x] * mU) + (127*(256-mU)))>>8;
-        int V = ((baseV[x] * mV) + (127*(256-mU)))>>8;
+        int op = maskY[x];
+        int invop = 256 - op;
+        int Y = (baseY[x] * (256*invop + (ovY[x] * op))) >> 16;
+
+        op = maskU[x];
+        invop = 256 - op;
+        int U = ((baseU[x] * invop * 256)  + (op * (baseU[x] * ovY[x] + 128 * (256-ovY[x])))) >> 16;
+
+        op = maskV[x];
+        invop = 256-op;
+        int V = ((baseV[x] * invop * 256)  + (op * (baseV[x] * ovY[x] + 128 * (256-ovY[x])))) >> 16;
 
         baseU[x] = (BYTE)U;
         baseV[x] = (BYTE)V;
@@ -81,12 +86,17 @@ void OL_MultiplyImage::BlendImageMask(Image444* base, Image444* overlay, Image44
   } else {
     for (int y = 0; y < h; y++) {
       for (int x = 0; x < w; x++) {
-        int op = min(256, (256-maskY[x]) + inv_opacity);
-        int Y = (baseY[x] * op * ovY[x])>>16;
-        int mU = min(256, (256-maskU[x]) + inv_opacity);
-        int mV = min(256, (256-maskV[x]) + inv_opacity);
-        int U = ((baseU[x] * mU) + (127*(256-mU)))>>8;
-        int V = ((baseV[x] * mV) + (127*(256-mU)))>>8;
+        int op = (maskY[x]*opacity)>>8;
+        int invop = 256 - op;
+        int Y = (baseY[x] * (256*invop + (ovY[x] * op))) >> 16;
+
+        op = (maskU[x]*opacity)>>8;
+        invop = 256 - op;
+        int U = ((baseU[x] * invop * 256)  + (op * (baseU[x] * ovY[x] + 128 * (256-ovY[x])))) >> 16;
+
+        op = (maskV[x]*opacity)>>8;
+        invop = 256-op;
+        int V = ((baseV[x] * invop * 256)  + (op * (baseV[x] * ovY[x] + 128 * (256-ovY[x])))) >> 16;
 
         baseU[x] = (BYTE)U;
         baseV[x] = (BYTE)V;
@@ -123,9 +133,12 @@ void OL_MultiplyImage::BlendImage(Image444* base, Image444* overlay) {
   if (opacity == 256) {
     for (int y = 0; y < h; y++) {
       for (int x = 0; x < w; x++) {
-        baseY[x] = 0;
-        baseU[x] = 127;
-        baseV[x] = 127;
+        int Y = (baseY[x] * ovY[x])>>8;
+        int U = (baseU[x] * ovY[x] + 128 * (256-ovY[x]) ) >> 8;
+        int V = (baseV[x] * ovY[x] + 128 * (256-ovY[x]) ) >> 8;
+        baseY[x] = Y;
+        baseU[x] = U;
+        baseV[x] = V;
       }
       baseY += base->pitch;
       baseU += base->pitch;
@@ -139,9 +152,11 @@ void OL_MultiplyImage::BlendImage(Image444* base, Image444* overlay) {
   } else {
     for (int y = 0; y < h; y++) {
       for (int x = 0; x < w; x++) {
-        int Y = (baseY[x] * inv_opacity * ovY[x])>>16;
-        int U = ((baseU[x]*inv_opacity)+(127*opacity))>>8;
-        int V = ((baseV[x]*inv_opacity)+(127*opacity))>>8;
+
+        int Y = (baseY[x] * (256*inv_opacity + (ovY[x] * opacity))) >> 16;        
+        int U = ((baseU[x] * inv_opacity * 256)  + (opacity * (baseU[x] * ovY[x] + 128 * (256-ovY[x])))) >> 16;
+        int V = ((baseV[x] * inv_opacity * 256)  + (opacity * (baseV[x] * ovY[x] + 128 * (256-ovY[x])))) >> 16;
+
         baseU[x] = (BYTE)U;
         baseV[x] = (BYTE)V;
         baseY[x] = (BYTE)Y;
