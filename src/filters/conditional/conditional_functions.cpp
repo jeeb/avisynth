@@ -261,7 +261,7 @@ AVSValue ComparePlane::CmpPlane(AVSValue clip, AVSValue clip2, void* user_data, 
 			env->ThrowError("Compare Plane: This filter can only be used within ConditionalFilter");
 
 		int n = cn.AsInt();
-		n = min(max(n,0),vi.num_frames);
+		n = min(max(n,0),vi.num_frames-1);
 
 		PVideoFrame src = child->GetFrame(n,env);
 		PVideoFrame src2 = child2->GetFrame(n,env);
@@ -318,7 +318,7 @@ AVSValue ComparePlane::CmpPlaneSame(AVSValue clip, void* user_data, int offset, 
 
 		int n = cn.AsInt();
 		n = min(max(n,0),vi.num_frames);
-		int n2 = min(max(n+offset,1),vi.num_frames);
+		int n2 = min(max(n+offset,0),vi.num_frames-1);
 
 		PVideoFrame src = child->GetFrame(n,env);
 		PVideoFrame src2 = child->GetFrame(n2,env);
