@@ -518,18 +518,22 @@ SOURCE=.\merge.h
 # Begin Source File
 
 SOURCE=.\scene_change.cpp
+# PROP Exclude_From_Build 1
 # End Source File
 # Begin Source File
 
 SOURCE=.\scene_change.h
+# PROP Exclude_From_Build 1
 # End Source File
 # Begin Source File
 
 SOURCE=.\tempsmoother.cpp
+# PROP Exclude_From_Build 1
 # End Source File
 # Begin Source File
 
 SOURCE=.\tempsmoother.h
+# PROP Exclude_From_Build 1
 # End Source File
 # End Group
 # End Group
