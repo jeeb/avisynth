@@ -738,6 +738,9 @@ TemporalSoften::TemporalSoften( PClip _child, unsigned radius, unsigned luma_thr
     env->ThrowError("TemporalSoften: Mode must be 1 or 2.");
   }
 
+  if (scenechange >= 255) {
+    scenechange = 0;
+  }
   if (scenechange>0) {
     if (!(env->GetCPUFlags() & CPUF_INTEGER_SSE))
       env->ThrowError("TemporalSoften: Scenechange requires Integer SSE capable CPU.");
@@ -834,10 +837,8 @@ PVideoFrame TemporalSoften::GetFrame(int n, IScriptEnvironment* env)
         if ((!skiprest) && (!planeDisabled[i])) {
           int scenevalues = isse_scenechange(c_plane, planeP[i], h, frames[radius]->GetRowSize(planes[c]), pitch, planePitch[i]);
           if (scenevalues < scenechange) {
-            if (scenevalues)  { // If not completely the same
-              planePitch2[d2] =  planePitch[i];
-              planeP2[d2++] = planeP[i]; 
-            }
+            planePitch2[d2] =  planePitch[i];
+            planeP2[d2++] = planeP[i]; 
           } else {
             skiprest = true;
           }
@@ -851,10 +852,8 @@ PVideoFrame TemporalSoften::GetFrame(int n, IScriptEnvironment* env)
         if ((!skiprest)  && (!planeDisabled[i+radius]) ) {   // Disable this frame on next plane (so that Y can affect UV)
           int scenevalues = isse_scenechange(c_plane, planeP[i+radius], h, frames[radius]->GetRowSize(planes[c]), pitch,  planePitch[i+radius]);
           if (scenevalues < scenechange) {
-            if (scenevalues) { // If not completely the same
-              planePitch2[d2] =  planePitch[i+radius];
-              planeP2[d2++] = planeP[i+radius];
-            }
+            planePitch2[d2] =  planePitch[i+radius];
+            planeP2[d2++] = planeP[i+radius];
           } else {
             skiprest = true;
           }

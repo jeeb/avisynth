@@ -54,6 +54,12 @@ void OL_BlendImage::BlendImageMask(Image444* base, Image444* overlay, Image444* 
   int h = base->h();
 
   if (opacity == 256) {
+  if (!(w&7)) {
+    MMerge_MMX(baseY, ovY, maskY, base->pitch, overlay->pitch, mask->pitch, w, h);
+    MMerge_MMX(baseU, ovU, maskU, base->pitch, overlay->pitch, mask->pitch, w, h);
+    MMerge_MMX(baseV, ovV, maskV, base->pitch, overlay->pitch, mask->pitch, w, h);
+    return;
+  }
     for (int y = 0; y < h; y++) {
       for (int x = 0; x < w; x++) {
         baseY[x] = (BYTE)(((baseY[x]*(256-maskY[x])) + (ovY[x]*maskY[x]+128))>>8);

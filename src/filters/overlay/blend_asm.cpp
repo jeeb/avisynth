@@ -53,7 +53,7 @@
 
 void mmx_weigh_planar(BYTE *p1, const BYTE *p2, int p1_pitch, int p2_pitch,int rowsize, int height, int weight, int invweight) {
   __int64 weight64  = (__int64)weight | (((__int64)invweight)<<16) | (((__int64)weight)<<32) |(((__int64)invweight)<<48);
-	__int64 rounder = 0x0000400000004000;		// (0.5)<<15 in each dword
+  __int64 rounder = 0x0000400000004000;   // (0.5)<<15 in each dword
 
   __asm {
       movq mm5,[rounder]
@@ -108,4 +108,74 @@ outy:
   } // end asm
 }
 
+// From MaskedMerge - Weighed merge of video planes depending on masks
+// MaskedMerge (C) 2003 Kurosu (kurosu@inforezo.org)
 
+void MMerge_MMX(unsigned char *dstp, const unsigned char *srcp,
+        const unsigned char *maskp, const int dst_pitch, const int src_pitch,
+        const int mask_pitch, const int row_size, const int height)
+{
+  static const __int64 Addi = 0x0080008000800080i64;
+
+  __asm {
+    mov     eax,[dstp]
+    mov     ebx,[srcp]
+    mov     ecx,[maskp]
+    mov     edx,[row_size]
+    mov     edi,0
+    mov     esi,[height]
+    movq    mm7,[Addi]   // sh0dan: Stored in register to avoid having to read from cache.
+    pxor    mm6, mm6
+    align 16
+loopx:
+    movq    mm0, [eax+edi]
+     movq    mm1, [ebx+edi]
+    movq    mm2, [ecx+edi]
+     movq    mm3, mm0
+    movq    mm4, mm1
+     movq    mm5, mm2  // sh0dan: No longer loading & unpacking the same data.
+
+    punpcklbw mm0, mm6
+     punpcklbw   mm1, mm6
+    punpcklbw mm2, mm6
+     punpckhbw   mm3, mm6
+    punpckhbw mm4, mm6
+     punpckhbw   mm5, mm6
+
+    psubw   mm1, mm0
+     psubw     mm4, mm3
+
+    pmullw    mm1, mm2
+     pmullw    mm4, mm5
+
+    psllw   mm0, 8
+     psllw     mm3, 8
+
+    pxor    mm0, mm7
+     pxor    mm3, mm7
+
+    paddw   mm0, mm1
+     paddw     mm3, mm4
+
+    psrlw   mm0, 8
+     psrlw     mm3, 8
+
+    packuswb  mm0, mm3
+
+    movq    [eax+edi],mm0
+
+    add     edi,8
+    cmp     edi,edx
+    jl      loopx
+
+    mov     edi,0
+    add     eax,[dst_pitch]
+    add     ebx,[src_pitch]
+    add     ecx,[mask_pitch]
+    dec     esi
+
+    jnz     loopx
+
+    emms
+  }
+}

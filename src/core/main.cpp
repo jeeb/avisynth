@@ -473,8 +473,8 @@ bool CAVIFileSynth::DelayInit() {
  int fp_state = _control87( 0, 0 );
  _control87( FP_STATE, 0xffffffff );
  if (szScriptName) {
-#ifndef _DEBUG
     try {
+#ifndef _DEBUG
       try {
 #endif
         // create a script environment and load the script into it
@@ -495,7 +495,7 @@ bool CAVIFileSynth::DelayInit() {
           throw AvisynthError("Avisynth error: YV12 images for output must have a width divisible by 4 (use crop)!");
         if (vi->IsYUY2()&&(vi->width&3))
           throw AvisynthError("Avisynth error: YUY2 images for output must have a width divisible by 4 (use crop)!");
-#ifndef _DEBUG
+//#ifndef _DEBUG
       }
       catch (AvisynthError error) {
         error_msg = error.msg;
@@ -508,8 +508,9 @@ bool CAVIFileSynth::DelayInit() {
           filter_graph = 0;
         }
       }
-#endif
-      delete[] szScriptName;
+//#endif
+      if (szScriptName)
+        delete[] szScriptName;
       szScriptName = 0;
       _clear87();
       __asm {emms};
