@@ -31,7 +31,7 @@ AVSFunction Layer_filters[] = {
   { "ColorKeyMask", "cii", ColorKeyMask::Create },    // clip, color, tolerance
   { "Layer", "cc[op]s[level]i[x]i[y]i[threshold]i[use_chroma]b", Layer::Create },
   /**
-    * Layer(clip, overlayclip, amount, xpos, ypos, [threshold=0], [use_chroma=true])
+    * Layer(clip, overlayclip, operation, amount, xpos, ypos, [threshold=0], [use_chroma=true])
    **/     
   { "Subtract", "cc", Subtract::Create },
   { 0,0,0 }
@@ -241,6 +241,7 @@ not_odd:
       add       esi, pitch
       dec       edx
       jnz       yloop
+      emms
     }
   }
 
@@ -274,8 +275,8 @@ Layer::Layer( PClip _child1, PClip _child2, const char _op[], int _lev, int _x, 
     if (vi1.pixel_type != vi2.pixel_type)
       env->ThrowError("Layer: image formats don't match");
 
-	if (! (vi1.IsRGB32() | vi1.IsYUV()) ) 
-		env->ThrowError("Layer only support RGB32 and YUV formats");
+	if (! (vi1.IsRGB32() | vi1.IsYUY2()) ) 
+		env->ThrowError("Layer only support RGB32 and YUY2 formats");
 
   vi = vi1;
 
@@ -290,6 +291,11 @@ Layer::Layer( PClip _child1, PClip _child2, const char _op[], int _lev, int _x, 
 
 	xcount = (vi.width < (ofsX + vi2.width))? (vi.width-xdest) : (vi2.width - xsrc);
 	ycount = (vi.height <  (ofsY + vi2.height))? (vi.height-ydest) : (vi2.height - ysrc);
+
+  if (!( !lstrcmpi(Op, "Mul") || !lstrcmpi(Op, "Add") || !lstrcmpi(Op, "Fast") || 
+         !lstrcmpi(Op, "Subtract") || !lstrcmpi(Op, "Add") || !lstrcmpi(Op, "Lighten") ||
+         !lstrcmpi(Op, "Darken") ))
+    env->ThrowError("Layer supports the following ops: Fast, Lighten, Darken, Add, Subtract, Mul");
 
   overlay_frames = vi2.num_frames;
 }
@@ -318,7 +324,7 @@ PVideoFrame __stdcall Layer::GetFrame(int n, IScriptEnvironment* env)
 		__declspec(align(8)) static __int64 ox7f7f7f7f7f7f7f7f=0x7f7f7f7f7f7f7f7f;  // FAST shift mask
 		__declspec(align(8)) static __int64	 ox0101010101010101=0x0101010101010101;// FAST lsb mask
 
-	if(vi.IsYUV()){
+	if(vi.IsYUY2()){
 
 		BYTE* src1p = src1->GetWritePtr();
 		const BYTE* src2p = src2->GetReadPtr();
