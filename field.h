@@ -41,6 +41,23 @@ public:
 };
 
 
+class AssumeParity : public GenericVideoFilter
+/**
+  * Class to assume field precedence
+ **/
+{
+public:
+  AssumeParity(PClip _child, bool _parity) : GenericVideoFilter(_child), parity(_parity) {}
+  inline bool __stdcall GetParity(int n)
+    { return parity ^ (vi.field_based && (n & 1)); }
+
+	inline static AVSValue __cdecl Create(AVSValue args, void* user_data, IScriptEnvironment* env)
+		{ return new AssumeParity(args[0].AsClip(), user_data!=0); }
+
+private:
+	bool parity;
+};
+
 class AssumeFieldBased : public GenericVideoFilter 
 /**
   * Class to assume field-based video

@@ -29,6 +29,8 @@
 
 AVSFunction Field_filters[] = {
   { "ComplementParity", "c", ComplementParity::Create },
+  { "AssumeTFF", "c", AssumeParity::Create, (void*)true },
+  { "AssumeBFF", "c", AssumeParity::Create, (void*)false },
   { "AssumeFieldBased", "c", AssumeFieldBased::Create },
   { "AssumeFrameBased", "c", AssumeFrameBased::Create },
   { "SeparateFields", "c", SeparateFields::Create },
