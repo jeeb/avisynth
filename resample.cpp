@@ -96,19 +96,321 @@ FilteredResizeH::FilteredResizeH( PClip _child, double subrange_left, double sub
   else
     pattern_luma = GetResamplingPatternRGB(vi.width, subrange_left, subrange_width, target_width, func);
   vi.width = target_width;
+  assemblerY = GenerateResizer(PLANAR_Y, env);
+  assemblerUV = GenerateResizer(PLANAR_U, env);
 }
+
+/***********************************
+ * Dynamically Assembled Resampler
+ *
+ * (c) 2003, Klaus Post
+ *
+ * Dynamic version of the Horizontal resizer
+ *
+ * The Algorithm is the same, except this
+ *  one is able to process 6 pixels in parallel.
+ * The inner loop filter is unrolled based on the
+ *  exact filter size.
+ * Too much code to workaround for the 6 pixels, and
+ *  still not quite perfect. Though still faster than
+ *  the original code.
+ **********************************/
+
+
+
+DynamicAssembledCode FilteredResizeH::GenerateResizer(int gen_plane, IScriptEnvironment* env) {
+  __declspec(align(8))static const __int64 FPround = 0x0000200000002000; // 16384/2  
+  __declspec(align(8)) static const __int64 Mask1 =  0x00000000ffff0000;
+  __declspec(align(8)) static const __int64 Mask3 =  0x000000000000ffff;
+  
+  Assembler x86;   // This is the class that assembles the code.
+
+  // Set up variables for this plane.
+  int vi_height = (gen_plane == PLANAR_Y) ? vi.height : (vi.height/2);
+  int vi_dst_width = (gen_plane == PLANAR_Y) ? vi.width : (vi.width/2);
+  int vi_src_width = (gen_plane == PLANAR_Y) ? original_width : (original_width/2);
+
+  int mod16_w = ((vi_src_width)/16);  // Src size!
+  int mod16_remain = (3+vi_src_width-(mod16_w*16))/4;  //Src size!
+
+
+  bool isse = !!(env->GetCPUFlags() & CPUF_INTEGER_SSE);
+
+  //  isse=false;   // Manually disable ISSE
+
+  int prefetchevery = 2;
+  if ((env->GetCPUFlags() & CPUF_3DNOW_EXT)||((env->GetCPUFlags() & CPUF_SSE2))) {
+    // We have either an Athlon or a P4 with 64byte cacheline
+    prefetchevery = 4;
+  }
+
+  bool avoid_stlf = false;
+  if (env->GetCPUFlags() & CPUF_3DNOW_EXT) {
+    // We have an Athlon.
+    // Avoid Store->Load forward penalty (8 to 4 mismatch)
+    // NOT faster on Athlon!
+    avoid_stlf = false;
+  }
+
+  int* array = (gen_plane == PLANAR_Y) ? pattern_luma : pattern_chroma;
+  int fir_filter_size = array[0];
+  int filter_offset=fir_filter_size*8+8;  // This is the length from one pixel pair to another
+  int* cur_luma = array+2;
+
+  if (true) {
+    // Store registers
+    x86.push(eax);
+    x86.push(ebx);
+    x86.push(ecx);
+    x86.push(edx);
+    x86.push(esi);
+    x86.push(edi);
+    x86.push(ebp);
+
+    // Initialize registers.
+    x86.mov(eax,(int)&FPround);
+    x86.movq(mm7,eax);  // Rounder for final division. Not touched!
+    x86.pxor(mm6,mm6);  // Cleared mmx register - Not touched!
+    
+    x86.mov(dword_ptr [&gen_h],vi_height);  // This is our y counter.
+
+    x86.label("yloop");
+
+    x86.mov(eax,dword_ptr [&gen_dstp]);
+    x86.mov(dword_ptr [&gen_temp_destp],eax);
+   
+    x86.mov(dword_ptr [&gen_x],(1+vi_dst_width)/6);
+    x86.mov(edi, dword_ptr[&tempY]);
+    x86.mov(esi, dword_ptr[&gen_srcp]);
+    for (int i=0;i<mod16_w;i++) {
+      if ((!(i%prefetchevery)) && (i*16+256<vi_src_width) && isse) {
+         //Prefetch only once per cache line
+       x86.prefetchnta(dword_ptr [esi+256]);
+      }
+      x86.movq(mm0,esi);        // Move pixels into mmx-registers
+       x86.movq(mm1,esi+8);
+      x86.movq(mm2,mm0);
+       x86.movq(mm3,mm1);
+      x86.punpcklbw(mm0,mm6);     // Unpack bytes -> words
+       x86.punpcklbw(mm1,mm6);
+      x86.punpckhbw(mm2,mm6);
+       x86.punpckhbw(mm3,mm6);
+      if ((!avoid_stlf) || (!isse)) {          
+        x86.movq(edi,mm0);        // Store pixels in temporary space.
+        x86.movq(edi+8,mm2);
+        x86.movq(edi+16,mm1);
+        x86.movq(edi+24,mm3);
+      } else {  // Code to avoid store->load forward size mismatch.
+        x86.movd(dword_ptr [edi],mm0);
+        x86.movd(dword_ptr [edi+8],mm2);
+        x86.movd(dword_ptr [edi+16],mm1);
+        x86.movd(dword_ptr [edi+24],mm3);
+        x86.pswapd(mm0,mm0);
+        x86.pswapd(mm1,mm1);
+        x86.pswapd(mm2,mm2);
+        x86.pswapd(mm3,mm3);
+        x86.movd(dword_ptr [edi+4],mm0);
+        x86.movd(dword_ptr [edi+8+4],mm2);
+        x86.movd(dword_ptr [edi+16+4],mm1);
+        x86.movd(dword_ptr [edi+24+4],mm3);
+      }
+      x86.add(esi,16);
+      x86.add(edi,32);
+    }
+    for (i=0;i<mod16_remain;i++) {
+      x86.movd(mm0,dword_ptr [esi+(i*4)]);
+      x86.punpcklbw(mm0,mm6);
+      x86.movq(edi+(i*8),mm0);
+    }
+
+    x86.mov(edi, (int)cur_luma);  // First there are offsets into the tempY planes, defining where the filter starts
+                                  // After that there is (filter_size) constants for multiplying.
+                                  // Next pixel pair is put after (filter_offset) bytes.
+
+    x86.align(16);
+    x86.label("xloop");
+    x86.mov(eax,dword_ptr [edi]);   // Move pointers of first pixel pair into registers
+    x86.mov(ebx,dword_ptr [edi+4]);
+    x86.mov(ecx,dword_ptr [edi+filter_offset]);     // Move pointers of next pixel pair into registers
+    x86.mov(edx,dword_ptr [edi+filter_offset+4]);
+    x86.mov(esi,dword_ptr [edi+(filter_offset*2)]);   // Move pointers of next pixel pair into registers
+    x86.mov(ebp,dword_ptr [edi+(filter_offset*2)+4]);
+    x86.pxor(mm3,mm3);
+    x86.pxor(mm5,mm5);
+    x86.pxor(mm4,mm4);
+    x86.add(edi,8); // cur_luma++
+
+    for (i=0;i<fir_filter_size;i++) {       // Unroll filter inner loop based on the filter size.
+        x86.movd(mm0, dword_ptr [eax+i*4]);
+        x86.movd(mm1, dword_ptr [ecx+i*4]);
+        x86.punpckldq(mm0, ebx+i*4);
+        x86.punpckldq(mm1, edx+i*4);
+        x86.pmaddwd(mm0,edi+i*8);
+        x86.movd(mm2, dword_ptr [esi+i*4]);
+        x86.pmaddwd(mm1,edi+filter_offset+(i*8));
+        x86.punpckldq(mm2, ebp+i*4);
+        x86.paddd(mm3, mm0);
+        x86.pmaddwd(mm2,edi+(filter_offset*2)+(i*8));
+        x86.paddd(mm4, mm1);
+        x86.paddd(mm5, mm2);
+    }
+    x86.paddd(mm3,mm7);
+     x86.paddd(mm4,mm7);
+    x86.psrld(mm3,14);
+     x86.paddd(mm5,mm7);
+    x86.psrld(mm4,14);
+     x86.mov(eax,dword_ptr[&gen_temp_destp]);
+    x86.psrld(mm5,14);
+    if (isse) {
+        x86.pshufw(mm3,mm3,(char)248);      // 11111000
+         x86.pshufw(mm4,mm4,(char)143);     // 10001111
+        x86.pshufw(mm5,mm5,(char)248);
+         x86.packuswb(mm3, mm3); 
+        x86.packuswb(mm4, mm4);
+         x86.packuswb(mm5, mm5);
+        x86.por(mm3,mm4);
+    } else {
+        x86.packuswb(mm4, mm6);
+        x86.packuswb(mm3, mm6);
+        x86.packuswb(mm4, mm6);
+        x86.packuswb(mm5, mm6);
+        x86.packuswb(mm3, mm6);
+        x86.psllq(mm4, 16);
+        x86.packuswb(mm5, mm6);
+        x86.por(mm3,mm4);
+    }
+    x86.movd(dword_ptr[eax],mm3);  // Optme: Unaligned every second pixel
+    x86.movd(dword_ptr[eax+4],mm5);   // This is a potential 2 byte overwrite!
+    x86.add(dword_ptr [&gen_temp_destp],6);
+    x86.add(edi,filter_offset*3-8);
+    x86.dec(dword_ptr [&gen_x]);
+    x86.jnz("xloop");
+
+    // Process any remaining pixels
+
+//      if (gen_plane != PLANAR_Y) x86.int3();
+    int remainy = vi_dst_width%6;
+    if (remainy<=1) remainy=0;
+    if (remainy) {
+      remainy++;
+      remainy/=2;  // This will be either 1 or 2.
+      remainy--;   // 0 if two pixels 1 if four.
+      x86.mov(eax,dword_ptr [edi]);
+      x86.mov(ebx,dword_ptr [edi+4]);
+      x86.pxor(mm3,mm3);
+      if (remainy) {
+        x86.mov(ecx,dword_ptr [edi+filter_offset]);
+        x86.mov(edx,dword_ptr [edi+filter_offset+4]);
+        x86.pxor(mm4,mm4);
+      }
+      x86.add(edi,8); // cur_luma++
+      for (i=0;i<fir_filter_size;i++) {
+        x86.movd(mm0, dword_ptr [eax+i*4]);
+        if (remainy) x86.movd(mm1, dword_ptr [ecx+i*4]);
+        x86.punpckldq(mm0, ebx+i*4);
+        if (remainy) x86.punpckldq(mm1, edx+i*4);
+        x86.pmaddwd(mm0,edi+i*8);
+        if (remainy) x86.pmaddwd(mm1,edi+filter_offset+(i*8));
+        x86.paddd(mm3, mm0);
+        if (remainy) x86.paddd(mm4, mm1);
+      }
+      x86.paddd(mm3,mm7);
+      if (remainy) x86.paddd(mm4,mm7);
+      x86.psrld(mm3,14);
+      if (remainy) x86.psrld(mm4,14);
+
+      if (isse) {
+        x86.pshufw(mm3,mm3,(char)248);      // 11111000
+        x86.pshufw(mm4,mm4,(char)143);     // 10001111
+        x86.packuswb(mm3, mm3); 
+        x86.packuswb(mm4, mm4);
+        x86.mov(eax,dword_ptr[&gen_temp_destp]);
+        if (remainy) x86.por(mm3,mm4);
+      } else {  //MMX
+        x86.packuswb(mm3, mm6);
+        x86.packuswb(mm3, mm6);
+        if(remainy) {
+          x86.packuswb(mm4, mm6);
+          x86.packuswb(mm4, mm6);
+          x86.psllq(mm4, 16);
+          x86.por(mm3,mm4);
+        }
+        x86.mov(eax,dword_ptr[&gen_temp_destp]);
+      }
+  //  if (gen_plane == PLANAR_Y) x86.int3();
+      if (!remainy) { // Two pixels
+        x86.movd(mm0,dword_ptr[eax]);
+        x86.pand(mm3,qword_ptr[(int)&Mask3]);
+        x86.pand(mm0,qword_ptr[(int)&Mask1]);
+        x86.por(mm3,mm0);
+      }
+
+      x86.movd(dword_ptr[eax],mm3); 
+    }
+    // End remaining pixels 
+
+    x86.mov(eax,dword_ptr [&gen_src_pitch]);
+    x86.mov(ebx,dword_ptr [&gen_dst_pitch]);
+    x86.add(dword_ptr [&gen_srcp], eax);
+    x86.add(dword_ptr [&gen_dstp], ebx);
+
+    x86.dec(dword_ptr [&gen_h]);
+    x86.jnz("yloop");
+    // No more mmx for now
+    x86.emms();
+    // Restore registers
+    x86.pop(ebp);
+    x86.pop(edi);
+    x86.pop(esi);
+    x86.pop(edx);
+    x86.pop(ecx);
+    x86.pop(ebx);
+    x86.pop(eax);
+    x86.ret();
+  }
+  return DynamicAssembledCode(x86, env, "ResizeH: ISSE code could not be compiled.");
+}
+
 
 
 PVideoFrame __stdcall FilteredResizeH::GetFrame(int n, IScriptEnvironment* env) 
 {
   PVideoFrame src = child->GetFrame(n, env);
   PVideoFrame dst = env->NewVideoFrame(vi);
-  const BYTE* srcp = src->GetReadPtr();
+  const BYTE* srcp = src->GetReadPtr(); 
   BYTE* dstp = dst->GetWritePtr();
   int src_pitch = src->GetPitch();
   int dst_pitch = dst->GetPitch();
   if (vi.IsYV12()) {
       int plane = 0;
+      if (true) {  // Use dynamic compilation?
+        gen_src_pitch = src_pitch;
+        gen_dst_pitch = dst_pitch;
+        gen_srcp = (BYTE*)srcp;
+        gen_dstp = dstp;
+        assemblerY.Call();
+
+        gen_src_pitch = src->GetPitch(PLANAR_U);
+        gen_dst_pitch = dst->GetPitch(PLANAR_U);
+        if (vi.IsVPlaneFirst()) {  // Process in order - also to avoid 2 byte overwrite, when rowsize=pitch=(mod6 rowszie).
+          gen_srcp = (BYTE*)src->GetReadPtr(PLANAR_V);
+          gen_dstp = dst->GetWritePtr(PLANAR_V);
+          assemblerUV.Call();
+
+          gen_srcp = (BYTE*)src->GetReadPtr(PLANAR_U);
+          gen_dstp = dst->GetWritePtr(PLANAR_U);
+          assemblerUV.Call();
+        } else {
+          gen_srcp = (BYTE*)src->GetReadPtr(PLANAR_U);
+          gen_dstp = dst->GetWritePtr(PLANAR_U);
+          assemblerUV.Call();
+
+          gen_srcp = (BYTE*)src->GetReadPtr(PLANAR_V);
+          gen_dstp = dst->GetWritePtr(PLANAR_V);
+          assemblerUV.Call();
+        }
+        return dst;
+      }
         while (plane++<3) {
 //        int org_width = (plane==1) ? original_width : (original_width+1)>>1;
         int org_width = (plane==1) ? src->GetRowSize(PLANAR_Y_ALIGNED) : src->GetRowSize(PLANAR_V_ALIGNED);
@@ -917,6 +1219,8 @@ FilteredResizeH::~FilteredResizeH(void)
     if (tempUV) _aligned_free(tempUV);
     if (tempY) _aligned_free(tempY);
   }
+  assemblerY.Free();
+  assemblerUV.Free();
 }
 
  

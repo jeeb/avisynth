@@ -36,6 +36,7 @@
 #define __Levels_H__
 
 #include "internal.h"
+#include "softwire_helpers.h"
 
 
 /********************************************************************
@@ -117,6 +118,7 @@ private:
 void asm_tweak_ISSE_YUY2( BYTE *srcp, int w, int h, int modulo, __int64 hue, __int64 satcont, 
                      __int64 bright );
 
+using namespace SoftWire; 
 
 class Limiter : public GenericVideoFilter
 {
@@ -124,13 +126,24 @@ public:
 	Limiter(PClip _child, int _min_luma, int _max_luma, int _min_chroma, int _max_chroma, IScriptEnvironment* env);
 	PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
   static AVSValue __cdecl Create(AVSValue args, void* user_data, IScriptEnvironment* env);
-  void isse_limiter(BYTE* p, int row_size, int height, int modulo, int cmin, int cmax);
-  void isse_limiter_mod8(BYTE* p, int row_size, int height, int modulo, int cmin, int cmax);
+  DynamicAssembledCode create_emulator(int row_size, int height, int modulo, IScriptEnvironment* env);
+  ~Limiter();
 private:
+  bool luma_emulator;
+  bool chroma_emulator;
 	int max_luma;
   int min_luma;
   int max_chroma;
   int min_chroma;
+
+  DynamicAssembledCode assemblerY;
+  DynamicAssembledCode assemblerUV;
+
+  //Variables needed by the emulator:
+  BYTE* c_plane;
+  int emu_cmin;
+  int emu_cmax;
+
 };
 
 

@@ -38,11 +38,11 @@
 #include "internal.h"
 #include "resample_functions.h"
 #include "transform.h"
+#include "softwire_helpers.h"
 
 
 
-/********************************************************************
-********************************************************************/
+
 
 class FilteredResizeH : public GenericVideoFilter 
 /**
@@ -55,12 +55,22 @@ public:
                    ResamplingFunction* func, IScriptEnvironment* env );
   virtual ~FilteredResizeH(void);
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
-
+  DynamicAssembledCode GenerateResizer(int gen_plane, IScriptEnvironment* env);
 private:
+  DynamicAssembledCode assemblerY;
+  DynamicAssembledCode assemblerUV;
+  
   int* /*const*/ pattern_luma;
   int* /*const*/ pattern_chroma;
   int original_width;
   BYTE *tempY, *tempUV;
+// These must be properly set when running the filter:
+  BYTE *gen_srcp;
+  BYTE *gen_dstp;
+  int gen_src_pitch, gen_dst_pitch;
+// These are sued by the filter:
+  int gen_h, gen_x;
+  BYTE* gen_temp_destp;
 };
 
  
@@ -107,6 +117,11 @@ static AVSValue __cdecl Create_BicubicResize(AVSValue args, void*, IScriptEnviro
 
 // 09-14-2002 - Vlad59 - Lanczos3Resize - 
 static AVSValue __cdecl Create_Lanczos3Resize(AVSValue args, void*, IScriptEnvironment* env);
+
+
+
+
+
 
 
 #endif // __Resample_H__

@@ -26,7 +26,7 @@ CFG=avisynth - Win32 Debug
 # PROP AllowPerConfigDependencies 0
 # PROP Scc_ProjName ""
 # PROP Scc_LocalPath ""
-CPP=xicl6.exe
+CPP=cl.exe
 MTL=midl.exe
 RSC=rc.exe
 
@@ -53,9 +53,9 @@ RSC=rc.exe
 BSC32=bscmake.exe
 # ADD BASE BSC32 /nologo
 # ADD BSC32 /nologo
-LINK32=xilink6.exe
+LINK32=link.exe
 # ADD BASE LINK32 kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib /nologo /dll /machine:I386
-# ADD LINK32 distrib/lib/libpng13.lib distrib/lib/libjpeg.lib msacm32.lib quartz.lib ddraw.lib amstrmid.lib vfw32.lib kernel32.lib advapi32.lib version.lib user32.lib gdi32.lib ole32.lib uuid.lib winmm.lib /nologo /dll /machine:I386
+# ADD LINK32 distrib/lib/libpng13.lib distrib/lib/libjpeg.lib distrib/lib/softwire.lib msacm32.lib quartz.lib ddraw.lib amstrmid.lib vfw32.lib kernel32.lib advapi32.lib version.lib user32.lib gdi32.lib ole32.lib uuid.lib winmm.lib /nologo /dll /machine:I386
 # SUBTRACT LINK32 /pdb:none
 # Begin Custom Build
 InputPath=.\Release\avisynth.dll
@@ -93,9 +93,9 @@ PostBuild_Cmds=copy distrib\bin\libpng13.dll $(SystemRoot)\system32	copy distrib
 BSC32=bscmake.exe
 # ADD BASE BSC32 /nologo
 # ADD BSC32 /nologo
-LINK32=xilink6.exe
+LINK32=link.exe
 # ADD BASE LINK32 kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib /nologo /dll /debug /machine:I386 /pdbtype:sept
-# ADD LINK32 distrib/lib/libpng13.lib distrib/lib/libjpeg.lib msacm32.lib quartz.lib ddraw.lib amstrmid.lib vfw32.lib kernel32.lib advapi32.lib version.lib user32.lib gdi32.lib ole32.lib uuid.lib winmm.lib /nologo /dll /debug /machine:I386 /pdbtype:sept
+# ADD LINK32 distrib/lib/libpng13.lib distrib/lib/libjpeg.lib distrib/lib/softwire.lib msacm32.lib quartz.lib ddraw.lib amstrmid.lib vfw32.lib kernel32.lib advapi32.lib version.lib user32.lib gdi32.lib ole32.lib uuid.lib winmm.lib /nologo /dll /debug /machine:I386 /pdbtype:sept
 # SUBTRACT LINK32 /pdb:none /incremental:no /nodefaultlib
 # Begin Special Build Tool
 SOURCE="$(InputPath)"
@@ -125,7 +125,7 @@ PostBuild_Cmds=copy Debug\avisynth.dll $(SystemRoot)\system32	copy distrib\bin\l
 BSC32=bscmake.exe
 # ADD BASE BSC32 /nologo
 # ADD BSC32 /nologo
-LINK32=xilink6.exe
+LINK32=link.exe
 # ADD BASE LINK32 msvcrt.lib c:\p\mm\mpeg2dll\release\mpeg2dll.lib ddraw.lib amstrmid.lib vfw32.lib kernel32.lib advapi32.lib version.lib user32.lib gdi32.lib ole32.lib uuid.lib /nologo /dll /machine:I386
 # SUBTRACT BASE LINK32 /pdb:none /debug /nodefaultlib
 # ADD LINK32 distrib/lib/libpng13.lib distrib/lib/libjpeg.lib penter.lib msvcrt.lib msacm32.lib quartz.lib ddraw.lib amstrmid.lib vfw32.lib kernel32.lib advapi32.lib version.lib user32.lib gdi32.lib ole32.lib uuid.lib winmm.lib /nologo /dll /debug /machine:I386 /nodefaultlib
@@ -266,6 +266,14 @@ SOURCE=.\main.cpp
 # Begin Source File
 
 SOURCE=.\plugins.cpp
+# End Source File
+# Begin Source File
+
+SOURCE=.\softwire_helpers.cpp
+# End Source File
+# Begin Source File
+
+SOURCE=.\softwire_helpers.h
 # End Source File
 # Begin Source File
 
