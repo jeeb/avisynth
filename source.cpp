@@ -334,7 +334,7 @@ AVISource::AVISource(const char filename[], bool fAudio, const char pixel_type[]
                                               aSrc->lSampleLast - aSrc->lSampleFirst,
                                               true);
     WAVEFORMATEX* pwfx; 
-    pwfx = audioStreamSource->GetFormat();
+    pwfx = audioStreamSource->GetFormat(); 
     vi.audio_samples_per_second = pwfx->nSamplesPerSec;
     vi.nchannels = pwfx->nChannels;
     if (pwfx->wBitsPerSample == 16) {
@@ -350,9 +350,12 @@ AVISource::AVISource(const char filename[], bool fAudio, const char pixel_type[]
 
     audio_stream_pos = 0;
   }
+
   // try to decompress frame 0 if not audio only.
+
   dropped_frame=false;
-  if (mode!=3) {
+
+  if (mode != 3) {
     int keyframe = pvideo->NearestKeyFrame(0);
     PVideoFrame frame = env->NewVideoFrame(vi, -4);
     LRESULT error = DecompressFrame(keyframe, false, frame->GetWritePtr());
@@ -805,11 +808,17 @@ class GetSample : public IBaseFilter, public IPin, public IMemInputPin {
 
 public:
 
+  bool load_audio;
+  int a_sample_bytes;
+  int a_allocated_buffer;
+  BYTE* a_buffer;         // FIXME: Remember to deallocate on destruction!!!
+
   GetSample(IScriptEnvironment* _env) : env(_env) {
     refcnt = 1;
     source_pin = 0;
     filter_graph = 0;
     pclock = 0;
+    a_allocated_buffer = 0;
     state = State_Stopped;
     flushing = end_of_stream = false;
     memset(&vi, 0, sizeof(vi));
@@ -855,11 +864,13 @@ public:
     IMediaControl* mc;
     filter_graph->QueryInterface(&mc);
     state = State_Paused;
-    _RPT0(0,"StopGraph() indicating done with sample\n");
+    _RPT1(0,"StopGraph() indicating done with sample - state:%d\n",state);
     PulseEvent(evtDoneWithSample);
+/***  Either of these seem to hang when exiting ****/
+#if 0
     mc->Stop();
     mc->Release();
-
+#endif
   }
 
   void PauseGraph() {
@@ -926,6 +937,7 @@ public:
 
   ULONG __stdcall AddRef() { InterlockedIncrement(&refcnt); _RPT1(0,"GetSample::AddRef() -> %d\n", refcnt); return refcnt; }
   ULONG __stdcall Release() { InterlockedDecrement(&refcnt); _RPT1(0,"GetSample::Release() -> %d\n", refcnt); return refcnt; }
+
   HRESULT __stdcall QueryInterface(REFIID iid, void** ppv) {
     if (iid == IID_IUnknown)
     *ppv = static_cast<IUnknown*>(static_cast<IBaseFilter*>(this));
@@ -1010,6 +1022,9 @@ public:
     return S_OK;
   }
   HRESULT __stdcall Disconnect() {
+    if (a_allocated_buffer) { 
+      delete[] a_buffer;
+    }
     source_pin = 0;
     return S_OK;
   }
@@ -1030,11 +1045,13 @@ public:
     lstrcpyW(pInfo->achName, L"GetSample");
     return S_OK;
   }
+
   HRESULT __stdcall QueryDirection(PIN_DIRECTION* pPinDir) {
     if (!pPinDir) return E_POINTER;
     *pPinDir = PINDIR_INPUT;
     return S_OK;
   }
+
   HRESULT __stdcall QueryId(LPWSTR* Id) {
     return E_NOTIMPL;
   }
@@ -1042,15 +1059,58 @@ public:
   HRESULT __stdcall QueryAccept(const AM_MEDIA_TYPE* pmt) {
     if (!pmt) return E_POINTER;
 
-    if (pmt->majortype != MEDIATYPE_Video) {
-      if (pmt->majortype == MEDIATYPE_Audio) {
-        _RPT0(0, "*** Found majortype Audio\n");
+    if (load_audio) {
+      if (pmt->majortype != MEDIATYPE_Audio && load_audio) {
+        _RPT0(0, "*** majortype was not audio\n");
+        return S_FALSE;
       }
-      _RPT0(0, "*** majortype was not video\n");
-      return S_FALSE;
+    } else {
+      if (pmt->majortype != MEDIATYPE_Video) {
+        _RPT0(0, "*** majortype was not video\n");
+        return S_FALSE;
+      }
     }
 
-    if (pmt->subtype == MEDIASUBTYPE_YV12) {  // Not tested, but it is accepted
+// Handle audio:
+    if (pmt->majortype == MEDIATYPE_Audio) {
+//      if (pmt->subtype != MEDIASUBTYPE_PCM  || pmt->subtype != MEDIASUBTYPE_IEEE_FLOAT ) {
+      if (pmt->subtype != MEDIASUBTYPE_PCM ) {
+        _RPT0(0, "*** In majortype Audio - Subtype rejected\n");
+        return S_FALSE;
+      }
+
+      WAVEFORMATEX* wex = (WAVEFORMATEX*)pmt->pbFormat;
+
+      if (wex->wFormatTag != WAVE_FORMAT_PCM) {
+        _RPT0(0, "*** Audio: Secondary check rejected - Not PCM after all???\n");
+        return S_FALSE;
+      }
+
+      vi.nchannels = wex->nChannels;
+      switch (wex->wBitsPerSample) {
+        case 8:
+          vi.sample_type = SAMPLE_INT8;
+          break;
+        case 16:
+          vi.sample_type = SAMPLE_INT16;
+          break;
+        case 24:
+          vi.sample_type = SAMPLE_INT24;
+          break;
+        case 32:
+          vi.sample_type = SAMPLE_INT32;
+          break;
+      }
+
+      vi.audio_samples_per_second = wex->nSamplesPerSec;
+
+      _RPT3(0, "*** Audio Accepted!  - Channels:%d.  Samples/sec:%d.  Bits/sample:%d.\n",wex->nChannels, wex->nSamplesPerSec, wex->wBitsPerSample);      
+      return S_OK;
+    }
+
+// Handle video:
+
+    if (pmt->subtype == MEDIASUBTYPE_YV12) {  
       vi.pixel_type = VideoInfo::CS_YV12;
     } else if (pmt->subtype == MEDIASUBTYPE_YUY2) {
       vi.pixel_type = VideoInfo::CS_YUY2;
@@ -1065,6 +1125,7 @@ public:
 
     BITMAPINFOHEADER* pbi;
     unsigned avg_time_per_frame;
+
     if (pmt->formattype == FORMAT_VideoInfo) {
       VIDEOINFOHEADER* vih = (VIDEOINFOHEADER*)pmt->pbFormat;
       avg_time_per_frame = unsigned(vih->AvgTimePerFrame);
@@ -1083,12 +1144,14 @@ public:
 
     vi.width = pbi->biWidth;
     vi.height = pbi->biHeight;
+
     if (avg_time_per_frame) {
       vi.SetFPS(10000000, avg_time_per_frame);
     } else {
       vi.fps_numerator = 1;
       vi.fps_denominator = 0;
     }
+
     _RPT4(0, "*** format accepted: %dx%d, pixel_type %d, framerate %d\n",
       vi.width, vi.height, vi.pixel_type, avg_time_per_frame);
     return S_OK;
@@ -1116,17 +1179,20 @@ public:
     SetEvent(evtNewSampleReady);
     return S_OK;
   }
+
   HRESULT __stdcall BeginFlush() {
     _RPT0(0,"GetSample::BeginFlush()\n");
     flushing = true;
     end_of_stream = false;
     return S_OK;
   }
+
   HRESULT __stdcall EndFlush() {
     _RPT0(0,"GetSample::EndFlush()\n");
     flushing = false;
     return S_OK;
   }
+
   HRESULT __stdcall NewSegment(REFERENCE_TIME tStart, REFERENCE_TIME tStop, double dRate) {
     return S_OK;
   }
@@ -1154,19 +1220,39 @@ public:
         DWORD(sample_end_time>>32), DWORD(sample_end_time));
       _RPT1(0," (%d)\n", DWORD(sample_end_time - sample_start_time));
     }
-    pvf = env->NewVideoFrame(vi,-4);
-    PBYTE buf;
-    pSamples->GetPointer(&buf);
-    if (!vi.IsPlanar()) {
-      env->BitBlt(pvf->GetWritePtr(), pvf->GetPitch(), buf,
-        pvf->GetPitch(), pvf->GetRowSize(), pvf->GetHeight());
-    } else {
-    env->BitBlt(pvf->GetWritePtr(PLANAR_Y), pvf->GetPitch(PLANAR_Y), buf,
-      pvf->GetPitch(PLANAR_Y), pvf->GetRowSize(PLANAR_Y), pvf->GetHeight(PLANAR_Y));
-    env->BitBlt(pvf->GetWritePtr(PLANAR_U), pvf->GetPitch(PLANAR_U), buf + pvf->GetOffset(PLANAR_U) - pvf->GetOffset(PLANAR_Y),
-      pvf->GetPitch(PLANAR_U), pvf->GetRowSize(PLANAR_U), pvf->GetHeight(PLANAR_U));
-    env->BitBlt(pvf->GetWritePtr(PLANAR_V), pvf->GetPitch(PLANAR_V), buf+ pvf->GetOffset(PLANAR_V) - pvf->GetOffset(PLANAR_Y),
-      pvf->GetPitch(PLANAR_V), pvf->GetRowSize(PLANAR_V), pvf->GetHeight(PLANAR_V));
+    if (vi.HasVideo() && (!load_audio)) {
+      pvf = env->NewVideoFrame(vi,-4);
+      PBYTE buf;
+      pSamples->GetPointer(&buf);
+      if (!vi.IsPlanar()) {
+        env->BitBlt(pvf->GetWritePtr(), pvf->GetPitch(), buf,
+          pvf->GetPitch(), pvf->GetRowSize(), pvf->GetHeight());
+      } else {
+        env->BitBlt(pvf->GetWritePtr(PLANAR_Y), pvf->GetPitch(PLANAR_Y), buf,
+          pvf->GetPitch(PLANAR_Y), pvf->GetRowSize(PLANAR_Y), pvf->GetHeight(PLANAR_Y));
+        env->BitBlt(pvf->GetWritePtr(PLANAR_U), pvf->GetPitch(PLANAR_U), buf + pvf->GetOffset(PLANAR_U) - pvf->GetOffset(PLANAR_Y),
+          pvf->GetPitch(PLANAR_U), pvf->GetRowSize(PLANAR_U), pvf->GetHeight(PLANAR_U));
+        env->BitBlt(pvf->GetWritePtr(PLANAR_V), pvf->GetPitch(PLANAR_V), buf+ pvf->GetOffset(PLANAR_V) - pvf->GetOffset(PLANAR_Y),
+          pvf->GetPitch(PLANAR_V), pvf->GetRowSize(PLANAR_V), pvf->GetHeight(PLANAR_V));
+      }
+    } else {  // audio
+      if (!a_allocated_buffer) {  // Allocate new buffer based on data length
+        a_buffer = new BYTE[pSamples->GetActualDataLength()];
+        a_allocated_buffer = pSamples->GetActualDataLength();
+      }
+      if (a_allocated_buffer < pSamples->GetActualDataLength()) { // Buffer too small  -- delete + reallocate
+        delete[] a_buffer;
+        a_buffer = new BYTE[pSamples->GetActualDataLength()];
+        a_allocated_buffer = pSamples->GetActualDataLength();
+      }
+      PBYTE buf;
+      pSamples->GetPointer(&buf);
+      memcpy(a_buffer, buf, pSamples->GetActualDataLength());
+
+      a_sample_bytes = pSamples->GetActualDataLength();
+
+      _RPT1(0,"Recieve: Got %d bytes of audio data.\n",pSamples->GetActualDataLength());
+
     }
     if (state == State_Running) {
       SetEvent(evtNewSampleReady);
@@ -1252,14 +1338,14 @@ static void DisconnectAllPinsAndRemoveFilter(IGraphBuilder* gb, IBaseFilter* bf)
 }
 
 
-static void RemoveUselessFilters(IGraphBuilder* gb, IBaseFilter* not_this_one) {
+static void RemoveUselessFilters(IGraphBuilder* gb, IBaseFilter* not_this_one, IBaseFilter* nor_this_one) {
   IEnumFilters* ef;
   if (FAILED(gb->EnumFilters(&ef)))
     return;
   ULONG fetched=1;
   IBaseFilter* bf;
   while (S_OK == ef->Next(1, &bf, &fetched)) {
-    if (bf != not_this_one) {
+    if (bf != not_this_one && bf != nor_this_one) {
       if (HasNoConnectedOutputPins(bf)) {
         DisconnectAllPinsAndRemoveFilter(gb, bf);
         ef->Reset();
@@ -1297,7 +1383,9 @@ static void SetMicrosoftDVtoFullResolution(IGraphBuilder* gb) {
 class DirectShowSource : public IClip {
 
   GetSample get_sample;
+  GetSample get_audio_sample;
   IGraphBuilder* gb;
+  __int64 next_sample;
 
   VideoInfo vi;
   __int64 duration;
@@ -1306,18 +1394,25 @@ class DirectShowSource : public IClip {
   __int64 base_sample_time;
   int cur_frame;
   bool no_search;
+  int audio_bytes_read;
   IScriptEnvironment* const env;
 
   void CheckHresult(HRESULT hr, const char* msg, const char* msg2 = "");
 
 public:
 
-  DirectShowSource(const char* filename, int _avg_time_per_frame, bool _seek, IScriptEnvironment* _env) : env(_env), get_sample(_env), no_search(!_seek) {
+  DirectShowSource(const char* filename, int _avg_time_per_frame, bool _seek, IScriptEnvironment* _env) : env(_env), get_sample(_env), get_audio_sample(_env), no_search(!_seek) {
+
     CheckHresult(CoCreateInstance(CLSID_FilterGraphNoThread, 0, CLSCTX_INPROC_SERVER, IID_IGraphBuilder, (void**)&gb), "couldn't create filter graph");
+
+    get_sample.load_audio = false;
+    get_audio_sample.load_audio = true;
 
     WCHAR filenameW[MAX_PATH];
     MultiByteToWideChar(CP_ACP, 0, filename, -1, filenameW, MAX_PATH);
-    CheckHresult(gb->AddFilter(static_cast<IBaseFilter*>(&get_sample), L"GetSample"), "couldn't add GetSample filter");
+
+    CheckHresult(gb->AddFilter(static_cast<IBaseFilter*>(&get_sample), L"GetSample"), "couldn't add Video GetSample filter");
+    CheckHresult(gb->AddFilter(static_cast<IBaseFilter*>(&get_audio_sample), L"GetSample"), "couldn't add Audio GetSample filter");
 
     CheckHresult(gb->RenderFile(filenameW, NULL), "couldn't open file ", filename);
 
@@ -1325,7 +1420,7 @@ public:
       env->ThrowError("DirectShowSource: the filter graph manager won't talk to me");
     }
 
-    RemoveUselessFilters(gb, &get_sample);
+    RemoveUselessFilters(gb, &get_sample, &get_audio_sample);
 
     SetMicrosoftDVtoFullResolution(gb);
 
@@ -1346,6 +1441,7 @@ public:
     ms->Release();
 
     vi = get_sample.GetVideoInfo();
+    VideoInfo a_vi = get_audio_sample.GetVideoInfo();
 
     if (_avg_time_per_frame) {
       avg_time_per_frame = _avg_time_per_frame;
@@ -1359,16 +1455,28 @@ public:
       env->ThrowError("DirectShowSource: I can't determine the frame rate of\nthe video; you must use the \"fps\" parameter");
     }
 
-    vi.num_frames = int(frame_units ? duration : duration / avg_time_per_frame);
+    if (vi.HasVideo()) {
+      vi.num_frames = int(frame_units ? duration : duration / avg_time_per_frame);
+    }
+
+
+    vi.nchannels = a_vi.nchannels;
+    vi.sample_type = a_vi.sample_type;
+    vi.audio_samples_per_second =  a_vi.audio_samples_per_second;
+    if (a_vi.HasAudio()) {
+      vi.num_audio_samples = vi.AudioSamplesFromFrames(int(frame_units ? duration : duration / avg_time_per_frame));
+    }
 
     get_sample.StartGraph();
+    get_audio_sample.StartGraph();
 
     cur_frame = 0;
     base_sample_time = 0;
-//    no_search = true;   // FIXME: Seeking manually disabled
+    audio_bytes_read = 0;
+    next_sample = 0;
   }
 
-  ~DirectShowSource() { get_sample.StopGraph(); gb->Release(); }
+  ~DirectShowSource() { get_sample.StopGraph(); get_audio_sample.StopGraph(); gb->Release(); }
 
   const VideoInfo& __stdcall GetVideoInfo() { return vi; }
 
@@ -1422,9 +1530,43 @@ public:
     }
     return v;
   }
+
   bool __stdcall GetParity(int n) { return vi.IsFieldBased() ? (n&1) : false; }
   void __stdcall SetCacheHints(int cachehints,int frame_range) { };
-  void __stdcall GetAudio(void*, __int64, __int64, IScriptEnvironment*) {}
+
+  void __stdcall GetAudio(void* buf, __int64 start, __int64 count, IScriptEnvironment* env) {
+
+    if (next_sample != start) {  // We have been searching!  Skip until sync!
+      memset(buf,0, vi.BytesFromAudioSamples(count));
+      return;
+    }
+
+    int bytes_left = vi.BytesFromAudioSamples(count);
+    int bytes_filled = 0;
+    BYTE* samples = (BYTE*)buf;
+
+    while (bytes_left) {
+      // Can we read from the Directshow filter?
+      if (get_audio_sample.a_sample_bytes - audio_bytes_read > 0) { // Copy as many bytes as needed.
+
+        int ds_offset = audio_bytes_read;  // First byte we can read.
+        int available_bytes = min(ds_offset + bytes_left, get_audio_sample.a_sample_bytes);  // This many bytes can be safely read.
+
+        memcpy(&samples[bytes_filled], &get_audio_sample.a_buffer[ds_offset], available_bytes);
+
+        available_bytes -= ds_offset;
+        bytes_left -= available_bytes;
+        bytes_filled += available_bytes;
+        audio_bytes_read += available_bytes;
+
+      } else { // Read more samples
+        get_audio_sample.NextSample();
+        audio_bytes_read = 0;
+      }
+    }
+    next_sample +=count;
+  }
+
 };
 
 

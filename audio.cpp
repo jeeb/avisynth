@@ -450,13 +450,23 @@ void __stdcall MergeChannels::GetAudio(void* buf, __int64 start, __int64 count, 
 
 AVSValue __cdecl MergeChannels::Create(AVSValue args, void*, IScriptEnvironment* env) 
 {
-  args = args[0];
-  const int num_args = args.ArraySize();
-  if (num_args == 1)
-    return args[0];
-  PClip* child_array = new PClip[num_args];
-  for (int i=0; i<num_args; ++i)
+  int num_args;
+  PClip* child_array;
+
+  if (args.IsArray()) {
+    num_args = args.ArraySize();
+    if (num_args == 1) return args[0];
+
+    child_array = new PClip[num_args];
+      for (int i=0; i<num_args; ++i)
     child_array[i] = args[i].AsClip();
+
+  } else {
+    num_args = 2;
+    child_array = new PClip[num_args];
+    child_array[0] = args[0].AsClip();
+    child_array[1] = args[1].AsClip();
+  }
   return new MergeChannels(args[0].AsClip(),num_args, child_array, env);
 }
 
