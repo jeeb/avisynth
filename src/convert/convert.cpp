@@ -398,7 +398,7 @@ PVideoFrame __stdcall ConvertToRGB::GetFrame(int n, IScriptEnvironment* env)
   
   int src_rowsize = __min(src_pitch, (src->GetRowSize()+7) & -8);
   // assumption: is_yuy2
-  if (use_mmx && ((src_rowsize & 7) == 0)) {
+  if (use_mmx && ((src_rowsize & 7) == 0) && (src_rowsize >= 16)) {
 	VideoInfo vi2 = vi;
 	vi2.width=src_rowsize / 2;
 	PVideoFrame dst = env->NewVideoFrame(vi2,-2); // force pitch == rowsize
