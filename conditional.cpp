@@ -58,9 +58,24 @@ ConditionalFilter::ConditionalFilter(PClip _child, PClip _source1, PClip _source
 			evaluator = LESSTHAN;
 		if (!evaluator)
 			env->ThrowError("ConditionalFilter: Evaluator could not be recognized!");
+
+		VideoInfo vi1 = source1->GetVideoInfo();
+		VideoInfo vi2 = source2->GetVideoInfo();
+
+		if (vi1.height != vi2.height)
+			env->ThrowError("ConditionalFilter: The two sources must have the same height!");
+		if (vi1.width != vi2.width)
+			env->ThrowError("ConditionalFilter: The two sources must have the same width!");
+		if (vi1.pixel_type != vi2.pixel_type)   // FIXME:  We need I420 -> YV12 transparency here!
+			env->ThrowError("ConditionalFilter: The two sources must be the same colorspace!");
+
+		vi.height = vi1.height;
+		vi.width = vi1.width;
+		vi.pixel_type = vi1.pixel_type;
+
 	}
 
-const char* t_TRUE="TRUE";
+const char* t_TRUE="TRUE"; 
 const char* t_FALSE="FALSE";
 
 
@@ -69,11 +84,11 @@ PVideoFrame __stdcall ConditionalFilter::GetFrame(int n, IScriptEnvironment* env
 	env->SetVar("last",(AVSValue)child);			 // Set explicit last
 	env->SetVar("current_frame",(AVSValue)n);  // Set frame to be tested by the conditional filters.
 
-	ScriptParser parser(env, eval1.AsString(), "Conditional Filter.");
+	ScriptParser parser(env, eval1.AsString(), "[Conditional Filter]");
 	PExpression exp = parser.Parse();
 	AVSValue e1_result = exp->Evaluate(env);
 
-	ScriptParser parser2(env, eval2.AsString(), "Conditional Filter.");
+	ScriptParser parser2(env, eval2.AsString(), "[Conditional Filter]");
 	exp = parser2.Parse();
 	AVSValue e2_result = exp->Evaluate(env);
 
