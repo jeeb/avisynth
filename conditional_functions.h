@@ -73,3 +73,27 @@ public:
 };
 
 
+class MinMaxPlane {
+
+public:
+	static AVSValue MinMax(AVSValue clip, void* user_data, float threshold, int plane, int mode, IScriptEnvironment* env);
+  static AVSValue __cdecl Create_max_y(AVSValue args, void* user_data, IScriptEnvironment* env);
+  static AVSValue __cdecl Create_min_y(AVSValue args, void* user_data, IScriptEnvironment* env);
+  static AVSValue __cdecl Create_median_y(AVSValue args, void* user_data, IScriptEnvironment* env);
+  static AVSValue __cdecl Create_minmax_y(AVSValue args, void* user_data, IScriptEnvironment* env);
+
+  static AVSValue __cdecl Create_max_u(AVSValue args, void* user_data, IScriptEnvironment* env);
+  static AVSValue __cdecl Create_min_u(AVSValue args, void* user_data, IScriptEnvironment* env);
+  static AVSValue __cdecl Create_median_u(AVSValue args, void* user_data, IScriptEnvironment* env);
+  static AVSValue __cdecl Create_minmax_u(AVSValue args, void* user_data, IScriptEnvironment* env);
+
+  static AVSValue __cdecl Create_max_v(AVSValue args, void* user_data, IScriptEnvironment* env);
+  static AVSValue __cdecl Create_min_v(AVSValue args, void* user_data, IScriptEnvironment* env);
+  static AVSValue __cdecl Create_median_v(AVSValue args, void* user_data, IScriptEnvironment* env);
+  static AVSValue __cdecl Create_minmax_v(AVSValue args, void* user_data, IScriptEnvironment* env);
+
+
+private:
+   enum { MIN = 1, MAX = 2, MEDIAN = 3, MINMAX_DIFFERENCE = 4 };
+
+};

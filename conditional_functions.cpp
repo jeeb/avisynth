@@ -53,6 +53,19 @@ AVSFunction Conditional_funtions_filters[] = {
   {  "UDifferenceToNext","c", ComparePlane::Create_prev_u },
   {  "VDifferenceToNext","c", ComparePlane::Create_prev_v },
   {  "RGBDifferenceToNext","c", ComparePlane::Create_prev_rgb },
+  {  "YPlaneMax","c[threshold]f", MinMaxPlane::Create_max_y },
+  {  "YPlaneMin","c[threshold]f", MinMaxPlane::Create_min_y },
+  {  "YPlaneMedian","c", MinMaxPlane::Create_median_y },
+  {  "YPlaneMinMaxDifference","c[threshold]f", MinMaxPlane::Create_minmax_y },
+  {  "UPlaneMax","c[threshold]f", MinMaxPlane::Create_max_u },
+  {  "UPlaneMin","c[threshold]f", MinMaxPlane::Create_min_u },
+  {  "UPlaneMedian","c", MinMaxPlane::Create_median_u },
+  {  "UPlaneMinMaxDifference","c[threshold]f", MinMaxPlane::Create_minmax_u },
+  {  "VPlaneMax","c[threshold]f", MinMaxPlane::Create_max_v },
+  {  "VPlaneMin","c[threshold]f", MinMaxPlane::Create_min_v },
+  {  "VPlaneMedian","c", MinMaxPlane::Create_median_v },
+  {  "VPlaneMinMaxDifference","c[threshold]f", MinMaxPlane::Create_minmax_v },
+
 //  {  "" },
   { 0 }
 };
@@ -320,7 +333,159 @@ AVSValue ComparePlane::CmpPlaneSame(AVSValue clip, void* user_data, int offset, 
 }
 
 
+// Y Planes functions
 
+AVSValue __cdecl MinMaxPlane::Create_max_y(AVSValue args, void* user_data, IScriptEnvironment* env) {
+	return MinMax(args[0],user_data, args[1].AsFloat(0.0f), PLANAR_Y, MAX, env);
+}
+
+AVSValue __cdecl MinMaxPlane::Create_min_y(AVSValue args, void* user_data, IScriptEnvironment* env) {
+	return MinMax(args[0],user_data, args[1].AsFloat(0.0f), PLANAR_Y, MIN, env);
+}
+
+AVSValue __cdecl MinMaxPlane::Create_median_y(AVSValue args, void* user_data, IScriptEnvironment* env) {
+	return MinMax(args[0],user_data, 0.0f, PLANAR_Y, MEDIAN, env);
+}
+
+AVSValue __cdecl MinMaxPlane::Create_minmax_y(AVSValue args, void* user_data, IScriptEnvironment* env) {
+	return MinMax(args[0],user_data, args[1].AsFloat(0.0f), PLANAR_Y, MINMAX_DIFFERENCE, env);
+}
+
+// U Planes functions
+
+AVSValue __cdecl MinMaxPlane::Create_max_u(AVSValue args, void* user_data, IScriptEnvironment* env) {
+	return MinMax(args[0],user_data, args[1].AsFloat(0.0f), PLANAR_U, MAX, env);
+}
+
+AVSValue __cdecl MinMaxPlane::Create_min_u(AVSValue args, void* user_data, IScriptEnvironment* env) {
+	return MinMax(args[0],user_data, args[1].AsFloat(0.0f), PLANAR_U, MIN, env);
+}
+
+AVSValue __cdecl MinMaxPlane::Create_median_u(AVSValue args, void* user_data, IScriptEnvironment* env) {
+	return MinMax(args[0],user_data, 0.0f, PLANAR_U, MEDIAN, env);
+}
+
+AVSValue __cdecl MinMaxPlane::Create_minmax_u(AVSValue args, void* user_data, IScriptEnvironment* env) {
+	return MinMax(args[0],user_data, args[1].AsFloat(0.0f), PLANAR_U, MINMAX_DIFFERENCE, env);
+}
+// V Planes functions
+
+AVSValue __cdecl MinMaxPlane::Create_max_v(AVSValue args, void* user_data, IScriptEnvironment* env) {
+	return MinMax(args[0],user_data, args[1].AsFloat(0.0f), PLANAR_V, MAX, env);
+}
+
+AVSValue __cdecl MinMaxPlane::Create_min_v(AVSValue args, void* user_data, IScriptEnvironment* env) {
+	return MinMax(args[0],user_data, args[1].AsFloat(0.0f), PLANAR_V, MIN, env);
+}
+
+AVSValue __cdecl MinMaxPlane::Create_median_v(AVSValue args, void* user_data, IScriptEnvironment* env) {
+	return MinMax(args[0],user_data, 0.0f, PLANAR_V, MEDIAN, env);
+}
+
+AVSValue __cdecl MinMaxPlane::Create_minmax_v(AVSValue args, void* user_data, IScriptEnvironment* env) {
+	return MinMax(args[0],user_data, args[1].AsFloat(0.0f), PLANAR_V, MINMAX_DIFFERENCE, env);
+}
+
+
+AVSValue MinMaxPlane::MinMax(AVSValue clip, void* user_data, float threshold, int plane, int mode, IScriptEnvironment* env) {
+  unsigned int accum[256];
+  
+  if (!clip.IsClip())
+    env->ThrowError("MinMax: No clip supplied!");
+
+  threshold /=100.0f;
+
+  PClip child = clip.AsClip();
+  VideoInfo vi = child->GetVideoInfo();
+  
+  if (!vi.IsPlanar())
+    env->ThrowError("MinMax: Image must be planar");
+
+  // Get current frame number
+  AVSValue cn = env->GetVar("current_frame");
+	if (!cn.IsInt())
+		env->ThrowError("Compare Plane: This filter can only be used within ConditionalFilter");
+
+	int n = cn.AsInt();
+
+ // Prepare the source
+	PVideoFrame src = child->GetFrame(n, env);
+
+	BYTE* srcp = src->GetWritePtr(plane);
+	int pitch = src->GetPitch(plane);
+	int w = src->GetRowSize(plane);
+	int h = src->GetHeight(plane);
+
+  // Reset accumulators
+  for (int i=0;i<256;i++) {
+    accum[i]=0;
+  }
+
+  // Count each component.
+	for (int y=0;y<h;y++) {
+    for (int x=0;x<w;x++) {
+       accum[srcp[x]]++;
+    }
+    srcp+=pitch;
+  }
+
+  int pixels = w*h;
+  threshold /=100.0f;  // Thresh now 0-1
+  threshold = max(0.0f,min(threshold,1.0f));
+
+  if (mode == MEDIAN) {
+    mode = MIN;
+    threshold =0.5f;
+  }
+
+  int tpixels = (int)((float)pixels*threshold);
+
+
+  // Find the value we need.
+  if (mode == MIN) {
+    int counted=0;
+    for (int i = 0; i< 256;i++) {
+      counted += accum[i];
+      if (counted>tpixels)
+        return AVSValue(i);
+    }
+    return AVSValue(255);
+  }
+
+  if (mode == MAX) {
+    int counted=0;
+    for (int i = 255; i>=0;i--) {
+      counted += accum[i];
+      if (counted>tpixels)
+        return AVSValue(i);
+    }
+    return AVSValue(0);
+  }
+  
+  if (mode == MINMAX_DIFFERENCE) {
+    int counted=0;
+    int t_min = -1;
+    int t_max = -1;
+    // Find min
+    for (int i = 0; (i < 256) && (t_min<0);i++) {
+      counted += accum[i];
+      if (counted>tpixels)
+        t_min=i;
+    }
+
+    // Find max
+    counted=0;
+    for (i = 255; (i>=0)&&(t_max<0);i--) {
+      counted += accum[i];
+      if (counted>tpixels)
+        t_max=i;
+    }
+
+    return AVSValue(max(0,t_max-t_min));  // We do not allow results <0 to be returned
+
+  }
+  return AVSValue(-1);
+}
 
 
 /*********************
