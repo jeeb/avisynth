@@ -89,7 +89,7 @@ typedef	long			PixOffset;
 // so I now set the Avisynth struct alignment explicitly here.
 #pragma pack(push,8)
 
-#define FRAME_ALIGN 32
+#define FRAME_ALIGN 16
 // Default frame alignment is 16 bytes, to help P4, when using SSE2
 
 // The VideoInfo struct holds global information about a clip (i.e.

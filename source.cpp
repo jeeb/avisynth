@@ -346,7 +346,8 @@ AVISource::AVISource(const char filename[], bool fAudio, const char pixel_type[]
     audio_stream_pos = 0;
   }
   // try to decompress frame 0 if not audio only.
-/*  if (mode!=3) {
+  dropped_frame=false;
+  if (mode!=3) {
     int keyframe = pvideo->NearestKeyFrame(0);
     PVideoFrame frame = env->NewVideoFrame(vi, -4);
     LRESULT error = DecompressFrame(keyframe, true, frame->GetWritePtr());
@@ -369,7 +370,7 @@ AVISource::AVISource(const char filename[], bool fAudio, const char pixel_type[]
     last_frame_no=0;
     last_frame=frame;
   }
-*/  
+ 
 }
 
 AVISource::~AVISource() {
@@ -392,7 +393,7 @@ const VideoInfo& AVISource::GetVideoInfo() { return vi; }
 PVideoFrame AVISource::GetFrame(int n, IScriptEnvironment* env) {
   
   n = min(max(n, 0), vi.num_frames-1);
-  
+  dropped_frame=false;
   if (n != last_frame_no) {
     // find the last keyframe
     int keyframe = pvideo->NearestKeyFrame(n);
