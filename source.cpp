@@ -67,9 +67,10 @@ public:
 
   static AVSValue __cdecl Create(AVSValue args, void* user_data, IScriptEnvironment* env) {
     const int mode = int(user_data);
-    PClip result = new AVISource(args[0][0].AsString(), args[1].AsBool(true), mode, env);
+    const bool fAudio = (mode == 3) || args[1].AsBool(true);
+    PClip result = new AVISource(args[0][0].AsString(), fAudio, mode, env);
     for (int i=1; i<args[0].ArraySize(); ++i)
-      result = new_Splice(result, new AVISource(args[0][i].AsString(), args[1].AsBool(true), mode, env), false, env);
+      result = new_Splice(result, new AVISource(args[0][i].AsString(), fAudio, mode, env), false, env);
     return result;
   }
 };
@@ -224,7 +225,7 @@ AVISource::AVISource(const char filename[], bool fAudio, int mode, IScriptEnviro
     CloseHandle(h);
   }
 
-  if (mode == 1) {    // AVIFile mode
+  if (mode == 1 || mode == 3) {    // AVIFile mode
     PAVIFILE paf;
     if (FAILED(AVIFileOpen(&paf, filename, OF_READ, 0)))
       env->ThrowError("AVIFileSource: couldn't open file");
@@ -233,40 +234,41 @@ AVISource::AVISource(const char filename[], bool fAudio, int mode, IScriptEnviro
     pfile = CreateAVIReadHandler(filename);
   }
 
-  // check for video stream
-  hic = 0;
-  pvideo = pfile->GetStream(streamtypeVIDEO, 0);
-  if (pvideo) {
-    LocateVideoCodec(env);
-    if (hic) {
-      // try to decompress to YUY2, RGB32, and RGB24 in turn
-      memset(&biDst, 0, sizeof(BITMAPINFOHEADER));
-      biDst.biSize = sizeof(BITMAPINFOHEADER);
-      biDst.biWidth = vi.width;
-      biDst.biHeight = vi.height;
-      biDst.biCompression = '2YUY';
-      biDst.biBitCount = 16;
-      biDst.biPlanes = 1;
-      biDst.biSizeImage = ((vi.width*2+3)&~3) * vi.height;
-      if (ICERR_OK == ICDecompressQuery(hic, pbiSrc, &biDst)) {
-        vi.pixel_type = VideoInfo::YUY2;
-      } else {
-        biDst.biCompression = BI_RGB;
-        biDst.biBitCount = 32;
-        biDst.biSizeImage = vi.width*vi.height*4;
+  if (mode != 3) { // check for video stream
+    hic = 0;
+    pvideo = pfile->GetStream(streamtypeVIDEO, 0);
+    if (pvideo) {
+      LocateVideoCodec(env);
+      if (hic) {
+        // try to decompress to YUY2, RGB32, and RGB24 in turn
+        memset(&biDst, 0, sizeof(BITMAPINFOHEADER));
+        biDst.biSize = sizeof(BITMAPINFOHEADER);
+        biDst.biWidth = vi.width;
+        biDst.biHeight = vi.height;
+        biDst.biCompression = '2YUY';
+        biDst.biBitCount = 16;
+        biDst.biPlanes = 1;
+        biDst.biSizeImage = ((vi.width*2+3)&~3) * vi.height;
         if (ICERR_OK == ICDecompressQuery(hic, pbiSrc, &biDst)) {
-          vi.pixel_type = VideoInfo::BGR32;
+          vi.pixel_type = VideoInfo::YUY2;
         } else {
-          biDst.biBitCount = 24;
-          biDst.biSizeImage = ((vi.width*3+3)&~3) * vi.height;
+          biDst.biCompression = BI_RGB;
+          biDst.biBitCount = 32;
+          biDst.biSizeImage = vi.width*vi.height*4;
           if (ICERR_OK == ICDecompressQuery(hic, pbiSrc, &biDst)) {
-            vi.pixel_type = VideoInfo::BGR24;
+            vi.pixel_type = VideoInfo::BGR32;
           } else {
-            env->ThrowError("AVISource: the video decompressor couldn't produce YUY2 or RGB output");
+            biDst.biBitCount = 24;
+            biDst.biSizeImage = ((vi.width*3+3)&~3) * vi.height;
+            if (ICERR_OK == ICDecompressQuery(hic, pbiSrc, &biDst)) {
+              vi.pixel_type = VideoInfo::BGR24;
+            } else {
+              env->ThrowError("AVISource: the video decompressor couldn't produce YUY2 or RGB output");
+            }
           }
         }
+        DecompressBegin(pbiSrc, &biDst);
       }
-      DecompressBegin(pbiSrc, &biDst);
     }
   }
 
@@ -1304,7 +1306,7 @@ AVSValue __cdecl Create_Version(AVSValue args, void*, IScriptEnvironment* env) {
 AVSFunction Source_filters[] = {
   { "AVISource", "s+[audio]b", AVISource::Create, (void*)0 },
   { "AVIFileSource", "s+[audio]b", AVISource::Create, (void*)1 },
-  { "WAVSource", "s+[audio]b", AVISource::Create, (void*)1 },
+  { "WAVSource", "s+", AVISource::Create, (void*)3 },
   { "OpenDMLSource", "s+[audio]b", AVISource::Create, (void*)2 },
   { "DirectShowSource", "s+[fps]f", Create_DirectShowSource },
   { "SegmentedAVISource", "s+[audio]b", Create_SegmentedSource, (void*)0 },
