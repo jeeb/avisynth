@@ -233,6 +233,18 @@ OverlayFunction* Overlay::SelectFunction(const char* name, IScriptEnvironment* e
   if (!lstrcmpi(name, "Multiply"))
     return new OL_MultiplyImage();
 
+  if (!lstrcmpi(name, "Chroma"))
+    return new OL_BlendChromaImage();
+
+  if (!lstrcmpi(name, "Luma"))
+    return new OL_BlendLumaImage();
+
+  if (!lstrcmpi(name, "Lighten"))
+    return new OL_LightenImage();
+
+  if (!lstrcmpi(name, "Darken"))
+    return new OL_DarkenImage();
+
   env->ThrowError("Overlay: Invalid 'Mode' specified.");
   return 0;
 }

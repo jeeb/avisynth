@@ -291,6 +291,18 @@ SOURCE=.\filters\overlay\OF_blend.cpp
 # End Source File
 # Begin Source File
 
+SOURCE=.\filters\overlay\OF_darken.cpp
+# End Source File
+# Begin Source File
+
+SOURCE=.\filters\overlay\OF_lighten.cpp
+# End Source File
+# Begin Source File
+
+SOURCE=.\filters\overlay\OF_lumaChroma.cpp
+# End Source File
+# Begin Source File
+
 SOURCE=.\filters\overlay\OF_multiply.cpp
 # End Source File
 # Begin Source File
