@@ -49,8 +49,8 @@ public:
   AvsImage(const VideoInfo & _vi) : vi(_vi) {};
   virtual ~AvsImage() {};
   
-  virtual bool compress(ostream & bufWriter, const BYTE * srcPtr, const int pitch) = 0;
-  virtual bool decompress(const istream & bufReader, BYTE * dstPtr) = 0;
+  virtual void compress(ostream & bufWriter, const BYTE * srcPtr, const int pitch) = 0;
+  virtual void decompress(const istream & bufReader, BYTE * dstPtr) = 0;
 
 protected:
   VideoInfo vi;
@@ -97,8 +97,8 @@ public:
   img_BMP(const VideoInfo & _vi);
   virtual ~img_BMP() {};
 
-  bool compress(ostream & bufWriter, const BYTE * srcPtr, const int pitch);
-  bool decompress(const istream & bufReader, BYTE * dstPtr);
+  void compress(ostream & bufWriter, const BYTE * srcPtr, const int pitch);
+  void decompress(const istream & bufReader, BYTE * dstPtr);
 
 protected:
   BITMAPFILEHEADER fileHeader;

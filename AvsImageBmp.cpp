@@ -44,7 +44,7 @@ img_BMP::img_BMP (const VideoInfo & _vi)
 {}
 
 
-bool img_BMP::compress(ostream & bufWriter, const BYTE * srcPtr, const int pitch) 
+void img_BMP::compress(ostream & bufWriter, const BYTE * srcPtr, const int pitch) 
 {  
   // construct file header  
   fileHeader.bfType = ('M' << 8) + 'B'; // little-endian sucks my balls
@@ -80,11 +80,11 @@ bool img_BMP::compress(ostream & bufWriter, const BYTE * srcPtr, const int pitch
     srcPtr += pitch;
   }
   bufWriter.flush();
-  return true;
+
 }
 
 
-bool img_BMP::decompress(const istream & bufReader, BYTE * dstPtr)
+void img_BMP::decompress(const istream & bufReader, BYTE * dstPtr)
 {
-  return true;
+  return;
 }
