@@ -187,7 +187,7 @@ HorizontalReduceBy2::HorizontalReduceBy2(PClip _child, IScriptEnvironment* env)
   source_width = vi.width;
   vi.width >>= 1;
 }
-
+ 
 
 PVideoFrame HorizontalReduceBy2::GetFrame(int n, IScriptEnvironment* env) 
 {
@@ -205,7 +205,7 @@ PVideoFrame HorizontalReduceBy2::GetFrame(int n, IScriptEnvironment* env)
 			isse_process_yuy2(src,dstp,dst_pitch);
 			return dst;
 		}
-  const BYTE* srcp = src->GetReadPtr();
+    const BYTE* srcp = src->GetReadPtr();
     for (int y = vi.height; y>0; --y) {
       for (int x = (vi.width>>1)-1; x; --x) {
         dstp[0] = (srcp[0] + 2*srcp[2] + srcp[4] + 2) >> 2;
@@ -224,7 +224,7 @@ PVideoFrame HorizontalReduceBy2::GetFrame(int n, IScriptEnvironment* env)
 
     }
   } else if (vi.IsRGB24()) {
-  const BYTE* srcp = src->GetReadPtr();
+    const BYTE* srcp = src->GetReadPtr();
     for (int y = vi.height; y>0; --y) {
       for (int x = (source_width-1)>>1; x; --x) {
         dstp[0] = (srcp[0] + 2*srcp[3] + srcp[6] + 2) >> 2;
@@ -245,8 +245,8 @@ PVideoFrame HorizontalReduceBy2::GetFrame(int n, IScriptEnvironment* env)
       }
     }
   } else {  //rgb32
+    const BYTE* srcp = src->GetReadPtr();
     for (int y = vi.height; y>0; --y) {
-  const BYTE* srcp = src->GetReadPtr();
       for (int x = (source_width-1)>>1; x; --x) {
         dstp[0] = (srcp[0] + 2*srcp[4] + srcp[8] + 2) >> 2;
         dstp[1] = (srcp[1] + 2*srcp[5] + srcp[9] + 2) >> 2;
