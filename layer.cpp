@@ -28,7 +28,8 @@
 
 AVSFunction Layer_filters[] = {
   { "Mask", "cc", Mask::Create },     // clip, mask
-  { "Layer", "ccs[x]iii[threshold]i[use_chroma]b", Layer::Create },
+  { "ColorKeyMask", "cii", ColorKeyMask::Create },    // clip, color, tolerance
+  { "Layer", "cc[op]s[level]i[x]i[y]i[threshold]i[use_chroma]b", Layer::Create },
   /**
     * Layer(clip, overlayclip, amount, xpos, ypos, [threshold=0], [use_chroma=true])
    **/     
@@ -157,6 +158,107 @@ AVSValue __cdecl Mask::Create(AVSValue args, void*, IScriptEnvironment* env)
 
 
 
+/**************************************
+ *******   ColorKeyMask Filter   ******
+ **************************************/
+
+
+ColorKeyMask::ColorKeyMask(PClip _child, int _color, int _tolerance, IScriptEnvironment *env)
+  : GenericVideoFilter(_child), color(_color & 0xffffff), tol(_tolerance)
+{
+  if (!vi.IsRGB32())
+    env->ThrowError("ColorKeyMask: requires RGB32 input");
+}
+
+PVideoFrame __stdcall ColorKeyMask::GetFrame(int n, IScriptEnvironment *env)
+{
+  PVideoFrame frame = child->GetFrame(n, env);
+  env->MakeWritable(&frame);
+
+  BYTE* pf = frame->GetWritePtr();
+  const int pitch = frame->GetPitch();
+  const int rowsize = frame->GetRowSize();
+
+  if (!(env->GetCPUFlags() & CPUF_MMX) || vi.width==1) {
+    const int R = color >> 16;
+    const int G = (color & 0xff00) >> 8;
+    const int B = color & 0xff;
+
+    for (int y=0; y<vi.height; y++) {
+      for (int x=0; x<rowsize; x+=4) {
+        if (IsClose(pf[x],B,tol) && IsClose(pf[x+1],B,tol) && IsClose(pf[x+2],R,tol))
+          pf[x+3]=0;
+      }
+      pf += pitch;
+    }
+  } else { // MMX
+    const int height = vi.height;
+    const __int64 col8 = (__int64)color << 32 | color;
+    const __int64 tol8 = ((__int64)tol * 0x0001010100010101i64) | 0xff000000ff000000i64;
+    const int xloopcount = -(rowsize & -8);
+    pf -= xloopcount;
+    __asm {
+      mov       esi, pf
+      mov       edx, height
+      pxor      mm0, mm0
+      movq      mm1, col8
+      movq      mm2, tol8
+
+yloop:
+      mov       ecx, xloopcount
+xloop:
+      movq      mm3, [esi+ecx]
+      movq      mm4, mm1
+      movq      mm5, mm3
+      psubusb   mm4, mm3
+      psubusb   mm5, mm1
+      por       mm4, mm5
+      psubusb   mm4, mm2
+      add       ecx, 8
+      pcmpeqd   mm4, mm0
+      pslld     mm4, 24
+      pandn     mm4, mm3
+      movq      [esi+ecx-8], mm4
+      jnz       xloop
+
+      mov       ecx, rowsize
+      and       ecx, 7
+      jz        not_odd
+      ; process last pixel
+      movd      mm3, [esi]
+      movq      mm4, mm1
+      movq      mm5, mm3
+      psubusb   mm4, mm3
+      psubusb   mm5, mm1
+      por       mm4, mm5
+      psubusb   mm4, mm2
+      pcmpeqd   mm4, mm0
+      pslld     mm4, 24
+      pandn     mm4, mm3
+      movd      [esi], mm4
+
+not_odd:
+      add       esi, pitch
+      dec       edx
+      jnz       yloop
+    }
+  }
+
+  return frame;
+}
+
+AVSValue __cdecl ColorKeyMask::Create(AVSValue args, void*, IScriptEnvironment* env) 
+{
+  return new ColorKeyMask(args[0].AsClip(), args[1].AsInt(0), args[2].AsInt(10), env);
+}
+
+
+
+
+
+
+
+
 /*******************************
  *******   Layer Filter   ******
  *******************************/
@@ -172,7 +274,7 @@ Layer::Layer( PClip _child1, PClip _child2, const char _op[], int _lev, int _x, 
     if (vi1.pixel_type != vi2.pixel_type)
       env->ThrowError("Layer: image formats don't match");
 
-	if (! (vi.IsRGB32() | vi.IsYUV()) ) 
+	if (! (vi1.IsRGB32() | vi1.IsYUV()) ) 
 		env->ThrowError("Layer only support RGB32 and YUV formats");
 
   vi = vi1;

@@ -53,6 +53,23 @@ private:
 
 
 
+class ColorKeyMask : public GenericVideoFilter
+/**
+  * Class for setting a mask on a video clip based on a color key
+**/
+{
+public:
+  ColorKeyMask(PClip _child, int _color, int _tolerance, IScriptEnvironment *env);
+  PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment *env);
+
+  static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env);
+
+private:
+  int color, tol;
+};
+
+
+
 class Layer: public IClip 
 /**
   * Class for layering two clips on each other, combined by various functions
