@@ -788,6 +788,51 @@ static void SetMicrosoftDVtoFullResolution(IGraphBuilder* gb) {
   
 }
 
+// The following constant is from "wmcodecconst.h" in the 
+// "Windows Media Audio and Video Codec Interfaces download package"
+// available for download from MSDN.
+static const WCHAR *g_wszWMVCDecoderDeinterlacing = L"_DECODERDEINTERLACING";
+
+static void DisableDeinterlacing(IFilterGraph *pGraph)
+{
+    IEnumFilters *pEnum = NULL;
+    IBaseFilter *pFilter;
+    ULONG cFetched;
+ 
+    HRESULT hr = pGraph->EnumFilters(&pEnum);
+    if (FAILED(hr))
+	return;
+
+    while(pEnum->Next(1, &pFilter, &cFetched) == S_OK) {
+        FILTER_INFO FilterInfo;
+        hr = pFilter->QueryFilterInfo(&FilterInfo);
+        if (FAILED(hr))
+            continue;  // Maybe the next one will work.
+
+	if (wcscmp(FilterInfo.achName, L"WMVideo Decoder DMO") == 0) {
+	    IPropertyBag *pPropertyBag = NULL;
+	    hr = pFilter->QueryInterface(IID_IPropertyBag, (void**)&pPropertyBag);
+	    if(SUCCEEDED(hr)) {
+		VARIANT myVar;
+		VariantInit(&myVar);
+		// Disable decoder deinterlacing
+		myVar.vt   = VT_BOOL;
+		myVar.lVal = FALSE;
+		pPropertyBag->Write(g_wszWMVCDecoderDeinterlacing, &myVar);
+	    }
+	}
+
+	// The FILTER_INFO structure holds a pointer to the Filter Graph
+	// Manager, with a reference count that must be released.
+	if (FilterInfo.pGraph != NULL)
+	    FilterInfo.pGraph->Release();
+	pFilter->Release();
+    }
+
+    pEnum->Release();
+}
+
+
 /************************************************
  *               DirectShowSource               *
  ***********************************************/
@@ -820,6 +865,7 @@ DirectShowSource::DirectShowSource(const char* filename, int _avg_time_per_frame
     RemoveUselessFilters(gb, &get_sample, &get_sample);
 
     SetMicrosoftDVtoFullResolution(gb);
+    DisableDeinterlacing(gb);
 
     // Prevent the graph from trying to run in "real time"
     // ... Disabled because it breaks ASF.  Now I know why
@@ -1022,7 +1068,7 @@ DirectShowSource::DirectShowSource(const char* filename, int _avg_time_per_frame
         } else { // Pad with 0
           if (vi.sample_type == SAMPLE_FLOAT) {
             float* samps = (float*)buf;
-            for (int i = 0; i < (bytes_left/sizeof(float)); i++)
+            for (int i = 0; i < (int)(bytes_left/sizeof(float)); i++)
               samps[i] = 0.0f;
           } else {
             memset(&samples[bytes_filled],0,bytes_left);
