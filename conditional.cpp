@@ -111,7 +111,7 @@ PVideoFrame __stdcall ConditionalFilter::GetFrame(int n, IScriptEnvironment* env
 			if (e1 < e2) state = true;
 	} else {  // Float compare
 		if (evaluator&EQUALS) 
-			if (fabs(f1-f2)>0.000001f) state = true;   // Exact equal will sometimes be rounded to wrong values.
+			if (fabs(f1-f2)<0.000001f) state = true;   // Exact equal will sometimes be rounded to wrong values.
 
 		if (evaluator&GREATERTHAN) 
 			if (f1 > f2) state = true;
