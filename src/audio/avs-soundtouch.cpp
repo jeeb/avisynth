@@ -63,6 +63,7 @@ private:
   double tempo;
   double rate;
   double pitch;
+  bool assume_one_to_one;
 
 public:
 static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env);
@@ -81,9 +82,9 @@ AVSsoundtouch(PClip _child, double _tempo, double _rate, double _pitch, IScriptE
   sample_multiplier = 100.0 / tempo;
   sample_multiplier *= 100.0 / rate;
 
-  int n;
+  assume_one_to_one = (fabs(sample_multiplier - 1.0) < 0.0000001) ? true : false;
   
-  for(n=0;n<last_nch;n++) 
+  for(int n=0;n<last_nch;n++) 
     samplers.add_item(new SoundTouch());
 
   for(n=0;n<last_nch;n++) {
@@ -94,7 +95,8 @@ AVSsoundtouch(PClip _child, double _tempo, double _rate, double _pitch, IScriptE
     samplers[n]->setSampleRate(vi.audio_samples_per_second);
   }
 
-  vi.num_audio_samples = (double)vi.num_audio_samples * sample_multiplier;
+  if (!assume_one_to_one) 
+    vi.num_audio_samples = (double)vi.num_audio_samples * sample_multiplier;
 
   sample_multiplier = 1.0 / sample_multiplier;  // We need the inserse to use it for sample offsets in the GetAudio loop.
 
@@ -108,9 +110,18 @@ void __stdcall AVSsoundtouch::GetAudio(void* buf, __int64 start, __int64 count, 
 {
 
   if (start != next_sample) {  // Reset on seek
-    for(int n=0;n<last_nch;n++) 
+
+    for(int n=0;n<last_nch;n++)  // Clear all resamplers
       samplers[n]->clear();
-    inputReadOffset = (__int64)(sample_multiplier * (double)start);  // Reset at new read position (NOT sample exact :( ).
+
+    next_sample = start;
+
+    if (assume_one_to_one) {
+      inputReadOffset = start;  // Reset at new read position.
+    } else {
+      inputReadOffset = (__int64)(sample_multiplier * (double)start);  // Reset at new read position (NOT sample exact :( ).
+    }
+
     dst_samples_filled=0;
   }
 
@@ -200,7 +211,7 @@ AVSValue __cdecl AVSsoundtouch::Create(AVSValue args, void*, IScriptEnvironment*
 
 
 AVSFunction Soundtouch_filters[] = {
-  { "SoundTouch", "c[tempo]f[rate]f[pitch]f", AVSsoundtouch::Create },
+  { "TimeStretch", "c[tempo]f[rate]f[pitch]f", AVSsoundtouch::Create },
   { 0 }
 };
 
