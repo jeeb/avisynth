@@ -97,9 +97,41 @@ ConditionalReader::ConditionalReader(PClip _child, const char* filename, const c
 
         if (fields != 3) 
           ThrowLine("ConditionalReader: Could not read range in line %d", lines);
+        if (start > stop)
+          ThrowLine("ConditionalReader: The start frame is after the end frame in line %d", lines);
 
         AVSValue set = ConvertType((const char*)value, lines);
         SetRange(start, stop, set);
+      } else if (ptr[0] == 'I' || ptr[0] == 'i') {  // Interpolate
+        if (mode == MODE_BOOL)
+          ThrowLine("ConditionalReader: Cannot interpolate booleans in line %d", lines);
+
+        ptr++;
+		    ptr = skipspaces(ptr);
+        int start;
+        int stop;
+        char* start_value [64];
+        char* stop_value [64];
+        fields = sscanf(ptr, "%d %d %64s %64s", &start, &stop, start_value, stop_value);
+
+        if (fields != 4) 
+          ThrowLine("ConditionalReader: Could not read interpolation range in line %d", lines);
+        if (start > stop)
+          ThrowLine("ConditionalReader: The start frame is after the end frame in line %d", lines);
+
+        AVSValue set_start = ConvertType((const char*)start_value, lines);
+        AVSValue set_stop = ConvertType((const char*)stop_value, lines);
+
+        int range = stop-start;
+        for (int i = 0; i<=range; i++) {
+          float where = (float)(i)/(float)range;
+          float diff = set_stop.AsFloat() - set_start.AsFloat();
+          if (mode == MODE_FLOAT) {
+            SetFrame(i+start, AVSValue(where*diff+set_start.AsFloat()));
+          } else {
+            SetFrame(i+start, AVSValue((int)(where*diff+set_start.AsFloat())));
+          }
+        }
       } else {
         char* value [64];
         int cframe;
@@ -199,7 +231,9 @@ void ConditionalReader::SetRange(int start_frame, int stop_frame, AVSValue v) {
 // Sets the value of one frame.
 
 void ConditionalReader::SetFrame(int framenumber, AVSValue v) {
-  framenumber = max(min(framenumber, vi.num_frames-1), 0);
+
+  if (framenumber < 0 || framenumber > vi.num_frames-1 )
+    return;
 
   switch (mode) {
     case MODE_INT:
