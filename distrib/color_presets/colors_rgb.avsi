@@ -107,7 +107,8 @@ global color_olivedrab 	= $6B8E23
 global color_orange 	= $FFA500
 global color_orangered 	= $FF4500
 global color_orchid 	= $DA70D6
-global color_palegoldenrod 	= $EEE8AA 	global color_aliceblue 	= $F0F8FF
+global color_palegoldenrod 	= $EEE8AA 	
+global color_aliceblue 	= $F0F8FF
 global color_antiquewhite 	= $FAEBD7
 global color_aqua 	= $00FFFF
 global color_aquamarine 	= $7FFFD4
