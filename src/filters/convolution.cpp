@@ -47,11 +47,12 @@
 ********************************************************************/
 
 AVSFunction Convolution_filters[] = {
-  { "GeneralConvolution", "c[bias]i[matrix]s", GeneralConvolution::Create },  
+  { "GeneralConvolution", "c[divisor]i[bias]i[matrix]s", GeneralConvolution::Create },  
     /** 
-      * GeneralConvolution(PClip clip, int bias=0, string matrix) 
+      * GeneralConvolution(PClip clip, int divisor=1, int bias=0, string matrix) 
       * clip     =  input video          
-      * bias     =  additive bias, i.e. initial value when accumulating product sums
+      * divisor  =  divides the output of the convolution (calculated before adding bias)
+      * bias     =  additive bias to adjust the total output intensity
       * matrix   =  the kernel (3x3 or 5x5).  any kind of whitespace is ok, see example
       * 
       * clip.GeneralConvolution("1 2 3
@@ -70,11 +71,13 @@ AVSFunction Convolution_filters[] = {
 
 /***** Setup stuff ****/
 
-GeneralConvolution::GeneralConvolution(PClip _child, int _nBias, const char * _matrix, IScriptEnvironment* _env) 
-  : GenericVideoFilter(_child), nBias(_nBias)
+GeneralConvolution::GeneralConvolution(PClip _child, int _divisor, int _nBias, const char * _matrix, IScriptEnvironment* _env) 
+  : GenericVideoFilter(_child), divisor(_divisor), nBias(_nBias)
 { 
   if (!child->GetVideoInfo().IsRGB32())
     _env->ThrowError("GeneralConvolution requires RGBA input");
+  if (divisor == 0)
+    _env->ThrowError("GeneralConvolution: divisor cannot be zero");
   setMatrix(_matrix, _env); 
   initBuffers(_env);
 }
@@ -91,8 +94,8 @@ GeneralConvolution::~GeneralConvolution(void)
 
 AVSValue __cdecl GeneralConvolution::Create(AVSValue args, void* user_data, IScriptEnvironment* env) 
 { 
-  return new GeneralConvolution( args[0].AsClip(), args[1].AsInt(0), 
-                                 args[2].AsString("0 0 0 0 1 0 0 0 0" ), env);
+  return new GeneralConvolution( args[0].AsClip(), args[1].AsInt(1), args[2].AsInt(0),
+                                 args[3].AsString("0 0 0 0 1 0 0 0 0" ), env);
 }
 
 
@@ -313,9 +316,9 @@ PVideoFrame __stdcall GeneralConvolution::GetFrame(int n, IScriptEnvironment* en
 						i04 * pbyB4[x0] + i14 * pbyB4[x1] + i24 * pbyB4[x2] + i34 * pbyB4[x3] + i44 * pbyB4[x4];			
 			}
 
-			iR = ((iR * iCountDiv) >> 20) + nBias;
-			iG = ((iG * iCountDiv) >> 20) + nBias;
-			iB = ((iB * iCountDiv) >> 20) + nBias;
+			iR = ((iR * iCountDiv) >> 20) / divisor + nBias;
+			iG = ((iG * iCountDiv) >> 20) / divisor + nBias;
+			iB = ((iB * iCountDiv) >> 20) / divisor + nBias;
 
 			if(iR > 255)
 				iR = 255;

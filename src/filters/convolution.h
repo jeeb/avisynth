@@ -55,7 +55,7 @@ class GeneralConvolution : public GenericVideoFilter
  **/
 {
 public:
-    GeneralConvolution(PClip _child, int _nBias, const char * _matrix, IScriptEnvironment* _env);
+    GeneralConvolution(PClip _child, int _divisor, int _nBias, const char * _matrix, IScriptEnvironment* _env);
     virtual ~GeneralConvolution(void);
     PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
     static AVSValue __cdecl Create(AVSValue args, void* user_data, IScriptEnvironment* env);
@@ -64,7 +64,8 @@ protected:
     void setMatrix(const char * _matrix, IScriptEnvironment* env);
     void initBuffers(IScriptEnvironment* env);
 
-private:                     
+private:      
+    int divisor;
     int nBias;
     unsigned int nSize;
         
