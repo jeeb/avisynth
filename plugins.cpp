@@ -86,12 +86,17 @@ AVSValue LoadPlugin(AVSValue args, void* user_data, IScriptEnvironment* env) {
       if (!AvisynthPluginInit) {
         if (GetProcAddress(plugin, "AvisynthPluginGetInfo"))
           env->ThrowError("LoadPlugin: \"%s\" is an Avisynth 0.x plugin, and is not compatible with version 1.x", plugin_name);
-        else if (quiet)
+        else if (quiet) {
           FreeLibrary(plugin);
-        else
+          // remove the last handle from the list
+          HMODULE* loaded_plugins = (HMODULE*)env->GetVar("$Plugins$").AsString();
+          int j=0;
+          while (loaded_plugins[j+1]) j++;
+          loaded_plugins[j] = 0;
+        } else
           env->ThrowError("LoadPlugin: \"%s\" is not an Avisynth 1.0 plugin", plugin_name);
-      }
-      result = AvisynthPluginInit(env);
+      } else
+        result = AvisynthPluginInit(env);
     }
   }
   return result ? AVSValue(result) : AVSValue();

@@ -487,6 +487,7 @@ private:
 
   IScriptEnvironment* This() { return this; }
   const char* GetPluginDirectory();
+  bool LoadPluginsMatching(const char* pattern);
   void PrescanPlugins();
 };
 
@@ -581,6 +582,32 @@ const char* ScriptEnvironment::GetPluginDirectory()
   return plugin_dir;
 }
 
+bool ScriptEnvironment::LoadPluginsMatching(const char* pattern)
+{
+  WIN32_FIND_DATA FileData;
+  char file[MAX_PATH];
+  char* dummy;
+//  const char* plugin_dir = GetPluginDirectory();
+
+//  strcpy(file, plugin_dir);
+//  strcat(file, "\\");
+//  strcat(file, pattern);
+  HANDLE hFind = FindFirstFile(pattern, &FileData);
+  BOOL bContinue = (hFind != INVALID_HANDLE_VALUE);
+  while (bContinue) {
+    // we have to use full pathnames here
+    GetFullPathName(FileData.cFileName, MAX_PATH, file, &dummy);
+    function_table.PrescanPluginStart(file);
+    LoadPlugin(AVSValue(&AVSValue(&AVSValue(file), 1), 1), (void*)true, this);
+    bContinue = FindNextFile(hFind, &FileData);
+    if (!bContinue) {
+      FindClose(hFind);
+      return true;
+    }
+  }
+  return false;
+}
+
 void ScriptEnvironment::PrescanPlugins()
 {
   const char* plugin_dir;
@@ -589,35 +616,25 @@ void ScriptEnvironment::PrescanPlugins()
     WIN32_FIND_DATA FileData;
     HANDLE hFind = FindFirstFile(plugin_dir, &FileData);
     if (hFind != INVALID_HANDLE_VALUE) {    
-      char file[MAX_PATH];
-      char* dummy;
+      FindClose(hFind);
       CWDChanger cwdchange(plugin_dir);
-      strcpy(file, plugin_dir);
-      strcat(file, "\\*.dll");
-      hFind = FindFirstFile(file, &FileData);
-      BOOL bContinue = (hFind != INVALID_HANDLE_VALUE);
-      if (bContinue) {
-        function_table.StartPrescanning();
-        while (bContinue) {
-          // we have to use full pathnames here
-          GetFullPathName(FileData.cFileName, MAX_PATH, file, &dummy);
-          function_table.PrescanPluginStart(file);
-          LoadPlugin(AVSValue(&AVSValue(&AVSValue(file), 1), 1), (void*)true, this);
-          bContinue = FindNextFile(hFind, &FileData);
-        }
-        // Now unloads all plugins
-        function_table.StopPrescanning();
+      function_table.StartPrescanning();
+      if (LoadPluginsMatching("*.dll") | LoadPluginsMatching("*.vdf")) {  // not || because of shortcut boolean eval.
+        // Unloads all plugins
         HMODULE* loaded_plugins = (HMODULE*)GetVar("$Plugins$").AsString();
         FreeLibraries(loaded_plugins, this);
       }
+      function_table.StopPrescanning();
 
+      char file[MAX_PATH];
       strcpy(file, plugin_dir);
       strcat(file, "\\*.avs");
       hFind = FindFirstFile(file, &FileData);
-      bContinue = (hFind != INVALID_HANDLE_VALUE);
+      BOOL bContinue = (hFind != INVALID_HANDLE_VALUE);
       while (bContinue) {
         Import(AVSValue(&AVSValue(&AVSValue(FileData.cFileName), 1), 1), 0, this);
         bContinue = FindNextFile(hFind, &FileData);
+        if (!bContinue) FindClose(hFind);
       }
     }
   }
