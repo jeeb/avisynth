@@ -91,6 +91,7 @@ ChangeFPS::ChangeFPS(PClip _child, int new_numerator, int new_denominator)
   a = __int64(vi.fps_numerator) * new_denominator;
   b = __int64(vi.fps_denominator) * new_numerator;
   vi.SetFPS(new_numerator, new_denominator);
+  vi.num_frames = int((vi.num_frames * b + (a >> 1)) / a);
 }
 
 
