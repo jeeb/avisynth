@@ -13,7 +13,7 @@
 ********************************************************************/
 
 AVSFunction Convolution_filters[] = {
-  { "GeneralConvolution", "c[bias]is", GeneralConvolution::Create },  
+  { "GeneralConvolution", "c[bias]i[matrix]s", GeneralConvolution::Create },  
     /** 
       * GeneralConvolution(PClip clip, int bias=0, string matrix) 
       * clip     =  input video          
@@ -56,7 +56,8 @@ GeneralConvolution::~GeneralConvolution(void)
 
 AVSValue __cdecl GeneralConvolution::Create(AVSValue args, void* user_data, IScriptEnvironment* env) 
 { 
-  return new GeneralConvolution(args[0].AsClip(), args[1].AsInt(0), args[2].AsString(), env);
+  return new GeneralConvolution( args[0].AsClip(), args[1].AsInt(0), 
+                                 args[2].AsString("0 0 0 0 1 0 0 0 0" ), env);
 }
 
 

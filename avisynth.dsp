@@ -116,7 +116,7 @@ BSC32=bscmake.exe
 LINK32=link.exe
 # ADD BASE LINK32 msvcrt.lib c:\p\mm\mpeg2dll\release\mpeg2dll.lib ddraw.lib amstrmid.lib vfw32.lib kernel32.lib advapi32.lib version.lib user32.lib gdi32.lib ole32.lib uuid.lib /nologo /dll /machine:I386
 # SUBTRACT BASE LINK32 /pdb:none /debug /nodefaultlib
-# ADD LINK32 penter.lib msvcrt.lib quartz.lib qtmlclient.lib ddraw.lib amstrmid.lib vfw32.lib kernel32.lib advapi32.lib version.lib user32.lib gdi32.lib ole32.lib uuid.lib /nologo /dll /debug /machine:I386 /nodefaultlib
+# ADD LINK32 penter.lib msvcrt.lib quartz.lib ddraw.lib amstrmid.lib vfw32.lib kernel32.lib advapi32.lib version.lib user32.lib gdi32.lib ole32.lib uuid.lib /nologo /dll /debug /machine:I386 /nodefaultlib
 # SUBTRACT LINK32 /pdb:none
 # Begin Special Build Tool
 SOURCE="$(InputPath)"
