@@ -193,7 +193,7 @@ PVideoFrame __stdcall ShowFiveVersions::GetFrame(int n, IScriptEnvironment* env)
   PVideoFrame dst = env->NewVideoFrame(vi);
   BYTE* dstp = dst->GetWritePtr();
   const int dst_pitch = dst->GetPitch();
-  const int height = dst->GetHeight();
+  const int height = dst->GetHeight()/2;
 
   for (int c=0; c<5; ++c) 
   {
@@ -205,7 +205,7 @@ PVideoFrame __stdcall ShowFiveVersions::GetFrame(int n, IScriptEnvironment* env)
     // staggered arrangement
     BYTE* dstp2 = dstp + (c>>1) * src_row_size;
     if ((c&1)^vi.IsRGB())
-      dstp2 += (vi.height * dst_pitch);
+      dstp2 += (height * dst_pitch);
     if (c&1)
       dstp2 += vi.BytesFromPixels(vi.width/6);
 
