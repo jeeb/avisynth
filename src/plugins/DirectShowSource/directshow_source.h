@@ -227,11 +227,12 @@ class DirectShowSource : public IClip {
   IScriptEnvironment* const env;
   void CheckHresult(HRESULT hr, const char* msg, const char* msg2 = "");
   HRESULT LoadGraphFile(IGraphBuilder *pGraph, const WCHAR* wszName);
+  bool convert_fps;
 
 
 public:
 
-  DirectShowSource(const char* filename, int _avg_time_per_frame, bool _seek, bool _enable_audio, bool _enable_video, IScriptEnvironment* _env);
+  DirectShowSource(const char* filename, int _avg_time_per_frame, bool _seek, bool _enable_audio, bool _enable_video, bool _convert_fps, IScriptEnvironment* _env);
   ~DirectShowSource();
   const VideoInfo& __stdcall GetVideoInfo() { return vi; }
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);

@@ -838,7 +838,7 @@ static void DisableDeinterlacing(IFilterGraph *pGraph)
  ***********************************************/
 
 
-DirectShowSource::DirectShowSource(const char* filename, int _avg_time_per_frame, bool _seek, bool _enable_audio, bool _enable_video, IScriptEnvironment* _env) : env(_env), get_sample(_env, _enable_audio, _enable_video), no_search(!_seek) {
+DirectShowSource::DirectShowSource(const char* filename, int _avg_time_per_frame, bool _seek, bool _enable_audio, bool _enable_video, bool _convert_fps, IScriptEnvironment* _env) : env(_env), get_sample(_env, _enable_audio, _enable_video), no_search(!_seek), convert_fps(_convert_fps) {
 
     CheckHresult(CoCreateInstance(CLSID_FilterGraphNoThread, 0, CLSCTX_INPROC_SERVER, IID_IGraphBuilder, (void**)&gb), "couldn't create filter graph");
 
@@ -877,7 +877,12 @@ DirectShowSource::DirectShowSource(const char* filename, int _avg_time_per_frame
 
     IMediaSeeking* ms=0;
     CheckHresult(gb->QueryInterface(&ms), "couldn't get IMediaSeeking interface");
-    frame_units = SUCCEEDED(ms->SetTimeFormat(&TIME_FORMAT_FRAME));
+	if (convert_fps) {
+		frame_units = false;
+		bool video_time = SUCCEEDED(ms->SetTimeFormat(&TIME_FORMAT_MEDIA_TIME));
+	} else {
+		frame_units = SUCCEEDED(ms->SetTimeFormat(&TIME_FORMAT_FRAME));
+	}
 
     if (FAILED(ms->GetDuration(&duration)) || duration == 0) {
       env->ThrowError("DirectShowSource: unable to determine the duration of the video");
@@ -976,10 +981,19 @@ DirectShowSource::DirectShowSource(const char* filename, int _avg_time_per_frame
           next_sample = sample_time * vi.audio_samples_per_second / 10000000;
         }
       } else {
-        while (cur_frame < n) {
-          get_sample.NextSample();
-          cur_frame++;
-        }
+		if (convert_fps) {
+          if (cur_frame<n) {  // automatic fps conversion: trust only sample time
+            while (get_sample.GetSampleEndTime()+base_sample_time <= sample_time) {
+              get_sample.NextSample();
+            }
+            cur_frame = n;
+          }
+		} else {
+          while (cur_frame < n) {
+            get_sample.NextSample();
+            cur_frame++;
+          }
+		}
       }
     }
     PVideoFrame v = get_sample.GetCurrentFrame();
@@ -1138,9 +1152,9 @@ AVSValue __cdecl Create_DirectShowSource(AVSValue args, void*, IScriptEnvironmen
 
   if (!(audio && video)) { // Hey - simple!!
     if (audio) {
-      return AlignPlanar::Create(new DirectShowSource(filename, avg_time_per_frame, args[2].AsBool(true), true , false, env));
+      return AlignPlanar::Create(new DirectShowSource(filename, avg_time_per_frame, args[2].AsBool(true), true , false, args[5].AsBool(false), env));
     } else {
-      return AlignPlanar::Create(new DirectShowSource(filename, avg_time_per_frame, args[2].AsBool(true), false , true, env));
+      return AlignPlanar::Create(new DirectShowSource(filename, avg_time_per_frame, args[2].AsBool(true), false , true, args[5].AsBool(false), env));
     }
   }
 
@@ -1154,14 +1168,14 @@ AVSValue __cdecl Create_DirectShowSource(AVSValue args, void*, IScriptEnvironmen
   const char *v_e_msg;
 
   try {
-    DS_audio = new DirectShowSource(filename, avg_time_per_frame, args[2].AsBool(true), audio , false, env);
+    DS_audio = new DirectShowSource(filename, avg_time_per_frame, args[2].AsBool(true), audio , false, args[5].AsBool(false), env);
   } catch (AvisynthError e) {
     a_e_msg = e.msg;
     audio_success = false;
   }
 
   try {
-    DS_video = new DirectShowSource(filename, avg_time_per_frame, args[2].AsBool(true), false, video, env);
+    DS_video = new DirectShowSource(filename, avg_time_per_frame, args[2].AsBool(true), false, video, args[5].AsBool(false), env);
   } catch (AvisynthError e) {
     if (!lstrcmpi(e.msg, "DirectShowSource: I can't determine the frame rate of\nthe video; you must use the \"fps\" parameter"))
       env->ThrowError(e.msg);
@@ -1194,7 +1208,7 @@ AVSValue __cdecl Create_DirectShowSource(AVSValue args, void*, IScriptEnvironmen
 
 extern "C" __declspec(dllexport) const char* __stdcall AvisynthPluginInit2(IScriptEnvironment* env)
 {
-    env->AddFunction("DirectShowSource", "s+[fps]f[seek]b[audio]b[video]b", Create_DirectShowSource, 0);
+    env->AddFunction("DirectShowSource", "s+[fps]f[seek]b[audio]b[video]b[convertfps]b", Create_DirectShowSource, 0);
     return "DirectShowSource";
 }
 
