@@ -339,7 +339,7 @@ void Overlay::FetchConditionals(IScriptEnvironment* env) {
     try {
 		  AVSValue cv = env->GetVar("OL_opacity_offset");
 		  if (cv.IsFloat())
-        op_offset = (int)(cv.AsFloat()*256);
+        op_offset = (int)(cv.AsFloat()*256.0);
     } catch (IScriptEnvironment::NotFound) {}
 
     try {

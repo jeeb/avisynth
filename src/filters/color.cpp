@@ -349,6 +349,7 @@ PVideoFrame __stdcall Color::GetFrame(int frame, IScriptEnvironment* env)
   }
 
 #ifdef _DEBUG
+/*
 	y.ave  = ( y.ave+total)/total/2; u.ave  = ( u.ave+totalby2)/total;   v.ave  = ( v.ave+totalby2)/total;
 	y0.ave = (y0.ave+total)/total/2; u0.ave = (u0.ave+totalby2)/total;   v0.ave = (v0.ave+totalby2)/total;
 	r.ave  = ( r.ave+total)/total/2; g.ave  = ( g.ave+total   )/total/2; b.ave  = ( b.ave+total   )/total/2;
@@ -386,7 +387,7 @@ PVideoFrame __stdcall Color::GetFrame(int frame, IScriptEnvironment* env)
 				y.over,u.over,v.over, r.over,g.over,b.over
 			);
 	OutputDebugString(buf);
-
+*/
 #endif
 
 	return src;
@@ -682,7 +683,8 @@ bool Color::CheckParms(const char *_levels, const char *_matrix, const char *_op
 #ifdef _DEBUG
 void Color::DumpLUT(void)
 {
-	static const char *TitleTbl[] = {
+/*
+  static const char *TitleTbl[] = {
 		"Color Adjust Look-up Table : Y, luminance\n",
 		"Color Adjust Look-up Table : U, Cb, Color Difference(blue)\n",
 		"Color Adjust Look-up Table : V, Cr, Color Difference(red)\n"
@@ -710,6 +712,7 @@ void Color::DumpLUT(void)
 		}
 		OutputDebugString("\n");
 	}
+*/
 }
 #endif
 

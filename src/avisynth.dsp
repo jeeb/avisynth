@@ -266,6 +266,42 @@ SOURCE=.\audio\supereq.h
 # Begin Group "Video"
 
 # PROP Default_Filter ""
+# Begin Group "Overlay"
+
+# PROP Default_Filter ""
+# Begin Source File
+
+SOURCE=.\filters\overlay\444convert.cpp
+# End Source File
+# Begin Source File
+
+SOURCE=.\filters\overlay\444convert.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\filters\overlay\imghelpers.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\filters\overlay\OF_add.cpp
+# End Source File
+# Begin Source File
+
+SOURCE=.\filters\overlay\OF_blend.cpp
+# End Source File
+# Begin Source File
+
+SOURCE=.\filters\overlay\overlay.cpp
+# End Source File
+# Begin Source File
+
+SOURCE=.\filters\overlay\overlay.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\filters\overlay\overlayfunctions.h
+# End Source File
+# End Group
 # Begin Source File
 
 SOURCE=.\filters\color.cpp
