@@ -42,6 +42,9 @@
 #include "../internal.h"
 #include "turnfunc.h"
 
+
+class Turn : public GenericVideoFilter {
+	
 void (*TurnFunc) (const unsigned char *srcp, unsigned char *dstp, const int rowsize,
 					const int height, const int src_pitch, const int dst_pitch,
 					const int direction);
@@ -54,9 +57,6 @@ void (*TurnPlanFunc) (const unsigned char *srcp_y, unsigned char *dstp_y,
 				  const int src_pitch_uv, const int dst_pitch_uv,
 				  const int direction);
 
-
-class Turn : public GenericVideoFilter {
-	
 	int			direction;
 
 public:

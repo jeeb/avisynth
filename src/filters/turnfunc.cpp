@@ -47,65 +47,65 @@ void TurnRGB24(const unsigned char *srcp, unsigned char *dstp, const int rowsize
 				const int direction)
 {
 	int dstp_offset;
-	if (direction == -1 ) {
+	if (direction == -1 ) { // Left
 		for (int y = 0; y<height; y++) {
-			dstp_offset = (height-y-1)*3;
-			for (int x=0; x<rowsize/3; x++) {	
-				dstp[dstp_offset+0] = srcp[(x<<1)+x+0];
-				dstp[dstp_offset+1] = srcp[(x<<1)+x+1];
-				dstp[dstp_offset+2] = srcp[(x<<1)+x+2];
+			dstp_offset = (height-1-y)*3;
+			for (int x=0; x<rowsize; x+=3) {	
+				dstp[dstp_offset+0] = srcp[x+0];
+				dstp[dstp_offset+1] = srcp[x+1];
+				dstp[dstp_offset+2] = srcp[x+2];
 				dstp_offset += dst_pitch;
 			}
 			srcp += src_pitch;
 		}
 	}
-	else {
+	else { // Right
+		int dstp_base = (rowsize/3-1) * dst_pitch;
 		for (int y=0; y<height; y++) {
-			dstp_offset = y*3;
-			for (int x = 0; x<rowsize/3; x++) {	
-				dstp[dstp_offset+0] = srcp[rowsize-3-(x<<1)-x+0];
-				dstp[dstp_offset+1] = srcp[rowsize-3-(x<<1)-x+1];
-				dstp[dstp_offset+2] = srcp[rowsize-3-(x<<1)-x+2];
-				dstp_offset += dst_pitch;
+			dstp_offset = dstp_base + y*3;
+			for (int x = 0; x<rowsize; x+=3) {	
+				dstp[dstp_offset+0] = srcp[x+0];
+				dstp[dstp_offset+1] = srcp[x+1];
+				dstp[dstp_offset+2] = srcp[x+2];
+				dstp_offset -= dst_pitch;
 			}
 			srcp += src_pitch;
 		}
-	};
+	}
 }
 
 void TurnRGB32(const unsigned char *srcp, unsigned char *dstp, const int rowsize,
 			   const int height, const int src_pitch, const int dst_pitch,
 			   const int direction)
 {
+	unsigned long *l_srcp = (unsigned long *)srcp;
+	unsigned long *l_dstp = (unsigned long *)dstp;
+	int l_rowsize = rowsize/4;
+	int l_src_pitch = src_pitch/4;
+	int l_dst_pitch = dst_pitch/4;
+
 	int dstp_offset;
-	if (direction == -1) {
+	if (direction == -1) { // Left
 		for (int y=0; y<height; y++) {
-			dstp_offset = (height-y-1)<<2;
-			for (int x=0; x<rowsize>>2; x++) {	
-				dstp[dstp_offset+0] = srcp[(x<<2)+0];
-				dstp[dstp_offset+1] = srcp[(x<<2)+1];
-				dstp[dstp_offset+2] = srcp[(x<<2)+2];
-				//Alpha Channel, maybe useless
-				dstp[dstp_offset+3] = srcp[(x<<2)+3];
-				dstp_offset += dst_pitch;
+			dstp_offset = (height-1-y);
+			for (int x=0; x<l_rowsize; x++) {	
+				l_dstp[dstp_offset] = l_srcp[x];
+				dstp_offset += l_dst_pitch;
 			}
-			srcp += src_pitch;
+			l_srcp += l_src_pitch;
 		}
 	}
-	else {
+	else { // Right
+		int dstp_base = (l_rowsize-1) * l_dst_pitch;
 		for (int y = 0; y<height; y++) {
-			dstp_offset = y<<2;
-			for (int x=0; x<rowsize>>2; x++) {	
-				dstp[dstp_offset+0] = srcp[rowsize-4-(x<<2)+0];
-				dstp[dstp_offset+1] = srcp[rowsize-4-(x<<2)+1];
-				dstp[dstp_offset+2] = srcp[rowsize-4-(x<<2)+2];
-				//Alpha Channel, maybe useless
-				dstp[dstp_offset+3] = srcp[rowsize-4-(x<<2)+3];
-				dstp_offset += dst_pitch;
+			dstp_offset = dstp_base + y;
+			for (int x = 0; x<l_rowsize; x++) {	
+				l_dstp[dstp_offset] = l_srcp[x];
+				dstp_offset -= l_dst_pitch;
 			}
-			srcp += src_pitch;
+			l_srcp += l_src_pitch;
 		}
-	};
+	}
 }
 
 void TurnYUY2(const unsigned char *srcp, unsigned char *dstp, const int rowsize,
@@ -114,11 +114,11 @@ void TurnYUY2(const unsigned char *srcp, unsigned char *dstp, const int rowsize,
 {
 	unsigned char u,v;
 	int dstp_offset;
-	if (direction == 1)
+	if (direction == 1) // Right
 	{
 		for (int y=0; y<height; y+=2)
 		{
-			dstp_offset = ((height-y)<<1)-4;
+			dstp_offset = ((height-2-y)<<1);
 			for (int x=0; x<rowsize; x+=4)
 			{
 				u = (srcp[x+1] + srcp[x+1+src_pitch])>>1;
@@ -127,34 +127,36 @@ void TurnYUY2(const unsigned char *srcp, unsigned char *dstp, const int rowsize,
 				dstp[dstp_offset+1] = u;
 				dstp[dstp_offset+2] = srcp[x];
 				dstp[dstp_offset+3] = v;
-				dstp[dstp_offset+dst_pitch+0] = srcp[x+src_pitch+2];
-				dstp[dstp_offset+dst_pitch+1] = u;
-				dstp[dstp_offset+dst_pitch+2] = srcp[x+2];
-				dstp[dstp_offset+dst_pitch+3] = v;
-				dstp_offset += dst_pitch<<1;
+				dstp_offset += dst_pitch;
+				dstp[dstp_offset+0] = srcp[x+src_pitch+2];
+				dstp[dstp_offset+1] = u;
+				dstp[dstp_offset+2] = srcp[x+2];
+				dstp[dstp_offset+3] = v;
+				dstp_offset += dst_pitch;
 			}
 			srcp += src_pitch<<1;
 		}
 	}
-	else
+	else // Left
 	{
-		srcp += rowsize-2;
+		srcp += rowsize-4;
 		for (int y=0; y<height; y+=2)
 		{
 			dstp_offset = (y<<1);
 			for (int x=0; x<rowsize; x+=4)
 			{
-				u = (srcp[-2-x+1] + srcp[-2-x+1+src_pitch])>>1;
-				v = (srcp[-2-x+3] + srcp[-2-x+3+src_pitch])>>1;
+				u = (srcp[-x+1] + srcp[-x+1+src_pitch])>>1;
+				v = (srcp[-x+3] + srcp[-x+3+src_pitch])>>1;
 				dstp[dstp_offset+0] = srcp[-x+2];
 				dstp[dstp_offset+1] = u;
 				dstp[dstp_offset+2] = srcp[-x+2+src_pitch];
 				dstp[dstp_offset+3] = v;
-				dstp[dstp_offset+dst_pitch+0] = srcp[-x];
-				dstp[dstp_offset+dst_pitch+1] = u;
-				dstp[dstp_offset+dst_pitch+2] = srcp[-x+src_pitch];
-				dstp[dstp_offset+dst_pitch+3] = v;
-				dstp_offset += dst_pitch<<1;
+				dstp_offset += dst_pitch;
+				dstp[dstp_offset+0] = srcp[-x];
+				dstp[dstp_offset+1] = u;
+				dstp[dstp_offset+2] = srcp[-x+src_pitch];
+				dstp[dstp_offset+3] = v;
+				dstp_offset += dst_pitch;
 			}
 			srcp += src_pitch<<1;
 		}
@@ -171,53 +173,53 @@ void TurnPlanar(const unsigned char *srcp_y, unsigned char *dstp_y,
 			  const int direction)
 {
 	int y, x, offset;
-	if (direction == 1)
+	if (direction == 1) // Right
 	{
 		for(y=0; y<height; y++)
 		{
-			offset = height-1;
-			for (int x=0; x<rowsize; x++)
+			offset = height-1-y;
+			for (x=0; x<rowsize; x++)
 			{
-				dstp_y[offset-y] = srcp_y[x];
+				dstp_y[offset] = srcp_y[x];
 				offset += dst_pitch_y;
 			}
 			srcp_y += src_pitch_y;
 		}
 		for(y=0; y<heightUV; y++)
 		{
-			offset = (heightUV-1);
+			offset = heightUV-1-y;
 			for (x=0; x<rowsizeUV; x++)
 			{
-				dstp_u[offset-y] = srcp_u[x];
-				dstp_v[offset-y] = srcp_v[x];
+				dstp_u[offset] = srcp_u[x];
+				dstp_v[offset] = srcp_v[x];
 				offset += dst_pitch_uv;
 			}
 			srcp_u += src_pitch_uv;
 			srcp_v += src_pitch_uv;
 		}
 	}
-	else
+	else // Left
 	{
-		srcp_y += rowsize;
+		srcp_y += rowsize-1;
 		for(y=0; y<height; y++)
 		{
-			offset = 0;
+			offset = y;
 			for (x=0; x<rowsize; x++)
 			{
-				dstp_y[dst_pitch_y*x+y] = srcp_y[-1-x];
+				dstp_y[offset] = srcp_y[-x];
 				offset += dst_pitch_y;
 			}
 			srcp_y += src_pitch_y;
 		}
-		srcp_u += (rowsizeUV);
-		srcp_v += (rowsizeUV);
+		srcp_u += rowsizeUV-1;
+		srcp_v += rowsizeUV-1;
 		for(y=0; y<heightUV; y++)
 		{
-			offset = 0;
+			offset = y;
 			for (x=0; x<rowsizeUV; x++)
 			{
-				dstp_u[offset+y] = srcp_u[-1-x];
-				dstp_v[offset+y] = srcp_v[-1-x];
+				dstp_u[offset] = srcp_u[-x];
+				dstp_v[offset] = srcp_v[-x];
 				offset += dst_pitch_uv;
 			}
 			srcp_u += src_pitch_uv;
