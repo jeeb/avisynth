@@ -55,7 +55,6 @@ struct ClientConnection {
   BYTE* pendingData;
   unsigned int pendingBytesSent;
   unsigned int totalPendingBytes;
-  PVideoFrame prepared_frame;
 };
 
 struct ServerReply {
@@ -95,7 +94,9 @@ private:
   void SendPendingData(ServerReply* s);
   void SendVideoInfo(ServerReply* s);
   void SendFrameInfo(ServerReply* s, const char* request);
-  void TCPServerListener::SendVideoFrame(ServerReply* s);
+  void SendAudioInfo(ServerReply* s, const char* request);
+  void SendVideoFrame(ServerReply* s);
+  void SendAudioData(ServerReply* s);
   WSADATA wsaData;
   SOCKET m_socket;
   sockaddr_in service;

@@ -38,7 +38,7 @@
 #include "alignplanar.h"
 
 
-
+//FIXME: If client application requests audio at the same time as requesting audio, data transfer might fail
 
 TCPClient::TCPClient(const char* _hostname, int _port, IScriptEnvironment* env) : hostname(_hostname), port(_port) {
   LPDWORD ThreadId = 0;
@@ -132,7 +132,36 @@ PVideoFrame __stdcall TCPClient::GetFrame(int n, IScriptEnvironment* env) {
 }
 
 void __stdcall TCPClient::GetAudio(void* buf, __int64 start, __int64 count, IScriptEnvironment* env) {
-   
+  ClientRequestAudio a;
+  memset(&a, 0 , sizeof(ClientRequestAudio));
+  a.start = start;
+  a.count = count;
+  a.bytes = vi.BytesFromAudioSamples(count);
+  client->SendRequest(CLIENT_REQUEST_AUDIO, &a, sizeof(ClientRequestAudio));
+  client->GetReply();
+  if (client->last_reply_type != SERVER_AUDIO_INFO) {
+    _RPT0(1,"TCPClient: Did not recieve expected packet (SERVER_AUDIOINFO)");
+    return;
+  }
+
+  ServerAudioInfo* ai = (ServerAudioInfo *)client->last_reply;
+  switch (ai->compression) {
+    case ServerAudioInfo::COMPRESSION_NONE:
+      break;
+    default:
+      env->ThrowError("TCPClient: Unknown compression.");
+  }
+
+  client->SendRequest(CLIENT_SEND_AUDIO, 0, 0);
+  client->GetReply();
+  _RPT1(0,"TCPClient: Requesting %d bytes (GetFrame)", a.bytes);
+  if (client->last_reply_type == SERVER_SENDING_AUDIO) {
+    client->GetDataBlock(a.bytes);
+    memcpy(buf, client->last_reply, client->last_reply_bytes);
+  } else {
+    env->ThrowError("TCPClient: Did not recieve expected packet (SERVER_SENDING_AUDIO)");
+  }
+  
 }
 
 bool __stdcall TCPClient::GetParity(int n) {
@@ -242,6 +271,8 @@ void TCPClientThread::GetDataBlock(unsigned int bytes) {
         break;
       }
     }
+  } else {
+    _RPT0(1, "TCPClient: Did not recieve a split block, as expected.");
   }
   delete[] last_reply;
   last_reply = d;

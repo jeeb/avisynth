@@ -176,7 +176,7 @@ void TCPServerListener::Listen() {
 
     for (i = 0; i< FD_SETSIZE; i++) {
       if(s_list[i].isConnected) {
-        if (FD_ISSET(s_list[i].s, &test_set)) {
+        if (FD_ISSET(s_list[i].s, &test_set) && (!s_list[i].isDataPending)) {
 
           request_handled = true;
           TCPRecievePacket* t = new TCPRecievePacket(s_list[i].s);
@@ -205,7 +205,7 @@ void TCPServerListener::Listen() {
         } // end if isDataPending
       } // end if list != null
     } // end for i
-    if (!request_handled) Sleep(20);  // If there has been nothing to do we might as well wait a bit.
+    if (!request_handled) Sleep(1);  // If there has been nothing to do we might as well wait a bit.
   } // while !shutdown
 }
 
@@ -226,7 +226,7 @@ void TCPServerListener::SendPacket(ClientConnection* cc, ServerReply* s) {
     BytesSent += r;                
   } // end while
   if (BytesSent != s->dataSize) {
-    _RPT2(1, "TCPServer: Failed in sending %d bytes - could only send %d bytes!\n", s->dataSize, BytesSent);
+    _RPT2(0, "TCPServer: Failed in sending %d bytes - could only send %d bytes!\n", s->dataSize, BytesSent);
     closesocket(cc->s);
     cc->isConnected = false;
   }
@@ -250,8 +250,14 @@ void TCPServerListener::Receive(const char* recvbuf, int bytes, ServerReply* s) 
     case CLIENT_REQUEST_FRAME:
       SendFrameInfo(s, &recvbuf[1]);
       break;
+    case CLIENT_REQUEST_AUDIO:
+      SendAudioInfo(s, &recvbuf[1]);
+      break;
     case CLIENT_SEND_FRAME:
       SendVideoFrame(s);
+      break;
+    case CLIENT_SEND_AUDIO:
+      SendAudioData(s);
       break;
     default:
       _RPT1(1,"TCPServer: Could not handle request type %d.", recvbuf[0]);
@@ -265,12 +271,13 @@ void TCPServerListener::SendPendingData(ServerReply* s) {
     return;
   }
   int bytes_left = cc->totalPendingBytes - cc->pendingBytesSent;
-  int send_bytes = max(0, min(bytes_left, 320*1024));
+  int send_bytes = max(0, min(bytes_left, 32*1024));
   s->allocateBuffer(send_bytes);
   s->setType(SERVER_SPLIT_BLOCK);
   memcpy(s->data, &cc->pendingData[cc->pendingBytesSent], send_bytes);
   SendPacket(cc, s);
   cc->pendingBytesSent += send_bytes;
+
   if (cc->pendingBytesSent >= cc->totalPendingBytes) {
     cc->isDataPending = false;
     delete[] cc->pendingData;
@@ -280,33 +287,15 @@ void TCPServerListener::SendPendingData(ServerReply* s) {
   }
 }
 
+void TCPServerListener::SendAudioData(ServerReply* s) {
+  s->client->isDataPending = true;
+  s->allocateBuffer(0);
+  s->setType(SERVER_SENDING_AUDIO);
+}
+
 void TCPServerListener::SendVideoFrame(ServerReply* s) {
   s->client->isDataPending = true;
   s->allocateBuffer(0);
-  const BYTE* srcp = s->client->prepared_frame->GetReadPtr();
-  int src_pitch = s->client->prepared_frame->GetPitch();
-  int src_height = s->client->prepared_frame->GetHeight();
-  int src_rowsize = s->client->prepared_frame->GetRowSize();
-
-  int data_size = src_height * src_pitch;
-  if (child->GetVideoInfo().IsYV12()) {
-    data_size = data_size + data_size / 2;
-  }
-  s->client->totalPendingBytes = data_size;
-  s->client->pendingBytesSent = 0;
-
-  BYTE* dstp = s->client->pendingData = new BYTE[data_size];
-  env->BitBlt(dstp, src_pitch, srcp, src_pitch, src_rowsize, src_height);
-
-  if (child->GetVideoInfo().IsYV12()) {
-    dstp += src_height * src_pitch;
-    srcp = s->client->prepared_frame->GetReadPtr(PLANAR_U);
-    env->BitBlt(dstp, src_pitch/2, srcp, src_pitch/2, src_rowsize/2, src_height/2);
-
-    dstp += src_height/2 * src_pitch/2;
-    srcp = s->client->prepared_frame->GetReadPtr(PLANAR_U);
-    env->BitBlt(dstp, src_pitch/2, srcp, src_pitch/2, src_rowsize/2, src_height/2);
-  }
   s->setType(SERVER_SENDING_FRAME);
 }
 
@@ -343,8 +332,58 @@ void TCPServerListener::SendFrameInfo(ServerReply* s, const char* request) {
   }
   sfi.data_size = data_size;
 
+  // Prepare data
+  const BYTE* srcp = src->GetReadPtr();
+  int src_pitch = src->GetPitch();
+  int src_height = src->GetHeight();
+  int src_rowsize = src->GetRowSize();
+
+  if (child->GetVideoInfo().IsYV12()) {
+    data_size = data_size + data_size / 2;
+  }
+  s->client->totalPendingBytes = data_size;
+  s->client->pendingBytesSent = 0;
+
+  BYTE* dstp = s->client->pendingData = new BYTE[data_size];
+  env->BitBlt(dstp, src_pitch, srcp, src_pitch, src_rowsize, src_height);
+
+  if (child->GetVideoInfo().IsYV12()) {
+    dstp += src_height * src_pitch;
+    srcp = src->GetReadPtr(PLANAR_U);
+    env->BitBlt(dstp, src_pitch/2, srcp, src_pitch/2, src_rowsize/2, src_height/2);
+
+    dstp += src_height/2 * src_pitch/2;
+    srcp = src->GetReadPtr(PLANAR_U);
+    env->BitBlt(dstp, src_pitch/2, srcp, src_pitch/2, src_rowsize/2, src_height/2);
+  }
+  
+  // Send Reply
   memcpy(s->data, &sfi, sizeof(ServerFrameInfo));
-  s->client->prepared_frame = src;
+}
+
+void TCPServerListener::SendAudioInfo(ServerReply* s, const char* request) {
+  _RPT0(0, "TCPServer: Sending Audio Info!\n");
+  ClientRequestAudio a;
+  memcpy(&a, request, sizeof(ClientRequestAudio));
+  s->allocateBuffer(sizeof(ServerAudioInfo));
+  s->setType(SERVER_AUDIO_INFO);
+
+  if (a.bytes != child->GetVideoInfo().BytesFromAudioSamples(a.count))
+    _RPT0(1, "TCPServer: Did not recieve proper bytecount.\n");
+
+  BYTE* buf = s->client->pendingData = new BYTE[a.bytes];
+  
+  child->GetAudio(buf, a.start, a.count, env);
+
+  ServerAudioInfo sfi;
+  sfi.compression = ServerAudioInfo::COMPRESSION_NONE;
+  sfi.comporessed_bytes = a.bytes;
+
+  s->client->pendingData = buf;
+  s->client->totalPendingBytes = a.bytes;
+  s->client->pendingBytesSent = 0;
+
+  memcpy(s->data, &sfi, sizeof(ServerAudioInfo));
 }
 
 void TCPServerListener::KillThread() {
