@@ -514,7 +514,7 @@ bool CAVIFileSynth::DelayInit() {
 #ifndef _DEBUG
     }
     catch (...) {
-//	    _RPT0(0,"DelayInit() caught general exception!\n");
+	    _RPT0(1,"DelayInit() caught general exception!\n");
       _clear87();
     __asm {emms};
       _control87( fp_state, 0xffffffff );

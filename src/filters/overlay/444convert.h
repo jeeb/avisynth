@@ -42,7 +42,7 @@
 
 class ConvertTo444 {
   private:
-    VideoInfo* inputVi;
+    VideoInfo* inputVi;    
 
   public:
     ConvertTo444() {inputVi = 0; }
@@ -87,12 +87,30 @@ public:
   void ConvertImageLumaOnly(PVideoFrame src_frame, Image444* dst_frame, IScriptEnvironment* env);
 };
 
+// Uses LumaOnly from "Convert444FromRGB"
+class Convert444NonCCIRFromRGB : public Convert444FromRGB {
+private:
+public:
+  void ConvertImage(PVideoFrame src_frame, Image444* dst_frame, IScriptEnvironment* env);
+};
+
+
 class Convert444ToYV12 : public ConvertFrom444 {
 public:
   PVideoFrame ConvertImage(Image444* src_frame, PVideoFrame dst_frame, IScriptEnvironment* env);
 };
 
 class Convert444ToYUY2 : public ConvertFrom444 {
+public:
+  PVideoFrame ConvertImage(Image444* src_frame, PVideoFrame dst_frame, IScriptEnvironment* env);
+};
+
+class Convert444ToRGB : public ConvertFrom444 {
+public:
+  PVideoFrame ConvertImage(Image444* src_frame, PVideoFrame dst_frame, IScriptEnvironment* env);
+};
+
+class Convert444NonCCIRToRGB : public ConvertFrom444 {
 public:
   PVideoFrame ConvertImage(Image444* src_frame, PVideoFrame dst_frame, IScriptEnvironment* env);
 };

@@ -42,7 +42,7 @@
 ********************************************************************/
 
 AVSFunction Overlay_filters[] = {
-  { "Overlay", "cc[x]i[y]i[mask]c[opacity]f[mode]s[greymask]b[output]s[ignore_conditional]b", Overlay::Create },   
+  { "Overlay", "cc[x]i[y]i[mask]c[opacity]f[mode]s[greymask]b[output]s[ignore_conditional]b[PC_Range]b", Overlay::Create },   
     // 0, src clip 
     // 1, overlay clip
     // 2, x
@@ -53,6 +53,7 @@ AVSFunction Overlay_filters[] = {
     // 7, greymask bool - true = only use luma information for mask
     // 8, output type, string
     // 9, ignore conditional variabels
+    // 10, full YUV range.
   { 0 }
 };
  
@@ -66,7 +67,8 @@ enum {
   ARG_MODE = 6,
   ARG_GREYMASK = 7,
   ARG_OUTPUT = 8,
-  ARG_IGNORE_CONDITIONAL = 9
+  ARG_IGNORE_CONDITIONAL = 9,
+  ARG_FULL_RANGE = 10
 };
 
 Overlay::Overlay(PClip _child, AVSValue args, IScriptEnvironment *env) :
@@ -90,7 +92,8 @@ GenericVideoFilter(_child) {
   }
 
   greymask = args[ARG_GREYMASK].AsBool(true);  // Grey mask, default true
-  ignore_conditional = args[ARG_IGNORE_CONDITIONAL].AsBool(false);
+  ignore_conditional = args[ARG_IGNORE_CONDITIONAL].AsBool(false);  // Don't ignore conditionals by default
+  full_range = args[ARG_FULL_RANGE].AsBool(false);  // Maintain CCIR601 range when converting to/from RGB.
 
   if (args[ARG_MASK].Defined()) {  // Mask defined
     mask = args[ARG_MASK].AsClip();
@@ -247,6 +250,11 @@ ConvertFrom444* Overlay::SelectOutputCS(const char* name, IScriptEnvironment* en
       return new Convert444ToYV12();
     } else if (vi.IsYUY2()) {
       return new Convert444ToYUY2();
+    } else if (vi.IsRGB()) {
+      if (full_range) {
+        return new Convert444NonCCIRToRGB();
+      }
+      return new Convert444ToRGB();
     }
   }
 
@@ -258,6 +266,27 @@ ConvertFrom444* Overlay::SelectOutputCS(const char* name, IScriptEnvironment* en
   if (!lstrcmpi(name, "YV12")) {
     vi.pixel_type = VideoInfo::CS_YV12;
     return new Convert444ToYV12();
+  }
+
+  if (!lstrcmpi(name, "RGB")) {
+    vi.pixel_type = VideoInfo::CS_BGR32;
+    if (full_range) 
+      return new Convert444NonCCIRToRGB();
+    return new Convert444ToRGB();
+  }
+
+  if (!lstrcmpi(name, "RGB32")) {
+    vi.pixel_type = VideoInfo::CS_BGR32;
+    if (full_range) 
+      return new Convert444NonCCIRToRGB();
+    return new Convert444ToRGB();
+  }
+
+  if (!lstrcmpi(name, "RGB24")) {
+    vi.pixel_type = VideoInfo::CS_BGR24;
+    if (full_range) 
+      return new Convert444NonCCIRToRGB();
+    return new Convert444ToRGB();
   }
 
   env->ThrowError("Overlay: Invalid 'output' colorspace specified.");
@@ -281,7 +310,11 @@ ConvertTo444* Overlay::SelectInputCS(VideoInfo* VidI, IScriptEnvironment* env) {
     c->SetVideoInfo(VidI);
     return c;
   } else if (VidI->IsRGB()) {
-    ConvertTo444* c = new Convert444FromRGB();
+    ConvertTo444* c;
+    if (full_range)
+      c = new Convert444NonCCIRFromRGB();
+    else
+      c = new Convert444FromRGB();
     c->SetVideoInfo(VidI);
     return c;
   } 

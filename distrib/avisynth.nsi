@@ -5,7 +5,7 @@
 
 !DEFINE VERSION 2.5.4
 
-!DEFINE DATE 301203
+!DEFINE DATE 080104
 
 
 SetCompressor bzip2
@@ -67,7 +67,7 @@ IfErrors dll_not_ok
   SetOutPath $INSTDIR
   File "GPL.txt"
 
-;  WriteRegStr HKLM "SOFTWARE\AviSynth" "" "$INSTDIR"
+  WriteRegStr HKLM "SOFTWARE\AviSynth" "" "$INSTDIR"
 
   ReadRegStr $0 HKEY_LOCAL_MACHINE "SOFTWARE\AviSynth" "plugindir2_5"
 	StrCmp "$0" "" No_Plugin_exists Plugin_exists
@@ -95,7 +95,7 @@ ClearErrors
 IfErrors reg_not_ok
   goto reg_ok
 reg_not_ok:
-  MessageBox MB_OK "You need administrator rights to install AviSynth!"
+  MessageBox MB_OK "You need administrator rights to install AviSynth!\r\n\r\n(Could not write to registry)"
   Abort
 reg_ok:
 
@@ -128,7 +128,6 @@ WriteUninstaller $INSTDIR\Uninstall.exe
 
 SectionEnd
 
-;SectionDivider
 
 Section "Documentation (recommended)"
   SectionIn 1 2
@@ -140,8 +139,10 @@ Section "Documentation (recommended)"
   File "..\Docs\english\corefilters\*.*"
   SetOutPath $INSTDIR\Docs\english\externalfilters
   File "..\Docs\english\externalfilters\*.*"
-  SetOutPath $INSTDIR\Docs\pictures
-  File "..\Docs\pictures\*.*"
+  SetOutPath $INSTDIR\Docs\pictures\corefilters
+  File "..\Docs\pictures\corefilters\*.*"
+  SetOutPath $INSTDIR\Docs\pictures\externalfilters
+  File "..\Docs\pictures\externalfilters\*.*"
 
 
   SetOutPath $INSTDIR\Examples
@@ -155,18 +156,29 @@ SectionEnd
 
 
 
-;Section "German Documentation"
-;  SectionIn 2 
-;  SetOutPath $INSTDIR\Docs_ger
-;  File "..\Docs_ger\*.*"
-;  SetOutPath $INSTDIR\Docs_ger\filters
-;  File "..\Docs_ger\filters\*.*"
+Section "German Documentation"
+  SectionIn 2 
+  SetOutPath $INSTDIR\Docs
+  File "..\Docs\*.*"
+  SetOutPath $INSTDIR\Docs\german
+  File "..\Docs\german\*.*"
+  SetOutPath $INSTDIR\Docs\german\corefilters
+  File "..\Docs\german\corefilters\*.*"
+  SetOutPath $INSTDIR\Docs\german\externalfilters
+  File "..\Docs\german\externalfilters\*.*"
+  SetOutPath $INSTDIR\Docs\pictures\corefilters
+  File "..\Docs\pictures\corefilters\*.*"
+  SetOutPath $INSTDIR\Docs\pictures\externalfilters
+  File "..\Docs\pictures\externalfilters\*.*"
+
+
+  SetOutPath $INSTDIR\Examples
+  File "Examples\*.*"
   
-;CreateShortCut "$SMPROGRAMS\AviSynth 2.5\Deutsche AviSynth Dokumentation.lnk" "$INSTDIR\Docs_ger\index.html"
+CreateShortCut "$SMPROGRAMS\AviSynth 2.5\Deutsche AviSynth Dokumentation.lnk" "$INSTDIR\Docs_ger\index.html"
 
-;SectionEnd
+SectionEnd
 
-;SectionDivider
 
 
 Section "Associate AVS files with Notepad"

@@ -76,6 +76,7 @@ private:
   OverlayFunction* func;
   bool greymask;
   bool ignore_conditional;
+  bool full_range;
   int offset_x, offset_y;
   int op_offset;
   int con_x_offset;
