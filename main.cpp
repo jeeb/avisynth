@@ -156,23 +156,23 @@ public:
 };
 
 
+static HRESULT hrfromcoinit = E_FAIL;
 BOOL APIENTRY DllMain(HANDLE hModule, ULONG ulReason, LPVOID lpReserved) {
 
 	switch(ulReason) {
 	case DLL_PROCESS_ATTACH:
-		CoInitialize(NULL);
+		hrfromcoinit = CoInitialize(NULL);
 		_RPT0(0,"Process attach\n");
 		break;
 
 	case DLL_PROCESS_DETACH:
-		CoUninitialize();
+                if(SUCCEEDED(hrfromcoinit)) CoUninitialize();
 		_RPT0(0,"Process detach\n");
 		break;
 	}
 
-    return TRUE;
+  return TRUE;
 }
-
 
 // From the Microsoft AVIFile docs.  Dense code...
 

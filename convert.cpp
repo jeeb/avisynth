@@ -489,7 +489,7 @@ PVideoFrame __stdcall ConvertToYUY2::GetFrame(int n, IScriptEnvironment* env)
 		}
 	}
   if (((src_cs&VideoInfo::CS_YV12)==VideoInfo::CS_YV12)||((src_cs&VideoInfo::CS_I420)==VideoInfo::CS_I420)) {  
-    PVideoFrame dst = env->NewVideoFrame(vi,16);
+    PVideoFrame dst = env->NewVideoFrame(vi,32);  // We need a bit more pitch here.
     BYTE* yuv = dst->GetWritePtr();
     if (interlaced) {
 		  if ((env->GetCPUFlags() & CPUF_INTEGER_SSE)) {

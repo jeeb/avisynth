@@ -170,7 +170,7 @@ xloop_test_p:
 
   int y=0;
   int x=0;
-
+  
   __asm {
     mov esi, [srcp]
     mov edi, [dst]
@@ -317,7 +317,6 @@ void isse_yv12_to_yuy2(const BYTE* srcY, const BYTE* srcU, const BYTE* srcV, int
 
   int dst_pitch2=dst_pitch*2;
   int src_pitch2 = src_pitch*2;
-
 
   
   /**** Do first and last lines - NO interpolation:   *****/
@@ -1218,6 +1217,8 @@ xloop:
        movq mm5,mm2
       pavgb mm6,mm1         // Average (chroma)
        pavgb mm5,mm3        // Average Chroma (second pair)
+      pavgb mm6,mm1         // Average (chroma) (upper = 75% lower = 25%)
+       pavgb mm5,mm3        // Average Chroma (second pair) (upper = 75% lower = 25%)
       pand mm0,mm4          // Mask luma
   	    psrlq mm5, 8
       pand mm1,mm4          // Mask luma
@@ -1280,6 +1281,8 @@ xloop2:   // Second field
        movq mm5,mm2
       pavgb mm6,mm1         // Average (chroma)
        pavgb mm5,mm3        // Average Chroma (second pair)
+      pavgb mm6,mm1         // Average (chroma) (upper = 75% lower = 25%)
+       pavgb mm5,mm3        // Average Chroma (second pair) (upper = 75% lower = 25%)
       pand mm0,mm4          // Mask luma
   	    psrlq mm5, 8
       pand mm1,mm4          // Mask luma
@@ -1486,7 +1489,7 @@ void mmx_yuy2_i_to_yv12(const BYTE* src, int src_rowsize, int src_pitch,
 
 __declspec(align(8)) static __int64 mask1	= 0x00ff00ff00ff00ff;
 __declspec(align(8)) static __int64 mask2	= 0xff00ff00ff00ff00;
-__declspec(align(8)) static __int64 add_1	= 0x0001000100010001;
+__declspec(align(8)) static __int64 add_2	= 0x0002000200020002;
 
   const BYTE** dstp= new const BYTE*[4];
   dstp[0]=dstY;
@@ -1527,18 +1530,22 @@ xloop:
        psrlw mm7,8
       paddw mm5,mm4
        paddw mm6,mm7
+      paddw mm5,mm4
+       paddw mm6,mm7
+      paddw mm5,mm4
+       paddw mm6,mm7
       movq mm4,[mask1]
        movq mm7,[mask2]
-      paddw mm5,[add_1]
-       paddw mm6,[add_1]
+      paddw mm5,[add_2]
+       paddw mm6,[add_2]
 
 //      pavgb mm6,mm1         // Average (chroma)
 //       pavgb mm5,mm3        // Average Chroma (second pair)
 
       pand mm0,mm4          // Mask luma
-  	    psrlw mm5, 1
+  	    psrlw mm5, 2
       pand mm1,mm4          // Mask luma
- 	     psrlw mm6, 1
+ 	     psrlw mm6, 2
       pand mm2,mm4          // Mask luma
        pand mm3,mm4         
       pand mm5,mm4           // Mask chroma
@@ -1603,18 +1610,22 @@ xloop2:   // Second field
        psrlw mm7,8
       paddw mm5,mm4
        paddw mm6,mm7
+      paddw mm5,mm4
+       paddw mm6,mm7
+      paddw mm5,mm4
+       paddw mm6,mm7
       movq mm4,[mask1]
        movq mm7,[mask2]
-      paddw mm5,[add_1]
-       paddw mm6,[add_1]
+      paddw mm5,[add_2]
+       paddw mm6,[add_2]
 
 //      pavgb mm6,mm1         // Average (chroma)
 //       pavgb mm5,mm3        // Average Chroma (second pair)
 
       pand mm0,mm4          // Mask luma
-  	    psrlw mm5, 1
+  	    psrlw mm5, 2
       pand mm1,mm4          // Mask luma
- 	     psrlw mm6, 1
+ 	     psrlw mm6, 2
       pand mm2,mm4          // Mask luma
        pand mm3,mm4         
       pand mm5,mm4           // Mask chroma
