@@ -58,7 +58,7 @@ void OL_AddImage::BlendImageMask(Image444* base, Image444* overlay, Image444* ma
         int U = baseU[x] + (((127*(256-maskU[x]))+(maskU[x]*(ovU[x])))>>8) - 127;
         int V = baseV[x] + (((127*(256-maskV[x]))+(maskV[x]*(ovV[x])))>>8) - 127;
         if (Y>255) {  // Apply overbrightness to UV
-          int multiplier = min(0,304-Y);  // 0 to 32
+          int multiplier = max(0,288-Y);  // 0 to 32
           U = ((U*multiplier) + (127*(32-multiplier)))>>5;
           V = ((V*multiplier) + (127*(32-multiplier)))>>5;
           Y= 255;
@@ -90,7 +90,7 @@ void OL_AddImage::BlendImageMask(Image444* base, Image444* overlay, Image444* ma
         int V = baseV[x] + (((127*(256-mV))+(mV*(ovV[x])))>>8) - 127;
 
         if (Y>255) {  // Apply overbrightness to UV
-          int multiplier = min(0,304-Y);  // 0 to 32
+          int multiplier = max(0,288-Y);  // 0 to 32
           U = ((U*multiplier) + (127*(32-multiplier)))>>5;
           V = ((V*multiplier) + (127*(32-multiplier)))>>5;
           Y = 255;
@@ -134,9 +134,10 @@ void OL_AddImage::BlendImage(Image444* base, Image444* overlay) {
         int U = baseU[x] + ovU[x] - 127;
         int V = baseV[x] + ovV[x] - 127;
         if (Y>255) {  // Apply overbrightness to UV
-          int multiplier = min(0,304-Y);  // 0 to 32
+          int multiplier = max(0,288-Y);  // 0 to 32
           U = ((U*multiplier) + (127*(32-multiplier)))>>5;
           V = ((V*multiplier) + (127*(32-multiplier)))>>5;
+          Y = 255;
         }
         baseU[x] = (BYTE)U;
         baseV[x] = (BYTE)V;
@@ -158,7 +159,7 @@ void OL_AddImage::BlendImage(Image444* base, Image444* overlay) {
         int U = baseU[x] + (((127*inv_opacity)+(opacity*(ovU[x])))>>8) - 127;
         int V = baseV[x] + (((127*inv_opacity)+(opacity*(ovV[x])))>>8) - 127;
         if (Y>255) {  // Apply overbrightness to UV
-          int multiplier = min(0,304-Y);  // 0 to 32
+          int multiplier = max(0,288-Y);  // 0 to 32
           U = ((U*multiplier) + (127*(32-multiplier)))>>5;
           V = ((V*multiplier) + (127*(32-multiplier)))>>5;
           Y  = 255;

@@ -149,12 +149,14 @@ void OL_SubtractImage::BlendImage(Image444* base, Image444* overlay) {
     for (int y = 0; y < h; y++) {
       for (int x = 0; x < w; x++) {
         int Y = baseY[x] - ((opacity*ovY[x])>>8);
-        int U = ((baseU[x]*inv_opacity)+(127*opacity))>>8;
-        int V = ((baseV[x]*inv_opacity)+(127*opacity))>>8;
-        if (Y<0) {  // Apply overbrightness to UV
+
+        int U = baseU[x] + (((127*inv_opacity)+(opacity*(ovU[x])))>>8) - 127;
+        int V = baseV[x] + (((127*inv_opacity)+(opacity*(ovV[x])))>>8) - 127;
+
+        if (Y<0) {  // Apply underbrightness to UV
           int multiplier = min(-Y,32);  // 0 to 32
-          U = ((U*multiplier) + (127*(32-multiplier)))>>5;
-          V = ((V*multiplier) + (127*(32-multiplier)))>>5;
+          U = ((U*(32-multiplier)) + (127*(multiplier)))>>5;
+          V = ((V*(32-multiplier)) + (127*(multiplier)))>>5;
           Y = 0;
         }
         baseU[x] = (BYTE)U;

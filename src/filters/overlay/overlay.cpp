@@ -187,6 +187,7 @@ PVideoFrame __stdcall Overlay::GetFrame(int n, IScriptEnvironment *env) {
     ClipFrames(img, maskImg, offset_x + con_x_offset, offset_y + con_y_offset);
   }
 
+  opacity = n%257;
 
   // Process the image
   func->setOpacity(opacity + op_offset);
