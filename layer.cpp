@@ -29,6 +29,7 @@
 AVSFunction Layer_filters[] = {
   { "Mask", "cc", Mask::Create },     // clip, mask
   { "ColorKeyMask", "cii", ColorKeyMask::Create },    // clip, color, tolerance
+  { "ResetMask", "c", ResetMask::Create },
   { "Layer", "cc[op]s[level]i[x]i[y]i[threshold]i[use_chroma]b", Layer::Create },
   /**
     * Layer(clip, overlayclip, operation, amount, xpos, ypos, [threshold=0], [use_chroma=true])
@@ -252,6 +253,52 @@ AVSValue __cdecl ColorKeyMask::Create(AVSValue args, void*, IScriptEnvironment* 
 {
   return new ColorKeyMask(args[0].AsClip(), args[1].AsInt(0), args[2].AsInt(10), env);
 }
+
+
+
+
+
+
+
+
+/********************************
+ ******  ResetMask filter  ******
+ ********************************/
+
+
+ResetMask::ResetMask(PClip _child, IScriptEnvironment* env)
+  : GenericVideoFilter(_child)
+{
+  if (!vi.IsRGB32())
+    env->ThrowError("ResetMask: RGB32 data only");
+}
+
+
+PVideoFrame ResetMask::GetFrame(int n, IScriptEnvironment* env)
+{
+  PVideoFrame f = child->GetFrame(n, env);
+  env->MakeWritable(&f);
+
+  BYTE* pf = f->GetWritePtr();
+  int pitch = f->GetPitch();
+  int rowsize = f->GetRowSize();
+  int height = f->GetHeight();
+
+  for (int i=0; i<height; i++) {
+    for (int j=3; j<rowsize; j+=4)
+      pf[j] = 255;
+    pf += pitch;
+  }
+
+  return f;
+}
+
+
+AVSValue ResetMask::Create(AVSValue args, void*, IScriptEnvironment* env)
+{
+  return new ResetMask(args[0].AsClip(), env);
+}
+
 
 
 

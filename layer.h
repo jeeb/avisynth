@@ -70,6 +70,20 @@ private:
 
 
 
+class ResetMask : public GenericVideoFilter
+/**
+  * Class to set the mask to all-opaque
+**/
+{
+public:
+  ResetMask(PClip _child, IScriptEnvironment* env);
+  PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
+
+  static AVSValue __cdecl Create(AVSValue arsg, void*, IScriptEnvironment* env);
+};
+
+
+
 class Layer: public IClip 
 /**
   * Class for layering two clips on each other, combined by various functions
