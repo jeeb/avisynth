@@ -1,7 +1,7 @@
 !packhdr tempfile.exe "upx --best --q tempfile.exe"
 
 !DEFINE VERSION 2.5.6
-!DEFINE DATE 241104
+!DEFINE DATE 210205
 
 SetCompressor lzma
 !include "MUI.nsh"
@@ -40,7 +40,7 @@ SetOverwrite try
 ShowInstDetails nevershow
 CRCCheck ON
 
-ComponentText "AviSynth - the premiere frameserving tool available today.$\nCopyright © 2000 - 2004."
+ComponentText "AviSynth - the premiere frameserving tool available today.$\nCopyright © 2000 - 2005."
 
 InstallDir "$PROGRAMFILES\AviSynth 2.5"
 InstallDirRegKey HKLM SOFTWARE\AviSynth ""
@@ -141,11 +141,13 @@ SectionIn 1
   File "..\..\Docs\english\corefilters\*.*"
   SetOutPath $INSTDIR\Docs\english\externalfilters
   File "..\..\Docs\english\externalfilters\*.*"
+  SetOutPath $INSTDIR\Docs\english\pictures\advancedtopics
+  File "..\..\Docs\english\pictures\advancedtopics\*.*"
   SetOutPath $INSTDIR\Docs\english\pictures\corefilters
   File "..\..\Docs\english\pictures\corefilters\*.*"
   SetOutPath $INSTDIR\Docs\english\pictures\externalfilters
   File "..\..\Docs\english\pictures\externalfilters\*.*"
-
+  
   SetOutPath $INSTDIR\Examples
   File "Examples\*.*"
 
@@ -254,6 +256,8 @@ Section "Uninstall"
   Delete "$INSTDIR\Examples\*.*"
   RMDir  "$INSTDIR\Examples"
 
+  Delete "$INSTDIR\Docs\english\pictures\advancedtopics\*.*"
+  RMDir  "$INSTDIR\Docs\english\pictures\advancedtopics"
   Delete "$INSTDIR\Docs\english\pictures\corefilters\*.*"
   RMDir  "$INSTDIR\Docs\english\pictures\corefilters"
   Delete "$INSTDIR\Docs\english\pictures\externalfilters\*.*"
