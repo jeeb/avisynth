@@ -21,6 +21,7 @@
 #include <stdarg.h>
 
 #include "internal.h"
+#include "script.h"
 
 
 #ifdef _MSC_VER
@@ -45,9 +46,20 @@ AVSFunction* builtin_functions[] = {
                    Layer_filters, Levels_filters, Misc_filters, 
                    Resample_filters, Resize_filters, 
                    Script_functions, Source_filters, Text_filters,
-                   Transform_filters, Merge_filters, Plugin_functions }; // sticking plugins last in the
-                                                                         // list should give them priority
-                                                                         // in the function tree
+                   Transform_filters, Merge_filters, Plugin_functions };
+
+
+
+const HKEY RegRootKey = HKEY_LOCAL_MACHINE;
+const char RegAvisynthKey[] = "Software\\Avisynth";
+const char RegPluginDir[] = "PluginDir";
+
+// in plugins.cpp
+AVSValue LoadPlugin(AVSValue args, void* user_data, IScriptEnvironment* env);
+void FreeLibraries(void* loaded_plugins, IScriptEnvironment* env);
+
+
+
 class LinkedVideoFrame {
 public:
   LinkedVideoFrame* next;
@@ -158,14 +170,23 @@ class FunctionTable {
     LocalFunction* prev;
   };
 
+  struct Plugin {
+    char* name;
+    LocalFunction* plugin_functions;
+    Plugin* prev;
+  };
+
   LocalFunction* local_functions;
+  Plugin* plugins;
+  bool prescanning, reloading;
 
   IScriptEnvironment* const env;
 
 public:
 
-  FunctionTable(IScriptEnvironment* _env) : env(_env) {
+  FunctionTable(IScriptEnvironment* _env) : env(_env), prescanning(false), reloading(false) {
     local_functions = 0;
+    plugins = 0;
   }
 
   ~FunctionTable() {
@@ -174,24 +195,89 @@ public:
       delete local_functions;
       local_functions = prev;
     }
+    while (plugins) {
+      RemovePlugin(plugins);
+    }
+  }
+
+  void StartPrescanning() { prescanning = true; }
+  void StopPrescanning() { prescanning = false; }
+
+  void PrescanPluginStart(const char* name)
+  {
+    if (!prescanning)
+      env->ThrowError("FunctionTable: Not in prescanning state");
+    _RPT1(0, "Prescanning plugin: %s\n", name);
+    Plugin* p = new Plugin;
+    p->name = strdup(name);
+    p->plugin_functions = 0;
+    p->prev = plugins;
+    plugins = p;
+  }
+
+  void RemovePlugin(Plugin* p)
+  {
+    LocalFunction* cur = p->plugin_functions;
+    while (cur) {
+      LocalFunction* prev = cur->prev;
+      free((void*)cur->name);
+      free((void*)cur->param_types);
+      delete cur;
+      cur = prev;
+    }
+    if (p == plugins) {
+      plugins = plugins->prev;
+    } else {
+      Plugin* pp = plugins;
+      while (pp->prev != p) pp = pp->prev;
+      pp->prev = p->prev;
+    }
+    free(p->name);
+    delete p;
   }
 
   void AddFunction(const char* name, const char* params, IScriptEnvironment::ApplyFunc apply, void* user_data) {
+    if (prescanning && !plugins)
+      env->ThrowError("FunctionTable in prescanning state but no plugin has been set");
     LocalFunction* f = new LocalFunction;
-    f->name = name;
-    f->param_types = params;
-    f->apply = apply;
-    f->user_data = user_data;
-    f->prev = local_functions;
-    local_functions = f;
+    if (!prescanning) {
+      f->name = name;
+      f->param_types = params;
+      f->apply = apply;
+      f->user_data = user_data;
+      f->prev = local_functions;
+      local_functions = f;
+    } else {
+      _RPT1(0, "  function %s (prescan)\n", name);
+      f->name = strdup(name);     // needs to copy here since the plugin will be unloaded
+      f->param_types = strdup(params);
+      f->prev = plugins->plugin_functions;
+      plugins->plugin_functions = f;
+    }
   }
 
   AVSFunction* Lookup(const char* search_name, const AVSValue* args, int num_args, bool* pstrict) {
     for (int strict = 1; strict >= 0; --strict) {
       *pstrict = strict&1;
+      // first, look in loaded plugins
       for (LocalFunction* p = local_functions; p; p = p->prev)
         if (!lstrcmpi(p->name, search_name) && TypeMatch(p->param_types, args, num_args, strict&1, env))
           return p;
+      // now looks in prescanned plugins
+      for (Plugin* pp = plugins; pp; pp = pp->prev)
+        for (LocalFunction* p = pp->plugin_functions; p; p = p->prev)
+          if (!lstrcmpi(p->name, search_name) && TypeMatch(p->param_types, args, num_args, strict&1, env)) {
+            _RPT2(0, "Loading plugin %s (lookup for function %s)\n", pp->name, p->name);
+            // sets reloading in case the plugin is performing env->FunctionExists() calls
+            reloading = true;
+            LoadPlugin(AVSValue(&AVSValue(&AVSValue(pp->name), 1), 1), (void*)false, env);
+            reloading = false;
+            // just in case the function disappeared from the plugin, avoid infinte recursion
+            RemovePlugin(pp);
+            // restart the search
+            return Lookup(search_name, args, num_args, pstrict);
+          }
+      // finally, look for a built-in function
       for (int i = 0; i < sizeof(builtin_functions)/sizeof(builtin_functions[0]); ++i)
         for (AVSFunction* j = builtin_functions[i]; j->name; ++j)
           if (!lstrcmpi(j->name, search_name) && TypeMatch(j->param_types, args, num_args, strict&1, env))
@@ -204,6 +290,12 @@ public:
     for (LocalFunction* p = local_functions; p; p = p->prev)
       if (!lstrcmpi(p->name, search_name))
         return true;
+    if (!reloading) {
+      for (Plugin* pp = plugins; pp; pp = pp->prev)
+        for (LocalFunction* p = pp->plugin_functions; p; p = p->prev)
+          if (!lstrcmpi(p->name, search_name))
+            return true;
+    }
     for (int i = 0; i < sizeof(builtin_functions)/sizeof(builtin_functions[0]); ++i)
       for (AVSFunction* j = builtin_functions[i]; j->name; ++j)
         if (!lstrcmpi(j->name, search_name))
@@ -366,7 +458,7 @@ public:
   void __stdcall BitBlt(BYTE* dstp, int dst_pitch, const BYTE* srcp, int src_pitch, int row_size, int height);
   void __stdcall AtExit(IScriptEnvironment::ShutdownFunc function, void* user_data);
   PVideoFrame __stdcall Subframe(PVideoFrame src, int rel_offset, int new_pitch, int new_row_size, int new_height);
-	int __stdcall SetMemoryMax(int mem);
+  int __stdcall SetMemoryMax(int mem);
   __stdcall ~ScriptEnvironment();
 
 private:
@@ -392,6 +484,8 @@ private:
   int Flatten(const AVSValue& src, AVSValue* dst, int index, int max, const char** arg_names=0);
 
   IScriptEnvironment* This() { return this; }
+  const char* GetPluginDirectory();
+  void PrescanPlugins();
 };
 
 
@@ -405,6 +499,8 @@ ScriptEnvironment::ScriptEnvironment() : at_exit(This()), function_table(This())
   global_var_table.Set("false", false);
   global_var_table.Set("yes", true);
   global_var_table.Set("no", false);
+  
+  PrescanPlugins();
 }
 
 ScriptEnvironment::~ScriptEnvironment() {
@@ -422,7 +518,7 @@ int ScriptEnvironment::SetMemoryMax(int mem) {
   MEMORYSTATUS memstatus;
   GlobalMemoryStatus(&memstatus);
   memory_max = min(max(memory_used,mem*1024*1024),memory_used+memstatus.dwAvailPhys-5*1024*1024);
-	return memory_max/(1024*1024);
+  return memory_max/(1024*1024);
 }
 
 void ScriptEnvironment::CheckVersion(int version) {
@@ -454,6 +550,77 @@ bool ScriptEnvironment::SetVar(const char* name, const AVSValue& val) {
 bool ScriptEnvironment::SetGlobalVar(const char* name, const AVSValue& val) {
   return global_var_table.Set(name, val);
 }
+
+const char* ScriptEnvironment::GetPluginDirectory()
+{
+  char* plugin_dir;
+  try {
+    plugin_dir = (char*)GetVar("$PluginDir$").AsString();
+  }
+  catch (...) {
+    HKEY AvisynthKey;
+    if (RegOpenKeyEx(RegRootKey, RegAvisynthKey, 0, KEY_READ, &AvisynthKey))
+      return 0;
+    DWORD size;
+    if (RegQueryValueEx(AvisynthKey, RegPluginDir, 0, 0, 0, &size))
+      return 0;
+    plugin_dir = new char[size];
+    if (RegQueryValueEx(AvisynthKey, RegPluginDir, 0, 0, (LPBYTE)plugin_dir, &size)) {
+      delete[] plugin_dir;
+      return 0;
+    }
+    // remove trailing backslashes
+    int l = strlen(plugin_dir);
+    while (plugin_dir[l-1] == '\\')
+      l--;
+    plugin_dir[l]=0;
+    SetGlobalVar("$PluginDir$", AVSValue(plugin_dir));
+  }
+  return plugin_dir;
+}
+
+void ScriptEnvironment::PrescanPlugins()
+{
+  const char* plugin_dir;
+  if (plugin_dir = GetPluginDirectory())
+  {
+    WIN32_FIND_DATA FileData;
+    HANDLE hFind = FindFirstFile(plugin_dir, &FileData);
+    if (hFind != INVALID_HANDLE_VALUE) {    
+      char file[MAX_PATH];
+      char* dummy;
+      CWDChanger cwdchange(plugin_dir);
+      strcpy(file, plugin_dir);
+      strcat(file, "\\*.dll");
+      hFind = FindFirstFile(file, &FileData);
+      BOOL bContinue = (hFind != INVALID_HANDLE_VALUE);
+      if (bContinue) {
+        function_table.StartPrescanning();
+        while (bContinue) {
+          // we have to use full pathnames here
+          GetFullPathName(FileData.cFileName, MAX_PATH, file, &dummy);
+          function_table.PrescanPluginStart(file);
+          LoadPlugin(AVSValue(&AVSValue(&AVSValue(file), 1), 1), (void*)true, this);
+          bContinue = FindNextFile(hFind, &FileData);
+        }
+        // Now unloads all plugins
+        function_table.StopPrescanning();
+        HMODULE* loaded_plugins = (HMODULE*)GetVar("$Plugins$").AsString();
+        FreeLibraries(loaded_plugins, this);
+      }
+
+      strcpy(file, plugin_dir);
+      strcat(file, "\\*.avs");
+      hFind = FindFirstFile(file, &FileData);
+      bContinue = (hFind != INVALID_HANDLE_VALUE);
+      while (bContinue) {
+        Import(AVSValue(&AVSValue(&AVSValue(FileData.cFileName), 1), 1), 0, this);
+        bContinue = FindNextFile(hFind, &FileData);
+      }
+    }
+  }
+}
+
 
 PVideoFrame ScriptEnvironment::NewVideoFrame(int row_size, int height, int align) {
   int pitch = (row_size+align-1) / align * align;

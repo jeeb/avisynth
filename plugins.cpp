@@ -28,7 +28,7 @@
 
 enum { max_plugins=50 };
 
-static void FreeLibraries(void* loaded_plugins, IScriptEnvironment* env) {
+void FreeLibraries(void* loaded_plugins, IScriptEnvironment* env) {
   for (int i=0; i<max_plugins; ++i) {
     HMODULE plugin = ((HMODULE*)loaded_plugins)[i];
     if (plugin)
@@ -36,9 +36,10 @@ static void FreeLibraries(void* loaded_plugins, IScriptEnvironment* env) {
     else
       break;
   }
+  memset(loaded_plugins, 0, max_plugins*sizeof(HMODULE));
 }
 
-static bool MyLoadLibrary(const char* filename, HMODULE* hmod, IScriptEnvironment* env) {
+static bool MyLoadLibrary(const char* filename, HMODULE* hmod, bool quiet, IScriptEnvironment* env) {
   HMODULE* loaded_plugins;
   try {
     loaded_plugins = (HMODULE*)env->GetVar("$Plugins$").AsString();
@@ -51,7 +52,10 @@ static bool MyLoadLibrary(const char* filename, HMODULE* hmod, IScriptEnvironmen
   }
   *hmod = LoadLibrary(filename);
   if (!*hmod)
-    env->ThrowError("LoadPlugin: unable to load \"%s\"", filename);
+    if (quiet)
+      return false;
+    else
+      env->ThrowError("LoadPlugin: unable to load \"%s\"", filename);
   // see if we've loaded this already, and add it to the list if not
   for (int j=0; j<max_plugins; ++j) {
     if (loaded_plugins[j] == *hmod) {
@@ -67,13 +71,14 @@ static bool MyLoadLibrary(const char* filename, HMODULE* hmod, IScriptEnvironmen
   return false;
 }
 
-AVSValue LoadPlugin(AVSValue args, void*, IScriptEnvironment* env) {
+AVSValue LoadPlugin(AVSValue args, void* user_data, IScriptEnvironment* env) {
+  bool quiet = (user_data != 0);
   args = args[0];
   const char* result=0;
   for (int i=0; i<args.ArraySize(); ++i) {
     HMODULE plugin;
     const char* plugin_name = args[i].AsString();
-    if (MyLoadLibrary(plugin_name, &plugin, env)) {
+    if (MyLoadLibrary(plugin_name, &plugin, quiet, env)) {
       typedef const char* (__stdcall *AvisynthPluginInitFunc)(IScriptEnvironment* env);
       AvisynthPluginInitFunc AvisynthPluginInit = (AvisynthPluginInitFunc)GetProcAddress(plugin, "AvisynthPluginInit");
       if (!AvisynthPluginInit)
@@ -81,6 +86,8 @@ AVSValue LoadPlugin(AVSValue args, void*, IScriptEnvironment* env) {
       if (!AvisynthPluginInit) {
         if (GetProcAddress(plugin, "AvisynthPluginGetInfo"))
           env->ThrowError("LoadPlugin: \"%s\" is an Avisynth 0.x plugin, and is not compatible with version 1.x", plugin_name);
+        else if (quiet)
+          FreeLibrary(plugin);
         else
           env->ThrowError("LoadPlugin: \"%s\" is not an Avisynth 1.0 plugin", plugin_name);
       }
@@ -91,78 +98,79 @@ AVSValue LoadPlugin(AVSValue args, void*, IScriptEnvironment* env) {
 }
 
 
+
 /********************************************************************
 * VFAPI plugin support
 ********************************************************************/
 
-#define	VF_STREAM_VIDEO		0x00000001
-#define	VF_STREAM_AUDIO		0x00000002
-#define	VF_OK				0x00000000
-#define	VF_ERROR			0x80004005
+#define VF_STREAM_VIDEO   0x00000001
+#define VF_STREAM_AUDIO   0x00000002
+#define VF_OK       0x00000000
+#define VF_ERROR      0x80004005
 
 struct VF_PluginInfo {
-	DWORD	dwSize;
-	DWORD	dwAPIVersion;
-	DWORD	dwVersion;
-	DWORD	dwSupportStreamType;
-	char	cPluginInfo[256];
-	char	cFileType[256];
+  DWORD dwSize;
+  DWORD dwAPIVersion;
+  DWORD dwVersion;
+  DWORD dwSupportStreamType;
+  char  cPluginInfo[256];
+  char  cFileType[256];
 };
 
-typedef	DWORD	VF_FileHandle;
+typedef DWORD VF_FileHandle;
 
 struct VF_FileInfo {
-	DWORD	dwSize;
-	DWORD	dwHasStreams;
+  DWORD dwSize;
+  DWORD dwHasStreams;
 };
 
 struct VF_StreamInfo_Video {
-	DWORD	dwSize;
-	DWORD	dwLengthL;
-	DWORD	dwLengthH;
-	DWORD	dwRate;
-	DWORD	dwScale;
-	DWORD	dwWidth;
-	DWORD	dwHeight;
-	DWORD	dwBitCount;
+  DWORD dwSize;
+  DWORD dwLengthL;
+  DWORD dwLengthH;
+  DWORD dwRate;
+  DWORD dwScale;
+  DWORD dwWidth;
+  DWORD dwHeight;
+  DWORD dwBitCount;
 };
 
 struct VF_StreamInfo_Audio {
-	DWORD	dwSize;
-	DWORD	dwLengthL;
-	DWORD	dwLengthH;
-	DWORD	dwRate;
-	DWORD	dwScale;
-	DWORD	dwChannels;
-	DWORD	dwBitsPerSample;
-	DWORD	dwBlockAlign;
+  DWORD dwSize;
+  DWORD dwLengthL;
+  DWORD dwLengthH;
+  DWORD dwRate;
+  DWORD dwScale;
+  DWORD dwChannels;
+  DWORD dwBitsPerSample;
+  DWORD dwBlockAlign;
 };
 
 struct VF_ReadData_Video {
-	DWORD	dwSize;
-	DWORD	dwFrameNumberL;
-	DWORD	dwFrameNumberH;
-	void	*lpData;
-	long	lPitch;
+  DWORD dwSize;
+  DWORD dwFrameNumberL;
+  DWORD dwFrameNumberH;
+  void  *lpData;
+  long  lPitch;
 };
 
 struct VF_ReadData_Audio {
-	DWORD	dwSize;
-	DWORD	dwSamplePosL;
-	DWORD	dwSamplePosH;
-	DWORD	dwSampleCount;
-	DWORD	dwReadedSampleCount;
-	DWORD	dwBufSize;
-	void	*lpBuf;
+  DWORD dwSize;
+  DWORD dwSamplePosL;
+  DWORD dwSamplePosH;
+  DWORD dwSampleCount;
+  DWORD dwReadedSampleCount;
+  DWORD dwBufSize;
+  void  *lpBuf;
 };
 
 struct VF_PluginFunc {
-	DWORD	dwSize;
-	HRESULT (_stdcall *OpenFile)( const char *lpFileName, VF_FileHandle* lpFileHandle );
-	HRESULT (_stdcall *CloseFile)( VF_FileHandle hFileHandle );
-	HRESULT (_stdcall *GetFileInfo)( VF_FileHandle hFileHandle, VF_FileInfo* lpFileInfo );
-	HRESULT (_stdcall *GetStreamInfo)( VF_FileHandle hFileHandle,DWORD dwStream,void *lpStreamInfo );
-	HRESULT (_stdcall *ReadData)( VF_FileHandle hFileHandle,DWORD dwStream,void *lpData ); 
+  DWORD dwSize;
+  HRESULT (_stdcall *OpenFile)( const char *lpFileName, VF_FileHandle* lpFileHandle );
+  HRESULT (_stdcall *CloseFile)( VF_FileHandle hFileHandle );
+  HRESULT (_stdcall *GetFileInfo)( VF_FileHandle hFileHandle, VF_FileInfo* lpFileInfo );
+  HRESULT (_stdcall *GetStreamInfo)( VF_FileHandle hFileHandle,DWORD dwStream,void *lpStreamInfo );
+  HRESULT (_stdcall *ReadData)( VF_FileHandle hFileHandle,DWORD dwStream,void *lpData ); 
 };
 
 typedef HRESULT (__stdcall *VF_GetPluginInfo)(VF_PluginInfo* lpPluginInfo);
@@ -271,7 +279,7 @@ public:
 AVSValue LoadVFAPIPlugin(AVSValue args, void*, IScriptEnvironment* env) {
   HMODULE plugin;
   const char* plugin_name = args[0].AsString();
-  if (MyLoadLibrary(plugin_name, &plugin, env)) {
+  if (MyLoadLibrary(plugin_name, &plugin, false, env)) {
     VF_GetPluginInfo vfGetPluginInfo = (VF_GetPluginInfo)GetProcAddress(plugin, "vfGetPluginInfo");
     VF_GetPluginFunc vfGetPluginFunc = (VF_GetPluginFunc)GetProcAddress(plugin, "vfGetPluginFunc");
     if (!vfGetPluginInfo || !vfGetPluginFunc)
@@ -296,22 +304,22 @@ AVSValue LoadVFAPIPlugin(AVSValue args, void*, IScriptEnvironment* env) {
 * VirtualDub plugin support
 ********************************************************************/
 
-//	VirtualDub - Video processing and capture application
-//	Copyright (C) 1998-2000 Avery Lee
+//  VirtualDub - Video processing and capture application
+//  Copyright (C) 1998-2000 Avery Lee
 //
-//	This program is free software; you can redistribute it and/or modify
-//	it under the terms of the GNU General Public License as published by
-//	the Free Software Foundation; either version 2 of the License, or
-//	(at your option) any later version.
+//  This program is free software; you can redistribute it and/or modify
+//  it under the terms of the GNU General Public License as published by
+//  the Free Software Foundation; either version 2 of the License, or
+//  (at your option) any later version.
 //
-//	This program is distributed in the hope that it will be useful,
-//	but WITHOUT ANY WARRANTY; without even the implied warranty of
-//	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-//	GNU General Public License for more details.
+//  This program is distributed in the hope that it will be useful,
+//  but WITHOUT ANY WARRANTY; without even the implied warranty of
+//  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+//  GNU General Public License for more details.
 //
-//	You should have received a copy of the GNU General Public License
-//	along with this program; if not, write to the Free Software
-//	Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+//  You should have received a copy of the GNU General Public License
+//  along with this program; if not, write to the Free Software
+//  Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
 
 
@@ -324,17 +332,17 @@ struct CScriptObject;
 
 class IScriptInterpreter {
 public:
-	virtual	void Destroy()										=0;
+  virtual void Destroy()                    =0;
 
-	virtual void SetRootHandler(void*, void*)	=0;
+  virtual void SetRootHandler(void*, void*) =0;
 
-	virtual void ExecuteLine(char *s)							=0;
+  virtual void ExecuteLine(char *s)             =0;
 
-	virtual void ScriptError(int e)								=0;
-	virtual char* TranslateScriptError(void* cse)		=0;
-	virtual char** AllocTempString(long l)						=0;
+  virtual void ScriptError(int e)               =0;
+  virtual char* TranslateScriptError(void* cse)   =0;
+  virtual char** AllocTempString(long l)            =0;
 
-	virtual CScriptValue LookupObjectMember(CScriptObject *obj, void *, char *szIdent) = 0;
+  virtual CScriptValue LookupObjectMember(CScriptObject *obj, void *, char *szIdent) = 0;
 };
 
 
@@ -345,29 +353,29 @@ class FilterActivation;
 typedef void (*ScriptVoidFunctionPtr)(IScriptInterpreter *, FilterActivation *, CScriptValue *, int);
 
 struct ScriptFunctionDef {
-	ScriptVoidFunctionPtr func_ptr;
-	char *name;
-	char *arg_list;
+  ScriptVoidFunctionPtr func_ptr;
+  char *name;
+  char *arg_list;
 };
 
 struct CScriptObject {
-	void* Lookup;
-	ScriptFunctionDef* func_list;
-	void* obj_list;
+  void* Lookup;
+  ScriptFunctionDef* func_list;
+  void* obj_list;
 };
 
 class CScriptValue {
 public:
-	enum { T_VOID, T_INT, T_PINT, T_STR, T_ARRAY, T_OBJECT, T_FNAME, T_FUNCTION, T_VARLV } type;
-	CScriptObject *thisPtr;
-	union {
-		int i;
-		char **s;
-	} u;
-	void *lpVoid;
-	CScriptValue()						{ type = T_VOID; }
-	void operator=(int i)					{ type = T_INT;			u.i = i; }
-	void operator=(char **s)				{ type = T_STR;			u.s = s; }
+  enum { T_VOID, T_INT, T_PINT, T_STR, T_ARRAY, T_OBJECT, T_FNAME, T_FUNCTION, T_VARLV } type;
+  CScriptObject *thisPtr;
+  union {
+    int i;
+    char **s;
+  } u;
+  void *lpVoid;
+  CScriptValue()            { type = T_VOID; }
+  void operator=(int i)         { type = T_INT;     u.i = i; }
+  void operator=(char **s)        { type = T_STR;     u.s = s; }
 };
 
 
@@ -376,116 +384,116 @@ public:
 
 class VBitmap {
 public:
-	Pixel *			data;
-	Pixel *			palette;
-	int				depth;
-	PixCoord		w, h;
-	PixOffset		pitch;
-	PixOffset		modulo;
-	PixOffset		size;
-	PixOffset		offset;
+  Pixel *     data;
+  Pixel *     palette;
+  int       depth;
+  PixCoord    w, h;
+  PixOffset   pitch;
+  PixOffset   modulo;
+  PixOffset   size;
+  PixOffset   offset;
 
-	PixOffset PitchAlign4() {
-		return ((w * depth + 31)/32)*4;
-	}
+  PixOffset PitchAlign4() {
+    return ((w * depth + 31)/32)*4;
+  }
 
-	PixOffset PitchAlign8() {
-		return ((w * depth + 63)/64)*8;
-	}
+  PixOffset PitchAlign8() {
+    return ((w * depth + 63)/64)*8;
+  }
 
-	PixOffset Modulo() {
-		return pitch - (w*depth+7)/8;
-	}
+  PixOffset Modulo() {
+    return pitch - (w*depth+7)/8;
+  }
 
-	PixOffset Size() {
-		return pitch*h;
-	}
+  PixOffset Size() {
+    return pitch*h;
+  }
 
-	//////
+  //////
 
-	virtual VBitmap& init(void *data, PixDim w, PixDim h, int depth) throw();
-	virtual VBitmap& init(void *data, BITMAPINFOHEADER *) throw();
+  virtual VBitmap& init(void *data, PixDim w, PixDim h, int depth) throw();
+  virtual VBitmap& init(void *data, BITMAPINFOHEADER *) throw();
 
-	virtual void MakeBitmapHeader(BITMAPINFOHEADER *bih) const throw();
+  virtual void MakeBitmapHeader(BITMAPINFOHEADER *bih) const throw();
 
-	virtual void AlignTo4() throw();
-	virtual void AlignTo8() throw();
+  virtual void AlignTo4() throw();
+  virtual void AlignTo8() throw();
 
-	virtual void BitBlt(PixCoord x2, PixCoord y2, const VBitmap *src, PixCoord x1, PixCoord y1, PixDim dx, PixDim dy) const;
-	virtual void BitBltDither(PixCoord x2, PixCoord y2, const VBitmap *src, PixDim x1, PixDim y1, PixDim dx, PixDim dy, bool to565) const;
-	virtual void BitBlt565(PixCoord x2, PixCoord y2, const VBitmap *src, PixDim x1, PixDim y1, PixDim dx, PixDim dy) const;
+  virtual void BitBlt(PixCoord x2, PixCoord y2, const VBitmap *src, PixCoord x1, PixCoord y1, PixDim dx, PixDim dy) const;
+  virtual void BitBltDither(PixCoord x2, PixCoord y2, const VBitmap *src, PixDim x1, PixDim y1, PixDim dx, PixDim dy, bool to565) const;
+  virtual void BitBlt565(PixCoord x2, PixCoord y2, const VBitmap *src, PixDim x1, PixDim y1, PixDim dx, PixDim dy) const;
 
-	virtual bool BitBltXlat1(PixCoord x2, PixCoord y2, const VBitmap *src, PixCoord x1, PixCoord y1, PixDim dx, PixDim dy, const Pixel8 *tbl) const;
-	virtual bool BitBltXlat3(PixCoord x2, PixCoord y2, const VBitmap *src, PixCoord x1, PixCoord y1, PixDim dx, PixDim dy, const Pixel32 *tbl) const;
+  virtual bool BitBltXlat1(PixCoord x2, PixCoord y2, const VBitmap *src, PixCoord x1, PixCoord y1, PixDim dx, PixDim dy, const Pixel8 *tbl) const;
+  virtual bool BitBltXlat3(PixCoord x2, PixCoord y2, const VBitmap *src, PixCoord x1, PixCoord y1, PixDim dx, PixDim dy, const Pixel32 *tbl) const;
 
-	virtual bool StretchBltNearestFast(PixCoord x1, PixCoord y1, PixDim dx, PixDim dy, const VBitmap *src, double x2, double y2, double dx1, double dy1) const;
+  virtual bool StretchBltNearestFast(PixCoord x1, PixCoord y1, PixDim dx, PixDim dy, const VBitmap *src, double x2, double y2, double dx1, double dy1) const;
 
-	virtual bool StretchBltBilinearFast(PixCoord x1, PixCoord y1, PixDim dx, PixDim dy, const VBitmap *src, double x2, double y2, double dx1, double dy1) const;
+  virtual bool StretchBltBilinearFast(PixCoord x1, PixCoord y1, PixDim dx, PixDim dy, const VBitmap *src, double x2, double y2, double dx1, double dy1) const;
 
-	virtual bool RectFill(PixCoord x1, PixCoord y1, PixDim dx, PixDim dy, Pixel32 c) const;
+  virtual bool RectFill(PixCoord x1, PixCoord y1, PixDim dx, PixDim dy, Pixel32 c) const;
 
-	virtual bool Histogram(PixCoord x, PixCoord y, PixCoord dx, PixCoord dy, long *pHisto, int iHistoType) const;
+  virtual bool Histogram(PixCoord x, PixCoord y, PixCoord dx, PixCoord dy, long *pHisto, int iHistoType) const;
 
-	//// NEW AS OF VIRTUALDUB V1.2B
+  //// NEW AS OF VIRTUALDUB V1.2B
 
-	virtual bool BitBltFromYUY2(PixCoord x2, PixCoord y2, const VBitmap *src, PixCoord x1, PixCoord y1, PixDim dx, PixDim dy) const;
-	virtual bool BitBltFromI420(PixCoord x2, PixCoord y2, const VBitmap *src, PixCoord x1, PixCoord y1, PixDim dx, PixDim dy) const;
+  virtual bool BitBltFromYUY2(PixCoord x2, PixCoord y2, const VBitmap *src, PixCoord x1, PixCoord y1, PixDim dx, PixDim dy) const;
+  virtual bool BitBltFromI420(PixCoord x2, PixCoord y2, const VBitmap *src, PixCoord x1, PixCoord y1, PixDim dx, PixDim dy) const;
 };
 
 
 VBitmap& VBitmap::init(void *lpData, BITMAPINFOHEADER *bmih) throw() {
-	data			= (Pixel *)lpData;
-	palette			= (Pixel *)(bmih+1);
-	depth			= bmih->biBitCount;
-	w				= bmih->biWidth;
-	h				= bmih->biHeight;
-	offset			= 0;
-	AlignTo4();
+  data      = (Pixel *)lpData;
+  palette     = (Pixel *)(bmih+1);
+  depth     = bmih->biBitCount;
+  w       = bmih->biWidth;
+  h       = bmih->biHeight;
+  offset      = 0;
+  AlignTo4();
 
-	return *this;
+  return *this;
 }
 
 VBitmap& VBitmap::init(void *data, PixDim w, PixDim h, int depth) throw() {
-	this->data		= (Pixel32 *)data;
-	this->palette	= NULL;
-	this->depth		= depth;
-	this->w			= w;
-	this->h			= h;
-	this->offset	= 0;
-	AlignTo8();
+  this->data    = (Pixel32 *)data;
+  this->palette = NULL;
+  this->depth   = depth;
+  this->w     = w;
+  this->h     = h;
+  this->offset  = 0;
+  AlignTo8();
 
-	return *this;
+  return *this;
 }
 
 void VBitmap::MakeBitmapHeader(BITMAPINFOHEADER *bih) const throw() {
-	bih->biSize				= sizeof(BITMAPINFOHEADER);
-	bih->biBitCount			= depth;
-	bih->biPlanes			= 1;
-	bih->biCompression		= BI_RGB;
+  bih->biSize       = sizeof(BITMAPINFOHEADER);
+  bih->biBitCount     = depth;
+  bih->biPlanes     = 1;
+  bih->biCompression    = BI_RGB;
 
-	if (pitch == ((w*bih->biBitCount + 31)/32) * 4)
-		bih->biWidth		= w;
-	else
-		bih->biWidth		= pitch*8 / depth;
+  if (pitch == ((w*bih->biBitCount + 31)/32) * 4)
+    bih->biWidth    = w;
+  else
+    bih->biWidth    = pitch*8 / depth;
 
-	bih->biHeight			= h;
-	bih->biSizeImage		= pitch*h;
-	bih->biClrUsed			= 0;
-	bih->biClrImportant		= 0;
-	bih->biXPelsPerMeter	= 0;
-	bih->biYPelsPerMeter	= 0;
+  bih->biHeight     = h;
+  bih->biSizeImage    = pitch*h;
+  bih->biClrUsed      = 0;
+  bih->biClrImportant   = 0;
+  bih->biXPelsPerMeter  = 0;
+  bih->biYPelsPerMeter  = 0;
 }
 
 void VBitmap::AlignTo4() throw() {
-	pitch		= PitchAlign4();
-	modulo		= Modulo();
-	size		= Size();
+  pitch   = PitchAlign4();
+  modulo    = Modulo();
+  size    = Size();
 }
 
 void VBitmap::AlignTo8() throw() {
-	pitch		= PitchAlign8();
-	modulo		= Modulo();
-	size		= Size();
+  pitch   = PitchAlign8();
+  modulo    = Modulo();
+  size    = Size();
 }
 
 
@@ -495,14 +503,14 @@ void VBitmap::AlignTo8() throw() {
 // This is really dumb, but necessary to support VTbls in C++.
 
 struct FilterVTbls {
-	void *pvtblVBitmap;
+  void *pvtblVBitmap;
 };
 
 //////////////////
 
 enum {
-	FILTERPARAM_SWAP_BUFFERS	= 0x00000001L,
-	FILTERPARAM_NEEDS_LAST		= 0x00000002L,
+  FILTERPARAM_SWAP_BUFFERS  = 0x00000001L,
+  FILTERPARAM_NEEDS_LAST    = 0x00000002L,
 };
 
 ///////////////////
@@ -527,25 +535,25 @@ typedef void (__cdecl *FilterModuleDeinitProc)(struct FilterModule *fm, const Fi
 
 class IFilterPreview {
 public:
-	virtual void SetButtonCallback(void*, void*)=0;
-	virtual void SetSampleCallback(void*, void*)=0;
+  virtual void SetButtonCallback(void*, void*)=0;
+  virtual void SetSampleCallback(void*, void*)=0;
 
-	virtual bool isPreviewEnabled()=0;
-	virtual void Toggle(HWND)=0;
-	virtual void Display(HWND, bool)=0;
-	virtual void RedoFrame()=0;
-	virtual void RedoSystem()=0;
-	virtual void UndoSystem()=0;
-	virtual void InitButton(HWND)=0;
-	virtual void Close()=0;
-	virtual bool SampleCurrentFrame()=0;
-	virtual long SampleFrames()=0;
+  virtual bool isPreviewEnabled()=0;
+  virtual void Toggle(HWND)=0;
+  virtual void Display(HWND, bool)=0;
+  virtual void RedoFrame()=0;
+  virtual void RedoSystem()=0;
+  virtual void UndoSystem()=0;
+  virtual void InitButton(HWND)=0;
+  virtual void Close()=0;
+  virtual bool SampleCurrentFrame()=0;
+  virtual long SampleFrames()=0;
 };
 
 //////////
 
-#define VIRTUALDUB_FILTERDEF_VERSION		(6)
-#define	VIRTUALDUB_FILTERDEF_COMPATIBLE		(4)
+#define VIRTUALDUB_FILTERDEF_VERSION    (6)
+#define VIRTUALDUB_FILTERDEF_COMPATIBLE   (4)
 
 // v3: added lCurrentSourceFrame to FrameStateInfo
 // v4 (1.2): lots of additions (VirtualDub 1.2)
@@ -553,38 +561,38 @@ public:
 // v6 (1.4): added error handling functions
 
 typedef struct FilterModule {
-	struct FilterModule *next, *prev;
-	HINSTANCE				hInstModule;
-	FilterModuleInitProc	initProc;
-	FilterModuleDeinitProc	deinitProc;
-    IScriptEnvironment*		env;
-    const char*				avisynth_function_name;
+  struct FilterModule *next, *prev;
+  HINSTANCE       hInstModule;
+  FilterModuleInitProc  initProc;
+  FilterModuleDeinitProc  deinitProc;
+    IScriptEnvironment*   env;
+    const char*       avisynth_function_name;
     int preroll;
 } FilterModule;
 
 typedef struct FilterDefinition {
 
-	struct FilterDefinition *next, *prev;
-	FilterModule *module;
+  struct FilterDefinition *next, *prev;
+  FilterModule *module;
 
-	char *				name;
-	char *				desc;
-	char *				maker;
-	void *				private_data;
-	int					inst_data_size;
+  char *        name;
+  char *        desc;
+  char *        maker;
+  void *        private_data;
+  int         inst_data_size;
 
-	FilterInitProc		initProc;
-	FilterDeinitProc	deinitProc;
-	FilterRunProc		runProc;
-	FilterParamProc		paramProc;
-	FilterConfigProc	configProc;
-	FilterStringProc	stringProc;
-	FilterStartProc		startProc;
-	FilterEndProc		endProc;
+  FilterInitProc    initProc;
+  FilterDeinitProc  deinitProc;
+  FilterRunProc   runProc;
+  FilterParamProc   paramProc;
+  FilterConfigProc  configProc;
+  FilterStringProc  stringProc;
+  FilterStartProc   startProc;
+  FilterEndProc   endProc;
 
-	CScriptObject	*script_obj;
+  CScriptObject *script_obj;
 
-	FilterScriptStrProc	fssProc;
+  FilterScriptStrProc fssProc;
 
 } FilterDefinition;
 
@@ -594,56 +602,56 @@ typedef struct FilterDefinition {
 
 class FilterStateInfo {
 public:
-	long	lCurrentFrame;				// current output frame
-	long	lMicrosecsPerFrame;			// microseconds per output frame
-	long	lCurrentSourceFrame;		// current source frame
-	long	lMicrosecsPerSrcFrame;		// microseconds per source frame
-	long	lSourceFrameMS;				// source frame timestamp
-	long	lDestFrameMS;				// output frame timestamp
+  long  lCurrentFrame;        // current output frame
+  long  lMicrosecsPerFrame;     // microseconds per output frame
+  long  lCurrentSourceFrame;    // current source frame
+  long  lMicrosecsPerSrcFrame;    // microseconds per source frame
+  long  lSourceFrameMS;       // source frame timestamp
+  long  lDestFrameMS;       // output frame timestamp
 };
 
 // VFBitmap: VBitmap extended to hold filter-specific information
 
 class VFBitmap : public VBitmap {
 public:
-	enum {
-		NEEDS_HDC		= 0x00000001L,
-	};
+  enum {
+    NEEDS_HDC   = 0x00000001L,
+  };
 
-	DWORD	dwFlags;
-	HDC		hdc;
+  DWORD dwFlags;
+  HDC   hdc;
 };
 
 // FilterActivation: This is what is actually passed to filters at runtime.
 
 class FilterActivation {
 public:
-	FilterDefinition *filter;
-	void *filter_data;
-	VFBitmap &dst, &src;
-	VFBitmap *__reserved0, *const last;
-	unsigned long x1, y1, x2, y2;
+  FilterDefinition *filter;
+  void *filter_data;
+  VFBitmap &dst, &src;
+  VFBitmap *__reserved0, *const last;
+  unsigned long x1, y1, x2, y2;
 
-	FilterStateInfo *pfsi;
-	IFilterPreview *ifp;
+  FilterStateInfo *pfsi;
+  IFilterPreview *ifp;
 
-	FilterActivation(VFBitmap& _dst, VFBitmap& _src, VFBitmap *_last) : dst(_dst), src(_src), last(_last) {}
+  FilterActivation(VFBitmap& _dst, VFBitmap& _src, VFBitmap *_last) : dst(_dst), src(_src), last(_last) {}
 };
 
 struct FilterFunctions {
-	FilterDefinition *(*addFilter)(FilterModule *, FilterDefinition *, int fd_len);
-	void (*removeFilter)(FilterDefinition *);
-	bool (*isFPUEnabled)();
-	bool (*isMMXEnabled)();
-	void (*InitVTables)(struct FilterVTbls *);
+  FilterDefinition *(*addFilter)(FilterModule *, FilterDefinition *, int fd_len);
+  void (*removeFilter)(FilterDefinition *);
+  bool (*isFPUEnabled)();
+  bool (*isMMXEnabled)();
+  void (*InitVTables)(struct FilterVTbls *);
 
-	// These functions permit you to throw MyError exceptions from a filter.
-	// YOU MUST ONLY CALL THESE IN runProc, initProc, and startProc.
+  // These functions permit you to throw MyError exceptions from a filter.
+  // YOU MUST ONLY CALL THESE IN runProc, initProc, and startProc.
 
-	void (*ExceptOutOfMemory)();				// ADDED: V6 (VirtualDub 1.4)
-	void (*Except)(const char *format, ...);	// ADDED: V6 (VirtualDub 1.4)
+  void (*ExceptOutOfMemory)();        // ADDED: V6 (VirtualDub 1.4)
+  void (*Except)(const char *format, ...);  // ADDED: V6 (VirtualDub 1.4)
 
-	long (*getCPUFlags)();						// ADDED: V6 (VirtualDub 1.4)
+  long (*getCPUFlags)();            // ADDED: V6 (VirtualDub 1.4)
 };
 
 
@@ -654,65 +662,65 @@ struct FilterFunctions {
 
 void VBitmap::BitBlt(PixCoord x2, PixCoord y2, const VBitmap *src, PixCoord x1, PixCoord y1, PixDim dx, PixDim dy) const
 {
-	throw AvisynthError("Unsupported VBitmap method: BitBlt");
+  throw AvisynthError("Unsupported VBitmap method: BitBlt");
 }
 
 void VBitmap::BitBltDither(PixCoord x2, PixCoord y2, const VBitmap *src, PixDim x1, PixDim y1, PixDim dx, PixDim dy, bool to565) const
 {
-	throw AvisynthError("Unsupported VBitmap method: BitBltDither");
+  throw AvisynthError("Unsupported VBitmap method: BitBltDither");
 }
 
 void VBitmap::BitBlt565(PixCoord x2, PixCoord y2, const VBitmap *src, PixDim x1, PixDim y1, PixDim dx, PixDim dy) const
 {
-	throw AvisynthError("Unsupported VBitmap method: BitBlt565");
+  throw AvisynthError("Unsupported VBitmap method: BitBlt565");
 }
 
 bool VBitmap::BitBltXlat1(PixCoord x2, PixCoord y2, const VBitmap *src, PixCoord x1, PixCoord y1, PixDim dx, PixDim dy, const Pixel8 *tbl) const
 {
-	throw AvisynthError("Unsupported VBitmap method: BitBltXlat1");
+  throw AvisynthError("Unsupported VBitmap method: BitBltXlat1");
 }
 
 bool VBitmap::BitBltXlat3(PixCoord x2, PixCoord y2, const VBitmap *src, PixCoord x1, PixCoord y1, PixDim dx, PixDim dy, const Pixel32 *tbl) const
 {
-	throw AvisynthError("Unsupported VBitmap method: BitBltXlat3");
+  throw AvisynthError("Unsupported VBitmap method: BitBltXlat3");
 }
 
 bool VBitmap::StretchBltNearestFast(PixCoord x1, PixCoord y1, PixDim dx, PixDim dy, const VBitmap *src, double x2, double y2, double dx1, double dy1) const
 {
-	throw AvisynthError("Unsupported VBitmap method: StretchBltNearestFast");
+  throw AvisynthError("Unsupported VBitmap method: StretchBltNearestFast");
 }
 
 bool VBitmap::StretchBltBilinearFast(PixCoord x1, PixCoord y1, PixDim dx, PixDim dy, const VBitmap *src, double x2, double y2, double dx1, double dy1) const
 {
-	throw AvisynthError("Unsupported VBitmap method: StretchBltBilinearFast");
+  throw AvisynthError("Unsupported VBitmap method: StretchBltBilinearFast");
 }
 
 bool VBitmap::RectFill(PixCoord x1, PixCoord y1, PixDim dx, PixDim dy, Pixel32 c) const
 {
-	throw AvisynthError("Unsupported VBitmap method: RectFill");
+  throw AvisynthError("Unsupported VBitmap method: RectFill");
 }
 
 bool VBitmap::Histogram(PixCoord x, PixCoord y, PixCoord dx, PixCoord dy, long *pHisto, int iHistoType) const
 {
-	throw AvisynthError("Unsupported VBitmap method: Histogram");
+  throw AvisynthError("Unsupported VBitmap method: Histogram");
 }
 
 bool VBitmap::BitBltFromYUY2(PixCoord x2, PixCoord y2, const VBitmap *src, PixCoord x1, PixCoord y1, PixDim dx, PixDim dy) const
 {
-	throw AvisynthError("Unsupported VBitmap method: BitBltFromYUY2");
+  throw AvisynthError("Unsupported VBitmap method: BitBltFromYUY2");
 }
 
 bool VBitmap::BitBltFromI420(PixCoord x2, PixCoord y2, const VBitmap *src, PixCoord x1, PixCoord y1, PixDim dx, PixDim dy) const
 {
-	throw AvisynthError("Unsupported VBitmap method: BitBltFromI420");
+  throw AvisynthError("Unsupported VBitmap method: BitBltFromI420");
 }
 
 
 class DummyFilterPreview : public IFilterPreview {
-	void Die() { throw AvisynthError("IFilterPreview not supported"); }
+  void Die() { throw AvisynthError("IFilterPreview not supported"); }
 public:
-	virtual void SetButtonCallback(void*, void*) { Die(); }
-	virtual void SetSampleCallback(void*, void*) { Die(); }
+  virtual void SetButtonCallback(void*, void*) { Die(); }
+  virtual void SetSampleCallback(void*, void*) { Die(); }
 
     virtual bool isPreviewEnabled() { return false; }
     virtual void Toggle(HWND) {}
@@ -746,7 +754,7 @@ static void FilterThrowExceptMemory() {
 // This is really disgusting...
 
 static void InitVTables(struct FilterVTbls *pvtbls) {
-	pvtbls->pvtblVBitmap = *(void **)&VBitmap();
+  pvtbls->pvtblVBitmap = *(void **)&VBitmap();
 }
 
 
@@ -758,7 +766,7 @@ bool isFPUEnabled() { return !!(GetCPUFlags() & CPUF_FPU); }
 bool isMMXEnabled() { return !!(GetCPUFlags() & CPUF_MMX); }
 
 FilterFunctions g_filterFuncs={
-	FilterAdd, FilterRemove, isFPUEnabled, isMMXEnabled, InitVTables, FilterThrowExceptMemory, FilterThrowExcept, GetCPUFlags
+  FilterAdd, FilterRemove, isFPUEnabled, isMMXEnabled, InitVTables, FilterThrowExceptMemory, FilterThrowExcept, GetCPUFlags
 };
 
 
@@ -770,7 +778,7 @@ class MyScriptInterpreter : public IScriptInterpreter {
 public:
   MyScriptInterpreter(IScriptEnvironment* _env) : env(_env) {}
   void Destroy() {}
-  void SetRootHandler(void*, void*)	{}
+  void SetRootHandler(void*, void*) {}
   void ExecuteLine(char *s) {}
   void ScriptError(int e) {
     switch (e) {
@@ -988,9 +996,9 @@ FilterDefinition *FilterAdd(FilterModule *fm, FilterDefinition *pfd, int fd_len)
 
   if (fd) {
     memcpy(fd, pfd, min(size_t(fd_len), sizeof(FilterDefinition)));
-    fd->module	= fm;
-    fd->prev	= NULL;
-    fd->next	= NULL;
+    fd->module  = fm;
+    fd->prev  = NULL;
+    fd->next  = NULL;
   }
 
   fm->env->AtExit(FreeFilterDefinition, fd);
@@ -1077,7 +1085,7 @@ AVSValue LoadVirtualdubPlugin(AVSValue args, void*, IScriptEnvironment* env) {
 
 
 AVSFunction Plugin_functions[] = {
-  { "LoadPlugin", "s+", LoadPlugin },
+  { "LoadPlugin", "s+", LoadPlugin, (void*)false },
   { "LoadVirtualdubPlugin", "ss[preroll]i", LoadVirtualdubPlugin },
   { "LoadVFAPIPlugin", "ss", LoadVFAPIPlugin },
   { 0 }
