@@ -567,7 +567,11 @@ static AVSValue __cdecl Create_BlankClip(AVSValue args, void*, IScriptEnvironmen
 
   vi.SetFieldBased(false);
   vi.audio_samples_per_second = args[7].AsInt(vi_default.audio_samples_per_second);
-  vi.nchannels = args[8].AsInt(vi_default.nchannels);
+  if (args[8].Defined())
+    vi.nchannels = args[8].AsBool() ? 2 : 1;
+  else
+    vi.nchannels = vi_default.nchannels;
+
   vi.sample_type = args[9].AsInt(vi_default.sample_type);
   vi.num_audio_samples = vi.AudioSamplesFromFrames(vi.num_frames);
   int color = args[10].AsInt(0);
