@@ -159,14 +159,21 @@ PVideoFrame __stdcall FilteredResizeH::GetFrame(int n, IScriptEnvironment* env)
         paddd       mm3, mm2            ;accumulate
         jnz         aloopUV
 
-        movq        mm4, mm3            ; clip chroma at 0
-        psrad       mm3, 31
-        pandn       mm3, mm4
-
+        
+ 
         paddd       mm1, mm6            ;Y1|Y1|Y0|Y0
         paddd       mm3, mm6            ; V| V| U| U
+        pxor        mm4, mm4
         pslld       mm3, 2
+
+        // Clip by using pack
+        packuswb    mm4,mm3
+//        pxor        mm3,mm3   // Doesn't seem to be necessary!
+        punpckhbw   mm3,mm4
+        psrld       mm3,8
+
         pand        mm3, mm5            ;mm3 = v| 0|u| 0
+
         psrld       mm1, 14             ;mm1 = 0|y1|0|y0
         por         mm3, mm1
         packuswb    mm3, mm3            ;mm3 = ...|v|y1|u|y0
