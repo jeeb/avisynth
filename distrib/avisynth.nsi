@@ -109,7 +109,7 @@ dll_not_ok:
   Abort
 dll_ok:
 
-MessageBox MB_YESNO|MB_ICONQUESTION  "Do you want to install ffvfw light?  ffvfw decodes AviSynth content, and allows AviSynth scripts to be served to applications as AVI files." IDNo NoAbort
+MessageBox MB_YESNO|MB_ICONQUESTION  "Do you want to install ffvfw light?$\r$\n$\r$\nffvfw decodes AviSynth content, and allows AviSynth scripts to be served to applications as AVI files.$\r$\n$\r$\nNote: On some computers ffvfw seems to create problems loading other applications - removing ffvfw again solves this problem." IDNo NoAbort
   SetOutPath $TEMP
 	File "ffvfwAVIS.exe"
 	ExecWait "$TEMP\ffvfwAVIS.exe"
