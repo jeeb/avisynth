@@ -136,9 +136,10 @@ class Animate : public IClip
   AVSValue *args_before, *args_after, *args_now;
   int num_args;
   const char* name;
+  bool range_limit;
 public:
   Animate( PClip context, int _first, int _last, const char* _name, const AVSValue* _args_before, 
-           const AVSValue* _args_after, int _num_args, IScriptEnvironment* env );
+           const AVSValue* _args_after, int _num_args, bool _range_limit, IScriptEnvironment* env );
   virtual ~Animate() 
     { delete[] args_before; }
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
@@ -152,6 +153,7 @@ public:
   void __stdcall SetCacheHints(int cachehints,int frame_range) { };
 
   static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env);
+  static AVSValue __cdecl Create_Range(AVSValue args, void*, IScriptEnvironment* env);
 };
 
 

@@ -140,7 +140,7 @@ int* GetResamplingPatternRGB( int original_width, double subrange_start, double 
   double filter_step = min(scale, 1.0);
   double filter_support = func->support() / filter_step;
   int fir_filter_size = int(ceil(filter_support*2));
-  int* result = (int*) _aligned_malloc((1 + target_width*(1+fir_filter_size)) * 4, 4);
+  int* result = (int*) _aligned_malloc((1 + target_width*(1+fir_filter_size)) * 4, 64);
 
   int* cur = result;
   *cur++ = fir_filter_size;
@@ -187,8 +187,8 @@ int* GetResamplingPatternYUV( int original_width, double subrange_start, double 
   int fir_fs_mmx = (fir_filter_size / 2) +1;  // number of loops in MMX code
   int target_width_a=(target_width+15)&(~15);
   int* result = luma ?
-    (int*) _aligned_malloc(2*4 + target_width_a*(1+fir_fs_mmx)*8, 8) :
-    (int*) _aligned_malloc(2*4 + target_width_a*(1+fir_filter_size)*8, 8);
+    (int*) _aligned_malloc(2*4 + target_width_a*(1+fir_fs_mmx)*8, 64) :
+    (int*) _aligned_malloc(2*4 + target_width_a*(1+fir_filter_size)*8, 64);
 
   int* cur[2] = { result +2, result +3 };
   *result = luma ? fir_fs_mmx : fir_filter_size;

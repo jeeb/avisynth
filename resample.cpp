@@ -67,9 +67,9 @@ AVSFunction Resample_filters[] = {
 
 FilteredResizeH::FilteredResizeH( PClip _child, double subrange_left, double subrange_width, 
                                   int target_width, ResamplingFunction* func, IScriptEnvironment* env )
-  : GenericVideoFilter(_child), tempY(0), tempUV(0)
+  : GenericVideoFilter(_child), tempY(0), tempUV(0),pattern_luma(0),pattern_chroma(0)
 {
-  pattern_chroma = 0;
+
   original_width = _child->GetVideoInfo().width;
   if (target_width<8)
     env->ThrowError("Resize: Width must be bigger than or equal to 8.");
@@ -908,12 +908,12 @@ out_i_aloopUV:
 
 FilteredResizeH::~FilteredResizeH(void) 
 {
-  _aligned_free(pattern_luma);
-  _aligned_free(pattern_chroma);
+  if (pattern_luma) _aligned_free(pattern_luma);
+  if (pattern_chroma) _aligned_free(pattern_chroma);
   if (tempY)
   {
-    _aligned_free(tempUV);
-    _aligned_free(tempY);
+    if (tempUV) _aligned_free(tempUV);
+    if (tempY) _aligned_free(tempY);
   }
 }
 

@@ -48,6 +48,7 @@ AVSFunction Combine_filters[] = {
   { "ShowFiveVersions", "ccccc", ShowFiveVersions::Create },
   { "Animate", "iis.*", Animate::Create },  // start frame, end frame, filter, start-args, end-args
   { "Animate", "ciis.*", Animate::Create }, 
+  { "ApplyRange", "ciis.*", Animate::Create_Range }, 
   { 0 }
 };
 
@@ -313,8 +314,8 @@ AVSValue __cdecl ShowFiveVersions::Create(AVSValue args, void*, IScriptEnvironme
  **************************************/
 
 Animate::Animate( PClip context, int _first, int _last, const char* _name, const AVSValue* _args_before, 
-                  const AVSValue* _args_after, int _num_args, IScriptEnvironment* env )
-   : first(_first), last(_last), name(_name), num_args(_num_args)
+                  const AVSValue* _args_after, int _num_args, bool _range_limit, IScriptEnvironment* env )
+   : first(_first), last(_last), name(_name), num_args(_num_args), range_limit(_range_limit)
 {
   if (first >= last)
     env->ThrowError("Animate: final frame number must be greater than initial");
@@ -379,6 +380,11 @@ Animate::Animate( PClip context, int _first, int _last, const char* _name, const
 
 PVideoFrame __stdcall Animate::GetFrame(int n, IScriptEnvironment* env) 
 {
+  if (range_limit) {
+    if ((n<first) || (n>last)) {
+      return args_after[0].AsClip()->GetFrame(n,env);
+    }
+  }
   int stage = min(max(n, first), last) - first;
   for (int i=0; i<cache_size; ++i)
     if (cache_stage[i] == stage)
@@ -422,5 +428,17 @@ AVSValue __cdecl Animate::Create(AVSValue args, void*, IScriptEnvironment* env)
   int n = args[3].ArraySize();
   if (n&1)
     env->ThrowError("Animate: must have two argument lists of the same length");
-  return new Animate(context, first, last, name, &args[3][0], &args[3][n>>1], n>>1, env);
+  return new Animate(context, first, last, name, &args[3][0], &args[3][n>>1], n>>1, false, env);
+}
+
+
+AVSValue __cdecl Animate::Create_Range(AVSValue args, void*, IScriptEnvironment* env) 
+{
+  PClip context = args[0].AsClip();
+
+  const int first = args[1].AsInt();
+  const int last = args[2].AsInt();
+  const char* const name = args[3].AsString();
+  int n = args[4].ArraySize();
+  return new Animate(context, first, last, name, &args[4][0], &args[4][0], n, true, env);
 }
