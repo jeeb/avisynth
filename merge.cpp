@@ -40,7 +40,7 @@ MergeChroma::MergeChroma(PClip _child, PClip _clip, float _weight, IScriptEnviro
   if (weight<0.0f) weight=0.0f;
   if (weight>1.0f) weight=1.0f;
 
-  if (weight>=1.0f && !(env->GetCPUFlags() & CPUF_MMX))
+  if (weight>=0.9999f && !(env->GetCPUFlags() & CPUF_MMX))
       env->ThrowError("MergeChroma: MMX required (K6, K7, P5 MMX, P-II, P-III or P4)");
 }
 
@@ -50,12 +50,15 @@ PVideoFrame __stdcall MergeChroma::GetFrame(int n, IScriptEnvironment* env)
 {
   
   PVideoFrame src = child->GetFrame(n, env);
+
+  if (weight<0.0001f) return src;
+
   PVideoFrame chroma = clip->GetFrame(n, env);
-  
+
   const int h = src->GetHeight();
   const int w = src->GetRowSize()>>1; // width in pixels
   
-  if (weight<1.0f) {
+  if (weight<0.9999f) {
     env->MakeWritable(&src);
     unsigned int* srcp = (unsigned int*)src->GetWritePtr();
     unsigned int* chromap = (unsigned int*)chroma->GetReadPtr();
@@ -64,7 +67,7 @@ PVideoFrame __stdcall MergeChroma::GetFrame(int n, IScriptEnvironment* env)
     const int ichroma_pitch = (chroma->GetPitch())>>2;  // Ints
   
     (env->GetCPUFlags() & CPUF_INTEGER_SSE ? isse_weigh_chroma : weigh_chroma)
-							(srcp,chromap,isrc_pitch,ichroma_pitch,w,h,(int)(weight*32767.0f),32767-(int)(weight*32767.0f));
+							(srcp,chromap,isrc_pitch,ichroma_pitch,w,h,(int)(weight*32768.0f),32768-(int)(weight*32768.0f));
   }
   else
   {
@@ -113,7 +116,7 @@ MergeLuma::MergeLuma(PClip _child, PClip _clip, float _weight, IScriptEnvironmen
   if (weight<0.0f) weight=0.0f;
   if (weight>1.0f) weight=1.0f;
 
-  if (weight>=1.0f && !(env->GetCPUFlags() & CPUF_MMX))
+  if (weight>=0.9999f && !(env->GetCPUFlags() & CPUF_MMX))
       env->ThrowError("MergeLuma: MMX required (K6, K7, P5 MMX, P-II, P-III or P4)");
 }
     
@@ -122,6 +125,9 @@ PVideoFrame __stdcall MergeLuma::GetFrame(int n, IScriptEnvironment* env)
 {
   
   PVideoFrame src = child->GetFrame(n, env);
+
+  if (weight<0.0001f) return src;
+
   PVideoFrame luma = clip->GetFrame(n, env);
   
   env->MakeWritable(&src);
@@ -134,9 +140,9 @@ PVideoFrame __stdcall MergeLuma::GetFrame(int n, IScriptEnvironment* env)
   const int h = src->GetHeight();
   const int w = src->GetRowSize()>>1; // width in pixels
     
-  if (weight<1.0f)
+  if (weight<0.9999f)
     (env->GetCPUFlags() & CPUF_INTEGER_SSE ? isse_weigh_luma : weigh_luma)
-							(srcp,lumap,isrc_pitch,iluma_pitch,w,h,(int)(weight*32767.0f),32767-(int)(weight*32767.0f));
+							(srcp,lumap,isrc_pitch,iluma_pitch,w,h,(int)(weight*32768.0f),32768-(int)(weight*32768.0f));
   else
 		mmx_merge_luma(srcp,lumap,isrc_pitch,iluma_pitch,w,h);
   return src;
