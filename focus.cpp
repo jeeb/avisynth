@@ -1155,12 +1155,11 @@ kernel_loop:
      por mm0,mm1
     por mm2,mm3
     por mm0,mm2
-    movntq [esi+eax],mm0
+    movq [esi+eax],mm0
 
     add eax,8   // Next 8 pixels
     jmp testplane
 outloop:
-    sfence
     emms
   }
 }

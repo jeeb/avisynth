@@ -124,11 +124,9 @@ PVideoFrame __stdcall Swap::GetFrame(int n, IScriptEnvironment* env) {
   if (mode==1) {  // SwapUV
 
     PVideoFrame dst = env->NewVideoFrame(vi);
-    const int xpixels=src->GetRowSize(PLANAR_U_ALIGNED)>>2; // Ints
-    const int yloops=src->GetHeight(PLANAR_U);
-    const BYTE* srcpY=src->GetWritePtr(PLANAR_Y);  // Y Plane must be touched!
-    const BYTE* srcpV=src->GetWritePtr(PLANAR_V);
-    const BYTE* srcpU=src->GetWritePtr(PLANAR_U);
+    const BYTE* srcpY=src->GetReadPtr(PLANAR_Y);  // Y Plane must be touched!
+    const BYTE* srcpV=src->GetReadPtr(PLANAR_V);
+    const BYTE* srcpU=src->GetReadPtr(PLANAR_U);
     
     env->BitBlt(dst->GetWritePtr(PLANAR_Y),dst->GetPitch(PLANAR_Y),srcpY,src->GetPitch(PLANAR_Y),src->GetRowSize(PLANAR_Y),src->GetHeight(PLANAR_Y));
     env->BitBlt(dst->GetWritePtr(PLANAR_U),dst->GetPitch(PLANAR_U),srcpV,src->GetPitch(PLANAR_V),src->GetRowSize(PLANAR_V),src->GetHeight(PLANAR_V));

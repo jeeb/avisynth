@@ -135,8 +135,8 @@ xloop_p:
      por mm3, mm4
     por mm0, mm2
      por mm3, mm5
-    movntq [edi],mm0
-     movntq [edi+8],mm3
+    movq [edi],mm0
+     movq [edi+8],mm3
     add eax,8
     add ebx,4
     add ecx,4
@@ -215,8 +215,8 @@ xloop:
      por mm0,mm5
     por mm1,mm6
     mov edx, src_pitch_uv4
-     movntq [edi],mm0
-    movntq [edi+8],mm1
+     movq [edi],mm0
+    movq [edi+8],mm1
 
     //Next line in same field
      
@@ -247,8 +247,8 @@ xloop:
     pslld mm6,24
      por mm0,mm5
     por mm1,mm6
-     movntq [edi+edx],mm0
-    movntq [edi+edx+8],mm1
+     movq [edi+edx],mm0
+    movq [edi+edx+8],mm1
      add edi,16
     mov edx, [x]
      add eax, 8
@@ -378,8 +378,8 @@ xloop_p:
      por mm3, mm4
     por mm0, mm2
      por mm3, mm5
-    movntq [edi],mm0
-     movntq [edi+8],mm3
+    movq [edi],mm0
+     movq [edi+8],mm3
     add eax,8
     add ebx,4
     add ecx,4
@@ -456,8 +456,8 @@ xloop:
      por mm0,mm5
     por mm1,mm6
     mov edx, src_pitch_uv2
-     movntq [edi],mm0
-    movntq [edi+8],mm1
+     movq [edi],mm0
+    movq [edi+8],mm1
 
     //Next line
      
@@ -487,8 +487,8 @@ xloop:
     pslld mm6,24
      por mm0,mm5
     por mm1,mm6
-     movntq [edi+edx],mm0
-    movntq [edi+edx+8],mm1
+     movq [edi+edx],mm0
+    movq [edi+edx+8],mm1
      add edi,16
     mov edx, [x]
      add eax, 8
@@ -1121,8 +1121,8 @@ xloop:
    		packuswb mm6, mm7     // Pack V 
        mov ebx, [edi]
       mov ecx, [edi+4]
-      movntq [ebx+edx*2],mm0
-       movntq [ecx+edx*2],mm1
+      movq [ebx+edx*2],mm0
+       movq [ecx+edx*2],mm1
 
       mov ecx, [edi+8]
       mov ebx, [edi+12]
@@ -1237,8 +1237,8 @@ xloop:
    		packuswb mm6, mm7     // Pack V 
        mov ebx, [edi]
       mov ecx, [edi+4]
-      movntq [ebx+edx*2],mm0
-       movntq [ecx+edx*2],mm1
+      movq [ebx+edx*2],mm0
+       movq [ecx+edx*2],mm1
 
       mov ecx, [edi+8]
       mov ebx, [edi+12]
@@ -1299,8 +1299,8 @@ xloop2:   // Second field
    		packuswb mm6, mm7     // Pack V 
        mov ebx, [edi]
       mov ecx, [edi+4]
-      movntq [ebx+edx*2],mm0
-       movntq [ecx+edx*2],mm1
+      movq [ebx+edx*2],mm0
+       movq [ecx+edx*2],mm1
 
       mov ecx, [edi+8]
       mov ebx, [edi+12]
