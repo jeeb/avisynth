@@ -46,7 +46,7 @@
 ********************************************************************/
 
 AVSFunction Image_filters[] = {
-  { "ImageWriter", "c[file]s[start]i[end]i[type]s", ImageWriter::Create }, // clip, base filename, start, end, image format/extension
+  { "ImageWriter", "c[file]s[start]i[end]i[type]s[info]b", ImageWriter::Create }, // clip, base filename, start, end, image format/extension
   { "ImageReader", "[file]s[start]i[end]i[fps]i[use_devil]b", ImageReader::Create }, // base filename (sprintf-style), start, end, frames per second, default reader to use
   { 0 }
 };
@@ -58,9 +58,9 @@ AVSFunction Image_filters[] = {
  ****************************/
 
 ImageWriter::ImageWriter(PClip _child, const char * _base_name, const int _start, const int _end,
-                         const char * _ext)
+                         const char * _ext, bool _info)
  : GenericVideoFilter(_child), antialiaser(vi.width, vi.height, "Arial", 192), base_name(_base_name), start(_start),
-    end(_end), ext(_ext)
+    end(_end), ext(_ext), info(_info)
 {  
   if (!lstrcmpi(ext, "ebmp")) 
   {
@@ -188,20 +188,20 @@ PVideoFrame ImageWriter::GetFrame(int n, IScriptEnvironment* env)
     ilDeleteImages(1, &myImage);
   }  
     
-  
-  // overlay on video output: progress indicator
-  ostringstream text;
-  text << "Frame " << n << " written to: " << filename;
+  if (info) {
+    // overlay on video output: progress indicator
+    ostringstream text;
+    text << "Frame " << n << " written to: " << filename;
 
-  HDC hdc = antialiaser.GetDC();
-  RECT r = { 32, 16, min(3440,vi.width*8), 768*2 };
-  DrawText(hdc, text.str().c_str(), -1, &r, 0);
-  GdiFlush();
+    HDC hdc = antialiaser.GetDC();
+    RECT r = { 32, 16, min(3440,vi.width*8), 768*2 };
+    DrawText(hdc, text.str().c_str(), -1, &r, 0);
+    GdiFlush();
 
-  env->MakeWritable(&frame);
-  antialiaser.Apply(vi, &frame, frame->GetPitch(),
-    vi.IsYUV() ? 0xD21092 : 0xFFFF00, vi.IsYUV() ? 0x108080 : 0);
-
+    env->MakeWritable(&frame);
+    antialiaser.Apply(vi, &frame, frame->GetPitch(),
+      vi.IsYUV() ? 0xD21092 : 0xFFFF00, vi.IsYUV() ? 0x108080 : 0);
+  }
   
   return frame;
 }
@@ -224,7 +224,7 @@ void ImageWriter::fileWrite(ostream & file, const BYTE * srcPtr, const int pitch
 AVSValue __cdecl ImageWriter::Create(AVSValue args, void*, IScriptEnvironment* env) 
 {
   return new ImageWriter(args[0].AsClip(), args[1].AsString("c:\\"), args[2].AsInt(0), args[3].AsInt(0),
-                         args[4].AsString("ebmp"));
+                         args[4].AsString("ebmp"), args[5].AsBool(false));
 }
 
 
