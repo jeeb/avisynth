@@ -390,6 +390,8 @@ public:
   virtual void __stdcall CheckVersion(int version = AVISYNTH_INTERFACE_VERSION) = 0;
 
   virtual PVideoFrame __stdcall Subframe(PVideoFrame src, int rel_offset, int new_pitch, int new_row_size, int new_height) = 0;
+
+	virtual int __stdcall SetMemoryMax(int mem) = 0;
 };
 
 
