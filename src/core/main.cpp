@@ -473,8 +473,10 @@ bool CAVIFileSynth::DelayInit() {
  int fp_state = _control87( 0, 0 );
  _control87( FP_STATE, 0xffffffff );
  if (szScriptName) {
+#ifndef _DEBUG
     try {
       try {
+#endif
         // create a script environment and load the script into it
         env = CreateScriptEnvironment();
         if (!env) return false;
@@ -493,6 +495,7 @@ bool CAVIFileSynth::DelayInit() {
           throw AvisynthError("Avisynth error: YV12 images for output must have a width divisible by 4 (use crop)!");
         if (vi->IsYUY2()&&(vi->width&3))
           throw AvisynthError("Avisynth error: YUY2 images for output must have a width divisible by 4 (use crop)!");
+#ifndef _DEBUG
       }
       catch (AvisynthError error) {
         error_msg = error.msg;
@@ -501,12 +504,14 @@ bool CAVIFileSynth::DelayInit() {
         filter_graph = env->Invoke("MessageClip", AVSValue(args, 2), arg_names).AsClip();
         vi = &filter_graph->GetVideoInfo();
       }
+#endif
       delete[] szScriptName;
       szScriptName = 0;
       _clear87();
       __asm {emms};
       _control87( fp_state, 0xffffffff );
       return true;
+#ifndef _DEBUG
     }
     catch (...) {
 //	    _RPT0(0,"DelayInit() caught general exception!\n");
@@ -515,6 +520,7 @@ bool CAVIFileSynth::DelayInit() {
       _control87( fp_state, 0xffffffff );
       return false;
     }
+#endif
   } else {
     _clear87();
     __asm {emms};

@@ -36,24 +36,15 @@
 
 #include "ssrc-convert.h"
 
-//#include "ssrc/ssrc.c"
-//#include "ssrc/fftsg_fl.c"
 
 /********************************************************************
 ***** Declare index of new filters for Avisynth's filter engine *****
 ********************************************************************/
 
 AVSFunction SSRC_filters[] = {
-  { "SSRC", "ci", SSRC::Create },
+  { "SSRC", "ci[fast]", SSRC::Create },
   { 0 }
 };
-
-
- 
-void __cdecl RecieveSamples(float* dst_samples,  unsigned int nsamples) {
-  memcpy(convertedBuffer, dst_samples, nsamples*sizeof(SFLOAT));
-  convertedLeft += nsamples;
-}
 
 
 /******************************************
@@ -61,40 +52,35 @@ void __cdecl RecieveSamples(float* dst_samples,  unsigned int nsamples) {
  *****************************************/
 
 
-SSRC::SSRC(PClip _child, int _target_rate, IScriptEnvironment* env)
-  : GenericVideoFilter(ConvertAudio::Create(_child,SAMPLE_FLOAT,SAMPLE_FLOAT)), target_rate(_target_rate)
+SSRC::SSRC(PClip _child, int _target_rate, bool _fast, IScriptEnvironment* env)
+  : GenericVideoFilter(ConvertAudio::Create(_child,SAMPLE_FLOAT,SAMPLE_FLOAT)), target_rate(_target_rate), fast(_fast)
 {
 
   if ((target_rate==vi.audio_samples_per_second)||(vi.audio_samples_per_second==0)) {
 		skip_conversion=true;
 		return;
 	} 
-  if (target_rate > vi.audio_samples_per_second)
-    env->ThrowError("SSRC: You can only resample to lower samplerates.");
 
-	skip_conversion=false;
+  skip_conversion=false;
   source_rate = vi.audio_samples_per_second;
 
 	factor = double(target_rate) / vi.audio_samples_per_second;
-
   vi.num_audio_samples = MulDiv(vi.num_audio_samples, target_rate, vi.audio_samples_per_second);
  
-  input_samples = *init_ssrc((unsigned long)source_rate, (unsigned long)target_rate, vi.AudioChannels(), RecieveSamples,  &ending, env);
+  res = SSRC_create(source_rate, target_rate, vi.AudioChannels(), 2,1, fast);
 
+  if (!res)
+    env->ThrowError("SSRC: could not resample between the two samplerates.");
+
+  input_samples = source_rate;  // We convert one second of input per loop.
   vi.audio_samples_per_second = target_rate;
-
-  srcbuffer = new SFLOAT[input_samples+1];
-  convertedBuffer = new SFLOAT[64+(input_samples*target_rate)/source_rate]; 
-
-  convertedLeft = 0;
+  srcbuffer = new SFLOAT[vi.AudioChannels() * input_samples];
   next_sample = 0;
-  convertedReadOffset = 0;
   inputReadOffset=0;
-  ending[0] = 0;
 
 }
 
-
+ 
 
 void __stdcall SSRC::GetAudio(void* buf, __int64 start, __int64 count, IScriptEnvironment* env)
 {
@@ -102,48 +88,63 @@ void __stdcall SSRC::GetAudio(void* buf, __int64 start, __int64 count, IScriptEn
 		child->GetAudio(buf, start, count, env);
 		return;
 	}
-
   count *= vi.AudioChannels();   // This is how SSRC keeps count. We'll do the same
-
-  short* dst = (short*)buf;
-  int ch = vi.AudioChannels();
-  int samples_filled = 0;
 
 
   if (start != next_sample) {  // Reset on seek
-    inputReadOffset = MulDiv(start, source_rate, target_rate);
-    convertedLeft = 0;
+    inputReadOffset = MulDiv(start, source_rate, target_rate);  // Reset at new read position.
+    res = SSRC_create(source_rate, target_rate, vi.AudioChannels(), 2, 1, fast);
   }
 
+
   SFLOAT* DestSamples = (SFLOAT*)buf;
-  int nsamples = input_samples / vi.AudioChannels();  // How many samples per input fetch
+  int ssrc_samples_tbr = count*sizeof(SFLOAT);  // count in bytes
+  bool buffer_full = false;
 
   do {
-    // Is there any samples left to copy?
-    if (convertedLeft>0) {
-      int ReadSamples = min(convertedLeft, count-samples_filled);
-      memcpy(&DestSamples[samples_filled], &convertedBuffer[convertedReadOffset], ReadSamples*sizeof(SFLOAT));
-      convertedLeft -= ReadSamples;
-      convertedReadOffset += ReadSamples;
-      samples_filled += ReadSamples;
+    int ssrc_samples_av;
+    SFLOAT* ssrc_samples = res->GetBuffer(&ssrc_samples_av);
+
+    if (ssrc_samples_av < ssrc_samples_tbr) {  // We don't have enough bytes.
+
+      child->GetAudio(srcbuffer, inputReadOffset, input_samples, env);
+      inputReadOffset += input_samples;
+
+
+      res->Write(srcbuffer, input_samples * vi.AudioChannels());
+
+    } else {  // Now we have enough data
+
+
+      env->BitBlt((BYTE*)buf, 0, (BYTE*)ssrc_samples, 0, ssrc_samples_tbr , 1);
+
+      for (int i=0;i<ssrc_samples_tbr;i++) {
+        // FIXME: Very, very, VERY nasty workaround for one sample garble some not-so-random-place when doing the very beginning of the sample! 
+        // FIXME: The same as above - this is just important, so it's here twice.
+        if (fabs(ssrc_samples[i])>100.0f) {
+          _RPT2(0,"Clipping detected at sample %4u, factor:%4.4f\n", i, ssrc_samples[i]);
+          if (i < vi.AudioChannels())
+            ssrc_samples[i] = 0.0f;
+          else
+            ssrc_samples[i] = ssrc_samples[i-vi.AudioChannels()];
+        }
+      }
+      res->Read(count);
+
+
+      buffer_full = true;
+
     }
 
-    // Convert Next block.
-    if (convertedLeft==0) {
-      child->GetAudio(srcbuffer, inputReadOffset, nsamples, env);
-      inputReadOffset += nsamples;
-      downsample(srcbuffer, input_samples);
-      convertedReadOffset = 0;
-    }
-  } while (samples_filled < count);
+  } while (!buffer_full);
   next_sample = start + (count/vi.AudioChannels());
-  return;
+
 }
 
 
 
 AVSValue __cdecl SSRC::Create(AVSValue args, void*, IScriptEnvironment* env) 
 {
-  return new SSRC(args[0].AsClip(), args[1].AsInt(), env);
+  return new SSRC(args[0].AsClip(), args[1].AsInt(), args[2].AsBool(false), env);
 }
 

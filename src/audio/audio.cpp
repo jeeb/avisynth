@@ -135,8 +135,16 @@ void __stdcall ConvertAudio::GetAudio(void* buf, __int64 start, __int64 count, I
     tempbuffer_size=count;
   }
   child->GetAudio(tempbuffer, start, count, env);
-  convertToFloat(tempbuffer, floatbuffer, src_format, count*channels);
-  convertFromFloat(floatbuffer, buf, dst_format, count*channels);
+
+  float* tmp_fb = floatbuffer;
+
+  if (src_format != SAMPLE_FLOAT) {  // Skip initial copy, if samples are already float
+    convertToFloat(tempbuffer, tmp_fb, src_format, count*channels);
+  } else {
+    tmp_fb = (float*)tempbuffer;
+  }
+
+  convertFromFloat(tmp_fb, buf, dst_format, count*channels);
 
 }
 
@@ -196,8 +204,9 @@ void ConvertAudio::convertFromFloat(float* inbuf,void* outbuf, char sample_type,
       }
     case SAMPLE_INT16: {
       signed short* samples = (signed short*)outbuf;
-      for (i=0;i<count;i++) 
+      for (i=0;i<count;i++) {
         samples[i]=Saturate_int16(inbuf[i] * 32768.0f);
+      }
       break;
       }
 
@@ -218,9 +227,10 @@ void ConvertAudio::convertFromFloat(float* inbuf,void* outbuf, char sample_type,
       break;
     }
     case SAMPLE_FLOAT: {
-      SFLOAT* samples = (SFLOAT*)outbuf;
-      for (i=0;i<count;i++) 
+      SFLOAT* samples = (SFLOAT*)outbuf;      
+      for (i=0;i<count;i++) {
         samples[i]=inbuf[i];
+      }
       break;     
     }
     default: { 

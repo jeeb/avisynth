@@ -689,7 +689,7 @@ void Color::DumpLUT(void)
 	};
 	static const BYTE *LUT[] = { (BYTE *)&LUT_Y, (BYTE *)&LUT_U, (BYTE *)&LUT_V };
 	int	index,i,j;
-	char buf[256];
+	char buf[512];
 
 	for(index=0; index<3; index++)
 	{

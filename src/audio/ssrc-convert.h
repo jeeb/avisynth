@@ -41,9 +41,6 @@ typedef float REAL;
 #include "ssrc.h"
 
 
-SFLOAT* convertedBuffer;
-int convertedLeft;
-
 
 class SSRC : public GenericVideoFilter 
 /**
@@ -51,15 +48,12 @@ class SSRC : public GenericVideoFilter
  **/
 {
 public:
-  SSRC(PClip _child, int _target_rate, IScriptEnvironment* env);
+  SSRC(PClip _child, int _target_rate, bool _fast, IScriptEnvironment* env);
   ~SSRC() {
      if (srcbuffer) delete[] srcbuffer;
-     if (convertedBuffer) delete[] convertedBuffer;
-      deinit_ssrc();
     }
   void __stdcall GetAudio(void* buf, __int64 start, __int64 count, IScriptEnvironment* env);
   static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env);
-//  void __cdecl RecieveSamples(float* dst_samples,  unsigned int nsamples);
 
 private:
   const int target_rate;
@@ -67,13 +61,15 @@ private:
   int srcbuffer_size;
   bool skip_conversion;
   double factor;
-  int* ending;
   int input_samples;
+  bool fast;
 
   SFLOAT* srcbuffer;
   __int64 next_sample;
-  int convertedReadOffset;
   __int64 inputReadOffset;
+
+	Resampler_base * res;
+
 };
 
 
