@@ -331,7 +331,7 @@ void TemporalSoften::run_MMX(DWORD *pframe, int rowsize, int height, int modulo,
   const DWORD tresholds = (chroma_threshold << 16) | luma_threshold;
   DWORD* pbuf = accu;
   const int kern = kernel;
-  const __int64 counters = (__int64)kern * 0x0001000100010001i64;
+  __int64 counters = (__int64)kern * 0x0001000100010001i64;
   const int w = rowsize >> 2;
   const __int64* scaletab = scaletab_MMX;
   __declspec(align(8)) static const __int64 indexer = 0x1000010000100001i64;
@@ -342,14 +342,13 @@ void TemporalSoften::run_MMX(DWORD *pframe, int rowsize, int height, int modulo,
     movd      mm5, tresholds
     punpckldq mm5, mm5
     pxor      mm0, mm0
-    mov       eax, coffset
     mov       ebx, noffset
-    mov       esp, scaletab
 
 TS_yloop:
     mov       ecx, w
 TS_xloop:
     mov       edx, [esi]          ; get new pixel
+    mov       eax, coffset
     mov       [edi+ebx], edx      ; put into place
     pxor      mm6, mm6            ; clear accumulators
     movd      mm1, [edi+eax]      ; get center pixel
@@ -382,12 +381,13 @@ TS_timeloop:
     pmaddwd   mm7, indexer
     movq      mm2, mm7
     punpckhdq mm7, mm7
+    mov       eax, scaletab
     paddd     mm2, mm7
     movd      edx, mm2
 
     ; index = edx = count0+16*(count1+16*(count2+16*count3))
 
-    movq      mm7, [esp+edx*8]
+    movq      mm7, [eax+edx*8]
     pmulhw    mm6, mm7
     packuswb  mm6, mm6
     dec       ecx
