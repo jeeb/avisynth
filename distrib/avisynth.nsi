@@ -1,27 +1,42 @@
-;For use with Nullsoft's NSIS v1.98
-;Compile the script inside the NSIS directory otherwise specify the exact file directories
-;The installer automatically sets Notepad as the default viewer for .avs files
-;If you add the icon to the AviSynth dll with Resource Hacker (unpack with UPX first) it will be ;visible for .avs files 
-;To further compress the installer remove ";" from the below line (you must have UPX) 
-;!packhdr tempfil.exe "C:\upx\upx --best --q tempfil.exe"
-;If you choose the alternate icons see the below "or alternate lines"
+;For use with Nullsoft's NSIS v2.0
+
+!packhdr "avisynth.dat" "upx.exe --best avisynth.dat" 
+
+
+!DEFINE VERSION 2.5.2
+
+!DEFINE DATE 100503
+
+
+
+SetCompressor bzip2
 
 Name "AviSynth"
-Caption "AviSynth 2.5.1 beta"
-Icon "AviSynth.ico"              ;or alternate16_Avs.ico
-UninstallIcon "Un_AviSynth.ico"  ;or alternate16_UnAvs.ico
-EnabledBitmap "on.bmp"
-DisabledBitmap "off.bmp"
-OutFile "AviSynth_251.exe"
-BrandingText "NSIS"
-InstallColors "C5DEFB" "000000"  ;or alternate "A9A8A9" "444644"
-InstProgressFlags "Colored"
-SetOverwrite On
-CRCCheck on
+Caption "AviSynth ${VERSION}"
+OutFile "AviSynth_${DATE}.exe"
+BrandingText "AviSynth ${VERSION} - ${DATE}"
 UninstallText "This will uninstall AviSynth. Click Uninstall to continue."
 
-LicenseText "AviSynth is distributed under the following license agreement.$\nYou must accept the agreement to install AviSynth."
 
+Icon "AviSynth.ico"              ;or alternate16_Avs.ico
+UninstallIcon "Un_AviSynth.ico"  ;or alternate16_UnAvs.ico
+InstallColors "C5DEFB" "000000"  ;or alternate "A9A8A9" "444644"
+InstProgressFlags "Colored"
+
+
+
+SetOverwrite On
+CRCCheck on
+
+; Pages we need:
+
+Page license
+Page components
+Page directory
+Page instfiles
+
+
+LicenseText "AviSynth is distributed under the following license agreement.$\nYou must accept the agreement to install AviSynth."
 LicenseData GPL.txt
 
 
@@ -38,6 +53,7 @@ InstType Normal
 Section "AviSynth Base (required)"
 SectionIn 1 2
 
+ClearErrors
   SetOutPath $SYSDIR
   File "..\release\AviSynth.dll"
 	File "bin\devil.dll"
@@ -54,8 +70,8 @@ No_Plugin_exists:
 	CreateDirectory "$INSTDIR\plugins"
 	StrCpy $0 "$INSTDIR\plugins"
 Plugin_exists:
-
 ClearErrors
+
 
   WriteRegStr HKEY_LOCAL_MACHINE "SOFTWARE\AviSynth" "plugindir2_5" "$0"
   WriteRegStr HKLM "SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\AviSynth" "DisplayName" "AviSynth 2.5"
@@ -98,7 +114,7 @@ NoAbort:
 
 SectionEnd
 
-SectionDivider
+;SectionDivider
 
 Section "Documentation (recommended)"
   SectionIn 1 2
@@ -116,6 +132,8 @@ Delete $INSTDIR\Uninstall.exe
 WriteUninstaller $INSTDIR\Uninstall.exe
 
 SectionEnd
+
+
 
 ;Section "German Documentation"
 ;  SectionIn 2 
@@ -135,10 +153,10 @@ SectionEnd
 
 ;SectionEnd
 
-SectionDivider
+
 
 Section "Associate AVS files with Notepad"
-  SectionIn 1 2
+;  SectionIn 1 2
   WriteRegStr HKCR "avsfile\shell\open\command" "" 'notepad.exe "%1"'
 SectionEnd
 
