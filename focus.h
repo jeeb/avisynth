@@ -64,12 +64,6 @@ static AVSValue __cdecl Create_Sharpen(AVSValue args, void*, IScriptEnvironment*
 static AVSValue __cdecl Create_Blur(AVSValue args, void*, IScriptEnvironment* env);
 
 
-/*** Inline helper methods ***/
-
-static inline IsClose(int a, int b, unsigned threshold) 
-  { return (unsigned(a-b+threshold) <= threshold*2); }
-
-
 
 
 /*** Soften classes ***/
