@@ -381,6 +381,7 @@ PVideoFrame Invert::GetFrame(int n, IScriptEnvironment* env)
     int mask = doY ? 0x00ff00ff : 0;
     mask |= doU ? 0x0000ff00 : 0;
     mask |= doV ? 0xFF000000 : 0;
+      
     ConvertFrame(pf, pitch, rowsize, height, mask);
   }
 
@@ -402,14 +403,15 @@ PVideoFrame Invert::GetFrame(int n, IScriptEnvironment* env)
   }
 
   if (vi.IsRGB24()) {
+    int rMask= doR ? 0xff : 0;
+    int gMask= doG ? 0xff : 0;
+    int bMask= doB ? 0xff : 0;
     for (int i=0; i<height; i++) {
+
       for (int j=0; j<rowsize; j+=3) {
-        if (doB)
-          pf[j] = 255 - pf[j];
-        if (doG)
-          pf[j+1] = 255 - pf[j+1];
-        if (doR)
-          pf[j+2] = 255 - pf[j+2];
+        pf[j] = pf[j] ^ bMask;
+        pf[j+1] = pf[j+1] ^ gMask;
+        pf[j+2] = pf[j+2] ^ rMask;
       }
       pf += pitch;
     }
@@ -418,40 +420,79 @@ PVideoFrame Invert::GetFrame(int n, IScriptEnvironment* env)
   return f;
 }
 
-void Invert::ConvertFrame(BYTE* frame, int pitch, int rowsize, int height, int mask) {
-  __asm {
-      movd mm7,[mask]
-      mov ebx,[rowsize]
-      mov esi,[frame]
-      xor ecx, ecx  // Height
-      mov edx,[height]
-      punpckldq mm7,mm7
-      align 16
+/**********************
+ * MMX invert function.
+ *
+ * Originally written by Klaus Post.
+ *
+ * Rewritten and optimized by ARDA.
+ **********************/
+
+void Invert::ConvertFrame
+         (BYTE* frame,
+          int pitch,
+          int rowsize,    //must be mod 4
+          int height,
+          int mask) {
+__asm {
+    movd mm7,[mask]
+
+    mov eax,[pitch]
+    mov ecx,[rowsize]
+    mov edi,[height]
+    mov esi,[frame]
+    sub eax,ecx         //modulo
+
+    punpckldq mm7,mm7
+align 16
 yloopback:
-      cmp ecx, edx
-      jge outy
-      xor eax, eax
-      align 16 
+    mov ebx,[rowsize]
+    mov edx,ebx
+    sar ebx,5
+    and edx,31
+align 16
 testloop:
-      cmp ebx, eax
-      jle outloop
+//    prefetchnta [esi+256]
 
-      movq mm0,[esi+eax]  // 8 pixels
-      pxor mm0, mm7
-      movq [esi+eax], mm0
+    movq mm0,[esi]
+    movq mm1,[esi+8]
+    movq mm2,[esi+16]
+    movq mm3,[esi+24]
 
-      add eax,8
-      jmp testloop
-      align 16
-outloop:
-      inc ecx
-      add esi, [pitch];
-      jmp yloopback
-outy:
-      emms
-  } // end asm
+    pxor mm0, mm7
+    pxor mm1, mm7
+    pxor mm2, mm7
+    pxor mm3, mm7
+
+    movq [esi], mm0
+    movq [esi+8], mm1
+    movq [esi+16], mm2
+    movq [esi+24], mm3
+
+    add esi,32
+    dec ebx
+    jne testloop
+
+    test edx,edx
+    jz outw
+
+    sar edx,2
+align 16
+restloop:
+    movd mm0,[esi]
+    pxor mm0, mm7
+    movd [esi],mm0
+    add esi,4
+    dec edx
+    jne restloop
+align 16
+outw:
+    add esi,eax
+    dec edi//sub height,1
+    jne yloopback
+    emms
+  };
 }
-
 
 
 AVSValue Invert::Create(AVSValue args, void*, IScriptEnvironment* env)

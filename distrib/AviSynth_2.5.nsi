@@ -1,7 +1,7 @@
 !packhdr tempfile.exe "upx --best --q tempfile.exe"
 
 !DEFINE VERSION 2.5.5
-!DEFINE DATE 300104
+!DEFINE DATE 030304
 
 SetCompressor lzma
 !include "MUI.nsh"
@@ -27,7 +27,7 @@ SetCompressor lzma
   !insertmacro MUI_PAGE_FINISH
   !insertmacro MUI_UNPAGE_CONFIRM
   !insertmacro MUI_UNPAGE_INSTFILES
-  
+
 ;----------------------------------
 
 !insertmacro MUI_LANGUAGE "English"
@@ -48,7 +48,7 @@ InstallDirRegKey HKLM SOFTWARE\AviSynth ""
 InstType Standard
 
 Section "!AviSynth Base (required)" Frameserving
-SectionIn RO 
+SectionIn RO
 
 ClearErrors
   SetOutPath $SYSDIR
@@ -79,11 +79,11 @@ ClearErrors
 
   WriteRegStr HKEY_LOCAL_MACHINE "SOFTWARE\AviSynth" "plugindir2_5" "$0"
   WriteRegStr HKLM "SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\AviSynth" "DisplayName" "AviSynth 2.5"
-  WriteRegStr HKLM "SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\AviSynth" "UninstallString" '"$INSTDIR\Uninstall.exe"' 
+  WriteRegStr HKLM "SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\AviSynth" "UninstallString" '"$INSTDIR\Uninstall.exe"'
   WriteRegStr HKLM "SOFTWARE\Classes\.avs" "" "avsfile"
   WriteRegStr HKCR ".avs" "" "avs_auto_file"
   WriteRegStr HKCR "CLSID\{E6D6B700-124D-11D4-86F3-DB80AFD98778}" "" "AviSynth"
-  WriteRegStr HKCR "CLSID\{E6D6B700-124D-11D4-86F3-DB80AFD98778}\InProcServer32" "" AviSynth.dll   
+  WriteRegStr HKCR "CLSID\{E6D6B700-124D-11D4-86F3-DB80AFD98778}\InProcServer32" "" AviSynth.dll
   WriteRegStr HKCR "avifile\Extensions\avs" "" "{E6D6B700-124D-11D4-86F3-DB80AFD98778}"
   WriteRegStr HKCR "Media Type\Extensions\.avs" "" ""
   WriteRegStr HKCR "Media Type\Extensions\.avs" "Source Filter" "{D3588AB0-0781-11CE-B03A-0020AF0BA770}"
@@ -99,14 +99,14 @@ reg_not_ok:
 reg_ok:
 
 CreateDirectory  "$SMPROGRAMS\AviSynth 2.5"
-  
+
   CreateShortCut "$SMPROGRAMS\AviSynth 2.5\Uninstall AviSynth.lnk" "$INSTDIR\Uninstall.exe"
   CreateShortCut "$SMPROGRAMS\AviSynth 2.5\License.lnk" "$INSTDIR\GPL.txt"
   CreateShortCut "$SMPROGRAMS\AviSynth 2.5\Plugin Directory.lnk" "$INSTDIR\Plugins"
   WriteINIStr    "$SMPROGRAMS\AviSynth 2.5\AviSynth Online.url" "InternetShortcut" "URL" "http://www.avisynth.org"
   WriteINIStr    "$SMPROGRAMS\AviSynth 2.5\Download Plugins.url" "InternetShortcut" "URL" "http://www.avisynth.org/warpenterprises/"
 
- Delete $INSTDIR\Uninstall.exe 
+ Delete $INSTDIR\Uninstall.exe
   WriteUninstaller $INSTDIR\Uninstall.exe
   goto dll_ok
 dll_not_ok:
@@ -115,7 +115,7 @@ dll_not_ok:
 dll_ok:
 
 
-Delete $INSTDIR\Uninstall.exe 
+Delete $INSTDIR\Uninstall.exe
 WriteUninstaller $INSTDIR\Uninstall.exe
 
 
@@ -164,7 +164,7 @@ Section /o "German Documentation" German
 
   SetOutPath $INSTDIR\Examples
   File "Examples\*.*"
-  
+
 CreateShortCut "$SMPROGRAMS\AviSynth 2.5\Deutsche AviSynth Dokumentation.lnk" "$INSTDIR\Docs\german\index.htm"
 
 SectionEnd
@@ -192,7 +192,7 @@ SubSectionEnd
 
 
 
-  !insertmacro MUI_FUNCTION_DESCRIPTION_BEGIN    
+  !insertmacro MUI_FUNCTION_DESCRIPTION_BEGIN
   !insertmacro MUI_DESCRIPTION_TEXT  ${Frameserving} "Install the main files for frameserving via AviSynth"
   !insertmacro MUI_DESCRIPTION_TEXT  ${Documentation} "Install help and example files"
   !insertmacro MUI_DESCRIPTION_TEXT  ${English} "Install English help and example files"
@@ -201,12 +201,12 @@ SubSectionEnd
   !insertmacro MUI_DESCRIPTION_TEXT  ${Associate1} "Open AVS files directly with Notepad"
   !insertmacro MUI_DESCRIPTION_TEXT  ${Associate2} "Open AVS files directly with Media Player 6.4"
   !insertmacro MUI_FUNCTION_DESCRIPTION_END
-	
+
 
 Function un.onUninstSuccess
     MessageBox MB_OK "Uninstall has been successfully completed."
   FunctionEnd
-                                                
+
 Section "Uninstall"
   DeleteRegKey HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\AviSynth"
   Delete "$SYSDIR\devil.dll"
