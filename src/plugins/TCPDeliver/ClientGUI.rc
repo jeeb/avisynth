@@ -81,6 +81,52 @@ BEGIN
 END
 #endif    // APSTUDIO_INVOKED
 
+
+#ifndef _MAC
+/////////////////////////////////////////////////////////////////////////////
+//
+// Version
+//
+
+VS_VERSION_INFO VERSIONINFO
+ FILEVERSION 1,0,0,1
+ PRODUCTVERSION 1,0,0,1
+ FILEFLAGSMASK 0x3fL
+#ifdef _DEBUG
+ FILEFLAGS 0x1L
+#else
+ FILEFLAGS 0x0L
+#endif
+ FILEOS 0x40004L
+ FILETYPE 0x2L
+ FILESUBTYPE 0x0L
+BEGIN
+    BLOCK "StringFileInfo"
+    BEGIN
+        BLOCK "000004b0"
+        BEGIN
+            VALUE "Comments", "\0"
+            VALUE "CompanyName", "avisynth.org\0"
+            VALUE "FileDescription", "TCPDeliver\0"
+            VALUE "FileVersion", "1, 0, 0, 1\0"
+            VALUE "InternalName", "TCPDeliver\0"
+            VALUE "LegalCopyright", "Copyright © 2004, Klaus Post. \0"
+            VALUE "LegalTrademarks", "Released under GPL.\0"
+            VALUE "OriginalFilename", "TCPDeliver.dll\0"
+            VALUE "PrivateBuild", "\0"
+            VALUE "ProductName", "AviSynth TCPDeliver\0"
+            VALUE "ProductVersion", "1, 0, 0, 1\0"
+            VALUE "SpecialBuild", "\0"
+        END
+    END
+    BLOCK "VarFileInfo"
+    BEGIN
+        VALUE "Translation", 0x0, 1200
+    END
+END
+
+#endif    // !_MAC
+
 #endif    // Danish resources
 /////////////////////////////////////////////////////////////////////////////
 

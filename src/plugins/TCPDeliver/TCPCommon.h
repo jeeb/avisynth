@@ -37,7 +37,7 @@
 #ifndef TCP_Common_h
 #define TCP_Common_h
 
-#define TCPDELIVER_MAJOR 2
+#define TCPDELIVER_MAJOR 3
 #define TCPDELIVER_MINOR 1
 
 #include "stdafx.h"
@@ -45,7 +45,7 @@
 /*****************************************************************
  General overview:
 
-  This client is designes as a universal way of transfering uncompressed
+  This client is designes as a universal way of transfering (un)compressed
  video via TCP LAN. The client is in no way intended to be used over slow
  connections due to the datasizes.
 
@@ -105,8 +105,11 @@ enum {
 struct ServerFrameInfo {
   unsigned int framenumber;       // The framenumber to be delivered.
   unsigned int row_size;          // The width of a used pixels of a line in bytes.
+  unsigned int row_sizeUV;          // The width of a used pixels of a line in bytes.
   unsigned int height;            // The height of the image in pixels 
+  unsigned int heightUV;            // The height of the image in pixels 
   unsigned int pitch;             // The length of a line in bytes.
+  unsigned int pitchUV;           // The length of a line in bytes.
   unsigned int compressed_bytes;  // The number of bytes to be transfered after compression.
   unsigned int compression;       // The compression sheme used.
   unsigned int data_size;         // Total size of the uncompressed image in bytes.
@@ -118,10 +121,6 @@ struct ServerFrameInfo {
   unsigned int reserved2;
   unsigned int reserved3;
   unsigned int reserved4;
-  unsigned int reserved5;
-  unsigned int reserved6;
-  unsigned int reserved7;
-  unsigned int reserved8;
 
   enum {
     COMPRESSION_NONE = 0,         // The image is sent as uncompressed bytes.
@@ -140,15 +139,12 @@ struct ServerFrameInfo {
 struct ServerAudioInfo {
   unsigned int compressed_bytes;  // The number of bytes sent after compression
   unsigned int compression;       // Compression sheme used.
+  unsigned int data_size;         // Total size of the uncompressed samples in bytes.
 
   unsigned int reserved1;
   unsigned int reserved2;
   unsigned int reserved3;
   unsigned int reserved4;
-  unsigned int reserved5;
-  unsigned int reserved6;
-  unsigned int reserved7;
-  unsigned int reserved8;
 
   enum {
     COMPRESSION_NONE = 0
@@ -173,12 +169,6 @@ struct ClientRequestAudio {
 
   unsigned int reserved1;
   unsigned int reserved2;
-  unsigned int reserved3;
-  unsigned int reserved4;
-  unsigned int reserved5;
-  unsigned int reserved6;
-  unsigned int reserved7;
-  unsigned int reserved8;
 };
 
 struct ClientRequestFrame {
@@ -186,12 +176,6 @@ struct ClientRequestFrame {
 
   unsigned int reserved1;
   unsigned int reserved2;
-  unsigned int reserved3;
-  unsigned int reserved4;
-  unsigned int reserved5;
-  unsigned int reserved6;
-  unsigned int reserved7;
-  unsigned int reserved8;
 };
 
 struct ClientRequestParity {
@@ -204,11 +188,6 @@ struct ClientCheckVersion {
   int compression_supported;
   unsigned int reserved2;
   unsigned int reserved3;
-  unsigned int reserved4;
-  unsigned int reserved5;
-  unsigned int reserved6;
-  unsigned int reserved7;
-  unsigned int reserved8;
 };
 
 /***********************************************************************

@@ -382,6 +382,26 @@ void TCPServerListener::SendPendingData(ClientConnection* cc) {
 
 }
 
+/**********************************************
+  TCPServerListener::CheckClientVersion
+
+  This will check to see if the client version
+  is compatible with the server version.
+
+  If "TCPDELIVER_MAJOR" doesn't match, they will
+  refuse to connect. Minor is not tested here.
+
+  The function will also select the compression
+  to be used for this client. Basicly the client
+  sends the compression types it will allow, and
+  the server will then select the best compression
+  scheme for this client.
+
+  This allows the client to select a specific 
+  compression, and thus only allowing the server 
+  to use this.
+ *********************************************/
+
 void TCPServerListener::CheckClientVersion(ServerReply* s, const char* request) {
   ClientCheckVersion* ccv = (ClientCheckVersion*)request;
   s->allocateBuffer(0);
@@ -456,6 +476,7 @@ void TCPServerListener::SendFrameInfo(ServerReply* s, const char* request) {
   BYTE* dstp;
   sfi.data_size = data_size;
 
+  // Compress the data.
   if (!child->GetVideoInfo().IsPlanar()) {
     env->MakeWritable(&src);
     
@@ -473,14 +494,16 @@ void TCPServerListener::SendFrameInfo(ServerReply* s, const char* request) {
   } else {
     env->MakeWritable(&src);
     BYTE *dst1, *dst2, *dst3;
+    sfi.row_sizeUV = src->GetRowSize(PLANAR_U_ALIGNED);
+    sfi.pitchUV = src->GetPitch(PLANAR_U);
 
     sfi.comp_Y_bytes = s->client->compression->CompressImage(src->GetWritePtr(PLANAR_Y), src_rowsize, src_height, src_pitch);
     dst1 = s->client->compression->dst;
 
-    sfi.comp_U_bytes = s->client->compression->CompressImage(src->GetWritePtr(PLANAR_U), src_rowsize/2, src_height/2, src_pitch/2);  //FIXME: YV12 only!
+    sfi.comp_U_bytes = s->client->compression->CompressImage(src->GetWritePtr(PLANAR_U), sfi.row_sizeUV, src->GetHeight(PLANAR_U), sfi.pitchUV);
     dst2 = s->client->compression->dst;
 
-    sfi.comp_V_bytes = s->client->compression->CompressImage(src->GetWritePtr(PLANAR_V), src_rowsize/2, src_height/2, src_pitch/2);  //FIXME: YV12 only!
+    sfi.comp_V_bytes = s->client->compression->CompressImage(src->GetWritePtr(PLANAR_V), sfi.row_sizeUV, src->GetHeight(PLANAR_U), sfi.pitchUV);
     dst3 = s->client->compression->dst;
 
     sfi.compressed_bytes = sfi.comp_Y_bytes + sfi.comp_U_bytes + sfi.comp_V_bytes;
@@ -519,6 +542,7 @@ void TCPServerListener::SendAudioInfo(ServerReply* s, const char* request) {
   ServerAudioInfo sfi;
   sfi.compression = ServerAudioInfo::COMPRESSION_NONE;
   sfi.compressed_bytes = a.bytes;
+  sfi.data_size = a.bytes;
 
   memcpy(s->data, &sfi, sizeof(ServerAudioInfo));
   child->GetAudio(s->data + sizeof(ServerAudioInfo), a.start, a.count, env);

@@ -44,6 +44,24 @@
 #include <malloc.h>
 #include "zlib/include/zlib.h" 
 
+/*******************************************************************************
+  This is a generic compression class for implementing different types of
+  compression.
+
+  Each compression type has it's own class and TCPCompression as it's 
+  superclass.
+
+  Basicly for compression and decompression you:
+
+  - Create an instance of the compression class.
+  - Call CompressImage or DeCompressImage with your data.
+  - The result is placed in the "dst" pointer.
+  - The number of bytes in the output is returned by the function.
+  - If "inplace" is false you must free the dst data using "_aligned_free".
+    - otherwise dst is the same as your source.
+
+  You can get a unique ID of the compression type, by reading "compression_type".
+ ******************************************************************************/
 
 class TCPCompression {
 public:

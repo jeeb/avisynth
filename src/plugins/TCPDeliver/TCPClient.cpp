@@ -164,18 +164,20 @@ PVideoFrame __stdcall TCPClient::GetFrame(int n, IScriptEnvironment* env) {
       env->BitBlt(dstp, frame->GetPitch(), t->dst, incoming_pitch, frame->GetRowSize(), frame->GetHeight());
       if (!t->inplace) _aligned_free(t->dst);
 
-      int uv_pitch = incoming_pitch / 2;
+      int uv_pitch = fi->pitchUV;
+      int uv_rowsize  = fi->row_sizeUV;
+      int uv_height = fi->heightUV;
 
       // U
       srcp += fi->comp_Y_bytes;
-      t->DeCompressImage(srcp, fi->row_size/2, fi->height/2, fi->pitch/2, fi->comp_U_bytes);
+      t->DeCompressImage(srcp, uv_rowsize, uv_height, uv_pitch, fi->comp_U_bytes);
       env->BitBlt(frame->GetWritePtr(PLANAR_U), frame->GetPitch(PLANAR_U),
                   t->dst, uv_pitch, frame->GetRowSize(PLANAR_U), frame->GetHeight(PLANAR_U));
       if (!t->inplace) _aligned_free(t->dst);
 
       // V
       srcp += fi->comp_U_bytes;
-      t->DeCompressImage(srcp, fi->row_size/2, fi->height/2, fi->pitch/2, fi->comp_V_bytes);
+      t->DeCompressImage(srcp, uv_rowsize, uv_height, uv_pitch, fi->comp_V_bytes);
       env->BitBlt(frame->GetWritePtr(PLANAR_V), frame->GetPitch(PLANAR_V),
                   t->dst, uv_pitch, frame->GetRowSize(PLANAR_V), frame->GetHeight(PLANAR_V));
       if (!t->inplace) _aligned_free(t->dst);
@@ -221,14 +223,14 @@ void __stdcall TCPClient::GetAudio(void* buf, __int64 start, __int64 count, IScr
 
   ServerAudioInfo* ai = (ServerAudioInfo *)client->reply->last_reply;
   switch (ai->compression) {
-  case ServerAudioInfo::COMPRESSION_NONE:
-    break;
-  default:
-    env->ThrowError("TCPClient: Unknown compression.");
+    case ServerAudioInfo::COMPRESSION_NONE:
+      break;
+    default:
+      env->ThrowError("TCPClient: Unknown compression.");
   }
 
-  _RPT1(0, "TCPClient: Got %d bytes of audio (GetAudio)\n", a.bytes);
-  memcpy(buf, client->reply->last_reply + sizeof(ClientRequestAudio), a.bytes);  // TODO: Check size
+  _RPT1(0, "TCPClient: Got %d bytes of audio (GetAudio)\n", ai->compressed_bytes);
+  memcpy(buf, client->reply->last_reply + sizeof(ClientRequestAudio), ai->data_size);
 }
 
 
