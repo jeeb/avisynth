@@ -43,6 +43,7 @@ class ConditionalFilter : public GenericVideoFilter
  **/
 {
   enum Eval {
+    NONE = 0,
     EQUALS = 1,
     GREATERTHAN = 2,
     LESSTHAN = 4

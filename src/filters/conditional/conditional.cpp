@@ -64,14 +64,16 @@ AVSFunction Conditional_filters[] = {
 ConditionalFilter::ConditionalFilter(PClip _child, PClip _source1, PClip _source2, AVSValue  _condition1, AVSValue  _evaluator, AVSValue  _condition2, bool _show, IScriptEnvironment* env) :
   GenericVideoFilter(_child), source1(_source1), source2(_source2),
   eval1(_condition1), eval2(_condition2), show(_show) {
-
+    
+    evaluator = NONE;
     if (lstrcmpi(_evaluator.AsString(), "equals") == 0 || lstrcmpi(_evaluator.AsString(), "=") == 0 || lstrcmpi(_evaluator.AsString(), "==") == 0)
       evaluator = EQUALS;
     if (lstrcmpi(_evaluator.AsString(), "greaterthan") == 0 || lstrcmpi(_evaluator.AsString(), ">") == 0)
       evaluator = GREATERTHAN;
     if (lstrcmpi(_evaluator.AsString(), "lessthan") == 0 || lstrcmpi(_evaluator.AsString(), "<") == 0)
       evaluator = LESSTHAN;
-    if (!evaluator)
+
+    if (evaluator = NONE)
       env->ThrowError("ConditionalFilter: Evaluator could not be recognized!");
 
     VideoInfo vi1 = source1->GetVideoInfo();
