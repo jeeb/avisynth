@@ -44,7 +44,7 @@ RSC=rc.exe
 # PROP Ignore_Export_Lib 0
 # PROP Target_Dir ""
 # ADD BASE CPP /nologo /MT /W3 /GX /O2 /D "WIN32" /D "NDEBUG" /D "_WINDOWS" /D "_MBCS" /D "_USRDLL" /D "AVISYNTH_EXPORTS" /YX /FD /c
-# ADD CPP /nologo /G6 /MD /W3 /GX /O2 /Oy /Ob1 /D "NDEBUG" /D "INC_OLE2" /D "STRICT" /D "WIN32" /D "_WIN32" /D "_MT" /D "_DLL" /D "_MBCS" /D "_USRDLL" /D "AVISYNTH_EXPORTS" /YX /FD /Gs /GF /c
+# ADD CPP /nologo /G6 /MD /W3 /GX /O2 /Ob2 /D "NDEBUG" /D "INC_OLE2" /D "STRICT" /D "WIN32" /D "_WIN32" /D "_MT" /D "_DLL" /D "_MBCS" /D "_USRDLL" /D "AVISYNTH_EXPORTS" /YX /FD /Gs /GF /c
 # SUBTRACT CPP /Fr
 # ADD BASE MTL /nologo /D "NDEBUG" /mktyplib203 /win32
 # ADD MTL /nologo /D "NDEBUG" /mktyplib203 /win32
@@ -60,7 +60,7 @@ LINK32=link.exe
 # Begin Special Build Tool
 SOURCE="$(InputPath)"
 PostBuild_Desc=Copying to windows
-PostBuild_Cmds=copy Release\avisynth.dll $(SystemRoot)\system32
+PostBuild_Cmds=release\upx -9 release\avisynth.dll	copy Release\avisynth.dll $(SystemRoot)\system32
 # End Special Build Tool
 
 !ELSEIF  "$(CFG)" == "avisynth - Win32 Debug"

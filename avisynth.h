@@ -28,6 +28,8 @@ enum { AVISYNTH_INTERFACE_VERSION = 1 };
 // so I now set the Avisynth struct alignment explicitly here.
 #pragma pack(push,8)
 
+#define FRAME_ALIGN 16 
+// Default frame alignment is 16 bytes, to help P4, when using SSE2
 
 // The VideoInfo struct holds global information about a clip (i.e.
 // information that does not depend on the frame number).  The GetVideoInfo
@@ -381,7 +383,7 @@ public:
   virtual void __stdcall PopContext() = 0;
 
   // align should be 4 or 8
-  virtual PVideoFrame __stdcall NewVideoFrame(const VideoInfo& vi, int align=8) = 0;
+  virtual PVideoFrame __stdcall NewVideoFrame(const VideoInfo& vi, int align=FRAME_ALIGN) = 0;
 
   virtual bool __stdcall MakeWritable(PVideoFrame* pvf) = 0;
 

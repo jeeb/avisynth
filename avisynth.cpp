@@ -32,6 +32,7 @@
   #define _RPT1(x,y,z) ((void)0)
 #endif
 
+
 extern AVSFunction Audio_filters[], Combine_filters[], Convert_filters[], 
                    Convolution_filters[], Edit_filters[], Field_filters[], 
                    Focus_filters[], Fps_filters[], Histogram_filters[], 
@@ -675,7 +676,7 @@ bool ScriptEnvironment::MakeWritable(PVideoFrame* pvf) {
   else {
     const int row_size = vf->GetRowSize();
     const int height = vf->GetHeight();
-    PVideoFrame dst = NewVideoFrame(row_size, height, 8);
+    PVideoFrame dst = NewVideoFrame(row_size, height, FRAME_ALIGN);
     BitBlt(dst->GetWritePtr(), dst->GetPitch(), vf->GetReadPtr(), vf->GetPitch(), row_size, height);
     *pvf = dst;
     return true;
