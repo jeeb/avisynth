@@ -34,6 +34,7 @@ x0000_0000_0010_0010	dq	00000000000100010h
 x0080_0080_0080_0080	dq	00080008000800080h
 x00FF_00FF_00FF_00FF	dq	000FF00FF00FF00FFh
 x00002000_00002000	dq	00000200000002000h
+xFF000000_FF000000	dq	0FF000000FF000000h
 cy			dq	000004A8500004A85h
 crv			dq	03313000033130000h
 cgu_cgv			dq	0E5FCF377E5FCF377h
@@ -54,10 +55,11 @@ ofs_x0000_0000_0010_0010 = 0
 ofs_x0080_0080_0080_0080 = 8
 ofs_x00FF_00FF_00FF_00FF = 16
 ofs_x00002000_00002000 = 24
-ofs_cy = 32
-ofs_crv = 40
-ofs_cgu_cgv = 48
-ofs_cbu = 56
+ofs_xFF000000_FF000000 = 32
+ofs_cy = 40
+ofs_crv = 48
+ofs_cgu_cgv = 56
+ofs_cbu = 64
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -78,7 +80,8 @@ YUV2RGB_INNER_LOOP	MACRO	uyvy,rgb32,no_next_pixel
 ;; This YUV422->RGB conversion code uses only four MMX registers per
 ;; source dword, so I convert two dwords in parallel.  Lines corresponding
 ;; to the "second pipe" are indented an extra space.  There's almost no
-;; overlap, except at the end and in the two lines marked ***.
+;; overlap, except at the end and in the three lines marked ***.
+;; revised 4july,2002 to properly set alpha in rgb32 to default "on" & other small memory optimizations
 
 	movd		mm0,[esi]
 	 movd		 mm5,[esi+4]
@@ -101,7 +104,7 @@ YUV2RGB_INNER_LOOP	MACRO	uyvy,rgb32,no_next_pixel
 	 psubw		 mm5,[edx+ofs_x0080_0080_0080_0080]
 	punpcklwd	mm0,mm2		; mm0 = ______Y1______Y0
 	 psllq		 mm6,32
-	pmaddwd		mm0,[edx+ofs_cy]	; mm0 scaled
+	pmaddwd		mm0,[edx+ofs_cy]
 	 punpcklwd	 mm4,mm6
 	paddw		mm1,mm1
 	 pmaddwd	 mm4,[edx+ofs_cy]
@@ -162,6 +165,8 @@ ENDIF
 	 packuswb	 mm4,mm6
 
 IF &rgb32
+	por mm0, [edx+ofs_xFF000000_FF000000]	 ; set alpha channels "on"
+	 por mm4, [edx+ofs_xFF000000_FF000000]
 	movq	[edi-16],mm0	; store the quadwords independently
 	 movq	 [edi-8],mm4
 ELSE
