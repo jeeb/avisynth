@@ -212,5 +212,7 @@ AVSValue Float(AVSValue args, void*,IScriptEnvironment* env);
 AVSValue Value(AVSValue args, void*, IScriptEnvironment* env);
 AVSValue HexValue(AVSValue args, void*, IScriptEnvironment* env);
 
+AVSValue HasVideo(AVSValue args, void*, IScriptEnvironment* env);
+AVSValue HasAudio(AVSValue args, void*, IScriptEnvironment* env);
 
 #endif  // __Script_H__

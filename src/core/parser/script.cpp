@@ -139,7 +139,11 @@ AVSFunction Script_functions[] = {
   { "hexvalue","s",HexValue},
 
   { "VersionNumber", "", VersionNumber },
-  { "VersionString", "", VersionString }, 
+  { "VersionString", "", VersionString },
+  
+  { "HasVideo", "c", HasVideo },
+  { "HasAudio", "c", HasAudio },
+ 
   { 0 }
 };
 
@@ -526,6 +530,9 @@ AVSValue IsInterleaved(AVSValue args, void*, IScriptEnvironment* env) { return V
 AVSValue IsFieldBased(AVSValue args, void*, IScriptEnvironment* env) { return VI(args[0]).IsFieldBased(); }
 AVSValue IsFrameBased(AVSValue args, void*, IScriptEnvironment* env) { return !VI(args[0]).IsFieldBased(); }
 AVSValue GetParity(AVSValue args, void*, IScriptEnvironment* env) { return args[0].AsClip()->GetParity(args[1].AsInt(0)); }
+
+AVSValue HasVideo(AVSValue args, void*, IScriptEnvironment* env) { return VI(args[0]).width!=0; }
+AVSValue HasAudio(AVSValue args, void*, IScriptEnvironment* env) { return VI(args[0]).audio_samples_per_second!=0; }
 
 AVSValue String(AVSValue args, void*, IScriptEnvironment* env)
 {
