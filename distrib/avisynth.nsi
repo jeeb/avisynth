@@ -3,9 +3,9 @@
 !packhdr "avisynth.dat" "upx.exe --best avisynth.dat" 
 
 
-!DEFINE VERSION 2.5.2
+!DEFINE VERSION 2.5.1
 
-!DEFINE DATE 100503
+!DEFINE DATE 150503
 
 
 

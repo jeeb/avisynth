@@ -31,7 +31,7 @@
 // Public License plus this exception.  An independent module is a module
 // which is not derived from or based on Avisynth, such as 3rd-party filters,
 // import and export plugins, or graphical user interfaces.
-
+ 
 
 #include "stdafx.h"
 
@@ -1308,7 +1308,7 @@ class DirectShowSource : public IClip {
 
 public:
 
-  DirectShowSource(const char* filename, int _avg_time_per_frame, IScriptEnvironment* _env) : env(_env), get_sample(_env) {
+  DirectShowSource(const char* filename, int _avg_time_per_frame, bool _seek, IScriptEnvironment* _env) : env(_env), get_sample(_env), no_search(!_seek) {
     CheckHresult(CoCreateInstance(CLSID_FilterGraphNoThread, 0, CLSCTX_INPROC_SERVER, IID_IGraphBuilder, (void**)&gb), "couldn't create filter graph");
 
     WCHAR filenameW[MAX_PATH];
@@ -1361,7 +1361,7 @@ public:
 
     cur_frame = 0;
     base_sample_time = 0;
-    no_search = true;   // FIXME: Seeking manually disabled
+//    no_search = true;   // FIXME: Seeking manually disabled
   }
 
   ~DirectShowSource() { get_sample.StopGraph(); gb->Release(); }
@@ -1392,7 +1392,7 @@ public:
     } else {
       __int64 sample_time = __int64(n) * avg_time_per_frame + (avg_time_per_frame>>1);
       if (n > cur_frame || n > cur_frame+10) {
-        if (get_sample.SeekTo(sample_time)!=S_OK) {
+        if (no_search || get_sample.SeekTo(sample_time)!=S_OK) {
           no_search=true;
           if (cur_frame<n) {  // seek manually
             while (get_sample.GetSampleEndTime()+base_sample_time <= sample_time) {
@@ -1438,7 +1438,7 @@ void DirectShowSource::CheckHresult(HRESULT hr, const char* msg, const char* msg
 AVSValue __cdecl Create_DirectShowSource(AVSValue args, void*, IScriptEnvironment* env) {
   const char* filename = args[0][0].AsString();
   int avg_time_per_frame = args[1].Defined() ? int(10000000 / args[1].AsFloat() + 0.5) : 0;
-  return AlignPlanar::Create(new DirectShowSource(filename, avg_time_per_frame, env));
+  return AlignPlanar::Create(new DirectShowSource(filename, avg_time_per_frame, args[2].AsBool(false), env));
 }
 
 
@@ -1471,6 +1471,8 @@ AVSValue __cdecl Create_SegmentedSource(AVSValue args, void* use_directshow, ISc
   bool bAudio = !use_directshow && args[1].AsBool(true);
   const char* pixel_type;
   if (!use_directshow) pixel_type = args[2].AsString("");
+  bool ds_seek;
+  if (use_directshow) ds_seek = args[2].AsBool(false);
   args = args[0];
   PClip result = 0;
   const char* error_msg=0;
@@ -1487,7 +1489,7 @@ AVSValue __cdecl Create_SegmentedSource(AVSValue args, void* use_directshow, ISc
       wsprintf(filename, "%s.%02d.%s", basename, j, extension);
       if (GetFileAttributes(filename) != (DWORD)-1) {   // check if file exists
         try {
-          PClip clip = use_directshow ? (IClip*)(new DirectShowSource(filename, avg_time_per_frame, env))
+          PClip clip = use_directshow ? (IClip*)(new DirectShowSource(filename, avg_time_per_frame, ds_seek, env))
                                     : (IClip*)(new AVISource(filename, bAudio, pixel_type, 0, env));
           result = !result ? clip : new_Splice(result, clip, false, env);
         } catch (AvisynthError e) {
@@ -1508,7 +1510,7 @@ AVSValue __cdecl Create_SegmentedSource(AVSValue args, void* use_directshow, ISc
 
 AVSValue __cdecl Create_Version(AVSValue args, void*, IScriptEnvironment* env) {
   return Create_MessageClip(AVS_VERSTR
-          "\n\xA9 2000-2002 Ben Rudiak-Gould, et al.\n"
+          "\n\xA9 2000-2003 Ben Rudiak-Gould, et al.\n"
           "http://www.avisynth.org",
   -1, -1, VideoInfo::CS_BGR24, false, 0xECF2BF, 0, 0x404040, env);
 }
@@ -1519,7 +1521,7 @@ AVSFunction Source_filters[] = {
   { "AVIFileSource", "s+[audio]b[pixel_type]s", AVISource::Create, (void*)1 },
   { "WAVSource", "s+", AVISource::Create, (void*)3 },
   { "OpenDMLSource", "s+[audio]b[pixel_type]s", AVISource::Create, (void*)2 },
-  { "DirectShowSource", "s+[fps]f", Create_DirectShowSource },
+  { "DirectShowSource", "s+[fps]f[seek]b", Create_DirectShowSource },
   { "SegmentedAVISource", "s+[audio]b[pixel_type]s", Create_SegmentedSource, (void*)0 },
   { "SegmentedDirectShowSource", "s+[fps]f", Create_SegmentedSource, (void*)1 },
 //  { "QuickTimeSource", "s", QuickTimeSource::Create },
