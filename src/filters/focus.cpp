@@ -922,6 +922,7 @@ out_row_loop_ex:
 
 AVSValue __cdecl Create_Sharpen(AVSValue args, void*, IScriptEnvironment* env) 
 {
+	try {	// HIDE DAMN SEH COMPILER BUG!!!
   const double amountH = args[1].AsFloat(), amountV = args[2].AsFloat(amountH);
   if (amountH < -1.5849625 || amountH > 1.0 || amountV < -1.5849625 || amountV > 1.0) // log2(3)
     env->ThrowError("Sharpen: arguments must be in the range -1.58 to 1.0");
@@ -942,10 +943,13 @@ AVSValue __cdecl Create_Sharpen(AVSValue args, void*, IScriptEnvironment* env)
       return new AdjustFocusH(amountH, new AdjustFocusV(amountV, args[0].AsClip()));
     }
   }
+	}
+	catch (...) { throw; }
 }
 
 AVSValue __cdecl Create_Blur(AVSValue args, void*, IScriptEnvironment* env) 
 {
+	try {	// HIDE DAMN SEH COMPILER BUG!!!
   const double amountH = args[1].AsFloat(), amountV = args[2].AsFloat(amountH);
   if (amountH < -1.0 || amountH > 1.5849625 || amountV < -1.0 || amountV > 1.5849625) // log2(3)
     env->ThrowError("Blur: arguments must be in the range -1.0 to 1.58");
@@ -966,6 +970,8 @@ AVSValue __cdecl Create_Blur(AVSValue args, void*, IScriptEnvironment* env)
       return new AdjustFocusH(-amountH, new AdjustFocusV(-amountV, args[0].AsClip()));
     }
   }
+	}
+	catch (...) { throw; }
 }
 
 

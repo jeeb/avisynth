@@ -65,25 +65,27 @@ Color::Color(PClip _child, double _gain_y, double _off_y, double _gamma_y, doubl
 				u_gain(_gain_u), u_bright(_off_u), u_gamma(_gamma_u),u_contrast(_cont_u),
 				v_gain(_gain_v), v_bright(_off_v), v_gamma(_gamma_v),v_contrast(_cont_v)
 {
-	if (!vi.IsYUV())
-		env->ThrowError("ColorYUV: requires YUV input");
-	
-	if (!CheckParms(_levels, _matrix, _opt)) {
-		if (levels < 0)		env->ThrowError("ColorYUV: parameter error : levels");
-		if (matrix < 0)		env->ThrowError("ColorYUV: parameter error : matrix");
-		if (opt < 0)		env->ThrowError("ColorYUV: parameter error : opt");
-	}
-	colorbars=_colorbars;
-  analyze=_analyze;
-  autowhite=_autowhite;
-  autogain=_autogain;
-	MakeGammaLUT();
-  if (colorbars) {
-    vi.height=224*2;
-    vi.width=224*2;
-    vi.pixel_type=VideoInfo::CS_YV12;
-  }
+    try {	// HIDE DAMN SEH COMPILER BUG!!!
+		if (!vi.IsYUV())
+			env->ThrowError("ColorYUV: requires YUV input");
 
+		if (!CheckParms(_levels, _matrix, _opt)) {
+			if (levels < 0)		env->ThrowError("ColorYUV: parameter error : levels");
+			if (matrix < 0)		env->ThrowError("ColorYUV: parameter error : matrix");
+			if (opt < 0)		env->ThrowError("ColorYUV: parameter error : opt");
+		}
+		colorbars=_colorbars;
+		analyze=_analyze;
+		autowhite=_autowhite;
+		autogain=_autogain;
+		MakeGammaLUT();
+		if (colorbars) {
+			vi.height=224*2;
+			vi.width=224*2;
+			vi.pixel_type=VideoInfo::CS_YV12;
+		}
+	}
+	catch (...) { throw; }
 }
 
 
@@ -717,7 +719,8 @@ void Color::DumpLUT(void)
 #endif
 
 AVSValue __cdecl Color::Create(AVSValue args, void* user_data, IScriptEnvironment* env) {
-    return new Color(args[0].AsClip(),
+    try {	// HIDE DAMN SEH COMPILER BUG!!!
+		return new Color(args[0].AsClip(),
 						args[1].AsFloat(0.0),		// gain_y
 						args[2].AsFloat(0.0),		// off_y      bright
 						args[3].AsFloat(0.0),		// gamma_y
@@ -738,5 +741,6 @@ AVSValue __cdecl Color::Create(AVSValue args, void* user_data, IScriptEnvironmen
 						args[18].AsBool(false),		// autowhite
 						args[19].AsBool(false),		// autogain
 						env);
+	}
+	catch (...) { throw; }
 }
-

@@ -72,6 +72,7 @@ FilteredResizeH::FilteredResizeH( PClip _child, double subrange_left, double sub
                                   int target_width, ResamplingFunction* func, IScriptEnvironment* env )
   : GenericVideoFilter(_child), tempY(0), tempUV(0),pattern_luma(0),pattern_chroma(0)
 {
+	try {	// HIDE DAMN SEH COMPILER BUG!!!
   pattern_luma = pattern_chroma = (int *)0;
   tempUV = tempY = 0;
 
@@ -109,6 +110,8 @@ FilteredResizeH::FilteredResizeH( PClip _child, double subrange_left, double sub
       assemblerUV = GenerateResizer(PLANAR_U, env);
     }
   }
+	}
+	catch (...) { throw; }
 }
 
 /***********************************
@@ -1584,6 +1587,7 @@ PClip CreateResizeV(PClip clip, double subrange_top, double subrange_height, int
 PClip CreateResize(PClip clip, int target_width, int target_height, const AVSValue* args, 
                    ResamplingFunction* f, IScriptEnvironment* env) 
 {
+	try {	// HIDE DAMN SEH COMPILER BUG!!!
   const VideoInfo& vi = clip->GetVideoInfo();
   const double subrange_left = args[0].AsFloat(0), subrange_top = args[1].AsFloat(0);
   const double subrange_width = args[2].AsFloat(vi.width), subrange_height = args[3].AsFloat(vi.height);
@@ -1608,6 +1612,8 @@ PClip CreateResize(PClip clip, int target_width, int target_height, const AVSVal
       result = CreateResizeV(result, subrange_top, subrange_height, target_height, f, env);
   }
   return result;
+	}
+	catch (...) { throw; }
 }
 
 AVSValue __cdecl Create_PointResize(AVSValue args, void*, IScriptEnvironment* env) 

@@ -551,7 +551,10 @@ public:
   }
 
   static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env) {
-    return new Tone(args[0].AsFloat(10.0), args[1].AsFloat(440), args[2].AsInt(48000), args[3].AsInt(2), args[4].AsString("Sine"), env);
+	try {	// HIDE DAMN SEH COMPILER BUG!!!
+	    return new Tone(args[0].AsFloat(10.0), args[1].AsFloat(440), args[2].AsInt(48000), args[3].AsInt(2), args[4].AsString("Sine"), env);
+	}
+	catch (...) { throw; }
   }
 
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env) { return NULL; }

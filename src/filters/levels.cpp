@@ -65,6 +65,7 @@ Levels::Levels( PClip _child, int in_min, double gamma, int in_max, int out_min,
                 IScriptEnvironment* env )
   : GenericVideoFilter(_child)
 {
+	try {	// HIDE DAMN SEH COMPILER BUG!!!
   if (gamma <= 0.0)
     env->ThrowError("Levels: gamma must be positive");
   gamma = 1/gamma;
@@ -103,6 +104,8 @@ Levels::Levels( PClip _child, int in_min, double gamma, int in_max, int out_min,
       map[i] = PixelClip(int(p+0.5));
     }
   }
+	}
+	catch (...) { throw; }
 }
 
 PVideoFrame __stdcall Levels::GetFrame(int n, IScriptEnvironment* env) 
@@ -380,6 +383,7 @@ PVideoFrame __stdcall Tweak::GetFrame(int n, IScriptEnvironment* env)
 
 AVSValue __cdecl Tweak::Create(AVSValue args, void* user_data, IScriptEnvironment* env)
 {
+	try {	// HIDE DAMN SEH COMPILER BUG!!!
     return new Tweak(args[0].AsClip(),
 					 args[1].AsFloat(0.0),		// hue
 					 args[2].AsFloat(1.0),		// sat
@@ -387,6 +391,8 @@ AVSValue __cdecl Tweak::Create(AVSValue args, void* user_data, IScriptEnvironmen
 					 args[4].AsFloat(1.0),		// cont
 					 args[5].AsBool(true),    // coring
 					 env);
+	}
+	catch (...) { throw; }
 }
 
 

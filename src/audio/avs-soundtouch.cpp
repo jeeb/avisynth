@@ -73,6 +73,7 @@ AVSsoundtouch(PClip _child, double _tempo, double _rate, double _pitch, IScriptE
 : GenericVideoFilter(ConvertAudio::Create(_child, SAMPLE_FLOAT, SAMPLE_FLOAT)), 
   tempo(_tempo), rate(_rate), pitch(_pitch)
 {
+	try {	// HIDE DAMN SEH COMPILER BUG!!!
   last_nch = vi.AudioChannels();
   
   dstbuffer = new SFLOAT[BUFFERSIZE * vi.AudioChannels()];  // Our buffer can minimum contain one second.
@@ -104,6 +105,8 @@ AVSsoundtouch(PClip _child, double _tempo, double _rate, double _pitch, IScriptE
   inputReadOffset = 0;  // Next input sample
   dst_samples_filled = 0;
 
+	}
+	catch (...) { throw; }
 }
 
 void __stdcall AVSsoundtouch::GetAudio(void* buf, __int64 start, __int64 count, IScriptEnvironment* env)
@@ -331,6 +334,7 @@ void __stdcall AVSStereoSoundTouch::GetAudio(void* buf, __int64 start, __int64 c
 };
 
 AVSValue __cdecl AVSsoundtouch::Create(AVSValue args, void*, IScriptEnvironment* env) {
+	try {	// HIDE DAMN SEH COMPILER BUG!!!
   if (args[0].AsClip()->GetVideoInfo().AudioChannels() == 2) {
     return new AVSStereoSoundTouch(args[0].AsClip(), 
       args[1].AsFloat(100.0), 
@@ -343,6 +347,9 @@ AVSValue __cdecl AVSsoundtouch::Create(AVSValue args, void*, IScriptEnvironment*
     args[2].AsFloat(100.0), 
     args[3].AsFloat(100.0), 
     env);
+
+	}
+	catch (...) { throw; }
 }
 
 
