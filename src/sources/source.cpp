@@ -156,6 +156,13 @@ static AVSValue __cdecl Create_BlankClip(AVSValue args, void*, IScriptEnvironmen
       env->ThrowError("BlankClip: pixel_type must be \"RGB32\", \"RGB24\", \"YV12\" or \"YUY2\"");
     }
   }
+  else {
+    vi.pixel_type = vi_default.pixel_type;
+  }
+
+  if (!vi.pixel_type)
+    vi.pixel_type = VideoInfo::CS_BGR32;
+
 
   double n = args[5].AsFloat(double(vi_default.fps_numerator));
 
@@ -167,9 +174,6 @@ static AVSValue __cdecl Create_BlankClip(AVSValue args, void*, IScriptEnvironmen
     vi.SetFPS(int(n+0.5), args[6].AsInt(vi_default.fps_denominator));
   }
 
-  if (!vi.pixel_type)
-    vi.pixel_type = vi_default.pixel_type;
-
   vi.SetFieldBased(false);
   vi.audio_samples_per_second = args[7].AsInt(vi_default.audio_samples_per_second);
 
@@ -179,7 +183,9 @@ static AVSValue __cdecl Create_BlankClip(AVSValue args, void*, IScriptEnvironmen
     vi.nchannels = vi_default.nchannels;
 
   vi.sample_type = args[9].AsInt(vi_default.sample_type);
+  vi.width++; // cheat HasVideo() call for Audio Only clips
   vi.num_audio_samples = vi.AudioSamplesFromFrames(vi.num_frames);
+  vi.width--;
 
   int color = args[10].AsInt(0);
   int mode = COLOR_MODE_RGB;
