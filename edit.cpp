@@ -222,7 +222,7 @@ Splice::Splice(PClip _child1, PClip _child2, bool realign_sound, IScriptEnvironm
   if (vi.HasVideo()) {
     if (vi.width != vi2.width || vi.height != vi2.height)
       env->ThrowError("Splice: frame sizes don't match");
-    if (vi.pixel_type != vi2.pixel_type)
+    if ((vi.pixel_type != vi2.pixel_type) || (!(vi.IsYV12() && vi2.IsYV12())) )  // Fix for I420.
       env->ThrowError("Splice: video formats don't match");
   }
   if (vi.HasAudio()) {
