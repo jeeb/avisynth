@@ -293,6 +293,7 @@ public:
 // *** Tobias Minich, Mar 2003                                     ***
 // BEGIN *************************************************************
 #if 1 
+    if (prescanning) {
     AVSValue fnplugin;
     char *fnpluginnew;
     try {
@@ -301,8 +302,7 @@ public:
       strcpy(fnpluginnew, fnplugin.AsString());
       strcat(fnpluginnew, " ");
       strcat(fnpluginnew, name);
-      env->SetGlobalVar("$PluginFunctions$", AVSValue(fnpluginnew));
-      //delete fnplugin;
+      env->SetGlobalVar("$PluginFunctions$", AVSValue(fnpluginnew));      
     } catch (...) {
       fnpluginnew = new char[strlen(name)+1];
       strcpy(fnpluginnew, name);
@@ -312,6 +312,7 @@ public:
     strcat(temp, name);
     strcat(temp, "!Param$");
     env->SetGlobalVar(temp, AVSValue(params));
+    }
 #endif
 // END ***************************************************************
 
