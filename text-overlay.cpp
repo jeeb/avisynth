@@ -672,8 +672,10 @@ const char* t_YES="YES";
 const char* t_NO="NO";
 const char* t_NONE="NONE";
 const char* t_PUNKNOWN="Parity unknown";
-const char* t_TFF="Top Field First";
+const char* t_TFF="Top Field First   ";
 const char* t_BFF="Bottom Field First";
+const char* t_STFF="Top Field (Separated)   ";
+const char* t_SBFF="Bottom Field (Separated)";
 
 
 PVideoFrame FilterInfo::GetFrame(int n, IScriptEnvironment* env) 
@@ -693,9 +695,19 @@ PVideoFrame FilterInfo::GetFrame(int n, IScriptEnvironment* env)
     if (vi.SampleType()==SAMPLE_INT24) s_type=t_INT24;
     if (vi.SampleType()==SAMPLE_INT32) s_type=t_INT32;
     if (vi.SampleType()==SAMPLE_FLOAT) s_type=t_FLOAT32;
-    if (vi.IsParityKnown()) {
-      s_parity = vi.IsBFF() ? t_BFF : t_TFF;
-    } else {s_parity=t_PUNKNOWN;}
+    if (vi.IsFieldBased()) {
+      if (child->GetParity(n)) {
+        s_parity = t_STFF;
+      } else {
+        s_parity = t_SBFF;
+      }
+    } else {
+      if (child->GetParity(n)) {
+        s_parity = t_TFF;
+      } else {
+        s_parity = t_BFF;
+      }
+    }
     char text[400];
     RECT r= { 32, 16, min(3440,vi.width*8), 768*2 };
     sprintf(text,
@@ -703,7 +715,7 @@ PVideoFrame FilterInfo::GetFrame(int n, IScriptEnvironment* env)
       "ColorSpace: %s\n"
       "Width:%4u pixels, Height:%4u pixels.\n"
       "Frames per second: %7.4f\n"
-      "FieldBased Video: %s\n"
+      "FieldBased (Separated) Video: %s\n"
       "Parity: %s\n"
       "Video Pitch: %4u bytes.\n"
       "Has Audio: %s\n"

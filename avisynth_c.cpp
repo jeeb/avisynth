@@ -1,4 +1,4 @@
-// Avisynth C Interface Version 0.10
+// Avisynth C Interface Version 0.14
 // Copyright 2003 Kevin Atkinson
 //
 // This program is free software; you can redistribute it and/or modify
@@ -12,7 +12,6 @@
 
 #include "internal.h"
 #include "avisynth_c.h"
-
 
 struct AVS_Clip 
 {
@@ -56,6 +55,15 @@ void avs_release_video_frame(AVS_VideoFrame * f)
 	((PVideoFrame *)&f)->~PVideoFrame();
 }
 
+extern "C"
+AVS_VideoFrame * avs_copy_video_frame(AVS_VideoFrame * f)
+{
+  AVS_VideoFrame * fnew;
+  new ((PVideoFrame *)&fnew) PVideoFrame(*(PVideoFrame *)&f);
+  return fnew;
+}
+
+
 /////////////////////////////////////////////////////////////////////
 //
 // C_VideoFilter
@@ -68,7 +76,9 @@ PVideoFrame C_VideoFilter::GetFrame(int n, IScriptEnvironment* env)
 		AVS_VideoFrame * f = d.get_frame(&d, n);
 		if (d.error)
 			throw AvisynthError(d.error);
-		return PVideoFrame((VideoFrame *)f);
+		PVideoFrame fr((VideoFrame *)f);
+    ((PVideoFrame *)&f)->~PVideoFrame();  
+    return fr;
 	} else {
 		return d.child->clip->GetFrame(n, env); 
 	}
@@ -144,13 +154,25 @@ const char * avs_clip_get_error(AVS_Clip * p) // return 0 if no error
 }
 
 extern "C"
+int avs_get_version(AVS_Clip * p)
+{
+  return p->clip->GetVersion();
+}
+
+extern "C"
+const AVS_VideoInfo * avs_get_video_info(AVS_Clip  * p)
+{
+  return  (const AVS_VideoInfo  *)&p->clip->GetVideoInfo();
+}
+
+
+extern "C"
 AVS_VideoFrame * avs_get_frame(AVS_Clip * p, int n)
 {
 	p->error = 0;
 	try {
 		PVideoFrame f0 = p->clip->GetFrame(n,p->env);
 		AVS_VideoFrame * f;
-		//f = *(AVS_VideoFrame * *)&f0;
 		new((PVideoFrame *)&f) PVideoFrame(f0);
 		return f;
 	} catch (AvisynthError err) {
@@ -245,7 +267,7 @@ AVS_Clip * avs_new_c_filter(AVS_ScriptEnvironment * e,
 	f->env.env = e->env;
 	f->d.env = &f->env;
 	if (store_child) {
-//		assert(child.type == 'c');
+		_ASSERTE(child.type == 'c');
 		f->child.clip = (IClip *)child.d.clip;
 		f->child.env  = e->env;
 		f->d.child = &f->child;
@@ -266,18 +288,18 @@ struct C_VideoFilter_UserData {
 	AVS_ApplyFunc func;
 };
 
-AVSValue __cdecl create_c_video_filter(AVSValue args, void * user_data, 
-									   IScriptEnvironment * e0)
+AVSValue __cdecl create_c_video_filter(AVSValue args, void * user_data,
+									                     IScriptEnvironment * e0)
 {
 	C_VideoFilter_UserData * d = (C_VideoFilter_UserData *)user_data;
 	AVS_ScriptEnvironment env(e0);
 	OutputDebugString("OK");
 	AVS_Value res = (d->func)(&env, *(AVS_Value *)&args, d->user_data);
-	AVSValue val(*(const AVSValue *)&res);
-	((AVSValue *)&res)->~AVSValue();
 	if (res.type == 'e') {
-		throw AvisynthError(res.d.string);
+    throw AvisynthError(res.d.string);
 	} else {
+    AVSValue val(*(const AVSValue *)&res);
+    ((AVSValue *)&res)->~AVSValue();
 		return val;
 	}
 }
@@ -323,7 +345,11 @@ extern "C"
 char * avs_sprintf(AVS_ScriptEnvironment * p, const char* fmt, ...)
 {
 	p->error = 0;
-	abort(); // FIXME
+	va_list vl;
+	va_start(vl, fmt);
+	char * v = p->env->VSprintf(fmt, (void *)vl);
+	va_end(vl);
+	return v;
 }
 
  // note: val is really a va_list; I hope everyone typedefs va_list to a pointer
@@ -348,11 +374,14 @@ AVS_Value avs_invoke(AVS_ScriptEnvironment * p, const char * name, AVS_Value arg
 	p->error = 0;
 	try {
 		AVSValue v0 = p->env->Invoke(name, *(AVSValue *)&args, arg_names);
-		v = *(AVS_Value *)&v0;
+		new ((AVSValue *)&v) AVSValue(v0);
 	} catch (IScriptEnvironment::NotFound) {
+    p->error = "Function Not Found";
 	} catch (AvisynthError err) {
 		p->error = err.msg;
 	}
+  if (p->error)
+    v = avs_new_value_error(p->error);
 	return v;
 }
 
@@ -392,9 +421,8 @@ int avs_set_global_var(AVS_ScriptEnvironment * p, const char* name, AVS_Value va
 	}
 }
 
-// align should be 4 or 8
 extern "C"
-AVS_VideoFrame * avs_new_video_frame(AVS_ScriptEnvironment * p, const AVS_VideoInfo *  vi, int align)
+AVS_VideoFrame * avs_new_video_frame_a(AVS_ScriptEnvironment * p, const AVS_VideoInfo *  vi, int align)
 {
 	p->error = 0;
 	PVideoFrame f0 = p->env->NewVideoFrame(*(const VideoInfo *)vi, align);
@@ -418,8 +446,30 @@ void avs_bit_blt(AVS_ScriptEnvironment * p, BYTE * dstp, int dst_pitch, const BY
 	p->env->BitBlt(dstp, dst_pitch, srcp, src_pitch, row_size, height);
 }
 
-//typedef void (*AVS_ShutdownFunc)(void* user_data, AVS_ScriptEnvironment * env)
-//void avs_at_exit(AVS_ScriptEnvironment *, AVS_ShutdownFunc function, void * user_data)
+struct ShutdownFuncData
+{
+  AVS_ShutdownFunc func;
+  void * user_data;
+};
+
+void __cdecl shutdown_func_bridge(void* user_data, IScriptEnvironment* env)
+{
+  ShutdownFuncData * d = (ShutdownFuncData *)user_data;
+  AVS_ScriptEnvironment e;
+  e.env = env;
+  d->func(d->user_data, &e);
+}
+
+extern "C"
+void avs_at_exit(AVS_ScriptEnvironment * p, 
+                 AVS_ShutdownFunc function, void * user_data)
+{
+  p->error = 0;
+  ShutdownFuncData * d = new ShutdownFuncData; // FIXME: When do I delete
+  d->func = function;
+  d->user_data = user_data;
+  p->env->AtExit(shutdown_func_bridge, d);
+}
 
 extern "C"
 int avs_check_version(AVS_ScriptEnvironment * p, int version)
@@ -480,10 +530,9 @@ int avs_set_working_dir(AVS_ScriptEnvironment * p, const char * newdir)
 
 AVS_ScriptEnvironment * avs_create_script_environment(int version)
 {
-	abort();
-	//AVS_ScriptEnvironment * e = new AVS_ScriptEnvironment;
-	//e->env = CreateScriptEnvironment(version);
-	//return e;
+	AVS_ScriptEnvironment * e = new AVS_ScriptEnvironment;
+	e->env = CreateScriptEnvironment(version);
+	return e;
 }
 
 
@@ -503,7 +552,8 @@ AVSValue __cdecl load_c_plugin(AVSValue args, void * user_data,
 	HMODULE plugin = LoadLibrary(filename);
 	if (!plugin)
 		env->ThrowError("Unable to load C Plugin: %s", filename);
-    AvisynthCPluginInitFunc func = (AvisynthCPluginInitFunc)GetProcAddress(plugin, "avisynth_c_plugin_init");
+    AvisynthCPluginInitFunc func 
+		= (AvisynthCPluginInitFunc)GetProcAddress(plugin, "avisynth_c_plugin_init");
 	if (!func)
 		env->ThrowError("Not An Avisynth 2 C Plugin: %s", filename);
 	AVS_ScriptEnvironment e;
@@ -513,6 +563,8 @@ AVSValue __cdecl load_c_plugin(AVSValue args, void * user_data,
 		throw AvisynthError(s);
 	return AVSValue(s);
 }
+
+
 
 AVSFunction CPlugin_filters[] = {
     {"LoadCPlugin", "s", load_c_plugin },

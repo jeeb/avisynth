@@ -1,4 +1,4 @@
-// Avisynth C Interface Version 0.10
+// Avisynth C Interface Version 0.14
 // Copyright 2003 Kevin Atkinson
 
 // This program is free software; you can redistribute it and/or modify
@@ -15,6 +15,21 @@
 // along with this program; if not, write to the Free Software
 // Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA, or visit
 // http://www.gnu.org/copyleft/gpl.html .
+//
+// As a special exception, I give you permission to link to the
+// Avisynth C interface with independent modules that communicate with
+// the Avisynth C interface solely through the interfaces defined in
+// avisynth_c.h, regardless of the license terms of these independent
+// modules, and to copy and distribute the resulting combined work
+// under terms of your choice, provided that every copy of the
+// combined work is accompanied by a complete copy of the source code
+// of the Avisynth C interface and Avisynth itself (with the version
+// used to produce the combined work), being distributed under the
+// terms of the GNU General Public License plus this exception.  An
+// independent module is a module which is not derived from or based
+// on Avisynth C Interface, such as 3rd-party filters, import and
+// export plugins, or graphical user interfaces.
+
 
 #ifndef __AVISYNTH_C__
 #define __AVISYNTH_C__
@@ -49,7 +64,7 @@ enum { AVISYNTH_INTERFACE_VERSION = 2 };
 
 enum {AVS_SAMPLE_INT8  = 1<<0,
       AVS_SAMPLE_INT16 = 1<<1, 
-      AVS_SAMPLE_INT24 = 1<<2,    // Int24 is a very stupid thing to code, but it's supported by some hardware.
+      AVS_SAMPLE_INT24 = 1<<2,
       AVS_SAMPLE_INT32 = 1<<3,
       AVS_SAMPLE_FLOAT = 1<<4};
 
@@ -180,9 +195,6 @@ static inline int avs_is_bff(const AVS_VideoInfo * p)
 static inline int avs_is_tff(const AVS_VideoInfo * p) 
 	{ return (p->pixel_type & AVS_IT_TFF); }
 
-static inline int avs_is_v_plane_first(const AVS_VideoInfo * p) 
-	{return ((p->pixel_type & AVS_CS_YV12) == AVS_CS_YV12); }  // Don't use this 
-
 static inline int avs_bits_per_pixel(const AVS_VideoInfo * p) 
 { 
     switch (p->pixel_type) {
@@ -243,13 +255,13 @@ static inline int avs_sample_type(const AVS_VideoInfo * p)
 static inline void avs_set_property(AVS_VideoInfo * p, int property)  
 	{ p->image_type|=property; }
 
-static inline void avd_clear_property(AVS_VideoInfo * p, int property)  
+static inline void avs_clear_property(AVS_VideoInfo * p, int property)  
 	{ p->image_type&=~property; }
 
 static inline void avs_set_field_based(AVS_VideoInfo * p, int isfieldbased)  
 	{ if (isfieldbased) p->image_type|=AVS_IT_FIELDBASED; else p->image_type&=~AVS_IT_FIELDBASED; }
 
-static inline void set_fps(AVS_VideoInfo * p, unsigned numerator, unsigned denominator) 
+static inline void avs_set_fps(AVS_VideoInfo * p, unsigned numerator, unsigned denominator) 
 {
     unsigned x=numerator, y=denominator;
     while (y) {   // find gcd
@@ -285,11 +297,10 @@ typedef struct AVS_VideoFrameBuffer {
 // VideoFrame holds a "window" into a VideoFrameBuffer.
 
 // AVS_VideoFrame is layed out identicly to IVideoFrame
+// DO NOT USE THIS STRUCTURE DIRECTLY
 typedef struct AVS_VideoFrame {
-  // Do Not Use These Values
   int refcount;
   AVS_VideoFrameBuffer * vfb;
-  // Its OK to LOOK at these values
   int offset, pitch, row_size, height, offsetU, offsetV, pitchUV;  // U&V offsets are from top of picture.
 } AVS_VideoFrame;
 
@@ -341,16 +352,6 @@ static inline int avs_get_height_p(const AVS_VideoFrame * p, int plane) {
 static inline const BYTE* avs_get_read_ptr(const AVS_VideoFrame * p) {
 	return p->vfb->data + p->offset;}
 
-static inline void avs_get_read_ptrs(const AVS_VideoFrame * p,
-									 const BYTE * * y, const BYTE * * u, 
-									 const BYTE * * v) 
-{
-	++p->vfb->sequence_number;
-	*y = p->vfb->data + p->offset;
-	*u = p->vfb->data + p->offsetU;
-	*v = p->vfb->data + p->offsetV;
-}
-
 static inline const BYTE* avs_get_read_ptr_p(const AVS_VideoFrame * p, int plane) 
 {
 	switch (plane) {
@@ -371,19 +372,6 @@ static inline BYTE* avs_get_write_ptr(const AVS_VideoFrame * p)
 		return 0;
 }
 
-static inline int avs_get_write_ptrs(const AVS_VideoFrame * p,
-									  BYTE * * y, BYTE * * u, BYTE * * v) 
-{
-	if (avs_is_writable(p)) {
-		++p->vfb->sequence_number;
-		*y = p->vfb->data + p->offset;
-		*u = p->vfb->data + p->offsetU;
-		*v = p->vfb->data + p->offsetV;
-		return 1;
-	} else
-		return 0;
-}
-
 static inline BYTE* avs_get_write_ptr_p(const AVS_VideoFrame * p, int plane) 
 {
 	if (plane==AVS_PLANAR_Y && avs_is_writable(p)) {
@@ -400,14 +388,30 @@ static inline BYTE* avs_get_write_ptr_p(const AVS_VideoFrame * p, int plane)
 	}
 }
 
+
 AVISYNTH_C_API void avs_release_video_frame(AVS_VideoFrame *);
-AVISYNTH_C_API void avs_copy_video_frame(AVS_VideoFrame * dest, 
-										 AVS_VideoFrame * src);
+// makes a shallow copy of a video frame
+AVISYNTH_C_API AVS_VideoFrame * avs_copy_video_frame(AVS_VideoFrame *);
+
+static inline void avs_release_frame(AVS_VideoFrame * f)
+  {avs_release_video_frame(f);}
+static inline AVS_VideoFrame * avs_copy_frame(AVS_VideoFrame * f)
+  {return avs_copy_video_frame(f);}
+
+
 
 /////////////////////////////////////////////////////////////////////
 //
 // AVS_Value
 //
+
+// Treat AVS_Value as a fat pointer.  That is use avs_copy_value
+// and avs_release_value appropiaty as you would if AVS_Value was
+// a pointer.
+
+// To maintain source code compatibility with future versions of the
+// avisynth_c API don't use the AVS_Value directly.  Use the helper
+// functions below.
 
 // AVS_Value is layed out identicly to AVSValue
 typedef struct AVS_Value AVS_Value;
@@ -417,6 +421,7 @@ struct AVS_Value {
   short array_size;
   union {
     void * clip; // do not use directly, use avs_take_clip
+	char boolean;
     int integer;
     float floating_pt;
     const char * string;
@@ -424,10 +429,61 @@ struct AVS_Value {
   } d;
 };
 
-AVISYNTH_C_API AVS_Clip * avs_take_clip(AVS_Value, AVS_ScriptEnvironment *);
-AVISYNTH_C_API void avs_set_to_clip(AVS_Value *, AVS_Clip *);
+// AVS_Value should be initilized with avs_void.
+// Should also set to avs_void after the value is released
+// with avs_copy_value.  Consider it the equalvent of setting
+// a pointer to NULL
+static const AVS_Value avs_void = {'v'};
+
 AVISYNTH_C_API void avs_copy_value(AVS_Value * dest, AVS_Value src);
 AVISYNTH_C_API void avs_release_value(AVS_Value);
+
+static inline int avs_defined(AVS_Value v) { return v.type != 'v'; }
+static inline int avs_is_clip(AVS_Value v) { return v.type == 'c'; }
+static inline int avs_is_bool(AVS_Value v) { return v.type == 'b'; }
+static inline int avs_is_int(AVS_Value v) { return v.type == 'i'; }
+static inline int avs_is_float(AVS_Value v) { return v.type == 'f' || v.type == 'i'; }
+static inline int avs_is_string(AVS_Value v) { return v.type == 's'; }
+static inline int avs_is_array(AVS_Value v) { return v.type == 'a'; }
+static inline int avs_is_error(AVS_Value v) { return v.type == 'e'; }
+
+AVISYNTH_C_API AVS_Clip * avs_take_clip(AVS_Value, AVS_ScriptEnvironment *);
+AVISYNTH_C_API void avs_set_to_clip(AVS_Value *, AVS_Clip *);
+
+static inline int avs_as_bool(AVS_Value v) 
+	{ return v.d.boolean; }   
+static inline int avs_as_int(AVS_Value v) 
+	{ return v.d.integer; }   
+static inline const char * avs_as_string(AVS_Value v) 
+	{ return avs_is_error(v) || avs_is_string(v) ? v.d.string : 0; }
+static inline double avs_as_float(AVS_Value v) 
+	{ return avs_is_int(v) ? v.d.integer : v.d.floating_pt; }
+static inline const char * avs_as_error(AVS_Value v) 
+	{ return avs_is_error(v) ? v.d.string : 0; }
+static inline const AVS_Value * avs_as_array(AVS_Value v)
+	{ return v.d.array; }
+static inline int avs_array_size(AVS_Value v) 
+	{ return avs_is_array(v) ? v.array_size : 1; }
+static inline AVS_Value avs_array_elt(AVS_Value v, int index) 
+	{ return avs_is_array(v) ? v.d.array[index] : v; }
+
+// only use these functions on am AVS_Value that does not already have
+// an active value.  Remember, treat AVS_Value as a fat pointer.
+static inline AVS_Value avs_new_value_bool(int v0) 
+	{ AVS_Value v; v.type = 'b'; v.d.boolean = v0 == 0 ? 0 : 1; return v; }   
+static inline AVS_Value avs_new_value_int(int v0) 
+	{ AVS_Value v; v.type = 'i'; v.d.integer = v0; return v; }   
+static inline AVS_Value avs_new_value_string(const char * v0) 
+	{ AVS_Value v; v.type = 's'; v.d.string = v0; return v; }
+static inline AVS_Value avs_new_value_float(float v0) 
+	{ AVS_Value v; v.type = 'f'; v.d.floating_pt = v0; return v;}
+static inline AVS_Value avs_new_value_error(const char * v0) 
+	{ AVS_Value v; v.type = 'e'; v.d.string = v0; return v; }
+static inline AVS_Value avs_new_value_clip(AVS_Clip * v0)
+	{ AVS_Value v; avs_set_to_clip(&v, v0); return v; }
+static inline AVS_Value avs_new_value_array(AVS_Value * v0, int size)
+	{ AVS_Value v; v.type = 'a'; v.d.array = v0; v.array_size = size; return v; }
+
 
 /////////////////////////////////////////////////////////////////////
 //
@@ -438,6 +494,10 @@ AVISYNTH_C_API void avs_release_clip(AVS_Clip *);
 AVISYNTH_C_API AVS_Clip * avs_copy_clip(AVS_Clip *);
 
 AVISYNTH_C_API const char * avs_clip_get_error(AVS_Clip *); // return 0 if no error
+
+AVISYNTH_C_API const AVS_VideoInfo * avs_get_video_info(AVS_Clip *);
+
+AVISYNTH_C_API int avs_get_version(AVS_Clip *);
  
 AVISYNTH_C_API AVS_VideoFrame * avs_get_frame(AVS_Clip *, int n);
 // The returned video frame must be released with avs_release_video_frame
@@ -494,6 +554,22 @@ AVS_Clip * avs_new_c_filter(AVS_ScriptEnvironment * e,
 // AVS_ScriptEnvironment
 //
 
+// For GetCPUFlags.  These are backwards-compatible with those in VirtualDub.
+enum {                    
+                    /* slowest CPU to support extension */
+  AVS_CPU_FORCE			  = 0x01,   // N/A
+  AVS_CPU_FPU			    = 0x02,   // 386/486DX
+  AVS_CPU_MMX			    = 0x04,   // P55C, K6, PII
+  AVS_CPU_INTEGER_SSE	= 0x08,		// PIII, Athlon
+  AVS_CPU_SSE			    = 0x10,		// PIII, Athlon XP/MP
+  AVS_CPU_SSE2			    = 0x20,		// PIV, Hammer
+  AVS_CPU_3DNOW			  = 0x40,   // K6-2
+  AVS_CPU_3DNOW_EXT		= 0x80,		// Athlon
+  AVS_CPU_X86_64       = 0xA0,   // Hammer (note: equiv. to 3DNow + SSE2, which only Hammer
+                              //         will have anyway)
+};
+
+
 AVISYNTH_C_API
 long avs_get_cpu_flags(AVS_ScriptEnvironment *);
 
@@ -531,10 +607,20 @@ int avs_set_global_var(AVS_ScriptEnvironment *, const char* name, const AVS_Valu
 //void avs_push_context(AVS_ScriptEnvironment *, int level=0);
 //void avs_pop_context(AVS_ScriptEnvironment *);
 
-// align should be 4 or 8
 AVISYNTH_C_API
-AVS_VideoFrame * avs_new_video_frame(AVS_ScriptEnvironment *, const AVS_VideoInfo * vi, int align);
-// The returned video frame must be be released
+AVS_VideoFrame * avs_new_video_frame_a(AVS_ScriptEnvironment *, const AVS_VideoInfo * vi, int align);
+// align should be at least 16
+
+static inline 
+AVS_VideoFrame * avs_new_video_frame(AVS_ScriptEnvironment * env, 
+                                     const AVS_VideoInfo * vi)
+  {return avs_new_video_frame_a(env,vi,AVS_FRAME_ALIGN);}
+
+static inline 
+AVS_VideoFrame * avs_new_frame(AVS_ScriptEnvironment * env, 
+                               const AVS_VideoInfo * vi)
+  {return avs_new_video_frame_a(env,vi,AVS_FRAME_ALIGN);}
+
 
 AVISYNTH_C_API
 int avs_make_writable(AVS_ScriptEnvironment *, AVS_VideoFrame * * pvf);
@@ -542,8 +628,9 @@ int avs_make_writable(AVS_ScriptEnvironment *, AVS_VideoFrame * * pvf);
 AVISYNTH_C_API
 void avs_bit_blt(AVS_ScriptEnvironment *, BYTE* dstp, int dst_pitch, const BYTE* srcp, int src_pitch, int row_size, int height);
 
-//typedef void (*AVS_ShutdownFunc)(void* user_data, AVS_ScriptEnvironment * env);
-//void avs_at_exit(AVS_ScriptEnvironment *, AVS_ShutdownFunc function, void * user_data);
+typedef void (*AVS_ShutdownFunc)(void* user_data, AVS_ScriptEnvironment * env);
+AVISYNTH_C_API
+void avs_at_exit(AVS_ScriptEnvironment *, AVS_ShutdownFunc function, void * user_data);
 
 AVISYNTH_C_API
 int avs_check_version(AVS_ScriptEnvironment *, int version);

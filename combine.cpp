@@ -373,18 +373,19 @@ Animate::Animate( PClip context, int _first, int _last, const char* _name, const
   cache_stage[0] = 0;
   cache[1] = env->Invoke(name, AVSValue(args_after, num_args)).AsClip();
   cache_stage[1] = last-first;
-  const VideoInfo& vi1 = cache[0]->GetVideoInfo();
-  const VideoInfo& vi2 = cache[1]->GetVideoInfo();
+
+  VideoInfo vi1 = cache[0]->GetVideoInfo();
+  VideoInfo vi2 = cache[1]->GetVideoInfo();
+
   if (vi1.width != vi2.width || vi1.height != vi2.height)
     env->ThrowError("Animate: initial and final video frame sizes must match");
+
   if (range_limit) {
     VideoInfo vi = context->GetVideoInfo();
     if (vi.width != vi1.width || vi.height != vi1.height)
      env->ThrowError("ApplyRange: Filtered and unfiltered video frame sizes must match");
-    if (vi.pixel_type != vi1.pixel_type) {
-      if (!(vi.IsYV12()&&vi1.IsYV12()))
-       env->ThrowError("ApplyRange: Filtered and unfiltered video colorspace must match");
-    }
+    if (!vi.IsSameColorspace(vi1)) 
+      env->ThrowError("ApplyRange: Filtered and unfiltered video colorspace must match");
   }
 }
 
@@ -424,6 +425,39 @@ PVideoFrame __stdcall Animate::GetFrame(int n, IScriptEnvironment* env)
   return cache[furthest]->GetFrame(n, env);
 }
 
+void __stdcall Animate::GetAudio(void* buf, __int64 start, __int64 count, IScriptEnvironment* env)  { 
+  if (range_limit) {  // Applyrange - hard switch between streams.
+
+    const VideoInfo& vi1 = cache[0]->GetVideoInfo();
+
+    if ( (start+count < vi1.AudioSamplesFromFrames(first)) || (start > vi1.AudioSamplesFromFrames(last)) ) {
+      // Everything unfiltered
+      args_after[0].AsClip()->GetAudio(buf, start, count, env);
+      return;
+    }
+
+    if (start < vi1.AudioSamplesFromFrames(first) || (start+count > vi1.AudioSamplesFromFrames(last)) ) {
+      // We are at one or both switchover points
+      // We start by filling with filtered material.
+      cache[0]->GetAudio(buf, start, count, env);
+
+      // Now we fetch the unfiltered material for both ends.
+      __int64 start_switch =  vi1.AudioSamplesFromFrames(first);
+      if (start_switch > start) 
+        args_after[0].AsClip()->GetAudio(buf, start, start_switch - start, env);  // UnFiltered
+
+      __int64 end_switch =  vi1.AudioSamplesFromFrames(last);
+      if (end_switch < start+count) 
+        args_after[0].AsClip()->GetAudio(buf, end_switch, start + count - end_switch, env);  // UnFiltered
+
+      return;
+    }
+
+    cache[0]->GetAudio(buf, start, count, env);  // Filtered
+    return;
+  }
+  cache[0]->GetAudio(buf, start, count, env); 
+} 
   
 
 AVSValue __cdecl Animate::Create(AVSValue args, void*, IScriptEnvironment* env) 

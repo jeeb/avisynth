@@ -143,9 +143,8 @@ public:
   virtual ~Animate() 
     { delete[] args_before; }
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
+  void __stdcall GetAudio(void* buf, __int64 start, __int64 count, IScriptEnvironment* env);
 
-  inline void __stdcall GetAudio(void* buf, __int64 start, __int64 count, IScriptEnvironment* env) 
-    { cache[0]->GetAudio(buf, start, count, env); } // this could be implemented better...
   inline const VideoInfo& __stdcall GetVideoInfo() 
     { return cache[0]->GetVideoInfo(); }
   inline bool __stdcall GetParity(int n) 
