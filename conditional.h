@@ -51,6 +51,7 @@ class ConditionalFilter : public GenericVideoFilter
 public:
   ConditionalFilter(PClip _child, PClip _source1, PClip _source2, AVSValue  _condition1, AVSValue  _evaluator, AVSValue  _condition2, bool _show, IScriptEnvironment* env);
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
+  void __stdcall GetAudio(void* buf, __int64 start, __int64 count, IScriptEnvironment* env);
   static AVSValue __cdecl Create(AVSValue args, void* user_data, IScriptEnvironment* env);
 
 private:
@@ -65,11 +66,13 @@ private:
 class ScriptClip : public GenericVideoFilter
 {
 public:
-  ScriptClip(PClip _child, AVSValue  _script, bool _show, IScriptEnvironment* env);
+  ScriptClip(PClip _child, AVSValue  _script, bool _show, bool _only_eval, IScriptEnvironment* env);
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
   static AVSValue __cdecl Create(AVSValue args, void* user_data, IScriptEnvironment* env);
+  static AVSValue __cdecl Create_eval(AVSValue args, void* user_data, IScriptEnvironment* env);
 
 private:
   AVSValue script;
   bool show;
+  bool only_eval;
 };

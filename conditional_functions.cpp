@@ -41,15 +41,19 @@ AVSFunction Conditional_funtions_filters[] = {
   {  "AverageLuma","c", AveragePlane::Create_y },
   {  "AverageChromaU","c", AveragePlane::Create_u },
   {  "AverageChromaV","c", AveragePlane::Create_v },
+  {  "RGBDifference","cc", ComparePlane::Create_rgb },
   {  "LumaDifference","cc", ComparePlane::Create_y },
   {  "ChromaUDifference","cc", ComparePlane::Create_u },
   {  "ChromaVDifference","cc", ComparePlane::Create_v },
   {  "YDifferenceFromPrevious","c", ComparePlane::Create_prev_y },
   {  "UDifferenceFromPrevious","c", ComparePlane::Create_prev_u },
   {  "VDifferenceFromPrevious","c", ComparePlane::Create_prev_v },
+  {  "RGBDifferenceFromPrevious","c", ComparePlane::Create_prev_rgb },
   {  "YDifferenceToNext","c", ComparePlane::Create_prev_y },
   {  "UDifferenceToNext","c", ComparePlane::Create_prev_u },
   {  "VDifferenceToNext","c", ComparePlane::Create_prev_v },
+  {  "RGBDifferenceToNext","c", ComparePlane::Create_prev_rgb },
+//  {  "" },
   { 0 }
 };
 
@@ -162,6 +166,10 @@ AVSValue __cdecl ComparePlane::Create_v(AVSValue args, void* user_data, IScriptE
 	return CmpPlane(args[0],args[1],user_data, PLANAR_V, env);
 }
 
+AVSValue __cdecl ComparePlane::Create_rgb(AVSValue args, void* user_data, IScriptEnvironment* env) {
+	return CmpPlane(args[0],args[1],user_data, -1 , env);
+}
+
 
 AVSValue __cdecl ComparePlane::Create_prev_y(AVSValue args, void* user_data, IScriptEnvironment* env) {
 	return CmpPlaneSame(args[0],user_data, -1, PLANAR_Y, env);
@@ -173,6 +181,10 @@ AVSValue __cdecl ComparePlane::Create_prev_u(AVSValue args, void* user_data, ISc
 
 AVSValue __cdecl ComparePlane::Create_prev_v(AVSValue args, void* user_data, IScriptEnvironment* env) {
 	return CmpPlaneSame(args[0],user_data, -1, PLANAR_V, env);
+}
+
+AVSValue __cdecl ComparePlane::Create_prev_rgb(AVSValue args, void* user_data, IScriptEnvironment* env) {
+	return CmpPlaneSame(args[0],user_data, -1, -1, env);
 }
 
 
@@ -188,6 +200,11 @@ AVSValue __cdecl ComparePlane::Create_next_v(AVSValue args, void* user_data, ISc
 	return CmpPlaneSame(args[0],user_data, 1, PLANAR_V, env);
 }
 
+AVSValue __cdecl ComparePlane::Create_next_rgb(AVSValue args, void* user_data, IScriptEnvironment* env) {
+	return CmpPlaneSame(args[0],user_data, 1, -1, env);
+}
+
+
 AVSValue ComparePlane::CmpPlane(AVSValue clip, AVSValue clip2, void* user_data, int plane, IScriptEnvironment* env) {
 		if (!clip.IsClip())
 			env->ThrowError("Plane Difference: No clip supplied!");
@@ -200,11 +217,18 @@ AVSValue ComparePlane::CmpPlane(AVSValue clip, AVSValue clip2, void* user_data, 
 		VideoInfo vi = child->GetVideoInfo();
 		PClip child2 = clip2.AsClip();
 		VideoInfo vi2 = child2->GetVideoInfo();
-
-		if (!vi.IsPlanar())
-			env->ThrowError("Plane Difference: Only planar images (as YV12) supported!");
-		if (!vi2.IsPlanar())
-			env->ThrowError("Plane Difference: Only planar images (as YV12) supported!");
+    if (plane !=-1 ) {
+		  if (!vi.IsPlanar())
+			  env->ThrowError("Plane Difference: Only planar images (as YV12) supported!");
+		  if (!vi2.IsPlanar())
+			  env->ThrowError("Plane Difference: Only planar images (as YV12) supported!");
+    } else {
+		  if (!vi.IsRGB())
+			  env->ThrowError("RGB Difference: RGB difference can only be tested on RGB images! (clip 1)");
+		  if (!vi2.IsRGB())
+			  env->ThrowError("RGB Difference: RGB difference can only be tested on RGB images! (clip 2)");
+      plane = 0;
+    }
 
 		if (vi.height!=vi2.height || vi.width != vi2.width) 
 			env->ThrowError("Plane Difference: Images are not the same size!");
@@ -228,10 +252,17 @@ AVSValue ComparePlane::CmpPlane(AVSValue clip, AVSValue clip2, void* user_data, 
 		int pitch2 = src2->GetPitch(plane);
 		w=(w/16)*16;
 
-		int b = isse_scenechange_16(srcp, srcp2, h, w, pitch, pitch2);
+		int b;
+    if (vi.IsRGB32()) {
+      b = isse_scenechange_rgb_16(srcp, srcp2, h, w, pitch, pitch2);
+    } else {
+      b = isse_scenechange_16(srcp, srcp2, h, w, pitch, pitch2);
+    }
 
 		if (!b) b=1;
 		float f = (float)b / (float)(h * w);
+    if (vi.IsRGB32()) 
+      f = f * 4.0 / 3.0;
 
 		return (AVSValue)f;
 }
@@ -244,10 +275,14 @@ AVSValue ComparePlane::CmpPlaneSame(AVSValue clip, void* user_data, int offset, 
 
 		PClip child = clip.AsClip();
 		VideoInfo vi = child->GetVideoInfo();
-
-		if (!vi.IsPlanar())
-			env->ThrowError("Plane Difference: Only planar images (as YV12) supported!");
-		
+    if (plane ==-1 ) {
+		  if (!vi.IsRGB())
+			  env->ThrowError("RGB Difference: RGB difference can only be calculated on RGB images");
+      plane = 0;
+    } else {
+		  if (!vi.IsPlanar())
+			  env->ThrowError("Plane Difference: Only planar images (as YV12) supported!");
+    }
 
 		AVSValue cn = env->GetVar("current_frame");
 		if (!cn.IsInt())
@@ -268,10 +303,18 @@ AVSValue ComparePlane::CmpPlaneSame(AVSValue clip, void* user_data, int offset, 
 		int pitch2 = src2->GetPitch(plane);
 		w=(w/16)*16;
 
-		int b = isse_scenechange_16(srcp, srcp2, h, w, pitch, pitch2);
+		int b;
+    if (vi.IsRGB32()) {
+      b = isse_scenechange_rgb_16(srcp, srcp2, h, w, pitch, pitch2);
+    } else {
+      b = isse_scenechange_16(srcp, srcp2, h, w, pitch, pitch2);
+    }
 
 		if (!b) b=1;
 		float f = (float)b / (float)(h * w);
+
+    if (vi.IsRGB32()) 
+      f = f * 4.0 / 3.0;
 
 		return (AVSValue)f;
 }
@@ -328,6 +371,76 @@ xloop:
      movq mm2,[esi+eax+8]
     movq mm1,[edi+eax]
      movq mm3,[edi+eax+8]
+    psadbw mm0,mm1    // Sum of absolute difference
+     psadbw mm2,mm3
+    paddd mm6,mm0     // Add...
+     paddd mm7,mm2
+
+    add eax,16
+    jmp xloop
+endframe:
+    paddd mm7,mm6
+    movd returnvalue,mm7
+    emms
+  }
+  return returnvalue;
+}
+
+
+
+/*********************
+ * RGB32 Scenechange detection.
+ * 
+ * (c) 2003, Klaus Post
+ *
+ * ISSE, MOD 16 version.
+ *
+ * Returns an int of the accumulated absolute difference
+ * between two planes. 
+ *
+ * The absolute difference between two planes are returned as an int.
+ * This version is optimized for mod16 widths. Others widths are allowed, 
+ *  but the remaining pixels are simply skipped.
+ *********************/
+
+
+int ComparePlane::isse_scenechange_rgb_16(const BYTE* c_plane, const BYTE* tplane, int height, int width, int c_pitch, int t_pitch) {
+   __declspec(align(8)) static const __int64 Mask1 =  0x00ffffff00ffffff;
+  int wp=width;
+  int hp=height;
+  int returnvalue=0xbadbad00;
+  __asm {
+    xor ebx,ebx     // Height
+    movq mm5,[Mask1]  // Mask for RGB32
+    mov edx, c_pitch    //copy pitch
+    mov ecx, t_pitch    //copy pitch
+    pxor mm6,mm6   // We maintain two sums, for better pairablility
+    pxor mm7,mm7
+    mov esi, c_plane
+    mov edi, tplane
+    jmp yloopover
+    align 16
+yloop:
+    inc ebx
+    add edi,ecx     // add pitch to both planes
+    add esi,edx
+yloopover:
+    cmp ebx,[hp]
+    jge endframe
+    xor eax,eax     // Width
+    align 16
+xloop:
+    cmp eax,[wp]    
+    jge yloop
+
+    movq mm0,[esi+eax]
+     movq mm2,[esi+eax+8]
+    pand mm0,mm5
+     pand mm2,mm5
+    movq mm1,[edi+eax]
+     movq mm3,[edi+eax+8]
+    pand mm1,mm5
+     pand mm3,mm5
     psadbw mm0,mm1    // Sum of absolute difference
      psadbw mm2,mm3
     paddd mm6,mm0     // Add...

@@ -43,9 +43,18 @@
 AVSFunction Conditional_filters[] = {
   {  "ConditionalFilter","cccsss[show]b", ConditionalFilter::Create },
   {  "ScriptClip", "cs[show]b", ScriptClip::Create },
+  {  "FrameEvaluate", "cs[show]b", ScriptClip::Create_eval },
   { 0 }
 };
 
+#define W_DIVISOR 5  // Width divisor for onscreen messages
+
+/********************************
+ * Conditional filter
+ *
+ * Returns each one frame from two sources,
+ * based on an evaluator.
+ ********************************/
 
 ConditionalFilter::ConditionalFilter(PClip _child, PClip _source1, PClip _source2, AVSValue  _condition1, AVSValue  _evaluator, AVSValue  _condition2, bool _show, IScriptEnvironment* env) :
   GenericVideoFilter(_child), source1(_source1), source2(_source2),
@@ -74,6 +83,13 @@ ConditionalFilter::ConditionalFilter(PClip _child, PClip _source1, PClip _source
     vi.width = vi1.width;
     vi.pixel_type = vi1.pixel_type;
     vi.num_frames = max(vi1.num_frames,vi2.num_frames);
+    vi.num_audio_samples = vi1.num_audio_samples;
+    vi.audio_samples_per_second = vi1.audio_samples_per_second;
+    vi.image_type = vi1.image_type;
+    vi.fps_denominator = vi1.fps_denominator;
+    vi.fps_numerator = vi1.fps_numerator;
+    vi.nchannels = vi1.nchannels;
+    vi.sample_type = vi1.sample_type;
   }
 
 const char* t_TRUE="TRUE"; 
@@ -85,7 +101,9 @@ PVideoFrame __stdcall ConditionalFilter::GetFrame(int n, IScriptEnvironment* env
   VideoInfo vi1 = source1->GetVideoInfo();
   VideoInfo vi2 = source2->GetVideoInfo();
 
-  env->SetVar("last",(AVSValue)child);       // Set explicit last
+  AVSValue prev_last = env->GetVar("last");  // Store previous last
+
+  env->SetVar("last",(AVSValue)child);       // Set implicit last
   env->SetVar("current_frame",(AVSValue)n);  // Set frame to be tested by the conditional filters.
 
   AVSValue e1_result;
@@ -103,9 +121,12 @@ PVideoFrame __stdcall ConditionalFilter::GetFrame(int n, IScriptEnvironment* env
 
     PVideoFrame dst = source1->GetFrame(n,env);
     env->MakeWritable(&dst);
-    ApplyMessage(&dst, vi1, error_msg, vi.width/4, 0xa0a0a0,0,0 , env );
+    ApplyMessage(&dst, vi1, error_msg, vi.width/W_DIVISOR, 0xa0a0a0,0,0 , env );
+    env->SetVar("last",prev_last);       // Restore implicit last
     return dst;
   }
+
+  env->SetVar("last",prev_last);       // Restore implicit last
 
   int test_int=false;
 
@@ -134,7 +155,7 @@ PVideoFrame __stdcall ConditionalFilter::GetFrame(int n, IScriptEnvironment* env
 
     PVideoFrame dst = source1->GetFrame(n,env);
     env->MakeWritable(&dst);
-    ApplyMessage(&dst, vi1, error_msg, vi.width/4, 0xa0a0a0,0,0 , env );
+    ApplyMessage(&dst, vi1, error_msg, vi.width/W_DIVISOR, 0xa0a0a0,0,0 , env );
     return dst;
   }
 
@@ -192,6 +213,10 @@ PVideoFrame __stdcall ConditionalFilter::GetFrame(int n, IScriptEnvironment* env
   return source2->GetFrame(min(vi1.num_frames-1,n),env);
 }
 
+void __stdcall ConditionalFilter::GetAudio(void* buf, __int64 start, __int64 count, IScriptEnvironment* env) {
+  source1->GetAudio(buf, start, count, env);
+}
+
 
 AVSValue __cdecl ConditionalFilter::Create(AVSValue args, void* user_data, IScriptEnvironment* env)
 {
@@ -203,14 +228,17 @@ AVSValue __cdecl ConditionalFilter::Create(AVSValue args, void* user_data, IScri
  * ScriptClip.
  *
  * Returns the value of a script evaluated at each frame.
+ *
+ * Implicit last, and current frame is set on each frame.
  **************************/
 
-ScriptClip::ScriptClip(PClip _child, AVSValue  _script, bool _show, IScriptEnvironment* env) :
-  GenericVideoFilter(_child), script(_script), show(_show) {
+ScriptClip::ScriptClip(PClip _child, AVSValue  _script, bool _show, bool _only_eval, IScriptEnvironment* env) :
+  GenericVideoFilter(_child), script(_script), show(_show), only_eval(_only_eval) {
 
   }
 
 PVideoFrame __stdcall ScriptClip::GetFrame(int n, IScriptEnvironment* env) {
+  AVSValue prev_last = env->GetVar("last");  // Store previous last
 
   env->SetVar("last",(AVSValue)child);       // Set explicit last
   env->SetVar("current_frame",(AVSValue)n);  // Set frame to be tested by the conditional filters.
@@ -219,7 +247,8 @@ PVideoFrame __stdcall ScriptClip::GetFrame(int n, IScriptEnvironment* env) {
   if (show) {
     PVideoFrame dst = child->GetFrame(n,env);
     env->MakeWritable(&dst);
-    ApplyMessage(&dst, vi, script.AsString(), vi.width/4, 0xa0a0a0,0,0 , env );
+    ApplyMessage(&dst, vi, script.AsString(), vi.width/6, 0xa0a0a0,0,0 , env );
+    env->SetVar("last",prev_last);       // Restore implicit last
     return dst;
   }
 
@@ -229,16 +258,20 @@ PVideoFrame __stdcall ScriptClip::GetFrame(int n, IScriptEnvironment* env) {
     ScriptParser parser(env, script.AsString(), "[ScriptClip]");
     PExpression exp = parser.Parse();
     result = exp->Evaluate(env);
-
   } catch (AvisynthError error) {    
     const char* error_msg = error.msg;  
 
     PVideoFrame dst = child->GetFrame(n,env);
     env->MakeWritable(&dst);
-    ApplyMessage(&dst, vi, error_msg, vi.width/4, 0xa0a0a0,0,0 , env );
+    ApplyMessage(&dst, vi, error_msg, vi.width/W_DIVISOR, 0xa0a0a0,0,0 , env );
+    env->SetVar("last",prev_last);       // Restore implicit last
     return dst;
   }
 
+  env->SetVar("last",prev_last);       // Restore implicit last
+
+  if (only_eval) return child->GetFrame(n,env);
+  
   const char* error = NULL;
   VideoInfo vi2;
   if (!result.IsClip()) {
@@ -257,11 +290,11 @@ PVideoFrame __stdcall ScriptClip::GetFrame(int n, IScriptEnvironment* env) {
   if (error != NULL) {
     PVideoFrame dst = child->GetFrame(n,env);
     env->MakeWritable(&dst);
-    ApplyMessage(&dst, vi, error, vi.width/4, 0xa0a0a0,0,0 , env );
+    ApplyMessage(&dst, vi, error, vi.width/W_DIVISOR, 0xa0a0a0,0,0 , env );
     return dst;
   }
 
-  n = min(n,vi2.num_frames);  // We ignore it if the new clip is not as long as the current one. This can allow the resulting clip to be one frame.
+  n = min(n,vi2.num_frames-1);  // We ignore it if the new clip is not as long as the current one. This can allow the resulting clip to be one frame.
 
   return result.AsClip()->GetFrame(n,env);
 }
@@ -269,7 +302,11 @@ PVideoFrame __stdcall ScriptClip::GetFrame(int n, IScriptEnvironment* env) {
 
 AVSValue __cdecl ScriptClip::Create(AVSValue args, void* user_data, IScriptEnvironment* env)
 {
-  return new ScriptClip(args[0].AsClip(), args[1], args[2].AsBool(false),env);
+  return new ScriptClip(args[0].AsClip(), args[1], args[2].AsBool(false),false, env);
 }
 
 
+AVSValue __cdecl ScriptClip::Create_eval(AVSValue args, void* user_data, IScriptEnvironment* env)
+{
+  return new ScriptClip(args[0].AsClip(), args[1], args[2].AsBool(false),true, env);
+}
