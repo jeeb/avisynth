@@ -810,13 +810,12 @@ PVideoFrame TemporalSoften::GetFrame(int n, IScriptEnvironment* env)
   do {
     int c_thresh = planes[c+1];  // Threshold for current plane.
     int d=0;
-    for (int i = 0;i< radius; i++) { // Fetch all planes sequencially
+    for (int i = 0;i<radius; i++) { // Fetch all planes sequencially
       planePitch[d] = frames[i]->GetPitch(planes[c]);
       planeP[d++] = frames[i]->GetReadPtr(planes[c]);
     }
 
     BYTE* c_plane= frames[radius]->GetWritePtr(planes[c]);
-//    BYTE* c_plane= env->NewVideoFrame(vi)->GetWritePtr(planes[c]);
 
     for (i = 1;i<=radius;i++) { // Fetch all planes sequencially
       planePitch[d] = frames[radius+i]->GetPitch(planes[c]);
@@ -831,7 +830,7 @@ PVideoFrame TemporalSoften::GetFrame(int n, IScriptEnvironment* env)
     if (scenechange>0) {
       int d2=0;
       bool skiprest = false;
-      for (int i = radius;i>=0;i--) { // Check frames backwards
+      for (int i = radius-1;i>=0;i--) { // Check frames backwards
         if ((!skiprest) && (!planeDisabled[i])) {
           int scenevalues = isse_scenechange(c_plane, planeP[i], h, frames[radius]->GetRowSize(planes[c]), pitch, planePitch[i]);
           if (scenevalues < scenechange) {
@@ -872,35 +871,38 @@ PVideoFrame TemporalSoften::GetFrame(int n, IScriptEnvironment* env)
       }
       d = d2;
     }
-    if (d<=1) 
+
+    if (d<1) 
       return frames[radius];
 
     
     i64_thresholds = (__int64)c_thresh | (__int64)(c_thresh<<8) | (((__int64)c_thresh)<<16) | (((__int64)c_thresh)<<24);
+
     if (vi.IsYUY2()) { 
       i64_thresholds = (__int64)luma_threshold | (__int64)(chroma_threshold<<8) | ((__int64)(luma_threshold)<<16) | ((__int64)(chroma_threshold)<<24);
     }
+
     i64_thresholds |= (i64_thresholds<<32);
-    int c_div = 32768/d;
+    int c_div = 32768/(d+1);  // We also have the tetplane included, thus d+1.
     if (c_thresh) {
       for (int y=0;y<h;y++) { // One line at the time
         if (mode == 1) {
           if ((env->GetCPUFlags() & CPUF_INTEGER_SSE)) {
-            isse_accumulate_line(c_plane, planeP, d-1, rowsize,&i64_thresholds);
+            isse_accumulate_line(c_plane, planeP, d, rowsize,&i64_thresholds);
           } else {
-            mmx_accumulate_line(c_plane, planeP, d-1, rowsize,&i64_thresholds);
+            mmx_accumulate_line(c_plane, planeP, d, rowsize,&i64_thresholds);
           }
           short* s_accum_line = (short*)accum_line;
           BYTE* b_div_line = (BYTE*)div_line;
           for (int i=0;i<w;i++) {
             int div=divtab[b_div_line[i]];
-            c_plane[i]=(div*(int)s_accum_line[i]+(div>>1))>>15; //Todo: Attempt asm/mmx mix - maybe faster
+            c_plane[i]=(div*(int)s_accum_line[i]+16384)>>15; //Todo: Attempt asm/mmx mix - maybe faster
           }
         } else {
           if ((env->GetCPUFlags() & CPUF_INTEGER_SSE)) {
-            isse_accumulate_line_mode2(c_plane, planeP, d-1, rowsize,&i64_thresholds, c_div);
+            isse_accumulate_line_mode2(c_plane, planeP, d, rowsize,&i64_thresholds, c_div);
           } else {
-            mmx_accumulate_line_mode2(c_plane, planeP, d-1, rowsize,&i64_thresholds, c_div);
+            mmx_accumulate_line_mode2(c_plane, planeP, d, rowsize,&i64_thresholds, c_div);
           }
         }
         for (int p=0;p<d;p++)
@@ -911,7 +913,7 @@ PVideoFrame TemporalSoften::GetFrame(int n, IScriptEnvironment* env)
     }
     c+=2;
   } while (planes[c]);
-//  PVideoFrame dst = frames[radius];
+
   return frames[radius];
 }
 
@@ -942,7 +944,7 @@ testplane:
     mov ebx,[planes]   // How many planes (this will be our counter)
     movq [ecx],mm3
      pxor mm7,mm7        // Clear divisor table
-    lea edi,[edi+ebx*4]
+    lea edi,[edi+ebx*4-4]
     movq [ecx+8],mm1
     align 16
 kernel_loop:
@@ -1019,7 +1021,7 @@ testplane:
     mov ebx,[planes]   // How many planes (this will be our counter)
     movq [ecx],mm3
      pxor mm7,mm7        // Clear divisor table
-    lea edi,[edi+ebx*4]
+    lea edi,[edi+ebx*4-4]
     movq [ecx+8],mm1
     align 16
 kernel_loop:
@@ -1094,7 +1096,7 @@ testplane:
 
     mov edi,[planeP];  // Adress of planeP array is now in edi
     mov ebx,[planes]   // How many planes (this will be our counter)
-    lea edi,[edi+ebx*4]
+    lea edi,[edi+ebx*4-4]
     align 16
 kernel_loop:
     mov edx,[edi]
@@ -1201,7 +1203,7 @@ testplane:
 
     mov edi,[planeP];  // Adress of planeP array is now in edi
     mov ebx,[planes]   // How many planes (this will be our counter)
-    lea edi,[edi+ebx*4]
+    lea edi,[edi+ebx*4-4]
     align 16
 kernel_loop:
     mov edx,[edi]
