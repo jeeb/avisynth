@@ -19,7 +19,7 @@
 			UseOfMFC="0"
 			ATLMinimizesCRunTimeLibraryUsage="FALSE"
 			CharacterSet="2"
-			WholeProgramOptimization="TRUE">
+			WholeProgramOptimization="FALSE">
 			<Tool
 				Name="VCCLCompilerTool"
 				AdditionalOptions="/Gs "
@@ -56,7 +56,7 @@
 				ModuleDefinitionFile=".\avisynth.def"
 				ProgramDatabaseFile=".\Release/avisynth.pdb"
 				OptimizeReferences="2"
-				ResourceOnlyDLL="TRUE"
+				ResourceOnlyDLL="FALSE"
 				ImportLibrary=".\Release/avisynth.lib"/>
 			<Tool
 				Name="VCMIDLTool"
