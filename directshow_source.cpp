@@ -117,7 +117,6 @@ class GetSample : public IBaseFilter, public IPin, public IMemInputPin {
   FILTER_STATE state;
   bool end_of_stream, flushing;
   IUnknown *m_pPos;  // Pointer to the CPosPassThru object.
-//  CPosPassThru *m_pPos;
   VideoInfo vi;
 
   HANDLE evtDoneWithSample, evtNewSampleReady;
@@ -128,15 +127,13 @@ class GetSample : public IBaseFilter, public IPin, public IMemInputPin {
   IScriptEnvironment* const env;
 
 public:
-
-
-  bool load_audio;
   int a_sample_bytes;
   int a_allocated_buffer;
-  BYTE* a_buffer;         // FIXME: Remember to deallocate on destruction!!!
+  BYTE* a_buffer;         // Killed on StopGraph
+  bool load_audio;
 
 
-  GetSample(IScriptEnvironment* _env) : env(_env) {
+  GetSample(IScriptEnvironment* _env, bool _load_audio) : env(_env), load_audio(_load_audio) {
     refcnt = 1;
     source_pin = 0;
     filter_graph = 0;
@@ -148,8 +145,8 @@ public:
     flushing = end_of_stream = false;
     memset(&vi, 0, sizeof(vi));
     sample_end_time = sample_start_time = 0;
-    evtDoneWithSample = ::CreateEvent(NULL, FALSE, FALSE, NULL);
-    evtNewSampleReady = ::CreateEvent(NULL, FALSE, FALSE, NULL);
+    evtDoneWithSample = ::CreateEvent(NULL, FALSE, FALSE, (load_audio) ? "AVS_DoneWithSample_audio" : "AVS_DoneWithSample_video");
+    evtNewSampleReady = ::CreateEvent(NULL, FALSE, FALSE, (load_audio) ? "AVS_NewSampleReady_audio" : "AVS_NewSampleReady_video");
   }
 
   ~GetSample() {
@@ -293,16 +290,32 @@ public:
 
   void NextSample() {
     if (end_of_stream) return;
-    _RPT0(0,"NextSample() indicating done with sample...\n");
-//    WaitForSingleObject(evtNewSampleReady, 10000);   // Max wait for new sample 10 secs.
+
+    if (load_audio) 
+      _RPT0(0,"NextSample() indicating done with sample...(audio)\n");
+    else 
+      _RPT0(0,"NextSample() indicating done with sample...(video)\n");
+
+
     HRESULT wait_result;
-    SetEvent(evtDoneWithSample);
+    SetEvent(evtDoneWithSample);  // We indicate that Recieve can run again. We have now finished using the frame.
+
     do {
-        _RPT0(0,"...NextSample() waiting for new sample...\n");
-        wait_result = WaitForSingleObject(evtNewSampleReady, 1000);
-    } while (wait_result == WAIT_TIMEOUT && state == State_Running);
+      if (load_audio) {
+        _RPT0(0,"...NextSample() waiting for new sample...(audio)\n");
+      } else {
+        _RPT0(0,"...NextSample() waiting for new sample... (video)\n");
+      }
+      wait_result = WaitForSingleObject(evtNewSampleReady, 1000);
+    } while (wait_result == WAIT_TIMEOUT);
+//    } while (wait_result == WAIT_TIMEOUT && state == State_Running);
 //    WaitForSingleObject(evtNewSampleReady, INFINITE);   // Max wait for new sample 10 secs.
-    _RPT0(0,"...NextSample() done waiting for new sample\n");
+
+    if (load_audio) {
+      _RPT0(0,"...NextSample() done waiting for new sample (audio)\n");
+    } else {
+      _RPT0(0,"...NextSample() done waiting for new sample (video)\n");
+    }
   }
 
   // IUnknown
@@ -337,6 +350,8 @@ public:
     else if (iid == IID_IMediaSeeking || iid == IID_IMediaPosition) {
       if (!source_pin)
         return E_NOINTERFACE;
+
+//      return source_pin->QueryInterface(iid, ppv);
 
       if (m_pPos == NULL)  {
           // We have not created the CPosPassThru object yet. Do so now.
@@ -629,6 +644,12 @@ public:
       return S_OK;
     }
 
+    if (load_audio)
+      _RPT0(0,"...Recieve() running. (audio)\n");
+    else 
+      _RPT0(0,"...Recieve() running. (video)\n");
+
+
     if (FAILED(pSamples->GetTime(&sample_start_time, &sample_end_time))) {
       _RPT0(0,"failed!\n");
     } else {
@@ -676,15 +697,27 @@ public:
     }
 
     HRESULT wait_result;
-    SetEvent(evtNewSampleReady);
+    SetEvent(evtNewSampleReady);  // New sample is finished - wait releasing it until it has been fetched (DoneWithSample).
 
     if (state == State_Running) {
+//    if (true) {
       do {
-        _RPT0(0,"...Recieve() waiting for DoneWithSample.\n");
+        if (load_audio)
+          _RPT0(0,"...Recieve() waiting for DoneWithSample. (audio)\n");
+        else 
+          _RPT0(0,"...Recieve() waiting for DoneWithSample. (video)\n");
+
         wait_result = WaitForSingleObject(evtDoneWithSample, 1000);
+//      } while (wait_result == WAIT_TIMEOUT);
       } while (wait_result == WAIT_TIMEOUT && state ==State_Running);
     }
 //    wait_result = WaitForSingleObject(evtDoneWithSample, INFINITE);
+
+    if (load_audio)
+      _RPT0(0,"Recieve() - returning. (audio)\n");
+    else 
+      _RPT0(0,"Recieve() - returning. (video)\n");
+
     return S_OK;
   }
 
@@ -874,15 +907,14 @@ class DirectShowSource : public IClip {
   IScriptEnvironment* const env;
   void CheckHresult(HRESULT hr, const char* msg, const char* msg2 = "");
   HRESULT LoadGraphFile(IGraphBuilder *pGraph, const WCHAR* wszName);
+  HRESULT DirectShowSource::RepositionAudio(__int64 start);
 
 public:
 
-  DirectShowSource(const char* filename, int _avg_time_per_frame, bool _seek, IScriptEnvironment* _env) : env(_env), get_sample(_env), get_audio_sample(_env), no_search(!_seek) {
+  DirectShowSource(const char* filename, int _avg_time_per_frame, bool _seek, IScriptEnvironment* _env) : env(_env), get_sample(_env, false), get_audio_sample(_env, true), no_search(!_seek) {
 
     CheckHresult(CoCreateInstance(CLSID_FilterGraphNoThread, 0, CLSCTX_INPROC_SERVER, IID_IGraphBuilder, (void**)&gb), "couldn't create filter graph");
 
-    get_sample.load_audio = false;
-    get_audio_sample.load_audio = true;
 
     WCHAR filenameW[MAX_PATH];
     MultiByteToWideChar(CP_ACP, 0, filename, -1, filenameW, MAX_PATH);
@@ -936,6 +968,14 @@ public:
 
     vi = get_sample.GetVideoInfo();
     VideoInfo a_vi = get_audio_sample.GetVideoInfo();
+    
+    // Workaround: On non-frame-based filters audio locks up video.
+
+    if (!frame_units && vi.HasVideo()) {
+      // Kill audio
+      RemoveUselessFilters(gb, &get_sample, &get_sample);
+      a_vi = vi;
+    }
 
     if (vi.HasVideo()) {
       if (_avg_time_per_frame) {
@@ -990,7 +1030,7 @@ public:
     n = max(min(n, vi.num_frames-1), 0);
     if (frame_units) {
       if (n < cur_frame || n > cur_frame+10) {
-        if ( no_search || FAILED(get_sample.SeekTo(__int64(n+1) * avg_time_per_frame + (avg_time_per_frame>>1))) ) {
+        if ( no_search || FAILED(get_sample.SeekTo(__int64(n) * avg_time_per_frame + (avg_time_per_frame>>1))) ) {
           no_search=true;  // Do not attempt further searches.
           if (cur_frame < n) {
             while (cur_frame < n) {
@@ -1129,6 +1169,19 @@ public:
 
 };
 
+HRESULT DirectShowSource::RepositionAudio(__int64 start) {
+  // Are we behind - always seek if possible - otherwise Fill 0's.
+
+  // Are we in front - should we just decode forwards.
+
+  // Attempt skip.
+
+  // We failed, decode.
+    return E_UNEXPECTED;
+}
+
+//HRESULT DirectShowSource::FillSilence(int n, void* buf, int sample_type) {
+//}
 
 void DirectShowSource::CheckHresult(HRESULT hr, const char* msg, const char* msg2) {
   if (SUCCEEDED(hr)) return;
