@@ -198,7 +198,7 @@ xloop:
      movd mm3, [ecx+edx]          // mm3 = V top field
     movd mm4,[ebx]            // U prev top field
      movq mm1,mm0             // mm1 = Y current line
-    movd mm5,[ecx]            // V prev top field   
+    movd mm5,[ecx]            // V prev top field
      pavgb mm4,mm2            // interpolate chroma U 
     pavgb mm5,mm3             // interpolate chroma V
      psubusb mm4, mm6         // Better rounding (thanks trbarry!)
@@ -1241,12 +1241,14 @@ xloop:
        movq mm2, [esi+8]    // Load second pair
       movq mm3, [esi+eax+8]
        movq mm5,mm2
+
       pavgb mm6,mm1         // Average (chroma)
        pavgb mm5,mm3        // Average Chroma (second pair)
       psubusb mm5, [add_ones]         // Better rounding (thanks trbarry!)
        psubusb mm6, [add_ones]
-      pavgb mm6,mm1         // Average (chroma) (upper = 75% lower = 25%)
-       pavgb mm5,mm3        // Average Chroma (second pair) (upper = 75% lower = 25%)
+      pavgb mm6,mm0         // Average (chroma) (upper = 75% lower = 25%)
+       pavgb mm5,mm2        // Average Chroma (second pair) (upper = 75% lower = 25%)
+
       pand mm0,mm4          // Mask luma
   	    psrlq mm5, 8
       pand mm1,mm4          // Mask luma
@@ -1307,12 +1309,14 @@ xloop2:   // Second field
        movq mm2, [esi+8]    // Load second pair
       movq mm3, [esi+eax+8]
        movq mm5,mm2
+
       pavgb mm6,mm1         // Average (chroma)
        pavgb mm5,mm3        // Average Chroma (second pair)
       psubusb mm5, [add_ones]         // Better rounding (thanks trbarry!)
        psubusb mm6, [add_ones]
-      pavgb mm6,mm1         // Average (chroma) (upper = 75% lower = 25%)
-       pavgb mm5,mm3        // Average Chroma (second pair) (upper = 75% lower = 25%)
+      pavgb mm6,mm1         // Average (chroma) (upper = 25% lower = 75%)
+       pavgb mm5,mm3        // Average Chroma (second pair) (upper = 25% lower = 75%)
+
       pand mm0,mm4          // Mask luma
   	    psrlq mm5, 8
       pand mm1,mm4          // Mask luma
@@ -1546,24 +1550,26 @@ yloop:
       jmp xloop_test
       align 16
 xloop:      
-      movq mm0,[esi]        // YUY2 upper line  (4 pixels luma, 2 chroma)
-       movq mm1,[esi+eax]   // YUY2 lower line  
-      movq mm6,mm0
-       movq mm2, [esi+8]    // Load second pair
-      movq mm3, [esi+eax+8]
-       movq mm5,mm2
-      movq mm7, mm1
-       movq mm4, mm3
-      psrlw mm5,8
-       psrlw mm6,8
-      psrlw mm4,8
-       psrlw mm7,8
-      paddw mm5,mm4
-       paddw mm6,mm7
-      paddw mm5,mm4
-       paddw mm6,mm7
-      paddw mm5,mm4
-       paddw mm6,mm7
+      movq mm0,[esi]        // YUY2 upper line  (4 pixels luma, 2 chroma) (u1)
+       movq mm1,[esi+eax]   // YUY2 lower line  (l1)
+      movq mm7,mm0          // (u1)
+       movq mm2, [esi+8]    // Load second pair (u2)
+      movq mm3, [esi+eax+8] // (l2)
+       movq mm4,mm2         // (u2)
+      movq mm6, mm1         // (l1)
+       movq mm5, mm3        // (l2)
+
+      psrlw mm5,8  //(l2)
+       psrlw mm6,8 //(l1)
+      psrlw mm4,8  //(u2)
+       psrlw mm7,8 //(u1)
+
+      paddw mm5,mm4  //l2+u2
+       paddw mm6,mm7 //l1+u1
+      paddw mm5,mm4  //l2+u2+u2
+       paddw mm6,mm7 //l1+u1+u1
+      paddw mm5,mm4  //l2+u2+u2+u2
+       paddw mm6,mm7 //l1+u1+u1+u1
       movq mm4,[mask1]
        movq mm7,[mask2]
       paddw mm5,[add_2]
