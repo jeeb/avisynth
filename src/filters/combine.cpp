@@ -72,12 +72,12 @@ StackVertical::StackVertical(PClip _child1, PClip _child2, IScriptEnvironment* e
     child1 = _child2; child2 = _child1;
   }
 
-  const VideoInfo& vi1 = child1->GetVideoInfo();
-  const VideoInfo& vi2 = child2->GetVideoInfo();
+  VideoInfo vi1 = child1->GetVideoInfo();
+  VideoInfo vi2 = child2->GetVideoInfo();
 
   if (vi1.width != vi2.width)
     env->ThrowError("StackVertical: image widths don't match");
-  if ((vi1.pixel_type != vi2.pixel_type) && (!(vi1.IsYV12() && vi2.IsYV12())))  // Fix for I420.
+  if (!(vi1.IsSameColorspace(vi2)))  
     env->ThrowError("StackVertical: image formats don't match");
 
   vi = vi1;
@@ -167,12 +167,12 @@ AVSValue __cdecl StackVertical::Create(AVSValue args, void*, IScriptEnvironment*
 StackHorizontal::StackHorizontal(PClip _child1, PClip _child2, IScriptEnvironment* env)
    : child1(_child1), child2(_child2)
 {
-  const VideoInfo& vi1 = child1->GetVideoInfo();
-  const VideoInfo& vi2 = child2->GetVideoInfo();
+  VideoInfo vi1 = child1->GetVideoInfo();
+  VideoInfo vi2 = child2->GetVideoInfo();
 
   if (vi1.height != vi2.height)
     env->ThrowError("StackHorizontal: image heights don't match");
-  if ((vi1.pixel_type != vi2.pixel_type) && (!(vi1.IsYV12() && vi2.IsYV12())))  // Fix for I420.
+  if (!(vi1.IsSameColorspace(vi2)))  
     env->ThrowError("StackHorizontal: image formats don't match");
 
   vi = vi1;

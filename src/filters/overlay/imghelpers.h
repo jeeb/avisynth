@@ -151,7 +151,10 @@ public:
   }
 
   bool IsSizeZero() {
-    return (!(w() && h() &&  pitch && Y_plane && V_plane && U_plane)); 
+    if (w()<=0) return true;
+    if (h()<=0) return true;
+    if (!(pitch && Y_plane && V_plane && U_plane)) return true;
+    return false;
   }
 
   void ReturnOriginal(bool shouldI) {

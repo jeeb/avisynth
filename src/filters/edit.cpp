@@ -362,7 +362,7 @@ Dissolve::Dissolve(PClip _child1, PClip _child2, int _overlap, IScriptEnvironmen
   if (vi.HasVideo()) {
     if (vi.width != vi2.width || vi.height != vi2.height)
       env->ThrowError("Dissolve: frame sizes don't match");
-    if (vi.pixel_type != vi2.pixel_type)
+    if (!(vi.IsSameColorspace(vi2)))
       env->ThrowError("Dissolve: video formats don't match");
   }
   if (vi.HasAudio()) {

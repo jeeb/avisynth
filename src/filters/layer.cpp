@@ -2020,11 +2020,13 @@ AVSValue __cdecl Layer::Create(AVSValue args, void*, IScriptEnvironment* env)
 Subtract::Subtract(PClip _child1, PClip _child2, IScriptEnvironment* env)
   : child1(_child1), child2(_child2)
 {
-  const VideoInfo& vi1 = child1->GetVideoInfo();
-  const VideoInfo& vi2 = child2->GetVideoInfo();
+  VideoInfo vi1 = child1->GetVideoInfo();
+  VideoInfo vi2 = child2->GetVideoInfo();
+
   if (vi1.width != vi2.width || vi1.height != vi2.height)
     env->ThrowError("Subtract: image dimensions don't match");
-  if (vi1.pixel_type != vi2.pixel_type)
+
+  if (!(vi1.IsSameColorspace(vi2)))
     env->ThrowError("Subtract: image formats don't match");
 
   vi = vi1;
