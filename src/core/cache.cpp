@@ -186,14 +186,14 @@ void __stdcall Cache::GetAudio(void* buf, __int64 start, __int64 count, IScriptE
   else
     ac_currentscore +=5;
 
-  ac_currentscore = max(min(ac_currentscore, 250), -10000000);
+  ac_currentscore = max(min(ac_currentscore, 450), -10000000);
 
   if (h_audiopolicy == CACHE_NOTHING && ac_currentscore <=0) {
     SetCacheHints(CACHE_AUDIO, 0);
     _RPT0(0, "CacheAudio: Automatically adding audiocache!\n");
   }
 
-  if (h_audiopolicy == CACHE_AUDIO  && (ac_currentscore>200) ) {
+  if (h_audiopolicy == CACHE_AUDIO  && (ac_currentscore > 400) ) {
     SetCacheHints(CACHE_AUDIO_NONE, 0);
     _RPT0(0, "CacheAudio: Automatically deleting cache!\n");
   }
@@ -231,7 +231,7 @@ void __stdcall Cache::GetAudio(void* buf, __int64 start, __int64 count, IScriptE
 		return;
 	}
 	
-	if ( (start<cache_start) || (start>=cache_start+cache_count) ){ //first sample is before or behind cache -> restart cache
+	if ( (start<cache_start) || (start>=(cache_start+cache_count)) ){ //first sample is before or behind cache -> restart cache
 	  _RPT0(0,"CA: Restart\n");
 
 		child->GetAudio(cache, start, maxsamplecount, env);
