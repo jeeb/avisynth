@@ -231,6 +231,13 @@ struct VideoInfo {
     fps_numerator = numerator/x;
     fps_denominator = denominator/x;
   }
+  // Test for same colorspace
+  bool IsSameColorspace(const VideoInfo& vi) {
+    if (vi.pixel_type == pixel_type) return TRUE;
+    if (IsYV12() && vi.IsYV12()) return TRUE;
+    return FALSE;
+  }
+
 };
 
 enum {

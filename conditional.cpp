@@ -76,7 +76,7 @@ ConditionalFilter::ConditionalFilter(PClip _child, PClip _source1, PClip _source
       env->ThrowError("ConditionalFilter: The two sources must have the same height!");
     if (vi1.width != vi2.width)
       env->ThrowError("ConditionalFilter: The two sources must have the same width!");
-    if (vi1.pixel_type != vi2.pixel_type)   // FIXME:  We need I420 -> YV12 transparency here!
+    if (!vi1.IsSameColorspace(vi2))
       env->ThrowError("ConditionalFilter: The two sources must be the same colorspace!");
 
     vi.height = vi1.height;
@@ -278,7 +278,7 @@ PVideoFrame __stdcall ScriptClip::GetFrame(int n, IScriptEnvironment* env) {
     error = "ScriptClip: Function did not return a video clip!";
   } else {
     vi2=result.AsClip()->GetVideoInfo();
-    if (vi2.pixel_type!=vi.pixel_type) {  // TODO: Add YV12 <-> I420 transaprency!
+    if (!vi.IsSameColorspace(vi2)) { 
       error = "ScriptClip: Function did not return a video clip of the same colorspace as the source clip!";
     } else if (vi2.width != vi.width) {
       error = "ScriptClip: Function did not return a video clip with the same width as the source clip!";

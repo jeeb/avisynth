@@ -226,7 +226,7 @@ Crop::Crop(int _left, int _top, int _width, int _height, PClip _child, IScriptEn
   top = _top;
   vi.width = _width;
   vi.height = _height;
-  child->SetCacheHints(CACHE_NOTHING,0);
+//  child->SetCacheHints(CACHE_NOTHING,0);
 }
 
 
@@ -272,7 +272,7 @@ AddBorders::AddBorders(int _left, int _top, int _right, int _bot, int _clr, PCli
   }
   vi.width += left+right;
   vi.height += top+bot;
-  child->SetCacheHints(CACHE_NOTHING,0);
+//  child->SetCacheHints(CACHE_NOTHING,0);
 }
 
 
