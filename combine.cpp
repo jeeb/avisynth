@@ -319,8 +319,11 @@ Animate::Animate( PClip context, int _first, int _last, const char* _name, const
                   const AVSValue* _args_after, int _num_args, bool _range_limit, IScriptEnvironment* env )
    : first(_first), last(_last), name(_name), num_args(_num_args), range_limit(_range_limit)
 {
-  if (first >= last)
-    env->ThrowError("Animate: final frame number must be greater than initial");
+  if (first > last) 
+    env->ThrowError("Animate: final frame number must be greater than initial.");
+
+  if (first == last && (!range_limit)) 
+    env->ThrowError("Animate: final frame cannot be the same as initial frame.");
 
   // check that argument types match
   for (int arg=0; arg<num_args; ++arg) {
@@ -430,13 +433,13 @@ void __stdcall Animate::GetAudio(void* buf, __int64 start, __int64 count, IScrip
 
     const VideoInfo& vi1 = cache[0]->GetVideoInfo();
 
-    if ( (start+count < vi1.AudioSamplesFromFrames(first)) || (start > vi1.AudioSamplesFromFrames(last)) ) {
+    if ( (start+count < vi1.AudioSamplesFromFrames(first)) || (start > vi1.AudioSamplesFromFrames(last+1)) ) {
       // Everything unfiltered
       args_after[0].AsClip()->GetAudio(buf, start, count, env);
       return;
     }
 
-    if (start < vi1.AudioSamplesFromFrames(first) || (start+count > vi1.AudioSamplesFromFrames(last)) ) {
+    if (start < vi1.AudioSamplesFromFrames(first) || (start+count > vi1.AudioSamplesFromFrames(last+1)) ) {
       // We are at one or both switchover points
       // We start by filling with filtered material.
       cache[0]->GetAudio(buf, start, count, env);
@@ -446,7 +449,7 @@ void __stdcall Animate::GetAudio(void* buf, __int64 start, __int64 count, IScrip
       if (start_switch > start) 
         args_after[0].AsClip()->GetAudio(buf, start, start_switch - start, env);  // UnFiltered
 
-      __int64 end_switch =  vi1.AudioSamplesFromFrames(last);
+      __int64 end_switch =  vi1.AudioSamplesFromFrames(last+1);
       if (end_switch < start+count) 
         args_after[0].AsClip()->GetAudio(buf, end_switch, start + count - end_switch, env);  // UnFiltered
 

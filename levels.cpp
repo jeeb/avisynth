@@ -47,9 +47,9 @@
 ********************************************************************/
 
 AVSFunction Levels_filters[] = {
-  { "Levels", "cifiii", Levels::Create },        // src_low, gamma, src_high, dst_low, dst_high 
+  { "Levels", "cifiii[coring]b", Levels::Create },        // src_low, gamma, src_high, dst_low, dst_high 
   { "RGBAdjust", "cffff", RGBAdjust::Create },   // R, G, B, A
-  { "Tweak", "c[hue]f[sat]f[bright]f[cont]f", Tweak::Create },  // hue, sat, bright, contrast
+  { "Tweak", "c[hue]f[sat]f[bright]f[cont]f[coring]b", Tweak::Create },  // hue, sat, bright, contrast
   { "Limiter", "c[min_luma]i[max_luma]i[min_chroma]i[max_chroma]i", Limiter::Create },
   { 0 }
 };
@@ -62,7 +62,7 @@ AVSFunction Levels_filters[] = {
  *******   Levels Filter   ******
  ********************************/
 
-Levels::Levels( PClip _child, int in_min, double gamma, int in_max, int out_min, int out_max, 
+Levels::Levels( PClip _child, int in_min, double gamma, int in_max, int out_min, int out_max, bool coring, 
                 IScriptEnvironment* env )
   : GenericVideoFilter(_child)
 {
@@ -78,10 +78,10 @@ Levels::Levels( PClip _child, int in_min, double gamma, int in_max, int out_min,
       p = pow(min(max(p, 0.0), 1.0), gamma);
       p = p * (out_max - out_min) + out_min;
       int pp = int(p*(219.0/255.0)+16.5);
-      map[i] = min(max(pp,16),235);
+      map[i] = min(max(pp,coring ? 16 : 0),coring ? 235 : 255);
 
       int q = ((i-128) * (out_max-out_min) + (divisor>>1)) / divisor + 128;
-      mapchroma[i] = min(max(q,16),240);
+      mapchroma[i] = min(max(q,coring ? 16 : 0),coring ? 240 : 0);
     }
   } 
   else {
@@ -150,7 +150,7 @@ PVideoFrame __stdcall Levels::GetFrame(int n, IScriptEnvironment* env)
 AVSValue __cdecl Levels::Create(AVSValue args, void*, IScriptEnvironment* env) 
 {
   return new Levels( args[0].AsClip(), args[1].AsInt(), args[2].AsFloat(), args[3].AsInt(), 
-                     args[4].AsInt(), args[5].AsInt(), env );
+                     args[4].AsInt(), args[5].AsInt(), args[6].AsBool(true), env );
 }
 
 
@@ -240,9 +240,9 @@ AVSValue __cdecl RGBAdjust::Create(AVSValue args, void*, IScriptEnvironment* env
 ******   Tweak    *****
 **********************/
 
-Tweak::Tweak( PClip _child, double _hue, double _sat, double _bright, double _cont, 
+Tweak::Tweak( PClip _child, double _hue, double _sat, double _bright, double _cont, bool _coring,
               IScriptEnvironment* env ) 
-  : GenericVideoFilter(_child), hue(_hue), sat(_sat), bright(_bright), cont(_cont)
+  : GenericVideoFilter(_child), hue(_hue), sat(_sat), bright(_bright), cont(_cont), coring(_coring)
 {
   if (vi.IsRGB())
 		env->ThrowError("Tweak: YUV data only (no RGB)");
@@ -272,6 +272,10 @@ PVideoFrame __stdcall Tweak::GetFrame(int n, IScriptEnvironment* env)
   if (row_size % 4 && vi.IsYV12())
 		env->ThrowError("Tweak: YV12 width must be a multiple of 4; use Crop");
   
+	int maxY = coring ? 235 : 255;
+	int maxUV = coring ? 240 : 255;
+	int minY = coring ? 16 : 0;
+	int minUV = coring ? 16 : 0;
 
  	Hue = (hue * 3.1415926) / 180.0;
 	Sin = (int) (sin(Hue) * 4096);
@@ -282,7 +286,7 @@ PVideoFrame __stdcall Tweak::GetFrame(int n, IScriptEnvironment* env)
 		__int64 satcont64 = (in64 Sat<<48) + (in64 Cont<<32) + (in64 Sat<<16) + in64 Cont;
 		__int64 bright64 = (in64 Bright<<32) + in64 Bright;
 
-    if (vi.IsYUY2()) {
+    if (vi.IsYUY2() && (!coring)) {
       asm_tweak_ISSE_YUY2(srcp, row_size>>2, height, src_pitch-row_size, hue64, satcont64, bright64);   
       return src;
     }
@@ -306,8 +310,8 @@ PVideoFrame __stdcall Tweak::GetFrame(int n, IScriptEnvironment* env)
 				y2 += (int) Bright;
 				y1 += 16;
 				y2 += 16;
-				y1 = min(max(y1,0),255);
-        y2 = min(max(y2,0),255);
+				y1 = min(max(y1,minY),maxY);
+        y2 = min(max(y2,minY),maxY);
 				srcp[x] = (int) y1;
 				srcp[x+2] = (int) y2;
 
@@ -318,8 +322,8 @@ PVideoFrame __stdcall Tweak::GetFrame(int n, IScriptEnvironment* env)
 				v = (v * Cos - u * Sin) >> 12;
 				u = ((ux * Sat) >> 9) + 128;
 				v = ((v * Sat) >> 9) + 128;
-				u = min(max(u,0),255);
-        v = min(max(v,0),255);
+				u = min(max(u,minUV),maxUV);
+        v = min(max(v,minUV),maxUV);
 				srcp[x+1] = u;
 				srcp[x+3] = v;
 			}
@@ -334,7 +338,7 @@ PVideoFrame __stdcall Tweak::GetFrame(int n, IScriptEnvironment* env)
 				y1 = (Cont * y1) >> 9;				
 				y1 += (int) Bright;
 				y1 += 16;				
-				y1 = min(max(y1,15),235);
+				y1 = min(max(y1,minY),maxY);
 				srcp[x] = (int) y1;
       }
       srcp += src_pitch;
@@ -353,8 +357,8 @@ PVideoFrame __stdcall Tweak::GetFrame(int n, IScriptEnvironment* env)
 				v = (v * Cos - u * Sin) >> 12;
 				u = ((ux * Sat) >> 9) + 128;
 				v = ((v * Sat) >> 9) + 128;
-				srcpu[x] = min(max(u,16),240);
-        srcpv[x] = min(max(v,16),240);				
+				srcpu[x] = min(max(u,minUV),maxUV);
+        srcpv[x] = min(max(v,minUV),maxUV);				
       }
       srcpu += src_pitch;
       srcpv += src_pitch;
@@ -371,6 +375,7 @@ AVSValue __cdecl Tweak::Create(AVSValue args, void* user_data, IScriptEnvironmen
 					 args[2].AsFloat(1.0),		// sat
 					 args[3].AsFloat(0.0),		// bright
 					 args[4].AsFloat(1.0),		// cont
+					 args[5].AsBool(true),    // coring
 					 env);
 }
 

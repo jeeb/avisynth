@@ -50,7 +50,7 @@ class Levels : public GenericVideoFilter
  **/
 {
 public:
-  Levels( PClip _child, int in_min, double gamma, int in_max, int out_min, int out_max, 
+  Levels( PClip _child, int in_min, double gamma, int in_max, int out_min, int out_max, bool coring,
           IScriptEnvironment* env );
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
   static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env);
@@ -84,7 +84,7 @@ private:
 class Tweak : public GenericVideoFilter
 {
 public:
-  Tweak( PClip _child, double _hue, double _sat, double _bright, double _cont, 
+  Tweak( PClip _child, double _hue, double _sat, double _bright, double _cont, bool _coring,
          IScriptEnvironment* env );
 
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
@@ -94,7 +94,7 @@ public:
 
 private:
 	double hue, sat, bright, cont;
-
+	bool coring;
 };
 
 

@@ -5,7 +5,7 @@
 
 !DEFINE VERSION 2.5.2
 
-!DEFINE DATE 030903
+!DEFINE DATE 120903
 
 
 
@@ -149,7 +149,7 @@ Section "German Documentation"
   SetOutPath $INSTDIR\Docs_ger\Filters
   File "..\Docs_ger\Filters\*.*"
   
-CreateShortCut "$SMPROGRAMS\AviSynth 2\Deutsche AviSynth Dokumentation.lnk" "$INSTDIR\Docs_ger\index.html"
+CreateShortCut "$SMPROGRAMS\AviSynth 2.5\Deutsche AviSynth Dokumentation.lnk" "$INSTDIR\Docs_ger\index.html"
 
 SectionEnd
 
