@@ -308,8 +308,8 @@ class VideoFrame {
   const int offset, pitch, row_size, height, offsetU, offsetV, pitchUV;  // U&V offsets are from top of picture.
 
   friend class PVideoFrame;
-  void AddRef() { ++refcount; }
-  void Release() { if (refcount==1) --vfb->refcount; --refcount; }
+  void AddRef() { InterlockedIncrement((long *)&refcount); }
+  void Release() { if (refcount==1) InterlockedDecrement(&vfb->refcount); InterlockedDecrement((long *)&refcount); }
 
   friend class ScriptEnvironment;
   friend class Cache;
@@ -377,7 +377,7 @@ public:
     return vfb->data + GetOffset(plane);
   }
 
-  ~VideoFrame() { --vfb->refcount; }
+  ~VideoFrame() { InterlockedDecrement(&vfb->refcount); }
 };
 
 enum {
@@ -391,8 +391,8 @@ class IClip {
   friend class PClip;
   friend class AVSValue;
   int refcnt;
-  void AddRef() { ++refcnt; }
-  void Release() { if (!--refcnt) delete this; }
+  void AddRef() { InterlockedIncrement((long *)&refcnt); }
+  void Release() { InterlockedDecrement((long *)&refcnt); if (!refcnt) delete this; }
 public:
   IClip() : refcnt(0) {}
 
@@ -518,6 +518,7 @@ public:
   const char* AsString(const char* def) const { _ASSERTE(IsString()||!Defined()); return IsString() ? string : def; }
 
   int ArraySize() const { _ASSERTE(IsArray()); return IsArray()?array_size:1; }
+
   const AVSValue& operator[](int index) const {
     _ASSERTE(IsArray() && index>=0 && index<array_size);
     return (IsArray() && index>=0 && index<array_size) ? array[index] : *this;
