@@ -45,10 +45,10 @@ AVSFunction Conditional_filters[] = {
   {  "ScriptClip", "cs[show]b", ScriptClip::Create },
   {  "ConditionalReader", "css[show]b", ConditionalReader::Create },
   {  "FrameEvaluate", "cs[show]b[after_frame]b", ScriptClip::Create_eval },
-  {  "Write",   "c[filename]ss+[append]b[flush]b", Write::Create },
-  {  "WriteIf", "c[filename]ss+[append]b[flush]b", Write::Create_If },
-  {  "WriteStart", "c[filename]ss+[append]b", Write::Create_Start },
-  {  "WriteEnd", "c[filename]ss+[append]b", Write::Create_End },
+  {  "WriteFile",   "c[filename]ss+[append]b[flush]b", Write::Create },
+  {  "WriteFileIf", "c[filename]ss+[append]b[flush]b", Write::Create_If },
+  {  "WriteFileStart", "c[filename]ss+[append]b", Write::Create_Start },
+  {  "WriteFileEnd", "c[filename]ss+[append]b", Write::Create_End },
   { 0 }
 };
 

@@ -319,14 +319,14 @@ AVSValue __cdecl ConditionalReader::Create(AVSValue args, void* user_data, IScri
 Write::Write (PClip _child, const char _filename[], AVSValue args, int _linecheck, bool _append, bool _flush, IScriptEnvironment* _env):
 	GenericVideoFilter(_child), linecheck(_linecheck), flush(_flush), append(_append), env(_env)
 {
-	strcpy(filename, _filename);
+	strncpy(filename, _filename, 254);
 	arrsize = __min(args.ArraySize(), maxWriteArgs);
 	int i;
 	
 	for (i=0; i<maxWriteArgs; i++) strcpy(arglist[i].string, "");
 
 	for (i=0; i<arrsize; i++) {
-		strcpy(arglist[i].expression, args[i].AsString(""));
+		strncpy(arglist[i].expression, args[i].AsString(""), 254);
 	}
 
 	if (append) {
@@ -357,15 +357,20 @@ PVideoFrame __stdcall Write::GetFrame(int n, IScriptEnvironment* env) {
 
 //changed to call write AFTER the child->GetFrame
 
+
 	PVideoFrame tmpframe = child->GetFrame(n, env);
 
 	if (linecheck<0) return tmpframe;	//do nothing here when writing only start or end
 
+	AVSValue prev_last = env->GetVar("last");  // Store previous last
+	env->SetVar("last",(AVSValue)child);       // Set implicit last (to avoid recursive stack calls?)
 	env->SetVar("current_frame",n);
 	
 	if (Write::DoEval(env)) {
 		Write::FileOut(env);
 	}
+
+	env->SetVar("last",prev_last);       // Restore implicit last
 
 	return tmpframe;
 
@@ -415,16 +420,16 @@ bool Write::DoEval( IScriptEnvironment* env) {
 					keep_this_line = false;
 					break;
 				}
-			} catch (AvisynthError error) {
+			} catch (AvisynthError) {
 //				env->ThrowError("Write: Can't eval linecheck expression!"); // results in KEEPING the line
 			}
 		} else {
 			try {
 				result = env->Invoke("Eval",expr);
 				result = env->Invoke("string",result);	//convert all results to a string
-				strcpy(arglist[i].string, result.AsString(""));
+				strncpy(arglist[i].string, result.AsString(""),254);
 			} catch (AvisynthError error) {
-				strcpy(arglist[i].string, error.msg);
+				strncpy(arglist[i].string, error.msg, 254);
 			}
 		}
 	}
