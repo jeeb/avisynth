@@ -53,10 +53,12 @@ public:
   PVideoFrame Histogram::DrawMode1(int n, IScriptEnvironment* env);
   PVideoFrame Histogram::DrawMode2(int n, IScriptEnvironment* env);
   PVideoFrame Histogram::DrawMode3(int n, IScriptEnvironment* env);
+  PVideoFrame Histogram::DrawMode4(int n, IScriptEnvironment* env);
 
   static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env);
 private:
   int mode;
+  PClip aud_clip;
 };
 
 

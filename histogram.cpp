@@ -60,29 +60,50 @@ AVSFunction Histogram_filters[] = {
 Histogram::Histogram(PClip _child, int _mode, IScriptEnvironment* env) 
   : GenericVideoFilter(_child), mode(_mode)
 {
-  if (!vi.IsYUV())
-    env->ThrowError("Histogram: YUV data only");
 
   if (mode ==0) {
+    if (!vi.IsYUV())
+      env->ThrowError("Histogram: YUV data only");
     vi.width += 256;
   }
   if (mode ==1) {
+    if (!vi.IsYUV())
+      env->ThrowError("Histogram: YUV data only");
     if (!vi.IsPlanar())
-      env->ThrowError("Histogram: Mode 1 only available in YV12.");
+      env->ThrowError("Histogram: Levels mode only available in YV12.");
     vi.width += 256;
     vi.height = max(256,vi.height);
   }
 
   if (mode ==2) {
+    if (!vi.IsYUV())
+      env->ThrowError("Histogram: YUV data only");
     if (!vi.IsPlanar())
-      env->ThrowError("Histogram: Mode 2 only available in YV12.");
+      env->ThrowError("Histogram: Color mode only available in YV12.");
     vi.width += 256;
     vi.height = max(256,vi.height);
   }
 
   if (mode ==3) {
     if (!vi.IsYUV())
-      env->ThrowError("Histogram: Mode 3 only available in YUV.");
+      env->ThrowError("Histogram: Luma mode only available in YUV.");
+  }
+
+  if (mode == 4) {
+    if (!vi.HasVideo()) {
+      vi.fps_numerator = 25;
+      vi.fps_denominator = 1;
+      vi.num_frames = vi.FramesFromAudioSamples(vi.num_audio_samples);
+    }
+    vi.pixel_type = VideoInfo::CS_YV12;
+    vi.height = 512;
+    vi.width = 512;
+    if (!vi.HasAudio())
+      env->ThrowError("Histogram: Stereo mode requires samples!");
+    if (vi.AudioChannels() != 2)
+      env->ThrowError("Histogram: Stereo mode only works on two audio channels.");
+
+     aud_clip = ConvertAudio::Create(child,SAMPLE_INT16,SAMPLE_INT16);
   }
 }
 
@@ -97,8 +118,47 @@ PVideoFrame __stdcall Histogram::GetFrame(int n, IScriptEnvironment* env)
     return DrawMode2(n, env);
   case 3:
     return DrawMode3(n, env);
+  case 4:
+    return DrawMode4(n, env);
   }
   return DrawMode0(n, env);
+}
+
+PVideoFrame Histogram::DrawMode4(int n, IScriptEnvironment* env) {
+  PVideoFrame src = env->NewVideoFrame(vi);
+  env->MakeWritable(&src);
+  __int64 start = vi.AudioSamplesFromFrames(n-1);  // We include the previous
+  __int64 end = vi.AudioSamplesFromFrames(n+2); // And the next frame
+  __int64 count = end-start;
+  signed short* samples = new signed short[(int)count*vi.AudioChannels()];
+
+  int w = src->GetRowSize();
+  int h = src->GetHeight();
+  int imgSize = h*src->GetPitch();
+  BYTE* srcp = src->GetWritePtr();
+  memset(srcp, 16, imgSize);
+
+  aud_clip->GetAudio(samples, max(0,start), count, env);
+  
+  int c = (int)count;
+  for (int i=0; i < count;i++) {
+    int l = (int)samples[i*2];
+    int r = (int)samples[i*2+1];
+    int y = 256+((l+r)>>8);
+    int x = 256+((l-r)>>8);
+    int v = srcp[x+y*512]+64;
+    srcp[x+y*512] = min(v,235);
+  }
+
+  if (vi.IsPlanar()) {
+    srcp = src->GetWritePtr(PLANAR_U);
+    imgSize = src->GetHeight(PLANAR_U) * src->GetRowSize(PLANAR_U);
+    memset(srcp, 127, imgSize);
+    srcp = src->GetWritePtr(PLANAR_V);
+    memset(srcp, 127, imgSize);
+  }
+  delete[] samples;
+  return src;
 }
 
 PVideoFrame Histogram::DrawMode3(int n, IScriptEnvironment* env) {
@@ -476,6 +536,9 @@ AVSValue __cdecl Histogram::Create(AVSValue args, void*, IScriptEnvironment* env
 
   if (!lstrcmpi(st_m, "luma"))
     mode = 3;
+
+  if (!lstrcmpi(st_m, "stereo"))
+    mode = 4;
 
   return new Histogram(args[0].AsClip(), mode, env);
 }
