@@ -19,10 +19,7 @@
 
 #include "stdafx.h"
 
-#include <string.h>
 #include <crtdbg.h>
-
-#include <windows.h>
 
 //#include "gui.h"
 //#include "crash.h"

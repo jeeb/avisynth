@@ -21,12 +21,6 @@
 #ifndef f_AVIINDEX_H
 #define f_AVIINDEX_H
 
-#include <stdio.h>
-#include <string.h>
-
-#include <windows.h>
-#include <vfw.h>
-
 class AVIIndexChainNode;
 
 class AVIIndexEntry2 {

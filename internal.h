@@ -39,14 +39,6 @@
 #define AVS_VERSION 2.51
 #define AVS_VERSTR "AviSynth 2.51 beta (avisynth.org) 12 mar. 2003"
 
-#define WIN32_LEAN_AND_MEAN
-#include <objbase.h>
-#include <vfw.h>
-#include <windows.h>
-#include <stdio.h>
-#include <malloc.h>
-#include <math.h>
-
 #include "avisynth.h"
 
 

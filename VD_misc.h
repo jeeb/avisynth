@@ -18,8 +18,6 @@
 #ifndef f_VIRTUALDUB_MISC_H
 #define f_VIRTUALDUB_MISC_H
 
-#include <mmsystem.h>
-
 long MulDivTrunc(long a, long b, long c);
 int NearestLongValue(long v, const long *array, int array_size);
 unsigned __stdcall MulDivUnsigned(unsigned a, unsigned b, unsigned c);

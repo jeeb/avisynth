@@ -20,7 +20,6 @@
 
 #include "stdafx.h"
 
-#include <stdio.h>
 #include <crtdbg.h>
 
 #include "AVIIndex.h"

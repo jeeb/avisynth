@@ -19,8 +19,6 @@
 
 #include <crtdbg.h>
 
-#include <windows.h>
-
 #include "AVIReadHandler.h"
 //#include "FastReadStream.h"
 //#include "ProgressDialog.h"

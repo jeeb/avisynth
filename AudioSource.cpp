@@ -17,12 +17,6 @@
 
 #include "stdafx.h"
 
-#include <stdio.h>
-#include <stdlib.h>
-
-#include <windows.h>
-#include <vfw.h>
-
 //#include "gui.h"
 #include "AudioSource.h"
 #include "AVIReadHandler.h"

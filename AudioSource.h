@@ -18,9 +18,6 @@
 #ifndef f_AUDIOSOURCE_H
 #define f_AUDIOSOURCE_H
 
-#include <windows.h>
-#include <vfw.h>
-
 #include "DubSource.h"
 
 class IAVIReadHandler;

@@ -21,8 +21,6 @@
 #ifndef f_VIRTUALDUB_FASTREADSTREAM_H
 #define f_VIRTUALDUB_FASTREADSTREAM_H
 
-#include <windows.h>
-
 class FastReadStreamHeader;
 
 class FastReadStream {

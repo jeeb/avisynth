@@ -18,10 +18,6 @@
 #ifndef f_AUDIO_H
 #define f_AUDIO_H
 
-#include <windows.h>
-#include <mmsystem.h>
-#include <msacm.h>
-
 //#include "FrameSubset.h"      // no need for this in avisynth
 
 typedef void (*AudioFormatConverter)(void *, void *, long);

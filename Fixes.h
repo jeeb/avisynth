@@ -21,9 +21,6 @@
 #ifndef f_FIXES_H
 #define f_FIXES_H
 
-#include <windows.h>
-#include <vfw.h>
-
 // Those stupid idiots at Microsoft forgot to change this structure
 // when making the VfW headers for Win32.  The result is that the
 // AVIStreamHeader is correct in 16-bit Windows, but the 32-bit

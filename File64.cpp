@@ -20,8 +20,6 @@
 
 #include "stdafx.h"
 
-#include <windows.h>
-
 #include "Error.h"
 
 #include "File64.h"

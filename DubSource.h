@@ -18,9 +18,6 @@
 #ifndef f_DUBSOURCE_H
 #define f_DUBSOURCE_H
 
-#include <windows.h>
-#include <vfw.h>
-
 class InputFile;
 
 class DubSource {

@@ -36,8 +36,6 @@
 #include "stdafx.h"
 
 #include "script.h"
-#include <stdlib.h>
-#include <io.h>
 #include <time.h>
  
 #ifdef _MSC_VER

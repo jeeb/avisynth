@@ -17,11 +17,6 @@
 
 #include "stdafx.h"
 
-#include <ctype.h>
-
-#include <wtypes.h>
-#include <mmsystem.h>
-
 #include "misc.h"
 
 extern long CPUCheckForExtensions();  // in cpuaccel.cpp

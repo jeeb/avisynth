@@ -20,10 +20,6 @@
 
 #include "stdafx.h"
 
-#include <windows.h>
-#include <stdio.h>
-#include <string.h>
-#include <io.h>
 #include <crtdbg.h>
 
 #include "Error.h"

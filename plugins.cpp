@@ -35,8 +35,6 @@
 
 #include "stdafx.h"
 
-#include <windows.h>
-
 #include "Error.h"    // which includes "internal.h"
 
 

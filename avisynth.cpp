@@ -34,9 +34,7 @@
 
 #include "stdafx.h"
 
-#include <stdio.h>
 #include <stdarg.h>
-#include <string.h>
 
 #include "internal.h"
 #include "script.h"
