@@ -91,20 +91,22 @@ PVideoFrame SeparateFields::GetFrame(int n, IScriptEnvironment* env)
 {
   PVideoFrame frame = child->GetFrame(n>>1, env);
   if (vi.IsPlanar()) {
-    bool topfield = (child->GetParity(n)+n)&1;
-    int UVoffset = !topfield ? frame->GetPitch(PLANAR_U) : 0;
-    int Yoffset = !topfield ? frame->GetPitch(PLANAR_Y) : 0;
-    return frame->Subframe(Yoffset, frame->GetPitch()*2, frame->GetRowSize(), frame->GetHeight()>>1, UVoffset, UVoffset, frame->GetPitch(PLANAR_U)*2);
+    const bool topfield = (child->GetParity(n)+n)&1;
+    const int UVoffset = !topfield ? frame->GetPitch(PLANAR_U) : 0;
+    const int Yoffset = !topfield ? frame->GetPitch(PLANAR_Y) : 0;
+    return frame->Subframe(Yoffset, frame->GetPitch()*2, frame->GetRowSize(), frame->GetHeight()>>1,
+	                       UVoffset, UVoffset, frame->GetPitch(PLANAR_U)*2);
   }
   return frame->Subframe((GetParity(n) ^ vi.IsYUY2()) * frame->GetPitch(),
-    frame->GetPitch()*2, frame->GetRowSize(), frame->GetHeight()>>1);  
+                         frame->GetPitch()*2, frame->GetRowSize(), frame->GetHeight()>>1);  
 }
 
 
 AVSValue __cdecl SeparateFields::Create(AVSValue args, void*, IScriptEnvironment* env) 
 {
   PClip clip = args[0].AsClip();
-//  if (clip->GetVideoInfo().IsFieldBased())
+  if (clip->GetVideoInfo().IsFieldBased())
+    env->ThrowError("SeparateFields: Clip is already Field Separated! Use AssumeFrameBased()");
 //    return clip;
 //  else
     return new SeparateFields(clip, env);
@@ -170,7 +172,7 @@ SelectEvery::SelectEvery(PClip _child, int _every, int _from)
 
 AVSValue __cdecl SelectEvery::Create(AVSValue args, void*, IScriptEnvironment* env) 
 {
-  int num_vals = args[2].ArraySize();
+  const int num_vals = args[2].ArraySize();
   if (num_vals <= 1)
     return new SelectEvery(args[0].AsClip(), args[1].AsInt(), num_vals>0 ? args[2][0].AsInt() : 0);
   else {
@@ -189,7 +191,7 @@ AVSValue __cdecl SelectEvery::Create(AVSValue args, void*, IScriptEnvironment* e
 
 
 /**************************************
- ********   DoubleWeaveFrames   *******
+ ********   DoubleWeaveFields   *******
  *************************************/
 
 DoubleWeaveFields::DoubleWeaveFields(PClip _child)
@@ -207,7 +209,7 @@ PVideoFrame DoubleWeaveFields::GetFrame(int n, IScriptEnvironment* env)
 
   PVideoFrame result = env->NewVideoFrame(vi);
 
-  bool parity = child->GetParity(n);
+  const bool parity = child->GetParity(n);
 
   CopyField(result, a, parity);
   CopyField(result, b, !parity);
@@ -218,15 +220,20 @@ PVideoFrame DoubleWeaveFields::GetFrame(int n, IScriptEnvironment* env)
 
 void DoubleWeaveFields::CopyField(const PVideoFrame& dst, const PVideoFrame& src, bool parity) 
 {
-  int add_pitch = dst->GetPitch() * (parity ^ vi.IsYUV());
-  int add_pitchUV = dst->GetPitch(PLANAR_U) * (parity ^ vi.IsYUV());
+  const int add_pitch = dst->GetPitch() * (parity ^ vi.IsYUV());
+  const int add_pitchUV = dst->GetPitch(PLANAR_U) * (parity ^ vi.IsYUV());
 
-  BitBlt( dst->GetWritePtr() + add_pitch, dst->GetPitch()*2,
-          src->GetReadPtr(), src->GetPitch(), src->GetRowSize(), src->GetHeight() );
+  BitBlt( dst->GetWritePtr()         + add_pitch,   dst->GetPitch()*2,
+          src->GetReadPtr(),                        src->GetPitch(),
+		  src->GetRowSize(),                        src->GetHeight() );
+
   BitBlt( dst->GetWritePtr(PLANAR_U) + add_pitchUV, dst->GetPitch(PLANAR_U)*2,
-          src->GetReadPtr(PLANAR_U), src->GetPitch(PLANAR_U), src->GetRowSize(PLANAR_U), src->GetHeight(PLANAR_U) );
+          src->GetReadPtr(PLANAR_U),                src->GetPitch(PLANAR_U),
+		  src->GetRowSize(PLANAR_U),                src->GetHeight(PLANAR_U) );
+
   BitBlt( dst->GetWritePtr(PLANAR_V) + add_pitchUV, dst->GetPitch(PLANAR_V)*2,
-          src->GetReadPtr(PLANAR_V), src->GetPitch(PLANAR_V), src->GetRowSize(PLANAR_V), src->GetHeight(PLANAR_V) );
+          src->GetReadPtr(PLANAR_V),                src->GetPitch(PLANAR_V),
+		  src->GetRowSize(PLANAR_V),                src->GetHeight(PLANAR_V) );
 }
 
 
@@ -258,7 +265,7 @@ PVideoFrame DoubleWeaveFrames::GetFrame(int n, IScriptEnvironment* env)
     PVideoFrame a = child->GetFrame(n>>1, env);
     PVideoFrame b = child->GetFrame((n+1)>>1, env);
     bool parity = this->GetParity(n);
-    env->MakeWritable(&a);
+//  env->MakeWritable(&a);
     if (a->IsWritable()) 
     {
       CopyAlternateLines(a, b, !parity);
@@ -276,17 +283,23 @@ PVideoFrame DoubleWeaveFrames::GetFrame(int n, IScriptEnvironment* env)
 
 void DoubleWeaveFrames::CopyAlternateLines(const PVideoFrame& dst, const PVideoFrame& src, bool parity) 
 {
-  int src_add_pitch = src->GetPitch() * (parity ^ vi.IsYUV());
-  int dst_add_pitch = dst->GetPitch() * (parity ^ vi.IsYUV());
-  BitBlt( dst->GetWritePtr() + dst_add_pitch, dst->GetPitch()*2,
-          src->GetReadPtr() + src_add_pitch, src->GetPitch()*2,
-          src->GetRowSize(), src->GetHeight()>>1 );
-  BitBlt( dst->GetWritePtr(PLANAR_U) , dst->GetPitch(PLANAR_U)*2,
-          src->GetReadPtr(PLANAR_U) , src->GetPitch(PLANAR_U)*2,
-          src->GetRowSize(PLANAR_U), src->GetHeight(PLANAR_U)>>1 );
-  BitBlt( dst->GetWritePtr(PLANAR_V) , dst->GetPitch(PLANAR_V)*2,
-          src->GetReadPtr(PLANAR_V) , src->GetPitch(PLANAR_V)*2,
-          src->GetRowSize(PLANAR_V), src->GetHeight(PLANAR_V)>>1 );
+  const int src_add_pitch   = src->GetPitch()         * (parity ^ vi.IsYUV());
+  const int src_add_pitchUV = src->GetPitch(PLANAR_U) * (parity ^ vi.IsYUV());
+
+  const int dst_add_pitch   = dst->GetPitch()         * (parity ^ vi.IsYUV());
+  const int dst_add_pitchUV = dst->GetPitch(PLANAR_U) * (parity ^ vi.IsYUV());
+ 
+  BitBlt( dst->GetWritePtr()         + dst_add_pitch,   dst->GetPitch()*2,
+          src->GetReadPtr()          + src_add_pitch,   src->GetPitch()*2,
+          src->GetRowSize(),                            src->GetHeight()>>1 );
+
+  BitBlt( dst->GetWritePtr(PLANAR_U) + dst_add_pitchUV, dst->GetPitch(PLANAR_U)*2,
+          src->GetReadPtr(PLANAR_U)  + src_add_pitchUV, src->GetPitch(PLANAR_U)*2,
+          src->GetRowSize(PLANAR_U),                    src->GetHeight(PLANAR_U)>>1 );
+
+  BitBlt( dst->GetWritePtr(PLANAR_V) + dst_add_pitchUV, dst->GetPitch(PLANAR_V)*2,
+          src->GetReadPtr(PLANAR_V)  + src_add_pitchUV, src->GetPitch(PLANAR_V)*2,
+          src->GetRowSize(PLANAR_V),                    src->GetHeight(PLANAR_V)>>1 );
 }
 
 
@@ -330,6 +343,9 @@ AVSValue __cdecl Create_DoubleWeave(AVSValue args, void*, IScriptEnvironment* en
 
 AVSValue __cdecl Create_Weave(AVSValue args, void*, IScriptEnvironment* env) 
 {
+  PClip clip = args[0].AsClip();
+  if (!clip->GetVideoInfo().IsFieldBased())
+    env->ThrowError("Weave: Clip is not Field Separated! Use AssumeFieldBased()");
   return new SelectEvery(Create_DoubleWeave(args, 0, env).AsClip(), 2, 0);
 }
 
@@ -365,9 +381,9 @@ AVSValue __cdecl Create_Bob(AVSValue args, void*, IScriptEnvironment* env)
   const int new_height = args[3].AsInt(vi.height*2);
   MitchellNetravaliFilter filter(b, c);
   return new_AssumeFrameBased(new Fieldwise(new FilteredResizeV(clip, -0.25, vi.height, 
-                                                new_height, &filter, env),
-	                                          new FilteredResizeV(clip, +0.25, vi.height, 
-                                                new_height, &filter, env)));	  
+                                                                new_height, &filter, env),
+                                            new FilteredResizeV(clip, +0.25, vi.height, 
+                                                                new_height, &filter, env)));  
 	}
 	catch (...) { throw; }
 }
@@ -387,61 +403,65 @@ PClip new_AssumeFrameBased(PClip _child)
 
 
 SelectRangeEvery::SelectRangeEvery(PClip _child, int _every, int _length, int _offset, bool _audio, IScriptEnvironment* env)
-		: GenericVideoFilter(_child), audio(_audio)
-	{
+    : GenericVideoFilter(_child), audio(_audio)
+{
+  AVSValue trimargs[3] = { _child, _offset, 0};
+  PClip c = env->Invoke("Trim",AVSValue(trimargs,3)).AsClip();
+  child = c;
+  vi = c->GetVideoInfo();
 
-		AVSValue trimargs[3] = { _child, _offset, 0};
-		PClip c = env->Invoke("Trim",AVSValue(trimargs,3)).AsClip();
-		child = c;
-		vi = c->GetVideoInfo();
+  every = min(max(_every,1),vi.num_frames);
+  length = min(max(_length,1),every);
 
-		every = min(max(_every,1),vi.num_frames);
-		length = min(max(_length,1),every);
+  const int n = vi.num_frames;
+  vi.num_frames = (n/every)*length+(n%every<length?n%every:length);
 
-		int n = vi.num_frames;
-		vi.num_frames = (n/every)*length+(n%every<length?n%every:length);
-
-    if (vi.HasAudio()) {
-      vi.num_audio_samples = vi.AudioSamplesFromFrames(vi.num_frames);
-    }
-
-	}
-	
-	PVideoFrame __stdcall SelectRangeEvery::GetFrame(int n, IScriptEnvironment* env) {
-		return child->GetFrame((n/length)*every+(n%length), env); }
-
-	bool __stdcall SelectRangeEvery::GetParity(int n)	{
-		return child->GetParity((n/length)*every+(n%length)); }
-
-
-  void __stdcall SelectRangeEvery::GetAudio(void* buf, __int64 start, __int64 count, IScriptEnvironment* env)  {
-    if (!audio) {
-      child->GetAudio(buf, start, count, env);
-      return;
-    }
-
-    int samples_filled = 0;
-    BYTE* samples = (BYTE*)buf;
-    int bps = vi.BytesPerAudioSample();
-    int startframe = vi.FramesFromAudioSamples(start);
-    int general_offset = start - vi.AudioSamplesFromFrames(startframe);  // General compensation for startframe rounding.
-
-    while (samples_filled < count) {
-      int iteration = startframe / length;                    // Which iteration is this.
-      int iteration_into = startframe % length;               // How far, in frames are we into this iteration.
-      int iteration_left = length - iteration_into;          // How many frames is left of this iteration.
-
-      __int64 iteration_left_samples = vi.AudioSamplesFromFrames(iteration_left);
-      __int64 getsamples = min(iteration_left_samples, count-samples_filled);   // This is the number of samples we can get without either having to skip, or being finished.
-
-      __int64 start_offset = vi.AudioSamplesFromFrames(iteration * every + iteration_into) + general_offset;
-
-      child->GetAudio(&samples[samples_filled*bps], start_offset, getsamples, env);
-      samples_filled += getsamples;
-      startframe = (iteration+1) * every;
-      general_offset = 0; // On the following loops, general offset should be 0, as we are either skipping.
-    }
+  if (vi.HasAudio()) {
+    vi.num_audio_samples = vi.AudioSamplesFromFrames(vi.num_frames);
   }
+}
+
+
+PVideoFrame __stdcall SelectRangeEvery::GetFrame(int n, IScriptEnvironment* env)
+{
+  return child->GetFrame((n/length)*every+(n%length), env);
+}
+
+
+bool __stdcall SelectRangeEvery::GetParity(int n)
+{
+  return child->GetParity((n/length)*every+(n%length));
+}
+
+
+void __stdcall SelectRangeEvery::GetAudio(void* buf, __int64 start, __int64 count, IScriptEnvironment* env)
+{
+  if (!audio) {
+    child->GetAudio(buf, start, count, env);
+    return;
+  }
+
+  int samples_filled = 0;
+  BYTE* samples = (BYTE*)buf;
+  const int bps = vi.BytesPerAudioSample();
+  int startframe = vi.FramesFromAudioSamples(start);
+  int general_offset = start - vi.AudioSamplesFromFrames(startframe);  // General compensation for startframe rounding.
+
+  while (samples_filled < count) {
+    const int iteration = startframe / length;                    // Which iteration is this.
+    const int iteration_into = startframe % length;               // How far, in frames are we into this iteration.
+    const int iteration_left = length - iteration_into;           // How many frames is left of this iteration.
+
+    const __int64 iteration_left_samples = vi.AudioSamplesFromFrames(iteration_left);
+    const __int64 getsamples = min(iteration_left_samples, count-samples_filled);   // This is the number of samples we can get without either having to skip, or being finished.
+    const __int64 start_offset = vi.AudioSamplesFromFrames(iteration * every + iteration_into) + general_offset;
+
+    child->GetAudio(&samples[samples_filled*bps], start_offset, getsamples, env);
+    samples_filled += getsamples;
+    startframe = (iteration+1) * every;
+    general_offset = 0; // On the following loops, general offset should be 0, as we are either skipping.
+  }
+}
 
 AVSValue __cdecl SelectRangeEvery::Create(AVSValue args, void* user_data, IScriptEnvironment* env) {
     return new SelectRangeEvery(args[0].AsClip(), args[1].AsInt(1500), args[2].AsInt(50), args[3].AsInt(0), args[4].AsBool(true), env);
