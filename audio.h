@@ -170,6 +170,15 @@ public:
   static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment*);
 };
 
+class AssumeRate : public GenericVideoFilter 
+/**
+  * Changes the sample rate of a clip
+ **/
+{
+public:
+  AssumeRate(PClip _clip, int _rate);
+  static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment*);
+};
 
 class DelayAudio : public GenericVideoFilter 
 /**

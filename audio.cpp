@@ -30,6 +30,7 @@ AVSFunction Audio_filters[] = {
   { "Amplify", "cf[]f", Amplify::Create },
   { "Normalize", "c[left]f[right]f", Normalize::Create },
   { "MixAudio", "cc[clip1_factor]f[clip2_factor]f", MixAudio::Create },
+  { "AssumeSampleRate", "ci", AssumeRate::Create },
   { "ResampleAudio", "ci", ResampleAudio::Create },
   { "LowPassAudio", "ci[]f", FilterAudio::Create_LowPass },
 //  { "LowPassAudioALT", "ci", FilterAudio::Create_LowPassALT },
@@ -335,6 +336,23 @@ AVSValue __cdecl KillAudio::Create(AVSValue args, void*, IScriptEnvironment*)
 }
 
 
+/*************************************
+ *******   Assume SampleRate  ********
+ *************************************/
+
+AssumeRate::AssumeRate(PClip _clip, int _rate) 
+  : GenericVideoFilter(_clip)
+{
+  if (_rate<0) 
+    _rate=0;
+
+    vi.audio_samples_per_second=_rate;
+} 
+
+AVSValue __cdecl AssumeRate::Create(AVSValue args, void*, IScriptEnvironment*) 
+{
+  return new AssumeRate(args[0].AsClip(),args[1].AsInt());
+}
 
 
 
