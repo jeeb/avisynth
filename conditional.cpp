@@ -115,7 +115,7 @@ PVideoFrame __stdcall ConditionalFilter::GetFrame(int n, IScriptEnvironment* env
 
     ScriptParser parser2(env, eval2.AsString(), "[Conditional Filter, Expression 2]");
     exp = parser2.Parse();
-    AVSValue e2_result = exp->Evaluate(env);
+    e2_result = exp->Evaluate(env);
   } catch (AvisynthError error) {    
     const char* error_msg = error.msg;  
 
@@ -200,7 +200,7 @@ PVideoFrame __stdcall ConditionalFilter::GetFrame(int n, IScriptEnvironment* env
         );
       }
 
-      PVideoFrame dst = (state) ? source1->GetFrame(max(vi1.num_frames-1,n),env) : source2->GetFrame(max(vi2.num_frames-1,n),env);
+      PVideoFrame dst = (state) ? source1->GetFrame(min(vi1.num_frames-1,n),env) : source2->GetFrame(min(vi2.num_frames-1,n),env);
       env->MakeWritable(&dst);
       ApplyMessage(&dst, vi, text, vi.width/4, 0xa0a0a0,0,0 , env );
 

@@ -207,26 +207,26 @@ void ConvertAudio::convertFromFloat(float* inbuf,void* outbuf, char sample_type,
 __inline int ConvertAudio::Saturate_int8(float n) {
     if (n <= -128.0f) return -128;
     if (n >= 127.0f) return 127;
-    return (int)n;
+    return (int)(n+0.5f);
 }
 
 
 __inline short ConvertAudio::Saturate_int16(float n) {
     if (n <= -32768.0f) return -32768;
     if (n >= 32767.0f) return 32767;
-    return (short)n;
+    return (short)(n+0.5f);
 }
 
 __inline int ConvertAudio::Saturate_int24(float n) {
     if (n <= (float)-(1<<23)) return -(1<<23);
     if (n >= (float)(1<<23)) return (1<<23);
-    return (short)n;
+    return (short)(n+0.5f);
 }
 
 __inline int ConvertAudio::Saturate_int32(float n) {
     if (n <= (float)MIN_INT) return MIN_INT;  
     if (n >= (float)MAX_INT) return MAX_INT;
-    return (int)n;
+    return (int)(n)+0.5f;
 }
 
 // There are two type parameters. Acceptable sample types and a prefered sample type.

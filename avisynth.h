@@ -374,7 +374,9 @@ public:
 
 enum {
   CACHE_NOTHING=0,
-  CACHE_RANGE=1 };
+  CACHE_RANGE=1,
+  CACHE_ALL=2,
+ };
 
 // Base class for all filters.
 class IClip {
