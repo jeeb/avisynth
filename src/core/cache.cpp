@@ -244,13 +244,6 @@ void __stdcall Cache::GetAudio(void* buf, __int64 start, __int64 count, IScriptE
 void __stdcall Cache::SetCacheHints(int cachehints,int frame_range) {   
   _RPT2(0, "Cache: Setting cache hints (hints:%d, range:%d )\n", cachehints, frame_range);
 
-  /*
-  if (cachehints == CACHE_CLIENT_ID) {
-    h_lastID = frame_range;
-    return;
-  }
-  */
-
   if (cachehints == CACHE_AUDIO) {
     // Range means for audio.
     // 0 == Cache last request only.
@@ -365,26 +358,4 @@ found_old_frame:
   Relink(&video_frames, i, video_frames.next);
 }
 
-// Currently not implemented.
 
-/*
-
-CacheClient::CacheClient(PClip _child) 
-: GenericVideoFilter(_child) { clientID = rand();}
-
-PVideoFrame __stdcall CacheClient::GetFrame(int n, IScriptEnvironment* env)  {
-  n = min(vi.num_frames-1, max(0,n));  // Inserted to avoid requests beyond framerange.
-  child->SetCacheHints(CACHE_CLIENT_ID,clientID);
-  return child->GetFrame(n,env);
-}
-
-void __stdcall CacheClient::SetCacheHints(int cachehints,int frame_range) {   
-  child->SetCacheHints(CACHE_CLIENT_ID,clientID);
-  child->SetCacheHints(cachehints, frame_range);
-}
-
-AVSValue __cdecl CacheClient::Create_Cache(AVSValue args, void*, IScriptEnvironment* env) 
-{
-  return new Cache(args[0].AsClip());
-}
-*/

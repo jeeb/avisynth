@@ -36,7 +36,7 @@
 #define __Cache_H__
 
 #include "../internal.h"
-using namespace std;
+//using namespace std;
 
 /********************************************************************
 ********************************************************************/
@@ -102,22 +102,4 @@ private:
   };
 };
 
-//class CacheClient : public GenericVideoFilter 
-/**
-  * Manages a video frame cache
-  * The client 
- **/
-/*
-{
-public:
-  CacheClient(PClip _child);
-  PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
-  void __stdcall SetCacheHints(int cachehints,int frame_range);
-  static AVSValue __cdecl Create_Cache(AVSValue args, void*, IScriptEnvironment* env);
-
-private:
-  int clientID;
-};
-
-*/
 #endif  // __Cache_H__

@@ -36,7 +36,7 @@
 
 #include "../internal.h"
 #include "../filters/text-overlay.h"
-
+#include "../core/cache.h"
 
 
 

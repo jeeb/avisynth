@@ -217,7 +217,7 @@ AVSValue __cdecl DuplicateFrame::Create(AVSValue args, void*, IScriptEnvironment
 Splice::Splice(PClip _child1, PClip _child2, bool realign_sound, IScriptEnvironment* env)
  : GenericVideoFilter(_child1), child2(_child2)
 {
-  const VideoInfo& vi2 = child2->GetVideoInfo();
+  VideoInfo vi2 = child2->GetVideoInfo();
 
   if (vi.HasVideo() ^ vi2.HasVideo())
     env->ThrowError("Splice: one clip has video and the other doesn't (not allowed)");
@@ -242,10 +242,11 @@ Splice::Splice(PClip _child1, PClip _child2, bool realign_sound, IScriptEnvironm
   // Check Audio
   if (vi.HasAudio()) {
     // If sample types do not match they are both converted to float samples to avoid loss of precision.
-    child2 = ConvertAudio::Create(child2,vi.SampleType(),SAMPLE_FLOAT);  // Clip 1 is check to be same type as clip 1, if not, convert to float samples.
-    child = ConvertAudio::Create(child,vi2.SampleType(),vi2.SampleType());  // Clip 1 is now be same type as clip 2.
+    child2 = ConvertAudio::Create(child2, vi.SampleType(), SAMPLE_FLOAT);  // Clip 1 is check to be same type as clip 1, if not, convert to float samples.
+    vi2 = child2->GetVideoInfo();
 
-    vi.sample_type = child->GetVideoInfo().sample_type;
+    child = ConvertAudio::Create(child, vi2.SampleType(), vi2.SampleType());  // Clip 1 is now be same type as clip 2.
+    vi = child->GetVideoInfo();
 
     if (vi.AudioChannels() != vi2.AudioChannels())
       env->ThrowError("Splice: sound formats don't match");
