@@ -50,6 +50,7 @@ AVSValue ExpSequence::Evaluate(IScriptEnvironment* env)
 }
 
 
+#ifdef _DEBUG
 /* First cut for breaking out system exceptions from the evil and most
  * unhelpful "Evaluate: Unrecognized exception!".
  *
@@ -213,12 +214,18 @@ void ExpExceptionTranslator::TrapEval(AVSValue &av, IScriptEnvironment* env)
  * Call an interlude. And this is all because C++ doesn't provide any way
  * to expand system exceptions into there true cause or identity.
  */
+#endif
+
 AVSValue ExpExceptionTranslator::Evaluate(IScriptEnvironment* env) 
 {
   try {
+#ifdef _DEBUG
     AVSValue av;
     TrapEval(av, env);
     return av;
+#else
+    return exp->Evaluate(env);
+#endif
   }
   catch (AvisynthError) {
     throw;
