@@ -53,7 +53,10 @@ Trim::Trim(int _firstframe, int _lastframe, PClip _child) : GenericVideoFilter(_
 {
   if (_lastframe == 0) _lastframe = vi.num_frames-1;
   firstframe = min(max(_firstframe, 0), vi.num_frames-1);
-  int lastframe = min(max(_lastframe, firstframe), vi.num_frames-1);
+  int lastframe=_lastframe;
+  if (_lastframe<0)
+    lastframe = firstframe - _lastframe;
+  lastframe = min(max(lastframe, firstframe), vi.num_frames-1);
   audio_offset = vi.AudioSamplesFromFrames(firstframe);
   vi.num_frames = lastframe+1 - firstframe;
   vi.num_audio_samples = vi.AudioSamplesFromFrames(lastframe+1) - audio_offset;
