@@ -1,7 +1,7 @@
 !packhdr tempfile.exe "upx --best --q tempfile.exe"
 
 !DEFINE VERSION 2.5.4
-!DEFINE DATE 090104
+!DEFINE DATE 150104-2
 
 
 SetCompressor lzma
@@ -47,6 +47,7 @@ InstallDir "$PROGRAMFILES\AviSynth 2.5"
 InstallDirRegKey HKLM SOFTWARE\AviSynth ""
 
 InstType Standard
+
 Section "!AviSynth Base (required)" Frameserving
 SectionIn RO 
 
@@ -120,7 +121,11 @@ WriteUninstaller $INSTDIR\Uninstall.exe
 
 SectionEnd
 
-Section "Documentation (recommended)" Docs
+Subsection "Documentation" Documentation
+
+Section "English Documentation" English
+SectionIn 1
+
   SetOutPath $INSTDIR\Docs
   File "..\Docs\*.*"
   SetOutPath $INSTDIR\Docs\english
@@ -164,11 +169,10 @@ CreateShortCut "$SMPROGRAMS\AviSynth 2.5\Deutsche AviSynth Dokumentation.lnk" "$
 
 SectionEnd
 
+Subsectionend
 
-!ifdef USE_SUBSECTION
-	SubSection /e "choose one" subsec
-!endif
 
+SubSection /e "Select Accosiation" SelectAssociation
 
 Section /o "Associate AVS files with Notepad" Associate1
 WriteRegStr HKCR "avsfile\shell\open\command" "" 'notepad.exe "%1"'
@@ -183,17 +187,17 @@ Section ""
 
 SectionEnd
 
-!ifdef USE_SUBSECTION
-	SubSectionEnd
-!endif
+SubSectionEnd
 
 
 
 
   !insertmacro MUI_FUNCTION_DESCRIPTION_BEGIN    
   !insertmacro MUI_DESCRIPTION_TEXT  ${Frameserving} "Install the main files for frameserving via AviSynth"
-  !insertmacro MUI_DESCRIPTION_TEXT  ${Docs} "Install help and example files"
+  !insertmacro MUI_DESCRIPTION_TEXT  ${Documentation} "Install help and example files"
+  !insertmacro MUI_DESCRIPTION_TEXT  ${English} "Install English help and example files"
   !insertmacro MUI_DESCRIPTION_TEXT  ${German} "Install German help and example files"
+  !insertmacro MUI_DESCRIPTION_TEXT  ${SelectAssociation} "Select only ONE of these for association!"
   !insertmacro MUI_DESCRIPTION_TEXT  ${Associate1} "Open AVS files directly with Notepad"
   !insertmacro MUI_DESCRIPTION_TEXT  ${Associate2} "Open AVS files directly with Media Player 6.4"
   !insertmacro MUI_FUNCTION_DESCRIPTION_END
