@@ -39,10 +39,16 @@
 
 
 DynamicAssembledCode::DynamicAssembledCode(Assembler &x86, IScriptEnvironment* env, const char * err_msg) {
-  entry = (void(*)())x86.callable();
+  entry = 0;
+  const char* soft_err = "";
+  try {
+    entry = (void(*)())x86.callable();
+  } catch (Error _err) { soft_err = _err.getString(); }
   if(!entry)
   {
-    _RPT0(0,x86.getErrors());
+    _RPT0(0,"SoftWire Compilation error:");
+    _RPT0(0,soft_err);
+    _RPT0(0,"\n");
     env->ThrowError(err_msg);
   }
   ret = (BYTE*)x86.acquire();

@@ -37,7 +37,7 @@
 #include "resample.h"
 
 
-
+#define USE_DYNAMIC_COMPILER false
 
 
 /********************************************************************
@@ -96,9 +96,11 @@ FilteredResizeH::FilteredResizeH( PClip _child, double subrange_left, double sub
   else
     pattern_luma = GetResamplingPatternRGB(vi.width, subrange_left, subrange_width, target_width, func);
   vi.width = target_width;
-  if (vi.IsPlanar()) {
-    assemblerY = GenerateResizer(PLANAR_Y, env);
-    assemblerUV = GenerateResizer(PLANAR_U, env);
+  if (USE_DYNAMIC_COMPILER) {
+    if (vi.IsPlanar()) {
+      assemblerY = GenerateResizer(PLANAR_Y, env);
+      assemblerUV = GenerateResizer(PLANAR_U, env);
+    }
   }
 }
 
@@ -385,7 +387,7 @@ PVideoFrame __stdcall FilteredResizeH::GetFrame(int n, IScriptEnvironment* env)
   int dst_pitch = dst->GetPitch();
   if (vi.IsYV12()) {
       int plane = 0;
-      if (true) {  // Use dynamic compilation?
+      if (USE_DYNAMIC_COMPILER) {  // Use dynamic compilation?
         gen_src_pitch = src_pitch;
         gen_dst_pitch = dst_pitch;
         gen_srcp = (BYTE*)srcp;
