@@ -35,7 +35,7 @@
 #include "stdafx.h"
 
 #include "audio.h"
-
+#include <emmintrin.h>  // Requires Processor Pack, Service Pack 5.
 
 /********************************************************************
 ***** Declare index of new filters for Avisynth's filter engine *****
@@ -157,10 +157,11 @@ void __stdcall ConvertAudio::GetAudio(void* buf, __int64 start, __int64 count, I
 
   if ((env->GetCPUFlags() & CPUF_3DNOW_EXT)) {
     convertFromFloat_3DN(tmp_fb, buf, dst_format, count*channels);
+  } else if ((env->GetCPUFlags() & CPUF_SSE)) {
+    convertFromFloat_SSE(tmp_fb, buf, dst_format, count*channels);
   } else {
     convertFromFloat(tmp_fb, buf, dst_format, count*channels);
   }
-
 }
 
 
@@ -308,9 +309,9 @@ c32_loop:
         outbuf[i]=0.0f;
       break;     
     }
-
   }
 }
+
 
 void ConvertAudio::convertFromFloat_3DN(float* inbuf,void* outbuf, char sample_type, int count) {
   int i;
@@ -335,7 +336,7 @@ void ConvertAudio::convertFromFloat_3DN(float* inbuf,void* outbuf, char sample_t
         movd mm7,[multiplier]
         pshufw mm7,mm7, 01000100b
         align 16
-c32f_loop:
+c16f_loop:
         movq mm1, [esi+eax*2]            //  b b | a a
         movq mm2, [esi+eax*2+8]          //  d d | c c
         pfmul mm1,mm7                  // x * 32 bit
@@ -346,7 +347,7 @@ c32f_loop:
         movq [edi+eax], mm1            //  store xb | xa
         add eax,8
         cmp eax, ebx
-        jne c32f_loop
+        jne c16f_loop
         emms
       }
       for (i=0; i<c_miss; i++) {
@@ -369,7 +370,7 @@ c32f_loop:
         movd mm7,[multiplier]
         pshufw mm7,mm7, 01000100b
         align 16
-c16f_loop:
+c32f_loop:
         movq mm1, [esi+eax]            //  b b | a a
         movq mm2, [esi+eax+8]          //  d d | c c
         pfmul mm1,mm7                  // x * 32 bit
@@ -380,7 +381,7 @@ c16f_loop:
         movq [edi+eax+8], mm2          //  store xd | xc
         add eax,16
         cmp eax, ebx
-        jne c16f_loop
+        jne c32f_loop
         emms
       }
       for (i=0; i<c_miss; i++) {
@@ -431,6 +432,57 @@ void ConvertAudio::convertFromFloat(float* inbuf,void* outbuf, char sample_type,
       signed int* samples = (signed int*)outbuf;
       for (i=0;i<count;i++) 
         samples[i]= Saturate_int32(inbuf[i] * (float)(MAX_INT));
+      break;     
+    }
+    case SAMPLE_INT24: {
+      unsigned char* samples = (unsigned char*)outbuf;
+      for (i=0;i<count;i++) {
+        signed int tval = Saturate_int24(inbuf[i] * (float)(1<<23));
+        samples[i*3] = tval & 0xff;
+        samples[i*3+1] = (tval & 0xff00)>>8;
+        samples[i*3+2] = (tval & 0xff0000)>>16;
+      }
+      break;
+    }
+    case SAMPLE_FLOAT: {
+      SFLOAT* samples = (SFLOAT*)outbuf;      
+      for (i=0;i<count;i++) {
+        samples[i]=inbuf[i];
+      }
+      break;     
+    }
+    default: { 
+    }
+  }
+}
+
+void ConvertAudio::convertFromFloat_SSE(float* inbuf,void* outbuf, char sample_type, int count) {
+  int i;
+  switch (sample_type) {
+    case SAMPLE_INT8: {
+      unsigned char* samples = (unsigned char*)outbuf;
+      for (i=0;i<count;i++) 
+        samples[i]=(unsigned char)Saturate_int8(inbuf[i] * 128.0f)+128;
+      break;
+      }
+    case SAMPLE_INT16: {
+      signed short* samples = (signed short*)outbuf;
+      for (i=0;i<count;i++) {
+        float val = inbuf[i] * (float)(MAX_INT);
+        int tval = _mm_cvtt_ss2si(_mm_load_ss(&val));
+        tval >>= 16;
+        samples[i] = tval;
+      }
+
+      break;
+      }
+
+    case SAMPLE_INT32: {
+      signed int* samples = (signed int*)outbuf;
+      for (i=0;i<count;i++) {
+        float val = inbuf[i] * (float)(MAX_INT);
+        samples[i]= _mm_cvtt_ss2si(_mm_load_ss(&val));
+      }
       break;     
     }
     case SAMPLE_INT24: {

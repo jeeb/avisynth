@@ -604,6 +604,7 @@ private:
   void convertToFloat_3DN(char* inbuf, float* outbuf, char sample_type, int count);
   void convertFromFloat(float* inbuf, void* outbuf, char sample_type, int count);
   void convertFromFloat_3DN(float* inbuf, void* outbuf, char sample_type, int count);
+  void convertFromFloat_SSE(float* inbuf, void* outbuf, char sample_type, int count);
 
   __inline int Saturate_int8(float n);
   __inline short Saturate_int16(float n);
