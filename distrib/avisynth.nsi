@@ -5,7 +5,7 @@
 
 !DEFINE VERSION 2.5.2
 
-!DEFINE DATE 170703
+!DEFINE DATE 060803
 
 
 
@@ -57,6 +57,7 @@ ClearErrors
   SetOutPath $SYSDIR
   File "..\release\AviSynth.dll"
 	File "bin\devil.dll"
+	File "bin\avisynth_c.dll"
 
 IfFileExists "$SYSDIR\msvcp60.dll" msvc60_exists
   File "bin\msvcp60.dll"
@@ -219,6 +220,7 @@ dontremoveplug:
 
   DeleteRegKey HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\AviSynth"
   Delete "$SYSDIR\AviSynth.dll"
+  Delete "$SYSDIR\avisynth_c.dll"
   DeleteRegKey HKLM "Software\Classes\avs"
   DeleteRegKey HKLM "Software\AviSynth"
   DeleteRegKey HKCR ".avs"
