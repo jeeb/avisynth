@@ -69,13 +69,14 @@ class RGBAdjust : public GenericVideoFilter
  **/
 {
 public:
-  RGBAdjust(PClip _child, double r, double g, double b, double a, IScriptEnvironment* env);
+  RGBAdjust(PClip _child, double _r, double _g, double _b, double _a, bool _analyze, IScriptEnvironment* env);
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
   static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env);
 
 private:
   BYTE mapR[256], mapG[256], mapB[256], mapA[256];
-
+  double r, g, b, a;
+  bool analyze;
 };
 
 
@@ -108,7 +109,7 @@ using namespace SoftWire;
 class Limiter : public GenericVideoFilter, public  CodeGenerator
 {
 public:
-	Limiter(PClip _child, int _min_luma, int _max_luma, int _min_chroma, int _max_chroma, IScriptEnvironment* env);
+	Limiter(PClip _child, int _min_luma, int _max_luma, int _min_chroma, int _max_chroma, const char* _show, IScriptEnvironment* env);
 	PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
   static AVSValue __cdecl Create(AVSValue args, void* user_data, IScriptEnvironment* env);
   DynamicAssembledCode create_emulator(int row_size, int height, IScriptEnvironment* env);
@@ -116,10 +117,11 @@ public:
 private:
   bool luma_emulator;
   bool chroma_emulator;
-	int max_luma;
+  int max_luma;
   int min_luma;
   int max_chroma;
   int min_chroma;
+  const char* show;
 
   DynamicAssembledCode assemblerY;
   DynamicAssembledCode assemblerUV;
