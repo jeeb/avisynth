@@ -434,7 +434,6 @@ out_i_aloopUV:
       mov         edi, dstp
       pxor        mm2, mm2
       movq        mm4, xFF000000
-      sub         esi,3                     ;Avoid bleeding to line at right side
       align 16
     yloop24:
       xor         ecx, ecx
@@ -454,6 +453,7 @@ out_i_aloopUV:
       align 16
     aloop24:
       sub         edx, 4                    ;cur--
+      sub         eax, 3
       movd        mm7, [ebx+eax]            ;mm7 = srcp[ofs+a] = 0|0|0|0|x|r|g|b
       punpcklbw   mm7, mm2                  ;mm7 = 0x|0r|0g|0b
       movq        mm6, mm7
@@ -466,7 +466,6 @@ out_i_aloopUV:
       pmaddwd     mm6, mm5                  ;mm6 =  x*co|r*co
       paddd       mm0, mm7
       paddd       mm1, mm6
-      sub         eax, 3
       jnz         aloop24
       pslld       mm0, 2
       pslld       mm1, 2                    ;compensate the fact that FPScale = 16384
@@ -497,13 +496,12 @@ out_i_aloopUV:
     int y = vi.height;
     int w = vi.width;
     int fir_filter_size = pattern_luma[0];
-    int* pattern_lumaP1 = pattern_luma+1 - fir_filter_size;
+    int* pattern_lumaP1 = &pattern_luma[1] - fir_filter_size;
 
     __asm {
       mov         esi, srcp
       mov         edi, dstp
       pxor        mm2, mm2
-      sub         esi,4                     ;Test hack to avoid bleeding to line at right side
       align 16
     yloop32:
       xor         ecx, ecx
@@ -522,6 +520,7 @@ out_i_aloopUV:
       align 16
     aloop32:
       sub         edx, 4                    ;cur--
+      dec         eax
       movd        mm7, [ebx+eax*4]          ;mm7 = srcp[ofs+a] = 0|0|0|0|a|r|g|b
       punpcklbw   mm7, mm2                  ;mm7 = 0a|0r|0g|0b
       movq        mm6, mm7
@@ -534,7 +533,6 @@ out_i_aloopUV:
       pmaddwd     mm6, mm5                  ;mm6 =  a*co|r*co
       paddd       mm0, mm7
       paddd       mm1, mm6
-      dec         eax
       jnz         aloop32
       pslld       mm0, 2
       pslld       mm1, 2                    ;compensate the fact that FPScale = 16384
