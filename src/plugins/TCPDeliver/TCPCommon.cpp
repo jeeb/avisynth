@@ -37,6 +37,7 @@
 #include "TCPCommon.h"
 #include "avisynth.h"
 
+
 #define TCPD_DO1(buf,i)  {s1 += buf[i]; s2 += s1;}
 #define TCPD_DO2(buf,i)  TCPD_DO1(buf,i); TCPD_DO1(buf,i+1);
 #define TCPD_DO4(buf,i)  TCPD_DO2(buf,i); TCPD_DO2(buf,i+2);
@@ -73,4 +74,18 @@ unsigned int adler32(unsigned int adler, const char* buf, unsigned int len)
 	return (s2 << 16) | s1;
 }
  
+/*
+BOOL APIENTRY DllMain(HANDLE hModule, ULONG ulReason, LPVOID lpReserved) {
+	switch(ulReason) {
+	case DLL_PROCESS_ATTACH:
+		hInstance=(HINSTANCE)hModule; 
+		_RPT0(0,"Process attach\n");
+		break;
 
+	case DLL_PROCESS_DETACH:
+		_RPT0(0,"Process detach\n");
+		break;
+	}
+    return TRUE;
+}
+*/

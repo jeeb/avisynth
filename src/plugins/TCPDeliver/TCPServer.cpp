@@ -37,18 +37,27 @@
 
 #include "TCPServer.h"
 
+HANDLE hThread;  
+HWND hDlg;  // Windowhandle
+
+#include "ServerGUICode.h"
 
 TCPServer::TCPServer(PClip _child, int port, IScriptEnvironment* env) : GenericVideoFilter(_child) {
-  LPDWORD ThreadId = 0;
+  //LPDWORD ThreadId = 0;
+//	DWORD id;
+//  hInstance=(HINSTANCE)hModule; 
   s = new TCPServerListener(port, child, env);
+//	if(!hThread) hThread=CreateThread(NULL, 10000, (unsigned long (__stdcall *)(void *))startWindow, 0, 0 , &id );
+//  startWindow();
 }
 
 TCPServer::~TCPServer() {
   DWORD dwExitCode = 0;
-	if(ServerThread)  {
+  s->KillThread();
+/*	if(ServerThread)  {
     TerminateThread(ServerThread, dwExitCode);
 		ServerThread=NULL; 
-  }
+  }*/
 }
 
 
@@ -137,6 +146,7 @@ void TCPServerListener::Listen() {
 
     if (FD_ISSET(m_socket, &test_set)) {
       AcceptSocket = accept( m_socket, NULL, NULL );
+      _RPT0(0,"TCPServer: Client Connected.\n");
     }
 
     if (AcceptSocket != SOCKET_ERROR ) {
@@ -150,8 +160,11 @@ void TCPServerListener::Listen() {
       if (slot >= 0 ) {
         s_list[slot] = AcceptSocket;
       } else {
-        _RPT0(1,"All slots full.");
-        // FIXME!
+        _RPT0(0,"TCPServer: All slots full.\n");
+        s.allocateBuffer(1);
+        s.data[0] = REQUEST_NOMORESOCKETS;
+        send(AcceptSocket, (const char*)s.data, s.dataSize, 0);
+        closesocket(AcceptSocket);
       }
     }
 
@@ -167,17 +180,19 @@ void TCPServerListener::Listen() {
       if(s_list[i] != NULL) {
         if (FD_ISSET(s_list[i], &test_set)) {
 
-          int bytesRecv = recv(s_list[i], recvbuf, 1025, 0 );
+          TCPRecievePacket* t = new TCPRecievePacket(s_list[i]);
           // FIXME: Possibly test if all bytes has been received.
-
-          _RPT1(0, "TCPServer: Bytes Recv: %ld\n", bytesRecv );
-
-          if (!( bytesRecv <= 0 || bytesRecv == WSAECONNRESET )) {
+          
+          _RPT1(0, "TCPServer: Bytes Recv: %ld\n", t->dataSize );
+          
+          if (!t->isDisconnected) {
             s.dataSize = 0;
-            Receive(recvbuf, bytesRecv, &s);
+            Receive((const char*)t->data, t->dataSize, &s);
+
             if (s.dataSize>0) {
               unsigned int BytesSent = 0;
               int r = 1;
+              send(s_list[i], (const char*)&s.dataSize, 4, 0);
               while (r > 0) {
                 r = send(s_list[i], (const char*)(&s.data[BytesSent]), s.dataSize-BytesSent, 0);
                 BytesSent += r;                
@@ -189,7 +204,7 @@ void TCPServerListener::Listen() {
               }
               s.freeBuffer();
             } // end if datasize > 0
-          } else { // WSAECONNRESET
+          } else { // isDiconnected
             _RPT0(0,  "TCPServer: Connection Closed.\n");
             closesocket(s_list[i]);
             s_list[i] = NULL;
@@ -217,7 +232,7 @@ void TCPServerListener::Receive(const char* recvbuf, int bytes, ServerReply* s) 
       s->data[0] = REQUEST_PONG;
       break;
 
-    case CLIENT_VIDEOINFO:
+    case CLIENT_SEND_VIDEOINFO:
       SendVideoInfo(s);
       break;
 
@@ -236,6 +251,46 @@ void TCPServerListener::SendVideoInfo(ServerReply* s) {
 }
 
 void TCPServerListener::KillThread() {
+  shutdown = true;
 }
 
+
+TCPRecievePacket::TCPRecievePacket(SOCKET _s) : s(_s) {
+  isDisconnected = false;
+  int recieved = 0;
+
+  while (recieved < 4) {
+    int bytesRecv = recv(s, (char*)&dataSize+recieved, 4-recieved, 0 );
+    if (bytesRecv == WSAECONNRESET) {
+      _RPT0(1, "TCPServer: Could not retrieve packet size!");
+      isDisconnected = true;
+      return;
+    }
+    recieved += bytesRecv;
+  }
+
+  if (dataSize <= 0) {
+    _RPT0(1, "TCPServer: Packet size less than 0!");
+    isDisconnected = true;
+    dataSize = 0;
+    return;
+  }
+
+  data = (BYTE*)malloc(dataSize);
+  recieved = 0;
+  while (recieved < dataSize) {
+    int bytesRecv = recv(s, (char*)&data[recieved], dataSize-recieved, 0 );
+    if (bytesRecv == WSAECONNRESET) {
+      _RPT0(0, "TCPServer: Could not retrieve packet data!");
+      isDisconnected = true;
+      return;
+    }
+    recieved += bytesRecv;
+  }
+}
+
+TCPRecievePacket::~TCPRecievePacket() {
+  if (dataSize >0)
+    free(data);
+}
 

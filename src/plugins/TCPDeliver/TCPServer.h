@@ -37,11 +37,11 @@
 #ifndef TCP_Server_h
 #define TCP_Server_h
 
-#include "stdafx.h"
 
+#include "TCPCommon.h"
 #include "winsock2.h"
 #include "avisynth.h"
-#include "TCPCommon.h"
+#include "resource.h"
 
 
 
@@ -97,6 +97,15 @@ private:
 };
 
 
-
+class TCPRecievePacket {
+public:
+  TCPRecievePacket(SOCKET _s);
+  TCPRecievePacket::~TCPRecievePacket();
+  int dataSize;
+  BYTE* data;
+  bool isDisconnected;
+private:
+  SOCKET s;  
+};
 
 #endif

@@ -116,7 +116,19 @@ SOURCE=.\TCPServer.cpp
 # PROP Default_Filter "h;hpp;hxx;hm;inl"
 # Begin Source File
 
+SOURCE=.\alignplanar.h
+# End Source File
+# Begin Source File
+
 SOURCE=.\avisynth.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\ServerGUICode.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\StdAfx.h
 # End Source File
 # Begin Source File
 

@@ -35,32 +35,95 @@
 // TCPDeliver (c) 2004 by Klaus Post
 
 #include "TCPClient.h"
-
-//static IScriptEnvironment* pass_client_env;
-//static int pass_server_port;
-//static const char pass_server_name;
+#include "alignplanar.h"
 
 
-//static void StartClientThread() {
-//  TCPClientThread* s = new TCPClientThread(pass_server_name, pass_server_port, pass_client_env);
-
-//}
 
 
 TCPClient::TCPClient(const char* _hostname, int _port, IScriptEnvironment* env) : hostname(_hostname), port(_port) {
   LPDWORD ThreadId = 0;
   client = new TCPClientThread(hostname, port, env);
 
-  if(!ClientThread) ClientThread = CreateThread(NULL, 0, (unsigned long (__stdcall *)(void *))client->StartClient(0), 0, 0 , ThreadId );
+//  if(!ClientThread) ClientThread = CreateThread(NULL, 0, (unsigned long (__stdcall *)(void *))StartClient, 0, 0 , ThreadId );
 
 }
 
 const VideoInfo& TCPClient::GetVideoInfo() {
+  memset(&vi, 0, sizeof(vi));
+  client->SendRequest(CLIENT_SEND_VIDEOINFO, 0, 0);
+  client->GetReply();
+  if (client->last_reply_type == SERVER_VIDEOINFO) {
+    if (client->last_reply_bytes != sizeof(VideoInfo)) {
+      _RPT0(1,"TCPClient: Internal error - VideoInfo was not right size!");
+    }
+    memcpy(&vi, client->last_reply, sizeof(VideoInfo));
+      
+  } else {
+    _RPT0(1,"TCPClient: Did not recieve expected packet (SERVER_VIDEOINFO)");
+  }
   return vi;
 }
 
 PVideoFrame __stdcall TCPClient::GetFrame(int n, IScriptEnvironment* env) { 
-  return NULL; 
+
+  return env->NewVideoFrame(vi);  // TESTING!!!
+
+  int al_b = sizeof(ClientRequestFrame);
+  ClientRequestFrame f;
+  memset(&f, 0 , sizeof(ClientRequestFrame));
+  f.n = n;
+  client->SendRequest(CLIENT_REQUEST_FRAME, &f, sizeof(ClientRequestFrame));
+  client->GetReply();
+
+  PVideoFrame frame;
+  int incoming_pitch;
+
+  if (client->last_reply_type == SERVER_FRAME_INFO) {
+    ServerFrameInfo* fi = (ServerFrameInfo *)client->last_reply;
+    frame = env->NewVideoFrame(vi);  
+
+    if((unsigned int)frame->GetRowSize() != fi->row_size)
+      env->ThrowError("TCPClient: Internal Error - rowsize alignment was not correct.");
+    if((unsigned int)frame->GetHeight() != fi->height)
+      env->ThrowError("TCPClient: Internal Error - height was not correct.");
+    if(fi->framenumber != (unsigned int)n)
+      env->ThrowError("TCPClient: Internal Error - framenumber was not correct.");
+
+    incoming_pitch = fi->pitch;
+    // Todo: Insert compression class.
+
+    switch (fi->compression) {
+    case ServerFrameInfo::COMPRESSION_NONE:
+      break;
+    default:
+      env->ThrowError("TCPClient: Unknown compression.");
+    }
+  } else {
+    env->ThrowError("TCPClient: Did not recieve expected packet (SERVER_FRAME_INFO)");
+  }
+  client->SendRequest(CLIENT_SEND_FRAME, 0, 0);
+  client->GetReply();
+
+  if (client->last_reply_type == SERVER_SENDING_FRAME) {
+    env->MakeWritable(&frame);
+    BYTE* dstp = frame->GetWritePtr();
+    BYTE* srcp = (unsigned char*)client->last_reply;
+
+    env->BitBlt(dstp, frame->GetPitch(), srcp, incoming_pitch, frame->GetRowSize(), frame->GetHeight());
+    if (vi.IsYV12()) {
+      int uv_pitch = incoming_pitch / 2;
+      srcp += frame->GetHeight()*incoming_pitch;
+      env->BitBlt(frame->GetWritePtr(PLANAR_U), frame->GetPitch(PLANAR_U), 
+        srcp, uv_pitch, frame->GetRowSize(PLANAR_U), frame->GetHeight(PLANAR_U));
+
+      srcp += frame->GetHeight(PLANAR_U)*uv_pitch;
+      env->BitBlt(frame->GetWritePtr(PLANAR_V), frame->GetPitch(PLANAR_V), 
+        srcp, uv_pitch, frame->GetRowSize(PLANAR_V), frame->GetHeight(PLANAR_V));
+    }
+  } else {
+    env->ThrowError("TCPClient: Did not recieve expected packet (SERVER_SENDING_FRAME)");
+  }
+  return frame;
 }
 
 void __stdcall TCPClient::GetAudio(void* buf, __int64 start, __int64 count, IScriptEnvironment* env) {
@@ -74,26 +137,34 @@ bool __stdcall TCPClient::GetParity(int n) {
 
 TCPClient::~TCPClient() {
   DWORD dwExitCode = 0;
-	if(ClientThread)  {
+  client->disconnect = true;
+/*	if(ClientThread)  {
     TerminateThread(ClientThread, dwExitCode);
 		ClientThread=NULL; 
-  }
+  }*/
 }
 
 
 AVSValue __cdecl Create_TCPClient(AVSValue args, void* user_data, IScriptEnvironment* env) {
-  return new TCPClient(args[0].AsString(), args[1].AsInt(22050), env);
+  return new AlignPlanar(new TCPClient(args[0].AsString(), args[1].AsInt(22050), env));
 }
 
 
 /*****************  CLIENT CODE   *******************/
 
+UINT StartClient(LPVOID p) {
+  TCPClientThread* t = (TCPClientThread*)p;
+  t->StartRequestLoop();
+  return 0;
+}
+
+
 TCPClientThread::TCPClientThread(const char* hostname, int port, IScriptEnvironment* env) {
   disconnect = false;
-
-  evtClientReadyForRequest = CreateEvent (NULL,	FALSE, FALSE, NULL);
-  evtClientReplyReady = CreateEvent (NULL,	FALSE, FALSE, NULL);
-  evtClientProcesRequest = CreateEvent (NULL,	FALSE, FALSE, NULL);
+//  sync_data = new TCPClientSynchronization();
+  evtClientReadyForRequest = ::CreateEvent (NULL,	FALSE, FALSE, NULL);
+  evtClientReplyReady = ::CreateEvent (NULL,	FALSE, FALSE, NULL);
+  evtClientProcesRequest = ::CreateEvent (NULL,	FALSE, FALSE, NULL);
 
   int iResult = WSAStartup( MAKEWORD(2,2), &wsaData );
   if ( iResult != NO_ERROR )
@@ -117,11 +188,41 @@ TCPClientThread::TCPClientThread(const char* hostname, int port, IScriptEnvironm
     WSACleanup();
     return;
   }
+
+  AfxBeginThread(StartClient, this , THREAD_PRIORITY_NORMAL,0,0,NULL);
+
+}
+
+// To be called from external interface
+void TCPClientThread::SendRequest(char requestId, void* data, unsigned int bytes) {
+    client_request_bytes = bytes+1;  // bytecount + id + data
+    client_request = new char[client_request_bytes+4];
+    memcpy(client_request, &client_request_bytes, 4);
+    client_request[4] = requestId;
+    memcpy(&client_request[5], data, bytes);
+    HRESULT wait_result;
+    client_request_bytes += 4;  // Compensate for byte count
+    while (wait_result == WAIT_TIMEOUT) {
+      wait_result = WaitForSingleObject(evtClientReadyForRequest, 1000);
+    }
+    SetEvent(evtClientProcesRequest);
+}
+
+// The data is only valid until SendRequest is called.
+void TCPClientThread::GetReply() {
+    HRESULT wait_result;
+    while (wait_result == WAIT_TIMEOUT) {
+      wait_result = WaitForSingleObject(evtClientReplyReady, 1000);
+    }
+    delete[] client_request;  // The request data can now be freed.
 }
 
 
+// Main thread for sending and recieving data
 
-UINT TCPClientThread::StartClient(LPVOID) {
+void TCPClientThread::StartRequestLoop() {
+//  ClientRequest r;
+  last_reply = new char[1];
   while (!disconnect) {
 
     HRESULT wait_result;
@@ -130,8 +231,62 @@ UINT TCPClientThread::StartClient(LPVOID) {
     while (wait_result == WAIT_TIMEOUT) {
       wait_result = WaitForSingleObject(evtClientProcesRequest, 1000);
     }
-    
-  }
-  return 0;
+
+    delete[] last_reply;
+    last_reply_bytes = 0;
+    last_reply_type = 0;
+
+    int bytesSent = send(m_socket, client_request, client_request_bytes, 0);
+    if (bytesSent == WSAECONNRESET) {
+      _RPT0(1, "TCPClient: Client was disconnected!");
+      disconnect = true;
+    } else {
+      // Wait for reply.
+      RecievePacket();
+    }
+    if (!disconnect) {
+      SetEvent(evtClientReplyReady);  // FIXME: Could give deadlocks, if client is waiting for reply.
+    }
+  } //end while
+  CloseHandle(evtClientProcesRequest);
+  CloseHandle(evtClientReplyReady);
+  CloseHandle(evtClientReadyForRequest);
 }
 
+void TCPClientThread::RecievePacket() {
+  int dataSize;
+  unsigned int recieved = 0;
+  while (recieved < 4) {
+    int bytesRecv = recv(m_socket, (char*)&dataSize+recieved, 4-recieved, 0 );
+    if (bytesRecv == WSAECONNRESET) {
+      _RPT0(0, "TCPClient: Could not retrieve packet size!");
+      disconnect = true;
+      return;
+    }
+    recieved += bytesRecv;
+  }
+/*
+  int bytesRecv = recv(m_socket, (char*)&dataSize, 4, 0 );
+  if (bytesRecv != 4 || bytesRecv == WSAECONNRESET) {
+    _RPT0(1, "TCPClient: Could not retrieve packet size!");
+    disconnect = true;
+    return;
+  }*/
+
+  char* data = new char[dataSize];
+  recieved = 0;
+
+  while (recieved < dataSize) {
+    int bytesRecv = recv(m_socket, (char*)&data[recieved], dataSize-recieved, 0 );
+    if (bytesRecv == WSAECONNRESET) {
+      _RPT0(0, "TCPClient: Could not retrieve packet data!");
+      disconnect = true;
+      return;
+    }
+    recieved += bytesRecv;
+  }
+  last_reply = new char[dataSize - 1];
+  last_reply_bytes = dataSize - 1;
+  last_reply_type = data[0];
+  memcpy(last_reply, data, last_reply_bytes);
+}

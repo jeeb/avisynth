@@ -40,6 +40,9 @@
 #define TCPDELIVER_MAJOR 1
 #define TCPDELIVER_MINOR 1
 
+#include "stdafx.h"
+
+//#include <Windows.h>
 
 enum {
   REQUEST_PING = 1,
@@ -48,26 +51,32 @@ enum {
   REQUEST_DISCONNECT = 4,
   REQUEST_NOMORESOCKETS = 5,
 
-  CLIENT_SENDFRAME = 20,
-  CLIENT_SENDAUDIO = 21,
-  CLIENT_VIDEOINFO = 22,
-  CLIENT_PREPAREFRAME = 23,
+  CLIENT_REQUEST_FRAME = 10,    // This will not send the actual data - only information about the data to be sent
+  CLIENT_REQUEST_AUDIO = 11,    // ditto
+  CLIENT_SEND_FRAME = 20,       // This will send the actual data.
+  CLIENT_SEND_AUDIO = 21,       
+  CLIENT_SEND_VIDEOINFO = 22,
 
   SERVER_VIDEOINFO = 30,
   SERVER_SENDING_FRAME = 31,
   SERVER_SENDING_AUDIO = 32,
-  SERVER_DATA_BLOCK = 33,
+  SERVER_FRAME_INFO = 33,
+  SERVER_AUDIO_INFO = 34,
 
-  SERVER_NEXT_PLANE = 34
+  SERVER_SPLIT_BLOCK = 35,        // Only server can split blocks into pieces
+  SERVER_END_SPLIT_BLOCK = 36,
+  SERVER_NEXT_PLANE = 37
 };
 
 struct ServerFrameInfo {
   unsigned int framenumber;
   unsigned int row_size;
   unsigned int height;
+  unsigned int pitch;
   unsigned int compressed_bytes;
   unsigned int compression;
   unsigned int crc;
+
   unsigned int reserved1;
   unsigned int reserved2;
   unsigned int reserved3;
@@ -86,6 +95,7 @@ struct ServerFrameInfo {
 struct ServerAudioInfo {
   unsigned int comporessed_bytes;
   unsigned int compression;
+
   unsigned int reserved1;
   unsigned int reserved2;
   unsigned int reserved3;
@@ -105,6 +115,7 @@ struct ClientRequestAudio {
   __int64 start;
   __int64 count;  
   unsigned int bytes;
+
   unsigned int reserved1;
   unsigned int reserved2;
   unsigned int reserved3;
@@ -117,6 +128,7 @@ struct ClientRequestAudio {
 
 struct ClientRequestFrame {
   unsigned int n;
+
   unsigned int reserved1;
   unsigned int reserved2;
   unsigned int reserved3;
@@ -127,6 +139,19 @@ struct ClientRequestFrame {
   unsigned int reserved8;
 };
 
+struct ServerSplitBlock {
+  unsigned int blocksize;   // Can be assumed to be multiple of 2
+  unsigned int n_blocks;    // Total number of blocks
+
+  unsigned int reserved1;
+  unsigned int reserved2;
+  unsigned int reserved3;
+  unsigned int reserved4;
+  unsigned int reserved5;
+  unsigned int reserved6;
+  unsigned int reserved7;
+  unsigned int reserved8;
+};
 
 /***********************************************************************
 // adler32 checksum
@@ -141,5 +166,7 @@ struct ClientRequestFrame {
 
 unsigned __int32 adler32(unsigned int adler, const unsigned char* buf, unsigned int len);
  
+static HINSTANCE hInstance;
+
 
 #endif

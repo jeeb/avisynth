@@ -39,14 +39,32 @@
 #define TCP_Client_h
 
 
-#include <afxmt.h>
-#include "winsock2.h"
-#include "avisynth.h"
+//#include <afxmt.h>
 #include "TCPCommon.h"
+#include <winsock2.h>
+#include "avisynth.h"
 
 AVSValue __cdecl Create_TCPClient(AVSValue args, void* user_data, IScriptEnvironment* env);
 
+/*
+struct ClientRequest {
+  BYTE* data;
+  unsigned int dataSize;
 
+  void allocateBuffer(int bytes) {
+    data = new BYTE[bytes];
+    dataSize = bytes;
+  }
+
+  void freeBuffer() {
+    if (dataSize)
+      delete[] data;
+    dataSize = 0;
+  }
+
+};
+*/
+/*
 class TCPClientSynchronization {
 public:
   BYTE* requestdata;
@@ -55,22 +73,35 @@ public:
   VideoInfo vi;
   bool parity;  
 };
-
+*/
 
 class TCPClientThread {
 public:
   TCPClientThread(const char* pass_server_name, int pass_port, IScriptEnvironment* env);
-  UINT StartClient(LPVOID);
+  void StartRequestLoop();
+  // Interfaces for unthreaded communication.
+  void SendRequest(char requestId, void* data, unsigned int bytes);
+  void TCPClientThread::GetReply();
+
   HANDLE evtClientReadyForRequest;   // Client is ready to recieve a new request.
   HANDLE evtClientReplyReady;        // Client has finished processing the last request.
   HANDLE evtClientProcesRequest;     // Client should process the passed request
-  TCPClientSynchronization data;     // 
+  char* last_reply;
+  unsigned int last_reply_bytes;
+  char last_reply_type;
+  bool disconnect;
+
+
 private:
+  void TCPClientThread::RecievePacket();
+  char* client_request;
+  unsigned int client_request_bytes;
   WSADATA wsaData;
   SOCKET m_socket;
-  sockaddr_in service;
-  bool disconnect;
+  sockaddr_in service;  
 };
+
+UINT StartClient(LPVOID p);
 
 class TCPClient  : public IClip {
 public:
@@ -82,7 +113,6 @@ public:
   bool __stdcall GetParity(int n);
   void __stdcall SetCacheHints(int cachehints,int frame_range) { } ; 
 
-  TCPClientSynchronization* data;
   TCPClientThread* client;
 private:
   const char* hostname;
