@@ -1412,6 +1412,7 @@ class DirectShowSource : public IClip {
   IScriptEnvironment* const env;
 
   void CheckHresult(HRESULT hr, const char* msg, const char* msg2 = "");
+  HRESULT LoadGraphFile(IGraphBuilder *pGraph, const WCHAR* wszName);
 
 public:
 
@@ -1428,7 +1429,13 @@ public:
     CheckHresult(gb->AddFilter(static_cast<IBaseFilter*>(&get_sample), L"GetSample"), "couldn't add Video GetSample filter");
     CheckHresult(gb->AddFilter(static_cast<IBaseFilter*>(&get_audio_sample), L"GetSample"), "couldn't add Audio GetSample filter");
 
-    CheckHresult(gb->RenderFile(filenameW, NULL), "couldn't open file ", filename);
+    bool load_grf = false;  // Detect ".GRF" extension and load as graph if so.
+
+    if (load_grf) {
+      CheckHresult(LoadGraphFile(gb, filenameW),"Couldn't open GRF file.",filename);
+    } else {
+      CheckHresult(gb->RenderFile(filenameW, NULL), "couldn't open file ", filename);
+    }
 
     if (!get_sample.IsConnected() && !get_audio_sample.IsConnected()) {
       env->ThrowError("DirectShowSource: the filter graph manager won't talk to me");
@@ -1624,6 +1631,39 @@ void DirectShowSource::CheckHresult(HRESULT hr, const char* msg, const char* msg
   if (!AMGetErrorText(hr, buf, MAX_ERROR_TEXT_LEN))
     wsprintf(buf, "error code 0x%x", hr);
   env->ThrowError("DirectShowSource: %s%s:\n%s", msg, msg2, buf);
+}
+
+HRESULT DirectShowSource::LoadGraphFile(IGraphBuilder *pGraph, const WCHAR* wszName)
+{
+    IStorage *pStorage = 0;
+    if (S_OK != StgIsStorageFile(wszName))
+    {
+        return E_FAIL;
+    }
+    HRESULT hr = StgOpenStorage(wszName, 0, 
+        STGM_TRANSACTED | STGM_READ | STGM_SHARE_DENY_WRITE, 
+        0, 0, &pStorage);
+    if (FAILED(hr))
+    {
+        return hr;
+    }
+    IPersistStream *pPersistStream = 0;
+    hr = pGraph->QueryInterface(IID_IPersistStream,
+             reinterpret_cast<void**>(&pPersistStream));
+    if (SUCCEEDED(hr))
+    {
+        IStream *pStream = 0;
+        hr = pStorage->OpenStream(L"ActiveMovieGraph", 0, 
+            STGM_READ | STGM_SHARE_EXCLUSIVE, 0, &pStream);
+        if(SUCCEEDED(hr))
+        {
+            hr = pPersistStream->Load(pStream);
+            pStream->Release();
+        }
+        pPersistStream->Release();
+    }
+    pStorage->Release();
+    return hr;
 }
 
 
