@@ -63,7 +63,9 @@ class AssumeParity : public GenericVideoFilter
  **/
 {
 public:
-  AssumeParity(PClip _child, bool _parity) : GenericVideoFilter(_child), parity(_parity) {}
+  AssumeParity(PClip _child, bool _parity) : GenericVideoFilter(_child), parity(_parity) { 
+    if (parity) {vi.Set(VideoInfo::IT_TFF);} else {vi.Set(VideoInfo::IT_BFF);}
+  }
   inline bool __stdcall GetParity(int n)
     { return parity ^ (vi.IsFieldBased() && (n & 1)); }
 

@@ -81,7 +81,7 @@ SeparateFields::SeparateFields(PClip _child, IScriptEnvironment* env)
   vi.height >>= 1;
   vi.fps_numerator *= 2;
   vi.num_frames *= 2;
-  vi.SetFieldBased(true);
+  vi.SetFieldBased(false);
 }
 
 
@@ -199,7 +199,7 @@ DoubleWeaveFields::DoubleWeaveFields(PClip _child)
   : GenericVideoFilter(_child) 
 {
   vi.height *= 2;
-  vi.SetFieldBased(false);
+  vi.SetFieldBased(true);
 }
 
 
@@ -223,6 +223,7 @@ void DoubleWeaveFields::CopyField(const PVideoFrame& dst, const PVideoFrame& src
 {
   int add_pitch = dst->GetPitch() * (parity ^ vi.IsYUV());
   int add_pitchUV = dst->GetPitch(PLANAR_U) * (parity ^ vi.IsYUV());
+
   BitBlt( dst->GetWritePtr() + add_pitch, dst->GetPitch()*2,
           src->GetReadPtr(), src->GetPitch(), src->GetRowSize(), src->GetHeight() );
   BitBlt( dst->GetWritePtr(PLANAR_U) + add_pitchUV, dst->GetPitch(PLANAR_U)*2,
