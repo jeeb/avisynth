@@ -244,7 +244,7 @@ AVSValue ExpMod::Evaluate(IScriptEnvironment* env)
   if (x.IsInt() && y.IsInt()) {
     if (y.AsInt() == 0)
       env->ThrowError("Evaluate: division by zero");
-    return x.AsInt() % y.AsInt();
+    return abs(x.AsInt() % y.AsInt());
   }
   else {
     env->ThrowError("Evaluate: operands of `%' must be integers");

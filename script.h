@@ -114,6 +114,8 @@ AVSValue Log(AVSValue args, void* user_data, IScriptEnvironment* env);
 AVSValue Exp(AVSValue args, void* user_data, IScriptEnvironment* env);
 AVSValue Pow(AVSValue args, void* user_data, IScriptEnvironment* env);
 AVSValue Sqrt(AVSValue args, void* user_data, IScriptEnvironment* env);
+AVSValue Fabs(AVSValue args, void* user_data, IScriptEnvironment* env);
+AVSValue Abs(AVSValue args, void* user_data, IScriptEnvironment* env);
 
 
 static inline const VideoInfo& VI(const AVSValue& arg);

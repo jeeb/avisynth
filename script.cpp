@@ -40,6 +40,8 @@ AVSFunction Script_functions[] = {
   { "exp", "f", Exp },
   { "pow", "ff", Pow },
   { "sqrt", "f", Sqrt },
+  { "fabs", "f", Fabs },
+  { "abs", "i", Abs },
 
 
   { "width", "c", Width },
@@ -242,6 +244,8 @@ AVSValue Log(AVSValue args, void* user_data, IScriptEnvironment* env) { return l
 AVSValue Exp(AVSValue args, void* user_data, IScriptEnvironment* env) { return exp(args[0].AsFloat()); }
 AVSValue Pow(AVSValue args, void* user_data, IScriptEnvironment* env) {	return pow(args[0].AsFloat(),args[1].AsFloat()); }
 AVSValue Sqrt(AVSValue args, void* user_data, IScriptEnvironment* env) { return sqrt(args[0].AsFloat()); }
+AVSValue Fabs(AVSValue args, void* user_data, IScriptEnvironment* env) { return fabs(args[0].AsFloat()); }
+AVSValue Abs(AVSValue args, void* user_data, IScriptEnvironment* env) { return abs(args[0].AsInt()); }
 
 static inline const VideoInfo& VI(const AVSValue& arg) { return arg.AsClip()->GetVideoInfo(); }
 
