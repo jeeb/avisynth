@@ -153,8 +153,8 @@ PVideoFrame ImageWriter::GetFrame(int n, IScriptEnvironment* env)
   else { /* Use DevIL library */
 
     // Check colorspace
-    if (!vi.IsRGB())
-      env->ThrowError("ImageWriter: DevIL requires RGB input");
+    if (!vi.IsRGB24())
+      env->ThrowError("ImageWriter: DevIL requires RGB24 input");
 
     // Set up DevIL    
     ILuint myImage;
@@ -162,14 +162,14 @@ PVideoFrame ImageWriter::GetFrame(int n, IScriptEnvironment* env)
     ilBindImage(myImage);
     
     // Set image parameters
-    ilTexImage(vi.width, vi.height, 1, vi.BitsPerPixel() / 8, vi.IsRGB24 ? IL_BGR : IL_BGRA, IL_UNSIGNED_BYTE, NULL);
+    ilTexImage(vi.width, vi.height, 1, vi.BitsPerPixel() / 8, IL_BGR, IL_UNSIGNED_BYTE, NULL);
 
     // Program actual image raster
     const BYTE * srcPtr = frame->GetReadPtr();
     int pitch = frame->GetPitch();
     for (int y=0; y<vi.height; ++y)
     {
-      ilSetPixels(0, y, 0, vi.width, 1, 1, vi.IsRGB24? IL_BGR : IL_BGRA, IL_UNSIGNED_BYTE, (void*) srcPtr);
+      ilSetPixels(0, y, 0, vi.width, 1, 1, IL_BGR, IL_UNSIGNED_BYTE, (void*) srcPtr);
       srcPtr += pitch;
     }
 

@@ -303,14 +303,6 @@ SOURCE=.\combine.h
 # End Source File
 # Begin Source File
 
-SOURCE=.\convert.cpp
-# End Source File
-# Begin Source File
-
-SOURCE=.\convert.h
-# End Source File
-# Begin Source File
-
 SOURCE=.\edit.cpp
 # End Source File
 # Begin Source File
@@ -525,6 +517,14 @@ SOURCE=.\ImageSeq.h
 # Begin Group "Conversion"
 
 # PROP Default_Filter ""
+# Begin Source File
+
+SOURCE=.\convert.cpp
+# End Source File
+# Begin Source File
+
+SOURCE=.\convert.h
+# End Source File
 # Begin Source File
 
 SOURCE=.\convert_a.asm
