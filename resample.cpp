@@ -133,14 +133,14 @@ PVideoFrame __stdcall FilteredResizeH::GetFrame(int n, IScriptEnvironment* env)
         // Ya, Yb: Y values in srcp[ofs0]
         // Ym, Yn: Y values in srcp[ofs1]
         movd        mm2, [esi]          ;mm2 =  0| 0|Yb|Ya
+        add         esi, 4
         punpckldq   mm2, [edi]          ;mm2 = Yn|Ym|Yb|Ya
                                         ;[eax] = COn|COm|COb|COa
-        pmaddwd     mm2, [eax]          ;mm2 = Y1|Y0 (DWORDs)
-        paddd       mm1, mm2            ;accumulate
-        add         esi, 4
         add         edi, 4
+        pmaddwd     mm2, [eax]          ;mm2 = Y1|Y0 (DWORDs)
         add         eax, 8              ;cur_luma++
         dec         ecx
+        paddd       mm1, mm2            ;accumulate
         jnz         aloopY
 
         mov         esi, [ebx]          ;esi=&tempUV[ofs]
@@ -149,12 +149,16 @@ PVideoFrame __stdcall FilteredResizeH::GetFrame(int n, IScriptEnvironment* env)
       aloopUV:
         movq        mm2, [esi]          ;mm2 = 0|V|0|U
                                         ;[ebx] = 0|COv|0|COu
-        pmaddwd     mm2, [ebx]          ;mm2 = V|U (DWORDs)
-        paddd       mm3, mm2            ;accumulate
         add         esi, 8
+        pmaddwd     mm2, [ebx]          ;mm2 = V|U (DWORDs)
         add         ebx, 8              ;cur_chroma++
         dec         ecx
+        paddd       mm3, mm2            ;accumulate
         jnz         aloopUV
+
+        movq        mm4, mm3            ; clip chroma at 0
+        psrad       mm3, 31
+        pandn       mm3, mm4
 
         paddd       mm1, mm6            ;Y1|Y1|Y0|Y0
         paddd       mm3, mm6            ; V| V| U| U
@@ -363,8 +367,8 @@ PVideoFrame __stdcall FilteredResizeV::GetFrame(int n, IScriptEnvironment* env)
     mov         esi, yOfs
     mov         eax, [edx]              ;eax = *cur
     mov         esi, [esi+eax*4]
-    add         esi, srcp               ;esi = srcp + yOfs[*cur]
     add         edx, 4                  ;cur++
+    add         esi, srcp               ;esi = srcp + yOfs[*cur]
     xor         ecx, ecx                ;ecx = x = 0
   xloop:
     pxor        mm7, mm7
@@ -374,8 +378,8 @@ PVideoFrame __stdcall FilteredResizeV::GetFrame(int n, IScriptEnvironment* env)
   bloop:
     movd        mm2, [eax]              ;mm2 = *srcp2 = 0|0|0|0|d|c|b|a
     movd        mm3, [edx+ebx*4]        ;mm3 = cur[b] = 0|co
-    punpckldq   mm3, mm3                ;mm3 = co|co
     punpcklbw   mm2, mm0                ;mm2 = 0d|0c|0b|0a
+    punpckldq   mm3, mm3                ;mm3 = co|co
     movq        mm4, mm2
     punpcklwd   mm2, mm0                ;mm2 = 00|0b|00|0a
     punpckhwd   mm4, mm0                ;mm4 = 00|0d|00|0c
@@ -383,8 +387,8 @@ PVideoFrame __stdcall FilteredResizeV::GetFrame(int n, IScriptEnvironment* env)
     pmaddwd     mm4, mm3                ;mm4 =  d*co|c*co
     paddd       mm1, mm2
     paddd       mm7, mm4                ;accumulate
-    add         eax, src_pitch          ;srcp2 += src_pitch
     inc         ebx
+    add         eax, src_pitch          ;srcp2 += src_pitch
     cmp         ebx, edi
     jnz         bloop
     mov         eax, dstp
