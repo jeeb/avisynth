@@ -1,0 +1,6 @@
+$Log: CHANGELOG.txt,v $
+Revision 1.1  2003/11/27 09:32:49  sh0dan
+- Restructured source into dirs.
+
+Revision 1.1  2003/11/19 20:35:30  wilbertd
+log file

@@ -5,7 +5,7 @@
 
 !DEFINE VERSION 2.5.4
 
-!DEFINE DATE 201103
+!DEFINE DATE 261103
 
 
 SetCompressor bzip2
@@ -54,7 +54,7 @@ SectionIn 1 2
 
 ClearErrors
   SetOutPath $SYSDIR
-  File "..\release\AviSynth.dll"
+  File "..\src\release\AviSynth.dll"
 	File "bin\devil.dll"
 	File "bin\avisynth_c.dll"
 
