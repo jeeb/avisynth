@@ -308,8 +308,10 @@ public:
       f2->param_types = strdup(params);     // needs to copy here since the plugin will be unloaded
       alt_name =f2->name;
       if (prescanning) {
+        f2->prev = plugins->plugin_functions;
         plugins->plugin_functions = f2;
       } else {
+        f2->prev = local_functions;
         local_functions = f2;
       }
     }

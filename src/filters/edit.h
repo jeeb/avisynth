@@ -156,7 +156,7 @@ public:
   static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env);
 
 private:
-  const PClip child2;
+  PClip child2;
   const int overlap;
   int video_fade_start, video_fade_end;
   int audio_fade_start, audio_fade_end;

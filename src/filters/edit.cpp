@@ -249,10 +249,10 @@ Splice::Splice(PClip _child1, PClip _child2, bool realign_sound, IScriptEnvironm
     vi = child->GetVideoInfo();
 
     if (vi.AudioChannels() != vi2.AudioChannels())
-      env->ThrowError("Splice: sound formats don't match");
+      env->ThrowError("Splice: The number of audio channels doesn't match");
 
     if (vi.SamplesPerSecond() != vi2.SamplesPerSecond())
-      env->ThrowError("Splice: The audio of the two clips have different samplerates! Use ResampleAudio()");
+      env->ThrowError("Splice: The audio of the two clips have different samplerates! Use SSRC()/ResampleAudio()");
   }
 
   video_switchover_point = vi.num_frames;
@@ -352,7 +352,7 @@ AVSValue __cdecl Dissolve::Create(AVSValue args, void*, IScriptEnvironment* env)
 Dissolve::Dissolve(PClip _child1, PClip _child2, int _overlap, IScriptEnvironment* env)
  : GenericVideoFilter(ConvertAudio::Create(_child1,SAMPLE_INT16,SAMPLE_INT16)), child2(ConvertAudio::Create(_child2,SAMPLE_INT16, SAMPLE_INT16)), overlap(_overlap), audbuffer(0), audbufsize(0)
 {
-  const VideoInfo& vi2 = child2->GetVideoInfo();
+  VideoInfo vi2 = child2->GetVideoInfo();
 
   if (vi.HasVideo() ^ vi2.HasVideo())
     env->ThrowError("Dissolve: one clip has video and the other doesn't (not allowed)");
@@ -366,8 +366,18 @@ Dissolve::Dissolve(PClip _child1, PClip _child2, int _overlap, IScriptEnvironmen
       env->ThrowError("Dissolve: video formats don't match");
   }
   if (vi.HasAudio()) {
-    if (vi.AudioChannels() != vi2.AudioChannels() || vi.SampleType() != vi2.SampleType())
-      env->ThrowError("Dissolve: sound formats don't match");
+    child2 = ConvertAudio::Create(child2, vi.SampleType(), SAMPLE_FLOAT);  // Clip 1 is check to be same type as clip 1, if not, convert to float samples.
+    vi2 = child2->GetVideoInfo();
+
+    child = ConvertAudio::Create(child, vi2.SampleType(), vi2.SampleType());  // Clip 1 is now be same type as clip 2.
+    vi = child->GetVideoInfo();
+
+    if (vi.AudioChannels() != vi2.AudioChannels())
+      env->ThrowError("Dissolve: The number of audio channels doesn't match");
+
+    if (vi.SamplesPerSecond() != vi2.SamplesPerSecond())
+      env->ThrowError("Dissolve: The audio of the two clips have different samplerates! Use SSRC()/ResampleAudio()");
+
   }
 
   if (overlap<0)
