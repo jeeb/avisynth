@@ -1,0 +1,79 @@
+<html>
+<body>
+<pre>
+<h1>Build Log</h1>
+<h3>
+--------------------Configuration: avisynth - Win32 Release--------------------
+</h3>
+<h3>Command Lines</h3>
+Creating temporary file "C:\DOCUME~1\RICHAR~1\LOCALS~1\Temp\RSP3E.tmp" with contents
+[
+/nologo /G6 /MD /W3 /GX /Og /Oi /Os /Oy /Ob1 /Gy /D "NDEBUG" /D "INC_OLE2" /D "STRICT" /D "WIN32" /D "_WIN32" /D "_MT" /D "_DLL" /D "_MBCS" /D "_USRDLL" /D "AVISYNTH_EXPORTS" /Fp"Release/avisynth.pch" /YX /Fo"Release/" /Fd"Release/" /FD /Gs /GF /c 
+"C:\Documents and Settings\Richard Berg\My Documents\Visual Studio Projects\Avisynth\layer.cpp"
+]
+Creating command line "cl.exe @C:\DOCUME~1\RICHAR~1\LOCALS~1\Temp\RSP3E.tmp" 
+Creating temporary file "C:\DOCUME~1\RICHAR~1\LOCALS~1\Temp\RSP3F.tmp" with contents
+[
+quartz.lib ddraw.lib amstrmid.lib vfw32.lib kernel32.lib advapi32.lib version.lib user32.lib gdi32.lib ole32.lib uuid.lib /nologo /dll /incremental:no /pdb:"Release/avisynth.pdb" /machine:I386 /def:".\avisynth.def" /out:"Release/avisynth.dll" /implib:"Release/avisynth.lib" 
+".\Release\AVIIndex.obj"
+".\Release\AVIReadHandler.obj"
+".\Release\cpuaccel.obj"
+".\Release\FastReadStream.obj"
+".\Release\File64.obj"
+".\Release\list.obj"
+".\Release\avisynth.obj"
+".\Release\main.obj"
+".\Release\plugins.obj"
+".\Release\source.obj"
+".\Release\decimate.obj"
+".\Release\decomb.obj"
+".\Release\fielddeinterlace.obj"
+".\Release\Telecide.obj"
+".\Release\audio.obj"
+".\Release\combine.obj"
+".\Release\convert.obj"
+".\Release\edit.obj"
+".\Release\field.obj"
+".\Release\focus.obj"
+".\Release\fps.obj"
+".\Release\histogram.obj"
+".\Release\levels.obj"
+".\Release\misc.obj"
+".\Release\resample.obj"
+".\Release\resample_functions.obj"
+".\Release\resize.obj"
+".\Release\text-overlay.obj"
+".\Release\transform.obj"
+".\Release\convolution.obj"
+".\Release\layer.obj"
+".\Release\merge.obj"
+".\Release\cache.obj"
+".\Release\expression.obj"
+".\Release\script.obj"
+".\Release\scriptparser.obj"
+".\Release\tokenizer.obj"
+".\Release\avisynth.res"
+".\Release\convert_a.obj"
+]
+Creating command line "link.exe @C:\DOCUME~1\RICHAR~1\LOCALS~1\Temp\RSP3F.tmp"
+<h3>Output Window</h3>
+Compiling...
+layer.cpp
+Linking...
+   Creating library Release/avisynth.lib and object Release/avisynth.exp
+Creating temporary file "C:\DOCUME~1\RICHAR~1\LOCALS~1\Temp\RSP43.bat" with contents
+[
+@echo off
+copy Release\avisynth.dll c:\winnt\system32
+]
+Creating command line "C:\DOCUME~1\RICHAR~1\LOCALS~1\Temp\RSP43.bat"
+
+        1 file(s) copied.
+
+
+
+<h3>Results</h3>
+avisynth.dll - 0 error(s), 0 warning(s)
+</pre>
+</body>
+</html>
