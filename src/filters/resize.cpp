@@ -278,7 +278,7 @@ PVideoFrame HorizontalReduceBy2::GetFrame(int n, IScriptEnvironment* env)
       dstp += dst_gap+1;
       srcp += src_gap+2;
     }
-  } else if (vi.IsYUY2()) {
+  } else if (vi.IsYUY2()  && (!(vi.width&3))) {
     if (env->GetCPUFlags() & CPUF_INTEGER_SSE) {
 			isse_process_yuy2(src,dstp,dst_pitch);
 			return dst;
@@ -364,7 +364,6 @@ PVideoFrame HorizontalReduceBy2::GetFrame(int n, IScriptEnvironment* env)
 #define R_SRC esi
 #define R_DST edi
 #define R_XOFFSET edx
-#define R_YLEFT ebx
 #define R_TEMP1 eax
 #define R_TEMP2 ecx
 
@@ -375,6 +374,8 @@ void HorizontalReduceBy2::isse_process_yuy2(PVideoFrame src,BYTE* dstp, int dst_
   int row_size = ((src->GetRowSize())>>1)-4;
 	
   const int height = vi.height;
+  int yleft = height;
+
   __declspec(align(8)) static const __int64 add_2=0x0002000200020002;
   __declspec(align(8)) static const __int64 zero_mask=0x000000000000ffff;
   __declspec(align(8)) static const __int64 three_mask=0x0000ffff00000000;
@@ -398,7 +399,6 @@ void HorizontalReduceBy2::isse_process_yuy2(PVideoFrame src,BYTE* dstp, int dst_
 				prefetchnta [srcp+64]
         mov R_SRC,srcp
         mov R_DST,dstp
-        mov R_YLEFT,[height]
 loop_nextline:
 				mov R_TEMP2,[row_size]
 loopback:
@@ -487,7 +487,10 @@ loopback:
         mov R_XOFFSET,0
         add R_DST,[dst_pitch]
         mov R_SRC,srcp
-        dec R_YLEFT
+
+        mov R_TEMP1, yleft
+        dec R_TEMP1
+        mov yleft, R_TEMP1
         jnz loop_nextline        
         emms
     }
