@@ -310,7 +310,7 @@ PVideoFrame __stdcall ConditionalReader::GetFrame(int n, IScriptEnvironment* env
 
 AVSValue __cdecl ConditionalReader::Create(AVSValue args, void* user_data, IScriptEnvironment* env)
 {
-  return new ConditionalReader(args[0].AsClip(), args[1].AsString(""), args[2].AsString("Conditional") , args[3].AsBool(true), env);
+  return new ConditionalReader(args[0].AsClip(), args[1].AsString(""), args[2].AsString("Conditional") , args[3].AsBool(false), env);
 }
 
 
