@@ -80,8 +80,8 @@ FilteredResizeH::FilteredResizeH( PClip _child, double subrange_left, double sub
   {
     if ((target_width&1) && (vi.IsYUY2()))
       env->ThrowError("Resize: YUY2 width must be even");
-    if ((target_width&1) && (vi.IsYV12()))
-      env->ThrowError("Resize: YV12 width must be mutiple of 2.");
+    if ((target_width&3) && (vi.IsYV12()))
+      env->ThrowError("Resize: YV12 width must be mutiple of 4.");
     tempY = (BYTE*) _aligned_malloc(original_width*2+4+32, 64);   // aligned for Athlon cache line
     tempUV = (BYTE*) _aligned_malloc(original_width*4+8+32, 64);  // aligned for Athlon cache line
     if (vi.IsYV12()) {
@@ -96,7 +96,10 @@ FilteredResizeH::FilteredResizeH( PClip _child, double subrange_left, double sub
   else
     pattern_luma = GetResamplingPatternRGB(vi.width, subrange_left, subrange_width, target_width, func);
   vi.width = target_width;
-  if (USE_DYNAMIC_COMPILER) {
+
+  use_dynamic_code = USE_DYNAMIC_COMPILER;
+
+  if (use_dynamic_code) {
     if (vi.IsPlanar()) {
       assemblerY = GenerateResizer(PLANAR_Y, env);
       assemblerUV = GenerateResizer(PLANAR_U, env);
@@ -316,7 +319,9 @@ DynamicAssembledCode FilteredResizeH::GenerateResizer(int gen_plane, IScriptEnvi
     // Process any remaining pixels
 
     int remainy = vi_dst_width%6;
-    if (remainy<=1) remainy=0;
+    if (remainy==1) 
+      remainy=0;
+
     if (remainy) {
       remainy++;
       remainy/=2;  // This will be either 1 or 2.
@@ -408,7 +413,7 @@ PVideoFrame __stdcall FilteredResizeH::GetFrame(int n, IScriptEnvironment* env)
   int dst_pitch = dst->GetPitch();
   if (vi.IsYV12()) {
       int plane = 0;
-      if (USE_DYNAMIC_COMPILER) {  // Use dynamic compilation?
+      if (use_dynamic_code) {  // Use dynamic compilation?
         gen_src_pitch = src_pitch;
         gen_dst_pitch = dst_pitch;
         gen_srcp = (BYTE*)srcp;
