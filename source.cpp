@@ -41,6 +41,7 @@ class AVISource : public IClip {
   BITMAPINFOHEADER* pbiSrc;
   BITMAPINFOHEADER biDst;
   bool ex;
+  bool dropped_frame;
   PVideoFrame last_frame;
   int last_frame_no;
 
@@ -90,25 +91,22 @@ LRESULT AVISource::DecompressBegin(LPBITMAPINFOHEADER lpbiSrc, LPBITMAPINFOHEADE
 
 LRESULT AVISource::DecompressFrame(int n, bool preroll, BYTE* buf) {
   _RPT2(0,"AVISource: Decompressing frame %d%s\n", n, preroll ? " (preroll)" : "");
-//  bool noframe = (n != AVIStreamFindSample(pvideo, n, FIND_NEXT | FIND_ANY));
   if (!hic) {
     pvideo->Read(n, 1, buf, vi.BMPSize(), NULL, NULL);
     return ICERR_OK;
   }
-//  if (!noframe) {
-reread:
-    long bytes_read = srcbuffer_size;
-    LRESULT err = pvideo->Read(n, 1, srcbuffer, srcbuffer_size, &bytes_read, NULL);
-    if (err == AVIERR_BUFFERTOOSMALL || (err == 0 && !srcbuffer)) {
-      delete[] srcbuffer;
-      pvideo->Read(n, 1, 0, srcbuffer_size, &bytes_read, NULL);
-      srcbuffer = new BYTE[srcbuffer_size = bytes_read];
-      goto reread;
-    }
-//  }
-  int flags = preroll * ICDECOMPRESS_PREROLL /*+ noframe * ICDECOMPRESS_NULLFRAME*/;
-  if (!pvideo->IsKeyFrame(n))
-    flags |= ICDECOMPRESS_NOTKEYFRAME;
+  long bytes_read = srcbuffer_size;
+  LRESULT err = pvideo->Read(n, 1, srcbuffer, srcbuffer_size, &bytes_read, NULL);
+  while (err == AVIERR_BUFFERTOOSMALL || (err == 0 && !srcbuffer)) {
+    delete[] srcbuffer;
+    pvideo->Read(n, 1, 0, srcbuffer_size, &bytes_read, NULL);
+    srcbuffer = new BYTE[srcbuffer_size = bytes_read];
+    err = pvideo->Read(n, 1, srcbuffer, srcbuffer_size, &bytes_read, NULL);
+  }
+  dropped_frame = !bytes_read;
+  int flags = preroll ? ICDECOMPRESS_PREROLL : 0;
+  flags |= dropped_frame ? ICDECOMPRESS_NULLFRAME : 0;
+  flags |= !pvideo->IsKeyFrame(n) ? ICDECOMPRESS_NOTKEYFRAME : 0;
   pbiSrc->biSizeImage = bytes_read;
   return !ex ? ICDecompress(hic, flags, pbiSrc, srcbuffer, &biDst, buf)
     : ICDecompressEx(hic, flags, pbiSrc, srcbuffer, 0, 0, vi.width, vi.height, &biDst, buf, 0, 0, vi.width, vi.height);
@@ -127,29 +125,29 @@ void AVISource::CheckHresult(HRESULT hr, const char* msg, IScriptEnvironment* en
 // taken from VirtualDub
 bool AVISource::AttemptCodecNegotiation(DWORD fccHandler, BITMAPINFOHEADER* bmih) {
 
-  	// Try the handler specified in the file first.  In some cases, it'll
-	// be wrong or missing.
+    // Try the handler specified in the file first.  In some cases, it'll
+  // be wrong or missing.
 
-	if (fccHandler)
-		hic = ICOpen(ICTYPE_VIDEO, fccHandler, ICMODE_DECOMPRESS);
+  if (fccHandler)
+    hic = ICOpen(ICTYPE_VIDEO, fccHandler, ICMODE_DECOMPRESS);
 
-	if (!hic || ICERR_OK!=ICDecompressQuery(hic, bmih, NULL)) {
-		if (hic)
-			ICClose(hic);
+  if (!hic || ICERR_OK!=ICDecompressQuery(hic, bmih, NULL)) {
+    if (hic)
+      ICClose(hic);
 
-		// Pick a handler based on the biCompression field instead.
+    // Pick a handler based on the biCompression field instead.
 
-		hic = ICOpen(ICTYPE_VIDEO, bmih->biCompression, ICMODE_DECOMPRESS);
+    hic = ICOpen(ICTYPE_VIDEO, bmih->biCompression, ICMODE_DECOMPRESS);
 
-		if (!hic || ICERR_OK!=ICDecompressQuery(hic, bmih, NULL)) {
-			if (hic)
-				ICClose(hic);
+    if (!hic || ICERR_OK!=ICDecompressQuery(hic, bmih, NULL)) {
+      if (hic)
+        ICClose(hic);
 
-			// This never seems to work...
+      // This never seems to work...
 
-			hic = ICLocate(ICTYPE_VIDEO, NULL, bmih, NULL, ICMODE_DECOMPRESS);
-		}
-	}
+      hic = ICLocate(ICTYPE_VIDEO, NULL, bmih, NULL, ICMODE_DECOMPRESS);
+    }
+  }
 
     return !!hic;
 }
@@ -180,10 +178,10 @@ void AVISource::LocateVideoCodec(IScriptEnvironment* env) {
   // otherwise, find someone who will decompress it
   } else {
     switch(pbiSrc->biCompression) {
-    case '34PM':		// Microsoft MPEG-4 V3
-    case '3VID':		// "DivX Low-Motion" (4.10.0.3917)
-    case '4VID':		// "DivX Fast-Motion" (4.10.0.3920)
-    case '14PA':		// "AngelPotion Definitive" (4.0.00.3688)
+    case '34PM':    // Microsoft MPEG-4 V3
+    case '3VID':    // "DivX Low-Motion" (4.10.0.3917)
+    case '4VID':    // "DivX Fast-Motion" (4.10.0.3920)
+    case '14PA':    // "AngelPotion Definitive" (4.0.00.3688)
       if (AttemptCodecNegotiation(asi.fccHandler, pbiSrc)) return;
       pbiSrc->biCompression = '34PM';
       if (AttemptCodecNegotiation(asi.fccHandler, pbiSrc)) return;
@@ -249,18 +247,18 @@ AVISource::AVISource(const char filename[], bool fAudio, int mode, IScriptEnviro
       biDst.biCompression = '2YUY';
       biDst.biBitCount = 16;
       biDst.biPlanes = 1;
-	  biDst.biSizeImage = vi.width*vi.height*2;
+      biDst.biSizeImage = ((vi.width*2+3)&~3) * vi.height;
       if (ICERR_OK == ICDecompressQuery(hic, pbiSrc, &biDst)) {
         vi.pixel_type = VideoInfo::YUY2;
       } else {
         biDst.biCompression = BI_RGB;
         biDst.biBitCount = 32;
-		biDst.biSizeImage = vi.width*vi.height*4;
+        biDst.biSizeImage = vi.width*vi.height*4;
         if (ICERR_OK == ICDecompressQuery(hic, pbiSrc, &biDst)) {
           vi.pixel_type = VideoInfo::BGR32;
         } else {
           biDst.biBitCount = 24;
-		  biDst.biSizeImage = vi.width*vi.height*3;
+          biDst.biSizeImage = ((vi.width*3+3)&~3) * vi.height;
           if (ICERR_OK == ICDecompressQuery(hic, pbiSrc, &biDst)) {
             vi.pixel_type = VideoInfo::BGR24;
           } else {
@@ -310,20 +308,11 @@ const VideoInfo& AVISource::GetVideoInfo() { return vi; }
 
 PVideoFrame AVISource::GetFrame(int n, IScriptEnvironment* env) {
 
-// Fix of the "dropped frame" bug
-droppedframe:   // SOLNEW
   n = min(max(n, 0), vi.num_frames-1);
 
   if (n != last_frame_no) {
     // find the last keyframe
     int keyframe = pvideo->NearestKeyFrame(n);
-// SOLNEW
-    if (keyframe < 0)
-    {
-      n--;
-      goto droppedframe;
-    }
-// SOLNEW
     // maybe we don't need to go back that far
     if (last_frame_no < n && last_frame_no >= keyframe)
       keyframe = last_frame_no+1;
@@ -331,11 +320,12 @@ droppedframe:   // SOLNEW
     for (int i = keyframe; i <= n; ++i) {
       PVideoFrame frame = env->NewVideoFrame(vi, 4);
       LRESULT error = DecompressFrame(i, i != n, frame->GetWritePtr());
-      if (error != ICERR_OK) {
+      // we don't want dropped frames to throw an error
+      if (error != ICERR_OK && !dropped_frame) {
         env->ThrowError("AVISource: failed to decompress frame %d (error %d)", i, error);
       }
       last_frame_no = i;
-      last_frame = frame;
+      if (!dropped_frame) last_frame = frame;
     }
   }
 
@@ -520,10 +510,10 @@ public:
     vi.num_frames = 107892;   // 1 hour
     vi.pixel_type = VideoInfo::BGR32;
     vi.field_based = false;
-		vi.sixteen_bit = true;
-		vi.stereo = true;
-		vi.audio_samples_per_second = 48000;
-		vi.num_audio_samples=(60*60)*vi.audio_samples_per_second;
+    vi.sixteen_bit = true;
+    vi.stereo = true;
+    vi.audio_samples_per_second = 48000;
+    vi.num_audio_samples=(60*60)*vi.audio_samples_per_second;
 
     frame = env->NewVideoFrame(vi);
     unsigned* p = (unsigned*)frame->GetWritePtr();
@@ -575,21 +565,21 @@ public:
   const VideoInfo& __stdcall GetVideoInfo() { return vi; }
 
   void __stdcall GetAudio(void* buf, int start, int count, IScriptEnvironment*) {
-		double Hz=440;
-		double add_per_sample=Hz/(double)vi.audio_samples_per_second;
-		double second_offset=(double)start*add_per_sample;
-		int d_mod=vi.audio_samples_per_second*2;
-		short* samples = (short*)buf;
-		for (int i=0;i<count;i++) {
-				samples[i*2]=(short)(32767.0*sin(3.1415926535897932384626433832795*2.0*second_offset));
-				if (((start+i)%d_mod)>vi.audio_samples_per_second) {
-					samples[i*2+1]=samples[i*2];
-				} else {
-					samples[i*2+1]=0;
-				} 
-				second_offset+=add_per_sample;
-		}
-	}
+    double Hz=440;
+    double add_per_sample=Hz/(double)vi.audio_samples_per_second;
+    double second_offset=(double)start*add_per_sample;
+    int d_mod=vi.audio_samples_per_second*2;
+    short* samples = (short*)buf;
+    for (int i=0;i<count;i++) {
+        samples[i*2]=(short)(32767.0*sin(3.1415926535897932384626433832795*2.0*second_offset));
+        if (((start+i)%d_mod)>vi.audio_samples_per_second) {
+          samples[i*2+1]=samples[i*2];
+        } else {
+          samples[i*2+1]=0;
+        } 
+        second_offset+=add_per_sample;
+    }
+  }
 
   static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env) {
     return new ColorBars(args[0].AsInt(), args[1].AsInt(), env);
@@ -635,9 +625,9 @@ public:
   }
   HRESULT __stdcall QueryInterface(REFIID iid, void** ppv) {
     if (iid == IID_IUnknown)
-	  *ppv = static_cast<IUnknown*>(this);
+    *ppv = static_cast<IUnknown*>(this);
     else if (iid == IID_IEnumPins)
-	  *ppv = static_cast<IEnumPins*>(this);
+    *ppv = static_cast<IEnumPins*>(this);
     else {
       *ppv = 0;
       return E_NOINTERFACE;
@@ -770,17 +760,17 @@ public:
   ULONG __stdcall Release() { InterlockedDecrement(&refcnt); _RPT1(0,"GetSample::Release() -> %d\n", refcnt); return refcnt; }
   HRESULT __stdcall QueryInterface(REFIID iid, void** ppv) {
     if (iid == IID_IUnknown)
-	  *ppv = static_cast<IUnknown*>(static_cast<IBaseFilter*>(this));
+    *ppv = static_cast<IUnknown*>(static_cast<IBaseFilter*>(this));
     else if (iid == IID_IPersist)
-	  *ppv = static_cast<IPersist*>(this);
+    *ppv = static_cast<IPersist*>(this);
     else if (iid == IID_IMediaFilter)
-	  *ppv = static_cast<IMediaFilter*>(this);
+    *ppv = static_cast<IMediaFilter*>(this);
     else if (iid == IID_IBaseFilter)
-	  *ppv = static_cast<IBaseFilter*>(this);
+    *ppv = static_cast<IBaseFilter*>(this);
     else if (iid == IID_IPin)
-	  *ppv = static_cast<IPin*>(this);
+    *ppv = static_cast<IPin*>(this);
     else if (iid == IID_IMemInputPin)
-	  *ppv = static_cast<IMemInputPin*>(this);
+    *ppv = static_cast<IMemInputPin*>(this);
     else if (iid == IID_IMediaSeeking || iid == IID_IMediaPosition) {
       // We don't implement IMediaSeeking or IMediaPosition, but
       // expose the upstream filter's implementation.  This violates
@@ -1117,7 +1107,7 @@ static void SetMicrosoftDVtoFullResolution(IGraphBuilder* gb) {
     bf->Release();
   }
   ef->Release();
-	
+  
 }
 
 
@@ -1276,7 +1266,7 @@ public:
 
 AVSValue __cdecl Create_SegmentedSource(AVSValue args, void* use_directshow, IScriptEnvironment* env) {
   int avg_time_per_frame = (use_directshow && args[1].Defined()) ? int(10000000 / args[1].AsFloat() + 0.5) : 0;
-	bool bAudio = !use_directshow && args[1].AsBool(true);
+  bool bAudio = !use_directshow && args[1].AsBool(true);
   args = args[0];
   PClip result = 0;
 
@@ -1305,8 +1295,8 @@ AVSValue __cdecl Create_SegmentedSource(AVSValue args, void* use_directshow, ISc
 
 AVSValue __cdecl Create_Version(AVSValue args, void*, IScriptEnvironment* env) {
   return Create_MessageClip("Avisynth v2.0.4, 07 Aug. 2002\n"
-			    "\xA9 2000 Ben Rudiak-Gould, et al.\n"
-			    "http://www.avisynth.org",
+          "\xA9 2000 Ben Rudiak-Gould, et al.\n"
+          "http://www.avisynth.org",
   -1, -1, VideoInfo::BGR24, false, 0x22AA22, 0, 0x402200, env);
 }
  
