@@ -62,6 +62,8 @@ PVideoFrame __stdcall Cache::GetFrame(int n, IScriptEnvironment* env)
 { 
   n = min(vi.num_frames-1, max(0,n));  // Inserted to avoid requests beyond framerange.
 
+  __asm {emms} 
+
   if (use_hints) {
 
     if (h_policy == CACHE_NOTHING) {
