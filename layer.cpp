@@ -21,8 +21,6 @@
 
 
 
-
-
 /********************************************************************
 ***** Declare index of new filters for Avisynth's filter engine *****
 ********************************************************************/
@@ -52,8 +50,8 @@ Mask::Mask(PClip _child1, PClip _child2, IScriptEnvironment* env)
   const VideoInfo& vi2 = child2->GetVideoInfo();
   if (vi1.width != vi2.width || vi1.height != vi2.height)
     env->ThrowError("Mask error: image dimensions don't match");
-  if (!vi1.IsRGB32() | !vi2.IsRGB())
-    env->ThrowError("Mask error: sources must be RGB and dest must be RGB32");
+  if (!vi1.IsRGB32() | !vi2.IsRGB32())
+    env->ThrowError("Mask error: sources must be RGB32");
 
   vi = vi1;
   mask_frames = vi2.num_frames;
@@ -68,17 +66,21 @@ PVideoFrame __stdcall Mask::GetFrame(int n, IScriptEnvironment* env)
   env->MakeWritable(&src1);
 
 	BYTE* src1p = src1->GetWritePtr();
-  const BYTE* src2p = src2->GetReadPtr();
+	const BYTE* src2p = src2->GetReadPtr();
 
-  const int src1_pitch = src1->GetPitch();
-  const int src2_pitch = src2->GetPitch();
-  
-  const int src2_pixels =  vi.BitsPerPixel()>>3;
+	const int pitch = src1->GetPitch();
 
-	const int cyb = int(0.114*65536+0.5);
-	const int cyg = int(0.587*65536+0.5);
-	const int cyr = int(0.299*65536+0.5);
+	const int cyb = int(0.114*32768+0.5);
+	const int cyg = int(0.587*32768+0.5);
+	const int cyr = int(0.299*32768+0.5);
 
+	const int myx = vi.width;
+	const int myy = vi.height;
+
+	__int64 rgb2lum = ((__int64)cyb << 32) | (cyg << 16) | cyr;
+	__int64 alpha_mask=0x00ffffff00ffffff;
+	__int64 color_mask=0xff000000ff000000;
+/*
   for (int y=0; y<vi.height; ++y) 
   {
 	  for (int x=0; x<vi.width; ++x)
@@ -88,9 +90,60 @@ PVideoFrame __stdcall Mask::GetFrame(int n, IScriptEnvironment* env)
     src1p += src1_pitch;
     src2p += src2_pitch;
   }
-  return src1;
-}
+*/
+ 		__asm {
+		mov			edi, src1p
+		mov			esi, src2p
+		mov			ebx, myy
+		movq		mm1,rgb2lum
+		movq		mm2, alpha_mask
+		movq		mm3, color_mask
+		xor         ecx, ecx
+		movd		mm7, [esi + ecx*4]
+		pxor		mm0,mm0
+		mov         edx, myx
 
+		mask_mmxloop:
+
+						movq		mm6, mm7
+						movq		mm5,mm1					;get rgb2lum
+
+						movd		mm4, [edi + ecx*4]	;get color RGBA
+
+						punpcklbw		mm6,mm0		;mm6= 00aa|00bb|00gg|00rr [src2]
+						pmaddwd			mm6,mm5		;partial monochrome result
+
+						mov		eax, ecx		;remember this pointer for the queue... aka pipline overhead
+
+						punpckldq		mm5,mm6		;ready to add
+						
+						inc         ecx				;point to next - aka loop counter
+
+						paddd			mm6, mm5			;32 bit result
+						psrlq			mm6, 23				;8 bit result
+
+						movd		mm7, [esi + ecx*4] ; pipeline in next mask pixel RGB
+
+						pand			mm4, mm2			;strip out old alpha
+						pand			mm6, mm3			;clear any possible junk
+
+						cmp			ecx, edx
+
+						por				mm6, mm4			;merge new alpha and original color
+						movd        [edi + eax*4],mm6		;store'em where they belong (at ecx-1)
+
+				jnz         mask_mmxloop
+
+		add			edi, pitch
+		add			esi, pitch
+		mov       edx, myx
+		xor         ecx, ecx
+		dec		ebx
+		jnz		mask_mmxloop
+		emms
+		}
+ return src1;
+}
 
 AVSValue __cdecl Mask::Create(AVSValue args, void*, IScriptEnvironment* env) 
 {
@@ -117,17 +170,17 @@ Layer::Layer( PClip _child1, PClip _child2, const char _op[], int _lev, int _x, 
 	const VideoInfo& vi1 = child1->GetVideoInfo();
   const VideoInfo& vi2 = child2->GetVideoInfo();
     
-  if (vi1.pixel_type != vi2.pixel_type)
-    env->ThrowError("Layer: image formats don't match");
-  
+    if (vi1.pixel_type != vi2.pixel_type)
+      env->ThrowError("Layer: image formats don't match");
+
   vi = vi1;
 
-	if (vi.IsRGB32()) 
-    ofsY = vi.height-vi2.height-ofsY; //RGB is upside down
-	else 
-    ofsX = ofsX & 0xFFFFFFFE;         //YUV must be aligned on even pixels
-  
-  xdest=(ofsX < 0)? 0: ofsX;
+//	ofsY = vi.height-vi2.height-ofsY; //RGB is upside down
+
+	if (vi.IsRGB32()) ofsY = vi.height-vi2.height-ofsY; //RGB is upside down
+	else ofsX = ofsX & 0xFFFFFFFE; //YUV must be aligned on even pixels
+
+	xdest=(ofsX < 0)? 0: ofsX;
 	ydest=(ofsY < 0)? 0: ofsY;
 
 	xsrc=(ofsX < 0)? (0-ofsX): 0;
@@ -145,7 +198,6 @@ Layer::Layer( PClip _child1, PClip _child2, const char _op[], int _lev, int _x, 
 		map2[B] = levelB * B;	
 }
 
-
 PVideoFrame __stdcall Layer::GetFrame(int n, IScriptEnvironment* env) 
 {
   PVideoFrame src1 = child1->GetFrame(n, env);
@@ -156,39 +208,262 @@ PVideoFrame __stdcall Layer::GetFrame(int n, IScriptEnvironment* env)
 
 	env->MakeWritable(&src1);
 
-  BYTE* src1p = src1->GetWritePtr();
-  const BYTE* src2p = src2->GetReadPtr();
-  const int src1_pitch = src1->GetPitch();
-  const int src2_pitch = src2->GetPitch();
-  const int src2_row_size = src2->GetRowSize();
-  const int row_size = src1->GetRowSize();
-  const int mylevel = levelB;
+	const int src1_pitch = src1->GetPitch();
+	const int src2_pitch = src2->GetPitch();
+	const int src2_row_size = src2->GetRowSize();
+	const int row_size = src1->GetRowSize();
+	const int mylevel = levelB;
 	const int myy = ycount;
 
-	if(vi.IsYUV())
-  {
+		__int64 oxooffooffooffooff=0x00ff00ff00ff00ff;  // Luma mask
+		__int64 oxffooffooffooffoo=0xff00ff00ff00ff00;  // Chroma mask
+		__int64 oxoo80oo80oo80oo80=0x0080008000800080;  // Null Chroma
+
+	if(vi.IsYUV()){
+
 		BYTE* src1p = src1->GetWritePtr();
 		const BYTE* src2p = src2->GetReadPtr();
 		src1p += (src1_pitch * ydest) + (xdest * 2);
 		src2p += (src2_pitch * ysrc) + (xsrc * 2);
-		const int myx = xcount * 2;
+		const int myx = xcount >> 1;
 
+		  __asm {
+				movq mm3, oxffooffooffooffoo     ; Chroma mask
+				movq mm2, oxooffooffooffooff     ; Luma mask
+				movd		mm1, mylevel			;alpha
+				punpcklwd		mm1,mm1	  ;mm1= 0000|0000|00aa*|00aa*
+				punpckldq		mm1, mm1	;mm1= 00aa*|00aa*|00aa*|00aa*
+				pxor		mm0,mm0
+		}
 		if (!lstrcmpi(Op, "Add"))
+		{
+			if (chroma)
 			{
-			for (int y=0; y<myy; ++y) {
-				for (int x=0; x<myx; x+=2) {
-					src1p[x]=(map1[src1p[x]] + map2[src2p[x]]) >> 8;
-					if (chroma) src1p[x+1]=(map1[src1p[x+1]] + map2[src2p[x+1]]) >> 8;
-					else src1p[x+1]=(map1[src1p[x+1]] + map2[128]) >> 8;
+				__asm {
+				mov			edi, src1p
+				mov			esi, src2p
+				mov			ebx, myy
+				
+				addyuy32loop:
+						mov         edx, myx
+						xor         ecx, ecx
+
+						addyuy32xloop:
+							//---- fetch src1/dest
+									
+							movd		mm7, [edi + ecx*4] ;src1/dest;
+							movq		mm4,mm7					;temp mm4=mm7
+							pand		mm7,mm2					;mask for luma
+							pand		mm4,mm3					;mask for chroma
+							psrlw		mm4,8							;line up chroma
+							movd		mm6, [esi + ecx*4] ;src2
+							movq		mm5,mm6					;temp mm5=mm6
+							pand		mm6,mm2					;mask for luma
+							pand		mm5,mm3					;mask for chroma
+							psrlw		mm5,8							;line'em up
+
+							//----- begin the fun (luma) stuff
+							psubsw	mm6, mm7
+							pmullw	mm6, mm1 	  	;mm6=scaled difference*255
+							psrlw		mm6, 8		    ;scale result
+							paddb		mm6, mm7		  ;add src1
+							//----- end the fun stuff...
+
+							//----- begin the fun (chroma) stuff
+							psubsw	mm5, mm4
+							pmullw	mm5, mm1 	  	;mm5=scaled difference*255
+							psrlw		mm5, 8		    ;scale result
+							paddb		mm5, mm4		  ;add src1
+							//----- end the fun stuff...
+
+							psllw		mm5,8				;line up chroma
+							por			mm6,mm5		;and merge'em back	
+
+							movd        [edi + ecx*4],mm6
+
+							inc         ecx
+							cmp         ecx, edx
+						jnz         addyuy32xloop
+
+						add			edi, src1_pitch
+						add			esi, src2_pitch
+				dec		ebx
+				jnz		addyuy32loop
+				emms
 				}
-			  src1p += src1_pitch;
-			  src2p += src2_pitch;
+			} else {
+				__asm {
+				mov			edi, src1p
+				mov			esi, src2p
+				mov			ebx, myy
+						
+				addy032loop:
+						mov         edx, myx
+						xor         ecx, ecx
+
+						addy032xloop:
+							//---- fetch src1/dest
+									
+							movd		mm7, [edi + ecx*4] ;src1/dest;
+							movq		mm4,mm7					;temp mm4=mm7
+							pand		mm7,mm2					;mask for luma
+							pand		mm4,mm3					;mask for chroma
+							psrlw		mm4,8							;line up chroma
+							movd		mm6, [esi + ecx*4] ;src2
+							movq		mm5,mm6					;temp mm5=mm6
+							pand		mm6,mm2					;mask for luma
+							movq		mm5,oxoo80oo80oo80oo80	 					;get null chroma
+
+							//----- begin the fun (luma) stuff
+							psubsw	mm6, mm7
+							pmullw	mm6, mm1 	  	;mm6=scaled difference*255
+							psrlw		mm6, 8		    ;scale result
+							paddb		mm6, mm7		  ;add src1
+							//----- end the fun stuff...
+
+							//----- begin the fun (chroma) stuff
+							psubsw	mm5, mm4
+							pmullw	mm5, mm1 	  	;mm5=scaled difference*255
+							psrlw		mm5, 8		    ;scale result
+							paddb		mm5, mm4		  ;add src1
+							//----- end the fun stuff...
+
+							psllw		mm5,8				;line up chroma
+							por			mm6,mm5		;and merge'em back	
+
+							movd        [edi + ecx*4],mm6
+
+							inc         ecx
+							cmp         ecx, edx
+						jnz         addy032xloop
+
+						add			edi, src1_pitch
+						add			esi, src2_pitch
+				dec		ebx
+				jnz		addy032loop
+				emms
+				}
+			}
+		}
+		if (!lstrcmpi(Op, "Subtract"))
+		{
+			if (chroma)
+			{
+				__asm {
+				mov			edi, src1p
+				mov			esi, src2p
+				mov			ebx, myy
+				
+				subyuy32loop:
+						mov         edx, myx
+						xor         ecx, ecx
+
+						subyuy32xloop:
+							//---- fetch src1/dest
+									
+							movd		mm7, [edi + ecx*4] ;src1/dest;
+							movq		mm4,mm7					;temp mm4=mm7
+							pand		mm7,mm2					;mask for luma
+							pand		mm4,mm3					;mask for chroma
+							movd		mm6, [esi + ecx*4] ;src2
+							psrlw		mm4,8							;line up chroma
+							pcmpeqb	mm5, mm5					;mm5 will be sacrificed 
+							psubb		mm5, mm6					;mm5 = 255-mm6
+							movq		mm6,mm5					;temp mm6=mm5
+							pand		mm6,mm2					;mask for luma
+							pand		mm5,mm3					;mask for chroma
+							psrlw		mm5,8							;line'em up
+
+							//----- begin the fun (luma) stuff
+							psubsw	mm6, mm7
+							pmullw	mm6, mm1 	  	;mm6=scaled difference*255
+							psrlw		mm6, 8		    ;scale result
+							paddb		mm6, mm7		  ;add src1
+							//----- end the fun stuff...
+
+							//----- begin the fun (chroma) stuff
+							psubsw	mm5, mm4
+							pmullw	mm5, mm1 	  	;mm5=scaled difference*255
+							psrlw		mm5, 8		    ;scale result
+							paddb		mm5, mm4		  ;add src1
+							//----- end the fun stuff...
+
+							psllw		mm5,8				;line up chroma
+							por			mm6,mm5		;and merge'em back	
+
+							movd        [edi + ecx*4],mm6
+
+							inc         ecx
+							cmp         ecx, edx
+						jnz        subyuy32xloop
+
+						add			edi, src1_pitch
+						add			esi, src2_pitch
+				dec		ebx
+				jnz		subyuy32loop
+				emms
+				}
+			} else {
+				__asm {
+				mov			edi, src1p
+				mov			esi, src2p
+				mov			ebx, myy
+						
+				suby032loop:
+						mov         edx, myx
+						xor         ecx, ecx
+
+						suby032xloop:
+							//---- fetch src1/dest
+									
+							movd		mm7, [edi + ecx*4] ;src1/dest;
+							movq		mm4,mm7					;temp mm4=mm7
+							pand		mm7,mm2					;mask for luma
+							pand		mm4,mm3					;mask for chroma
+							movd		mm6, [esi + ecx*4] ;src2
+							psrlw		mm4,8							;line up chroma
+							pcmpeqb	mm5, mm5					;mm5 will be sacrificed 
+							psubb		mm5, mm6					;mm5 = 255-mm6
+							movq		mm6,mm5					;temp mm6=mm5
+							pand		mm6,mm2					;mask for luma
+							movq		mm5,mm0 					;get null chroma
+
+							//----- begin the fun (luma) stuff
+							pandn				mm6, mm1	;mm6 = mm6*
+							psubsw	mm6, mm7
+							pmullw	mm6, mm1 	  	;mm6=scaled difference*255
+							psrlw		mm6, 8		    ;scale result
+							paddb		mm6, mm7		  ;add src1
+							//----- end the fun stuff...
+
+							//----- begin the fun (chroma) stuff
+							psubsw	mm5, mm4
+							pmullw	mm5, mm1 	  	;mm5=scaled difference*255
+							psrlw		mm5, 8		    ;scale result
+							paddb		mm5, mm4		  ;add src1
+							//----- end the fun stuff...
+
+							psllw		mm5,8				;line up chroma
+							por			mm6,mm5		;and merge'em back	
+
+							movd        [edi + ecx*4],mm6
+
+							inc         ecx
+							cmp         ecx, edx
+						jnz         suby032xloop
+
+						add			edi, src1_pitch
+						add			esi, src2_pitch
+				dec		ebx
+				jnz		suby032loop
+				emms
+				}
 			}
 		}
 		if (!lstrcmpi(Op, "Window"))
 			{
 			for (int y=0; y<myy; ++y) {
-				for (int x=0; x<myx; x+=2) {
+				for (int x=0; x<myx; ++x) {
 					if (IsClose(src1p[x], src2p[x], T)) 
 					{
 					src1p[x]=(map1[src1p[x]] + map2[src2p[x]]) >> 8;
@@ -206,23 +481,10 @@ PVideoFrame __stdcall Layer::GetFrame(int n, IScriptEnvironment* env)
 			  src2p += src2_pitch;
 			}
 		}
-		if (!lstrcmpi(Op, "Subtract"))
-		{
-
-			for (int y=0; y<myy; ++y) {
-				for (int x=0; x<myx; x+=2) {
-					src1p[x]=(map1[src1p[x]] + map2[255-src2p[x]]) >> 8;
-					if (chroma) src1p[x+1]=(map1[src1p[x+1]] + map2[255-src2p[x+1]]) >> 8;
-					else src1p[x+1]=(map1[src1p[x+1]] + map2[128]) >> 8;
-				}
-			  src1p += src1_pitch;
-			  src2p += src2_pitch;
-			}
-		}
 		if (!lstrcmpi(Op, "Lighten"))
 		{
 			for (int y=0; y<myy; ++y) {
-				for (int x=0; x<myx; x+=2) {
+				for (int x=0; x<myx; ++x) {
 					int _temp1 = (map2[src2p[x]] + map1[src1p[x]]) >>8;
 					if (  _temp1 > (T + src1p[x])) 
 					{
@@ -237,7 +499,7 @@ PVideoFrame __stdcall Layer::GetFrame(int n, IScriptEnvironment* env)
 		if (!lstrcmpi(Op, "Darken"))
 		{
 			for (int y=0; y<myy; ++y) {
-				for (int x=0; x<myx; x+=2) {
+				for (int x=0; x<myx; ++x) {
 					int _temp1 = (map2[src2p[x]] + map1[src1p[x]]) >>8;
 					if (  _temp1 < (src1p[x]-T)) 
 					{
@@ -252,329 +514,275 @@ PVideoFrame __stdcall Layer::GetFrame(int n, IScriptEnvironment* env)
 	}
 	else if (vi.IsRGB32())
 	{
-    const int cyb = int(0.114*32768+0.5);
-	  const int cyg = int(0.587*32768+0.5);
-	  const int cyr = int(0.299*32768+0.5);
-	  const unsigned __int64 rgb2lum = ((__int64)cyb << 32) | (cyg << 16) | cyr;
+		const int cyb = int(0.114*32768+0.5);
+		const int cyg = int(0.587*32768+0.5);
+		const int cyr = int(0.299*32768+0.5);
+		const unsigned __int64 rgb2lum = ((__int64)cyb << 32) | (cyg << 16) | cyr;
 
+		BYTE* src1p = src1->GetWritePtr();
+		const BYTE* src2p = src2->GetReadPtr();
+		const int myx = xcount;
 
-  	src1p += (src1_pitch * ydest) + (xdest * 4);
-  	src2p += (src2_pitch * ysrc) + (xsrc * 4);
+		src1p += (src1_pitch * ydest) + (xdest * 4);
+		src2p += (src2_pitch * ysrc) + (xsrc * 4);
 
-  	const int mylevel = levelB;
-    const int myx = xcount;
-  	const int myy = ycount;
+		if (!lstrcmpi(Op, "Add"))
+		{
+			if (chroma)
+			{
+				__asm {
+				mov			edi, src1p
+				mov			esi, src2p
+				mov			ebx, myy
+				movd		mm1, mylevel			;alpha
+				pxor		mm0,mm0
+				
+				add32loop:
+						mov         edx, myx
+						xor         ecx, ecx
 
-	  if (!lstrcmpi(Op, "Add"))
-	  {
-  		if (chroma)
-		  {
-  			__asm {
-			  mov			edi, src1p
-			  mov			esi, src2p
-			  mov			ebx, myy
-			  movd		mm1, mylevel			;alpha
-			  pxor		mm0,mm0
-			
-  			add32loop:
-					  mov         edx, myx
-					  xor         ecx, ecx
+						add32xloop:
+								movd		mm6, [esi + ecx*4] ;src2
+								movq		mm2,mm6
 
-  					add32xloop:
-							  movd		mm6, [esi + ecx*4] ;src2
-							  movq		mm2,mm6
+						//----- extract alpha into four channels
 
-					//----- extract alpha into four channels
-  
-							  psrlq		mm2,24		    ;mm2= 0000|0000|0000|00aa
-							  pmullw	mm2,mm1		    ;mm2= pixel alpha * script alpha
+								psrlq		mm2,24		    ;mm2= 0000|0000|0000|00aa
+								pmullw	mm2,mm1		    ;mm2= pixel alpha * script alpha
 
-							  movd		mm7, [edi + ecx*4] ;src1/dest		;what a mess...
-							
-							  psrlw		mm2,8		      ;mm2= 0000|0000|0000|00aa*
-							  punpcklwd		mm2,mm2	  ;mm2= 0000|0000|00aa*|00aa*
-							  punpckldq		mm2, mm2	;mm2= 00aa*|00aa*|00aa*|00aa*
+								movd		mm7, [edi + ecx*4] ;src1/dest		;what a mess...
+								
+								psrlw		mm2,8		      ;mm2= 0000|0000|0000|00aa*
+								punpcklwd		mm2,mm2	  ;mm2= 0000|0000|00aa*|00aa*
+								punpckldq		mm2, mm2	;mm2= 00aa*|00aa*|00aa*|00aa*
 
-					//----- alpha mask now in all four channels of mm2
+						//----- alpha mask now in all four channels of mm2
 
-  							punpcklbw		mm7, mm0	;mm7= 00aa|00bb|00gg|00rr [src1]
-							  punpcklbw		mm6,mm0		;mm6= 00aa|00bb|00gg|00rr [src2]
+								punpcklbw		mm7, mm0	;mm7= 00aa|00bb|00gg|00rr [src1]
+								punpcklbw		mm6,mm0		;mm6= 00aa|00bb|00gg|00rr [src2]
 
-					//----- begin the fun stuff
-							
-							  psubsw	mm6, mm7
-							  pmullw	mm6, mm2 	  	;mm6=scaled difference*255
-							  psrlw		mm6, 8		    ;scale result
-							  paddb		mm6, mm7		  ;add src1
+						//----- begin the fun stuff
+								
+								psubsw	mm6, mm7
+								pmullw	mm6, mm2 	  	;mm6=scaled difference*255
+								psrlw		mm6, 8		    ;scale result
+								paddb		mm6, mm7		  ;add src1
 
-					//----- end the fun stuff...
+						//----- end the fun stuff...
 
-  							packuswb			mm6,mm0
-							  movd        [edi + ecx*4],mm6
+								packuswb			mm6,mm0
+								movd        [edi + ecx*4],mm6
 
-  							inc         ecx
-							  cmp         ecx, edx
-					  jnz         add32xloop
+								inc         ecx
+								cmp         ecx, edx
+						jnz         add32xloop
 
-					  add			edi, src1_pitch
-					  add			esi, src2_pitch
-			  dec		ebx
-			  jnz		add32loop
-			  emms
-			  }
-  		} else {
-			  __asm {
-			  mov			edi, src1p
-			  mov			esi, src2p
-			  mov			ebx, myy
-			  movd		mm1, mylevel
-			  pxor		mm0,mm0
-					
-			  add32yloop:
-					  mov         edx, myx
-					  xor         ecx, ecx
+						add			edi, src1_pitch
+						add			esi, src2_pitch
+				dec		ebx
+				jnz		add32loop
+				emms
+				}
+			} else {
+				__asm {
+				mov			edi, src1p
+				mov			esi, src2p
+				mov			ebx, myy
+				movd		mm1, mylevel
+				pxor		mm0,mm0
+						
+				add32yloop:
+						mov         edx, myx
+						xor         ecx, ecx
 
-  					add32yxloop:
-							  movd		mm6, [esi + ecx*4] ;src2
-							  movq		mm2,mm6
+						add32yxloop:
+								movd		mm6, [esi + ecx*4] ;src2
+								movq		mm2,mm6
 
-					//----- extract alpha into four channels
+						//----- extract alpha into four channels
 
-					  		psrlq		mm2,24		      ;mm2= 0000|0000|0000|00aa
-							  pmullw		mm2,mm1		    ;mm2= pixel alpha * script alpha
+								psrlq		mm2,24		      ;mm2= 0000|0000|0000|00aa
+								pmullw		mm2,mm1		    ;mm2= pixel alpha * script alpha
 
-  							movd		mm7, [edi + ecx*4] ;src1/dest		;what a mess...
-							
-	  						psrlw		mm2,8		        ;mm2= 0000|0000|0000|00aa*
-  							punpcklwd		mm2,mm2		  ;mm2= 0000|0000|00aa*|00aa*
-		  					punpckldq		mm2, mm2		;mm2= 00aa*|00aa*|00aa*|00aa*
+								movd		mm7, [edi + ecx*4] ;src1/dest		;what a mess...
+								
+								psrlw		mm2,8		        ;mm2= 0000|0000|0000|00aa*
+								punpcklwd		mm2,mm2		  ;mm2= 0000|0000|00aa*|00aa*
+								punpckldq		mm2, mm2		;mm2= 00aa*|00aa*|00aa*|00aa*
 
-			  				movq			mm3, rgb2lum	;another spaced out load
+								movq			mm3, rgb2lum	;another spaced out load
 
-					//----- alpha mask now in all four channels of mm3
+						//----- alpha mask now in all four channels of mm3
 
-				  			punpcklbw		mm7,mm0		  ;mm7= 00aa|00bb|00gg|00rr [src1]
-					  		punpcklbw		mm6,mm0		  ;mm6= 00aa|00bb|00gg|00rr [src2]
+								punpcklbw		mm7,mm0		  ;mm7= 00aa|00bb|00gg|00rr [src1]
+								punpcklbw		mm6,mm0		  ;mm6= 00aa|00bb|00gg|00rr [src2]
 
-					//----- begin the fun stuff
+						//----- begin the fun stuff
 
-					//----- start rgb -> monochrome
-						  	pmaddwd			mm6,mm3			;partial monochrome result
-							  punpckldq		mm3,mm6			;ready to add
-  							paddd			mm6, mm3		  ;32 bit result
-	  						; maybe add rounding here (+ 0000|4000|0000|0000) ?
-		  					psrlq			mm6, 47				;8 bit result
-			  				punpcklwd		mm6, mm6		;propagate words
-				  			punpckldq		mm6, mm6
-					//----- end rgb -> monochrome
+						//----- start rgb -> monochrome
+								pmaddwd			mm6,mm3			;partial monochrome result
+								punpckldq		mm3,mm6			;ready to add
+								paddd			mm6, mm3		  ;32 bit result
+								psrlq			mm6, 47				;8 bit result
+								punpcklwd		mm6, mm6		;propagate words
+								punpckldq		mm6, mm6
+						//----- end rgb -> monochrome
 
-					  		psubsw		mm6, mm7
-							  pmullw		mm6,mm2		;mm6=scaled difference*255
-							  psrlw		  mm6,8		  ;scale result
-							  paddb		  mm6,mm7		;add src1
+								psubsw		mm6, mm7
+								pmullw		mm6,mm2		;mm6=scaled difference*255
+								psrlw		  mm6,8		  ;scale result
+								paddb		  mm6,mm7		;add src1
 
-					//----- end the fun stuff...
+						//----- end the fun stuff...
 
-							  packuswb		mm6,mm0
-							  movd        [edi + ecx*4],mm6
+								packuswb		mm6,mm0
+								movd        [edi + ecx*4],mm6
 
-							  inc         ecx
-							  cmp         ecx, edx
-					  jnz         add32yxloop
+								inc         ecx
+								cmp         ecx, edx
+						jnz         add32yxloop
 
-  					add				edi, src1_pitch
-					  add				esi, src2_pitch
-			  dec		ebx
-			  jnz		add32yloop
-			  emms
-			  }
-		  }
-	  }
-	  if (!lstrcmpi(Op, "Subtract"))
-	  {
-  		if (chroma)
-		  {
-  			__asm {
-			  mov			edi, src1p
-			  mov			esi, src2p
-			  mov			ebx, myy
-			  movd		mm1, mylevel
-			  pxor		mm0, mm0
-			  pcmpeqb		mm4, mm4
-			  punpcklbw	mm4, mm0		;0x00ff00ff00ff00ff
-					
-  			sub32loop:
-					  mov         edx, myx
-					  xor         ecx, ecx
+						add				edi, src1_pitch
+						add				esi, src2_pitch
+				dec		ebx
+				jnz		add32yloop
+				emms
+				}
+			}
+		}
+		if (!lstrcmpi(Op, "Subtract"))
+		{
+			if (chroma)
+			{
+				__asm {
+				mov			edi, src1p
+				mov			esi, src2p
+				mov			ebx, myy
+				movd		mm1, mylevel
+				pxor		mm0, mm0
+				pcmpeqb		mm4, mm4
+				punpcklbw	mm4, mm0		;0x00ff00ff00ff00ff
+						
+				sub32loop:
+						mov         edx, myx
+						xor         ecx, ecx
 
-					  sub32xloop:
-							  movd	  mm6, [esi + ecx*4] ;src2	
-							  movq		mm2,mm6
+						sub32xloop:
+								movd	  mm6, [esi + ecx*4] ;src2	
+								movq		mm2,mm6
 
-					//----- extract alpha into four channels
+						//----- extract alpha into four channels
 
-  							psrlq		mm2,24		  ;mm2= 0000|0000|0000|00aa
-							  pmullw		mm2,mm1		;mm2= pixel alpha * script alpha
+								psrlq		mm2,24		  ;mm2= 0000|0000|0000|00aa
+								pmullw		mm2,mm1		;mm2= pixel alpha * script alpha
 
-  							movd		mm7, [edi + ecx*4] ;src1/dest		;what a mess...
-							
-  							psrlw		mm2,8		        ;mm2= 0000|0000|0000|00aa*
-							  punpcklwd		mm2,mm2		  ;mm2= 0000|0000|00aa*|00aa*
-							  punpckldq		mm2, mm2		;mm2=00aa*|00aa*|00aa*|00aa*
+								movd		mm7, [edi + ecx*4] ;src1/dest		;what a mess...
+								
+								psrlw		mm2,8		        ;mm2= 0000|0000|0000|00aa*
+								punpcklwd		mm2,mm2		  ;mm2= 0000|0000|00aa*|00aa*
+								punpckldq		mm2, mm2		;mm2=00aa*|00aa*|00aa*|00aa*
 
-					//----- alpha mask now in all four channels of mm2
+						//----- alpha mask now in all four channels of mm2
 
-  							punpcklbw		mm7,mm0		;mm7= 00aa|00bb|00gg|00rr [src1]
-							  punpcklbw		mm6,mm0		;mm6= 00aa|00bb|00gg|00rr [src2]
-							  pandn				mm6, mm4	;mm6 = mm6*
+								punpcklbw		mm7,mm0		;mm7= 00aa|00bb|00gg|00rr [src1]
+								punpcklbw		mm6,mm0		;mm6= 00aa|00bb|00gg|00rr [src2]
+								pandn				mm6, mm4	;mm6 = mm6*
 
-					//----- begin the fun stuff
-							
-  							psubsw	mm6, mm7
-							  pmullw	mm6,mm2		;mm6=scaled difference*255
-							  psrlw		mm6,8		  ;scale result
-							  paddb		mm6,mm7		;add src1
+						//----- begin the fun stuff
+								
+								psubsw	mm6, mm7
+								pmullw	mm6,mm2		;mm6=scaled difference*255
+								psrlw		mm6,8		  ;scale result
+								paddb		mm6,mm7		;add src1
 
-					//----- end the fun stuff...
+						//----- end the fun stuff...
 
-  							packuswb			mm6,mm0
-							  movd        [edi + ecx*4],mm6
+								packuswb			mm6,mm0
+								movd        [edi + ecx*4],mm6
 
-							  inc         ecx
-							  cmp         ecx, edx
-					  jnz         sub32xloop
+								inc         ecx
+								cmp         ecx, edx
+						jnz         sub32xloop
 
-					  add				edi, src1_pitch
-					  add				esi, src2_pitch
-			  dec		ebx
-			  jnz		sub32loop
-			  emms
-			  }
-		  } else {
-  			__asm {
-			  mov			edi, src1p
-			  mov			esi, src2p
-			  mov			eax, src2p
-			  mov			ebx, myy
-			  movd		mm1, mylevel
-			  pxor		mm0, mm0
-			  pcmpeqb		mm4, mm4
-			  punpcklbw	mm4, mm0		;0x00ff00ff00ff00ff
-					
-  			sub32yloop:
-					  mov         edx, myx
-					  xor         ecx, ecx
+						add				edi, src1_pitch
+						add				esi, src2_pitch
+				dec		ebx
+				jnz		sub32loop
+				emms
+				}
+			} else {
+				__asm {
+				mov			edi, src1p
+				mov			esi, src2p
+				mov			eax, src2p
+				mov			ebx, myy
+				movd		mm1, mylevel
+				pxor		mm0, mm0
+				pcmpeqb		mm4, mm4
+				punpcklbw	mm4, mm0		;0x00ff00ff00ff00ff
+						
+				sub32yloop:
+						mov         edx, myx
+						xor         ecx, ecx
 
-  					sub32yxloop:
-							  movd		mm6, [esi + ecx*4] ;src2
-							  movq		mm2,mm6
+						sub32yxloop:
+								movd		mm6, [esi + ecx*4] ;src2
+								movq		mm2,mm6
 
-					//----- extract alpha into four channels
+						//----- extract alpha into four channels
 
-  							psrlq		mm2,24		;mm2= 0000|0000|0000|00aa
-							  pmullw	mm2,mm1		;mm2= pixel alpha * script alpha
+								psrlq		mm2,24		;mm2= 0000|0000|0000|00aa
+								pmullw	mm2,mm1		;mm2= pixel alpha * script alpha
 
-  							movd		mm7, [edi + ecx*4] ;src1/dest		;what a mess...
-							
-  							psrlw		mm2,8		        ;mm2= 0000|0000|0000|00aa*
-							  punpcklwd		mm2,mm2		  ;mm2= 0000|0000|00aa*|00aa*
-							  punpckldq		mm2, mm2		;mm2=00aa*|00aa*|00aa*|00aa*
+								movd		mm7, [edi + ecx*4] ;src1/dest		;what a mess...
+								
+								psrlw		mm2,8		        ;mm2= 0000|0000|0000|00aa*
+								punpcklwd		mm2,mm2		  ;mm2= 0000|0000|00aa*|00aa*
+								punpckldq		mm2, mm2		;mm2=00aa*|00aa*|00aa*|00aa*
 
-  							movd			mm3, rgb2lum		;another spaced out load
+								movd			mm3, rgb2lum		;another spaced out load
 
-					//----- alpha mask now in all four channels of mm3
+						//----- alpha mask now in all four channels of mm3
 
-  							punpcklbw		mm7,mm0		;mm7= 00aa|00bb|00gg|00rr [src1]
-							  punpcklbw		mm6,mm0		;mm6= 00aa|00bb|00gg|00rr [src2]
-							  pandn		mm6, mm4
+								punpcklbw		mm7,mm0		;mm7= 00aa|00bb|00gg|00rr [src1]
+								punpcklbw		mm6,mm0		;mm6= 00aa|00bb|00gg|00rr [src2]
+								pandn		mm6, mm4
 
-					//----- begin the fun stuff
+						//----- begin the fun stuff
 
-					//----- start rgb -> monochrome
-							  pmaddwd			mm6,mm3			;partial monochrome result
-							  punpckldq		mm3,mm6					;ready to add
-							  paddd			mm6, mm3		;32 bit result
-							  ; maybe add rounding here (+ 0000|4000|0000|0000) ?
-							  psrld			mm6, 47				;8 bit result
-							  punpcklwd		mm6, mm6		;propogate words
-							  punpckldq		mm6, mm6
-					//----- end rgb -> monochrome
+						//----- start rgb -> monochrome
+								pmaddwd			mm6,mm3			;partial monochrome result
+								punpckldq		mm3,mm6					;ready to add
+								paddd			mm6, mm3		;32 bit result
+								; maybe add rounding here (+ 0000|4000|0000|0000) ?
+								psrld			mm6, 47				;8 bit result
+								punpcklwd		mm6, mm6		;propogate words
+								punpckldq		mm6, mm6
+						//----- end rgb -> monochrome
 
-					  		psubsw	mm6, mm7
-							  pmullw	mm6, mm2		;mm6=scaled difference*255
-							  psrlw		mm6, 8		  ;scale result
-							  paddb		mm6, mm7		;add src1
+								psubsw	mm6, mm7
+								pmullw	mm6, mm2		;mm6=scaled difference*255
+								psrlw		mm6, 8		  ;scale result
+								paddb		mm6, mm7		;add src1
 
-					//----- end the fun stuff...
+						//----- end the fun stuff...
 
-							  packuswb		mm6,mm0
-							  movd        [edi + ecx*4],mm6
+								packuswb		mm6,mm0
+								movd        [edi + ecx*4],mm6
 
-							  inc         ecx
-							  cmp         ecx, edx
-					  jnz         sub32yxloop
+								inc         ecx
+								cmp         ecx, edx
+						jnz         sub32yxloop
 
-  					add				edi, src1_pitch
-					  add				esi, src2_pitch
-			  dec		ebx
-			  jnz		sub32yloop
-			  emms
-			  }
-		  }
-	  }
-	  if (!lstrcmpi(Op, "Lighten"))
-	  {
-  		for (int y=0; y<ycount; ++y) {
-			  for (int x=0; x<xcount; ++x) {
-  				int inx = (x + xdest) *4;
-				  int overx = (x + xsrc) *4;
-				  int lumin = int (cyb*src1p[inx] + cyg*src1p[inx+1] + cyr*src1p[inx+2] + 0x4000) >> 15; 
-				  int lumover = int (cyb*src2p[overx] + cyg*src2p[overx+1] + cyr*src2p[overx+2] + 0x4000) >> 15; 
-          // int _temp1 = (map2[lumover] + map1[lumin]) >>8;
-				  if (  lumover > lumin) 
-				  {
-  					if (chroma){
-						  src1p[inx] = (map1[src1p[inx]] + map2[src2p[overx]])>>8;	inx++; overx++;
-						  src1p[inx] = (map1[src1p[inx]] + map2[src2p[overx]])>>8;	inx++; overx++;
-						  src1p[inx] = (map1[src1p[inx]] + map2[src2p[overx]])>>8;
-					  } else {
-  						src1p[inx] = (map1[src1p[inx]] + map2[lumover])>>8;	inx++;
-						  src1p[inx] = (map1[src1p[inx]] + map2[lumover])>>8;	inx++;
-						  src1p[inx] = (map1[src1p[inx]] + map2[lumover])>>8;
-					  }
-				  }
-			  }
-		    src1p += src1_pitch;
-		    src2p += src2_pitch;
-		  }
-	  }
-	  if (!lstrcmpi(Op, "Darken"))
-	  {
-  		for (int y=0; y<ycount; ++y) {
-			  for (int x=0; x<xcount; ++x) {
-  				int inx = (x + xdest) *4;
-				  int overx = (x + xsrc) *4;
-				  int lumin = int (cyb*src1p[inx] + cyg*src1p[inx+1] + cyr*src1p[inx+2] + 0x4000) >> 15; 
-				  int lumover = int (cyb*src2p[overx] + cyg*src2p[overx+1] + cyr*src2p[overx+2] + 0x4000) >> 15; 
-          // int _temp1 = (map2[lumover] + map1[lumin]) >>8;
-				  if ( lumover < lumin) 
-				  {
-  					if (chroma){
-						  src1p[inx] = (map1[src1p[inx]] + map2[src2p[overx]])>>8;	inx++; overx++;
-						  src1p[inx] = (map1[src1p[inx]] + map2[src2p[overx]])>>8;	inx++; overx++;
-						  src1p[inx] = (map1[src1p[inx]] + map2[src2p[overx]])>>8;
-					  } else {
-  						src1p[inx] = (map1[src1p[inx]] + map2[lumover])>>8;	inx++;
-						  src1p[inx] = (map1[src1p[inx]] + map2[lumover])>>8;	inx++;
-						  src1p[inx] = (map1[src1p[inx]] + map2[lumover])>>8;
-					  }
-				  }
-			  }
-		    src1p += src1_pitch;
-		    src2p += src2_pitch;
-		  }
-	  }
-  }
+						add				edi, src1_pitch
+						add				esi, src2_pitch
+				dec		ebx
+				jnz		sub32yloop
+				emms
+				}
+			}
+		}
+	}
 	return src1;
 }
 
