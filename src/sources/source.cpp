@@ -120,8 +120,16 @@ static PVideoFrame CreateBlankFrame(const VideoInfo& vi, int color, int mode, IS
 static AVSValue __cdecl Create_BlankClip(AVSValue args, void*, IScriptEnvironment* env) {
   VideoInfo vi_default;
   memset(&vi_default, 0, sizeof(VideoInfo));
-  vi_default.fps_denominator=1; vi_default.fps_numerator=24; vi_default.height=480; vi_default.pixel_type=VideoInfo::CS_BGR32; vi_default.num_frames=240; vi_default.width=640;
-  vi_default.audio_samples_per_second=44100; vi_default.nchannels=1; vi_default.num_audio_samples=44100*10; vi_default.sample_type=SAMPLE_INT16;
+  vi_default.fps_denominator=1;
+  vi_default.fps_numerator=24;
+  vi_default.height=480;
+  vi_default.pixel_type=VideoInfo::CS_BGR32;
+  vi_default.num_frames=240;
+  vi_default.width=640;
+  vi_default.audio_samples_per_second=44100;
+  vi_default.nchannels=1;
+  vi_default.num_audio_samples=44100*10;
+  vi_default.sample_type=SAMPLE_INT16;
 
   VideoInfo vi;
 
@@ -202,7 +210,8 @@ extern bool GetTextBoundingBox(const char* text, const char* fontname,
   int size, bool bold, bool italic, int align, int* width, int* height);
 
 
-PClip Create_MessageClip(const char* message, int width, int height, int pixel_type, bool shrink, int textcolor, int halocolor, int bgcolor, IScriptEnvironment* env) {
+PClip Create_MessageClip(const char* message, int width, int height, int pixel_type, bool shrink,
+                         int textcolor, int halocolor, int bgcolor, IScriptEnvironment* env) {
   int size;
   for (size = 24*8; /*size>=9*8*/; size-=4) {
     int text_width, text_height;
@@ -256,20 +265,29 @@ public:
     memset(&vi, 0, sizeof(VideoInfo));
     vi.width = w;
     vi.height = h;
-    vi.fps_numerator = 2997;
-    vi.fps_denominator = 100;
+    vi.fps_numerator = 30000;
+    vi.fps_denominator = 1001;
     vi.num_frames = 107892;   // 1 hour
-    if (lstrcmpi(pixel_type, "RGB") == 0) {
+    if (lstrcmpi(pixel_type, "RGB32") == 0) {
         vi.pixel_type = VideoInfo::CS_BGR32;
-    } else if (lstrcmpi(pixel_type, "YUY2") == 0) { // YUY2
+    }
+	else if (lstrcmpi(pixel_type, "YUY2") == 0) { // YUY2
         vi.pixel_type = VideoInfo::CS_YUY2;
-    } else {
-      env->ThrowError("BlankClip: pixel_type must be \"RGB\" or \"YUY2\"");
+		if (w & 1)
+          env->ThrowError("ColorBars: YUY2 width must be even!");
+    }
+//	else if (lstrcmpi(pixel_type, "YV12") == 0) { // YV12
+//		vi.pixel_type = VideoInfo::CS_YV12;
+//		if ((w & 1) || (h & 1))
+//		env->ThrowError("ColorBars: YV12 both height and width must be even!");
+//	}
+	else {
+      env->ThrowError("ColorBars: pixel_type must be \"RGB32\" or \"YUY2\"");
     }
     vi.sample_type = SAMPLE_FLOAT;
     vi.nchannels = 2;
     vi.audio_samples_per_second = 48000;
-    vi.num_audio_samples=(60*60)*vi.audio_samples_per_second;
+    vi.num_audio_samples=vi.AudioSamplesFromFrames(vi.num_frames);
 
     frame = env->NewVideoFrame(vi);
     unsigned* p = (unsigned*)frame->GetWritePtr();
@@ -277,7 +295,7 @@ public:
 
     int y = 0;
     
-	if (lstrcmpi(pixel_type, "RGB") == 0) {
+	if (vi.IsRGB32()) {
 		// these values are taken from http://www.greatdv.com/video/smptebars3.htm
 		// note we go bottom->top
 		static const int bottom_quarter[] = { 0x001d42, 0xebebeb, 0x2c005c, 0x101010,  0x070707, 0x101010, 0x181818,  0x101010 };
@@ -315,42 +333,48 @@ public:
 			}
 			p += pitch;
 		}
-	} else { // YUY2; [16,235] RGB -> [16,235] YUV from http://www.greatdv.com/video/smptebars3.htm
+	}
+	else if (vi.IsYUY2()) { // YUY2; [16,235]RGB -[rec601]-> [16,235]YUV calc'd by WilbertD
 		static const int top_two_thirds[] = { 0x80b480b4, 0x8ea12ca1, 0x2c829c82, 0x3b6f486f, 0xc454b754, 0xd3406440, 0x7222d222 }; //VYUY
-		for (; y < 0.667*h; ++y) {
+		w >>= 1;
+		for (; y*3 < h*2; ++y) {
 			int x = 0;
 			for (int i=0; i<7; i++) {
-				for (; x < 0.5*w*(i+1)/7; ++x)
+				for (; x < (w*(i+1)+3)/7; ++x)
 					p[x] = top_two_thirds[i];
 			}
 			p += pitch;
 		}
 
-		static const int two_thirds_to_three_quarters[] = { 0x7222d222, 0x80108010, 0xc454b754, 0x80108010, 0x2c829c82, 0x80108010, 0x80b480b4 }; //VYUY
-		for (; y < 0.75*h; ++y) {
+		static const int two_thirds_to_three_quarters[] =
+		                                     { 0x7222d222, 0x80108010, 0xc454b754, 0x80108010, 0x2c829c82, 0x80108010, 0x80b480b4 }; //VYUY
+		for (; y*4 < h*3; ++y) {
 			int x = 0;
 			for (int i=0; i<7; i++) {
-				for (; x < 0.5*w*(i+1)/7; ++x)
+				for (; x < (w*(i+1)+3)/7; ++x)
 					p[x] = two_thirds_to_three_quarters[i];
 			}
 			p += pitch;
 		}
 
-		static const int bottom_quarter[] = { 0x6f189818, 0x80eb80eb, 0x8f17a717, 0x80eb80eb, 0x80078007, 0x80108010, 0x80188018, 0x80108010 };
+		static const int bottom_quarter[] = { 0x6f189818, 0x80eb80eb, 0x8f17a717, 0x80108010, 0x80078007, 0x80108010, 0x80188018, 0x80108010 };
 		for (; y < h; ++y) {
 			int x = 0;
 			for (int i=0; i<4; ++i) {
-				for (; x < (0.5*w*(i+1)*5+14)/28; ++x)
+				for (; x < (w*(i+1)*5+14)/28; ++x)
 					p[x] = bottom_quarter[i];
 			}
 			for (int j=4; j<7; ++j) {
-				for (; x < (0.5*w*(j+12)+5)/21; ++x)
+				for (; x < (w*(j+12)+10)/21; ++x)
 					p[x] = bottom_quarter[j];
 			}
-			for (; x < 0.5*w; ++x)
+			for (; x < w; ++x)
 				p[x] = bottom_quarter[7];
 			p += pitch;
 		}
+	}
+	else if (vi.IsYV12()) {
+      env->ThrowError("ColorBars: YV12 not yet unimplemented");
 	}
   }
 
@@ -385,7 +409,7 @@ public:
   }
 
   static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env) {
-    return new ColorBars(args[0].AsInt(640), args[1].AsInt(480), args[2].AsString("YUY2"), env);
+    return new ColorBars(args[0].AsInt(640), args[1].AsInt(480), args[2].AsString("RGB32"), env);
   }
 };
 
@@ -540,7 +564,8 @@ class Tone : public IClip {
 
 public:
 
-  Tone(float _length, double _freq, int _samplerate, int _ch, const char* _type, IScriptEnvironment* env): freq(_freq), samplerate(_samplerate), ch(_ch) {
+  Tone(float _length, double _freq, int _samplerate, int _ch, const char* _type, IScriptEnvironment* env):
+             freq(_freq), samplerate(_samplerate), ch(_ch) {
     memset(&vi, 0, sizeof(VideoInfo));
     vi.sample_type = SAMPLE_FLOAT;
     vi.nchannels = ch;
