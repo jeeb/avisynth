@@ -88,10 +88,19 @@ Crop::Crop(int _left, int _top, int _width, int _height, PClip _child, IScriptEn
   /* Negative values -> VDub-style syntax
      Namely, Crop(a, b, -c, -d) will crop c pixels from the right and d pixels from the bottom.  
      Flags on 0 values too since AFAICT it's much more useful to this syntax than the standard one. */
+  if ( (_left<0) || (_top<0) )
+    env->ThrowError("Crop: Top and Left must be more than 0");
+
   if (_width <= 0)
       _width = vi.width - _left + _width;
   if (_height <= 0)
       _height = vi.height - _top + _height;
+
+  if (_width <=0)
+    env->ThrowError("Crop: Destination width is 0 or less.");
+
+  if (_height<=0)
+    env->ThrowError("Crop: Destination height is 0 or less.");
 
   if (vi.IsYUY2()) {
     // YUY2 can only crop to even pixel boundaries horizontally
@@ -226,9 +235,15 @@ AVSValue __cdecl Create_Letterbox(AVSValue args, void*, IScriptEnvironment* env)
   PClip clip = args[0].AsClip();
   int top = args[1].AsInt();
   int bot = args[2].AsInt();
-  int left = args[3].AsInt(0);
+  int left = args[3].AsInt(0); 
   int right = args[4].AsInt(0);
   const VideoInfo& vi = clip->GetVideoInfo();
+  if ( (top<0) || (bot<0) || (left<0) || (right<0) ) 
+    env->ThrowError("LetterBox: You cannot specify letterboxing less than 0.");
+  if (top+bot>=vi.height) // Must be >= otherwise it is interpreted wrong by crop()
+    env->ThrowError("LetterBox: You cannot specify letterboxing that is bigger than the picture (height).");  
+  if (right+left>=vi.width) // Must be >= otherwise it is interpreted wrong by crop()
+    env->ThrowError("LetterBox: You cannot specify letterboxing that is bigger than the picture (width).");
   if (vi.IsYUY2() && (left&1))
     env->ThrowError("LetterBox: Width must be divideable with 2 (Left side)");
   if (vi.IsYUY2() && (right&1))
