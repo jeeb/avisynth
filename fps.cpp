@@ -48,8 +48,8 @@
 AVSFunction Fps_filters[] = {
   { "AssumeFPS", "ci[]i[sync_audio]b", AssumeFPS::Create },     // dst framerate, sync audio?
   { "AssumeFPS", "cf[sync_audio]b", AssumeFPS::CreateFloat },   // dst framerate, sync audio?
-  { "ChangeFPS", "ci[]i", ChangeFPS::Create },                  // dst framerate
-  { "ChangeFPS", "cf", ChangeFPS::CreateFloat },                // dst framerate
+  { "ChangeFPS", "ci[]i[linear]b", ChangeFPS::Create },                  // dst framerate
+  { "ChangeFPS", "cf[linear]b", ChangeFPS::CreateFloat },                // dst framerate
   { "ConvertFPS", "ci[]i[zone]i[vbi]i", ConvertFPS::Create },   // dst framerate, zone lines, vbi lines
   { "ConvertFPS", "cf[zone]i[vbi]i", ConvertFPS::CreateFloat }, // dst framerate, zone lines, vbi lines
   { 0 }
@@ -103,19 +103,32 @@ AVSValue __cdecl AssumeFPS::CreateFloat(AVSValue args, void*, IScriptEnvironment
  ************************************/
 
 
-ChangeFPS::ChangeFPS(PClip _child, int new_numerator, int new_denominator)
-  : GenericVideoFilter(_child)
+ChangeFPS::ChangeFPS(PClip _child, int new_numerator, int new_denominator, bool _linear)
+  : GenericVideoFilter(_child), linear(_linear)
 {
   a = __int64(vi.fps_numerator) * new_denominator;
   b = __int64(vi.fps_denominator) * new_numerator;
   vi.SetFPS(new_numerator, new_denominator);
   vi.num_frames = int((vi.num_frames * b + (a >> 1)) / a);
+  lastframe = -1;
 }
 
 
 PVideoFrame __stdcall ChangeFPS::GetFrame(int n, IScriptEnvironment* env)
 {
-  return child->GetFrame( int((n * a + (b>>1)) / b), env );
+  int getframe = int(((__int64)n * a + (b>>1)) / b);  // Which frame to get next?
+
+  if (linear) {
+    if ((lastframe < (getframe-1)) && (getframe - lastframe < 10)) {  // Do not decode more than 10 frames
+      while (lastframe < (getframe-1)) {
+        lastframe++;
+        PVideoFrame p = child->GetFrame(lastframe, env);  // If MSVC optimizes this I'll kill it ;)
+      }
+    }
+  }
+
+  lastframe = getframe;
+  return child->GetFrame(getframe , env );
 }
 
 
@@ -127,7 +140,7 @@ bool __stdcall ChangeFPS::GetParity(int n)
 
 AVSValue __cdecl ChangeFPS::Create(AVSValue args, void*, IScriptEnvironment* env) 
 {
-  return new ChangeFPS( args[0].AsClip(), args[1].AsInt(), args[2].AsInt(1) );
+  return new ChangeFPS( args[0].AsClip(), args[1].AsInt(), args[2].AsInt(1), args[3].AsBool(true) );
 }
 
 
@@ -136,7 +149,7 @@ AVSValue __cdecl ChangeFPS::CreateFloat(AVSValue args, void*, IScriptEnvironment
   double n = args[1].AsFloat();
   int d = 1;
   while (n < 16777216 && d < 16777216) { n*=2; d*=2; }
-  return new ChangeFPS(args[0].AsClip(), int(n+0.5), d);
+  return new ChangeFPS(args[0].AsClip(), int(n+0.5), d, args[2].AsBool(true));
 }
 
 

@@ -58,7 +58,7 @@ class ChangeFPS : public GenericVideoFilter
  **/
 {
 public:
-  ChangeFPS(PClip _child, int new_numerator, int new_denominator);
+  ChangeFPS(PClip _child, int new_numerator, int new_denominator, bool linear);
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
   bool __stdcall GetParity(int n);
 
@@ -67,6 +67,8 @@ public:
 
 private:
   __int64 a, b;
+  bool linear;
+  int lastframe;
 };
 
 
