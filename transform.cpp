@@ -103,8 +103,8 @@ Crop::Crop(int _left, int _top, int _width, int _height, PClip _child, IScriptEn
   }
 
 
-  if (_width > vi.width || _height > vi.height)
-    env->ThrowError("Crop: you cannot use crop to enlarge a clip!");
+  if (_left + _width > vi.width || _top + _height > vi.height)
+    env->ThrowError("Crop: you cannot use crop to enlarge or 'shift' a clip");
 
   left_bytes = vi.BytesFromPixels(_left);
   top = _top;
