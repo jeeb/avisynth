@@ -183,6 +183,7 @@ struct VideoInfo {
   __int64 BytesFromAudioSamples(__int64 samples) const { return samples * BytesPerAudioSample(); }
   int AudioChannels() const { return nchannels; }
   int SampleType() const{ return sample_type;}
+  bool IsSampleType(int testtype) const{ return !!(sample_type&testtype);}
   int SamplesPerSecond() const { return audio_samples_per_second; }
   int BytesPerAudioSample() const { return nchannels*BytesPerChannelSample();}
   void SetFieldBased(bool isfieldbased)  { if (isfieldbased) image_type|=IT_FIELDBASED; else  image_type&=~IT_FIELDBASED; }

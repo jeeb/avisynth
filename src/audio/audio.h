@@ -113,6 +113,7 @@ public:
 private:
   char *tempbuffer;
   int tempbuffer_size;
+  int channels;
 };
 
 class EnsureVBRMP3Sync : public GenericVideoFilter 

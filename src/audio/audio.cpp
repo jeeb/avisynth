@@ -301,6 +301,7 @@ ConvertToMono::ConvertToMono(PClip _clip)
   SAMPLE_INT16|SAMPLE_FLOAT, SAMPLE_FLOAT))
 {
 	
+  channels = vi.AudioChannels();
   vi.nchannels = 1;
   tempbuffer_size=0;
 }
@@ -308,7 +309,6 @@ ConvertToMono::ConvertToMono(PClip _clip)
 
 void __stdcall ConvertToMono::GetAudio(void* buf, __int64 start, __int64 count, IScriptEnvironment* env) 
 {
-  int channels=vi.AudioChannels();
   if (tempbuffer_size) {
     if (tempbuffer_size<count) {
       delete[] tempbuffer;
@@ -319,24 +319,26 @@ void __stdcall ConvertToMono::GetAudio(void* buf, __int64 start, __int64 count, 
     tempbuffer=new char[count*channels*vi.BytesPerChannelSample()];
     tempbuffer_size=count;
   }
+
   child->GetAudio(tempbuffer, start, count, env);
-  if (vi.SampleType()&SAMPLE_INT16) {
+
+  if (vi.IsSampleType(SAMPLE_INT16)) {
     signed short* samples = (signed short*)buf;
     signed short* tempsamples = (signed short*)tempbuffer;
     for (int i=0; i<count; i++) {
       int tsample=0;    
-      for (int j=0;j<channels;j++) 
-        tsample+=tempbuffer[i*channels+j]; // Accumulate samples
-      samples[i] =(short)((tsample+(channels>>1))/channels);
+      for (int j=0 ; j<channels ; j++) 
+        tsample += tempsamples[i*channels+j]; // Accumulate samples
+      samples[i] =(signed short)(((tsample+(channels>>1))/channels));
     }
-  } else if (vi.SampleType()&SAMPLE_FLOAT) {
+  } else if (vi.IsSampleType(SAMPLE_FLOAT)) {
     SFLOAT* samples = (SFLOAT*)buf;
     SFLOAT* tempsamples = (SFLOAT*)tempbuffer;
     SFLOAT f_channels= (SFLOAT)channels;
     for (int i=0; i<count; i++) {
       SFLOAT tsample=0.0f;    
       for (int j=0;j<channels;j++) 
-        tsample+=tempsamples[i*channels+j]; // Accumulate samples
+        tsample += tempsamples[i*channels+j]; // Accumulate samples
       samples[i] =(tsample/f_channels);
     }
   }
