@@ -127,8 +127,8 @@ PVideoFrame __stdcall Histogram::GetFrame(int n, IScriptEnvironment* env)
 PVideoFrame Histogram::DrawMode4(int n, IScriptEnvironment* env) {
   PVideoFrame src = env->NewVideoFrame(vi);
   env->MakeWritable(&src);
-  __int64 start = vi.AudioSamplesFromFrames(n-1);  // We include the previous
-  __int64 end = vi.AudioSamplesFromFrames(n+2); // And the next frame
+  __int64 start = vi.AudioSamplesFromFrames(n);  // We include the previous
+  __int64 end = vi.AudioSamplesFromFrames(n+1); // And the next frame
   __int64 count = end-start;
   signed short* samples = new signed short[(int)count*vi.AudioChannels()];
 
@@ -141,13 +141,19 @@ PVideoFrame Histogram::DrawMode4(int n, IScriptEnvironment* env) {
   aud_clip->GetAudio(samples, max(0,start), count, env);
   
   int c = (int)count;
-  for (int i=0; i < count;i++) {
-    int l = (int)samples[i*2];
-    int r = (int)samples[i*2+1];
-    int y = 256+((l+r)>>8);
-    int x = 256+((l-r)>>8);
-    int v = srcp[x+y*512]+64;
-    srcp[x+y*512] = min(v,235);
+  for (int i=1; i < count;i++) {
+    int l1 = (int)samples[i*2-2];
+    int r1 = (int)samples[i*2-1];
+    int l2 = (int)samples[i*2];
+    int r2 = (int)samples[i*2+1];
+    for (int s = 0 ; s < 8; s++) {  // 8 times supersampling (linear)
+      int l = (l1*s) + (l2*(8-s));
+      int r = (r1*s) + (r2*(8-s));
+      int y = 256+((l+r)>>11);
+      int x = 256+((l-r)>>11);
+      int v = srcp[x+y*512]+48;
+      srcp[x+y*512] = min(v,235);
+    }
   }
 
   if (vi.IsPlanar()) {
