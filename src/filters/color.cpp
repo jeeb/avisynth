@@ -101,7 +101,6 @@ PVideoFrame __stdcall Color::GetFrame(int frame, IScriptEnvironment* env)
 	COUNT r0,g0,b0;
 	PIXELDATA	pixel0;
 	int   total,totalby2;
-	char buf[256];
 #endif
   if (colorbars) {
     PVideoFrame dst= env->NewVideoFrame(vi);
@@ -355,7 +354,8 @@ PVideoFrame __stdcall Color::GetFrame(int frame, IScriptEnvironment* env)
 	r.ave  = ( r.ave+total)/total/2; g.ave  = ( g.ave+total   )/total/2; b.ave  = ( b.ave+total   )/total/2;
 	r0.ave = (r0.ave+total)/total/2; g0.ave = (g0.ave+total   )/total/2; b0.ave = (b0.ave+total   )/total/2;
 
-	OutputDebugString("\n");
+  char buf[256];
+  OutputDebugString("\n");
 	sprintf(buf,"frame=%05d  minimun   Src=[Y:%03d  U:%03d  V:%03d  R:%03d  G:%03d  B:%03d]" \
 				"  Dst=[Y:%03d  U:%03d  V:%03d  R:%03d  G:%03d  B:%03d]",
 				frame, y0.min,u0.min,v0.min, r0.min,g0.min,b0.min,
