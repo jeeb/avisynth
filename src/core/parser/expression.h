@@ -123,6 +123,8 @@ public:
   
 private:
   const PExpression exp;
+  void TrapEval(AVSValue&, IScriptEnvironment*);
+  void ChainEval(AVSValue&, IScriptEnvironment*);
 };
 
 

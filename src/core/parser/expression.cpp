@@ -49,11 +49,147 @@ AVSValue ExpSequence::Evaluate(IScriptEnvironment* env)
     return b->Evaluate(env);
 }
 
+/* First cut for breaking out system exceptions from the evil and most
+ * unhelpful "Evaluate: Unrecognized exception!".
+ *
+ * This initial version just decodes the exception code, latter if one
+ * is so inclined the info structure could be pulled apart and the
+ * state of the machine presented. So far just knowing "Integer Divide
+ * by Zero" was happening has been a real boon.
+ *
+ * Warning! Don't try to throw another exception here it is not safe.
+ * If you want to throw a new exception, flag your intention through
+ * a function argument, return "EXCEPTION_EXECUTE_HANDLER" and throw
+ * the exception from within the _except block.
+ */
+int ProcessSystemError(int code, _EXCEPTION_POINTERS *info, char **msg)
+{
+  
+  switch (code) {
+  case 0xE06D7363:                       // 0xE06D7363
+    return EXCEPTION_CONTINUE_SEARCH; // C++ Exception, 0xE0000000 | "\0msc"
+  
+  case STATUS_GUARD_PAGE_VIOLATION:      // 0x80000001
+    *msg="Evaluate: System exception - Guard Page Violation";
+    break;
+  case STATUS_DATATYPE_MISALIGNMENT:     // 0x80000002
+    *msg="Evaluate: System exception - Datatype Misalignment";
+    break;
+  case STATUS_BREAKPOINT:                // 0x80000003
+    *msg="Evaluate: System exception - Breakpoint";
+    break;
+  case STATUS_SINGLE_STEP:               // 0x80000004
+    *msg="Evaluate: System exception - Single Step";
+    break;
+  case STATUS_ACCESS_VIOLATION:          // 0xc0000005
+    *msg="Evaluate: System exception - Access Violation";
+    break;
+  case STATUS_IN_PAGE_ERROR:             // 0xc0000006
+    *msg="Evaluate: System exception - In Page Error";
+    break;
+  case STATUS_INVALID_HANDLE:            // 0xc0000008
+    *msg="Evaluate: System exception - Invalid Handle";
+    break;
+  case STATUS_NO_MEMORY:                 // 0xc0000017
+    *msg="Evaluate: System exception - No Memory";
+    break;
+  case STATUS_ILLEGAL_INSTRUCTION:       // 0xc000001d
+    *msg="Evaluate: System exception - Illegal Instruction";
+    break;
+  case STATUS_NONCONTINUABLE_EXCEPTION:  // 0xc0000025
+    *msg="Evaluate: System exception - Noncontinuable Exception";
+    break;
+  case STATUS_INVALID_DISPOSITION:       // 0xc0000026
+    *msg="Evaluate: System exception - Invalid Disposition";
+    break;
+  case STATUS_ARRAY_BOUNDS_EXCEEDED:     // 0xc000008c
+    *msg="Evaluate: System exception - Array Bounds Exceeded";
+    break;
+  case STATUS_FLOAT_DENORMAL_OPERAND:    // 0xc000008d
+    *msg="Evaluate: System exception - Float Denormal Operand";
+    break;
+  case STATUS_FLOAT_DIVIDE_BY_ZERO:      // 0xc000008e
+    *msg="Evaluate: System exception - Float Divide by Zero";
+    break;
+  case STATUS_FLOAT_INEXACT_RESULT:      // 0xc000008f
+    *msg="Evaluate: System exception - Float Inexact Result";
+    break;
+  case STATUS_FLOAT_INVALID_OPERATION:   // 0xc0000090
+    *msg="Evaluate: System exception - Float Invalid Operation";
+    break;
+  case STATUS_FLOAT_OVERFLOW:            // 0xc0000091
+    *msg="Evaluate: System exception - Float Overflow";
+    break;
+  case STATUS_FLOAT_STACK_CHECK:         // 0xc0000092
+    *msg="Evaluate: System exception - Float Stack Check";
+    break;
+  case STATUS_FLOAT_UNDERFLOW:           // 0xc0000093
+    *msg="Evaluate: System exception - Float Underflow";
+    break;
+  case STATUS_INTEGER_DIVIDE_BY_ZERO:    // 0xc0000094
+    *msg="Evaluate: System exception - Integer Divide by Zero";
+    break;
+  case STATUS_INTEGER_OVERFLOW:          // 0xc0000095
+    *msg="Evaluate: System exception - Integer Overflow";
+    break;
+  case STATUS_PRIVILEGED_INSTRUCTION:    // 0xc0000096
+    *msg="Evaluate: System exception - Privileged Instruction";
+    break;
+  case STATUS_STACK_OVERFLOW:            // 0xc00000fd
+    *msg="Evaluate: System exception - Stack Overflow";
+    break;
+  default:
+    return EXCEPTION_CONTINUE_SEARCH;
+  }
+  return EXCEPTION_EXECUTE_HANDLER;
+}
 
+/* Damn! This is trickey, exp->Evaluate returns an AVSValue object, so the
+ * stupid compiler builds a local one on the stack, calls the constructor,
+ * calls Evaluate passing a pointer to the local AVSValue object. Upon return
+ * it then copies the local AVSValue to the passed in alias and calls the
+ * destructor. Of course there has to be an implicit try/catch around the
+ * whole lot just in case so the destructor is guaranteed to be called.
+ *
+ * All proper C++, yes but it would be just as valid to directly pass the
+ * av alias to Evaluate in it's returned object argument, and I wouldn't
+ * need all the trickey calls within calls to do this simple job.
+ */
+void ExpExceptionTranslator::ChainEval(AVSValue &av, IScriptEnvironment* env) 
+{
+  av = exp->Evaluate(env);
+}
+
+
+/* Damn! I can't call Evaluate directly from here because it returns an object
+ * I have to call an interlude and pass an alias to the return value through.
+ */
+void ExpExceptionTranslator::TrapEval(AVSValue &av, IScriptEnvironment* env) 
+{
+  char *msg;
+
+  __try {
+    ChainEval(av, env);
+  }
+  __except (ProcessSystemError((int)_exception_code(),
+                               (_EXCEPTION_POINTERS *)_exception_info(),
+                               &msg))
+  {
+    env->ThrowError(msg);
+  }
+}
+
+
+/* Damn! You can't mix C++ exception handling and SEH in the one routine.
+ * Call an interlude. And this is all because C++ doesn't provide an way
+ * expand system exceptions into there true cause or identity.
+ */
 AVSValue ExpExceptionTranslator::Evaluate(IScriptEnvironment* env) 
 {
   try {
-    return exp->Evaluate(env);
+    AVSValue av;
+    TrapEval(av, env);
+    return av;
   }
   catch (AvisynthError) {
     throw;
@@ -65,7 +201,6 @@ AVSValue ExpExceptionTranslator::Evaluate(IScriptEnvironment* env)
 #endif
   return 0;
 }
-
 
 AVSValue ExpTryCatch::Evaluate(IScriptEnvironment* env) 
 {
