@@ -70,21 +70,6 @@ BEGIN
     BEGIN
         BLOCK "000004b0"
         BEGIN
-            VALUE "Comments", "\0"
-            VALUE "CompanyName", "none\0"
-            VALUE "FileDescription", "avisynth\0"
-            VALUE "FileVersion", "2, 0, 4, 0\0"
-            VALUE "InternalName", "avisynth\0"
-            VALUE "LegalCopyright", "Copyright © 2002\0"
-            VALUE "LegalTrademarks", "\0"
-            VALUE "OriginalFilename", "avisynth.dll\0"
-            VALUE "PrivateBuild", "\0"
-            VALUE "ProductName", "none avisynth\0"
-            VALUE "ProductVersion", "2, 0, 4, 0\0"
-            VALUE "SpecialBuild", "\0"
-        END
-        BLOCK "040904b0"
-        BEGIN
             VALUE "Comments", "Homepage: http://www.avisynth.org\0"
             VALUE "CompanyName", "The Public\0"
             VALUE "FileDescription", "Avisynth video processing scripting language\0"
@@ -95,13 +80,13 @@ BEGIN
             VALUE "OriginalFilename", "avisynth.dll\0"
             VALUE "PrivateBuild", "\0"
             VALUE "ProductName", "Avisynth\0"
-            VALUE "ProductVersion", "2.0.4\0"
+            VALUE "ProductVersion", "2, 0, 4, 0\0"
             VALUE "SpecialBuild", "\0"
         END
     END
     BLOCK "VarFileInfo"
     BEGIN
-        VALUE "Translation", 0x0, 1200, 0x409, 1200
+        VALUE "Translation", 0x0, 1200
     END
 END
 
