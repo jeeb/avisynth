@@ -556,14 +556,17 @@ Loop::Loop(PClip _child, int _times, int _start, int _end, IScriptEnvironment* e
     vi.num_frames += (times-1) * frames;
     end = start + times * frames - 1;
   }
-  if (!vi.sixteen_bit)
-    env->ThrowError("Loop: Sound must be 16 bits, use ConvertAudioTo16bit() or KillAudio()");
 
-  start_samples = (((start*vi.audio_samples_per_second)*vi.fps_denominator)/ vi.fps_numerator);
-  loop_ends_at_sample = (((end*vi.audio_samples_per_second)*vi.fps_denominator)/ vi.fps_numerator);
-  loop_len_samples = (int)(0.5+(double)(loop_ends_at_sample-start_samples)/(double)times);
+  if (vi.audio_samples_per_second) {
+    if (!vi.sixteen_bit)
+      env->ThrowError("Loop: Sound must be 16 bits, use ConvertAudioTo16bit() or KillAudio()");
 
-  vi.num_audio_samples+=(loop_len_samples*times);
+    start_samples = (((start*vi.audio_samples_per_second)*vi.fps_denominator)/ vi.fps_numerator);
+    loop_ends_at_sample = (((end*vi.audio_samples_per_second)*vi.fps_denominator)/ vi.fps_numerator);
+    loop_len_samples = (int)(0.5+(double)(loop_ends_at_sample-start_samples)/(double)times);
+
+    vi.num_audio_samples+=(loop_len_samples*times);
+  }
 }
 
 
