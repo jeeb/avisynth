@@ -53,7 +53,7 @@ class Swap : public GenericVideoFilter
  **/
 {
 public:
-  Swap(PClip _child, PClip _clip, PClip _clipY, int _mode, IScriptEnvironment* env);  
+  Swap(PClip _child, PClip _clip, PClip _clipY, int _mode, int _test, IScriptEnvironment* env);  
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
 
   static AVSValue __cdecl CreateUV(AVSValue args, void* user_data, IScriptEnvironment* env);
@@ -65,6 +65,9 @@ public:
 private:
   PClip clip, clipY;
   int mode;
+  int test;
+
+  enum {SwapUV=1, UToY, VToY, YToUV};
 };
 
 
@@ -75,7 +78,7 @@ class MergeChroma : public GenericVideoFilter
  **/
 {
 public:
-  MergeChroma(PClip _child, PClip _clip, float _weight, IScriptEnvironment* env);  
+  MergeChroma(PClip _child, PClip _clip, float _weight, int _test, IScriptEnvironment* env);  
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
 
   static AVSValue __cdecl Create(AVSValue args, void* user_data, IScriptEnvironment* env);
@@ -83,6 +86,7 @@ public:
 private:
   PClip clip;
   float weight;
+  int test;
 };
 
 
@@ -92,7 +96,7 @@ class MergeLuma : public GenericVideoFilter
  **/
 {
 public:
-  MergeLuma(PClip _child, PClip _clip, float _weight, IScriptEnvironment* env);  
+  MergeLuma(PClip _child, PClip _clip, float _weight, int _test, IScriptEnvironment* env);  
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
 
   static AVSValue __cdecl Create(AVSValue args, void* user_data, IScriptEnvironment* env);
@@ -100,6 +104,7 @@ public:
 private:
   PClip clip;
   float weight;
+  int test;
 };
 
 
@@ -110,12 +115,15 @@ private:
 void mmx_merge_luma( unsigned int *src, unsigned int *luma, int pitch, 
                      int luma_pitch, int width, int height );
                     
-void isse_weigh_luma( unsigned int *src, unsigned int *luma, int pitch, 
+void mmx_weigh_luma( unsigned int *src, unsigned int *luma, int pitch, 
                      int luma_pitch, int width, int height, int weight, int invweight );
 
-void isse_weigh_chroma( unsigned int *src,unsigned int *chroma, int pitch, 
+void mmx_weigh_chroma( unsigned int *src,unsigned int *chroma, int pitch, 
                        int chroma_pitch, int width, int height, int weight, int invweight );
 
+void merge_luma( unsigned int *src, unsigned int *luma, int pitch, 
+                     int luma_pitch, int width, int height );
+                    
 void weigh_luma( unsigned int *src, unsigned int *luma, int pitch,
                  int luma_pitch, int width, int height, int weight, int invweight);
 
