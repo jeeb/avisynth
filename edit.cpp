@@ -37,6 +37,7 @@ AVSFunction Edit_filters[] = {
   { "Reverse", "c", Reverse::Create },                      // plays backwards
   { "FadeOut", "ci", Create_FadeOut },                      // # frames
   { "FadeOut2", "ci", Create_FadeOut2 },                    // # frames
+  { "Loop", "c[times]i[start]i[end]i", Loop::Create },      // number of loops, first frame, last frames
   { 0 }
 };
 
@@ -529,6 +530,61 @@ AVSValue __cdecl Reverse::Create(AVSValue args, void*, IScriptEnvironment* env)
 {
   return new Reverse(args[0].AsClip());
 }
+
+
+
+
+
+
+
+
+/******************************
+ ******   Loop Filter   *******
+ *****************************/
+
+Loop::Loop(PClip _child, int times, int _start, int _end)
+ : GenericVideoFilter(_child), start(_start), end(_end)
+{
+  start = min(max(start,0),vi.num_frames-1);
+  end = min(max(end,start),vi.num_frames-1);
+  frames = end-start+1;
+  if (times<0) {
+    vi.num_frames = 10000000;
+    end = vi.num_frames;
+  } else {
+    vi.num_frames += (times-1) * frames;
+    end = start + times * frames - 1;
+  }
+}
+
+
+PVideoFrame Loop::GetFrame(int n, IScriptEnvironment* env)
+{
+  return child->GetFrame(convert(n), env);
+}
+
+
+bool Loop::GetParity(int n)
+{
+  return child->GetParity(convert(n));
+}
+
+
+__inline int Loop::convert(int n)
+{
+  if (n>end) return n - end + start + frames - 1;
+  else if (n>=start) return ((n - start) % frames) + start;
+  else return n;
+}
+
+
+AVSValue __cdecl Loop::Create(AVSValue args, void*, IScriptEnvironment* env)
+{
+	return new Loop(args[0].AsClip(), args[1].AsInt(-1), args[2].AsInt(0), args[3].AsInt(10000000));
+}
+
+
+
 
 
 

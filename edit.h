@@ -189,6 +189,25 @@ public:
 
 
 
+
+class Loop : public GenericVideoFilter {
+/**
+  * Class to loop over a range of frames
+**/
+public:
+	Loop(PClip _child, int times, int _start, int _end);
+	PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
+	bool __stdcall GetParity(int n);
+
+	static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env);
+private:
+	int frames, start, end;
+	int convert(int n);
+};
+
+
+
+
 /**** A few factory methods ****/
 
 static AVSValue __cdecl Create_FadeOut(AVSValue args, void*, IScriptEnvironment* env);
