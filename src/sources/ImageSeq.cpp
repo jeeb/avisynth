@@ -48,7 +48,7 @@
 AVSFunction Image_filters[] = {
   { "ImageWriter", "c[file]s[start]i[end]i[type]s[info]b", ImageWriter::Create }, 
     // clip, base filename, start, end, image format/extension
-  { "ImageReader", "[file]s[start]i[end]i[fps]i[use_devil]b", ImageReader::Create }, 
+  { "ImageReader", "[file]s[start]i[end]i[fps]f[use_devil]b", ImageReader::Create }, 
     // base filename (sprintf-style), start, end, frames per second, default reader to use
   { 0 }
 };
@@ -111,7 +111,12 @@ PVideoFrame ImageWriter::GetFrame(int n, IScriptEnvironment* env)
   
   // check bounds (where end=0 implies no upper bound)
   if (n < start || (end > 0 && n > end) )
+  {
+    ostringstream ss;
+    ss << "ImageWriter: frame " << n << " not in range";
+    ApplyMessage(&frame, vi, ss.str().c_str(), vi.width/4, 0xf0f0f0,0,0 , env);
     return frame;  
+  }
 
   // construct filename
   ostringstream fn_oss;
@@ -123,7 +128,10 @@ PVideoFrame ImageWriter::GetFrame(int n, IScriptEnvironment* env)
     // initialize file object
     ofstream file(filename.c_str(), ios::out | ios::trunc | ios::binary);  
     if (!file)
-      env->ThrowError("ImageWriter: could not create file");
+    {
+      ApplyMessage(&frame, vi, "ImageWriter: could not create file", vi.width/4, 0xf0f0f0,0,0 , env);
+      return frame;
+    }
 
     // write headers
     file.write(reinterpret_cast<const char *>( &fileHeader ), sizeof(BITMAPFILEHEADER));
@@ -156,7 +164,10 @@ PVideoFrame ImageWriter::GetFrame(int n, IScriptEnvironment* env)
 
     // Check colorspace
     if (!vi.IsRGB24())
-      env->ThrowError("ImageWriter: DevIL requires RGB24 input");
+    {
+      ApplyMessage(&frame, vi, "ImageWriter: DevIL requires RGB24 input", vi.width/4, 0xf0f0f0,0,0 , env);
+      return frame;
+    }
 
     // Set up DevIL    
     ILuint myImage;
@@ -184,26 +195,22 @@ PVideoFrame ImageWriter::GetFrame(int n, IScriptEnvironment* env)
     // Get errors if any
     ILenum err = ilGetError();
     if (err != IL_NO_ERROR)
-      env->ThrowError("ImageWriter: error '%s' in DevIL library writing file %s", 
-                        getErrStr(err).c_str(), filename.c_str());
+    {   
+      ostringstream ss;
+      ss << "ImageWriter: error '" << getErrStr(err) << "' in DevIL library\n writing file " << filename;
+      ApplyMessage(&frame, vi, ss.str().c_str(), vi.width/4, 0xf0f0f0,0,0 , env);
+      return frame;
+    }
     
     // Clean up
     ilDeleteImages(1, &myImage);
   }  
     
-  if (info) {
+  if (info) {    
     // overlay on video output: progress indicator
     ostringstream text;
     text << "Frame " << n << " written to: " << filename;
-
-    HDC hdc = antialiaser.GetDC();
-    RECT r = { 32, 16, min(3440,vi.width*8), 768*2 };
-    DrawText(hdc, text.str().c_str(), -1, &r, 0);
-    GdiFlush();
-
-    env->MakeWritable(&frame);
-    antialiaser.Apply(vi, &frame, frame->GetPitch(),
-      vi.IsYUV() ? 0xD21092 : 0xFFFF00, vi.IsYUV() ? 0x108080 : 0);
+    ApplyMessage(&frame, vi, text.str().c_str(), vi.width/4, 0xf0f0f0,0,0 , env);
   }
   
   return frame;
@@ -237,14 +244,23 @@ AVSValue __cdecl ImageWriter::Create(AVSValue args, void*, IScriptEnvironment* e
  *******   Image Reader ******
  ****************************/
 
-ImageReader::ImageReader(const char * _base_name, const int _start, const int _end, const int _fps, bool _use_DevIL)
- : base_name(_base_name), start(_start), end(_end), fps(_fps), use_DevIL(_use_DevIL)
+ImageReader::ImageReader(const char * _base_name, const int _start, const int _end, const float _fps, bool _use_DevIL)
+ : base_name(_base_name), start(_start), end(_end), fps(_fps), use_DevIL(_use_DevIL), static_frame(NULL)
 {
   // Generate full name
-  sprintf(fileName, base_name, start);
+  sprintf(filename, base_name, start);
+
+  // Invariants
+  vi.num_frames = end + 1;  // make sure each frame can be requested
+  vi.audio_samples_per_second = 0;  
+  double num = fps;  // calculate fps as num/denom for vi
+  int denom = 1;
+  while (num < 16777216 && denom < 16777216) { num*=2; denom*=2; }
+  vi.fps_numerator = int(num+0.5);
+  vi.fps_denominator = denom;
     
   // Try to parse as bmp/ebmp
-  ifstream file(fileName, ios::binary);  
+  ifstream file(filename, ios::binary);  
   file.read( reinterpret_cast<char *> (&fileHeader), sizeof(fileHeader) );
   file.read( reinterpret_cast<char *> (&infoHeader), sizeof(infoHeader) );
   file.close();
@@ -255,10 +271,6 @@ ImageReader::ImageReader(const char * _base_name, const int _start, const int _e
 
     vi.width = infoHeader.biWidth;
     vi.height = infoHeader.biHeight;
-    vi.fps_numerator = fps;
-    vi.fps_denominator = 1;
-    vi.num_frames = end + 1;  // make sure each frame can be requested
-    vi.audio_samples_per_second = 0;
     
     if (infoHeader.biBitCount == 32) {
       vi.pixel_type = VideoInfo::CS_BGR32;      
@@ -279,19 +291,27 @@ ImageReader::ImageReader(const char * _base_name, const int _start, const int _e
     ilGenImages(1, &myImage);
     ilBindImage(myImage);
 
-    ilLoadImage(fileName);
+    ilLoadImage(filename);
     
-    // no error checking...
-
     vi.width = ilGetInteger(IL_IMAGE_WIDTH);
     vi.height = ilGetInteger(IL_IMAGE_HEIGHT);
-    vi.fps_numerator = fps;
-    vi.fps_denominator = 1;
-    vi.num_frames = end + 1;
-    vi.audio_samples_per_second = 0;
     vi.pixel_type = VideoInfo::CS_BGR24;
 
     ilDeleteImages(1, &myImage);
+
+    // Get errors if any
+    // (note: inability to parse an (e)bmp will show up here as a DevIL error)
+    constructor_err = "";
+    ILenum err = ilGetError();  // will be handled in first GetFrame call
+    if (err != IL_NO_ERROR)
+    {
+      ostringstream ss;
+      ss << "ImageReader: error '" << getErrStr(err) << "' in DevIL library\n reading file " << filename;
+      constructor_err = ss.str();
+
+      vi.width = 640;  // make sure we have room to write the error message
+      vi.height = 480;
+    }
   }
 }
 
@@ -304,7 +324,6 @@ ImageReader::~ImageReader()
 }
 
 
-
 PVideoFrame ImageReader::GetFrame(int n, IScriptEnvironment* env) 
 {
   PVideoFrame frame = env->NewVideoFrame(vi);
@@ -315,11 +334,28 @@ PVideoFrame ImageReader::GetFrame(int n, IScriptEnvironment* env)
   int height = frame->GetHeight();
   int width = vi.width;
 
-  sprintf(fileName, base_name, n);
+  sprintf(filename, base_name, n);
+  
+  // check for constructor error
+  if (constructor_err != "")
+  {
+    memset(frame->GetWritePtr(), 0, frame->GetPitch() * frame->GetHeight());     
+    ApplyMessage(&frame, vi, constructor_err.c_str(), vi.width/4, 0xf0f0f0,0,0 , env);
+    return frame;
+  }
+
+  // check if we want a static image
+  if (static_frame != NULL && n >= start && n <= end)
+  {
+    return static_frame;
+  }
   
   // check range
   if (n < start || n > end) {
-    memset(dstPtr, 0, frame->GetPitch() * frame->GetHeight());
+    memset(frame->GetWritePtr(), 0, frame->GetPitch() * frame->GetHeight()); 
+    ostringstream ss;
+    ss << "ImageReader: frame " << n << " not in range";
+    ApplyMessage(&frame, vi, ss.str().c_str(), vi.width/4, 0xf0f0f0,0,0 , env);
     return frame;
   }  
 
@@ -330,20 +366,33 @@ PVideoFrame ImageReader::GetFrame(int n, IScriptEnvironment* env)
     ilGenImages(1, &myImage);
     ilBindImage(myImage);
 
-    ilLoadImage(fileName);
+    ilLoadImage(filename);
 
     // Get errors if any
     ILenum err = ilGetError();
     if (err != IL_NO_ERROR)
-      env->ThrowError("ImageReader: error '%s' in DevIL library reading file %s", 
-                        getErrStr(err).c_str(), fileName);
+    {
+      memset(frame->GetWritePtr(), 0, frame->GetPitch() * frame->GetHeight()); 
+      ostringstream ss;
+      ss << "ImageReader: error '" << getErrStr(err) << "' in DevIL library\n reading file " << filename;
+      ApplyMessage(&frame, vi, ss.str().c_str(), vi.width/4, 0xf0f0f0,0,0 , env);
+      return frame;
+    }
 
 
     // Check some parameters
     if ( ilGetInteger(IL_IMAGE_HEIGHT) != height)
-      env->ThrowError("ImageReader: images must have identical heights");
+    {
+      memset(frame->GetWritePtr(), 0, frame->GetPitch() * frame->GetHeight());       
+      ApplyMessage(&frame, vi, "ImageReader: images must have identical heights", vi.width/4, 0xf0f0f0,0,0 , env);
+      return frame;
+    }    
     if ( ilGetInteger(IL_IMAGE_WIDTH) != width)
-      env->ThrowError("ImageReader: images must have identical widths");
+    {
+      memset(frame->GetWritePtr(), 0, frame->GetPitch() * frame->GetHeight());       
+      ApplyMessage(&frame, vi, "ImageReader: images must have identical widths", vi.width/4, 0xf0f0f0,0,0 , env);
+      return frame;
+    }
 
     // Copy raster to AVS frame
     for (int y=0; y<height; ++y)
@@ -355,16 +404,22 @@ PVideoFrame ImageReader::GetFrame(int n, IScriptEnvironment* env)
     // Get errors if any    
     err = ilGetError();
     if (err != IL_NO_ERROR)
-      env->ThrowError("ImageReader: error '%s' in DevIL library reading file %s", 
-                        getErrStr(err).c_str(), fileName);
+    {
+      memset(frame->GetWritePtr(), 0, frame->GetPitch() * frame->GetHeight()); 
+      ostringstream ss;
+      ss << "ImageReader: error '" << getErrStr(err) << "' in DevIL library\n reading file " << filename;
+      ApplyMessage(&frame, vi, ss.str().c_str(), vi.width/4, 0xf0f0f0,0,0 , env);
+      return frame;
+    }
 
     // Cleanup
     ilDeleteImages(1, &myImage);
   }
   else {  /* treat as ebmp  */
     // Open file, ensure it has the expected properties
-    ifstream file(fileName, ios::binary);
-    checkProperties(file, env);
+    ifstream file(filename, ios::binary);
+    if (!checkProperties(file, frame, env))
+      return frame;
     
     // Read in raster, seeking past padding
     file.seekg (fileHeader.bfOffBits, ios::beg); 
@@ -385,6 +440,10 @@ PVideoFrame ImageReader::GetFrame(int n, IScriptEnvironment* env)
     file.close();
   }
 
+  // undecorated filename means they want a single, static image
+  if( strcmp(filename, base_name) == 0 ) 
+    static_frame = frame;
+
   return frame;
 }
 
@@ -401,7 +460,7 @@ void ImageReader::fileRead(istream & file, BYTE * dstPtr, const int pitch, const
 }
 
 
-void ImageReader::checkProperties(istream & file, IScriptEnvironment * env)
+bool ImageReader::checkProperties(istream & file, PVideoFrame & frame, IScriptEnvironment * env)
 {
   BITMAPFILEHEADER tempFileHeader;
   BITMAPINFOHEADER tempInfoHeader;
@@ -410,26 +469,70 @@ void ImageReader::checkProperties(istream & file, IScriptEnvironment * env)
   file.read( reinterpret_cast<char *> (&tempInfoHeader), sizeof(tempInfoHeader) );
  
   if (tempFileHeader.bfType != fileHeader.bfType)
-    env->ThrowError("ImageReader: invalid (E)BMP file");  
+  {    
+    ApplyMessage(&frame, vi, "ImageReader: invalid (E)BMP file", vi.width/4, 0xf0f0f0,0,0 , env);
+    return false;
+  }
+
   if (tempInfoHeader.biWidth != infoHeader.biWidth)
-    env->ThrowError("ImageReader: image widths must be identical");
+  {    
+    ApplyMessage(&frame, vi, "ImageReader: image widths must be identical", vi.width/4, 0xf0f0f0,0,0 , env);
+    return false;
+  }
+
   if (tempInfoHeader.biHeight != infoHeader.biHeight)
-    env->ThrowError("ImageReader: image heights must be identical");
+  {    
+    ApplyMessage(&frame, vi, "ImageReader: image heights must be identical", vi.width/4, 0xf0f0f0,0,0 , env);
+    return false;
+  }
+
   if (tempInfoHeader.biPlanes != infoHeader.biPlanes)
-    env->ThrowError("ImageReader: images must have the same number of planes");
+  {    
+    ApplyMessage(&frame, vi, "ImageReader: images must have the same number of planes", vi.width/4, 0xf0f0f0,0,0 , env);
+    return false;
+  }
+
   if (tempInfoHeader.biBitCount != infoHeader.biBitCount)
-    env->ThrowError("ImageReader: images must have identical bits per pixel");
+  {    
+    ApplyMessage(&frame, vi, "ImageReader: images must have identical bits per pixel", vi.width/4, 0xf0f0f0,0,0 , env);
+    return false;
+  }
+
   if (tempFileHeader.bfSize != fileHeader.bfSize)
-    env->ThrowError("ImageReader: raster sizes must be identical");
+  {    
+    ApplyMessage(&frame, vi, "ImageReader: raster sizes must be identical", vi.width/4, 0xf0f0f0,0,0 , env);
+    return false;
+  }
+
   if (tempInfoHeader.biCompression != 0)
-    env->ThrowError("ImageReader: EBMP reader cannot handle compressed images"); 
+  {    
+    ApplyMessage(&frame, vi, "ImageReader: EBMP reader cannot handle compressed images", vi.width/4, 0xf0f0f0,0,0 , env);
+    return false;
+  }
+
+  return true;
 }   
 
 
 AVSValue __cdecl ImageReader::Create(AVSValue args, void*, IScriptEnvironment* env) 
 {
-  return new ImageReader(args[0].AsString("c:\\"), args[1].AsInt(0), args[2].AsInt(1000), args[3].AsInt(24), 
+  const char * path = args[0].AsString("c:\\");
+
+  AVSValue image = new ImageReader(path, args[1].AsInt(0), args[2].AsInt(1000), args[3].AsFloat(24), 
                          args[4].AsBool(false));
+
+  // work around DevIL upside-down bug with compressed images
+  const char * ext = strrchr(path, '.') + 1;
+  if (  !lstrcmpi(ext, "jpeg") || !lstrcmpi(ext, "jpg") || !lstrcmpi(ext, "jpe") || !lstrcmpi(ext, "dds") || 
+        !lstrcmpi(ext, "pal") || !lstrcmpi(ext, "pal") || !lstrcmpi(ext, "pcx") || !lstrcmpi(ext, "png") || 
+        !lstrcmpi(ext, "pbm") || !lstrcmpi(ext, "pgm") || !lstrcmpi(ext, "ppm") || !lstrcmpi(ext, "tga")    )
+  {
+    return new FlipVertical(image.AsClip());
+  }
+  else
+  {
+    return image;
+  }
 }
 
 

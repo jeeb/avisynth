@@ -35,6 +35,7 @@
 #ifndef __Image_Sequence_H__
 #define __Image_Sequence_H__
 
+#include "string.h"
 #include<iostream>
 #include<iomanip>
 #include<sstream>
@@ -42,7 +43,8 @@
 using namespace std;
 
 #include "../internal.h"
-#include "../filters/text-overlay.h"
+#include "../filters/text-overlay.h"  // for messages
+#include "../filters/transform.h"  // for FlipVertical
 
 #include "../../distrib/include/il/il.h"
 
@@ -81,13 +83,11 @@ class ImageReader : public IClip
  **/
 {
 public:
-  ImageReader(const char * _base_name, const int _start, const int _end, const int _fps, bool use_DevIL);
+  ImageReader(const char * _base_name, const int _start, const int _end, const float _fps, bool _use_DevIL);
   ~ImageReader();
 
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
-  void fileRead(istream & file, BYTE * dstPtr, const int pitch, const int row_size, const int height);
-  void checkProperties(istream & file, IScriptEnvironment * env);
-  
+    
   void __stdcall GetAudio(void* buf, __int64 start, __int64 count, IScriptEnvironment* env) {}
   const VideoInfo& __stdcall GetVideoInfo() { return vi; }
   bool __stdcall GetParity(int n) { return false; }
@@ -97,15 +97,22 @@ public:
   static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env);
 
 private:
+  void fileRead(istream & file, BYTE * dstPtr, const int pitch, const int row_size, const int height);
+  bool checkProperties(istream & file, PVideoFrame & frame, IScriptEnvironment * env);
+  
   const char * base_name;
   const int start;
   const int end;
-  const int fps;
+  const float fps;
   bool use_DevIL;
+
+  string constructor_err;
 
   VideoInfo vi;
 
-  char fileName[512];
+  PVideoFrame static_frame;
+
+  char filename[512];
       
   BITMAPFILEHEADER fileHeader;
   BITMAPINFOHEADER infoHeader;
