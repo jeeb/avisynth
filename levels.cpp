@@ -672,11 +672,8 @@ DynamicAssembledCode Limiter::create_emulator(int row_size, int height, IScriptE
     prefetchevery = 2;  // 64 byte cacheline
   }
 
-  bool use_movntq = true;
-  if ((env->GetCPUFlags() & CPUF_3DNOW_EXT)) {
-    // Experimentally disable movntq on Athlon
-    use_movntq = false;
-  }
+  bool use_movntq = false;  // We cannot enable write conbining as we are only writing 32 bytes between reads.
+
 
   Assembler x86;   // This is the class that assembles the code.
   
@@ -717,7 +714,7 @@ DynamicAssembledCode Limiter::create_emulator(int row_size, int height, IScriptE
       x86.pmaxub(mm1,mm6);
       x86.pmaxub(mm2,mm6);
       x86.pmaxub(mm3,mm6);
-      if (use_movntq) {
+      if (!use_movntq) {
         x86.movq(ebx,mm0);
         x86.movq(ebx+8,mm1);
         x86.movq(ebx+16,mm2);
