@@ -50,6 +50,7 @@ AVSFunction Image_filters[] = {
     // clip, base filename, start, end, image format/extension
   { "ImageReader", "[file]s[start]i[end]i[fps]f[use_devil]b", ImageReader::Create }, 
     // base filename (sprintf-style), start, end, frames per second, default reader to use
+  { "ImageSource", "[file]s[start]i[end]i[fps]f[use_devil]b", ImageReader::Create },
   { 0 }
 };
 
