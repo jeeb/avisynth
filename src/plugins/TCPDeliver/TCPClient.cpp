@@ -37,6 +37,10 @@
 #include "TCPClient.h"
 #include "alignplanar.h"
 
+/**************************  TCP Client *****************************
+  The TCPCLient is designed as a multithreaded application.
+
+ ********************************************************************/
 
 //FIXME: If client application requests audio at the same time as requesting audio, data transfer might fail
 

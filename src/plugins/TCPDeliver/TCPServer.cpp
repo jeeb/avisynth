@@ -377,7 +377,7 @@ void TCPServerListener::SendAudioInfo(ServerReply* s, const char* request) {
 
   ServerAudioInfo sfi;
   sfi.compression = ServerAudioInfo::COMPRESSION_NONE;
-  sfi.comporessed_bytes = a.bytes;
+  sfi.compressed_bytes = a.bytes;
 
   s->client->pendingData = buf;
   s->client->totalPendingBytes = a.bytes;

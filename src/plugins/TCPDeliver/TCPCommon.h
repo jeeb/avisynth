@@ -42,25 +42,58 @@
 
 #include "stdafx.h"
 
+/*****************************************************************
+ General overview:
+
+  This client is designes as a universal way of transfering uncompressed
+ video via TCP LAN. The client is in no way intended to be used over slow
+ connections due to the datasizes.
+
+  The system is based on the TCP protocol and implemented using WinSock2
+  All data sent is made platform independant, but assume little endian (Intel).
+
+  Data is sent as packaged TCP streams, and each packet is deviced like this:
+
+  0-4: Packet size EXCLUDING these four bytes.[unsigned int32]. 
+  5: Packet type.
+  6: Packet data.
+
+  Next packet is assumed to start right after the packet data.
+  There is no fixed maximum packet type, but large data amounts 
+  (like frames and samples) are split up into subpackets.
+
+ *****************************************************************/
 
 enum {
   REQUEST_PING = 1,
   REQUEST_PONG = 2,
   REQUEST_VERSION = 3,
-  REQUEST_DISCONNECT = 4,
-  REQUEST_NOMORESOCKETS = 5,
+  REQUEST_DISCONNECT = 4,       // Request to disconnect.
+  REQUEST_NOMORESOCKETS = 5,    // Returned to the client if no more sockets are available.
 
-  CLIENT_REQUEST_FRAME = 10,    // This will not send the actual data - only information about the data to be sent
-  CLIENT_REQUEST_AUDIO = 11,    // ditto
-  CLIENT_SEND_FRAME = 20,       // This will send the actual data.
+  CLIENT_REQUEST_FRAME = 10,    
+    // Client would like to have information about frame 'n', which is prepared to be sent.
+    // This will not send the actual data - only information about the data to be sent.
+    // Client should send a ClientRequestFrame struct, Server should return a ServerFrameInfo.
+  CLIENT_REQUEST_AUDIO = 11,    
+  // Same as above
+  // Client should send a ClientRequestAudio struct, Server should return a ServerAudioInfo.
+  CLIENT_SEND_FRAME = 20,       
+  // This will send the actual data.
+  // The data will follow as a split block, without the client needing to send a new request.
   CLIENT_SEND_AUDIO = 21,       
+  // Same as above.
   CLIENT_SEND_VIDEOINFO = 22,
+  // This will make the server send an AviSynth 2.5 struct containing information about the video stream (VideoInfo).
+  CLIENT_SEND_PARITY = 23,
 
   SERVER_VIDEOINFO = 30,
+  // Server send an AviSynth 2.5 VideoInfo struct containing information about the movie.
   SERVER_SENDING_FRAME = 31,
   SERVER_SENDING_AUDIO = 32,
   SERVER_FRAME_INFO = 33,
   SERVER_AUDIO_INFO = 34,
+  SERVER_SENDING_PARITY = 35,
 
   SERVER_SPLIT_BLOCK = 35,        // Only server can split blocks into pieces
   SERVER_END_SPLIT_BLOCK = 36,
@@ -69,15 +102,24 @@ enum {
   INTERNAL_DISCONNECTED = 51
 };
 
+/**********************
+  ServerFrameInfo:
+  Information returned by the server
+  after a client has requested a frame.
+
+  Note that on planar images the information of
+  row_size, width, height is the information
+  about the first plane.
+ **********************/
+
 struct ServerFrameInfo {
-  unsigned int framenumber;
-  unsigned int row_size;
-  unsigned int height;
-  unsigned int pitch;
-  unsigned int compressed_bytes;
-  unsigned int compression;
-  unsigned int crc;
-  unsigned int data_size;
+  unsigned int framenumber;       // The framenumber to be delivered.
+  unsigned int row_size;          // The width of a used pixels of a line in bytes.
+  unsigned int height;            // The height of the image in pixels 
+  unsigned int pitch;             // The length of a line in bytes.
+  unsigned int compressed_bytes;  // The number of bytes to be transfered after compression.
+  unsigned int compression;       // The compression sheme used.
+  unsigned int data_size;         // Total size of the uncompressed image in bytes.
 
   unsigned int reserved1;
   unsigned int reserved2;
@@ -89,14 +131,19 @@ struct ServerFrameInfo {
   unsigned int reserved8;
 
   enum {
-    COMPRESSION_NONE = 0
+    COMPRESSION_NONE = 0          // The image is sent as uncompressed bytes.
   };
-
 };
 
+/**********************
+  ServerAudioInfo:
+ Information about a collection of
+ samples that has been requested by the
+ client.
+ **********************/
 struct ServerAudioInfo {
-  unsigned int comporessed_bytes;
-  unsigned int compression;
+  unsigned int compressed_bytes;  // The number of bytes sent after compression
+  unsigned int compression;       // Compression sheme used.
 
   unsigned int reserved1;
   unsigned int reserved2;
@@ -112,11 +159,15 @@ struct ServerAudioInfo {
   };
 
 };
-
+/**********************
+  ClientRequestAudio:
+ A request by the client to send a 
+ cumber of samples.
+ **********************/
 struct ClientRequestAudio {
-  __int64 start;
-  __int64 count;  
-  unsigned int bytes;
+  __int64 start;        // The offset of the first sample to be returned (in samples, not multiplied by the number of channels).
+  __int64 count;        // The number of samples to be fetched.
+  unsigned int bytes;   // The expected number of bytes
 
   unsigned int reserved1;
   unsigned int reserved2;
@@ -129,7 +180,7 @@ struct ClientRequestAudio {
 };
 
 struct ClientRequestFrame {
-  unsigned int n;
+  unsigned int n;       // The number of the frame requested.
 
   unsigned int reserved1;
   unsigned int reserved2;
@@ -141,6 +192,9 @@ struct ClientRequestFrame {
   unsigned int reserved8;
 };
 
+struct ClientRequestParity {
+  unsigned int n;       // The number of the frame requested.
+};
 
 /***********************************************************************
 // adler32 checksum
