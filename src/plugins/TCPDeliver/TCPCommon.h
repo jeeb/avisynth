@@ -126,7 +126,8 @@ struct ServerFrameInfo {
   enum {
     COMPRESSION_NONE = 0,         // The image is sent as uncompressed bytes.
     COMPRESSION_DELTADOWN_LZO = 1<<0,    // The image is sent as downwards-delta + lzo compressed data.
-    COMPRESSION_DELTADOWN_HUFFMAN = 1<<1 // The image is sent as downwards-delta + huffman compressed.
+    COMPRESSION_DELTADOWN_HUFFMAN = 1<<1, // The image is sent as downwards-delta + huffman compressed.
+    COMPRESSION_DELTADOWN_GZIP = 1<<2 // The image is sent as downwards-delta + GZip huffman compressed.
   };
 };
 

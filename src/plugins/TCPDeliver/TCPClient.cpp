@@ -142,6 +142,10 @@ PVideoFrame __stdcall TCPClient::GetFrame(int n, IScriptEnvironment* env) {
       case ServerFrameInfo::COMPRESSION_DELTADOWN_HUFFMAN: {
           t = (TCPCompression*)new PredictDownHuffman();
           break;
+                                                           }
+      case ServerFrameInfo::COMPRESSION_DELTADOWN_GZIP: {
+          t = (TCPCompression*)new PredictDownGZip();
+          break;
         }
       default:
         env->ThrowError("TCPClient: Unknown compression.");
@@ -314,7 +318,8 @@ TCPClientThread::TCPClientThread(const char* hostname, int port, IScriptEnvironm
   ccv.major = TCPDELIVER_MAJOR;
   ccv.minor = TCPDELIVER_MINOR;
   ccv.compression_supported = ServerFrameInfo::COMPRESSION_DELTADOWN_LZO |
-    ServerFrameInfo::COMPRESSION_DELTADOWN_HUFFMAN;
+    ServerFrameInfo::COMPRESSION_DELTADOWN_HUFFMAN |
+    ServerFrameInfo::COMPRESSION_DELTADOWN_GZIP;
   SendRequest(CLIENT_CHECK_VERSION, &ccv, sizeof(ccv));
   GetReply();
 

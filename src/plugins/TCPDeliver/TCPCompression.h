@@ -1,6 +1,3 @@
-// Avisynth v2.5.  Copyright 2002 Ben Rudiak-Gould et al.
-// http://www.avisynth.org
-
 // This program is free software; you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
 // the Free Software Foundation; either version 2 of the License, or
@@ -34,14 +31,68 @@
 
 // TCPDeliver (c) 2004 by Klaus Post
 
-#include "TCPClient.h"
-#include "TCPServer.h"
+#ifndef TCP_Compression_h
+#define TCP_Compression_h
+
+#define ZLIB_WINAPI
+
+#include "lzo/include/lzoconf.h"
+#include "lzo/include/lzo1x.h"
+#include "huffman.h"
+#include "TCPCommon.h"
+#include "avisynth.h"
+#include <malloc.h>
+#include "zlib/include/zlib.h" 
 
 
-extern "C" __declspec(dllexport) const char* __stdcall AvisynthPluginInit2(IScriptEnvironment* env)
-{
-    env->AddFunction("TCPServer", "c[port]i", Create_TCPServer, 0);
-    env->AddFunction("TCPSource", "s[port]i[compression]s", Create_TCPClient, 0);
-    return "TCPDeliver for AviSynth";
-}
+class TCPCompression {
+public:
+  TCPCompression() { 
+    dst = 0;
+    compression_type = ServerFrameInfo::COMPRESSION_NONE;
+  }
+  virtual ~TCPCompression(void) {};
 
+  virtual int CompressImage(BYTE* image, int rowsize, int h, int pitch);  // returns new size
+  virtual int DeCompressImage(BYTE* image, int rowsize, int h, int pitch, int data_size); // returns new size
+
+
+  BYTE* dst;      // Must always be deallocated using _aligned_free().
+  int compression_type;
+  bool inplace;   // Do NOT free dst, when true.
+};
+
+
+class PredictDownLZO : public TCPCompression {
+public:
+  PredictDownLZO();
+  virtual ~PredictDownLZO(void);
+
+  int CompressImage(BYTE* image, int rowsize, int h, int pitch);
+  int DeCompressImage(BYTE* image, int rowsize, int h, int pitch, int data_size);
+private:
+  lzo_bytep wrkmem; 
+
+};
+
+class PredictDownHuffman : public TCPCompression {
+public:
+  PredictDownHuffman();
+  virtual ~PredictDownHuffman(void);
+
+  int CompressImage(BYTE* image, int rowsize, int h, int pitch);
+  int DeCompressImage(BYTE* image, int rowsize, int h, int pitch, int data_size);
+};
+
+class PredictDownGZip : public TCPCompression {
+public:
+  PredictDownGZip();
+  virtual ~PredictDownGZip(void);
+
+  int CompressImage(BYTE* image, int rowsize, int h, int pitch);
+  int DeCompressImage(BYTE* image, int rowsize, int h, int pitch, int data_size);
+private:
+  z_stream_s *z;
+};
+
+#endif

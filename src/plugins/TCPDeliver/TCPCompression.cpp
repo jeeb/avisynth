@@ -195,12 +195,13 @@ yloopback:
 
     emms
   }
+
   int in_size = pitch*h;
   unsigned int out_size = in_size*2;
   dst = (BYTE*)_aligned_malloc(out_size, 16);
   out_size = Huffman_Compress(image, dst, in_size );
 
-  _RPT2(0, "TCPCompression: Compressed %d bytes into %d bytes.\n", in_size, out_size);
+  _RPT2(0, "TCPCompression: Compressed %d bytes into %d bytes.(Huffman)\n", in_size, out_size);
   return out_size;
 }
  
@@ -242,7 +243,146 @@ yloopback:
 
     emms
   }
-  _RPT2(0, "TCPCompression: Decompressed %d bytes into %d bytes.\n", in_size, dst_size);
+  _RPT2(0, "TCPCompression: Decompressed %d bytes into %d bytes.(Huffmann)\n", in_size, dst_size);
   return dst_size;
 }
+
+
+PredictDownGZip::PredictDownGZip() {
+  compression_type = ServerFrameInfo::COMPRESSION_DELTADOWN_GZIP;
+  z = (z_stream_s*)malloc(sizeof(z_stream_s));
+}
+
+PredictDownGZip::~PredictDownGZip(void) {
+  free(z);
+}
+/******************************
+ * Downwards deltaencoded.
+ ******************************/
+
+int PredictDownGZip::CompressImage(BYTE* image, int rowsize, int h, int pitch) {
+  // Pitch mod 16
+  // Height > 2
+  inplace = false;    
+  rowsize = (rowsize+15)&~15;
+    
+  __asm {
+    xor eax, eax        // x offset
+    mov ecx, [pitch]
+    mov edx, rowsize
+xloopback:
+    mov ebx, [h]
+    mov esi, [image]    // src
+    pxor mm4, mm4   // left
+    pxor mm5, mm5   // left2
+yloopback:
+    movq mm0, [esi+eax]   // temp
+    movq mm1, [esi+eax+8]   // temp
+    movq mm2, mm0
+    movq mm3, mm1
+    psubb mm0, mm4  // left - temp
+    psubb mm1, mm5  // left - temp
+    movq [esi+eax], mm0
+    movq [esi+eax+8], mm1
+    movq mm4, mm2  // left = temp
+    movq mm5, mm3  // left = temp
+    add esi, ecx  // Next line
+    dec ebx
+    jnz yloopback
+
+    add eax, 16
+    cmp eax, edx
+    jl xloopback
+
+    emms
+  }
+
+  int in_size = pitch*h;
+  unsigned int out_size = in_size*2;
+  dst = (BYTE*)_aligned_malloc(out_size, 16);
+  memset(z, 0, sizeof(z_stream_s));
+
+  z->avail_in = in_size;
+  z->next_in = image;
+  z->total_in = 0;
+
+  z->avail_out = out_size;
+  z->next_out = dst;
+  z->total_out = 0;
+  
+  z->data_type = Z_BINARY;
+  deflateInit2(z, Z_BEST_SPEED, Z_DEFLATED, 15, 8, Z_HUFFMAN_ONLY);
+//  deflateInit(z, Z_BEST_SPEED);
+  int i = deflate(z, Z_FINISH);
+
+  deflateEnd(z);
+  out_size = z->total_out;//uLong
+  unsigned int* dstint = (unsigned int*)&dst[out_size];
+  dstint[0]= z->adler;
+
+  out_size+=4;
+  _RPT2(0, "TCPCompression: Compressed %d bytes into %d bytes (GZIP).\n", in_size, out_size);
+  return out_size;
+}
+ 
+int PredictDownGZip::DeCompressImage(BYTE* image, int rowsize, int h, int pitch, int in_size) {
+  // Pitch mod 16
+  // Height > 2
+  inplace = false;    
+  unsigned int dst_size = pitch*h;
+  dst = (BYTE*)_aligned_malloc(dst_size, 64);
+  memset(z, 0, sizeof(z_stream_s));
+
+  unsigned int* dstint = (unsigned int*)&image[in_size-4];
+  z->adler = dstint[0]; 
+  in_size-=4;
+
+  z->avail_in = in_size;
+  z->next_in = image;
+  z->total_in = 0;
+
+  z->avail_out = dst_size;
+  z->next_out = dst;
+  z->total_out = 0;
+
+  z->data_type = Z_BINARY;
+
+
+  inflateInit(z);
+  int i = inflate(z, Z_FINISH);
+  inflateEnd(z);
+
+  rowsize = (rowsize+15)&~15;
+  image = dst;
+    
+  __asm {
+    xor eax, eax        // x offset
+    mov ecx, [pitch]
+    mov edx, rowsize
+xloopback:
+    mov ebx, [h]
+    mov esi, [image]    // src
+    pxor mm4, mm4   // left
+    pxor mm5, mm5   // left2
+yloopback:
+    movq mm0, [esi+eax]   // src
+    movq mm1, [esi+eax+8]   // src2
+    paddb mm4, mm0  // left + src
+    paddb mm5, mm1  // left + src
+    movq [esi+eax], mm4
+    movq [esi+eax+8], mm5
+    add esi, ecx  // Next line
+    dec ebx
+    jnz yloopback
+
+    add eax, 16
+    cmp eax, edx
+    jl xloopback
+
+    emms
+  }
+  _RPT2(0, "TCPCompression: Decompressed %d bytes into %d bytes. (GZIP)\n", in_size, dst_size);
+  return dst_size;
+}
+
 

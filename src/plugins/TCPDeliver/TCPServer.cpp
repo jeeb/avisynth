@@ -340,6 +340,7 @@ void TCPServerListener::Receive(TCPRecievePacket* tr, ServerReply* s) {
     break;
   default:
     _RPT1(1, "TCPServer: Could not handle request type %d.", recvbuf[0]);
+    tr->isDisconnected = true;
     break;
   }
 }
@@ -389,7 +390,10 @@ void TCPServerListener::CheckClientVersion(ServerReply* s, const char* request) 
   } else {
     s->setType(REQUEST_CONNECTIONACCEPTED);
   }
-  if (ccv->compression_supported & ServerFrameInfo::COMPRESSION_DELTADOWN_HUFFMAN) {
+  if (ccv->compression_supported & ServerFrameInfo::COMPRESSION_DELTADOWN_GZIP) {
+    delete s->client->compression;
+    s->client->compression = new PredictDownGZip();
+  } else if (ccv->compression_supported & ServerFrameInfo::COMPRESSION_DELTADOWN_HUFFMAN) {
     delete s->client->compression;
     s->client->compression = new PredictDownHuffman();
   } else if (ccv->compression_supported & ServerFrameInfo::COMPRESSION_DELTADOWN_LZO) {
@@ -501,8 +505,6 @@ void TCPServerListener::SendFrameInfo(ServerReply* s, const char* request) {
   // Send Reply
   memcpy(s->data, &sfi, sizeof(ServerFrameInfo));
 }
-
-// 28 98 88 12
 
 void TCPServerListener::SendAudioInfo(ServerReply* s, const char* request) {
   _RPT0(0, "TCPServer: Sending Audio Info!\n");

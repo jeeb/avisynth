@@ -1283,30 +1283,6 @@ FilteredResizeV::FilteredResizeV( PClip _child, double subrange_top, double subr
 
   pitch_gUV = -1;
   yOfsUV = 0;
-
-/*
- * This is where I started tracking the cache corruption bug
- * It's bad form to exercise the world from a constructor,
- * particularly when trying to use animate.
- *
- * Calling GetFrame when the world is still being built has
- * a certain chicken before the egg difficulty ;-)
- *
- * Ian Brabham, 11 July 2004
-
-  PVideoFrame src = child->GetFrame(0, env);
-  int sh = src->GetHeight();
-  pitch_gY = src->GetPitch(PLANAR_Y);
-  yOfs = new int[sh];
-  for (int i = 0; i < sh; i++) yOfs[i] = src->GetPitch() * i;
-
-  int shUV = src->GetHeight(PLANAR_U);
-  pitch_gUV = src->GetPitch(PLANAR_U);
-  yOfsUV = new int[shUV];
-  for (i = 0; i < shUV; i++) {
-    yOfsUV[i] = src->GetPitch(PLANAR_U) * i;
-  }
-*/
 }
 
 
@@ -1324,19 +1300,31 @@ PVideoFrame __stdcall FilteredResizeV::GetFrame(int n, IScriptEnvironment* env)
   BYTE* dstp = dst->GetWritePtr();
   int y = vi.height;
   int plane = vi.IsPlanar() ? 4:1;
-  if (pitch_gUV != src->GetPitch(PLANAR_U)) {
+
+  if (pitch_gUV != src->GetPitch(PLANAR_U)) {  // Pitch is not the same as last frame
     int shUV = src->GetHeight(PLANAR_U);
-	if (!yOfsUV) yOfsUV = new int[shUV];
-    for (int i = 0; i < shUV; i++) yOfsUV[i] = src->GetPitch(PLANAR_U) * i;
     pitch_gUV = src->GetPitch(PLANAR_U);
+
+	  if (!yOfsUV) 
+      yOfsUV = new int[shUV];
+
+    for (int i = 0; i < shUV; i++) 
+      yOfsUV[i] = pitch_gUV * i;
   }
-  if (pitch_gY != src->GetPitch(PLANAR_Y))  {
+
+  if (pitch_gY != src->GetPitch(PLANAR_Y))  { // Pitch is not the same as last frame
     int sh = src->GetHeight();
-	if (!yOfs) yOfs = new int[sh];
     pitch_gY = src->GetPitch(PLANAR_Y);
-    for (int i = 0; i < sh; i++) yOfs[i] = src->GetPitch() * i;
+
+	  if (!yOfs) 
+      yOfs = new int[sh];
+
+    for (int i = 0; i < sh; i++) 
+      yOfs[i] = pitch_gY * i;
   }
+
   int *yOfs2 = this->yOfs;
+
   while (plane-->0){
     switch (plane) {
       case 2:  // take V plane
