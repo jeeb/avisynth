@@ -672,7 +672,7 @@ private:
   VarTable* var_table;
 
   LinkedVideoFrameBuffer video_frame_buffers;
-  int memory_max, memory_used;
+  __int64 memory_max, memory_used;
 
   LinkedVideoFrameBuffer* NewFrameBuffer(int size);
 
@@ -694,8 +694,12 @@ private:
 ScriptEnvironment::ScriptEnvironment() : at_exit(This()), function_table(This()), global_var_table(0, 0) {
   MEMORYSTATUS memstatus;
   GlobalMemoryStatus(&memstatus);
-  memory_max = max(memstatus.dwAvailPhys / 4,16*1024*1024);   // Minimum 16MB, otherwise available physical memory/4, no maximum
-  memory_used = 0;
+  // Minimum 16MB, otherwise available physical memory/4, no maximum
+  if (memstatus.dwAvailPhys  > 64*1024*1024)
+    memory_max = (__int64)memstatus.dwAvailPhys >> 2;
+  else
+    memory_max = 16777216i64;
+  memory_used = 0i64;
   var_table = new VarTable(0, &global_var_table);
   global_var_table.Set("true", true);
   global_var_table.Set("false", false);
@@ -719,9 +723,15 @@ ScriptEnvironment::~ScriptEnvironment() {
 
 int ScriptEnvironment::SetMemoryMax(int mem) {
   MEMORYSTATUS memstatus;
+  __int64 mem_limit;
+
   GlobalMemoryStatus(&memstatus);
-  memory_max = min(max(memory_used,mem*1024*1024),memory_used+memstatus.dwAvailPhys-5*1024*1024);
-  return memory_max/(1024*1024);
+  memory_max = mem * 1048576i64;                          // mem as megabytes
+  if (memory_max < memory_used) memory_max = memory_used; // can't be less than we already have
+  mem_limit = memory_used + (__int64)memstatus.dwAvailPhys - 5242880i64;
+  if (memory_max > mem_limit) memory_max = mem_limit;     // can't be more than 5Mb less than total
+  if (memory_max < 16777216i64) memory_max = 16777216i64; // can't be less than 16Mb
+  return (int)(memory_max/1048576i64);
 }
 
 int ScriptEnvironment::SetWorkingDir(const char * newdir) {
@@ -996,7 +1006,7 @@ PVideoFrame __stdcall ScriptEnvironment::Subframe(PVideoFrame src, int rel_offse
 
 LinkedVideoFrameBuffer* ScriptEnvironment::NewFrameBuffer(int size) {
   memory_used += size;
-  _RPT1(0, "Frame buffer memory used: %d\n", memory_used);
+  _RPT1(0, "Frame buffer memory used: %I64d\n", memory_used);
   return new LinkedVideoFrameBuffer(size);
 }
 
@@ -1016,18 +1026,26 @@ LinkedVideoFrameBuffer* ScriptEnvironment::GetFrameBuffer2(int size) {
  * a random candidate selection model. (i.e. pick a buffer at random)
  * 
  * Ian Brabham, 11 July 2004
-
+ 
+ * Exercising Plan C exclusively caused problems with uncontrolled memory
+ * usage, probably with heap fragmentation. Restore Plan B until a better
+ * overall model can be developed. This should restore the prior level of
+ * stability and Plan C can now at least be used when required without the
+ * fatality previously experienced.
+ *
+ * Ian Brabham 24 July 2004
+*/
   // Plan B: look for an existing buffer of the appropriate size
 
   for (LinkedVideoFrameBuffer* i = video_frame_buffers.prev; i != &video_frame_buffers; i = i->prev) {
     if (i->GetRefcount() == 0 && i->GetDataSize() == size)
       return i;
   }
-*/
+
   // Plan C:
   // Before we allocate a new frame, check our memory usage, and perhaps delete some unreferenced frames.
 
-  if (memory_used >  memory_max + (memory_max/4) ) {  // Are we more than 25% above allowed usage?
+  if (memory_used >  memory_max + (memory_max >> 3) ) {  // Are we more than 12.5% above allowed usage?
     int freed = 0;
     int freed_count = 0;
     // Deallocate enough unused frames.
@@ -1042,7 +1060,7 @@ LinkedVideoFrameBuffer* ScriptEnvironment::GetFrameBuffer2(int size) {
           freed_count++;
           // Delete data;
           i->~LinkedVideoFrameBuffer();
-	  if ((memory_used-freed) < memory_max)
+	  if ((memory_used - freed) < memory_max)
 	    break; // Stop, we are below 100% utilization
         }
       }
