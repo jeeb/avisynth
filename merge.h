@@ -54,13 +54,18 @@ private:
 /**** MMX Routines ****/
 
 void mmx_merge_luma( unsigned int *src, unsigned int *luma, int pitch, 
-                     int luma_pitch,int width, int height );
+                     int luma_pitch, int width, int height );
                     
-void mmx_weigh_luma( unsigned int *src,unsigned int *luma, int pitch, 
-                     int luma_pitch,int width, int height, int weight, int invweight );
+void isse_weigh_luma( unsigned int *src, unsigned int *luma, int pitch, 
+                     int luma_pitch, int width, int height, int weight, int invweight );
 
-void mmx_weigh_chroma( unsigned int *src,unsigned int *luma, int pitch, 
-                     int luma_pitch,int width, int height, int weight, int invweight );
+void isse_weigh_chroma( unsigned int *src,unsigned int *chroma, int pitch, 
+                       int chroma_pitch, int width, int height, int weight, int invweight );
 
+void weigh_luma( unsigned int *src, unsigned int *luma, int pitch,
+                 int luma_pitch, int width, int height, int weight, int invweight);
+
+void weigh_chroma( unsigned int *src, unsigned int *chroma, int pitch,
+                   int chroma_pitch, int width, int height, int weight, int invweight);
 
 #endif  // __Merge_H__

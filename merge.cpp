@@ -8,14 +8,13 @@
 
 #include "merge.h"
 
-
 /********************************************************************
 ***** Declare index of new filters for Avisynth's filter engine *****
 ********************************************************************/
 
 AVSFunction Merge_filters[] = {
-  { "MergeChroma", "cc[lumaweight]f", MergeChroma::Create },  // src, chroma src, weight
-  { "MergeLuma", "cc[lumaweight]f", MergeLuma::Create },      // src, chroma src, weight
+  { "MergeChroma", "cc[chromaweight]f", MergeChroma::Create },  // src, chroma src, weight
+  { "MergeLuma", "cc[lumaweight]f", MergeLuma::Create },      // src, luma src, weight
   { 0 }
 };
 
@@ -41,16 +40,8 @@ MergeChroma::MergeChroma(PClip _child, PClip _clip, float _weight, IScriptEnviro
   if (weight<0.0f) weight=0.0f;
   if (weight>1.0f) weight=1.0f;
 
-  if (weight<1.0f)
-  {
-    if (!(env->GetCPUFlags() & CPUF_INTEGER_SSE))
-      env->ThrowError("MergeChroma: Integer SSE required (K7, P3 or P4) for weighted mode.");
-  }
-  else
-  {
-    if (!(env->GetCPUFlags() & CPUF_MMX))
+  if (weight>=1.0f && !(env->GetCPUFlags() & CPUF_MMX))
       env->ThrowError("MergeChroma: MMX required (K6, K7, P5 MMX, P-II, P-III or P4)");
-  }
 }
 
 
@@ -59,7 +50,7 @@ PVideoFrame __stdcall MergeChroma::GetFrame(int n, IScriptEnvironment* env)
 {
   
   PVideoFrame src = child->GetFrame(n, env);
-  PVideoFrame luma = clip->GetFrame(n, env);
+  PVideoFrame chroma = clip->GetFrame(n, env);
   
   const int h = src->GetHeight();
   const int w = src->GetRowSize()>>1; // width in pixels
@@ -67,29 +58,27 @@ PVideoFrame __stdcall MergeChroma::GetFrame(int n, IScriptEnvironment* env)
   if (weight<1.0f) {
     env->MakeWritable(&src);
     unsigned int* srcp = (unsigned int*)src->GetWritePtr();
-    unsigned int* lumap = (unsigned int*)luma->GetReadPtr();
+    unsigned int* chromap = (unsigned int*)chroma->GetReadPtr();
 
     const int isrc_pitch = (src->GetPitch())>>2;  // int pitch (one pitch=two pixels)
-    const int iluma_pitch = (luma->GetPitch())>>2;  // Ints
+    const int ichroma_pitch = (chroma->GetPitch())>>2;  // Ints
   
-    mmx_weigh_chroma(srcp,lumap,isrc_pitch,iluma_pitch,w,h,(int)(weight*32767.0f),32767-(int)(weight*32767.0f));
-
+    (env->GetCPUFlags() & CPUF_INTEGER_SSE ? isse_weigh_chroma : weigh_chroma)
+							(srcp,chromap,isrc_pitch,ichroma_pitch,w,h,(int)(weight*32767.0f),32767-(int)(weight*32767.0f));
   }
   else
   {
     unsigned int* srcp = (unsigned int*)src->GetReadPtr();
-    env->MakeWritable(&luma);
-    unsigned int* lumap = (unsigned int*)luma->GetWritePtr();
+    env->MakeWritable(&chroma);
+    unsigned int* chromap = (unsigned int*)chroma->GetWritePtr();
 
     const int isrc_pitch = (src->GetPitch())>>2;  // int pitch (one pitch=two pixels)
-    const int iluma_pitch = (luma->GetPitch())>>2;  // Ints
+    const int ichroma_pitch = (chroma->GetPitch())>>2;  // Ints
 
-    mmx_merge_luma(lumap,srcp,iluma_pitch,isrc_pitch,w,h);  // Just swap luma/chroma
-    __asm {emms};
-    return luma;
+    mmx_merge_luma(chromap,srcp,ichroma_pitch,isrc_pitch,w,h);  // Just swap luma/chroma
+    return chroma;
   }
 
-  __asm {emms};
   return src;
 }
 
@@ -124,17 +113,8 @@ MergeLuma::MergeLuma(PClip _child, PClip _clip, float _weight, IScriptEnvironmen
   if (weight<0.0f) weight=0.0f;
   if (weight>1.0f) weight=1.0f;
 
-  if (weight<1.0f)
-  {
-    if (!(env->GetCPUFlags() & CPUF_INTEGER_SSE))
-      env->ThrowError("MergeLuma: Integer SSE required (K7, P3 or P4) for weighted mode.");
-
-  }
-  else
-  {
-    if (!(env->GetCPUFlags() & CPUF_MMX))
+  if (weight>=1.0f && !(env->GetCPUFlags() & CPUF_MMX))
       env->ThrowError("MergeLuma: MMX required (K6, K7, P5 MMX, P-II, P-III or P4)");
-  }
 }
     
 
@@ -155,11 +135,10 @@ PVideoFrame __stdcall MergeLuma::GetFrame(int n, IScriptEnvironment* env)
   const int w = src->GetRowSize()>>1; // width in pixels
     
   if (weight<1.0f)
-		mmx_weigh_luma(srcp,lumap,isrc_pitch,iluma_pitch,w,h,(int)(weight*32767.0f),32767-(int)(weight*32767.0f));
+    (env->GetCPUFlags() & CPUF_INTEGER_SSE ? isse_weigh_luma : weigh_luma)
+							(srcp,lumap,isrc_pitch,iluma_pitch,w,h,(int)(weight*32767.0f),32767-(int)(weight*32767.0f));
   else
 		mmx_merge_luma(srcp,lumap,isrc_pitch,iluma_pitch,w,h);
- 
-  __asm {emms};
   return src;
 }
 
@@ -172,6 +151,62 @@ AVSValue __cdecl MergeLuma::Create(AVSValue args, void* user_data, IScriptEnviro
 
 
 
+
+/****************************
+******    C routines    *****
+****************************/
+
+
+void weigh_luma(unsigned int *src,unsigned int *luma, int pitch, int luma_pitch,int width, int height, int weight, int invweight) {
+
+	int lwidth=width>>1;
+
+	for (int y=0;y<height;y++) {
+	  unsigned int *tlu=&luma[y*luma_pitch];  // offset
+		unsigned int *src2=src;
+		for (int x=0;x<lwidth;x++) {
+			unsigned int lumapix=*tlu++;
+			unsigned int destpix=*src2;
+			unsigned int luma1=lumapix&0xff;
+			unsigned int luma2=(lumapix&0xff0000)>>16;
+
+			unsigned int orgluma1=destpix&0xff;
+			unsigned int orgluma2=(destpix&0xff0000)>>16;
+			
+			*src2++ = ( destpix & 0xff00ff00 ) |
+				( ( luma1 * weight + orgluma1 * invweight + 16384 ) >> 15 ) |
+				( ( ( luma2 * weight + orgluma2 * invweight + 16384 ) << 1 ) &0xff0000 );  // Insert new luma values
+		}
+		src+=pitch;
+	} // end for y
+}
+
+
+
+
+void weigh_chroma(unsigned int *src,unsigned int *chroma, int pitch, int chroma_pitch,int width, int height, int weight, int invweight) {
+
+	int lwidth=width>>1;
+
+	for (int y=0;y<height;y++) {
+	  unsigned int *tch=&chroma[y*chroma_pitch];  // offset
+		unsigned int *src2=src;
+		for (int x=0;x<lwidth;x++) {
+			unsigned int chromapix=*tch++;
+			unsigned int destpix=*src2;
+			unsigned int chroma1=(chromapix&0xff00)>>8;
+			unsigned int chroma2=(chromapix&0xff000000)>>24;
+
+			unsigned int orgchroma1=(destpix&0xff00)>>8;
+			unsigned int orgchroma2=(destpix&0xff000000)>>24;
+			
+			*src2++ = ( destpix & 0x00ff00ff ) |
+				( ( ( chroma1 * weight + orgchroma1 * invweight + 16384 ) >> 7 ) & 0xff00 ) |
+				( ( ( chroma2 * weight + orgchroma2 * invweight + 16384 ) << 9 ) & 0xff000000 );  // Insert new chroma values
+		}
+		src+=pitch;
+	} // end for y
+}
 
 
 
@@ -249,12 +284,13 @@ exitloop:
 		src += pitch;
 		luma += luma_pitch;
 	} // end for y
+  __asm {emms};
 }
 
 
 
 
-void mmx_weigh_luma(unsigned int *src,unsigned int *luma, int pitch,
+void isse_weigh_luma(unsigned int *src,unsigned int *luma, int pitch,
 										int luma_pitch,int width, int height, int weight, int invweight)
 {
 	__int64 I1=0x00ff00ff00ff00ff;  // Luma mask
@@ -340,14 +376,15 @@ exitloop:
 		src += pitch;
 		luma += luma_pitch;
 	} // end for y
+  __asm {emms};
 }
 
 
 
 
 
-void mmx_weigh_chroma( unsigned int *src,unsigned int *luma, int pitch, 
-                     int luma_pitch,int width, int height, int weight, int invweight ) 
+void isse_weigh_chroma( unsigned int *src,unsigned int *chroma, int pitch, 
+                     int chroma_pitch,int width, int height, int weight, int invweight ) 
 {
 	__int64 I1=0x00ff00ff00ff00ff;  // Luma mask
 //__int64 I2=0xff00ff00ff00ff00;  // Chroma mask // unused
@@ -374,7 +411,7 @@ void mmx_weigh_chroma( unsigned int *src,unsigned int *luma, int pitch,
 	__asm {
 		mov eax,src
 		mov ecx,0
-		mov ebx,luma
+		mov ebx,chroma
 		jmp afterloop
 		align 16
 goloop:
@@ -431,6 +468,7 @@ outloop:
 exitloop:
 		}
 		src += pitch;
-		luma += luma_pitch;
+		chroma += chroma_pitch;
 	} // end for y
+  __asm {emms};
 }
