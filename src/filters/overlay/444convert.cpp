@@ -255,8 +255,8 @@ PVideoFrame Convert444ToRGB::ConvertImage(Image444* src, PVideoFrame dst, IScrip
     int xRGB = 0;
     for (int x=0; x<w; x++) {
       int Y = ((srcY[x] - 16) * int(255.0/219.0*65536+0.5))>>16;
-      int U = ((srcU[x] - 127) * int(255.0/239.0*65536+0.5))>>16;
-      int V = ((srcV[x] - 127) * int(255.0/239.0*65536+0.5))>>16;
+      int U = ((srcU[x] - 128) * int(255.0/239.0*65536+0.5))>>16;
+      int V = ((srcV[x] - 128) * int(255.0/239.0*65536+0.5))>>16;
 
       int r = Y + ((V * crv)>>16);
       int b = Y + ((U * cbu)>>16);
@@ -302,8 +302,8 @@ PVideoFrame Convert444NonCCIRToRGB::ConvertImage(Image444* src, PVideoFrame dst,
     int xRGB = 0;
     for (int x=0; x<w; x++) {
       int Y = srcY[x];
-      int U = srcU[x] - 127;
-      int V = srcV[x] - 127;
+      int U = srcU[x] - 128;
+      int V = srcV[x] - 128;
 
       int r = Y + ((V * crv)>>16);
       int b = Y + ((U * cbu)>>16);
