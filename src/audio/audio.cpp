@@ -458,6 +458,7 @@ void ConvertAudio::convertFromFloat(float* inbuf,void* outbuf, char sample_type,
 
 void ConvertAudio::convertFromFloat_SSE(float* inbuf,void* outbuf, char sample_type, int count) {
   int i;
+
   switch (sample_type) {
     case SAMPLE_INT8: {
       unsigned char* samples = (unsigned char*)outbuf;
@@ -467,23 +468,78 @@ void ConvertAudio::convertFromFloat_SSE(float* inbuf,void* outbuf, char sample_t
       }
     case SAMPLE_INT16: {
       signed short* samples = (signed short*)outbuf;
-      for (i=0;i<count;i++) {
-        float val = inbuf[i] * (float)(MAX_INT);
-        int tval = _mm_cvtt_ss2si(_mm_load_ss(&val));
-        tval >>= 16;
-        samples[i] = tval;
+      int sleft = count & 3;
+      count -= sleft;
+
+      float mult[4];
+      mult[0]=mult[1]=mult[2]=mult[3] = 32768.0;
+
+      _asm {
+        movups xmm7, [mult]
+        mov eax, inbuf
+        xor ebx, ebx
+        mov ecx, count
+        shl ecx, 1
+        mov edx, outbuf
+        align 16
+cf16_loop:
+        movups xmm0, [eax+ebx*2]
+        mulps  xmm0, xmm7
+        movhlps xmm1, xmm0
+        cvtps2pi mm0, xmm0
+        cvtps2pi mm1, xmm1
+        packssdw mm0, mm1
+        movq [edx+ebx], mm0
+
+        add ebx,8
+        cmp ecx, ebx
+        jne cf16_loop
+        emms
+      }
+
+      for (i=0;i<sleft;i++) {
+        samples[count+i]=Saturate_int16(inbuf[count+i] * 32768.0f);
       }
 
       break;
-      }
+    }
 
     case SAMPLE_INT32: {
       signed int* samples = (signed int*)outbuf;
-      for (i=0;i<count;i++) {
-        float val = inbuf[i] * (float)(MAX_INT);
-        samples[i]= _mm_cvtt_ss2si(_mm_load_ss(&val));
+      int sleft = count & 3;
+      count -= sleft;
+
+      float mult[4];
+      mult[0]=mult[1]=mult[2]=mult[3] = (float)(INT_MAX);
+
+      _asm {
+        movups xmm7, [mult]
+        mov eax, inbuf
+        xor ebx, ebx
+        mov ecx, count
+        shl ecx, 2
+        mov edx, outbuf
+        align 16
+cf32_loop:
+        movups xmm0, [eax+ebx]
+        mulps  xmm0, xmm7
+        movhlps xmm1, xmm0
+        cvtps2pi mm0, xmm0
+        cvtps2pi mm1, xmm1
+        movq [edx+ebx], mm0
+        movq [edx+ebx+8], mm1
+
+        add ebx,16
+        cmp ecx, ebx
+        jne cf32_loop
+        emms
       }
-      break;     
+
+      for (i=0;i<sleft;i++) {
+        samples[count+i]=Saturate_int32(inbuf[count+i] * (float)(INT_MAX));
+      }
+
+      break;
     }
     case SAMPLE_INT24: {
       unsigned char* samples = (unsigned char*)outbuf;
