@@ -79,6 +79,8 @@ CreateDirectory  "$SMPROGRAMS\AviSynth 2.5"
   CreateShortCut "$SMPROGRAMS\AviSynth 2.5\Uninstall AviSynth.lnk" "$INSTDIR\Uninstall.exe"
   CreateShortCut "$SMPROGRAMS\AviSynth 2.5\License.lnk" "$INSTDIR\GPL.txt"
   CreateShortCut "$SMPROGRAMS\AviSynth 2.5\Plugin Directory.lnk" "$INSTDIR\Plugins"
+  WriteINIStr    "$SMPROGRAMS\AviSynth 2.5\AviSynth Online.url" "InternetShortcut" "URL" "http://www.avisynth.org"
+  WriteINIStr    "$SMPROGRAMS\AviSynth 2.5\Download Plugins.url" "InternetShortcut" "URL" "http://www.avisynth.org/index.php?page=Section+3%3A+Filters+and+colorspaces#q3.4"
 
 Delete $INSTDIR\Uninstall.exe 
 WriteUninstaller $INSTDIR\Uninstall.exe
@@ -103,7 +105,6 @@ Section "Documentation (recommended)"
 
   CreateShortCut "$SMPROGRAMS\AviSynth 2.5\AviSynth Documentation.lnk" "$INSTDIR\Docs\index.html"
   CreateShortCut "$SMPROGRAMS\AviSynth 2.5\Example Scripts.lnk" "$INSTDIR\Examples"
-  WriteINIStr    "$SMPROGRAMS\AviSynth 2.5\AviSynth Online.url" "InternetShortcut" "URL" "http://www.avisynth.org"
 
 Delete $INSTDIR\Uninstall.exe 
 WriteUninstaller $INSTDIR\Uninstall.exe
