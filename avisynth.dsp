@@ -62,7 +62,7 @@ InputPath=.\Release\avisynth.dll
 SOURCE="$(InputPath)"
 
 "$(SystemRoot)\system32\avisynth.dll" : $(SOURCE) "$(INTDIR)" "$(OUTDIR)"
-	release\upx -9 release\avisynth.dll 
+	distrib\upx -9 release\avisynth.dll 
 	copy Release\avisynth.dll $(SystemRoot)\system32 
 	
 # End Custom Build
