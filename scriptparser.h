@@ -59,8 +59,8 @@ private:
   PExpression ParseOr(void);
   PExpression ParseAnd(void);
   PExpression ParseComparison(void);
-  PExpression ParseAddition(void);
-  PExpression ParseMultiplication(void);
+  PExpression ParseAddition(bool negationOnHold);
+  PExpression ParseMultiplication(bool negationOnHold);
   PExpression ParseUnary(void);
   PExpression ParseOOP(void);
 

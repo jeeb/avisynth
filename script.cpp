@@ -19,6 +19,8 @@
 
 #include "script.h"
 #include <stdlib.h>
+#include <io.h>
+#include <time.h>
 
 #ifdef _MSC_VER
   #define itoa(a,b,c) _itoa(a,b,c)
@@ -40,9 +42,25 @@ AVSFunction Script_functions[] = {
   { "exp", "f", Exp },
   { "pow", "ff", Pow },
   { "sqrt", "f", Sqrt },
-  { "fabs", "f", Fabs },
-  { "abs", "i", Abs },
 
+  { "abs", "i", Abs },
+  { "abs", "f", FAbs },
+  { "sign","f",Sign},
+
+  { "lcase","s",LCase},
+  { "ucase","s",UCase},
+  { "strlen","s",StrLen},
+  { "revstr","s",RevStr},
+  { "leftstr","si",LeftStr},
+  { "midstr","si[length]i",MidStr},
+  { "rightstr","si",RightStr},
+  { "findstr","ss",FindStr},
+
+  { "rand", "[max]i[scale]b[seed]b", Rand },
+
+  { "Select", "i.+", Select },
+
+  { "nop","",NOP },
 
   { "width", "c", Width },
   { "height", "c", Height },
@@ -255,8 +273,91 @@ AVSValue Log(AVSValue args, void* user_data, IScriptEnvironment* env) { return l
 AVSValue Exp(AVSValue args, void* user_data, IScriptEnvironment* env) { return exp(args[0].AsFloat()); }
 AVSValue Pow(AVSValue args, void* user_data, IScriptEnvironment* env) {	return pow(args[0].AsFloat(),args[1].AsFloat()); }
 AVSValue Sqrt(AVSValue args, void* user_data, IScriptEnvironment* env) { return sqrt(args[0].AsFloat()); }
-AVSValue Fabs(AVSValue args, void* user_data, IScriptEnvironment* env) { return fabs(args[0].AsFloat()); }
+AVSValue FAbs(AVSValue args, void* user_data, IScriptEnvironment* env) { return fabs(args[0].AsFloat()); }
 AVSValue Abs(AVSValue args, void* user_data, IScriptEnvironment* env) { return abs(args[0].AsInt()); }
+AVSValue Sign(AVSValue args, void*, IScriptEnvironment* env) { return args[0].AsFloat()==0 ? 0 : args[0].AsFloat() > 0 ? 1 : -1; }
+
+AVSValue UCase(AVSValue args, void*, IScriptEnvironment* env) { return _strupr(_strdup(args[0].AsString())); }
+AVSValue LCase(AVSValue args, void*, IScriptEnvironment* env) { return _strlwr(_strdup(args[0].AsString())); }
+
+AVSValue StrLen(AVSValue args, void*, IScriptEnvironment* env) { return int(strlen(args[0].AsString())); }
+AVSValue RevStr(AVSValue args, void*, IScriptEnvironment* env) { return _strrev(_strdup(args[0].AsString())); }
+
+AVSValue LeftStr(AVSValue args, void*, IScriptEnvironment* env)
+ { char result[512] = "\0";
+
+   if (args[1].AsInt() < 0)
+      env->ThrowError("LeftStr: Negative character count not allowed");
+   strncat(result, args[0].AsString(), args[1].AsInt());
+   return _strdup(result); }
+
+AVSValue MidStr(AVSValue args, void*, IScriptEnvironment* env)
+{ char result[512] = "\0";
+  int maxlen, len, offset;
+
+  maxlen = strlen(args[0].AsString());
+  if (args[1].AsInt() < 1)
+      env->ThrowError("MidStr: Illegal character location");
+  len = args[2].AsInt(maxlen);
+  if (len < 0)
+      env->ThrowError("MidStr: Illegal character count");
+  offset = args[1].AsInt() - 1;
+  if (maxlen <= offset) { offset = 0; len = 0;}
+  strncat(result, args[0].AsString()+offset, len);
+  return _strdup(result); }
+
+AVSValue RightStr(AVSValue args, void*, IScriptEnvironment* env)
+ { char result[512] = "\0";
+   int offset;
+
+   if (args[1].AsInt() < 0)
+      env->ThrowError("RightStr: Negative character count not allowed");
+   offset = strlen(args[0].AsString()) - args[1].AsInt();
+   if (offset < 0) offset = 0;
+   strncat(result, args[0].AsString()+offset, args[1].AsInt());
+   return _strdup(result); }
+
+AVSValue FindStr(AVSValue args, void*, IScriptEnvironment* env)
+{ char *pdest;
+  int result;
+
+  pdest = strstr( args[0].AsString(),args[1].AsString() );
+  result = pdest - args[0].AsString() +1;
+  if (pdest == NULL) result = 0;
+  return result; }
+
+AVSValue Rand(AVSValue args, void* user_data, IScriptEnvironment* env)
+ { int limit = args[0].AsInt(RAND_MAX);
+   bool scale_mode = args[1].AsBool((abs(limit) > RAND_MAX));
+
+   if (args[2].AsBool(false)) srand( (unsigned) time(NULL) ); //seed
+
+   if (scale_mode) {
+      double f = 1.0 / RAND_MAX;
+      return int(f * rand() * limit); }
+    else { //modulus mode
+      int s = (limit < 0 ? -1 : 1);
+      if (limit==0) return 0;
+       else return s * rand() % limit;
+         }
+ }
+
+AVSValue Select(AVSValue args, void*, IScriptEnvironment* env)
+{ int i = args[0].AsInt();
+  if ((args[1].ArraySize() <= i) || (i < 0))
+    env->ThrowError("Select: Index value out of range");
+  return args[1][i];
+}
+
+AVSValue NOP(AVSValue args, void*, IScriptEnvironment* env) { return NULL;}
+
+AVSValue Exist(AVSValue args, void*, IScriptEnvironment* env)
+ { struct _finddata_t c_file;
+   const char *filename = args[0].AsString();
+   bool wildcard;
+   wildcard = ((strchr(filename,'*')!=NULL) || (strchr(filename,'?')!=NULL));
+   return _findfirst(filename,&c_file)==-1L ? false : wildcard ? false : true; 
+}
 
 static inline const VideoInfo& VI(const AVSValue& arg) { return arg.AsClip()->GetVideoInfo(); }
 

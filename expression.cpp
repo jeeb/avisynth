@@ -150,8 +150,11 @@ AVSValue ExpLess::Evaluate(IScriptEnvironment* env)
   else if (x.IsFloat() && y.IsFloat()) {
     return x.AsFloat() < y.AsFloat();
   }
+  else if (x.IsString() && y.IsString()) {
+    return _stricmp(x.AsString(),y.AsString()) < 0 ? true : false;
+  }
   else {
-    env->ThrowError("Evaluate: operands of `<' and friends must be numeric");
+    env->ThrowError("Evaluate: operands of `<' and friends must be string or numeric");
     return 0;
   }
 }

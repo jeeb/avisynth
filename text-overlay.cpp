@@ -30,8 +30,9 @@
 AVSFunction Text_filters[] = {
   { "ShowFrameNumber", "c[scroll]b", ShowFrameNumber::Create }, // clip, scroll?
   { "ShowSMPTE", "cf", ShowSMPTE::Create },                     // clip, fps
-  { "Subtitle", "cs[x]i[y]i[first_frame]i[last_frame]i[font]s[size]i[text_color]i[halo_color]i", 
+  { "Subtitle", "cs[x]i[y]i[first_frame]i[last_frame]i[font]s[size]i[text_color]i[halo_color]i[align]i[spc]i", 
     Subtitle::Create },       // see docs!
+//  { "Subtitle", "cs[x]i[y]i[first_frame]i[last_frame]i[font]s[size]i[text_color]i[halo_color]i", 
   { "Compare", "cc[channels]s[logfile]s[show_graph]b", Compare::Create },
   { 0 }
 };
@@ -479,7 +480,7 @@ AVSValue __cdecl ShowSMPTE::Create(AVSValue args, void*, IScriptEnvironment* env
 
 Subtitle::Subtitle( PClip _child, const char _text[], int _x, int _y, int _firstframe, 
                     int _lastframe, const char _fontname[], int _size, int _textcolor, 
-                    int _halocolor )
+                    int _halocolor, int _align, int _spc )
  : GenericVideoFilter(_child), antialiaser(0), text(_text), x(_x), y(_y), 
    firstframe(_firstframe), lastframe(_lastframe), fontname(MyStrdup(_fontname)), size(_size*8)
 {
@@ -490,6 +491,8 @@ Subtitle::Subtitle( PClip _child, const char _text[], int _x, int _y, int _first
     textcolor = _textcolor;
     halocolor = _halocolor;
   }
+ align = _align;
+ spc = _spc;
 }
 
 
@@ -520,7 +523,6 @@ PVideoFrame Subtitle::GetFrame(int n, IScriptEnvironment* env)
   return frame;
 }
 
-
 AVSValue __cdecl Subtitle::Create(AVSValue args, void*, IScriptEnvironment* env) 
 {
     PClip clip = args[0].AsClip();
@@ -531,10 +533,28 @@ AVSValue __cdecl Subtitle::Create(AVSValue args, void*, IScriptEnvironment* env)
     const int size = args[7].AsInt(18);
     const int text_color = args[8].AsInt(0xFFFF00);
     const int halo_color = args[9].AsInt(0);
-    const int x = args[2].AsInt(8);
-    const int y = args[3].AsInt(size);
-    return new Subtitle(clip, text, x, y, first_frame, last_frame, font, size, text_color, halo_color);
+    const int align = args[10].AsInt(args[2].AsInt(8)==-1?5:4);
+    const int spc = args[11].AsInt(0);
+    int defx, defy;
+    switch( align ) {
+     case 2: case 5 : case 8: defx = -1; break;
+     case 3: case 6 : case 9: defx = clip->GetVideoInfo().width-8; break;
+     default: defx = 8; break; }
+
+    if ((align >=6) && (align<=9)) defy = 0;
+      else { if ((align >=1) && (align <=3))
+               defy = clip->GetVideoInfo().height-1;
+               else defy = size; }
+
+    const int x = args[2].AsInt(defx);
+    const int y = args[3].AsInt(defy);
+
+    if ((align < 1) || (align > 9))
+     env->ThrowError("Subtitle: Align values are 1 - 9 mapped to your numeric pad");
+
+    return new Subtitle(clip, text, x, y, first_frame, last_frame, font, size, text_color, halo_color, align, spc);
 }
+
 
 
 void Subtitle::InitAntialiaser() 
@@ -543,21 +563,30 @@ void Subtitle::InitAntialiaser()
 
   HDC hdcAntialias = antialiaser->GetDC();
 
-  int real_x;
-  if (x == -1) {
-    SetTextAlign(hdcAntialias, TA_BASELINE|TA_CENTER);
-    real_x = vi.width>>1;
-  } else {
-    SetTextAlign(hdcAntialias, TA_BASELINE|TA_LEFT);
-    real_x = x;
-  }
+  int real_x = x;
+  int real_y = y;
+  unsigned int al = 0;
 
-  TextOut(hdcAntialias, real_x*8+16, y*8+16, text, strlen(text));
+  switch( align )
+  { case 1: al = TA_BOTTOM   | TA_LEFT; break;
+    case 2: al = TA_BOTTOM   | TA_CENTER; break;
+    case 3: al = TA_BOTTOM   | TA_RIGHT; break;
+    case 5: al = TA_BASELINE | TA_CENTER; break;
+    case 6: al = TA_BASELINE | TA_RIGHT; break;
+    case 7: al = TA_TOP      | TA_LEFT; break;
+    case 8: al = TA_TOP      | TA_CENTER; break;
+    case 9: al = TA_TOP      | TA_RIGHT; break;
+    default: al= TA_BASELINE | TA_LEFT; break;
+  }
+  SetTextCharacterExtra(hdcAntialias, spc);
+  SetTextAlign(hdcAntialias, al);
+
+  if (x==-1) real_x = vi.width>>1;
+  if (y==-1) real_y = vi.height>>1;
+
+  TextOut(hdcAntialias, real_x*8+16, real_y*8+16, text, strlen(text));
   GdiFlush();
 }
-
-
-
 
 
 

@@ -103,7 +103,7 @@ class Subtitle : public GenericVideoFilter
 {
 public:
   Subtitle( PClip _child, const char _text[], int _x, int _y, int _firstframe, int _lastframe, 
-            const char _fontname[], int _size, int _textcolor, int _halocolor );
+            const char _fontname[], int _size, int _textcolor, int _halocolor, int _align, int _spc );
   virtual ~Subtitle(void);
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
   
@@ -113,12 +113,11 @@ private:
   void InitAntialiaser(void);
   
   const int x, y, firstframe, lastframe, size;
-  /*const*/ int textcolor, halocolor;
+  /*const*/ int textcolor, halocolor, align, spc;
   const char* const fontname;
   const char* const text;
   Antialiaser* antialiaser;  
 };
-
 
 
 class Compare : public GenericVideoFilter

@@ -35,14 +35,15 @@ AVSFunction Edit_filters[] = {
   { "Dissolve", "cc+i", Dissolve::Create },                 // clips, overlap frames
   { "AudioDub", "cc", AudioDub::Create },                   // video src, audio src
   { "Reverse", "c", Reverse::Create },                      // plays backwards
-  { "FadeOut", "ci", Create_FadeOut },                      // # frames
-  { "FadeOut2", "ci", Create_FadeOut2 },                    // # frames
-  { "FadeIn", "ci", Create_FadeIn },                      // # frames
-  { "FadeIn2", "ci", Create_FadeIn2 },                    // # frames
+  { "FadeOut", "ci[color]i", Create_FadeOut},               // # frames, color
+  { "FadeOut2", "ci[color]i", Create_FadeOut2},             // # frames, color
+  { "FadeIn", "ci[color]i", Create_FadeIn},                 // # frames, color
+  { "FadeIn2", "ci[color]i", Create_FadeIn2},               // # frames, color
+  { "FadeIO", "ci[color]i", Create_FadeIO},                 // # frames [,color]
+  { "FadeIO2", "ci[color]i", Create_FadeIO2},               // # frames [,color]
   { "Loop", "c[times]i[start]i[end]i", Loop::Create },      // number of loops, first frame, last frames
   { 0 }
 };
-
 
 
 
@@ -645,48 +646,65 @@ AVSValue __cdecl Loop::Create(AVSValue args, void*, IScriptEnvironment* env)
 
 
 
-
 /******************************
  ** Assorted factory methods **
  *****************************/
 
-AVSValue __cdecl Create_FadeOut(AVSValue args, void*, IScriptEnvironment* env) 
-{
+PClip __cdecl ColorClip(PClip a, int duration, int color, IScriptEnvironment* env) {
+  AVSValue blackness_args[] = { a, duration, color };
+  static const char* arg_names[3] = { 0, 0, "color" };
+  return env->Invoke("Blackness", AVSValue(blackness_args, 3), arg_names ).AsClip();
+}
+
+AVSValue __cdecl Create_FadeOut(AVSValue args, void*,IScriptEnvironment* env) {
   int duration = args[1].AsInt();
+  int fadeclr = args[2].AsInt(0);
   PClip a = args[0].AsClip();
-  AVSValue blackness_args[] = { a, duration+1 };
-  PClip b = env->Invoke("Blackness", AVSValue(blackness_args, 2)).AsClip();
+  PClip b = ColorClip(a,duration+1,fadeclr,env);
   return new Dissolve(a, b, duration, env);
 }
 
-AVSValue __cdecl Create_FadeOut2(AVSValue args, void*, IScriptEnvironment* env) 
-{
+AVSValue __cdecl Create_FadeOut2(AVSValue args, void*,IScriptEnvironment* env) {
   int duration = args[1].AsInt();
+  int fadeclr = args[2].AsInt(0);
   PClip a = args[0].AsClip();
-  AVSValue blackness_args[] = { a, duration+2 };
-  PClip b = env->Invoke("Blackness", AVSValue(blackness_args, 2)).AsClip();
+  PClip b = ColorClip(a,duration+2,fadeclr,env);
   return new Dissolve(a, b, duration, env);
 }
 
-AVSValue __cdecl Create_FadeIn(AVSValue args, void*, IScriptEnvironment* env) 
-{
+AVSValue __cdecl Create_FadeIn(AVSValue args, void*,IScriptEnvironment* env) {
   int duration = args[1].AsInt();
+  int fadeclr = args[2].AsInt(0);
   PClip a = args[0].AsClip();
-  AVSValue blackness_args[] = { a, duration+1 };
-  PClip b = env->Invoke("Blackness", AVSValue(blackness_args, 2)).AsClip();
+  PClip b = ColorClip(a,duration+1,fadeclr,env);
   return new Dissolve(b, a, duration, env);
 }
 
-AVSValue __cdecl Create_FadeIn2(AVSValue args, void*, IScriptEnvironment* env) 
-{
+AVSValue __cdecl Create_FadeIn2(AVSValue args, void*,IScriptEnvironment* env) {
   int duration = args[1].AsInt();
+  int fadeclr = args[2].AsInt(0);
   PClip a = args[0].AsClip();
-  AVSValue blackness_args[] = { a, duration+2 };
-  PClip b = env->Invoke("Blackness", AVSValue(blackness_args, 2)).AsClip();
+  PClip b = ColorClip(a,duration+2,fadeclr,env);
   return new Dissolve(b, a, duration, env);
 }
 
+AVSValue __cdecl Create_FadeIO(AVSValue args, void*, IScriptEnvironment* env) {
+  int duration = args[1].AsInt();
+  int fadeclr = args[2].AsInt(0);
+  PClip a = args[0].AsClip();
+  PClip b = ColorClip(a,duration+1,fadeclr,env);
+  AVSValue dissolve_args[] = { b, a, b, duration };
+  return env->Invoke("Dissolve", AVSValue(dissolve_args,4)).AsClip();
+}
 
+AVSValue __cdecl Create_FadeIO2(AVSValue args, void*, IScriptEnvironment* env) {
+  int duration = args[1].AsInt();
+  int fadeclr = args[2].AsInt(0);
+  PClip a = args[0].AsClip();
+  PClip b = ColorClip(a,duration+2,fadeclr,env);
+  AVSValue dissolve_args[] = { b, a, b, duration };
+  return env->Invoke("Dissolve", AVSValue(dissolve_args,4)).AsClip();
+}
 
 
 PClip new_Splice(PClip _child1, PClip _child2, bool realign_sound, IScriptEnvironment* env) 

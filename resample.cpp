@@ -32,11 +32,12 @@ AVSFunction Resample_filters[] = {
   { "BicubicResize", "cii[b]f[c]f[src_left]f[src_top]f[src_width]f[src_height]f", Create_BicubicResize },
   { "LanczosResize", "cii[src_left]f[src_top]f[src_width]f[src_height]f", Create_Lanczos3Resize},
   /**
-    * Resize(PClip clip, [src_left, src_top, src_width, int src_height,] dst_width, dst_height)
+    * Resize(PClip clip, dst_width, dst_height [src_left, src_top, src_width, int src_height,] )
     *
     * src_left et al.   =  when these optional arguments are given, the filter acts just like
     *                      a Crop was performed with those parameters before resizing, only faster
    **/
+
 
   { 0 }
 };

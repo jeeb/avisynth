@@ -311,16 +311,17 @@ PExpression ScriptParser::ParseAnd(void)
 
 PExpression ScriptParser::ParseComparison(void)
 {
-  PExpression left = ParseAddition();
+  PExpression left = ParseAddition(false);
   PExpression result;
   int op;
   while ((op = GetTokenAsComparisonOperator()) != 0) {
     tokenizer.NextToken();
-    PExpression right = ParseAddition();
+    PExpression right = ParseAddition(false);
     PExpression term;
     switch (op) {
       case '==': term = new ExpEqual(left, right); break;
       case '!=': term = new ExpNot(new ExpEqual(left, right)); break;
+      case '<>': term = new ExpNot(new ExpEqual(left, right)); break;
       case '<': term = new ExpLess(left, right); break;
       case '>=': term = new ExpNot(new ExpLess(left, right)); break;
       case '>': term = new ExpLess(right, left); break;
@@ -333,27 +334,25 @@ PExpression ScriptParser::ParseComparison(void)
 }
 
 
-PExpression ScriptParser::ParseAddition(void) 
+PExpression ScriptParser::ParseAddition(bool negationOnHold) //update exterior calls to ParseAddition(false)
 {
-  PExpression left = ParseMultiplication();
+  PExpression left = ParseMultiplication(negationOnHold);
   bool plus = tokenizer.IsOperator('+');
   bool minus = tokenizer.IsOperator('-');
   bool doubleplus = tokenizer.IsOperator('++');
   if (plus || minus || doubleplus) {
     tokenizer.NextToken();
-    PExpression right = ParseAddition();
-    if (plus)
-      return new ExpPlus(left, right);
-    else if (minus)
-      return new ExpMinus(left, right);
-    else
+    PExpression right = ParseAddition(minus);
+    if (doubleplus)
       return new ExpDoublePlus(left, right);
+    else 
+      return new ExpPlus(left, right);   //no longer ExpMinus  'right' will be negated when needed
   }
   else
     return left;
 }
 
-PExpression ScriptParser::ParseMultiplication(void) 
+PExpression ScriptParser::ParseMultiplication(bool negationOnHold) 
 {
   PExpression left = ParseUnary();
   bool mult = tokenizer.IsOperator('*');
@@ -361,17 +360,19 @@ PExpression ScriptParser::ParseMultiplication(void)
   bool mod = tokenizer.IsOperator('%');
   if (mult || div || mod) {
     tokenizer.NextToken();
-    PExpression right = ParseMultiplication();
+    PExpression right = ParseMultiplication(false);
     if (mult)
-      return new ExpMult(left, right);
+      left = new ExpMult(left, right);
     else if (div)
-      return new ExpDiv(left, right);
+      left = new ExpDiv(left, right);
     else
-      return new ExpMod(left, right);
-  }
-  else
-    return left;
+      left = new ExpMod(left, right);
+  }  
+  if (negationOnHold)   //negate the factorised result if needed
+    left = new ExpNegate(left);
+  return left;
 }
+
 
 PExpression ScriptParser::ParseUnary(void) {
   // accept '+' with anything
@@ -485,13 +486,14 @@ PExpression ScriptParser::ParseAtom(void)
   }
 }
 
-int ScriptParser::GetTokenAsComparisonOperator() 
+int ScriptParser::GetTokenAsComparisonOperator()
 {
   if (!tokenizer.IsOperator())
     return 0;
   int op = tokenizer.AsOperator();
-  if (op == '==' || op == '!=' || op == '<' || op == '>' || op == '<=' || op == '>=')
+  if (op == '==' || op == '!=' || op == '<>' || op == '<' || op == '>' || op == '<=' || op == '>=')
     return op;
   else
     return 0;
 }
+

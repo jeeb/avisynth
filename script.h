@@ -114,7 +114,7 @@ AVSValue Log(AVSValue args, void* user_data, IScriptEnvironment* env);
 AVSValue Exp(AVSValue args, void* user_data, IScriptEnvironment* env);
 AVSValue Pow(AVSValue args, void* user_data, IScriptEnvironment* env);
 AVSValue Sqrt(AVSValue args, void* user_data, IScriptEnvironment* env);
-AVSValue Fabs(AVSValue args, void* user_data, IScriptEnvironment* env);
+AVSValue FAbs(AVSValue args, void* user_data, IScriptEnvironment* env);
 AVSValue Abs(AVSValue args, void* user_data, IScriptEnvironment* env);
 
 
@@ -154,5 +154,24 @@ AVSValue Frac(AVSValue args, void*, IScriptEnvironment* env);
 AVSValue Float(AVSValue args, void*,IScriptEnvironment* env); 
 AVSValue Value(AVSValue args, void*, IScriptEnvironment* env);
 AVSValue HexValue(AVSValue args, void*, IScriptEnvironment* env);
+
+AVSValue Sign(AVSValue args, void*, IScriptEnvironment* env);
+
+AVSValue UCase(AVSValue args, void*, IScriptEnvironment* env);
+AVSValue LCase(AVSValue args, void*, IScriptEnvironment* env);
+AVSValue StrLen(AVSValue args, void*, IScriptEnvironment* env);
+AVSValue RevStr(AVSValue args, void*, IScriptEnvironment* env);
+AVSValue LeftStr(AVSValue args, void*, IScriptEnvironment* env);
+AVSValue MidStr(AVSValue args, void*, IScriptEnvironment* env);
+AVSValue RightStr(AVSValue args, void*, IScriptEnvironment* env);
+AVSValue FindStr(AVSValue args, void*, IScriptEnvironment* env);
+
+AVSValue Rand(AVSValue args, void* user_data, IScriptEnvironment* env);
+
+AVSValue Select(AVSValue args, void*, IScriptEnvironment* env);
+
+AVSValue NOP(AVSValue args, void*, IScriptEnvironment* env);
+
+AVSValue Exist(AVSValue args, void*, IScriptEnvironment* env);
 
 #endif  // __Script_H__

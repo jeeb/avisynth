@@ -449,12 +449,16 @@ static PVideoFrame CreateBlankFrame(const VideoInfo& vi, int color, IScriptEnvir
     unsigned d = (color_yuv>>16) * 0x010001 + ((color_yuv>>8)&255) * 0x0100 + (color_yuv&255) * 0x01000000;
     for (int i=0; i<size; i+=4)
       *(unsigned*)(p+i) = d;
-  } else if (vi.IsRGB24()) {
+} else if (vi.IsRGB24()) {
+    const unsigned char clr0 = (color & 0xFF);
+    const unsigned short clr1 = (color >> 8);
+    const int gr = frame->GetRowSize();
+    const int gp = frame->GetPitch();
     for (int y=frame->GetHeight();y>0;y--) {
-      for (int i=0; i<frame->GetRowSize(); i+=3) {
-        p[i] = color&0xff; p[i+1] = (color>>8)&0xff; p[i+2] = (color>>16)&0xff;
+      for (int i=0; i<gr; i+=3) {
+        p[i] = clr0; *(unsigned __int16*)(p+i+1) = clr1;
       }
-      p+=frame->GetPitch();
+      p+=gp;
     }
   } else if (vi.IsRGB32()) {
     for (int i=0; i<size; i+=4)

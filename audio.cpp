@@ -404,7 +404,7 @@ void __stdcall Amplify::GetAudio(void* buf, int start, int count, IScriptEnviron
   } 
   else {
     for (int i=0; i<count; ++i)
-      samples[i] = Saturate(int(Int32x32To64(samples[i],left_factor) >> 16));
+      samples[i] = Saturate(int(Int32x32To64(samples[i],left_factor) >> 16));  
   }
 }
 
@@ -445,7 +445,7 @@ void __stdcall Normalize::GetAudio(void* buf, int start, int count, IScriptEnvir
   if (max_volume==-1) {
     int passes=vi.num_audio_samples/count;
     int num_samples=count;
-    if (vi.stereo) num_samples*=2;
+//    if (vi.stereo) num_samples*=2;
     // Read samples into buffer and test them
     for (int i=0;i<passes;i++) {
         child->GetAudio(buf, num_samples*i, count, env);
@@ -455,7 +455,7 @@ void __stdcall Normalize::GetAudio(void* buf, int start, int count, IScriptEnvir
     }     
     // Remaining samples
     int rem_samples=vi.num_audio_samples%count;
-    if (vi.stereo) rem_samples*=2;
+//    if (vi.stereo) rem_samples*=2;
     child->GetAudio(buf, num_samples*passes, rem_samples, env);
     for (i=0;i<rem_samples;i++) {
       max_volume=max(abs(samples[i]),max_volume);
