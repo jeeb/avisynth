@@ -19,6 +19,7 @@
 
 #include "script.h"
 #include <stdlib.h>
+#include <math.h>
 
 #ifdef _MSC_VER
   #define itoa(a,b,c) _itoa(a,b,c)
@@ -233,9 +234,9 @@ AVSValue Import(AVSValue args, void*, IScriptEnvironment* env)
 AVSValue SetMemoryMax(AVSValue args, void*, IScriptEnvironment* env) { return env->SetMemoryMax(args[0].AsInt()); }
 AVSValue SetWorkingDir(AVSValue args, void*, IScriptEnvironment* env) { return env->SetWorkingDir(args[0].AsString()); }
 
-AVSValue Floor(AVSValue args, void*, IScriptEnvironment* env) { return int(args[0].AsFloat()); }
-AVSValue Ceil(AVSValue args, void*, IScriptEnvironment* env) { return -int(-args[0].AsFloat()); }
-AVSValue Round(AVSValue args, void*, IScriptEnvironment* env) { return int(args[0].AsFloat()+0.5); }
+AVSValue Floor(AVSValue args, void*,IScriptEnvironment* env) { return int(floor(args[0].AsFloat())); }
+AVSValue Ceil(AVSValue args, void*, IScriptEnvironment* env) { return int(ceil(args[0].AsFloat())); }
+AVSValue Round(AVSValue args, void*, IScriptEnvironment* env) { return args[0].AsFloat()<0 ? -int(-args[0].AsFloat()-.5) : int(args[0].AsFloat()+.5); }
 
 AVSValue Sin(AVSValue args, void* user_data, IScriptEnvironment* env) { return sin(args[0].AsFloat()); }
 AVSValue Cos(AVSValue args, void* user_data, IScriptEnvironment* env) { return cos(args[0].AsFloat()); }
