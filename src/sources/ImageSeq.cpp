@@ -55,6 +55,31 @@ AVSFunction Image_filters[] = {
 };
 
 
+static char* GetWorkingDir(char* buf, size_t bufSize)
+{
+    assert(buf != NULL);
+    DWORD len = GetCurrentDirectory(bufSize - 1, buf);
+
+    // if the retrieved directory name doesn't end in a trailing slash, add one
+    if (len > 0 && len < bufSize - 1 && buf[len - 1] != '\\')
+    {
+        buf[len] = '\\';
+        buf[len + 1] = '\0';
+        ++len;
+    }
+    return buf;
+}
+
+
+static bool IsAbsolutePath(const char* path)
+{
+    assert(path != NULL);
+    return    strchr(path, ':') != NULL
+              // Allow UNC paths too
+           || (path[0] == '\\' && path[1] == '\\')
+           || (path[0] == '/' && path[1] == '/');
+}
+
 
 /*****************************
  *******   Image Writer ******
@@ -245,12 +270,23 @@ AVSValue __cdecl ImageWriter::Create(AVSValue args, void*, IScriptEnvironment* e
 /*****************************
  *******   Image Reader ******
  ****************************/
-
-ImageReader::ImageReader(const char * _base_name, const int _start, const int _end, const float _fps, bool _use_DevIL, bool _info)
- : base_name(_base_name), start(_start), end(_end), fps(_fps), use_DevIL(_use_DevIL), static_frame(NULL), info(_info)
+ImageReader::ImageReader(const char * _base_name, const int _start, const int _end,
+                         const float _fps, bool _use_DevIL, bool _info)
+ : base_name(), start(_start), end(_end), fps(_fps), use_DevIL(_use_DevIL), static_frame(NULL), info(_info)
 {
   // Generate full name
-  sprintf(filename, base_name, start);
+  if (IsAbsolutePath(_base_name))
+  {
+    base_name[0] = '\0';
+    strncat(base_name, _base_name, sizeof base_name);
+  }
+  else
+  {
+    char cwd[MAX_PATH + 1];
+    GetWorkingDir(cwd, sizeof cwd);
+    _snprintf(base_name, sizeof base_name, "%s%s", cwd, _base_name);
+  }
+  _snprintf(filename, sizeof filename, base_name, start);
 
   // Invariants
   vi.num_frames = -start + end + 1;  // make sure each frame can be requested
@@ -336,7 +372,7 @@ PVideoFrame ImageReader::GetFrame(int n, IScriptEnvironment* env)
   int height = frame->GetHeight();
   int width = vi.width;
 
-  sprintf(filename, base_name, n+start);
+  _snprintf(filename, sizeof filename, base_name, n+start);
   
   // check for constructor error
   if (constructor_err != "")

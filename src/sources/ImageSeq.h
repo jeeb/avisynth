@@ -40,6 +40,7 @@
 #include<iomanip>
 #include<sstream>
 #include<fstream>
+#include <cassert>
 using namespace std;
 
 #include "../internal.h"
@@ -100,7 +101,7 @@ private:
   void fileRead(istream & file, BYTE * dstPtr, const int pitch, const int row_size, const int height);
   bool checkProperties(istream & file, PVideoFrame & frame, IScriptEnvironment * env);
   
-  const char * base_name;
+  char base_name[MAX_PATH + 1];
   const int start;
   const int end;
   const float fps;
@@ -113,7 +114,7 @@ private:
 
   PVideoFrame static_frame;
 
-  char filename[512];
+  char filename[MAX_PATH + 1];
       
   BITMAPFILEHEADER fileHeader;
   BITMAPINFOHEADER infoHeader;
