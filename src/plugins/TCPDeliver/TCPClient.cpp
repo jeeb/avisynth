@@ -201,10 +201,12 @@ bool __stdcall TCPClient::GetParity(int n) {
   memset(&c, 0, sizeof(ClientRequestParity));
   c.n = n;
   client->SendRequest(CLIENT_SEND_PARITY, &c, sizeof(ClientRequestParity));
+  client->GetReply();
   if (client->reply->last_reply_type != SERVER_SENDING_PARITY) {
+    _RPT0(1, "TCPClient: Did not recieve expected packet (SERVER_SENDING_PARITY)");
     return false;
   }
-  ServerParityReply* p = (ServerParityReply *)client->reply->last_reply_type;
+  ServerParityReply* p = (ServerParityReply *)client->reply->last_reply;
   _RPT0(0,"TCPClient: Got parity information.\n");
   return !!p->parity;
 }

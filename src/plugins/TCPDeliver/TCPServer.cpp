@@ -381,6 +381,7 @@ void TCPServerListener::SendParityInfo(ServerReply* s, const char* request) {
   r.n = p->n;
   r.parity = child->GetParity(p->n);
   s->allocateBuffer(sizeof(ServerParityReply));
+  s->setType(SERVER_SENDING_PARITY);
   memcpy(s->data, &r, sizeof(ServerParityReply));
 }
 
