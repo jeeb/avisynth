@@ -367,6 +367,9 @@ Dissolve::Dissolve(PClip _child1, PClip _child2, int _overlap, IScriptEnvironmen
       env->ThrowError("Dissolve: sound formats don't match");
   }
 
+  if (overlap<0)
+    env->ThrowError("Dissolve: Cannot dissolve if overlap is less than zero");
+
   video_fade_start = vi.num_frames - overlap;
   video_fade_end = vi.num_frames - 1;
 
@@ -390,7 +393,7 @@ PVideoFrame Dissolve::GetFrame(int n, IScriptEnvironment* env)
   const int multiplier = n - video_fade_start + 1;
 
   if ((env->GetCPUFlags() & CPUF_MMX) && (!(a->GetRowSize()&4)) ) {  // MMX and Video is mod 4
-    int weight = (multiplier*32767) / overlap;
+    int weight = (multiplier * 32767) / (overlap+1);
     int invweight = 32767-weight;
     env->MakeWritable(&a);
     mmx_weigh_yv12(a->GetWritePtr(), b->GetReadPtr(), a->GetPitch(), b->GetPitch(), a->GetRowSize(), a->GetHeight(), weight, invweight);
