@@ -66,6 +66,7 @@ ConditionalFilter::ConditionalFilter(PClip _child, PClip _source1, PClip _source
   eval1(_condition1), eval2(_condition2), show(_show) {
     
     evaluator = NONE;
+
     if (lstrcmpi(_evaluator.AsString(), "equals") == 0 || lstrcmpi(_evaluator.AsString(), "=") == 0 || lstrcmpi(_evaluator.AsString(), "==") == 0)
       evaluator = EQUALS;
     if (lstrcmpi(_evaluator.AsString(), "greaterthan") == 0 || lstrcmpi(_evaluator.AsString(), ">") == 0)
@@ -73,7 +74,7 @@ ConditionalFilter::ConditionalFilter(PClip _child, PClip _source1, PClip _source
     if (lstrcmpi(_evaluator.AsString(), "lessthan") == 0 || lstrcmpi(_evaluator.AsString(), "<") == 0)
       evaluator = LESSTHAN;
 
-    if (evaluator = NONE)
+    if (evaluator == NONE)
       env->ThrowError("ConditionalFilter: Evaluator could not be recognized!");
 
     VideoInfo vi1 = source1->GetVideoInfo();
