@@ -242,11 +242,13 @@ private:
 
 class SelectRangeEvery : public GenericVideoFilter {
 	int every, length;
+  bool audio;
 public:
-	SelectRangeEvery(PClip _child, int _every, int _length, int _offset, IScriptEnvironment* env);
+	SelectRangeEvery(PClip _child, int _every, int _length, int _offset, bool _audio, IScriptEnvironment* env);
 	PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
 	bool __stdcall GetParity(int n);
   static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env);
+  void __stdcall SelectRangeEvery::GetAudio(void* buf, __int64 start, __int64 count, IScriptEnvironment* env);
 
 };
 
