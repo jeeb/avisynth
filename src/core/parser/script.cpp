@@ -97,7 +97,7 @@ AVSFunction Script_functions[] = {
   { "IsFieldBased", "c", IsFieldBased },
   { "IsFrameBased", "c", IsFrameBased },
   { "GetParity", "c[n]i", GetParity },
-  { "String", ".", String },
+  { "String", ".[]s", String },
 
   { "IsBool", ".", IsBool },
   { "IsInt", ".", IsInt },
@@ -520,14 +520,21 @@ AVSValue String(AVSValue args, void*, IScriptEnvironment* env)
 {
   if (args[0].IsString()) return args[0];
   if (args[0].IsBool()) return (args[0].AsBool()?"true":"false");
-  if (args[0].IsInt()) {
-    char *s = new char[12];
-    return itoa(args[0].AsInt(), s, 10);
-  }
-  if (args[0].IsFloat()) {
-    char *s = new char[30];
-    sprintf(s,"%lf",args[0].AsFloat());
-    return s;
+  if (args[1].Defined()) {	// WE --> a format parameter is present 
+		if (args[0].IsFloat()) {	//if it is an Int: IsFloat gives True, also !
+			return  env->Sprintf(args[1].AsString("%f"),args[0].AsFloat());
+		}
+		return "";	// <--WE
+  } else {	// standard behaviour
+	  if (args[0].IsInt()) {
+		char *s = new char[12];
+		return itoa(args[0].AsInt(), s, 10);
+	  }
+	  if (args[0].IsFloat()) {
+		char *s = new char[30];
+		sprintf(s,"%lf",args[0].AsFloat());
+		return s;
+	  }
   }
   return "";
 } 
