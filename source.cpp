@@ -788,15 +788,42 @@ public:
   }
 
   HRESULT SeekTo(__int64 pos) {
+    //Ignore seeking
+#if 0
+/*
     PauseGraph();
 
+    HRESULT hr;
     IMediaSeeking* ms;
     filter_graph->QueryInterface(&ms);
-    HRESULT hr = ms->SetPositions(&pos, AM_SEEKING_AbsolutePositioning, NULL, 0);
-    ms->Release();
 
+    LONGLONG pStop=0;
+    LONGLONG pCurrent=0;
+    _RPT0(0,"SeekTo() seeking to new position\n");
+
+    DWORD pCapabilities = AM_SEEKING_CanGetCurrentPos;
+    HRESULT canDo = ms->CheckCapabilities(&pCapabilities);
+    if (canDo) {
+      HRESULT hr2 = ms->GetPositions(&pStop,&pCurrent);
+    } else {
+       _ASSERT(FALSE);
+    }
+
+    pCapabilities = AM_SEEKING_CanSeekAbsolute;
+    canDo = ms->CheckCapabilities(&pCapabilities);
+
+    if (canDo) {
+       hr = ms->SetPositions(&pos, AM_SEEKING_AbsolutePositioning, 0, 0);
+    } else {
+       pCapabilities = AM_SEEKING_CanSeekForwards;
+       canDo = ms->CheckCapabilities(&pCapabilities);
+       _ASSERT(FALSE);
+    }
+    ms->Release();
     StartGraph();
-    return hr;
+*/
+#endif
+    return S_OK;  // Fake ok
   }
 
   void NextSample() {
@@ -1244,6 +1271,24 @@ public:
 
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env) {
     n = max(min(n, vi.num_frames-1), 0);
+#if 1
+    if (frame_units) {
+      if (n > cur_frame) {
+        while (cur_frame < n) {
+          get_sample.NextSample();
+          cur_frame++;
+        }
+      }
+    } else {
+      __int64 sample_time = __int64(n) * avg_time_per_frame + (avg_time_per_frame>>1);
+      if (n > cur_frame) {
+        while (get_sample.GetSampleEndTime()+base_sample_time <= sample_time) {
+          get_sample.NextSample();
+        }
+        cur_frame = n;
+      }
+    }
+#else
     if (frame_units) {
       if (n < cur_frame || n > cur_frame+10) {
         CheckHresult(get_sample.SeekTo(n), "unable to seek in stream (using frames)");
@@ -1266,9 +1311,14 @@ public:
       }
       cur_frame = n;
     }
-    return get_sample.GetCurrentFrame();
+#endif
+    PVideoFrame v = get_sample.GetCurrentFrame();
+    if ((cur_frame!=n) && (n%10>4)) {
+      env->MakeWritable(&v);
+      ApplyMessage(&v, vi, "Video Desync!",256,0xffffff,0,0,env);
+    }
+    return v;
   }
-
   bool __stdcall GetParity(int n) { return vi.field_based ? (n&1) : false; }
 
   void __stdcall GetAudio(void*, int, int, IScriptEnvironment*) {}
