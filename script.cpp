@@ -118,6 +118,10 @@ AVSFunction Script_functions[] = {
   { "SetWorkingDir", "s", SetWorkingDir },
   { "Exist", "s", Exist },
 
+  { "Chr","i", AVSChr },
+  { "Time", "s", AVSTime },
+  { "Spline","[x]ff+[cubic]b", Spline },
+
   { "int", "f", Int },
   { "frac","f", Frac},
   { "float","f",Float},
@@ -374,6 +378,117 @@ AVSValue Exist(AVSValue args, void*, IScriptEnvironment* env)
    wildcard = ((strchr(filename,'*')!=NULL) || (strchr(filename,'?')!=NULL));
    return _findfirst(filename,&c_file)==-1L ? false : wildcard ? false : true; 
 }
+
+
+//WE ->
+
+// Spline functions to generate and evaluate a natural bicubic spline
+void spline(float x[], float y[], int n, float y2[])
+{
+	int i,k;
+	float p, qn, sig, un, u[256];
+
+	y2[1]=u[1]=0.0;
+
+	for (i=2; i<=n-1; i++) {
+		sig = (x[i] - x[i-1])/(x[i+1] - x[i-1]);
+		p = sig * y2[i-1] + 2.0;
+		y2[i] = (sig - 1.0) / p;
+		u[i] = (y[i+1] - y[i])/(x[i+1] - x[i]) - (y[i] - y[i-1])/(x[i] - x[i-1]);
+		u[i] = (6.0*u[i]/(x[i+1] - x[i-1]) - sig*u[i-1])/p;
+	}
+	qn=un=0.0;
+	y2[n]=(un - qn*u[n-1])/(qn * y2[n-1] + 1.0);
+	for (k=n-1; k>=1; k--) {
+		y2[k] = y2[k] * y2[k+1] + u[k];
+	}
+}
+
+int splint(float xa[], float ya[], float y2a[], int n, float x, float * y, bool cubic)
+{
+	int klo, khi, k;
+	float h,b,a;
+
+	klo=1;
+	khi=n;
+	while (khi-klo > 1) {
+		k=(khi + klo) >> 1;
+		if (xa[k] > x ) khi = k;
+		else klo = k;
+	}
+	h = xa[khi] - xa[klo];
+	if (h==0.0) {
+		y=0;
+		return -1;	// all x's have to be different
+	}
+	a = (xa[khi] - x)/h;
+	b = (x - xa[klo])/h;
+
+	if (cubic) {
+		*y = a * ya[klo] + b*ya[khi] + ((a*a*a - a)*y2a[klo] + (b*b*b - b)*y2a[khi]) * (h*h) / 6.0;
+	} else {
+		*y = a * ya[klo] + b*ya[khi];
+	}
+	return 0;
+}
+
+// the script functions 
+AVSValue AVSChr(AVSValue args, void*,IScriptEnvironment* env )
+{
+    char *s = new char[2];
+
+	s[0]=(char)(args[0].AsInt());
+	s[1]=0;
+    return s;
+}
+
+AVSValue AVSTime(AVSValue args, void*,IScriptEnvironment* env )
+{
+	time_t lt_t;
+	struct tm * lt;
+	time(&lt_t);
+	lt = localtime (&lt_t);
+    char *s = new char[50];
+	strftime(s,50,args[0].AsString(""),lt);
+    return s;
+}
+
+AVSValue Spline(AVSValue args, void*, IScriptEnvironment* env )
+{
+    float xa[256];
+	float ya[256];
+	float y2a[256];
+	int n;
+	float x,y;
+	int i;
+	bool cubic;
+
+	AVSValue coordinates;
+
+	x = args[0].AsFloat(0);
+	coordinates = args[1];
+	cubic = args[2].AsBool(true);
+
+	n = coordinates.ArraySize() ;
+
+	if (n<4 || n&1) env->ThrowError("Two few arguments for Spline");
+
+	n=n/2;
+	for (i=1; i<=n; i++) {
+		xa[i] = coordinates[(i-1)*2].AsFloat(0);
+		ya[i] = coordinates[(i-1)*2+1].AsFloat(0);
+	}
+
+	for (i=1; i<n; i++) {
+		if (xa[i] >= xa[i+1]) env->ThrowError("Spline: all x values have to be different and in ascending order!");
+	}
+	
+	spline(xa, ya, n, y2a);
+	splint(xa, ya, y2a, n, x, &y, cubic);
+	return y;
+}
+
+// WE <-
 
 static inline const VideoInfo& VI(const AVSValue& arg) { return arg.AsClip()->GetVideoInfo(); }
 
