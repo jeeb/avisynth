@@ -411,7 +411,7 @@ AVSValue MinMaxPlane::MinMax(AVSValue clip, void* user_data, float threshold, in
  // Prepare the source
 	PVideoFrame src = child->GetFrame(n, env);
 
-	BYTE* srcp = src->GetWritePtr(plane);
+	const BYTE* srcp = src->GetReadPtr(plane);
 	int pitch = src->GetPitch(plane);
 	int w = src->GetRowSize(plane);
 	int h = src->GetHeight(plane);
