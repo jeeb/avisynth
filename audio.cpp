@@ -29,16 +29,16 @@ AVSFunction Audio_filters[] = {
   { "AmplifydB", "cf[]f", Amplify::Create_dB },
   { "Amplify", "cf[]f", Amplify::Create },
   { "Normalize", "c[left]f[right]f", Normalize::Create },
+  { "MixAudio", "cc[clip1_factor]f[clip2_factor]f", MixAudio::Create },
   { "ResampleAudio", "ci", ResampleAudio::Create },
   { "ConvertAudioTo16bit", "c", ConvertAudioTo16bit::Create },
   { "ConvertToMono", "c", ConvertToMono::Create },
+  { "MonoToStereo", "cc", MonoToStereo::Create },
+  { "GetLeftChannel", "c", GetChannel::Create_left },
+  { "GetRightChannel", "c", GetChannel::Create_right },
   { "KillAudio", "c", KillAudio::Create },
   { 0 }
 };
-
-
-
-
 
 
 
@@ -90,6 +90,7 @@ AVSValue __cdecl ConvertAudioTo16bit::Create(AVSValue args, void*, IScriptEnviro
 ConvertToMono::ConvertToMono(PClip _clip) 
   : GenericVideoFilter(ConvertAudioTo16bit::Create(_clip))
 {
+	
   vi.stereo = false;
   tempbuffer_size=0;
 }
@@ -122,12 +123,151 @@ PClip ConvertToMono::Create(PClip clip)
     return new ConvertToMono(clip);
 }
 
-
 AVSValue __cdecl ConvertToMono::Create(AVSValue args, void*, IScriptEnvironment*) 
 {
   return Create(args[0].AsClip());
 }
 
+
+/*******************************************
+ *******   Mux 2 mono sources -> stereo ****
+ *******************************************/
+
+MonoToStereo::MonoToStereo(PClip _child, PClip _clip, IScriptEnvironment* env) 
+  : GenericVideoFilter(ConvertAudioTo16bit::Create(_child)),
+	right(ConvertAudioTo16bit::Create(_clip))
+{
+	const VideoInfo& vi2 = right->GetVideoInfo();
+
+	if (vi.audio_samples_per_second!=vi2.audio_samples_per_second) 
+		env->ThrowError("MixAudio: Clips must have same sample rate! Use ResampleAudio()!");  // Could be removed for fun :)
+
+	left_stereo=vi.stereo;
+	right_stereo=vi2.stereo;
+
+  vi.stereo = true;
+  tempbuffer_size=0;
+}
+
+
+void __stdcall MonoToStereo::GetAudio(void* buf, int start, int count, IScriptEnvironment* env) 
+{
+  if (tempbuffer_size) {
+    if (tempbuffer_size<(count*4)) {
+      delete[] tempbuffer;
+      tempbuffer=new signed short[count*4];
+      tempbuffer_size=count;
+    }
+  } else {
+    tempbuffer=new signed short[count*4];
+    tempbuffer_size=count;
+  }
+	int t_offset=(tempbuffer_size*2);
+
+  child->GetAudio(tempbuffer, start, count, env);
+  right->GetAudio((tempbuffer+t_offset), start, count, env);
+	
+  signed short* samples = (signed short*)buf;
+  signed short* left_samples = (signed short*)tempbuffer;
+  signed short* right_samples = (signed short*)(tempbuffer+t_offset);
+
+	if (left_stereo) {
+		if (right_stereo) { //Ls Rs
+			for (int i=0; i<count; i++) {
+				samples[i*2] = (left_samples[i*2]);
+				samples[i*2+1] = (right_samples[i*2+1]);
+			}
+		} else { // Ls Rm
+			for (int i=0; i<count; i++) {
+				samples[i*2] = (left_samples[i*2]);
+				samples[i*2+1] = (right_samples[i]);
+			}
+		}
+	} else { // Lm
+		if (right_stereo) { //Lm Rs
+			for (int i=0; i<count; i++) {
+				samples[i*2] = (left_samples[i]);
+				samples[i*2+1] = (right_samples[i*2+1]);
+			}
+		} else { // Lm Rm
+			for (int i=0; i<count; i++) {
+				samples[i*2] = (left_samples[i]);
+				samples[i*2+1] = (right_samples[i]);
+			}
+		}
+	}
+}
+
+
+AVSValue __cdecl MonoToStereo::Create(AVSValue args, void*, IScriptEnvironment* env) 
+{
+  return new MonoToStereo(args[0].AsClip(),args[1].AsClip(),env);
+}
+
+
+/***************************************************
+ *******   Get left or right                 *******
+ *******    channel from a stereo source     *******
+ ***************************************************/
+
+GetChannel::GetChannel(PClip _clip, bool _left) 
+  : GenericVideoFilter(ConvertAudioTo16bit::Create(_clip)),
+		left(_left)
+{	
+  vi.stereo = false;
+  tempbuffer_size=0;
+}
+
+
+void __stdcall GetChannel::GetAudio(void* buf, int start, int count, IScriptEnvironment* env) 
+{
+  if (tempbuffer_size) {
+    if (tempbuffer_size<(count*2)) {
+      delete[] tempbuffer;
+      tempbuffer=new signed short[count*2];
+      tempbuffer_size=count;
+    }
+  } else {
+    tempbuffer=new signed short[count*2];
+    tempbuffer_size=count;
+  }
+  child->GetAudio(tempbuffer, start, count, env);
+  signed short* samples = (signed short*)buf;
+	if (left) {
+		for (int i=0; i<count; i++)
+			samples[i] = tempbuffer[i*2];
+	} else {
+		for (int i=0; i<count; i++)
+			samples[i] = tempbuffer[i*2+1];
+	}
+}
+
+
+PClip GetChannel::Create_left(PClip clip) 
+{
+  if (!clip->GetVideoInfo().stereo)
+    return clip;
+  else
+    return new GetChannel(clip,true);
+}
+
+PClip GetChannel::Create_right(PClip clip) 
+{
+  if (!clip->GetVideoInfo().stereo)
+    return clip;
+  else
+    return new GetChannel(clip,false);
+}
+
+AVSValue __cdecl GetChannel::Create_left(AVSValue args, void*, IScriptEnvironment*) 
+{
+  return Create_left(args[0].AsClip());
+}
+
+AVSValue __cdecl GetChannel::Create_right(AVSValue args, void*, IScriptEnvironment*) 
+{
+  return Create_right(args[0].AsClip());
+}
 
 
 /******************************
@@ -171,8 +311,6 @@ AVSValue __cdecl DelayAudio::Create(AVSValue args, void*, IScriptEnvironment* en
 {
   return new DelayAudio(args[1].AsFloat(), args[0].AsClip());
 }
-
-
 
 
 
@@ -283,8 +421,72 @@ AVSValue __cdecl Normalize::Create(AVSValue args, void*, IScriptEnvironment* env
 }
 
 
+/*****************************
+ ***** Mix audio  tracks ******
+ ******************************/
+
+MixAudio::MixAudio(PClip _child, PClip _clip, double _track1_factor, double _track2_factor, IScriptEnvironment* env)
+  : GenericVideoFilter(ConvertAudioTo16bit::Create(_child)),
+    clip(ConvertAudioTo16bit::Create(_clip)),
+		track1_factor(int(_track1_factor*65536+.5)),
+    track2_factor(int(_track2_factor*65536+.5)) {
+
+		const VideoInfo& vi2 = clip->GetVideoInfo();
+
+		if (vi.audio_samples_per_second!=vi2.audio_samples_per_second) 
+			env->ThrowError("MixAudio: Clips must have same sample rate! Use ResampleAudio()!");  // Could be removed for fun :)
+
+		if (vi.stereo!=vi2.stereo) 
+			env->ThrowError("MixAudio: Clips must have same number of channels! Use ConvertToMono() or MonoToStereo()!");
+
+		tempbuffer_size=0;
+	}
 
 
+void __stdcall MixAudio::GetAudio(void* buf, int start, int count, IScriptEnvironment* env) 
+{
+  if (tempbuffer_size) {
+    if (tempbuffer_size<(count*2)) {
+      delete[] tempbuffer;
+      tempbuffer=new signed short[count*2];
+      tempbuffer_size=count;
+    }
+  } else {
+    tempbuffer=new signed short[count*2];
+    tempbuffer_size=count;
+  }
+
+  child->GetAudio(buf, start, count, env);
+  clip->GetAudio(tempbuffer, start, count, env);
+  short* samples = (short*)buf;
+  short* clip_samples = (short*)tempbuffer;
+
+  if (vi.stereo) {
+    for (int i=0; i<count; ++i) {
+      samples[i*2] = Saturate( int(Int32x32To64(samples[i*2],track1_factor) >> 16) +
+				int(Int32x32To64(clip_samples[i*2],track2_factor) >> 16) );
+      samples[i*2+1] = Saturate( int(Int32x32To64(samples[i*2+1],track1_factor) >> 16) +
+				int(Int32x32To64(clip_samples[i*2+1],track2_factor) >> 16) );
+    }
+  } 
+  else {
+    for (int i=0; i<count; ++i) {
+      samples[i] = Saturate( int(Int32x32To64(samples[i],track1_factor) >> 16) +
+				int(Int32x32To64(clip_samples[i],track2_factor) >> 16) );
+		}
+  }
+}
+
+
+
+AVSValue __cdecl MixAudio::Create(AVSValue args, void*, IScriptEnvironment* env) 
+{
+  double track1_factor = args[2].AsFloat(0.5);
+  double track2_factor = args[3].AsFloat(1.0-track1_factor);
+  return new MixAudio(args[0].AsClip(),args[1].AsClip(), track1_factor, track2_factor,env);
+}
+
+  
 
 
 /********************************

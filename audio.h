@@ -101,6 +101,49 @@ private:
 };
 
 
+class MonoToStereo : public GenericVideoFilter 
+/**
+  * Class to convert two mono sources to stereo
+ **/
+{
+public:
+  MonoToStereo(PClip _child,PClip _clip, IScriptEnvironment* env);
+  virtual ~MonoToStereo()
+  {delete[] tempbuffer;tempbuffer_size=0;}
+
+  void __stdcall GetAudio(void* buf, int start, int count, IScriptEnvironment* env);
+  static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment*);
+
+private:
+	PClip right;
+  signed short *tempbuffer;
+  int tempbuffer_size;
+	bool left_stereo,right_stereo;
+};
+
+
+class GetChannel : public GenericVideoFilter 
+/**
+  * Class to get left or right channel from stereo source
+ **/
+{
+public:
+  GetChannel(PClip _clip, bool _left);
+  virtual ~GetChannel()
+  {delete[] tempbuffer;tempbuffer_size=0;}
+
+  void __stdcall GetAudio(void* buf, int start, int count, IScriptEnvironment* env);
+  static PClip Create_left(PClip clip);
+  static PClip Create_right(PClip clip);
+  static AVSValue __cdecl Create_left(AVSValue args, void*, IScriptEnvironment*);
+  static AVSValue __cdecl Create_right(AVSValue args, void*, IScriptEnvironment*);
+
+private:
+  signed short *tempbuffer;
+  int tempbuffer_size;
+	bool left;
+};
+
 class KillAudio : public GenericVideoFilter 
 /**
   * Removes audio from clip
@@ -179,6 +222,35 @@ private:
     return (short)n;
   }
 
+};
+
+class MixAudio : public GenericVideoFilter 
+/**
+  * Mix audio from one clip into another.
+ **/
+{
+public:
+  MixAudio(PClip _child, PClip _clip, double _track1_factor, double _track2_factor, IScriptEnvironment* env);
+  void __stdcall GetAudio(void* buf, int start, int count, IScriptEnvironment* env);
+
+  static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env);
+  virtual ~MixAudio() {delete[] tempbuffer;tempbuffer_size=0;}
+
+
+private:
+  const int track1_factor, track2_factor;
+	int tempbuffer_size;
+  signed short *tempbuffer;
+	PClip clip;
+
+  static inline short Saturate(int n) {
+    if (n <= -32768) return -32768;
+    if (n >= 32767) return 32767;
+    return (short)n;
+  }
+
+  static inline double dBtoScaleFactor(double dB) 
+    { return pow(10.0, dB/10.0); }
 };
 
 
