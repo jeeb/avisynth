@@ -149,8 +149,9 @@ void __stdcall EnsureVBRMP3Sync::GetAudio(void* buf, int start, int count, IScri
 {
   signed short* samples = (signed short*)buf;
 
-  if (start!=last_end) { // Reread from sample 0!
+  if (start!=last_end) { // Reread!
     int offset=0;
+    if (start>last_end) offset=last_end; // Skip forward only if the skipped to position is in front of last position.
     while (offset+count<start) { // Read whole blocks of 'count' samples
       child->GetAudio(samples, offset, count, env);
       offset+=count;
