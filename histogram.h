@@ -47,10 +47,15 @@ class Histogram : public GenericVideoFilter
  **/
 {
 public:
-  Histogram(PClip _child, IScriptEnvironment* env);
+  Histogram(PClip _child, int _mode, IScriptEnvironment* env);
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
+  PVideoFrame Histogram::DrawMode0(int n, IScriptEnvironment* env);
+  PVideoFrame Histogram::DrawMode1(int n, IScriptEnvironment* env);
+  PVideoFrame Histogram::DrawMode2(int n, IScriptEnvironment* env);
 
   static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env);
+private:
+  int mode;
 };
 
 
