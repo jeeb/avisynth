@@ -349,9 +349,9 @@ void __stdcall EnsureVBRMP3Sync::GetAudio(void* buf, __int64 start, __int64 coun
 {
   signed short* samples = (signed short*)buf;
 
-  if (start!=last_end) { // Reread!
-    int offset=0;
-    if (start>last_end) offset=last_end; // Skip forward only if the skipped to position is in front of last position.
+  if (start != last_end) { // Reread!
+    __int64 offset = 0;
+    if (start>last_end) offset = last_end; // Skip forward only if the skipped to position is in front of last position.
     while (offset+count<start) { // Read whole blocks of 'count' samples
       child->GetAudio(samples, offset, count, env);
       offset+=count;
@@ -390,6 +390,7 @@ MergeChannels::MergeChannels(PClip _clip, int _num_children, PClip* _child_array
   clip_channels = new int[num_children]; // fixme: deleteme!
   clip_offset = new signed char*[num_children]; // fixme: deleteme!
   clip_channels[0]= clip1_channels;
+
   for (int i=1;i<num_children;i++) {
     tclip = child_array[i];
     child_array[i] = ConvertAudio::Create(tclip,vi.SampleType(),vi.SampleType());  // Clip 2 should now be same type as clip 1.
@@ -403,6 +404,7 @@ MergeChannels::MergeChannels(PClip _clip, int _num_children, PClip* _child_array
     clip_channels[i] = vi2.AudioChannels();
     vi.nchannels += vi2.AudioChannels();
   }
+
   tempbuffer_size=0;
 }
 
@@ -506,15 +508,6 @@ void __stdcall GetChannel::GetAudio(void* buf, __int64 start, __int64 count, ISc
     }
   }
 
-
-  /*
-  for (int i=0; i<count; i++) 
-    for (int k=0; k<numchannels; k++) {
-      int ch = channel[k];
-      for (int j=0;j<dst_cbps;j++)
-		    samples[(i*dst_bps)+(k*dst_cbps)+j] = tempbuffer[(i*src_bps)+(ch*src_cbps)+j];
-    }
-    */
 }
 
 
@@ -715,20 +708,20 @@ Normalize::Normalize(PClip _child, double _max_factor, bool _showvalues)
 void __stdcall Normalize::GetAudio(void* buf, __int64 start, __int64 count, IScriptEnvironment* env)
 {
   if (max_volume<0.0f) {
-    int passes=vi.num_audio_samples/count;
-    int num_samples=count;
+    __int64 passes = vi.num_audio_samples / count;
+    __int64 num_samples = count;
     // Read samples into buffer and test them
-    if (vi.SampleType()==SAMPLE_INT16) {
+    if (vi.SampleType() == SAMPLE_INT16) {
       short* samples = (short*)buf;
       short i_max_volume=0;
       for (int i=0;i<passes;i++) {
-          child->GetAudio(buf, num_samples*i, count, env);
+          child->GetAudio(buf, num_samples*(__int64)i, count, env);
           for (int i=0;i<num_samples;i++) {
             i_max_volume=max(abs(samples[i]),i_max_volume);
           }      
       }    
       // Remaining samples
-      int rem_samples=vi.num_audio_samples%count;
+      __int64 rem_samples = vi.num_audio_samples%count;
       child->GetAudio(buf, num_samples*passes, rem_samples, env);
       for (i=0;i<rem_samples;i++) {
         i_max_volume=max(abs(samples[i]),i_max_volume);
@@ -746,7 +739,7 @@ void __stdcall Normalize::GetAudio(void* buf, __int64 start, __int64 count, IScr
           }      
       }    
       // Remaining samples
-      int rem_samples=vi.num_audio_samples%count;
+      __int64 rem_samples = vi.num_audio_samples%count;
       rem_samples*=vi.AudioChannels();
       child->GetAudio(buf, num_samples*passes, rem_samples, env);
       for (i=0;i<rem_samples;i++) {
@@ -756,11 +749,12 @@ void __stdcall Normalize::GetAudio(void* buf, __int64 start, __int64 count, IScr
       max_factor=1.0f/max_volume;
     }
   } 
+
   if (vi.SampleType()==SAMPLE_INT16) {
     int factor=(int)(max_factor*65536.0f);
     short* samples = (short*)buf;
     child->GetAudio(buf, start, count, env); 
-    int channels=vi.AudioChannels();
+    int channels = vi.AudioChannels();
     for (int i=0; i<count; ++i) {
       for (int j=0;j<channels;j++) {
         samples[i*channels+j] = Saturate(int(Int32x32To64(samples[i*channels+j],factor) >> 16));
@@ -783,15 +777,11 @@ PVideoFrame __stdcall Normalize::GetFrame(int n, IScriptEnvironment* env) {
     PVideoFrame src = child->GetFrame(n, env);
     env->MakeWritable(&src);
     char text[400];
-    double maxvol = 32767.0 / (double)max_volume;
-    double maxdb = log(20 / maxvol);
+    double maxdb = 8.685889638 * log(max_factor);
     if (max_volume<0) {
       sprintf(text,"Normalize: Result not yet calculated!");
     } else {
-/*    sprintf(text,"Amplify Factor: %8.4f\nAmplify DB: %8.4f",
-      maxvol, maxdb);
-*/    sprintf(text,"Amplify Factor: %8.4f",
-      maxvol);
+    sprintf(text,"Amplify Factor: %8.4f\nAmplify DB: %8.4f", max_factor, maxdb);
     }
     ApplyMessage(&src, vi, text, vi.width/4, 0xf0f0f0,0,0 , env );
     return src;
@@ -944,35 +934,19 @@ void __stdcall ResampleAudio::GetAudio(void* buf, __int64 start, __int64 count, 
   int pos_end = int(src_end) - (int(src_start) & ~Pmask) + (Xoff << Np);
   short* dst = (short*)buf;
 
-  if (vi.AudioChannels()==1) {
-    while (pos < pos_end) 
-    {
-      short* Xp = &srcbuffer[pos>>Np];
-      int v = FilterUD(Xp, (short)(pos&Pmask), -1);  /* Perform left-wing inner product */
-      v += FilterUD(Xp+1, (short)((-pos)&Pmask), 1);  /* Perform right-wing inner product */
+  while (pos < pos_end)  {
+    int ch = vi.AudioChannels();
+    for (int q = 0; q < ch; q++) {
+      short* Xp = &srcbuffer[(pos>>Np)*ch];
+      int v = FilterUD(Xp + q, (short)(pos&Pmask), - ch);  /* Perform left-wing inner product */
+      v += FilterUD(Xp+ ch + q, (short)((-pos)&Pmask), ch);  /* Perform right-wing inner product */
       v >>= Nhg;      /* Make guard bits */
       v *= LpScl;     /* Normalize for unity filter gain */
       *dst++ = IntToShort(v,NLpScl);   /* strip guard bits, deposit output */
-      pos += dtb;       /* Move to next sample by time increment */
     }
+    pos += dtb;       /* Move to next sample by time increment */
   }
-  else if (vi.AudioChannels()==2) {
-    while (pos < pos_end) 
-    {
-      short* Xp = &srcbuffer[(pos>>Np)*2];
-      int v = FilterUD(Xp, (short)(pos&Pmask), -2);
-      v += FilterUD(Xp+2, (short)((-pos)&Pmask), 2);
-      v >>= Nhg;
-      v *= LpScl;
-      *dst++ = IntToShort(v,NLpScl);
-      int w = FilterUD(Xp+1, (short)(pos&Pmask), -2);
-      w += FilterUD(Xp+3, (short)((-pos)&Pmask), 2);
-      w >>= Nhg;
-      w *= LpScl;
-      *dst++ = IntToShort(w,NLpScl);
-      pos += dtb;
-    }
-  }
+
 }
 
   

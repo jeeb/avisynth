@@ -128,7 +128,7 @@ public:
   static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment*);
 
 private:
-  int last_end;
+  __int64 last_end;
 };
 
 class MergeChannels : public GenericVideoFilter 
@@ -250,47 +250,7 @@ private:
 };
 
 
-class FilterAudio : public GenericVideoFilter 
-/**
-  * FilterAudio a clip's audio track
- **/
-{
-public:
-  FilterAudio(PClip _child, int _cutoff, float _rez, int lowpass);
-  void __stdcall GetAudio(void* buf, __int64 start, __int64 count, IScriptEnvironment* env);
-  virtual ~FilterAudio()
-  {if (tempbuffer_size) {delete[] tempbuffer;tempbuffer_size=0;}}
 
-  static AVSValue __cdecl Create_LowPass(AVSValue args, void*, IScriptEnvironment* env);
-  static AVSValue __cdecl Create_HighPass(AVSValue args, void*, IScriptEnvironment* env);
-  static AVSValue __cdecl Create_LowPassALT(AVSValue args, void*, IScriptEnvironment* env);
-
-
-private:
-  signed short *tempbuffer;
-  int tempbuffer_size;
-  int cutoff;
-  float rez;
-  int lowpass;
-//algo 1:
-  int lastsample;
-  signed short last_4; 
-  signed short last_3; 
-  signed short last_2; 
-  signed short last_1; 
-//algo 2:
-  float l_vibrapos;
-  float l_vibraspeed; 
-  float r_vibrapos;
-  float r_vibraspeed; 
-
-  static __inline short Saturate(int n) {
-    if (n <= -32768) return -32768;
-    if (n >= 32767) return 32767;
-    return (short)n;
-  }
-
-};
 
 
 class Normalize : public GenericVideoFilter 
