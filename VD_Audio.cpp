@@ -1440,8 +1440,9 @@ BOOL CALLBACK ACMStreamOpenCallback(HACMDRIVERID hadid, DWORD dwInstance, DWORD 
 		if (!res) {
 
 			res = acmDriverDetails(hadid, &add, 0);
-			if (!res)
+      if (!res) {
 				_RPT1(0,"Trying driver: [%s]\n", add.szLongName);
+      }
 
 			// Attempt our stream open!
 

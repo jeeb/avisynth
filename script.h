@@ -130,6 +130,8 @@ AVSValue AudioChannels(AVSValue args, void*, IScriptEnvironment* env);
 AVSValue AudioBits(AVSValue args, void*, IScriptEnvironment* env);
 AVSValue IsRGB(AVSValue args, void*, IScriptEnvironment* env);
 AVSValue IsYUY2(AVSValue args, void*, IScriptEnvironment* env);
+AVSValue IsRGB24(AVSValue args, void*, IScriptEnvironment* env);
+AVSValue IsRGB32(AVSValue args, void*, IScriptEnvironment* env);
 AVSValue IsFieldBased(AVSValue args, void*, IScriptEnvironment* env);
 AVSValue IsFrameBased(AVSValue args, void*, IScriptEnvironment* env);
 AVSValue GetParity(AVSValue args, void*, IScriptEnvironment* env);
@@ -144,5 +146,13 @@ AVSValue Defined(AVSValue args, void*, IScriptEnvironment* env);
 
 AVSValue Default(AVSValue args, void*, IScriptEnvironment* env);
 
+AVSValue VersionNumber(AVSValue args, void*, IScriptEnvironment* env);
+AVSValue VersionString(AVSValue args, void*, IScriptEnvironment* env); 
+
+AVSValue Int(AVSValue args, void*, IScriptEnvironment* env); 
+AVSValue Frac(AVSValue args, void*, IScriptEnvironment* env); 
+AVSValue Float(AVSValue args, void*,IScriptEnvironment* env); 
+AVSValue Value(AVSValue args, void*, IScriptEnvironment* env);
+AVSValue HexValue(AVSValue args, void*, IScriptEnvironment* env);
 
 #endif  // __Script_H__

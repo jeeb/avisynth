@@ -19,7 +19,6 @@
 
 #include "script.h"
 #include <stdlib.h>
-#include <math.h>
 
 #ifdef _MSC_VER
   #define itoa(a,b,c) _itoa(a,b,c)
@@ -55,6 +54,8 @@ AVSFunction Script_functions[] = {
   { "audiobits", "c", AudioBits },
   { "IsRGB", "c", IsRGB },
   { "IsYUY2", "c", IsYUY2 },
+  { "IsRGB24", "c", IsRGB24 },
+  { "IsRGB32", "c", IsRGB32 },
   { "IsFieldBased", "c", IsFieldBased },
   { "IsFrameBased", "c", IsFrameBased },
   { "GetParity", "c[n]i", GetParity },
@@ -82,6 +83,15 @@ AVSFunction Script_functions[] = {
 
   { "SetWorkingDir", "s", SetWorkingDir },
 
+  { "int", "f", Int },
+  { "frac","f", Frac},
+  { "float","f",Float},
+
+  { "value","s",Value},
+  { "hexvalue","s",HexValue},
+
+  { "VersionNumber", "", VersionNumber },
+  { "VersionString", "", VersionString }, 
   { 0 }
 };
 
@@ -236,7 +246,7 @@ AVSValue SetWorkingDir(AVSValue args, void*, IScriptEnvironment* env) { return e
 
 AVSValue Floor(AVSValue args, void*,IScriptEnvironment* env) { return int(floor(args[0].AsFloat())); }
 AVSValue Ceil(AVSValue args, void*, IScriptEnvironment* env) { return int(ceil(args[0].AsFloat())); }
-AVSValue Round(AVSValue args, void*, IScriptEnvironment* env) { return args[0].AsFloat()<0 ? -int(-args[0].AsFloat()-.5) : int(args[0].AsFloat()+.5); }
+AVSValue Round(AVSValue args, void*, IScriptEnvironment* env) { return args[0].AsFloat()<0 ? -int(-args[0].AsFloat()+.5) : int(args[0].AsFloat()+.5); }
 
 AVSValue Sin(AVSValue args, void* user_data, IScriptEnvironment* env) { return sin(args[0].AsFloat()); }
 AVSValue Cos(AVSValue args, void* user_data, IScriptEnvironment* env) { return cos(args[0].AsFloat()); }
@@ -260,9 +270,23 @@ AVSValue AudioChannels(AVSValue args, void*, IScriptEnvironment* env) { return V
 AVSValue AudioBits(AVSValue args, void*, IScriptEnvironment* env) { return VI(args[0]).sixteen_bit ? 16 : 8; }
 AVSValue IsRGB(AVSValue args, void*, IScriptEnvironment* env) { return VI(args[0]).IsRGB(); }
 AVSValue IsYUY2(AVSValue args, void*, IScriptEnvironment* env) { return VI(args[0]).IsYUY2(); }
+AVSValue IsRGB24(AVSValue args, void*, IScriptEnvironment* env) { return VI(args[0]).IsRGB24(); }
+AVSValue IsRGB32(AVSValue args, void*, IScriptEnvironment* env) { return VI(args[0]).IsRGB32(); }
 AVSValue IsFieldBased(AVSValue args, void*, IScriptEnvironment* env) { return VI(args[0]).field_based; }
 AVSValue IsFrameBased(AVSValue args, void*, IScriptEnvironment* env) { return !VI(args[0]).field_based; }
 AVSValue GetParity(AVSValue args, void*, IScriptEnvironment* env) { return args[0].AsClip()->GetParity(args[1].AsInt(0)); }
+
+AVSValue VersionNumber(AVSValue args, void*, IScriptEnvironment* env) { return AVS_VERSION; }
+AVSValue VersionString(AVSValue args, void*, IScriptEnvironment* env) { return AVS_VERSTR; }
+
+AVSValue Int(AVSValue args, void*, IScriptEnvironment* env) { return int(args[0].AsFloat()); }
+AVSValue Frac(AVSValue args, void*, IScriptEnvironment* env) { return args[0].AsFloat() - int(args[0].AsFloat()); }
+AVSValue Float(AVSValue args, void*,IScriptEnvironment* env) { return args[0].AsFloat(); }
+
+AVSValue Value(AVSValue args, void*, IScriptEnvironment* env) { char *stopstring; return strtod(args[0].AsString(),&stopstring); }
+AVSValue HexValue(AVSValue args, void*, IScriptEnvironment* env) { char *stopstring; return strtol(args[0].AsString(),&stopstring,16); }
+
+
 
 AVSValue String(AVSValue args, void*, IScriptEnvironment* env)
 {
