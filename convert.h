@@ -146,6 +146,23 @@ private:
 
 };
 
+class ConvertBackToYUY2 : public GenericVideoFilter 
+/**
+  * Class for conversions to YUY2 (With Chroma copy)
+ **/
+{
+public:
+  ConvertBackToYUY2(PClip _child, IScriptEnvironment* env);
+	void mmx_ConvertRGB32toYUY2(unsigned int *src,unsigned int *dst,int src_pitch, int dst_pitch,int w, int h);
+  PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
+
+  static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env);
+
+private:
+  const bool rgb32;
+
+};
+
 
 
 class Greyscale : public GenericVideoFilter 
