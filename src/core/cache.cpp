@@ -560,9 +560,9 @@ void __stdcall Cache::GetAudio(void* buf, __int64 start, __int64 count, IScriptE
 
     child->GetAudio(buf, start, count, env);
 
-	cache_start = start+count-maxsamplecount;
-	cache_count = maxsamplecount;
-    memcpy(cache, buf, vi.BytesFromAudioSamples(maxsamplecount));
+    cache_count = min(count, maxsamplecount); // Remember maxsamplecount gets updated
+    cache_start = start+count-cache_count;
+    memcpy(cache, buf, vi.BytesFromAudioSamples(cache_count));
     return;
   }
 
