@@ -196,9 +196,9 @@ PVideoFrame __stdcall Cache::GetFrame(int n, IScriptEnvironment* env)
   __asm {emms} // Protection from rogue filter authors
 
   if (h_policy == CACHE_NOTHING) { // don't want a cache. Typically filters that only ever seek forward.
-	__asm mov ebx,ebx  // Hack! prevent compiler from trusting ebx contents across call
+    __asm mov ebx,ebx  // Hack! prevent compiler from trusting ebx contents across call
     PVideoFrame result = childGetFrame(n, env);
-    if (result->vfb) env->ManageCache(MC_ReturnVideoFrameBuffer, result->vfb); // return vfb to vfb pool for immediate reuse
+//  if (result->vfb) env->ManageCache(MC_ReturnVideoFrameBuffer, result->vfb); // return vfb to vfb pool for immediate reuse
     return result;
   }
 
