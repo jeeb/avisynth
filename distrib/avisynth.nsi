@@ -82,6 +82,7 @@ Section "Documentation (optional)"
   SetOutPath "$INSTDIR\filters"
 	File "..\docs\filters\*.html"
   CreateShortCut "$SMPROGRAMS\AviSynth 2\Avisynth Documentation.lnk" "$INSTDIR\index.html"
+  CreateShortCut "$SMPROGRAMS\AviSynth 2\Avisynth Online.lnk" "http://avisynth.org"
 SectionEnd
 
 ; begin uninstall settings/section
