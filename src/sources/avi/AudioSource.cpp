@@ -113,11 +113,6 @@ AudioSourceAVI::AudioSourceAVI(IAVIReadHandler *pAVI, bool bAutomated) {
 AudioSourceAVI::~AudioSourceAVI() {
 	if (pAVIStream)
 		delete pAVIStream;
-
-/* adding these 2 lines helps, it seems that this file handle is not released anywhere else. */
-	if (pAVIFile) 
-		pAVIFile->Release();
-
 }
 
 BOOL AudioSourceAVI::init() {

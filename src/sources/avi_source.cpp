@@ -270,6 +270,7 @@ AVISource::AVISource(const char filename[], bool fAudio, const char pixel_type[]
   pvideo=0;
   pfile=0;
   bIsType1 = false;
+  hic = 0;
 
   AVIFileInit();
 
@@ -298,7 +299,6 @@ AVISource::AVISource(const char filename[], bool fAudio, const char pixel_type[]
   }
 
   if (mode != MODE_WAV) { // check for video stream
-    hic = 0;
     pvideo = pfile->GetStream(streamtypeVIDEO, 0);
 
     if (!pvideo) { // Attempt DV type 1 video.
@@ -375,29 +375,30 @@ AVISource::AVISource(const char filename[], bool fAudio, const char pixel_type[]
   }
 
   // check for audio stream
-  if (fAudio && pfile->GetStream(streamtypeAUDIO, 0)) {
+  if (fAudio) { //  && pfile->GetStream(streamtypeAUDIO, 0)) {
     aSrc = new AudioSourceAVI(pfile, true);
-    aSrc->init();
-    audioStreamSource = new AudioStreamSource(aSrc,
-                                              aSrc->lSampleFirst,
-                                              aSrc->lSampleLast - aSrc->lSampleFirst,
-                                              true);
-    WAVEFORMATEX* pwfx;
-    pwfx = audioStreamSource->GetFormat();
-    vi.audio_samples_per_second = pwfx->nSamplesPerSec;
-    vi.nchannels = pwfx->nChannels;
-    if (pwfx->wBitsPerSample == 16) {
-      vi.sample_type = SAMPLE_INT16;
-    } else if (pwfx->wBitsPerSample == 8) {
-      vi.sample_type = SAMPLE_INT8;
-    } else if (pwfx->wBitsPerSample == 24) {
-      vi.sample_type = SAMPLE_INT24;
-    } else if (pwfx->wBitsPerSample == 32) {
-      vi.sample_type = SAMPLE_INT32;
-    }
-    vi.num_audio_samples = audioStreamSource->GetLength();
+    if (aSrc->init()) {
+		audioStreamSource = new AudioStreamSource(aSrc,
+												  aSrc->lSampleFirst,
+												  aSrc->lSampleLast - aSrc->lSampleFirst,
+												  true);
+		WAVEFORMATEX* pwfx;
+		pwfx = audioStreamSource->GetFormat();
+		vi.audio_samples_per_second = pwfx->nSamplesPerSec;
+		vi.nchannels = pwfx->nChannels;
+		if (pwfx->wBitsPerSample == 16) {
+		  vi.sample_type = SAMPLE_INT16;
+		} else if (pwfx->wBitsPerSample == 8) {
+		  vi.sample_type = SAMPLE_INT8;
+		} else if (pwfx->wBitsPerSample == 24) {
+		  vi.sample_type = SAMPLE_INT24;
+		} else if (pwfx->wBitsPerSample == 32) {
+		  vi.sample_type = SAMPLE_INT32;
+		}
+		vi.num_audio_samples = audioStreamSource->GetLength();
 
-    audio_stream_pos = 0;
+		audio_stream_pos = 0;
+	  }
   }
 
   // try to decompress frame 0 if not audio only.
@@ -427,7 +428,6 @@ AVISource::AVISource(const char filename[], bool fAudio, const char pixel_type[]
     last_frame_no=0;
     last_frame=frame;
   }
-
 }
 
 AVISource::~AVISource() {
