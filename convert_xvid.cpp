@@ -50,7 +50,7 @@
 ; *  exception also makes it possible to release a modified version which
 ; *  carries forward this exception.
 ; *
-; * $Id: convert_xvid.cpp,v 1.2 2003/03/25 12:19:10 sh0dan Exp $
+; * $Id: convert_xvid.cpp,v 1.3 2003/03/25 20:43:07 sh0dan Exp $
 ; *
 ;------------------------------------------------------------------------------
 ; NB:	n contrary to the c implementation this code does the conversion
@@ -1021,7 +1021,7 @@ xloop1:
 				cmp eax, ebx
 				jb	xloop1
 
-		add edi, [esp + 0]		; dst += dst_dif
+		add edi, dword ptr [esp + 0]		; dst += dst_dif
 		add esi, [esp + 24 + 24]	; y_src += y_stride
 		
 		xor eax, eax
@@ -1046,7 +1046,7 @@ xloop2:
 				cmp eax, ebx
 				jb	xloop2
 
-		add edi, [esp + 0]			; dst += dst_dif
+		add edi, dword ptr [esp + 0]			; dst += dst_dif
 		add esi, [esp + 24 + 24]	; y_src += y_stride
 		add ecx, [esp + 24 + 28]	; u_src += uv_stride
 		add edx, [esp + 24 + 28]	; v_src += uv_stride
@@ -1159,7 +1159,7 @@ xloop1:
 				cmp eax, ebx
 				jb	xloop1
 
-		add edi, [esp + 0]		; dst += dst_dif
+		add edi, dword ptr [esp + 0]		; dst += dst_dif
 		add esi, [esp + 24 + 24]	; y_src += y_stride
 		
 		xor eax, eax
@@ -1183,7 +1183,7 @@ xloop2:
 				cmp eax, ebx
 				jb	xloop2
 
-		add edi, [esp + 0]			; dst += dst_dif
+		add edi, dword ptr [esp + 0]			; dst += dst_dif
 		add esi, [esp + 24 + 24]	; y_src += y_stride
 		add ecx, [esp + 24 + 28]	; u_src += uv_stride
 		add edx, [esp + 24 + 28]	; v_src += uv_stride
@@ -1391,7 +1391,7 @@ xloop:
 		add ecx, [esp + 20]			; u_out += uv_dif
 		add edx, [esp + 20]			; v_out += uv_dif
 
-		dec [esp+0]
+		dec dword ptr [esp+0]
 		jnz near yloop
 
 		emms
@@ -1582,8 +1582,8 @@ xloop:
 		add edi, [esp + 16]			; y_out += y_dif
 		add ecx, [esp + 20]			; u_out += uv_dif
 		add edx, [esp + 20]			; v_out += uv_dif
-
-		dec [esp+0]
+    
+		dec dword ptr [esp+0]
 		jnz yloop
 
 		emms
