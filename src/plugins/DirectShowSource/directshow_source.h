@@ -51,6 +51,8 @@ extern void ApplyMessage(PVideoFrame* frame, const VideoInfo& vi,
 /********************************************************************
 ********************************************************************/
 
+#define SAFE_RELEASE(x) { if (x) x->Release(); x = NULL; }
+
 
 
 #include <evcode.h>

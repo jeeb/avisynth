@@ -887,6 +887,7 @@ DirectShowSource::DirectShowSource(const char* filename, int _avg_time_per_frame
 			mc->Release();
 		}
     get_sample.StopGraph();
+    SAFE_RELEASE(gb);
   }
 
 

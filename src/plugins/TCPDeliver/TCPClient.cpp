@@ -48,11 +48,11 @@
  ********************************************************************/
 
 
-TCPClient::TCPClient(const char* _hostname, int _port, IScriptEnvironment* env) : hostname(_hostname), port(_port) {
+TCPClient::TCPClient(const char* _hostname, int _port, const char* compression, IScriptEnvironment* env) : hostname(_hostname), port(_port) {
   LPDWORD ThreadId = 0;
 
   _RPT0(0, "TCPClient: Creating client object.\n");
-  client = new TCPClientThread(hostname, port, env);
+  client = new TCPClientThread(hostname, port, compression, env);
   _RPT0(0, "TCPClient: Client object created.\n");
 
   //  if(!ClientThread) ClientThread = CreateThread(NULL, 0, (unsigned long (__stdcall *)(void *))StartClient, 0, 0 , ThreadId );
@@ -150,6 +150,7 @@ PVideoFrame __stdcall TCPClient::GetFrame(int n, IScriptEnvironment* env) {
       default:
         env->ThrowError("TCPClient: Unknown compression.");
     }
+
     if (!vi.IsPlanar()) {
       t->DeCompressImage(srcp, fi->row_size, fi->height, fi->pitch, fi->compressed_bytes);
       env->BitBlt(dstp, frame->GetPitch(), t->dst, incoming_pitch, frame->GetRowSize(), frame->GetHeight());
@@ -262,7 +263,8 @@ TCPClient::~TCPClient() {
 
 
 AVSValue __cdecl Create_TCPClient(AVSValue args, void* user_data, IScriptEnvironment* env) {
-  return new AlignPlanar(new TCPClient(args[0].AsString(), args[1].AsInt(22050), env));
+  const char* comp = args[2].Defined() ? args[2].AsString("") : 0;
+  return new AlignPlanar(new TCPClient(args[0].AsString(), args[1].AsInt(22050), comp, env));
 }
 
 
@@ -275,7 +277,7 @@ UINT StartClient(LPVOID p) {
 }
 
 
-TCPClientThread::TCPClientThread(const char* hostname, int port, IScriptEnvironment* env) {
+TCPClientThread::TCPClientThread(const char* hostname, int port, const char* compression, IScriptEnvironment* env) {
   disconnect = false;
   data_waiting = false;
   thread_running = false;
@@ -320,11 +322,26 @@ TCPClientThread::TCPClientThread(const char* hostname, int port, IScriptEnvironm
   ccv.compression_supported = ServerFrameInfo::COMPRESSION_DELTADOWN_LZO |
     ServerFrameInfo::COMPRESSION_DELTADOWN_HUFFMAN |
     ServerFrameInfo::COMPRESSION_DELTADOWN_GZIP;
+
+  if (compression) {  // Override compression if specified.
+    if (!lstrcmpi(compression, "none")) {
+      ccv.compression_supported = ServerFrameInfo::COMPRESSION_NONE;
+    } else if (!lstrcmpi(compression, "lzo")) {
+      ccv.compression_supported = ServerFrameInfo::COMPRESSION_DELTADOWN_LZO;
+    } else if (!lstrcmpi(compression, "huffman")) {
+      ccv.compression_supported = ServerFrameInfo::COMPRESSION_DELTADOWN_HUFFMAN;
+    } else if (!lstrcmpi(compression, "gzip")) {
+      ccv.compression_supported = ServerFrameInfo::COMPRESSION_DELTADOWN_GZIP;
+    } else {
+      env->ThrowError("TCPSource: Unknown Compression type specified.");
+    }
+  }
+
   SendRequest(CLIENT_CHECK_VERSION, &ccv, sizeof(ccv));
   GetReply();
 
   if (reply->last_reply_type != REQUEST_CONNECTIONACCEPTED) {
-    env->ThrowError("TCPClient: Version Check failed! (Ensure Client and Server are same version)");
+    env->ThrowError("TCPSource: Version Check failed! (Ensure Client and Server are same version)");
   }
 
 }
