@@ -46,34 +46,6 @@
 
 AVSValue __cdecl Create_TCPClient(AVSValue args, void* user_data, IScriptEnvironment* env);
 
-/*
-struct ClientRequest {
-  BYTE* data;
-  unsigned int dataSize;
-
-  void allocateBuffer(int bytes) {
-    data = new BYTE[bytes];
-    dataSize = bytes;
-  }
-
-  void freeBuffer() {
-    if (dataSize)
-      delete[] data;
-    dataSize = 0;
-  }
-
-};
-*/
-/*
-class TCPClientSynchronization {
-public:
-  BYTE* requestdata;
-  BYTE* videoData;
-  BYTE* audioData;
-  VideoInfo vi;
-  bool parity;  
-};
-*/
 
 class TCPClientThread {
 public:
@@ -81,7 +53,7 @@ public:
   void StartRequestLoop();
   // Interfaces for unthreaded communication.
   void SendRequest(char requestId, void* data, unsigned int bytes);
-  void TCPClientThread::GetReply();
+  void GetReply();
 
 
   HANDLE evtClientReadyForRequest;   // Client is ready to recieve a new request.
@@ -91,10 +63,10 @@ public:
   unsigned int last_reply_bytes;
   char last_reply_type;
   bool disconnect;
+  bool thread_running;
 
 private:
   void RecievePacket();
-  void RecieveDataBlock();
   char* client_request;
   unsigned int client_request_bytes;
   WSADATA wsaData;

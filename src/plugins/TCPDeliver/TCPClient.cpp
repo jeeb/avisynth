@@ -51,6 +51,8 @@
 
 TCPClient::TCPClient(const char* _hostname, int _port, IScriptEnvironment* env) : hostname(_hostname), port(_port) {
   LPDWORD ThreadId = 0;
+
+  _RPT0(0, "TCPClient: Creating client object.\n");
   client = new TCPClientThread(hostname, port, env);
   _RPT0(0, "TCPClient: Client object created.\n");
 
@@ -89,7 +91,7 @@ PVideoFrame __stdcall TCPClient::GetFrame(int n, IScriptEnvironment* env) {
   int incoming_pitch;
   unsigned int incoming_bytes;
 
-  if (client->last_reply_type == SERVER_FRAME_INFO) {
+  if (client->last_reply_type == SERVER_SENDING_FRAME) {
     ServerFrameInfo* fi = (ServerFrameInfo *)client->last_reply;
     frame = env->NewVideoFrame(vi);  
 
@@ -110,30 +112,22 @@ PVideoFrame __stdcall TCPClient::GetFrame(int n, IScriptEnvironment* env) {
     default:
       env->ThrowError("TCPClient: Unknown compression.");
     }
-  } else {
-    env->ThrowError("TCPClient: Did not recieve expected packet (SERVER_FRAME_INFO)");
-  }
-  client->SendRequest(CLIENT_SEND_FRAME, 0, 0);
-  client->GetReply();
-  _RPT1(0,"TCPClient: Requesting %d bytes (GetFrame)\n", incoming_bytes);
-  if (client->last_reply_type == SERVER_SENDING_FRAME) {
-    client->SendRequest(INTERNAL_GETDATABLOCK, &incoming_bytes, sizeof(unsigned int));
-    client->GetReply();
-      
+
     env->MakeWritable(&frame);
+
     BYTE* dstp = frame->GetWritePtr();
-    BYTE* srcp = (unsigned char*)client->last_reply;
+    BYTE* srcp = (unsigned char*)client->last_reply + sizeof(ServerFrameInfo);
 
     env->BitBlt(dstp, frame->GetPitch(), srcp, incoming_pitch, frame->GetRowSize(), frame->GetHeight());
     if (vi.IsYV12()) {
       int uv_pitch = incoming_pitch / 2;
       srcp += frame->GetHeight()*incoming_pitch;
-      env->BitBlt(frame->GetWritePtr(PLANAR_U), frame->GetPitch(PLANAR_U), 
-        srcp, uv_pitch, frame->GetRowSize(PLANAR_U), frame->GetHeight(PLANAR_U));
-
-      srcp += frame->GetHeight(PLANAR_U)*uv_pitch;
       env->BitBlt(frame->GetWritePtr(PLANAR_V), frame->GetPitch(PLANAR_V), 
         srcp, uv_pitch, frame->GetRowSize(PLANAR_V), frame->GetHeight(PLANAR_V));
+
+      srcp += frame->GetHeight(PLANAR_U)*uv_pitch;
+      env->BitBlt(frame->GetWritePtr(PLANAR_U), frame->GetPitch(PLANAR_U), 
+        srcp, uv_pitch, frame->GetRowSize(PLANAR_U), frame->GetHeight(PLANAR_U));
     }
   } else {
     env->ThrowError("TCPClient: Did not recieve expected packet (SERVER_SENDING_FRAME)");
@@ -146,11 +140,11 @@ void __stdcall TCPClient::GetAudio(void* buf, __int64 start, __int64 count, IScr
   memset(&a, 0 , sizeof(ClientRequestAudio));
   a.start = start;
   a.count = count;
-  a.bytes = vi.BytesFromAudioSamples(count);
+  a.bytes = (int)vi.BytesFromAudioSamples(count);
   client->SendRequest(CLIENT_REQUEST_AUDIO, &a, sizeof(ClientRequestAudio));
   client->GetReply();
-  if (client->last_reply_type != SERVER_AUDIO_INFO) {
-    _RPT0(1,"TCPClient: Did not recieve expected packet (SERVER_AUDIOINFO)");
+  if (client->last_reply_type != SERVER_SENDING_AUDIO) {
+    _RPT0(1,"TCPClient: Did not recieve expected packet (SERVER_SENDING_AUDIO)");
     return;
   }
 
@@ -162,18 +156,10 @@ void __stdcall TCPClient::GetAudio(void* buf, __int64 start, __int64 count, IScr
       env->ThrowError("TCPClient: Unknown compression.");
   }
 
-  client->SendRequest(CLIENT_SEND_AUDIO, 0, 0);
-  client->GetReply();
-  _RPT1(0,"TCPClient: Requesting %d bytes (GetAudio)\n", a.bytes);
-  if (client->last_reply_type == SERVER_SENDING_AUDIO) {
-    client->SendRequest(INTERNAL_GETDATABLOCK, &a.bytes, sizeof(unsigned int));
-    client->GetReply();
-    memcpy(buf, client->last_reply, client->last_reply_bytes);
-  } else {
-    env->ThrowError("TCPClient: Did not recieve expected packet (SERVER_SENDING_AUDIO)");
-  }
-  
+  _RPT1(0,"TCPClient: Got %d bytes of audio (GetAudio)\n", a.bytes);
+  memcpy(buf, client->last_reply+sizeof(ClientRequestAudio), a.bytes);
 }
+
 
 bool __stdcall TCPClient::GetParity(int n) {
   return false;
@@ -182,7 +168,13 @@ bool __stdcall TCPClient::GetParity(int n) {
 
 TCPClient::~TCPClient() {
   DWORD dwExitCode = 0;
+  _RPT0(0, "TCPClient: Killing thread.\n");
   client->disconnect = true;
+  client->SendRequest(REQUEST_DISCONNECT,0,0);
+  while (client->thread_running) {Sleep(10);}
+  delete client;
+  _RPT0(0, "TCPClient: Thread killed.\n");
+
 }
 
 
@@ -202,6 +194,8 @@ UINT StartClient(LPVOID p) {
 
 TCPClientThread::TCPClientThread(const char* hostname, int port, IScriptEnvironment* env) {
   disconnect = false;
+
+  thread_running = false;
 
   evtClientReadyForRequest = ::CreateEvent (NULL,	FALSE, FALSE, NULL);
   evtClientReplyReady = ::CreateEvent (NULL,	FALSE, FALSE, NULL);
@@ -233,6 +227,7 @@ TCPClientThread::TCPClientThread(const char* hostname, int port, IScriptEnvironm
 
   AfxBeginThread(StartClient, this , THREAD_PRIORITY_NORMAL,0,0,NULL);
 
+  thread_running = true;
 }
 
 // To be called from external interface
@@ -287,53 +282,35 @@ void TCPClientThread::StartRequestLoop() {
     last_reply_bytes = 0;
     last_reply_type = 0;
 
-    if (client_request[4] != INTERNAL_GETDATABLOCK) {
-      int bytesSent = send(m_socket, client_request, client_request_bytes, 0);
+    int bytesSent = send(m_socket, client_request, client_request_bytes, 0);
 
-      _RPT0(0, "TCPClient: Request sent.\n");    
+    _RPT0(0, "TCPClient: Request sent.\n");    
 
-      if (bytesSent == WSAECONNRESET || bytesSent == 0) {
-        _RPT0(1, "TCPClient: Client was disconnected!");
-        disconnect = true;
-      } else {
-        // Wait for reply.
-        RecievePacket();
-      }
+    if (disconnect || bytesSent == WSAECONNRESET || bytesSent == 0) {
+      _RPT0(0, "TCPClient: Client was disconnected!");
+      disconnect = true;
     } else {
-      RecieveDataBlock();
+      // Wait for reply.
+      RecievePacket();
     }
     _RPT0(0, "TCPClient: Returning reply.\n");    
+
     if (disconnect) {
       last_reply_type = INTERNAL_DISCONNECTED;
     }
     SetEvent(evtClientReplyReady);  // FIXME: Could give deadlocks, if client is waiting for reply.
   } //end while
+
   CloseHandle(evtClientProcesRequest);
   CloseHandle(evtClientReplyReady);
   CloseHandle(evtClientReadyForRequest);
-  delete[] last_reply;
+
   closesocket(m_socket);
-}
+  WSACleanup();
 
-void TCPClientThread::RecieveDataBlock() {
-  unsigned int* pBytes = (unsigned int*)(&client_request[5]);
-  unsigned int bytes = pBytes[0];
-  char* d = new char[bytes];
-  unsigned int write_offset = 0;
-
-  do {
-    RecievePacket();
-    if (write_offset+last_reply_bytes > bytes) {
-      _RPT0(1, "TCPClient: Recieved too many bytes in split block!\n");
-      break;
-    }
-    memcpy(&d[write_offset], last_reply, last_reply_bytes);
-    delete[] last_reply;
-    write_offset+= last_reply_bytes;
-  } while (last_reply_type == SERVER_SPLIT_BLOCK);
-  last_reply = d;
-  last_reply_bytes = write_offset;
-  last_reply_type = INTERNAL_GETDATABLOCK;
+  delete[] client_request;  // The request data can now be freed.
+  thread_running = false;
+  _RPT0(0, "TCPClient: Client thread no longer running.\n");
 }
 
 void TCPClientThread::RecievePacket() {
@@ -350,11 +327,6 @@ void TCPClientThread::RecievePacket() {
   }
 
   _RPT1(0,"TCPClient: Got packet, of %d bytes\n", dataSize);
-
-  if (dataSize> 1024*1024) {
-    _RPT1(1,"TCPClient: Excessively large package recieved: %d bytes.", dataSize);
-    return;
-  }
 
   char* data = new char[dataSize];
   recieved = 0;

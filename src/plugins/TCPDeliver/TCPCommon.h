@@ -79,11 +79,6 @@ enum {
   CLIENT_REQUEST_AUDIO = 11,    
   // Same as above
   // Client should send a ClientRequestAudio struct, Server should return a ServerAudioInfo.
-  CLIENT_SEND_FRAME = 20,       
-  // This will send the actual data.
-  // The data will follow as a split block, without the client needing to send a new request.
-  CLIENT_SEND_AUDIO = 21,       
-  // Same as above.
   CLIENT_SEND_VIDEOINFO = 22,
   // This will make the server send an AviSynth 2.5 struct containing information about the video stream (VideoInfo).
   CLIENT_SEND_PARITY = 23,
@@ -92,8 +87,6 @@ enum {
   // Server send an AviSynth 2.5 VideoInfo struct containing information about the movie.
   SERVER_SENDING_FRAME = 31,
   SERVER_SENDING_AUDIO = 32,
-  SERVER_FRAME_INFO = 33,
-  SERVER_AUDIO_INFO = 34,
   SERVER_SENDING_PARITY = 35,
 
   SERVER_SPLIT_BLOCK = 35,        // Only server can split blocks into pieces

@@ -55,6 +55,19 @@ struct ClientConnection {
   BYTE* pendingData;
   unsigned int pendingBytesSent;
   unsigned int totalPendingBytes;
+
+  void reset() {
+    if (isDataPending)
+      delete[] pendingData;
+
+    s = 0;
+    pendingData = 0;
+    pendingBytesSent = 0;
+    totalPendingBytes = 0;
+    isConnected = false;
+    isDataPending = false;
+  }
+
 };
 
 struct ServerReply {
@@ -87,12 +100,13 @@ public:
   TCPServerListener(int port, PClip child, IScriptEnvironment* env);
   void Listen();
   void KillThread();
+  bool thread_running;
 
 private:
-  void Receive(const char* recvbuf, int bytesRecv, ServerReply* s);
+  void Receive(const char* recvbuf, unsigned int bytesRecv, ServerReply* s);
   void AcceptClient(SOCKET s, ClientConnection* s_list);
   void SendPacket(ClientConnection* cc, ServerReply* s);
-  void SendPendingData(ServerReply* s);
+  void SendPendingData(ClientConnection* cc);
   void SendVideoInfo(ServerReply* s);
   void SendFrameInfo(ServerReply* s, const char* request);
   void SendAudioInfo(ServerReply* s, const char* request);

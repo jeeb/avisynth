@@ -42,7 +42,7 @@ HWND hDlg;  // Windowhandle
 
 #include "ServerGUICode.h"
 
-/**************************  TCP Client *****************************
+/**************************  TCP Server *****************************
   The server is basicly a thread that is spawned.
 
   The server is optimized for one client, but allows several clients to 
@@ -54,17 +54,20 @@ HWND hDlg;  // Windowhandle
 
 
 TCPServer::TCPServer(PClip _child, int port, IScriptEnvironment* env) : GenericVideoFilter(_child) {
-  //LPDWORD ThreadId = 0;
-//	DWORD id;
-//  hInstance=(HINSTANCE)hModule; 
+
+  _RPT0(0, "TCPServer: Opening instance\n");
   s = new TCPServerListener(port, child, env);
-//	if(!hThread) hThread=CreateThread(NULL, 10000, (unsigned long (__stdcall *)(void *))startWindow, 0, 0 , &id );
+//  if(!hThread) hThread=CreateThread(NULL, 10000, (unsigned long (__stdcall *)(void *))startWindow, 0, 0 , &id );
 //  startWindow();
 }
 
 TCPServer::~TCPServer() {
+  _RPT0(0, "TCPServer: Killing thread.\n");
   DWORD dwExitCode = 0;
   s->KillThread();
+  while (s->thread_running) {Sleep(10);}
+  _RPT0(0, "TCPServer: Thread killed.\n");
+  delete s;
 }
 
 
@@ -73,7 +76,7 @@ AVSValue __cdecl Create_TCPServer(AVSValue args, void* user_data, IScriptEnviron
 }
 
 
-/******** Server Thread    *******/
+/********** Server Thread **********/
 
 UINT StartServer(LPVOID p) {
   TCPServerListener* t = (TCPServerListener*)p;
@@ -94,6 +97,8 @@ UINT StartServer(LPVOID p) {
  *********************************/
 
 TCPServerListener::TCPServerListener(int port, PClip _child, IScriptEnvironment* _env) : child(_child), env(_env) {
+
+  thread_running = false;
 
   int iResult = WSAStartup( MAKEWORD(2,2), &wsaData );
   if ( iResult != NO_ERROR )
@@ -132,6 +137,8 @@ TCPServerListener::TCPServerListener(int port, PClip _child, IScriptEnvironment*
   shutdown = false;
 
   AfxBeginThread(StartServer, this , THREAD_PRIORITY_NORMAL,0,0,NULL);
+
+  thread_running = true;
 
 }
 /*************************
@@ -174,7 +181,6 @@ void TCPServerListener::Listen() {
 
     if (FD_ISSET(m_socket, &test_set)) {
       AcceptClient(accept( m_socket, NULL, NULL ), &s_list[0]);
-
       _RPT0(0,"TCPServer: Client Connected.\n");
     }
 
@@ -189,18 +195,19 @@ void TCPServerListener::Listen() {
     bool request_handled = false;
 
     for (i = 0; i< FD_SETSIZE; i++) {
+      s.dataSize = 0;
       if(s_list[i].isConnected) {
         if (FD_ISSET(s_list[i].s, &test_set) && (!s_list[i].isDataPending)) {
 
           request_handled = true;
-          TCPRecievePacket* t = new TCPRecievePacket(s_list[i].s);
+          TCPRecievePacket* tr = new TCPRecievePacket(s_list[i].s);
           
-          _RPT1(0, "TCPServer: Bytes Recv: %ld\n", t->dataSize );
+          _RPT1(0, "TCPServer: Bytes Recv: %ld\n", tr->dataSize );
           
-          if (!t->isDisconnected) {
+          if (!tr->isDisconnected) {
             s.dataSize = 0;
             s.client = &s_list[i];  // Add client info to serverreply.
-            Receive((const char*)t->data, t->dataSize, &s);
+            Receive((const char*)tr->data, tr->dataSize, &s);
 
             if (s.dataSize > 0) {
               SendPacket(&s_list[i], &s);
@@ -209,20 +216,35 @@ void TCPServerListener::Listen() {
           } else { // isDisconnected
             _RPT0(0,  "TCPServer: Connection Closed.\n");
             closesocket(s_list[i].s);
-            s_list[i].isConnected = false;
+            s_list[i].reset();
           }
-          delete t;
+          delete tr;
         } // end if fd is set
-        if (s_list[i].isDataPending) {
-          request_handled = true;
-          SendPendingData(&s);
-        } // end if isDataPending
       } // end if list != null
     } // end for i
+
+    FD_ZERO(&test_set);
+
+    for (i = 0; i< FD_SETSIZE; i++) 
+      if(s_list[i].isConnected && s_list[i].isDataPending) 
+        FD_SET(s_list[i].s, &test_set);
+
+    select(0, NULL, &test_set, NULL, &t);  // Can we send?
+    for (i = 0; i< FD_SETSIZE; i++) {
+      if(FD_ISSET(s_list[i].s, &test_set) && s_list[i].isDataPending ) {
+        request_handled = true;
+        SendPendingData(&s_list[i]);
+      } // end if isDataPending
+    }
+
     if (!request_handled) Sleep(1);  // If there has been nothing to do we might as well wait a bit.
   } // while !shutdown
   closesocket(m_socket);
+  WSACleanup();
+  thread_running = false;
+  _RPT0(0, "TCPServer: Client thread no longer running.\n");
 }
+
 
 void TCPServerListener::AcceptClient(SOCKET AcceptSocket, ClientConnection* s_list) {
   ServerReply s;
@@ -235,6 +257,7 @@ void TCPServerListener::AcceptClient(SOCKET AcceptSocket, ClientConnection* s_li
   if (slot >= 0 ) {
     s_list[slot].s = AcceptSocket;
     s_list[slot].isConnected = true;
+
   } else {
     _RPT0(0,"TCPServer: All slots full.\n");
     s.allocateBuffer(0);
@@ -258,24 +281,13 @@ void TCPServerListener::SendPacket(ClientConnection* cc, ServerReply* s) {
    _RPT0(0, "TCPServer: Sending packet.\n");    
 
   unsigned int BytesSent = 0;
-  int r = 1;
   send(cc->s, (const char*)&s->dataSize, 4, 0);
-  while (r > 0) {
-    r = send(cc->s, (const char*)(&s->internal_data[BytesSent]), s->dataSize-BytesSent, 0);
-    if (r == SOCKET_ERROR || r<0) {
-      _RPT0(0, "TCPServer: Could not send packet (SOCKET_ERROR). Connection closed\n", );
-      closesocket(cc->s);
-      cc->isConnected = false;
-    }
-    BytesSent += r;                
-  } // end while
-  if (BytesSent != s->dataSize) {
-    _RPT2(0, "TCPServer: Failed in sending %d bytes - could only send %d bytes!\n", s->dataSize, BytesSent);
-    closesocket(cc->s);
-    cc->isConnected = false;
-  }
-  s->freeBuffer();
-  _RPT0(0, "TCPServer: Packet sent succesfully.\n");    
+  cc->pendingData = s->internal_data;
+  cc->isDataPending = !!s->dataSize;
+  cc->totalPendingBytes = s->dataSize;
+  cc->pendingBytesSent = 0;
+
+  _RPT0(0, "TCPServer: Packet set to pending.\n");    
 }
 
 /****************************
@@ -285,13 +297,13 @@ void TCPServerListener::SendPacket(ClientConnection* cc, ServerReply* s) {
   reply for an incoming client request.
  ****************************/
 
-void TCPServerListener::Receive(const char* recvbuf, int bytes, ServerReply* s) {
+void TCPServerListener::Receive(const char* recvbuf, unsigned int bytes, ServerReply* s) {
   switch (recvbuf[0]) {
     case REQUEST_PING:
       _RPT0(0, "TCPServer: Received Ping? - returning Pong!\n");
-      s->allocateBuffer(bytes);
-      memcpy(s->data, recvbuf, bytes);
-      s->data[0] = REQUEST_PONG;
+      s->allocateBuffer(16);
+      memcpy(s->data, recvbuf, min(16,bytes));
+      s->setType(REQUEST_PONG);
       break;
 
     case CLIENT_SEND_VIDEOINFO:
@@ -302,12 +314,6 @@ void TCPServerListener::Receive(const char* recvbuf, int bytes, ServerReply* s) 
       break;
     case CLIENT_REQUEST_AUDIO:
       SendAudioInfo(s, &recvbuf[1]);
-      break;
-    case CLIENT_SEND_FRAME:
-      SendVideoFrame(s);
-      break;
-    case CLIENT_SEND_AUDIO:
-      SendAudioData(s);
       break;
     default:
       _RPT1(1,"TCPServer: Could not handle request type %d.", recvbuf[0]);
@@ -325,39 +331,31 @@ void TCPServerListener::Receive(const char* recvbuf, int bytes, ServerReply* s) 
   in the code below :)
  *****************************/
 
-void TCPServerListener::SendPendingData(ServerReply* s) {
-  ClientConnection* cc = s->client;
+void TCPServerListener::SendPendingData(ClientConnection* cc) {
   if (!cc->isDataPending) {
     return;
   }
   int bytes_left = cc->totalPendingBytes - cc->pendingBytesSent;
-  int send_bytes = max(0, min(bytes_left, 32*1024));
-  s->allocateBuffer(send_bytes);
-  s->setType(SERVER_SPLIT_BLOCK);
-  memcpy(s->data, &cc->pendingData[cc->pendingBytesSent], send_bytes);
-  SendPacket(cc, s);
-  cc->pendingBytesSent += send_bytes;
+  int send_bytes = max(0, min(bytes_left, 64*1024));
+//  int send_bytes = bytes_left;
+
+  int r = send(cc->s, (const char*)(&cc->pendingData[cc->pendingBytesSent]), send_bytes, 0);
+  if (r == SOCKET_ERROR || r<0) {
+    _RPT0(0, "TCPServer: Could not send packet (SOCKET_ERROR). Connection closed\n", );
+    closesocket(cc->s);
+    cc->isConnected = false;
+  }
+
+  cc->pendingBytesSent += r;
 
   if (cc->pendingBytesSent >= cc->totalPendingBytes) {
     cc->isDataPending = false;
     delete[] cc->pendingData;
-    s->allocateBuffer(0);
-    s->setType(SERVER_END_SPLIT_BLOCK);
-    SendPacket(cc, s);
+    cc->totalPendingBytes = 0;
   }
+
 }
 
-void TCPServerListener::SendAudioData(ServerReply* s) {
-  s->client->isDataPending = true;   // Activate sending of pending data
-  s->allocateBuffer(0);
-  s->setType(SERVER_SENDING_AUDIO);
-}
-
-void TCPServerListener::SendVideoFrame(ServerReply* s) {
-  s->client->isDataPending = true;  // Activate sending of pending data
-  s->allocateBuffer(0);
-  s->setType(SERVER_SENDING_FRAME);
-}
 
 void TCPServerListener::SendVideoInfo(ServerReply* s) {
   _RPT0(0, "TCPServer: Sending VideoInfo!\n");
@@ -374,8 +372,6 @@ void TCPServerListener::SendFrameInfo(ServerReply* s, const char* request) {
   _RPT0(0, "TCPServer: Sending Frame Info!\n");
   ClientRequestFrame f;
   memcpy(&f, request, sizeof(ClientRequestFrame));
-  s->allocateBuffer(sizeof(ServerFrameInfo));
-  s->setType(SERVER_FRAME_INFO);
   PVideoFrame src = child->GetFrame(f.n, env);
   
   ServerFrameInfo sfi;
@@ -401,15 +397,16 @@ void TCPServerListener::SendFrameInfo(ServerReply* s, const char* request) {
   if (child->GetVideoInfo().IsYV12()) {
     data_size = data_size + data_size / 2;
   }
-  s->client->totalPendingBytes = data_size;
-  s->client->pendingBytesSent = 0;
 
-  BYTE* dstp = s->client->pendingData = new BYTE[data_size];
+  s->allocateBuffer(sizeof(ServerFrameInfo)+data_size);
+  s->setType(SERVER_SENDING_FRAME);
+
+  BYTE* dstp = s->data + sizeof(ServerFrameInfo);
   env->BitBlt(dstp, src_pitch, srcp, src_pitch, src_rowsize, src_height);
 
   if (child->GetVideoInfo().IsYV12()) {
     dstp += src_height * src_pitch;
-    srcp = src->GetReadPtr(PLANAR_U);
+    srcp = src->GetReadPtr(PLANAR_V);
     env->BitBlt(dstp, src_pitch/2, srcp, src_pitch/2, src_rowsize/2, src_height/2);
 
     dstp += src_height/2 * src_pitch/2;
@@ -425,25 +422,18 @@ void TCPServerListener::SendAudioInfo(ServerReply* s, const char* request) {
   _RPT0(0, "TCPServer: Sending Audio Info!\n");
   ClientRequestAudio a;
   memcpy(&a, request, sizeof(ClientRequestAudio));
-  s->allocateBuffer(sizeof(ServerAudioInfo));
-  s->setType(SERVER_AUDIO_INFO);
+  s->allocateBuffer(sizeof(ServerAudioInfo)+a.bytes);
+  s->setType(SERVER_SENDING_AUDIO);
 
   if (a.bytes != child->GetVideoInfo().BytesFromAudioSamples(a.count))
     _RPT0(1, "TCPServer: Did not recieve proper bytecount.\n");
 
-  BYTE* buf = s->client->pendingData = new BYTE[a.bytes];
-  
-  child->GetAudio(buf, a.start, a.count, env);
-
   ServerAudioInfo sfi;
   sfi.compression = ServerAudioInfo::COMPRESSION_NONE;
   sfi.compressed_bytes = a.bytes;
-
-  s->client->pendingData = buf;
-  s->client->totalPendingBytes = a.bytes;
-  s->client->pendingBytesSent = 0;
-
+  
   memcpy(s->data, &sfi, sizeof(ServerAudioInfo));
+  child->GetAudio(s->data+sizeof(ServerAudioInfo), a.start, a.count, env);
 }
 
 void TCPServerListener::KillThread() {
@@ -464,7 +454,7 @@ TCPRecievePacket::TCPRecievePacket(SOCKET _s) : s(_s) {
   while (recieved < 4) {
     int bytesRecv = recv(s, (char*)&dataSize+recieved, 4-recieved, 0 );
     if (bytesRecv == WSAECONNRESET || bytesRecv <= 0) {
-      _RPT0(0, "TCPServer: Could not retrieve packet size!");
+      _RPT0(0, "TCPServer: Could not retrieve packet size!\n");
       isDisconnected = true;
       return;
     }
@@ -472,7 +462,7 @@ TCPRecievePacket::TCPRecievePacket(SOCKET _s) : s(_s) {
   }
 
   if (dataSize <= 0) {
-    _RPT0(1, "TCPServer: Packet size less than 0!");
+    _RPT0(0, "TCPServer: Packet size less than 0!");
     isDisconnected = true;
     dataSize = 0;
     return;
