@@ -38,6 +38,8 @@
 // adapted by Richard Berg (avisynth-dev@richardberg.net)
 
 
+#include "stdafx.h"
+
 #include "merge.h"
 
 /********************************************************************

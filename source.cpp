@@ -33,6 +33,8 @@
 // import and export plugins, or graphical user interfaces.
 
 
+#include "stdafx.h"
+
 #include "internal.h"
 #include "convert.h"
 #include "transform.h"

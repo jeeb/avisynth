@@ -34,6 +34,8 @@
 
 
 
+#include "stdafx.h"
+
 #include "ImageSeq.h"
 
 

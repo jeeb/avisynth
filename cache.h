@@ -36,7 +36,6 @@
 #define __Cache_H__
 
 #include "internal.h"
-#include <vector>
 using namespace std;
 
 /********************************************************************

@@ -33,6 +33,8 @@
 // import and export plugins, or graphical user interfaces.
 
 
+#include "stdafx.h"
+
 #include "expression.h"
 
 

@@ -33,6 +33,8 @@
 // import and export plugins, or graphical user interfaces.
 
 
+#include "stdafx.h"
+
 #include <windows.h>
 
 #include "Error.h"    // which includes "internal.h"

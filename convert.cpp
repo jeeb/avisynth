@@ -33,6 +33,8 @@
 // import and export plugins, or graphical user interfaces.
 
 
+#include "stdafx.h"
+
 #include "convert.h"
 #include "convert_xvid.h"
 #include "convert_yv12.h"

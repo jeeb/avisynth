@@ -26,6 +26,8 @@
 //	doubly-linked lists.
 //
 
+#include "stdafx.h"
+
 #include "list.h"
 
 List::List() {

@@ -50,7 +50,7 @@
 ; *  exception also makes it possible to release a modified version which
 ; *  carries forward this exception.
 ; *
-; * $Id: convert_xvid.cpp,v 1.1 2003/02/12 01:37:02 richardberg Exp $
+; * $Id: convert_xvid.cpp,v 1.2 2003/03/25 12:19:10 sh0dan Exp $
 ; *
 ;------------------------------------------------------------------------------
 ; NB:	n contrary to the c implementation this code does the conversion
@@ -62,6 +62,7 @@
 ; ****************************************************************************/
 ;
 
+#include "stdafx.h"
 
 #include "convert_xvid.h"
 

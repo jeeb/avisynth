@@ -33,8 +33,9 @@
 // import and export plugins, or graphical user interfaces.
 
 
+#include "stdafx.h"
+
 #include "cache.h"
-#include <algorithm>
 /*
 FrameCache::CachedVideoFrame::CachedVideoFrame(int _n, const PVideoFrame& _frame)
 : n(_n), frame(_frame) { seq_number = frame->GetFrameBuffer()->GetSequenceNumber(); }

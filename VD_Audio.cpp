@@ -17,6 +17,8 @@
 
 //#include "VirtualDub.h"
 
+#include "stdafx.h"
+
 #include <string.h>
 #include <crtdbg.h>
 
