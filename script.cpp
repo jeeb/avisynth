@@ -30,7 +30,7 @@ AVSFunction Script_functions[] = {
   { "ceil", "f", Ceil },
   { "round", "f", Round },
 
-	{ "sin", "f", Sin },
+  { "sin", "f", Sin },
   { "cos", "f", Cos },
   { "pi", "", Pi },
   { "log", "f", Log },
@@ -52,6 +52,7 @@ AVSFunction Script_functions[] = {
   { "IsFieldBased", "c", IsFieldBased },
   { "IsFrameBased", "c", IsFrameBased },
   { "GetParity", "c[n]i", GetParity },
+  { "String", ".", String },
 
   { "IsBool", ".", IsBool },
   { "IsInt", ".", IsInt },
@@ -71,7 +72,7 @@ AVSFunction Script_functions[] = {
 
   { "Cache", "c", Cache::Create_Cache },
 
-	{ "SetMemoryMax", "i", SetMemoryMax },
+  { "SetMemoryMax", "i", SetMemoryMax },
 
   { 0 }
 };
@@ -251,6 +252,22 @@ AVSValue IsYUY2(AVSValue args, void*, IScriptEnvironment* env) { return VI(args[
 AVSValue IsFieldBased(AVSValue args, void*, IScriptEnvironment* env) { return VI(args[0]).field_based; }
 AVSValue IsFrameBased(AVSValue args, void*, IScriptEnvironment* env) { return !VI(args[0]).field_based; }
 AVSValue GetParity(AVSValue args, void*, IScriptEnvironment* env) { return args[0].AsClip()->GetParity(args[1].AsInt(0)); }
+
+AVSValue String(AVSValue args, void*, IScriptEnvironment* env)
+{
+  if (args[0].IsString()) return args[0];
+  if (args[0].IsBool()) return (args[0].AsBool()?"true":"false");
+  if (args[0].IsInt()) {
+    char *s = new char[12];
+    return itoa(args[0].AsInt(), s, 10);
+  }
+  if (args[0].IsFloat()) {
+    char *s = new char[30];
+    sprintf(s,"%lf",args[0].AsFloat());
+    return s;
+  }
+  return "";
+}
 
 AVSValue IsBool(AVSValue args, void*, IScriptEnvironment* env) { return args[0].IsBool(); }
 AVSValue IsInt(AVSValue args, void*, IScriptEnvironment* env) { return args[0].IsInt(); }

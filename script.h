@@ -130,6 +130,7 @@ AVSValue IsYUY2(AVSValue args, void*, IScriptEnvironment* env);
 AVSValue IsFieldBased(AVSValue args, void*, IScriptEnvironment* env);
 AVSValue IsFrameBased(AVSValue args, void*, IScriptEnvironment* env);
 AVSValue GetParity(AVSValue args, void*, IScriptEnvironment* env);
+AVSValue String(AVSValue args, void*, IScriptEnvironment* env);
 
 AVSValue IsBool(AVSValue args, void*, IScriptEnvironment* env);
 AVSValue IsInt(AVSValue args, void*, IScriptEnvironment* env);
