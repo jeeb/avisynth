@@ -567,7 +567,7 @@ public:
 // until the class instance is destroyed (which happens when a script
 // file is closed).
 class StringDump {
-  enum { BLOCK_SIZE = 4096 };
+  enum { BLOCK_SIZE = 32768 };
   char* current_block;
   int block_pos, block_size;
 
@@ -623,12 +623,14 @@ public:
     atexit_list = new AtExitRec(f, d, atexit_list);
   }
   ~AtExiter() {
+#if 1
     while (atexit_list) {
       AtExitRec* next = atexit_list->next;
       atexit_list->func(atexit_list->user_data, env);
       delete atexit_list;
       atexit_list = next;
     }
+#endif
   }
 };
 
