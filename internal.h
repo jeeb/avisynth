@@ -16,8 +16,8 @@
 // Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA, or visit
 // http://www.gnu.org/copyleft/gpl.html .
 
-#define AVS_VERSION 2.07
-#define AVS_VERSTR "AviSynth 2.07 (avisynth.org) 22 nov. 2002"
+#define AVS_VERSION 2.08
+#define AVS_VERSTR "AviSynth 2.08 (avisynth.org) 09 Jan. 2003"
 
 #ifndef __Internal_H__
 #define __Internal_H__
