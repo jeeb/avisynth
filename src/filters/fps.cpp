@@ -65,9 +65,12 @@ AVSFunction Fps_filters[] = {
  *******   AssumeFPS Filters   ******
  ************************************/
 
-AssumeFPS::AssumeFPS(PClip _child, int numerator, int denominator, bool sync_audio)
+AssumeFPS::AssumeFPS(PClip _child, int numerator, int denominator, bool sync_audio, IScriptEnvironment* env)
  : GenericVideoFilter(_child)
 {
+  if (denominator == 0)
+    env->ThrowError("AssumeFPS: Denominator cannot be 0 (zero).");
+
   if (sync_audio) 
   {
     __int64 a = __int64(vi.fps_numerator) * denominator;
@@ -81,7 +84,7 @@ AssumeFPS::AssumeFPS(PClip _child, int numerator, int denominator, bool sync_aud
 AVSValue __cdecl AssumeFPS::Create(AVSValue args, void*, IScriptEnvironment* env) 
 {
   return new AssumeFPS( args[0].AsClip(), args[1].AsInt(), 
-                        args[2].AsInt(1), args[3].AsBool(false) );
+                        args[2].AsInt(1), args[3].AsBool(false), env );
 }
 
 
@@ -90,14 +93,19 @@ AVSValue __cdecl AssumeFPS::CreateFloat(AVSValue args, void*, IScriptEnvironment
   double n = args[1].AsFloat();
   int d = 1;
   while (n < 16777216 && d < 16777216) { n*=2; d*=2; }
-  return new AssumeFPS(args[0].AsClip(), int(n+0.5), d, args[2].AsBool(false));
+  return new AssumeFPS(args[0].AsClip(), int(n+0.5), d, args[2].AsBool(false), env);
 }
 
 AVSValue __cdecl AssumeFPS::CreateFromClip(AVSValue args, void*, IScriptEnvironment* env)
 {
   const VideoInfo& vi = args[1].AsClip()->GetVideoInfo();
+
+  if (!vi.HasVideo()) {
+    env->ThrowError("AssumeFPS: The clip supplied to get the FPS from must contain video.");
+  }
+
   return new AssumeFPS( args[0].AsClip(), vi.fps_numerator,
-                        vi.fps_denominator, args[2].AsBool(false) );
+                        vi.fps_denominator, args[2].AsBool(false), env );
 }
 
 

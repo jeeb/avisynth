@@ -46,7 +46,7 @@ class AssumeFPS : public GenericVideoFilter
  **/
 {
 public:
-  AssumeFPS(PClip _child, int numerator, int denominator, bool sync_audio);
+  AssumeFPS(PClip _child, int numerator, int denominator, bool sync_audio, IScriptEnvironment* env);
   static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env);
   static AVSValue __cdecl CreateFloat(AVSValue args, void*, IScriptEnvironment* env);
   static AVSValue __cdecl CreateFromClip(AVSValue args, void*, IScriptEnvironment* env);
