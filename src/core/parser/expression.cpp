@@ -62,86 +62,98 @@ AVSValue ExpSequence::Evaluate(IScriptEnvironment* env)
  * a function argument, return "EXCEPTION_EXECUTE_HANDLER" and throw
  * the exception from within the _except block.
  */
-int ProcessSystemError(int code, _EXCEPTION_POINTERS *info, char **msg)
+int ProcessSystemError(int code, _EXCEPTION_POINTERS *info)
 {
   switch (code) {
-  case 0xE06D7363:                       // 0xE06D7363
-    return EXCEPTION_CONTINUE_SEARCH; // C++ Exception, 0xE0000000 | "\0msc"
+  case 0xE06D7363:
+    break; // C++ Exception, 0xE0000000 | "\0msc"
   
   case STATUS_GUARD_PAGE_VIOLATION:      // 0x80000001
-    *msg="Evaluate: System exception - Guard Page Violation";
-    break;
   case STATUS_DATATYPE_MISALIGNMENT:     // 0x80000002
-    *msg="Evaluate: System exception - Datatype Misalignment";
-    break;
-  case STATUS_BREAKPOINT:                // 0x80000003
-    *msg="Evaluate: System exception - Breakpoint";
-    break;
-  case STATUS_SINGLE_STEP:               // 0x80000004
-    *msg="Evaluate: System exception - Single Step";
-    break;
+//case STATUS_BREAKPOINT:                // 0x80000003
+//case STATUS_SINGLE_STEP:               // 0x80000004
   case STATUS_ACCESS_VIOLATION:          // 0xc0000005
-    *msg="Evaluate: System exception - Access Violation";
-    break;
   case STATUS_IN_PAGE_ERROR:             // 0xc0000006
-    *msg="Evaluate: System exception - In Page Error";
-    break;
   case STATUS_INVALID_HANDLE:            // 0xc0000008
-    *msg="Evaluate: System exception - Invalid Handle";
-    break;
   case STATUS_NO_MEMORY:                 // 0xc0000017
-    *msg="Evaluate: System exception - No Memory";
-    break;
   case STATUS_ILLEGAL_INSTRUCTION:       // 0xc000001d
-    *msg="Evaluate: System exception - Illegal Instruction";
-    break;
   case STATUS_NONCONTINUABLE_EXCEPTION:  // 0xc0000025
-    *msg="Evaluate: System exception - Noncontinuable Exception";
-    break;
   case STATUS_INVALID_DISPOSITION:       // 0xc0000026
-    *msg="Evaluate: System exception - Invalid Disposition";
-    break;
   case STATUS_ARRAY_BOUNDS_EXCEEDED:     // 0xc000008c
-    *msg="Evaluate: System exception - Array Bounds Exceeded";
-    break;
   case STATUS_FLOAT_DENORMAL_OPERAND:    // 0xc000008d
-    *msg="Evaluate: System exception - Float Denormal Operand";
-    break;
   case STATUS_FLOAT_DIVIDE_BY_ZERO:      // 0xc000008e
-    *msg="Evaluate: System exception - Float Divide by Zero";
-    break;
   case STATUS_FLOAT_INEXACT_RESULT:      // 0xc000008f
-    *msg="Evaluate: System exception - Float Inexact Result";
-    break;
   case STATUS_FLOAT_INVALID_OPERATION:   // 0xc0000090
-    *msg="Evaluate: System exception - Float Invalid Operation";
-    break;
   case STATUS_FLOAT_OVERFLOW:            // 0xc0000091
-    *msg="Evaluate: System exception - Float Overflow";
-    break;
   case STATUS_FLOAT_STACK_CHECK:         // 0xc0000092
-    *msg="Evaluate: System exception - Float Stack Check";
-    break;
   case STATUS_FLOAT_UNDERFLOW:           // 0xc0000093
-    *msg="Evaluate: System exception - Float Underflow";
-    break;
   case STATUS_INTEGER_DIVIDE_BY_ZERO:    // 0xc0000094
-    *msg="Evaluate: System exception - Integer Divide by Zero";
-    break;
   case STATUS_INTEGER_OVERFLOW:          // 0xc0000095
-    *msg="Evaluate: System exception - Integer Overflow";
-    break;
   case STATUS_PRIVILEGED_INSTRUCTION:    // 0xc0000096
-    *msg="Evaluate: System exception - Privileged Instruction";
-    break;
   case STATUS_STACK_OVERFLOW:            // 0xc00000fd
-    *msg="Evaluate: System exception - Stack Overflow";
-    break;
+	return EXCEPTION_EXECUTE_HANDLER;
+
   default:
-    return EXCEPTION_CONTINUE_SEARCH;
+    break;
   }
-  return EXCEPTION_EXECUTE_HANDLER;
+  return EXCEPTION_CONTINUE_SEARCH;
 }
+
+const char * const StringSystemError(const int code)
+{
+  switch (code) {
+  case STATUS_GUARD_PAGE_VIOLATION:      // 0x80000001
+    return "Evaluate: System exception - Guard Page Violation";
+  case STATUS_DATATYPE_MISALIGNMENT:     // 0x80000002
+    return "Evaluate: System exception - Datatype Misalignment";
+  case STATUS_BREAKPOINT:                // 0x80000003
+    return "Evaluate: System exception - Breakpoint";
+  case STATUS_SINGLE_STEP:               // 0x80000004
+    return "Evaluate: System exception - Single Step";
+  case STATUS_ACCESS_VIOLATION:          // 0xc0000005
+    return "Evaluate: System exception - Access Violation";
+  case STATUS_IN_PAGE_ERROR:             // 0xc0000006
+    return "Evaluate: System exception - In Page Error";
+  case STATUS_INVALID_HANDLE:            // 0xc0000008
+    return "Evaluate: System exception - Invalid Handle";
+  case STATUS_NO_MEMORY:                 // 0xc0000017
+    return "Evaluate: System exception - No Memory";
+  case STATUS_ILLEGAL_INSTRUCTION:       // 0xc000001d
+    return "Evaluate: System exception - Illegal Instruction";
+  case STATUS_NONCONTINUABLE_EXCEPTION:  // 0xc0000025
+    return "Evaluate: System exception - Noncontinuable Exception";
+  case STATUS_INVALID_DISPOSITION:       // 0xc0000026
+    return "Evaluate: System exception - Invalid Disposition";
+  case STATUS_ARRAY_BOUNDS_EXCEEDED:     // 0xc000008c
+    return "Evaluate: System exception - Array Bounds Exceeded";
+  case STATUS_FLOAT_DENORMAL_OPERAND:    // 0xc000008d
+    return "Evaluate: System exception - Float Denormal Operand";
+  case STATUS_FLOAT_DIVIDE_BY_ZERO:      // 0xc000008e
+    return "Evaluate: System exception - Float Divide by Zero";
+  case STATUS_FLOAT_INEXACT_RESULT:      // 0xc000008f
+    return "Evaluate: System exception - Float Inexact Result";
+  case STATUS_FLOAT_INVALID_OPERATION:   // 0xc0000090
+    return "Evaluate: System exception - Float Invalid Operation";
+  case STATUS_FLOAT_OVERFLOW:            // 0xc0000091
+    return "Evaluate: System exception - Float Overflow";
+  case STATUS_FLOAT_STACK_CHECK:         // 0xc0000092
+    return "Evaluate: System exception - Float Stack Check";
+  case STATUS_FLOAT_UNDERFLOW:           // 0xc0000093
+    return "Evaluate: System exception - Float Underflow";
+  case STATUS_INTEGER_DIVIDE_BY_ZERO:    // 0xc0000094
+    return "Evaluate: System exception - Integer Divide by Zero";
+  case STATUS_INTEGER_OVERFLOW:          // 0xc0000095
+    return "Evaluate: System exception - Integer Overflow";
+  case STATUS_PRIVILEGED_INSTRUCTION:    // 0xc0000096
+    return "Evaluate: System exception - Privileged Instruction";
+  case STATUS_STACK_OVERFLOW:            // 0xc00000fd
+    return "Evaluate: System exception - Stack Overflow";
+  default:
+    break;
+  }
+  return "Evaluate: System exception - UNKNOWN!";
+}
+
 
 /* Damn! This is trickey, exp->Evaluate returns an AVSValue object, so the
  * stupid compiler builds a local one on the stack, calls the constructor,
@@ -165,16 +177,15 @@ void ExpExceptionTranslator::ChainEval(AVSValue &av, IScriptEnvironment* env)
  */
 void ExpExceptionTranslator::TrapEval(AVSValue &av, IScriptEnvironment* env) 
 {
-  char *msg;
+  int excode;
 
   __try {
     ChainEval(av, env);
   }
-  __except (ProcessSystemError((int)_exception_code(),
-                               (_EXCEPTION_POINTERS *)_exception_info(),
-                               &msg))
+  __except (ProcessSystemError(excode = (int)_exception_code(),
+                               (_EXCEPTION_POINTERS *)_exception_info()))
   {
-    env->ThrowError(msg);
+    env->ThrowError(StringSystemError(excode));
   }
 }
 
