@@ -52,22 +52,14 @@ AVSFunction Convert_filters[] = {
   { "ConvertToYV12", "c[interlaced]b", ConvertToYV12::Create },  
   { "ConvertToYUY2", "c[interlaced]b", ConvertToYUY2::Create },  
   { "ConvertBackToYUY2", "c", ConvertBackToYUY2::Create },  
-  { "Greyscale", "c", Greyscale::Create },
+  { "Greyscale", "c[matrix]s", Greyscale::Create },
   { 0 }
 };
 
 
-
-
-
-
-
-
-
-
 /*************************************
  *******   RGB Helper Classes   ******
- ************************************/
+ *************************************/
 
 RGB24to32::RGB24to32(PClip src) 
   : GenericVideoFilter(src) 
@@ -82,15 +74,132 @@ PVideoFrame __stdcall RGB24to32::GetFrame(int n, IScriptEnvironment* env)
   PVideoFrame dst = env->NewVideoFrame(vi);
   const BYTE *p = src->GetReadPtr();
   BYTE *q = dst->GetWritePtr();
-  for (int y = vi.height; y > 0; --y) {
-    for (int x = 0; x < vi.width; ++x) {
-      q[x*4+0] = p[x*3+0];
-      q[x*4+1] = p[x*3+1];
-      q[x*4+2] = p[x*3+2];
-      q[x*4+3] = 255;
-    }
-    p += src->GetPitch();
-    q += dst->GetPitch();
+  const int src_pitch = src->GetPitch();
+  const int dst_pitch = dst->GetPitch();
+
+  if (env->GetCPUFlags() & CPUF_MMX) {
+	int h=vi.height;
+	int x_loops=vi.width; // 4 dwords/loop   read 12 bytes, write 16 bytes
+	const int x_left=vi.width%4;
+	x_loops-=x_left;
+	x_loops*=4;
+	__declspec(align(8)) static const __int64 oxffooooooffoooooo=0xff000000ff000000;
+
+	__asm {
+    mov			esi,p
+    mov			edi,q
+    mov			eax,255				; Alpha channel for unaligned stosb
+    mov			edx,[x_left]		; Count of unaligned pixels
+    movq		mm7,[oxffooooooffoooooo]
+    align 16
+yloop:
+    mov			ebx,0				; src offset
+    mov			ecx,0				; dst offset
+xloop:
+    movq		mm0,[ebx+esi]		; 0000 0000 b1r0 g0b0	get b1 & a0
+     movd		mm1,[ebx+esi+4]		; 0000 0000 g2b2 r1g1	get b2 & t1
+	movq		mm2,mm0				; 0000 0000 b1r0 g0b0	copy b1
+	 punpcklwd	mm1,mm1				; g2b2 g2b2 r1g1 r1g1	b2 in top, t1 in bottom
+	psrld		mm2,24				; 0000 0000 0000 00b1	b1 in right spot
+	 pslld		mm1,8				; b2g2 b200 g1r1 g100	t1 in right spot
+    movd		mm3,[ebx+esi+8]		; 0000 0000 r3g3 b3r2	get a3 & t2
+	 por		mm2,mm1				; b2g2 b200 g1r1 g1b1	build a1 in low mm2
+	pslld		mm1,8				; g2b2 0000 r1g1 b100	clean up b2
+	 psllq		mm3,24				; 00r3 g3b3 r200 0000	a3 in right spot
+	psrlq		mm1,40				; 0000 0000 00g2 b200	b2 in right spot
+	 punpckldq	mm0,mm2				; g1r1 g1b1 b1r0 g0b0	build a1, a0 in mm0
+	por			mm1,mm3				; 00r3 g3b3 r2g2 b200	build a2
+	 por		mm0,mm7				; a1r1 g1b1 a0r0 g0b0	add alpha to a1, a0
+	psllq		mm1,24				; b3r2 g2b2 0000 0000	a2 in right spot
+     movq		[ecx+edi],mm0		; a1r1 g1b1 a0r0 g0b0	store a1, a0
+	punpckhdq	mm1,mm3				; 00r3 g3b3 b3r2 g2b2	build a3, a2 in mm1
+     add		ecx,16				; bump dst index
+	por			mm1,mm7				; a3r3 g3b3 a2r2 g2b2	add alpha to a3, a2
+     add		ebx,12				; bump src index
+    movq		[ecx+edi-8],mm1		; a3r3 g3b3 a2r2 g2b2	store a3, a2
+
+    cmp			ecx,[x_loops]
+    jl			xloop
+
+    cmp			edx,0				; Check unaligned move count
+    je			no_copy				; None, do next row
+    cmp			edx,2
+    je			copy_2				; Convert 2 pixels
+    cmp			edx,1
+    je			copy_1				; Convert 1 pixel
+//copy 3
+    add			esi,ebx				; else Convert 3 pixels
+    add			edi,ecx
+    movsb 							; b
+    movsb							; g
+    movsb							; r
+    stosb							; a
+
+    movsb 							; b
+    movsb							; g
+    movsb							; r
+    stosb							; a
+
+    movsb 							; b
+    movsb							; g
+    movsb							; r
+    stosb							; a
+    sub			esi,ebx
+    sub			edi,ecx
+    sub			esi,9
+    sub			edi,12
+    jmp			no_copy
+    align 16
+copy_2:
+    add			esi,ebx
+    add			edi,ecx
+    movsb 							; b
+    movsb							; g
+    movsb							; r
+    stosb							; a
+
+    movsb 							; b
+    movsb							; g
+    movsb							; r
+    stosb							; a
+    sub			esi,ebx
+    sub			edi,ecx
+    sub			esi,6
+    sub			edi,8
+    jmp			no_copy
+    align 16
+copy_1:
+    add			esi,ebx
+    add			edi,ecx
+    movsb 							; b
+    movsb							; g
+    movsb							; r
+    stosb							; a
+    sub			esi,ebx
+    sub			edi,ecx
+    sub			esi,3
+    sub			edi,4
+    align 16
+no_copy:
+    add			esi,[src_pitch]
+    add			edi,[dst_pitch]    
+    
+    dec			[h]
+    jnz			yloop
+    emms
+	}
+  }
+  else {
+	for (int y = vi.height; y > 0; --y) {
+	  for (int x = 0; x < vi.width; ++x) {
+		q[x*4+0] = p[x*3+0];
+		q[x*4+1] = p[x*3+1];
+		q[x*4+2] = p[x*3+2];
+		q[x*4+3] = 255;
+	  }
+	  p += src_pitch;
+	  q += dst_pitch;
+	}
   }
   return dst;
 }
@@ -113,15 +222,17 @@ PVideoFrame __stdcall RGB32to24::GetFrame(int n, IScriptEnvironment* env)
   BYTE *q = dst->GetWritePtr();
   const int src_pitch = src->GetPitch();
   const int dst_pitch = dst->GetPitch();
-  const int h=vi.height;
-  int x_loops=vi.width; // 4 dwords/loop   read 16 bytes, write 12 bytes
-  const int x_left=vi.width%4;
-  x_loops-=x_left;
-  x_loops*=4;
-  __declspec(align(8)) static const __int64 oxooooooooooffffff=0x0000000000ffffff;
-  __declspec(align(8)) static const __int64 oxooffffffoooooooo=0x00ffffff00000000;
 
-  __asm {
+  if (env->GetCPUFlags() & CPUF_MMX) {
+	const int h=vi.height;
+	int x_loops=vi.width; // 4 dwords/loop   read 16 bytes, write 12 bytes
+	const int x_left=vi.width%4;
+	x_loops-=x_left;
+	x_loops*=4;
+	__declspec(align(8)) static const __int64 oxooooooooooffffff=0x0000000000ffffff;
+	__declspec(align(8)) static const __int64 oxooffffffoooooooo=0x00ffffff00000000;
+
+	__asm {
     mov esi,p
     mov edi,q
     mov eax,[h]
@@ -143,24 +254,24 @@ xloop:
     pand mm1,mm6      ; 0000 0000 00r2 g2b2 
 
     pand mm2,mm7      ; 00r1 g1b1 0000 0000
-    pand mm3,mm7      ; 00r3 g3b3 0000 0000
-
     movq mm4,mm1      ; 0000 0000 00r2 g2b2 
+
     psrlq mm2,8       ; 0000 r1g1 b100 0000
+    pand mm3,mm7      ; 00r3 g3b3 0000 0000
     
     psllq mm4,48      ; g2b2 0000 0000 0000
     por mm0,mm2       ; 0000 r1g1 b1r0 g0b0
 
     psrlq mm1,16      ; 0000 0000 0000 00r2
-    por mm0,mm4
+    por mm0,mm4       ; g2b2 r1g1 b1r0 g0b0
 
-    psrlq mm3,24      ; 0000 0000 b3g3 r300
+    psrlq mm3,24      ; 0000 0000 r3g3 b300
     movq [ecx+edi],mm0
 
-    por mm3,mm1
+    por mm3,mm1       ; 0000 0000 r3g3 b3r2
+    add ebx,16
     movd [ecx+edi+8],mm3
 
-    add ebx,16
     add ecx,12
     cmp ebx,[x_loops]
     jl xloop
@@ -226,19 +337,19 @@ no_copy:
     dec eax
     jnz yloop
     emms
+	}
   }
-  
-/*  
-  for (int y = vi.height; y > 0; --y) {
-    for (int x = 0; x < vi.width; ++x) {
-      q[x*3+0] = p[x*4+0];
-      q[x*3+1] = p[x*4+1];
-      q[x*3+2] = p[x*4+2];
-    }
-    p += src->GetPitch();
-    q += dst->GetPitch();
+  else {
+	for (int y = vi.height; y > 0; --y) {
+	  for (int x = 0; x < vi.width; ++x) {
+		q[x*3+0] = p[x*4+0];
+		q[x*3+1] = p[x*4+1];
+		q[x*3+2] = p[x*4+2];
+	  }
+	  p += src_pitch;
+	  q += dst_pitch;
+	}
   }
-  */
   return dst;
 }
 
@@ -263,51 +374,75 @@ ConvertToRGB::ConvertToRGB( PClip _child, bool rgb24, const char* matrix,
     else
       env->ThrowError("ConvertToRGB: invalid \"matrix\" parameter (must be matrix=\"Rec709\")");
   }
-  use_mmx = (vi.width & 3) == 0 && (env->GetCPUFlags() & CPUF_MMX);
+  use_mmx = (env->GetCPUFlags() & CPUF_MMX) != 0;
 
-  if ((rgb24 || rec709) && !use_mmx)
-    env->ThrowError("ConvertToRGB: 24-bit RGB and Rec.709 support require MMX and horizontal width a multiple of 4");
+  if (rec709 && ((vi.width & 3) != 0) || !use_mmx)
+    env->ThrowError("ConvertToRGB: Rec.709 support require MMX and horizontal width a multiple of 4");
   vi.pixel_type = rgb24 ? VideoInfo::CS_BGR24 : VideoInfo::CS_BGR32;
-
 }
 
 
 PVideoFrame __stdcall ConvertToRGB::GetFrame(int n, IScriptEnvironment* env) 
 {
   PVideoFrame src = child->GetFrame(n, env);
-  PVideoFrame dst = env->NewVideoFrame(vi,-2);
   const int src_pitch = src->GetPitch();
-  const int dst_pitch = dst->GetPitch();
   const BYTE* srcp = src->GetReadPtr();
-  BYTE* dstp = dst->GetWritePtr();
+  
+  int src_rowsize = __min(src_pitch, (src->GetRowSize()+7) & -8);
   // assumption: is_yuy2
-  if (use_mmx) {
+  if (use_mmx && ((src_rowsize & 7) == 0)) {
+	VideoInfo vi2 = vi;
+	vi2.width=src_rowsize / 2;
+	PVideoFrame dst = env->NewVideoFrame(vi2,-2); // force pitch == rowsize
+	BYTE* dstp = dst->GetWritePtr();
+
     (vi.IsRGB24() ? mmx_YUY2toRGB24 : mmx_YUY2toRGB32)(srcp, dstp,
-      srcp + vi.height * src_pitch, src_pitch, src->GetRowSize(), rec709);
-  } else if (vi.IsRGB32()) {    
-    srcp += vi.height * src_pitch;
-    for (int y=vi.height; y>0; --y) {
-      srcp -= src_pitch;
-      for (int x=0; x<vi.width; x+=2) {
-        YUV2RGB(srcp[x*2+0], srcp[x*2+1], srcp[x*2+3], &dstp[x*4]);
-        dstp[x*4+3] = 255;
-        YUV2RGB(srcp[x*2+2], srcp[x*2+1], srcp[x*2+3], &dstp[x*4+4]);
-        dstp[x*4+7] = 255;
-      }
-      dstp += dst_pitch;
-    }
-  } else if (vi.IsRGB24()) {
-    srcp += vi.height * src_pitch;
-    for (int y=vi.height; y>0; --y) {
-      srcp -= src_pitch;
-      for (int x=0; x<vi.width; x+=2) {
-        YUV2RGB(srcp[x*2+0], srcp[x*2+1], srcp[x*2+3], &dstp[x*3]);
-        YUV2RGB(srcp[x*2+2], srcp[x*2+1], srcp[x*2+3], &dstp[x*3+3]);
-      }
-      dstp += dst_pitch;
-    }
+      srcp + vi.height * src_pitch, src_pitch, src_rowsize, rec709);
+	  
+	if (vi.width & 3) {  // Did we extend off the right edge of picture?
+	  const int dst_pitch = dst->GetPitch();
+	  const int x2 = (vi.width-2) * 2;
+	  const int xE = (vi.width-1) * (vi2.BitsPerPixel()>>3);
+	  srcp += vi.height * src_pitch;
+	  for (int y=vi.height; y>0; --y) {
+		srcp -= src_pitch;
+		YUV2RGB(srcp[x2+2], srcp[x2+1], srcp[x2+3], &dstp[xE]);
+		dstp += dst_pitch;
+	  }
+	}
+	return dst->Subframe(0, dst->GetPitch(), vi2.BytesFromPixels(vi.width), vi.height);
   }
-  return dst;
+  else {
+	PVideoFrame dst = env->NewVideoFrame(vi);
+	const int dst_pitch = dst->GetPitch();
+	BYTE* dstp = dst->GetWritePtr();
+
+	if (vi.IsRGB32()) {    
+	  srcp += vi.height * src_pitch;
+	  for (int y=vi.height; y>0; --y) {
+		srcp -= src_pitch;
+		for (int x=0; x<vi.width; x+=2) {
+		  YUV2RGB(srcp[x*2+0], srcp[x*2+1], srcp[x*2+3], &dstp[x*4]);
+		  dstp[x*4+3] = 255;
+		  YUV2RGB(srcp[x*2+2], srcp[x*2+1], srcp[x*2+3], &dstp[x*4+4]);
+		  dstp[x*4+7] = 255;
+		}
+		dstp += dst_pitch;
+	  }
+	}
+	else if (vi.IsRGB24()) {
+	  srcp += vi.height * src_pitch;
+	  for (int y=vi.height; y>0; --y) {
+		srcp -= src_pitch;
+		for (int x=0; x<vi.width; x+=2) {
+		  YUV2RGB(srcp[x*2+0], srcp[x*2+1], srcp[x*2+3], &dstp[x*3]);
+		  YUV2RGB(srcp[x*2+2], srcp[x*2+1], srcp[x*2+3], &dstp[x*3+3]);
+		}
+		dstp += dst_pitch;
+	  }
+	}
+    return dst;
+  }
 }
 
 
@@ -592,7 +727,7 @@ PVideoFrame __stdcall ConvertBackToYUY2::GetFrame(int n, IScriptEnvironment* env
       yuv[0] = y1;
       const int y2 = (cyb*rgb_next[0] + cyg*rgb_next[1] + cyr*rgb_next[2] + 0x108000) >> 16;
       yuv[2] = y2;
-      const int scaled_y = (y1*2 - 32) * int(255.0/219.0*32768+0.5);
+      const int scaled_y = (y1 - 16) * int(255.0/219.0*65536+0.5);
       const int b_y = ((rgb[0]) << 16) - scaled_y;
       yuv[1] = ScaledPixelClip((b_y >> 10) * int(1/2.018*1024+0.5) + 0x800000);  // u
       const int r_y = ((rgb[2]) << 16) - scaled_y;
@@ -624,9 +759,18 @@ AVSValue __cdecl ConvertBackToYUY2::Create(AVSValue args, void*, IScriptEnvironm
  *******   Convert to Greyscale ******
  ************************************/
 
-Greyscale::Greyscale(PClip _child, IScriptEnvironment* env)
+Greyscale::Greyscale(PClip _child, const char* matrix, IScriptEnvironment* env)
  : GenericVideoFilter(_child)
 {
+  rec709 = false;
+  if (matrix) {
+    if (!vi.IsRGB())
+      env->ThrowError("GreyScale: invalid \"matrix\" parameter (RGB data only)");
+    if (!lstrcmpi(matrix, "rec709"))
+      rec709 = true;
+    else
+      env->ThrowError("GreyScale: invalid \"matrix\" parameter (must be matrix=\"Rec709\")");
+  }
 }
 
 
@@ -639,112 +783,269 @@ PVideoFrame Greyscale::GetFrame(int n, IScriptEnvironment* env)
   int myy = vi.height;
   int myx = vi.width;
   if (vi.IsYV12()) {
-    pitch = frame->GetPitch(PLANAR_U)/4;
-    int *srcpUV = (int*)frame->GetWritePtr(PLANAR_U);
-    myx = frame->GetRowSize(PLANAR_U_ALIGNED)/4;
-    myy = frame->GetHeight(PLANAR_U);
+	pitch = frame->GetPitch(PLANAR_U)/4;
+	int *srcpUV = (int*)frame->GetWritePtr(PLANAR_U);
+	myx = frame->GetRowSize(PLANAR_U_ALIGNED)/4;
+	myy = frame->GetHeight(PLANAR_U);
 	  for (int y=0; y<myy; y++) {
-      for (int x=0; x<myx; x++) {
-		    srcpUV[x] = 0x80808080;  // mod 8
-      }
-		  srcpUV += pitch;
+		for (int x=0; x<myx; x++) {
+		  srcpUV[x] = 0x80808080;  // mod 8
+		}
+		srcpUV += pitch;
 	  }
-    pitch = frame->GetPitch(PLANAR_V)/4;
-    srcpUV = (int*)frame->GetWritePtr(PLANAR_V);
-    myx = frame->GetRowSize(PLANAR_V_ALIGNED)/4;
-    myy = frame->GetHeight(PLANAR_V);
+	pitch = frame->GetPitch(PLANAR_V)/4;
+	srcpUV = (int*)frame->GetWritePtr(PLANAR_V);
+	myx = frame->GetRowSize(PLANAR_V_ALIGNED)/4;
+	myy = frame->GetHeight(PLANAR_V);
 	  for (y=0; y<myy; ++y) {
-      for (int x=0; x<myx; x++) {
-		    srcpUV[x] = 0x80808080;  // mod 8
-      }
-		  srcpUV += pitch;
+		for (int x=0; x<myx; x++) {
+		  srcpUV[x] = 0x80808080;  // mod 8
+		}
+		srcpUV += pitch;
 	  }
-  } else if (vi.IsYUY2())
-	{
-	  for (int y=0; y<myy; ++y) {
-		for (int x=0; x<myx; x++)
-		  srcp[x*2+1] = 128;
-		srcp += pitch;
+  }
+  else if (vi.IsYUY2() && (env->GetCPUFlags() & CPUF_MMX)) {
+	__declspec(align(8)) static const __int64 oxooffooffooffooff = 0x00ff00ff00ff00ff;
+	__declspec(align(8)) static const __int64 ox80oo80oo80oo80oo = 0x8000800080008000;
+
+	  myx = __min(pitch>>1, (myx+3) & -4);	// Try for mod 8
+	  __asm {
+
+		movq		mm7,oxooffooffooffooff
+		movq		mm6,ox80oo80oo80oo80oo
+		mov			esi,srcp				; data pointer
+		mov			ebx,pitch				; pitch
+		mov			edx,myy					; height
+		mov			edi,myx					; aligned width
+		sub			ebx,edi
+		sub			ebx,edi					; modulo = pitch - rowsize
+		shr			edi,1					; number of dwords
+
+		align		16
+yloop:
+		mov			ecx,edi					; number of dwords
+
+		test		esi,0x7					; qword aligned?
+		jz			xloop1					; yes
+
+		movd		mm5,[esi]				; process 1 dword
+		pand		mm5,mm7					; keep luma
+		 add		esi,4					; srcp++
+		por			mm5,mm6					; set chroma = 128
+		 dec		ecx						; count--
+		movd		[esi-4],mm5				; update 2 pixels
+
+		align		16
+xloop1:
+		cmp			ecx,16					; Try to do 16 pixels per loop
+		jl			xlend1
+
+		movq		mm0,[esi+0]				; process 1 dword
+		movq		mm1,[esi+8]
+		pand		mm0,mm7					; keep luma
+		pand		mm1,mm7
+		por			mm0,mm6					; set chroma = 128
+		por			mm1,mm6
+		movq		[esi+0],mm0				; update 2 pixels
+		movq		[esi+8],mm1
+		
+		movq		mm2,[esi+16]
+		movq		mm3,[esi+24]
+		pand		mm2,mm7
+		pand		mm3,mm7
+		por			mm2,mm6
+		por			mm3,mm6
+		movq		[esi+16],mm2
+		movq		[esi+24],mm3
+
+		movq		mm0,[esi+32]
+		movq		mm1,[esi+40]
+		pand		mm0,mm7
+		pand		mm1,mm7
+		por			mm0,mm6
+		por			mm1,mm6
+		movq		[esi+32],mm0
+		movq		[esi+40],mm1
+
+		movq		mm2,[esi+48]
+		movq		mm3,[esi+56]
+		pand		mm2,mm7
+		pand		mm3,mm7
+		por			mm2,mm6
+		por			mm3,mm6
+		movq		[esi+48],mm2
+		movq		[esi+56],mm3
+		
+		sub			ecx,16					; count-=16
+		add			esi,64					; srcp+=16
+
+		jmp			xloop1
+xlend1:
+		cmp			ecx,2
+		jl			xlend2
+
+		align		16
+xloop3:
+		movq		mm0,[esi]				; process 1 qword
+		 sub		ecx,2					; count-=2
+		pand		mm0,mm7					; keep luma
+		 add		esi,8					; srcp+=2
+		por			mm0,mm6					; set chroma = 128
+		 cmp		ecx,2					; any qwords left
+		movq		[esi-8],mm0				; update 4 pixels
+		 jge		xloop3					; more qwords ?
+
+		align		16
+xlend2:
+		cmp			ecx,1					; 1 dword left
+		jl			xlend3					; no
+
+		movd		mm0,[esi]				; process 1 dword
+		pand		mm0,mm7					; keep luma
+		por			mm0,mm6					; set chroma = 128
+		movd		[esi-4],mm0				; update 2 pixels
+		add			esi,4					; srcp++
+
+xlend3:
+		add			esi,ebx
+		dec			edx
+		jnle		yloop
+		emms
 	  }
-	} else if (vi.IsRGB32() && (env->GetCPUFlags() & CPUF_MMX) && (!myx&1) ) {
-		const int cyb = int(0.114*32768+0.5);
-		const int cyg = int(0.587*32768+0.5);
-		const int cyr = int(0.299*32768+0.5);
-		myx = myx >> 1;
-		__int64 rgb2lum = ((__int64)cyb << 32) | (cyg << 16) | cyr;
+  }
+  else if (vi.IsYUY2()) {
+	for (int y=0; y<myy; ++y) {
+	  for (int x=0; x<myx; x++)
+		srcp[x*2+1] = 128;
+	  srcp += pitch;
+	}
+  }
+  else if (vi.IsRGB32() && (env->GetCPUFlags() & CPUF_MMX)) {
+	const int cyb = int(0.114*32768+0.5);
+	const int cyg = int(0.587*32768+0.5);
+	const int cyr = int(0.299*32768+0.5);
+
+	const int cyb709 = int(0.072182*32768+0.5);
+	const int cyg709 = int(0.715169*32768+0.5);
+	const int cyr709 = int(0.212649*32768+0.5);
+
+//	const int crv709 = int(1.792630*65536+0.5);
+//	const int cgv709 = int(0.533022*65536+0.5);
+//	const int cgu709 = int(0.213209*65536+0.5);
+//	const int cbu709 = int(2.112443*65536+0.5);
+
+	__int64 rgb2lum;
+    __declspec(align(8)) static const __int64 oxoooo4ooooooooooo=0x0000400000000000;
+    __declspec(align(8)) static const __int64 oxffooooooffoooooo=0xff000000ff000000;
+	
+	if (rec709)
+	  rgb2lum = ((__int64)cyr709 << 32) | (cyg709 << 16) | cyb709;
+	else
+	  rgb2lum = ((__int64)cyr << 32) | (cyg << 16) | cyb;
 
     __asm {
-      mov			edi, srcp
-        pxor		mm0,mm0
-        movq		mm7,rgb2lum
-        
-        xor     ecx, ecx
-        movq		mm2, [edi + ecx*8]
-        mov			ebx, myy
-        mov     edx, myx
-        
+		mov			edi,srcp
+		pxor		mm0,mm0
+		movq		mm1,oxoooo4ooooooooooo
+		movq		mm2,rgb2lum
+		movq		mm3,oxffooooooffoooooo
+
+		xor			ecx,ecx
+		mov			ebx,myy
+		mov			edx,myx
+
+		align		16
 rgb2lum_mmxloop:
-      
-      movq		mm6, mm2
-        movq		mm3,mm7	;get rgb2lum
-        movq		mm5,mm6
-        punpcklbw		mm6,mm0		;mm6= 00aa|00bb|00gg|00rr [src2]
-        punpckhbw		mm5, mm0	 
-        //----- start rgb -> monochrome
-        
-        
-        pmaddwd			mm6,mm3			;partial monochrome result
-        
-        mov		eax, ecx								;pipeline overhead - pointer to ecx-1
-        inc         ecx		;loop counter
-        
-        movq		mm4, mm7	 ;get rgb2lum again
-        
-        movq		mm2, [edi + ecx*8] ; split up otherwise sequential memory access
-        
-        pmaddwd			mm5, mm4
-        punpckldq		mm3,mm6			;ready to add
-        punpckldq			mm4, mm5
-        paddd			mm6, mm3		  ;32 bit result
-        paddd			mm5, mm4
-        psrlq			mm6, 47				;8 bit result
-        psrlq			mm5, 47
-        punpcklwd		mm6, mm6		;propogate words
-        punpckldq		mm6, mm6
-        punpcklwd		mm5, mm5
-        punpckldq		mm5, mm5
-        
-        cmp         ecx, edx
-        
-        packuswb		mm6,mm0
-        packuswb		mm5,mm0
-        psllq				mm5,32
-        por					mm6, mm5
-        movq        [edi + eax*8],mm6
-        
-        jnz         rgb2lum_mmxloop
-        
-        add			edi, pitch
-        mov         edx, myx
-        xor         ecx, ecx
-        dec		ebx
-        jnz		rgb2lum_mmxloop
-        emms
+		movq		mm6,[edi+ecx*4]		; Get 2 pixels
+		 movq		mm4,mm3				; duplicate alpha mask
+		movq		mm5,mm6				; duplicate pixels
+		 pand		mm4,mm6				; extract alpha channel [ha00000la000000]
+		punpcklbw	mm6,mm0				; [00ha|00rr|00gg|00bb]		-- low
+		 punpckhbw	mm5,mm0	 			;                      		-- high
+		pmaddwd		mm6,mm2				; [0*a+cyr*r|cyg*g+cyb*b]		-- low
+		 pmaddwd	mm5,mm2				;                         		-- high
+		punpckldq	mm7,mm6				; [loDWmm6|junk]				-- low
+		 paddd		mm6,mm1				; +=0.5
+		paddd		mm5,mm1				; +=0.5
+		 paddd		mm6,mm7				; [hiDWmm6+32768+loDWmm6|junk]	-- low
+		punpckldq	mm7,mm5				; [loDWmm5|junk]				-- high
+		psrlq		mm6,47				; -> 8 bit result				-- low
+		 paddd		mm5,mm7				; [hiDWmm5+32768+loDWmm5|junk]	-- high
+		punpcklwd	mm6,mm6				; [0000|0000|grey|grey]		-- low
+		 psrlq		mm5,47				; -> 8 bit result				-- high
+		punpckldq	mm6,mm6				; [grey|grey|grey|grey]		-- low
+		 punpcklwd	mm5,mm5				; [0000|0000|grey|grey]		-- high
+		 punpckldq	mm5,mm5				; [grey|grey|grey|grey]		-- high
+		 packuswb	mm6,mm5				; [hg|hg|hg|hg|lg|lg|lg|lg]
+		 psrld		mm6,8				; [00|hg|hg|hg|00|lg|lg|lg]
+		add			ecx,2				; loop counter
+		 por		mm6,mm4				; [ha|hg|hg|hg|la|lg|lg|lg]
+		cmp			ecx,edx				; loop >= myx
+		 movq		[edi+ecx*4-8],mm6	; update 2 pixels
+		jnge		rgb2lum_mmxloop
+
+		test		edx,1				; Non-mod 2 width
+		jz			rgb2lum_even
+
+		movd		mm6,[edi+ecx*4]		; Get 1 pixels
+		movq		mm4,mm3				; duplicate alpha mask
+		pand		mm4,mm6				; extract alpha channel [xx00000la000000]
+		punpcklbw	mm6,mm0				; [00ha|00rr|00gg|00bb]
+		pmaddwd		mm6,mm2				; [0*a+cyr*r|cyg*g+cyb*b]
+		punpckldq	mm7,mm6				; [loDWmm6|junk]
+		paddd		mm6,mm1				; +=0.5
+		paddd		mm6,mm7				; [hiDWmm6+32768+loDWmm6|junk]
+		psrlq		mm6,47				; -> 8 bit result
+		punpcklwd	mm6,mm6				; [0000|0000|grey|grey]
+		punpckldq	mm6,mm6				; [grey|grey|grey|grey]
+		packuswb	mm6,mm0				; [xx|xx|xx|xx|lg|lg|lg|lg]
+		psrld		mm6,8				; [00|xx|xx|xx|00|lg|lg|lg]
+		por			mm6,mm4				; [xx|xx|xx|xx|la|lg|lg|lg]
+		movd		[edi+ecx*4],mm6	; update 1 pixels
+
+rgb2lum_even:
+		add			edi,pitch
+		mov			edx,myx
+		xor			ecx,ecx
+		dec			ebx
+		jnle		rgb2lum_mmxloop
+
+		emms
     }
-  } else if (vi.IsRGB()) {  // RGB C
+  }
+  else if (vi.IsRGB()) {  // RGB C
     BYTE* p_count = srcp;
     const int rgb_inc = vi.IsRGB32() ? 4 : 3;
-    for (int y=0; y<vi.height; ++y) {
-      for (int x=0; x<vi.width; x++) {
-        //				int greyscale=((p[0]*4725)+(p[1]*46884)+(p[2]*13926))>>16;              // This is the correct brigtness calculations (standardized in Rec. 709)
-        int greyscale=((srcp[0]*7471)+(srcp[1]*38469)+(srcp[2]*19595))>>16;      // This produces similar results as YUY2 (luma calculation)
-        srcp[0]=srcp[1]=srcp[2]=greyscale;
-        srcp += rgb_inc;
-      } 
-      p_count+=pitch;
-      srcp=p_count;
-    }
-    
+	if (rec709) {
+//	  const int cyb709 = int(0.072182*65536+0.5); //  4731       4725
+//	  const int cyg709 = int(0.715169*65536+0.5); // 46869      46884
+//	  const int cyr709 = int(0.212649*65536+0.5); // 13936      13927
+
+	  for (int y=0; y<vi.height; ++y) {
+		for (int x=0; x<vi.width; x++) {
+		  int greyscale=((srcp[0]*4731)+(srcp[1]*46869)+(srcp[2]*13936)+32768)>>16; // This is the correct brigtness calculations (standardized in Rec. 709)
+		  srcp[0]=srcp[1]=srcp[2]=greyscale;
+		  srcp += rgb_inc;
+		} 
+		p_count+=pitch;
+		srcp=p_count;
+	  }
+	}
+	else {
+//	  const int cyb = int(0.114*65536+0.5); //  7471
+//	  const int cyg = int(0.587*65536+0.5); // 38470
+//	  const int cyr = int(0.299*65536+0.5); // 19595
+
+	  for (int y=0; y<vi.height; ++y) {
+		for (int x=0; x<vi.width; x++) {
+		  int greyscale=((srcp[0]*7471)+(srcp[1]*38470)+(srcp[2]*19595)+32768)>>16; // This produces similar results as YUY2 (luma calculation)
+		  srcp[0]=srcp[1]=srcp[2]=greyscale;
+		  srcp += rgb_inc;
+		} 
+		p_count+=pitch;
+		srcp=p_count;
+	  }
+	}
   }
   return frame;
 }
@@ -752,5 +1053,5 @@ rgb2lum_mmxloop:
 
 AVSValue __cdecl Greyscale::Create(AVSValue args, void*, IScriptEnvironment* env) 
 {
-  return new Greyscale(args[0].AsClip(),env);
+  return new Greyscale(args[0].AsClip(), args[1].AsString(0), env);
 }

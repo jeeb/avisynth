@@ -203,10 +203,14 @@ class Greyscale : public GenericVideoFilter
  **/
 {
 public:
-  Greyscale(PClip _child, IScriptEnvironment* env);
+  Greyscale(PClip _child, const char* matrix, IScriptEnvironment* env);
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
 
   static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env);
+
+private:
+  bool rec709;
+
 };
 
 
