@@ -45,6 +45,8 @@ using namespace std;
 #include "text-overlay.h"
 #include "AvsImage.h"
 
+#include "distrib\il\il.h"
+#include "distrib\il\ilu.h"
 
 
 class ImageWriter : public GenericVideoFilter 
@@ -58,6 +60,7 @@ public:
   ~ImageWriter();
 
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
+  void fileWrite(ostream & file, const BYTE * srcPtr, int pitch, int row_size, int height);
 
   static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env);
 
@@ -69,7 +72,8 @@ private:
   const int end;
   const int compression;
 
-  AvsImage * image;
+  BITMAPFILEHEADER fileHeader;
+  BITMAPINFOHEADER infoHeader;
 };
 
 
@@ -97,9 +101,7 @@ public:
 private:
   const char * base_name;
   const char * ext;
-  
-  AvsImage * image;
-
+    
   VideoInfo vi;
 };
 

@@ -64,20 +64,36 @@ ImageWriter::ImageWriter(PClip _child, const char * _base_name, const int _start
 {  
   if (!lstrcmpi(ext, "bmp")) 
   {
-    image = new img_BMP(vi);
-  } else if (!lstrcmpi(ext, "png")) 
-  {
-    image = new img_PNG(vi, compression);
-  } else if (!lstrcmpi(ext, "jpeg")) 
-  {
-    image = new img_JPEG(vi, compression);
+    // construct file header  
+    fileHeader.bfType = ('M' << 8) + 'B'; // I hate little-endian
+    fileHeader.bfSize = vi.BMPSize(); // includes 4-byte padding
+    fileHeader.bfReserved1 = 0;
+    fileHeader.bfReserved2 = 0;
+    fileHeader.bfOffBits = sizeof(BITMAPFILEHEADER) + sizeof(BITMAPINFOHEADER);
+    fileHeader.bfSize += fileHeader.bfOffBits;
+  
+    // construct info header
+    infoHeader.biSize = sizeof(BITMAPINFOHEADER);
+    infoHeader.biWidth = vi.width;
+    infoHeader.biHeight = vi.height;
+    infoHeader.biPlanes = vi.IsPlanar() ? 3 : 1;
+    infoHeader.biBitCount = vi.BitsPerPixel();
+    infoHeader.biCompression = 0;
+    infoHeader.biSizeImage = fileHeader.bfSize - fileHeader.bfOffBits;
+    infoHeader.biXPelsPerMeter = 0;
+    infoHeader.biYPelsPerMeter = 0;
+    infoHeader.biClrUsed = 0;
+    infoHeader.biClrImportant = 0;
   }
+  else {
+    
+  } 
 }
 
 
 ImageWriter::~ImageWriter()
 {
-  delete image;
+  
 }
 
 
@@ -86,13 +102,7 @@ PVideoFrame ImageWriter::GetFrame(int n, IScriptEnvironment* env)
 {
   PVideoFrame frame = child->GetFrame(n, env);
   
-  // check some things
-  if (vi.IsPlanar())
-    env->ThrowError("ImageWriter: cannot export planar formats");
-  
-  if (image == NULL)
-    env->ThrowError("ImageWriter: invalid format");
-
+  // check bounds (where end=0 implies no upper bound)
   if (n < start || (end > 0 && n > end) )
     return frame;  
 
@@ -101,15 +111,65 @@ PVideoFrame ImageWriter::GetFrame(int n, IScriptEnvironment* env)
   fn_oss << base_name << setfill('0') << setw(6) << n << '.' << ext;
   string filename = fn_oss.str();
 
-  
-  // initialize file object
-  ofstream file(filename.c_str(), ios::out | ios::trunc | ios::binary);  
-  if (!file)
-    env->ThrowError("ImageWriter: could not create file");
+  if (!lstrcmpi(ext, "bmp"))
+  {
+    // initialize file object
+    ofstream file(filename.c_str(), ios::out | ios::trunc | ios::binary);  
+    if (!file)
+      env->ThrowError("ImageWriter: could not create file");
 
+    // write headers
+    file.write(reinterpret_cast<const char *>( &fileHeader ), sizeof(BITMAPFILEHEADER));
+    file.write(reinterpret_cast<const char *>( &infoHeader ), sizeof(BITMAPINFOHEADER));
+    
+    // write raster
+    const BYTE * srcPtr = frame->GetReadPtr();
+    int pitch = frame->GetPitch(); 
+    int row_size = frame->GetRowSize();
+    int height = frame->GetHeight();    
+    
+    fileWrite(file, srcPtr, pitch, row_size, height);
+
+    if (vi.IsYV12())
+    {
+      srcPtr = frame->GetReadPtr(PLANAR_U);
+      pitch = frame->GetPitch(PLANAR_U); 
+      row_size = frame->GetRowSize(PLANAR_U);
+      height = frame->GetHeight(PLANAR_U);
+      fileWrite(file, srcPtr, pitch, row_size, height);
+
+      srcPtr = frame->GetReadPtr(PLANAR_V);
+      fileWrite(file, srcPtr, pitch, row_size, height);
+    }
+    file.close();
+  }
+  else {
+    // Check colorspace
+    if (!vi.IsRGB())
+      env->ThrowError("ImageWrite: DevIL requires RGB input");
+
+    // Set up DevIL
+    ilInit();
+    ILuint myImage;
+    ilGenImages(1, &myImage);
+    ilBindImage(myImage);
+    
+    // Set image parameters
+    ilTexImage(vi.width, vi.height, 1, vi.BitsPerPixel() / 8, vi.IsRGB24 ? IL_BGR : IL_BGRA, IL_UNSIGNED_BYTE, NULL);
+    ilSetData((void *) frame->GetReadPtr());
+
+    // Save to disk (format automatically inferred from extension)
+    ilSaveImage(const_cast<char * const> (filename.c_str()) );
+
+    // Get errors if any
+    ILenum err = ilGetError();
+    if (err != IL_NO_ERROR)
+      env->ThrowError( iluErrorString(err) );
+    
+    // Clean up
+    ilDeleteImages(1, &myImage);
+  }  
   
-  // do it  
-  image->compress(file, frame->GetReadPtr(), frame->GetPitch(), env);
   
   
   // overlay on video output: progress indicator
@@ -125,10 +185,22 @@ PVideoFrame ImageWriter::GetFrame(int n, IScriptEnvironment* env)
   antialiaser.Apply(vi, &frame, frame->GetPitch(),
     vi.IsYUV() ? 0xD21092 : 0xFFFF00, vi.IsYUV() ? 0x108080 : 0);
 
-  // cleanup
-  file.close();
   
   return frame;
+}
+
+
+void ImageWriter::fileWrite(ostream & file, const BYTE * srcPtr, int pitch, int row_size, int height)
+{
+  int dummy = 0;      
+  int padding = (4 - (row_size % 4)) % 4;
+
+  for(UINT i=0; i < height; ++i)
+  {
+    file.write(reinterpret_cast<const char *>( srcPtr ), row_size);
+    file.write(reinterpret_cast<char *>( &dummy ), padding); // pad with 0's to mod-4
+    srcPtr += pitch;
+  }
 }
 
 
@@ -150,30 +222,21 @@ ImageReader::ImageReader(const char * _base_name, const char * _ext)
 {  
   if (!lstrcmpi(ext, "bmp")) 
   {
-    image = new img_BMP(vi);
-  } else if (!lstrcmpi(ext, "png")) 
-  {
-    image = new img_PNG(vi, 0);
-  } else if (!lstrcmpi(ext, "jpeg")) 
-  {
-    image = new img_JPEG(vi, 0);
+    
+  
   }
 }
 
 
 ImageReader::~ImageReader()
 {
-  delete image;
+
 }
 
 
 
 PVideoFrame ImageReader::GetFrame(int n, IScriptEnvironment* env) 
 {
-  // check some things  
-  if (image == NULL)
-    env->ThrowError("ImageReader: invalid format");
-  
 
   // construct filename
   ostringstream fn_oss;
@@ -189,8 +252,7 @@ PVideoFrame ImageReader::GetFrame(int n, IScriptEnvironment* env)
   
   // do it
   PVideoFrame frame = env->NewVideoFrame(vi);
-  image->decompress(file, frame->GetWritePtr(), env);
-  
+
    
   // cleanup
   file.close();
