@@ -48,6 +48,7 @@ GeneralConvolution::GeneralConvolution(PClip _child, int _nBias, const char * _m
 
 GeneralConvolution::~GeneralConvolution(void)
 {
+  delete [] pbyA; 
   delete [] pbyR; 
   delete [] pbyG; 
   delete [] pbyB;
@@ -135,8 +136,8 @@ void GeneralConvolution::initBuffers(IScriptEnvironment* env)
   int buffSize = vi.width * vi.height;
   pbyA = new BYTE[buffSize];
   pbyR = new BYTE[buffSize];
-	pbyG = new BYTE[buffSize];
-	pbyB = new BYTE[buffSize];	
+  pbyG = new BYTE[buffSize];
+  pbyB = new BYTE[buffSize];	
 	
   if(pbyA && pbyR && pbyG && pbyB == false)
     env->ThrowError("GeneralConvolution: out of memory");
