@@ -66,7 +66,7 @@ private:
 class ScriptClip : public GenericVideoFilter
 {
 public:
-  ScriptClip(PClip _child, AVSValue  _script, bool _show, bool _only_eval, IScriptEnvironment* env);
+  ScriptClip(PClip _child, AVSValue  _script, bool _show, bool _only_eval, bool _eval_after_frame, IScriptEnvironment* env);
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
   static AVSValue __cdecl Create(AVSValue args, void* user_data, IScriptEnvironment* env);
   static AVSValue __cdecl Create_eval(AVSValue args, void* user_data, IScriptEnvironment* env);
@@ -75,4 +75,5 @@ private:
   AVSValue script;
   bool show;
   bool only_eval;
+  bool eval_after;
 };

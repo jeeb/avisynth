@@ -43,7 +43,7 @@
 AVSFunction Conditional_filters[] = {
   {  "ConditionalFilter","cccsss[show]b", ConditionalFilter::Create },
   {  "ScriptClip", "cs[show]b", ScriptClip::Create },
-  {  "FrameEvaluate", "cs[show]b", ScriptClip::Create_eval },
+  {  "FrameEvaluate", "cs[show]b[after_frame]b", ScriptClip::Create_eval },
   { 0 }
 };
 
@@ -232,8 +232,8 @@ AVSValue __cdecl ConditionalFilter::Create(AVSValue args, void* user_data, IScri
  * Implicit last, and current frame is set on each frame.
  **************************/
 
-ScriptClip::ScriptClip(PClip _child, AVSValue  _script, bool _show, bool _only_eval, IScriptEnvironment* env) :
-  GenericVideoFilter(_child), script(_script), show(_show), only_eval(_only_eval) {
+ScriptClip::ScriptClip(PClip _child, AVSValue  _script, bool _show, bool _only_eval, bool _eval_after_frame, IScriptEnvironment* env) :
+  GenericVideoFilter(_child), script(_script), show(_show), only_eval(_only_eval), eval_after(_eval_after_frame) {
 
   }
 
@@ -253,6 +253,9 @@ PVideoFrame __stdcall ScriptClip::GetFrame(int n, IScriptEnvironment* env) {
   }
 
   AVSValue result;
+  PVideoFrame eval_return;   // Frame to be returned if script should be evaluated AFTER frame has been fetched. Otherwise not used.
+
+  if (only_eval && eval_after) eval_return = child->GetFrame(n,env);
 
   try {
     ScriptParser parser(env, script.AsString(), "[ScriptClip]");
@@ -270,6 +273,7 @@ PVideoFrame __stdcall ScriptClip::GetFrame(int n, IScriptEnvironment* env) {
 
   env->SetVar("last",prev_last);       // Restore implicit last
 
+  if (only_eval && eval_after) return eval_return;
   if (only_eval) return child->GetFrame(n,env);
   
   const char* error = NULL;
@@ -302,11 +306,10 @@ PVideoFrame __stdcall ScriptClip::GetFrame(int n, IScriptEnvironment* env) {
 
 AVSValue __cdecl ScriptClip::Create(AVSValue args, void* user_data, IScriptEnvironment* env)
 {
-  return new ScriptClip(args[0].AsClip(), args[1], args[2].AsBool(false),false, env);
+  return new ScriptClip(args[0].AsClip(), args[1], args[2].AsBool(false),false, false, env);
 }
 
 
 AVSValue __cdecl ScriptClip::Create_eval(AVSValue args, void* user_data, IScriptEnvironment* env)
 {
-  return new ScriptClip(args[0].AsClip(), args[1], args[2].AsBool(false),true, env);
-}
+  return new ScriptClip(args[0].AsClip(), args[1], args[2].AsBool(false),true, args[3].AsBool(false), env);}
