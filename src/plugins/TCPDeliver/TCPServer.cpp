@@ -360,7 +360,7 @@ void TCPServerListener::SendPendingData(ClientConnection* cc) {
     return ;
   }
   int bytes_left = cc->totalPendingBytes - cc->pendingBytesSent;
-  int send_bytes = max(0, min(bytes_left, 64 * 1024));
+  int send_bytes = max(0, min(bytes_left, 1024 * 1024));
   //  int send_bytes = bytes_left;
 
   int r = send(cc->s, (const char*)(&cc->pendingData[cc->pendingBytesSent]), send_bytes, 0);
@@ -496,6 +496,7 @@ void TCPServerListener::SendFrameInfo(ServerReply* s, const char* request) {
     BYTE *dst1, *dst2, *dst3;
     sfi.row_sizeUV = src->GetRowSize(PLANAR_U_ALIGNED);
     sfi.pitchUV = src->GetPitch(PLANAR_U);
+    sfi.heightUV = src->GetHeight(PLANAR_U);
 
     sfi.comp_Y_bytes = s->client->compression->CompressImage(src->GetWritePtr(PLANAR_Y), src_rowsize, src_height, src_pitch);
     dst1 = s->client->compression->dst;

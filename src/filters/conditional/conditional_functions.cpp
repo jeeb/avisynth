@@ -345,7 +345,6 @@ AVSValue ComparePlane::CmpPlaneSame(AVSValue clip, void* user_data, int offset, 
         b = C_scenechange_16(srcp, srcp2, h, w, pitch, pitch2);  
     }
 
-		if (!b) b=1;
 		float f = (float)b / (float)(h * w);
 
     if (vi.IsRGB32()) 
