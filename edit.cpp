@@ -250,6 +250,9 @@ Splice::Splice(PClip _child1, PClip _child2, bool realign_sound, IScriptEnvironm
   }
 
   video_switchover_point = vi.num_frames;
+  
+  if (!video_switchover_point)  // We don't have video, so we cannot align sound to frames
+    realign_sound = false;
 
   if (realign_sound)
     audio_switchover_point = vi.AudioSamplesFromFrames(video_switchover_point);

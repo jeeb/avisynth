@@ -41,6 +41,8 @@
 #include "avi_source.cpp"
 #include "directshow_source.h"
 
+#define PI 3.1415926535897932384626433832795
+#include <ctime>
 
 /********************************************************************
 ********************************************************************/
@@ -394,6 +396,145 @@ AVSValue __cdecl Create_SegmentedSource(AVSValue args, void* use_directshow, ISc
   return result;
 }
 
+/**********************************************************
+ *                         TONE                           *    
+ **********************************************************/
+class SampleGenerator {
+public:
+  SampleGenerator() {}
+  virtual SFLOAT getValueAt(double where) {return 0.0f;}
+};
+
+class SineGenerator : public SampleGenerator {
+public:
+  SineGenerator() {}
+  SFLOAT getValueAt(double where) {return sinf(PI * where* 2.0);}
+};
+
+
+class NoiseGenerator : public SampleGenerator {
+public:
+  NoiseGenerator() {
+    srand( (unsigned)time( NULL ) );
+  }
+
+  SFLOAT getValueAt(double where) {return (float) rand()*(2.0f/RAND_MAX) -1.0f;}
+};
+
+class SquareGenerator : public SampleGenerator {
+public:
+  SquareGenerator() {}
+
+  SFLOAT getValueAt(double where) {
+    if (where<=0.5) {
+      return 1.0f;
+    } else {
+      return -1.0f;
+    }
+  }
+};
+
+class TriangleGenerator : public SampleGenerator {
+public:
+  TriangleGenerator() {}
+
+  SFLOAT getValueAt(double where) {
+    if (where<=0.25) {
+      return (where*4.0);
+    } else if (where<=0.75) {
+      return ((-4.0*(where-0.50)));
+    } else {
+      return ((4.0*(where-1.00)));
+    }
+  }
+};
+
+class SawtoothGenerator : public SampleGenerator {
+public:
+  SawtoothGenerator() {}
+
+  SFLOAT getValueAt(double where) {
+    return 2.0*(where-0.5);
+  }
+};
+
+
+class Tone : public IClip {
+  VideoInfo vi;
+  SampleGenerator *s;
+  double freq;
+  int samplerate;
+  int ch;
+
+public:
+
+  Tone(float _length, double _freq, int _samplerate, int _ch, const char* _type, IScriptEnvironment* env): freq(_freq), samplerate(_samplerate), ch(_ch) {
+    memset(&vi, 0, sizeof(VideoInfo));
+    vi.sample_type = SAMPLE_FLOAT;
+    vi.nchannels = ch;
+    vi.audio_samples_per_second = samplerate;
+    vi.num_audio_samples=(__int64)(_length*(float)vi.audio_samples_per_second);
+    if (!lstrcmpi(_type, "Sine")) 
+      s = new SineGenerator();
+    else if (!lstrcmpi(_type, "Noise")) 
+      s = new NoiseGenerator();
+    else if (!lstrcmpi(_type, "Square")) 
+      s = new SquareGenerator();
+    else if (!lstrcmpi(_type, "Triangle")) 
+      s = new TriangleGenerator();
+    else if (!lstrcmpi(_type, "Sawtooth")) 
+      s = new SawtoothGenerator();
+    else if (!lstrcmpi(_type, "Silence")) 
+      s = new SampleGenerator();
+    else
+      env->ThrowError("Tone: Type was not recognized!");
+  }
+
+  void __stdcall GetAudio(void* buf, __int64 start, __int64 count, IScriptEnvironment* env) {
+    // How much should we add per sample 
+    // In seconds (beware of inprecision!)
+    double add_per_sample = freq / (double)vi.audio_samples_per_second;
+
+    // Where do we start timewise
+    // In seconds - precise (enough)
+    double start_offset = ((double)start) / (double)samplerate;
+
+
+    // Where in the cycle are we in?
+    double cycle = (freq * start) / samplerate;
+
+    // Which cycle are we in?
+    double round_cycle = (double)(int)(cycle);
+
+    double period_place = cycle-round_cycle;
+
+    SFLOAT* samples = (SFLOAT*)buf;
+
+    for (int i=0;i<count;i++) {
+      SFLOAT v = s->getValueAt(max(0.0, min(1.0,period_place)));
+      for (int o=0;o<ch;o++) {
+        samples[o+i*ch] = v;
+      }
+      period_place += add_per_sample;
+      while (period_place > 1.0) {
+        period_place -= 1.0;
+      }
+    }
+  }
+
+  static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env) {
+    return new Tone(args[0].AsFloat(10.0), args[1].AsFloat(440), args[2].AsInt(48000), args[3].AsInt(2), args[4].AsString("Sine"), env);
+  }
+
+  PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env) { return NULL; }
+  const VideoInfo& __stdcall GetVideoInfo() { return vi; }
+  bool __stdcall GetParity(int n) { return false; }
+  void __stdcall SetCacheHints(int cachehints,int frame_range) { };
+
+};
+
+
+
 AVSValue __cdecl Create_Version(AVSValue args, void*, IScriptEnvironment* env) {
   return Create_MessageClip(AVS_VERSTR
           "\n\xA9 2000-2003 Ben Rudiak-Gould, et al.\n"
@@ -410,11 +551,11 @@ AVSFunction Source_filters[] = {
   { "DirectShowSource", "s+[fps]f[seek]b[audio]b[video]b", Create_DirectShowSource },
   { "SegmentedAVISource", "s+[audio]b[pixel_type]s", Create_SegmentedSource, (void*)0 },
   { "SegmentedDirectShowSource", "s+[fps]f", Create_SegmentedSource, (void*)1 },
-//  { "QuickTimeSource", "s", QuickTimeSource::Create },
   { "BlankClip", "[clip]c[length]i[width]i[height]i[pixel_type]s[fps]f[fps_denominator]i[audio_rate]i[stereo]b[sixteen_bit]b[color]i", Create_BlankClip },
   { "Blackness", "[clip]c[length]i[width]i[height]i[pixel_type]s[fps]f[fps_denominator]i[audio_rate]i[stereo]b[sixteen_bit]b[color]i", Create_BlankClip },
   { "MessageClip", "s[width]i[height]i[shrink]b[text_color]i[halo_color]i[bg_color]i", Create_MessageClip },
   { "ColorBars", "ii", ColorBars::Create },
+  { "Tone", "[length]f[frequency]f[samplerate]i[channels]i[type]s", Tone::Create },
 
   { "Version", "", Create_Version },
   { 0,0,0 }
