@@ -89,8 +89,6 @@ enum {
   SERVER_SENDING_AUDIO = 32,
   SERVER_SENDING_PARITY = 35,
 
-  SERVER_SPLIT_BLOCK = 35,        // Only server can split blocks into pieces
-  SERVER_END_SPLIT_BLOCK = 36,
 
   INTERNAL_GETDATABLOCK = 50,
   INTERNAL_DISCONNECTED = 51

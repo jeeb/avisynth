@@ -54,6 +54,7 @@ public:
   // Interfaces for unthreaded communication.
   void SendRequest(char requestId, void* data, unsigned int bytes);
   void GetReply();
+  bool IsDataPending();
 
 
   HANDLE evtClientReadyForRequest;   // Client is ready to recieve a new request.
@@ -72,6 +73,7 @@ private:
   WSADATA wsaData;
   SOCKET m_socket;
   sockaddr_in service;  
+  bool data_waiting;
 };
 
 UINT StartClient(LPVOID p);
@@ -92,7 +94,7 @@ private:
   int port;
   VideoInfo vi;
   HANDLE ClientThread;
-
+  bool frame_requested;
 };
 
 #endif

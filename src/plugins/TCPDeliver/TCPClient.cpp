@@ -61,6 +61,9 @@ TCPClient::TCPClient(const char* _hostname, int _port, IScriptEnvironment* env) 
 }
 
 const VideoInfo& TCPClient::GetVideoInfo() {
+  if (client->IsDataPending()) {  // Ignore any pending data
+    client->GetReply();
+  }
   _RPT0(0, "TCPClient: Requesting VideoInfo.\n");
   memset(&vi, 0, sizeof(VideoInfo));
   client->SendRequest(CLIENT_SEND_VIDEOINFO, 0, 0);
@@ -79,13 +82,28 @@ const VideoInfo& TCPClient::GetVideoInfo() {
 
 PVideoFrame __stdcall TCPClient::GetFrame(int n, IScriptEnvironment* env) { 
 
-
   int al_b = sizeof(ClientRequestFrame);
   ClientRequestFrame f;
   memset(&f, 0 , sizeof(ClientRequestFrame));
   f.n = n;
-  client->SendRequest(CLIENT_REQUEST_FRAME, &f, sizeof(ClientRequestFrame));
-  client->GetReply();
+
+  bool ready = false;
+
+  if (client->IsDataPending()) {
+    client->GetReply();
+    if (client->last_reply_type == SERVER_SENDING_FRAME) {
+      ServerFrameInfo* fi = (ServerFrameInfo *)client->last_reply;
+      if ((int)fi->framenumber == n) {
+        ready = true;
+        _RPT1(0, "TCPClient: Frame was PreRequested (hit!). Found frame %d.\n", n);
+      }
+    }
+  }
+  if (!ready) {
+    _RPT1(0, "TCPClient: Frame was not PreRequested (miss). Requesting frame %d.\n", n);
+    client->SendRequest(CLIENT_REQUEST_FRAME, &f, sizeof(ClientRequestFrame));
+    client->GetReply();
+  }
 
   PVideoFrame frame;
   int incoming_pitch;
@@ -132,19 +150,30 @@ PVideoFrame __stdcall TCPClient::GetFrame(int n, IScriptEnvironment* env) {
   } else {
     env->ThrowError("TCPClient: Did not recieve expected packet (SERVER_SENDING_FRAME)");
   }
+
+  if (true) {  // Request next frame
+    f.n = n+1;
+    client->SendRequest(CLIENT_REQUEST_FRAME, &f, sizeof(ClientRequestFrame));
+    _RPT1(0, "TCPClient: PreRequesting frame frame %d.\n", f.n);
+  }
+
   return frame;
 }
 
 void __stdcall TCPClient::GetAudio(void* buf, __int64 start, __int64 count, IScriptEnvironment* env) {
+  if (client->IsDataPending()) {  // Ignore any pending data
+    client->GetReply();
+  }
   ClientRequestAudio a;
   memset(&a, 0 , sizeof(ClientRequestAudio));
   a.start = start;
   a.count = count;
   a.bytes = (int)vi.BytesFromAudioSamples(count);
+
   client->SendRequest(CLIENT_REQUEST_AUDIO, &a, sizeof(ClientRequestAudio));
   client->GetReply();
   if (client->last_reply_type != SERVER_SENDING_AUDIO) {
-    _RPT0(1,"TCPClient: Did not recieve expected packet (SERVER_SENDING_AUDIO)");
+    env->ThrowError("TCPClient: Did not recieve expected packet (SERVER_SENDING_AUDIO)");
     return;
   }
 
@@ -194,7 +223,7 @@ UINT StartClient(LPVOID p) {
 
 TCPClientThread::TCPClientThread(const char* hostname, int port, IScriptEnvironment* env) {
   disconnect = false;
-
+  data_waiting = false;
   thread_running = false;
 
   evtClientReadyForRequest = ::CreateEvent (NULL,	FALSE, FALSE, NULL);
@@ -232,7 +261,12 @@ TCPClientThread::TCPClientThread(const char* hostname, int port, IScriptEnvironm
 
 // To be called from external interface
 void TCPClientThread::SendRequest(char requestId, void* data, unsigned int bytes) {
-    _RPT0(0, "TCPClient: Waiting for ready for request.\n");    
+    _RPT0(0, "TCPClient: Waiting for ready for request.\n");
+    if (data_waiting) {
+      _RPT0(1, "TCPClient: Data already waiting.\n");
+      return;
+    }
+    data_waiting = true;
     HRESULT wait_result = WAIT_TIMEOUT;
     while (wait_result == WAIT_TIMEOUT) {
       wait_result = WaitForSingleObject(evtClientReadyForRequest, 1000);
@@ -252,13 +286,24 @@ void TCPClientThread::SendRequest(char requestId, void* data, unsigned int bytes
 
 // The data is only valid until SendRequest is called.
 void TCPClientThread::GetReply() {
+    if (!data_waiting)
+      return;
+
     _RPT0(0, "TCPClient: Waiting for reply.\n");    
     HRESULT wait_result = WAIT_TIMEOUT;
+
     while (wait_result == WAIT_TIMEOUT) {
       wait_result = WaitForSingleObject(evtClientReplyReady, 1000);
     }
+
     if (client_request)
       delete[] client_request;  // The request data can now be freed.
+
+    data_waiting = false;
+}
+
+bool TCPClientThread::IsDataPending() {
+  return data_waiting;
 }
 
 
