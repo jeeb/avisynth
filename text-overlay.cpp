@@ -626,8 +626,10 @@ Compare::Compare(PClip _child1, PClip _child2, const char* channels, const char 
 		log = fopen(fname, "wt");
 		if (log) {
 			fprintf(log,"Comparing channel(s) %s\n\n",channels);
-			fprintf(log," Frame      MAD        MD      PSNR (dB) \n");
-			fprintf(log,"-----------------------------------------\n");
+			fprintf(log,"           Mean               Max    Max             \n");
+			fprintf(log,"         Absolute     Mean    Pos.   Neg.            \n");
+			fprintf(log," Frame     Dev.       Dev.    Dev.   Dev.  PSNR (dB) \n");
+			fprintf(log,"-----------------------------------------------------\n");
 		} else
 			env->ThrowError("Compare: unable to create file %s", fname);
 	} else {
@@ -676,6 +678,8 @@ PVideoFrame __stdcall Compare::GetFrame(int n, IScriptEnvironment* env)
 
 	int SD = 0;
 	int SAD = 0;
+	int pos_D = 0;
+	int neg_D = 0;
 	double SSD = 0;
 	int row_SSD;
 
@@ -694,6 +698,8 @@ PVideoFrame __stdcall Compare::GetFrame(int n, IScriptEnvironment* env)
 				SD += d0 + d1 + d2 + d3;
 				SAD += abs(d0) + abs(d1) + abs(d2) + abs(d3);
 				row_SSD += d0 * d0 + d1 * d1 + d2 * d2 + d3 * d3;
+				pos_D = max(max(max(max(pos_D,d0),d1),d2),d3);
+				neg_D = min(min(min(min(neg_D,d0),d1),d2),d3);
 			}
 			SSD += row_SSD;
 			f1ptr += pitch1;
@@ -703,6 +709,7 @@ PVideoFrame __stdcall Compare::GetFrame(int n, IScriptEnvironment* env)
 		const _int64 mask64 = (__int64)mask << (vi.IsRGB24()? 24: 32) | mask;
 		const int incr2 = incr * 2;
 		__int64 iSSD;
+		unsigned __int64 pos_D8 = 0, neg_D8 = 0;
 
 		__asm {
 			mov			esi, f1ptr
@@ -727,6 +734,15 @@ comp_loopx:
 			movq		mm2, mm0
 			psubusb		mm0, mm1
 			psubusb		mm1, mm2
+
+			; maximum positive and negative differences
+			movq		mm3, pos_D8
+			movq		mm2, neg_D8
+			pmaxub		mm3, mm0
+			pmaxub		mm2, mm1
+			movq		pos_D8, mm3
+			movq		neg_D8, mm2
+
 			 movq		mm2, mm0			; SSD calculations are indented
 			psadbw		mm0, mm6
 			 por		mm2, mm1
@@ -763,6 +779,13 @@ comp_loopx:
 			emms
 		}
 		SSD = iSSD;		// convert to double
+		for (int i=0; i<8; i++) {
+			pos_D = max(pos_D, pos_D8 & 0xff);
+			neg_D = max(neg_D, neg_D8 & 0xff);
+			pos_D8 >>= 8;
+			neg_D8 >>= 8;
+		}
+		neg_D = -neg_D;
 	}
 
 	double MAD = (double)SAD / bytecount;
@@ -770,12 +793,14 @@ comp_loopx:
 	if (SSD == 0.0) SSD = 1.0;
 	double PSNR = 10.0 * log10(bytecount * 255.0 * 255.0 / SSD);
 
-	if (log) fprintf(log,"%6u  %8.4f  %+9.4f   %8.4f\n", n, MAD, MD, PSNR);
+	if (log) fprintf(log,"%6u  %8.4f  %+9.4f  %3d    %3d    %8.4f\n", n, MAD, MD, pos_D, neg_D, PSNR);
 	else {
 		HDC hdc = antialiaser.GetDC();
-		char text[100];
-		RECT r= { 32, 16, 1024, 512 };
-		sprintf(text, "Frame: %u\nMAD: %8.4f\nMD: %+9.4f\nPSNR:%6.2f dB", n, MAD, MD, PSNR);
+		char text[200];
+		RECT r= { 32, 16, 1536, 768 };
+		sprintf(text,
+			"       Frame:  %-8u\nMean Abs Dev:%8.4f\n    Mean Dev:%+8.4f\n Max Pos Dev:%3d \n Max Neg Dev:%3d \n        PSNR:%6.2f dB",
+			n, MAD, MD, pos_D, neg_D, PSNR);
 		DrawText(hdc, text, -1, &r, 0);
 		GdiFlush();
 
@@ -787,7 +812,7 @@ comp_loopx:
 		if (show_graph) {
 			// original idea by Marc_FD
 			psnrs[n] = min((int)(PSNR + 0.5), 100);
-			if (vi.height > 100) {
+			if (vi.height > 196) {
 				if (vi.IsYUY2()) {
 					dstp += (vi.height - 1) * dst_pitch;
 					for (int y = 0; y <= 100; y++) {						
