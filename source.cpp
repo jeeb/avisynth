@@ -735,7 +735,7 @@ public:
   }
 
   static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env) {
-    return new ColorBars(args[0].AsInt(), args[1].AsInt(), env);
+    return new ColorBars(args[0].AsInt(640), args[1].AsInt(480), env);
   }
 };
 
