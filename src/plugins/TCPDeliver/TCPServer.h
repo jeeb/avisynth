@@ -94,6 +94,17 @@ struct ServerReply {
 
 };
 
+class TCPRecievePacket {
+public:
+  TCPRecievePacket(SOCKET _s);
+  TCPRecievePacket::~TCPRecievePacket();
+  int dataSize;
+  BYTE* data;
+  bool isDisconnected;
+private:
+  SOCKET s;  
+};
+
 
 class TCPServerListener {
 public:
@@ -103,13 +114,14 @@ public:
   bool thread_running;
 
 private:
-  void Receive(const char* recvbuf, unsigned int bytesRecv, ServerReply* s);
+  void Receive(TCPRecievePacket* tr, ServerReply* s);
   void AcceptClient(SOCKET s, ClientConnection* s_list);
   void SendPacket(ClientConnection* cc, ServerReply* s);
   void SendPendingData(ClientConnection* cc);
   void SendVideoInfo(ServerReply* s);
   void SendFrameInfo(ServerReply* s, const char* request);
   void SendAudioInfo(ServerReply* s, const char* request);
+  void SendParityInfo(ServerReply* s, const char* request);
   void SendVideoFrame(ServerReply* s);
   void SendAudioData(ServerReply* s);
   WSADATA wsaData;
@@ -135,15 +147,5 @@ private:
 };
 
 
-class TCPRecievePacket {
-public:
-  TCPRecievePacket(SOCKET _s);
-  TCPRecievePacket::~TCPRecievePacket();
-  int dataSize;
-  BYTE* data;
-  bool isDisconnected;
-private:
-  SOCKET s;  
-};
 
 #endif

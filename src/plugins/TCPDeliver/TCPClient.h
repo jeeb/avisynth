@@ -79,6 +79,7 @@ private:
   void PushReply();
   void PopReply();
   void RecievePacket();
+  void CleanUp();
   char* client_request;
   unsigned int client_request_bytes;
   WSADATA wsaData;

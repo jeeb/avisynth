@@ -79,6 +79,8 @@ const VideoInfo& TCPClient::GetVideoInfo() {
   return vi;
 }
 
+
+
 PVideoFrame __stdcall TCPClient::GetFrame(int n, IScriptEnvironment* env) { 
 
   int al_b = sizeof(ClientRequestFrame);
@@ -147,6 +149,9 @@ PVideoFrame __stdcall TCPClient::GetFrame(int n, IScriptEnvironment* env) {
         srcp, uv_pitch, frame->GetRowSize(PLANAR_U), frame->GetHeight(PLANAR_U));
     }
   } else {
+    if (client->reply->last_reply_type == INTERNAL_DISCONNECTED)
+      env->ThrowError("TCPClient: Disconnected from server");
+
     env->ThrowError("TCPClient: Did not recieve expected packet (SERVER_SENDING_FRAME)");
   }
 
@@ -159,6 +164,8 @@ PVideoFrame __stdcall TCPClient::GetFrame(int n, IScriptEnvironment* env) {
   return frame;
 }
 
+
+
 void __stdcall TCPClient::GetAudio(void* buf, __int64 start, __int64 count, IScriptEnvironment* env) {
   ClientRequestAudio a;
   memset(&a, 0 , sizeof(ClientRequestAudio));
@@ -169,6 +176,9 @@ void __stdcall TCPClient::GetAudio(void* buf, __int64 start, __int64 count, IScr
   client->SendRequest(CLIENT_REQUEST_AUDIO, &a, sizeof(ClientRequestAudio));
   client->GetReply();
   if (client->reply->last_reply_type != SERVER_SENDING_AUDIO) {
+    if (client->reply->last_reply_type == INTERNAL_DISCONNECTED)
+      env->ThrowError("TCPClient: Disconnected from server");
+
     env->ThrowError("TCPClient: Did not recieve expected packet (SERVER_SENDING_AUDIO)");
     return;
   }
@@ -187,7 +197,16 @@ void __stdcall TCPClient::GetAudio(void* buf, __int64 start, __int64 count, IScr
 
 
 bool __stdcall TCPClient::GetParity(int n) {
-  return false;
+  ClientRequestParity c;
+  memset(&c, 0, sizeof(ClientRequestParity));
+  c.n = n;
+  client->SendRequest(CLIENT_SEND_PARITY, &c, sizeof(ClientRequestParity));
+  if (client->reply->last_reply_type != SERVER_SENDING_PARITY) {
+    return false;
+  }
+  ServerParityReply* p = (ServerParityReply *)client->reply->last_reply_type;
+  _RPT0(0,"TCPClient: Got parity information.\n");
+  return !!p->parity;
 }
 
 
@@ -353,6 +372,7 @@ void TCPClientThread::StartRequestLoop() {
     _RPT0(0, "TCPClient: Processing request.\n");    
 
     delete[] reply->last_reply;
+    reply->last_reply = 0;
     reply->last_reply_bytes = 0;
     reply->last_reply_type = 0;
 
@@ -379,17 +399,29 @@ void TCPClientThread::StartRequestLoop() {
   CloseHandle(evtClientReplyReady);
   CloseHandle(evtClientReadyForRequest);
 
+  CleanUp();
   closesocket(m_socket);
   WSACleanup();
 
+  thread_running = false;
+  _RPT0(0, "TCPClient: Client thread no longer running.\n");
+}
+
+void TCPClientThread::CleanUp() {
   if (client_request) {
     delete[] client_request;  // The request data can now be freed.
     client_request = 0;
   }
-  delete[] reply->last_reply;
+
+  if (reply->pushed_reply) {
+    if (reply->pushed_reply->last_reply_bytes)
+      delete[] reply->pushed_reply->last_reply;
+  }
+
+  if (reply->last_reply_bytes)
+    delete[] reply->last_reply;
+
   delete reply;
-  thread_running = false;
-  _RPT0(0, "TCPClient: Client thread no longer running.\n");
 }
 
 void TCPClientThread::RecievePacket() {

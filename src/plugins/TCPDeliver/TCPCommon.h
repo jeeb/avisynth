@@ -89,8 +89,6 @@ enum {
   SERVER_SENDING_AUDIO = 32,
   SERVER_SENDING_PARITY = 35,
 
-
-  INTERNAL_GETDATABLOCK = 50,
   INTERNAL_DISCONNECTED = 51
 };
 
@@ -151,6 +149,12 @@ struct ServerAudioInfo {
   };
 
 };
+
+struct ServerParityReply {
+  unsigned int n;       // The number of the frame requested.
+  unsigned char parity;  // Parity information
+};
+
 /**********************
   ClientRequestAudio:
  A request by the client to send a 

@@ -207,7 +207,7 @@ void TCPServerListener::Listen() {
           if (!tr->isDisconnected) {
             s.dataSize = 0;
             s.client = &s_list[i];  // Add client info to serverreply.
-            Receive((const char*)tr->data, tr->dataSize, &s);
+            Receive(tr, &s);
 
             if (s.dataSize > 0) {
               SendPacket(&s_list[i], &s);
@@ -297,7 +297,10 @@ void TCPServerListener::SendPacket(ClientConnection* cc, ServerReply* s) {
   reply for an incoming client request.
  ****************************/
 
-void TCPServerListener::Receive(const char* recvbuf, unsigned int bytes, ServerReply* s) {
+void TCPServerListener::Receive(TCPRecievePacket* tr, ServerReply* s) {
+  const char* recvbuf = (const char*)tr->data;
+  unsigned int bytes = tr->dataSize;
+
   switch (recvbuf[0]) {
     case REQUEST_PING:
       _RPT0(0, "TCPServer: Received Ping? - returning Pong!\n");
@@ -314,6 +317,12 @@ void TCPServerListener::Receive(const char* recvbuf, unsigned int bytes, ServerR
       break;
     case CLIENT_REQUEST_AUDIO:
       SendAudioInfo(s, &recvbuf[1]);
+      break;
+    case CLIENT_SEND_PARITY:
+      SendParityInfo(s, &recvbuf[1]);
+      break;
+    case REQUEST_DISCONNECT:
+      tr->isDisconnected = true;
       break;
     default:
       _RPT1(1,"TCPServer: Could not handle request type %d.", recvbuf[0]);
@@ -365,8 +374,16 @@ void TCPServerListener::SendVideoInfo(ServerReply* s) {
   memcpy(s->data, &child->GetVideoInfo(), sizeof(VideoInfo));
 }
 
+void TCPServerListener::SendParityInfo(ServerReply* s, const char* request) {
+  ClientRequestParity* p = (ClientRequestParity *) request;
+  ServerParityReply r;
+  memset(&r, 0, sizeof(ServerParityReply));
+  r.n = p->n;
+  r.parity = child->GetParity(p->n);
+  s->allocateBuffer(sizeof(ServerParityReply));
+  memcpy(s->data, &r, sizeof(ServerParityReply));
+}
 
-// Silly way of handling requests. A real mess.
 // Requests should optimally be handled by a separate thread to avoid blocking other clients while requesting the frame.
 void TCPServerListener::SendFrameInfo(ServerReply* s, const char* request) {
   _RPT0(0, "TCPServer: Sending Frame Info!\n");
