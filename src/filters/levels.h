@@ -46,7 +46,7 @@
 
 class Levels : public GenericVideoFilter 
 /**
-  * Class for adjusting levels in a YUV clip
+  * Class for adjusting levels in a clip
  **/
 {
 public:
@@ -65,17 +65,18 @@ private:
 
 class RGBAdjust : public GenericVideoFilter 
 /**
-  * Class for adjusting colors in RGBA space
+  * Class for adjusting and analyzing colors in RGBA space
  **/
 {
 public:
-  RGBAdjust(PClip _child, double _r, double _g, double _b, double _a, bool _analyze, IScriptEnvironment* env);
+  RGBAdjust(PClip _child, double r,  double g,  double b,  double a,
+                          double rb, double gb, double bb, double ab,
+                          bool _analyze, IScriptEnvironment* env);
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
   static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env);
 
 private:
   BYTE mapR[256], mapG[256], mapB[256], mapA[256];
-  double r, g, b, a;
   bool analyze;
 };
 
@@ -85,7 +86,7 @@ private:
 class Tweak : public GenericVideoFilter
 {
 public:
-  Tweak( PClip _child, double _hue, double _sat, double _bright, double _cont, bool _coring,
+  Tweak( PClip _child, double _hue, double _sat, double _bright, double _cont, bool _coring, bool _sse,
          IScriptEnvironment* env );
 
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
@@ -94,8 +95,12 @@ public:
   static AVSValue __cdecl Create(AVSValue args, void* user_data, IScriptEnvironment* env);
 
 private:
-	double hue, sat, bright, cont;
-	bool coring;
+	int Sin, Cos;
+	int Sat, Bright, Cont;
+	bool coring, sse;
+
+	BYTE map[256];
+	int mapCos[256], mapSin[256];
 };
 
 
@@ -109,7 +114,7 @@ using namespace SoftWire;
 class Limiter : public GenericVideoFilter, public  CodeGenerator
 {
 public:
-	Limiter(PClip _child, int _min_luma, int _max_luma, int _min_chroma, int _max_chroma, const char* _show, IScriptEnvironment* env);
+	Limiter(PClip _child, int _min_luma, int _max_luma, int _min_chroma, int _max_chroma, int _show, IScriptEnvironment* env);
 	PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
   static AVSValue __cdecl Create(AVSValue args, void* user_data, IScriptEnvironment* env);
   DynamicAssembledCode create_emulator(int row_size, int height, IScriptEnvironment* env);
@@ -121,7 +126,7 @@ private:
   int min_luma;
   int max_chroma;
   int min_chroma;
-  const char* show;
+  const enum SHOW {show_none, show_luma, show_luma_grey, show_chroma, show_chroma_grey} show;
 
   DynamicAssembledCode assemblerY;
   DynamicAssembledCode assemblerUV;
