@@ -373,7 +373,7 @@ AudioStreamSource::AudioStreamSource(AudioSource *src, long first_samp, long max
 		DWORD dwOutputBufferSize;
 		DWORD dwOutputFormatSize;
 
-		if (!AllocFormat(sizeof(PCMWAVEFORMAT)))
+		if (!AllocFormat(sizeof(WAVEFORMATEX)))
 			throw MyMemoryError();
 
 		if (acmMetrics(NULL, ACM_METRIC_MAX_SIZE_FORMAT, (LPVOID)&dwOutputFormatSize))
@@ -398,7 +398,7 @@ AudioStreamSource::AudioStreamSource(AudioSource *src, long first_samp, long max
 		oFormat->nAvgBytesPerSec	= oFormat->nBlockAlign * oFormat->nSamplesPerSec;
 		oFormat->cbSize				= 0;
 
-		memcpy(GetFormat(), oFormat, sizeof(PCMWAVEFORMAT));
+		memcpy(GetFormat(), oFormat, sizeof(WAVEFORMATEX));
 		free(oFormat);
 		oFormat = GetFormat();
 
