@@ -31,6 +31,8 @@
 
 #define in64 (__int64)(unsigned short)
 
+#define ATHLON  // comment this out if using the Intel compiler, or you need Pentium/K6 support
+
 typedef unsigned long	Pixel;
 typedef unsigned long	Pixel32;
 typedef unsigned char Pixel8;
@@ -96,10 +98,6 @@ public:
 
 extern _PixelClip PixelClip;
 
-static inline BYTE ScaledPixelClip(int i) {
-  return PixelClip((i+32768) >> 16);
-}
-
 
 template<class ListNode>
 static inline void Relink(ListNode* newprev, ListNode* me, ListNode* newnext) {
@@ -110,6 +108,20 @@ static inline void Relink(ListNode* newprev, ListNode* me, ListNode* newnext) {
   me->next = newnext;
   me->prev->next = me->next->prev = me;
 }
+
+
+
+/*** Inline helper methods ***/
+
+
+static inline BYTE ScaledPixelClip(int i) {
+  return PixelClip((i+32768) >> 16);
+}
+
+
+static inline IsClose(int a, int b, unsigned threshold) 
+  { return (unsigned(a-b+threshold) <= threshold*2); }
+
 
 
 
