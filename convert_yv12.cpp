@@ -1346,3 +1346,333 @@ yloop_test:
   }
    delete[] dstp;
 }
+
+
+
+/********************************
+ * Progressive YUY2 to YV12
+ * 
+ * (c) Copyright 2003, Klaus Post
+ *
+ * Converts 8x2 (8 pixels, two lines) in parallel.
+ * Requires mod8 pitch for output, and mod16 pitch for input.
+ * MMX Version (much slower than ISSE!) (used as fallback for ISSE version)
+ ********************************/
+
+void mmx_yuy2_to_yv12(const BYTE* src, int src_rowsize, int src_pitch, 
+                    BYTE* dstY, BYTE* dstU, BYTE* dstV, int dst_pitchY, int dst_pitchUV,
+                    int height) {
+
+__declspec(align(8)) static __int64 mask1	= 0x00ff00ff00ff00ff;
+__declspec(align(8)) static __int64 mask2	= 0xff00ff00ff00ff00;
+__declspec(align(8)) static __int64 add_1	= 0x0001000100010001;
+
+  const BYTE** dstp= new const BYTE*[4];
+  dstp[0]=dstY;
+  dstp[1]=dstY+dst_pitchY;
+  dstp[2]=dstU;
+  dstp[3]=dstV;
+  int src_pitch2 = src_pitch*2;
+  int dst_pitch2 = dst_pitchY*2;
+
+  int y=0;
+  int x=0;
+  src_rowsize = (src_rowsize+3)/4;
+  __asm {
+    mov edx,0
+    mov esi, src
+    mov edi, dstp
+    jmp yloop_test
+    align 16
+yloop:
+      mov edx,0               // x counter   
+      mov eax, [src_pitch]
+      jmp xloop_test
+      align 16
+xloop:      
+      movq mm0,[esi]        // YUY2 upper line  (4 pixels luma, 2 chroma)
+       movq mm1,[esi+eax]   // YUY2 lower line  
+      movq mm6,mm0
+       movq mm2, [esi+8]    // Load second pair
+      movq mm3, [esi+eax+8]
+       movq mm5,mm2
+      movq mm7, mm1
+       movq mm4, mm3
+      psrlw mm5,8
+       psrlw mm6,8
+      psrlw mm4,8
+       psrlw mm7,8
+      paddw mm5,mm4
+       paddw mm6,mm7
+      movq mm4,[mask1]
+       movq mm7,[mask2]
+      paddw mm5,[add_1]
+       paddw mm6,[add_1]
+      
+//      pavgb mm6,mm1         // Average (chroma)
+//       pavgb mm5,mm3        // Average Chroma (second pair)
+
+      pand mm0,mm4          // Mask luma
+       psrlw mm5,1
+      pand mm1,mm4          // Mask luma
+       psrlw mm6,1
+      pand mm2,mm4          // Mask luma
+       pand mm3,mm4         
+   		packuswb mm0, mm2     // Pack luma (upper)
+   		 packuswb mm6, mm5    // Pack chroma
+   		packuswb mm1, mm3     // Pack luma (lower)     
+       movq mm5, mm6        // Chroma copy
+      pand mm5, mm7         // Mask V
+       pand mm6, mm4        // Mask U
+      psrlq mm5,8            // shift down V
+   		 packuswb mm5, mm7     // Pack U 
+   		packuswb mm6, mm7     // Pack V 
+       mov ebx, [edi]
+      mov ecx, [edi+4]
+      movq [ebx+edx*2],mm0
+       movq [ecx+edx*2],mm1
+
+      mov ecx, [edi+8]
+      mov ebx, [edi+12]
+       movd [ecx+edx], mm6  // Store U
+      movd [ebx+edx], mm5   // Store V
+      add esi, 16
+      add edx, 4
+xloop_test:
+    cmp edx,[src_rowsize]
+    jl xloop
+    mov esi, src
+    mov edx,[edi]
+    mov ebx,[edi+4]
+    mov ecx,[edi+8]
+    mov eax,[edi+12]
+    
+    add edx, [dst_pitch2]
+    add ebx, [dst_pitch2]
+    add ecx, [dst_pitchUV]
+    add eax, [dst_pitchUV]
+    add esi, [src_pitch2]
+
+    mov [edi],edx
+    mov [edi+4],ebx
+    mov [edi+8],ecx
+    mov [edi+12],eax
+    mov edx, [y]
+    mov [src],esi
+    
+    add edx, 2
+
+yloop_test:
+    cmp edx,[height]
+    mov [y],edx
+    jl yloop
+    emms
+  }
+   delete[] dstp;
+}
+
+
+
+/********************************
+ * Interlaced YUY2 to YV12
+ * 
+ * (c) Copyright 2003, Klaus Post
+ *
+ * Converts 8x2 (8 pixels, two lines) in parallel.
+ * Requires mod8 pitch for output, and mod16 pitch for input.
+ * MMX version (used as fallback for ISSE version)
+ ********************************/
+
+
+void mmx_yuy2_i_to_yv12(const BYTE* src, int src_rowsize, int src_pitch, 
+                    BYTE* dstY, BYTE* dstU, BYTE* dstV, int dst_pitchY, int dst_pitchUV,
+                    int height) {
+
+__declspec(align(8)) static __int64 mask1	= 0x00ff00ff00ff00ff;
+__declspec(align(8)) static __int64 mask2	= 0xff00ff00ff00ff00;
+__declspec(align(8)) static __int64 add_1	= 0x0001000100010001;
+
+  const BYTE** dstp= new const BYTE*[4];
+  dstp[0]=dstY;
+  dstp[1]=dstY+(dst_pitchY*2);
+  dstp[2]=dstU;
+  dstp[3]=dstV;
+  int src_pitch2 = src_pitch*2;
+  int dst_pitch2 = dst_pitchY*2;
+  int src_pitch4 = src_pitch*4;
+  int dst_pitch3 = dst_pitchY*3;
+
+  int y=0;
+  int x=0;
+  src_rowsize = (src_rowsize+3)/4;
+  __asm {
+    mov edx,0
+    mov esi, src
+    mov edi, dstp
+    jmp yloop_test
+    align 16
+yloop:
+      mov edx,0               // x counter   
+      mov eax, [src_pitch2]
+      jmp xloop_test
+      align 16
+xloop:      
+      movq mm0,[esi]        // YUY2 upper line  (4 pixels luma, 2 chroma)
+       movq mm1,[esi+eax]   // YUY2 lower line  
+      movq mm6,mm0
+       movq mm2, [esi+8]    // Load second pair
+      movq mm3, [esi+eax+8]
+       movq mm5,mm2
+      movq mm7, mm1
+       movq mm4, mm3
+      psrlw mm5,8
+       psrlw mm6,8
+      psrlw mm4,8
+       psrlw mm7,8
+      paddw mm5,mm4
+       paddw mm6,mm7
+      movq mm4,[mask1]
+       movq mm7,[mask2]
+      paddw mm5,[add_1]
+       paddw mm6,[add_1]
+
+//      pavgb mm6,mm1         // Average (chroma)
+//       pavgb mm5,mm3        // Average Chroma (second pair)
+
+      pand mm0,mm4          // Mask luma
+  	    psrlw mm5, 1
+      pand mm1,mm4          // Mask luma
+ 	     psrlw mm6, 1
+      pand mm2,mm4          // Mask luma
+       pand mm3,mm4         
+      pand mm5,mm4           // Mask chroma
+       pand mm6,mm4          // Mask chroma
+   		packuswb mm0, mm2     // Pack luma (upper)
+   		 packuswb mm6, mm5    // Pack chroma
+   		packuswb mm1, mm3     // Pack luma (lower)     
+       movq mm5, mm6        // Chroma copy
+      pand mm5, mm7         // Mask V
+       pand mm6, mm4        // Mask U
+      psrlq mm5,8            // shift down V
+   		 packuswb mm5, mm7     // Pack U 
+   		packuswb mm6, mm7     // Pack V 
+       mov ebx, [edi]
+      mov ecx, [edi+4]
+      movq [ebx+edx*2],mm0
+       movq [ecx+edx*2],mm1
+
+      mov ecx, [edi+8]
+      mov ebx, [edi+12]
+       movd [ecx+edx], mm6  // Store U
+      movd [ebx+edx], mm5   // Store V
+      add esi, 16
+      add edx, 4
+xloop_test:
+    cmp edx,[src_rowsize]
+    jl xloop
+
+    mov esi, src
+    mov edx,[edi]
+    mov ebx,[edi+4]
+    mov ecx,[edi+8]
+    mov eax,[edi+12]
+    
+    add edx, [dst_pitchY]
+    add ebx, [dst_pitchY]
+    add ecx, [dst_pitchUV]
+    add eax, [dst_pitchUV]
+    add esi, [src_pitch]
+
+    mov [edi],edx
+    mov [edi+4],ebx
+    mov [edi+8],ecx
+    mov [edi+12],eax
+
+    mov edx, 0
+    mov eax, [src_pitch2]
+
+    jmp xloop2_test
+xloop2:   // Second field
+      movq mm0,[esi]        // YUY2 upper line  (4 pixels luma, 2 chroma)
+       movq mm1,[esi+eax]   // YUY2 lower line  
+      movq mm6,mm0
+       movq mm2, [esi+8]    // Load second pair
+      movq mm3, [esi+eax+8]
+       movq mm5,mm2
+      movq mm7, mm1
+       movq mm4, mm3
+      psrlw mm5,8
+       psrlw mm6,8
+      psrlw mm4,8
+       psrlw mm7,8
+      paddw mm5,mm4
+       paddw mm6,mm7
+      movq mm4,[mask1]
+       movq mm7,[mask2]
+      paddw mm5,[add_1]
+       paddw mm6,[add_1]
+
+//      pavgb mm6,mm1         // Average (chroma)
+//       pavgb mm5,mm3        // Average Chroma (second pair)
+
+      pand mm0,mm4          // Mask luma
+  	    psrlw mm5, 1
+      pand mm1,mm4          // Mask luma
+ 	     psrlw mm6, 1
+      pand mm2,mm4          // Mask luma
+       pand mm3,mm4         
+      pand mm5,mm4           // Mask chroma
+       pand mm6,mm4          // Mask chroma
+   		packuswb mm0, mm2     // Pack luma (upper)
+   		 packuswb mm6, mm5    // Pack chroma
+   		packuswb mm1, mm3     // Pack luma (lower)     
+       movq mm5, mm6        // Chroma copy
+      pand mm5, mm7         // Mask V
+       pand mm6, mm4        // Mask U
+      psrlq mm5,8            // shift down V
+   		 packuswb mm5, mm7     // Pack U 
+   		packuswb mm6, mm7     // Pack V 
+       mov ebx, [edi]
+      mov ecx, [edi+4]
+      movq [ebx+edx*2],mm0
+       movq [ecx+edx*2],mm1
+
+      mov ecx, [edi+8]
+      mov ebx, [edi+12]
+       movd [ecx+edx], mm6  // Store U
+      movd [ebx+edx], mm5   // Store V
+      add esi, 16
+      add edx, 4
+xloop2_test:
+    cmp edx,[src_rowsize]
+    jl xloop2
+
+    mov esi, src
+    mov edx,[edi]
+    mov ebx,[edi+4]
+    mov ecx,[edi+8]
+    mov eax,[edi+12]
+    
+    add edx, [dst_pitch3]
+    add ebx, [dst_pitch3]
+    add ecx, [dst_pitchUV]
+    add eax, [dst_pitchUV]
+    add esi, [src_pitch4]
+
+    mov [edi],edx
+    mov [edi+4],ebx
+    mov [edi+8],ecx
+    mov [edi+12],eax
+    mov edx, [y]
+    mov [src],esi
+    
+    add edx, 4
+
+yloop_test:
+    cmp edx,[height]
+    mov [y],edx
+    jl yloop
+    emms
+  }
+   delete[] dstp;
+}
