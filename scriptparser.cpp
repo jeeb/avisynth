@@ -58,7 +58,7 @@ PExpression ScriptParser::Parse(void)
     }
 #ifndef _DEBUG
     catch (...) {
-      env->ThrowError("Unrecognized exception!");
+      env->ThrowError("Parse: Unrecognized exception!");
     }
 #endif
   }

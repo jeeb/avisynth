@@ -96,8 +96,10 @@ FilteredResizeH::FilteredResizeH( PClip _child, double subrange_left, double sub
   else
     pattern_luma = GetResamplingPatternRGB(vi.width, subrange_left, subrange_width, target_width, func);
   vi.width = target_width;
-  assemblerY = GenerateResizer(PLANAR_Y, env);
-  assemblerUV = GenerateResizer(PLANAR_U, env);
+  if (vi.IsPlanar()) {
+    assemblerY = GenerateResizer(PLANAR_Y, env);
+    assemblerUV = GenerateResizer(PLANAR_U, env);
+  }
 }
 
 /***********************************

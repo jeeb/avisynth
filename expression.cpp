@@ -58,9 +58,11 @@ AVSValue ExpExceptionTranslator::Evaluate(IScriptEnvironment* env)
   catch (AvisynthError) {
     throw;
   }
+#ifndef _DEBUG
   catch (...) {
-    env->ThrowError("Unrecognized exception!");
+    env->ThrowError("Evaluate: Unrecognized exception!");
   }
+#endif
   return 0;
 }
 
