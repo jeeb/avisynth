@@ -589,42 +589,86 @@ PVideoFrame Histogram::DrawMode0(int n, IScriptEnvironment* env)
       }
       if (y&1) {
         for (x=0; x<128; ++x) {
-          p[x*2+vi.width-256] = min(255, hist[x*2]*4);
-          p[x*2+vi.width-256+1] = min(255, hist[x*2+1]*4);
           if (x<8) {
-            p2[x+(vi.width>>1)-128]  = 0;
-            p3[x+(vi.width>>1)-128]  = 160; 
-          } else if (x>118) {
-            p2[x+(vi.width>>1)-128]  = 0;
-            p3[x+(vi.width>>1)-128]  = 160;
+			p[x*2+vi.width-256] = max(min(255, hist[x*2]*4), 84);
+			p[x*2+vi.width-256+1] = max(min(255, hist[x*2+1]*4), 84);
+            p2[x+(vi.width>>1)-128] = 0;
+            p3[x+(vi.width>>1)-128] = 160; 
+          } else if (x>117) {
+  			p[x*2+vi.width-256] = max(min(255, hist[x*2]*4), 84);
+			p[x*2+vi.width-256+1] = max(min(255, hist[x*2+1]*4), 84);
+            p2[x+(vi.width>>1)-128] = 0;
+            p3[x+(vi.width>>1)-128] = 160;
           } else if (x==62) {
-            p2[x+(vi.width>>1)-128]  = 160;
-            p3[x+(vi.width>>1)-128]  = 0;
+			p[x*2+vi.width-256] = max(min(255, hist[x*2]*4), 84);
+			p[x*2+vi.width-256+1] = max(min(255, hist[x*2+1]*4), 84);
+            p2[x+(vi.width>>1)-128] = 160;
+            p3[x+(vi.width>>1)-128] = 0;
           } else {
-            p2[x+(vi.width>>1)-128]  = 128;
-            p3[x+(vi.width>>1)-128]  = 128;
+			p[x*2+vi.width-256] = min(255, hist[x*2]*4);
+			p[x*2+vi.width-256+1] = min(255, hist[x*2+1]*4);
+            p2[x+(vi.width>>1)-128] = 128;
+            p3[x+(vi.width>>1)-128] = 128;
           }
         }
         p2+= dst->GetPitch(PLANAR_U);
         p3+= dst->GetPitch(PLANAR_U);
       } else {
-        for (x=0; x<256; ++x) {
-          p[x+vi.width-256] = min(255, hist[x]*4);
+        for (x=0; x<128; ++x) {
+          if (x<8) {
+            p[x*2+vi.width-256] = max(min(255, hist[x*2]*4), 84);
+            p[x*2+vi.width-256+1] = max(min(255, hist[x*2+1]*4), 84);
+		  } else if (x>117) {
+            p[x*2+vi.width-256] = max(min(255, hist[x*2]*4), 84);
+            p[x*2+vi.width-256+1] = max(min(255, hist[x*2+1]*4), 84);
+		  } else if (x==62) {
+            p[x*2+vi.width-256] = max(min(255, hist[x*2]*4), 84);
+            p[x*2+vi.width-256+1] = max(min(255, hist[x*2+1]*4), 84);
+		  } else {
+            p[x*2+vi.width-256] = min(255, hist[x*2]*4);
+            p[x*2+vi.width-256+1] = min(255, hist[x*2+1]*4);
+          }
         }
       }
       p += dst->GetPitch();
     }
     return dst;
   }
-  for (int y=0; y<src->GetHeight(); ++y) {
+  for (int y=0; y<src->GetHeight(); ++y) { // YUY2
     int hist[256] = {0};
     int x;
     for (x=0; x<vi.width-256; ++x) {
       hist[p[x*2]]++;
     }
-    for (x=0; x<256; ++x) {
-      p[x*2+vi.width*2-512] = min(255, hist[x]*3);
-      p[x*2+vi.width*2-511] = 128;
+    for (x=0; x<256; x+=2) {
+	  if (x<16) {
+	    p[x*2+vi.width*2-512] = max(min(255, hist[x]*4), 84);
+		p[x*2+vi.width*2-511] = 0;
+	  } else if (x>235) {
+        p[x*2+vi.width*2-512] = max(min(255, hist[x]*4), 84);
+		p[x*2+vi.width*2-511] = 0;
+	  } else if (x==124) {
+        p[x*2+vi.width*2-512] = max(min(255, hist[x]*4), 84);
+		p[x*2+vi.width*2-511] = 160;
+	  } else {
+		p[x*2+vi.width*2-512] = min(255, hist[x]*4);
+		p[x*2+vi.width*2-511] = 128;
+	  }
+    }
+    for (x=1; x<256; x+=2) {
+	  if (x<16) {
+	    p[x*2+vi.width*2-512] = max(min(255, hist[x]*4), 84);
+		p[x*2+vi.width*2-511] = 160;
+	  } else if (x>235) {
+        p[x*2+vi.width*2-512] = max(min(255, hist[x]*4), 84);
+		p[x*2+vi.width*2-511] = 160;
+	  } else if (x==125) {
+        p[x*2+vi.width*2-512] = max(min(255, hist[x]*4), 84);
+		p[x*2+vi.width*2-511] = 0;
+	  } else {
+		p[x*2+vi.width*2-512] = min(255, hist[x]*4);
+		p[x*2+vi.width*2-511] = 128;
+	  }
     }
     p += dst->GetPitch();
   }
