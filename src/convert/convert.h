@@ -144,7 +144,7 @@ public:
 private:
   bool use_mmx, is_yv12;
   int yv12_width, theMatrix;
-  enum {Rec601=0, Rec709=1, PCLevels=3 };	// Note! convert_a.asm assumes these values
+  enum {Rec601=0, Rec709=1, PC_601=3, PC_709=7 };	// Note! convert_a.asm assumes these values
 };
 
 class ConvertToYV12 : public GenericVideoFilter 
@@ -179,7 +179,7 @@ private:
   const bool interlaced;
 
   int theMatrix;
-  enum {Rec601=0, Rec709=1, PCLevels=3 };
+  enum {Rec601=0, Rec709=1, PC_601=2, PC_709=3 };	// Note! convert_yuy2.cpp assumes these values
 };
 
 class ConvertBackToYUY2 : public GenericVideoFilter 
@@ -197,7 +197,7 @@ private:
   const bool rgb32;
 
   int theMatrix;
-  enum {Rec601=0, Rec709=1, PCLevels=3 };
+  enum {Rec601=0, Rec709=1, PC_601=2, PC_709=3 };	// Note! convert_yuy2.cpp assumes these values
   
 };
 
