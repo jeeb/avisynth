@@ -294,11 +294,12 @@ PVideoFrame __stdcall ConvertToRGB::GetFrame(int n, IScriptEnvironment* env)
       yv12_to_rgb32_mmx(dstp, dst_pitch/4,src->GetReadPtr(PLANAR_Y),src->GetReadPtr(PLANAR_U),src->GetReadPtr(PLANAR_V),src->GetPitch(PLANAR_Y),src->GetPitch(PLANAR_U),yv12_width,-src->GetHeight(PLANAR_Y));
     }
     return dst;
-  }
+  }  
+  // assumption: is_yuy2
   if (use_mmx) {
     (vi.IsRGB24() ? mmx_YUY2toRGB24 : mmx_YUY2toRGB32)(srcp, dstp,
       srcp + vi.height * src_pitch, src_pitch, src->GetRowSize(), rec709);
-  } else {
+  } else if (vi.IsRGB32()) {    
     srcp += vi.height * src_pitch;
     for (int y=vi.height; y>0; --y) {
       srcp -= src_pitch;
@@ -307,6 +308,16 @@ PVideoFrame __stdcall ConvertToRGB::GetFrame(int n, IScriptEnvironment* env)
         dstp[x*4+3] = 255;
         YUV2RGB(srcp[x*2+2], srcp[x*2+1], srcp[x*2+3], &dstp[x*4+4]);
         dstp[x*4+7] = 255;
+      }
+      dstp += dst_pitch;
+    }
+  } else if (vi.IsRGB24()) {
+    srcp += vi.height * src_pitch;
+    for (int y=vi.height; y>0; --y) {
+      srcp -= src_pitch;
+      for (int x=0; x<vi.width; x+=2) {
+        YUV2RGB(srcp[x*2+0], srcp[x*2+1], srcp[x*2+3], &dstp[x*3]);
+        YUV2RGB(srcp[x*2+2], srcp[x*2+1], srcp[x*2+3], &dstp[x*3+3]);
       }
       dstp += dst_pitch;
     }
