@@ -49,8 +49,7 @@
 
 double PointFilter::f(double x)
 { 
-  x = fabs(x);
-  return (x<1.0) ? (x) : 0.0;  // Can somebody confirm this function?
+  return 1.0;
 }
 
 
@@ -162,7 +161,7 @@ double Lanczos4Filter::f(double value)
  *****************************/
 
 int* GetResamplingPatternRGB( int original_width, double subrange_start, double subrange_width,
-                              int target_width, ResamplingFunction* func )
+                              int target_width, ResamplingFunction* func, IScriptEnvironment* env )
 /** 
   * This function returns a resampling "program" which is interpreted by the 
   * FilteredResize filters.  It handles edge conditions so FilteredResize    
@@ -194,6 +193,8 @@ int* GetResamplingPatternRGB( int original_width, double subrange_start, double 
     double total = 0.0;
     for (int j=0; j<fir_filter_size; ++j)
       total += func->f((start_pos+j - pos) * filter_step);
+    if (total == 0.0) // Just to be absolutly sure - IanB
+      env->ThrowError("Resize: Internal error, zero coeff total.");
     double total2 = 0.0;
     for (int k=0; k<fir_filter_size; ++k) {
       double total3 = total2 + func->f((start_pos+k - pos) * filter_step) / total;
@@ -207,7 +208,8 @@ int* GetResamplingPatternRGB( int original_width, double subrange_start, double 
 
 
 int* GetResamplingPatternYUV( int original_width, double subrange_start, double subrange_width,
-                              int target_width, ResamplingFunction* func, bool luma, BYTE *temp )
+                              int target_width, ResamplingFunction* func, bool luma, BYTE *temp,
+                              IScriptEnvironment* env )
 /** 
   * Same as with the RGB case, but with special
   * allowances for YUV-MMX code
@@ -245,6 +247,8 @@ int* GetResamplingPatternYUV( int original_width, double subrange_start, double 
     double total = 0.0;
     for (int j=0; j<fir_filter_size; ++j)
       total += func->f((start_pos+j - pos) * filter_step);
+    if (total == 0.0) // Just to be absolutly sure - IanB
+      env->ThrowError("Resize: Internal error, zero coeff total.");
     double total2 = 0.0;
     int oldCoeff = 0;
     for (int k=0; k<fir_filter_size; ++k)

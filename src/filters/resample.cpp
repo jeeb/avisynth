@@ -87,15 +87,15 @@ FilteredResizeH::FilteredResizeH( PClip _child, double subrange_left, double sub
     tempUV = (BYTE*) _aligned_malloc(original_width*4+8+32, 64);  // aligned for Athlon cache line
     if (vi.IsYV12()) {
       pattern_chroma = GetResamplingPatternYUV( vi.width>>1, subrange_left/2, subrange_width/2,
-        target_width>>1, func, true, tempY );
+        target_width>>1, func, true, tempY, env );
     } else {
       pattern_chroma = GetResamplingPatternYUV( vi.width>>1, subrange_left/2, subrange_width/2,
-        target_width>>1, func, false, tempUV );
+        target_width>>1, func, false, tempUV, env );
     }
-    pattern_luma = GetResamplingPatternYUV(vi.width, subrange_left, subrange_width, target_width, func, true, tempY);
+    pattern_luma = GetResamplingPatternYUV(vi.width, subrange_left, subrange_width, target_width, func, true, tempY, env);
   }
   else
-    pattern_luma = GetResamplingPatternRGB(vi.width, subrange_left, subrange_width, target_width, func);
+    pattern_luma = GetResamplingPatternRGB(vi.width, subrange_left, subrange_width, target_width, func, env);
   vi.width = target_width;
 
   use_dynamic_code = USE_DYNAMIC_COMPILER;
@@ -1272,8 +1272,8 @@ FilteredResizeV::FilteredResizeV( PClip _child, double subrange_top, double subr
     env->ThrowError("Resize: YV12 destination height must be multiple of 2.");
   if (vi.IsRGB())
     subrange_top = vi.height - subrange_top - subrange_height;
-  resampling_pattern = GetResamplingPatternRGB(vi.height, subrange_top, subrange_height, target_height, func);
-  resampling_patternUV = GetResamplingPatternRGB(vi.height>>1, subrange_top/2.0f, subrange_height/2.0f, target_height>>1, func);
+  resampling_pattern = GetResamplingPatternRGB(vi.height, subrange_top, subrange_height, target_height, func, env);
+  resampling_patternUV = GetResamplingPatternRGB(vi.height>>1, subrange_top/2.0f, subrange_height/2.0f, target_height>>1, func, env);
   vi.height = target_height;
 
   PVideoFrame src = child->GetFrame(0, env);

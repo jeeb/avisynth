@@ -129,10 +129,11 @@ private:
 
 
 int* GetResamplingPatternRGB(int original_width, double subrange_start, double subrange_width,
-                                    int target_width, ResamplingFunction* func);
+                                    int target_width, ResamplingFunction* func, IScriptEnvironment* env);
 
 int* GetResamplingPatternYUV(int original_width, double subrange_start, double subrange_width,
-                                    int target_width, ResamplingFunction* func, bool luma, BYTE *temp);
+                                    int target_width, ResamplingFunction* func, bool luma, BYTE *temp,
+                                    IScriptEnvironment* env);
 
 
 #endif  // __Reample_Functions_H__

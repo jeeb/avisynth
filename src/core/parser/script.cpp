@@ -82,8 +82,11 @@ AVSFunction Script_functions[] = {
   { "height", "c", Height },
   { "framecount", "c", FrameCount },
   { "framerate", "c", FrameRate },
+  { "frameratenumerator", "c", FrameRateNumerator },
+  { "frameratedenominator", "c", FrameRateDenominator },
   { "audiorate", "c", AudioRate },
   { "audiolength", "c", AudioLength },  // Fixme: Add int64 to script
+  { "audiolengthf", "c", AudioLengthF }, // at least this will give an order of the size
   { "audiochannels", "c", AudioChannels },
   { "audiobits", "c", AudioBits },
   { "IsAudioFloat", "c", IsFloat },
@@ -501,9 +504,12 @@ static inline const VideoInfo& VI(const AVSValue& arg) { return arg.AsClip()->Ge
 AVSValue Width(AVSValue args, void*, IScriptEnvironment* env) { return VI(args[0]).width; }
 AVSValue Height(AVSValue args, void*, IScriptEnvironment* env) { return VI(args[0]).height; }
 AVSValue FrameCount(AVSValue args, void*, IScriptEnvironment* env) { return VI(args[0]).num_frames; }
-AVSValue FrameRate(AVSValue args, void*, IScriptEnvironment* env) { const VideoInfo& vi = VI(args[0]); return float(vi.fps_numerator) / float(vi.fps_denominator); }
+AVSValue FrameRate(AVSValue args, void*, IScriptEnvironment* env) { const VideoInfo& vi = VI(args[0]); return (double)vi.fps_numerator / (double)vi.fps_denominator; } // maximise available precision
+AVSValue FrameRateNumerator(AVSValue args, void*, IScriptEnvironment* env) { return (int)VI(args[0]).fps_numerator; } // unsigned long truncated to int
+AVSValue FrameRateDenominator(AVSValue args, void*, IScriptEnvironment* env) { return (int)VI(args[0]).fps_denominator; } // unsigned long truncated to int
 AVSValue AudioRate(AVSValue args, void*, IScriptEnvironment* env) { return VI(args[0]).audio_samples_per_second; }
 AVSValue AudioLength(AVSValue args, void*, IScriptEnvironment* env) { return (int)VI(args[0]).num_audio_samples; }  // Truncated to int
+AVSValue AudioLengthF(AVSValue args, void*, IScriptEnvironment* env) { return (double)VI(args[0]).num_audio_samples; } // at least this will give an order of the size
 AVSValue AudioChannels(AVSValue args, void*, IScriptEnvironment* env) { return VI(args[0]).nchannels; }
 AVSValue AudioBits(AVSValue args, void*, IScriptEnvironment* env) { return VI(args[0]).BytesPerChannelSample()*8; }
 AVSValue IsAudioFloat(AVSValue args, void*, IScriptEnvironment* env) { return VI(args[0]).IsSampleType(SAMPLE_FLOAT); }
