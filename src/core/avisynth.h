@@ -226,13 +226,20 @@ struct VideoInfo {
 
   // useful mutator
   void SetFPS(unsigned numerator, unsigned denominator) {
-    unsigned x=numerator, y=denominator;
-    while (y) {   // find gcd
-      unsigned t = x%y; x = y; y = t;
-    }
-    fps_numerator = numerator/x;
-    fps_denominator = denominator/x;
+	if ((numerator == 0) || (denominator == 0)) {
+	  fps_numerator = 0;
+	  fps_denominator = 1;
+	}
+	else {
+	  unsigned x=numerator, y=denominator;
+	  while (y) {   // find gcd
+		unsigned t = x%y; x = y; y = t;
+	  }
+	  fps_numerator = numerator/x;
+	  fps_denominator = denominator/x;
+	}
   }
+
   // Test for same colorspace
   bool IsSameColorspace(const VideoInfo& vi) {
     if (vi.pixel_type == pixel_type) return TRUE;
