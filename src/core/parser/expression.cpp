@@ -49,6 +49,7 @@ AVSValue ExpSequence::Evaluate(IScriptEnvironment* env)
     return b->Evaluate(env);
 }
 
+
 /* First cut for breaking out system exceptions from the evil and most
  * unhelpful "Evaluate: Unrecognized exception!".
  *
@@ -62,16 +63,23 @@ AVSValue ExpSequence::Evaluate(IScriptEnvironment* env)
  * a function argument, return "EXCEPTION_EXECUTE_HANDLER" and throw
  * the exception from within the _except block.
  */
-int ProcessSystemError(int code, _EXCEPTION_POINTERS *info)
+static int ProcessSystemError(unsigned code, _EXCEPTION_POINTERS *info)
 {
-  switch (code) {
-  case 0xE06D7363:
-    break; // C++ Exception, 0xE0000000 | "\0msc"
+  if (code == 0xE06D7363) // C++ Exception, 0xE0000000 | "\0msc"
+    return EXCEPTION_CONTINUE_SEARCH;
   
+  switch (code) {
   case STATUS_GUARD_PAGE_VIOLATION:      // 0x80000001
   case STATUS_DATATYPE_MISALIGNMENT:     // 0x80000002
 //case STATUS_BREAKPOINT:                // 0x80000003
 //case STATUS_SINGLE_STEP:               // 0x80000004
+	return EXCEPTION_EXECUTE_HANDLER;
+
+  default:
+    break;
+  }
+
+  switch (code) {
   case STATUS_ACCESS_VIOLATION:          // 0xc0000005
   case STATUS_IN_PAGE_ERROR:             // 0xc0000006
   case STATUS_INVALID_HANDLE:            // 0xc0000008
@@ -96,10 +104,11 @@ int ProcessSystemError(int code, _EXCEPTION_POINTERS *info)
   default:
     break;
   }
+
   return EXCEPTION_CONTINUE_SEARCH;
 }
 
-const char * const StringSystemError(const int code)
+static const char * const StringSystemError(const unsigned code)
 {
   switch (code) {
   case STATUS_GUARD_PAGE_VIOLATION:      // 0x80000001
@@ -110,6 +119,11 @@ const char * const StringSystemError(const int code)
     return "Evaluate: System exception - Breakpoint";
   case STATUS_SINGLE_STEP:               // 0x80000004
     return "Evaluate: System exception - Single Step";
+  default:
+    break;
+  }
+
+  switch (code) {
   case STATUS_ACCESS_VIOLATION:          // 0xc0000005
     return "Evaluate: System exception - Access Violation";
   case STATUS_IN_PAGE_ERROR:             // 0xc0000006
@@ -151,7 +165,8 @@ const char * const StringSystemError(const int code)
   default:
     break;
   }
-  return "Evaluate: System exception - UNKNOWN!";
+
+  return 0;
 }
 
 
@@ -177,15 +192,19 @@ void ExpExceptionTranslator::ChainEval(AVSValue &av, IScriptEnvironment* env)
  */
 void ExpExceptionTranslator::TrapEval(AVSValue &av, IScriptEnvironment* env) 
 {
-  int excode;
+  unsigned excode;
 
   __try {
     ChainEval(av, env);
   }
-  __except (ProcessSystemError(excode = (int)_exception_code(),
+  __except (ProcessSystemError(excode = _exception_code(),
                                (_EXCEPTION_POINTERS *)_exception_info()))
   {
-    env->ThrowError(StringSystemError(excode));
+    const char * const extext = StringSystemError(excode);
+	if (extext)
+      env->ThrowError(extext);
+	else
+      env->ThrowError("Evaluate: System exception - 0x%x", excode);
   }
 }
 
