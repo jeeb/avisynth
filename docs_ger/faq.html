@@ -1,0 +1,223 @@
+<!doctype html public "-//w3c//dtd html 4.0 transitional//en">
+<html>
+<head>
+   <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+   <title> Frequently Asked Questions </title>
+<style type=text/css>A:link {
+COLOR: #404a58;TEXT-DECORATION: none
+}
+A:visited {
+COLOR: #404a58;TEXT-DECORATION: none
+}
+A:active {
+COLOR: #404a58;TEXT-DECORATION: none
+}
+A:hover {
+COLOR: #e8f0ff; TEXT-DECORATION: underline
+}</style>
+</head>
+<body bgcolor="#B6C0CA">
+
+<h1>
+Avisynth Frequently Asked Questions</h1>
+<p><a NAME="q1"></a><b>Q1: Was ist AviSynth?</b> 
+<p> AviSynth (AVI SYNTHesizer) ist ein frameserver, ein Programm das im Hintergrund 
+  frames (Einzelbilder) einem anderen Programm zur Verf&uuml;gung stellt.
+<p>Was AviSynth so einzigartig macht, ist die Tatsache, das es sich nicht um ein 
+  stand-alone Programm handelt, das eine Ausgabedatei erstellt, sondern eben nur 
+  die Schicht zwischen der Videodatei und einer anderen Video-Applikation. 
+<p>AviSynth funktioniert so: Zuesrt wird eine einfache Textdatei mit speziellen 
+  Befehlen darin erstellt, das sogenannte Skript. Diese Befehle beziehen sich 
+  auch ein oder mehrere Videos und die Filter, die man darauf anwenden m&ouml;chte. 
+  Dann startet man eine Videoanwendung, wie VirtualDub, und &ouml;ffnet das Skript. 
+  Jetzt kommt AviSynth ins Spiel und &ouml;ffnet die Videos, auf die verwiesen 
+  wird, f&uuml;hrt die angegebenen Filter aus und gibt das Ergebnis an die Anwendung 
+  zur&uuml;ck. Die Anwendung merkt gar nicht, dass sie von AviSynth bedient wird, 
+  sondern sieht ein gefiltertes AVI als ob es als Datei auf der Festplatte vorliegt.
+<p>Es gibt f&uuml;nf Hauptgr&uuml;nde f&uuml;r die Verwendung von AviSynth: 
+<ol type="1">
+  <li>Zusammenf&uuml;gen von Videos: mit AviSynth k&ouml;nnen beliebig viele Videos, 
+    auch segmentierte AVIs, zusammengef&uuml;gt werden. Auch nur Teile davon oder 
+    von der Tonspur.<br>
+    &nbsp; </li>
+  <li> Filtern von Videos: Es gibt viele eingebaute Filter (zum Beispiel zum Gr&ouml;sse 
+    &auml;ndern, R&auml;nder abschneiden, sch&auml;rfen).</li>
+  <br>
+  &nbsp; 
+  <li>&Uuml;berwinden der 2 GB-Grenze f&uuml;r AVIs: AviSynth kann beliebig grosse 
+    (nur durch das Betriebssystem begrenzt) AVIs &ouml;ffnen und an Anwendung 
+    weitergeben, die normalerweise nur 2GB-AVIs &ouml;ffnen k&ouml;nnen.</li>
+  <br>
+  &nbsp; 
+  <li> &Ouml;ffnen von speziellen, sonst nicht unterst&uuml;tzten Videoformaten, 
+    z.B. MPEG2-Videos.</li>
+  <br>
+  &nbsp; 
+  <li> Sparen von Festplatten-Platz: AviSynth erzeugt das Video genau zu dem Zeitpunkt, 
+    wo die Anwendung die einzelnen Bilder anfordert. So sind keine Zwischendateien 
+    notwendig, es wird kein zus&auml;tzlicher Speicher ben&ouml;tigt und auch 
+    nicht der damit verbundene Datentransfer zur Festplatte.</li>
+</ol>
+
+<p><a NAME="q2"></a><b>Q2: Wer entwickelte AviSynth?</b>
+<p> AviSynth bis zu Version v1.0b wurde von Ben Rudiak-Gould (<a href="http://math.berkeley.edu/~benrg/avisynth.html">http://math.berkeley.edu/~benrg/avisynth.html</a>) 
+  entwickelt. Nachdem Ben die Entwicklung aufgab, wurde sie von Edwin van Eggelen 
+  weitergef&uuml;hrt (<a href="http://www.videotools.net/uk/download.php">http://www.videotools.net/uk/download.php</a>)
+<p>Juli 2002 gab es ein neues <a href="http://sourceforge.net/projects/avisynth2/"> 
+  sourceforge Projekt</a>, in dem AviSynth gr&uuml;ndlich &uuml;berarbeitet und 
+  erweitert wurde.<b> Die aktuelle, recht stabile und fehlerfreie Version ist 
+  v2.0.6</b>
+<p><a NAME="q3"></a><b>Q3: Wie findet man die Version heraus?</b> 
+<p>In eine Textdatei die folgende Zeile schreiben:
+<p>version()
+<p>und als &quot;version.avs&quot; abspeichern. Beim &Ouml;ffnen z.B. mit dem 
+  Windows Media Player wird die Version angezeigt und man hat auch die Gewissheit, 
+  dass AviSynth korrekt installiert ist.
+<p><a NAME="q11"></a><b>Q4: Wie l&auml;dt man jetzt so eine Skript-Datei ein einen 
+  Encoder oder eine Anwendung?</b> 
+<p>Einfach die AVS-Datei &ouml;ffnen, als ob sie ein AVI w&auml;re. Das geht mit 
+  den meisten Programmen, die AVIs &ouml;ffnen k&ouml;nnen (es gibt Ausnahmen), 
+  auch wenn die Endung AVS nicht als Videodatei vorgeschlagen wird.
+<p><a NAME="q12"></a><b>Q5: Probleme bei verschiedenen Encodern?</b> 
+<ol type="1">
+  <li><i>AVS-Datei kann in TMPGEnc nicht ge&ouml;ffnet werden, was kann man da 
+    machen?</i></li>
+  <p>- VFAPI plugin (&quot;ReadAVS&quot;) installieren<br>
+    - DirectShow Filter in TMPGEnc deaktivieren<br>
+    - Als letzten Befehl im Skript "ConvertToRGB24()" hinzuf&uuml;gen</p>
+  <li> <i>CCE SP st&uuml;rzt beim Lesen einer AVS-Datei ab?</i></li>
+  <p>- Als letzte Zeile im Skript "ResampleAudio(44100)" hinzuf&uuml;gen, auch 
+    wenn im AVS gar kein Audio vorkommt</p>
+  <li> <i>Manche Encoder (CCE SP v2.62/v2.64, ProCoder) lesen keine AVS-Dateien?</i></li>
+  <br>
+  Wenn diese Programme nicht die Standard-Windows-Funktionen verwenden, funktionert 
+  AviSynth nicht.<br>
+  Hier kann mittels dem &quot;VFAPI reader codec&quot; (das ist auch so eine Art 
+  frameserver, aktuelle Version 1.05) ein &quot;pseudo&quot;-AVI erzeugt werden, 
+  welches von wirklich allen Programmen gelesen werden kann. Diese Methode hat 
+  nur den Nachteil einer geringeren Geschwindigkeit. <br>
+  &nbsp; 
+  <li> <i>Ein falscher YUY2 Codec verursacht (mehr oder weniger starke) Farbfehler 
+    in TMPGEnc?</i></li>
+  <br>
+  Auch hier sicherheitshalber als letzte Zeile im Skript &quot;ConvertToRGB24()&quot; 
+  hinzuf&uuml;gen, TMPGEnc kann sowieso nur RGB lesen.<br>
+</ol>
+
+<a NAME="q13"></a><b>Q6: Die gebr&auml;uchlichsten Arten, um ein Video in das 
+Skript zu laden?</b> 
+<ol>
+  <li> AVI-Dateien (mit unkomprimiertem PCM-Audio oder CBR/VBR MP3-audio), auch 
+    VirtualDub-Frameserver VDR:<br>
+    <i>AviSource("d:\filename.avi")</i> <br>
+    oder mit abgeschaltetem Audio:<br>
+    <i>AviSource("d:\filename.avi", audio=false)<br>
+    <br>
+    </i></li>
+  <li>AVI- oder andere Video-Dateien die von AVISource nicht unterst&uuml;tzt 
+    werden (z.B. DV Typ 1AVI-files, MPEG1):, allerdings ohne Audio-Unterst&uuml;tzung:<br>
+    <i>DirectShowSource("d:\filename.avi")</i> <br>
+    <i>DirectShowSource("d:\filename.mpg")</i><br>
+    <br>
+    Manchmal muss die Framerate angegeben werden:<br>
+    <br>
+    <i>DirectShowSource("d:\filename.asf", fps=15)</i> <br>
+    <br>
+  </li>
+  <li> MPEG2-Dateien (mpg, vob, m2v):</li>
+  <br>
+  Mit dem Programm DVD2AVI ein &quot;project file&quot; (eine Art Index f&uuml;r 
+  den schnellen Zugriff) erstellen und in AviSynth laden. Die Versionen von DVD2AVI 
+  und MPEG2DEC m&uuml;ssen kompatibel sein:<br>
+  <i>LoadPlugin("d:\mpeg2dec.dll")</i><br>
+  <i>mpeg2source("d:\filename.d2v")</i> <br>
+</ol>
+
+<p><a NAME="q14"></a><b>Q7: Wie kann das Audio dazugeladen werden?</b> 
+<p>Das funktioniert f&uuml;r WAV und MP3-Dateien mit einem WAV-header.
+<p>WAVSource("d:\filename.wav") 
+<p><a NAME="q16"></a><b>Q8: Wie kann man jetzt Video und Audio verbinden?</b> 
+<p>video = AVISource("d:\filename1.avi") <br>
+  audio = WAVSource("d:\filename2.wav") <br>
+  AudioDub(video, audio) 
+<p><a NAME="q19"></a><b>Q9: Was bedeuten die unterschiedlichen Farbformate RGB/YUV 
+  und was heisst das f&uuml;r die verwendeten Filter?</b> 
+<p>Es sind einfach zwei unterschiedliche Arten, wie die Farbinformation intern 
+  abgespeichert sind.
+<p>RGB speichert f&uuml;r jede Grundfarbe Rot, Gr&uuml;n, Blau einen Wert.
+<p>YUV speichert einen Wert f&uuml;r die Helligkeit Y und f&uuml;r zwei Farb-Achsen 
+  U und V, wobei die Farbinformation immer f&uuml;r 2 horizontale Pixel gilt.
+<p>Manche Filter funktionieren nur in einem bestimmten Farbformat.<br>
+  Es gibt allerdings die Funktionen
+<p>ConvertToYUY2()<br>
+  ConvertBackToYUY2() <br>
+  ConvertToRGB()<br>
+  ConvertToRGB24()<br>
+  ConvertToRGB32()
+<p>um zwischen den Formaten zu wechseln, was nat&uuml;rlich so selten wie m&ouml;glich 
+  gemacht werden sollte.
+<p>Wenn m&ouml;glich, sollte man beim YUY2-Format bleiben, da dieses am schnellsten 
+  ist. <br>
+  &nbsp; 
+<p><a name="q32"></a><b>Q10: Wie kann man ein plugin in AviSynth laden?</b> 
+<p>Mittels "LoadPlugin". Hier ein Beispiel: 
+<p>LoadPlugin("d:\mpeg2dec.dll") <br>
+  mpeg2source("d:\filename.d2v") 
+<p>Weiters gibt es eine automatische Plugin-Ladefunktion. Alle Dateien in PlugIn-Verzeichnis 
+  werden automatisch geladen.<br>
+  Vorsicht, nur funktionierende Plugins in dieses Verzeichnis speichern.
+<p>Das Verzeichnis ist in der Registry gespeichert:<br>
+
+<p><br>
+  <i>[HKEY_LOCAL_MACHINE\SOFTWARE\Avisynth]</i> <br>
+  <i>"PluginDir"="c:\\program files\\avisynth\\plugins"</i> 
+<p><a NAME="q21"></a><b>Q11: Welche externen Filter gibt es und wo kann man sie 
+  herbekommen?</b> 
+<p><a href="http://sauron.mordor.net/dgraft/mine.html" target="_blank">sauron.mordor.net/dgraft</a> 
+  ist die Homepage von Donald Graft. Dort findet man viele Filter und Links. 
+<p><a href="http://forum.doom9.org">forum.doom9.org</a> DAS Forum f&uuml;r AviSynth
+<p><a href="http://www.doom9.org">www.doom9.org</a> viele Links und Download-Bereich
+<ol type="1">
+  <li> Decomb-Filterset (Donald Graft alias neuron2): Mit diesen Filtern kann 
+    telecined-Video zur&uuml;ck zu progressiv konvertiert werden und echtes Interlaced 
+    kann deinterlaced werden.<br>
+    <br>
+  </li>
+  <li> TemporalSmoother (dividee): Adaptives Rauschfilter, das zeitlich arbeitet 
+    (also nur bei ruhigen Szenen wirkt).<br>
+    <br>
+  </li>
+  <li> VobSub (gabest): Generierung von Untertiteln.</li>
+  <br>
+  &nbsp; 
+  <li> GreedyHMA (Tom Barry): Deinterlace, De-Telecine.</li>
+  <br>
+  &nbsp;&nbsp; 
+  <li> Smoother HiQ (Klaus Post): Adaptives Rauschfilter, arbeitet r&auml;umlich.</li>
+  <br>
+  &nbsp; 
+  <li> ImageSequence (bzzz2): zum Importieren von Bild (-Sequenzen).</li>
+  <br>
+  &nbsp; 
+  <li> Unfilter (Tom Barry): Sch&auml;rfen und Weichzeichnen.</li>
+  <br>
+  &nbsp;&nbsp; 
+  <li> TomsMoComp (Tom Barry): Deinterlace.</li>
+  <br>
+  &nbsp; 
+  <li> Dup (Donald Graft): Dupliziert fast gleiche Bilder (bei Zeichentrick).</li>
+  <br>
+  &nbsp;&nbsp; 
+  <li> Convolution3D (vlad59): Rauschfilter, das gleichzeitig r&auml;umlich und 
+    zeitlich arbeitet.</li>
+</ol>
+<p><a NAME="q33"></a><b>Q12: Was ist mpeg2dec.dll und wo kann man die neueste 
+  Version bekommen?</b> 
+<p>mpeg2dec.dll/mpeg2dec2.dll sind plugins, mittels denen AviSynth MPEG2-Dateien 
+  lesen kann. Mpeg2source erzeugt ein Video im YUY2-Format. 
+<p>mpeg2dec.dll gibt es auf der Homepage von <a href="http://users.win.be/dividee/avisynth.html">Dividees</a>, 
+  mpeg2dec2.dll (etwas fehlertolerantere Version) gibt es auf der Homepage von 
+  <a href="http://www.trbarry.com/mpeg2dec2.zip">trbarry</a>. 
+<p>&nbsp;
+</body>
+</html>

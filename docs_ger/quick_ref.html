@@ -1,0 +1,626 @@
+<!doctype html public "-//W3C//DTD HTML 4.0 Transitional//EN">
+<html>
+<head>
+<title>AviSynth 2 - Befehlsverzeichnis</title>
+<STYLE type=text/css>A:link {
+COLOR: #000000;TEXT-DECORATION: none
+font-family: Arial, Helvetica, sans-serif;
+font-size: 13pt;
+font-weight: bold;
+}
+A:visited {
+COLOR: #000000;TEXT-DECORATION: none
+font-family: Arial, Helvetica, sans-serif;
+font-size: 13pt;
+font-weight: bold;
+}
+A:active {
+COLOR: #000000;TEXT-DECORATION: none
+font-family: Arial, Helvetica, sans-serif;
+font-size: 13pt;
+font-weight: bold;
+}
+A:hover {
+COLOR: #e8f0ff; TEXT-DECORATION: underline
+}
+h1 {
+color : 000000;
+font-family: Tahoma, Verdana, Arial, Helvetica, sans-serif;
+font-size: 18pt;
+letter-spacing: 0.15em;
+font-weight: bold;
+}
+h3 {
+color : 000000;
+font-family: Tahoma, Verdana, Arial, Helvetica, sans-serif;
+font-size: 15pt;
+font-weight: bold;
+}
+</STYLE>
+</head>
+<body bgcolor=b6c0ca>
+<p><b><u>Abk&uuml;rzungen:</u></b></p>
+<p><b></b>Benannte Funktionsargumente werden in Anf&uuml;hrungszeichen &quot;arg&quot; 
+  geschrieben und sind immer optional.<br>
+  M&ouml;gliche Typen von nicht-clip-Argumentn sind int (Ganzzahl), float (Gleitkommazahl), 
+  string (Zeichenkette) or bool (Wahr/Falsch).<br>
+  <tt><font color="#e8f0ff">[yuy2]</font></tt> usw. beschreibt die m&ouml;glichen 
+  Farbformate f&uuml;r ein Filter. Siehe auch <a href="filters/convert.html">ConvertToRGB 
+  / ConvertToYUY2 / ConvertBackToYUY2</a> f&uuml;r Details.<br>
+  <tt><font color="#e8f0ff">[v 2.04]</font></tt> bezeichnet die Version von AviSynth, 
+  seit der das Filter verf&uuml;gbar ist.</p>
+<table width="75%" border="1">
+  <tr> 
+    <td width="16%">script</td>
+    <td width="84%">Textdatei mit den Filtern und Befehlen</td>
+  </tr>
+  <tr> 
+    <td width="16%">clip</td>
+    <td width="84%">Videodatei (oder eigentlich die Variable, in der das Video 
+      gespeichert wird)</td>
+  </tr>
+  <tr> 
+    <td width="16%">file</td>
+    <td width="84%">Datei</td>
+  </tr>
+  <tr> 
+    <td width="16%">frame</td>
+    <td width="84%">ein Bild in einem Video</td>
+  </tr>
+  <tr> 
+    <td width="16%">fps (framerate)</td>
+    <td width="84%">Bilder pro Sekunde, f&uuml;r PAL immer 25 (Bildwiederholrate)</td>
+  </tr>
+  <tr> 
+    <td width="16%">fade</td>
+    <td width="84%">schw&auml;cher werden, also z.B. ausblenden</td>
+  </tr>
+  <tr> 
+    <td width="16%">reduce</td>
+    <td width="84%">vermindern</td>
+  </tr>
+  <tr> 
+    <td width="16%">trim</td>
+    <td width="84%">Abschneiden</td>
+  </tr>
+  <tr> 
+    <td width="16%">argument</td>
+    <td width="84%">die Eingangsgr&ouml;ssen f&uuml;r eine Funktion bzw. einen 
+      Filterbefehl</td>
+  </tr>
+  <tr> 
+    <td width="16%">stack</td>
+    <td width="84%">&uuml;bereinander packen</td>
+  </tr>
+  <tr> 
+    <td width="16%">number</td>
+    <td width="84%">eine Zahl</td>
+  </tr>
+  <tr> 
+    <td width="16%">string</td>
+    <td width="84%">eine Zeichenkette (d.h. eine Aneinanderreihung von Buchstaben, 
+      Ziffern,...)</td>
+  </tr>
+  <tr> 
+    <td width="16%">int</td>
+    <td width="84%">eine Ganzzahl (Zahl ohne Komma)</td>
+  </tr>
+  <tr> 
+    <td width="16%">float</td>
+    <td width="84%">eine Gleitkommazahl (mit Komma)</td>
+  </tr>
+  <tr> 
+    <td width="16%">splice</td>
+    <td width="84%">zusammenf&uuml;gen</td>
+  </tr>
+  <tr> 
+    <td width="16%">aligned, unaligned</td>
+    <td width="84%">ausgerichtet, nicht ausgerichtet</td>
+  </tr>
+  <tr> 
+    <td width="16%">expression</td>
+    <td width="84%">Ausdruck, Formel</td>
+  </tr>
+  <tr> 
+    <td width="16%">return</td>
+    <td width="84%">zur&uuml;ckkehren, R&uuml;ckgabe eines Wertes</td>
+  </tr>
+  <tr> 
+    <td width="16%">optional</td>
+    <td width="84%">eine Variable, die angef&uuml;hrt sein kann aber nicht sein 
+      muss</td>
+  </tr>
+  <tr> 
+    <td width="16%">default</td>
+    <td width="84%">Standardwert</td>
+  </tr>
+  <tr> 
+    <td width="16%">true</td>
+    <td width="84%">wahr, Ja</td>
+  </tr>
+  <tr> 
+    <td width="16%">false</td>
+    <td width="84%">falsch, nein</td>
+  </tr>
+  <tr> 
+    <td width="16%">error</td>
+    <td width="84%">Fehler</td>
+  </tr>
+  <tr> 
+    <td width="16%">plugin</td>
+    <td width="84%">Erweiterungs-Funktion</td>
+  </tr>
+  <tr> 
+    <td width="16%">field, interlaced</td>
+    <td width="84%"> 
+      <p>bei einem Interlaced-Bild sind zwei &quot;field&quot;-Bilder (die zeitlich 
+        1/50 sec auseinander liegen) auf ein &quot;frame&quot;-Bild zusammengemischt, 
+        und zwar immer die geraden Zeilen vom einen und die ungeraden vom zweiten 
+        &quot;field&quot;-Bild.<br>
+        Die zeitliche Aufl&ouml;sung ist also doppelt so hoch, allerdings mit 
+        der halben Zeilenanzahl, wobei die vertikale Position dieser Zeilen stimmt 
+        (die fields werden beim Abspielen im TV nicht nur doppelt so hoch gemacht 
+        sondern auch um eine halbe Zeile nach oben bzw. unten verschoben)</p>
+    </td>
+  </tr>
+  <tr> 
+    <td width="16%">bob</td>
+    <td width="84%">springen (n&auml;mlich gerade der Effekt, dass die fields 
+      eines Interlaced-Videos hoch- und runter springen, wenn man sie einfach 
+      hintereinander abspielt)</td>
+  </tr>
+  <tr> 
+    <td width="16%">progressive</td>
+    <td width="84%">das Gegenteil von Interlaced - alle 1/25 sec ein ganzes Bild</td>
+  </tr>
+</table>
+<p>&nbsp; </p>
+<hr>
+<h1>Alphabetische Auflistung</h1>
+<p><b><a href="filters/addborders.html">AddBorders</a> </b> <tt> <font color="#e8f0ff"> 
+  [yuy2] [rgb32] [rgb24] </font> </tt> </p>
+<ul>
+  <li><tt>AddBorders(</tt><i>clip, int left, int top, int right, int bottom</i><tt>)</tt></li>
+</ul>
+<b> <a href="filters/amplify.html">Amplify / AmplifydB</a> </b> <tt> <font color="#e8f0ff"> 
+[yuy2] [rgb32] [rgb24] </font> </tt> 
+<ul>
+  <li><tt>Amplify(</tt><i>clip, float amount</i><tt>)</tt></li>
+  <li><tt>Amplify(</tt><i>clip, float left, float right</i><tt>)</tt></li>
+  <li><tt>AmplifydB(</tt><i>clip, float amount</i><tt>)</tt></li>
+  <li><tt>AmplifydB(</tt><i>clip, float left, float right</i><tt>)</tt></li>
+</ul>
+<b> <a href="filters/animate.html">Animate</a> </b> <tt> <font color="#e8f0ff"> 
+[yuy2] [rgb32] [rgb24] </font> </tt> 
+<ul>
+  <li><tt>Animate(</tt><i>clip, int start_frame, int end_frame, string filtername, 
+    start_args, end_args</i><tt>)</tt></li>
+</ul>
+<b> <a href="filters/assumeframefield.html">AssumeFrameBased / AssumeFieldBased</a> 
+</b> <tt> <font color="#e8f0ff"> [yuy2] [rgb32] [rgb24] </font> </tt> 
+<ul>
+  <li><tt>AssumeFrameBased(</tt><i>clip</i><tt>)</tt></li>
+  <li><tt>AssumeFieldBased(</tt><i>clip</i><tt>)</tt></li>
+</ul>
+<B><a href="filters/assumefieldfirst.html">AssumeTFF / AssumeBFF</a> </b> <tt> 
+<font color="#e8f0ff"> [yuy2] [rgb32] [rgb24]</font></tt> 
+<ul>
+  <li><tt>AssumeTFF(</tt><i>clip</i><tt>)<font color="#e8f0ff"> [v 2.04]</font></tt></li>
+  <li><tt>AssumeBFF(</tt><i>clip</i><tt>)<font color="#e8f0ff"> [v 2.04]</font></tt></li>
+</ul>
+<a href="filters/assumerate.html"><b>AssumeSampleRate</b></a> <tt> <font color="#e8f0ff"> 
+[yuy2] [rgb32] [rgb24] </font> </tt> 
+<ul>
+  <li><tt>AssumeFrameBased(</tt><i>clip</i>,<i>int new_rate</i><tt>)</tt></li>
+</ul>
+<B><a href="filters/audiodub.html"></a></b><b><a href="filters/audiodub.html">AudioDub</a> 
+</b> <tt> <font color="#e8f0ff"> [yuy2] [rgb32] [rgb24] </font> </tt> 
+<ul>
+  <li><tt>AudioDub(</tt><i>video_clip, audio_clip</i><tt>)</tt></li>
+</ul>
+<B><a href="filters/avisource.html">AVISource / OpenDMLSource / AVIFileSource 
+/ WAVSource</a></b><tt> </tt> 
+<ul>
+  <li><tt>AVISource(</tt><i>string filename[,...], bool &quot;audio&quot;</i><tt>) 
+    </tt></li>
+  <li><tt>OpenDMLSource(</tt><i>string filename[,...], bool &quot;audio&quot;</i><tt>)</tt></li>
+  <li><tt>AVIFileSource(</tt><i>string filename[,...], bool &quot;audio&quot;</i><tt>)</tt></li>
+  <li><tt>WAVSource(</tt><i>string filename[,...], bool &quot;audio&quot;</i><tt>)<br>
+    </tt> 
+    <p></p>
+  </li>
+</ul>
+<B><a href="filters/bicubicresize.html"></a></b><B><a href="filters/blankclip.html">BlankClip 
+/ Blackness</a></b><tt> </tt> 
+<ul>
+  <li><tt>BlankClip</tt>(<i>clip &quot;clip&quot;, int &quot;length&quot;, int 
+    &quot;width&quot;, int &quot;height&quot;, string &quot;pixel_type&quot;, 
+    float &quot;fps&quot;, int &quot;fps_denominator&quot;,&nbsp;int &quot;audio_rate&quot;, 
+    bool &quot;stereo&quot;, bool &quot;sixteen_bit&quot;, int &quot;color&quot;</i>) 
+  </li>
+  <li><tt>Blackness</tt>(<i>clip &quot;clip&quot;, int &quot;length&quot;, int 
+    &quot;width&quot;, int &quot;height&quot;, string &quot;pixel_type&quot;, 
+    float &quot;fps&quot;, int &quot;fps_denominator&quot;,&nbsp;int &quot;audio_rate&quot;, 
+    bool &quot;stereo&quot;, bool &quot;sixteen_bit&quot;, int &quot;color&quot;</i>) 
+  </li>
+</ul>
+<B><a href="filters/bob.html"></a></b><b><a href="filters/blur.html">Blur / Sharpen</a> 
+</b> <tt> <font color="#e8f0ff"> [yuy2] [rgb32] [rgb24] </font> </tt> 
+<ul>
+  <li><tt>Blur(</tt><i>clip, float amount</i><tt>)</tt></li>
+  <li><tt>Sharpen(</tt><i>clip, float amount</i><tt>)</tt></li>
+</ul>
+<b> <a href="filters/bob.html">Bob</a> </b> <tt> <font color="#e8f0ff"> [yuy2] 
+[rgb32] [rgb24] </font> </tt> 
+<ul>
+  <li><tt>Bob(</tt><i>clip, float &quot;b&quot;, float &quot;c&quot;, float &quot;height&quot;</i><tt>)</tt></li>
+</ul>
+<B><a href="filters/colorbars.html">ColorBars</a></b><tt> </tt> 
+<ul>
+  <li><tt>ColorBars(</tt><i>int width, int height</i><tt>)</tt></li>
+</ul>
+<b> <a href="filters/complementparity.html">ComplementParity</a> </b> <tt> <font color="#e8f0ff"> 
+[yuy2] [rgb32] [rgb24] </font> </tt> 
+<ul>
+  <li><tt>ComplementParity(</tt><i>clip</i><tt>)</tt></li>
+</ul>
+<B><a href="filters/compare.html">Compare</a> </b> <tt> <font color="#e8f0ff"> 
+[yuy2] [rgb32] [rgb24] </font> </tt> 
+<ul>
+  <li><tt>Compare(</tt><i>clip_filtered, clip_original, string &quot;channels&quot;, 
+    string &quot;logfile&quot;, bool &quot;show_graph&quot;</i><tt>)<font color="#e8f0ff"> 
+    [v 2.04]</font></tt></li>
+</ul>
+<B><a href="filters/convert.html">ConvertToRGB / ConvertToYUY2 / ConvertBackToYUY2 
+/ ConvertToRGB32 / ConvertToRGB24</a> </b> <tt> <font color="#e8f0ff"> [yuy2] 
+[rgb32] [rgb24] </font> </tt> 
+<ul>
+  <li><tt>ConvertToRGB(</tt><i>clip</i><tt>)</tt></li>
+  <li><tt>ConvertToYUY2(</tt><i>clip</i><tt>)</tt></li>
+  <li><tt>ConvertToBackYUY2(</tt><i>clip</i><tt>)<font color="#e8f0ff"> [v 2.04]</font></tt></li>
+  <li><tt>ConvertToRGB24(</tt><i>clip</i><tt>)</tt></li>
+  <li><tt>ConvertToRGB32(</tt><i>clip</i><tt>)</tt></li>
+</ul>
+<b> <a href="filters/convertaudioto16bit.html">ConvertAudioTo16bit</a> </b> <tt> 
+<font color="#e8f0ff"> [yuy2] [rgb32] [rgb24] </font> </tt> 
+<ul>
+  <li><tt>ConvertAudioTo16bit(</tt><i>clip</i><tt>)</tt></li>
+</ul>
+<B><a href="filters/converttomono.html">ConvertToMono</a> </b> <tt> <font color="#e8f0ff"> 
+[yuy2] [rgb32] [rgb24] </font> </tt> 
+<ul>
+  <li><tt>ConvertToMono(</tt><i>clip</i><tt>)<font color="#e8f0ff"> [v 2.04]</font></tt></li>
+</ul>
+<B><a href="filters/converttorgb.html"></a> </b> 
+
+  <b><a href="filters/crop.html">Crop / CropBottom</a> </b> <tt> <font color="#e8f0ff"> 
+  [yuy2] [rgb32] [rgb24] </font> </tt> 
+
+<ul>
+  <li><tt>Crop(</tt><i>clip, int left, int top, int width, int height</i><tt>)</tt></li>
+  <li><tt>CropBottom(</tt><i>clip, int count</i><tt>)</tt></li>
+</ul>
+<b> <a href="filters/delayaudio.html">DelayAudio</a> </b> <tt> <font color="#e8f0ff"> 
+[yuy2] [rgb32] [rgb24] </font> </tt> 
+<ul>
+  <li><tt>DelayAudio(</tt><i>clip, float seconds</i><tt>)</tt></li>
+</ul>
+<b> <a href="filters/deleteframe.html">DeleteFrame</a> </b> <tt> <font color="#e8f0ff"> 
+[yuy2] [rgb32] [rgb24] </font> </tt> 
+<ul>
+  <li><tt>DeleteFrame(</tt><i>clip, int frame</i><tt>)</tt></li>
+</ul>
+<B><a href="filters/directshowsource.html">DirectShowSource</a></b><tt> </tt> 
+<ul>
+  <li><tt>DirectShowSource(</tt><i>string filename, int &quot;fps&quot;</i><tt>)</tt></li>
+</ul>
+<B><a href="filters/doubleweave.html"></a></b><b><a href="filters/dissolve.html">Dissolve</a> 
+</b> <tt> <font color="#e8f0ff"> [yuy2] [rgb32] [rgb24] </font> </tt> 
+<ul>
+  <li><tt>Dissolve(</tt><i>clip1, clip2[,...], int overlap</i><tt>)</tt></li>
+</ul>
+<b> <a href="filters/doubleweave.html">DoubleWeave</a> </b> <tt> <font color="#e8f0ff"> 
+[yuy2] [rgb32] [rgb24] </font> </tt> 
+<ul>
+  <li><tt>DoubleWeave(</tt><i>clip</i><tt>)</tt></li>
+</ul>
+<b> <a href="filters/duplicateframe.html">DuplicateFrame</a> </b> <tt> <font color="#e8f0ff"> 
+[yuy2] [rgb32] [rgb24] </font> </tt> 
+<ul>
+  <li><tt>DuplicateFrame(</tt><i>clip, int frame</i><tt>)</tt></li>
+</ul>
+<b> <a href="filters/ensuresync.html">EnsureVBRMP3Sync</a> </b> <tt> <font color="#e8f0ff"> 
+[yuy2] [rgb32] [rgb24] </font> </tt> 
+<ul>
+  <li><tt>EnsureVBRMP3Sync(</tt><i>clip</i><tt>)</tt></li>
+</ul>
+<b> <a href="filters/fade.html">FadeOut / FadeOut2</a> </b> <tt> <font color="#e8f0ff"> 
+[yuy2] [rgb32] [rgb24] </font> </tt> 
+<ul>
+  <li><tt>FadeOut(</tt><i>clip, int frames</i><tt>)</tt></li>
+  <li><tt>FadeOut2(</tt><i>clip, int frames</i><tt>)</tt></li>
+</ul>
+<b> <a href="filters/fixbrokenchromaupsampling.html">FixBrokenChromaUpsampling</a> 
+</b> <tt> <font color="#e8f0ff"> [yuy2] </font> </tt> 
+<ul>
+  <li><tt>FixBrokenChromaUpsampling(</tt><i>clip</i><tt>)</tt></li>
+</ul>
+<b> <a href="filters/fixluminance.html">FixLuminance</a> </b> <tt> <font color="#e8f0ff"> 
+[yuy2] </font> </tt> 
+<ul>
+  <li><tt>FixLuminance(</tt><i>clip, int intercept, int slope</i><tt>)</tt></li>
+</ul>
+<b> <a href="filters/flip.html">FlipVertical</a> </b> <tt> <font color="#e8f0ff"> 
+[yuy2] [rgb32] [rgb24] </font> </tt> 
+<ul>
+  <li><tt>FlipVertical(</tt><i>clip</i><tt>)</tt></li>
+</ul>
+<b> <a href="filters/fps.html">AssumeFPS / ChangeFPS / ConvertFPS</a> </b> <tt> 
+<font color="#e8f0ff"> [yuy2] [rgb32] [rgb24] </font> </tt> 
+<ul>
+  <li><tt>AssumeFPS(</tt><i>clip, int numerator, int denominator, bool &quot;sync_audio&quot;</i><tt>)</tt></li>
+  <li><tt>ChangeFPS(</tt><i>clip, float fps</i><tt>)</tt></li>
+  <li><tt>ConvertFPS(</tt><i>clip, int new_rate, int &quot;zone&quot;, int &quot;vbi&quot;</i><tt>)</tt></li>
+</ul>
+<b> <a href="filters/freezeframe.html">FreezeFrame</a> </b> <tt> <font color="#e8f0ff"> 
+[yuy2] [rgb32] [rgb24] </font> </tt> 
+<ul>
+  <li><tt>FreezeFrame(</tt><i>clip, int first_frame, int last_frame, int source_frame</i><tt>)</tt></li>
+</ul>
+<B><a href="filters/convolution.html">GeneralConvolution</a> </b> <tt> <font color="#e8f0ff"> 
+[rgb32]</font> </tt> 
+<ul>
+  <li><tt>GeneralConvolution (</tt><i>clip, int &quot;bias&quot;, string matrix</i><tt>)<font color="#e8f0ff"> 
+    [v 2.04]</font></tt></li>
+</ul>
+<B><a href="filters/interleave.html"></a></b><b><a href="filters/interleave.html"></a></b><b><a href="filters/getchannel.html">GetLeftChannel 
+/ GetRightChannel</a> </b> <tt> <font color="#e8f0ff"> [yuy2] [rgb32] [rgb24]</font> 
+</tt> 
+<ul>
+  <li><tt>GetLeftChannel(</tt><i>clip</i><tt>)<font color="#e8f0ff"> [v 2.04]</font></tt></li>
+  <li><tt>GetRightChannel(</tt><i>clip</i><tt>)<font color="#e8f0ff"> [v 2.04]</font></tt></li>
+</ul>
+<B></b><b><a href="filters/greyscale.html">Greyscale</a> </b> <tt> <font color="#e8f0ff"> 
+[yuy2] [rgb32] [rgb24]</font> </tt> 
+<ul>
+  <li><tt>Greyscale (</tt><i>clip</i><tt>)</tt></li>
+</ul>
+<B><a href="filters/interleave.html"></a></b><b><a href="filters/interleave.html"></a></b><b><a href="filters/getchannel.html"></a></b><b><a href="filters/Histogram.html">Histogram</a> 
+</b> <tt> <font color="#e8f0ff"> [yuy2] [rgb32] [rgb24]</font> </tt> 
+<ul>
+  <li><tt>Histogram (</tt><i>clip</i><tt>)</tt></li>
+</ul>
+<B><a href="filters/interleave.html"></a></b><b><a href="filters/interleave.html"></a></b><b><a href="filters/getchannel.html"></a></b><b><a href="filters/interleave.html"></a></b><b><a href="filters/interleave.html">Interleave</a> 
+</b> <tt> <font color="#e8f0ff"> [yuy2] [rgb32] [rgb24] </font> </tt> 
+<ul>
+  <li><tt>Interleave(</tt><i>clip, clip [,...]</i><tt>)</tt></li>
+</ul>
+<B><a href="filters/killaudio.html">KillAudio</a> </b> <tt> <font color="#e8f0ff"> 
+[yuy2] [rgb32] [rgb24] </font> </tt> 
+<ul>
+  <li><tt>KillAudio(</tt><i>clip</i><tt>)<font color="#e8f0ff"> [v 2.04]</font></tt></li>
+</ul>
+<B><a href="filters/layer.html">Layer / Mask / ResetMask / ColorKeyMask</a> </b> 
+<tt> <font color="#e8f0ff"> [???]</font> </tt> 
+<ul>
+  <li><tt>Layer(</tt><i>clip, layer_clip, string &quot;op&quot;, int &quot;level&quot;, 
+    int &quot;x&quot;, int &quot;y&quot;, int &quot;threshold&quot;, bool &quot;use_chroma&quot;</i><tt>)<font color="#e8f0ff"> 
+    [yuy2] [rgb32] [v 2.04]</font></tt></li>
+  <li><tt>Mask(</tt><i>clip, mask_clip</i><tt>)<font color="#e8f0ff"> [rgb32] 
+    [v 2.04]</font></tt></li>
+  <li><tt>ResetMask(</tt><i>clip</i><tt>)<font color="#e8f0ff"> [rgb32] [v 2.06]</font></tt></li>
+  <li><tt>ColorKeyMask(</tt><i>clip, int color, int tolerance</i><tt>)<font color="#e8f0ff"> 
+    [rgb32] [v 2.04]</font></tt></li>
+</ul>
+<B><a href="filters/level	s.html"></a></b><b><a href="filters/letterbox.html">Letterbox</a> 
+</b> <tt> <font color="#e8f0ff"> [yuy2] [rgb32] [rgb24] </font> </tt> 
+<ul>
+  <li><tt>Letterbox(</tt><i>clip, int top, int bottom, [int left, int right]</i><tt>)</tt></li>
+</ul>
+<b> <a href="filters/levels.html">Levels</a> </b> <tt> <font color="#e8f0ff"> 
+[yuy2] [rgb32] [rgb24] </font> </tt> 
+<ul>
+  <li><tt>Levels(</tt><i>clip, int input_low, float gamma, int input_high, int 
+    output_low, int output_high</i><tt>)</tt></li>
+</ul>
+<B><a href="filters/loop.html">Loop</a> </b> <tt> <font color="#e8f0ff"> [yuy2] 
+[rgb32] [rgb24] </font> </tt> 
+<ul>
+  <li><tt>Loop(</tt><i>clip, int &quot;times&quot;, int &quot;start&quot;, int 
+    &quot;end&quot;</i><tt>)<font color="#e8f0ff"> [v 2.04]</font></tt></li>
+</ul>
+<B><a href="filters/merge.html">MergeChroma / MergeLuma</a> </b> <tt> <font color="#e8f0ff"> 
+[yuy2] </font> </tt> 
+<ul>
+  <li><tt>MergeChroma(</tt><i>clip1, clip2, float weight</i><tt>) <font color="#e8f0ff"> 
+    [v 2.04]</font></tt></li>
+  <li><tt>MergeLuma(</tt><i>clip1, clip2, float weight</i><tt>)<font color="#e8f0ff"> 
+    [v 2.04]</font></tt></li>
+</ul>
+<B><a href="filters/passaudio.html">LowPassAudio / HighPassAudio</a> </b> <tt> 
+<font color="#e8f0ff"> [yuy2] [rgb32] [rgb24] </font> </tt> 
+<ul>
+  <li><tt>LowPassAudiodio(clip, float frequency)<font color="#e8f0ff"> [v 2.04]</font></tt></li>
+  <li><tt>HighPassAudiodio(clip, float frequency)<font color="#e8f0ff"> [v 2.04]</font></tt></li>
+</ul>
+<B></b><b><a href="filters/message.html">MessageClip</a></b> 
+<ul>
+  <li><tt>MessageClip(</tt><i>string message, int &quot;width&quot;, int &quot;height&quot;, 
+    bool &quot;shrink&quot;, int &quot;text_color&quot;, int &quot;halo_color&quot;, 
+    int &quot;bg_color&quot;</i><tt>)</tt></li>
+</ul>
+<B><a href="filters/mixaudio.html">MixAudio</a> </b> <tt> <font color="#e8f0ff"> 
+[yuy2] [rgb32] [rgb24] </font> </tt> 
+<ul>
+  <li><tt>MixAudio(</tt><i>clip1, clip 2, &quot;clip1_factor&quot;, clip2_factor</i><tt>)<font color="#e8f0ff"> 
+    [v 2.04]</font></tt></li>
+</ul>
+<B><a href="filters/monotostereo.html">MonoToStereo</a> </b> <tt> <font color="#e8f0ff"> 
+[yuy2] [rgb32] [rgb24] </font> </tt> 
+<ul>
+  <li><tt>MonoToStereo(</tt><i>left_channel_clip, right_channel_clip</i><tt>)<font color="#e8f0ff"> 
+    [v 2.04]</font></tt></li>
+</ul>
+<B><a href="filters/normalize.html">Normalize</a> </b> <tt> <font color="#e8f0ff"> 
+[yuy2] [rgb32] [rgb24] </font> </tt> 
+<ul>
+  <li><tt>Normalize(</tt><i>clip, float &quot;left&quot;, float &quot;right&quot;</i><tt>)<font color="#e8f0ff"> 
+    [v 2.04]</font></tt></li>
+</ul>
+<b> <a href="filters/peculiar.html">PeculiarBlend</a> </b> <tt> <font color="#e8f0ff"> 
+[yuy2] </font> </tt> 
+<ul>
+  <li><tt>PeculiarBlend(</tt><i>clip, int cutoff</i><tt>)</tt></li>
+</ul>
+<b> <a href="filters/pulldown.html">Pulldown</a> </b> <tt> <font color="#e8f0ff"> 
+[yuy2] [rgb32] [rgb24] </font> </tt> 
+<ul>
+  <li><tt>Pulldown(</tt><i>clip, int a , int b</i><tt>)</tt></li>
+</ul>
+<B><a href="filters/adjust.html">RGBAdjust</a> </b> <tt> <font color="#e8f0ff"> 
+[yuy2] [rgb32] [rgb24] </font> </tt> 
+<ul>
+  <li><tt>RGBAdjust(</tt><i>clip, float red, float green, float blue, float alpha</i><tt>)</tt></li>
+</ul>
+<B><a href="filters/reduceby2.html"></a></b><b><a href="filters/reduceby2.html">ReduceBy2 
+/ HorizontalReduceBy2 / VerticalReduceBy2</a> </b> <tt> <font color="#e8f0ff"> 
+[yuy2] [rgb32] [rgb24] </font> </tt> 
+<ul>
+  <li><tt>HorizontalReduceBy2(</tt><i>clip</i><tt>)</tt></li>
+  <li><tt>VerticalReduceBy2(</tt><i>clip</i><tt>)</tt></li>
+  <li><tt>ReduceBy2(</tt><i>clip</i><tt>)</tt></li>
+</ul>
+<b> <a href="filters/resampleaudio.html">ResampleAudio</a> </b> <tt> <font color="#e8f0ff"> 
+[yuy2] [rgb32] [rgb24] </font> </tt> 
+<ul>
+  <li><tt>ResampleAudio(</tt><i>clip, int new_sample_rate</i><tt>)</tt></li>
+</ul>
+<b> <a href="filters/resize.html">BilinearResize / BicubicResize / LanczosResize 
+/ PointResize</a> </b> <tt> <font color="#e8f0ff"> [yuy2] [rgb32] [rgb24] </font> 
+</tt> 
+<ul>
+  <li><tt>BilinearResize(</tt><i>clip, int target_width, int target_height</i><tt>)</tt></li>
+  <li><tt>BilinearResize(</tt><i>clip, int target_width, int target_height, float 
+    &quot;src_left&quot;, float &quot;src_top&quot;, float &quot;src_width&quot;, 
+    float &quot;src_height&quot;</i><tt>)</tt></li>
+  <li><tt>BicubicResize(</tt><i>clip, int target_width, int target_height, float 
+    &quot;b&quot;, float &quot;c&quot;</i><tt>)</tt></li>
+  <li><tt>BicubicResize(</tt><i>clip, int target_width, int target_height, float 
+    &quot;b&quot;, float &quot;c&quot;, float &quot;src_left&quot;, float &quot;src_top&quot;, 
+    float &quot;src_width&quot;, float &quot;src_height&quot;</i><tt>)</tt></li>
+  <li><tt>LanczosResize(</tt><i>clip, int target_width, int target_height</i><tt>)<font color="#e8f0ff"> 
+    [v2.06]</font></tt></li>
+  <li><tt>LanczosResize(</tt><i>clip, int target_width, int target_height, float 
+    "src_left", float "src_top", float "src_width", float "src_height"</i><tt>)<font color="#e8f0ff"> 
+    [v2.06]</font></tt></li>
+  <li> 
+    <p><tt>PointResize(</tt><i>clip, int target_width, int target_height</i><tt>)<font color="#e8f0ff"> 
+      [v2.07]</font><br>
+      </tt> 
+  </li>
+  <li><tt>PointResize(</tt><i>clip, int target_width, int target_height, float 
+    "src_left", float "src_top", float "src_width", float "src_height"</i><tt>)</tt><tt><font color="#e8f0ff"> 
+    [v2.07]</font><br>
+    </tt> 
+    <p></p>
+</ul>
+<b><a href="filters/reverse.html">Reverse</a> </b> <tt> <font color="#e8f0ff"> 
+[yuy2] [rgb32] [rgb24] </font> </tt> 
+<ul>
+  <li><tt>Reverse(</tt><i>clip</i><tt>)</tt></li>
+</ul>
+<B><a href="filters/segmentedsource.html">SegmentedAVISource / SegmentedDirectShowSource</a></b> 
+<ul>
+  <li><tt>SegmentedAVISource(</tt><i>string base_filename[,...], bool &quot;audio&quot;</i><tt>)</tt></li>
+  <li><tt>SegmentedDirectShowSource(</tt><i>string base_filename[,...][,fps]</i><tt>)<br>
+    </tt> 
+    <p></p>
+  </li>
+</ul>
+<B><a href="filters/selectevery.html"></a></b><b><a href="filters/select.html">SelectEven 
+/ SelectOdd</a> </b> <tt> <font color="#e8f0ff"> [yuy2] [rgb32] [rgb24] </font> 
+</tt> 
+<ul>
+  <li><tt>SelectEven(</tt><i>clip</i><tt>)</tt></li>
+  <li><tt>SelectOdd(</tt><i>clip</i><tt>)</tt></li>
+</ul>
+<b> <a href="filters/selectevery.html">SelectEvery</a> </b> <tt> <font color="#e8f0ff"> 
+[yuy2] [rgb32] [rgb24] </font> </tt> 
+<ul>
+  <li><tt>SelectEvery(</tt><i>clip, int step_size[, int offset1[, int offset2[,...]]]</i><tt>)</tt></li>
+</ul>
+<b> <a href="filters/seperatefields.html">SeparateFields</a> </b> <tt> <font color="#e8f0ff"> 
+[yuy2] [rgb32] [rgb24] </font> </tt> 
+<ul>
+  <li><tt>SeparateFields(</tt><i>clip</i><tt>)</tt></li>
+</ul>
+<b> <a href="filters/showfive.html">ShowFiveVersions</a> </b> <tt> <font color="#e8f0ff"> 
+[yuy2] [rgb32] [rgb24] </font> </tt> 
+<ul>
+  <li><tt>ShowFiveVersions(</tt><i>clip1, clip2, clip3, clip4, clip5</i><tt>)</tt></li>
+</ul>
+<b> <a href="filters/showframes.html">ShowFrameNumber / ShowSMPTE</a> </b> <tt> 
+<font color="#e8f0ff"> [yuy2] [rgb32] [rgb24] </font> </tt> 
+<ul>
+  <li><tt>ShowFrameNumber(</tt><i>clip, bool &quot;scroll&quot;</i><tt>)</tt></li>
+  <li><tt>ShowSMPTE(</tt><i>clip, float fps</i><tt>)</tt></li>
+</ul>
+<b> <a href="filters/soften.html">SpatialSoften / TemporalSoften</a> </b> <tt> 
+<font color="#e8f0ff"> [yuy2] </font> </tt> 
+<ul>
+  <li><tt>SpatialSoften(</tt><i>clip, int radius, int luma_threshold, int chroma_threshold</i><tt>)</tt></li>
+  <li><tt>TemporalSoften(</tt><i>clip, int radius, int luma_threshold, int chroma_threshold</i><tt>)</tt></li>
+</ul>
+<b> <a href="filters/splice.html">AlignedSplice / UnalignedSplice</a> </b> <tt> 
+<font color="#e8f0ff"> [yuy2] [rgb32] [rgb24] </font> </tt> 
+<ul>
+  <li><tt>AlignedSplice(</tt><i>clip1, clip2[,...]</i><tt>)</tt></li>
+  <li><tt>UnAlignedSplice(</tt><i>clip1, clip2[,...]</i><tt>)</tt></li>
+</ul>
+<b> <a href="filters/stack.html">StackHorizontal / StackVertical</a> </b> <tt> 
+<font color="#e8f0ff"> [yuy2] [rgb32] [rgb24] </font> </tt> 
+<ul>
+  <li><tt>StackHorizontal(</tt><i>clip1, clip2[,...]</i><tt>)</tt></li>
+  <li><tt>StackVertical(</tt><i>clip1, clip2[,...]</i><tt>)</tt></li>
+</ul>
+<B><a href="filters/subtitle.html">Subtitle</a> </b> <tt> <font color="#e8f0ff"> 
+[yuy2] [rgb32] [rgb24] </font> </tt> 
+<ul>
+  <li><tt>Subtitle(</tt><i>clip, string text, int &quot;x&quot;, int &quot;y&quot;, 
+    int &quot;first_frame&quot;, int &quot;last_frame&quot;, string &quot;font&quot;, 
+    int &quot;size&quot;, int &quot;text_color&quot;, int &quot;halo_color&quot;</i><tt>)</tt></li>
+  <li><tt>Subtitle(</tt><i>clip, string "text"</i><tt>)</tt></li>
+</ul>
+<b> <a href="filters/subtract.html">Subtract</a> </b> <tt> <font color="#e8f0ff"> 
+[yuy2] [rgb32] [rgb24] </font> </tt> 
+<ul>
+  <li><tt>Subtract(</tt><i>clip1, clip2</i><tt>)</tt></li>
+</ul>
+<b> <a href="filters/swapfields.html">SwapFields</a> </b> <tt> <font color="#e8f0ff"> 
+[yuy2] [rgb32] [rgb24] </font> </tt> 
+<ul>
+  <li><tt>SwapFields(</tt><i>clip</i><tt>)</tt></li>
+</ul>
+<b> <a href="filters/trim.html">Trim</a> </b> <tt> <font color="#e8f0ff"> [yuy2] 
+[rgb32] [rgb24] </font> </tt> 
+<ul>
+  <li><tt>Trim(</tt><i>clip, int first_frame, int last_frame</i><tt>)</tt></li>
+</ul>
+<B><a href="filters/tweak.html">Tweak</a> </b> <tt> <font color="#e8f0ff"> [yuy2]</font> 
+</tt> 
+<ul>
+  <li><tt>Tweak(</tt><i>clip, float "hue", float "sat", float "bright", float 
+    "cont"</i><tt>)<font color="#e8f0ff"> [v 2.04]</font></tt></li>
+</ul>
+<B><a href="filters/version.html"></a></b><b><a href="filters/version.html">Version</a></b><tt> 
+</tt> 
+<ul>
+  <li><tt>Version()</tt></li>
+</ul>
+<b> <a href="filters/weave.html">Weave</a> </b> <tt> <font color="#e8f0ff"> [yuy2] 
+[rgb32] [rgb24] </font> </tt> 
+<ul>
+  <li><tt>Weave(</tt><i>clip</i></li>
+</ul>
+</body>
+</html>
