@@ -164,13 +164,12 @@ PVideoFrame ImageWriter::GetFrame(int n, IScriptEnvironment* env)
     // Get errors if any
     ILenum err = ilGetError();
     if (err != IL_NO_ERROR)
-      env->ThrowError( iluErrorString(err) );
+      env->ThrowError("ImageWriter: error encountered in DevIL library");
     
     // Clean up
     ilDeleteImages(1, &myImage);
   }  
-  
-  
+    
   
   // overlay on video output: progress indicator
   ostringstream text;

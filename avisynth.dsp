@@ -55,7 +55,7 @@ BSC32=bscmake.exe
 # ADD BSC32 /nologo
 LINK32=link.exe
 # ADD BASE LINK32 kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib /nologo /dll /machine:I386
-# ADD LINK32 distrib/lib/libpng13.lib distrib/lib/libjpeg.lib distrib/lib/softwire.lib msacm32.lib quartz.lib ddraw.lib amstrmid.lib vfw32.lib kernel32.lib advapi32.lib version.lib user32.lib gdi32.lib ole32.lib uuid.lib winmm.lib /nologo /dll /machine:I386
+# ADD LINK32 distrib/lib/softwire.lib msacm32.lib quartz.lib ddraw.lib amstrmid.lib vfw32.lib kernel32.lib advapi32.lib version.lib user32.lib gdi32.lib ole32.lib uuid.lib winmm.lib /nologo /dll /machine:I386
 # SUBTRACT LINK32 /pdb:none
 # Begin Custom Build
 InputPath=.\Release\avisynth.dll
@@ -95,7 +95,7 @@ BSC32=bscmake.exe
 # ADD BSC32 /nologo
 LINK32=link.exe
 # ADD BASE LINK32 kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib /nologo /dll /debug /machine:I386 /pdbtype:sept
-# ADD LINK32 distrib/lib/libpng13.lib distrib/lib/libjpeg.lib distrib/lib/softwire.lib msacm32.lib quartz.lib ddraw.lib amstrmid.lib vfw32.lib kernel32.lib advapi32.lib version.lib user32.lib gdi32.lib ole32.lib uuid.lib winmm.lib /nologo /dll /debug /machine:I386 /pdbtype:sept
+# ADD LINK32 distrib/lib/softwire.lib msacm32.lib quartz.lib ddraw.lib amstrmid.lib vfw32.lib kernel32.lib advapi32.lib version.lib user32.lib gdi32.lib ole32.lib uuid.lib winmm.lib /nologo /dll /debug /machine:I386 /pdbtype:sept
 # SUBTRACT LINK32 /pdb:none /incremental:no /nodefaultlib
 # Begin Special Build Tool
 SOURCE="$(InputPath)"
@@ -128,7 +128,7 @@ BSC32=bscmake.exe
 LINK32=link.exe
 # ADD BASE LINK32 msvcrt.lib c:\p\mm\mpeg2dll\release\mpeg2dll.lib ddraw.lib amstrmid.lib vfw32.lib kernel32.lib advapi32.lib version.lib user32.lib gdi32.lib ole32.lib uuid.lib /nologo /dll /machine:I386
 # SUBTRACT BASE LINK32 /pdb:none /debug /nodefaultlib
-# ADD LINK32 distrib/lib/libpng13.lib distrib/lib/libjpeg.lib penter.lib msvcrt.lib msacm32.lib quartz.lib ddraw.lib amstrmid.lib vfw32.lib kernel32.lib advapi32.lib version.lib user32.lib gdi32.lib ole32.lib uuid.lib winmm.lib /nologo /dll /debug /machine:I386 /nodefaultlib
+# ADD LINK32 penter.lib msvcrt.lib msacm32.lib quartz.lib ddraw.lib amstrmid.lib vfw32.lib kernel32.lib advapi32.lib version.lib user32.lib gdi32.lib ole32.lib uuid.lib winmm.lib /nologo /dll /debug /machine:I386 /nodefaultlib
 # SUBTRACT LINK32 /pdb:none
 # Begin Special Build Tool
 SOURCE="$(InputPath)"
@@ -514,22 +514,6 @@ SOURCE=.\turnfunc.h
 # Begin Group "Image"
 
 # PROP Default_Filter "*.cpp *.h"
-# Begin Source File
-
-SOURCE=.\AvsImage.h
-# End Source File
-# Begin Source File
-
-SOURCE=.\AvsImageBmp.cpp
-# End Source File
-# Begin Source File
-
-SOURCE=.\AvsImageJpeg.cpp
-# End Source File
-# Begin Source File
-
-SOURCE=.\AvsImagePng.cpp
-# End Source File
 # Begin Source File
 
 SOURCE=.\ImageSeq.cpp

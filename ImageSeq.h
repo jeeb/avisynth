@@ -43,10 +43,8 @@ using namespace std;
 
 #include "internal.h"
 #include "text-overlay.h"
-#include "AvsImage.h"
 
-#include "distrib\il\il.h"
-#include "distrib\il\ilu.h"
+#include "distrib\include\il\il.h"
 
 
 class ImageWriter : public GenericVideoFilter 
