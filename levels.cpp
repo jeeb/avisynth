@@ -48,7 +48,6 @@
 
 AVSFunction Levels_filters[] = {
   { "Levels", "cifiii", Levels::Create },        // src_low, gamma, src_high, dst_low, dst_high 
-  { "HSIAdjust", "cffifi", HSIAdjust::Create },  // H, S, min, gamma, max
   { "RGBAdjust", "cffff", RGBAdjust::Create },   // R, G, B, A
   { "Tweak", "c[hue]f[sat]f[bright]f[cont]f", Tweak::Create },  // hue, sat, bright, contrast
   { "Limiter", "c[min_luma]i[max_luma]i[min_chroma]i[max_chroma]i", Limiter::Create },
@@ -155,97 +154,6 @@ AVSValue __cdecl Levels::Create(AVSValue args, void*, IScriptEnvironment* env)
 }
 
 
-
-
-
-
-/*******************************
- *******    HSI Filter    ******
- *******************************/
-
-HSIAdjust::HSIAdjust( PClip _child, double h, double s, int min, double gamma, int max, 
-                      IScriptEnvironment* env )
-  : GenericVideoFilter(_child)
-{
-  if (!vi.IsYUV())
-    env->ThrowError("HSIAdjust requires YUV input");
-	BYTE p;
-	double x;
-	int xx;
-	int Hdivisor = int((1 / s) * 224);
-	double Ydivisor = ((max - min) + (max == min));
-	double rotU = (h < 0)?0-h:0;
-	double rotV = (0 < h)?h:0;
-	for (int i=0; i<256; ++i)
-	{
-    p = ((int(rotU + i) -128) * 224 + (Hdivisor>>1)) / Hdivisor + 128;
-    mapU[i] = min(max(p,16),240);
-
-    p = ((int(rotV + i) -128) * 224 + (Hdivisor>>1)) / Hdivisor + 128;
-    mapV[i] = min(max(p,16),240);
-
-    x = ((i-16)*(255.0/219.0) - min) / Ydivisor;
-    x = pow(min(max(x, 0.0), 1.0), gamma);
-    x = x * 219 + 16;
-    xx = int(x*(219.0/255.0)+16.5);
-    mapY[i] = min(max(xx,16),235);
-  }	
-}
-
-
-PVideoFrame __stdcall HSIAdjust::GetFrame(int n, IScriptEnvironment* env) 
-{
-  PVideoFrame frame = child->GetFrame(n, env);
-  env->MakeWritable(&frame);
-  BYTE* p = frame->GetWritePtr();
-  int pitch = frame->GetPitch();
-  if (vi.IsYUY2()) {
-	  for (int y=0; y<vi.height; ++y) 
-    {
-      for (int x=0; x<vi.width; x+=2) 
-      {
-        p[x*2] = mapY[p[x*2]];
-        p[x*2+1] = mapU[p[x*2+1]];
-        p[x*2+2] = mapY[p[x*2+2]];
-        p[x*2+3] = mapV[p[x*2+3]];
-      }
-   	  p += pitch;
-    }
-  } else if (vi.IsYV12()) {
-    for (int y=0; y<vi.height; ++y) {
-      for (int x=0; x<vi.width; ++x) {
-        p[x] = mapY[p[x]];
-      }
-      p += pitch;
-    }
-    pitch = frame->GetPitch(PLANAR_U);
-    p = frame->GetWritePtr(PLANAR_U);
-    int w = frame->GetRowSize(PLANAR_U);
-    int h = frame->GetHeight(PLANAR_U);
-    for (y=0; y<h; ++y) {
-      for (int x=0; x<w; ++x) {
-        p[x] = mapU[p[x]];
-      }
-      p += pitch;
-    }
-    p = frame->GetWritePtr(PLANAR_V);
-    for (y=0; y<h; ++y) {
-      for (int x=0; x<w; ++x) {
-        p[x] = mapV[p[x]];
-      }
-      p += pitch;
-    }
-
-  }
-  return frame;
-}
-
-
-AVSValue __cdecl HSIAdjust::Create(AVSValue args, void*, IScriptEnvironment* env) 
-{
-  return new HSIAdjust( args[0].AsClip(), args[1].AsFloat(), args[2].AsFloat(), args[3].AsInt(), 
-                        args[4].AsFloat(), args[5].AsInt(), env );
-}
 
 
 

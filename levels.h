@@ -62,21 +62,6 @@ private:
 };
 
 
-class HSIAdjust : public GenericVideoFilter 
-/**
-  * Class for adjusting colors in HSI space
- **/
-{
-public:
-  HSIAdjust(PClip _child, double h, double s, int min, double gamma, int max, IScriptEnvironment* env);
-  PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
-  static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env);
-
-private:
-  BYTE mapY[256], mapU[256], mapV[256];
-
-};
-
 
 class RGBAdjust : public GenericVideoFilter 
 /**
