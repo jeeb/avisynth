@@ -88,6 +88,7 @@ AVSFunction Script_functions[] = {
   { "audiobits", "c", AudioBits },
   { "IsRGB", "c", IsRGB },
   { "IsYUY2", "c", IsYUY2 },
+  { "IsYUV", "c", IsYUV },
   { "IsYV12", "c", IsYV12 },
   { "IsPlanar", "c", IsPlanar },
   { "IsInterleaved", "c", IsInterleaved },
@@ -506,6 +507,7 @@ AVSValue AudioBits(AVSValue args, void*, IScriptEnvironment* env) { return VI(ar
 AVSValue IsRGB(AVSValue args, void*, IScriptEnvironment* env) { return VI(args[0]).IsRGB(); }
 AVSValue IsRGB24(AVSValue args, void*, IScriptEnvironment* env) { return VI(args[0]).IsRGB24(); }
 AVSValue IsRGB32(AVSValue args, void*, IScriptEnvironment* env) { return VI(args[0]).IsRGB32(); }
+AVSValue IsYUV(AVSValue args, void*, IScriptEnvironment* env) { return VI(args[0]).IsYUV(); }
 AVSValue IsYUY2(AVSValue args, void*, IScriptEnvironment* env) { return VI(args[0]).IsYUY2(); }
 AVSValue IsYV12(AVSValue args, void*, IScriptEnvironment* env) { return VI(args[0]).IsYV12(); }
 AVSValue IsPlanar(AVSValue args, void*, IScriptEnvironment* env) { return VI(args[0]).IsPlanar(); }

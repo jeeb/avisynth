@@ -147,6 +147,7 @@ AVSValue AudioBits(AVSValue args, void*, IScriptEnvironment* env);
 AVSValue IsRGB(AVSValue args, void*, IScriptEnvironment* env);
 AVSValue IsYV12(AVSValue args, void*, IScriptEnvironment* env);
 AVSValue IsYUY2(AVSValue args, void*, IScriptEnvironment* env);
+AVSValue IsYUV(AVSValue args, void*, IScriptEnvironment* env);
 AVSValue IsRGB24(AVSValue args, void*, IScriptEnvironment* env);
 AVSValue IsRGB32(AVSValue args, void*, IScriptEnvironment* env);
 AVSValue IsPlanar(AVSValue args, void*, IScriptEnvironment* env);
