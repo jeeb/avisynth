@@ -30,6 +30,15 @@ AVSFunction Script_functions[] = {
   { "ceil", "f", Ceil },
   { "round", "f", Round },
 
+	{ "sin", "f", Sin },
+  { "cos", "f", Cos },
+  { "pi", "", Pi },
+  { "log", "f", Log },
+  { "exp", "f", Exp },
+  { "pow", "ff", Pow },
+  { "sqrt", "f", Sqrt },
+
+
   { "width", "c", Width },
   { "height", "c", Height },
   { "framecount", "c", FrameCount },
@@ -61,6 +70,8 @@ AVSFunction Script_functions[] = {
   { "Assert", "s", AssertEval },
 
   { "Cache", "c", Cache::Create_Cache },
+
+	{ "SetMemoryMax", "i", SetMemoryMax },
 
   { 0 }
 };
@@ -211,9 +222,19 @@ AVSValue Import(AVSValue args, void*, IScriptEnvironment* env)
 
 
 
+AVSValue SetMemoryMax(AVSValue args, void*, IScriptEnvironment* env) { return env->SetMemoryMax(args[0].AsInt()); }
+
 AVSValue Floor(AVSValue args, void*, IScriptEnvironment* env) { return int(args[0].AsFloat()); }
 AVSValue Ceil(AVSValue args, void*, IScriptEnvironment* env) { return -int(-args[0].AsFloat()); }
 AVSValue Round(AVSValue args, void*, IScriptEnvironment* env) { return int(args[0].AsFloat()+0.5); }
+
+AVSValue Sin(AVSValue args, void* user_data, IScriptEnvironment* env) { return sin(args[0].AsFloat()); }
+AVSValue Cos(AVSValue args, void* user_data, IScriptEnvironment* env) { return cos(args[0].AsFloat()); }
+AVSValue Pi(AVSValue args, void* user_data, IScriptEnvironment* env) { return 3.14159265358979323; }
+AVSValue Log(AVSValue args, void* user_data, IScriptEnvironment* env) { return log(args[0].AsFloat()); }
+AVSValue Exp(AVSValue args, void* user_data, IScriptEnvironment* env) { return exp(args[0].AsFloat()); }
+AVSValue Pow(AVSValue args, void* user_data, IScriptEnvironment* env) {	return pow(args[0].AsFloat(),args[0].AsFloat()); }
+AVSValue Sqrt(AVSValue args, void* user_data, IScriptEnvironment* env) { return sqrt(args[0].AsFloat()); }
 
 static inline const VideoInfo& VI(const AVSValue& arg) { return arg.AsClip()->GetVideoInfo(); }
 

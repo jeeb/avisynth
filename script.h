@@ -97,7 +97,7 @@ AVSValue Apply(AVSValue args, void*, IScriptEnvironment* env) ;
 
 AVSValue Import(AVSValue args, void*, IScriptEnvironment* env);
 
-
+AVSValue SetMemoryMax(AVSValue args, void*, IScriptEnvironment* env);
 
 
 /*****   Entry/Factory Methods   ******/
@@ -105,6 +105,15 @@ AVSValue Import(AVSValue args, void*, IScriptEnvironment* env);
 AVSValue Floor(AVSValue args, void*, IScriptEnvironment* env);
 AVSValue Ceil(AVSValue args, void*, IScriptEnvironment* env);
 AVSValue Round(AVSValue args, void*, IScriptEnvironment* env);
+
+AVSValue Sin(AVSValue args, void* user_data, IScriptEnvironment* env);
+AVSValue Cos(AVSValue args, void* user_data, IScriptEnvironment* env);
+AVSValue Pi(AVSValue args, void* user_data, IScriptEnvironment* env);
+AVSValue Log(AVSValue args, void* user_data, IScriptEnvironment* env);
+AVSValue Exp(AVSValue args, void* user_data, IScriptEnvironment* env);
+AVSValue Pow(AVSValue args, void* user_data, IScriptEnvironment* env);
+AVSValue Sqrt(AVSValue args, void* user_data, IScriptEnvironment* env);
+
 
 static inline const VideoInfo& VI(const AVSValue& arg);
 
