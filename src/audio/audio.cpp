@@ -104,7 +104,6 @@ AVSValue __cdecl ConvertAudio::Create_24bit(AVSValue args, void*, IScriptEnviron
  *******   Convert Audio -> Arbitrary ******
  ******************************************/
 
-// Fixme: Implement 24 bit samples
 // Optme: Could be made onepass, but that would make it immensely complex
 ConvertAudio::ConvertAudio(PClip _clip, int _sample_type) 
   : GenericVideoFilter(_clip)
@@ -310,8 +309,7 @@ ConvertToMono::ConvertToMono(PClip _clip)
   : GenericVideoFilter(ConvertAudio::Create(_clip,
   SAMPLE_INT16|SAMPLE_FLOAT, SAMPLE_FLOAT))
 {
-	
-  channels = vi.AudioChannels();
+ †channels = vi.AudioChannels();
   vi.nchannels = 1;
   tempbuffer_size=0;
 }
@@ -357,6 +355,8 @@ void __stdcall ConvertToMono::GetAudio(void* buf, __int64 start, __int64 count, 
 
 PClip ConvertToMono::Create(PClip clip) 
 {
+  if (!clip->GetVideoInfo().HasAudio())
+    return clip;
   if (clip->GetVideoInfo().AudioChannels()==1)
     return clip;
   else
