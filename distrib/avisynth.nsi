@@ -30,7 +30,7 @@ DirText "Select the directory to install documentation in:"
 Section "AviSynth Base" ; (default section)
 SetOutPath "$SYSDIR"
 File "..\release\avisynth.dll"
-RegDll "$SYSDIR\avisynth.dll"
+;RegDll "$SYSDIR\avisynth.dll"
 
 ; Write GPL
 SetOutPath "$INSTDIR"
@@ -97,9 +97,15 @@ DeleteRegKey HKEY_CLASSES_ROOT "Media Type\Extensions\.avs"
 DeleteRegKey HKEY_CLASSES_ROOT "CLSID\{E6D6B700-124D-11D4-86F3-DB80AFD98778}" 
 DeleteRegKey HKEY_CLASSES_ROOT "CLSID\{E6D6B700-124D-11D4-86F3-DB80AFD98778}\InProcServer32"
 DeleteRegKey HKEY_CLASSES_ROOT "CLSID\{E6D6B700-124D-11D4-86F3-DB80AFD98778}\InProcServer32"
-UnRegDLL "$SYSDIR\avisynth.dll"
+;UnRegDLL "$SYSDIR\avisynth.dll"
 Delete "$SYSDIR\avisynth.dll"
+Delete "$INSTDIR\*.html"
+Delete "$INSTDIR\*.txt"
+Delete "$INSTDIR\filters\*.*"
+Delete "$SMPROGRAMS\AviSynth 2\*.*"
 
+RMDir "$INSTDIR\filters"
+RMDir "$INSTDIR\plugins"
 RMDir "$INSTDIR"
 RMDir "$SMPROGRAMS\AviSynth 2"
 SectionEnd ; end of uninstall section
