@@ -40,9 +40,9 @@ SectionIn 1 2
 
   SetOutPath $SYSDIR
   File "..\release\AviSynth.dll"
-  File "bin\libjpeg.dll"
-  File "bin\libpng13.dll"
-  File "bin\zlib.dll"
+	File "bin\devil.dll"
+	File "bin\ilu.dll"
+	File "bin\ilut.dll"
 IfErrors dll_not_ok
 
   SetOutPath $INSTDIR
