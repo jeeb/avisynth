@@ -307,28 +307,30 @@ AVISource::AVISource(const char filename[], bool fAudio, const char pixel_type[]
 
     audio_stream_pos = 0;
   }
-  // try to decompress frame 0.
-  int keyframe = pvideo->NearestKeyFrame(0);
-  PVideoFrame frame = env->NewVideoFrame(vi, 4);
-  LRESULT error = DecompressFrame(keyframe, true, frame->GetWritePtr());
-  if (error != ICERR_OK || (!frame)||(dropped_frame)) {   // shutdown, if init not succesful.
-    if (hic) {
-      !ex ? ICDecompressEnd(hic) : ICDecompressExEnd(hic);
-      ICClose(hic);
+  // try to decompress frame 0 if not audio only.
+  if (mode!=3) {
+    int keyframe = pvideo->NearestKeyFrame(0);
+    PVideoFrame frame = env->NewVideoFrame(vi, 4);
+    LRESULT error = DecompressFrame(keyframe, true, frame->GetWritePtr());
+    if (error != ICERR_OK || (!frame)||(dropped_frame)) {   // shutdown, if init not succesful.
+      if (hic) {
+        !ex ? ICDecompressEnd(hic) : ICDecompressExEnd(hic);
+        ICClose(hic);
+      }
+      if (pvideo) delete pvideo;
+      if (aSrc) delete aSrc;
+      if (audioStreamSource) delete audioStreamSource;
+      if (pfile)
+        pfile->Release();
+      AVIFileExit();
+      if (pbiSrc)
+        free(pbiSrc);
+      env->ThrowError("AviSource: Could not decompress frame 0");
+      
     }
-    if (pvideo) delete pvideo;
-    if (aSrc) delete aSrc;
-    if (audioStreamSource) delete audioStreamSource;
-    if (pfile)
-      pfile->Release();
-    AVIFileExit();
-    if (pbiSrc)
-      free(pbiSrc);
-    env->ThrowError("AviSource: Could not decompress frame 0");
-  
+    last_frame_no=0;
+    last_frame=frame;
   }
-  last_frame_no=0;
-  last_frame=frame;
 }
 
 AVISource::~AVISource() {
@@ -956,6 +958,9 @@ public:
     if (!pmt) return E_POINTER;
 
     if (pmt->majortype != MEDIATYPE_Video) {
+      if (pmt->majortype == MEDIATYPE_Audio) {
+        _RPT0(0, "*** Found majortype Audio\n");
+      }
       _RPT0(0, "*** majortype was not video\n");
       return S_FALSE;
     }
