@@ -217,8 +217,13 @@ AVISource::AVISource(const char filename[], bool fAudio, const char pixel_type[]
   if (mode == 0) {
     // if it looks like an AVI file, open in OpenDML mode; otherwise AVIFile mode
     HANDLE h = CreateFile(filename, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, 0, NULL);
-    if (h == INVALID_HANDLE_VALUE)
-      env->ThrowError("AVISource autodetect: couldn't open file");
+    if (h == INVALID_HANDLE_VALUE) {
+      char foo[50] = "AVISource autodetect: couldn't open file";
+      strcat(foo, "\nError code: ");
+      char bar[10];
+      strcat(foo, itoa(GetLastError(), bar, 10));
+      env->ThrowError(foo);
+    }
     unsigned buf[3];
     DWORD bytes_read;
     if (ReadFile(h, buf, 12, &bytes_read, NULL) && bytes_read == 12 && buf[0] == 'FFIR' && buf[2] == ' IVA')
