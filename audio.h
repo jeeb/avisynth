@@ -219,8 +219,8 @@ private:
     return (short)n;
   }
 
-  static __inline double dBtoScaleFactor(double dB) 
-    { return pow(10.0, dB/10.0); }
+ static __inline double dBtoScaleFactor(double dB)
+ { return pow(10.0, dB/20.0); };
 };
 
 
@@ -317,10 +317,10 @@ private:
     return (short)n;
   }
 
-  static __inline double dBtoScaleFactor(double dB) 
-    { return pow(10.0, dB/10.0); }
-};
+ static __inline double dBtoScaleFactor(double dB)
+ { return pow(10.0, dB/20.0); }
 
+};
 
 class ResampleAudio : public GenericVideoFilter 
 /**
