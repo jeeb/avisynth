@@ -78,10 +78,10 @@ Levels::Levels( PClip _child, int in_min, double gamma, int in_max, int out_min,
       p = pow(min(max(p, 0.0), 1.0), gamma);
       p = p * (out_max - out_min) + out_min;
       int pp = int(p*(219.0/255.0)+16.5);
-      map[i] = min(max(pp,coring ? 16 : 0),coring ? 235 : 255);
+      map[i] = min(max(pp, (coring) ? 16 : 0), (coring) ? 235 : 255);
 
       int q = ((i-128) * (out_max-out_min) + (divisor>>1)) / divisor + 128;
-      mapchroma[i] = min(max(q,coring ? 16 : 0),coring ? 240 : 0);
+      mapchroma[i] = min(max(q, (coring) ? 16 : 0), (coring) ? 240 : 255);
     }
   } 
   else {
