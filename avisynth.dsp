@@ -448,6 +448,14 @@ SOURCE=.\Color.h
 # End Source File
 # Begin Source File
 
+SOURCE=.\conditional.cpp
+# End Source File
+# Begin Source File
+
+SOURCE=.\conditional.h
+# End Source File
+# Begin Source File
+
 SOURCE=.\convolution.cpp
 # End Source File
 # Begin Source File
