@@ -176,6 +176,7 @@ GetSample::GetSample(IScriptEnvironment* _env, bool _load_audio, bool _load_vide
     ms->Release();
     mc->Release();
     StartGraph();
+    a_sample_bytes = 0;
 
     return hr;  // Seek ok
   }
@@ -551,7 +552,7 @@ GetSample::GetSample(IScriptEnvironment* _env, bool _load_audio, bool _load_vide
 
 
     if (FAILED(pSamples->GetTime(&sample_start_time, &sample_end_time))) {
-      _RPT0(0,"failed!\n");
+      _RPT0(0,"GetTimefailed!\n");
     } else {
       _RPT4(0,"%x%08x - %x%08x",
         DWORD(sample_start_time>>32), DWORD(sample_start_time),
@@ -950,7 +951,7 @@ DirectShowSource::DirectShowSource(const char* filename, int _avg_time_per_frame
 
   void __stdcall DirectShowSource::GetAudio(void* buf, __int64 start, __int64 count, IScriptEnvironment* env) {
 
-    int bytes_left = vi.BytesFromAudioSamples(count);
+    int bytes_filled = 0;
 
  
     if (next_sample != start) {  // We have been searching!  Skip until sync!
@@ -960,22 +961,26 @@ DirectShowSource::DirectShowSource(const char* filename, int _avg_time_per_frame
       if ((!no_search) && SUCCEEDED(get_sample.SeekTo(seekTo))) {
         // Seek succeeded!
         next_sample = start;
+      } 
 
-      } else if (start < next_sample) { // We are behind sync - pad with 0
-        if (no_search || vi.HasVideo() || FAILED(get_sample.SeekTo(seekTo))) {
-          // We cannot seek.
-          if (vi.sample_type == SAMPLE_FLOAT) {
-            float* samps = (float*)buf;
-            for (int i = 0; i < bytes_left/sizeof(float); i++)
-              samps[i] = 0.0f;
-          } else {
-            memset(buf,0, bytes_left);
-          }
-          return;
+      if (start < next_sample) { // We are behind sync - pad with 0
+        int fill_nsamples  = min(next_sample - start, count);
+        // We cannot seek.
+        if (vi.sample_type == SAMPLE_FLOAT) {
+          float* samps = (float*)buf;
+          for (int i = 0; i < fill_nsamples; i++)
+            samps[i] = 0.0f;
+        } else {
+          memset(buf,0, vi.BytesFromAudioSamples(fill_nsamples));
         }
-        // We skipped successfully
-        next_sample = start;
-      } else {  // Skip forward (decode)
+
+        if (fill_nsamples == count)  // Buffer is filled - return
+          return;
+        start += fill_nsamples;
+        count -= fill_nsamples;
+        bytes_filled += vi.BytesFromAudioSamples(fill_nsamples);
+      }
+      if (start > next_sample) {  // Skip forward (decode)
         // Should we search?
         int skip_left = start - next_sample;
         bool cont = !get_sample.IsEndOfStream();
@@ -998,8 +1003,8 @@ DirectShowSource::DirectShowSource(const char* filename, int _avg_time_per_frame
       }
     }
 
-    int bytes_filled = 0;
     BYTE* samples = (BYTE*)buf;
+    int bytes_left = vi.BytesFromAudioSamples(count);
 
     while (bytes_left) {
       // Can we read from the Directshow filter?
