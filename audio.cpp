@@ -778,6 +778,7 @@ PVideoFrame __stdcall Normalize::GetFrame(int n, IScriptEnvironment* env) {
     env->MakeWritable(&src);
     char text[400];
     double maxdb = 8.685889638 * log(max_factor);
+    // maxdb = (20 * log(factor)) / log(10);
     if (max_volume<0) {
       sprintf(text,"Normalize: Result not yet calculated!");
     } else {
