@@ -53,10 +53,15 @@ public:
   static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env);
 
 private:
-OverlayFunction* SelectFunction(const char* name, IScriptEnvironment* env);
-  
+  OverlayFunction* SelectFunction(const char* name, IScriptEnvironment* env);
+  ConvertFrom444* SelectOutputCS(const char* name, IScriptEnvironment* env);
+  ConvertTo444* SelectInputCS(VideoInfo* VidI, IScriptEnvironment* env);  
+  void ClipFrames(Image444* input, Image444* overlay, int x, int y);
+
   VideoInfo overlayVi;
   VideoInfo maskVi;
+  VideoInfo* inputVi;
+
   ConvertFrom444* outputConv;
   ConvertTo444* inputConv;
   ConvertTo444* overlayConv;
@@ -69,6 +74,8 @@ OverlayFunction* SelectFunction(const char* name, IScriptEnvironment* env);
   int opacity;
   OverlayFunction* func;
   bool greymask;
+  int offset_x, offset_y;
+
 };
 
 

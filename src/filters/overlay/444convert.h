@@ -41,13 +41,19 @@
 #include "imghelpers.h"
 
 class ConvertTo444 {
+  private:
+    VideoInfo* inputVi;
+
   public:
-    ConvertTo444() {}
+    ConvertTo444() {inputVi = 0; }
     virtual void ConvertImage(PVideoFrame src_frame, Image444* dst_frame, IScriptEnvironment* env) {
       env->ThrowError("Overlay: Unable to convert input image.");
     }
     virtual void ConvertImageLumaOnly(PVideoFrame src_frame, Image444* dst_frame, IScriptEnvironment* env) {
       env->ThrowError("Overlay: Unable to convert input image.");
+    }
+    void SetVideoInfo(VideoInfo* in_vi) {
+      inputVi = in_vi;
     }
 };
 
@@ -67,7 +73,18 @@ public:
   void ConvertImageLumaOnly(PVideoFrame src_frame, Image444* dst_frame, IScriptEnvironment* env);
 };
 
+class Convert444FromYUY2 : public ConvertTo444 {
+public:
+  void ConvertImage(PVideoFrame src_frame, Image444* dst_frame, IScriptEnvironment* env);
+  void ConvertImageLumaOnly(PVideoFrame src_frame, Image444* dst_frame, IScriptEnvironment* env);
+};
+
 class Convert444ToYV12 : public ConvertFrom444 {
+public:
+  PVideoFrame ConvertImage(Image444* src_frame, PVideoFrame dst_frame, IScriptEnvironment* env);
+};
+
+class Convert444ToYUY2 : public ConvertFrom444 {
 public:
   PVideoFrame ConvertImage(Image444* src_frame, PVideoFrame dst_frame, IScriptEnvironment* env);
 };

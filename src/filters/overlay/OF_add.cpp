@@ -49,8 +49,8 @@ void OL_AddImage::BlendImageMask(Image444* base, Image444* overlay, Image444* ma
   BYTE* maskY = mask->GetPtr(PLANAR_Y);
   BYTE* maskU = mask->GetPtr(PLANAR_U);
   BYTE* maskV = mask->GetPtr(PLANAR_V);
-  int w = base->w;
-  int h = base->h;
+  int w = base->w();
+  int h = base->h();
   if (opacity == 256) {
     for (int y = 0; y < h; y++) {
       for (int x = 0; x < w; x++) {
@@ -62,8 +62,8 @@ void OL_AddImage::BlendImageMask(Image444* base, Image444* overlay, Image444* ma
           U = ((U*multiplier) + (127*(32-multiplier)))>>5;
           V = ((V*multiplier) + (127*(32-multiplier)))>>5;
         }
-        baseU[x] = (BYTE)U;
-        baseV[x] = (BYTE)V;
+        baseU[x] = (BYTE)min(U,255);
+        baseV[x] = (BYTE)min(V,255);
         baseY[x] = (BYTE)min(255, Y);
       }
       maskY += mask->pitch;
@@ -93,8 +93,8 @@ void OL_AddImage::BlendImageMask(Image444* base, Image444* overlay, Image444* ma
           U = ((U*multiplier) + (127*(32-multiplier)))>>5;
           V = ((V*multiplier) + (127*(32-multiplier)))>>5;
         }
-        baseU[x] = (BYTE)U;
-        baseV[x] = (BYTE)V;
+        baseU[x] = (BYTE)min(U,255);
+        baseV[x] = (BYTE)min(V,255);
         baseY[x] = (BYTE)min(255, Y);
       }
       baseY += base->pitch;
@@ -123,8 +123,8 @@ void OL_AddImage::BlendImage(Image444* base, Image444* overlay) {
   BYTE* ovU = overlay->GetPtr(PLANAR_U);
   BYTE* ovV = overlay->GetPtr(PLANAR_V);
   
-  int w = base->w;
-  int h = base->h;
+  int w = base->w();
+  int h = base->h();
   if (opacity == 256) {
     for (int y = 0; y < h; y++) {
       for (int x = 0; x < w; x++) {
@@ -160,8 +160,8 @@ void OL_AddImage::BlendImage(Image444* base, Image444* overlay) {
           U = ((U*multiplier) + (127*(32-multiplier)))>>5;
           V = ((V*multiplier) + (127*(32-multiplier)))>>5;
         }
-        baseU[x] = (BYTE)U;
-        baseV[x] = (BYTE)V;
+        baseU[x] = (BYTE)min(U,255);
+        baseV[x] = (BYTE)min(V,255);
         baseY[x] = (BYTE)min(255, Y);
       }
       baseY += base->pitch;

@@ -63,16 +63,12 @@ void Convert444FromYV12::ConvertImage(PVideoFrame src, Image444* dst, IScriptEnv
       int x2 = x<<1;
       dstU[x2] = u;
       dstV[x2] = v;
-      dstU[x2+dstUVpitch] = (u + srcU[x+srcUVpitch]+1)>>1;
-      dstV[x2+dstUVpitch] = (v + srcV[x+srcUVpitch]+1)>>1;
-      BYTE u2 = srcU[x+1];
-      BYTE v2 = srcV[x+1];
-      u = dstU[x2+1] = (u+u2+1)>>1;
-      v = dstV[x2+1] = (v+v2+1)>>1;
-      dstU[x2+dstUVpitch+1] = (u + srcU[x+srcUVpitch+1]+1)>>1;
-      dstV[x2+dstUVpitch+1] = (v + srcV[x+srcUVpitch+1]+1)>>1;
-      u = u2;
-      v = v2;
+      dstU[x2+dstUVpitch] = u;
+      dstV[x2+dstUVpitch] = v;
+      u = dstU[x2+1] = srcU[x+1];
+      v = dstV[x2+1] = srcV[x+1];
+      dstU[x2+dstUVpitch+1] = u;
+      dstV[x2+dstUVpitch+1] = v;
     }
     dstU[w*2-2] = dstU[w*2-1] = dstU[w*2-2+dstUVpitch] = dstU[w*2-1+dstUVpitch] = u;
     dstV[w*2-2] = dstV[w*2-1] = dstV[w*2-2+dstUVpitch] = dstV[w*2-1+dstUVpitch] = v;
@@ -85,17 +81,75 @@ void Convert444FromYV12::ConvertImage(PVideoFrame src, Image444* dst, IScriptEnv
     int x2 = x<<1;
     BYTE u = dstU[x2] = dstU[x2+dstUVpitch] = srcU[x];
     BYTE v = dstV[x2] = dstV[x2+dstUVpitch] = srcV[x];
-    dstU[x2+1] = dstU[x2+dstUVpitch+1] = (u + srcU[x+1] + 1)>>1;
-    dstV[x2+1] = dstV[x2+dstUVpitch+1] = (v + srcV[x+1] + 1)>>1;
+    dstU[x2+1] = dstU[x2+dstUVpitch+1] = u;
+    dstV[x2+1] = dstV[x2+dstUVpitch+1] = v;
   }
   dstU[w*2-2] = dstU[w*2-1] = dstU[w*2-2+dstUVpitch] = dstU[w*2-1+dstUVpitch] = srcU[w-1];
   dstV[w*2-2] = dstV[w*2-1] = dstU[w*2-2+dstUVpitch] = dstU[w*2-1+dstUVpitch] = srcV[w-1];
 }
 
+
 void Convert444FromYV12::ConvertImageLumaOnly(PVideoFrame src, Image444* dst, IScriptEnvironment* env) {
   env->BitBlt(dst->GetPtr(PLANAR_Y), dst->pitch, 
     src->GetReadPtr(PLANAR_Y),src->GetPitch(PLANAR_Y), src->GetRowSize(PLANAR_Y), src->GetHeight());
 }
+
+
+void Convert444FromYUY2::ConvertImage(PVideoFrame src, Image444* dst, IScriptEnvironment* env) {
+
+  const BYTE* srcP = src->GetReadPtr();
+  int srcPitch = src->GetPitch();
+
+  BYTE* dstY = dst->GetPtr(PLANAR_Y);
+  BYTE* dstU = dst->GetPtr(PLANAR_U);
+  BYTE* dstV = dst->GetPtr(PLANAR_V);
+
+  int dstPitch = dst->pitch;
+
+  int w = dst->w();
+  int h = dst->h();
+
+  for (int y=0; y<h; y++) {
+    for (int x=0; x<w; x+=2) {
+      int x2 = x<<1;
+      dstY[x] = srcP[x2];
+      dstU[x] = dstU[x+1] = srcP[x2+1];
+      dstV[x] = dstV[x+1] = srcP[x2+3];
+      dstY[x+1] = srcP[x2+2];
+    }
+
+    srcP+=srcPitch;
+
+    dstY+=dstPitch;
+    dstU+=dstPitch;
+    dstV+=dstPitch;
+  }
+}
+
+void Convert444FromYUY2::ConvertImageLumaOnly(PVideoFrame src, Image444* dst, IScriptEnvironment* env) {
+
+  const BYTE* srcP = src->GetReadPtr();
+  int srcPitch = src->GetPitch();
+
+  BYTE* dstY = dst->GetPtr(PLANAR_Y);
+
+  int dstPitch = dst->pitch;
+
+  int w = dst->w();
+  int h = dst->h();
+
+  for (int y=0; y<h; y++) {
+    for (int x=0; x<w; x+=2) {
+      int x2 = x<<1;
+      dstY[x] = srcP[x2];
+      dstY[x+1] = srcP[x2+2];
+    }
+
+    srcP+=srcPitch;
+    dstY+=dstPitch;
+  }
+}
+
 
 PVideoFrame Convert444ToYV12::ConvertImage(Image444* src, PVideoFrame dst, IScriptEnvironment* env) {
   env->MakeWritable(&dst);
@@ -126,6 +180,39 @@ PVideoFrame Convert444ToYV12::ConvertImage(Image444* src, PVideoFrame dst, IScri
     srcV+=srcUVpitch*2;
     dstU+=dstUVpitch;
     dstV+=dstUVpitch;
+  }
+  return dst;
+}
+
+
+PVideoFrame Convert444ToYUY2::ConvertImage(Image444* src, PVideoFrame dst, IScriptEnvironment* env) {
+  env->MakeWritable(&dst);
+
+  const BYTE* srcY = src->GetPtr(PLANAR_Y);
+  const BYTE* srcU = src->GetPtr(PLANAR_U);
+  const BYTE* srcV = src->GetPtr(PLANAR_V);
+
+  int srcPitch = src->pitch;
+
+  BYTE* dstP = dst->GetWritePtr();
+
+  int dstPitch = dst->GetPitch();
+
+  int w = src->w();
+  int h = src->h();
+  
+  for (int y=0; y<h; y++) {
+    for (int x=0; x<w; x+=2) {
+      int x2 = x<<1;
+      dstP[x2] = srcY[x];
+      dstP[x2+1] = (srcU[x] + srcU[x+1] + 1)>>1;
+      dstP[x2+2] = srcY[x+1];
+      dstP[x2+3] = (srcV[x] + srcV[x+1] + 1)>>1;
+    }
+    srcY+=srcPitch;
+    srcU+=srcPitch;
+    srcV+=srcPitch;
+    dstP+=dstPitch;
   }
   return dst;
 }

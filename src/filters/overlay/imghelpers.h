@@ -42,30 +42,48 @@ private:
   BYTE* Y_plane;
   BYTE* U_plane;
   BYTE* V_plane;
-  bool lumaonly;
-public:
 
-  const int w;
-  const int h;
+  BYTE* fake_Y_plane;
+  BYTE* fake_U_plane;
+  BYTE* fake_V_plane;
+
+  int fake_w;
+  int fake_h;
+  const int _w;
+  const int _h;
+
+  bool return_original;
+
+
+public:
   int pitch;
 
-  Image444() : w(0), h(0) {}
+  Image444() : _w(0), _h(0) {}
 
-  Image444(int _w, int _h) : w(_w), h(_h) {
-    pitch = (w+15)&(~15);
-    Y_plane = (BYTE*)_aligned_malloc(pitch*h, 64); 
-    U_plane = (BYTE*)_aligned_malloc(pitch*h, 64); 
-    V_plane = (BYTE*)_aligned_malloc(pitch*h, 64); 
+  Image444(Image444* img) : _w(img->w()), _h(img->h()), pitch(img->pitch) {
+    Y_plane = img->GetPtr(PLANAR_Y);
+    U_plane = img->GetPtr(PLANAR_U);
+    V_plane = img->GetPtr(PLANAR_V);
+    ResetFake();
   }
 
-  Image444(BYTE* Y, BYTE* U, BYTE* V, int _w, int _h, int _pitch) : w(_w), h(_h) {
-    if (!(w && h)) {
+  Image444(int _inw, int _inh) : _w(_inw), _h(_inh) {
+    pitch = (_w+15)&(~15);
+    Y_plane = (BYTE*)_aligned_malloc(pitch*_h, 64); 
+    U_plane = (BYTE*)_aligned_malloc(pitch*_h, 64); 
+    V_plane = (BYTE*)_aligned_malloc(pitch*_h, 64); 
+    ResetFake();
+  }
+
+  Image444(BYTE* Y, BYTE* U, BYTE* V, int _inw, int _inh, int _pitch) : _w(_inw), _h(_inh) {
+    if (!(_w && _h)) {
       _RPT0(1,"Image444: Height or Width is 0");
     }
     Y_plane = Y;
     U_plane = U;
     V_plane = V;
     pitch = _pitch;
+    ResetFake();
   }
 
   void free_chroma() {
@@ -78,43 +96,75 @@ public:
   }
 
   void free() {
-    if (!(w && h)) {
+    if (!(_w && _h)) {
       _RPT0(1,"Image444: Height or Width is 0");
     }
     free_luma();
     free_chroma();
   }
 
+  __inline int w() { return (return_original) ? _w : fake_w; }
+  __inline int h() { return (return_original) ? _h : fake_h; }
+
   BYTE* GetPtr(int plane) {
-    if (!(w && h)) {
+    if (!(_w && _h)) {
       _RPT0(1,"Image444: Height or Width is 0");
     }
     switch (plane) {
       case PLANAR_Y:
-        return Y_plane;
+        return (return_original) ? Y_plane : fake_Y_plane;
       case PLANAR_U:
-        return U_plane;
+        return (return_original) ? U_plane : fake_U_plane;
       case PLANAR_V:
-        return V_plane;
+        return (return_original) ? V_plane : fake_V_plane;
     }
     return Y_plane;
   }
 
   void SetPtr(BYTE* ptr, int plane) {
-    if (!(w && h)) {
+    if (!(_w && _h)) {
       _RPT0(1,"Image444: Height or Width is 0");
     }
     switch (plane) {
       case PLANAR_Y:
-        Y_plane = ptr;
+        fake_Y_plane = Y_plane = ptr;
         break;
       case PLANAR_U:
-        U_plane = ptr;
+        fake_Y_plane = U_plane = ptr;
         break;
       case PLANAR_V:
-        V_plane = ptr;
+        fake_Y_plane = V_plane = ptr;
         break;
     }
+  }
+
+  void SubFrame(int x, int y, int new_w, int new_h) {
+    new_w = min(new_w, w()-x);
+    new_h = min(new_h, h()-y);
+
+    fake_Y_plane = GetPtr(PLANAR_Y) + x + (y*pitch);
+    fake_U_plane = GetPtr(PLANAR_U) + x + (y*pitch);
+    fake_V_plane = GetPtr(PLANAR_V) + x + (y*pitch);
+    
+    fake_w = new_w;
+    fake_h = new_h;
+  }
+
+  bool IsSizeZero() {
+    return (!(w() && h() &&  pitch && Y_plane && V_plane && U_plane)); 
+  }
+
+  void ReturnOriginal(bool shouldI) {
+    return_original = shouldI;
+  }
+
+  void ResetFake() {
+    return_original = true;
+    fake_Y_plane = Y_plane;
+    fake_U_plane = U_plane;
+    fake_V_plane = V_plane;
+    fake_w = _w;
+    fake_h = _h;
   }
 
 };

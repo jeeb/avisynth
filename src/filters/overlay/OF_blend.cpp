@@ -50,8 +50,8 @@ void OL_BlendImage::BlendImageMask(Image444* base, Image444* overlay, Image444* 
   BYTE* maskU = mask->GetPtr(PLANAR_U);
   BYTE* maskV = mask->GetPtr(PLANAR_V);
 
-  int w = base->w;
-  int h = base->h;
+  int w = base->w();
+  int h = base->h();
 
   if (opacity == 256) {
     for (int y = 0; y < h; y++) {
@@ -106,8 +106,8 @@ void OL_BlendImage::BlendImage(Image444* base, Image444* overlay) {
   BYTE* ovU = overlay->GetPtr(PLANAR_U);
   BYTE* ovV = overlay->GetPtr(PLANAR_V);
   
-  int w = base->w;
-  int h = base->h;
+  int w = base->w();
+  int h = base->h();
 
   if (opacity == 256) {
     env->BitBlt(baseY, base->pitch, ovY, overlay->pitch, w, h);

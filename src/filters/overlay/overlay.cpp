@@ -42,67 +42,93 @@
 ********************************************************************/
 
 AVSFunction Overlay_filters[] = {
-  { "Overlay", "cc[mask]c[opacity]f[mode]s[greymask]b", Overlay::Create },   
+  { "Overlay", "cc[x]i[y]i[mask]c[opacity]f[mode]s[greymask]b[output]s", Overlay::Create },   
     // 0, src clip 
     // 1, overlay clip
-    // 2, mask clip
-    // 3, overlay opacity.(0.0->1.0)
-    // 4, mode string, "blend", "add"
-    // 5, greymask bool - true = only use luma information for mask
+    // 2, x
+    // 3, y
+    // 4, mask clip
+    // 5, overlay opacity.(0.0->1.0)
+    // 6, mode string, "blend", "add"
+    // 7, greymask bool - true = only use luma information for mask
+    // 8, output type, string
   { 0 }
 };
  
+enum {
+  ARG_SRC = 0,
+  ARG_OVERLAY = 1,
+  ARG_X = 2,
+  ARG_Y = 3,
+  ARG_MASK = 4,
+  ARG_OPACITY = 5,
+  ARG_MODE = 6,
+  ARG_GREYMASK = 7,
+  ARG_OUTPUT = 8
+};
 
 Overlay::Overlay(PClip _child, AVSValue args, IScriptEnvironment *env) :
- GenericVideoFilter(_child) {
-   mask = 0;
-   opacity = (int)(256.0*args[3].AsFloat(1.0));
-   overlay = args[1].AsClip();
+GenericVideoFilter(_child) {
 
-   overlayVi = overlay->GetVideoInfo();
-   if (overlayVi.IsYV12()) {
-     overlayConv = new Convert444FromYV12();
-   } else {
-     env->ThrowError("Overlay: Overlay image colorspace not supported.");
-   }
+  // Make copy of the VideoInfo
+  inputVi = (VideoInfo*)malloc(sizeof(VideoInfo));
+  memcpy(inputVi, &vi, sizeof(VideoInfo));
 
-   greymask = args[5].AsBool(true);  // Grey mask, default true
+  mask = 0;
+  opacity = (int)(256.0*args[ARG_OPACITY].AsFloat(1.0)+0.5);
+  offset_x = args[ARG_X].AsInt(0);
+  offset_y = args[ARG_Y].AsInt(0);
 
-   if (args[2].Defined()) {  // Mask defined
-     mask = args[2].AsClip();
-     maskVi = mask->GetVideoInfo();
-     if (maskVi.width!=overlayVi.width) {
-       env->ThrowError("Overlay: Mask and overlay must have the same image size! (Width is not the same)");
-     }
-     if (maskVi.height!=overlayVi.height) {
-       env->ThrowError("Overlay: Mask and overlay must have the same image size! (Height is not the same)");
-     }
-     if (maskVi.IsYV12()) {
-       maskConv = new Convert444FromYV12();
-     } else {
+  overlay = args[ARG_OVERLAY].AsClip();  
+  overlayVi = overlay->GetVideoInfo();
+  overlayConv = SelectInputCS(&overlayVi, env);
+
+  if (!overlayConv) {
+    env->ThrowError("Overlay: Overlay image colorspace not supported.");
+  }
+
+  greymask = args[ARG_GREYMASK].AsBool(true);  // Grey mask, default true
+
+  if (args[ARG_MASK].Defined()) {  // Mask defined
+    mask = args[ARG_MASK].AsClip();
+    maskVi = mask->GetVideoInfo();
+    if (maskVi.width!=overlayVi.width) {
+      env->ThrowError("Overlay: Mask and overlay must have the same image size! (Width is not the same)");
+    }
+    if (maskVi.height!=overlayVi.height) {
+      env->ThrowError("Overlay: Mask and overlay must have the same image size! (Height is not the same)");
+    }
+
+    maskConv = SelectInputCS(&maskVi, env);
+    if (!maskConv) {
        env->ThrowError("Overlay: Mask image colorspace not supported.");
-     }
-     maskImg = new Image444(maskVi.width, maskVi.height);
+    }
 
-     if (greymask) {
-       maskImg->free_chroma();
-       maskImg->SetPtr(maskImg->GetPtr(PLANAR_Y), PLANAR_U);
-       maskImg->SetPtr(maskImg->GetPtr(PLANAR_Y), PLANAR_V);
-     }
+    maskImg = new Image444(maskVi.width, maskVi.height);
 
-   }
+    if (greymask) {
+      maskImg->free_chroma();
+      maskImg->SetPtr(maskImg->GetPtr(PLANAR_Y), PLANAR_U);
+      maskImg->SetPtr(maskImg->GetPtr(PLANAR_Y), PLANAR_V);
+    }
+
+  }
    
-   if (vi.IsYV12()) {
-     inputConv = new Convert444FromYV12();
-     outputConv = new Convert444ToYV12();
-   } else {
-     env->ThrowError("Overlay: Colorspace not supported.");
-   }
+  inputConv = SelectInputCS(inputVi, env);
+
+  if (!inputConv) {
+    env->ThrowError("Overlay: Colorspace not supported.");
+  }
+
+  if (args[ARG_OUTPUT].Defined())
+    outputConv = SelectOutputCS(args[ARG_OUTPUT].AsString(),env);
+  else 
+    outputConv = SelectOutputCS(0, env);
 
   img = new Image444(vi.width, vi.height);
   overlayImg = new Image444(overlayVi.width, overlayVi.height);
 
-  func = SelectFunction(args[4].AsString("Blend"), env);
+  func = SelectFunction(args[ARG_MODE].AsString("Blend"), env);
 
 }
 
@@ -116,7 +142,9 @@ Overlay::~Overlay() {
   }
   overlayImg->free();
   img->free();
+  free(inputVi);
 }
+
 
 PVideoFrame __stdcall Overlay::GetFrame(int n, IScriptEnvironment *env) {
   // Fetch current frame and convert it.
@@ -127,18 +155,35 @@ PVideoFrame __stdcall Overlay::GetFrame(int n, IScriptEnvironment *env) {
   PVideoFrame Oframe = overlay->GetFrame(n, env);
   overlayConv->ConvertImage(Oframe, overlayImg, env);
 
+  // Clip overlay to original image
+  ClipFrames(img, overlayImg, offset_x, offset_y);
+
+
+  if (overlayImg->IsSizeZero()) {
+    // Convert output image back
+    img->ReturnOriginal(true);
+    overlayImg->ReturnOriginal(true);
+    PVideoFrame f = env->NewVideoFrame(vi);
+    return outputConv->ConvertImage(img, f, env);
+  }
+
+
   // fetch current mask (if given)
+  
   if (mask) {
     PVideoFrame Mframe = mask->GetFrame(n, env);
     if (greymask)
       maskConv->ConvertImageLumaOnly(Mframe, maskImg, env);
     else 
       maskConv->ConvertImage(Mframe, maskImg, env);
+
+    img->ReturnOriginal(true);
+    ClipFrames(img, maskImg, offset_x, offset_y);
   }
+
 
   // Process the image
   func->setOpacity(opacity);
-//  func->setOpacity(n%257);
   func->setEnv(env);
 
   if (!mask) {
@@ -147,10 +192,24 @@ PVideoFrame __stdcall Overlay::GetFrame(int n, IScriptEnvironment *env) {
     func->BlendImageMask(img, overlayImg, maskImg);
   }
 
+  // Reset overlay & image offsets
+  img->ReturnOriginal(true);
+  overlayImg->ReturnOriginal(true);
+  if (mask)
+    maskImg->ReturnOriginal(true);
+
   // Convert output image back
-  frame = outputConv->ConvertImage(img, frame, env);
-  return frame;
+
+  PVideoFrame f = env->NewVideoFrame(vi);
+  f = outputConv->ConvertImage(img, f, env);
+  return f;
 }
+
+
+/*************************
+ *   Helper functions    *
+ *************************/
+
 
 OverlayFunction* Overlay::SelectFunction(const char* name, IScriptEnvironment* env) {
 
@@ -163,6 +222,102 @@ OverlayFunction* Overlay::SelectFunction(const char* name, IScriptEnvironment* e
   env->ThrowError("Overlay: Invalid 'Mode' specified.");
   return 0;
 }
+
+////////////////////////////////
+// This function will return an output colorspace converter.
+// First priority is the string.
+// If if there isn't one supplied it will return a converter
+// matching the current VideoInfo (vi)
+////////////////////////////////
+
+ConvertFrom444* Overlay::SelectOutputCS(const char* name, IScriptEnvironment* env) {
+  if (!name) {
+    if (vi.IsYV12()) {
+      return new Convert444ToYV12();
+    } else if (vi.IsYUY2()) {
+      return new Convert444ToYUY2();
+    }
+  }
+
+  if (!lstrcmpi(name, "YUY2")) {
+    vi.pixel_type = VideoInfo::CS_YUY2;
+    return new Convert444ToYUY2();
+  }
+
+  if (!lstrcmpi(name, "YV12")) {
+    vi.pixel_type = VideoInfo::CS_YV12;
+    return new Convert444ToYV12();
+  }
+
+  env->ThrowError("Overlay: Invalid 'output' colorspace specified.");
+  return 0;
+}
+
+///////////////////////////////////
+// Note: Instead of throwing an
+// error, this function returns 0
+// if it cannot fint the colorspace,
+// for more accurate error reporting
+///////////////////////////////////
+
+ConvertTo444* Overlay::SelectInputCS(VideoInfo* VidI, IScriptEnvironment* env) {
+  if (VidI->IsYV12()) {
+    ConvertTo444* c = new Convert444FromYV12();
+    c->SetVideoInfo(VidI);
+    return c;
+  } else if (VidI->IsYUY2()) {
+    ConvertTo444* c = new Convert444FromYUY2();
+    c->SetVideoInfo(VidI);
+    return c;
+  } 
+  return 0;
+}
+
+void Overlay::ClipFrames(Image444* input, Image444* overlay, int x, int y) {
+
+  input->ResetFake();
+  overlay->ResetFake();
+
+  input->ReturnOriginal(false);  // We now use cropped space
+  overlay->ReturnOriginal(false);
+
+  // Crop negative offset off overlay
+  if (x<0) {
+    overlay->SubFrame(-x,0,overlay->w()+x, overlay->h());
+    x=0;
+  }
+  if (y<0) {
+    overlay->SubFrame(0,-y, overlay->w(), overlay->h()+y);
+    y=0;
+  }
+  // Clip input-frame to topleft overlay:
+  input->SubFrame(x,y,input->w()-x, input->h()-y);
+  x = y = 0;
+  // input and overlay are now topleft aligned
+  // x+y should now no longer be needed.
+
+  // Clip overlay that is beyond the right side of the input
+
+  if (overlay->w() > input->w()) {
+    overlay->SubFrame(0,0,input->w(), overlay->h());
+  }
+
+  if (overlay->h() > input->h()) {
+    overlay->SubFrame(0,0,overlay->w(), input->h());
+  }
+
+  // Clip right/ bottom of input 
+  
+  if(input->w() > overlay->w()) {
+    input->SubFrame(0,0, overlay->w(), input->h());
+  }
+
+  if(input->h() > overlay->h()) {
+    input->SubFrame(0,0, input->w(), overlay->h());
+  }
+
+}
+
 
 AVSValue __cdecl Overlay::Create(AVSValue args, void*, IScriptEnvironment* env) {
    return new Overlay(args[0].AsClip(), args, env);
