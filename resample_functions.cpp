@@ -63,6 +63,39 @@ double MitchellNetravaliFilter::f (double x)
 }
 
 
+/***********************
+ *** Lanczos3 filter ***
+ ***********************/
+
+double Lanczos3Filter::sinc(double value)
+{
+	if (value != 0.0)
+	{
+		value *= M_PI;
+		return sin(value) / value;
+	}
+	else
+	{
+		return 1.0;
+	}
+}
+
+double Lanczos3Filter::f(double value)
+{
+	if (value < 0.0)
+	{
+		value = -value;
+	}
+	if (value < 3.0)
+	{
+		return (sinc(value) * sinc(value / 3.0));
+	}
+	else
+	{
+		return 0.0;
+	}
+}
+
 
 
 

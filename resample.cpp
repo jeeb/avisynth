@@ -29,6 +29,7 @@
 AVSFunction Resample_filters[] = {  
   { "BilinearResize", "cii[src_left]f[src_top]f[src_width]f[src_height]f", Create_BilinearResize },
   { "BicubicResize", "cii[b]f[c]f[src_left]f[src_top]f[src_width]f[src_height]f", Create_BicubicResize },
+  { "LanczosResize", "cii[src_left]f[src_top]f[src_width]f[src_height]f", Create_Lanczos3Resize},
   /**
     * Resize(PClip clip, [src_left, src_top, src_width, int src_height,] dst_width, dst_height)
     *
@@ -596,6 +597,7 @@ FilteredResizeV::FilteredResizeV( PClip _child, double subrange_top, double subr
 
 PVideoFrame __stdcall FilteredResizeV::GetFrame(int n, IScriptEnvironment* env)
 {
+  static const __int64 FPround =           0x0000200000002000;  // 16384/2
   PVideoFrame src = child->GetFrame(n, env);
   PVideoFrame dst = env->NewVideoFrame(vi);
   const int* cur = resampling_pattern;
@@ -759,6 +761,8 @@ PVideoFrame __stdcall FilteredResizeV::GetFrame(int n, IScriptEnvironment* env)
     jnz         bloop
 align 16
 out_bloop:
+    paddd       mm1,[FPround]
+    paddd       mm7,[FPround]
     mov         eax, dstp
     pslld       mm1, 2                  ;14 bits -> 16bit fraction
     pslld       mm7, 2                  ;compensate the fact that FPScale = 16384
@@ -870,4 +874,11 @@ AVSValue __cdecl Create_BicubicResize(AVSValue args, void*, IScriptEnvironment* 
 {
   return CreateResize( args[0].AsClip(), args[1].AsInt(), args[2].AsInt(), &args[5], 
                        &MitchellNetravaliFilter(args[3].AsFloat(1./3.), args[4].AsFloat(1./3.)), env );
+}
+
+// 09-14-2002 - Vlad59 - Lanczos3Resize - Added Lanczos3Resize
+AVSValue __cdecl Create_Lanczos3Resize(AVSValue args, void*, IScriptEnvironment* env) 
+{
+  return CreateResize( args[0].AsClip(), args[1].AsInt(), args[2].AsInt(), &args[3], 
+                       &Lanczos3Filter(), env );
 }

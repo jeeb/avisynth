@@ -25,6 +25,10 @@
 // 2 bits sacrificed because of 16 bit signed MMX multiplication
 const int FPScale = 16384; // fixed point scaler
 
+// 09-14-2002 - Vlad59 - Lanczos3Resize - Constant added
+#define M_PI 3.14159265358979323846
+
+
 
 /*******************************************
    ***************************************
@@ -67,6 +71,20 @@ public:
 
 private:
   double p0,p2,p3,q0,q1,q2,q3;
+};
+
+// 09-14-2002 - Vlad59 - Lanczos3Resize
+class Lanczos3Filter : public ResamplingFunction
+/**
+  * Lanczos3 filter, used in Lanczos3Resize
+ **/
+{
+public:
+	double f(double x);
+	double support() { return 3.0; };
+
+private:
+	double sinc(double value);
 };
 
 
