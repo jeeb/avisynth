@@ -456,6 +456,14 @@ SOURCE=.\conditional.h
 # End Source File
 # Begin Source File
 
+SOURCE=.\conditional_functions.cpp
+# End Source File
+# Begin Source File
+
+SOURCE=.\conditional_functions.h
+# End Source File
+# Begin Source File
+
 SOURCE=.\convolution.cpp
 # End Source File
 # Begin Source File
