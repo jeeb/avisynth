@@ -648,7 +648,7 @@ enum {
                               //         will have anyway)
 };
 #define MAX_INT 0x7fffffff
-#define MIN_INT 0x80000000
+#define MIN_INT -0x7fffffff
 
 
 
