@@ -70,7 +70,7 @@ MEMCPY_AMD.CPP
 
 // Inline assembly syntax for use with Visual C++
 
-void * memcpy_amd(void *dest, const void *src, size_t n)
+void memcpy_amd(void *dest, const void *src, size_t n)
 {
   __asm {
 
