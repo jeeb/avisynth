@@ -35,6 +35,7 @@
 
 #include "convert.h"
 #include "convert_xvid.h"
+#include "convert_yv12.h"
 
 
 
@@ -47,7 +48,7 @@ AVSFunction Convert_filters[] = {
   { "ConvertToRGB24", "c[matrix]s", ConvertToRGB::Create24 },
   { "ConvertToRGB32", "c[matrix]s", ConvertToRGB::Create32 },
   { "ConvertToYV12", "c", ConvertToYV12::Create },  
-  { "ConvertToYUY2", "c", ConvertToYUY2::Create },  
+  { "ConvertToYUY2", "c[interlaced]b", ConvertToYUY2::Create },  
   { "ConvertBackToYUY2", "c", ConvertBackToYUY2::Create },  
   { "Greyscale", "c", Greyscale::Create },
   { 0 }
@@ -463,8 +464,8 @@ AVSValue __cdecl ConvertToYV12::Create(AVSValue args, void*, IScriptEnvironment*
  *******   Convert to YUY2   ******
  *********************************/
 
-ConvertToYUY2::ConvertToYUY2(PClip _child, IScriptEnvironment* env)
-  : GenericVideoFilter(_child), src_cs(vi.pixel_type)
+ConvertToYUY2::ConvertToYUY2(PClip _child, bool _interlaced, IScriptEnvironment* env)
+  : GenericVideoFilter(_child), interlaced(_interlaced),src_cs(vi.pixel_type)
 {
   if (vi.width & 1)
     env->ThrowError("ConvertToYUY2: image width must be even");
@@ -618,66 +619,18 @@ PVideoFrame __stdcall ConvertToYUY2::GetFrame(int n, IScriptEnvironment* env)
   if (((src_cs&VideoInfo::CS_YV12)==VideoInfo::CS_YV12)||((src_cs&VideoInfo::CS_I420)==VideoInfo::CS_I420)) {  
     PVideoFrame dst = env->NewVideoFrame(vi);
     BYTE* yuv = dst->GetWritePtr();
-    yv12_to_yuyv_mmx(yuv,dst->GetPitch()/2,src->GetReadPtr(PLANAR_Y),src->GetReadPtr(PLANAR_U),src->GetReadPtr(PLANAR_V), src->GetPitch(PLANAR_Y), src->GetPitch(PLANAR_U), src->GetRowSize(PLANAR_Y), src->GetHeight(PLANAR_Y));
-    return dst;
-    /*
-    const BYTE* yp = src->GetReadPtr(PLANAR_Y);
-    const BYTE* up = src->GetReadPtr(PLANAR_U);
-    const BYTE* vp = src->GetReadPtr(PLANAR_V);
-
-    int dst_pitch=dst->GetPitch();
-    int src_pitchUV=src->GetPitch(PLANAR_U);
-    int src_pitchY=src->GetPitch(PLANAR_Y);
-
-  if (!vi.IsFieldBased()) {
-    for (int y=0; y<(vi.height>>1); y++) {
-      for (int x=0; x<(vi.width>>1); x++) {
-        yuv[x*4]=yp[x*2];
-        yuv[x*4+2]=yp[x*2+1];
-        yuv[x*4+1]=up[x];
-        yuv[x*4+3]=vp[x];
-
-        yuv[x*4+dst_pitch]=yp[x*2+src_pitchY];
-        yuv[x*4+2+dst_pitch]=yp[x*2+1+src_pitchY];
-        yuv[x*4+1+dst_pitch]=up[x];
-        yuv[x*4+3+dst_pitch]=vp[x];
+    if (interlaced) {
+		  if ((env->GetCPUFlags() & CPUF_INTEGER_SSE)) {
+        isse_yv12_i_to_yuy2(src->GetReadPtr(PLANAR_Y), src->GetReadPtr(PLANAR_U), src->GetReadPtr(PLANAR_V), src->GetRowSize(PLANAR_Y_ALIGNED), src->GetPitch(PLANAR_Y), src->GetRowSize(PLANAR_U), 
+                      yuv, dst->GetPitch() ,src->GetHeight());
+      } else {
+        mmx_yv12_i_to_yuy2(src->GetReadPtr(PLANAR_Y), src->GetReadPtr(PLANAR_U), src->GetReadPtr(PLANAR_V), src->GetRowSize(PLANAR_Y_ALIGNED), src->GetPitch(PLANAR_Y), src->GetRowSize(PLANAR_U), 
+                    yuv, dst->GetPitch() ,src->GetHeight());
       }
-      yp += src_pitchY*2;
-      up += src_pitchUV;
-      vp += src_pitchUV;
-      yuv += dst_pitch*2;
+    } else {
+      yv12_to_yuyv_mmx(yuv,dst->GetPitch()/2,src->GetReadPtr(PLANAR_Y),src->GetReadPtr(PLANAR_U),src->GetReadPtr(PLANAR_V), src->GetPitch(PLANAR_Y), src->GetPitch(PLANAR_U), src->GetRowSize(PLANAR_Y), src->GetHeight(PLANAR_Y));
     }
-  } else { // Fieldbased
-    for (int y=0; y<(vi.height>>2); y++) {
-      for (int x=0; x<(vi.width>>1); x++) {
-        yuv[x*4]=yp[x*2];
-        yuv[x*4+2]=yp[x*2+1];
-        yuv[x*4+1]=up[x];
-        yuv[x*4+3]=vp[x];
-
-        yuv[x*4+dst_pitch*2]=yp[x*2+src_pitchY*2];  // Two lines down, same UV
-        yuv[x*4+2+dst_pitch*2]=yp[x*2+1+src_pitchY*2];
-        yuv[x*4+1+dst_pitch*2]=up[x];
-        yuv[x*4+3+dst_pitch*2]=vp[x];
-
-        yuv[x*4+dst_pitch]=yp[x*2+src_pitchY];
-        yuv[x*4+2+dst_pitch]=yp[x*2+1+src_pitchY];
-        yuv[x*4+1+dst_pitch]=up[x+src_pitchUV];
-        yuv[x*4+3+dst_pitch]=vp[x+src_pitchUV];
-
-        yuv[x*4+dst_pitch*3]=yp[x*2+src_pitchY*3];
-        yuv[x*4+2+dst_pitch*3]=yp[x*2+1+src_pitchY*3];
-        yuv[x*4+1+dst_pitch*3]=up[x+src_pitchUV];
-        yuv[x*4+3+dst_pitch*3]=vp[x+src_pitchUV];
-      }
-      yp += src_pitchY*4;
-      up += src_pitchUV*2;
-      vp += src_pitchUV*2;
-      yuv += dst_pitch*4;
-    }
-  }
     return dst;
-    */
   }
 
   PVideoFrame dst = env->NewVideoFrame(vi);
@@ -724,22 +677,16 @@ AVSValue __cdecl ConvertToYUY2::Create(AVSValue args, void*, IScriptEnvironment*
   if (clip->GetVideoInfo().IsYUY2())
     return clip;
   const VideoInfo vi = clip->GetVideoInfo();
-  if (vi.IsYV12()) {
-    if (vi.IsFieldBased()) {
+  bool i=args[1].AsBool(false);
+  if (!i) {
+    if (vi.IsYV12()) {
       if (vi.width&7) {
         int xtra = 8 - (vi.width&7);
-        return new Crop(0,0,-xtra,0,(new DoubleWeaveFields(new ConvertToYUY2(new SeparateFields(new AddBorders(0,0,xtra,0,0,clip),env), env))),env);
-      } else {
-        return new DoubleWeaveFields(new ConvertToYUY2(new SeparateFields(clip,env), env));
-      }
-    } else {
-      if (vi.width&7) {
-        int xtra = 8 - (vi.width&7);
-        return new Crop(0,0,-xtra,0,(new ConvertToYUY2(new AddBorders(0,0,xtra,0,0,clip),env)),env);
+        return new Crop(0,0,-xtra,0,(new ConvertToYUY2(new AddBorders(0,0,xtra,0,0,clip),i,env)),env);
       }
     }
   }
-  return new ConvertToYUY2(clip, env);
+  return new ConvertToYUY2(clip, i, env);
 }
 
 

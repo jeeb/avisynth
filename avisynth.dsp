@@ -493,6 +493,14 @@ SOURCE=.\convert_xvid.h
 # End Source File
 # Begin Source File
 
+SOURCE=.\convert_yv12.cpp
+# End Source File
+# Begin Source File
+
+SOURCE=.\convert_yv12.h
+# End Source File
+# Begin Source File
+
 SOURCE=.\convolution.cpp
 # End Source File
 # Begin Source File

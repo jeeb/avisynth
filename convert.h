@@ -169,7 +169,7 @@ class ConvertToYUY2 : public GenericVideoFilter
  **/
 {
 public:
-  ConvertToYUY2(PClip _child, IScriptEnvironment* env);
+  ConvertToYUY2(PClip _child, bool _interlaced, IScriptEnvironment* env);
 	void mmx_ConvertRGB32toYUY2(unsigned int *src,unsigned int *dst,int src_pitch, int dst_pitch,int w, int h);
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
 
@@ -177,7 +177,7 @@ public:
 
 private:
   const int src_cs;  // Source colorspace
-
+  const bool interlaced;
 };
 
 class ConvertBackToYUY2 : public GenericVideoFilter 
@@ -194,7 +194,7 @@ public:
 
 private:
   const bool rgb32;
-
+  
 };
 
 
