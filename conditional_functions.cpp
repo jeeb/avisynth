@@ -44,6 +44,12 @@ AVSFunction Conditional_funtions_filters[] = {
   {  "LumaDifference","cc", ComparePlane::Create_y },
   {  "ChromaUDifference","cc", ComparePlane::Create_u },
   {  "ChromaVDifference","cc", ComparePlane::Create_v },
+  {  "YDifferenceFromPrevious","c", ComparePlane::Create_prev_y },
+  {  "UDifferenceFromPrevious","c", ComparePlane::Create_prev_u },
+  {  "VDifferenceFromPrevious","c", ComparePlane::Create_prev_v },
+  {  "YDifferenceToNext","c", ComparePlane::Create_prev_y },
+  {  "UDifferenceToNext","c", ComparePlane::Create_prev_u },
+  {  "VDifferenceToNext","c", ComparePlane::Create_prev_v },
   { 0 }
 };
 
@@ -156,6 +162,32 @@ AVSValue __cdecl ComparePlane::Create_v(AVSValue args, void* user_data, IScriptE
 	return CmpPlane(args[0],args[1],user_data, PLANAR_V, env);
 }
 
+
+AVSValue __cdecl ComparePlane::Create_prev_y(AVSValue args, void* user_data, IScriptEnvironment* env) {
+	return CmpPlaneSame(args[0],user_data, -1, PLANAR_Y, env);
+}
+
+AVSValue __cdecl ComparePlane::Create_prev_u(AVSValue args, void* user_data, IScriptEnvironment* env) {
+	return CmpPlaneSame(args[0],user_data, -1, PLANAR_U, env);
+}
+
+AVSValue __cdecl ComparePlane::Create_prev_v(AVSValue args, void* user_data, IScriptEnvironment* env) {
+	return CmpPlaneSame(args[0],user_data, -1, PLANAR_V, env);
+}
+
+
+AVSValue __cdecl ComparePlane::Create_next_y(AVSValue args, void* user_data, IScriptEnvironment* env) {
+	return CmpPlaneSame(args[0],user_data, 1, PLANAR_Y, env);
+}
+
+AVSValue __cdecl ComparePlane::Create_next_u(AVSValue args, void* user_data, IScriptEnvironment* env) {
+	return CmpPlaneSame(args[0],user_data, 1, PLANAR_U, env);
+}
+
+AVSValue __cdecl ComparePlane::Create_next_v(AVSValue args, void* user_data, IScriptEnvironment* env) {
+	return CmpPlaneSame(args[0],user_data, 1, PLANAR_V, env);
+}
+
 AVSValue ComparePlane::CmpPlane(AVSValue clip, AVSValue clip2, void* user_data, int plane, IScriptEnvironment* env) {
 		if (!clip.IsClip())
 			env->ThrowError("Plane Difference: No clip supplied!");
@@ -183,6 +215,7 @@ AVSValue ComparePlane::CmpPlane(AVSValue clip, AVSValue clip2, void* user_data, 
 			env->ThrowError("Compare Plane: This filter can only be used within ConditionalFilter");
 
 		int n = cn.AsInt();
+		n = min(max(n,0),vi.num_frames);
 
 		PVideoFrame src = child->GetFrame(n,env);
 		PVideoFrame src2 = child2->GetFrame(n,env);
@@ -203,6 +236,45 @@ AVSValue ComparePlane::CmpPlane(AVSValue clip, AVSValue clip2, void* user_data, 
 		return (AVSValue)f;
 }
 
+AVSValue ComparePlane::CmpPlaneSame(AVSValue clip, void* user_data, int offset, int plane, IScriptEnvironment* env) {
+		if (!clip.IsClip())
+			env->ThrowError("Plane Difference: No clip supplied!");
+    if (!(env->GetCPUFlags() & CPUF_INTEGER_SSE))
+      env->ThrowError("Plane Difference: Requires Integer SSE capable CPU.");
+
+		PClip child = clip.AsClip();
+		VideoInfo vi = child->GetVideoInfo();
+
+		if (!vi.IsPlanar())
+			env->ThrowError("Plane Difference: Only planar images (as YV12) supported!");
+		
+
+		AVSValue cn = env->GetVar("current_frame");
+		if (!cn.IsInt())
+			env->ThrowError("Compare Plane: This filter can only be used within ConditionalFilter");
+
+		int n = cn.AsInt();
+		n = min(max(n,0),vi.num_frames);
+		int n2 = min(max(n+offset,1),vi.num_frames);
+
+		PVideoFrame src = child->GetFrame(n,env);
+		PVideoFrame src2 = child->GetFrame(n2,env);
+
+		const BYTE* srcp = src->GetReadPtr(plane);
+		const BYTE* srcp2 = src2->GetReadPtr(plane);
+		int h = src->GetHeight(plane);
+		int w = src->GetRowSize(plane);
+		int pitch = src->GetPitch(plane);
+		int pitch2 = src2->GetPitch(plane);
+		w=(w/16)*16;
+
+		int b = isse_scenechange_16(srcp, srcp2, h, w, pitch, pitch2);
+
+		if (!b) b=1;
+		float f = (float)b / (float)(h * w);
+
+		return (AVSValue)f;
+}
 
 
 
