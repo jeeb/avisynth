@@ -5,7 +5,7 @@
 
 !DEFINE VERSION 2.5.4
 
-!DEFINE DATE 191203
+!DEFINE DATE 301203
 
 
 SetCompressor bzip2
@@ -92,6 +92,12 @@ ClearErrors
   WriteRegStr HKCR ".avs" "" "avsfile"
   WriteRegStr HKCR "avsfile" "" "AviSynth Script"
   WriteRegStr HKCR "avsfile\DefaultIcon" "" $SYSDIR\AviSynth.dll,0
+IfErrors reg_not_ok
+  goto reg_ok
+reg_not_ok:
+  MessageBox MB_OK "You need administrator rights to install AviSynth!"
+  Abort
+reg_ok:
 
 CreateDirectory  "$SMPROGRAMS\AviSynth 2.5"
   
@@ -149,16 +155,16 @@ SectionEnd
 
 
 
-Section "German Documentation"
-  SectionIn 2 
-  SetOutPath $INSTDIR\Docs_ger
-  File "..\Docs_ger\*.*"
-  SetOutPath $INSTDIR\Docs_ger\filters
-  File "..\Docs_ger\filters\*.*"
+;Section "German Documentation"
+;  SectionIn 2 
+;  SetOutPath $INSTDIR\Docs_ger
+;  File "..\Docs_ger\*.*"
+;  SetOutPath $INSTDIR\Docs_ger\filters
+;  File "..\Docs_ger\filters\*.*"
   
-CreateShortCut "$SMPROGRAMS\AviSynth 2.5\Deutsche AviSynth Dokumentation.lnk" "$INSTDIR\Docs_ger\index.html"
+;CreateShortCut "$SMPROGRAMS\AviSynth 2.5\Deutsche AviSynth Dokumentation.lnk" "$INSTDIR\Docs_ger\index.html"
 
-SectionEnd
+;SectionEnd
 
 ;SectionDivider
 
