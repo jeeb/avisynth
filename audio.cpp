@@ -28,7 +28,7 @@ AVSFunction Audio_filters[] = {
   { "DelayAudio", "cf", DelayAudio::Create },
   { "AmplifydB", "cf[]f", Amplify::Create_dB },
   { "Amplify", "cf[]f", Amplify::Create },
-  { "Normalize", "c[left]f[right]f", Normalize::Create },
+  { "Normalize", "c[left]f[right]f[show]b", Normalize::Create },
   { "MixAudio", "cc[clip1_factor]f[clip2_factor]f", MixAudio::Create },
   { "AssumeSampleRate", "ci", AssumeRate::Create },
   { "ResampleAudio", "ci", ResampleAudio::Create },
@@ -431,10 +431,11 @@ AVSValue __cdecl Amplify::Create_dB(AVSValue args, void*, IScriptEnvironment* en
 ******************************/
 
 
-Normalize::Normalize(PClip _child, double _left_factor, double _right_factor)
+Normalize::Normalize(PClip _child, double _left_factor, double _right_factor, bool _showvalues)
   : GenericVideoFilter(ConvertAudioTo16bit::Create(_child)),
     left_factor(int(_left_factor*65536+.5)),
-    right_factor(int(_right_factor*65536+.5)) {
+    right_factor(int(_right_factor*65536+.5)),
+    showvalues(_showvalues) {
   max_volume=-1;
   }
 
@@ -445,7 +446,6 @@ void __stdcall Normalize::GetAudio(void* buf, int start, int count, IScriptEnvir
   if (max_volume==-1) {
     int passes=vi.num_audio_samples/count;
     int num_samples=count;
-//    if (vi.stereo) num_samples*=2;
     // Read samples into buffer and test them
     for (int i=0;i<passes;i++) {
         child->GetAudio(buf, num_samples*i, count, env);
@@ -455,7 +455,6 @@ void __stdcall Normalize::GetAudio(void* buf, int start, int count, IScriptEnvir
     }     
     // Remaining samples
     int rem_samples=vi.num_audio_samples%count;
-//    if (vi.stereo) rem_samples*=2;
     child->GetAudio(buf, num_samples*passes, rem_samples, env);
     for (i=0;i<rem_samples;i++) {
       max_volume=max(abs(samples[i]),max_volume);
@@ -465,6 +464,7 @@ void __stdcall Normalize::GetAudio(void* buf, int start, int count, IScriptEnvir
     left_factor=(int)((double)left_factor*volume);
     right_factor=(int)((double)right_factor*volume);
   } 
+
   child->GetAudio(buf, start, count, env); 
   if (vi.stereo) {
     for (int i=0; i<count; ++i) {
@@ -478,12 +478,35 @@ void __stdcall Normalize::GetAudio(void* buf, int start, int count, IScriptEnvir
   }
 }
 
+PVideoFrame __stdcall Normalize::GetFrame(int n, IScriptEnvironment* env) {
+  if (showvalues) {
+    PVideoFrame src = child->GetFrame(n, env);
+    env->MakeWritable(&src);
+    char text[400];
+    double maxvol = 32767.0 / (double)max_volume;
+    double maxdb = log(20 / maxvol);
+    if (max_volume<0) {
+      sprintf(text,"Normalize: Result not yet calculated!");
+    } else {
+/*    sprintf(text,"Amplify Factor: %8.4f\nAmplify DB: %8.4f",
+      maxvol, maxdb);
+*/    sprintf(text,"Amplify Factor: %8.4f",
+      maxvol);
+    }
+    ApplyMessage(&src, vi, text, vi.width/4, 0xf0f0f0,0,0 , env );
+    return src;
+  }
+  return   child->GetFrame(n, env);
+
+}
+
 
 AVSValue __cdecl Normalize::Create(AVSValue args, void*, IScriptEnvironment* env) 
 {
   double left_factor = args[1].AsFloat(1.0);
   double right_factor = args[2].AsFloat(left_factor);
-  return new Normalize(args[0].AsClip(), left_factor, right_factor);
+  bool show = args[3].AsBool(false);
+  return new Normalize(args[0].AsClip(), left_factor, right_factor, show);
 }
 
 
