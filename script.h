@@ -149,6 +149,8 @@ AVSValue IsYV12(AVSValue args, void*, IScriptEnvironment* env);
 AVSValue IsYUY2(AVSValue args, void*, IScriptEnvironment* env);
 AVSValue IsRGB24(AVSValue args, void*, IScriptEnvironment* env);
 AVSValue IsRGB32(AVSValue args, void*, IScriptEnvironment* env);
+AVSValue IsPlanar(AVSValue args, void*, IScriptEnvironment* env);
+AVSValue IsInterleaved(AVSValue args, void*, IScriptEnvironment* env);
 AVSValue IsFieldBased(AVSValue args, void*, IScriptEnvironment* env);
 AVSValue IsFrameBased(AVSValue args, void*, IScriptEnvironment* env);
 AVSValue GetParity(AVSValue args, void*, IScriptEnvironment* env);

@@ -88,6 +88,9 @@ AVSFunction Script_functions[] = {
   { "audiobits", "c", AudioBits },
   { "IsRGB", "c", IsRGB },
   { "IsYUY2", "c", IsYUY2 },
+  { "IsYUY2", "c", IsYV12 },
+  { "IsPlanar", "c", IsPlanar },
+  { "IsInterleved", "c", IsInterleaved },
   { "IsRGB24", "c", IsRGB24 },
   { "IsRGB32", "c", IsRGB32 },
   { "IsFieldBased", "c", IsFieldBased },
@@ -504,6 +507,9 @@ AVSValue IsRGB(AVSValue args, void*, IScriptEnvironment* env) { return VI(args[0
 AVSValue IsRGB24(AVSValue args, void*, IScriptEnvironment* env) { return VI(args[0]).IsRGB24(); }
 AVSValue IsRGB32(AVSValue args, void*, IScriptEnvironment* env) { return VI(args[0]).IsRGB32(); }
 AVSValue IsYUY2(AVSValue args, void*, IScriptEnvironment* env) { return VI(args[0]).IsYUY2(); }
+AVSValue IsYV12(AVSValue args, void*, IScriptEnvironment* env) { return VI(args[0]).IsYV12(); }
+AVSValue IsPlanar(AVSValue args, void*, IScriptEnvironment* env) { return VI(args[0]).IsPlanar(); }
+AVSValue IsInterleaved(AVSValue args, void*, IScriptEnvironment* env) { return VI(args[0]).IsColorSpace(VideoInfo::CS_INTERLEAVED); }
 AVSValue IsFieldBased(AVSValue args, void*, IScriptEnvironment* env) { return VI(args[0]).IsFieldBased(); }
 AVSValue IsFrameBased(AVSValue args, void*, IScriptEnvironment* env) { return !VI(args[0]).IsFieldBased(); }
 AVSValue GetParity(AVSValue args, void*, IScriptEnvironment* env) { return args[0].AsClip()->GetParity(args[1].AsInt(0)); }
