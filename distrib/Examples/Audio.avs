@@ -12,7 +12,7 @@ signal = AmplifyDB(-3)
 
 # Puts the new signal as right channel, leaving the sound from GetRightChannel as new left channel.
 
-MergeChannels(signal)
+MonoToStereo(signal)
 
 # Left channel now contains a pulsing signal (from ColorBars).
 # Right channel now contains the same signal at -3dB.
