@@ -172,6 +172,9 @@ Layer::Layer( PClip _child1, PClip _child2, const char _op[], int _lev, int _x, 
     if (vi1.pixel_type != vi2.pixel_type)
       env->ThrowError("Layer: image formats don't match");
 
+	if (! (vi.IsRGB32() | vi.IsYUV()) ) 
+		env->ThrowError("Layer only support RGB32 and YUV formats");
+
   vi = vi1;
 
 	if (vi.IsRGB32()) ofsY = vi.height-vi2.height-ofsY; //RGB is upside down
