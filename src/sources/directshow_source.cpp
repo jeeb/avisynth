@@ -968,8 +968,9 @@ DirectShowSource::DirectShowSource(const char* filename, int _avg_time_per_frame
             float* samps = (float*)buf;
             for (int i = 0; i < bytes_left/sizeof(float); i++)
               samps[i] = 0.0f;
+          } else {
+            memset(buf,0, bytes_left);
           }
-          memset(buf,0, bytes_left);
           return;
         }
         // We skipped successfully

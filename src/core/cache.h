@@ -57,9 +57,11 @@ public:
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
   void __stdcall SetCacheHints(int cachehints,int frame_range);
   static AVSValue __cdecl Create_Cache(AVSValue args, void*, IScriptEnvironment* env);
+  void __stdcall GetAudio(void* buf, __int64 start, __int64 count, IScriptEnvironment* env);
 
 private:
   void RegisterVideoFrame(const PVideoFrame& frame, int n, IScriptEnvironment*);
+  void Cache::FillZeros(void* buf, int start_offset, int count);
 
   struct CachedVideoFrame 
   {
@@ -82,6 +84,17 @@ private:
   int h_radius;
   int h_policy;
   int h_lastID;
+// Audio cache:
+  int h_audiopolicy;
+  int h_audioSize;
+	char * cache;
+	int samplesize;
+	int maxsamplecount;
+	__int64 cache_start;
+	__int64 cache_count;
+	char dbgbuf[255];
+
+
   enum {CACHE_ST_USED = 1<<0,
         CACHE_ST_DELETEME = 1<<1,
         CACHE_ST_BEING_GENERATED = 1<<2,

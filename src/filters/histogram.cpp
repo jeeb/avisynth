@@ -90,6 +90,9 @@ Histogram::Histogram(PClip _child, int _mode, IScriptEnvironment* env)
   }
 
   if ((mode == 4)||(mode==5)) {
+
+    child->SetCacheHints(CACHE_AUDIO,4096*1024);    
+
     if (!vi.HasVideo()) {
       mode = 4; // force mode to 4.
       vi.fps_numerator = 25;

@@ -949,6 +949,9 @@ ResampleAudio::ResampleAudio(PClip _child, int _target_rate, IScriptEnvironment*
   dtb = int(dt*(1<<Np) + 0.5);
   double dh = min(double(Npc), factor*Npc);  /* Filter sampling period */
   dhb = int(dh*(1<<Na) + 0.5);
+
+  child->SetCacheHints(CACHE_AUDIO,0);
+
 }
 
 

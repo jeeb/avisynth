@@ -41,7 +41,7 @@ AVSFunction Cache_filters[] = {
   { "InternalCache", "c", Cache::Create_Cache },                    
   { 0 }
 };
-
+ 
 
 /*******************************
  *******   Cache filter   ******
@@ -53,6 +53,7 @@ Cache::Cache(PClip _child)
 
   use_hints=false;   // Default policy is to cache all frames
   h_policy = CACHE_NOTHING;  // Since hints are not used per default, this is solely to describe the lowest default cache mode.
+  h_audiopolicy = CACHE_NOTHING;  // Don't cache audio per default.
 
  }
 
@@ -146,6 +147,92 @@ PVideoFrame __stdcall Cache::GetFrame(int n, IScriptEnvironment* env)
   return result;
 }
 
+void Cache::FillZeros(void* buf, int start_offset, int count) {
+
+  if (vi.sample_type == SAMPLE_FLOAT) {
+    float* samps = (float*)buf;
+    for (int i = start_offset; i < count; i++)
+      samps[i] = 0.0f;
+
+    } else {
+      int bps = vi.BytesPerAudioSample();
+      unsigned char* byte_buf = (unsigned char*)buf;
+      memset(byte_buf + start_offset*bps, 0, count * bps);
+    }
+}
+
+void __stdcall Cache::GetAudio(void* buf, __int64 start, __int64 count, IScriptEnvironment* env) {
+  if (count <= 0) 
+    return;
+
+  if ( (!vi.HasAudio()) || (start+count <= 0) || (start >= vi.num_audio_samples)) {
+    // Complely skip.
+    FillZeros(buf, 0, count);
+    return;
+  }
+
+  if (start < 0) {  // Partial initial skip
+    FillZeros(buf, 0, -start);  // Fill all samples before 0 with silence.
+    count += start;
+    child->GetAudio((unsigned char*)buf+(vi.BytesPerAudioSample()*(-start)), 0, count, env);    
+  }
+
+  if (start+count > vi.num_audio_samples) {  // Partial ending skip
+    __int64 end = start + count;
+    FillZeros(buf, vi.num_audio_samples - start, end - vi.num_audio_samples);  // Fill all samples after end with silence.
+    count = (vi.num_audio_samples - start);
+    child->GetAudio(buf, 0, count, env);
+  }
+
+  if (h_audiopolicy == CACHE_NOTHING) {
+    child->GetAudio(buf, start, count, env);
+    return;  // We are ok to return now!
+  }
+	int shiftsamples;
+
+#ifdef _DEBUG
+	sprintf(dbgbuf, "CA:Get %.6d %.6d %.6d %.6d\n", int(start), int(count), int(cache_start), int(cache_count));	
+	_RPT0(0,dbgbuf);
+#endif
+
+	if (count>maxsamplecount) {		//is cache big enough?
+		_RPT0(0, "CA:Cache too small->no caching\n");	
+		child->GetAudio(buf, start, count, env);
+		return;
+	}
+	
+	if ( (start<cache_start) || (start>=cache_start+cache_count) ){ //first sample is before or behind cache -> restart cache
+	  _RPT0(0,"CA: Restart\n");
+
+		child->GetAudio(cache, start, count, env);
+		cache_start = start;
+		cache_count = count;
+	} else {	//at least start sample is in cache
+		if ( start + count > cache_start + cache_count ) {//cache is too short. Else all is already in the cache
+			if ((start - cache_start + count)>maxsamplecount) {	//cache shifting is necessary
+				shiftsamples = start - cache_start + count - maxsamplecount;
+
+				if ( (start - cache_start)/2 > shiftsamples ) {	//shift half cache if possible
+					shiftsamples = (start - cache_start)/2;
+				}
+
+				memmove(cache, cache+shiftsamples*samplesize,(cache_count-shiftsamples)*samplesize);
+
+				cache_start = cache_start + shiftsamples;
+				cache_count = cache_count - shiftsamples;
+			}
+
+			//append to cache
+			child->GetAudio(cache + cache_count*samplesize, cache_start + cache_count, start+count-(cache_start+cache_count), env);
+			cache_count = cache_count + start+count-(cache_start+cache_count);
+		}
+	}
+
+	//copy cache to buf
+	memcpy(buf,cache + (start - cache_start)*samplesize, count*samplesize);
+
+}
+
 void __stdcall Cache::SetCacheHints(int cachehints,int frame_range) {   
   _RPT2(0, "Cache: Setting cache hints (hints:%d, range:%d )\n", cachehints, frame_range);
 
@@ -156,6 +243,29 @@ void __stdcall Cache::SetCacheHints(int cachehints,int frame_range) {
   }
   */
 
+  if (cachehints == CACHE_AUDIO) {
+    // Range means for audio.
+    // 0 == Cache last request only.
+    // Positive. Allocate X bytes for cache.
+    if (h_audiopolicy != CACHE_NOTHING) 
+      delete[] cache;       // FIXME: Allocate largest requested cache.
+
+    h_audiopolicy = CACHE_AUDIO;
+
+    if (!frame_range)
+      frame_range=256*1024;
+
+    if (frame_range) {
+		  cache = new char[frame_range];
+		  samplesize = vi.BytesPerAudioSample();
+		  maxsamplecount = frame_range/samplesize - 1;
+		  cache_start=0;
+		  cache_count=0;  
+    } else {
+      //FIXME: Implement me!!
+    }
+    return;
+  }
   if (cachehints == CACHE_ALL) {
     // This is default operation, so if another filter
     h_policy = CACHE_ALL;
@@ -210,6 +320,8 @@ Cache::~Cache() {
       delete[] h_status;
     }
   }
+  if (h_audiopolicy != CACHE_NOTHING)
+    delete[] cache;
 }
 
 AVSValue __cdecl Cache::Create_Cache(AVSValue args, void*, IScriptEnvironment* env) 
