@@ -177,9 +177,9 @@ struct VideoInfo {
   int BytesFromPixels(int pixels) const { return pixels * (BitsPerPixel()>>3); }   // Will not work on planar images, but will return only luma planes
   int RowSize() const { return BytesFromPixels(width); }  // Also only returns first plane on planar images
   int BMPSize() const { if (IsPlanar()) {int p = height * ((RowSize()+3) & ~3); p+=p>>1; return p;  } return height * ((RowSize()+3) & ~3); }
-  __int64 AudioSamplesFromFrames(__int64 frames) const { return ((__int64)(frames) * audio_samples_per_second * fps_denominator / fps_numerator); }
-  int FramesFromAudioSamples(__int64 samples) const { return (int)(samples * (__int64)fps_numerator / (__int64)fps_denominator / (__int64)audio_samples_per_second); }
-  __int64 AudioSamplesFromBytes(__int64 bytes) const { return bytes / BytesPerAudioSample(); }
+  __int64 AudioSamplesFromFrames(__int64 frames) const { return HasVideo() ? ((__int64)(frames) * audio_samples_per_second * fps_denominator / fps_numerator) : 0; }
+  int FramesFromAudioSamples(__int64 samples) const { return (HasVideo() && HasAudio()) ? (int)(samples * (__int64)fps_numerator / (__int64)fps_denominator / (__int64)audio_samples_per_second) : 0; }
+  __int64 AudioSamplesFromBytes(__int64 bytes) const { return HasAudio() ? bytes / BytesPerAudioSample() : 0; }
   __int64 BytesFromAudioSamples(__int64 samples) const { return samples * BytesPerAudioSample(); }
   int AudioChannels() const { return nchannels; }
   int SampleType() const{ return sample_type;}

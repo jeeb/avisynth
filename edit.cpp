@@ -70,8 +70,11 @@ AVSFunction Edit_filters[] = {
  *******   Trim Filter   ******
  ******************************/
 
-Trim::Trim(int _firstframe, int _lastframe, PClip _child) : GenericVideoFilter(_child) 
+Trim::Trim(int _firstframe, int _lastframe, PClip _child, IScriptEnvironment* env) : GenericVideoFilter(_child) 
 {
+  if (!vi.HasVideo())
+    env->ThrowError("Trim: Cannot trim if there is no video.");
+
   if (_lastframe == 0) _lastframe = vi.num_frames-1;
   firstframe = min(max(_firstframe, 0), vi.num_frames-1);
   int lastframe=_lastframe;
@@ -104,7 +107,7 @@ bool Trim::GetParity(int n)
 
 AVSValue __cdecl Trim::Create(AVSValue args, void*, IScriptEnvironment* env) 
 {
-  return new Trim(args[1].AsInt(), args[2].AsInt(), args[0].AsClip());
+  return new Trim(args[1].AsInt(), args[2].AsInt(), args[0].AsClip(), env);
 }
 
 
