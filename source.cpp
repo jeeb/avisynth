@@ -338,11 +338,11 @@ void AVISource::GetAudio(void* buf, int start, int count, IScriptEnvironment* en
   LONG bytes_read=0, samples_read=0;
 
   if (start < 0) {
-    int bytes = vi.BytesFromAudioSamples(-start);
+    int bytes = vi.BytesFromAudioSamples(min(-start, count));
     memset(buf, 0, bytes);
     buf = (char*)buf + bytes;
-    count += start;
-    start = 0;
+    count -= vi.AudioSamplesFromBytes(bytes);
+    start += vi.AudioSamplesFromBytes(bytes);
   }
 
   if (audioStreamSource) {
