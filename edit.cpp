@@ -291,7 +291,7 @@ AVSValue __cdecl Dissolve::Create(AVSValue args, void*, IScriptEnvironment* env)
 {
   const int overlap = args[2].AsInt();
   PClip result = args[0].AsClip();
-  for (int i=1; i < args[1].ArraySize(); ++i)
+  for (int i=0; i < args[1].ArraySize(); ++i)
     result = new Dissolve(result, args[1][i].AsClip(), overlap, env);
   return result;
 }
