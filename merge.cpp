@@ -107,7 +107,7 @@ MergeLuma::MergeLuma(PClip _child, PClip _clip, float _weight, IScriptEnvironmen
 {
   const VideoInfo& vi2 = clip->GetVideoInfo();
 
-  if (!vi.IsYUY2() || !vi.IsYUY2())
+  if (!vi.IsYUY2() || !vi2.IsYUY2())
     env->ThrowError("MergeLuma: YUY2 data only (no RGB); use ConvertToYUY2");
 
   if (vi.width!=vi2.width || vi.height!=vi2.height)
