@@ -283,20 +283,18 @@ PVideoFrame __stdcall GeneralConvolution::GetFrame(int n, IScriptEnvironment* en
 			iR += i22 * pbyR2[x2];
 			iG += i22 * pbyG2[x2];
 			iB += i22 * pbyB2[x2];
-			if(nSize == 9)
+			// Always do 3x3 ring of pixel
+			iR += i11 * pbyR1[x1] + i21 * pbyR1[x2] + i31 * pbyR1[x3] +
+					i12 * pbyR2[x1] + i32 * pbyR2[x3] +
+					i13 * pbyR3[x1] + i23 * pbyR3[x2] + i33 * pbyR3[x3];
+			iG += i11 * pbyG1[x1] + i21 * pbyG1[x2] + i31 * pbyG1[x3] +
+					i12 * pbyG2[x1] + i32 * pbyG2[x3] +
+					i13 * pbyG3[x1] + i23 * pbyG3[x2] + i33 * pbyG3[x3];
+			iB += i11 * pbyB1[x1] + i21 * pbyB1[x2] + i31 * pbyB1[x3] +
+					i12 * pbyB2[x1] + i32 * pbyB2[x3] +
+			  	i13 * pbyB3[x1] + i23 * pbyB3[x2] + i33 * pbyB3[x3];
+      if(nSize == 25)
 			{
-				iR += i11 * pbyR1[x1] + i21 * pbyR1[x2] + i31 * pbyR1[x3] +
-						i12 * pbyR2[x1] + i32 * pbyR2[x3] +
-						i13 * pbyR3[x1] + i23 * pbyR3[x2] + i33 * pbyR3[x3];
-				iG += i11 * pbyG1[x1] + i21 * pbyG1[x2] + i31 * pbyG1[x3] +
-						i12 * pbyG2[x1] + i32 * pbyG2[x3] +
-						i13 * pbyG3[x1] + i23 * pbyG3[x2] + i33 * pbyG3[x3];
-				iB += i11 * pbyB1[x1] + i21 * pbyB1[x2] + i31 * pbyB1[x3] +
-						i12 * pbyB2[x1] + i32 * pbyB2[x3] +
-						i13 * pbyB3[x1] + i23 * pbyB3[x2] + i33 * pbyB3[x3];
-				}
-			else
-      {
 				iR += i00 * pbyR0[x0] + i10 * pbyR0[x1] + i20 * pbyR0[x2] + i30 * pbyR0[x3] + i40 * pbyR0[x4] +
 						i01 * pbyR1[x0] + i41 * pbyR1[x4] +
 						i02 * pbyR2[x0] + i42 * pbyR2[x4] +
