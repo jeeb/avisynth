@@ -354,8 +354,6 @@ AVSValue __cdecl Create_SegmentedSource(AVSValue args, void* use_directshow, ISc
   bool bAudio = !use_directshow && args[1].AsBool(true);
   const char* pixel_type;
   if (!use_directshow) pixel_type = args[2].AsString("");
-  bool ds_seek;
-  if (use_directshow) ds_seek = args[2].AsBool(false);
   args = args[0];
   PClip result = 0;
   const char* error_msg=0;
@@ -371,9 +369,14 @@ AVSValue __cdecl Create_SegmentedSource(AVSValue args, void* use_directshow, ISc
       char filename[260];
       wsprintf(filename, "%s.%02d.%s", basename, j, extension);
       if (GetFileAttributes(filename) != (DWORD)-1) {   // check if file exists
+          PClip clip;
         try {
-          PClip clip = use_directshow ? (IClip*)(new DirectShowSource(filename, avg_time_per_frame, ds_seek, env))
-                                    : (IClip*)(new AVISource(filename, bAudio, pixel_type, 0, env));
+          if (use_directshow) {
+            AVSValue inv_args[5] = { filename, avg_time_per_frame, true, true, true}; 
+            clip = env->Invoke("DirectShowSource",AVSValue(inv_args,5)).AsClip();
+          } else {
+            clip =  (IClip*)(new AVISource(filename, bAudio, pixel_type, 0, env));
+          }
           result = !result ? clip : new_Splice(result, clip, false, env);
         } catch (AvisynthError e) {
           error_msg=e.msg;
@@ -404,7 +407,7 @@ AVSFunction Source_filters[] = {
   { "AVIFileSource", "s+[audio]b[pixel_type]s", AVISource::Create, (void*)1 },
   { "WAVSource", "s+", AVISource::Create, (void*)3 },
   { "OpenDMLSource", "s+[audio]b[pixel_type]s", AVISource::Create, (void*)2 },
-  { "DirectShowSource", "s+[fps]f[seek]b", Create_DirectShowSource },
+  { "DirectShowSource", "s+[fps]f[seek]b[audio]b[video]b", Create_DirectShowSource },
   { "SegmentedAVISource", "s+[audio]b[pixel_type]s", Create_SegmentedSource, (void*)0 },
   { "SegmentedDirectShowSource", "s+[fps]f", Create_SegmentedSource, (void*)1 },
 //  { "QuickTimeSource", "s", QuickTimeSource::Create },

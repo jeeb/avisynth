@@ -131,9 +131,10 @@ public:
   int a_allocated_buffer;
   BYTE* a_buffer;         // Killed on StopGraph
   bool load_audio;
+  bool load_video;
 
 
-  GetSample(IScriptEnvironment* _env, bool _load_audio) : env(_env), load_audio(_load_audio) {
+  GetSample(IScriptEnvironment* _env, bool _load_audio, bool _load_video) : env(_env), load_audio(_load_audio) {
     refcnt = 1;
     source_pin = 0;
     filter_graph = 0;
@@ -465,13 +466,21 @@ public:
     if (!pmt) return E_POINTER;
 
     if (load_audio) {
-      if (pmt->majortype != MEDIATYPE_Audio && load_audio) {
+      if (pmt->majortype != MEDIATYPE_Audio) {
         return S_FALSE;
       }
-    } else {
+    } else if (load_video) {
       if (pmt->majortype != MEDIATYPE_Video) {
         return S_FALSE;
       }
+    }
+
+    if (!load_video && pmt->majortype == MEDIATYPE_Video) {
+      return S_FALSE;
+    }
+
+    if (!load_audio && pmt->majortype == MEDIATYPE_Audio) {
+      return S_FALSE;
     }
 
 // Handle audio:
@@ -700,7 +709,6 @@ public:
     SetEvent(evtNewSampleReady);  // New sample is finished - wait releasing it until it has been fetched (DoneWithSample).
 
     if (state == State_Running) {
-//    if (true) {
       do {
         if (load_audio)
           _RPT0(0,"...Recieve() waiting for DoneWithSample. (audio)\n");
@@ -708,10 +716,8 @@ public:
           _RPT0(0,"...Recieve() waiting for DoneWithSample. (video)\n");
 
         wait_result = WaitForSingleObject(evtDoneWithSample, 1000);
-//      } while (wait_result == WAIT_TIMEOUT);
       } while (wait_result == WAIT_TIMEOUT && state ==State_Running);
     }
-//    wait_result = WaitForSingleObject(evtDoneWithSample, INFINITE);
 
     if (load_audio)
       _RPT0(0,"Recieve() - returning. (audio)\n");
@@ -892,7 +898,6 @@ static void SetMicrosoftDVtoFullResolution(IGraphBuilder* gb) {
 class DirectShowSource : public IClip {
 
   GetSample get_sample;
-  GetSample get_audio_sample;
   IGraphBuilder* gb;
   __int64 next_sample;
 
@@ -911,7 +916,7 @@ class DirectShowSource : public IClip {
 
 public:
 
-  DirectShowSource(const char* filename, int _avg_time_per_frame, bool _seek, IScriptEnvironment* _env) : env(_env), get_sample(_env, false), get_audio_sample(_env, true), no_search(!_seek) {
+  DirectShowSource(const char* filename, int _avg_time_per_frame, bool _seek, bool _enable_audio, bool _enable_video, IScriptEnvironment* _env) : env(_env), get_sample(_env, _enable_audio, _enable_video), no_search(!_seek) {
 
     CheckHresult(CoCreateInstance(CLSID_FilterGraphNoThread, 0, CLSCTX_INPROC_SERVER, IID_IGraphBuilder, (void**)&gb), "couldn't create filter graph");
 
@@ -920,7 +925,6 @@ public:
     MultiByteToWideChar(CP_ACP, 0, filename, -1, filenameW, MAX_PATH);
 
     CheckHresult(gb->AddFilter(static_cast<IBaseFilter*>(&get_sample), L"GetSample Video"), "couldn't add Video GetSample filter");
-    CheckHresult(gb->AddFilter(static_cast<IBaseFilter*>(&get_audio_sample), L"GetSample Audio"), "couldn't add Audio GetSample filter");
 
     bool load_grf = !strcmpi(filename+strlen(filename)-3,"grf");  // Detect ".GRF" extension and load as graph if so.
 
@@ -928,16 +932,15 @@ public:
       CheckHresult(LoadGraphFile(gb, filenameW),"Couldn't open GRF file.",filename);
       // Try connecting to any open pins.
       AttemptConnectFilters(gb, &get_sample);
-      AttemptConnectFilters(gb, &get_audio_sample);
     } else {
       CheckHresult(gb->RenderFile(filenameW, NULL), "couldn't open file ", filename);
     }
 
-    if (!get_sample.IsConnected() && !get_audio_sample.IsConnected()) {
+    if (!get_sample.IsConnected()) {
       env->ThrowError("DirectShowSource: the filter graph manager won't talk to me");
     }
 
-    RemoveUselessFilters(gb, &get_sample, &get_audio_sample);
+    RemoveUselessFilters(gb, &get_sample, &get_sample);
 
     SetMicrosoftDVtoFullResolution(gb);
 
@@ -967,15 +970,6 @@ public:
     ms->Release();
 
     vi = get_sample.GetVideoInfo();
-    VideoInfo a_vi = get_audio_sample.GetVideoInfo();
-    
-    // Workaround: On non-frame-based filters audio locks up video.
-
-    if (!frame_units && vi.HasVideo()) {
-      // Kill audio
-      RemoveUselessFilters(gb, &get_sample, &get_sample);
-      a_vi = vi;
-    }
 
     if (vi.HasVideo()) {
       if (_avg_time_per_frame) {
@@ -990,18 +984,13 @@ public:
         env->ThrowError("DirectShowSource: I can't determine the frame rate of\nthe video; you must use the \"fps\" parameter");
       }
       vi.num_frames = int(frame_units ? duration : duration / avg_time_per_frame);
-      get_sample.StartGraph();
     }
 
-
-
-    vi.nchannels = a_vi.nchannels;
-    vi.sample_type = a_vi.sample_type;
-    vi.audio_samples_per_second =  a_vi.audio_samples_per_second;
-    if (a_vi.HasAudio()) {
-      vi.num_audio_samples = (__int64)((double)audio_dur * (double)a_vi.audio_samples_per_second / 10000000.0);
-      get_audio_sample.StartGraph();
+    if (vi.HasAudio()) {
+      vi.num_audio_samples = (__int64)((double)audio_dur * (double)vi.audio_samples_per_second / 10000000.0);
     }
+
+    get_sample.StartGraph();
 
     cur_frame = 0;
     base_sample_time = 0;
@@ -1021,7 +1010,6 @@ public:
 			mc->Release();
 		}
     get_sample.StopGraph();
-    get_audio_sample.StopGraph();
   }
 
   const VideoInfo& __stdcall GetVideoInfo() { return vi; }
@@ -1086,18 +1074,17 @@ public:
 
     int bytes_left = vi.BytesFromAudioSamples(count);
 
-//    if (vi.HasVideo() && (!no_search)) next_sample = start;  // Never seek when video.
  
     if (next_sample != start) {  // We have been searching!  Skip until sync!
 
       __int64 seekTo = start*(__int64)10000000/(__int64)vi.audio_samples_per_second;
 
-      if ((!vi.HasVideo()) && (!no_search) && SUCCEEDED(get_audio_sample.SeekTo(seekTo))) {
+      if ((!no_search) && SUCCEEDED(get_sample.SeekTo(seekTo))) {
         // Seek succeeded!
         next_sample = start;
 
       } else if (start < next_sample) { // We are behind sync - pad with 0
-        if (no_search || vi.HasVideo() || FAILED(get_audio_sample.SeekTo(seekTo))) {
+        if (no_search || vi.HasVideo() || FAILED(get_sample.SeekTo(seekTo))) {
           // We cannot seek.
           if (vi.sample_type == SAMPLE_FLOAT) {
             float* samps = (float*)buf;
@@ -1112,19 +1099,19 @@ public:
       } else {  // Skip forward (decode)
         // Should we search?
         int skip_left = start - next_sample;
-        bool cont = !get_audio_sample.IsEndOfStream();
+        bool cont = !get_sample.IsEndOfStream();
         while (cont) {
-          if (vi.AudioSamplesFromBytes(get_audio_sample.a_sample_bytes) > skip_left) {
+          if (vi.AudioSamplesFromBytes(get_sample.a_sample_bytes) > skip_left) {
             audio_bytes_read = vi.BytesFromAudioSamples(skip_left);
             cont = false;
           }
           
-          if (get_audio_sample.IsEndOfStream())
+          if (get_sample.IsEndOfStream())
             cont= false;
           
           if (cont) {  // Read on
-            get_audio_sample.NextSample();
-            skip_left -= vi.AudioSamplesFromBytes(get_audio_sample.a_sample_bytes);
+            get_sample.NextSample();
+            skip_left -= vi.AudioSamplesFromBytes(get_sample.a_sample_bytes);
             audio_bytes_read = 0;
           }
         } // end while
@@ -1137,20 +1124,20 @@ public:
 
     while (bytes_left) {
       // Can we read from the Directshow filter?
-      if (get_audio_sample.a_sample_bytes - audio_bytes_read > 0) { // Copy as many bytes as needed.
+      if (get_sample.a_sample_bytes - audio_bytes_read > 0) { // Copy as many bytes as needed.
 
         int ds_offset = audio_bytes_read;  // First byte we can read.
-        int available_bytes = min(bytes_left, get_audio_sample.a_sample_bytes - ds_offset);  // This many bytes can be safely read.
+        int available_bytes = min(bytes_left, get_sample.a_sample_bytes - ds_offset);  // This many bytes can be safely read.
 
-        memcpy(&samples[bytes_filled], &get_audio_sample.a_buffer[ds_offset], available_bytes);
+        memcpy(&samples[bytes_filled], &get_sample.a_buffer[ds_offset], available_bytes);
 
         bytes_left -= available_bytes;
         bytes_filled += available_bytes;
         audio_bytes_read += available_bytes;
 
       } else { // Read more samples
-        if (!get_audio_sample.IsEndOfStream()) {
-          get_audio_sample.NextSample();
+        if (!get_sample.IsEndOfStream()) {
+          get_sample.NextSample();
           audio_bytes_read = 0;
         } else { // Pad with 0
           if (vi.sample_type == SAMPLE_FLOAT) {
@@ -1169,19 +1156,6 @@ public:
 
 };
 
-HRESULT DirectShowSource::RepositionAudio(__int64 start) {
-  // Are we behind - always seek if possible - otherwise Fill 0's.
-
-  // Are we in front - should we just decode forwards.
-
-  // Attempt skip.
-
-  // We failed, decode.
-    return E_UNEXPECTED;
-}
-
-//HRESULT DirectShowSource::FillSilence(int n, void* buf, int sample_type) {
-//}
 
 void DirectShowSource::CheckHresult(HRESULT hr, const char* msg, const char* msg2) {
   if (SUCCEEDED(hr)) return;
@@ -1230,6 +1204,55 @@ HRESULT DirectShowSource::LoadGraphFile(IGraphBuilder *pGraph, const WCHAR* wszN
 AVSValue __cdecl Create_DirectShowSource(AVSValue args, void*, IScriptEnvironment* env) {
   const char* filename = args[0][0].AsString();
   int avg_time_per_frame = args[1].Defined() ? int(10000000 / args[1].AsFloat() + 0.5) : 0;
-  return AlignPlanar::Create(new DirectShowSource(filename, avg_time_per_frame, args[2].AsBool(true), env));
+  
+  bool audio = args[3].AsBool(true);
+  bool video = args[4].AsBool(true);
+
+  if (!(audio || video)) 
+    env->ThrowError("DirectShowSource: Both video and audio was disabled!");
+
+  if (!(audio && video)) { // Hey - simple!!
+    if (audio) 
+      return AlignPlanar::Create(new DirectShowSource(filename, avg_time_per_frame, args[2].AsBool(true), audio , false, env));
+    else
+      return AlignPlanar::Create(new DirectShowSource(filename, avg_time_per_frame, args[2].AsBool(true), false , true, env));
+  }
+
+  PClip DS_audio;
+  PClip DS_video;
+
+  bool audio_success = true;
+  bool video_success = true;
+
+  const char *a_e_msg;
+  const char *v_e_msg;
+
+  try {
+    DS_audio = new DirectShowSource(filename, avg_time_per_frame, args[2].AsBool(true), audio , false, env);
+  } catch (AvisynthError e) {
+    a_e_msg = e.msg;
+    audio_success = false;
+  }
+
+  try {
+    DS_video = new DirectShowSource(filename, avg_time_per_frame, args[2].AsBool(true), false, video, env);
+  } catch (AvisynthError e) {
+    v_e_msg = e.msg;
+    video_success = false;
+  }
+
+  if (!(audio_success || video_success)) 
+    env->ThrowError(v_e_msg);
+
+  if (!audio_success)
+    return AlignPlanar::Create(DS_video);
+
+  if (!video_success)
+    return DS_audio;
+
+  AVSValue inv_args[2] = { DS_video, DS_audio }; 
+  PClip ds_all =  env->Invoke("AudioDub",AVSValue(inv_args,2)).AsClip();
+
+  return AlignPlanar::Create(ds_all);
 }
 
