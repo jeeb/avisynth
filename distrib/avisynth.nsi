@@ -27,8 +27,7 @@ DirText "Select the directory to install documentation in:"
 
 
 Section "AviSynth Base" ; (default section)
-IfErrors ignore_me2    ; Clear errors up till now.
-ignore_me2:
+ClearErrors
 SetOutPath "$SYSDIR"
 File "..\release\avisynth.dll"
 
@@ -47,8 +46,7 @@ CreateDirectory "$INSTDIR\plugins"
 StrCpy $0 "$INSTDIR\plugins"
 Plugin_exists:
 
-IfErrors ignore_me    ; Clear errors up till now.
-ignore_me:
+ClearErrors
 
 ; add files / whatever that need to be installed here.
 WriteRegStr HKEY_LOCAL_MACHINE "SOFTWARE\AviSynth" "plugindir" "$0"
@@ -75,11 +73,13 @@ WriteUninstaller "$INSTDIR\uninst.exe"
 goto dll_ok
 dll_not_ok:
 MessageBox MB_OK "Could not copy avisynth.dll to system directory - Close down all applications that use Avisynth, and sure to have write permission to the system directory, and try again."
+Abort
 dll_ok:
 
 goto reg_ok
 reg_not_ok:
 MessageBox MB_OK "Could not register filter properly - Be sure to have administrator rights, and try again."
+Abort
 reg_ok:
 SectionEnd ; end of default section
 
