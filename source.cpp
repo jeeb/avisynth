@@ -959,37 +959,38 @@ public:
     DWORD dwCaps = 0;
     ms->GetCapabilities(&dwCaps);
     
-    if (dwCaps & AM_SEEKING_CanGetCurrentPos) {
-      hr = ms->GetPositions(&pCurrent,&pStop);
-    }
-
     GUID pref_f;
 
     ms->QueryPreferredFormat(&pref_f);
 
     if (pref_f == TIME_FORMAT_FRAME) {
-      _RPT0(0,"Prefered format: frames!");
+      _RPT0(0,"Prefered format: frames!\n");
     }
     if (pref_f == TIME_FORMAT_SAMPLE) {
-      _RPT0(0,"Prefered format: samples!");
+      _RPT0(0,"Prefered format: samples!\n");
     }
     if (pref_f == TIME_FORMAT_MEDIA_TIME) {
-      _RPT0(0,"Prefered format: media time!");
+      _RPT0(0,"Prefered format: media time!\n");
     }
 
     hr = ms->SetTimeFormat(&TIME_FORMAT_MEDIA_TIME);
 
     if (!SUCCEEDED(hr)) {
-      _RPT0(0,"Could not seek to media time!");
+      _RPT0(0,"Could not seek to media time!\n");
       mc->Release();
       ms->Release();
       StartGraph();
       return hr;
     }
+
+    if (dwCaps & AM_SEEKING_CanGetCurrentPos) {
+      hr = ms->GetPositions(&pCurrent,&pStop);
+    }
+
     if (dwCaps & AM_SEEKING_CanSeekAbsolute) {
        hr = ms->SetPositions(&pos, AM_SEEKING_AbsolutePositioning, NULL, AM_SEEKING_NoPositioning);
        if (FAILED(hr)) {
-         _RPT0(0,"Absolute seek failed!");
+         _RPT0(0,"Absolute seek failed!\n");
          mc->Release();
          ms->Release();
          StartGraph();
@@ -1000,8 +1001,12 @@ public:
         pCurrent = pos - pCurrent;
         pStop = pos - pStop;
         hr = ms->SetPositions(&pCurrent, AM_SEEKING_RelativePositioning, &pStop, AM_SEEKING_NoPositioning);
+        if (FAILED(hr))
+           _RPT0(0,"Relative seek failed!\n");
+
       } else {
         // No way of seeking
+         _RPT0(0,"Could not perform any seek!\n");
         mc->Release();
         ms->Release();
         StartGraph();
@@ -1012,7 +1017,7 @@ public:
     mc->Release();
     StartGraph();
 
-    return S_OK;  // Seek ok
+    return hr;  // Seek ok
   }
 
   void NextSample() {
@@ -1020,7 +1025,12 @@ public:
     _RPT0(0,"NextSample() indicating done with sample...\n");
     SetEvent(evtDoneWithSample);
     _RPT0(0,"...NextSample() waiting for new sample...\n");
-    WaitForSingleObject(evtNewSampleReady, INFINITE);
+//    WaitForSingleObject(evtNewSampleReady, 10000);   // Max wait for new sample 10 secs.
+    HRESULT wait_result;
+    do {
+        wait_result = WaitForSingleObject(evtNewSampleReady, 100);
+    } while (wait_result != WAIT_OBJECT_0 && state ==State_Running);
+//    WaitForSingleObject(evtNewSampleReady, INFINITE);   // Max wait for new sample 10 secs.
     _RPT0(0,"...NextSample() done waiting for new sample\n");
   }
 
@@ -1586,7 +1596,6 @@ class DirectShowSource : public IClip {
   bool no_search;
   int audio_bytes_read;
   IScriptEnvironment* const env;
-
   void CheckHresult(HRESULT hr, const char* msg, const char* msg2 = "");
   HRESULT LoadGraphFile(IGraphBuilder *pGraph, const WCHAR* wszName);
 
@@ -1647,8 +1656,6 @@ public:
       env->ThrowError("DirectShowSource: unable to determine the duration of the audio");
     }
 
-    frame_units = true;
-
     ms->Release();
 
     vi = get_sample.GetVideoInfo();
@@ -1707,8 +1714,8 @@ public:
     n = max(min(n, vi.num_frames-1), 0);
     if (frame_units) {
       if (n < cur_frame || n > cur_frame+10) {
-        if ( no_search || get_sample.SeekTo(__int64(n+1) * avg_time_per_frame + (avg_time_per_frame>>1))!=S_OK) {
-          no_search=true;
+        if ( no_search || FAILED(get_sample.SeekTo(__int64(n+1) * avg_time_per_frame + (avg_time_per_frame>>1))) ) {
+          no_search=true;  // Do not attempt further searches.
           if (cur_frame < n) {
             while (cur_frame < n) {
               get_sample.NextSample();
@@ -1716,6 +1723,7 @@ public:
             } // end while
           } // end if curframe<n  fail, if n is behind cur_frame and no seek.
         } else { // seek ok!
+          next_sample = (__int64(n+1) * avg_time_per_frame + (avg_time_per_frame>>1)) * vi.audio_samples_per_second / 10000000;
           cur_frame = n;
         }
       } else {
@@ -1726,8 +1734,8 @@ public:
       }
     } else {
       __int64 sample_time = __int64(n) * avg_time_per_frame + (avg_time_per_frame>>1);
-      if (n > cur_frame || n > cur_frame+10) {
-        if (no_search || get_sample.SeekTo(sample_time)!=S_OK) {
+      if (n < cur_frame || n > cur_frame+10) {
+        if (no_search || FAILED(get_sample.SeekTo(sample_time))) {
           no_search=true;
           if (cur_frame<n) {  // seek manually
             while (get_sample.GetSampleEndTime()+base_sample_time <= sample_time) {
@@ -1738,6 +1746,7 @@ public:
         } else { // seek ok!
           base_sample_time = sample_time - (avg_time_per_frame>>1) - get_sample.GetSampleStartTime();
           cur_frame = n;
+          next_sample = sample_time * vi.audio_samples_per_second / 10000000;
         }
       } else {
         while (cur_frame < n) {
@@ -1761,17 +1770,31 @@ public:
 
     int bytes_left = vi.BytesFromAudioSamples(count);
 
-    if (vi.HasVideo() && (!no_search)) next_sample = start;  // Never seek when video.
-
+//    if (vi.HasVideo() && (!no_search)) next_sample = start;  // Never seek when video.
+ 
     if (next_sample != start) {  // We have been searching!  Skip until sync!
-      if ((!no_search) && SUCCEEDED(get_audio_sample.SeekTo(start*(__int64)10000000/(__int64)vi.audio_samples_per_second))) {
+
+      __int64 seekTo = start*(__int64)10000000/(__int64)vi.audio_samples_per_second;
+
+      if ((!vi.HasVideo()) && (!no_search) && SUCCEEDED(get_audio_sample.SeekTo(seekTo))) {
         // Seek succeeded!
         next_sample = start;
 
       } else if (start < next_sample) { // We are behind sync - pad with 0
-        memset(buf,0, bytes_left);
-        return;
+        if (no_search || vi.HasVideo() || FAILED(get_audio_sample.SeekTo(seekTo))) {
+          // We cannot seek.
+          if (vi.sample_type == SAMPLE_FLOAT) {
+            float* samps = (float*)buf;
+            for (int i = 0; i < bytes_left/sizeof(float); i++)
+              samps[i] = 0.0f;
+          }
+          memset(buf,0, bytes_left);
+          return;
+        }
+        // We skipped successfully
+        next_sample = start;
       } else {  // Skip forward (decode)
+        // Should we search?
         int skip_left = start - next_sample;
         bool cont = !get_audio_sample.IsEndOfStream();
         while (cont) {
@@ -1814,7 +1837,13 @@ public:
           get_audio_sample.NextSample();
           audio_bytes_read = 0;
         } else { // Pad with 0
-          memset(&samples[bytes_filled],0,bytes_left);
+          if (vi.sample_type == SAMPLE_FLOAT) {
+            float* samps = (float*)buf;
+            for (int i = 0; i < bytes_left/sizeof(float); i++)
+              samps[i] = 0.0f;
+          } else {
+            memset(&samples[bytes_filled],0,bytes_left);
+          }
           bytes_left = 0;
         }
       }
