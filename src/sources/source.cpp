@@ -552,7 +552,7 @@ AVSFunction Source_filters[] = {
   { "BlankClip", "[clip]c[length]i[width]i[height]i[pixel_type]s[fps]f[fps_denominator]i[audio_rate]i[stereo]b[sixteen_bit]b[color]i", Create_BlankClip },
   { "Blackness", "[clip]c[length]i[width]i[height]i[pixel_type]s[fps]f[fps_denominator]i[audio_rate]i[stereo]b[sixteen_bit]b[color]i", Create_BlankClip },
   { "MessageClip", "s[width]i[height]i[shrink]b[text_color]i[halo_color]i[bg_color]i", Create_MessageClip },
-  { "ColorBars", "ii", ColorBars::Create },
+  { "ColorBars", "[width]i[height]i", ColorBars::Create },
   { "Tone", "[length]f[frequency]f[samplerate]i[channels]i[type]s", Tone::Create },
 
   { "Version", "", Create_Version },

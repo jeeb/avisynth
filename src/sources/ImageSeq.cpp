@@ -109,6 +109,7 @@ ImageWriter::~ImageWriter()
 PVideoFrame ImageWriter::GetFrame(int n, IScriptEnvironment* env) 
 {
   PVideoFrame frame = child->GetFrame(n, env);
+  env->MakeWritable(&frame);
   
   // check bounds (where end=0 implies no upper bound)
   if (n < start || (end > 0 && n > end) )
