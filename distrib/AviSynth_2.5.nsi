@@ -131,17 +131,17 @@ Section "English Documentation" English
 SectionIn 1
 
   SetOutPath $INSTDIR\Docs
-  File "..\..\Docs\*.*"
+  File "..\..\Docs\*.css"
   SetOutPath $INSTDIR\Docs\english
   File "..\..\Docs\english\*.*"
   SetOutPath $INSTDIR\Docs\english\corefilters
   File "..\..\Docs\english\corefilters\*.*"
   SetOutPath $INSTDIR\Docs\english\externalfilters
   File "..\..\Docs\english\externalfilters\*.*"
-  SetOutPath $INSTDIR\Docs\pictures\corefilters
-  File "..\..\Docs\pictures\corefilters\*.*"
-  SetOutPath $INSTDIR\Docs\pictures\externalfilters
-  File "..\..\Docs\pictures\externalfilters\*.*"
+  SetOutPath $INSTDIR\Docs\english\pictures\corefilters
+  File "..\..\Docs\english\pictures\corefilters\*.*"
+  SetOutPath $INSTDIR\Docs\english\pictures\externalfilters
+  File "..\..\Docs\english\pictures\externalfilters\*.*"
 
 
   CreateShortCut "$SMPROGRAMS\AviSynth 2.5\AviSynth Documentation.lnk" "$INSTDIR\Docs\english\index.htm"
@@ -150,17 +150,13 @@ SectionEnd
 
 Section /o "German Documentation" German
   SetOutPath $INSTDIR\Docs
-  File "..\..\Docs\*.*"
+  File "..\..\Docs\*.css"
   SetOutPath $INSTDIR\Docs\german
   File "..\..\Docs\german\*.*"
   SetOutPath $INSTDIR\Docs\german\corefilters
   File "..\..\Docs\german\corefilters\*.*"
   SetOutPath $INSTDIR\Docs\german\externalfilters
   File "..\..\Docs\german\externalfilters\*.*"
-  SetOutPath $INSTDIR\Docs\pictures\corefilters
-  File "..\..\Docs\pictures\corefilters\*.*"
-  SetOutPath $INSTDIR\Docs\pictures\externalfilters
-  File "..\..\Docs\pictures\externalfilters\*.*"
 
 
   SetOutPath $INSTDIR\Examples
@@ -172,17 +168,13 @@ SectionEnd
 
 Section /o "French Documentation" French
   SetOutPath $INSTDIR\Docs
-  File "..\..\Docs\*.*"
+  File "..\..\Docs\*.css"
   SetOutPath $INSTDIR\Docs\french
   File "..\..\Docs\french\*.*"
   SetOutPath $INSTDIR\Docs\french\corefilters
   File "..\..\Docs\french\corefilters\*.*"
   SetOutPath $INSTDIR\Docs\french\externalfilters
   File "..\..\Docs\french\externalfilters\*.*"
-  SetOutPath $INSTDIR\Docs\pictures\corefilters
-  File "..\..\Docs\pictures\corefilters\*.*"
-  SetOutPath $INSTDIR\Docs\pictures\externalfilters
-  File "..\..\Docs\pictures\externalfilters\*.*"
 
 
   SetOutPath $INSTDIR\Examples
@@ -248,6 +240,10 @@ Section "Uninstall"
   Delete "$INSTDIR\Examples\*.*"
   RMDir  "$INSTDIR\Examples"
 
+  Delete "$INSTDIR\Docs\English\pictures\corefilters\*.*"
+  RMDir  "$INSTDIR\Docs\English\pictures\corefilters"
+  Delete "$INSTDIR\Docs\English\pictures\externalfilters\*.*"
+  RMDir  "$INSTDIR\Docs\English\pictures\externalfilters"
   Delete "$INSTDIR\Docs\English\corefilters\*.*"
   RMDir  "$INSTDIR\Docs\English\corefilters"
   Delete "$INSTDIR\Docs\English\externalfilters\*.*"
@@ -269,12 +265,6 @@ Section "Uninstall"
   Delete "$INSTDIR\Docs\french\*.*"
   RMDir  "$INSTDIR\Docs\french"
 
-  Delete "$INSTDIR\Docs\Pictures\corefilters\*.*"
-  Delete "$INSTDIR\Docs\Pictures\externalfilters\*.*"
-  Delete "$INSTDIR\Docs\Pictures\*.*"
-  RMDir  "$INSTDIR\Docs\Pictures\corefilters"
-  RMDir  "$INSTDIR\Docs\Pictures\externalfilters"
-  RMDir  "$INSTDIR\Docs\Pictures"
   Delete "$INSTDIR\Docs\*.*"
   RMDir  "$INSTDIR\Docs"
   Delete "$INSTDIR\Uninstall.exe"
