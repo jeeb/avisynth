@@ -57,12 +57,13 @@ public:
   ~ImageWriter();
 
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
-  void fileWrite(ostream & file, const BYTE * srcPtr, int pitch, int row_size, int height);
+  void fileWrite(ostream & file, const BYTE * srcPtr, const int pitch, const int row_size, const int height);
 
   static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env);
 
 private:
   Antialiaser antialiaser;
+  
   const char * base_name;
   const char * ext;
   const int start;
@@ -79,16 +80,15 @@ class ImageReader : public IClip
  **/
 {
 public:
-  ImageReader(const char * _base_name, const char * _ext);
+  ImageReader(const char * _base_name, const int _start, const int _end, const int _fps);
   ~ImageReader();
 
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
+  void fileRead(istream & file, BYTE * dstPtr, const int pitch, const int row_size, const int height);
   
-  void __stdcall GetAudio(void* buf, __int64 start, __int64 count, IScriptEnvironment* env) {
-    memset(buf, 0, vi.BytesFromAudioSamples(count));
-  }
+  void __stdcall GetAudio(void* buf, __int64 start, __int64 count, IScriptEnvironment* env) {}
   const VideoInfo& __stdcall GetVideoInfo() { return vi; }
-  bool __stdcall GetParity(int n) { return vi.IsFieldBased() ? (n&1) : false; }
+  bool __stdcall GetParity(int n) { return false; }
   void __stdcall SetCacheHints(int cachehints,int frame_range) { };
   
   
@@ -96,9 +96,17 @@ public:
 
 private:
   const char * base_name;
-  const char * ext;
-    
+  const int start;
+  const int end;
+  const int fps;
+  bool use_DevIL;
+
   VideoInfo vi;
+
+  char fileName[512];
+      
+  BITMAPFILEHEADER fileHeader;
+  BITMAPINFOHEADER infoHeader;
 };
 
 
