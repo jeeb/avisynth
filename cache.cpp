@@ -193,14 +193,16 @@ void __stdcall Cache::SetCacheHints(int cachehints,int frame_range) {
 
 Cache::~Cache() {
   if (use_hints) {
-    for (int i = 0; i<h_total_frames; i++) {
-      if ((h_status[i] & CACHE_ST_USED) && (!(h_status[i] & CACHE_ST_HAS_BEEN_RELEASED)))
-        InterlockedDecrement(&h_vfb[i]->refcount);  // We can now release this vfb.
-      free(h_video_frames[i]);
+    if (h_policy == CACHE_RANGE) {
+      for (int i = 0; i<h_total_frames; i++) {
+        if ((h_status[i] & CACHE_ST_USED) && (!(h_status[i] & CACHE_ST_HAS_BEEN_RELEASED)))
+          InterlockedDecrement(&h_vfb[i]->refcount);  // We can now release this vfb.
+        free(h_video_frames[i]);
+      }
+      free(h_vfb);
+      delete[] h_frame_nums;
+      delete[] h_status;
     }
-    free(h_vfb);
-    delete[] h_frame_nums;
-    delete[] h_status;
   }
 }
 
