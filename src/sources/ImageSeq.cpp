@@ -48,9 +48,9 @@
 AVSFunction Image_filters[] = {
   { "ImageWriter", "c[file]s[start]i[end]i[type]s[info]b", ImageWriter::Create }, 
     // clip, base filename, start, end, image format/extension
-  { "ImageReader", "[file]s[start]i[end]i[fps]f[use_devil]b", ImageReader::Create }, 
+  { "ImageReader", "[file]s[start]i[end]i[fps]f[use_devil]b[info]b", ImageReader::Create }, 
     // base filename (sprintf-style), start, end, frames per second, default reader to use
-  { "ImageSource", "[file]s[start]i[end]i[fps]f[use_devil]b", ImageReader::Create },
+  { "ImageSource", "[file]s[start]i[end]i[fps]f[use_devil]b[info]b", ImageReader::Create },
   { 0 }
 };
 
@@ -245,8 +245,8 @@ AVSValue __cdecl ImageWriter::Create(AVSValue args, void*, IScriptEnvironment* e
  *******   Image Reader ******
  ****************************/
 
-ImageReader::ImageReader(const char * _base_name, const int _start, const int _end, const float _fps, bool _use_DevIL)
- : base_name(_base_name), start(_start), end(_end), fps(_fps), use_DevIL(_use_DevIL), static_frame(NULL)
+ImageReader::ImageReader(const char * _base_name, const int _start, const int _end, const float _fps, bool _use_DevIL, bool _info)
+ : base_name(_base_name), start(_start), end(_end), fps(_fps), use_DevIL(_use_DevIL), static_frame(NULL), info(_info)
 {
   // Generate full name
   sprintf(filename, base_name, start);
@@ -445,6 +445,13 @@ PVideoFrame ImageReader::GetFrame(int n, IScriptEnvironment* env)
   if( strcmp(filename, base_name) == 0 ) 
     static_frame = frame;
 
+  if (info) {    
+    // overlay on video output: progress indicator
+    ostringstream text;
+    text << "Frame " << n << " read from: " << filename;
+    ApplyMessage(&frame, vi, text.str().c_str(), vi.width/4, 0xf0f0f0,0,0 , env);
+  }
+
   return frame;
 }
 
@@ -520,7 +527,7 @@ AVSValue __cdecl ImageReader::Create(AVSValue args, void*, IScriptEnvironment* e
   const char * path = args[0].AsString("c:\\");
 
   AVSValue image = new ImageReader(path, args[1].AsInt(0), args[2].AsInt(1000), args[3].AsFloat(24), 
-                         args[4].AsBool(false));
+                         args[4].AsBool(false), args[5].AsBool(false));
 
   // work around DevIL upside-down bug with compressed images
   const char * ext = strrchr(path, '.') + 1;

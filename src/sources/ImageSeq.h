@@ -83,7 +83,7 @@ class ImageReader : public IClip
  **/
 {
 public:
-  ImageReader(const char * _base_name, const int _start, const int _end, const float _fps, bool _use_DevIL);
+  ImageReader(const char * _base_name, const int _start, const int _end, const float _fps, bool _use_DevIL, bool _info);
   ~ImageReader();
 
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
@@ -105,6 +105,7 @@ private:
   const int end;
   const float fps;
   bool use_DevIL;
+  bool info;
 
   string constructor_err;
 
