@@ -49,7 +49,7 @@ void TurnRGB24(const unsigned char *srcp, unsigned char *dstp, const int rowsize
 	int dstp_offset;
 	if (direction == -1 ) {
 		for (int y = 0; y<height; y++) {
-			dstp_offset = (height-y)*3;
+			dstp_offset = (height-y-1)*3;
 			for (int x=0; x<rowsize/3; x++) {	
 				dstp[dstp_offset+0] = srcp[(x<<1)+x+0];
 				dstp[dstp_offset+1] = srcp[(x<<1)+x+1];
@@ -80,7 +80,7 @@ void TurnRGB32(const unsigned char *srcp, unsigned char *dstp, const int rowsize
 	int dstp_offset;
 	if (direction == -1) {
 		for (int y=0; y<height; y++) {
-			dstp_offset = (height-y)<<2;
+			dstp_offset = (height-y-1)<<2;
 			for (int x=0; x<rowsize>>2; x++) {	
 				dstp[dstp_offset+0] = srcp[(x<<2)+0];
 				dstp[dstp_offset+1] = srcp[(x<<2)+1];
@@ -114,11 +114,11 @@ void TurnYUY2(const unsigned char *srcp, unsigned char *dstp, const int rowsize,
 {
 	unsigned char u,v;
 	int dstp_offset;
-	if (direction == -1)
+	if (direction == 1)
 	{
 		for (int y=0; y<height; y+=2)
 		{
-			dstp_offset = ((height-y)<<1);
+			dstp_offset = ((height-y)<<1)-4;
 			for (int x=0; x<rowsize; x+=4)
 			{
 				u = (srcp[x+1] + srcp[x+1+src_pitch])>>1;
@@ -171,11 +171,11 @@ void TurnPlanar(const unsigned char *srcp_y, unsigned char *dstp_y,
 			  const int direction)
 {
 	int y, x, offset;
-	if (direction == -1)
+	if (direction == 1)
 	{
 		for(y=0; y<height; y++)
 		{
-			offset = height;
+			offset = height-1;
 			for (int x=0; x<rowsize; x++)
 			{
 				dstp_y[offset-y] = srcp_y[x];
@@ -185,7 +185,7 @@ void TurnPlanar(const unsigned char *srcp_y, unsigned char *dstp_y,
 		}
 		for(y=0; y<heightUV; y++)
 		{
-			offset = (heightUV);
+			offset = (heightUV-1);
 			for (x=0; x<rowsizeUV; x++)
 			{
 				dstp_u[offset-y] = srcp_u[x];
