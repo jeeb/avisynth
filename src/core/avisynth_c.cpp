@@ -1,4 +1,4 @@
-// Avisynth C Interface Version 0.14
+// Avisynth C Interface Version 0.20 stdcall
 // Copyright 2003 Kevin Atkinson
 //
 // This program is free software; you can redistribute it and/or modify
@@ -7,11 +7,11 @@
 // (at your option) any later version.
 //
 
-
 #include "stdafx.h"
 
 #include "../internal.h"
 #include "avisynth_c.h"
+
 
 struct AVS_Clip 
 {
@@ -49,14 +49,15 @@ public:
 //
 //
 
-extern "C"
-void avs_release_video_frame(AVS_VideoFrame * f)
+extern "C" 
+  void AVSC_CC
+  avs_release_video_frame(AVS_VideoFrame * f)
 {
 	((PVideoFrame *)&f)->~PVideoFrame();
 }
 
 extern "C"
-AVS_VideoFrame * avs_copy_video_frame(AVS_VideoFrame * f)
+AVS_VideoFrame * AVSC_CC avs_copy_video_frame(AVS_VideoFrame * f)
 {
   AVS_VideoFrame * fnew;
   new ((PVideoFrame *)&fnew) PVideoFrame(*(PVideoFrame *)&f);
@@ -137,37 +138,37 @@ C_VideoFilter::~C_VideoFilter()
 //
 
 extern "C"
-void avs_release_clip(AVS_Clip * p)
+void AVSC_CC avs_release_clip(AVS_Clip * p)
 {
 	delete p;
 }
 
-AVS_Clip * avs_copy_clip(AVS_Clip * p)
+AVS_Clip * AVSC_CC avs_copy_clip(AVS_Clip * p)
 {
 	return new AVS_Clip(*p);
 }
 
 extern "C"
-const char * avs_clip_get_error(AVS_Clip * p) // return 0 if no error
+const char * AVSC_CC avs_clip_get_error(AVS_Clip * p) // return 0 if no error
 {
 	return p->error;
 }
 
 extern "C"
-int avs_get_version(AVS_Clip * p)
+int AVSC_CC avs_get_version(AVS_Clip * p)
 {
   return p->clip->GetVersion();
 }
 
 extern "C"
-const AVS_VideoInfo * avs_get_video_info(AVS_Clip  * p)
+const AVS_VideoInfo * AVSC_CC avs_get_video_info(AVS_Clip  * p)
 {
   return  (const AVS_VideoInfo  *)&p->clip->GetVideoInfo();
 }
 
 
 extern "C"
-AVS_VideoFrame * avs_get_frame(AVS_Clip * p, int n)
+AVS_VideoFrame * AVSC_CC avs_get_frame(AVS_Clip * p, int n)
 {
 	p->error = 0;
 	try {
@@ -182,7 +183,7 @@ AVS_VideoFrame * avs_get_frame(AVS_Clip * p, int n)
 }
 
 extern "C"
-int avs_get_parity(AVS_Clip * p, int n) // return field parity if field_based, else parity of first field in frame
+int AVSC_CC avs_get_parity(AVS_Clip * p, int n) // return field parity if field_based, else parity of first field in frame
 {
 	try {
 		p->error = 0;
@@ -194,7 +195,7 @@ int avs_get_parity(AVS_Clip * p, int n) // return field parity if field_based, e
 }
 
 extern "C"
-int avs_get_audio(AVS_Clip * p, void * buf, INT64 start, INT64 count) // start and count are in samples
+int AVSC_CC avs_get_audio(AVS_Clip * p, void * buf, INT64 start, INT64 count) // start and count are in samples
 {
 	try {
 		p->error = 0;
@@ -207,7 +208,7 @@ int avs_get_audio(AVS_Clip * p, void * buf, INT64 start, INT64 count) // start a
 }
 
 extern "C"
-int avs_set_cache_hints(AVS_Clip * p, int cachehints, int frame_range)  // We do not pass cache requests upwards, only to the next filter.
+int AVSC_CC avs_set_cache_hints(AVS_Clip * p, int cachehints, int frame_range)  // We do not pass cache requests upwards, only to the next filter.
 {
 	try {
 		p->error = 0;
@@ -224,7 +225,7 @@ int avs_set_cache_hints(AVS_Clip * p, int cachehints, int frame_range)  // We do
 //
 //
 extern "C"
-AVS_Clip * avs_take_clip(AVS_Value v, AVS_ScriptEnvironment * env)
+AVS_Clip * AVSC_CC avs_take_clip(AVS_Value v, AVS_ScriptEnvironment * env)
 {
 	AVS_Clip * c = new AVS_Clip;
 	c->env  = env->env;
@@ -233,19 +234,19 @@ AVS_Clip * avs_take_clip(AVS_Value v, AVS_ScriptEnvironment * env)
 }
 
 extern "C"
-void avs_set_to_clip(AVS_Value * v, AVS_Clip * c)
+void AVSC_CC avs_set_to_clip(AVS_Value * v, AVS_Clip * c)
 {
 	new(v) AVSValue(c->clip);
 }
 
 extern "C"
-void avs_copy_value(AVS_Value * dest, AVS_Value src)
+void AVSC_CC avs_copy_value(AVS_Value * dest, AVS_Value src)
 {
 	new(dest) AVSValue(*(const AVSValue *)&src);
 }
 
 extern "C"
-void avs_release_value(AVS_Value v)
+void AVSC_CC avs_release_value(AVS_Value v)
 {
 	((AVSValue *)&v)->~AVSValue();
 }
@@ -256,7 +257,7 @@ void avs_release_value(AVS_Value v)
 //
 
 extern "C"
-AVS_Clip * avs_new_c_filter(AVS_ScriptEnvironment * e,
+AVS_Clip * AVSC_CC avs_new_c_filter(AVS_ScriptEnvironment * e,
 							AVS_FilterInfo * * fi,
 							AVS_Value child, int store_child)
 {
@@ -298,15 +299,17 @@ AVSValue __cdecl create_c_video_filter(AVSValue args, void * user_data,
 	if (res.type == 'e') {
     throw AvisynthError(res.d.string);
 	} else {
-    AVSValue val(*(const AVSValue *)&res);
+    AVSValue val;
+    val = (*(const AVSValue *)&res);
     ((AVSValue *)&res)->~AVSValue();
 		return val;
 	}
 }
 
 extern "C"
-int avs_add_function(AVS_ScriptEnvironment * env, const char * name, const char * params, 
-					  AVS_ApplyFunc applyf, void * user_data)
+int AVSC_CC 
+  avs_add_function(AVS_ScriptEnvironment * env, const char * name, const char * params, 
+				   AVS_ApplyFunc applyf, void * user_data)
 {
 	C_VideoFilter_UserData * d = new C_VideoFilter_UserData;
 	// When do I free d ????
@@ -328,21 +331,21 @@ int avs_add_function(AVS_ScriptEnvironment * env, const char * name, const char 
 //
 
 extern "C"
-long avs_get_cpu_flags(AVS_ScriptEnvironment * p)
+long AVSC_CC avs_get_cpu_flags(AVS_ScriptEnvironment * p)
 {
 	p->error = 0;
 	return p->env->GetCPUFlags();
 }
 
 extern "C"
-char * avs_save_string(AVS_ScriptEnvironment * p, const char* s, int length)
+char * AVSC_CC avs_save_string(AVS_ScriptEnvironment * p, const char* s, int length)
 {
 	p->error = 0;
 	return p->env->SaveString(s, length);
 }
 
 extern "C"
-char * avs_sprintf(AVS_ScriptEnvironment * p, const char* fmt, ...)
+char * AVSC_CC avs_sprintf(AVS_ScriptEnvironment * p, const char* fmt, ...)
 {
 	p->error = 0;
 	va_list vl;
@@ -354,21 +357,21 @@ char * avs_sprintf(AVS_ScriptEnvironment * p, const char* fmt, ...)
 
  // note: val is really a va_list; I hope everyone typedefs va_list to a pointer
 extern "C"
-char * avs_vsprintf(AVS_ScriptEnvironment * p, const char* fmt, void* val)
+char * AVSC_CC avs_vsprintf(AVS_ScriptEnvironment * p, const char* fmt, void* val)
 {
 	p->error = 0;
 	return p->env->VSprintf(fmt, val);
 }
 
 extern "C"
-int avs_function_exists(AVS_ScriptEnvironment * p, const char * name)
+int AVSC_CC avs_function_exists(AVS_ScriptEnvironment * p, const char * name)
 {
 	p->error = 0;
 	return p->env->FunctionExists(name);
 }
 
 extern "C"
-AVS_Value avs_invoke(AVS_ScriptEnvironment * p, const char * name, AVS_Value args, const char * * arg_names)
+AVS_Value AVSC_CC avs_invoke(AVS_ScriptEnvironment * p, const char * name, AVS_Value args, const char * * arg_names)
 {
 	AVS_Value v = {0,0};
 	p->error = 0;
@@ -386,7 +389,7 @@ AVS_Value avs_invoke(AVS_ScriptEnvironment * p, const char * name, AVS_Value arg
 }
 
 extern "C"
-AVS_Value avs_get_var(AVS_ScriptEnvironment * p, const char* name)
+AVS_Value AVSC_CC avs_get_var(AVS_ScriptEnvironment * p, const char* name)
 {
 	AVS_Value v = {0,0};
 	p->error = 0;
@@ -398,7 +401,7 @@ AVS_Value avs_get_var(AVS_ScriptEnvironment * p, const char* name)
 }
 
 extern "C"
-int avs_set_var(AVS_ScriptEnvironment * p, const char* name, AVS_Value val)
+int AVSC_CC avs_set_var(AVS_ScriptEnvironment * p, const char* name, AVS_Value val)
 {
 	p->error = 0;
 	try {
@@ -410,7 +413,7 @@ int avs_set_var(AVS_ScriptEnvironment * p, const char* name, AVS_Value val)
 }
 
 extern "C"
-int avs_set_global_var(AVS_ScriptEnvironment * p, const char* name, AVS_Value val)
+int AVSC_CC avs_set_global_var(AVS_ScriptEnvironment * p, const char* name, AVS_Value val)
 {
 	p->error = 0;
 	try {
@@ -422,7 +425,7 @@ int avs_set_global_var(AVS_ScriptEnvironment * p, const char* name, AVS_Value va
 }
 
 extern "C"
-AVS_VideoFrame * avs_new_video_frame_a(AVS_ScriptEnvironment * p, const AVS_VideoInfo *  vi, int align)
+AVS_VideoFrame * AVSC_CC avs_new_video_frame_a(AVS_ScriptEnvironment * p, const AVS_VideoInfo *  vi, int align)
 {
 	p->error = 0;
 	PVideoFrame f0 = p->env->NewVideoFrame(*(const VideoInfo *)vi, align);
@@ -432,7 +435,7 @@ AVS_VideoFrame * avs_new_video_frame_a(AVS_ScriptEnvironment * p, const AVS_Vide
 }
 
 extern "C"
-int avs_make_writable(AVS_ScriptEnvironment * p, AVS_VideoFrame * * pvf)
+int AVSC_CC avs_make_writable(AVS_ScriptEnvironment * p, AVS_VideoFrame * * pvf)
 {
 	p->error = 0;
 	int res = p->env->MakeWritable((PVideoFrame *)(pvf));
@@ -440,7 +443,7 @@ int avs_make_writable(AVS_ScriptEnvironment * p, AVS_VideoFrame * * pvf)
 }
 
 extern "C"
-void avs_bit_blt(AVS_ScriptEnvironment * p, BYTE * dstp, int dst_pitch, const BYTE * srcp, int src_pitch, int row_size, int height)
+void AVSC_CC avs_bit_blt(AVS_ScriptEnvironment * p, BYTE * dstp, int dst_pitch, const BYTE * srcp, int src_pitch, int row_size, int height)
 {
 	p->error = 0;
 	p->env->BitBlt(dstp, dst_pitch, srcp, src_pitch, row_size, height);
@@ -461,18 +464,18 @@ void __cdecl shutdown_func_bridge(void* user_data, IScriptEnvironment* env)
 }
 
 extern "C"
-void avs_at_exit(AVS_ScriptEnvironment * p, 
-                 AVS_ShutdownFunc function, void * user_data)
+void AVSC_CC avs_at_exit(AVS_ScriptEnvironment * p, 
+                           AVS_ShutdownFunc function, void * user_data)
 {
   p->error = 0;
   ShutdownFuncData * d = new ShutdownFuncData; // FIXME: When do I delete
   d->func = function;
   d->user_data = user_data;
-//  p->env->AtExit(shutdown_func_bridge, d);
+  p->env->AtExit(shutdown_func_bridge, d);
 }
 
 extern "C"
-int avs_check_version(AVS_ScriptEnvironment * p, int version)
+int AVSC_CC avs_check_version(AVS_ScriptEnvironment * p, int version)
 {
 	p->error = 0;
 	try {
@@ -485,7 +488,7 @@ int avs_check_version(AVS_ScriptEnvironment * p, int version)
 }
 
 extern "C"
-AVS_VideoFrame * avs_subframe(AVS_ScriptEnvironment * p, AVS_VideoFrame * src0, 
+AVS_VideoFrame * AVSC_CC avs_subframe(AVS_ScriptEnvironment * p, AVS_VideoFrame * src0, 
 							  int rel_offset, int new_pitch, int new_row_size, int new_height)
 {
 	p->error = 0;
@@ -501,7 +504,7 @@ AVS_VideoFrame * avs_subframe(AVS_ScriptEnvironment * p, AVS_VideoFrame * src0,
 }
 
 extern "C"
-int avs_set_memory_max(AVS_ScriptEnvironment * p, int mem)
+int AVSC_CC avs_set_memory_max(AVS_ScriptEnvironment * p, int mem)
 {
 	p->error = 0;
 	try {
@@ -513,7 +516,7 @@ int avs_set_memory_max(AVS_ScriptEnvironment * p, int mem)
 }
 
 extern "C"
-int avs_set_working_dir(AVS_ScriptEnvironment * p, const char * newdir)
+int AVSC_CC avs_set_working_dir(AVS_ScriptEnvironment * p, const char * newdir)
 {
 	p->error = 0;
 	try {
@@ -528,7 +531,8 @@ int avs_set_working_dir(AVS_ScriptEnvironment * p, const char * newdir)
 // 
 //
 
-AVS_ScriptEnvironment * avs_create_script_environment(int version)
+extern "C" 
+AVS_ScriptEnvironment * AVSC_CC avs_create_script_environment(int version)
 {
 	AVS_ScriptEnvironment * e = new AVS_ScriptEnvironment;
 	e->env = CreateScriptEnvironment(version);
@@ -541,19 +545,23 @@ AVS_ScriptEnvironment * avs_create_script_environment(int version)
 // 
 //
 
-typedef const char * (__cdecl *AvisynthCPluginInitFunc)(AVS_ScriptEnvironment* env);
+typedef const char * (AVSC_CC *AvisynthCPluginInitFunc)(AVS_ScriptEnvironment* env);
 
 AVSValue __cdecl load_c_plugin(AVSValue args, void * user_data, 
 					           IScriptEnvironment * env)
 {
-	// load dll
-	// call entry point
 	const char * filename = args[0].AsString();
 	HMODULE plugin = LoadLibrary(filename);
 	if (!plugin)
 		env->ThrowError("Unable to load C Plugin: %s", filename);
-    AvisynthCPluginInitFunc func 
-		= (AvisynthCPluginInitFunc)GetProcAddress(plugin, "avisynth_c_plugin_init");
+    AvisynthCPluginInitFunc func = 0;
+#ifndef AVSC_USE_STDCALL
+    func = (AvisynthCPluginInitFunc)GetProcAddress(plugin, "avisynth_c_plugin_init");
+#else // AVSC_USE_STDCALL
+    func = (AvisynthCPluginInitFunc)GetProcAddress(plugin, "avisynth_c_plugin_init_s@4");
+    if (!func)
+      func = (AvisynthCPluginInitFunc)GetProcAddress(plugin, "avisynth_c_plugin_init_s");
+#endif // AVSC_USE_STDCALL
 	if (!func)
 		env->ThrowError("Not An Avisynth 2 C Plugin: %s", filename);
 	AVS_ScriptEnvironment e;
@@ -563,7 +571,6 @@ AVSValue __cdecl load_c_plugin(AVSValue args, void * user_data,
 		throw AvisynthError(s);
 	return AVSValue(s);
 }
-
 
 
 AVSFunction CPlugin_filters[] = {

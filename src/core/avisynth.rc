@@ -112,7 +112,7 @@ LANGUAGE LANG_NEUTRAL, SUBLANG_SYS_DEFAULT
 
 // Icon with lowest ID value placed first to ensure application icon
 // remains consistent on all systems.
-IDI_ICON                ICON    DISCARDABLE     "..\\distrib\\AviSynth.ico"
+IDI_ICON                ICON    DISCARDABLE     "..\\..\\distrib\\AviSynth.ico"
 #endif    // Neutral (Sys. Default) resources
 /////////////////////////////////////////////////////////////////////////////
 
