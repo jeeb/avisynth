@@ -233,7 +233,7 @@ AVSValue Cos(AVSValue args, void* user_data, IScriptEnvironment* env) { return c
 AVSValue Pi(AVSValue args, void* user_data, IScriptEnvironment* env) { return 3.14159265358979323; }
 AVSValue Log(AVSValue args, void* user_data, IScriptEnvironment* env) { return log(args[0].AsFloat()); }
 AVSValue Exp(AVSValue args, void* user_data, IScriptEnvironment* env) { return exp(args[0].AsFloat()); }
-AVSValue Pow(AVSValue args, void* user_data, IScriptEnvironment* env) {	return pow(args[0].AsFloat(),args[0].AsFloat()); }
+AVSValue Pow(AVSValue args, void* user_data, IScriptEnvironment* env) {	return pow(args[0].AsFloat(),args[1].AsFloat()); }
 AVSValue Sqrt(AVSValue args, void* user_data, IScriptEnvironment* env) { return sqrt(args[0].AsFloat()); }
 
 static inline const VideoInfo& VI(const AVSValue& arg) { return arg.AsClip()->GetVideoInfo(); }
