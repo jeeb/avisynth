@@ -30,7 +30,8 @@ converttoyuy2()
 Coloryuv(showyuv=true)
 bg = loop(last + reverse(), 10)
 
-t_mask = messageclip(ovText).converttoyv12().coloryuv(levels="tv->pc").trim(0,1)
+c = framecount(bg)
+t_mask = messageclip(ovText, height=c).converttoyv12().coloryuv(levels="tv->pc").trim(0,1)
 t_blank = blankclip(t_mask, color=$ffffff)
 
 t_mask_bl = t_mask.blur(1.0).blur(1.0).blur(1.0)
