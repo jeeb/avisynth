@@ -253,7 +253,7 @@ ImageReader::ImageReader(const char * _base_name, const int _start, const int _e
   sprintf(filename, base_name, start);
 
   // Invariants
-  vi.num_frames = end + 1;  // make sure each frame can be requested
+  vi.num_frames = -start + end + 1;  // make sure each frame can be requested
   vi.audio_samples_per_second = 0;  
   double num = fps;  // calculate fps as num/denom for vi
   int denom = 1;
@@ -336,7 +336,7 @@ PVideoFrame ImageReader::GetFrame(int n, IScriptEnvironment* env)
   int height = frame->GetHeight();
   int width = vi.width;
 
-  sprintf(filename, base_name, n);
+  sprintf(filename, base_name, n+start);
   
   // check for constructor error
   if (constructor_err != "")
@@ -353,13 +353,13 @@ PVideoFrame ImageReader::GetFrame(int n, IScriptEnvironment* env)
   }
   
   // check range
-  if (n < start || n > end) {
+/*  if (n < start || n > end) {
     memset(frame->GetWritePtr(), 0, frame->GetPitch() * frame->GetHeight()); 
     ostringstream ss;
     ss << "ImageReader: frame " << n << " not in range";
     ApplyMessage(&frame, vi, ss.str().c_str(), vi.width/4, 0xf0f0f0,0,0 , env);
     return frame;
-  }  
+  }  */
 
   if (use_DevIL)  /* read using DevIL */
   {    

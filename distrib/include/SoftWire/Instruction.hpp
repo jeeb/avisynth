@@ -70,15 +70,16 @@ namespace SoftWire
 			CPU_P7			= 0x00000800 | CPU_SSE,   // Pentium 4
 			CPU_WILLAMETTE	= CPU_P7,
 			CPU_SSE2		= 0x00001000 | CPU_WILLAMETTE,
+			CPU_PNI			= 0x00002000,
 
-			CPU_AMD			= 0x00002000,   // AMD specific system calls
-			CPU_CYRIX		= 0x00004000,
-			CPU_3DNOW		= 0x00008000 | CPU_AMD,
-			CPU_ATHLON		= 0x00010000 | CPU_3DNOW,
-			CPU_SMM			= 0x00020000,   // System Management Mode, standby mode
+			CPU_AMD			= 0x00004000,   // AMD specific system calls
+			CPU_CYRIX		= 0x00008000,
+			CPU_3DNOW		= 0x00010000 | CPU_AMD,
+			CPU_ATHLON		= 0x00020000 | CPU_3DNOW,
+			CPU_SMM			= 0x00040000,   // System Management Mode, standby mode
 
-			CPU_UNDOC		= 0x00040000,   // Undocumented, also not supported by Visual Studio inline assembler
-			CPU_PRIV		= 0x00080000    // Priviledged, run-time compiled OS kernel anyone?
+			CPU_UNDOC		= 0x00080000,   // Undocumented, also not supported by Visual Studio inline assembler
+			CPU_PRIV		= 0x00100000    // Priviledged, run-time compiled OS kernel anyone?
 		};
 
 		struct Syntax

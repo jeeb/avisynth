@@ -279,20 +279,20 @@ public:
 		n1y = fs1/sfrq;
 		n1x = n1/n1y+1;
 
-		f1order = (int*)malloc(sizeof(int)*n1y*osf);
+		f1order = (int*)_aligned_malloc(sizeof(int)*n1y*osf, 64);
 		for(i=0;i<n1y*osf;i++) {
 		  f1order[i] = fs1/sfrq-(i*(fs1/(dfrq*osf)))%(fs1/sfrq);
 		  if (f1order[i] == fs1/sfrq) f1order[i] = 0;
 		}
 
-		f1inc = (int*)malloc(sizeof(int)*n1y*osf);
+		f1inc = (int*)_aligned_malloc(sizeof(int)*n1y*osf, 64);
 		for(i=0;i<n1y*osf;i++) {
 		  f1inc[i] = f1order[i] < fs1/(dfrq*osf) ? nch : 0;
 		  if (f1order[i] == fs1/sfrq) f1order[i] = 0;
 		}
 
-		stage1 = (REAL**)malloc(sizeof(REAL *)*n1y);
-		stage1[0] = (REAL*)malloc(sizeof(REAL)*n1x*n1y);
+		stage1 = (REAL**)_aligned_malloc(sizeof(REAL *)*n1y, 64);
+		stage1[0] = (REAL*)_aligned_malloc(sizeof(REAL)*n1x*n1y, 64);
 
 		for(i=1;i<n1y;i++) {
 		  stage1[i] = &(stage1[0][n1x*i]);
@@ -333,7 +333,7 @@ public:
 		for(n2b=1;n2b<n2;n2b*=2);
 		n2b *= 2;
 
-		stage2 = (REAL*)malloc(sizeof(REAL)*n2b);
+		stage2 = (REAL*)_aligned_malloc(sizeof(REAL)*n2b, 64);
 
 		for(i=0;i<n2b;i++) stage2[i] = 0;
 
@@ -342,10 +342,10 @@ public:
 		}
 
 		ipsize    = 2+sqrt((double)n2b);
-		fft_ip    = (int*)malloc(sizeof(int)*ipsize);
+		fft_ip    = (int*)_aligned_malloc(sizeof(int)*ipsize, 64);
 		fft_ip[0] = 0;
 		wsize     = n2b/2;
-		fft_w     = (REAL*)malloc(sizeof(REAL)*wsize);
+		fft_w     = (REAL*)_aligned_malloc(sizeof(REAL)*wsize, 64);
 
 		dsp_math<REAL>::rdft(n2b,1,stage2,fft_ip,fft_w);
 	  }
@@ -353,19 +353,19 @@ public:
 //	  delay=0;
 	  n2b2=n2b/2;
 
-		buf1 = (REAL**)malloc(sizeof(REAL *)*nch);
+		buf1 = (REAL**)_aligned_malloc(sizeof(REAL *)*nch, 64);
 		for(i=0;i<nch;i++)
 		  {
-		buf1[i] = (REAL*)malloc(sizeof(REAL)*(n2b2/osf+1));
+		buf1[i] = (REAL*)_aligned_malloc(sizeof(REAL)*(n2b2/osf+1), 64);
 		for(j=0;j<(n2b2/osf+1);j++) buf1[i][j] = 0;
 		  }
 
-		buf2 = (REAL**)malloc(sizeof(REAL *)*nch);
-		for(i=0;i<nch;i++) buf2[i] = (REAL*)malloc(sizeof(REAL)*n2b);
+		buf2 = (REAL**)_aligned_malloc(sizeof(REAL *)*nch, 64);
+		for(i=0;i<nch;i++) buf2[i] = (REAL*)_aligned_malloc(sizeof(REAL)*n2b, 64);
 
 
-		inbuf  = (REAL*)calloc(nch*(n2b2+n1x),sizeof(REAL));
-		outbuf = (REAL*)malloc(sizeof(REAL)*nch*(n2b2/osf+1));
+		inbuf  = (REAL*)_aligned_malloc(nch*(n2b2+n1x)*sizeof(REAL), 64);
+		outbuf = (REAL*)_aligned_malloc(sizeof(REAL)*nch*(n2b2/osf+1), 64);
 
 		s1p = 0;
 		rp  = 0;
@@ -597,19 +597,19 @@ public:
 
 	~Upsampler()
 	{
-	  free(f1order);
-	  free(f1inc);
-	  free(stage1[0]);
-	  free(stage1);
-	  free(stage2);
-	  free(fft_ip);
-	  free(fft_w);
-	  for(i=0;i<nch;i++) free(buf1[i]);
-	  free(buf1);
-	  for(i=0;i<nch;i++) free(buf2[i]);
-	  free(buf2);
-	  free(inbuf);
-	  free(outbuf);
+	  _aligned_free(f1order);
+	  _aligned_free(f1inc);
+	  _aligned_free(stage1[0]);
+	  _aligned_free(stage1);
+	  _aligned_free(stage2);
+	  _aligned_free(fft_ip);
+	  _aligned_free(fft_w);
+	  for(i=0;i<nch;i++) _aligned_free(buf1[i]);
+	  _aligned_free(buf1);
+	  for(i=0;i<nch;i++) _aligned_free(buf2[i]);
+	  _aligned_free(buf2);
+	  _aligned_free(inbuf);
+	  _aligned_free(outbuf);
 	  //free(rawoutbuf);
 	}
 };
@@ -706,7 +706,7 @@ public:
     for(n1b=1;n1b<n1;n1b*=2);
     n1b *= 2;
 
-    stage1 = (REAL*)malloc(sizeof(REAL)*n1b);
+    stage1 = (REAL*)_aligned_malloc(sizeof(REAL)*n1b, 64);
 
     for(i=0;i<n1b;i++) stage1[i] = 0;
 
@@ -715,10 +715,10 @@ public:
     }
 
     ipsize    = 2+sqrt((double)n1b);
-    fft_ip    = (int*)malloc(sizeof(int)*ipsize);
+    fft_ip    = (int*)_aligned_malloc(sizeof(int)*ipsize, 64);
     fft_ip[0] = 0;
     wsize     = n1b/2;
-    fft_w     = (REAL*)malloc(sizeof(REAL)*wsize);
+    fft_w     = (REAL*)_aligned_malloc(sizeof(REAL)*wsize, 64);
 
     dsp_math<REAL>::rdft(n1b,1,stage1,fft_ip,fft_w);
   }
@@ -729,12 +729,12 @@ public:
     fs2 = sfrq/frqgcd*dfrq;
     n2 = 1;
     n2y = n2x = 1;
-    f2order = (int*)malloc(sizeof(int)*n2y);
+    f2order = (int*)_aligned_malloc(sizeof(int)*n2y, 64);
     f2order[0] = 0;
-    f2inc = (int*)malloc(sizeof(int)*n2y);
+    f2inc = (int*)_aligned_malloc(sizeof(int)*n2y, 64);
     f2inc[0] = sfrq/dfrq;
-    stage2 = (REAL**)malloc(sizeof(REAL *)*n2y);
-    stage2[0] = (REAL*)malloc(sizeof(REAL)*n2x*n2y);
+    stage2 = (REAL**)_aligned_malloc(sizeof(REAL *)*n2y, 64);
+    stage2[0] = (REAL*)_aligned_malloc(sizeof(REAL)*n2x*n2y, 64);
     stage2[0][0] = 1;
   } else {
     double aa = AA; /* stop band attenuation(dB) */
@@ -758,20 +758,20 @@ public:
     n2y = fs2/fs1; // 0でないサンプルがfs2で何サンプルおきにあるか？
     n2x = n2/n2y+1;
 
-    f2order = (int*)malloc(sizeof(int)*n2y);
+    f2order = (int*)_aligned_malloc(sizeof(int)*n2y, 64);
     for(i=0;i<n2y;i++) {
       f2order[i] = fs2/fs1-(i*(fs2/dfrq))%(fs2/fs1);
       if (f2order[i] == fs2/fs1) f2order[i] = 0;
     }
 
-    f2inc = (int*)malloc(sizeof(int)*n2y);
+    f2inc = (int*)_aligned_malloc(sizeof(int)*n2y, 64);
     for(i=0;i<n2y;i++) {
       f2inc[i] = (fs2/dfrq-f2order[i])/(fs2/fs1)+1;
       if (f2order[i+1==n2y ? 0 : i+1] == 0) f2inc[i]--;
     }
 
-    stage2 = (REAL**)malloc(sizeof(REAL *)*n2y);
-    stage2[0] = (REAL*)malloc(sizeof(REAL)*n2x*n2y);
+    stage2 = (REAL**)_aligned_malloc(sizeof(REAL *)*n2y, 64);
+    stage2[0] = (REAL*)_aligned_malloc(sizeof(REAL)*n2x*n2y, 64);
 
     for(i=1;i<n2y;i++) {
       stage2[i] = &(stage2[0][n2x*i]);
@@ -801,19 +801,19 @@ public:
     // Dの後ろをAに移動
     // CをDにコピー
 
-    buf1 = (REAL**)malloc(sizeof(REAL *)*nch);
+    buf1 = (REAL**)_aligned_malloc(sizeof(REAL *)*nch, 64);
     for(i=0;i<nch;i++)
-      buf1[i] = (REAL*)malloc(n1b*sizeof(REAL));
+      buf1[i] = (REAL*)_aligned_malloc(n1b*sizeof(REAL), 64);
 
-    buf2 = (REAL**)malloc(sizeof(REAL *)*nch);
+    buf2 = (REAL**)_aligned_malloc(sizeof(REAL *)*nch, 64);
     for(i=0;i<nch;i++) {
-      buf2[i] = (REAL*)malloc(sizeof(REAL)*(n2x+1+n1b2));
+      buf2[i] = (REAL*)_aligned_malloc(sizeof(REAL)*(n2x+1+n1b2), 64);
       for(j=0;j<n2x+n1b2;j++) buf2[i][j] = 0;
     }
 
     //rawoutbuf = (unsigned char*)malloc(dbps*nch*((double)n1b2*sfrq/dfrq+1));
-    inbuf = (REAL*)calloc(nch*(n1b2/osf+osf+1),sizeof(REAL));
-    outbuf = (REAL*)malloc(sizeof(REAL)*nch*((double)n1b2*sfrq/dfrq+1));
+    inbuf = (REAL*)_aligned_malloc(nch*(n1b2/osf+osf+1)*sizeof(REAL), 64);
+    outbuf = (REAL*)_aligned_malloc(sizeof(REAL)*nch*((double)n1b2*sfrq/dfrq+1), 64);
 
     op = outbuf;
 
@@ -837,19 +837,19 @@ public:
 
   ~Downsampler()
   {
-	free(stage1);
-	free(fft_ip);
-	free(fft_w);
-	free(f2order);
-	free(f2inc);
-	free(stage2[0]);
-	free(stage2);
-	for(i=0;i<nch;i++) free(buf1[i]);
-	free(buf1);
-	for(i=0;i<nch;i++) free(buf2[i]);
-	free(buf2);
-	free(inbuf);
-	free(outbuf);
+	_aligned_free(stage1);
+	_aligned_free(fft_ip);
+	_aligned_free(fft_w);
+	_aligned_free(f2order);
+	_aligned_free(f2inc);
+	_aligned_free(stage2[0]);
+	_aligned_free(stage2);
+	for(i=0;i<nch;i++) _aligned_free(buf1[i]);
+	_aligned_free(buf1);
+	for(i=0;i<nch;i++) _aligned_free(buf2[i]);
+	_aligned_free(buf2);
+	_aligned_free(inbuf);
+	_aligned_free(outbuf);
 	//free(rawoutbuf);
   }
 

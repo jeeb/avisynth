@@ -126,11 +126,10 @@ ConditionalReader::ConditionalReader(PClip _child, const char* filename, const c
         for (int i = 0; i<=range; i++) {
           float where = (float)(i)/(float)range;
           float diff = set_stop.AsFloat() - set_start.AsFloat();
-          if (mode == MODE_FLOAT) {
-            SetFrame(i+start, AVSValue(where*diff+set_start.AsFloat()));
-          } else {
-            SetFrame(i+start, AVSValue((int)(where*diff+set_start.AsFloat())));
-          }
+          float n = where * diff + set_start.AsFloat();
+          SetFrame(i+start, (mode == MODE_FLOAT)
+                  ? AVSValue(n)
+                  : AVSValue((int) n));
         }
       } else {
         char* value [64];

@@ -36,7 +36,6 @@
 #include "stdafx.h"
 
 #include "levels.h"
-#include "../../distrib/include/softwire/Assembler.hpp"
 
 
 
@@ -603,7 +602,7 @@ DynamicAssembledCode Limiter::create_emulator(int row_size, int height, IScriptE
     prefetchevery = 2;  // 64 byte cacheline
   }
 
-  bool use_movntq = false;  // We cannot enable write combining as we are only writing 32 bytes between reads. Softwire also crashes here!!!
+  bool use_movntq = true;  // We cannot enable write combining as we are only writing 32 bytes between reads. Softwire also crashes here!!!
   bool hard_prefetch = false;   // Do we prefetch ALL data before any processing takes place?
 
   if (env->GetCPUFlags() & CPUF_3DNOW_EXT) {

@@ -1,6 +1,8 @@
 #ifndef SoftWire_CodeGenerator_hpp
 #define SoftWire_CodeGenerator_hpp
 
+#undef free   // Defined by memory manager
+
 #include "Assembler.hpp"
 
 namespace SoftWire
@@ -19,15 +21,27 @@ namespace SoftWire
 				reference = 0;
 				priority = 0;
 				copy = 0;
-				partial = false;
+				load = 0;
+				partial = 0;
 				modified = false;
 			}
 
 			OperandREF reference;
 			unsigned int priority;
 			Encoding *copy;   // For copy propagation
-			bool partial;     // Single scalar in SSE
+			Encoding *load;   // For load-load elimination
+			int partial;     // Number of bytes used, 0/1/2 for general-purpose, 0/4 for SSE, 0 means all
 			bool modified;
+		};
+
+		class Variable
+		{
+		public:
+			~Variable();
+
+		protected:
+			static int stack;
+			int reference;
 		};
 
 	public:
@@ -59,10 +73,78 @@ namespace SoftWire
 			Allocation xmm7;
 		};
 
+		class Byte : public Variable
+		{
+		public:
+			Byte();
+
+			operator OperandREG8() const;
+		};
+
+		typedef Byte Char;
+
+		class Word : public Variable
+		{
+		public:
+			Word();
+
+			operator OperandREG16() const;
+		};
+
+		typedef Word Byte2;
+		typedef Word Char2;
+		typedef Word Short;
+
+		class Dword : public Variable
+		{
+		public:
+			Dword();
+
+			operator OperandREG32() const;
+		};
+
+		typedef Dword Byte4;
+		typedef Dword Char4;
+		typedef Dword Word2;
+		typedef Dword Short2;
+		typedef Dword Int;
+
+		class Qword : public Variable
+		{
+		public:
+			Qword();
+
+			operator OperandMMREG() const;
+		};
+
+		typedef Qword Byte8;
+		typedef Qword Char8;
+		typedef Qword Word4;
+		typedef Qword Short4;
+		typedef Qword Dword2;
+		typedef Qword Int2;
+
+		class Float : public Variable
+		{
+		public:
+			Float();
+
+			operator OperandXMMREG() const;
+		};
+
+		class Float4 : public Variable
+		{
+		public:
+			Float4();
+
+			operator OperandXMMREG() const;
+		};
+
 		CodeGenerator();
 
 		~CodeGenerator();
 
+		// Register allocation
 		const OperandREG8 r8(const OperandREF &ref, bool copy = true);
 		const OperandREG8 x8(const OperandREF &ref, bool copy = false);
 		const OperandREG8 t8(int i);
@@ -73,12 +155,12 @@ namespace SoftWire
 		const OperandREG16 t16(int i);
 		const OperandR_M16 m16(const OperandREF &ref);
 
-		const OperandREG32 &r32(const OperandREF &ref, bool copy = true);
-		const OperandREG32 &x32(const OperandREF &ref, bool copy = false);
-		const OperandREG32 &t32(int i);
-		const OperandR_M32 m32(const OperandREF &ref);
-		const OperandREG32 &allocate(const OperandREG32 &reg, const OperandREF &ref, bool copy = false);
-		const OperandREG32 &assign(const OperandREG32 &reg, const OperandREF &ref, bool copy = true);
+		const OperandREG32 &r32(const OperandREF &ref, bool copy = true, int partial = 0);
+		const OperandREG32 &x32(const OperandREF &ref, bool copy = false, int partial = 0);
+		const OperandREG32 &t32(int i, int partial = 0);
+		const OperandR_M32 m32(const OperandREF &ref, int partial = 0);
+		const OperandREG32 &allocate(const OperandREG32 &reg, const OperandREF &ref, int partial);
+		const OperandREG32 &assign(const OperandREG32 &reg, const OperandREF &ref, bool copy, int partial);
 		const OperandREG32 &access(const OperandREG32 &reg);
 		void free(const OperandREG32 &reg);
 		void spill(const OperandREG32 &reg);
@@ -87,8 +169,8 @@ namespace SoftWire
 		const OperandMMREG &x64(const OperandREF &ref, bool copy = false);
 		const OperandMMREG &t64(int i);
 		const OperandR_M64 m64(const OperandREF &ref);
-		const OperandMMREG &allocate(const OperandMMREG &reg, const OperandREF &ref, bool copy = false);
-		const OperandMMREG &assign(const OperandMMREG &reg, const OperandREF &ref, bool copy = true);
+		const OperandMMREG &allocate(const OperandMMREG &reg, const OperandREF &ref);
+		const OperandMMREG &assign(const OperandMMREG &reg, const OperandREF &ref, bool copy);
 		const OperandMMREG &access(const OperandMMREG &reg);
 		void free(const OperandMMREG &reg);
 		void spill(const OperandMMREG &reg);
@@ -97,8 +179,8 @@ namespace SoftWire
 		const OperandXMMREG &x128(const OperandREF &ref, bool copy = false, bool ss = false);
 		const OperandXMMREG &t128(int i, bool ss = false);
 		const OperandR_M128 m128(const OperandREF &ref, bool ss = false);
-		const OperandXMMREG &allocate(const OperandXMMREG &reg, const OperandREF &ref, bool copy = false, bool ss = false);
-		const OperandXMMREG &assign(const OperandXMMREG &reg, const OperandREF &ref, bool copy = true, bool ss = false);
+		const OperandXMMREG &allocate(const OperandXMMREG &reg, const OperandREF &ref, bool ss);
+		const OperandXMMREG &assign(const OperandXMMREG &reg, const OperandREF &ref, bool copy, bool ss);
 		const OperandXMMREG &access(const OperandXMMREG &reg);
 		void free(const OperandXMMREG &reg);
 		void spill(const OperandXMMREG &reg);
@@ -133,6 +215,9 @@ namespace SoftWire
 
 		static void enableSpillUnrelocated();   // Default off
 		static void disableSpillUnrelocated();
+
+		static void enableLoadLoadElimination();   // Default on
+		static void disableLoadLoadElimination();
 
 		// Overloaded to optimize or emulate
 		Encoding *addps(OperandXMMREG xmmi, OperandXMMREG xmmj);
@@ -275,6 +360,8 @@ namespace SoftWire
 
 		using Assembler::mov;
 		Encoding *mov(OperandREG32 r32i, OperandREG32 r32j);
+		Encoding *mov(OperandREG32 r32, OperandMEM32 m32);
+		Encoding *mov(OperandREG32 r32, OperandR_M32 r_m32);
 
 		Encoding *movaps(OperandXMMREG xmmi, OperandXMMREG xmmj);
 		Encoding *movaps(OperandXMMREG xmm, OperandMEM128 m128);
@@ -419,9 +506,15 @@ namespace SoftWire
 		Encoding *unpcklps(OperandXMMREG xmm, OperandMEM128 mem128);
 		Encoding *unpcklps(OperandXMMREG xmm, OperandR_M128 r_m128);
 
+		Encoding *xadd(OperandREG8 r8i, OperandREG8 r8j);
+		Encoding *xadd(OperandREG16 r16i, OperandREG16 r16j);
+		Encoding *xadd(OperandREG32 r32i, OperandREG32 r32j);
 		Encoding *xadd(OperandR_M8 r_m8, OperandREG8 r8);
 		Encoding *xadd(OperandR_M16 r_m16, OperandREG16 r16);
 		Encoding *xadd(OperandR_M32 r_m32, OperandREG32 r32);
+		Encoding *xchg(OperandREG8 r8i, OperandREG8 r8j);
+		Encoding *xchg(OperandREG16 r16i, OperandREG16 r16j);
+		Encoding *xchg(OperandREG32 r32i, OperandREG32 r32j);
 		Encoding *xchg(OperandR_M8 r_m8, OperandREG8 r8);
 		Encoding *xchg(OperandR_M16 r_m16, OperandREG16 r16);
 		Encoding *xchg(OperandR_M32 r_m32, OperandREG32 r32);
@@ -443,51 +536,70 @@ namespace SoftWire
 		// Debugging tools
 		void dumpSSE();
 
+		// Active code generator, used for variables stack
+		static CodeGenerator *activeCG();
+
 	private:
 		// Overloaded to detect modified/unmodified registers
 		virtual Encoding *x86(int instructionID,
-		                      const Operand &firstOperand = VOID,
-		                      const Operand &secondOperand = VOID,
-		                      const Operand &thirdOperand = VOID);
+		                      const Operand &firstOperand = Operand::OPERAND_VOID,
+		                      const Operand &secondOperand = Operand::OPERAND_VOID,
+		                      const Operand &thirdOperand = Operand::OPERAND_VOID);
 
-		// Used to prevent spilling of unmodified registers
-		void markModified(const Operand &op);
+		void markModified(const Operand &op);   // Used to prevent spilling of unmodified registers
+		void retainLoad(const Operand &op);   // Retain the instruction that loads this register
+		void swapAllocation(Allocation *source, Allocation *destination);   // Used for copy propagation
 
-		// Used for copy propagation
-		void swapAllocation(Allocation *source, Allocation *destination);
+		// Get allocation data of corresponding operand
+		static Allocation &X32(const OperandREG32 &r32);
+		static Allocation &X64(const OperandMMREG &r64);
+		static Allocation &X128(const OperandXMMREG &r128);
+		static Allocation &X32(Encoding::Reg r32);
+		static Allocation &X64(Encoding::Reg r64);
+		static Allocation &X128(Encoding::Reg r128);
+
+		// Get register of corresponding operand
+		static const OperandREG8 &R8(Encoding::Reg r8);
+		static const OperandREG16 &R16(Encoding::Reg r16);
+		static const OperandREG32 &R32(Encoding::Reg r32);
+		static const OperandMMREG &R64(Encoding::Reg r64);
+		static const OperandXMMREG &R128(Encoding::Reg r128);
+
+		static CodeGenerator *active;
 
 		// Current allocation data
-		Allocation EAX;
-		Allocation ECX;
-		Allocation EDX;
-		Allocation EBX;
-		Allocation ESI;
-		Allocation EDI;
+		static Allocation EAX;
+		static Allocation ECX;
+		static Allocation EDX;
+		static Allocation EBX;
+		static Allocation ESI;
+		static Allocation EDI;
 
-		Allocation MM0;
-		Allocation MM1;
-		Allocation MM2;
-		Allocation MM3;
-		Allocation MM4;
-		Allocation MM5;
-		Allocation MM6;
-		Allocation MM7;
+		static Allocation MM0;
+		static Allocation MM1;
+		static Allocation MM2;
+		static Allocation MM3;
+		static Allocation MM4;
+		static Allocation MM5;
+		static Allocation MM6;
+		static Allocation MM7;
 
-		Allocation XMM0;
-		Allocation XMM1;
-		Allocation XMM2;
-		Allocation XMM3;
-		Allocation XMM4;
-		Allocation XMM5;
-		Allocation XMM6;
-		Allocation XMM7;
+		static Allocation XMM0;
+		static Allocation XMM1;
+		static Allocation XMM2;
+		static Allocation XMM3;
+		static Allocation XMM4;
+		static Allocation XMM5;
+		static Allocation XMM6;
+		static Allocation XMM7;
 
-		float sse[8][4];   // Storage for SSE emulation registers
+		static float sse[8][4];   // Storage for SSE emulation registers
 
 		static bool emulateSSE;
 		static bool copyPropagation;
 		static bool dropUnmodified;
 		static bool spillUnrelocated;
+		static bool loadLoadElimination;
 	};
 }
 

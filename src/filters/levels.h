@@ -105,7 +105,7 @@ void asm_tweak_ISSE_YUY2( BYTE *srcp, int w, int h, int modulo, __int64 hue, __i
 
 using namespace SoftWire; 
 
-class Limiter : public GenericVideoFilter
+class Limiter : public GenericVideoFilter, public  CodeGenerator
 {
 public:
 	Limiter(PClip _child, int _min_luma, int _max_luma, int _min_chroma, int _max_chroma, IScriptEnvironment* env);
@@ -130,7 +130,6 @@ private:
   int emu_cmax;
   int modulo;
 };
-
 
 
 #endif  // __Levels_H__

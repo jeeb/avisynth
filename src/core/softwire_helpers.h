@@ -33,7 +33,7 @@
 // import and export plugins, or graphical user interfaces.
 
 #include "../internal.h"
-#include "../../distrib/include/softwire/Assembler.hpp"
+#include "../../distrib/include/softwire/CodeGenerator.hpp"
 
 using namespace SoftWire; 
 

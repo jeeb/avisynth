@@ -17,8 +17,13 @@ namespace SoftWire
 		char string[256];
 	};
 
-	#define INTERNAL_ERROR Error("%s (%d):\n\tInternal error", __FILE__, __LINE__)
-	#define EXCEPTION      Error("%s (%d):\n\t", __FILE__, __LINE__) << Error
+	#ifndef NDEBUG
+		#define INTERNAL_ERROR Error("%s (%d):\n\tInternal error", __FILE__, __LINE__)
+		#define EXCEPTION      Error("%s (%d):\n\t", __FILE__, __LINE__) << Error
+	#else
+		#define INTERNAL_ERROR Error("Internal error")
+		#define EXCEPTION      Error	
+	#endif
 }
 
 #endif   // SoftWire_Error_hpp

@@ -44,7 +44,7 @@
 
 
 
-class FilteredResizeH : public GenericVideoFilter 
+class FilteredResizeH : public GenericVideoFilter, public  CodeGenerator
 /**
   * Class to resize in the horizontal direction using a specified sampling filter
   * Helper for resample functions
