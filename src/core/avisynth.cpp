@@ -135,12 +135,13 @@ VideoFrame* VideoFrame::Subframe(int rel_offset, int new_pitch, int new_row_size
 
 
 VideoFrameBuffer::VideoFrameBuffer(int size)
- : refcount(0), data(new BYTE[size]), data_size(size) { InterlockedIncrement(&sequence_number); }
+ : refcount(0), data(new BYTE[size]), data_size(size), sequence_number(0) { InterlockedIncrement(&sequence_number); }
 
-VideoFrameBuffer::VideoFrameBuffer() : refcount(0), data(0), data_size(0) {}
+VideoFrameBuffer::VideoFrameBuffer() : refcount(0), data(0), data_size(0), sequence_number(0) {}
 
 VideoFrameBuffer::~VideoFrameBuffer() {
 //  _ASSERTE(refcount == 0);
+  InterlockedIncrement(&sequence_number); // HACK : Notify any children with a pointer, this buffer has changed!!!
   delete[] data;
 }
 
@@ -1003,19 +1004,33 @@ LinkedVideoFrameBuffer* ScriptEnvironment::GetFrameBuffer2(int size) {
   // Plan A: are we below our memory usage?  If so, allocate a new buffer
   if (memory_used + size < memory_max)
     return NewFrameBuffer(size);
+/*
+ * Temporarily remove Plan B. Because of the way video frame buffers are
+ * mismanaged finding one of the correct size most likely ends up smacking
+ * a buffer that will be needed soon. Defering to a modified Plan C that
+ * stops when memory_used is just below memory_max gives markedly improved
+ * performance, but still falls far short of what could be expected from
+ * the LRU model we should be using.
+ * 
+ * Performance with this hack is close to what would be expected from
+ * a random candidate selection model. (i.e. pick a buffer at random)
+ * 
+ * Ian Brabham, 11 July 2004
+
   // Plan B: look for an existing buffer of the appropriate size
 
   for (LinkedVideoFrameBuffer* i = video_frame_buffers.prev; i != &video_frame_buffers; i = i->prev) {
     if (i->GetRefcount() == 0 && i->GetDataSize() == size)
       return i;
   }
+*/
   // Plan C:
-  // Before we allocate a new frame, check our memory usage, and perhaps delete any unreferenced frames.
+  // Before we allocate a new frame, check our memory usage, and perhaps delete some unreferenced frames.
 
   if (memory_used >  memory_max + (memory_max/4) ) {  // Are we more than 25% above allowed usage?
     int freed = 0;
     int freed_count = 0;
-    // Deallocate all unused frames.
+    // Deallocate enough unused frames.
     for (LinkedVideoFrameBuffer* i = video_frame_buffers.prev; i != &video_frame_buffers; i = i->prev) {
       if (i->GetRefcount() == 0) {
         if (i->next != i->prev) {
@@ -1027,6 +1042,8 @@ LinkedVideoFrameBuffer* ScriptEnvironment::GetFrameBuffer2(int size) {
           freed_count++;
           // Delete data;
           i->~LinkedVideoFrameBuffer();
+	  if ((memory_used-freed) < memory_max)
+	    break; // Stop, we are below 100% utilization
         }
       }
     }

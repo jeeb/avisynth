@@ -1276,6 +1276,22 @@ FilteredResizeV::FilteredResizeV( PClip _child, double subrange_top, double subr
   resampling_patternUV = GetResamplingPatternRGB(vi.height>>1, subrange_top/2.0f, subrange_height/2.0f, target_height>>1, func, env);
   vi.height = target_height;
 
+  pitch_gY = -1;
+  yOfs = 0;
+
+  pitch_gUV = -1;
+  yOfsUV = 0;
+
+/*
+ * This is where I started tracking the cache corruption bug
+ * It's bad form to exercise the world from a constructor,
+ * particularly when trying to use animate.
+ *
+ * Calling GetFrame when the world is still being built has
+ * a certain chicken before the egg difficulty ;-)
+ *
+ * Ian Brabham, 11 July 2004
+
   PVideoFrame src = child->GetFrame(0, env);
   int sh = src->GetHeight();
   pitch_gY = src->GetPitch(PLANAR_Y);
@@ -1288,6 +1304,7 @@ FilteredResizeV::FilteredResizeV( PClip _child, double subrange_top, double subr
   for (i = 0; i < shUV; i++) {
     yOfsUV[i] = src->GetPitch(PLANAR_U) * i;
   }
+*/
 }
 
 
@@ -1305,17 +1322,19 @@ PVideoFrame __stdcall FilteredResizeV::GetFrame(int n, IScriptEnvironment* env)
   BYTE* dstp = dst->GetWritePtr();
   int y = vi.height;
   int plane = vi.IsPlanar() ? 4:1;
-  int *yOfs2 = this->yOfs;
   if (pitch_gUV != src->GetPitch(PLANAR_U)) {
     int shUV = src->GetHeight(PLANAR_U);
+	if (!yOfsUV) yOfsUV = new int[shUV];
     for (int i = 0; i < shUV; i++) yOfsUV[i] = src->GetPitch(PLANAR_U) * i;
     pitch_gUV = src->GetPitch(PLANAR_U);
   }
   if (pitch_gY != src->GetPitch(PLANAR_Y))  {
     int sh = src->GetHeight();
+	if (!yOfs) yOfs = new int[sh];
     pitch_gY = src->GetPitch(PLANAR_Y);
     for (int i = 0; i < sh; i++) yOfs[i] = src->GetPitch() * i;
   }
+  int *yOfs2 = this->yOfs;
   while (plane-->0){
     switch (plane) {
       case 2:  // take V plane
@@ -1527,8 +1546,8 @@ FilteredResizeV::~FilteredResizeV(void)
 {
   if (resampling_pattern) _aligned_free(resampling_pattern);
   if (resampling_patternUV) _aligned_free(resampling_patternUV);
-  delete[] yOfs;
-  delete[] yOfsUV;
+  if (yOfs) delete[] yOfs;
+  if (yOfsUV) delete[] yOfsUV;
 }
 
 

@@ -106,10 +106,10 @@ PVideoFrame __stdcall Cache::GetFrame(int n, IScriptEnvironment* env)
           notfound = false;
         }
       }  
-      _RPT1(0, "Cache2: Miss! Now locking frame frame %d in memory\n", n);
+      _RPT2(0, "Cache2:%x: Miss! Now locking frame frame %d in memory\n", this, n);
     } else {   // Frame was found - copy
       VideoFrame* copy = new VideoFrame(result->vfb, result->offset, result->pitch, result->row_size, result->height, result->offsetU, result->offsetV, result->pitchUV);
-      _RPT1(0, "Cache2: using cached copy of frame %d\n", n);
+      _RPT2(0, "Cache2:%x: using cached copy of frame %d\n", this, n);
       return copy;
     }// Store it
 
@@ -135,7 +135,7 @@ PVideoFrame __stdcall Cache::GetFrame(int n, IScriptEnvironment* env)
     if (i->frame_number == n) {
       InterlockedIncrement(&i->vfb->refcount);  // Increment to be sure this frame isn't used.
       if (i->sequence_number == i->vfb->GetSequenceNumber()) {
-        _RPT1(0, "Cache: using cached copy of frame %d\n", n);
+        _RPT2(0, "Cache:%x: using cached copy of frame %d\n", this, n);
         // move the matching cache entry to the front of the list
         Relink(&video_frames, i, video_frames.next);
         VideoFrame* result = new VideoFrame(i->vfb, i->offset, i->pitch, i->row_size, i->height, i->offsetU, i->offsetV, i->pitchUV);
@@ -145,7 +145,7 @@ PVideoFrame __stdcall Cache::GetFrame(int n, IScriptEnvironment* env)
       InterlockedDecrement(&i->vfb->refcount);
     }
   }
-  _RPT2(0, "Cache: generating copy of frame %d (%d cached)\n", n, c);
+  _RPT3(0, "Cache:%x: generating copy of frame %d (%d cached)\n", this, n, c);
   // not cached; make the filter generate it.
   PVideoFrame result = child->GetFrame(n, env);
   RegisterVideoFrame(result, n, env);
@@ -190,12 +190,12 @@ void __stdcall Cache::GetAudio(void* buf, __int64 start, __int64 count, IScriptE
 
   if (h_audiopolicy == CACHE_NOTHING && ac_currentscore <=0) {
     SetCacheHints(CACHE_AUDIO, 0);
-    _RPT0(0, "CacheAudio: Automatically adding audiocache!\n");
+    _RPT1(0, "CacheAudio:%x: Automatically adding audiocache!\n", this);
   }
 
   if (h_audiopolicy == CACHE_AUDIO  && (ac_currentscore > 400) ) {
     SetCacheHints(CACHE_AUDIO_NONE, 0);
-    _RPT0(0, "CacheAudio: Automatically deleting cache!\n");
+    _RPT1(0, "CacheAudio:%x: Automatically deleting cache!\n", this);
   }
 
   ac_expected_next = start + count;
@@ -212,14 +212,14 @@ void __stdcall Cache::GetAudio(void* buf, __int64 start, __int64 count, IScriptE
 #endif
 
 	if (count>maxsamplecount) {		//is cache big enough?
-		_RPT0(0, "CA:Cache too small->caching last audio\n");
+		_RPT1(0, "CA:%x:Cache too small->caching last audio\n", this);
     ac_too_small_count++;
 
     if (ac_too_small_count > 2 && (maxsamplecount < vi.AudioSamplesFromBytes(4095*1024))) {  // Max size = 4MB!
       //automatically upsize cache!
       int new_size = vi.BytesFromAudioSamples(count)+1024;
       new_size = min(4096*1024, new_size);
-      _RPT1(0, "CacheAudio: Autoupsizing buffer to %d bytes!", new_size);
+      _RPT2(0, "CacheAudio:%x: Autoupsizing buffer to %d bytes!", this, new_size);
       SetCacheHints(CACHE_AUDIO, new_size);
     }
 
@@ -232,7 +232,7 @@ void __stdcall Cache::GetAudio(void* buf, __int64 start, __int64 count, IScriptE
 	}
 	
 	if ( (start<cache_start) || (start>=(cache_start+cache_count)) ){ //first sample is before or behind cache -> restart cache
-	  _RPT0(0,"CA: Restart\n");
+	  _RPT1(0,"CA:%x: Restart\n", this);
 
 		child->GetAudio(cache, start, maxsamplecount, env);
 		cache_start = start;
@@ -264,7 +264,7 @@ void __stdcall Cache::GetAudio(void* buf, __int64 start, __int64 count, IScriptE
 }
 
 void __stdcall Cache::SetCacheHints(int cachehints,int frame_range) {   
-  _RPT2(0, "Cache: Setting cache hints (hints:%d, range:%d )\n", cachehints, frame_range);
+  _RPT3(0, "Cache:%x: Setting cache hints (hints:%d, range:%d )\n", this, cachehints, frame_range);
 
   if (cachehints == CACHE_AUDIO) {
 
