@@ -44,6 +44,8 @@
  * Requires mod 8 pitch.
  *************************************/
 
+__declspec(align(8)) static const __int64 add_ones=0x0101010101010101;
+
 
 void isse_yv12_i_to_yuy2(const BYTE* srcY, const BYTE* srcU, const BYTE* srcV, int src_rowsize, int src_pitch, int src_pitch_uv, 
                     BYTE* dst, int dst_pitch,
@@ -189,6 +191,7 @@ yloop:
     align 16
 xloop:
     mov edx, src_pitch_uv2
+      movq mm6, [add_ones]
     movq mm0,[eax]          // mm0 = Y current line
      pxor mm7,mm7
     movd mm2,[ebx+edx]            // mm2 = U top field
@@ -197,7 +200,9 @@ xloop:
      movq mm1,mm0             // mm1 = Y current line
     movd mm5,[ecx]            // V prev top field   
      pavgb mm4,mm2            // interpolate chroma U 
-    pavgb mm5,mm3             // interpolate chroma V    
+    pavgb mm5,mm3             // interpolate chroma V
+     psubusb mm4, mm6         // Better rounding (thanks trbarry!)
+    psubusb mm5, mm6
      pavgb mm4,mm2            // interpolate chroma U 
     pavgb mm5,mm3             // interpolate chroma V    
     punpcklbw mm0,mm7        // Y low
@@ -221,13 +226,15 @@ xloop:
     movq [edi+8],mm1
 
     //Next line in same field
-     
+     movq mm6, [add_ones]     
     movd mm4,[ebx+edx]        // U next top field
      movd mm5,[ecx+edx]       // V prev top field
     mov edx, [src_pitch2]
      movq mm0,[eax+edx]        // Next Y-line
     pavgb mm4,mm2            // interpolate chroma U
      pavgb mm5,mm3             // interpolate chroma V
+    psubusb mm4, mm6         // Better rounding (thanks trbarry!)
+     psubusb mm5, mm6
     pavgb mm4,mm2            // interpolate chroma U
      pavgb mm5,mm3             // interpolate chroma V
     pxor mm7,mm7
@@ -430,6 +437,7 @@ yloop:
     jmp xloop_test
     align 16
 xloop:
+    movq mm6,[add_ones]
     mov edx, src_pitch_uv
     movq mm0,[eax]          // mm0 = Y current line
      pxor mm7,mm7
@@ -438,6 +446,10 @@ xloop:
     movd mm4,[ebx]        // U prev top field
      movq mm1,mm0             // mm1 = Y current line
     movd mm5,[ecx]        // V prev top field
+     pavgb mm4,mm2            // interpolate chroma U  (25/75)
+    pavgb mm5,mm3             // interpolate chroma V  (25/75)
+     psubusb mm4, mm6         // Better rounding (thanks trbarry!)
+    psubusb mm5, mm6
      pavgb mm4,mm2            // interpolate chroma U 
     pavgb mm5,mm3             // interpolate chroma V
      punpcklbw mm0,mm7        // Y low
@@ -462,6 +474,7 @@ xloop:
 
     //Next line
      
+     movq mm6,[add_ones]
     movd mm4,[ebx+edx]        // U next top field
      movd mm5,[ecx+edx]       // V prev top field
     mov edx, [src_pitch]
@@ -469,7 +482,10 @@ xloop:
     movq mm0,[eax+edx]        // Next U-line
      pavgb mm4,mm2            // interpolate chroma U 
     movq mm1,mm0             // mm1 = Y current line
-
+    pavgb mm5,mm3             // interpolate chroma V
+     psubusb mm4, mm6         // Better rounding (thanks trbarry!)
+    psubusb mm5, mm6
+     pavgb mm4,mm2            // interpolate chroma U 
     pavgb mm5,mm3             // interpolate chroma V
      punpcklbw mm0,mm7        // Y low
     punpckhbw mm1,mm7         // Y high*
@@ -824,7 +840,7 @@ yloop_test:
 void mmx_yv12_to_yuy2(const BYTE* srcY, const BYTE* srcU, const BYTE* srcV, int src_rowsize, int src_pitch, int src_pitch_uv, 
                     BYTE* dst, int dst_pitch,
                     int height) {
-  __declspec(align(8)) static __int64 add_64=0x0001000100010001;
+  __declspec(align(8)) static __int64 add_64=0x0002000200020002;
   const BYTE** srcp= new const BYTE*[3];
   int src_pitch_uv2 = src_pitch_uv*2;
   int skipnext = 0;
@@ -959,10 +975,14 @@ xloop:
      punpcklbw mm5,mm7         // V 00vv 00vv 00vv 00vv
     paddusw mm4,mm2
      paddusw mm5,mm3
+    paddusw mm4,mm2
+     paddusw mm5,mm3
+    paddusw mm4,mm2
+     paddusw mm5,mm3
     paddusw mm4, [add_64]
      paddusw mm5, [add_64]
-    psrlw mm4,1
-     psrlw mm5,1
+    psrlw mm4,2
+     psrlw mm5,2
 
 
      punpcklbw mm0,mm7        // Y low
@@ -996,10 +1016,14 @@ xloop:
      punpcklbw mm5,mm7         // V 00vv 00vv 00vv 00vv
     paddusw mm4,mm2
      paddusw mm5,mm3
+    paddusw mm4,mm2
+     paddusw mm5,mm3
+    paddusw mm4,mm2
+     paddusw mm5,mm3
     paddusw mm4, [add_64]
      paddusw mm5, [add_64]
-    psrlw mm4,1
-     psrlw mm5,1
+    psrlw mm4,2
+     psrlw mm5,2
 
      punpcklbw mm0,mm7        // Y low
     punpckhbw mm1,mm7         // Y high*
@@ -1219,6 +1243,8 @@ xloop:
        movq mm5,mm2
       pavgb mm6,mm1         // Average (chroma)
        pavgb mm5,mm3        // Average Chroma (second pair)
+      psubusb mm5, [add_ones]         // Better rounding (thanks trbarry!)
+       psubusb mm6, [add_ones]
       pavgb mm6,mm1         // Average (chroma) (upper = 75% lower = 25%)
        pavgb mm5,mm3        // Average Chroma (second pair) (upper = 75% lower = 25%)
       pand mm0,mm4          // Mask luma
@@ -1283,6 +1309,8 @@ xloop2:   // Second field
        movq mm5,mm2
       pavgb mm6,mm1         // Average (chroma)
        pavgb mm5,mm3        // Average Chroma (second pair)
+      psubusb mm5, [add_ones]         // Better rounding (thanks trbarry!)
+       psubusb mm6, [add_ones]
       pavgb mm6,mm1         // Average (chroma) (upper = 75% lower = 25%)
        pavgb mm5,mm3        // Average Chroma (second pair) (upper = 75% lower = 25%)
       pand mm0,mm4          // Mask luma
