@@ -416,8 +416,6 @@ AVSValue MinMaxPlane::MinMax(AVSValue clip, void* user_data, float threshold, in
   if (!clip.IsClip())
     env->ThrowError("MinMax: No clip supplied!");
 
-  threshold /=100.0f;
-
   PClip child = clip.AsClip();
   VideoInfo vi = child->GetVideoInfo();
   
