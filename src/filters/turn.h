@@ -61,9 +61,11 @@ void (*TurnPlanFunc) (const unsigned char *srcp_y, unsigned char *dstp_y,
 
 public:
     Turn(PClip _child, int _direction, IScriptEnvironment* env):GenericVideoFilter(_child){
-		int src_height = vi.height;
-		vi.height = vi.width;
-		vi.width = src_height;
+		if (_direction) {
+			int src_height = vi.height;
+			vi.height = vi.width;
+			vi.width = src_height;
+		}
 		direction = _direction;
 		
 		if (vi.IsRGB())
@@ -86,6 +88,7 @@ public:
 	PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
   static AVSValue __cdecl Create_TurnLeft(AVSValue args, void* user_data, IScriptEnvironment* env);
   static AVSValue __cdecl Create_TurnRight(AVSValue args, void* user_data, IScriptEnvironment* env);
+  static AVSValue __cdecl Create_Turn180(AVSValue args, void* user_data, IScriptEnvironment* env);
 
 };
 

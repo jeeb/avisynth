@@ -59,7 +59,7 @@ void TurnRGB24(const unsigned char *srcp, unsigned char *dstp, const int rowsize
 			srcp += src_pitch;
 		}
 	}
-	else { // Right
+	else if (direction == 1 ) { // Right
 		int dstp_base = (rowsize/3-1) * dst_pitch;
 		for (int y=0; y<height; y++) {
 			dstp_offset = dstp_base + y*3;
@@ -69,6 +69,18 @@ void TurnRGB24(const unsigned char *srcp, unsigned char *dstp, const int rowsize
 				dstp[dstp_offset+2] = srcp[x+2];
 				dstp_offset -= dst_pitch;
 			}
+			srcp += src_pitch;
+		}
+	}
+	else { // 180
+		dstp += (height-1)*dst_pitch + (rowsize-3);
+		for (int y = 0; y<height; y++) {
+			for (int x = 0; x<rowsize; x+=3) {	
+				dstp[-x+0] = srcp[x+0];
+				dstp[-x+1] = srcp[x+1];
+				dstp[-x+2] = srcp[x+2];
+			}
+			dstp -= dst_pitch;
 			srcp += src_pitch;
 		}
 	}
@@ -95,7 +107,7 @@ void TurnRGB32(const unsigned char *srcp, unsigned char *dstp, const int rowsize
 			l_srcp += l_src_pitch;
 		}
 	}
-	else { // Right
+	else if (direction == 1 ) { // Right
 		int dstp_base = (l_rowsize-1) * l_dst_pitch;
 		for (int y = 0; y<height; y++) {
 			dstp_offset = dstp_base + y;
@@ -103,6 +115,16 @@ void TurnRGB32(const unsigned char *srcp, unsigned char *dstp, const int rowsize
 				l_dstp[dstp_offset] = l_srcp[x];
 				dstp_offset -= l_dst_pitch;
 			}
+			l_srcp += l_src_pitch;
+		}
+	}
+	else { // 180
+		l_dstp += (height-1)*l_dst_pitch + (l_rowsize-1);
+		for (int y = 0; y<height; y++) {
+			for (int x = 0; x<l_rowsize; x++) {	
+				l_dstp[-x] = l_srcp[x];
+			}
+			l_dstp -= l_dst_pitch;
 			l_srcp += l_src_pitch;
 		}
 	}
@@ -137,7 +159,7 @@ void TurnYUY2(const unsigned char *srcp, unsigned char *dstp, const int rowsize,
 			srcp += src_pitch<<1;
 		}
 	}
-	else // Left
+	else if (direction == -1)// Left
 	{
 		srcp += rowsize-4;
 		for (int y=0; y<height; y+=2)
@@ -159,6 +181,20 @@ void TurnYUY2(const unsigned char *srcp, unsigned char *dstp, const int rowsize,
 				dstp_offset += dst_pitch;
 			}
 			srcp += src_pitch<<1;
+		}
+	}
+	else // 180
+	{
+		dstp += (height-1)*dst_pitch + (rowsize-4);
+		for (int y = 0; y<height; y++) {
+			for (int x = 0; x<rowsize; x+=4) {	
+				dstp[-x+2] = srcp[x+0];
+				dstp[-x+1] = srcp[x+1];
+				dstp[-x+0] = srcp[x+2];
+				dstp[-x+3] = srcp[x+3];
+			}
+			dstp -= dst_pitch;
+			srcp += src_pitch;
 		}
 	}
 }
@@ -198,7 +234,7 @@ void TurnPlanar(const unsigned char *srcp_y, unsigned char *dstp_y,
 			srcp_v += src_pitch_uv;
 		}
 	}
-	else // Left
+	else if (direction == -1) // Left
 	{
 		srcp_y += rowsize-1;
 		for(y=0; y<height; y++)
@@ -222,6 +258,29 @@ void TurnPlanar(const unsigned char *srcp_y, unsigned char *dstp_y,
 				dstp_v[offset] = srcp_v[-x];
 				offset += dst_pitch_uv;
 			}
+			srcp_u += src_pitch_uv;
+			srcp_v += src_pitch_uv;
+		}
+	}
+	else // 180
+	{
+		dstp_y += (height-1)*dst_pitch_y + (rowsize-1);
+		for (y = 0; y<height; y++) {
+			for (x = 0; x<rowsize; x++) {	
+				dstp_y[-x] = srcp_y[x];
+			}
+			dstp_y -= dst_pitch_y;
+			srcp_y += src_pitch_y;
+		}
+		dstp_u += (heightUV-1)*dst_pitch_uv + (rowsizeUV-1);
+		dstp_v += (heightUV-1)*dst_pitch_uv + (rowsizeUV-1);
+		for (y = 0; y<heightUV; y++) {
+			for (x = 0; x<rowsizeUV; x++) {	
+				dstp_u[-x] = srcp_u[x];
+				dstp_v[-x] = srcp_v[x];
+			}
+			dstp_u -= dst_pitch_uv;
+			dstp_v -= dst_pitch_uv;
 			srcp_u += src_pitch_uv;
 			srcp_v += src_pitch_uv;
 		}

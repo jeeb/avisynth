@@ -46,6 +46,7 @@
 AVSFunction Turn_filters[] = {
   { "TurnLeft","c",Turn::Create_TurnLeft },
   { "TurnRight","c",Turn::Create_TurnRight },
+  { "Turn180","c",Turn::Create_Turn180 },
   { 0 }
 };
 
@@ -82,5 +83,9 @@ AVSValue __cdecl Turn::Create_TurnLeft(AVSValue args, void* user_data, IScriptEn
 
 AVSValue __cdecl Turn::Create_TurnRight(AVSValue args, void* user_data, IScriptEnvironment* env) {
 	return new Turn(args[0].AsClip(),+1, env);
+}
+
+AVSValue __cdecl Turn::Create_Turn180(AVSValue args, void* user_data, IScriptEnvironment* env) {
+	return new Turn(args[0].AsClip(),0, env);
 }
 
