@@ -762,7 +762,7 @@ public:
     mc->Run();
     mc->Release();
     _RPT0(0,"StartGraph() waiting for new sample...\n");
-    WaitForSingleObject(evtNewSampleReady, INFINITE);
+    WaitForSingleObject(evtNewSampleReady, 5000);    // MAX wait time = 5000ms!
     _RPT0(0,"...StartGraph() finished waiting for new sample\n");
 
   }
@@ -790,25 +790,19 @@ public:
   }
 
   HRESULT SeekTo(__int64 pos) {
-    //Ignore seeking
-#if 0
-/*
     PauseGraph();
-
     HRESULT hr;
     IMediaSeeking* ms;
     filter_graph->QueryInterface(&ms);
 
-    LONGLONG pStop=0;
-    LONGLONG pCurrent=0;
+    LONGLONG pStop=-1;
+    LONGLONG pCurrent=-1;
     _RPT0(0,"SeekTo() seeking to new position\n");
 
     DWORD pCapabilities = AM_SEEKING_CanGetCurrentPos;
     HRESULT canDo = ms->CheckCapabilities(&pCapabilities);
     if (canDo) {
       HRESULT hr2 = ms->GetPositions(&pStop,&pCurrent);
-    } else {
-       _ASSERT(FALSE);
     }
 
     pCapabilities = AM_SEEKING_CanSeekAbsolute;
@@ -817,15 +811,22 @@ public:
     if (canDo) {
        hr = ms->SetPositions(&pos, AM_SEEKING_AbsolutePositioning, 0, 0);
     } else {
-       pCapabilities = AM_SEEKING_CanSeekForwards;
-       canDo = ms->CheckCapabilities(&pCapabilities);
-       _ASSERT(FALSE);
+      pCapabilities = AM_SEEKING_CanSeekForwards;
+      canDo = ms->CheckCapabilities(&pCapabilities);
+      if (canDo && (pCurrent!=-1)) {
+        pCurrent-=pos;
+        hr = ms->SetPositions(&pCurrent, AM_SEEKING_RelativePositioning, 0, 0);
+      } else {
+        // No way of seeking
+        ms->Release();
+        StartGraph();
+        return S_FALSE;
+      }
     }
     ms->Release();
     StartGraph();
-*/
-#endif
-    return S_OK;  // Fake ok
+
+    return S_OK;  // Seek ok
   }
 
   void NextSample() {
@@ -1208,7 +1209,7 @@ class DirectShowSource : public IClip {
   int avg_time_per_frame;
   __int64 base_sample_time;
   int cur_frame;
-
+  bool no_search;
   IScriptEnvironment* const env;
 
   void CheckHresult(HRESULT hr, const char* msg, const char* msg2 = "");
@@ -1268,6 +1269,7 @@ public:
 
     cur_frame = 0;
     base_sample_time = 0;
+    no_search = false;
   }
 
   ~DirectShowSource() { get_sample.StopGraph(); gb->Release(); }
@@ -1276,28 +1278,19 @@ public:
 
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env) {
     n = max(min(n, vi.num_frames-1), 0);
-#if 1
-    if (frame_units) {
-      if (n > cur_frame) {
-        while (cur_frame < n) {
-          get_sample.NextSample();
-          cur_frame++;
-        }
-      }
-    } else {
-      __int64 sample_time = __int64(n) * avg_time_per_frame + (avg_time_per_frame>>1);
-      if (n > cur_frame) {
-        while (get_sample.GetSampleEndTime()+base_sample_time <= sample_time) {
-          get_sample.NextSample();
-        }
-        cur_frame = n;
-      }
-    }
-#else
     if (frame_units) {
       if (n < cur_frame || n > cur_frame+10) {
-        CheckHresult(get_sample.SeekTo(n), "unable to seek in stream (using frames)");
-        cur_frame = n;
+        if ( no_search || get_sample.SeekTo(n)!=S_OK) {
+          no_search=true;
+          if (cur_frame < n) {
+            while (cur_frame < n) {
+              get_sample.NextSample();
+              cur_frame++;
+            } // end while
+          } // end if curframe<n  fail, if n is behind cur_frame and no seek.
+        } else { // seek ok!
+          cur_frame = n;
+        }
       } else {
         while (cur_frame < n) {
           get_sample.NextSample();
@@ -1306,17 +1299,25 @@ public:
       }
     } else {
       __int64 sample_time = __int64(n) * avg_time_per_frame + (avg_time_per_frame>>1);
-      if (n < cur_frame || n > cur_frame+10) {
-        CheckHresult(get_sample.SeekTo(sample_time), "unable to seek in stream");
-        base_sample_time = sample_time - (avg_time_per_frame>>1) - get_sample.GetSampleStartTime();
+      if (n > cur_frame || n > cur_frame+10) {
+        if (get_sample.SeekTo(sample_time)!=S_OK) {
+          if (cur_frame<n) {  // seek manually
+            while (get_sample.GetSampleEndTime()+base_sample_time <= sample_time) {
+              get_sample.NextSample();
+            }
+            cur_frame = n;
+          } // end if curframe<n  fail, if n is behind cur_frame and no seek.
+        } else { // seek ok!
+          base_sample_time = sample_time - (avg_time_per_frame>>1) - get_sample.GetSampleStartTime();
+          cur_frame = n;
+        }
       } else {
-        while (get_sample.GetSampleEndTime()+base_sample_time <= sample_time) {
+        while (cur_frame < n) {
           get_sample.NextSample();
+          cur_frame++;
         }
       }
-      cur_frame = n;
     }
-#endif
     PVideoFrame v = get_sample.GetCurrentFrame();
     if ((cur_frame!=n) && (n%10>4)) {
       env->MakeWritable(&v);
