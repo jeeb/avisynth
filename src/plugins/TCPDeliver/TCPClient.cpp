@@ -40,6 +40,11 @@
 /**************************  TCP Client *****************************
   The TCPCLient is designed as a multithreaded application.
 
+  When TCP-client is invoked it will spawn a request thread, that operates
+  independently of the AviSynth request thread.
+
+  This will (in time) allow the client to fetch frames while AviSynth is doing
+  further processing, or the client-app is compressing frames or similar.
  ********************************************************************/
 
 //FIXME: If client application requests audio at the same time as requesting audio, data transfer might fail
@@ -110,9 +115,10 @@ PVideoFrame __stdcall TCPClient::GetFrame(int n, IScriptEnvironment* env) {
   }
   client->SendRequest(CLIENT_SEND_FRAME, 0, 0);
   client->GetReply();
-  _RPT1(0,"TCPClient: Requesting %d bytes (GetFrame)", incoming_bytes);
+  _RPT1(0,"TCPClient: Requesting %d bytes (GetFrame)\n", incoming_bytes);
   if (client->last_reply_type == SERVER_SENDING_FRAME) {
-    client->GetDataBlock(incoming_bytes);
+    client->SendRequest(INTERNAL_GETDATABLOCK, &incoming_bytes, sizeof(unsigned int));
+    client->GetReply();
       
     env->MakeWritable(&frame);
     BYTE* dstp = frame->GetWritePtr();
@@ -158,9 +164,10 @@ void __stdcall TCPClient::GetAudio(void* buf, __int64 start, __int64 count, IScr
 
   client->SendRequest(CLIENT_SEND_AUDIO, 0, 0);
   client->GetReply();
-  _RPT1(0,"TCPClient: Requesting %d bytes (GetFrame)", a.bytes);
+  _RPT1(0,"TCPClient: Requesting %d bytes (GetAudio)\n", a.bytes);
   if (client->last_reply_type == SERVER_SENDING_AUDIO) {
-    client->GetDataBlock(a.bytes);
+    client->SendRequest(INTERNAL_GETDATABLOCK, &a.bytes, sizeof(unsigned int));
+    client->GetReply();
     memcpy(buf, client->last_reply, client->last_reply_bytes);
   } else {
     env->ThrowError("TCPClient: Did not recieve expected packet (SERVER_SENDING_AUDIO)");
@@ -259,30 +266,6 @@ void TCPClientThread::GetReply() {
       delete[] client_request;  // The request data can now be freed.
 }
 
-void TCPClientThread::GetDataBlock(unsigned int bytes) {
-  SendRequest(INTERNAL_GETDATABLOCK, 0,0);
-  GetReply();
-  char* d = new char[bytes];
-  unsigned int write_offset = 0;
-  if (last_reply_type == SERVER_SPLIT_BLOCK) {
-    while (last_reply_type ==SERVER_SPLIT_BLOCK) {
-      memcpy(&d[write_offset], last_reply, last_reply_bytes);
-      write_offset+= last_reply_bytes;
-      SendRequest(INTERNAL_GETDATABLOCK, 0,0);
-      GetReply();
-      if (write_offset>bytes) {
-        _RPT0(1, "TCPServer: Recieved too many bytes!");
-        break;
-      }
-    }
-  } else {
-    _RPT0(1, "TCPClient: Did not recieve a split block, as expected.");
-  }
-  delete[] last_reply;
-  last_reply = d;
-  last_reply_bytes = write_offset;
-  last_reply_type = INTERNAL_GETDATABLOCK;
-}
 
 // Main thread for sending and recieving data
 
@@ -317,7 +300,7 @@ void TCPClientThread::StartRequestLoop() {
         RecievePacket();
       }
     } else {
-      RecievePacket();
+      RecieveDataBlock();
     }
     _RPT0(0, "TCPClient: Returning reply.\n");    
     if (disconnect) {
@@ -328,6 +311,29 @@ void TCPClientThread::StartRequestLoop() {
   CloseHandle(evtClientProcesRequest);
   CloseHandle(evtClientReplyReady);
   CloseHandle(evtClientReadyForRequest);
+  delete[] last_reply;
+  closesocket(m_socket);
+}
+
+void TCPClientThread::RecieveDataBlock() {
+  unsigned int* pBytes = (unsigned int*)(&client_request[5]);
+  unsigned int bytes = pBytes[0];
+  char* d = new char[bytes];
+  unsigned int write_offset = 0;
+
+  do {
+    RecievePacket();
+    if (write_offset+last_reply_bytes > bytes) {
+      _RPT0(1, "TCPClient: Recieved too many bytes in split block!\n");
+      break;
+    }
+    memcpy(&d[write_offset], last_reply, last_reply_bytes);
+    delete[] last_reply;
+    write_offset+= last_reply_bytes;
+  } while (last_reply_type == SERVER_SPLIT_BLOCK);
+  last_reply = d;
+  last_reply_bytes = write_offset;
+  last_reply_type = INTERNAL_GETDATABLOCK;
 }
 
 void TCPClientThread::RecievePacket() {
@@ -335,7 +341,7 @@ void TCPClientThread::RecievePacket() {
   unsigned int recieved = 0;
   while (recieved < 4) {
     int bytesRecv = recv(m_socket, (char*)&dataSize+recieved, 4-recieved, 0 );
-    if (bytesRecv == WSAECONNRESET || bytesRecv == 0) {
+    if (bytesRecv == WSAECONNRESET || bytesRecv <= 0) {
       _RPT0(0, "TCPClient: Could not retrieve packet size!\n");
       disconnect = true;
       return;
@@ -345,15 +351,17 @@ void TCPClientThread::RecievePacket() {
 
   _RPT1(0,"TCPClient: Got packet, of %d bytes\n", dataSize);
 
-//  if (dataSize> 65536)
-//    _RPT1(1,"TCPClient: Excessively large package recieved: %d bytes.", dataSize);
+  if (dataSize> 1024*1024) {
+    _RPT1(1,"TCPClient: Excessively large package recieved: %d bytes.", dataSize);
+    return;
+  }
 
   char* data = new char[dataSize];
   recieved = 0;
 
   while (recieved < dataSize) {
     int bytesRecv = recv(m_socket, (char*)&data[recieved], dataSize-recieved, 0 );
-    if (bytesRecv == WSAECONNRESET || bytesRecv == 0) {
+    if (bytesRecv == WSAECONNRESET || bytesRecv <= 0) {
       _RPT0(0, "TCPClient: Could not retrieve packet data!\n");
       disconnect = true;
       return;

@@ -70,6 +70,7 @@ enum {
   REQUEST_VERSION = 3,
   REQUEST_DISCONNECT = 4,       // Request to disconnect.
   REQUEST_NOMORESOCKETS = 5,    // Returned to the client if no more sockets are available.
+  REQUEST_CONNECTIONACCEPTED = 6,    // Returned to the client when it has attempted connection and succeeded.
 
   CLIENT_REQUEST_FRAME = 10,    
     // Client would like to have information about frame 'n', which is prepared to be sent.

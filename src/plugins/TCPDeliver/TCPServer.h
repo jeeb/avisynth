@@ -90,6 +90,7 @@ public:
 
 private:
   void Receive(const char* recvbuf, int bytesRecv, ServerReply* s);
+  void AcceptClient(SOCKET s, ClientConnection* s_list);
   void SendPacket(ClientConnection* cc, ServerReply* s);
   void SendPendingData(ServerReply* s);
   void SendVideoInfo(ServerReply* s);

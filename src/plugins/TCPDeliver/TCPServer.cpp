@@ -42,6 +42,17 @@ HWND hDlg;  // Windowhandle
 
 #include "ServerGUICode.h"
 
+/**************************  TCP Client *****************************
+  The server is basicly a thread that is spawned.
+
+  The server is optimized for one client, but allows several clients to 
+  be connected and requesting frames.
+
+  The server is "dumb". It will only respond to requests from clients, 
+  and not do any "thinking" by itself.
+ ********************************************************************/
+
+
 TCPServer::TCPServer(PClip _child, int port, IScriptEnvironment* env) : GenericVideoFilter(_child) {
   //LPDWORD ThreadId = 0;
 //	DWORD id;
@@ -70,6 +81,17 @@ UINT StartServer(LPVOID p) {
   return 0;
 }
 
+/*********************************
+  class TCPServerListener
+
+  This will open the server socket.
+  This function is not part of the server
+  thread, and should be done before starting the
+  thread.
+
+  Thread is spawned if the server has been
+  created successfully.
+ *********************************/
 
 TCPServerListener::TCPServerListener(int port, PClip _child, IScriptEnvironment* _env) : child(_child), env(_env) {
 
@@ -112,7 +134,20 @@ TCPServerListener::TCPServerListener(int port, PClip _child, IScriptEnvironment*
   AfxBeginThread(StartServer, this , THREAD_PRIORITY_NORMAL,0,0,NULL);
 
 }
+/*************************
+  TCPServerListener::Listen()
+ 
+  This is the main loop of the server, and this will
+  run as long as the server exists.
 
+  The main loop is running and checks each input socket
+  for new connections or client requests. One request
+  per client is handled per loop.
+
+  The client might have data pending, which is sent
+  in minor blocks to avoid blocking all clients
+  if one client is on a slower connection.
+ *************************/
 
 void TCPServerListener::Listen() {
   _RPT0(0,"TCPServer: Starting to Listen\n");
@@ -133,37 +168,16 @@ void TCPServerListener::Listen() {
   while (!shutdown) {
     // Attempt to Accept an incoming request
 
-    SOCKET AcceptSocket = SOCKET_ERROR;
-
     FD_ZERO(&test_set);
     FD_SET(m_socket, &test_set);
     select(0, &test_set, NULL, NULL, &t);
 
     if (FD_ISSET(m_socket, &test_set)) {
-      AcceptSocket = accept( m_socket, NULL, NULL );
+      AcceptClient(accept( m_socket, NULL, NULL ), &s_list[0]);
+
       _RPT0(0,"TCPServer: Client Connected.\n");
     }
 
-    if (AcceptSocket != SOCKET_ERROR ) {
-
-      // Find free slot
-      int slot = -1;
-      for (i = FD_SETSIZE ; i>=0; i--)
-        if (!s_list[i].isConnected)
-          slot = i;
-
-      if (slot >= 0 ) {
-        s_list[slot].s = AcceptSocket;
-        s_list[slot].isConnected = true;
-      } else {
-        _RPT0(0,"TCPServer: All slots full.\n");
-        s.allocateBuffer(1);
-        s.data[0] = REQUEST_NOMORESOCKETS;
-        send(AcceptSocket, (const char*)s.data, s.dataSize, 0);
-        closesocket(AcceptSocket);
-        s.freeBuffer();
-      }
-    }
 
     FD_ZERO(&test_set);
 
@@ -207,8 +221,38 @@ void TCPServerListener::Listen() {
     } // end for i
     if (!request_handled) Sleep(1);  // If there has been nothing to do we might as well wait a bit.
   } // while !shutdown
+  closesocket(m_socket);
 }
 
+void TCPServerListener::AcceptClient(SOCKET AcceptSocket, ClientConnection* s_list) {
+  ServerReply s;
+  // Find free slot
+  int slot = -1;
+  for (int i = FD_SETSIZE ; i>=0; i--) 
+    if (!s_list[i].isConnected)
+      slot = i;
+    
+  if (slot >= 0 ) {
+    s_list[slot].s = AcceptSocket;
+    s_list[slot].isConnected = true;
+  } else {
+    _RPT0(0,"TCPServer: All slots full.\n");
+    s.allocateBuffer(0);
+    s.data[0] = REQUEST_NOMORESOCKETS;
+    send(AcceptSocket, (const char*)s.data, s.dataSize, 0);
+    closesocket(AcceptSocket);
+    s.freeBuffer();
+  }
+}
+/*******************************
+  TCPServerListener::SendPacket
+
+  This function will send the data constructed in
+  a ServerReply to the client.
+
+  This function is always called if there has been
+  a request from a client.
+ *******************************/
 
 void TCPServerListener::SendPacket(ClientConnection* cc, ServerReply* s) {
    _RPT0(0, "TCPServer: Sending packet.\n");    
@@ -218,7 +262,7 @@ void TCPServerListener::SendPacket(ClientConnection* cc, ServerReply* s) {
   send(cc->s, (const char*)&s->dataSize, 4, 0);
   while (r > 0) {
     r = send(cc->s, (const char*)(&s->internal_data[BytesSent]), s->dataSize-BytesSent, 0);
-    if (r == SOCKET_ERROR) {
+    if (r == SOCKET_ERROR || r<0) {
       _RPT0(0, "TCPServer: Could not send packet (SOCKET_ERROR). Connection closed\n", );
       closesocket(cc->s);
       cc->isConnected = false;
@@ -234,6 +278,12 @@ void TCPServerListener::SendPacket(ClientConnection* cc, ServerReply* s) {
   _RPT0(0, "TCPServer: Packet sent succesfully.\n");    
 }
 
+/****************************
+  TCPServerListener::Receive
+
+  This function will select a proper
+  reply for an incoming client request.
+ ****************************/
 
 void TCPServerListener::Receive(const char* recvbuf, int bytes, ServerReply* s) {
   switch (recvbuf[0]) {
@@ -265,6 +315,16 @@ void TCPServerListener::Receive(const char* recvbuf, int bytes, ServerReply* s) 
   }
 }
 
+/*****************************
+  TCPServerListener::SendPendingData
+
+  This function will send (a part of) any
+  pending data to a client.
+
+  A maximum blocksize is hidden somewhere
+  in the code below :)
+ *****************************/
+
 void TCPServerListener::SendPendingData(ServerReply* s) {
   ClientConnection* cc = s->client;
   if (!cc->isDataPending) {
@@ -288,13 +348,13 @@ void TCPServerListener::SendPendingData(ServerReply* s) {
 }
 
 void TCPServerListener::SendAudioData(ServerReply* s) {
-  s->client->isDataPending = true;
+  s->client->isDataPending = true;   // Activate sending of pending data
   s->allocateBuffer(0);
   s->setType(SERVER_SENDING_AUDIO);
 }
 
 void TCPServerListener::SendVideoFrame(ServerReply* s) {
-  s->client->isDataPending = true;
+  s->client->isDataPending = true;  // Activate sending of pending data
   s->allocateBuffer(0);
   s->setType(SERVER_SENDING_FRAME);
 }
@@ -390,6 +450,12 @@ void TCPServerListener::KillThread() {
   shutdown = true;
 }
 
+/***************************
+  class TCPRecievePacket
+
+  This helper class will recieve and
+  decode a client request.
+ ***************************/
 
 TCPRecievePacket::TCPRecievePacket(SOCKET _s) : s(_s) {
   isDisconnected = false;
@@ -411,7 +477,7 @@ TCPRecievePacket::TCPRecievePacket(SOCKET _s) : s(_s) {
     dataSize = 0;
     return;
   }
-
+  
   data = (BYTE*)malloc(dataSize);
   recieved = 0;
   while (recieved < dataSize) {
