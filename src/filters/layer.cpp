@@ -333,8 +333,7 @@ AVSValue ResetMask::Create(AVSValue args, void*, IScriptEnvironment* env)
 Invert::Invert(PClip _child, const char * _channels, IScriptEnvironment* env)
   : GenericVideoFilter(_child), channels(_channels)
 {
-  if (!vi.IsRGB32())
-    env->ThrowError("ResetMask: RGB32 data only");
+
 }
 
 
@@ -353,7 +352,12 @@ PVideoFrame Invert::GetFrame(int n, IScriptEnvironment* env)
   bool doG = false;
   bool doR = false;
   bool doA = false;
+
+  bool doY = false;
+  bool doU = false;
+  bool doV = false;
   char ch = 1;
+
   for (int k=0; ch!='\0'; ++k) {
     ch = tolower(channels[k]);
     if (ch == 'b')
@@ -364,30 +368,95 @@ PVideoFrame Invert::GetFrame(int n, IScriptEnvironment* env)
       doR = true;
     if (ch == 'a')
       doA = true;
+
+    if (ch == 'y')
+      doY = true;
+    if (ch == 'u')
+      doU = true;
+    if (ch == 'v')
+      doV = true;
   }
 
+  if (vi.IsYUY2()) {
+    int mask = doY ? 0x00ff00ff : 0;
+    mask |= doU ? 0x0000ff00 : 0;
+    mask |= doV ? 0xFF000000 : 0;
+    ConvertFrame(pf, pitch, rowsize, height, mask);
+  }
 
-  for (int i=0; i<height; ++i) {
-    for (int j=0; j<rowsize; j+=4) {
-      if (doB)
-        pf[j] = 255 - pf[j];
-      if (doG)
-        pf[j+1] = 255 - pf[j+1];
-      if (doR)
-        pf[j+2] = 255 - pf[j+2];
-      if (doA)
-        pf[j+3] = 255 - pf[j+3];
+  if (vi.IsRGB32()) {
+    int mask = doB ? 0xff : 0;
+    mask |= doG ? 0xff00 : 0;
+    mask |= doR ? 0xff0000 : 0;
+    mask |= doA ? 0xff000000 : 0;
+    ConvertFrame(pf, pitch, rowsize, height, mask);
+  }
+
+  if (vi.IsYV12()) {
+    if (doY)
+      ConvertFrame(pf, pitch, f->GetRowSize(PLANAR_Y_ALIGNED), height, 0xffffffff);
+    if (doU)
+      ConvertFrame(f->GetWritePtr(PLANAR_U), f->GetPitch(PLANAR_U), f->GetRowSize(PLANAR_U_ALIGNED), f->GetHeight(PLANAR_U), 0xffffffff);
+    if (doV)
+      ConvertFrame(f->GetWritePtr(PLANAR_V), f->GetPitch(PLANAR_V), f->GetRowSize(PLANAR_V_ALIGNED), f->GetHeight(PLANAR_V), 0xffffffff);
+  }
+
+  if (vi.IsRGB24()) {
+    for (int i=0; i<height; i++) {
+      for (int j=0; j<rowsize; j+=3) {
+        if (doB)
+          pf[j] = 255 - pf[j];
+        if (doG)
+          pf[j+1] = 255 - pf[j+1];
+        if (doR)
+          pf[j+2] = 255 - pf[j+2];
+      }
+      pf += pitch;
     }
-    pf += pitch;
   }
 
   return f;
 }
 
+void Invert::ConvertFrame(BYTE* frame, int pitch, int rowsize, int height, int mask) {
+  __asm {
+      movd mm7,[mask]
+      mov ebx,[rowsize]
+      mov esi,[frame]
+      xor ecx, ecx  // Height
+      mov edx,[height]
+      punpckldq mm7,mm7
+      align 16
+yloopback:
+      cmp ecx, edx
+      jge outy
+      xor eax, eax
+      align 16 
+testloop:
+      cmp ebx, eax
+      jle outloop
+
+      movq mm0,[esi+eax]  // 8 pixels
+      pxor mm0, mm7
+      movq [esi+eax], mm0
+
+      add eax,8
+      jmp testloop
+      align 16
+outloop:
+      inc ecx
+      add esi, [pitch];
+      jmp yloopback
+outy:
+      emms
+  } // end asm
+}
+
+
 
 AVSValue Invert::Create(AVSValue args, void*, IScriptEnvironment* env)
 {
-  return new Invert(args[0].AsClip(), args[1].AsString("RGBA"), env);
+  return new Invert(args[0].AsClip(), args[0].AsClip()->GetVideoInfo().IsRGB() ? args[1].AsString("RGBA") : args[1].AsString("YUV"), env);
 }
 
 
