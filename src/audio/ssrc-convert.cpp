@@ -55,6 +55,7 @@ AVSFunction SSRC_filters[] = {
 SSRC::SSRC(PClip _child, int _target_rate, bool _fast, IScriptEnvironment* env)
   : GenericVideoFilter(ConvertAudio::Create(_child,SAMPLE_FLOAT,SAMPLE_FLOAT)), target_rate(_target_rate), fast(_fast)
 {
+  srcbuffer = 0;  // If constructor should return
 
   if ((target_rate==vi.audio_samples_per_second)||(vi.audio_samples_per_second==0)) {
 		skip_conversion=true;
@@ -76,7 +77,7 @@ SSRC::SSRC(PClip _child, int _target_rate, bool _fast, IScriptEnvironment* env)
   vi.audio_samples_per_second = target_rate;
   srcbuffer = new SFLOAT[vi.AudioChannels() * input_samples];
 
-  for(int i=0; i<vi.AudioChannels() * input_samples; i++)
+  for(int i=0; i<vi.AudioChannels() * input_samples; i++)  // We stuff one second into the input (preroll)
     srcbuffer[i] = 0.0f;
 
   next_sample = -target_rate;

@@ -245,6 +245,8 @@ Splice::Splice(PClip _child1, PClip _child2, bool realign_sound, IScriptEnvironm
     child2 = ConvertAudio::Create(child2,vi.SampleType(),SAMPLE_FLOAT);  // Clip 1 is check to be same type as clip 1, if not, convert to float samples.
     child = ConvertAudio::Create(child,vi2.SampleType(),vi2.SampleType());  // Clip 1 is now be same type as clip 2.
 
+    vi.sample_type = child->GetVideoInfo().sample_type;
+
     if (vi.AudioChannels() != vi2.AudioChannels())
       env->ThrowError("Splice: sound formats don't match");
 
