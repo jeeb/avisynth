@@ -149,8 +149,86 @@ PVideoFrame __stdcall FilteredResizeH::GetFrame(int n, IScriptEnvironment* env)
         add         eax, 8              ;cur_luma++
         dec         ecx
         paddd       mm1, mm2            ;accumulate
+        jz         out_i_aloopY
+//unroll1
+        movd        mm2, [esi]          ;mm2 =  0| 0|Yb|Ya
+        add         esi, 4
+        punpckldq   mm2, [edi]          ;mm2 = Yn|Ym|Yb|Ya
+                                        ;[eax] = COn|COm|COb|COa
+        add         edi, 4
+        pmaddwd     mm2, [eax]          ;mm2 = Y1|Y0 (DWORDs)
+        add         eax, 8              ;cur_luma++
+        dec         ecx
+        paddd       mm1, mm2            ;accumulate
+        jz         out_i_aloopY
+//unroll2
+        movd        mm2, [esi]          ;mm2 =  0| 0|Yb|Ya
+        add         esi, 4
+        punpckldq   mm2, [edi]          ;mm2 = Yn|Ym|Yb|Ya
+                                        ;[eax] = COn|COm|COb|COa
+        add         edi, 4
+        pmaddwd     mm2, [eax]          ;mm2 = Y1|Y0 (DWORDs)
+        add         eax, 8              ;cur_luma++
+        dec         ecx
+        paddd       mm1, mm2            ;accumulate
+        jz         out_i_aloopY
+//unroll3
+        movd        mm2, [esi]          ;mm2 =  0| 0|Yb|Ya
+        add         esi, 4
+        punpckldq   mm2, [edi]          ;mm2 = Yn|Ym|Yb|Ya
+                                        ;[eax] = COn|COm|COb|COa
+        add         edi, 4
+        pmaddwd     mm2, [eax]          ;mm2 = Y1|Y0 (DWORDs)
+        add         eax, 8              ;cur_luma++
+        dec         ecx
+        paddd       mm1, mm2            ;accumulate
+        jz         out_i_aloopY
+//unroll4
+        movd        mm2, [esi]          ;mm2 =  0| 0|Yb|Ya
+        add         esi, 4
+        punpckldq   mm2, [edi]          ;mm2 = Yn|Ym|Yb|Ya
+                                        ;[eax] = COn|COm|COb|COa
+        add         edi, 4
+        pmaddwd     mm2, [eax]          ;mm2 = Y1|Y0 (DWORDs)
+        add         eax, 8              ;cur_luma++
+        dec         ecx
+        paddd       mm1, mm2            ;accumulate
+        jz         out_i_aloopY
+//unroll5
+        movd        mm2, [esi]          ;mm2 =  0| 0|Yb|Ya
+        add         esi, 4
+        punpckldq   mm2, [edi]          ;mm2 = Yn|Ym|Yb|Ya
+                                        ;[eax] = COn|COm|COb|COa
+        add         edi, 4
+        pmaddwd     mm2, [eax]          ;mm2 = Y1|Y0 (DWORDs)
+        add         eax, 8              ;cur_luma++
+        dec         ecx
+        paddd       mm1, mm2            ;accumulate
+        jz         out_i_aloopY
+//unroll6
+        movd        mm2, [esi]          ;mm2 =  0| 0|Yb|Ya
+        add         esi, 4
+        punpckldq   mm2, [edi]          ;mm2 = Yn|Ym|Yb|Ya
+                                        ;[eax] = COn|COm|COb|COa
+        add         edi, 4
+        pmaddwd     mm2, [eax]          ;mm2 = Y1|Y0 (DWORDs)
+        add         eax, 8              ;cur_luma++
+        dec         ecx
+        paddd       mm1, mm2            ;accumulate
+        jz         out_i_aloopY
+//unroll7
+        movd        mm2, [esi]          ;mm2 =  0| 0|Yb|Ya
+        add         esi, 4
+        punpckldq   mm2, [edi]          ;mm2 = Yn|Ym|Yb|Ya
+                                        ;[eax] = COn|COm|COb|COa
+        add         edi, 4
+        pmaddwd     mm2, [eax]          ;mm2 = Y1|Y0 (DWORDs)
+        add         eax, 8              ;cur_luma++
+        dec         ecx
+        paddd       mm1, mm2            ;accumulate
         jnz         i_aloopY
-
+        align 16
+out_i_aloopY:
         mov         esi, [ebx]          ;esi=&tempUV[ofs]
         add         ebx, 8              ;cur_chroma++
         mov         ecx, fir_filter_size_chroma
@@ -163,8 +241,72 @@ PVideoFrame __stdcall FilteredResizeH::GetFrame(int n, IScriptEnvironment* env)
         add         ebx, 8              ;cur_chroma++
         dec         ecx
         paddd       mm3, mm2            ;accumulate
+        jz         out_i_aloopUV
+//unroll1
+        movq        mm2, [esi]          ;mm2 = 0|V|0|U
+                                        ;[ebx] = 0|COv|0|COu
+        add         esi, 8
+        pmaddwd     mm2, [ebx]          ;mm2 = V|U (DWORDs)
+        add         ebx, 8              ;cur_chroma++
+        dec         ecx
+        paddd       mm3, mm2            ;accumulate
+        jz         out_i_aloopUV
+//unroll2
+        movq        mm2, [esi]          ;mm2 = 0|V|0|U
+                                        ;[ebx] = 0|COv|0|COu
+        add         esi, 8
+        pmaddwd     mm2, [ebx]          ;mm2 = V|U (DWORDs)
+        add         ebx, 8              ;cur_chroma++
+        dec         ecx
+        paddd       mm3, mm2            ;accumulate
+        jz         out_i_aloopUV
+//unroll3
+        movq        mm2, [esi]          ;mm2 = 0|V|0|U
+                                        ;[ebx] = 0|COv|0|COu
+        add         esi, 8
+        pmaddwd     mm2, [ebx]          ;mm2 = V|U (DWORDs)
+        add         ebx, 8              ;cur_chroma++
+        dec         ecx
+        paddd       mm3, mm2            ;accumulate
+        jz         out_i_aloopUV
+//unroll4
+        movq        mm2, [esi]          ;mm2 = 0|V|0|U
+                                        ;[ebx] = 0|COv|0|COu
+        add         esi, 8
+        pmaddwd     mm2, [ebx]          ;mm2 = V|U (DWORDs)
+        add         ebx, 8              ;cur_chroma++
+        dec         ecx
+        paddd       mm3, mm2            ;accumulate
+        jz         out_i_aloopUV
+//unroll5
+        movq        mm2, [esi]          ;mm2 = 0|V|0|U
+                                        ;[ebx] = 0|COv|0|COu
+        add         esi, 8
+        pmaddwd     mm2, [ebx]          ;mm2 = V|U (DWORDs)
+        add         ebx, 8              ;cur_chroma++
+        dec         ecx
+        paddd       mm3, mm2            ;accumulate
+        jz         out_i_aloopUV
+//unroll6
+        movq        mm2, [esi]          ;mm2 = 0|V|0|U
+                                        ;[ebx] = 0|COv|0|COu
+        add         esi, 8
+        pmaddwd     mm2, [ebx]          ;mm2 = V|U (DWORDs)
+        add         ebx, 8              ;cur_chroma++
+        dec         ecx
+        paddd       mm3, mm2            ;accumulate
+        jz         out_i_aloopUV
+//unroll7
+        movq        mm2, [esi]          ;mm2 = 0|V|0|U
+                                        ;[ebx] = 0|COv|0|COu
+        add         esi, 8
+        pmaddwd     mm2, [ebx]          ;mm2 = V|U (DWORDs)
+        add         ebx, 8              ;cur_chroma++
+        dec         ecx
+        paddd       mm3, mm2            ;accumulate
         jnz         i_aloopUV
-
+        align 16
+out_i_aloopUV:
         paddd       mm3, mm6            ; V| V| U| U  (round)
          paddd       mm1, mm6            ;Y1|Y1|Y0|Y0  (round)
         pslld       mm3, 2              ; Shift up from 14 bits fraction to 16 bit fraction
@@ -479,10 +621,10 @@ PVideoFrame __stdcall FilteredResizeV::GetFrame(int n, IScriptEnvironment* env)
     add         edx, 4                  ;cur++
     add         esi, srcp               ;esi = srcp + yOfs[*cur]
     xor         ecx, ecx                ;ecx = x = 0
-    align 16
-  xloop:
     pxor        mm7, mm7
     pxor        mm1, mm1                ;total = 0
+    align 16
+  xloop:
     lea         eax, [esi+ecx*4]        ;eax = srcp2 = srcp + x
     xor         ebx, ebx                ;ebx = b = 0
     align 16
@@ -501,7 +643,122 @@ PVideoFrame __stdcall FilteredResizeV::GetFrame(int n, IScriptEnvironment* env)
      paddd       mm1, mm2
     paddd       mm7, mm4                ;accumulate
     cmp         ebx, edi
+    jz         out_bloop
+//unroll1
+    movd        mm2, [eax]              ;mm2 = *srcp2 = 0|0|0|0|d|c|b|a     
+    movd        mm3, [edx+ebx*4]        ;mm3 = cur[b] = 0|co
+    punpcklbw   mm2, mm0                ;mm2 = 0d|0c|0b|0a
+     inc         ebx
+    punpckldq   mm3, mm3                ;mm3 = co|co
+     movq        mm4, mm2
+    punpcklwd   mm2, mm0                ;mm2 = 00|0b|00|0a
+     add         eax, src_pitch          ;srcp2 += src_pitch
+    pmaddwd     mm2, mm3                ;mm2 =  b*co|a*co
+     punpckhwd   mm4, mm0                ;mm4 = 00|0d|00|0c
+    pmaddwd     mm4, mm3                ;mm4 =  d*co|c*co
+     paddd       mm1, mm2
+    paddd       mm7, mm4                ;accumulate
+    cmp         ebx, edi
+    jz         out_bloop
+//unroll2
+    movd        mm2, [eax]              ;mm2 = *srcp2 = 0|0|0|0|d|c|b|a     
+    movd        mm3, [edx+ebx*4]        ;mm3 = cur[b] = 0|co
+    punpcklbw   mm2, mm0                ;mm2 = 0d|0c|0b|0a
+     inc         ebx
+    punpckldq   mm3, mm3                ;mm3 = co|co
+     movq        mm4, mm2
+    punpcklwd   mm2, mm0                ;mm2 = 00|0b|00|0a
+     add         eax, src_pitch          ;srcp2 += src_pitch
+    pmaddwd     mm2, mm3                ;mm2 =  b*co|a*co
+     punpckhwd   mm4, mm0                ;mm4 = 00|0d|00|0c
+    pmaddwd     mm4, mm3                ;mm4 =  d*co|c*co
+     paddd       mm1, mm2
+    paddd       mm7, mm4                ;accumulate
+    cmp         ebx, edi
+    jz         out_bloop
+//unroll3
+    movd        mm2, [eax]              ;mm2 = *srcp2 = 0|0|0|0|d|c|b|a     
+    movd        mm3, [edx+ebx*4]        ;mm3 = cur[b] = 0|co
+    punpcklbw   mm2, mm0                ;mm2 = 0d|0c|0b|0a
+     inc         ebx
+    punpckldq   mm3, mm3                ;mm3 = co|co
+     movq        mm4, mm2
+    punpcklwd   mm2, mm0                ;mm2 = 00|0b|00|0a
+     add         eax, src_pitch          ;srcp2 += src_pitch
+    pmaddwd     mm2, mm3                ;mm2 =  b*co|a*co
+     punpckhwd   mm4, mm0                ;mm4 = 00|0d|00|0c
+    pmaddwd     mm4, mm3                ;mm4 =  d*co|c*co
+     paddd       mm1, mm2
+    paddd       mm7, mm4                ;accumulate
+    cmp         ebx, edi
+    jz         out_bloop
+//unroll4
+    movd        mm2, [eax]              ;mm2 = *srcp2 = 0|0|0|0|d|c|b|a     
+    movd        mm3, [edx+ebx*4]        ;mm3 = cur[b] = 0|co
+    punpcklbw   mm2, mm0                ;mm2 = 0d|0c|0b|0a
+     inc         ebx
+    punpckldq   mm3, mm3                ;mm3 = co|co
+     movq        mm4, mm2
+    punpcklwd   mm2, mm0                ;mm2 = 00|0b|00|0a
+     add         eax, src_pitch          ;srcp2 += src_pitch
+    pmaddwd     mm2, mm3                ;mm2 =  b*co|a*co
+     punpckhwd   mm4, mm0                ;mm4 = 00|0d|00|0c
+    pmaddwd     mm4, mm3                ;mm4 =  d*co|c*co
+     paddd       mm1, mm2
+    paddd       mm7, mm4                ;accumulate
+    cmp         ebx, edi
+    jz         out_bloop
+//unroll5
+    movd        mm2, [eax]              ;mm2 = *srcp2 = 0|0|0|0|d|c|b|a     
+    movd        mm3, [edx+ebx*4]        ;mm3 = cur[b] = 0|co
+    punpcklbw   mm2, mm0                ;mm2 = 0d|0c|0b|0a
+     inc         ebx
+    punpckldq   mm3, mm3                ;mm3 = co|co
+     movq        mm4, mm2
+    punpcklwd   mm2, mm0                ;mm2 = 00|0b|00|0a
+     add         eax, src_pitch          ;srcp2 += src_pitch
+    pmaddwd     mm2, mm3                ;mm2 =  b*co|a*co
+     punpckhwd   mm4, mm0                ;mm4 = 00|0d|00|0c
+    pmaddwd     mm4, mm3                ;mm4 =  d*co|c*co
+     paddd       mm1, mm2
+    paddd       mm7, mm4                ;accumulate
+    cmp         ebx, edi
+    jz         out_bloop
+//unroll6
+    movd        mm2, [eax]              ;mm2 = *srcp2 = 0|0|0|0|d|c|b|a     
+    movd        mm3, [edx+ebx*4]        ;mm3 = cur[b] = 0|co
+    punpcklbw   mm2, mm0                ;mm2 = 0d|0c|0b|0a
+     inc         ebx
+    punpckldq   mm3, mm3                ;mm3 = co|co
+     movq        mm4, mm2
+    punpcklwd   mm2, mm0                ;mm2 = 00|0b|00|0a
+     add         eax, src_pitch          ;srcp2 += src_pitch
+    pmaddwd     mm2, mm3                ;mm2 =  b*co|a*co
+     punpckhwd   mm4, mm0                ;mm4 = 00|0d|00|0c
+    pmaddwd     mm4, mm3                ;mm4 =  d*co|c*co
+     paddd       mm1, mm2
+    paddd       mm7, mm4                ;accumulate
+    cmp         ebx, edi
+    jz         out_bloop
+//unroll7
+    movd        mm2, [eax]              ;mm2 = *srcp2 = 0|0|0|0|d|c|b|a     
+    movd        mm3, [edx+ebx*4]        ;mm3 = cur[b] = 0|co
+    punpcklbw   mm2, mm0                ;mm2 = 0d|0c|0b|0a
+     inc         ebx
+    punpckldq   mm3, mm3                ;mm3 = co|co
+     movq        mm4, mm2
+    punpcklwd   mm2, mm0                ;mm2 = 00|0b|00|0a
+     add         eax, src_pitch          ;srcp2 += src_pitch
+    pmaddwd     mm2, mm3                ;mm2 =  b*co|a*co
+     punpckhwd   mm4, mm0                ;mm4 = 00|0d|00|0c
+    pmaddwd     mm4, mm3                ;mm4 =  d*co|c*co
+     paddd       mm1, mm2
+    paddd       mm7, mm4                ;accumulate
+
+    cmp         ebx, edi
     jnz         bloop
+align 16
+out_bloop:
     mov         eax, dstp
     pslld       mm1, 2                  ;14 bits -> 16bit fraction
     pslld       mm7, 2                  ;compensate the fact that FPScale = 16384
@@ -509,7 +766,9 @@ PVideoFrame __stdcall FilteredResizeV::GetFrame(int n, IScriptEnvironment* env)
     psrlw       mm1, 8                  ;mm1 = 0|d|0|c|0|b|0|a
     packuswb    mm1, mm2                ;mm1 = 0|0|0|0|d|c|b|a
     movd        [eax+ecx*4], mm1
+    pxor        mm7, mm7
     inc         ecx
+    pxor        mm1, mm1                ;total = 0
     cmp         ecx, xloops
     jnz         xloop
     add         eax, dst_pitch
