@@ -3,6 +3,30 @@ Microsoft Developer Studio Workspace File, Format Version 6.00
 
 ###############################################################################
 
+Project: "DirectShowSource"=.\plugins\DirectShowSource\DirectShowSource.dsp - Package Owner=<4>
+
+Package=<5>
+{{{
+}}}
+
+Package=<4>
+{{{
+}}}
+
+###############################################################################
+
+Project: "TCPDeliver"=.\plugins\TCPDeliver\TCPDeliver.dsp - Package Owner=<4>
+
+Package=<5>
+{{{
+}}}
+
+Package=<4>
+{{{
+}}}
+
+###############################################################################
+
 Project: "avisynth"=.\avisynth.dsp - Package Owner=<4>
 
 Package=<5>
