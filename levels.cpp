@@ -580,7 +580,7 @@ DynamicAssembledCode Limiter::create_emulator(int row_size, int height, IScriptE
     prefetchevery = 2;  // 64 byte cacheline
   }
 
-  bool use_movntq = false;  // We cannot enable write conbining as we are only writing 32 bytes between reads.
+  bool use_movntq = false;  // We cannot enable write combining as we are only writing 32 bytes between reads.
 
 
   Assembler x86;   // This is the class that assembles the code.
@@ -666,5 +666,5 @@ DynamicAssembledCode Limiter::create_emulator(int row_size, int height, IScriptE
 
 AVSValue __cdecl Limiter::Create(AVSValue args, void* user_data, IScriptEnvironment* env)
 {
-	return new Limiter(args[0].AsClip(), args[1].AsInt(16), args[2].AsInt(236), args[3].AsInt(16), args[4].AsInt(240), env);
+	return new Limiter(args[0].AsClip(), args[1].AsInt(16), args[2].AsInt(235), args[3].AsInt(16), args[4].AsInt(240), env);
 }

@@ -104,6 +104,7 @@ AVSValue LoadPlugin(AVSValue args, void* user_data, IScriptEnvironment* env) {
         if (!AvisynthPluginInit) {  // Attempt C-plugin
           AvisynthPluginInit = (AvisynthPluginInitFunc)GetProcAddress(plugin, "avisynth_c_plugin_init");
           if (AvisynthPluginInit) {
+            FreeLibrary(plugin);
             return env->Invoke("LoadCPlugin", args);
           }
         }
