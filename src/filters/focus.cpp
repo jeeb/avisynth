@@ -831,7 +831,7 @@ PVideoFrame TemporalSoften::GetFrame(int n, IScriptEnvironment* env)
     if (scenechange>0) {
       int d2=0;
       bool skiprest = false;
-      for (int i = radius-1;i>=0;i--) { // Check frames backwards
+      for (int i = radius;i>=0;i--) { // Check frames backwards
         if ((!skiprest) && (!planeDisabled[i])) {
           int scenevalues = isse_scenechange(c_plane, planeP[i], h, frames[radius]->GetRowSize(planes[c]), pitch, planePitch[i]);
           if (scenevalues < scenechange) {
