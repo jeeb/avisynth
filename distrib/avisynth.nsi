@@ -2,7 +2,6 @@
 ; by 130.225.167.75 on Sep 25 02 @ 09:39
 
 ; NOTE: this .NSI script is designed for NSIS v1.8+
-; GetFileTimeLocal "..\Release\avisynth.dll",$WORD1,$WORD2
 BrandingText "Avisynth 2 installer."
 Name "AviSynth 2.06"
 OutFile "AviSynth206.exe"
@@ -14,8 +13,8 @@ OutFile "AviSynth206.exe"
 SetCompress auto ; (can be off or force)
 SetDatablockOptimize on ; (can be off)
 CRCCheck on ; (can be off)
-AutoCloseWindow true ; (can be true for the window go away automatically at end)
-; ShowInstDetails hide ; (can be show to have them shown, or nevershow to disable)
+AutoCloseWindow false ; (can be true for the window go away automatically at end)
+ShowInstDetails show ; (can be show to have them shown, or nevershow to disable)
 ; SetDateSave off ; (can be on to have files restored to their orginal date)
 
 LicenseText "You must agree to this license before installing."
@@ -28,9 +27,13 @@ DirText "Select the directory to install documentation in:"
 
 
 Section "AviSynth Base" ; (default section)
+IfErrors ignore_me2    ; Clear errors up till now.
+ignore_me2:
 SetOutPath "$SYSDIR"
 File "..\release\avisynth.dll"
-;RegDll "$SYSDIR\avisynth.dll"
+
+IfErrors dll_not_ok
+
 
 ; Write GPL
 SetOutPath "$INSTDIR"
@@ -59,10 +62,6 @@ WriteRegStr HKEY_CLASSES_ROOT "CLSID\{E6D6B700-124D-11D4-86F3-DB80AFD98778}\InPr
 WriteRegStr HKEY_CLASSES_ROOT "CLSID\{E6D6B700-124D-11D4-86F3-DB80AFD98778}\InProcServer32" "ThreadingModel" "Apartment"
 
 IfErrors reg_not_ok
-goto reg_ok
-reg_not_ok:
-MessageBox MB_OK "Could not register filter properly - Be sure to have administrator rights, and try again."
-reg_ok:
 
 
 ; Create links
@@ -73,6 +72,15 @@ CreateShortCut "$SMPROGRAMS\AviSynth 2\License.lnk" "$INSTDIR\gpl.txt"
 ; write out uninstaller
 WriteUninstaller "$INSTDIR\uninst.exe"
 
+goto dll_ok
+dll_not_ok:
+MessageBox MB_OK "Could not copy avisynth.dll to system directory - Close down all applications that use Avisynth, and sure to have write permission to the system directory, and try again."
+dll_ok:
+
+goto reg_ok
+reg_not_ok:
+MessageBox MB_OK "Could not register filter properly - Be sure to have administrator rights, and try again."
+reg_ok:
 SectionEnd ; end of default section
 
 Section "Documentation (optional)"
@@ -91,8 +99,12 @@ UninstallText "This will remove Avisynth from your system"
 
 Section Uninstall
 ; add delete commands to delete whatever files/registry keys/etc you installed here.
-Delete "$INSTDIR\uninst.exe"
+MessageBox MB_YESNO "Do you want to remove pointer to plugin directory (no files will be removed)?" IDYES removeplug IDNO dontremoveplug
+removeplug:
 DeleteRegKey HKEY_LOCAL_MACHINE "SOFTWARE\AviSynth" 
+dontremoveplug:
+
+Delete "$INSTDIR\uninst.exe"
 DeleteRegKey HKEY_LOCAL_MACHINE "SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\AviSynth 2"
 DeleteRegKey HKEY_CLASSES_ROOT "avifile\Extensions\AVS" 
 DeleteRegKey HKEY_CLASSES_ROOT "Media Type\Extensions\.avs" 
