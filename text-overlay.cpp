@@ -620,7 +620,7 @@ Compare::Compare(PClip _child1, PClip _child2, const char* channels, const char 
 
 	masked_bytes = 0;
 	for (DWORD temp = mask; temp != 0; temp >>=8)
-		masked_bytes += (mask & 1);
+		masked_bytes += (temp & 1);
 
 	if (fname[0] != 0) {
 		log = fopen(fname, "wt");
