@@ -4,8 +4,7 @@
 *.opt
 *.plg
 Package
-Profile
 $(SystemRoot)
-Debug
-Release
+src\Debug
+src\Release
 Temp
