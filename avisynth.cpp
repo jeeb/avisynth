@@ -36,20 +36,18 @@ extern AVSFunction Audio_filters[], Combine_filters[], Convert_filters[],
                    Plugin_functions[], Resample_filters[], Resize_filters[], 
                    Script_functions[], Source_filters[], Text_filters[],
                    Transform_filters[], Merge_filters[];
-                   //Decomb_filters[]
-
+                   
 
 AVSFunction* builtin_functions[] = {  
                    Audio_filters, Combine_filters, Convert_filters, 
                    Convolution_filters, Edit_filters, Field_filters, 
                    Focus_filters, Fps_filters, Histogram_filters, 
                    Layer_filters, Levels_filters, Misc_filters, 
-                   Plugin_functions, Resample_filters, Resize_filters, 
+                   Resample_filters, Resize_filters, 
                    Script_functions, Source_filters, Text_filters,
-                   Transform_filters, Merge_filters };
-                   //Decomb_filters
-
-
+                   Transform_filters, Merge_filters, Plugin_functions }; // sticking plugins last in the
+                                                                         // list should give them priority
+                                                                         // in the function tree
 class LinkedVideoFrame {
 public:
   LinkedVideoFrame* next;
