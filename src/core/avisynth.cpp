@@ -36,6 +36,9 @@
 
 #include <stdarg.h>
 
+#include <string>
+using std::string;
+
 #include "../internal.h"
 #include "./parser/script.h"
 #include "memcpy_amd.h"
@@ -682,6 +685,7 @@ private:
   const char* GetPluginDirectory();
   bool LoadPluginsMatching(const char* pattern);
   void PrescanPlugins();
+  void ExportFilters();
 
 };
 
@@ -698,6 +702,7 @@ ScriptEnvironment::ScriptEnvironment() : at_exit(This()), function_table(This())
   global_var_table.Set("no", false);
 
   PrescanPlugins();
+  ExportFilters();
 }
 
 ScriptEnvironment::~ScriptEnvironment() {
@@ -837,6 +842,23 @@ void ScriptEnvironment::PrescanPlugins()
     }
   }
 }
+
+void ScriptEnvironment::ExportFilters()
+{
+  string builtin_names;
+
+  for (int i = 0; i < sizeof(builtin_functions)/sizeof(builtin_functions[0]); ++i) {
+    for (AVSFunction* j = builtin_functions[i]; j->name; ++j) {
+      builtin_names += j->name;
+      
+      string param_id = string("$Plugin!") + j->name + "!Param$";
+      SetGlobalVar( SaveString(param_id.c_str(), param_id.length() + 1), AVSValue(j->param_types) );
+    }
+  }
+
+  SetGlobalVar("$InternalFunctions$", AVSValue( SaveString(builtin_names.c_str(), builtin_names.length() + 1) ));
+}
+
 
 PVideoFrame ScriptEnvironment::NewPlanarVideoFrame(int width, int height, int align, bool U_first) {
   int pitch = (width+align-1) / align * align;  // Y plane, width = 1 byte per pixel
