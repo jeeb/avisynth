@@ -82,7 +82,7 @@ AVSValue __cdecl FlipVertical::Create(AVSValue args, void*, IScriptEnvironment* 
  *******   Crop Filter   ******
  *****************************/
 
-Crop::Crop(int _left, int _top, int _width, int _height, PClip _child)
+Crop::Crop(int _left, int _top, int _width, int _height, PClip _child, IScriptEnvironment* env)
  : GenericVideoFilter(_child)
 {
   /* Negative values -> VDub-style syntax
@@ -101,6 +101,11 @@ Crop::Crop(int _left, int _top, int _width, int _height, PClip _child)
     // RGB is upside-down
     _top = vi.height - _height - _top;
   }
+
+
+  if (_width > vi.width || _height > vi.height)
+    env->ThrowError("Crop: you cannot use crop to enlarge a clip!");
+
   left_bytes = vi.BytesFromPixels(_left);
   top = _top;
   vi.width = _width;
@@ -118,7 +123,7 @@ PVideoFrame Crop::GetFrame(int n, IScriptEnvironment* env)
 AVSValue __cdecl Crop::Create(AVSValue args, void*, IScriptEnvironment* env) 
 {
   return new Crop( args[1].AsInt(), args[2].AsInt(), args[3].AsInt(), args[4].AsInt(), 
-                   args[0].AsClip() );
+                   args[0].AsClip(), env );
 }
 
 
@@ -222,7 +227,7 @@ AVSValue __cdecl Create_Letterbox(AVSValue args, void*, IScriptEnvironment* env)
   int top = args[1].AsInt();
   int bot = args[2].AsInt();
   const VideoInfo& vi = clip->GetVideoInfo();
-  return new AddBorders(0, top, 0, bot, new Crop(0, top, vi.width, vi.height-top-bot, clip));
+  return new AddBorders(0, top, 0, bot, new Crop(0, top, vi.width, vi.height-top-bot, clip, env));
 }
 
 
@@ -230,5 +235,5 @@ AVSValue __cdecl Create_CropBottom(AVSValue args, void*, IScriptEnvironment* env
 {
   PClip clip = args[0].AsClip();
   const VideoInfo& vi = clip->GetVideoInfo();
-  return new Crop(0, 0, vi.width, vi.height - args[1].AsInt(), clip);
+  return new Crop(0, 0, vi.width, vi.height - args[1].AsInt(), clip, env);
 }
