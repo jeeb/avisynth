@@ -10,11 +10,15 @@ namespace SoftWire
 
 		const char *getString() const;
 
+		Error &operator<<(const Error &error);
+		Error &operator>>(const Error &error);
+
 	private:
 		char string[256];
 	};
 
-	#define INTERNAL_ERROR Error("Internal error in %s (%d)", __FILE__, __LINE__);
+	#define INTERNAL_ERROR Error("%s (%d):\n\tInternal error", __FILE__, __LINE__)
+	#define EXCEPTION      Error("%s (%d):\n\t", __FILE__, __LINE__) << Error
 }
 
 #endif   // SoftWire_Error_hpp

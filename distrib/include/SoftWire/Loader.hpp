@@ -15,7 +15,8 @@ namespace SoftWire
 
 		~Loader();
 
-		const void (*callable(const char *entryLabel = 0))();
+		void (*callable(const char *entryLabel = 0))();
+		void (*finalize(const char *entryLabel = 0))();
 		void *acquire();
 
 		void appendEncoding(const Encoding &encoding);
@@ -30,7 +31,9 @@ namespace SoftWire
 		Instruction *instructions;
 		unsigned char *machineCode;
 		char *listing;
+
 		bool possession;
+		bool finalized;
 
 		void loadCode(const char *entryLabel = 0);
 		const unsigned char *resolveReference(const char *name) const;

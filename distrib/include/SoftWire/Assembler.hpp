@@ -17,18 +17,22 @@ namespace SoftWire
 	class Assembler
 	{
 	public:
-		Assembler();
-		Assembler(const char *fileName);
+		Assembler(const char *fileName = 0);
 
 		~Assembler();
 
-		// Retrieve assembly code
-		const void (*callable(const char *entryLabel = 0))();
-		void *acquire();
+		// Run-time intrinsics
+		void label(const char *label);
+		#include "Intrinsics.hpp"
 
 		// Methods for passing data references
 		static void defineExternal(void *pointer, const char *name);
 		static void defineSymbol(int value, const char *name);
+
+		// Retrieve assembly code
+		void (*callable(const char *entryLabel = 0))();
+		void (*finalize(const char *entryLable = 0))();
+		void *acquire();
 
 		// Error and debugging methods
 		const char *getErrors() const;
@@ -36,10 +40,6 @@ namespace SoftWire
 		void clearListing() const;
 		void setEchoFile(const char *echoFile, const char *mode = "wt");
 		void annotate(const char *format, ...);
-
-		void label(const char *label);
-
-		#include "Intrinsics.hpp"
 
 	private:
 		char *entryLabel;
@@ -59,10 +59,10 @@ namespace SoftWire
 		void assembleFile();
 		void assembleLine();
 
-		void x86(int instructionID,
-		         const Operand &firstOperand = VOID,
-		         const Operand &secondOperand = VOID,
-		         const Operand &thirdOperand = VOID);   // Assemble run-time intrinsic
+		int x86(int instructionID,
+		        const Operand &firstOperand = VOID,
+		        const Operand &secondOperand = VOID,
+		        const Operand &thirdOperand = VOID);   // Assemble run-time intrinsic
 
 		void handleError(const char *error);
 	};

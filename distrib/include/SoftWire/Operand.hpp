@@ -199,47 +199,16 @@ namespace SoftWire
 		}
 	};
 
-//	typedef char OperandBYTE;
-//	typedef short OperandWORD;
-//	typedef int OperandDWORD;
-
-	struct OperandR_M8 : virtual Operand
-	{
-	};
-
-	struct OperandR_M16 : virtual Operand
-	{
-	};
-
-	struct OperandR_M32 : virtual Operand
-	{
-	};
-
-	struct OperandR_M64 : virtual Operand
-	{
-	};
-
-	struct OperandR_M128 : virtual Operand
-	{
-	};
-
-	struct OperandXMM32 : virtual Operand
-	{
-	};
-
-	struct OperandXMM64 : virtual Operand
-	{
-	};
-
 	struct OperandREF : virtual Operand
 	{
-		OperandREF(void *ref = 0)
+		OperandREF(const void *ref = 0)
 		{
-			type = Operand::REG32;
+			type = Operand::REF;
 			baseReg = Encoding::REG_UNKNOWN;
 			indexReg = Encoding::REG_UNKNOWN;
 			scale = 0;
 			displacement = (int)ref;
+			notation = 0;
 		}
 
 		OperandREF(const char *ref)
@@ -250,14 +219,15 @@ namespace SoftWire
 
 		OperandREF(int ref)
 		{
-			type = Operand::REG32;
+			type = Operand::REF;
 			baseReg = Encoding::REG_UNKNOWN;
 			indexReg = Encoding::REG_UNKNOWN;
 			scale = 0;
 			displacement = ref;
+			notation = 0;
 		}
 
-		const OperandREF operator+(void *disp) const
+		const OperandREF operator+(const void *disp) const
 		{
 			OperandREF returnReg;
 
@@ -292,107 +262,18 @@ namespace SoftWire
 
 			return returnReg;
 		}
-	};
 
-	struct OperandREG : virtual Operand
-	{
-		OperandREG(const Operand &reg = Operand::INIT)
+		bool operator==(const OperandREF &ref) const
 		{
-			type = reg.type;
-			this->reg = reg.reg;
-			notation = reg.notation;
-		}
-	};
-
-	struct OperandREG8 : OperandR_M8, OperandREG
-	{
-		OperandREG8(Encoding::Reg reg = Encoding::REG_UNKNOWN)
-		{
-			type = Operand::REG8;
-			this->reg = reg;
-		}
-	};
-
-	struct OperandREG16 : OperandR_M16, OperandREG
-	{
-		OperandREG16(Encoding::Reg reg = Encoding::REG_UNKNOWN)
-		{
-			type = Operand::REG16;
-			this->reg = reg;
-		}
-	};
-
-	struct OperandREG32;
-
-	struct OperandREGxX : OperandREF
-	{
-		OperandREGxX(Encoding::Reg reg = Encoding::REG_UNKNOWN)
-		{
-			type = Operand::REG32;
-			this->reg = reg;
-			indexReg = Encoding::REG_UNKNOWN;
-			scale = 0;
-			displacement = 0;
+			return baseReg == ref.baseReg &&
+			       indexReg == ref.indexReg &&
+				   scale == ref.scale &&
+				   displacement == ref.displacement;
 		}
 
-		friend const OperandREF operator+(const OperandREGxX &ref1, const OperandREG32 &ref2);
-		friend const OperandREGxX operator+(const OperandREGxX &ref, void *disp);
-		friend const OperandREGxX operator+(const OperandREGxX &ref, int disp);
-		friend const OperandREGxX operator-(const OperandREGxX &ref, int disp);
-
-		friend const OperandREF operator+(const OperandREG32 &ref2, const OperandREGxX &ref1);
-		friend const OperandREGxX operator+(void *disp, const OperandREGxX &ref);
-		friend const OperandREGxX operator+(int disp, const OperandREGxX &ref);
-		friend const OperandREGxX operator-(int disp, const OperandREGxX &ref);
-	};
-
-	struct OperandREG32 : OperandR_M32, OperandREF, OperandREG
-	{
-		OperandREG32(Encoding::Reg reg = Encoding::REG_UNKNOWN)
+		bool operator!=(const OperandREF &ref) const
 		{
-			type = Operand::REG32;
-			this->reg = reg;
-			indexReg = Encoding::REG_UNKNOWN;
-			scale = 0;
-			displacement = 0;
-		}
-
-		friend const OperandREF operator+(const OperandREG32 ref, const OperandREG32 &ref2);
-
-		friend const OperandREG32 operator+(const OperandREG32 ref, void *disp);
-		friend const OperandREG32 operator+(const OperandREG32 ref, int disp);
-		friend const OperandREG32 operator-(const OperandREG32 ref, int disp);
-		friend const OperandREGxX operator*(const OperandREG32 ref, int scale);
-
-		friend const OperandREG32 operator+(void *disp, const OperandREG32 ref);
-		friend const OperandREG32 operator+(int disp, const OperandREG32 ref);
-		friend const OperandREG32 operator-(int disp, const OperandREG32 ref);
-		friend const OperandREGxX operator*(int scale, const OperandREG32 ref);
-	};
-
-	struct OperandFPUREG : virtual Operand, OperandREG
-	{
-		OperandFPUREG(Encoding::Reg reg = Encoding::REG_UNKNOWN)
-		{
-			type = Operand::FPUREG;
-			this->reg = reg;
-		}
-	};
-
-	struct OperandMMREG : OperandR_M64, OperandREG
-	{
-		OperandMMREG(Encoding::Reg reg = Encoding::REG_UNKNOWN)
-		{
-			type = Operand::MMREG;
-			this->reg = reg;
-		}
-	};
-
-	struct OperandXMMREG : OperandR_M128, OperandXMM32, OperandXMM64, OperandREG
-	{
-		OperandXMMREG(Encoding::Reg reg = Encoding::REG_UNKNOWN)
-		{
-			type = Operand::XMMREG; this->reg = reg;
+			return !(*this == ref);
 		}
 	};
 
@@ -415,7 +296,7 @@ namespace SoftWire
 			indexReg = ref.indexReg;
 			scale = ref.scale;
 			displacement = ref.displacement;
-			notation = 0;
+			notation = ref.notation;
 		}
 
 		OperandMEM operator[](const OperandREF &ref) const
@@ -435,6 +316,7 @@ namespace SoftWire
 			indexReg = ref.indexReg;
 			scale = ref.scale;
 			displacement = ref.displacement;
+			notation = ref.notation;
 		}
 
 		OperandMEM8 operator[](const OperandREF &ref) const
@@ -454,6 +336,7 @@ namespace SoftWire
 			indexReg = ref.indexReg;
 			scale = ref.scale;
 			displacement = ref.displacement;
+			notation = ref.notation;
 		}
 
 		OperandMEM16 operator[](const OperandREF &ref) const
@@ -473,6 +356,7 @@ namespace SoftWire
 			indexReg = ref.indexReg;
 			scale = ref.scale;
 			displacement = ref.displacement;
+			notation = ref.notation;
 		}
 
 		OperandMEM32 operator[](const OperandREF &ref) const
@@ -492,6 +376,7 @@ namespace SoftWire
 			indexReg = ref.indexReg;
 			scale = ref.scale;
 			displacement = ref.displacement;
+			notation = ref.notation;
 		}
 
 		OperandMEM64 operator[](const OperandREF &ref) const
@@ -511,11 +396,283 @@ namespace SoftWire
 			indexReg = ref.indexReg;
 			scale = ref.scale;
 			displacement = ref.displacement;
+			notation = ref.notation;
 		}
 
 		OperandMEM128 operator[](const OperandREF &ref) const
 		{
 			return OperandMEM128(ref);
+		}
+	};
+
+	struct OperandR_M8 : virtual Operand
+	{
+		OperandR_M8()
+		{
+			type = Operand::R_M8;
+			baseReg = Encoding::REG_UNKNOWN;
+			indexReg = Encoding::REG_UNKNOWN;
+			scale = 0;
+			displacement = 0;
+			notation = 0;
+		}
+
+		OperandR_M8(const OperandMEM8 &mem)
+		{
+			type = Operand::MEM8;
+			baseReg = mem.baseReg;
+			indexReg = mem.indexReg;
+			scale = mem.scale;
+			displacement = mem.displacement;
+			notation = mem.notation;
+		}
+	};
+
+	struct OperandR_M16 : virtual Operand
+	{
+		OperandR_M16()
+		{
+			type = Operand::R_M16;
+			baseReg = Encoding::REG_UNKNOWN;
+			indexReg = Encoding::REG_UNKNOWN;
+			scale = 0;
+			displacement = 0;
+			notation = 0;
+		}
+
+		OperandR_M16(const OperandMEM16 &mem)
+		{
+			type = Operand::MEM16;
+			baseReg = mem.baseReg;
+			indexReg = mem.indexReg;
+			scale = mem.scale;
+			displacement = mem.displacement;
+			notation = mem.notation;
+		}
+	};
+
+	struct OperandR_M32 : virtual Operand
+	{
+		OperandR_M32()
+		{
+			type = Operand::R_M32;
+			baseReg = Encoding::REG_UNKNOWN;
+			indexReg = Encoding::REG_UNKNOWN;
+			scale = 0;
+			displacement = 0;
+			notation = 0;
+		}
+
+		OperandR_M32(const OperandMEM32 &mem)
+		{
+			type = Operand::MEM32;
+			baseReg = mem.baseReg;
+			indexReg = mem.indexReg;
+			scale = mem.scale;
+			displacement = mem.displacement;
+			notation = mem.notation;
+		}
+	};
+
+	struct OperandR_M64 : virtual Operand
+	{
+		OperandR_M64()
+		{
+			type = Operand::R_M64;
+			baseReg = Encoding::REG_UNKNOWN;
+			indexReg = Encoding::REG_UNKNOWN;
+			scale = 0;
+			displacement = 0;
+			notation = 0;
+		}
+
+		OperandR_M64(const OperandMEM64 &mem)
+		{
+			type = Operand::MEM64;
+			baseReg = mem.baseReg;
+			indexReg = mem.indexReg;
+			scale = mem.scale;
+			displacement = mem.displacement;
+			notation = mem.notation;
+		}
+	};
+
+	struct OperandR_M128 : virtual Operand
+	{
+		OperandR_M128()
+		{
+			type = Operand::R_M128;
+			baseReg = Encoding::REG_UNKNOWN;
+			indexReg = Encoding::REG_UNKNOWN;
+			scale = 0;
+			displacement = 0;
+			notation = 0;
+		}
+
+		OperandR_M128(const OperandMEM128 &mem)
+		{
+			type = Operand::MEM128;
+			baseReg = mem.baseReg;
+			indexReg = mem.indexReg;
+			scale = mem.scale;
+			displacement = mem.displacement;
+			notation = mem.notation;
+		}
+	};
+
+	struct OperandXMM32 : virtual Operand
+	{
+		OperandXMM32()
+		{
+			type = Operand::XMM32;
+			baseReg = Encoding::REG_UNKNOWN;
+			indexReg = Encoding::REG_UNKNOWN;
+			scale = 0;
+			displacement = 0;
+			notation = 0;
+		}
+
+		OperandXMM32(const OperandMEM32 &mem)
+		{
+			type = Operand::MEM32;
+			baseReg = mem.baseReg;
+			indexReg = mem.indexReg;
+			scale = mem.scale;
+			displacement = mem.displacement;
+			notation = mem.notation;
+		}
+	};
+
+	struct OperandXMM64 : virtual Operand
+	{
+		OperandXMM64()
+		{
+			type = Operand::XMM64;
+			baseReg = Encoding::REG_UNKNOWN;
+			indexReg = Encoding::REG_UNKNOWN;
+			scale = 0;
+			displacement = 0;
+			notation = 0;
+		}
+
+		OperandXMM64(const OperandMEM64 &mem)
+		{
+			type = Operand::MEM64;
+			baseReg = mem.baseReg;
+			indexReg = mem.indexReg;
+			scale = mem.scale;
+			displacement = mem.displacement;
+			notation = mem.notation;
+		}
+	};
+
+	struct OperandREG : virtual Operand
+	{
+		OperandREG(const Operand &reg = Operand::INIT)
+		{
+			type = reg.type;
+			this->reg = reg.reg;
+			notation = reg.notation;
+		}
+	};
+
+	struct OperandREG8 : OperandR_M8, OperandREG
+	{
+		OperandREG8(Encoding::Reg reg = Encoding::REG_UNKNOWN)
+		{
+			type = Operand::REG8;
+			this->reg = reg;
+			notation = 0;
+		}
+	};
+
+	struct OperandREG16 : OperandR_M16, OperandREG
+	{
+		OperandREG16(Encoding::Reg reg = Encoding::REG_UNKNOWN)
+		{
+			type = Operand::REG16;
+			this->reg = reg;
+			notation = 0;
+		}
+	};
+
+	struct OperandREG32;
+
+	struct OperandREGxX : OperandREF
+	{
+		OperandREGxX(Encoding::Reg reg = Encoding::REG_UNKNOWN)
+		{
+			type = Operand::REG32;
+			this->reg = reg;
+			indexReg = Encoding::REG_UNKNOWN;
+			scale = 0;
+			displacement = 0;
+			notation = 0;
+		}
+
+		friend const OperandREF operator+(const OperandREGxX &ref1, const OperandREG32 &ref2);
+		friend const OperandREGxX operator+(const OperandREGxX &ref, void *disp);
+		friend const OperandREGxX operator+(const OperandREGxX &ref, int disp);
+		friend const OperandREGxX operator-(const OperandREGxX &ref, int disp);
+
+		friend const OperandREF operator+(const OperandREG32 &ref2, const OperandREGxX &ref1);
+		friend const OperandREGxX operator+(void *disp, const OperandREGxX &ref);
+		friend const OperandREGxX operator+(int disp, const OperandREGxX &ref);
+		friend const OperandREGxX operator-(int disp, const OperandREGxX &ref);
+	};
+
+	struct OperandREG32 : OperandR_M32, OperandREF, OperandREG
+	{
+		OperandREG32(Encoding::Reg reg = Encoding::REG_UNKNOWN)
+		{
+			type = Operand::REG32;
+			this->reg = reg;
+			indexReg = Encoding::REG_UNKNOWN;
+			scale = 0;
+			displacement = 0;
+			notation = 0;
+		}
+
+		friend const OperandREF operator+(const OperandREG32 ref, const OperandREG32 &ref2);
+
+		friend const OperandREG32 operator+(const OperandREG32 ref, void *disp);
+		friend const OperandREG32 operator+(const OperandREG32 ref, int disp);
+		friend const OperandREG32 operator-(const OperandREG32 ref, int disp);
+		friend const OperandREGxX operator*(const OperandREG32 ref, int scale);
+
+		friend const OperandREG32 operator+(void *disp, const OperandREG32 ref);
+		friend const OperandREG32 operator+(int disp, const OperandREG32 ref);
+		friend const OperandREG32 operator-(int disp, const OperandREG32 ref);
+		friend const OperandREGxX operator*(int scale, const OperandREG32 ref);
+	};
+
+	struct OperandFPUREG : virtual Operand, OperandREG
+	{
+		OperandFPUREG(Encoding::Reg reg = Encoding::REG_UNKNOWN)
+		{
+			type = Operand::FPUREG;
+			this->reg = reg;
+			notation = 0;
+		}
+	};
+
+	struct OperandMMREG : OperandR_M64, OperandREG
+	{
+		OperandMMREG(Encoding::Reg reg = Encoding::REG_UNKNOWN)
+		{
+			type = Operand::MMREG;
+			this->reg = reg;
+			notation = 0;
+		}
+	};
+
+	struct OperandXMMREG : OperandR_M128, OperandXMM32, OperandXMM64, OperandREG
+	{
+		OperandXMMREG(Encoding::Reg reg = Encoding::REG_UNKNOWN)
+		{
+			type = Operand::XMMREG;
+			this->reg = reg;
+			notation = 0;
 		}
 	};
 
@@ -525,6 +682,7 @@ namespace SoftWire
 		{
 			type = Operand::AL;
 			reg = Encoding::AL;
+			notation = "al";
 		}
 	};
 
@@ -534,6 +692,7 @@ namespace SoftWire
 		{
 			type = Operand::CL;
 			reg = Encoding::CL;
+			notation = "cl";
 		}
 	};
 
@@ -543,6 +702,7 @@ namespace SoftWire
 		{
 			type = Operand::AX;
 			reg = Encoding::AX;
+			notation = "ax";
 		}
 	};
 
@@ -552,6 +712,7 @@ namespace SoftWire
 		{
 			type = Operand::DX;
 			reg = Encoding::DX;
+			notation = "dx";
 		}
 	};
 
@@ -561,6 +722,7 @@ namespace SoftWire
 		{
 			type = Operand::CX;
 			reg = Encoding::CX;
+			notation = "cx";
 		}
 	};
 
@@ -570,6 +732,7 @@ namespace SoftWire
 		{
 			type = Operand::EAX;
 			reg = Encoding::EAX;
+			notation = "eax";
 		}
 	};
 
@@ -579,6 +742,7 @@ namespace SoftWire
 		{
 			type = Operand::ECX;
 			reg = Encoding::ECX;
+			notation = "ecx";
 		}
 	};
 
@@ -588,6 +752,7 @@ namespace SoftWire
 		{
 			type = Operand::ST0;
 			reg = Encoding::ST0;
+			notation = "st0";
 		}
 	};
 
@@ -604,6 +769,7 @@ namespace SoftWire
 
 	static const OperandAL al;
 	static const OperandCL cl;
+	static const OperandREG8 reg8;
 	static const OperandREG8 dl(Encoding::DL);
 	static const OperandREG8 bl(Encoding::BL);
 	static const OperandREG8 ah(Encoding::AH);
@@ -614,6 +780,7 @@ namespace SoftWire
 	static const OperandAX ax;
 	static const OperandCX cx;
 	static const OperandDX dx;
+	static const OperandREG16 reg16;
 	static const OperandREG16 bx(Encoding::BX);
 	static const OperandREG16 sp(Encoding::SP);
 	static const OperandREG16 bp(Encoding::BP);
@@ -622,6 +789,7 @@ namespace SoftWire
 
 	static const OperandEAX eax;
 	static const OperandECX ecx;
+	static const OperandREG32 reg32;
 	static const OperandREG32 edx(Encoding::EDX);
 	static const OperandREG32 ebx(Encoding::EBX);
 	static const OperandREG32 esp(Encoding::ESP);
@@ -631,6 +799,7 @@ namespace SoftWire
 
 	static const OperandST0 st;
 	static const OperandST0 st0;
+	static const OperandFPUREG fpureg;
 	static const OperandFPUREG st1(Encoding::ST1);
 	static const OperandFPUREG st2(Encoding::ST2);
 	static const OperandFPUREG st3(Encoding::ST3);
@@ -639,6 +808,7 @@ namespace SoftWire
 	static const OperandFPUREG st6(Encoding::ST6);
 	static const OperandFPUREG st7(Encoding::ST7);
 
+	static const OperandMMREG mmreg;
 	static const OperandMMREG mm0(Encoding::MM0);
 	static const OperandMMREG mm1(Encoding::MM1);
 	static const OperandMMREG mm2(Encoding::MM2);
@@ -648,6 +818,7 @@ namespace SoftWire
 	static const OperandMMREG mm6(Encoding::MM6);
 	static const OperandMMREG mm7(Encoding::MM7);
 
+	static const OperandXMMREG xmmreg;
 	static const OperandXMMREG xmm0(Encoding::XMM0);
 	static const OperandXMMREG xmm1(Encoding::XMM1);
 	static const OperandXMMREG xmm2(Encoding::XMM2);

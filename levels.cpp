@@ -563,10 +563,11 @@ PVideoFrame __stdcall Limiter::GetFrame(int n, IScriptEnvironment* env) {
     if (env->GetCPUFlags() & CPUF_INTEGER_SSE) {
       c_plane = srcp;
       if (!luma_emulator) {  
-        assemblerY = create_emulator(row_size, height, pitch-row_size, env);
+        assemblerY = create_emulator(row_size, height, env);
       }
       emu_cmin =  min_luma|(min_chroma<<8);
       emu_cmax =  max_luma|(max_chroma<<8);
+      modulo = pitch-row_size;
       assemblerY.Call();
     }
 
@@ -589,26 +590,29 @@ PVideoFrame __stdcall Limiter::GetFrame(int n, IScriptEnvironment* env) {
   } else if(vi.IsYV12()) {
   if (env->GetCPUFlags() & CPUF_INTEGER_SSE) {
     /** Run emulator if CPU supports it**/
+    row_size= frame->GetRowSize(PLANAR_Y_ALIGNED);
     if (!luma_emulator) {
-      row_size= frame->GetRowSize(PLANAR_Y_ALIGNED);
-      assemblerY = create_emulator(row_size, height, pitch-row_size, env);
+      assemblerY = create_emulator(row_size, height, env);
       luma_emulator=true;
     }
     emu_cmin = min_luma|(min_luma<<8);
     emu_cmax = max_luma|(max_luma<<8);
+    modulo = pitch-row_size;
 
     c_plane = (BYTE*)srcp;
     assemblerY.Call();
 
+    // Prepare for chroma
+    row_size = frame->GetRowSize(PLANAR_U_ALIGNED);
+    pitch = frame->GetPitch(PLANAR_U);
     if (!chroma_emulator) {
-      row_size = frame->GetRowSize(PLANAR_U_ALIGNED);
-      pitch = frame->GetPitch(PLANAR_U);
       height = frame->GetHeight(PLANAR_U);
-      assemblerUV = create_emulator(row_size, height, pitch-row_size, env);
+      assemblerUV = create_emulator(row_size, height, env);
       chroma_emulator=true;
     }
     emu_cmin = min_chroma|(min_chroma<<8);
     emu_cmax = max_chroma|(max_chroma<<8);
+    modulo = pitch-row_size;
 
     c_plane = frame->GetWritePtr(PLANAR_U);
     assemblerUV.Call();
@@ -656,7 +660,7 @@ Limiter::~Limiter() {
   if (chroma_emulator) assemblerUV.Free();
 }
 
-DynamicAssembledCode Limiter::create_emulator(int row_size, int height, int modulo, IScriptEnvironment* env) {
+DynamicAssembledCode Limiter::create_emulator(int row_size, int height, IScriptEnvironment* env) {
 
   int mod32_w = row_size/32;
   int remain_4 = (row_size-(mod32_w*32))/4;
@@ -685,7 +689,7 @@ DynamicAssembledCode Limiter::create_emulator(int row_size, int height, int modu
 
     x86.mov(eax, height);
     x86.mov(ebx, dword_ptr [&c_plane]);
-    x86.mov(ecx, modulo);
+    x86.mov(ecx, dword_ptr [&modulo]);
     x86.movd(mm7,dword_ptr [&emu_cmax]);
     x86.movd(mm6, dword_ptr [&emu_cmin]);
     x86.pshufw(mm7,mm7,0);

@@ -5,7 +5,7 @@
 
 namespace SoftWire
 {
-enum
+	enum
 	{
 		/*
 			+r Add register value to opcode

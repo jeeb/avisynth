@@ -126,7 +126,7 @@ public:
 	Limiter(PClip _child, int _min_luma, int _max_luma, int _min_chroma, int _max_chroma, IScriptEnvironment* env);
 	PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
   static AVSValue __cdecl Create(AVSValue args, void* user_data, IScriptEnvironment* env);
-  DynamicAssembledCode create_emulator(int row_size, int height, int modulo, IScriptEnvironment* env);
+  DynamicAssembledCode create_emulator(int row_size, int height, IScriptEnvironment* env);
   ~Limiter();
 private:
   bool luma_emulator;
@@ -143,7 +143,7 @@ private:
   BYTE* c_plane;
   int emu_cmin;
   int emu_cmax;
-
+  int modulo;
 };
 
 
