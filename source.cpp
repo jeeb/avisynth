@@ -503,6 +503,10 @@ public:
     vi.num_frames = 107892;   // 1 hour
     vi.pixel_type = VideoInfo::BGR32;
     vi.field_based = false;
+		vi.sixteen_bit = true;
+		vi.stereo = true;
+		vi.audio_samples_per_second = 48000;
+		vi.num_audio_samples=(60*60)*vi.audio_samples_per_second;
 
     frame = env->NewVideoFrame(vi);
     unsigned* p = (unsigned*)frame->GetWritePtr();
@@ -552,7 +556,23 @@ public:
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env) { return frame; }
   bool __stdcall GetParity(int n) { return false; }
   const VideoInfo& __stdcall GetVideoInfo() { return vi; }
-  void __stdcall GetAudio(void*, int, int, IScriptEnvironment*) {}
+
+  void __stdcall GetAudio(void* buf, int start, int count, IScriptEnvironment*) {
+		double Hz=440;
+		double add_per_sample=Hz/(double)vi.audio_samples_per_second;
+		double second_offset=(double)start*add_per_sample;
+		int d_mod=vi.audio_samples_per_second*2;
+		short* samples = (short*)buf;
+		for (int i=0;i<count;i++) {
+				samples[i*2]=(short)(32767.0*sin(3.1415926535897932384626433832795*2.0*second_offset));
+				if (((start+i)%d_mod)>vi.audio_samples_per_second) {
+					samples[i*2+1]=samples[i*2];
+				} else {
+					samples[i*2+1]=0;
+				} 
+				second_offset+=add_per_sample;
+		}
+	}
 
   static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env) {
     return new ColorBars(args[0].AsInt(), args[1].AsInt(), env);
@@ -681,6 +701,7 @@ public:
     _RPT0(0,"StartGraph() waiting for new sample...\n");
     WaitForSingleObject(evtNewSampleReady, INFINITE);
     _RPT0(0,"...StartGraph() finished waiting for new sample\n");
+
   }
 
   void StopGraph() {
@@ -691,6 +712,7 @@ public:
     PulseEvent(evtDoneWithSample);
     mc->Stop();
     mc->Release();
+
   }
 
   void PauseGraph() {
@@ -701,6 +723,7 @@ public:
     PulseEvent(evtDoneWithSample);
     mc->Pause();
     mc->Release();
+
   }
 
   HRESULT SeekTo(__int64 pos) {
@@ -1063,7 +1086,7 @@ static void SetMicrosoftDVtoFullResolution(IGraphBuilder* gb) {
   // great annoyance.  This will set it to full res if possible.
   // Note that IIPDVDec is not declared in older versions of
   // strmif.h; you may need the Win2000 platform SDK.
-  IEnumFilters* ef;
+/*  IEnumFilters* ef;
   if (FAILED(gb->EnumFilters(&ef)))
     return;
   ULONG fetched=1;
@@ -1077,6 +1100,7 @@ static void SetMicrosoftDVtoFullResolution(IGraphBuilder* gb) {
     bf->Release();
   }
   ef->Release();
+	*/
 }
 
 
