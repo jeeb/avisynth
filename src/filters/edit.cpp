@@ -493,8 +493,8 @@ void Dissolve::GetAudio(void* buf, __int64 start, __int64 count, IScriptEnvironm
         } else if (numerator < denominator) {
           a[i+p] = b[i+p] + MulDiv(a[i+p]-b[i+p], numerator, denominator);
         }
-        numerator--;
       }
+      numerator--;
     }
     return;
   } 
@@ -513,8 +513,8 @@ void Dissolve::GetAudio(void* buf, __int64 start, __int64 count, IScriptEnvironm
           SFLOAT w = numerator / denominator;  // How far into the fade are we?
           a[i+p] = b[i+p] + w * (a[i+p]-b[i+p]);
         }
-        numerator--;
       }
+      numerator--;
     }
     return;
   }
