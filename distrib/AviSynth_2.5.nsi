@@ -1,7 +1,7 @@
 !packhdr tempfile.exe "upx --best --q tempfile.exe"
 
 !DEFINE VERSION 2.5.5
-!DEFINE DATE 030304
+!DEFINE DATE 170604
 
 SetCompressor lzma
 !include "MUI.nsh"
@@ -53,7 +53,7 @@ SectionIn RO
 ClearErrors
   SetOutPath $SYSDIR
   File "..\src\release\AviSynth.dll"
-	File "bin\devil.dll"
+  File "bin\devil.dll"
 
 IfFileExists "$SYSDIR\msvcp60.dll" msvc60_exists
   File "bin\msvcp60.dll"
@@ -67,10 +67,10 @@ IfErrors dll_not_ok
   WriteRegStr HKLM "SOFTWARE\AviSynth" "" "$INSTDIR"
 
   ReadRegStr $0 HKEY_LOCAL_MACHINE "SOFTWARE\AviSynth" "plugindir2_5"
-	StrCmp "$0" "" No_Plugin_exists Plugin_exists
+  StrCmp "$0" "" No_Plugin_exists Plugin_exists
 No_Plugin_exists:
-	CreateDirectory "$INSTDIR\plugins"
-	StrCpy $0 "$INSTDIR\plugins"
+  CreateDirectory "$INSTDIR\plugins"
+  StrCpy $0 "$INSTDIR\plugins"
 Plugin_exists:
 ClearErrors
 
@@ -114,6 +114,9 @@ dll_not_ok:
   Abort
 dll_ok:
 
+SetOutPath $INSTDIR\Examples
+File "Examples\*.*"
+CreateShortCut "$SMPROGRAMS\AviSynth 2.5\Example Scripts.lnk" "$INSTDIR\Examples"
 
 Delete $INSTDIR\Uninstall.exe
 WriteUninstaller $INSTDIR\Uninstall.exe
@@ -127,39 +130,36 @@ Section "English Documentation" English
 SectionIn 1
 
   SetOutPath $INSTDIR\Docs
-  File "..\Docs\*.*"
+  File "..\..\Docs\*.*"
   SetOutPath $INSTDIR\Docs\english
-  File "..\Docs\english\*.*"
+  File "..\..\Docs\english\*.*"
   SetOutPath $INSTDIR\Docs\english\corefilters
-  File "..\Docs\english\corefilters\*.*"
+  File "..\..\Docs\english\corefilters\*.*"
   SetOutPath $INSTDIR\Docs\english\externalfilters
-  File "..\Docs\english\externalfilters\*.*"
+  File "..\..\Docs\english\externalfilters\*.*"
   SetOutPath $INSTDIR\Docs\pictures\corefilters
-  File "..\Docs\pictures\corefilters\*.*"
+  File "..\..\Docs\pictures\corefilters\*.*"
   SetOutPath $INSTDIR\Docs\pictures\externalfilters
-  File "..\Docs\pictures\externalfilters\*.*"
+  File "..\..\Docs\pictures\externalfilters\*.*"
 
-  SetOutPath $INSTDIR\Examples
-  File "Examples\*.*"
 
   CreateShortCut "$SMPROGRAMS\AviSynth 2.5\AviSynth Documentation.lnk" "$INSTDIR\Docs\english\index.htm"
-  CreateShortCut "$SMPROGRAMS\AviSynth 2.5\Example Scripts.lnk" "$INSTDIR\Examples"
 SectionEnd
 
 
 Section /o "German Documentation" German
   SetOutPath $INSTDIR\Docs
-  File "..\Docs\*.*"
+  File "..\..\Docs\*.*"
   SetOutPath $INSTDIR\Docs\german
-  File "..\Docs\german\*.*"
+  File "..\..\Docs\german\*.*"
   SetOutPath $INSTDIR\Docs\german\corefilters
-  File "..\Docs\german\corefilters\*.*"
+  File "..\..\Docs\german\corefilters\*.*"
   SetOutPath $INSTDIR\Docs\german\externalfilters
-  File "..\Docs\german\externalfilters\*.*"
+  File "..\..\Docs\german\externalfilters\*.*"
   SetOutPath $INSTDIR\Docs\pictures\corefilters
-  File "..\Docs\pictures\corefilters\*.*"
+  File "..\..\Docs\pictures\corefilters\*.*"
   SetOutPath $INSTDIR\Docs\pictures\externalfilters
-  File "..\Docs\pictures\externalfilters\*.*"
+  File "..\..\Docs\pictures\externalfilters\*.*"
 
 
   SetOutPath $INSTDIR\Examples
@@ -168,6 +168,29 @@ Section /o "German Documentation" German
 CreateShortCut "$SMPROGRAMS\AviSynth 2.5\Deutsche AviSynth Dokumentation.lnk" "$INSTDIR\Docs\german\index.htm"
 
 SectionEnd
+
+Section /o "French Documentation" French
+  SetOutPath $INSTDIR\Docs
+  File "..\..\Docs\*.*"
+  SetOutPath $INSTDIR\Docs\french
+  File "..\..\Docs\french\*.*"
+  SetOutPath $INSTDIR\Docs\french\corefilters
+  File "..\..\Docs\french\corefilters\*.*"
+  SetOutPath $INSTDIR\Docs\french\externalfilters
+  File "..\..\Docs\french\externalfilters\*.*"
+  SetOutPath $INSTDIR\Docs\pictures\corefilters
+  File "..\..\Docs\pictures\corefilters\*.*"
+  SetOutPath $INSTDIR\Docs\pictures\externalfilters
+  File "..\..\Docs\pictures\externalfilters\*.*"
+
+
+  SetOutPath $INSTDIR\Examples
+  File "Examples\*.*"
+
+CreateShortCut "$SMPROGRAMS\AviSynth 2.5\French AviSynth Documentation.lnk" "$INSTDIR\Docs\french\index.htm"
+
+SectionEnd
+
 
 Subsectionend
 
@@ -190,13 +213,12 @@ SectionEnd
 SubSectionEnd
 
 
-
-
   !insertmacro MUI_FUNCTION_DESCRIPTION_BEGIN
   !insertmacro MUI_DESCRIPTION_TEXT  ${Frameserving} "Install the main files for frameserving via AviSynth"
-  !insertmacro MUI_DESCRIPTION_TEXT  ${Documentation} "Install help and example files"
-  !insertmacro MUI_DESCRIPTION_TEXT  ${English} "Install English help and example files"
-  !insertmacro MUI_DESCRIPTION_TEXT  ${German} "Install German help and example files"
+  !insertmacro MUI_DESCRIPTION_TEXT  ${Documentation} "Install help"
+  !insertmacro MUI_DESCRIPTION_TEXT  ${English} "Install English help"
+  !insertmacro MUI_DESCRIPTION_TEXT  ${German} "Install German help"
+  !insertmacro MUI_DESCRIPTION_TEXT  ${French} "Install French help"
   !insertmacro MUI_DESCRIPTION_TEXT  ${SelectAssociation} "Select only ONE of these for association!"
   !insertmacro MUI_DESCRIPTION_TEXT  ${Associate1} "Open AVS files directly with Notepad"
   !insertmacro MUI_DESCRIPTION_TEXT  ${Associate2} "Open AVS files directly with Media Player 6.4"
@@ -238,6 +260,13 @@ Section "Uninstall"
   RMDir  "$INSTDIR\Docs\German\externalfilters"
   Delete "$INSTDIR\Docs\German\*.*"
   RMDir  "$INSTDIR\Docs\German"
+
+  Delete "$INSTDIR\Docs\french\corefilters\*.*"
+  RMDir  "$INSTDIR\Docs\french\corefilters"
+  Delete "$INSTDIR\Docs\french\externalfilters\*.*"
+  RMDir  "$INSTDIR\Docs\french\externalfilters"
+  Delete "$INSTDIR\Docs\french\*.*"
+  RMDir  "$INSTDIR\Docs\french"
 
   Delete "$INSTDIR\Docs\Pictures\corefilters\*.*"
   Delete "$INSTDIR\Docs\Pictures\externalfilters\*.*"
