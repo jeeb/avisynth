@@ -1,4 +1,5 @@
-#include <stdlib.h>
+#include "stdafx.h"
+
 
 #ifndef HIGHPREC
 typedef float REAL;

@@ -12,19 +12,16 @@
 // DSPguru       - DSPguru@math.com
 
 
-//#include "stdafx.h"
-#include <stdio.h>
-#include <stdlib.h>
-#include <math.h>
+#include "stdafx.h"
 #include <assert.h>
 #include <time.h>
 
 #define DSPguru		1
 #define InitEnding	1
 
-//#ifndef NDEBUG
-//#define NDEBUG
-//#endif 
+#ifndef NDEBUG
+#define NDEBUG
+#endif 
  
 #define VERSION "1.28"
 
@@ -306,7 +303,7 @@ SSRC_API void ssrc_callback(DELIVER encode_routine)
 
 
 #ifdef InitEnding
-int* init_ssrc(unsigned long SFRQ,unsigned long DFRQ,unsigned int NCH, DELIVER encode_routine, int** ENDING) 
+int* init_ssrc(unsigned long SFRQ,unsigned long DFRQ,unsigned int NCH, DELIVER encode_routine, int** ENDING, IScriptEnvironment* env) 
 #else
 SSRC_API int* __cdecl init_ssrc(int SFRQ,int DFRQ,unsigned int NCH, DELIVER encode_routine)
 #endif
@@ -345,9 +342,9 @@ SSRC_API int* __cdecl init_ssrc(int SFRQ,int DFRQ,unsigned int NCH, DELIVER enco
     else if (dfrq/frqgcd % 2 == 0) osf = 2;
     else if (dfrq/frqgcd % 3 == 0) osf = 3; // (147 % 3) = 0
     else {
-      fprintf(stderr,"Resampling from %dHz to %dHz is not supported.\n",sfrq,dfrq);
-      fprintf(stderr,"%d/gcd(%d,%d)=%d must be divided by 2 or 3.\n",dfrq,sfrq,dfrq,dfrq/frqgcd);
-      exit(-1);
+      char err[1024];
+      sprintf(err,"SSRC: Resampling from %dHz to %dHz is not supported.\n%d/gcd(%d,%d)=%d must be divided by 2 or 3.\n",sfrq,dfrq,dfrq,sfrq,dfrq,dfrq/frqgcd);
+      env->ThrowError(err);
     }
 
     fs1 = sfrq*osf;

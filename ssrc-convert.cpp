@@ -72,6 +72,9 @@ SSRC::SSRC(PClip _child, int _target_rate, IScriptEnvironment* env)
 		skip_conversion=true;
 		return;
 	} 
+  if (target_rate > vi.audio_samples_per_second)
+    env->ThrowError("SSRC: You can only resample to lower samplerates.");
+
 	skip_conversion=false;
   source_rate = vi.audio_samples_per_second;
 
@@ -79,12 +82,12 @@ SSRC::SSRC(PClip _child, int _target_rate, IScriptEnvironment* env)
 
   vi.num_audio_samples = MulDiv(vi.num_audio_samples, target_rate, vi.audio_samples_per_second);
  
-  input_samples = *init_ssrc((unsigned long)source_rate, (unsigned long)target_rate, vi.AudioChannels(), RecieveSamples,  &ending);
+  input_samples = *init_ssrc((unsigned long)source_rate, (unsigned long)target_rate, vi.AudioChannels(), RecieveSamples,  &ending, env);
 
   vi.audio_samples_per_second = target_rate;
 
-  srcbuffer = new SFLOAT[input_samples];
-  convertedBuffer = new SFLOAT[input_samples];  // Will alwats be less than input_samples.
+  srcbuffer = new SFLOAT[input_samples+1];
+  convertedBuffer = new SFLOAT[64+(input_samples*target_rate)/source_rate]; 
 
   convertedLeft = 0;
   next_sample = 0;
