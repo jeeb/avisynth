@@ -119,6 +119,8 @@ LRESULT AVISource::DecompressFrame(int n, bool preroll, BYTE* buf) {
     err = pvideo->Read(n, 1, srcbuffer, srcbuffer_size, &bytes_read, NULL);
   }
   dropped_frame = !bytes_read;
+  if (dropped_frame) return ICERR_OK;  // If frame is 0 bytes (dropped), return instead of attempt decompressing as Vdub.
+
   int flags = preroll ? ICDECOMPRESS_PREROLL : 0;
   flags |= dropped_frame ? ICDECOMPRESS_NULLFRAME : 0;
   flags |= !pvideo->IsKeyFrame(n) ? ICDECOMPRESS_NOTKEYFRAME : 0;
