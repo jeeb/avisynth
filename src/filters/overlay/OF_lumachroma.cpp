@@ -37,6 +37,7 @@
 #include "stdafx.h"
 #include "overlayfunctions.h"
 
+
 void OL_BlendLumaImage::BlendImageMask(Image444* base, Image444* overlay, Image444* mask) {
   BYTE* baseY = base->GetPtr(PLANAR_Y);
 
@@ -104,76 +105,6 @@ void OL_BlendLumaImage::BlendImage(Image444* base, Image444* overlay) {
   }// if !mmx
 }
 
-
-/*******************
- * Blends two planes.
- * A weight between the two planes are given.
- * Has rather ok pairing, 
- * and has very little memory usage.
- * Processes four pixels per loop, so rowsize must be mod 4.
- * Thanks to ARDA for squeezing out a bit more performance.
- * 
- * Weights must be multipled by 32767
- * Returns the blended plane in p1;
- * (c) 2002 by sh0dan.
- ********/
-
-void OL_BlendLumaImage::mmx_weigh_planar(BYTE *p1, const BYTE *p2, int p1_pitch, int p2_pitch,int rowsize, int height, int weight, int invweight) {
-  __int64 weight64  = (__int64)weight | (((__int64)invweight)<<16) | (((__int64)weight)<<32) |(((__int64)invweight)<<48);
-	__int64 rounder = 0x0000400000004000;		// (0.5)<<15 in each dword
-
-  __asm {
-      movq mm5,[rounder]
-      pxor mm6,mm6
-      movq mm7,[weight64]
-      mov ebx,[rowsize]
-      mov esi,[p1]
-      mov edi,[p2]
-      xor ecx, ecx  // Height
-      mov edx,[height]
-      align 16
-yloopback:
-      cmp ecx, edx
-      jge outy
-      xor eax, eax
-      align 16 
-testloop:
-      cmp ebx, eax
-      jle outloop
-      punpcklbw mm0,[esi+eax]  // 4 pixels
-       pxor mm3,mm3
-      punpcklbw mm1,[edi+eax]  // y300 y200 y100 y000
-       psrlw mm0,8              // 00y3 00y2 00y1 00y0
-      psrlw mm1,8              // 00y3 00y2 00y1 00y0  
-       pxor mm2,mm2
-      movq mm4,mm1
-       punpcklwd mm2,mm0
-      punpckhwd mm3,mm0  
-       punpcklwd mm4,mm6
-      punpckhwd mm1,mm6
-       por mm2,mm4
-      por mm3,mm1
-       pmaddwd mm2,mm7     // Multiply pixels by weights.  pixel = img1*weight + img2*invweight (twice)
-      pmaddwd mm3,mm7      // Stalls 1 cycle (multiply unit stall)
-       paddd mm2,mm5       // Add rounder
-      paddd mm3,mm5
-       psrld mm2,15        // Shift down, so there is no fraction.
-      psrld mm3,15        
-      packssdw mm2,mm3
-      packuswb mm2,mm6 
-      movd [esi+eax],mm2
-      add eax,4
-      jmp testloop
-      align 16
-outloop:
-      inc ecx
-      add esi, [p1_pitch];
-      add edi, [p2_pitch];
-      jmp yloopback
-outy:
-      emms
-  } // end asm
-}
 
 
 void OL_BlendChromaImage::BlendImageMask(Image444* base, Image444* overlay, Image444* mask) {
@@ -261,73 +192,3 @@ void OL_BlendChromaImage::BlendImage(Image444* base, Image444* overlay) {
   }// if !mmx
 }
 
-
-/*******************
- * Blends two planes.
- * A weight between the two planes are given.
- * Has rather ok pairing, 
- * and has very little memory usage.
- * Processes four pixels per loop, so rowsize must be mod 4.
- * Thanks to ARDA for squeezing out a bit more performance.
- * 
- * Weights must be multipled by 32767
- * Returns the blended plane in p1;
- * (c) 2002 by sh0dan.
- ********/
-
-void OL_BlendChromaImage::mmx_weigh_planar(BYTE *p1, const BYTE *p2, int p1_pitch, int p2_pitch,int rowsize, int height, int weight, int invweight) {
-  __int64 weight64  = (__int64)weight | (((__int64)invweight)<<16) | (((__int64)weight)<<32) |(((__int64)invweight)<<48);
-	__int64 rounder = 0x0000400000004000;		// (0.5)<<15 in each dword
-
-  __asm {
-      movq mm5,[rounder]
-      pxor mm6,mm6
-      movq mm7,[weight64]
-      mov ebx,[rowsize]
-      mov esi,[p1]
-      mov edi,[p2]
-      xor ecx, ecx  // Height
-      mov edx,[height]
-      align 16
-yloopback:
-      cmp ecx, edx
-      jge outy
-      xor eax, eax
-      align 16 
-testloop:
-      cmp ebx, eax
-      jle outloop
-      punpcklbw mm0,[esi+eax]  // 4 pixels
-       pxor mm3,mm3
-      punpcklbw mm1,[edi+eax]  // y300 y200 y100 y000
-       psrlw mm0,8              // 00y3 00y2 00y1 00y0
-      psrlw mm1,8              // 00y3 00y2 00y1 00y0  
-       pxor mm2,mm2
-      movq mm4,mm1
-       punpcklwd mm2,mm0
-      punpckhwd mm3,mm0  
-       punpcklwd mm4,mm6
-      punpckhwd mm1,mm6
-       por mm2,mm4
-      por mm3,mm1
-       pmaddwd mm2,mm7     // Multiply pixels by weights.  pixel = img1*weight + img2*invweight (twice)
-      pmaddwd mm3,mm7      // Stalls 1 cycle (multiply unit stall)
-       paddd mm2,mm5       // Add rounder
-      paddd mm3,mm5
-       psrld mm2,15        // Shift down, so there is no fraction.
-      psrld mm3,15        
-      packssdw mm2,mm3
-      packuswb mm2,mm6 
-      movd [esi+eax],mm2
-      add eax,4
-      jmp testloop
-      align 16
-outloop:
-      inc ecx
-      add esi, [p1_pitch];
-      add edi, [p2_pitch];
-      jmp yloopback
-outy:
-      emms
-  } // end asm
-}

@@ -38,11 +38,12 @@
 #include "conditional.h"
 #include "../../core/parser/scriptparser.h"
 #include "../text-overlay.h"
-
+#include "conditional_reader.h"
 
 AVSFunction Conditional_filters[] = {
   {  "ConditionalFilter","cccsss[show]b", ConditionalFilter::Create },
   {  "ScriptClip", "cs[show]b", ScriptClip::Create },
+  {  "ConditionalReader", "css[show]b", ConditionalReader::Create },
   {  "FrameEvaluate", "cs[show]b[after_frame]b", ScriptClip::Create_eval },
   { 0 }
 };

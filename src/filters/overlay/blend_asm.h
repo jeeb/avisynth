@@ -34,55 +34,25 @@
 
 // Overlay (c) 2003, 2004 by Klaus Post
 
-#ifndef __Overlay_h
-#define __Overlay_h
-
-#include "../../internal.h"
-#include "444convert.h"
-#include "overlayfunctions.h"
-#include "blend_asm.h"
-
-class Overlay : public GenericVideoFilter
-/**
-  * 
-**/
-{
-public:
-  Overlay(PClip _child, AVSValue args, IScriptEnvironment *env);
-  PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment *env);
-  ~Overlay();
-  static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env);
-
-private:
-  OverlayFunction* SelectFunction(const char* name, IScriptEnvironment* env);
-  ConvertFrom444* SelectOutputCS(const char* name, IScriptEnvironment* env);
-  ConvertTo444* SelectInputCS(VideoInfo* VidI, IScriptEnvironment* env);  
-  void ClipFrames(Image444* input, Image444* overlay, int x, int y);
-  void FetchConditionals(IScriptEnvironment* env);
-
-  VideoInfo overlayVi;
-  VideoInfo maskVi;
-  VideoInfo* inputVi;
-
-  ConvertFrom444* outputConv;
-  ConvertTo444* inputConv;
-  ConvertTo444* overlayConv;
-  ConvertTo444* maskConv;
-  Image444* img;
-  Image444* overlayImg;
-  Image444* maskImg;
-  PClip overlay;
-  PClip mask;
-  int opacity;
-  OverlayFunction* func;
-  bool greymask;
-  bool ignore_conditional;
-  bool full_range;
-  int offset_x, offset_y;
-  int op_offset;
-  int con_x_offset;
-  int con_y_offset;
-};
+#ifndef __blend_asm_h
+#define __blend_asm_h
 
 
-#endif //Overlay_h
+/*******************
+ * Blends two planes.
+ * A weight between the two planes are given.
+ * Has rather ok pairing, 
+ * and has very little memory usage.
+ * Processes four pixels per loop, so rowsize must be mod 4.
+ * Thanks to ARDA for squeezing out a bit more performance.
+ * 
+ * Weights must be multipled by 32767
+ * Returns the blended plane in p1;
+ * (c) 2002 by sh0dan.
+ ********/
+
+
+void mmx_weigh_planar(BYTE *p1, const BYTE *p2, int p1_pitch, int p2_pitch,int rowsize, int height, int weight, int invweight);
+ 
+
+#endif // __blend_asm_h

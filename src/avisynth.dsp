@@ -279,6 +279,14 @@ SOURCE=.\filters\overlay\444convert.h
 # End Source File
 # Begin Source File
 
+SOURCE=.\filters\overlay\blend_asm.cpp
+# End Source File
+# Begin Source File
+
+SOURCE=.\filters\overlay\blend_asm.h
+# End Source File
+# Begin Source File
+
 SOURCE=.\filters\overlay\imghelpers.h
 # End Source File
 # Begin Source File
