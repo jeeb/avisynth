@@ -1,5 +1,5 @@
 // Avisynth filter: YUV merge
-// by Donald Graft (neuron2@interact.dk)
+// by Donald Graft (neuron2@attbi.com)
 // adapted by Richard Berg (avisynth-dev@richardberg.net)
 //
 // Released under the GNU Public License
