@@ -376,19 +376,26 @@ PExpression ScriptParser::ParseAddition(bool negationOnHold) //update exterior c
 PExpression ScriptParser::ParseMultiplication(bool negationOnHold) 
 {
   PExpression left = ParseUnary();
-  bool mult = tokenizer.IsOperator('*');
-  bool div = tokenizer.IsOperator('/');
-  bool mod = tokenizer.IsOperator('%');
-  if (mult || div || mod) {
-    tokenizer.NextToken();
-    PExpression right = ParseMultiplication(false);
+
+  do {
+    bool mult = tokenizer.IsOperator('*');
+    bool div = tokenizer.IsOperator('/');
+    bool mod = tokenizer.IsOperator('%');
+    
+    if (mult || div || mod)
+      tokenizer.NextToken();
+    else break;                                 //exits the while if not a mult op
+ 
+    PExpression right = ParseUnary();
     if (mult)
       left = new ExpMult(left, right);
     else if (div)
       left = new ExpDiv(left, right);
     else
       left = new ExpMod(left, right);
-  }  
+  }
+  while(true);
+
   if (negationOnHold)   //negate the factorised result if needed
     left = new ExpNegate(left);
   return left;
