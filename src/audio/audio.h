@@ -78,7 +78,8 @@ static __inline short IntToShort(int v, int scl)
 
 static double Izero(double x);
 static void LpFilter(double c[], int N, double frq, double Beta, int Num);
-static int makeFilter(short Imp[], int *LpScl, unsigned short Nwing, double Froll, double Beta);
+static int makeFilter(short   Imp[], int     *LpScl, unsigned short Nwing, double Froll, double Beta);
+static int makeFilter(SFLOAT fImp[], SFLOAT *fLpScl, unsigned short Nwing, double Froll, double Beta);
 
 
 /********************************************************************
@@ -290,22 +291,32 @@ class ResampleAudio : public GenericVideoFilter
 public:
   ResampleAudio(PClip _child, int _target_rate, IScriptEnvironment* env);
   virtual ~ResampleAudio() 
-    { if (srcbuffer) delete[] srcbuffer; }
+    { if  (srcbuffer) delete[]  srcbuffer;  
+      if (fsrcbuffer) delete[] fsrcbuffer; }
   void __stdcall GetAudio(void* buf, __int64 start, __int64 count, IScriptEnvironment* env);
 
   static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env);
 
 private:
-  int FilterUD(short *Xp, short Ph, short Inc);
+  int    FilterUD(short  *Xp, short Ph, short Inc);
+  SFLOAT FilterUD(SFLOAT *Xp, short Ph, short Inc);
 
   enum { Nwing = 8192, Nmult = 65 };
+
   short Imp[Nwing+1];
   SFLOAT fImp[Nwing+1];
+  SFLOAT fAmasktab[Amask+1];
+
   const int target_rate;
   double factor;
   int Xoff, dtb, dhb;
-  int LpScl;
-  short* srcbuffer;
+
+  int     LpScl;
+  SFLOAT fLpScl;
+
+  short*   srcbuffer;
+  SFLOAT* fsrcbuffer;
+
   int srcbuffer_size;
   bool skip_conversion;
 };

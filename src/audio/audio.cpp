@@ -334,9 +334,9 @@ void __stdcall MergeChannels::GetAudio(void* buf, __int64 start, __int64 count, 
 		if (env->GetCPUFlags() & CPUF_MMX) {
           __asm {
 		    mov eax,[src_buf]
-		     mov ebx,[samples]
+		     mov edi,[samples]
 		    mov ecx,dword ptr[count]
-		     add ebx,[dst_offset]
+		     add edi,[dst_offset]
 			test ecx,ecx
 		     mov edx,[bps]    ; bytes per strip
 			jz done
@@ -345,19 +345,19 @@ void __stdcall MergeChannels::GetAudio(void* buf, __int64 start, __int64 count, 
 
 		    movq mm1,[eax]    ; do 1 odd quad
 		     add eax,8
-		    movq [ebx],mm1
-		     add ebx,edx
+		    movq [edi],mm1
+		     add edi,edx
 			test ecx,ecx
 			jz done
 			 align 16
 label:
 		    movq mm0,[eax]    ; do pairs of quads
 		     movq mm1,[eax+8]
-		    movq [ebx],mm0
-		     add ebx,edx
+		    movq [edi],mm0
+		     add edi,edx
 		    add eax,16
-		     movq [ebx],mm1
-		    add ebx,edx
+		     movq [edi],mm1
+		    add edi,edx
 			 loop label
 done:
 		    emms
@@ -596,7 +596,6 @@ void __stdcall Amplify::GetAudio(void* buf, __int64 start, __int64 count, IScrip
     const int* iv = i_v;
 
     __asm {
-          mov	 ebx, [channels]
           mov	 ecx, [iv]
           mov	 edi, [buf]
           align  16
@@ -624,7 +623,7 @@ notpossat0:
           shrd	 eax, edx, 17				; n>>17
 saturate0:
           mov	 WORD PTR [edi-2], ax		; *samples
-          cmp	 esi, ebx					; j < channels
+          cmp	 esi, [channels]			; j < channels
           jl	 jloop0
 
           cmp	 edi, [endsample]
@@ -644,7 +643,6 @@ saturate0:
     const int* iv = i_v;
 
     __asm {
-          mov	 ebx, [channels]
           mov	 ecx, [iv]
           mov	 edi, [buf]
           align  16
@@ -672,7 +670,7 @@ notpossat1:
           shrd	 eax, edx, 17				; n>>17
 saturate1:
           mov	 DWORD PTR [edi-4], eax		; *samples
-          cmp	 esi, ebx					; j < channels
+          cmp	 esi, [channels]			; j < channels
           jl	 jloop1
 
           cmp	 edi, [endsample]
@@ -987,20 +985,19 @@ void __stdcall MixAudio::GetAudio(void* buf, __int64 start, __int64 count, IScri
 	const int t2_factor = track2_factor;
 
     __asm {
+		  push   ebx
           mov	 edi, [buf]
           mov	 esi, [tbuffer]
           align  16
 iloop3:
-          mov	 edx, [t1_factor]
           movsx	 eax, WORD PTR [edi]		; *samples
           add	 edi, 2						; samples++
-          imul	 edx
+          imul	 [t1_factor]
 		  mov    ebx, eax
 		  mov    ecx, edx
-          mov	 edx, [t2_factor]
           movsx	 eax, WORD PTR [esi]		; *clip_samples
           add	 esi, 2						; clip_samples++
-          imul	 edx
+          imul	 [t2_factor]
           add	 eax, ebx
           adc	 edx, ecx
           add	 eax, 65536
@@ -1022,6 +1019,7 @@ saturate3:
 
           cmp	 edi, [endsample]
           jl	 iloop3
+		  pop    ebx
     }
   } else if (vi.SampleType()&SAMPLE_FLOAT) {
     SFLOAT* samples = (SFLOAT*)buf;
@@ -1049,12 +1047,11 @@ AVSValue __cdecl MixAudio::Create(AVSValue args, void*, IScriptEnvironment* env)
  *******   Resample Audio   ******
  *******************************/
 
-// FIXME: Support float
-
 ResampleAudio::ResampleAudio(PClip _child, int _target_rate, IScriptEnvironment* env)
-    : GenericVideoFilter(ConvertAudio::Create(_child, SAMPLE_INT16, SAMPLE_INT16)), target_rate(_target_rate) {
+    : GenericVideoFilter(ConvertAudio::Create(_child, SAMPLE_INT16 | SAMPLE_FLOAT, SAMPLE_FLOAT)), target_rate(_target_rate) {
 	try {	// HIDE DAMN SEH COMPILER BUG!!!
   srcbuffer = 0;
+  fsrcbuffer = 0;
 
   if ((target_rate == vi.audio_samples_per_second) || (vi.audio_samples_per_second == 0)) {
     skip_conversion = true;
@@ -1066,18 +1063,40 @@ ResampleAudio::ResampleAudio(PClip _child, int _target_rate, IScriptEnvironment*
   vi.num_audio_samples = MulDiv(vi.num_audio_samples, target_rate, vi.audio_samples_per_second);
   vi.audio_samples_per_second = target_rate;
 
-  // generate filter coefficients
-  makeFilter(Imp, &LpScl, Nwing, 0.90, 9);
-  Imp[Nwing] = 0; // for "interpolation" beyond last coefficient
+  if (vi.IsSampleType(SAMPLE_INT16)) {
+
+	// generate filter coefficients
+	makeFilter(Imp, &LpScl, Nwing, 0.90, 9);
+	Imp[Nwing] = 0; // for "interpolation" beyond last coefficient
+
+	// Attenuate resampler scale factor by 0.95 to reduce probability of clipping
+	LpScl = int(LpScl * 0.95);
+
+	/* Account for increased filter gain when using factors less than 1 */
+	if (factor < 1)
+	  LpScl = int(LpScl * factor + 0.5);
+
+  }
+  else { // SAMPLE_FLOAT
+
+	// Load interpolate ratio table
+	for (int i=0; i<=Amask; i++)
+	  fAmasktab[i] = float(i) / (Amask+1);   /* a is between 0 and 1 */
+
+	/* Account for increased filter gain when using factors less than 1 */
+	if (factor < 1)
+	  fLpScl = factor;
+	else
+	  fLpScl = 1.0f; // Clipping is not a problem with floats. The filter seems to have a gain of 0.95 already ???
+
+	// generate filter coefficients
+	makeFilter(fImp, &fLpScl, Nwing, 0.90, 9);
+	fImp[Nwing] = 0.0; // for "interpolation" beyond last coefficient
+
+  }
 
   /* Calc reach of LP filter wing & give some creeping room */
   Xoff = int(((Nmult + 1) / 2.0) * max(1.0, 1.0 / factor)) + 10;
-
-  // Attenuate resampler scale factor by 0.95 to reduce probability of clipping
-  LpScl = int(LpScl * 0.95);
-  /* Account for increased filter gain when using factors less than 1 */
-  if (factor < 1)
-    LpScl = int(LpScl * factor + 0.5);
 
   double dt = 1.0 / factor;            /* Output sampling period */
   dtb = int(dt * (1 << Np) + 0.5);
@@ -1100,33 +1119,62 @@ void __stdcall ResampleAudio::GetAudio(void* buf, __int64 start, __int64 count, 
   __int64 src_end = __int64(((start + count) / factor) * (1 << Np) + 0.5);
   const __int64 source_samples = ((src_end - src_start) >> Np) + 2 * Xoff + 1;
   const int source_bytes = vi.BytesFromAudioSamples(source_samples);
-  if (!srcbuffer || source_bytes > srcbuffer_size) {
-    if (srcbuffer)
-      delete[] srcbuffer;
-    srcbuffer = new short[source_bytes >> 1];
-    srcbuffer_size = source_bytes;
-  }
-  child->GetAudio(srcbuffer, (src_start >> Np) - Xoff, source_samples, env);
 
   __int64 pos = (int(src_start & Pmask)) + (Xoff << Np);
-
-  short* dst = (short*)buf;
-
   int ch = vi.AudioChannels();
-  short* dst_end = &dst[count * ch];
 
-  while (dst < dst_end) {
-    for (int q = 0; q < ch; q++) {
-      short* Xp = &srcbuffer[(pos >> Np) * ch];
-      int v = FilterUD(Xp + q, (short)(pos & Pmask), - ch);  /* Perform left-wing inner product */
-      v += FilterUD(Xp + ch + q, (short)(( -pos) & Pmask), ch);  /* Perform right-wing inner product */
-      v >>= Nhg;      /* Make guard bits */
-      v *= LpScl;     /* Normalize for unity filter gain */
-      *dst++ = IntToShort(v, NLpScl);   /* strip guard bits, deposit output */
-    }
-    pos += dtb;       /* Move to next sample by time increment */
+  if (vi.IsSampleType(SAMPLE_INT16)) {
+
+	if (!srcbuffer || source_bytes > srcbuffer_size) {
+	  if (srcbuffer)
+		delete[] srcbuffer;
+	  srcbuffer = new short[source_bytes >> 1];
+	  srcbuffer_size = source_bytes;
+	}
+	child->GetAudio(srcbuffer, (src_start >> Np) - Xoff, source_samples, env);
+
+	short* dst = (short*)buf;
+
+	short* dst_end = &dst[count * ch];
+
+	while (dst < dst_end) {
+	  for (int q = 0; q < ch; q++) {
+		short* Xp = &srcbuffer[(pos >> Np) * ch];
+		int v = FilterUD(Xp + q, (short)(pos & Pmask), - ch);  /* Perform left-wing inner product */
+		v += FilterUD(Xp + ch + q, (short)(( -pos) & Pmask), ch);  /* Perform right-wing inner product */
+		v >>= Nhg;      /* Make guard bits */
+		v *= LpScl;     /* Normalize for unity filter gain */
+		*dst++ = IntToShort(v, NLpScl);   /* strip guard bits, deposit output */
+	  }
+	  pos += dtb;       /* Move to next sample by time increment */
+	}
+
   }
+  else { // SAMPLE_FLOAT
 
+	if (!fsrcbuffer || source_bytes > srcbuffer_size) {
+	  if (fsrcbuffer)
+		delete[] fsrcbuffer;
+	  fsrcbuffer = new SFLOAT[source_bytes >> 2];
+	  srcbuffer_size = source_bytes;
+	}
+	child->GetAudio(fsrcbuffer, (src_start >> Np) - Xoff, source_samples, env);
+
+	SFLOAT* dst = (SFLOAT*)buf;
+
+	SFLOAT* dst_end = &dst[count * ch];
+
+	while (dst < dst_end) {
+	  for (int q = 0; q < ch; q++) {
+		SFLOAT* Xp = &fsrcbuffer[(pos >> Np) * ch];
+		SFLOAT v = FilterUD(Xp +      q, (short)(   pos  & Pmask), - ch);  /* Perform left-wing inner product */
+		v       += FilterUD(Xp + ch + q, (short)(( -pos) & Pmask),   ch);  /* Perform right-wing inner product */
+		*dst++ = v;     /* deposit output */
+	  }
+	  pos += dtb;       /* Move to next sample by time increment */
+	}
+
+  }
 }
 
 
@@ -1135,6 +1183,7 @@ AVSValue __cdecl ResampleAudio::Create(AVSValue args, void*, IScriptEnvironment*
 }
 
 
+// FilterUD SAMPLE_INT16 Version
 int ResampleAudio::FilterUD(short *Xp, short Ph, short Inc) {
   int v = 0;
   unsigned Ho = (Ph * (unsigned)dhb) >> Np;
@@ -1154,6 +1203,29 @@ int ResampleAudio::FilterUD(short *Xp, short Ph, short Inc) {
     if (t & 1 << (Nhxn - 1))  /* Round, if needed */
       t += 1 << (Nhxn - 1);
     t >>= Nhxn;       /* Leave some guard bits, but come back some */
+    v += t;           /* The filter output */
+    Ho += dhb;        /* IR step */
+    Xp += Inc;        /* Input signal step. NO CHECK ON BOUNDS */
+  }
+  return (v);
+}
+
+// FilterUD SAMPLE_FLOAT Version
+SFLOAT ResampleAudio::FilterUD(SFLOAT *Xp, short Ph, short Inc) {
+  SFLOAT v = 0;
+  unsigned Ho = (Ph * (unsigned)dhb) >> Np;
+  unsigned End = Nwing;
+  if (Inc > 0)        /* If doing right wing...              */
+  {                   /* ...drop extra coeff, so when Ph is  */
+    End--;            /*    0.5, we don't do too many mult's */
+    if (Ph == 0)      /* If the phase is zero...             */
+      Ho += dhb;      /* ...then we've already skipped the   */
+  }                   /*    first sample, so we must also    */
+                      /*    skip ahead in fImp[]             */
+  while ((Ho >> Na) < End) {
+    SFLOAT t = fImp[Ho >> Na];      /* Get IR sample */
+    t += (fImp[(Ho >> Na) + 1] - t) * fAmasktab[Ho & Amask]; /* t is now interpolated filter coeff */
+    t *= *Xp;         /* Mult coeff by input sample */
     v += t;           /* The filter output */
     Ho += dhb;        /* IR step */
     Xp += Inc;        /* Input signal step. NO CHECK ON BOUNDS */
@@ -1219,6 +1291,7 @@ void LpFilter(double c[], int N, double frq, double Beta, int Num) {
  *
  */
 
+// makeFilter SAMPLE_INT16 Version
 int makeFilter( short Imp[], int *LpScl, unsigned short Nwing, double Froll, double Beta) {
   static const int MAXNWING = 8192;
   static double ImpR[MAXNWING];
@@ -1261,6 +1334,50 @@ int makeFilter( short Imp[], int *LpScl, unsigned short Nwing, double Froll, dou
     Scl = -Scl;
   for (i = 0; i < Nwing; i++)         /* Scale & round them */
     Imp[i] = int(ImpR[i] * Scl + 0.5);
+
+  return (0);
+}
+
+
+// makeFilter SAMPLE_FLOAT Version
+int makeFilter( SFLOAT fImp[], SFLOAT *fLpScl, unsigned short Nwing, double Froll, double Beta) {
+  static const int MAXNWING = 8192;
+  static double ImpR[MAXNWING];
+
+  double DCgain, Scl;
+  short Dh;
+  int i;
+
+  if (Nwing > MAXNWING)                      /* Check for valid parameters */
+    return (1);
+  if ((Froll <= 0) || (Froll > 1))
+    return (2);
+  if (Beta < 1)
+    return (3);
+
+  /*
+   * Design Kaiser-windowed sinc-function low-pass filter
+   */
+  LpFilter(ImpR, (int)Nwing, 0.5*Froll, Beta, Npc);
+
+  /* Compute the DC gain of the lowpass filter, and its maximum coefficient
+   * magnitude. Scale the coefficients so that the maximum coeffiecient just
+   * fits in Nh-bit fixed-point, and compute LpScl as the NLpScl-bit (signed)
+   * scale factor which when multiplied by the output of the lowpass filter
+   * gives unity gain. */
+  DCgain = 0;
+  Dh = Npc;                       /* Filter sampling period for factors>=1 */
+  for (i = Dh; i < Nwing; i += Dh)
+    DCgain += ImpR[i];
+  DCgain = 2 * DCgain + ImpR[0];    /* DC gain of real coefficients */
+
+  Scl = *fLpScl / DCgain;
+
+  /* Scale filter coefficients for Nh bits and convert to integer */
+  if (ImpR[0] < 0)                /* Need pos 1st value for LpScl storage */
+    Scl = -Scl;
+  for (i = 0; i < Nwing; i++)         /* Scale & round them */
+    fImp[i] = ImpR[i] * Scl;
 
   return (0);
 }
