@@ -57,7 +57,6 @@ typedef	long			PixOffset;
 
 
 #include "avisynth.h"
-#include "fastlib.h"
 
 
 struct AVSFunction {
