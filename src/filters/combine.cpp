@@ -271,24 +271,75 @@ PVideoFrame __stdcall ShowFiveVersions::GetFrame(int n, IScriptEnvironment* env)
 {
   PVideoFrame dst = env->NewVideoFrame(vi);
   BYTE* dstp = dst->GetWritePtr();
+  BYTE* dstpU = dst->GetWritePtr(PLANAR_U);
+  BYTE* dstpV = dst->GetWritePtr(PLANAR_V);
   const int dst_pitch = dst->GetPitch();
+  const int dst_pitchUV = dst->GetPitch(PLANAR_U);
   const int height = dst->GetHeight()/2;
+
+  if (vi.IsYUV()) {
+    const int wg = dst->GetRowSize()/6;
+    for (int i=0; i<height; i++){
+      memset(dstp + ((height+i)*dst_pitch),        128, wg);
+      memset(dstp + ((height+i)*dst_pitch) + wg*5, 128, wg);
+    }
+    if (vi.IsYV12()) {
+      for (int i=0; i<height/2; i++){
+	memset(dstpU + ((height/2+i)*dst_pitchUV),            128, wg/2);
+	memset(dstpU + ((height/2+i)*dst_pitchUV) + (wg*5)/2, 128, wg/2);
+	memset(dstpV + ((height/2+i)*dst_pitchUV),            128, wg/2);
+	memset(dstpV + ((height/2+i)*dst_pitchUV) + (wg*5)/2, 128, wg/2);
+      }
+    }
+  }
+  else { // vi.IsRGB()
+    const int wg = dst->GetRowSize()/6;
+    for (int i=0; i<height; i++){
+      memset(dstp + i*dst_pitch,        128, wg);
+      memset(dstp + i*dst_pitch + wg*5, 128, wg);
+    }
+  }
 
   for (int c=0; c<5; ++c) 
   {
     PVideoFrame src = child[c]->GetFrame(n, env);
-    const BYTE* srcp = src->GetReadPtr();
-    const int src_pitch = src->GetPitch();
-    const int src_row_size = src->GetRowSize();
+	if (vi.IsYV12()) {
+	  const BYTE* srcpY = src->GetReadPtr(PLANAR_Y);
+	  const BYTE* srcpU = src->GetReadPtr(PLANAR_U);
+	  const BYTE* srcpV = src->GetReadPtr(PLANAR_V);
+	  const int src_pitchY = src->GetPitch(PLANAR_Y);
+	  const int src_pitchUV = src->GetPitch(PLANAR_U);
+	  const int src_row_sizeY = src->GetRowSize(PLANAR_Y);
+	  const int src_row_sizeUV = src->GetRowSize(PLANAR_U);
 
-    // staggered arrangement
-    BYTE* dstp2 = dstp + (c>>1) * src_row_size;
-    if ((c&1)^vi.IsRGB())
-      dstp2 += (height * dst_pitch);
-    if (c&1)
-      dstp2 += vi.BytesFromPixels(vi.width/6);
+	  // staggered arrangement
+	  BYTE* dstp2 = dstp + (c>>1) * src_row_sizeY;
+	  BYTE* dstp2U = dstpU + (c>>1) * src_row_sizeUV;
+	  BYTE* dstp2V = dstpV + (c>>1) * src_row_sizeUV;
+	  if (c&1) {
+		dstp2 += (height * dst_pitch) + vi.width/6;
+		dstp2U += (height/2 * dst_pitchUV) + vi.width/12;
+		dstp2V += (height/2 * dst_pitchUV) + vi.width/12;
+	  }
 
-    BitBlt(dstp2, dst_pitch, srcp, src_pitch, src_row_size, height);
+	  BitBlt(dstp2, dst_pitch, srcpY, src_pitchY, src_row_sizeY, height);
+	  BitBlt(dstp2U, dst_pitchUV, srcpU, src_pitchUV, src_row_sizeUV, height/2);
+	  BitBlt(dstp2V, dst_pitchUV, srcpV, src_pitchUV, src_row_sizeUV, height/2);
+	}
+	else {
+	  const BYTE* srcp = src->GetReadPtr();
+	  const int src_pitch = src->GetPitch();
+	  const int src_row_size = src->GetRowSize();
+
+	  // staggered arrangement
+	  BYTE* dstp2 = dstp + (c>>1) * src_row_size;
+	  if ((c&1)^vi.IsRGB())
+		dstp2 += (height * dst_pitch);
+	  if (c&1)
+		dstp2 += vi.BytesFromPixels(vi.width/6);
+
+	  BitBlt(dstp2, dst_pitch, srcp, src_pitch, src_row_size, height);
+	}
   }
 
   return dst;
