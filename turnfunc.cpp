@@ -167,7 +167,7 @@ void TurnYV12(const unsigned char *srcp_y, unsigned char *dstp_y,
 			  const int src_pitch_uv, const int dst_pitch_uv,
 			  const int direction)
 {
-	int y, x, u, v, offset;
+	int y, x, offset;
 	if (direction == -1)
 	{
 		for(y=0; y<height; y++)
