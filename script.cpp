@@ -18,8 +18,11 @@
 
 
 #include "script.h"
+#include <stdlib.h>
 
-
+#ifdef _MSC_VER
+  #define itoa(a,b,c) _itoa(a,b,c)
+#endif
 
 /********************************************************************
 ***** Declare index of new filters for Avisynth's filter engine *****

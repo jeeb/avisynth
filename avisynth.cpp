@@ -19,6 +19,7 @@
 
 #include <stdio.h>
 #include <stdarg.h>
+#include <string.h>
 
 #include "internal.h"
 #include "script.h"
@@ -26,6 +27,7 @@
 
 #ifdef _MSC_VER
   #define strnicmp(a,b,c) _strnicmp(a,b,c)
+  #define strdup(a) _strdup(a)
 #else
   #define _RPT1(x,y,z) ((void)0)
 #endif
