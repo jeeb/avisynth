@@ -16,10 +16,10 @@
 <br />
 <tt>HorizontalReduceBy2</tt> verkleinert jeden Frame auf die halbe Breite, <tt>VerticalReduceBy2</tt> verkleinert jeden Frame auf die halbe H&ouml;he. Beide Filter hintereinander verkleinern das ganze Bild auf die H&auml;lfte, daf&uuml;r kann als Abk&uuml;rzung auch <tt>ReduceBy2</tt> verwendet werden.<br />
 <br />
-Der verwendete Filter-Kernel ist (1/4,1/2,1/4), das ist der gleiche wie im VirtualDub-Filter &quot;2:1 reduction (high quality)&quot;. Dabei werden die Aliasing-Probleme eines (1/2,1/2)-Kernels vermieden. Der VirtualDub-Filter &quot;resize&quot; verwendet einen anderen Kernel f&uuml;r eine 2:1-Verkleinerung, bei dem aber MPEG-Videos entstehen, die ganz wenig schlechter aussehen, wahrscheinlich da die Kanten etwas gesch&auml;rft werden, was f&uuml;r die meisten Codecs von Nachteil ist.<br />
+Der verwendete Filter-Kernel ist (1/4,1/2,1/4), das ist der gleiche wie im VirtualDub-Filter &quot;2:1 reduction (high quality)&quot;. Dabei werden die Aliasing-Probleme eines (1/2,1/2)-Kernels vermieden. Der VirtualDub-Filter &quot;resize&quot; verwendet einen anderen Kernel f&uuml;r eine 2:1-Verkleinerung, bei dem aber MPEG-Videos entstehen, die ein ganz wenig schlechter aussehen, wahrscheinlich da die Kanten etwas gesch&auml;rft werden, was f&uuml;r die meisten Codecs von Nachteil ist.<br />
 <br />
-Falls die Quelle interlaced ist, deinterlaced <tt>VerticalReduceBy2</tt> das Bild. Falls du sp&auml;ter ein Video mit 320x240 haben willst, empfehle ich dir, dass du mit voller vertikaler interlaced Aufl&ouml;sung 320x480 und dann <tt>VerticalReduceBy2</tt> anwendest. Du bekommst ein sehr viel besser aussehendes Bild.<br />
+Falls die Quelle interlaced ist, deinterlaced <tt>VerticalReduceBy2</tt> das Bild. Falls du sp&auml;ter ein Video mit 320x240 haben willst, empfehle ich dir, dass du mit voller vertikaler interlaced Aufl&ouml;sung 320x480 aufnimmst und dann <tt>VerticalReduceBy2</tt> anwendest. Du bekommst ein sehr viel besser aussehendes Bild.<br />
 <br />
-<form action=""><input type="button" value="back" onclick="history.go(-1)" /></form>
+<form action=""><input type="button" value="Zur&uuml;ck" onclick="history.go(-1)" /></form>
 </body>
 </html>

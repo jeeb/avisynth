@@ -10,11 +10,11 @@
 </head><body>
 <span class="titresmall"><a name="MixAudio"></a>MixAudio</span><br /><br />
 
-<tt>MixAudio(</tt><i>clip1, clip2, float clip1_factor, float clip2_factor</i><tt>)</tt><br /><br />
+<tt>MixAudio(</tt><i>clip1, clip2, float &quot;clip1_factor&quot;, float &quot;clip2_factor&quot;</i><tt>)</tt><br /><br />
 
 Der Ton von zwei Clips wird gemischt. Die Lautst&auml;rke f&uuml;r die zwei Clips kann optional angegeben werden.<br /><br />
 
-Die Lautst&auml;rke wird als Faktor angegeben, wobei 0.0 den jeweiligen Kanal auf Null regelt, und 1.0 den Kanal zu 100% aufdreht. Der Standardwert ist 0.5 / 0.5, wenn nur ein Faktor angegeben wird, ist der Faktor f&uuml;r den anderer Kanal 1.0-(factor). Wenn factor1 + factor2 gr&ouml;sser als 1.0 ist, kann &Uuml;bersteuerung auftreten.<br /><br />
+Die Lautst&auml;rke wird als Faktor angegeben, wobei 0.0 den jeweiligen Kanal auf Null regelt, und 1.0 den Kanal zu 100% aufdreht. Der Standardwert ist 0.5 / 0.5, wenn nur ein Faktor angegeben wird, ist der Faktor f&uuml;r den anderer Kanal 1.0-(<i>clipX_factor</i>). Wenn <i>clip1_factor</i> + <i>clip2_factor</i> gr&ouml;sser als 1.0 ist, kann &Uuml;bersteuerung auftreten.<br /><br />
 
 Die beiden Clips m&uuml;ssen die gleichen Samplingraten haben (es kann - wenn notwendig -  dazu <a href="resampleaudio.html"><tt>ResampleAudio</tt></a> verwendet werden). Weiter m&uuml;ssen die Clips die gleiche Anzahl an Kan&auml;len haben (stereo/mono) - hier kann falls notwendig <a href="converttomono.html"><tt>ConvertToMono()</tt></a> oder <a href="mergechannels.html"><tt>MergeChannels()</tt></a> verwendet werden.<br /><br />
 
@@ -24,8 +24,8 @@ Die beiden Clips m&uuml;ssen die gleichen Samplingraten haben (es kann - wenn no
    <tt>
     Beispiel:<br /><br />
     
-    # Mischen zweier Quellen, die eine etwas leiser<br />
-    Soundtrack = Wavsource("C:\Dateiname1.wav")<br />
+    # Mischen zweier Quellen, die eine etwas leiser:<br />
+    Soundtrack = WavSource("C:\Dateiname1.wav")<br />
     Speak = WavSource("C:\Dateiname2.wav")<br />
     return MixAudio(Soundtrack,Speak,0.75,0.25)<br />
     # genaugenommen ist das 0.25 am Schluss gar nicht notwendig
@@ -34,6 +34,6 @@ Die beiden Clips m&uuml;ssen die gleichen Samplingraten haben (es kann - wenn no
  </tr>
 </table><br />
 
-<form action=""><input type="button" value="back" onclick="history.go(-1)" /></form>
+<form action=""><input type="button" value="Zur&uuml;ck" onclick="history.go(-1)" /></form>
 </body>
 </html>

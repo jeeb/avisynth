@@ -11,9 +11,13 @@
 <span class="titresmall"><a name="Trim"></a>Trim</span><br />
 <br />
 <tt>Trim(</tt><i>clip, int &quot;first_frame&quot;, int &quot;last_frame&quot;</i><tt>)</tt><br />
+<tt>Trim(</tt><i>clip, int &quot;first_frame&quot;, int &quot;-num_frames&quot;</i><tt>)</tt><br />
 <br />
-Mit <tt>Trim</tt> wird ein Clip geschnitten, so dass nur noch die Frames <i>first-frame</i> bis <i>last-frame</i> enthalten sind. Auch der Ton wird entsprechend geschnitten. Wenn Null f&uuml;r <i>last-frame</i> eingesetzt wird, wird das als &quot;bis zum Ende des Clips&quot; interpretiert.<br />
-Eine negatives Argument von <i>last_frame</i> gibt die Frames von <i>first_frame</i> bis <i>first_frame</i> + (- <i>last_frame</i>-1) zur&uuml;ck. Dies ist auch die einzige M&ouml;glichkeit, den allerersten Frame zu erhalten.<br />
+Mit <tt>Trim</tt> wird ein Clip geschnitten, so dass nur noch die Frames <i>first-frame</i> bis <i>last-frame</i> enthalten sind. Auch der Ton wird entsprechend geschnitten. Beachte, dass AviSynth mit 0 anf&auml;ngt zu z&auml;hlen.<br />
+<br />
+Wenn du eine negative Zahl f&uuml;r <i>num_frames</i> angibst, werden die Frames <i>first_frame</i> bis <i>first_frame + num_frames - 1</i> zur&uuml;ckgeben.<br />
+<br />
+Wenn Null für <i>last-frame</i> eingesetzt wird, wird das als &quot;bis zum Ende des Clips&quot; interpretiert. Das bedeutet, nur den allerersten Frame zu erhalten, ist nur mit <i>num-frames</i> m&ouml;glich.<br />
 <br />
 <table border="1" width="75%">
  <tr> 
@@ -23,14 +27,14 @@ Eine negatives Argument von <i>last_frame</i> gibt die Frames von <i>first_frame
       <tt>Trim(100,-100)</tt><br /><br />
     
       # Das ist das gleiche wie Trim(100,199):<br />
-      <tt>Trim(0,-1)</tt><br /><br />
+      <tt>Trim(1000,-100)</tt><br /><br />
     
-      # Den ersten Frame zur&uuml;ckgeben:<br />
-      <tt>Trim(100,0)</tt>
+      # Ist NICHT dasgleiche wie {{Trim(0,0)}} (das w&uuml;rde den ganzen Clip zur&uuml;ckgeben):<br />
+      <tt>Trim(0,-1)</tt>
   </td>
  </tr>
 </table>
 <br />
-<form action=""><input type="button" value="back" onclick="history.go(-1)" /></form>
+<form action=""><input type="button" value="Zur&uuml;ck" onclick="history.go(-1)" /></form>
 </body>
 </html>

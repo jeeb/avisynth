@@ -12,23 +12,23 @@
 <br />
 <tt>Subtract(</tt><i>clip1, clip2</i><tt>)</tt><br />
 <br />
-Durch <tt>Subtract</tt> wird ein Clip produziert, bei dem jedes Pixel die Differenz der entsprechenden Pixel in <i>clip1</i> und <i>clip2</i> ist. Um ganz genau zu sein: jedes Pixel wird auf (50% grau) + (<i>clip1</i> Pixel) - (<i>clip2</i> Pixel) gesetzt. Mit <tt>Levels</tt> kann danach der Kontrast erh&ouml;ht werden.<br />
+Durch <tt>Subtract</tt> wird ein Clip produziert, bei dem jedes Pixel die Differenz der entsprechenden Pixel in <i>clip1</i> und <i>clip2</i> ist. Um ganz genau zu sein: jedes Pixel wird auf (50% grau) + (<i>clip1</i> Pixel) - (<i>clip2</i> Pixel) gesetzt. Mit <a href="levels.html"><tt>Levels</tt></a> kann danach der Kontrast erh&ouml;ht werden.<br />
 <br />
 Siehe auch <a href="../syntax.html#multiclip" target="_self">hier</a> zu den entstehenden Clip-Eigenschaften.<br />
 <br />
 <table border="1" width="75%">
  <tr> 
-  <td>Beispiele:<br /><br />
-    
-      # Den Unterschied zwischen clip1 und clip2 extrem herausheben:<br />
-      <tt>Subtract(clip1,clip2).Levels(127,1,129,0,255)</tt><br /><br />
-    
+  <td>Beispiele:<br />
+      <br />    
+      # Den Unterschied zwischen <i>clip1</i> und <i>clip2</i> extrem herausheben:<br />
+      <tt>Subtract(clip1,clip2).Levels(127,1,129,0,255)</tt><br />
+      <br />    
       # Den Unterschied zwischen hintereinander folgenden Frames anzeigen:<br />
       <tt>Subtract(clip.Trim(1,0),clip)</tt>
   </td>
  </tr>
 </table>
 <br />
-<form action=""><input type="button" value="back" onclick="history.go(-1)" /></form>
+<form action=""><input type="button" value="Zur&uuml;ck" onclick="history.go(-1)" /></form>
 </body>
 </html>

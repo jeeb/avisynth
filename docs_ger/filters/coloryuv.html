@@ -34,7 +34,7 @@
 <br />
 <i>Autowhite</i> kann &quot;true&quot; oder &quot;false&quot; sein. Hier wird die Information vom Analysator genutzt und es wird versucht, den Farb-Versatz zu zentrieren. Falls du etwas gecaptured hast, wo die Farben zu einer Farbe verschoben sind, kann dieser Filter helfen. Aber Obacht, - er ist nicht sehr intelligent - wenn du z.B. einen klaren blauen Himmel hast, wird <i>autowhite</i> alles komplett grau machen! Falls du &quot;off_u&quot; oder &quot;off_v&quot; Parameter angibst, werden diese Parameter dann ignoriert !<br />
 <br />
-<i>Autogain</i> kann &quot;true&quot; oder &quot;false&quot; sein. Hier wird auch die Information vom Analysator genutzt und versucht, ein best möglichen Kontrast herzustellen. Das bedeutet, dass die Helligkeitswerte (Y) auf die Mininum- oder Maximum-Werte gebracht werden. Dies entspricht dann so ziemlich den &quot;"autogain&quot; Einstellungen bei Kameras, wo dunkle Szene sehr verst&auml;rkt werden, w&auml;hrend Szenen mit einem guten Kontrast erhalten bleiben. Dies wird auch mancherorts &quot;autolevels&quot; genannt.<br />
+<i>Autogain</i> kann &quot;true&quot; oder &quot;false&quot; sein. Hier wird auch die Information vom Analysator genutzt und versucht, ein best m&ouml;glichen Kontrast herzustellen. Das bedeutet, dass die Helligkeitswerte (Y) auf die Mininum- oder Maximum-Werte gebracht werden. Dies entspricht dann so ziemlich den &quot;"autogain&quot; Einstellungen bei Kameras, wo dunkle Szene sehr verst&auml;rkt werden, w&auml;hrend Szenen mit einem guten Kontrast erhalten bleiben. Dies wird auch mancherorts &quot;autolevels&quot; genannt.<br />
 <br />
 Die quantisierte S&auml;ttigung, Kontrast und Helligkeit (wie z.B. in <tt><a href="tweak.html">Tweak</a></tt>)
 sind mit Quantit&auml;ten dieses Filter auf folgende Art verkn&uuml;pft:<br />
@@ -50,7 +50,7 @@ Eine S&auml;ttigung von 0.8 ergibt z.B.: cont_u = cont_v = - 0.2 * 256 = 51.2.<b
    <tt>
     Beispiele:<br />
     <br />
-    # Passt den Gamma-Wert aller Kan&auml;le (although less to y), while making 'y' larger:<br />
+    # Passt den Gamma-Wert aller Kan&auml;le (obwohl kleiner als <i>y</i>) an, w&auml;hrend <i>y</i> gr&ouml;&szlig;er gemacht wird:<br />
     ColorYUV(gamma_y=128, gamma_u=256, gamma_v=256, offset_y=-16)<br />
     <br />
     # Zeigt alle Farben an. Bei Frame 0 ist die Helligkeit 16, bei Frame 1 ist sie 17 usw.:<br />
@@ -63,6 +63,6 @@ Eine S&auml;ttigung von 0.8 ergibt z.B.: cont_u = cont_v = - 0.2 * 256 = 51.2.<b
  </tr>
 </table>
 <br />
-<form action=""><input type="button" value="back" onclick="history.go(-1)" /></form>
+<form action=""><input type="button" value="Zur&uuml;ck" onclick="history.go(-1)" /></form>
 </body>
 </html>

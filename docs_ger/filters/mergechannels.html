@@ -8,36 +8,36 @@
  <title>MergeChannels AviSynth Filter</title>
  <link rel="stylesheet" type="text/css" href="../style.css" />
 </head><body>
-<span class="titresmall"><a name="MergeChannels"></a>MergeChannels</span><br /><br />
-
-<tt>MergeChannels(</tt><i>clip1 , clip2 [, clip3, ...]</i><tt>)</tt><br /><br />
-
-Seit AviSynth 2.5 erstetzt <tt>MergeChannels</tt>  <a href="monotostereo.html"><tt>MonoToStereo</tt></a> und kann genutzt werden, um die Tonkan&auml;le zweier oder mehrerer Clips zu mischen.<br /><br />
-
+<span class="titresmall"><a name="MergeChannels"></a>MergeChannels</span><br />
+<br />
+<tt>MergeChannels(</tt><i>clip1 , clip2 [, clip3, ...]</i><tt>)</tt><br />
+<br />
+Seit AviSynth v2.5 erstetzt <tt>MergeChannels</tt> <a href="monotostereo.html"><tt>MonoToStereo</tt></a> und kann genutzt werden, um die Tonkan&auml;le zweier oder mehrerer Clips zu mischen.<br />
+<br />
 <table border="1" width="75%">
  <tr> 
   <td> 
    <tt>
-    Beispiele:<br /><br />
-    
+    Beispiele:<br />
+    <br />    
     # Konvertiert eine unkompremierte WAV Datei in ein 44.1 kHz Stereo Signal:<br />
-    video = AviSource("C:\Dateiname.avi")<br />
-    audio = WavSource("C:\Dateiname.avi")<br />
+    video = AviSource(&quot;C:\Dateiname.avi&quot;)<br />
+    audio = WavSource(&quot;C:\Dateiname.avi&quot;)<br />
     l_ch = GetChannel(audio, 1)<br />
     r_ch = GetChannel(audio, 2)<br />
     stereo = MergeChannels(l_ch, r_ch).ResampleAudio(44100)<br />
-    return AudioDub(video, stereo)<br /><br />
-    
+    return AudioDub(video, stereo)<br />
+    <br />    
     # Alternativ:<br />
-    video = AviSource("C:\Dateiname.avi")<br />
-    audio = WavSource("C:\Dateiname.avi")<br />
+    video = AviSource(&quot;C:\Dateiname.avi&quot;)<br />
+    audio = WavSource(&quot;C:\Dateiname.avi&quot;)<br />
     stereo = GetChannel(audio, 1, 2).ResampleAudio(44100)<br />
     return AudioDub(video, stereo)
    </tt>
   </td>
  </tr>
-</table><br />
-
-<form action=""><input type="button" value="back" onclick="history.go(-1)" /></form>
+</table>
+<br />
+<form action=""><input type="button" value="Zur&uuml;ck" onclick="history.go(-1)" /></form>
 </body>
 </html>

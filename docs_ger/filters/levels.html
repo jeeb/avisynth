@@ -10,7 +10,7 @@
 </head><body>
 <span class="titresmall"><a name="Levels"></a>Levels</span><br /><br />
 
-<tt>Levels(</tt><i>clip, int input_low, float gamma, int input_high, int output_low, int output_high</i><tt>)</tt><br /><br />
+<tt>Levels(</tt><i>clip, int &quot;input_low&quot;, float &quot;gamma&quot;, int &quot;input_high&quot;, int &quot;output_low&quot;, int &quot;output_high&quot;</i><tt>)</tt><br /><br />
 
 Mit diesem Filter wird die Helligkeit, der Kontrast und der Gamma-Wert ver&auml;ndert. Mit den Parametern <i>input_low</i> und <i>input_high</i> wird eingestellt, welche Werte des Eingangs-Videos als v&ouml;llig schwarz und v&ouml;llig weiss betrachtet werden; mit <i>output_low</i> und <i>output_high</i> werden die Werte eingestellt, die beim entstehenden Video als Schwarz und Weiss gelten sollen; der Parameter <i>gamma</i> bestimmt den Grad der Nichtlinearit&auml;t bei der Umwandlung, oder in Formeln:<br /><br />
 
@@ -28,19 +28,19 @@ Beim Bearbeiten im YUY2-Farbraum wird von <tt>Levels</tt> nur die Helligkeitsinf
    <tt>
     Beispiele:<br /><br />
 
-    # keine Ver&auml;nderung<br />
-    Levels 0,1,255,0,255<br /><br />
+    # Keine Ver&auml;nderung:<br />
+    Levels(0,1,255,0,255)<br /><br />
 
-    # Gamma-Korrektur f&uuml;r eine Anzeige in einer hellen Umgebung<br />
-    Levels 0,1.3,255,0,255<br /><br />
+    # Gamma-Korrektur f&uuml;r eine Anzeige in einer hellen Umgebung:<br />
+    Levels(0,1.3,255,0,255)<br /><br />
 
-    # das Bild invertieren (ein Photo-Negativ erzeugen)<br />
-    Levels 0,1,255,255,0
+    # Das Bild invertieren (ein Photo-Negativ erzeugen):<br />
+    Levels(0,1,255,255,0)
    </tt>
   </td>
  </tr>
 </table><br />
 
-<form action=""><input type="button" value="back" onclick="history.go(-1)" /></form>
+<form action=""><input type="button" value="Zur&uuml;ck" onclick="history.go(-1)" /></form>
 </body>
 </html>

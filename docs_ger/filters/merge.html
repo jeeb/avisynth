@@ -10,8 +10,8 @@
 </head><body>
 <span class="titresmall"><a name="MergeChroma"></a>MergeChroma / MergeLuma</span><br /><br />
 
-<tt>MergeChroma(</tt><i>clip1, clip2, float weight</i><tt>)</tt><br />
-<tt>MergeLuma(</tt><i>clip1, clip2, float weight</i><tt>)</tt><br /><br />
+<tt>MergeChroma(</tt><i>clip1, clip2, float &quot;weight&quot;</i><tt>)</tt><br />
+<tt>MergeLuma(</tt><i>clip1, clip2, float &quot;weight&quot;</i><tt>)</tt><br /><br />
 
 Dieser Filter erm&ouml;glicht das einfache Mischen von zwei Videoclips. Es gibt einen optionalen Gewichtungs-Faktor, &uuml;ber den der Anteil der Clips eingestellt werden kann.<br /><br />
 
@@ -27,39 +27,39 @@ Siehe auch <a href="../syntax.html#multiclip" target="_self">hier</a> zu den ent
  <tr> 
   <td> 
    <tt>
-    Beispiele:<br /><br />
-    
-    # Unsch&auml;rfe nur im Helligkeitskanal<br />
-    mpeg2source("C:\DVD2AVI.d2v")<br />
+    Beispiele:<br />
+    <br />    
+    # Unsch&auml;rfe nur im Helligkeitskanal:<br />
+    Mpeg2Source(&quot;C:\DVD2AVI.d2v&quot;)<br />
     lumvid = Blur(1.0)<br />
-    MergeLuma(lumvid)<br /><br />
-    
-    # SpatialSmoother (r&auml;umliche Unsch&auml;rfe) nur im Farbkanal, gemischt zu 50% mit dem Original<br />
-    mpeg2source("C:\DVD2AVI.d2v")<br />
+    MergeLuma(lumvid)<br />
+    <br />    
+    # SpatialSmoother (r&auml;umliche Unsch&auml;rfe) nur im Farbkanal, gemischt zu 50% mit dem Original:<br />
+    Mpeg2Source(&quot;C:\DVD2AVI.d2v&quot;)<br />
     chromavid = SpatialSmoother(2,3)<br />
-    MergeChroma(chromavid,0.5)<br /><br />
-    
-    # ein TemporalSmoother (zeitliche Unsch&auml;rfe) und ein leichter SpatialSmoother im Helligkeitskanal,<br />
+    MergeChroma(chromavid,0.5)<br />
+    <br />    
+    # Ein TemporalSmoother (zeitliche Unsch&auml;rfe) und ein leichter SpatialSmoother im Helligkeitskanal,<br />
     # einen st&auml;rkeren SpatialSmoother im Farbkanal<br />
     # der urspr&uuml;ngliche Hellgkeitskanal wird dann zu 75% zu der gegl&auml;tteten Version gemischt<br />
-    # der gegl&auml;ttete Farbkanal wird komplett verwendet<br />
-    mpeg2source("C:\DVD2AVI.d2v")<br />
+    # der gegl&auml;ttete Farbkanal wird komplett verwendet:<br />
+    Mpeg2Source(&quot;C:\DVD2AVI.d2v&quot;)<br />
     luma = TemporalSmoother(2,3)<br />
-    luma2 = Spatialsmoother(luma,3,10,10)<br />
-    chroma = Spatialsmoother(3,40,40)<br />
+    luma2 = SpatialSmoother(luma,3,10,10)<br />
+    chroma = SpatialSmoother(3,40,40)<br />
     MergeLuma(luma2,0.75)<br />
-    MergeChroma(chroma)<br /><br />
-    
-    # so k&ouml;nnen zwei Videos gemittelt werden<br />
-    avisource("C:\Dateiname1.avi")<br />
-    vid2 = avisource("C:\Dateiname2.avi")<br />
+    MergeChroma(chroma)<br />
+    <br />    
+    # So k&ouml;nnen zwei Videos gemittelt werden:<br />
+    AviSource(&quot;C:\Dateiname1.avi&quot;)<br />
+    vid2 = AviSource(&quot;C:\Dateiname2.avi&quot;)<br />
     MergeLuma(vid2,0.5)<br />
     MergeChroma(vid2,0.5)
    </tt>
   </td>
  </tr>
-</table><br />
-
-<form action=""><input type="button" value="back" onclick="history.go(-1)" /></form>
+</table>
+<br />
+<form action=""><input type="button" value="Zur&uuml;ck" onclick="history.go(-1)" /></form>
 </body>
 </html>

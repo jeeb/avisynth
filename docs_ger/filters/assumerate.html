@@ -10,32 +10,27 @@
 </head><body>
 <span class="titresmall"><a name="AssumeSampleRate"></a>AssumeSampleRate</span><br /><br />
 
-<tt>AssumeSampleRate(</tt><i>clip, int samplerate</i><tt>)</tt><br /><br />
+<tt>AssumeSampleRate(</tt><i>clip, int &quot;samplerate&quot;</i><tt>)</tt><br /><br />
 
-<tt>AssumeSampleRate</tt> (verf&uuml;gbar seit v2.07) &auml;ndert die Samplingrate und damit die Abspielgeschwindigkeit des Audio-Teils.<br />
+<tt>AssumeSampleRate</tt> (verf&uuml;gbar seit AviSynth v2.07) &auml;ndert die Samplingrate und damit die Abspielgeschwindigkeit des Audio-Teils.<br />
 Wenn nur dieser Filter alleine verwendet wird, wird das Video asynchron zum Ton.<br /><br />
 
 <table border="1" width="75%">
  <tr> 
   <td> 
    <tt>
-    Beispiele:<br /><br />
-
-    # Angenommen dieses Video hat 25fps, 44100hz.<br />
-    AviSource("video_audio.avi")<br /><br />
-    
-    # Ton halb so schnell abspielen:<br />
-    AssumeSampleRate(22050)<br /><br />
-    
-    # Video halb so schnell abspielen:<br />
-    AssumeFPS(12.5)<br /><br />
-
-    # Video und Ton sind jetzt synchron und spielen in Zeitlupe.
+    Beispiele:<br />
+    <br />
+    AviSource(&quot;Dateiname&quot;) # Angenommen dieses Video hat 25fps, 44100hz<br />
+    AssumeSampleRate(22050) # Ton halb so schnell abspielen<br />
+    AssumeFPS(12.5) # Video halb so schnell abspielen<br />
+    <br />
+    Video und Ton sind jetzt synchron und spielen in Zeitlupe.
    </tt>
   </td>
  </tr>
 </table><br />
 
-<form action=""><input type="button" value="back" onclick="history.go(-1)" /></form>
+<form action=""><input type="button" value="Zur&uuml;ck" onclick="history.go(-1)" /></form>
 </body>
 </html>

@@ -289,14 +289,14 @@ Dies geschieht beim &Ouml;ffnen des Skripts. Nur das Filtern an sich geschieht z
 <br />
 <b><u>Variablen:</u></b><br />
 <br />
-Ein Variablen-name kann bis zu 50 Zeichen lang sein und aus Buchstaben, Ziffern und Unterstriche(_), aber keine anderen Zeichen bestehen. Desweiteren darf er nicht mit einer Ziffer beginnen.<br />
+Ein Variablenname kann bis zu 50 Zeichen lang sein und aus Buchstaben, Ziffern und Unterstriche(_), aber keine anderen Zeichen bestehen. Desweiteren darf er nicht mit einer Ziffer beginnen.<br />
 <br />
 Folgende Variablen-Typen k&ouml;nnen verwendet werden:<br />
 <br />
 <tt>clip</tt>: Ein Videoclip enth&auml;lt das Video und / oder Audio. Mindestens eine solche Variable muss verwendet und als Ergebnis zur&uuml;ckgegeben werden.<br />
-<tt>string</tt>: Ist umgeben von &quot;Anf&uuml;hrungszeichen&quot; oder ``TeX-Style Anf&uuml;hrungszeichen''. Eine Zeichenkette kann alle Zeichen enthalten au&szlig;er die genannten Anf&uuml;hrungszeichen. Falls du Anf&uuml;hrungszeichen in der Zeihenfolge verwenden musst, dann nutze au&szlig;en die Tex-Notation.<br />
+<tt>string</tt>: Ist umgeben von &quot;Anf&uuml;hrungszeichen&quot; oder ``TeX-Style Anf&uuml;hrungszeichen''. Eine Zeichenkette kann alle Zeichen enthalten au&szlig;er die genannten Anf&uuml;hrungszeichen. Falls du Anf&uuml;hrungszeichen in der Zeichenkette verwenden musst, dann nutze ausschlie&szlig;lich die TeX-Notation. Alternativ kannst du auch die  typografische Anf&uuml;hrungszeichen aus dem erweiterten ASCII Zeichensatz von Windows anstatt der geraden verwenden, um diese Beschr&auml;nkung auszuhebeln.<br />
 <tt>int</tt>: Ist eine Ganzzahl, die als eine Folge von Ziffern eingegeben wird, optional mit einem + oder - am Anfang.<br />
-<tt>float</tt>: Ist eine Dezimalzahl, eingegeben als Folge von Ziffern mit einem Punkt (.) innerhalb der Zifferfolge und optional einem + oderr - . Zum Beispiel wird +1. als <tt>float</tt> behandelt.<br />
+<tt>float</tt>: Ist eine Dezimalzahl, eingegeben als Folge von Ziffern mit einem Punkt (.) innerhalb der Zifferfolge und optional einem + oder - . Zum Beispiel wird +1. als <tt>float</tt> behandelt.<br />
 <tt>val</tt>: Wird als Typ eines Funktionsarguments genutzt, wo es egal ist, ob <tt>int</tt> oder <tt>float</tt>.<br />
 <tt>bool</tt>: Kann <tt>TRUE</tt> (wahr) oder <tt>FALSE</tt> (falsch) sein.<br />
 <tt>Hexadezimal-Werte</tt>: K&ouml;nnen mit einem vorgestellen $ eingegeben werden. Intern wird diese Variable als Ganzzahl behandelt. Manche Filter verwendet diese Schreibweise zur Angabe von Farbwerten. So ist z.B. $FF8800 ein Orange-Ton.<br />
@@ -386,13 +386,13 @@ Die Argumente und das Ergebnis dieser Funktionen sind nicht Clips, sondern ander
 <br />
 <table border="1" width="75%">
  <tr>
-  <td width="62%"><tt>Floor(float)</tt>: Konvertiert von Dezimalzahl zu Integer.</td><td width="40%"><tt>Floor(1.2) = 1</tt><br /><tt>Floor(1.6) = 1</tt><br /><tt>Floor(-1.2) = -2</tt><br /><tt>Floor(-1.6) = -2</tt></td>
+  <td width="62%"><tt>Floor(float)</tt>: Konvertiert eine Dezimalzahl in Integer (rundet alle Dezimalstellen ab).</td><td width="40%"><tt>Floor(1.2) = 1</tt><br /><tt>Floor(1.6) = 1</tt><br /><tt>Floor(-1.2) = -2</tt><br /><tt>Floor(-1.6) = -2</tt></td>
  </tr>
  <tr>
-  <td><tt>Ceil(float)</tt>: Konvertiert von Dezimalzahl zu Integer.</td><td><tt>Ceil(1.2) = 2.0</tt><br /><tt>Ceil(1.6) = 2.0</tt><br /><tt>Ceil(-1.2) = -1</tt><br /><tt>Ceil(-1.6) = -1</tt></td>
+  <td><tt>Ceil(float)</tt>: Konvertiert eine Dezimalzahl in Integer (rundet alle Dezimalstellen auf).</td><td><tt>Ceil(1.2) = 2.0</tt><br /><tt>Ceil(1.6) = 2.0</tt><br /><tt>Ceil(-1.2) = -1</tt><br /><tt>Ceil(-1.6) = -1</tt></td>
  </tr>
  <tr>
-  <td><tt>Round(float)</tt>: Konvertiert von Dezimalzahl zu Integer.</td><td><tt>Round(1.2) = 1</tt><br /><tt>Round(1.6) = 2</tt><br /><tt>Round(-1.2) = -1</tt><br /><tt>Round(-1.6) = -2</tt></td>
+  <td><tt>Round(float)</tt>: Konvertiert eine Dezimalzahl in Integer (rundet alle Dezimalstellen zur n&auml;hesten Integerzahl auf oder ab).</td><td><tt>Round(1.2) = 1</tt><br /><tt>Round(1.6) = 2</tt><br /><tt>Round(-1.2) = -1</tt><br /><tt>Round(-1.6) = -2</tt></td>
  </tr>
  <tr>
   <td><tt>Int(float)</tt>: Konvertiert von Dezimalzahl zu Integer (rundet ab). <font color="#FFFF66" size="-1"><b>v2.07</b></font></td><td><tt>Int(1.2) = 1</tt><br /><tt>Int(1.6) = 1</tt><br /><tt>Int(-1.2) = -1</tt><br /><tt>Int(-1.6) = -1</tt></td>
@@ -571,6 +571,8 @@ Es gibt auch eine Funktion, mit der man &uuml;berpr&uuml;fen kann, ob ein Fehler
  </tr>
 </table>
 <br />
+<hr />
+<br />
 <span class="titresmall"><a name="ControlFunctions"></a>Steuerfunktionen</span><br />
 <br />
 <tt>SetMemoryMax(int)</tt>: Setzt die maximale Speichergr&ouml;sse, die AviSynth verwendet (in MB) <font face="Courier New, Courier, mono" color="#FFFF66" size="4"><b>v2</b></font><br />
@@ -584,7 +586,7 @@ Das kann vor allem f&uuml;r das einfache Laden von Quell-Clips verwendet werden 
 <br />
 Diese Funktionen haben als Argument ein Clip, als R&uuml;ckgabewert eine Eigenschaft des Clips.<br />
 <br />
-<tt>Widthx(clip)</tt> Breite<br />
+<tt>Width(clip)</tt> Breite<br />
 <tt>Height(clip)</tt> H&ouml;he<br />
 <tt>Framecount(clip)</tt> Anzahl der Frames<br />
 <tt>Framerate(clip)</tt> Framerate (Bilder pro Sekunde)<br />
@@ -624,12 +626,14 @@ Diese Funktionen haben als Argument ein Clip, als R&uuml;ckgabewert eine Eigensc
 <br />
 Man kann auch selber Funktionen definieren. Das kann am Bestem anhand eines Beispiels erkl&auml;rt werden:<br />
 <br />
-<table border="1" width="75%">
+<table border="1" width="87%">
  <tr> 
   <td> 
-   <tt>Function NTSC2PAL(clip c) {<br />
-   &nbsp;&nbsp; Assert(c.height == 480, &quot;NTSC2PAL: Quell-Clip muss 480 Linien haben&quot;)<br />
-   &nbsp;&nbsp; Bob(c, height=576)<br />
+   <tt>
+    function NTSC2PAL(clip c) {<br />
+    &nbsp;&nbsp; # Ziemlich gut für NTSC-&gt;PAL Konvertierungen. Noch besser w&auml;re es mit Smart Bob. :-)<br />
+    &nbsp;&nbsp; Assert(c.height == 480, &quot;NTSC2PAL: Quell-Clip muss 480 Zeilen haben&quot;)<br />
+    &nbsp;&nbsp; Bob(c, height=576)<br />
     &nbsp;&nbsp; return Weave()<br />
     }</tt>
   </td>

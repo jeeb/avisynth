@@ -8,40 +8,38 @@
  <title>Normalize AviSynth Filter</title>
  <link rel="stylesheet" type="text/css" href="../style.css" />
 </head><body>
-<span class="titresmall"><a name="Normalize"></a>Normalize</span><br /><br />
-
-<tt>Normalize(</tt><i>clip, float "volume", bool "show"</i><tt>)</tt><br /><br />
-
-Verst&auml;rkt den Ton soweit als m&ouml;glich ohne zu &Uuml;bersteuern.<br /><br />
-
-Standardm&auml;ssig wird der Clip auf 1.0 verst&auml;rkt (die gr&ouml;&szlig;te Lautst&auml;rke ohne &Uuml;bersteuern - gr&ouml;&szlig;ere Werte erzeugen mit Sicherheit Verzerrungen). Wenn nur die Lautst&auml;rke von einem Kanal angegeben wird, wird der andere gleichermassen verst&auml;rkt.<br /><br />
-
-Seit AviSynth 2.08 gibt das optionale Argument <i>show</i>. Wenn <i>show=true</i> gesetzt ist, wird die maximale m&ouml;gliche Verst&auml;rkung ohne &Uuml;bersteuerung angezeigt.<br /><br />
-
-Bei Mehrkanal-Ton wird nicht jeder Kanal einzeln verst&auml;rkt, auch wenn die Lautst&auml;rken sehr unterschiedlich sind. Die Lautst&auml;rken werden angewandt, nachdem das Maximum gefunden wurde, und arbeitet genauso wie ein getrennt angewendetes <a href="amplify.html"><tt>Amplify</tt></a>. Das bedeutet, dass, wenn man zwei Kan&auml;le hat mit unterschiedlichen Lautst&auml;rken, dann der lautere Kanal die Lautst&auml;rke auch f&uuml;r den leiseren Kanal bestimmt. Wenn jeder Kanal getrennt normalisiert werden soll, muss vorher <a href="getchannel.html"><tt>GetChannel()</tt></a> zum Aufsplitten der Kan&auml;le verwendet werden.<br /><br />
-
-Als ein Nebeneffekt wird der Ton auf 16 bit konvertiert.<br /><br />
-
+<span class="titresmall"><a name="Normalize"></a>Normalize</span><br />
+<br />
+<tt>Normalize(</tt><i>clip, float &quot;volume&quot;, bool &quot;show&quot;</i><tt>)</tt><br />
+<br />
+Verst&auml;rkt den Ton soweit als m&ouml;glich ohne zu &Uuml;bersteuern.<br />
+<br />
+Standardm&auml;ssig wird der Clip auf 1.0 verst&auml;rkt (die gr&ouml;&szlig;te Lautst&auml;rke ohne &Uuml;bersteuern - gr&ouml;&szlig;ere Werte erzeugen mit Sicherheit Verzerrungen). Wenn nur die Lautst&auml;rke von einem Kanal angegeben wird, wird der andere gleichermassen verst&auml;rkt.<br />
+<br />
+Seit AviSynth 2.08 gibt das optionale Argument <i>show</i>. Wenn <i>show=true</i> gesetzt ist, wird die maximale m&ouml;gliche Verst&auml;rkung ohne &Uuml;bersteuerung angezeigt.<br />
+<br />
+Bei Mehrkanal-Ton wird nicht jeder Kanal einzeln verst&auml;rkt, auch wenn die Lautst&auml;rken sehr unterschiedlich sind. Die Lautst&auml;rken werden angewandt, nachdem das Maximum gefunden wurde, und arbeitet genauso wie ein getrennt angewendetes <a href="amplify.html"><tt>Amplify</tt></a>. Das bedeutet, dass, wenn man zwei Kan&auml;le hat mit unterschiedlichen Lautst&auml;rken, dann der lautere Kanal die Lautst&auml;rke auch f&uuml;r den leiseren Kanal bestimmt. Wenn jeder Kanal getrennt normalisiert werden soll, muss vorher <a href="getchannel.html"><tt>GetChannel()</tt></a> zum Aufsplitten der Kan&auml;le verwendet werden.<br />
+<br />
+Als ein Nebeneffekt wird der Ton auf 16 bit konvertiert.<br />
+<br />
 <table border="1" width="75%">
  <tr> 
   <td> 
-   <tt>
-    Beispiele:<br /><br />
-    
-    # Normalisieren auf 98%:<br />
-    source = AviSource("C:\Dateiname.wav")<br />
-    return Normalize(source,0.98)<br /><br />
-
-    # jeden Kanal getrennt normalisieren:<br />
-    Source = AviSource("C:\Dateiname.wav")<br />
-    left_ch = GetLeftChannel(Source).Normalize()<br />
-    right_ch = GetRightChannel(Source).Normalize()<br />
-    Return MonoToStereo(left_ch,right_ch)
-   </tt>
+   Beispiele:<br />
+   <br />    
+   Normalisieren auf 98%:<br />
+   <tt>AviSource(&quot;C:\Dateiname.wav&quot;)<br />
+   Normalize(0.98)</tt><br />
+   <br />
+   Jeden Kanal getrennt normalisieren:<br />
+   <tt>Source = AviSource(&quot;C:\Dateiname.wav&quot;)<br />
+   left_ch = GetLeftChannel(Source).Normalize()<br />
+   right_ch = GetRightChannel(Source).Normalize()<br />
+   Return MonoToStereo(left_ch,right_ch)</tt>
   </td>
  </tr>
-</table><br />
-
-<form action=""><input type="button" value="back" onclick="history.go(-1)" /></form>
+</table>
+<br />
+<form action=""><input type="button" value="Zur&uuml;ck" onclick="history.go(-1)" /></form>
 </body>
 </html>

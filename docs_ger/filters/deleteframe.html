@@ -10,13 +10,13 @@
 </head><body>
 <span class="titresmall"><a name="DeleteFrame"></a>DeleteFrame</span><br /><br />
 
-<tt>DeleteFrame(</tt><i>clip, int frame</i><tt>)</tt><br /><br />
+<tt>DeleteFrame(</tt><i>clip, int &quot;frame&quot;</i><tt>)</tt><br /><br />
 
-<tt>DeleteFrame</tt> l&ouml;scht den im Argument angegebenen Frame. Der Ton wird nicht ver&auml;ndert, daher entsteht eine merkbare Asynchronit&auml;t zwischen Audio und Video, wenn der Filter zu oft verwendet wird.<br /><br />
+<tt>DeleteFrame</tt> l&ouml;scht den im Argument angegebenen <i>frame</i>. Der Ton wird nicht ver&auml;ndert, daher entsteht eine merkbare Asynchronit&auml;t zwischen Audio und Video, wenn der Filter zu oft verwendet wird.<br /><br />
 
 Wenn man einen Teil von a bis b mitsamt dem Audioteil l&ouml;schen m&ouml;chte, geht man so vor:<br />
 <tt>Trim(0,</tt><i>a-1</i><tt>) ++ Trim(</tt><i>b+1</i><tt>,0)</tt><br /><br />
 
-<form action=""><input type="button" value="back" onclick="history.go(-1)" /></form>
+<form action=""><input type="button" value="Zur&uuml;ck" onclick="history.go(-1)" /></form>
 </body>
 </html>

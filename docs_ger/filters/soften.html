@@ -13,9 +13,9 @@
 <tt>SpatialSoften(</tt><i>clip, int &quot;radius&quot;, int &quot;luma_threshold&quot;, int &quot;chroma_threshold&quot;</i><tt>)</tt><br />
 <tt>TemporalSoften(</tt><i>clip, int &quot;radius&quot;, int &quot;luma_threshold&quot;, int &quot;chroma_threshold&quot;, int &quot;scenechange&quot;, int &quot;mode&quot;</i><tt>)</tt><br />
 <br />
-Die Filter <tt>SpatialSoften</tt> und <tt>TemporalSoften</tt> entfernen Rauschen vom Video, indem gezielt Pixels gemischt werden. Diese Filter k&ouml;nnen wahre Wunder verbringen, allerdings werden dabei feine Details verwischt, wenn die Filterwirkung zu stark eingestellt wird. Weiterhin sind sie ziemlich langsam, besonders bei einem grossen <i>radius</i>, sie sollten daher beim Testen als letztes justiert werden.<br />
+Die Filter <tt>SpatialSoften</tt> und <tt>TemporalSoften</tt> entfernen Rauschen vom Video, indem gezielt Pixel gemischt werden. Diese Filter k&ouml;nnen wahre Wunder verbringen, allerdings werden dabei feine Details verwischt, wenn die Filterwirkung zu stark eingestellt ist. Weiterhin sind sie ziemlich langsam, besonders bei einem grossen <i>radius</i>, sie sollten daher beim Testen als letztes justiert werden.<br />
 <br />
-<tt>SpatialSoften</tt> ersetzt jedes Pixel mit dem Durchschnitt aller Nachbarpixel (innerhalb einem Abstand von <i>radius</i> in x- und y-Richtung), die sich vom Zentral-Pixel um weniger als den Grenzwert unterscheiden. Die Grenzwerte k&ouml;nen f&uuml;r Helligkeit <i>(luma_threshold)</i> und Farbe <i>(chroma_threshold)</i> getrennt angegeben werden.<br />
+<tt>SpatialSoften</tt> ersetzt jedes Pixel mit dem Durchschnitt aller Nachbarpixel (innerhalb einem Abstand von <i>radius</i> in x- und y-Richtung), die sich vom Zentral-Pixel um weniger als den Grenzwert unterscheiden. Die Grenzwerte k&ouml;nnen f&uuml;r Helligkeit (<i>luma_threshold</i>) und Farbe (<i>chroma_threshold</i>) getrennt angegeben werden.<br />
 <br />
 <tt>TemporalSoften</tt> ist &auml;hnlich, allerdings werden hier Pixel in Nachbar-Frames (innerhalb eines zeitlichen Abstandes <i>radius</i>) betrachtet. Dieser Filter ist nicht so effektiv wie <tt>SpatialSoften</tt>.<br />
 <br />
@@ -25,9 +25,9 @@ Am Besten man probiert verschiedene Grenzwerte einfach aus. Bei einem Wert von N
 <br />
 Seit AviSynth v1.0 beta 5 funktionieren <tt>SpatialSoften</tt> und <tt>TemporalSoften</tt> nur mit YUY2 Quellen. Man kann <a href="convert.html"><tt>ConvertToYUY2</tt></a> verwenden, wenn die Quelle nicht in YUY2 vorliegt.<br />
 <br />
-Beachte, dass man seit AviSynth v2.04 das Plugin TemporalSoften2 nicht mehr ben&ouml;tigt, da diese Plugin in AviSynth eingebaut wurde und das alte TemporalSoften erstetzt hat.<br />
+Beachte, dass man seit AviSynth v2.04 das Plugin TemporalSoften2 nicht mehr ben&ouml;tigt wird, da diese Plugin in AviSynth eingebaut wurde und das alte TemporalSoften erstetzt hat.<br />
 <br />
-Seit AviSynth v2.5 wurde zwei Optionen <tt>TemporalSoften</tt> hinzugef&uuml;gt:
+Seit AviSynth v2.5 wurden zwei Optionen <tt>TemporalSoften</tt> hinzugef&uuml;gt:
 <ul>
  <li>Ein optionaler <i>mode=2</i> Parameter: In diesem Modus wird eine neue und bessere Methode verwendet, die Frames zu mischen. Man erh&auml;lt dadurch eine bessere Qualit&auml;t. Die Methode ist auch schneller, ben&ouml;tigt aber einen ISSE f&auml;higen Prozessor.<br />
      <i>mode=1</i> ist der Standardwert und funktioniert auch weiterhin.</li>
@@ -35,6 +35,6 @@ Seit AviSynth v2.5 wurde zwei Optionen <tt>TemporalSoften</tt> hinzugef&uuml;gt:
 </ul>
 [Ein guter Startwert f&uuml;rs Testen ist TemporalSoften(4,4,8,15,2)]<br />
 <br />
-<form action=""><input type="button" value="back" onclick="history.go(-1)" /></form>
+<form action=""><input type="button" value="Zur&uuml;ck" onclick="history.go(-1)" /></form>
 </body>
 </html>

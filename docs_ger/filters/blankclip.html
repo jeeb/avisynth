@@ -13,7 +13,7 @@
 <tt>BlankClip</tt>(<i>clip "template", int "length", int "width", int "height", string "pixel_type", float "fps", int "fps_denominator", int "audio_rate", bool "stereo", bool "sixteen_bit", int "color"</i>)<br />
 <tt>Blackness</tt>()<br /><br />
 
-Der <tt>BlankClip</tt> Filter erzeugt ein einf&auml;rbiges, stilles Video-Clip mit der angegebenen Anzahl <i>length</i> an Frames. Wenn ein Clip als Argument &uuml;bergeben wird, werden dessen Eigenschaften (Framerate, Gr&ouml;&szlig;e, usw.) als Vorlage verwendet. Man kann allerdings auch alle Eigenschaften angeben, ohne ein Vorlage-Clip zu verwenden. <i>color</i> muss als hexadezimaler RGB-Wert eingegeben werden. Ohne Argumente produziert <tt>BlankClip</tt> einen schwarzen Clip, 10 Sekunden lang (RGB32), 640x480, 24 fps, 16 Bit 44100 Hz Stereo.<br /><br />
+Der <tt>BlankClip</tt> Filter erzeugt ein einf&auml;rbiges, stilles Video-Clip mit der angegebenen Anzahl <i>length</i> an Frames. Wenn ein Clip als Argument &uuml;bergeben wird, werden dessen Eigenschaften (Framerate, Gr&ouml;&szlig;e, usw.) als Vorlage verwendet. Man kann allerdings auch alle Eigenschaften angeben, ohne ein <i>template</i>-Clip zu verwenden. <i>color</i> muss als hexadezimaler RGB-Wert eingegeben werden. Ohne Argumente produziert <tt>BlankClip</tt> einen schwarzen Clip, 10 Sekunden lang (RGB32), 640x480, 24 fps, 16 Bit 44100 Hz Stereo.<br /><br />
 
 <i>template</i>: Falls angegeben, hat der resultierende Clip die Clip-Eigenschaften wie die Vorlage (Fehler: au&szlig;er den gleichen Farbraum), au&szlig;er die Eigenschaften, die du noch explizit definierst.<br /><br />
 <i>length</i>: L&auml;nge in Frames des resultierenden Clips.<br /><br />
@@ -52,6 +52,6 @@ Der <tt>BlankClip</tt> Filter erzeugt ein einf&auml;rbiges, stilles Video-Clip m
  </tr>
 </table><br />
 
-<form action=""><input type="button" value="back" onclick="history.go(-1)" /></form>
+<form action=""><input type="button" value="Zur&uuml;ck" onclick="history.go(-1)" /></form>
 </body>
 </html>

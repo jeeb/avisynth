@@ -13,17 +13,17 @@
 <tt>ConvertBackToYUY2(</tt><i>clip</i><tt>)</tt><br />
 <tt>ConvertToRGB(</tt><i>clip</i><tt>)</tt><br />
 <tt>ConvertToRGB24(</tt><i>clip</i><tt>)</tt><br />
-<tt>ConvertToRGB24(</tt><i>clip, bool "interlaced"</i><tt>)</tt><br />
+<tt>ConvertToRGB24(</tt><i>clip, bool &quot;interlaced&quot;</i><tt>)</tt><br />
 <tt>ConvertToRGB32(</tt><i>clip</i><tt>)</tt><br />
-<tt>ConvertToRGB32(</tt><i>clip, bool "interlaced"</i><tt>)</tt><br />
+<tt>ConvertToRGB32(</tt><i>clip, bool &quot;interlaced&quot;</i><tt>)</tt><br />
 <tt>ConvertToYUY2(</tt><i>clip</i><tt>)</tt><br />
-<tt>ConvertToYUY2(</tt><i>clip, bool "interlaced"</i><tt>)</tt><br />
+<tt>ConvertToYUY2(</tt><i>clip, bool &quot;interlaced&quot;</i><tt>)</tt><br />
 <tt>ConvertToYV12(</tt><i>clip</i><tt>)</tt><br />
-<tt>ConvertToYV12(</tt><i>clip, bool "interlaced"</i><tt>)</tt><br /><br />
+<tt>ConvertToYV12(</tt><i>clip, bool &quot;interlaced&quot;</i><tt>)</tt><br /><br />
 
-Vor der Version 2.5 konnte AviSynth intern nur mit zwei Farbr&auml;umen umgehen, RGB und YUY2. Seit der Version 2.5 beherrscht AviSynth nun auch einen dritten Farbraum, YV12. Diese Filter konvertieren einen Farbraum in einen anderen. Wenn das Video bereits in dem angegebenen Format vorliegt, wird es unver&auml;ndert durchgeschleift. (mit RGB ist in dieser Dokumentation RGBA gemeint) <tt>ConvertToRGB</tt> konvertiert zu RGB32, es sei denn, der Clip ist RGB24. Falls du unbedingt 24-Bit RGB brauchst, nutze explizit <tt>ConvertToRGB24</tt> und <tt>ConvertToRGB32</tt> f&uuml;r die R&uuml;cktransformation.<br /><br />
+Vor AviSynth v2.5 konnte AviSynth intern nur mit zwei Farbr&auml;umen umgehen, RGB und YUY2. Seit AviSynth v2.5 beherrscht AviSynth nun auch einen dritten Farbraum, YV12. Diese Filter konvertieren einen Farbraum in einen anderen. Wenn das Video bereits in dem angegebenen Format vorliegt, wird es unver&auml;ndert durchgeschleift. (mit RGB ist in dieser Dokumentation RGBA gemeint) <tt>ConvertToRGB</tt> konvertiert zu RGB32, es sei denn, der Clip ist RGB24. Falls du unbedingt 24-Bit RGB brauchst, nutze explizit <tt>ConvertToRGB24</tt> und <tt>ConvertToRGB32</tt> f&uuml;r die R&uuml;cktransformation.<br /><br />
 
-Seit v2.51/v2.52 wurde ein optionaler <i>interlaced</i> Parameter hinzugef&uuml;gt (Standard: <i>interlaced=false</i>). Wenn dieser auf <i>false</i> steht, bedeutet dies, dass der <i>clip</i> progressiv ist, wenn der Parameter auf <i>true</i> steht, bedeutet dies, dass der <i>clip</i> interlaced ist. Diese Option wurde hinzugef&uuml;gt, weil z.B. (angenommen der Clip ist interlaced YV12):<br /><br />
+Seit AviSynth v2.51/v2.52 wurde ein optionaler <i>interlaced</i> Parameter hinzugef&uuml;gt (Standard: <i>interlaced=false</i>). Wenn dieser auf <i>false</i> steht, bedeutet dies, dass der <i>clip</i> progressiv ist, wenn der Parameter auf <i>true</i> steht, bedeutet dies, dass der <i>clip</i> interlaced ist. Diese Option wurde hinzugef&uuml;gt, weil z.B. (angenommen der Clip ist interlaced YV12):<br /><br />
 
 <table border="1" width="75%">
  <tr>
@@ -86,6 +86,6 @@ In vielen F&auml;llen ist der <tt>ConvertToRGB</tt> Filter nicht notwendig. Wenn
  </tr>
 </table><br />
 
-<form action=""><input type="button" value="back" onclick="history.go(-1)" /></form>
+<form action=""><input type="button" value="Zur&uuml;ck" onclick="history.go(-1)" /></form>
 </body>
 </html>

@@ -10,7 +10,7 @@
 </head><body>
 <span class="titresmall"><a name="DirectShowSource"></a>DirectShowSource</span><br /><br />
 
-<tt>DirectShowSource(</tt><i>string filename, int fps, bool &quot;seek&quot;</i><tt>)</tt><br /><br />
+<tt>DirectShowSource(</tt><i>string &quot;filename&quot;, int &quot;fps&quot;, bool &quot;seek&quot;</i><tt>)</tt><br /><br />
 
 <tt>DirectShowSource</tt> &ouml;ffnet <i>filename</i> mittels DirectShow, das ist das gleiche Multimedia-Wiedergabe-System, das auch der Windows Media Player verwendet. Daher k&ouml;nnen die meisten Formate gelesen werden, welche vom Media Player abgespielt werden, also MPEG, MP3 und QuickTime, und AVIs, welche von <a href="avisource.html"><tt>AVISource</tt></a> nicht unterst&uuml;tzt werden (DV Typ 1 oder Codecs, f&uuml;r die es nur DirectShow-Filter gibt). Man sollte immer zuerst versuchen, die Datei mit <tt>AVISource</tt> zu &ouml;ffnen.<br /><br />
 
@@ -25,8 +25,8 @@ Es gibt einige Probleme:<br />
   <li>Der Microsoft DV Codec wird erkannt und auf das Dekodieren in voller Aufl&ouml;sung eingestellt.</li>
 </ul>
 
-Vorspulen kann man, es ist aber sehr langsam. Beim Zur&uuml;ckspulen wird eine Warnung angezeigt, wenn das Video relativ zur Bildnummer asynchron ist. Wenn diese Suchfunktion sehr langsam ist, kann sie mit <i>seek=false</i> abgeschaltet werden. <tt><font color="#e8f0ff">[v 2.07]</font></tt><br /><br />
+Vorspulen kann man, es ist aber sehr langsam. Beim Zur&uuml;ckspulen wird eine Warnung angezeigt, wenn das Video relativ zur Bildnummer asynchron ist. Wenn diese Suchfunktion sehr langsam ist, kann sie seit AviSynth 2.07 mit <i>seek=false</i> abgeschaltet werden.<br /><br />
 
-<form action=""><input type="button" value="back" onclick="history.go(-1)" /></form>
+<form action=""><input type="button" value="Zur&uuml;ck" onclick="history.go(-1)" /></form>
 </body>
 </html>

@@ -8,33 +8,33 @@
  <title>AVISource / OpenDMLSource / AVIFileSource / WAVSource AviSynth Filter</title>
  <link rel="stylesheet" type="text/css" href="../style.css" />
 </head><body>
-<span class="titresmall"><a name="AVISource"></a>AVISource / OpenDMLSource / AVIFileSource / WAVSource</span><br /><br />
-
-<tt>AVISource(</tt><i>string filename [,...], bool "audio", string "pixel_type"</i><tt>)</tt><br />
-<tt>OpenDMLSource(</tt><i>string filename [,...] [, bool audio = true] [, string pixel_type = YV12]</i><tt>)</tt><br />
-<tt>AVIFileSource(</tt><i>string filename [,...] [, bool audio = true] [, string pixel_type = YV12]</i><tt>)</tt><br />
-<tt>WAVSource(</tt><i>string filename [,...]</i><tt>)</tt><br /><br />
-
-<tt>AVISource</tt> verwendet als Argumente ein oder mehrere Dateinamen in Anf&uuml;hrungszeichen und liest die Dateien entweder mit dem Video-for-Windows "AVIFile" Interface oder mit dem in AviSynth eingebauten OpenDML-Code (von VirtualDub). Dieser Filter kann jedes AVI lesen, wof&uuml;r ein AVIFile Handler vorhanden ist. Es k&ouml;nnen also nicht nur AVI sondern auch WAV, AVS (AviSynth Skript) und VDR (VirtualDub Frameserver) Dateien ge&ouml;ffnet werden. Wenn mehrere Dateien angegeben werden, werden diese mit <a href="UnalignedSplice"><tt>UnalignedSplice</tt></a> aneinander gef&uuml;gt. Das <i>bool</i> Argument ist optional und standardm&auml;&szlig;ig auf &quot;true&quot; gesetzt.<br /><br />
-
-Der <tt>AVISource</tt> Filter untersucht die Datei und bestimmt den Typ. Dann gibt er die Datei entweder an den AVIFile Handler oder den OpenDML weiter. Bei Problemen mit einem der Handler kann auch direkt <tt>OpenDMLSource</tt> und <tt>AVIFileSource</tt> verwendet werden, welche die Verwendung eines bestimmten Handlers festlegen. Jeder kann normale AVI (&lt; 2GB) lesen, nur der OpenDML Handler kann gr&ouml;ssere AVI lesen. Nur der AVIFile Handler kann andere Typen wie WAV, VDR und AVS lesen.<br /><br />
-
-Bis zu v2.04 war <tt>WAVSource</tt> ein anderer Name f&uuml;r <tt>AVIFileSource</tt>. In sp&auml;teren Versionen versucht <tt>WAVSource</tt> nicht mehr, den Video-Teil zu &ouml;ffnen. Das kann n&uuml;tzlich sein, um den Ton auszulesen, wenn das Video defekt ist oder kein passender Dekompressor (Codec) installiert ist.<br /><br />
-
-Seit v2.04 wird ACM (Audio Compression Manager) Ton (z.B. MP3-AVIs) unterst&uuml;tzt. Mit <tt>AVISource</tt> k&ouml;nnen WAV Dateien nicht mehr ge&ouml;ffnet werden, dies ist nun nur mit <tt>WAVSource</tt> m&ouml;glich.<br /><br />
-
-Seit v2.06 erlaubt der <i>pixel_type</i> Parameter (Standard <tt>YUY2</tt>), dem Dekompressor mitzuteilen, welchen Farbraum verwendet werden soll. Erlaubte Werte sind <tt>YUY2</tt>, <tt>RGB32</tt> und <tt>RGB24</tt>. Falls nicht angegeben, wird AviSynth den ersten verf&uuml;gbare Farbraum vom Dekompressor (in dieser Reihenfolge: YUY2, RGB32, RGB24) verwenden . Dieser Parameter hat keine Auswirkungen, wenn das Video in einem unkompremierten Format (YUY2, RGB32 oder RGB24) vorliegt, da dann kein Dekompressor verwendet wird.<br /><br />
-
-Seit v2.5 ist der Standardwert des &quot;pixel_type&quot; Parameters auf <tt>YV12</tt> ge&auml;ndert worden.<br />
-Manchmal sind die Farben verzerrt bei Laden eines DivX Clips in AviSynth v2.5, aufgrund eines Fehlers in DivX (?). Du kannst <a href="swap.html"><tt>SwapUV</tt></a> verwenden, um die Farben zu korregieren.<br /><br />
-
+<span class="titresmall"><a name="AVISource"></a>AVISource / OpenDMLSource / AVIFileSource / WAVSource</span><br />
+<br />
+<tt>AVISource(</tt><i>string &quot;filename&quot; [,...], bool &quot;audio&quot;, string &quot;pixel_type&quot;</i><tt>)</tt><br />
+<tt>OpenDMLSource(</tt><i>string &quot;filename&quot; [,...] [, bool &quot;audio&quot;] [, &quot;string pixel_type&quot;]</i><tt>)</tt><br />
+<tt>AVIFileSource(</tt><i>string &quot;filename&quot; [,...] [, bool &quot;audio&quot;] [, &quot;string pixel_type&quot;]</i><tt>)</tt><br />
+<tt>WAVSource(</tt><i>string &quot;filename&quot; [,...]</i><tt>)</tt><br />
+<br />
+<tt>AVISource</tt> verwendet als Argumente ein oder mehrere Dateinamen in Anf&uuml;hrungszeichen und liest die Dateien entweder mit dem Video-for-Windows &quot;AVIFile&quot; Interface oder mit dem in AviSynth eingebauten OpenDML-Code (von VirtualDub). Dieser Filter kann jedes AVI lesen, wof&uuml;r ein AVIFile Handler vorhanden ist. Es k&ouml;nnen also nicht nur AVI sondern auch WAV, AVS (AviSynth Skript) und VDR (VirtualDub Frameserver) Dateien ge&ouml;ffnet werden. Wenn mehrere Dateien angegeben werden, werden diese mit <a href="splice.html"><tt>UnalignedSplice</tt></a> aneinander gef&uuml;gt. Das <i>bool</i> Argument ist optional und standardm&auml;&szlig;ig auf &quot;true&quot; gesetzt.<br />
+<br />
+Der <tt>AVISource</tt> Filter untersucht die Datei und bestimmt den Typ. Dann gibt er die Datei entweder an den AVIFile Handler oder den OpenDML weiter. Bei Problemen mit einem der Handler kann auch direkt <tt>OpenDMLSource</tt> und <tt>AVIFileSource</tt> verwendet werden, welche die Verwendung eines bestimmten Handlers festlegen. Jeder kann normale AVI (&lt; 2GB) lesen, nur der OpenDML Handler kann gr&ouml;&szlig;ere AVI`s lesen. Nur der AVIFile Handler kann andere Typen wie WAV, VDR und AVS lesen.<br />
+<br />
+Bis zu AviSynth v2.04 war <tt>WAVSource</tt> ein anderer Name f&uuml;r <tt>AVIFileSource</tt>. In sp&auml;teren Versionen versucht <tt>WAVSource</tt> nicht mehr, den Video-Teil zu &ouml;ffnen. Das kann n&uuml;tzlich sein, um den Ton auszulesen, wenn das Video defekt ist oder kein passender Dekompressor (Codec) installiert ist.<br />
+<br />
+Seit AviSynth v2.04 wird ACM (Audio Compression Manager) Ton (z.B. MP3-AVI`s) unterst&uuml;tzt. Mit <tt>AVISource</tt> k&ouml;nnen WAV Dateien nicht mehr ge&ouml;ffnet werden, dies ist nun nur mit <tt>WAVSource</tt> m&ouml;glich.<br />
+<br />
+Seit AviSynth v2.06 erlaubt der <i>pixel_type</i> Parameter (Standard <tt>YUY2</tt>), dem Dekompressor mitzuteilen, welcher Farbraum verwendet werden soll. Erlaubte Werte sind <tt>YUY2</tt>, <tt>RGB32</tt> und <tt>RGB24</tt>. Falls nicht angegeben, wird AviSynth den ersten verf&uuml;gbaren Farbraum vom Dekompressor (in dieser Reihenfolge: YUY2, RGB32, RGB24) verwenden. Dieser Parameter hat keine Auswirkungen, wenn das Video in einem unkompremierten Format (YUY2, RGB32 oder RGB24) vorliegt, da dann kein Dekompressor verwendet wird.<br />
+<br />
+Seit AviSynth v2.5 ist der Standardwert des <i>pixel_type</i> Parameters auf <tt>YV12</tt> ge&auml;ndert worden.<br />
+Manchmal sind die Farben verzerrt bei Laden einer DivX AVI Datei in AviSynth v2.5, aufgrund eines Fehlers in DivX (?). Du kannst <a href="swap.html"><tt>SwapUV</tt></a> verwenden, um die Farben zu korregieren.<br />
+<br />
 <table border="1">
  <tr>
   <td>
    <tt>
-    Beispiele:<br /><br />
-    
-    AVISource("C:\Datei.avi")&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; # Hinweis f&uuml;r C Programmierer: keine doppelten Rückw&auml;rtsschr&auml;gstriche (Backslashes)<br />
+    Beispiele:<br />
+    <br />    
+    AVISource("C:\Datei.avi")&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; # Hinweis f&uuml;r C Programmierer: keine doppelten R&uuml;ckw&auml;rtsschr&auml;gstriche (Backslashes)<br />
     AVISource("C:/Datei.avi")&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; # Vorw&auml;rtsschr&auml;gstriche (forward slash) funktionieren auch<br />
     WAVSource("C:\Soundtrack.wav")&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; # funktioniert<br />
     AVISource("Datei1.avi","Datei2.avi") # dasgleiche wie<br />
@@ -43,8 +43,8 @@ Manchmal sind die Farben verzerrt bei Laden eines DivX Clips in AviSynth v2.5, a
    </tt>
   </td>   
  </tr>
-</table><br />
-
-<form action=""><input type="button" value="back" onclick="history.go(-1)" /></form>
+</table>
+<br />
+<form action=""><input type="button" value="Zur&uuml;ck" onclick="history.go(-1)" /></form>
 </body>
 </html>

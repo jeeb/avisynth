@@ -13,7 +13,7 @@
 <tt>SwapUV(</tt><i>clip</i><tt>)</tt><br />
 <tt>UToY(</tt><i>clip</i><tt>)</tt><br />
 <tt>VToY(</tt><i>clip</i><tt>)</tt><br />
-<tt>YToUV(</tt><i>clipU</i>, <i>clipV</i><tt>)</tt><br />
+<tt>YToUV(</tt><i>clip &quot;clipU&quot;, clip &quot;clipV&quot; [,clip &quot;clipY&quot;</i><tt>)</tt><br />
 <br />
 Diese vier Filter sind seit AviSynth v2.5 verf&uuml;gbar.<br />
 <br />
@@ -23,7 +23,7 @@ Diese vier Filter sind seit AviSynth v2.5 verf&uuml;gbar.<br />
 <br />
 Genauso kopiert <tt>VToY</tt> den Farbkanal V in den Helligkeitskanal Y. Das resultierende Bild ist halb so gro&szlig; und es gibt keine Farbinformationen mehr, das Bild besteht aus Graustufen.<br />
 <br />
-<tt>YToUV</tt> kopiert den Helligkeitskanal der beiden Clips in den U und V Kanal. Das Bild ist nun doppelt so gro&szlig; und die Helligkeit besteht zu 50% aus Grau. Nutze <a href="Merge.html">MergeLuma</a>, wenn du Helligkeitswerte hinzuf&uuml;gen willst.<br />
+<tt>YToUV</tt> kopiert den Helligkeitskanal der beiden Clips in den U und V Kanal. Das Bild ist nun doppelt so gro&szlig; und die Helligkeit besteht zu 50% aus Grau. Nutze <a href="merge.html">MergeLuma</a>, wenn du Helligkeitswerte hinzuf&uuml;gen willst.<br />
 <br />
 <table border="1" width="75%">
  <tr>
@@ -38,6 +38,6 @@ Genauso kopiert <tt>VToY</tt> den Farbkanal V in den Helligkeitskanal Y. Das res
  </tr>
 </table>
 <br />
-<form action=""><input type="button" value="back" onclick="history.go(-1)" /></form>
+<form action=""><input type="button" value="Zur&uuml;ck" onclick="history.go(-1)" /></form>
 </body>
 </html>

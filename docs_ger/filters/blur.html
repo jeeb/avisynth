@@ -10,13 +10,17 @@
 </head><body>
 <span class="titresmall"><a name="Blur"></a>Blur / Sharpen</span><br /><br />
 
-<tt>Blur(</tt><i>clip, float amount</i><tt>)<br />
-</tt><tt>Sharpen(</tt><i>clip, float amount</i><tt>)</tt><br /><br />
-
-Diese zwei Filter sind einfache 3x3-Kern Unsch&auml;rfe- bzw. Sch&auml;rf-Filter. Der gr&ouml;&szlig;te erlaubte Wert ist 1.58, das entspricht einer gleichm&auml;ssigen 3x3-Pixel Unsch&auml;rfe. Ein Wert von 1.0 entspricht einem (1/4,1/2,1/4) Kern. F&uuml;r gaussche Unsch&auml;rfen mit gr&ouml;sserem Radius k&ouml;nnen mehrere Befehle <tt>Blur(1.0)</tt> hintereinander gereiht werden.<br /><br />
-
-Negative Argumente von <tt>Blur</tt> sch&auml;rfen das Bild, da <tt>Sharpen( x )</tt> nur eine andere Schreibweise ist f&uuml;r <tt>Blur( -x )</tt>. Der kleinste erlaubte Wert f&uuml;r <tt>Blur</tt> ist -1.0, der gr&ouml;&szlig;te f&uuml;r <tt>Sharpen</tt> ist 1.0.<br /><br />
-
-<form action=""><input type="button" value="back" onclick="history.go(-1)" /></form>
+<tt>Blur(</tt><i>clip, float &quot;amount&quot;</i><tt>)</tt><br />
+<tt>Blur(</tt><i>clip, float &quot;amountH&quot;, float &quot;amountV&quot;</i><tt>)</tt><br />
+<tt>Sharpen(</tt><i>clip, float &quot;amount&quot;</i><tt>)</tt><br />
+<tt>Sharpen(</tt><i>clip, float &quot;amountH&quot;, float &quot;amountV&quot;</i><tt>)</tt><br />
+<br />
+Diese zwei Filter sind einfache 3x3-Kern Unsch&auml;rfe- bzw. Sch&auml;rfe-Filter. Der gr&ouml;&szlig;te erlaubte Wert ist 1.58, das entspricht einer gleichm&auml;ssigen 3x3-Pixel Unsch&auml;rfe. Ein Wert von 1.0 entspricht einem (1/4,1/2,1/4) Kern. F&uuml;r gaussche Unsch&auml;rfen mit gr&ouml;sserem Radius k&ouml;nnen mehrere Befehle <tt>Blur(1.0)</tt> hintereinander gereiht werden.<br />
+<br />
+Negative Argumente von <tt>Blur</tt> sch&auml;rfen das Bild, da <tt>Sharpen( x )</tt> nur eine andere Schreibweise ist f&uuml;r <tt>Blur( -x )</tt>. Der kleinste erlaubte Wert f&uuml;r <tt>Blur</tt> ist -1.0, der gr&ouml;&szlig;te f&uuml;r <tt>Sharpen</tt> ist 1.0.<br />
+<br />
+Man kann auch bei den beiden Filtern zwei Argumenten angeben, um horizontal und vertikal unabh&auml;ngig voneinander zu filtern. So kann man mit <tt>Blur(0,1)</tt> nur vertikal filtern, um z.B. interlaced Zeilen miteinander durch &Uuml;berblendung zu verbinden.<br />
+<br />
+<form action=""><input type="button" value="Zur&uuml;ck" onclick="history.go(-1)" /></form>
 </body>
 </html>

@@ -10,14 +10,14 @@
 </head><body>
 <span class="titresmall"><a name="PeculiarBlend"></a>PeculiarBlend</span><br /><br />
 
-<tt>PeculiarBlend(</tt><i>clip, int cutoff</i><tt>)</tt><br /><br />
+<tt>PeculiarBlend(</tt><i>clip, int &quot;cutoff&quot;</i><tt>)</tt><br /><br />
 
-Dieses Filter mischt jeden Frame mit dem nachfolgenden Frame in einer speziellen Art. Der Teil des Frames unterhalb der Zeile <i>cutoff</i> wird nicht ver&auml;ndert. Der Teil &uuml;ber der Zeile <i>cutoff-30</i> wird ersetzt mit dem Inhalt des folgenden Frames. Die 30 Zeilen dazwischen werden ansteigend gemischt, um den &Uuml;bergang zu verstecken.<br /><br />
+Dieser Filter mischt jeden Frame mit dem nachfolgenden Frame in einer speziellen Art. Der Teil des Frames unterhalb der Zeile <i>cutoff</i> wird nicht ver&auml;ndert. Der Teil &uuml;ber der Zeile <i>cutoff-30</i> wird ersetzt mit dem Inhalt des folgenden Frames. Die 30 Zeilen dazwischen werden ansteigend gemischt, um den &Uuml;bergang zu verstecken.<br /><br />
 
 Wozu das Ganze? Viele Videos sind urspr&uuml;nglich auf Film aufgenommen worden (mittels 3:2 <a href="pulldown.html">pulldown</a>). Manche aber verwenden ein unangenehmeres Verfahren, bei dem der &Uuml;bergang zum n&auml;chsten Frame in der Mitte eines Feldes stattfindet, d.h. einzelne Felder haben oben den Anteil von einen Frame, unten den Anteil von einem anderen. Dieses Filter macht diesen Effekt teilweise r&uuml;ckg&auml;ngig und sollte vor dem <a href="pulldown.html"><tt>Pulldown</tt></a> Filter angewendet werden. Um <i>cutoff</i> zu bestimmen, nehme einen Frame, der in dieser Art &uuml;berblendet wurde und setze <i>cutoff</i> als die Anzahl an Scanlinien, von denen du meinst, dass sie &uuml;berblendet worden sind.<br /><br />
 
 Seit AviSynth v1.0 beta 5 funktioniert dieser Filter nur mit einer YUV Quelle. Man kann <a href="convert.html"><tt>ConvertToYUY2</tt></a> verwenden, um andere Quellen nach YUY2 zu konvertieren.<br /><br />
 
-<form action=""><input type="button" value="back" onclick="history.go(-1)" /></form>
+<form action=""><input type="button" value="Zur&uuml;ck" onclick="history.go(-1)" /></form>
 </body>
 </html>

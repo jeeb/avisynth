@@ -8,11 +8,11 @@
  <title>Pulldown AviSynth Filter</title>
  <link rel="stylesheet" type="text/css" href="../style.css" />
 </head><body>
-<span class="titresmall"><a name="Pulldown"></a>Pulldown</span><br /><br />
+<span class="titresmall"><a name="Pulldown"></a>PullDown</span><br /><br />
 
-<tt>Pulldown(</tt><i>clip, int a , int b</i><tt>)</tt><br /><br />
+<tt>PullDown(</tt><i>clip, int &quot;a&quot;, int &quot;b&quot;</i><tt>)</tt><br /><br />
 
-Dieser Filter nimmt einfach zwei von f&uuml;nf Frames aus dem Quell-Video. Die Famerate wird auf 2/5 reduziert. <tt>Pulldown 0,2</tt> nimmt z.B. die Frames 0, 2, 5, 7, 10, 12, und so weiter.<br /><br />
+Dieser Filter nimmt einfach zwei von f&uuml;nf Frames aus dem Quell-Video. Die Famerate wird auf 2/5 reduziert. <tt>PullDown(0,2)</tt> nimmt z.B. die Frames 0, 2, 5, 7, 10, 12, usw. .<br /><br />
 
 Dieser Filter sollte nach <a href="doubleweave.html"><tt>DoubleWeave</tt></a> verwendet werden. Der Sinn ist, dass die Original-Frames von einem Video, dass aus Filmmaterial mittels 3:2 Pulldown erstellt wurde, wiederhergestellt werden.<br /><br />
 
@@ -38,6 +38,6 @@ Das Ganze ist kompliziert zum Beschreiben, in der Paxis kann man die richtigen P
 
 <tt>Pulldown(</tt><i>a</i><tt>,</tt><i>b</i><tt>)</tt> wird intern umgesetzt als <tt>SelectEvery(5,</tt><i>a</i><tt>,</tt><i>b</i><tt>).AssumeFrameBased</tt>.<br /><br />
 
-<form action=""><input type="button" value="back" onclick="history.go(-1)" /></form>
+<form action=""><input type="button" value="Zur&uuml;ck" onclick="history.go(-1)" /></form>
 </body>
 </html>

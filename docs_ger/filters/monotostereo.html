@@ -10,13 +10,13 @@
 </head><body>
 <span class="titresmall"><a name="MonoToStereo"></a>MonoToStereo</span><br /><br />
 
-<tt>MonoToStereo(</tt><i>left_channel_clip, right_channel_clip</i><tt>)</tt><br /><br />
+<tt>MonoToStereo(</tt><i>clip &quot;left_channel_clip&quot;, clip &quot;right_channel_clip&quot;</i><tt>)</tt><br /><br />
 
 Wandelt zwei Mono-Signale in ein Stereo-Signal um. Das kann zum Beispiel verwendet werden, wenn beide Kan&auml;le getrennt bearbeitet wurden und dann kombiniert werden sollen.<br /><br />
 
-Die beiden Clips m&uuml;ssen die gleiche Samplingrate haben (<a href="resampleaudio.html"><tt>ResampleAudio</tt></a> bei Problemen). Wenn eine Quelle schon Stereo ist, wird das Signal vom entsprechenden Kanal genommen (der linke vom <i>left_channel_clip</i>, und umgekehrt). Der Ton wird als Nebeneffekt zu 16 bit konvertiert.<br /><br />
+Die beiden Clips m&uuml;ssen die gleiche Samplingrate haben (<a href="resampleaudio.html"><tt>ResampleAudio</tt></a> bei Problemen). Wenn eine Quelle schon Stereo ist, wird das Signal vom entsprechenden Kanal genommen (der linke vom <i>left_channel_clip</i>, und umgekehrt). Der Ton wird als Nebeneffekt zu 16 Bit konvertiert.<br /><br />
 
-Bei AviSynth 2.5 wird anstatt dieses Filters einfach automatisch <a href="mergechannels.html">MergeChannels</a> genommen.<br /><br />
+Bei AviSynth v2.5 wird anstatt dieses Filters einfach automatisch <a href="mergechannels.html">MergeChannels</a> genommen.<br /><br />
 
 <table border="1" width="75%">
  <tr> 
@@ -33,6 +33,6 @@ Bei AviSynth 2.5 wird anstatt dieses Filters einfach automatisch <a href="mergec
  </tr>
 </table><br />
 
-<form action=""><input type="button" value="back" onclick="history.go(-1)" /></form>
+<form action=""><input type="button" value="Zur&uuml;ck" onclick="history.go(-1)" /></form>
 </body>
 </html>
