@@ -292,9 +292,8 @@ void Overlay::ClipFrames(Image444* input, Image444* overlay, int x, int y) {
   }
   // Clip input-frame to topleft overlay:
   input->SubFrame(x,y,input->w()-x, input->h()-y);
-  x = y = 0;
+
   // input and overlay are now topleft aligned
-  // x+y should now no longer be needed.
 
   // Clip overlay that is beyond the right side of the input
 
