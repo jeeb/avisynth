@@ -64,7 +64,9 @@ enum {
 
   SERVER_SPLIT_BLOCK = 35,        // Only server can split blocks into pieces
   SERVER_END_SPLIT_BLOCK = 36,
-  SERVER_NEXT_PLANE = 37
+
+  INTERNAL_GETDATABLOCK = 50,
+  INTERNAL_DISCONNECTED = 51
 };
 
 struct ServerFrameInfo {
@@ -75,6 +77,7 @@ struct ServerFrameInfo {
   unsigned int compressed_bytes;
   unsigned int compression;
   unsigned int crc;
+  unsigned int data_size;
 
   unsigned int reserved1;
   unsigned int reserved2;
@@ -138,19 +141,6 @@ struct ClientRequestFrame {
   unsigned int reserved8;
 };
 
-struct ServerSplitBlock {
-  unsigned int blocksize;   // Can be assumed to be multiple of 2
-  unsigned int n_blocks;    // Total number of blocks
-
-  unsigned int reserved1;
-  unsigned int reserved2;
-  unsigned int reserved3;
-  unsigned int reserved4;
-  unsigned int reserved5;
-  unsigned int reserved6;
-  unsigned int reserved7;
-  unsigned int reserved8;
-};
 
 /***********************************************************************
 // adler32 checksum

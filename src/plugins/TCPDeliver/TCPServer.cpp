@@ -120,7 +120,7 @@ void TCPServerListener::Listen() {
 
   timeval t;
   t.tv_sec = 0;
-  t.tv_usec = 1;
+  t.tv_usec = 0; 
 
   ClientConnection s_list[FD_SETSIZE];
   int i;
@@ -192,7 +192,7 @@ void TCPServerListener::Listen() {
               SendPacket(&s_list[i], &s);
             } // end if datasize > 0
 
-          } else { // isDiconnected
+          } else { // isDisconnected
             _RPT0(0,  "TCPServer: Connection Closed.\n");
             closesocket(s_list[i].s);
             s_list[i].isConnected = false;
@@ -201,7 +201,7 @@ void TCPServerListener::Listen() {
         } // end if fd is set
         if (s_list[i].isDataPending) {
           request_handled = true;
-
+          SendPendingData(&s);
         } // end if isDataPending
       } // end if list != null
     } // end for i
@@ -217,7 +217,7 @@ void TCPServerListener::SendPacket(ClientConnection* cc, ServerReply* s) {
   int r = 1;
   send(cc->s, (const char*)&s->dataSize, 4, 0);
   while (r > 0) {
-    r = send(cc->s, (const char*)(&s->data[BytesSent]), s->dataSize-BytesSent, 0);
+    r = send(cc->s, (const char*)(&s->internal_data[BytesSent]), s->dataSize-BytesSent, 0);
     if (r == SOCKET_ERROR) {
       _RPT0(0, "TCPServer: Could not send packet (SOCKET_ERROR). Connection closed\n", );
       closesocket(cc->s);
@@ -250,14 +250,39 @@ void TCPServerListener::Receive(const char* recvbuf, int bytes, ServerReply* s) 
     case CLIENT_REQUEST_FRAME:
       SendFrameInfo(s, &recvbuf[1]);
       break;
+    case CLIENT_SEND_FRAME:
+      SendVideoFrame(s);
+      break;
     default:
       _RPT1(1,"TCPServer: Could not handle request type %d.", recvbuf[0]);
       break;
   }
 }
 
+void TCPServerListener::SendPendingData(ServerReply* s) {
+  ClientConnection* cc = s->client;
+  if (!cc->isDataPending) {
+    return;
+  }
+  int bytes_left = cc->totalPendingBytes - cc->pendingBytesSent;
+  int send_bytes = max(0, min(bytes_left, 320*1024));
+  s->allocateBuffer(send_bytes);
+  s->setType(SERVER_SPLIT_BLOCK);
+  memcpy(s->data, &cc->pendingData[cc->pendingBytesSent], send_bytes);
+  SendPacket(cc, s);
+  cc->pendingBytesSent += send_bytes;
+  if (cc->pendingBytesSent >= cc->totalPendingBytes) {
+    cc->isDataPending = false;
+    delete[] cc->pendingData;
+    s->allocateBuffer(0);
+    s->setType(SERVER_END_SPLIT_BLOCK);
+    SendPacket(cc, s);
+  }
+}
+
 void TCPServerListener::SendVideoFrame(ServerReply* s) {
   s->client->isDataPending = true;
+  s->allocateBuffer(0);
   const BYTE* srcp = s->client->prepared_frame->GetReadPtr();
   int src_pitch = s->client->prepared_frame->GetPitch();
   int src_height = s->client->prepared_frame->GetHeight();
@@ -268,6 +293,7 @@ void TCPServerListener::SendVideoFrame(ServerReply* s) {
     data_size = data_size + data_size / 2;
   }
   s->client->totalPendingBytes = data_size;
+  s->client->pendingBytesSent = 0;
 
   BYTE* dstp = s->client->pendingData = new BYTE[data_size];
   env->BitBlt(dstp, src_pitch, srcp, src_pitch, src_rowsize, src_height);
@@ -303,17 +329,22 @@ void TCPServerListener::SendFrameInfo(ServerReply* s, const char* request) {
   s->setType(SERVER_FRAME_INFO);
   PVideoFrame src = child->GetFrame(f.n, env);
   
-  PVideoFrame dst = env->NewVideoFrame(child->GetVideoInfo());
   ServerFrameInfo sfi;
   memset(&sfi, 0, sizeof(ServerFrameInfo));
   sfi.framenumber = f.n;
   sfi.compression = ServerFrameInfo::COMPRESSION_NONE;
   sfi.height = src->GetHeight();
   sfi.row_size = src->GetRowSize();
-  sfi.pitch = dst->GetPitch();
+  sfi.pitch = src->GetPitch();
+
+  int data_size = sfi.height * sfi.pitch;
+  if (child->GetVideoInfo().IsYV12()) {
+    data_size = data_size + data_size / 2;
+  }
+  sfi.data_size = data_size;
 
   memcpy(s->data, &sfi, sizeof(ServerFrameInfo));
-  s->client->prepared_frame = dst;
+  s->client->prepared_frame = src;
 }
 
 void TCPServerListener::KillThread() {
@@ -327,7 +358,7 @@ TCPRecievePacket::TCPRecievePacket(SOCKET _s) : s(_s) {
 
   while (recieved < 4) {
     int bytesRecv = recv(s, (char*)&dataSize+recieved, 4-recieved, 0 );
-    if (bytesRecv == WSAECONNRESET || bytesRecv == 0) {
+    if (bytesRecv == WSAECONNRESET || bytesRecv <= 0) {
       _RPT0(0, "TCPServer: Could not retrieve packet size!");
       isDisconnected = true;
       return;
@@ -346,7 +377,7 @@ TCPRecievePacket::TCPRecievePacket(SOCKET _s) : s(_s) {
   recieved = 0;
   while (recieved < dataSize) {
     int bytesRecv = recv(s, (char*)&data[recieved], dataSize-recieved, 0 );
-    if (bytesRecv == WSAECONNRESET || bytesRecv == 0) {
+    if (bytesRecv == WSAECONNRESET || bytesRecv <= 0) {
       _RPT0(0, "TCPServer: Could not retrieve packet data!");
       isDisconnected = true;
       return;

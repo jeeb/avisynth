@@ -32,102 +32,41 @@
 // which is not derived from or based on Avisynth, such as 3rd-party filters,
 // import and export plugins, or graphical user interfaces.
 
-// TCPDeliver (c) 2004 by Klaus Post
-
-#ifndef TCP_Server_h
-#define TCP_Server_h
-
-
-#include "TCPCommon.h"
-#include "winsock2.h"
-#include "avisynth.h"
-#include "resource.h"
 
 
 
+/******************************
+ *******   AlignPlanar   ******
+ *****************************/
 
-AVSValue __cdecl Create_TCPServer(AVSValue args, void* user_data, IScriptEnvironment* env);
+#ifndef Alignplanar_h
+#define Alignplanar_h
 
-struct ClientConnection {
-  SOCKET s;
-  bool isConnected;
-  bool isDataPending;
-  BYTE* pendingData;
-  unsigned int pendingBytesSent;
-  unsigned int totalPendingBytes;
-  PVideoFrame prepared_frame;
-};
+AlignPlanar::AlignPlanar(PClip _clip) : GenericVideoFilter(_clip) {}
 
-struct ServerReply {
-  BYTE* data;
-  unsigned int dataSize;
-  BYTE* internal_data;
-  ClientConnection* client;
+PVideoFrame __stdcall AlignPlanar::GetFrame(int n, IScriptEnvironment* env) {
+  PVideoFrame src = child->GetFrame(n, env);
+  if (!(src->GetRowSize(PLANAR_Y_ALIGNED)&(FRAME_ALIGN-1))) return src;
+  PVideoFrame dst = env->NewVideoFrame(vi);
+  if ((dst->GetRowSize(PLANAR_Y_ALIGNED)&(FRAME_ALIGN-1))) 
+    env->ThrowError("AlignPlanar: [internal error] Returned frame was not aligned!");
 
-  void allocateBuffer(int bytes) {
-    internal_data = new BYTE[bytes+1];
-    data = &internal_data[1];
-    dataSize = bytes+1;
+
+  env->BitBlt(dst->GetWritePtr(), dst->GetPitch(), src->GetReadPtr(), src->GetPitch(), src->GetRowSize(), src->GetHeight());
+  env->BitBlt(dst->GetWritePtr(PLANAR_V), dst->GetPitch(PLANAR_V), src->GetReadPtr(PLANAR_V), src->GetPitch(PLANAR_V), src->GetRowSize(PLANAR_V), src->GetHeight(PLANAR_V));
+  env->BitBlt(dst->GetWritePtr(PLANAR_U), dst->GetPitch(PLANAR_U), src->GetReadPtr(PLANAR_U), src->GetPitch(PLANAR_U), src->GetRowSize(PLANAR_U), src->GetHeight(PLANAR_U));
+  return dst;
+}
+
+
+PClip AlignPlanar::Create(PClip clip) 
+{
+  if (!clip->GetVideoInfo().IsPlanar()) {  // If not planar, already ok.
+    return clip;
   }
+  else 
+    return new AlignPlanar(clip);
+}
 
-  void freeBuffer() {
-    if (dataSize)
-      delete[] internal_data;
-    dataSize = 0;
-  }
-
-  void setType(BYTE type) {
-    internal_data[0] = type;
-  }
-
-};
-
-
-class TCPServerListener {
-public:
-  TCPServerListener(int port, PClip child, IScriptEnvironment* env);
-  void Listen();
-  void KillThread();
-
-private:
-  void Receive(const char* recvbuf, int bytesRecv, ServerReply* s);
-  void SendPacket(ClientConnection* cc, ServerReply* s);
-  void SendPendingData(ServerReply* s);
-  void SendVideoInfo(ServerReply* s);
-  void SendFrameInfo(ServerReply* s, const char* request);
-  void TCPServerListener::SendVideoFrame(ServerReply* s);
-  WSADATA wsaData;
-  SOCKET m_socket;
-  sockaddr_in service;
-  PClip child;
-  IScriptEnvironment* env;
-  bool shutdown;
-};
-
-
-class TCPServerConnection {
-
-};
-
-class TCPServer  : public GenericVideoFilter {
-public:
-  TCPServer(PClip _child, int port, IScriptEnvironment* env);
-  ~TCPServer();
-private:
-  HANDLE ServerThread;
-  TCPServerListener* s;
-};
-
-
-class TCPRecievePacket {
-public:
-  TCPRecievePacket(SOCKET _s);
-  TCPRecievePacket::~TCPRecievePacket();
-  int dataSize;
-  BYTE* data;
-  bool isDisconnected;
-private:
-  SOCKET s;  
-};
 
 #endif

@@ -82,6 +82,7 @@ public:
   // Interfaces for unthreaded communication.
   void SendRequest(char requestId, void* data, unsigned int bytes);
   void TCPClientThread::GetReply();
+  void GetDataBlock(unsigned int bytes);
 
   HANDLE evtClientReadyForRequest;   // Client is ready to recieve a new request.
   HANDLE evtClientReplyReady;        // Client has finished processing the last request.
