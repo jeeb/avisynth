@@ -177,6 +177,7 @@ private:
   double PSNR_min, PSNR_tot, PSNR_max;
   double MAD_min, MAD_tot, MAD_max;
   double MD_min, MD_tot, MD_max;
+  double bytecount_overall, SSD_overall;
   int framecount;
 };
 

@@ -835,6 +835,8 @@ Compare::~Compare()
     fprintf(log,"Mean Absolute Deviation: %9.4f %9.4f %9.4f\n", MAD_min, MAD_tot/framecount, MAD_max);
     fprintf(log,"         Mean Deviation: %+9.4f %+9.4f %+9.4f\n", MD_min, MD_tot/framecount, MD_max);
     fprintf(log,"                   PSNR: %9.4f %9.4f %9.4f\n", PSNR_min, PSNR_tot/framecount, PSNR_max);
+    double PSNR_overall = 10.0 * log10(bytecount_overall * 255.0 * 255.0 / SSD_overall);
+    fprintf(log,"           Overall PSNR: %9.4f\n", PSNR_overall);
     fclose(log);
   }
   delete[] psnrs;
@@ -990,6 +992,8 @@ comp_loopx:
     MAD_min = MAD_tot = MAD_max = MAD;
     MD_min = MD_tot = MD_max = MD;
     PSNR_min = PSNR_tot = PSNR_max = PSNR;
+    bytecount_overall = double(bytecount);
+    SSD_overall = SSD;
   } else {
     MAD_min = min(MAD_min, MAD);
     MAD_tot += MAD;
@@ -1000,26 +1004,31 @@ comp_loopx:
     PSNR_min = min(PSNR_min, PSNR);
     PSNR_tot += PSNR;
     PSNR_max = max(PSNR_max, PSNR);
+    bytecount_overall += double(bytecount);
+    SSD_overall += SSD;  
   }
 
   if (log) fprintf(log,"%6u  %8.4f  %+9.4f  %3d    %3d    %8.4f\n", n, MAD, MD, pos_D, neg_D, PSNR);
   else {
     HDC hdc = antialiaser.GetDC();
     char text[400];
-    RECT r= { 32, 16, min(3440,vi.width*8), 768 };
+    RECT r= { 32, 16, min(3440,vi.width*8), 768+128 };
+    double PSNR_overall = 10.0 * log10(bytecount_overall * 255.0 * 255.0 / SSD_overall);
     sprintf(text,
       "       Frame:  %-8u(   min  /   avg  /   max  )\n"
       "Mean Abs Dev:%8.4f  (%7.3f /%7.3f /%7.3f )\n"
       "    Mean Dev:%+8.4f  (%+7.3f /%+7.3f /%+7.3f )\n"
-      " Max Pos Dev:%3d  \n"
-      " Max Neg Dev:%3d  \n"
-      "        PSNR:%6.2f dB ( %6.2f / %6.2f / %6.2f )", 
+      " Max Pos Dev:%4d  \n"
+      " Max Neg Dev:%4d  \n"
+      "        PSNR:%6.2f dB ( %6.2f / %6.2f / %6.2f )\n"
+      "Overall PSNR:%6.2f dB\n", 
       n,
       MAD, MAD_min, MAD_tot / framecount, MD_max,
       MD, MD_min, MD_tot / framecount, MD_max,
       pos_D,
       neg_D,
-      PSNR, PSNR_min, PSNR_tot / framecount, PSNR_max
+      PSNR, PSNR_min, PSNR_tot / framecount, PSNR_max,
+      PSNR_overall
     );
     DrawText(hdc, text, -1, &r, 0);
     GdiFlush();
