@@ -1242,8 +1242,14 @@ AVSValue __cdecl Create_DirectShowSource(AVSValue args, void*, IScriptEnvironmen
     video_success = false;
   }
 
-  if (!(audio_success || video_success)) 
-    env->ThrowError(v_e_msg);
+  if (!(audio_success || video_success)) {
+    char err[1024] = "DirectShowSource: Could not open as video or audio.\r\n\r\nVideo returned:  \"";
+    strcat(err,v_e_msg);
+    strcat(err,"\"\r\n\r\nAudio returned:  \"");
+    strcat(err,a_e_msg);
+    strcat(err,"\"\r\n");
+    env->ThrowError(err);
+  }
 
   if (!audio_success)
     return AlignPlanar::Create(DS_video);
