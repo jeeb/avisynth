@@ -1525,8 +1525,10 @@ out_bloop:
 
 FilteredResizeV::~FilteredResizeV(void)
 {
-  _aligned_free(resampling_pattern);
+  if (resampling_pattern) _aligned_free(resampling_pattern);
+  if (resampling_patternUV) _aligned_free(resampling_patternUV);
   delete[] yOfs;
+  delete[] yOfsUV;
 }
 
 
