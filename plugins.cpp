@@ -87,7 +87,6 @@ static bool MyLoadLibrary(const char* filename, HMODULE* hmod, bool quiet, IScri
   return false;
 }
 
-// TODO: Implement rejection of 1.x and 2.0x plugins
 
 AVSValue LoadPlugin(AVSValue args, void* user_data, IScriptEnvironment* env) {
   bool quiet = (user_data != 0);
@@ -98,13 +97,20 @@ AVSValue LoadPlugin(AVSValue args, void* user_data, IScriptEnvironment* env) {
     const char* plugin_name = args[i].AsString();
     if (MyLoadLibrary(plugin_name, &plugin, quiet, env)) {
       typedef const char* (__stdcall *AvisynthPluginInitFunc)(IScriptEnvironment* env);
-      AvisynthPluginInitFunc AvisynthPluginInit = (AvisynthPluginInitFunc)GetProcAddress(plugin, "AvisynthPluginInit2");   // TODO: Change this to reject 1.0!!
+      AvisynthPluginInitFunc AvisynthPluginInit = (AvisynthPluginInitFunc)GetProcAddress(plugin, "AvisynthPluginInit2");
       if (!AvisynthPluginInit) {
         AvisynthPluginInit = (AvisynthPluginInitFunc)GetProcAddress(plugin, "_AvisynthPluginInit2@4");
+
+        if (!AvisynthPluginInit) {  // Attempt C-plugin
+          AvisynthPluginInit = (AvisynthPluginInitFunc)GetProcAddress(plugin, "avisynth_c_plugin_init");
+          if (AvisynthPluginInit) {
+            return env->Invoke("LoadCPlugin", args);
+          }
+        }
+
         if (!AvisynthPluginInit) {  // Older version
           FreeLibrary(plugin);
           if (quiet) {
-//            FreeLibrary(plugin);
             // remove the last handle from the list
             HMODULE* loaded_plugins = (HMODULE*)env->GetVar("$Plugins$").AsString();
             int j=0;

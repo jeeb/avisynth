@@ -243,6 +243,14 @@ SOURCE=.\avisynth.rc
 # End Source File
 # Begin Source File
 
+SOURCE=.\avisynth_c.cpp
+# End Source File
+# Begin Source File
+
+SOURCE=.\avisynth_c.h
+# End Source File
+# Begin Source File
+
 SOURCE=.\cache.cpp
 # End Source File
 # Begin Source File
