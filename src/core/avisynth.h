@@ -179,7 +179,7 @@ struct VideoInfo {
   int RowSize() const { return BytesFromPixels(width); }  // Also only returns first plane on planar images
   int BMPSize() const { if (IsPlanar()) {int p = height * ((RowSize()+3) & ~3); p+=p>>1; return p;  } return height * ((RowSize()+3) & ~3); }
   __int64 AudioSamplesFromFrames(__int64 frames) const { return HasVideo() ? ((__int64)(frames) * audio_samples_per_second * fps_denominator / fps_numerator) : 0; }
-  int FramesFromAudioSamples(__int64 samples) const { return (HasAudio()) ? (int)(samples * (__int64)fps_numerator / (__int64)fps_denominator / (__int64)audio_samples_per_second) : 0; }
+  int FramesFromAudioSamples(__int64 samples) const { return (HasAudio()) ? (int)((samples * (__int64)fps_numerator)/((__int64)fps_denominator * (__int64)audio_samples_per_second)) : 0; }
   __int64 AudioSamplesFromBytes(__int64 bytes) const { return HasAudio() ? bytes / BytesPerAudioSample() : 0; }
   __int64 BytesFromAudioSamples(__int64 samples) const { return samples * BytesPerAudioSample(); }
   int AudioChannels() const { return nchannels; }
@@ -602,9 +602,12 @@ public:
 private:
   void convertToFloat(char* inbuf, float* outbuf, char sample_type, int count);
   void convertToFloat_3DN(char* inbuf, float* outbuf, char sample_type, int count);
+  void convertToFloat_SSE(char* inbuf, float* outbuf, char sample_type, int count);
+  void convertToFloat_SSE2(char* inbuf, float* outbuf, char sample_type, int count);
   void convertFromFloat(float* inbuf, void* outbuf, char sample_type, int count);
   void convertFromFloat_3DN(float* inbuf, void* outbuf, char sample_type, int count);
   void convertFromFloat_SSE(float* inbuf, void* outbuf, char sample_type, int count);
+  void convertFromFloat_SSE2(float* inbuf, void* outbuf, char sample_type, int count);
 
   __inline int Saturate_int8(float n);
   __inline short Saturate_int16(float n);
@@ -684,6 +687,8 @@ public:
 	virtual int __stdcall SetMemoryMax(int mem) = 0;
 
   virtual int __stdcall SetWorkingDir(const char * newdir) = 0;
+
+  virtual void* __stdcall ManageCache(int key, void* data) = 0;
 
 };
 
