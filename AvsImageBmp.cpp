@@ -46,7 +46,7 @@ img_BMP::img_BMP (const VideoInfo & _vi)
 {
   // construct file header  
   fileHeader.bfType = ('M' << 8) + 'B'; // I hate little-endian
-  fileHeader.bfSize = vi.height * (vi.RowSize() + (vi.RowSize() % 4)); // don't forget padding
+  fileHeader.bfSize = vi.BMPSize(); // includes 4-byte padding
   fileHeader.bfReserved1 = 0;
   fileHeader.bfReserved2 = 0;
   fileHeader.bfOffBits = sizeof(BITMAPFILEHEADER) + sizeof(BITMAPINFOHEADER);
@@ -56,7 +56,7 @@ img_BMP::img_BMP (const VideoInfo & _vi)
   infoHeader.biSize = sizeof(BITMAPINFOHEADER);
   infoHeader.biWidth = vi.width;
   infoHeader.biHeight = vi.height;
-  infoHeader.biPlanes = 1;
+  infoHeader.biPlanes = vi.IsPlanar() ? 3 : 1;
   infoHeader.biBitCount = vi.BitsPerPixel();
   infoHeader.biCompression = 0;
   infoHeader.biSizeImage = fileHeader.bfSize - fileHeader.bfOffBits;
@@ -75,10 +75,11 @@ void img_BMP::compress(ostream & bufWriter, const BYTE * srcPtr, const int pitch
     
   // write raster
   int dummy = 0;  
+  int padding = (4 - (vi.RowSize() % 4)) % 4;
   for(UINT i=0; i < vi.height; ++i)
   {
     bufWriter.write(reinterpret_cast<const char *>( srcPtr ), vi.RowSize());
-    bufWriter.write(reinterpret_cast<char *>( &dummy ), vi.RowSize() % 4); // pad with 0's
+    bufWriter.write(reinterpret_cast<char *>( &dummy ), padding); // pad with 0's
     srcPtr += pitch;
   }
   bufWriter.flush();
