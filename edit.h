@@ -195,7 +195,7 @@ class Loop : public GenericVideoFilter {
   * Class to loop over a range of frames
 **/
 public:
-	Loop(PClip _child, int times, int _start, int _end);
+	Loop(PClip _child, int times, int _start, int _end, IScriptEnvironment* env);
 	PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
 	bool __stdcall GetParity(int n);
   void __stdcall GetAudio(void* buf, int start, int count, IScriptEnvironment* env);

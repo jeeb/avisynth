@@ -542,7 +542,7 @@ AVSValue __cdecl Reverse::Create(AVSValue args, void*, IScriptEnvironment* env)
  ******   Loop Filter   *******
  *****************************/
 
-Loop::Loop(PClip _child, int _times, int _start, int _end)
+Loop::Loop(PClip _child, int _times, int _start, int _end, IScriptEnvironment* env)
  : GenericVideoFilter(_child), times(_times), start(_start), end(_end)
 {
   start = min(max(start,0),vi.num_frames-1);
@@ -556,6 +556,8 @@ Loop::Loop(PClip _child, int _times, int _start, int _end)
     vi.num_frames += (times-1) * frames;
     end = start + times * frames - 1;
   }
+  if (!vi.sixteen_bit)
+    env->ThrowError("Loop: Sound must be 16 bits, use ConvertAudioTo16bit() or KillAudio()");
 
   start_samples = (((start*vi.audio_samples_per_second)*vi.fps_denominator)/ vi.fps_numerator);
   loop_ends_at_sample = (((end*vi.audio_samples_per_second)*vi.fps_denominator)/ vi.fps_numerator);
@@ -577,8 +579,7 @@ bool Loop::GetParity(int n)
 }
  
 void Loop::GetAudio(void* buf, int s_start, int count, IScriptEnvironment* env) {
-  if (!vi.sixteen_bit)
-    env->ThrowError("Loop: Sound must be 16 bits, use ConvertAudioTo16bit() or KillAudio()");
+
 
   if (s_start+count<start_samples) {
     child->GetAudio(buf,s_start,count,env);
@@ -628,7 +629,7 @@ __inline int Loop::convert(int n)
 
 AVSValue __cdecl Loop::Create(AVSValue args, void*, IScriptEnvironment* env)
 {
-	return new Loop(args[0].AsClip(), args[1].AsInt(-1), args[2].AsInt(0), args[3].AsInt(10000000));
+	return new Loop(args[0].AsClip(), args[1].AsInt(-1), args[2].AsInt(0), args[3].AsInt(10000000),env);
 }
 
 
