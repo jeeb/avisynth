@@ -154,19 +154,9 @@ PVideoFrame __stdcall Cache::GetFrame(int n, IScriptEnvironment* env)
 
 void Cache::FillZeros(void* buf, int start_offset, int count) {
 
-  if (vi.sample_type == SAMPLE_FLOAT) {
-    float* samps = (float*)buf;
-    start_offset *= vi.AudioChannels();
-    count *= vi.AudioChannels();
-
-    for (int i = start_offset; i < count; i++)
-      samps[i] = 0.0f;
-
-    } else {
-      int bps = vi.BytesPerAudioSample();
-      unsigned char* byte_buf = (unsigned char*)buf;
-      memset(byte_buf + start_offset * bps, 0, count * bps);
-    }
+    int bps = vi.BytesPerAudioSample();
+    unsigned char* byte_buf = (unsigned char*)buf;
+    memset(byte_buf + start_offset * bps, 0, count * bps);
 }
 
 void __stdcall Cache::GetAudio(void* buf, __int64 start, __int64 count, IScriptEnvironment* env) {
