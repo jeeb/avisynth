@@ -33,11 +33,9 @@
 // import and export plugins, or graphical user interfaces.
  
 
-#include "../stdafx.h"
 
-#include "../internal.h"
-#include "../convert/convert.h"
-#include "../filters/transform.h"
+#include "avisynth.h"
+#include "alignplanar.h"
 #include <streams.h>
 
 // For some reason KSDATAFORMAT_SUBTYPE_IEEE_FLOAT and KSDATAFORMAT_SUBTYPE_PCM doesn't work - we construct the GUID manually!
@@ -52,6 +50,7 @@ extern void ApplyMessage(PVideoFrame* frame, const VideoInfo& vi,
 
 /********************************************************************
 ********************************************************************/
+
 
 
 #include <evcode.h>

@@ -58,7 +58,7 @@ extern AVSFunction Audio_filters[], Combine_filters[], Convert_filters[],
                    Debug_filters[], Image_filters[], Turn_filters[], 
 									 Conditional_filters[], Conditional_funtions_filters[],
                    CPlugin_filters[], Cache_filters[],SSRC_filters[],
-                   SuperEq_filters[], Overlay_filters[];
+                   SuperEq_filters[], Overlay_filters[], Soundtouch_filters[];
                    
 
 AVSFunction* builtin_functions[] = {  
@@ -72,7 +72,8 @@ AVSFunction* builtin_functions[] = {
                    Debug_filters, Image_filters, Turn_filters,
 									 Conditional_filters, Conditional_funtions_filters,
                    Plugin_functions, CPlugin_filters, Cache_filters, 
-                   SSRC_filters, SuperEq_filters, Overlay_filters };
+                   SSRC_filters, SuperEq_filters, Overlay_filters,
+                   Soundtouch_filters };
 
 
 

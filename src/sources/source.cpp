@@ -39,7 +39,6 @@
 #include "../convert/convert.h"
 #include "../filters/transform.h"
 #include "avi_source.cpp"
-#include "directshow_source.h"
 
 #define PI 3.1415926535897932384626433832795
 #include <ctime>
@@ -548,7 +547,6 @@ AVSFunction Source_filters[] = {
   { "AVIFileSource", "s+[audio]b[pixel_type]s", AVISource::Create, (void*)1 },
   { "WAVSource", "s+", AVISource::Create, (void*)3 },
   { "OpenDMLSource", "s+[audio]b[pixel_type]s", AVISource::Create, (void*)2 },
-  { "DirectShowSource", "s+[fps]f[seek]b[audio]b[video]b", Create_DirectShowSource },
   { "SegmentedAVISource", "s+[audio]b[pixel_type]s", Create_SegmentedSource, (void*)0 },
   { "SegmentedDirectShowSource", "s+[fps]f", Create_SegmentedSource, (void*)1 },
   { "BlankClip", "[clip]c[length]i[width]i[height]i[pixel_type]s[fps]f[fps_denominator]i[audio_rate]i[stereo]b[sixteen_bit]b[color]i", Create_BlankClip },

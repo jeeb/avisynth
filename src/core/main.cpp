@@ -501,8 +501,12 @@ bool CAVIFileSynth::DelayInit() {
         error_msg = error.msg;
         AVSValue args[2] = { error.msg, 0xff3333 };
         static const char* arg_names[2] = { 0, "text_color" };
-        filter_graph = env->Invoke("MessageClip", AVSValue(args, 2), arg_names).AsClip();
-        vi = &filter_graph->GetVideoInfo();
+        try {
+          filter_graph = env->Invoke("MessageClip", AVSValue(args, 2), arg_names).AsClip();
+          vi = &filter_graph->GetVideoInfo();
+        } catch (AvisynthError) {
+          filter_graph = 0;
+        }
       }
 #endif
       delete[] szScriptName;
@@ -516,7 +520,7 @@ bool CAVIFileSynth::DelayInit() {
     catch (...) {
 	    _RPT0(1,"DelayInit() caught general exception!\n");
       _clear87();
-    __asm {emms};
+      __asm {emms};
       _control87( fp_state, 0xffffffff );
       return false;
     }

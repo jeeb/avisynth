@@ -46,11 +46,10 @@ enum { AVISYNTH_INTERFACE_VERSION = 2 };
    Moved from internal.h */
 
 // Win32 API macros, notably the types BYTE, DWORD, ULONG, etc. 
-#include <windef.h>  
+//#include <windef.h>  
 
 // COM interface macros
 #include <objbase.h>
-
 
 // Raster types used by VirtualDub & Avisynth
 #define in64 (__int64)(unsigned short)
@@ -649,7 +648,7 @@ enum {
                               //         will have anyway)
 };
 #define MAX_INT 0x7fffffff
-#define MIN_INT -0x7fffffff
+#define MIN_INT 0x80000000
 
 
 

@@ -53,7 +53,7 @@ BSC32=bscmake.exe
 # ADD BSC32 /nologo
 LINK32=link.exe
 # ADD BASE LINK32 kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib /nologo /dll /machine:I386
-# ADD LINK32 ../distrib/lib/pfc.lib ../distrib/lib/devil.lib ../distrib/lib/softwire.lib msacm32.lib quartz.lib ddraw.lib amstrmid.lib vfw32.lib kernel32.lib advapi32.lib version.lib user32.lib gdi32.lib ole32.lib uuid.lib winmm.lib strmbase.lib oleaut32.lib /nologo /dll /debug /machine:I386
+# ADD LINK32 ../distrib/lib/SoundTouch.lib ../distrib/lib/pfc.lib ../distrib/lib/devil.lib ../distrib/lib/softwire.lib msacm32.lib vfw32.lib kernel32.lib advapi32.lib version.lib user32.lib gdi32.lib ole32.lib uuid.lib winmm.lib oleaut32.lib /nologo /dll /debug /machine:I386
 # SUBTRACT LINK32 /pdb:none
 # Begin Custom Build
 InputPath=.\Release\avisynth.dll
@@ -93,7 +93,7 @@ BSC32=bscmake.exe
 # ADD BSC32 /nologo
 LINK32=link.exe
 # ADD BASE LINK32 kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib /nologo /dll /debug /machine:I386 /pdbtype:sept
-# ADD LINK32 ../distrib/lib/debug/pfc.lib ../distrib/lib/devil.lib ../distrib/lib/softwire.lib msacm32.lib quartz.lib ddraw.lib amstrmid.lib vfw32.lib kernel32.lib advapi32.lib version.lib user32.lib gdi32.lib ole32.lib uuid.lib winmm.lib strmbasd.lib oleaut32.lib /nologo /dll /debug /machine:I386 /pdbtype:sept
+# ADD LINK32 ../distrib/lib/debug/SoundTouchD.lib ../distrib/lib/debug/pfc.lib ../distrib/lib/devil.lib ../distrib/lib/softwire.lib msacm32.lib vfw32.lib kernel32.lib advapi32.lib version.lib user32.lib gdi32.lib ole32.lib uuid.lib winmm.lib oleaut32.lib /nologo /dll /debug /machine:I386 /pdbtype:sept
 # SUBTRACT LINK32 /pdb:none /incremental:no /nodefaultlib
 # Begin Special Build Tool
 SOURCE="$(InputPath)"
@@ -228,6 +228,14 @@ SOURCE=.\audio\audio.cpp
 # Begin Source File
 
 SOURCE=.\audio\audio.h
+# End Source File
+# Begin Source File
+
+SOURCE=".\audio\avs-soundtouch.cpp"
+# End Source File
+# Begin Source File
+
+SOURCE=".\audio\avs-soundtouch.h"
 # End Source File
 # Begin Source File
 
@@ -631,14 +639,6 @@ SOURCE=.\sources\avi\VD_misc.h
 
 SOURCE=.\sources\avi_source.cpp
 # PROP Exclude_From_Build 1
-# End Source File
-# Begin Source File
-
-SOURCE=.\sources\directshow_source.cpp
-# End Source File
-# Begin Source File
-
-SOURCE=.\sources\directshow_source.h
 # End Source File
 # Begin Source File
 

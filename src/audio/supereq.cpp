@@ -126,7 +126,6 @@ void __stdcall AVSsupereq::GetAudio(void* buf, __int64 start, __int64 count, ISc
       eqs[n]->equ_makeTable(bands,&paramroot,(double)last_srate);
   }
 
-  SFLOAT* DestSamples = (SFLOAT*)buf;
   bool buffer_full = false;
   int samples_filled = 0;
 

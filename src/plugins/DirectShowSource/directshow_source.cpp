@@ -33,7 +33,6 @@
 // import and export plugins, or graphical user interfaces.
  
 
-#include "stdafx.h"
 
 #include "directshow_source.h"
 
@@ -51,8 +50,6 @@ GetSample::GetSample(IScriptEnvironment* _env, bool _load_audio, bool _load_vide
     flushing = end_of_stream = false;
     memset(&vi, 0, sizeof(vi));
     sample_end_time = sample_start_time = 0;
-//    evtDoneWithSample = ::CreateEvent(NULL, FALSE, FALSE, (load_audio) ? "AVS_DoneWithSample_audio" : "AVS_DoneWithSample_video");
-//    evtNewSampleReady = ::CreateEvent(NULL, FALSE, FALSE, (load_audio) ? "AVS_NewSampleReady_audio" : "AVS_NewSampleReady_video");
     evtDoneWithSample = ::CreateEvent(NULL, FALSE, FALSE, NULL);
     evtNewSampleReady = ::CreateEvent(NULL, FALSE, FALSE, NULL);
   }
@@ -201,8 +198,6 @@ GetSample::GetSample(IScriptEnvironment* _env, bool _load_audio, bool _load_vide
       }
       wait_result = WaitForSingleObject(evtNewSampleReady, 1000);
     } while (wait_result == WAIT_TIMEOUT);
-//    } while (wait_result == WAIT_TIMEOUT && state == State_Running);
-//    WaitForSingleObject(evtNewSampleReady, INFINITE);   // Max wait for new sample 10 secs.
 
     if (load_audio) {
       _RPT0(0,"...NextSample() done waiting for new sample (audio)\n");
@@ -943,7 +938,7 @@ DirectShowSource::DirectShowSource(const char* filename, int _avg_time_per_frame
     PVideoFrame v = get_sample.GetCurrentFrame();
     if ((cur_frame!=n) && (n%10>4)) {
       env->MakeWritable(&v);
-      ApplyMessage(&v, vi, "Video Desync!",256,0xffffff,0,0,env);
+//      ApplyMessage(&v, vi, "Video Desync!",256,0xffffff,0,0,env);
     }
     return v;
   }
@@ -964,29 +959,29 @@ DirectShowSource::DirectShowSource(const char* filename, int _avg_time_per_frame
       } 
 
       if (start < next_sample) { // We are behind sync - pad with 0
-        int fill_nsamples  = min(next_sample - start, count);
+        int fill_nsamples  = (int)min(next_sample - start, count);
         // We cannot seek.
         if (vi.sample_type == SAMPLE_FLOAT) {
           float* samps = (float*)buf;
           for (int i = 0; i < fill_nsamples; i++)
             samps[i] = 0.0f;
         } else {
-          memset(buf,0, vi.BytesFromAudioSamples(fill_nsamples));
+          memset(buf,0, (unsigned int)vi.BytesFromAudioSamples(fill_nsamples));
         }
 
         if (fill_nsamples == count)  // Buffer is filled - return
           return;
         start += fill_nsamples;
         count -= fill_nsamples;
-        bytes_filled += vi.BytesFromAudioSamples(fill_nsamples);
+        bytes_filled += (int)vi.BytesFromAudioSamples(fill_nsamples);
       }
       if (start > next_sample) {  // Skip forward (decode)
         // Should we search?
-        int skip_left = start - next_sample;
+        int skip_left = (int)(start - next_sample);
         bool cont = !get_sample.IsEndOfStream();
         while (cont) {
           if (vi.AudioSamplesFromBytes(get_sample.a_sample_bytes) > skip_left) {
-            audio_bytes_read = vi.BytesFromAudioSamples(skip_left);
+            audio_bytes_read = (int)vi.BytesFromAudioSamples(skip_left);
             cont = false;
           }
           
@@ -995,7 +990,7 @@ DirectShowSource::DirectShowSource(const char* filename, int _avg_time_per_frame
           
           if (cont) {  // Read on
             get_sample.NextSample();
-            skip_left -= vi.AudioSamplesFromBytes(get_sample.a_sample_bytes);
+            skip_left -= (int)vi.AudioSamplesFromBytes(get_sample.a_sample_bytes);
             audio_bytes_read = 0;
           }
         } // end while
@@ -1004,7 +999,7 @@ DirectShowSource::DirectShowSource(const char* filename, int _avg_time_per_frame
     }
 
     BYTE* samples = (BYTE*)buf;
-    int bytes_left = vi.BytesFromAudioSamples(count);
+    int bytes_left = (int)vi.BytesFromAudioSamples(count);
 
     while (bytes_left) {
       // Can we read from the Directshow filter?
@@ -1026,7 +1021,7 @@ DirectShowSource::DirectShowSource(const char* filename, int _avg_time_per_frame
         } else { // Pad with 0
           if (vi.sample_type == SAMPLE_FLOAT) {
             float* samps = (float*)buf;
-            for (int i = 0; i < bytes_left/sizeof(float); i++)
+            for (int i = 0; i < (bytes_left/sizeof(float)); i++)
               samps[i] = 0.0f;
           } else {
             memset(&samples[bytes_filled],0,bytes_left);
@@ -1146,5 +1141,13 @@ AVSValue __cdecl Create_DirectShowSource(AVSValue args, void*, IScriptEnvironmen
   PClip ds_all =  env->Invoke("AudioDub",AVSValue(inv_args,2)).AsClip();
 
   return AlignPlanar::Create(ds_all);
+}
+
+
+
+extern "C" __declspec(dllexport) const char* __stdcall AvisynthPluginInit2(IScriptEnvironment* env)
+{
+    env->AddFunction("DirectShowSource", "s+[fps]f[seek]b[audio]b[video]b", Create_DirectShowSource, 0);
+    return "DirectShowSource";
 }
 

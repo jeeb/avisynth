@@ -153,13 +153,16 @@ void Cache::FillZeros(void* buf, int start_offset, int count) {
 
   if (vi.sample_type == SAMPLE_FLOAT) {
     float* samps = (float*)buf;
+    start_offset *= vi.AudioChannels();
+    count *= vi.AudioChannels();
+
     for (int i = start_offset; i < count; i++)
       samps[i] = 0.0f;
 
     } else {
       int bps = vi.BytesPerAudioSample();
       unsigned char* byte_buf = (unsigned char*)buf;
-      memset(byte_buf + start_offset*bps, 0, count * bps);
+      memset(byte_buf + start_offset * bps, 0, count * bps);
     }
 }
 
@@ -180,9 +183,8 @@ void __stdcall Cache::GetAudio(void* buf, __int64 start, __int64 count, IScriptE
     start = 0;
   }
 
-  if (start+count > vi.num_audio_samples) {  // Partial ending skip
-    __int64 end = start + count;
-    FillZeros(buf, vi.num_audio_samples - start, end - vi.num_audio_samples);  // Fill all samples after end with silence.
+  if (start+count >= vi.num_audio_samples) {  // Partial ending skip
+    FillZeros(buf, 0 , count);  // Fill all samples
     count = (vi.num_audio_samples - start);
   }
 
@@ -210,9 +212,9 @@ void __stdcall Cache::GetAudio(void* buf, __int64 start, __int64 count, IScriptE
 	if ( (start<cache_start) || (start>=cache_start+cache_count) ){ //first sample is before or behind cache -> restart cache
 	  _RPT0(0,"CA: Restart\n");
 
-		child->GetAudio(cache, start, count, env);
+		child->GetAudio(cache, start, maxsamplecount, env);
 		cache_start = start;
-		cache_count = count;
+		cache_count = maxsamplecount;
 	} else {	//at least start sample is in cache
 		if ( start + count > cache_start + cache_count ) {//cache is too short. Else all is already in the cache
 			if ((start - cache_start + count)>maxsamplecount) {	//cache shifting is necessary
