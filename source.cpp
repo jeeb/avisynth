@@ -40,9 +40,11 @@
 #include "transform.h"
 #include "AudioSource.h"
 #include "VD_Audio.h"
-
 #include "AVIReadHandler.h"
 
+// For some reason KSDATAFORMAT_SUBTYPE_IEEE_FLOAT and KSDATAFORMAT_SUBTYPE_PCM doesn't work - we construct the GUID manually!
+const GUID SUBTYPE_IEEE_AVSPCM  = {0x00000001, 0x0000, 0x0010, {0x80, 0x00, 0x00, 0xaa, 0x00, 0x38, 0x9b, 0x71}};
+const GUID SUBTYPE_IEEE_AVSFLOAT  = {0x00000003, 0x0000, 0x0010, {0x80, 0x00, 0x00, 0xaa, 0x00, 0x38, 0x9b, 0x71}};
 
 
 class AVISource : public IClip {
@@ -1068,6 +1070,8 @@ public:
     return E_NOTIMPL;
   }
 
+
+
   HRESULT __stdcall QueryAccept(const AM_MEDIA_TYPE* pmt) {
     if (!pmt) return E_POINTER;
 
@@ -1093,7 +1097,7 @@ public:
 
       WAVEFORMATEX* wex = (WAVEFORMATEX*)pmt->pbFormat;
 
-      if (wex->wFormatTag != WAVE_FORMAT_PCM) {
+      if ((wex->wFormatTag != WAVE_FORMAT_PCM) && (wex->wFormatTag != WAVE_FORMAT_EXTENSIBLE)) {
         _RPT0(0, "*** Audio: Secondary check rejected - Not PCM after all???\n");
         return S_FALSE;
       }
@@ -1112,6 +1116,34 @@ public:
         case 32:
           vi.sample_type = SAMPLE_INT32;
           break;
+        default:
+        _RPT0(0, "*** Audio: Unsupported number of bits per \n");
+        return S_FALSE;
+
+      }
+
+      if (wex->wFormatTag == WAVE_FORMAT_EXTENSIBLE) {
+        if (wex->cbSize < 22) {
+          _RPT0(0, "*** Audio: Extended wave format structure does not have the correct size!\n");
+          return S_FALSE;
+        }
+        // Override settings with extended data (float or >2 ch).
+        WAVEFORMATEXTENSIBLE* _wext =  (WAVEFORMATEXTENSIBLE*)pmt->pbFormat;
+        WAVEFORMATEXTENSIBLE wext =  *_wext;
+        
+        
+        if (wext.Samples.wValidBitsPerSample != wext.Format.wBitsPerSample) {  // FIXME:  Allow bit padding!
+          _RPT0(0, "*** Audio: Cannot accept sound, if ValidBitsPerSample != BitsPerSample!\n");
+          return S_FALSE;
+        }
+
+        if (wext.SubFormat == SUBTYPE_IEEE_AVSFLOAT) {  // We have float audio.
+          vi.sample_type = SAMPLE_FLOAT;
+        } else if (wext.SubFormat != SUBTYPE_IEEE_AVSPCM) {
+          _RPT0(0, "*** Audio: Extended WAVE format must be float or PCM.\n");
+          return S_FALSE;
+        }
+
       }
 
       vi.audio_samples_per_second = wex->nSamplesPerSec;

@@ -763,6 +763,7 @@ Compare::Compare(PClip _child1, PClip _child2, const char* channels, const char 
     framecount(0)
 {
   const VideoInfo& vi2 = child2->GetVideoInfo();
+  psnrs = 0;
 
   if (vi.pixel_type != vi2.pixel_type || vi.width != vi2.width || vi.height != vi2.height)
     env->ThrowError("Compare: incompatible clips");
@@ -839,7 +840,7 @@ Compare::~Compare()
     fprintf(log,"           Overall PSNR: %9.4f\n", PSNR_overall);
     fclose(log);
   }
-  delete[] psnrs;
+  if (psnrs) delete[] psnrs;
 }
 
 
