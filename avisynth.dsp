@@ -487,6 +487,14 @@ SOURCE=.\layer.h
 # End Source File
 # Begin Source File
 
+SOURCE=.\memcpy_amd.cpp
+# End Source File
+# Begin Source File
+
+SOURCE=.\memcpy_amd.h
+# End Source File
+# Begin Source File
+
 SOURCE=.\merge.cpp
 # End Source File
 # Begin Source File

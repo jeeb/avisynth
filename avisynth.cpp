@@ -38,6 +38,7 @@
 
 #include "internal.h"
 #include "script.h"
+#include "memcpy_amd.h"
 
 #ifdef _MSC_VER
   #define strnicmp(a,b,c) _strnicmp(a,b,c)
@@ -994,8 +995,13 @@ bool ScriptEnvironment::FunctionExists(const char* name) {
 }
 
 void BitBlt(BYTE* dstp, int dst_pitch, const BYTE* srcp, int src_pitch, int row_size, int height) {
+  if ( (!height)|| (!row_size)) return;
   if (GetCPUFlags() & CPUF_INTEGER_SSE) {
-    asm_BitBlt_ISSE(dstp,dst_pitch,srcp,src_pitch,row_size,height);
+    if (height == 1 || (src_pitch == dst_pitch == row_size)) {
+      memcpy_amd(dstp, srcp, row_size*height);
+    } else {
+      asm_BitBlt_ISSE(dstp,dst_pitch,srcp,src_pitch,row_size,height);
+    }
     return;
   } else if (GetCPUFlags() & CPUF_MMX) {
     asm_BitBlt_MMX(dstp,dst_pitch,srcp,src_pitch,row_size,height);
