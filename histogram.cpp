@@ -149,13 +149,14 @@ PVideoFrame Histogram::DrawMode5(int n, IScriptEnvironment* env) {
   BYTE* dstp = dst->GetWritePtr();
   int p = dst->GetPitch(PLANAR_Y);
 
-  memset(dstp, 16, imgSize);
-
-  imgSize = dst->GetHeight(PLANAR_U) * dst->GetPitch(PLANAR_U);
-  memset(dst->GetWritePtr(PLANAR_U) , 127, imgSize);
-  memset(dst->GetWritePtr(PLANAR_V), 127, imgSize);
-
   PVideoFrame src = child->GetFrame(n, env);
+  if ((src->GetHeight()<dst->GetHeight()) || (src->GetRowSize() < dst->GetRowSize())) {
+    memset(dstp, 16, imgSize);
+    int imgSizeU = dst->GetHeight(PLANAR_U) * dst->GetPitch(PLANAR_U);
+    memset(dst->GetWritePtr(PLANAR_U) , 127, imgSizeU);
+    memset(dst->GetWritePtr(PLANAR_V), 127, imgSizeU);
+  }
+
   env->BitBlt(dstp, dst->GetPitch(), src->GetReadPtr(), src->GetPitch(), src->GetRowSize(), src->GetHeight());
   env->BitBlt(dst->GetWritePtr(PLANAR_U), dst->GetPitch(PLANAR_U), src->GetReadPtr(PLANAR_U), src->GetPitch(PLANAR_U), src->GetRowSize(PLANAR_U), src->GetHeight(PLANAR_U));
   env->BitBlt(dst->GetWritePtr(PLANAR_V), dst->GetPitch(PLANAR_V), src->GetReadPtr(PLANAR_V), src->GetPitch(PLANAR_V), src->GetRowSize(PLANAR_V), src->GetHeight(PLANAR_V));
@@ -272,10 +273,13 @@ PVideoFrame Histogram::DrawMode2(int n, IScriptEnvironment* env) {
   PVideoFrame src = child->GetFrame(n, env);
 
   int imgSize = dst->GetHeight()*dst->GetPitch();
-  memset(p, 16, imgSize);
-  imgSize = dst->GetHeight(PLANAR_U) * dst->GetPitch(PLANAR_U);
-  memset(dst->GetWritePtr(PLANAR_U) , 127, imgSize);
-  memset(dst->GetWritePtr(PLANAR_V), 127, imgSize);
+
+  if (src->GetHeight()<dst->GetHeight()) {
+    memset(p, 16, imgSize);
+    int imgSizeU = dst->GetHeight(PLANAR_U) * dst->GetPitch(PLANAR_U);
+    memset(dst->GetWritePtr(PLANAR_U) , 127, imgSizeU);
+    memset(dst->GetWritePtr(PLANAR_V), 127, imgSizeU);
+  }
 
 
   env->BitBlt(p, dst->GetPitch(), src->GetReadPtr(), src->GetPitch(), src->GetRowSize(), src->GetHeight());
@@ -373,10 +377,12 @@ PVideoFrame Histogram::DrawMode1(int n, IScriptEnvironment* env) {
   PVideoFrame src = child->GetFrame(n, env);
 
   int imgSize = dst->GetHeight()*dst->GetPitch();
-  memset(p, 16, imgSize);
-  imgSize = dst->GetHeight(PLANAR_U) * dst->GetPitch(PLANAR_U);
-  memset(dst->GetWritePtr(PLANAR_U) , 127, imgSize);
-  memset(dst->GetWritePtr(PLANAR_V), 127, imgSize);
+  if (src->GetHeight()<dst->GetHeight()) {
+    memset(p, 16, imgSize);
+    int imgSizeU = dst->GetHeight(PLANAR_U) * dst->GetPitch(PLANAR_U);
+    memset(dst->GetWritePtr(PLANAR_U) , 127, imgSizeU);
+    memset(dst->GetWritePtr(PLANAR_V), 127, imgSizeU);
+  }
 
   env->BitBlt(p, dst->GetPitch(), src->GetReadPtr(), src->GetPitch(), src->GetRowSize(), src->GetHeight());
   if (vi.IsPlanar()) {
