@@ -907,20 +907,21 @@ public:
     DWORD pCapabilities = AM_SEEKING_CanGetCurrentPos;
     HRESULT canDo = ms->CheckCapabilities(&pCapabilities);
     if (canDo) {
-      HRESULT hr2 = ms->GetPositions(&pStop,&pCurrent);
+      HRESULT hr2 = ms->GetPositions(&pCurrent,&pStop);
     }
 
     pCapabilities = AM_SEEKING_CanSeekAbsolute;
     canDo = ms->CheckCapabilities(&pCapabilities);
 
     if (canDo) {
-       hr = ms->SetPositions(&pos, AM_SEEKING_AbsolutePositioning, 0, 0);
+       hr = ms->SetPositions(&pos, AM_SEEKING_AbsolutePositioning, &pStop,AM_SEEKING_NoPositioning);
     } else {
       pCapabilities = AM_SEEKING_CanSeekForwards;
       canDo = ms->CheckCapabilities(&pCapabilities);
       if (canDo && (pCurrent!=-1)) {
-        pCurrent-=pos;
-        hr = ms->SetPositions(&pCurrent, AM_SEEKING_RelativePositioning, 0, 0);
+        pCurrent = pos - pCurrent;
+        pStop = pos - pStop;
+        hr = ms->SetPositions(&pCurrent, AM_SEEKING_RelativePositioning, &pStop, AM_SEEKING_NoPositioning);
       } else {
         // No way of seeking
         ms->Release();
