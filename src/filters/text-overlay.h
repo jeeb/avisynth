@@ -99,16 +99,22 @@ class ShowSMPTE : public GenericVideoFilter
  **/
 {
 public:
-  ShowSMPTE(PClip _child, double _rate, IScriptEnvironment* env);
+  ShowSMPTE(PClip _child, double _rate, const char* _offset, int _x, int _y, const char _fontname[], int _size,
+			int _textcolor, int _halocolor, IScriptEnvironment* env);
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
 
   static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env);
 
-
 private:
   Antialiaser antialiaser;
   char rate;
+  const char* offset;
+  int offset_f;
+  const int size, x, y;
+  int textcolor, halocolor;
+  const char* const fontname;
   bool dropframe;
+  int off_f, off_sec, off_min, off_our;
 };
 
 
