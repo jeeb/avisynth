@@ -198,7 +198,8 @@ unsigned int Resampler_base::GetLatency()
 template<class REAL>
 class Upsampler : public Resampler_i_base<REAL>
 {
-  __int64 frqgcd,osf,fs1,fs2;
+  __int64 fs1;
+  int frqgcd,osf,fs2;
   REAL **stage1,*stage2;
   int n1,n1x,n1y,n2,n2b;
   int filter2len;
@@ -250,7 +251,7 @@ public:
 
 		frqgcd = gcd(sfrq,dfrq);
 
-		fs1 = sfrq / frqgcd * dfrq;
+		fs1 = (__int64)(sfrq / frqgcd) * (__int64)dfrq;
 
 		if (fs1/dfrq == 1) osf = 1;
 		else if (fs1/dfrq % 2 == 0) osf = 2;
