@@ -120,6 +120,7 @@ static AVSValue __cdecl Create_BicubicResize(AVSValue args, void*, IScriptEnviro
 // 09-14-2002 - Vlad59 - Lanczos3Resize - 
 static AVSValue __cdecl Create_Lanczos3Resize(AVSValue args, void*, IScriptEnvironment* env);
 
+static AVSValue __cdecl Create_Lanczos4Resize(AVSValue args, void*, IScriptEnvironment* env);
 
 
 

@@ -123,7 +123,38 @@ double Lanczos3Filter::f(double value)
 	}
 }
 
+/***********************
+ *** Lanczos4 filter ***
+ ***********************/
 
+double Lanczos4Filter::sinc(double value)
+{
+	if (value != 0.0)
+	{
+		value *= M_PI;
+		return sin(value) / value;
+	}
+	else
+	{
+		return 1.0;
+	}
+}
+
+double Lanczos4Filter::f(double value)
+{
+	if (value < 0.0)
+	{
+		value = -value;
+	}
+	if (value < 4.0)
+	{
+		return (sinc(value) * sinc(value / 4.0));
+	}
+	else
+	{
+		return 0.0;
+	}
+}
 
 
 /******************************

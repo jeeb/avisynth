@@ -113,6 +113,19 @@ private:
 	double sinc(double value);
 };
 
+// Lanczos4Resize
+class Lanczos4Filter : public ResamplingFunction
+/**
+  * Lanczos4 filter, used in Lanczos4Resize
+ **/
+{
+public:
+	double f(double x);
+	double support() { return 4.0; };
+
+private:
+	double sinc(double value);
+};
 
 
 int* GetResamplingPatternRGB(int original_width, double subrange_start, double subrange_width,
