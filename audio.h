@@ -125,6 +125,30 @@ private:
     { return pow(10.0, dB/10.0); }
 };
 
+class Normalize : public GenericVideoFilter 
+/**
+  * Normalize a clip's audio track
+ **/
+{
+public:
+  Normalize(PClip _child, double _left_factor, double _right_factor);
+  void __stdcall GetAudio(void* buf, int start, int count, IScriptEnvironment* env);
+
+  static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env);
+  static AVSValue __cdecl Create_dB(AVSValue args, void*, IScriptEnvironment* env);
+
+
+private:
+  int left_factor, right_factor;
+  int max_volume;
+
+  static inline short Saturate(int n) {
+    if (n <= -32768) return -32768;
+    if (n >= 32767) return 32767;
+    return (short)n;
+  }
+
+};
 
 
 class ResampleAudio : public GenericVideoFilter 

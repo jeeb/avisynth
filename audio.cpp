@@ -28,6 +28,7 @@ AVSFunction Audio_filters[] = {
   { "DelayAudio", "cf", DelayAudio::Create },
   { "AmplifydB", "cf[]f", Amplify::Create_dB },
   { "Amplify", "cf[]f", Amplify::Create },
+  { "Normalize", "c[left]f[right]f", Normalize::Create },
   { "ResampleAudio", "ci", ResampleAudio::Create },
   { "ConvertAudioTo16bit", "c", ConvertAudioTo16bit::Create },
   { 0 }
@@ -159,8 +160,65 @@ AVSValue __cdecl Amplify::Create_dB(AVSValue args, void*, IScriptEnvironment* en
 }
 
 
+/*****************************
+ ***** Normalize audio  ******
+******************************/
 
 
+Normalize::Normalize(PClip _child, double _left_factor, double _right_factor)
+  : GenericVideoFilter(ConvertAudioTo16bit::Create(_child)),
+    left_factor(int(_left_factor*65536+.5)),
+    right_factor(int(_right_factor*65536+.5)) {
+  max_volume=-1;
+  }
+
+
+void __stdcall Normalize::GetAudio(void* buf, int start, int count, IScriptEnvironment* env) 
+{
+  short* samples = (short*)buf;
+  if (max_volume==-1) {
+    int passes=vi.num_audio_samples/count;
+    int num_samples=count;
+    if (vi.stereo) num_samples*=2;
+    // Read samples into buffer and test them
+    for (int i=0;i<passes;i++) {
+        child->GetAudio(buf, num_samples*i, count, env);
+        for (int i=0;i<num_samples;i++) {
+          max_volume=max(abs(samples[i]),max_volume);
+        }
+    }     
+    // Remaining samples
+    int rem_samples=vi.num_audio_samples%count;
+    if (vi.stereo) rem_samples*=2;
+    child->GetAudio(buf, num_samples*passes, rem_samples, env);
+    for (i=0;i<rem_samples;i++) {
+      max_volume=max(abs(samples[i]),max_volume);
+    }
+
+    double volume=32767.0/(double)max_volume;
+    left_factor=(int)((double)left_factor*volume);
+    right_factor=(int)((double)right_factor*volume);
+  } 
+  child->GetAudio(buf, start, count, env); 
+  if (vi.stereo) {
+    for (int i=0; i<count; ++i) {
+      samples[i*2] = Saturate(int(Int32x32To64(samples[i*2],left_factor) >> 16));
+      samples[i*2+1] = Saturate(int(Int32x32To64(samples[i*2+1],right_factor) >> 16));
+    }
+  } 
+  else {
+    for (int i=0; i<count; ++i)
+      samples[i] = int(Int32x32To64(samples[i],left_factor) >> 16);
+  }
+}
+
+
+AVSValue __cdecl Normalize::Create(AVSValue args, void*, IScriptEnvironment* env) 
+{
+  double left_factor = args[1].AsFloat(1.0);
+  double right_factor = args[2].AsFloat(left_factor);
+  return new Normalize(args[0].AsClip(), left_factor, right_factor);
+}
 
 
 
