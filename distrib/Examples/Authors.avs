@@ -4,6 +4,7 @@ ovText = "AviSynth Authors:"+chr(13)+
 	\ "Klaus Post"+chr(13)+
 	\ "Richard Berg"+chr(13)+
 	\ "Dividee"+chr(13)+
+	\ "Ian Brabham"+chr(13)+
 	\ "David Pierre"+chr(13)+chr(13)+
 	\ "Documentation:"+chr(13)+
 	\ "----------------------------"+chr(13)+
