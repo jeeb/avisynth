@@ -57,7 +57,7 @@ extern AVSFunction Audio_filters[], Combine_filters[], Convert_filters[],
                    Transform_filters[], Merge_filters[], Color_filters[],
                    Debug_filters[], Image_filters[], Turn_filters[], 
 									 Conditional_filters[], Conditional_funtions_filters[],
-                   CPlugin_filters[];
+                   CPlugin_filters[], Cache_filters[];
                    
 
 AVSFunction* builtin_functions[] = {  
@@ -70,7 +70,7 @@ AVSFunction* builtin_functions[] = {
                    Transform_filters, Merge_filters, Color_filters, 
                    Debug_filters, Image_filters, Turn_filters,
 									 Conditional_filters, Conditional_funtions_filters,
-                   Plugin_functions, CPlugin_filters };
+                   Plugin_functions, CPlugin_filters, Cache_filters };
 
 
 

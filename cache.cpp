@@ -37,6 +37,11 @@
 
 #include "cache.h"
 
+AVSFunction Cache_filters[] = {
+  { "InternalCache", "c", Cache::Create_Cache },                    
+  { 0 }
+};
+
 
 /*******************************
  *******   Cache filter   ******
