@@ -33,7 +33,7 @@ AVSFunction Transform_filters[] = {
                                                   //  left, top, -right, -bottom (VDub style)
   { "CropBottom", "ci", Create_CropBottom },      // bottom amount
   { "AddBorders", "ciiii", AddBorders::Create },  // left, top, right, bottom
-  { "Letterbox", "cii", Create_Letterbox },       // top, bottom
+  { "Letterbox", "cii[x1]i[x2]i", Create_Letterbox },       // top, bottom, [left], [right]
   { 0 }
 };
 
@@ -226,8 +226,15 @@ AVSValue __cdecl Create_Letterbox(AVSValue args, void*, IScriptEnvironment* env)
   PClip clip = args[0].AsClip();
   int top = args[1].AsInt();
   int bot = args[2].AsInt();
+  int left = args[3].AsInt(0);
+  int right = args[4].AsInt(0);
   const VideoInfo& vi = clip->GetVideoInfo();
-  return new AddBorders(0, top, 0, bot, new Crop(0, top, vi.width, vi.height-top-bot, clip, env));
+  if (vi.IsYUY2() && (left&1))
+    env->ThrowError("LetterBox: Width must be divideable with 2 (Left side)");
+  if (vi.IsYUY2() && (right&1))
+    env->ThrowError("LetterBox: Width must be divideable with 2 (Right side)");
+
+  return new AddBorders(left, top, right, bot, new Crop(left, top, vi.width-left-right, vi.height-top-bot, clip, env));
 }
 
 
