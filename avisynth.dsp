@@ -44,7 +44,7 @@ RSC=rc.exe
 # PROP Ignore_Export_Lib 0
 # PROP Target_Dir ""
 # ADD BASE CPP /nologo /MT /W3 /GX /O2 /D "WIN32" /D "NDEBUG" /D "_WINDOWS" /D "_MBCS" /D "_USRDLL" /D "AVISYNTH_EXPORTS" /YX /FD /c
-# ADD CPP /nologo /G6 /MD /W3 /GX /Ot /Og /Oi /Op- /Oy /Ob1 /Gy /D "NDEBUG" /D "INC_OLE2" /D "STRICT" /D "WIN32" /D "_WIN32" /D "_MT" /D "_DLL" /D "_MBCS" /D "_USRDLL" /D "AVISYNTH_EXPORTS" /YX /FD /Gs /GF /c
+# ADD CPP /nologo /G6 /MD /W3 /GX /Ot /Og /Oi /Oy /Ob1 /Gy /D "NDEBUG" /D "INC_OLE2" /D "STRICT" /D "WIN32" /D "_WIN32" /D "_MT" /D "_DLL" /D "_MBCS" /D "_USRDLL" /D "AVISYNTH_EXPORTS" /YX /FD /Gs /GF /c
 # SUBTRACT CPP /Ox /Os /Fr
 # ADD BASE MTL /nologo /D "NDEBUG" /mktyplib203 /win32
 # ADD MTL /nologo /D "NDEBUG" /mktyplib203 /win32
@@ -254,42 +254,6 @@ SOURCE=.\source.cpp
 # Begin Group "Filters"
 
 # PROP Default_Filter ""
-# Begin Group "Decomb"
-
-# PROP Default_Filter ""
-# Begin Source File
-
-SOURCE=.\decimate.cpp
-# End Source File
-# Begin Source File
-
-SOURCE=.\decimate.h
-# End Source File
-# Begin Source File
-
-SOURCE=.\decomb.cpp
-# End Source File
-# Begin Source File
-
-SOURCE=.\decomb.h
-# End Source File
-# Begin Source File
-
-SOURCE=.\fielddeinterlace.cpp
-# End Source File
-# Begin Source File
-
-SOURCE=.\fielddeinterlace.h
-# End Source File
-# Begin Source File
-
-SOURCE=.\Telecide.cpp
-# End Source File
-# Begin Source File
-
-SOURCE=.\telecide.h
-# End Source File
-# End Group
 # Begin Group "Original"
 
 # PROP Default_Filter ""
@@ -514,26 +478,6 @@ SOURCE=.\merge.cpp
 # Begin Source File
 
 SOURCE=.\merge.h
-# End Source File
-# Begin Source File
-
-SOURCE=.\scene_change.cpp
-# PROP Exclude_From_Build 1
-# End Source File
-# Begin Source File
-
-SOURCE=.\scene_change.h
-# PROP Exclude_From_Build 1
-# End Source File
-# Begin Source File
-
-SOURCE=.\tempsmoother.cpp
-# PROP Exclude_From_Build 1
-# End Source File
-# Begin Source File
-
-SOURCE=.\tempsmoother.h
-# PROP Exclude_From_Build 1
 # End Source File
 # End Group
 # End Group
