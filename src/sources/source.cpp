@@ -46,6 +46,10 @@
 /********************************************************************
 ********************************************************************/
 
+enum {
+    COLOR_MODE_RGB = 0,
+    COLOR_MODE_YUV
+};
 
 class StaticImage : public IClip {
   const VideoInfo vi;
@@ -64,7 +68,7 @@ public:
 };
 
 
-static PVideoFrame CreateBlankFrame(const VideoInfo& vi, int color, int coloryuv, IScriptEnvironment* env) {
+static PVideoFrame CreateBlankFrame(const VideoInfo& vi, int color, int mode, IScriptEnvironment* env) {
 
   if (!vi.HasVideo()) return 0;
 
@@ -73,7 +77,7 @@ static PVideoFrame CreateBlankFrame(const VideoInfo& vi, int color, int coloryuv
   int size = frame->GetPitch() * frame->GetHeight();
 
   if (vi.IsYV12()) {
-    int color_yuv =(coloryuv >= 0) ? coloryuv : RGB2YUV(color);
+    int color_yuv =(mode == COLOR_MODE_YUV) ? color : RGB2YUV(color);
     int Cval = (color_yuv>>16)&0xff;
     Cval |= (Cval<<8)|(Cval<<16)|(Cval<<24);
     for (int i=0; i<size; i+=4)
@@ -91,7 +95,7 @@ static PVideoFrame CreateBlankFrame(const VideoInfo& vi, int color, int coloryuv
     for (i=0; i<size; i+=4)
       *(unsigned*)(p+i) = Cval;
   } else if (vi.IsYUY2()) {
-    int color_yuv =(coloryuv >= 0) ? coloryuv : RGB2YUV(color);
+    int color_yuv =(mode == COLOR_MODE_YUV) ? color : RGB2YUV(color);
     unsigned d = ((color_yuv>>16)&255) * 0x010001 + ((color_yuv>>8)&255) * 0x0100 + (color_yuv&255) * 0x01000000;
     for (int i=0; i<size; i+=4)
       *(unsigned*)(p+i) = d;
@@ -170,15 +174,19 @@ static AVSValue __cdecl Create_BlankClip(AVSValue args, void*, IScriptEnvironmen
   vi.num_audio_samples = vi.AudioSamplesFromFrames(vi.num_frames);
 
   int color = args[10].AsInt(0);
+  int mode = COLOR_MODE_RGB;
   if (args[11].Defined()) {
-	if (color != 0)
+	if (color != 0) // Not quite 100% test
 	  env->ThrowError("BlankClip: color and color_yuv are mutually exclusive");
 	if (!vi.IsYUV())
 	  env->ThrowError("BlankClip: color_yuv only valid for YUV color spaces");
+    color = args[11].AsInt();
+    mode=COLOR_MODE_YUV;
+	if ((unsigned)color > 0xffffff)
+	  env->ThrowError("BlankClip: color_yuv must be between 0 and %d($ffffff)", 0xffffff);
   }
-  int coloryuv = args[11].AsInt(-1);
 
-  return new StaticImage(vi, CreateBlankFrame(vi, color, coloryuv, env));
+  return new StaticImage(vi, CreateBlankFrame(vi, color, mode, env));
 }
 
 
@@ -219,7 +227,7 @@ PClip Create_MessageClip(const char* message, int width, int height, int pixel_t
   vi.fps_denominator = 1;
   vi.num_frames = 240;
 
-  PVideoFrame frame = CreateBlankFrame(vi, bgcolor, -1, env);
+  PVideoFrame frame = CreateBlankFrame(vi, bgcolor, COLOR_MODE_RGB, env);
   ApplyMessage(&frame, vi, message, size, textcolor, halocolor, bgcolor, env);
   return new StaticImage(vi, frame);
 };
