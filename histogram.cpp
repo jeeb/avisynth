@@ -89,15 +89,23 @@ Histogram::Histogram(PClip _child, int _mode, IScriptEnvironment* env)
       env->ThrowError("Histogram: Luma mode only available in YUV.");
   }
 
-  if (mode == 4) {
+  if ((mode == 4)||(mode==5)) {
     if (!vi.HasVideo()) {
+      mode = 4; // force mode to 4.
       vi.fps_numerator = 25;
       vi.fps_denominator = 1;
       vi.num_frames = vi.FramesFromAudioSamples(vi.num_audio_samples);
     }
-    vi.pixel_type = VideoInfo::CS_YV12;
-    vi.height = 512;
-    vi.width = 512;
+    if (mode == 5)  {
+      vi.height = max(512, vi.height);
+      vi.width = max(512, vi.width);
+      if(!vi.IsYV12())
+        env->ThrowError("Histogram: StereoOverlay must be YV12");
+    } else {
+      vi.pixel_type = VideoInfo::CS_YV12;
+      vi.height = 512;
+      vi.width = 512;
+    }
     if (!vi.HasAudio())
       env->ThrowError("Histogram: Stereo mode requires samples!");
     if (vi.AudioChannels() != 2)
@@ -120,15 +128,74 @@ PVideoFrame __stdcall Histogram::GetFrame(int n, IScriptEnvironment* env)
     return DrawMode3(n, env);
   case 4:
     return DrawMode4(n, env);
+  case 5:
+    return DrawMode5(n, env);
   }
   return DrawMode0(n, env);
 }
 
+
+PVideoFrame Histogram::DrawMode5(int n, IScriptEnvironment* env) {
+  PVideoFrame dst = env->NewVideoFrame(vi);
+
+  __int64 start = vi.AudioSamplesFromFrames(n); 
+  __int64 end = vi.AudioSamplesFromFrames(n+1); 
+  __int64 count = end-start;
+  signed short* samples = new signed short[(int)count*vi.AudioChannels()];
+
+  int w = dst->GetRowSize();
+  int h = dst->GetHeight();
+  int imgSize = h*dst->GetPitch();
+  BYTE* dstp = dst->GetWritePtr();
+  int p = dst->GetPitch(PLANAR_Y);
+
+  memset(dstp, 16, imgSize);
+
+  imgSize = dst->GetHeight(PLANAR_U) * dst->GetPitch(PLANAR_U);
+  memset(dst->GetWritePtr(PLANAR_U) , 127, imgSize);
+  memset(dst->GetWritePtr(PLANAR_V), 127, imgSize);
+
+  PVideoFrame src = child->GetFrame(n, env);
+  env->BitBlt(dstp, dst->GetPitch(), src->GetReadPtr(), src->GetPitch(), src->GetRowSize(), src->GetHeight());
+  env->BitBlt(dst->GetWritePtr(PLANAR_U), dst->GetPitch(PLANAR_U), src->GetReadPtr(PLANAR_U), src->GetPitch(PLANAR_U), src->GetRowSize(PLANAR_U), src->GetHeight(PLANAR_U));
+  env->BitBlt(dst->GetWritePtr(PLANAR_V), dst->GetPitch(PLANAR_V), src->GetReadPtr(PLANAR_V), src->GetPitch(PLANAR_V), src->GetRowSize(PLANAR_V), src->GetHeight(PLANAR_V));
+
+  BYTE* _dstp = dstp;
+  for (int iY = 0; iY<512; iY++) {
+    for (int iX = 0; iX<512; iX++) {
+      _dstp[iX] >>= 1;
+    }
+    _dstp+=p;
+  }
+
+  aud_clip->GetAudio(samples, max(0,start), count, env);
+  
+  int c = (int)count;
+  for (int i=1; i < count;i++) {
+    int l1 = (int)samples[i*2-2];
+    int r1 = (int)samples[i*2-1];
+    int l2 = (int)samples[i*2];
+    int r2 = (int)samples[i*2+1];
+    for (int s = 0 ; s < 8; s++) {  // 8 times supersampling (linear)
+      int l = (l1*s) + (l2*(8-s));
+      int r = (r1*s) + (r2*(8-s));
+      int y = 256+((l+r)>>11);
+      int x = 256+((l-r)>>11);
+      int v = dstp[x+y*p]+48;
+      dstp[x+y*p] = min(v,235);
+    }
+  }
+
+  delete[] samples;
+  return dst;
+}
+
+
 PVideoFrame Histogram::DrawMode4(int n, IScriptEnvironment* env) {
   PVideoFrame src = env->NewVideoFrame(vi);
   env->MakeWritable(&src);
-  __int64 start = vi.AudioSamplesFromFrames(n);  // We include the previous
-  __int64 end = vi.AudioSamplesFromFrames(n+1); // And the next frame
+  __int64 start = vi.AudioSamplesFromFrames(n); 
+  __int64 end = vi.AudioSamplesFromFrames(n+1); 
   __int64 count = end-start;
   signed short* samples = new signed short[(int)count*vi.AudioChannels()];
 
@@ -158,7 +225,7 @@ PVideoFrame Histogram::DrawMode4(int n, IScriptEnvironment* env) {
 
   if (vi.IsPlanar()) {
     srcp = src->GetWritePtr(PLANAR_U);
-    imgSize = src->GetHeight(PLANAR_U) * src->GetRowSize(PLANAR_U);
+    imgSize = src->GetHeight(PLANAR_U) * src->GetPitch(PLANAR_U);
     memset(srcp, 127, imgSize);
     srcp = src->GetWritePtr(PLANAR_V);
     memset(srcp, 127, imgSize);
@@ -190,7 +257,7 @@ PVideoFrame Histogram::DrawMode3(int n, IScriptEnvironment* env) {
   }
   if (vi.IsPlanar()) {
     srcp = src->GetWritePtr(PLANAR_U);
-    imgsize = src->GetHeight(PLANAR_U) * src->GetRowSize(PLANAR_U);
+    imgsize = src->GetHeight(PLANAR_U) * src->GetPitch(PLANAR_U);
     memset(srcp, 127, imgsize);
     srcp = src->GetWritePtr(PLANAR_V);
     memset(srcp, 127, imgsize);
@@ -198,10 +265,19 @@ PVideoFrame Histogram::DrawMode3(int n, IScriptEnvironment* env) {
   return src;
 }
 
+
 PVideoFrame Histogram::DrawMode2(int n, IScriptEnvironment* env) {
   PVideoFrame dst = env->NewVideoFrame(vi);
   BYTE* p = dst->GetWritePtr();
   PVideoFrame src = child->GetFrame(n, env);
+
+  int imgSize = dst->GetHeight()*dst->GetPitch();
+  memset(p, 16, imgSize);
+  imgSize = dst->GetHeight(PLANAR_U) * dst->GetPitch(PLANAR_U);
+  memset(dst->GetWritePtr(PLANAR_U) , 127, imgSize);
+  memset(dst->GetWritePtr(PLANAR_V), 127, imgSize);
+
+
   env->BitBlt(p, dst->GetPitch(), src->GetReadPtr(), src->GetPitch(), src->GetRowSize(), src->GetHeight());
   if (vi.IsPlanar()) {
     env->BitBlt(dst->GetWritePtr(PLANAR_U), dst->GetPitch(PLANAR_U), src->GetReadPtr(PLANAR_U), src->GetPitch(PLANAR_U), src->GetRowSize(PLANAR_U), src->GetHeight(PLANAR_U));
@@ -295,6 +371,13 @@ PVideoFrame Histogram::DrawMode1(int n, IScriptEnvironment* env) {
   PVideoFrame dst = env->NewVideoFrame(vi);
   BYTE* p = dst->GetWritePtr();
   PVideoFrame src = child->GetFrame(n, env);
+
+  int imgSize = dst->GetHeight()*dst->GetPitch();
+  memset(p, 16, imgSize);
+  imgSize = dst->GetHeight(PLANAR_U) * dst->GetPitch(PLANAR_U);
+  memset(dst->GetWritePtr(PLANAR_U) , 127, imgSize);
+  memset(dst->GetWritePtr(PLANAR_V), 127, imgSize);
+
   env->BitBlt(p, dst->GetPitch(), src->GetReadPtr(), src->GetPitch(), src->GetRowSize(), src->GetHeight());
   if (vi.IsPlanar()) {
     env->BitBlt(dst->GetWritePtr(PLANAR_U), dst->GetPitch(PLANAR_U), src->GetReadPtr(PLANAR_U), src->GetPitch(PLANAR_U), src->GetRowSize(PLANAR_U), src->GetHeight(PLANAR_U));
@@ -545,6 +628,9 @@ AVSValue __cdecl Histogram::Create(AVSValue args, void*, IScriptEnvironment* env
 
   if (!lstrcmpi(st_m, "stereo"))
     mode = 4;
+
+  if (!lstrcmpi(st_m, "stereooverlay"))
+    mode = 5;
 
   return new Histogram(args[0].AsClip(), mode, env);
 }
