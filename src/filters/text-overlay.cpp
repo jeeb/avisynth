@@ -138,22 +138,26 @@ void Antialiaser::Apply( const VideoInfo& vi, PVideoFrame* frame, int pitch, int
     ApplyYV12((*frame)->GetWritePtr(), pitch, textcolor, halocolor, (*frame)->GetPitch(PLANAR_U),(*frame)->GetWritePtr(PLANAR_U),(*frame)->GetWritePtr(PLANAR_V));
 }
 
-void Antialiaser::ApplyYV12(BYTE* buf, int pitch, int textcolor, int halocolor, int pitchUV,BYTE* bufU,BYTE* bufV) {
+void Antialiaser::ApplyYV12(BYTE* buf, int pitch, int textcolor, int halocolor, int pitchUV, BYTE* bufU, BYTE* bufV) {
   if (dirty) GetAlphaRect();
   int Ytext = ((textcolor>>16)&255), Utext = ((textcolor>>8)&255), Vtext = (textcolor&255);
   int Yhalo = ((halocolor>>16)&255), Uhalo = ((halocolor>>8)&255), Vhalo = (halocolor&255);
-  int w2=w*2;
+  int w2 = w*2;
   char* alpha = alpha_bits;
-  for (int y=0; y<(h>>1); y++) {
-    for (int x=0; x<w; x+=2) {
-      if (*(__int32*)&alpha[x*2] || *(__int32*)&alpha[x*2+w2]) {
-        buf[x+0] = (buf[x+0] * (64-alpha[x*2+0]-alpha[x*2+1]) + Ytext * alpha[x*2+0] + Yhalo * alpha[x*2+1]) >> 6;
-        buf[x+1] = (buf[x+1] * (64-alpha[x*2+2]-alpha[x*2+3]) + Ytext * alpha[x*2+2] + Yhalo * alpha[x*2+3]) >> 6;
-        buf[x+0+pitch] = (buf[x+0+pitch] * (64-alpha[x*2+0+((w2))]-alpha[x*2+1+(w2)]) + Ytext * alpha[x*2+0+(w2)] + Yhalo * alpha[x*2+1+(w2)]) >> 6;
-        buf[x+1+pitch] = (buf[x+1+pitch] * (64-alpha[x*2+2+(w2)]-alpha[x*2+3+(w2)]) + Ytext * alpha[x*2+2+(w2)] + Yhalo * alpha[x*2+3+(w2)]) >> 6;
+  int h_half = h/2;
 
-        int auv1 = (alpha[x*2]+alpha[x*2+2]+alpha[x*2+(w2)]+alpha[x*2+2+(w2)])>>1;
-        int auv2 = (alpha[x*2+1]+alpha[x*2+3]+alpha[x*2+1+(w2)]+alpha[x*2+3+(w2)])>>1;
+  for (int y=0; y<h_half; y++) {
+    for (int x=0; x<w; x+=2) {
+      int x2 = x<<1;  // Supersampled (alpha) x position.
+      if (*(__int32*)&alpha[x2] || *(__int32*)&alpha[x2+w2]) {
+        buf[x+0] = (buf[x+0] * (64-alpha[x2+0]-alpha[x2+1]) + Ytext * alpha[x2+0] + Yhalo * alpha[x2+1]) >> 6;
+        buf[x+1] = (buf[x+1] * (64-alpha[x2+2]-alpha[x2+3]) + Ytext * alpha[x2+2] + Yhalo * alpha[x2+3]) >> 6;
+
+        buf[x+0+pitch] = (buf[x+0+pitch] * (64-alpha[x2+0+((w2))]-alpha[x2+1+(w2)]) + Ytext * alpha[x2+0+w2] + Yhalo * alpha[x2+1+w2]) >> 6;
+        buf[x+1+pitch] = (buf[x+1+pitch] * (64-alpha[x2+2+(w2)]-alpha[x2+3+(w2)]) + Ytext * alpha[x2+2+w2] + Yhalo * alpha[x2+3+w2]) >> 6;
+
+        int auv1 = (alpha[x2] + alpha[x2+2] + alpha[x2+w2] + alpha[x2+2+w2]) >> 1;
+        int auv2 = (alpha[x2+1] + alpha[x2+3] + alpha[x2+1+w2] + alpha[x2+3+w2]) >> 1;
 
         bufU[x>>1] = (bufU[x>>1] * (128-auv1-auv2) + Utext * auv1 + Uhalo * auv2) >> 7;
         bufV[x>>1] = (bufV[x>>1] * (128-auv1-auv2) + Vtext * auv1 + Vhalo * auv2) >> 7;
@@ -805,15 +809,21 @@ Compare::Compare(PClip _child1, PClip _child2, const char* channels, const char 
   const VideoInfo& vi2 = child2->GetVideoInfo();
   psnrs = 0;
 
-  if (vi.pixel_type != vi2.pixel_type || vi.width != vi2.width || vi.height != vi2.height)
-    env->ThrowError("Compare: incompatible clips");
+  if (!vi.IsSameColorspace(vi2))
+    env->ThrowError("Compare: Clips are not same colorspace.");
+
+  if (vi.width != vi2.width || vi.height != vi2.height)
+    env->ThrowError("Compare: Clips must have same size.");
+
+  if (!(vi.IsRGB24() || vi.IsYUY2() || vi.IsRGB32()))
+    env->ThrowError("Compare: Clips have unknown format. RGB24, RGB32 and YUY2 supported.");
 
   if (channels[0] == 0) {
     if (vi.IsRGB32() || vi.IsRGB24())
       channels = "RGB";
     else if (vi.IsYUY2())
       channels = "YUV";
-    else env->ThrowError("Compare: clips have unknown format");
+    else env->ThrowError("Compare: Clips have unknown format. RGB24, RGB32 and YUY2 supported.");
   }
 
   mask = 0;

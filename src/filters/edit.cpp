@@ -511,7 +511,7 @@ void Dissolve::GetAudio(void* buf, __int64 start, __int64 count, IScriptEnvironm
           a[i+p] = b[i+p];
         } else if (numerator < denominator) {
           SFLOAT w = numerator / denominator;  // How far into the fade are we?
-          a[i+p] = b[i+p] * w + ((1.0 - w) * a[i+p]);
+          a[i+p] = b[i+p] + w * (a[i+p]-b[i+p]);
         }
         numerator--;
       }
