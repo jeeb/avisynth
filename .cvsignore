@@ -1,0 +1,11 @@
+*.aps
+*.dsw
+*.ncb
+*.opt
+*.plg
+Package
+Profile
+$(SystemRoot)
+Debug
+Release
+Temp
