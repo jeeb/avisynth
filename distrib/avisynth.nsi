@@ -3,9 +3,9 @@
 !packhdr "avisynth.dat" "upx.exe --best avisynth.dat" 
 
 
-!DEFINE VERSION 2.5.1
+!DEFINE VERSION 2.5.2
 
-!DEFINE DATE 150503
+!DEFINE DATE 010603
 
 
 
@@ -57,6 +57,11 @@ ClearErrors
   SetOutPath $SYSDIR
   File "..\release\AviSynth.dll"
 	File "bin\devil.dll"
+
+IfFileExists "$SYSDIR\msvcp60.dll" msvc60_exists
+  File "bin\msvcp60.dll"
+msvc60_exists:
+
 IfErrors dll_not_ok
 
   SetOutPath $INSTDIR
