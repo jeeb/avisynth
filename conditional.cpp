@@ -37,16 +37,18 @@
 
 #include "conditional.h"
 #include "scriptparser.h"
+#include "text-overlay.h"
+
 
 AVSFunction Conditional_filters[] = {
-  {  "ConditionalFilter","cccsss", ConditionalFilter::Create },
+  {  "ConditionalFilter","cccsss[show]b", ConditionalFilter::Create },
   { 0 }
 };
 
 
-ConditionalFilter::ConditionalFilter(PClip _child, PClip _source1, PClip _source2, AVSValue  _condition1, AVSValue  _evaluator, AVSValue  _condition2 , IScriptEnvironment* env) :
+ConditionalFilter::ConditionalFilter(PClip _child, PClip _source1, PClip _source2, AVSValue  _condition1, AVSValue  _evaluator, AVSValue  _condition2, bool _show, IScriptEnvironment* env) :
 	GenericVideoFilter(_child), source1(_source1), source2(_source2),
-	eval1(_condition1), eval2(_condition2) {
+	eval1(_condition1), eval2(_condition2), show(_show) {
 
 		if (lstrcmpi(_evaluator.AsString(), "equals") == 0 || lstrcmpi(_evaluator.AsString(), "=") == 0 || lstrcmpi(_evaluator.AsString(), "==") == 0)
 			evaluator = EQUALS;
@@ -56,9 +58,10 @@ ConditionalFilter::ConditionalFilter(PClip _child, PClip _source1, PClip _source
 			evaluator = LESSTHAN;
 		if (!evaluator)
 			env->ThrowError("ConditionalFilter: Evaluator could not be recognized!");
-
-
 	}
+
+const char* t_TRUE="TRUE";
+const char* t_FALSE="FALSE";
 
 
 PVideoFrame __stdcall ConditionalFilter::GetFrame(int n, IScriptEnvironment* env) {
@@ -78,8 +81,8 @@ PVideoFrame __stdcall ConditionalFilter::GetFrame(int n, IScriptEnvironment* env
 
 	int e1 = 0;
 	int e2 = 0;
-	int f1 = 0.0f;
-	int f2 = 0.0f;
+	float f1 = 0.0f;
+	float f2 = 0.0f;
 
 	if (e1_result.IsInt() || e1_result.IsBool()) {
 		test_int = true;
@@ -120,6 +123,31 @@ PVideoFrame __stdcall ConditionalFilter::GetFrame(int n, IScriptEnvironment* env
 			if (f1 < f2) state = true;		
 	}
 
+	if (show) {
+      char text[400];
+			if (test_int) {
+				sprintf(text,
+					"Left side Conditional Result:%i\n"
+					"Right side Conditional Result:%i\n"
+					"Evaluate result: %s\n",
+					e1, e2, (state) ? t_TRUE : t_FALSE
+				);
+			} else {
+				sprintf(text,
+					"Left side Conditional Result:%7.4f\n"
+					"Right side Conditional Result:%7.4f\n"
+					"Evaluate result: %s\n", 
+					f1, f2, (state) ? t_TRUE : t_FALSE
+				);
+			}
+
+			PVideoFrame dst = (state) ? source1->GetFrame(n,env) : source2->GetFrame(n,env);
+			env->MakeWritable(&dst);
+			ApplyMessage(&dst, vi, text, vi.width/4, 0xa0a0a0,0,0 , env );
+
+		return dst;
+	}
+
 	if (state) 
 		return source1->GetFrame(n,env);
 	
@@ -129,6 +157,6 @@ PVideoFrame __stdcall ConditionalFilter::GetFrame(int n, IScriptEnvironment* env
 
 AVSValue __cdecl ConditionalFilter::Create(AVSValue args, void* user_data, IScriptEnvironment* env)
 {
-  return new ConditionalFilter(args[0].AsClip(), args[1].AsClip(), args[2].AsClip(), args[3], args[4], args[5], env);
+  return new ConditionalFilter(args[0].AsClip(), args[1].AsClip(), args[2].AsClip(), args[3], args[4], args[5], args[6].AsBool(false), env);
 }
 

@@ -41,6 +41,9 @@ AVSFunction Conditional_funtions_filters[] = {
   {  "AverageLuma","c", AveragePlane::Create_y },
   {  "AverageChromaU","c", AveragePlane::Create_u },
   {  "AverageChromaV","c", AveragePlane::Create_v },
+  {  "LumaDifference","cc", ComparePlane::Create_y },
+  {  "ChromaUDifference","cc", ComparePlane::Create_u },
+  {  "ChromaVDifference","cc", ComparePlane::Create_v },
   { 0 }
 };
 
@@ -62,6 +65,8 @@ AVSValue __cdecl AveragePlane::Create_v(AVSValue args, void* user_data, IScriptE
 AVSValue AveragePlane::AvgPlane(AVSValue clip, void* user_data, int plane, IScriptEnvironment* env) {
 		if (!clip.IsClip())
 			env->ThrowError("Average Plane: No clip supplied!");
+    if (!(env->GetCPUFlags() & CPUF_INTEGER_SSE))
+      env->ThrowError("Average Plane: Requires Integer SSE capable CPU.");
 
 		PClip child = clip.AsClip();
 		VideoInfo vi = child->GetVideoInfo();
@@ -79,14 +84,14 @@ AVSValue AveragePlane::AvgPlane(AVSValue clip, void* user_data, int plane, IScri
 
 		const BYTE* srcp = src->GetReadPtr(plane);
 		int h = src->GetHeight(plane);
-		int w = src->GetRowSize(plane|PLANAR_ALIGNED);
+		int w = src->GetRowSize(plane);
 		int pitch = src->GetPitch(plane);
 		w=(w/16)*16;
 
 		int b = isse_average_plane(srcp, h, w, pitch);
 
 		if (!b) b=1;
-		float f = (float)b / (float)(h * src->GetRowSize(plane));
+		float f = (float)b / (float)(h * w);
 
 		return (AVSValue)f;
 }
@@ -121,6 +126,138 @@ xloop:
     movq mm2,[esi+eax+8]
     psadbw mm0,mm5    // Sum of absolute difference (= sum of all pixels)
      psadbw mm2,mm5
+    paddd mm6,mm0     // Add...
+     paddd mm7,mm2
+
+    add eax,16
+    jmp xloop
+endframe:
+    paddd mm7,mm6
+    movd returnvalue,mm7
+    emms
+  }
+  return returnvalue;
+}
+
+
+
+
+AVSValue __cdecl ComparePlane::Create_y(AVSValue args, void* user_data, IScriptEnvironment* env) {
+	return CmpPlane(args[0],args[1],user_data, PLANAR_Y, env);
+}
+
+
+AVSValue __cdecl ComparePlane::Create_u(AVSValue args, void* user_data, IScriptEnvironment* env) {
+	return CmpPlane(args[0],args[1],user_data, PLANAR_U, env);
+}
+
+
+AVSValue __cdecl ComparePlane::Create_v(AVSValue args, void* user_data, IScriptEnvironment* env) {
+	return CmpPlane(args[0],args[1],user_data, PLANAR_V, env);
+}
+
+AVSValue ComparePlane::CmpPlane(AVSValue clip, AVSValue clip2, void* user_data, int plane, IScriptEnvironment* env) {
+		if (!clip.IsClip())
+			env->ThrowError("Plane Difference: No clip supplied!");
+		if (!clip2.IsClip())
+			env->ThrowError("Plane Difference: Second parameter is not a clip!");
+    if (!(env->GetCPUFlags() & CPUF_INTEGER_SSE))
+      env->ThrowError("Plane Difference: Requires Integer SSE capable CPU.");
+
+		PClip child = clip.AsClip();
+		VideoInfo vi = child->GetVideoInfo();
+		PClip child2 = clip2.AsClip();
+		VideoInfo vi2 = child2->GetVideoInfo();
+
+		if (!vi.IsPlanar())
+			env->ThrowError("Plane Difference: Only planar images (as YV12) supported!");
+		if (!vi2.IsPlanar())
+			env->ThrowError("Plane Difference: Only planar images (as YV12) supported!");
+
+		if (vi.height!=vi2.height || vi.width != vi2.width) 
+			env->ThrowError("Plane Difference: Images are not the same size!");
+			
+
+		AVSValue cn = env->GetVar("current_frame");
+		if (!cn.IsInt())
+			env->ThrowError("Compare Plane: This filter can only be used within ConditionalFilter");
+
+		int n = cn.AsInt();
+
+		PVideoFrame src = child->GetFrame(n,env);
+		PVideoFrame src2 = child2->GetFrame(n,env);
+
+		const BYTE* srcp = src->GetReadPtr(plane);
+		const BYTE* srcp2 = src2->GetReadPtr(plane);
+		int h = src->GetHeight(plane);
+		int w = src->GetRowSize(plane);
+		int pitch = src->GetPitch(plane);
+		int pitch2 = src2->GetPitch(plane);
+		w=(w/16)*16;
+
+		int b = isse_scenechange_16(srcp, srcp2, h, w, pitch, pitch2);
+
+		if (!b) b=1;
+		float f = (float)b / (float)(h * w);
+
+		return (AVSValue)f;
+}
+
+
+
+
+
+
+/*********************
+ * YV12 Scenechange detection.
+ * 
+ * (c) 2003, Klaus Post
+ *
+ * ISSE, MOD 16 version.
+ *
+ * Returns an int of the accumulated absolute difference
+ * between two planes. 
+ *
+ * The absolute difference between two planes are returned as an int.
+ * This version is optimized for mod16 widths. Others widths are allowed, 
+ *  but the remaining pixels are simply skipped.
+ *********************/
+
+
+int ComparePlane::isse_scenechange_16(const BYTE* c_plane, const BYTE* tplane, int height, int width, int c_pitch, int t_pitch) {
+  int wp=width;
+  int hp=height;
+  int returnvalue=0xbadbad00;
+  __asm {
+    xor ebx,ebx     // Height
+    pxor mm5,mm5  // Maximum difference
+    mov edx, c_pitch    //copy pitch
+    mov ecx, t_pitch    //copy pitch
+    pxor mm6,mm6   // We maintain two sums, for better pairablility
+    pxor mm7,mm7
+    mov esi, c_plane
+    mov edi, tplane
+    jmp yloopover
+    align 16
+yloop:
+    inc ebx
+    add edi,ecx     // add pitch to both planes
+    add esi,edx
+yloopover:
+    cmp ebx,[hp]
+    jge endframe
+    xor eax,eax     // Width
+    align 16
+xloop:
+    cmp eax,[wp]    
+    jge yloop
+
+    movq mm0,[esi+eax]
+     movq mm2,[esi+eax+8]
+    movq mm1,[edi+eax]
+     movq mm3,[edi+eax+8]
+    psadbw mm0,mm1    // Sum of absolute difference
+     psadbw mm2,mm3
     paddd mm6,mm0     // Add...
      paddd mm7,mm2
 

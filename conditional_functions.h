@@ -43,8 +43,20 @@ public:
   static AVSValue __cdecl Create_y(AVSValue args, void* user_data, IScriptEnvironment* env);
   static AVSValue __cdecl Create_u(AVSValue args, void* user_data, IScriptEnvironment* env);
   static AVSValue __cdecl Create_v(AVSValue args, void* user_data, IScriptEnvironment* env);
-	static AVSValue AveragePlane::AvgPlane(AVSValue clip, void* user_data, int plane, IScriptEnvironment* env);
-	static int AveragePlane::isse_average_plane(const BYTE* c_plane, int height, int width, int c_pitch);
+	static AVSValue AvgPlane(AVSValue clip, void* user_data, int plane, IScriptEnvironment* env);
+	static int isse_average_plane(const BYTE* c_plane, int height, int width, int c_pitch);
 
 };
+
+class ComparePlane {
+
+public:
+  static AVSValue __cdecl Create_y(AVSValue args, void* user_data, IScriptEnvironment* env);
+  static AVSValue __cdecl Create_u(AVSValue args, void* user_data, IScriptEnvironment* env);
+  static AVSValue __cdecl Create_v(AVSValue args, void* user_data, IScriptEnvironment* env);
+	static AVSValue CmpPlane(AVSValue clip, AVSValue clip2, void* user_data, int plane, IScriptEnvironment* env);
+	static int isse_scenechange_16(const BYTE* c_plane, const BYTE* tplane, int height, int width, int c_pitch, int t_pitch);
+
+};
+
 
