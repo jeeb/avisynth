@@ -587,9 +587,9 @@ FilteredResizeV::FilteredResizeV( PClip _child, double subrange_top, double subr
     subrange_top = vi.height - subrange_top - subrange_height;
   resampling_pattern = GetResamplingPatternRGB(vi.height, subrange_top, subrange_height, target_height, func);
   vi.height = target_height;
-
   PVideoFrame src = child->GetFrame(0, env);
   int sh = src->GetHeight();
+  g_pitch = src->GetPitch();
   yOfs = new int[sh];
   for (int i = 0; i < sh; i++) yOfs[i] = src->GetPitch() * i;
 }
@@ -606,6 +606,11 @@ PVideoFrame __stdcall FilteredResizeV::GetFrame(int n, IScriptEnvironment* env)
   const int dst_pitch = dst->GetPitch();
   const int xloops = src->GetRowSize() / 4;
   const BYTE* srcp = src->GetReadPtr();
+  if (g_pitch!=src->GetPitch()) {
+    int sh = src->GetHeight();
+    for (int i = 0; i < sh; i++) yOfs[i] = src->GetPitch() * i;
+    g_pitch = src->GetPitch();
+  }
   BYTE* dstp = dst->GetWritePtr();
   int y = vi.height;
   int *yOfs = this->yOfs;

@@ -65,6 +65,7 @@ public:
 private:
   int* /*const*/ resampling_pattern;
   int *yOfs;
+  int g_pitch; 
 };
 
 

@@ -634,7 +634,7 @@ void ScriptEnvironment::PrescanPlugins()
 
       char file[MAX_PATH];
       strcpy(file, plugin_dir);
-      strcat(file, "\\*.avs");
+      strcat(file, "\\*.avsi");
       hFind = FindFirstFile(file, &FileData);
       BOOL bContinue = (hFind != INVALID_HANDLE_VALUE);
       while (bContinue) {
