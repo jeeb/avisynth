@@ -1040,6 +1040,15 @@ yloop_test:
 }
 
 
+/********************************
+ * Progressive YUY2 to YV12
+ * 
+ * (c) Copyright 2003, Klaus Post
+ *
+ * Converts 8x2 (8 pixels, two lines) in parallel.
+ * Requires mod8 pitch for output, and mod16 pitch for input.
+ ********************************/
+
 void isse_yuy2_to_yv12(const BYTE* src, int src_rowsize, int src_pitch, 
                     BYTE* dstY, BYTE* dstU, BYTE* dstV, int dst_pitchY, int dst_pitchUV,
                     int height) {
@@ -1136,12 +1145,22 @@ yloop_test:
     cmp edx,[height]
     mov [y],edx
     jl yloop
+    sfence
     emms
   }
    delete[] dstp;
 }
 
 
+
+/********************************
+ * Interlaced YUY2 to YV12
+ * 
+ * (c) Copyright 2003, Klaus Post
+ *
+ * Converts 8x2 (8 pixels, two lines) in parallel.
+ * Requires mod8 pitch for output, and mod16 pitch for input.
+ ********************************/
 
 
 void isse_yuy2_i_to_yv12(const BYTE* src, int src_rowsize, int src_pitch, 
@@ -1305,8 +1324,8 @@ yloop_test:
     cmp edx,[height]
     mov [y],edx
     jl yloop
+    sfence
     emms
   }
    delete[] dstp;
-
 }

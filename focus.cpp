@@ -858,10 +858,15 @@ PVideoFrame TemporalSoften::GetFrame(int n, IScriptEnvironment* env)
       }
       d = d2;
     }
-
     if (d<=1) 
       return frame;
-    
+/*
+//isse_average_plane(const BYTE* c_plane, int height, int width, int c_pitch)
+    int detectfade=10;
+    if (detectfade) {
+
+    }
+  */  
     i64_thresholds = (__int64)c_thresh | (__int64)(c_thresh<<8) | (((__int64)c_thresh)<<16) | (((__int64)c_thresh)<<24);
     if (vi.IsYUY2()) { 
       i64_thresholds = (__int64)luma_threshold | (__int64)(chroma_threshold<<8) | ((__int64)(luma_threshold)<<16) | ((__int64)(chroma_threshold)<<24);
@@ -1056,10 +1061,10 @@ outloop:
 
 void TemporalSoften::isse_accumulate_line_mode2(const BYTE* c_plane, const BYTE** planeP, int planes, int rowsize, __int64* t, int div) {
   __declspec(align(8)) static __int64 full = 0xffffffffffffffffi64;
+  __declspec(align(8)) static const __int64 add64 = (__int64)(16384) | ((__int64)(16384)<<32);
   const __int64 t2 = *t;
   __int64 div64 = (__int64)(div) | ((__int64)(div)<<16) | ((__int64)(div)<<32) | ((__int64)(div)<<48);
   div>>=1;
-  __int64 add64 = (__int64)(div) | ((__int64)(div)<<32);
 
   __asm {
     mov esi,c_plane;
@@ -1163,11 +1168,11 @@ outloop:
 void TemporalSoften::mmx_accumulate_line_mode2(const BYTE* c_plane, const BYTE** planeP, int planes, int rowsize, __int64* t, int div) {
   __declspec(align(8)) static __int64 full = 0xffffffffffffffffi64;
   __declspec(align(8)) static __int64 low_ffff = 0x000000000000ffffi64;
+  __declspec(align(8)) static const __int64 add64 = (__int64)(16384) | ((__int64)(16384)<<32);
   const __int64 t2 = *t;
 
   __int64 div64 = (__int64)(div) | ((__int64)(div)<<16) | ((__int64)(div)<<32) | ((__int64)(div)<<48);
   div>>=1;
-  __int64 add64 = (__int64)(div) | ((__int64)(div)<<32);
 
   __asm {
     mov esi,c_plane;
@@ -1319,6 +1324,52 @@ xloop:
      paddd mm7,mm2
 
     add eax,32
+    jmp xloop
+endframe:
+    paddd mm7,mm6
+    movd returnvalue,mm7
+    emms
+  }
+  return returnvalue;
+}
+
+// Average plane
+
+int TemporalSoften::isse_average_plane(const BYTE* c_plane, int height, int width, int c_pitch) {
+  __declspec(align(8)) static __int64 full = 0xffffffffffffffffi64;
+  int wp=(width/16)*16;
+  int hp=height;
+  int returnvalue=0xbadbad00;
+  __asm {
+    xor ebx,ebx     // Height
+    pxor mm5,mm5  // Maximum difference
+    mov edx, c_pitch    //copy pitch
+    pxor mm5,mm5  // Cleared
+    pxor mm6,mm6   // We maintain two sums, for better pairablility
+    pxor mm7,mm7
+    mov esi, c_plane
+    jmp yloopover
+    align 16
+yloop:
+    inc ebx
+    add esi,edx  // add pitch
+yloopover:
+    cmp ebx,[hp]
+    jge endframe
+    xor eax,eax     // Width
+    align 16
+xloop:
+    cmp eax,[wp]    
+    jge yloop
+
+    movq mm0,[esi+eax]
+    movq mm2,[esi+eax+8]
+    psadbw mm0,mm4    // Sum of absolute difference (= sum of all pixels)
+     psadbw mm2,mm4
+    paddd mm6,mm0     // Add...
+     paddd mm7,mm2
+
+    add eax,16
     jmp xloop
 endframe:
     paddd mm7,mm6

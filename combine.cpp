@@ -74,7 +74,7 @@ StackVertical::StackVertical(PClip _child1, PClip _child2, IScriptEnvironment* e
 
   if (vi1.width != vi2.width)
     env->ThrowError("StackVertical: image widths don't match");
-  if (vi1.pixel_type != vi2.pixel_type)
+  if ((vi1.pixel_type != vi2.pixel_type) && (!(vi1.IsYV12() && vi2.IsYV12())))  // Fix for I420.
     env->ThrowError("StackVertical: image formats don't match");
 
   vi = vi1;
@@ -169,7 +169,7 @@ StackHorizontal::StackHorizontal(PClip _child1, PClip _child2, IScriptEnvironmen
 
   if (vi1.height != vi2.height)
     env->ThrowError("StackHorizontal: image heights don't match");
-  if (vi1.pixel_type != vi2.pixel_type)
+  if ((vi1.pixel_type != vi2.pixel_type) && (!(vi1.IsYV12() && vi2.IsYV12())))  // Fix for I420.
     env->ThrowError("StackHorizontal: image formats don't match");
 
   vi = vi1;

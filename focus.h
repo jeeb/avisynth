@@ -132,6 +132,7 @@ private:
   void TemporalSoften::isse_accumulate_line_mode2(const BYTE* c_plane, const BYTE** planeP, int planes, int rowsize, __int64* t, int div);
   void TemporalSoften::mmx_accumulate_line_mode2(const BYTE* c_plane, const BYTE** planeP, int planes, int rowsize, __int64* t, int div);
   int TemporalSoften::isse_scenechange(const BYTE* c_plane, const BYTE* tplane, int height, int width, int c_pitch, int t_pitch);
+  int TemporalSoften::isse_average_plane(const BYTE* c_plane, int height, int width, int c_pitch);
 // YUY2:
   const unsigned luma_threshold, chroma_threshold;
   DWORD* accu;
