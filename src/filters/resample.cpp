@@ -89,10 +89,10 @@ FilteredResizeH::FilteredResizeH( PClip _child, double subrange_left, double sub
     tempY = (BYTE*) _aligned_malloc(original_width*2+4+32, 64);   // aligned for Athlon cache line
     tempUV = (BYTE*) _aligned_malloc(original_width*4+8+32, 64);  // aligned for Athlon cache line
     if (vi.IsYV12()) {
-      pattern_chroma = GetResamplingPatternYUV( vi.width>>1, subrange_left/2, subrange_width/2,
+      pattern_chroma = GetResamplingPatternYUV( vi.width>>1, subrange_left/2.0, subrange_width/2.0,
         target_width>>1, func, true, tempY, env );
     } else {
-      pattern_chroma = GetResamplingPatternYUV( vi.width>>1, subrange_left/2, subrange_width/2,
+      pattern_chroma = GetResamplingPatternYUV( vi.width>>1, subrange_left/2.0, subrange_width/2.0,
         target_width>>1, func, false, tempUV, env );
     }
     pattern_luma = GetResamplingPatternYUV(vi.width, subrange_left, subrange_width, target_width, func, true, tempY, env);

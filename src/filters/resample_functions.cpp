@@ -187,7 +187,7 @@ int* GetResamplingPatternRGB( int original_width, double subrange_start, double 
     double total = 0.0;
 
     // Ensure that we have a valid position
-    double ok_pos = max(0.0,min(original_width - subrange_start,pos));
+    double ok_pos = max(0.0,min(original_width,pos));
 
     for (int j=0; j<fir_filter_size; ++j) {  // Accumulate all coefficients
       total += func->f((start_pos+j - ok_pos) * filter_step);
@@ -273,10 +273,10 @@ int* GetResamplingPatternYUV( int original_width, double subrange_start, double 
     double total = 0.0;
 
     // Ensure that we have a valid position
-    double ok_pos = max(0.0,min(original_width - subrange_start,pos));
+    double ok_pos = max(0.0,min(original_width, pos)); 
 
     for (int j=0; j<fir_filter_size; ++j) {  // Accumulate all coefficients
-      total += func->f((start_pos+j - ok_pos) * filter_step);
+      total += func->f((start_pos + j - ok_pos) * filter_step);
     }
 
     if (total == 0.0) {

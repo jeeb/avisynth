@@ -43,7 +43,7 @@ RSC=rc.exe
 # PROP Ignore_Export_Lib 0
 # PROP Target_Dir ""
 # ADD BASE CPP /nologo /MT /W3 /GX /O2 /D "WIN32" /D "NDEBUG" /D "_WINDOWS" /D "_MBCS" /D "_USRDLL" /D "AVISYNTH_EXPORTS" /YX /FD /c
-# ADD CPP /nologo /G6 /MD /W3 /GX /Zd /O2 /Oy- /Ob2 /D "NDEBUG" /D "INC_OLE2" /D "STRICT" /D "WIN32" /D "_WIN32" /D "_MT" /D "_DLL" /D "_MBCS" /D "_USRDLL" /D "AVISYNTH_C_EXPORTS" /Fr /Yu"stdafx.h" /FD /Gs /GF /c
+# ADD CPP /nologo /G6 /MD /W3 /GX /Zd /O2 /Op /Ob2 /D "NDEBUG" /D "INC_OLE2" /D "STRICT" /D "WIN32" /D "_WIN32" /D "_MT" /D "_DLL" /D "_MBCS" /D "_USRDLL" /D "AVISYNTH_C_EXPORTS" /Fr /Yu"stdafx.h" /FD /Gs /GF /c
 # ADD BASE MTL /nologo /D "NDEBUG" /mktyplib203 /win32
 # ADD MTL /nologo /D "NDEBUG" /mktyplib203 /win32
 # ADD BASE RSC /l 0x409 /d "NDEBUG"
