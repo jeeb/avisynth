@@ -61,5 +61,8 @@ void mmx_merge_luma( unsigned int *src, unsigned int *luma, int pitch,
 void mmx_weigh_luma( unsigned int *src,unsigned int *luma, int pitch, 
                      int luma_pitch,int width, int height, int weight, int invweight );
 
+void mmx_weigh_chroma( unsigned int *src,unsigned int *luma, int pitch, 
+                     int luma_pitch,int width, int height, int weight, int invweight );
+
 
 #endif  // __Merge_H__
