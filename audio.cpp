@@ -31,6 +31,9 @@ AVSFunction Audio_filters[] = {
   { "Normalize", "c[left]f[right]f", Normalize::Create },
   { "MixAudio", "cc[clip1_factor]f[clip2_factor]f", MixAudio::Create },
   { "ResampleAudio", "ci", ResampleAudio::Create },
+  { "LowPassAudio", "ci[]f", FilterAudio::Create_LowPass },
+//  { "LowPassAudioALT", "ci", FilterAudio::Create_LowPassALT },
+  { "HighPassAudio", "ci[]f", FilterAudio::Create_HighPass },
   { "ConvertAudioTo16bit", "c", ConvertAudioTo16bit::Create },
   { "ConvertToMono", "c", ConvertToMono::Create },
   { "MonoToStereo", "cc", MonoToStereo::Create },
@@ -486,6 +489,208 @@ AVSValue __cdecl MixAudio::Create(AVSValue args, void*, IScriptEnvironment* env)
   return new MixAudio(args[0].AsClip(),args[1].AsClip(), track1_factor, track2_factor,env);
 }
 
+  
+/**********************************************
+ *******   Lowpass and highpass filter  *******
+ *******                                *******
+ *******   Type : biquad,               *******
+ *******          tweaked butterworth   *******
+ *******  Source: musicdsp.org          *******
+ *******          Posted by Patrice Tarrabia **
+ *******  Adapted by Klaus Post         *******
+ ***********************************************/
+
+FilterAudio::FilterAudio(PClip _child, int _cutoff, float _rez, int _lowpass)
+  : GenericVideoFilter(ConvertAudioTo16bit::Create(_child)),
+    cutoff(_cutoff),
+    rez(_rez), 
+    lowpass(_lowpass) {
+      l_vibrapos = 0;
+      l_vibraspeed = 0;
+      r_vibrapos = 0;
+      r_vibraspeed = 0;
+      lastsample=-1;
+      tempbuffer_size=0;
+
+} 
+
+
+void __stdcall FilterAudio::GetAudio(void* buf, int start, int count, IScriptEnvironment* env) 
+{
+  if (lowpass<2) {    
+    //Algorithm 1: Lowpass is only used in ALT-mode
+    
+    if (tempbuffer_size) {
+      if (tempbuffer_size<(count*2)) {
+        delete[] tempbuffer;
+        tempbuffer=new signed short[4+count*2];
+        tempbuffer_size=count;
+      }
+    } else {
+      tempbuffer=new signed short[4+count*2];
+      tempbuffer_size=count;
+    }
+    child->GetAudio(tempbuffer, start-2, count+2, env);
+    float a1,a2,a3,b1,b2,c; 
+    if (lowpass) {
+      c = 1.0 / tan(PI * (float)cutoff / (float)vi.audio_samples_per_second);
+      a1 = 1.0 / ( 1.0 + rez * c + c * c);
+      a2 = 2* a1;
+      a3 = a1;
+      b1 = 2.0 * ( 1.0 - c*c) * a1;
+      b2 = ( 1.0 - rez * c + c * c) * a1; 
+    } else {
+      c = tan(PI * (float)cutoff / (float)vi.audio_samples_per_second);
+      a1 = 1.0 / ( 1.0 + rez * c + c * c);
+      a2 = -2*a1;
+      a3 = a1;
+      b1 = 2.0 * ( c*c - 1.0) * a1;
+      b2 = ( 1.0 - rez * c + c * c) * a1;  
+    }
+    short* samples = (short*)buf;
+    if (vi.stereo) {
+      
+      if (lastsample!=start) {  // Streaming has just started here.
+        last_1=tempbuffer[3];
+        last_2=tempbuffer[2];
+        last_3=tempbuffer[1];
+        last_4=tempbuffer[0]; 
+      }
+      unsigned int i=0;
+      tempbuffer+=4;
+      samples[0]=Saturate((int)(a1 * (float)tempbuffer[i*2] + a2 * (float)tempbuffer[i*2-2] + a3 * (float)tempbuffer[i*2-4] - b1*(float)last_2 - b2*(float)last_4));
+      samples[1]=Saturate((int)(a1 * (float)tempbuffer[i*2+1] + a2 * (float)tempbuffer[i*2-2+1] + a3 * (float)tempbuffer[i*2-4+1] - b1*(float)last_1 - b2*(float)last_3+0.5f));
+      i++;
+      samples[2]=Saturate((int)(a1 * (float)tempbuffer[i*2] + a2 * (float)tempbuffer[i*2-2] + a3 * (float)tempbuffer[i*2-4] - b1*(float)samples[i*2-2] - b2*(float)last_2+0.5f));
+      samples[3]=Saturate((int)(a1 * (float)tempbuffer[i*2+1] + a2 * (float)tempbuffer[i*2-2+1] + a3 * (float)tempbuffer[i*2-4+1] - b1*(float)samples[i*2-2+1] - b2*(float)last_1+0.5f));
+      i++;
+      for (; i<count; ++i) { 
+        samples[i*2]=Saturate((int)(a1 * (float)tempbuffer[i*2] + a2 * (float)tempbuffer[i*2-2] + a3 * (float)tempbuffer[i*2-4] - b1*(float)samples[i*2-2] - b2*(float)samples[i*2-4]+0.5f));
+        samples[i*2+1]=Saturate((int)(a1 * (float)tempbuffer[i*2+1] + a2 * (float)tempbuffer[i*2-2+1] + a3 * (float)tempbuffer[i*2-4+1] - b1*(float)samples[i*2-2+1] - b2*(float)samples[i*2-4+1]+0.5f));
+      }
+      last_1=samples[count*2-1];
+      last_2=samples[count*2-2];
+      last_3=samples[count*2-3];
+      last_4=samples[count*2-4];
+      lastsample=start+count;
+    } 
+    else { 
+      if (lastsample!=start) {
+        last_1=tempbuffer[1];
+        last_2=tempbuffer[0];
+      }
+      tempbuffer+=2;
+      unsigned int i=0;
+      samples[i]=Saturate((int)(a1 * (float)tempbuffer[i] + a2 * (float)tempbuffer[i-1] + a3 * (float)tempbuffer[i-2] - b1*(float)last_1 - b2*(float)last_2+0.5f));
+      i++;
+      samples[i]=Saturate((int)(a1 * (float)tempbuffer[i] + a2 * (float)tempbuffer[i-1] + a3 * (float)tempbuffer[i-2] - b1*(float)samples[0] - b2*(float)last_1+0.5f));
+      i++;
+      for (; i<count; ++i) {
+         samples[i]=Saturate((int)(a1 * (float)tempbuffer[i] + a2 * (float)tempbuffer[i-1] + a3 * (float)tempbuffer[i-2] - b1*(float)samples[i-1] - b2*(float)samples[i-2]+0.5f));
+      }
+      last_1=samples[count-1];
+      last_2=samples[count-2];
+      lastsample=start+count;
+    }
+    
+    
+  } else {
+    //Algorithm 2: 
+    // Only lowpass, but doesn't seem to amplify as much
+    
+    if (start==0) {
+      l_vibrapos = 0;
+      l_vibraspeed = 0;
+      r_vibrapos = 0;
+      r_vibraspeed = 0;
+    }
+    child->GetAudio(buf, start, count, env);
+    float amp = 0.9f; 
+    float w = 2.0*PI*(float)cutoff/(float)vi.audio_samples_per_second; // Pole angle
+    float q = 1.0-w/(2.0*(amp+0.5/(1.0+w))+w-2.0); // Pole magnitude
+    float r = q*q;
+    float c = r+1.0-2.0*cos(w)*q;
+    float temp;
+    short* samples = (short*)buf;
+    if (vi.stereo) {
+      for (unsigned int i=0; i<count; ++i) { 
+        
+        // Accelerate vibra by signal-vibra, multiplied by lowpasscutoff 
+        l_vibraspeed += ((float)samples[i*2] - l_vibrapos) * c;
+        r_vibraspeed += ((float)samples[i*2+1] - r_vibrapos) * c;
+        
+        // Add velocity to vibra's position 
+        l_vibrapos += l_vibraspeed;
+        r_vibrapos += r_vibraspeed;
+        
+        // Attenuate/amplify vibra's velocity by resonance 
+        l_vibraspeed *= r;
+        r_vibraspeed *= r;
+        
+        // Check clipping 
+        temp = l_vibrapos;
+        if (temp > 32767.0) {
+          temp = 32767.0;
+        } else if (temp < -32768.0) temp = -32768.0;
+        
+        // Store new value  
+        samples[i*2] = (short)temp; 
+
+        temp = r_vibrapos;
+        if (temp > 32767.0) {
+          temp = 32767.0;
+        } else if (temp < -32768.0) temp = -32768.0;
+        
+        // Store new value  
+        samples[i*2+1] = (short)temp; 
+      }
+    } else {
+      for (unsigned int i=0; i<count; ++i) { 
+        
+        // Accelerate vibra by signal-vibra, multiplied by lowpasscutoff 
+        l_vibraspeed += ((float)samples[i] - l_vibrapos) * c;
+        
+        // Add velocity to vibra's position 
+        l_vibrapos += l_vibraspeed;
+        
+        // Attenuate/amplify vibra's velocity by resonance 
+        l_vibraspeed *= r;
+        
+        // Check clipping 
+        temp = l_vibrapos;
+        if (temp > 32767.0) {
+          temp = 32767.0;
+        } else if (temp < -32768.0) temp = -32768.0;
+        
+        // Store new value  
+        samples[i] = (short)temp; 
+      }
+    }
+  }
+}
+
+
+AVSValue __cdecl FilterAudio::Create_LowPass(AVSValue args, void*, IScriptEnvironment* env) 
+{
+  int cutoff = args[1].AsInt();
+  float rez = args[2].AsFloat(0.2);
+  return new FilterAudio(args[0].AsClip(), cutoff, rez,2);
+}
+
+
+AVSValue __cdecl FilterAudio::Create_HighPass(AVSValue args, void*, IScriptEnvironment* env) 
+{
+  int cutoff = args[1].AsInt();
+  float rez = args[2].AsFloat(0.2);
+  return new FilterAudio(args[0].AsClip(), cutoff, rez,0);
+}
+
+AVSValue __cdecl FilterAudio::Create_LowPassALT(AVSValue args, void*, IScriptEnvironment* env) 
+{
+  int cutoff = args[1].AsInt();
+  float rez = 0.0f;
+  return new FilterAudio(args[0].AsClip(), cutoff, rez,1);
+}
   
 
 

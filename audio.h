@@ -47,7 +47,7 @@
 
 static const long double PI = 3.14159265358979323846;
 
-static inline short IntToShort(int v, int scl)
+static __inline short IntToShort(int v, int scl)
 {
   v += (1<<(scl-1));  /* round */
   v >>= scl;
@@ -89,7 +89,7 @@ class ConvertToMono : public GenericVideoFilter
 public:
   ConvertToMono(PClip _clip);
   virtual ~ConvertToMono()
-  {delete[] tempbuffer;tempbuffer_size=0;}
+  {if (tempbuffer_size) {delete[] tempbuffer;tempbuffer_size=0;}}
 
   void __stdcall GetAudio(void* buf, int start, int count, IScriptEnvironment* env);
   static PClip Create(PClip clip);
@@ -109,7 +109,7 @@ class MonoToStereo : public GenericVideoFilter
 public:
   MonoToStereo(PClip _child,PClip _clip, IScriptEnvironment* env);
   virtual ~MonoToStereo()
-  {delete[] tempbuffer;tempbuffer_size=0;}
+  {if (tempbuffer_size) {delete[] tempbuffer;tempbuffer_size=0;}}
 
   void __stdcall GetAudio(void* buf, int start, int count, IScriptEnvironment* env);
   static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment*);
@@ -130,7 +130,7 @@ class GetChannel : public GenericVideoFilter
 public:
   GetChannel(PClip _clip, bool _left);
   virtual ~GetChannel()
-  {delete[] tempbuffer;tempbuffer_size=0;}
+   {if (tempbuffer_size) {delete[] tempbuffer;tempbuffer_size=0;}}
 
   void __stdcall GetAudio(void* buf, int start, int count, IScriptEnvironment* env);
   static PClip Create_left(PClip clip);
@@ -189,7 +189,7 @@ public:
 private:
   const int left_factor, right_factor;
 
-  static inline short Saturate(int n) {
+  static __inline short Saturate(int n) {
     if (n <= -32768) return -32768;
     if (n >= 32767) return 32767;
     return (short)n;
@@ -198,6 +198,50 @@ private:
   static inline double dBtoScaleFactor(double dB) 
     { return pow(10.0, dB/10.0); }
 };
+
+
+class FilterAudio : public GenericVideoFilter 
+/**
+  * FilterAudio a clip's audio track
+ **/
+{
+public:
+  FilterAudio(PClip _child, int _cutoff, float _rez, int lowpass);
+  void __stdcall GetAudio(void* buf, int start, int count, IScriptEnvironment* env);
+  virtual ~FilterAudio()
+  {if (tempbuffer_size) {delete[] tempbuffer;tempbuffer_size=0;}}
+
+  static AVSValue __cdecl Create_LowPass(AVSValue args, void*, IScriptEnvironment* env);
+  static AVSValue __cdecl Create_HighPass(AVSValue args, void*, IScriptEnvironment* env);
+  static AVSValue __cdecl Create_LowPassALT(AVSValue args, void*, IScriptEnvironment* env);
+
+
+private:
+  signed short *tempbuffer;
+  int tempbuffer_size;
+  int cutoff;
+  float rez;
+  int lowpass;
+//algo 1:
+  int lastsample;
+  signed short last_4; 
+  signed short last_3; 
+  signed short last_2; 
+  signed short last_1; 
+//algo 2:
+  float l_vibrapos;
+  float l_vibraspeed; 
+  float r_vibrapos;
+  float r_vibraspeed; 
+
+  static __inline short Saturate(int n) {
+    if (n <= -32768) return -32768;
+    if (n >= 32767) return 32767;
+    return (short)n;
+  }
+
+};
+
 
 class Normalize : public GenericVideoFilter 
 /**
@@ -243,7 +287,7 @@ private:
   signed short *tempbuffer;
 	PClip clip;
 
-  static inline short Saturate(int n) {
+  static __inline short Saturate(int n) {
     if (n <= -32768) return -32768;
     if (n >= 32767) return 32767;
     return (short)n;
