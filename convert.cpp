@@ -462,14 +462,20 @@ ConvertToYUY2::ConvertToYUY2(PClip _child, bool _interlaced, IScriptEnvironment*
 PVideoFrame __stdcall ConvertToYUY2::GetFrame(int n, IScriptEnvironment* env) 
 {
   PVideoFrame src = child->GetFrame(n, env);
-	if ((src_cs&VideoInfo::CS_BGR32)==VideoInfo::CS_BGR32) {
-		if ((env->GetCPUFlags() & CPUF_MMX)) {
+	if ((env->GetCPUFlags() & CPUF_MMX)) {
+		if ((src_cs&VideoInfo::CS_BGR32)==VideoInfo::CS_BGR32) {
 			PVideoFrame dst = env->NewVideoFrame(vi);
 			BYTE* yuv = dst->GetWritePtr();
 			mmx_ConvertRGB32toYUY2((unsigned int *)src->GetReadPtr(),(unsigned int *)yuv ,(src->GetPitch())>>2, (dst->GetPitch())>>2,vi.width, vi.height);
-			__asm { emms }
-			return dst;
-		}
+		  __asm { emms }
+		  return dst;
+    } else  if ((src_cs&VideoInfo::CS_BGR24)==VideoInfo::CS_BGR24) {
+			PVideoFrame dst = env->NewVideoFrame(vi);
+			BYTE* yuv = dst->GetWritePtr();
+			mmx_ConvertRGB24toYUY2((unsigned int *)src->GetReadPtr(),(unsigned int *)yuv ,(src->GetPitch())>>2, (dst->GetPitch())>>2,vi.width, vi.height);
+		  __asm { emms }
+		  return dst;
+    }
 	}
   if (((src_cs&VideoInfo::CS_YV12)==VideoInfo::CS_YV12)||((src_cs&VideoInfo::CS_I420)==VideoInfo::CS_I420)) {  
     PVideoFrame dst = env->NewVideoFrame(vi,32);  // We need a bit more pitch here.
@@ -493,7 +499,7 @@ PVideoFrame __stdcall ConvertToYUY2::GetFrame(int n, IScriptEnvironment* env)
     }
     return dst;
   }
-// RGB 24 and non MMX machines.
+// non MMX machines.
 
   PVideoFrame dst = env->NewVideoFrame(vi);
   BYTE* yuv = dst->GetWritePtr();
