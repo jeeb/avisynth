@@ -243,7 +243,7 @@ public:
     vi.fps_denominator = 100;
     vi.num_frames = 107892;   // 1 hour
     vi.pixel_type = VideoInfo::CS_BGR32;
-    vi.sample_type = SAMPLE_INT16;
+    vi.sample_type = SAMPLE_FLOAT;
     vi.nchannels = 2;
     vi.audio_samples_per_second = 48000;
     vi.num_audio_samples=(60*60)*vi.audio_samples_per_second;
@@ -301,17 +301,19 @@ public:
   void __stdcall GetAudio(void* buf, __int64 start, __int64 count, IScriptEnvironment* env) {
     double Hz=440;
     double add_per_sample=Hz/(double)vi.audio_samples_per_second;
-    double second_offset=(double)start*add_per_sample;
+    float f_add_per_sample=float(add_per_sample);
+    float second_offset=(float)((double)start*add_per_sample);
     int d_mod=vi.audio_samples_per_second*2;
-    short* samples = (short*)buf;
+    float* samples = (float*)buf;
+
     for (int i=0;i<count;i++) {
-        samples[i*2]=(short)(32767.0*sin(3.1415926535897932384626433832795*2.0*second_offset));
+        samples[i*2]=sinf(3.1415926535897932384626433832795f*2.0f*second_offset);
         if (((start+i)%d_mod)>vi.audio_samples_per_second) {
           samples[i*2+1]=samples[i*2];
         } else {
           samples[i*2+1]=0;
         }
-        second_offset+=add_per_sample;
+        second_offset+=f_add_per_sample;
     }
   }
 
