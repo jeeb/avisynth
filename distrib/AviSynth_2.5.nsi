@@ -1,7 +1,7 @@
 !packhdr tempfile.exe "upx --best --q tempfile.exe"
 
 !DEFINE VERSION 2.5.5
-!DEFINE DATE 270104
+!DEFINE DATE 300104
 
 SetCompressor lzma
 !include "MUI.nsh"
@@ -54,7 +54,6 @@ ClearErrors
   SetOutPath $SYSDIR
   File "..\src\release\AviSynth.dll"
 	File "bin\devil.dll"
-	File "bin\avisynth_c.dll"
 
 IfFileExists "$SYSDIR\msvcp60.dll" msvc60_exists
   File "bin\msvcp60.dll"

@@ -100,7 +100,7 @@ AVSValue LoadPlugin(AVSValue args, void* user_data, IScriptEnvironment* env) {
       AvisynthPluginInitFunc AvisynthPluginInit = (AvisynthPluginInitFunc)GetProcAddress(plugin, "AvisynthPluginInit2");
       if (!AvisynthPluginInit) {
         AvisynthPluginInit = (AvisynthPluginInitFunc)GetProcAddress(plugin, "_AvisynthPluginInit2@4");
-
+/*
         if (!AvisynthPluginInit) {  // Attempt C-plugin
           AvisynthPluginInit = (AvisynthPluginInitFunc)GetProcAddress(plugin, "avisynth_c_plugin_init");
           if (AvisynthPluginInit) {
@@ -108,7 +108,7 @@ AVSValue LoadPlugin(AVSValue args, void* user_data, IScriptEnvironment* env) {
             return env->Invoke("LoadCPlugin", args);
           }
         }
-
+*/
         if (!AvisynthPluginInit) {  // Older version
           FreeLibrary(plugin);
           if (quiet) {
