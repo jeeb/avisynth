@@ -291,6 +291,14 @@ SOURCE=.\filters\overlay\OF_blend.cpp
 # End Source File
 # Begin Source File
 
+SOURCE=.\filters\overlay\OF_multiply.cpp
+# End Source File
+# Begin Source File
+
+SOURCE=.\filters\overlay\OF_subtract.cpp
+# End Source File
+# Begin Source File
+
 SOURCE=.\filters\overlay\overlay.cpp
 # End Source File
 # Begin Source File
