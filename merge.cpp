@@ -225,8 +225,8 @@ void weigh_chroma(unsigned int *src,unsigned int *chroma, int pitch, int chroma_
 void mmx_merge_luma( unsigned int *src, unsigned int *luma, int pitch, 
                      int luma_pitch,int width, int height ) 
 {
-	__int64 I1=0x00ff00ff00ff00ff;  // Luma mask
-	__int64 I2=0xff00ff00ff00ff00;  // Chroma mask
+	__declspec(align(8)) static __int64 I1=0x00ff00ff00ff00ff;  // Luma mask
+	__declspec(align(8)) static __int64 I2=0xff00ff00ff00ff00;  // Chroma mask
   // [V][Y2][U][Y1]
 
   int row_size = width * 2;
@@ -253,10 +253,6 @@ afterloop:
 		cmp       ecx,[lwidth_bytes]	; Is eax(i) greater than endx
 		jge       outloop		; Jump out of loop if true
 
-#ifdef ATHLON
-	prefetchw [eax+ecx]
-	prefetch [ebx+ecx]
-#endif
 
 		; Processes 8 pixels at the time 
 		movq mm0,[eax+ecx]		; chroma 4 pixels
@@ -299,8 +295,8 @@ exitloop:
 void isse_weigh_luma(unsigned int *src,unsigned int *luma, int pitch,
 										int luma_pitch,int width, int height, int weight, int invweight)
 {
-	__int64 I1=0x00ff00ff00ff00ff;  // Luma mask
-	__int64 I2=0xff00ff00ff00ff00;  // Chroma mask
+	__declspec(align(8)) static __int64 I1=0x00ff00ff00ff00ff;  // Luma mask
+	__declspec(align(8)) static __int64 I2=0xff00ff00ff00ff00;  // Chroma mask
   // [V][Y2][U][Y1]
 
   int row_size = width * 2;
@@ -334,10 +330,6 @@ afterloop:
 		cmp       ecx,[lwidth_bytes]	; Is eax(i) greater than endx
 		jge       outloop		; Jump out of loop if true
 
-#ifdef ATHLON
-	prefetchw [eax+ecx]
-	prefetch [ebx+ecx]
-#endif
 
 		; Processes 4 pixels at the time
 		movq mm0,[eax+ecx]		; original 4 pixels   (cc)
@@ -392,18 +384,17 @@ exitloop:
 void isse_weigh_chroma( unsigned int *src,unsigned int *chroma, int pitch, 
                      int chroma_pitch,int width, int height, int weight, int invweight ) 
 {
-	__int64 I1=0x00ff00ff00ff00ff;  // Luma mask
-//__int64 I2=0xff00ff00ff00ff00;  // Chroma mask // unused
+
+  __declspec(align(8)) static __int64 I1=0x00ff00ff00ff00ff;  // Luma mask
+  __declspec(align(8)) static __int64 weight64  = (__int64)invweight | (((__int64)weight)<<16) | (((__int64)invweight)<<32) |(((__int64)weight)<<48);
+	__declspec(align(8)) static __int64 rounder = 0x0000400000004000;		// (0.5)<<15 in each dword
   // [V][Y2][U][Y1]
 
   int row_size = width * 2;
 	int lwidth_bytes = row_size & -8;	// bytes handled by the main loop
-  __int64 weight64  = (__int64)invweight | (((__int64)weight)<<16) | (((__int64)invweight)<<32) |(((__int64)weight)<<48);
-	__int64 rounder = 0x0000400000004000;		// (0.5)<<15 in each dword
 
   __asm {
 		movq mm7,[I1]     ; Luma
-//		movq mm6,[I2]     ; Chroma // unused
     movq mm5,[weight64] ; Weight
 		movq mm4,[rounder]
 
@@ -426,10 +417,6 @@ afterloop:
 		cmp       ecx,[lwidth_bytes]	; Is eax(i) greater than endx
 		jge       outloop		; Jump out of loop if true
 
-#ifdef ATHLON
-	prefetchw [eax+ecx]
-	prefetch [ebx+ecx]
-#endif
 
 		; Processes 4 pixels at the time
 		movq mm0,[eax+ecx]		; original 4 pixels   (cc)
