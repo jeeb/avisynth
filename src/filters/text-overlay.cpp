@@ -37,7 +37,10 @@
 
 #include "text-overlay.h"
 
+#include<string>
+#include<sstream>
 
+using namespace std;
 
 
 
@@ -677,6 +680,30 @@ const char* t_STFF="Top Field (Separated)   ";
 const char* t_SBFF="Bottom Field (Separated)";
 
 
+string GetCpuMsg(IScriptEnvironment * env)
+{
+  int flags = env->GetCPUFlags();
+  stringstream ss;  
+
+  if (flags & CPUF_FPU)
+    ss << "x87  ";
+  if (flags & CPUF_MMX)
+    ss << "MMX  ";
+  if (flags & CPUF_INTEGER_SSE)
+    ss << "ISSE  ";
+  if (flags & CPUF_SSE)
+    ss << "SSE  ";
+  if (flags & CPUF_SSE2)
+    ss << "SSE2  ";
+  if (flags & CPUF_3DNOW)
+    ss << "3DNOW  ";
+  if (flags & CPUF_3DNOW_EXT)
+    ss << "3DNOW_EXT  ";
+
+  return ss.str();
+}
+
+
 PVideoFrame FilterInfo::GetFrame(int n, IScriptEnvironment* env) 
 {
   PVideoFrame frame = child->GetFrame(n, env);
@@ -721,6 +748,7 @@ PVideoFrame FilterInfo::GetFrame(int n, IScriptEnvironment* env)
       "Audio Channels: %-8u\n"
       "Sample Type: %s\n"
       "Samples Per Second: %4d\n"
+      "CPU detected: %s\n"
       ,n
       ,c_space
       ,vi.width,vi.height
@@ -732,6 +760,7 @@ PVideoFrame FilterInfo::GetFrame(int n, IScriptEnvironment* env)
       ,vi.AudioChannels()
       ,s_type
       ,vi.audio_samples_per_second
+      ,GetCpuMsg(env).c_str()
     );
 
     DrawText(hdcAntialias, text, -1, &r, 0);
