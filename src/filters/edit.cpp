@@ -665,15 +665,16 @@ Loop::Loop(PClip _child, int _times, int _start, int _end, IScriptEnvironment* e
 
   if (vi.HasAudio()) {
     if (vi.HasVideo()) {
-      start_samples = (((start*vi.audio_samples_per_second)*vi.fps_denominator)/ vi.fps_numerator);
-      loop_ends_at_sample = (((end*vi.audio_samples_per_second)*vi.fps_denominator)/ vi.fps_numerator);
-      loop_len_samples = (__int64)(0.5+(double)(loop_ends_at_sample-start_samples)/(double)times);
+      start_samples = vi.AudioSamplesFromFrames(start);
+      loop_ends_at_sample = vi.AudioSamplesFromFrames(end); // This is the output end sample
+      loop_len_samples = (__int64)(0.5+(double)(loop_ends_at_sample - start_samples)/(double)times);  // length (in float) of each loop in samples
     } else {
         // start and end frame numbers are meaningless without video
         start_samples = 0;
-        loop_ends_at_sample = loop_len_samples = vi.num_audio_samples;
+        loop_len_samples = vi.num_audio_samples;
+        loop_ends_at_sample = vi.num_audio_samples * times;
     }
-    vi.num_audio_samples+=(loop_len_samples*times);
+    vi.num_audio_samples += (loop_len_samples*times);
   }
 
 }
