@@ -564,28 +564,28 @@ PVideoFrame __stdcall Limiter::GetFrame(int n, IScriptEnvironment* env) {
       c_plane = srcp;
       if (!luma_emulator) {  
         assemblerY = create_emulator(row_size, height, env);
+        luma_emulator=true;
       }
       emu_cmin =  min_luma|(min_chroma<<8);
       emu_cmax =  max_luma|(max_chroma<<8);
       modulo = pitch-row_size;
       assemblerY.Call();
-    }
-
-
-	  for(int y = 0; y < height; y++) {
-      for(int x = 0; x < row_size; x++) {
-        if(srcp[x] < min_luma )
-          srcp[x++] = min_luma;
-        else if(srcp[x] > max_luma)
-          srcp[x++] = max_luma;
-        else
-          x++;
-        if(srcp[x] < min_chroma)
-          srcp[x] = min_chroma;
-        else if(srcp[x] > max_chroma)
-          srcp[x] = max_chroma;
+    } else {  // If not ISSE
+	    for(int y = 0; y < height; y++) {
+        for(int x = 0; x < row_size; x++) {
+          if(srcp[x] < min_luma )
+            srcp[x++] = min_luma;
+          else if(srcp[x] > max_luma)
+            srcp[x++] = max_luma;
+          else
+            x++;
+          if(srcp[x] < min_chroma)
+            srcp[x] = min_chroma;
+          else if(srcp[x] > max_chroma)
+            srcp[x] = max_chroma;
+        }
+        srcp += pitch;
       }
-      srcp += pitch;
     }  
   } else if(vi.IsYV12()) {
   if (env->GetCPUFlags() & CPUF_INTEGER_SSE) {
@@ -666,6 +666,7 @@ DynamicAssembledCode Limiter::create_emulator(int row_size, int height, IScriptE
   int remain_4 = (row_size-(mod32_w*32))/4;
 
   int prefetchevery = 1;  // 32 byte cache line
+
   if ((env->GetCPUFlags() & CPUF_3DNOW_EXT)||((env->GetCPUFlags() & CPUF_SSE2))) {
     // We have either an Athlon or a P4
     prefetchevery = 2;  // 64 byte cacheline
@@ -688,11 +689,11 @@ DynamicAssembledCode Limiter::create_emulator(int row_size, int height, IScriptE
     x86.push(edi);
 
     x86.mov(eax, height);
-    x86.mov(ebx, dword_ptr [&c_plane]);
-    x86.mov(ecx, dword_ptr [&modulo]);
-    x86.movd(mm7,dword_ptr [&emu_cmax]);
+    x86.mov(ebx, dword_ptr [&c_plane]);  // Pointer to the current plane
+    x86.mov(ecx, dword_ptr [&modulo]);   // Modulo
+    x86.movd(mm7,dword_ptr [&emu_cmax]);  
     x86.movd(mm6, dword_ptr [&emu_cmin]);
-    x86.pshufw(mm7,mm7,0);
+    x86.pshufw(mm7,mm7,0);  // Move thresholds into all 8 bytes
     x86.pshufw(mm6,mm6,0);
 
     x86.align(16);
@@ -740,6 +741,9 @@ DynamicAssembledCode Limiter::create_emulator(int row_size, int height, IScriptE
     x86.add(ebx,ecx);
     x86.dec(eax);
     x86.jnz("yloop");
+    if (use_movntq) {
+      x86.sfence();  // Flush write combiner.
+    }
     x86.emms();
 
     x86.pop(edi);
