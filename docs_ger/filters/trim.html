@@ -1,53 +1,43 @@
 <!doctype html public "-//W3C//DTD HTML 4.0 Transitional//EN">
 <html>
 <head>
-<meta name="GENERATOR" content="PPWIZARD version 02.213 on WIN2K, FREE tool for Windows, OS/2, DOS and UNIX by Dennis Bareis (http://www.labyrinth.net.au/~dbareis/ppwizard.htm)">
-<title>Trim Avisynth Filter</title>
-<STYLE type=text/css>
-A:link {
-COLOR: #404a58;TEXT-DECORATION: none
-}
-A:visited {
-COLOR: #404a58;TEXT-DECORATION: none
-}
-A:active {
-COLOR: #404a58;TEXT-DECORATION: none
-}
-A:hover {
-COLOR: #e8f0ff; TEXT-DECORATION: underline
-}
-.titresmall {
-color : 000000;
-font-family: Tahoma, Verdana, Arial, Helvetica, sans-serif;
-font-size: 16pt;
-letter-spacing: 0.15em;
-font-weight: bold;
-}
-</STYLE>
+ <meta name="Generator" content="PPWIZARD version 02.213 on WIN2K, FREE tool for Windows, OS/2, DOS and UNIX by Dennis Bareis (http://www.labyrinth.net.au/~dbareis/ppwizard.htm)">
+ <title>Trim AviSynth Filter</title>
+ <style type=text/css>
+  A:link { COLOR: #404a58;TEXT-DECORATION: none }
+  A:visited { COLOR: #404a58;TEXT-DECORATION: none }
+  A:active { COLOR: #404a58;TEXT-DECORATION: none }
+  A:hover { COLOR: #e8f0ff; TEXT-DECORATION: underline }
+  .titresmall { color : 000000; font-family: Tahoma, Verdana, Arial, Helvetica, sans-serif; font-size: 16pt; letter-spacing: 0.15em; font-weight: bold; }
+ </style>
 </head>
 <body bgcolor=b6cac0>
-<span class="titresmall"><a name="Trim">Trim</a></span> 
-<p><tt>Trim(</tt><i>clip, int first_frame, int last_frame</i><tt>)</tt></p>
-<p>Mit <tt>Trim</tt> wird ein Clip geschnitten, so dass nur noch die Frames <i>first-frame</i> 
-  bis <i>last-frame</i> enthalten sind. Auch das Audio wird entsprechend geschnitten 
-  Wenn Null f&uuml;r <i>last-frame</i> eingesetzt wird, wird das als &quot;bis 
-  zum Ende des Clips&quot; interpretiert.<br>
-  Eine negative Argument von <i>last_frame</i> gibt die Frames von <i>first_frame</i> 
-  bis <i>first_frame</i> + (- <i>last_frame</i>-1) zur&uuml;ck. Dies ist auch 
-  die einzige M&ouml;glichkeit, den allerersten Frame zu erhalten.</p>
-<p>&nbsp; </p>
-<table width="75%" border="1">
-  <tr> 
-    <td> 
-      <pre>Beispiel:</pre>
-      <pre>Trim(100,0)     # die ersten 100 Frames l&ouml;schen<br>Trim(100,-100)  # das ist das gleiche wie Trim(100,199)<br>Trim(0,-1)      # den ersten Frame zur&uuml;ckgeben</pre>
-    </td>
-  </tr>
-</table>
-<p>&nbsp;</p>
-<FORM>
-<INPUT TYPE="Button" VALUE="Back"
-onClick="history.go(-1)">
-</form>
+<span class="titresmall"><a name="Trim"></a>Trim</span><br><br>
+
+<tt>Trim(</tt><i>clip, int first_frame, int last_frame</i><tt>)</tt><br><br>
+
+Mit <tt>Trim</tt> wird ein Clip geschnitten, so dass nur noch die Frames <i>first-frame</i> bis <i>last-frame</i> enthalten sind. Auch der Ton wird entsprechend geschnitten. Wenn Null f&uuml;r <i>last-frame</i> eingesetzt wird, wird das als &quot;bis zum Ende des Clips&quot; interpretiert.<br>
+Eine negatives Argument von <i>last_frame</i> gibt die Frames von <i>first_frame</i> bis <i>first_frame</i> + (- <i>last_frame</i>-1) zur&uuml;ck. Dies ist auch die einzige M&ouml;glichkeit, den allerersten Frame zu erhalten.<br><br>
+
+<table border width="75%">
+ <tr> 
+  <td> 
+   <tt>
+    Beispiele:<br><br>
+    
+    # Die ersten 100 Frames l&ouml;schen:<br>
+    Trim(100,-100)<br><br>
+    
+    # Das ist das gleiche wie Trim(100,199)<br>
+    Trim(0,-1)<br><br>
+    
+    # Den ersten Frame zur&uuml;ckgeben:<br>
+    Trim(100,0)
+   </tt>
+  </td>
+ </tr>
+</table><br>
+
+<form><input type="Button" value="Back" onClick="history.go(-1)"></form>
 </body>
 </html>

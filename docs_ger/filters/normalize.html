@@ -1,65 +1,52 @@
-<!doctype html public "-//W3C//DTD HTML 4.0 Transitional//EN">
+<!doctype html public "-//w3c//dtd html 4.0 transitional//en">
 <html>
 <head>
-<meta name="GENERATOR" content="PPWIZARD version 02.213 on WIN2K, FREE tool for Windows, OS/2, DOS and UNIX by Dennis Bareis (http://www.labyrinth.net.au/~dbareis/ppwizard.htm)">
-<title>Normalize Avisynth Filter</title>
-<STYLE type=text/css>
-A:link {
-COLOR: #404a58;TEXT-DECORATION: none
-}
-A:visited {
-COLOR: #404a58;TEXT-DECORATION: none
-}
-A:active {
-COLOR: #404a58;TEXT-DECORATION: none
-}
-A:hover {
-COLOR: #e8f0ff; TEXT-DECORATION: underline
-}
-.titresmall {
-color : 000000;
-font-family: Tahoma, Verdana, Arial, Helvetica, sans-serif;
-font-size: 16pt;
-letter-spacing: 0.15em;
-font-weight: bold;
-}
-</STYLE>
+ <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+ <meta name="Generator" content="Mozilla/4.5 [en] (WinNT; I) [Netscape]">
+ <title>Normalize AviSynth Filter</title>
+ <style type=text/css>
+  A:link { COLOR: #404a58;TEXT-DECORATION: none }
+  A:visited { COLOR: #404a58;TEXT-DECORATION: none }
+  A:active { COLOR: #404a58;TEXT-DECORATION: none }
+  A:hover { COLOR: #e8f0ff; TEXT-DECORATION: underline }
+  .titresmall { color : 000000; font-family: Tahoma, Verdana, Arial, Helvetica, sans-serif; font-size: 16pt; letter-spacing: 0.15em; font-weight: bold; }
+ </style>
 </head>
-<body bgcolor=b6cac0>
-<SPAN class=titresmall><A name=Normalize>Normalize</A></SPAN> 
-<P><tt>Normalize(</tt><i>clip, float &quot;left&quot;, float &quot;right&quot;</i><tt>)<font color="#e8f0ff"></font></tt>
-<p>Verst&auml;rkt das Audio soweit als m&ouml;glich ohne zu &Uuml;bersteuern. 
-<p>Standardm&auml;ssig wird das Clip auf 1.0 verst&auml;rkt (die gr&ouml;sste 
-  Lautst&auml;rke ohne &Uuml;bersteuern - gr&ouml;ssere Werte erzeugen mit Sicherheit 
-  Verzerrungen). Wenn nur die Lautst&auml;rke von einem Kanal angegeben wird, 
-  wird der andere gleichermassen verst&auml;rkt. 
-<p>Stereo-Kan&auml;le werden von diesem Filter nie getrennt verst&auml;rkt, auch 
-  wenn die Lautst&auml;rken sehr unterschiedlich sind. Die beiden Lautst&auml;rken 
-  werden angewandt, nachdem das Maximum gefunden wurde. Wenn jeder Kanal getrennt 
-  normalisiert werden soll, muss vorher <tt>GetLeftChannel()</tt> und <tt>GetRightChannel()</tt> 
-  verwendet werden. Audio wird auf 16 bit konvertiert.
-<p>&nbsp;
-<table width="75%" border="1">
-  <tr> 
-    <td> 
-      <pre>Beispiele:</pre>
-      <pre># Normalisieren auf 98%
-source=AviSource("c:\autechre.wav")
-return Normalize(source,0.98)
+<body bgcolor="#B6CAC0">
+<span class=titresmall><a name="Normalize"></a>Normalize</span><br><br>
 
-# jeden Kanal getrennt normalisieren
-Source=AviSource("bjoer7000.wav")
-left_ch=GetLeftChannel(Source).Normalize()
-right_ch=GetRightChannel(Source).Normalize()
-Return MonoToStereo(left_ch,right_ch)
-</pre>
-      </td>
-  </tr>
-</table>
-<p>&nbsp;
-<FORM>
-<INPUT TYPE="Button" VALUE="Back"
-onClick="history.go(-1)">
-</form>
+<tt>Normalize(</tt><i>clip, float "volume", bool "show"</i><tt>)</tt><br><br>
+
+Verst&auml;rkt den Ton soweit als m&ouml;glich ohne zu &Uuml;bersteuern.<br><br>
+
+Standardm&auml;ssig wird der Clip auf 1.0 verst&auml;rkt (die gr&ouml;&szlig;te Lautst&auml;rke ohne &Uuml;bersteuern - gr&ouml;&szlig;ere Werte erzeugen mit Sicherheit Verzerrungen). Wenn nur die Lautst&auml;rke von einem Kanal angegeben wird, wird der andere gleichermassen verst&auml;rkt.<br><br>
+
+Seit AviSynth 2.08 gibt das optionale Argument <i>show</i>. Wenn <i>show=true</i> gesetzt ist, wird die maximale m&ouml;gliche Verst&auml;rkung ohne &Uuml;bersteuerung angezeigt.<br><br>
+
+Bei Mehrkanal-Ton wird nicht jeder Kanal einzeln verst&auml;rkt, auch wenn die Lautst&auml;rken sehr unterschiedlich sind. Die Lautst&auml;rken werden angewandt, nachdem das Maximum gefunden wurde, und arbeitet genauso wie ein getrennt angewendetes <a href="amplify.html"><tt>Amplify</tt></a>. Das bedeutet, dass, wenn man zwei Kan&auml;le hat mit unterschiedlichen Lautst&auml;rken, dann der lautere Kanal die Lautst&auml;rke auch f&uuml;r den leiseren Kanal bestimmt. Wenn jeder Kanal getrennt normalisiert werden soll, muss vorher <a href="getchannel.html"><tt>GetChannel()</tt></a> zum Aufsplitten der Kan&auml;le verwendet werden.<br><br>
+
+Als ein Nebeneffekt wird der Ton auf 16 bit konvertiert.<br><br>
+
+<table border width="75%">
+ <tr> 
+  <td> 
+   <tt>
+    Beispiele:<br><br>
+    
+    # Normalisieren auf 98%:<br>
+    source = AviSource("C:\Dateiname.wav")<br>
+    return Normalize(source,0.98)<br><br>
+
+    # jeden Kanal getrennt normalisieren:<br>
+    Source = AviSource("C:\Dateiname.wav")<br>
+    left_ch = GetLeftChannel(Source).Normalize()<br>
+    right_ch = GetRightChannel(Source).Normalize()<br>
+    Return MonoToStereo(left_ch,right_ch)
+   </tt>
+  </td>
+ </tr>
+</table><br>
+
+<form><input type="Button" value="Back" onClick="history.go(-1)"></form>
 </body>
 </html>

@@ -1,58 +1,46 @@
 <!doctype html public "-//W3C//DTD HTML 4.0 Transitional//EN">
 <html>
 <head>
-<meta name="GENERATOR" content="PPWIZARD version 02.213 on WIN2K, FREE tool for Windows, OS/2, DOS and UNIX by Dennis Bareis (http://www.labyrinth.net.au/~dbareis/ppwizard.htm)">
-<title>Loop Avisynth Filter</title>
-<STYLE type=text/css>
-A:link {
-COLOR: #404a58;TEXT-DECORATION: none
-}
-A:visited {
-COLOR: #404a58;TEXT-DECORATION: none
-}
-A:active {
-COLOR: #404a58;TEXT-DECORATION: none
-}
-A:hover {
-COLOR: #e8f0ff; TEXT-DECORATION: underline
-}
-.titresmall {
-color : 000000;
-font-family: Tahoma, Verdana, Arial, Helvetica, sans-serif;
-font-size: 16pt;
-letter-spacing: 0.15em;
-font-weight: bold;
-}
-</STYLE>
+ <meta name="Generator" content="PPWIZARD version 02.213 on WIN2K, FREE tool for Windows, OS/2, DOS and UNIX by Dennis Bareis (http://www.labyrinth.net.au/~dbareis/ppwizard.htm)">
+ <title>Loop AviSynth Filter</title>
+ <style type=text/css>
+  A:link { COLOR: #404a58;TEXT-DECORATION: none }
+  A:visited { COLOR: #404a58;TEXT-DECORATION: none }
+  A:active { COLOR: #404a58;TEXT-DECORATION: none }
+  A:hover { COLOR: #e8f0ff; TEXT-DECORATION: underline }
+  .titresmall { color : 000000; font-family: Tahoma, Verdana, Arial, Helvetica, sans-serif; font-size: 16pt; letter-spacing: 0.15em; font-weight: bold; }
+ </style>
 </head>
 <body bgcolor=b6cac0>
-<SPAN class=titresmall><A name=Loop>Loop</A></SPAN> 
-<P><tt>Loop(</tt><i>clip, int &quot;times&quot;, int &quot;start&quot;, int &quot;end&quot;</i><tt>)</tt>
-<p>Dieses Filter wiederholt das Segment von <i>start frame</i> bis <i>end frame</i> 
-  so oft wie durch <i>times</i> angegeben. <br>
-  <i>times</i> (Standardwert = -1): so oft wird die Schleife durchlaufen<br>
-  <i>start</i> (Standardwert = 0): der Frame vom Clip wo die Schleife startet<br>
-  <i>end</i> (Standardwert = framecount(clip)): der Fam vom Clip wo die Schleife 
-  endet
-<p>
-<table width="75%" border="1">
-  <tr> 
-    <td> 
-      <pre>Example:
-<br>Loop(10,100,110) # Wiederholt Frame 100 bis 110 vom aktuellern Clip 10 mal
-<br>Loop()           # wiederholt den aktuellen Clip praktisch unendlich oft
-<br>Loop(10)         # wiederholt den Clip 10 mal
-<br>Loop(10,20,29  ) # wiederholt Frame 20 bis 29 10 mal, bevor weitergespielt wird
-                 # das Clip wird um 90 Frames l&auml;nger<br><br>Loop(0,20,29)    # Frames 20 bis 29 l&ouml;schen
-                 # das Clip wird um 10 Frames k&uuml;rzer
-<br>Loop(-1,20,29)   # Frame 20 bis 29 wird unendlich oft wiederholt</pre>
-      </td>
-  </tr>
-</table>
-<p>&nbsp;
-<FORM>
-<INPUT TYPE="Button" VALUE="Back"
-onClick="history.go(-1)">
-</form>
+<span class=titresmall><a name=Loop></a>Loop</span><br><br>
+
+<tt>Loop(</tt><i>clip, int &quot;times&quot;, int &quot;start&quot;, int &quot;end&quot;</i><tt>)</tt><br><br>
+
+<tt>Loop</tt> wiederholt das Segment von <i>start frame</i> bis <i>end frame</i> so oft wie durch <i>times</i> angegeben. <br><br>
+
+<i>times</i> (Standardwert = -1): so oft wird die Schleife durchlaufen<br>
+<i>start</i> (Standardwert = 0): der Frame vom Clip, bei dem die Schleife startet<br>
+<i>end</i> (Standardwert = framecount(clip)): der Frame vom Clip, bei dem die Schleife endet<br><br>
+
+<table border width="80%">
+ <tr> 
+  <td> 
+   <tt>
+    Beispiele:<br><br>
+    
+    Loop(10,100,110) # Wiederholt Frame 100 bis 110 vom aktuellern Clip 10 mal<br>
+    Loop() &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; # wiederholt den aktuellen Clip praktisch unendlich oft<br>
+    Loop(10) &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; # wiederholt den Clip 10 mal<br>
+    Loop(10,20,29) &nbsp; # wiederholt Frame 20 bis 29 10 mal, bevor weitergespielt wird<br>
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; # das Clip wird um 90 Frames l&auml;nger<br>
+    Loop(0,20,29) &nbsp;&nbsp; # Frames 20 bis 29 l&ouml;schen<br>
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; # das Clip wird um 10 Frames k&uuml;rzer<br>
+    Loop(-1,20,29) &nbsp; # Frame 20 bis 29 wird unendlich oft wiederholt
+   </tt>
+  </td>
+ </tr>
+</table><br>
+
+<form><input type="Button" value="Back" onClick="history.go(-1)"></form>
 </body>
 </html>

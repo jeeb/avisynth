@@ -1,47 +1,26 @@
 <!doctype html public "-//W3C//DTD HTML 4.0 Transitional//EN">
 <html>
 <head>
-<meta name="GENERATOR" content="PPWIZARD version 02.213 on WIN2K, FREE tool for Windows, OS/2, DOS and UNIX by Dennis Bareis (http://www.labyrinth.net.au/~dbareis/ppwizard.htm)">
-<title>Blur / Sharpen Avisynth Filter</title>
-<STYLE type=text/css>
-A:link {
-COLOR: #404a58;TEXT-DECORATION: none
-}
-A:visited {
-COLOR: #404a58;TEXT-DECORATION: none
-}
-A:active {
-COLOR: #404a58;TEXT-DECORATION: none
-}
-A:hover {
-COLOR: #e8f0ff; TEXT-DECORATION: underline
-}
-.titresmall {
-color : 000000;
-font-family: Tahoma, Verdana, Arial, Helvetica, sans-serif;
-font-size: 16pt;
-letter-spacing: 0.15em;
-font-weight: bold;
-}
-</STYLE>
+ <meta name="Generator" content="PPWIZARD version 02.213 on WIN2K, FREE tool for Windows, OS/2, DOS and UNIX by Dennis Bareis (http://www.labyrinth.net.au/~dbareis/ppwizard.htm)">
+ <title>Blur / Sharpen AviSynth Filter</title>
+ <style type=text/css>
+  A:link { COLOR: #404a58;TEXT-DECORATION: none }
+  A:visited { COLOR: #404a58;TEXT-DECORATION: none }
+  A:active { COLOR: #404a58;TEXT-DECORATION: none }
+  A:hover { COLOR: #e8f0ff; TEXT-DECORATION: underline }
+  .titresmall { color : 000000; font-family: Tahoma, Verdana, Arial, Helvetica, sans-serif; font-size: 16pt; letter-spacing: 0.15em; font-weight: bold; }
+ </style>
 </head>
 <body bgcolor=b6cac0>
-<span class="titresmall"><a name="Blur">Blur / Sharpen</a></span> 
-<p><tt>Blur(</tt><i>clip, float amount</i><tt>)<br>
-  </tt><tt>Sharpen(</tt><i>clip, float amount</i><tt>)</tt></p>
-<b> <a href="filters/bob.html"></a></b>Diese zwei Filter sind einfache 3x3-kernel 
-Unsch&auml;rfe- bzw. Sch&auml;rf-Filter. Der gr&ouml;sste Wert ist 1.58, das entspricht 
-einer gleichm&auml;ssigen 3x3-pixel Unsch&auml;rfe. Ein Wert von 1.0 entspricht 
-einem (1/4,1/2,1/4) kernel. F&uuml;r Unsch&auml;rfen mit gr&ouml;sserem Radius 
-k&ouml;nnen mehrere Befehle <tt>Blur(1.0)</tt> hintereinander gereiht werden. 
-<p>Negative Argumente von <tt>Blur</tt> sch&auml;rfen das Bild, da <tt>Sharpen</tt> 
-  <i>n</i> nur eine andere Schreibweise ist f&uuml;r <tt>Blur</tt> <i>-n</i>. 
-  Der kleinste erlaubte Wert f&uuml;r <tt>Blur</tt> ist -1.0, der gr&ouml;sste 
-  f&uuml;r <tt>Sharpen</tt> ist 1.0. </p>
-<p> 
-<FORM>
-  <INPUT TYPE="Button" VALUE="Back"
-onClick="history.go(-1)">
-</form>
+<span class="titresmall"><a name="Blur"></a>Blur / Sharpen</span><br><br>
+
+<tt>Blur(</tt><i>clip, float amount</i><tt>)<br>
+</tt><tt>Sharpen(</tt><i>clip, float amount</i><tt>)</tt><br><br>
+
+Diese zwei Filter sind einfache 3x3-Kern Unsch&auml;rfe- bzw. Sch&auml;rf-Filter. Der gr&ouml;&szlig;te erlaubte Wert ist 1.58, das entspricht einer gleichm&auml;ssigen 3x3-Pixel Unsch&auml;rfe. Ein Wert von 1.0 entspricht einem (1/4,1/2,1/4) Kern. F&uuml;r gaussche Unsch&auml;rfen mit gr&ouml;sserem Radius k&ouml;nnen mehrere Befehle <tt>Blur(1.0)</tt> hintereinander gereiht werden.<br><br>
+
+Negative Argumente von <tt>Blur</tt> sch&auml;rfen das Bild, da <tt>Sharpen( x )</tt> nur eine andere Schreibweise ist f&uuml;r <tt>Blur( -x )</tt>. Der kleinste erlaubte Wert f&uuml;r <tt>Blur</tt> ist -1.0, der gr&ouml;&szlig;te f&uuml;r <tt>Sharpen</tt> ist 1.0.<br><br>
+
+<form><input type="Button" value="Back" onClick="history.go(-1)"></form>
 </body>
 </html>

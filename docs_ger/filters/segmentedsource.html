@@ -1,44 +1,28 @@
 <!doctype html public "-//W3C//DTD HTML 4.0 Transitional//EN">
 <html>
 <head>
-<meta name="GENERATOR" content="PPWIZARD version 02.213 on WIN2K, FREE tool for Windows, OS/2, DOS and UNIX by Dennis Bareis (http://www.labyrinth.net.au/~dbareis/ppwizard.htm)">
-<title>SegmentedAVISource / SegmentedDirectShowSource Avisynth Filter</title>
-<STYLE type=text/css>
-A:link {
-COLOR: #404a58;TEXT-DECORATION: none
-}
-A:visited {
-COLOR: #404a58;TEXT-DECORATION: none
-}
-A:active {
-COLOR: #404a58;TEXT-DECORATION: none
-}
-A:hover {
-COLOR: #e8f0ff; TEXT-DECORATION: underline
-}
-.titresmall {
-color : 000000;
-font-family: Tahoma, Verdana, Arial, Helvetica, sans-serif;
-font-size: 16pt;
-letter-spacing: 0.15em;
-font-weight: bold;
-}
-</STYLE>
+ <meta name="Generator" content="PPWIZARD version 02.213 on WIN2K, FREE tool for Windows, OS/2, DOS and UNIX by Dennis Bareis (http://www.labyrinth.net.au/~dbareis/ppwizard.htm)">
+ <title>SegmentedAVISource / SegmentedDirectShowSource AviSynth Filter</title>
+ <style type=text/css>
+  A:link { COLOR: #404a58;TEXT-DECORATION: none }
+  A:visited { COLOR: #404a58;TEXT-DECORATION: none }
+  A:active { COLOR: #404a58;TEXT-DECORATION: none }
+  A:hover { COLOR: #e8f0ff; TEXT-DECORATION: underline }
+  .titresmall { color : 000000; font-family: Tahoma, Verdana, Arial, Helvetica, sans-serif; font-size: 16pt; letter-spacing: 0.15em; font-weight: bold; }
+ </style>
 </head>
 <body bgcolor=b6cac0>
-<span class="titresmall"><a name="SegmentedAVISource">SegmentedAVISource / SegmentedDirectShowSource</a></span> 
-<p><tt>SegmentedAVISource(</tt><i>string base_filename[,...], bool &quot;audio&quot;, string &quot;pixel_type&quot;</i><tt>)</tt><br>
-  <tt>SegmentedDirectShowSource(</tt><i>string base_filename[,...][,fps]</i><tt>)</tt></p>
-<p>Dieses Filter l&auml;dt automatisch bis zu 100 AVI-Dateien pro Argument (intern 
-  durch <tt>AVISource</tt>) und f&uuml;gt diese zusammen (intern durch <tt>UnalignedSplice</tt>). 
-  Wenn als Argument "d:\filename.ext" eingegeben wird, werden die Dateien &quot;d:\filename.00.ext&quot;, 
-  &quot; d:\filename.01.ext&quot; und so weiter bsi zu &quot;d:\filename.99.ext&quot; 
-  geladen. Alle da nicht vorhandenen Dateien werden &uuml;bersprungen. </p>
-<p><tt>SegmentedDirectShowSource</tt> funktioniert genauso. 
-<p>Auch hier wird ACM (Audio Compression Manager)-Audio (z.B. mp3-AVIs) unterst&uuml;tzt. 
-<FORM>
-<INPUT TYPE="Button" VALUE="Back"
-onClick="history.go(-1)">
-</form>
+<span class="titresmall"><a name="SegmentedAVISource"></a>SegmentedAVISource / SegmentedDirectShowSource</span><br><br>
+
+<tt>SegmentedAVISource(</tt><i>string base_filename[,...], bool &quot;audio&quot;, string &quot;pixel_type&quot;</i><tt>)</tt><br>
+<tt>SegmentedDirectShowSource(</tt><i>string base_filename[,...][,fps]</i><tt>)</tt><br><br>
+
+Dieser Filter l&auml;dt automatisch bis zu 100 AVI-Dateien pro Argument (intern durch <a href="avisource.html"><tt>AVISource</tt></a>) und f&uuml;gt diese zusammen (intern durch <a href="splice.html"><tt>UnalignedSplice</tt></a>). Wenn als Argument "d:\filename.ext" eingegeben wird, werden die Dateien &quot;d:\filename.00.ext&quot;, &quot; d:\filename.01.ext&quot; und so weiter bis zu &quot;d:\filename.99.ext&quot; geladen. Alle nicht vorhandenen Dateien werden &uuml;bersprungen.<br><br>
+
+<tt>SegmentedDirectShowSource</tt> funktioniert genauso.<br><br>
+
+Seit AviSynth 2.04 wird ACM (Audio Compression Manager) Ton (z.B. mp3-AVIs) auch intern unterst&uuml;tzt.<br><br>
+
+<form><input type="Button" value="Back" onClick="history.go(-1)"></form>
 </body>
 </html>

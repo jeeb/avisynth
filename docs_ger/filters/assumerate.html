@@ -1,53 +1,50 @@
-<!doctype html public "-//W3C//DTD HTML 4.0 Transitional//EN">
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
 <html>
 <head>
-<meta name="GENERATOR" content="PPWIZARD version 02.213 on WIN2K, FREE tool for Windows, OS/2, DOS and UNIX by Dennis Bareis (http://www.labyrinth.net.au/~dbareis/ppwizard.htm)">
-<title>AssumeSampleRate Avisynth Filter</title>
-<STYLE type=text/css>
-A:link {
-COLOR: #404a58;TEXT-DECORATION: none
-}
-A:visited {
-COLOR: #404a58;TEXT-DECORATION: none
-}
-A:active {
-COLOR: #404a58;TEXT-DECORATION: none
-}
-A:hover {
-COLOR: #e8f0ff; TEXT-DECORATION: underline
-}
-.titresmall {
-color : 000000;
-font-family: Tahoma, Verdana, Arial, Helvetica, sans-serif;
-font-size: 16pt;
-letter-spacing: 0.15em;
-font-weight: bold;
-}
-</STYLE>
+ <title>AssumeSampleRate AviSynth Filter</title>
+ <meta http-equiv=Content-Type content="text/html; charset=iso-8859-1">
+ <meta content="MSHTML 6.00.2600.0" name=Generator>
+ <style type=text/css>
+  A:link { COLOR: #404a58; TEXT-DECORATION: none }
+  A:visited { COLOR: #404a58; TEXT-DECORATION: none }
+  A:active { COLOR: #404a58; TEXT-DECORATION: none }
+  A:hover { COLOR: #e8f0ff; TEXT-DECORATION: underline }
+  .titresmall { FONT-WEIGHT: bold; FONT-SIZE: 16pt; COLOR: #000000; FONT-FAMILY: Tahoma, Verdana, Arial, Helvetica, sans-serif; LETTER-SPACING: 0.15em }
+ </style>
 </head>
-<body bgcolor=b6cac0>
-<span class="titresmall"><a name="AssumeSampleRate">AssumeSampleRate</a></span> 
-<p><tt>AssumeSampleRate(</tt><i>video_clip, samplerate</i><tt>)</tt></p>
-<p><tt>AssumeSampleRate</tt> &auml;ndert die sample rate und damit die Abspiel-Geschwindigkeit 
-  des Audio-Teils.<br>
-  Wenn nur dieses Filter alleine verwendet wird, wird das Video asynchron zum 
-  Audio. <br>
-<p>&nbsp;
-<p>Beispiele:
-<pre>
-#Angenommen dieses Video hat 25fps, 44100hz.
-AviSource("video_audio.avi")
-#audio halb so schnell abspielen:
-AssumeSampleRate(22050) 
-#Video halb so schnell abspielen:
-AssumeFPS(12.5)
+<body bgcolor=#b6cac0>
+<span class="titresmall"><a name="AssumeSampleRate"></a>AssumeSampleRate</span><br><br>
 
-# Video und audio sind jetzt synchron und spielen in Zeitlupe.
+<tt>AssumeSampleRate(</tt><i>clip, int samplerate</i><tt>)</tt><br><br>
+
+<tt>AssumeSampleRate</tt> (verf&uuml;gbar seit v2.07) &auml;ndert die Samplingrate und damit die Abspielgeschwindigkeit des Audio-Teils.<br>
+Wenn nur dieser Filter alleine verwendet wird, wird das Video asynchron zum Ton.<br><br>
+
+
+
 </pre>
-<p>
-<FORM>
-<INPUT TYPE="Button" VALUE="Back"
-onClick="history.go(-1)">
-</form>
+
+<table border width="75%">
+ <tr> 
+  <td> 
+   <tt>
+    Beispiele:<br><br>
+
+    # Angenommen dieses Video hat 25fps, 44100hz.<br>
+    AviSource("video_audio.avi")<br><br>
+    
+    # Ton halb so schnell abspielen:<br>
+    AssumeSampleRate(22050)<br><br>
+    
+    # Video halb so schnell abspielen:<br>
+    AssumeFPS(12.5)<br><br>
+
+    # Video und Ton sind jetzt synchron und spielen in Zeitlupe.
+   </tt>
+  </td>
+ </tr>
+</table><br>
+
+<form><input onclick="history.go(-1)" type="button" value="Back"></form>
 </body>
 </html>

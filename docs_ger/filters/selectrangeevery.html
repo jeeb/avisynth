@@ -3,7 +3,8 @@
 <head>
  <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
  <meta name="Generator" content="Mozilla/4.06 [en] (Win98; I) [Netscape]">
- <title>ConvertToMono AviSynth Filter</title>
+ <meta name="Author" content="Wilbert Dijkhof">
+ <title>SelectRangeEvery AviSynth Filter</title>
  <style type=text/css>
   A:link { COLOR: #404a58;TEXT-DECORATION: none }
   A:visited { COLOR: #404a58;TEXT-DECORATION: none }
@@ -13,11 +14,24 @@
  </style>
 </head>
 <body bgcolor="#B6CAC0">
-<span class=titresmall><a name="ConvertToMono"></a>ConvertToMono</span><br><br>
+<span class="titresmall"><a name="SelectRangeEvery"></a>SelectRangeEvery</span><br><br>
 
-<tt>ConvertToMono(</tt><i>clip</i><tt>)</tt><br><br>
+<tt>SelectRangeEvery(</tt><i>clip, int period, int range</i><tt>)</tt><br><br>
 
-Bis zur Version 2.5 wurde ein Stereo Signal in ein Mono Signal gewandelt, ab Version 2.5 wird eine Mehrkanal-Signal in ein Mono Signal gewandelt. Falls das Signal schon Mono ist, wird es unver&auml;ndert durchgeschleift.<br><br>
+Dieser Filter ist seit AviSynth 2.5 verf&uuml;gbar. Er w&auml;hlt einen Bereich an Frames mit einer definierten Periode aus einem Quellclip.<br><br>
+
+<table border width="75%">
+ <tr>
+  <td>
+   <tt>
+    Beispiel:<br><br>
+    
+    # W&auml;hlt die Frames 0 bis 13, 280 bis 293, 560 bis 573 usw. aus:<br>
+    SelectRangeEvery(clip, 280, 14)
+   </tt>
+  <td>
+ </tr>
+</table><br>
 
 <form><input type="Button" value="Back" onClick="history.go(-1)"></form>
 </body>

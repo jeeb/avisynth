@@ -1,62 +1,44 @@
-<!doctype html public "-//W3C//DTD HTML 4.0 Transitional//EN">
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
 <html>
 <head>
-<meta name="GENERATOR" content="PPWIZARD version 02.213 on WIN2K, FREE tool for Windows, OS/2, DOS and UNIX by Dennis Bareis (http://www.labyrinth.net.au/~dbareis/ppwizard.htm)">
-<title>MixAudio Avisynth Filter</title>
-<STYLE type=text/css>
-A:link {
-COLOR: #404a58;TEXT-DECORATION: none
-}
-A:visited {
-COLOR: #404a58;TEXT-DECORATION: none
-}
-A:active {
-COLOR: #404a58;TEXT-DECORATION: none
-}
-A:hover {
-COLOR: #e8f0ff; TEXT-DECORATION: underline
-}
-.titresmall {
-color : 000000;
-font-family: Tahoma, Verdana, Arial, Helvetica, sans-serif;
-font-size: 16pt;
-letter-spacing: 0.15em;
-font-weight: bold;
-}
-</STYLE>
+ <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+ <meta name="Generator" content="Mozilla/4.06 [en] (Win98; I) [Netscape]">
+ <title>MixAudio AviSynth Filter</title>
+ <style type=text/css>
+  A:link { COLOR: #404a58;TEXT-DECORATION: none }
+  A:visited { COLOR: #404a58;TEXT-DECORATION: none }
+  A:active { COLOR: #404a58;TEXT-DECORATION: none }
+  A:hover { COLOR: #e8f0ff; TEXT-DECORATION: underline }
+  .titresmall { color : 000000; font-family: Tahoma, Verdana, Arial, Helvetica, sans-serif; font-size: 16pt; letter-spacing: 0.15em; font-weight: bold; }
+ </style>
 </head>
-<body bgcolor=b6cac0>
-<SPAN class=titresmall><A name=MixAudio>MixAudio</A></SPAN> 
-<P><tt>MixAudio(</tt><i>clip1, clip 2, &quot;clip1_factor&quot;, clip2_factor</i><tt>)<font color="#e8f0ff"></font></tt>
-<p>Das Audio von zwei Clips wird gemischt. Eine Lautst&auml;rke f&uuml;r die zwei 
-  Clips kann optional angegeben werden. 
-<p>Die Lautst&auml;rke wird als Faktor angegeben, wobei 0.0 den jeweiligen Kanal 
-  auf Null regelt, und 1.0 den Kanal zu 100% aufdreht. Der Standardwert ist 0.5 
-  / 0.5, wenn nur ein Faktor angegeben wird, ist der Faktor f&uuml;r den anderer 
-  Kanal 1.0-(factor). Wenn factor1 + factor2 gr&ouml;sser als 1.0 ist, kann &Uuml;bersteuerung 
-  auftreten. 
-<p>Die beiden Clips m&uuml;ssen die gleichen Sample-Raten haben (es kann wennn 
-  notwendig dazu <tt>ResampleAudio</tt> verwendet werden). Weiters m&uuml;ssen 
-  die Clips die gleiche Anzahl an Kan&auml;len haben (stereo/mono) - hier kann 
-  falls notwendig <tt>ConvertToMono()</tt> oder <tt>MonoToStereo()</tt> verwendet 
-  werden. Audio wird auf 16 bit konvertiert.
-<p>&nbsp;
-<table width="75%" border="1">
-  <tr> 
-    <td> 
-      <pre>Beispiel:</pre>
-      <pre># zwei Quellen mischen, die eine etwas leiser
-Soundtrack=Wavsource("c:\soundtrack.wav")
-Speak=WavSource("c:\speak.wav")
-return MixAudio(Soundtrack,Speak,0.75,0.25)
-# genaugenommen ist das 0.25 am Schluss nicht mehr notwendig</pre>
-      </td>
-  </tr>
-</table>
-<p>&nbsp;
-<FORM>
-<INPUT TYPE="Button" VALUE="Back"
-onClick="history.go(-1)">
-</form>
+<body bgcolor="#B6CAC0">
+<span class=titresmall><a name="MixAudio"></a>MixAudio</span><br><br>
+
+<tt>MixAudio(</tt><i>clip1, clip2, float lip1_factor, float clip2_factor</i><tt>)</tt><br><br>
+
+Der Ton von zwei Clips wird gemischt. Die Lautst&auml;rke f&uuml;r die zwei Clips kann optional angegeben werden.<br><br>
+
+Die Lautst&auml;rke wird als Faktor angegeben, wobei 0.0 den jeweiligen Kanal auf Null regelt, und 1.0 den Kanal zu 100% aufdreht. Der Standardwert ist 0.5 / 0.5, wenn nur ein Faktor angegeben wird, ist der Faktor f&uuml;r den anderer Kanal 1.0-(factor). Wenn factor1 + factor2 gr&ouml;sser als 1.0 ist, kann &Uuml;bersteuerung auftreten.<br><br>
+
+Die beiden Clips m&uuml;ssen die gleichen Samplingraten haben (es kann - wenn notwendig -  dazu <a href="resampleaudio.html"><tt>ResampleAudio</tt></a> verwendet werden). Weiter m&uuml;ssen die Clips die gleiche Anzahl an Kan&auml;len haben (stereo/mono) - hier kann falls notwendig <a href="converttomono.html"><tt>ConvertToMono()</tt></a> oder <a href="mergechannels.html"><tt>MergeChannels()</tt></a> verwendet werden.<br><br>
+
+<table border width="75%">
+ <tr> 
+  <td> 
+   <tt>
+    Beispiel:<br><br>
+    
+    # Mischen zweier Quellen, die eine etwas leiser<br>
+    Soundtrack = Wavsource("C:\Dateiname1.wav")<br>
+    Speak = WavSource("C:\Dateiname2.wav")<br>
+    return MixAudio(Soundtrack,Speak,0.75,0.25)<br>
+    # genaugenommen ist das 0.25 am Schluss gar nicht notwendig
+   </tt>
+  </td>
+ </tr>
+</table><br>
+
+<form><input type="Button" value="Back" onClick="history.go(-1)"></form>
 </body>
 </html>

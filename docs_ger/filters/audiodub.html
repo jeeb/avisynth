@@ -1,48 +1,39 @@
 <!doctype html public "-//W3C//DTD HTML 4.0 Transitional//EN">
 <html>
 <head>
-<meta name="GENERATOR" content="PPWIZARD version 02.213 on WIN2K, FREE tool for Windows, OS/2, DOS and UNIX by Dennis Bareis (http://www.labyrinth.net.au/~dbareis/ppwizard.htm)">
-<title>AudioDub Avisynth Filter</title>
-<STYLE type=text/css>
-A:link {
-COLOR: #404a58;TEXT-DECORATION: none
-}
-A:visited {
-COLOR: #404a58;TEXT-DECORATION: none
-}
-A:active {
-COLOR: #404a58;TEXT-DECORATION: none
-}
-A:hover {
-COLOR: #e8f0ff; TEXT-DECORATION: underline
-}
-.titresmall {
-color : 000000;
-font-family: Tahoma, Verdana, Arial, Helvetica, sans-serif;
-font-size: 16pt;
-letter-spacing: 0.15em;
-font-weight: bold;
-}
-</STYLE>
+ <meta name="Generator" content="PPWIZARD version 02.213 on WIN2K, FREE tool for Windows, OS/2, DOS and UNIX by Dennis Bareis (http://www.labyrinth.net.au/~dbareis/ppwizard.htm)">
+ <title>AudioDub AviSynth Filter</title>
+ <style type=text/css>
+  A:link { COLOR: #404a58;TEXT-DECORATION: none }
+  A:visited { COLOR: #404a58;TEXT-DECORATION: none }
+  A:active { COLOR: #404a58;TEXT-DECORATION: none }
+  A:hover { COLOR: #e8f0ff; TEXT-DECORATION: underline }
+  .titresmall { color : 000000; font-family: Tahoma, Verdana, Arial, Helvetica, sans-serif;  font-size: 16pt; letter-spacing: 0.15em; font-weight: bold; }
+ </style>
 </head>
 <body bgcolor=b6cac0>
-<span class="titresmall"><a name="AudioDub">AudioDub</a></span> 
-<p><tt>AudioDub(</tt><i>video_clip, audio_clip</i><tt>)</tt></p>
-<p><tt>AudioDub</tt> verwendet das Video vom ersten Argument und das Audio vom 
-  zweiten und verbindet beide zu einem gemeinsamen Clip. Wenn in einem der Argumente 
-  kein Video oder Audio vorhanden ist, wird die umgekehrte Variante versucht, 
-  wenn das auch nicht hilft, entsteht ein Fehler</p>
-<p>Beispiel: </p>
-<pre># Aufgenommene Segmente laden, wobei das Video 
-# in vielen AVI gespeichert wurde, das Audio aber in einer WAV-Datei
-video = AVISource("capture1.avi") + AVISource("capture2.avi")
-audio = WAVSource("capture.wav")
-AudioDub(video, audio)
-</pre>
-<p>
-<FORM>
-<INPUT TYPE="Button" VALUE="Back"
-onClick="history.go(-1)">
-</form>
+<span class="titresmall"><a name="AudioDub"></a>AudioDub</span><br><br>
+
+<tt>AudioDub(</tt><i>video_clip, audio_clip</i><tt>)</tt><br><br>
+
+<tt>AudioDub</tt> verwendet das Video vom ersten Argument und das Audio vom zweiten Argument und verbindet beide zu einem gemeinsamen Clip. Wenn in einem der Argumente kein Video oder Audio vorhanden ist, wird die umgekehrte Variante versucht, wenn das auch nicht hilft, wird eine Fehlermeldung ausgegeben.<br><br>
+
+<table border width="75%">
+ <tr> 
+  <td> 
+   <tt>
+    Beispiel:<br><br>
+
+    # Aufgenommene Segmente laden, wobei das Video in mehrere AVIs gespeichert<br>
+    #  wurde, der Ton aber in einer einzigen WAV Datei<br>
+    video = AVISource("capture1.avi") + AVISource("capture2.avi")<br>
+    audio = WAVSource("capture.wav")<br>
+    AudioDub(video, audio)
+   </tt>   
+  </td>
+ </tr>
+</table><br>
+
+<form><input type="Button" value="Back" onClick="history.go(-1)"></form>
 </body>
 </html>

@@ -1,0 +1,113 @@
+<!doctype html public "-//w3c//dtd html 4.0 transitional//en">
+<html>
+<head>
+ <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+ <meta name="Generator" content="Mozilla/4.5 [en] (WinNT; I) [Netscape]">
+ <meta name="Author" content="Wilbert Dijkhof">
+ <title>ConditionalFilter AviSynth Filter</title>
+ <style type=text/css>
+  A:link { COLOR: #404a58;TEXT-DECORATION: none }
+  A:visited { COLOR: #404a58;TEXT-DECORATION: none }
+  A:active { COLOR: #404a58;TEXT-DECORATION: none }
+  A:hover { COLOR: #e8f0ff; TEXT-DECORATION: underline }
+  .titresmall { color : 000000; font-family: Tahoma, Verdana, Arial, Helvetica, sans-serif; font-size: 16pt; letter-spacing: 0.15em; font-weight: bold; }
+ </style>
+</head>
+<body bgcolor="#B6CAC0">
+<span class="titresmall"><a name="ConditionalFilter"></a>ConditionalFilter</span><br><br>
+
+<tt>ConditionalFilter</tt>(<i>clip testclip, clip source1, clip source2, string filter, string operator, string value, bool ''show''</i>)<br><br>
+
+<tt>ConditionalFilter</tt> returns <i>source1</i> when the condition
+formed by ''filter+operator+value'' is met, otherwise it returns <i>source2</i>.
+If <i>filter</i> is not explicitly applied to a clip, it will be applied
+on <i>testclip</i>. The audio is taken from source1. An example:
+<p>This will choose frames from vid_blur when the average luma value of
+a frame is less than 20. Otherwise frames from vid will be returned. Adding
+"true" at the end will display the actual values on the screen:
+<pre>vid = AviSource("file")
+vid_blur = vid.Blur(1.5)
+ConditionalFilter(vid, vid_blur, vid, "AverageLuma()", "lessthan", "20")</pre>
+The string <i>filter</i> can be any internal filter, but also some filters
+which are predefined (see below).
+<br>The string <i>operator</i> can be "equals", "morethan" or "lessthan".
+Or "=", ">" or "&lt;" respectively.
+<p>The internal functions (so far) are:
+<br><tt>AverageLuma</tt>(<i>clip</i>)
+<br><tt>AverageChromaU</tt>(<i>clip</i>)
+<br><tt>AverageChromaV</tt>(<i>clip</i>)
+<br>This will return the average pixel value of a plane. (Requires YV12,
+ISSE).
+<p><tt>RGBDifference</tt>(<i>clip1, clip2</i>)
+<br><tt>LumaDifference</tt>(<i>clip1, clip2</i>)
+<br><tt>ChromaUDifference</tt>(<i>clip1, clip2</i>)
+<br><tt>ChromaUDifference</tt>(<i>clip1, clip2</i>)
+<br>These return a float value between 0 and 255 of the absolute difference
+between two planes. (Requires YV12, ISSE)
+<p>When using these functions there are "implicit last" (first parameter
+doesn't have to be specified), so the first parameter is replaced by the
+testclip.
+<p>Other internal functions:
+<p><tt>RGBDifferenceFromPrevious</tt>(<i>clip</i>)
+<br><tt>YDifferenceFromPrevious</tt>(<i>clip</i>)
+<br><tt>UDifferenceFromPrevious</tt>(<i>clip</i>)
+<br><tt>VDifferenceFromPrevious</tt>(<i>clip</i>)
+<br><tt>RGBDifferenceToNext</tt>(<i>clip</i>)
+<br><tt>YDifferenceToNext</tt>(<i>clip</i>)
+<br><tt>UDifferenceToNext</tt>(<i>clip</i>)
+<br><tt>VDifferenceToNext</tt>(<i>clip</i>)
+<p>These should be quite handy for detecting scene change transitions:
+<p>Example (this will replace the last frame before a scenechange with
+the first frame after the scenechange):
+<pre>ConditionalFilter(last, last, last.trim(1,0), "YDifferenceToNext()", ">", "10", true)</pre>
+Other internal functions:
+<p><tt>YPlaneMax</tt>(<i>clip, float threshold</i>)
+<br><tt>UPlaneMax</tt>(<i>clip, float threshold</i>)
+<br><tt>VPlaneMax</tt>(<i>clip, float threshold</i>)
+<br><tt>YPlaneMin</tt>(<i>clip, float threshold</i>)
+<br><tt>UPlaneMin</tt>(<i>clip, float threshold</i>)
+<br><tt>VPlaneMin</tt>(<i>clip, float threshold</i>)
+<br><tt>YPlaneMedian</tt>(<i>clip</i>)
+<br><tt>UPlaneMedian</tt>(<i>clip</i>)
+<br><tt>VPlaneMedian</tt>(<i>clip</i>)
+<br><tt>YPlaneMinMaxDifference</tt>(<i>clip, float threshold</i>)
+<br><tt>UPlaneMinMaxDifference</tt>(<i>clip, float threshold</i>)
+<br><tt>VPlaneMinMaxDifference</tt>(<i>clip, float threshold</i>)
+<p><i>Threshold</i> is a percentage, on how many percent of the pixels
+are allowed above or below minimum. The threshold is optional and defaults
+to 0.
+<p><span class="titresmall"><a name="ScriptClip"></a>ScriptClip</span>
+<p><tt>ScriptClip</tt>(<i>clip clip, string function, bool ''show''</i>)
+<p><tt>ScriptClip</tt> returns the clip returned by the function evaluated
+on every frame.
+<p>Some examples:
+<p>This will print the difference from the previous frame onto the current
+one:
+<pre>clip = AviSource("c:\file.avi")
+ScriptClip(clip, "Subtitle(String(YDifferenceFromPrevious))")</pre>
+This will apply blur on each frame based on the difference from the previous.
+This will also show how errors are reported on some frames :)
+<pre>clip = AviSource("c:\file.avi")
+ScriptClip(clip, "Blur(YDifferenceFromPrevious/20.0)")</pre>
+This will apply temporalsoften to very static scenes, and apply a _variable_
+blur on moving scenes. Blur is now capped properly. We also assign a variable
+- and this is why a line break is inserted:
+<pre>function fmin(float f1, float f2) {
+&nbsp; return (f1&lt;f2) ? f1 : f2
+}
+clip = AviSource("c:\file.avi")
+ScriptClip(clip, "diff = YDifferenceToNext()"+chr(13)+"diff > 2.5 ? Blur(fmin(diff/20,1.5)) : TemporalSoften(2,7,7,3,2)")</pre>
+"Restrictions" - the output of the script MUST be exactly like the clip
+delivered to <tt>ScriptClip</tt> (same colorspace, width and height). Your
+returned clip is allowed to have different length - but the length from
+"clip" is always used. Audio from "clip" is passed through untouched. For
+two very different sources (MPEG2DEC3 and AviSource) - you might run into
+colorspace mismatches. This is known quirk.
+<p><span class="titresmall"><a name="FrameEvaluate"></a>FrameEvaluate</span>
+<p><tt>FrameEvaluate</tt>(<i>clip clip, script function</i>)
+<p>Similar to <tt>ScriptClip</tt>, except the output of the filter is ignored.
+This can be used for assigning variables, etc. Frames are passed directly
+through from the supplied clip.
+<p><form><input type="Button" value="Back" onClick="history.go(-1)"></form>
+</body>
+</html>

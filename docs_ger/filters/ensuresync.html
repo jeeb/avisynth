@@ -1,55 +1,37 @@
 <!doctype html public "-//W3C//DTD HTML 4.0 Transitional//EN">
 <html>
 <head>
-<meta name="GENERATOR" content="PPWIZARD version 02.213 on WIN2K, FREE tool for Windows, OS/2, DOS and UNIX by Dennis Bareis (http://www.labyrinth.net.au/~dbareis/ppwizard.htm)">
-<title>EnsureVBRMP3Sync Avisynth Filter</title>
-<STYLE type=text/css>
-A:link {
-COLOR: #404a58;TEXT-DECORATION: none
-}
-A:visited {
-COLOR: #404a58;TEXT-DECORATION: none
-}
-A:active {
-COLOR: #404a58;TEXT-DECORATION: none
-}
-A:hover {
-COLOR: #e8f0ff; TEXT-DECORATION: underline
-}
-.titresmall {
-color : 000000;
-font-family: Tahoma, Verdana, Arial, Helvetica, sans-serif;
-font-size: 16pt;
-letter-spacing: 0.15em;
-font-weight: bold;
-}
-</STYLE>
+ <meta name="Generator" content="PPWIZARD version 02.213 on WIN2K, FREE tool for Windows, OS/2, DOS and UNIX by Dennis Bareis (http://www.labyrinth.net.au/~dbareis/ppwizard.htm)">
+ <title>EnsureVBRMP3Sync AviSynth Filter</title>
+ <style type=text/css>
+  A:link { COLOR: #404a58;TEXT-DECORATION: none }
+  A:visited { COLOR: #404a58;TEXT-DECORATION: none }
+  A:active { COLOR: #404a58;TEXT-DECORATION: none }
+  A:hover { COLOR: #e8f0ff; TEXT-DECORATION: underline }
+  .titresmall { color : 000000; font-family: Tahoma, Verdana, Arial, Helvetica, sans-serif; font-size: 16pt; letter-spacing: 0.15em; font-weight: bold; }
+ </style>
 </head>
 <body bgcolor=b6cac0>
-<SPAN class=titresmall><A name=EnsureVBRMP3Sync>EnsureVBRMP3Sync</A></SPAN> 
-<P><TT>EnsureVBRMP3Sync(</TT><I>clip</I><TT>)</TT> 
-<p>Korrigiert die Audio-Synchronit&auml;t bei mp3-AVI's beim Suchlauf und bei 
-  Schnitt-Operationen. Die Suchgeschwindigkeit wird stark vermindert, allerdings 
-  notwendig, z.B. bei Verwendung von <tt>Trim</tt>. Die Funktion muss immer bevor 
-  <tt>Trim</tt> verwendet werden. 
-<p>&nbsp; 
-<table width="75%" border="1">
-  <tr> 
-    <td> 
-      <pre>Beispiel:
+<span class=titresmall><a name=EnsureVBRMP3Sync></a>EnsureVBRMP3Sync</span><br><br>
 
+<tt>EnsureVBRMP3Sync(</tt><i>clip</i><tt>)</tt><br><br>
 
-AviSource("movie.avi")
-EnsureVBRMP3Sync()
-Trim(250,2500)
-</pre>
-    </td>
-  </tr>
-</table>
-<p>&nbsp; 
-<FORM>
-  <INPUT TYPE="Button" VALUE="Back"
-onClick="history.go(-1)">
-</form>
+Korrigiert die Ton-Synchronit&auml;t bei MP3-AVI's beim Spulen und bei Schnitt-Operationen. Die Spulgeschwindigkeit wird stark vermindert, ist allerdings notwendig, z.B. bei Verwendung von <a href="trim.html"><tt>Trim</tt></a>. Die Funktion muss immer vor <tt>Trim</tt> verwendet werden.<br><br>
+
+<table border width="75%" >
+ <tr> 
+  <td> 
+   <tt>
+    Beispiel:<br><br>
+   
+    AviSource("Dateiname.avi")<br>
+    EnsureVBRMP3Sync()<br>
+    Trim(250,2500)
+   </tt>
+  </td>
+ </tr>
+</table><br>
+
+<form><input type="Button" value="Back" onClick="history.go(-1)"></form>
 </body>
 </html>

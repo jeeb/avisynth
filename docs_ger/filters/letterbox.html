@@ -1,46 +1,29 @@
 <!doctype html public "-//W3C//DTD HTML 4.0 Transitional//EN">
 <html>
 <head>
-<meta name="GENERATOR" content="PPWIZARD version 02.213 on WIN2K, FREE tool for Windows, OS/2, DOS and UNIX by Dennis Bareis (http://www.labyrinth.net.au/~dbareis/ppwizard.htm)">
-<title>Letterbox Avisynth Filter</title>
-<STYLE type=text/css>
-A:link {
-COLOR: #404a58;TEXT-DECORATION: none
-}
-A:visited {
-COLOR: #404a58;TEXT-DECORATION: none
-}
-A:active {
-COLOR: #404a58;TEXT-DECORATION: none
-}
-A:hover {
-COLOR: #e8f0ff; TEXT-DECORATION: underline
-}
-.titresmall {
-color : 000000;
-font-family: Tahoma, Verdana, Arial, Helvetica, sans-serif;
-font-size: 16pt;
-letter-spacing: 0.15em;
-font-weight: bold;
-}
-</STYLE>
+ <meta name="Generator" content="PPWIZARD version 02.213 on WIN2K, FREE tool for Windows, OS/2, DOS and UNIX by Dennis Bareis (http://www.labyrinth.net.au/~dbareis/ppwizard.htm)">
+ <title>Letterbox AviSynth Filter</title>
+ <style type=text/css>
+  A:link { COLOR: #404a58;TEXT-DECORATION: none }
+  A:visited { COLOR: #404a58;TEXT-DECORATION: none }
+  A:active { COLOR: #404a58;TEXT-DECORATION: none }
+  A:hover { COLOR: #e8f0ff; TEXT-DECORATION: underline }
+  .titresmall { color : 000000; font-family: Tahoma, Verdana, Arial, Helvetica, sans-serif; font-size: 16pt; letter-spacing: 0.15em; font-weight: bold; }
+ </style>
 </head>
 <body bgcolor=b6cac0>
-<span class="titresmall"><a name="Letterbox">Letterbox</a></span> 
-<p><tt>Letterbox(</tt><i>clip, int top, int bottom, [int left, int right]</i><tt>)</tt></p>
-<p>Dieses Filter erzeugt oben und unten einen schwarzen Rand mit <i>top</i> und 
-  <i>bottom</i> Pixel H&ouml;he, optional auch rechts und links mit <i>left</i> 
-  und <i>right</i> Pixel Breite.</p>
-<p> Man kann damit zum Beispiel verrauschte schwarze Streifen eines Videos, das 
-  bereits schwarze Balken hat, einheitlich Schwarz f&auml;rben oder die fehlerhaften 
-  Zeilen, die meist ganz unten in einer VHS-Aufnahme sichtbar sind, ausblenden 
-  oder den Overscan-Bereich f&uuml;r VCD und SVCD auf schwarz setzen.</p>
-<p>Die Funktion ist k&ouml;nnte auch mit einer Kombination aus <tt>Crop</tt> und 
-  <tt>AddBorders</tt> werden, <tt>Letterbox</tt> ist allerdings einfacher und 
-  schneller. </p>
-<FORM>
-<INPUT TYPE="Button" VALUE="Back"
-onClick="history.go(-1)">
-</form>
+<span class="titresmall"><a name="Letterbox"></a>Letterbox</span><br><br>
+
+<tt>Letterbox(</tt><i>clip, int top, int bottom, [int left], [int right], int &quot;color&quot;</i><tt>)</tt><br><br>
+
+<tt>Letterbox</tt> erzeugt oben und unten einen schwarzen Rand mit <i>top</i> und <i>bottom</i> Pixel H&ouml;he, optional auch rechts und links mit <i>left</i> und <i>right</i> Pixel Breite.<br><br>
+
+Man kann damit zum Beispiel verrauschte schwarze Streifen eines Videos, das bereits schwarze Balken hat, einheitlich Schwarz f&auml;rben oder die fehlerhaften Zeilen, die meist ganz unten in einer VHS-Aufnahme sichtbar sind, ausblenden oder den Overscan-Bereich f&uuml;r VCD und SVCD auf Schwarz setzen.<br><br>
+
+Die Funktion k&ouml;nnte auch mit einer Kombination aus <a href="crop.html"><tt>Crop</tt></a> und <a href="addborders.html"><tt>AddBorders</tt></a> erreicht werden, <tt>Letterbox</tt> ist allerdings einfacher und schneller.<br><br>
+
+Allgemein ist es besser die Sachen mit <tt>Crop</tt> oder <tt>CropBottom</tt> wegzuschneiden als mit <tt>Letterbox</tt> zu verdecken. In manchen F&auml;llen ist es besser <tt>Letterbox</tt> zu verwenden, weil man damit Standard Bildgr&ouml;&szlig;en wie 352x288 oder 320x240 bekommt. Manche MPEG Player k&ouml;nnen krumme Bildgr&ouml;&szlig;en nicht abspielen.<br><br>
+
+<form><input type="Button" value="Back" onClick="history.go(-1)"></form>
 </body>
 </html>

@@ -1,717 +1,800 @@
-<!doctype html public "-//W3C//DTD HTML 4.0 Transitional//EN">
+<!doctype html public "-//w3c//dtd html 4.0 transitional//en">
 <html>
 <head>
-<title>AviSynth 2 - Syntax</title>
-<STYLE type=text/css>A:link {
-COLOR: #404a58;TEXT-DECORATION: none
-}
-A:visited {
-COLOR: #404a58;TEXT-DECORATION: none
-}
-A:active {
-COLOR: #404a58;TEXT-DECORATION: none
-}
-A:hover {
-COLOR: #e8f0ff; TEXT-DECORATION: underline
-}
-.titresmall {
-color : 000000;
-font-family: Tahoma, Verdana, Arial, Helvetica, sans-serif;
-font-size: 18pt;
-letter-spacing: 0.15em;
-font-weight: bold;
-}
-</STYLE>
+ <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+ <meta name="Generator" content="EditPlus">
+ <meta name="Generator" content="Mozilla/4.5 [en] (WinNT; I) [Netscape]">
+ <title>AviSynth 2 - Basic Syntax</title>
+ <style type=text/css>
+  A:link { COLOR: #404a58;TEXT-DECORATION: none }
+  A:visited { COLOR: #404a58;TEXT-DECORATION: none }
+  A:active { COLOR: #404a58;TEXT-DECORATION: none }
+  A:hover { COLOR: #e8f0ff; TEXT-DECORATION: underline }
+  .titresmall { color : 000000; font-family: Tahoma, Verdana, Arial, Helvetica, sans-serif; font-size: 18pt; letter-spacing: 0.15em; font-weight: bold; }
+ </style>
 </head>
-<body bgcolor=b6c0ca>
-<p><span class="titresmall"><a name="Gettingstarted"></a>Los gehts</span></p>
-<p>Ganz kurz gesagt arbeitet AviSynth so: Zuerst erstellt man eine einfache Text-Datei 
-  (.txt) mit speziellen Befehlen darin, das ist dann das Skript. Diese Befehle 
-  erzeugen Verweise auf ein oder mehrere Videos und Filter, die man daf&uuml;r 
-  verwenden m&ouml;chte. Als n&auml;chstes wird eine Video-Anwendung wie z.B. 
-  VirtualDub, gestartet und damit die Skript-Datei ge&ouml;ffnet. Hier greift 
-  jetzt AviSynth ein. AviSynth &ouml;ffnet die Videos, auf die verwiesen wurde, 
-  bearbeitet das Video mit den Filtern und gibt das Ergebnis zur&uuml;ck an die 
-  Video-Anwendung. Diese merkt aber gar nicht, dass im Hintergrund AviSynth arbeitet. 
-  F&uuml;r die Anwendung sieht es so aus, als ob eine gefilterte AVI-Datei auf 
-  der Festplatte vorhanden ist.</p>
-<p>Es gibt viel Neues und Wiederentdecktes in AviSynth2 (d.h. alle Versionen &uuml;ber 
-  2.00). Diese Teile sind mit <font color="FFFF66"><b><font size="4" face="Courier New, Courier, mono"> 
-  v2</font></b></font> gekennzeichnet.<br>
-</p>
-<p><b><u>Lineare Editierung / Schnitt:</u></b></p>
-<p>Das einfachste, was mit AviSynth gemacht werden kann, ist die Verwendung als 
-  linearer Video-Editor. Das sind die M&ouml;glichkeiten, die auch mit VirtualDub 
-  m&ouml;glich sind. Die Skripte daf&uuml;r sind recht einfach, weil keine Variablen 
-  oder komplizierten Ausdr&uuml;cke notwendig sind.</p>
-<p>Zum Testen erzeugt man eine Datei test.avs (nochmal: das ist nur eine umbenannte 
-  Text-Datei) und schreibt folgende Zeile hinein:</p>
-<table width="75%" border="1">
-  <tr> 
-    <td> 
-      <pre>Version</pre>
-    </td>
-  </tr>
-</table>
-<p>Wenn man nun diese Datei z.B. mit dem Windows Media Player &ouml;ffnet, sieht 
-  man ein zehn Sekunden langes Video mit der Versionsnummer und einem Copyright 
-  von Avisynth.</p>
-<p><tt>Version</tt> nennt man auch Quell-Filter, das heisst, diese Funktion modifiziert 
-  nicht ein Video sondern erzeugt selber ein Video-Clip Der erste Befehl in einem 
-  Avisynth Skript wird immer ein Quell-Filter sein.</p>
-<p>Jetzt kommt noch eine zweite Zeile zum Skript:</p>
-<table width="75%" border="1">
-  <tr> 
-    <td> 
-      <pre>Version
-ReduceBy2   # Verkleinere auf die H&auml;lfte</pre>
-    </td>
-  </tr>
-</table>
-<p>Wenn man diese Datei nochmals im Media Player &ouml;ffnet, sieht man wieder 
-  die Copyright-Meldung, jetzt allerdings halb so gross wie vorher.<br>
-  <tt>ReduceBy2</tt> ist ein Transformations-Filter, welches das vorhergehende 
-  Clip nimmt und in irgendeiner Weise umwandelt. Viele diese Filter k&ouml;nnen 
-  zu einer Filterkette zusammengeh&auml;ngt werden.<br>
-  Noch eine Zeile dazu, um das Video am Schluss auf Schwarz auszublenden: <br>
-</p>
-<table width="75%" border="1">
-  <tr> 
-    <td> 
-      <pre>Version
-ReduceBy2
-FadeOut(15)   # ausblenden</pre>
-    </td>
-  </tr>
-</table>
-<p>Nach dem Wieder&ouml;ffnen sollte das Video w&auml;hrend den ersten 9 Sekunden 
-  gleich ausschauen wie vorher, und dann in der letzten Sekunde auf Schwarz blenden.<br>
-  Das <tt>FadeOut</tt> filter verwendet ein numerisches Argument, mit dem die 
-  Anzahl der Bilder (frames) angegeben wird, die f&uuml;r das Ausblenden verwendet 
-  werden. Das Video, das von <tt>Version</tt> erzeugt wird, l&auml;uft mit 15fps, 
-  daher beginnt das Ausblenden eine Sekunde vor dem Ende..</p>
-<p>Angenommen es dauert zu lange bis das Ausblenden beginnt. Man kann aber den 
-  Anfang wegschneiden. Das Clip, das <tt>Version</tt> erzeugt, ist 150 frames 
-  lang (15 fps mal 10 sec).<br>
-  Avisynth beginnt die Numerierung der frames bei 0.<br>
-  Daher haben die frames die Nummern 0 bis149. <tt>FadeOut</tt> h&auml;ngt einen 
-  frame zus&auml;tzlich dran, daher gehen die frames nach diesem Skript von 0 
-  to 150. Um die ersten 120 davon wegzul&ouml;schen, schreibt man dies: <br>
-</p>
-<table width="75%" border="1">
-  <tr> 
-    <td> 
-      <pre>Version
-ReduceBy2
-FadeOut(15)
-Trim(120,150) # die ersten 8 Sekunden wegschneiden</pre>
-    </td>
-  </tr>
-</table>
-<p>Hier sieht man auch, wie man Kommentare verwenden kann.<br>
-  Kommentare starten mit einem # Zeichen und sind immer die ganze Zeile lang. 
-  Sie werden von AviSynth v&ouml;llig ignoriert. <br>
-  Das <tt>Trim</tt> filter verwendet zwei Argumente, getrennt mit einem Beistrich: 
-  der erste und der letzte frame, die vom Clip verwendet werden sollen. Wenn man 
-  als letzten Frame 0 einsetzt, bedeutet das &quot;Ende com Clip&quot;, daher 
-  h&auml;tte man auch schreiben k&ouml;nnen: <tt>Trim(120,0)</tt>.</p>
-<p>Die Frame-Nummern auf diese Art zu verfolgen ist sehr m&uuml;hsam. Es ist wesentlich 
-  einfacher, ein halbfertiges Skript in VirtualDub zu &ouml;ffnen, wo die frame-Nummer 
-  auch angezeigt wird. Man kann auch den eingebaute ShowFrameNumber filter verwenden, 
-  der auf jeden frame die frame-Nummer schreibt. </p>
-<p> Im wirklichen Gebrauch ist das wichtigtes Quell-Fiter <tt>AVISource</tt>, 
-  womit eine AVI-Datei von der Festplatte ge&ouml;ffnet werden kann. Hier ein 
-  kleiner Test f&uuml;r die Datei &quot;capture.avi&quot;, in dem die genannten 
-  Filter verwendet werden: <br>
-</p>
-<table width="75%" border="1">
-  <tr> 
-    <td> 
-      <pre>AVISource(&quot;d:\capture.avi&quot;)   # hier muss nat&uuml;rlich der wirkliche Datei- und Pfadname stehen
-ReduceBy2
-FadeOut(15)
-Trim(120,0)</pre>
-    </td>
-  </tr>
-</table>
-<p>Man sieht, dass sogar ein einzeiliges Skript, das nur aus dem <tt>AVISource</tt> 
-  Befehl besteht, schon sinnvoll sein kann, um AVI-Dateien &gt;2GB auch mit Applikationen 
-  &ouml;ffnen zu k&ouml;nnen, die das eigentlich nicht unterst&uuml;tzen. </p>
-<hr>
-<p><b><u>Nicht-Lineares Editieren:</u></b></p>
-<p>Nun zum wirklich interessanten Teil. In ein Skript folgendes schreiben:</p>
-<table width="75%" border="1">
-  <tr> 
-    <td> 
-      <pre>StackVertical(Version, Version)</pre>
-    </td>
-  </tr>
-</table>
-<p>Wenn man dieses Skript &ouml;ffnet, ist das Ergebnis ein Video mit zweimal 
-  der Versions-Info &uuml;bereinander gestellt..<br>
-  Die Funktion <tt>StackVertical</tt> verwendet nicht Zahlen oder Zeichenfolgen 
-  als Argumente sondern Video-Clips. In diesem Skript wird das <tt>Version</tt>-Filter 
-  zweimal aufgerufen. Jedesmal gibt es eine separate Kopie des <tt>Version</tt>-Clips 
-  zur&uuml;ck. Diese zwei Clip werden an <tt>StackVertical</tt> &uuml;bergeben, 
-  das sie dann zusammenf&uuml;gt (ohne sich darum zu k&uuml;mmern, woher die Eingangsclips 
-  kommen).</p>
-<p>Eines der am meisten verwendeten Filter dieses Typs ist <tt>UnalignedSplice</tt>, 
-  diese Funktion f&uuml;gt Clips (zeitlich) aneinander. So schaut ein Sript aus, 
-  das drei AVI-Dateien l&auml;dt und aneinander f&uuml;gt:</p>
-<table width="100%" border="1">
-  <tr> 
-    <td> 
-      <pre>UnalignedSplice(AVISource(&quot;d:\capture.00.avi&quot;), AVISource(&quot;d:\capture.01.avi&quot;), AVISource(&quot;d:\capture.02.avi&quot;))</pre>
-    </td>
-  </tr>
-</table>
-<p>Beide Filter (<tt>StackVertical</tt> und <tt>UnalignedSplice</tt>) k&ouml;nnen 
-  mit nur zwei oder auch bis zu sechzig Argumenten verwendet werden. <br>
-  Der Operator <tt>+</tt> kann als Abk&uuml;rzung f&uuml;r <tt>UnalignedSplice</tt> 
-  verwendet werden.</p>
-<p> Dieses Beispiel macht das gleiche als das vorhergehende: <br>
-</p>
-<table width="100%" border="1">
-  <tr> 
-    <td> 
-      <pre>AVISource(&quot;d:\capture.00.avi&quot;) + AVISource(&quot;d:\capture.01.avi&quot;) + AVISource(&quot;d:\capture.02.avi&quot;)</pre>
-    </td>
-  </tr>
-</table>
-<p>F&uuml;r den Fall, das z.B. von einem Aufnahme-Programm die AVIs mit mehreren 
-  Segmenten, der Ton als separate WAV-Datei gespeichert wurde, kann so alles wieder 
-  in ein Video mit Ton kombiniert werden:</p>
-<table width="100%" border="1">
-  <tr> 
-    <td> 
-      <pre>AudioDub(AVISource(&quot;d:\capture.00.avi&quot;)+AVISource(&quot;d:\capture.01.avi&quot;)+AVISource(&quot;d:\capture.02.avi&quot;), WAVSource(&quot;d:\audio.wav&quot;))</pre>
-    </td>
-  </tr>
-</table>
-<p></p>
-<hr>
-<span class="titresmall"><a name="Syntax">Syntax</a></span> 
-<p><b><u>Ausdr&uuml;cke:</u></b></p>
-<p></p>
-<p>Ein AviSynth Skript besteht aus mehreren Zeilen die folgende Form haben:</p>
-<table width="75%" border="1">
-  <tr> 
-    <td> 
-      <pre>variable_name = ausdruck
-</pre>
-    </td>
-  </tr>
-</table>
-<p>In diesem Beispiel wird <tt>ausdruck</tt> ausgewertet und das Ergebnis einer 
-  Variable <tt>variable_name</tt> zugewiesen.<br>
-</p>
-<p> In diesem Zusammenhang ist die Kurzform daf&uuml;r wichtig:</p>
-<table width="75%" border="1">
-  <tr> 
-    <td> 
-      <pre>ausdruck</pre>
-    </td>
-  </tr>
-</table>
-<p>In diesem Fall wird <tt>ausdruck</tt> ausgewertet und der speziellen Variable 
-  <tt>last</tt> zugewiesen.<br>
-  Das ist das gleiche als</p>
-<table width="75%" border="1">
-  <tr> 
-    <td> 
-      <pre>last = ausdruck</pre>
-    </td>
-  </tr>
-</table>
-<p>Das Ende eines Skripts schaut immer so aus:</p>
-<table width="75%" border="1">
-  <tr> 
-    <td> 
-      <pre>return ausdruck</pre>
-    </td>
-  </tr>
-</table>
-<p>Hier wird<tt>ausdruck</tt> ausgewertet und als R&uuml;ckgabewert des Skripts 
-  verwendet, d.h. als Video welches die Anwendung zu sehen bekommt, die die AVS-Datei 
-  &ouml;ffnet. </p>
-<p>Die einfachste Form eines Ausdrucks, der eine Funktion aufruft, ist:</p>
-<table width="75%" border="1">
-  <tr> 
-    <td> 
-      <pre>Function(argumente)</pre>
-    </td>
-  </tr>
-</table>
-<p>Clip-Funktionen erzeugen als Ergebnis immer ein neues Clip (es wird also nicht 
-  das vorhandene Clip ver&auml;ndert).<br>
-  <tt>argumente</tt> ist eine Liste von Funktions-Argumenten getrennt durch Beistriche. 
-  Diese Liste kann leer sein (was bedeutet, dass alle oder manche Argumente optional 
-  sein k&ouml;nnen).</p>
-<p>Wenn die Filter-Funktion als erstes Argument ein Video-Clip erwartet und dieses 
-  Argument nicht angegeben wird, wird die spezielle Variable <tt>last</tt> verwendet.</p>
-<p> Bei manchen AviSynth-Filter k&ouml;nnen auch &quot;benannte Argumente&quot; 
-  verwendet werden. Diese benannten Argumente k&ouml;nnen in einer beliebigen 
-  Reihenfolge angegeben werden,<br>
-  und das Filter verwendet Standard (default)-Werte f&uuml;r nicht angegebene 
-  Argumente (benannte Argumente sind daher immer optional).<br>
-  Das vereinfacht die Benutzung mancher Filter stark.</p>
-<table width="75%" border="1">
-  <tr> 
-    <td> 
-      <pre>Man kann schreiben:
+<body bgcolor="#B6C0CA">
+<span class="titresmall"><a name="Gettingstarted"></a>Los geht`s</span><br><br>
+Ganz kurz gesagt arbeitet AviSynth so: Zuerst erstellt man eine einfache Textdatei (.txt) mit speziellen Befehlen darin, das nennt man dann das Skript. Diese Befehle erzeugen Verweise auf ein oder mehrere Videos und Filter, die man daf&uuml;r verwenden m&ouml;chte. Als n&auml;chstes wird eine Videoanwendung wie z.B. VirtualDub, gestartet und damit die Skript-Datei ge&ouml;ffnet. Hier tritt jetzt AviSynth in Aktion. AviSynth &ouml;ffnet die Videos, auf die verwiesen wurde, bearbeitet das Video mit den Filtern und gibt das Ergebnis zur&uuml;ck an die Videoanwendung. Diese merkt aber gar nicht, dass im Hintergrund AviSynth arbeitet. F&uuml;r die Anwendung sieht es so aus, als ob eine gefilterte AVI-Datei auf der Festplatte vorhanden ist.<br><br>
 
-Subtitle("Hallo, Leute!", text_color=$00FF00, x=100, y=200)
+Es gibt viel Neues und Wiederentdecktes in AviSynth2 (d.h. alle Versionen &uuml;ber 2.00). Diese Teile sind mit <font color="FFFF66" size="4" face="Courier New, Courier, mono"><b>v2</b></font> gekennzeichnet.<br><br>
 
-statt
+Diese Version bringt gro&szlig;e interne &Auml;nderungen. Lese <a href="twopointfive.html" target="main">AviSynth 2.5</a> sorgf&auml;ltig bevor du mit dieser Version arbeitest. Relevante &Auml;nderungen sind mit <font face="Courier New, Courier, mono" color="#FFFF66" size=+1><b>v2.5</b></font> gekennzeichnet.<br><br><br>
 
-Subtitle("Hallo, Leute!", 100, 200, 0, 999999, &quot;Arial", 24, $00FF00)</pre>
+<b><u>Lineare Editierung / Schnitt:</u></b><br><br>
+Das einfachste, was mit AviSynth gemacht werden kann, ist die Verwendung als linearer Videoeditor. Das sind die M&ouml;glichkeiten, die auch mit VirtualDub m&ouml;glich sind. Die Skripte daf&uuml;r sind recht einfach, weil keine Variablen oder komplizierten Ausdr&uuml;cke notwendig sind.<br><br>
+
+Zum Testen erzeugt man eine Datei test.avs (das ist nur eine umbenannte Text-Datei) und schreibt folgende Zeile hinein:<br><br>
+
+<table border width="75%">
+ <tr>
+  <td>
+   <tt>Version
+   </tt>
+  </td>
+ </tr>
+</table><br>
+
+Wenn man nun diese Datei z.B. mit dem Windows Media Player &ouml;ffnet, sieht man ein zehn Sekunden langes Video mit der Versionsnummer und einem Copyright von AviSynth.<br><br>
+
+<tt>Version</tt> nennt man einen Quell-Filter, das heisst, dieser Filter modifiziert nicht ein Video, sondern erzeugt selber einen Videoclip. Der erste Befehl in einem AviSynth Skript wird immer ein Quell-Filter sein.<br><br>
+
+Jetzt kommt noch eine zweite Zeile zum Skript:<br><br>
+
+<table border width="75%">
+ <tr>
+  <td>
+   <tt>Version<br>
+          ReduceBy2
+   </tt>
+  </td>
+ </tr>
+</table><br>
+
+Wenn man diese Datei nochmals im Media Player &ouml;ffnet, sieht man wieder die Copyright-Meldung, jetzt allerdings halb so gross wie vorher.<br>
+<tt>ReduceBy2</tt> ist ein Transformations-Filter, welches den vorhergehenden Clip nimmt und in irgendeiner Weise umwandelt. Viele diese Filter k&ouml;nnen zu einer Filterkette zusammengeh&auml;ngt werden, genauso wie in VirtualDub.<br>
+Noch eine Zeile dazu, um das Video am Schluss auf Schwarz auszublenden:<br><br>
+
+<table border width="75%">
+ <tr>
+  <td>
+   <tt>Version<br>
+       ReduceBy2<br>
+       FadeOut(15)
+   </tt>
+  </td>
+ </tr>
+</table><br>
+
+Nach dem Wieder&ouml;ffnen sollte das Video w&auml;hrend den ersten 9 Sekunden gleich ausschauen wie vorher und dann in der letzten Sekunde samft auf Schwarz ausblenden.<br>
+Das <tt>FadeOut</tt> filter verwendet ein numerisches Argument, mit dem die Anzahl der Bilder (Frames) angegeben wird, die f&uuml;r das Ausblenden verwendet werden. Das Video, das von <tt>Version</tt> erzeugt wird, l&auml;uft mit 15fps, daher beginnt das Ausblenden eine Sekunde vor dem Ende.<br><br>
+
+Angenommen es dauert zu lange bis das Ausblenden beginnt. Dann kann man den Anfang wegschneiden. Der Clip, den <tt>Version</tt> erzeugt, ist 150 Frames lang (15 fps mal 10 sec).<br>
+AviSynth beginnt die Numerierung der Frames bei 0.<br>
+Daher haben die Frames die Nummern 0 bis 149. <tt>FadeOut</tt> h&auml;ngt einen Frame zus&auml;tzlich dran, daher gehen die Frames nach diesem Skript von 0 bis 150. Um die ersten 120 davon zu entfernen, schreibt man dies:<br><br>
+
+<table border width="75%">
+ <tr>
+  <td>
+   <tt>Version<br>
+       ReduceBy2<br>
+       FadeOut(15)<br>
+       Trim(120,150) # Schneidet dei ersten achten Sekunden weg
+   </tt>
+  </td>
+ </tr>
+</table><br>
+
+In diesem Beispiel wurde zum ersten Mal ein Kommentare verwendet.<br>
+Kommentare starten mit dem # Zeichen und dann die ganze Zeile g&uuml;ltig. Sie werden von AviSynth v&ouml;llig ignoriert. <br>
+Der <tt>Trim</tt> Filter verwendet zwei Argumente, getrennt mit ein Komma: der erste und der letzte Frame, die vom Clip verwendet werden soll. Wenn man als letzten Frame 0 einsetzt, bedeutet das &quot;Ende vom Clip&quot;, daher h&auml;tte man auch schreiben k&ouml;nnen: <tt>Trim(120,0)</tt>.<br><br>
+
+Die Frame-Nummern auf diese Art zu verfolgen ist sehr m&uuml;hsam. Es ist wesentlich einfacher, ein halbfertiges Skript in VirtualDub zu &ouml;ffnen, wo die Frame-Nummer auch angezeigt wird. Man kann auch den internen ShowFrameNumber Filter verwenden, der auf jeden Frame die Frame-Nummer schreibt.<br><br>
+
+
+In der Praxis ist ein sehr viel h&auml;figer genutzte Quell-Fiter als <tt>Version</tt> ist <tt>AVISource</tt>, womit eine AVI-Datei (oder diverse andere Dateitypen) von der Festplatte ge&ouml;ffnet werden kann.<br>
+Falls du eine AVI-Datei parat hast, kannst du dieselben Filter auf die AVI-Datei anwenden.<br><br>
+
+<table border width="75%">
+ <tr>
+ <td>
+  <tt>AVISource("d:\capture.avi") # passe den Dateinamen und der Dateipfad an<br>
+      ReduceBy2<br>
+      FadeOut(15)<br>
+      Trim(120,0)
+   </tt>
+  </td>
+ </tr>
+</table><br>
+
+Sogar ein einzeiliges Skript, das nur aus dem <tt>AVISource</tt> Befehl besteht, kann schon sinnvoll sein. N&auml;mlich dann, wenn man AVI-Dateien, die gr&ouml;&szlig;er als 2GB sind, auch mit Applikationen &ouml;ffnen zu k&ouml;nnen, die eigentlich nur Daten bis 2GB unterst&uuml;tzen.<br><br><br>
+
+<hr><br>
+
+<b><u>Nichtlineares Editieren:</u></b><br><br>
+
+Nun zum wirklich interessanten Teil. Schreibe in ein Skript folgendes:<br><br>
+
+<table border width="75%">
+ <tr>
+  <td>
+   <tt>StackVertical(Version, Version)
+   </tt>
+  </td>
+ </tr>
+</table><br>
+
+Wenn man dieses Skript &ouml;ffnet, ist das Ergebnis ein Video mit zweimal der Versions-Info &uuml;bereinander gestellt.<br>
+Die Funktion <tt>StackVertical</tt> verwendet nicht Zahlen oder Zeichenfolgen als Argumente sondern Video-Clips. In diesem Skript wird der <tt>Version</tt> Filter zweimal aufgerufen. Jedesmal gibt es eine separate Kopie des <tt>Version</tt>-Clips zur&uuml;ck. Diese zwei Clips werden an <tt>StackVertical</tt> &uuml;bergeben, das sie dann zusammenf&uuml;gt (ohne sich darum zu k&uuml;mmern, woher die Eingangsclips kommen).<br><br>
+
+Eines der am meisten verwendeten Filter dieses Typs ist <tt>UnalignedSplice</tt>, diese Funktion f&uuml;gt Clips (zeitlich) aneinander. So schaut ein Sript aus, das drei AVI-Dateien l&auml;dt und aneinanderf&uuml;gt:<br><br>
+
+<table border width="100%">
+ <tr>
+  <td>
+   <tt>UnalignedSplice(AVISource("d:\capture.00.avi"), AVISource("d:\capture.01.avi"), AVISource("d:\capture.02.avi"))
+   </tt>
+  </td>
+ </tr>
+</table><br>
+
+Beide Filter (<tt>StackVertical</tt> und <tt>UnalignedSplice</tt>) k&ouml;nnen mit nur zwei oder auch bis zu sechzig Argumenten verwendet werden.<br>
+Der Operator <tt>+</tt> kann als Abk&uuml;rzung f&uuml;r <tt>UnalignedSplice</tt> verwendet werden.<br><br>
+
+Dieses Beispiel macht das gleiche als das vorhergehende:<br><br>
+
+<table border width="100%">
+ <tr>
+  <td>
+   <tt>AVISource("d:\capture.00.avi") + AVISource("d:\capture.01.avi") + AVISource("d:\capture.02.avi")
+   </tt>
+  </td>
+ </tr>
+</table><br>
+
+F&uuml;r den Fall, dass z.B. von einem Aufnahme-Programm die AVIs in mehrere Segmenten, der Ton aber als einzelne separate WAV-Datei gespeichert wurde, kann so alles wieder in ein Video mit Ton kombiniert werden:<br><br>
+
+<table border width="100%">
+ <tr>
+  <td>
+   <tt>AudioDub(AVISource("d:\capture.00.avi")+AVISource("d:\capture.01.avi")+AVISource("d:\capture.02.avi"), WAVSource("d:\audio.wav"))
+   </tt>
+  </td>
+ </tr>
+</table><br><br>
+
+<hr><br>
+
+<span class="titresmall"><a name="Syntax"></a>Syntax</span><br><br>
+<b><u>Ausdr&uuml;cke:</u></b><br><br>
+
+Ein AviSynth Skript besteht aus mehreren Zeilen, die folgende Form haben:<br><br>
+
+<table border width="75%">
+ <tr> 
+  <td> 
+   <tt>variable_name = ausdruck
+   </tt>
+  </td>
+ </tr>
+</table><br>
+
+In diesem Beispiel wird <tt>ausdruck</tt> ausgewertet und das Ergebnis einer Variable <tt>variable_name</tt> zugewiesen.<br><br>
+
+In diesem Zusammenhang ist die Kurzform daf&uuml;r wichtig:<br><br>
+
+<table border width="75%">
+ <tr> 
+  <td> 
+   <tt>ausdruck
+   </tt>
+  </td>
+ </tr>
+</table><br>
+
+In diesem Fall wird <tt>ausdruck</tt> ausgewertet und der speziellen Variable <tt>last</tt> zugewiesen.<br>
+Das ist das gleiche wie:<br><br>
+
+<table border width="75%">
+ <tr> 
+  <td> 
+   <tt>last = ausdruck
+   </tt>
+  </td>
+ </tr>
+</table><br>
+
+Das Ende eines Skripts schaut immer so aus:<br><br>
+
+<table border width="75%">
+ <tr> 
+  <td> 
+   <tt>return ausdruck
+   </tt>
+  </td>
+ </tr>
+</table><br>
+
+Hier wird <tt>ausdruck</tt> ausgewertet und als R&uuml;ckgabewert des Skripts verwendet, d.h. als Video welches die Anwendung zu sehen bekommt, die die AVS-Datei &ouml;ffnet.<br><br>
+
+Die einfachste Form eines Ausdrucks, der eine Funktion aufruft, ist:<br><br>
+
+<table border width="75%">
+ <tr> 
+  <td> 
+   <tt>Function(argumente)
+   </tt>
+  </td>
+ </tr>
+</table><br>
+
+Clip-Funktionen erzeugen als Ergebnis immer ein neues Clip, es wird also nicht das vorhandene Clip ver&auml;ndert.<br>
+<tt>argumente</tt> ist eine Liste von Funktions-Argumenten getrennt durch Kommas. Diese Liste kann leer sein (was bedeutet, dass alle oder manche Argumente optional sind).<br><br>
+
+Wenn die Filter-Funktion als erstes Argument ein Video-Clip erwartet und dieses Argument nicht angegeben wird, wird die spezielle Variable <tt>last</tt> verwendet.<br><br>
+
+Bei manchen AviSynth Filtern k&ouml;nnen auch &quot;benannte Argumente&quot; verwendet werden. Diese benannten Argumente k&ouml;nnen in einer beliebigen Reihenfolge angegeben werden, und der Filter verwendet Standard (default) Werte f&uuml;r nicht angegebene Argumente (benannte Argumente sind daher immer optional).<br>
+Das vereinfacht die Benutzung mancher Filter stark.<br><br>
+
+<table border width="75%">
+ <tr> 
+  <td> 
+   <tt>Man kann schreiben:<br>
+       Subtitle("Hallo, Leute!", text_color=$00FF00, x=100, y=200)<br>
+       anstatt von<br>
+       Subtitle("Hallo, Leute!", 100, 200, 0, 999999, &quot;Arial", 24, $00FF00)
+   </tt>
+  </td>
+ </tr>
+</table><br>
+
+Eine alternative Syntax (&quot;OOP-Notation") f&uuml;r Clip Funktionen ist<br><br>
+
+<table border width="75%">
+ <tr> 
+  <td> 
+   <tt>ausdruck.funktion(argumente)<br><br>
+       z.B.:<br>
+       Version.ReduceBy2.FadeOut(15)
+   </tt>
+  </td>
+ </tr>
+</table><br>
+
+Das ist das gleiche wie:<br><br>
+
+<table border width="75%">
+ <tr> 
+  <td> 
+   <tt>funktionen(ausdruck, argumente)<br><br>
+       z.B.:<br>
+       FadeOut(15, ReduceBy2(Version))
+   </tt>
+  </td>
+ </tr>
+</table><br>
+
+,was man sich vorstellen kann als <tt>Funktion</tt> angewendet auf <tt>ausdruck</tt>.<br>
+Ein Nachteil dieser OOP-Notation ist, dass sie nur f&uuml;r Filter verwendet werden kann, die ein einzelnes Videoclip-Argument haben und nicht mit Filtern, die mehrere Argumente erwarten.<br><br>
+
+Alle AviSynth Funktionen erzeugen eine fest definierte Anzahl an Frames, auch die Framerate wird durch das Skript eindeutig bestimmt, auch wenn die Befehle sehr komplex aussehen.<br>
+AviSynth weiss nach dem Lesen des Skripts wie lange das erzeugte Video sein wird, welche Framerate es hat und hat die komplette Schnittsequenz von allen Quell-Videos ermittelt.<br>
+Dies geschieht beim &Ouml;ffnen des Skripts. Nur das Filtern an sich geschieht zur Laufzeit auf Anforderung durch das Video-Programm.<br><br>
+
+<hr><br>
+
+<b>Kommentare</b>: AviSynth ignoriert alles ab einem # Zeichen bis zum Ende
+der Zeile.<br><br>
+
+<b>Gross- und Kleinschreibung wird ignoriert</b>: aViSouRCe ist das gleiche wie AVISource.<br><br>
+  
+<b>Fortsetzen</b> auf der n&auml;chsten oder von der vorherigen Zeile: \<br><br>
+
+<table border width="75%">
+ <tr> 
+  <td width="33%"> 
+    <tt>Subtitle (&quot;Test-Text&quot;)
+        <br>
+    </tt>
+   </td>
+   <td width="33%"> 
+    <tt>Subtitle (            \<br>
+        &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&quot;Test-Text&quot;)
+    </tt>
     </td>
-  </tr>
-</table>
-<p>Eine alternative Syntax (&quot;OOP-Notation") f&uuml;r Clip-Funktionen ist</p>
-<table width="75%" border="1">
-  <tr> 
-    <td> 
-      <pre>ausdruck.funktion(argumente)<br><br>z.B.:<br>Version.ReduceBy2.FadeOut(15)</pre>
-    </td>
-  </tr>
-</table>
-<p>Das ist das gleiche als:</p>
-<table width="75%" border="1">
-  <tr> 
-    <td> 
-      <pre>funktionen(ausdruck, argumente)<br><br>z.B.:<br>FadeOut(15, ReduceBy2(Version))</pre>
-    </td>
-  </tr>
-</table>
-<p>was man sich vorstellen kann als <tt>Funktion</tt> angwendet auf <tt>ausdruck</tt>.<br>
-  Ein Nachteil dieser OOP-Notation ist, dass sie nur f&uuml;r Filter verwendet 
-  werden kann, die ein einzelnes Video-Clip-Argument haben und nicht mit Filtern, 
-  die mehrere Argumente erwarten.</p>
-<p>Alle AviSynth-Funktionen erzeugen eine fest definierte Anzahl an frames, auch 
-  die framerate wird durch das Skript eindeutig bestimmt, auch wenn die Befehle 
-  sehr komplex aussehen.<br>
-  AviSynth weiss nach dem Lesen des Skripts wie lange das erzeugte Video sein 
-  wird, welche framerate es hat und hat die komplette Schnittsequenz von allen 
-  Quell-Videos ermittelt. Dies geschieht beim &Ouml;ffnen des Skripts. Nur das 
-  Filtern an sich geschieht zur Laufzeit auf Anforderung durch das Video-Programm.</p>
-<hr>
-<p><b>Kommentare</b>: AviSynth ignoriert alles ab einem # Zeichen bis zum Ende 
-  der Zeile. </p>
-<p><b>Gross- und Kleinschreibung wird ignoriert</b>: aViSouRCe ist das gleiche 
-  als AVISource. </p>
-<p><b>Fortsetzen</b> auf der n&auml;chsten oder von der vorherigen Zeile: \ </p>
-<table width="75%" border="1">
-  <tr> 
     <td width="33%"> 
-      <pre>
-Subtitle (&quot;Test-Text&quot;)<br>
-</pre>
-    </td>
-    <td width="33%"> 
-      <pre width="33%">Subtitle (            \
-          &quot;Test-Text&quot;)</pre>
-    </td>
-    <td width="33%"> 
-      <pre width="33%">Subtitle ( 
-\         &quot;Test-Text&quot;)</pre>
+      <tt>Subtitle (<br>
+          \&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&quot;Test-Text&quot;)
+      </tt>
     </td>
   </tr>
-</table>
-<br>
-<hr>
-<p><b><u>Variablen:</u></b></p>
-<p></p>
-<p> 
-<p> 
-<p> 
-<p>Ein Variablen-Name kann bis zu 50 Zeichen lang sein und aus Buchstaben, Ziffern 
-  und Unterstriche(_), aber keinen anderen Zeichen bestehen, weiters darf er nicht 
-  mit einer Ziffer beginnen.<br>
-  <br>
-  Folgende Variablen-Typen k&ouml;nnen verwendet werden:</p>
-<p><tt>clip</tt>: ein Video-Clip das Video und / oder Audio enth&auml;lt. Mindestens 
-  eine solche Variable muss verwendet und als Ergebnis zur&uuml;ckgegeben werden.<br>
-  <tt>string</tt>: umgeben &quot;Anf&uuml;hrungsstrichen&quot;. Eine Zeichenkette 
-  kann alle Zeichen enthalten ausser Anf&uuml;hrungsstrichen.<br>
-  <tt>int:</tt> eine Ganzzahl, die als eine Folge von Ziffern eingegeben wird, 
-  optional mit einem + oder - amAnfang.<br>
-  <tt>float:</tt> eine Fliesskomma-Zahl, eingegeben als Folge von Ziffern mit 
-  einem Punkt (.) innerhalb und optional einem + or -. Zum Beispiel wird +1. als 
-  <tt>float </tt>behandelt. <br>
-  <tt>val:</tt> als Typ eines Funktionsarguments wo es egal ist, ob int oder float 
-  <br>
-  <tt>bool</tt> : kann TRUE oder FALSE sein<br>
-  <tt>hexadezimal-Werte</tt>: k&ouml;nnen mit einem vorgestellen $ eingegeben 
-  werden. Intern wird diese Variable als Ganzzahl behandelt. Manche Filter verwendet 
-  diese Schreibweise zur Angabe von Farbwerten. So ist z.B. $FF8800 ein Orange-Ton.<br>
-  <br>
-  <tt>global</tt>: Definiert eine globale Variable, die von allen benutzer-definierten 
-  Funktionen und dem Hauptskript gemeinsam benutzt werden kann. <font size="6" color="#66FFFF" face="Courier New, Courier, mono"><b><font color="#FFFF66" size="4">v2</font></b></font></p>
-<p>So schaut eine andere Version des Beispiels von oben aus, die besser handhabbar 
-  und leichter verst&auml;ndlich ist: <br>
-</p>
-<table width="75%" border="1">
-  <tr> 
-    <td> 
-      <pre>a = AVISource(&quot;d:\capture.00.avi&quot;)
-b = AVISource(&quot;d:\capture.01.avi&quot;)
-c = AVISource(&quot;d:\capture.02.avi&quot;)
-sound_track = WAVSource(&quot;d:\audio.wav&quot;)
+</table><br><br>
 
-AudioDub(a+b+c, sound_track)</pre>
-    </td>
-  </tr>
-</table>
-<br>
-<hr>
-<p><b><u>Operatoren:</u></b></p>
-<p>Mit allen Typen von Operanden (clip, int, float, string, bool) kann verwendet 
-  werden:<br>
-  <tt>==</tt> ist gleich<br>
-  <tt>!=</tt> ist nicht gleich<br>
-  <tt>||</tt> oder<br>
-  <tt>&amp;&amp;</tt> und<br>
-</p>
-<p> Nur mit numerischen Operanden (int, float):<br>
-  <tt>+ </tt> Addieren<br>
-  <tt>- </tt> Subtrahieren<br>
-  <tt>* </tt> Multiplizieren<br>
-  <tt>/ </tt> Dividieren<br>
-  <tt>% </tt>Modulo (Rest)<br>
-  <tt>&gt;=</tt> gr&ouml;sser oder gleich als<br>
-  <tt>&lt;=</tt> kleiner oder gleich als<br>
-  <tt>&lt; </tt> kleiner als<br>
-  <tt>&gt; </tt> gr&ouml;sser als<br>
-</p>
-<table width="75%" border="1">
-  <tr> 
-    <td> 
-      <pre>AviSynth zerlegt Ausdr&uuml;cke von rechts nach links, was zu ungewohnten Ergebnissen f&uuml;hren kann:
+<hr><br>
 
+<b><u>Variablen:</u></b><br><br>
 
-a = 10 - 5 - 5          ergibt 10 - (5 - 5) = 10 !
-b = 100. / 2. / 4.      ergibt 100. / (2. / 4.) = 200 !</pre>
-    </td>
-  </tr>
-</table>
-<p>Mit Operanden vom Typ string:<br>
-  <tt>+ </tt> Addieren (Zeichenketten zusammenh&auml;ngen)<br>
-</p>
-<p> Mit Typ clip:<br>
-  <tt>+ </tt> das gleiche wie die Funktion<tt> UnalignedSplice</tt> <br>
-  <tt>++</tt> das gleiche wie die Funktion <tt> AlignedSplice</tt> <br>
-  <br>
-  Mit Operanden vom Typ bool:<br>
-  <tt>?:</tt> bedingte Ausf&uuml;hrung von Code:<br>
-</p>
-<table BORDER cellspacing=1 cellpadding=4 width=75%>
-  <tr> 
-    <td valign="TOP"> 
-      <pre>b = (a==true) ? 1 : 2<br>
-&Uuml;bersetzt in pseudo-basic:<br>
-wenn (a=true) dann b=1 sonst b=2 </pre>
-    </td>
-  </tr>
-</table>
-<br>
-<hr>
-<p><b><u><span class="titresmall"><a name="Functions">Funktionen</a></span> </u></b></p>
-<p> 
-<p> 
-<p> 
-<p> 
-<p><b><u>Skript-Funktionen:</u></b></p>
-<p>Die Argumente und das Ergebnis dieser Funktionen sind nicht Clips, sondern 
-  andere Variablen, die im Skript verwendet werden.</p>
-<p> <tt> Floor</tt> (float): Konvertiert von float zu int<br>
-  <tt>Ceil</tt> (float): Konvertiert von float zu int<br>
-  <tt>Round</tt> (float): Konvertiert von float zu int<br>
-  <tt>Sin</tt> (float)<b><font color="#FFFF66" size="2"> v2</font></b><br>
-  <tt>Cos</tt> (float)<b><font color="#FFFF66" size="2"> v2</font></b><br>
-  <tt>Pi</tt> ()<b><font color="#FFFF66" size="2"> v2</font></b><br>
-  <tt>Log</tt> (float)<b><font color="#FFFF66" size="2"> v2</font></b><br>
-  <tt>Exp</tt> (float)<b><font color="#FFFF66" size="2"> v2</font></b><br>
-  <tt>Pow</tt> (float Basis, float Hochzahl)<b><font color="#FFFF66" size="2"> 
-  v2</font></b><br>
-  <tt>Sqrt</tt> (float}<b><font color="#FFFF66" size="2"> v2</font></b><br>
-  <tt>fabs</tt> (float)<b><font color="#FFFF66" size="2"> v2.07</font></b> Absolutwert 
-  f&uuml;r float Zahlen.<br>
-  <tt>abs</tt> (integer)<b><font color="#FFFF66" size="2"> v2.07</font></b> Absolutwert 
-  f&uuml;r int Zahlen.<br>
-  <tt>IsBool</tt> (var)<br>
-  <tt>IsInt</tt> (var)<br>
-  <tt>IsFloat</tt> (var)<br>
-  <tt>IsString</tt> (var)<br>
-  <tt>IsClip</tt> (var)<br>
-  <tt>Defined</tt> (var): um optionale Parameter in benutzer-definierten Funktionen 
-  definieren zu k&ouml;nnen.<br>
-  <tt>Default</tt> (x,d): ergibt x wenn Defined(x), d sonst.<br>
-  <tt>String </tt>(float / int): Konvertiert eine Zahl in einen string.<b><font color="#FFFF66" size="2"> 
-  v2</font></b></p>
-<table width="75%" border="1">
-  <tr> 
-    <td> 
-      <pre>Subtitle( &quot;Clip H&ouml;he ist &quot; + String(last.height) )</pre>
-    </td>
-  </tr>
-</table>
-<p><tt>Eval</tt> (string)<br>
-  <tt>Apply</tt> (func-string,arg,...): Eval("f(x)") ist equivalent zu f(x) ist 
-  equivalent zu Apply("f", x))<br>
-</p>
-<table width="75%" border="1">
-  <tr> 
-    <td> 
-      <pre>Man kann Eval f&uuml;r sowas verwenden:
-<br>settings = &quot;352, 288&quot;
-Eval( &quot;BicubicResize(&quot; + settings + &quot;)&quot; )</pre>
-    </td>
-  </tr>
-</table>
-<p>Es kann auch der Text von einem anderen Skript importiert werden:<br>
-  <tt>Import</tt> (Dateiname): verarbeitet den Inhalt von einem andern AviSynth 
-  Skript.</p>
-<p>F&uuml;r error-Meldungen und das Auffangen von falschen Benutzereingaben kann 
-  folgendes verwendet werden: <br>
-  <tt>Assert</tt> (bool, string error-Meldung): error-Meldungen erzeugen<br>
-  <tt>AssertEval</tt> (string)</p>
-<p>Es gibt auch eine Funktion mit der man &uuml;berpr&uuml;fen kann, ob ein Error 
-  auftreten WIRD:</p>
-<table width="75%" border="1">
-  <tr> 
-    <td> 
-      <pre>Try {
-  AviSource(&quot;file.avi&quot;)
-}
-catch(error_meldung) {
-   Blackness.Subtitle(error_meldung)
-}</pre>
-    </td>
-  </tr>
-</table>
-<p><b><u>SteuerFunktionen:</u></b></p>
-<p> <tt>SetMemoryMax</tt>(int): Setzt die maximale Speichergr&ouml;sse, die AviSynth 
-  verwendet (in MB)<font size="6" color="#66FFFF" face="Courier New, Courier, mono"><b><font color="#FFFF66" size="4"> 
-  v2</font></b></font><br>
-  In manchen Versionen ist die Standardgr&ouml;sse 5MB, was eher wenig ist. Wenn 
-  Probleme auftreten (besonders langsame Geschwindigkeit), sollte diese dieser 
-  Wert auf mindestens 32MB gesetzt werden.<br>
-  <tt>SetWorkingDir</tt>(string): Setzt das Standard-Verzeichnis f&uuml;r AviSynth 
-  (normalerweise sonst das Verzeichnis in dem sich das Skript befindet)<font size="6" color="#66FFFF" face="Courier New, Courier, mono"><b><font color="#FFFF66" size="4"> 
-  v2</font></b></font><br>
-  Das kann vor allem f&uuml;r das einfache Laden von Quell-Clips verwendet werden 
-  und hat keine Auswirkung auf das automatische Laden der plugins. Das Ergebnis 
-  ist 0 wenn erfolgreich, sonst -1 (wenn z.B. der Pfad nicht existiert)</p>
-<hr>
-<p><b><u>Clip-Eigenschaften:</u></b></p>
-Diese Funktionen haben als Argument ein Clip, als R&uuml;ckgabewert eine Eigenschaft 
-des Clips. 
-<p> <tt> Width</tt> (clip) Breite<br>
-  <tt> Height</tt> (clip) H&ouml;he<br>
-  <tt> Framecount</tt> (clip) Frame-Anzahl<br>
-  <tt> Framerate</tt> (clip) Frame-Rate (Bilder pro Sekunde)<br>
-  <tt> Audiorate</tt> (clip) Sample-Frequenz des Tons<br>
-  <tt> Audiolength </tt> (clip) L&auml;nge des Audios<br>
-  <tt> Audiochannels</tt> (clip) Anzahl der Kan&auml;le<br>
-  <tt> Audiobits</tt> (clip) Bitanzahl<br>
-  <tt> IsRGB</tt> (clip) Videoformat ist RGB<br>
-  <tt> IsYUY2 </tt> (clip) Videoformat ist YUY2<br>
-  <tt> IsFieldBased</tt> (clip) Video ist fieldbased (interlaced)<br>
-  <tt> IsFrameBased</tt> (clip) Video ist framebased (progressive)<br>
-  <tt> GetParity</tt> (clip) welches field (Halbbild) wird zuerst angezeigt (even/odd)</p>
-<table width="100%" border="1">
-  <tr> 
-    <td> 
-      <pre>Nicht vergessen: die Clip-Eigenschaften k&ouml;nnen auch mit der impliziten Variablen LAST oder mit der OOP-Notation verwendet werden:<br>
-BilinearResize(Width/2, Height/2)
-   ist das gleich wie
-BilinearResize(Width(Last)/2, Height(Last)/2)
-   ist das gleich wie
-BilinearResize(Last.Width / 2, Last.Height / 2)</pre>
-    </td>
-  </tr>
-</table>
-<br>
-<hr>
-<p><b><u>Benutzer-Definierte Funktionen:</u></b></p>
-<p>Man kann auch selber Funktionen definieren. Das kann am besten anhand eines 
-  Beispiels erkl&auml;rt werden:</p>
-<table BORDER width=75%>
-  <tr> 
-    <td valign="TOP"> 
-      <pre>Function NTSC2PAL( clip c) {
-    Assert(c.height == 480, "NTSC2PAL: input clip must have 480 scan lines")
-    Bob(c, height=576)
-    return Weave()
-}</pre>
-    </td>
-  </tr>
-</table>
-<p> Sogar rekursive Funktionen k&ouml;nnen definiert werden.</p>
-<table BORDER width=75% >
-  <tr> 
-    <td valign="TOP"> 
-      <pre>function TRANSITION(clip clip, int start,        int expo, int overlap)
-{
-   return ( start &gt;= clip.framecount-expo ? 
-   \   Trim(clip,start,0) : 
-   \   Dissolve(Trim(clip,start,start+expo-1),
-   \      TRANSITION(clip,start+expo,expo,overlap),
-   \      overlap 
-   \      )
-}</pre>
-    </td>
-  </tr>
-</table>
-<br>
-<hr>
-<p><b><a name="multiclip"></a>Funktionen mit mehr als einem Quell-Clip</b></p>
-<p>Manche Funktionen kombinieren zwei oder mehrere Clips auf verschiedene Art. 
-  Wie der Video-Inhalt berechnet wird, ist bei den jeweiligen Funktionen beschrieben, 
-  hier ist eine Zusammenfassung welche Eigenschaften das Ergebnis-Clip haben wird.</p>
-<p>Das Quell-Clip muss immer das gleiche Farbformat und - mit Ausnahme von <i>Layer</i> 
-  - auch die gleichen Abmessungen.</p>
-<table border="1">
-  <tr> 
-    <td><b></b></td>
-    <td> 
-      <div align="center"><b>frame-rate</b></div>
-    </td>
-    <td colspan="2"> 
-      <div align="center"><b>frame-Anzahl</b></div>
-      <div align="center"></div>
-    </td>
-    <td> 
-      <div align="center"><b>audio Inhalt</b></div>
-    </td>
-    <td> 
-      <div align="center"><b>audio sampling rate</b></div>
-    </td>
-  </tr>
-  <tr> 
-    <td><b>AlignedSplice, UnalignedSplice</b></td>
-    <td rowspan="6"> 
-      <div align="center">
-        <p>vom ersten Clip</p>
-        </div>
-    </td>
-    <td> 
-      <div align="center">Summe aller Clips</div>
-    </td>
-    <td> 
-      <div align="center"></div>
-    </td>
-    <td> 
-      <div align="center">siehe Filter-Beschreibung</div>
-    </td>
-    <td rowspan="7"> 
-      <div align="center">vom ersten Clip</div>
-    </td>
-  </tr>
-  <tr> 
-    <td><b>Dissolve</b></td>
-    <td> 
-      <div align="center">Summer aller Clips minus der &Uuml;berlappung</div>
-    </td>
-    <td> 
-      <div align="center"></div>
-    </td>
-    <td> 
-      <div align="center">siehe Filter-Beschreibung</div>
-    </td>
-  </tr>
-  <tr> 
-    <td><b>MergeLuma, MergeChroma</b></td>
-    <td rowspan="2"> 
-      <div align="center">vom ersten Clip</div>
-    </td>
-    <td rowspan="5"> 
-      <div align="center">der letzte Frame vom k&uuml;rzeren Clip wird bis zum 
-        Ende wiederholt</div>
-    </td>
-    <td rowspan="5"> 
-      <div align="center">vom ersten Clip</div>
-    </td>
-  </tr>
-  <tr> 
-    <td><b>Layer</b></td>
-  </tr>
-  <tr> 
-    <td><b>Subtract</b></td>
-    <td rowspan="2"> 
-      <div align="center">vom l&auml;ngeren Clip</div>
-    </td>
-  </tr>
-  <tr> 
-    <td><b>StackHorizontal, StackVertical</b></td>
-  </tr>
-  <tr> 
-    <td><b>Interleave</b></td>
-    <td> 
-      <div align="center">(fps vom ersten Clip)<br>
-        x<br>
-        (Anzahl der Clips)</div>
-    </td>
-    <td> 
-      <div align="center">2x frame-Anzahl vom l&auml;ngeren Clip</div>
-    </td>
-  </tr>
-</table>
-<p>Wie man sehen kann, sind die Funktionen nicht v&ouml;llig symmetrisch sondern 
-  nehmen manche Eigenschaften vom ERSTEN Clip.</p>
-<p></p>
-<hr>
-<p><b><span class="titresmall"><a name="Plugins"></a>Plugins</span></b></p>
-<p>Mit diesen Funktionen k&ouml;nnen externe Filter zu AviSynth hinzugef&uuml;gt 
-  werden.</p>
-<p><tt>LoadPlugin</tt> ("dateiname"[,...])</p>
-<p>L&auml;dt ein oder mehrere externe AviSynth plugins (DLLs).</p>
-<hr>
-<p><tt>LoadVirtualDubPlugin</tt> ("dateiname","filtername", preroll)</p>
-<p>So wird ein plugin geladen, das f&uuml;r VirtualDub geschrieben wurde. "dateiname" 
-  ist der Name der .vdf-Datei. Nach dem Aufruf dieser Funktion kann das Filter 
-  mit "filtername" in AviSynth benutzt werden. VirtualDub Filter unterst&uuml;tzen 
-  nur das RGB32-Farbformat. Wenn das Video in einem anderen Format vorliegt, muss 
-  man <tt>ConvertToRGB32</tt> verwenden (<tt>ConvertToRGB</tt> reicht nicht).</p>
-<p> Das Ergebnis mancher Filter h&auml;ngt von vorhergehenden frames ab, f&uuml;r 
-  diese muss <tt>preroll</tt> mindestens die Anzahl der frames sein, die das Filter 
-  zum Auff&uuml;llen seiner internen Speicher ben&ouml;tigt.</p>
-<hr>
-<p><tt>LoadVFAPIPlugin </tt> ("filename","filtername")</p>
-<p>So k&ouml;nnen VFAPI plugins (TMPGEnc import plugins) verwendet werden.</p>
-<hr>
-<p><b><a name="autoloading"></a>Plugin autoload und and name precedence<font color="FFFF66"><b><font size="4" face="Courier New, Courier, mono"> 
-  v2</font></b></font></b></p>
-<p>Es ist m&ouml;glich, alle plugins und Skripte mit benutzer-definierten Funktionen 
-  oder globalen Variablen in einem Verzeichnis zu speichern, aus dem dann alle 
-  Dateien mit den Endungen .AVS and .DLL beim Starten von AviSynth geladen werden 
-  (dynamisch wenn vom Skript wirklich ben&ouml;tigt). </p>
-<p>Skripte in diesem Verzeichnis sollten nur Funktions-Definitionen und globale 
-  Variable, aber nicht den Teil der Videobearbeitung beinhalten (also kein AviSource,...), 
-  sonst k&ouml;nnen seltsame Fehler auftreten. Auch sollten keine anderen Dateien 
-  in dieses Verzeichnis gespeichert werden.</p>
-<p>Der Verzeichnisname ist in der registry gespeichert. Man kann eine .REG-Datei 
-  mit folgendem Inhalt doppelklicken, um den Pfad zu setzen (nat&uuml;rlich vorher 
-  den wirklichen Pfad einsetzen):</p>
-<table width="75%" border="1">
-  <tr> 
-    <td> 
-      <pre>REGEDIT4
+Ein Variablen-name kann bis zu 50 Zeichen lang sein und aus Buchstaben, Ziffern und Unterstriche(_), aber keine anderen Zeichen bestehen. Desweiteren darf er nicht mit einer Ziffer beginnen.<br><br>
 
+Folgende Variablen-Typen k&ouml;nnen verwendet werden:<br><br>
 
-[HKEY_LOCAL_MACHINE\SOFTWARE\Avisynth]
-&quot;PluginDir&quot;=&quot;c:\\programme\\avisynth\\plugins&quot;
-       </pre>
-    </td>
-  </tr>
-</table>
-<p>Die Reihenfolge in der gleichnamige Funktionen aufgerufen werden ist:<font color="FFFF66"><b><font size="4" face="Courier New, Courier, mono"> 
-  v2</font></b></font><br>
-  1. Funktionen aus externen plugins (haben immer die h&ouml;chste Priorit&auml;t)<br>
-  2. benutzer-defininierte Funktionen<br>
-  3. eingebaute Funktionen</p>
-Innerhalb dieser Gruppen hat die am letzten geladenen Funktion Vorrang. 
-<p>&nbsp; </p>
+<tt>clip</tt>: Ein Videoclip enth&auml;lt das Video und / oder Audio. Mindestens eine solche Variable muss verwendet und als Ergebnis zur&uuml;ckgegeben werden.<br>
+<tt>string</tt>: Ist umgeben von &quot;Anf&uuml;hrungszeichen&quot; oder ``TeX-Style Anf&uuml;hrungszeichen''. Eine Zeichenkette kann alle Zeichen enthalten au&szlig;er die genannten Anf&uuml;hrungszeichen. Falls du Anf&uuml;hrungszeichen in der Zeihenfolge verwenden musst, dann nutze au&szlig;en die Tex-Notation.<br>
+<tt>int</tt>: Ist eine Ganzzahl, die als eine Folge von Ziffern eingegeben wird, optional mit einem + oder - am Anfang.<br>
+<tt>float</tt>: Ist eine Dezimalzahl, eingegeben als Folge von Ziffern mit einem Punkt (.) innerhalb der Zifferfolge und optional einem + oderr - . Zum Beispiel wird +1. als <tt>float</tt> behandelt.<br>
+<tt>val</tt>: Wird als Typ eines Funktionsarguments genutzt, wo es egal ist, ob <tt>int</tt> oder <tt>float</tt>.<br>
+<tt>bool</tt>: Kann <tt>TRUE</tt> (wahr) oder <tt>FALSE</tt> (falsch) sein.<br>
+<tt>Hexadezimal-Werte</tt>: K&ouml;nnen mit einem vorgestellen $ eingegeben werden. Intern wird diese Variable als Ganzzahl behandelt. Manche Filter verwendet diese Schreibweise zur Angabe von Farbwerten. So ist z.B. $FF8800 ein Orange-Ton.<br><br>
+
+<tt>global</tt>: Definiert eine globale Variable, die von allen benutzerdefinierten Funktionen und dem Hauptskript gemeinsam benutzt werden kann. <font color="FFFF66" size="4" face="Courier New, Courier, mono"><b>v2</b></font><br><br>
+
+So schaut eine andere Version des Beispiels von oben aus, die besser handhabbar und leichter verst&auml;ndlich ist:<br><br>
+
+<table border width="75%">
+ <tr> 
+  <td> 
+   <tt>a = AVISource(&quot;d:\capture.00.avi&quot;)<br>
+       b = AVISource(&quot;d:\capture.01.avi&quot;)<br>
+       c = AVISource(&quot;d:\capture.02.avi&quot;)<br>
+       sound_track = WAVSource(&quot;d:\audio.wav&quot;)<br><br>
+       
+       AudioDub(a+b+c, sound_track)
+   </tt>
+  </td>
+ </tr>
+</table><br><br>
+
+<hr><br>
+
+<span class="titresmall"><a name="Operators"></a>Operatoren:</span><br><br>
+
+Mit allen Typen von Operanden (clip, int, float, string, bool) k&ouml;nnen verwendet werden:<br>
+<tt>==</tt> ist gleich<br>
+<tt>!=</tt> ist nicht gleich<br>
+<tt>||</tt> oder<br>
+<tt>&amp;&amp;</tt> und<br><br>
+
+Nur mit numerischen Operanden (int, float):<br>
+<tt>+ </tt> Addieren<br>
+<tt>- </tt> Subtrahieren<br>
+<tt>* </tt> Multiplizieren<br>
+<tt>/ </tt> Dividieren<br>
+<tt>% </tt> Modulo (Rest)<br>
+<tt>&gt;=</tt> gr&ouml;sser oder gleich als<br>
+<tt>&lt;=</tt> kleiner oder gleich als<br>
+<tt>&lt; </tt> kleiner als<br>
+<tt>&gt; </tt> gr&ouml;sser als<br><br>
+
+<table border width="75%">
+ <tr> 
+  <td> 
+   <tt>AviSynth zerlegt Ausdr&uuml;cke von rechts nach links, was zu ungewohnten Ergebnissen f&uuml;hren kann:<br>
+       a = 10 - 5 - 5 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ergibt 10 - (5 - 5) = 10 !<br>
+       b = 100. / 2. / 4. &nbsp;&nbsp; ergibt 100. / (2. / 4.) = 200 !
+   </tt>
+  </td>
+ </tr>
+</table><br>
+
+Mit Operanden vom Typ string (Gro&szlig;- / Kleinschreibung wird ignoriert):<br>
+<tt>+ </tt> Addieren (Zeichenketten zusammenh&auml;ngen)<br>
+<tt>&gt;=</tt> gr&ouml;sser oder gleich als<br>
+<tt>&lt;=</tt> kleiner oder gleich als<br>
+<tt>&lt; </tt> kleiner als<br>
+<tt>&gt; </tt> gr&ouml;sser als<br><br>
+
+Mit Typ clip:<br>
+<tt>+ </tt> das gleiche wie die Funktion<tt> UnalignedSplice</tt> <br>
+<tt>++</tt> das gleiche wie die Funktion <tt> AlignedSplice</tt><br><br>
+
+Mit Operanden vom Typ bool:<br>
+<tt>?:</tt> bedingte Ausf&uuml;hrung von Code:<br><br>
+
+<table border width=75% cellspacing="1" cellpadding="4">
+ <tr> 
+  <td> 
+   <tt>b = (a==true) ? 1 : 2<br><br>
+       &Uuml;bersetzt in pseudo-basic:<br><br>
+       wenn (a=true) dann b=1 sonst b=2
+   </tt>
+  </td>
+ </tr>
+</table><br><br>
+
+<hr><br>
+
+<span class="titresmall"><a name="ScriptFunctions"></a><b>Skript Funktionen</b></span><br><br>
+
+Die Argumente und das Ergebnis dieser Funktionen sind nicht Clips, sondern andere Variablen, die im Skript verwendet werden.<br><br>
+
+<p><b><u>Numerische Funktionen:</u></b><br><br>
+
+<table border width="75%">
+ <tr>
+  <td width="62%"><tt>Floor(float)</tt>: Konvertiert von Dezimalzahl zu Integer.</td><td width="40%"><tt>Floor(1.2) = 1</tt><br><tt>Floor(1.6) = 1</tt><br><tt>Floor(-1.2) = -2</tt><br><tt>Floor(-1.6) = -2</tt></td>
+ </tr>
+ <tr>
+  <td><tt>Ceil(float)</tt>: Konvertiert von Dezimalzahl zu Integer.</td><td><tt>Ceil(1.2) = 2.0</tt><br><tt>Ceil(1.6) = 2.0</tt><br><tt>Ceil(-1.2) = -1</tt><br><tt>Ceil(-1.6) = -1</tt></td>
+ </tr>
+ <tr>
+  <td><tt>Round(float)</tt>: Konvertiert von Dezimalzahl zu Integer.</td><td><tt>Round(1.2) = 1</tt><br><tt>Round(1.6) = 2</tt><br><tt>Round(-1.2) = -1</tt><br><tt>Round(-1.6) = -2</tt></td>
+ </tr>
+ <tr>
+  <td><tt>Int(float)</tt>: Konvertiert von Dezimalzahl zu Integer (rundet ab). <font color="#FFFF66" size=-1><b>v2.07</b></font></td><td><tt>Int(1.2) = 1</tt><br><tt>Int(1.6) = 1</tt><br><tt>Int(-1.2) = -1</tt><br><tt>Int(-1.6) = -1</tt></td>
+ </tr>
+ <tr>
+  <td><tt>Float(int)</tt>: Konvertiert von Integer zu Dezimalzahl. <font color="#FFFF66" size=-1><b>v2.07</b></font></td><td>&nbsp;</td>
+ </tr>
+ <tr>
+  <td><tt>Frac(float)</tt>: Gibt den entsprechenden Bruch der Dezimalzahl zur&uuml;ck. <font color="#FFFF66" size=-1><b>v2.07</b></font></td><td><tt>Frac(3.7) = 0.7</tt><br><tt>Frac(-1.8) = -0.8</tt></td>
+ </tr>
+ <tr>
+  <td><tt>Abs(integer)</tt> / <tt>Absx(float)</tt>: Absoluter Wert eines Integer oder Dezimalzahl. <font color="#FFFF66" size=-1><b>v2.07</b></font></td><td><tt>Abs(-3.8) = 1.8</tt></td>
+ </tr>
+ <tr>
+  <td><tt>Sign(int)</tt> / <tt>Sign(float)</tt>: Gibt das Vorzeichen der Zahl als -1, 0 oder 1 zur&uuml;ck. <font color="#FFFF66" size=-1><b>v2.07</b></font></td><td><tt>Sign(-3.5) = -1</tt><br><tt>Sign(3.5) = 1</tt><br><tt>Sign(0) = 0</tt></td>
+ </tr>
+ <tr>
+  <td><tt>HexValue(string)</tt>: Gibt den Wert einer hexadezimaler Zeichenkette zur&uuml;ck. <font color="#FFFF66" size=-1><b>v2.07</b></font></td><td><tt>HexValue ( "FF00" ) = 65280</tt></td>
+ </tr>
+ <tr>
+  <td><tt>Sin(float)</tt> <font color="#FFFF66" size=-1><b>v2</b></font></td><td>&nbsp;</td>
+ </tr>
+ <tr>
+  <td><tt>Cos(float)</tt> <font color="#FFFF66" size=-1><b>v2</b></font></td><td>&nbsp;</td>
+ </tr>
+ <tr>
+  <td><tt>Pi()</tt> <b><font color="#FFFF66"><font size=-1> v2</font></font></b></td><td>&nbsp;</td>
+ </tr>
+ <tr>
+  <td><tt>Log(float)</tt> <font color="#FFFF66" size=-1><b>v2</b></font></td><td>&nbsp;</td>
+ </tr>
+ <tr>
+  <td><tt>Exp(float)</tt> <font color="#FFFF66" size=-1><b>v2</b></font></td><td>&nbsp;</td>
+ </tr>
+ <tr>
+  <td><tt>Pow(float base,float power)</tt> <font color="#FFFF66" size=-1><b>v2</b></font></td><td>&nbsp;</td>
+ </tr>
+ <tr>
+  <td><tt>Sqrt(float}</tt> <font color="#FFFF66" size=-1><b>v2</b></font></td><td>&nbsp;</td>
+ </tr>
+ <tr>
+  <td><tt>Rand([int max] [,bool scale] [,bool seed])</tt>: Gibt eine Zufallszahl als Integer zwischen 0 and dem Maximum zur&uuml;ck. <font color="#FFFF66" size=-1><b>v2.07</b></font><br>&nbsp; Standard: Maximum = 32768<br>&nbsp; scale = TRUE ( TRUE = normaler Modus, FALSE =<br>&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; modulierender Modus)<br>&nbsp; seed = FALSE (TRUE = nutze Zeit als **seed)</td><td><tt>Rand(100) = Integer zwischen 0 und 99</tt></td>
+ </tr>
+ <tr>
+  <td><tt>Spline(float X,&nbsp; x1,y1, x2,y2, ...., bool "cubic"}</tt> <font color="#FFFF66" size=-1><b>v2.5</b></font><br>&nbsp;Interpolatiert den Y Wert am Punkt X unter Verwendung der Kontrollpunkte x1/y1,...<br>&nbsp;Man muss mindestens zwei x/y-Paare angeben.<br>&nbsp;Die Interpolation kann kubisch (das Ergebnis ist dann ein Spline) oder linear (das Ergebnis is ein Polygone) sein.</td><td><tt>Spline(5, 0,0, 10,10, 20,0, false) = 5</tt><br><tt>Spline(5, 0,0, 10,10, 20,0, true) = 7</tt></td>
+ </tr>
+</table><br>
+
+<b><u>Zeichenketten Funktionen:</u></b><br><br>
+
+<table border width="80%">
+ <tr>
+  <td width="60"><tt>UCase(string)</tt>: Gibt die Zeichenkette in Gro&szlig;buchstaben zur&uuml;ck. <font color="#FFFF66" size=-1><b>v2.07</b></font></td><td width="40"><tt>UCase("AviSynth") = "AviSynth"</tt></td>
+ </tr>
+ <tr>
+  <td><tt>LCase(string)</tt>: Gibt die Zeichenkette in Klein;buchstaben zur&uuml;ck. <font color="#FFFF66" size=-1><b>v2.07</b></font></td><td><tt>LCase("AviSynth") = "AviSynth"</tt></td>
+ </tr>
+ <tr>
+  <td><tt>RevStr(string)</tt>: Gibt die Zeichenkette umgedrehter Reihenfolge zur&uuml;ck. <font color="#FFFF66" size=-1><b>v2.07</b></font></td><td><tt>RevStr("AviSynth") = "htnySivA"</tt></td>
+ </tr>
+ <tr>
+  <td><tt>StrLen(string)</tt>: Gibt die L&auml;nge derZeichenkette zur&uuml;ck. <font color="#FFFF66" size=-1><b>v2.07</b></font></td><td><tt>StrLen("AviSynth") = 8</tt></td>
+ </tr>
+ <tr>
+  <td><tt>Findstr(string1,string2</tt>): <font color="#FFFF66" size=-1><b>v2.07</b></font><br>Gibt den **offset an string2 innerhalb von string1 zur&uuml;ck. Die Suche ber&uuml;cksichtigt die Gro&szlig;- und Kleinschreibung.</td><td><tt>Findstr("AviSynth","syn") = 4</tt></td>
+ </tr>
+ <tr>
+  <td><tt>LeftStr(string,length)</tt> / <tt>RightStr(string,length)</tt>:<b><font color="#FFFF66"><font size=-1> v2.07</font></font></b><br>Gibt den linken oder rechten Teil von der angegeben L&auml;nge der Zeichenkette zur&uuml;ck.</td><td><tt>LeftStr("AviSynth",3) = "Avi"</tt></td>
+ </tr>
+ <tr>
+  <td><tt>MidStr(string,start [,length])</tt>: <font color="#FFFF66" size=-1><b>v2.07</b></font><br>Gibt einen Teil der Zeichenkette zur&uuml;ck, der bei start (f&uuml;r den ersten Buchstaben start=1) beginnt und die angegeben L&auml;nge hat oder bis zum Ende der Zeichenkette.</td><td><tt>MidStr("AviSynth",3,2) = "iS"</tt></td>
+ </tr>
+ <tr>
+  <td><tt>VersionNumber()</tt> <font color="#FFFF66" size=-1><b>v2.07</b></font></td><td><tt>VersionNumber() = 2.07</tt></td>
+ </tr>
+ <tr>
+  <td><tt>VersionString()</tt> <font color="#FFFF66" size=-1><b>v2.07</b></font></td><td><tt>VersionString() = "AviSynth 2.08 (AviSynth.org) 22 nov. 2002"</tt></td>
+ </tr>
+ <tr>
+  <td><tt>Chr(int)</tt>: Gibt das ASCII Zeichen zur&uuml;ck. <b><font color="#FFFF66"><font size=-1>v2.5</font></font></b></td><td><tt>Chr(34) gibt das Anf&uuml;hrungszeichen zur&uuml;ck</tt></td>
+ </tr>
+ <tr>
+  <td><tt>Time(string)</tt>: Gibt eine Zeichenkette mit der aktuellen Systemzeit in einem vorgegeben Format zur&uuml;ck. <b><font color="#FFFF66"><font size=-1>v2.5</font></font></b></td>
+  <td>Abk&uuml;rzung f&uuml;r das Ausgabeformat:<br>
+      %a K&uuml;rzel des Wochentages<br>
+      %A Volle Name des Wochentages<br>
+      %b K&uuml;rzel des Monats<br>
+      %B Voller Name des Monats<br>
+      %c Datum und Zeit im lokalem Format<br>
+      %d Tag und Monat als Dezimalzahlen (01 – 31)<br>
+      %H Stunde im 24-Stunden Format (00 – 23)<br>
+      %I Stunde im 12-Stunden Format (01 – 12)<br>
+      %j Tag des Jahres als Dezimalzahl (001 – 366)<br>
+      %m Monat als Dezimalzahl (01 – 12)<br>
+      %M Minute als Dezimalzahl (00 – 59)<br>
+      %p Aktuelle **locale‚s A.M./P.M. indicator for 12-hour clock<br>
+      %S Skeunde als Dezimalzahl (00 – 59)<br>
+      %U Woche des Jahres als Dezimalzahl mit Sonntag als ersten Wochentag (00 – 53)<br>
+      %w Wochentag als Dezimalzahl (0 – 6; Sonntag ist 0)<br>
+      %W Wochentag des Jahres als Dezimalzahl mit Montag ersten Wochentag (00 – 53)<br>
+      %x **Date representation for current locale<br>
+      %X **Time representation for current locale<br>
+      %y Jahr ohne Jahrhundertangabe als Dezimalzahl (00 – 99)<br>
+      %Y Jahr mit Jahrhundertangabe als Dezimalzahl<br>
+      %z, %Z Zeitzonen Name oder K&uuml;rzel; es wird nichts zur&uuml;ckgegeben, wenn die Zeitzone unbekannt ist<br>
+      %% Prozent Zeichen<br><br>
+
+      Das # Zeichen kann vor jeden Formatierungs-Code vorangestellt werden. In diesem Fall wird die Deutung des Formatierungs-Codes wie folgt ge&auml;ndert:<br><br>
+         
+      %#a, %#A, %#b, %#B, %#p, %#X, %#z, %#Z, %#% # Zeichen werden ignoriert.<br>
+      %#c Long date and time representation, appropriate for current locale. For example: “Tuesday, March 14, 1995, 12:41:29„.<br>
+      %#x Long date representation, appropriate to current locale. For example: “Tuesday, March 14, 1995„.<br>
+      %#d, %#H, %#I, %#j, %#m, %#M, %#S, %#U, %#w, %#W, %#y, %#Y Remove leading zeros (if any).
+  </td>
+ </tr>
+</table><br>
+
+<b><u>Konvertierungen:</u></b><br><br>
+
+<table border width="75%">
+ <tr>
+  <td width="60%"><tt>Value(string)</tt>: Gibt den Wert einer Zeichenkette zur&uuml;ck. <font color="#FFFF66" size=-1><b>v2.07</b></font></td><td width="40%"><tt>Value( "-2.7" ) = 2.7</tt></td>
+ </tr>
+ <tr>
+  <td><tt>String(float/int/string)</tt>: Konvertiert eine Zahl in eine Zeichenkette.<b><font color="#FFFF66"><font size=-1>v2</font></font></b></td><td><tt>z.B. Subtitle( "Clip H&ouml;he ist " + String(last.height))</tt></td>
+ </tr>
+</table><br>
+
+<b><u>Test Funktionen:</u></b><br><br>
+
+<tt>IsBool(var)</tt>
+<tt>IsInt(var)</tt><br>
+<tt>IsFloat(var)</tt><br>
+<tt>IsString(var)</tt><br>
+<tt>IsClip(var)</tt><br><br>
+
+<b><u>Andere Funktionen:</u></b><br><br>
+<tt>Select(index, item0 [,item1...])</tt>: Gibt item zur&uuml;ck, ausgew&auml;hlt durch index (0=item0). Items k&ouml;nnen beliebige Variablen, Clips oder beides sein. <font color="#FFFF66" size=-1><b>v2.07</b></font>
+<tt>Defined(var)</tt>: um optionale Parameter in benutzer-definierten Funktionen definieren zu k&ouml;nnen.<br>
+<tt>Default(x,d)</tt>: ergibt x wenn Defined(x), d sonst.<br>
+<tt>Exist(Dateiname)</tt>: Gibt TRUE oder FALSE zur&uuml;ck, je nachdem ob die Datei existiert oder nicht. <font color="#FFFF66" size=-1><b>v2.07</b></font><br>
+<tt>NOP</tt>: Gibt NULL zur&uuml;ck, wird haupts&auml;chlich f&uuml;r bedingte Ausf&uuml;hrung, wobei
+ **non-return value items such as import and no "else" condition desired.
+<font color="#FFFF66" size=-1><b>v2.07</b></font><br>
+<tt>Eval(string)</tt><br>
+<tt>Apply(func-string,arg,...)</tt>: Eval("f(x)") ist &auml;quivalent zu f(x) ist &auml;quivalent zu Apply("f", x).<br><br>
+
+<table border width="75%">
+ <tr> 
+  <td> 
+   <tt>Man kann Eval f&uuml;r sowas verwenden:<br><br>
+       settings = &quot;352, 288&quot;<br>
+       Eval( &quot;BicubicResize(&quot; + settings + &quot;)&quot; )
+   </tt>
+  </td>
+ </tr>
+</table><br>
+
+Es kann auch der Text von einem anderen Skript importiert werden:<br>
+<tt>Import</tt> (Dateiname): verarbeitet den Inhalt von einem andern AviSynth 
+    Skript.<br><br>
+
+F&uuml;r Fehlermeldungen und das Auffangen von falschen Benutzereingaben kann folgendes verwendet werden: <br>
+<tt>Assert(bool, string Fehlermeldung)</tt>: Fehlermeldungen erzeugen<br>
+<tt>AssertEval(string)</tt><br><br>
+
+Es gibt auch eine Funktion, mit der man &uuml;berpr&uuml;fen kann, ob ein Fehler auftreten WIRD:<br><br>
+
+<table border width="75%">
+ <tr> 
+  <td> 
+   <tt>Try {<br>
+       &nbsp;&nbsp; AviSource(&quot;Datei.avi&quot;)<br>
+       }<br>
+       catch(Fehlermeldung) {<br>
+       &nbsp;&nbsp; Blackness.Subtitle(Fehlermeldung)<br>
+       }
+   </tt>
+  </td>
+ </tr>
+</table><br>
+
+<span class="titresmall"><a name="ControlFunctions"></a>SteuerFunktionen</span><br><br>
+
+<tt>SetMemoryMax(int)</tt>: Setzt die maximale Speichergr&ouml;sse, die AviSynth verwendet (in MB) <font face="Courier New, Courier, mono" color="#FFFF66" size="4"><b>v2</b></font><br>
+In manchen Versionen ist die Standardgr&ouml;sse 5MB, was recht wenig ist. Wenn Probleme auftreten (besonders langsame Geschwindigkeit), sollte diese dieser Wert auf mindestens 32MB gesetzt werden.<br>
+<tt>SetWorkingDir(string)</tt>: Setzt das Standard-Verzeichnis f&uuml;r AviSynth (normalerweise sonst das Verzeichnis in dem sich das Skript befindet). <font face="Courier New, Courier, mono" color="#FFFF66" size="4"><b>v2</b></font><br>
+Das kann vor allem f&uuml;r das einfache Laden von Quell-Clips verwendet werden und hat keinerlei Auswirkung auf das automatische Laden der Plugins. Das Ergebnis ist 0 wenn erfolgreich, sonst -1 (wenn z.B. der Pfad nicht existiert)<br><br>
+  
+<hr><br>
+
+<span class="titresmall"><a name="ClipProperties"></a>Clip-Eigenschaften:</span><br><br>
+
+Diese Funktionen haben als Argument ein Clip, als R&uuml;ckgabewert eine Eigenschaft des Clips.<br><br>
+
+<tt>Widthx(clip)</tt> Breite<br>
+<tt>Height(clip)</tt> H&ouml;he<br>
+<tt>Framecount(clip)</tt> Anzahl der Frames<br>
+<tt>Framerate(clip)</tt> Framerate (Bilder pro Sekunde)<br>
+<tt>Audiorate(clip)</tt> Samplingfrequenz des Tones<br>
+<tt>Audiolength(clip)</tt> L&auml;nge des Tones<br>
+<tt>Audiochannels(clip)</tt> Anzahl der Kan&auml;le<br>
+<tt>Audiobits(clip)</tt> Bitanzahl<br>
+<tt>IsRGB(clip)</tt> Videoformat ist RGB<br>
+<tt>IsRGB24(clip)</tt> Videoformat ist RGB24 <font color="#FFFF66" size=-1><b>v2.07</b></font><br>
+<tt>IsRGB32(clip)</tt> Videoformat ist RGB32 <font color="#FFFF66" size=-1><b>v2.07</b></font><br>
+<tt>IsYUY2(clip)</tt> Videoformat ist YUY2<br>
+<tt>IsYV12(clip)</tt> Videoformat ist YV12 <font color="#FFFF66" size=-1><b>v2.51</b></font><br>
+<tt>IsPlanar(clip)</tt> Videoformat ist **planar <font color="#FFFF66" size=-1><b>v2.51</b></font><br>
+<tt>IsInterleaved(clip)</tt> Videoformat ist **interleaved <font color="#FFFF66" size=-1><b>v2.51</b></font><br>
+<tt>IsFieldBased(clip)</tt> Video basiert auf Feldern (interlaced)<br>
+<tt>IsFrameBased(clip)</tt> Video basiert auf Frames (progressive)<br>
+<tt>GetParity(clip)</tt> Welches Feld (Halbbild) wird zuerst angezeigt (gerade/ungeraden)<br><br>
+
+<table border width="100%">
+ <tr> 
+  <td> 
+   <tt>Nicht vergessen: die Clip-Eigenschaften k&ouml;nnen auch mit der impliziten Variablen LAST oder mit der OOP-Notation verwendet werden:<br><br>
+       BilinearResize(Width/2, Height/2)<br>
+       &nbsp;&nbsp; ist das gleich wie<br>
+       BilinearResize(Width(Last)/2, Height(Last)/2)<br>
+       &nbsp;&nbsp; ist das gleich wie<br>
+       BilinearResize(Last.Width / 2, Last.Height / 2)
+   </tt>
+  </td>
+ </tr>
+</table><br><br>
+
+<hr><br>
+
+<span class="titresmall"><a name="userdefined"></a><b>Benutzerdefinierte Funktionen:</b></span><br><br>
+
+Man kann auch selber Funktionen definieren. Das kann am Bestem anhand eines Beispiels erkl&auml;rt werden:<br><br>
+
+<table border width=75%>
+ <tr> 
+  <td> 
+   <tt>Function NTSC2PAL( clip c) {<br>
+       &nbsp;&nbsp; Assert(c.height == 480, "NTSC2PAL: Quell-Clip muss 480 Linien haben")<br>
+       &nbsp;&nbsp; Bob(c, height=576)<br>
+       &nbsp;&nbsp; return Weave()<br>
+       }
+   </tt>
+  </td>
+ </tr>
+</table><br>
+
+Sogar rekursive Funktionen k&ouml;nnen definiert werden:<br><br>
+
+<table border width=75%>
+ <tr> 
+  <td> 
+   <tt>function TRANSITION(clip clip, int start, int expo, int overlap)<br>
+       {<br>
+       &nbsp;&nbsp; return ( start &gt;= clip.framecount-expo ?<br>
+       &nbsp;&nbsp; \&nbsp;&nbsp; Trim(clip,start,0) :<br>
+       &nbsp;&nbsp; \&nbsp;&nbsp; Dissolve(Trim(clip,start,start+expo-1),<br>
+       &nbsp;&nbsp; \&nbsp;&nbsp;&nbsp;&nbsp; TRANSITION(clip,start+expo,expo,overlap),<br>
+       &nbsp;&nbsp; \&nbsp;&nbsp;&nbsp;&nbsp; overlap<br>
+       &nbsp;&nbsp; \&nbsp;&nbsp;&nbsp;&nbsp; )<br>
+       }
+   </tt>
+  </td>
+ </tr>
+</table><br><br>
+
+<hr><br>
+
+<p><span class="titresmall"><a name="multiclip"></a><b>Funktionen mit mehr als einem Quell-Clip</b></span><br><br>
+
+Manche Funktionen kombinieren zwei oder mehrere Clips auf verschiedene Art. Wie der Videoinhalt berechnet wird, ist bei den jeweiligen Funktionen beschrieben, hier ist eine Zusammenfassung welche Eigenschaften das Ergebnis-Clip haben wird.<br><br>
+
+Das Quell-Clip muss immer im gleichem Farbraum vorliegen und - mit Ausnahme von <tt>Layer</tt> - auch die gleichen Abmessungen haben.<br><br>
+
+<table border>
+ <tr>
+  <td>&nbsp;</td>
+  <td align="center"><b>Framerate</b></td>
+  <td colspan="2" align="center"><b>Frame Anzahl</b></td>
+  <td align="center"><b>Audio Inhalt</b></td>
+  <td align="center"><b>Audio Samplingrate</b></td>
+ </tr>
+ <tr>
+  <td><b>AlignedSplice, UnalignedSplice</b></td>
+  <td rowspan="6" align="center">Erster Clip</td>
+  <td align="center">Summer aller Clips</td>
+  <td>&nbsp;</td>
+  <td align="center">Siehe Filter Beschreibung</td>
+  <td rowspan="7" align="center">Erster Clip</td>
+ </tr>
+ <tr>
+  <td><b>Dissolve</b></td>
+  <td align="center">Summer aller Clips abz&uuml;glich der &Uuml;berlappung</td>
+  <td>&nbsp;</td>
+  <td align="center">Siehe Filter Beschreibung</td>
+ </tr>
+ <tr>
+  <td><b>MergeLuma, MergeChroma</b></td>
+  <td rwospan="2" align="center">Erster Clip</td>
+  <td rowspan="5" align="center">Der letzte<br>Frame des<br> k&uuml;rzeren Clips<br>wird wiederholt<br>bis zum Ende<br>des Clips</td>
+  <td rowspan="5" align="center">Erster Clip</td>
+ </tr>
+ <tr>
+  <td><b>Layer</b></td>
+ </tr>
+ <tr>
+  <td><b>Subtract</b></td>
+  <td rowspan="2" align="center">L&auml;ngster Clip</td>
+ </tr>
+ <tr>
+  <td><b>StackHorizontal, StackVertical</b></td>
+ </tr>
+ <tr>
+  <td><b>Interleave</b></td>
+  <td align="center">(fps des ersten Clips)<br>x<br>(Anzahl der Clips)</td>
+  <td align="center">Doppelte Frameanzahl des l&auml;ngsten Clips</td>
+ </tr>
+</table><br>
+
+Wie man sehen kann, sind die Funktionen nicht v&ouml;llig symmetrisch, sondern nehmen manche Eigenschaften vom ERSTEN Clip.<br><br>
+
+<hr><br>
+
+<span class="titresmall"><a name="Plugins"></a><b>Plugins</b></span><br><br>
+
+Mit diesen Funktionen k&ouml;nnen externe Filter zu AviSynth hinzugef&uuml;gt werden.<br><br>
+
+Die Reihenfolge, in welche gleichlautende Funktionen aufgerufen werden, ist: <font face="Courier New, Courier, mono" color="#FFFF66" size=+1><b>v2</b></font><br>
+1. Funktionen aus externen Plugins<br>
+2. Benutzerdefinierte Funktionen<br>
+3. AviSynth-interne Funktionen<br><br>
+
+<tt>LoadPlugin</tt> ("Dateiname"[,...])<br><br>
+
+L&auml;dt ein oder mehrere externe AviSynth plugins (Dll`s).<br><br>
+
+<hr><br>
+
+<tt>LoadVirtualDubPlugin</tt> ("Dateiname","Filtername", preroll)<br><br>
+
+So wird ein Plugin geladen, das f&uuml;r VirtualDub geschrieben wurde. "Dateiname" ist der Name der .vdf-Datei. Nach dem Aufruf dieser Funktion kann das Filter mit "Filtername" in AviSynth benutzt werden. VirtualDub Filter unterst&uuml;tzen nur den RGB32-Farbraum. Wenn das Video in einem anderen Format vorliegt, muss man <tt>ConvertToRGB32</tt> verwenden (<tt>ConvertToRGB</tt> reicht nicht aus).<br><br>
+
+Das Ergebnis mancher Filter h&auml;ngt von vorhergehenden Frames ab, f&uuml;r diese muss <tt>preroll</tt> mindestens die Anzahl der Frames sein, die der Filter zum Auff&uuml;llen seiner internen Speicher ben&ouml;tigt und/oder um seine internen Variablen zu aktualisieren.<br><br>
+  
+<hr><br>
+
+<tt>LoadVFAPIPlugin </tt> ("Dateiname","Filtername")<br><br>
+
+So k&ouml;nnen VFAPI Plugins (TMPGEnc Import Plugins) verwendet werden.<br><br>
+
+<hr><br>
+
+<b><a name="autoloading"></a>Automatisches Laden von Plugins und Funktionsnamen Priorit&auml;t <font color="FFFF66"><font size="4" face="Courier New, Courier, mono"><b>v2</b></font><br><br>
+
+Es ist m&ouml;glich, alle plugins und Skripte mit benutzerdefinierten Funktionen oder globalen Variablen in einem Verzeichnis zu abzulegen, aus dem dann alle Dateien mit den Endungen .AVS and .DLL beim Starten von AviSynth geladen werden (dynamisch, d.h. wenn sie wirklich vom Skript ben&ouml;tigt werden).<br><br>
+  
+Skripte in diesem Verzeichnis sollten nur Funktions-Definitionen und globale Variable, aber nicht den Teil der Videobearbeitung beinhalten (also kein <tt>AviSource</tt> usw.), sonst k&ouml;nnen seltsame Fehler auftreten. Auch sollten keine anderen Dateien in dieses Verzeichnis gespeichert werden.<br><br>
+
+Der Verzeichnisname ist in der Registry gespeichert (der Registry-Schl&uuml;ssel hat sich bei <font face="Courier New, Courier, mono" color="#FFFF66" size=+1><b>v2.5</b></font> ge&auml;ndert). Man kann eine .REG-Datei mit folgendem Inhalt doppelklicken, um den Pfad zu setzen (nat&uuml;rlich vorher den wirklichen Pfad einsetzen):<br><br>
+
+<table border width="75%">
+ <tr> 
+  <td> 
+   <tt>REGEDIT4<br><br>
+       [HKEY_LOCAL_MACHINE\SOFTWARE\AviSynth]<br>
+       &quot;PluginDir2_5&quot;=&quot;C:\\Programme\\AviSynth\\Plugins&quot;
+    </tt>
+  </td>
+ </tr>
+</table><br>
+
+Die Reihenfolge, in der gleichnamige Funktionen aufgerufen werden, ist:
+1. Funktionen aus externen Plugins (haben immer die h&ouml;chste Priorit&auml;t)<br>
+2. Benutzerdefininierte Funktionen (haben eine h&ouml;herer Priorit&auml;t als eingebaute Funktionen - so kann man eingebaute Funktionen durch eigene ersetzen)<br>
+3. eingebaute Funktionen<br><br>
+
+Innerhalb dieser Gruppen hat die am letzten geladenen Funktion Vorrang, es gibt keine Fehler durch ein Problem mit Funktionsnamen.
+  
 </body>
 </html>

@@ -1,45 +1,51 @@
 <!doctype html public "-//W3C//DTD HTML 4.0 Transitional//EN">
 <html>
 <head>
-<meta name="GENERATOR" content="PPWIZARD version 02.213 on WIN2K, FREE tool for Windows, OS/2, DOS and UNIX by Dennis Bareis (http://www.labyrinth.net.au/~dbareis/ppwizard.htm)">
-<title>Amplify / AmplifydB Avisynth Filter</title>
-<STYLE type=text/css>
-A:link {
-COLOR: #404a58;TEXT-DECORATION: none
-}
-A:visited {
-COLOR: #404a58;TEXT-DECORATION: none
-}
-A:active {
-COLOR: #404a58;TEXT-DECORATION: none
-}
-A:hover {
-COLOR: #e8f0ff; TEXT-DECORATION: underline
-}
-.titresmall {
-color : 000000;
-font-family: Tahoma, Verdana, Arial, Helvetica, sans-serif;
-font-size: 16pt;
-letter-spacing: 0.15em;
-font-weight: bold;
-}
-</STYLE>
+ <meta name="Generator" content="PPWIZARD version 02.213 on WIN2K, FREE tool for Windows, OS/2, DOS and UNIX by Dennis Bareis (http://www.labyrinth.net.au/~dbareis/ppwizard.htm)">
+ <title>Amplify / AmplifydB AviSynth Filter</title>
+ <style type=text/css>
+  A:link { COLOR: #404a58;TEXT-DECORATION: none }
+  A:visited { COLOR: #404a58;TEXT-DECORATION: none }
+  A:active { COLOR: #404a58;TEXT-DECORATION: none }
+  A:hover { COLOR: #e8f0ff; TEXT-DECORATION: underline }
+  .titresmall { color : 000000; font-family: Tahoma, Verdana, Arial, Helvetica, sans-serif; font-size: 16pt; letter-spacing: 0.15em; font-weight: bold; }
+ </style>
 </head>
 <body bgcolor=b6cac0>
-<span class="titresmall"><a name="Amplify">Amplify / AmplifydB</a></span> 
-<p><tt>Amplify(</tt><i>clip, float amount</i><tt>)</tt><br>
-  <tt>Amplify(</tt><i>clip, float left, float right</i><tt>)</tt><br>
-  <tt>AmplifydB(</tt><i>clip, float amount</i><tt>)</tt><br>
-  <tt>AmplifydB(</tt><i>clip, float left, float right</i><tt>)</tt></p>
-<p><tt>Amplify</tt> ver&auml;ndert die Lautst&auml;rke um den Faktor <i>amount</i>. 
-  Beide Kan&auml;le (<i>left</i> und <i>right</i>) k&ouml;nnen getrennt angegeben 
-  werden. <tt>AmplifydB</tt> ist das gleiche, nur sind die Werte in dB. Negative 
-  dB-Werte oder Faktoren zwischen 0 und 1 k&ouml;nnen zum Reduzieren der Lautst&auml;rke 
-  verwendet werden. Negative Werte drehen die Phase um 180°. </p>
-<p>Audio samples werden automatisch zu 16 bit konvertiert. 
-<FORM>
-<INPUT TYPE="Button" VALUE="Back"
-onClick="history.go(-1)">
-</form>
+<span class="titresmall"> <a name="Amplify"></a>Amplify / AmplifydB</span><br><br>
+
+<tt>Amplify(</tt><i>clip, float amount1[, float amount2[, float amount2,...]]</i><tt>)</tt><br>
+<tt>AmplifydB(</tt><i>clip, float amount1[, float amount2[, float amount2,...]]</i><tt>)</tt><br><br>
+
+<tt>Amplify</tt> ver&auml;ndert die Lautst&auml;rke um den Faktor <i>amount</i>. Beide Kan&auml;le k&ouml;nnen getrennt angegeben werden.<br>
+Falls es mehr **volumens als Kan&auml;le gibt, werden sie ignoriert und falls es weniger **volumes als Kan&auml;le gibt, so wird das letzte **volume auf f&uuml;r die restlichen Kan&auml;le verwendet.<br><br>
+  
+<tt>AmplifydB</tt> macht das gleiche, nur sind die Werte in dB. Negative dB-Werte oder Faktoren zwischen 0 und 1 k&ouml;nnen zum Reduzieren der Lautst&auml;rke verwendet werden. Negative Werte drehen die Phase um 180°.<br><br>
+
+Audio Samplingtiefe wird automatisch zu 16 Bit konvertiert.<br><br>
+
+<table border width="75%">
+ <tr> 
+  <td>
+   <tt>Beispiele:<br>
+       # Erh&ouml;ht die Lautst&auml;rke des linken Kanals um 3 dB:<br>
+       video = AviSource(&quot;C:\Datei.avi&quot;)<br>
+       stereo = WavSource(&quot;C:\Audio.wav&quot;)<br>
+       stereo_amp = AmplifydB(stereo, 3, 0)<br>
+       return AudioDub(video, stereo_amp)<br><br>
+      
+       # Erh&ouml;ht die Lautst&auml;rken der vorderen Kan&auml;le um 3 dB:<br>
+       video = AviSource(&quot;C:\Datei_6ch_wav.avi&quot;)<br>
+       audio = WavSource(&quot;C:\Datei_6ch_wav.avi&quot;)<br>
+       multichannel_amp = AmplifydB(audio, 3, 3, 3)<br>
+       return AudioDub(video, multichannel_amp)<br>
+   </tt>
+  </td>
+ </tr>
+</table><br>
+
+<p>Wie bei Mehrkanal-Ton die Kan&auml;le angeordnet sind, kann man der <a href="getchannel.html">GetChannel</a> Beschreibung entnehmen.<br><br>
+
+<form><input type="Button" value="Back" onClick="history.go(-1)"></form>
 </body>
 </html>

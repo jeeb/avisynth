@@ -1,43 +1,26 @@
 <!doctype html public "-//W3C//DTD HTML 4.0 Transitional//EN">
 <html>
 <head>
-<meta name="GENERATOR" content="PPWIZARD version 02.213 on WIN2K, FREE tool for Windows, OS/2, DOS and UNIX by Dennis Bareis (http://www.labyrinth.net.au/~dbareis/ppwizard.htm)">
-<title>DeleteFrame Avisynth Filter</title>
-<STYLE type=text/css>
-A:link {
-COLOR: #404a58;TEXT-DECORATION: none
-}
-A:visited {
-COLOR: #404a58;TEXT-DECORATION: none
-}
-A:active {
-COLOR: #404a58;TEXT-DECORATION: none
-}
-A:hover {
-COLOR: #e8f0ff; TEXT-DECORATION: underline
-}
-.titresmall {
-color : 000000;
-font-family: Tahoma, Verdana, Arial, Helvetica, sans-serif;
-font-size: 16pt;
-letter-spacing: 0.15em;
-font-weight: bold;
-}
-</STYLE>
+ <meta name="Generator" content="PPWIZARD version 02.213 on WIN2K, FREE tool for Windows, OS/2, DOS and UNIX by Dennis Bareis (http://www.labyrinth.net.au/~dbareis/ppwizard.htm)">
+ <title>DeleteFrame AviSynth Filter</title>
+ <style type=text/css>
+  A:link { COLOR: #404a58;TEXT-DECORATION: none }
+  A:visited { COLOR: #404a58;TEXT-DECORATION: none }
+  A:active { COLOR: #404a58;TEXT-DECORATION: none }
+  A:hover { COLOR: #e8f0ff; TEXT-DECORATION: underline }
+  .titresmall { color : 000000; font-family: Tahoma, Verdana, Arial, Helvetica, sans-serif; font-size: 16pt; letter-spacing: 0.15em; font-weight: bold; }
+ </style>
 </head>
 <body bgcolor=b6cac0>
-<span class="titresmall"><a name="DeleteFrame">DeleteFrame</a></span> 
-<p><tt>DeleteFrame(</tt><i>clip, int frame</i><tt>)</tt></p>
-<p><tt>DeleteFrame</tt> l&ouml;scht einen einzelnen frame. Der Audio-Teil wird 
-  nicht ver&auml;ndert, daher entsteht eine merkbare Asynchronit&auml;t zwischen 
-  Audio und Video, wenn das Filter zu oft verwendet wird.. </p>
-<p>Wenn man einen Teil von a bis b mitsamt dem Audioteil l&ouml;schen m&ouml;chte, 
-  geht man so vor:</p>
-<p><tt>Trim(0,</tt><i>a-1</i><tt>) ++ Trim(</tt><i>b+1</i><tt>,0)</tt></p>
-<p>
-<FORM>
-<INPUT TYPE="Button" VALUE="Back"
-onClick="history.go(-1)">
-</form>
+<span class="titresmall"><a name="DeleteFrame"></a>DeleteFrame</span><br><br>
+
+<tt>DeleteFrame(</tt><i>clip, int frame</i><tt>)</tt><br><br>
+
+<tt>DeleteFrame</tt> l&ouml;scht den im Argument angegebenen Frame. Der Ton wird nicht ver&auml;ndert, daher entsteht eine merkbare Asynchronit&auml;t zwischen Audio und Video, wenn der Filter zu oft verwendet wird.<br><br>
+
+Wenn man einen Teil von a bis b mitsamt dem Audioteil l&ouml;schen m&ouml;chte, geht man so vor:<br>
+<tt>Trim(0,</tt><i>a-1</i><tt>) ++ Trim(</tt><i>b+1</i><tt>,0)</tt><br><br>
+
+<form><input type="Button" value="Back" onClick="history.go(-1)"></form>
 </body>
 </html>

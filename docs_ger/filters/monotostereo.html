@@ -1,56 +1,42 @@
 <!doctype html public "-//W3C//DTD HTML 4.0 Transitional//EN">
 <html>
 <head>
-<meta name="GENERATOR" content="PPWIZARD version 02.213 on WIN2K, FREE tool for Windows, OS/2, DOS and UNIX by Dennis Bareis (http://www.labyrinth.net.au/~dbareis/ppwizard.htm)">
-<title>MonoToStereo Avisynth Filter</title>
-<STYLE type=text/css>
-A:link {
-COLOR: #404a58;TEXT-DECORATION: none
-}
-A:visited {
-COLOR: #404a58;TEXT-DECORATION: none
-}
-A:active {
-COLOR: #404a58;TEXT-DECORATION: none
-}
-A:hover {
-COLOR: #e8f0ff; TEXT-DECORATION: underline
-}
-.titresmall {
-color : 000000;
-font-family: Tahoma, Verdana, Arial, Helvetica, sans-serif;
-font-size: 16pt;
-letter-spacing: 0.15em;
-font-weight: bold;
-}
-</STYLE>
+ <meta name="Generator" content="PPWIZARD version 02.213 on WIN2K, FREE tool for Windows, OS/2, DOS and UNIX by Dennis Bareis (http://www.labyrinth.net.au/~dbareis/ppwizard.htm)">
+ <title>MonoToStereo AviSynth Filter</title>
+ <style type=text/css>
+  A:link { COLOR: #404a58;TEXT-DECORATION: none }
+  A:visited { COLOR: #404a58;TEXT-DECORATION: none }
+  A:active { COLOR: #404a58;TEXT-DECORATION: none }
+  A:hover { COLOR: #e8f0ff; TEXT-DECORATION: underline }
+  .titresmall { color : 000000; font-family: Tahoma, Verdana, Arial, Helvetica, sans-serif; font-size: 16pt; letter-spacing: 0.15em; font-weight: bold; }
+ </style>
 </head>
 <body bgcolor=b6cac0>
-<SPAN class=titresmall><A name=MonoToStereo>MonoToStereo</A></SPAN> 
-<P><tt>MonoToStereo(</tt><i>left_channel_clip, right_channel_clip</i><tt>)<font color="#e8f0ff"></font></tt>
-<p>Wandelt zwei Mono-Signale in ein Stereo-Signal um. Das kann zum Beispiel verwendet 
-  werden, wenn beide Kan&auml;le getrennt bearbeitet wurden und dann kombiniert 
-  werden sollen.
-<p>Die beiden Clips m&uuml;ssen die gleiche Sample-Rate haben (<tt>ResampleAudio</tt> 
-  bei Problemen).Wenn eine Quelle schon Stereo ist, wird das Signal vom entsprechenden 
-  Kanal genommen (der linke vom <i>left channel clip</i>, und umgekehrt). Audio 
-  wird zu 16 bit konvertiert
-<p>&nbsp;
-<table width="75%" border="1">
-  <tr> 
-    <td> 
-      <pre>Beispiel:</pre>
-      <pre># Kombinert zwei WAV-Quellen zu einem Stereo-Signal:
-left_channel=WavSource("c:\left_channel.wav")
-right_channel=WavSource("c:\right_channel.wav")
-return MonoToStereo(left_channel, right_channel)</pre>
-      </td>
-  </tr>
-</table>
-<p>&nbsp;
-<FORM>
-<INPUT TYPE="Button" VALUE="Back"
-onClick="history.go(-1)">
-</form>
+<span class=titresmall><a name="MonoToStereo"></a>MonoToStereo</span><br><br>
+
+<tt>MonoToStereo(</tt><i>left_channel_clip, right_channel_clip</i><tt>)</tt><br><br>
+
+Wandelt zwei Mono-Signale in ein Stereo-Signal um. Das kann zum Beispiel verwendet werden, wenn beide Kan&auml;le getrennt bearbeitet wurden und dann kombiniert werden sollen.<br><br>
+
+Die beiden Clips m&uuml;ssen die gleiche Samplingrate haben (<a href="resampleaudio.html"><tt>ResampleAudio</tt></a> bei Problemen). Wenn eine Quelle schon Stereo ist, wird das Signal vom entsprechenden Kanal genommen (der linke vom <i>left_channel_clip</i>, und umgekehrt). Der Ton wird als Nebeneffekt zu 16 bit konvertiert.<br><br>
+
+Bei AviSynth 2.5 wird anstatt dieses Filters einfach automatisch <a href="mergechannels.html">MergeChannels</a> genommen.<br><br>
+
+<table border width="75%">
+ <tr> 
+  <td> 
+   <tt>
+    Beispiel:<br><br>
+    
+    # Kombinert zwei WAV-Quellen zu einem Stereo-Signal:<br>
+    left_channel = WavSource("C:\Dateiname1.wav")<br>
+    right_channel = WavSource("C:\Dateiname2.wav")<br>
+    return MonoToStereo(left_channel, right_channel)
+   </tt>
+  </td>
+ </tr>
+</table><br>
+
+<form><input type="Button" value="Back" onClick="history.go(-1)"></form>
 </body>
 </html>

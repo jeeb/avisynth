@@ -1,0 +1,49 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+<html>
+<head>
+ <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+ <meta name="Generator" content="Mozilla/4.06 [en] (Win98; I) [Netscape]">
+ <meta name="Author" content="Wilbert Dijkhof">
+ <title>MergeChannels AviSynth Filter</title>
+ <style type=text/css>
+  A:link { COLOR: #404a58;TEXT-DECORATION: none }
+  A:visited { COLOR: #404a58;TEXT-DECORATION: none }
+  A:active { COLOR: #404a58;TEXT-DECORATION: none }
+  A:hover { COLOR: #e8f0ff; TEXT-DECORATION: underline }
+  .titresmall { color : 000000; font-family: Tahoma, Verdana, Arial, Helvetica, sans-serif; font-size: 16pt; letter-spacing: 0.15em; font-weight: bold; }
+ </style>
+</head>
+<body bgcolor="#B6CAC0">
+<span class=titresmall><a name="MergeChannels"></a>MergeChannels</span><br><br>
+
+<tt>MergeChannels(</tt><i>clip1 , clip2 [, clip3, ...]</i><tt>)</tt><br><br>
+
+Seit AviSynth 2.5 erstetzt <tt>MergeChannels</tt>  <a href="monotostereo.html"><tt>MonoToStereo</tt></a> und kann genutzt werden, um die Tonkan&auml;le zweier oder mehrerer Clips zu mischen.<br><br>
+
+<table border width="75%">
+ <tr> 
+  <td> 
+   <tt>
+    Beispiele:<br><br>
+    
+    # Konvertiert eine unkompremierte WAV Datei in ein 44.1 kHz Stereo Signal:<br>
+    video = AviSource("C:\Dateiname.avi")<br>
+    audio = WavSource("C:\Dateiname.avi")<br>
+    l_ch = GetChannel(audio, 1)<br>
+    r_ch = GetChannel(audio, 2)<br>
+    stereo = MergeChannels(l_ch, r_ch).ResampleAudio(44100)<br>
+    return AudioDub(video, stereo)<br><br>
+    
+    # Alternativ:<br>
+    video = AviSource("C:\Dateiname.avi")<br>
+    audio = WavSource("C:\Dateiname.avi")<br>
+    stereo = GetChannel(audio, 1, 2).ResampleAudio(44100)<br>
+    return AudioDub(video, stereo)
+   </tt>
+  </td>
+ </tr>
+</table><br>
+
+<form><input type="Button" value="Back" onClick="history.go(-1)"></form>
+</body>
+</html>

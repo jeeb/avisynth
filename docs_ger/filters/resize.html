@@ -1,138 +1,101 @@
 <!doctype html public "-//W3C//DTD HTML 4.0 Transitional//EN">
 <html>
 <head>
-<meta name="GENERATOR" content="PPWIZARD version 02.213 on WIN2K, FREE tool for Windows, OS/2, DOS and UNIX by Dennis Bareis (http://www.labyrinth.net.au/~dbareis/ppwizard.htm)">
-<title>Resize Avisynth Filter</title>
-<STYLE type=text/css>
-A:link {
-COLOR: #404a58;TEXT-DECORATION: none
-}
-A:visited {
-COLOR: #404a58;TEXT-DECORATION: none
-}
-A:active {
-COLOR: #404a58;TEXT-DECORATION: none
-}
-A:hover {
-COLOR: #e8f0ff; TEXT-DECORATION: underline
-}
-.titresmall {
-color : 000000;
-font-family: Tahoma, Verdana, Arial, Helvetica, sans-serif;
-font-size: 16pt;
-letter-spacing: 0.15em;
-font-weight: bold;
-}
-</STYLE>
+ <meta name="Generator" content="PPWIZARD version 02.213 on WIN2K, FREE tool for Windows, OS/2, DOS and UNIX by Dennis Bareis (http://www.labyrinth.net.au/~dbareis/ppwizard.htm)">
+ <title>Resize AviSynth Filter</title>
+ <style type=text/css>
+  A:link { COLOR: #404a58;TEXT-DECORATION: none }
+  A:visited { COLOR: #404a58;TEXT-DECORATION: none }
+  A:active { COLOR: #404a58;TEXT-DECORATION: none }
+  A:hover { COLOR: #e8f0ff; TEXT-DECORATION: underline }
+  .titresmall { color : 000000; font-family: Tahoma, Verdana, Arial, Helvetica, sans-serif; font-size: 16pt; letter-spacing: 0.15em; font-weight: bold; }
+ </style>
 </head>
 <body bgcolor=b6cac0>
-<span class="titresmall"><a name="Resize">BicubicResize / BilinearResize / LanczosResize 
-/ PointResize</a></span> 
-<p><tt>BicubicResize(</tt><i>clip, int target_width, int target_height, float 
-  &quot;b&quot;, float &quot;c&quot;</i><tt>)<br>
-  </tt><tt>BilinearResize(</tt><i>clip, int target_width, int target_height</i><tt>)<br>
-  </tt><tt>LanczosResize(</tt><i>clip, int target_width, int target_height</i><tt>)<br>
-  </tt><tt>PointResize(</tt><i>clip, int target_width, int target_height</i><tt>)</tt> 
-  </p>
-<p>Bei allen dieses Filtern zum Gr&ouml;ssen&auml;ndern kann eine erweiterte Syntax 
-  verwendet werden, die vor dem Verkleinern bzw. Vergr&ouml;ssern das Bild abschneidet. 
-  Die gleiche Operation wird durch ein Crop vor dem Resize erreicht.</p>
-<table width="75%" border="1">
-  <tr> 
-    <td> 
-      <pre>Crop(10,10,200,300).BilinearResize(100,150)
-  ist das gleiche wie
-BilinearResize(100,150,10,10,200,300)</pre>
-    </td>
-  </tr>
-</table>
-<p><tt>BicubicResize(</tt><i>clip, int target_width, int target_height, float 
-  &quot;b&quot;, float &quot;c&quot;, float &quot;src_left&quot;, float &quot;src_top&quot;, 
-  float &quot;src_width&quot;, float &quot;src_height&quot;</i><tt>)<br>
-  </tt><tt>BilinearResize(</tt><i>clip, int target_width, int target_height, float 
-  &quot;src_left&quot;, float &quot;src_top&quot;, float &quot;src_width&quot;, 
-  float &quot;src_height&quot;</i><tt>)<br>
-  </tt><tt>LanczosResize(</tt><i>clip, int target_width, int target_height, float 
-  "src_left", float "src_top", float "src_width", float "src_height"</i><tt>)<br>
-  PointResize(</tt><i>clip, int target_width, int target_height, float "src_left", 
-  float "src_top", float "src_width", float "src_height"</i><tt>)</tt></p>
-<p>Wichtig:: AviSynth hat (intern) v&ouml;llig getrennte vertikale und horizontale 
-  Filter zur Gr&ouml;ssen&auml;nderung. Wenn in einer Richtung keine &Auml;nderung 
-  notwendig ist, wird dieser Teil &uuml;bersprungen.<br>
-  Es wird zuerst die Richtung mit dem kleineren Verh&auml;ltnis bearbeitet, damit 
-  die bestm&ouml;gliche Qualit&auml;t erhalten wird und das Filter f&uuml;r die 
-  zweite Richtung ein m&ouml;glichst gutes Eingangsbild bekommt.</p>
-<b> <a href="filters/blur.html"></a></b> 
-<hr>
-<p><tt>BilinearResize</tt> verwendet ein Standard-Bilinear-Filter, der fast identisch 
-  mit dem VirtualDub-Filter "precise bilinear" ist. Nur &quot;fast&quot; deshalb, 
-  da VirtualDub hier einen winzigen Skalierungsfehler macht, bei dem die oberste 
-  und unterste Zeile abgeschnitten oder verdoppelt werden, was aber nur bei bei 
-  einer Vergr&ouml;sserung um 2 oder mehr auff&auml;llt.</p>
-<table width="75%" border="1">
-  <tr> 
-    <td> 
-      <pre>Beispiele:
-# eine Video-Datei laden und die Gr&ouml;sse auf 240x180 &auml;ndern (egal wie gross sie vorher war)
-AVISource("video.avi").BilinearResize(240,180)
+<span class="titresmall"><a name="Resize"></a>BicubicResize / BilinearResize / LanczosResize / PointResize</span><br><br>
 
-# ein 720x480 (CCIR601)-Video laden und die Gr&ouml;sse auf 352x240 (VCD-NTSC) &auml;ndern,
-# wobei das korrekte Seitenverh&auml;ltnis beibehalten wird
-AVISource("dv.avi").BilinearResize(352,240,8,0,704,480)
+<tt>BicubicResize(</tt><i>clip, int target_width, int target_height, float &quot;b&quot;, float &quot;c&quot;</i><tt>)</tt><br>
+<tt>BilinearResize(</tt><i>clip, int target_width, int target_height</i><tt>)</tt><br>
+<tt>LanczosResize(</tt><i>clip, int target_width, int target_height</i><tt>)</tt><br>
+<tt>PointResize(</tt><i>clip, int target_width, int target_height</i><tt>)</tt><br><br>
 
-# das rechte obere Filter eine 320x240-Videos rausschneiden und
-# auf den ganzen Frame vergr&ouml;ssern
-BilinearResize(320,240,160,0,160,120)
-</pre>
-    </td>
-  </tr>
-</table>
-<br>
-<hr>
-<p><tt>BicubicResize</tt> ist &auml;hnlich wie <tt>BilinearResize</tt>, es wird 
-  aber eine zweifach kubische Mitchell-Netravali-Filter-Funktion eingesetzt.. 
-  <br>
-  Mit den Parametern <i>b</i> und <i>c</i> kann die Eigenschaft dieser Funktion 
-  eingestellt werden, die Parameter werden auch manchmal als &quot;blurring&quot; 
-  (verwischen) und &quot;ringing&quot; (Ringe zeichnen) bezeichnet.</p>
-<p>Mit <i>b</i> = 0 und <i>c</i> = 0.75 ist das Filter genau gleich wie das VirtualDub-Filter 
-  "precise bicubic" (bis auf das genannte Skalierungsproblem). Der Standardwert 
-  ist <i>b</i> = 1/3 und <i>c</i> = 1/3, das sind die von Mitchell und Netravali 
-  empfohlenen Werte, die das subjektiv sch&ouml;nste Bild ergeben. Mit gr&ouml;sseren 
-  Werten von <i>b</i> und <i>c</i> k&ouml;nnen interessante Effekte entstehen, 
-  z.B. mit <i>b</i> = 0 und <i>c</i> = -5. </p>
-<p>Beim Vergr&ouml;ssern eines Videos erh&auml;lt man mit <tt>BicubicResize</tt> 
-  wesentlich bessere Ergebniss als mit<tt> BilinearResize</tt>. Beim Verkleinern 
-  kann <tt>BilinearResize</tt> gleich gut oder sogar besser sein. Ein bikubisches 
-  Filter erzeugt Bilder, die sch&ouml;ner aussehen, allerdings deswegen, da eine 
-  leichte Sch&auml;rfung stattfindet und nicht wegen einer exakteren Abtastung. 
-  Scharfe Bilder schauen gut aus, solange man sie nicht komprimiert, dann k&ouml;nnen 
-  sie leicht h&auml;sslich werden. Besonders beim Encoden mit niedriger (knapper) 
-  Bitrate gibt <tt>BilinearResize</tt> meist bessere Ergebnisse..</p>
-<p> Man muss<br>
-  b + 2 * c = 1<br>
-  setzen um ein numerisch genaues Filter zu erhalten.<br>
-  Daher kann f&uuml;r b = 0 ein maximales c = 0.5 verwendet werden, das ist dann 
-  ein Catmull-Rom-Spline und ein guter Wert f&uuml;r maximale Sch&auml;rfe. </p>
-<p>Mit Werten c&gt;0.6 f&auml;ngt das Filter an, Ring-Artefakte zu produzieren. 
-  Es entsteht hier keine echte Sch&auml;rfe mehr.<br>
-  F&uuml;r b d&uuml;rfen keine negativen Werte verwendet werden. </p>
-<hr>
-<p><tt>LanczosResize</tt> ist eine Alternative f&uuml;r<tt> BicubicResize</tt> 
-  mit hohen Werten von c von 0.6 ... 0.75 und erzeugt relativ starke Sch&auml;rfung.<br>
-  Es bietet eine h&ouml;here Qualit&auml;t (weniger Artefakte) und gleichzeitig 
-  ein scharfes Bild.</p>
-<hr>
-<p><tt>PointResize</tt> ist die denkbar einfachste Methode, die einen Punkt-Sampler 
-  oder einen n&auml;chster-Nachbar-Algorithmus verwendet, was ein sehr geblocktes 
-  Bild erzeugt. Dieses Filter sollte daher nur verwendet werden, wenn man absichtlich 
-  eine &quot;schlechte&quot; Bildqualit&auml;t erzeugen m&ouml;chte oder klare 
-  Pixel-Zeichnungen m&ouml;chte.<br>
-  Weiters kann es auch zum testweisen Vergr&ouml;ssern verwendet werden.</p>
-<p>&nbsp;</p>
-<FORM>
-  <INPUT TYPE="Button" VALUE="Back"
-onClick="history.go(-1)">
-</form>
+Bei allen diesen Filtern zur Gr&ouml;&szlig;en&auml;nderung kann eine erweiterte Syntax verwendet werden, die vor dem Verkleinern bzw. Vergr&ouml;ssern das Bild abschneidet. Die gleiche Operation wird durch <a href="crop.html"><tt>Crop()</tt></a> vor dem Resize erreicht.<br><br>
+
+<table border width="75%">
+ <tr> 
+  <td> 
+   <tt>
+    Crop(10,10,200,300).BilinearResize(100,150)<br><br>
+    
+    ist das gleiche wie<br><br>
+  
+    BilinearResize(100,150,10,10,200,300)
+   </tt>
+  </td>
+ </tr>
+</table><br>
+
+<tt>BicubicResize(</tt><i>clip, int target_width, int target_height, float &quot;b&quot;, float &quot;c&quot;, float &quot;src_left&quot;, float &quot;src_top&quot;, float &quot;src_width&quot;, float &quot;src_height&quot;</i><tt>)</tt><br>
+<tt>BilinearResize(</tt><i>clip, int target_width, int target_height, float &quot;src_left&quot;, float &quot;src_top&quot;, float &quot;src_width&quot;, float &quot;src_height&quot;</i><tt>)</tt><br>
+<tt>LanczosResize(</tt><i>clip, int target_width, int target_height, float "src_left", float "src_top", float "src_width", float "src_height"</i><tt>)</tt><br>
+<tt>PointResize(</tt><i>clip, int target_width, int target_height, float "src_left", float "src_top", float "src_width", float "src_height"</i><tt>)</tt><br><br>
+
+<b>Wichtig:</b> AviSynth hat (intern) v&ouml;llig getrennte vertikale und horizontale Filter zur Gr&ouml;&szlig;en&auml;nderung. Wenn in einer Richtung keine &Auml;nderung notwendig ist, wird dieser Teil &uuml;bersprungen.<br>
+Es wird zuerst die Richtung mit dem kleineren Verh&auml;ltnis bearbeitet, damit die bestm&ouml;gliche Qualit&auml;t erhalten wird und der Filter f&uuml;r die zweite Richtung ein m&ouml;glichst gutes Eingangsbild bekommt.<br><br>
+
+<hr><br>
+
+Der <tt>BilinearResize</tt> Filter skaliert die eingehenden Frames in eine beliebig andere Aufl&ouml;sung. Wenn man die optionalen <i>source</i> Argumente angibt, ist das Ergebnis das gleiche, als wenn man zuvor <tt>Crop</tt> angewendet h&auml;tte mit diesen Argumenten. Allerdings w&auml;re dies nicht so schnell.<br><br>
+
+<tt>BilinearResize</tt> verwendet einen Standard-Bilinear-Filter, der fast identisch mit dem VirtualDub-Filter &quot;precise bilinear&quot; ist. Nur &quot;fast&quot; deshalb, da VirtualDub hier einen winzigen Skalierungsfehler macht, bei dem die oberste und unterste Zeile abgeschnitten oder verdoppelt werden, was aber nur bei bei einer Vergr&ouml;sserung um 2 oder mehr auff&auml;llt.<br><br>
+
+<table border>
+ <tr> 
+  <td> 
+   <tt>
+    Beispiele:<br><br>
+   
+    # eine Video-Datei laden und die Gr&ouml;&szlig;e auf 240x180 &auml;ndern (egal wie gro&szlig; die Aufl&ouml;sung vorher war):<br>
+    AVISource("Dateiname.avi").BilinearResize(240,180)<br><br>
+
+    # ein 720x480 (CCIR601)-Video laden und die Gr&ouml;sse auf 352x240 (VCD-NTSC) &auml;ndern,<br>
+    # wobei das korrekte Seitenverh&auml;ltnis beibehalten wird:<br>
+    AVISource("Dateiname.avi").BilinearResize(352,240,8,0,704,480)<br><br>
+
+    # das rechte obere Quadrat eines 320x240 Videos rausschneiden und auf den ganzen Frame vergr&ouml;ssern:<br>
+    BilinearResize(320,240,160,0,160,120)
+   </tt>
+  </td>
+ </tr>
+</table><br>
+
+<hr><br>
+
+<tt>BicubicResize</tt> ist &auml;hnlich wie <tt>BilinearResize</tt>, es wird aber eine zweifach kubische Mitchell-Netravali-Filter-Funktion eingesetzt.<br>
+Mit den Parametern <i>b</i> und <i>c</i> kann die Eigenschaft dieser Funktion eingestellt werden, die Parameter werden auch manchmal als &quot;blurring&quot; (verwischen) und &quot;ringing&quot; (Ringe zeichnen) bezeichnet.<br><br>
+
+Mit <i>b</i> = 0 und <i>c</i> = 0.75 ist der Filter genau gleich wie der VirtualDub-Filter &quot;precise bicubic&quot; (bis auf das genannte Skalierungsproblem). Der Standardwert ist <i>b</i> = 1/3 und <i>c</i> = 1/3, das sind die von Mitchell und Netravali empfohlenen Werte, die das subjektiv sch&ouml;nste Bild ergeben. Mit gr&ouml;sseren Werten von <i>b</i> und <i>c</i> k&ouml;nnen interessante Effekte entstehen, z.B. mit <i>b</i> = 0 und <i>c</i> = -5. <br><br>
+
+Beim Vergr&ouml;ssern eines Videos erh&auml;lt man mit <tt>BicubicResize</tt> wesentlich bessere Ergebniss als mit<tt> BilinearResize</tt>. Beim Verkleinern kann <tt>BilinearResize</tt> gleich gut oder sogar besser sein. Ein bikubischer Filter erzeugt Bilder, die sch&ouml;ner aussehen, allerdings deswegen, da eine leichte Sch&auml;rfung stattfindet und nicht wegen einer exakteren Abtastung. Scharfe Bilder schauen gut aus, solange man sie nicht komprimiert, dann k&ouml;nnen sie leicht h&auml;sslich werden. Besonders beim Encoden mit niedriger (knapper) Bitrate gibt <tt>BilinearResize</tt> meist bessere Ergebnisse.<br><br>
+
+Man muss<br>
+b + 2 * c = 1<br>
+setzen um einen numerisch genauen Filter zu erhalten.<br>
+Daher kann f&uuml;r b = 0 ein maximales c = 0.5 verwendet werden, das ist dann ein Catmull-Rom-Spline und ein guter Wert f&uuml;r maximale Sch&auml;rfe.<br><br>
+
+Mit Werten c&gt;0.6 f&auml;ngt der Filter an, Ring-Artefakte zu produzieren. Es entsteht hier keine echte Sch&auml;rfe mehr, **what you'll get is crispening like on a TV set.<br>
+F&uuml;r b d&uuml;rfen keine negativen Werte verwendet werden. b muss mindesten 0 sein.<br><br>
+
+<hr><br>
+
+<tt>LanczosResize</tt> ist eine Alternative f&uuml;r<tt> BicubicResize</tt> mit hohen Werten von c von 0.6 ... 0.75 und erzeugt relativ starke Sch&auml;rfung.<br>
+Es bietet normalerweise eine h&ouml;here Qualit&auml;t (weniger Artefakte) und gleichzeitig ein scharfes Bild.<br><br>
+
+<hr><br>
+
+<tt>PointResize</tt> ist die denkbar einfachste Methode, die einen Punkt-Sampler oder einen n&auml;chster-Nachbar-Algorithmus verwendet, was ein sehr geblocktes Bild erzeugt. Dieses Filter sollte daher nur verwendet werden, wenn man absichtlich eine &quot;schlechte&quot; Bildqualit&auml;t erzeugen m&ouml;chte oder klare Pixel-Zeichnungen m&ouml;chte.<br>
+Weiter kann es auch zum probeweisen Vergr&ouml;ssern verwendet werden.<br><br>
+
+<form><input type="Button" value="Back" onClick="history.go(-1)"></form>
 </body>
 </html>

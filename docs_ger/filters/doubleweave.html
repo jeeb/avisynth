@@ -1,66 +1,45 @@
 <!doctype html public "-//W3C//DTD HTML 4.0 Transitional//EN">
 <html>
 <head>
-<meta name="GENERATOR" content="PPWIZARD version 02.213 on WIN2K, FREE tool for Windows, OS/2, DOS and UNIX by Dennis Bareis (http://www.labyrinth.net.au/~dbareis/ppwizard.htm)">
-<title>DoubleWeave Avisynth Filter</title>
-<STYLE type=text/css>
-A:link {
-COLOR: #404a58;TEXT-DECORATION: none
-}
-A:visited {
-COLOR: #404a58;TEXT-DECORATION: none
-}
-A:active {
-COLOR: #404a58;TEXT-DECORATION: none
-}
-A:hover {
-COLOR: #e8f0ff; TEXT-DECORATION: underline
-}
-.titresmall {
-color : 000000;
-font-family: Tahoma, Verdana, Arial, Helvetica, sans-serif;
-font-size: 16pt;
-letter-spacing: 0.15em;
-font-weight: bold;
-}
-</STYLE>
+ <meta name="Generator" content="PPWIZARD version 02.213 on WIN2K, FREE tool for Windows, OS/2, DOS and UNIX by Dennis Bareis (http://www.labyrinth.net.au/~dbareis/ppwizard.htm)">
+ <title>DoubleWeave AviSynth Filter</title>
+ <style type=text/css>
+  A:link { COLOR: #404a58;TEXT-DECORATION: none }
+  A:visited { COLOR: #404a58;TEXT-DECORATION: none }
+  A:active { COLOR: #404a58;TEXT-DECORATION: none }
+  A:hover { COLOR: #e8f0ff; TEXT-DECORATION: underline }
+  .titresmall { color : 000000; font-family: Tahoma, Verdana, Arial, Helvetica, sans-serif; font-size: 16pt; letter-spacing: 0.15em; font-weight: bold; }
+ </style>
 </head>
 <body bgcolor=b6cac0>
-<span class="titresmall"><a name="DoubleWeave">DoubleWeave</a></span>
-<p><tt>DoubleWeave(</tt><i>clip</i><tt>)</tt>
-</p>
-<p>Wenn das Quell-Clip field-basiert ist, funktioniert das <tt>DoubleWeave</tt> 
-  Filter wie <tt>Weave</tt>, ausser dass die doppelte Anzahl an frames erzeugt 
-  wird: anstatt fields 0 und 1 zu frame 0, field 2 und 3 zu frame 1, und so weiter 
-  zu kombinieren, wird field 0 und 1 zu frame 0, field 1 und 2 zu frame 1, und 
-  so weiter kombiniert. Die frame rate und die frame-Anzahl wird daher nicht ver&auml;ndert. 
-</p>
-<p>Wenn das Quell-Clip frame-basiert ist, arbeitet das Filter als ob vorher die 
-  fields mittels <tt>SeparateFields</tt> getrennt wurden. </p>
-<p><tt>Weave</tt> ist eigentlich eine Abk&uuml;rzung f&uuml;r <tt>DoubleWeave</tt> 
-  gefolgt von <tt>SelectEven</tt>. </p>
-<p>Meistens wird man ein Filter wie <tt>SelectOdd</tt> oder <tt>Pulldown</tt> 
-  nach diesem Filter verwenden, falls man nicht wirklich ein 50fps oder 60fps 
-  Video will. Es mag ineffizient aussehen, zuerst alle field-Paare zu interlacen 
-  und dann gleich die H&auml;lfte der entstehenden frames wegzulassen. Da aber 
-  AviSynth die frames nur auf Anforderung wirklich berechnet, werden nie ben&ouml;tigte 
-  frames auch nie erzeugt. </p>
-<p>Wenn man field-basiertes Video, zum Beispiel Material von der Video-Kamera 
-  bearbeitet, wird man dieses Filter eher nicht brauchen. Um NTSC-Video, dass 
-  von einem Film konvertiert wurde, mit dem <tt>Pulldown-</tt>Filter zubearbeiten, 
-  braucht man zuerst <tt>DoubleWeave</tt>. Siehe auch bei <tt>Pulldown</tt> f&uuml;r 
-  weitere Erkl&auml;rungen. </p>
-<p>Wenn man PAL-Video bearbeitet, dass von Film-Material konvertiert wurde, braucht 
-  man kein <tt>Pulldown</tt>, man k&ouml;nnte aber <tt>DoubleWeave</tt> so verwendet: 
-</p>
-<pre># Das "PAL deinterlace" Filter von VirtualDub nachbauen
-DoubleWeave
-SelectOdd
-</pre>
-<p>
-<FORM>
-<INPUT TYPE="Button" VALUE="Back"
-onClick="history.go(-1)">
-</form>
+<span class="titresmall"><a name="DoubleWeave"></a>DoubleWeave</span><br><br>
+
+<tt>DoubleWeave(</tt><i>clip</i><tt>)</tt><br><br>
+
+Wenn der Quellclip auf Feldern basiert, funktioniert der <tt>DoubleWeave</tt> Filter wie <a href="weave.html"><tt>Weave</tt></a>, au&szlig;er dass die doppelte Anzahl an Frames erzeugt wird: anstatt dass Feld 0 und 1 zu Frame 0, Feld 2 und 3 zu Frame 1 usw. kombiniert werden, werden Feld 0 und 1 zu Frame 0, Feld 1 und 2 zu Frame 1 usw. kombiniert. Die Framerate und die Anzahl der Frames wird daher nicht ver&auml;ndert.<br><br>
+
+Wenn ders Quellclip auf Frames basiert, arbeitet der Filter als ob vorher die Felder mittels <a href="seperatefields.html"><tt>SeparateFields</tt></a> getrennt wurden.<br><br>
+
+<tt>Weave</tt> ist eigentlich eine Abk&uuml;rzung f&uuml;r <tt>DoubleWeave</tt>, gefolgt von <a href="select.html"><tt>SelectEven</tt></a>.<br><br>
+
+Meistens wird man ein Filter wie <a href="select.html"><tt>SelectOdd</tt></a> oder <a href="pulldown.html"><tt>Pulldown</tt></a> nach diesem Filter verwenden, falls man nicht wirklich ein 50fps oder 60fps Video will. Es mag ineffizient aussehen, zuerst alle Feld-Paare zu interlacen und dann gleich die H&auml;lfte der entstehenden Frames wegzulassen. Da aber AviSynth die Frames nur auf Anforderung wirklich berechnet, werden nie ben&ouml;tigte Frames auch nie erzeugt.<br><br>
+
+Wenn man ein auf Feldern basiertes Video, zum Beispiel Material von der Video-Kamera bearbeitet, wird man dieses Filter eher nicht brauchen. Aber um NTSC-Video, dass von einem Film konvertiert wurde, mit dem <tt>Pulldown</tt> Filter zu bearbeiten, braucht man zuerst <tt>DoubleWeave</tt>. Siehe auch bei <a href="pulldown.html"><tt>Pulldown</tt></a> f&uuml;r weitere Erkl&auml;rungen.<br><br>
+
+Wenn man ein PAL-Video bearbeitet, dass von Film-Material konvertiert wurde, braucht man kein <tt>Pulldown</tt>, man k&ouml;nnte aber <tt>DoubleWeave</tt> so verwendet:<br><br>
+
+<table border width="75%">
+ <tr>
+  <td>
+   <tt>
+    # Nachbau des "PAL deinterlace" Filter aus VirtualDub<br>
+    DoubleWeave<br>
+    SelectOdd
+   </tt>
+  </td>
+ </tr>    
+</table><br>
+
+<form><input type="Button" value="Back" onClick="history.go(-1)"></form>
 </body>
 </html>

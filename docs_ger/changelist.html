@@ -1,0 +1,264 @@
+<!DOCTYPE doctype PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+<html>
+<head>
+ <title>AviSynth 2 - History</title>
+ <meta name="Generator" content="EditPlus">
+ <meta name="Author" content="">
+ <meta name="Keywords" content="">
+ <meta name="Description" content="">
+ <style type="text/css">A:link {
+  COLOR: #404a58;TEXT-DECORATION: none }
+  A:visited { COLOR: #404a58;TEXT-DECORATION: none }
+  A:active { COLOR: #404a58;TEXT-DECORATION: none }
+  A:hover { COLOR: #e8f0ff; TEXT-DECORATION: underline }
+ </style>
+</head>
+<body bgcolor="#b6c0ca">
+<h1>&Auml;nderungen</h1>
+
+<h2>&Auml;nderungen gegen&uuml;ber Version 2.51</h2>
+<ul>
+ <li>Es wurde Ein Fehler in Farbraum-Check der <a href="filters\conditionalfilter.html">Conditional Filter</a> behoben.</li>
+ <li><a href="filters\conditionalfilter.html">DifferenceToNext()</a> gab die Differenz zum vorhergehenden Frame zur&uuml;ck ;)</li>
+ <li>Kleine &Auml;nderungen beim Installationsprogramm.</li>
+ <li>Es wurde ein Fehler, der einen Absturz beim Beenden von Filtern f&uuml;hrte, wenn ein CACHE_NONE Hinweis gesetzt war, behoben. (Betroffenen waren <a href="filters\crop.html">Crop()</a> und <a href="filters\addborders.html">AddBorders()</a> aus dem 30. April Release).</li>
+ <li>Folgende <a href="filters\conditionalfilter.html">Conditional Filter</a> wurden hinzugef&uuml;gt:</li>
+ <ul>
+  <li>YPlaneMax(clip, float threshold), YPlaneMin(clip, float threshold), YPlaneMedian(clip), YPlaneMinMaxDifference(clip, float threshold)</li>
+  <li>Der Schwellenwert (threshold) ist ein Verh&auml;ltnis, wieviel Prozent von Pixeln &uuml;ber oder unter dem Minimum erlaubt sind. Die Angabe des Schwellenwertes ist optional und der Standard ist 0.</li>
+  <li>Es gibt entsprechende Filter f&uuml;r U und V.</li>
+ </ul>
+ <li>AviSynth versucht nun Framebuffer frei zugeben, wenn die Arbeitsspeicher Ausnutzung auf 25% f&auml;llt oder unter den SetMemoryMax() Wert.</li>
+ <li>Die Light-Version von &quot;ffvfw&quot; wurde dem Installationsprogramm hinzugef&uuml;gt.</li>
+ <li>Erh&ouml;hte Genauigkeit beim Runden bei der ISSE YV12 &lt;-&gt; YUY2 Konvertierung.</li>
+ <li>Erh&ouml;hte Qualit&auml;t beim  **chroma upsampling quality bei der **planar YV12 -&gt; YUY2 Konvertierung.</li>
+ <li>Es wurde Fehler bei Cache Hinweisen wurde behoben.</li>
+ <li>Es wurde hoffentlich eine Fehler mit h&uuml;pfenden Frames in <a href="filters\soften.html">TemporalSoften()</a> behoben.</li>
+ <li>Es wurde Fehler in den <a href="filters\conditionalfilter.html">Conditional Filtern</a> behoben.</li>
+ <li>Leicht bessere Genauigkeit bei der Tonkonvertierung.</li>
+ <li>Es wurde ein weiterer Cache Hinweis zur AviSynth.h hinzugef&uuml;gt.</li>
+ <li>Es wurde ein Fehler in I420 / YV12 bei Interleave behoben.</li>
+ <li>Es wurde ein Fehler beim **Resizing in RGB behoben.</li>
+ <li>YV12 &lt;-&gt; RGB Konvertierung now use an intermediate YUY2 conversion to achieve better chroma upsamplig. As a result of this <a href="filters\convert.html">ConvertToRGB()</a> now also take an &quot;interlaced=true/false&quot; parameter.</li>
+ <li>Added MMX RGB24-&gt;YUY2 conversion.</li>
+ <li>Minor changes to existing RGB32 -&gt; YUY2 MMX.</li>
+ <li>Added <a href="filters\conditionalfilter.html">FrameEvaluate()</a> - Similar to <a href="filters\conditionalfilter.html">ScriptClip()</a>, except the output of the filter is ignored. This can be used for assigning variables, etc. Frames are passed directly through from the supplied clip.</li>
+ <li><a href="filters\conditionalfilter.html">ConditionalFilter()</a> now takes audio from &quot;Source1&quot; instead of the testclip.</li>
+ <li>Minor adjustments to onscreen error reporting (<a href="filters\conditionalfilter.html">ScriptClip() / ConditionalFilter</a>).</li>
+ <li>Fixed problems with implicit last giving problem with multiple filter instances of <a href="filters\conditionalfilter.html">ScriptClip() / ConditionalFilter</a>.</li>
+ <li>Added conditional filter <a href="filters\conditionalfilter.html">RGBDifference()</a>.</li>
+ <li>Added conditional filter <a href="filters\conditionalfilter.html">RGBDifferenceFromPrevious()</a>.</li>
+ <li>Added the Conditional Filter<a href="filters\conditionalfilter.html">RGBDifferenceToNext()</a>.</li>
+ <li><a href="filters\animate.html">ApplyRange()</a> now checks if size and colorspace are the same.</li>
+ <li>Only include devil.dll in installation package.</li>
+ <li>Added <a href="filters\conditionalfilter.html">ScriptClip()</a>. This will return the clip returned by the function evaluated on every frame.</li>
+ <li>Added 3 script functions: Chr, Time, Spline.</li>
+ <li>Many <a href="filters\image.html">ImageReader() / ImageWriter()</a> fixes and updates.</li>
+ <li><a href="filters\conditionalfilter.html">Conditional Filter</a>: Length is now defined by the longest of the source clips.</li>
+ <li><a href="filters\conditionalfilter.html">Conditional Filter</a>: All errors are now being reported onscreen instead of throwing a runtime exception!</li>
+ <li><a href="filters\convert.html">ConvertToRGB24()</a>: Fixed issue with non-mod 4 resolutions from YUY2.</li>
+ <li>Fixed: Now only the two sources for <a href="filters\conditionalfilter.html">ConditionalFilter()</a> must be the same.</li>
+ <li>Added <a href="filters\conditionalfilter.html">Conditional Filters: YDifferenceFromPrevious(), UDifferenceFromPrevious(), VDifferenceFromPrevious() und YDifferenceToNext(), UDifferenceToNext(), VDifferenceToNext()</a>.</li>
+ <li><a href="filters\conditionalfilter.html">Conditional functions</a> now check frame range.</li>
+ <li>Added <a href="filters\conditionalfilter.html">Conditional Filters: LumaDifference(), ChromaUDifference() und ChromaUDifference()</a>. They return a float value between 0 and 255 of the absolute difference between two planes.</li>
+ <li>Added &quot;show&quot; parameter to <a href="filters\conditionalfilter.html">ConditionalFilter()</a>. This will overlay the results on the screen.</li>
+ <li>Added <a href="filters\conditionalfilter.html">Conditional AverageLuma, AverageChromaU, AverageChromaV</a> functions. Returns a float from 0 to 255 based on the average pixel values of a plane.</li>
+ <li>Added <a href="filters\conditionalfilter.html">ConditionalFilter()</a>. See doom9 forums for syntax. (for now).</li>
+ <li>Added SoftWire dynamic compiled horizontal resizer.</li>
+ <li>Added dynamic compiled <a href="filters\limiter.html">Limiter()</a>.</li>
+ <li>AviSynth now mimics VDubs way of handling dropped frames to avoid problems with buggy codecs.</li>
+ <li>Implemented Belgabors patch for exporting plugin functions.</li>
+ <li>Fixed bug when height &gt; 512 in RGB -&gt; YV12 conversion.</li>
+ <li>Fixed float point exceptions being thrown in some applications, based on the CPU register settings.</li>
+ <li>Minor speedup to ISSE <a href="filters\limiter.html">Limiter()</a>.</li>
+ <li>Better chroma alignment on interlaced YUY2 -&gt;YV12.</li>
+</ul>
+
+<h2>&Auml;nderungen gegen&uuml;ber Version 2.50 </h2>
+<ul>
+ <li>Fixed bug in BMP writer on non-mod-4 widths.</li>
+ <li>Added start/end parameters to <a href="filters\image.html">ImageWriter()</a>.</li>
+ <li>Fixed crash in <a href="filters\swap.html">SwapUV()</a> in some cases.</li>
+ <li>Removed "movntq" from YUY2 <-> YV12 conversion routines. Much faster code!</li>
+ <li>Reenabled "maximize speed" in optimizations.</li>
+ <li>Put in fix in dll initialization from Gabest.</li>
+ <li>Fixed 4 flickering pixels in <a href="filters\convert.html">ConvertToYUY2()</a>, and potential out-of-buffer writes.</li>
+ <li>Fixed chroma weighing in interlaced yv12 -> yuy2.</li>
+ <li>Added <a href="filters\animate.html">ApplyRange()</a>.</li>
+ <li>Aligned Resize data (slightly faster on some setups).</li>
+ <li>Fixed bug in YV12 <a href="filters\stack.html">StackVertical()</a>, causing corrupt images.</li>
+ <li>Removed all fieldbased/mod 4 checks.</li>
+ <li>Restored how fieldbased/framebased works (needs further testing!).</li>
+ <li>Added MMX/ISSE version of YUY2 -> YV12 conversion routines (interlaced/progressive). Use <a href="filters\convert.html">ConvertToYV12(interlaced=true/false)</a>.</li>
+ <li>Made <a href="filters\swap.html">SwapUV()</a> faster.</li>
+ <li><a href="filters\swap.html">YToUV()</a> now takes an optional third parameter, that contains luma for the final clip.</li>
+ <li>Fixed memory exception problem in <a href="filters\blur.html">Blur()</a>.</li>
+ <li>AudioLength() now returns the size in samples (do however beware of overflows on very long clips).</li>
+ <li>Changed chroma weighing to be 25/75 on interlaced YV12 -> YUY2.</li>
+ <li>Removed startup Box from installer.</li>
+ <li>Enabled Steady's much faster BitBlt code.</li>
+ <li>Added ISSE YV12->YUY2 conversions. Faster than Xvid - and both interlaced and noninterlaced modes supported. Use <a href="filters\convert.html">ConvertToYV12(interlaced=true)</a>.</li>
+ <li>Fixed non-matching image type in <a href="filters\stack.html">Stack Filter</a>, <a href="filters\splice.html">Splice Filter</a>.</li>
+ <li>Fixed rounding in <a href="filters\soften.html">TemporalSoften()</a> mode 2.</li>
+ <li>Added rewritten YV12->YUY2 (progressive) conversion to avoid using buggy XviD conversion. It also has better quality as it properly interpolates chromas as opposed to simply copying it. Speed should be the same.</li>
+ <li>Added interlaced YV12->YUY2 conversion. Use <a href="filters\convert.html">ConvertToYUY2(interlaced=true)</a>.</li>
+ <li>Fix bug in C version of YUY2 -> RGB24.</li>
+ <li>Added <a href="filters\turn.html">TurnLeft() / TurnRight()</a>.</li>
+ <li>Updated (and probably broke!) <a href="filters\seperatefields.html">SeparateFields()</a> / <a href="filters\weave.html">Weave()</a>. They will need to be tested!</li>
+ <li>Updated <a href="filters\assumefieldfirst.html">AssumeTFF() und AssumeBFF()</a> to also write the information to VideoInfo.</li>
+ <li>Fixed bug with uninitialized data in <a href="filters\avisource.html">AVISource()</a>.</li>
+ <li>Updated icons.</li>
+ <li>PNG and JPEG support (output only). Warning: still buggy!</li>
+ <li>Fixed wrong pitch being used in <a href="filters\soften.html">TemporalSoften</a> scenechange - could in rare cases lead to unexpected results.</li>
+ <li>Fixed <a href="filters\splice.html">Splice Filter</a> problems with YV12 from different sources. Audio is now automatically converted to the same format.</li>
+ <li>Put in Steady's new BitBlt code, and enabled it for ISSE capable processors.</li>
+ <li>Fixed crashbug in YUY2 <a href="filters\merge.html">MergeChroma</a>.</li>
+ <li>Doesn't add audio to track, if there is no present in <a href="filters\assumesamplerate.html">AssumeSamplerate()</a>.
+ <li>Fixed isBFF() and isTFF().</li>
+</ul>
+
+<h2>Wesentliche &Auml;nderungen gegen&uuml;ber den 2.0.x Versionen:</h2>
+<ul>
+ <li>Native planar YV12 support.</li>
+ <li>Multiple audiochannels. Unlimited number of channels is now supported.</li>
+ <li>Float samples support. AviSynth is now capable of processing samples as floats.</li>
+ <li>Automatic sample conversion. If some filters doesn't support a specific sample type, they are converted to the format preserving most quality (most often floats).</li>
+ <li>Optimizations. Many basic features has been optimized, and now performs much better than previous versions.</li>
+ <li><a href="filters\soften.html">TemporalSoften</a> has a significant speed improvement, scenechange detection and a new improved blend mode.</li>
+ <li><a href="filters\limiter.html">Limiter</a> can limit the YUV ranges, to avoid invalid color values and improve compression.</li>
+ <li><a href="filters\coloryuv.html">ColorYUV()</a> makes it possible to do very exact color corrections. ColorYUV has built-in auto-whitebalance and auto-gain features.</li>
+ <li>Select separate planes using <a href="filters\swap.html">UToY(), VToY()</a> and merge them together again, using <a href="filters\swap.html">YToUV</a>.</li>
+ <li><a href="filters\flip.html">Fliphorizontal()</a> implemented.</li>
+ <li><a href="filters\selectrangeevery.html">SelectRangeEvery()</a> is now part of the core functions.</li>
+ <li><a href="filters\blur.html">Blur(), Sharpen()</a>, <a href="filters\resize.html">Resize Filter</a> optimized.</li>
+ <li>Fast XviD colorspace conversions.</li>
+ <li>See clip info using the info() command.</li>
+</ul>
+
+<h4>&Auml;nderungen gegen&uuml;ber Version 2.07</h4>
+<ul>
+ <li>Fixed crashbug in <a href="filters\resize.html">Resize Filter</a>.</li>
+ <li>AviSynth now only includes "*.avsi" from the plugin directory.</li>
+ <li>Changed maximum number of arguments from 40 to 1024.</li>
+ <li><a href="filters\resampleaudio.html">ResampleAudio()</a> caused crashes, if no audio was present.</li>
+ <li>Fixed: Exist() didn't work.</li>
+</ul>
+
+<h4>&Auml;nderungen gegen&uuml;ber Version 2.06</h4>
+<ul>
+ <li>Skript Erweiterungen:</li>
+ <ul>
+  <li>LeftStr(string, int size), RightStr(string, int size), MidStr(string, int first, int length), FindStr(string, string), RevStr(string), StrLen(string)</li>
+  <li>Sign(int), sign(float), Nop, Rand([int limit]), Select(index, item0 [,item1...]), Exist(string filename)</li>
+  <li>VersionNumber(), VersionString()</li>
+  <li>IsRGB24(clip), IsRGB32(clip), Int(float), Frac(float), Float(int), Value(string), HexValue(string)</li>
+ </ul>
+ <li>Strings can be compared using "<" ,">","<=",">=" operators (case insensitive).</li>
+ <li>Color option for <a href="filters\fade.html">Fade Filter</a> , <a href="filters\letterbox.html">Letterbox()</a>, and <a href="filters\addborders">AddBorders()</a>.</li>
+ <li><a href="filters\subtitle.html">Subtitle</a> alignment and spacing options, added y=-1 centering support (x=-1 undocumented support remains) and defaults for x,y and align vary depending on each other's settings.</li>
+ <li>Optimization for recent <a href="filters\blankclip.html">BlankClip()</a> RGB24 bug fix.</li>
+ <li>Es wurden Fehler in den Funktionen ceil, floor und round behoben.</li>
+ <li>Es wurde ein Fehler im RGB24 Modus von <a href="filters\blankclip.html">BlankClip()</a> behoben bei ungeraden horizontalen Breiten.</li>
+ <li>**Fixed DB scale off by 2x in volume.</li>
+ <li>Es wurde der Filter <a href="filters/fade.html">FadeIn / FadeIn2</a> hinzugef&uuml;gt, um ** fade in video and audio.</li>
+ <li>Der neue Filter <a href="filters/assumerate.html">AssumeSampleRate()</a> hinzugef&uuml;gt, der die **Samplingfrequenz ohne **Neusamplen &auml;ndert (Ja, diese f&uuml;hrt zu Asynchronit&auml;ten !).</li>
+ <li>Es wurde ein Fehler in <a href="filters\trim.html">Trim()</a> behoben, der einen um einen Frame falschen **offset bewirkte, wenn das zweite Argument negativ war.</li>
+ <li>Es wurden die Funktionen abs(integer) und abs(float) hinzugef&uuml;gt.</li>
+ <li>Es wurde ein Fehler in '%' (Modulo) bei Skripten behoben, so dass nun absolute Werte zur&uuml;ckgegeben werden.</li>
+ <li>Es wurde ein boolscher Parameter zu <a href="filters\directshowsource.html">DirectShowSource()</a> hinzugef&uuml;gt, so dass man das **seeking manuell ausschlten kann, wenn es einem zu langsam geht.</li>
+ <li>Der Filter <a href="filters/resize.html">PointResize()</a> wurde hinzugef&uuml;gt. Diese Funktion entspricht dem "Nearest Neighbour" in VirtualDub.</li>
+ <li>Es wurde die Funktion SetWorkingDir() hinzugef&uuml;gt.</li>
+ <li>Ein Fehler, der <a href="filters\normalize.html">Normalize()</a> zum Absturz gebracht hatte, wurde behoben.</li>
+ <li>Eine deutsche Dokumentation wurde hinzugef&uuml;gt.</li>
+</ul>
+
+<h4>&Auml;nderungen gegen&uuml;ber Version 2.05</h4>
+<ul>
+ <li>Ein m&ouml;glicher Fehler, der zu einem Absturz in Resize f&uuml;hren konnte, wurde behoben - nun wurde der Fehler wirklich behoben gegen&uuml;ber dem bisherigen **hack.</li>
+ <li>Standardm&auml;&szlig;ig **alignment ist nun 16 Bytes, wodurch der Pentium 4 schneller werden sollte.</li>
+ <li>Ein Fehler wurde in RGB32 behoben <a href="filters/greyscale.html">Greyscale()</a>, wenn nicht durch 2 teilbar war.</li>
+ <li>Beispielskripte und eine Installations-/Deinstallationsprogramm wurde hinzugef&uuml;gt. Man braucht sich nun nicht mehr mit der .reg Datei und Regedit herumzuschlagen.</li>
+ <li>Es wurde ein Fehler in <a href="filters/trim.html">Trim()</a> behoben, so dass man nun auch - wie beschrieben - negative Werte nutzen kann.</li>
+ <li>Es wurde einige Fehler beim automatischen Laden von Plugins behoben:</li>
+ <ul>
+  <li>der Computer fror ein, wenn eine ung&uuml;ltige Dll geladen wurde
+  <li>es wurden Dateien, obwohl nicht notwendig, blockiert
+  <li>es werden nun auch AviSynth Plugins mit .vdf Endung geladen
+ </ul>
+ <li>**Made forward seeking fallback code in <a href="filters/directshowsource.html">DirectShowSource()</a> files - it will not freeze anymore, just be very slow, since it has to decode all inbetween frames!</li>
+ <li>Der neue Filter <a href="filters/resize.html">LanczosResize()</a> wurde hinzugef&uuml;gt, welches den Lanczos3 Algorithmus verwendet. Dieser bietet in der Regel bessere Qualit&auml;t als <a href="filters/bicubicresize.html">BicubicResize</a>.</li>
+ <li>H&ouml;here Genauigkeit beim Runden in <a href="filters/resize.html">BicubicResize() / BilinearResize()</a>.</li>
+ <li>Der YUY2 Modus von <a href="filters/resize.html">BicubicResize() / BilinearResize()</a> wurde optimiert.</li>
+ <li>Neuer <a href="filters/layer.html">ResetMask()</a> Filter: **sets the mask to "all-opaque" (RGB32 only).</li>
+ <li><a href="filters/fps.html">ChangeFPS()</a> &auml;ndert nun den Framez&auml;hler (der Dank geht an Xesdeeni).</li>
+ <li>AVI Dateien, deren erster Frame ung&uuml;ltig ist, werden nun abgewiesen. Es ist nicht m&ouml;glich,** of handling this situation gracefully. Bei segmentierten AVI's wird das entsprechende Segment automatisch ignoriert OHNE eine Fehlermeldung auszugeben.</li>
+ <li>Die Parameter von <a href="filters/crop.html">Crop()</a> und <a href="filters/letterbox.html">LetterBox()</a> werden nun besser &uuml;berpr&uuml;ft.</li>
+ <li>**Fixed wrap at right side of picture in RGB <a href="filters/resize.html">BicubicResize() / BilinearResize()</a>.</li>
+ <li>Es wurde ein weiteres Chroma **wrap Problem in <a href="filters/resize.html">BicubicResize()</a> gel&ouml;st.</li>
+ <li>Es wurde ein optinaler Pixel-Typ Parameter zu <a href="filters/avisource.html">AVISource()</a> hinzugef&uuml;gt und **siblings, um eine Dekompessionsformat (YUY2, RGB32 oder RGB24) zu erzwingen.</li>
+ <li>Es wurden optinale Links- und Rechts-Parameter bei <a href="filters/letterbox.html">Letterbox()</a> hinzugef&uuml;gt. Die Parameter wurden hinter die existierenden Parameter gesetzt aus Kompatibilit&auml;t zu alten Skripten.</li>
+ <li><a href="filters/ensuresync.html">EnsureVBRMP3Sync()</a> wurde hinzugef&uuml;gt, um Asyncronit&auml;ten mit in VBR kompremierten MP3s zu vermeiden. Dies verlangsamt das **slow seeking down considerably, aber ist daf&uuml;r sehr praktisch z.B. f&uuml;r <a href="filters/trim.html">trim()</a>. Nutze die Funktion immer vor <a href="filters/trim.html">trim()</a>.</li>
+ <li>Ein Fehler, der manche Rechner bei den <a href="filters\resize.html">Resize Filtern</a> abst&uuml;rzen lie&szlig;, wurde behoben.</li>
+ <li><a href="filters/avisource.html">AVISource()</a> gibt immer den letzten g&uuml;ltigen Frame bei Dekompressionsfehlern zur&uuml;ck.</li>
+ <li>Es wird nun gepr&uuml;ft, ob der Frame 0 ung&uuml;ltig ist (trat am Meisten bei <a href="filters/segmentedsource.html">SegmentedAVISource()</a> auf).</li>
+</ul>
+
+<h4>&Auml;nderungen gegen&uuml;ber Version 2.04</h4>
+<ul>
+ <li>Erweiterung des <a href="filters\compare.html">Compare()</a> Filters (Statistik &uuml;ber mehrere Frames).</li>
+ <li>Reorganisation beim Laden von Funktion, damit (hoffentlich) Plugins Vorrang vor internen Filtern haben.</li>
+ <li>LowPassAudio(frequency) und HighPassAudio(frequency) wurde hinzugef&uuml;gt.</li>
+ <li>Viele Aktualisierungen und Erg&auml;nzungen in der Dokumentation.</li>
+ <li>Neue Funktion String(value) konvertiert einen AVS Wert in einen String.</li>
+ <li>Die Anzahl der Plugins wurde von 50 auf 30 gesenkt.</li>
+ <li>AviSynth verbraucht nun mindestens 16MB Cache oderr 1/4 des freien physikalischen Speichers.</li>
+ <li><a href="syntax.html#autoloading">Automatisches Laden von Plugins</a> (Erstelle den String &quot;HKEY_LOCAL_MACHINE\Software\AviSynth\PluginDir&quot; in der Registrierung) (noch in der Alpha-Phase).</li>
+ <li>Ein Fehler, der <a href="filters\segmentedsource.html">SegmentedAVISource()</a> beim Beenden abst&uuml;rzen lie&szlig;, wurde behoben.</li>
+ <li>Ein Fehler bez&uuml;glich des Tones in <a href="filters\avisource.html">AVISource()</a> wurde behoben.</li>
+ <li>Ein Fehler in FilteredResizeH (siehe Fehler [ 588402 ]) wurde behoben. Desweiteren wurder der Filter ein wenig optimiert.</li>
+ <li>Ein Fehler in <a href="filters\soften.html">TemporalSoften()</a> wurde behoben.</li>
+ <li>Ein Fehler, der Frames ausliess (besteht seit Version 2.04), wurde behoben.</li>
+ <li>Fehler in Pow(x,y) wurde behoben.</li>
+</ul>
+
+<h4>&Auml;nderungen gegen&uuml;ber Version 2.03</h4>
+<ul>
+ <li>Es wird nun kompremiertes Audio in <a href="filters\avisource.html">AVISource(), AVIFileSource() und OpenDMLSource()</a> unterst&uuml;tzt. Mit einem boolscher Parameter nach clip kann man dies ausschalten.</li>
+ <li>Kompilierungsfehler in <a href="filters\soften.html">TemporalSoften()</a> wurde behoben.</li>
+</ul>
+
+<h4>&Auml;nderungen gegen&uuml;ber Version 2.02</h4>
+<ul>
+ <li>EMMS Fehler in <a href="filters\layer.html">ColorKeyMask()</a> behoben.</li>
+ <li>YUY2 Erkennungsproblem in <a href="filters\layer.html">Layer()</a> behoben.</li>
+ <li>Benutzerfreundliche Fehlermeldungen bei <a href="filters\layer.html">Layer()</a> Fehlern hinzugef&uuml;gt.</li>
+ <li><a href="filters\getchannel.html">GetLeftChannel()</a> gibt den linken Kanal zur&uuml;ck.</li>
+ <li><a href="filters\getchannel.html">GetRightChannel()</a> gibt den rechten Kanal zur&uuml;ck.</li>
+ <li><a href="filters\monotostereo.html">MonoToStereo()</a> multiplext zwei Streams in einen Stereo Stream.</li>
+ <li><a href="filters\mixaudio.html">MixAudio()</a> mischt Streams mit zwei Tonspuren zusammen.</li>
+ <li><a href="filters\convert.html">ConvertBackToYUY2()</a> hinzugef&uuml;gt. Es wird nur das Chroma vom linken Pixel genutzt, um eine Verschiebung der Farbe bei mehrfachen YUY2-&gt;RGB&gt;YUY2 Konvertierungen zu vermeiden. ConvertToYUY2 besteht unver&auml;ndert weiter.</li>
+ <li>Dokumentation f&uuml;r die neuen Filter und Parameter hinzugef&uuml;gt.</li>
+ <li>Audio wurde dem <a href="filters\loop.html">Loop()</a> Filter hinzugef&uuml;gt.</li>
+ <li>Neue Filter <a href="filters\converttomono.html">ConvertToMono()</a> konvertiert Stereo in Mono.</li>
+ <li>Neue Filter <a href="filters\killaudio.html">KillAudio()</a> l&ouml;scht den Ton aus einem Stream. Man kann dies nutzen, wenn man Abst&uuml;rze hat mit kompremierten AVI Ton.</li>
+ <li>Neuer Filter <a href="filters\layer.html">ColorKeyMask()</a> + ein Fehler in <a href="filters\layer.html">Layer()</a> wurde behoben.</li>
+ <li>Neuer Filter <a href="filters\normalize.html">Normalize()</a>. Normalisiert Audio. Beide Float-Variablen sind optional. Falls ein Maximalwert (von 0 bis 1) gesetzt wird, wird der Stream auf diesen Level gebracht, ansonsten wird die Maximallautst&auml;rke genommen.</li>
+ <li><a href="filters\soften.html">TemporalSoften()</a> (MMX &amp; C ) (war bisher als  Plugin TemporalSoften2 verf&uuml;bar).</li>
+ <li><a href="filters\reduceby2">HorizontalReduceBy2()</a> ist nun MMX optimiert im YUY2 Modus.</li>
+ <li>Der 1-Pixel-Versatz Fehler wurde in <a href="filters\reduceby2.html">VerticalReduceby2()</a> behoben.</li>
+ <li>MMX ist nun **pixelperfect im Vergleich mit C Implementationen.</li>
+ <li>Die Reihenfolge in <a href="filters\reduceby2.html">ReduceBy2()</a> wurde ge&auml;ndert, da nun VerticalReduceBy2() schneller ist.</li>
+ <li><a href="filters\reduceby2.html">VerticalReduceBy2()</a> f&uuml;r MMX optimiert. Er ist nun mehr als doppel so schnell. Auch pr&uuml;ft der Filter, ob das Bild zu klein ist, um es zu verkleinern.</li>
+ <li><a href="filters\colorbars.html">Colorbars()</a> generiert nun auch einen Testton. Dieser Testton ist eine 440 Hz Sinuskurve bei 48 kHz, 16 Bit, Stereo. Der Ton wird in den RECHTEN Lautsprecher ausgegeben und pro Sekunde einmal ein- und wieder ausgeschaltet.</li>
+ <li><a href="filters\resampleaudio.html">ResampleAudio()</a> &uuml;bergeht nun die Konvertierung, wenn die Samplingfrequenz schon in der vorgegeben Frequenz ist.</li>
+ <li>Kein Athlon Code ** bei der Installation.</li>
+ <li><a href="filters\convert.html">ConvertToYUY2</a> f&uuml;r MMX optimiert.</li>
+ <li>Fehler bei <a href="filters\greyscale.html">Greyscale()</a> im RGB Modus behoben.</li>
+ <li><a href="filters\layer.html">Layer()</a> und Decomb() Filter optimiert.</li>
+ <li>Neue Filter <a href="filters\compare.html">Compare()</a> hinzugef&uuml;gt.</li>
+ <li><a href="filters\assumefieldfirst.html">AssumeTFF() und AssumeBFF()</a> nutzen nun **Parit&auml;t.</li>
+ <li>Dokumentation wiederhergestellt und aktualisiert.</li>
+</ul>
+<p>Bitte melde Fehler auf der <a href="http://sourceforge.net/projects/AviSynth2">Sourceforge AviSynth 2 Seite</a> oder im <a href="http://forum.doom9.org/forumdisplay.php?s=&amp;forumid=33">Doom9 AviSynth Forum</a></p>
+</body>
+</html>

@@ -1,48 +1,35 @@
-<!doctype html public "-//W3C//DTD HTML 4.0 Transitional//EN">
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
 <html>
 <head>
-<meta name="GENERATOR" content="PPWIZARD version 02.213 on WIN2K, FREE tool for Windows, OS/2, DOS and UNIX by Dennis Bareis (http://www.labyrinth.net.au/~dbareis/ppwizard.htm)">
-<title>AddBorders Avisynth Filter</title>
-<STYLE type=text/css>
-A:link {
-COLOR: #404a58;TEXT-DECORATION: none
-}
-A:visited {
-COLOR: #404a58;TEXT-DECORATION: none
-}
-A:active {
-COLOR: #404a58;TEXT-DECORATION: none
-}
-A:hover {
-COLOR: #e8f0ff; TEXT-DECORATION: underline
-}
-.titresmall {
-color : 000000;
-font-family: Tahoma, Verdana, Arial, Helvetica, sans-serif;
-font-size: 16pt;
-letter-spacing: 0.15em;
-font-weight: bold;
-}
-</STYLE>
+ <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+ <meta name="Generator" content="Mozilla/4.06 [en] (Win98; I) [Netscape]">
+ <title>AddBorders AviSynth Filter</title>
+ <style type=text/css>
+  A:link { COLOR: #404a58;TEXT-DECORATION: none }
+  A:visited { COLOR: #404a58;TEXT-DECORATION: none }
+  A:active { COLOR: #404a58;TEXT-DECORATION: none }
+  A:hover { COLOR: #e8f0ff; TEXT-DECORATION: underline }
+  .titresmall { color : 000000; font-family: Tahoma, Verdana, Arial, Helvetica, sans-serif; font-size: 16pt; letter-spacing: 0.15em; font-weight: bold; }
+ </style>
 </head>
-<body bgcolor=b6cac0>
-<span class="titresmall"><a name="AddBorders">AddBorders</a></span> 
-<p><tt>AddBorders(</tt><i>clip, int left, int top, int right, int bottom</i><tt>)</tt></p>
-<p><tt>AddBorders</tt> f&uuml;gt schwarze R&auml;nder mit der angegebenen Anzahl 
-  von Pixel zum Bild dazu. Im YUY2-Farbraum muss <i>left</i> und <i>right</i> 
-  ein Vielfaches von 2 sein. </p>
-<p>Achtung: viele Kompressions-Algorithmen haben Schwierigkeiten mit vollfarbigen 
-  R&auml;ndern, wenn die Breite der R&auml;ndern nicht ein Vielfaches der Blockgr&ouml;sse 
-  ist (16 pixel bei MPEG). </p>
-<p>Dieses Filter kann zusammen mit <tt>Crop</tt> verwendet werden, um ein Bild 
-  zu verschieben, ohne die Bildgr&ouml;sse zu ver&auml;ndern:</p>
-<pre># r&uuml;ckt ein 352x240 Bild um 2 pixel nach rechts
-Crop(0,0,350,240).AddBorders(2,0,0,0)
-</pre>
-<p>
-<FORM>
-<INPUT TYPE="Button" VALUE="Back"
-onClick="history.go(-1)">
-</form>
+<body bgcolor="#B6CAC0">
+
+<span class="titresmall"><a name="AddBorders"></a>AddBorders</span><br><br>
+<tt>AddBorders(</tt><i>clip, int left, int top [, int right, int bottom] [, int color]</i><tt>)</tt> <br><br>
+
+<tt>AddBorders</tt> f&uuml;gt schwarze R&auml;nder mit der angegebenen Anzahl von Pixel zum Bild dazu.<br><br>
+
+Siehe <a href="filters/convert.html#formats">Farbraumkonvertierungs Filter</a> f&uuml;r die Besonderheiten der einzelnen Farbr&auml;ume.<br><br>  
+
+Der <i>color</i> Parameter ist optional (verf&uuml;gbar seit v2.07), Standard=0 &lt;black>, und wird als RGB Wert angegeben unabh&auml;ngig davon, ob der Farbraum RGB oder YUV basierend ist.<br><br>
+
+Achtung: viele Kompressionsalgorithmen haben Schwierigkeiten mit vollfarbigen R&auml;ndern, wenn die Breite der R&auml;ndern nicht ein Vielfaches der Blockgr&ouml;sse ist (16 Pixel bei MPEG).<br><br>
+
+Dieses Filter kann zusammen mit <tt>Crop</tt> verwendet werden, um ein Bild zu verschieben, ohne die Bildgr&ouml;sse zu ver&auml;ndern:<br><br>
+
+# r&uuml;ckt ein 352x240 Bild um 2 Pixel nach rechts<br>
+Crop(0,0,350,240).AddBorders(2,0,0,0)<br><br>
+
+<form><input type="Button" value="Back" onClick="history.go(-1)"></form>
 </body>
 </html>

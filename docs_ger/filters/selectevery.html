@@ -1,59 +1,44 @@
 <!doctype html public "-//W3C//DTD HTML 4.0 Transitional//EN">
 <html>
 <head>
-<meta name="GENERATOR" content="PPWIZARD version 02.213 on WIN2K, FREE tool for Windows, OS/2, DOS and UNIX by Dennis Bareis (http://www.labyrinth.net.au/~dbareis/ppwizard.htm)">
-<title>SelectEvery Avisynth Filter</title>
-<STYLE type=text/css>
-A:link {
-COLOR: #404a58;TEXT-DECORATION: none
-}
-A:visited {
-COLOR: #404a58;TEXT-DECORATION: none
-}
-A:active {
-COLOR: #404a58;TEXT-DECORATION: none
-}
-A:hover {
-COLOR: #e8f0ff; TEXT-DECORATION: underline
-}
-.titresmall {
-color : 000000;
-font-family: Tahoma, Verdana, Arial, Helvetica, sans-serif;
-font-size: 16pt;
-letter-spacing: 0.15em;
-font-weight: bold;
-}
-</STYLE>
+ <meta name="Generator" content="PPWIZARD version 02.213 on WIN2K, FREE tool for Windows, OS/2, DOS and UNIX by Dennis Bareis (http://www.labyrinth.net.au/~dbareis/ppwizard.htm)">
+ <title>SelectEvery AviSynth Filter</title>
+ <style type=text/css>
+  A:link { COLOR: #404a58;TEXT-DECORATION: none }
+  A:visited { COLOR: #404a58;TEXT-DECORATION: none }
+  A:active { COLOR: #404a58;TEXT-DECORATION: none }
+  A:hover { COLOR: #e8f0ff; TEXT-DECORATION: underline }
+  .titresmall { color : 000000; font-family: Tahoma, Verdana, Arial, Helvetica, sans-serif; font-size: 16pt; letter-spacing: 0.15em; font-weight: bold; }
+ </style>
 </head>
 <body bgcolor=b6cac0>
-<span class="titresmall"><a name="SelectEvery">SelectEvery</a></span> 
-<p><tt>SelectEvery(</tt><i>clip, int step_size[, int offset1[, int offset2[,...]]]</i><tt>)</tt></p>
-<p><tt>SelectEvery</tt> ist die Verallgemeinerung von Filter wie <tt>SelectEven</tt> 
-  und <tt>Pulldown</tt>.</p>
-<p> Das wird am besten durch Beispiele erkl&auml;rt: </p>
-<table width="75%" border="1">
-  <tr> 
-    <td> 
-      <pre>
-SelectEvery(clip,2,0)      # das gleiche wie SelectEven(clip)
-SelectEvery(clip,2,1)      # das gleich wie SelectOdd(clip)
-SelectEvery(clip,10,3,6,7) # verwendet Frames 3,6,7,13,16,17,... vom Quell-Clip
-SelectEvery(clip,9)        # verwendet Frames 0,9,18,... (als zweites Argument wird 0 angenommen)
-</pre>
-      <pre>Oder so: </pre>
-      <pre># auf ein 24fps progressives Quellclip 3:2 Pulldown anwenden,
-# was ein 30fps interlaced Clip ergibt
-AssumeFrameBased
-SeparateFields
-SelectEvery(8, 0,1, 2,3,2, 5,4, 7,6,7)
-Weave
-</pre>
-      </td>
-  </tr>
-</table>
-<FORM>
-  <INPUT TYPE="Button" VALUE="Back"
-onClick="history.go(-1)">
-</form>
+<span class="titresmall"><a name="SelectEvery"></a>SelectEvery</span><br><br>
+
+<tt>SelectEvery(</tt><i>clip, int step_size[, int offset1[, int offset2[,...]]]</i><tt>)</tt><br><br>
+
+<tt>SelectEvery</tt> ist die Verallgemeinerung von Filter wie <a href="select.html"><tt>SelectEven</tt></a> und <a href="pulldown.html"><tt>Pulldown</tt></a>.<br><br>
+Das wird am Besten durch Beispiele erkl&auml;rt:<br><br>
+
+<table border>
+ <tr> 
+  <td> 
+   <tt>
+    SelectEvery(clip,2,0) &nbsp;&nbsp;&nbsp;&nbsp; # das gleiche wie SelectEven(clip)<br>
+    SelectEvery(clip,2,1) &nbsp;&nbsp;&nbsp;&nbsp; # das gleich wie SelectOdd(clip)<br>
+    SelectEvery(clip,10,3,6,7) # verwendet Frames 3,6,7,13,16,17,... vom Quell-Clip<br>
+    SelectEvery(clip,9) &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; # verwendet Frames 0,9,18,... (als zweites Argument wird 0 angenommen)<br><br>
+
+    Oder so:<br>
+    # auf ein 24fps progressives Quellclip 3:2 Pulldown anwenden, was ein 30fps interlaced Clip ergibt:<br>
+    AssumeFrameBased<br>
+    SeparateFields<br>
+    SelectEvery(8, 0,1, 2,3,2, 5,4, 7,6,7)<br>
+    Weave
+   </tt>
+  </td>
+ </tr>
+</table><br>
+
+<form><input type="Button" value="Back" onClick="history.go(-1)"></form>
 </body>
 </html>

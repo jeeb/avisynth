@@ -1,271 +1,131 @@
-<!doctype html public "-//W3C//DTD HTML 4.0 Transitional//EN">
+<!doctype html public "-//w3c//dtd html 4.0 transitional//en">
 <html>
 <head>
-<meta name="GENERATOR" content="PPWIZARD version 02.213 on WIN2K, FREE tool for Windows, OS/2, DOS and UNIX by Dennis Bareis (http://www.labyrinth.net.au/~dbareis/ppwizard.htm)">
-<title>Avisynth 2 Filter Reference</title>
-<meta name="Keywords" content="Avisynth 2 Filter Reference">
-<meta name="Description" content="Avisynth filter reference">
-<STYLE type=text/css>A:link {
-COLOR: #404a58;TEXT-DECORATION: none
-}
-A:visited {
-COLOR: #404a58;TEXT-DECORATION: none
-}
-A:active {
-COLOR: #404a58;TEXT-DECORATION: none
-}
-A:hover {
-COLOR: #e8f0ff; TEXT-DECORATION: underline
-}
-h2 {
-color : 000000;
-font-family: Tahoma, Verdana, Arial, Helvetica, sans-serif;
-font-size: 15pt;
-font-weight: bold;
-}
-</STYLE>
+ <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+ <meta name="Generator" content="Mozilla/4.76 [en] (Win98; U) [Netscape]">
+ <meta name="Keywords" content="Avisynth 2 Filter Reference">
+ <meta name="Description" content="Avisynth filter reference">
+ <title>AviSynth 2 Filter Referenz</title>
+ <style type="text/css">
+  A:link { COLOR: #404a58;TEXT-DECORATION: none }
+  A:visited { COLOR: #404a58;TEXT-DECORATION: none }
+  A:active { COLOR: #404a58;TEXT-DECORATION: none }
+  A:hover { COLOR: #e8f0ff; TEXT-DECORATION: underline }
+  h2 { color : 000000; font-family: Tahoma, Verdana, Arial, Helvetica, sans-serif; font-size: 15pt; font-weight: bold; }
+ </style>
 </head>
-<body bgcolor=b6c0ca>
+<body bgcolor="#B6C0CA">
+
 <h2><a name="producing"></a>Quellfilter, die ein Clip erzeugen</h2>
-<table border=1 cellpadding=4 cellspacing=0 style="border-style:1px solid black" width=90%>
-  <tr>
-    <td width=30%><a href="filters/avisource.html">AVISource / OpenDMLSource / 
-      AVIFileSource / WAVSource</a></td>
-    <td width=70%> &ouml;ffnet eine Video-Datei</td>
-  <tr>
-    <td width=30%><a href="filters/directshowsource.html">DirectShowSource</a></td>
-    <td width=70%> &ouml;ffnet eine Videodatei mittels DirectShow</td>
-  <tr>
-    <td width=30%><a href="filters/segmentedsource.html">SegmentedAVISource / 
-      SegmentedDirectShowSource</a></td>
-    <td width=70%> l&auml;dt automatisch bis zu 100 AVI-Segmente</td>
-  <tr>
-    <td width=30%><a href="filters/blankclip.html">BlankClip / Blackness</a></td>
-    <td width=70%> erzeugt ein einfarbiges Clip mit den angegebenen Eigenschaften</td>
+<table border cellspacing="0" cellpadding="4" width="90%">
+ <tr><td width="30%"><a href="filters/avisource.html">AVISource / OpenDMLSource / AVIFileSource / WAVSource</a></td><td width="70%">Es werden die in den Anf&uuml;hrungszeichen enthaltenen Dateinamen als Argument &uuml;bernommen und die Dateien ge&ouml;ffnet.</td></tr>
+ <tr><td><a href="filters/directshowsource.html">DirectShowSource</a></td><td>Es wird eine Videodatei mittels DirectShow ge&ouml;ffnet.</td></tr>
+ <tr><td><a href="filters/segmentedsource.html">SegmentedAVISource / SegmentedDirectShowSource</a></td><td>Es werden automatisch bis zu 100 AVI-Segmente &uuml;bers Argument geladen.</td></tr>
+ <tr><td><a href="filters/blankclip.html">BlankClip / Blackness</a></td><td>Es wird ein einfarbiger Clip ohne Audio mit der angegebenen L&auml;nge (in Frames) erzeugt.</td></tr>
+ <tr><td><a href="filters/image.html">ImageReader</a></td><td>Es wird aus Standbildern ein Videoclip erzeugt.</td></tr>
 </table>
+
 <h2><a name="processing"></a>Filter zur Bildbearbeitung</h2>
-<table border=1 cellpadding=4 cellspacing=0 style="border-style:1px solid black" width=90%>
-  <tr> 
-    <td width=30%><a href="filters/addborders.html">AddBorders</a></td>
-    <td width=70%> f&uuml;gt einen schwarzen Rand um das Bild dazu</td>
-  <tr> 
-    <td width=30%><a href="filters/blur.html">Blur / Sharpen</a></td>
-    <td width=70%>Einfache 3x3-kernel Sch&auml;rfe- und Unsch&auml;rfe-Filter</td>
-  <tr> 
-    <td width=30%><a href="filters/convert.html">ConvertToRGB / ConvertToYUY2 
-      / ConvertBackToYUY2 / ConvertToRGB32 / ConvertToRGB24</a></td>
-    <td width=70%>AviSynth kann intern mit zwei Farbformaten RGB und YUY2 rechnen, 
-      diese Filter dienen zur Umwandlung dazwischen</td>
-  <tr> 
-    <td width=30%><a href="filters/crop.html">Crop / CropBottom</a></td>
-    <td width=70%> schneidet den Rand eines Bildes ab</td>
-  <tr> 
-    <td width=30%><a href="filters/convolution.html">GeneralConvolution</a></td>
-    <td width=70%>Allgemeine Konvolution.</td>
-  <tr> 
-    <td width=30%><a href="filters/greyscale.html">Greyscale</a></td>
-    <td width=70%>Umwandlung in ein Grauwert-Video</td>
-  <tr> 
-    <td width=30%><a href="filters/layer.html">Layer / Mask / ResetMask / ColorKeyMask</a></td>
-    <td width=70%>&Uuml;berlagerung zweier Videos, diese m&uuml;ssen nicht gleich 
-      gross sein</td>
-  <tr> 
-    <td width=30%><a href="filters/letterbox.html">Letterbox</a></td>
-    <td width=70%> f&auml;rbt den Rand schwarz ein</td>
-  <tr> 
-    <td width=30%><a href="filters/levels.html">Levels</a></td>
-    <td width=70%>&auml;ndert die Helligkeitsverteilung und den Gammawert.</td>
-  <tr> 
-    <td width=30%><a href="filters/merge.html">MergeChroma / MergeLuma</a></td>
-    <td width=70%>Mischen der Farb- oder Helligkeitswerte zweier gleich grosser 
-      Videos</td>
-  <tr> 
-    <td width=30%><a href="filters/reduceby2.html">ReduceBy2 / HorizontalReduceBy2 
-      / VerticalReduceBy2</a></td>
-    <td width=70%>Verkleinerung auf die H&auml;lfte.</td>
-  <tr> 
-    <td width=30%><a href="filters/resize.html">BilinearResize / BicubicResize 
-      / LanczosResize / PointResize</a></td>
-    <td width=70%>Vergr&ouml;ssern und Verkleinern mit verschiedenen Methoden</td>
-  <tr> 
-    <td width=30%><a href="filters/adjust.html">RGBAdjust</a></td>
-    <td width=70%>Ver&auml;ndern der einzelnen Farbkomponenten</td>
-  <tr> 
-    <td width=30%><a href="filters/soften.html">SpatialSoften / TemporalSoften</a></td>
-    <td width=70%>Rauschfilter durch adaptives Mischen von Pixel</td>
-  <tr> 
-    <td width=30%><a href="filters/Tweak.html">Tweak</a></td>
-    <td width=70%>Ver&auml;ndern von Farbton, S&auml;ttigung, Helligkeit und Kontrast</td>
+<table border cellspacing="0" cellpadding="4" width="90%">
+ <tr><td width="30%"><a href="filters/addborders.html">Addborders</a></td><td width="70%">Es wird einen schwarzen Rand um das Bild dazu hinzugef&uuml;gt.</td></tr>
+ <tr><td><a href="filters/blur.html">Blur / Sharpen</a></td><td>Dies sind einfache 3x3-Kern Sch&auml;rfe- und Unsch&auml;rfe-Filter.</td></tr>
+ <tr><td><a href="filters/coloryuv.html">ColorYUV</a></td><td>Man kann die Farben und die Helligkeit unabh&auml;ngig voneinander justieren.</td></tr>
+ <tr><td><a href="filters/convert.html">ConvertToRGB / ConvertToYUY2 / ConvertToYV12 / ConvertBackToYUY2 ConvertToRGB32 / ConvertToRGB24</a></td><td>AviSynth kann intern mit vier Farbr&auml;umen umgehen: RGB24, RGB32, YUY2 und YV12. Mit diesen Filtern kann man zwischen in die einzelnen Farbr&auml;ume wechseln.</td></tr>
+ <tr><td><a href="filters/crop.html">Crop / CropBottom</a></td><td>Man kann hiermit &uuml;berfl&uuml;ssige Pixel vom Rand eines Bildes wegschneiden.</td></tr>
+ <tr><td><a href="filters/convolution.html">GeneralConvolution</a></td><td>Allgemeine Konvolution.</td></tr>
+ <tr><td><a href="filters/greyscale.html">Greyscale</a></td><td>Umwandlung in ein Graustufen-Video.</td></tr>
+ <tr><td><a href="filters/layer.html">Layer / Mask / ResetMask / ColorKeyMask</a></td><td>&Uuml;berlagerung zweier Videos.</td></tr>
+ <tr><td><a href="filters/letterbox.html">Letterbox</a></td><td>Es wird der obere und untere Rand Schwarz eingef&auml;rbt und optinal auch die linke und rechte Seite eines Bildes.</td></tr>
+ <tr><td><a href="filters/levels.html">Levels</a></td><td>Man kann die Helligkeitsverteilung, den Kontrast und den Gammawert &auml;ndern.</td></tr>
+ <tr><td><a href="filters/limiter.html">Limiter</a></td><td>Es wird die Farbpalette auf den CCIR-601 Bereich eingeschr&auml;nkt.</td></tr>
+ <tr><td><a href="filters/merge.html">MergeChroma / MergeLuma</a></td><td>Mischen der Farb- oder Helligkeitswerte eines Videoclips in einen anderen. Es gibt eine optionale Gewichtung, so dass ein Verh&auml;ltnis zwischen den zwei Clips angegeben werden kann.</td></tr>
+ <tr><td><a href="filters/reduceby2.html">ReduceBy2 / HorizontalReduceBy2 / VerticalReduceBy2</a></td><td>Verkleinerung der entsprechenden Aufl&ouml;sung auf die H&auml;lfte.</td></tr>
+ <tr><td><a href="filters/resize.html">BilinearResize / BicubicResize / LanczosResize / PointResize</a></td><td>Die **Resize Filter skalieren die Quelle in eine beliebige neue Aufl&ouml;sung mittels verschiedener Algorithmen.</td></tr>
+ <tr><td><a href="filters/adjust.html">RGBAdjust</a></td><td>Justiert jeden einzelnen Farbkanal einzeln.</td></tr>
+ <tr><td><a href="filters/soften.html">SpatialSoften / TemporalSoften</a></td><td>Es wird Rauschen entfernt durch adaptives Mischen von Pixeln.</td></tr>
+ <tr><td><a href="filters/swap.html">SwapUV / UToY / VToY / YToUV</a></td><td>Tauscht / kopiert die Farbkan&auml;le eines Videoclips.</td></tr>
+ <tr><td><a href="filters/Tweak.html">Tweak</a></td><td>Ver&auml;ndern von Farbton, S&auml;ttigung, Helligkeit und Kontrast.</td></tr>
 </table>
+
 <h2><a name="editing"></a>Filter zum Scheiden</h2>
-<table border=1 cellpadding=4 cellspacing=0 style="border-style:1px solid black" width=90%>
-  <tr> 
-    <td width=30%><a href="filters/splice.html">AlignedSplice / UnalignedSplice</a></td>
-    <td width=70%>Zusammenf&uuml;gen von Video-Clips (mit oder ohne Anpassung 
-      des Audios)</td>
-  <tr> 
-    <td width=30%><a href="filters/fps.html">AssumeFPS / ChangeFPS / ConvertFPS</a></td>
-    <td width=70%>&Auml;ndern der Bildwiederholrate</td>
-  <tr> 
-    <td width=30%><a href="filters/deleteframe.html">DeleteFrame</a></td>
-    <td width=70%>einen Frame l&ouml;schen</td>
-  <tr> 
-    <td width=30%><a href="filters/dissolve.html">Dissolve</a></td>
-    <td width=70%>&auml;hnlich AlignedSplice, allerdings mit einem Bereich in 
-      dem die Videos gemischt werden</td>
-  <tr> 
-    <td width=30%><a href="filters/duplicateframe.html">DuplicateFrame</a></td>
-    <td width=70%>verdoppelt einen Frame</td>
-  <tr> 
-    <td width=30%><a href="filters/fade.html">FadeIn / FadeOut / FadeIn2 / FadeOut2</a></td>
-    <td width=70%>Ein- und Ausblenden von Video und Audio</td>
-  <tr> 
-    <td width=30%><a href="filters/freezeframe.html">FreezeFrame</a></td>
-    <td width=70%>Ersetzen von Frames</td>
-  <tr> 
-    <td width=30%><a href="filters/loop.html">Loop</a></td>
-    <td width=70%>einen Teil eines Videos wiederholen</td>
-  <tr> 
-    <td width=30%><a href="filters/select.html">SelectEven / SelectOdd</a></td>
-    <td width=70%>jeden zweiten Frame verwenden (meist bei Videos, die aus Fields 
-      bestehen)</td>
-  <tr> 
-    <td width=30%><a href="filters/selectevery.html">SelectEvery</a></td>
-    <td width=70%>die allgemeine Form von SelectEven und Pulldown</td>
-  <tr> 
-    <td width=30%><a href="filters/trim.html">Trim</a></td>
-    <td width=70%>Schneiden eines Videos</td>
+<table border cellspacing="0" cellpadding="4" width="90%" >
+ <tr><td width="30%"><a href="filters/splice.html">AlignedSplice / UnalignedSplice</a></td><td width="70%">Zusammenf&uuml;gen von zwei oder mehr Videoclips.</td></tr>
+ <tr><td><a href="filters/fps.html">AssumeFPS / ChangeFPS / ConvertFPS</a></td><td>&Auml;ndern der Bildwiederholrate in unterschiedlicher Art und Weise.</td></tr>
+ <tr><td><a href="filters/deleteframe.html">DeleteFrame</a></td><td>L&ouml;scht einen einzelnen Frame, den man per Argument angibt.</td></tr>
+ <tr><td><a href="filters/dissolve.html">Dissolve</a></td><td> Ist &auml;hnlich AlignedSplice, allerdings mit einem Bereich, in dem die Videos gemischt werden.</td></tr>
+ <tr><td><a href="filters/duplicateframe.html">DuplicateFrame</a></td><td>Verdoppelt einen Frame, den man per Argument angibt.</td></tr>
+ <tr><td><a href="filters/fade.html">FadeIn / FadeOut</a></td><td>Ein- und Ausblenden des Videos gleichm&auml;&szlig;ig aus oder in Schwarz am Anfang oder am Ende.</td></tr>
+ <tr><td><a href="filters/freezeframe.html">FreezeFrame</a></td><td>Ersetzt alle Frames zwischen dem ersten und letzten Frame</td></tr>
+ <tr><td><a href="filters/loop.html">Loop</a></td><td>Wiederholt den Bereich zwischen dem ersten und letzten Frame eine bestimmte Anzahl mal.</td></tr>
+ <tr><td><a href="filters/select.html">SelectEven / SelectOdd</a></td><td>SelectEven erzeugt ein Video, bei dem nur die geraden Frames genommen wurden.</td></tr>
+ <tr><td><a href="filters/selectevery.html">SelectEvery</a></td><td>Sind die allgemeine Form von SelectEven und Pulldown.</td></tr>
+ <tr><td><a href="filters/selectrangeevery.html">SelectRangeEvery</a></td><td>Es werden nur Frames aus einem Bereich ausgew&auml;hlt, welches sich immer wiederholt.</td></tr>
+ <tr><td><a href="filters/trim.html">Trim</a></td><td>Schneidet einen Videoclip, so dass das erzeugte Video nur die Frames zwischen erstem und letztem Frame enth&auml;lt.</td></tr>
 </table>
+
 <h2><a name="interlaced"></a>Filter zum Bearbeiten von Interlaced Video</h2>
-<table border=1 cellpadding=4 cellspacing=0 style="border-style:1px solid black" width=90%>
-  <tr> 
-    <td width=30%><a href="filters/assumeframefield.html">AssumeFrameBased / AssumeFieldBased</a></td>
-    <td width=70%>zum Umschalten wie das Video behandelt wird</td>
-  <tr> 
-    <td width=30%><a href="filters/assumefieldfirst.html">AssumeTTF / AssumeBFF</a></td>
-    <td width=70%>zum Bestimmen der Halbbild-Reihenfolge</td>
-  <tr> 
-    <td width=30%><a href="filters/bob.html">Bob</a></td>
-    <td width=70%>bob-deinterlacen</td>
-  <tr> 
-    <td width=30%><a href="filters/complementparity.html">ComplementParity</a></td>
-    <td width=70%>&Auml;ndern der Halbbild-Reihenfolge</td>
-  <tr> 
-    <td width=30%><a href="filters/doubleweave.html">DoubleWeave</a></td>
-    <td width=70%>&auml;hnlich wie Weave, es wird aber die doppelte Frameanzahl 
-      erzeugt</td>
-  <tr> 
-    <td width=30%><a href="filters/interleave.html">Interleave</a></td>
-    <td width=70%>Verzahnen von Clips</td>
-  <tr> 
-    <td width=30%><a href="filters/pulldown.html">Pulldown</a></td>
-    <td width=70%>zwei von f&uuml;nf Frames</td>
-  <tr> 
-    <td width=30%><a href="filters/seperatefields.html">SeparateFields</a></td>
-    <td width=70%>ein Interlaced-Bild in die Fields mit der doppelten Framerate 
-      aufsplitten</td>
-  <tr> 
-    <td width=30%><a href="filters/swapfields.html">SwapFields</a></td>
-    <td width=70%>Tauschen der Fields</td>
-  <tr> 
-    <td width=30%><a href="filters/weave.html">Weave</a></td>
-    <td width=70%>das Gegenteil von SeparateFields</td>
+<table border cellspacing="0" cellpadding="4" width="90%">
+ <tr><td width="30%"><a href="filters/assumeframefield.html">AssumeFrameBased / AssumeFieldBased</a></td><td width="70%">AviSynth nimmt dann an, dass der Videoclip auf Feldern oder auf Frames basiert.</td></tr>
+ <tr><td><a href="filters/assumefieldfirst.html">AssumeTTF / AssumeBFF</a></td><td>Bestimmt die Reihenfolge der Halbbilder.</td></tr>
+ <tr><td><a href="filters/bob.html">Bob</a></td><td>Deinterlacen mittels der Bob-Methode.</td></tr>
+ <tr><td><a href="filters/complementparity.html">ComplementParity</a></td><td>&Auml;ndern der Halbbild-Reihenfolge.</td></tr>
+ <tr><td><a href="filters/doubleweave.html">DoubleWeave</a></td><td>Wenn die Quelle auf Feldern basiert, dann funktioniert DoubleWeave &auml;hnlich wie Weave,&auml;hnlich wie Weave, es wird aber die doppelte Frameanzahl erzeugt.</td></tr>
+ <tr><td><a href="filters/interleave.html">Interleave</a></td><td>Verzahnen von mehreren Videoclips auf Frame Basis.</td></tr>
+ <tr><td><a href="filters/pulldown.html">Pulldown</a></td><td>Es werden einfach zwei von f&uuml;nf Frames gel&ouml;scht.</td></tr>
+ <tr><td><a href="filters/seperatefields.html">SeparateFields</a></td><td>Splittet ein Interlaced-Frame in Felder auf.</td></tr>
+ <tr><td><a href="filters/swapfields.html">SwapFields</a></td><td>Tauschen der Felder in einem Interlaced-Frame.</td></tr>
+ <tr><td><a href="filters/weave.html">Weave</a></td><td>Nimmt ein zusammengeh&ouml;hrendes Paar an Feldern aus dem Videoclip und erstellt daraus einen Interlaced-Frame.</td></tr>
 </table>
-<p>
+
 <h2><a name="audio"></a>Audio Filter</h2>
-<table border=1 cellpadding=4 cellspacing=0 style="border-style:1px solid black" width=90%>
-  <tr> 
-    <td width=30%><a href="filters/amplify.html">Amplify / AmplifydB</a></td>
-    <td width=70%>&Auml;ndern der Lautst&auml;rke</td>
-  <tr> 
-    <td width=30%><a href="filters/assumerate.html">AssumeSampleRate</a></td>
-    <td width=70%>Anpassen der Sample-Frequenz und damit &Auml;ndern der Abspielgeschwindigkeit</td>
-  <tr> 
-    <td width=30%><a href="filters/audiodub.html">AudioDub</a></td>
-    <td width=70%>einf&uuml;gen des Audios</td>
-  <tr> 
-    <td width=30%><a href="filters/converttomono.html">ConvertToMono</a></td>
-    <td width=70%>zu Mono wandeln</td>
-  <tr> 
-    <td width=30%><a href="filters/convertaudioto16bit.html">ConvertAudioTo16bit</a></td>
-    <td width=70%>zu 16 bits wandeln</td>
-  <tr> 
-    <td width=30%><a href="filters/delayaudio.html">DelayAudio</a></td>
-    <td width=70%>die Audiospur verz&ouml;gern</td>
-  <tr> 
-    <td width=30%><a href="filters/ensuresync.html">EnsureVBRMP3Sync</a></td>
-    <td width=70%>Asynchrone Wiedergabe von mp3-AVI's vermeiden</td>
-  <tr> 
-    <td width=30%><a href="filters/getchannel.html">GetLeftChannel / GetRightChannel</a></td>
-    <td width=70%>Auswahl eines Kanals</td>
-  <tr> 
-    <td width=30%><a href="filters/killaudio.html">KillAudio</a></td>
-    <td width=70%>Entfernt das Audio</td>
-  <tr> 
-    <td width=30%><a href="filters/passaudio.html">LowPassAudio / HighPassAudio</a></td>
-    <td width=70%>Hochpass und Tiefpass-Filter</td>
-  <tr> 
-    <td width=30%><a href="filters/mixaudio.html">MixAudio</a></td>
-    <td width=70%>Mischen vom Audio</td>
-  <tr> 
-    <td width=30%><a href="filters/monotostereo.html">MonoToStereo</a></td>
-    <td width=70%>Aus zwei Mono ein Stereo erzeugen</td>
-  <tr> 
-    <td width=30%><a href="filters/normalize.html">Normalize</a></td>
-    <td width=70%>Auf maximale Lautst&auml;rke erh&ouml;hen</td>
-  <tr> 
-    <td width=30%><a href="filters/resampleaudio.html">ResampleAudio</a></td>
-    <td width=70%>echtes Umrechnen der Sample-Frequenz</td>
+Vor der Version 2.5 wurde die Samplingtiefe auf 16 Bits konvertiert, wenn einer der folgenden Audio Filter verwendet wurde.<br>
+Ab der Version 2.5 werden die Samplingtiefe automatisch konvertiert, wenn ein Filter eine bestimmte Samplingtiefe ben&ouml;tigt. Dies bedeutet, dass die meisten Filter die verschiedenen Typen von Quelle akzeptieren, aber wenn ein Filter die Samplingtiefe einer Quelle nicht unterst&uuml;tzt, wird die Samplingtiefe automatisch konvertiert in etwas, was unterst&uuml;tzt wird von dem Filter.<br>
+Im Allgemeinen braucht sich der durchschnittlichen Nutzer darum nicht zu k&uuml;mmern. Eine bestimmte Samplingtiefe kann festgestetzt werden durch die ConvertAudio Functionen.<br>
+Wenn die Samplingtiefe ist vom Typ Fließkommazahl und AviSynth die Daten auch ausgeben soll, wird sie automatisch nach 16 Bit konvertiert, da Fließkommazahl-Samplingtiefen nicht als g&uuml;ltige AVI Daten ausgeben werden k&ouml;nnen.<br><br>
+
+<table border cellspacing="0" cellpadding="4" width="90%">
+ <tr><td width="30%"><a href="filters/amplify.html">Amplify / AmplifydB</a></td><td width="70%">&Auml;ndern der Lautst&auml;rke von mehreren Tonspuren.</td></tr>
+ <tr><td><a href="filters/assumerate.html">AssumeSampleRate</a></td><td>Anpassen der Sampling-Frequenz und damit &Auml;ndern der Abspielgeschwindigkeit.</td></tr>
+ <tr><td><a href="filters/audiodub.html">AudioDub</a></td><td>Es wird der Videostream vom ersten Argument und der Audiostream vom zweitem Argument genommen und dann kombiniert.</td></tr>
+ <tr><td><a href="filters/converttomono.html">ConvertToMono</a></td><td>Vereinigt alle Tonkan&auml;le in einen Mono Kanal.</td></tr>
+ <tr><td><a href="filters/convertaudio.html">ConvertAudioTo8bit / ConvertAudioTo16bit / ConvertAudioTo24bit / ConvertAudioTo32bit / ConvertAudioToFloat</a></td><td>Konvertiert die Samplingtiefe von 8 auf 16 Bits.</td></tr>
+ <tr><td><a href="filters/delayaudio.html">DelayAudio</a></td><td>Es wird die Tonspur um eine bestimmte Anzahl an Sekunden verz&ouml;gert.</td></tr>
+ <tr><td><a href="filters/ensuresync.html">EnsureVBRMP3Sync</a></td><td>Korregiert asynchrone MP3-AVI`s beim **seeking oder Schneiden.</td></tr>
+ <tr><td><a href="filters/getchannel.html">GetChannel</a></td><td>Gibt nur einen bestimmten Kanal vom Audiostream wieder.</td></tr>
+ <tr><td><a href="filters/killaudio.html">KillAudio</a></td><td>Entfernt den Ton komplett aus einem Clip.</td></tr>
+ <tr><td><a href="filters/mergechannels.html">MergeChannels</a></td><td>Verbindet die Kan&auml;le von zwei oder mehr Audioclips.</td></tr>
+ <tr><td><a href="filters/mixaudio.html">MixAudio</a></td><td>Mischen vom Audio aus zwei Clips.</td></tr>
+ <tr><td><a href="filters/normalize.html">Normalize</a></td><td>Auf maximale Lautst&auml;rke erh&ouml;hen.</td></tr>
+ <tr><td><a href="filters/resampleaudio.html">ResampleAudio</a></td><td>Konvertiert in hoher Qualit&auml;t die Abtastrate.</td></tr>
 </table>
+
 <h2><a name="special"></a>Spezielle und exotische Filter</h2>
-<table border=1 cellpadding=4 cellspacing=0 style="border-style:1px solid black" width=90%>
-  <tr> 
-    <td width=30%><a href="filters/animate.html">Animate</a></td>
-    <td width=70%>ein Meta-Filter, welches andere Filter mit kontinuierlich ver&auml;nderten 
-      Werten aufruft</td>
-  <tr> 
-    <td width=30%><a href="filters/fixbrokenchromaupsampling.html">FixBrokenChromaUpsampling</a></td>
-    <td width=70%>spezielles Filter z.B. f&uuml;r den MS DV Codec</td>
-  <tr> 
-    <td width=30%><a href="filters/flip.html">FlipVertical</a></td>
-    <td width=70%>stellt das Video auf den Kopf</td>
-  <tr> 
-    <td width=30%><a href="filters/reverse.html">Reverse</a></td>
-    <td width=70%>R&uuml;ckw&auml;rts abspielen</td>
-  <tr> 
-    <td width=30%><a href="filters/subtitle.html">Subtitle</a></td>
-    <td width=70%>eine Zeile Text einf&uuml;gen</td>
+<table border cellspacing="0" cellpadding="4" width="90%">
+ <tr><td width="30%"><a href="filters/animate.html">Animate / ApplyRange</a></td><td width="70%">Dies ist ein Meta-Filter, welcher andere Filter mit kontinuierlich ver&auml;nderten Werten aufruft.</td></tr>
+ <tr><td><a href="filters/conditionalfilter.html">ConditionalFilter / FrameEvaluate / ScriptClip</a></td><td>...</td></tr>
+ <tr><td><a href="filters/fixbrokenchromaupsampling.html">FixBrokenChromaUpsampling</a></td><td>Es ist mir aufgefallen, dass der MS DV Codec die Farbkan&auml;le falsch hochrechnet, so habe ich diesen Filter erstellt, der das Problem kompensiert.</td></tr>
+ <tr><td><a href="filters/fixluminance.html">FixLuminance</a></td><td>Korregiert einen versetzten vertikalen Helligkeits **offset</td></tr>
+ <tr><td><a href="filters/flip.html">FlipHorizontal / FlipVertical</a></td><td>Stellt das Video auf den Kopf oder tauscht die Seiten</td></tr>
+ <tr><td><a href="filters/image.html">Imagewriter</a></td><td>Schreibt die Frames als Bilder auf die Festplatte.</td></tr>
+ <tr><td><a href="filters/peculiar.html">PeculiarBlend</a></td><td>Blendet jeden Frame in den darauffolgenden Frame in einer bestimmten Art ein.</td></tr>
+ <tr><td><a href="filters/reverse.html">Reverse</a></td><td>Spielt den Clip r&uuml;ckw&auml;rts ab.</td></tr>
+ <tr><td><a href="filters/subtitle.html">Subtitle</a></td><td>F&uuml;gt eine einzelne Textzeile (anti-aliased) in einen bestimmten Bereich ein.</td></tr>
+ <tr><td><a href="filters/turn.html">TurnLeft / Turnright</a></td><td>Dreht das Video um 90 Grad gegen/im Uhrzeigersinn.</td></tr>
 </table>
+
 <h2><a name="debug"></a>Debug- und Test-Filter</h2>
-<table border=1 cellpadding=4 cellspacing=0 style="border-style:1px solid black" width=90%>
-  <tr> 
-    <td width=30%><a href="filters/colorbars.html">ColorBars</a></td>
-    <td width=70%>erzeugt ein Videoclip mit einem Testbild und Testton</td>
-  <tr> 
-    <td width=30%><a href="filters/compare.html">Compare</a></td>
-    <td width=70%>Vergleicht zwei Videos</td>
-  <tr> 
-    <td width=30%><a href="filters/Histogram.html">Histogram</a></td>
-    <td width=70%>f&uuml;gt ein Helligkeits-Histogram hinzu</td>
-  <tr> 
-    <td width=30%><a href="filters/message.html">MessageClip</a></td>
-    <td width=70%>erzeugt ein Clip mit einer Nachricht als Text</td>
-  <tr> 
-    <td width=30%><a href="filters/showframes.html">ShowFrameNumber / ShowSMPTE</a></td>
-    <td width=70%>blendet die Frame-Nummer oder den Zeitcode ein</td>
-  
-  <tr> 
-    <td width=30%><a href="filters/stack.html">StackHorizontal / StackVertical</a></td>
-    <td width=70%>reiht Videos nebeneinander</td>
-  
-  <tr> 
-    <td width=30%><a href="filters/subtract.html">Subtract</a></td>
-    <td width=70%>die Differenz zweier Videos</td>
-  
-  <tr> 
-    <td width=30%><a href="filters/version.html"> Version</a></td>
-    <td width=70%>erzeugt ein Video mit der Versionsnummer und der Copyright-Information</td>
-  
+<table border cellspacing="0" cellpadding="4" width="90%">
+ <tr><td width="30%"><a href="filters/colorbars.html">ColorBars</a></td><td width="70%">Erzeugt ein Videoclip mit einem Testbild aus SMPTE Farbbalken.</td></tr>
+ <tr><td><a href="filters/compare.html">Compare</a></td><td>Vergleicht zwei Videoclips und gibt die Informationen &uuml;ber die Unterschiede aus.</td></tr>
+ <tr><td><a href="filters/Histogram.html">Histogram</a></td><td>F&uuml;gt ein Helligkeits-Histogram hinzu.</td></tr>
+ <tr><td><a href="filters/info.html">Info</a></td><td>Gibt Informationen &uuml;ber das Video und Audio aus.</td></tr>
+ <tr><td><a href="filters/message.html">MessageClip</a></td><td>Erzeugt einen Videoclip mit einer Textnachricht.</td></tr>
+ <tr><td><a href="filters/showfive.html">ShowFiveVersions</a></td><td>Nimmt f&uuml;nf Videoclips und kombiniert sie nebeneinander von links nach rechts zu einem Bild.</td></tr>
+ <tr><td><a href="filters/showframes.html">ShowFrameNumber / ShowSMPTE</a></td><td>Blendet die Frame-Nummer ein.</td></tr>
+ <tr><td><a href="filters/stack.html">StackHorizontal / StackVertical</a></td><td>Reiht zwei oder mehr Videoclips nebeneinander oder untereinander.</td></tr>
+ <tr><td><a href="filters/subtract.html">Subtract</a></td><td>Gibt eine Videoclip aus, wobei jeder Pixel die Differenz aus zwei verglichenen Pixeln ist.</td></tr>
+ <tr><td><a href="filters/version.html">Version</a></td><td>Erzeugt ein Video mit der Versionsnummer und der Copyright-Information.</td></tr>
 </table>
+
 </body>
 </html>

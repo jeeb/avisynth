@@ -1,49 +1,28 @@
 <!doctype html public "-//W3C//DTD HTML 4.0 Transitional//EN">
 <html>
 <head>
-<meta name="GENERATOR" content="PPWIZARD version 02.213 on WIN2K, FREE tool for Windows, OS/2, DOS and UNIX by Dennis Bareis (http://www.labyrinth.net.au/~dbareis/ppwizard.htm)">
-<title>FadeOut / FadeOut2 Avisynth Filter</title>
-<STYLE type=text/css>
-A:link {
-COLOR: #404a58;TEXT-DECORATION: none
-}
-A:visited {
-COLOR: #404a58;TEXT-DECORATION: none
-}
-A:active {
-COLOR: #404a58;TEXT-DECORATION: none
-}
-A:hover {
-COLOR: #e8f0ff; TEXT-DECORATION: underline
-}
-.titresmall {
-color : 000000;
-font-family: Tahoma, Verdana, Arial, Helvetica, sans-serif;
-font-size: 16pt;
-letter-spacing: 0.15em;
-font-weight: bold;
-}
-</STYLE>
+ <meta name="Generator" content="PPWIZARD version 02.213 on WIN2K, FREE tool for Windows, OS/2, DOS and UNIX by Dennis Bareis (http://www.labyrinth.net.au/~dbareis/ppwizard.htm)">
+ <title>FadeOut / FadeOut2 AviSynth Filter</title>
+ <style type=text/css>
+  A:link { COLOR: #404a58;TEXT-DECORATION: none }
+  A:visited { COLOR: #404a58;TEXT-DECORATION: none }
+  A:active { COLOR: #404a58;TEXT-DECORATION: none }
+  A:hover { COLOR: #e8f0ff; TEXT-DECORATION: underline }
+  .titresmall { color : 000000; font-family: Tahoma, Verdana, Arial, Helvetica, sans-serif; font-size: 16pt; letter-spacing: 0.15em; font-weight: bold; }
+ </style>
 </head>
 <body bgcolor=b6cac0>
-<span class="titresmall"><a name="FadeOut">FadeOut / FadeOut2</a></span> 
-<p><tt>FadeOut(</tt><i>clip, int frames</i><tt>)<br>
-  FadeIn(</tt><i>clip, int frames</i><tt>)</tt></p>
-<p><tt>FadeOut2(</tt><i>clip, int frames</i><tt>)<br>
-  FadeIn2(</tt><i>clip, int frames</i><tt>)</tt><tt> </tt></p>
-<p><tt>FadeOut</tt> und <tt>FadeOut2</tt> blenden das Video linear zu einem schwarzen 
-  Bild aus. Auch das Audio wird linear zu Stille ausgeblendet. Das Ausblenden 
-  betrifft immer nur die letzten <i>frames</i> Frames vom Clip. Der letzte Frame 
-  ist nur fast ganz schwarz, daher wird am Ende noch ein ganz schwarzer Frame 
-  angeh&auml;ngt. Die Frameanzahl wird daher um eins erh&ouml;ht. </p>
-<p><tt>FadeOut2</tt> arbeitet genauso, ausser dass zwei schwarze Frames angeh&auml;ngt 
-  werden. Der einzige Verwendungszweck daf&uuml;r ist ein work-around f&uuml;r 
-  einen Fehler im Windows Media Player (der letzte Frame einer MPEG-Datei wird 
-  nicht abgespielt, sondern der vorletzte bleibt sichtbar).</p>
-<p><tt>FadeIn</tt> und <tt>FadeIn2</tt> machen das Gleiche am Anfang eines Clips.</p>
-<FORM>
-<INPUT TYPE="Button" VALUE="Back"
-onClick="history.go(-1)">
-</form>
+<span class="titresmall"><a name="FadeOut"></a>FadeOut / FadeOut2</span><br><br>
+
+<tt>FadeOut(</tt><i>clip, int frames</i><tt>)</tt><br>
+<tt>FadeOut2(</tt><i>clip, int frames</i><tt>)</tt><br><br>
+
+<tt>FadeOut</tt> und <tt>FadeOut2</tt> blenden das Video am Ende linear zu einem schwarzen Bild aus. Auch der Ton (falls vorhanden) wird linear zu Stille ausgeblendet. Das Ausblenden betrifft immer nur die letzten <i>frames</i> Frames vom Clip. Der letzte Frame ist nur fast ganz Schwarz, daher wird am Ende noch ein ganz schwarzer Frame angeh&auml;ngt. Die Frameanzahl wird daher um Eins erh&ouml;ht.<br><br>
+
+<tt>FadeOut2</tt> arbeitet genauso, au&szlig;er dass zwei schwarze Frames angeh&auml;ngt werden. Der einzige Verwendungszweck daf&uuml;r ist, dass dies ein Workaround f&uuml;r einen Fehler im Windows Media Player ist (der letzte Frame einer MPEG-Datei wird nicht abgespielt, sondern der vorletzte bleibt sichtbar).<br><br>
+
+<tt>FadeOut(</tt><i>clip</i><tt>,</tt><i>n</i><tt>)</tt> ist an sich nur eine Ankürzung f&uuml;r <tt>Dissolve(</tt><i>clip</i><tt>,Blackness(</tt><i>clip</i><tt>,</tt><i>n+1</i><tt>)<tt>,</tt><i>n</i>)</tt> (oder <i>n+2</i> anstatt von <i>n+1</i> f&uuml;r <tt>FadeOut2</tt>). Es gibt keinen korrespondierenden <tt>FadeIn</tt> Befehl, aber man bekommt den gleichen Effekt, when man die Argumente von <tt>Dissolve</tt> umdreht: <tt>Dissolve(Blackness(</tt><i>n+1</i><tt>,</tt><i>clip</i><tt>),</tt><i>clip</i><tt>,</tt><i>n</i><tt>)</tt>.<br><br>
+
+<form><input type="Button" value="Back" onClick="history.go(-1)"></form>
 </body>
 </html>

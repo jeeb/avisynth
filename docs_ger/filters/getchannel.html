@@ -1,52 +1,86 @@
-<!doctype html public "-//W3C//DTD HTML 4.0 Transitional//EN">
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
 <html>
 <head>
-<meta name="GENERATOR" content="PPWIZARD version 02.213 on WIN2K, FREE tool for Windows, OS/2, DOS and UNIX by Dennis Bareis (http://www.labyrinth.net.au/~dbareis/ppwizard.htm)">
-<title>GetLeftChannel / GetRightChannel Avisynth Filter</title>
-<STYLE type=text/css>
-A:link {
-COLOR: #404a58;TEXT-DECORATION: none
-}
-A:visited {
-COLOR: #404a58;TEXT-DECORATION: none
-}
-A:active {
-COLOR: #404a58;TEXT-DECORATION: none
-}
-A:hover {
-COLOR: #e8f0ff; TEXT-DECORATION: underline
-}
-.titresmall {
-color : 000000;
-font-family: Tahoma, Verdana, Arial, Helvetica, sans-serif;
-font-size: 16pt;
-letter-spacing: 0.15em;
-font-weight: bold;
-}
-</STYLE>
+ <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+ <meta name="Generator" content="Mozilla/4.06 [en] (Win98; I) [Netscape]">
+ <meta name="Author" content="Wilbert Dijkhof">
+ <title>GetChannel AviSynth Filter</title>
+ <style type=text/css>
+  A:link { COLOR: #404a58;TEXT-DECORATION: none }
+  A:visited { COLOR: #404a58;TEXT-DECORATION: none }
+  A:active { COLOR: #404a58;TEXT-DECORATION: none }
+  A:hover { COLOR: #e8f0ff; TEXT-DECORATION: underline }
+  .titresmall { color : 000000; font-family: Tahoma, Verdana, Arial, Helvetica, sans-serif; font-size: 16pt; letter-spacing: 0.15em; font-weight: bold; }
+ </style>
 </head>
-<body bgcolor=b6cac0>
-<SPAN class=titresmall><A name=GetChannel>GetLeftChannel / GetRightChannel</A></SPAN>
-<P><TT>GetLeftChannel(</TT><I>clip</I><TT>)</TT>
-<br><TT>GetRightChannel(</TT><I>clip</I><TT>)</TT>
-<p>Hat als Ergebnis den linken oder rechten Kanal eines Stereo-Signals. Das Audio 
-  wird ausserdem auf 16 bit umgewandelt. 
-<p>
-<table width="75%" border="1">
-  <tr> 
-    <td> 
-      <pre>Beispiel:</pre>
-      <pre># entfernt den rechten Kanal, erzeugt also ein Mono-Clip mit dem Audio vom linken Kanal:
-stereo=WavSource("c:\afx-ab3_t4.wav")
-return GetLeftChannel(stereo)
-</pre>
-      </td>
-  </tr>
-</table>
-<p>&nbsp;
-<FORM>
-<INPUT TYPE="Button" VALUE="Back"
-onClick="history.go(-1)">
-</form>
+<body bgcolor="#B6CAC0">
+<span class=titresmall><a name="GetChannel"></a>GetChannel</span><br><br>
+
+<tt>GetChannel(</tt><i>clip, int ch1 [, int ch2, ...]</i><tt>)</tt><br><br>
+
+Seit der Version 2.5 ersetzt <tt>GetChannel</tt> <tt>GetLeftChannel</tt>, indem der linken Kanal wiedergeben wird, und <tt>GetRightChannel</tt>, indem ein oder mehr Kan&auml;e eines Mehrkanalsignales wiedergegeben wird. Die Kan&auml;le sind folgenderma&szlig;en nummeriert:<br><br>
+ 
+<i>Stereo</i>:<br>
+<table border width="75%">
+ <tr>
+  <td>1</td>
+  <td>linker Kanal</td>
+ </tr>
+ <tr>
+  <td>2</td>
+  <td>rechter Kanal</td>
+ </tr>
+</table><br>
+
+<i>6-kan&auml;lige WAV Datei (erzeugt aus AC3 5.1)</i>:
+<table border width="75%">
+ <tr>
+  <td>1</td>
+  <td>vorderer linker Kanal</td>
+ </tr>
+ <tr>
+  <td>2</td>
+  <td>vorderer rechter Kanal</td>
+ </tr>
+  <tr>
+  <td>3</td>
+  <td>Center Kanal vorne</td>
+ </tr>
+  <tr>
+  <td>4</td>
+  <td>hinterer linker Kanal</td>
+ </tr>
+  <tr>
+  <td>5</td>
+  <td>hinterer rechter Kanal</td>
+ </tr>
+  <tr>
+  <td>6</td>
+  <td>LFE (Subwoofer)</td>
+ </tr>
+</table><br>
+
+<table border>
+ <tr>
+  <td>
+   <tt>
+    Beispiele:<br><br>
+    # Entfernt den rechten Kanal und gibt einen Mono Ton bestehend aus dem linkem Kanal zur&uuml;ck:<br>
+    video = AviSource("C:\Dateiname.avi")<br>
+    stereo = WavSource("C:\Dateiname_wav.wav")<br>
+    mono = GetChannel(stereo, 1)<br>
+    return AudioDub(video, mono)<br><br>
+
+    # Konvertiert eine AVI mit unkompremiertem Mehrkanal-WAV Ton in ein Stereo Signal:<br>
+    video = AviSource("C:\Dateiname.avi")<br>
+    audio = WavSource("C:\Dateiname_wav.wav")<br>
+    stereo = GetChannel(audio, 1, 2)<br>
+    return AudioDub(video, stereo)
+   </tt>
+  </td>
+ </tr>
+</table><br>
+
+<form><input type="Button" value="Back" onClick="history.go(-1)"></form>
 </body>
 </html>

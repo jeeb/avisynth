@@ -1,0 +1,52 @@
+<!doctype html public "-//w3c//dtd html 4.0 transitional//en">
+<html>
+<head>
+ <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+ <meta name="Generator" content="Mozilla/4.5 [en] (WinNT; I) [Netscape]">
+ <meta name="Author" content="Wilbert Dijkhof">
+ <title>Swap AviSynth Filter</title>
+ <style type=text/css>
+  A:link { COLOR: #404a58;TEXT-DECORATION: none }
+  A:visited { COLOR: #404a58;TEXT-DECORATION: none }
+  A:active { COLOR: #404a58;TEXT-DECORATION: none }
+  A:hover { COLOR: #e8f0ff; TEXT-DECORATION: underline }
+  .titresmall { color : 000000; font-family: Tahoma, Verdana, Arial, Helvetica, sans-serif; font-size: 16pt; letter-spacing: 0.15em; font-weight: bold; }
+ </style>
+</head>
+<body bgcolor="#B6CAC0">
+<span class="titresmall"><a name="Swap"></a>SwapUV / UToY / VToY / YToUV</span><br><br>
+
+<tt>SwapUV(</tt><i>clip</i><tt>)</tt><br>
+<tt>UToY(</tt><i>clip</i><tt>)</tt><br>
+<tt>VToY(</tt><i>clip</i><tt>)</tt><br>
+<tt>YToUV(</tt><i>clipU</i>, <i>clipV</i><tt>)</tt><br><br>
+
+Diese vier Filter sind seit AviSynth v2.5 verf&uuml;gbar.<br><br>
+
+<tt>SwapUV</tt> tauscht die Farbkan&auml;le (U und V) eines Videoclips. Manchmal sind die Farben verzerrt (Gesichter sind blau anstatt hautfarbend usw.), wenn man einen DivX oder MJPEG Clip in AviSynth v2.5 l&auml;dt aufgrund eines Fehlers (?) im DivX Dekoder. Man kann mit diesem Filter das Problem beheben.<br><br>
+
+<tt>UToY</tt> kopiert  **chroma U plane to Y plane. Das resultierende Bild ist halb so gro&szlig; und es gibt keine Farbinformationen mehr, das Bild besteht aus Graustufen.<br><br>
+
+Genauso kopiert <tt>VToY</tt> **chroma V plane to Y plane. Das resultierende Bild ist halb so gro&szlig; und es gibt keine Farbinformationen mehr, das Bild besteht aus Graustufen.<br><br>
+
+<tt>YToUV</tt> kopiert den Helligkeitskanal der beiden Clips in den U und V Kanal. Das Bild ist nun doppelt so gro&szlig; und die Helligkeit besteht zu 50% aus Grau. Nutze <a href="Merge.html">MergeLuma</a>, wenn du Helligkeitswerte hinzuf&uuml;gen willst.<br><br>
+
+<table border width="75%">
+ <tr>
+  <td>
+   <tt>
+    Beispiel:<br><br>
+    
+    # Verwischt den U Farbkanal:<br>
+    video = Colorbars(512, 512).ConvertToYV12<br>
+    u_chroma = UToY(video).blur(1.5)<br>
+    YtoUV(u_chroma, video.VToY)<br>
+    MergeLuma(video)
+   </tt>
+  </td>
+ </tr>
+</table><br>
+
+<form><input type="Button" value="Back" onClick="history.go(-1)"></form>
+</body>
+</html>

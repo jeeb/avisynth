@@ -1,0 +1,94 @@
+<!doctype html public "-//w3c//dtd html 4.0 transitional//en">
+<html>
+<head>
+ <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+ <meta name="Generator" content="Mozilla/4.5 [en] (WinNT; I) [Netscape]">
+ <meta name="Author" content="Wilbert Dijkhof">
+ <title>ColorYUV AviSynth Filter</title>
+ <style type=text/css>
+  A:link { COLOR: #404a58;TEXT-DECORATION: none }
+  A:visited { COLOR: #404a58;TEXT-DECORATION: none }
+  A:active { COLOR: #404a58;TEXT-DECORATION: none }
+  A:hover { COLOR: #e8f0ff; TEXT-DECORATION: underline }
+  .titresmall { color: 000000; font-family: Tahoma, Verdana, Arial, Helvetica, sans-serif; font-size: 16pt; letter-spacing: 0.15em; font-weight: bold; }
+ </style>
+</head>
+<body text="#000000" bgcolor="#B6CAC0" link="#0000EE" vlink="#551A8B" alink="#FF0000">
+<span class="titresmall"><a name="ColorYUV"></a>ColorYUV</span>
+<p><tt>ColorYUV</tt>(<i>clip, float "gain_y", float "off_y", float "gamma_y",
+float "cont_y", float "gain_u", float "off_u", float "gamma_u", float "cont_u",
+float "gain_v", float "off_v", float "gamma_v", float "cont_v", string
+"levels", string "opt", boolean "showyuv", boolean "analyze", boolean "autowhite",
+boolean "autogain"</i>)
+<p><tt>ColorYUV</tt> allows many different methods of changing the color
+and luminance of your images. <tt>ColorYUV</tt> is present in AviSynth
+v2.5. All settings for this filter are optional. All values are defaulting
+to "0".
+<p>Description:
+<p><i>Gain</i>, <i>offset</i>, <i>gamma</i> and <i>contrast</i> can be
+set independent on each channel.
+<p><i>Gain</i> is a multiplier for the value. That means that if gain is
+set to 0, it preserves the values as they are. When gain is 256 all values
+are multiplied by 2 (twice as bright). If gain is 512 all values are multiplied
+by 3.
+<p><i>Offset</i> adds a value to the luma or chroma values. An offset set
+to 16 will add 16 to the pixel values. An offset of -32 will subtract 32
+from all pixel values.
+<p><i>Gamma</i> adjusts gamma of the specified channel. A gamma value of
+0 is the same as gamma 1.0. When gamma is set to 256 it is the same as
+gamma 2.0. Gamma is valid down to -256, where it is the same as gamma 0.0.
+<p><i>Contrast</i> adjusts contrast of the specified channel. Values are
+the mapped the same way as Gamma.
+<p><i>Levels</i> can be set to either "TV->PC" or "PC->TV". This will perform
+a range conversion. Normally YUV values are not mapped from 0 to 255 (PC
+range), but a limited range (TV range). This performs conversion between
+the two formats. If nothing is entered as parameter, no conversion will
+be made (default operation).
+<p><i>Opt</i> can be either "coring" or "" (nothing, default setting).
+Specifying "coring" will clip your YUV values to the valid TV-ranges. Otherwise
+"invalid results" will be accepted.
+<p><i>ShowYUV</i> can be true or false. This will overwrite your image
+with an image showing all chroma values along the two axes. This can be
+useful if you need to adjust the color of your image, but need to know
+how the colors are arranged. At the topleft of the image, the chroma values
+are '16'. At the right side of the image, U is at maximum. At the bottom
+of the screen V is at its maximum. In the middle both chroma is 128 (or
+grey).
+<p><i>Analyze</i> can be true or false. This will print out color statistics
+on the screen. There are maximum and minimum values for all channels. There
+is an average for all channels. There is a "loose maximum" and "loose minimum".
+The "loose" values are made to filter out very bright or very dark noise
+creating an artificially low or high minimum / maximum.
+<p><i>Autowhite</i> can be true or false. This setting will use the information
+from the analyzer, and attempt to center the color offsets. If you have
+recorded some material, where the colors are shifted toward one color,
+this filter may help. But be careful - it isn't very intelligent - if your
+material is a clear blue sky, autowhite will make it completely grey! If
+you add "off_u" or "off_v" parameters at the same time as autowhite, they
+will not be used!
+<p><i>Autogain</i> can be true or false. This setting will use the information
+from the analyzer, and attempt to create as good contrast as possible.
+That means, it will scale up the luma (y) values to match the minimum and
+maximum values. This will make it act much as an "autogain" setting on
+cameras, amplifying dark scenes very much, while leaving scenes with good
+contrast alone. Some places this is also refered to as "autolevels".
+<p>The quantities saturation, contrast and brightness (as in <tt><a href="tweak.html">Tweak</a></tt>
+for example) are connected with quantities in this filter by the following
+relations:
+<p>cont_u = cont_v = - (1 - saturation) * 256
+<br>cont_y = - (1-contrast) * 256
+<br>off_y = brightness
+<p>A saturation of 0.8 gives for example: cont_u = cont_v = - 0.2 * 256
+= 51.2.
+<p>Examples:
+<pre>#&nbsp; This will adjust gamma for all channels (although less to y), while making 'y' larger.
+colorYUV(gamma_y=128, gamma_u=256, gamma_v=256, offset_y=-16)</pre>
+
+<pre>#&nbsp; Shows all colors. Frame 0 luma is 16, frame 1 luma is 17 and so on.
+colorYUV(showyuv=true)</pre>
+
+<pre>#&nbsp; Recovers visibility on very bad recordings.
+colorYUV(autogain=true, autowhite=true)</pre>
+<form><input type="Button" value="Back" onClick="history.go(-1)"></form>
+</body>
+</html>
