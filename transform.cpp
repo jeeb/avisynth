@@ -210,15 +210,6 @@ Crop::Crop(int _left, int _top, int _width, int _height, PClip _child, IScriptEn
         env->ThrowError("Crop: YV12 images can only be cropped by even numbers (top).");
       if (_height&1)
         env->ThrowError("Crop: YV12 images can only be cropped by even numbers (bottom).");
-      if ((_top&3) &&(vi.IsFieldBased()))
-        env->ThrowError("Crop: Interlaced (fieldbased) YV12 images can only be cropped by numbers multiple of 4 in height (top).");
-      if ((_height&3) &&(vi.IsFieldBased()))
-        env->ThrowError("Crop: Interlaced (fieldbased) YV12 images can only be cropped by numbers multiple of 4 in height (bottom).");
-    } else if (vi.IsYUY2()) {
-      if (vi.IsFieldBased() && (_top&1))
-        env->ThrowError("Crop: Interlaced (fieldbased) YUY2 images can only be cropped by even numbers in height (top).");
-      if (vi.IsFieldBased() && (_height&1))
-        env->ThrowError("Crop: Interlaced (fieldbased) YUY2 images can only be cropped by even numbers in height (bottom).");
     }
   } else {
     // RGB is upside-down
@@ -244,7 +235,6 @@ PVideoFrame Crop::GetFrame(int n, IScriptEnvironment* env)
     return frame->Subframe(top * frame->GetPitch() + left_bytes, frame->GetPitch(), vi.RowSize(), vi.height);
   else
     return frame->Subframe(top * frame->GetPitch() + left_bytes, frame->GetPitch(), vi.RowSize(), vi.height, (top/2) * frame->GetPitch(PLANAR_U) + (left_bytes/2), (top/2) * frame->GetPitch(PLANAR_V) + (left_bytes/2), frame->GetPitch(PLANAR_U));
-  //                                                                                                                    U                                  V
 }
 
 
@@ -269,10 +259,7 @@ AddBorders::AddBorders(int _left, int _top, int _right, int _bot, int _clr, PCli
     // YUY2 can only add even amounts
     left = left & -2;
     right = (right+1) & -2;
-    if (vi.IsYV12()&&vi.IsFieldBased()) {
-      top=top& -4;
-      bot=(bot+3)& -4;
-    } else if (vi.IsYV12()) {
+    if (vi.IsYV12()) {
       top=top& -2;
       bot=(bot+1)& -2;
     }

@@ -389,7 +389,7 @@ ConvertToYV12::ConvertToYV12(PClip _child, bool _interlaced, IScriptEnvironment*
     env->ThrowError("ConvertToYV12: image width must be multiple of 2");
   if (interlaced && (vi.height & 3))
     env->ThrowError("ConvertToYV12: Interlaced image height must be multiple of 4");
-  if ((!vi.IsFieldBased()) && (vi.height & 1))
+  if ((!interlaced) && (vi.height & 1))
     env->ThrowError("ConvertToYV12: image height must be multiple of 2");
   isYUY2=isRGB32=isRGB24=false;
   if (vi.IsYUY2()) isYUY2 = true;
@@ -666,7 +666,7 @@ PVideoFrame Greyscale::GetFrame(int n, IScriptEnvironment* env)
     myy = frame->GetHeight(PLANAR_U);
 	  for (int y=0; y<myy; y++) {
       for (int x=0; x<myx; x++) {
-		    srcpUV[x] = 0x7f7f7f7f;  // mod 8
+		    srcpUV[x] = 0x80808080;  // mod 8
       }
 		  srcpUV += pitch;
 	  }
@@ -676,7 +676,7 @@ PVideoFrame Greyscale::GetFrame(int n, IScriptEnvironment* env)
     myy = frame->GetHeight(PLANAR_V);
 	  for (y=0; y<myy; ++y) {
       for (int x=0; x<myx; x++) {
-		    srcpUV[x] = 0x7f7f7f7f;  // mod 8
+		    srcpUV[x] = 0x80808080;  // mod 8
       }
 		  srcpUV += pitch;
 	  }
@@ -684,7 +684,7 @@ PVideoFrame Greyscale::GetFrame(int n, IScriptEnvironment* env)
 	{
 	  for (int y=0; y<myy; ++y) {
 		for (int x=0; x<myx; x++)
-		  srcp[x*2+1] = 127;
+		  srcp[x*2+1] = 128;
 		srcp += pitch;
 	  }
 	} else if (vi.IsRGB32() && (env->GetCPUFlags() & CPUF_MMX) && (!myx&1) ) {

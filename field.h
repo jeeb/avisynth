@@ -59,14 +59,6 @@
  * SeparateFields splits out Top and Bottom frames. It returns true on 
  * GetParity for Top fields and false for Bottom fields.
  *
- * The old AviSynth had a strange setting of fieldbased. It was false
- * on all material, except after a SeparateFields. This was used to 
- * distinguish between material that had been separated, and 
- * material that did not.
- *
- * In AviSynth 2.5 fieldbased is only true if the material is KNOWN
- * to be fieldbased, or the source filter believes there is a reason
- * to know if it is so.
  **********************************************************************/
 
 

@@ -931,8 +931,6 @@ FilteredResizeV::FilteredResizeV( PClip _child, double subrange_top, double subr
 {
   if (target_height<4)
     env->ThrowError("Resize: Height must be bigger than or equal to 4.");
-  if (vi.IsYV12() && (target_height&3) && vi.IsFieldBased())
-    env->ThrowError("Resize: Fieldbased YV12 destination height must be multiple of 4.");
   if (vi.IsYV12() && (target_height&1))
     env->ThrowError("Resize: YV12 destination height must be multiple of 2.");
   if (vi.IsRGB())

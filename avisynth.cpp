@@ -942,7 +942,7 @@ bool ScriptEnvironment::FunctionExists(const char* name) {
 
 void BitBlt(BYTE* dstp, int dst_pitch, const BYTE* srcp, int src_pitch, int row_size, int height) {
   if (GetCPUFlags() & CPUF_INTEGER_SSE) {
-    asm_BitBlt_MMX(dstp,dst_pitch,srcp,src_pitch,row_size,height);
+    asm_BitBlt_ISSE(dstp,dst_pitch,srcp,src_pitch,row_size,height);
     return;
   } else if (GetCPUFlags() & CPUF_MMX) {
     asm_BitBlt_MMX(dstp,dst_pitch,srcp,src_pitch,row_size,height);

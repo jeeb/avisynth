@@ -81,7 +81,7 @@ SeparateFields::SeparateFields(PClip _child, IScriptEnvironment* env)
   vi.height >>= 1;
   vi.fps_numerator *= 2;
   vi.num_frames *= 2;
-  vi.SetFieldBased(false);
+  vi.SetFieldBased(true);
 }
 
 
@@ -191,7 +191,7 @@ DoubleWeaveFields::DoubleWeaveFields(PClip _child)
   : GenericVideoFilter(_child) 
 {
   vi.height *= 2;
-  vi.SetFieldBased(true);
+  vi.SetFieldBased(false);
 }
 
 
@@ -316,7 +316,7 @@ PVideoFrame __stdcall Fieldwise::GetFrame(int n, IScriptEnvironment* env)
 AVSValue __cdecl Create_DoubleWeave(AVSValue args, void*, IScriptEnvironment* env) 
 {
   PClip clip = args[0].AsClip();
-  if (!clip->GetVideoInfo().IsFieldBased())
+  if (clip->GetVideoInfo().IsFieldBased())
     return new DoubleWeaveFields(clip);
   else
     return new DoubleWeaveFrames(clip);

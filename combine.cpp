@@ -63,7 +63,7 @@ AVSFunction Combine_filters[] = {
 StackVertical::StackVertical(PClip _child1, PClip _child2, IScriptEnvironment* env)
 {
   // swap the order of the parameters in RGB mode because it's upside-down
-  if (_child1->GetVideoInfo().IsYUY2()) {
+  if (_child1->GetVideoInfo().IsYUV()) {
     child1 = _child1; child2 = _child2;
   } else {
     child1 = _child2; child2 = _child1;
@@ -117,15 +117,15 @@ PVideoFrame __stdcall StackVertical::GetFrame(int n, IScriptEnvironment* env)
 
   if (vi.IsYV12())
   {
-    // Copy YV12 upside-down
-    BitBlt(dstp, dst_pitch, src2p, src1_pitch, row_size, src1_height);
-    BitBlt(dstp2, dst_pitch, src1p, src2_pitch, row_size, src2_height);
+    // Copy YV12 
+    BitBlt(dstp, dst_pitch, src1p, src1_pitch, row_size, src1_height);
+    BitBlt(dstp2, dst_pitch, src2p, src2_pitch, row_size, src2_height);
 
-    BitBlt(dstpU, dst_pitchUV, src2pU, src1_pitchUV, row_sizeUV, src1_heightUV);
-    BitBlt(dstp2U, dst_pitchUV, src1pU, src2_pitchUV, row_sizeUV, src2_heightUV);
+    BitBlt(dstpU, dst_pitchUV, src1pU, src1_pitchUV, row_sizeUV, src1_heightUV);
+    BitBlt(dstp2U, dst_pitchUV, src2pU, src2_pitchUV, row_sizeUV, src2_heightUV);
 
-    BitBlt(dstpV, dst_pitchUV, src2pV, src1_pitchUV, row_sizeUV, src1_heightUV);
-    BitBlt(dstp2V, dst_pitchUV, src1pV, src2_pitchUV, row_sizeUV, src2_heightUV);
+    BitBlt(dstpV, dst_pitchUV, src1pV, src1_pitchUV, row_sizeUV, src1_heightUV);
+    BitBlt(dstp2V, dst_pitchUV, src2pV, src2_pitchUV, row_sizeUV, src2_heightUV);
   } else {
     // I'll leave the planar BitBlts (no-ops) in for compatibility with future planar formats
     BitBlt(dstp, dst_pitch, src1p, src1_pitch, row_size, src1_height);
