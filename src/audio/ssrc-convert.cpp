@@ -42,7 +42,7 @@
 ********************************************************************/
 
 AVSFunction SSRC_filters[] = {
-  { "SSRC", "ci[fast]", SSRC::Create },
+  { "SSRC", "ci[fast]b", SSRC::Create },
   { 0 }
 };
 
@@ -61,7 +61,7 @@ SSRC::SSRC(PClip _child, int _target_rate, bool _fast, IScriptEnvironment* env)
 		return;
 	} 
 
-  skip_conversion=false;
+  skip_conversion = false;
   source_rate = vi.audio_samples_per_second;
 
 	factor = double(target_rate) / vi.audio_samples_per_second;
@@ -75,12 +75,24 @@ SSRC::SSRC(PClip _child, int _target_rate, bool _fast, IScriptEnvironment* env)
   input_samples = source_rate;  // We convert one second of input per loop.
   vi.audio_samples_per_second = target_rate;
   srcbuffer = new SFLOAT[vi.AudioChannels() * input_samples];
-  next_sample = 0;
-  inputReadOffset=0;
+
+  for(int i=0; i<vi.AudioChannels() * input_samples; i++)
+    srcbuffer[i] = 0.0f;
+
+  next_sample = -target_rate;
+  inputReadOffset = 0;
+  res->Write(srcbuffer, input_samples * vi.AudioChannels());
 
 }
 
- 
+ /***************************************
+ * Implementation notes:
+ * - For some strange reason SSRC delivers a 
+ * loud click in the very beginning of the sample.
+ *   Therefore we preroll a second of audio whenever 
+ * a new instance is created.
+ ****************************************/
+
 
 void __stdcall SSRC::GetAudio(void* buf, __int64 start, __int64 count, IScriptEnvironment* env)
 {
@@ -88,12 +100,24 @@ void __stdcall SSRC::GetAudio(void* buf, __int64 start, __int64 count, IScriptEn
 		child->GetAudio(buf, start, count, env);
 		return;
 	}
+
   count *= vi.AudioChannels();   // This is how SSRC keeps count. We'll do the same
 
-
   if (start != next_sample) {  // Reset on seek
-    inputReadOffset = MulDiv(start, source_rate, target_rate);  // Reset at new read position.
-    res = SSRC_create(source_rate, target_rate, vi.AudioChannels(), 2, 1, fast);
+    bool skip_restart = false;
+
+    if (start > next_sample) { // Don't seek if within 10 sek, but skip
+      if ((next_sample + input_samples * 10) > start) {
+        skip_restart = true;
+      }
+    }
+
+    if (!skip_restart)  { 
+      inputReadOffset = MulDiv(start, source_rate, target_rate) -  input_samples;  // Reset at new read position minus ONE second.
+      res = SSRC_create(source_rate, target_rate, vi.AudioChannels(), 2, 1, fast);
+      _RPT2(0, "SSRC: Resetting position. Next_sample: %d. Start:%d.!\n", (int)next_sample, (int)start);
+      next_sample = start - target_rate;
+    }
   }
 
 
@@ -101,39 +125,48 @@ void __stdcall SSRC::GetAudio(void* buf, __int64 start, __int64 count, IScriptEn
   int ssrc_samples_tbr = count*sizeof(SFLOAT);  // count in bytes
   bool buffer_full = false;
 
+
+  if (next_sample < start) { // Skip
+    int skip_count = (start - next_sample) * vi.AudioChannels();
+    _RPT1(0,"SSRC: Skipping %u samples", skip_count);
+    int skip_nsamples = skip_count*sizeof(SFLOAT);  // count in bytes
+    do {
+      int ssrc_samples_av;
+      SFLOAT* ssrc_samples = res->GetBuffer(&ssrc_samples_av);
+
+      if (ssrc_samples_av < skip_nsamples) {  // We don't have enough bytes - feed more.
+
+        child->GetAudio(srcbuffer, inputReadOffset, input_samples, env);
+        inputReadOffset += input_samples;
+
+        res->Write(srcbuffer, input_samples * vi.AudioChannels());
+
+      } else {  // Now we have enough data
+        res->Read(skip_count);
+        next_sample += start;
+        buffer_full = true;
+      }
+    } while (!buffer_full);
+
+    buffer_full = false;
+  }
+
+
   do {
     int ssrc_samples_av;
     SFLOAT* ssrc_samples = res->GetBuffer(&ssrc_samples_av);
 
-    if (ssrc_samples_av < ssrc_samples_tbr) {  // We don't have enough bytes.
+    if (ssrc_samples_av < ssrc_samples_tbr) {  // We don't have enough bytes - feed more.
 
       child->GetAudio(srcbuffer, inputReadOffset, input_samples, env);
       inputReadOffset += input_samples;
-
-
       res->Write(srcbuffer, input_samples * vi.AudioChannels());
 
     } else {  // Now we have enough data
 
-
       env->BitBlt((BYTE*)buf, 0, (BYTE*)ssrc_samples, 0, ssrc_samples_tbr , 1);
-
-      for (int i=0;i<ssrc_samples_tbr;i++) {
-        // FIXME: Very, very, VERY nasty workaround for one sample garble some not-so-random-place when doing the very beginning of the sample! 
-        // FIXME: The same as above - this is just important, so it's here twice.
-        if (fabs(ssrc_samples[i])>100.0f) {
-          _RPT2(0,"Clipping detected at sample %4u, factor:%4.4f\n", i, ssrc_samples[i]);
-          if (i < vi.AudioChannels())
-            ssrc_samples[i] = 0.0f;
-          else
-            ssrc_samples[i] = ssrc_samples[i-vi.AudioChannels()];
-        }
-      }
       res->Read(count);
-
-
       buffer_full = true;
-
     }
 
   } while (!buffer_full);
@@ -145,6 +178,6 @@ void __stdcall SSRC::GetAudio(void* buf, __int64 start, __int64 count, IScriptEn
 
 AVSValue __cdecl SSRC::Create(AVSValue args, void*, IScriptEnvironment* env) 
 {
-  return new SSRC(args[0].AsClip(), args[1].AsInt(), args[2].AsBool(false), env);
+  return new SSRC(args[0].AsClip(), args[1].AsInt(), args[2].AsBool(true), env);
 }
 
