@@ -764,7 +764,7 @@ AVSValue __cdecl FilterAudio::Create_LowPassALT(AVSValue args, void*, IScriptEnv
 ResampleAudio::ResampleAudio(PClip _child, int _target_rate, IScriptEnvironment* env)
   : GenericVideoFilter(ConvertAudioTo16bit::Create(_child)), target_rate(_target_rate)
 {
-  if (target_rate==vi.audio_samples_per_second) {
+  if ((target_rate==vi.audio_samples_per_second) || (vi.audio_samples_per_second==0)) {
 		skip_conversion=true;
 		return;
 	} 

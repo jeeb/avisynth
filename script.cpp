@@ -100,6 +100,7 @@ AVSFunction Script_functions[] = {
   { "SetMemoryMax", "i", SetMemoryMax },
 
   { "SetWorkingDir", "s", SetWorkingDir },
+  { "Exist", "s", Exist },
 
   { "int", "f", Int },
   { "frac","f", Frac},
