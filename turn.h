@@ -49,6 +49,7 @@ void (*TurnPlanFunc) (const unsigned char *srcp_y, unsigned char *dstp_y,
 				  const unsigned char *srcp_u, unsigned char *dstp_u,
 				  const unsigned char *srcp_v, unsigned char *dstp_v,
 				  const int rowsize, const int height,
+				  const int rowsizeUV, const int heightUV,
 				  const int src_pitch_y, const int dst_pitch_y,
 				  const int src_pitch_uv, const int dst_pitch_uv,
 				  const int direction);
@@ -76,9 +77,9 @@ public:
 			if (vi.height%2) env->ThrowError("Turn: YUY2 data must have MOD2 height");
 			TurnFunc = TurnYUY2;
 		}
-		else if (vi.IsYV12())
+		else if (vi.IsPlanar())
 		{
-			TurnPlanFunc = TurnYV12;
+			TurnPlanFunc = TurnPlanar;
 		}
 	};
 

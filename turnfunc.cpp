@@ -159,10 +159,11 @@ void TurnYUY2(const unsigned char *srcp, unsigned char *dstp, const int rowsize,
 	}
 }
 
-void TurnYV12(const unsigned char *srcp_y, unsigned char *dstp_y,
+void TurnPlanar(const unsigned char *srcp_y, unsigned char *dstp_y,
 			  const unsigned char *srcp_u, unsigned char *dstp_u,
 			  const unsigned char *srcp_v, unsigned char *dstp_v,
 			  const int rowsize, const int height,
+			  const int rowsizeUV, const int heightUV,
 			  const int src_pitch_y, const int dst_pitch_y,
 			  const int src_pitch_uv, const int dst_pitch_uv,
 			  const int direction)
@@ -180,10 +181,10 @@ void TurnYV12(const unsigned char *srcp_y, unsigned char *dstp_y,
 			}
 			srcp_y += src_pitch_y;
 		}
-		for(y=0; y<height>>1; y++)
+		for(y=0; y<heightUV; y++)
 		{
-			offset = (height>>1);
-			for (x=0; x<rowsize>>1; x++)
+			offset = (heightUV);
+			for (x=0; x<rowsizeUV; x++)
 			{
 				dstp_u[offset-y] = srcp_u[x];
 				dstp_v[offset-y] = srcp_v[x];
@@ -206,12 +207,12 @@ void TurnYV12(const unsigned char *srcp_y, unsigned char *dstp_y,
 			}
 			srcp_y += src_pitch_y;
 		}
-		srcp_u += (rowsize>>1);
-		srcp_v += (rowsize>>1);
-		for(y=0; y<height>>1; y++)
+		srcp_u += (rowsizeUV);
+		srcp_v += (rowsizeUV);
+		for(y=0; y<heightUV; y++)
 		{
 			offset = 0;
-			for (x=0; x<rowsize>>1; x++)
+			for (x=0; x<rowsizeUV; x++)
 			{
 				dstp_u[offset+y] = srcp_u[-1-x];
 				dstp_v[offset+y] = srcp_v[-1-x];

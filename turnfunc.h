@@ -48,10 +48,11 @@ void TurnRGB32 (const unsigned char *srcp, unsigned char *dstp, const int rowsiz
 void TurnYUY2 (const unsigned char *srcp, unsigned char *dstp, const int rowsize,
 				const int height, const int src_pitch, const int dst_pitch,
 				const int direction);
-void TurnYV12 (const unsigned char *srcp_y, unsigned char *dstp_y,
+void TurnPlanar (const unsigned char *srcp_y, unsigned char *dstp_y,
 			  const unsigned char *srcp_u, unsigned char *dstp_u,
 			  const unsigned char *srcp_v, unsigned char *dstp_v,
 			  const int rowsize, const int height,
+			  const int rowsizeUV, const int heightUV,
 			  const int src_pitch_y, const int dst_pitch_y,
 			  const int src_pitch_uv, const int dst_pitch_uv,
 			  const int direction);
