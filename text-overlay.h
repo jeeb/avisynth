@@ -121,6 +121,27 @@ private:
 
 
 
+class Compare : public GenericVideoFilter
+/**
+  * Compare two clips frame by frame and display fidelity measurements (with optionnal logging to file)
+ **/
+{
+public:
+	Compare(PClip _child1, PClip _child2, const char* channels, const char *fname, bool _show_graph, IScriptEnvironment* env);
+	~Compare();
+	static AVSValue __cdecl Create(AVSValue args, void* , IScriptEnvironment* env);
+	PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
+private:
+	Antialiaser antialiaser;
+	PClip child2;
+	DWORD mask;
+	int masked_bytes;
+	FILE* log;
+	int* psnrs;
+	bool show_graph;
+};
+
+
 
 /**** Helper functions ****/
 
