@@ -181,8 +181,8 @@ void ExpExceptionTranslator::TrapEval(AVSValue &av, IScriptEnvironment* env)
 
 
 /* Damn! You can't mix C++ exception handling and SEH in the one routine.
- * Call an interlude. And this is all because C++ doesn't provide an way
- * expand system exceptions into there true cause or identity.
+ * Call an interlude. And this is all because C++ doesn't provide any way
+ * to expand system exceptions into there true cause or identity.
  */
 AVSValue ExpExceptionTranslator::Evaluate(IScriptEnvironment* env) 
 {
@@ -492,7 +492,7 @@ ExpFunctionCall::ExpFunctionCall( const char* _name, PExpression* _arg_exprs,
 
 AVSValue ExpFunctionCall::Call(IScriptEnvironment* env) 
 {
-  AVSValue args[61];
+  AVSValue *args = new AVSValue[arg_expr_count+1];
   for (int a=0; a<arg_expr_count; ++a)
     args[a+1] = arg_exprs[a]->Evaluate(env);
   // first try without implicit "last"

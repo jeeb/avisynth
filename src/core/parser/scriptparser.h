@@ -56,13 +56,13 @@ public:
 
   PExpression Parse(void);
 
+  enum {max_args=1024};
+
 private:
   IScriptEnvironment* const env;
   Tokenizer tokenizer;
   const char* const code;
   const char* const filename;
-
-  enum {max_args=1024};
 
   void Expect(int op, const char* msg);
 

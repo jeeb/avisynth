@@ -1204,9 +1204,10 @@ int ScriptEnvironment::Flatten(const AVSValue& src, AVSValue* dst, int index, in
 
 
 AVSValue ScriptEnvironment::Invoke(const char* name, const AVSValue args, const char** arg_names) {
+  const int max_args = ScriptParser::max_args;
   // flatten unnamed args
-  AVSValue args2[60];
-  int args2_count = Flatten(args, args2, 0, 60, arg_names);
+  AVSValue *args2 = new AVSValue[max_args]; // Don't burn stack, use heap!
+  int args2_count = Flatten(args, args2, 0, max_args, arg_names);
 
   // find matching function
   bool strict;
@@ -1215,7 +1216,7 @@ AVSValue ScriptEnvironment::Invoke(const char* name, const AVSValue args, const 
     throw NotFound();
 
   // combine unnamed args into arrays
-  AVSValue args3[60];
+  AVSValue *args3 = new AVSValue[max_args]; // Don't burn stack, use heap!
   const char* p = f->param_types;
   int src_index=0, dst_index=0;
   while (*p) {
