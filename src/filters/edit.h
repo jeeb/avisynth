@@ -148,7 +148,7 @@ class Dissolve : public GenericVideoFilter
  **/
 {
 public:
-  Dissolve(PClip _child1, PClip _child2, int _overlap, IScriptEnvironment* env);
+  Dissolve(PClip _child1, PClip _child2, int _overlap, double fps, IScriptEnvironment* env);
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
   void __stdcall GetAudio(void* buf, __int64 start, __int64 count, IScriptEnvironment* env);
   bool __stdcall GetParity(int n);
@@ -229,10 +229,13 @@ private:
 
 /**** A few factory methods ****/
 
+static AVSValue __cdecl Create_FadeOut0(AVSValue args, void*, IScriptEnvironment* env);
 static AVSValue __cdecl Create_FadeOut(AVSValue args, void*, IScriptEnvironment* env);
 static AVSValue __cdecl Create_FadeOut2(AVSValue args, void*, IScriptEnvironment* env);
+static AVSValue __cdecl Create_FadeIn0(AVSValue args, void*, IScriptEnvironment* env);
 static AVSValue __cdecl Create_FadeIn(AVSValue args, void*, IScriptEnvironment* env);
 static AVSValue __cdecl Create_FadeIn2(AVSValue args, void*,IScriptEnvironment* env);
+static AVSValue __cdecl Create_FadeIO0(AVSValue args, void*,IScriptEnvironment* env);
 static AVSValue __cdecl Create_FadeIO(AVSValue args, void*,IScriptEnvironment* env);
 static AVSValue __cdecl Create_FadeIO2(AVSValue args, void*,IScriptEnvironment* env);
 

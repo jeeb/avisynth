@@ -49,15 +49,18 @@ AVSFunction Edit_filters[] = {
   { "DuplicateFrame", "ci", DuplicateFrame::Create },       // frame #
   { "UnalignedSplice", "cc+", Splice::CreateUnaligned },    // clips
   { "AlignedSplice", "cc+", Splice::CreateAligned },        // clips
-  { "Dissolve", "cc+i", Dissolve::Create },                 // clips, overlap frames
+  { "Dissolve", "cc+i[fps]f", Dissolve::Create },           // clips, overlap frames[, fps]
   { "AudioDub", "cc", AudioDub::Create },                   // video src, audio src
   { "Reverse", "c", Reverse::Create },                      // plays backwards
-  { "FadeOut", "ci[color]i", Create_FadeOut},               // # frames, color
-  { "FadeOut2", "ci[color]i", Create_FadeOut2},             // # frames, color
-  { "FadeIn", "ci[color]i", Create_FadeIn},                 // # frames, color
-  { "FadeIn2", "ci[color]i", Create_FadeIn2},               // # frames, color
-  { "FadeIO", "ci[color]i", Create_FadeIO},                 // # frames [,color]
-  { "FadeIO2", "ci[color]i", Create_FadeIO2},               // # frames [,color]
+  { "FadeOut0", "ci[color]i[fps]f", Create_FadeOut0},       // # frames[, color][, fps]
+  { "FadeOut", "ci[color]i[fps]f", Create_FadeOut},         // # frames[, color][, fps]
+  { "FadeOut2", "ci[color]i[fps]f", Create_FadeOut2},       // # frames[, color][, fps]
+  { "FadeIn0", "ci[color]i[fps]f", Create_FadeIn0},         // # frames[, color][, fps]
+  { "FadeIn", "ci[color]i[fps]f", Create_FadeIn},           // # frames[, color][, fps]
+  { "FadeIn2", "ci[color]i[fps]f", Create_FadeIn2},         // # frames[, color][, fps]
+  { "FadeIO0", "ci[color]i[fps]f", Create_FadeIO0},         // # frames[, color][, fps]
+  { "FadeIO", "ci[color]i[fps]f", Create_FadeIO},           // # frames[, color][, fps]
+  { "FadeIO2", "ci[color]i[fps]f", Create_FadeIO2},         // # frames[, color][, fps]
   { "Loop", "c[times]i[start]i[end]i", Loop::Create },      // number of loops, first frame, last frames
   { 0 }
 };
@@ -337,20 +340,24 @@ AVSValue __cdecl Splice::CreateAligned(AVSValue args, void*, IScriptEnvironment*
  *******   Dissolve Filter  ******
  *********************************/
 
-// Fixme: Add float samples
 
 AVSValue __cdecl Dissolve::Create(AVSValue args, void*, IScriptEnvironment* env) 
 {
   const int overlap = args[2].AsInt();
+  const float fps = args[3].AsFloat(24);
   PClip result = args[0].AsClip();
   for (int i=0; i < args[1].ArraySize(); ++i)
-    result = new Dissolve(result, args[1][i].AsClip(), overlap, env);
+    result = new Dissolve(result, args[1][i].AsClip(), overlap, fps, env);
   return result;
 }
 
 
-Dissolve::Dissolve(PClip _child1, PClip _child2, int _overlap, IScriptEnvironment* env)
- : GenericVideoFilter(ConvertAudio::Create(_child1,SAMPLE_INT16|SAMPLE_FLOAT,SAMPLE_FLOAT)), child2(ConvertAudio::Create(_child2,SAMPLE_INT16|SAMPLE_FLOAT, SAMPLE_FLOAT)), overlap(_overlap), audbuffer(0), audbufsize(0)
+Dissolve::Dissolve(PClip _child1, PClip _child2, int _overlap, double fps, IScriptEnvironment* env)
+ : GenericVideoFilter(ConvertAudio::Create(_child1,SAMPLE_INT16|SAMPLE_FLOAT,SAMPLE_FLOAT)),
+   child2(_child2),
+   overlap(_overlap),
+   audbuffer(0),
+   audbufsize(0)
 {
   VideoInfo vi2 = child2->GetVideoInfo();
 
@@ -359,12 +366,9 @@ Dissolve::Dissolve(PClip _child1, PClip _child2, int _overlap, IScriptEnvironmen
   if (vi.HasAudio() ^ vi2.HasAudio())
     env->ThrowError("Dissolve: one clip has audio and the other doesn't (not allowed)");
 
-  if (vi.HasVideo()) {
-    if (vi.width != vi2.width || vi.height != vi2.height)
-      env->ThrowError("Dissolve: frame sizes don't match");
-    if (!(vi.IsSameColorspace(vi2)))
-      env->ThrowError("Dissolve: video formats don't match");
-  }
+  if (overlap<0)
+    env->ThrowError("Dissolve: Cannot dissolve if overlap is less than zero");
+
   if (vi.HasAudio()) {
     child2 = ConvertAudio::Create(child2, vi.SampleType(), SAMPLE_FLOAT);  // Clip 1 is check to be same type as clip 1, if not, convert to float samples.
     vi2 = child2->GetVideoInfo();
@@ -377,17 +381,27 @@ Dissolve::Dissolve(PClip _child1, PClip _child2, int _overlap, IScriptEnvironmen
 
     if (vi.SamplesPerSecond() != vi2.SamplesPerSecond())
       env->ThrowError("Dissolve: The audio of the two clips have different samplerates! Use SSRC()/ResampleAudio()");
-
   }
 
-  if (overlap<0)
-    env->ThrowError("Dissolve: Cannot dissolve if overlap is less than zero");
+  if (vi.HasVideo()) {
+    if (vi.width != vi2.width || vi.height != vi2.height)
+      env->ThrowError("Dissolve: frame sizes don't match");
+    if (!(vi.IsSameColorspace(vi2)))
+      env->ThrowError("Dissolve: video formats don't match");
 
-  video_fade_start = vi.num_frames - overlap;
-  video_fade_end = vi.num_frames - 1;
+	video_fade_start = vi.num_frames - overlap;
+	video_fade_end = vi.num_frames - 1;
 
-  audio_fade_end = vi.AudioSamplesFromFrames(video_fade_end+1)-1;
-  audio_fade_start = vi.AudioSamplesFromFrames(video_fade_start);
+	audio_fade_start = vi.AudioSamplesFromFrames(video_fade_start);
+	audio_fade_end = vi.AudioSamplesFromFrames(video_fade_end+1)-1;
+  }
+  else {
+	video_fade_start = 0;
+	video_fade_end = 0;
+
+	audio_fade_start = vi.num_audio_samples - __int64(Int32x32To64(vi.SamplesPerSecond(), overlap)/fps+0.5);
+	audio_fade_end = vi.num_audio_samples-1;
+  }
 
   vi.num_frames = video_fade_start + vi2.num_frames;
   vi.num_audio_samples = audio_fade_start + vi2.num_audio_samples;
@@ -480,42 +494,50 @@ void Dissolve::GetAudio(void* buf, __int64 start, __int64 count, IScriptEnvironm
   child->GetAudio(buf, start, count, env);
   child2->GetAudio(audbuffer, start - audio_fade_start, count, env);
   
-  int denominator = (audio_fade_end - audio_fade_start);
+  const int nch = vi.AudioChannels();
+  const int countXnch = count*nch;
+  const int denominator = (audio_fade_end - audio_fade_start);
   int numerator = (audio_fade_end - start);
   
   if (vi.IsSampleType(SAMPLE_INT16)) {
-    int nch = vi.AudioChannels();
-    short *a = (short*)buf, *b = (short*)audbuffer;
-    for (int i=0; i<count*nch; i+=nch) {
-      for (int p=0; p < nch; p++) {
-        if (numerator <= 0) {
-          a[i+p] = b[i+p];
-        } else if (numerator < denominator) {
-          a[i+p] = b[i+p] + MulDiv(a[i+p]-b[i+p], numerator, denominator);
-        }
+    short *const a = (short*)buf;
+    const short *const b = (short*)audbuffer;
+
+    for (int i=0; i<countXnch; i+=nch) {
+      if (numerator <= 0) {                          // Past end of dissolve
+        break;
       }
+      else if (numerator < denominator) {            // In dissolve region
+        for (int p=0; p < nch; p++)
+          a[i+p] = b[i+p] + MulDiv(a[i+p]-b[i+p], numerator, denominator);
+      }
+   // else                                           // Before begining of dissolve
       numerator--;
     }
+    const int nchb = (countXnch - i) * sizeof(short);
+    memcpy(a+i, b+i, nchb);
     return;
   } 
 
   if (vi.IsSampleType(SAMPLE_FLOAT)) {
-    int nch = vi.AudioChannels();
-    SFLOAT denominator = SFLOAT(audio_fade_end - audio_fade_start);  // Complete length of fade.
-    SFLOAT numerator = SFLOAT(audio_fade_end - start);  // Offset into the fade
-    SFLOAT *a = (SFLOAT*)buf, *b = (SFLOAT*)audbuffer;
+    const SFLOAT frdenominator = SFLOAT(1.0/denominator);
+    SFLOAT *const a = (SFLOAT*)buf;
+    const SFLOAT *const b = (SFLOAT*)audbuffer;
 
-    for (int i=0; i<count*nch; i+=nch) {
-      for (int p=0; p < nch; p++) {
-        if (numerator <= 0) {
-          a[i+p] = b[i+p];
-        } else if (numerator < denominator) {
-          SFLOAT w = numerator / denominator;  // How far into the fade are we?
-          a[i+p] = b[i+p] + w * (a[i+p]-b[i+p]);
-        }
+    for (int i=0; i<countXnch; i+=nch) {
+      if (numerator <= 0) {                          // Past end of dissolve
+        break;
       }
-      numerator--;
+      else if (numerator < denominator) {            // In dissolve region
+        const SFLOAT w = numerator * frdenominator;  // How far into the fade are we?
+        for (int p=0; p < nch; p++)
+          a[i+p] = b[i+p] + w * (a[i+p]-b[i+p]);
+      }
+   // else                                           // Before begining of dissolve
+      numerator--; // When was a float only worked for N < 2^24
     }
+    const int nchb = (countXnch - i) * sizeof(SFLOAT);
+    memcpy(a+i, b+i, nchb);
     return;
   }
 
@@ -760,60 +782,101 @@ AVSValue __cdecl Loop::Create(AVSValue args, void*, IScriptEnvironment* env)
  *****************************/
 
 
-PClip __cdecl ColorClip(PClip a, int duration, int color, IScriptEnvironment* env) {
-  AVSValue blackness_args[] = { a, duration, color };
-  static const char* arg_names[3] = { 0, 0, "color" };
-  return env->Invoke("Blackness", AVSValue(blackness_args, 3), arg_names ).AsClip();
+PClip __cdecl ColorClip(PClip a, int duration, int color, float fps, IScriptEnvironment* env) {
+  if (a->GetVideoInfo().HasVideo()) {
+	AVSValue blackness_args[] = { a, duration, color };
+	static const char* arg_names[3] = { 0, 0, "color" };
+	return env->Invoke("Blackness", AVSValue(blackness_args, 3), arg_names ).AsClip();
+  }
+  else {
+	AVSValue blackness_args[] = { a, duration, color, fps };
+	static const char* arg_names[4] = { 0, 0, "color", "fps" };
+	return env->Invoke("Blackness", AVSValue(blackness_args, 4), arg_names ).AsClip();
+  }
+}
+
+AVSValue __cdecl Create_FadeOut0(AVSValue args, void*,IScriptEnvironment* env) {
+  const int duration = args[1].AsInt();
+  const int fadeclr = args[2].AsInt(0);
+  const float fps = args[3].AsFloat(24);
+  PClip a = args[0].AsClip();
+  PClip b = ColorClip(a,duration,fadeclr,fps,env);
+  return new Dissolve(a, b, duration, fps, env);
 }
 
 AVSValue __cdecl Create_FadeOut(AVSValue args, void*,IScriptEnvironment* env) {
-  int duration = args[1].AsInt();
-  int fadeclr = args[2].AsInt(0);
+  const int duration = args[1].AsInt();
+  const int fadeclr = args[2].AsInt(0);
+  const float fps = args[3].AsFloat(24);
   PClip a = args[0].AsClip();
-  PClip b = ColorClip(a,duration+1,fadeclr,env);
-  return new Dissolve(a, b, duration, env);
+  PClip b = ColorClip(a,duration+1,fadeclr,fps,env);
+  return new Dissolve(a, b, duration, fps, env);
 }
 
 AVSValue __cdecl Create_FadeOut2(AVSValue args, void*,IScriptEnvironment* env) {
-  int duration = args[1].AsInt();
-  int fadeclr = args[2].AsInt(0);
+  const int duration = args[1].AsInt();
+  const int fadeclr = args[2].AsInt(0);
+  const float fps = args[3].AsFloat(24);
   PClip a = args[0].AsClip();
-  PClip b = ColorClip(a,duration+2,fadeclr,env);
-  return new Dissolve(a, b, duration, env);
+  PClip b = ColorClip(a,duration+2,fadeclr,fps,env);
+  return new Dissolve(a, b, duration, fps, env);
+}
+
+AVSValue __cdecl Create_FadeIn0(AVSValue args, void*,IScriptEnvironment* env) {
+  const int duration = args[1].AsInt();
+  const int fadeclr = args[2].AsInt(0);
+  const float fps = args[3].AsFloat(24);
+  PClip a = args[0].AsClip();
+  PClip b = ColorClip(a,duration,fadeclr,fps,env);
+  return new Dissolve(b, a, duration, fps, env);
 }
 
 AVSValue __cdecl Create_FadeIn(AVSValue args, void*,IScriptEnvironment* env) {
-  int duration = args[1].AsInt();
-  int fadeclr = args[2].AsInt(0);
+  const int duration = args[1].AsInt();
+  const int fadeclr = args[2].AsInt(0);
+  const float fps = args[3].AsFloat(24);
   PClip a = args[0].AsClip();
-  PClip b = ColorClip(a,duration+1,fadeclr,env);
-  return new Dissolve(b, a, duration, env);
+  PClip b = ColorClip(a,duration+1,fadeclr,fps,env);
+  return new Dissolve(b, a, duration, fps, env);
 }
 
 AVSValue __cdecl Create_FadeIn2(AVSValue args, void*,IScriptEnvironment* env) {
-  int duration = args[1].AsInt();
-  int fadeclr = args[2].AsInt(0);
+  const int duration = args[1].AsInt();
+  const int fadeclr = args[2].AsInt(0);
+  const float fps = args[3].AsFloat(24);
   PClip a = args[0].AsClip();
-  PClip b = ColorClip(a,duration+2,fadeclr,env);
-  return new Dissolve(b, a, duration, env);
+  PClip b = ColorClip(a,duration+2,fadeclr,fps,env);
+  return new Dissolve(b, a, duration, fps, env);
+}
+
+AVSValue __cdecl Create_FadeIO0(AVSValue args, void*, IScriptEnvironment* env) {
+  const int duration = args[1].AsInt();
+  const int fadeclr = args[2].AsInt(0);
+  const float fps = args[3].AsFloat(24);
+  PClip a = args[0].AsClip();
+  PClip b = ColorClip(a,duration,fadeclr,fps,env);
+  AVSValue dissolve_args[] = { b, a, b, duration, fps };
+  return env->Invoke("Dissolve", AVSValue(dissolve_args,5)).AsClip();
 }
 
 AVSValue __cdecl Create_FadeIO(AVSValue args, void*, IScriptEnvironment* env) {
-  int duration = args[1].AsInt();
-  int fadeclr = args[2].AsInt(0);
+  const int duration = args[1].AsInt();
+  const int fadeclr = args[2].AsInt(0);
+  const float fps = args[3].AsFloat(24);
   PClip a = args[0].AsClip();
-  PClip b = ColorClip(a,duration+1,fadeclr,env);
-  AVSValue dissolve_args[] = { b, a, b, duration };
-  return env->Invoke("Dissolve", AVSValue(dissolve_args,4)).AsClip();
+  PClip b = ColorClip(a,duration+1,fadeclr,fps,env);
+  AVSValue dissolve_args[] = { b, a, b, duration, fps };
+  return env->Invoke("Dissolve", AVSValue(dissolve_args,5)).AsClip();
 }
 
 AVSValue __cdecl Create_FadeIO2(AVSValue args, void*, IScriptEnvironment* env) {
-  int duration = args[1].AsInt();
-  int fadeclr = args[2].AsInt(0);
+  const int duration = args[1].AsInt();
+  const int fadeclr = args[2].AsInt(0);
+  const float fps = args[3].AsFloat(24);
   PClip a = args[0].AsClip();
-  PClip b = ColorClip(a,duration+2,fadeclr,env);
-  AVSValue dissolve_args[] = { b, a, b, duration };
-  return env->Invoke("Dissolve", AVSValue(dissolve_args,4)).AsClip();
+  PClip b = ColorClip(a,duration+2,fadeclr,fps,env);
+  AVSValue dissolve_args[] = { b, a, b, duration, fps };
+  return env->Invoke("Dissolve", AVSValue(dissolve_args,5)).AsClip();
 }
 
 
