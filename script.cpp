@@ -77,6 +77,8 @@ AVSFunction Script_functions[] = {
 
   { "SetMemoryMax", "i", SetMemoryMax },
 
+  { "SetWorkingDir", "s", SetWorkingDir },
+
   { 0 }
 };
 
@@ -227,6 +229,7 @@ AVSValue Import(AVSValue args, void*, IScriptEnvironment* env)
 
 
 AVSValue SetMemoryMax(AVSValue args, void*, IScriptEnvironment* env) { return env->SetMemoryMax(args[0].AsInt()); }
+AVSValue SetWorkingDir(AVSValue args, void*, IScriptEnvironment* env) { return env->SetWorkingDir(args[0].AsString()); }
 
 AVSValue Floor(AVSValue args, void*, IScriptEnvironment* env) { return int(args[0].AsFloat()); }
 AVSValue Ceil(AVSValue args, void*, IScriptEnvironment* env) { return -int(-args[0].AsFloat()); }

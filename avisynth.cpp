@@ -462,6 +462,7 @@ public:
   void __stdcall AtExit(IScriptEnvironment::ShutdownFunc function, void* user_data);
   PVideoFrame __stdcall Subframe(PVideoFrame src, int rel_offset, int new_pitch, int new_row_size, int new_height);
   int __stdcall SetMemoryMax(int mem);
+  int __stdcall SetWorkingDir(const char * newdir);
   __stdcall ~ScriptEnvironment();
 
 private:
@@ -523,6 +524,10 @@ int ScriptEnvironment::SetMemoryMax(int mem) {
   GlobalMemoryStatus(&memstatus);
   memory_max = min(max(memory_used,mem*1024*1024),memory_used+memstatus.dwAvailPhys-5*1024*1024);
   return memory_max/(1024*1024);
+}
+
+int ScriptEnvironment::SetWorkingDir(const char * newdir) {
+  return SetCurrentDirectory(newdir) ? 0 : 1;
 }
 
 void ScriptEnvironment::CheckVersion(int version) {

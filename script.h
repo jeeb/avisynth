@@ -99,6 +99,7 @@ AVSValue Import(AVSValue args, void*, IScriptEnvironment* env);
 
 AVSValue SetMemoryMax(AVSValue args, void*, IScriptEnvironment* env);
 
+AVSValue SetWorkingDir(AVSValue args, void*, IScriptEnvironment* env);
 
 /*****   Entry/Factory Methods   ******/
 
