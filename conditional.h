@@ -42,11 +42,11 @@ class ConditionalFilter : public GenericVideoFilter
   * Conditional 
  **/
 {
-	enum Eval {
-		EQUALS = 1,
-		GREATERTHAN = 2,
-		LESSTHAN = 4
-	};
+  enum Eval {
+    EQUALS = 1,
+    GREATERTHAN = 2,
+    LESSTHAN = 4
+  };
 
 public:
   ConditionalFilter(PClip _child, PClip _source1, PClip _source2, AVSValue  _condition1, AVSValue  _evaluator, AVSValue  _condition2, bool _show, IScriptEnvironment* env);
@@ -56,9 +56,20 @@ public:
 private:
   PClip source1;
   PClip source2;
-	Eval evaluator;
-	AVSValue eval1;
-	AVSValue eval2;
-	bool show;
+  Eval evaluator;
+  AVSValue eval1;
+  AVSValue eval2;
+  bool show;
 };
 
+class ScriptClip : public GenericVideoFilter
+{
+public:
+  ScriptClip(PClip _child, AVSValue  _script, bool _show, IScriptEnvironment* env);
+  PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
+  static AVSValue __cdecl Create(AVSValue args, void* user_data, IScriptEnvironment* env);
+
+private:
+  AVSValue script;
+  bool show;
+};

@@ -276,7 +276,7 @@ ConvertToRGB::ConvertToRGB( PClip _child, bool rgb24, const char* matrix,
 PVideoFrame __stdcall ConvertToRGB::GetFrame(int n, IScriptEnvironment* env) 
 {
   PVideoFrame src = child->GetFrame(n, env);
-  PVideoFrame dst = env->NewVideoFrame(vi);
+  PVideoFrame dst = env->NewVideoFrame(vi,-2);
   const int src_pitch = src->GetPitch();
   const int dst_pitch = dst->GetPitch();
   const BYTE* srcp = src->GetReadPtr();
@@ -449,7 +449,10 @@ ConvertToYUY2::ConvertToYUY2(PClip _child, bool _interlaced, IScriptEnvironment*
   : GenericVideoFilter(_child), interlaced(_interlaced),src_cs(vi.pixel_type)
 {
   if (vi.height&3 && vi.IsYV12() && interlaced) 
-    env->ThrowError("ConvertToYUY2: Cannot convert from YV12 if height is not multiple of 4. Use Crop!");
+    env->ThrowError("ConvertToYUY2: Cannot convert from interlaced YV12 if height is not multiple of 4. Use Crop!");
+
+  if (vi.height&1 && vi.IsYV12() ) 
+    env->ThrowError("ConvertToYUY2: Cannot convert from YV12 if height is not even. Use Crop!");
 
   if (vi.width & 1)
     env->ThrowError("ConvertToYUY2: Image width must be even. Use Crop!");
@@ -490,6 +493,7 @@ PVideoFrame __stdcall ConvertToYUY2::GetFrame(int n, IScriptEnvironment* env)
     }
     return dst;
   }
+// RGB 24 and non MMX machines.
 
   PVideoFrame dst = env->NewVideoFrame(vi);
   BYTE* yuv = dst->GetWritePtr();
