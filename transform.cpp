@@ -114,6 +114,7 @@ PVideoFrame FlipHorizontal::GetFrame(int n, IScriptEnvironment* env) {
   int h = src->GetHeight();
   int bpp = vi.BytesFromPixels(1);
   if (vi.IsYUY2()) { // Avoid flipping UV in YUY2 mode.
+    srcp+=row_size;
     srcp-=4;
     for (int y=0; y<h;y++) {
       for (int x=0; x<row_size; x+=4) {
