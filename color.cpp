@@ -34,7 +34,7 @@
 
 
 
-/* Color YUV originally by ??????
+/* Color YUV originally by Kiraru2002(masani)
  * 
  * Adapted for AviSynth and YV12 code added by Klaus Post
 */

@@ -53,16 +53,17 @@ class Swap : public GenericVideoFilter
  **/
 {
 public:
-  Swap(PClip _child, PClip _clip, int _mode, IScriptEnvironment* env);  
+  Swap(PClip _child, PClip _clip, PClip _clipY, int _mode, IScriptEnvironment* env);  
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
 
   static AVSValue __cdecl CreateUV(AVSValue args, void* user_data, IScriptEnvironment* env);
   static AVSValue __cdecl CreateUToY(AVSValue args, void* user_data, IScriptEnvironment* env);
   static AVSValue __cdecl CreateVToY(AVSValue args, void* user_data, IScriptEnvironment* env);
   static AVSValue __cdecl CreateYToUV(AVSValue args, void* user_data, IScriptEnvironment* env);
+  static AVSValue __cdecl CreateYToYUV(AVSValue args, void* user_data, IScriptEnvironment* env);
 
 private:
-  PClip clip;
+  PClip clip, clipY;
   int mode;
 };
 

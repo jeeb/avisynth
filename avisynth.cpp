@@ -751,8 +751,6 @@ PVideoFrame __stdcall ScriptEnvironment::NewVideoFrame(const VideoInfo& vi, int 
     }
     if ((vi.height&1)||(vi.width&1))
       ThrowError("Filter Error: Attempted to request an YV12 frame that wasn't mod2 in width and height!");
-    if ((vi.height&3)&&vi.IsFieldBased())
-      ThrowError("Filter Error: Attempted to request a fieldbased YV12 frame that wasn't mod4 in height!");
     return ScriptEnvironment::NewPlanarVideoFrame(vi.width, vi.height, align, !vi.IsVPlaneFirst());  // If planar, maybe swap U&V
   } else {
     if ((vi.width&1)&&(vi.IsYUY2()))
@@ -944,7 +942,7 @@ bool ScriptEnvironment::FunctionExists(const char* name) {
 
 void BitBlt(BYTE* dstp, int dst_pitch, const BYTE* srcp, int src_pitch, int row_size, int height) {
   if (GetCPUFlags() & CPUF_INTEGER_SSE) {
-    asm_BitBlt_ISSE(dstp,dst_pitch,srcp,src_pitch,row_size,height);
+    asm_BitBlt_MMX(dstp,dst_pitch,srcp,src_pitch,row_size,height);
     return;
   } else if (GetCPUFlags() & CPUF_MMX) {
     asm_BitBlt_MMX(dstp,dst_pitch,srcp,src_pitch,row_size,height);

@@ -51,6 +51,7 @@ AVSFunction Merge_filters[] = {
   {  "UToY","c", Swap::CreateUToY },
   {  "VToY","c", Swap::CreateVToY },
   {  "YToUV","cc", Swap::CreateYToUV },
+  {  "YToUV","ccc", Swap::CreateYToYUV },
   { 0 }
 };
 
@@ -61,24 +62,33 @@ AVSFunction Merge_filters[] = {
 
 
 AVSValue __cdecl Swap::CreateUV(AVSValue args, void* user_data, IScriptEnvironment* env) {
-  return new Swap(args[0].AsClip(), args[0].AsClip(), 1 , env);
+  return new Swap(args[0].AsClip(), args[0].AsClip(), args[0].AsClip(), 1 , env);
 }
 
 AVSValue __cdecl Swap::CreateUToY(AVSValue args, void* user_data, IScriptEnvironment* env) {
-  return new Swap(args[0].AsClip(), args[0].AsClip(), 2 , env);
+  return new Swap(args[0].AsClip(), args[0].AsClip(), args[0].AsClip(), 2 , env);
 }
 
 AVSValue __cdecl Swap::CreateVToY(AVSValue args, void* user_data, IScriptEnvironment* env) {
-  return new Swap(args[0].AsClip(), args[0].AsClip(), 3 , env);
+  return new Swap(args[0].AsClip(), args[0].AsClip(), args[0].AsClip(), 3 , env);
 }
 
 AVSValue __cdecl Swap::CreateYToUV(AVSValue args, void* user_data, IScriptEnvironment* env) {
-  return new Swap(args[0].AsClip(), args[1].AsClip(), 4 , env);
+  return new Swap(args[0].AsClip(), args[1].AsClip(), NULL , 4 , env);
 }
 
-Swap::Swap(PClip _child, PClip _clip, int _mode, IScriptEnvironment* env) 
-  : GenericVideoFilter(_child), clip(_clip), mode(_mode) {
+AVSValue __cdecl Swap::CreateYToYUV(AVSValue args, void* user_data, IScriptEnvironment* env) {
+  return new Swap(args[0].AsClip(), args[1].AsClip(), args[2].AsClip(), 4 , env);
+}
+
+Swap::Swap(PClip _child, PClip _clip, PClip _clipY, int _mode, IScriptEnvironment* env) 
+  : GenericVideoFilter(_child), clip(_clip), clipY(_clipY), mode(_mode) {
     VideoInfo vi2=clip->GetVideoInfo();
+    VideoInfo vi3;
+
+  if (clipY) 
+    vi3=clipY->GetVideoInfo();
+
   if (!vi.IsYV12() || !vi2.IsYV12()) 
     env->ThrowError("Plane swapper: YV12 data only!");  // Todo: report correct filter
   switch (mode) {
@@ -94,6 +104,15 @@ Swap::Swap(PClip _child, PClip _clip, int _mode, IScriptEnvironment* env)
       env->ThrowError("YToUV: Clips does not have the same height!");
     if (vi.width!=vi2.width)
       env->ThrowError("YToUV: Clips does not have the same width!");
+    if (clipY) {
+      if (!vi3.IsYV12()) 
+        env->ThrowError("YToUV: Y clip must be YV12!");
+      if ((vi3.width/2)!=vi.width)
+        env->ThrowError("YToUV: Y clip does not have the double width of the UV clips!");
+      if ((vi3.height/2)!=vi.height)
+        env->ThrowError("YToUV: Y clip does not have the double height of the UV clips!");
+    }
+
     vi.height <<=1;
     vi.width <<=1;
     break;
@@ -103,23 +122,19 @@ Swap::Swap(PClip _child, PClip _clip, int _mode, IScriptEnvironment* env)
 PVideoFrame __stdcall Swap::GetFrame(int n, IScriptEnvironment* env) {
   PVideoFrame src = child->GetFrame(n, env);
   if (mode==1) {  // SwapUV
-    env->MakeWritable(&src);
+
+    PVideoFrame dst = env->NewVideoFrame(vi);
     const int xpixels=src->GetRowSize(PLANAR_U_ALIGNED)>>2; // Ints
     const int yloops=src->GetHeight(PLANAR_U);
-    int* srcpY=(int*)src->GetWritePtr(PLANAR_Y);  // Y Plane must be touched!
-    int* srcpV=(int*)src->GetWritePtr(PLANAR_V);
-    int* srcpU=(int*)src->GetWritePtr(PLANAR_U);
+    const BYTE* srcpY=src->GetWritePtr(PLANAR_Y);  // Y Plane must be touched!
+    const BYTE* srcpV=src->GetWritePtr(PLANAR_V);
+    const BYTE* srcpU=src->GetWritePtr(PLANAR_U);
     
-    for (int y=0;y<yloops;y++) { //todo: mmx me
-      for (int x=0;x<xpixels;x++) {
-        int t=srcpU[x];
-        srcpU[x]=srcpV[x];
-        srcpV[x]=t;
-      }
-      srcpU+=src->GetPitch(PLANAR_U)/4;
-      srcpV+=src->GetPitch(PLANAR_U)/4;
-    }
-    return src;
+    env->BitBlt(dst->GetWritePtr(PLANAR_Y),dst->GetPitch(PLANAR_Y),srcpY,src->GetPitch(PLANAR_Y),src->GetRowSize(PLANAR_Y),src->GetHeight(PLANAR_Y));
+    env->BitBlt(dst->GetWritePtr(PLANAR_U),dst->GetPitch(PLANAR_U),srcpV,src->GetPitch(PLANAR_V),src->GetRowSize(PLANAR_V),src->GetHeight(PLANAR_V));
+    env->BitBlt(dst->GetWritePtr(PLANAR_V),dst->GetPitch(PLANAR_V),srcpU,src->GetPitch(PLANAR_V),src->GetRowSize(PLANAR_V),src->GetHeight(PLANAR_V));
+
+    return dst;
   }
   if (mode==2 || mode ==3) {  // U to Y or V to Y
     PVideoFrame dst = env->NewVideoFrame(vi);
@@ -148,22 +163,27 @@ PVideoFrame __stdcall Swap::GetFrame(int n, IScriptEnvironment* env) {
 	  }
     return dst;
   }
-  if (mode==4) {  // Merge UV  U=child V=clip
+  if (mode==4) {  // Merge UV  U=child V=clip, Y= Yclip (optional)
     PVideoFrame dst = env->NewVideoFrame(vi);
     env->BitBlt(dst->GetWritePtr(PLANAR_U),dst->GetPitch(PLANAR_U),src->GetReadPtr(PLANAR_Y),src->GetPitch(PLANAR_Y),src->GetRowSize(PLANAR_Y),src->GetHeight(PLANAR_Y));
     src = clip->GetFrame(n, env);
     env->BitBlt(dst->GetWritePtr(PLANAR_V),dst->GetPitch(PLANAR_V),src->GetReadPtr(PLANAR_Y),src->GetPitch(PLANAR_Y),src->GetRowSize(PLANAR_Y),src->GetHeight(PLANAR_Y));
-    // Luma = 128
-    int pitch = dst->GetPitch(PLANAR_Y)/4;
-    int *srcpY = (int*)dst->GetWritePtr(PLANAR_Y);
-    int myx = dst->GetRowSize(PLANAR_Y_ALIGNED)/4;
-    int myy = dst->GetHeight(PLANAR_Y);
-	  for (int y=0; y<myy; y++) {
-      for (int x=0; x<myx; x++) {
-		    srcpY[x] = 0x80808080;  // mod 4
-      }
-		  srcpY += pitch;
-	  }
+    if (!clipY) {
+      // Luma = 128
+      int pitch = dst->GetPitch(PLANAR_Y)/4;
+      int *srcpY = (int*)dst->GetWritePtr(PLANAR_Y);
+      int myx = dst->GetRowSize(PLANAR_Y_ALIGNED)/4;
+      int myy = dst->GetHeight(PLANAR_Y);
+	    for (int y=0; y<myy; y++) {
+        for (int x=0; x<myx; x++) {
+		      srcpY[x] = 0x80808080;  // mod 4
+        }
+		    srcpY += pitch;
+	    }
+    } else {
+      src = clipY->GetFrame(n, env);
+      env->BitBlt(dst->GetWritePtr(PLANAR_Y),dst->GetPitch(PLANAR_Y),src->GetReadPtr(PLANAR_Y),src->GetPitch(PLANAR_Y),src->GetRowSize(PLANAR_Y),src->GetHeight(PLANAR_Y));
+    }
     return dst;
   }
   return src;

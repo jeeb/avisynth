@@ -68,7 +68,7 @@ AdjustFocusV::AdjustFocusV(double _amount, PClip _child)
 
 AdjustFocusV::~AdjustFocusV(void) 
 { 
-  delete[] line; 
+  if (line) delete[] line; 
 }
 
 PVideoFrame __stdcall AdjustFocusV::GetFrame(int n, IScriptEnvironment* env) 
@@ -76,7 +76,7 @@ PVideoFrame __stdcall AdjustFocusV::GetFrame(int n, IScriptEnvironment* env)
 	PVideoFrame frame = child->GetFrame(n, env);
 	env->MakeWritable(&frame);
 	if (!line)
-		line = new uc[frame->GetRowSize()];
+		line = new uc[frame->GetRowSize()+16];
 
 	if (vi.IsYV12()) {
     int plane,cplane;
