@@ -22,7 +22,7 @@
 // along with this program; if not, write to the Free Software
 // Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA, or visit
 // http://www.gnu.org/copyleft/gpl.html .
-
+ 
 
 #include "internal.h"
 #include "convert.h"
@@ -438,7 +438,7 @@ public:
   bool __stdcall GetParity(int n) { return vi.field_based ? (n&1) : false; }
 };
 
-
+ 
 static PVideoFrame CreateBlankFrame(const VideoInfo& vi, int color, IScriptEnvironment* env) {
   if (!vi.HasVideo()) return 0;
   PVideoFrame frame = env->NewVideoFrame(vi);
@@ -450,8 +450,11 @@ static PVideoFrame CreateBlankFrame(const VideoInfo& vi, int color, IScriptEnvir
     for (int i=0; i<size; i+=4)
       *(unsigned*)(p+i) = d;
   } else if (vi.IsRGB24()) {
-    for (int i=0; i<size; i+=3) {
-      p[i] = color; p[i+1] = color>>8; p[i+2] = color>>16;
+    for (int y=frame->GetHeight();y>0;y--) {
+      for (int i=0; i<frame->GetRowSize(); i+=3) {
+        p[i] = color&0xff; p[i+1] = (color>>8)&0xff; p[i+2] = (color>>16)&0xff;
+      }
+      p+=frame->GetPitch();
     }
   } else if (vi.IsRGB32()) {
     for (int i=0; i<size; i+=4)
