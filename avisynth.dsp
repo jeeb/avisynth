@@ -659,7 +659,7 @@ SOURCE=.\ssrc.cpp
 
 !ELSEIF  "$(CFG)" == "avisynth - Win32 Debug"
 
-# SUBTRACT CPP /YX /Yc /Yu
+# ADD CPP /Yu
 
 !ELSEIF  "$(CFG)" == "avisynth - Win32 Profile"
 

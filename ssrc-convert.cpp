@@ -48,10 +48,7 @@ AVSFunction SSRC_filters[] = {
   { 0 }
 };
 
-// Note - floats should not be clipped - they will be clipped, when they are converted back to ints.
-// Vdub can handle 8/16 bit, and reads 32bit, but cannot play/convert it. Floats doesn't make sense in AVI. So for now convert back to 16 bit always
-// FIXME: Most int64's are often cropped to ints - count is ok to be int, but not start
- 
+
  
 void __cdecl RecieveSamples(float* dst_samples,  unsigned int nsamples) {
   memcpy(convertedBuffer, dst_samples, nsamples*sizeof(SFLOAT));
@@ -112,8 +109,9 @@ void __stdcall SSRC::GetAudio(void* buf, __int64 start, __int64 count, IScriptEn
   int ch = vi.AudioChannels();
   int samples_filled = 0;
 
+
   if (start != next_sample) {  // Reset on seek
-    inputReadOffset = MulDiv(count, target_rate, source_rate);
+    inputReadOffset = MulDiv(start, source_rate, target_rate);
     convertedLeft = 0;
   }
 
