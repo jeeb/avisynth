@@ -41,6 +41,7 @@
 #include "AudioSource.h"
 #include "VD_Audio.h"
 #include "AVIReadHandler.h"
+#include <streams.h>
 
 // For some reason KSDATAFORMAT_SUBTYPE_IEEE_FLOAT and KSDATAFORMAT_SUBTYPE_PCM doesn't work - we construct the GUID manually!
 const GUID SUBTYPE_IEEE_AVSPCM  = {0x00000001, 0x0000, 0x0010, {0x80, 0x00, 0x00, 0xaa, 0x00, 0x38, 0x9b, 0x71}};
@@ -181,27 +182,27 @@ void AVISource::LocateVideoCodec(IScriptEnvironment* env) {
   long size = sizeof(BITMAPINFOHEADER);
 
   // Read video format.  If it's a
-	// type-1 DV, we're going to have to fake it.
+  // type-1 DV, we're going to have to fake it.
 
-	if (bIsType1) {
-		if (!(pbiSrc = (BITMAPINFOHEADER *)malloc(size))) env->ThrowError("AviSource: Could not allocate BITMAPINFOHEADER.");
+  if (bIsType1) {
+    if (!(pbiSrc = (BITMAPINFOHEADER *)malloc(size))) env->ThrowError("AviSource: Could not allocate BITMAPINFOHEADER.");
 
-		pbiSrc->biSize			= sizeof(BITMAPINFOHEADER);
-		pbiSrc->biWidth			= 720;
+    pbiSrc->biSize      = sizeof(BITMAPINFOHEADER);
+    pbiSrc->biWidth     = 720;
 
-		if (asi.dwRate > asi.dwScale*26i64)
-			pbiSrc->biHeight			= 480;
-		else
-			pbiSrc->biHeight			= 576;
+    if (asi.dwRate > asi.dwScale*26i64)
+      pbiSrc->biHeight      = 480;
+    else
+      pbiSrc->biHeight      = 576;
 
-		pbiSrc->biPlanes			= 1;
-		pbiSrc->biBitCount		= 24;
-		pbiSrc->biCompression		= 'dsvd';
-		pbiSrc->biSizeImage		= asi.dwSuggestedBufferSize;
-		pbiSrc->biXPelsPerMeter	= 0;
-		pbiSrc->biYPelsPerMeter	= 0;
-		pbiSrc->biClrUsed			= 0;
-		pbiSrc->biClrImportant	= 0;
+    pbiSrc->biPlanes      = 1;
+    pbiSrc->biBitCount    = 24;
+    pbiSrc->biCompression   = 'dsvd';
+    pbiSrc->biSizeImage   = asi.dwSuggestedBufferSize;
+    pbiSrc->biXPelsPerMeter = 0;
+    pbiSrc->biYPelsPerMeter = 0;
+    pbiSrc->biClrUsed     = 0;
+    pbiSrc->biClrImportant  = 0;
 
   } else {  
     CheckHresult(pvideo->ReadFormat(0, 0, &size), "couldn't get video format size", env);
@@ -291,7 +292,7 @@ AVISource::AVISource(const char filename[], bool fAudio, const char pixel_type[]
     pvideo = pfile->GetStream(streamtypeVIDEO, 0);
 
     if (!pvideo) { // Attempt DV type 1 video.
-    	pvideo = pfile->GetStream('svai', 0);
+      pvideo = pfile->GetStream('svai', 0);
       bIsType1 = true;
     }
 
@@ -844,7 +845,8 @@ class GetSample : public IBaseFilter, public IPin, public IMemInputPin {
   IReferenceClock* pclock;  // not refcounted
   FILTER_STATE state;
   bool end_of_stream, flushing;
-
+  IUnknown *m_pPos;  // Pointer to the CPosPassThru object.
+//  CPosPassThru *m_pPos;
   VideoInfo vi;
 
   HANDLE evtDoneWithSample, evtNewSampleReady;
@@ -856,10 +858,12 @@ class GetSample : public IBaseFilter, public IPin, public IMemInputPin {
 
 public:
 
+
   bool load_audio;
   int a_sample_bytes;
   int a_allocated_buffer;
   BYTE* a_buffer;         // FIXME: Remember to deallocate on destruction!!!
+
 
   GetSample(IScriptEnvironment* _env) : env(_env) {
     refcnt = 1;
@@ -867,7 +871,9 @@ public:
     filter_graph = 0;
     pclock = 0;
     a_allocated_buffer = 0;
+    m_pPos =0;
     state = State_Stopped;
+    a_buffer = 0;
     flushing = end_of_stream = false;
     memset(&vi, 0, sizeof(vi));
     sample_end_time = sample_start_time = 0;
@@ -914,11 +920,14 @@ public:
     state = State_Paused;
     _RPT1(0,"StopGraph() indicating done with sample - state:%d\n",state);
     PulseEvent(evtDoneWithSample);
-/***  Either of these seem to hang when exiting ****/
-#if 0
     mc->Stop();
     mc->Release();
-#endif
+    if (m_pPos)
+      m_pPos->Release();
+    m_pPos = 0;
+    if (a_buffer)
+      delete[] a_buffer;
+    a_buffer = 0;
   }
 
   void PauseGraph() {
@@ -933,8 +942,13 @@ public:
   }
 
   HRESULT SeekTo(__int64 pos) {
-    PauseGraph();
+//    PauseGraph();
     HRESULT hr;
+
+    IMediaControl* mc;
+    filter_graph->QueryInterface(&mc);
+    hr = mc->Stop();
+
     IMediaSeeking* ms;
     filter_graph->QueryInterface(&ms);
 
@@ -942,32 +956,60 @@ public:
     LONGLONG pCurrent=-1;
     _RPT0(0,"SeekTo() seeking to new position\n");
 
-    DWORD pCapabilities = AM_SEEKING_CanGetCurrentPos;
-    HRESULT canDo = ms->CheckCapabilities(&pCapabilities);
-    if (canDo) {
-      HRESULT hr2 = ms->GetPositions(&pCurrent,&pStop);
+    DWORD dwCaps = 0;
+    ms->GetCapabilities(&dwCaps);
+    
+    if (dwCaps & AM_SEEKING_CanGetCurrentPos) {
+      hr = ms->GetPositions(&pCurrent,&pStop);
     }
 
-    pCapabilities = AM_SEEKING_CanSeekAbsolute;
-    canDo = ms->CheckCapabilities(&pCapabilities);
+    GUID pref_f;
 
-    if (canDo) {
-       hr = ms->SetPositions(&pos, AM_SEEKING_AbsolutePositioning, &pStop,AM_SEEKING_NoPositioning);
+    ms->QueryPreferredFormat(&pref_f);
+
+    if (pref_f == TIME_FORMAT_FRAME) {
+      _RPT0(0,"Prefered format: frames!");
+    }
+    if (pref_f == TIME_FORMAT_SAMPLE) {
+      _RPT0(0,"Prefered format: samples!");
+    }
+    if (pref_f == TIME_FORMAT_MEDIA_TIME) {
+      _RPT0(0,"Prefered format: media time!");
+    }
+
+    hr = ms->SetTimeFormat(&TIME_FORMAT_MEDIA_TIME);
+
+    if (!SUCCEEDED(hr)) {
+      _RPT0(0,"Could not seek to media time!");
+      mc->Release();
+      ms->Release();
+      StartGraph();
+      return hr;
+    }
+    if (dwCaps & AM_SEEKING_CanSeekAbsolute) {
+       hr = ms->SetPositions(&pos, AM_SEEKING_AbsolutePositioning, NULL, AM_SEEKING_NoPositioning);
+       if (FAILED(hr)) {
+         _RPT0(0,"Absolute seek failed!");
+         mc->Release();
+         ms->Release();
+         StartGraph();
+         return hr;
+       }
     } else {
-      pCapabilities = AM_SEEKING_CanSeekForwards;
-      canDo = ms->CheckCapabilities(&pCapabilities);
-      if (canDo && (pCurrent!=-1)) {
+      if ((dwCaps & AM_SEEKING_CanSeekForwards) && (pCurrent!=-1)) {
         pCurrent = pos - pCurrent;
         pStop = pos - pStop;
         hr = ms->SetPositions(&pCurrent, AM_SEEKING_RelativePositioning, &pStop, AM_SEEKING_NoPositioning);
       } else {
         // No way of seeking
+        mc->Release();
         ms->Release();
         StartGraph();
         return S_FALSE;
       }
     }
     ms->Release();
+    mc->Release();
     StartGraph();
 
     return S_OK;  // Seek ok
@@ -984,8 +1026,19 @@ public:
 
   // IUnknown
 
-  ULONG __stdcall AddRef() { InterlockedIncrement(&refcnt); _RPT1(0,"GetSample::AddRef() -> %d\n", refcnt); return refcnt; }
-  ULONG __stdcall Release() { InterlockedDecrement(&refcnt); _RPT1(0,"GetSample::Release() -> %d\n", refcnt); return refcnt; }
+  ULONG __stdcall AddRef() { 
+    InterlockedIncrement(&refcnt); 
+    _RPT1(0,"GetSample::AddRef() -> %d\n", refcnt); 
+    return refcnt; 
+  }
+
+  ULONG __stdcall Release() { 
+    InterlockedDecrement(&refcnt); 
+    _RPT1(0,"GetSample::Release() -> %d\n", refcnt); 
+    return refcnt; 
+  }
+
+  
 
   HRESULT __stdcall QueryInterface(REFIID iid, void** ppv) {
     if (iid == IID_IUnknown)
@@ -1001,13 +1054,17 @@ public:
     else if (iid == IID_IMemInputPin)
     *ppv = static_cast<IMemInputPin*>(this);
     else if (iid == IID_IMediaSeeking || iid == IID_IMediaPosition) {
-      // We don't implement IMediaSeeking or IMediaPosition, but
-      // expose the upstream filter's implementation.  This violates
-      // the rule that QueryInterface should be an equivalence
-      // relation, but it seems to work for this purpose.
       if (!source_pin)
         return E_NOINTERFACE;
-      return source_pin->QueryInterface(iid, ppv);
+
+      if (m_pPos == NULL)  {
+          // We have not created the CPosPassThru object yet. Do so now.
+          HRESULT hr = S_OK;
+          hr = CreatePosPassThru(NULL , FALSE, static_cast<IPin*>(this), &m_pPos);
+
+          if (FAILED(hr)) return hr;
+        }
+        return m_pPos->QueryInterface(iid, ppv);
     } else {
       *ppv = 0;
       return E_NOINTERFACE;
@@ -1113,12 +1170,10 @@ public:
 
     if (load_audio) {
       if (pmt->majortype != MEDIATYPE_Audio && load_audio) {
-        _RPT0(0, "*** majortype was not audio\n");
         return S_FALSE;
       }
     } else {
       if (pmt->majortype != MEDIATYPE_Video) {
-        _RPT0(0, "*** majortype was not video\n");
         return S_FALSE;
       }
     }
@@ -1286,12 +1341,13 @@ public:
   HRESULT __stdcall Receive(IMediaSample* pSamples) {
     if (end_of_stream || flushing) {
       _RPT0(0,"discarding sample (end of stream or flushing)\n");
-      return E_UNEXPECTED;
+      return S_OK;
     }
     if (S_OK == pSamples->IsPreroll()) {
       _RPT0(0,"discarding sample (preroll)\n");
       return S_OK;
     }
+
     if (FAILED(pSamples->GetTime(&sample_start_time, &sample_end_time))) {
       _RPT0(0,"failed!\n");
     } else {
@@ -1315,7 +1371,7 @@ public:
         env->BitBlt(pvf->GetWritePtr(PLANAR_V), pvf->GetPitch(PLANAR_V), buf+ pvf->GetOffset(PLANAR_V) - pvf->GetOffset(PLANAR_Y),
           pvf->GetPitch(PLANAR_V), pvf->GetRowSize(PLANAR_V), pvf->GetHeight(PLANAR_V));
       }
-    } else {  // audio
+    } else if (load_audio) {  // audio
 
       if (!a_allocated_buffer) {  // Allocate new buffer based on data length
         a_buffer = new BYTE[pSamples->GetActualDataLength()];
@@ -1339,7 +1395,10 @@ public:
     }
     if (state == State_Running) {
       SetEvent(evtNewSampleReady);
-      WaitForSingleObject(evtDoneWithSample, INFINITE);
+      HRESULT wait_result;
+      do {
+        wait_result = WaitForSingleObject(evtDoneWithSample, 100);
+      } while (wait_result != WAIT_OBJECT_0 && state ==State_Running);
     }
     return S_OK;
   }
@@ -1439,6 +1498,54 @@ static void RemoveUselessFilters(IGraphBuilder* gb, IBaseFilter* not_this_one, I
   ef->Release();
 }
 
+static HRESULT AttemptConnectFilters(IGraphBuilder* gb, IBaseFilter* connect_filter) {
+  IEnumFilters* ef;
+
+  if (FAILED(gb->EnumFilters(&ef)))
+    return E_UNEXPECTED;
+
+  HRESULT hr;
+  ULONG fetched=1;
+  IBaseFilter* bf;
+  IEnumPins* ep_conn;
+
+  connect_filter->EnumPins(&ep_conn);
+  IPin* p_conn;
+  if (FAILED(ep_conn->Next(1, &p_conn, &fetched))) 
+    return E_UNEXPECTED;
+
+  while (S_OK == ef->Next(1, &bf, &fetched)) {
+    if (bf != connect_filter) {
+      IEnumPins* ep;
+
+      bf->EnumPins(&ep);
+      IPin* pPin;
+      while (S_OK == ep->Next(1, &pPin, &fetched))  {
+
+        PIN_DIRECTION PinDirThis;
+        pPin->QueryDirection(&PinDirThis);
+
+        if (PinDirThis == PINDIR_OUTPUT) {
+          hr = gb->ConnectDirect(pPin, p_conn, NULL);
+          if (hr == S_OK) {
+            pPin->Release();
+            ep->Release();
+            bf->Release();
+            ep_conn->Release();
+            ef->Release();
+            return S_OK;
+          }
+        }
+      }
+      pPin->Release();
+      ep->Release();
+    }
+    bf->Release();
+  }
+  ep_conn->Release();
+  ef->Release();
+  return S_OK;
+}
 
 static void SetMicrosoftDVtoFullResolution(IGraphBuilder* gb) {
   // Microsoft's DV codec defaults to half-resolution, to everyone's
@@ -1498,10 +1605,13 @@ public:
     CheckHresult(gb->AddFilter(static_cast<IBaseFilter*>(&get_sample), L"GetSample"), "couldn't add Video GetSample filter");
     CheckHresult(gb->AddFilter(static_cast<IBaseFilter*>(&get_audio_sample), L"GetSample"), "couldn't add Audio GetSample filter");
 
-    bool load_grf = false;  // Detect ".GRF" extension and load as graph if so.
+    bool load_grf = !strcmpi(filename+strlen(filename)-3,"grf");  // Detect ".GRF" extension and load as graph if so.
 
     if (load_grf) {
       CheckHresult(LoadGraphFile(gb, filenameW),"Couldn't open GRF file.",filename);
+      // Try connecting to any open pins.
+      AttemptConnectFilters(gb, &get_sample);
+      AttemptConnectFilters(gb, &get_audio_sample);
     } else {
       CheckHresult(gb->RenderFile(filenameW, NULL), "couldn't open file ", filename);
     }
@@ -1525,14 +1635,19 @@ public:
     IMediaSeeking* ms=0;
     CheckHresult(gb->QueryInterface(&ms), "couldn't get IMediaSeeking interface");
     frame_units = SUCCEEDED(ms->SetTimeFormat(&TIME_FORMAT_FRAME));
+
     if (FAILED(ms->GetDuration(&duration)) || duration == 0) {
       env->ThrowError("DirectShowSource: unable to determine the duration of the video");
     }
+
     bool audio_time = SUCCEEDED(ms->SetTimeFormat(&TIME_FORMAT_MEDIA_TIME));
     __int64 audio_dur;
+
     if (FAILED(ms->GetDuration(&audio_dur)) || audio_dur == 0) {
       env->ThrowError("DirectShowSource: unable to determine the duration of the audio");
     }
+
+    frame_units = true;
 
     ms->Release();
 
@@ -1564,7 +1679,6 @@ public:
       vi.num_audio_samples = (__int64)((double)audio_dur * (double)a_vi.audio_samples_per_second / 10000000.0);
       get_audio_sample.StartGraph();
     }
-// dur = 100ns / 1/10 ms = 1/10000 s
 
     cur_frame = 0;
     base_sample_time = 0;
@@ -1574,10 +1688,17 @@ public:
 
 
   ~DirectShowSource() {
-//    get_sample.StopGraph(); 
-//    get_audio_sample.StopGraph(); // Stopgraph crashes AC3filter
-    gb->Abort(); 
-//    gb->Release(); // Release hangs, if Stopgraph has not been called
+    IMediaControl* mc;
+    if (SUCCEEDED(gb->QueryInterface(&mc))) {
+      OAFilterState st;
+      mc->GetState(1000, &st);
+      if (st == State_Running) {
+				mc->Stop();
+			}
+			mc->Release();
+		}
+    get_sample.StopGraph();
+    get_audio_sample.StopGraph();
   }
 
   const VideoInfo& __stdcall GetVideoInfo() { return vi; }
@@ -1586,7 +1707,7 @@ public:
     n = max(min(n, vi.num_frames-1), 0);
     if (frame_units) {
       if (n < cur_frame || n > cur_frame+10) {
-        if ( no_search || get_sample.SeekTo(n)!=S_OK) {
+        if ( no_search || get_sample.SeekTo(__int64(n+1) * avg_time_per_frame + (avg_time_per_frame>>1))!=S_OK) {
           no_search=true;
           if (cur_frame < n) {
             while (cur_frame < n) {
@@ -1640,8 +1761,14 @@ public:
 
     int bytes_left = vi.BytesFromAudioSamples(count);
 
+    if (vi.HasVideo() && (!no_search)) next_sample = start;  // Never seek when video.
+
     if (next_sample != start) {  // We have been searching!  Skip until sync!
-      if (start < next_sample) { // We are behind sync - pad with 0
+      if ((!no_search) && SUCCEEDED(get_audio_sample.SeekTo(start*(__int64)10000000/(__int64)vi.audio_samples_per_second))) {
+        // Seek succeeded!
+        next_sample = start;
+
+      } else if (start < next_sample) { // We are behind sync - pad with 0
         memset(buf,0, bytes_left);
         return;
       } else {  // Skip forward (decode)
@@ -1745,7 +1872,7 @@ HRESULT DirectShowSource::LoadGraphFile(IGraphBuilder *pGraph, const WCHAR* wszN
 AVSValue __cdecl Create_DirectShowSource(AVSValue args, void*, IScriptEnvironment* env) {
   const char* filename = args[0][0].AsString();
   int avg_time_per_frame = args[1].Defined() ? int(10000000 / args[1].AsFloat() + 0.5) : 0;
-  return AlignPlanar::Create(new DirectShowSource(filename, avg_time_per_frame, args[2].AsBool(false), env));
+  return AlignPlanar::Create(new DirectShowSource(filename, avg_time_per_frame, args[2].AsBool(true), env));
 }
 
 
