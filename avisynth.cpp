@@ -284,6 +284,32 @@ public:
       f->prev = plugins->plugin_functions;
       plugins->plugin_functions = f;
     }
+// *******************************************************************
+// *** Make Plugin Functions readable for external apps            ***
+// *** Tobias Minich, Mar 2003                                     ***
+// BEGIN *************************************************************
+    AVSValue fnplugin;
+    char *fnpluginnew;
+    try {
+      fnplugin = env->GetVar("$PluginFunctions$");
+      fnpluginnew = new char[strlen(fnplugin.AsString())+strlen(name)+2];
+      strcpy(fnpluginnew, fnplugin.AsString());
+      strcat(fnpluginnew, " ");
+      strcat(fnpluginnew, name);
+      env->SetGlobalVar("$PluginFunctions$", AVSValue(fnpluginnew));
+      //delete fnplugin;
+    } catch (...) {
+      fnpluginnew = new char[strlen(name)+1];
+      strcpy(fnpluginnew, name);
+      env->SetGlobalVar("$PluginFunctions$", AVSValue(fnpluginnew));
+    }
+    char temp[1024] = "$Plugin!";
+    strcat(temp, name);
+    strcat(temp, "!Param$");
+    env->SetGlobalVar(temp, AVSValue(params));
+// END ***************************************************************
+
+
   }
 
   AVSFunction* Lookup(const char* search_name, const AVSValue* args, int num_args, bool* pstrict) {
