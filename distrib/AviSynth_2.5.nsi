@@ -3,7 +3,6 @@
 !DEFINE VERSION 2.5.5
 !DEFINE DATE 270104
 
-
 SetCompressor lzma
 !include "MUI.nsh"
 !include WinMessages.nsh
@@ -174,7 +173,7 @@ SectionEnd
 Subsectionend
 
 
-SubSection /e "Select Accosiation" SelectAssociation
+SubSection /e "Select Association" SelectAssociation
 
 Section /o "Associate AVS files with Notepad" Associate1
 WriteRegStr HKCR "avsfile\shell\open\command" "" 'notepad.exe "%1"'
