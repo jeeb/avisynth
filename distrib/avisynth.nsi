@@ -5,7 +5,7 @@
 
 !DEFINE VERSION 2.5.2
 
-!DEFINE DATE 010603
+!DEFINE DATE 170703
 
 
 
@@ -109,12 +109,15 @@ dll_not_ok:
   Abort
 dll_ok:
 
-MessageBox MB_YESNO|MB_ICONQUESTION  "Do you want to install ffvfw light?$\r$\n$\r$\nffvfw decodes AviSynth content, and allows AviSynth scripts to be served to applications as AVI files.$\r$\n$\r$\nNote: On some computers ffvfw seems to create problems loading other applications - removing ffvfw again solves this problem." IDNo NoAbort
-  SetOutPath $TEMP
-	File "ffvfwAVIS.exe"
-	ExecWait "$TEMP\ffvfwAVIS.exe"
-	Delete "$TEMP\ffvfwAVIS.exe"
-NoAbort:
+;MessageBox MB_YESNO|MB_ICONQUESTION  "Do you want to install ffvfw light?$\r$\n$\r$\nffvfw decodes AviSynth content, and allows AviSynth scripts to be served to applications as AVI files.$\r$\n$\r$\nNote: On some computers ffvfw seems to create problems loading other applications - removing ffvfw again solves this problem." IDNo NoAbort
+;  SetOutPath $TEMP
+;	File "ffvfwAVIS.exe"
+;	ExecWait "$TEMP\ffvfwAVIS.exe"
+;	Delete "$TEMP\ffvfwAVIS.exe"
+;NoAbort:
+
+Delete $INSTDIR\Uninstall.exe 
+WriteUninstaller $INSTDIR\Uninstall.exe
 
 
 SectionEnd
@@ -133,31 +136,23 @@ Section "Documentation (recommended)"
   CreateShortCut "$SMPROGRAMS\AviSynth 2.5\AviSynth Documentation.lnk" "$INSTDIR\Docs\index.html"
   CreateShortCut "$SMPROGRAMS\AviSynth 2.5\Example Scripts.lnk" "$INSTDIR\Examples"
 
-Delete $INSTDIR\Uninstall.exe 
-WriteUninstaller $INSTDIR\Uninstall.exe
 
 SectionEnd
 
 
 
-;Section "German Documentation"
-;  SectionIn 2 
-;  SetOutPath $INSTDIR\Docs_ger
-;  File "..\Docs_ger\*.*"
-;  SetOutPath $INSTDIR\Docs_ger\Filters
-;  File "..\Docs_ger\Filters\*.*"
-;  SetOutPath $INSTDIR\Examples
-;  File "..\Examples\*.*"
+Section "German Documentation"
+  SectionIn 2 
+  SetOutPath $INSTDIR\Docs_ger
+  File "..\Docs_ger\*.*"
+  SetOutPath $INSTDIR\Docs_ger\Filters
+  File "..\Docs_ger\Filters\*.*"
   
-;CreateShortCut "$SMPROGRAMS\AviSynth 2\Deutsche AviSynth Dokumentation.lnk" "$INSTDIR\Docs_ger\index.html"
+CreateShortCut "$SMPROGRAMS\AviSynth 2\Deutsche AviSynth Dokumentation.lnk" "$INSTDIR\Docs_ger\index.html"
 
-;CreateShortCut "$SMPROGRAMS\AviSynth 2\Skript Beispiele.lnk" "$INSTDIR\Examples"
+SectionEnd
 
-;Delete $INSTDIR\Uninstall.exe 
-;WriteUninstaller $INSTDIR\Uninstall.exe
-
-;SectionEnd
-
+;SectionDivider
 
 
 Section "Associate AVS files with Notepad"
