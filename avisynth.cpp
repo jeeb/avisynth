@@ -291,6 +291,7 @@ public:
 // *** Make Plugin Functions readable for external apps            ***
 // *** Tobias Minich, Mar 2003                                     ***
 // BEGIN *************************************************************
+#if 0 
     AVSValue fnplugin;
     char *fnpluginnew;
     try {
@@ -310,6 +311,7 @@ public:
     strcat(temp, name);
     strcat(temp, "!Param$");
     env->SetGlobalVar(temp, AVSValue(params));
+#endif
 // END ***************************************************************
 
 

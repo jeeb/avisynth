@@ -934,7 +934,7 @@ void __stdcall ResampleAudio::GetAudio(void* buf, __int64 start, __int64 count, 
 	}
   __int64 src_start = __int64(start / factor * (1<<Np) + 0.5);
   __int64 src_end = __int64(((start+count) / factor) * (1<<Np) + 0.5);
-  const __int64 source_samples = (src_end>>Np)-(src_start>>Np)+2*Xoff+1;
+  const __int64 source_samples = ((src_end - src_start)>>Np)+2*Xoff+1;
   const int source_bytes = vi.BytesFromAudioSamples(source_samples);
   if (!srcbuffer || source_bytes > srcbuffer_size) 
   {
@@ -944,16 +944,14 @@ void __stdcall ResampleAudio::GetAudio(void* buf, __int64 start, __int64 count, 
   }
   child->GetAudio(srcbuffer, (src_start>>Np)-Xoff, source_samples, env);
 
-  int pos = (int(src_start & Pmask)) + (Xoff << Np);
-  int pos_end = ( int(src_end - (src_start& ~(__int64)Pmask))) + (Xoff << Np);
+  __int64 pos = (int(src_start & Pmask)) + (Xoff << Np);
 
-//  int pos_end = int(src_end) - (int(src_start) & ~Pmask) + (Xoff << Np);
   short* dst = (short*)buf;
 
-  _ASSERT(pos_end - pos <= count*dtb);
+  int ch = vi.AudioChannels();
+  short* dst_end = &dst[count * ch];
 
-  while (pos < pos_end)  {
-    int ch = vi.AudioChannels();
+  while (dst < dst_end)  {
     for (int q = 0; q < ch; q++) {
       short* Xp = &srcbuffer[(pos>>Np)*ch];
       int v = FilterUD(Xp + q, (short)(pos&Pmask), - ch);  /* Perform left-wing inner product */
