@@ -1236,19 +1236,22 @@ public:
           pvf->GetPitch(PLANAR_V), pvf->GetRowSize(PLANAR_V), pvf->GetHeight(PLANAR_V));
       }
     } else {  // audio
+
       if (!a_allocated_buffer) {  // Allocate new buffer based on data length
         a_buffer = new BYTE[pSamples->GetActualDataLength()];
         a_allocated_buffer = pSamples->GetActualDataLength();
       }
+
       if (a_allocated_buffer < pSamples->GetActualDataLength()) { // Buffer too small  -- delete + reallocate
         delete[] a_buffer;
         a_buffer = new BYTE[pSamples->GetActualDataLength()];
         a_allocated_buffer = pSamples->GetActualDataLength();
       }
+
       PBYTE buf;
       pSamples->GetPointer(&buf);
-      memcpy(a_buffer, buf, pSamples->GetActualDataLength());
 
+      memcpy(a_buffer, buf, pSamples->GetActualDataLength());
       a_sample_bytes = pSamples->GetActualDataLength();
 
       _RPT1(0,"Recieve: Got %d bytes of audio data.\n",pSamples->GetActualDataLength());
@@ -1536,12 +1539,34 @@ public:
 
   void __stdcall GetAudio(void* buf, __int64 start, __int64 count, IScriptEnvironment* env) {
 
+    int bytes_left = vi.BytesFromAudioSamples(count);
+
     if (next_sample != start) {  // We have been searching!  Skip until sync!
-      memset(buf,0, vi.BytesFromAudioSamples(count));
-      return;
+      if (start < next_sample) { // We are behind sync - pad with 0
+        memset(buf,0, bytes_left);
+        return;
+      } else {  // Skip forward (decode)
+        int skip_left = start - next_sample;
+        bool cont = !get_audio_sample.IsEndOfStream();
+        while (cont) {
+          if (vi.AudioSamplesFromBytes(get_audio_sample.a_sample_bytes) > skip_left) {
+            audio_bytes_read = vi.BytesFromAudioSamples(skip_left);
+            cont = false;
+          }
+          
+          if (get_audio_sample.IsEndOfStream())
+            cont= false;
+          
+          if (cont) {  // Read on
+            get_audio_sample.NextSample();
+            skip_left -= vi.AudioSamplesFromBytes(get_audio_sample.a_sample_bytes);
+            audio_bytes_read = 0;
+          }
+        } // end while
+        next_sample = start;
+      }
     }
 
-    int bytes_left = vi.BytesFromAudioSamples(count);
     int bytes_filled = 0;
     BYTE* samples = (BYTE*)buf;
 
@@ -1550,18 +1575,23 @@ public:
       if (get_audio_sample.a_sample_bytes - audio_bytes_read > 0) { // Copy as many bytes as needed.
 
         int ds_offset = audio_bytes_read;  // First byte we can read.
-        int available_bytes = min(ds_offset + bytes_left, get_audio_sample.a_sample_bytes);  // This many bytes can be safely read.
+        int available_bytes = min(bytes_left, get_audio_sample.a_sample_bytes - ds_offset);  // This many bytes can be safely read.
 
         memcpy(&samples[bytes_filled], &get_audio_sample.a_buffer[ds_offset], available_bytes);
 
-        available_bytes -= ds_offset;
+//        available_bytes -= ds_offset;
         bytes_left -= available_bytes;
         bytes_filled += available_bytes;
         audio_bytes_read += available_bytes;
 
       } else { // Read more samples
-        get_audio_sample.NextSample();
-        audio_bytes_read = 0;
+        if (!get_audio_sample.IsEndOfStream()) {
+          get_audio_sample.NextSample();
+          audio_bytes_read = 0;
+        } else { // Pad with 0
+          memset(&samples[bytes_filled],0,bytes_left);
+          bytes_left = 0;
+        }
       }
     }
     next_sample +=count;
