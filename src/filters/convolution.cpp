@@ -55,9 +55,9 @@ AVSFunction Convolution_filters[] = {
       * bias     =  additive bias to adjust the total output intensity
       * matrix   =  the kernel (3x3 or 5x5).  any kind of whitespace is ok, see example
       * 
-      * clip.GeneralConvolution("1 2 3
-      *                          4 5 6
-      *                          7 8 9")
+      * clip.GeneralConvolution(matrix = "1 2 3
+      *                                   4 5 6
+      *                                   7 8 9")
      **/  
 
   { 0 }
