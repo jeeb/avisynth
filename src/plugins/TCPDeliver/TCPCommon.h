@@ -67,10 +67,10 @@
 enum {
   REQUEST_PING = 1,
   REQUEST_PONG = 2,
-  REQUEST_VERSION = 3,
   REQUEST_DISCONNECT = 4,       // Request to disconnect.
   REQUEST_NOMORESOCKETS = 5,    // Returned to the client if no more sockets are available.
   REQUEST_CONNECTIONACCEPTED = 6,    // Returned to the client when it has attempted connection and succeeded.
+  CLIENT_CHECK_VERSION = 7,
 
   CLIENT_REQUEST_FRAME = 10,    
     // Client would like to have information about frame 'n', which is prepared to be sent.
@@ -190,6 +190,11 @@ struct ClientRequestFrame {
 
 struct ClientRequestParity {
   unsigned int n;       // The number of the frame requested.
+};
+
+struct ClientCheckVersion {
+  int major;
+  int minor;
 };
 
 /***********************************************************************

@@ -124,6 +124,7 @@ private:
   void SendParityInfo(ServerReply* s, const char* request);
   void SendVideoFrame(ServerReply* s);
   void SendAudioData(ServerReply* s);
+  void CheckClientVersion(ServerReply* s, const char* request);
   WSADATA wsaData;
   SOCKET m_socket;
   sockaddr_in service;

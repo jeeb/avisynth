@@ -58,4 +58,8 @@ void MMerge_MMX(unsigned char *dstp, const unsigned char *srcp,
 				const unsigned char *maskp, const int dst_pitch, const int src_pitch,
 				const int mask_pitch, const int row_size, const int height);
 
+void mmx_darken_planar(BYTE *p1, BYTE *p1U, BYTE *p1V, const BYTE *p2, const BYTE *p2U, const BYTE *p2V, int p1_pitch, int p2_pitch,int rowsize, int height);
+
+void mmx_lighten_planar(BYTE *p1, BYTE *p1U, BYTE *p1V, const BYTE *p2, const BYTE *p2U, const BYTE *p2V, int p1_pitch, int p2_pitch,int rowsize, int height);
+
 #endif // __blend_asm_h

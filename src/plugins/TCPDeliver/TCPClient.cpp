@@ -167,6 +167,8 @@ PVideoFrame __stdcall TCPClient::GetFrame(int n, IScriptEnvironment* env) {
 
 
 void __stdcall TCPClient::GetAudio(void* buf, __int64 start, __int64 count, IScriptEnvironment* env) {
+  if (!vi.HasAudio()) return;
+
   ClientRequestAudio a;
   memset(&a, 0 , sizeof(ClientRequestAudio));
   a.start = start;
@@ -276,6 +278,17 @@ TCPClientThread::TCPClientThread(const char* hostname, int port, IScriptEnvironm
   AfxBeginThread(StartClient, this , THREAD_PRIORITY_NORMAL,0,0,NULL);
 
   thread_running = true;
+
+  ClientCheckVersion ccv;
+  ccv.major = TCPDELIVER_MAJOR;
+  ccv.minor = TCPDELIVER_MINOR;
+  SendRequest(CLIENT_CHECK_VERSION, &ccv, sizeof(ccv));
+  GetReply();
+
+  if (reply->last_reply_type != REQUEST_CONNECTIONACCEPTED) {
+    env->ThrowError("TCPClient: Version Check failed! (Ensure Client and Server are same version)");
+  }
+
 }
 
 // To be called from external interface

@@ -104,6 +104,10 @@ SOURCE=.\TCPCommon.cpp
 # End Source File
 # Begin Source File
 
+SOURCE=.\TCPCompression.cpp
+# End Source File
+# Begin Source File
+
 SOURCE=.\TCPDeliver.cpp
 # End Source File
 # Begin Source File
@@ -137,6 +141,10 @@ SOURCE=.\TCPClient.h
 # Begin Source File
 
 SOURCE=.\TCPCommon.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\TCPCompression.h
 # End Source File
 # Begin Source File
 

@@ -298,10 +298,11 @@ void TCPServerListener::SendPacket(ClientConnection* cc, ServerReply* s) {
  ****************************/
 
 void TCPServerListener::Receive(TCPRecievePacket* tr, ServerReply* s) {
-  const char* recvbuf = (const char*)tr->data;
-  unsigned int bytes = tr->dataSize;
-
-  switch (recvbuf[0]) {
+  const char recvtype = tr->data[0];
+  const char* recvbuf = (const char*)&tr->data[1];
+  unsigned int bytes = tr->dataSize-1;
+  
+  switch (recvtype) {
     case REQUEST_PING:
       _RPT0(0, "TCPServer: Received Ping? - returning Pong!\n");
       s->allocateBuffer(16);
@@ -313,16 +314,19 @@ void TCPServerListener::Receive(TCPRecievePacket* tr, ServerReply* s) {
       SendVideoInfo(s);
       break;
     case CLIENT_REQUEST_FRAME:
-      SendFrameInfo(s, &recvbuf[1]);
+      SendFrameInfo(s, recvbuf);
       break;
     case CLIENT_REQUEST_AUDIO:
-      SendAudioInfo(s, &recvbuf[1]);
+      SendAudioInfo(s, recvbuf);
       break;
     case CLIENT_SEND_PARITY:
-      SendParityInfo(s, &recvbuf[1]);
+      SendParityInfo(s, recvbuf);
       break;
     case REQUEST_DISCONNECT:
       tr->isDisconnected = true;
+      break;
+    case CLIENT_CHECK_VERSION:
+      CheckClientVersion(s, recvbuf);
       break;
     default:
       _RPT1(1,"TCPServer: Could not handle request type %d.", recvbuf[0]);
@@ -365,6 +369,15 @@ void TCPServerListener::SendPendingData(ClientConnection* cc) {
 
 }
 
+void TCPServerListener::CheckClientVersion(ServerReply* s, const char* request) {
+  ClientCheckVersion* ccv = (ClientCheckVersion*)request;
+  s->allocateBuffer(0);
+  if (ccv->major != TCPDELIVER_MAJOR) {
+    s->setType(REQUEST_DISCONNECT);
+  } else {
+    s->setType(REQUEST_CONNECTIONACCEPTED);
+  }
+}
 
 void TCPServerListener::SendVideoInfo(ServerReply* s) {
   _RPT0(0, "TCPServer: Sending VideoInfo!\n");
@@ -373,6 +386,7 @@ void TCPServerListener::SendVideoInfo(ServerReply* s) {
   s->setType(SERVER_VIDEOINFO);
   memcpy(s->data, &child->GetVideoInfo(), sizeof(VideoInfo));
 }
+
 
 void TCPServerListener::SendParityInfo(ServerReply* s, const char* request) {
   ClientRequestParity* p = (ClientRequestParity *) request;
@@ -384,6 +398,7 @@ void TCPServerListener::SendParityInfo(ServerReply* s, const char* request) {
   s->setType(SERVER_SENDING_PARITY);
   memcpy(s->data, &r, sizeof(ServerParityReply));
 }
+
 
 // Requests should optimally be handled by a separate thread to avoid blocking other clients while requesting the frame.
 void TCPServerListener::SendFrameInfo(ServerReply* s, const char* request) {
@@ -435,6 +450,7 @@ void TCPServerListener::SendFrameInfo(ServerReply* s, const char* request) {
   // Send Reply
   memcpy(s->data, &sfi, sizeof(ServerFrameInfo));
 }
+
 
 void TCPServerListener::SendAudioInfo(ServerReply* s, const char* request) {
   _RPT0(0, "TCPServer: Sending Audio Info!\n");

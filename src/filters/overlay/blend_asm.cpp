@@ -179,3 +179,178 @@ loopx:
     emms
   }
 }
+
+
+void mmx_darken_planar(BYTE *p1, BYTE *p1U, BYTE *p1V, const BYTE *p2, const BYTE *p2U, const BYTE *p2V, int p1_pitch, int p2_pitch,int rowsize, int height) {
+  static const __int64 AllOnes = 0xffffffffffffffff;
+  const BYTE* bpp[6];
+  bpp[0] = p1; bpp[1] = p2; bpp[2] = p1U; bpp[3] = p2U; bpp[4] = p1V; bpp[5] = p2V;
+
+  __asm {
+      movq mm7,[AllOnes]
+      pxor mm6,mm6
+      mov ebx,[rowsize]
+      mov esi,[p1]
+      mov edi,[p2]
+      xor ecx, ecx  // Height
+      lea edx, bpp
+      align 16
+yloopback:
+      cmp ecx, [height]
+      jge outy
+      xor eax, eax
+      align 16 
+testloop:
+      cmp ebx, eax
+      jle outloop
+      mov esi,[edx+0]   // Y
+      mov edi,[edx+4]
+      movq mm0,[eax+esi]
+      movq mm1,[eax+edi]
+      movq mm2, mm1
+      psubusb mm2,mm0
+      pcmpeqb mm2,mm6
+      
+      movq mm3,mm2   
+      pxor mm2,mm7   // Inverted
+      pand mm0,mm2
+      pand mm1,mm3
+      por mm0,mm1
+      movq [eax+esi], mm0
+
+      mov esi,[edx+8]  // U
+      mov edi,[edx+12]
+      movq mm4,[eax+esi]
+      movq mm5,[eax+edi]
+      pand mm4,mm2
+      pand mm5,mm3
+      por mm4,mm5
+      movq [eax+esi], mm4
+
+      mov esi,[edx+16]  // V
+      mov edi,[edx+20]
+      movq mm0,[eax+esi]
+      movq mm1,[eax+edi]
+      pand mm0,mm2
+      pand mm1,mm3
+      por mm0,mm1
+      movq [eax+esi], mm0
+
+      add eax,8
+      jmp testloop
+      align 16
+outloop:
+      inc ecx
+      mov esi,[edx+0]
+      mov edi,[edx+4]
+      add esi, [p1_pitch];
+      add edi, [p2_pitch];
+      mov [edx+0], esi
+      mov [edx+4], edi
+
+      mov esi,[edx+8]
+      mov edi,[edx+12]
+      add esi, [p1_pitch];
+      add edi, [p2_pitch];
+      mov [edx+8], esi
+      mov [edx+12], edi
+
+      mov esi,[edx+16]
+      mov edi,[edx+20]
+      add esi, [p1_pitch];
+      add edi, [p2_pitch];
+      mov [edx+16], esi
+      mov [edx+20], edi
+
+      jmp yloopback
+outy:
+      emms
+  } // end asm
+}
+
+void mmx_lighten_planar(BYTE *p1, BYTE *p1U, BYTE *p1V, const BYTE *p2, const BYTE *p2U, const BYTE *p2V, int p1_pitch, int p2_pitch,int rowsize, int height) {
+  static const __int64 AllOnes = 0xffffffffffffffff;
+  const BYTE* bpp[6];
+  bpp[0] = p1; bpp[1] = p2; bpp[2] = p1U; bpp[3] = p2U; bpp[4] = p1V; bpp[5] = p2V;
+
+  __asm {
+      movq mm7,[AllOnes]
+      pxor mm6,mm6
+      mov ebx,[rowsize]
+      mov esi,[p1]
+      mov edi,[p2]
+      xor ecx, ecx  // Height
+      lea edx, bpp
+      align 16
+yloopback:
+      cmp ecx, [height]
+      jge outy
+      xor eax, eax
+      align 16 
+testloop:
+      cmp ebx, eax
+      jle outloop
+      mov esi,[edx+0]   // Y
+      mov edi,[edx+4]
+      movq mm0,[eax+esi]
+      movq mm1,[eax+edi]
+      movq mm2, mm0
+      psubusb mm2,mm1
+      pcmpeqb mm2,mm6
+      
+      movq mm3,mm2   
+      pxor mm2,mm7   // Inverted
+      pand mm0,mm2
+      pand mm1,mm3
+      por mm0,mm1
+      movq [eax+esi], mm0
+
+      mov esi,[edx+8]  // U
+      mov edi,[edx+12]
+      movq mm4,[eax+esi]
+      movq mm5,[eax+edi]
+      pand mm4,mm2
+      pand mm5,mm3
+      por mm4,mm5
+      movq [eax+esi], mm4
+
+      mov esi,[edx+16]  // V
+      mov edi,[edx+20]
+      movq mm0,[eax+esi]
+      movq mm1,[eax+edi]
+      pand mm0,mm2
+      pand mm1,mm3
+      por mm0,mm1
+      movq [eax+esi], mm0
+
+      add eax,8
+      jmp testloop
+      align 16
+outloop:
+      inc ecx
+      mov esi,[edx+0]
+      mov edi,[edx+4]
+      add esi, [p1_pitch];
+      add edi, [p2_pitch];
+      mov [edx+0], esi
+      mov [edx+4], edi
+
+      mov esi,[edx+8]
+      mov edi,[edx+12]
+      add esi, [p1_pitch];
+      add edi, [p2_pitch];
+      mov [edx+8], esi
+      mov [edx+12], edi
+
+      mov esi,[edx+16]
+      mov edi,[edx+20]
+      add esi, [p1_pitch];
+      add edi, [p2_pitch];
+      mov [edx+16], esi
+      mov [edx+20], edi
+
+      jmp yloopback
+outy:
+      emms
+  } // end asm
+}
