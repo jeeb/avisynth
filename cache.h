@@ -26,6 +26,38 @@
 ********************************************************************/
 
 
+//polymorphic frame cache for use by the Cache filter
+class FrameCache {
+
+public:
+  virtual PVideoFrame fetch(int n) = 0;
+  virtual PVideoFrame store(int n, const PVideoFrame& frame) = 0;
+
+};  
+
+//frame cache who keeps frames within a fixed range
+//frames out of range are likely to be uncached
+class RangeCache : FrameCache {
+
+public:
+  RangeCache(int scale);
+  
+  virtual PVideoFrame fetch(int n);
+  virtual PVideoFrame store(int n, const PVideoFrame& frame);
+};
+
+//frame cache who keeps the last used frames
+//(fectched frames restart at the beginning of the queue)
+class QueueCache : FrameCache {
+
+public:
+  QueueCache(int scale);
+
+  virtual PVideoFrame fetch(int n);
+  virtual PVideoFrame store(int n, const PVideoFrame& frame);
+};
+
+
 class Cache : public GenericVideoFilter 
 /**
   * Manages a video frame cache
