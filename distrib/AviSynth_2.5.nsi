@@ -1,7 +1,7 @@
 !packhdr tempfile.exe "upx --best --q tempfile.exe"
 
 !DEFINE VERSION 2.5.5
-!DEFINE DATE 170604
+!DEFINE DATE 130704
 
 SetCompressor lzma
 !include "MUI.nsh"
@@ -76,6 +76,7 @@ ClearErrors
 
   SetOutPath $0
   File "..\src\plugins\DirectShowSource\Release\DirectShowSource.dll"
+  File "..\src\plugins\TCPDeliver\Release\TCPDeliver.dll"
 
   WriteRegStr HKEY_LOCAL_MACHINE "SOFTWARE\AviSynth" "plugindir2_5" "$0"
   WriteRegStr HKLM "SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\AviSynth" "DisplayName" "AviSynth 2.5"

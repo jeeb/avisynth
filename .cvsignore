@@ -5,6 +5,9 @@
 *.plg
 Package
 $(SystemRoot)
-src\Debug
-src\Release
+src/Debug
+src/Release
+src/plugins/DirectShowSource/Release/*.*
+src/plugins/DirectShowSource/Debug/*.*
+
 Temp

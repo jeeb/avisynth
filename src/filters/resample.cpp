@@ -72,8 +72,11 @@ FilteredResizeH::FilteredResizeH( PClip _child, double subrange_left, double sub
                                   int target_width, ResamplingFunction* func, IScriptEnvironment* env )
   : GenericVideoFilter(_child), tempY(0), tempUV(0),pattern_luma(0),pattern_chroma(0)
 {
+  pattern_luma = pattern_chroma = (int *)0;
+  tempUV = tempY = 0;
 
   original_width = _child->GetVideoInfo().width;
+
   if (target_width<8)
     env->ThrowError("Resize: Width must be bigger than or equal to 8.");
 
@@ -1254,8 +1257,6 @@ FilteredResizeH::~FilteredResizeH(void)
   assemblerUV.Free();
 }
 
- 
-
 
 
 /***************************************
@@ -1266,6 +1267,7 @@ FilteredResizeV::FilteredResizeV( PClip _child, double subrange_top, double subr
                                   int target_height, ResamplingFunction* func, IScriptEnvironment* env )
   : GenericVideoFilter(_child)
 {
+  resampling_pattern = resampling_patternUV = yOfs = yOfsUV = 0;
   if (target_height<4)
     env->ThrowError("Resize: Height must be bigger than or equal to 4.");
   if (vi.IsYV12() && (target_height&1))

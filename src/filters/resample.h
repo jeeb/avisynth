@@ -70,7 +70,7 @@ private:
   BYTE *gen_srcp;
   BYTE *gen_dstp;
   int gen_src_pitch, gen_dst_pitch;
-// These are sued by the filter:
+// These are used by the filter:
   int gen_h, gen_x;
   BYTE* gen_temp_destp;
 };

@@ -221,7 +221,9 @@ void Tokenizer::NextToken() {
           
           pc = end+1;
         }
-        type = 's';
+        for (const char *cp = start; cp < end; cp++) {
+          if (*cp == '\n') { line++; }
+        }        type = 's';
         string = env->SaveString(start, end-start);
       }
       break;

@@ -197,8 +197,8 @@ int* GetResamplingPatternRGB( int original_width, double subrange_start, double 
     double total = 0.0;
     for (int j=0; j<fir_filter_size; ++j)
       total += func->f((start_pos+j - pos) * filter_step);
-    if (total == 0.0) // Just to be absolutly sure - IanB
-      env->ThrowError("Resize: Internal error, zero coeff total.");
+//    if (total == 0.0) // Just to be absolutly sure - IanB
+//      env->ThrowError("Resize: Internal error, zero coeff total.");
     double total2 = 0.0;
     for (int k=0; k<fir_filter_size; ++k) {
       double total3 = total2 + func->f((start_pos+k - pos) * filter_step) / total;
@@ -256,8 +256,8 @@ int* GetResamplingPatternYUV( int original_width, double subrange_start, double 
     double total = 0.0;
     for (int j=0; j<fir_filter_size; ++j)
       total += func->f((start_pos+j - pos) * filter_step);
-    if (total == 0.0) // Just to be absolutly sure - IanB
-      env->ThrowError("Resize: Internal error, zero coeff total.");
+//    if (total == 0.0) // Just to be absolutly sure - IanB
+//      env->ThrowError("Resize: Internal error, zero coeff total.");
     double total2 = 0.0;
     int oldCoeff = 0;
     for (int k=0; k<fir_filter_size; ++k)
