@@ -48,30 +48,30 @@
 #endif
 
 
-extern AVSFunction Audio_filters[], Combine_filters[], Convert_filters[], 
-                   Convolution_filters[], Edit_filters[], Field_filters[], 
-                   Focus_filters[], Fps_filters[], Histogram_filters[], 
-                   Layer_filters[], Levels_filters[], Misc_filters[], 
-                   Plugin_functions[], Resample_filters[], Resize_filters[], 
+extern AVSFunction Audio_filters[], Combine_filters[], Convert_filters[],
+                   Convolution_filters[], Edit_filters[], Field_filters[],
+                   Focus_filters[], Fps_filters[], Histogram_filters[],
+                   Layer_filters[], Levels_filters[], Misc_filters[],
+                   Plugin_functions[], Resample_filters[], Resize_filters[],
                    Script_functions[], Source_filters[], Text_filters[],
                    Transform_filters[], Merge_filters[], Color_filters[],
-                   Debug_filters[], Image_filters[], Turn_filters[], 
-									 Conditional_filters[], Conditional_funtions_filters[],
+                   Debug_filters[], Image_filters[], Turn_filters[],
+                                     Conditional_filters[], Conditional_funtions_filters[],
                    CPlugin_filters[], Cache_filters[],SSRC_filters[],
                    SuperEq_filters[], Overlay_filters[], Soundtouch_filters[];
-                   
 
-AVSFunction* builtin_functions[] = {  
-                   Audio_filters, Combine_filters, Convert_filters, 
-                   Convolution_filters, Edit_filters, Field_filters, 
-                   Focus_filters, Fps_filters, Histogram_filters, 
-                   Layer_filters, Levels_filters, Misc_filters, 
-                   Resample_filters, Resize_filters, 
+
+AVSFunction* builtin_functions[] = {
+                   Audio_filters, Combine_filters, Convert_filters,
+                   Convolution_filters, Edit_filters, Field_filters,
+                   Focus_filters, Fps_filters, Histogram_filters,
+                   Layer_filters, Levels_filters, Misc_filters,
+                   Resample_filters, Resize_filters,
                    Script_functions, Source_filters, Text_filters,
-                   Transform_filters, Merge_filters, Color_filters, 
+                   Transform_filters, Merge_filters, Color_filters,
                    Debug_filters, Image_filters, Turn_filters,
-									 Conditional_filters, Conditional_funtions_filters,
-                   Plugin_functions, CPlugin_filters, Cache_filters, 
+                                     Conditional_filters, Conditional_funtions_filters,
+                   Plugin_functions, CPlugin_filters, Cache_filters,
                    SSRC_filters, SuperEq_filters, Overlay_filters,
                    Soundtouch_filters };
 
@@ -276,9 +276,86 @@ public:
     delete p;
   }
 
+  static bool IsParameterTypeSpecifier(char c) {
+    switch (c) {
+      case 'b': case 'i': case 'f': case 's': case 'c': case '.':
+        return true;
+      default:
+        return false;
+    }
+  }
+
+  static bool IsParameterTypeModifier(char c) {
+    switch (c) {
+      case '+': case '*':
+        return true;
+      default:
+        return false;
+    }
+  }
+
+  static bool IsValidParameterString(const char* p) {
+    int state = 0;
+    char c;
+    while ((c = *p++) != '\0' && state != -1) {
+      switch (state) {
+        case 0:
+          if (IsParameterTypeSpecifier(c)) {
+            state = 1;
+          }
+          else if (c == '[') {
+            state = 2;
+          }
+          else {
+            state = -1;
+          }
+          break;
+
+        case 1:
+          if (IsParameterTypeSpecifier(c)) {
+            // do nothing; stay in the current state
+          }
+          else if (c == '[') {
+            state = 2;
+          }
+          else if (IsParameterTypeModifier(c)) {
+            state = 0;
+          }
+          else {
+            state = -1;
+          }
+          break;
+
+        case 2:
+          if (c == ']') {
+            state = 3;
+          }
+          else {
+            // do nothing; stay in the current state
+          }
+          break;
+
+        case 3:
+          if (IsParameterTypeSpecifier(c)) {
+            state = 1;
+          }
+          else {
+            state = -1;
+          }
+          break;
+      }
+    }
+
+    // states 0, 1 are the only ending states we accept
+    return state == 0 || state == 1;
+  }
+
   void AddFunction(const char* name, const char* params, IScriptEnvironment::ApplyFunc apply, void* user_data) {
     if (prescanning && !plugins)
       env->ThrowError("FunctionTable in prescanning state but no plugin has been set");
+    if (!IsValidParameterString(params))
+      env->ThrowError("%s has an invalid parameter string (bug in filter)", name);
+
     LocalFunction* f = new LocalFunction;
     const char* alt_name = 0;
     if (!prescanning) {
@@ -319,7 +396,7 @@ public:
 // *** Make Plugin Functions readable for external apps            ***
 // *** Tobias Minich, Mar 2003                                     ***
 // BEGIN *************************************************************
-#if 1 
+#if 1
     if (prescanning) {
     AVSValue fnplugin;
     char *fnpluginnew;
@@ -420,9 +497,10 @@ public:
 
     bool optional = false;
 
-    for (int i=0; i<num_args; ++i) {
+    int i = 0;
+    while (i < num_args) {
 
-      if (*param_types == 0) {
+      if (*param_types == '\0') {
         // more args than params
         return false;
       }
@@ -430,10 +508,16 @@ public:
       if (*param_types == '[') {
         // named arg: skip over the name
         param_types = strchr(param_types+1, ']');
-        if (!param_types)
+        if (param_types == NULL) {
           env->ThrowError("TypeMatch: unterminated parameter name (bug in filter)");
+        }
+
         ++param_types;
         optional = true;
+
+        if (*param_types == '\0') {
+          env->ThrowError("TypeMatch: no type specified for optional parameter (bug in filter)");
+        }
       }
 
       if (param_types[1] == '*') {
@@ -443,16 +527,21 @@ public:
 
       switch (*param_types) {
         case 'b': case 'i': case 'f': case 's': case 'c':
-          if ((!optional || args[i].Defined()) && !SingleTypeMatch(*param_types, args[i], strict))
+          if (   (!optional || args[i].Defined())
+              && !SingleTypeMatch(*param_types, args[i], strict))
             return false;
-          // fall thru
+          // fall through
         case '.':
           ++param_types;
+          ++i;
           break;
         case '+': case '*':
           if (!SingleTypeMatch(param_types[-1], args[i], strict)) {
+            // we're done with the + or *
             ++param_types;
-            --i;
+          }
+          else {
+            ++i;
           }
           break;
         default:
@@ -463,7 +552,8 @@ public:
     // We're out of args.  We have a match if one of the following is true:
     // (a) we're out of params; (b) remaining params are named; (c) we're
     // at a '+' or '*'.
-    return (*param_types == 0 || *param_types == '[' || *param_types == '+' || *param_types == '*');
+    return    *param_types == '\0' || *param_types == '['
+           || *param_types == '+' || param_types[0] == '*' || param_types[1] == '*';
   }
 };
 
@@ -606,7 +696,7 @@ ScriptEnvironment::ScriptEnvironment() : at_exit(This()), function_table(This())
   global_var_table.Set("false", false);
   global_var_table.Set("yes", true);
   global_var_table.Set("no", false);
-  
+
   PrescanPlugins();
 }
 
@@ -723,7 +813,7 @@ void ScriptEnvironment::PrescanPlugins()
   {
     WIN32_FIND_DATA FileData;
     HANDLE hFind = FindFirstFile(plugin_dir, &FileData);
-    if (hFind != INVALID_HANDLE_VALUE) {    
+    if (hFind != INVALID_HANDLE_VALUE) {
       FindClose(hFind);
       CWDChanger cwdchange(plugin_dir);
       function_table.StartPrescanning();
@@ -755,7 +845,7 @@ PVideoFrame ScriptEnvironment::NewPlanarVideoFrame(int width, int height, int al
   int size = pitch * height + UVpitch * height;
   VideoFrameBuffer* vfb = GetFrameBuffer(size+(FRAME_ALIGN*4));
   if (!vfb)
-    ThrowError("NewPlanarVideoFrame: Returned 0 size image!"); 
+    ThrowError("NewPlanarVideoFrame: Returned 0 size image!");
 #ifdef _DEBUG
   {
     static const BYTE filler[] = { 0x0A, 0x11, 0x0C, 0xA7, 0xED };
@@ -802,7 +892,7 @@ PVideoFrame ScriptEnvironment::NewVideoFrame(int row_size, int height, int align
 }
 
 
-PVideoFrame __stdcall ScriptEnvironment::NewVideoFrame(const VideoInfo& vi, int align) { 
+PVideoFrame __stdcall ScriptEnvironment::NewVideoFrame(const VideoInfo& vi, int align) {
   // Check requested pixel_type:
   switch (vi.pixel_type) {
     case VideoInfo::CS_BGR24:
@@ -846,7 +936,7 @@ bool ScriptEnvironment::MakeWritable(PVideoFrame* pvf) {
   // Otherwise, allocate a new frame (using NewVideoFrame) and
   // copy the data into it.  Then modify the passed PVideoFrame
   // to point to the new buffer.
-    const int row_size = vf->GetRowSize(); 
+    const int row_size = vf->GetRowSize();
     const int height = vf->GetHeight();
     PVideoFrame dst;
     if (vf->GetPitch(PLANAR_U)) {  // we have no videoinfo, so we can only assume that it is Planar
@@ -905,7 +995,7 @@ LinkedVideoFrameBuffer* ScriptEnvironment::GetFrameBuffer2(int size) {
     // Deallocate all unused frames.
     for (LinkedVideoFrameBuffer* i = video_frame_buffers.prev; i != &video_frame_buffers; i = i->prev) {
       if (i->GetRefcount() == 0) {
-        if (i->next != i->prev) {  
+        if (i->next != i->prev) {
           // Relink
           i->prev->next = i->next;
           i->next->prev = i->prev;
@@ -920,7 +1010,7 @@ LinkedVideoFrameBuffer* ScriptEnvironment::GetFrameBuffer2(int size) {
     _RPT2(0,"Freed %d frames, consisting of %d bytes.\n",freed_count, freed);
     memory_used -= freed;
   }
-  // Plan D: allocate a new buffer, regardless of current memory usage  
+  // Plan D: allocate a new buffer, regardless of current memory usage
   return NewFrameBuffer(size);
 }
 

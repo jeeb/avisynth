@@ -198,7 +198,7 @@ unsigned int Resampler_base::GetLatency()
 template<class REAL>
 class Upsampler : public Resampler_i_base<REAL>
 {
-  int frqgcd,osf,fs1,fs2;
+  __int64 frqgcd,osf,fs1,fs2;
   REAL **stage1,*stage2;
   int n1,n1x,n1y,n2,n2b;
   int filter2len;
