@@ -139,8 +139,7 @@ class MergeChannels : public GenericVideoFilter
 {
 public:
   MergeChannels(PClip _clip, int _num_children, PClip* _child_array, IScriptEnvironment* env);
-  virtual ~MergeChannels()
-   {if (tempbuffer_size) {delete[] tempbuffer;tempbuffer_size=0;}}
+  ~MergeChannels();
 
   void __stdcall GetAudio(void* buf, __int64 start, __int64 count, IScriptEnvironment* env);
   static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment*);
@@ -150,7 +149,6 @@ private:
   signed char** clip_offset;
   signed char *tempbuffer;
   int tempbuffer_size;
-	int clip1_channels;
 
   const int num_children;
   PClip* child_array;
@@ -181,12 +179,11 @@ public:
 private:
   char *tempbuffer;
   int tempbuffer_size;
-	int* channel;
+  int* channel;
   int numchannels;
+  int cbps;
   int src_bps;
-  int src_cbps;
   int dst_bps;
-  int dst_cbps;
 };
 
 class KillAudio : public GenericVideoFilter 
@@ -213,7 +210,7 @@ public:
   static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env);
 
 private:
-  const int delay_samples;
+  const __int64 delay_samples;
 };
 
 
@@ -224,7 +221,7 @@ class Amplify : public GenericVideoFilter
  **/
 {
 public:
-  Amplify(PClip _child, float* _volumes);
+  Amplify(PClip _child, float* _volumes, int* _i_v);
   void __stdcall GetAudio(void* buf, __int64 start, __int64 count, IScriptEnvironment* env);
 
   static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env);
@@ -233,18 +230,7 @@ public:
 
 private:
   const float* volumes;
-
-  static __inline short Saturate(int n) {
-    if (n <= -32768) return -32768;
-    if (n >= 32767) return 32767;
-    return (short)n;
-  }
-
-  static __inline int Saturate_int32(__int64 n) {
-    if (n <= MIN_INT) return MIN_INT;  
-    if (n >= MAX_INT) return MAX_INT;
-    return (int)n;
-  }
+  const int* i_v;
 
  static __inline double dBtoScaleFactor(double dB)
  { return pow(10.0, dB/20.0);};
@@ -260,7 +246,7 @@ class Normalize : public GenericVideoFilter
  **/
 {
 public:
-  Normalize(PClip _child, double _max_factor, bool _showvalues);
+  Normalize(PClip _child, float _max_factor, bool _showvalues);
   void __stdcall GetAudio(void* buf, __int64 start, __int64 count, IScriptEnvironment* env);
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
 
@@ -270,14 +256,8 @@ public:
 private:
   float max_factor;
   float max_volume;
+  int   frameno;
   bool showvalues;
-
-  static __inline short Saturate(int n) {
-    if (n <= -32768) return -32768;
-    if (n >= 32767) return 32767;
-    return (short)n;
-  }
-
 };
 
 class MixAudio : public GenericVideoFilter 
@@ -295,18 +275,10 @@ public:
 
 private:
   const int track1_factor, track2_factor;
-	int tempbuffer_size;
+  const float t1factor, t2factor;
+  int tempbuffer_size;
   signed char *tempbuffer;
-	PClip tclip,clip;
-
-  static __inline short Saturate(int n) {
-    if (n <= -32768) return -32768;
-    if (n >= 32767) return 32767;
-    return (short)n;
-  }
-
- static __inline double dBtoScaleFactor(double dB)
- { return pow(10.0, dB/20.0);};
+  PClip tclip,clip;
 };
 
 

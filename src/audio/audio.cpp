@@ -36,6 +36,8 @@
 
 #include "audio.h"
 
+#define BIGBUFFSIZE (256*1024) // Use a 256Kb buffer for EnsureVBRMP3Sync seeking & Normalize scanning
+
 /********************************************************************
 ***** Declare index of new filters for Avisynth's filter engine *****
 ********************************************************************/
@@ -66,7 +68,9 @@ AVSFunction Audio_filters[] = {
                               };
 
 // Note - floats should not be clipped - they will be clipped, when they are converted back to ints.
-// Vdub can handle 8/16 bit, and reads 32bit, but cannot play/convert it. Floats doesn't make sense in AVI. So for now convert back to 16 bit always
+// Vdub can handle 8/16 bit, and reads 32bit, but cannot play/convert it. Floats doesn't make sense
+// in AVI. So for now convert back to 16 bit always.
+
 // FIXME: Most int64's are often cropped to ints - count is ok to be int, but not start
 
 // For explicit conversions
@@ -147,21 +151,24 @@ void __stdcall ConvertToMono::GetAudio(void* buf, __int64 start, __int64 count, 
   if (vi.IsSampleType(SAMPLE_INT16)) {
     signed short* samples = (signed short*)buf;
     signed short* tempsamples = (signed short*)tempbuffer;
+	const int rchannels = 65536 / channels;
+	
     for (int i = 0; i < count; i++) {
       int tsample = 0;
-      for (int j = 0 ; j < channels ; j++)
-        tsample += tempsamples[i * channels + j]; // Accumulate samples
-      samples[i] = (signed short)(((tsample + (channels >> 1)) / channels));
+      for (int j = i*channels ; j < i*channels+channels; j++)
+        tsample += tempsamples[j]; // Accumulate samples
+      samples[i] = (signed short)((tsample * rchannels + 32768) >> 16); // tsample * (1/channels) + 0.5
     }
   } else if (vi.IsSampleType(SAMPLE_FLOAT)) {
     SFLOAT* samples = (SFLOAT*)buf;
     SFLOAT* tempsamples = (SFLOAT*)tempbuffer;
-    SFLOAT f_channels = (SFLOAT)channels;
+    SFLOAT f_rchannels = 1.0f / (SFLOAT)channels;
+
     for (int i = 0; i < count; i++) {
       SFLOAT tsample = 0.0f;
-      for (int j = 0;j < channels;j++)
-        tsample += tempsamples[i * channels + j]; // Accumulate samples
-      samples[i] = (tsample / f_channels);
+      for (int j = i*channels ; j < i*channels+channels; j++)
+        tsample += tempsamples[j]; // Accumulate samples
+      samples[i] = (tsample * f_rchannels);
     }
   }
 }
@@ -193,30 +200,45 @@ EnsureVBRMP3Sync::EnsureVBRMP3Sync(PClip _clip)
 
 
 void __stdcall EnsureVBRMP3Sync::GetAudio(void* buf, __int64 start, __int64 count, IScriptEnvironment* env) {
-  signed short* samples = (signed short*)buf;
 
   if (start != last_end) { // Reread!
-    __int64 offset = 0;
+    __int64 bcount = count;
+	__int64 offset = 0;
+    char* samples = (char*)buf;
+    bool bigbuff=false;
+
     if (start > last_end)
       offset = last_end; // Skip forward only if the skipped to position is in front of last position.
-    while (offset + count < start) { // Read whole blocks of 'count' samples
-      child->GetAudio(samples, offset, count, env);
-      offset += count;
+
+	if ((count < start-offset) && (vi.BytesFromAudioSamples(count) < BIGBUFFSIZE)) {
+	  samples = new char[BIGBUFFSIZE];
+	  if (samples) {
+	    bigbuff=true;
+	    bcount = vi.AudioSamplesFromBytes(BIGBUFFSIZE);
+	  }
+	  else {
+	    samples = (char*)buf; // malloc failed just reuse clients buffer
+	  }
+	}
+    while (offset + bcount < start) { // Read whole blocks of 'bcount' samples
+      child->GetAudio(samples, offset, bcount, env);
+      offset += bcount;
     } // Read until 'start'
     child->GetAudio(samples, offset, start - offset, env);  // Now we're at 'start'
     offset += start - offset;
+	if (bigbuff) delete[] samples;
     if (offset != start)
       env->ThrowError("EnsureVBRMP3Sync [Internal error]: Offset should be %i, but is %i", start, offset);
   }
-  child->GetAudio(samples, start, count, env);
+  child->GetAudio(buf, start, count, env);
   last_end = start + count;
 }
 
 
 PClip EnsureVBRMP3Sync::Create(PClip clip) {
   PClip c = new EnsureVBRMP3Sync(clip);
-  PClip c2 = new Cache(c);
-  c2->SetCacheHints(CACHE_AUDIO, 1024*1024); // Very good idea to insert a cache here.
+  PClip c2 = new Cache(c); // Very good idea to insert a cache here.
+  c2->SetCacheHints(CACHE_AUDIO, 1024*1024);
   return c2;
 }
 
@@ -226,17 +248,16 @@ AVSValue __cdecl EnsureVBRMP3Sync::Create(AVSValue args, void*, IScriptEnvironme
 
 
 /*******************************************
- *******   Mux two sources, so the      ****
- *******   total channels  is the same  ****
- *******   as the two clip              ****
+ *******   Mux 'N' sources, so the      ****
+ *******   total channels is the sum of ****
+ *******   the channels in the 'N' clip ****
  *******************************************/
 
 MergeChannels::MergeChannels(PClip _clip, int _num_children, PClip* _child_array, IScriptEnvironment* env)
     : GenericVideoFilter(_clip), num_children(_num_children), child_array(_child_array) {
-  clip1_channels = vi.AudioChannels();
-  clip_channels = new int[num_children]; // fixme: deleteme!
-  clip_offset = new signed char * [num_children]; // fixme: deleteme!
-  clip_channels[0] = clip1_channels;
+  clip_channels = new int[num_children];
+  clip_offset = new signed char * [num_children];
+  clip_channels[0] = vi.AudioChannels();
 
   for (int i = 1;i < num_children;i++) {
     tclip = child_array[i];
@@ -253,6 +274,15 @@ MergeChannels::MergeChannels(PClip _clip, int _num_children, PClip* _child_array
   }
 
   tempbuffer_size = 0;
+}
+
+MergeChannels::~MergeChannels() {
+  if (tempbuffer_size) {
+    delete[] tempbuffer;
+	tempbuffer_size=0;
+  }
+  delete[] clip_channels;
+  delete[] clip_offset;
 }
 
 
@@ -284,12 +314,71 @@ void __stdcall MergeChannels::GetAudio(void* buf, __int64 start, __int64 count, 
   int dst_offset = 0;
   for (i = 0;i < num_children;i++) {
     signed char* src_buf = clip_offset[i];
-    for (int l = 0;l < count;l++) {
-      for (int k = 0;k < (bpcs*clip_channels[i]);k++) {
-        samples[dst_offset + (l*bps) + k] = src_buf[(l * bpcs * clip_channels[i]) + k];
+	int bpcc = bpcs*clip_channels[i];
+
+	switch (bpcc) {
+	
+	case 2: { // mono 16 bit
+        for (int l = 0, k=dst_offset; l < count; l++, k+=bps) {
+          *(short*)(samples+k) = ((short*)src_buf)[l];
+        }
+        break;
+      }
+	case 4: { // mono float/32 bit, stereo 16 bit
+        for (int l = 0, k=dst_offset; l < count; l++, k+=bps) {
+          *(int*)(samples+k) = ((int*)src_buf)[l];
+        }
+        break;
+      }
+	case 8: { // stereo float/32 bit
+		if (env->GetCPUFlags() & CPUF_MMX) {
+          __asm {
+		    mov eax,[src_buf]
+		     mov ebx,[samples]
+		    mov ecx,dword ptr[count]
+		     add ebx,[dst_offset]
+			test ecx,ecx
+		     mov edx,[bps]    ; bytes per strip
+			jz done
+			 shr ecx,1        ; CF=count&1, count>>=1
+			 jnc label        ; count was even
+
+		    movq mm1,[eax]    ; do 1 odd quad
+		     add eax,8
+		    movq [ebx],mm1
+		     add ebx,edx
+			test ecx,ecx
+			jz done
+			 align 16
+label:
+		    movq mm0,[eax]    ; do pairs of quads
+		     movq mm1,[eax+8]
+		    movq [ebx],mm0
+		     add ebx,edx
+		    add eax,16
+		     movq [ebx],mm1
+		    add ebx,edx
+			 loop label
+done:
+		    emms
+          }
+        }
+		else {
+          for (int l = 0, k=dst_offset; l < count; l++, k+=bps) {
+            *(__int64*)(samples+k) = ((__int64*)src_buf)[l];
+          }
+        }
+        break;
+      }
+	default: { // everything else, 1 byte at a time
+        for (int l = 0; l < count; l++) {
+          for (int k = 0; k < bpcc; k++) {
+            samples[dst_offset + (l*bps) + k] = src_buf[(l*bpcc) + k];
+          }
+        }
       }
     }
-    dst_offset += clip_channels[i] * bpcs;
+    dst_offset += bpcc;
   }
 }
 
@@ -327,15 +416,13 @@ AVSValue __cdecl MergeChannels::Create(AVSValue args, void*, IScriptEnvironment*
 
 
 GetChannel::GetChannel(PClip _clip, int* _channel, int _numchannels)
-    : GenericVideoFilter(_clip),
-    channel(_channel),
-numchannels(_numchannels) {
+    : GenericVideoFilter(_clip), channel(_channel), numchannels(_numchannels)
+{
+  cbps = vi.BytesPerChannelSample();
   src_bps = vi.BytesPerAudioSample();
-  src_cbps = vi.BytesPerChannelSample();
   vi.nchannels = numchannels;
   tempbuffer_size = 0;
   dst_bps = vi.BytesPerAudioSample();
-  dst_cbps = vi.BytesPerChannelSample();
 }
 
 
@@ -351,19 +438,55 @@ void __stdcall GetChannel::GetAudio(void* buf, __int64 start, __int64 count, ISc
     tempbuffer_size = count;
   }
   child->GetAudio(tempbuffer, start, count, env);
-  char* samples = (char*)buf;
-  int dst_o;
-  int src_o;
-  for (int i = 0; i < count; i++) {
-    dst_o = i * dst_bps;
-    src_o = i * src_bps;
-    for (int k = 0; k < numchannels; k++) {
-      int ch = channel[k];
-      for (int j = 0;j < dst_cbps;j++)
-        samples[dst_o + (k*dst_cbps) + j] = tempbuffer[src_o + (ch * src_cbps) + j];
+  
+  switch (cbps) {
+  case 1: {    // 8 bit
+      char* samples = (char*)buf;
+      char* tbuff = tempbuffer;
+      for (int i = 0; i < count; i++) {
+        for (int k = 0; k < numchannels; k++) {
+          *(samples++) = tbuff[channel[k]];
+        }
+        tbuff += src_bps;
+      }
+	  break;
+    }
+  case 2: {    // 16 bit
+      short* samples = (short*)buf;
+      short* tbuff = (short*)tempbuffer;
+      for (int i = 0; i < count; i++) {
+        for (int k = 0; k < numchannels; k++) {
+          *(samples++) = tbuff[channel[k]];
+        }
+        tbuff += src_bps>>1;
+      }
+	  break;
+    }
+  case 4: {    // float/32 bit
+      int* samples = (int*)buf;
+      int* tbuff = (int*)tempbuffer;
+      for (int i = 0; i < count; i++) {
+        for (int k = 0; k < numchannels; k++) {
+          *(samples++) = tbuff[channel[k]];
+        }
+        tbuff += src_bps>>2;
+      }
+	  break;
+    }
+  default: {  // 24 bit, etc
+      char* samples = (char*)buf;
+      char* tbuff = tempbuffer;
+      for (int i = 0; i < count; i++) {
+        for (int k = 0; k < numchannels; k++) {
+          int src_o = channel[k] * cbps;
+          for (int j = src_o; j < src_o+cbps; j++)
+            *(samples++) = tbuff[j];
+        }
+        tbuff += src_bps;
+      }
+	  break;
     }
   }
-
 }
 
 
@@ -451,44 +574,117 @@ AVSValue __cdecl DelayAudio::Create(AVSValue args, void*, IScriptEnvironment* en
  *******************************/
 
 
-Amplify::Amplify(PClip _child, float* _volumes)
+Amplify::Amplify(PClip _child, float* _volumes, int* _i_v)
     : GenericVideoFilter(ConvertAudio::Create(_child, SAMPLE_INT16 | SAMPLE_FLOAT | SAMPLE_INT32, SAMPLE_FLOAT)),
-volumes(_volumes) {}
+volumes(_volumes), i_v(_i_v) { }
 
 
 void __stdcall Amplify::GetAudio(void* buf, __int64 start, __int64 count, IScriptEnvironment* env) {
   child->GetAudio(buf, start, count, env);
   int channels = vi.AudioChannels();
+  int countXchannels = count*channels; 
+
   if (vi.SampleType() == SAMPLE_INT16) {
-    int* i_v = new int[channels];
-    short* samples = (short*)buf;
-    for (int v = 0;v < channels;v++)
-      i_v[v] = int(volumes[v] * 65535.0f + 0.5f);
-    for (int i = 0; i < count; ++i) {
-      for (int j = 0;j < channels;j++) {
-        samples[i*channels + j] = Saturate(int(Int32x32To64(samples[i * channels + j], i_v[j]) >> 16));
-      }
+// Talk about crap assembler code, who taught this compiler how to do 64bits!
+//  short* samples = (short*)buf;
+//  for (int i = 0; i < countXchannels; i+=channels) {
+//    for (int j = 0; j < channels; j++) {
+//      samples[i + j] = Saturate(Int32x32To64(samples[i + j], i_v[j]) + 65536);
+//    }
+//  }
+    const short* endsample = (short*)buf + countXchannels;
+    const int* iv = i_v;
+
+    __asm {
+          mov	 ebx, [channels]
+          mov	 ecx, [iv]
+          mov	 edi, [buf]
+          align  16
+iloop0:
+          xor	 esi, esi					; j
+jloop0:
+          mov	 eax, DWORD PTR [ecx+esi*4]	; i_v[j]
+          movsx	 edx, WORD PTR [edi]		; *samples
+          inc	 esi						; j++
+          imul	 edx
+          add	 edi, 2						; samples++
+          add	 eax, 65536
+          adc	 edx, 0
+
+          cmp	 edx, -1					; if (nh < -1) return MIN_SHORT;
+          jge	 notnegsat0
+          mov	 eax, -32768
+          jmp	 saturate0
+notnegsat0:
+          test	 edx, edx					; if (nh >  0) return MAX_SHORT;
+          jle	 notpossat0
+          mov	 eax, 32767
+          jmp	 saturate0
+notpossat0:
+          shrd	 eax, edx, 17				; n>>17
+saturate0:
+          mov	 WORD PTR [edi-2], ax		; *samples
+          cmp	 esi, ebx					; j < channels
+          jl	 jloop0
+
+          cmp	 edi, [endsample]
+          jl	 iloop0
     }
     return ;
   }
 
   if (vi.SampleType() == SAMPLE_INT32) {
-    int* samples = (int*)buf;
-    int* i_v = new int[channels];
-    for (int v = 0;v < channels;v++)
-      i_v[v] = int(volumes[v] * 65535.0f + 0.5f);
-    for (int i = 0; i < count; ++i) {
-      for (int j = 0;j < channels;j++) {
-        samples[i*channels + j] = Saturate_int32(Int32x32To64(samples[i * channels + j], i_v[j]) >> 16);
-      }
+//  const int* samples = (int*)buf;
+//  for (int i = 0; i < countXchannels; i+=channels) {
+//    for (int j = 0;j < channels;j++) {
+//      samples[i + j] = Saturate_int32(Int32x32To64(samples[i + j], i_v[j]) + 32768);
+//    }
+//  }
+    const int* endsample = (int*)buf + countXchannels;
+    const int* iv = i_v;
+
+    __asm {
+          mov	 ebx, [channels]
+          mov	 ecx, [iv]
+          mov	 edi, [buf]
+          align  16
+iloop1:
+          xor	 esi, esi					; j
+jloop1:
+          mov	 eax, DWORD PTR [ecx+esi*4]	; i_v[j]
+          mov  	 edx, DWORD PTR [edi]		; *samples
+          inc	 esi						; j++
+          imul	 edx
+          add	 edi, 4						; samples++
+          add	 eax, 65536
+          adc	 edx, 0
+
+          cmp	 edx,0xffff0000				; if (nh < -65536) return MIN_INT;
+          jge	 notnegsat1
+          mov	 eax, 0x80000000
+          jmp	 saturate1
+notnegsat1:
+          cmp 	 edx,0x0000ffff				; if (nh >  0) return MAX_INT;
+          jle	 notpossat1
+          mov	 eax, 0x7fffffff
+          jmp	 saturate1
+notpossat1:
+          shrd	 eax, edx, 17				; n>>17
+saturate1:
+          mov	 DWORD PTR [edi-4], eax		; *samples
+          cmp	 esi, ebx					; j < channels
+          jl	 jloop1
+
+          cmp	 edi, [endsample]
+          jl	 iloop1
     }
     return ;
   }
   if (vi.SampleType() == SAMPLE_FLOAT) {
     SFLOAT* samples = (SFLOAT*)buf;
-    for (int i = 0; i < count; ++i) {
-      for (int j = 0;j < channels;j++) {
-        samples[i*channels + j] = samples[i * channels + j] * volumes[j];   // Does not saturate, as other filters do. We should saturate only on conversion.
+    for (int i = 0; i < countXchannels; i+=channels) {
+      for (int j = 0;j < channels;j++) {				// Does not saturate, as other filters do. 
+        samples[i + j] = samples[i + j] * volumes[j];	// We should saturate only on conversion.
       }
     }
     return ;
@@ -503,10 +699,12 @@ AVSValue __cdecl Amplify::Create(AVSValue args, void*, IScriptEnvironment* env) 
   const int num_args = args_c.ArraySize();
   const int ch = args[0].AsClip()->GetVideoInfo().AudioChannels();
   float* child_array = new float[ch];
+  int* i_child_array = new int[ch];
   for (int i = 0; i < ch; ++i) {
     child_array[i] = args_c[min(i, num_args - 1)].AsFloat();
+    i_child_array[i] = int(child_array[i] * 131072.0f + 0.5f);
   }
-  return new Amplify(args[0].AsClip(), child_array);
+  return new Amplify(args[0].AsClip(), child_array, i_child_array);
 }
 
 
@@ -519,10 +717,12 @@ AVSValue __cdecl Amplify::Create_dB(AVSValue args, void*, IScriptEnvironment* en
   const int num_args = args_c.ArraySize();
   const int ch = args[0].AsClip()->GetVideoInfo().AudioChannels();
   float* child_array = new float[ch];
+  int* i_child_array = new int[ch];
   for (int i = 0; i < ch; ++i) {
     child_array[i] = dBtoScaleFactor(args_c[min(i, num_args - 1)].AsFloat());
+    i_child_array[i] = int(child_array[i] * 131072.0f + 0.5f);
   }
-  return new Amplify(args[0].AsClip(), child_array);
+  return new Amplify(args[0].AsClip(), child_array, i_child_array);
 	}
 	catch (...) { throw; }
 }
@@ -532,77 +732,177 @@ AVSValue __cdecl Amplify::Create_dB(AVSValue args, void*, IScriptEnvironment* en
  ***** Normalize audio  ******
  ***** Supports int16,float******
  ******************************/
-// Fixme: Maxfactor should be different on different types
 
-Normalize::Normalize(PClip _child, double _max_factor, bool _showvalues)
+Normalize::Normalize(PClip _child, float _max_factor, bool _showvalues)
     : GenericVideoFilter(ConvertAudio::Create(_child, SAMPLE_INT16 | SAMPLE_FLOAT, SAMPLE_FLOAT)),
-    max_factor(_max_factor),
-showvalues(_showvalues) {
+    max_factor(_max_factor), showvalues(_showvalues) {
   max_volume = -1.0f;
 }
 
 
+
 void __stdcall Normalize::GetAudio(void* buf, __int64 start, __int64 count, IScriptEnvironment* env) {
   if (max_volume < 0.0f) {
-    __int64 passes = vi.num_audio_samples / count;
-    __int64 num_samples = count;
     // Read samples into buffer and test them
     if (vi.SampleType() == SAMPLE_INT16) {
+      __int64 bcount = count;
       short* samples = (short*)buf;
-      short i_max_volume = 0;
-      for (int i = 0;i < passes;i++) {
-        child->GetAudio(buf, num_samples*(__int64)i, count, env);
-        for (int i = 0;i < num_samples;i++) {
-          i_max_volume = max(abs(samples[i]), i_max_volume);
+      bool bigbuff=false;
+
+	  if (vi.BytesFromAudioSamples(count) < BIGBUFFSIZE) {
+	    samples = new short[BIGBUFFSIZE/sizeof(short)];
+	    if (samples) {
+	      bigbuff=true;
+	      bcount = vi.AudioSamplesFromBytes(BIGBUFFSIZE);
+	    }
+	    else {
+	      samples = (short*)buf; // malloc failed just reuse clients buffer
+	    }
+	  }
+
+      const __int64 passes = vi.num_audio_samples / bcount;
+	  __int64 negpeaksampleno=-1, pospeaksampleno=-1;
+      short i_pos_volume = 0;
+      short i_neg_volume = 0;
+      const int chanXbcount = bcount * vi.AudioChannels();
+
+      for (__int64 i = 0; i < passes; i++) {
+        child->GetAudio(samples, bcount*i, bcount, env);
+        for (int j = 0; j < chanXbcount; j++) {
+		  const short sample=samples[j];
+          if (sample < i_neg_volume) {	// Cope with MIN_SHORT
+		    i_neg_volume = sample;
+		    negpeaksampleno = chanXbcount*i+j;
+		  }
+		  else if (sample > i_pos_volume) {
+			i_pos_volume = sample;
+			pospeaksampleno = chanXbcount*i+j;
+		  }
         }
       }
       // Remaining samples
-      __int64 rem_samples = vi.num_audio_samples % count;
-      child->GetAudio(buf, num_samples*passes, rem_samples, env);
-      for (i = 0;i < rem_samples;i++) {
-        i_max_volume = max(abs(samples[i]), i_max_volume);
+      const __int64 rem_samples = vi.num_audio_samples % bcount;
+      const int chanXremcount = rem_samples * vi.AudioChannels();
+
+      child->GetAudio(samples, bcount*passes, rem_samples, env);
+      for (int j = 0; j < chanXremcount; j++) {
+		const short sample=samples[j];
+        if (sample < i_neg_volume) {	// Cope with MIN_SHORT
+		  i_neg_volume = sample;
+		  negpeaksampleno = chanXbcount*passes+j;
+		}
+		else if (sample > i_pos_volume) {
+		  i_pos_volume = sample;
+		  pospeaksampleno = chanXbcount*passes+j;
+		}
       }
-      max_volume = (float)i_max_volume / 32768.0f;
-      max_factor = 1.0f / max_volume;
+	  if (bigbuff) delete[] samples;
+
+	  i_pos_volume = -i_pos_volume;
+	  if (i_neg_volume < i_pos_volume) {
+	    i_pos_volume = i_neg_volume;
+	    frameno = vi.FramesFromAudioSamples(negpeaksampleno / vi.AudioChannels());
+	  }
+	  else {
+	    frameno = vi.FramesFromAudioSamples(pospeaksampleno / vi.AudioChannels());
+	  }
+      max_volume = (float)i_pos_volume * (-1.0f/32768.0f);
+      max_factor = max_factor / max_volume;
 
     } else if (vi.SampleType() == SAMPLE_FLOAT) {  // Float
-
+      __int64 bcount = count;
       SFLOAT* samples = (SFLOAT*)buf;
-      for (int i = 0;i < passes;i++) {
-        child->GetAudio(buf, num_samples*i, count, env);
-        for (int i = 0;i < num_samples;i++) {
-          max_volume = max(fabs(samples[i]), max_volume);
+      bool bigbuff=false;
+
+	  if (vi.BytesFromAudioSamples(count) < BIGBUFFSIZE) {
+	    samples = new SFLOAT[BIGBUFFSIZE/sizeof(SFLOAT)];
+	    if (samples) {
+	      bigbuff=true;
+	      bcount = vi.AudioSamplesFromBytes(BIGBUFFSIZE);
+	    }
+	    else {
+	      samples = (SFLOAT*)buf; // malloc failed just reuse clients buffer
+	    }
+	  }
+
+      const int chanXbcount = bcount * vi.AudioChannels();
+      const __int64 passes = vi.num_audio_samples / bcount;
+	  __int64 peaksampleno=-1;
+	  
+      for (__int64 i = 0;i < passes;i++) {
+        child->GetAudio(buf, bcount*i, bcount, env);
+        for (int j = 0;j < chanXbcount;j++) {
+		  const SFLOAT sample = fabs(samples[j]);
+          if (sample > max_volume) {
+		    max_volume = sample;
+			peaksampleno = chanXbcount*i+j;
+		  }
         }
       }
       // Remaining samples
-      __int64 rem_samples = vi.num_audio_samples % count;
-      child->GetAudio(buf, num_samples*passes, rem_samples, env);
-      for (i = 0;i < rem_samples;i++) {
-        max_volume = max(fabs(samples[i]), max_volume);
-      }
+      const __int64 rem_samples = vi.num_audio_samples % bcount;
+      const int chanXremcount = rem_samples * vi.AudioChannels();
 
-      max_factor = 1.0f / max_volume;
+      child->GetAudio(buf, bcount*passes, rem_samples, env);
+      for (int j = 0;j < chanXremcount;j++) {
+		const SFLOAT sample = fabs(samples[j]);
+        if (sample > max_volume) {
+		  max_volume = sample;
+		  peaksampleno = chanXbcount*passes+j;
+		}
+      }
+	  if (bigbuff) delete[] samples;
+
+	  frameno = vi.FramesFromAudioSamples(peaksampleno / vi.AudioChannels());
+      max_factor = max_factor / max_volume;
     }
   }
 
+  const int chanXcount = count * vi.AudioChannels();
+
   if (vi.SampleType() == SAMPLE_INT16) {
-    int factor = (int)(max_factor * 65536.0f);
-    short* samples = (short*)buf;
+    const int factor = (int)(max_factor * 131072.0f + 0.5f);
     child->GetAudio(buf, start, count, env);
-    int channels = vi.AudioChannels();
-    for (int i = 0; i < count; ++i) {
-      for (int j = 0;j < channels;j++) {
-        samples[i*channels + j] = Saturate(int(Int32x32To64(samples[i * channels + j], factor) >> 16));
-      }
+
+//  short* samples = (short*)buf;
+//  for (int i = 0; i < chanXcount; ++i) {
+//    samples[i] = Saturate(Int32x32To64(samples[i], factor) + 32768);
+//  }
+    const short* endsample = (short*)buf + chanXcount;
+
+    __asm {
+          mov	 ecx, [factor]
+          mov	 edi, [buf]
+          align  16
+iloop2:
+          movsx	 eax, WORD PTR [edi]		; *samples
+          imul	 ecx
+          add	 edi, 2						; samples++
+          add	 eax, 65536
+          adc	 edx, 0
+
+          cmp	 edx, -1					; if (nh < -1) return MIN_SHORT;
+          jge	 notnegsat2
+          mov	 eax, -32768
+          jmp	 saturate2
+notnegsat2:
+          test	 edx, edx					; if (nh >  0) return MAX_SHORT;
+          jle	 notpossat2
+          mov	 eax, 32767
+          jmp	 saturate2
+notpossat2:
+          shrd	 eax, edx, 17				; n>>17
+saturate2:
+          mov	 WORD PTR [edi-2], ax		; *samples
+
+          cmp	 edi, [endsample]
+          jl	 iloop2
     }
-  } else {
+  } else if (vi.SampleType() == SAMPLE_FLOAT) {
     SFLOAT* samples = (SFLOAT*)buf;
     child->GetAudio(buf, start, count, env);
-    int channels = vi.AudioChannels();
-    for (int i = 0; i < count; ++i) {
-      for (int j = 0;j < channels;j++) {
-        samples[i*channels + j] = samples[i * channels + j] * max_factor;
-      }
+    for (int i = 0; i < chanXcount; ++i) {
+      samples[i] = samples[i] * max_factor;
     }
   }
 }
@@ -612,14 +912,15 @@ PVideoFrame __stdcall Normalize::GetFrame(int n, IScriptEnvironment* env) {
     PVideoFrame src = child->GetFrame(n, env);
     env->MakeWritable(&src);
     char text[400];
-    double maxdb = 8.685889638 * log(max_factor);
-    // maxdb = (20 * log(factor)) / log(10);
+
     if (max_volume < 0) {
       sprintf(text, "Normalize: Result not yet calculated!");
     } else {
-      sprintf(text, "Amplify Factor: %8.4f\nAmplify DB: %8.4f", max_factor, maxdb);
+      double maxdb = 8.685889638 * log(max_factor);
+      // maxdb = (20 * log(factor)) / log(10);
+      sprintf(text, "Amplify Factor: %8.4f\nAmplify DB: %8.4f\nAt Frame: %d", max_factor, maxdb, frameno);
     }
-    ApplyMessage(&src, vi, text, vi.width / 4, 0xf0f0f0, 0, 0 , env );
+    ApplyMessage(&src, vi, text, vi.width / 4, 0xf0f080, 0, 0 , env );
     return src;
   }
   return child->GetFrame(n, env);
@@ -627,10 +928,9 @@ PVideoFrame __stdcall Normalize::GetFrame(int n, IScriptEnvironment* env) {
 }
 
 
-
 AVSValue __cdecl Normalize::Create(AVSValue args, void*, IScriptEnvironment* env) {
-  double max_volume = args[1].AsFloat(1.0);
-  return new Normalize(args[0].AsClip(), max_volume, args[2].AsBool(false));
+
+  return new Normalize(args[0].AsClip(), args[1].AsFloat(1.0), args[2].AsBool(false));
 }
 
 
@@ -641,8 +941,10 @@ AVSValue __cdecl Normalize::Create(AVSValue args, void*, IScriptEnvironment* env
 MixAudio::MixAudio(PClip _child, PClip _clip, double _track1_factor, double _track2_factor, IScriptEnvironment* env)
     : GenericVideoFilter(ConvertAudio::Create(_child, SAMPLE_INT16 | SAMPLE_FLOAT, SAMPLE_FLOAT)),
     tclip(_clip),
-    track1_factor(int(_track1_factor*65536 + .5)),
-track2_factor(int(_track2_factor*65536 + .5)) {
+    track1_factor(int(_track1_factor*131072.0 + 0.5)),
+    track2_factor(int(_track2_factor*131072.0 + 0.5)),
+    t1factor(float(_track1_factor)),
+    t2factor(float(_track2_factor)) {
 
   clip = ConvertAudio::Create(tclip, vi.SampleType(), vi.SampleType());  // Clip 2 should now be same type as clip 1.
   const VideoInfo vi2 = clip->GetVideoInfo();
@@ -671,26 +973,61 @@ void __stdcall MixAudio::GetAudio(void* buf, __int64 start, __int64 count, IScri
 
   child->GetAudio(buf, start, count, env);
   clip->GetAudio(tempbuffer, start, count, env);
-  int channels = vi.AudioChannels();
+  unsigned channels = vi.AudioChannels();
 
   if (vi.SampleType()&SAMPLE_INT16) {
-    short* samples = (short*)buf;
-    short* clip_samples = (short*)tempbuffer;
-    for (int i = 0; i < count; ++i) {
-      for (int j = 0;j < channels;j++) {
-        samples[i*channels + j] = Saturate( int(Int32x32To64(samples[i * channels + j], track1_factor) >> 16) +
-                                            int(Int32x32To64(clip_samples[i * channels + j], track2_factor) >> 16) );
-      }
+//  short* samples = (short*)buf;
+//  short* clip_samples = (short*)tempbuffer;
+//  for (unsigned i = 0; i < unsigned(count)*channels; ++i) {
+//      samples[i] = Saturate64(Int32x32To64(samples[i], track1_factor) + Int32x32To64(clip_samples[i], track2_factor) + 32768);
+//  }
+    const short* tbuffer = (short*)tempbuffer;
+    const short* endsample = (short*)buf + unsigned(count)*channels;
+	const int t1_factor = track1_factor;
+	const int t2_factor = track2_factor;
+
+    __asm {
+          mov	 edi, [buf]
+          mov	 esi, [tbuffer]
+          align  16
+iloop3:
+          mov	 edx, [t1_factor]
+          movsx	 eax, WORD PTR [edi]		; *samples
+          add	 edi, 2						; samples++
+          imul	 edx
+		  mov    ebx, eax
+		  mov    ecx, edx
+          mov	 edx, [t2_factor]
+          movsx	 eax, WORD PTR [esi]		; *clip_samples
+          add	 esi, 2						; clip_samples++
+          imul	 edx
+          add	 eax, ebx
+          adc	 edx, ecx
+          add	 eax, 65536
+          adc	 edx, 0
+
+          cmp	 edx, -1					; if (nh < -1) return MIN_SHORT;
+          jge	 notnegsat3
+          mov	 eax, -32768
+          jmp	 saturate3
+notnegsat3:
+          test	 edx, edx					; if (nh >  0) return MAX_SHORT;
+          jle	 notpossat3
+          mov	 eax, 32767
+          jmp	 saturate3
+notpossat3:
+          shrd	 eax, edx, 17				; n>>17
+saturate3:
+          mov	 WORD PTR [edi-2], ax		; *samples
+
+          cmp	 edi, [endsample]
+          jl	 iloop3
     }
   } else if (vi.SampleType()&SAMPLE_FLOAT) {
     SFLOAT* samples = (SFLOAT*)buf;
     SFLOAT* clip_samples = (SFLOAT*)tempbuffer;
-    float t1factor = (float)track1_factor / 65536.0f;
-    float t2factor = (float)track2_factor / 65536.0f;
-    for (int i = 0; i < count; ++i) {
-      for (int j = 0;j < channels;j++) {
-        samples[i*channels + j] = (samples[i * channels + j] * t1factor) + (clip_samples[i * channels + j] * t2factor);
-      }
+    for (unsigned i = 0; i < unsigned(count)*channels; ++i) {
+        samples[i] = (samples[i] * t1factor) + (clip_samples[i] * t2factor);
     }
   }
 }
