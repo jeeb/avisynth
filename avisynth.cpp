@@ -1003,9 +1003,6 @@ void BitBlt(BYTE* dstp, int dst_pitch, const BYTE* srcp, int src_pitch, int row_
       asm_BitBlt_ISSE(dstp,dst_pitch,srcp,src_pitch,row_size,height);
     }
     return;
-  } else if (GetCPUFlags() & CPUF_MMX) {
-    asm_BitBlt_MMX(dstp,dst_pitch,srcp,src_pitch,row_size,height);
-    return;
   }
   if (dst_pitch == src_pitch && src_pitch == row_size) {
     memcpy(dstp, srcp, src_pitch * height);
@@ -1233,61 +1230,6 @@ memoptA_done8:
 }//end BitBlt_memopt()
 
 
-void asm_BitBlt_MMX(BYTE* dstp, int dst_pitch, const BYTE* srcp, int src_pitch, int row_size, int height) {
-  int bytesleft=0;
-  if (row_size&15) {
-    int a=(row_size+15)&(~15);
-    if ((a<=src_pitch) && (a<=dst_pitch)) {
-      row_size=a;
-    } else {
-      bytesleft=(row_size&15);
-      row_size&=~15;
-    }
-  }
-  int src_modulo = src_pitch - (row_size+bytesleft);
-  int dst_modulo = dst_pitch - (row_size+bytesleft);
-  if (height==0 || row_size==0) return;
-    __asm {
-      mov edi,[dstp]
-      mov esi,[srcp]
-      xor eax, eax;  // Height counter
-      xor ebx, ebx;  // Row counter
-      mov edx, [row_size]
-new_line_mmx:
-      mov ecx,[bytesleft]
-      cmp ebx,edx
-      jge nextline_mmx
-      align 16
-nextpixels_mmx:
-      movq mm0,[esi+ebx]
-      movq mm1,[esi+ebx+8]
-      movq [edi+ebx],mm0
-      movq [edi+ebx+8],mm1
-      add ebx,16
-      cmp ebx,edx
-      jl nextpixels_mmx
-      align 16
-nextline_mmx:
-      add esi,edx
-      add edi,edx
-      cmp ecx,0
-      jz do_next_line_mmx
-      rep movsb         ; the last 1-7 bytes
-
-      align 16
-do_next_line_mmx:
-      add esi, [src_modulo]
-      add edi, [dst_modulo]
-      xor ebx, ebx;  // Row counter
-      inc eax
-      cmp eax,[height]
-      jl new_line_mmx
-  }
-  __asm {emms};
-}
-
-void asm_BitBltNC(BYTE* dstp, int dst_pitch, const BYTE* srcp, int src_pitch, int row_size, int height) {
-}
 
 void ScriptEnvironment::BitBlt(BYTE* dstp, int dst_pitch, const BYTE* srcp, int src_pitch, int row_size, int height) {
   if (height<0)

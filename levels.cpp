@@ -478,6 +478,7 @@ PVideoFrame __stdcall Limiter::GetFrame(int n, IScriptEnvironment* env) {
       emu_cmax =  max_luma|(max_chroma<<8);
       modulo = pitch-row_size;
       assemblerY.Call();
+      return frame;
     } else {  // If not ISSE
 	    for(int y = 0; y < height; y++) {
         for(int x = 0; x < row_size; x++) {
@@ -494,44 +495,46 @@ PVideoFrame __stdcall Limiter::GetFrame(int n, IScriptEnvironment* env) {
         }
         srcp += pitch;
       }
+      return frame;
     }  
   } else if(vi.IsYV12()) {
-  if (env->GetCPUFlags() & CPUF_INTEGER_SSE) {
-    /** Run emulator if CPU supports it**/
-    row_size= frame->GetRowSize(PLANAR_Y_ALIGNED);
-    if (!luma_emulator) {
-      assemblerY = create_emulator(row_size, height, env);
-      luma_emulator=true;
+    if (env->GetCPUFlags() & CPUF_INTEGER_SSE) {
+      /** Run emulator if CPU supports it**/
+      row_size= frame->GetRowSize(PLANAR_Y_ALIGNED);
+      if (!luma_emulator) {
+        assemblerY = create_emulator(row_size, height, env);
+        luma_emulator=true;
+      }
+      emu_cmin = min_luma|(min_luma<<8);
+      emu_cmax = max_luma|(max_luma<<8);
+      modulo = pitch-row_size;
+      
+      c_plane = (BYTE*)srcp;
+      assemblerY.Call();
+      
+      // Prepare for chroma
+      row_size = frame->GetRowSize(PLANAR_U_ALIGNED);
+      pitch = frame->GetPitch(PLANAR_U);
+      
+      if (!chroma_emulator) {
+        height = frame->GetHeight(PLANAR_U);
+        assemblerUV = create_emulator(row_size, height, env);
+        chroma_emulator=true;
+      }
+      emu_cmin = min_chroma|(min_chroma<<8);
+      emu_cmax = max_chroma|(max_chroma<<8);
+      modulo = pitch-row_size;
+      
+      c_plane = frame->GetWritePtr(PLANAR_U);
+      assemblerUV.Call();
+      
+      c_plane = frame->GetWritePtr(PLANAR_V);
+      assemblerUV.Call();
+      
+      return frame;
     }
-    emu_cmin = min_luma|(min_luma<<8);
-    emu_cmax = max_luma|(max_luma<<8);
-    modulo = pitch-row_size;
 
-    c_plane = (BYTE*)srcp;
-    assemblerY.Call();
-
-    // Prepare for chroma
-    row_size = frame->GetRowSize(PLANAR_U_ALIGNED);
-    pitch = frame->GetPitch(PLANAR_U);
-    if (!chroma_emulator) {
-      height = frame->GetHeight(PLANAR_U);
-      assemblerUV = create_emulator(row_size, height, env);
-      chroma_emulator=true;
-    }
-    emu_cmin = min_chroma|(min_chroma<<8);
-    emu_cmax = max_chroma|(max_chroma<<8);
-    modulo = pitch-row_size;
-
-    c_plane = frame->GetWritePtr(PLANAR_U);
-    assemblerUV.Call();
-
-    c_plane = frame->GetWritePtr(PLANAR_V);
-    assemblerUV.Call();
-
-    return frame;
-  }
-
-  for(int y = 0; y < height; y++) {
+    for(int y = 0; y < height; y++) {
       for(int x = 0; x < row_size; x++) {
         if(srcp[x] < min_luma )
           srcp[x] = min_luma;
@@ -541,11 +544,11 @@ PVideoFrame __stdcall Limiter::GetFrame(int n, IScriptEnvironment* env) {
       srcp += pitch;
     }
     srcp = frame->GetWritePtr(PLANAR_U);
-	  unsigned char* srcpV = frame->GetWritePtr(PLANAR_V);
+    unsigned char* srcpV = frame->GetWritePtr(PLANAR_V);
     row_size = frame->GetRowSize(PLANAR_U);
     height = frame->GetHeight(PLANAR_U);
     pitch = frame->GetPitch(PLANAR_U);
-	  for(y = 0; y < height; y++) {
+    for(y = 0; y < height; y++) {
       for(int x = 0; x < row_size; x++) {
         if(srcp[x] < min_chroma)
           srcp[x] = min_chroma;
@@ -560,13 +563,17 @@ PVideoFrame __stdcall Limiter::GetFrame(int n, IScriptEnvironment* env) {
       srcpV += pitch;
     }
   }
-    return frame;
+  return frame;
 }
 
 Limiter::~Limiter() {
   if (luma_emulator) assemblerY.Free();
   if (chroma_emulator) assemblerUV.Free();
 }
+
+/***
+ * Dynamicly assembled code - runs at approx 14000 fps at 480x480 on a 1.8Ghz Athlon. 5-6x faster than C code
+ ***/
 
 DynamicAssembledCode Limiter::create_emulator(int row_size, int height, IScriptEnvironment* env) {
 
@@ -580,7 +587,12 @@ DynamicAssembledCode Limiter::create_emulator(int row_size, int height, IScriptE
     prefetchevery = 2;  // 64 byte cacheline
   }
 
-  bool use_movntq = false;  // We cannot enable write combining as we are only writing 32 bytes between reads.
+  bool use_movntq = false;  // We cannot enable write combining as we are only writing 32 bytes between reads. Softwire also crashes here!!!
+  bool hard_prefetch = false;   // Do we prefetch ALL data before any processing takes place?
+
+  if (env->GetCPUFlags() & CPUF_3DNOW_EXT) {
+    hard_prefetch = true;   // We have AMD - so we enable hard prefetching.
+  }
 
 
   Assembler x86;   // This is the class that assembles the code.
@@ -593,6 +605,7 @@ DynamicAssembledCode Limiter::create_emulator(int row_size, int height, IScriptE
     x86.push(esi);
     x86.push(edi);
 
+
     x86.mov(eax, height);
     x86.mov(ebx, dword_ptr [&c_plane]);  // Pointer to the current plane
     x86.mov(ecx, dword_ptr [&modulo]);   // Modulo
@@ -603,10 +616,15 @@ DynamicAssembledCode Limiter::create_emulator(int row_size, int height, IScriptE
 
     x86.align(16);
     x86.label("yloop");
+    if (hard_prefetch) {
+      for (int i=0;i<=mod32_w;i+=2) {
+        x86.mov(edx, dword_ptr [ebx + (i*32)]);
+      }
+    }
     for (int i=0;i<mod32_w;i++) {
       // This loop processes 32 bytes at the time.
       // All remaining pixels are handled by the next loop.
-      if (!(i%prefetchevery)) {
+      if ((!(i%prefetchevery)) && (!hard_prefetch)) {
          //Prefetch only once per cache line
        x86.prefetchnta(dword_ptr [ebx+256]);
       }
@@ -628,10 +646,10 @@ DynamicAssembledCode Limiter::create_emulator(int row_size, int height, IScriptE
         x86.movq(ebx+16,mm2);
         x86.movq(ebx+24,mm3);
       } else {
-        x86.movntq(ebx,mm0);
-        x86.movntq(ebx+8,mm1);
-        x86.movntq(ebx+16,mm2);
-        x86.movntq(ebx+24,mm3);
+        x86.movntq(qword_ptr [ebx],mm0);
+        x86.movntq(qword_ptr [ebx+8],mm1);
+        x86.movntq(qword_ptr [ebx+16],mm2);
+        x86.movntq(qword_ptr [ebx+24],mm3);
       }
       x86.add(ebx,32);
     }
