@@ -188,18 +188,16 @@ yloop:
 xloop:
     mov edx, src_pitch_uv2
     movq mm0,[eax]          // mm0 = Y current line
+     pxor mm7,mm7
     movd mm2,[ebx+edx]            // mm2 = U top field
      movd mm3, [ecx+edx]          // mm3 = V top field
     movd mm4,[ebx]            // U prev top field
      movq mm1,mm0             // mm1 = Y current line
-    movd mm5,[ecx]            // V prev top field    
-    movq mm6,mm4
-     movq mm7,mm5
+    movd mm5,[ecx]            // V prev top field   
      pavgb mm4,mm2            // interpolate chroma U 
     pavgb mm5,mm3             // interpolate chroma V    
-     pavgb mm4,mm6            // interpolate chroma U 
-    pavgb mm5,mm7             // interpolate chroma V    
-     pxor mm7,mm7
+     pavgb mm4,mm2            // interpolate chroma U 
+    pavgb mm5,mm3             // interpolate chroma V    
     punpcklbw mm0,mm7        // Y low
     punpckhbw mm1,mm7         // Y high*
      punpcklbw mm4,mm7        // U 00uu 00uu 00uu 00uu
@@ -222,15 +220,15 @@ xloop:
 
     //Next line in same field
      
-     pxor mm7,mm7
     movd mm4,[ebx+edx]        // U next top field
      movd mm5,[ecx+edx]       // V prev top field
     mov edx, [src_pitch2]
-     movq mm0,[eax+edx]        // Next U-line
+     movq mm0,[eax+edx]        // Next Y-line
     pavgb mm4,mm2            // interpolate chroma U
      pavgb mm5,mm3             // interpolate chroma V
     pavgb mm4,mm2            // interpolate chroma U
      pavgb mm5,mm3             // interpolate chroma V
+    pxor mm7,mm7
     movq mm1,mm0             // mm1 = Y current line
      punpcklbw mm0,mm7        // Y low
     punpckhbw mm1,mm7         // Y high*
@@ -695,14 +693,12 @@ xloop:
      punpcklbw mm3,mm7         // V 00vv 00vv 00vv 00vv
     punpcklbw mm4,mm7        // U 00uu 00uu 00uu 00uu
      punpcklbw mm5,mm7         // V 00vv 00vv 00vv 00vv
-    movq mm6,mm4
-     movq mm7,mm5
     paddusw mm4,mm2
      paddusw mm5,mm3
-    paddusw mm4,mm6
-     paddusw mm5,mm7
-    paddusw mm4,mm6
-     paddusw mm5,mm7
+    paddusw mm4,mm2
+     paddusw mm5,mm3
+    paddusw mm4,mm2
+     paddusw mm5,mm3
     paddusw mm4, [add_64]
      paddusw mm5, [add_64]
     psrlw mm4,2

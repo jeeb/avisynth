@@ -489,8 +489,8 @@ PVideoFrame __stdcall ConvertToYUY2::GetFrame(int n, IScriptEnvironment* env)
     PVideoFrame dst = env->NewVideoFrame(vi,16);
     BYTE* yuv = dst->GetWritePtr();
     if (interlaced) {
-      if (((src->GetPitch()&7)||(dst->GetPitch())&15)) 
-        env->ThrowError("ConvertToYUY2 (interlaced): Pitch was not properly aligned - please report this!");
+//      if (((src->GetPitch()&7)||(dst->GetPitch())&15)) 
+//        env->ThrowError("ConvertToYUY2 (interlaced): Pitch was not properly aligned - please report this!");
 
 		  if ((env->GetCPUFlags() & CPUF_INTEGER_SSE)) {
         isse_yv12_i_to_yuy2(src->GetReadPtr(PLANAR_Y), src->GetReadPtr(PLANAR_U), src->GetReadPtr(PLANAR_V), src->GetRowSize(PLANAR_Y_ALIGNED), src->GetPitch(PLANAR_Y), src->GetPitch(PLANAR_U), 
@@ -500,8 +500,9 @@ PVideoFrame __stdcall ConvertToYUY2::GetFrame(int n, IScriptEnvironment* env)
                     yuv, dst->GetPitch() ,src->GetHeight());
       }
     } else {
-      if (((src->GetPitch()&7)||(dst->GetPitch())&15)) 
-        env->ThrowError("ConvertToYUY2 (progressive): Pitch was not properly aligned - please report this!");
+//      if (((src->GetPitch()&7)||(dst->GetPitch())&15)) 
+//        env->ThrowError("ConvertToYUY2 (progressive): Pitch was not properly aligned - please report this!");
+
 		  if ((env->GetCPUFlags() & CPUF_INTEGER_SSE)) {
         isse_yv12_to_yuy2(src->GetReadPtr(PLANAR_Y), src->GetReadPtr(PLANAR_U), src->GetReadPtr(PLANAR_V), src->GetRowSize(PLANAR_Y_ALIGNED), src->GetPitch(PLANAR_Y), src->GetPitch(PLANAR_U), 
                       yuv, dst->GetPitch() ,src->GetHeight());
