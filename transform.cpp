@@ -245,7 +245,7 @@ PVideoFrame Crop::GetFrame(int n, IScriptEnvironment* env)
   PVideoFrame frame = child->GetFrame(n, env);
 
   if (align) {
-    PVideoFrame dst = env->NewVideoFrame(vi, align);
+    PVideoFrame dst = env->NewVideoFrame(vi);
 
     env->BitBlt(dst->GetWritePtr(PLANAR_Y), dst->GetPitch(PLANAR_Y),
       frame->GetReadPtr(PLANAR_Y) + top *  frame->GetPitch(PLANAR_Y) + left_bytes,
