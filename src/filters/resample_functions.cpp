@@ -179,7 +179,11 @@ int* GetResamplingPatternRGB( int original_width, double subrange_start, double 
 
   double pos_step = subrange_width / target_width;
   // the following translates such that the image center remains fixed
-  double pos = subrange_start + ((subrange_width - target_width) / (target_width*2));
+  double pos;
+  if (fir_filter_size == 1) // PointResize
+    pos = subrange_start;
+  else
+    pos = subrange_start + ((subrange_width - target_width) / (target_width*2));
 
   for (int i=0; i<target_width; ++i) {
     int end_pos = int(pos + filter_support);
@@ -230,7 +234,12 @@ int* GetResamplingPatternYUV( int original_width, double subrange_start, double 
 
   double pos_step = subrange_width / target_width;
   // the following translates such that the image center remains fixed
-  double pos = subrange_start + ((subrange_width - target_width) / (target_width*2));
+  double pos;
+  if (fir_filter_size == 1) // PointResize
+    pos = subrange_start;
+  else
+    pos = subrange_start + ((subrange_width - target_width) / (target_width*2));
+
   for (int i=0; i<target_width_a; ++i) {
     int end_pos = int(pos + filter_support);
     if (end_pos > original_width-1)
