@@ -66,6 +66,7 @@ private:
   PClip mask;
   int opacity;
   OverlayFunction* func;
+  bool greymask;
 };
 
 

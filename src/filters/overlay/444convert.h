@@ -46,6 +46,9 @@ class ConvertTo444 {
     virtual void ConvertImage(PVideoFrame src_frame, Image444* dst_frame, IScriptEnvironment* env) {
       env->ThrowError("Overlay: Unable to convert input image.");
     }
+    virtual void ConvertImageLumaOnly(PVideoFrame src_frame, Image444* dst_frame, IScriptEnvironment* env) {
+      env->ThrowError("Overlay: Unable to convert input image.");
+    }
 };
 
 class ConvertFrom444 {
@@ -61,6 +64,7 @@ class ConvertFrom444 {
 class Convert444FromYV12 : public ConvertTo444 {
 public:
   void ConvertImage(PVideoFrame src_frame, Image444* dst_frame, IScriptEnvironment* env);
+  void ConvertImageLumaOnly(PVideoFrame src_frame, Image444* dst_frame, IScriptEnvironment* env);
 };
 
 class Convert444ToYV12 : public ConvertFrom444 {

@@ -42,11 +42,13 @@
 ********************************************************************/
 
 AVSFunction Overlay_filters[] = {
-  { "Overlay", "cc[mask]c[opacity]f", Overlay::Create },   
+  { "Overlay", "cc[mask]c[opacity]f[mode]s[greymask]b", Overlay::Create },   
     // 0, src clip 
     // 1, overlay clip
     // 2, mask clip
     // 3, overlay opacity.(0.0->1.0)
+    // 4, mode string, "blend", "add"
+    // 5, greymask bool - true = only use luma information for mask
   { 0 }
 };
  
@@ -64,7 +66,9 @@ Overlay::Overlay(PClip _child, AVSValue args, IScriptEnvironment *env) :
      env->ThrowError("Overlay: Overlay image colorspace not supported.");
    }
 
-   if (args[2].Defined()) {
+   greymask = args[5].AsBool(true);  // Grey mask, default true
+
+   if (args[2].Defined()) {  // Mask defined
      mask = args[2].AsClip();
      maskVi = mask->GetVideoInfo();
      if (maskVi.width!=overlayVi.width) {
@@ -79,6 +83,13 @@ Overlay::Overlay(PClip _child, AVSValue args, IScriptEnvironment *env) :
        env->ThrowError("Overlay: Mask image colorspace not supported.");
      }
      maskImg = new Image444(maskVi.width, maskVi.height);
+
+     if (greymask) {
+       maskImg->free_chroma();
+       maskImg->SetPtr(maskImg->GetPtr(PLANAR_Y), PLANAR_U);
+       maskImg->SetPtr(maskImg->GetPtr(PLANAR_Y), PLANAR_V);
+     }
+
    }
    
    if (vi.IsYV12()) {
@@ -87,17 +98,22 @@ Overlay::Overlay(PClip _child, AVSValue args, IScriptEnvironment *env) :
    } else {
      env->ThrowError("Overlay: Colorspace not supported.");
    }
+
   img = new Image444(vi.width, vi.height);
   overlayImg = new Image444(overlayVi.width, overlayVi.height);
 
-  func = new OL_AddImage();
+  func = new OL_BlendImage();
 
 }
 
 
 Overlay::~Overlay() {
-  if (mask)
-    maskImg->free();
+  if (mask) {
+    if (!greymask) {
+      maskImg->free_chroma();
+    }
+    maskImg->free_luma();
+  }
   overlayImg->free();
   img->free();
 }
@@ -109,9 +125,20 @@ PVideoFrame __stdcall Overlay::GetFrame(int n, IScriptEnvironment *env) {
   // Fetch current overlay and convert it
   PVideoFrame Oframe = overlay->GetFrame(n, env);
   overlayConv->ConvertImage(Oframe, overlayImg, env);
+  // fetch current mask (if given)
+  if (mask) {
+    PVideoFrame Mframe = mask->GetFrame(n, env);
+    if (greymask)
+      maskConv->ConvertImageLumaOnly(Mframe, maskImg, env);
+    else 
+      maskConv->ConvertImage(Mframe, maskImg, env);
+  }
 
   // Process the image
   func->setOpacity(opacity);
+//  func->setOpacity(n%257);
+  func->setEnv(env);
+
   if (!mask) {
     func->BlendImage(img, overlayImg);
   } else {

@@ -42,11 +42,13 @@ private:
   BYTE* Y_plane;
   BYTE* U_plane;
   BYTE* V_plane;
+  bool lumaonly;
 public:
 
   const int w;
   const int h;
   int pitch;
+
   Image444() : w(0), h(0) {}
 
   Image444(int _w, int _h) : w(_w), h(_h) {
@@ -66,13 +68,21 @@ public:
     pitch = _pitch;
   }
 
+  void free_chroma() {
+    _aligned_free(U_plane);
+    _aligned_free(V_plane);
+  }
+
+  void free_luma() {
+    _aligned_free(Y_plane);
+  }
+
   void free() {
     if (!(w && h)) {
       _RPT0(1,"Image444: Height or Width is 0");
     }
-    _aligned_free(Y_plane);
-    _aligned_free(U_plane);
-    _aligned_free(V_plane);
+    free_luma();
+    free_chroma();
   }
 
   BYTE* GetPtr(int plane) {
@@ -89,6 +99,24 @@ public:
     }
     return Y_plane;
   }
+
+  void SetPtr(BYTE* ptr, int plane) {
+    if (!(w && h)) {
+      _RPT0(1,"Image444: Height or Width is 0");
+    }
+    switch (plane) {
+      case PLANAR_Y:
+        Y_plane = ptr;
+        break;
+      case PLANAR_U:
+        U_plane = ptr;
+        break;
+      case PLANAR_V:
+        V_plane = ptr;
+        break;
+    }
+  }
+
 };
 
 

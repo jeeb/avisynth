@@ -45,16 +45,24 @@ public:
   OverlayFunction() {
   }
   void setOpacity(int _opacity) { opacity = max(0,min(_opacity,256)); inv_opacity = 256-opacity; }
+  void setEnv(IScriptEnvironment *_env) { env = _env;}
   virtual void BlendImage(Image444* base, Image444* overlay) = 0;
   virtual void BlendImageMask(Image444* base, Image444* overlay, Image444* mask) = 0;
 protected:
   int opacity;
   int inv_opacity;
+  IScriptEnvironment *env;
 };
 
 class OL_AddImage : public OverlayFunction {
   void BlendImage(Image444* base, Image444* overlay);
   void BlendImageMask(Image444* base, Image444* overlay, Image444* mask);
+};
+
+class OL_BlendImage : public OverlayFunction {
+  void BlendImage(Image444* base, Image444* overlay);
+  void BlendImageMask(Image444* base, Image444* overlay, Image444* mask);
+  void mmx_weigh_planar(BYTE *p1, const BYTE *p2, int p1_pitch, int p2_pitch,int rowsize, int height, int weight, int invweight);
 };
 
 #endif  // Overlay_funcs_h

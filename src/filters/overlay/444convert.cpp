@@ -92,6 +92,10 @@ void Convert444FromYV12::ConvertImage(PVideoFrame src, Image444* dst, IScriptEnv
   dstV[w*2-2] = dstV[w*2-1] = srcV[w-1];
 }
 
+void Convert444FromYV12::ConvertImageLumaOnly(PVideoFrame src, Image444* dst, IScriptEnvironment* env) {
+  env->BitBlt(dst->GetPtr(PLANAR_Y), dst->pitch, 
+    src->GetReadPtr(PLANAR_Y),src->GetPitch(PLANAR_Y), src->GetRowSize(PLANAR_Y), src->GetHeight());
+}
 
 PVideoFrame Convert444ToYV12::ConvertImage(Image444* src, PVideoFrame dst, IScriptEnvironment* env) {
   env->MakeWritable(&dst);
