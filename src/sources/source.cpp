@@ -64,7 +64,7 @@ public:
 };
 
 
-static PVideoFrame CreateBlankFrame(const VideoInfo& vi, int color, IScriptEnvironment* env) {
+static PVideoFrame CreateBlankFrame(const VideoInfo& vi, int color, int coloryuv, IScriptEnvironment* env) {
 
   if (!vi.HasVideo()) return 0;
 
@@ -73,7 +73,7 @@ static PVideoFrame CreateBlankFrame(const VideoInfo& vi, int color, IScriptEnvir
   int size = frame->GetPitch() * frame->GetHeight();
 
   if (vi.IsYV12()) {
-    int color_yuv = RGB2YUV(color);
+    int color_yuv =(coloryuv >= 0) ? coloryuv : RGB2YUV(color);
     int Cval = (color_yuv>>16)&0xff;
     Cval |= (Cval<<8)|(Cval<<16)|(Cval<<24);
     for (int i=0; i<size; i+=4)
@@ -91,8 +91,8 @@ static PVideoFrame CreateBlankFrame(const VideoInfo& vi, int color, IScriptEnvir
     for (i=0; i<size; i+=4)
       *(unsigned*)(p+i) = Cval;
   } else if (vi.IsYUY2()) {
-    int color_yuv = RGB2YUV(color);
-    unsigned d = (color_yuv>>16) * 0x010001 + ((color_yuv>>8)&255) * 0x0100 + (color_yuv&255) * 0x01000000;
+    int color_yuv =(coloryuv >= 0) ? coloryuv : RGB2YUV(color);
+    unsigned d = ((color_yuv>>16)&255) * 0x010001 + ((color_yuv>>8)&255) * 0x0100 + (color_yuv&255) * 0x01000000;
     for (int i=0; i<size; i+=4)
       *(unsigned*)(p+i) = d;
   } else if (vi.IsRGB24()) {
@@ -168,8 +168,17 @@ static AVSValue __cdecl Create_BlankClip(AVSValue args, void*, IScriptEnvironmen
 
   vi.sample_type = args[9].AsInt(vi_default.sample_type);
   vi.num_audio_samples = vi.AudioSamplesFromFrames(vi.num_frames);
+
   int color = args[10].AsInt(0);
-  return new StaticImage(vi, CreateBlankFrame(vi, color, env));
+  if (args[11].Defined()) {
+	if (color != 0)
+	  env->ThrowError("BlankClip: color and color_yuv are mutually exclusive");
+	if (!vi.IsYUV())
+	  env->ThrowError("BlankClip: color_yuv only valid for YUV color spaces");
+  }
+  int coloryuv = args[11].AsInt(-1);
+
+  return new StaticImage(vi, CreateBlankFrame(vi, color, coloryuv, env));
 }
 
 
@@ -210,7 +219,7 @@ PClip Create_MessageClip(const char* message, int width, int height, int pixel_t
   vi.fps_denominator = 1;
   vi.num_frames = 240;
 
-  PVideoFrame frame = CreateBlankFrame(vi, bgcolor, env);
+  PVideoFrame frame = CreateBlankFrame(vi, bgcolor, -1, env);
   ApplyMessage(&frame, vi, message, size, textcolor, halocolor, bgcolor, env);
   return new StaticImage(vi, frame);
 };
@@ -561,8 +570,8 @@ AVSFunction Source_filters[] = {
   { "OpenDMLSource", "s+[audio]b[pixel_type]s[fourCC]s", AVISource::Create, (void*) AVISource::MODE_OPENDML },
   { "SegmentedAVISource", "s+[audio]b[pixel_type]s[fourCC]s", Create_SegmentedSource, (void*)0 },
   { "SegmentedDirectShowSource", "s+[fps]f", Create_SegmentedSource, (void*)1 },
-  { "BlankClip", "[clip]c[length]i[width]i[height]i[pixel_type]s[fps]f[fps_denominator]i[audio_rate]i[stereo]b[sixteen_bit]b[color]i", Create_BlankClip },
-  { "Blackness", "[clip]c[length]i[width]i[height]i[pixel_type]s[fps]f[fps_denominator]i[audio_rate]i[stereo]b[sixteen_bit]b[color]i", Create_BlankClip },
+  { "BlankClip", "[clip]c[length]i[width]i[height]i[pixel_type]s[fps]f[fps_denominator]i[audio_rate]i[stereo]b[sixteen_bit]b[color]i[color_yuv]i", Create_BlankClip },
+  { "Blackness", "[clip]c[length]i[width]i[height]i[pixel_type]s[fps]f[fps_denominator]i[audio_rate]i[stereo]b[sixteen_bit]b[color]i[color_yuv]i", Create_BlankClip },
   { "MessageClip", "s[width]i[height]i[shrink]b[text_color]i[halo_color]i[bg_color]i", Create_MessageClip },
   { "ColorBars", "[width]i[height]i", ColorBars::Create },
   { "Tone", "[length]f[frequency]f[samplerate]i[channels]i[type]s", Tone::Create },
