@@ -91,7 +91,7 @@ Histogram::Histogram(PClip _child, int _mode, IScriptEnvironment* env)
 
   if ((mode == 4)||(mode==5)) {
 
-    child->SetCacheHints(CACHE_AUDIO,4096*1024);    
+    child->SetCacheHints(CACHE_AUDIO,4096*1024);
 
     if (!vi.HasVideo()) {
       mode = 4; // force mode to 4.
@@ -190,6 +190,13 @@ PVideoFrame Histogram::DrawMode5(int n, IScriptEnvironment* env) {
     }
   }
 
+  int y_off = p*256;
+  for (int x = 0; x < 512; x+=16)
+    dstp[y_off + x] = (dstp[y_off + x] > 127) ? 16 : 235;
+
+  for (int y = 0; y < 512;y+=16)
+    dstp[y*p+256] = (dstp[y*p+256]>127) ? 16 : 235 ;
+
   delete[] samples;
   return dst;
 }
@@ -208,6 +215,7 @@ PVideoFrame Histogram::DrawMode4(int n, IScriptEnvironment* env) {
   int imgSize = h*src->GetPitch();
   BYTE* srcp = src->GetWritePtr();
   memset(srcp, 16, imgSize);
+  int p = src->GetPitch();
 
   aud_clip->GetAudio(samples, max(0,start), count, env);
   
@@ -226,6 +234,13 @@ PVideoFrame Histogram::DrawMode4(int n, IScriptEnvironment* env) {
       srcp[x+y*512] = min(v,235);
     }
   }
+
+  int y_off = p*256;
+  for (int x = 0; x < 512; x+=16)
+    srcp[y_off + x] = (srcp[y_off + x] > 127) ? 16 : 235; 
+
+  for (int y = 0; y < 512;y+=16)
+    srcp[y*p+256] = (srcp[y*p+256]>127) ? 16 : 235 ;
 
   if (vi.IsPlanar()) {
     srcp = src->GetWritePtr(PLANAR_U);
