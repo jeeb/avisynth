@@ -41,7 +41,7 @@ AVSFunction Audio_filters[] = {
 
 
 
-
+ 
 /******************************************
  *******   Convert Audio -> 16 bit   ******
  *****************************************/
@@ -174,7 +174,12 @@ AVSValue __cdecl Amplify::Create_dB(AVSValue args, void*, IScriptEnvironment* en
 ResampleAudio::ResampleAudio(PClip _child, int _target_rate, IScriptEnvironment* env)
   : GenericVideoFilter(ConvertAudioTo16bit::Create(_child)), target_rate(_target_rate)
 {
-  factor = double(target_rate) / vi.audio_samples_per_second;
+  if (target_rate==vi.audio_samples_per_second) {
+		skip_conversion=true;
+		return;
+	} 
+	skip_conversion=false;
+	factor = double(target_rate) / vi.audio_samples_per_second;
   srcbuffer=0;
 
   vi.num_audio_samples = MulDiv(vi.num_audio_samples, target_rate, vi.audio_samples_per_second);
@@ -202,6 +207,10 @@ ResampleAudio::ResampleAudio(PClip _child, int _target_rate, IScriptEnvironment*
 
 void __stdcall ResampleAudio::GetAudio(void* buf, int start, int count, IScriptEnvironment* env) 
 {
+  if (skip_conversion) {
+		child->GetAudio(buf, start, count, env);
+		return;
+	}
   __int64 src_start = __int64(start / factor * (1<<Np) + 0.5);
   __int64 src_end = __int64((start+count) / factor * (1<<Np) + 0.5);
   const int source_samples = int(src_end>>Np)-int(src_start>>Np)+2*Xoff+1;

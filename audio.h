@@ -151,6 +151,7 @@ private:
   int LpScl;
   short* srcbuffer;
   int srcbuffer_size;
+  int skip_conversion;
 };
 
 
