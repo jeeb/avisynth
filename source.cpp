@@ -6,7 +6,8 @@
 //
 // If you run into problem compiling this source please download the Windows SDK
 // for microsoft. The full version is around 600MB !!!
-//
+// On most environments, the DirectX 8.1 SDK is enough - other also require the Platform SDK.
+
 // This program is free software; you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
 // the Free Software Foundation; either version 2 of the License, or
@@ -44,7 +45,6 @@ class AVISource : public IClip {
   bool dropped_frame;
   PVideoFrame last_frame;
   int last_frame_no;
-
   AudioSource* aSrc;
   AudioStreamSource* audioStreamSource;
   int audio_stream_pos;
@@ -298,7 +298,7 @@ AVISource::AVISource(const char filename[], bool fAudio, const char pixel_type[]
                                               aSrc->lSampleFirst, 
                                               aSrc->lSampleLast - aSrc->lSampleFirst,
                                               true);
-    WAVEFORMATEX* pwfx;
+    WAVEFORMATEX* pwfx; 
     pwfx = audioStreamSource->GetFormat();
     vi.audio_samples_per_second = pwfx->nSamplesPerSec;
     vi.stereo = (pwfx->nChannels == 2);
@@ -307,6 +307,28 @@ AVISource::AVISource(const char filename[], bool fAudio, const char pixel_type[]
 
     audio_stream_pos = 0;
   }
+  // try to decompress frame 0.
+  int keyframe = pvideo->NearestKeyFrame(0);
+  PVideoFrame frame = env->NewVideoFrame(vi, 4);
+  LRESULT error = DecompressFrame(keyframe, true, frame->GetWritePtr());
+  if (error != ICERR_OK || (!frame)||(dropped_frame)) {   // shutdown, if init not succesful.
+    if (hic) {
+      !ex ? ICDecompressEnd(hic) : ICDecompressExEnd(hic);
+      ICClose(hic);
+    }
+    if (pvideo) delete pvideo;
+    if (aSrc) delete aSrc;
+    if (audioStreamSource) delete audioStreamSource;
+    if (pfile)
+      pfile->Release();
+    AVIFileExit();
+    if (pbiSrc)
+      free(pbiSrc);
+    env->ThrowError("AviSource: Could not decompress frame 0");
+  
+  }
+  last_frame_no=0;
+  last_frame=frame;
 }
 
 AVISource::~AVISource() {
@@ -1295,7 +1317,6 @@ public:
 /********************************************************************
 ********************************************************************/
 
-
 AVSValue __cdecl Create_SegmentedSource(AVSValue args, void* use_directshow, IScriptEnvironment* env) {
   int avg_time_per_frame = (use_directshow && args[1].Defined()) ? int(10000000 / args[1].AsFloat() + 0.5) : 0;
   bool bAudio = !use_directshow && args[1].AsBool(true);
@@ -1303,7 +1324,7 @@ AVSValue __cdecl Create_SegmentedSource(AVSValue args, void* use_directshow, ISc
   if (!use_directshow) pixel_type = args[2].AsString("");
   args = args[0];
   PClip result = 0;
-
+  const char* error_msg=0;
   for (int i = 0; i < args.ArraySize(); ++i) {
     char basename[260];
     strcpy(basename, args[i].AsString());
@@ -1316,14 +1337,23 @@ AVSValue __cdecl Create_SegmentedSource(AVSValue args, void* use_directshow, ISc
       char filename[260];
       wsprintf(filename, "%s.%02d.%s", basename, j, extension);
       if (GetFileAttributes(filename) != (DWORD)-1) {   // check if file exists
-        PClip clip = use_directshow ? (IClip*)(new DirectShowSource(filename, avg_time_per_frame, env))
+        try {
+          PClip clip = use_directshow ? (IClip*)(new DirectShowSource(filename, avg_time_per_frame, env))
                                     : (IClip*)(new AVISource(filename, bAudio, pixel_type, 0, env));
-        result = !result ? clip : new_Splice(result, clip, false, env);
+          result = !result ? clip : new_Splice(result, clip, false, env);
+        } catch (AvisynthError e) {
+          error_msg=e.msg;
+        }
       }
     }
   }
-  if (!result)
-    env->ThrowError("Segmented%sSource: no files found!", use_directshow ? "DirectShow" : "AVI");
+  if (!result) {
+    if (!error_msg) {
+      env->ThrowError("Segmented%sSource: no files found!", use_directshow ? "DirectShow" : "AVI");
+    } else {
+      env->ThrowError("Segmented%sSource: decompressor returned error:\n%s!", use_directshow ? "DirectShow" : "AVI",error_msg);
+    }
+  }
   return result;
 }
 
