@@ -697,7 +697,7 @@ STDMETHODIMP_(LONG) CAVIStreamSynth::Info(AVISTREAMINFOW *psi, LONG lSize) {
       int bytes_per_sample = vi->BytesPerAudioSample();
       asi.dwScale = bytes_per_sample;
       asi.dwRate = vi->audio_samples_per_second * bytes_per_sample;
-      asi.dwLength = vi->num_audio_samples;
+      asi.dwLength = (unsigned long)vi->num_audio_samples;
       asi.dwSampleSize = bytes_per_sample;
       wcscpy(asi.szName, L"Avisynth audio #1");
     } else {
@@ -803,8 +803,8 @@ STDMETHODIMP CAVIStreamSynth::Read(LONG lStart, LONG lSamples, LPVOID lpBuffer, 
 
   if (fAudio) {
     if (lSamples == AVISTREAMREAD_CONVENIENT)
-      lSamples = parent->vi->AudioSamplesFromFrames(1);
-    if (plBytes) *plBytes = parent->vi->BytesFromAudioSamples(lSamples);
+      lSamples = (unsigned long)parent->vi->AudioSamplesFromFrames(1);
+    if (plBytes) *plBytes = (long)parent->vi->BytesFromAudioSamples(lSamples);
     if (plSamples) *plSamples = lSamples;
     if (!lpBuffer)
       return S_OK;
