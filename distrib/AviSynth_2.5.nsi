@@ -1,7 +1,7 @@
 !packhdr tempfile.exe "upx --best --q tempfile.exe"
 
-!DEFINE VERSION 2.5.5
-!DEFINE DATE 170804
+!DEFINE VERSION 2.5.6
+!DEFINE DATE 241104
 
 SetCompressor lzma
 !include "MUI.nsh"
@@ -135,6 +135,8 @@ SectionIn 1
   File "..\..\Docs\*.css"
   SetOutPath $INSTDIR\Docs\english
   File "..\..\Docs\english\*.*"
+  SetOutPath $INSTDIR\Docs\english\advancedtopics
+  File "..\..\Docs\english\advancedtopics\*.*"
   SetOutPath $INSTDIR\Docs\english\corefilters
   File "..\..\Docs\english\corefilters\*.*"
   SetOutPath $INSTDIR\Docs\english\externalfilters
@@ -144,8 +146,11 @@ SectionIn 1
   SetOutPath $INSTDIR\Docs\english\pictures\externalfilters
   File "..\..\Docs\english\pictures\externalfilters\*.*"
 
+  SetOutPath $INSTDIR\Examples
+  File "Examples\*.*"
 
-  CreateShortCut "$SMPROGRAMS\AviSynth 2.5\AviSynth Documentation.lnk" "$INSTDIR\Docs\english\index.htm"
+CreateShortCut "$SMPROGRAMS\AviSynth 2.5\AviSynth Documentation.lnk" "$INSTDIR\Docs\english\index.htm"
+
 SectionEnd
 
 
@@ -158,10 +163,6 @@ Section /o "German Documentation" German
   File "..\..\Docs\german\corefilters\*.*"
   SetOutPath $INSTDIR\Docs\german\externalfilters
   File "..\..\Docs\german\externalfilters\*.*"
-
-
-  SetOutPath $INSTDIR\Examples
-  File "Examples\*.*"
 
 CreateShortCut "$SMPROGRAMS\AviSynth 2.5\Deutsche AviSynth Dokumentation.lnk" "$INSTDIR\Docs\german\index.htm"
 
@@ -177,14 +178,25 @@ Section /o "French Documentation" French
   SetOutPath $INSTDIR\Docs\french\externalfilters
   File "..\..\Docs\french\externalfilters\*.*"
 
-
-  SetOutPath $INSTDIR\Examples
-  File "Examples\*.*"
-
 CreateShortCut "$SMPROGRAMS\AviSynth 2.5\French AviSynth Documentation.lnk" "$INSTDIR\Docs\french\index.htm"
 
 SectionEnd
 
+Section /o "Italian Documentation" Italian
+  SetOutPath $INSTDIR\Docs
+  File "..\..\Docs\*.css"
+  SetOutPath $INSTDIR\Docs\italian
+  File "..\..\Docs\italian\*.*"
+  SetOutPath $INSTDIR\Docs\italian\corefilters
+  File "..\..\Docs\italian\corefilters\*.*"
+  SetOutPath $INSTDIR\Docs\italian\externalfilters
+  File "..\..\Docs\italian\externalfilters\*.*"
+  SetOutPath $INSTDIR\Docs\italian\pictures\corefilters
+  File "..\..\Docs\italian\pictures\corefilters\*.*"
+
+CreateShortCut "$SMPROGRAMS\AviSynth 2.5\Italian AviSynth Documentation.lnk" "$INSTDIR\Docs\italian\index.htm"
+
+SectionEnd
 
 Subsectionend
 
@@ -213,6 +225,7 @@ SubSectionEnd
   !insertmacro MUI_DESCRIPTION_TEXT  ${English} "Install English help"
   !insertmacro MUI_DESCRIPTION_TEXT  ${German} "Install German help"
   !insertmacro MUI_DESCRIPTION_TEXT  ${French} "Install French help"
+  !insertmacro MUI_DESCRIPTION_TEXT  ${Italian} "Install Italian help"
   !insertmacro MUI_DESCRIPTION_TEXT  ${SelectAssociation} "Select only ONE of these for association!"
   !insertmacro MUI_DESCRIPTION_TEXT  ${Associate1} "Open AVS files directly with Notepad"
   !insertmacro MUI_DESCRIPTION_TEXT  ${Associate2} "Open AVS files directly with Media Player 6.4"
@@ -241,23 +254,25 @@ Section "Uninstall"
   Delete "$INSTDIR\Examples\*.*"
   RMDir  "$INSTDIR\Examples"
 
-  Delete "$INSTDIR\Docs\English\pictures\corefilters\*.*"
-  RMDir  "$INSTDIR\Docs\English\pictures\corefilters"
-  Delete "$INSTDIR\Docs\English\pictures\externalfilters\*.*"
-  RMDir  "$INSTDIR\Docs\English\pictures\externalfilters"
-  Delete "$INSTDIR\Docs\English\corefilters\*.*"
-  RMDir  "$INSTDIR\Docs\English\corefilters"
-  Delete "$INSTDIR\Docs\English\externalfilters\*.*"
-  RMDir  "$INSTDIR\Docs\English\externalfilters"
-  Delete "$INSTDIR\Docs\English\*.*"
-  RMDir  "$INSTDIR\Docs\English"
+  Delete "$INSTDIR\Docs\english\pictures\corefilters\*.*"
+  RMDir  "$INSTDIR\Docs\english\pictures\corefilters"
+  Delete "$INSTDIR\Docs\english\pictures\externalfilters\*.*"
+  RMDir  "$INSTDIR\Docs\english\pictures\externalfilters"
+  Delete "$INSTDIR\Docs\english\advancedtopics\*.*"
+  RMDir  "$INSTDIR\Docs\english\advancedtopics"
+  Delete "$INSTDIR\Docs\english\corefilters\*.*"
+  RMDir  "$INSTDIR\Docs\english\corefilters"
+  Delete "$INSTDIR\Docs\english\externalfilters\*.*"
+  RMDir  "$INSTDIR\Docs\english\externalfilters"
+  Delete "$INSTDIR\Docs\english\*.*"
+  RMDir  "$INSTDIR\Docs\english"
 
-  Delete "$INSTDIR\Docs\German\corefilters\*.*"
-  RMDir  "$INSTDIR\Docs\German\corefilters"
-  Delete "$INSTDIR\Docs\German\externalfilters\*.*"
-  RMDir  "$INSTDIR\Docs\German\externalfilters"
-  Delete "$INSTDIR\Docs\German\*.*"
-  RMDir  "$INSTDIR\Docs\German"
+  Delete "$INSTDIR\Docs\german\corefilters\*.*"
+  RMDir  "$INSTDIR\Docs\german\corefilters"
+  Delete "$INSTDIR\Docs\german\externalfilters\*.*"
+  RMDir  "$INSTDIR\Docs\german\externalfilters"
+  Delete "$INSTDIR\Docs\german\*.*"
+  RMDir  "$INSTDIR\Docs\german"
 
   Delete "$INSTDIR\Docs\french\corefilters\*.*"
   RMDir  "$INSTDIR\Docs\french\corefilters"
@@ -265,6 +280,15 @@ Section "Uninstall"
   RMDir  "$INSTDIR\Docs\french\externalfilters"
   Delete "$INSTDIR\Docs\french\*.*"
   RMDir  "$INSTDIR\Docs\french"
+
+  Delete "$INSTDIR\Docs\italian\pictures\corefilters\*.*"
+  RMDir  "$INSTDIR\Docs\italian\pictures\corefilters"
+  Delete "$INSTDIR\Docs\italian\pictures\externalfilters\*.*"
+  RMDir  "$INSTDIR\Docs\italian\pictures\externalfilters"
+  Delete "$INSTDIR\Docs\italian\corefilters\*.*"
+  RMDir  "$INSTDIR\Docs\italian\corefilters"
+  Delete "$INSTDIR\Docs\italian\*.*"
+  RMDir  "$INSTDIR\Docs\italian"
 
   Delete "$INSTDIR\Docs\*.*"
   RMDir  "$INSTDIR\Docs"
