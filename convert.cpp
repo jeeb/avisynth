@@ -386,11 +386,11 @@ ConvertToYV12::ConvertToYV12(PClip _child, bool _interlaced, IScriptEnvironment*
   interlaced(_interlaced)
 {
   if (vi.width & 1)
-    env->ThrowError("ConvertToYV12: image width must be multiple of 2");
+    env->ThrowError("ConvertToYV12: Image width must be multiple of 2");
   if (interlaced && (vi.height & 3))
     env->ThrowError("ConvertToYV12: Interlaced image height must be multiple of 4");
   if ((!interlaced) && (vi.height & 1))
-    env->ThrowError("ConvertToYV12: image height must be multiple of 2");
+    env->ThrowError("ConvertToYV12: Image height must be multiple of 2");
   isYUY2=isRGB32=isRGB24=false;
   if (vi.IsYUY2()) isYUY2 = true;
   if (vi.IsRGB32()) isRGB32 = true;
@@ -468,8 +468,11 @@ AVSValue __cdecl ConvertToYV12::Create(AVSValue args, void*, IScriptEnvironment*
 ConvertToYUY2::ConvertToYUY2(PClip _child, bool _interlaced, IScriptEnvironment* env)
   : GenericVideoFilter(_child), interlaced(_interlaced),src_cs(vi.pixel_type)
 {
+  if (vi.height&3 && vi.IsYV12() && interlaced) 
+    env->ThrowError("ConvertToYUY2: Cannot convert from YV12 if height is not multiple of 4. Use Crop!");
+
   if (vi.width & 1)
-    env->ThrowError("ConvertToYUY2: image width must be even");
+    env->ThrowError("ConvertToYUY2: Image width must be even. Use Crop!");
   vi.pixel_type = VideoInfo::CS_YUY2;
 }
 
@@ -489,9 +492,6 @@ PVideoFrame __stdcall ConvertToYUY2::GetFrame(int n, IScriptEnvironment* env)
     PVideoFrame dst = env->NewVideoFrame(vi,16);
     BYTE* yuv = dst->GetWritePtr();
     if (interlaced) {
-//      if (((src->GetPitch()&7)||(dst->GetPitch())&15)) 
-//        env->ThrowError("ConvertToYUY2 (interlaced): Pitch was not properly aligned - please report this!");
-
 		  if ((env->GetCPUFlags() & CPUF_INTEGER_SSE)) {
         isse_yv12_i_to_yuy2(src->GetReadPtr(PLANAR_Y), src->GetReadPtr(PLANAR_U), src->GetReadPtr(PLANAR_V), src->GetRowSize(PLANAR_Y_ALIGNED), src->GetPitch(PLANAR_Y), src->GetPitch(PLANAR_U), 
                       yuv, dst->GetPitch() ,src->GetHeight());
@@ -500,9 +500,6 @@ PVideoFrame __stdcall ConvertToYUY2::GetFrame(int n, IScriptEnvironment* env)
                     yuv, dst->GetPitch() ,src->GetHeight());
       }
     } else {
-//      if (((src->GetPitch()&7)||(dst->GetPitch())&15)) 
-//        env->ThrowError("ConvertToYUY2 (progressive): Pitch was not properly aligned - please report this!");
-
 		  if ((env->GetCPUFlags() & CPUF_INTEGER_SSE)) {
         isse_yv12_to_yuy2(src->GetReadPtr(PLANAR_Y), src->GetReadPtr(PLANAR_U), src->GetReadPtr(PLANAR_V), src->GetRowSize(PLANAR_Y_ALIGNED), src->GetPitch(PLANAR_Y), src->GetPitch(PLANAR_U), 
                       yuv, dst->GetPitch() ,src->GetHeight());

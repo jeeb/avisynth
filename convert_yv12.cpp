@@ -64,7 +64,7 @@ void isse_yv12_i_to_yuy2(const BYTE* srcY, const BYTE* srcU, const BYTE* srcV, i
   const BYTE* _srcU=srcU;
   const BYTE* _srcV=srcV;
   BYTE* _dst=dst;
-
+//
   for (int i=0;i<8;i++) {
     switch (i) {
     case 1:
@@ -81,7 +81,7 @@ void isse_yv12_i_to_yuy2(const BYTE* srcY, const BYTE* srcU, const BYTE* srcV, i
       _srcY+=src_pitch2;  // Same  chroma as in 2
       _dst+=dst_pitch2;
       break;
-    case 4:
+    case 4: // Now we process the bottom four lines of the picture. 
       _srcY=srcY+(src_pitch*(height-4));
       _srcU=srcU+(src_pitch_uv*((height>>1)-2));
       _srcV=srcV+(src_pitch_uv*((height>>1)-2));
@@ -144,7 +144,7 @@ xloop_p:
     add edi, 16
 xloop_test_p:
       cmp edx,[src_rowsize]
-      jle xloop_p
+      jl xloop_p
     }
   }
 
@@ -387,7 +387,7 @@ xloop_p:
     add edi, 16
 xloop_test_p:
       cmp edx,[src_rowsize]
-      jle xloop_p
+      jl xloop_p
     }
   }
 
@@ -638,7 +638,7 @@ xloop_p:
     add edi, 16
 xloop_test_p:
       cmp edx,[src_rowsize]
-      jle xloop_p
+      jl xloop_p
     }
   }
 
@@ -901,7 +901,7 @@ xloop_p:
     add edi, 16
 xloop_test_p:
       cmp edx,[src_rowsize]
-      jle xloop_p
+      jl xloop_p
     }
   }
 
