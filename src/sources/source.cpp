@@ -133,8 +133,11 @@ static AVSValue __cdecl Create_BlankClip(AVSValue args, void*, IScriptEnvironmen
 
   VideoInfo vi;
 
-  if (args[0].Defined()) {
-    vi_default = args[0].AsClip()->GetVideoInfo();
+  if (args[0].ArraySize() == 1) {
+    vi_default = args[0][0].AsClip()->GetVideoInfo();
+  }
+  else if (args[0].ArraySize() != 0) {
+    env->ThrowError("BlankClip: Only 1 Template clip allowed.");
   }
 
   vi.num_frames = args[1].AsInt(vi_default.num_frames);
@@ -759,8 +762,8 @@ AVSFunction Source_filters[] = {
   { "OpenDMLSource", "s+[audio]b[pixel_type]s[fourCC]s", AVISource::Create, (void*) AVISource::MODE_OPENDML },
   { "SegmentedAVISource", "s+[audio]b[pixel_type]s[fourCC]s", Create_SegmentedSource, (void*)0 },
   { "SegmentedDirectShowSource", "s+[fps]f", Create_SegmentedSource, (void*)1 },
-  { "BlankClip", "[clip]c[length]i[width]i[height]i[pixel_type]s[fps]f[fps_denominator]i[audio_rate]i[stereo]b[sixteen_bit]b[color]i[color_yuv]i", Create_BlankClip },
-  { "Blackness", "[clip]c[length]i[width]i[height]i[pixel_type]s[fps]f[fps_denominator]i[audio_rate]i[stereo]b[sixteen_bit]b[color]i[color_yuv]i", Create_BlankClip },
+  { "BlankClip", "[clip]c*[length]i[width]i[height]i[pixel_type]s[fps]f[fps_denominator]i[audio_rate]i[stereo]b[sixteen_bit]b[color]i[color_yuv]i", Create_BlankClip },
+  { "Blackness", "[clip]c*[length]i[width]i[height]i[pixel_type]s[fps]f[fps_denominator]i[audio_rate]i[stereo]b[sixteen_bit]b[color]i[color_yuv]i", Create_BlankClip },
   { "MessageClip", "s[width]i[height]i[shrink]b[text_color]i[halo_color]i[bg_color]i", Create_MessageClip },
   { "ColorBars", "[width]i[height]i[pixel_type]s", ColorBars::Create },
   { "Tone", "[length]f[frequency]f[samplerate]i[channels]i[type]s[level]f", Tone::Create },
