@@ -77,11 +77,12 @@ SectionEnd ; end of default section
 
 Section "Documentation (optional)"
   SectionIn 1
-  SetOutPath "$INSTDIR"
+  CreateDirectory "$INSTDIR\docs"
+  SetOutPath "$INSTDIR\docs"
 	File "..\docs\*.html"
-  SetOutPath "$INSTDIR\filters"
+  SetOutPath "$INSTDIR\docs\filters"
 	File "..\docs\filters\*.html"
-  CreateShortCut "$SMPROGRAMS\AviSynth 2\Avisynth Documentation.lnk" "$INSTDIR\index.html"
+  CreateShortCut "$SMPROGRAMS\AviSynth 2\Avisynth Documentation.lnk" "$INSTDIR\docs\index.html"
   CreateShortCut "$SMPROGRAMS\AviSynth 2\Avisynth Online.lnk" "http://avisynth.org"
 SectionEnd
 
@@ -100,12 +101,13 @@ DeleteRegKey HKEY_CLASSES_ROOT "CLSID\{E6D6B700-124D-11D4-86F3-DB80AFD98778}\InP
 DeleteRegKey HKEY_CLASSES_ROOT "CLSID\{E6D6B700-124D-11D4-86F3-DB80AFD98778}\InProcServer32"
 ;UnRegDLL "$SYSDIR\avisynth.dll"
 Delete "$SYSDIR\avisynth.dll"
-Delete "$INSTDIR\*.html"
-Delete "$INSTDIR\*.txt"
-Delete "$INSTDIR\filters\*.*"
+Delete "$INSTDIR\gpl.txt"
+Delete "$INSTDIR\docs\filters\*.*"
+Delete "$INSTDIR\docs\*.*"
 Delete "$SMPROGRAMS\AviSynth 2\*.*"
 
-RMDir "$INSTDIR\filters"
+RMDir "$INSTDIR\docs\filters"
+RMDir "$INSTDIR\docs"
 RMDir "$INSTDIR\plugins"
 RMDir "$INSTDIR"
 RMDir "$SMPROGRAMS\AviSynth 2"
