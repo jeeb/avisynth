@@ -47,7 +47,7 @@
 
 AVSFunction Text_filters[] = {
   { "ShowFrameNumber", "c[scroll]b", ShowFrameNumber::Create }, // clip, scroll?
-  { "ShowSMPTE", "cf", ShowSMPTE::Create },                     // clip, fps
+  { "ShowSMPTE", "c[fps]f", ShowSMPTE::Create },                     // clip, fps
   { "Info", "c", FilterInfo::Create },                     // clip
   { "Subtitle", "cs[x]i[y]i[first_frame]i[last_frame]i[font]s[size]i[text_color]i[halo_color]i[align]i[spc]i", 
     Subtitle::Create },       // see docs!
@@ -502,14 +502,15 @@ PVideoFrame __stdcall ShowSMPTE::GetFrame(int n, IScriptEnvironment* env)
   GdiFlush();
 
   antialiaser.Apply( vi, &frame, frame->GetPitch(),
-                     vi.IsYUV() ? 0xD21092 : 0xFFFF00, vi.IsYUY2() ? 0x108080 : 0 );
+                     vi.IsYUV() ? 0xD21092 : 0xFFFF00, vi.IsYUV() ? 0x108080 : 0 );
 
   return frame;
 }
 
 AVSValue __cdecl ShowSMPTE::Create(AVSValue args, void*, IScriptEnvironment* env)
 {
-  return new ShowSMPTE(args[0].AsClip(), args[1].AsFloat(), env);
+  double def_rate = (double)args[0].AsClip()->GetVideoInfo().fps_numerator / (double)args[0].AsClip()->GetVideoInfo().fps_denominator;
+  return new ShowSMPTE(args[0].AsClip(), args[1].AsFloat(def_rate), env);
 }
 
 

@@ -238,7 +238,7 @@ AVISource::AVISource(const char filename[], bool fAudio, const char pixel_type[]
     if (h == INVALID_HANDLE_VALUE) {
       env->ThrowError("AVISource autodetect: couldn't open file\nError code: %d", GetLastError()); 
     }
-    unsigned buf[3];
+    unsigned int buf[3];
     DWORD bytes_read;
     if (ReadFile(h, buf, 12, &bytes_read, NULL) && bytes_read == 12 && buf[0] == 'FFIR' && buf[2] == ' IVA')
       mode = 2;
