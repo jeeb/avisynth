@@ -31,11 +31,11 @@ class VerticalReduceBy2 : public GenericVideoFilter
  **/
 {  
 public:
-  VerticalReduceBy2(PClip _child);
+  VerticalReduceBy2(PClip _child, IScriptEnvironment* env);
+  void mmx_process(PVideoFrame src,BYTE* dstp, int dst_pitch);
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
-
   static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env)  { 
-    return new VerticalReduceBy2(args[0].AsClip()); 
+    return new VerticalReduceBy2(args[0].AsClip(),env); 
   }
 
 private:

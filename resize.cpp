@@ -43,11 +43,14 @@ AVSFunction Resize_filters[] = {
  ************************************/
 
 
-VerticalReduceBy2::VerticalReduceBy2(PClip _child)
+VerticalReduceBy2::VerticalReduceBy2(PClip _child, IScriptEnvironment* env)
  : GenericVideoFilter(_child)
 {
   original_height = vi.height;
   vi.height >>= 1;
+  if (vi.height<3) {
+    env->ThrowError("VerticalReduceBy2: Image too small to be reduced by 2.");    
+  }
 }
 
 
@@ -57,9 +60,15 @@ PVideoFrame VerticalReduceBy2::GetFrame(int n, IScriptEnvironment* env) {
   const int src_pitch = src->GetPitch();
   const int dst_pitch = dst->GetPitch();
   const int row_size = src->GetRowSize();
-
   BYTE* dstp = dst->GetWritePtr();
 
+  if ((env->GetCPUFlags() & CPUF_MMX)) {
+    if ((row_size&3)==0) {  // row width divideable with 4 (one dword per loop)
+      mmx_process(src,dstp,dst_pitch);
+      return dst;
+    }
+  } 
+    
   for (int y=0; y<vi.height; ++y) {
     const BYTE* line0 = src->GetReadPtr() + (y*2)*src_pitch;
     const BYTE* line1 = line0 + src_pitch;
@@ -72,6 +81,94 @@ PVideoFrame VerticalReduceBy2::GetFrame(int n, IScriptEnvironment* env) {
   return dst;
 }
 
+/*************************************
+ ******* Vertical 2:1 Reduction ******
+ ******* MMX Optimized          ******
+ ************************************/
+
+
+#define R_SRC edx
+#define R_DST edi
+#define R_XOFFSET eax
+#define R_YLEFT ebx
+#define R_SRC_PITCH ecx
+#define R_DST_PITCH esi
+
+void VerticalReduceBy2::mmx_process(PVideoFrame src,BYTE* dstp, int dst_pitch) {
+  
+  const BYTE* srcp = src->GetReadPtr();
+  const int src_pitch = src->GetPitch();
+  int row_size = src->GetRowSize();
+  const int height = vi.height-1;
+  static const __int64 add_2=0x0002000200020002;
+  __asm {
+    movq mm7,[add_2];
+  }
+  if ((row_size&3)==0) {  // row width divideable with 4 (one dword per loop)
+    __asm {
+      mov R_XOFFSET,0
+        mov R_SRC,srcp
+        mov R_DST,dstp
+        mov R_SRC_PITCH,[src_pitch]
+        mov R_DST_PITCH,[dst_pitch]
+        mov R_YLEFT,[height]
+        add R_DST,4   //don't ask why
+loopback:
+      pxor mm1,mm1
+        punpckhbw mm0,[R_SRC]  // line0
+        punpckhbw mm1,[R_SRC+R_SRC_PITCH]  // line1
+        punpckhbw mm2,[R_SRC+R_SRC_PITCH*2]  // line2
+        psrlw mm0,8
+        psrlw mm1,7
+        paddw mm0,mm7
+        psrlw mm2,8
+        paddw mm0,mm1
+        paddw mm0,mm2
+        psrlw mm0,2
+        packuswb mm0,mm1
+        movd [R_DST+R_XOFFSET],mm0
+        add R_SRC,4
+        add R_XOFFSET,4
+        cmp  R_XOFFSET,[row_size]
+        jl loopback						; Jump back
+        add srcp, R_SRC_PITCH
+        mov R_XOFFSET,0
+        add srcp, R_SRC_PITCH
+        add R_DST,R_DST_PITCH
+        mov R_SRC,srcp
+        dec R_YLEFT
+        jnz loopback
+        
+        // last line 
+loopback_last:
+      pxor mm1,mm1
+        punpckhbw mm0,[R_SRC]  // line0
+        punpckhbw mm1,[R_SRC+R_SRC_PITCH]  // line1
+        psrlw mm0,8
+        movq mm2,mm1  // dupe line 1
+        psrlw mm1,7
+        paddw mm0,mm7
+        psrlw mm2,8
+        paddw mm0,mm1
+        paddw mm0,mm2
+        psrlw mm0,2
+        packuswb mm0,mm1
+        movd [R_DST+R_XOFFSET],mm0
+        add R_XOFFSET,4
+        add R_SRC,4
+        cmp  R_XOFFSET,[row_size]
+        jl loopback_last						; Jump back
+        emms
+    }
+  }
+}
+
+#undef R_SRC
+#undef R_DST
+#undef R_XOFFSET
+#undef R_YLEFT
+#undef R_SRC_PITCH
+#undef R_DST_PITCH
 
 
 
@@ -176,7 +273,7 @@ PVideoFrame HorizontalReduceBy2::GetFrame(int n, IScriptEnvironment* env)
 
 AVSValue __cdecl Create_ReduceBy2(AVSValue args, void*, IScriptEnvironment* env) 
 {
-  return new VerticalReduceBy2(new HorizontalReduceBy2(args[0].AsClip(), env));
+  return new VerticalReduceBy2(new HorizontalReduceBy2(args[0].AsClip(), env),env);
 }
 
 
