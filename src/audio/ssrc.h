@@ -1,3 +1,21 @@
+/******************************************************
+  A fast and high quality sampling rate converter SSRC
+                                           written by Naoki Shibata
+
+
+Homepage : http://shibatch.sourceforge.net/
+e-mail   : shibatch@users.sourceforge.net
+
+Some changes are:
+
+Copyright © 2001-2003, Peter Pawlowski
+All rights reserved.
+
+Other changes are:
+
+Copyright © 2003, Klaus Post
+
+*******************************************************/
 
 
 #include "../internal.h"

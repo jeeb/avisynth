@@ -1,3 +1,26 @@
+/******************************************************
+SuperEQ written by Naoki Shibata  shibatch@users.sourceforge.net
+
+Shibatch Super Equalizer is a graphic and parametric equalizer plugin
+for winamp. This plugin uses 16383th order FIR filter with FFT algorithm.
+It's equalization is very precise. Equalization setting can be done
+for each channel separately.
+
+
+Homepage : http://shibatch.sourceforge.net/
+e-mail   : shibatch@users.sourceforge.net
+
+Some changes are from foobar2000 (www.foobar2000.org):
+
+Copyright © 2001-2003, Peter Pawlowski
+All rights reserved.
+
+Other changes are:
+
+Copyright © 2003, Klaus Post
+
+*******************************************************/
+
 #include <math.h>
 #include "stdafx.h"
 #include "supereq.h"
