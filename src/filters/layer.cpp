@@ -94,7 +94,8 @@ PVideoFrame __stdcall Mask::GetFrame(int n, IScriptEnvironment* env)
 	BYTE* src1p = src1->GetWritePtr();
 	const BYTE* src2p = src2->GetReadPtr();
 
-	const int pitch = src1->GetPitch();
+	const int src1_pitch = src1->GetPitch();
+	const int src2_pitch = src2->GetPitch();
 
 	const int cyb = int(0.114*32768+0.5);
 	const int cyg = int(0.587*32768+0.5);
@@ -158,8 +159,8 @@ PVideoFrame __stdcall Mask::GetFrame(int n, IScriptEnvironment* env)
 
 				jnz         mask_mmxloop
 
-		add			edi, pitch
-		add			esi, pitch
+		add			edi, src1_pitch
+		add			esi, src2_pitch
 		mov       edx, myx
 		xor         ecx, ecx
 		dec		ebx
