@@ -35,7 +35,8 @@ extern AVSFunction Audio_filters[], Combine_filters[], Convert_filters[],
                    Layer_filters[], Levels_filters[], Misc_filters[], 
                    Plugin_functions[], Resample_filters[], Resize_filters[], 
                    Script_functions[], Source_filters[], Text_filters[],
-                   Transform_filters[], Merge_filters[], Decomb_filters[];
+                   Transform_filters[], Merge_filters[];
+                   //Decomb_filters[]
 
 
 AVSFunction* builtin_functions[] = {  
@@ -45,7 +46,8 @@ AVSFunction* builtin_functions[] = {
                    Layer_filters, Levels_filters, Misc_filters, 
                    Plugin_functions, Resample_filters, Resize_filters, 
                    Script_functions, Source_filters, Text_filters,
-                   Transform_filters, Merge_filters, Decomb_filters };
+                   Transform_filters, Merge_filters };
+                   //Decomb_filters
 
 
 class LinkedVideoFrame {
