@@ -122,6 +122,6 @@ void weigh_luma( unsigned int *src, unsigned int *luma, int pitch,
 void weigh_chroma( unsigned int *src, unsigned int *chroma, int pitch,
                    int chroma_pitch, int width, int height, int weight, int invweight);
 
-void mmx_weigh_yv12(BYTE *p1,BYTE *p2, int p1_pitch, int p2_pitch,int rowsize, int height, int weight, int invweight);
+void mmx_weigh_yv12(BYTE *p1,const BYTE *p2, int p1_pitch, int p2_pitch,int rowsize, int height, int weight, int invweight);
 
 #endif  // __Merge_H__

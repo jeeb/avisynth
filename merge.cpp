@@ -816,10 +816,13 @@ exitloop:
  * and has very little memory usage.
  * Processes four pixels per loop, so rowsize must be mod 4.
  * Thanks to ARDA for squeezing out a bit more performance.
+ * 
+ * Weights must be multipled by 32767
+ * Returns the blended plane in p1;
  * (c) 2002 by sh0dan.
  ********/
 
-void mmx_weigh_yv12(BYTE *p1,BYTE *p2, int p1_pitch, int p2_pitch,int rowsize, int height, int weight, int invweight) {
+void mmx_weigh_yv12(BYTE *p1, const BYTE *p2, int p1_pitch, int p2_pitch,int rowsize, int height, int weight, int invweight) {
   __int64 weight64  = (__int64)weight | (((__int64)invweight)<<16) | (((__int64)weight)<<32) |(((__int64)invweight)<<48);
 	__int64 rounder = 0x0000400000004000;		// (0.5)<<15 in each dword
 
