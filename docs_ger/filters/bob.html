@@ -1,25 +1,21 @@
-<!doctype html public "-//W3C//DTD HTML 4.0 Transitional//EN">
-<html>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "DTD/xhtml1-transitional.dtd">  
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="de" lang="de">
 <head>
- <meta name="Generator" content="PPWIZARD version 02.213 on WIN2K, FREE tool for Windows, OS/2, DOS and UNIX by Dennis Bareis (http://www.labyrinth.net.au/~dbareis/ppwizard.htm)">
+ <meta http-equiv="content-type" content="text/html; charset=iso-8859-1" />
+ <meta http-equiv="content-style-type" content="text/css" />
+ <meta name="author" content="WarpEnterprises" />
+ <meta name="date" content="2003-07-09" />
  <title>Bob AviSynth Filter</title>
- <style type=text/css>
-  A:link { COLOR: #404a58;TEXT-DECORATION: none }
-  A:visited { COLOR: #404a58;TEXT-DECORATION: none }
-  A:active { COLOR: #404a58;TEXT-DECORATION: none }
-  A:hover { COLOR: #e8f0ff; TEXT-DECORATION: underline }
-  .titresmall { color : 000000; font-family: Tahoma, Verdana, Arial, Helvetica, sans-serif; font-size: 16pt; letter-spacing: 0.15em; font-weight: bold; }
- </style>
-</head>
-<body bgcolor=b6cac0>
-<span class="titresmall"><a name="Bob"></a>Bob</span><br><br>
+ <link rel="stylesheet" type="text/css" href="../style.css" />
+</head><body>
+<span class="titresmall"><a name="Bob"></a>Bob</span><br /><br />
 
-<tt>Bob(</tt><i>clip, float &quot;b&quot;, float &quot;c&quot;, float &quot;height&quot;</i><tt>)</tt><br><br>
+<tt>Bob(</tt><i>clip, float &quot;b&quot;, float &quot;c&quot;, float &quot;height&quot;</i><tt>)</tt><br /><br />
 
-<tt>Bob</tt> deinterlaced ein Video auf folgende Art. Jedes Feld wird auf ganze Frame-Gr&ouml;&szlig;e vergr&ouml;ssert, indem zwischen den Feldzeilen interpoliert wird. Die Top-fields werden dabei im Vergleich mit den Bottom-fields etwas nach oben ger&uuml;ckt. Daher springt das Bild nach dem Filtern nicht mehr rauf und runter. Allerdings wird in ruhigen Szenen ein Schimmern sichtbar, da die Interpolation das jeweils andere Feld nicht sehr exakt rekonstruiert.<br><br>
+<tt>Bob</tt> deinterlaced ein Video auf folgende Art. Jedes Feld wird auf ganze Frame-Gr&ouml;&szlig;e vergr&ouml;ssert, indem zwischen den Feldzeilen interpoliert wird. Die Top-fields werden dabei im Vergleich mit den Bottom-fields etwas nach oben ger&uuml;ckt. Daher springt das Bild nach dem Filtern nicht mehr rauf und runter. Allerdings wird in ruhigen Szenen ein Schimmern sichtbar, da die Interpolation das jeweils andere Feld nicht sehr exakt rekonstruiert.<br /><br />
 
-Dieser Filter verwendet <tt>BicubicResize</tt>, die Werte <i>b</i> and <i>c</i> (siehe <a href="resize.html"><tt>BicubicResize</tt></a>) k&ouml;nnen entsprechend angepasst werden. Man kann auch gleichzeitig die vertikale Aufl&ouml;ung mit dem Parameter <i>height</i> anpassen.<br><br>
+Dieser Filter verwendet <tt>BicubicResize</tt>, die Werte <i>b</i> and <i>c</i> (siehe <a href="resize.html"><tt>BicubicResize</tt></a>) k&ouml;nnen entsprechend angepasst werden. Man kann auch gleichzeitig die vertikale Aufl&ouml;ung mit dem Parameter <i>height</i> anpassen.<br /><br />
 
-<form><input type="Button" value="Back" onClick="history.go(-1)"></form>
+<form action=""><input type="button" value="back" onclick="history.go(-1)" /></form>
 </body>
 </html>

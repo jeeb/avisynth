@@ -1,64 +1,60 @@
-<!doctype html public "-//W3C//DTD HTML 4.0 Transitional//EN">
-<html>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "DTD/xhtml1-transitional.dtd">  
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="de" lang="de">
 <head>
- <meta name="Generator" content="PPWIZARD version 02.213 on WIN2K, FREE tool for Windows, OS/2, DOS and UNIX by Dennis Bareis (http://www.labyrinth.net.au/~dbareis/ppwizard.htm)">
+ <meta http-equiv="content-type" content="text/html; charset=iso-8859-1" />
+ <meta http-equiv="content-style-type" content="text/css" />
+ <meta name="author" content="WarpEnterprises" />
+ <meta name="date" content="2003-07-09" />
  <title>AssumeFPS / ChangeFPS / ConvertFPS AviSynth Filter</title>
- <style type=text/css>
-  A:link { COLOR: #404a58;TEXT-DECORATION: none }
-  A:visited { COLOR: #404a58;TEXT-DECORATION: none }
-  A:active { COLOR: #404a58;TEXT-DECORATION: none }
-  A:hover { COLOR: #e8f0ff; TEXT-DECORATION: underline }
-  .titresmall { color : 000000; font-family: Tahoma, Verdana, Arial, Helvetica, sans-serif; font-size: 16pt; letter-spacing: 0.15em; font-weight: bold; }
- </style>
-</head>
-<body bgcolor=b6cac0>
-<span class="titresmall"><a name="AssumeFPS"></a>AssumeFPS</span><br><br>
-<tt>AssumeFPS(</tt><i>clip, float fps, bool &quot;sync_audio&quot;</i><tt>)<br>
-</tt><tt>AssumeFPS(</tt><i>clip, int numerator[, int denominator], bool &quot;sync_audio&quot;</i><tt>)</tt><br><br>
+ <link rel="stylesheet" type="text/css" href="../style.css" />
+</head><body>
+<span class="titresmall"><a name="AssumeFPS"></a>AssumeFPS</span><br /><br />
+<tt>AssumeFPS(</tt><i>clip, float fps, bool &quot;sync_audio&quot;</i><tt>)<br />
+</tt><tt>AssumeFPS(</tt><i>clip, int numerator[, int denominator], bool &quot;sync_audio&quot;</i><tt>)</tt><br /><br />
 
-Der <tt>AssumeFPS</tt> Filter &auml;ndert die Framerate ohne die Frameanzahl zu &auml;ndern; das Video wird also schneller bzw. langsamer abgespielt, es wird lediglich die Framerate ver&auml;ndert.<br>
-Wenn <i>sync_audio</i> = true gesetzt wird, wird auch die Samplingrate vom Ton entsprechend ver&auml;ndert, damit die Spieldauer vom Ton gleich der des Videos ist. Die Tonh&ouml;he &auml;ndert sich dadurch.<br><br>
+Der <tt>AssumeFPS</tt> Filter &auml;ndert die Framerate ohne die Frameanzahl zu &auml;ndern; das Video wird also schneller bzw. langsamer abgespielt, es wird lediglich die Framerate ver&auml;ndert.<br />
+Wenn <i>sync_audio</i> = true gesetzt wird, wird auch die Samplingrate vom Ton entsprechend ver&auml;ndert, damit die Spieldauer vom Ton gleich der des Videos ist. Die Tonh&ouml;he &auml;ndert sich dadurch.<br /><br />
 
-Dieser Filter kann auch nur dazu eingesetzt werden, die Samplingrate des Tones zu &auuml;ndern.<br><br>
+Dieser Filter kann auch nur dazu eingesetzt werden, die Samplingrate des Tones zu &auml;ndern.<br /><br />
 
-<hr><br>
+<hr /><br />
 
-<span class="titresmall"><a name="ChangeFPS"></a>ChangeFPS</span><br><br>
+<span class="titresmall"><a name="ChangeFPS"></a>ChangeFPS</span><br /><br />
 
-<tt>ChangeFPS(</tt><i>clip, float fps</i><tt>)<br>
-ChangeFPS(</tt><i>clip, int numerator[, int denominator]</i><tt>)</tt><br><br>
+<tt>ChangeFPS(</tt><i>clip, float fps</i><tt>)<br />
+ChangeFPS(</tt><i>clip, int numerator[, int denominator]</i><tt>)</tt><br /><br />
 
-Dieses Filter &auml;ndert die Framerate, indem Frames gel&ouml;scht oder dupliziert werden.<br><br>
+Dieses Filter &auml;ndert die Framerate, indem Frames gel&ouml;scht oder dupliziert werden.<br /><br />
   
-Bis Version 2.05 wurde das Video beschnitten oder aufgef&uuml;llt, um die Spieldauer und Abspielgeschwindigkeit (die Anzahl der Frames wird nicht ver&auml;ndert) zu erhalten. In neueren Versionen wurde die Vorgehensweise ge&auml;ndert. Nun wird die Anzahl der Frames erh&ouml;t oder vermindert wie bei <tt>ConvertFPS</tt>.<br><br>
+Bis Version 2.05 wurde das Video beschnitten oder aufgef&uuml;llt, um die Spieldauer und Abspielgeschwindigkeit (die Anzahl der Frames wird nicht ver&auml;ndert) zu erhalten. In neueren Versionen wurde die Vorgehensweise ge&auml;ndert. Nun wird die Anzahl der Frames erh&ouml;t oder vermindert wie bei <tt>ConvertFPS</tt>.<br /><br />
 
-<hr><br>
+<hr /><br />
 
-<span class="titresmall"><a name="ConvertFPS"></a>ConvertFPS</span> <span class="titresmall"><tt><font color="#e8f0ff">[yuy2]</font></tt></span><br><br>
+<span class="titresmall"><a name="ConvertFPS"></a>ConvertFPS</span> <span class="titresmall"><tt><font color="#e8f0ff">[yuy2]</font></tt></span><br /><br />
 
-<tt>ConvertFPS(</tt><i>clip, float new_rate, int &quot;zone&quot;, int &quot;vbi&quot;</i><tt>)</tt><br><br>
+<tt>ConvertFPS(</tt><i>clip, float new_rate, int &quot;zone&quot;, int &quot;vbi&quot;</i><tt>)</tt><br /><br />
 
-<i>[funktioniert in Version 2.5 noch nicht]</i><br><br>
+<i>[funktioniert in Version 2.5 noch nicht]</i><br /><br />
 
-<tt>ConvertFPS()</tt> ist seit Version 1.0beta7 enthalten.<br><br>
+<tt>ConvertFPS()</tt> ist seit Version 1.0beta7 enthalten.<br /><br />
 
-Der Filter versucht, die Framerate von <i>clip</i> zu <i>new_rate</i>  zu konvertieren ohne das Weglassen oder dublizieren von Frames. Dadurch wird eine weiche Konvertierung, &auml;hnlich der von **Standalone converter boxes. Das Ergebnis wird (fast) die gleiche Filml&auml;nge haben wie <i>clip</i>, aber die Anzahl der Frames wird ge&auml;ndert entsprechend dem Verh&auml;ltnis aus Quell- und Ziel-Framerate.<br><br>
+Der Filter versucht, die Framerate von <i>clip</i> zu <i>new_rate</i>  zu konvertieren ohne das Weglassen oder dublizieren von Frames. Dadurch wird eine weiche Konvertierung, &auml;hnlich der von Konverter-Hardware. Das Ergebnis wird (fast) die gleiche Filml&auml;nge haben wie <i>clip</i>, aber die Anzahl der Frames wird ge&auml;ndert entsprechend dem Verh&auml;ltnis aus Quell- und Ziel-Framerate.<br /><br />
 
-Der Filter hat zwei Modi. Falls das optinale Argument <i>zone</i> nicht angegeben ist, werden angrenzende Frames gemischt, wobei diese Mischung mit dem zeitlichen Abstand der beiden Frames zum Zielframe gewichtet wird (quot;Mischen Modus&quot;). Wenn <i>zone</i> angegeben ist, wird immer von einem Frame zum n&auml;chsten umgeschaltet, wenn der neue Zielframe beginnt (&quot;Schalten Modus&quot;), das heisst irgendwo in der Mitte des Zielframes. Dabei wird angenommen, dass das Bild auf einem TV betrachtet wird (nicht auf einem PC!)und jeder Frame von oben nach unten abgetastet wird. Der Parameter <i>zone</i> gibt die Breite der &Uuml;bergangsregion an, in der die zwei Frames gemischt werden (um scharfekantige &Uuml;berg&auml;nge zu vermeiden).<br><br>
+Der Filter hat zwei Modi. Falls das optinale Argument <i>zone</i> nicht angegeben ist, werden angrenzende Frames gemischt, wobei diese Mischung mit dem zeitlichen Abstand der beiden Frames zum Zielframe gewichtet wird (quot;Mischen Modus&quot;). Wenn <i>zone</i> angegeben ist, wird immer von einem Frame zum n&auml;chsten umgeschaltet, wenn der neue Zielframe beginnt (&quot;Schalten Modus&quot;), das heisst irgendwo in der Mitte des Zielframes. Dabei wird angenommen, dass das Bild auf einem TV betrachtet wird (nicht auf einem PC!)und jeder Frame von oben nach unten abgetastet wird. Der Parameter <i>zone</i> gibt die Breite der &Uuml;bergangsregion an, in der die zwei Frames gemischt werden (um scharfekantige &Uuml;berg&auml;nge zu vermeiden).<br /><br />
 
-Der Modus &quot;Mischen&quot; erzeugt eine leichte Unsch&auml;rfe bei Bewegungen, was ein typisches Artefakt bei Framerate-Umwandlungen ist (kann auch bei kommerziellen Videos oder TV-Programmen beobachtet werden). Bei interlaced Material muss der Filter auf die einzelnen Felder angewendet werden, nicht auf die interlaced Frames (siehe Beispiel).<br><br>
+Der Modus &quot;Mischen&quot; erzeugt eine leichte Unsch&auml;rfe bei Bewegungen, was ein typisches Artefakt bei Framerate-Umwandlungen ist (kann auch bei kommerziellen Videos oder TV-Programmen beobachtet werden). Bei interlaced Material muss der Filter auf die einzelnen Felder angewendet werden, nicht auf die interlaced Frames (siehe Beispiel).<br /><br />
 
-Der Modus &quot;Schalten&quot; ist ein Versuch, diese Unsch&auml;rfe zu vermeiden, allerdings kann ein leichtes Flackern und Bewegungsartefakte entstehen. Besonders Schwenks sind anf&auml;llig daf&uuml;r, da die einzelnen Frames bei Szenen mit Bewegung gebogene oder unterbrochene senkrechte Linien zeigen. Auch Szenenwechsel k&ouml;nnen in der Mitte des Frames sichtbar werden. Trotzdem sieht das Ergebnis weniger unscharf aus.<br><br>
+Der Modus &quot;Schalten&quot; ist ein Versuch, diese Unsch&auml;rfe zu vermeiden, allerdings kann ein leichtes Flackern und Bewegungsartefakte entstehen. Besonders Schwenks sind anf&auml;llig daf&uuml;r, da die einzelnen Frames bei Szenen mit Bewegung gebogene oder unterbrochene senkrechte Linien zeigen. Auch Szenenwechsel k&ouml;nnen in der Mitte des Frames sichtbar werden. Trotzdem sieht das Ergebnis weniger unscharf aus.<br /><br />
 
-Kein Modus ist also perfekt. Welcher der bessere ist, h&auml;ngt vom eigenen Geschmack und dem verwendeten Filmmaterial ab. Der &quot;Schalten&quot; Modus ist wahrscheinlich nur brauchbar, wenn man sich das Ergebnis auf einem Fernseher und nicht auf dem PC ansieht.<br><br>
+Kein Modus ist also perfekt. Welcher der bessere ist, h&auml;ngt vom eigenen Geschmack und dem verwendeten Filmmaterial ab. Der &quot;Schalten&quot; Modus ist wahrscheinlich nur brauchbar, wenn man sich das Ergebnis auf einem Fernseher und nicht auf dem PC ansieht.<br /><br />
 
-Aufwendigere Framerate-Konvertierungen verwenden Algorithmen zur Bewegungsinterpolation, die schwierig zu erstellen sind, aber dann wesentlich bessere Ergebnisse liefern.<br><br>
+Aufwendigere Framerate-Konvertierungen verwenden Algorithmen zur Bewegungsinterpolation, die schwierig zu erstellen sind, aber dann wesentlich bessere Ergebnisse liefern.<br /><br />
 
-Filmmaterial sollte nicht mehrfach mit diesem Filter umgewandelt werden. Es kommt schnell zu Unsch&auml;rfen bei mehrfacher Anwendung.<br><br>
+Filmmaterial sollte nicht mehrfach mit diesem Filter umgewandelt werden. Es kommt schnell zu Unsch&auml;rfen bei mehrfacher Anwendung.<br /><br />
 
-Der Ton wird nicht ver&auml;ndert, er bleibt synchron, die L&auml;nge des Tones kann sich ganz leicht von der Videol&auml;nge nach der Umwandlung unterscheiden, da das Ergebnis ja eine ganzzahlige Anzahl von Frames haben muss. Dieser Effekt wirkt sich st&auml;rker aus bei kurzen Clips, der entstehende L&auml;ngenunterschied kann aber ignoriert werden.<br><br>
+Der Ton wird nicht ver&auml;ndert, er bleibt synchron, die L&auml;nge des Tones kann sich ganz leicht von der Videol&auml;nge nach der Umwandlung unterscheiden, da das Ergebnis ja eine ganzzahlige Anzahl von Frames haben muss. Dieser Effekt wirkt sich st&auml;rker aus bei kurzen Clips, der entstehende L&auml;ngenunterschied kann aber ignoriert werden.<br /><br />
 
-<b>Parameter:</b><br><br>
+<b>Parameter:</b><br /><br />
 
 <table>
  <tr valign="top"> 
@@ -67,36 +63,36 @@ Der Ton wird nicht ver&auml;ndert, er bleibt synchron, die L&auml;nge des Tones 
  </tr>
  <tr valign="top"> 
   <td><i>zone</i></td>
-  <td>(Optional) Wenn angegeben, wird der Filter im Modus &quot;Schalten&quot; betrieben, der Wert ist eine Ganzzahl gr&ouml;&szlig;er 0. Falls er dennoch auf 0 steht, wird ein extrem &quot;Schalten&quot; durchgef&uuml;hrt, d.h. es wird augenblicklich der n&auml;chste Frame **below the switch line. Ist der Wert gr&ouml;szlig;er als 0, gibt er die H&ouml;he der Zone an, in der die Frames ineinander &uuml;bergeblendet werden. Ein Wert von 80 ergibt gute Ergebnisse bei Vollbild (480/576 Linien). Der Wert von <i>zone</i> muss kleiner oder gleich der Anzahl der Linien des Zielframes sein, die der Dauer eines Quell-Frames entsprechen. Das sind normalerweise 5/6 oder 6/5 von der Ziel-Frameh&ouml;he, also einige hundert Linien. Ein Fehler wird erzeugt, wenn ein zu grosser Wert gew&auml;hlt wird.</td>
+  <td>(Optional) Wenn angegeben, wird der Filter im Modus &quot;Schalten&quot; betrieben, der Wert ist eine Ganzzahl gr&ouml;&szlig;er 0. Falls er dennoch auf 0 steht, wird ein extrem &quot;Schalten&quot; durchgef&uuml;hrt, d.h. es wird augenblicklich der n&auml;chste Frame vor dem Schalten genommen. Ist der Wert gr&ouml;szlig;er als 0, gibt er die H&ouml;he der Zone an, in der die Frames ineinander &uuml;bergeblendet werden. Ein Wert von 80 ergibt gute Ergebnisse bei Vollbild (480/576 Linien). Der Wert von <i>zone</i> muss kleiner oder gleich der Anzahl der Linien des Zielframes sein, die der Dauer eines Quell-Frames entsprechen. Das sind normalerweise 5/6 oder 6/5 von der Ziel-Frameh&ouml;he, also einige hundert Linien. Ein Fehler wird erzeugt, wenn ein zu grosser Wert gew&auml;hlt wird.</td>
  </tr>
  <tr valign="top"> 
   <td><i>vbi</i></td>
   <td>(Optional) Im Modus &quot;Schalten&quot; wird damit eine Korrektur f&uuml;r die vertikale Austastl&uuml;cke angegeben. Der Wert gibt die H&ouml;he beim Zielframe in Zeilen an, typische Werte sind vbi=49 bei PAL und vbi=45 bei NTSC (der Wert ist nicht kritisch). Wird ignoriert im &quot;Mischen&quot; Modus.</td>
  </tr>
-</table><br>
+</table><br />
 
-<table border>
+<table border="1">
  <tr> 
   <td> 
    <tt>
-    Beispiel NTSC-&gt;PAL Umwandlung:<br><br>
+    Beispiel NTSC-&gt;PAL Umwandlung:<br /><br />
     
-    AVISource("NTSC_clip.avi")&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; # Clip laden<br>
-    Bob() &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; # Felder trennen und auf volle H&ouml;he bringen<br>
-    BicubicResize(768,576) &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;# Gr&ouml;sse auf PAL (quadratische Pixel) anpassen<br>
-    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; (f&uuml;r CCIR muss 720,576 verwendet werden)<br>
-    ConvertFPS(50) &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; # Feldrate auf PAL wandeln, Modus &quot;Mischen&quot;<br>
-    SeparateFields.SelectEvery(4,0,3) # Bob r&uuml;ckg&auml;ngig machen, &quot;Even Field First&quot;.<br>
-    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;SelectEvery(4,1,2) f&uuml;r &quot;Odd Field first&quot;<br>
-    Weave &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; # zur&uuml;ckwandeln von Feldern in Frames<br><br>
+    AVISource("NTSC_clip.avi")&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; # Clip laden<br />
+    Bob() &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; # Felder trennen und auf volle H&ouml;he bringen<br />
+    BicubicResize(768,576) &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;# Gr&ouml;&szlig;e auf PAL (quadratische Pixel) anpassen<br />
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; (f&uuml;r CCIR muss 720,576 verwendet werden)<br />
+    ConvertFPS(50) &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; # Feldrate auf PAL wandeln, Modus &quot;Mischen&quot;<br />
+    SeparateFields.SelectEvery(4,0,3) # Bob r&uuml;ckg&auml;ngig machen, &quot;Even Field First&quot;.<br />
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;SelectEvery(4,1,2) f&uuml;r &quot;Odd Field first&quot;<br />
+    Weave &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; # zur&uuml;ckwandeln von Feldern in Frames<br /><br />
       
-    Dieses Beispiel funtioniert auch bei frame-basiertem NTSC-Material und telecine-Film.<br>
+    Dieses Beispiel funtioniert auch bei frame-basiertem NTSC-Material und telecine-Film.<br />
     Bei Filmmaterial ist aber das Ergebnis bei einem inverse-telecine Filter und einer Anpassung der Framerate von 23.976 auf 25fps besser.
    </tt>
   </td>
  </tr>
-</table><br>
+</table><br />
 
-<form><input type="Button" value="Back" onClick="history.go(-1)"></form>
+<form action=""><input type="button" value="back" onclick="history.go(-1)" /></form>
 </body>
 </html>

@@ -1,23 +1,18 @@
-<!doctype html public "-//w3c//dtd html 4.0 transitional//en">
-<html>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "DTD/xhtml1-transitional.dtd"> 
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="de" lang="de">
 <head>
- <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
- <meta name="Generator" content="Mozilla/4.76 [en] (Win98; U) [Netscape]">
- <meta name="Keywords" content="Avisynth 2 Filter Reference">
- <meta name="Description" content="Avisynth filter reference">
+ <meta http-equiv="content-type" content="text/html; charset=iso-8859-1" />
+ <meta http-equiv="content-style-type" content="text/css" />
+ <meta name="author" content="WarpEnterprises" />
+ <meta name="date" content="2003-07-09" />
  <title>AviSynth 2 Filter Referenz</title>
+ <link rel="stylesheet" type="text/css" href="style.css" />
  <style type="text/css">
-  A:link { COLOR: #404a58;TEXT-DECORATION: none }
-  A:visited { COLOR: #404a58;TEXT-DECORATION: none }
-  A:active { COLOR: #404a58;TEXT-DECORATION: none }
-  A:hover { COLOR: #e8f0ff; TEXT-DECORATION: underline }
-  h2 { color : 000000; font-family: Tahoma, Verdana, Arial, Helvetica, sans-serif; font-size: 15pt; font-weight: bold; }
+  h2 {color:000000; font-family:Tahoma,Verdana,Arial,Helvetica,sans-serif;font-size:15pt;font-weight:bold;}
  </style>
-</head>
-<body bgcolor="#B6C0CA">
-
+</head><body>
 <h2><a name="producing"></a>Quellfilter, die ein Clip erzeugen</h2>
-<table border cellspacing="0" cellpadding="4" width="90%">
+<table border="1" width="90%">
  <tr><td width="30%"><a href="filters/avisource.html">AVISource / OpenDMLSource / AVIFileSource / WAVSource</a></td><td width="70%">Es werden die in den Anf&uuml;hrungszeichen enthaltenen Dateinamen als Argument &uuml;bernommen und die Dateien ge&ouml;ffnet.</td></tr>
  <tr><td><a href="filters/directshowsource.html">DirectShowSource</a></td><td>Es wird eine Videodatei mittels DirectShow ge&ouml;ffnet.</td></tr>
  <tr><td><a href="filters/segmentedsource.html">SegmentedAVISource / SegmentedDirectShowSource</a></td><td>Es werden automatisch bis zu 100 AVI-Segmente &uuml;bers Argument geladen.</td></tr>
@@ -26,7 +21,7 @@
 </table>
 
 <h2><a name="processing"></a>Filter zur Bildbearbeitung</h2>
-<table border cellspacing="0" cellpadding="4" width="90%">
+<table border="1" width="90%">
  <tr><td width="30%"><a href="filters/addborders.html">Addborders</a></td><td width="70%">Es wird einen schwarzen Rand um das Bild dazu hinzugef&uuml;gt.</td></tr>
  <tr><td><a href="filters/blur.html">Blur / Sharpen</a></td><td>Dies sind einfache 3x3-Kern Sch&auml;rfe- und Unsch&auml;rfe-Filter.</td></tr>
  <tr><td><a href="filters/coloryuv.html">ColorYUV</a></td><td>Man kann die Farben und die Helligkeit unabh&auml;ngig voneinander justieren.</td></tr>
@@ -40,7 +35,7 @@
  <tr><td><a href="filters/limiter.html">Limiter</a></td><td>Es wird die Farbpalette auf den CCIR-601 Bereich eingeschr&auml;nkt.</td></tr>
  <tr><td><a href="filters/merge.html">MergeChroma / MergeLuma</a></td><td>Mischen der Farb- oder Helligkeitswerte eines Videoclips in einen anderen. Es gibt eine optionale Gewichtung, so dass ein Verh&auml;ltnis zwischen den zwei Clips angegeben werden kann.</td></tr>
  <tr><td><a href="filters/reduceby2.html">ReduceBy2 / HorizontalReduceBy2 / VerticalReduceBy2</a></td><td>Verkleinerung der entsprechenden Aufl&ouml;sung auf die H&auml;lfte.</td></tr>
- <tr><td><a href="filters/resize.html">BilinearResize / BicubicResize / LanczosResize / PointResize</a></td><td>Die **Resize Filter skalieren die Quelle in eine beliebige neue Aufl&ouml;sung mittels verschiedener Algorithmen.</td></tr>
+ <tr><td><a href="filters/resize.html">BilinearResize / BicubicResize / LanczosResize / PointResize</a></td><td>Die Resize Filter skalieren die Quelle in eine beliebige neue Aufl&ouml;sung mittels verschiedener Algorithmen.</td></tr>
  <tr><td><a href="filters/adjust.html">RGBAdjust</a></td><td>Justiert jeden einzelnen Farbkanal einzeln.</td></tr>
  <tr><td><a href="filters/soften.html">SpatialSoften / TemporalSoften</a></td><td>Es wird Rauschen entfernt durch adaptives Mischen von Pixeln.</td></tr>
  <tr><td><a href="filters/swap.html">SwapUV / UToY / VToY / YToUV</a></td><td>Tauscht / kopiert die Farbkan&auml;le eines Videoclips.</td></tr>
@@ -48,7 +43,7 @@
 </table>
 
 <h2><a name="editing"></a>Filter zum Scheiden</h2>
-<table border cellspacing="0" cellpadding="4" width="90%" >
+<table border="1" width="90%" >
  <tr><td width="30%"><a href="filters/splice.html">AlignedSplice / UnalignedSplice</a></td><td width="70%">Zusammenf&uuml;gen von zwei oder mehr Videoclips.</td></tr>
  <tr><td><a href="filters/fps.html">AssumeFPS / ChangeFPS / ConvertFPS</a></td><td>&Auml;ndern der Bildwiederholrate in unterschiedlicher Art und Weise.</td></tr>
  <tr><td><a href="filters/deleteframe.html">DeleteFrame</a></td><td>L&ouml;scht einen einzelnen Frame, den man per Argument angibt.</td></tr>
@@ -64,7 +59,7 @@
 </table>
 
 <h2><a name="interlaced"></a>Filter zum Bearbeiten von Interlaced Video</h2>
-<table border cellspacing="0" cellpadding="4" width="90%">
+<table border="1" width="90%">
  <tr><td width="30%"><a href="filters/assumeframefield.html">AssumeFrameBased / AssumeFieldBased</a></td><td width="70%">AviSynth nimmt dann an, dass der Videoclip auf Feldern oder auf Frames basiert.</td></tr>
  <tr><td><a href="filters/assumefieldfirst.html">AssumeTTF / AssumeBFF</a></td><td>Bestimmt die Reihenfolge der Halbbilder.</td></tr>
  <tr><td><a href="filters/bob.html">Bob</a></td><td>Deinterlacen mittels der Bob-Methode.</td></tr>
@@ -78,19 +73,19 @@
 </table>
 
 <h2><a name="audio"></a>Audio Filter</h2>
-Vor der Version 2.5 wurde die Samplingtiefe auf 16 Bits konvertiert, wenn einer der folgenden Audio Filter verwendet wurde.<br>
-Ab der Version 2.5 werden die Samplingtiefe automatisch konvertiert, wenn ein Filter eine bestimmte Samplingtiefe ben&ouml;tigt. Dies bedeutet, dass die meisten Filter die verschiedenen Typen von Quelle akzeptieren, aber wenn ein Filter die Samplingtiefe einer Quelle nicht unterst&uuml;tzt, wird die Samplingtiefe automatisch konvertiert in etwas, was unterst&uuml;tzt wird von dem Filter.<br>
-Im Allgemeinen braucht sich der durchschnittlichen Nutzer darum nicht zu k&uuml;mmern. Eine bestimmte Samplingtiefe kann festgestetzt werden durch die ConvertAudio Functionen.<br>
-Wenn die Samplingtiefe ist vom Typ Fließkommazahl und AviSynth die Daten auch ausgeben soll, wird sie automatisch nach 16 Bit konvertiert, da Fließkommazahl-Samplingtiefen nicht als g&uuml;ltige AVI Daten ausgeben werden k&ouml;nnen.<br><br>
+Vor der Version 2.5 wurde die Samplingtiefe auf 16 Bits konvertiert, wenn einer der folgenden Audio Filter verwendet wurde.<br />
+Ab der Version 2.5 werden die Samplingtiefe automatisch konvertiert, wenn ein Filter eine bestimmte Samplingtiefe ben&ouml;tigt. Dies bedeutet, dass die meisten Filter die verschiedenen Typen von Quelle akzeptieren, aber wenn ein Filter die Samplingtiefe einer Quelle nicht unterst&uuml;tzt, wird die Samplingtiefe automatisch konvertiert in etwas, was unterst&uuml;tzt wird von dem Filter.<br />
+Im Allgemeinen braucht sich der durchschnittlichen Nutzer darum nicht zu k&uuml;mmern. Eine bestimmte Samplingtiefe kann festgestetzt werden durch die ConvertAudio Functionen.<br />
+Wenn die Samplingtiefe ist vom Typ Fließkommazahl und AviSynth die Daten auch ausgeben soll, wird sie automatisch nach 16 Bit konvertiert, da Fließkommazahl-Samplingtiefen nicht als g&uuml;ltige AVI Daten ausgeben werden k&ouml;nnen.<br /><br />
 
-<table border cellspacing="0" cellpadding="4" width="90%">
+<table border="1" width="90%">
  <tr><td width="30%"><a href="filters/amplify.html">Amplify / AmplifydB</a></td><td width="70%">&Auml;ndern der Lautst&auml;rke von mehreren Tonspuren.</td></tr>
  <tr><td><a href="filters/assumerate.html">AssumeSampleRate</a></td><td>Anpassen der Sampling-Frequenz und damit &Auml;ndern der Abspielgeschwindigkeit.</td></tr>
  <tr><td><a href="filters/audiodub.html">AudioDub</a></td><td>Es wird der Videostream vom ersten Argument und der Audiostream vom zweitem Argument genommen und dann kombiniert.</td></tr>
  <tr><td><a href="filters/converttomono.html">ConvertToMono</a></td><td>Vereinigt alle Tonkan&auml;le in einen Mono Kanal.</td></tr>
  <tr><td><a href="filters/convertaudio.html">ConvertAudioTo8bit / ConvertAudioTo16bit / ConvertAudioTo24bit / ConvertAudioTo32bit / ConvertAudioToFloat</a></td><td>Konvertiert die Samplingtiefe von 8 auf 16 Bits.</td></tr>
  <tr><td><a href="filters/delayaudio.html">DelayAudio</a></td><td>Es wird die Tonspur um eine bestimmte Anzahl an Sekunden verz&ouml;gert.</td></tr>
- <tr><td><a href="filters/ensuresync.html">EnsureVBRMP3Sync</a></td><td>Korregiert asynchrone MP3-AVI`s beim **seeking oder Schneiden.</td></tr>
+ <tr><td><a href="filters/ensuresync.html">EnsureVBRMP3Sync</a></td><td>Korregiert asynchrone MP3-AVI`s beim Spulen oder Schneiden.</td></tr>
  <tr><td><a href="filters/getchannel.html">GetChannel</a></td><td>Gibt nur einen bestimmten Kanal vom Audiostream wieder.</td></tr>
  <tr><td><a href="filters/killaudio.html">KillAudio</a></td><td>Entfernt den Ton komplett aus einem Clip.</td></tr>
  <tr><td><a href="filters/mergechannels.html">MergeChannels</a></td><td>Verbindet die Kan&auml;le von zwei oder mehr Audioclips.</td></tr>
@@ -100,11 +95,11 @@ Wenn die Samplingtiefe ist vom Typ Fließkommazahl und AviSynth die Daten auch au
 </table>
 
 <h2><a name="special"></a>Spezielle und exotische Filter</h2>
-<table border cellspacing="0" cellpadding="4" width="90%">
+<table border="1" width="90%">
  <tr><td width="30%"><a href="filters/animate.html">Animate / ApplyRange</a></td><td width="70%">Dies ist ein Meta-Filter, welcher andere Filter mit kontinuierlich ver&auml;nderten Werten aufruft.</td></tr>
  <tr><td><a href="filters/conditionalfilter.html">ConditionalFilter / FrameEvaluate / ScriptClip</a></td><td>...</td></tr>
  <tr><td><a href="filters/fixbrokenchromaupsampling.html">FixBrokenChromaUpsampling</a></td><td>Es ist mir aufgefallen, dass der MS DV Codec die Farbkan&auml;le falsch hochrechnet, so habe ich diesen Filter erstellt, der das Problem kompensiert.</td></tr>
- <tr><td><a href="filters/fixluminance.html">FixLuminance</a></td><td>Korregiert einen versetzten vertikalen Helligkeits **offset</td></tr>
+ <tr><td><a href="filters/fixluminance.html">FixLuminance</a></td><td>Korregiert einen versetzten vertikalen Helligkeits-Versatz</td></tr>
  <tr><td><a href="filters/flip.html">FlipHorizontal / FlipVertical</a></td><td>Stellt das Video auf den Kopf oder tauscht die Seiten</td></tr>
  <tr><td><a href="filters/image.html">Imagewriter</a></td><td>Schreibt die Frames als Bilder auf die Festplatte.</td></tr>
  <tr><td><a href="filters/peculiar.html">PeculiarBlend</a></td><td>Blendet jeden Frame in den darauffolgenden Frame in einer bestimmten Art ein.</td></tr>
@@ -114,7 +109,7 @@ Wenn die Samplingtiefe ist vom Typ Fließkommazahl und AviSynth die Daten auch au
 </table>
 
 <h2><a name="debug"></a>Debug- und Test-Filter</h2>
-<table border cellspacing="0" cellpadding="4" width="90%">
+<table border="1" width="90%">
  <tr><td width="30%"><a href="filters/colorbars.html">ColorBars</a></td><td width="70%">Erzeugt ein Videoclip mit einem Testbild aus SMPTE Farbbalken.</td></tr>
  <tr><td><a href="filters/compare.html">Compare</a></td><td>Vergleicht zwei Videoclips und gibt die Informationen &uuml;ber die Unterschiede aus.</td></tr>
  <tr><td><a href="filters/Histogram.html">Histogram</a></td><td>F&uuml;gt ein Helligkeits-Histogram hinzu.</td></tr>

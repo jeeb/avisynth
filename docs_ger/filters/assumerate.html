@@ -1,50 +1,41 @@
-<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
-<html>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "DTD/xhtml1-transitional.dtd">  
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="de" lang="de">
 <head>
  <title>AssumeSampleRate AviSynth Filter</title>
- <meta http-equiv=Content-Type content="text/html; charset=iso-8859-1">
- <meta content="MSHTML 6.00.2600.0" name=Generator>
- <style type=text/css>
-  A:link { COLOR: #404a58; TEXT-DECORATION: none }
-  A:visited { COLOR: #404a58; TEXT-DECORATION: none }
-  A:active { COLOR: #404a58; TEXT-DECORATION: none }
-  A:hover { COLOR: #e8f0ff; TEXT-DECORATION: underline }
-  .titresmall { FONT-WEIGHT: bold; FONT-SIZE: 16pt; COLOR: #000000; FONT-FAMILY: Tahoma, Verdana, Arial, Helvetica, sans-serif; LETTER-SPACING: 0.15em }
- </style>
-</head>
-<body bgcolor=#b6cac0>
-<span class="titresmall"><a name="AssumeSampleRate"></a>AssumeSampleRate</span><br><br>
+ <meta http-equiv="content-type" content="text/html; charset=iso-8859-1" />
+ <meta http-equiv="content-style-type" content="text/css" />
+ <meta name="author" content="WarpEnterprises" />
+ <meta name="date" content="2003-07-09" />
+ <link rel="stylesheet" type="text/css" href="../style.css" />
+</head><body>
+<span class="titresmall"><a name="AssumeSampleRate"></a>AssumeSampleRate</span><br /><br />
 
-<tt>AssumeSampleRate(</tt><i>clip, int samplerate</i><tt>)</tt><br><br>
+<tt>AssumeSampleRate(</tt><i>clip, int samplerate</i><tt>)</tt><br /><br />
 
-<tt>AssumeSampleRate</tt> (verf&uuml;gbar seit v2.07) &auml;ndert die Samplingrate und damit die Abspielgeschwindigkeit des Audio-Teils.<br>
-Wenn nur dieser Filter alleine verwendet wird, wird das Video asynchron zum Ton.<br><br>
+<tt>AssumeSampleRate</tt> (verf&uuml;gbar seit v2.07) &auml;ndert die Samplingrate und damit die Abspielgeschwindigkeit des Audio-Teils.<br />
+Wenn nur dieser Filter alleine verwendet wird, wird das Video asynchron zum Ton.<br /><br />
 
-
-
-</pre>
-
-<table border width="75%">
+<table border="1" width="75%">
  <tr> 
   <td> 
    <tt>
-    Beispiele:<br><br>
+    Beispiele:<br /><br />
 
-    # Angenommen dieses Video hat 25fps, 44100hz.<br>
-    AviSource("video_audio.avi")<br><br>
+    # Angenommen dieses Video hat 25fps, 44100hz.<br />
+    AviSource("video_audio.avi")<br /><br />
     
-    # Ton halb so schnell abspielen:<br>
-    AssumeSampleRate(22050)<br><br>
+    # Ton halb so schnell abspielen:<br />
+    AssumeSampleRate(22050)<br /><br />
     
-    # Video halb so schnell abspielen:<br>
-    AssumeFPS(12.5)<br><br>
+    # Video halb so schnell abspielen:<br />
+    AssumeFPS(12.5)<br /><br />
 
     # Video und Ton sind jetzt synchron und spielen in Zeitlupe.
    </tt>
   </td>
  </tr>
-</table><br>
+</table><br />
 
-<form><input onclick="history.go(-1)" type="button" value="Back"></form>
+<form action=""><input type="button" value="back" onclick="history.go(-1)" /></form>
 </body>
 </html>

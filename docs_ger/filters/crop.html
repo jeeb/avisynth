@@ -1,74 +1,69 @@
-<!doctype html public "-//w3c//dtd html 4.0 transitional//en">
-<html>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "DTD/xhtml1-transitional.dtd">  
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="de" lang="de">
 <head>
- <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
- <meta name="Generator" content="Mozilla/4.5 [en] (WinNT; I) [Netscape]">
+ <meta http-equiv="content-type" content="text/html; charset=iso-8859-1" />
+ <meta http-equiv="content-style-type" content="text/css" />
+ <meta name="author" content="WarpEnterprises" />
+ <meta name="date" content="2003-07-09" />
  <title>Crop / CropBottom AviSynth Filter</title>
- <style type=text/css>
-  A:link { COLOR: #404a58;TEXT-DECORATION: none }
-  A:visited { COLOR: #404a58;TEXT-DECORATION: none }
-  A:active { COLOR: #404a58;TEXT-DECORATION: none }
-  A:hover { COLOR: #e8f0ff; TEXT-DECORATION: underline }
-  .titresmall { color : 000000; font-family: Tahoma, Verdana, Arial, Helvetica, sans-serif; font-size: 16pt; letter-spacing: 0.15em; font-weight: bold; }
- </style>
-</head>
-<body bgcolor="#B6CAC0">
-<span class="titresmall"><a name="Crop"></a>Crop / CropBottom</span><br><br>
+ <link rel="stylesheet" type="text/css" href="../style.css" />
+</head><body>
+<span class="titresmall"><a name="Crop"></a>Crop / CropBottom</span><br /><br />
 
-<tt>Crop(</tt><i>clip, int left, int top, int width, int height</i><tt>)</tt><br>
-<tt>Crop</tt>(<i>clip, int left, int top, int -right, int -bottom</i>)<br>
-<tt>CropBottom(</tt><i>clip, int count</i><tt>)</tt><br><br>
+<tt>Crop(</tt><i>clip, int left, int top, int width, int height</i><tt>)</tt><br />
+<tt>Crop</tt>(<i>clip, int left, int top, int -right, int -bottom</i>)<br />
+<tt>CropBottom(</tt><i>clip, int count</i><tt>)</tt><br /><br />
 
-<tt>Crop</tt> schneidet &uuml;berfl&uuml;ssige Pixel ab. Wenn das Quellvideo beispielsweise eine Aufl&ouml;sung von 720x480 hat und man es auf die VideoCD-Aufl&ouml;sung 320x240 bringen m&ouml;chte, geht man so vor:<br><br>
+<tt>Crop</tt> schneidet &uuml;berfl&uuml;ssige Pixel ab. Wenn das Quellvideo beispielsweise eine Aufl&ouml;sung von 720x480 hat und man es auf die VideoCD-Aufl&ouml;sung 320x240 bringen m&ouml;chte, geht man so vor:<br /><br />
 
-<table border width="85%">
+<table border="1" width="85%">
  <tr>
   <td>
    <tt>
-    # Konvertiert CCIR601 zu VCD unter Beibehaltung des richtigen Seitenverh&auml;ltnisses:<br>
-    ReduceBy2<br>
+    # Konvertiert CCIR601 zu VCD unter Beibehaltung des richtigen Seitenverh&auml;ltnisses:<br />
+    ReduceBy2<br />
     Crop(4,0,352,240)
    </tt>
   </td>
  </tr>
-</table><br>
+</table><br />
 
-Siehe auch die <a href="convert.html">Farbraumkonvertierungs Filter</a> bei Verwendung der verschiedenen Farbr&auml;ume.<br><br>
+Siehe auch die <a href="convert.html">Farbraumkonvertierungs Filter</a> bei Verwendung der verschiedenen Farbr&auml;ume.<br /><br />
 
-Wenn f&uuml;r <i>width</i> und <i>height</i> negative Zahlen eingegeben werden, werden diese auch als **Offsets behandelt. Zum Beispiel:<br><br>
+Wenn f&uuml;r <i>width</i> und <i>height</i> negative Zahlen eingegeben werden, werden diese auch als Versatz behandelt. Zum Beispiel:<br /><br />
 
-<table border width="75%">
+<table border="1" width="75%">
  <tr>
   <td>
    <tt>
-    # 16 Pixel von jedem Rand abschneiden, unabh&auml;ngig von der Bildgr&ouml;&szlig;e:<br>
+    # 16 Pixel von jedem Rand abschneiden, unabh&auml;ngig von der Bildgr&ouml;&szlig;e:<br />
     Crop(16,16,-16,-16)
    </tt>
   </td>
  </tr>
-</table><br>
+</table><br />
 
-Die alternative <tt>CropBottom</tt>-Syntax ist n&uuml;tzlich, um bei VHS-Aufnahmen die defekten untersten Zeilen abzuschneiden, da hier <i>count</i> Linien vom unteren Rand entfernt werden.<br><br>
+Die alternative <tt>CropBottom</tt>-Syntax ist n&uuml;tzlich, um bei VHS-Aufnahmen die defekten untersten Zeilen abzuschneiden, da hier <i>count</i> Linien vom unteren Rand entfernt werden.<br /><br />
 
-Um die Datenstruktur der einzelnen Farbr&auml;ume zu erhalten, sollte die folgenden Regeln beachtet werden. Es wird keine Fehlermeldung ausgegeben, wenn man es nicht macht, aber es k&ouml;nnen komische Artefakte entstehen.<br><br>
+Um die Datenstruktur der einzelnen Farbr&auml;ume zu erhalten, sollte die folgenden Regeln beachtet werden. Es wird keine Fehlermeldung ausgegeben, wenn man es nicht macht, aber es k&ouml;nnen komische Artefakte entstehen.<br /><br />
 
-In RGB:<br>
- die Breite kann frei gew&auml;hlt werden,<br>
- die H&ouml;he kann frei gew&auml;hlt werden, wenn das Video progressiv ist,<br>
- die H&ouml;he muss ein Vielfaches von 2 sein, wenn das Video interlaced ist.<br><br>
+In RGB:<br />
+ die Breite kann frei gew&auml;hlt werden,<br />
+ die H&ouml;he kann frei gew&auml;hlt werden, wenn das Video progressiv ist,<br />
+ die H&ouml;he muss ein Vielfaches von 2 sein, wenn das Video interlaced ist.<br /><br />
 
-In YUY2:<br>
- die Breite muss ein Vielfaches von 2 sein,<br>
- die H&ouml;he kann frei gew&auml;hlt werden, wenn das Video progressiv ist,<br>
- die H&ouml;he muss ein Vielfaches von 2 sein, wenn das Video interlaced ist.<br><br>
+In YUY2:<br />
+ die Breite muss ein Vielfaches von 2 sein,<br />
+ die H&ouml;he kann frei gew&auml;hlt werden, wenn das Video progressiv ist,<br />
+ die H&ouml;he muss ein Vielfaches von 2 sein, wenn das Video interlaced ist.<br /><br />
 
-In YV12:<br>
- die Breite muss ein Vielfaches von 2 sein,<br>
- die H&ouml;he muss ein Vielfaches von 2 sein, wenn das Video progressiv ist,<br>
- die H&ouml;he muss ein Vielfaches von 4 sein, wenn das Video interlaced ist.<br><br>
+In YV12:<br />
+ die Breite muss ein Vielfaches von 2 sein,<br />
+ die H&ouml;he muss ein Vielfaches von 2 sein, wenn das Video progressiv ist,<br />
+ die H&ouml;he muss ein Vielfaches von 4 sein, wenn das Video interlaced ist.<br /><br />
 
-HINWEIS: Die Resize Filter erlauben optional auch das teilweise Wegschneiden des Eingangsframes, dies resultiert **in a weighting being applied to the edge pixels being resized. Diese Optionen kann man nutzen, wenn man die Beschr&auml;nkungen der Aufl&ouml;sung umgehen muss. Siehe dazu die Beschreibung der <a href="resize.html">Resize Filter</a>.<br><br>
+HINWEIS: Die Resize Filter erlauben optional auch das teilweise Wegschneiden des Eingangsframes. Dies resultiert in eine Gewichtung der Pixel von Kanten, die resized werden. Diese Optionen kann man nutzen, wenn man die Beschr&auml;nkungen der Aufl&ouml;sung umgehen muss. Siehe dazu die Beschreibung der <a href="resize.html">Resize Filter</a>.<br /><br />
 
-<form><input type="Button" value="Back" onClick="history.go(-1)"></form>
+<form action=""><input type="button" value="back" onclick="history.go(-1)" /></form>
 </body>
 </html>

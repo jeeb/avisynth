@@ -1,69 +1,65 @@
-<!doctype html public "-//W3C//DTD HTML 4.0 Transitional//EN">
-<html>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "DTD/xhtml1-transitional.dtd">  
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="de" lang="de">
 <head>
- <meta name="Generator" content="PPWIZARD version 02.213 on WIN2K, FREE tool for Windows, OS/2, DOS and UNIX by Dennis Bareis (http://www.labyrinth.net.au/~dbareis/ppwizard.htm)">
+ <meta http-equiv="content-type" content="text/html; charset=iso-8859-1" />
+ <meta http-equiv="content-style-type" content="text/css" />
+ <meta name="author" content="WarpEnterprises" />
+ <meta name="date" content="2003-07-09" />
  <title>MergeLuma / MergeChroma AviSynth Filter</title>
- <style type=text/css>
-  A:link { COLOR: #404a58;TEXT-DECORATION: none }
-  A:visited { COLOR: #404a58;TEXT-DECORATION: none }
-  A:active { COLOR: #404a58;TEXT-DECORATION: none }
-  A:hover { COLOR: #e8f0ff; TEXT-DECORATION: underline }
-  .titresmall { color : 000000; font-family: Tahoma, Verdana, Arial, Helvetica, sans-serif; font-size: 16pt; letter-spacing: 0.15em; font-weight: bold; }
- </style>
-</head>
-<body bgcolor=b6cac0>
-<span class=titresmall><a name=Merge></a>MergeChroma / MergeLuma</span><br><br>
+ <link rel="stylesheet" type="text/css" href="../style.css" />
+</head><body>
+<span class="titresmall"><a name="MergeChroma"></a>MergeChroma / MergeLuma</span><br /><br />
 
-<tt>MergeChroma(</tt><i>clip1, clip2, float weight</i><tt>)</tt><br>
-<tt>MergeLuma(</tt><i>clip1, clip2, float weight</i><tt>)</tt><br><br>
+<tt>MergeChroma(</tt><i>clip1, clip2, float weight</i><tt>)</tt><br />
+<tt>MergeLuma(</tt><i>clip1, clip2, float weight</i><tt>)</tt><br /><br />
 
-Dieser Filter erm&ouml;glicht das einfache Mischen von zwei Videoclips. Es gibt einen optionalen Gewichtungs-Faktor, &uuml;ber den der Anteil der Clips eingestellt werden kann.<br><br>
+Dieser Filter erm&ouml;glicht das einfache Mischen von zwei Videoclips. Es gibt einen optionalen Gewichtungs-Faktor, &uuml;ber den der Anteil der Clips eingestellt werden kann.<br /><br />
 
-<i>clip1</i> ist der Clip, in den die neue Farbinformation (bei <tt>MergeChroma</tt>) bzw. Helligkeitsinformation (bei <tt>MergeLuma</tt>) dazugemischt wird, der jeweils andere Kanal bleibt unver&auml;ndert.<br><br>
+<i>clip1</i> ist der Clip, in den die neue Farbinformation (bei <tt>MergeChroma</tt>) bzw. Helligkeitsinformation (bei <tt>MergeLuma</tt>) dazugemischt wird, der jeweils andere Kanal bleibt unver&auml;ndert.<br /><br />
 
-<i>clip2</i> ist der Clip, von dem die zus&auml;tzlichen Farb- (bei <tt>MergeChroma</tt>) oder Helligkeitsinformationen (bei <tt>MergeLuma</tt>) genommen werden.<br><br>
+<i>clip2</i> ist der Clip, von dem die zus&auml;tzlichen Farb- (bei <tt>MergeChroma</tt>) oder Helligkeitsinformationen (bei <tt>MergeLuma</tt>) genommen werden.<br /><br />
 
-Der Parameter <i>weight</i> definiert, wie viel Einfluss <i>clip2</i> haben soll. Der g&uuml;ltige Bereich ist von 0.0 bis 1.0, wobei 0.0 keinen Einfluss bedeutet und 1.0 (Standardwert) den jeweiligen Kanal komplett &uuml;berschreibt. Der Filter ist etwas langsamer, wenn eine Gewichtung angegeben ist.<br><br>
+Der Parameter <i>weight</i> definiert, wie viel Einfluss <i>clip2</i> haben soll. Der g&uuml;ltige Bereich ist von 0.0 bis 1.0, wobei 0.0 keinen Einfluss bedeutet und 1.0 (Standardwert) den jeweiligen Kanal komplett &uuml;berschreibt. Der Filter ist etwas langsamer, wenn eine Gewichtung angegeben ist.<br /><br />
 
-Siehe auch <a href="../syntax.html#multiclip" target="_self">hier</a> zu den entstehenden Clip-Eigenschaften.<br><br>
+Siehe auch <a href="../syntax.html#multiclip" target="_self">hier</a> zu den entstehenden Clip-Eigenschaften.<br /><br />
 
-<table border>
+<table border="1">
  <tr> 
   <td> 
    <tt>
-    Beispiele:<br><br>
+    Beispiele:<br /><br />
     
-    # Unsch&auml;rfe nur im Helligkeitskanal<br>
-    mpeg2source("C:\DVD2AVI.d2v")<br>
-    lumvid = Blur(1.0)<br>
-    MergeLuma(lumvid)<br><br>
+    # Unsch&auml;rfe nur im Helligkeitskanal<br />
+    mpeg2source("C:\DVD2AVI.d2v")<br />
+    lumvid = Blur(1.0)<br />
+    MergeLuma(lumvid)<br /><br />
     
-    # SpatialSmoother (r&auml;umliche Unsch&auml;rfe) nur im Farbkanal, gemischt zu 50% mit dem Original<br>
-    mpeg2source("C:\DVD2AVI.d2v")<br>
-    chromavid = SpatialSmoother(2,3)<br>
-    MergeChroma(chromavid,0.5)<br><br>
+    # SpatialSmoother (r&auml;umliche Unsch&auml;rfe) nur im Farbkanal, gemischt zu 50% mit dem Original<br />
+    mpeg2source("C:\DVD2AVI.d2v")<br />
+    chromavid = SpatialSmoother(2,3)<br />
+    MergeChroma(chromavid,0.5)<br /><br />
     
-    # ein TemporalSmoother (zeitliche Unsch&auml;rfe) und ein leichter SpatialSmoother im Helligkeitskanal,<br>
-    # einen st&auml;rkeren SpatialSmoother im Farbkanal<br>
-    # der urspr&uuml;ngliche Hellgkeitskanal wird dann zu 75% zu der gegl&auml;tteten Version gemischt<br>
-    # der gegl&auml;ttete Farbkanal wird komplett verwendet<br>
-    mpeg2source("C:\DVD2AVI.d2v")<br>
-    luma = TemporalSmoother(2,3)<br>
-    luma2 = Spatialsmoother(luma,3,10,10)<br>
-    chroma = Spatialsmoother(3,40,40)<br>
-    MergeLuma(luma2,0.75)<br>
-    MergeChroma(chroma)<br><br>
+    # ein TemporalSmoother (zeitliche Unsch&auml;rfe) und ein leichter SpatialSmoother im Helligkeitskanal,<br />
+    # einen st&auml;rkeren SpatialSmoother im Farbkanal<br />
+    # der urspr&uuml;ngliche Hellgkeitskanal wird dann zu 75% zu der gegl&auml;tteten Version gemischt<br />
+    # der gegl&auml;ttete Farbkanal wird komplett verwendet<br />
+    mpeg2source("C:\DVD2AVI.d2v")<br />
+    luma = TemporalSmoother(2,3)<br />
+    luma2 = Spatialsmoother(luma,3,10,10)<br />
+    chroma = Spatialsmoother(3,40,40)<br />
+    MergeLuma(luma2,0.75)<br />
+    MergeChroma(chroma)<br /><br />
     
-    # so k&ouml;nnen zwei Videos gemittelt werden<br>
-    avisource("C:\Dateiname1.avi")<br>
-    vid2 = avisource("C:\Dateiname2.avi")<br>
-    MergeLuma(vid2,0.5)<br>
+    # so k&ouml;nnen zwei Videos gemittelt werden<br />
+    avisource("C:\Dateiname1.avi")<br />
+    vid2 = avisource("C:\Dateiname2.avi")<br />
+    MergeLuma(vid2,0.5)<br />
     MergeChroma(vid2,0.5)
    </tt>
   </td>
  </tr>
-</table><br>
+</table><br />
 
-<form><input type="Button" value="Back" onClick="history.go(-1)"></form>
+<form action=""><input type="button" value="back" onclick="history.go(-1)" /></form>
 </body>
 </html>

@@ -1,44 +1,40 @@
-<!doctype html public "-//w3c//dtd html 4.0 transitional//en">
-<html>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "DTD/xhtml1-transitional.dtd">  
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="de" lang="de">
 <head>
- <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
- <meta name="Generator" content="Mozilla/4.5 [en] (WinNT; I) [Netscape]">
- <meta name="Keywords" content="Avisynth filter reference">
- <meta name="Description" content="Avisynth filter reference">
+ <meta http-equiv="content-type" content="text/html; charset=iso-8859-1" />
+ <meta http-equiv="content-style-type" content="text/css" />
+ <meta name="author" content="WarpEnterprises" />
+ <meta name="date" content="2003-07-09" />
  <title>Avisynth 2 Quick Command Reference</title>
+ <link rel="stylesheet" type="text/css" href="style.css" />
  <style type="text/css">
-  A:link { COLOR: #000000;TEXT-DECORATION: none font-family: Arial, Helvetica, sans-serif; font-size: 13pt; font-weight: bold; }
-  A:visited { COLOR: #000000;TEXT-DECORATION: none font-family: Arial, Helvetica, sans-serif; font-size: 13pt; font-weight: bold; }
-  A:active { COLOR: #000000;TEXT-DECORATION: none font-family: Arial, Helvetica, sans-serif; font-size: 13pt; font-weight: bold; }
-  A:hover { COLOR: #e8f0ff; TEXT-DECORATION: underline }
-  h1 { color : 000000; font-family: Tahoma, Verdana, Arial, Helvetica, sans-serif; font-size: 18pt; letter-spacing: 0.15em; font-weight: bold; }
-  h3 { color : 000000; font-family: Tahoma, Verdana, Arial, Helvetica, sans-serif; font-size: 15pt; font-weight: bold; }
+  h1 {color:000000; font-family:Tahoma,Verdana,Arial,Helvetica,sans-serif; font-size:18pt; letter-spacing:0.15em; font-weight:bold;}
+  h3 {color:000000; font-family:Tahoma,Verdana,Arial,Helvetica,sans-serif; font-size:15pt; font-weight:bold;}
  </style>
-</head>
-<body bgcolor="#B6C0CA">
-<b><u>Abk&uuml;rzungen:</u></b><br><br>
-Benannte Funktionsargumente werden in Anf&uuml;hrungszeichen &quot;arg&quot; geschrieben und sind immer optional. Nichtoptinonale Argument sind in eckige [] Klammern gesetzt.<br>
-M&ouml;gliche Typen von nicht-clip-Argumenten sind int (Ganzzahl), float (Dezimalzahl), string (Zeichenkette) oder bool (Wahr/Falsch).<br>
-<tt><font color="#E8F0FF">[yuy2]</font></tt> usw. gibt an, dass dieser Farbraumdenotes unterst&uuml;tzt wird. Guck dir auch die <a href="filters/convert.html#formats">Farbraumkonvertierungs Filter</a> an f&uuml;r mehr Informationen.<br>
-<tt><font color="#E8F0FF">[v 2.04]</font></tt> gibt an, ab welcher AviSynth Version der Filter enthalten ist.<br>
-<hr>
+</head><body>
+<b><u>Abk&uuml;rzungen:</u></b><br /><br />
+Benannte Funktionsargumente werden in Anf&uuml;hrungszeichen &quot;arg&quot; geschrieben und sind immer optional. Nichtoptinonale Argument sind in eckige [] Klammern gesetzt.<br />
+M&ouml;gliche Typen von nicht-clip-Argumenten sind int (Ganzzahl), float (Dezimalzahl), string (Zeichenkette) oder bool (Wahr/Falsch).<br />
+<tt><font color="#E8F0FF">[yuy2]</font></tt> usw. gibt an, dass dieser Farbraumdenotes unterst&uuml;tzt wird. Guck dir auch die <a href="filters/convert.html#formats">Farbraumkonvertierungs Filter</a> an f&uuml;r mehr Informationen.<br />
+<tt><font color="#E8F0FF">[v 2.04]</font></tt> gibt an, ab welcher AviSynth Version der Filter enthalten ist.<br />
+<hr />
 <h1>Alphabetische Auflistung</h1>
 
 <b><a href="filters/addborders.html">AddBorders</a></b> <tt><font color="#CCFFFF">[yv12] [</font><font color="#E8F0FF">yuy2] [rgb32] [rgb24]</font></tt>
 <ul>
- <li><tt>AddBorders(</tt><i>clip, int left, int top, int right, int bottom, int color</i><tt>)</tt></li>
+ <li><tt>AddBorders(</tt><i>clip, int &quot;left&quot;, int &quot;top&quot;, int &quot;right&quot;, int &quot;bottom&quot;, int &quot;color&quot;</i><tt>)</tt></li>
 </ul>
 
 <b><a href="filters/amplify.html">Amplify / AmplifydB</a> </b><tt><font color="#CCFFFF">[yv12]</font><font color="#E8F0FF"> [yuy2] [rgb32] [rgb24]</font></tt>
 <ul>
- <li><tt>Amplify(</tt><i>clip, float amount1 [,...]</i><tt>)</tt></li>
- <li><tt>AmplifydB(</tt><i>clip, float amount1 [,...]</i><tt>)</tt></li>
+ <li><tt>Amplify(</tt><i>clip, float &quot;amount1&quot; [,...]</i><tt>)</tt></li>
+ <li><tt>AmplifydB(</tt><i>clip, float &quot;amount1&quot; [,...]</i><tt>)</tt></li>
 </ul>
 
 <b><a href="filters/animate.html">Animate / ApplyRange</a></b><tt><font color="#CCFFFF"> [yv12]</font><font color="#E8F0FF">[yuy2] [rgb32] [rgb24]</font></tt>
 <ul>
- <li><tt>Animate(</tt><i>clip, int start_frame, int end_frame, string filtername, start_args, end_args</i><tt>)</tt></li>
- <li><tt>ApplyRange(</tt><i>clip, int start_frame, int end_frame, string filtername, args</i><tt>)<font color="#E8F0FF"> [v 2.51]</font></tt></li>
+ <li><tt>Animate(</tt><i>clip, int &quot;start_frame&quot;, int &quot;end_frame&quot;, string &quot;filtername&quot;, &quot;start_args&quot;, &quot;end_args&quot;</i><tt>)</tt></li>
+ <li><tt>ApplyRange(</tt><i>clip, int &quot;start_frame&quot;, int &quot;end_frame&quot;, string &quot;filtername&quot;, args</i><tt>)<font color="#E8F0FF"> [v 2.51]</font></tt></li>
 </ul>
 
 <b><a href="filters/assumeframefield.html">AssumeFrameBased / AssumeFieldBased</a></b><tt><font color="#CCFFFF"> [yv12] [</font><font color="#E8F0FF">yuy2] [rgb32] [rgb24]</font></tt>
@@ -55,7 +51,7 @@ M&ouml;gliche Typen von nicht-clip-Argumenten sind int (Ganzzahl), float (Dezima
 
 <b><a href="filters/assumerate.html">AssumeSampleRate</a> </b><tt><font color="#CCFFFF">[yv12]</font><font color="#E8F0FF">[yuy2] [rgb32] [rgb24]</font></tt>
 <ul>
- <li><tt>AssumeSampleRate(</tt><i>clip</i>, <i>int samplerate</i><tt>)<font color="#E8F0FF">[v2.07]</font></tt></li>
+ <li><tt>AssumeSampleRate(</tt><i>clip</i>, <i>int &quot;samplerate&quot;</i><tt>)<font color="#E8F0FF">[v2.07]</font></tt></li>
 </ul>
 
 <b><a href="filters/audiodub.html">AudioDub</a> </b><tt><font color="#CCFFFF">[yv12]</font><font color="#E8F0FF">[yuy2] [rgb32] [rgb24]</font></tt>
@@ -65,37 +61,37 @@ M&ouml;gliche Typen von nicht-clip-Argumenten sind int (Ganzzahl), float (Dezima
 
 <b><a href="filters/avisource.html">AVISource / OpenDMLSource / AVIFileSource / WAVSource</a></b>
 <ul>
- <li><tt>AVISource(</tt><i>string filename [, ...], bool "audio", string "pixel_type"</i><tt>)</tt></li>
- <li><tt>OpenDMLSource(</tt><i>string filename [, ...], bool "audio", string "pixel_type"</i><tt>)</tt></li>
- <li><tt>AVIFileSource(</tt><i>string filename [, ...], bool "audio", string "pixel_type"</i><tt>)</tt></li>
- <li><tt>WAVSource(</tt><i>string filename [, ...]</i><tt>)</tt></li>
+ <li><tt>AVISource(</tt><i>string &quot;filename&quot; [, ...], bool &quot;audio&quot;, string &quot;pixel_type&quot;</i><tt>)</tt></li>
+ <li><tt>OpenDMLSource(</tt><i>string &quot;filename&quot; [, ...], bool &quot;audio&quot;, string &quot;pixel_type&quot;</i><tt>)</tt></li>
+ <li><tt>AVIFileSource(</tt><i>string &quot;filename&quot; [, ...], bool "audio", string "pixel_type"</i><tt>)</tt></li>
+ <li><tt>WAVSource(</tt><i>string &quot;filename&quot; [, ...]</i><tt>)</tt></li>
 </ul>
 
 <b><a href="filters/blankclip.html">BlankClip / Blackness</a></b><tt><font color="#CCFFFF">[yv12] [</font><font color="#E8F0FF">yuy2] [rgb32] [rgb24]</font></tt>
 <ul>
- <li><tt>BlankClip</tt>(<i>clip clip, int "length", int "width", int "height", string "pixel_type", float "fps", int "fps_denominator", int "audio_rate", bool "stereo", bool "sixteen_bit", int "color"</i>)</li>
- <li><tt>Blackness</tt>(<i>clip clip, int "length", int "width", int "height", string "pixel_type", float "fps", int "fps_denominator", int "audio_rate", bool "stereo", bool "sixteen_bit", int "color"</i>)</li>
+ <li><tt>BlankClip</tt>(<i>clip clip, int &quot;length&quot;, int &quot;width&quot;, int &quot;height&quot;, string &quot;pixel_type&quot;, float &quot;fps&quot;, int &quot;fps_denominator&quot;, int &quot;audio_rate&quot;, bool &quot;stereo&quot;, bool &quot;sixteen_bit&quot;, int &quot;color&quot;</i>)</li>
+ <li><tt>Blackness</tt>(<i>clip clip, int &quot;length&quot;, int &quot;width&quot;, int &quot;height&quot;, string &quot;pixel_type&quot;, float &quot;fps&quot;, int &quot;fps_denominator&quot;, int &quot;audio_rate&quot;, bool &quot;stereo&quot;, bool &quot;sixteen_bit&quot;, int &quot;color&quot;</i>)</li>
 </ul>
 
 <b><a href="filters/blur.html">Blur / Sharpen</a></b><tt><font color="#CCFFFF">[yv12]</font></tt><b> </b><tt><font color="#E8F0FF">[yuy2] [rgb32] [rgb24]</font></tt>
 <ul>
- <li><tt>Blur(</tt><i>clip, float amount</i><tt>)</tt></li>
- <li><tt>Sharpen(</tt><i>clip, float amount</i><tt>)</tt></li>
+ <li><tt>Blur(</tt><i>clip, float &quot;amount&quot;</i><tt>)</tt></li>
+ <li><tt>Sharpen(</tt><i>clip, float &quot;amount&quot;</i><tt>)</tt></li>
 </ul>
 
 <b><a href="filters/bob.html">Bob</a> </b><tt><font color="#CCFFFF">[yv12]</font><font color="#E8F0FF">[yuy2] [rgb32] [rgb24]</font></tt>
 <ul>
- <li><tt>Bob(</tt><i>clip, float "b", float "c", float "height"</i><tt>)</tt></li>
+ <li><tt>Bob(</tt><i>clip, float &quot;b&quot;, float &quot;c&quot;, float &quot;height&quot;</i><tt>)</tt></li>
 </ul>
 
 <b><a href="filters/colorbars.html">ColorBars</a> </b><tt><font color="#E8F0FF">[rgb32]</font></tt>
 <ul>
- <li><tt>ColorBars(</tt><i>int width, int height</i><tt>)</tt></li>
+ <li><tt>ColorBars(</tt><i>int &quot;width&quot;, int &quot;height&quot;</i><tt>)</tt></li>
 </ul>
 
 <b><a href="filters/coloryuv.html">ColorYUV</a> </b><tt><font color="#CCFFFF">[yv12]</font><font color="#E8F0FF">[yuy2]</font></tt>
 <ul>
- <li><tt>ColorYUV(</tt><i>clip, float "gain_y", float "off_y", float "gamma_y", float "cont_y", float "gain_u", float "off_u", float "gamma_u", float "cont_u", float "gain_v", float "off_v", float "gamma_v", float "cont_v", string "levels", string "opt", boolean "showyuv", boolean "analyze", boolean "autowhite", boolean "autogain"</i><tt>)<font color="#E8F0FF"> [v 2.50]</font></tt></li>
+ <li><tt>ColorYUV(</tt><i>clip, float &quot;gain_y&quot;, float &quot;off_y&quot;, float &quot;gamma_y&quot;, float &quot;cont_y&quot;, float &quot;gain_u&quot;, float &quot;off_u&quot;, float &quot;gamma_u&quot;, float &quot;cont_u&quot;, float &quot;gain_v&quot;, float &quot;off_v&quot;, float &quot;gamma_v&quot;, float &quot;cont_v&quot;, string &quot;levels&quot;, string &quot;opt&quot;, boolean &quot;showyuv&quot;, boolean &quot;analyze&quot;, boolean &quot;autowhite&quot;, boolean &quot;autogain&quot;</i><tt>)<font color="#E8F0FF"> [v 2.50]</font></tt></li>
 </ul>
 
 <b><a href="filters/complementparity.html">ComplementParity</a> </b><tt><font color="#CCFFFF">[yv12]</font><font color="#E8F0FF">[yuy2] [rgb32] [rgb24]</font></tt>
@@ -105,29 +101,29 @@ M&ouml;gliche Typen von nicht-clip-Argumenten sind int (Ganzzahl), float (Dezima
 
 <b><a href="filters/compare.html">Compare</a> </b><tt><font color="#E8F0FF">[yuy2] [rgb32] [rgb24]</font></tt>
 <ul>
- <li><tt>Compare(</tt><i>clip_filtered, clip_original, string "channels", string "logfile", bool "show_graph"</i><tt>)<font color="#E8F0FF"> [v 2.04]</font></tt></li>
+ <li><tt>Compare(</tt><i>clip_filtered, clip_original, string &quot;channels&quot;, string &quot;logfile&quot;, bool &quot;show_graph&quot;</i><tt>)<font color="#E8F0FF"> [v 2.04]</font></tt></li>
 </ul>
 
 <b><a href="filters/conditionalfilter.html">ConditionalFilter / FrameEvaluate / ScriptClip</a> </b><tt><font color="#CCFFFF">[yv12]</font></tt><b> </b><tt><font color="#E8F0FF">[yuy2] [rgb32] [rgb24]</font></tt>
 <ul>
- <li><tt>ConditionalFilter</tt>(<i>clip testclip, clip source1, clip source2, string filter, string operator, string value, bool ''show''</i>)<tt><font color="#E8F0FF">[v 2.52]</font></tt></li>
+ <li><tt>ConditionalFilter</tt>(<i>clip testclip, clip source1, clip source2, string &quot;filter&quot;, string &quot;operator&quot;, string &quot;value&quot;, bool &quot;show&quot;</i>)<tt><font color="#E8F0FF">[v 2.52]</font></tt></li>
  <li><tt>FrameEvaluate</tt>(<i>clip clip, script function</i>)<tt><font color="#E8F0FF">[v 2.52]</font></tt></li>
- <li><tt>ScriptClip</tt>(<i>clip clip, string function, bool ''show''</i>)<tt><font color="#E8F0FF">[v 2.52]</font></tt></li>
+ <li><tt>ScriptClip</tt>(<i>clip clip, string &quot;function&quot;, bool &quot;show&quot;</i>)<tt><font color="#E8F0FF">[v 2.52]</font></tt></li>
 </ul>
 
 <b><a href="filters/convert.html">ConvertBackToYUY2 / ConvertToRGB / ConvertToRGB24 / ConvertToRGB32 / ConvertToYUY2 / ConvertToYV12</a> </b><tt><font color="#CCFFFF">[yv12]</font><font color="#E8F0FF">[yuy2] [rgb32] [rgb24]</font></tt>
 <ul>
  <li><tt>ConvertToBackYUY2(</tt><i>clip</i><tt>)<font color="#E8F0FF"> [v 2.04]</font></tt></li>
  <li><tt>ConvertToRGB(</tt><i>clip</i><tt>)</tt></li>
- <li><tt>ConvertToRGB(</tt><i>clip, bool "interlaced"</i><tt>)<font color="#E8F0FF">[v 2.52]</font></tt></li>
+ <li><tt>ConvertToRGB(</tt><i>clip, bool interlaced&quot;</i><tt>)<font color="#E8F0FF">[v 2.52]</font></tt></li>
  <li><tt>ConvertToRGB24(</tt><i>clip</i><tt>)</tt></li>
- <li><tt>ConvertToRGB24(</tt><i>clip, bool "interlaced"</i><tt>)<font color="#E8F0FF">[v 2.52]</font></tt></li>
+ <li><tt>ConvertToRGB24(</tt><i>clip, bool &quot;interlaced&quot;</i><tt>)<font color="#E8F0FF">[v 2.52]</font></tt></li>
  <li><tt>ConvertToRGB32(</tt><i>clip</i><tt>)</tt></li>
- <li><tt>ConvertToRGB32(</tt><i>clip, bool "interlaced"</i><tt>)<font color="#E8F0FF">[v 2.52]</font></tt></li>
+ <li><tt>ConvertToRGB32(</tt><i>clip, bool &quot;interlaced&quot;</i><tt>)<font color="#E8F0FF">[v 2.52]</font></tt></li>
  <li><tt>ConvertToYUY2(</tt><i>clip</i><tt>)</tt></li>
- <li><tt>ConvertToYUY2(</tt><i>clip, bool "interlaced"</i><tt>)<font color="#E8F0FF">[v 2.51]</font></tt></li>
+ <li><tt>ConvertToYUY2(</tt><i>clip, bool &quot;interlaced&quot;</i><tt>)<font color="#E8F0FF">[v 2.51]</font></tt></li>
  <li><tt>ConvertToYV12(</tt><i>clip</i><tt>)<font color="#E8F0FF"> [v 2.50]</font></tt></li>
- <li><tt>ConvertToYV12(</tt><i>clip, bool "interlaced"</i><tt>)<font color="#E8F0FF">[v 2.51]</font></tt></li>
+ <li><tt>ConvertToYV12(</tt><i>clip, bool &quot;interlaced&quot;</i><tt>)<font color="#E8F0FF">[v 2.51]</font></tt></li>
 </ul>
 
 <b><a href="filters/convertaudio.html">ConvertAudioTo8bit / ConvertAudioTo16bit / ConvertAudioTo24bit / ConvertAudioTo32bit / ConvertAudioToFloat</a> </b><tt><font color="#CCFFFF">[yv12]</font><font color="#E8F0FF">[yuy2] [rgb32] [rgb24]</font></tt>
@@ -146,29 +142,29 @@ M&ouml;gliche Typen von nicht-clip-Argumenten sind int (Ganzzahl), float (Dezima
 
 <b><a href="filters/crop.html">Crop / CropBottom</a> </b><tt><font color="#CCFFFF">[yv12]</font><font color="#E8F0FF">[yuy2] [rgb32] [rgb24]</font></tt>
 <ul>
- <li><tt>Crop(</tt><i>clip, int left, int top, int width, int height</i><tt>)</tt></li>
- <li><tt>Crop(</tt><i>clip, int left, int top, int -right, int -bottom</i><tt>)<font color="#E8F0FF">[v 2.04 ?]</font></tt></li>
- <li><tt>CropBottom(</tt><i>clip, int count</i><tt>)</tt></li>
+ <li><tt>Crop(</tt><i>clip, int &quot;left&quot;, int &quot;top&quot;, int &quot;width&quot;, int &quot;height&quot;</i><tt>)</tt></li>
+ <li><tt>Crop(</tt><i>clip, int &quot;left&quot;, int &quot;top&quot;, int &quot;-right&quot;, int &quot;-bottom&quot;</i><tt>)<font color="#E8F0FF">[v 2.04 ?]</font></tt></li>
+ <li><tt>CropBottom(</tt><i>clip, int &quot;count&quot;</i><tt>)</tt></li>
 </ul>
 
 <b><a href="filters/delayaudio.html">DelayAudio</a> </b><tt><font color="#CCFFFF">[yv12]</font><font color="#E8F0FF">[yuy2] [rgb32] [rgb24]</font></tt>
 <ul>
- <li><tt>DelayAudio(</tt><i>clip, float seconds</i><tt>)</tt></li>
+ <li><tt>DelayAudio(</tt><i>clip, float &quot;seconds&quot;</i><tt>)</tt></li>
 </ul>
 
 <b><a href="filters/deleteframe.html">DeleteFrame</a> </b><tt><font color="#CCFFFF">[yv12]</font><font color="#E8F0FF">[yuy2] [rgb32] [rgb24]</font></tt>
 <ul>
- <li><tt>DeleteFrame(</tt><i>clip, int frame</i><tt>)</tt></li>
+ <li><tt>DeleteFrame(</tt><i>clip, int &quot;frame&quot;</i><tt>)</tt></li>
 </ul>
 
 <b><a href="filters/directshowsource.html">DirectShowSource</a></b>
 <ul>
- <li><tt>DirectShowSource(</tt><i>string filename, int "fps"</i><tt>)</tt></li>
+ <li><tt>DirectShowSource(</tt><i>string &quot;filename&quot;, int &quot;fps&quot;</i><tt>)</tt></li>
 </ul>
 
 <b><a href="filters/dissolve.html">Dissolve</a> </b><tt><font color="#CCFFFF">[yv12]</font><font color="#E8F0FF">[yuy2] [rgb32] [rgb24]</font></tt>
 <ul>
- <li><tt>Dissolve(</tt><i>clip1, clip2 [,...], int overlap</i><tt>)</tt></li>
+ <li><tt>Dissolve(</tt><i>clip1, clip2 [,...], int &quot;overlap&quot;</i><tt>)</tt></li>
 </ul>
 
 <b><a href="filters/doubleweave.html">DoubleWeave</a> </b><tt><font color="#CCFFFF">[yv12]</font><font color="#E8F0FF">[yuy2] [rgb32] [rgb24]</font></tt>
@@ -178,7 +174,7 @@ M&ouml;gliche Typen von nicht-clip-Argumenten sind int (Ganzzahl), float (Dezima
 
 <b><a href="filters/duplicateframe.html">DuplicateFrame</a> </b><tt><font color="#CCFFFF">[yv12]</font><font color="#E8F0FF">[yuy2] [rgb32] [rgb24]</font></tt>
 <ul>
- <li><tt>DuplicateFrame(</tt><i>clip, int frame</i><tt>)</tt></li>
+ <li><tt>DuplicateFrame(</tt><i>clip, int &quot;frame&quot;</i><tt>)</tt></li>
 </ul>
 
 <b><a href="filters/ensuresync.html">EnsureVBRMP3Sync</a> </b><tt><font color="#CCFFFF">[yv12]</font><font color="#E8F0FF">[yuy2] [rgb32] [rgb24]</font></tt>
@@ -188,12 +184,12 @@ M&ouml;gliche Typen von nicht-clip-Argumenten sind int (Ganzzahl), float (Dezima
 
 <b><a href="filters/fade.html">FadeIn / FadeOut / FadeIn2 / FadeOut2 / FadeIO / FadeIO2</a></b><tt><font color="#CCFFFF"> [yv12] </font><font color="#E8F0FF">[yuy2] [rgb32] [rgb24]</font></tt>
 <ul>
- <li><tt>FadeOut(</tt><i>clip, int frames</i><tt>)</tt></li>
- <li><tt>FadeOut2(</tt><i>clip, int frames</i><tt>)</tt></li>
- <li><tt>FadeIn(</tt><i>clip, int frames</i><tt>) <font color="#E8F0FF">[v 2.07]</font></tt></li>
- <li><tt>FadeIn2(</tt><i>clip, int frames</i><tt>) <font color="#E8F0FF">[v2.07]</font></tt></li>
- <li><tt>FadeIO(</tt><i>clip, int frames</i><tt>) <font color="#E8F0FF">[v 2.07]</font></tt></li>
- <li><tt>FadeIO2(</tt><i>clip, int frames</i><tt>) <font color="#E8F0FF">[v2.07]</font></tt></li>
+ <li><tt>FadeOut(</tt><i>clip, &quot;int frames&quot;</i><tt>)</tt></li>
+ <li><tt>FadeOut2(</tt><i>clip, int &quot;frames&quot;</i><tt>)</tt></li>
+ <li><tt>FadeIn(</tt><i>clip, int &quot;frames&quot;</i><tt>) <font color="#E8F0FF">[v 2.07]</font></tt></li>
+ <li><tt>FadeIn2(</tt><i>clip, int &quot;frames&quot;</i><tt>) <font color="#E8F0FF">[v2.07]</font></tt></li>
+ <li><tt>FadeIO(</tt><i>clip, int &quot;frames&quot;</i><tt>) <font color="#E8F0FF">[v 2.07]</font></tt></li>
+ <li><tt>FadeIO2(</tt><i>clip, int &quot;frames&quot;</i><tt>) <font color="#E8F0FF">[v2.07]</font></tt></li>
 </ul>
 
 <b><a href="filters/fixbrokenchromaupsampling.html">FixBrokenChromaUpsampling</a></b><tt><font color="#E8F0FF">[yuy2]</font></tt>
@@ -203,35 +199,35 @@ M&ouml;gliche Typen von nicht-clip-Argumenten sind int (Ganzzahl), float (Dezima
 
 <b><a href="filters/fixluminance.html">FixLuminance</a></b><tt><font color="#E8F0FF">[yuy2]</font></tt>
 <ul>
- <li><tt>FixLuminance(</tt><i>clip, int intercept, int slope</i><tt>)</tt></li>
+ <li><tt>FixLuminance(</tt><i>clip, int &quot;intercept&quot;, int &quot;slope&quot;</i><tt>)</tt></li>
 </ul>
 
 <b><a href="filters/flip.html">FlipHorizontal / FlipVertical</a></b><tt><font color="#E8F0FF">[yv12] [yuy2] [rgb32] [rgb24]</font></tt>
 <ul>
- <li><tt>FlipHorizontal(</tt><i>clip</i>)<tt><font color="#E8F0FF"> [v 2.50]</font></tt></li>
+ <li><tt>FlipHorizontal(</tt><i>clip</i>)<tt><font color="#E8F0FF"> [v2.50]</font></tt></li>
  <li><tt>FlipVertical(</tt><i>clip</i><tt>)</tt></li>
 </ul>
 
 <b><a href="filters/fps.html">AssumeFPS / ChangeFPS / ConvertFPS</a></b><tt><font color="#E8F0FF">[yuy2] [rgb32] [rgb24]</font></tt>
 <ul>
- <li><tt>AssumeFPS(</tt><i>clip, int numerator, int denominator, bool "sync_audio"</i><tt>)</tt></li>
- <li><tt>ChangeFPS(</tt><i>clip, float fps</i><tt>)</tt></li>
- <li><tt>ConvertFPS(</tt><i>clip, int new_rate, int "zone", int "vbi"</i><tt>)</tt></li>
+ <li><tt>AssumeFPS(</tt><i>clip, int &quot;numerator&quot;, int &quot;denominator&quot;, bool &quot;sync_audio&quot;</i><tt>)</tt></li>
+ <li><tt>ChangeFPS(</tt><i>clip, float &quot;fps&quot;</i><tt>)</tt></li>
+ <li><tt>ConvertFPS(</tt><i>clip, int &quot;new_rate&quot;, int &quot;zone&quot;, int &quot;vbi&quot;</i><tt>)</tt></li>
 </ul>
 
 <b><a href="filters/freezeframe.html">FreezeFrame</a> </b><tt><font color="#CCFFFF">[yv12]</font><font color="#E8F0FF">[yuy2] [rgb32] [rgb24]</font></tt>
 <ul>
- <li><tt>FreezeFrame(</tt><i>clip, int first_frame, int last_frame, int source_frame</i><tt>)</tt></li>
+ <li><tt>FreezeFrame(</tt><i>clip, int &quot;first_frame&quot;, int &quot;last_frame&quot;, int &quot;source_frame&quot;</i><tt>)</tt></li>
 </ul>
 
 <b><a href="filters/convolution.html">GeneralConvolution</a> </b><tt><font color="#E8F0FF">[rgb32]</font></tt>
 <ul>
- <li><tt>GeneralConvolution(</tt><i>clip, int "bias", string matrix</i><tt>)<font color="#E8F0FF">[v 2.04]</font></tt></li>
+ <li><tt>GeneralConvolution(</tt><i>clip, int &quot;bias&quot;, string &quot;matrix&quot;</i><tt>)<font color="#E8F0FF">[v 2.04]</font></tt></li>
 </ul>
 
 <b><a href="filters/getchannel.html">GetChannel</a> </b><tt><font color="#CCFFFF">[yv12]</font><font color="#E8F0FF">[yuy2] [rgb32] [rgb24]</font></tt>
 <ul>
- <li><tt>GetChannel(</tt><i>clip, int ch1 [, int ch2, ...]</i><tt>)<font color="#E8F0FF">[v 2.50]</font></tt></li>
+ <li><tt>GetChannel(</tt><i>clip, int &quot;ch1&quot; [, int &quot;ch2&quot;, ...]</i><tt>)<font color="#E8F0FF">[v 2.50]</font></tt></li>
 </ul>
 
 <b><a href="filters/greyscale.html">Greyscale</a> </b><tt><font color="#CCFFFF">[yv12]</font><font color="#E8F0FF">[yuy2] [rgb32] [rgb24]</font></tt>
@@ -246,9 +242,9 @@ M&ouml;gliche Typen von nicht-clip-Argumenten sind int (Ganzzahl), float (Dezima
 
 <b><a href="filters/imagewriter.html">ImageReader / ImageWriter</a> </b><tt><font color="#CCFFFF">[yv12]</font><font color="#E8F0FF">[yuy2]</font><font color="#CCFFFF">[rgb32]</font><font color="#E8F0FF">[rgb24]</font></tt>
 <ul>
- <li><tt>ImageReader</tt>(<i>string path, int begin, int end, int fps, bool "use_DevIL"</i>)<tt><font color="#E8F0FF"> [v 2.52]</font></tt></li>
- <li><tt>ImageWriter(</tt><i>clip, string "path", string format</i><tt>)<font color="#E8F0FF">[v 2.51]</font></tt></li>
- <li><tt>ImageWriter(</tt><i>clip, string "path", int "begin", int "end", string format</i><tt>)<font color="#E8F0FF"> [v 2.52]</font></tt></li>
+ <li><tt>ImageReader</tt>(<i>string &quot;path&quot;, int &quot;begin&quot;, int &quot;end&quot;, int &quot;fps&quot;, bool &quot;use_DevIL&quot;</i>)<tt><font color="#E8F0FF"> [v 2.52]</font></tt></li>
+ <li><tt>ImageWriter(</tt><i>clip, string &quot;path&quot;, string &quot;format&quot;</i><tt>)<font color="#E8F0FF">[v 2.51]</font></tt></li>
+ <li><tt>ImageWriter(</tt><i>clip, string &quot;path&quot;, int &quot;begin&quot;, int &quot;end&quot;, string &quot;format&quot;</i><tt>)<font color="#E8F0FF"> [v 2.52]</font></tt></li>
 </ul>
 
 <b><a href="filters/info.html">Info</a> </b><tt><font color="#CCFFFF">[yv12]</font><font color="#E8F0FF">[yuy2] [rgb32] [rgb24]</font></tt>
@@ -268,30 +264,30 @@ M&ouml;gliche Typen von nicht-clip-Argumenten sind int (Ganzzahl), float (Dezima
 
 <b><a href="filters/layer.html">Layer / Mask / ResetMask / ColorKeyMask</a></b><tt><font color="#E8F0FF">[RGB32]</font></tt>
 <ul>
- <li><tt>Layer(</tt><i>clip, layer_clip, string "op", int "level", int "x", int "y", int "threshold", bool "use_chroma"</i><tt>)<font color="#E8F0FF">[yuy2] [rgb32] [v 2.04]</font></tt></li>
+ <li><tt>Layer(</tt><i>clip, layer_clip, string &quot;op&quot;, int &quot;level&quot;, int &quot;x&quot;, int &quot;y&quot;, int &quot;threshold&quot;, bool &quot;use_chroma&quot;</i><tt>)<font color="#E8F0FF">[yuy2] [rgb32] [v 2.04]</font></tt></li>
  <li><tt>Mask(</tt><i>clip, mask_clip</i><tt>)<font color="#E8F0FF"> [rgb32][v 2.04]</font></tt></li>
  <li><tt>ResetMask(</tt><i>clip</i><tt>)<font color="#E8F0FF"> [rgb32] [v 2.06]</font></tt></li>
- <li><tt>ColorKeyMask(</tt><i>clip, int color, int tolerance</i><tt>)<font color="#E8F0FF">[rgb32] [v 2.04]</font></tt></li>
+ <li><tt>ColorKeyMask(</tt><i>clip, int &quot;color&quot;, int &quot;tolerance&quot;</i><tt>)<font color="#E8F0FF">[rgb32] [v 2.04]</font></tt></li>
 </ul>
 
 <b><a href="filters/letterbox.html">Letterbox</a> </b><tt><font color="#CCFFFF">[yv12]</font><font color="#E8F0FF">[yuy2] [rgb32] [rgb24]</font></tt>
 <ul>
- <li><tt>Letterbox(</tt><i>clip, int top, int bottom, [int left, int right]</i><tt>)</tt></li>
+ <li><tt>Letterbox(</tt><i>clip, int &quot;top&quot;, int &quot;bottom&quot;, [int &quot;left&quot;, int &quot;right&quot;]</i><tt>)</tt></li>
 </ul>
 
 <b><a href="filters/levels.html">Levels</a> </b><tt><font color="#CCFFFF">[yv12]</font><font color="#E8F0FF">[yuy2][rgb32] [rgb24]</font></tt>
 <ul>
- <li><tt>Levels(</tt><i>clip, int input_low, float gamma, int input_high, int output_low, int output_high</i><tt>)</tt></li>
+ <li><tt>Levels(</tt><i>clip, int &quot;input_low&quot;, float &quot;gamma&quot;, int &quot;input_high&quot;, int &quot;output_low&quot;, int &quot;output_high&quot;</i><tt>)</tt></li>
 </ul>
 
 <b><a href="filters/limiter.html">Limiter</a> </b><tt><font color="#CCFFFF">[yv12]</font><font color="#E8F0FF">[yuy2]</font></tt>
 <ul>
- <li><tt>Limiter(</tt><i>clip, int ''min_luma'', int ''max_luma'', int ''min_chroma'', int ''max_chroma'')</i><tt><font color="#E8F0FF"> [v 2.50]</font></tt></li>
+ <li><tt>Limiter(</tt><i>clip, int &quot;min_luma&quot;, int &quot;max_luma&quot;, int &quot;min_chroma&quot;, int &quot;max_chroma&quot;)</i><tt><font color="#E8F0FF"> [v 2.50]</font></tt></li>
 </ul>
 
 <b><a href="filters/loop.html">Loop</a> </b><tt><font color="#E8F0FF">[yuy2] [rgb32] [rgb24]</font></tt>
 <ul>
- <li><tt>Loop(</tt><i>clip, int "times", int "start", int "end"</i><tt>)<font color="#E8F0FF">[v 2.04]</font></tt></li>
+ <li><tt>Loop(</tt><i>clip, int &quot;times&quot;, int &quot;start&quot;, int &quot;end&quot;</i><tt>)<font color="#E8F0FF">[v 2.04]</font></tt></li>
 </ul>
 
 <b><a href="filters/mergechannels.html">MergeChannels</a> </b><tt><font color="#CCFFFF">[yv12]</font><font color="#E8F0FF">[yuy2] [rgb32] [rgb24]</font></tt>
@@ -301,38 +297,38 @@ M&ouml;gliche Typen von nicht-clip-Argumenten sind int (Ganzzahl), float (Dezima
 
 <b><a href="filters/merge.html">MergeChroma / MergeLuma</a> </b><tt><font color="#CCFFFF">[yv12]</font><font color="#E8F0FF">[yuy2]</font></tt>
 <ul>
- <li><tt>MergeChroma(</tt><i>clip1, clip2, float weight</i><tt>) <font color="#E8F0FF">[v2.04]</font></tt></li>
- <li><tt>MergeLuma(</tt><i>clip1, clip2, float weight</i><tt>)<font color="#E8F0FF">[v 2.04]</font></tt></li>
+ <li><tt>MergeChroma(</tt><i>clip1, clip2, float &quot;weight&quot;</i><tt>) <font color="#E8F0FF">[v2.04]</font></tt></li>
+ <li><tt>MergeLuma(</tt><i>clip1, clip2, float &quot;weight&quot;</i><tt>)<font color="#E8F0FF">[v 2.04]</font></tt></li>
 </ul>
 
 <b><a href="filters/message.html">MessageClip</a> </b><tt><font color="#E8F0FF">[rgb32]</font></tt>
 <ul>
- <li><tt>MessageClip(</tt><i>string message, int "width", int "height", bool "shrink", int "text_color", int "halo_color", int "bg_color"</i><tt>)</tt></li>
+ <li><tt>MessageClip(</tt><i>string &quot;message&quot;, int &quot;width&quot;, int &quot;height&quot;, bool &quot;shrink&quot;, int &quot;text_color&quot;, int &quot;halo_color&quot;, int &quot;bg_color&quot;</i><tt>)</tt></li>
 </ul>
 
 <b><a href="filters/mixaudio.html">MixAudio</a> </b><tt><font color="#CCFFFF">[yv12]</font><font color="#E8F0FF">[yuy2] [rgb32] [rgb24]</font></tt>
 <ul>
- <li><tt>MixAudio(</tt><i>clip1, clip 2, clip1_factor, "clip2_factor"</i><tt>)<font color="#E8F0FF">[v 2.04]</font></tt></li>
+ <li><tt>MixAudio(</tt><i>clip1, clip2, float &quot;clip1_factor&quot;, float &quot;clip2_factor&quot;</i><tt>)<font color="#E8F0FF">[v 2.04]</font></tt></li>
 </ul>
 
 <b><a href="filters/normalize.html">Normalize</a> </b><tt><font color="#CCFFFF">[yv12]</font><font color="#E8F0FF">[yuy2] [rgb32] [rgb24]</font></tt>
 <ul>
- <li><tt>Normalize(</tt><i>clip, float "volume", bool "show"</i><tt>)<font color="#E8F0FF">[v 2.04]</font></tt></li>
+ <li><tt>Normalize(</tt><i>clip, float &quot;volume&quot;, bool &quot;show&quot;</i><tt>)<font color="#E8F0FF">[v 2.04]</font></tt></li>
 </ul>
 
 <b><a href="filters/peculiar.html">PeculiarBlend</a></b><tt><font color="#E8F0FF">[yuy2]</font></tt>
 <ul>
- <li><tt>PeculiarBlend(</tt><i>clip, int cutoff</i><tt>)</tt></li>
+ <li><tt>PeculiarBlend(</tt><i>clip, int &quot;cutoff&quot;</i><tt>)</tt></li>
 </ul>
 
 <b><a href="filters/pulldown.html">Pulldown</a> </b><tt><font color="#CCFFFF">[yv12]</font><font color="#E8F0FF">[yuy2] [rgb32] [rgb24]</font></tt>
 <ul>
- <li><tt>Pulldown(</tt><i>clip, int a , int b</i><tt>)</tt></li>
+ <li><tt>Pulldown(</tt><i>clip, int &quot;a&quot;, int &quot;b&quot;</i><tt>)</tt></li>
 </ul>
 
 <b><a href="filters/adjust.html">RGBAdjust</a> </b><tt><font color="#E8F0FF">[yuy2] [rgb32] [rgb24]</font></tt>
 <ul>
- <li><tt>RGBAdjust(</tt><i>clip, float red, float green, float blue, float alpha</i><tt>)</tt></li>
+ <li><tt>RGBAdjust(</tt><i>clip, float &quot;red&quot;, float &quot;green&quot;, float &quot;blue&quot;, float &quot;alpha&quot;</i><tt>)</tt></li>
 </ul>
 
 <b><a href="filters/reduceby2.html">ReduceBy2 / HorizontalReduceBy2 / VerticalReduceBy2</a></b><tt><font color="#CCFFFF">[yv12] </font><font color="#E8F0FF">[yuy2] [rgb32] [rgb24]</font></tt>
@@ -344,19 +340,19 @@ M&ouml;gliche Typen von nicht-clip-Argumenten sind int (Ganzzahl), float (Dezima
 
 <b><a href="filters/resampleaudio.html">ResampleAudio</a> </b><tt><font color="#CCFFFF">[yv12]</font><font color="#E8F0FF">[yuy2] [rgb32] [rgb24]</font></tt>
 <ul>
- <li><tt>ResampleAudio(</tt><i>clip, int new_sample_rate</i><tt>)</tt></li>
+ <li><tt>ResampleAudio(</tt><i>clip, int &quot;new_sample_rate&quot;</i><tt>)</tt></li>
 </ul>
 
 <b><a href="filters/resize.html">BilinearResize / BicubicResize / LanczosResize / PointResize</a> </b><tt><font color="#CCFFFF">[yv12]</font></tt><b> </b><tt><font color="#E8F0FF">[yuy2] [rgb32] [rgb24]</font></tt>
 <ul>
- <li><tt>BilinearResize(</tt><i>clip, int target_width, int target_height</i><tt>)</tt></li>
- <li><tt>BilinearResize(</tt><i>clip, int target_width, int target_height, float "src_left", float "src_top", float "src_width", float "src_height"</i><tt>)</tt></li>
- <li><tt>BicubicResize(</tt><i>clip, int target_width, int target_height, float "b", float "c"</i><tt>)</tt></li>
- <li><tt>BicubicResize(</tt><i>clip, int target_width, int target_height, float "b", float "c", float "src_left", float "src_top", float "src_width", float "src_height"</i><tt>)</tt></li>
- <li><tt>LanczosResize(</tt><i>clip, int target_width, int target_height</i><tt>)<font color="#E8F0FF">[v2.06]</font></tt></li>
- <li><tt>LanczosResize(</tt><i>clip, int target_width, int target_height, float "src_left", float "src_top", float "src_width", float "src_height"</i><tt>)<font color="#E8F0FF">[v2.06]</font></tt></li>
- <li><tt>PointResize(</tt><i>clip, int target_width, int target_height</i><tt>)<font color="#E8F0FF">[v2.07]</font></tt></li>
- <li><tt>PointResize(</tt><i>clip, int target_width, int target_height, float "src_left", float "src_top", float "src_width", float "src_height"</i><tt>)<font color="#E8F0FF">[v2.07]</font></tt></li>
+ <li><tt>BilinearResize(</tt><i>clip, int &quot;target_width&quot;, int &quot;target_height&quot;</i><tt>)</tt></li>
+ <li><tt>BilinearResize(</tt><i>clip, int &quot;target_width&quot;, int &quot;target_height&quot;, float &quot;src_left&quot;, float &quot;src_top&quot;, float &quot;src_width&quot;, float &quot;src_height&quot;</i><tt>)</tt></li>
+ <li><tt>BicubicResize(</tt><i>clip, int &quot;target_width&quot;, int &quot;target_height&quot;, float &quot;b&quot;, float &quot;c&quot;</i><tt>)</tt></li>
+ <li><tt>BicubicResize(</tt><i>clip, int &quot;target_width&quot;, int &quot;target_height&quot;, float &quot;b&quot;, float &quot;c&quot;, float &quot;src_left&quot;, float &quot;src_top&quot;, float &quot;src_width&quot;, float &quot;src_height&quot;</i><tt>)</tt></li>
+ <li><tt>LanczosResize(</tt><i>clip, int &quot;target_width&quot;, int &quot;target_height&quot;</i><tt>)<font color="#E8F0FF">[v2.06]</font></tt></li>
+ <li><tt>LanczosResize(</tt><i>clip, int &quot;target_width&quot;, int &quot;target_height&quot;, float &quot;src_left&quot;, float &quot;src_top&quot;, float &quot;src_width&quot;, float &quot;src_height&quot;</i><tt>)<font color="#E8F0FF">[v2.06]</font></tt></li>
+ <li><tt>PointResize(</tt><i>clip, int &quot;target_width&quot;, int &quot;target_height&quot;</i><tt>)<font color="#E8F0FF">[v2.07]</font></tt></li>
+ <li><tt>PointResize(</tt><i>clip, int &quot;target_width&quot;, int &quot;target_height&quot;, float &quot;src_left&quot;, float &quot;src_top&quot;, float &quot;src_width&quot;, float &quot;src_height&quot;</i><tt>)<font color="#E8F0FF">[v2.07]</font></tt></li>
 </ul>
 
 <b><a href="filters/reverse.html">Reverse</a> </b><tt><font color="#CCFFFF">[yv12]</font><font color="#E8F0FF">[yuy2] [rgb32] [rgb24]</font></tt>
@@ -366,8 +362,8 @@ M&ouml;gliche Typen von nicht-clip-Argumenten sind int (Ganzzahl), float (Dezima
 
 <b><a href="filters/segmentedsource.html">SegmentedAVISource / SegmentedDirectShowSource</a></b>
 <ul>
- <li><tt>SegmentedAVISource(</tt><i>string base_filename [, ...], bool "audio"</i><tt>)</tt></li>
- <li><tt>SegmentedDirectShowSource(</tt><i>string base_filename [, ...]&nbsp;[, fps]</i><tt>)</tt></li>
+ <li><tt>SegmentedAVISource(</tt><i>string &quot;base_filename&quot; [, ...], bool &quot;audio&quot;</i><tt>)</tt></li>
+ <li><tt>SegmentedDirectShowSource(</tt><i>string &quot;base_filename&quot; [, ...]&nbsp;[, fps]</i><tt>)</tt></li>
 </ul>
 
 <b><a href="filters/select.html">SelectEven / SelectOdd</a> </b><tt><font color="#CCFFFF">[yv12]</font><font color="#E8F0FF">[yuy2] [rgb32] [rgb24]</font></tt>
@@ -378,12 +374,12 @@ M&ouml;gliche Typen von nicht-clip-Argumenten sind int (Ganzzahl), float (Dezima
 
 <b><a href="filters/selectevery.html">SelectEvery</a> </b><tt><font color="#CCFFFF">[yv12]</font><font color="#E8F0FF">[yuy2] [rgb32] [rgb24]</font></tt>
 <ul>
- <li><tt>SelectEvery(</tt><i>clip, int step_size [, int offset1 [, int offset2 [,...]]]</i><tt>)</tt></li>
+ <li><tt>SelectEvery(</tt><i>clip, int &quot;step_size&quot; [, int &quot;offset1&quot; [, int &quot;offset2&quot; [,...]]]</i><tt>)</tt></li>
 </ul>
 
 <b><a href="filters/selectrangeevery.html">SelectRangeEvery</a> </b><tt><font color="#CCFFFF">[yv12]</font><font color="#E8F0FF">[yuy2] [rgb32] [rgb24]</font></tt>
 <ul>
- <li><tt>SelectRangeEvery(</tt><i>clip, int period, int range</i><tt>)<font color="#E8F0FF">[v2.50]</font></tt></li>
+ <li><tt>SelectRangeEvery(</tt><i>clip, int &quot;period&quot;, int &quot;range&quot;</i><tt>)<font color="#E8F0FF">[v2.50]</font></tt></li>
 </ul>
 
 <b><a href="filters/seperatefields.html">SeparateFields</a> </b><tt><font color="#CCFFFF">[yv12]</font><font color="#E8F0FF">[yuy2] [rgb32] [rgb24]</font></tt>
@@ -398,14 +394,14 @@ M&ouml;gliche Typen von nicht-clip-Argumenten sind int (Ganzzahl), float (Dezima
 
 <b><a href="filters/showframes.html">ShowFrameNumber / ShowSMPTE</a></b><tt><font color="#E8F0FF">[yv12] [yuy2] [rgb32] [rgb24]</font></tt>
 <ul>
- <li><tt>ShowFrameNumber(</tt><i>clip, bool "scroll"</i><tt>)</tt></li>
- <li><tt>ShowSMPTE(</tt><i>clip, float fps</i><tt>)</tt></li>
+ <li><tt>ShowFrameNumber(</tt><i>clip, bool &quot;scroll&quot;</i><tt>)</tt></li>
+ <li><tt>ShowSMPTE(</tt><i>clip, float &quot;fps&quot;</i><tt>)</tt></li>
 </ul>
 
 <b><a href="filters/soften.html">SpatialSoften / TemporalSoften</a></b><tt><font color="#E8F0FF">[yuy2]</font></tt>
 <ul>
- <li><tt>SpatialSoften(</tt><i>clip, int radius, int luma_threshold, int chroma_threshold</i><tt>)</tt></li>
- <li><tt>TemporalSoften(</tt><i>clip, int radius, int luma_threshold, int chroma_threshold, int "scenechange", int "mode"</i><tt>) <font color="#CCFFFF">[yv12, </font><font color="#E8F0FF">v2.50]</font></tt></li>
+ <li><tt>SpatialSoften(</tt><i>clip, int &quot;radius&quot;, int &quot;luma_threshold&quot;, int &quot;chroma_threshold&quot;</i><tt>)</tt></li>
+ <li><tt>TemporalSoften(</tt><i>clip, int &quot;radius&quot;, int &quot;luma_threshold&quot;, int &quot;chroma_threshold&quot;, int &quot;scenechange&quot;, int &quot;mode&quot;</i><tt>) <font color="#CCFFFF">[yv12, </font><font color="#E8F0FF">v2.50]</font></tt></li>
 </ul>
 
 <b><a href="filters/splice.html">AlignedSplice / UnalignedSplice</a> </b><tt><font color="#CCFFFF">[yv12]</font><font color="#E8F0FF">[yuy2] [rgb32] [rgb24]</font></tt>
@@ -422,8 +418,8 @@ M&ouml;gliche Typen von nicht-clip-Argumenten sind int (Ganzzahl), float (Dezima
 
 <b><a href="filters/subtitle.html">Subtitle</a> </b><tt><font color="#E8F0FF">[yv12][yuy2][rgb32] [rgb24]</font></tt>
 <ul>
- <li><tt>Subtitle(</tt><i>clip, string text, int "x", int "y", int "first_frame", int "last_frame", string "font", int "size", int "text_color", int "halo_color"</i><tt>)</tt></li>
- <li><tt>Subtitle(</tt><i>clip, string "text"</i><tt>)</tt></li>
+ <li><tt>Subtitle(</tt><i>clip, string &quot;text&quot;, int &quot;x&quot;, int &quot;y&quot;, int &quot;first_frame&quot;, int &quot;last_frame&quot;, string &quot;font&quot;, int &quot;size&quot;, int &quot;text_color&quot;, int &quot;halo_color&quot;</i><tt>)</tt></li>
+ <li><tt>Subtitle(</tt><i>clip, string &quot;text&quot;</i><tt>)</tt></li>
 </ul>
 
 <b><a href="filters/subtract.html">Subtract</a></b><tt><font color="#E8F0FF">[yuy2] [rgb32] [rgb24]</font></tt>
@@ -433,10 +429,10 @@ M&ouml;gliche Typen von nicht-clip-Argumenten sind int (Ganzzahl), float (Dezima
 
 <b><a href="filters/swap.html">SwapUV / UToY / VToY / YToUV</a> </b><tt><font color="#CCFFFF">[yv12]</font></tt>
 <ul>
- <li><tt>SwapUV(</tt><i>clip</i><tt>)<font color="#E8F0FF"> [v 2.50]</font></tt></li>
- <li><tt>UToY(</tt><i>clip</i><tt>)<font color="#E8F0FF"> [v 2.50]</font></tt></li>
- <li><tt>VToY(</tt><i>clip</i><tt>)<font color="#E8F0FF"> [v 2.50]</font></tt></li>
- <li><tt>YToUV(</tt><i>clip</i><tt>)<font color="#E8F0FF"> [v 2.50]</font></tt></li>
+ <li><tt>SwapUV(</tt><i>clip</i><tt>)<font color="#E8F0FF"> [v2.50]</font></tt></li>
+ <li><tt>UToY(</tt><i>clip</i><tt>)<font color="#E8F0FF"> [v2.50]</font></tt></li>
+ <li><tt>VToY(</tt><i>clip</i><tt>)<font color="#E8F0FF"> [v2.50]</font></tt></li>
+ <li><tt>YToUV(</tt><i>clip</i><tt>)<font color="#E8F0FF"> [v2.50]</font></tt></li>
 </ul>
 
 <b><a href="filters/swapfields.html">SwapFields</a> </b><tt><font color="#CCFFFF">[yv12]</font><font color="#E8F0FF">[yuy2] [rgb32] [rgb24]</font></tt>
@@ -444,20 +440,20 @@ M&ouml;gliche Typen von nicht-clip-Argumenten sind int (Ganzzahl), float (Dezima
  <li><tt>SwapFields(</tt><i>clip</i><tt>)</tt></li>
 </ul>
 
-<b><a href="filters/turn.html">TurnLeft / TurnRight</a> </b><tt><font color="#CCFFFF">[yv12]</font><font color="#E8F0FF">[yuy2] [rgb32] [rgb24]</font></tt>
-<ul>
- <li><tt>TurnLeft(</tt><i>clip</i><tt>)<font color="#E8F0FF"> [v 2.51]</font></tt></li>
- <li><tt>TurnRight(</tt><i>clip</i><tt>)<font color="#E8F0FF"> [v 2.51]</font></tt></li>
-</ul>
-
 <b><a href="filters/trim.html">Trim</a> </b><tt><font color="#CCFFFF">[yv12]</font><font color="#E8F0FF">[yuy2] [rgb32] [rgb24]</font></tt>
 <ul>
- <li><tt>Trim(</tt><i>clip, int first_frame, int last_frame</i><tt>)</tt></li>
+ <li><tt>Trim(</tt><i>clip, int &quot;first_frame&quot;, int &quot;last_frame&quot;</i><tt>)</tt></li>
+</ul>
+
+<b><a href="filters/turn.html">TurnLeft / TurnRight</a> </b><tt><font color="#CCFFFF">[yv12]</font><font color="#E8F0FF">[yuy2] [rgb32] [rgb24]</font></tt>
+<ul>
+ <li><tt>TurnLeft(</tt><i>clip</i><tt>)<font color="#E8F0FF"> [v2.51]</font></tt></li>
+ <li><tt>TurnRight(</tt><i>clip</i><tt>)<font color="#E8F0FF"> [v2.51]</font></tt></li>
 </ul>
 
 <b><a href="filters/tweak.html">Tweak</a> </b><tt><font color="#CCFFFF">[yv12]</font><font color="#E8F0FF">[yuy2]</font></tt>
 <ul>
- <li><tt>Tweak(</tt><i>clip, float "hue", float "sat", float "bright", float "cont"</i><tt>)<font color="#E8F0FF"> [v 2.04]</font></tt></li>
+ <li><tt>Tweak(</tt><i>clip, float &quot;hue&quot;, float &quot;sat&quot;, float &quot;bright&quot;, float &quot;cont&quot;</i><tt>)<font color="#E8F0FF"> [v2.04]</font></tt></li>
 </ul>
 
 <b><a href="filters/version.html">Version</a> </b><tt><font color="#E8F0FF">[rgb24]</font></tt>

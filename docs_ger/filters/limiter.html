@@ -1,27 +1,21 @@
-<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
-<html>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "DTD/xhtml1-transitional.dtd">  
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="de" lang="de">
 <head>
- <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
- <meta name="Generator" content="Mozilla/4.06 [en] (Win98; I) [Netscape]">
- <meta name="Author" content="Wilbert Dijkhof">
+ <meta http-equiv="content-type" content="text/html; charset=iso-8859-1" />
+ <meta http-equiv="content-style-type" content="text/css" />
+ <meta name="author" content="Wilbert Dijkhof" />
+ <meta name="date" content="2003-07-09" />
  <title>Limiter AviSynth Filter</title>
- <style type=text/css>
-  A:link { COLOR: #404a58;TEXT-DECORATION: none }
-  A:visited { COLOR: #404a58;TEXT-DECORATION: none }
-  A:active { COLOR: #404a58;TEXT-DECORATION: none }
-  A:hover { COLOR: #e8f0ff; TEXT-DECORATION: underline }
-  .titresmall { color : 000000; font-family: Tahoma, Verdana, Arial, Helvetica, sans-serif; font-size: 16pt; letter-spacing: 0.15em; font-weight: bold; }
- </style>
-</head>
-<body TEXT="#000000" bgcolor="#B6CAC0" LINK="#0000EE" VLINK="#551A8B" ALINK="#FF0000">
-<span class="titresmall"><a name="Limiter"></a>Limiter</span><br><br>
+ <link rel="stylesheet" type="text/css" href="../style.css" />
+</head><body>
+<span class="titresmall"><a name="Limiter"></a>Limiter</span><br /><br />
 
-<tt>Limiter(</tt><i>clip, int min_luma, int max_luma, int min_chroma, int max_chroma</i><tt>)</tt><br><br>
+<tt>Limiter(</tt><i>clip, int min_luma, int max_luma, int min_chroma, int max_chroma</i><tt>)</tt><br /><br />
 
-Dieser Filter ist seit AviSynth 2.5 verf&uuml;gbar. Die Norm CCIR-601 definiert Bereiche an g&uuml;ltigen Pixelwerten f&uuml;r die Darstellung auf einem Fernseher. Diese Bereiche sind  16-236 f&uuml;r die Helligkeitskomponente und 16-240 f&uuml;r die Farbinformationen.<br><br>
+Dieser Filter ist seit AviSynth 2.5 verf&uuml;gbar. Die Norm CCIR-601 definiert Bereiche an g&uuml;ltigen Pixelwerten f&uuml;r die Darstellung auf einem Fernseher. Diese Bereiche sind  16-236 f&uuml;r die Helligkeitskomponente und 16-240 f&uuml;r die Farbinformationen.<br /><br />
 
-Pixelwerte, die au&szlig;erhalb dieses Bereich sind, verursachen Probleme mit manchen Fernsehern. Dieser Filter ist der beste Weg, um diese ung&uuml;ltigen Pixelwert zu entfernen vor dem Kodieren, wenn man sich das Ergebnis auf dem Fernseher betrachten will. Standardm&auml;&szlig;ig setzt dieser Filter Pixelwerte unter 16 auf 16 und &uuml;ber 236 (oder 240) auf 236 (oder 240).<br><br>
+Pixelwerte, die au&szlig;erhalb dieses Bereich sind, verursachen Probleme mit manchen Fernsehern. Dieser Filter ist der beste Weg, um diese ung&uuml;ltigen Pixelwert zu entfernen vor dem Kodieren, wenn man sich das Ergebnis auf dem Fernseher betrachten will. Standardm&auml;&szlig;ig setzt dieser Filter Pixelwerte unter 16 auf 16 und &uuml;ber 236 (oder 240) auf 236 (oder 240).<br /><br />
 
-<form><input type="Button" value="Back" onClick="history.go(-1)"></form>
+<form action=""><input type="button" value="back" onclick="history.go(-1)" /></form>
 </body>
 </html>
