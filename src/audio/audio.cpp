@@ -309,7 +309,7 @@ ConvertToMono::ConvertToMono(PClip _clip)
   : GenericVideoFilter(ConvertAudio::Create(_clip,
   SAMPLE_INT16|SAMPLE_FLOAT, SAMPLE_FLOAT))
 {
- †channels = vi.AudioChannels();
+ channels = vi.AudioChannels();
   vi.nchannels = 1;
   tempbuffer_size=0;
 }

@@ -236,6 +236,10 @@ SOURCE=.\audio\dbesi0.c
 # End Source File
 # Begin Source File
 
+SOURCE=.\audio\paramlist.h
+# End Source File
+# Begin Source File
+
 SOURCE=".\audio\ssrc-convert.cpp"
 # End Source File
 # Begin Source File
@@ -249,6 +253,14 @@ SOURCE=.\audio\ssrc.cpp
 # Begin Source File
 
 SOURCE=.\audio\ssrc.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\audio\supereq.cpp
+# End Source File
+# Begin Source File
+
+SOURCE=.\audio\supereq.h
 # End Source File
 # End Group
 # Begin Group "Video"
