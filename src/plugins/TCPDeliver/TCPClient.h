@@ -43,6 +43,7 @@
 #include "TCPCommon.h"
 #include <winsock2.h>
 #include "avisynth.h"
+#include "TCPCompression.h"
 
 AVSValue __cdecl Create_TCPClient(AVSValue args, void* user_data, IScriptEnvironment* env);
 

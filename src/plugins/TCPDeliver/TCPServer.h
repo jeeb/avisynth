@@ -42,7 +42,7 @@
 #include "winsock2.h"
 #include "avisynth.h"
 #include "resource.h"
-
+#include "TCPCompression.h"
 
 
 
@@ -55,6 +55,7 @@ struct ClientConnection {
   BYTE* pendingData;
   unsigned int pendingBytesSent;
   unsigned int totalPendingBytes;
+  TCPCompression* compression;
 
   void reset() {
     if (isDataPending)
@@ -66,6 +67,9 @@ struct ClientConnection {
     totalPendingBytes = 0;
     isConnected = false;
     isDataPending = false;
+    if (compression)
+      delete compression;
+    compression = new TCPCompression();
   }
 
 };

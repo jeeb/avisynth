@@ -53,7 +53,7 @@ BSC32=bscmake.exe
 # ADD BSC32 /nologo
 LINK32=link.exe
 # ADD BASE LINK32 kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib /nologo /dll /machine:I386
-# ADD LINK32 kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib ws2_32.lib /nologo /dll /machine:I386
+# ADD LINK32 kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib ws2_32.lib lzo/release/lzo.lib huffman/release/huffman.lib /nologo /dll /machine:I386
 
 !ELSEIF  "$(CFG)" == "TCPDeliver - Win32 Debug"
 
@@ -79,7 +79,7 @@ BSC32=bscmake.exe
 # ADD BSC32 /nologo
 LINK32=link.exe
 # ADD BASE LINK32 kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib /nologo /dll /debug /machine:I386 /pdbtype:sept
-# ADD LINK32 kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib ws2_32.lib /nologo /dll /debug /machine:I386 /pdbtype:sept
+# ADD LINK32 kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib ws2_32.lib lzo/debug/lzo.lib huffman/release/huffman.lib /nologo /dll /debug /machine:I386 /pdbtype:sept
 
 !ENDIF 
 
@@ -92,6 +92,10 @@ LINK32=link.exe
 # PROP Default_Filter "cpp;c;cxx;rc;def;r;odl;idl;hpj;bat"
 # Begin Source File
 
+SOURCE=.\huffman.c
+# End Source File
+# Begin Source File
+
 SOURCE=.\StdAfx.cpp
 # End Source File
 # Begin Source File
@@ -101,6 +105,10 @@ SOURCE=.\TCPClient.cpp
 # Begin Source File
 
 SOURCE=.\TCPCommon.cpp
+# End Source File
+# Begin Source File
+
+SOURCE=.\TCPCompression.cpp
 # End Source File
 # Begin Source File
 
@@ -124,6 +132,10 @@ SOURCE=.\avisynth.h
 # End Source File
 # Begin Source File
 
+SOURCE=.\huffman.h
+# End Source File
+# Begin Source File
+
 SOURCE=.\ServerGUICode.h
 # End Source File
 # Begin Source File
@@ -137,6 +149,10 @@ SOURCE=.\TCPClient.h
 # Begin Source File
 
 SOURCE=.\TCPCommon.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\TCPCompression.h
 # End Source File
 # Begin Source File
 

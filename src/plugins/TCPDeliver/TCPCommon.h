@@ -37,7 +37,7 @@
 #ifndef TCP_Common_h
 #define TCP_Common_h
 
-#define TCPDELIVER_MAJOR 1
+#define TCPDELIVER_MAJOR 2
 #define TCPDELIVER_MINOR 1
 
 #include "stdafx.h"
@@ -110,6 +110,9 @@ struct ServerFrameInfo {
   unsigned int compressed_bytes;  // The number of bytes to be transfered after compression.
   unsigned int compression;       // The compression sheme used.
   unsigned int data_size;         // Total size of the uncompressed image in bytes.
+  unsigned int comp_Y_bytes;      // Compressed size of Y-plane (in planar mode)
+  unsigned int comp_U_bytes;      // U-plane
+  unsigned int comp_V_bytes;      // V-plane
 
   unsigned int reserved1;
   unsigned int reserved2;
@@ -121,7 +124,9 @@ struct ServerFrameInfo {
   unsigned int reserved8;
 
   enum {
-    COMPRESSION_NONE = 0          // The image is sent as uncompressed bytes.
+    COMPRESSION_NONE = 0,         // The image is sent as uncompressed bytes.
+    COMPRESSION_DELTADOWN_LZO = 1<<0,    // The image is sent as downwards-delta + lzo compressed data.
+    COMPRESSION_DELTADOWN_HUFFMAN = 1<<1 // The image is sent as downwards-delta + huffman compressed.
   };
 };
 
@@ -195,6 +200,14 @@ struct ClientRequestParity {
 struct ClientCheckVersion {
   int major;
   int minor;
+  int compression_supported;
+  unsigned int reserved2;
+  unsigned int reserved3;
+  unsigned int reserved4;
+  unsigned int reserved5;
+  unsigned int reserved6;
+  unsigned int reserved7;
+  unsigned int reserved8;
 };
 
 /***********************************************************************

@@ -125,28 +125,56 @@ PVideoFrame __stdcall TCPClient::GetFrame(int n, IScriptEnvironment* env) {
     incoming_bytes = fi->data_size;
     // Todo: Insert compression class.
 
-    switch (fi->compression) {
-    case ServerFrameInfo::COMPRESSION_NONE:
-      break;
-    default:
-      env->ThrowError("TCPClient: Unknown compression.");
-    }
-
     env->MakeWritable(&frame);
 
     BYTE* dstp = frame->GetWritePtr();
     BYTE* srcp = (unsigned char*)client->reply->last_reply + sizeof(ServerFrameInfo);
+    TCPCompression* t = 0;
 
-    env->BitBlt(dstp, frame->GetPitch(), srcp, incoming_pitch, frame->GetRowSize(), frame->GetHeight());
-    if (vi.IsYV12()) {
+    switch (fi->compression) {
+      case ServerFrameInfo::COMPRESSION_NONE:
+          t = (TCPCompression*)new TCPCompression();        
+        break;
+      case ServerFrameInfo::COMPRESSION_DELTADOWN_LZO: {
+          t = (TCPCompression*)new PredictDownLZO();
+          break;
+        }
+      case ServerFrameInfo::COMPRESSION_DELTADOWN_HUFFMAN: {
+          t = (TCPCompression*)new PredictDownHuffman();
+          break;
+        }
+      default:
+        env->ThrowError("TCPClient: Unknown compression.");
+    }
+    if (!vi.IsPlanar()) {
+      t->DeCompressImage(srcp, fi->row_size, fi->height, fi->pitch, fi->compressed_bytes);
+      env->BitBlt(dstp, frame->GetPitch(), t->dst, incoming_pitch, frame->GetRowSize(), frame->GetHeight());
+      if (!t->inplace) {
+        _aligned_free(t->dst);
+      }
+      delete t;
+    } else {
+      // Y
+      t->DeCompressImage(srcp, fi->row_size, fi->height, fi->pitch, fi->comp_Y_bytes);
+      env->BitBlt(dstp, frame->GetPitch(), t->dst, incoming_pitch, frame->GetRowSize(), frame->GetHeight());
+      if (!t->inplace) _aligned_free(t->dst);
+
       int uv_pitch = incoming_pitch / 2;
-      srcp += frame->GetHeight() * incoming_pitch;
-      env->BitBlt(frame->GetWritePtr(PLANAR_V), frame->GetPitch(PLANAR_V),
-                  srcp, uv_pitch, frame->GetRowSize(PLANAR_V), frame->GetHeight(PLANAR_V));
 
-      srcp += frame->GetHeight(PLANAR_U) * uv_pitch;
+      // U
+      srcp += fi->comp_Y_bytes;
+      t->DeCompressImage(srcp, fi->row_size/2, fi->height/2, fi->pitch/2, fi->comp_U_bytes);
       env->BitBlt(frame->GetWritePtr(PLANAR_U), frame->GetPitch(PLANAR_U),
-                  srcp, uv_pitch, frame->GetRowSize(PLANAR_U), frame->GetHeight(PLANAR_U));
+                  t->dst, uv_pitch, frame->GetRowSize(PLANAR_U), frame->GetHeight(PLANAR_U));
+      if (!t->inplace) _aligned_free(t->dst);
+
+      // V
+      srcp += fi->comp_U_bytes;
+      t->DeCompressImage(srcp, fi->row_size/2, fi->height/2, fi->pitch/2, fi->comp_V_bytes);
+      env->BitBlt(frame->GetWritePtr(PLANAR_V), frame->GetPitch(PLANAR_V),
+                  t->dst, uv_pitch, frame->GetRowSize(PLANAR_V), frame->GetHeight(PLANAR_V));
+      if (!t->inplace) _aligned_free(t->dst);
+      delete t;
     }
   } else {
     if (client->reply->last_reply_type == INTERNAL_DISCONNECTED)
@@ -285,6 +313,8 @@ TCPClientThread::TCPClientThread(const char* hostname, int port, IScriptEnvironm
   ClientCheckVersion ccv;
   ccv.major = TCPDELIVER_MAJOR;
   ccv.minor = TCPDELIVER_MINOR;
+  ccv.compression_supported = ServerFrameInfo::COMPRESSION_DELTADOWN_LZO |
+    ServerFrameInfo::COMPRESSION_DELTADOWN_HUFFMAN;
   SendRequest(CLIENT_CHECK_VERSION, &ccv, sizeof(ccv));
   GetReply();
 

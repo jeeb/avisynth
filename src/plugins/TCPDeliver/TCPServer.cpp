@@ -168,7 +168,9 @@ void TCPServerListener::Listen() {
 
   ClientConnection s_list[FD_SETSIZE];
   int i;
-
+  if (lzo_init() != LZO_E_OK) { 
+    env->ThrowError("TCPServer: Could not initialize LZO compression library!");
+  }
   ServerReply s;
 
   for (i = 0; i < FD_SETSIZE ; i++)
@@ -261,6 +263,7 @@ void TCPServerListener::AcceptClient(SOCKET AcceptSocket, ClientConnection* s_li
       slot = i;
 
   if (slot >= 0 ) {
+    s_list[slot].reset();
     s_list[slot].s = AcceptSocket;
     s_list[slot].isConnected = true;
 
@@ -364,6 +367,8 @@ void TCPServerListener::SendPendingData(ClientConnection* cc) {
     _RPT0(0, "TCPServer: Could not send packet (SOCKET_ERROR). Connection closed\n", );
     closesocket(cc->s);
     cc->isConnected = false;
+    cc->totalPendingBytes = 0;
+    return;
   }
 
   cc->pendingBytesSent += r;
@@ -383,6 +388,13 @@ void TCPServerListener::CheckClientVersion(ServerReply* s, const char* request) 
     s->setType(REQUEST_DISCONNECT);
   } else {
     s->setType(REQUEST_CONNECTIONACCEPTED);
+  }
+  if (ccv->compression_supported & ServerFrameInfo::COMPRESSION_DELTADOWN_HUFFMAN) {
+    delete s->client->compression;
+    s->client->compression = new PredictDownHuffman();
+  } else if (ccv->compression_supported & ServerFrameInfo::COMPRESSION_DELTADOWN_LZO) {
+    delete s->client->compression;
+    s->client->compression = new PredictDownLZO();
   }
 }
 
@@ -426,7 +438,6 @@ void TCPServerListener::SendFrameInfo(ServerReply* s, const char* request) {
   if (child->GetVideoInfo().IsYV12()) {
     data_size = data_size + data_size / 2;
   }
-  sfi.data_size = data_size;
 
   // Prepare data
   const BYTE* srcp = src->GetReadPtr();
@@ -438,26 +449,60 @@ void TCPServerListener::SendFrameInfo(ServerReply* s, const char* request) {
     data_size = data_size + data_size / 2;
   }
 
-  s->allocateBuffer(sizeof(ServerFrameInfo) + data_size);
-  s->setType(SERVER_SENDING_FRAME);
+  BYTE* dstp;
+  sfi.data_size = data_size;
 
-  BYTE* dstp = s->data + sizeof(ServerFrameInfo);
-  env->BitBlt(dstp, src_pitch, srcp, src_pitch, src_rowsize, src_height);
+  if (!child->GetVideoInfo().IsPlanar()) {
+    env->MakeWritable(&src);
+    
+    sfi.compression = s->client->compression->compression_type;
+    sfi.compressed_bytes = s->client->compression->CompressImage(src->GetWritePtr(), src_rowsize, src_height, src_pitch);
 
-  if (child->GetVideoInfo().IsYV12()) {
-    dstp += src_height * src_pitch;
-    srcp = src->GetReadPtr(PLANAR_V);
-    env->BitBlt(dstp, src_pitch / 2, srcp, src_pitch / 2, src_rowsize / 2, src_height / 2);
+    s->allocateBuffer(sizeof(ServerFrameInfo) + sfi.compressed_bytes);
+    dstp = s->data + sizeof(ServerFrameInfo);
+    env->BitBlt(dstp, 0, s->client->compression->dst, 0, sfi.compressed_bytes, 1);
 
-    dstp += src_height / 2 * src_pitch / 2;
-    srcp = src->GetReadPtr(PLANAR_U);
-    env->BitBlt(dstp, src_pitch / 2, srcp, src_pitch / 2, src_rowsize / 2, src_height / 2);
+    if (!s->client->compression->inplace) {
+      _aligned_free(s->client->compression->dst);
+    }
+   
+  } else {
+    env->MakeWritable(&src);
+    BYTE *dst1, *dst2, *dst3;
+
+    sfi.comp_Y_bytes = s->client->compression->CompressImage(src->GetWritePtr(PLANAR_Y), src_rowsize, src_height, src_pitch);
+    dst1 = s->client->compression->dst;
+
+    sfi.comp_U_bytes = s->client->compression->CompressImage(src->GetWritePtr(PLANAR_U), src_rowsize/2, src_height/2, src_pitch/2);  //FIXME: YV12 only!
+    dst2 = s->client->compression->dst;
+
+    sfi.comp_V_bytes = s->client->compression->CompressImage(src->GetWritePtr(PLANAR_V), src_rowsize/2, src_height/2, src_pitch/2);  //FIXME: YV12 only!
+    dst3 = s->client->compression->dst;
+
+    sfi.compressed_bytes = sfi.comp_Y_bytes + sfi.comp_U_bytes + sfi.comp_V_bytes;
+    s->allocateBuffer(sizeof(ServerFrameInfo) + sfi.compressed_bytes);
+
+    dstp = s->data + sizeof(ServerFrameInfo);
+    sfi.compression = s->client->compression->compression_type;
+
+    env->BitBlt(dstp, 0, dst1, 0, sfi.comp_Y_bytes, 1);
+    env->BitBlt(&dstp[sfi.comp_Y_bytes], 0, dst2, 0, sfi.comp_U_bytes, 1);
+    env->BitBlt(&dstp[sfi.comp_Y_bytes+sfi.comp_U_bytes], 0, dst3, 0, sfi.comp_V_bytes, 1);
+
+    if (!s->client->compression->inplace) {
+      _aligned_free(dst1);
+      _aligned_free(dst2);
+      _aligned_free(dst3);
+    }
   }
+
+  s->setType(SERVER_SENDING_FRAME);
 
   // Send Reply
   memcpy(s->data, &sfi, sizeof(ServerFrameInfo));
 }
 
+// 28 98 88 12
 
 void TCPServerListener::SendAudioInfo(ServerReply* s, const char* request) {
   _RPT0(0, "TCPServer: Sending Audio Info!\n");
