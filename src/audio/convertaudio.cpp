@@ -45,7 +45,7 @@
 // If not, the current clip will be converted to the prefered type.
 PClip ConvertAudio::Create(PClip clip, int sample_type, int prefered_type) 
 {
-  if ((!clip->GetVideoInfo().HasAudio()) || clip->GetVideoInfo().SampleType()&sample_type) {  // Sample type is already ok!
+  if ((!clip->GetVideoInfo().HasAudio()) || clip->GetVideoInfo().SampleType()&(sample_type|prefered_type)) {  // Sample type is already ok!
     return clip;
   }
   else 
