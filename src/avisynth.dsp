@@ -239,6 +239,10 @@ SOURCE=".\audio\avs-soundtouch.h"
 # End Source File
 # Begin Source File
 
+SOURCE=.\audio\convertaudio.cpp
+# End Source File
+# Begin Source File
+
 SOURCE=.\audio\dbesi0.c
 # SUBTRACT CPP /YX /Yc /Yu
 # End Source File
