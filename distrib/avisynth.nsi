@@ -3,8 +3,8 @@
 
 ; NOTE: this .NSI script is designed for NSIS v1.8+
 BrandingText "Avisynth 2 installer."
-Name "AviSynth 2.06"
-OutFile "AviSynth206.exe"
+Name "AviSynth 2.07"
+OutFile "AviSynth207.exe"
 
 EnabledBitmap "on.bmp"
 DisabledBitmap "off.bmp"
@@ -26,14 +26,17 @@ DirShow show ; (make this hide to not let the user change it)
 DirText "Select the directory to install documentation in:"
 ComponentText "AviSynth Installation."
 
+Function .onInit
+SectionSetFlags 3 0
+FunctionEnd
 
+;0
 Section "AviSynth Base (required)" ; (default section)
 ClearErrors
 SetOutPath "$SYSDIR"
 File "..\release\avisynth.dll"
 
 IfErrors dll_not_ok
-
 
 ; Write GPL
 SetOutPath "$INSTDIR"
@@ -84,6 +87,10 @@ Abort
 reg_ok:
 SectionEnd ; end of default section
 
+;1
+SectionDivider
+
+;2
 Section "Documentation (recommended)"
   CreateDirectory "$INSTDIR\docs"
   SetOutPath "$INSTDIR\docs"
@@ -97,6 +104,24 @@ Section "Documentation (recommended)"
   CreateShortCut "$SMPROGRAMS\AviSynth 2\Avisynth Documentation.lnk" "$INSTDIR\docs\index.html"
   CreateShortCut "$SMPROGRAMS\AviSynth 2\Avisynth Online.lnk" "http://avisynth.org"
 SectionEnd
+
+
+;3
+Section "German Documentation"
+  CreateDirectory "$INSTDIR\docs_ger"
+  SetOutPath "$INSTDIR\docs_ger"
+	File "..\docs_ger\*.html"
+  SetOutPath "$INSTDIR\docs_ger\filters"
+	File "..\docs_ger\filters\*.html"
+  CreateDirectory "$INSTDIR\Examples"
+  SetOutPath "$INSTDIR\examples"
+	File "Examples\*.avs"
+  CreateShortCut "$SMPROGRAMS\AviSynth 2\Skript Beispiele.lnk" "$INSTDIR\examples"
+  CreateShortCut "$SMPROGRAMS\AviSynth 2\Deutsche Avisynth Dokumentation.lnk" "$INSTDIR\docs_ger\index.html"
+  CreateShortCut "$SMPROGRAMS\AviSynth 2\Avisynth Online.lnk" "http://avisynth.org"
+SectionEnd
+
+
 
 ; begin uninstall settings/section
 UninstallText "This will remove Avisynth from your system"
@@ -120,6 +145,8 @@ Delete "$SYSDIR\avisynth.dll"
 Delete "$INSTDIR\gpl.txt"
 Delete "$INSTDIR\docs\filters\*.*"
 Delete "$INSTDIR\docs\*.*"
+Delete "$INSTDIR\docs_ger\filters\*.*"
+Delete "$INSTDIR\docs_ger\*.*"
 Delete "$INSTDIR\examples\audio.avs"
 Delete "$INSTDIR\examples\editing.avs"
 Delete "$INSTDIR\examples\processing.avs"

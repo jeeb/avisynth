@@ -2,10 +2,15 @@
 <html>
 <head>
   <title>AviSynth 2 - History</title>
+     
   <meta name="Generator" content="EditPlus">
+  
   <meta name="Author" content="">
+  
   <meta name="Keywords" content="">
+  
   <meta name="Description" content="">
+  
   <style type="text/css">A:link {
 
 COLOR: #404a58;TEXT-DECORATION: none
@@ -33,34 +38,61 @@ COLOR: #e8f0ff; TEXT-DECORATION: underline
 <body bgcolor="#b6c0ca">
 <h1>Changes.</h1>
 <h4>Changes from 2.06</h4>
-- Added <a href="filters/assumerate.html">AssumeSampleRate()</a> to change the samplerate without resampling (yes, this will lead to desync!).<br>
+- Script extensions:  <br><tt>
+- - LeftStr(string, int size), RightStr(string, int size), MidStr(string, int first, int length), FindStr(string, string), RevStr(string), StrLen(string)<br>
+- - Sign(int), sign(float), Nop, Rand([int limit]), Select(index, item0 [,item1...]), Exist(string filename) <br>
+- - VersionNumber(), VersionString()<br>
+- - IsRGB24(clip), IsRGB32(clip), Int(float), Frac(float), Float(int), Value(string), HexValue(string).<br></tt>
+- Strings can be compared using "<" ,">","<=",">=" operators (case insensitive). <br>
+- Color option for Fades , Letterbox, and Addborders.<br>
+- Subtitle alignment and spacing options, added y=-1 centering support (x=-1 undocumented support remains) and defaults for x,y and align vary depending on each other's settings. <br>
+- Optimization for recent BlankClip() RGB24 bug fix. <br>
+- Fixed ceil, floor and round functions.<br>
+- Fixed BlankClip RGB24 with odd widths.<br>
+- Fixed DB scale off by 2x in volume.<br>
+- Added <a href="filters/fade.html">FadeIn / FadeIn2</a> to fade in video
+and audio.<br>
+- Added <a href="filters/assumerate.html">AssumeSampleRate()</a> to change
+the samplerate without resampling (yes, this will lead to desync!).<br>
 - Fixed one frame wrong offset in trim, when second argument is negative.<br>
-- Added abs(integer) and fabs(float) functions to script.<br>
+- Added abs(integer) and abs(float).<br>
 - Fixed '%' (mod) in scripts, so it returns absolute values.<br>
-- Added a boolean to DirectShowSource, so seeking can be manually disabled, if it works very slowly.<br>
-- Added <a href="filters/pointresize.html">PointResize()</a> function. Resamples as "Nearest Neighbour" in Virtual Dub.<br>
+- Added a boolean to DirectShowSource, so seeking can be manually disabled,
+if it works very slowly.<br>
+- Added <a href="filters/pointresize.html">PointResize()</a> function. Resamples
+as "Nearest Neighbour" in Virtual Dub.<br>
 - Added SetWorkingDir() function.<br>
+- Added German documentation.<br>
 <br>
 <h4>Changes from 2.05</h4>
 - Fixed potential crashbug in Resize - real fix instead of previous hack.<br>
 - Default alignment is now 16 bytes, which should be faster on P4.<br>
-- Fixed bug in RGB32 <a href="filters/greyscale.html">greyscale</a>, when with not divideable with 2.<br>
-- Added example scripts.
-- Added installer/uninstaller. No more need to fiddle with .reg files and regedit.<br>
-- Fixed <a href="filters/trim.html">Trim</a>, so negative values works as documented.<br>
-- Fixes to plugin autoloading: - freezed when invalid dll encountered, was locking files unnecessarily, now also loads avisynth plugins with VDF extension.<br>
-- Made forward seeking fallback code in <a href="filters/directshowsource.html">DirectShowSource</a> files - it will not freeze anymore, just be very slow, since it has to decode all inbetween frames!<br>
-- Added <a href="filters/lanczosresize.html">LanczosResize</a> which uses the Lanczos3 algorithm - it provides better quality than <a
+- Fixed bug in RGB32 <a href="filters/greyscale.html">greyscale</a>, when
+with not divideable with 2.<br>
+- Added example scripts. - Added installer/uninstaller. No more need to fiddle
+with .reg files and regedit.<br>
+- Fixed <a href="filters/trim.html">Trim</a>, so negative values works as
+documented.<br>
+- Fixes to plugin autoloading: - freezed when invalid dll encountered, was
+locking files unnecessarily, now also loads avisynth plugins with VDF extension.<br>
+- Made forward seeking fallback code in <a
+ href="filters/directshowsource.html">DirectShowSource</a> files - it will
+not freeze anymore, just be very slow, since it has to decode all inbetween
+frames!<br>
+- Added <a href="filters/lanczosresize.html">LanczosResize</a> which uses
+the Lanczos3 algorithm - it provides better quality than <a
  href="filters/bicubicresize.html">BicubicResize</a> in many cases.<br>
-- Better rounding precision in <a
- href="filters/bicubicresize.html">BicubicResize</a>/<a
+- Better rounding precision in <a href="filters/bicubicresize.html">BicubicResize</a>/<a
  href="filters/bilinearresize.html">BilinearResize</a>.<br>
-- Optimizations to YUY2 <a
- href="filters/bicubicresize.html">BicubicResize</a>/<a
+- Optimizations to YUY2 <a href="filters/bicubicresize.html">BicubicResize</a>/<a
  href="filters/bilinearresize.html">BilinearResize</a>.<br>
-- New <a href="filters/layer.html">ResetMask()</a> filter: sets the mask to "all-opaque" (RGB32 only).<br>
-- <a href="filters/fps.html">ChangeFPS()</a> now changes the framecount (thanks to Xesdeeni).<br>
-- AVI files, that contains an invalid first frame are now rejected - there is no way of handling this situation gracefully. Segmented AVI's automatically skip these segments, and will NOT return an error.<br>
+- New <a href="filters/layer.html">ResetMask()</a> filter: sets the mask
+to "all-opaque" (RGB32 only).<br>
+- <a href="filters/fps.html">ChangeFPS()</a> now changes the framecount (thanks
+to Xesdeeni).<br>
+- AVI files, that contains an invalid first frame are now rejected - there
+is no way of handling this situation gracefully. Segmented AVI's automatically
+skip these segments, and will NOT return an error.<br>
 - Better parameter checks on <a href="filters/crop.html">Crop()</a> and <a
  href="filters/letterbox.html">LetterBox()</a>.<br>
 - Fixed wrap at right side of picture in RGB <a
@@ -74,10 +106,10 @@ format (YUY2, RGB32 or RGB24).<br>
 - Added optional left and right parameters to <a
  href="filters/letterbox.html">Letterbox</a> - parameters are placed after
 the existing to preserve compatibility.<br>
-- Added <a href="filters/ensuresync.html">EnsureVBRMP3Sync(clip)</a>, to
-avoid desync of VBR-compressed mp3-soundtrack. This will slow seeking down
-considerably, but is very useful when using<a href="filters/trim.html"> trim()</a>
-for instance. Always use before<a href="filters/trim.html"> trim()</a>.<br>
+- Added <a href="filters/ensuresync.html">EnsureVBRMP3Sync(clip)</a>, to avoid
+desync of VBR-compressed mp3-soundtrack. This will slow seeking down considerably,
+but is very useful when using<a href="filters/trim.html"> trim()</a>for instance.
+Always use before<a href="filters/trim.html"> trim()</a>.<br>
 - BugFix: Fixed crashbug in Resize functions on some machines.<br>
 - <a href="filters/avisource.html">AviSource</a> always returns last valid
 frame on decompression errors.<br>
@@ -93,8 +125,8 @@ frame on decompression errors.<br>
 - Bumped number of plugins to 50 from 30<br>
 - Avisynth now allocates minimum 16MB cache, or otherwise 1/4th of free physical
 memory.<br>
-- <a href="syntax.html#autoloading">Plugin autoloading</a> (Create string regkey: 
-HKEY_LOCAL_MACHINE\Software\Avisynth\PluginDir) (still in alpha)<br>
+- <a href="syntax.html#autoloading">Plugin autoloading</a> (Create string
+regkey:  HKEY_LOCAL_MACHINE\Software\Avisynth\PluginDir) (still in alpha)<br>
 - Crash-on-exit bugfix in SegmentedAviSource.<br>
 - Audio-related bugfix in AVISource.<br>
 - Bugfix in FilteredResizeH (see bug [ 588402 ]) minor optimizations too.<br>
@@ -111,13 +143,13 @@ Boolean parameter after clip turns it off.<br>
 - Added friendly error message for Layer ops<br>
 - GetLeftChannel - Returns left channel.<br>
 - GetRightChannel - Returns right channel.<br>
-- MonoToStereo(clip1_left,clip2_right) - muxes two clips together as one
-stereo clip.<br>
+- MonoToStereo(clip1_left,clip2_right) - muxes two clips together as one stereo
+clip.<br>
 - MixAudio(clip_1,clip_2,float clip1_volume, float clip2_volume) Mixes two
 audio sources together.<br>
-- Added ConvertBackToYUY2() That only uses chroma from the left pixel to
-avoid shifting chroma color by multiple YUY2-&gt;RGB&gt;YUY2 conversions.
-ConvertToYUY2 remains unchanged.<br>
+- Added ConvertBackToYUY2() That only uses chroma from the left pixel to avoid
+shifting chroma color by multiple YUY2-&gt;RGB&gt;YUY2 conversions. ConvertToYUY2
+remains unchanged.<br>
 - Added Documentation for new parameters<br>
 - Added sound to Loop() function.<br>
 - New function ConvertToMono(clip) - convert stereo to mono.<br>
@@ -148,10 +180,10 @@ bool show_graph=true)<br>
 - AssumeTFF() and AssumeBFF() to force parity<br>
 - Documentation restructured and updated.
 <p>Please report bugs at <a
- href="http://sourceforge.net/projects/avisynth2">Sourceforge Avisynth 2
-page</a> - or - <a
- href="http://forum.doom9.org/forumdisplay.php?s=&amp;forumid=33">Doom9's Avisynth
-forum</a></p>
+ href="http://sourceforge.net/projects/avisynth2">Sourceforge Avisynth 2 page</a>
+- or - <a href="http://forum.doom9.org/forumdisplay.php?s=&amp;forumid=33">Doom9's
+Avisynth forum</a></p>
+<br>
 <br>
 </body>
 </html>
