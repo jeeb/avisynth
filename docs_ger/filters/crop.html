@@ -1,0 +1,57 @@
+<!doctype html public "-//W3C//DTD HTML 4.0 Transitional//EN">
+<html>
+<head>
+<meta name="GENERATOR" content="PPWIZARD version 02.213 on WIN2K, FREE tool for Windows, OS/2, DOS and UNIX by Dennis Bareis (http://www.labyrinth.net.au/~dbareis/ppwizard.htm)">
+<title>Crop / CropBottom Avisynth Filter</title>
+<STYLE type=text/css>
+A:link {
+COLOR: #404a58;TEXT-DECORATION: none
+}
+A:visited {
+COLOR: #404a58;TEXT-DECORATION: none
+}
+A:active {
+COLOR: #404a58;TEXT-DECORATION: none
+}
+A:hover {
+COLOR: #e8f0ff; TEXT-DECORATION: underline
+}
+.titresmall {
+color : 000000;
+font-family: Tahoma, Verdana, Arial, Helvetica, sans-serif;
+font-size: 16pt;
+letter-spacing: 0.15em;
+font-weight: bold;
+}
+</STYLE>
+</head>
+<body bgcolor=b6cac0>
+<span class="titresmall"><a name="Crop">Crop / CropBottom</a></span> 
+<p><tt>Crop(</tt><i>clip, int left, int top, int width, int height</i><tt>)<br>
+  </tt><tt>CropBottom(</tt><i>clip, int count</i><tt>)</tt></p>
+<b> <a href="filters/delayaudio.html"></a></b><tt>Crop</tt> schneidet &uuml;berfl&uuml;ssige 
+Pixel ab. Wenn das Quellvideo beispielsweise eine Aufl&ouml;sung von 720x480 hat 
+und man es auf VideoCD-Aufl&ouml;sung bringen m&ouml;chte, geht man so vor: 
+<pre># Umwandlung CCIR601 zu VCD, mit dem korrekten Seitenverh&auml;ltnis
+ReduceBy2
+Crop(4,0,352,240)
+</pre>
+<p>Das YUY2-Format speichert die Farbinformation gemeinsam f&uuml;r zwei horizontale 
+  Pixel, daher muss in diesem Farbformat<i> left</i> und <i>width</i> geradzahlig 
+  sein. 
+<p>Wenn f&uuml;r <i>width</i> und <i>height</i> negative Zahlen eingegeben werden, 
+  werden diese auch als Offsets behandelt. Zum Beispiel: 
+<pre># 16 pixels von jedem Rand abschneiden unabh&auml;ngig von der Bildgr&ouml;sse:
+Crop(16,16,-16,-16)
+</pre>
+<p></p>
+<p>Die alternative <tt>CropBottom</tt>-Syntax ist n&uuml;tzlich, um bei VHS-Aufnahmen 
+  die defekten untersten Zeilen abzuschneiden, da hier <i>count</i> Linien vom 
+  unteren Rand entfernt werden. </p>
+<p> 
+<FORM>
+  <INPUT TYPE="Button" VALUE="Back"
+onClick="history.go(-1)">
+</form>
+</body>
+</html>

@@ -1,0 +1,51 @@
+<!doctype html public "-//W3C//DTD HTML 4.0 Transitional//EN">
+<html>
+<head>
+<meta name="GENERATOR" content="PPWIZARD version 02.213 on WIN2K, FREE tool for Windows, OS/2, DOS and UNIX by Dennis Bareis (http://www.labyrinth.net.au/~dbareis/ppwizard.htm)">
+<title>ReduceBy2 / HorizontalReduceBy2 / VerticalReduceBy2 Avisynth Filter</title>
+<STYLE type=text/css>
+A:link {
+COLOR: #404a58;TEXT-DECORATION: none
+}
+A:visited {
+COLOR: #404a58;TEXT-DECORATION: none
+}
+A:active {
+COLOR: #404a58;TEXT-DECORATION: none
+}
+A:hover {
+COLOR: #e8f0ff; TEXT-DECORATION: underline
+}
+.titresmall {
+color : 000000;
+font-family: Tahoma, Verdana, Arial, Helvetica, sans-serif;
+font-size: 16pt;
+letter-spacing: 0.15em;
+font-weight: bold;
+}
+</STYLE>
+</head>
+<body bgcolor=b6cac0>
+<span class="titresmall"><a name="ReduceBy2">HorizontalReduceBy2 / VerticalReduceBy2
+/ ReduceBy2</a></span>
+<p><tt>HorizontalReduceBy2(</tt><i>clip</i><tt>)</tt> <br>
+<tt>VerticalReduceBy2(</tt><i>clip</i><tt>)</tt> <br>
+<tt>ReduceBy2(</tt><i>clip</i><tt>)</tt>
+</p>
+<p><tt>HorizontalReduceBy2</tt> verkleinert das Bild auf die halbe Breite, <tt>VerticalReduceBy2</tt> 
+  verkleinert das Bild auf die halbe H&ouml;he. Beide Filter hintereinander verkleinern 
+  das ganze Bild auf die H&auml;lfte, daf&uuml;r kann als Abk&uuml;rzung auch 
+  <tt>ReduceBy2</tt> verwendet werden.</p>
+<p>Der verwendete Filter-Kernel ist (1/4,1/2,1/4), das ist der gleiche wie im 
+  VirtualDub-Filter &quot;2:1 reduction (high quality)". Dabei werden die Aliasing-Probleme 
+  eines (1/2,1/2)-Kernels vermieden. Das VirtualDub-Filter "resize" verwendet 
+  einen anderen Kernel f&uuml;r eine 2:1-Verkleinerung, bei dem aber MPEG-Videos 
+  entstehen, die ganz wenig schlechter aussehen, wahrscheinlich da die Kanten 
+  etwas gesch&auml;rft werden, was f&uuml;r die meisten Codecs von Nachteil ist. 
+</p>
+<FORM>
+<INPUT TYPE="Button" VALUE="Back"
+onClick="history.go(-1)">
+</form>
+</body>
+</html>

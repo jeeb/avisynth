@@ -1,0 +1,54 @@
+<!doctype html public "-//W3C//DTD HTML 4.0 Transitional//EN">
+<html>
+<head>
+<meta name="GENERATOR" content="PPWIZARD version 02.213 on WIN2K, FREE tool for Windows, OS/2, DOS and UNIX by Dennis Bareis (http://www.labyrinth.net.au/~dbareis/ppwizard.htm)">
+<title>ShowFiveVersions Avisynth Filter</title>
+<STYLE type=text/css>
+A:link {
+COLOR: #404a58;TEXT-DECORATION: none
+}
+A:visited {
+COLOR: #404a58;TEXT-DECORATION: none
+}
+A:active {
+COLOR: #404a58;TEXT-DECORATION: none
+}
+A:hover {
+COLOR: #e8f0ff; TEXT-DECORATION: underline
+}
+.titresmall {
+color : 000000;
+font-family: Tahoma, Verdana, Arial, Helvetica, sans-serif;
+font-size: 16pt;
+letter-spacing: 0.15em;
+font-weight: bold;
+}
+</STYLE>
+</head>
+<body bgcolor=b6cac0>
+<span class="titresmall"><a name="ShowFiveVersions">ShowFiveVersions</a></span> 
+<p><tt>ShowFiveVersions(</tt><i>clip1, clip2, clip3, clip4, clip5</i><tt>)</tt></p>
+<p><tt>ShowFiveVersions</tt> nimmt f&uuml;nft Videos und kombinert diese nebeneinander 
+  zu einem Bild. Damit kann das korrekte NTSC-Pulldown-Muster gefunden werden:: 
+</p>
+<pre>
+DoubleWeave()
+# falls notwendig hier noch verkleinern
+a = Pulldown(0,2).Subtitle("0,2")
+b = Pulldown(1,3).Subtitle("1,3")
+c = Pulldown(2,4).Subtitle("2,4")
+d = Pulldown(0,3).Subtitle("0,3")
+e = Pulldown(1,4).Subtitle("1,4")
+ShowFiveVersions(a,b,c,d,e)
+</pre>
+<p>Dadurch werden alle f&uuml;nf Pulldown-Muster mit dem beschreibenden Text nebeneinander 
+  angezeigt. Man schaut sich das Video an und verwendet das Muster welches keine 
+  gemischten Fields erzeugt. Wenn keines funktioniert, handelt es sich um eine 
+  komplizierter Pulldown-Methode, bei der vielleicht <tt>PeculiarBlend</tt> hilft.. 
+</p>
+<FORM>
+<INPUT TYPE="Button" VALUE="Back"
+onClick="history.go(-1)">
+</form>
+</body>
+</html>

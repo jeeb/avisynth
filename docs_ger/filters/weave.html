@@ -1,0 +1,48 @@
+<!doctype html public "-//W3C//DTD HTML 4.0 Transitional//EN">
+<html>
+<head>
+<meta name="GENERATOR" content="PPWIZARD version 02.213 on WIN2K, FREE tool for Windows, OS/2, DOS and UNIX by Dennis Bareis (http://www.labyrinth.net.au/~dbareis/ppwizard.htm)">
+<title>Weave Avisynth Filter</title>
+<STYLE type=text/css>
+A:link {
+COLOR: #404a58;TEXT-DECORATION: none
+}
+A:visited {
+COLOR: #404a58;TEXT-DECORATION: none
+}
+A:active {
+COLOR: #404a58;TEXT-DECORATION: none
+}
+A:hover {
+COLOR: #e8f0ff; TEXT-DECORATION: underline
+}
+.titresmall {
+color : 000000;
+font-family: Tahoma, Verdana, Arial, Helvetica, sans-serif;
+font-size: 16pt;
+letter-spacing: 0.15em;
+font-weight: bold;
+}
+</STYLE>
+</head>
+<body bgcolor=b6cac0>
+<span class="titresmall"><a name="Weave">Weave</a></span>
+<p><tt>Weave(</tt><i>clip</i><tt>)</tt>
+</p>
+<p><tt>Weave</tt> ist das Gegenteil von <tt>SeparateFields</tt>: es nimmt Paare 
+  von Fields vom Quellvideo und kombiniert diese zu Interlaced Frames. Das entstehende 
+  Clip hat die halbe Frame-Rate und die halbe Frame-Anzahl. <tt>Weave</tt> verwendet 
+  die Frame-Parit&auml;ts-Information con Quell-Clip, um zu ermittlen, welches 
+  Field mit der ersten Zeile beginnt. Wenn dies ein falsches Ergebnis liefert, 
+  kann voher <tt>ComplementParity</tt> oder nachher<tt>SwapFields</tt> verwendet 
+  werden. </p>
+<p>Alle AviSynth-Filter f&uuml;hren die Field-Parit&auml;t mit, daher kombiniert 
+  <tt>Weave</tt> die Fields immer in der richtigen Reihenfolge. </p>
+<p>Dieser Filter macht gar nichts, wenn das Clip schon Frame-basiert ist. </p>
+<p>
+<FORM>
+<INPUT TYPE="Button" VALUE="Back"
+onClick="history.go(-1)">
+</form>
+</body>
+</html>

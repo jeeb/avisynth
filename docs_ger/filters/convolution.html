@@ -1,0 +1,81 @@
+<!doctype html public "-//W3C//DTD HTML 4.0 Transitional//EN">
+<html>
+<head>
+<meta name="GENERATOR" content="PPWIZARD version 02.213 on WIN2K, FREE tool for Windows, OS/2, DOS and UNIX by Dennis Bareis (http://www.labyrinth.net.au/~dbareis/ppwizard.htm)">
+<title>GeneralConvolution Avisynth Filter</title>
+<STYLE type=text/css>
+A:link {
+COLOR: #404a58;TEXT-DECORATION: none
+}
+A:visited {
+COLOR: #404a58;TEXT-DECORATION: none
+}
+A:active {
+COLOR: #404a58;TEXT-DECORATION: none
+}
+A:hover {
+COLOR: #e8f0ff; TEXT-DECORATION: underline
+}
+.titresmall {
+color : 000000;
+font-family: Tahoma, Verdana, Arial, Helvetica, sans-serif;
+font-size: 16pt;
+letter-spacing: 0.15em;
+font-weight: bold;
+}
+</STYLE>
+</head>
+<body bgcolor=b6cac0>
+<SPAN class=titresmall><A name=Loop>GeneralConvolution</A></SPAN> 
+<P><tt>GeneralConvolution (</tt><i>clip, int &quot;bias&quot;, string matrix</i><tt>)</tt> 
+<p>Dieses Filter f&uuml;hrt eine Matrix-Multiplikation (Konvolution, Faltung) 
+  durch.<br>
+  <i>matrix</i> kann als 3x3 oder 5x5 Matrix mit 9 oder 25 Ganzzahlen vorliegen.<br>
+  <i>clip</i> muss im RGB32-Format vorliegen.
+<p>&nbsp;
+<table width="75%" border="1">
+  <tr> 
+    <td> 
+      <pre>Einige Beispiele...<br>
+Unsch&auml;rfe:
+GeneralConvolution(0,&quot;
+   10 10 10 10 10
+   10 10 10 10 10 
+   10 10 10 16 10 
+   10 10 10 10 10 
+   10 10 10 10 10 &quot;)<br>
+Horizontaler (Sobel) Kanten-Detektor: 
+GeneralConvolution(0,&quot;
+    1  2  1 
+    0  0  0 
+   -1 -2 -1 &quot;)<br>
+Vertikaler (Sobel) Kanten-Detektor: 
+GeneralConvolution(0,&quot;
+   1  0 -1 
+   2  0 -2 
+   1  0 -1 &quot;)<br>
+Verschiebung um ein Pixel (der &quot;1&quot; kann entsprechen f&uuml;r Links, Rechts, Unten, Oben verschoben werden)
+GeneralConvolution(0,&quot;
+   0 1 0 
+   0 0 0 
+   0 0 0 &quot;)<br>
+Verschiebung um ein halbes Pixel nach oben: 
+GeneralConvolution(0,&quot;
+   0 128   0 
+   0 128   0 
+   0   0   0 &quot;)<br>
+Verschiebung um ein halbes Pixel nach rechts: 
+GeneralConvolution(0,&quot;
+   0   0   0 
+   0 128 128 
+   0   0   0 &quot;)</pre>
+      </td>
+  </tr>
+</table>
+<p>&nbsp;
+<FORM>
+<INPUT TYPE="Button" VALUE="Back"
+onClick="history.go(-1)">
+</form>
+</body>
+</html>

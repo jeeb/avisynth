@@ -1,0 +1,69 @@
+<!doctype html public "-//W3C//DTD HTML 4.0 Transitional//EN">
+<html>
+<head>
+<meta name="GENERATOR" content="PPWIZARD version 02.213 on WIN2K, FREE tool for Windows, OS/2, DOS and UNIX by Dennis Bareis (http://www.labyrinth.net.au/~dbareis/ppwizard.htm)">
+<title>Pulldown Avisynth Filter</title>
+<STYLE type=text/css>
+A:link {
+COLOR: #404a58;TEXT-DECORATION: none
+}
+A:visited {
+COLOR: #404a58;TEXT-DECORATION: none
+}
+A:active {
+COLOR: #404a58;TEXT-DECORATION: none
+}
+A:hover {
+COLOR: #e8f0ff; TEXT-DECORATION: underline
+}
+.titresmall {
+color : 000000;
+font-family: Tahoma, Verdana, Arial, Helvetica, sans-serif;
+font-size: 16pt;
+letter-spacing: 0.15em;
+font-weight: bold;
+}
+</STYLE>
+</head>
+<body bgcolor=b6cac0>
+<span class="titresmall"><a name="Pulldown">Pulldown</a></span> 
+<p><tt>Pulldown(</tt><i>clip, int a , int b</i><tt>)</tt></p>
+<p>Dieser Filter nimmt einfach zwei von f&uuml;nf Frames aus dem Quell-Video. 
+  Die Fame-Rate wird auf 2/5 reduziert. <tt>Pulldown 0,2</tt> nimmt z.B. die Frames 
+  0, 2, 5, 7, 10, 12, und so weiter. </p>
+<p>Dieses Filter sollte nach <tt>DoubleWeave</tt> verwendet werden, der Sinn ist, 
+  dass die Original-Frames von einem Video wiederhergestellt werden, dass mittels 
+  3:2 Pulldown erstellt wurde. </p>
+<p><tt>DoubleWeave</tt> muss daher vorher verwendet werden, da Capture-Karten 
+  die Fields in der falschen Reihenfolge kombinieren. Bei der Betrachtung als 
+  Fields ist die 3:2 pulldown Sequenz einfach "A A B B B C C D D D ...", wobei 
+  "A" bis &quot;D" die Original-Film-Frames darstellen. Die Karte kombiniert allerdings 
+  die Fields ohne auf das Pulldown-Muster zu achten: </p>
+<pre>A   B   C   D   D       (30fps)
+A   B   B   C   D
+</pre>
+<p>In diesem Muster ist der Frame C nie alleine sichtbar. Nach <tt>DoubleWeave</tt> 
+  jedes Field-Paar hat seinen eigenen Frame: </p>
+<pre>A A B B C C D D D       (60fps)
+A B B B B C C D D
+*     *   *     *
+</pre>
+<p>Jetzt hat also jeder Film-Frame zumindest einen Video-Frame. Hier selektiert 
+  <tt>Pulldown</tt> mit Argumenten <tt>0,3</tt> die mit <tt>*</tt> gekennzeichneten 
+  Frames und man erh&auml;lt:</p>
+<pre>A     B   C     D       (24fps)
+A     B   C     D
+</pre>
+<p>... was ja das gew&uuml;nschte ist. </p>
+<p>Das ganze ist kompliziert zum Beschreiben, in der Paxis kann man die richtigen 
+  Parameter ganz schnell durch Probieren finden. (siehe auch Beispiel bei <tt>ShowFiveVersions</tt>)</p>
+<p><tt>Pulldown(</tt><i>a</i><tt>,</tt><i>b</i><tt>)</tt> wird intern umgesetzt 
+  als <tt>SelectEvery(5,</tt><i>a</i><tt>,</tt><i>b</i><tt>).AssumeFrameBased</tt>. 
+</p>
+<p>
+<FORM>
+<INPUT TYPE="Button" VALUE="Back"
+onClick="history.go(-1)">
+</form>
+</body>
+</html>

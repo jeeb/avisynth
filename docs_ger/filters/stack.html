@@ -1,0 +1,62 @@
+<!doctype html public "-//W3C//DTD HTML 4.0 Transitional//EN">
+<html>
+<head>
+<meta name="GENERATOR" content="PPWIZARD version 02.213 on WIN2K, FREE tool for Windows, OS/2, DOS and UNIX by Dennis Bareis (http://www.labyrinth.net.au/~dbareis/ppwizard.htm)">
+<title>StackHorizontal / StackVertical Avisynth Filter</title>
+<STYLE type=text/css>
+A:link {
+COLOR: #404a58;TEXT-DECORATION: none
+}
+A:visited {
+COLOR: #404a58;TEXT-DECORATION: none
+}
+A:active {
+COLOR: #404a58;TEXT-DECORATION: none
+}
+A:hover {
+COLOR: #e8f0ff; TEXT-DECORATION: underline
+}
+.titresmall {
+color : 000000;
+font-family: Tahoma, Verdana, Arial, Helvetica, sans-serif;
+font-size: 16pt;
+letter-spacing: 0.15em;
+font-weight: bold;
+}
+</STYLE>
+</head>
+<body bgcolor=b6cac0>
+<span class="titresmall"><a name="Stack">StackHorizontal / StackVertical</a></span> 
+<p><tt>StackHorizontal(</tt><i>clip1, clip2[,...]</i><tt>)</tt><br>
+  <tt>StackVertical(</tt><i>clip1, clip2[,...]</i><tt>)</tt></p>
+<p>Mit <tt>StackHorizontal</tt> k&ouml;nnen zwei oder mehr Video-Clips von links 
+  nach rechts aneinander gereiht werden, um sie gemeinsam anschauen zu k&ouml;nnen. 
+  Die H&ouml;hen und die Farbformate m&uuml;ssen gleich sein. Die meisten anderen 
+  Information (Audio-Track, Frame-Rate, usw.) stammt vom ersten Clip - siehe auch 
+  <a href="../syntax.html#multiclip" target="_self">hier</a> zu den entstehenden 
+  Clip-Eigenschaften.</p>
+<p> <tt>StackVertical</tt> macht das Gleiche, nur von oben nach unten.</p>
+<table width="75%" border="1">
+  <tr>
+    <td>
+      <pre>Beispiele:
+
+
+# Vergleich eines Videos mit und ohne Rauschfilter
+StackVertical(last, last.SpatialSoften(2,3,6))
+
+
+#                                                  a b
+# die Clips in den Variablen a,b,c,d so anzeigen:  c d
+StackVertical(StackHorizontal(a,b),StackHorizontal(c,d))
+</pre>
+      <p>
+    </td>
+  </tr>
+</table>
+<p>&nbsp;</p><FORM>
+<INPUT TYPE="Button" VALUE="Back"
+onClick="history.go(-1)">
+</form>
+</body>
+</html>

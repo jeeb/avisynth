@@ -1,0 +1,47 @@
+<!doctype html public "-//W3C//DTD HTML 4.0 Transitional//EN">
+<html>
+<head>
+<meta name="GENERATOR" content="PPWIZARD version 02.213 on WIN2K, FREE tool for Windows, OS/2, DOS and UNIX by Dennis Bareis (http://www.labyrinth.net.au/~dbareis/ppwizard.htm)">
+<title>Bob Avisynth Filter</title>
+<STYLE type=text/css>
+A:link {
+COLOR: #404a58;TEXT-DECORATION: none
+}
+A:visited {
+COLOR: #404a58;TEXT-DECORATION: none
+}
+A:active {
+COLOR: #404a58;TEXT-DECORATION: none
+}
+A:hover {
+COLOR: #e8f0ff; TEXT-DECORATION: underline
+}
+.titresmall {
+color : 000000;
+font-family: Tahoma, Verdana, Arial, Helvetica, sans-serif;
+font-size: 16pt;
+letter-spacing: 0.15em;
+font-weight: bold;
+}
+</STYLE>
+</head>
+<body bgcolor=b6cac0>
+<span class="titresmall"><a name="Bob">Bob</a></span> 
+<p><tt>Bob(</tt><i>clip, float &quot;b&quot;, float &quot;c&quot;, float &quot;height&quot;</i><tt>)</tt></p>
+<p><tt>Bob</tt> de-interlaced ein Video auf folgende Art. Jedes field wird auf 
+  ganze frame-Gr&ouml;sse vergr&ouml;ssert, indem zwischen den field-Zeilen interpoliert 
+  wird. Die top fields werden dabei im Vergleich mit den bottom fields etwas nach 
+  oben ger&uuml;ckt. Daher springt das Bild nach dem Filtern nicht mehr rauf und 
+  runter. Allerdings wird in ruhigen Szenen ein Schimmern sichtbar, da die Interpolation 
+  das jeweils andere field nicht sehr exakt rekonstruiert.</p>
+<p>Dieses Filter verwendet <tt>BicubicResize</tt>, die Werte <i>b</i> and <i>c</i> 
+  (siehe <tt>BicubicResize</tt>) k&ouml;nnen entsprechend angepasst werden. Man 
+  kann auch gleichzeitig die vertikale Aufl&ouml;ung mit dem Parameter <i>height</i> 
+  anpassen. </p>
+<p>
+<FORM>
+<INPUT TYPE="Button" VALUE="Back"
+onClick="history.go(-1)">
+</form>
+</body>
+</html>

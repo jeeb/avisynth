@@ -1,0 +1,73 @@
+<!doctype html public "-//W3C//DTD HTML 4.0 Transitional//EN">
+<html>
+<head>
+<meta name="GENERATOR" content="PPWIZARD version 02.213 on WIN2K, FREE tool for Windows, OS/2, DOS and UNIX by Dennis Bareis (http://www.labyrinth.net.au/~dbareis/ppwizard.htm)">
+<title>AlignedSplice / UnalignedSplice Avisynth Filter</title>
+<STYLE type=text/css>
+A:link {
+COLOR: #404a58;TEXT-DECORATION: none
+}
+A:visited {
+COLOR: #404a58;TEXT-DECORATION: none
+}
+A:active {
+COLOR: #404a58;TEXT-DECORATION: none
+}
+A:hover {
+COLOR: #e8f0ff; TEXT-DECORATION: underline
+}
+.titresmall {
+color : 000000;
+font-family: Tahoma, Verdana, Arial, Helvetica, sans-serif;
+font-size: 16pt;
+letter-spacing: 0.15em;
+font-weight: bold;
+}
+</STYLE>
+<link ">
+<link href="as">
+</head>
+<body bgcolor=b6cac0>
+<span class="titresmall"><a name="Splice">AlignedSplice / UnalignedSplice</a></span> 
+<p><tt>AlignedSplice(</tt><i>clip1, clip2[,...]</i><tt>)</tt><br>
+  <tt>UnAlignedSplice(</tt><i>clip1, clip2[,...]</i><tt>)</tt></p>
+<p><tt>AlignedSplice</tt> und <tt>UnalignedSplice</tt> f&uuml;gen zwei oder mehrere 
+  Clips hintereinander. Der Unterschied zwischen beiden besteht in der Behandlung 
+  des Audio-Tracks. <tt>UnalignedSplice</tt> f&uuml;gt die Audio-Tracks aneinander, 
+  ohne die Synchronisation zum Video zu beachten. <tt>AlignedSplice</tt> schneidet 
+  den ersten Audio-Track ab oder f&uuml;gt Stille ein, um sicherzustellen, dass 
+  der zweite Track synchron zum Video bleibt.</p>
+<p><tt>UnalignedSplice</tt> sollte verwendet werden, wenn die verwendeten Soundtracks 
+  urspr&uuml;nglich zusammenh&auml;ngend waren (zum Beispiel bei Dateien, die 
+  mit einem Capture-Programm aufgenommen wurden). Kleine Fehler im Timing k&ouml;nnen 
+  sonst zu Spr&uuml;ngen im Audio-Teil f&uuml;hren, wenn hier <tt>AlignedSplice</tt> 
+  verwendet wird.</p>
+<p>AviSynth stellt die Operatoren <tt>+</tt> und <tt>++</tt> als Abk&uuml;rzungen 
+  f&uuml;r <tt>UnalignedSplice</tt> und <tt>AlignedSplice</tt> zur Verf&uuml;gung. 
+</p>
+<p>Siehe auch <a href="../syntax.html#multiclip" target="_self">hier</a> zu den 
+  entstehenden Clip-Eigenschaften.</p>
+<table width="75%" border="1">
+  <tr>
+    <td>
+      <p>Beispiel 1:</p>
+      <pre># Segmente einer Aufnahme zu einem Clip zusammenf&uuml;gen
+UnalignedSplice(AVISource("cap1.avi"),AVISource("cap2.avi"),AVISource("cap3.avi"))
+# oder: AVISource("cap1.avi") + AVISource("cap2.avi") + AVISource("cap3.avi")
+</pre>
+      <p>Beispiel 2:</p>
+      <pre># drei Szenen aus einem Clip schneiden und diese in einer anderen Reihenfolge zusammenf&uuml;gen
+AVISource("video.avi")
+edited_video = Trim(2000,2500) ++ Trim(3000,3500) ++ Trim(1000,1500)
+</pre>
+      <p>
+    </td>
+  </tr>
+</table>
+<p>&nbsp;</p>
+<FORM>
+<INPUT TYPE="Button" VALUE="Back"
+onClick="history.go(-1)">
+</form>
+</body>
+</html>

@@ -1,0 +1,138 @@
+<!doctype html public "-//W3C//DTD HTML 4.0 Transitional//EN">
+<html>
+<head>
+<meta name="GENERATOR" content="PPWIZARD version 02.213 on WIN2K, FREE tool for Windows, OS/2, DOS and UNIX by Dennis Bareis (http://www.labyrinth.net.au/~dbareis/ppwizard.htm)">
+<title>Layer Avisynth Filter</title>
+<STYLE type=text/css>
+A:link {
+COLOR: #404a58;TEXT-DECORATION: none
+}
+A:visited {
+COLOR: #404a58;TEXT-DECORATION: none
+}
+A:active {
+COLOR: #404a58;TEXT-DECORATION: none
+}
+A:hover {
+COLOR: #e8f0ff; TEXT-DECORATION: underline
+}
+.titresmall {
+color : 000000;
+font-family: Tahoma, Verdana, Arial, Helvetica, sans-serif;
+font-size: 16pt;
+letter-spacing: 0.15em;
+font-weight: bold;
+}
+</STYLE>
+</head>
+<body bgcolor=b6cac0>
+<span class="titresmall"><a name="Layer">Layer</a></span> <span class="titresmall"><tt><font color="#e8f0ff">[yuy2][rgb32]</font></tt></span> 
+<p><tt>Layer(</tt><i>base_clip, overlay_clip, string &quot;op&quot;, int &quot;level&quot;, 
+  int &quot;x&quot;, int &quot;y&quot;, int &quot;threshold&quot;, bool &quot;use_chroma&quot;</i><tt>)</tt></p>
+<p>Dieses Filter kann zwei Clips mit unterschiedlicher Gr&ouml;sse (aber mit gleichem 
+  Farbformat) mischen, wobei verschiedene Mischmethoden verwendet werden k&ouml;nnen. 
+  F&uuml;r eine Pixel-basierte Transparenz-Maske wird der vierte Farbkanal beim 
+  Format RGB32 (der A- oder alpha-Kanal) verwendet.</p>
+<p><i>Base_clip</i>: das unten liegende Clip, der auch die Gr&ouml;sse und die 
+  anderen Video- und Audio-Eigenschaften des entstehenden Clips bestimmt.<br>
+  <i>Overlay_clip</i>: das Clip welches zum <i>Base_clip</i> dazugemischt wird.<br>
+  <i>op</i>: die Mischoperation, die durchgef&uuml;hrt wird. Das kann sein: &quot;add&quot; 
+  (Addieren), &quot;subtract&quot; (Subtrahieren), &quot;brighten&quot; (Aufhellen), 
+  &quot;darken&quot; (Verdunkeln), &quot;fast&quot; (die Schnellvariante), &quot;mul&quot; 
+  (Multiplizieren) <br>
+  <i>level</i>: 0-255, gibt die St&auml;rke der durchgef&uuml;hrten Operation 
+  an. 0: das base_clip wird nicht ver&auml;ndert, 255: die maximale St&auml;rke 
+  wird verwendet<br>
+  <i>x, y</i>: die Verschiebung des overlay_clip gegen&uuml;ber dem base_clip.<br>
+  <i>threshold</i>: gibt es nur f&uuml;r &quot;lighten&quot; and &quot;darken&quot; 
+  (ein Schwellwert)<br>
+  <i>use_chroma</i>: gibt an, ob auch die Farbinformation von overlay_clip verwendet 
+  wird, der Standardwert ist <i>use_chroma=true</i> (Farbe wird verwendet). Bei 
+  <i>use_chroma=false</i> wird nur die Helligkeitsinformation verwendet.</p>
+<p>Es gibt einige Unterschiede vom Verhalten und den erlaubten Parametern, die 
+  vom Farbformat und der verwendeten Mischoperation abh&auml;ngen:<br>
+  <b><br>
+  o</b> Bei YUY2 gibt es keinen alpha-Kanal, daher auch keine Transparenz-Maske. 
+  Das Verhalten ist also so, als ob die Maske &uuml;berall undurchsichtig w&auml;re.<br>
+  <b><br>
+  o</b> Bei RGB32 wird der alpha-Kanal vom <i>overlay_clip</i> mit <i>level</i> 
+  multipliziert, der effektive Wert f&uuml;r alpha f&uuml;r ein Pixel ist also 
+  alpha = (alpha_mask * level) / 256. Daher muss f&uuml;r eine Operation mit voller 
+  St&auml;rke alpha und <i>level</i> gleich 255 sein.</p>
+<p>Diese Operationen verhalten sich f&uuml;r RGB32 und YUY2 gleich:</p>
+<table width="75%" border="1">
+  <tr> 
+    <td> 
+      <pre>&quot;fast&quot;: <i>use_chroma</i> muss TRUE sein, <i>level</i> und <i>threshold</i> werden nicht verwendet.
+        Das Ergebnis ist einfach der Mittelwert zwischen <i>base_clip</i> und <i>overlay_clip</i>.
+
+&quot;add&quot;:  <i>threshold</i> wird nicht verwendet. Der Unterschied zwischen <i>base_clip</i> und <i>overlay_clip</i> wird<br>        mit alpha multipliziert und zum <i>base_clip</i> dazugez&auml;hlt.
+        alpha=0 -&gt; nur das <i>base_clip</i> ist sichtbar,
+        alpha=128 -&gt; <i>base_clip</i> und <i>overlay_clip</i> werden gleichwertig gemischt,
+        alpha=255 -&gt; nur das <i>overlay_clip</i> ist sichtbar.
+
+&quot;subtract&quot;: das gleich wie bei &quot;add&quot;, allerdings wird das <i>overlay_clip</i> vorher invertiert.</pre>
+    </td>
+  </tr>
+</table>
+<p>Diese Operationen arbeiten (anscheinend) nur in YUY2 korrekt:</p>
+<table width="75%" border="1">
+  <tr> 
+    <td> 
+      <pre>&quot;mul&quot;: <i>threshold</i> wird nicht verwendet. Das <i>base_clip</i> wird so wie das <i>overlay_clip</i> &quot;eingef&auml;rbt&quot;, <i>use_chroma</i> sollte also TRUE sein.
+       alpha=0 -&gt; nur das <i>base_clip</i> sichtbar, alpha=255 -&gt; ungef&auml;hr die gleiche Helligkeit wie das <i>base_clip</i><br>       aber mit den Farben vom <i>overlay_clip</i>
+
+&quot;lighten&quot;: <i>use_chroma</i> muss TRUE sein. F&uuml;hrt die gleiche Operation wie &quot;add&quot; durch, aber nur wenn
+           das Ergebnus HELLER als das <i>base_clip</i> ist, wird der neue Wert auch verwendet.
+           Mit einem hohen <i>threshold</i> ist die Operation wahrscheinlicher,<br>           mit <i>threshold</i>=255 ist das Ergbnis das gleiche wie &quot;add&quot;,
+           mit <i>threshold</i>=0 wird das <i>base_clip</i> eher unver&auml;ndert gelassen,
+           abh&auml;ngig von der Differenz zwischen <i>base_clip </i>und <i>overlay_clip</i>.
+
+&quot;darken&quot;:  das gleich wie &quot;lighten&quot;, allerdings wird das Ergebnis nur verwendet, wenn der neue Wert DUNKLER als <i>base_clip</i> ist.</pre>
+    </td>
+  </tr>
+</table>
+<br>
+<p></p>
+Siehe auch <a href="../syntax.html#multiclip" target="_self">hier</a> zu den entstehenden 
+Clip-Eigenschaften. 
+<hr>
+<p><span class="titresmall"><a name="Mask">Mask</a><tt><font color="#e8f0ff"> 
+  [rgb32]</font></tt></span></p>
+<p><tt>Mask(</tt><i>clip, mask_clip</i><tt>)</tt></p>
+<p>Setzt in <i>clip</i> eine definierte alpha-Maske (zur Verwendung mit <tt>Layer</tt>, 
+  das <i>mask_clip</i> wird auf Grauwerte umgewandelt und diese werden als Maske 
+  (alpha-Kanal) vom RGB32 verwendet. Bei diesem Kanal bedeutet &quot;schwarz&quot; 
+  v&ouml;llig durchsichtig, weiss bedeutet v&ouml;llig undurchsichtig.<br>
+</p>
+<hr>
+<p><span class="titresmall"><a name="ResetMask">ResetMask</a><tt><font color="#e8f0ff"> 
+  [rgb32]</font></tt></span></p>
+<p><tt>ResetMask(</tt><i>clip</i><tt>)</tt></p>
+<p>Setzt die alpha-Maske vom<i> clip</i> komplett auf undurchsichtig (zur Verwendung 
+  mit <tt>Layer</tt>).<br>
+</p>
+<table width="75%" border="1">
+  <tr> 
+    <td> 
+      <pre>Der alpha-Kanal eines RGB32-Clip ist nicht immer in einem definierten Zustand (abh&auml;ngig von der Quelle),<br>dieses Filter ist die einfachste Art, eine komplett &quot;weisse&quot; Maske zu setzen:
+
+clip=ResetMask(clip)</pre>
+    </td>
+  </tr>
+</table>
+<p></p>
+<hr>
+<p><span class="titresmall"><a name="ColorKeyMask">ColorKeyMask</a><tt><font color="#e8f0ff"> 
+  [rgb32]</font></tt></span></p>
+<p><tt>ColorKeyMask(</tt><i>clip, int color, int tolerance</i><tt>)</tt></p>
+<p>Setzt den alpha-Kanal (&auml;hnlich wie auch <i>Mask</i>), allerdings durch 
+  Vergleichen der Farben. Jedes Pixel mit einem Farbunterschied, der kleiner als 
+  <i>tolerance</i> ist, wird auf transparent gesetzt, andernfalls unver&auml;ndert 
+  gelassen (es wird NICHT auf undurchsichtigt gesetzt).</p>
+<FORM>
+  <INPUT TYPE="Button" VALUE="Back"
+onClick="history.go(-1)">
+</form>
+</body>
+</html>

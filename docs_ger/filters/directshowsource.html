@@ -1,0 +1,65 @@
+<!doctype html public "-//W3C//DTD HTML 4.0 Transitional//EN">
+<html>
+<head>
+<meta name="GENERATOR" content="PPWIZARD version 02.213 on WIN2K, FREE tool for Windows, OS/2, DOS and UNIX by Dennis Bareis (http://www.labyrinth.net.au/~dbareis/ppwizard.htm)">
+<title>DirectShowSource Avisynth Filter</title>
+<STYLE type=text/css>
+A:link {
+COLOR: #404a58;TEXT-DECORATION: none
+}
+A:visited {
+COLOR: #404a58;TEXT-DECORATION: none
+}
+A:active {
+COLOR: #404a58;TEXT-DECORATION: none
+}
+A:hover {
+COLOR: #e8f0ff; TEXT-DECORATION: underline
+}
+.titresmall {
+color : 000000;
+font-family: Tahoma, Verdana, Arial, Helvetica, sans-serif;
+font-size: 16pt;
+letter-spacing: 0.15em;
+font-weight: bold;
+}
+</STYLE>
+</head>
+<body bgcolor=b6cac0>
+<span class="titresmall"><a name="DirectShowSource">DirectShowSource</a></span> 
+<p><tt>DirectShowSource(</tt><i>string filename, int fps, bool seek</i><tt>)</tt></p>
+<p><tt>DirectShowSource</tt> &ouml;ffnet <i>filename</i> mittels DirectShow, das 
+  ist das gleiche Multimedia-Wiedergabe-System, das auch der Windows Media Player 
+  verwendet. Daher k&ouml;nnen die meisten Formate gelesen werden, welche vom 
+  Media Player abgespielt werden, auch MPEG, MP3 und QuickTime, und AVIs, welchen 
+  von <tt>AVISource</tt> nicht unterst&uuml;tzt werden (DV type 1). Man sollte 
+  immer zuerst versuchen, die Datei mit <tt>AVISource</tt> versuchen.. </p>
+<p> Es gibt einige Probleme: </p>
+<ul>
+  <li>Kein Audio</li>
+  <li>Keine GRF-Dateien</li>
+  <li>Manche Decoder (z.B. MS MPEG-4) erzeugen ein Video, dass am Kopf steht. 
+    Man muss dann <tt>FlipVertical</tt> verwenden. </li>
+  <li>DirectShow Videodekoder m&uuml;ssen frame-genaues Suchen nicht unterst&uuml;tzen 
+    (die meisten tun es auch nicht). So lange man daher einen Teil des Videos 
+    sequentiell verwendet, funktioniert alles, kompliziertere Operationen k&ouml;nnen 
+    jedoch fehlschlagen. Diese Beschr&auml;nkung gilt nicht f&uuml;r AVIs oder 
+    ander frame-genaue DirectShow Dekoder.</li>
+  <li>DirectShow Videodekoders m&uuml;ssen nicht einmal die frame-Rate zur&uuml;ckgeben. 
+    Die meisten machen es zwar, aber z.B. der ASF Dekoder nicht, in diesen F&auml;llen 
+    muss die Rate manuell angegeben werden:<br>
+    <tt>DirectShowSource("video.asf", fps=15)</tt>. </li>
+  <li>Der Microsoft DV Codec wird erkannt und auf das Dekodieren in voller Aufl&ouml;sung 
+    eingestellt.</li>
+</ul>
+<p>Vorw&auml;rts suchen kann durchgef&uuml;hrt werden, ist aber sehr langsam. 
+  Beim R&uuml;ckw&auml;rtssuchen wird eine Warnung angezeigt, wenn das Video relativ 
+  zur Bildnummer asynchron ist. Wenn diese Suchfunktion sehr langsam ist, kann 
+  sie mit &quot;seek=false" abgeschaltet werden.<tt><font color="#e8f0ff"> [v 
+  2.07]</font></tt> 
+<FORM>
+<INPUT TYPE="Button" VALUE="Back"
+onClick="history.go(-1)">
+</form>
+</body>
+</html>

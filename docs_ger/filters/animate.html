@@ -1,0 +1,67 @@
+<!doctype html public "-//W3C//DTD HTML 4.0 Transitional//EN">
+<html>
+<head>
+<meta name="GENERATOR" content="PPWIZARD version 02.213 on WIN2K, FREE tool for Windows, OS/2, DOS and UNIX by Dennis Bareis (http://www.labyrinth.net.au/~dbareis/ppwizard.htm)">
+<title>Animate Avisynth Filter</title>
+<STYLE type=text/css>
+A:link {
+COLOR: #404a58;TEXT-DECORATION: none
+}
+A:visited {
+COLOR: #404a58;TEXT-DECORATION: none
+}
+A:active {
+COLOR: #404a58;TEXT-DECORATION: none
+}
+A:hover {
+COLOR: #e8f0ff; TEXT-DECORATION: underline
+}
+.titresmall {
+color : 000000;
+font-family: Tahoma, Verdana, Arial, Helvetica, sans-serif;
+font-size: 16pt;
+letter-spacing: 0.15em;
+font-weight: bold;
+}
+</STYLE>
+</head>
+<body bgcolor=b6cac0>
+<span class="titresmall"><a name="Animate">Animate</a></span> 
+<p><tt>Animate(</tt><i>clip, int start_frame,int end_frame, string filtername, 
+  start_args, end_args</i><tt>)</tt></p>
+<p><tt>Animate</tt> ist ein &quot;meta-filter&quot;. Das durch <i>filter</i> angegebene 
+  Filter wird mit kontinuirlich ge&auml;nderten Werten ausgf&uuml;hrt. Bei frame 
+  <i>start-frame</i> und davor, <i>filter</i> wird mit den <i>start-args</i>-Argumenten 
+  ausgef&uuml;hrt. Beim frame <i>end-frame</i> und sp&auml;ter wird <i>filter</i> 
+  mit den <i>end-args</i>-Argumenten ausgef&uuml;hrt. Dazwischen werden die Argumente 
+  linear interpoliert um einen weichen &Uuml;bergang zu erhalten.</p>
+<p><i>Filter</i> muss in Anf&uuml;hrungsstrichen stehen, keine Klammern um die 
+  zwei Argumente-Listen. Zeichenketten und Video-Clips k&ouml;nnen nicht interpoliert 
+  werden und m&uuml;ssen daher bei beiden Argumentlisten gleich sein OOP-Notation 
+  oder implizites <tt>last</tt> d&uuml;rfen nicht verwendet werden. </p>
+<p>Dieses Filter bearbeitet einen sich ver&auml;ndernden Audio-Teil nicht richtig, 
+  es sollte daher nicht mit Filtern verwendet werden, die den Audio-Teil ver&auml;ndern. 
+  Weiters darf sich die frame-G&ouml;sse nicht &auml;ndern.</p>
+<p>Beispiele: </p>
+<pre># eine Laufschrift-Version vom "Version"-Video
+ver = Version()
+return Animate(0,149,"Crop", ver,0,0,64,32, ver,448,0,64,32)
+
+# auf Weiss blenden
+Animate(100,200,"Levels", last,0,1,255,0,255, last,0,1,255,255,255)
+
+# Zur Mitte eines 320x240 Videos zoomen, beginnend bei Vergr&ouml;sserung 1:1 im frame 100
+# am Ende mit 4:1 Vergr&ouml;sserung bei frame 200
+Animate(100,200,"BicubicResize",last,0,0,320,240,320,240,last,120,90,80,60,320,240)
+
+# Den Text "Hello, World!" herauszoomen aus der Bildmitte eines 320x240 Videos
+Animate(0,48,"Subtitle", last,"Hello, World!",160,120,0,99999,"Arial",0,
+last,"Hello, World!",25,130,0,99999,"Arial",48)
+</pre>
+<p>
+<FORM>
+<INPUT TYPE="Button" VALUE="Back"
+onClick="history.go(-1)">
+</form>
+</body>
+</html>

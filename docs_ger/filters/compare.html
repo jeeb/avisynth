@@ -1,0 +1,54 @@
+<!doctype html public "-//W3C//DTD HTML 4.0 Transitional//EN">
+<html>
+<head>
+<meta name="GENERATOR" content="PPWIZARD version 02.213 on WIN2K, FREE tool for Windows, OS/2, DOS and UNIX by Dennis Bareis (http://www.labyrinth.net.au/~dbareis/ppwizard.htm)">
+<title>Compare Avisynth Filter</title>
+<STYLE type=text/css>
+A:link {
+COLOR: #404a58;TEXT-DECORATION: none
+}
+A:visited {
+COLOR: #404a58;TEXT-DECORATION: none
+}
+A:active {
+COLOR: #404a58;TEXT-DECORATION: none
+}
+A:hover {
+COLOR: #e8f0ff; TEXT-DECORATION: underline
+}
+.titresmall {
+color : 000000;
+font-family: Tahoma, Verdana, Arial, Helvetica, sans-serif;
+font-size: 16pt;
+letter-spacing: 0.15em;
+font-weight: bold;
+}
+</STYLE>
+</head>
+<body bgcolor=b6cac0>
+<span class="titresmall"><a name="Compare">Compare</a></span> 
+<p><tt>Compare(</tt><i>clip_filtered, clip_original, string &quot;channels&quot;, 
+  string &quot;logfile&quot;, bool &quot;show_graph&quot;</i><tt>)</tt>
+<p> <tt>Compare</tt> erm&ouml;glicht einen Vergleich zwischen einem gefilterten 
+  Clip und dem Original. Dazu wird der Text und eine Grafik (wenn show_graph = 
+  true) ausgegeben (Mean Absolute Difference, Mean Difference & PSNR). Der string 
+  <i>channels</i> ist eine Kombination aus R,G,B[,A] oder Y,U,V , je nach dem 
+  Farbformat der Quell-Clips. Ein leerer String wird als "YUV" oder"RGB" interpretiert.Wenn 
+  <i>logfile</i> vorhanden ist, erfolgt die Ausgabe des Textes nur in diese Datei, 
+  dies ist viel schneller und besonders n&uuml;tzlich beim Vergleich von l&auml;ngeren 
+  Clips.
+<p> Beispiele:
+<pre>#Zeigt die Unterschiede am Bildschirm an
+Compare(clip1,clip2)
+#erzeugt eine Datei:
+Compare(clip1,clip2,"","compare.log")
+#Vergleicht nur das Farbsignal von zwei YUY2 clips.
+Compare(clip1,clip2,"UV")
+</pre>
+<p>
+<FORM>
+<INPUT TYPE="Button" VALUE="Back"
+onClick="history.go(-1)">
+</form>
+</body>
+</html>

@@ -1,0 +1,51 @@
+<!doctype html public "-//W3C//DTD HTML 4.0 Transitional//EN">
+<html>
+<head>
+<meta name="GENERATOR" content="PPWIZARD version 02.213 on WIN2K, FREE tool for Windows, OS/2, DOS and UNIX by Dennis Bareis (http://www.labyrinth.net.au/~dbareis/ppwizard.htm)">
+<title>Subtitle Avisynth Filter</title>
+<STYLE type=text/css>
+A:link {
+COLOR: #404a58;TEXT-DECORATION: none
+}
+A:visited {
+COLOR: #404a58;TEXT-DECORATION: none
+}
+A:active {
+COLOR: #404a58;TEXT-DECORATION: none
+}
+A:hover {
+COLOR: #e8f0ff; TEXT-DECORATION: underline
+}
+.titresmall {
+color : 000000;
+font-family: Tahoma, Verdana, Arial, Helvetica, sans-serif;
+font-size: 16pt;
+letter-spacing: 0.15em;
+font-weight: bold;
+}
+</STYLE>
+</head>
+<body bgcolor=b6cac0>
+<span class="titresmall"><a name="Subtitle">Subtitle</a></span> 
+<p><tt>Subtitle(</tt><i>clip, string text, int &quot;x&quot;, int &quot;y&quot;, 
+  int &quot;first_frame&quot;, int &quot;last_frame&quot;, string &quot;font&quot;, 
+  int &quot;size&quot;, int &quot;text_color&quot;, int &quot;halo_color&quot;</i><tt>)</tt><br>
+  <tt>Subtitle(</tt><i>clip, string "text"</i><tt>)</tt></p>
+<p>Dieses Filter schreibt eine Zeile Text (mit Anti-Aliasing = Kantengl&auml;ttung) 
+  auf einen Bereich von Frames. Wenn man mehr als einen Untertitel braucht oder 
+  mehrzeiligen Text braucht, muss man mehrere <tt>Subtitle</tt>-Filter hintereinander 
+  f&uuml;gen. Dieses Filter ist eher nur f&uuml;r einfache Anwendungen gedacht. 
+</p>
+<p>Die Text- und Halo-Farbe m&uuml;ssen als Hexadezimale RGB-Werte (wie in HTML, 
+  nur mit $ statt #) angegeben werden</p>
+<p>Die kurze Form ist n&uuml;tzlich, wenn nur eine schnelle Beschriftung der Frames 
+  stattfinden soll, wobei das genaue Aussehen egal ist. </p>
+<p>Dieses Filter wird intern auch f&uuml;r <tt>Version</tt>, zum R&uuml;ckmelden 
+  von Fehlermeldungen und bei <tt>ShowFrameNumber</tt> verwendet. </p>
+<p>
+<FORM>
+<INPUT TYPE="Button" VALUE="Back"
+onClick="history.go(-1)">
+</form>
+</body>
+</html>

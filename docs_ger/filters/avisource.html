@@ -1,0 +1,73 @@
+<!doctype html public "-//W3C//DTD HTML 4.0 Transitional//EN">
+<html>
+<head>
+<meta name="GENERATOR" content="PPWIZARD version 02.213 on WIN2K, FREE tool for Windows, OS/2, DOS and UNIX by Dennis Bareis (http://www.labyrinth.net.au/~dbareis/ppwizard.htm)">
+<title>AVISource / OpenDMLSource / AVIFileSource / WAVSource Avisynth Filter</title>
+<STYLE type=text/css>
+A:link {
+COLOR: #404a58;TEXT-DECORATION: none
+}
+A:visited {
+COLOR: #404a58;TEXT-DECORATION: none
+}
+A:active {
+COLOR: #404a58;TEXT-DECORATION: none
+}
+A:hover {
+COLOR: #e8f0ff; TEXT-DECORATION: underline
+}
+.titresmall {
+color : 000000;
+font-family: Tahoma, Verdana, Arial, Helvetica, sans-serif;
+font-size: 16pt;
+letter-spacing: 0.15em;
+font-weight: bold;
+}
+</STYLE>
+</head>
+<body bgcolor=b6cac0>
+<span class="titresmall"><a name="AVISource">AVISource / OpenDMLSource / AVIFileSource 
+/ WAVSource</a></span> 
+<p><tt>AVISource(</tt><i>string filename[,...], bool &quot;audio&quot;, string &quot;pixel_type&quot;</i><tt>)<br>
+  </tt><tt>OpenDMLSource(</tt><i>string filename[,...], bool &quot;audio&quot;, string &quot;pixel_type&quot;</i><tt>)<br>
+  </tt><tt>AVIFileSource(</tt><i>string filename[,...], bool &quot;audio&quot;, string &quot;pixel_type&quot;</i><tt>)<br>
+  </tt><tt>WAVSource(</tt><i>string filename[,...]</i><tt>)</tt></p>
+<p><tt>AVISource</tt> verwendet als Argumente ein oder mehrere Dateinamen in Anf&uuml;hrungsstrichen, 
+  und liest die Dateien entweder mit dem Video-for-Windows "AVIFile" Interface, 
+  oder mit dem in AviSynth eingebauten OpenDML-Code (von VirtualDub). Dieses Filter 
+  kann jedes AVI lesen, wof&uuml;r ein AVIFile handler vorhanden ist. Es k&ouml;nnen 
+  also nicht nur AVI sondern auch WAV, AVS (Avisynth script) und VDR (VirtualDub 
+  frameserver) Dateien ge&ouml;ffnet werden. Wenn mehrere Dateien angegeben werden, 
+  werden diese mit <tt>UnalignedSplice</tt> aneinander gef&uuml;gt. </p>
+<p>Das <tt>AVISource</tt> Filter untersucht den Typ und gibt dann entweder an 
+  den AVIFile handler oder den OpenDML weiter. Bei Problemen mit einem davon kann 
+  auch direkt <tt>OpenDMLSource</tt> und <tt>AVIFileSource</tt> verwendet werden. 
+  Jeder kann normale AVI (&lt; 2GB) lesen, nur der OpenDML handler kann gr&ouml;ssere 
+  AVI lesen, nur der AVIFile handler kann andere Typen wie WAV, VDR und AVS lesen.</p>
+<p>Bis zu v2.04 war <tt>WAVSource</tt> ein anderer Name f&uuml;r <tt>AVIFileSource</tt>. 
+  In sp&auml;teren Versionen versucht <tt>WAVSource</tt> nicht mehr, den Video-Teil 
+  zu &ouml;ffnen. Das kann n&uuml;tzlich sein, um das Audio auszulesen, wenn das 
+  Video defekt ist oder kein passender Dekompressor (CODEC) installiert ist.</p>
+<p>Ab v2.04 wird ACM (Audio Compression Manager) audio (z.B. mp3-AVIs) unterst&uuml;tzt. 
+  Mit <tt>AVISource</tt> k&ouml;nnen WAV nicht mehr ge&ouml;ffnet werden (nur 
+  mehr mit <tt>WAVSource</tt>)</p>
+<p>Mit dem Parameter <i>pixel_type</i> kann das Ausgabeformat des Video-Codecs 
+  ausgew&auml;hlt werden. G&uuml;ltige Werte sind<tt>"YUY2"</tt>, <tt>"RGB32"</tt> 
+  and <tt>"RGB24"</tt>. Wenn dieser Parameter ausgelassen wird, verwendet AviSynth 
+  das erste unterst&uuml;tzte Format (in der Reihenfolge YUY2, RGB32, RGB24). 
+  Dieser Parameter hat keine Wirkung bei unkompromierten Formaten.</p>
+<p>Beispiele: </p>
+<pre>AVISource("d:\capture.avi")        # so oder
+AVISource("c:/capture/00.avi")     # so oder
+WAVSource("f:\soundtrack.wav")     # so oder
+WAVSource("f:\soundtrack.wav")     # so
+AVISource("cap1.avi","cap2.avi")   # das gleiche wie AVISource("cap1.avi")+AVISource("cap2.avi")
+AVISource("cap.avi",false,"RGB32") # kein Audio und RGB32 Dekompression angefordert
+</pre>
+<p>
+<FORM>
+<INPUT TYPE="Button" VALUE="Back"
+onClick="history.go(-1)">
+</form>
+</body>
+</html>

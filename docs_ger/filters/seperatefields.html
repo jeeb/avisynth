@@ -1,0 +1,58 @@
+<!doctype html public "-//W3C//DTD HTML 4.0 Transitional//EN">
+<html>
+<head>
+<meta name="GENERATOR" content="PPWIZARD version 02.213 on WIN2K, FREE tool for Windows, OS/2, DOS and UNIX by Dennis Bareis (http://www.labyrinth.net.au/~dbareis/ppwizard.htm)">
+<title>SeparateFields Avisynth Filter</title>
+<STYLE type=text/css>
+A:link {
+COLOR: #404a58;TEXT-DECORATION: none
+}
+A:visited {
+COLOR: #404a58;TEXT-DECORATION: none
+}
+A:active {
+COLOR: #404a58;TEXT-DECORATION: none
+}
+A:hover {
+COLOR: #e8f0ff; TEXT-DECORATION: underline
+}
+.titresmall {
+color : 000000;
+font-family: Tahoma, Verdana, Arial, Helvetica, sans-serif;
+font-size: 16pt;
+letter-spacing: 0.15em;
+font-weight: bold;
+}
+</STYLE>
+</head>
+<body bgcolor=b6cac0>
+<span class="titresmall"><a name="SeparateFields">SeparateFields</a></span>
+<p><tt>SeparateFields(</tt><i>clip</i><tt>)</tt>
+</p>
+<p>NTSC und PAL Video-Signale sind eigentlich eine Hintereinanderreihung von Fields, 
+  aber alle Capture-Karten nehmen zwei Fields gleichzeitig auf und verzahnen oder 
+  verweben (&quot;weave&quot;) diese zu einem Frame. Daher enth&auml;lt Frame 
+  0 in der aufgenommenen Datei die Fiels 0 und 1, Frame 1 enth&auml;lt die Fields 
+  2 und 3 und so weiter.<tt>SeparateFields</tt> nimmt ein Frame-basiertes Clip 
+  und teilt jeden Frame in die Fields, aus denen er besteht. Dadurch entsteht 
+  ein neues Clip mit der doppelten Frame-Rate und auch der doppelten Frame-Anzahl.<br>
+  Das ist n&uuml;tzlich, wenn man <tt>Trim</tt> und &auml;hnliche Filter Field-genau 
+  verwenden will.</p>
+<p>Ausserdem muss so ein Interlaced-Video vorher in die Fields geteilt werden, 
+  wenn man Filter verwenden will, die in vertikaler Richtung etwas ver&auml;ndern, 
+  z.B. die H&ouml;he &auml;ndern. Nach dem Filter werden die Fields dann wieder 
+  mit <i>Weave</i> zusammengef&uuml;gt.</p>
+<p><tt>SeparateFields</tt> verwendet die Field-Dominanz-Information des Quell-Clips 
+  um die Reihenfolge der Field-Paare zu bestimmen. Wenn dies ein falsches Ergebnis 
+  liefert, kann davor <tt>ComplementParity</tt> verwendet werden. Es k&ouml;nnte 
+  auch sein, dass man vorher <tt>AssumeFrameBased</tt> verwenden muss, falls das 
+  Clip f&auml;lschlicherweise schon als Field-basiert gekennzeichnet ist.. </p>
+<p>Das Filter macht n&auml;mlich nichts, wenn das Clip schon field-basiert ist. 
+</p>
+<p>
+<FORM>
+<INPUT TYPE="Button" VALUE="Back"
+onClick="history.go(-1)">
+</form>
+</body>
+</html>

@@ -1,0 +1,49 @@
+<!doctype html public "-//W3C//DTD HTML 4.0 Transitional//EN">
+<html>
+<head>
+<meta name="GENERATOR" content="PPWIZARD version 02.213 on WIN2K, FREE tool for Windows, OS/2, DOS and UNIX by Dennis Bareis (http://www.labyrinth.net.au/~dbareis/ppwizard.htm)">
+<title>PeculiarBlend Avisynth Filter</title>
+<STYLE type=text/css>
+A:link {
+COLOR: #404a58;TEXT-DECORATION: none
+}
+A:visited {
+COLOR: #404a58;TEXT-DECORATION: none
+}
+A:active {
+COLOR: #404a58;TEXT-DECORATION: none
+}
+A:hover {
+COLOR: #e8f0ff; TEXT-DECORATION: underline
+}
+.titresmall {
+color : 000000;
+font-family: Tahoma, Verdana, Arial, Helvetica, sans-serif;
+font-size: 16pt;
+letter-spacing: 0.15em;
+font-weight: bold;
+}
+</STYLE>
+</head>
+<body bgcolor=b6cac0>
+<span class="titresmall"><a name="PeculiarBlend">PeculiarBlend</a></span> 
+<p><tt>PeculiarBlend(</tt><i>clip, int cutoff</i><tt>)</tt></p>
+<p>Dieses Filter mischt jeden Frame mit dem nachfolgenden Frame in einer speziellen 
+  Art. Der Teil des Frames unterhalb der Zeile <i>cutoff</i> wird nicht ver&auml;ndert. 
+  Der Teil &uuml;ber der Zeile <i>cutoff-30</i> wird ersetzt mit dem Inhalt des 
+  folgenden Frames. Die 30 Zeilen dazwischen werden ansteigend gemischt, um den 
+  &Uuml;bergang zu verstecken.</p>
+<p>Wozu das ganze? Viele Videos sind urspr&uuml;nglich auf Film aufgenommen worden 
+  (mittels 3:2 pulldown). Manche verwendet ein unangenehmeres Verfahren, bei dem 
+  der &Uuml;bergang zum n&auml;chsten Frame in der Mitte eines Fields stattfindet, 
+  d.h. einzelne Fields haben oben den Anteil von einen Frame, unten den Anteil 
+  von einem anderen. Dieses Filter macht diesen Effekt teilweise r&uuml;ckg&auml;ngig 
+  und sollte vor / nach (?) dem <tt>Pulldown</tt> Filter verwendet werden. </p>
+<p>Funktioniert nur mit YUY2.</p>
+<p>
+<FORM>
+<INPUT TYPE="Button" VALUE="Back"
+onClick="history.go(-1)">
+</form>
+</body>
+</html>

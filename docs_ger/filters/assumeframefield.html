@@ -1,0 +1,56 @@
+<!doctype html public "-//W3C//DTD HTML 4.0 Transitional//EN">
+<html>
+<head>
+<meta name="GENERATOR" content="PPWIZARD version 02.213 on WIN2K, FREE tool for Windows, OS/2, DOS and UNIX by Dennis Bareis (http://www.labyrinth.net.au/~dbareis/ppwizard.htm)">
+<title>AssumeFrameBased / AssumeFieldBased Avisynth Filter</title>
+<STYLE type=text/css>
+A:link {
+COLOR: #404a58;TEXT-DECORATION: none
+}
+A:visited {
+COLOR: #404a58;TEXT-DECORATION: none
+}
+A:active {
+COLOR: #404a58;TEXT-DECORATION: none
+}
+A:hover {
+COLOR: #e8f0ff; TEXT-DECORATION: underline
+}
+.titresmall {
+color : 000000;
+font-family: Tahoma, Verdana, Arial, Helvetica, sans-serif;
+font-size: 16pt;
+letter-spacing: 0.15em;
+font-weight: bold;
+}
+</STYLE>
+</head>
+<body bgcolor=b6cac0>
+<span class="titresmall"><a name="AssumeFrameBased">AssumeFrameBased / AssumeFieldBased</a></span>
+<p><tt>AssumeFrameBased(</tt><i>clip</i><tt>)</tt> <br>
+<tt>AssumeFieldBased(</tt><i>clip</i><tt>)</tt>
+</p>
+<p>AviSynth merkt sich ob ein Clip in fields oder frames vorliegt. Wenn das Clip 
+  aus fields besteht, wird ausserdem die Parit&auml;t (also ob es ein Top- oder 
+  Bottom-field ist) von jedem field mitgef&uuml;hrt. Wenn das Clip aus frames 
+  besteht, wird das dominante field mitgef&uuml;hrt (d.h. welches field zuerst 
+  abgespielt wird). </p>
+<p>Diese Information ist allerdings nicht immer korrekt, da sie normalerweise 
+  nicht in den Video-Dateien mitgespeichert ist und AviSynth's Quell-Filters immer 
+  einen Standardwert verwenden.<tt>AssumeFrameBased</tt> und <tt>AssumeFieldBased</tt> 
+  k&ouml;nnen verwendet werden, um AviSynth den richtigen Typ mitzuteilen. </p>
+<p><tt>AssumeFrameBased</tt> l&ouml;scht die vorhandene Information und es wird 
+  angenommen, dass das Clip aus frames mit einem bottom field als dominantes field 
+  besteht. Wenn das top field dominant sein soll, kann man danach <tt>ComplementParity</tt> 
+  verwenden. </p>
+<p><tt>AssumeFieldBased</tt> l&ouml;scht die vorhandene Information und es wird 
+  angenommen, dass das clip aus fields besteht, die geradzahligen fields als bottom 
+  fields und die ungeradzahligen fields als top fields. Auch hier kann <tt>ComplementParity</tt> 
+  zum Umdrehen verwendet werden. </p>
+<p>
+<FORM>
+<INPUT TYPE="Button" VALUE="Back"
+onClick="history.go(-1)">
+</form>
+</body>
+</html>

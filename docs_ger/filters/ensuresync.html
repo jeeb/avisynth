@@ -1,0 +1,55 @@
+<!doctype html public "-//W3C//DTD HTML 4.0 Transitional//EN">
+<html>
+<head>
+<meta name="GENERATOR" content="PPWIZARD version 02.213 on WIN2K, FREE tool for Windows, OS/2, DOS and UNIX by Dennis Bareis (http://www.labyrinth.net.au/~dbareis/ppwizard.htm)">
+<title>EnsureVBRMP3Sync Avisynth Filter</title>
+<STYLE type=text/css>
+A:link {
+COLOR: #404a58;TEXT-DECORATION: none
+}
+A:visited {
+COLOR: #404a58;TEXT-DECORATION: none
+}
+A:active {
+COLOR: #404a58;TEXT-DECORATION: none
+}
+A:hover {
+COLOR: #e8f0ff; TEXT-DECORATION: underline
+}
+.titresmall {
+color : 000000;
+font-family: Tahoma, Verdana, Arial, Helvetica, sans-serif;
+font-size: 16pt;
+letter-spacing: 0.15em;
+font-weight: bold;
+}
+</STYLE>
+</head>
+<body bgcolor=b6cac0>
+<SPAN class=titresmall><A name=EnsureVBRMP3Sync>EnsureVBRMP3Sync</A></SPAN> 
+<P><TT>EnsureVBRMP3Sync(</TT><I>clip</I><TT>)</TT> 
+<p>Korrigiert die Audio-Synchronit&auml;t bei mp3-AVI's beim Suchlauf und bei 
+  Schnitt-Operationen. Die Suchgeschwindigkeit wird stark vermindert, allerdings 
+  notwendig, z.B. bei Verwendung von <tt>Trim</tt>. Die Funktion muss immer bevor 
+  <tt>Trim</tt> verwendet werden. 
+<p>&nbsp; 
+<table width="75%" border="1">
+  <tr> 
+    <td> 
+      <pre>Beispiel:
+
+
+AviSource("movie.avi")
+EnsureVBRMP3Sync()
+Trim(250,2500)
+</pre>
+    </td>
+  </tr>
+</table>
+<p>&nbsp; 
+<FORM>
+  <INPUT TYPE="Button" VALUE="Back"
+onClick="history.go(-1)">
+</form>
+</body>
+</html>

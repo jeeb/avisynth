@@ -1,0 +1,62 @@
+<!doctype html public "-//W3C//DTD HTML 4.0 Transitional//EN">
+<html>
+<head>
+<meta name="GENERATOR" content="PPWIZARD version 02.213 on WIN2K, FREE tool for Windows, OS/2, DOS and UNIX by Dennis Bareis (http://www.labyrinth.net.au/~dbareis/ppwizard.htm)">
+<title>MixAudio Avisynth Filter</title>
+<STYLE type=text/css>
+A:link {
+COLOR: #404a58;TEXT-DECORATION: none
+}
+A:visited {
+COLOR: #404a58;TEXT-DECORATION: none
+}
+A:active {
+COLOR: #404a58;TEXT-DECORATION: none
+}
+A:hover {
+COLOR: #e8f0ff; TEXT-DECORATION: underline
+}
+.titresmall {
+color : 000000;
+font-family: Tahoma, Verdana, Arial, Helvetica, sans-serif;
+font-size: 16pt;
+letter-spacing: 0.15em;
+font-weight: bold;
+}
+</STYLE>
+</head>
+<body bgcolor=b6cac0>
+<SPAN class=titresmall><A name=MixAudio>MixAudio</A></SPAN> 
+<P><tt>MixAudio(</tt><i>clip1, clip 2, &quot;clip1_factor&quot;, clip2_factor</i><tt>)<font color="#e8f0ff"></font></tt>
+<p>Das Audio von zwei Clips wird gemischt. Eine Lautst&auml;rke f&uuml;r die zwei 
+  Clips kann optional angegeben werden. 
+<p>Die Lautst&auml;rke wird als Faktor angegeben, wobei 0.0 den jeweiligen Kanal 
+  auf Null regelt, und 1.0 den Kanal zu 100% aufdreht. Der Standardwert ist 0.5 
+  / 0.5, wenn nur ein Faktor angegeben wird, ist der Faktor f&uuml;r den anderer 
+  Kanal 1.0-(factor). Wenn factor1 + factor2 gr&ouml;sser als 1.0 ist, kann &Uuml;bersteuerung 
+  auftreten. 
+<p>Die beiden Clips m&uuml;ssen die gleichen Sample-Raten haben (es kann wennn 
+  notwendig dazu <tt>ResampleAudio</tt> verwendet werden). Weiters m&uuml;ssen 
+  die Clips die gleiche Anzahl an Kan&auml;len haben (stereo/mono) - hier kann 
+  falls notwendig <tt>ConvertToMono()</tt> oder <tt>MonoToStereo()</tt> verwendet 
+  werden. Audio wird auf 16 bit konvertiert.
+<p>&nbsp;
+<table width="75%" border="1">
+  <tr> 
+    <td> 
+      <pre>Beispiel:</pre>
+      <pre># zwei Quellen mischen, die eine etwas leiser
+Soundtrack=Wavsource("c:\soundtrack.wav")
+Speak=WavSource("c:\speak.wav")
+return MixAudio(Soundtrack,Speak,0.75,0.25)
+# genaugenommen ist das 0.25 am Schluss nicht mehr notwendig</pre>
+      </td>
+  </tr>
+</table>
+<p>&nbsp;
+<FORM>
+<INPUT TYPE="Button" VALUE="Back"
+onClick="history.go(-1)">
+</form>
+</body>
+</html>

@@ -1,0 +1,51 @@
+<!doctype html public "-//W3C//DTD HTML 4.0 Transitional//EN">
+<html>
+<head>
+<meta name="GENERATOR" content="PPWIZARD version 02.213 on WIN2K, FREE tool for Windows, OS/2, DOS and UNIX by Dennis Bareis (http://www.labyrinth.net.au/~dbareis/ppwizard.htm)">
+<title>ShowFrameNumber / ShowSMPTE Avisynth Filter</title>
+<STYLE type=text/css>
+A:link {
+COLOR: #404a58;TEXT-DECORATION: none
+}
+A:visited {
+COLOR: #404a58;TEXT-DECORATION: none
+}
+A:active {
+COLOR: #404a58;TEXT-DECORATION: none
+}
+A:hover {
+COLOR: #e8f0ff; TEXT-DECORATION: underline
+}
+.titresmall {
+color : 000000;
+font-family: Tahoma, Verdana, Arial, Helvetica, sans-serif;
+font-size: 16pt;
+letter-spacing: 0.15em;
+font-weight: bold;
+}
+</STYLE>
+</head>
+<body bgcolor=b6cac0>
+<span class="titresmall"><a name="ShowFrameNumber">ShowFrameNumber</a></span> 
+<p><tt>ShowFrameNumber(</tt><i>clip, bool &quot;scroll&quot;</i><tt>)</tt></p>
+<p><tt>ShowFrameNumber</tt> schreibt auf jeden Frame dessen Nummer, so wie AviSynth 
+  sie durchnumeriert. Das kann manchmal beim Erstellen der Skripts hilfreich sein. 
+  Wenn danach andere Filter angewendet werden, behandeln diese den Text als normale 
+  Bildinformation, daher kann der Text unscharf werden.</p>
+<p>Wenn <tt>scroll=true</tt> wird die Nummer nur einmal in das Video gezeichnet 
+  und springt von oben nach unten, bei <tt>scroll=false</tt> wird die Nummer sooft 
+  wie m&ouml;glich auf die rechte Seite des Videos geschrieben.</p>
+<p>
+</p><hr>
+<span class="titresmall"><a name="ShowSMPTE">ShowSMPTE</a></span> 
+<p><tt>ShowSMPTE(</tt><i>clip, float fps</i><tt>)</tt></p>
+<p><tt>ShowSMPTE</tt> ist &auml;hnlich wie <tt>ShowFrameNumber</tt>, zeigt aber 
+  einen SMPTE-Zeitcode an (<tt>Stunden:Minuten:Sekunden:Frames</tt>). Das Argument 
+  <i>fps</i> muss angegeben werden und muss 24, 25, 30 oder 29.97 sein.</p>
+<p>Vorsicht: beide Filter sind durch das Zeichnen des Textes langsam
+<FORM>
+<INPUT TYPE="Button" VALUE="Back"
+onClick="history.go(-1)">
+</form>
+</body>
+</html>
