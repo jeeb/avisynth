@@ -6,8 +6,8 @@ BrandingText "Avisynth 2 installer."
 Name "AviSynth 2.06"
 OutFile "AviSynth206.exe"
 
-#EnabledBitmap "on.bmp"
-#DisabledBitmap "off.bmp"
+EnabledBitmap "on.bmp"
+DisabledBitmap "off.bmp"
 
 ; Some default compiler settings (uncomment and change at will):
 SetCompress auto ; (can be off or force)
@@ -24,9 +24,10 @@ InstallDir "$PROGRAMFILES\AviSynth2"
 InstallDirRegKey HKEY_LOCAL_MACHINE "SOFTWARE\AviSynth" ""
 DirShow show ; (make this hide to not let the user change it)
 DirText "Select the directory to install documentation in:"
+ComponentText "AviSynth Installation."
 
 
-Section "AviSynth Base" ; (default section)
+Section "AviSynth Base (required)" ; (default section)
 ClearErrors
 SetOutPath "$SYSDIR"
 File "..\release\avisynth.dll"
@@ -83,13 +84,16 @@ Abort
 reg_ok:
 SectionEnd ; end of default section
 
-Section "Documentation (optional)"
-  SectionIn 1
+Section "Documentation (recommended)"
   CreateDirectory "$INSTDIR\docs"
   SetOutPath "$INSTDIR\docs"
 	File "..\docs\*.html"
   SetOutPath "$INSTDIR\docs\filters"
 	File "..\docs\filters\*.html"
+  CreateDirectory "$INSTDIR\Examples"
+  SetOutPath "$INSTDIR\examples"
+	File "Examples\*.avs"
+  CreateShortCut "$SMPROGRAMS\AviSynth 2\Example Scripts.lnk" "$INSTDIR\examples"
   CreateShortCut "$SMPROGRAMS\AviSynth 2\Avisynth Documentation.lnk" "$INSTDIR\docs\index.html"
   CreateShortCut "$SMPROGRAMS\AviSynth 2\Avisynth Online.lnk" "http://avisynth.org"
 SectionEnd
@@ -116,6 +120,11 @@ Delete "$SYSDIR\avisynth.dll"
 Delete "$INSTDIR\gpl.txt"
 Delete "$INSTDIR\docs\filters\*.*"
 Delete "$INSTDIR\docs\*.*"
+Delete "$INSTDIR\examples\audio.avs"
+Delete "$INSTDIR\examples\editing.avs"
+Delete "$INSTDIR\examples\processing.avs"
+Delete "$INSTDIR\examples\syntax.avs"
+Delete "$INSTDIR\examples\version.avs"
 Delete "$SMPROGRAMS\AviSynth 2\*.*"
 
 RMDir "$INSTDIR\docs\filters"
