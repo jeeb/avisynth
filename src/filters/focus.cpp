@@ -75,6 +75,10 @@ AdjustFocusV::~AdjustFocusV(void)
   if (line) delete[] line; 
 }
 
+// --------------------------------
+// Blur/Sharpen Vertical GetFrame()
+// --------------------------------
+
 PVideoFrame __stdcall AdjustFocusV::GetFrame(int n, IScriptEnvironment* env) 
 {
 	PVideoFrame frame = child->GetFrame(n, env);
@@ -94,7 +98,10 @@ PVideoFrame __stdcall AdjustFocusV::GetFrame(int n, IScriptEnvironment* env)
 			int row_size = frame->GetRowSize(plane|PLANAR_ALIGNED);
 			int height   = frame->GetHeight(plane);
 			memcpy(linea, buf, row_size); // First row - map centre as upper
-			if (env->GetCPUFlags() & CPUF_MMX) {
+			// All normal cases will have pitch aligned 16, we
+			// need 8. If someone works hard enough to override
+			// this we can't process the short fall. Use C Code.
+			if ((pitch >= ((row_size+7) & -8)) && (env->GetCPUFlags() & CPUF_MMX)) {
 				AFV_MMX(linea, buf, height, pitch, row_size, amount);
 			} else {
 				AFV_C(linea, buf, height, pitch, row_size, amount);
@@ -107,15 +114,18 @@ PVideoFrame __stdcall AdjustFocusV::GetFrame(int n, IScriptEnvironment* env)
 		int row_size = vi.RowSize();
 		int height   = vi.height;
 		memcpy(linea, buf, row_size); // First row - map centre as upper
-		if (env->GetCPUFlags() & CPUF_MMX) {
+		if ((pitch >= ((row_size+7) & -8)) && (env->GetCPUFlags() & CPUF_MMX)) {
 			AFV_MMX(linea, buf, height, pitch, row_size, amount);
 		} else {
 			AFV_C(linea, buf, height, pitch, row_size, amount);
 		}
 	}
-
-  return frame;
+	return frame;
 }
+
+// ------------------------------
+// Blur/Sharpen Vertical C++ Code
+// ------------------------------
 
 void AFV_C(uc* l, uc* p, const int height, const int pitch, const int row_size, const int amount) {
 	const int center_weight = amount*2;
@@ -132,6 +142,10 @@ void AFV_C(uc* l, uc* p, const int height, const int pitch, const int row_size, 
 		p[x] = ScaledPixelClip(p[x] * center_weight + (l[x] + p[x]) * outer_weight);
 	}
 }
+
+// ------------------------------
+// Blur/Sharpen Vertical MMX Code
+// ------------------------------
 
 void AFV_MMX(const uc* l, const uc* p, const int height, const int pitch, const int row_size, const int amount) {
 	// round masks
@@ -164,11 +178,7 @@ void AFV_MMX(const uc* l, const uc* p, const int height, const int pitch, const 
 		pxor	mm0,mm0
 	}
 	
-// All normal cases will have pitch aligned 16, we
-// need 8. If someone works hard enough to override
-// this we can't process the short fall. Tough luck!
-
-	int _row_size = __min(pitch, (row_size+7) & -8) >> 3; // Possible short fall (row_size - _row_size*8)
+	int nloops = __min(pitch, (row_size+7) & -8) >> 3;
 
 	for (int y = height-1; y>0; --y) {
 
@@ -179,7 +189,7 @@ void AFV_MMX(const uc* l, const uc* p, const int height, const int pitch, const 
 		add			eax,ecx
 		mov			p,eax			; p += pitch;
 		mov			eax,l			; line buffer
-		mov			edi,_row_size
+		mov			edi,nloops
 
 		align		16
 row_loop:
@@ -225,7 +235,7 @@ row_loop:
 	__asm { // Last row - map centre as lower
 		mov			ebx,p			; frame buffer
 		mov			eax,l			; line buffer
-		mov			edi,_row_size
+		mov			edi,nloops
 
 		align		16
 lrow_loop:
@@ -267,6 +277,10 @@ lrow_loop:
 AdjustFocusH::AdjustFocusH(double _amount, PClip _child)
 : GenericVideoFilter(FillBorder::Create(_child)), amount(int(32768*pow(2.0, _amount)+0.5)) {}
 
+// ----------------------------------
+// Blur/Sharpen Horizontal GetFrame()
+// ----------------------------------
+
 PVideoFrame __stdcall AdjustFocusH::GetFrame(int n, IScriptEnvironment* env) 
 {
 	PVideoFrame frame = child->GetFrame(n, env);
@@ -282,7 +296,7 @@ PVideoFrame __stdcall AdjustFocusH::GetFrame(int n, IScriptEnvironment* env)
 			uc* q = frame->GetWritePtr(plane);
 			const int pitch = frame->GetPitch(plane);
 			int height = frame->GetHeight(plane);
-			if (!(row_size & 7) && (env->GetCPUFlags() & CPUF_MMX)) {
+			if ((pitch >= ((row_size+7) & -8)) && (env->GetCPUFlags() & CPUF_MMX)) {
 				AFH_YV12_MMX(q,height,pitch,row_size,amount);
 			} else {
 				AFH_YV12_C(q,height,pitch,row_size,amount);
@@ -314,6 +328,10 @@ PVideoFrame __stdcall AdjustFocusH::GetFrame(int n, IScriptEnvironment* env)
 	return frame;
 }
 
+// --------------------------------------
+// Blur/Sharpen Horizontal RGB32 C++ Code
+// --------------------------------------
+
 void AFH_RGB32_C(uc* p, int height, const int pitch, const int width, const int amount) {
 	const int center_weight = amount*2;
 	const int outer_weight = 32768-amount;
@@ -341,6 +359,10 @@ void AFH_RGB32_C(uc* p, int height, const int pitch, const int width, const int 
 		p += pitch;
 	}
 }
+
+// --------------------------------------
+// Blur/Sharpen Horizontal RGB32 MMX Code
+// --------------------------------------
 
 void AFH_RGB32_MMX(const uc* p, const int height, const int pitch, const int width, const int amount) {
 	// round masks
@@ -416,9 +438,9 @@ row_loop:
 		 paddusw	mm4,r6			; += 0.5
 		psraw		mm6,7			; /= 32768
 		 psraw		mm4,6			; /= 16384
-		add		ecx,8
-		 paddsw		mm6,mm4			; Weighted centres + outers
 	;stall
+		 paddsw		mm6,mm4			; Weighted centres + outers
+		add		ecx,8
 		 packuswb	mm7,mm6			; pack low with high
 	;stall
 		 movq		[ecx-8],mm7		; Update 2 centre pixels
@@ -436,11 +458,8 @@ odd_end:
 		paddusw		mm1,r7			; += 0.5
 		 psraw		mm2,6			; /= 16384
 		psraw		mm1,7			; /= 32768
-	;stall
 		paddsw		mm1,mm2			; Weighted centres + outers
-	;stall
 		packuswb	mm1,mm1			; pack low with high
-	;stall
 		movd		[ecx],mm1		; Update 1 centre pixels
 		 jmp		next_loop
 
@@ -456,11 +475,8 @@ even_end:
 		paddusw		mm1,r7			; += 0.5
 		 psraw		mm2,6			; /= 16384
 		psraw		mm1,7			; /= 32768
-	;stall
 		paddsw		mm1,mm2			; Weighted centres + outers
-	;stall
 		packuswb	mm7,mm1			; pack low with high
-	;stall
 		movq		[ecx],mm7		; Update 2 centre pixels
 
 next_loop:
@@ -469,6 +485,10 @@ next_loop:
 	}
 	__asm emms
 }
+
+// -------------------------------------
+// Blur/Sharpen Horizontal YUY2 C++ Code
+// -------------------------------------
 
 void AFH_YUY2_C(uc* p, int height, const int pitch, const int width, const int amount) {
 	const int center_weight = amount*2;
@@ -499,6 +519,10 @@ void AFH_YUY2_C(uc* p, int height, const int pitch, const int width, const int a
 	}
 }
 
+
+// -------------------------------------
+// Blur/Sharpen Horizontal YUY2 MMX Code
+// -------------------------------------
 
 void AFH_YUY2_MMX(const uc* p, const int height, const int pitch, const int width, const int amount) {
 	// round masks
@@ -547,18 +571,17 @@ void AFH_YUY2_MMX(const uc* p, const int height, const int pitch, const int widt
 		 psllq		mm3,32			; [0v 00 0u 00 00 00 00 00]
 		mov			edi,width
 		 por		mm1,mm3			; [0v 0y 0u 00 00 00 00 00]	-- Left
+		sub			edi,2
 
 		align		16
 row_loop:
-		sub			edi,2
 		jle			odd_end
 		sub			edi,2
 		jle			even_end
 
-		movq		mm3,[ecx+8]		; [6v 7y 6u 6y 4v 5y 4u 4y]	-- Right
-
-		 movq		mm5,ym			; 0x00FF00FF00FF00FF
 		movq		mm0,mm1			;   [-2v -1y -2u -2y -4v -3y -4u -4y]
+		 movq		mm3,[ecx+8]		; [6v 7y 6u 6y 4v 5y 4u 4y]	-- Right
+		movq		mm5,ym			; 0x00FF00FF00FF00FF
 		 movq		mm6,mm3			;   [6v 7y 6u 6y 4v 5y 4u 4y]
 		pand		mm0,mm5			;   [00-1y 00-2y 00-3y 00-4y]
 		 pand		mm6,mm5			;   [007y 006y 005y 004y]
@@ -568,50 +591,48 @@ row_loop:
 		 movq		mm7,mm5			;   [003y 002y 001y 000y]
 		movq		mm4,mm5			;   [003y 002y 001y 000y]
 		 psllq		mm7,16			;   [002y 001y 000y 0000]
-		psrlq		mm4,16			;   [0000 003y 002y 001y]
+		psrlq		mm5,16			;   [0000 003y 002y 001y]
 		 por		mm0,mm7			; [002y 001y 000y 00-1y]	-- Left
-		por			mm6,mm4			; [004y 003y 002y 001y]		-- Right
-	;stall
+		por			mm6,mm5			; [004y 003y 002y 001y]		-- Right
+		 pmullw		mm4,cw			; *= center weight
 		paddsw		mm0,mm6			; left += right 
-		 pmullw		mm5,cw			; *= center weight
+		 paddusw	mm4,r6			; += 0.5
 		pmullw		mm0,ow			; *= outer weight
-		 paddusw	mm5,r6			; += 0.5
+		 psraw		mm4,6			; /= 16384
 		paddusw		mm0,r7			; += 0.5
-		 psraw		mm5,6			; /= 16384
-		psraw		mm0,7			; /= 32768
 		 movq		mm6,cm			; 0xFF00FF00FF00FF00
-		paddsw		mm0,mm5			; Weighted centres + outers
+		psraw		mm0,7			; /= 32768
 		 pand		mm1,mm6			;   [-2v00 -2u00 -4v00 -4u00]
-		movq		mm5,mm2			;   [2v 3y 2u 2y 0v 1y 0u 0y]
-		 psrlq		mm1,40			;   [0000 0000 00-2v 00-2u]
-		pand		mm5,mm6			;   [2v00 2u00 0v00 0u00]
-		 pand		mm6,mm3			;   [6v00 6u00 4v00 4u00]
-		psrlq		mm5,8			; [002v 002u 000v 000u]		-- Centre
-		 psllq		mm6,24			;   [004v 004u 0000 0000]
-		movq		mm7,mm5			;   [002v 002u 000v 000u]
-		 movq		mm4,mm5			;   [002v 002u 000v 000u]
-		psllq		mm7,32			;   [000v 000u 0000 0000]
-		 psrlq		mm4,32			;   [0000 0000 002v 002u]
-		por			mm1,mm7			; [000v 000u 00-2v 00-2u]	-- Left
-		 por		mm6,mm4			; [004v 004u 002v 002u]		-- Right
-	;stall
-		 paddsw		mm1,mm6			; left += right
-		pmullw		mm5,cw			; *= center weight
-		 pmullw		mm1,ow			; *= outer weight
-		paddusw		mm5,r6			; += 0.5
-		 paddusw	mm1,r7			; += 0.5
-		psraw		mm5,6			; /= 16384
-		 psraw		mm1,7			; /= 32768
-		packuswb	mm0,mm0			; [3y 2y 1y 0y 3y 2y 1y 0y] -- Unsign Saturated
-		 paddsw		mm1,mm5			; Weighted centres + outers
-		add			ecx,8			; 
-		 packuswb	mm1,mm1			; [2v 2u 0v 0u 2v 2u 0v 0u] -- Unsign Saturated
-	;stall
-		 punpcklbw	mm0,mm1			; [2v 3y 2u 2y 0v 1y 0v 0y]
-		movq		mm1,mm2			; 
-		 movq		[ecx-8],mm0		; 
-		movq		mm2,mm3			; 
-		 jmp		row_loop		; 
+		paddsw		mm0,mm4			; Weighted centres + outers
+		 movq		mm5,mm2			;   [2v 3y 2u 2y 0v 1y 0u 0y]
+		psrlq		mm1,40			;   [0000 0000 00-2v 00-2u]
+		 pand		mm5,mm6			;   [2v00 2u00 0v00 0u00]
+		pand		mm6,mm3			;   [6v00 6u00 4v00 4u00]
+		 psrlq		mm5,8			; [002v 002u 000v 000u]		-- Centre
+		psllq		mm6,24			;   [004v 004u 0000 0000]
+		 movq		mm7,mm5			;   [002v 002u 000v 000u]
+		movq		mm4,mm5			;   [002v 002u 000v 000u]
+		 psllq		mm7,32			;   [000v 000u 0000 0000]
+		psrlq		mm4,32			;   [0000 0000 002v 002u]
+		 por		mm7,mm1			; [000v 000u 00-2v 00-2u]	-- Left
+		por			mm6,mm4			; [004v 004u 002v 002u]		-- Right
+		 packuswb	mm0,mm0			; [3y 2y 1y 0y 3y 2y 1y 0y] -- Unsign Saturated
+		paddsw		mm7,mm6			; left += right
+		 pmullw		mm5,cw			; *= center weight
+		pmullw		mm7,ow			; *= outer weight
+		 paddusw	mm5,r6			; += 0.5
+		paddusw		mm7,r7			; += 0.5
+		 psraw		mm5,6			; /= 16384
+		psraw		mm7,7			; /= 32768
+		 add		ecx,8			; 
+		paddsw		mm7,mm5			; Weighted centres + outers
+		 movq		mm1,mm2			; 
+		packuswb	mm7,mm7			; [2v 2u 0v 0u 2v 2u 0v 0u] -- Unsign Saturated
+		 movq		mm2,mm3			; 
+		punpcklbw	mm0,mm7			; [2v 3y 2u 2y 0v 1y 0v 0y]
+		 sub		edi,2
+		movq		[ecx-8],mm0		; Update 4 centre pixels
+		jmp			row_loop		; 
 
 		align		16
 odd_end:
@@ -627,35 +648,31 @@ odd_end:
 		 psrlq		mm6,16			;   [0000 00xx 00xx 001y]
 		por			mm0,mm7			; [00xx 001y 000y 00-1y]	-- Left
 		 punpcklwd	mm6,mm6			; [00xx 00xx 001y 001y]		-- Right
-		pmullw		mm5,cw			; *= center weight
-		 paddsw		mm0,mm6			; left += right 
-		paddusw		mm5,r6			; += 0.5
-		 pmullw		mm0,ow			; *= outer weight
-		psraw		mm5,6			; /= 16384
-		 paddusw	mm0,r7			; += 0.5
+		pmullw		mm5,cw			; *= center weight YY
+		 paddsw		mm0,mm6			; left += right  YY
+		paddusw		mm5,r6			; += 0.5 YY
+		 pmullw		mm0,ow			; *= outer weight YY
 		movq		mm3,cm			; 0xFF00FF00FF00FF00
-		 psraw		mm0,7			; /= 32768
+		 psraw		mm5,6			; /= 16384
 		pand		mm1,mm3			;   [-2v00 -2u00 -4v00 -4u00]
-		 paddsw		mm0,mm5			; Weighted centres + outers
+		 paddusw	mm0,r7			; += 0.5 YY
 		pand		mm3,mm2			;   [xx00 xx00 0v00 0u00]
 		 psrlq		mm1,40			; [0000 0000 00-2v 00-2u]	-- Left
 		psrlq		mm3,8			; [0000 0000 000v 000u]		-- Centre
-	;stall
-		paddsw		mm1,mm3			; left += centre
-		 pmullw		mm3,cw			; *= center weight
-		pmullw		mm1,ow			; *= outer weight
-		 paddusw	mm3,r6			; += 0.5
-		paddusw		mm1,r7			; += 0.5
-		 psraw		mm3,6			; /= 16384
-		psraw		mm1,7			; /= 32768
+		 psraw		mm0,7			; /= 32768 YY
+		paddsw		mm1,mm3			; left += centre UV
+		 pmullw		mm3,cw			; *= center weight UV
+		pmullw		mm1,ow			; *= outer weight UV
+		 paddusw	mm3,r6			; += 0.5 UV
+		paddusw		mm1,r7			; += 0.5 UV
+		 psraw		mm3,6			; /= 16384 UV
+		psraw		mm1,7			; /= 32768 UV
+		 paddsw		mm0,mm5			; Weighted centres + outers YY
+		paddsw		mm1,mm3			; Weighted centres + outers UV
 		 packuswb	mm0,mm0			; [xx xx 1y 0y xx xx 1y 0y] -- Unsign Saturated
-		paddsw		mm1,mm3			; Weighted centres + outers
-	;stall
 		packuswb	mm1,mm1			; [xx xx 0v 0u xx xx 0v 0u] -- Unsign Saturated
-	;stall
 		punpcklbw	mm0,mm1			; [xx xx xx xx 0v 1y 0v 0y]
-	;stall
-		movd		[ecx],mm0		; 
+		movd		[ecx],mm0		; Update 2 centre pixels
 		jmp		next_loop
 
 		align		16
@@ -674,41 +691,39 @@ even_end:
 		 psrlq		mm4,16			;   [0000 003y 002y 001y]
 		por			mm0,mm7			; [002y 001y 000y 00-1y]	-- Left
 		 por		mm6,mm4			; [003y 003y 002y 001y]		-- Right
-	;stall
+		movq		mm3,cm			; 0xFF00FF00FF00FF00
 		 paddsw		mm0,mm6			; left += right 
 		pmullw		mm5,cw			; *= center weight
 		 pmullw		mm0,ow			; *= outer weight
 		paddusw		mm5,r6			; += 0.5
 		 paddusw	mm0,r7			; += 0.5
 		psraw		mm5,6			; /= 16384
+		 pand		mm1,mm3			;   [-2v00 -2u00 -4v00 -4u00]
+		pand		mm3,mm2			;   [2v00 2u00 0v00 0u00]
+		 psrlq		mm1,40			;   [0000 0000 00-2v 00-2u]
+		movq		mm4,mm3			;   [2v00 2u00 0v00 0u00]
+		 movq		mm7,mm3			;   [2v00 2u00 0v00 0u00]
+		psrlq		mm4,40			;   [0000 0000 002v 002u]
+		 psllq		mm7,24			;   [000v 000u 0000 0000]
+		movq		mm6,mm4			;   [0000 0000 002v 002u]
+		 por		mm1,mm7			; [000v 000u 00-2v 00-2u]	-- Left
+		psllq		mm6,32			;   [002v 002u 0000 0000]
+		 psrlq		mm3,8			; [002v 002u 000v 000u]		-- Centre
+		por			mm6,mm4			; [002v 002u 002v 002u]		-- Right
+		 pmullw		mm3,cw			; *= center weight
+		paddsw		mm1,mm6			; left += right
+		 paddusw	mm3,r6			; += 0.5
+		pmullw		mm1,ow			; *= outer weight
+		 psraw		mm3,6			; /= 16384
+		paddusw		mm1,r7			; += 0.5
 		 psraw		mm0,7			; /= 32768
-		movq		mm3,cm			; 0xFF00FF00FF00FF00
+		psraw		mm1,7			; /= 32768
 		 paddsw		mm0,mm5			; Weighted centres + outers
-		pand		mm1,mm3			;   [-2v00 -2u00 -4v00 -4u00]
-		 pand		mm3,mm2			;   [2v00 2u00 0v00 0u00]
-		psrlq		mm1,40			;   [0000 0000 00-2v 00-2u]
-		 movq		mm4,mm3			;   [2v00 2u00 0v00 0u00]
-		movq		mm7,mm3			;   [2v00 2u00 0v00 0u00]
-		 psrlq		mm4,40			;   [0000 0000 002v 002u]
-		psllq		mm7,24			;   [000v 000u 0000 0000]
-		 movq		mm6,mm4			;   [0000 0000 002v 002u]
-		por			mm1,mm7			; [000v 000u 00-2v 00-2u]	-- Left
-		 psllq		mm6,32			;   [002v 002u 0000 0000]
-		psrlq		mm3,8			; [002v 002u 000v 000u]		-- Centre
-		 por		mm6,mm4			; [002v 002u 002v 002u]		-- Right
-		pmullw		mm3,cw			; *= center weight
-		 paddsw		mm1,mm6			; left += right
-		paddusw		mm3,r6			; += 0.5
-		 pmullw		mm1,ow			; *= outer weight
-		psraw		mm3,6			; /= 16384
-		 paddusw	mm1,r7			; += 0.5
-		packuswb	mm0,mm0			; [3y 2y 1y 0y 3y 2y 1y 0y] -- Unsign Saturated
-		 psraw		mm1,7			; /= 32768
-	;stall
 		paddsw		mm1,mm3			; Weighted centres + outers
+		 packuswb	mm0,mm0			; [3y 2y 1y 0y 3y 2y 1y 0y] -- Unsign Saturated
 		packuswb	mm1,mm1			; [2v 2u 0v 0u 2v 2u 0v 0u] -- Unsign Saturated
 		punpcklbw	mm0,mm1			; [2v 3y 2u 2y 0v 1y 0v 0y]
-		movq		[ecx],mm0		; 
+		movq		[ecx],mm0		; Update 4 centre pixels
 
 next_loop:
 		}
@@ -716,6 +731,10 @@ next_loop:
 	}
 	__asm emms
 }
+
+// --------------------------------------
+// Blur/Sharpen Horizontal RGB24 C++ Code
+// --------------------------------------
 
 void AFH_RGB24_C(uc* p, int height, const int pitch, const int width, const int amount) {
   const int center_weight = amount*2;
@@ -742,6 +761,10 @@ void AFH_RGB24_C(uc* p, int height, const int pitch, const int width, const int 
     }
 }
 
+// -------------------------------------
+// Blur/Sharpen Horizontal YV12 C++ Code
+// -------------------------------------
+
 void AFH_YV12_C(uc* p, int height, const int pitch, const int row_size, const int amount) 
 {
 	const int center_weight = amount*2;
@@ -757,6 +780,10 @@ void AFH_YV12_C(uc* p, int height, const int pitch, const int row_size, const in
 		p += pitch;
 	}
 }
+
+// -------------------------------------
+// Blur/Sharpen Horizontal YV12 MMX Code
+// -------------------------------------
 
 #define scale(mmAA,mmBB,mmCC,mmA,mmB,mmC,zeros)	\
 __asm	movq		mmC,mmCC	/* Right 8 pixels      */\
@@ -791,7 +818,7 @@ __asm	packuswb	mmA,mmAA	/* Packed new 8 pixels */
 // Planer MMX blur/sharpen - process 8 pixels at a time
 //   FillBorder::Create(_child)) ensures the right edge is repeated to mod 8 width
 //   frame->GetRowSize(plane|PLANAR_ALIGNED) ensured rowsize is also mod 8
-// For rowsize less than 8 C code is used (unlikely, I couldn't force a case)
+// For pitch less than 8 C code is used (unlikely, I couldn't force a case)
 // 
 void AFH_YV12_MMX(uc* p, int height, const int pitch, const int row_size, const int amount) 
 {
