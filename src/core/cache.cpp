@@ -175,7 +175,8 @@ void __stdcall Cache::GetAudio(void* buf, __int64 start, __int64 count, IScriptE
 
   if (start < 0) {  // Partial initial skip
     FillZeros(buf, 0, -start);  // Fill all samples before 0 with silence.
-    count += start;
+    count += start;  // Subtract start bytes from count.
+    buf = ((BYTE*)buf) - (int)(start*vi.BytesPerAudioSample());   
     start = 0;
   }
 
