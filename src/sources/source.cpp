@@ -31,7 +31,7 @@
 // Public License plus this exception.  An independent module is a module
 // which is not derived from or based on Avisynth, such as 3rd-party filters,
 // import and export plugins, or graphical user interfaces.
- 
+
 
 #include "stdafx.h"
 
@@ -288,7 +288,7 @@ public:
       for (int i=0; i<7; ++i) {
         for (; x < (w*(i+1)+3)/7; ++x)
           p[x] = top_two_thirds[i];
-      } 
+      }
       p += pitch;
     }
   }
@@ -310,7 +310,7 @@ public:
           samples[i*2+1]=samples[i*2];
         } else {
           samples[i*2+1]=0;
-        } 
+        }
         second_offset+=add_per_sample;
     }
   }
@@ -354,7 +354,11 @@ AVSValue __cdecl Create_SegmentedSource(AVSValue args, void* use_directshow, ISc
   int avg_time_per_frame = (use_directshow && args[1].Defined()) ? int(10000000 / args[1].AsFloat() + 0.5) : 0;
   bool bAudio = !use_directshow && args[1].AsBool(true);
   const char* pixel_type;
-  if (!use_directshow) pixel_type = args[2].AsString("");
+  const char* fourCC;
+  if (!use_directshow) {
+    pixel_type = args[2].AsString("");
+    fourCC = args[3].AsString("");
+  }
   args = args[0];
   PClip result = 0;
   const char* error_msg=0;
@@ -373,10 +377,10 @@ AVSValue __cdecl Create_SegmentedSource(AVSValue args, void* use_directshow, ISc
           PClip clip;
         try {
           if (use_directshow) {
-            AVSValue inv_args[5] = { filename, avg_time_per_frame, true, true, true}; 
+            AVSValue inv_args[5] = { filename, avg_time_per_frame, true, true, true};
             clip = env->Invoke("DirectShowSource",AVSValue(inv_args,5)).AsClip();
           } else {
-            clip =  (IClip*)(new AVISource(filename, bAudio, pixel_type, 0, env));
+            clip =  (IClip*)(new AVISource(filename, bAudio, pixel_type, fourCC, 0, env));
           }
           result = !result ? clip : new_Splice(result, clip, false, env);
         } catch (AvisynthError e) {
@@ -396,7 +400,7 @@ AVSValue __cdecl Create_SegmentedSource(AVSValue args, void* use_directshow, ISc
 }
 
 /**********************************************************
- *                         TONE                           *    
+ *                         TONE                           *
  **********************************************************/
 class SampleGenerator {
 public:
@@ -473,24 +477,24 @@ public:
     vi.nchannels = ch;
     vi.audio_samples_per_second = samplerate;
     vi.num_audio_samples=(__int64)(_length*(float)vi.audio_samples_per_second);
-    if (!lstrcmpi(_type, "Sine")) 
+    if (!lstrcmpi(_type, "Sine"))
       s = new SineGenerator();
-    else if (!lstrcmpi(_type, "Noise")) 
+    else if (!lstrcmpi(_type, "Noise"))
       s = new NoiseGenerator();
-    else if (!lstrcmpi(_type, "Square")) 
+    else if (!lstrcmpi(_type, "Square"))
       s = new SquareGenerator();
-    else if (!lstrcmpi(_type, "Triangle")) 
+    else if (!lstrcmpi(_type, "Triangle"))
       s = new TriangleGenerator();
-    else if (!lstrcmpi(_type, "Sawtooth")) 
+    else if (!lstrcmpi(_type, "Sawtooth"))
       s = new SawtoothGenerator();
-    else if (!lstrcmpi(_type, "Silence")) 
+    else if (!lstrcmpi(_type, "Silence"))
       s = new SampleGenerator();
     else
       env->ThrowError("Tone: Type was not recognized!");
   }
 
   void __stdcall GetAudio(void* buf, __int64 start, __int64 count, IScriptEnvironment* env) {
-    // How much should we add per sample 
+    // How much should we add per sample
     // In seconds (beware of inprecision!)
     double add_per_sample = freq / (double)vi.audio_samples_per_second;
 
@@ -536,18 +540,18 @@ public:
 
 AVSValue __cdecl Create_Version(AVSValue args, void*, IScriptEnvironment* env) {
   return Create_MessageClip(AVS_VERSTR
-          "\n\xA9 2000-2003 Ben Rudiak-Gould, et al.\n"
+          "\n\xA9 2000-2004 Ben Rudiak-Gould, et al.\n"
           "http://www.avisynth.org",
   -1, -1, VideoInfo::CS_BGR24, false, 0xECF2BF, 0, 0x404040, env);
 }
- 
+
 
 AVSFunction Source_filters[] = {
-  { "AVISource", "s+[audio]b[pixel_type]s", AVISource::Create, (void*)0 },
-  { "AVIFileSource", "s+[audio]b[pixel_type]s", AVISource::Create, (void*)1 },
-  { "WAVSource", "s+", AVISource::Create, (void*)3 },
-  { "OpenDMLSource", "s+[audio]b[pixel_type]s", AVISource::Create, (void*)2 },
-  { "SegmentedAVISource", "s+[audio]b[pixel_type]s", Create_SegmentedSource, (void*)0 },
+  { "AVISource", "s+[audio]b[pixel_type]s[fourCC]s", AVISource::Create, (void*) AVISource::MODE_NORMAL },
+  { "AVIFileSource", "s+[audio]b[pixel_type]s[fourCC]s", AVISource::Create, (void*) AVISource::MODE_AVIFILE },
+  { "WAVSource", "s+", AVISource::Create, (void*) AVISource::MODE_WAV },
+  { "OpenDMLSource", "s+[audio]b[pixel_type]s[fourCC]s", AVISource::Create, (void*) AVISource::MODE_OPENDML },
+  { "SegmentedAVISource", "s+[audio]b[pixel_type]s[fourCC]s", Create_SegmentedSource, (void*)0 },
   { "SegmentedDirectShowSource", "s+[fps]f", Create_SegmentedSource, (void*)1 },
   { "BlankClip", "[clip]c[length]i[width]i[height]i[pixel_type]s[fps]f[fps_denominator]i[audio_rate]i[stereo]b[sixteen_bit]b[color]i", Create_BlankClip },
   { "Blackness", "[clip]c[length]i[width]i[height]i[pixel_type]s[fps]f[fps_denominator]i[audio_rate]i[stereo]b[sixteen_bit]b[color]i", Create_BlankClip },

@@ -31,7 +31,7 @@
 // Public License plus this exception.  An independent module is a module
 // which is not derived from or based on Avisynth, such as 3rd-party filters,
 // import and export plugins, or graphical user interfaces.
- 
+
 
 #include "../stdafx.h"
 
@@ -67,11 +67,18 @@ class AVISource : public IClip {
 
   void CheckHresult(HRESULT hr, const char* msg, IScriptEnvironment* env);
   bool AttemptCodecNegotiation(DWORD fccHandler, BITMAPINFOHEADER* bmih);
-  void LocateVideoCodec(IScriptEnvironment* env);
+  void LocateVideoCodec(const char fourCC[], IScriptEnvironment* env);
 
 public:
 
-  AVISource::AVISource(const char filename[], bool fAudio, const char pixel_type[], int mode, IScriptEnvironment* env);  // mode: 0=detect, 1=avifile, 2=opendml, 3=avifile (audio only)
+  enum {
+    MODE_NORMAL = 0,
+    MODE_AVIFILE,
+    MODE_OPENDML,
+    MODE_WAV
+  };
+
+  AVISource::AVISource(const char filename[], bool fAudio, const char pixel_type[], const char fourCC[], int mode, IScriptEnvironment* env);  // mode: 0=detect, 1=avifile, 2=opendml, 3=avifile (audio only)
   ~AVISource();
   const VideoInfo& __stdcall GetVideoInfo();
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
@@ -81,11 +88,13 @@ public:
 
   static AVSValue __cdecl Create(AVSValue args, void* user_data, IScriptEnvironment* env) {
     const int mode = int(user_data);
-    const bool fAudio = (mode == 3) || args[1].AsBool(true);
-    const char* pixel_type = (mode != 3) ? args[2].AsString("") : "";
-    PClip result = new AVISource(args[0][0].AsString(), fAudio, pixel_type, mode, env);
+    const bool fAudio = (mode == MODE_WAV) || args[1].AsBool(true);
+    const char* pixel_type = (mode != MODE_WAV) ? args[2].AsString("") : "";
+    const char* fourCC = (mode != MODE_WAV) ? args[3].AsString("") : "";
+
+    PClip result = new AVISource(args[0][0].AsString(), fAudio, pixel_type, fourCC, mode, env);
     for (int i=1; i<args[0].ArraySize(); ++i)
-      result = new_Splice(result, new AVISource(args[0][i].AsString(), fAudio, pixel_type, mode, env), false, env);
+      result = new_Splice(result, new AVISource(args[0][i].AsString(), fAudio, pixel_type, fourCC, mode, env), false, env);
     return AlignPlanar::Create(result);
   }
 };
@@ -171,7 +180,7 @@ bool AVISource::AttemptCodecNegotiation(DWORD fccHandler, BITMAPINFOHEADER* bmih
 }
 
 
-void AVISource::LocateVideoCodec(IScriptEnvironment* env) {
+void AVISource::LocateVideoCodec(const char fourCC[], IScriptEnvironment* env) {
   AVISTREAMINFO asi;
   CheckHresult(pvideo->Info(&asi, sizeof(asi)), "couldn't get video info", env);
   long size = sizeof(BITMAPINFOHEADER);
@@ -199,7 +208,7 @@ void AVISource::LocateVideoCodec(IScriptEnvironment* env) {
     pbiSrc->biClrUsed     = 0;
     pbiSrc->biClrImportant  = 0;
 
-  } else {  
+  } else {
     CheckHresult(pvideo->ReadFormat(0, 0, &size), "couldn't get video format size", env);
     pbiSrc = (LPBITMAPINFOHEADER)malloc(size);
     CheckHresult(pvideo->ReadFormat(0, pbiSrc, &size), "couldn't get video format", env);
@@ -209,6 +218,12 @@ void AVISource::LocateVideoCodec(IScriptEnvironment* env) {
   vi.height = pbiSrc->biHeight;
   vi.SetFPS(asi.dwRate, asi.dwScale);
   vi.num_frames = asi.dwLength;
+
+  // try the requested decoder, if specified
+  if (fourCC != NULL && strlen(fourCC) == 4) {
+    DWORD fcc = fourCC[0] | (fourCC[1] << 8) | (fourCC[2] << 16) | (fourCC[3] << 24);
+    asi.fccHandler = pbiSrc->biCompression = fcc;
+  }
 
   // see if we can handle the video format directly
   if (pbiSrc->biCompression == '2YUY') {
@@ -244,7 +259,7 @@ void AVISource::LocateVideoCodec(IScriptEnvironment* env) {
 }
 
 
-AVISource::AVISource(const char filename[], bool fAudio, const char pixel_type[], int mode, IScriptEnvironment* env) {
+AVISource::AVISource(const char filename[], bool fAudio, const char pixel_type[], const char fourCC[], int mode, IScriptEnvironment* env) {
   srcbuffer = 0; srcbuffer_size = 0;
   memset(&vi, 0, sizeof(vi));
   ex = false;
@@ -255,25 +270,25 @@ AVISource::AVISource(const char filename[], bool fAudio, const char pixel_type[]
   pvideo=0;
   pfile=0;
   bIsType1 = false;
-    
+
   AVIFileInit();
-  
-  if (mode == 0) {
+
+  if (mode == MODE_NORMAL) {
     // if it looks like an AVI file, open in OpenDML mode; otherwise AVIFile mode
     HANDLE h = CreateFile(filename, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, 0, NULL);
     if (h == INVALID_HANDLE_VALUE) {
-      env->ThrowError("AVISource autodetect: couldn't open file\nError code: %d", GetLastError()); 
+      env->ThrowError("AVISource autodetect: couldn't open file\nError code: %d", GetLastError());
     }
     unsigned int buf[3];
     DWORD bytes_read;
     if (ReadFile(h, buf, 12, &bytes_read, NULL) && bytes_read == 12 && buf[0] == 'FFIR' && buf[2] == ' IVA')
-      mode = 2;
+      mode = MODE_OPENDML;
     else
-      mode = 1;
+      mode = MODE_AVIFILE;
     CloseHandle(h);
   }
-  
-  if (mode == 1 || mode == 3) {    // AVIFile mode
+
+  if (mode == MODE_AVIFILE || mode == MODE_WAV) {    // AVIFile mode
     PAVIFILE paf;
     if (FAILED(AVIFileOpen(&paf, filename, OF_READ, 0)))
       env->ThrowError("AVIFileSource: couldn't open file");
@@ -281,8 +296,8 @@ AVISource::AVISource(const char filename[], bool fAudio, const char pixel_type[]
   } else {              // OpenDML mode
     pfile = CreateAVIReadHandler(filename);
   }
-  
-  if (mode != 3) { // check for video stream
+
+  if (mode != MODE_WAV) { // check for video stream
     hic = 0;
     pvideo = pfile->GetStream(streamtypeVIDEO, 0);
 
@@ -292,15 +307,15 @@ AVISource::AVISource(const char filename[], bool fAudio, const char pixel_type[]
     }
 
     if (pvideo) {
-      LocateVideoCodec(env);
+      LocateVideoCodec(fourCC, env);
       if (hic) {
         bool fYV12  = lstrcmpi(pixel_type, "YV12" ) == 0 || pixel_type[0] == 0;
         bool fYUY2  = lstrcmpi(pixel_type, "YUY2" ) == 0 || pixel_type[0] == 0;
         bool fRGB32 = lstrcmpi(pixel_type, "RGB32") == 0 || pixel_type[0] == 0;
-        bool fRGB24 = lstrcmpi(pixel_type, "RGB24") == 0 || pixel_type[0] == 0;       
+        bool fRGB24 = lstrcmpi(pixel_type, "RGB24") == 0 || pixel_type[0] == 0;
         if (!(fYV12 || fYUY2 || fRGB32 || fRGB24))
           env->ThrowError("AVISource: requested format should be YV12, YUY2, RGB32 or RGB24");
-        
+
         // try to decompress to YV12, YUY2, RGB32, and RGB24 in turn
         memset(&biDst, 0, sizeof(BITMAPINFOHEADER));
         biDst.biSize = sizeof(BITMAPINFOHEADER);
@@ -308,11 +323,11 @@ AVISource::AVISource(const char filename[], bool fAudio, const char pixel_type[]
         biDst.biHeight = vi.height;
         biDst.biCompression = '21VY';
         biDst.biBitCount = 12;
-        biDst.biPlanes = 1;  
+        biDst.biPlanes = 1;
         int xwidth=(vi.width+3)&(~3);
         biDst.biSizeImage = xwidth * vi.height + ((xwidth>>1) * vi.height);
 
-        if (fYV12 && ICERR_OK == ICDecompressQuery(hic, pbiSrc, &biDst)) {  
+        if (fYV12 && ICERR_OK == ICDecompressQuery(hic, pbiSrc, &biDst)) {
           vi.pixel_type = VideoInfo::CS_YV12;
           _RPT0(0,"AVISource: Opening as YV12.\n");
         } else {
@@ -364,11 +379,11 @@ AVISource::AVISource(const char filename[], bool fAudio, const char pixel_type[]
     aSrc = new AudioSourceAVI(pfile, true);
     aSrc->init();
     audioStreamSource = new AudioStreamSource(aSrc,
-                                              aSrc->lSampleFirst, 
+                                              aSrc->lSampleFirst,
                                               aSrc->lSampleLast - aSrc->lSampleFirst,
                                               true);
-    WAVEFORMATEX* pwfx; 
-    pwfx = audioStreamSource->GetFormat(); 
+    WAVEFORMATEX* pwfx;
+    pwfx = audioStreamSource->GetFormat();
     vi.audio_samples_per_second = pwfx->nSamplesPerSec;
     vi.nchannels = pwfx->nChannels;
     if (pwfx->wBitsPerSample == 16) {
@@ -389,7 +404,7 @@ AVISource::AVISource(const char filename[], bool fAudio, const char pixel_type[]
 
   dropped_frame=false;
 
-  if (mode != 3) {
+  if (mode != MODE_WAV) {
     int keyframe = pvideo->NearestKeyFrame(0);
     PVideoFrame frame = env->NewVideoFrame(vi, -4);
     LRESULT error = DecompressFrame(keyframe, false, frame->GetWritePtr());
@@ -407,12 +422,12 @@ AVISource::AVISource(const char filename[], bool fAudio, const char pixel_type[]
       if (pbiSrc)
         free(pbiSrc);
       env->ThrowError("AviSource: Could not decompress frame 0");
-      
+
     }
     last_frame_no=0;
     last_frame=frame;
   }
- 
+
 }
 
 AVISource::~AVISource() {
@@ -433,7 +448,7 @@ AVISource::~AVISource() {
 const VideoInfo& AVISource::GetVideoInfo() { return vi; }
 
 PVideoFrame AVISource::GetFrame(int n, IScriptEnvironment* env) {
-  
+
   n = min(max(n, 0), vi.num_frames-1);
   dropped_frame=false;
   if (n != last_frame_no) {
@@ -464,8 +479,8 @@ PVideoFrame AVISource::GetFrame(int n, IScriptEnvironment* env) {
           env->ThrowError("AVISource: could not find valid keyframe for frame %d.", n);
         }
       }
-      
-    } while(not_found_yet);    
+
+    } while(not_found_yet);
   }
   return last_frame;
 }
@@ -493,6 +508,3 @@ void AVISource::GetAudio(void* buf, __int64 start, __int64 count, IScriptEnviron
 }
 
 bool AVISource::GetParity(int n) { return false; }
-
-
-
