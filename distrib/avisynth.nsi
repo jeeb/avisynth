@@ -3,9 +3,9 @@
 !packhdr "avisynth.dat" "upx.exe --best avisynth.dat" 
 
 
-!DEFINE VERSION 2.5.3
+!DEFINE VERSION 2.5.4
 
-!DEFINE DATE 111103
+!DEFINE DATE 201103
 
 
 SetCompressor bzip2

@@ -39,7 +39,7 @@
 #include "convert.h"
 #include "transform.h"
 #include "avi_source.cpp"
-#include "directshow_source.cpp"
+#include "directshow_source.h"
 
 
 /********************************************************************

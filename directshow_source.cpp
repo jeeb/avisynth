@@ -35,106 +35,11 @@
 
 #include "stdafx.h"
 
-#include "internal.h"
-#include "convert.h"
-#include "transform.h"
-#include <streams.h>
-
-// For some reason KSDATAFORMAT_SUBTYPE_IEEE_FLOAT and KSDATAFORMAT_SUBTYPE_PCM doesn't work - we construct the GUID manually!
-const GUID SUBTYPE_IEEE_AVSPCM  = {0x00000001, 0x0000, 0x0010, {0x80, 0x00, 0x00, 0xaa, 0x00, 0x38, 0x9b, 0x71}};
-const GUID SUBTYPE_IEEE_AVSFLOAT  = {0x00000003, 0x0000, 0x0010, {0x80, 0x00, 0x00, 0xaa, 0x00, 0x38, 0x9b, 0x71}};
+#include "directshow_source.h"
 
 
-extern void ApplyMessage(PVideoFrame* frame, const VideoInfo& vi,
-  const char* message, int size, int textcolor, int halocolor, int bgcolor,
-  IScriptEnvironment* env);
 
-
-/********************************************************************
-********************************************************************/
-
-
-#include <evcode.h>
-#include <control.h>
-#include <strmif.h>
-#include <amvideo.h>
-#include <dvdmedia.h>
-#include <vfwmsgs.h>
-#include <initguid.h>
-#include <uuids.h>
-#include <errors.h>
-
-
-class GetSample;
-
-
-class GetSampleEnumPins : public IEnumPins {
-  long refcnt;
-  GetSample* const parent;
-  int pos;
-public:
-  GetSampleEnumPins(GetSample* _parent, int _pos=0);
-
-  // IUnknown
-  
-  ULONG __stdcall AddRef() { InterlockedIncrement(&refcnt); return refcnt; }
-  ULONG __stdcall Release() {
-    if (!InterlockedDecrement(&refcnt)) {
-      delete this;
-      return 0;
-    } else {
-      return refcnt;
-    }
-  }
-  HRESULT __stdcall QueryInterface(REFIID iid, void** ppv) {
-    if (iid == IID_IUnknown)
-    *ppv = static_cast<IUnknown*>(this);
-    else if (iid == IID_IEnumPins)
-    *ppv = static_cast<IEnumPins*>(this);
-    else {
-      *ppv = 0;
-      return E_NOINTERFACE;
-    }
-    AddRef();
-    return S_OK;
-  }
-
-  // IEnumPins
-
-  HRESULT __stdcall Next(ULONG cPins, IPin** ppPins, ULONG* pcFetched);
-  HRESULT __stdcall Skip(ULONG cPins) { return E_NOTIMPL; }
-  HRESULT __stdcall Reset() { pos=0; return S_OK; }
-  HRESULT __stdcall Clone(IEnumPins** ppEnum) { return E_NOTIMPL; }
-};
-
-
-class GetSample : public IBaseFilter, public IPin, public IMemInputPin {
-
-  long refcnt;
-  IPin* source_pin;  // not refcounted
-  IFilterGraph* filter_graph;  // not refcounted
-  IReferenceClock* pclock;  // not refcounted
-  FILTER_STATE state;
-  bool end_of_stream, flushing;
-  IUnknown *m_pPos;  // Pointer to the CPosPassThru object.
-  VideoInfo vi;
-
-  HANDLE evtDoneWithSample, evtNewSampleReady;
-
-  PVideoFrame pvf;
-  __int64 sample_start_time, sample_end_time;
-
-  IScriptEnvironment* const env;
-
-public:
-  int a_sample_bytes;
-  int a_allocated_buffer;
-  BYTE* a_buffer;         // Killed on StopGraph
-  bool load_audio;
-  bool load_video;
-
-
-  GetSample(IScriptEnvironment* _env, bool _load_audio, bool _load_video) : env(_env), load_audio(_load_audio), load_video(_load_video) {
+GetSample::GetSample(IScriptEnvironment* _env, bool _load_audio, bool _load_video) : env(_env), load_audio(_load_audio), load_video(_load_video) {
     refcnt = 1;
     source_pin = 0;
     filter_graph = 0;
@@ -146,33 +51,19 @@ public:
     flushing = end_of_stream = false;
     memset(&vi, 0, sizeof(vi));
     sample_end_time = sample_start_time = 0;
-    evtDoneWithSample = ::CreateEvent(NULL, FALSE, FALSE, (load_audio) ? "AVS_DoneWithSample_audio" : "AVS_DoneWithSample_video");
-    evtNewSampleReady = ::CreateEvent(NULL, FALSE, FALSE, (load_audio) ? "AVS_NewSampleReady_audio" : "AVS_NewSampleReady_video");
+//    evtDoneWithSample = ::CreateEvent(NULL, FALSE, FALSE, (load_audio) ? "AVS_DoneWithSample_audio" : "AVS_DoneWithSample_video");
+//    evtNewSampleReady = ::CreateEvent(NULL, FALSE, FALSE, (load_audio) ? "AVS_NewSampleReady_audio" : "AVS_NewSampleReady_video");
+    evtDoneWithSample = ::CreateEvent(NULL, FALSE, FALSE, NULL);
+    evtNewSampleReady = ::CreateEvent(NULL, FALSE, FALSE, NULL);
   }
 
-  ~GetSample() {
+  GetSample::~GetSample() {
     CloseHandle(evtDoneWithSample);
     CloseHandle(evtNewSampleReady);
   }
 
-  // These are utility functions for use by DirectShowSource.  Note that
-  // the other thread (the one used by the DirectShow filter graph side of
-  // things) is always blocked when any of these functions is called, and
-  // is always blocked when they return, though it may be temporarily
-  // unblocked in between.
 
-  bool IsConnected() { return !!source_pin; }
-
-  bool IsEndOfStream() { return end_of_stream; }
-
-  const VideoInfo& GetVideoInfo() { return vi; }
-
-  PVideoFrame GetCurrentFrame() { return pvf; }
-
-  __int64 GetSampleStartTime() { return sample_start_time; }
-  __int64 GetSampleEndTime() { return sample_end_time; }
-
-  void StartGraph() {
+  void GetSample::StartGraph() {
     IMediaControl* mc;
     filter_graph->QueryInterface(&mc);
     mc->Run();
@@ -183,7 +74,7 @@ public:
 
   }
 
-  void StopGraph() {
+  void GetSample::StopGraph() {
     IMediaControl* mc;
     filter_graph->QueryInterface(&mc);
     state = State_Paused;
@@ -199,7 +90,7 @@ public:
     a_buffer = 0;
   }
 
-  void PauseGraph() {
+  void GetSample::PauseGraph() {
     IMediaControl* mc;
     filter_graph->QueryInterface(&mc);
     state = State_Paused;
@@ -210,7 +101,7 @@ public:
 
   }
 
-  HRESULT SeekTo(__int64 pos) {
+  HRESULT GetSample::SeekTo(__int64 pos) {
 //    PauseGraph();
     HRESULT hr;
 
@@ -289,7 +180,7 @@ public:
     return hr;  // Seek ok
   }
 
-  void NextSample() {
+  void GetSample::NextSample() {
     if (end_of_stream) return;
 
     if (load_audio) 
@@ -321,13 +212,13 @@ public:
 
   // IUnknown
 
-  ULONG __stdcall AddRef() { 
+  ULONG __stdcall GetSample::AddRef() { 
     InterlockedIncrement(&refcnt); 
     _RPT1(0,"GetSample::AddRef() -> %d\n", refcnt); 
     return refcnt; 
   }
 
-  ULONG __stdcall Release() { 
+  ULONG __stdcall GetSample::Release() { 
     InterlockedDecrement(&refcnt); 
     _RPT1(0,"GetSample::Release() -> %d\n", refcnt); 
     return refcnt; 
@@ -335,7 +226,7 @@ public:
 
   
 
-  HRESULT __stdcall QueryInterface(REFIID iid, void** ppv) {
+  HRESULT __stdcall GetSample::QueryInterface(REFIID iid, void** ppv) {
     if (iid == IID_IUnknown)
     *ppv = static_cast<IUnknown*>(static_cast<IBaseFilter*>(this));
     else if (iid == IID_IPersist)
@@ -372,20 +263,20 @@ public:
 
   // IPersist
 
-  HRESULT __stdcall GetClassID(CLSID* pClassID) { return E_NOTIMPL; }
+  HRESULT __stdcall GetSample::GetClassID(CLSID* pClassID) { return E_NOTIMPL; }
 
   // IMediaFilter
 
-  HRESULT __stdcall Stop() { _RPT0(0,"GetSample::Stop()\n"); state = State_Stopped; return S_OK; }
-  HRESULT __stdcall Pause() { _RPT0(0,"GetSample::Pause()\n"); state = State_Paused; return S_OK; }
-  HRESULT __stdcall Run(REFERENCE_TIME tStart) { _RPT0(0,"GetSample::Run()\n"); state = State_Running; return S_OK; }
-  HRESULT __stdcall GetState(DWORD dwMilliSecsTimeout, FILTER_STATE* State) {
+  HRESULT __stdcall GetSample::Stop() { _RPT0(0,"GetSample::Stop()\n"); state = State_Stopped; return S_OK; }
+  HRESULT __stdcall GetSample::Pause() { _RPT0(0,"GetSample::Pause()\n"); state = State_Paused; return S_OK; }
+  HRESULT __stdcall GetSample::Run(REFERENCE_TIME tStart) { _RPT0(0,"GetSample::Run()\n"); state = State_Running; return S_OK; }
+  HRESULT __stdcall GetSample::GetState(DWORD dwMilliSecsTimeout, FILTER_STATE* State) {
     if (!State) return E_POINTER;
     *State = state;
     return S_OK;
   }
-  HRESULT __stdcall SetSyncSource(IReferenceClock* pClock) { pclock = pClock; return S_OK; }
-  HRESULT __stdcall GetSyncSource(IReferenceClock** ppClock) {
+  HRESULT __stdcall GetSample::SetSyncSource(IReferenceClock* pClock) { pclock = pClock; return S_OK; }
+  HRESULT __stdcall GetSample::GetSyncSource(IReferenceClock** ppClock) {
     if (!ppClock) return E_POINTER;
     *ppClock = pclock;
     if (pclock) pclock->AddRef();
@@ -394,37 +285,37 @@ public:
 
   // IBaseFilter
 
-  HRESULT __stdcall EnumPins(IEnumPins** ppEnum) {
+  HRESULT __stdcall GetSample::EnumPins(IEnumPins** ppEnum) {
     if (!ppEnum) return E_POINTER;
     *ppEnum = new GetSampleEnumPins(this);
     return S_OK;
   }
-  HRESULT __stdcall FindPin(LPCWSTR Id, IPin** ppPin) { return E_NOTIMPL; }
-  HRESULT __stdcall QueryFilterInfo(FILTER_INFO* pInfo) {
+  HRESULT __stdcall GetSample::FindPin(LPCWSTR Id, IPin** ppPin) { return E_NOTIMPL; }
+  HRESULT __stdcall GetSample::QueryFilterInfo(FILTER_INFO* pInfo) {
     if (!pInfo) return E_POINTER;
     lstrcpyW(pInfo->achName, L"GetSample");
     pInfo->pGraph = filter_graph;
     if (filter_graph) filter_graph->AddRef();
     return S_OK;
   }
-  HRESULT __stdcall JoinFilterGraph(IFilterGraph* pGraph, LPCWSTR pName) {
+  HRESULT __stdcall GetSample::JoinFilterGraph(IFilterGraph* pGraph, LPCWSTR pName) {
     filter_graph = pGraph;
     return S_OK;
   }
-  HRESULT __stdcall QueryVendorInfo(LPWSTR* pVendorInfo) { return E_NOTIMPL; }
+  HRESULT __stdcall GetSample::QueryVendorInfo(LPWSTR* pVendorInfo) { return E_NOTIMPL; }
 
   // IPin
 
-  HRESULT __stdcall Connect(IPin* pReceivePin, const AM_MEDIA_TYPE* pmt) {
+  HRESULT __stdcall GetSample::Connect(IPin* pReceivePin, const AM_MEDIA_TYPE* pmt) {
     return E_UNEXPECTED;
   }
-  HRESULT __stdcall ReceiveConnection(IPin* pConnector, const AM_MEDIA_TYPE* pmt) {
+  HRESULT __stdcall GetSample::ReceiveConnection(IPin* pConnector, const AM_MEDIA_TYPE* pmt) {
     if (!pConnector || !pmt) return E_POINTER;
     if (GetSample::QueryAccept(pmt) != S_OK) return E_INVALIDARG;
     source_pin = pConnector;
     return S_OK;
   }
-  HRESULT __stdcall Disconnect() {
+  HRESULT __stdcall GetSample::Disconnect() {
     if (a_allocated_buffer) { 
       a_allocated_buffer = 0;
       delete[] a_buffer;
@@ -432,16 +323,16 @@ public:
     source_pin = 0;
     return S_OK;
   }
-  HRESULT __stdcall ConnectedTo(IPin** ppPin) {
+  HRESULT __stdcall GetSample::ConnectedTo(IPin** ppPin) {
     if (!ppPin) return E_POINTER;
     if (source_pin) source_pin->AddRef();
     *ppPin = source_pin;
     return source_pin ? S_OK : VFW_E_NOT_CONNECTED;
   }
-  HRESULT __stdcall ConnectionMediaType(AM_MEDIA_TYPE* pmt) {
+  HRESULT __stdcall GetSample::ConnectionMediaType(AM_MEDIA_TYPE* pmt) {
     return E_NOTIMPL;
   }
-  HRESULT __stdcall QueryPinInfo(PIN_INFO* pInfo) {
+  HRESULT __stdcall GetSample::QueryPinInfo(PIN_INFO* pInfo) {
     if (!pInfo) return E_POINTER;
     pInfo->pFilter = static_cast<IBaseFilter*>(this);
     AddRef();
@@ -450,19 +341,19 @@ public:
     return S_OK;
   }
 
-  HRESULT __stdcall QueryDirection(PIN_DIRECTION* pPinDir) {
+  HRESULT __stdcall GetSample::QueryDirection(PIN_DIRECTION* pPinDir) {
     if (!pPinDir) return E_POINTER;
     *pPinDir = PINDIR_INPUT;
     return S_OK;
   }
 
-  HRESULT __stdcall QueryId(LPWSTR* Id) {
+  HRESULT __stdcall GetSample::QueryId(LPWSTR* Id) {
     return E_NOTIMPL;
   }
 
 
 
-  HRESULT __stdcall QueryAccept(const AM_MEDIA_TYPE* pmt) {
+  HRESULT __stdcall GetSample::QueryAccept(const AM_MEDIA_TYPE* pmt) {
     if (!pmt) return E_POINTER;
 
     if (load_audio) {
@@ -597,13 +488,13 @@ public:
     return S_OK;
   }
 
-  HRESULT __stdcall EnumMediaTypes(IEnumMediaTypes** ppEnum) {
+  HRESULT __stdcall GetSample::EnumMediaTypes(IEnumMediaTypes** ppEnum) {
     return E_NOTIMPL;
   }
-  HRESULT __stdcall QueryInternalConnections(IPin** apPin, ULONG* nPin) {
+  HRESULT __stdcall GetSample::QueryInternalConnections(IPin** apPin, ULONG* nPin) {
     return E_NOTIMPL;
   }
-  HRESULT __stdcall EndOfStream() {
+  HRESULT __stdcall GetSample::EndOfStream() {
     _RPT0(0,"GetSample::EndOfStream()\n");
     end_of_stream = true;
     if (state == State_Running) {
@@ -620,30 +511,30 @@ public:
     return S_OK;
   }
 
-  HRESULT __stdcall BeginFlush() {
+  HRESULT __stdcall GetSample::BeginFlush() {
     _RPT0(0,"GetSample::BeginFlush()\n");
     flushing = true;
     end_of_stream = false;
     return S_OK;
   }
 
-  HRESULT __stdcall EndFlush() {
+  HRESULT __stdcall GetSample::EndFlush() {
     _RPT0(0,"GetSample::EndFlush()\n");
     flushing = false;
     return S_OK;
   }
 
-  HRESULT __stdcall NewSegment(REFERENCE_TIME tStart, REFERENCE_TIME tStop, double dRate) {
+  HRESULT __stdcall GetSample::NewSegment(REFERENCE_TIME tStart, REFERENCE_TIME tStop, double dRate) {
     return S_OK;
   }
 
   // IMemInputPin
 
-  HRESULT __stdcall GetAllocator(IMemAllocator** ppAllocator) { return E_NOTIMPL; }
-  HRESULT __stdcall NotifyAllocator(IMemAllocator* pAllocator, BOOL bReadOnly) { return S_OK; }
-  HRESULT __stdcall GetAllocatorRequirements(ALLOCATOR_PROPERTIES* pProps) { return E_NOTIMPL; }
+  HRESULT __stdcall GetSample::GetAllocator(IMemAllocator** ppAllocator) { return E_NOTIMPL; }
+  HRESULT __stdcall GetSample::NotifyAllocator(IMemAllocator* pAllocator, BOOL bReadOnly) { return S_OK; }
+  HRESULT __stdcall GetSample::GetAllocatorRequirements(ALLOCATOR_PROPERTIES* pProps) { return E_NOTIMPL; }
 
-  HRESULT __stdcall Receive(IMediaSample* pSamples) {
+  HRESULT __stdcall GetSample::Receive(IMediaSample* pSamples) {
     if (end_of_stream || flushing) {
       _RPT0(0,"discarding sample (end of stream or flushing)\n");
       return S_OK;
@@ -727,7 +618,7 @@ public:
     return S_OK;
   }
 
-  HRESULT __stdcall ReceiveMultiple(IMediaSample** ppSamples, long nSamples, long* nSamplesProcessed) {
+  HRESULT __stdcall GetSample::ReceiveMultiple(IMediaSample** ppSamples, long nSamples, long* nSamplesProcessed) {
     for (int i=0; i<nSamples; ++i) {
       HRESULT hr = Receive(ppSamples[i]);
       if (FAILED(hr)) {
@@ -739,8 +630,8 @@ public:
     return S_OK;
   }
 
-  HRESULT __stdcall ReceiveCanBlock() { return S_OK; }
-};
+  HRESULT __stdcall GetSample::ReceiveCanBlock() { return S_OK; }
+
 
 
 GetSampleEnumPins::GetSampleEnumPins(GetSample* _parent, int _pos) : parent(_parent) { pos=_pos; refcnt = 1; }
@@ -755,6 +646,12 @@ HRESULT __stdcall GetSampleEnumPins::Next(ULONG cPins, IPin** ppPins, ULONG* pcF
   pos += copy;
   return int(cPins) > copy ? S_FALSE : S_OK;
 }
+
+
+/************************************************
+ *    DirectShowSource Helper Funcctions.       *
+ ***********************************************/
+
 
 
 static bool HasNoConnectedOutputPins(IBaseFilter* bf) {
@@ -781,6 +678,7 @@ static bool HasNoConnectedOutputPins(IBaseFilter* bf) {
   ep->Release();
   return true;
 }
+
 
 
 static void DisconnectAllPinsAndRemoveFilter(IGraphBuilder* gb, IBaseFilter* bf) {
@@ -894,29 +792,12 @@ static void SetMicrosoftDVtoFullResolution(IGraphBuilder* gb) {
   
 }
 
+/************************************************
+ *               DirectShowSource               *
+ ***********************************************/
 
-class DirectShowSource : public IClip {
 
-  GetSample get_sample;
-  IGraphBuilder* gb;
-  __int64 next_sample;
-
-  VideoInfo vi;
-  __int64 duration;
-  bool frame_units, known_framerate;
-  int avg_time_per_frame;
-  __int64 base_sample_time;
-  int cur_frame;
-  bool no_search;
-  int audio_bytes_read;
-  IScriptEnvironment* const env;
-  void CheckHresult(HRESULT hr, const char* msg, const char* msg2 = "");
-  HRESULT LoadGraphFile(IGraphBuilder *pGraph, const WCHAR* wszName);
-  HRESULT DirectShowSource::RepositionAudio(__int64 start);
-
-public:
-
-  DirectShowSource(const char* filename, int _avg_time_per_frame, bool _seek, bool _enable_audio, bool _enable_video, IScriptEnvironment* _env) : env(_env), get_sample(_env, _enable_audio, _enable_video), no_search(!_seek) {
+DirectShowSource::DirectShowSource(const char* filename, int _avg_time_per_frame, bool _seek, bool _enable_audio, bool _enable_video, IScriptEnvironment* _env) : env(_env), get_sample(_env, _enable_audio, _enable_video), no_search(!_seek) {
 
     CheckHresult(CoCreateInstance(CLSID_FilterGraphNoThread, 0, CLSCTX_INPROC_SERVER, IID_IGraphBuilder, (void**)&gb), "couldn't create filter graph");
 
@@ -999,7 +880,7 @@ public:
   }
 
 
-  ~DirectShowSource() {
+  DirectShowSource::~DirectShowSource() {
     IMediaControl* mc;
     if (SUCCEEDED(gb->QueryInterface(&mc))) {
       OAFilterState st;
@@ -1012,10 +893,9 @@ public:
     get_sample.StopGraph();
   }
 
-  const VideoInfo& __stdcall GetVideoInfo() { return vi; }
 
-  PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env) {
-    n = max(min(n, vi.num_frames-1), 0);
+  PVideoFrame __stdcall DirectShowSource::GetFrame(int n, IScriptEnvironment* env) {
+    n = max(min(n, vi.num_frames-1), 0); 
     if (frame_units) {
       if (n < cur_frame || n > cur_frame+10) {
         if ( no_search || FAILED(get_sample.SeekTo(__int64(n) * avg_time_per_frame + (avg_time_per_frame>>1))) ) {
@@ -1067,10 +947,8 @@ public:
     return v;
   }
 
-  bool __stdcall GetParity(int n) { return vi.IsFieldBased() ? (n&1) : false; }
-  void __stdcall SetCacheHints(int cachehints,int frame_range) { };
 
-  void __stdcall GetAudio(void* buf, __int64 start, __int64 count, IScriptEnvironment* env) {
+  void __stdcall DirectShowSource::GetAudio(void* buf, __int64 start, __int64 count, IScriptEnvironment* env) {
 
     int bytes_left = vi.BytesFromAudioSamples(count);
 
@@ -1154,7 +1032,6 @@ public:
     next_sample +=count;
   }
 
-};
 
 
 void DirectShowSource::CheckHresult(HRESULT hr, const char* msg, const char* msg2) {

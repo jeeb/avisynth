@@ -468,7 +468,7 @@ void avs_at_exit(AVS_ScriptEnvironment * p,
   ShutdownFuncData * d = new ShutdownFuncData; // FIXME: When do I delete
   d->func = function;
   d->user_data = user_data;
-  p->env->AtExit(shutdown_func_bridge, d);
+//  p->env->AtExit(shutdown_func_bridge, d);
 }
 
 extern "C"
