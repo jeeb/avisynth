@@ -733,13 +733,16 @@ TemporalSoften::TemporalSoften( PClip _child, unsigned radius, unsigned luma_thr
   if ((vi.IsYUY2()) && (vi.width&7)) {
     env->ThrowError("TemporalSoften: YUY2 source must be multiple of 8 in width.");
   }
+
   if (mode!=max(min(mode,2),1)) {
     env->ThrowError("TemporalSoften: Mode must be 1 or 2.");
   }
+
   if (scenechange>0) {
     if (!(env->GetCPUFlags() & CPUF_INTEGER_SSE))
       env->ThrowError("TemporalSoften: Scenechange requires Integer SSE capable CPU.");
   }
+
   scenechange *= ((vi.width/32)*32)*vi.height*vi.BytesFromPixels(1);
   
   planes = new int[8];
@@ -753,15 +756,15 @@ TemporalSoften::TemporalSoften( PClip _child, unsigned radius, unsigned luma_thr
     divtab[i] = 32768/(i+1);
   int c = 0;
   if (vi.IsYV12()) {
-    if (luma_thresh>=0) {planes[c++] = PLANAR_Y; planes[c++] = luma_thresh;}
-    if (chroma_thresh>=0) { planes[c++] = PLANAR_V;planes[c++] =chroma_thresh;planes[c++] = PLANAR_U;planes[c++] =chroma_thresh;}
+    if (luma_thresh>0) {planes[c++] = PLANAR_Y; planes[c++] = luma_thresh;}
+    if (chroma_thresh>0) { planes[c++] = PLANAR_V;planes[c++] =chroma_thresh; planes[c++] = PLANAR_U;planes[c++] = chroma_thresh;}
   } else {
     planes[c++]=0;
     planes[c++]=luma_thresh|(chroma_thresh<<8);
   }
   planes[c]=0;
-  accum_line=(int*)_aligned_malloc(((vi.width*vi.BytesFromPixels(1)+FRAME_ALIGN-1)/8)*16,8);
-  div_line=(int*)_aligned_malloc(((vi.width*vi.BytesFromPixels(1)+FRAME_ALIGN-1)/8)*16,8);
+  accum_line=(int*)_aligned_malloc(((vi.width*vi.BytesFromPixels(1)+FRAME_ALIGN-1)/8)*16,64);
+  div_line=(int*)_aligned_malloc(((vi.width*vi.BytesFromPixels(1)+FRAME_ALIGN-1)/8)*16,64);
   frames = new PVideoFrame[kernel];
 }
 
@@ -785,10 +788,14 @@ TemporalSoften::~TemporalSoften(void)
 PVideoFrame TemporalSoften::GetFrame(int n, IScriptEnvironment* env) 
 {
   __int64 i64_thresholds = 0x1000010000100001i64;
-//  PVideoFrame frame;
   int radius = (kernel-1) / 2 ;
   int c=0;
   
+  // Just skip if silly settings
+
+  if ((!luma_threshold) && (!chroma_threshold) || (!radius))
+    return child->GetFrame(n,env);
+    
 
   for (int p=0;p<16;p++)
     planeDisabled[p]=false;

@@ -36,8 +36,8 @@
 #ifndef __Internal_H__
 #define __Internal_H__
 
-#define AVS_VERSION 2.51
-#define AVS_VERSTR "AviSynth 2.51, build:"__DATE__" ["__TIME__"]"
+#define AVS_VERSION 2.52
+#define AVS_VERSTR "AviSynth 2.52, build:"__DATE__" ["__TIME__"]"
 
 
 #include "avisynth.h"
