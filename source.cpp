@@ -1536,7 +1536,13 @@ public:
     next_sample = 0;
   }
 
-  ~DirectShowSource() { get_sample.StopGraph(); get_audio_sample.StopGraph(); gb->Release(); }
+
+  ~DirectShowSource() {
+//    get_sample.StopGraph(); 
+//    get_audio_sample.StopGraph(); // Stopgraph crashes AC3filter
+    gb->Abort(); 
+//    gb->Release(); // Release hangs, if Stopgraph has not been called
+  }
 
   const VideoInfo& __stdcall GetVideoInfo() { return vi; }
 
