@@ -311,9 +311,9 @@ AVISource::~AVISource() {
 const VideoInfo& AVISource::GetVideoInfo() { return vi; }
 
 PVideoFrame AVISource::GetFrame(int n, IScriptEnvironment* env) {
-
+  
   n = min(max(n, 0), vi.num_frames-1);
-
+  
   if (n != last_frame_no) {
     // find the last keyframe
     int keyframe = pvideo->NearestKeyFrame(n);
@@ -321,18 +321,30 @@ PVideoFrame AVISource::GetFrame(int n, IScriptEnvironment* env) {
     if (last_frame_no < n && last_frame_no >= keyframe)
       keyframe = last_frame_no+1;
     if (keyframe < 0) keyframe = 0;
-    for (int i = keyframe; i <= n; ++i) {
-      PVideoFrame frame = env->NewVideoFrame(vi, 4);
-      LRESULT error = DecompressFrame(i, i != n, frame->GetWritePtr());
-      // we don't want dropped frames to throw an error
-      if (error != ICERR_OK && !dropped_frame) {
-        env->ThrowError("AVISource: failed to decompress frame %d (error %d)", i, error);
+    bool not_found_yet=false;
+    do {
+      for (int i = keyframe; i <= n; ++i) {
+        PVideoFrame frame = env->NewVideoFrame(vi, 4);
+        LRESULT error = DecompressFrame(i, i != n, frame->GetWritePtr());
+        // we don't want dropped frames to throw an error
+        // Experiment to remove ALL error reporting, so it will always return last valid frame.
+        if (error != ICERR_OK && !dropped_frame) {
+          //        env->ThrowError("AVISource: failed to decompress frame %d (error %d)", i, error);
+        }
+        last_frame_no = i;
+        if ((!dropped_frame) && frame && (error == ICERR_OK)) last_frame = frame;   // Better safe than sorry
       }
-      last_frame_no = i;
-      if (!dropped_frame) last_frame = frame;
-    }
+      if (!last_frame) {  // Last keyframe was not valid.
+        not_found_yet=true;
+        int key_pre=keyframe;
+        keyframe = pvideo->NearestKeyFrame(keyframe-1);
+        if (keyframe == key_pre) {
+          env->ThrowError("AVISource: could not find valid keyframe for frame %d.", n);
+        }
+      }
+      
+    } while(not_found_yet);    
   }
-
   return last_frame;
 }
 
