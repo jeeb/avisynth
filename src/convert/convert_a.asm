@@ -46,27 +46,43 @@ _TEXT64	segment	page public use32 'CODE'
 
 yuv2rgb_constants:
 
-x0000_0000_0010_0010	dq	00000000000100010h
-x0080_0080_0080_0080	dq	00080008000800080h
+x0000_0000_0010_0010	dq	00000000000100010h		;    16
+x0080_0080_0080_0080	dq	00080008000800080h		;   128
 x00FF_00FF_00FF_00FF	dq	000FF00FF00FF00FFh
-x00002000_00002000	dq	00000200000002000h
-xFF000000_FF000000	dq	0FF000000FF000000h
-cy			dq	000004A8500004A85h
-crv			dq	03313000033130000h
-cgu_cgv			dq	0E5FCF377E5FCF377h
-cbu			dq	00000408D0000408Dh
+x00002000_00002000		dq	00000200000002000h		;  8192        = (0.5)<<14
+xFF000000_FF000000		dq	0FF000000FF000000h
+cy						dq	000004A8500004A85h		; 19077        = (255./219.)<<14+0.5
+crv						dq	03313000033130000h		; 13075        = ((1-0.299)*255./224.)<<14+0.5
+cgu_cgv					dq	0E5FCF377E5FCF377h		; -6660, -3209 = ((K-1)*K/0.587*255./224.)<<14+0.5, K=(0.229, 0.114)
+cbu						dq	00000408D0000408Dh		;        16525 = ((1-0.114)*255./224.)<<14+0.5
 
 yuv2rgb_constants_rec709:
 
-	dq	00000000000100010h
-	dq	00080008000800080h
-	dq	000FF00FF00FF00FFh
-	dq	00000200000002000h
-	dq	0FF000000FF000000h
-	dq	000004A8500004A85h
-	dq	03960000039600000h
-	dq	0EEF5F930EEF5F930h
-	dq	00000439B0000439Bh
+						dq	00000000000100010h		;    16       
+						dq	00080008000800080h		;   128       
+						dq	000FF00FF00FF00FFh                    
+						dq	00000200000002000h		;  8192        = (0.5)<<14
+						dq	0FF000000FF000000h                    
+						dq	000004A8500004A85h		; 19077        = (255./219.)<<14+0.5
+						dq	03960000039600000h		;        14688 = ((1-0.2125)*255./224.)<<14+0.5
+						dq	0EEF5F930EEF5F930h		; -4363, -1774 = ((K-1)*K/0.7154*255./224.)<<14+0.5, K=(0.2125, 0.0721)
+						dq	00000439B0000439Bh		; 17307        = ((1-0.0721)*255./224.)<<14+0.5       
+
+	;					dq	03960000039600000h		;        14685 = ((1-0.212649)*255./224.)<<14+0.5
+	;					dq	0EEF5F930EEF5F930h		; -4366, -1746 = ((K-1)*K/0.715169*255./224.)<<14+0.5, K=(0.212649, 0.072182)
+	;					dq	00000439B0000439Bh		; 17305        = ((1-0.072182)*255./224.)<<14+0.5       
+
+yuv2rgb_constants_PC_levels:
+
+						dq	00000000000000000h		;     0       
+						dq	00080008000800080h		;   128       
+						dq	000FF00FF00FF00FFh                    
+						dq	00000200000002000h		;  8192        = (0.5)<<14
+						dq	0FF000000FF000000h                    
+						dq	00000400000004000h		; 16384        = (1.)<<14+0.5                                
+						dq	02CDD00002CDD0000h		;        11485 = (1-0.299)<<14+0.5                      
+						dq	0E927F4FEE927F4FEh		; -5849, -2818 = ((K-1)*K/0.587)<<14+0.5, K=(0.229, 0.114)
+						dq	0000038B4000038B4h		; 14516        = (1-0.114)<<14+0.5                      
 
 ofs_x0000_0000_0010_0010 = 0
 ofs_x0080_0080_0080_0080 = 8
@@ -106,31 +122,31 @@ YUV2RGB_INNER_LOOP	MACRO	uyvy,rgb32,no_next_pixel
 	GET_Y		mm0,&uyvy	; mm0 = __________Y1__Y0
 	 movq		 mm4,mm5
 	GET_UV		mm1,&uyvy	; mm1 = __________V0__U0
-	 GET_Y		 mm4,&uyvy
+	 GET_Y		 mm4,&uyvy	; mm4 = __________Y3__Y2
 	movq		mm2,mm5		; *** avoid reload from [esi+4]
-	 GET_UV		 mm5,&uyvy
-	psubw		mm0,[edx+ofs_x0000_0000_0010_0010]
+	 GET_UV		 mm5,&uyvy	; mm5 = __________V2__U2
+	psubw		mm0,[edx+ofs_x0000_0000_0010_0010]	; (Y-16)
 	 movd		 mm6,[esi+8-4*(no_next_pixel)]
 	GET_UV		mm2,&uyvy	; mm2 = __________V2__U2
-	 psubw		 mm4,[edx+ofs_x0000_0000_0010_0010]
-	paddw		mm2,mm1
-	 GET_UV		 mm6,&uyvy
-	psubw		mm1,[edx+ofs_x0080_0080_0080_0080]
-	 paddw		 mm6,mm5
+	 psubw		 mm4,[edx+ofs_x0000_0000_0010_0010]	; (Y-16)
+	paddw		mm2,mm1		; 2*UV1=UV0+UV2
+	 GET_UV		 mm6,&uyvy	; mm6 = __________V4__U4
+	psubw		mm1,[edx+ofs_x0080_0080_0080_0080]	; (UV-128)
+	 paddw		 mm6,mm5	; 2*UV3=UV2+UV4
 	psllq		mm2,32
-	 psubw		 mm5,[edx+ofs_x0080_0080_0080_0080]
+	 psubw		 mm5,[edx+ofs_x0080_0080_0080_0080]	; (UV-128)
 	punpcklwd	mm0,mm2		; mm0 = ______Y1______Y0
 	 psllq		 mm6,32
-	pmaddwd		mm0,[edx+ofs_cy]
+	pmaddwd		mm0,[edx+ofs_cy]	; (Y-16)*(255./219.)<<14
 	 punpcklwd	 mm4,mm6
-	paddw		mm1,mm1
+	paddw		mm1,mm1		; 2*UV0=UV0+UV0
 	 pmaddwd	 mm4,[edx+ofs_cy]
-	 paddw		 mm5,mm5
+	 paddw		 mm5,mm5	; 2*UV2=UV2+UV2
 	paddw		mm1,mm2		; mm1 = __V1__U1__V0__U0 * 2
-	paddd		mm0,[edx+ofs_x00002000_00002000]
-	 paddw		 mm5,mm6
+	paddd		mm0,[edx+ofs_x00002000_00002000]	; +=0.5<<14
+	 paddw		 mm5,mm6	; mm5 = __V3__U3__V2__U2 * 2
 	movq		mm2,mm1
-	 paddd		 mm4,[edx+ofs_x00002000_00002000]
+	 paddd		 mm4,[edx+ofs_x00002000_00002000]	; +=0.5<<14
 	movq		mm3,mm1
 	 movq		 mm6,mm5
 	pmaddwd		mm1,[edx+ofs_crv]
@@ -211,7 +227,7 @@ YUV2RGB_PROC	MACRO	procname,uyvy,rgb32
 ;;	[esp+12] const BYTE* src_end,
 ;;	[esp+16] int src_pitch,
 ;;	[esp+20] int row_size,
-;;	[esp+24] bool rec709);
+;;	[esp+24] rec709 matrix);  0=rec601, 1=rec709, 3=PC_Levels
 
 _&procname	PROC
 
@@ -219,14 +235,18 @@ _&procname	PROC
 	push	edi
 	push	ebx
 
-	mov	eax,[esp+16+12]
-	mov	esi,[esp+12+12]		; read source bottom-up
-	mov	edi,[esp+8+12]
-	mov	ebx,[esp+20+12]
+	mov	eax,[esp+16+12]		; src_pitch
+	mov	esi,[esp+12+12]		; src_end - read source bottom-up
+	mov	edi,[esp+8+12]		; dstp
+	mov	ebx,[esp+20+12]		; row_size
 	mov	edx,offset yuv2rgb_constants
 	test	byte ptr [esp+24+12],1
 	jz	loop0
 	mov	edx,offset yuv2rgb_constants_rec709
+
+	test	byte ptr [esp+24+12],2
+	jz	loop0
+	mov	edx,offset yuv2rgb_constants_PC_levels
 
 loop0:
 	sub	esi,eax
@@ -240,7 +260,7 @@ loop1:
 	YUV2RGB_INNER_LOOP	uyvy,rgb32,1
 
 	sub	esi,ebx
-	cmp	esi,[esp+4+12]
+	cmp	esi,[esp+4+12]		; src
 	ja	loop0
 
 	emms

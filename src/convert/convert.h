@@ -93,8 +93,8 @@ inline int RGB2YUV(int rgb)
 // in convert_a.asm
 extern "C" 
 {
-  extern void __cdecl mmx_YUY2toRGB24(const BYTE* src, BYTE* dst, const BYTE* src_end, int src_pitch, int row_size, bool rec709);
-  extern void __cdecl mmx_YUY2toRGB32(const BYTE* src, BYTE* dst, const BYTE* src_end, int src_pitch, int row_size, bool rec709);
+  extern void __cdecl mmx_YUY2toRGB24(const BYTE* src, BYTE* dst, const BYTE* src_end, int src_pitch, int row_size, int matrix);
+  extern void __cdecl mmx_YUY2toRGB32(const BYTE* src, BYTE* dst, const BYTE* src_end, int src_pitch, int row_size, int matrix);
 }
 
 
@@ -142,9 +142,9 @@ public:
   static AVSValue __cdecl Create24(AVSValue args, void*, IScriptEnvironment* env);
 
 private:
-  bool use_mmx, rec709, is_yv12;
-  int yv12_width;
-
+  bool use_mmx, is_yv12;
+  int yv12_width, theMatrix;
+  enum {Rec601=0, Rec709=1, PCLevels=3 };	// Note! convert_a.asm assumes these values
 };
 
 class ConvertToYV12 : public GenericVideoFilter 
@@ -169,7 +169,7 @@ class ConvertToYUY2 : public GenericVideoFilter
  **/
 {
 public:
-  ConvertToYUY2(PClip _child, bool _interlaced, IScriptEnvironment* env);
+  ConvertToYUY2(PClip _child, bool _interlaced, const char *matrix, IScriptEnvironment* env);
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
 
   static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env);
@@ -177,6 +177,9 @@ public:
 private:
   const int src_cs;  // Source colorspace
   const bool interlaced;
+
+  int theMatrix;
+  enum {Rec601=0, Rec709=1, PCLevels=3 };
 };
 
 class ConvertBackToYUY2 : public GenericVideoFilter 
@@ -185,13 +188,16 @@ class ConvertBackToYUY2 : public GenericVideoFilter
  **/
 {
 public:
-  ConvertBackToYUY2(PClip _child, IScriptEnvironment* env);
+  ConvertBackToYUY2(PClip _child, const char *matrix, IScriptEnvironment* env);
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
 
   static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env);
 
 private:
   const bool rgb32;
+
+  int theMatrix;
+  enum {Rec601=0, Rec709=1, PCLevels=3 };
   
 };
 
@@ -199,7 +205,7 @@ private:
 
 class Greyscale : public GenericVideoFilter 
 /**
-  * Class to convert YUY2 video to greyscale
+  * Class to convert video to greyscale
  **/
 {
 public:
@@ -209,7 +215,8 @@ public:
   static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env);
 
 private:
-  bool rec709;
+  int theMatrix;
+  enum {Rec601 = 0, Rec709, Average };
 
 };
 
