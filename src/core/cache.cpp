@@ -562,7 +562,9 @@ void __stdcall Cache::GetAudio(void* buf, __int64 start, __int64 count, IScriptE
 
     cache_count = min(count, maxsamplecount); // Remember maxsamplecount gets updated
     cache_start = start+count-cache_count;
-    memcpy(cache, buf, vi.BytesFromAudioSamples(cache_count));
+    BYTE *buff=(BYTE *)buf;
+    buff += vi.BytesFromAudioSamples(cache_start - start);
+    memcpy(cache, buff, vi.BytesFromAudioSamples(cache_count));
     return;
   }
 
@@ -571,11 +573,9 @@ void __stdcall Cache::GetAudio(void* buf, __int64 start, __int64 count, IScriptE
   if ( (start<cache_start) || (start>=(cache_start+cache_count)) ){ //first sample is before or behind cache -> restart cache
     _RPT1(0,"CA:%x: Restart\n", this);
 
-// This is excessive, should only be asking for count!
-
-    child->GetAudio(cache, start, maxsamplecount, env);
+    cache_count = min(count, maxsamplecount);
     cache_start = start;
-    cache_count = maxsamplecount;
+    child->GetAudio(cache, cache_start, cache_count, env);
   } else {  //at least start sample is in cache
     if ( start + count > cache_start + cache_count ) {//cache is too short. Else all is already in the cache
       if ((start - cache_start + count)>maxsamplecount) {  //cache shifting is necessary
