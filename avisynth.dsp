@@ -227,6 +227,11 @@ SOURCE=.\VD_misc.h
 # PROP Default_Filter ""
 # Begin Source File
 
+SOURCE=.\avi_source.cpp
+# PROP Exclude_From_Build 1
+# End Source File
+# Begin Source File
+
 SOURCE=.\avisynth.cpp
 # End Source File
 # Begin Source File
@@ -260,6 +265,11 @@ SOURCE=.\cache.h
 # Begin Source File
 
 SOURCE=.\clip_info.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\directshow_source.cpp
+# PROP Exclude_From_Build 1
 # End Source File
 # Begin Source File
 

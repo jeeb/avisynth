@@ -997,14 +997,14 @@ bool ScriptEnvironment::FunctionExists(const char* name) {
 void BitBlt(BYTE* dstp, int dst_pitch, const BYTE* srcp, int src_pitch, int row_size, int height) {
   if ( (!height)|| (!row_size)) return;
   if (GetCPUFlags() & CPUF_INTEGER_SSE) {
-    if (height == 1 || (src_pitch == dst_pitch == row_size)) {
+    if (height == 1 || (src_pitch == dst_pitch && dst_pitch == row_size)) {
       memcpy_amd(dstp, srcp, row_size*height);
     } else {
       asm_BitBlt_ISSE(dstp,dst_pitch,srcp,src_pitch,row_size,height);
     }
     return;
   }
-  if (dst_pitch == src_pitch && src_pitch == row_size) {
+  if (height == 1 || (dst_pitch == src_pitch && src_pitch == row_size)) {
     memcpy(dstp, srcp, src_pitch * height);
   } else {
     for (int y=height; y>0; --y) {
