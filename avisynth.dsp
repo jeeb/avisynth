@@ -68,7 +68,7 @@ SOURCE="$(InputPath)"
 # End Custom Build
 # Begin Special Build Tool
 SOURCE="$(InputPath)"
-PostBuild_Cmds=copy Release\avisynth.dll $(SystemRoot)\system32	copy distrib\bin\libpng13.dll $(SystemRoot)\system32	copy distrib\bin\libjpeg-bgr.dll $(SystemRoot)\system32\libjpeg.dll
+PostBuild_Cmds=copy distrib\bin\libpng13.dll $(SystemRoot)\system32	copy distrib\bin\libjpeg-bgr.dll $(SystemRoot)\system32\libjpeg.dll
 # End Special Build Tool
 
 !ELSEIF  "$(CFG)" == "avisynth - Win32 Debug"
