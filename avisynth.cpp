@@ -942,8 +942,11 @@ bool ScriptEnvironment::FunctionExists(const char* name) {
 }
 
 void BitBlt(BYTE* dstp, int dst_pitch, const BYTE* srcp, int src_pitch, int row_size, int height) {
-  if (GetCPUFlags() & CPUF_MMX) {
-    asm_BitBlt(dstp,dst_pitch,srcp,src_pitch,row_size,height);
+  if (GetCPUFlags() & CPUF_INTEGER_SSE) {
+    asm_BitBlt_ISSE(dstp,dst_pitch,srcp,src_pitch,row_size,height);
+    return;
+  } else if (GetCPUFlags() & CPUF_MMX) {
+    asm_BitBlt_MMX(dstp,dst_pitch,srcp,src_pitch,row_size,height);
     return;
   }
   if (dst_pitch == src_pitch && src_pitch == row_size) {
@@ -961,225 +964,218 @@ void BitBlt(BYTE* dstp, int dst_pitch, const BYTE* srcp, int src_pitch, int row_
   * Assembler bitblit by Steady
    *****************************/
 
-#if 0
 
-void asm_BitBlt(BYTE* dstp, int dst_pitch, const BYTE* srcp, int src_pitch, int row_size, int height) {
-	if(row_size==0 || height==0) return; //abort on goofs
-	//move backwards for easier looping and to disable hardware prefetch
-	const BYTE* srcStart=srcp+src_pitch*(height-1);
-	BYTE* dstStart=dstp+dst_pitch*(height-1);
+void asm_BitBlt_ISSE(BYTE* dstp, int dst_pitch, const BYTE* srcp, int src_pitch, int row_size, int height) {
 
-	if(row_size < 16) {//to small to optimize
-		_asm {
-			mov 	esi,srcStart	//move rows from bottom up
-			mov 	edi,dstStart
-			mov 	edx,row_size
-			dec		edx
-			mov 	ebx,height
-			align 16
+  if(row_size==0 || height==0) return; //abort on goofs
+  //move backwards for easier looping and to disable hardware prefetch
+  const BYTE* srcStart=srcp+src_pitch*(height-1);
+  BYTE* dstStart=dstp+dst_pitch*(height-1);
+
+  if(row_size < 64) {
+    _asm {
+      mov   esi,srcStart  //move rows from bottom up
+      mov   edi,dstStart
+      mov   edx,row_size
+      dec   edx
+      mov   ebx,height
+      align 16
 memoptS_rowloop:
-			mov 	ecx,edx
-//			rep movsb
+      mov   ecx,edx
+//      rep movsb
 memoptS_byteloop:
-			mov		AL,[esi+ecx]
-			mov		[edi+ecx],AL
-			sub		ecx,1
-			jnc		memoptS_byteloop
-			sub 	esi,src_pitch
-			sub 	edi,dst_pitch
-			dec 	ebx
-			jne 	memoptS_rowloop
-		};
-		return;
-	}//end small version
+      mov   AL,[esi+ecx]
+      mov   [edi+ecx],AL
+      sub   ecx,1
+      jnc   memoptS_byteloop
+      sub   esi,src_pitch
+      sub   edi,dst_pitch
+      dec   ebx
+      jne   memoptS_rowloop
+    };
+    return;
+  }//end small version
 
-	else if( (int(dstp) | row_size) & 7) {//not QW aligned
-		//unaligned version makes no assumptions on alignment
-		//other than pitch is QW aligned
-		int preBytes;// 0-7 bytes before first QW
+  else if( (int(dstp) | row_size | src_pitch | dst_pitch) & 7) {//not QW aligned
+    //unaligned version makes no assumptions on alignment
 
-		_asm {
+    _asm {
 //****** initialize
-			mov		esi,srcStart	//bottom row
-			mov		AL,[esi]
-			mov		edi,dstStart
-			mov		edx,row_size
-			mov		ecx,edi
-			neg		ecx
-			and		ecx,7		//bytes before first QWord in dest
-			mov		preBytes,ecx
-			mov		ebx,height
+      mov   esi,srcStart  //bottom row
+      mov   AL,[esi]
+      mov   edi,dstStart
+      mov   edx,row_size
+      mov   ebx,height
 
 //********** loop starts here ***********
 
-			align 16
+      align 16
 memoptU_rowloop:
-			mov		ecx,edx			//row_size
-			dec		ecx					//offset to last byte in row
-			add		ecx,esi			//ecx= ptr last byte in row
-			and		ecx,~63			//align to first byte in cache line
+      mov   ecx,edx     //row_size
+      dec   ecx         //offset to last byte in row
+      add   ecx,esi     //ecx= ptr last byte in row
+      and   ecx,~63     //align to first byte in cache line
 memoptU_prefetchloop:
-			mov		AX,[ecx]		//tried AL,AX,EAX, AX a tiny bit faster
-			sub		ecx,64
-			cmp		ecx,esi
-			jae		memoptU_prefetchloop
+      mov   AX,[ecx]    //tried AL,AX,EAX, AX a tiny bit faster
+      sub   ecx,64
+      cmp   ecx,esi
+      jae   memoptU_prefetchloop
 
 //************ write *************
 
-			movq		mm6,[esi]			//move the first unaligned bytes
-			movntq	[edi],mm6			//if preBytes!=0, overlaps with QW aligned below
+      movq    mm6,[esi]     //move the first unaligned bytes
+      movntq  [edi],mm6
 //************************
-			mov		eax,edi
-			mov		ecx,preBytes		//preBytes=offset from edi(dstp) to next QW (0-7)
-			neg		eax
-			and		eax,63				//eax=bytes from edi to start of next 64 byte cache line
-			align	16
-memoptU_prewrite8loop:   //write out odd QW's so 64bit write is cache line aligned
-			cmp		ecx,eax				//start of cache line ?
-			jz		memoptU_pre8done	//if not, write single QW
-			movq		mm7,[esi+ecx]
-			movntq	[edi+ecx],mm7
-			add		ecx,8
-			jmp		memoptU_prewrite8loop
+      mov   eax,edi
+      neg   eax
+      mov   ecx,eax
+      and   eax,63      //eax=bytes from [edi] to start of next 64 byte cache line
+      and   ecx,7       //ecx=bytes from [edi] to next QW
+      align 16
+memoptU_prewrite8loop:        //write out odd QW's so 64 bit write is cache line aligned
+      cmp   ecx,eax           //start of cache line ?
+      jz    memoptU_pre8done  //if not, write single QW
+      movq    mm7,[esi+ecx]
+      movntq  [edi+ecx],mm7
+      add   ecx,8
+      jmp   memoptU_prewrite8loop
 
-			align	16
+      align 16
 memoptU_write64loop:
-			movntq	[edi+ecx-64],mm0
-			movntq	[edi+ecx-56],mm1
-			movntq	[edi+ecx-48],mm2
-			movntq	[edi+ecx-40],mm3
-			movntq	[edi+ecx-32],mm4
-			movntq	[edi+ecx-24],mm5
-			movntq	[edi+ecx-16],mm6
-			movntq	[edi+ecx- 8],mm7
+      movntq  [edi+ecx-64],mm0
+      movntq  [edi+ecx-56],mm1
+      movntq  [edi+ecx-48],mm2
+      movntq  [edi+ecx-40],mm3
+      movntq  [edi+ecx-32],mm4
+      movntq  [edi+ecx-24],mm5
+      movntq  [edi+ecx-16],mm6
+      movntq  [edi+ecx- 8],mm7
 memoptU_pre8done:
-			add		ecx,64
-			cmp		ecx,edx		//while(offset <= row_size) do {...
-			ja		memoptU_done64
-			movq		mm0,[esi+ecx-64]
-			movq		mm1,[esi+ecx-56]
-			movq		mm2,[esi+ecx-48]
-			movq		mm3,[esi+ecx-40]
-			movq		mm4,[esi+ecx-32]
-			movq		mm5,[esi+ecx-24]
-			movq		mm6,[esi+ecx-16]
-			movq		mm7,[esi+ecx- 8]
-			jmp		memoptU_write64loop
+      add   ecx,64
+      cmp   ecx,edx         //while(offset <= row_size) do {...
+      ja    memoptU_done64
+      movq    mm0,[esi+ecx-64]
+      movq    mm1,[esi+ecx-56]
+      movq    mm2,[esi+ecx-48]
+      movq    mm3,[esi+ecx-40]
+      movq    mm4,[esi+ecx-32]
+      movq    mm5,[esi+ecx-24]
+      movq    mm6,[esi+ecx-16]
+      movq    mm7,[esi+ecx- 8]
+      jmp   memoptU_write64loop
 memoptU_done64:
 
-			sub			ecx,64		//went to far
-			align	16
+      sub     ecx,64    //went to far
+      align 16
 memoptU_write8loop:
-			add			ecx,8		//next QW
-			cmp			ecx,edx	//any QW's left in row ?
-			ja			memoptU_done8
-			movq		mm0,[esi+ecx-8]
-			movntq	[edi+ecx-8],mm0
-			jmp		memoptU_write8loop
+      add     ecx,8           //next QW
+      cmp     ecx,edx         //any QW's left in row ?
+      ja      memoptU_done8
+      movq    mm0,[esi+ecx-8]
+      movntq  [edi+ecx-8],mm0
+      jmp   memoptU_write8loop
 memoptU_done8:
 
-			movq		mm1,[esi+edx-8]
-			movntq	[edi+edx-8],mm1
-			sub		esi,src_pitch
-			sub		edi,dst_pitch
-			dec		ebx							//row counter (=height at start)
-			jne		memoptU_rowloop
+      movq    mm1,[esi+edx-8] //write the last unaligned bytes
+      movntq  [edi+edx-8],mm1
+      sub   esi,src_pitch
+      sub   edi,dst_pitch
+      dec   ebx               //row counter (=height at start)
+      jne   memoptU_rowloop
 
-			sfence
-			emms
-		};
-		return;
-	}//end unaligned version
+      sfence
+      emms
+    };
+    return;
+  }//end unaligned version
 
-	else {//QW aligned version (fastest)
-	//else dstp and row_size QW aligned - hope for the best from srcp
-	//QW aligned version should generally be true when copying full rows
-		_asm {
-			mov		esi,srcStart	//start of bottom row
-			mov		edi,dstStart
-			mov		ebx,height
-			mov		edx,row_size
-			align	16
+  else {//QW aligned version (fastest)
+  //else dstp and row_size QW aligned - hope for the best from srcp
+  //QW aligned version should generally be true when copying full rows
+    _asm {
+      mov   esi,srcStart  //start of bottom row
+      mov   edi,dstStart
+      mov   ebx,height
+      mov   edx,row_size
+      align 16
 memoptA_rowloop:
-			mov		ecx,edx	//row_size
-			dec		ecx			//offset to last byte in row
+      mov   ecx,edx //row_size
+      dec   ecx     //offset to last byte in row
 
 //********forward routine
-			add		ecx,esi
-			and		ecx,~63		//align prefetch to first byte in cache line(~3-4% faster)
-			align	16
+      add   ecx,esi
+      and   ecx,~63   //align prefetch to first byte in cache line(~3-4% faster)
+      align 16
 memoptA_prefetchloop:
-			mov		AX,[ecx]
-			sub		ecx,64
-			cmp		ecx,esi
-			jae		memoptA_prefetchloop
+      mov   AX,[ecx]
+      sub   ecx,64
+      cmp   ecx,esi
+      jae   memoptA_prefetchloop
 
-			mov		eax,edi
-			xor		ecx,ecx
-			neg		eax
-			and		eax,63		//eax=bytes from edi to start of cache line
-			align	16
-memoptA_prewrite8loop:   //write out odd QW's so 64bit write is cache line aligned
-			cmp		ecx,eax				//start of cache line ?
-			jz		memoptA_pre8done	//if not, write single QW
-			movq		mm7,[esi+ecx]
-			movntq	[edi+ecx],mm7
-			add		ecx,8
-			jmp		memoptA_prewrite8loop
+      mov   eax,edi
+      xor   ecx,ecx
+      neg   eax
+      and   eax,63            //eax=bytes from edi to start of cache line
+      align 16
+memoptA_prewrite8loop:        //write out odd QW's so 64bit write is cache line aligned
+      cmp   ecx,eax           //start of cache line ?
+      jz    memoptA_pre8done  //if not, write single QW
+      movq    mm7,[esi+ecx]
+      movntq  [edi+ecx],mm7
+      add   ecx,8
+      jmp   memoptA_prewrite8loop
 
-			align	16
+      align 16
 memoptA_write64loop:
-			movntq	[edi+ecx-64],mm0
-			movntq	[edi+ecx-56],mm1
-			movntq	[edi+ecx-48],mm2
-			movntq	[edi+ecx-40],mm3
-			movntq	[edi+ecx-32],mm4
-			movntq	[edi+ecx-24],mm5
-			movntq	[edi+ecx-16],mm6
-			movntq	[edi+ecx- 8],mm7
+      movntq  [edi+ecx-64],mm0
+      movntq  [edi+ecx-56],mm1
+      movntq  [edi+ecx-48],mm2
+      movntq  [edi+ecx-40],mm3
+      movntq  [edi+ecx-32],mm4
+      movntq  [edi+ecx-24],mm5
+      movntq  [edi+ecx-16],mm6
+      movntq  [edi+ecx- 8],mm7
 memoptA_pre8done:
-			add		ecx,64
-			cmp		ecx,edx
-			ja		memoptA_done64  //less than 64 bytes left
-			movq		mm0,[esi+ecx-64]
-			movq		mm1,[esi+ecx-56]
-			movq		mm2,[esi+ecx-48]
-			movq		mm3,[esi+ecx-40]
-			movq		mm4,[esi+ecx-32]
-			movq		mm5,[esi+ecx-24]
-			movq		mm6,[esi+ecx-16]
-			movq		mm7,[esi+ecx- 8]
-			jmp		memoptA_write64loop
+      add   ecx,64
+      cmp   ecx,edx
+      ja    memoptA_done64    //less than 64 bytes left
+      movq    mm0,[esi+ecx-64]
+      movq    mm1,[esi+ecx-56]
+      movq    mm2,[esi+ecx-48]
+      movq    mm3,[esi+ecx-40]
+      movq    mm4,[esi+ecx-32]
+      movq    mm5,[esi+ecx-24]
+      movq    mm6,[esi+ecx-16]
+      movq    mm7,[esi+ecx- 8]
+      jmp   memoptA_write64loop
 
 memoptA_done64:
-			sub		ecx,64
+      sub   ecx,64
 
-			align	16
-memoptA_write8loop:		//less than 8 QW's left
-			add		ecx,8
-			cmp		ecx,edx
-			ja		memoptA_done8	//no QW's left
-			movq		mm7,[esi+ecx-8]
-			movntq	[edi+ecx-8],mm7
-			jmp		memoptA_write8loop
+      align 16
+memoptA_write8loop:           //less than 8 QW's left
+      add   ecx,8
+      cmp   ecx,edx
+      ja    memoptA_done8     //no QW's left
+      movq    mm7,[esi+ecx-8]
+      movntq  [edi+ecx-8],mm7
+      jmp   memoptA_write8loop
 
 memoptA_done8:
-			sub		esi,src_pitch
-			sub		edi,dst_pitch
-			dec		ebx		//row counter (height)
-			jne		memoptA_rowloop
+      sub   esi,src_pitch
+      sub   edi,dst_pitch
+      dec   ebx               //row counter (height)
+      jne   memoptA_rowloop
 
-			sfence
-			emms
-		};
-		return;
-	}//end aligned version
-
+      sfence
+      emms
+    };
+    return;
+  }//end aligned version
 }//end BitBlt_memopt()
 
-#else
 
-void asm_BitBlt(BYTE* dstp, int dst_pitch, const BYTE* srcp, int src_pitch, int row_size, int height) {
+void asm_BitBlt_MMX(BYTE* dstp, int dst_pitch, const BYTE* srcp, int src_pitch, int row_size, int height) {
   int bytesleft=0;
   if (row_size&15) {
     int a=(row_size+15)&(~15);
@@ -1193,46 +1189,6 @@ void asm_BitBlt(BYTE* dstp, int dst_pitch, const BYTE* srcp, int src_pitch, int 
   int src_modulo = src_pitch - (row_size+bytesleft);
   int dst_modulo = dst_pitch - (row_size+bytesleft);
   if (height==0 || row_size==0) return;
-  if ((GetCPUFlags() & CPUF_INTEGER_SSE)) {  // ISSE ~10-15% faster on K7 in reallife tests
-    __asm {
-      mov edi,[dstp]
-      mov esi,[srcp]
-      xor eax, eax;  // Height counter
-      xor ebx, ebx;  // Row counter
-      mov edx, [row_size]
-new_line_sse:
-      mov ecx,[bytesleft]
-      cmp ebx,edx
-      jge nextline_sse
-      align 16
-nextpixels_sse:
-      prefetchnta [esi+ebx+256]  // Prefetch a few cache lines ahead (~1% faster)
-      movq mm0,[esi+ebx]
-      movq mm1,[esi+ebx+8]
-      movntq [edi+ebx],mm0      // Is faster in reallife on K7 (~4 %)
-      movntq [edi+ebx+8],mm1
-      add ebx,16
-      cmp ebx,edx
-      jl nextpixels_sse
-      align 16
-nextline_sse:
-      add esi,ebx
-      add edi,ebx
-      cmp ecx,0
-      jz do_next_line_sse
-      rep movsb         ; the last 1-15 bytes
-
-      align 16
-do_next_line_sse:
-      add esi, [src_modulo]
-      add edi, [dst_modulo]
-      xor ebx, ebx;  // Row counter
-      inc eax
-      cmp eax,[height]
-      jl new_line_sse
-      sfence
-    }
-  } else {  // Plain MMX ~ 5% faster on K7 in real life
     __asm {
       mov edi,[dstp]
       mov esi,[srcp]
@@ -1268,11 +1224,9 @@ do_next_line_mmx:
       inc eax
       cmp eax,[height]
       jl new_line_mmx
-    }
   }
   __asm {emms};
 }
-#endif
 
 void asm_BitBltNC(BYTE* dstp, int dst_pitch, const BYTE* srcp, int src_pitch, int row_size, int height) {
 }
