@@ -1086,7 +1086,7 @@ static void SetMicrosoftDVtoFullResolution(IGraphBuilder* gb) {
   // great annoyance.  This will set it to full res if possible.
   // Note that IIPDVDec is not declared in older versions of
   // strmif.h; you may need the Win2000 platform SDK.
-/*  IEnumFilters* ef;
+  IEnumFilters* ef;
   if (FAILED(gb->EnumFilters(&ef)))
     return;
   ULONG fetched=1;
@@ -1100,7 +1100,7 @@ static void SetMicrosoftDVtoFullResolution(IGraphBuilder* gb) {
     bf->Release();
   }
   ef->Release();
-	*/
+	
 }
 
 
