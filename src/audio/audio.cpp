@@ -788,7 +788,6 @@ void __stdcall Normalize::GetAudio(void* buf, __int64 start, __int64 count, IScr
       }    
       // Remaining samples
       __int64 rem_samples = vi.num_audio_samples%count;
-      rem_samples*=vi.AudioChannels();
       child->GetAudio(buf, num_samples*passes, rem_samples, env);
       for (i=0;i<rem_samples;i++) {
         max_volume=max(fabs(samples[i]),max_volume);

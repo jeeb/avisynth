@@ -1,7 +1,7 @@
 !packhdr tempfile.exe "upx --best --q tempfile.exe"
 
 !DEFINE VERSION 2.5.4
-!DEFINE DATE 080104
+!DEFINE DATE 090104
 
 
 SetCompressor lzma
