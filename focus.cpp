@@ -1321,7 +1321,7 @@ int TemporalSoften::isse_scenechange(const BYTE* c_plane, const BYTE* tplane, in
     align 16
 yloop:
     inc ebx
-    add edi,edx     // add pitch to both planes
+    add edi,ecx     // add pitch to both planes
     add esi,edx
 yloopover:
     cmp ebx,[hp]
