@@ -449,6 +449,7 @@ public:
 };
 
 StringDump::~StringDump() {
+  _RPT0(0,"StringDump: DeAllocating all stringblocks.\r\n");
   char* p = current_block;
   while (p) {
     char* next = *(char**)p;
@@ -462,6 +463,7 @@ char* StringDump::SaveString(const char* s, int len) {
     len = lstrlen(s);
   if (block_pos+len+1 > block_size) {
     char* new_block = new char[block_size = max(block_size, len+1)];
+    _RPT0(0,"StringDump: Allocating new stringblock.\r\n");
     *(char**)new_block = current_block;   // beginning of block holds pointer to previous block
     current_block = new_block;
     block_pos = sizeof(char*);
