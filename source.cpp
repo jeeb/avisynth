@@ -1414,10 +1414,10 @@ AVSValue __cdecl Create_SegmentedSource(AVSValue args, void* use_directshow, ISc
 }
 
 AVSValue __cdecl Create_Version(AVSValue args, void*, IScriptEnvironment* env) {
-  return Create_MessageClip("Avisynth v2.0.5, 22 Aug. 2002\n"
-          "\xA9 2000 Ben Rudiak-Gould, et al.\n"
+  return Create_MessageClip("Avisynth v2.0.6, 27 September. 2002\n"
+          "\xA9 2000-2002 Ben Rudiak-Gould, et al.\n"
           "http://www.avisynth.org",
-  -1, -1, VideoInfo::BGR24, false, 0x22AA22, 0, 0x402200, env);
+  -1, -1, VideoInfo::BGR24, false, 0xECF2BF, 0, 0x404040, env);
 }
  
 

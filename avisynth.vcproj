@@ -307,37 +307,6 @@
 				RelativePath=".\source.cpp">
 			</File>
 		</Filter>
-		<Filter
-			Name="Filters"
-			Filter="">
-			<Filter
-				Name="Decomb"
-				Filter="">
-				<File
-					RelativePath=".\Telecide.cpp">
-				</File>
-				<File
-					RelativePath=".\decimate.cpp">
-				</File>
-				<File
-					RelativePath=".\decimate.h">
-				</File>
-				<File
-					RelativePath=".\decomb.cpp">
-				</File>
-				<File
-					RelativePath=".\decomb.h">
-				</File>
-				<File
-					RelativePath=".\fielddeinterlace.cpp">
-				</File>
-				<File
-					RelativePath=".\fielddeinterlace.h">
-				</File>
-				<File
-					RelativePath=".\telecide.h">
-				</File>
-			</Filter>
 			<Filter
 				Name="Original"
 				Filter="">

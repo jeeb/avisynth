@@ -130,6 +130,7 @@ Delete "$SMPROGRAMS\AviSynth 2\*.*"
 RMDir "$INSTDIR\docs\filters"
 RMDir "$INSTDIR\docs"
 RMDir "$INSTDIR\plugins"
+RMDir "$INSTDIR\examples"
 RMDir "$INSTDIR"
 RMDir "$SMPROGRAMS\AviSynth 2"
 SectionEnd ; end of uninstall section
