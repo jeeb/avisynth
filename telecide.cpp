@@ -744,9 +744,9 @@ void __declspec(naked) asm_deinterlace(const BYTE *dstp, const BYTE *p,
 								  const BYTE *n, BYTE *fmask,
 								  BYTE *dmask, int thresh, int dthresh, int row_size)
 {
-	static const __int64 Mask0 = 0xFFFF0000FFFF0000i64;
-	static const __int64 Mask2 = 0x00000000000000FFi64;
-	static const __int64 Mask3 = 0x0000000000FF0000i64;
+	__declspec(align(8)) static const __int64 Mask0 = 0xFFFF0000FFFF0000i64;
+	__declspec(align(8)) static const __int64 Mask2 = 0x00000000000000FFi64;
+	__declspec(align(8)) static const __int64 Mask3 = 0x0000000000FF0000i64;
 	__asm
 	{
 		push		ebp
@@ -832,10 +832,10 @@ void __declspec(naked) asm_deinterlace_chroma(const BYTE *dstp, const BYTE *p,
 								  const BYTE *n, BYTE *fmask,
 								  BYTE *dmask, int thresh, int dthresh, int row_size)
 {
-	static const __int64 Mask0 = 0xFFFF0000FFFF0000i64;
-	static const __int64 Mask2 = 0x00000000000000FFi64;
-	static const __int64 Mask3 = 0x0000000000FF0000i64;
-	static const __int64 Mask4 = 0x0000000000FF00FFi64;
+	__declspec(align(8)) static const __int64 Mask0 = 0xFFFF0000FFFF0000i64;
+	__declspec(align(8)) static const __int64 Mask2 = 0x00000000000000FFi64;
+	__declspec(align(8)) static const __int64 Mask3 = 0x0000000000FF0000i64;
+	__declspec(align(8)) static const __int64 Mask4 = 0x0000000000FF00FFi64;
 	__asm
 	{
 		push		ebp
@@ -946,9 +946,9 @@ xloop:
 int __declspec(naked) asm_match(const BYTE *curr, const BYTE *pprev,
 								  const BYTE *pnext, int row_size)
 {
-	static const __int64 Threshold = 0x0000006500000065i64;
-	static const __int64 Mask = 0xFFFF0000FFFF0000i64;
-	static const __int64 Ones = 0x0000000100000001i64;
+	__declspec(align(8)) static const __int64 Threshold = 0x0000006500000065i64;
+	__declspec(align(8)) static const __int64 Mask = 0xFFFF0000FFFF0000i64;
+	__declspec(align(8)) static const __int64 Ones = 0x0000000100000001i64;
 	__asm
 	{
 		push ebp
@@ -1029,8 +1029,8 @@ int __declspec(naked) asm_blend(const BYTE *dstp, const BYTE *cprev,
 								const BYTE *cnext, BYTE *finalp,
 								BYTE *dmaskp, int count)
 {
-	static const __int64 Mask1 = 0xFEFEFEFEFEFEFEFEi64;
-	static const __int64 Mask2 = 0xFCFCFCFCFCFCFCFCi64;
+	__declspec(align(8)) static const __int64 Mask1 = 0xFEFEFEFEFEFEFEFEi64;
+	__declspec(align(8)) static const __int64 Mask2 = 0xFCFCFCFCFCFCFCFCi64;
 	__asm
 	{
 		push ebp
@@ -1107,7 +1107,7 @@ int __declspec(naked) asm_interpolate(const BYTE *dstp, const BYTE *cprev,
 								const BYTE *cnext, BYTE *finalp,
 								BYTE *dmaskp, int count)
 {
-	static const __int64 Mask = 0xFEFEFEFEFEFEFEFEi64;
+	__declspec(align(8)) static const __int64 Mask = 0xFEFEFEFEFEFEFEFEi64;
 	__asm
 	{
 		push ebp

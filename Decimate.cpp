@@ -282,9 +282,9 @@ AVSValue __cdecl Decimate::Create(AVSValue args, void* user_data, IScriptEnviron
 int __declspec(naked) asm_compare( const BYTE *curr, const BYTE *prev, 
                                    int row_size )
 {
-	static const __int64 Threshold = 0x1010101010101010i64;
-	static const __int64 Ones      = 0x0101010101010101i64;
-	static const __int64 LowByte   = 0x00000000000000FFi64;
+	__declspec(align(8)) static const __int64 Threshold = 0x1010101010101010i64;
+	__declspec(align(8)) static const __int64 Ones      = 0x0101010101010101i64;
+	__declspec(align(8)) static const __int64 LowByte   = 0x00000000000000FFi64;
 	__asm
 	{
 		push		ebp

@@ -82,9 +82,9 @@ PVideoFrame __stdcall FilteredResizeH::GetFrame(int n, IScriptEnvironment* env)
   {  
     int fir_filter_size_luma = pattern_luma[0];
     int fir_filter_size_chroma = pattern_chroma[0];
-    static const __int64 x0000000000FF00FF = 0x0000000000FF00FF;
-    static const __int64 x00FF000000FF0000 = 0x00FF000000FF0000;
-    static const __int64 FPround =           0x0000200000002000;  // 16384/2
+    __declspec(align(8)) static const __int64 x0000000000FF00FF = 0x0000000000FF00FF;
+    __declspec(align(8)) static const __int64 x00FF000000FF0000 = 0x00FF000000FF0000;
+    __declspec(align(8)) static const __int64 FPround =           0x0000200000002000;  // 16384/2
 
     __asm {
       pxor        mm0, mm0
@@ -181,7 +181,7 @@ PVideoFrame __stdcall FilteredResizeH::GetFrame(int n, IScriptEnvironment* env)
     int w = vi.width * 3;
     int fir_filter_size = pattern_luma[0];
     int* pattern_lumaP1 = pattern_luma+1 - fir_filter_size;
-    static const __int64 xFF000000 = 0xFF000000;
+    __declspec(align(8)) static const __int64 xFF000000 = 0xFF000000;
     __asm {
       mov         esi, srcp
       mov         edi, dstp

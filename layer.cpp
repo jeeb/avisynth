@@ -78,9 +78,9 @@ PVideoFrame __stdcall Mask::GetFrame(int n, IScriptEnvironment* env)
 	const int myx = vi.width;
 	const int myy = vi.height;
 
-	__int64 rgb2lum = ((__int64)cyb << 32) | (cyg << 16) | cyr;
-	__int64 alpha_mask=0x00ffffff00ffffff;
-	__int64 color_mask=0xff000000ff000000;
+	__declspec(align(8)) static __int64 rgb2lum = ((__int64)cyb << 32) | (cyg << 16) | cyr;
+	__declspec(align(8)) static __int64 alpha_mask=0x00ffffff00ffffff;
+	__declspec(align(8)) static __int64 color_mask=0xff000000ff000000;
 /*
   for (int y=0; y<vi.height; ++y) 
   {
@@ -210,11 +210,11 @@ PVideoFrame __stdcall Layer::GetFrame(int n, IScriptEnvironment* env)
 	const int myy = ycount;
 
 
-		__int64 oxooffooffooffooff=0x00ff00ff00ff00ff;  // Luma mask
-		__int64 oxffooffooffooffoo=0xff00ff00ff00ff00;  // Chroma mask
-		__int64 oxoo80oo80oo80oo80=0x0080008000800080;  // Null Chroma
-		__int64 ox7f7f7f7f7f7f7f7f=0x7f7f7f7f7f7f7f7f;  // FAST shift mask
-		__int64	 ox0101010101010101=0x0101010101010101;// FAST lsb mask
+		__declspec(align(8)) static __int64 oxooffooffooffooff=0x00ff00ff00ff00ff;  // Luma mask
+		__declspec(align(8)) static __int64 oxffooffooffooffoo=0xff00ff00ff00ff00;  // Chroma mask
+		__declspec(align(8)) static __int64 oxoo80oo80oo80oo80=0x0080008000800080;  // Null Chroma
+		__declspec(align(8)) static __int64 ox7f7f7f7f7f7f7f7f=0x7f7f7f7f7f7f7f7f;  // FAST shift mask
+		__declspec(align(8)) static __int64	 ox0101010101010101=0x0101010101010101;// FAST lsb mask
 
 	if(vi.IsYUV()){
 
@@ -461,10 +461,10 @@ PVideoFrame __stdcall Layer::GetFrame(int n, IScriptEnvironment* env)
 						mov         edx, myx
 						xor         ecx, ecx
 
+				align 16
 						addy032xloop:
 							//---- fetch src1/dest
 									
-				align 16
 							movd		mm7, [edi + ecx*4] ;src1/dest;
 							movd		mm6, [esi + ecx*4] ;src2
 							movq		mm4,mm7					;temp mm4=mm7
@@ -528,10 +528,10 @@ PVideoFrame __stdcall Layer::GetFrame(int n, IScriptEnvironment* env)
 						xor         ecx, ecx
 						shr			edx,1
 
+				    align 16
 						fastyuy32xloop:
 							//---- fetch src1/dest
 									
-				align 16
 							movq		mm7, [edi + ecx*8] ;src1/dest;
 							movq		mm6, [esi + ecx*8] ;src2
 							movq		mm3, mm1
@@ -584,10 +584,10 @@ PVideoFrame __stdcall Layer::GetFrame(int n, IScriptEnvironment* env)
 						mov         edx, myx
 						xor         ecx, ecx
 
+				    align 16
 						subyuy32xloop:
 							//---- fetch src1/dest
 									
-				align 16
 							movd		mm7, [edi + ecx*4] ;src1/dest;
 							movd		mm6, [esi + ecx*4] ;src2
 							movq		mm4,mm7					;temp mm4=mm7
@@ -652,10 +652,10 @@ PVideoFrame __stdcall Layer::GetFrame(int n, IScriptEnvironment* env)
 						mov         edx, myx
 						xor         ecx, ecx
 
+				    align 16
 						suby032xloop:
 							//---- fetch src1/dest
 									
-				align 16
 							movd		mm7, [edi + ecx*4] ;src1/dest;
 							movd		mm6, [esi + ecx*4] ;src2
 							movq		mm4,mm7					;temp mm4=mm7
@@ -723,10 +723,10 @@ PVideoFrame __stdcall Layer::GetFrame(int n, IScriptEnvironment* env)
 						mov         edx, myx
 						xor         ecx, ecx
 
+				    align 16
 						lightenyuy32xloop:
 							//---- fetch src1/dest
 									
-				align 16
 							movd		mm7, [edi + ecx*4] ;src1/dest;
 							movd		mm6, [esi + ecx*4] ;src2
 							movq		mm1, thresh				;we'll need this in a minute
@@ -801,10 +801,10 @@ PVideoFrame __stdcall Layer::GetFrame(int n, IScriptEnvironment* env)
 						mov         edx, myx
 						xor         ecx, ecx
 
+				    align 16
 						darkenyuy32xloop:
 							//---- fetch src1/dest
 									
-				align 16
 							movd		mm7, [edi + ecx*4] ;src1/dest;
 							movd		mm6, [esi + ecx*4] ;src2
 							movq		mm1, thresh				;we'll need this in a minute
@@ -866,7 +866,7 @@ PVideoFrame __stdcall Layer::GetFrame(int n, IScriptEnvironment* env)
 		const int cyb = int(0.114*32768+0.5);
 		const int cyg = int(0.587*32768+0.5);
 		const int cyr = int(0.299*32768+0.5);
-		const unsigned __int64 rgb2lum = ((__int64)cyb << 32) | (cyg << 16) | cyr;
+		__declspec(align(8)) static const unsigned __int64 rgb2lum = ((__int64)cyb << 32) | (cyg << 16) | cyr;
 
 		BYTE* src1p = src1->GetWritePtr();
 		const BYTE* src2p = src2->GetReadPtr();
@@ -892,7 +892,7 @@ PVideoFrame __stdcall Layer::GetFrame(int n, IScriptEnvironment* env)
 						mov         edx, myx
 						xor         ecx, ecx
 
-				align 16
+				    align 16
 						mul32xloop:
 								movd		mm6, [esi + ecx*4] ;src2
 								movd		mm7, [edi + ecx*4] ;src1/dest
@@ -952,7 +952,7 @@ PVideoFrame __stdcall Layer::GetFrame(int n, IScriptEnvironment* env)
 						mov         edx, myx
 						xor         ecx, ecx
 
-				align 16
+				    align 16
 						mul32yxloop:
 								movd		mm6, [esi + ecx*4] ;src2
 								movd		mm7, [edi + ecx*4] ;src1/dest
@@ -1030,7 +1030,7 @@ PVideoFrame __stdcall Layer::GetFrame(int n, IScriptEnvironment* env)
 						mov         edx, myx
 						xor         ecx, ecx
 
-				align 16
+				    align 16
 						add32xloop:
 								movd		mm6, [esi + ecx*4] ;src2
 								movd		mm7, [edi + ecx*4] ;src1/dest
