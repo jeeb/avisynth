@@ -52,7 +52,7 @@ AVSFunction Layer_filters[] = {
   { "ColorKeyMask", "cii", ColorKeyMask::Create },    // clip, color, tolerance
   { "ResetMask", "c", ResetMask::Create },
   { "Invert", "c[channels]s", Invert::Create },
-  { "ShowAlpha", "c", ShowAlpha::Create },
+  { "ShowAlpha", "c[pixel_type]s", ShowAlpha::Create },
   { "Layer", "cc[op]s[level]i[x]i[y]i[threshold]i[use_chroma]b", Layer::Create },
   /**
     * Layer(clip, overlayclip, operation, amount, xpos, ypos, [threshold=0], [use_chroma=true])
@@ -398,41 +398,126 @@ AVSValue Invert::Create(AVSValue args, void*, IScriptEnvironment* env)
  ********************************/
 
 
-ShowAlpha::ShowAlpha(PClip _child, IScriptEnvironment* env)
-  : GenericVideoFilter(_child)
+ShowAlpha::ShowAlpha(PClip _child, const char * _pixel_type, IScriptEnvironment* env)
+  : GenericVideoFilter(_child), pixel_type(_pixel_type)
 {
   if (!vi.IsRGB32())
-    env->ThrowError("ResetMask: RGB32 data only");
+    env->ThrowError("ShowAlpha: RGB32 data only");
+
+  if (!lstrcmpi(pixel_type, "rgb")) {
+    vi.pixel_type = VideoInfo::CS_BGR32;
+  } 
+  else if (!lstrcmpi(pixel_type, "yuy2")) {
+    if (vi.width & 1) {
+      env->ThrowError("ShowAlpha: width must be mod 2 for yuy2");
+    }
+    vi.pixel_type = VideoInfo::CS_YUY2;
+  }
+  else if (!lstrcmpi(pixel_type, "yv12")) {
+    if (vi.width & 1) {
+      env->ThrowError("ShowAlpha: width must be mod 2 for yv12");
+    }
+    if (vi.height & 1) {
+      env->ThrowError("ShowAlpha: height must be mod 2 for yv12");
+    }
+    vi.pixel_type = VideoInfo::CS_YV12;
+  }
+
+  else {
+    env->ThrowError("ShowAlpha supports the following output pixel types: RGB, YUY2, or YV12");
+  }
 }
 
 
 PVideoFrame ShowAlpha::GetFrame(int n, IScriptEnvironment* env)
 {
   PVideoFrame f = child->GetFrame(n, env);
-  env->MakeWritable(&f);
 
-  BYTE* pf = f->GetWritePtr();
+  const BYTE* pf = f->GetReadPtr();
+  int height = f->GetHeight();
   int pitch = f->GetPitch();
   int rowsize = f->GetRowSize();
-  int height = f->GetHeight();
-
-  for (int i=0; i<height; i++) {
-    for (int j=0; j<rowsize; j+=4) {
-      char alpha = pf[j+3];
-      pf[j + 0] = alpha;
-      pf[j + 1] = alpha;
-      pf[j + 2] = alpha;
+  
+  if (!lstrcmpi(pixel_type, "rgb"))
+  {
+    // we can do it in-place
+    env->MakeWritable(&f);
+    BYTE* dstp = f->GetWritePtr();
+    
+    for (int i=0; i<height; ++i) {
+      for (int j=0; j<rowsize; j+=4) {        
+        dstp[j + 0] = dstp[j + 1] = dstp[j + 2] = dstp[j + 3];
+      }
+      dstp += pitch;
     }
-    pf += pitch;
+  
+    return f;
   }
+  else if (!lstrcmpi(pixel_type, "yuy2"))
+  {    
+    PVideoFrame dst = env->NewVideoFrame(vi);
+    BYTE * dstp = dst->GetWritePtr();
+    int dstpitch = dst->GetPitch();
+    int dstrowsize = dst->GetRowSize();
 
+    // RGB is upside-down
+    pf += (height-1) * pitch;
+
+    for (int i=0; i<height; ++i) {
+      for (int j=0; j<dstrowsize; j+=2) {        
+        dstp[j + 0] = pf[j*2 + 3];
+        dstp[j + 1] = 128;        
+      }
+      pf -= pitch;
+      dstp += dstpitch;
+    }      
+
+    return dst;
+  }
+  else if (!lstrcmpi(pixel_type, "yv12"))
+  {
+    int i, j;  // stupid VC6
+
+    PVideoFrame dst = env->NewVideoFrame(vi);
+    BYTE * dstp = dst->GetWritePtr();
+    int dstpitch = dst->GetPitch();
+    int dstrowsize = dst->GetRowSize();
+
+    // RGB is upside-down
+    pf += (height-1) * pitch;
+
+    for (i=0; i<height; ++i) {
+      for (j=0; j<dstrowsize; ++j) {
+        dstp[j] = pf[j*4 + 3]; 
+      }
+      pf -= pitch;
+      dstp += dstpitch;
+    }
+
+    dstpitch = dst->GetPitch(PLANAR_U);
+    dstrowsize = dst->GetRowSize(PLANAR_U);
+    int dstheight = dst->GetHeight(PLANAR_U);
+    BYTE * dstpu = dst->GetWritePtr(PLANAR_U);
+    BYTE * dstpv = dst->GetWritePtr(PLANAR_V);
+    for (i=0; i<dstheight; ++i) {      
+      for (j=0; j<dstrowsize/4; ++j) {
+        ((unsigned int*) dstpu)[j] = ((unsigned int*) dstpv)[j] = 0x80808080;
+      }
+      dstpu += dstpitch;
+      dstpv += dstpitch;
+    }
+
+    return dst;
+  }
+  
+  env->ThrowError("ShowAlpha: unexpected end of function");
   return f;
 }
 
 
 AVSValue ShowAlpha::Create(AVSValue args, void*, IScriptEnvironment* env)
 {
-  return new ShowAlpha(args[0].AsClip(), env);
+  return new ShowAlpha(args[0].AsClip(), args[1].AsString("RGB"), env);
 }
 
 

@@ -130,10 +130,12 @@ class ShowAlpha : public GenericVideoFilter
 **/
 {
 public:
-  ShowAlpha(PClip _child, IScriptEnvironment* env);
+  ShowAlpha(PClip _child, const char * _pixel_type, IScriptEnvironment* env);
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
 
   static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env);
+private:
+  const char * pixel_type;
 };
 
 
