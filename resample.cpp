@@ -82,14 +82,14 @@ PVideoFrame __stdcall FilteredResizeH::GetFrame(int n, IScriptEnvironment* env)
     int fir_filter_size_luma = pattern_luma[0];
     int fir_filter_size_chroma = pattern_chroma[0];
     static const __int64 x0000000000FF00FF = 0x0000000000FF00FF;
-    static const __int64 x00FF000000FF0000 = 0x00FF000000FF0000;
+    static const __int64 xFFFF0000FFFF0000 = 0xFFFF0000FFFF0000;
     static const __int64 FPround =           0x0000200000002000;  // 16384/2
 
     __asm {
       pxor        mm0, mm0
       movq        mm7, x0000000000FF00FF
       movq        mm6, FPround
-      movq        mm5, x00FF000000FF0000
+      movq        mm5, xFFFF0000FFFF0000
     }
     for (int y=0; y<vi.height; ++y)
     {
@@ -165,13 +165,8 @@ PVideoFrame __stdcall FilteredResizeH::GetFrame(int n, IScriptEnvironment* env)
  
         paddd       mm1, mm6            ;Y1|Y1|Y0|Y0  (round)
         paddd       mm3, mm6            ; V| V| U| U  (round)
-        pxor        mm4, mm4
-        pslld       mm3, 2              ; Shift up from 14 bits fraction
+        pslld       mm3, 2              ; Shift up from 14 bits fraction to 16 bit fraction
                                 
-        packsswb    mm4,mm3             ; Clip >255 by using pack / unpack
-        punpckhbw   mm3,mm4
-        psrld       mm3,8
-
         pand        mm3, mm5            ;mm3 = v| 0|u| 0
 
         psrld       mm1, 14             ;mm1 = 0|y1|0|y0
