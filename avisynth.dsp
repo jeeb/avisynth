@@ -269,7 +269,10 @@ SOURCE=.\clip_info.h
 # Begin Source File
 
 SOURCE=.\directshow_source.cpp
-# PROP Exclude_From_Build 1
+# End Source File
+# Begin Source File
+
+SOURCE=.\directshow_source.h
 # End Source File
 # Begin Source File
 
