@@ -314,3 +314,139 @@ AVSValue __cdecl ConditionalReader::Create(AVSValue args, void* user_data, IScri
 }
 
 
+// Write ------------------------------------------------
+
+Write::Write (PClip _child, const char _filename[], AVSValue args, int _linecheck, bool _append, bool _flush, IScriptEnvironment* _env):
+	GenericVideoFilter(_child), linecheck(_linecheck), flush(_flush), append(_append), env(_env)
+{
+	strcpy(filename, _filename);
+	arrsize = __min(args.ArraySize(), maxWriteArgs);
+	int i;
+	
+	for (i=0; i<maxWriteArgs; i++) strcpy(arglist[i].string, "");
+
+	for (i=0; i<arrsize; i++) {
+		strcpy(arglist[i].expression, args[i].AsString(""));
+	}
+
+	if (append) {
+		strcpy(mode, "a+t");
+	} else {
+		strcpy(mode, "w+t");
+	}
+
+	fout = fopen(filename, mode);	//append or purge file
+	if (!fout) env->ThrowError("Write: File cannot be opened.");
+	
+	if (flush) fclose(fout);	//will be reopened in FileOut
+
+	strcpy(mode, "a+t");	// in GetFrame always appending
+
+	if (linecheck == -1) {	//write at start
+		env->SetVar("current_frame",-1);
+		Write::DoEval(env);
+		Write::FileOut(env);
+	}
+	if (linecheck == -2) {	//write at end, evaluate right now
+		env->SetVar("current_frame",-2);
+		Write::DoEval(env);
+	}
+}
+
+PVideoFrame __stdcall Write::GetFrame(int n, IScriptEnvironment* env) {
+
+//changed to call write AFTER the child->GetFrame
+
+	PVideoFrame tmpframe = child->GetFrame(n, env);
+
+	if (linecheck<0) return tmpframe;	//do nothing here when writing only start or end
+
+	env->SetVar("current_frame",n);
+	
+	if (Write::DoEval(env)) {
+		Write::FileOut(env);
+	}
+
+	return tmpframe;
+
+};
+
+Write::~Write(void) {
+	if (append) {
+		strcpy(mode, "a+t");
+	} else {
+		strcpy(mode, "w+t");
+	}
+
+	if (linecheck == -2) {	//write at end
+		Write::FileOut(env);
+	}
+	if (!flush) fclose(fout);
+};
+
+void Write::FileOut(IScriptEnvironment* env) {
+	int i;
+	if (flush) {
+		fout = fopen(filename, mode);
+		if (!fout) env->ThrowError("Write: File cannot be opened.");
+	}
+	for (i= ( (linecheck==1) ? 1 : 0) ; i<maxWriteArgs; i++ ) {
+		fprintf(fout, "%s", arglist[i].string );
+	}
+	fprintf(fout, "\n");
+	if (flush) {
+		fclose(fout);
+	}
+}
+
+bool Write::DoEval( IScriptEnvironment* env) {
+	bool keep_this_line = true;
+	int i;
+	AVSValue expr;
+	AVSValue result;
+
+	for (i=0; i<arrsize; i++) {
+		expr = arglist[i].expression;
+		
+		if ( (linecheck==1) && (i==0)) {
+			try {
+				result = env->Invoke("Eval",expr);
+				if (!result.AsBool(true)) {
+					keep_this_line = false;
+					break;
+				}
+			} catch (AvisynthError error) {
+//				env->ThrowError("Write: Can't eval linecheck expression!"); // results in KEEPING the line
+			}
+		} else {
+			try {
+				result = env->Invoke("Eval",expr);
+				result = env->Invoke("string",result);	//convert all results to a string
+				strcpy(arglist[i].string, result.AsString(""));
+			} catch (AvisynthError error) {
+				strcpy(arglist[i].string, error.msg);
+			}
+		}
+	}
+	return keep_this_line;
+}
+
+AVSValue __cdecl Write::Create(AVSValue args, void* user_data, IScriptEnvironment* env)
+{
+	return new Write(args[0].AsClip(), args[1].AsString(""), args[2], 0, args[3].AsBool(true),args[4].AsBool(true), env);
+}
+
+AVSValue __cdecl Write::Create_If(AVSValue args, void* user_data, IScriptEnvironment* env)
+{
+	return new Write(args[0].AsClip(), args[1].AsString(""), args[2], 1, args[3].AsBool(true),args[4].AsBool(true), env);
+}
+
+AVSValue __cdecl Write::Create_Start(AVSValue args, void* user_data, IScriptEnvironment* env)
+{
+	return new Write(args[0].AsClip(), args[1].AsString(""), args[2], -1, args[3].AsBool(false), true, env);
+}
+
+AVSValue __cdecl Write::Create_End(AVSValue args, void* user_data, IScriptEnvironment* env)
+{
+	return new Write(args[0].AsClip(), args[1].AsString(""), args[2], -2, args[3].AsBool(true), true, env);
+}

@@ -176,3 +176,38 @@ iscomment(char *string)
 	return(iscomment);
 }
 
+/* ------------------------------------------------------------------------------
+** Write function to evaluate expressions per frame and write the results to file
+** Ernst Peché, 2004
+*/
+
+#define maxWriteArgs 16
+
+class Write : public GenericVideoFilter
+{
+private:
+	FILE * fout;
+	int linecheck;	// 0=write each line, 1=write only if first expression == true, -1 = write at start, -2 = write at end
+	bool flush;
+	bool append;
+	IScriptEnvironment* env;
+
+	char filename[255];
+	char mode[10];	//file open mode
+	int arrsize;
+	struct exp_res {
+		char expression[255];
+		char string[255];
+	} arglist[maxWriteArgs];	//max 16 args
+
+public:
+    Write(PClip _child, const char _filename[], AVSValue args, int _linecheck, bool _flush, bool _append, IScriptEnvironment* env);
+	~Write(void);
+	PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
+	static AVSValue __cdecl Create(AVSValue args, void* user_data, IScriptEnvironment* env);
+	static AVSValue __cdecl Create_If(AVSValue args, void* user_data, IScriptEnvironment* env);
+	static AVSValue __cdecl Create_Start(AVSValue args, void* user_data, IScriptEnvironment* env);
+	static AVSValue __cdecl Create_End(AVSValue args, void* user_data, IScriptEnvironment* env);
+	bool DoEval(IScriptEnvironment* env);
+	void FileOut(IScriptEnvironment* env);
+};
