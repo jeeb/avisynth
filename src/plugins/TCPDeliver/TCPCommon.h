@@ -42,7 +42,6 @@
 
 #include "stdafx.h"
 
-//#include <Windows.h>
 
 enum {
   REQUEST_PING = 1,
@@ -167,6 +166,5 @@ struct ServerSplitBlock {
 unsigned __int32 adler32(unsigned int adler, const unsigned char* buf, unsigned int len);
  
 static HINSTANCE hInstance;
-
 
 #endif

@@ -48,19 +48,36 @@
 
 AVSValue __cdecl Create_TCPServer(AVSValue args, void* user_data, IScriptEnvironment* env);
 
+struct ClientConnection {
+  SOCKET s;
+  bool isConnected;
+  bool isDataPending;
+  BYTE* pendingData;
+  unsigned int pendingBytesSent;
+  unsigned int totalPendingBytes;
+  PVideoFrame prepared_frame;
+};
+
 struct ServerReply {
   BYTE* data;
   unsigned int dataSize;
+  BYTE* internal_data;
+  ClientConnection* client;
 
   void allocateBuffer(int bytes) {
-    data = new BYTE[bytes];
+    internal_data = new BYTE[bytes+1];
+    data = &internal_data[1];
     dataSize = bytes;
   }
 
   void freeBuffer() {
     if (dataSize)
-      delete[] data;
+      delete[] internal_data;
     dataSize = 0;
+  }
+
+  void setType(BYTE type) {
+    internal_data[0] = type;
   }
 
 };
@@ -74,11 +91,15 @@ public:
 
 private:
   void Receive(const char* recvbuf, int bytesRecv, ServerReply* s);
+  void SendPacket(ClientConnection* cc, ServerReply* s);
   void SendVideoInfo(ServerReply* s);
+  void SendFrameInfo(ServerReply* s, const char* request);
+  void TCPServerListener::SendVideoFrame(ServerReply* s);
   WSADATA wsaData;
   SOCKET m_socket;
   sockaddr_in service;
   PClip child;
+  IScriptEnvironment* env;
   bool shutdown;
 };
 

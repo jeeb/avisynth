@@ -91,7 +91,6 @@ public:
   char last_reply_type;
   bool disconnect;
 
-
 private:
   void TCPClientThread::RecievePacket();
   char* client_request;

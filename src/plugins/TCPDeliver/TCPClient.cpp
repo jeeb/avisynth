@@ -43,12 +43,14 @@
 TCPClient::TCPClient(const char* _hostname, int _port, IScriptEnvironment* env) : hostname(_hostname), port(_port) {
   LPDWORD ThreadId = 0;
   client = new TCPClientThread(hostname, port, env);
+  _RPT0(0, "TCPClient: Client object created.\n");
 
 //  if(!ClientThread) ClientThread = CreateThread(NULL, 0, (unsigned long (__stdcall *)(void *))StartClient, 0, 0 , ThreadId );
 
 }
 
 const VideoInfo& TCPClient::GetVideoInfo() {
+  _RPT0(0, "TCPClient: Requesting VideoInfo.\n");
   memset(&vi, 0, sizeof(vi));
   client->SendRequest(CLIENT_SEND_VIDEOINFO, 0, 0);
   client->GetReply();
@@ -138,10 +140,6 @@ bool __stdcall TCPClient::GetParity(int n) {
 TCPClient::~TCPClient() {
   DWORD dwExitCode = 0;
   client->disconnect = true;
-/*	if(ClientThread)  {
-    TerminateThread(ClientThread, dwExitCode);
-		ClientThread=NULL; 
-  }*/
 }
 
 
@@ -161,7 +159,7 @@ UINT StartClient(LPVOID p) {
 
 TCPClientThread::TCPClientThread(const char* hostname, int port, IScriptEnvironment* env) {
   disconnect = false;
-//  sync_data = new TCPClientSynchronization();
+
   evtClientReadyForRequest = ::CreateEvent (NULL,	FALSE, FALSE, NULL);
   evtClientReplyReady = ::CreateEvent (NULL,	FALSE, FALSE, NULL);
   evtClientProcesRequest = ::CreateEvent (NULL,	FALSE, FALSE, NULL);
@@ -188,6 +186,7 @@ TCPClientThread::TCPClientThread(const char* hostname, int port, IScriptEnvironm
     WSACleanup();
     return;
   }
+  _RPT0(0, "TCPClient: Connected to server!  Spawning thread.\n");
 
   AfxBeginThread(StartClient, this , THREAD_PRIORITY_NORMAL,0,0,NULL);
 
@@ -195,22 +194,28 @@ TCPClientThread::TCPClientThread(const char* hostname, int port, IScriptEnvironm
 
 // To be called from external interface
 void TCPClientThread::SendRequest(char requestId, void* data, unsigned int bytes) {
+    _RPT0(0, "TCPClient: Waiting for ready for request.\n");    
+    HRESULT wait_result = WAIT_TIMEOUT;
+    while (wait_result == WAIT_TIMEOUT) {
+      wait_result = WaitForSingleObject(evtClientReadyForRequest, 1000);
+    }
+
+    _RPT0(0, "TCPClient: Sending Request.\n");    
+
     client_request_bytes = bytes+1;  // bytecount + id + data
     client_request = new char[client_request_bytes+4];
     memcpy(client_request, &client_request_bytes, 4);
     client_request[4] = requestId;
     memcpy(&client_request[5], data, bytes);
-    HRESULT wait_result;
     client_request_bytes += 4;  // Compensate for byte count
-    while (wait_result == WAIT_TIMEOUT) {
-      wait_result = WaitForSingleObject(evtClientReadyForRequest, 1000);
-    }
+
     SetEvent(evtClientProcesRequest);
 }
 
 // The data is only valid until SendRequest is called.
 void TCPClientThread::GetReply() {
-    HRESULT wait_result;
+    _RPT0(0, "TCPClient: Waiting for reply.\n");    
+    HRESULT wait_result = WAIT_TIMEOUT;
     while (wait_result == WAIT_TIMEOUT) {
       wait_result = WaitForSingleObject(evtClientReplyReady, 1000);
     }
@@ -221,22 +226,27 @@ void TCPClientThread::GetReply() {
 // Main thread for sending and recieving data
 
 void TCPClientThread::StartRequestLoop() {
-//  ClientRequest r;
+  _RPT0(0, "TCPClient: Thread starting.\n");
   last_reply = new char[1];
   while (!disconnect) {
 
-    HRESULT wait_result;
+    HRESULT wait_result = WAIT_TIMEOUT;
     SetEvent(evtClientReadyForRequest);
 
     while (wait_result == WAIT_TIMEOUT) {
       wait_result = WaitForSingleObject(evtClientProcesRequest, 1000);
     }
 
+    _RPT0(0, "TCPClient: Processing request.\n");    
+
     delete[] last_reply;
     last_reply_bytes = 0;
     last_reply_type = 0;
 
     int bytesSent = send(m_socket, client_request, client_request_bytes, 0);
+
+    _RPT0(0, "TCPClient: Request sent.\n");    
+
     if (bytesSent == WSAECONNRESET) {
       _RPT0(1, "TCPClient: Client was disconnected!");
       disconnect = true;
@@ -244,9 +254,11 @@ void TCPClientThread::StartRequestLoop() {
       // Wait for reply.
       RecievePacket();
     }
-    if (!disconnect) {
-      SetEvent(evtClientReplyReady);  // FIXME: Could give deadlocks, if client is waiting for reply.
+    _RPT0(0, "TCPClient: Returning reply.\n");    
+    if (disconnect) {
+      last_reply_type = 0;
     }
+    SetEvent(evtClientReplyReady);  // FIXME: Could give deadlocks, if client is waiting for reply.
   } //end while
   CloseHandle(evtClientProcesRequest);
   CloseHandle(evtClientReplyReady);
@@ -258,35 +270,34 @@ void TCPClientThread::RecievePacket() {
   unsigned int recieved = 0;
   while (recieved < 4) {
     int bytesRecv = recv(m_socket, (char*)&dataSize+recieved, 4-recieved, 0 );
-    if (bytesRecv == WSAECONNRESET) {
-      _RPT0(0, "TCPClient: Could not retrieve packet size!");
+    if (bytesRecv == WSAECONNRESET || bytesRecv == 0) {
+      _RPT0(0, "TCPClient: Could not retrieve packet size!\n");
       disconnect = true;
       return;
     }
     recieved += bytesRecv;
   }
-/*
-  int bytesRecv = recv(m_socket, (char*)&dataSize, 4, 0 );
-  if (bytesRecv != 4 || bytesRecv == WSAECONNRESET) {
-    _RPT0(1, "TCPClient: Could not retrieve packet size!");
-    disconnect = true;
-    return;
-  }*/
+
+  _RPT1(0,"TCPClient: Got packet, of %d bytes\n", dataSize);
+
+  if (dataSize> 65536)
+    _RPT1(1,"TCPClient: Excessively large package recieved: %d bytes.", dataSize);
 
   char* data = new char[dataSize];
   recieved = 0;
 
   while (recieved < dataSize) {
     int bytesRecv = recv(m_socket, (char*)&data[recieved], dataSize-recieved, 0 );
-    if (bytesRecv == WSAECONNRESET) {
-      _RPT0(0, "TCPClient: Could not retrieve packet data!");
+    if (bytesRecv == WSAECONNRESET || bytesRecv == 0) {
+      _RPT0(0, "TCPClient: Could not retrieve packet data!\n");
       disconnect = true;
       return;
     }
     recieved += bytesRecv;
   }
-  last_reply = new char[dataSize - 1];
+  last_reply = new char[dataSize - 1];  // Freed in StartRequestLoop
   last_reply_bytes = dataSize - 1;
   last_reply_type = data[0];
-  memcpy(last_reply, data, last_reply_bytes);
+  memcpy(last_reply, &data[1], last_reply_bytes);
+  delete[] data;
 }
