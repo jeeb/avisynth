@@ -728,6 +728,10 @@ SOURCE=..\distrib\AviSynth.ico
 # End Source File
 # Begin Source File
 
+SOURCE=.\core\resource.h
+# End Source File
+# Begin Source File
+
 SOURCE=.\stdafx.cpp
 # ADD CPP /Yc"stdafx.h"
 # End Source File
