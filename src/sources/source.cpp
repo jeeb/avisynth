@@ -258,8 +258,16 @@ AVSValue __cdecl Create_MessageClip(AVSValue args, void*, IScriptEnvironment* en
 class ColorBars : public IClip {
   VideoInfo vi;
   PVideoFrame frame;
+  SFLOAT *audio;
+  unsigned nsamples;
+
+  enum { Hz = 440 } ;
 
 public:
+
+  ~ColorBars() {
+    if (audio) delete audio;
+  }
 
   ColorBars(int w, int h, const char* pixel_type, IScriptEnvironment* env) {
     memset(&vi, 0, sizeof(VideoInfo));
@@ -276,13 +284,13 @@ public:
 		if (w & 1)
           env->ThrowError("ColorBars: YUY2 width must be even!");
     }
-//	else if (lstrcmpi(pixel_type, "YV12") == 0) { // YV12
-//		vi.pixel_type = VideoInfo::CS_YV12;
-//		if ((w & 1) || (h & 1))
-//		env->ThrowError("ColorBars: YV12 both height and width must be even!");
-//	}
+	else if (lstrcmpi(pixel_type, "YV12") == 0) { // YV12
+		vi.pixel_type = VideoInfo::CS_YV12;
+		if ((w & 1) || (h & 1))
+		env->ThrowError("ColorBars: YV12 both height and width must be even!");
+	}
 	else {
-      env->ThrowError("ColorBars: pixel_type must be \"RGB32\" or \"YUY2\"");
+      env->ThrowError("ColorBars: pixel_type must be \"RGB32\", \"YUY2\" or \"YV12\"");
     }
     vi.sample_type = SAMPLE_FLOAT;
     vi.nchannels = 2;
@@ -298,7 +306,8 @@ public:
 	if (vi.IsRGB32()) {
 		// these values are taken from http://www.greatdv.com/video/smptebars3.htm
 		// note we go bottom->top
-		static const int bottom_quarter[] = { 0x001d42, 0xebebeb, 0x2c005c, 0x101010,  0x070707, 0x101010, 0x181818,  0x101010 };
+		static const int bottom_quarter[] =
+			{ 0x001d42, 0xebebeb, 0x2c005c, 0x101010,  0x070707, 0x101010, 0x181818,  0x101010 };
 		for (; y < h/4; ++y) {
 			int x = 0;
 			for (int i=0; i<4; ++i) {
@@ -314,7 +323,8 @@ public:
 			p += pitch;
 		}
 		
-		static const int two_thirds_to_three_quarters[] = { 0x0f0fb4, 0x101010, 0xb410b4, 0x101010, 0x0db4b4, 0x101010, 0xb4b4b4 };
+		static const int two_thirds_to_three_quarters[] =
+			{ 0x0f0fb4, 0x101010, 0xb410b4, 0x101010, 0x0db4b4, 0x101010, 0xb4b4b4 };
 		for (; y < h/3; ++y) {
 			int x = 0;
 			for (int i=0; i<7; ++i) {
@@ -324,7 +334,8 @@ public:
 			p += pitch;
 		}
 		
-		static const int top_two_thirds[] = { 0xb4b4b4, 0xb4b40c, 0x0db4b4, 0x0db40c, 0xb410b4, 0xb40f0e, 0x0f0fb4 };
+		static const int top_two_thirds[] =
+			{ 0xb4b4b4, 0xb4b40c, 0x0db4b4, 0x0db40c, 0xb410b4, 0xb40f0e, 0x0f0fb4 };
 		for (; y < h; ++y) {
 			int x = 0;
 			for (int i=0; i<7; ++i) {
@@ -335,7 +346,8 @@ public:
 		}
 	}
 	else if (vi.IsYUY2()) { // YUY2; [16,235]RGB -[rec601]-> [16,235]YUV calc'd by WilbertD
-		static const int top_two_thirds[] = { 0x80b480b4, 0x8ea12ca1, 0x2c829c82, 0x3b6f486f, 0xc454b754, 0xd3406440, 0x7222d222 }; //VYUY
+		static const int top_two_thirds[] =
+			{ 0x80b480b4, 0x8ea12ca1, 0x2c829c82, 0x3b6f486f, 0xc454b754, 0xd3406440, 0x7222d222 }; //VYUY
 		w >>= 1;
 		for (; y*3 < h*2; ++y) {
 			int x = 0;
@@ -347,7 +359,7 @@ public:
 		}
 
 		static const int two_thirds_to_three_quarters[] =
-		                                     { 0x7222d222, 0x80108010, 0xc454b754, 0x80108010, 0x2c829c82, 0x80108010, 0x80b480b4 }; //VYUY
+			{ 0x7222d222, 0x80108010, 0xc454b754, 0x80108010, 0x2c829c82, 0x80108010, 0x80b480b4 }; //VYUY
 		for (; y*4 < h*3; ++y) {
 			int x = 0;
 			for (int i=0; i<7; i++) {
@@ -357,7 +369,8 @@ public:
 			p += pitch;
 		}
 
-		static const int bottom_quarter[] = { 0x6f189818, 0x80eb80eb, 0x8f17a717, 0x80108010, 0x80078007, 0x80108010, 0x80188018, 0x80108010 };
+		static const int bottom_quarter[] =
+			{ 0x6f189818, 0x80eb80eb, 0x8f17a717, 0x80108010, 0x80078007, 0x80108010, 0x80188018, 0x80108010 };
 		for (; y < h; ++y) {
 			int x = 0;
 			for (int i=0; i<4; ++i) {
@@ -374,7 +387,90 @@ public:
 		}
 	}
 	else if (vi.IsYV12()) {
-      env->ThrowError("ColorBars: YV12 not yet unimplemented");
+		unsigned short* pY = (unsigned short*)frame->GetWritePtr(PLANAR_Y);
+		BYTE* pU = (BYTE*)frame->GetWritePtr(PLANAR_U);
+		BYTE* pV = (BYTE*)frame->GetWritePtr(PLANAR_V);
+		const int pitchY  = frame->GetPitch(PLANAR_Y)>>1;
+		const int pitchUV = frame->GetPitch(PLANAR_U);
+
+		static const unsigned short top_two_thirdsY[] = { 0xb4b4, 0xa1a1, 0x8282, 0x6f6f, 0x5454, 0x4040, 0x2222 };
+		static const BYTE top_two_thirdsU[] = { 0x80, 0x2c, 0x9c, 0x48, 0xb7, 0x64, 0xd2 };
+		static const BYTE top_two_thirdsV[] = { 0x80, 0x8e, 0x2c, 0x3b, 0xc4, 0xd3, 0x72 };
+		w >>= 1;
+		h >>= 1;
+		for (; y*3 < h*2; ++y) {
+			int x = 0;
+			for (int i=0; i<7; i++) {
+				for (; x < (w*(i+1)+3)/7; ++x) {
+					pY[x] = pY[x+pitchY] = top_two_thirdsY[i];
+					pU[x] = top_two_thirdsU[i];
+					pV[x] = top_two_thirdsV[i];
+				}
+			}
+			pY += pitchY*2; pU += pitchUV; pV += pitchUV;
+		}
+		static const unsigned short two_thirds_to_three_quartersY[] = { 0x2222, 0x1010, 0x5454, 0x1010, 0x8282, 0x1010, 0xb4b4 };
+		static const BYTE two_thirds_to_three_quartersU[] = { 0xd2, 0x80, 0xb7, 0x80, 0x9c, 0x80, 0x80 };
+		static const BYTE two_thirds_to_three_quartersV[] = { 0x72, 0x80, 0xc4, 0x80, 0x2c, 0x80, 0x80 };
+		for (; y*4 < h*3; ++y) {
+			int x = 0;
+			for (int i=0; i<7; i++) {
+				for (; x < (w*(i+1)+3)/7; ++x) {
+					pY[x] = pY[x+pitchY] = two_thirds_to_three_quartersY[i];
+					pU[x] = two_thirds_to_three_quartersU[i];
+					pV[x] = two_thirds_to_three_quartersV[i];
+				}
+			}
+			pY += pitchY*2; pU += pitchUV; pV += pitchUV;
+		}
+		static const unsigned short bottom_quarterY[] = { 0x1818, 0xebeb, 0x1717, 0x1010, 0x0707, 0x1010, 0x1818, 0x1010 };
+		static const BYTE bottom_quarterU[] = { 0x98, 0x80, 0xa7, 0x80, 0x80, 0x80, 0x80, 0x80 };
+		static const BYTE bottom_quarterV[] = { 0x6f, 0x80, 0x8f, 0x80, 0x80, 0x80, 0x80, 0x80 };
+		for (; y < h; ++y) {
+			int x = 0;
+			for (int i=0; i<4; ++i) {
+				for (; x < (w*(i+1)*5+14)/28; ++x) {
+					pY[x] = pY[x+pitchY] = bottom_quarterY[i];
+					pU[x] = bottom_quarterU[i];
+					pV[x] = bottom_quarterV[i];
+				}
+			}
+			for (int j=4; j<7; ++j) {
+				for (; x < (w*(j+12)+10)/21; ++x) {
+					pY[x] = pY[x+pitchY] = bottom_quarterY[j];
+					pU[x] = bottom_quarterU[j];
+					pV[x] = bottom_quarterV[j];
+				}
+			}
+			for (; x < w; ++x) {
+				pY[x] = pY[x+pitchY] = bottom_quarterY[7];
+				pU[x] = bottom_quarterU[7];
+				pV[x] = bottom_quarterV[7];
+			}
+			pY += pitchY*2; pU += pitchUV; pV += pitchUV;
+		}
+	}
+
+	// Generate Audio buffer
+	{
+	  unsigned x=vi.audio_samples_per_second, y=Hz;
+	  while (y) {     // find gcd
+		unsigned t = x%y; x = y; y = t;
+	  }
+	  nsamples = vi.audio_samples_per_second/x; // 1200
+	  const unsigned ncycles  = Hz/x; // 11
+
+	  audio = new SFLOAT[nsamples];
+
+	  if (!audio)
+		env->ThrowError("ColorBars: insufficient memory");
+
+	  const double add_per_sample=ncycles/(double)nsamples;
+	  double second_offset=0.0;
+	  for (int i=0;i<nsamples;i++) {
+		  audio[i] = sin(3.1415926535897932384626433832795*2.0*second_offset);
+		  second_offset+=add_per_sample;
+	  }
 	}
   }
 
@@ -384,6 +480,21 @@ public:
   void __stdcall SetCacheHints(int cachehints,int frame_range) { };
 
   void __stdcall GetAudio(void* buf, __int64 start, __int64 count, IScriptEnvironment* env) {
+#if 1
+    const int d_mod = vi.audio_samples_per_second*2;
+    float* samples = (float*)buf;
+
+	int j = start % nsamples;
+    for (int i=0;i<count;i++) {
+	  samples[i*2]=audio[j];
+	  if (((start+i)%d_mod)>vi.audio_samples_per_second) {
+		samples[i*2+1]=audio[j];
+	  } else {
+		samples[i*2+1]=0;
+	  }
+	  if (++j >= nsamples) j = 0;
+	}
+#else
     __int64 Hz=440;
     // Calculate what start equates in cycles.
     // This is the number of cycles (rounded down) that has already been taken.
@@ -406,6 +517,7 @@ public:
         }
         second_offset+=add_per_sample;
     }
+#endif
   }
 
   static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env) {
@@ -558,19 +670,22 @@ public:
 class Tone : public IClip {
   VideoInfo vi;
   SampleGenerator *s;
-  double freq;
-  int samplerate;
-  int ch;
+  const double freq;            // Frequency in Hz
+  const double samplerate;      // Samples per second
+  const int ch;                 // Number of channels
+  const double add_per_sample;  // How much should we add per sample in seconds
+  const float level;
 
 public:
 
-  Tone(float _length, double _freq, int _samplerate, int _ch, const char* _type, IScriptEnvironment* env):
-             freq(_freq), samplerate(_samplerate), ch(_ch) {
+  Tone(float _length, double _freq, int _samplerate, int _ch, const char* _type, float _level, IScriptEnvironment* env):
+             freq(_freq), samplerate(_samplerate), ch(_ch), add_per_sample(_freq/_samplerate), level(_level) {
     memset(&vi, 0, sizeof(VideoInfo));
     vi.sample_type = SAMPLE_FLOAT;
-    vi.nchannels = ch;
-    vi.audio_samples_per_second = samplerate;
+    vi.nchannels = _ch;
+    vi.audio_samples_per_second = _samplerate;
     vi.num_audio_samples=(__int64)(_length*(float)vi.audio_samples_per_second);
+
     if (!lstrcmpi(_type, "Sine"))
       s = new SineGenerator();
     else if (!lstrcmpi(_type, "Noise"))
@@ -588,40 +703,28 @@ public:
   }
 
   void __stdcall GetAudio(void* buf, __int64 start, __int64 count, IScriptEnvironment* env) {
-    // How much should we add per sample
-    // In seconds (beware of inprecision!)
-    double add_per_sample = freq / (double)vi.audio_samples_per_second;
-
-    // Where do we start timewise
-    // In seconds - precise (enough)
-    double start_offset = ((double)start) / (double)samplerate;
-
 
     // Where in the cycle are we in?
-    double cycle = (freq * start) / samplerate;
-
-    // Which cycle are we in?
-    double round_cycle = (double)(int)(cycle);
-
-    double period_place = cycle-round_cycle;
+    const double cycle = (freq * start) / samplerate;
+    double period_place = cycle - floor(cycle);
 
     SFLOAT* samples = (SFLOAT*)buf;
 
     for (int i=0;i<count;i++) {
-      SFLOAT v = s->getValueAt(max(0.0, min(1.0,period_place)));
+      SFLOAT v = s->getValueAt(period_place) * level;
       for (int o=0;o<ch;o++) {
         samples[o+i*ch] = v;
       }
       period_place += add_per_sample;
-      while (period_place > 1.0) {
-        period_place -= 1.0;
-      }
+      if (period_place >= 1.0)
+        period_place -= floor(period_place);
     }
   }
 
   static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env) {
 	try {	// HIDE DAMN SEH COMPILER BUG!!!
-	    return new Tone(args[0].AsFloat(10.0), args[1].AsFloat(440), args[2].AsInt(48000), args[3].AsInt(2), args[4].AsString("Sine"), env);
+	    return new Tone(args[0].AsFloat(10.0), args[1].AsFloat(440), args[2].AsInt(48000),
+		                args[3].AsInt(2), args[4].AsString("Sine"), args[5].AsFloat(1.0), env);
 	}
 	catch (...) { throw; }
   }
@@ -654,7 +757,7 @@ AVSFunction Source_filters[] = {
   { "Blackness", "[clip]c[length]i[width]i[height]i[pixel_type]s[fps]f[fps_denominator]i[audio_rate]i[stereo]b[sixteen_bit]b[color]i[color_yuv]i", Create_BlankClip },
   { "MessageClip", "s[width]i[height]i[shrink]b[text_color]i[halo_color]i[bg_color]i", Create_MessageClip },
   { "ColorBars", "[width]i[height]i[pixel_type]s", ColorBars::Create },
-  { "Tone", "[length]f[frequency]f[samplerate]i[channels]i[type]s", Tone::Create },
+  { "Tone", "[length]f[frequency]f[samplerate]i[channels]i[type]s[level]f", Tone::Create },
 
   { "Version", "", Create_Version },
   { 0,0,0 }
