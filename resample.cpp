@@ -615,6 +615,7 @@ PVideoFrame __stdcall FilteredResizeV::GetFrame(int n, IScriptEnvironment* env)
     mov         edx, cur
     pxor        mm0, mm0
     mov         edi, fir_filter_size
+    movq        mm6,[FPround]
     align 16
   yloop:
     mov         esi, yOfs
@@ -761,8 +762,8 @@ PVideoFrame __stdcall FilteredResizeV::GetFrame(int n, IScriptEnvironment* env)
     jnz         bloop
 align 16
 out_bloop:
-    paddd       mm1,[FPround]
-    paddd       mm7,[FPround]
+    paddd       mm1,mm6
+    paddd       mm7,mm6
     mov         eax, dstp
     pslld       mm1, 2                  ;14 bits -> 16bit fraction
     pslld       mm7, 2                  ;compensate the fact that FPScale = 16384
