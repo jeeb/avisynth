@@ -81,6 +81,37 @@ public:
   static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment*);
 };
 
+class ConvertToMono : public GenericVideoFilter 
+/**
+  * Class to convert audio to mono
+ **/
+{
+public:
+  ConvertToMono(PClip _clip);
+  virtual ~ConvertToMono()
+  {delete[] tempbuffer;tempbuffer_size=0;}
+
+  void __stdcall GetAudio(void* buf, int start, int count, IScriptEnvironment* env);
+  static PClip Create(PClip clip);
+  static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment*);
+
+private:
+  signed short *tempbuffer;
+  int tempbuffer_size;
+};
+
+
+class KillAudio : public GenericVideoFilter 
+/**
+  * Removes audio from clip
+ **/
+{
+public:
+  KillAudio(PClip _clip);
+  void __stdcall GetAudio(void* buf, int start, int count, IScriptEnvironment* env) {};
+  static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment*);
+};
+
 
 class DelayAudio : public GenericVideoFilter 
 /**

@@ -31,6 +31,8 @@ AVSFunction Audio_filters[] = {
   { "Normalize", "c[left]f[right]f", Normalize::Create },
   { "ResampleAudio", "ci", ResampleAudio::Create },
   { "ConvertAudioTo16bit", "c", ConvertAudioTo16bit::Create },
+  { "ConvertToMono", "c", ConvertToMono::Create },
+  { "KillAudio", "c", KillAudio::Create },
   { 0 }
 };
 
@@ -81,8 +83,68 @@ AVSValue __cdecl ConvertAudioTo16bit::Create(AVSValue args, void*, IScriptEnviro
 
 
 
+/******************************************
+ *******   Convert Audio -> Mono     ******
+ *****************************************/
+
+ConvertToMono::ConvertToMono(PClip _clip) 
+  : GenericVideoFilter(ConvertAudioTo16bit::Create(_clip))
+{
+  vi.stereo = false;
+  tempbuffer_size=0;
+}
 
 
+void __stdcall ConvertToMono::GetAudio(void* buf, int start, int count, IScriptEnvironment* env) 
+{
+  if (tempbuffer_size) {
+    if (tempbuffer_size<count) {
+      delete[] tempbuffer;
+      tempbuffer=new signed short[count*2];
+      tempbuffer_size=count;
+    }
+  } else {
+    tempbuffer=new signed short[count*2];
+    tempbuffer_size=count;
+  }
+  child->GetAudio(tempbuffer, start, count, env);
+  signed short* samples = (signed short*)buf;
+  for (int i=0; i<count; i++)
+    samples[i] = (tempbuffer[i*2] + tempbuffer[i*2+1])>>1;
+}
+
+
+PClip ConvertToMono::Create(PClip clip) 
+{
+  if (!clip->GetVideoInfo().stereo)
+    return clip;
+  else
+    return new ConvertToMono(clip);
+}
+
+
+AVSValue __cdecl ConvertToMono::Create(AVSValue args, void*, IScriptEnvironment*) 
+{
+  return Create(args[0].AsClip());
+}
+
+
+
+/******************************
+ *******   Kill Audio  ********
+ ******************************/
+
+KillAudio::KillAudio(PClip _clip) 
+  : GenericVideoFilter(_clip)
+{
+  vi.audio_samples_per_second=0;
+  vi.num_audio_samples=0;
+}
+
+AVSValue __cdecl KillAudio::Create(AVSValue args, void*, IScriptEnvironment*) 
+{
+  return new KillAudio(args[0].AsClip());
+}
 
 
 
