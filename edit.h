@@ -198,10 +198,11 @@ public:
 	Loop(PClip _child, int times, int _start, int _end);
 	PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
 	bool __stdcall GetParity(int n);
+  void __stdcall GetAudio(void* buf, int start, int count, IScriptEnvironment* env);
 
 	static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env);
 private:
-	int frames, start, end;
+	int frames, start, end, times, start_samples, loop_ends_at_sample,loop_len_samples;
 	int convert(int n);
 };
 

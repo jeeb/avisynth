@@ -542,19 +542,26 @@ AVSValue __cdecl Reverse::Create(AVSValue args, void*, IScriptEnvironment* env)
  ******   Loop Filter   *******
  *****************************/
 
-Loop::Loop(PClip _child, int times, int _start, int _end)
- : GenericVideoFilter(_child), start(_start), end(_end)
+Loop::Loop(PClip _child, int _times, int _start, int _end)
+ : GenericVideoFilter(_child), times(_times), start(_start), end(_end)
 {
   start = min(max(start,0),vi.num_frames-1);
   end = min(max(end,start),vi.num_frames-1);
   frames = end-start+1;
-  if (times<0) {
+  if (times<=0) {
     vi.num_frames = 10000000;
     end = vi.num_frames;
+    times=10000000/(end-start);
   } else {
     vi.num_frames += (times-1) * frames;
     end = start + times * frames - 1;
   }
+
+  start_samples = (((start*vi.audio_samples_per_second)*vi.fps_denominator)/ vi.fps_numerator);
+  loop_ends_at_sample = (((end*vi.audio_samples_per_second)*vi.fps_denominator)/ vi.fps_numerator);
+  loop_len_samples = (int)(0.5+(double)(loop_ends_at_sample-start_samples)/(double)times);
+
+  vi.num_audio_samples+=(loop_len_samples*times);
 }
 
 
@@ -568,7 +575,48 @@ bool Loop::GetParity(int n)
 {
   return child->GetParity(convert(n));
 }
+ 
+void Loop::GetAudio(void* buf, int s_start, int count, IScriptEnvironment* env) {
+  if (!vi.sixteen_bit)
+    env->ThrowError("Loop: Sound must be 16 bits, use ConvertAudioTo16bit() or KillAudio()");
 
+  if (s_start+count<start_samples) {
+    child->GetAudio(buf,s_start,count,env);
+    return;
+  }
+
+  if (s_start>loop_ends_at_sample) {
+    child->GetAudio(buf,s_start-(loop_len_samples*(times-1)),count,env);
+    return;
+  } 
+
+  signed short* samples = (signed short*)buf;
+  int s_pitch=1;
+  if (vi.stereo) s_pitch=2;
+ 
+  int in_loop_start=s_start-start_samples;  // This is the offset within the loop
+  int fetch_at_sample = (in_loop_start%loop_len_samples); // This is the first sample to get.
+
+  while (count>0) {
+    if (count+fetch_at_sample<loop_len_samples) {  // All samples can be fetched within loop
+      child->GetAudio(samples,start_samples+fetch_at_sample,count,env);
+      return;
+    } else {  // Get as many as possible without getting over the length of the loop 
+      int get_count=loop_len_samples-fetch_at_sample;
+      if (get_count>count) get_count=count;  // Just to be safe
+      if (get_count+s_start>loop_ends_at_sample) get_count=loop_ends_at_sample-(get_count+s_start); // Just to be safe
+      child->GetAudio(samples,start_samples+fetch_at_sample,get_count,env);
+      samples+=get_count*s_pitch;  // update dest start pointer
+      count-=get_count;
+      s_start+=get_count;
+      if (s_start>=loop_ends_at_sample) { // Continue on after the loop
+        child->GetAudio(samples,start_samples+loop_len_samples,count,env);
+        return;
+      } 
+      fetch_at_sample=0;  // Reset and make ready for another loop
+    }
+  }
+}
 
 __inline int Loop::convert(int n)
 {
