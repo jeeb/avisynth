@@ -37,9 +37,11 @@
 #define __Internal_H__
 
 #define AVS_VERSION 2.51
-#define AVS_VERSTR "AviSynth 2.51 beta (avisynth.org) 12 mar. 2003"
+#define AVS_VERSTR "AviSynth 2.51, build:"__DATE__" ["__TIME__"]"
+
 
 #include "avisynth.h"
+
 
 
 struct AVSFunction {

@@ -44,6 +44,7 @@
 #include "AVIReadHandler.h"
 
 
+
 class AVISource : public IClip {
   IAVIReadHandler *pfile;
   IAVIReadStream *pvideo;
