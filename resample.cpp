@@ -53,6 +53,9 @@ FilteredResizeH::FilteredResizeH( PClip _child, double subrange_left, double sub
 {
   pattern_chroma = 0;
   original_width = _child->GetVideoInfo().width;
+  if (target_width<4)
+    env->ThrowError("Resize: Width must be bigger than or equal to 4.");
+
   if (vi.IsYUY2())
   {
     if (target_width&1)
@@ -196,7 +199,7 @@ PVideoFrame __stdcall FilteredResizeH::GetFrame(int n, IScriptEnvironment* env)
       mov         edi, dstp
       pxor        mm2, mm2
       movq        mm4, xFF000000
-
+      sub         esi,3                     ;Avoid bleeding to line at right side
       align 16
     yloop24:
       xor         ecx, ecx
@@ -265,7 +268,7 @@ PVideoFrame __stdcall FilteredResizeH::GetFrame(int n, IScriptEnvironment* env)
       mov         esi, srcp
       mov         edi, dstp
       pxor        mm2, mm2
-
+      sub         esi,4                     ;Test hack to avoid bleeding to line at right side
       align 16
     yloop32:
       xor         ecx, ecx
@@ -343,6 +346,8 @@ FilteredResizeV::FilteredResizeV( PClip _child, double subrange_top, double subr
                                   int target_height, ResamplingFunction* func, IScriptEnvironment* env )
   : GenericVideoFilter(_child)
 {
+  if (target_height<4)
+    env->ThrowError("Resize: Height must be bigger than or equal to 4.");
   if (vi.IsRGB())
     subrange_top = vi.height - subrange_top - subrange_height;
   resampling_pattern = GetResamplingPatternRGB(vi.height, subrange_top, subrange_height, target_height, func);
