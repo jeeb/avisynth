@@ -182,160 +182,160 @@ void Antialiaser::ApplyRGB32(BYTE* buf, int pitch, int textcolor, int halocolor)
 
 void Antialiaser::GetAlphaRect() {
 
-	dirty = false;
+  dirty = false;
 
-	static BYTE	bitcnt[256],		// bit count
-							bitexl[256],		// expand to left bit
-							bitexr[256];		// expand to right bit
-	static bool fInited = false;
+  static BYTE bitcnt[256],    // bit count
+              bitexl[256],    // expand to left bit
+              bitexr[256];    // expand to right bit
+  static bool fInited = false;
 
-	if (!fInited) {
-		int i;
+  if (!fInited) {
+    int i;
 
-		for(i=0; i<256; i++) {
-			BYTE b=0, l=0, r=0;
+    for(i=0; i<256; i++) {
+      BYTE b=0, l=0, r=0;
 
-			if (i&  1) { b=1; l|=0x01; r|=0xFF; }
-			if (i&  2) { ++b; l|=0x03; r|=0xFE; }
-			if (i&  4) { ++b; l|=0x07; r|=0xFC; }
-			if (i&  8) { ++b; l|=0x0F; r|=0xF8; }
-			if (i& 16) { ++b; l|=0x1F; r|=0xF0; }
-			if (i& 32) { ++b; l|=0x3F; r|=0xE0; }
-			if (i& 64) { ++b; l|=0x7F; r|=0xC0; }
-			if (i&128) { ++b; l|=0xFF; r|=0x80; }
+      if (i&  1) { b=1; l|=0x01; r|=0xFF; }
+      if (i&  2) { ++b; l|=0x03; r|=0xFE; }
+      if (i&  4) { ++b; l|=0x07; r|=0xFC; }
+      if (i&  8) { ++b; l|=0x0F; r|=0xF8; }
+      if (i& 16) { ++b; l|=0x1F; r|=0xF0; }
+      if (i& 32) { ++b; l|=0x3F; r|=0xE0; }
+      if (i& 64) { ++b; l|=0x7F; r|=0xC0; }
+      if (i&128) { ++b; l|=0xFF; r|=0x80; }
 
-			bitcnt[i] = b;
-			bitexl[i] = l;
-			bitexr[i] = r;
-		}
+      bitcnt[i] = b;
+      bitexl[i] = l;
+      bitexr[i] = r;
+    }
 
-		fInited = true;
-	}
+    fInited = true;
+  }
 
-	int srcpitch = (w+4+3) & -4;
+  int srcpitch = (w+4+3) & -4;
 
-	char* dst = alpha_bits;
-	for (int y=0; y<h; ++y) {
-		BYTE* src = (BYTE*)lpAntialiasBits + ((h-y-1)*8 + 20) * srcpitch + 2;
-		int wt = w;
-		do {
-			int alpha1, alpha2;
-			int i;
-			BYTE bmasks[8], tmasks[8];
+  char* dst = alpha_bits;
+  for (int y=0; y<h; ++y) {
+    BYTE* src = (BYTE*)lpAntialiasBits + ((h-y-1)*8 + 20) * srcpitch + 2;
+    int wt = w;
+    do {
+      int alpha1, alpha2;
+      int i;
+      BYTE bmasks[8], tmasks[8];
 
-			alpha1 = alpha2 = 0;
+      alpha1 = alpha2 = 0;
 
-/*			BYTE tmp = 0;
-			for (i=0; i<8; i++) {
-				tmp |= src[srcpitch*i];
-				tmp |= src[srcpitch*i-1];
-				tmp |= src[srcpitch*i+1];
-				tmp |= src[srcpitch*(-8+i)];
-				tmp |= src[srcpitch*(-8+i)-1];
-				tmp |= src[srcpitch*(-8+i)+1];
-				tmp |= src[srcpitch*(8+i)];
-				tmp |= src[srcpitch*(8+i)-1];
-				tmp |= src[srcpitch*(8+i)+1];
-			}
+/*      BYTE tmp = 0;
+      for (i=0; i<8; i++) {
+        tmp |= src[srcpitch*i];
+        tmp |= src[srcpitch*i-1];
+        tmp |= src[srcpitch*i+1];
+        tmp |= src[srcpitch*(-8+i)];
+        tmp |= src[srcpitch*(-8+i)-1];
+        tmp |= src[srcpitch*(-8+i)+1];
+        tmp |= src[srcpitch*(8+i)];
+        tmp |= src[srcpitch*(8+i)-1];
+        tmp |= src[srcpitch*(8+i)+1];
+      }
 */
-			DWORD tmp;
-			__asm {						// test if the whole area isn't just plain black
-				mov edx, srcpitch
-				mov	esi, src
-				mov	ecx, edx
-				dec esi
-				shl ecx, 3
-				sub esi, ecx	; src - 8*pitch - 1
+      DWORD tmp;
+      __asm {           // test if the whole area isn't just plain black
+        mov edx, srcpitch
+        mov esi, src
+        mov ecx, edx
+        dec esi
+        shl ecx, 3
+        sub esi, ecx  ; src - 8*pitch - 1
 
-				mov eax, [esi]  ; repeat 24 times
-				add esi, edx
-				or eax, [esi]
-				add esi, edx
-				or eax, [esi]
-				add esi, edx
-				or eax, [esi]
-				add esi, edx
-				or eax, [esi]
-				add esi, edx
-				or eax, [esi]
-				add esi, edx
-				or eax, [esi]
-				add esi, edx
-				or eax, [esi]
-				add esi, edx
-				or eax, [esi]
-				add esi, edx
-				or eax, [esi]
-				add esi, edx
-				or eax, [esi]
-				add esi, edx
-				or eax, [esi]
-				add esi, edx
-				or eax, [esi]
-				add esi, edx
-				or eax, [esi]
-				add esi, edx
-				or eax, [esi]
-				add esi, edx
-				or eax, [esi]
-				add esi, edx
-				or eax, [esi]
-				add esi, edx
-				or eax, [esi]
-				add esi, edx
-				or eax, [esi]
-				add esi, edx
-				or eax, [esi]
-				add esi, edx
-				or eax, [esi]
-				add esi, edx
-				or eax, [esi]
-				add esi, edx
-				or eax, [esi]
-				add esi, edx
-				or eax, [esi]
+        mov eax, [esi]  ; repeat 24 times
+        add esi, edx
+        or eax, [esi]
+        add esi, edx
+        or eax, [esi]
+        add esi, edx
+        or eax, [esi]
+        add esi, edx
+        or eax, [esi]
+        add esi, edx
+        or eax, [esi]
+        add esi, edx
+        or eax, [esi]
+        add esi, edx
+        or eax, [esi]
+        add esi, edx
+        or eax, [esi]
+        add esi, edx
+        or eax, [esi]
+        add esi, edx
+        or eax, [esi]
+        add esi, edx
+        or eax, [esi]
+        add esi, edx
+        or eax, [esi]
+        add esi, edx
+        or eax, [esi]
+        add esi, edx
+        or eax, [esi]
+        add esi, edx
+        or eax, [esi]
+        add esi, edx
+        or eax, [esi]
+        add esi, edx
+        or eax, [esi]
+        add esi, edx
+        or eax, [esi]
+        add esi, edx
+        or eax, [esi]
+        add esi, edx
+        or eax, [esi]
+        add esi, edx
+        or eax, [esi]
+        add esi, edx
+        or eax, [esi]
+        add esi, edx
+        or eax, [esi]
 
-				and eax, 0x00ffffff
-				mov tmp, eax
-			}
+        and eax, 0x00ffffff
+        mov tmp, eax
+      }
 
-			if (tmp != 0) {			// quick exit in a common case
-				for (i=0; i<8; i++)
-					alpha1 += bitcnt[src[srcpitch*i]];
+      if (tmp != 0) {     // quick exit in a common case
+        for (i=0; i<8; i++)
+          alpha1 += bitcnt[src[srcpitch*i]];
 
-				BYTE cenmask = 0, mask1, mask2;
+        BYTE cenmask = 0, mask1, mask2;
 
-				for(i=0; i<=8; i++) {
-					cenmask |= (BYTE)(((long)-src[srcpitch*i  ])>>31);
-					cenmask |= bitexl[src[srcpitch*i-1]];
-					cenmask |= bitexr[src[srcpitch*i+1]];
-				}
+        for(i=0; i<=8; i++) {
+          cenmask |= (BYTE)(((long)-src[srcpitch*i  ])>>31);
+          cenmask |= bitexl[src[srcpitch*i-1]];
+          cenmask |= bitexr[src[srcpitch*i+1]];
+        }
 
-				mask1 = mask2 = cenmask;
+        mask1 = mask2 = cenmask;
 
-				for(i=0; i<8; i++) {
-					mask1 |= (BYTE)(((long)-src[srcpitch*(-i)])>>31);
-					mask1 |= bitexl[src[srcpitch*(-8+i)-1]];
-					mask1 |= bitexr[src[srcpitch*(-8+1)+1]];
-					mask2 |= (BYTE)(((long)-src[srcpitch*(8+i)])>>31);
-					mask2 |= bitexl[src[srcpitch*(8+i)-1]];
-					mask2 |= bitexr[src[srcpitch*(8+i)+1]];
+        for(i=0; i<8; i++) {
+          mask1 |= (BYTE)(((long)-src[srcpitch*(-i)])>>31);
+          mask1 |= bitexl[src[srcpitch*(-8+i)-1]];
+          mask1 |= bitexr[src[srcpitch*(-8+1)+1]];
+          mask2 |= (BYTE)(((long)-src[srcpitch*(8+i)])>>31);
+          mask2 |= bitexl[src[srcpitch*(8+i)-1]];
+          mask2 |= bitexr[src[srcpitch*(8+i)+1]];
 
-					tmasks[i] = mask1;
-					bmasks[i] = mask2;
-				}
+          tmasks[i] = mask1;
+          bmasks[i] = mask2;
+        }
 
-				for(i=0; i<8; i++) {
-					alpha2 += bitcnt[cenmask | tmasks[7-i] | bmasks[i]];
-				}
-			}
+        for(i=0; i<8; i++) {
+          alpha2 += bitcnt[cenmask | tmasks[7-i] | bmasks[i]];
+        }
+      }
 
-			dst[0] = alpha1;
-			dst[1] = alpha2-alpha1;
-			dst += 2;
-			++src;
-		} while(--wt);
-	}
+      dst[0] = alpha1;
+      dst[1] = alpha2-alpha1;
+      dst += 2;
+      ++src;
+    } while(--wt);
+  }
 }
 
 
@@ -571,290 +571,326 @@ void Subtitle::InitAntialiaser()
 
 
 Compare::Compare(PClip _child1, PClip _child2, const char* channels, const char *fname, bool _show_graph, IScriptEnvironment* env)
-	: GenericVideoFilter(_child1),
-	  child2(_child2),
-	  log(NULL),
-	  show_graph(_show_graph),
-	  antialiaser(vi.width, vi.height, "Courier New", 128)
+  : GenericVideoFilter(_child1),
+    child2(_child2),
+    log(NULL),
+    show_graph(_show_graph),
+    antialiaser(vi.width, vi.height, "Courier New", 128),
+    framecount(0)
 {
-	const VideoInfo& vi2 = child2->GetVideoInfo();
+  const VideoInfo& vi2 = child2->GetVideoInfo();
 
-	if (vi.pixel_type != vi2.pixel_type || vi.width != vi2.width || vi.height != vi2.height)
-		env->ThrowError("Compare: incompatible clips");
+  if (vi.pixel_type != vi2.pixel_type || vi.width != vi2.width || vi.height != vi2.height)
+    env->ThrowError("Compare: incompatible clips");
 
-	if (channels[0] == 0) {
-		if (vi.IsRGB32() || vi.IsRGB24())
-			channels = "RGB";
-		else if (vi.IsYUY2())
-			channels = "YUV";
-		else env->ThrowError("Compare: clips have unknown format");
-	}
+  if (channels[0] == 0) {
+    if (vi.IsRGB32() || vi.IsRGB24())
+      channels = "RGB";
+    else if (vi.IsYUY2())
+      channels = "YUV";
+    else env->ThrowError("Compare: clips have unknown format");
+  }
 
-	mask = 0;
-	for (int i = 0; i < strlen(channels); i++) {
-		if (vi.IsRGB())	{
-			switch (channels[i]) {
-			case 'b':
-			case 'B': mask |= 0x000000ff; break;
-			case 'g':
-			case 'G': mask |= 0x0000ff00; break;
-			case 'r':
-			case 'R': mask |= 0x00ff0000; break;
-			case 'a':
-			case 'A': mask |= 0xff000000; break;
-			default: env->ThrowError("Compare: invalid channel: %c", channels[i]);
-			}
-			if (vi.IsRGB24()) mask &= 0x00ffffff;		// no alpha channel in RGB24
-		} else {	// YUV
-			switch (channels[i]) {
-			case 'y':
-			case 'Y': mask |= 0x00ff00ff; break;
-			case 'u':
-			case 'U': mask |= 0x0000ff00; break;
-			case 'v':
-			case 'V': mask |= 0xff000000; break;
-			default: env->ThrowError("Compare: invalid channel: %c", channels[i]);
-			}
-		}
-	}
+  mask = 0;
+  for (WORD i = 0; i < strlen(channels); i++) {
+    if (vi.IsRGB()) {
+      switch (channels[i]) {
+      case 'b':
+      case 'B': mask |= 0x000000ff; break;
+      case 'g':
+      case 'G': mask |= 0x0000ff00; break;
+      case 'r':
+      case 'R': mask |= 0x00ff0000; break;
+      case 'a':
+      case 'A': mask |= 0xff000000; break;
+      default: env->ThrowError("Compare: invalid channel: %c", channels[i]);
+      }
+      if (vi.IsRGB24()) mask &= 0x00ffffff;   // no alpha channel in RGB24
+    } else {  // YUV
+      switch (channels[i]) {
+      case 'y':
+      case 'Y': mask |= 0x00ff00ff; break;
+      case 'u':
+      case 'U': mask |= 0x0000ff00; break;
+      case 'v':
+      case 'V': mask |= 0xff000000; break;
+      default: env->ThrowError("Compare: invalid channel: %c", channels[i]);
+      }
+    }
+  }
 
-	masked_bytes = 0;
-	for (DWORD temp = mask; temp != 0; temp >>=8)
-		masked_bytes += (temp & 1);
+  masked_bytes = 0;
+  for (DWORD temp = mask; temp != 0; temp >>=8)
+    masked_bytes += (temp & 1);
 
-	if (fname[0] != 0) {
-		log = fopen(fname, "wt");
-		if (log) {
-			fprintf(log,"Comparing channel(s) %s\n\n",channels);
-			fprintf(log,"           Mean               Max    Max             \n");
-			fprintf(log,"         Absolute     Mean    Pos.   Neg.            \n");
-			fprintf(log," Frame     Dev.       Dev.    Dev.   Dev.  PSNR (dB) \n");
-			fprintf(log,"-----------------------------------------------------\n");
-		} else
-			env->ThrowError("Compare: unable to create file %s", fname);
-	} else {
-		psnrs = new int[vi.num_frames];
-		if (psnrs)
-			for (int i = 0; i < vi.num_frames; i++)
-				psnrs[i] = 0;
-	}
+  if (fname[0] != 0) {
+    log = fopen(fname, "wt");
+    if (log) {
+      fprintf(log,"Comparing channel(s) %s\n\n",channels);
+      fprintf(log,"           Mean               Max    Max             \n");
+      fprintf(log,"         Absolute     Mean    Pos.   Neg.            \n");
+      fprintf(log," Frame     Dev.       Dev.    Dev.   Dev.  PSNR (dB) \n");
+      fprintf(log,"-----------------------------------------------------\n");
+    } else
+      env->ThrowError("Compare: unable to create file %s", fname);
+  } else {
+    psnrs = new int[vi.num_frames];
+    if (psnrs)
+      for (int i = 0; i < vi.num_frames; i++)
+        psnrs[i] = 0;
+  }
 
 }
 
 
 Compare::~Compare()
 {
-	if (log) fclose(log);
-	delete[] psnrs;
+  if (log) {
+    fprintf(log,"\n\n\nTotal frames processed: %d\n\n", framecount);
+    fprintf(log,"                           Minimum   Average   Maximum\n");
+    fprintf(log,"Mean Absolute Deviation: %9.4f %9.4f %9.4f\n", MAD_min, MAD_tot/framecount, MAD_max);
+    fprintf(log,"         Mean Deviation: %+9.4f %+9.4f %+9.4f\n", MD_min, MD_tot/framecount, MD_max);
+    fprintf(log,"                   PSNR: %9.4f %9.4f %9.4f\n", PSNR_min, PSNR_tot/framecount, PSNR_max);
+    fclose(log);
+  }
+  delete[] psnrs;
 }
 
 
 AVSValue __cdecl Compare::Create(AVSValue args, void*, IScriptEnvironment *env)
 {
-	return new Compare(	args[0].AsClip(),			// clip
-						args[1].AsClip(),			// base clip
-						args[2].AsString(""),		// channels
-						args[3].AsString(""),		// logfile
-						args[4].AsBool(true),		// show_graph
-						env);
+  return new Compare( args[0].AsClip(),     // clip
+            args[1].AsClip(),     // base clip
+            args[2].AsString(""),   // channels
+            args[3].AsString(""),   // logfile
+            args[4].AsBool(true),   // show_graph
+            env);
 }
 
 
 
 PVideoFrame __stdcall Compare::GetFrame(int n, IScriptEnvironment* env)
 {
-	PVideoFrame f1 = child->GetFrame(n, env);
-	PVideoFrame f2 = child2->GetFrame(n, env);
+  PVideoFrame f1 = child->GetFrame(n, env);
+  PVideoFrame f2 = child2->GetFrame(n, env);
 
-	const BYTE* f1ptr = f1->GetReadPtr();
-	const BYTE* f2ptr = f2->GetReadPtr();
-	const int pitch1 = f1->GetPitch();
-	const int pitch2 = f2->GetPitch();
-	const int rowsize = f1->GetRowSize();
-	const int height = f1->GetHeight();
+  const BYTE* f1ptr = f1->GetReadPtr();
+  const BYTE* f2ptr = f2->GetReadPtr();
+  const int pitch1 = f1->GetPitch();
+  const int pitch2 = f2->GetPitch();
+  const int rowsize = f1->GetRowSize();
+  const int height = f1->GetHeight();
 
-	int bytecount = rowsize * height * masked_bytes / 4;
-	const int incr = vi.IsRGB24() ? 3 : 4;
+  int bytecount = rowsize * height * masked_bytes / 4;
+  const int incr = vi.IsRGB24() ? 3 : 4;
 
-	int SD = 0;
-	int SAD = 0;
-	int pos_D = 0;
-	int neg_D = 0;
-	double SSD = 0;
-	int row_SSD;
+  int SD = 0;
+  int SAD = 0;
+  int pos_D = 0;
+  int neg_D = 0;
+  double SSD = 0;
+  int row_SSD;
 
-	if (((rowsize & 7) && !vi.IsRGB24()) ||					// rowsize must be a multiple or 8 for RGB32 and YUY2
-		((rowsize % 6) && vi.IsRGB24()) ||					// or 6 for RGB24
-		!(env->GetCPUFlags() & CPUF_INTEGER_SSE)) {			// to use the ISSE routine
-		for (int y = 0; y < height; y++) {
-			row_SSD = 0;
-			for (int x = 0; x < rowsize; x += incr) {
-				DWORD p1 = *(DWORD *)(f1ptr + x) & mask;
-				DWORD p2 = *(DWORD *)(f2ptr + x) & mask;
-				int d0 = (p1 & 0xff) - (p2 & 0xff);
-				int d1 = ((p1 >> 8) & 0xff) - ((p2 & 0xff00) >> 8);
-				int d2 = ((p1 >>16) & 0xff) - ((p2 & 0xff0000) >> 16);
-				int d3 = (p1 >> 24) - (p2 >> 24);
-				SD += d0 + d1 + d2 + d3;
-				SAD += abs(d0) + abs(d1) + abs(d2) + abs(d3);
-				row_SSD += d0 * d0 + d1 * d1 + d2 * d2 + d3 * d3;
-				pos_D = max(max(max(max(pos_D,d0),d1),d2),d3);
-				neg_D = min(min(min(min(neg_D,d0),d1),d2),d3);
-			}
-			SSD += row_SSD;
-			f1ptr += pitch1;
-			f2ptr += pitch2;
-		}
-	} else {				// ISSE version; rowsize multiple of 8 for RGB32 and YUY2; 6 for RGB24
-		const _int64 mask64 = (__int64)mask << (vi.IsRGB24()? 24: 32) | mask;
-		const int incr2 = incr * 2;
-		__int64 iSSD;
-		unsigned __int64 pos_D8 = 0, neg_D8 = 0;
+  if (((rowsize & 7) && !vi.IsRGB24()) ||       // rowsize must be a multiple or 8 for RGB32 and YUY2
+    ((rowsize % 6) && vi.IsRGB24()) ||          // or 6 for RGB24
+    !(env->GetCPUFlags() & CPUF_INTEGER_SSE)) { // to use the ISSE routine
+    for (int y = 0; y < height; y++) {
+      row_SSD = 0;
+      for (int x = 0; x < rowsize; x += incr) {
+        DWORD p1 = *(DWORD *)(f1ptr + x) & mask;
+        DWORD p2 = *(DWORD *)(f2ptr + x) & mask;
+        int d0 = (p1 & 0xff) - (p2 & 0xff);
+        int d1 = ((p1 >> 8) & 0xff) - ((p2 & 0xff00) >> 8);
+        int d2 = ((p1 >>16) & 0xff) - ((p2 & 0xff0000) >> 16);
+        int d3 = (p1 >> 24) - (p2 >> 24);
+        SD += d0 + d1 + d2 + d3;
+        SAD += abs(d0) + abs(d1) + abs(d2) + abs(d3);
+        row_SSD += d0 * d0 + d1 * d1 + d2 * d2 + d3 * d3;
+        pos_D = max(max(max(max(pos_D,d0),d1),d2),d3);
+        neg_D = min(min(min(min(neg_D,d0),d1),d2),d3);
+      }
+      SSD += row_SSD;
+      f1ptr += pitch1;
+      f2ptr += pitch2;
+    }
+  } else {        // ISSE version; rowsize multiple of 8 for RGB32 and YUY2; 6 for RGB24
+    const _int64 mask64 = (__int64)mask << (vi.IsRGB24()? 24: 32) | mask;
+    const int incr2 = incr * 2;
+    __int64 iSSD;
+    unsigned __int64 pos_D8 = 0, neg_D8 = 0;
 
-		__asm {
-			mov			esi, f1ptr
-			mov			edi, f2ptr
-			add			esi, rowsize
-			add			edi, rowsize
-			mov			ebx, height
-			xor			eax, eax			; sum of squared differences low
-			xor			edx, edx			; sum of squared differences high
-			pxor		mm7, mm7			; sum of absolute differences
-			pxor		mm6, mm6			; zero
-			pxor		mm5, mm5			; sum of differences
+    __asm {
+      mov     esi, f1ptr
+      mov     edi, f2ptr
+      add     esi, rowsize
+      add     edi, rowsize
+      mov     ebx, height
+      xor     eax, eax      ; sum of squared differences low
+      xor     edx, edx      ; sum of squared differences high
+      pxor    mm7, mm7      ; sum of absolute differences
+      pxor    mm6, mm6      ; zero
+      pxor    mm5, mm5      ; sum of differences
 comp_loopy:
-			mov			ecx, rowsize
-			neg			ecx
-			pxor		mm4, mm4			; sum of squared differences (row_SSD)
+      mov     ecx, rowsize
+      neg     ecx
+      pxor    mm4, mm4      ; sum of squared differences (row_SSD)
 comp_loopx:
-			movq		mm0, [esi+ecx]
-			movq		mm1, [edi+ecx]
-			pand		mm0, mask64
-			pand		mm1, mask64
-			movq		mm2, mm0
-			psubusb		mm0, mm1
-			psubusb		mm1, mm2
+      movq    mm0, [esi+ecx]
+      movq    mm1, [edi+ecx]
+      pand    mm0, mask64
+      pand    mm1, mask64
+      movq    mm2, mm0
+      psubusb   mm0, mm1
+      psubusb   mm1, mm2
 
-			; maximum positive and negative differences
-			movq		mm3, pos_D8
-			movq		mm2, neg_D8
-			pmaxub		mm3, mm0
-			pmaxub		mm2, mm1
-			movq		pos_D8, mm3
-			movq		neg_D8, mm2
+      ; maximum positive and negative differences
+      movq    mm3, pos_D8
+      movq    mm2, neg_D8
+      pmaxub    mm3, mm0
+      pmaxub    mm2, mm1
+      movq    pos_D8, mm3
+      movq    neg_D8, mm2
 
-			 movq		mm2, mm0			; SSD calculations are indented
-			psadbw		mm0, mm6
-			 por		mm2, mm1
-			psadbw		mm1, mm6
-			 movq		mm3, mm2
-			 punpcklbw	mm2, mm6
-			 punpckhbw	mm3, mm6
-			 pmaddwd	mm2, mm2
-			paddd		mm7, mm0
-			paddd		mm5, mm0
-			 pmaddwd	mm3, mm3
-			paddd		mm7, mm1
-			 paddd		mm4, mm2
-			psubd		mm5, mm1
-			add			ecx, incr2
-			 paddd		mm4, mm3			; keep two counts at once
-			jne			comp_loopx
+       movq   mm2, mm0      ; SSD calculations are indented
+      psadbw    mm0, mm6
+       por    mm2, mm1
+      psadbw    mm1, mm6
+       movq   mm3, mm2
+       punpcklbw  mm2, mm6
+       punpckhbw  mm3, mm6
+       pmaddwd  mm2, mm2
+      paddd   mm7, mm0
+      paddd   mm5, mm0
+       pmaddwd  mm3, mm3
+      paddd   mm7, mm1
+       paddd    mm4, mm2
+      psubd   mm5, mm1
+      add     ecx, incr2
+       paddd    mm4, mm3      ; keep two counts at once
+      jne     comp_loopx
 
-			add			esi, pitch1
-			add			edi, pitch2
-			movq		mm3, mm4
-			punpckhdq	mm4, mm6
-			paddd		mm3, mm4
-			movd		ecx, mm3
-			add			eax, ecx
-			adc			edx, 0
-			dec			ebx
-			jne			comp_loopy
+      add     esi, pitch1
+      add     edi, pitch2
+      movq    mm3, mm4
+      punpckhdq mm4, mm6
+      paddd   mm3, mm4
+      movd    ecx, mm3
+      add     eax, ecx
+      adc     edx, 0
+      dec     ebx
+      jne     comp_loopy
 
-			movd		SAD, mm7
-			movd		SD, mm5
-			mov			DWORD PTR [iSSD], eax
-			mov			DWORD PTR [iSSD+4], edx
-			emms
-		}
-		SSD = iSSD;		// convert to double
-		for (int i=0; i<8; i++) {
-			pos_D = max(pos_D, pos_D8 & 0xff);
-			neg_D = max(neg_D, neg_D8 & 0xff);
-			pos_D8 >>= 8;
-			neg_D8 >>= 8;
-		}
-		neg_D = -neg_D;
-	}
+      movd    SAD, mm7
+      movd    SD, mm5
+      mov     DWORD PTR [iSSD], eax
+      mov     DWORD PTR [iSSD+4], edx
+      emms
+    }
+    SSD = (double)iSSD;
+    for (int i=0; i<8; i++) {
+      pos_D = max(pos_D, (int)(pos_D8 & 0xff));
+      neg_D = max(neg_D, (int)(neg_D8 & 0xff));
+      pos_D8 >>= 8;
+      neg_D8 >>= 8;
+    }
+    neg_D = -neg_D;
+  }
 
-	double MAD = (double)SAD / bytecount;
-	double MD = (double)SD / bytecount;
-	if (SSD == 0.0) SSD = 1.0;
-	double PSNR = 10.0 * log10(bytecount * 255.0 * 255.0 / SSD);
+  double MAD = (double)SAD / bytecount;
+  double MD = (double)SD / bytecount;
+  if (SSD == 0.0) SSD = 1.0;
+  double PSNR = 10.0 * log10(bytecount * 255.0 * 255.0 / SSD);
 
-	if (log) fprintf(log,"%6u  %8.4f  %+9.4f  %3d    %3d    %8.4f\n", n, MAD, MD, pos_D, neg_D, PSNR);
-	else {
-		HDC hdc = antialiaser.GetDC();
-		char text[200];
-		RECT r= { 32, 16, 1536, 768 };
-		sprintf(text,
-			"       Frame:  %-8u\nMean Abs Dev:%8.4f\n    Mean Dev:%+8.4f\n Max Pos Dev:%3d \n Max Neg Dev:%3d \n        PSNR:%6.2f dB",
-			n, MAD, MD, pos_D, neg_D, PSNR);
-		DrawText(hdc, text, -1, &r, 0);
-		GdiFlush();
+  framecount++;
+  if (framecount == 1) {
+    MAD_min = MAD_tot = MAD_max = MAD;
+    MD_min = MD_tot = MD_max = MD;
+    PSNR_min = PSNR_tot = PSNR_max = PSNR;
+  } else {
+    MAD_min = min(MAD_min, MAD);
+    MAD_tot += MAD;
+    MAD_max = max(MAD_max, MAD);
+    MD_min = min(MD_min, MD);
+    MD_tot += MD;
+    MD_max = max(MD_max, MD);
+    PSNR_min = min(PSNR_min, PSNR);
+    PSNR_tot += PSNR;
+    PSNR_max = max(PSNR_max, PSNR);
+  }
 
-		env->MakeWritable(&f1);
-		BYTE* dstp = f1->GetWritePtr();
-		int dst_pitch = f1->GetPitch();
-		antialiaser.Apply( vi, dstp, dst_pitch, vi.IsYUY2() ? 0xD21092 : 0xFFFF00, vi.IsYUY2() ? 0x108080 : 0 );
+  if (log) fprintf(log,"%6u  %8.4f  %+9.4f  %3d    %3d    %8.4f\n", n, MAD, MD, pos_D, neg_D, PSNR);
+  else {
+    HDC hdc = antialiaser.GetDC();
+    char text[400];
+    RECT r= { 32, 16, min(3440,vi.width*8), 768 };
+    sprintf(text,
+      "       Frame:  %-8u(   min  /   avg  /   max  )\n"
+      "Mean Abs Dev:%8.4f  (%7.3f /%7.3f /%7.3f )\n"
+      "    Mean Dev:%+8.4f  (%+7.3f /%+7.3f /%+7.3f )\n"
+      " Max Pos Dev:%3d  \n"
+      " Max Neg Dev:%3d  \n"
+      "        PSNR:%6.2f dB ( %6.2f / %6.2f / %6.2f )", 
+      n,
+      MAD, MAD_min, MAD_tot / framecount, MD_max,
+      MD, MD_min, MD_tot / framecount, MD_max,
+      pos_D,
+      neg_D,
+      PSNR, PSNR_min, PSNR_tot / framecount, PSNR_max
+    );
+    DrawText(hdc, text, -1, &r, 0);
+    GdiFlush();
 
-		if (show_graph) {
-			// original idea by Marc_FD
-			psnrs[n] = min((int)(PSNR + 0.5), 100);
-			if (vi.height > 196) {
-				if (vi.IsYUY2()) {
-					dstp += (vi.height - 1) * dst_pitch;
-					for (int y = 0; y <= 100; y++) {						
-						for (int x = max(0, vi.width - n - 1); x < vi.width; x++) {
-							if (y <= psnrs[n - vi.width + 1 + x]) {
-								if (y <= psnrs[n - vi.width + 1 + x] - 2) {
-									dstp[x << 1] = 0x00;				// Y
-									dstp[((x & -1) << 1) + 1] = 0x80;	// U
-									dstp[((x & -1) << 1) + 3] = 0x80;	// V
-								} else {
-									dstp[x << 1] = 0xFF;				// Y
-									dstp[((x & -1) << 1) + 1] = 0x80;	// U
-									dstp[((x & -1) << 1) + 3] = 0x80;	// V
-								}
-							}
-						} // for x
-						dstp -= dst_pitch;
-					} // for y
-				} else {	// RGB
-					for (int y = 0; y <= 100; y++) {
-						for (int x = max(0, vi.width - n - 1); x < vi.width; x++) {
-							if (y <= psnrs[n - vi.width + 1 + x]) {
-								const int xx = x * incr;
-								if (y <= psnrs[n - vi.width + 1 + x] -2) {
-									dstp[xx] = 0x00;			// B
-									dstp[xx + 1] = 0x00;		// G
-									dstp[xx + 2] = 0x00;		// R
-								} else {
-									dstp[xx] = 0xFF;			// B
-									dstp[xx + 1] = 0xFF;		// G
-									dstp[xx + 2] = 0xFF;		// R
-								}
-							}
-						} // for x
-						dstp += dst_pitch;
-					} // for y
-				} // RGB
-			} // height > 100
-		} // show_graph
-	} // no logfile
+    env->MakeWritable(&f1);
+    BYTE* dstp = f1->GetWritePtr();
+    int dst_pitch = f1->GetPitch();
+    antialiaser.Apply( vi, dstp, dst_pitch, vi.IsYUY2() ? 0xD21092 : 0xFFFF00, vi.IsYUY2() ? 0x108080 : 0 );
 
-	return f1;
+    if (show_graph) {
+      // original idea by Marc_FD
+      psnrs[n] = min((int)(PSNR + 0.5), 100);
+      if (vi.height > 196) {
+        if (vi.IsYUY2()) {
+          dstp += (vi.height - 1) * dst_pitch;
+          for (int y = 0; y <= 100; y++) {            
+            for (int x = max(0, vi.width - n - 1); x < vi.width; x++) {
+              if (y <= psnrs[n - vi.width + 1 + x]) {
+                if (y <= psnrs[n - vi.width + 1 + x] - 2) {
+                  dstp[x << 1] = 0x00;              // Y
+                  dstp[((x & -1) << 1) + 1] = 0x80; // U
+                  dstp[((x & -1) << 1) + 3] = 0x80; // V
+                } else {
+                  dstp[x << 1] = 0xFF;              // Y
+                  dstp[((x & -1) << 1) + 1] = 0x80; // U
+                  dstp[((x & -1) << 1) + 3] = 0x80; // V
+                }
+              }
+            } // for x
+            dstp -= dst_pitch;
+          } // for y
+        } else {  // RGB
+          for (int y = 0; y <= 100; y++) {
+            for (int x = max(0, vi.width - n - 1); x < vi.width; x++) {
+              if (y <= psnrs[n - vi.width + 1 + x]) {
+                const int xx = x * incr;
+                if (y <= psnrs[n - vi.width + 1 + x] -2) {
+                  dstp[xx] = 0x00;        // B
+                  dstp[xx + 1] = 0x00;    // G
+                  dstp[xx + 2] = 0x00;    // R
+                } else {
+                  dstp[xx] = 0xFF;        // B
+                  dstp[xx + 1] = 0xFF;    // G
+                  dstp[xx + 2] = 0xFF;    // R
+                }
+              }
+            } // for x
+            dstp += dst_pitch;
+          } // for y
+        } // RGB
+      } // height > 100
+    } // show_graph
+  } // no logfile
+
+  return f1;
 }
 
 
