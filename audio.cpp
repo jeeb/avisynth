@@ -453,13 +453,15 @@ AVSValue __cdecl MergeChannels::Create(AVSValue args, void*, IScriptEnvironment*
   int num_args;
   PClip* child_array;
 
-  if (args.IsArray()) {
-    num_args = args.ArraySize();
+  if (args[0].IsArray()) {
+    num_args = args[0].ArraySize();
     if (num_args == 1) return args[0];
 
     child_array = new PClip[num_args];
       for (int i=0; i<num_args; ++i)
-    child_array[i] = args[i].AsClip();
+    child_array[i] = args[0][i].AsClip();
+
+    return new MergeChannels(args[0][0].AsClip(),num_args, child_array, env);
 
   } else {
     num_args = 2;
