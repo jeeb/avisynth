@@ -520,6 +520,26 @@ SOURCE=.\merge.cpp
 SOURCE=.\merge.h
 # End Source File
 # End Group
+# Begin Group "Image"
+
+# PROP Default_Filter "*.cpp *.h"
+# Begin Source File
+
+SOURCE=.\AvsImage.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\AvsImageBmp.cpp
+# End Source File
+# Begin Source File
+
+SOURCE=.\ImageSeq.cpp
+# End Source File
+# Begin Source File
+
+SOURCE=.\ImageSeq.h
+# End Source File
+# End Group
 # End Group
 # Begin Group "Script"
 
