@@ -205,13 +205,13 @@ PVideoFrame __stdcall ColorKeyMask::GetFrame(int n, IScriptEnvironment *env)
   const int rowsize = frame->GetRowSize();
 
   if (!(env->GetCPUFlags() & CPUF_MMX) || vi.width==1) {
-    const int R = color >> 16;
-    const int G = (color & 0xff00) >> 8;
+    const int R = (color >> 16) & 0xff;
+    const int G = (color >> 8) & 0xff;
     const int B = color & 0xff;
 
     for (int y=0; y<vi.height; y++) {
       for (int x=0; x<rowsize; x+=4) {
-        if (IsClose(pf[x],B,tol) && IsClose(pf[x+1],B,tol) && IsClose(pf[x+2],R,tol))
+        if (IsClose(pf[x],G,tol) && IsClose(pf[x+1],B,tol) && IsClose(pf[x+2],R,tol))
           pf[x+3]=0;
       }
       pf += pitch;
