@@ -176,14 +176,13 @@ void __stdcall Cache::GetAudio(void* buf, __int64 start, __int64 count, IScriptE
   if (start < 0) {  // Partial initial skip
     FillZeros(buf, 0, -start);  // Fill all samples before 0 with silence.
     count += start;
-    child->GetAudio((unsigned char*)buf+(vi.BytesPerAudioSample()*(-start)), 0, count, env);    
+    start = 0;
   }
 
   if (start+count > vi.num_audio_samples) {  // Partial ending skip
     __int64 end = start + count;
     FillZeros(buf, vi.num_audio_samples - start, end - vi.num_audio_samples);  // Fill all samples after end with silence.
     count = (vi.num_audio_samples - start);
-    child->GetAudio(buf, 0, count, env);
   }
 
   if (h_audiopolicy == CACHE_NOTHING) {
@@ -198,8 +197,12 @@ void __stdcall Cache::GetAudio(void* buf, __int64 start, __int64 count, IScriptE
 #endif
 
 	if (count>maxsamplecount) {		//is cache big enough?
-		_RPT0(0, "CA:Cache too small->no caching\n");	
+		_RPT0(0, "CA:Cache too small->caching last audio\n");
 		child->GetAudio(buf, start, count, env);
+
+		cache_start = start+count-maxsamplecount;
+		cache_count = maxsamplecount;
+    memcpy(cache, buf, vi.BytesFromAudioSamples(maxsamplecount));
 		return;
 	}
 	
