@@ -51,7 +51,7 @@ long __declspec(naked) CPUCheckForExtensions() {
 		push	ebx
 
 		xor		ebp,ebp			//cpu flags - if we don't have CPUID, we probably
-								//won't want to try FPU optimizations.
+								      //won't want to try FPU optimizations.
 
 		//check for CPUID.
 
