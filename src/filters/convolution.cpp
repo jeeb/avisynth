@@ -47,14 +47,14 @@
 ********************************************************************/
 
 AVSFunction Convolution_filters[] = {
-  { "GeneralConvolution", "c[divisor]f[bias]i[matrix]s[auto]b", GeneralConvolution::Create },
-  { "GeneralConvolution", "cis", GeneralConvolution::Create }, // Legacy syntax support
+// Please when adding parameters try not to break the legacy order - IanB July 2004
+	{ "GeneralConvolution", "c[bias]i[matrix]s[divisor]f[auto]b", GeneralConvolution::Create },
     /**
       * GeneralConvolution(PClip clip, int divisor=1, int bias=0, string matrix)
       * clip     =  input video
-      * divisor  =  divides the output of the convolution (calculated before adding bias)
       * bias     =  additive bias to adjust the total output intensity
       * matrix   =  the kernel (3x3 or 5x5).  any kind of whitespace is ok, see example
+      * divisor  =  divides the output of the convolution (calculated before adding bias)
       * auto     =  automaticly scale the result based on the sum of the matrix elements
       *
       * clip.GeneralConvolution(matrix = "1 2 3
@@ -97,12 +97,8 @@ GeneralConvolution::~GeneralConvolution(void)
 
 AVSValue __cdecl GeneralConvolution::Create(AVSValue args, void* user_data, IScriptEnvironment* env)
 {
-  if (args[1].IsInt() && args[2].IsString())
-    return new GeneralConvolution( args[0].AsClip(), 1.0, args[1].AsInt(),
-                                   args[2].AsString(), true, env);
-  else
-    return new GeneralConvolution( args[0].AsClip(), args[1].AsFloat(1.0), args[2].AsInt(0),
-                                   args[3].AsString("0 0 0 0 1 0 0 0 0" ), args[4].AsBool(true), env);
+  return new GeneralConvolution( args[0].AsClip(), args[3].AsFloat(1.0), args[1].AsInt(0),
+                                   args[2].AsString("0 0 0 0 1 0 0 0 0" ), args[4].AsBool(true), env);
 }
 
 
