@@ -80,11 +80,12 @@ class ImageReader : public IClip
  **/
 {
 public:
-  ImageReader(const char * _base_name, const int _start, const int _end, const int _fps);
+  ImageReader(const char * _base_name, const int _start, const int _end, const int _fps, bool use_DevIL);
   ~ImageReader();
 
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
   void fileRead(istream & file, BYTE * dstPtr, const int pitch, const int row_size, const int height);
+  void checkProperties(istream & file, IScriptEnvironment * env);
   
   void __stdcall GetAudio(void* buf, __int64 start, __int64 count, IScriptEnvironment* env) {}
   const VideoInfo& __stdcall GetVideoInfo() { return vi; }

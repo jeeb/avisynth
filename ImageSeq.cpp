@@ -47,7 +47,7 @@
 
 AVSFunction Image_filters[] = {
   { "ImageWriter", "c[file]s[start]i[end]i[type]s", ImageWriter::Create }, // clip, base filename, start, end, image format/extension
-  { "ImageReader", "[file]s[start]i[end]i[fps]i", ImageReader::Create }, // base filename (sprintf-style), start, end, frames per second
+  { "ImageReader", "[file]s[start]i[end]i[fps]i[use_devil]b", ImageReader::Create }, // base filename (sprintf-style), start, end, frames per second, default reader to use
   { 0 }
 };
 
@@ -234,8 +234,8 @@ AVSValue __cdecl ImageWriter::Create(AVSValue args, void*, IScriptEnvironment* e
  *******   Image Reader ******
  ****************************/
 
-ImageReader::ImageReader(const char * _base_name, const int _start, const int _end, const int _fps)
- : base_name(_base_name), start(_start), end(_end), fps(_fps)
+ImageReader::ImageReader(const char * _base_name, const int _start, const int _end, const int _fps, bool _use_DevIL)
+ : base_name(_base_name), start(_start), end(_end), fps(_fps), use_DevIL(_use_DevIL)
 {
   // Generate full name
   sprintf(fileName, base_name, start);
@@ -246,7 +246,7 @@ ImageReader::ImageReader(const char * _base_name, const int _start, const int _e
   file.read( reinterpret_cast<char *> (&infoHeader), sizeof(infoHeader) );
   file.close();
 
-  if ( fileHeader.bfType == ('M' << 8) + 'B' )
+  if ( fileHeader.bfType == ('M' << 8) + 'B' && use_DevIL == false)
   {
     use_DevIL = false;
 
@@ -254,7 +254,7 @@ ImageReader::ImageReader(const char * _base_name, const int _start, const int _e
     vi.height = infoHeader.biHeight;
     vi.fps_numerator = fps;
     vi.fps_denominator = 1;
-    vi.num_frames = end - start + 1;
+    vi.num_frames = end + 1;  // make sure each frame can be requested
     vi.audio_samples_per_second = 0;
     
     if (infoHeader.biBitCount == 32) {
@@ -284,7 +284,7 @@ ImageReader::ImageReader(const char * _base_name, const int _start, const int _e
     vi.height = ilGetInteger(IL_IMAGE_HEIGHT);
     vi.fps_numerator = fps;
     vi.fps_denominator = 1;
-    vi.num_frames = end - start + 1;
+    vi.num_frames = end + 1;
     vi.audio_samples_per_second = 0;
     vi.pixel_type = VideoInfo::CS_BGR24;
 
@@ -332,12 +332,18 @@ PVideoFrame ImageReader::GetFrame(int n, IScriptEnvironment* env)
     // Get errors if any
     ILenum err = ilGetError();
     if (err != IL_NO_ERROR)
-      env->ThrowError("ImageWriter: error #%d encountered in DevIL library", err);
+      env->ThrowError("ImageReader: error #%d encountered in DevIL library", err);
+
+    // Check some parameters
+    if ( ilGetInteger(IL_IMAGE_HEIGHT) != height)
+      env->ThrowError("ImageReader: images must have identical heights");
+    if ( ilGetInteger(IL_IMAGE_WIDTH) != width)
+      env->ThrowError("ImageReader: images must have identical widths");
 
     // Copy raster to AVS frame
     for (int y=0; y<height; ++y)
     {
-      ilCopyPixels(0, y, 0, width, height, 1, IL_BGR, IL_UNSIGNED_BYTE, dstPtr);
+      ilCopyPixels(0, y, 0, width, 1, 1, IL_BGR, IL_UNSIGNED_BYTE, dstPtr);
       dstPtr += pitch;
     }
 
@@ -350,11 +356,12 @@ PVideoFrame ImageReader::GetFrame(int n, IScriptEnvironment* env)
     ilDeleteImages(1, &myImage);
   }
   else {  /* treat as ebmp  */
-    // Open file & seek to start of raster
+    // Open file, ensure it has the expected properties
     ifstream file(fileName, ios::binary);
-    file.seekg (fileHeader.bfOffBits, ios::beg); 
-
+    checkProperties(file, env);
+    
     // Read in raster, seeking past padding
+    file.seekg (fileHeader.bfOffBits, ios::beg); 
     fileRead(file, dstPtr, pitch, row_size, height);
 
     if (vi.IsYV12())
@@ -370,7 +377,6 @@ PVideoFrame ImageReader::GetFrame(int n, IScriptEnvironment* env)
     }      
 
     file.close();
-
   }
 
   return frame;
@@ -389,7 +395,33 @@ void ImageReader::fileRead(istream & file, BYTE * dstPtr, const int pitch, const
 }
 
 
+void ImageReader::checkProperties(istream & file, IScriptEnvironment * env)
+{
+  BITMAPFILEHEADER tempFileHeader;
+  BITMAPINFOHEADER tempInfoHeader;
+  
+  file.read( reinterpret_cast<char *> (&tempFileHeader), sizeof(tempFileHeader) );
+  file.read( reinterpret_cast<char *> (&tempInfoHeader), sizeof(tempInfoHeader) );
+ 
+  if (tempFileHeader.bfType != fileHeader.bfType)
+    env->ThrowError("ImageReader: invalid (E)BMP file");  
+  if (tempInfoHeader.biWidth != infoHeader.biWidth)
+    env->ThrowError("ImageReader: image widths must be identical");
+  if (tempInfoHeader.biHeight != infoHeader.biHeight)
+    env->ThrowError("ImageReader: image heights must be identical");
+  if (tempInfoHeader.biPlanes != infoHeader.biPlanes)
+    env->ThrowError("ImageReader: images must have the same number of planes");
+  if (tempInfoHeader.biBitCount != infoHeader.biBitCount)
+    env->ThrowError("ImageReader: images must have identical bits per pixel");
+  if (tempFileHeader.bfSize != fileHeader.bfSize)
+    env->ThrowError("ImageReader: raster sizes must be identical");
+  if (tempInfoHeader.biCompression != 0)
+    env->ThrowError("ImageReader: EBMP reader cannot handle compressed images"); 
+}   
+
+
 AVSValue __cdecl ImageReader::Create(AVSValue args, void*, IScriptEnvironment* env) 
 {
-  return new ImageReader(args[0].AsString("c:\\"), args[1].AsInt(0), args[2].AsInt(1000), args[3].AsInt(24));
+  return new ImageReader(args[0].AsString("c:\\"), args[1].AsInt(0), args[2].AsInt(1000), args[3].AsInt(24), 
+                         args[4].AsBool(false));
 }
