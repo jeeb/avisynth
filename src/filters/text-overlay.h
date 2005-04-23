@@ -81,14 +81,18 @@ class ShowFrameNumber : public GenericVideoFilter
  **/
 {  
 public:
-  ShowFrameNumber(PClip _child, bool _scroll);
+  ShowFrameNumber(PClip _child, bool _scroll, int _offset, int _x, int _y, const char _fontname[], int _size,
+			int _textcolor, int _halocolor, IScriptEnvironment* env);
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
 
   static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env);
 
 private:
   Antialiaser antialiaser;
-  bool scroll;
+  const bool scroll;
+  const int offset;
+  const int size, x, y;
+  int textcolor, halocolor;
 };
 
 
@@ -99,7 +103,7 @@ class ShowSMPTE : public GenericVideoFilter
  **/
 {
 public:
-  ShowSMPTE(PClip _child, double _rate, const char* _offset, int _x, int _y, const char _fontname[], int _size,
+  ShowSMPTE(PClip _child, double _rate, const char* _offset, int _offset_f, int _x, int _y, const char _fontname[], int _size,
 			int _textcolor, int _halocolor, IScriptEnvironment* env);
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
 
@@ -107,14 +111,11 @@ public:
 
 private:
   Antialiaser antialiaser;
-  char rate;
-  const char* offset;
+  int rate;
   int offset_f;
-  const int size, x, y;
+  const int x, y;
   int textcolor, halocolor;
-  const char* const fontname;
   bool dropframe;
-  int off_f, off_sec, off_min, off_our;
 };
 
 

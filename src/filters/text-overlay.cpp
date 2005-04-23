@@ -49,10 +49,8 @@ using namespace std;
 ********************************************************************/
 
 AVSFunction Text_filters[] = {
-  { "ShowFrameNumber", "c[scroll]b", ShowFrameNumber::Create }, // clip, scroll?
-  { "ShowSMPTE", "c[fps]f[offset]s[x]i[y]i[font]s[size]i[text_color]i[halo_color]i", ShowSMPTE::Create },
-    // clip, fps, offset, x, y, font, size, text_color, halo_color
-//  { "ShowSMPTE", "c[fps]f[offset_f]i[x]i[y]i[font]s[size]i[text_color]i[halo_color]i", ShowSMPTE::Create },
+  { "ShowFrameNumber", "c[scroll]b[offset]i[x]i[y]i[font]s[size]i[text_color]i[halo_color]i", ShowFrameNumber::Create },
+  { "ShowSMPTE", "c[fps]f[offset]s[offset_f]i[x]i[y]i[font]s[size]i[text_color]i[halo_color]i", ShowSMPTE::Create },
   { "Info", "c", FilterInfo::Create },                     // clip
   { "Subtitle", "cs[x]i[y]i[first_frame]i[last_frame]i[font]s[size]i[text_color]i[halo_color]i[align]i[spc]i", 
     Subtitle::Create },       // see docs!
@@ -410,33 +408,51 @@ void Antialiaser::GetAlphaRect() {
  *******   Show Frame Number    ******
  ************************************/
 
-ShowFrameNumber::ShowFrameNumber(PClip _child, bool _scroll)
- : GenericVideoFilter(_child), antialiaser(vi.width, vi.height, "Arial", 192),
-   scroll(_scroll) {}
+ShowFrameNumber::ShowFrameNumber(PClip _child, bool _scroll, int _offset, int _x, int _y, const char _fontname[],
+					 int _size, int _textcolor, int _halocolor, IScriptEnvironment* env)
+ : GenericVideoFilter(_child), scroll(_scroll), offset(_offset), x(_x), y(_y), size(_size*8), antialiaser(vi.width, vi.height, _fontname, _size*8)
+   // GenericVideoFilter(_child), antialiaser(vi.width, vi.height, "Arial", 192),
+{
+  if ((x==-1) ^ (y==-1))
+	env->ThrowError("ShowFrameNumber: both x and y position must be specified");
+
+  if (vi.IsYUV()) {
+    textcolor = RGB2YUV(_textcolor);
+    halocolor = RGB2YUV(_halocolor);
+  } else {
+    textcolor = _textcolor;
+    halocolor = _halocolor;
+  }
+}
 
 
 PVideoFrame ShowFrameNumber::GetFrame(int n, IScriptEnvironment* env) {
   PVideoFrame frame = child->GetFrame(n, env);
+  n+=offset;
+  if (n < 0) return frame;
+
   env->MakeWritable(&frame);
 
   HDC hdc = antialiaser.GetDC();
   SetTextAlign(hdc, TA_BASELINE|TA_LEFT);
   RECT r = { 0, 0, 32767, 32767 };
   FillRect(hdc, &r, (HBRUSH)GetStockObject(BLACK_BRUSH));
-  char text[40];
+  char text[16];
   wsprintf(text, "%05d", n);
-  if( scroll ) {
+  if (x!=-1 && y!=-1) {
+    TextOut(hdc, x*8, y*8-48, text, strlen(text));
+  } else if (scroll) {
     int n1 = vi.IsFieldBased() ? (n/2) : n;
-    int y = 192 + (192*n1)%(vi.height*8);
-    TextOut(hdc, child->GetParity(n) ? 32 : vi.width*8-512, y, text, strlen(text));
+    int y2 = size + (size*n1)%(vi.height*8);
+    TextOut(hdc, child->GetParity(n) ? 32 : vi.width*8-int(3*size), y2, text, strlen(text));
   } else {
-    for (int y=192; y<vi.height*8; y += 192)
-      TextOut(hdc, child->GetParity(n) ? 32 : vi.width*8-512, y, text, strlen(text));
+    for (int y2=size; y2<vi.height*8; y2 += size)
+      //TextOut(hdc, x*8, y*8-48, text, strlen(text));
+	  TextOut(hdc, child->GetParity(n) ? 32 : vi.width*8-int(3*size), y2, text, strlen(text));
   }
   GdiFlush();
 
-  antialiaser.Apply(vi, &frame, frame->GetPitch(),
-    vi.IsYUV() ? 0xD21092 : 0xFFFF00, vi.IsYUV() ? 0x108080 : 0);
+  antialiaser.Apply(vi, &frame, frame->GetPitch(), textcolor, halocolor);
 
   return frame;
 }
@@ -444,7 +460,16 @@ PVideoFrame ShowFrameNumber::GetFrame(int n, IScriptEnvironment* env) {
 
 AVSValue __cdecl ShowFrameNumber::Create(AVSValue args, void*, IScriptEnvironment* env) 
 {
-  return new ShowFrameNumber(args[0].AsClip(), args[1].AsBool(false));
+  PClip clip = args[0].AsClip();
+  bool scroll = args[1].AsBool(false);
+  const int offset = args[2].AsInt(0);
+  const int x = args[3].AsInt(-1);
+  const int y = args[4].AsInt(-1);
+  const char* font = args[5].AsString("Arial");
+  const int size = args[6].AsInt(24);
+  const int text_color = args[7].AsInt(0xFFFF00);
+  const int halo_color = args[8].AsInt(0);
+  return new ShowFrameNumber(clip, scroll, offset, x, y, font, size, text_color, halo_color, env);
 }
 
 
@@ -458,14 +483,22 @@ AVSValue __cdecl ShowFrameNumber::Create(AVSValue args, void*, IScriptEnvironmen
  *******   Show SMPTE code    ******
  **********************************/
 
-ShowSMPTE::ShowSMPTE(PClip _child, double _rate, const char* _offset, int _x, int _y, const char _fontname[],
+ShowSMPTE::ShowSMPTE(PClip _child, double _rate, const char* offset, int _offset_f, int _x, int _y, const char _fontname[],
 					 int _size, int _textcolor, int _halocolor, IScriptEnvironment* env)
-  : GenericVideoFilter(_child), offset(_offset), x(_x), y(_y), fontname(MyStrdup(_fontname)), size(_size*8), antialiaser(vi.width, vi.height, _fontname, _size*8)
+  : GenericVideoFilter(_child), x(_x), y(_y), antialiaser(vi.width, vi.height, _fontname, _size*8)
 {
+  int off_f, off_sec, off_min, off_hour;
+
   if (_rate == 24) {
     rate = 24;
     dropframe = false;
   } 
+//  Need to cogitate with the guys about this
+//  gotta drop 86.3 counts per hour
+//  else if (_rate > 23.975 && _rate < 23.977) { // Pulldown drop frame rate
+//    rate = 24;
+//    dropframe = true;
+//  } 
   else if (_rate == 25) {
     rate = 25;
     dropframe = false;
@@ -480,6 +513,7 @@ ShowSMPTE::ShowSMPTE(PClip _child, double _rate, const char* _offset, int _x, in
   } 
   else {
     env->ThrowError("ShowSMPTE: rate argument must be 24, 25, 30, or 29.97");
+//    env->ThrowError("ShowSMPTE: rate argument must be 23.976, 24, 25, 30, or 29.97");
   }
   if (vi.IsYUV()) {
     textcolor = RGB2YUV(_textcolor);
@@ -489,50 +523,49 @@ ShowSMPTE::ShowSMPTE(PClip _child, double _rate, const char* _offset, int _x, in
     halocolor = _halocolor;
   }
 
-  if (strlen(offset)!=11 || offset[2] != ':' || offset[5] != ':' || offset[8] != ':')
-    env->ThrowError("ShowSMPTE:  offset should be of the form \"00:00:00:00\" ");
-  if (!isdigit(offset[0]) || !isdigit(offset[1]) || !isdigit(offset[3]) || !isdigit(offset[4]) || !isdigit(offset[6]) || !isdigit(offset[7]) || !isdigit(offset[9]) || !isdigit(offset[10]))
-    env->ThrowError("ShowSMPTE:  offset should be of the form \"00:00:00:00\" ");
+  if (offset) {
+	if (strlen(offset)!=11 || offset[2] != ':' || offset[5] != ':' || offset[8] != ':')
+	  env->ThrowError("ShowSMPTE:  offset should be of the form \"00:00:00:00\" ");
+	if (!isdigit(offset[0]) || !isdigit(offset[1]) || !isdigit(offset[3]) || !isdigit(offset[4])
+	 || !isdigit(offset[6]) || !isdigit(offset[7]) || !isdigit(offset[9]) || !isdigit(offset[10]))
+	  env->ThrowError("ShowSMPTE:  offset should be of the form \"00:00:00:00\" ");
 
-  char res[3] = "";
-  strncat(res, offset, 2);
-  off_our = atoi(res);
+	off_hour = atoi(offset);
 
-  char res2[3] = "";
-  strncat(res2, offset+3, 2);
-  off_min = atoi(res2);
-  if (off_min>59)
-    env->ThrowError("ShowSMPTE:  make sure that the number of minutes in the offset is in the range 0..59");
+	off_min = atoi(offset+3);
+	if (off_min > 59)
+	  env->ThrowError("ShowSMPTE:  make sure that the number of minutes in the offset is in the range 0..59");
 
-  char res3[3] = "";
-  strncat(res3, offset+6, 2);
-  off_sec = atoi(res3);
-  if (off_sec>59)
-    env->ThrowError("ShowSMPTE:  make sure that the number of seconds in the offset is in the range 0..59");
+	off_sec = atoi(offset+6);
+	if (off_sec > 59)
+	  env->ThrowError("ShowSMPTE:  make sure that the number of seconds in the offset is in the range 0..59");
 
-  char res4[3] = "";
-  strncat(res4, offset+9, 2);
-  off_f = atoi(res4);
+	off_f = atoi(offset+9);
+	if (off_f >= rate)
+	  env->ThrowError("ShowSMPTE:  make sure that the number of frames in the offset is in the range 0..%d", rate-1);
 
-  int c;
-  if (dropframe) {
-    c = off_min + 60*off_our;  // number of drop events
-    c -= c/10; // less non-drop events on 10 minutes
-    c *=2; // drop 2 frames per drop event
-  } else {
-    c = 0;
+	int c = 0;
+	if (dropframe) {
+	  c = off_min + 60*off_hour;  // number of drop events
+	  c -= c/10; // less non-drop events on 10 minutes
+	  c *=2; // drop 2 frames per drop event
+	}
+	
+	offset_f = off_f + rate*(off_sec + 60*off_min + 3600*off_hour) - c;
   }
-  
-  offset_f = off_f + rate*(off_sec + 60*off_min + 3600*off_our) - c;
+  else {
+	offset_f = _offset_f;
+  }
 }
 
 
 PVideoFrame __stdcall ShowSMPTE::GetFrame(int n, IScriptEnvironment* env) 
 {
-  PVideoFrame frame = child->GetFrame(n+=offset_f, env);
-  env->MakeWritable(&frame);
-
+  PVideoFrame frame = child->GetFrame(n, env);
+  n+=offset_f;
   if (n < 0) return frame;
+
+  env->MakeWritable(&frame);
 
   if (dropframe) {
   // at 10:00, 20:00, 30:00, etc. nothing should happen if offset=0
@@ -546,10 +579,10 @@ PVideoFrame __stdcall ShowSMPTE::GetFrame(int n, IScriptEnvironment* env)
   int frames = n % rate;
   int sec = n/rate;
   int min = sec/60;
-  int our = sec/3600;
+  int hour = sec/3600;
 
   char text[16];
-  wsprintf(text, "%02d:%02d:%02d:%02d", our, min%60, sec%60, frames);
+  wsprintf(text, "%02d:%02d:%02d:%02d", hour, min%60, sec%60, frames);
 
   HDC hdc = antialiaser.GetDC();
   SetTextAlign(hdc, TA_BASELINE|TA_CENTER);
@@ -558,7 +591,7 @@ PVideoFrame __stdcall ShowSMPTE::GetFrame(int n, IScriptEnvironment* env)
   TextOut(hdc, x*8, y*8-48, text, strlen(text));
   GdiFlush();
 
-  antialiaser.Apply( vi, &frame, frame->GetPitch(), textcolor, halocolor );
+  antialiaser.Apply(vi, &frame, frame->GetPitch(), textcolor, halocolor);
 
   return frame;
 }
@@ -568,18 +601,18 @@ AVSValue __cdecl ShowSMPTE::Create(AVSValue args, void*, IScriptEnvironment* env
   PClip clip = args[0].AsClip();
   double def_rate = (double)args[0].AsClip()->GetVideoInfo().fps_numerator / (double)args[0].AsClip()->GetVideoInfo().fps_denominator;
   double dfrate = args[1].AsFloat(def_rate);
-  const char* offset = args[2].AsString("00:00:00:00");
+  const char* offset = args[2].AsString(0);
+  const int offset_f = args[3].AsInt(0);
   const int xreal = args[0].AsClip()->GetVideoInfo().width;
-  const int x = args[3].AsInt(xreal*0.5);
+  const int x = args[4].AsInt(xreal*0.5);
   const int yreal = args[0].AsClip()->GetVideoInfo().height;
-  const int y = args[4].AsInt(yreal);
-  const char* font = args[5].AsString("Arial");
-  const int size = args[6].AsInt(24);
-  const int text_color = args[7].AsInt(0xFFFF00);
-  const int halo_color = args[8].AsInt(0);
-  return new ShowSMPTE(clip, def_rate, offset, x, y, font, size, text_color, halo_color, env);
+  const int y = args[5].AsInt(yreal);
+  const char* font = args[6].AsString("Arial");
+  const int size = args[7].AsInt(24);
+  const int text_color = args[8].AsInt(0xFFFF00);
+  const int halo_color = args[9].AsInt(0);
+  return new ShowSMPTE(clip, dfrate, offset, offset_f, x, y, font, size, text_color, halo_color, env);
 }
-
 
 
 
@@ -648,18 +681,19 @@ AVSValue __cdecl Subtitle::Create(AVSValue args, void*, IScriptEnvironment* env)
     const int size = args[7].AsInt(18);
     const int text_color = args[8].AsInt(0xFFFF00);
     const int halo_color = args[9].AsInt(0);
-    const int align = args[10].AsInt(args[2].AsInt(8)==-1?5:4);
+    const int align = args[10].AsInt(args[2].AsInt(8)==-1?2:7);
     const int spc = args[11].AsInt(0);
     int defx, defy;
-    switch( align ) {
-     case 2: case 5 : case 8: defx = -1; break;
-     case 3: case 6 : case 9: defx = clip->GetVideoInfo().width-8; break;
+    switch (align) {
+	 case 1: case 4: case 7: defx = 8; break;
+     case 2: case 5: case 8: defx = -1; break;
+     case 3: case 6: case 9: defx = clip->GetVideoInfo().width-8; break;
      default: defx = 8; break; }
-
-    if ((align >=6) && (align<=9)) defy = 0;
-      else { if ((align >=1) && (align <=3))
-               defy = clip->GetVideoInfo().height-1;
-               else defy = size; }
+    switch (align) {
+     case 1: case 2: case 3: defy = clip->GetVideoInfo().height-1; break;
+     case 4: case 5: case 6: defy = -1; break;
+	 case 7: case 8: case 9: defy = 0; break;
+     default: defy = size; break; }
 
     const int x = args[2].AsInt(defx);
     const int y = args[3].AsInt(defy);
@@ -682,10 +716,11 @@ void Subtitle::InitAntialiaser()
   int real_y = y;
   unsigned int al = 0;
 
-  switch( align )
+  switch (align)
   { case 1: al = TA_BOTTOM   | TA_LEFT; break;
     case 2: al = TA_BOTTOM   | TA_CENTER; break;
     case 3: al = TA_BOTTOM   | TA_RIGHT; break;
+    case 4: al = TA_BASELINE | TA_LEFT; break;
     case 5: al = TA_BASELINE | TA_CENTER; break;
     case 6: al = TA_BASELINE | TA_RIGHT; break;
     case 7: al = TA_TOP      | TA_LEFT; break;
