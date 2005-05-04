@@ -135,6 +135,37 @@ double Lanczos4Filter::f(double value) {
   }
 }
 
+/***********************
+ *** Spline16 filter ***
+ ***********************/
+
+double Spline16Filter::f(double value) {
+  value = fabs(value);
+
+  if (value < 1.0) {
+    return ( ( value - 9.0/5.0 ) * value - 1.0/5.0 ) * value + 1.0;
+  } else if (value < 2.0) {
+    return ( ( -1.0/3.0 * (value-1.0) + 4.0/5.0 ) * (value-1.0) - 7.0/15.0 ) * (value-1.0);
+  }
+  return 0.0;
+}
+
+/***********************
+ *** Spline36 filter ***
+ ***********************/
+
+double Spline36Filter::f(double value) {
+  value = fabs(value);
+
+  if (value < 1.0) {
+    return ( ( 13.0/11.0  * value - 453.0/ 209.0 ) * value - 3.0/ 209.0  ) * value + 1.0;
+  } else if (value < 2.0) {
+    return ( ( - 6.0/11.0  * (value-1.0) + 270.0/ 209.0 ) * (value-1.0) - 156.0/ 209.0 ) *(value-1.0);
+  } else if (value < 3.0) {
+    return  ( (    1.0/11.0  * (value-2.0) -  45.0/ 209.0 ) * (value-2.0) +  26.0/ 209.0 ) *(value-2.0);
+  }
+  return 0.0;
+}
 
 /******************************
  **** Resampling Patterns  ****

@@ -122,6 +122,9 @@ static AVSValue __cdecl Create_Lanczos3Resize(AVSValue args, void*, IScriptEnvir
 
 static AVSValue __cdecl Create_Lanczos4Resize(AVSValue args, void*, IScriptEnvironment* env);
 
+static AVSValue __cdecl Create_Spline16Resize(AVSValue args, void*, IScriptEnvironment* env);
+
+static AVSValue __cdecl Create_Spline36Resize(AVSValue args, void*, IScriptEnvironment* env);
 
 
 

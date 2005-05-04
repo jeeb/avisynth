@@ -50,6 +50,8 @@ AVSFunction Resample_filters[] = {
   { "BicubicResize", "cii[b]f[c]f[src_left]f[src_top]f[src_width]f[src_height]f", Create_BicubicResize },
   { "LanczosResize", "cii[src_left]f[src_top]f[src_width]f[src_height]f", Create_Lanczos3Resize},
   { "Lanczos4Resize", "cii[src_left]f[src_top]f[src_width]f[src_height]f", Create_Lanczos4Resize},
+  { "Spline16Resize", "cii[src_left]f[src_top]f[src_width]f[src_height]f", Create_Spline16Resize},
+  { "Spline36Resize", "cii[src_left]f[src_top]f[src_width]f[src_height]f", Create_Spline36Resize},
   /**
     * Resize(PClip clip, dst_width, dst_height [src_left, src_top, src_width, int src_height,] )
     *
@@ -1661,4 +1663,16 @@ AVSValue __cdecl Create_Lanczos4Resize(AVSValue args, void*, IScriptEnvironment*
 {
   return CreateResize( args[0].AsClip(), args[1].AsInt(), args[2].AsInt(), &args[3], 
                        &Lanczos4Filter(), env );
+}
+
+AVSValue __cdecl Create_Spline16Resize(AVSValue args, void*, IScriptEnvironment* env) 
+{
+  return CreateResize( args[0].AsClip(), args[1].AsInt(), args[2].AsInt(), &args[3], 
+                       &Spline16Filter(), env );
+}
+
+AVSValue __cdecl Create_Spline36Resize(AVSValue args, void*, IScriptEnvironment* env) 
+{
+  return CreateResize( args[0].AsClip(), args[1].AsInt(), args[2].AsInt(), &args[3], 
+                       &Spline36Filter(), env );
 }

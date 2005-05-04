@@ -127,6 +127,32 @@ private:
 	double sinc(double value);
 };
 
+// Spline16
+class Spline16Filter : public ResamplingFunction
+/**
+  * Spline16 of Panorama Tools is a cubic-spline, with derivative set to 0 at the edges (4x4 pixels).
+ **/
+{
+public:
+	double f(double x);
+	double support() { return 2.0; };
+
+private:
+};
+
+// Spline36
+class Spline36Filter : public ResamplingFunction
+/**
+  * Spline36 is like Spline16,  except that it uses 6x6=36 pixels.
+ **/
+{
+public:
+	double f(double x);
+	double support() { return 3.0; };
+
+private:
+};
+
 
 int* GetResamplingPatternRGB(int original_width, double subrange_start, double subrange_width,
                                     int target_width, ResamplingFunction* func, IScriptEnvironment* env);
