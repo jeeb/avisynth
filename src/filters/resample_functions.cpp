@@ -89,7 +89,7 @@ double MitchellNetravaliFilter::f (double x) {
  *** Lanczos3 filter ***
  ***********************/
 LanczosFilter::LanczosFilter(int t = 3) {
-   taps = (double)t;
+   taps = (double)(max( 1,min(100,t)));
 }
 
 double LanczosFilter::sinc(double value) {
