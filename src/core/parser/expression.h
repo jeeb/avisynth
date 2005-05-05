@@ -123,7 +123,7 @@ public:
   
 private:
   const PExpression exp;
-  void TrapEval(AVSValue&, IScriptEnvironment*);
+  void TrapEval(AVSValue&, unsigned &excode, IScriptEnvironment*);
   void ChainEval(AVSValue&, IScriptEnvironment*);
 };
 

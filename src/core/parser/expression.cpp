@@ -49,8 +49,6 @@ AVSValue ExpSequence::Evaluate(IScriptEnvironment* env)
     return b->Evaluate(env);
 }
 
-
-#ifdef _DEBUG
 /* First cut for breaking out system exceptions from the evil and most
  * unhelpful "Evaluate: Unrecognized exception!".
  *
@@ -58,57 +56,7 @@ AVSValue ExpSequence::Evaluate(IScriptEnvironment* env)
  * is so inclined the info structure could be pulled apart and the
  * state of the machine presented. So far just knowing "Integer Divide
  * by Zero" was happening has been a real boon.
- *
- * Warning! Don't try to throw another exception here it is not safe.
- * If you want to throw a new exception, flag your intention through
- * a function argument, return "EXCEPTION_EXECUTE_HANDLER" and throw
- * the exception from within the _except block.
  */
-static int ProcessSystemError(unsigned code, _EXCEPTION_POINTERS *info)
-{
-  if (code == 0xE06D7363) // C++ Exception, 0xE0000000 | "\0msc"
-    return EXCEPTION_CONTINUE_SEARCH;
-  
-  switch (code) {
-  case STATUS_GUARD_PAGE_VIOLATION:      // 0x80000001
-  case STATUS_DATATYPE_MISALIGNMENT:     // 0x80000002
-//case STATUS_BREAKPOINT:                // 0x80000003
-//case STATUS_SINGLE_STEP:               // 0x80000004
-	return EXCEPTION_EXECUTE_HANDLER;
-
-  default:
-    break;
-  }
-
-  switch (code) {
-  case STATUS_ACCESS_VIOLATION:          // 0xc0000005
-  case STATUS_IN_PAGE_ERROR:             // 0xc0000006
-  case STATUS_INVALID_HANDLE:            // 0xc0000008
-  case STATUS_NO_MEMORY:                 // 0xc0000017
-  case STATUS_ILLEGAL_INSTRUCTION:       // 0xc000001d
-  case STATUS_NONCONTINUABLE_EXCEPTION:  // 0xc0000025
-  case STATUS_INVALID_DISPOSITION:       // 0xc0000026
-  case STATUS_ARRAY_BOUNDS_EXCEEDED:     // 0xc000008c
-  case STATUS_FLOAT_DENORMAL_OPERAND:    // 0xc000008d
-  case STATUS_FLOAT_DIVIDE_BY_ZERO:      // 0xc000008e
-  case STATUS_FLOAT_INEXACT_RESULT:      // 0xc000008f
-  case STATUS_FLOAT_INVALID_OPERATION:   // 0xc0000090
-  case STATUS_FLOAT_OVERFLOW:            // 0xc0000091
-  case STATUS_FLOAT_STACK_CHECK:         // 0xc0000092
-  case STATUS_FLOAT_UNDERFLOW:           // 0xc0000093
-  case STATUS_INTEGER_DIVIDE_BY_ZERO:    // 0xc0000094
-  case STATUS_INTEGER_OVERFLOW:          // 0xc0000095
-  case STATUS_PRIVILEGED_INSTRUCTION:    // 0xc0000096
-  case STATUS_STACK_OVERFLOW:            // 0xc00000fd
-	return EXCEPTION_EXECUTE_HANDLER;
-
-  default:
-    break;
-  }
-
-  return EXCEPTION_CONTINUE_SEARCH;
-}
-
 static const char * const StringSystemError(const unsigned code)
 {
   switch (code) {
@@ -191,22 +139,17 @@ void ExpExceptionTranslator::ChainEval(AVSValue &av, IScriptEnvironment* env)
 /* Damn! I can't call Evaluate directly from here because it returns an object
  * I have to call an interlude and pass an alias to the return value through.
  */
-void ExpExceptionTranslator::TrapEval(AVSValue &av, IScriptEnvironment* env) 
+void ExpExceptionTranslator::TrapEval(AVSValue &av, unsigned &excode, IScriptEnvironment* env) 
 {
-  unsigned excode;
-
+// XPsp2 bug with this
+#if 1
   __try {
     ChainEval(av, env);
   }
-  __except (ProcessSystemError(excode = _exception_code(),
-                               (_EXCEPTION_POINTERS *)_exception_info()))
-  {
-    const char * const extext = StringSystemError(excode);
-	if (extext)
-      env->ThrowError(extext);
-	else
-      env->ThrowError("Evaluate: System exception - 0x%x", excode);
-  }
+  __except (excode = _exception_code(), EXCEPTION_CONTINUE_SEARCH ) { }
+#else
+  ChainEval(av, env);
+#endif
 }
 
 
@@ -214,29 +157,33 @@ void ExpExceptionTranslator::TrapEval(AVSValue &av, IScriptEnvironment* env)
  * Call an interlude. And this is all because C++ doesn't provide any way
  * to expand system exceptions into there true cause or identity.
  */
-#endif
 
 AVSValue ExpExceptionTranslator::Evaluate(IScriptEnvironment* env) 
 {
+  unsigned excode=0;
   try {
-#ifdef _DEBUG
     AVSValue av;
-    TrapEval(av, env);
+    TrapEval(av, excode, env);
     return av;
-#else
-    return exp->Evaluate(env);
-#endif
   }
   catch (AvisynthError) {
     throw;
   }
-#ifndef _DEBUG
   catch (...) {
+	if ( (excode != 0xE06D7363) // C++ Exception, 0xE0000000 | "\0msc"
+	  && (excode != 0) ) {
+	  const char * const extext = StringSystemError(excode);
+	  if (extext)
+		env->ThrowError(extext);
+	  else
+		env->ThrowError("Evaluate: System exception - 0x%x", excode);
+	}
     env->ThrowError("Evaluate: Unrecognized exception!");
   }
-#endif
   return 0;
 }
+
+
 
 AVSValue ExpTryCatch::Evaluate(IScriptEnvironment* env) 
 {
