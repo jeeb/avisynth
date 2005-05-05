@@ -48,7 +48,7 @@ AVSFunction Resample_filters[] = {
   { "PointResize", "cii[src_left]f[src_top]f[src_width]f[src_height]f", Create_PointResize },
   { "BilinearResize", "cii[src_left]f[src_top]f[src_width]f[src_height]f", Create_BilinearResize },
   { "BicubicResize", "cii[b]f[c]f[src_left]f[src_top]f[src_width]f[src_height]f", Create_BicubicResize },
-  { "LanczosResize", "cii[src_left]f[src_top]f[src_width]f[src_height]f", Create_Lanczos3Resize},
+  { "LanczosResize", "cii[src_left]f[src_top]f[src_width]f[src_height]f[taps]i", Create_LanczosResize},
   { "Lanczos4Resize", "cii[src_left]f[src_top]f[src_width]f[src_height]f", Create_Lanczos4Resize},
   { "Spline16Resize", "cii[src_left]f[src_top]f[src_width]f[src_height]f", Create_Spline16Resize},
   { "Spline36Resize", "cii[src_left]f[src_top]f[src_width]f[src_height]f", Create_Spline36Resize},
@@ -1653,17 +1653,16 @@ AVSValue __cdecl Create_BicubicResize(AVSValue args, void*, IScriptEnvironment* 
                        &MitchellNetravaliFilter(args[3].AsFloat(1./3.), args[4].AsFloat(1./3.)), env );
 }
 
-// 09-14-2002 - Vlad59 - Lanczos3Resize - Added Lanczos3Resize
-AVSValue __cdecl Create_Lanczos3Resize(AVSValue args, void*, IScriptEnvironment* env) 
+AVSValue __cdecl Create_LanczosResize(AVSValue args, void*, IScriptEnvironment* env) 
 {
   return CreateResize( args[0].AsClip(), args[1].AsInt(), args[2].AsInt(), &args[3], 
-                       &Lanczos3Filter(), env );
+                       &LanczosFilter(args[7].AsInt(3)), env );
 }
-// Lanczos 4
+
 AVSValue __cdecl Create_Lanczos4Resize(AVSValue args, void*, IScriptEnvironment* env) 
 {
   return CreateResize( args[0].AsClip(), args[1].AsInt(), args[2].AsInt(), &args[3], 
-                       &Lanczos4Filter(), env );
+                       &LanczosFilter(4), env );
 }
 
 AVSValue __cdecl Create_Spline16Resize(AVSValue args, void*, IScriptEnvironment* env) 

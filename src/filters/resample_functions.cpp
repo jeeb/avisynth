@@ -88,8 +88,11 @@ double MitchellNetravaliFilter::f (double x) {
 /***********************
  *** Lanczos3 filter ***
  ***********************/
+LanczosFilter::LanczosFilter(int t = 3) {
+   taps = (double)t;
+}
 
-double Lanczos3Filter::sinc(double value) {
+double LanczosFilter::sinc(double value) {
   if (value != 0.0) {
     value *= M_PI;
     return sin(value) / value;
@@ -98,42 +101,16 @@ double Lanczos3Filter::sinc(double value) {
   }
 }
 
-double Lanczos3Filter::f(double value) {
-  if (value < 0.0) {
-    value = -value;
-  }
+double LanczosFilter::f(double value) {
+   value = fabs(value);
 
-  if (value < 3.0) {
-    return (sinc(value) * sinc(value / 3.0));
+  if (value < taps) {
+    return (sinc(value) * sinc(value / taps));
   } else {
     return 0.0;
   }
 }
 
-/***********************
- *** Lanczos4 filter ***
- ***********************/
-
-double Lanczos4Filter::sinc(double value) {
-  if (value != 0.0) {
-    value *= M_PI;
-    return sin(value) / value;
-  } else {
-    return 1.0;
-  }
-}
-
-double Lanczos4Filter::f(double value) {
-  if (value < 0.0) {
-    value = -value;
-  }
-
-  if (value < 4.0) {
-    return (sinc(value) * sinc(value / 4.0));
-  } else {
-    return 0.0;
-  }
-}
 
 /***********************
  *** Spline16 filter ***
@@ -166,6 +143,10 @@ double Spline36Filter::f(double value) {
   }
   return 0.0;
 }
+
+/***********************
+ *** Gaussian filter ***
+ ***********************/
 
 GaussianFilter::GaussianFilter(double p = 30.0) {
   param = min(100.0,max(0.1,p));

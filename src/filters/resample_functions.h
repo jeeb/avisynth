@@ -99,18 +99,19 @@ private:
   double p0,p2,p3,q0,q1,q2,q3;
 };
 
-// 09-14-2002 - Vlad59 - Lanczos3Resize
-class Lanczos3Filter : public ResamplingFunction
+class LanczosFilter : public ResamplingFunction
 /**
-  * Lanczos3 filter, used in Lanczos3Resize
+  * Lanczos filter, used in LanczosResize
  **/
 {
 public:
+  LanczosFilter(int taps);
 	double f(double x);
-	double support() { return 3.0; };
+	double support() { return taps; };
 
 private:
 	double sinc(double value);
+  double taps;
 };
 
 // Lanczos4Resize
