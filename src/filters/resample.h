@@ -126,6 +126,7 @@ static AVSValue __cdecl Create_Spline16Resize(AVSValue args, void*, IScriptEnvir
 
 static AVSValue __cdecl Create_Spline36Resize(AVSValue args, void*, IScriptEnvironment* env);
 
+static AVSValue __cdecl Create_GaussianResize(AVSValue args, void*, IScriptEnvironment* env);
 
 
 

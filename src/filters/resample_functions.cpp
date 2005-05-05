@@ -167,6 +167,17 @@ double Spline36Filter::f(double value) {
   return 0.0;
 }
 
+GaussianFilter::GaussianFilter(double p = 30.0) {
+  param = min(100.0,max(0.1,p));
+}
+
+double GaussianFilter::f(double value) {
+  value = fabs(value);
+	double p = param*0.1;
+	return pow(2.0, - p*value*value);
+}
+
+
 /******************************
  **** Resampling Patterns  ****
  *****************************/

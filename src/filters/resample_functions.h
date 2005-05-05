@@ -154,6 +154,20 @@ private:
 };
 
 
+class GaussianFilter : public ResamplingFunction
+/**
+  * GaussianFilter, from swscale.
+ **/
+{
+public:
+  GaussianFilter(double p);
+	double f(double x);
+	double support() { return 4.0; };
+
+private:
+ double param;
+};
+
 int* GetResamplingPatternRGB(int original_width, double subrange_start, double subrange_width,
                                     int target_width, ResamplingFunction* func, IScriptEnvironment* env);
 
