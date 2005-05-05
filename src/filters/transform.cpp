@@ -128,17 +128,16 @@ PVideoFrame FlipHorizontal::GetFrame(int n, IScriptEnvironment* env) {
     }
     return dst;
   }
-  srcp+=row_size-bpp;
-  for (int y=0; y<h;y++) { // Loop for RGB and planar luma.
-    for (int x=0; x<row_size; x+=bpp) {
-      for (int i=0;i<bpp;i++) {
-        dstp[x+i] = srcp[-x+i];
-      }
-    }
-    srcp += src_pitch;
-    dstp += dst_pitch;
-  }
   if (vi.IsPlanar()) {  //For planar always 1bpp
+		srcp+=row_size-1;
+		for (int y=0; y<h;y++) { // Loop planar luma.
+			for (int x=0; x<row_size; x++) {
+				dstp[x] = srcp[-x];
+			}
+			srcp += src_pitch;
+			dstp += dst_pitch;
+		}
+
     srcp = src->GetReadPtr(PLANAR_U);
     dstp = dst->GetWritePtr(PLANAR_U);
     row_size = src->GetRowSize(PLANAR_U);
@@ -146,7 +145,7 @@ PVideoFrame FlipHorizontal::GetFrame(int n, IScriptEnvironment* env) {
     dst_pitch = dst->GetPitch(PLANAR_U);
     h = src->GetHeight(PLANAR_U);
     srcp+=row_size-1;
-    for (int y=0; y<h;y++) {
+    for (y=0; y<h;y++) {
       for (int x=0; x<row_size; x++) {
         dstp[x] = srcp[-x];
       }
@@ -163,7 +162,27 @@ PVideoFrame FlipHorizontal::GetFrame(int n, IScriptEnvironment* env) {
       srcp += src_pitch;
       dstp += dst_pitch;
     }
-
+		return dst;
+  }
+  srcp+=row_size-bpp;
+  if (vi.IsRGB32()) {
+		for (int y=0; y<h;y++) { // Loop for RGB
+			for (int x=0; x<row_size/4; x++) {
+				((int*)dstp)[x] = ((int*)srcp)[-x];
+			}
+			srcp += src_pitch;
+			dstp += dst_pitch;
+		}
+		return dst;
+  }
+  for (int y=0; y<h;y++) { // Loop for RGB
+    for (int x=0; x<row_size; x+=bpp) {
+      for (int i=0;i<bpp;i++) {
+        dstp[x+i] = srcp[-x+i];
+      }
+    }
+    srcp += src_pitch;
+    dstp += dst_pitch;
   }
   return dst;
 }
@@ -457,7 +476,7 @@ AlignPlanar::AlignPlanar(PClip _clip) : GenericVideoFilter(_clip) {}
 
 PVideoFrame __stdcall AlignPlanar::GetFrame(int n, IScriptEnvironment* env) {
   PVideoFrame src = child->GetFrame(n, env);
-  if (!(src->GetRowSize(PLANAR_Y_ALIGNED)&(FRAME_ALIGN-1))) return src;
+  if (!(src->GetRowSize(PLANAR_U_ALIGNED)&(FRAME_ALIGN-1))) return src; // If chroma is aligned luma will be too
   PVideoFrame dst = env->NewVideoFrame(vi);
   if ((dst->GetRowSize(PLANAR_Y_ALIGNED)&(FRAME_ALIGN-1))) 
     env->ThrowError("AlignPlanar: [internal error] Returned frame was not aligned!");

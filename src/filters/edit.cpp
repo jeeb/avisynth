@@ -419,11 +419,11 @@ PVideoFrame Dissolve::GetFrame(int n, IScriptEnvironment* env)
 
   const int multiplier = n - video_fade_start + 1;
 
-  if ((env->GetCPUFlags() & CPUF_MMX) && (!(a->GetRowSize()&4)) ) {  // MMX and Video is mod 4
+  if ((env->GetCPUFlags() & CPUF_MMX) && (!(a->GetRowSize(PLANAR_Y_ALIGNED)&7)) ) {  // MMX and Video is mod 8
     int weight = (multiplier * 32767) / (overlap+1);
     int invweight = 32767-weight;
     env->MakeWritable(&a);
-    mmx_weigh_yv12(a->GetWritePtr(), b->GetReadPtr(), a->GetPitch(), b->GetPitch(), a->GetRowSize(), a->GetHeight(), weight, invweight);
+    mmx_weigh_yv12(a->GetWritePtr(), b->GetReadPtr(), a->GetPitch(), b->GetPitch(), a->GetRowSize(PLANAR_Y_ALIGNED), a->GetHeight(), weight, invweight);
     if (vi.IsPlanar()) {
       mmx_weigh_yv12(a->GetWritePtr(PLANAR_U), b->GetReadPtr(PLANAR_U), a->GetPitch(PLANAR_U), b->GetPitch(PLANAR_U), a->GetRowSize(PLANAR_U_ALIGNED), a->GetHeight(PLANAR_U), weight, invweight);
       mmx_weigh_yv12(a->GetWritePtr(PLANAR_V), b->GetReadPtr(PLANAR_V), a->GetPitch(PLANAR_V), b->GetPitch(PLANAR_V), a->GetRowSize(PLANAR_V_ALIGNED), a->GetHeight(PLANAR_V), weight, invweight);    

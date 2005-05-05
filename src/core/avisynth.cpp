@@ -928,9 +928,13 @@ void ScriptEnvironment::ExportFilters()
 
 
 PVideoFrame ScriptEnvironment::NewPlanarVideoFrame(int width, int height, int align, bool U_first) {
-  int pitch = (width+align-1) / align * align;  // Y plane, width = 1 byte per pixel
-//  int UVpitch = ((width>>1)+align-1) / align * align;  // UV plane, width = 1/2 byte per pixel - can't align UV planes seperately.
-  int UVpitch = pitch>>1;  // UV plane, width = 1/2 byte per pixel
+// Align UV planes, Y will follow
+  int UVpitch = ((width>>1)+align-1) / align * align;  // UV plane, width = 1/2 byte per pixel
+  int pitch = UVpitch<<1;  // Y plane, width = 1 byte per pixel
+
+//  int pitch = (width+align-1) / align * align;  // Y plane, width = 1 byte per pixel
+//  int UVpitch = pitch>>1;  // UV plane, width = 1/2 byte per pixel - can't align UV planes seperately.
+
   int size = pitch * height + UVpitch * height;
   VideoFrameBuffer* vfb = GetFrameBuffer(size+(FRAME_ALIGN*4));
   if (!vfb)
