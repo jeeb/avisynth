@@ -240,6 +240,35 @@ struct VideoInfo {
 	}
   }
 
+  // Range protected multiply-divide of FPS
+  void MulDivFPS(unsigned multiplier, unsigned divisor) {
+	unsigned __int64 numerator   = UInt32x32To64(fps_numerator,   multiplier);
+	unsigned __int64 denominator = UInt32x32To64(fps_denominator, divisor);
+
+	unsigned __int64 x=numerator, y=denominator;
+	while (y) {   // find gcd
+	  unsigned __int64 t = x%y; x = y; y = t;
+	}
+	numerator   /= x; // normalize
+	denominator /= x;
+
+	unsigned __int64 temp = numerator | denominator; // Just looking top bit
+	unsigned u = 0;
+	while (temp & 0xffffffff80000000) { // or perhaps > 16777216*2
+	  temp = Int64ShrlMod32(temp, 1);
+	  u++;
+	}
+	if (u) { // Scale to fit
+	  const unsigned round = 1 << (u-1);
+	  SetFPS( (unsigned)Int64ShrlMod32(numerator   + round, u),
+	          (unsigned)Int64ShrlMod32(denominator + round, u) );
+	}
+	else {
+	  fps_numerator   = (unsigned)numerator;
+	  fps_denominator = (unsigned)denominator;
+	}
+  }
+
   // Test for same colorspace
   bool IsSameColorspace(const VideoInfo& vi) {
     if (vi.pixel_type == pixel_type) return TRUE;

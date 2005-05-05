@@ -81,7 +81,7 @@ SeparateFields::SeparateFields(PClip _child, IScriptEnvironment* env)
   if (vi.IsYV12() && vi.height & 3)
     env->ThrowError("SeparateFields: YV12 height must be multiple of 4");
   vi.height >>= 1;
-  vi.fps_numerator *= 2;
+  vi.MulDivFPS(2, 1);
   vi.num_frames *= 2;
   vi.SetFieldBased(true);
 }
@@ -126,7 +126,7 @@ Interleave::Interleave(int _num_children, const PClip* _child_array, IScriptEnvi
   : num_children(_num_children), child_array(_child_array)
 {
   vi = child_array[0]->GetVideoInfo();
-  vi.fps_numerator *= num_children;
+  vi.MulDivFPS(num_children, 1);
   vi.num_frames = (vi.num_frames - 1) * num_children + 1;
   for (int i=1; i<num_children; ++i) 
   {
@@ -165,7 +165,7 @@ AVSValue __cdecl Interleave::Create(AVSValue args, void*, IScriptEnvironment* en
 SelectEvery::SelectEvery(PClip _child, int _every, int _from)
  : GenericVideoFilter(_child), every(_every), from(_from)
 {
-  vi.fps_denominator *= every;
+  vi.MulDivFPS(1, every);
   vi.num_frames = (vi.num_frames-1-from) / every + 1;
 }
 
@@ -251,7 +251,7 @@ DoubleWeaveFrames::DoubleWeaveFrames(PClip _child)
   : GenericVideoFilter(_child) 
 {
   vi.num_frames *= 2;
-  vi.fps_numerator *= 2;
+  vi.MulDivFPS(2, 1);
 }
 
 

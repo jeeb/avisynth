@@ -95,7 +95,7 @@ AVSValue __cdecl AssumeFPS::CreateFloat(AVSValue args, void*, IScriptEnvironment
 	try {	// HIDE DAMN SEH COMPILER BUG!!!
   double n = args[1].AsFloat();
   int d = 1;
-  while (n < 16777216 && d < 16777216) { n*=2; d*=2; }
+  while (n < 16777216 && d < 16777216) { n*=2; d*=2; } // 2^24, floats precision
   return new AssumeFPS(args[0].AsClip(), int(n+0.5), d, args[2].AsBool(false), env);
 	}
 	catch (...) { throw; }
@@ -171,7 +171,7 @@ AVSValue __cdecl ChangeFPS::CreateFloat(AVSValue args, void*, IScriptEnvironment
 	try {	// HIDE DAMN SEH COMPILER BUG!!!
   double n = args[1].AsFloat();
   int d = 1;
-  while (n < 16777216 && d < 16777216) { n*=2; d*=2; }
+  while (n < 16777216 && d < 16777216) { n*=2; d*=2; } // 2^24, floats precision
   return new ChangeFPS(args[0].AsClip(), int(n+0.5), d, args[2].AsBool(true), env);
 	}
 	catch (...) { throw; }
@@ -355,11 +355,7 @@ AVSValue __cdecl ConvertFPS::CreateFloat(AVSValue args, void*, IScriptEnvironmen
 	try {	// HIDE DAMN SEH COMPILER BUG!!!
   double n = args[1].AsFloat();
   int d = 1;
-  while (n < 16777216 && d < 16777216) 
-  { 
-    n*=2; 
-    d*=2; 
-  }
+  while (n < 16777216 && d < 16777216) { n*=2; d*=2; } // 2^24, floats precision
   return new ConvertFPS( args[0].AsClip(), int(n+0.5), d, args[2].AsInt(-1), 
                          args[3].AsInt(0), env );
 	}
