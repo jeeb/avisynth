@@ -87,7 +87,7 @@ static bool IsAbsolutePath(const char* path)
 
 ImageWriter::ImageWriter(PClip _child, const char * _base_name, const int _start, const int _end,
                          const char * _ext, bool _info)
- : GenericVideoFilter(_child), antialiaser(vi.width, vi.height, "Arial", 192), base_name(_base_name), start(_start),
+ : GenericVideoFilter(_child), base_name(_base_name), start(_start),
     end(_end), ext(_ext), info(_info)
 {  
   if (!lstrcmpi(ext, "ebmp")) 

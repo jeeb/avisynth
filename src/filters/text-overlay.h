@@ -50,25 +50,28 @@ class Antialiaser
  **/
 {  
 public:
-  Antialiaser(int width, int height, const char fontname[], int size);
+  Antialiaser(int width, int height, const char fontname[], int size, int textcolor, int halocolor);
   virtual ~Antialiaser();
   HDC GetDC();
   
-  void Apply(const VideoInfo& vi, PVideoFrame* frame, int pitch, int textcolor, int halocolor);
-  void ApplyYV12(BYTE* buf, int pitch, int textcolor, int halocolor, int UVpitch,BYTE* bufV,BYTE* bufU);
-  void ApplyYUY2(BYTE* buf, int pitch, int textcolor, int halocolor);
-  void ApplyRGB24(BYTE* buf, int pitch, int textcolor, int halocolor);
-  void ApplyRGB32(BYTE* buf, int pitch, int textcolor, int halocolor);  
+  void Apply(const VideoInfo& vi, PVideoFrame* frame, int pitch);
 
 private:
+  void ApplyYV12(BYTE* buf, int pitch, int UVpitch,BYTE* bufV,BYTE* bufU);
+  void ApplyYUY2(BYTE* buf, int pitch);
+  void ApplyRGB24(BYTE* buf, int pitch);
+  void ApplyRGB32(BYTE* buf, int pitch);  
+
   const int w, h;
   HDC hdcAntialias;
   HBITMAP hbmAntialias;
   void* lpAntialiasBits;
   HFONT hfontDefault;
   HBITMAP hbmDefault;
-  char* alpha_bits;
+  unsigned short* alpha_calcs;
   bool dirty;
+  const int textcolor, halocolor;
+  int xl, yt, xr, yb; // sub-rectangle containing live text
 
   void GetAlphaRect();
 };
@@ -92,7 +95,6 @@ private:
   const bool scroll;
   const int offset;
   const int size, x, y;
-  int textcolor, halocolor;
 };
 
 
@@ -114,7 +116,6 @@ private:
   int rate;
   int offset_f;
   const int x, y;
-  int textcolor, halocolor;
   bool dropframe;
 };
 
@@ -138,7 +139,7 @@ private:
   void InitAntialiaser(void);
   
   const int x, y, firstframe, lastframe, size;
-  /*const*/ int textcolor, halocolor, align, spc;
+  const int textcolor, halocolor, align, spc;
   const char* const fontname;
   const char* const text;
   Antialiaser* antialiaser;  

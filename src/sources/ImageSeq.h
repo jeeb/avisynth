@@ -66,7 +66,6 @@ public:
 
 private:
   bool info;
-  Antialiaser antialiaser;
   
   const char * base_name;
   const char * ext;

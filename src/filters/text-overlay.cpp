@@ -49,12 +49,24 @@ using namespace std;
 ********************************************************************/
 
 AVSFunction Text_filters[] = {
-  { "ShowFrameNumber", "c[scroll]b[offset]i[x]i[y]i[font]s[size]i[text_color]i[halo_color]i", ShowFrameNumber::Create },
-  { "ShowSMPTE", "c[fps]f[offset]s[offset_f]i[x]i[y]i[font]s[size]i[text_color]i[halo_color]i", ShowSMPTE::Create },
-  { "Info", "c", FilterInfo::Create },                     // clip
-  { "Subtitle", "cs[x]i[y]i[first_frame]i[last_frame]i[font]s[size]i[text_color]i[halo_color]i[align]i[spc]i", 
+  { "ShowFrameNumber",
+	"c[scroll]b[offset]i[x]i[y]i[font]s[size]i[text_color]i[halo_color]i",
+	ShowFrameNumber::Create },
+
+  { "ShowSMPTE",
+	"c[fps]f[offset]s[offset_f]i[x]i[y]i[font]s[size]i[text_color]i[halo_color]i",
+	ShowSMPTE::Create },
+
+  { "Info", "c", FilterInfo::Create },  // clip
+
+  { "Subtitle",
+	"cs[x]i[y]i[first_frame]i[last_frame]i[font]s[size]i[text_color]i[halo_color]i[align]i[spc]i", 
     Subtitle::Create },       // see docs!
-  { "Compare", "cc[channels]s[logfile]s[show_graph]b", Compare::Create },
+
+  { "Compare",
+	"cc[channels]s[logfile]s[show_graph]b",
+	Compare::Create },
+
   { 0 }
 };
 
@@ -67,8 +79,8 @@ AVSFunction Text_filters[] = {
  *******   Anti-alias    ******
  *****************************/
 
-Antialiaser::Antialiaser(int width, int height, const char fontname[], int size)
- : w(width), h(height)
+Antialiaser::Antialiaser(int width, int height, const char fontname[], int size, int _textcolor, int _halocolor)
+ : w(width), h(height), textcolor(_textcolor), halocolor(_halocolor)
 {
   struct {
     BITMAPINFOHEADER bih;
@@ -105,7 +117,7 @@ Antialiaser::Antialiaser(int width, int height, const char fontname[], int size)
   SetTextColor(hdcAntialias, 0xffffff);
   SetBkColor(hdcAntialias, 0);
 
-  alpha_bits = new char[width*height*2];
+  alpha_calcs = new unsigned short[width*height*4];
 
   dirty = true;
 }
@@ -115,7 +127,7 @@ Antialiaser::~Antialiaser() {
   DeleteObject(SelectObject(hdcAntialias, hbmDefault));
   DeleteObject(SelectObject(hdcAntialias, hfontDefault));
   DeleteDC(hdcAntialias);
-  delete[] alpha_bits;
+  delete[] alpha_calcs;
 }
 
 
@@ -125,112 +137,129 @@ HDC Antialiaser::GetDC() {
 }
 
 
-void Antialiaser::Apply( const VideoInfo& vi, PVideoFrame* frame, int pitch, int textcolor, 
-                         int halocolor ) 
+void Antialiaser::Apply( const VideoInfo& vi, PVideoFrame* frame, int pitch)
 {
   if (vi.IsRGB32())
-    ApplyRGB32((*frame)->GetWritePtr(), pitch, textcolor, halocolor);
+    ApplyRGB32((*frame)->GetWritePtr(), pitch);
   else if (vi.IsRGB24())
-    ApplyRGB24((*frame)->GetWritePtr(), pitch, textcolor, halocolor);
+    ApplyRGB24((*frame)->GetWritePtr(), pitch);
   else if (vi.IsYUY2())
-    ApplyYUY2((*frame)->GetWritePtr(), pitch, textcolor, halocolor);
+    ApplyYUY2((*frame)->GetWritePtr(), pitch);
   else if (vi.IsYV12())
-    ApplyYV12((*frame)->GetWritePtr(), pitch, textcolor, halocolor, (*frame)->GetPitch(PLANAR_U),(*frame)->GetWritePtr(PLANAR_U),(*frame)->GetWritePtr(PLANAR_V));
+    ApplyYV12((*frame)->GetWritePtr(), pitch,
+              (*frame)->GetPitch(PLANAR_U),
+			  (*frame)->GetWritePtr(PLANAR_U), (*frame)->GetWritePtr(PLANAR_V) );
 }
 
-void Antialiaser::ApplyYV12(BYTE* buf, int pitch, int textcolor, int halocolor, int pitchUV, BYTE* bufU, BYTE* bufV) {
-  if (dirty) GetAlphaRect();
-  int Ytext = ((textcolor>>16)&255), Utext = ((textcolor>>8)&255), Vtext = (textcolor&255);
-  int Yhalo = ((halocolor>>16)&255), Uhalo = ((halocolor>>8)&255), Vhalo = (halocolor&255);
-  int w2 = w*2;
-  char* alpha = alpha_bits;
-  int h_half = h/2;
 
-  for (int y=0; y<h_half; y++) {
-    for (int x=0; x<w; x+=2) {
-      int x2 = x<<1;  // Supersampled (alpha) x position.
-      if (*(__int32*)&alpha[x2] || *(__int32*)&alpha[x2+w2]) {
-        buf[x+0] = (buf[x+0] * (64-alpha[x2+0]-alpha[x2+1]) + Ytext * alpha[x2+0] + Yhalo * alpha[x2+1]) >> 6;
-        buf[x+1] = (buf[x+1] * (64-alpha[x2+2]-alpha[x2+3]) + Ytext * alpha[x2+2] + Yhalo * alpha[x2+3]) >> 6;
+void Antialiaser::ApplyYV12(BYTE* buf, int pitch, int pitchUV, BYTE* bufU, BYTE* bufV) {
+  if (dirty) {
+    GetAlphaRect();
+	xl &= -2; xr = (xr+1) & -2;
+	yb &= -2; yt = (yt+1) & -2;
+  }
+  const int w4 = w*4;
+  unsigned short* alpha = alpha_calcs + yb*w4;
+  buf  += pitch*yb;
+  bufU += pitchUV*yb/2;
+  bufV += pitchUV*yb/2;
 
-        buf[x+0+pitch] = (buf[x+0+pitch] * (64-alpha[x2+0+((w2))]-alpha[x2+1+(w2)]) + Ytext * alpha[x2+0+w2] + Yhalo * alpha[x2+1+w2]) >> 6;
-        buf[x+1+pitch] = (buf[x+1+pitch] * (64-alpha[x2+2+(w2)]-alpha[x2+3+(w2)]) + Ytext * alpha[x2+2+w2] + Yhalo * alpha[x2+3+w2]) >> 6;
+  for (int y=yb; y<=yt; y+=2) {
+    for (int x=xl; x<=xr; x+=2) {
+      const int basealpha00 = alpha[x*4+0];
+      const int basealpha10 = alpha[x*4+4];
+      const int basealpha01 = alpha[x*4+0+w4];
+      const int basealpha11 = alpha[x*4+4+w4];
+      const int basealphaUV = basealpha00 + basealpha10 + basealpha01 + basealpha11;
 
-        int auv1 = (alpha[x2] + alpha[x2+2] + alpha[x2+w2] + alpha[x2+2+w2]) >> 1;
-        int auv2 = (alpha[x2+1] + alpha[x2+3] + alpha[x2+1+w2] + alpha[x2+3+w2]) >> 1;
+      if (basealphaUV != 256) {
+        buf[x+0]       = (buf[x+0]       * basealpha00 + alpha[x*4+3]   ) >> 6;
+        buf[x+1]       = (buf[x+1]       * basealpha10 + alpha[x*4+7]   ) >> 6;
+        buf[x+0+pitch] = (buf[x+0+pitch] * basealpha01 + alpha[x*4+3+w4]) >> 6;
+        buf[x+1+pitch] = (buf[x+1+pitch] * basealpha11 + alpha[x*4+7+w4]) >> 6;
 
-        bufU[x>>1] = (bufU[x>>1] * (128-auv1-auv2) + Utext * auv1 + Uhalo * auv2) >> 7;
-        bufV[x>>1] = (bufV[x>>1] * (128-auv1-auv2) + Vtext * auv1 + Vhalo * auv2) >> 7;
+        const int au  = alpha[x*4+2] + alpha[x*4+6] + alpha[x*4+2+w4] + alpha[x*4+6+w4];
+        bufU[x>>1] = (bufU[x>>1] * basealphaUV + au) >> 8;
+
+        const int av  = alpha[x*4+1] + alpha[x*4+5] + alpha[x*4+1+w4] + alpha[x*4+5+w4];
+        bufV[x>>1] = (bufV[x>>1] * basealphaUV + av) >> 8;
       }
     }
     buf += pitch*2;
     bufU += pitchUV;
     bufV += pitchUV;
+    alpha += w*8;
+  }
+}
+
+
+void Antialiaser::ApplyYUY2(BYTE* buf, int pitch) {
+  if (dirty) {
+    GetAlphaRect();
+	xl &= -2; xr = (xr+1) & -2;
+  }
+  unsigned short* alpha = alpha_calcs + yb*w*4;
+  buf += pitch*yb;
+
+  for (int y=yb; y<=yt; ++y) {
+    for (int x=xl; x<=xr; x+=2) {
+      const int basealpha0  = alpha[x*4+0];
+      const int basealpha1  = alpha[x*4+4];
+      const int basealphaUV = basealpha0 + basealpha1;
+
+      if (basealphaUV != 128) {
+        buf[x*2+0] = (buf[x*2+0] * basealpha0 + alpha[x*4+3]) >> 6;
+        buf[x*2+2] = (buf[x*2+2] * basealpha1 + alpha[x*4+7]) >> 6;
+
+        const int au  = alpha[x*4+2] + alpha[x*4+6];
+        buf[x*2+1] = (buf[x*2+1] * basealphaUV + au) >> 7;
+
+        const int av  = alpha[x*4+1] + alpha[x*4+5];
+        buf[x*2+3] = (buf[x*2+3] * basealphaUV + av) >> 7;
+      }
+    }
+    buf += pitch;
     alpha += w*4;
   }
 }
 
 
-void Antialiaser::ApplyYUY2(BYTE* buf, int pitch, int textcolor, int halocolor) {
+void Antialiaser::ApplyRGB24(BYTE* buf, int pitch) {
   if (dirty) GetAlphaRect();
-  int Ytext = ((textcolor>>16)&255), Utext = ((textcolor>>8)&255), Vtext = (textcolor&255);
-  int Yhalo = ((halocolor>>16)&255), Uhalo = ((halocolor>>8)&255), Vhalo = (halocolor&255);
-  char* alpha = alpha_bits;
-  for (int y=h; y>0; --y) {
-    for (int x=0; x<w; x+=2) {
-      if (*(__int32*)&alpha[x*2]) {
-        buf[x*2+0] = (buf[x*2+0] * (64-alpha[x*2+0]-alpha[x*2+1]) + Ytext * alpha[x*2+0] + Yhalo * alpha[x*2+1]) >> 6;
-        buf[x*2+2] = (buf[x*2+2] * (64-alpha[x*2+2]-alpha[x*2+3]) + Ytext * alpha[x*2+2] + Yhalo * alpha[x*2+3]) >> 6;
-        int auv1 = alpha[x*2]+alpha[x*2+2];
-        int auv2 = alpha[x*2+1]+alpha[x*2+3];
-        buf[x*2+1] = (buf[x*2+1] * (128-auv1-auv2) + Utext * auv1 + Uhalo * auv2) >> 7;
-        buf[x*2+3] = (buf[x*2+3] * (128-auv1-auv2) + Vtext * auv1 + Vhalo * auv2) >> 7;
+  unsigned short* alpha = alpha_calcs + yt*w*4;
+  buf  += pitch*yb;
+
+  for (int y=yb; y<=yt; ++y) {
+    for (int x=xl; x<=xr; ++x) {
+      const int basealpha = alpha[x*4+0];
+      if (basealpha != 64) {
+        buf[x*3+0] = (buf[x*3+0] * basealpha + alpha[x*4+1]) >> 6;
+        buf[x*3+1] = (buf[x*3+1] * basealpha + alpha[x*4+2]) >> 6;
+        buf[x*3+2] = (buf[x*3+2] * basealpha + alpha[x*4+3]) >> 6;
       }
     }
     buf += pitch;
-    alpha += w*2;
+    alpha -= w*4;
   }
 }
 
 
-void Antialiaser::ApplyRGB24(BYTE* buf, int pitch, int textcolor, int halocolor) {
+void Antialiaser::ApplyRGB32(BYTE* buf, int pitch) {
   if (dirty) GetAlphaRect();
-  int Rtext = ((textcolor>>16)&255), Gtext = ((textcolor>>8)&255), Btext = (textcolor&255);
-  int Rhalo = ((halocolor>>16)&255), Ghalo = ((halocolor>>8)&255), Bhalo = (halocolor&255);
-  char* alpha = alpha_bits + (h-1)*w*2;
-  for (int y=h; y>0; --y) {
-    for (int x=0; x<w; ++x) {
-      int textalpha = alpha[x*2+0];
-      int haloalpha = alpha[x*2+1];
-      if (textalpha | haloalpha) {
-        buf[x*3+0] = (buf[x*3+0] * (64-textalpha-haloalpha) + Btext * textalpha + Bhalo * haloalpha) >> 6;
-        buf[x*3+1] = (buf[x*3+1] * (64-textalpha-haloalpha) + Gtext * textalpha + Ghalo * haloalpha) >> 6;
-        buf[x*3+2] = (buf[x*3+2] * (64-textalpha-haloalpha) + Rtext * textalpha + Rhalo * haloalpha) >> 6;
+  unsigned short* alpha = alpha_calcs + yt*w*4;
+  buf  += pitch*yb;
+
+  for (int y=yb; y<=yt; ++y) {
+    for (int x=xl; x<=xr; ++x) {
+      const int basealpha = alpha[x*4+0];
+      if (basealpha != 64) {
+        buf[x*4+0] = (buf[x*4+0] * basealpha + alpha[x*4+1]) >> 6;
+        buf[x*4+1] = (buf[x*4+1] * basealpha + alpha[x*4+2]) >> 6;
+        buf[x*4+2] = (buf[x*4+2] * basealpha + alpha[x*4+3]) >> 6;
       }
     }
     buf += pitch;
-    alpha -= w*2;
-  }
-}
-
-
-void Antialiaser::ApplyRGB32(BYTE* buf, int pitch, int textcolor, int halocolor) {
-  if (dirty) GetAlphaRect();
-  int Rtext = ((textcolor>>16)&255), Gtext = ((textcolor>>8)&255), Btext = (textcolor&255);
-  int Rhalo = ((halocolor>>16)&255), Ghalo = ((halocolor>>8)&255), Bhalo = (halocolor&255);
-  char* alpha = alpha_bits + (h-1)*w*2;
-  for (int y=h; y>0; --y) {
-    for (int x=0; x<w; ++x) {
-      int textalpha = alpha[x*2+0];
-      int haloalpha = alpha[x*2+1];
-      if (textalpha | haloalpha) {
-        buf[x*4+0] = (buf[x*4+0] * (64-textalpha-haloalpha) + Btext * textalpha + Bhalo * haloalpha) >> 6;
-        buf[x*4+1] = (buf[x*4+1] * (64-textalpha-haloalpha) + Gtext * textalpha + Ghalo * haloalpha) >> 6;
-        buf[x*4+2] = (buf[x*4+2] * (64-textalpha-haloalpha) + Rtext * textalpha + Rhalo * haloalpha) >> 6;
-      }
-    }
-    buf += pitch;
-    alpha -= w*2;
+    alpha -= w*4;
   }
 }
 
@@ -267,9 +296,17 @@ void Antialiaser::GetAlphaRect() {
     fInited = true;
   }
 
-  int srcpitch = (w+4+3) & -4;
+  const int RYtext = ((textcolor>>16)&255), GUtext = ((textcolor>>8)&255), BVtext = (textcolor&255);
+  const int RYhalo = ((halocolor>>16)&255), GUhalo = ((halocolor>>8)&255), BVhalo = (halocolor&255);
 
-  char* dst = alpha_bits;
+  const int srcpitch = (w+4+3) & -4;
+
+  xl=0;
+  xr=w+1;
+  yt=-1;
+  yb=h;
+
+  unsigned short* dest = alpha_calcs;
   for (int y=0; y<h; ++y) {
     BYTE* src = (BYTE*)lpAntialiasBits + ((h-y-1)*8 + 20) * srcpitch + 2;
     int wt = w;
@@ -301,60 +338,54 @@ void Antialiaser::GetAlphaRect() {
         dec esi
         shl ecx, 3
         sub esi, ecx  ; src - 8*pitch - 1
+        lea edi,[esi+edx*2]
 
         mov eax, [esi]  ; repeat 24 times
-        add esi, edx
+        mov ecx, [esi+edx]
+        lea esi,[esi+edx*4]
+        or eax, [edi]
+        or ecx, [edi+edx]
+        lea edi,[edi+edx*4]
         or eax, [esi]
-        add esi, edx
+        or ecx, [esi+edx]
+        lea esi,[esi+edx*4]
+        or eax, [edi]
+        or ecx, [edi+edx]
+        lea edi,[edi+edx*4]
         or eax, [esi]
-        add esi, edx
+        or ecx, [esi+edx]
+        lea esi,[esi+edx*4]
+        or eax, [edi]
+        or ecx, [edi+edx]
+        lea edi,[edi+edx*4]
         or eax, [esi]
-        add esi, edx
+        or ecx, [esi+edx]
+        lea esi,[esi+edx*4]
+        or eax, [edi]
+        or ecx, [edi+edx]
+        lea edi,[edi+edx*4]
         or eax, [esi]
-        add esi, edx
+        or ecx, [esi+edx]
+        lea esi,[esi+edx*4]
+        or eax, [edi]
+        or ecx, [edi+edx]
+        lea edi,[edi+edx*4]
         or eax, [esi]
-        add esi, edx
-        or eax, [esi]
-        add esi, edx
-        or eax, [esi]
-        add esi, edx
-        or eax, [esi]
-        add esi, edx
-        or eax, [esi]
-        add esi, edx
-        or eax, [esi]
-        add esi, edx
-        or eax, [esi]
-        add esi, edx
-        or eax, [esi]
-        add esi, edx
-        or eax, [esi]
-        add esi, edx
-        or eax, [esi]
-        add esi, edx
-        or eax, [esi]
-        add esi, edx
-        or eax, [esi]
-        add esi, edx
-        or eax, [esi]
-        add esi, edx
-        or eax, [esi]
-        add esi, edx
-        or eax, [esi]
-        add esi, edx
-        or eax, [esi]
-        add esi, edx
-        or eax, [esi]
-        add esi, edx
-        or eax, [esi]
-        add esi, edx
-        or eax, [esi]
+        or ecx, [esi+edx]
+        or eax, [edi]
+        or ecx, [edi+edx]
 
+        or eax, ecx
         and eax, 0x00ffffff
         mov tmp, eax
       }
 
       if (tmp != 0) {     // quick exit in a common case
+		if (wt >= xl) xl=wt;
+		if (wt <= xr) xr=wt;
+		if (y  >= yt) yt=y;
+		if (y  <= yb) yb=y;
+
         for (i=0; i<8; i++)
           alpha1 += bitcnt[src[srcpitch*i]];
 
@@ -383,14 +414,25 @@ void Antialiaser::GetAlphaRect() {
         for(i=0; i<8; i++) {
           alpha2 += bitcnt[cenmask | tmasks[7-i] | bmasks[i]];
         }
+		dest[0] = 64 - alpha2;
+		dest[1] = BVtext * alpha1 + BVhalo * (alpha2-alpha1);
+		dest[2] = GUtext * alpha1 + GUhalo * (alpha2-alpha1);
+		dest[3] = RYtext * alpha1 + RYhalo * (alpha2-alpha1);
+      }
+	  else {
+		dest[0] = 64;
+		dest[1] = 0;
+		dest[2] = 0;
+		dest[3] = 0;
       }
 
-      dst[0] = alpha1;
-      dst[1] = alpha2-alpha1;
-      dst += 2;
+      dest += 4;
       ++src;
     } while(--wt);
   }
+
+  xl=w-xl;
+  xr=w-xr;
 }
 
 
@@ -410,19 +452,14 @@ void Antialiaser::GetAlphaRect() {
 
 ShowFrameNumber::ShowFrameNumber(PClip _child, bool _scroll, int _offset, int _x, int _y, const char _fontname[],
 					 int _size, int _textcolor, int _halocolor, IScriptEnvironment* env)
- : GenericVideoFilter(_child), scroll(_scroll), offset(_offset), x(_x), y(_y), size(_size*8), antialiaser(vi.width, vi.height, _fontname, _size*8)
-   // GenericVideoFilter(_child), antialiaser(vi.width, vi.height, "Arial", 192),
+// GenericVideoFilter(_child), antialiaser(vi.width, vi.height, "Arial", 192),
+ : GenericVideoFilter(_child), scroll(_scroll), offset(_offset), x(_x), y(_y), size(_size*8),
+   antialiaser(vi.width, vi.height, _fontname, _size*8,
+               vi.IsYUV() ? RGB2YUV(_textcolor) : _textcolor,
+               vi.IsYUV() ? RGB2YUV(_halocolor) : _halocolor )
 {
   if ((x==-1) ^ (y==-1))
 	env->ThrowError("ShowFrameNumber: both x and y position must be specified");
-
-  if (vi.IsYUV()) {
-    textcolor = RGB2YUV(_textcolor);
-    halocolor = RGB2YUV(_halocolor);
-  } else {
-    textcolor = _textcolor;
-    halocolor = _halocolor;
-  }
 }
 
 
@@ -452,7 +489,7 @@ PVideoFrame ShowFrameNumber::GetFrame(int n, IScriptEnvironment* env) {
   }
   GdiFlush();
 
-  antialiaser.Apply(vi, &frame, frame->GetPitch(), textcolor, halocolor);
+  antialiaser.Apply(vi, &frame, frame->GetPitch());
 
   return frame;
 }
@@ -485,7 +522,10 @@ AVSValue __cdecl ShowFrameNumber::Create(AVSValue args, void*, IScriptEnvironmen
 
 ShowSMPTE::ShowSMPTE(PClip _child, double _rate, const char* offset, int _offset_f, int _x, int _y, const char _fontname[],
 					 int _size, int _textcolor, int _halocolor, IScriptEnvironment* env)
-  : GenericVideoFilter(_child), x(_x), y(_y), antialiaser(vi.width, vi.height, _fontname, _size*8)
+  : GenericVideoFilter(_child), x(_x), y(_y),
+    antialiaser(vi.width, vi.height, _fontname, _size*8,
+                vi.IsYUV() ? RGB2YUV(_textcolor) : _textcolor,
+                vi.IsYUV() ? RGB2YUV(_halocolor) : _halocolor )
 {
   int off_f, off_sec, off_min, off_hour;
 
@@ -493,12 +533,10 @@ ShowSMPTE::ShowSMPTE(PClip _child, double _rate, const char* offset, int _offset
     rate = 24;
     dropframe = false;
   } 
-//  Need to cogitate with the guys about this
-//  gotta drop 86.3 counts per hour
-//  else if (_rate > 23.975 && _rate < 23.977) { // Pulldown drop frame rate
-//    rate = 24;
-//    dropframe = true;
-//  } 
+  else if (_rate > 23.975 && _rate < 23.977) { // Pulldown drop frame rate
+    rate = 24;
+    dropframe = true;
+  } 
   else if (_rate == 25) {
     rate = 25;
     dropframe = false;
@@ -512,15 +550,8 @@ ShowSMPTE::ShowSMPTE(PClip _child, double _rate, const char* offset, int _offset
     dropframe = true;
   } 
   else {
-    env->ThrowError("ShowSMPTE: rate argument must be 24, 25, 30, or 29.97");
-//    env->ThrowError("ShowSMPTE: rate argument must be 23.976, 24, 25, 30, or 29.97");
-  }
-  if (vi.IsYUV()) {
-    textcolor = RGB2YUV(_textcolor);
-    halocolor = RGB2YUV(_halocolor);
-  } else {
-    textcolor = _textcolor;
-    halocolor = _halocolor;
+//    env->ThrowError("ShowSMPTE: rate argument must be 24, 25, 30, or 29.97");
+    env->ThrowError("ShowSMPTE: rate argument must be 23.976, 24, 25, 30, or 29.97");
   }
 
   if (offset) {
@@ -544,14 +575,22 @@ ShowSMPTE::ShowSMPTE(PClip _child, double _rate, const char* offset, int _offset
 	if (off_f >= rate)
 	  env->ThrowError("ShowSMPTE:  make sure that the number of frames in the offset is in the range 0..%d", rate-1);
 
-	int c = 0;
+	offset_f = off_f + rate*(off_sec + 60*off_min + 3600*off_hour);
 	if (dropframe) {
-	  c = off_min + 60*off_hour;  // number of drop events
-	  c -= c/10; // less non-drop events on 10 minutes
-	  c *=2; // drop 2 frames per drop event
+	  if (rate == 30) {
+		int c = 0;
+		c = off_min + 60*off_hour;  // number of drop events
+		c -= c/10; // less non-drop events on 10 minutes
+		c *=2; // drop 2 frames per drop event
+		offset_f -= c;
+	  }
+	  else if (rate == 24) {
+//  Need to cogitate with the guys about this
+//  gotta drop 86.3 counts per hour. So until
+//  a proper formula is found, just wing it!
+		offset_f -= 2 * ((offset_f+1001)/2002);
+	  }
 	}
-	
-	offset_f = off_f + rate*(off_sec + 60*off_min + 3600*off_hour) - c;
   }
   else {
 	offset_f = _offset_f;
@@ -568,12 +607,18 @@ PVideoFrame __stdcall ShowSMPTE::GetFrame(int n, IScriptEnvironment* env)
   env->MakeWritable(&frame);
 
   if (dropframe) {
-  // at 10:00, 20:00, 30:00, etc. nothing should happen if offset=0
-    int high = n / 17982;
-    int low = n % 17982;
-    if (low>=2)
-      low += 2 * ((low-2) / 1798);
-    n = high * 18000 + low;
+    if (rate == 30) {
+	// at 10:00, 20:00, 30:00, etc. nothing should happen if offset=0
+	  int high = n / 17982;
+	  int low = n % 17982;
+	  if (low>=2)
+		low += 2 * ((low-2) / 1798);
+	  n = high * 18000 + low;
+	}
+	else if (rate == 24) {
+//  Needs some cogitating
+	  n += 2 * ((n+1001)/2002);
+	}
   }
 
   int frames = n % rate;
@@ -591,7 +636,7 @@ PVideoFrame __stdcall ShowSMPTE::GetFrame(int n, IScriptEnvironment* env)
   TextOut(hdc, x*8, y*8-48, text, strlen(text));
   GdiFlush();
 
-  antialiaser.Apply(vi, &frame, frame->GetPitch(), textcolor, halocolor);
+  antialiaser.Apply(vi, &frame, frame->GetPitch());
 
   return frame;
 }
@@ -628,17 +673,11 @@ Subtitle::Subtitle( PClip _child, const char _text[], int _x, int _y, int _first
                     int _lastframe, const char _fontname[], int _size, int _textcolor, 
                     int _halocolor, int _align, int _spc )
  : GenericVideoFilter(_child), antialiaser(0), text(_text), x(_x), y(_y), 
-   firstframe(_firstframe), lastframe(_lastframe), fontname(MyStrdup(_fontname)), size(_size*8)
+   firstframe(_firstframe), lastframe(_lastframe), fontname(MyStrdup(_fontname)), size(_size*8),
+   textcolor(vi.IsYUV() ? RGB2YUV(_textcolor) : _textcolor),
+   halocolor(vi.IsYUV() ? RGB2YUV(_halocolor) : _halocolor),
+   align(_align), spc(_spc)
 {
-  if (vi.IsYUV()) {
-    textcolor = RGB2YUV(_textcolor);
-    halocolor = RGB2YUV(_halocolor);
-  } else {
-    textcolor = _textcolor;
-    halocolor = _halocolor;
-  }
- align = _align;
- spc = _spc;
 }
 
 
@@ -658,7 +697,7 @@ PVideoFrame Subtitle::GetFrame(int n, IScriptEnvironment* env)
   if (n >= firstframe && n <= lastframe) {
     if (!antialiaser)
       InitAntialiaser();
-    antialiaser->Apply(vi, &frame, frame->GetPitch(), textcolor, halocolor);
+    antialiaser->Apply(vi, &frame, frame->GetPitch());
   } else {
     // if we get far enough away from the frames we're supposed to
     // subtitle, then junk the buffered drawing information
@@ -708,7 +747,7 @@ AVSValue __cdecl Subtitle::Create(AVSValue args, void*, IScriptEnvironment* env)
 
 void Subtitle::InitAntialiaser() 
 {
-  antialiaser = new Antialiaser(vi.width, vi.height, fontname, size);
+  antialiaser = new Antialiaser(vi.width, vi.height, fontname, size, textcolor, halocolor);
 
   HDC hdcAntialias = antialiaser->GetDC();
 
@@ -750,7 +789,7 @@ void Subtitle::InitAntialiaser()
 
 FilterInfo::FilterInfo( PClip _child)
 : GenericVideoFilter(_child),
-antialiaser(vi.width, vi.height, "Courier New", 128) {
+antialiaser(vi.width, vi.height, "Courier New", 128, vi.IsYUV() ? 0xD21092 : 0xFFFF00, vi.IsYUV() ? 0x108080 : 0) {
 }
 
 
@@ -866,7 +905,7 @@ PVideoFrame FilterInfo::GetFrame(int n, IScriptEnvironment* env)
     env->MakeWritable(&frame);
     BYTE* dstp = frame->GetWritePtr();
     int dst_pitch = frame->GetPitch();
-    antialiaser.Apply(vi, &frame, dst_pitch, vi.IsYUV() ? 0xD21092 : 0xFFFF00, vi.IsYUV() ? 0x108080 : 0 );
+    antialiaser.Apply(vi, &frame, dst_pitch );
 
   return frame;
 }
@@ -896,7 +935,7 @@ Compare::Compare(PClip _child1, PClip _child2, const char* channels, const char 
     child2(_child2),
     log(NULL),
     show_graph(_show_graph),
-    antialiaser(vi.width, vi.height, "Courier New", 128),
+    antialiaser(vi.width, vi.height, "Courier New", 128, vi.IsYUV() ? 0xD21092 : 0xFFFF00, vi.IsYUV() ? 0x108080 : 0),
     framecount(0)
 {
   const VideoInfo& vi2 = child2->GetVideoInfo();
@@ -1182,7 +1221,7 @@ comp_loopx:
     env->MakeWritable(&f1);
     BYTE* dstp = f1->GetWritePtr();
     int dst_pitch = f1->GetPitch();
-    antialiaser.Apply( vi, &f1, dst_pitch, vi.IsYUV() ? 0xD21092 : 0xFFFF00, vi.IsYUV() ? 0x108080 : 0 );
+    antialiaser.Apply( vi, &f1, dst_pitch );
 
     if (show_graph) {
       // original idea by Marc_FD
@@ -1291,15 +1330,15 @@ bool GetTextBoundingBox( const char* text, const char* fontname, int size, bool 
 void ApplyMessage( PVideoFrame* frame, const VideoInfo& vi, const char* message, int size, 
                    int textcolor, int halocolor, int bgcolor, IScriptEnvironment* env ) 
 {
-  Antialiaser antialiaser(vi.width, vi.height, "Arial", size);
-  HDC hdcAntialias = antialiaser.GetDC();
-  RECT r = { 4*8, 4*8, (vi.width-4)*8, (vi.height-4)*8 };
-  DrawText(hdcAntialias, message, lstrlen(message), &r, DT_NOPREFIX|DT_CENTER);
-  GdiFlush();
   if (vi.IsYUV()) {
     textcolor = RGB2YUV(textcolor);
     halocolor = RGB2YUV(halocolor);
   }
-  antialiaser.Apply(vi, frame, (*frame)->GetPitch(), textcolor, halocolor);
+  Antialiaser antialiaser(vi.width, vi.height, "Arial", size, textcolor, halocolor);
+  HDC hdcAntialias = antialiaser.GetDC();
+  RECT r = { 4*8, 4*8, (vi.width-4)*8, (vi.height-4)*8 };
+  DrawText(hdcAntialias, message, lstrlen(message), &r, DT_NOPREFIX|DT_CENTER);
+  GdiFlush();
+  antialiaser.Apply(vi, frame, (*frame)->GetPitch());
 }
 
