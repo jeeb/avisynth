@@ -71,6 +71,7 @@ class RGBAdjust : public GenericVideoFilter
 public:
   RGBAdjust(PClip _child, double r,  double g,  double b,  double a,
                           double rb, double gb, double bb, double ab,
+                          double rg, double gg, double bg, double ag,
                           bool _analyze, IScriptEnvironment* env);
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
   static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env);
