@@ -104,7 +104,7 @@ PVideoFrame __stdcall Mask::GetFrame(int n, IScriptEnvironment* env)
 	const int myx = vi.width;
 	const int myy = vi.height;
 
-	__declspec(align(8)) static __int64 rgb2lum = ((__int64)cyb << 32) | (cyg << 16) | cyr;
+	__declspec(align(8)) static __int64 rgb2lum = ((__int64)cyr << 32) | (cyg << 16) | cyb;
 	__declspec(align(8)) static __int64 alpha_mask=0x00ffffff00ffffff;
 	__declspec(align(8)) static __int64 color_mask=0xff000000ff000000;
 /*
@@ -119,55 +119,38 @@ PVideoFrame __stdcall Mask::GetFrame(int n, IScriptEnvironment* env)
   }
 */
  		__asm {
-		push        ebx
 		mov			edi, src1p
 		mov			esi, src2p
-		mov			ebx, myy
-		movq		mm1,rgb2lum
+		mov			eax, myy
+		movq		mm1, rgb2lum
 		movq		mm2, alpha_mask
 		movq		mm3, color_mask
 		xor         ecx, ecx
-		pxor		mm0,mm0
+		pxor		mm0, mm0
 		mov         edx, myx
+		align		16
+mask_mmxloop:
+			movd		mm6, [esi + ecx*4] ; pipeline in next mask pixel RGB
+			 movd		mm4, [edi + ecx*4]	;get color RGBA
+			punpcklbw	mm6,mm0				;mm6= 00aa|00rr|00gg|00bb [src2]
+			pmaddwd		mm6,mm1				;partial monochrome result
+			punpckldq	mm5,mm6				;ready to add
+			paddd		mm6, mm5			;32 bit result
+			psrlq		mm6, 23				;8 bit result
+			 pand		mm4, mm2			;strip out old alpha
+			pand		mm6, mm3			;clear any possible junk
+			 inc		ecx					;point to next - aka loop counter
+			por			mm6, mm4			;merge new alpha and original color
+			 cmp		ecx, edx
+			movd		[edi+ecx*4-4],mm6	;store'em where they belong (at ecx-1)
+			 jnz		mask_mmxloop
 
-		mask_mmxloop:
-
-						movd		mm6, [esi + ecx*4] ; pipeline in next mask pixel RGB
-
-						movq		mm5,mm1					;get rgb2lum
-
-						movd		mm4, [edi + ecx*4]	;get color RGBA
-
-						punpcklbw		mm6,mm0		;mm6= 00aa|00bb|00gg|00rr [src2]
-						pmaddwd			mm6,mm5		;partial monochrome result
-
-						mov		eax, ecx		;remember this pointer for the queue... aka pipline overhead
-
-						inc         ecx				;point to next - aka loop counter
-
-						punpckldq		mm5,mm6		;ready to add
-
-						paddd			mm6, mm5			;32 bit result
-						psrlq			mm6, 23				;8 bit result
-
-						pand			mm4, mm2			;strip out old alpha
-						pand			mm6, mm3			;clear any possible junk
-
-						cmp			ecx, edx
-
-						por				mm6, mm4			;merge new alpha and original color
-						movd        [edi + eax*4],mm6		;store'em where they belong (at ecx-1)
-
-				jnz         mask_mmxloop
-
-		add			edi, src1_pitch
-		add			esi, src2_pitch
-		mov       edx, myx
-		xor         ecx, ecx
-		dec		ebx
+		add		edi, src1_pitch
+		add		esi, src2_pitch
+		xor		ecx, ecx
+		dec		eax
 		jnz		mask_mmxloop
 		emms
-		pop     ebx
 		}
  return src1;
 }
