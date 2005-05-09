@@ -46,6 +46,7 @@
 ********************************************************************/
 
 AVSFunction Fps_filters[] = {
+  { "AssumeScaledFPS", "c[multiplier]i[divisor]i[sync_audio]b", AssumeScaledFPS::Create },
   { "AssumeFPS", "ci[]i[sync_audio]b", AssumeFPS::Create },      // dst framerate, sync audio?
   { "AssumeFPS", "cf[sync_audio]b", AssumeFPS::CreateFloat },    // dst framerate, sync audio?
   { "AssumeFPS", "cc[sync_audio]b", AssumeFPS::CreateFromClip }, // clip with dst framerate, sync audio?
@@ -59,6 +60,36 @@ AVSFunction Fps_filters[] = {
 };
 
 
+
+
+
+
+/******************************************
+ *******   AssumeScaledFPS Filters   ******
+ ******************************************/
+
+AssumeScaledFPS::AssumeScaledFPS(PClip _child, int multiplier, int divisor, bool sync_audio, IScriptEnvironment* env)
+ : GenericVideoFilter(_child)
+{
+  if (divisor <= 0)
+    env->ThrowError("AssumeScaledFPS: Divisor must be positive.");
+
+  if (multiplier <= 0)
+    env->ThrowError("AssumeScaledFPS: Multiplier must be positive.");
+
+  if (sync_audio) 
+  {
+    vi.audio_samples_per_second = MulDiv(vi.audio_samples_per_second, multiplier, divisor);
+  }
+  vi.MulDivFPS((unsigned)multiplier, (unsigned)divisor);
+}
+
+
+AVSValue __cdecl AssumeScaledFPS::Create(AVSValue args, void*, IScriptEnvironment* env) 
+{
+  return new AssumeScaledFPS( args[0].AsClip(), args[1].AsInt(1), 
+                        args[2].AsInt(1), args[3].AsBool(false), env );
+}
 
 
 

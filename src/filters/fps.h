@@ -40,6 +40,17 @@
 /********************************************************************
 ********************************************************************/
 
+class AssumeScaledFPS : public GenericVideoFilter 
+/**
+  * Class to change the framerate without changing the frame count
+ **/
+{
+public:
+  AssumeScaledFPS(PClip _child, int multiplier, int divisor, bool sync_audio, IScriptEnvironment* env);
+  static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env);
+};
+
+
 class AssumeFPS : public GenericVideoFilter 
 /**
   * Class to change the framerate without changing the frame count
