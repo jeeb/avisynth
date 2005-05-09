@@ -43,7 +43,7 @@
 ********************************************************************/
 
 AVSFunction Edit_filters[] = {  
-  { "Trim", "cii", Trim::Create },                          // first frame, last frame
+  { "Trim", "cii[]b", Trim::Create },                       // first frame, last frame[, pad audio]
   { "FreezeFrame", "ciii", FreezeFrame::Create },           // first frame, last frame, source frame
   { "DeleteFrame", "ci", DeleteFrame::Create },             // frame #
   { "DuplicateFrame", "ci", DuplicateFrame::Create },       // frame #
@@ -73,20 +73,43 @@ AVSFunction Edit_filters[] = {
  *******   Trim Filter   ******
  ******************************/
 
-Trim::Trim(int _firstframe, int _lastframe, PClip _child, IScriptEnvironment* env) : GenericVideoFilter(_child) 
+Trim::Trim(int _firstframe, int _lastframe, bool _padaudio, PClip _child, IScriptEnvironment* env) : GenericVideoFilter(_child) 
 {
+  int lastframe;
+
   if (!vi.HasVideo())
     env->ThrowError("Trim: Cannot trim if there is no video.");
 
-  if (_lastframe == 0) _lastframe = vi.num_frames-1;
   firstframe = min(max(_firstframe, 0), vi.num_frames-1);
-  int lastframe=_lastframe;
-  if (_lastframe<0)
+
+  if (_lastframe == 0)
+    lastframe = vi.num_frames-1;
+  else if (_lastframe < 0)
     lastframe = firstframe - _lastframe - 1;
+  else
+    lastframe = _lastframe;
+
   lastframe = min(max(lastframe, firstframe), vi.num_frames-1);
-  audio_offset = vi.AudioSamplesFromFrames(firstframe);
   vi.num_frames = lastframe+1 - firstframe;
-  vi.num_audio_samples = vi.AudioSamplesFromFrames(lastframe+1) - audio_offset;
+
+  audio_offset = vi.AudioSamplesFromFrames(firstframe);
+  if (_padaudio)
+    vi.num_audio_samples = vi.AudioSamplesFromFrames(lastframe+1) - audio_offset;
+  else {
+	__int64 samples;
+
+    if (_lastframe == 0)
+      samples = vi.num_audio_samples;
+	else {
+	  samples = vi.AudioSamplesFromFrames(lastframe+1);
+	  if (samples > vi.num_audio_samples)
+		samples = vi.num_audio_samples;
+	}
+    if (audio_offset >= samples)
+      vi.num_audio_samples = 0;
+    else
+      vi.num_audio_samples = samples - audio_offset;
+  }
 }
 
 
@@ -110,7 +133,7 @@ bool Trim::GetParity(int n)
 
 AVSValue __cdecl Trim::Create(AVSValue args, void*, IScriptEnvironment* env) 
 {
-  return new Trim(args[1].AsInt(), args[2].AsInt(), args[0].AsClip(), env);
+  return new Trim(args[1].AsInt(), args[2].AsInt(), args[3].AsBool(true), args[0].AsClip(), env);
 }
 
 

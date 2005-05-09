@@ -47,7 +47,7 @@ class Trim : public GenericVideoFilter
  **/
 {
 public:
-  Trim(int _firstframe, int _lastframe, PClip _child, IScriptEnvironment* env);
+  Trim(int _firstframe, int _lastframe, bool _padaudio, PClip _child, IScriptEnvironment* env);
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
   void __stdcall GetAudio(void* buf, __int64 start, __int64 count, IScriptEnvironment* env);
   bool __stdcall GetParity(int n);
