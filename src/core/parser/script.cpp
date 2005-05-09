@@ -47,6 +47,8 @@
 ********************************************************************/
 
 AVSFunction Script_functions[] = {
+  { "muldiv", "iii", Muldiv },
+
   { "floor", "f", Floor },
   { "ceil", "f", Ceil },
   { "round", "f", Round },
@@ -294,6 +296,8 @@ AVSValue Import(AVSValue args, void*, IScriptEnvironment* env)
 
 AVSValue SetMemoryMax(AVSValue args, void*, IScriptEnvironment* env) { return env->SetMemoryMax(args[0].AsInt()); }
 AVSValue SetWorkingDir(AVSValue args, void*, IScriptEnvironment* env) { return env->SetWorkingDir(args[0].AsString()); }
+
+AVSValue Muldiv(AVSValue args, void*,IScriptEnvironment* env) { return int(MulDiv(args[0].AsInt(), args[1].AsInt(), args[2].AsInt())); }
 
 AVSValue Floor(AVSValue args, void*,IScriptEnvironment* env) { return int(floor(args[0].AsFloat())); }
 AVSValue Ceil(AVSValue args, void*, IScriptEnvironment* env) { return int(ceil(args[0].AsFloat())); }
