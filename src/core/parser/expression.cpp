@@ -136,21 +136,65 @@ void ExpExceptionTranslator::ChainEval(AVSValue &av, IScriptEnvironment* env)
 }
 
 
+#if 0
 /* Damn! I can't call Evaluate directly from here because it returns an object
  * I have to call an interlude and pass an alias to the return value through.
  */
 void ExpExceptionTranslator::TrapEval(AVSValue &av, unsigned &excode, IScriptEnvironment* env) 
 {
 // XPsp2 bug with this
-#if 1
   __try {
     ChainEval(av, env);
   }
   __except (excode = _exception_code(), EXCEPTION_CONTINUE_SEARCH ) { }
-#else
-  ChainEval(av, env);
-#endif
 }
+
+#else
+  
+/* Damn! XPsp2 barfs at my use of SEH. So do my own exception handling routine.
+ * Simple handler snaffles the exception code and stashes it where my extended
+ * EXCEPTION_REGISTRATION record retarg pointer point, then just continue the
+ * search. 
+ */
+EXCEPTION_DISPOSITION __cdecl _Exp_except_handler(struct _EXCEPTION_RECORD *ExceptionRecord, void * EstablisherFrame,
+												  struct _CONTEXT *ContextRecord, void * DispatcherContext)
+{
+  struct Est_Frame {  // My extended EXCEPTION_REGISTRATION record
+	void	  *prev;
+	void	  *handler;
+	unsigned  *retarg;	  // pointer where to stash exception code
+  };
+
+  if (ExceptionRecord->ExceptionFlags == 0)	  // First pass?
+	*(((struct Est_Frame *)EstablisherFrame)->retarg) = ExceptionRecord->ExceptionCode;
+
+  return ExceptionContinueSearch;
+}
+
+
+/* Damn! XPsp2 barfs at my use of SEH, so do my own exception handling
+ * Having to do this is pure filth!
+ */
+void ExpExceptionTranslator::TrapEval(AVSValue &av, unsigned &excode, IScriptEnvironment* env) 
+{
+  DWORD handler = (DWORD)_Exp_except_handler;
+ 
+  __asm { // Build EXCEPTION_REGISTRATION record:
+  push	excode		// Address of return argument
+  push	handler	    // Address of handler function
+  push	FS:[0]		// Address of previous handler
+  mov	FS:[0],esp	// Install new EXCEPTION_REGISTRATION
+  }
+
+  ChainEval(av, env);
+
+  __asm { // Remove our EXCEPTION_REGISTRATION record
+  mov	eax,[esp]	// Get pointer to previous record
+  mov	FS:[0], eax	// Install previous record
+  add	esp, 12		// Clean our EXCEPTION_REGISTRATION off stack
+  }
+}
+#endif
 
 
 /* Damn! You can't mix C++ exception handling and SEH in the one routine.

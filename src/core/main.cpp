@@ -473,10 +473,10 @@ bool CAVIFileSynth::DelayInit() {
  int fp_state = _control87( 0, 0 );
  _control87( FP_STATE, 0xffffffff );
  if (szScriptName) {
-    try {
 #ifndef _DEBUG
-      try {
+    try {
 #endif
+      try {
         // create a script environment and load the script into it
         env = CreateScriptEnvironment();
         if (!env) return false;
@@ -499,7 +499,6 @@ bool CAVIFileSynth::DelayInit() {
           throw AvisynthError("Avisynth error: YV12 images for output must have a width divisible by 4 (use crop)!");
         if (vi->IsYUY2()&&(vi->width&3))
           throw AvisynthError("Avisynth error: YUY2 images for output must have a width divisible by 4 (use crop)!");
-//#ifndef _DEBUG
       }
       catch (AvisynthError error) {
         error_msg = error.msg;
@@ -512,7 +511,7 @@ bool CAVIFileSynth::DelayInit() {
           filter_graph = 0;
         }
       }
-//#endif
+
       if (szScriptName)
         delete[] szScriptName;
       szScriptName = 0;
@@ -760,15 +759,26 @@ void CAVIStreamSynth::ReadFrame(void* lpBuffer, int n) {
   PVideoFrame frame = parent->filter_graph->GetFrame(n, parent->env);
   if (!frame)
     parent->env->ThrowError("Avisynth error: generated video frame was nil (this is a bug)");
+
 //  VideoInfo vi = parent->filter_graph->GetVideoInfo();
-  const int pitch = frame->GetPitch();
+  const int pitch    = frame->GetPitch();
   const int row_size = frame->GetRowSize();
+  const int height   = frame->GetHeight();
+
   // BMP scanlines are always dword-aligned
   const int out_pitch = (row_size+3) & -4;
-  BitBlt((BYTE*)lpBuffer, out_pitch, frame->GetReadPtr(), pitch, row_size, frame->GetHeight());
-  // TODO: Make the following more eyepleasing
-  BitBlt((BYTE*)lpBuffer+(out_pitch*frame->GetHeight()), out_pitch/2, frame->GetReadPtr(PLANAR_V), frame->GetPitch(PLANAR_V), frame->GetRowSize(PLANAR_V), frame->GetHeight(PLANAR_V));
-  BitBlt((BYTE*)lpBuffer+(out_pitch*frame->GetHeight()+frame->GetHeight(PLANAR_U)*out_pitch/2), out_pitch/2, frame->GetReadPtr(PLANAR_U), frame->GetPitch(PLANAR_U), frame->GetRowSize(PLANAR_V), frame->GetHeight(PLANAR_U));
+
+  BitBlt((BYTE*)lpBuffer, out_pitch, frame->GetReadPtr(), pitch, row_size, height);
+
+  BitBlt((BYTE*)lpBuffer + (out_pitch*height),
+         out_pitch/2,               frame->GetReadPtr(PLANAR_V),
+		 frame->GetPitch(PLANAR_V), frame->GetRowSize(PLANAR_V),
+		 frame->GetHeight(PLANAR_V) );
+
+  BitBlt((BYTE*)lpBuffer + (out_pitch*height + frame->GetHeight(PLANAR_V)*out_pitch/2),
+         out_pitch/2,               frame->GetReadPtr(PLANAR_U),
+		 frame->GetPitch(PLANAR_U), frame->GetRowSize(PLANAR_U),
+		 frame->GetHeight(PLANAR_U) );
 }
 
 
