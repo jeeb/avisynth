@@ -147,6 +147,10 @@ SOURCE=.\core\parser\tokenizer.h
 # End Group
 # Begin Source File
 
+SOURCE=.\core\alignplanar.cpp
+# End Source File
+# Begin Source File
+
 SOURCE=.\core\avisynth.cpp
 # End Source File
 # Begin Source File

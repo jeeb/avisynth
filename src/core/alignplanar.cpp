@@ -32,16 +32,41 @@
 // which is not derived from or based on Avisynth, such as 3rd-party filters,
 // import and export plugins, or graphical user interfaces.
 
-// TCPDeliver (c) 2004 by Klaus Post
+// Alignplanar
+// Copyright (c) Klaus Post 2001 - 2005
 
-#include "TCPClient.h"
-#include "TCPServer.h"
+/******************************
+ *******   AlignPlanar   ******
+ *****************************/
+
+#include "stdafx.h"
+#include "avisynth.h"
 
 
-extern "C" __declspec(dllexport) const char* __stdcall AvisynthPluginInit2(IScriptEnvironment* env)
+AlignPlanar::AlignPlanar(PClip _clip) : GenericVideoFilter(_clip) {}
+
+PVideoFrame __stdcall AlignPlanar::GetFrame(int n, IScriptEnvironment* env) {
+  PVideoFrame src = child->GetFrame(n, env);
+  if (!(src->GetRowSize(PLANAR_Y_ALIGNED)&(FRAME_ALIGN-1))) return src;
+  if (!(src->GetRowSize(PLANAR_U_ALIGNED)&(FRAME_ALIGN-1))) return src; // Ensure that chroma is also aligned.
+  PVideoFrame dst = env->NewVideoFrame(vi);
+  if ((dst->GetRowSize(PLANAR_Y_ALIGNED)&(FRAME_ALIGN-1))) 
+    env->ThrowError("AlignPlanar: [internal error] Returned frame was not aligned!");
+
+
+  env->BitBlt(dst->GetWritePtr(), dst->GetPitch(), src->GetReadPtr(), src->GetPitch(), src->GetRowSize(), src->GetHeight());
+  env->BitBlt(dst->GetWritePtr(PLANAR_V), dst->GetPitch(PLANAR_V), src->GetReadPtr(PLANAR_V), src->GetPitch(PLANAR_V), src->GetRowSize(PLANAR_V), src->GetHeight(PLANAR_V));
+  env->BitBlt(dst->GetWritePtr(PLANAR_U), dst->GetPitch(PLANAR_U), src->GetReadPtr(PLANAR_U), src->GetPitch(PLANAR_U), src->GetRowSize(PLANAR_U), src->GetHeight(PLANAR_U));
+  return dst;
+}
+
+
+PClip AlignPlanar::Create(PClip clip) 
 {
-    env->AddFunction("TCPServer", "c[port]i", Create_TCPServer, 0);
-    env->AddFunction("TCPSource", "s[port]i[compression]s", Create_TCPClient, 0);
-    return "TCPDeliver for AviSynth";
+  if (!clip->GetVideoInfo().IsPlanar()) {  // If not planar, already ok.
+    return clip;
+  }
+  else 
+    return new AlignPlanar(clip);
 }
 

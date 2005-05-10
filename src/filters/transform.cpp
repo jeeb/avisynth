@@ -467,36 +467,7 @@ AVSValue __cdecl AddBorders::Create(AVSValue args, void*, IScriptEnvironment* en
 
 
 
-/******************************
- *******   AlignPlanar   ******
- *****************************/
 
-
-AlignPlanar::AlignPlanar(PClip _clip) : GenericVideoFilter(_clip) {}
-
-PVideoFrame __stdcall AlignPlanar::GetFrame(int n, IScriptEnvironment* env) {
-  PVideoFrame src = child->GetFrame(n, env);
-  if (!(src->GetRowSize(PLANAR_U_ALIGNED)&(FRAME_ALIGN-1))) return src; // If chroma is aligned luma will be too
-  PVideoFrame dst = env->NewVideoFrame(vi);
-  if ((dst->GetRowSize(PLANAR_Y_ALIGNED)&(FRAME_ALIGN-1))) 
-    env->ThrowError("AlignPlanar: [internal error] Returned frame was not aligned!");
-
-
-  BitBlt(dst->GetWritePtr(), dst->GetPitch(), src->GetReadPtr(), src->GetPitch(), src->GetRowSize(), src->GetHeight());
-  BitBlt(dst->GetWritePtr(PLANAR_V), dst->GetPitch(PLANAR_V), src->GetReadPtr(PLANAR_V), src->GetPitch(PLANAR_V), src->GetRowSize(PLANAR_V), src->GetHeight(PLANAR_V));
-  BitBlt(dst->GetWritePtr(PLANAR_U), dst->GetPitch(PLANAR_U), src->GetReadPtr(PLANAR_U), src->GetPitch(PLANAR_U), src->GetRowSize(PLANAR_U), src->GetHeight(PLANAR_U));
-  return dst;
-}
-
-
-PClip AlignPlanar::Create(PClip clip) 
-{
-  if (!clip->GetVideoInfo().IsPlanar()) {  // If not planar, already ok.
-    return clip;
-  }
-  else 
-    return new AlignPlanar(clip);
-}
 
 
 
