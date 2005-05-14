@@ -217,7 +217,7 @@ PVideoFrame __stdcall Cache::GetFrame(int n, IScriptEnvironment* env)
 		  foundframe = true;
 		}
 		// Check if it is out of scope
-		else if (abs(h_video_frames[i]->frame_number-n)>h_radius) {
+		else if (abs(h_video_frames[i]->frame_number-n)>=h_total_frames) {
 		  h_video_frames[i]->status |= CACHE_ST_DELETEME;
 		  if (!(h_video_frames[i]->status & CACHE_ST_HAS_BEEN_RELEASED)) {  // Has this framebuffer been released?
 			UnlockVFB(h_video_frames[i]);  // We can now release this vfb.
