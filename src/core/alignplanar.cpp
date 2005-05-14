@@ -46,17 +46,22 @@
 AlignPlanar::AlignPlanar(PClip _clip) : GenericVideoFilter(_clip) {}
 
 PVideoFrame __stdcall AlignPlanar::GetFrame(int n, IScriptEnvironment* env) {
-  PVideoFrame src = child->GetFrame(n, env);
-  if (!(src->GetRowSize(PLANAR_Y_ALIGNED)&(FRAME_ALIGN-1))) return src;
-  if (!(src->GetRowSize(PLANAR_U_ALIGNED)&(FRAME_ALIGN-1))) return src; // Ensure that chroma is also aligned.
-  PVideoFrame dst = env->NewVideoFrame(vi);
-  if ((dst->GetRowSize(PLANAR_Y_ALIGNED)&(FRAME_ALIGN-1))) 
-    env->ThrowError("AlignPlanar: [internal error] Returned frame was not aligned!");
+  int plane = (env->PlanarChromaAlignment(IScriptEnvironment::PlanarChromaAlignmentTest)) ? PLANAR_U_ALIGNED : PLANAR_Y_ALIGNED;
 
+  PVideoFrame src = child->GetFrame(n, env);
+
+  if (!(src->GetRowSize(plane)&(FRAME_ALIGN-1)))
+    return src;
+
+  PVideoFrame dst = env->NewVideoFrame(vi);
+
+  if ((dst->GetRowSize(plane)&(FRAME_ALIGN-1))) 
+    env->ThrowError("AlignPlanar: [internal error] Returned frame was not aligned!");
 
   env->BitBlt(dst->GetWritePtr(), dst->GetPitch(), src->GetReadPtr(), src->GetPitch(), src->GetRowSize(), src->GetHeight());
   env->BitBlt(dst->GetWritePtr(PLANAR_V), dst->GetPitch(PLANAR_V), src->GetReadPtr(PLANAR_V), src->GetPitch(PLANAR_V), src->GetRowSize(PLANAR_V), src->GetHeight(PLANAR_V));
   env->BitBlt(dst->GetWritePtr(PLANAR_U), dst->GetPitch(PLANAR_U), src->GetReadPtr(PLANAR_U), src->GetPitch(PLANAR_U), src->GetRowSize(PLANAR_U), src->GetHeight(PLANAR_U));
+
   return dst;
 }
 

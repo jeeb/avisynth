@@ -708,6 +708,7 @@ public:
   int __stdcall SetWorkingDir(const char * newdir);
   __stdcall ~ScriptEnvironment();
   void* __stdcall ManageCache(int key, void* data);
+  bool __stdcall PlanarChromaAlignment(IScriptEnvironment::PlanarChromaAlignmentMode key);
 
 private:
 
@@ -736,11 +737,17 @@ private:
   bool LoadPluginsMatching(const char* pattern);
   void PrescanPlugins();
   void ExportFilters();
+  bool PlanarChromaAlignmentState;
 
 };
 
 
-ScriptEnvironment::ScriptEnvironment() : at_exit(This()), function_table(This()), global_var_table(0, 0) {
+ScriptEnvironment::ScriptEnvironment()
+  : at_exit(This()),
+    function_table(This()),
+	global_var_table(0, 0),
+	PlanarChromaAlignmentState(true){
+
   MEMORYSTATUS memstatus;
   GlobalMemoryStatus(&memstatus);
   // Minimum 16MB, otherwise available physical memory/4, no maximum
@@ -928,12 +935,18 @@ void ScriptEnvironment::ExportFilters()
 
 
 PVideoFrame ScriptEnvironment::NewPlanarVideoFrame(int width, int height, int align, bool U_first) {
-// Align UV planes, Y will follow
-  int UVpitch = ((width>>1)+align-1) / align * align;  // UV plane, width = 1/2 byte per pixel
-  int pitch = UVpitch<<1;  // Y plane, width = 1 byte per pixel
+  int UVpitch, pitch;
 
-//  int pitch = (width+align-1) / align * align;  // Y plane, width = 1 byte per pixel
-//  int UVpitch = pitch>>1;  // UV plane, width = 1/2 byte per pixel - can't align UV planes seperately.
+  if (PlanarChromaAlignmentState) {
+// Align UV planes, Y will follow
+	UVpitch = ((width>>1)+align-1) / align * align;  // UV plane, width = 1/2 byte per pixel
+	pitch = UVpitch<<1;  // Y plane, width = 1 byte per pixel
+  }
+  else {
+// Do legacy alignment
+	pitch = (width+align-1) / align * align;  // Y plane, width = 1 byte per pixel
+	UVpitch = pitch>>1;  // UV plane, width = 1/2 byte per pixel - can't align UV planes seperately.
+  }
 
   int size = pitch * height + UVpitch * height;
   VideoFrameBuffer* vfb = GetFrameBuffer(size+(FRAME_ALIGN*4));
@@ -1097,6 +1110,28 @@ void* ScriptEnvironment::ManageCache(int key, void* data){
     break;
   }
   return 0;
+}
+
+
+bool ScriptEnvironment::PlanarChromaAlignment(IScriptEnvironment::PlanarChromaAlignmentMode key){
+  bool oldPlanarChromaAlignmentState = PlanarChromaAlignmentState;
+
+  switch (key)
+  {
+  case IScriptEnvironment::PlanarChromaAlignmentOff:
+  {
+	PlanarChromaAlignmentState = false;
+    break;
+  }
+  case IScriptEnvironment::PlanarChromaAlignmentOn:
+  {
+	PlanarChromaAlignmentState = true;
+    break;
+  }
+  default:
+    break;
+  }
+  return oldPlanarChromaAlignmentState;
 }
 
 
