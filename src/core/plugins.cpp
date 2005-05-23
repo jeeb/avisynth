@@ -37,7 +37,7 @@
 
 #include "Error.h"    // which includes "internal.h"
 
-const char* loadplugin_prefix;
+const char* loadplugin_prefix = NULL;
 
 /********************************************************************
 * Native plugin support
@@ -60,11 +60,22 @@ static bool MyLoadLibrary(const char* filename, HMODULE* hmod, bool quiet, IScri
   HMODULE* loaded_plugins;
   try {
     loaded_plugins = (HMODULE*)env->GetVar("$Plugins$").AsString();
-  }
-  catch (...) {
-    loaded_plugins = new HMODULE[max_plugins];
-    memset(loaded_plugins, 0, max_plugins*sizeof(HMODULE));
-    env->SetGlobalVar("$Plugins$", (const char*)loaded_plugins);
+  }  // Tritical May 2005
+  catch (...) { // probably should be IScriptEnvironment::NotFound
+    HMODULE plugins[max_plugins]; // buffer to clone on stack
+
+    memset(plugins, 0, max_plugins*sizeof(HMODULE));
+    // Cheat and copy into SaveString buffer
+    env->SetGlobalVar("$Plugins$", env->SaveString((const char*)plugins, max_plugins*sizeof(HMODULE)));
+    try {
+        loaded_plugins = (HMODULE*)env->GetVar("$Plugins$").AsString();
+    }
+    catch(...) { // probably should be IScriptEnvironment::NotFound
+      if (!quiet)
+        env->ThrowError("LoadPlugin: unable to get plugin list $Plugins$, loading \"%s\"", filename);
+      return false;
+    }
+    // Register FreeLibraries(loaded_plugins) to be run at script close
     env->AtExit(FreeLibraries, loaded_plugins);
   }
   *hmod = LoadLibrary(filename);
@@ -85,13 +96,16 @@ static bool MyLoadLibrary(const char* filename, HMODULE* hmod, bool quiet, IScri
       int len = strlen(filename);
       int pos = len-strcspn(t_string, ".");
       int pos2 = len-strcspn(t_string, "\\");
+      free(t_string);  // Tritical May 2005
       strncat(result, filename+pos2, pos-pos2-1);
+      if (loadplugin_prefix) free((void*)loadplugin_prefix);  // Tritical May 2005
       loadplugin_prefix = _strdup(result);
       loaded_plugins[j] = *hmod;
       return true;
     }
   }
-  env->ThrowError("LoadPlugin: too many plugins loaded already (max. %d)", max_plugins);
+  if (!quiet)
+    env->ThrowError("LoadPlugin: too many plugins loaded already (max. %d)", max_plugins);
   return false;
 }
 
@@ -136,6 +150,7 @@ AVSValue LoadPlugin(AVSValue args, void* user_data, IScriptEnvironment* env) {
       }
     }
   }
+  if (loadplugin_prefix) free((void*)loadplugin_prefix);  // Tritical May 2005
   loadplugin_prefix = 0;
   return result ? AVSValue(result) : AVSValue();
 }
@@ -1092,7 +1107,7 @@ AVSValue LoadVirtualdubPlugin(AVSValue args, void*, IScriptEnvironment* env) {
   try {
     loaded_modules = (FilterModule*)env->GetVar("$LoadVirtualdubPlugin$").AsString();
   }
-  catch (...) {}
+  catch (...) {} // probably should be IScriptEnvironment::NotFound
 
   for (FilterModule* i = loaded_modules; i; i = i->next) {
     if (i->hInstModule == hmodule) {

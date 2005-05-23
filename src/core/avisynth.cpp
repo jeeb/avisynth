@@ -108,16 +108,34 @@ public:
   VideoFrame vf;
 };
 
-static LinkedVideoFrame* g_VideoFrame_recycle_bin = 0;
+class RecycleBin {  // Tritical May 2005
+public:
+	LinkedVideoFrame* g_VideoFrame_recycle_bin;
+	RecycleBin() : g_VideoFrame_recycle_bin(NULL) { };
+	~RecycleBin()
+	{
+		for (LinkedVideoFrame*i=g_VideoFrame_recycle_bin; i;)
+		{
+			LinkedVideoFrame* j = i->next;
+			operator delete(i);
+			i = j;
+		}
+	}
+};
+
+// Work still needed here, this implentation clears the heap
+// when the .DLL unloads. Should clean up on script close.
+
+static RecycleBin g_Bin;
 
 void* VideoFrame::operator new(unsigned) {
   // CriticalSection
-  for (LinkedVideoFrame* i = g_VideoFrame_recycle_bin; i; i = i->next)
+  for (LinkedVideoFrame* i = g_Bin.g_VideoFrame_recycle_bin; i; i = i->next)
     if (i->vf.refcount == 0)
       return &i->vf;
   LinkedVideoFrame* result = (LinkedVideoFrame*)::operator new(sizeof(LinkedVideoFrame));
-  result->next = g_VideoFrame_recycle_bin;
-  g_VideoFrame_recycle_bin = result;
+  result->next = g_Bin.g_VideoFrame_recycle_bin;
+  g_Bin.g_VideoFrame_recycle_bin = result;
   return &result->vf;
 }
 
@@ -282,6 +300,8 @@ public:
   ~FunctionTable() {
     while (local_functions) {
       LocalFunction* prev = local_functions->prev;
+	  free((void*)local_functions->name);  // Tritical May 2005
+	  free((void*)local_functions->param_types);
       delete local_functions;
       local_functions = prev;
     }
@@ -409,8 +429,8 @@ public:
     LocalFunction* f = new LocalFunction;
     const char* alt_name = 0;
     if (!prescanning) {
-      f->name = name;
-      f->param_types = params;
+      f->name = strdup(name);  // Tritical May 2005
+      f->param_types = strdup(params);
       f->apply = apply;
       f->user_data = user_data;
       f->prev = local_functions;
@@ -711,10 +731,13 @@ public:
   bool __stdcall PlanarChromaAlignment(IScriptEnvironment::PlanarChromaAlignmentMode key);
 
 private:
+  // Tritical May 2005
+  // Note order here!!
+  // AtExiter has functions which
+  // rely on StringDump elements.
+  StringDump string_dump;
 
   AtExiter at_exit;
-
-  StringDump string_dump;
 
   FunctionTable function_table;
 
@@ -853,7 +876,15 @@ const char* ScriptEnvironment::GetPluginDirectory()
     while (plugin_dir[l-1] == '\\')
       l--;
     plugin_dir[l]=0;
-    SetGlobalVar("$PluginDir$", AVSValue(plugin_dir));
+    SetGlobalVar("$PluginDir$", AVSValue(SaveString(plugin_dir)));  // Tritical May 2005
+	delete[] plugin_dir;
+	try {
+		plugin_dir = (char*)GetVar("$PluginDir$").AsString();
+	}
+	catch (...)
+	{
+		return 0;
+	}
   }
   return plugin_dir;
 }
@@ -1613,6 +1644,7 @@ void ScriptEnvironment::ThrowError(const char* fmt, ...) {
 
 
 IScriptEnvironment* __stdcall CreateScriptEnvironment(int version) {
+  if (loadplugin_prefix) free((void*)loadplugin_prefix);
   loadplugin_prefix = 0;
   if (version <= AVISYNTH_INTERFACE_VERSION)
     return new ScriptEnvironment;

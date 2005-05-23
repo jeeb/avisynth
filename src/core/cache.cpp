@@ -701,7 +701,7 @@ void Cache::ReleaseHintCache()
       if ( (h_video_frames[i]->status & CACHE_ST_USED) &&
 		  !(h_video_frames[i]->status & CACHE_ST_HAS_BEEN_RELEASED) )
         UnlockVFB(h_video_frames[i]);  // We can now release this vfb.
-      delete h_video_frames[i];
+		  delete h_video_frames[i];
 	  h_video_frames[i] = 0;
     }
     delete[] h_video_frames;
@@ -715,6 +715,15 @@ Cache::~Cache() {
   ReleaseHintCache();
   if (h_audiopolicy != CACHE_NOTHING)
     delete[] cache;
+
+  CachedVideoFrame *k, *j;
+  for (k = video_frames.next; k!=&video_frames;)
+  {
+	  j = k->next;
+	  if (k->vfb_locked) UnlockVFB(k);
+	  delete k;
+	  k = j;
+  }
 }
 
 AVSValue __cdecl Cache::Create_Cache(AVSValue args, void*, IScriptEnvironment* env) 
