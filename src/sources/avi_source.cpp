@@ -32,6 +32,12 @@
 // which is not derived from or based on Avisynth, such as 3rd-party filters,
 // import and export plugins, or graphical user interfaces.
 
+/*************************************************************
+ *                                                           *
+ *  WARNING !! This module has been excluded from the build  *
+ *  ========== because it is #include'd in source/source.cpp *
+ *                                                           *
+ *************************************************************/
 
 #include "../stdafx.h"
 
@@ -228,8 +234,10 @@ void AVISource::LocateVideoCodec(const char fourCC[], IScriptEnvironment* env) {
   // see if we can handle the video format directly
   if (pbiSrc->biCompression == '2YUY') {
     vi.pixel_type = VideoInfo::CS_YUY2;
-  } else if (pbiSrc->biCompression == 'YV12') {
+  } else if (pbiSrc->biCompression == '21VY') {
     vi.pixel_type = VideoInfo::CS_YV12;
+  } else if (pbiSrc->biCompression == '024I') {
+    vi.pixel_type = VideoInfo::CS_I420;
   } else if (pbiSrc->biCompression == BI_RGB && pbiSrc->biBitCount == 32) {
     vi.pixel_type = VideoInfo::CS_BGR32;
   } else if (pbiSrc->biCompression == BI_RGB && pbiSrc->biBitCount == 24) {
@@ -443,6 +451,8 @@ AVISource::~AVISource() {
   AVIFileExit();
   if (pbiSrc)
     free(pbiSrc);
+  if (srcbuffer)  // Tritical May 2005
+    delete[] srcbuffer;
 }
 
 const VideoInfo& AVISource::GetVideoInfo() { return vi; }
@@ -459,10 +469,13 @@ PVideoFrame AVISource::GetFrame(int n, IScriptEnvironment* env) {
       keyframe = last_frame_no+1;
     if (keyframe < 0) keyframe = 0;
     bool not_found_yet=false;
+
+    PVideoFrame frame = env->NewVideoFrame(vi, -4);
+    BYTE* frameWritePtr = frame->GetWritePtr();
+
     do {
       for (int i = keyframe; i <= n; ++i) {
-        PVideoFrame frame = env->NewVideoFrame(vi, -4);
-        LRESULT error = DecompressFrame(i, i != n, frame->GetWritePtr());
+        LRESULT error = DecompressFrame(i, i != n, frameWritePtr);
         // we don't want dropped frames to throw an error
         // Experiment to remove ALL error reporting, so it will always return last valid frame.
         if (error != ICERR_OK && !dropped_frame) {
