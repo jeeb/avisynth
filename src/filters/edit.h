@@ -219,8 +219,8 @@ public:
 
 	static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env);
 private:
-	int frames, start, end, times;
-  __int64 start_samples, loop_ends_at_sample,loop_len_samples;
+	int   frames,    start,     end;
+  __int64 aud_count, aud_start, aud_end;
 	int convert(int n);
 };
 

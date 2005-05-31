@@ -689,39 +689,50 @@ AVSValue __cdecl Reverse::Create(AVSValue args, void*, IScriptEnvironment* env)
 
 
 
-/******************************
+/*****************************
  ******   Loop Filter   *******
  *****************************/
 
-Loop::Loop(PClip _child, int _times, int _start, int _end, IScriptEnvironment* env)
- : GenericVideoFilter(_child), times(_times), start(_start), end(_end)
+Loop::Loop(PClip _child, int times, int _start, int _end, IScriptEnvironment* env)
+ : GenericVideoFilter(_child), start(_start), end(_end)
 {
   start = min(max(start,0),vi.num_frames-1);
   end = min(max(end,start),vi.num_frames-1);
   frames = end-start+1;
-  if (times<=0) {
+  if (times<0) { // Loop nearly forever
     vi.num_frames = 10000000;
     end = vi.num_frames;
-    times=10000000/(end-start);
-  } else {
+	if (vi.HasAudio()) {
+	  if (vi.HasVideo()) {
+		aud_start = vi.AudioSamplesFromFrames(start);
+		aud_end = vi.AudioSamplesFromFrames(end+1) - 1; // This is the output end sample
+		aud_count = vi.AudioSamplesFromFrames(frames); // length of each loop in samples
+	  } else {
+		// start and end frame numbers are meaningless without video
+		aud_start = 0;
+		aud_count = vi.num_audio_samples;
+		aud_end = Int32x32To64(400000, vi.audio_samples_per_second);
+	  }
+	  vi.num_audio_samples = aud_end+1;
+	}
+  }
+  else {
     vi.num_frames += (times-1) * frames;
     end = start + times * frames - 1;
+	if (vi.HasAudio()) {
+	  if (vi.HasVideo()) {
+		aud_start = vi.AudioSamplesFromFrames(start);
+		aud_end = vi.AudioSamplesFromFrames(end+1) - 1; // This is the output end sample
+		aud_count = vi.AudioSamplesFromFrames(frames); // length of each loop in samples
+	  } else {
+		// start and end frame numbers are meaningless without video
+		aud_start = 0;
+		aud_count = vi.num_audio_samples;
+		aud_end = vi.num_audio_samples * times;
+	  }
+	  vi.num_audio_samples += (times-1) * aud_count;
+	}
   }
-
-  if (vi.HasAudio()) {
-    if (vi.HasVideo()) {
-      start_samples = vi.AudioSamplesFromFrames(start);
-      loop_ends_at_sample = vi.AudioSamplesFromFrames(end); // This is the output end sample
-      loop_len_samples = (__int64)(0.5+(double)(loop_ends_at_sample - start_samples)/(double)times);  // length (in float) of each loop in samples
-    } else {
-        // start and end frame numbers are meaningless without video
-        start_samples = 0;
-        loop_len_samples = vi.num_audio_samples;
-        loop_ends_at_sample = vi.num_audio_samples * times;
-    }
-    vi.num_audio_samples += (loop_len_samples*times);
-  }
-
 }
 
 
@@ -736,44 +747,37 @@ bool Loop::GetParity(int n)
   return child->GetParity(convert(n));
 }
  
-void Loop::GetAudio(void* buf, __int64 s_start, __int64 count, IScriptEnvironment* env) {
-
-  if (s_start+count<start_samples) {
-    child->GetAudio(buf,s_start,count,env);
-    return;
-  }
-
-  if (s_start>loop_ends_at_sample) {
-    child->GetAudio(buf,s_start-(loop_len_samples*(times-1)),count,env);
-    return;
-  } 
-
+void Loop::GetAudio(void* buf, __int64 start, __int64 count, IScriptEnvironment* env) {
+  __int64 get_count, get_start;
+  const int bpas = vi.BytesPerAudioSample();
   char* samples = (char*)buf;
-  int bps = vi.BytesPerChannelSample();
 
-  int s_pitch=vi.AudioChannels();
- 
-  __int64 in_loop_start=s_start-start_samples;  // This is the offset within the loop
-  __int64 fetch_at_sample = (in_loop_start%loop_len_samples); // This is the first sample to get.
+  while (count > 0) {
+	if (start > aud_end) {   // tail of clip
+	  get_start = aud_start + aud_count + start - (aud_end+1);
+	  get_count = count;
+	}
+	else {
+	  if (start > aud_start) // loop part of clip
+		get_start = (start - aud_start) % aud_count + aud_start;
+	  else                   // head of clip
+		get_start = start;
 
-  while (count>0) {
-    if (count+fetch_at_sample<loop_len_samples) {  // All samples can be fetched within loop
-      child->GetAudio(samples,start_samples+fetch_at_sample,count,env);
-      return;
-    } else {  // Get as many as possible without getting over the length of the loop 
-      __int64 get_count=loop_len_samples-fetch_at_sample;
-      if (get_count>count) get_count=count;  // Just to be safe
-      if (get_count+s_start>loop_ends_at_sample) get_count=loop_ends_at_sample-(get_count+s_start); // Just to be safe
-      child->GetAudio(samples,start_samples+fetch_at_sample,get_count,env);
-      samples+=get_count*s_pitch*bps;  // update dest start pointer
-      count-=get_count;
-      s_start+=get_count;
-      if (s_start>=loop_ends_at_sample) { // Continue on after the loop
-        child->GetAudio(samples,start_samples+loop_len_samples,count,env);
-        return;
-      } 
-      fetch_at_sample=0;  // Reset and make ready for another loop
-    }
+	  get_count = aud_count - (get_start - aud_start); // count to end of next iteration
+
+	  if (get_start+get_count > aud_end+1) // loop(0) case
+		get_count = aud_end+1 - get_start;
+	  else if (start+get_count > aud_end)
+		get_count = count; // if is last iteration do all of remainder
+
+	  if (get_count > count) get_count = count;
+	}
+
+	child->GetAudio(samples, get_start, get_count, env);
+
+	samples += get_count * bpas;  // update dest start pointer
+	start   += get_count;
+	count   -= get_count;
   }
 }
 
