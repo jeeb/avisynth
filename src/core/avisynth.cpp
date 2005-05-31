@@ -769,7 +769,7 @@ ScriptEnvironment::ScriptEnvironment()
   : at_exit(This()),
     function_table(This()),
 	global_var_table(0, 0),
-	PlanarChromaAlignmentState(true){
+	PlanarChromaAlignmentState(true){ // Change to "false" for release of 2.5.6 reset to "true" for 2.5.7
 
   MEMORYSTATUS memstatus;
   GlobalMemoryStatus(&memstatus);
@@ -968,7 +968,13 @@ void ScriptEnvironment::ExportFilters()
 PVideoFrame ScriptEnvironment::NewPlanarVideoFrame(int width, int height, int align, bool U_first) {
   int UVpitch, pitch;
 
-  if (PlanarChromaAlignmentState) {
+  if (align<0) {
+// Forced alignment - pack Y as specified, pack UV half that
+    align = -align;
+	pitch = (width+align-1) / align * align;  // Y plane, width = 1 byte per pixel
+	UVpitch = (pitch+1)>>1;  // UV plane, width = 1/2 byte per pixel - can't align UV planes seperately.
+  } 
+  else if (PlanarChromaAlignmentState) {
 // Align UV planes, Y will follow
 	UVpitch = ((width>>1)+align-1) / align * align;  // UV plane, width = 1/2 byte per pixel
 	pitch = UVpitch<<1;  // Y plane, width = 1 byte per pixel
@@ -976,7 +982,7 @@ PVideoFrame ScriptEnvironment::NewPlanarVideoFrame(int width, int height, int al
   else {
 // Do legacy alignment
 	pitch = (width+align-1) / align * align;  // Y plane, width = 1 byte per pixel
-	UVpitch = pitch>>1;  // UV plane, width = 1/2 byte per pixel - can't align UV planes seperately.
+	UVpitch = (pitch+1)>>1;  // UV plane, width = 1/2 byte per pixel - can't align UV planes seperately.
   }
 
   int size = pitch * height + UVpitch * height;
@@ -1044,9 +1050,7 @@ PVideoFrame __stdcall ScriptEnvironment::NewVideoFrame(const VideoInfo& vi, int 
   }
   // If align is negative, it will be forced, if not it may be made bigger
   if (vi.IsPlanar()) { // Planar requires different math ;)
-    if (align<0) {
-      align *= -1;
-    } else {
+    if (align>=0) {
       align = max(align,FRAME_ALIGN);
     }
     if ((vi.height&1)||(vi.width&1))
