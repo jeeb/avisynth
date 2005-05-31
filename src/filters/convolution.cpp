@@ -177,8 +177,8 @@ PVideoFrame __stdcall GeneralConvolution::GetFrame(int n, IScriptEnvironment* en
   PVideoFrame dst = env->NewVideoFrame(vi);
   char *dstStart = (char *) dst->GetWritePtr();
 
-  const int pitch = src->GetPitch();
-  const int modulo = pitch - src->GetRowSize();
+  const int pitch = dst->GetPitch();
+  const int modulo = src->GetPitch() - src->GetRowSize();
 
   srcp = (Pixel32*) src->GetReadPtr();
   pbyA0 = pbyA;
