@@ -153,7 +153,8 @@ public:
   void StopGraph();
   void PauseGraph();
   HRESULT SeekTo(__int64 pos);
-  void NextSample();
+  //void NextSample();
+  bool NextSample();
   ULONG __stdcall AddRef();
   ULONG __stdcall Release();
   HRESULT __stdcall QueryInterface(REFIID iid, void** ppv);

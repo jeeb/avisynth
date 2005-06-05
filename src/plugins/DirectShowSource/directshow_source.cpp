@@ -178,8 +178,10 @@ GetSample::GetSample(IScriptEnvironment* _env, bool _load_audio, bool _load_vide
     return hr;  // Seek ok
   }
 
-  void GetSample::NextSample() {
-    if (end_of_stream) return;
+  //void GetSample::NextSample() {
+  bool GetSample::NextSample() {
+    //if (end_of_stream) return;
+    if (end_of_stream) return false;
 
     if (load_audio) 
       _RPT0(0,"NextSample() indicating done with sample...(audio)\n");
@@ -204,6 +206,7 @@ GetSample::GetSample(IScriptEnvironment* _env, bool _load_audio, bool _load_vide
     } else {
       _RPT0(0,"...NextSample() done waiting for new sample (video)\n");
     }
+	return true;
   }
 
   // IUnknown
@@ -984,7 +987,8 @@ DirectShowSource::DirectShowSource(const char* filename, int _avg_time_per_frame
 		if (convert_fps) {
           if (cur_frame<n) {  // automatic fps conversion: trust only sample time
             while (get_sample.GetSampleEndTime()+base_sample_time <= sample_time) {
-              get_sample.NextSample();
+              //get_sample.NextSample();
+              if(!get_sample.NextSample()) break;
             }
             cur_frame = n;
           }
