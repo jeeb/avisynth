@@ -735,7 +735,15 @@ AVSValue __cdecl Subtitle::Create(AVSValue args, void*, IScriptEnvironment* env)
      default: defy = size; break; }
 
     const int x = args[2].AsInt(defx);
-    const int y = args[3].AsInt(defy);
+    int y = args[3].AsInt(defy);
+
+	// mirroring and aligning rgb position
+	if ((defy!=-1) && (clip->GetVideoInfo().IsRGB())) {
+		y = clip->GetVideoInfo().height - y - size;
+		y = max(y,0);
+	} else if ((defy!=-1) && (clip->GetVideoInfo().IsYUV())) {
+		y = min(y,clip->GetVideoInfo().height - size);
+	}
 
     if ((align < 1) || (align > 9))
      env->ThrowError("Subtitle: Align values are 1 - 9 mapped to your numeric pad");
@@ -755,7 +763,7 @@ void Subtitle::InitAntialiaser()
   int real_y = y;
   unsigned int al = 0;
 
-  switch (align)
+/*  switch (align) // this code is turned because (1,4,7) was not visible in YUV clip
   { case 1: al = TA_BOTTOM   | TA_LEFT; break;
     case 2: al = TA_BOTTOM   | TA_CENTER; break;
     case 3: al = TA_BOTTOM   | TA_RIGHT; break;
@@ -767,11 +775,11 @@ void Subtitle::InitAntialiaser()
     case 9: al = TA_TOP      | TA_RIGHT; break;
     default: al= TA_BASELINE | TA_LEFT; break;
   }
+  SetTextAlign(hdcAntialias, al);*/
   SetTextCharacterExtra(hdcAntialias, spc);
-  SetTextAlign(hdcAntialias, al);
 
   if (x==-1) real_x = vi.width>>1;
-  if (y==-1) real_y = vi.height>>1;
+  if (y==-1) real_y = (vi.height>>1) - (size>>4);
 
   TextOut(hdcAntialias, real_x*8+16, real_y*8+16, text, strlen(text));
   GdiFlush();
