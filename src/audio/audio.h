@@ -153,9 +153,7 @@ private:
 
   const int num_children;
   PClip* child_array;
-  PClip tclip;
 
-  VideoInfo vi2;
 };
 
 
@@ -279,7 +277,7 @@ private:
   const float t1factor, t2factor;
   int tempbuffer_size;
   signed char *tempbuffer;
-  PClip tclip,clip;
+  PClip clip;
 };
 
 
