@@ -521,8 +521,15 @@ AVSValue ExpFunctionCall::Call(IScriptEnvironment* env)
 {
   AVSValue result;
   AVSValue *args = new AVSValue[arg_expr_count+1];
-  for (int a=0; a<arg_expr_count; ++a)
-    args[a+1] = arg_exprs[a]->Evaluate(env);
+  try {
+    for (int a=0; a<arg_expr_count; ++a)
+      args[a+1] = arg_exprs[a]->Evaluate(env);
+  }
+  catch (...)
+  {
+    delete[] args;
+    throw;
+  }
   // first try without implicit "last"
   try {
     result = env->Invoke(name, AVSValue(args+1, arg_expr_count), arg_expr_names+1);
@@ -539,7 +546,17 @@ AVSValue ExpFunctionCall::Call(IScriptEnvironment* env)
         return result;
       }
       catch (IScriptEnvironment::NotFound) { /* see below */ }
+      catch (...)
+      {
+        delete[] args;
+        throw;
+      }
     }
+  }
+  catch (...)
+  {
+    delete[] args;
+    throw;
   }
   delete[] args;
   env->ThrowError(env->FunctionExists(name) ? "Script error: Invalid arguments to function \"%s\""
