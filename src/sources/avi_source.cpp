@@ -84,8 +84,10 @@ public:
     MODE_WAV
   };
 
-  AVISource::AVISource(const char filename[], bool fAudio, const char pixel_type[], const char fourCC[], int mode, IScriptEnvironment* env);  // mode: 0=detect, 1=avifile, 2=opendml, 3=avifile (audio only)
+  AVISource(const char filename[], bool fAudio, const char pixel_type[],
+            const char fourCC[], int mode, IScriptEnvironment* env);  // mode: 0=detect, 1=avifile, 2=opendml, 3=avifile (audio only)
   ~AVISource();
+  CleanUp();
   const VideoInfo& __stdcall GetVideoInfo();
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
   void __stdcall GetAudio(void* buf, __int64 start, __int64 count, IScriptEnvironment* env) ;
@@ -281,164 +283,176 @@ AVISource::AVISource(const char filename[], bool fAudio, const char pixel_type[]
   hic = 0;
 
   AVIFileInit();
+  try {
 
-  if (mode == MODE_NORMAL) {
-    // if it looks like an AVI file, open in OpenDML mode; otherwise AVIFile mode
-    HANDLE h = CreateFile(filename, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, 0, NULL);
-    if (h == INVALID_HANDLE_VALUE) {
-      env->ThrowError("AVISource autodetect: couldn't open file\nError code: %d", GetLastError());
-    }
-    unsigned int buf[3];
-    DWORD bytes_read;
-    if (ReadFile(h, buf, 12, &bytes_read, NULL) && bytes_read == 12 && buf[0] == 'FFIR' && buf[2] == ' IVA')
-      mode = MODE_OPENDML;
-    else
-      mode = MODE_AVIFILE;
-    CloseHandle(h);
-  }
-
-  if (mode == MODE_AVIFILE || mode == MODE_WAV) {    // AVIFile mode
-    PAVIFILE paf;
-    if (FAILED(AVIFileOpen(&paf, filename, OF_READ, 0)))
-      env->ThrowError("AVIFileSource: couldn't open file");
-    pfile = CreateAVIReadHandler(paf);
-  } else {              // OpenDML mode
-    pfile = CreateAVIReadHandler(filename);
-  }
-
-  if (mode != MODE_WAV) { // check for video stream
-    pvideo = pfile->GetStream(streamtypeVIDEO, 0);
-
-    if (!pvideo) { // Attempt DV type 1 video.
-      pvideo = pfile->GetStream('svai', 0);
-      bIsType1 = true;
+    if (mode == MODE_NORMAL) {
+      // if it looks like an AVI file, open in OpenDML mode; otherwise AVIFile mode
+      HANDLE h = CreateFile(filename, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, 0, NULL);
+      if (h == INVALID_HANDLE_VALUE) {
+        env->ThrowError("AVISource autodetect: couldn't open file\nError code: %d", GetLastError());
+      }
+      unsigned int buf[3];
+      DWORD bytes_read;
+      if (ReadFile(h, buf, 12, &bytes_read, NULL) && bytes_read == 12 && buf[0] == 'FFIR' && buf[2] == ' IVA')
+        mode = MODE_OPENDML;
+      else
+        mode = MODE_AVIFILE;
+      CloseHandle(h);
     }
 
-    if (pvideo) {
-      LocateVideoCodec(fourCC, env);
-      if (hic) {
-        bool fYV12  = lstrcmpi(pixel_type, "YV12" ) == 0 || pixel_type[0] == 0;
-        bool fYUY2  = lstrcmpi(pixel_type, "YUY2" ) == 0 || pixel_type[0] == 0;
-        bool fRGB32 = lstrcmpi(pixel_type, "RGB32") == 0 || pixel_type[0] == 0;
-        bool fRGB24 = lstrcmpi(pixel_type, "RGB24") == 0 || pixel_type[0] == 0;
-        if (!(fYV12 || fYUY2 || fRGB32 || fRGB24))
-          env->ThrowError("AVISource: requested format should be YV12, YUY2, RGB32 or RGB24");
+    if (mode == MODE_AVIFILE || mode == MODE_WAV) {    // AVIFile mode
+      PAVIFILE paf;
+      if (FAILED(AVIFileOpen(&paf, filename, OF_READ, 0)))
+        env->ThrowError("AVIFileSource: couldn't open file");
+      pfile = CreateAVIReadHandler(paf);
+    } else {              // OpenDML mode
+      pfile = CreateAVIReadHandler(filename);
+    }
 
-        // try to decompress to YV12, YUY2, RGB32, and RGB24 in turn
-        memset(&biDst, 0, sizeof(BITMAPINFOHEADER));
-        biDst.biSize = sizeof(BITMAPINFOHEADER);
-        biDst.biWidth = vi.width;
-        biDst.biHeight = vi.height;
-        biDst.biCompression = '21VY';
-        biDst.biBitCount = 12;
-        biDst.biPlanes = 1;
-        int xwidth=(vi.width+3)&(~3);
-        biDst.biSizeImage = xwidth * vi.height + ((xwidth>>1) * vi.height);
+    if (mode != MODE_WAV) { // check for video stream
+      pvideo = pfile->GetStream(streamtypeVIDEO, 0);
 
-        if (fYV12 && ICERR_OK == ICDecompressQuery(hic, pbiSrc, &biDst)) {
-          vi.pixel_type = VideoInfo::CS_YV12;
-          _RPT0(0,"AVISource: Opening as YV12.\n");
-        } else {
-          biDst.biSizeImage = ((vi.width*2+3)&~3) * vi.height;
-          biDst.biCompression = '2YUY';
-          biDst.biBitCount = 16;
-          if (fYUY2 && ICERR_OK == ICDecompressQuery(hic, pbiSrc, &biDst)) {
-            vi.pixel_type = VideoInfo::CS_YUY2;
-            _RPT0(0,"AVISource: Opening as YUY2.\n");
+      if (!pvideo) { // Attempt DV type 1 video.
+        pvideo = pfile->GetStream('svai', 0);
+        bIsType1 = true;
+      }
+
+      if (pvideo) {
+        LocateVideoCodec(fourCC, env);
+        if (hic) {
+          bool fYV12  = lstrcmpi(pixel_type, "YV12" ) == 0 || pixel_type[0] == 0;
+          bool fYUY2  = lstrcmpi(pixel_type, "YUY2" ) == 0 || pixel_type[0] == 0;
+          bool fRGB32 = lstrcmpi(pixel_type, "RGB32") == 0 || pixel_type[0] == 0;
+          bool fRGB24 = lstrcmpi(pixel_type, "RGB24") == 0 || pixel_type[0] == 0;
+          if (!(fYV12 || fYUY2 || fRGB32 || fRGB24))
+            env->ThrowError("AVISource: requested format should be YV12, YUY2, RGB32 or RGB24");
+
+          // try to decompress to YV12, YUY2, RGB32, and RGB24 in turn
+          memset(&biDst, 0, sizeof(BITMAPINFOHEADER));
+          biDst.biSize = sizeof(BITMAPINFOHEADER);
+          biDst.biWidth = vi.width;
+          biDst.biHeight = vi.height;
+          biDst.biCompression = '21VY';
+          biDst.biBitCount = 12;
+          biDst.biPlanes = 1;
+          int xwidth=(vi.width+3)&(~3);
+          biDst.biSizeImage = xwidth * vi.height + ((xwidth>>1) * vi.height);
+
+          if (fYV12 && ICERR_OK == ICDecompressQuery(hic, pbiSrc, &biDst)) {
+            vi.pixel_type = VideoInfo::CS_YV12;
+            _RPT0(0,"AVISource: Opening as YV12.\n");
           } else {
-            biDst.biCompression = BI_RGB;
-            biDst.biBitCount = 32;
-            biDst.biSizeImage = vi.width*vi.height*4;
-            if (fRGB32 && ICERR_OK == ICDecompressQuery(hic, pbiSrc, &biDst)) {
-              vi.pixel_type = VideoInfo::CS_BGR32;
-              _RPT0(0,"AVISource: Opening as RGB32.\n");
+            biDst.biSizeImage = ((vi.width*2+3)&~3) * vi.height;
+            biDst.biCompression = '2YUY';
+            biDst.biBitCount = 16;
+            if (fYUY2 && ICERR_OK == ICDecompressQuery(hic, pbiSrc, &biDst)) {
+              vi.pixel_type = VideoInfo::CS_YUY2;
+              _RPT0(0,"AVISource: Opening as YUY2.\n");
             } else {
-              biDst.biBitCount = 24;
-              biDst.biSizeImage = ((vi.width*3+3)&~3) * vi.height;
-              if (fRGB24 && ICERR_OK == ICDecompressQuery(hic, pbiSrc, &biDst)) {
-                vi.pixel_type = VideoInfo::CS_BGR24;
-                _RPT0(0,"AVISource: Opening as RGB24.\n");
+              biDst.biCompression = BI_RGB;
+              biDst.biBitCount = 32;
+              biDst.biSizeImage = vi.width*vi.height*4;
+              if (fRGB32 && ICERR_OK == ICDecompressQuery(hic, pbiSrc, &biDst)) {
+                vi.pixel_type = VideoInfo::CS_BGR32;
+                _RPT0(0,"AVISource: Opening as RGB32.\n");
               } else {
-                if (fYUY2 && (fRGB32 || fRGB24) && fYV12)
-                  env->ThrowError("AVISource: the video decompressor couldn't produce YUY2 or RGB output");
-                else if (fYV12)
-                  env->ThrowError("AVISource: the video decompressor couldn't produce YV12 output");
-                else if (fYUY2)
-                  env->ThrowError("AVISource: the video decompressor couldn't produce YUY2 output");
-                else if (fRGB32)
-                  env->ThrowError("AVISource: the video decompressor couldn't produce RGB32 output");
-                else if (fRGB24)
-                  env->ThrowError("AVISource: the video decompressor couldn't produce RGB24 output");
-                else
-                  env->ThrowError("AVISource: internal error");
+                biDst.biBitCount = 24;
+                biDst.biSizeImage = ((vi.width*3+3)&~3) * vi.height;
+                if (fRGB24 && ICERR_OK == ICDecompressQuery(hic, pbiSrc, &biDst)) {
+                  vi.pixel_type = VideoInfo::CS_BGR24;
+                  _RPT0(0,"AVISource: Opening as RGB24.\n");
+                } else {
+                  if (fYUY2 && (fRGB32 || fRGB24) && fYV12)
+                    env->ThrowError("AVISource: the video decompressor couldn't produce YUY2 or RGB output");
+                  else if (fYV12)
+                    env->ThrowError("AVISource: the video decompressor couldn't produce YV12 output");
+                  else if (fYUY2)
+                    env->ThrowError("AVISource: the video decompressor couldn't produce YUY2 output");
+                  else if (fRGB32)
+                    env->ThrowError("AVISource: the video decompressor couldn't produce RGB32 output");
+                  else if (fRGB24)
+                    env->ThrowError("AVISource: the video decompressor couldn't produce RGB24 output");
+                  else
+                    env->ThrowError("AVISource: internal error");
+                }
               }
             }
           }
+          DecompressBegin(pbiSrc, &biDst);
         }
-        DecompressBegin(pbiSrc, &biDst);
+      } else {
+        env->ThrowError("AviSource: Could not locate video stream.");
       }
-    } else {
-      env->ThrowError("AviSource: Could not locate video stream.");
+    }
+
+    // check for audio stream
+    if (fAudio) /*  && pfile->GetStream(streamtypeAUDIO, 0)) */ {
+      aSrc = new AudioSourceAVI(pfile, true);
+      if (aSrc->init()) {
+          audioStreamSource = new AudioStreamSource(aSrc,
+                                                    aSrc->lSampleFirst,
+                                                    aSrc->lSampleLast - aSrc->lSampleFirst,
+                                                    true);
+          WAVEFORMATEX* pwfx;
+          pwfx = audioStreamSource->GetFormat();
+          vi.audio_samples_per_second = pwfx->nSamplesPerSec;
+          vi.nchannels = pwfx->nChannels;
+          if (pwfx->wBitsPerSample == 16) {
+            vi.sample_type = SAMPLE_INT16;
+          } else if (pwfx->wBitsPerSample == 8) {
+            vi.sample_type = SAMPLE_INT8;
+          } else if (pwfx->wBitsPerSample == 24) {
+            vi.sample_type = SAMPLE_INT24;
+          } else if (pwfx->wBitsPerSample == 32) {
+            vi.sample_type = SAMPLE_INT32;
+          }
+          vi.num_audio_samples = audioStreamSource->GetLength();
+
+          audio_stream_pos = 0;
+        }
+    }
+
+    // try to decompress frame 0 if not audio only.
+
+    dropped_frame=false;
+
+    if (mode != MODE_WAV) {
+      int keyframe = pvideo->NearestKeyFrame(0);
+      PVideoFrame frame = env->NewVideoFrame(vi, -4);
+      LRESULT error = DecompressFrame(keyframe, false, frame->GetWritePtr());
+      if (error != ICERR_OK || (!frame)||(dropped_frame)) {   // shutdown, if init not succesful.
+/*
+        if (hic) {
+          !ex ? ICDecompressEnd(hic) : ICDecompressExEnd(hic);
+          ICClose(hic);
+        }
+        if (pvideo) delete pvideo;
+        if (aSrc) delete aSrc;
+        if (audioStreamSource) delete audioStreamSource;
+        if (pfile)
+          pfile->Release();
+        AVIFileExit();
+        if (pbiSrc)
+          free(pbiSrc);
+*/
+        env->ThrowError("AviSource: Could not decompress frame 0");
+
+      }
+      last_frame_no=0;
+      last_frame=frame;
     }
   }
-
-  // check for audio stream
-  if (fAudio) { //  && pfile->GetStream(streamtypeAUDIO, 0)) {
-    aSrc = new AudioSourceAVI(pfile, true);
-    if (aSrc->init()) {
-		audioStreamSource = new AudioStreamSource(aSrc,
-												  aSrc->lSampleFirst,
-												  aSrc->lSampleLast - aSrc->lSampleFirst,
-												  true);
-		WAVEFORMATEX* pwfx;
-		pwfx = audioStreamSource->GetFormat();
-		vi.audio_samples_per_second = pwfx->nSamplesPerSec;
-		vi.nchannels = pwfx->nChannels;
-		if (pwfx->wBitsPerSample == 16) {
-		  vi.sample_type = SAMPLE_INT16;
-		} else if (pwfx->wBitsPerSample == 8) {
-		  vi.sample_type = SAMPLE_INT8;
-		} else if (pwfx->wBitsPerSample == 24) {
-		  vi.sample_type = SAMPLE_INT24;
-		} else if (pwfx->wBitsPerSample == 32) {
-		  vi.sample_type = SAMPLE_INT32;
-		}
-		vi.num_audio_samples = audioStreamSource->GetLength();
-
-		audio_stream_pos = 0;
-	  }
-  }
-
-  // try to decompress frame 0 if not audio only.
-
-  dropped_frame=false;
-
-  if (mode != MODE_WAV) {
-    int keyframe = pvideo->NearestKeyFrame(0);
-    PVideoFrame frame = env->NewVideoFrame(vi, -4);
-    LRESULT error = DecompressFrame(keyframe, false, frame->GetWritePtr());
-    if (error != ICERR_OK || (!frame)||(dropped_frame)) {   // shutdown, if init not succesful.
-      if (hic) {
-        !ex ? ICDecompressEnd(hic) : ICDecompressExEnd(hic);
-        ICClose(hic);
-      }
-      if (pvideo) delete pvideo;
-      if (aSrc) delete aSrc;
-      if (audioStreamSource) delete audioStreamSource;
-      if (pfile)
-        pfile->Release();
-      AVIFileExit();
-      if (pbiSrc)
-        free(pbiSrc);
-      env->ThrowError("AviSource: Could not decompress frame 0");
-
-    }
-    last_frame_no=0;
-    last_frame=frame;
+  catch (...) {
+    AVISource::CleanUp();
+    throw;
   }
 }
 
 AVISource::~AVISource() {
+  AVISource::CleanUp();
+}
+
+AVISource::CleanUp() {
   if (hic) {
     !ex ? ICDecompressEnd(hic) : ICDecompressExEnd(hic);
     ICClose(hic);
