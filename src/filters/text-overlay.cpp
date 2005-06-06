@@ -155,8 +155,8 @@ void Antialiaser::Apply( const VideoInfo& vi, PVideoFrame* frame, int pitch)
 void Antialiaser::ApplyYV12(BYTE* buf, int pitch, int pitchUV, BYTE* bufU, BYTE* bufV) {
   if (dirty) {
     GetAlphaRect();
-	xl &= -2; xr = (xr+1) & -2;
-	yb &= -2; yt = (yt+1) & -2;
+	xl &= -2; xr |= 1;
+	yb &= -2; yt |= 1;
   }
   const int w4 = w*4;
   unsigned short* alpha = alpha_calcs + yb*w4;
@@ -196,7 +196,7 @@ void Antialiaser::ApplyYV12(BYTE* buf, int pitch, int pitchUV, BYTE* bufU, BYTE*
 void Antialiaser::ApplyYUY2(BYTE* buf, int pitch) {
   if (dirty) {
     GetAlphaRect();
-	xl &= -2; xr = (xr+1) & -2;
+	xl &= -2; xr |= 1;
   }
   unsigned short* alpha = alpha_calcs + yb*w*4;
   buf += pitch*yb;
@@ -226,8 +226,8 @@ void Antialiaser::ApplyYUY2(BYTE* buf, int pitch) {
 
 void Antialiaser::ApplyRGB24(BYTE* buf, int pitch) {
   if (dirty) GetAlphaRect();
-  unsigned short* alpha = alpha_calcs + yt*w*4;
-  buf  += pitch*yb;
+  unsigned short* alpha = alpha_calcs + yb*w*4;
+  buf  += pitch*(h-yb-1);
 
   for (int y=yb; y<=yt; ++y) {
     for (int x=xl; x<=xr; ++x) {
@@ -238,16 +238,16 @@ void Antialiaser::ApplyRGB24(BYTE* buf, int pitch) {
         buf[x*3+2] = (buf[x*3+2] * basealpha + alpha[x*4+3]) >> 6;
       }
     }
-    buf += pitch;
-    alpha -= w*4;
+    buf -= pitch;
+    alpha += w*4;
   }
 }
 
 
 void Antialiaser::ApplyRGB32(BYTE* buf, int pitch) {
   if (dirty) GetAlphaRect();
-  unsigned short* alpha = alpha_calcs + yt*w*4;
-  buf  += pitch*yb;
+  unsigned short* alpha = alpha_calcs + yb*w*4;
+  buf  += pitch*(h-yb-1);
 
   for (int y=yb; y<=yt; ++y) {
     for (int x=xl; x<=xr; ++x) {
@@ -258,8 +258,8 @@ void Antialiaser::ApplyRGB32(BYTE* buf, int pitch) {
         buf[x*4+2] = (buf[x*4+2] * basealpha + alpha[x*4+3]) >> 6;
       }
     }
-    buf += pitch;
-    alpha -= w*4;
+    buf -= pitch;
+    alpha += w*4;
   }
 }
 
@@ -729,21 +729,13 @@ AVSValue __cdecl Subtitle::Create(AVSValue args, void*, IScriptEnvironment* env)
      case 3: case 6: case 9: defx = clip->GetVideoInfo().width-8; break;
      default: defx = 8; break; }
     switch (align) {
-     case 1: case 2: case 3: defy = clip->GetVideoInfo().height-1; break;
+     case 1: case 2: case 3: defy = clip->GetVideoInfo().height-2; break;
      case 4: case 5: case 6: defy = -1; break;
 	 case 7: case 8: case 9: defy = 0; break;
      default: defy = size; break; }
 
     const int x = args[2].AsInt(defx);
-    int y = args[3].AsInt(defy);
-
-	// mirroring and aligning rgb position
-	if ((defy!=-1) && (clip->GetVideoInfo().IsRGB())) {
-		y = clip->GetVideoInfo().height - y - size;
-		y = max(y,0);
-	} else if ((defy!=-1) && (clip->GetVideoInfo().IsYUV())) {
-		y = min(y,clip->GetVideoInfo().height - size);
-	}
+    const int y = args[3].AsInt(defy);
 
     if ((align < 1) || (align > 9))
      env->ThrowError("Subtitle: Align values are 1 - 9 mapped to your numeric pad");
@@ -763,23 +755,23 @@ void Subtitle::InitAntialiaser()
   int real_y = y;
   unsigned int al = 0;
 
-/*  switch (align) // this code is turned because (1,4,7) was not visible in YUV clip
-  { case 1: al = TA_BOTTOM   | TA_LEFT; break;
-    case 2: al = TA_BOTTOM   | TA_CENTER; break;
-    case 3: al = TA_BOTTOM   | TA_RIGHT; break;
-    case 4: al = TA_BASELINE | TA_LEFT; break;
-    case 5: al = TA_BASELINE | TA_CENTER; break;
-    case 6: al = TA_BASELINE | TA_RIGHT; break;
-    case 7: al = TA_TOP      | TA_LEFT; break;
-    case 8: al = TA_TOP      | TA_CENTER; break;
-    case 9: al = TA_TOP      | TA_RIGHT; break;
-    default: al= TA_BASELINE | TA_LEFT; break;
+  switch (align) // This spec where [X, Y] is relative to the text (inverted logic)
+  { case 1: al = TA_BOTTOM   | TA_LEFT; break;		// .----
+    case 2: al = TA_BOTTOM   | TA_CENTER; break;	// --.--
+    case 3: al = TA_BOTTOM   | TA_RIGHT; break;		// ----.
+    case 4: al = TA_BASELINE | TA_LEFT; break;		// .____
+    case 5: al = TA_BASELINE | TA_CENTER; break;	// __.__
+    case 6: al = TA_BASELINE | TA_RIGHT; break;		// ____.
+    case 7: al = TA_TOP      | TA_LEFT; break;		// `----
+    case 8: al = TA_TOP      | TA_CENTER; break;	// --`--
+    case 9: al = TA_TOP      | TA_RIGHT; break;		// ----`
+    default: al= TA_BASELINE | TA_LEFT; break;		// .____
   }
-  SetTextAlign(hdcAntialias, al);*/
   SetTextCharacterExtra(hdcAntialias, spc);
+  SetTextAlign(hdcAntialias, al);
 
   if (x==-1) real_x = vi.width>>1;
-  if (y==-1) real_y = (vi.height>>1) - (size>>4);
+  if (y==-1) real_y = (vi.height>>1);
 
   TextOut(hdcAntialias, real_x*8+16, real_y*8+16, text, strlen(text));
   GdiFlush();
