@@ -123,19 +123,19 @@ public:
 	}
 };
 
-// Work still needed here, this implentation clears the heap
-// when the .DLL unloads. Should clean up on script close.
 
-static RecycleBin g_Bin;
+// Tsp June 2005 the heap is cleared when ScriptEnviroment is destroyed
+
+static RecycleBin *g_Bin=0;
 
 void* VideoFrame::operator new(unsigned) {
   // CriticalSection
-  for (LinkedVideoFrame* i = g_Bin.g_VideoFrame_recycle_bin; i; i = i->next)
+  for (LinkedVideoFrame* i = g_Bin->g_VideoFrame_recycle_bin; i; i = i->next)
     if (i->vf.refcount == 0)
       return &i->vf;
   LinkedVideoFrame* result = (LinkedVideoFrame*)::operator new(sizeof(LinkedVideoFrame));
-  result->next = g_Bin.g_VideoFrame_recycle_bin;
-  g_Bin.g_VideoFrame_recycle_bin = result;
+  result->next = g_Bin->g_VideoFrame_recycle_bin;
+  g_Bin->g_VideoFrame_recycle_bin = result;
   return &result->vf;
 }
 
@@ -729,6 +729,7 @@ public:
   __stdcall ~ScriptEnvironment();
   void* __stdcall ManageCache(int key, void* data);
   bool __stdcall PlanarChromaAlignment(IScriptEnvironment::PlanarChromaAlignmentMode key);
+  PVideoFrame __stdcall Subframe(PVideoFrame src, int rel_offset, int new_pitch, int new_row_size, int new_height, int rel_offsetU, int rel_offsetV, int new_pitchUV);
 
 private:
   // Tritical May 2005
@@ -762,14 +763,21 @@ private:
   void ExportFilters();
   bool PlanarChromaAlignmentState;
 
+  static long refcount; // Global to all ScriptEnvironment objects
 };
 
+long ScriptEnvironment::refcount=0;
 
 ScriptEnvironment::ScriptEnvironment()
   : at_exit(This()),
     function_table(This()),
 	global_var_table(0, 0),
-	PlanarChromaAlignmentState(true){ // Change to "false" for release of 2.5.6 reset to "true" for 2.5.7
+	PlanarChromaAlignmentState(false){ // Change to "true" for 2.5.7
+
+  if(InterlockedCompareExchange(&refcount, 1, 0) == 0)//tsp June 2005 Initialize Recycle bin
+    g_Bin=new RecycleBin();
+  else
+    InterlockedIncrement(&refcount);
 
   MEMORYSTATUS memstatus;
   GlobalMemoryStatus(&memstatus);
@@ -803,6 +811,10 @@ ScriptEnvironment::~ScriptEnvironment() {
     LinkedVideoFrameBuffer* prev = i->prev;
     delete i;
     i = prev;
+  }
+  if(!InterlockedDecrement((long*)&refcount)){
+	delete g_Bin;//tsp June 2005 Cleans up the heap
+	g_Bin=NULL;
   }
 }
 
@@ -1108,10 +1120,15 @@ void ScriptEnvironment::PopContext() {
   var_table = var_table->Pop();
 }
 
+
 PVideoFrame __stdcall ScriptEnvironment::Subframe(PVideoFrame src, int rel_offset, int new_pitch, int new_row_size, int new_height) {
   return src->Subframe(rel_offset, new_pitch, new_row_size, new_height);
 }
 
+//tsp June 2005 new function compliments the above function
+PVideoFrame __stdcall ScriptEnvironment::Subframe(PVideoFrame src, int rel_offset, int new_pitch, int new_row_size, int new_height, int rel_offsetU, int rel_offsetV, int new_pitchUV) {
+  return src->Subframe(rel_offset, new_pitch, new_row_size, new_height, rel_offsetU, rel_offsetV, new_pitchUV);
+}
 
 void* ScriptEnvironment::ManageCache(int key, void* data){
 // An extensible interface for providing system or user access to the
@@ -1124,7 +1141,7 @@ void* ScriptEnvironment::ManageCache(int key, void* data){
   // allowing it to be reused in favour of any of it's older siblings.
   case MC_ReturnVideoFrameBuffer:
   {
-    LinkedVideoFrameBuffer *lvfb = (LinkedVideoFrameBuffer*)data;
+	LinkedVideoFrameBuffer *lvfb = (LinkedVideoFrameBuffer*)data;
 
 	// The Cache volunteers VFB's it no longer tracks for reuse. This closes the loop
 	// for Memory Management. GetFrameBuffer moves new VideoFrameBuffer's to the head
@@ -1179,11 +1196,11 @@ LinkedVideoFrameBuffer* ScriptEnvironment::NewFrameBuffer(int size) {
 
 LinkedVideoFrameBuffer* ScriptEnvironment::GetFrameBuffer2(int size) {
   LinkedVideoFrameBuffer *i, *j;
- 
+
   // Before we allocate a new framebuffer, check our memory usage, and if we
   // are more than 12.5% above allowed usage discard some unreferenced frames.
   if (memory_used >  memory_max + (memory_max >> 3) ) {
-	++g_Mem_stats.CleanUps;
+    ++g_Mem_stats.CleanUps;
     int freed = 0;
     int freed_count = 0;
     // Deallocate enough unused frames.
@@ -1200,12 +1217,12 @@ LinkedVideoFrameBuffer* ScriptEnvironment::GetFrameBuffer2(int size) {
           i->~LinkedVideoFrameBuffer();  // Can't delete me because caches have pointers to me
           // Link onto tail of lost_video_frame_buffers chain.
           j = i;
-		  i = i -> next; // step back one
+          i = i -> next; // step back one
           Relink(lost_video_frame_buffers.prev, j, &lost_video_frame_buffers);
           if ((memory_used+size - freed) < memory_max)
             break; // Stop, we are below 100% utilization
         }
-		else break;
+        else break;
       }
     }
     _RPT2(0,"Freed %d frames, consisting of %d bytes.\n",freed_count, freed);
@@ -1217,33 +1234,33 @@ LinkedVideoFrameBuffer* ScriptEnvironment::GetFrameBuffer2(int size) {
     //   Part 1: look for a returned free buffer of the same size and reuse it
     for (i = video_frame_buffers.prev; i != &video_frame_buffers; i = i->prev) {
       if (i->returned && (i->GetRefcount() == 0) && (i->GetDataSize() == size)) {
-		++g_Mem_stats.PlanA1;
+        ++g_Mem_stats.PlanA1;
         return i;
-	  }
+      }
     }
     //   Part 2: else just allocate a new buffer
-	++g_Mem_stats.PlanA2;
+    ++g_Mem_stats.PlanA2;
     return NewFrameBuffer(size);
   }
-  
+
   // Plan B: Steal the oldest existing free buffer of the same size
   j = 0;
   for (i = video_frame_buffers.prev; i != &video_frame_buffers; i = i->prev) {
     if (i->GetRefcount() == 0) {
-	  if (i->GetDataSize() == size) {
-		++g_Mem_stats.PlanB;
-		return i;
-	  }
-	  if (i->GetDataSize() > size) {
-		if ((j == 0) || (i->GetDataSize() < j->GetDataSize())) j = i;
-	  }
-	}
+      if (i->GetDataSize() == size) {
+        ++g_Mem_stats.PlanB;
+        return i;
+      }
+      if (i->GetDataSize() > size) {
+        if ((j == 0) || (i->GetDataSize() < j->GetDataSize())) j = i;
+      }
+    }
   }
 
   // Plan C: Steal the oldest, smallest free buffer that is greater in size
   if (j) {
-	++g_Mem_stats.PlanC;
-	return j;
+    ++g_Mem_stats.PlanC;
+    return j;
   }
 
   // Plan D: Allocate a new buffer, regardless of current memory usage
