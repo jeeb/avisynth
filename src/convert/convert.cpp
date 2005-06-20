@@ -418,7 +418,7 @@ PVideoFrame __stdcall ConvertToRGB::GetFrame(int n, IScriptEnvironment* env)
 		dstp += dst_pitch;
 	  }
 	}
-	return dst->Subframe(0, dst->GetPitch(), vi2.BytesFromPixels(vi.width), vi.height);
+	return env->Subframe(dst,0, dst->GetPitch(), vi2.BytesFromPixels(vi.width), vi.height);
   }
   else {
 	PVideoFrame dst = env->NewVideoFrame(vi);
