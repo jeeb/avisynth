@@ -289,7 +289,7 @@ AVISource::AVISource(const char filename[], bool fAudio, const char pixel_type[]
       // if it looks like an AVI file, open in OpenDML mode; otherwise AVIFile mode
       HANDLE h = CreateFile(filename, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, 0, NULL);
       if (h == INVALID_HANDLE_VALUE) {
-        env->ThrowError("AVISource autodetect: couldn't open file\nError code: %d", GetLastError());
+        env->ThrowError("AVISource autodetect: couldn't open file '%s'\nError code: %d", filename, GetLastError());
       }
       unsigned int buf[3];
       DWORD bytes_read;
@@ -302,9 +302,17 @@ AVISource::AVISource(const char filename[], bool fAudio, const char pixel_type[]
 
     if (mode == MODE_AVIFILE || mode == MODE_WAV) {    // AVIFile mode
       PAVIFILE paf;
-      if (FAILED(AVIFileOpen(&paf, filename, OF_READ, 0)))
-        env->ThrowError("AVIFileSource: couldn't open file");
-      pfile = CreateAVIReadHandler(paf);
+      try { // The damn .WAV clsid handler has only a 48 byte buffer to parse the filename and GPF's
+		if (FAILED(AVIFileOpen(&paf, filename, OF_READ, 0)))
+		  env->ThrowError("AVIFileSource: couldn't open file '%s'", filename);
+      }
+	  catch (AvisynthError) {
+		throw;
+	  }
+	  catch (...) {
+		env->ThrowError("AVIFileSource: VFW failure, AVIFileOpen(%s), length of filename part must be < 48", filename);
+	  }
+	  pfile = CreateAVIReadHandler(paf);
     } else {              // OpenDML mode
       pfile = CreateAVIReadHandler(filename);
     }
