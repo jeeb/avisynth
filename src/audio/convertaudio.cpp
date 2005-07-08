@@ -151,6 +151,17 @@ void __stdcall ConvertAudio::GetAudio(void* buf, __int64 start, __int64 count, I
  *   d[i*2+1] = s[i];
  * }
 
+ *   movq       mm0,[s]
+ *    pxor      mm1,mm1
+ *   pxor       mm2,mm2
+ *    punpcklwd mm1,mm0
+ *   d+=16
+ *    punpckhwd mm2,mm0
+ *   movq       [d-16],mm1
+ *    s+=8
+ *   movq       [d-8],mm2
+ *   
+ 
  * S16 = (S32 + 0x8000) >> 16
  *
  * short *d=dest;
@@ -520,8 +531,8 @@ c32_loop:
           movq mm2, [esi+eax+8]          //  d d | c c
           pi2fd mm1, mm1                 //  xb=float(b) | xa=float(a)
           pi2fd mm2, mm2                 //  xb=float(d) | xa=float(c)
-          pfmul mm1,mm7                  // x / 32768.0
-          pfmul mm2,mm7                  // x / 32768.0
+          pfmul mm1,mm7                  // x / MaxInt.0
+          pfmul mm2,mm7                  // x / MaxInt.0
           movq [edi+eax], mm1            //  store xb | xa
           movq [edi+eax+8], mm2          //  store xd | xc
           add eax,16
@@ -923,14 +934,14 @@ cf16_loop:
       count -= sleft;
 
       float mult  = (float)(MAX_INT);  // (2^23)<<8
-      float limit = 2147483520.0f;     // (2^24-1)<<7
+//      float limit = 2147483520.0f;     // (2^24-1)<<7
 
       if (count) {
         _asm {
           movss    xmm7, [mult]
-          movss    xmm6, [limit]
+//          movss    xmm6, [limit]
           shufps   xmm7, xmm7, 00000000b
-          shufps   xmm6, xmm6, 00000000b
+//          shufps   xmm6, xmm6, 00000000b
 
           mov      eax, inbuf
           mov      ecx, count
