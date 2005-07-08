@@ -108,6 +108,24 @@ private:
 };
 
 
+class MergeAll : public GenericVideoFilter
+/**
+  * Merge the planes of one clip into another
+ **/
+{
+public:
+  MergeAll(PClip _child, PClip _clip, float _weight, int _test, IScriptEnvironment* env);  
+  PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
+
+  static AVSValue __cdecl Create(AVSValue args, void* user_data, IScriptEnvironment* env);
+
+private:
+  PClip clip;
+  float weight;
+  int test;
+};
+
+
 
 
 /**** MMX Routines ****/
@@ -130,6 +148,10 @@ void weigh_luma( unsigned int *src, unsigned int *luma, int pitch,
 void weigh_chroma( unsigned int *src, unsigned int *chroma, int pitch,
                    int chroma_pitch, int width, int height, int weight, int invweight);
 
-void mmx_weigh_yv12(BYTE *p1,const BYTE *p2, int p1_pitch, int p2_pitch,int rowsize, int height, int weight, int invweight);
+void mmx_weigh_plane(BYTE *p1,const BYTE *p2, int p1_pitch, int p2_pitch,int rowsize, int height, int weight, int invweight);
+
+void weigh_plane(BYTE *p1,const BYTE *p2, int p1_pitch, int p2_pitch,int rowsize, int height, int weight, int invweight);
+
+void isse_avg_plane(BYTE *p1,const BYTE *p2, int p1_pitch, int p2_pitch,int rowsize, int height);
 
 #endif  // __Merge_H__
