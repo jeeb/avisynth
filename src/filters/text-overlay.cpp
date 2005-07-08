@@ -684,6 +684,7 @@ Subtitle::Subtitle( PClip _child, const char _text[], int _x, int _y, int _first
 
 Subtitle::~Subtitle(void) 
 {
+  free((void*)fontname);
   delete antialiaser;
 }
 

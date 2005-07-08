@@ -549,13 +549,13 @@ AVSValue String(AVSValue args, void*, IScriptEnvironment* env)
 		return "";	// <--WE
   } else {	// standard behaviour
 	  if (args[0].IsInt()) {
-		char *s = new char[12];
-		return itoa(args[0].AsInt(), s, 10);
+		char s[12];
+		return env->SaveString(itoa(args[0].AsInt(), s, 10));
 	  }
 	  if (args[0].IsFloat()) {
-		char *s = new char[30];
+		char s[30];
 		sprintf(s,"%lf",args[0].AsFloat());
-		return s;
+		return env->SaveString(s);
 	  }
   }
   return "";
