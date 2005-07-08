@@ -229,6 +229,7 @@ class DirectShowSource : public IClip {
   void CheckHresult(HRESULT hr, const char* msg, const char* msg2 = "");
   HRESULT LoadGraphFile(IGraphBuilder *pGraph, const WCHAR* wszName);
   bool convert_fps;
+  void DirectShowSource::cleanUp();
 
 
 public:

@@ -38,7 +38,8 @@
 
 
 
-GetSample::GetSample(IScriptEnvironment* _env, bool _load_audio, bool _load_video) : env(_env), load_audio(_load_audio), load_video(_load_video) {
+GetSample::GetSample(IScriptEnvironment* _env, bool _load_audio, bool _load_video)
+  : env(_env), load_audio(_load_audio), load_video(_load_video) {
     refcnt = 1;
     source_pin = 0;
     filter_graph = 0;
@@ -434,7 +435,8 @@ GetSample::GetSample(IScriptEnvironment* _env, bool _load_audio, bool _load_vide
 
       vi.audio_samples_per_second = wex->nSamplesPerSec;
 
-      _RPT3(0, "*** Audio Accepted!  - Channels:%d.  Samples/sec:%d.  Bits/sample:%d.\n",wex->nChannels, wex->nSamplesPerSec, wex->wBitsPerSample);      
+      _RPT3(0, "*** Audio Accepted!  - Channels:%d.  Samples/sec:%d.  Bits/sample:%d.\n",
+            wex->nChannels, wex->nSamplesPerSec, wex->wBitsPerSample);      
       return S_OK;
     }
 
@@ -841,9 +843,12 @@ static void DisableDeinterlacing(IFilterGraph *pGraph)
  ***********************************************/
 
 
-DirectShowSource::DirectShowSource(const char* filename, int _avg_time_per_frame, bool _seek, bool _enable_audio, bool _enable_video, bool _convert_fps, IScriptEnvironment* _env) : env(_env), get_sample(_env, _enable_audio, _enable_video), no_search(!_seek), convert_fps(_convert_fps) {
+DirectShowSource::DirectShowSource(const char* filename, int _avg_time_per_frame, bool _seek, bool _enable_audio,
+                                   bool _enable_video, bool _convert_fps, IScriptEnvironment* _env)
+  : env(_env), get_sample(_env, _enable_audio, _enable_video), no_search(!_seek), convert_fps(_convert_fps), gb(NULL) {
 
-    CheckHresult(CoCreateInstance(CLSID_FilterGraphNoThread, 0, CLSCTX_INPROC_SERVER, IID_IGraphBuilder, (void**)&gb), "couldn't create filter graph");
+    CheckHresult(CoCreateInstance(CLSID_FilterGraphNoThread, 0, CLSCTX_INPROC_SERVER, IID_IGraphBuilder, (void**)&gb),
+                 "couldn't create filter graph");
 
 
     WCHAR filenameW[MAX_PATH];
@@ -862,6 +867,7 @@ DirectShowSource::DirectShowSource(const char* filename, int _avg_time_per_frame
     }
 
     if (!get_sample.IsConnected()) {
+      cleanUp();
       env->ThrowError("DirectShowSource: the filter graph manager won't talk to me");
     }
 
@@ -888,6 +894,8 @@ DirectShowSource::DirectShowSource(const char* filename, int _avg_time_per_frame
 	}
 
     if (FAILED(ms->GetDuration(&duration)) || duration == 0) {
+      ms->Release();
+      cleanUp();
       env->ThrowError("DirectShowSource: unable to determine the duration of the video");
     }
 
@@ -895,6 +903,8 @@ DirectShowSource::DirectShowSource(const char* filename, int _avg_time_per_frame
     __int64 audio_dur;
 
     if (FAILED(ms->GetDuration(&audio_dur)) || audio_dur == 0) {
+      ms->Release();
+      cleanUp();
       env->ThrowError("DirectShowSource: unable to determine the duration of the audio");
     }
 
@@ -911,7 +921,7 @@ DirectShowSource::DirectShowSource(const char* filename, int _avg_time_per_frame
         avg_time_per_frame = 10000000 / vi.fps_numerator * vi.fps_denominator;
       }
       if (avg_time_per_frame == 0) {
-        gb->Release();
+        cleanUp();
         env->ThrowError("DirectShowSource: I can't determine the frame rate of\nthe video; you must use the \"fps\" parameter");
       }
       vi.num_frames = int(frame_units ? duration : duration / avg_time_per_frame);
@@ -931,19 +941,22 @@ DirectShowSource::DirectShowSource(const char* filename, int _avg_time_per_frame
 
 
   DirectShowSource::~DirectShowSource() {
-    IMediaControl* mc;
-    if (SUCCEEDED(gb->QueryInterface(&mc))) {
-      OAFilterState st;
-      mc->GetState(1000, &st);
-      if (st == State_Running) {
-				mc->Stop();
-			}
-			mc->Release();
-		}
-    get_sample.StopGraph();
-    SAFE_RELEASE(gb);
+    cleanUp();
   }
 
+  void DirectShowSource::cleanUp() {
+    if (gb) {
+      IMediaControl* mc;
+      if (SUCCEEDED(gb->QueryInterface(&mc))) {
+        OAFilterState st;
+        mc->GetState(1000, &st);
+        if (st == State_Running) mc->Stop();
+        mc->Release();
+      }
+      get_sample.StopGraph();
+      SAFE_RELEASE(gb);
+    }
+  }
 
   PVideoFrame __stdcall DirectShowSource::GetFrame(int n, IScriptEnvironment* env) {
     n = max(min(n, vi.num_frames-1), 0); 
@@ -1107,6 +1120,7 @@ void DirectShowSource::CheckHresult(HRESULT hr, const char* msg, const char* msg
   char buf[MAX_ERROR_TEXT_LEN] = {0};
   if (!AMGetErrorText(hr, buf, MAX_ERROR_TEXT_LEN))
     wsprintf(buf, "error code 0x%x", hr);
+  cleanUp();
   env->ThrowError("DirectShowSource: %s%s:\n%s", msg, msg2, buf);
 }
 
