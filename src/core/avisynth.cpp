@@ -717,6 +717,7 @@ public:
   bool __stdcall SetGlobalVar(const char* name, const AVSValue& val);
   void __stdcall PushContext(int level=0);
   void __stdcall PopContext();
+  void __stdcall PopContextGlobal();
   PVideoFrame __stdcall NewVideoFrame(const VideoInfo& vi, int align);
   PVideoFrame NewVideoFrame(int row_size, int height, int align);
   PVideoFrame NewPlanarVideoFrame(int width, int height, int align, bool U_first);
@@ -742,7 +743,7 @@ private:
 
   FunctionTable function_table;
 
-  VarTable global_var_table;
+  VarTable* global_var_table;
   VarTable* var_table;
 
   LinkedVideoFrameBuffer video_frame_buffers, lost_video_frame_buffers;
@@ -771,7 +772,6 @@ long ScriptEnvironment::refcount=0;
 ScriptEnvironment::ScriptEnvironment()
   : at_exit(This()),
     function_table(This()),
-	global_var_table(0, 0),
 	PlanarChromaAlignmentState(false){ // Change to "true" for 2.5.7
 
   if(InterlockedCompareExchange(&refcount, 1, 0) == 0)//tsp June 2005 Initialize Recycle bin
@@ -787,11 +787,12 @@ ScriptEnvironment::ScriptEnvironment()
   else
     memory_max = 16777216i64;
   memory_used = 0i64;
-  var_table = new VarTable(0, &global_var_table);
-  global_var_table.Set("true", true);
-  global_var_table.Set("false", false);
-  global_var_table.Set("yes", true);
-  global_var_table.Set("no", false);
+  global_var_table = new VarTable(0, 0);
+  var_table = new VarTable(0, global_var_table);
+  global_var_table->Set("true", true);
+  global_var_table->Set("false", false);
+  global_var_table->Set("yes", true);
+  global_var_table->Set("no", false);
 
   PrescanPlugins();
   ExportFilters();
@@ -800,6 +801,8 @@ ScriptEnvironment::ScriptEnvironment()
 ScriptEnvironment::~ScriptEnvironment() {
   while (var_table)
     PopContext();
+  while (global_var_table)
+    PopContextGlobal();
   LinkedVideoFrameBuffer* i = video_frame_buffers.prev;
   while (i != &video_frame_buffers) {
     LinkedVideoFrameBuffer* prev = i->prev;
@@ -862,7 +865,7 @@ bool ScriptEnvironment::SetVar(const char* name, const AVSValue& val) {
 }
 
 bool ScriptEnvironment::SetGlobalVar(const char* name, const AVSValue& val) {
-  return global_var_table.Set(name, val);
+  return global_var_table->Set(name, val);
 }
 
 const char* ScriptEnvironment::GetPluginDirectory()
@@ -1113,11 +1116,15 @@ void ScriptEnvironment::AtExit(IScriptEnvironment::ShutdownFunc function, void* 
 }
 
 void ScriptEnvironment::PushContext(int level) {
-  var_table = new VarTable(var_table, &global_var_table);
+  var_table = new VarTable(var_table, global_var_table);
 }
 
 void ScriptEnvironment::PopContext() {
   var_table = var_table->Pop();
+}
+
+void ScriptEnvironment::PopContextGlobal() {
+  global_var_table = global_var_table->Pop();
 }
 
 
@@ -1144,17 +1151,35 @@ void* ScriptEnvironment::ManageCache(int key, void* data){
 	LinkedVideoFrameBuffer *lvfb = (LinkedVideoFrameBuffer*)data;
 
 	// The Cache volunteers VFB's it no longer tracks for reuse. This closes the loop
-	// for Memory Management. GetFrameBuffer moves new VideoFrameBuffer's to the head
-	// of the list and here we move unloved VideoFrameBuffer's to the end.
+	// for Memory Management. MC_PromoteVideoFrameBuffer moves VideoFrameBuffer's to
+	// the head of the list and here we move unloved VideoFrameBuffer's to the end.
 
 	// Check to make sure the vfb wasn't discarded and is really a LinkedVideoFrameBuffer.
 	if ((lvfb->data == 0) || (lvfb->signature != LinkedVideoFrameBuffer::ident)) break;
 
 	// Move unloved VideoFrameBuffer's to the end of the video_frame_buffers LRU list.
-	Relink(video_frame_buffers.prev, (LinkedVideoFrameBuffer*)lvfb, &video_frame_buffers);
+	Relink(video_frame_buffers.prev, lvfb, &video_frame_buffers);
 
 	// Flag it as returned, i.e. for immediate reuse.
 	lvfb->returned = true;
+
+	return (void*)1;
+  }
+  // Allow the cache to designate a VideoFrameBuffer as cacheable thus
+  // requesting it be moved to the head of the video_frame_buffers LRU list.
+  case MC_PromoteVideoFrameBuffer:
+  {
+	LinkedVideoFrameBuffer *lvfb = (LinkedVideoFrameBuffer*)data;
+
+	// When a cache instance detects attempts to refetch previously generated frames
+	// it starts to promote VFB's to the head of the video_frame_buffers LRU list.
+	// Previously all VFB's cycled to the head now only cacheable ones do.
+
+	// Check to make sure the vfb wasn't discarded and is really a LinkedVideoFrameBuffer.
+	if ((lvfb->data == 0) || (lvfb->signature != LinkedVideoFrameBuffer::ident)) break;
+
+	// Move loved VideoFrameBuffer's to the head of the video_frame_buffers LRU list.
+    Relink(&video_frame_buffers, lvfb, video_frame_buffers.next);
 
 	return (void*)1;
   }
