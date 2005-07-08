@@ -99,7 +99,7 @@ AVSsoundtouch(PClip _child, double _tempo, double _rate, double _pitch, IScriptE
   if (!assume_one_to_one) 
     vi.num_audio_samples = (double)vi.num_audio_samples * sample_multiplier;
 
-  sample_multiplier = 1.0 / sample_multiplier;  // We need the inserse to use it for sample offsets in the GetAudio loop.
+  sample_multiplier = 1.0 / sample_multiplier;  // We need the inverse to use it for sample offsets in the GetAudio loop.
 
   next_sample = 0;  // Next output sample
   inputReadOffset = 0;  // Next input sample
