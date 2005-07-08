@@ -125,18 +125,39 @@ private:
 
 
 
-class ShowAlpha : public GenericVideoFilter
+class ShowChannel : public GenericVideoFilter
 /**
   * Class to set the RGB components to the alpha mask
 **/
 {
 public:
-  ShowAlpha(PClip _child, const char * _pixel_type, IScriptEnvironment* env);
+  ShowChannel(PClip _child, const char * _pixel_type, int _channel, IScriptEnvironment* env);
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
 
-  static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env);
+  static AVSValue __cdecl Create(AVSValue args, void* channel, IScriptEnvironment* env);
 private:
-  const char * pixel_type;
+  const int channel;
+  const int input_type;
+};
+
+
+
+
+class MergeRGB : public GenericVideoFilter
+/**
+  * Class to load the RGB components from specified clips
+**/
+{
+public:
+  MergeRGB(PClip _child, PClip _blue, PClip _green, PClip _red, PClip _alpha,
+           const char * _pixel_type, IScriptEnvironment* env);
+  PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
+
+  static AVSValue __cdecl Create(AVSValue args, void* mode, IScriptEnvironment* env);
+private:
+  const PClip blue, green, red, alpha;
+  const VideoInfo &viB, &viG, &viR, &viA;
+  const char const * myname;
 };
 
 
