@@ -43,8 +43,8 @@
 // env->ManageCache() Non user keys definition
 // Define user accessible keys in avisynth.h
 //
-#define MC_ReturnVideoFrameBuffer 0xFFFF0001
-
+#define MC_ReturnVideoFrameBuffer  0xFFFF0001
+#define MC_PromoteVideoFrameBuffer 0xFFFF0002
 
 #include "core/avisynth.h"
 
