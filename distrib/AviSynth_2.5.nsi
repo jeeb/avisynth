@@ -1,7 +1,7 @@
 !packhdr tempfile.exe "upx --best --q tempfile.exe"
 
 !DEFINE VERSION 2.5.6
-!DEFINE DATE 210205
+!DEFINE DATE 050705
 
 SetCompressor lzma
 !include "MUI.nsh"
@@ -200,6 +200,26 @@ CreateShortCut "$SMPROGRAMS\AviSynth 2.5\Italian AviSynth Documentation.lnk" "$I
 
 SectionEnd
 
+Section /o "Russian Documentation" Russian
+  SetOutPath $INSTDIR\Docs
+  File "..\..\Docs\*.css"
+  SetOutPath $INSTDIR\Docs\russian
+  File "..\..\Docs\russian\*.*"
+  SetOutPath $INSTDIR\Docs\russian\advancedtopics
+  File "..\..\Docs\russian\advancedtopics\*.*"
+  SetOutPath $INSTDIR\Docs\russian\corefilters
+  File "..\..\Docs\russian\corefilters\*.*"
+  SetOutPath $INSTDIR\Docs\russian\externalfilters
+  File "..\..\Docs\russian\externalfilters\*.*"
+  SetOutPath $INSTDIR\Docs\russian\pictures\advancedtopics
+  File "..\..\Docs\russian\pictures\advancedtopics\*.*"
+  SetOutPath $INSTDIR\Docs\russian\pictures\corefilters
+  File "..\..\Docs\russian\pictures\corefilters\*.*"
+
+CreateShortCut "$SMPROGRAMS\AviSynth 2.5\Russian AviSynth Documentation.lnk" "$INSTDIR\Docs\russian\index.htm"
+
+SectionEnd
+
 Subsectionend
 
 
@@ -228,6 +248,7 @@ SubSectionEnd
   !insertmacro MUI_DESCRIPTION_TEXT  ${German} "Install German help"
   !insertmacro MUI_DESCRIPTION_TEXT  ${French} "Install French help"
   !insertmacro MUI_DESCRIPTION_TEXT  ${Italian} "Install Italian help"
+  !insertmacro MUI_DESCRIPTION_TEXT  ${Russian} "Install Russian help"
   !insertmacro MUI_DESCRIPTION_TEXT  ${SelectAssociation} "Select only ONE of these for association!"
   !insertmacro MUI_DESCRIPTION_TEXT  ${Associate1} "Open AVS files directly with Notepad"
   !insertmacro MUI_DESCRIPTION_TEXT  ${Associate2} "Open AVS files directly with Media Player 6.4"
@@ -239,7 +260,6 @@ Function un.onUninstSuccess
   FunctionEnd
 
 Section "Uninstall"
-  DeleteRegKey HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\AviSynth"
   Delete "$SYSDIR\devil.dll"
   Delete "$SYSDIR\AviSynth.dll"
   DeleteRegKey HKLM "Software\Classes\avs"
@@ -256,18 +276,22 @@ Section "Uninstall"
   Delete "$INSTDIR\Examples\*.*"
   RMDir  "$INSTDIR\Examples"
 
-  Delete "$INSTDIR\Docs\english\pictures\advancedtopics\*.*"
-  RMDir  "$INSTDIR\Docs\english\pictures\advancedtopics"
-  Delete "$INSTDIR\Docs\english\pictures\corefilters\*.*"
-  RMDir  "$INSTDIR\Docs\english\pictures\corefilters"
-  Delete "$INSTDIR\Docs\english\pictures\externalfilters\*.*"
-  RMDir  "$INSTDIR\Docs\english\pictures\externalfilters"
+  Delete "$INSTDIR\plugins\DirectShowSource.dll"
+  Delete "$INSTDIR\plugins\TCPDeliver.dll"
+
   Delete "$INSTDIR\Docs\english\advancedtopics\*.*"
   RMDir  "$INSTDIR\Docs\english\advancedtopics"
   Delete "$INSTDIR\Docs\english\corefilters\*.*"
   RMDir  "$INSTDIR\Docs\english\corefilters"
   Delete "$INSTDIR\Docs\english\externalfilters\*.*"
   RMDir  "$INSTDIR\Docs\english\externalfilters"
+  Delete "$INSTDIR\Docs\english\pictures\advancedtopics\*.*"
+  RMDir  "$INSTDIR\Docs\english\pictures\advancedtopics"
+  Delete "$INSTDIR\Docs\english\pictures\corefilters\*.*"
+  RMDir  "$INSTDIR\Docs\english\pictures\corefilters"
+  Delete "$INSTDIR\Docs\english\pictures\externalfilters\*.*"
+  RMDir  "$INSTDIR\Docs\english\pictures\externalfilters"
+  RMDir  "$INSTDIR\Docs\english\pictures"
   Delete "$INSTDIR\Docs\english\*.*"
   RMDir  "$INSTDIR\Docs\english"
 
@@ -285,18 +309,35 @@ Section "Uninstall"
   Delete "$INSTDIR\Docs\french\*.*"
   RMDir  "$INSTDIR\Docs\french"
 
-  Delete "$INSTDIR\Docs\italian\pictures\corefilters\*.*"
-  RMDir  "$INSTDIR\Docs\italian\pictures\corefilters"
-  Delete "$INSTDIR\Docs\italian\pictures\externalfilters\*.*"
-  RMDir  "$INSTDIR\Docs\italian\pictures\externalfilters"
   Delete "$INSTDIR\Docs\italian\corefilters\*.*"
   RMDir  "$INSTDIR\Docs\italian\corefilters"
+  Delete "$INSTDIR\Docs\italian\externalfilters\*.*"
+  RMDir  "$INSTDIR\Docs\italian\externalfilters"
+  Delete "$INSTDIR\Docs\italian\pictures\corefilters\*.*"
+  RMDir  "$INSTDIR\Docs\italian\pictures\corefilters"
+  RMDir  "$INSTDIR\Docs\italian\pictures"
   Delete "$INSTDIR\Docs\italian\*.*"
   RMDir  "$INSTDIR\Docs\italian"
+
+  Delete "$INSTDIR\Docs\russian\advancedtopics\*.*"
+  RMDir  "$INSTDIR\Docs\russian\advancedtopics"
+  Delete "$INSTDIR\Docs\russian\corefilters\*.*"
+  RMDir  "$INSTDIR\Docs\russian\corefilters"
+  Delete "$INSTDIR\Docs\russian\externalfilters\*.*"
+  RMDir  "$INSTDIR\Docs\russian\externalfilters"
+  Delete "$INSTDIR\Docs\russian\pictures\advancedtopics\*.*"
+  RMDir  "$INSTDIR\Docs\russian\pictures\advancedtopics"
+  Delete "$INSTDIR\Docs\russian\pictures\corefilters\*.*"
+  RMDir  "$INSTDIR\Docs\russian\pictures\corefilters"
+  RMDir  "$INSTDIR\Docs\russian\pictures"
+  Delete "$INSTDIR\Docs\russian\*.*"
+  RMDir  "$INSTDIR\Docs\russian"
 
   Delete "$INSTDIR\Docs\*.*"
   RMDir  "$INSTDIR\Docs"
   Delete "$INSTDIR\Uninstall.exe"
+
+  DeleteRegKey HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\AviSynth"
 
 IfFileExists $INSTDIR 0 Removed
     MessageBox MB_YESNO|MB_ICONQUESTION \
