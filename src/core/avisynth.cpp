@@ -1232,9 +1232,6 @@ LinkedVideoFrameBuffer* ScriptEnvironment::GetFrameBuffer2(int size) {
     for (i = video_frame_buffers.prev; i != &video_frame_buffers; i = i->prev) {
       if (i->GetRefcount() == 0) {
         if (i->next != i->prev) {
-          // Unlink this one
-          i->prev->next = i->next;
-          i->next->prev = i->prev;
           // Store size.
           freed += i->data_size;
           freed_count++;
@@ -1295,8 +1292,13 @@ LinkedVideoFrameBuffer* ScriptEnvironment::GetFrameBuffer2(int size) {
 
 VideoFrameBuffer* ScriptEnvironment::GetFrameBuffer(int size) {
   LinkedVideoFrameBuffer* result = GetFrameBuffer2(size);
+#if 0
   // Link onto head of video_frame_buffers chain.
   Relink(&video_frame_buffers, result, video_frame_buffers.next);
+#else
+  // Link onto tail of video_frame_buffers chain.
+  Relink(video_frame_buffers.prev, result, &video_frame_buffers);
+#endif
   result->returned = false;
   return result;
 }

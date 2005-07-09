@@ -55,9 +55,10 @@ AVSFunction Cache_filters[] = {
 };
  
 
-#define DEF_CACHED_VIDEO_FRAMES   4
-#define MAX_CACHE_MISSES 100
-#define MAX_CACHED_VIDEO_FRAMES 200
+enum {CACHE_SCALE_FACTOR      =  16}; // Granularity fraction for cache size - 1/16th
+enum {MAX_CACHE_MISSES        = 100}; // Consecutive misses before a reset
+enum {MAX_CACHED_VIDEO_FRAMES = 200}; // Maximum number of VFB's that are tracked
+enum {MAX_CACHE_RANGE         =  21}; // Maximum CACHE_RANGE span i.e. number of protected VFB's
 
 
 /*******************************
@@ -71,13 +72,14 @@ Cache::Cache(PClip _child)
   h_policy = CACHE_ALL;  // Since hints are not used per default, this is to describe the lowest default cache mode.
   h_audiopolicy = CACHE_NOTHING;  // Don't cache audio per default.
 
-  cache_limit = 16*DEF_CACHED_VIDEO_FRAMES;
-  cache_init  = cache_limit/16;
+  cache_limit = CACHE_SCALE_FACTOR / 2;  // Start half way towards 1 buffer
+  cache_init  = 0;
   fault_rate = 0;
   miss_count = 0x80000000; // Hugh negative
 
-  h_total_frames = 0; // Hint cache not init'ed
-  h_radius = 0;
+//h_total_frames = 0; // Hint cache not init'ed
+  h_span = 0;
+  protectcount = 0;
 
   ac_expected_next = 0;
   ac_currentscore = 100;
@@ -87,36 +89,30 @@ Cache::Cache(PClip _child)
 
  }
 
+/*********** V I D E O   C A C H E ************/
 
-/* Problem :- When Plan B: steals a vfb some poor cache instance looses a frame
- * and when it scans it's list it will dutifully return that vfb for early reuse
- * however that vfb is now owned by another cache instance that currently loves
- * the vfb, i.e. it should remain at the head of the LRU not move to the tail.
- *
- * Also the heuristic MakeWriteable() detector will be deceived when Plan B: steals
- * a VFB. It currently assumes any modified VFB are modified by the calling filter.
- *
- * Perhaps as Plan B: double increments the sequence number, assume a difference
- * of one implies calling filter modified, else more implies theft.
- */
+
+// Any vfb's that are still current we give back for earlier reuse
 void Cache::ReturnVideoFrameBuffer(CachedVideoFrame *i, IScriptEnvironment* env)
 {
+	// A vfb purge has occured
 	if (!i->vfb) return;
 
-	// if vfb was probably stolen leave it alone
-	if (i->vfb->GetSequenceNumber() > i->sequence_number+1) return;
+	// if vfb is not current (i.e ours) leave it alone
+	if (i->vfb->GetSequenceNumber() != i->sequence_number) return;
 
 	// return vfb to vfb pool for immediate reuse
-    if (i->vfb) env->ManageCache(MC_ReturnVideoFrameBuffer, i->vfb);
+    env->ManageCache(MC_ReturnVideoFrameBuffer, i->vfb);
 }
 
 
+// If the cache is not being used reset it
 void Cache::ResetCache(IScriptEnvironment* env)
 {
   ++g_Cache_stats.resets;
   CachedVideoFrame *i, *j;
 
-  _RPT3(0, "Cache:%x: Cache Reset, cache_limit %d, cache_init %d\n", this, cache_limit, 16*cache_init);
+  _RPT3(0, "Cache:%x: Cache Reset, cache_limit %d, cache_init %d\n", this, cache_limit, CACHE_SCALE_FACTOR*cache_init);
 
   int count=0;
   for (i = video_frames.next; i != &video_frames; i = i->next) {
@@ -134,11 +130,13 @@ purge_old_frame:
   // Delete the excess CachedVideoFrames
   while (j != &video_frames) {
 	i = j->next;
-	ReturnVideoFrameBuffer(j, env); // Maybe return old vfb to vfb pool for early reuse
+	if (j->vfb_protected) UnProtectVFB(j);
+	if (j->vfb_locked) UnlockVFB(j);
+	ReturnVideoFrameBuffer(j, env); // Return old vfb to vfb pool for early reuse
 	delete j;
 	j = i;
   }
-  cache_limit = 16*cache_init;
+  cache_limit = CACHE_SCALE_FACTOR*cache_init;
 }
 
 
@@ -197,12 +195,10 @@ PVideoFrame __stdcall Cache::GetFrame(int n, IScriptEnvironment* env)
 
   if (h_policy == CACHE_NOTHING) { // don't want a cache. Typically filters that only ever seek forward.
     __asm mov ebx,ebx  // Hack! prevent compiler from trusting ebx contents across call
-    PVideoFrame result = childGetFrame(n, env);
-//  if (result->vfb) env->ManageCache(MC_ReturnVideoFrameBuffer, result->vfb); // return vfb to vfb pool for immediate reuse
-    return result;
+    return childGetFrame(n, env);
   }
 
-  if (h_policy == CACHE_RANGE) {  // for filters that bash a span of frames. Typically temporal filters.
+/*if (h_policy == CACHE_RANGE) {  // for filters that bash a span of frames. Typically temporal filters.
     PVideoFrame result;
     bool foundframe = false;
 
@@ -280,7 +276,7 @@ PVideoFrame __stdcall Cache::GetFrame(int n, IScriptEnvironment* env)
   }
 
 //if (h_policy == CACHE_ALL) { // The default policy, pot luck!
-
+*/
     if (video_frames.next->vfb_locked) {  // release the head vfb if it is locked
       UnlockVFB(video_frames.next);
       _RPT3(0, "Cache:%x: unlocking vfb %x for frame %d\n", this, video_frames.next->vfb, video_frames.next->frame_number);
@@ -290,7 +286,7 @@ PVideoFrame __stdcall Cache::GetFrame(int n, IScriptEnvironment* env)
 
     // look for a cached copy of the frame
     if (n>=minframe && n<=maxframe) { // have we ever seen this frame?
-	  miss_count = 0; // Start/Reset cache reset counter
+	  miss_count = 0; // Start/Reset cache miss counter
 
       int c=0;
       int imaxframe = -1;
@@ -301,28 +297,24 @@ PVideoFrame __stdcall Cache::GetFrame(int n, IScriptEnvironment* env)
         ++c;
         const int ifn = i->frame_number;
 
-        if (i->vfb_locked) {  // release the vfb if it is locked
-          UnlockVFB(i);
-          _RPT3(0, "Cache:%x: B. unlock vfb %x for frame %d\n", this, i->vfb, i->frame_number);
-        }
-
         if (ifn == n) {
           found = true;
 
-          LockVFB(i);  // Lock to be sure this frame isn't updated.
+		  if (!i->vfb_locked)
+			LockVFB(i);  // Lock to be sure this frame isn't updated.
 
           if (i->sequence_number == i->vfb->GetSequenceNumber()) {
 		    ++g_Cache_stats.vfb_found;
-			return BuildVideoFrame(i, n);
+			return BuildVideoFrame(i, n); // Success!
           }
 
 		  ++i->faults;
-		  fault_rate += 30 + c;
+		  fault_rate += 30 + c; // Bias by number of cache entries searched
 		  if (100*i->faults > fault_rate) fault_rate = 100*i->faults;
 		  if (fault_rate > 300) fault_rate = 300;
 		  _RPT3(0, "Cache:%x: stale frame %d, requests %d\n", this, n, i->faults);
 
-          if (i->sequence_number == i->vfb->GetSequenceNumber()-1) { // Modified by a caller
+          if (i->sequence_number == i->vfb->GetSequenceNumber()-1) { // Modified by a parent
 		    ++g_Cache_stats.vfb_modified;
           }
 		  else { // vfb has been stolen
@@ -330,6 +322,7 @@ PVideoFrame __stdcall Cache::GetFrame(int n, IScriptEnvironment* env)
             _RPT3(0, "Cache:%x: stolen vfb %x, frame %d\n", this, i->vfb, n);
 		  }
 
+	      if (i->vfb_protected) UnProtectVFB(i);
           UnlockVFB(i);
 
 		  cvf = i; // Remember this entry!
@@ -339,17 +332,27 @@ PVideoFrame __stdcall Cache::GetFrame(int n, IScriptEnvironment* env)
         if (ifn < iminframe) iminframe = ifn;
         if (ifn > imaxframe) imaxframe = ifn;
 
+		// Unprotect any frames out of CACHE_RANGE scope
+		if ((i->vfb_protected) && (abs(ifn-n) >= h_span)) {
+          UnProtectVFB(i);
+          _RPT3(0, "Cache:%x: A: Unprotect vfb %x for frame %d\n", this, i->vfb, ifn);
+		}
+
+        if (i->vfb_locked) {  // release the vfb if it is locked
+          UnlockVFB(i);
+          _RPT3(0, "Cache:%x: B. unlock vfb %x for frame %d\n", this, i->vfb, ifn);
+        }
       } // for (CachedVideoFrame* i =
 
-      if (!found) { // Cache miss - allocate extra buffers
+      if (!found) { // Cache miss - accumulate towards extra buffers
 		++g_Cache_stats.vfb_notfound;
-	    int span = 1 + imaxframe-iminframe - cache_limit/16;
-		if (span > 16)
-	      cache_limit += 16; // Add upto one whole buffer
+	    int span = 1 + imaxframe-iminframe - cache_limit/CACHE_SCALE_FACTOR;
+		if (span > CACHE_SCALE_FACTOR)
+	      cache_limit += CACHE_SCALE_FACTOR; // Add upto one whole buffer at a time
 		else if (span >  0)
 	      cache_limit += span; // Add span 16ths towards another buffer
 
-        if (cache_limit > 16*MAX_CACHED_VIDEO_FRAMES) cache_limit = 16*MAX_CACHED_VIDEO_FRAMES;
+        if (cache_limit > CACHE_SCALE_FACTOR*MAX_CACHED_VIDEO_FRAMES) cache_limit = CACHE_SCALE_FACTOR*MAX_CACHED_VIDEO_FRAMES;
 
 		maxframe = imaxframe; // update the limits from what is currently cached
 		minframe = iminframe;
@@ -368,22 +371,37 @@ PVideoFrame __stdcall Cache::GetFrame(int n, IScriptEnvironment* env)
     if (fault_rate > 0) --fault_rate;  // decay fault rate
 
     _RPT4(0, "Cache:%x: generating frame %d, cache from %d to %d\n", this, n, minframe, maxframe);
+
     // not cached; make the filter generate it.
 	__asm mov ebx,ebx  // Hack! prevent compiler from trusting ebx contents across call
     PVideoFrame result = childGetFrame(n, env);
+
+	// When we have the possibility of cacheing, promote
+	// the vfb to the head of the LRU list, CACHE_RANGE
+	// frames are NOT promoted hence they are fair game
+	// for reuse as soon as they are unprotected. This
+	// is a fair price to pay for their protection. If
+	// a 2nd filter is hiting the cache outside the radius
+	// of protection then we do promote protected frames.
+
+	if (cache_limit/CACHE_SCALE_FACTOR > h_span)
+	  env->ManageCache(MC_PromoteVideoFrameBuffer, result->vfb);
 
 	if (!cvf) cvf=GetACachedVideoFrame(result);
 
     RegisterVideoFrame(cvf, result, n, env);
 
+	if (h_span) {
+      ProtectVFB(cvf, n);
+	}
 	// If we have asked for a same stale frame twice, lock frames.
-	if ((fault_rate > 100) && (fault_rate != 130)) { // Generated frames are subject to locking for longer
+	else if (  (fault_rate >  100)     // Generated frames are subject to locking at a lower fault rate
+	   && (fault_rate != 130) ) { // Throw an unlocked probing frame at the world occasionally
 	  LockVFB(cvf);  // Increment to be sure this frame isn't modified.
 	  _RPT3(0, "Cache:%x: lock vfb %x, gened frame %d\n", this, cvf->vfb, n);
 	}
 
     return result;
-//}
 }
 
 
@@ -392,8 +410,9 @@ VideoFrame* Cache::BuildVideoFrame(CachedVideoFrame *i, int n)
   Relink(&video_frames, i, video_frames.next);   // move the matching cache entry to the front of the list
   VideoFrame* result = new VideoFrame(i->vfb, i->offset, i->pitch, i->row_size, i->height, i->offsetU, i->offsetV, i->pitchUV);
 
-  // If we have asked for a same stale frame twice, leave frames locked.
-  if ((fault_rate <= 160) || (fault_rate == 190)) { // Reissued frames are not subject to locking as readily
+  // If we have asked for any same stale frame twice, leave frames locked.
+  if (  (fault_rate <= 160)     // Reissued frames are not subject to locking at the lower fault rate
+     || (fault_rate == 190) ) { // Throw an unlocked probing frame at the world occasionally
 	UnlockVFB(i);
 	_RPT2(0, "Cache:%x: using cached copy of frame %d\n", this, n);
   }
@@ -413,7 +432,8 @@ Cache::CachedVideoFrame* Cache::GetACachedVideoFrame(const PVideoFrame& frame)
   // scan forwards for the last protected CachedVideoFrame
   for (i = video_frames.next; i != &video_frames; i = i->next) {
     if (i->vfb == frame->vfb) return i; // Don't fill cache with 100's copies of a Blankclip vfb
-	if (++count >= cache_limit/16) break;
+	count += 1;
+	if ((count > h_span) && (count >= cache_limit/CACHE_SCALE_FACTOR)) break;
   }
 
   // scan backwards for a used CachedVideoFrame
@@ -431,7 +451,7 @@ Cache::CachedVideoFrame* Cache::GetACachedVideoFrame(const PVideoFrame& frame)
 
 void Cache::RegisterVideoFrame(CachedVideoFrame *i, const PVideoFrame& frame, int n, IScriptEnvironment* env) 
 {
-  ReturnVideoFrameBuffer(i, env); // Maybe return old vfb to vfb pool for early reuse
+  ReturnVideoFrameBuffer(i, env); // Return old vfb to vfb pool for early reuse
 
   // copy all the info
   i->vfb = frame->vfb;
@@ -460,7 +480,7 @@ void Cache::RegisterVideoFrame(CachedVideoFrame *i, const PVideoFrame& frame, in
 
 void Cache::LockVFB(CachedVideoFrame *i)
 {
-  if (i->vfb) {
+  if (!!i->vfb && !i->vfb_locked) {
 	i->vfb_locked = true;
 	InterlockedIncrement(&i->vfb->refcount);
   }
@@ -469,12 +489,44 @@ void Cache::LockVFB(CachedVideoFrame *i)
 
 void Cache::UnlockVFB(CachedVideoFrame *i)
 {
-  if (i->vfb) {
-	InterlockedDecrement(&i->vfb->refcount);
+  if (!!i->vfb && i->vfb_locked) {
 	i->vfb_locked = false;
+	InterlockedDecrement(&i->vfb->refcount);
   }
 }
 
+void Cache::ProtectVFB(CachedVideoFrame *i, int n)
+{
+  CachedVideoFrame* j = video_frames.prev;
+
+  // Unprotect any frames out of CACHE_RANGE scope
+  while ((protectcount >= h_span) && (j != &video_frames)){
+	if ( (j != i) && (j->vfb_protected) && (abs(n - j->frame_number) >= h_span) ) {
+      UnProtectVFB(j);
+      _RPT3(0, "Cache:%x: B: Unprotect vfb %x for frame %d\n", this, j->vfb, j->frame_number);
+	  break;
+	}
+	j = j->prev;
+  }
+
+  if (!!i->vfb && !i->vfb_protected) {
+	InterlockedIncrement(&protectcount);
+	i->vfb_protected = true;
+	InterlockedIncrement(&i->vfb->refcount);
+  }
+}
+
+
+void Cache::UnProtectVFB(CachedVideoFrame *i)
+{
+  if (!!i->vfb && i->vfb_protected) {
+	InterlockedDecrement(&i->vfb->refcount);
+	i->vfb_protected = false;
+	InterlockedDecrement(&protectcount);
+  }
+}
+
+/*********** A U D I O   C A C H E ************/
 
 void Cache::FillZeros(void* buf, int start_offset, int count) {
 
@@ -547,7 +599,7 @@ void __stdcall Cache::GetAudio(void* buf, __int64 start, __int64 count, IScriptE
 
 // Populate "buf" with whats available BEFORE any resizing!
 // Only GetAudio() the missing bits, worst case the whole lot,
-// best case a small chunk at the begining and/or the end. Then
+// best case a small chunk at the begining or the end. Then
 // repopulate the cache aligned with the end of "buf".
 
     if (ac_too_small_count > 2 && (maxsamplecount < vi.AudioSamplesFromBytes(4095*1024))) {  // Max size = 4MB!
@@ -581,7 +633,7 @@ void __stdcall Cache::GetAudio(void* buf, __int64 start, __int64 count, IScriptE
       if ((start - cache_start + count)>maxsamplecount) {  //cache shifting is necessary
         shiftsamples = start - cache_start + count - maxsamplecount;
 
-// Why this test? - Make the most of having to do a memmove
+// Q. Why this test? - A. To make the most of having to do a memmove
         if ( (start - cache_start)/2 > shiftsamples ) {  //shift half cache if possible
           shiftsamples = (start - cache_start)/2;
         }
@@ -603,6 +655,8 @@ void __stdcall Cache::GetAudio(void* buf, __int64 start, __int64 count, IScriptE
   memcpy(buf,cache + (start - cache_start)*samplesize, count*samplesize);
 
 }
+
+/*********** C A C H E   H I N T S ************/
 
 void __stdcall Cache::SetCacheHints(int cachehints,int frame_range) {
   _RPT3(0, "Cache:%x: Setting cache hints (hints:%d, range:%d )\n", this, cachehints, frame_range);
@@ -644,25 +698,27 @@ void __stdcall Cache::SetCacheHints(int cachehints,int frame_range) {
 
 
   if (cachehints == CACHE_ALL) {
+	int _cache_limit;
 
-    ReleaseHintCache();
+//  ReleaseHintCache();
 
     h_policy = CACHE_ALL;  // This is default operation, a simple LRU cache
 
-    if (frame_range <= 0)
-      cache_limit = 16*DEF_CACHED_VIDEO_FRAMES;
-    else if (frame_range >= MAX_CACHED_VIDEO_FRAMES)
-      cache_limit = 16*MAX_CACHED_VIDEO_FRAMES;
+    if (frame_range >= MAX_CACHED_VIDEO_FRAMES)
+      _cache_limit = CACHE_SCALE_FACTOR * MAX_CACHED_VIDEO_FRAMES;
     else
-    cache_limit = 16*frame_range;
-    cache_init  = cache_limit/16;
+      _cache_limit = CACHE_SCALE_FACTOR * frame_range;
 
+	if (_cache_limit > cache_limit)  // The max of all requests
+	  cache_limit = _cache_limit;
+
+    cache_init  = cache_limit/CACHE_SCALE_FACTOR;
     return;
   }
 
   if (cachehints == CACHE_NOTHING) {
 
-    ReleaseHintCache();
+//  ReleaseHintCache();
 
     h_policy = CACHE_NOTHING;  // filter requested no caching.
     return;
@@ -672,47 +728,48 @@ void __stdcall Cache::SetCacheHints(int cachehints,int frame_range) {
 
     h_policy = CACHE_RANGE;  // An explicit cache of radius "frame_range" around the current frame, n.
 
-    if (frame_range <= h_radius)  // Use the largest size when we have multiple clients
+    if (frame_range <= h_span)  // Use the largest size when we have multiple clients
       return;
 
-    ReleaseHintCache();
+//  ReleaseHintCache();
 
-    cache_limit = 0;
-    cache_init  = 0;
+    h_span = frame_range;
+	if (h_span > MAX_CACHE_RANGE) h_span=MAX_CACHE_RANGE;
 
-    h_radius = frame_range;
-    h_total_frames = frame_range*2+1;
+//  h_total_frames = frame_range*2+1;
 
 	// Need to manually allocate h_video_frames[] and it's members so
 	// I can move the members between this and the video_frames list
 
-    h_video_frames = new CachedVideoFrame*[h_total_frames];
-
-    for (int i = 0; i<h_total_frames; i++) {
-      h_video_frames[i]=new CachedVideoFrame;
-    }
+//    h_video_frames = new CachedVideoFrame*[h_total_frames];
+//
+//    for (int i = 0; i<h_total_frames; i++) {
+//      h_video_frames[i]=new CachedVideoFrame;
+//    }
   }
 } 
 
-void Cache::ReleaseHintCache()
+/*********** C L E A N U P ************/
+
+/*void Cache::ReleaseHintCache()
 {
   if (h_total_frames > 0) { // if we got some -- release em!
     for (int i = 0; i<h_total_frames; i++) {
       if ( (h_video_frames[i]->status & CACHE_ST_USED) &&
 		  !(h_video_frames[i]->status & CACHE_ST_HAS_BEEN_RELEASED) )
-        UnlockVFB(h_video_frames[i]);  // We can now release this vfb.
-		  delete h_video_frames[i];
+		UnlockVFB(h_video_frames[i]);  // We can now release this vfb.
+	  delete h_video_frames[i];
 	  h_video_frames[i] = 0;
     }
     delete[] h_video_frames;
     h_total_frames = 0;
     h_radius = 0;
   }
-}
+}*/
 
 
 Cache::~Cache() {
-  ReleaseHintCache();
+//ReleaseHintCache();
   if (h_audiopolicy != CACHE_NOTHING)
     delete[] cache;
 
@@ -720,11 +777,14 @@ Cache::~Cache() {
   for (k = video_frames.next; k!=&video_frames;)
   {
 	  j = k->next;
+	  if (k->vfb_protected) UnProtectVFB(k);
 	  if (k->vfb_locked) UnlockVFB(k);
 	  delete k;
 	  k = j;
   }
 }
+
+/*********** C R E A T E ************/
 
 AVSValue __cdecl Cache::Create_Cache(AVSValue args, void*, IScriptEnvironment* env) 
 {

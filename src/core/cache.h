@@ -41,9 +41,9 @@
 /********************************************************************
 ********************************************************************/
 
-enum {
-  CACHE_CLIENT_ID=256+1,
- };
+// enum {
+//   CACHE_CLIENT_ID=256+1,
+//  };
 
 
 class Cache : public GenericVideoFilter 
@@ -63,13 +63,15 @@ private:
   struct CachedVideoFrame;
   void RegisterVideoFrame(CachedVideoFrame *i, const PVideoFrame& frame, int n, IScriptEnvironment* env);
   void FillZeros(void* buf, int start_offset, int count);
-  void ReleaseHintCache();
+//void ReleaseHintCache();
   void ResetCache(IScriptEnvironment* env);
   void ReturnVideoFrameBuffer(CachedVideoFrame *i, IScriptEnvironment* env);
   CachedVideoFrame* GetACachedVideoFrame(const PVideoFrame& frame);
   VideoFrame* BuildVideoFrame(CachedVideoFrame *i, int n);
   void LockVFB(CachedVideoFrame *i);
   void UnlockVFB(CachedVideoFrame *i);
+  void ProtectVFB(CachedVideoFrame *i, int n);
+  void UnProtectVFB(CachedVideoFrame *i);
 #ifdef _DEBUG
   PVideoFrame __stdcall childGetFrame(int n, IScriptEnvironment* env);
 #endif
@@ -83,24 +85,28 @@ private:
     int frame_number;
 	int faults;  // the number of times this frame was requested and found to be stale(modified)
 	bool vfb_locked;
-    int status;
+	bool vfb_protected;
+//  int status;
 
     CachedVideoFrame() { 
 		next=prev=this; 
 		vfb=0; 
 		frame_number=-1; 
 		vfb_locked=false;
-		status=0;
+		vfb_protected=false;
+//		status=0;
 	}
   };
   CachedVideoFrame video_frames;
 
-// hint vars:
-  CachedVideoFrame** h_video_frames;
-  int h_total_frames;
-  int h_radius;
   int h_policy;
-  int h_lastID;
+// hint vars:
+//CachedVideoFrame** h_video_frames;
+//int h_total_frames;
+//  int h_radius;
+  int h_span;
+  long protectcount;
+
 // Audio cache:
   int h_audiopolicy;
   int h_audioSize;
@@ -125,7 +131,7 @@ private:
   
   enum {CACHE_ST_USED = 1<<0,
         CACHE_ST_DELETEME = 1<<1,
-        CACHE_ST_BEING_GENERATED = 1<<2,
+//      CACHE_ST_BEING_GENERATED = 1<<2,
         CACHE_ST_HAS_BEEN_RELEASED = 1<<3
   };
 
