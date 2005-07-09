@@ -45,7 +45,6 @@ using namespace std;
 
 #include "../internal.h"
 #include "../filters/text-overlay.h"  // for messages
-#include "../filters/transform.h"  // for FlipVertical
 
 #include "../../distrib/include/il/il.h"
 
@@ -56,15 +55,15 @@ class ImageWriter : public GenericVideoFilter
  **/
 {  
 public:
-  ImageWriter(PClip _child, const char * _base_name, const int start, const int end, const char * _ext, bool _info);
+  ImageWriter(PClip _child, const char * _base_name, const int start, const int end, const char * _ext, bool _info, IScriptEnvironment* env);
   ~ImageWriter();
-
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
-  void fileWrite(ostream & file, const BYTE * srcPtr, const int pitch, const int row_size, const int height);
 
   static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env);
 
 private:
+  void fileWrite(ostream & file, const BYTE * srcPtr, const int pitch, const int row_size, const int height);
+
   bool info;
   
   const char * base_name;
@@ -83,7 +82,9 @@ class ImageReader : public IClip
  **/
 {
 public:
-  ImageReader(const char * _base_name, const int _start, const int _end, const float _fps, bool _use_DevIL, bool _info);
+  ImageReader(const char * _base_name, const int _start, const int _end,
+              const float _fps, bool _use_DevIL, bool _info, const char * _pixel,
+			  IScriptEnvironment* env);
   ~ImageReader();
 
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
@@ -98,17 +99,14 @@ public:
 
 private:
   void fileRead(istream & file, BYTE * dstPtr, const int pitch, const int row_size, const int height);
-  bool checkProperties(istream & file, PVideoFrame & frame, IScriptEnvironment * env);
+  bool checkProperties(ifstream & file, PVideoFrame & frame, IScriptEnvironment * env);
   PVideoFrame ImageReader::FlipFrame(PVideoFrame src, IScriptEnvironment * env);
 
   char base_name[MAX_PATH + 1];
   const int start;
   const int end;
-  const float fps;
   bool use_DevIL;
   bool info;
-
-  string constructor_err;
 
   VideoInfo vi;
 
