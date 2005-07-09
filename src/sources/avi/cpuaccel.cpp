@@ -121,7 +121,7 @@ long __declspec(naked) CPUCheckForExtensions() {
 
 		and		edx,00400000h	//AMD MMX extensions (integer SSE) is bit 22
 		shr		edx,19
-		or		ebp,edx
+		or		ebp,edx			//set bit 3
 
 done:
 		mov		eax,ebp
