@@ -1001,7 +1001,8 @@ PVideoFrame ScriptEnvironment::NewPlanarVideoFrame(int width, int height, int al
   }
 
   int size = pitch * height + UVpitch * height;
-  VideoFrameBuffer* vfb = GetFrameBuffer(size+(FRAME_ALIGN*4));
+  int _align = (align < FRAME_ALIGN) ? FRAME_ALIGN : align;
+  VideoFrameBuffer* vfb = GetFrameBuffer(size+(_align*4));
   if (!vfb)
     ThrowError("NewPlanarVideoFrame: Returned 0 size image!");
 #ifdef _DEBUG
