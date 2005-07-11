@@ -215,6 +215,8 @@ Section /o "Russian Documentation" Russian
   File "..\..\Docs\russian\pictures\advancedtopics\*.*"
   SetOutPath $INSTDIR\Docs\russian\pictures\corefilters
   File "..\..\Docs\russian\pictures\corefilters\*.*"
+  SetOutPath $INSTDIR\Docs\russian\pictures\externalfilters
+  File "..\..\Docs\russian\pictures\externalfilters\*.*"
 
 CreateShortCut "$SMPROGRAMS\AviSynth 2.5\Russian AviSynth Documentation.lnk" "$INSTDIR\Docs\russian\index.htm"
 
@@ -329,6 +331,8 @@ Section "Uninstall"
   RMDir  "$INSTDIR\Docs\russian\pictures\advancedtopics"
   Delete "$INSTDIR\Docs\russian\pictures\corefilters\*.*"
   RMDir  "$INSTDIR\Docs\russian\pictures\corefilters"
+  Delete "$INSTDIR\Docs\russian\pictures\externalfilters\*.*"
+  RMDir  "$INSTDIR\Docs\russian\pictures\externalfilters"
   RMDir  "$INSTDIR\Docs\russian\pictures"
   Delete "$INSTDIR\Docs\russian\*.*"
   RMDir  "$INSTDIR\Docs\russian"
