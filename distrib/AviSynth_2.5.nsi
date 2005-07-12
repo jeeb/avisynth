@@ -1,7 +1,7 @@
 !packhdr tempfile.exe "upx --best --q tempfile.exe"
 
 !DEFINE VERSION 2.5.6
-!DEFINE DATE 050705
+!DEFINE DATE 120705
 
 SetCompressor lzma
 !include "MUI.nsh"
@@ -100,9 +100,12 @@ reg_not_ok:
   Abort
 reg_ok:
 
+SetShellVarContext Current
 CreateDirectory  "$SMPROGRAMS\AviSynth 2.5"
-
   CreateShortCut "$SMPROGRAMS\AviSynth 2.5\Uninstall AviSynth.lnk" "$INSTDIR\Uninstall.exe"
+
+SetShellVarContext All
+CreateDirectory  "$SMPROGRAMS\AviSynth 2.5"
   CreateShortCut "$SMPROGRAMS\AviSynth 2.5\License.lnk" "$INSTDIR\GPL.txt"
   CreateShortCut "$SMPROGRAMS\AviSynth 2.5\Plugin Directory.lnk" "$INSTDIR\Plugins"
   WriteINIStr    "$SMPROGRAMS\AviSynth 2.5\AviSynth Online.url" "InternetShortcut" "URL" "http://www.avisynth.org"
@@ -151,6 +154,7 @@ SectionIn 1
   SetOutPath $INSTDIR\Examples
   File "Examples\*.*"
 
+SetShellVarContext All
 CreateShortCut "$SMPROGRAMS\AviSynth 2.5\AviSynth Documentation.lnk" "$INSTDIR\Docs\english\index.htm"
 
 SectionEnd
@@ -166,6 +170,7 @@ Section /o "German Documentation" German
   SetOutPath $INSTDIR\Docs\german\externalfilters
   File "..\..\Docs\german\externalfilters\*.*"
 
+SetShellVarContext All
 CreateShortCut "$SMPROGRAMS\AviSynth 2.5\Deutsche AviSynth Dokumentation.lnk" "$INSTDIR\Docs\german\index.htm"
 
 SectionEnd
@@ -180,6 +185,7 @@ Section /o "French Documentation" French
   SetOutPath $INSTDIR\Docs\french\externalfilters
   File "..\..\Docs\french\externalfilters\*.*"
 
+SetShellVarContext All
 CreateShortCut "$SMPROGRAMS\AviSynth 2.5\French AviSynth Documentation.lnk" "$INSTDIR\Docs\french\index.htm"
 
 SectionEnd
@@ -196,6 +202,7 @@ Section /o "Italian Documentation" Italian
   SetOutPath $INSTDIR\Docs\italian\pictures\corefilters
   File "..\..\Docs\italian\pictures\corefilters\*.*"
 
+SetShellVarContext All
 CreateShortCut "$SMPROGRAMS\AviSynth 2.5\Italian AviSynth Documentation.lnk" "$INSTDIR\Docs\italian\index.htm"
 
 SectionEnd
@@ -218,6 +225,7 @@ Section /o "Russian Documentation" Russian
   SetOutPath $INSTDIR\Docs\russian\pictures\externalfilters
   File "..\..\Docs\russian\pictures\externalfilters\*.*"
 
+SetShellVarContext All
 CreateShortCut "$SMPROGRAMS\AviSynth 2.5\Russian AviSynth Documentation.lnk" "$INSTDIR\Docs\russian\index.htm"
 
 SectionEnd
@@ -272,8 +280,15 @@ Section "Uninstall"
   DeleteRegKey HKCR "avsfile\DefaultIcon"
   DeleteRegValue HKCR "avsfile\shell\open\command 'notepad.exe "%1"'"
   DeleteRegValue HKCR "avsfile\shell\open\command 'mplayer2.exe "%1"'"
+
+  SetShellVarContext All
   Delete "$SMPROGRAMS\AviSynth 2.5\*.*"
   RMDir  "$SMPROGRAMS\AviSynth 2.5"
+
+  SetShellVarContext Current
+  Delete "$SMPROGRAMS\AviSynth 2.5\*.*"
+  RMDir  "$SMPROGRAMS\AviSynth 2.5"
+
   Delete "$INSTDIR\GPL.txt"
   Delete "$INSTDIR\Examples\*.*"
   RMDir  "$INSTDIR\Examples"
@@ -345,7 +360,7 @@ Section "Uninstall"
 
 IfFileExists $INSTDIR 0 Removed
     MessageBox MB_YESNO|MB_ICONQUESTION \
-      "Do you want to remove pointer to plugin directory (no files will be removed)?" IDNO Removed
+      "Do you want to remove the registry pointer to plugin directory (no files will be removed)?" IDNO Removed
     DeleteRegKey HKLM "Software\AviSynth"
   Removed:
 
