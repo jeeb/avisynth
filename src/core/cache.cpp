@@ -303,6 +303,9 @@ PVideoFrame __stdcall Cache::GetFrame(int n, IScriptEnvironment* env)
 		  if (!i->vfb_locked)
 			LockVFB(i);  // Lock to be sure this frame isn't updated.
 
+		  // We have a hit make sure cache_limit as at least this wide
+          if (cache_limit < c * CACHE_SCALE_FACTOR) cache_limit = c * CACHE_SCALE_FACTOR;
+
           if (i->sequence_number == i->vfb->GetSequenceNumber()) {
 		    ++g_Cache_stats.vfb_found;
 			return BuildVideoFrame(i, n); // Success!
@@ -352,13 +355,14 @@ PVideoFrame __stdcall Cache::GetFrame(int n, IScriptEnvironment* env)
 		else if (span >  0)
 	      cache_limit += span; // Add span 16ths towards another buffer
 
-        if (cache_limit > CACHE_SCALE_FACTOR*MAX_CACHED_VIDEO_FRAMES) cache_limit = CACHE_SCALE_FACTOR*MAX_CACHED_VIDEO_FRAMES;
-
 		maxframe = imaxframe; // update the limits from what is currently cached
 		minframe = iminframe;
 	  }
 
+      if (cache_limit > CACHE_SCALE_FACTOR*MAX_CACHED_VIDEO_FRAMES) cache_limit = CACHE_SCALE_FACTOR*MAX_CACHED_VIDEO_FRAMES;
+
       _RPT4(0, "Cache:%x: size %d, limit %d, fault %d\n", this, c, cache_limit, fault_rate);
+
     } // if (n>=minframe
 	else {
       ++g_Cache_stats.vfb_never;
