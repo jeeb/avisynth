@@ -85,6 +85,7 @@ GetSample::GetSample(IScriptEnvironment* _env, bool _load_audio, bool _load_vide
     m_pPos = 0;
     if (a_buffer)
       delete[] a_buffer;
+    a_allocated_buffer = 0;
     a_buffer = 0;
   }
 
@@ -176,6 +177,7 @@ GetSample::GetSample(IScriptEnvironment* _env, bool _load_audio, bool _load_vide
     StartGraph();
     a_sample_bytes = 0;
 
+    end_of_stream = false;
     return hr;  // Seek ok
   }
 
@@ -319,6 +321,7 @@ GetSample::GetSample(IScriptEnvironment* _env, bool _load_audio, bool _load_vide
     if (a_allocated_buffer) { 
       a_allocated_buffer = 0;
       delete[] a_buffer;
+      a_buffer = 0;
     }
     source_pin = 0;
     return S_OK;
@@ -1014,10 +1017,10 @@ DirectShowSource::DirectShowSource(const char* filename, int _avg_time_per_frame
       }
     }
     PVideoFrame v = get_sample.GetCurrentFrame();
-    if ((cur_frame!=n) && (n%10>4)) {
-      env->MakeWritable(&v);
+//    if ((cur_frame!=n) && (n%10>4)) {
+//      env->MakeWritable(&v);
 //      ApplyMessage(&v, vi, "Video Desync!",256,0xffffff,0,0,env);
-    }
+//    }
     return v;
   }
 
