@@ -1324,84 +1324,116 @@ int ScriptEnvironment::Flatten(const AVSValue& src, AVSValue* dst, int index, in
 
 
 AVSValue ScriptEnvironment::Invoke(const char* name, const AVSValue args, const char** arg_names) {
-  // flatten unnamed args
-  AVSValue args2[ScriptParser::max_args];
-  int args2_count = Flatten(args, args2, 0, ScriptParser::max_args, arg_names);
 
-  // find matching function
+  int args2_count;
   bool strict;
-  AVSFunction* f = function_table.Lookup(name, args2, args2_count, &strict);
-  if (!f)
-    throw NotFound();
+  AVSFunction *f;
+  AVSValue retval;
+
+  AVSValue *args1 = new AVSValue[ScriptParser::max_args]; // Save stack space - put on heap!!!
+
+  try {
+	// flatten unnamed args
+	args2_count = Flatten(args, args1, 0, ScriptParser::max_args, arg_names);
+
+	// find matching function
+	f = function_table.Lookup(name, args1, args2_count, &strict);
+	if (!f)
+	  throw NotFound();
+  }
+  catch (...) {
+    delete[] args1;
+	throw;
+  }
+
+  // collapse the 1024 element array
+  AVSValue *args2 = new AVSValue[args2_count];
+  for (int i=0; i< args2_count; i++)
+    args2[i] = args1[i];
+  delete[] args1;
 
   // combine unnamed args into arrays
-  AVSValue args3[ScriptParser::max_args];
-  const char* p = f->param_types;
   int src_index=0, dst_index=0;
-  while (*p) {
-    if (*p == '[') {
-      p = strchr(p+1, ']');
-      if (!p) break;
-      p++;
-    } else if (p[1] == '*' || p[1] == '+') {
-      int start = src_index;
-      while (src_index < args2_count && FunctionTable::SingleTypeMatch(*p, args2[src_index], strict))
-        src_index++;
-      args3[dst_index++] = AVSValue(&args2[start], src_index - start);
-      p += 2;
-    } else {
-      if (src_index < args2_count)
-        args3[dst_index] = args2[src_index];
-      src_index++;
-      dst_index++;
-      p++;
-    }
-  }
-  if (src_index < args2_count)
-    ThrowError("Too many arguments to function %s", name);
+  const char* p = f->param_types;
+  const int maxarg3 = max(args2_count, strlen(p)); // well it can't be any longer than this.
 
-  const int args3_count = dst_index;
+  AVSValue *args3 = new AVSValue[maxarg3];
 
-  // copy named args
-  if (args.IsArray() && arg_names) {
-    const int array_size = args.ArraySize();
-    for (int i=0; i<array_size; ++i) {
-      if (arg_names[i]) {
-        int named_arg_index = 0;
-        for (const char* p = f->param_types; *p; ++p) {
-          if (*p == '*' || *p == '+') {
-            continue;   // without incrementing named_arg_index
-          } else if (*p == '[') {
-            p += 1;
-            const char* q = strchr(p, ']');
-            if (!q) break;
-            if (strlen(arg_names[i]) == unsigned(q-p) && !strnicmp(arg_names[i], p, q-p)) {
-              // we have a match
-              if (args3[named_arg_index].Defined()) {
-                ThrowError("Script error: the named argument \"%s\" was passed more than once to %s", arg_names[i], name);
-              } else if (args[i].IsArray()) {
-                ThrowError("Script error: can't pass an array as a named argument");
-              } else if (args[i].Defined() && !FunctionTable::SingleTypeMatch(q[1], args[i], false)) {
-                ThrowError("Script error: the named argument \"%s\" to %s had the wrong type", arg_names[i], name);
-              } else {
-                args3[named_arg_index] = args[i];
-                goto success;
-              }
-            } else {
-              p = q+1;
-            }
-          }
-          named_arg_index++;
-        }
-        // failure
-        ThrowError("Script error: %s does not have a named argument \"%s\"", name, arg_names[i]);
+  try {
+	while (*p) {
+	  if (*p == '[') {
+		p = strchr(p+1, ']');
+		if (!p) break;
+		p++;
+	  } else if (p[1] == '*' || p[1] == '+') {
+		int start = src_index;
+		while (src_index < args2_count && FunctionTable::SingleTypeMatch(*p, args2[src_index], strict))
+		  src_index++;
+		args3[dst_index++] = AVSValue(&args2[start], src_index - start); // can't delete args2 early because of this
+		p += 2;
+	  } else {
+		if (src_index < args2_count)
+		  args3[dst_index] = args2[src_index];
+		src_index++;
+		dst_index++;
+		p++;
+	  }
+	}
+	if (src_index < args2_count)
+	  ThrowError("Too many arguments to function %s", name);
+
+	const int args3_count = dst_index;
+
+	// copy named args
+	if (args.IsArray() && arg_names) {
+	  const int array_size = args.ArraySize();
+	  for (int i=0; i<array_size; ++i) {
+		if (arg_names[i]) {
+		  int named_arg_index = 0;
+		  for (const char* p = f->param_types; *p; ++p) {
+			if (*p == '*' || *p == '+') {
+			  continue;   // without incrementing named_arg_index
+			} else if (*p == '[') {
+			  p += 1;
+			  const char* q = strchr(p, ']');
+			  if (!q) break;
+			  if (strlen(arg_names[i]) == unsigned(q-p) && !strnicmp(arg_names[i], p, q-p)) {
+				// we have a match
+				if (args3[named_arg_index].Defined()) {
+				  ThrowError("Script error: the named argument \"%s\" was passed more than once to %s", arg_names[i], name);
+				} else if (args[i].IsArray()) {
+				  ThrowError("Script error: can't pass an array as a named argument");
+				} else if (args[i].Defined() && !FunctionTable::SingleTypeMatch(q[1], args[i], false)) {
+				  ThrowError("Script error: the named argument \"%s\" to %s had the wrong type", arg_names[i], name);
+				} else {
+				  args3[named_arg_index] = args[i];
+				  goto success;
+				}
+			  } else {
+				p = q+1;
+			  }
+			}
+			named_arg_index++;
+		  }
+		  // failure
+		  ThrowError("Script error: %s does not have a named argument \"%s\"", name, arg_names[i]);
 success:;
-      }
-    }
-  }
+		}
+	  }
+	}
 
-  // ... and we're finally ready to make the call
-  return f->apply(AVSValue(args3, args3_count), f->user_data, this);
+	// ... and we're finally ready to make the call
+	retval = f->apply(AVSValue(args3, args3_count), f->user_data, this);
+  }
+  catch (...) {
+    delete[] args3;
+	delete[] args2;
+	throw;
+  }
+  delete[] args3;
+  delete[] args2;
+
+  return retval;
 }
 
 
