@@ -235,13 +235,12 @@ Subsectionend
 
 SubSection /e "Select Association" SelectAssociation
 
-Section /o "Associate AVS files with Notepad" Associate1
+Section /o "Associate AVS files with Notepad (open)" Associate1
 WriteRegStr HKCR "avsfile\shell\open\command" "" 'notepad.exe "%1"'
 SectionEnd
 
-Section /o "Associate AVS files with Media Player 6.4" Associate2
-WriteRegStr HKCR "avsfile\shell\open\command" "" 'mplayer2.exe "%1"'
-WriteRegStr HKCR "avsfile\shell\open\command" "" '$PROGRAMFILES\Windows Media Player\mplayer2.exe "%1"'
+Section /o "Associate AVS files with Media Player 6.4 (play)" Associate2
+WriteRegStr HKCR "avsfile\shell\play\command" "" '"$PROGRAMFILES\Windows Media Player\mplayer2.exe" /Play "%L"'
 SectionEnd
 
 Section ""
@@ -259,9 +258,9 @@ SubSectionEnd
   !insertmacro MUI_DESCRIPTION_TEXT  ${French} "Install French help"
   !insertmacro MUI_DESCRIPTION_TEXT  ${Italian} "Install Italian help"
   !insertmacro MUI_DESCRIPTION_TEXT  ${Russian} "Install Russian help"
-  !insertmacro MUI_DESCRIPTION_TEXT  ${SelectAssociation} "Select only ONE of these for association!"
-  !insertmacro MUI_DESCRIPTION_TEXT  ${Associate1} "Open AVS files directly with Notepad"
-  !insertmacro MUI_DESCRIPTION_TEXT  ${Associate2} "Open AVS files directly with Media Player 6.4"
+  !insertmacro MUI_DESCRIPTION_TEXT  ${SelectAssociation} "Select one or both associations"
+  !insertmacro MUI_DESCRIPTION_TEXT  ${Associate1} "Open AVS files directly with Notepad to edit"
+  !insertmacro MUI_DESCRIPTION_TEXT  ${Associate2} "Play AVS files directly with Media Player 6.4 (right click - play)"
   !insertmacro MUI_FUNCTION_DESCRIPTION_END
 
 
@@ -278,8 +277,8 @@ Section "Uninstall"
   DeleteRegKey HKCR "Media Type\Extensions\.avs"
   DeleteRegKey HKCR "avifile\Extensions\avs"
   DeleteRegKey HKCR "avsfile\DefaultIcon"
-  DeleteRegValue HKCR "avsfile\shell\open\command 'notepad.exe "%1"'"
-  DeleteRegValue HKCR "avsfile\shell\open\command 'mplayer2.exe "%1"'"
+  DeleteRegValue HKCR "avsfile\shell\open\command"
+  DeleteRegValue HKCR "avsfile\shell\play\command"
 
   SetShellVarContext All
   Delete "$SMPROGRAMS\AviSynth 2.5\*.*"
