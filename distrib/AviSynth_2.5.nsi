@@ -1,7 +1,7 @@
 !packhdr tempfile.exe "upx --best --q tempfile.exe"
 
 !DEFINE VERSION 2.5.6
-!DEFINE DATE 120705
+!DEFINE DATE 140705
 
 SetCompressor lzma
 !include "MUI.nsh"
@@ -252,7 +252,7 @@ SubSectionEnd
 
   !insertmacro MUI_FUNCTION_DESCRIPTION_BEGIN
   !insertmacro MUI_DESCRIPTION_TEXT  ${Frameserving} "Install the main files for frameserving via AviSynth"
-  !insertmacro MUI_DESCRIPTION_TEXT  ${Documentation} "Install help"
+  !insertmacro MUI_DESCRIPTION_TEXT  ${Documentation} "Install help. Please select languages"
   !insertmacro MUI_DESCRIPTION_TEXT  ${English} "Install English help"
   !insertmacro MUI_DESCRIPTION_TEXT  ${German} "Install German help"
   !insertmacro MUI_DESCRIPTION_TEXT  ${French} "Install French help"
@@ -277,8 +277,8 @@ Section "Uninstall"
   DeleteRegKey HKCR "Media Type\Extensions\.avs"
   DeleteRegKey HKCR "avifile\Extensions\avs"
   DeleteRegKey HKCR "avsfile\DefaultIcon"
-  DeleteRegValue HKCR "avsfile\shell\open\command"
-  DeleteRegValue HKCR "avsfile\shell\play\command"
+  DeleteRegKey HKCR "avsfile\shell\open\command"
+  DeleteRegKey HKCR "avsfile\shell\play\command"
 
   SetShellVarContext All
   Delete "$SMPROGRAMS\AviSynth 2.5\*.*"
