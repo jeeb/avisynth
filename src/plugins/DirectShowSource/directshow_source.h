@@ -33,19 +33,15 @@
 // import and export plugins, or graphical user interfaces.
  
 
+#define WIN32_LEAN_AND_MEAN
+#include <windows.h>
 
 #include "avisynth.h"
-#include "alignplanar.h"
 #include <streams.h>
 
 // For some reason KSDATAFORMAT_SUBTYPE_IEEE_FLOAT and KSDATAFORMAT_SUBTYPE_PCM doesn't work - we construct the GUID manually!
 const GUID SUBTYPE_IEEE_AVSPCM  = {0x00000001, 0x0000, 0x0010, {0x80, 0x00, 0x00, 0xaa, 0x00, 0x38, 0x9b, 0x71}};
 const GUID SUBTYPE_IEEE_AVSFLOAT  = {0x00000003, 0x0000, 0x0010, {0x80, 0x00, 0x00, 0xaa, 0x00, 0x38, 0x9b, 0x71}};
-
-
-extern void ApplyMessage(PVideoFrame* frame, const VideoInfo& vi,
-  const char* message, int size, int textcolor, int halocolor, int bgcolor,
-  IScriptEnvironment* env);
 
 
 /********************************************************************
@@ -76,7 +72,7 @@ class GetSampleEnumPins : public IEnumPins {
 public:
   GetSampleEnumPins(GetSample* _parent, int _pos=0);
 
-  // IUnknown
+// IUnknown::
   
   ULONG __stdcall AddRef() { InterlockedIncrement(&refcnt); return refcnt; }
   ULONG __stdcall Release() {
@@ -88,10 +84,8 @@ public:
     }
   }
   HRESULT __stdcall QueryInterface(REFIID iid, void** ppv) {
-    if (iid == IID_IUnknown)
-    *ppv = static_cast<IUnknown*>(this);
-    else if (iid == IID_IEnumPins)
-    *ppv = static_cast<IEnumPins*>(this);
+    if      (iid == IID_IUnknown)  *ppv = static_cast<IUnknown*>(this);
+    else if (iid == IID_IEnumPins) *ppv = static_cast<IEnumPins*>(this);
     else {
       *ppv = 0;
       return E_NOINTERFACE;
@@ -100,7 +94,7 @@ public:
     return S_OK;
   }
 
-  // IEnumPins
+// IEnumPins::
 
   HRESULT __stdcall Next(ULONG cPins, IPin** ppPins, ULONG* pcFetched);
   HRESULT __stdcall Skip(ULONG cPins) { return E_NOTIMPL; }
@@ -121,55 +115,71 @@ class GetSample : public IBaseFilter, public IPin, public IMemInputPin {
   VideoInfo vi;
 
   HANDLE evtDoneWithSample, evtNewSampleReady;
-  PVideoFrame pvf;
 
   __int64 sample_start_time, sample_end_time;
-  IScriptEnvironment* const env;
   bool load_audio;
   bool load_video;
 
+  bool startGraphTimeout;
+
 public:
   int a_sample_bytes;
-  int a_allocated_buffer;
-  BYTE* a_buffer;         // Killed on StopGraph
+  BYTE* av_buffer;         // Killed on StopGraph
 
-  GetSample(IScriptEnvironment* _env, bool _load_audio, bool _load_video);
+  GetSample(bool _load_audio, bool _load_video);
   ~GetSample();
 
   // These are utility functions for use by DirectShowSource.  Note that
   // the other thread (the one used by the DirectShow filter graph side of
   // things) is always blocked when any of these functions is called, and
-  // is always blocked when they return, though it may be temporarily
-  // unblocked in between.
+  // is always blocked when they return
 
   bool IsConnected() { return !!source_pin; }
   bool IsEndOfStream() { return end_of_stream; }
   const VideoInfo& GetVideoInfo() { return vi; }
-  PVideoFrame GetCurrentFrame() { return pvf; }
+  PVideoFrame GetCurrentFrame(IScriptEnvironment* env);
   __int64 GetSampleStartTime() { return sample_start_time; }
   __int64 GetSampleEndTime() { return sample_end_time; }
+  void WaitForStart();
+
+  // These all cause the other thread (the one used by the DirectShow filter
+  // graph side of things) to do it's thing and cycle. Hopefully it is blocked
+  // again as they exit, a timeouts from StartGraph violates this.
 
   void StartGraph();
   void StopGraph();
   void PauseGraph();
   HRESULT SeekTo(__int64 pos);
-  //void NextSample();
   bool NextSample();
+  
+// IUnknown::
+
   ULONG __stdcall AddRef();
   ULONG __stdcall Release();
   HRESULT __stdcall QueryInterface(REFIID iid, void** ppv);
+
+// IPersist::
+  
   HRESULT __stdcall GetClassID(CLSID* pClassID);
+
+// IMediaFilter::
+
   HRESULT __stdcall Stop();
   HRESULT __stdcall Pause();
   HRESULT __stdcall Run(REFERENCE_TIME tStart); 
   HRESULT __stdcall GetState(DWORD dwMilliSecsTimeout, FILTER_STATE* State);
   HRESULT __stdcall SetSyncSource(IReferenceClock* pClock);
   HRESULT __stdcall GetSyncSource(IReferenceClock** ppClock);
+
+// IBaseFilter::
+
   HRESULT __stdcall EnumPins(IEnumPins** ppEnum);
   HRESULT __stdcall FindPin(LPCWSTR Id, IPin** ppPin);
   HRESULT __stdcall QueryFilterInfo(FILTER_INFO* pInfo);
   HRESULT __stdcall JoinFilterGraph(IFilterGraph* pGraph, LPCWSTR pName);
   HRESULT __stdcall QueryVendorInfo(LPWSTR* pVendorInfo);
+
+// IPin::
 
   HRESULT __stdcall Connect(IPin* pReceivePin, const AM_MEDIA_TYPE* pmt);
   HRESULT __stdcall ReceiveConnection(IPin* pConnector, const AM_MEDIA_TYPE* pmt);
@@ -187,28 +197,22 @@ public:
   HRESULT __stdcall EndFlush();
   HRESULT __stdcall NewSegment(REFERENCE_TIME tStart, REFERENCE_TIME tStop, double dRate);
 
-  // IMemInputPin
+// IMemInputPin::
 
   HRESULT __stdcall GetAllocator(IMemAllocator** ppAllocator);
   HRESULT __stdcall NotifyAllocator(IMemAllocator* pAllocator, BOOL bReadOnly);
   HRESULT __stdcall GetAllocatorRequirements(ALLOCATOR_PROPERTIES* pProps);
-
   HRESULT __stdcall Receive(IMediaSample* pSamples);
   HRESULT __stdcall ReceiveMultiple(IMediaSample** ppSamples, long nSamples, long* nSamplesProcessed);
   HRESULT __stdcall ReceiveCanBlock();
 };
 
 
-GetSampleEnumPins::GetSampleEnumPins(GetSample* _parent, int _pos);
-HRESULT __stdcall GetSampleEnumPins::Next(ULONG cPins, IPin** ppPins, ULONG* pcFetched);
-
 static bool HasNoConnectedOutputPins(IBaseFilter* bf);
-
 static void DisconnectAllPinsAndRemoveFilter(IGraphBuilder* gb, IBaseFilter* bf);
 static void RemoveUselessFilters(IGraphBuilder* gb, IBaseFilter* not_this_one, IBaseFilter* nor_this_one);
 static HRESULT AttemptConnectFilters(IGraphBuilder* gb, IBaseFilter* connect_filter);
 static void SetMicrosoftDVtoFullResolution(IGraphBuilder* gb);
-
 
 
 class DirectShowSource : public IClip {
@@ -218,23 +222,21 @@ class DirectShowSource : public IClip {
   __int64 next_sample;
 
   VideoInfo vi;
-  __int64 duration;
-  bool frame_units, known_framerate;
+  bool frame_units;
   int avg_time_per_frame;
   __int64 base_sample_time;
   int cur_frame;
   bool no_search;
   int audio_bytes_read;
-  IScriptEnvironment* const env;
-  void CheckHresult(HRESULT hr, const char* msg, const char* msg2 = "");
+  void CheckHresult(IScriptEnvironment* env, HRESULT hr, const char* msg, const char* msg2 = "");
   HRESULT LoadGraphFile(IGraphBuilder *pGraph, const WCHAR* wszName);
   bool convert_fps;
-  void DirectShowSource::cleanUp();
+  void cleanUp();
 
 
 public:
 
-  DirectShowSource(const char* filename, int _avg_time_per_frame, bool _seek, bool _enable_audio, bool _enable_video, bool _convert_fps, IScriptEnvironment* _env);
+  DirectShowSource(const char* filename, int _avg_time_per_frame, bool _seek, bool _enable_audio, bool _enable_video, bool _convert_fps, IScriptEnvironment* env);
   ~DirectShowSource();
   const VideoInfo& __stdcall GetVideoInfo() { return vi; }
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
@@ -244,9 +246,6 @@ public:
   void __stdcall SetCacheHints(int cachehints,int frame_range) { };
 
   void __stdcall GetAudio(void* buf, __int64 start, __int64 count, IScriptEnvironment* env);
-
-private:
-
 
 };
 

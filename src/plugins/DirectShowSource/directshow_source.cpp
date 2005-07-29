@@ -33,21 +33,24 @@
 // import and export plugins, or graphical user interfaces.
  
 
-
 #include "directshow_source.h"
 
 
+/************************************
+ *             GetSample            *
+ ************************************/
 
-GetSample::GetSample(IScriptEnvironment* _env, bool _load_audio, bool _load_video)
-  : env(_env), load_audio(_load_audio), load_video(_load_video) {
+
+GetSample::GetSample(bool _load_audio, bool _load_video)
+  : load_audio(_load_audio), load_video(_load_video) {
     refcnt = 1;
     source_pin = 0;
     filter_graph = 0;
     pclock = 0;
-    a_allocated_buffer = 0;
     m_pPos =0;
     state = State_Stopped;
-    a_buffer = 0;
+	a_sample_bytes = 0;
+    av_buffer = 0;
     flushing = end_of_stream = false;
     memset(&vi, 0, sizeof(vi));
     sample_end_time = sample_start_time = 0;
@@ -56,148 +59,192 @@ GetSample::GetSample(IScriptEnvironment* _env, bool _load_audio, bool _load_vide
   }
 
   GetSample::~GetSample() {
+    PulseEvent(evtDoneWithSample);
     CloseHandle(evtDoneWithSample);
+    PulseEvent(evtNewSampleReady);
     CloseHandle(evtNewSampleReady);
+  }
+
+
+  void GetSample::WaitForStart() {
+
+    // Give the graph every opportunity to start before we return empty data
+
+    if (startGraphTimeout)
+      startGraphTimeout = (WaitForSingleObject(evtNewSampleReady, 120000) == WAIT_TIMEOUT);    // MAX wait time = 2 minutes!
+  }
+
+
+  PVideoFrame GetSample::GetCurrentFrame(IScriptEnvironment* env) {
+
+    PVideoFrame pvf = env->NewVideoFrame(vi);;
+
+    WaitForStart();   
+
+    if (av_buffer) {
+
+      // Put any knowledge of video packing and alignment here and
+      // keep it independant of any AviSynth packing and alignment.
+
+      PBYTE buf = av_buffer;
+
+      if (!vi.IsPlanar()) { // Packed formats have rows 32bit aligned
+
+	    const int rowsize = pvf->GetRowSize();
+        env->BitBlt(pvf->GetWritePtr(), pvf->GetPitch(), buf, (rowsize+3)&~3, rowsize, pvf->GetHeight());
+      }
+      else {
+
+	    const int rowsize = pvf->GetRowSize(PLANAR_Y);
+		const int height  = pvf->GetHeight(PLANAR_Y);
+
+        // All planar formats have Y rows 32bit aligned
+        env->BitBlt(pvf->GetWritePtr(PLANAR_Y), pvf->GetPitch(PLANAR_Y), buf, (rowsize+3)&~3, rowsize, height);
+
+	    const int UVrowsize = pvf->GetRowSize(PLANAR_V);
+		const int UVheight  = pvf->GetHeight(PLANAR_V);
+
+        // YV12 format has UV rows 16bit aligned with
+        // V plane first, after aligned end of Y plane
+		buf += ((rowsize+3)&~3) * height;
+        env->BitBlt(pvf->GetWritePtr(PLANAR_V), pvf->GetPitch(PLANAR_V), buf, (UVrowsize+1)&~1, UVrowsize, UVheight);
+
+        // And U plane last, after aligned end of V plane
+		buf += ((UVrowsize+1)&~1) * UVheight;
+        env->BitBlt(pvf->GetWritePtr(PLANAR_U), pvf->GetPitch(PLANAR_U), buf, (UVrowsize+1)&~1, UVrowsize, UVheight);
+      }
+    }
+    else {
+      // If the graph still hasn't started yet we won't have a current frame
+      // so dummy up a grey frame so at least things won't be fatal.
+
+      memset(pvf->GetWritePtr(), 128, pvf->GetPitch()*(pvf->GetHeight()+pvf->GetHeight(PLANAR_U)));
+    }
+    return pvf;
   }
 
 
   void GetSample::StartGraph() {
     _RPT0(0,"DSS StartGraph() waiting for new sample...\n");
+    ResetEvent(evtDoneWithSample);  // Nuke any unused SetEvents
+    ResetEvent(evtNewSampleReady);  // Nuke any unused SetEvents
     IMediaControl* mc;
     filter_graph->QueryInterface(&mc);
+    end_of_stream = false;
     mc->Run();
     mc->Release();
-    WaitForSingleObject(evtNewSampleReady, 5000);    // MAX wait time = 5000ms!
-    _RPT0(0,"DSS ...StartGraph() finished waiting for new sample\n");
-
+    startGraphTimeout = (WaitForSingleObject(evtNewSampleReady, 5000) == WAIT_TIMEOUT);    // MAX wait time = 5000ms!
+    _RPT1(0,"DSS ...StartGraph() %s waiting for new sample\n", startGraphTimeout ? "*** TIMED OUT ***" : "finished");
   }
 
   void GetSample::StopGraph() {
+    _RPT1(0,"DSS StopGraph() indicating done with sample - state:%d\n",state);
     IMediaControl* mc;
     filter_graph->QueryInterface(&mc);
-    state = State_Paused;
-    _RPT1(0,"DSS StopGraph() indicating done with sample - state:%d\n",state);
-    PulseEvent(evtDoneWithSample);
+    PulseEvent(evtDoneWithSample); // Free task if waiting
+    SetEvent(evtDoneWithSample);   // Add 1 spare notify just in case
     mc->Stop();
     mc->Release();
     if (m_pPos)
       m_pPos->Release();
     m_pPos = 0;
-    if (a_buffer)
-      delete[] a_buffer;
-    a_allocated_buffer = 0;
-    a_buffer = 0;
   }
 
   void GetSample::PauseGraph() {
+    _RPT0(0,"DSS PauseGraph() indicating done with sample\n");
     IMediaControl* mc;
     filter_graph->QueryInterface(&mc);
-    state = State_Paused;
-    _RPT0(0,"DSS PauseGraph() indicating done with sample\n");
-    PulseEvent(evtDoneWithSample);
     mc->Pause();
     mc->Release();
-
   }
 
   HRESULT GetSample::SeekTo(__int64 pos) {
-//    PauseGraph();
-    HRESULT hr;
+    _RPT1(0,"DSS SeekTo() seeking to new position %I64d\n", pos);
 
     IMediaControl* mc;
     filter_graph->QueryInterface(&mc);
-    hr = mc->Stop();
+    mc->Stop();
+    mc->Release();
 
     IMediaSeeking* ms;
     filter_graph->QueryInterface(&ms);
 
-    LONGLONG pStop=-1;
-    LONGLONG pCurrent=-1;
-    _RPT1(0,"DSS SeekTo() seeking to new position %I64d\n", pos);
-
     DWORD dwCaps = 0;
     ms->GetCapabilities(&dwCaps);
     
-    GUID pref_f;
-    ms->QueryPreferredFormat(&pref_f);
-    if (pref_f == TIME_FORMAT_FRAME) {
-      _RPT0(0,"Prefered format: frames!\n");
-    }
-    if (pref_f == TIME_FORMAT_SAMPLE) {
-      _RPT0(0,"Prefered format: samples!\n");
-    }
-    if (pref_f == TIME_FORMAT_MEDIA_TIME) {
-      _RPT0(0,"Prefered format: media time!\n");
-    }
+    ms->SetTimeFormat(&TIME_FORMAT_MEDIA_TIME); // Setting can give E_NOTIMPL
 
-    hr = ms->SetTimeFormat(&TIME_FORMAT_MEDIA_TIME);
+    HRESULT hr = S_FALSE;
+    LONGLONG pCurrent = -1, pStop;
+    GUID time_f;
 
-    if (!SUCCEEDED(hr)) {
-      _RPT0(0,"DSS Could not seek to media time!\n");
-      mc->Release();
-      ms->Release();
-      StartGraph();
-      return hr;
+    ms->GetTimeFormat(&time_f);                 // so check what it currently is
+    if (time_f != TIME_FORMAT_MEDIA_TIME) {
+      // Probably should implement code for all the time formats  :: FIXME
+      _RPT0(0,"DSS Could not set time format to media time!\n");
+      goto SeekExit;
     }
-
-    if (dwCaps & AM_SEEKING_CanGetCurrentPos) {
-      hr = ms->GetPositions(&pCurrent,&pStop);
-    }
-
     if (dwCaps & AM_SEEKING_CanSeekAbsolute) {
-       hr = ms->SetPositions(&pos, AM_SEEKING_AbsolutePositioning, NULL, AM_SEEKING_NoPositioning);
-       if (FAILED(hr)) {
-         _RPT0(0,"DSS Absolute seek failed!\n");
-         mc->Release();
-         ms->Release();
-         StartGraph();
-         return hr;
-       }
+      if (SUCCEEDED(hr = ms->SetPositions(&pos, AM_SEEKING_AbsolutePositioning, NULL, AM_SEEKING_NoPositioning)))
+          goto SeekExit;
+      _RPT0(0,"DSS Absolute seek failed!\n"); // and now trying relative seek
     }
-	else if ((dwCaps & AM_SEEKING_CanSeekForwards) && (pCurrent!=-1)) {
-	  pCurrent = pos - pCurrent;
-	  pStop = pos - pStop;
-	  hr = ms->SetPositions(&pCurrent, AM_SEEKING_RelativePositioning, &pStop, AM_SEEKING_NoPositioning);
-	  if (FAILED(hr)) {
-		 _RPT0(0,"DSS Relative seek failed!\n");
-	  }
-	}
-	else {
-	  // No way of seeking
-	   _RPT0(0,"DSS Could not perform any seek!\n");
-	  mc->Release();
-	  ms->Release();
-	  StartGraph();
-	  return S_FALSE;
+    if ( !(dwCaps & AM_SEEKING_CanGetCurrentPos) ) {
+      _RPT0(0,"DSS GetPositions unsupported!\n");
+      goto SeekExit;
     }
-
-    end_of_stream = false;
-
+    if (FAILED(hr = ms->GetPositions(&pCurrent, &pStop)) || (pCurrent == -1)) {
+      _RPT0(0,"DSS GetPositions failed!\n");
+      goto SeekExit;
+    }
+    pCurrent = pos - pCurrent;
+    if ( ((dwCaps & AM_SEEKING_CanSeekForwards)  && (pCurrent > 0))
+      || ((dwCaps & AM_SEEKING_CanSeekBackwards) && (pCurrent < 0)) ) {
+      if (FAILED(hr = ms->SetPositions(&pCurrent, AM_SEEKING_RelativePositioning, NULL, AM_SEEKING_NoPositioning))) {
+          _RPT0(0,"DSS Relative seek failed!\n"); }
+    }
+    else { // No way of seeking
+      _RPT0(0,"DSS Could not perform any seek!\n");
+    }
+SeekExit:
     ms->Release();
-    mc->Release();
     StartGraph(); // includes a "WaitForSingleObject(evtNewSampleReady, ..."
-    a_sample_bytes = 0;
 
-    return hr;  // Seek ok
+    return hr;
   }
+
 
   bool GetSample::NextSample() {
     const char * const streamName = load_audio ? "audio" : "video";
 
     if (end_of_stream) return false;
 
-	_RPT1(0,"DSS NextSample() indicating done with sample...(%s)\n", streamName);
+    // If the graph didn't start, check if it has yet. We absolutly have to keep in lock
+    // step with the evtNewSampleReady and evtDoneWithSample synchronizaton objects. This
+    // is a bit kludgy because when it happens blank frames or silence are returned but
+    // it is better than returning totally corrupt data.
 
-    HRESULT wait_result;
+    WaitForStart();   
+
+    if (startGraphTimeout) return false;
+
+    _RPT1(0,"DSS NextSample() indicating done with sample...(%s)\n", streamName);
+
     SetEvent(evtDoneWithSample);  // We indicate that Receive can run again. We have now finished using the frame.
 
+    if (state == State_Stopped) {
+      _RPT1(0,"DSS NextSample() state == State_Stopped (%s)\n", streamName); // Opps should never happen!
+      return false;
+    }
+
+    HRESULT wait_result;
     do {
-	  _RPT1(0,"DSS ...NextSample() waiting for new sample...(%s)\n", streamName);
-      wait_result = WaitForSingleObject(evtNewSampleReady, 1000);
+      _RPT1(0,"DSS ...NextSample() waiting for new sample...(%s)\n", streamName);
+      wait_result = WaitForSingleObject(evtNewSampleReady, 5000);
     } while (wait_result == WAIT_TIMEOUT);
 
-	_RPT1(0,"DSS ...NextSample() done waiting for new sample (%s)\n", streamName);
-	return true;
+    _RPT1(0,"DSS ...NextSample() done waiting for new sample (%s)\n", streamName);
+	return !end_of_stream;
   }
 
   // IUnknown
@@ -227,8 +274,6 @@ GetSample::GetSample(IScriptEnvironment* _env, bool _load_audio, bool _load_vide
       if (!source_pin)
         return E_NOINTERFACE;
 
-//      return source_pin->QueryInterface(iid, ppv);
-
       if (m_pPos == NULL)  {
           // We have not created the CPosPassThru object yet. Do so now.
           HRESULT hr = S_OK;
@@ -252,24 +297,28 @@ GetSample::GetSample(IScriptEnvironment* _env, bool _load_audio, bool _load_vide
   // IMediaFilter
 
   HRESULT __stdcall GetSample::Stop() {
-	_RPT0(0,"DSS GetSample::Stop()\n");
-	state = State_Stopped;
-	return S_OK;
+    _RPT0(0,"DSS GetSample::Stop()\n");
+    state = State_Stopped;
+    PulseEvent(evtDoneWithSample);
+    return S_OK;
   }
 
   HRESULT __stdcall GetSample::Pause() { _RPT0(0,"DSS GetSample::Pause()\n"); state = State_Paused; return S_OK; }
 
   HRESULT __stdcall GetSample::Run(REFERENCE_TIME tStart) {
-	_RPT1(0,"DSS GetSample::Run(%I64d)\n", tStart);
-	state = State_Running;
-	return S_OK;
+    _RPT1(0,"DSS GetSample::Run(%I64d)\n", tStart);
+    state = State_Running;
+    return S_OK;
   }
+
   HRESULT __stdcall GetSample::GetState(DWORD dwMilliSecsTimeout, FILTER_STATE* State) {
     if (!State) return E_POINTER;
     *State = state;
     return S_OK;
   }
+
   HRESULT __stdcall GetSample::SetSyncSource(IReferenceClock* pClock) { pclock = pClock; return S_OK; }
+
   HRESULT __stdcall GetSample::GetSyncSource(IReferenceClock** ppClock) {
     if (!ppClock) return E_POINTER;
     *ppClock = pclock;
@@ -310,11 +359,6 @@ GetSample::GetSample(IScriptEnvironment* _env, bool _load_audio, bool _load_vide
     return S_OK;
   }
   HRESULT __stdcall GetSample::Disconnect() {
-    if (a_allocated_buffer) { 
-      a_allocated_buffer = 0;
-      delete[] a_buffer;
-      a_buffer = 0;
-    }
     source_pin = 0;
     return S_OK;
   }
@@ -371,7 +415,7 @@ GetSample::GetSample(IScriptEnvironment* _env, bool _load_audio, bool _load_vide
 
 // Handle audio:
     if (pmt->majortype == MEDIATYPE_Audio) {
-//      if (pmt->subtype != MEDIASUBTYPE_PCM  || pmt->subtype != MEDIASUBTYPE_IEEE_FLOAT ) 
+//      if (pmt->subtype != MEDIASUBTYPE_PCM  || pmt->subtype != MEDIASUBTYPE_IEEE_FLOAT )
       if (pmt->subtype != MEDIASUBTYPE_PCM ) {
         _RPT0(0, "*** In majortype Audio - Subtype rejected\n");
         return S_FALSE;
@@ -437,13 +481,15 @@ GetSample::GetSample(IScriptEnvironment* _env, bool _load_audio, bool _load_vide
 
 // Handle video:
 
-    if (pmt->subtype == MEDIASUBTYPE_YV12) {  
+    if        (pmt->subtype == MEDIASUBTYPE_YV12) {  
       vi.pixel_type = VideoInfo::CS_YV12;
     } else if (pmt->subtype == MEDIASUBTYPE_YUY2) {
       vi.pixel_type = VideoInfo::CS_YUY2;
     } else if (pmt->subtype == MEDIASUBTYPE_RGB24) {
       vi.pixel_type = VideoInfo::CS_BGR24;
     } else if (pmt->subtype == MEDIASUBTYPE_RGB32) {
+      vi.pixel_type = VideoInfo::CS_BGR32;
+    } else if (pmt->subtype == MEDIASUBTYPE_ARGB32) {
       vi.pixel_type = VideoInfo::CS_BGR32;
     } else {
       _RPT0(0, "*** subtype rejected\n");
@@ -493,13 +539,11 @@ GetSample::GetSample(IScriptEnvironment* _env, bool _load_audio, bool _load_vide
   HRESULT __stdcall GetSample::EndOfStream() {
     _RPT0(0,"DSS GetSample::EndOfStream()\n");
     end_of_stream = true;
-    if (state == State_Running) {
-      if (filter_graph) {
-        IMediaEventSink* mes;
-        if (SUCCEEDED(filter_graph->QueryInterface(&mes))) {
-          mes->Notify(EC_COMPLETE, (long)S_OK, (long)static_cast<IBaseFilter*>(this));
-          mes->Release();
-        }
+    if (filter_graph) {
+      IMediaEventSink* mes;
+      if (SUCCEEDED(filter_graph->QueryInterface(&mes))) {
+        mes->Notify(EC_COMPLETE, (long)S_OK, (long)static_cast<IBaseFilter*>(this));
+        mes->Release();
       }
     }
     _RPT0(0,"DSS EndOfStream() indicating new sample ready\n");
@@ -526,14 +570,18 @@ GetSample::GetSample(IScriptEnvironment* _env, bool _load_audio, bool _load_vide
 
   // IMemInputPin
 
-  HRESULT __stdcall GetSample::GetAllocator(IMemAllocator** ppAllocator) { return E_NOTIMPL; }
+  HRESULT __stdcall GetSample::GetAllocator(IMemAllocator** ppAllocator) { return VFW_E_NO_ALLOCATOR; }
   HRESULT __stdcall GetSample::NotifyAllocator(IMemAllocator* pAllocator, BOOL bReadOnly) { return S_OK; }
   HRESULT __stdcall GetSample::GetAllocatorRequirements(ALLOCATOR_PROPERTIES* pProps) { return E_NOTIMPL; }
 
   HRESULT __stdcall GetSample::Receive(IMediaSample* pSamples) {
-    if (end_of_stream || flushing) {
-      _RPT0(0,"DSS discarding sample (end of stream or flushing)\n");
-      return S_OK;
+    if (state == State_Stopped) {
+      _RPT0(0,"DSS discarding sample (State_Stopped)\n");
+      return VFW_E_WRONG_STATE;
+    }
+    if (flushing) {
+      _RPT0(0,"DSS discarding sample (flushing)\n");
+      return S_FALSE;
     }
     if (S_OK == pSamples->IsPreroll()) {
       _RPT0(0,"DSS discarding sample (preroll)\n");
@@ -552,56 +600,28 @@ GetSample::GetSample(IScriptEnvironment* _env, bool _load_audio, bool _load_vide
       _RPT3(0,"DSS %I64d - %I64d (%d)\n", sample_start_time, sample_end_time,
                                           DWORD(sample_end_time - sample_start_time));
     }
-    if (vi.HasVideo() && (!load_audio)) {
-      pvf = env->NewVideoFrame(vi,-4);
-      PBYTE buf;
-      pSamples->GetPointer(&buf);
-      if (!vi.IsPlanar()) {
-        env->BitBlt(pvf->GetWritePtr(), pvf->GetPitch(), buf,
-          pvf->GetPitch(), pvf->GetRowSize(), pvf->GetHeight());
-      } else {
-        env->BitBlt(pvf->GetWritePtr(PLANAR_Y), pvf->GetPitch(PLANAR_Y), buf,
-          pvf->GetPitch(PLANAR_Y), pvf->GetRowSize(PLANAR_Y), pvf->GetHeight(PLANAR_Y));
-        env->BitBlt(pvf->GetWritePtr(PLANAR_U), pvf->GetPitch(PLANAR_U), buf + pvf->GetOffset(PLANAR_U) - pvf->GetOffset(PLANAR_Y),
-          pvf->GetPitch(PLANAR_U), pvf->GetRowSize(PLANAR_U), pvf->GetHeight(PLANAR_U));
-        env->BitBlt(pvf->GetWritePtr(PLANAR_V), pvf->GetPitch(PLANAR_V), buf+ pvf->GetOffset(PLANAR_V) - pvf->GetOffset(PLANAR_Y),
-          pvf->GetPitch(PLANAR_V), pvf->GetRowSize(PLANAR_V), pvf->GetHeight(PLANAR_V));
-      }
-    } else if (load_audio) {  // audio
 
-      if (!a_allocated_buffer) {  // Allocate new buffer based on data length
-        a_buffer = new BYTE[pSamples->GetActualDataLength()];
-        a_allocated_buffer = pSamples->GetActualDataLength();
-      }
+    pSamples->GetPointer(&av_buffer);
 
-      if (a_allocated_buffer < pSamples->GetActualDataLength()) { // Buffer too small  -- delete + reallocate
-        delete[] a_buffer;
-        a_buffer = new BYTE[pSamples->GetActualDataLength()];
-        a_allocated_buffer = pSamples->GetActualDataLength();
-      }
-
-      PBYTE buf;
-      pSamples->GetPointer(&buf);
-
-      memcpy(a_buffer, buf, pSamples->GetActualDataLength());
+    if (load_audio) {  // audio
       a_sample_bytes = pSamples->GetActualDataLength();
-
-      _RPT1(0,"DSS Receive: Got %d bytes of audio data.\n",pSamples->GetActualDataLength());
+      _RPT1(0,"DSS Receive: Got %d bytes of audio data.\n",a_sample_bytes);
     }
 
     HRESULT wait_result;
     SetEvent(evtNewSampleReady);  // New sample is finished - wait releasing it until it has been fetched (DoneWithSample).
 
-    if (state == State_Running) {
-      do {
-        if (load_audio)
-          _RPT0(0,"DSS ...Receive() waiting for DoneWithSample. (audio)\n");
-        else 
-          _RPT0(0,"DSS ...Receive() waiting for DoneWithSample. (video)\n");
+    do {
+      if (load_audio)
+        _RPT0(0,"DSS ...Receive() waiting for DoneWithSample. (audio)\n");
+      else 
+        _RPT0(0,"DSS ...Receive() waiting for DoneWithSample. (video)\n");
 
-        wait_result = WaitForSingleObject(evtDoneWithSample, 1000);
-      } while (wait_result == WAIT_TIMEOUT && state ==State_Running);
-    }
+      wait_result = WaitForSingleObject(evtDoneWithSample, 5000);
+    } while (wait_result == WAIT_TIMEOUT);
+
+    av_buffer = 0;
+    a_sample_bytes = 0;
 
     if (load_audio)
       _RPT0(0,"DSS Receive() - returning. (audio)\n");
@@ -804,7 +824,7 @@ static void DisableDeinterlacing(IFilterGraph *pGraph)
  
     HRESULT hr = pGraph->EnumFilters(&pEnum);
     if (FAILED(hr))
-	return;
+        return;
 
     while(pEnum->Next(1, &pFilter, &cFetched) == S_OK) {
         FILTER_INFO FilterInfo;
@@ -812,24 +832,24 @@ static void DisableDeinterlacing(IFilterGraph *pGraph)
         if (FAILED(hr))
             continue;  // Maybe the next one will work.
 
-	if (wcscmp(FilterInfo.achName, L"WMVideo Decoder DMO") == 0) {
-	    IPropertyBag *pPropertyBag = NULL;
-	    hr = pFilter->QueryInterface(IID_IPropertyBag, (void**)&pPropertyBag);
-	    if(SUCCEEDED(hr)) {
-		VARIANT myVar;
-		VariantInit(&myVar);
-		// Disable decoder deinterlacing
-		myVar.vt   = VT_BOOL;
-		myVar.lVal = FALSE;
-		pPropertyBag->Write(g_wszWMVCDecoderDeinterlacing, &myVar);
-	    }
-	}
+        if (wcscmp(FilterInfo.achName, L"WMVideo Decoder DMO") == 0) {
+            IPropertyBag *pPropertyBag = NULL;
+            hr = pFilter->QueryInterface(IID_IPropertyBag, (void**)&pPropertyBag);
+            if(SUCCEEDED(hr)) {
+            VARIANT myVar;
+            VariantInit(&myVar);
+            // Disable decoder deinterlacing
+            myVar.vt   = VT_BOOL;
+            myVar.lVal = FALSE;
+            pPropertyBag->Write(g_wszWMVCDecoderDeinterlacing, &myVar);
+            }
+        }
 
-	// The FILTER_INFO structure holds a pointer to the Filter Graph
-	// Manager, with a reference count that must be released.
-	if (FilterInfo.pGraph != NULL)
-	    FilterInfo.pGraph->Release();
-	pFilter->Release();
+        // The FILTER_INFO structure holds a pointer to the Filter Graph
+        // Manager, with a reference count that must be released.
+        if (FilterInfo.pGraph != NULL)
+            FilterInfo.pGraph->Release();
+        pFilter->Release();
     }
 
     pEnum->Release();
@@ -843,11 +863,10 @@ static void DisableDeinterlacing(IFilterGraph *pGraph)
 
 DirectShowSource::DirectShowSource(const char* filename, int _avg_time_per_frame, bool _seek, bool _enable_audio,
                                    bool _enable_video, bool _convert_fps, IScriptEnvironment* env)
-  : get_sample(env, _enable_audio, _enable_video), no_search(!_seek), convert_fps(_convert_fps), gb(NULL) {
+  : get_sample(_enable_audio, _enable_video), no_search(!_seek), convert_fps(_convert_fps), gb(NULL) {
 
     CheckHresult(env, CoCreateInstance(CLSID_FilterGraphNoThread, 0, CLSCTX_INPROC_SERVER, IID_IGraphBuilder, (void**)&gb),
                  "couldn't create filter graph");
-
 
     WCHAR filenameW[MAX_PATH];
     MultiByteToWideChar(CP_ACP, 0, filename, -1, filenameW, MAX_PATH);
@@ -884,52 +903,110 @@ DirectShowSource::DirectShowSource(const char* filename, int _avg_time_per_frame
 
     IMediaSeeking* ms=0;
     CheckHresult(env, gb->QueryInterface(&ms), "couldn't get IMediaSeeking interface");
-	if (convert_fps) {
-		frame_units = false;
-		bool video_time = SUCCEEDED(ms->SetTimeFormat(&TIME_FORMAT_MEDIA_TIME));
-	} else {
-		frame_units = SUCCEEDED(ms->SetTimeFormat(&TIME_FORMAT_FRAME));
-	}
-
-    if (FAILED(ms->GetDuration(&duration)) || duration == 0) {
-      ms->Release();
-      cleanUp();
-      env->ThrowError("DirectShowSource: unable to determine the duration of the video.");
-    }
-
-    bool audio_time = SUCCEEDED(ms->SetTimeFormat(&TIME_FORMAT_MEDIA_TIME));
-    __int64 audio_dur;
-
-    if (FAILED(ms->GetDuration(&audio_dur)) || audio_dur == 0) {
-      ms->Release();
-      cleanUp();
-      env->ThrowError("DirectShowSource: unable to determine the duration of the audio.");
-    }
-
-    ms->Release();
 
     vi = get_sample.GetVideoInfo();
 
     if (vi.HasVideo()) {
+      bool fc_failed = true, mt_failed = true;
+      __int64 frame_count = 0, duration = 0;
+      GUID time_fmt = {0, 0, 0, {0, 0, 0, 0, 0, 0, 0, 0}};
+
+      // SetTimeFormat can give E_NOTIMPL
+      ms->SetTimeFormat(&TIME_FORMAT_MEDIA_TIME);
+      // so check what it currently is
+      ms->GetTimeFormat(&time_fmt);
+
+      if (time_fmt == TIME_FORMAT_MEDIA_TIME)
+        mt_failed = (FAILED(ms->GetDuration(&duration)) || duration == 0);
+
+      // run in frame mode if we can set time format to frame
+      frame_units = SUCCEEDED(ms->SetTimeFormat(&TIME_FORMAT_FRAME));
+
+      if (frame_units)
+        fc_failed = (FAILED(ms->GetDuration(&frame_count)) || frame_count == 0);
+
+      if (convert_fps || fc_failed) frame_units = false;
+
+      if (mt_failed && !frame_units) {
+        ms->Release();
+        cleanUp();
+        env->ThrowError("DirectShowSource: unable to determine the duration of the video.");
+      }
+
       if (_avg_time_per_frame) {
         avg_time_per_frame = _avg_time_per_frame;
         vi.SetFPS(10000000, avg_time_per_frame);
-      } else {
+        vi.num_frames = int(frame_units ? frame_count : duration / avg_time_per_frame);
+      }
+      else {
         // this is exact (no rounding needed) because of the way the fps is set in GetSample
         avg_time_per_frame = 10000000 / vi.fps_numerator * vi.fps_denominator;
+        if (avg_time_per_frame != 0) {
+          vi.num_frames = int(frame_units ? frame_count : duration / avg_time_per_frame);
+        }
+        else {
+          // Try duration divided by frame count
+          if (fc_failed || mt_failed) {
+            ms->Release();
+            cleanUp();
+            env->ThrowError("DirectShowSource: I can't determine the frame rate\n"
+                            "of the video, you must use the \"fps\" parameter."); // Note must match message below
+          }
+          else {
+            avg_time_per_frame = int((duration + (frame_count>>1)) / frame_count);
+            vi.num_frames = int(frame_count);
+
+            unsigned __int64 numerator   = 10000000 * frame_count;
+            unsigned __int64 denominator = duration;
+
+            unsigned __int64 x=numerator, y=denominator;
+            while (y) {   // find gcd
+              unsigned __int64 t = x%y; x = y; y = t;
+            }
+            numerator   /= x; // normalize
+            denominator /= x;
+
+            unsigned __int64 temp = numerator | denominator; // Just looking top bit
+            unsigned u = 0;
+            while (temp & 0xffffffff80000000) {
+              temp = Int64ShrlMod32(temp, 1);
+              u++;
+            }
+            if (u) { // Scale to fit
+              const unsigned round = 1 << (u-1);
+              vi.SetFPS( (unsigned)Int64ShrlMod32(numerator   + round, u),
+                         (unsigned)Int64ShrlMod32(denominator + round, u) );
+            }
+            else {
+              vi.fps_numerator   = (unsigned)numerator;
+              vi.fps_denominator = (unsigned)denominator;
+            }
+          }
+        }
       }
-      if (avg_time_per_frame == 0) {
-        cleanUp();
-        env->ThrowError("DirectShowSource: I can't determine the frame rate\n"
-                        "of the video, you must use the \"fps\" parameter."); // Note must match message below
-      }
-      vi.num_frames = int(frame_units ? duration : duration / avg_time_per_frame);
     }
 
     if (vi.HasAudio()) {
+      GUID time_fmt = {0, 0, 0, {0, 0, 0, 0, 0, 0, 0, 0}};
+      __int64 audio_dur = 0;
+
+      // SetTimeFormat can give E_NOTIMPL
+      ms->SetTimeFormat(&TIME_FORMAT_MEDIA_TIME);
+      // so check what it currently is
+      ms->GetTimeFormat(&time_fmt);
+
+      if ( (time_fmt != TIME_FORMAT_MEDIA_TIME)
+        || FAILED(ms->GetDuration(&audio_dur))
+        || (audio_dur == 0) ) {
+          ms->Release();
+          cleanUp();
+          env->ThrowError("DirectShowSource: unable to determine the duration of the audio.");
+      }
+
       vi.num_audio_samples = (__int64)((double)audio_dur * (double)vi.audio_samples_per_second / 10000000.0);
     }
 
+    ms->Release();
     get_sample.StartGraph();
 
     cur_frame = 0;
@@ -949,7 +1026,7 @@ DirectShowSource::DirectShowSource(const char* filename, int _avg_time_per_frame
       if (SUCCEEDED(gb->QueryInterface(&mc))) {
         OAFilterState st;
         mc->GetState(1000, &st);
-        if (st == State_Running) mc->Stop();
+        if (st != State_Stopped) mc->Stop();
         mc->Release();
       }
       get_sample.StopGraph();
@@ -959,80 +1036,87 @@ DirectShowSource::DirectShowSource(const char* filename, int _avg_time_per_frame
 
   PVideoFrame __stdcall DirectShowSource::GetFrame(int n, IScriptEnvironment* env) {
     n = max(min(n, vi.num_frames-1), 0); 
+    // Ask for the frame whose [start_time ->T<- end_time] span sample_time
+    const __int64 sample_time = Int32x32To64(n, avg_time_per_frame) + (avg_time_per_frame>>1);
     if (frame_units) {
       if (n < cur_frame || n > cur_frame+10) {
-        if ( no_search || FAILED(get_sample.SeekTo(__int64(n) * avg_time_per_frame + (avg_time_per_frame>>1))) ) {
-          no_search=true;  // Do not attempt further searches.
-          if (cur_frame < n) {
-            while (cur_frame < n) {
-              get_sample.NextSample();
-              cur_frame++;
-            } // end while
-          } // end if curframe<n  fail, if n is behind cur_frame and no seek.
+        if ( no_search || FAILED(get_sample.SeekTo(sample_time)) ) {
+          while (cur_frame < n) {
+            if (!get_sample.NextSample()) break;
+            cur_frame++;
+          } // end while (cur_frame<n  fail, if n is behind cur_frame and no seek.
         }
-		else { // seek ok!
+        else { // seek ok!
           cur_frame = n;
         }
       }
-	  else {
+      else {
         while (cur_frame < n) {
-          get_sample.NextSample();
+          if (!get_sample.NextSample()) break;
           cur_frame++;
         }
       }
     }
-	else {
-      __int64 sample_time = __int64(n) * avg_time_per_frame + (avg_time_per_frame>>1);
+    else {
       if (n < cur_frame || n > cur_frame+10) {
         if (no_search || FAILED(get_sample.SeekTo(sample_time))) {
-          no_search=true;
           if (cur_frame<n) {  // seek manually
-            while (get_sample.GetSampleEndTime()+base_sample_time <= sample_time) {
-              get_sample.NextSample();
+            while (get_sample.GetSampleEndTime() <= sample_time) {
+              if (!get_sample.NextSample()) break;
             }
             cur_frame = n;
           } // end if curframe<n  fail, if n is behind cur_frame and no seek.
         }
-		else { // seek ok!
+        else { // seek ok!
           // Stupid DirectShow bases its idea of the time of the frame
-		  // after a seek as somewhere between +/-(avg_time_per_frame/2)
+          // after a seek as somewhere between +/-(avg_time_per_frame/2)
+          // i.e. It approximatly starts from zero.
           base_sample_time = sample_time - (avg_time_per_frame>>1) - get_sample.GetSampleStartTime();
           cur_frame = n;
         }
       }
-	  else if (convert_fps) {
-		if (cur_frame<n) {  // automatic fps conversion: trust only sample time
-		  while (get_sample.GetSampleEndTime()+base_sample_time <= sample_time) {
-			if(!get_sample.NextSample()) break;
-		  }
-		  cur_frame = n;
-		}
-	  }
-	  else {
-		while (cur_frame < n) {
-		  get_sample.NextSample();
-		  cur_frame++;
-		}
+      else if (convert_fps) {
+        if (cur_frame<n) {  // automatic fps conversion: trust only sample time
+          while (get_sample.GetSampleEndTime()+base_sample_time <= sample_time) {
+            if(!get_sample.NextSample()) break;
+          }
+          cur_frame = n;
+        }
+      }
+      else {
+        while (cur_frame < n) {
+          if (!get_sample.NextSample()) break;
+          cur_frame++;
+        }
       }
     }
-    return get_sample.GetCurrentFrame();
+    return get_sample.GetCurrentFrame(env);
   }
 
 
   void __stdcall DirectShowSource::GetAudio(void* buf, __int64 start, __int64 count, IScriptEnvironment* env) {
-
     int bytes_filled = 0;
-
  
     if (next_sample != start) {  // We have been searching!  Skip until sync!
 
-      __int64 seekTo = start*(__int64)10000000/(__int64)vi.audio_samples_per_second;
       _RPT2(0,"DSS GetAudio: Seeking %I64d previous %I64d samples.\n", start, next_sample);
 
-      _RPT1(0,"DSS GetAudio: SeekTo %I64d media time.\n", seekTo);
-      if ((!no_search) && SUCCEEDED(get_sample.SeekTo(seekTo))) {
-        // Seek succeeded!
-        next_sample = start;
+      // Backup to begining of current buffer
+      next_sample -= vi.AudioSamplesFromBytes(audio_bytes_read);
+      audio_bytes_read = 0;
+
+      // Avoid a seek if target is within the current buffer
+      const __int64 avail_samples = vi.AudioSamplesFromBytes(get_sample.a_sample_bytes);
+      if ((start < next_sample) || (start >= next_sample+avail_samples)) {
+
+        const __int64 seekTo = (start*10000000 + (vi.audio_samples_per_second>>1)) / vi.audio_samples_per_second;
+        _RPT1(0,"DSS GetAudio: SeekTo %I64d media time.\n", seekTo);
+
+        if ((!no_search) && SUCCEEDED(get_sample.SeekTo(seekTo))) {
+          // Seek succeeded!
+          next_sample = start;
+          audio_bytes_read = 0;
+        } 
       } 
 
       if (start < next_sample) { // We are behind sync - pad with 0
@@ -1054,25 +1138,26 @@ DirectShowSource::DirectShowSource(const char* filename, int _avg_time_per_frame
         count -= fill_nsamples;
         bytes_filled += (int)vi.BytesFromAudioSamples(fill_nsamples);
       }
+
       if (start > next_sample) {  // Skip forward (decode)
         // Should we search?
-        int skip_left = (int)(start - next_sample);
+        int skip_left = (int)vi.BytesFromAudioSamples(start - next_sample);
         _RPT1(0,"DSS GetAudio: Skipping %d bytes.\n", skip_left);
-        bool cont = !get_sample.IsEndOfStream();
-        while (cont) {
-          if (vi.AudioSamplesFromBytes(get_sample.a_sample_bytes) > skip_left) {
-            audio_bytes_read = (int)vi.BytesFromAudioSamples(skip_left);
-            cont = false;
+
+        get_sample.WaitForStart();
+        while (skip_left > 0) {
+
+          if (get_sample.a_sample_bytes-audio_bytes_read >= skip_left) {
+            audio_bytes_read += skip_left;
+            break;
           }
+          skip_left -= get_sample.a_sample_bytes-audio_bytes_read;
+          audio_bytes_read = get_sample.a_sample_bytes;
           
-          if (get_sample.IsEndOfStream())
-            cont= false;
-          
-          if (cont) {  // Read on
-            get_sample.NextSample();
-            skip_left -= (int)vi.AudioSamplesFromBytes(get_sample.a_sample_bytes);
+          if (get_sample.NextSample())
             audio_bytes_read = 0;
-          }
+          else
+             break;  // EndOfStream?
         } // end while
         next_sample = start;
       }
@@ -1082,29 +1167,31 @@ DirectShowSource::DirectShowSource(const char* filename, int _avg_time_per_frame
     int bytes_left = (int)vi.BytesFromAudioSamples(count);
     _RPT2(0,"DSS GetAudio: Reading %I64d samples, %d bytes.\n", count, bytes_left);
 
+    get_sample.WaitForStart();
     while (bytes_left) {
       // Can we read from the Directshow filters buffer?
       if (get_sample.a_sample_bytes - audio_bytes_read > 0) { // Copy as many bytes as needed.
 
-		// This many bytes can be safely read.
+        // This many bytes can be safely read.
         const int available_bytes = min(bytes_left, get_sample.a_sample_bytes - audio_bytes_read);
         _RPT2(0,"DSS GetAudio: Memcpy %d offset, %d bytes.\n", bytes_filled, available_bytes);
 
-        memcpy(&samples[bytes_filled], &get_sample.a_buffer[audio_bytes_read], available_bytes);
+        memcpy(&samples[bytes_filled], &get_sample.av_buffer[audio_bytes_read], available_bytes);
 
         bytes_left -= available_bytes;
         bytes_filled += available_bytes;
         audio_bytes_read += available_bytes;
 
-      } else { // Read more samples
-        if (!get_sample.IsEndOfStream()) {
-          get_sample.NextSample();
+      }
+      else { // Read more samples
+        if (get_sample.NextSample()) {
           audio_bytes_read = 0;
         } else { // Pad with 0
           _RPT2(0,"DSS GetAudio: Memset %d offset, %d bytes.\n", bytes_filled, bytes_left);
           if (vi.sample_type == SAMPLE_FLOAT) {
-            float* samps = (float*)buf;
-            for (int i = 0; i < (int)(bytes_left/sizeof(float)); i++)
+            float* samps = (float*)((int)(&samples[bytes_filled]) & ~3); // Aligned just to be sure
+            const int samples_left = (bytes_left+sizeof(float)-1)/sizeof(float);
+            for (int i = 0; i < samples_left; i++)
               samps[i] = 0.0f;
           } else {
             memset(&samples[bytes_filled],0,bytes_left);
