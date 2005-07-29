@@ -444,6 +444,21 @@ Animate::Animate( PClip context, int _first, int _last, const char* _name, const
 }
 
 
+bool __stdcall Animate::GetParity(int n) 
+{
+  if (range_limit) {
+    if ((n<first) || (n>last)) {
+      return args_after[0].AsClip()->GetParity(n);
+    }
+  }
+  // We could go crazy here and replicate the GetFrame
+  // logic and share the cache_stage but it is not
+  // really worth it. Although clips that change parity
+  // are supported they are very confusing.
+  return cache[0]->GetParity(n);
+}
+
+
 PVideoFrame __stdcall Animate::GetFrame(int n, IScriptEnvironment* env) 
 {
   if (range_limit) {
@@ -483,34 +498,42 @@ void __stdcall Animate::GetAudio(void* buf, __int64 start, __int64 count, IScrip
   if (range_limit) {  // Applyrange - hard switch between streams.
 
     const VideoInfo& vi1 = cache[0]->GetVideoInfo();
+    const __int64 start_switch =  vi1.AudioSamplesFromFrames(first);
+    const __int64 end_switch   =  vi1.AudioSamplesFromFrames(last+1);
 
-    if ( (start+count < vi1.AudioSamplesFromFrames(first)) || (start > vi1.AudioSamplesFromFrames(last+1)) ) {
+    if ( (start+count <= start_switch) || (start >= end_switch) ) {
       // Everything unfiltered
       args_after[0].AsClip()->GetAudio(buf, start, count, env);
       return;
     }
-
-    if (start < vi1.AudioSamplesFromFrames(first) || (start+count > vi1.AudioSamplesFromFrames(last+1)) ) {
+    else if ( (start < start_switch) || (start+count > end_switch) ) {
       // We are at one or both switchover points
-      // We start by filling with filtered material.
-      cache[0]->GetAudio(buf, start, count, env);
 
-      // Now we fetch the unfiltered material for both ends.
-      __int64 start_switch =  vi1.AudioSamplesFromFrames(first);
-      if (start_switch > start) 
-        args_after[0].AsClip()->GetAudio(buf, start, start_switch - start, env);  // UnFiltered
+      // The bit before
+      if (start_switch > start) {
+	const __int64 pre_count = start_switch - start;
+        args_after[0].AsClip()->GetAudio(buf, start, pre_count, env);  // UnFiltered
+	start += pre_count;
+	count -= pre_count;
+	buf = (void*)( (BYTE*)buf + vi1.BytesFromAudioSamples(pre_count) );
+      }
 
-      __int64 end_switch =  vi1.AudioSamplesFromFrames(last+1);
-      if (end_switch < start+count) 
-        args_after[0].AsClip()->GetAudio(buf, end_switch, start + count - end_switch, env);  // UnFiltered
+      // The bit in the middle
+      const __int64 filt_count = (end_switch < start+count) ? (end_switch - start) : count;
+      cache[0]->GetAudio(buf, start, filt_count, env);  // Filtered 
+      start += filt_count;
+      count -= filt_count;
+      buf = (void*)( (BYTE*)buf + vi1.BytesFromAudioSamples(filt_count) );
+
+      // The bit after
+      if (count > 0) 
+        args_after[0].AsClip()->GetAudio(buf, start, count, env);  // UnFiltered
 
       return;
     }
-
-    cache[0]->GetAudio(buf, start, count, env);  // Filtered
-    return;
+    // Everything filtered
   }
-  cache[0]->GetAudio(buf, start, count, env); 
+  cache[0]->GetAudio(buf, start, count, env);  // Filtered 
 } 
   
 

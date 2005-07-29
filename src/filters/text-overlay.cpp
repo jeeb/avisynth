@@ -783,6 +783,17 @@ void Subtitle::InitAntialiaser()
 
 
 
+inline int CalcFontSize(int w, int h)
+{
+  enum { minFS=8, FS=128, minH=200, minW=352 };
+
+  const int ws = (w < minW) ? (FS*w)/minW : FS;
+  const int hs = (h < minH) ? (FS*h)/minH : FS;
+  const int fs = (ws < hs) ? ws : hs;
+  return ( (fs < minFS) ? minFS : fs );
+}
+
+
 /***********************************
  *******   FilterInfo Filter    ******
  **********************************/
@@ -790,7 +801,7 @@ void Subtitle::InitAntialiaser()
 
 FilterInfo::FilterInfo( PClip _child)
 : GenericVideoFilter(_child),
-antialiaser(vi.width, vi.height, "Courier New", 128, vi.IsYUV() ? 0xD21092 : 0xFFFF00, vi.IsYUV() ? 0x108080 : 0) {
+antialiaser(vi.width, vi.height, "Courier New", CalcFontSize(vi.width, vi.height), vi.IsYUV() ? 0xD21092 : 0xFFFF00, vi.IsYUV() ? 0x108080 : 0) {
 }
 
 
@@ -811,10 +822,12 @@ const char* t_FLOAT32="Float 32 bit";
 const char* t_YES="YES";
 const char* t_NO="NO";
 const char* t_NONE="NONE";
-const char* t_TFF="Assuming Top Field First   ";
-const char* t_BFF="Assuming Bottom Field First";
-const char* t_STFF="Top Field (Separated)   ";
-const char* t_SBFF="Bottom Field (Separated)";
+const char* t_TFF="Top Field First             ";
+const char* t_BFF="Bottom Field First          ";
+const char* t_ATFF="Assumed Top Field First    ";
+const char* t_ABFF="Assumed Bottom Field First ";
+const char* t_STFF="Top Field (Separated)      ";
+const char* t_SBFF="Bottom Field (Separated)   ";
 
 
 string GetCpuMsg(IScriptEnvironment * env)
@@ -866,9 +879,9 @@ PVideoFrame FilterInfo::GetFrame(int n, IScriptEnvironment* env)
       }
     } else {
       if (child->GetParity(n)) {
-        s_parity = t_TFF;
+        s_parity = vi.IsTFF() ? t_ATFF : t_TFF;
       } else {
-        s_parity = t_BFF;
+        s_parity = vi.IsBFF() ? t_ABFF : t_BFF;
       }
     }
     char text[400];

@@ -147,8 +147,8 @@ public:
 
   inline const VideoInfo& __stdcall GetVideoInfo() 
     { return cache[0]->GetVideoInfo(); }
-  inline bool __stdcall GetParity(int n) 
-    { return cache[0]->GetParity(n); }
+  bool __stdcall GetParity(int n);
+
   void __stdcall SetCacheHints(int cachehints,int frame_range) { };
 
   static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env);

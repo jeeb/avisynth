@@ -54,16 +54,17 @@ enum {
 class StaticImage : public IClip {
   const VideoInfo vi;
   const PVideoFrame frame;
+  bool parity;
 
 public:
-  StaticImage(const VideoInfo& _vi, const PVideoFrame& _frame)
-    : vi(_vi), frame(_frame) {}
+  StaticImage(const VideoInfo& _vi, const PVideoFrame& _frame, bool _parity)
+    : vi(_vi), frame(_frame), parity(_parity) {}
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env) { return frame; }
   void __stdcall GetAudio(void* buf, __int64 start, __int64 count, IScriptEnvironment* env) {
     memset(buf, 0, vi.BytesFromAudioSamples(count));
   }
   const VideoInfo& __stdcall GetVideoInfo() { return vi; }
-  bool __stdcall GetParity(int n) { return vi.IsFieldBased() ? (n&1) : false; }
+  bool __stdcall GetParity(int n) { return (vi.IsFieldBased() ? (n&1) : false) ^ parity; }
   void __stdcall SetCacheHints(int cachehints,int frame_range) { };
 };
 
@@ -130,11 +131,14 @@ static AVSValue __cdecl Create_BlankClip(AVSValue args, void*, IScriptEnvironmen
   vi_default.nchannels=1;
   vi_default.num_audio_samples=44100*10;
   vi_default.sample_type=SAMPLE_INT16;
+  vi_default.SetFieldBased(false);
+  bool parity=false;
 
   VideoInfo vi;
 
   if (args[0].ArraySize() == 1) {
     vi_default = args[0][0].AsClip()->GetVideoInfo();
+    parity = args[0][0].AsClip()->GetParity(0);
   }
   else if (args[0].ArraySize() != 0) {
     env->ThrowError("BlankClip: Only 1 Template clip allowed.");
@@ -143,7 +147,6 @@ static AVSValue __cdecl Create_BlankClip(AVSValue args, void*, IScriptEnvironmen
   vi.num_frames = args[1].AsInt(vi_default.num_frames);
   vi.width = args[2].AsInt(vi_default.width);
   vi.height = args[3].AsInt(vi_default.height);
-  vi.pixel_type = vi_default.pixel_type;
 
   if (args[4].Defined()) {
     const char* pixel_type_string = args[4].AsString();
@@ -177,7 +180,8 @@ static AVSValue __cdecl Create_BlankClip(AVSValue args, void*, IScriptEnvironmen
     vi.SetFPS(int(n+0.5), args[6].AsInt(vi_default.fps_denominator));
   }
 
-  vi.SetFieldBased(false);
+  vi.image_type = vi_default.image_type; // Copy any field sense from template
+
   vi.audio_samples_per_second = args[7].AsInt(vi_default.audio_samples_per_second);
 
   if (args[8].Defined())
@@ -203,7 +207,7 @@ static AVSValue __cdecl Create_BlankClip(AVSValue args, void*, IScriptEnvironmen
 	  env->ThrowError("BlankClip: color_yuv must be between 0 and %d($ffffff)", 0xffffff);
   }
 
-  return new StaticImage(vi, CreateBlankFrame(vi, color, mode, env));
+  return new StaticImage(vi, CreateBlankFrame(vi, color, mode, env), parity);
 }
 
 
@@ -247,7 +251,7 @@ PClip Create_MessageClip(const char* message, int width, int height, int pixel_t
 
   PVideoFrame frame = CreateBlankFrame(vi, bgcolor, COLOR_MODE_RGB, env);
   ApplyMessage(&frame, vi, message, size, textcolor, halocolor, bgcolor, env);
-  return new StaticImage(vi, frame);
+  return new StaticImage(vi, frame, false);
 };
 
 

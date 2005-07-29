@@ -68,7 +68,17 @@ class ComplementParity : public GenericVideoFilter
  **/
 {
 public:
-  ComplementParity(PClip _child) : GenericVideoFilter(_child) {}
+  ComplementParity(PClip _child) : GenericVideoFilter(_child) {
+    if (vi.IsBFF() && !vi.IsTFF()) {
+	  vi.Clear(VideoInfo::IT_BFF);
+	  vi.Set(VideoInfo::IT_TFF);
+	}
+	else if (!vi.IsBFF() && vi.IsTFF()) {
+	  vi.Set(VideoInfo::IT_BFF);
+	  vi.Clear(VideoInfo::IT_TFF);
+	}
+//  else both were set (illegal state) or both were unset (parity unknown)
+  }
   inline bool __stdcall GetParity(int n) 
     { return !child->GetParity(n); }
 
@@ -79,12 +89,18 @@ public:
 
 class AssumeParity : public GenericVideoFilter
 /**
-  * Class to assume field precedence
+  * Class to assume field precedence, AssumeTFF() & AssumeBFF()
  **/
 {
 public:
   AssumeParity(PClip _child, bool _parity) : GenericVideoFilter(_child), parity(_parity) { 
-    if (parity) {vi.Set(VideoInfo::IT_TFF);} else {vi.Set(VideoInfo::IT_BFF);}
+    if (parity) {
+	  vi.Clear(VideoInfo::IT_BFF);
+	  vi.Set(VideoInfo::IT_TFF);
+	} else {
+	  vi.Set(VideoInfo::IT_BFF);
+	  vi.Clear(VideoInfo::IT_TFF);
+	}
   }
   inline bool __stdcall GetParity(int n)
     { return parity ^ (vi.IsFieldBased() && (n & 1)); }
@@ -103,7 +119,7 @@ class AssumeFieldBased : public GenericVideoFilter
 {
 public:
   AssumeFieldBased(PClip _child) : GenericVideoFilter(_child) 
-  { vi.SetFieldBased(true); }
+  { vi.SetFieldBased(true); vi.Clear(VideoInfo::IT_BFF); vi.Clear(VideoInfo::IT_TFF); }
   inline bool __stdcall GetParity(int n) 
     { return n&1; }
 
@@ -119,7 +135,7 @@ class AssumeFrameBased : public GenericVideoFilter
 {
 public:
   AssumeFrameBased(PClip _child) : GenericVideoFilter(_child) 
-  { vi.SetFieldBased(false); }
+  { vi.SetFieldBased(false); vi.Clear(VideoInfo::IT_BFF); vi.Clear(VideoInfo::IT_TFF); }
   inline bool __stdcall GetParity(int n) 
     { return false; }
 
