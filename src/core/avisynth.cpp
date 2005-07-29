@@ -991,7 +991,7 @@ PVideoFrame ScriptEnvironment::NewPlanarVideoFrame(int width, int height, int al
   } 
   else if (PlanarChromaAlignmentState) {
 // Align UV planes, Y will follow
-	UVpitch = ((width>>1)+align-1) / align * align;  // UV plane, width = 1/2 byte per pixel
+	UVpitch = (((width+1)>>1)+align-1) / align * align;  // UV plane, width = 1/2 byte per pixel
 	pitch = UVpitch<<1;  // Y plane, width = 1 byte per pixel
   }
   else {
