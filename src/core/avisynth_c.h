@@ -39,9 +39,9 @@
 #  define EXTERN_C
 #endif
 
-#define ACSC_USE_STDCALL 1
+#define AVSC_USE_STDCALL 1
 
-#ifndef ACSC_USE_STDCALL
+#ifndef AVSC_USE_STDCALL
 #  define AVSC_CC __cdecl
 #else
 #  define AVSC_CC __stdcall
@@ -646,22 +646,9 @@ AVSC_API(int) avs_set_working_dir(AVS_ScriptEnvironment *, const char * newdir);
 // writing an AVS script or without going through AVIFile.
 AVSC_API(AVS_ScriptEnvironment *) avs_create_script_environment(int version);
 
-#ifndef AVSC_USE_STDCALL
-
 // this symbol is the entry point for the plugin and must
 // be defined
 AVSC_EXPORT
 const char * AVSC_CC avisynth_c_plugin_init(AVS_ScriptEnvironment* env);
-
-#else // AVSC_USE_STDCALL
-
-// this symbol is the entry point for the plugin and must
-// be defined
-AVSC_EXPORT
-const char * AVSC_CC avisynth_c_plugin_init_s(AVS_ScriptEnvironment* env);
-
-#define avisynth_c_plugin_init avisynth_c_plugin_init_s
-
-#endif // AVSC_USE_STDCALL
 
 #endif

@@ -558,9 +558,9 @@ AVSValue __cdecl load_c_plugin(AVSValue args, void * user_data,
 #ifndef AVSC_USE_STDCALL
     func = (AvisynthCPluginInitFunc)GetProcAddress(plugin, "avisynth_c_plugin_init");
 #else // AVSC_USE_STDCALL
-    func = (AvisynthCPluginInitFunc)GetProcAddress(plugin, "avisynth_c_plugin_init_s@4");
+    func = (AvisynthCPluginInitFunc)GetProcAddress(plugin, "avisynth_c_plugin_init@4");
     if (!func)
-      func = (AvisynthCPluginInitFunc)GetProcAddress(plugin, "avisynth_c_plugin_init_s");
+      func = (AvisynthCPluginInitFunc)GetProcAddress(plugin, "avisynth_c_plugin_init");
 #endif // AVSC_USE_STDCALL
 	if (!func)
 		env->ThrowError("Not An Avisynth 2 C Plugin: %s", filename);
@@ -575,6 +575,7 @@ AVSValue __cdecl load_c_plugin(AVSValue args, void * user_data,
 
 AVSFunction CPlugin_filters[] = {
     {"LoadCPlugin", "s", load_c_plugin },
+    {"Load_Stdcall_Plugin", "s", load_c_plugin },
     { 0 }
 };
 
