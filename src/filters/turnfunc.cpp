@@ -143,8 +143,8 @@ void TurnYUY2(const unsigned char *srcp, unsigned char *dstp, const int rowsize,
 			dstp_offset = ((height-2-y)<<1);
 			for (int x=0; x<rowsize; x+=4)
 			{
-				u = (srcp[x+1] + srcp[x+1+src_pitch])>>1;
-				v = (srcp[x+3] + srcp[x+3+src_pitch])>>1;
+				u = (srcp[x+1] + srcp[x+1+src_pitch] + 1) >> 1;
+				v = (srcp[x+3] + srcp[x+3+src_pitch] + 1) >> 1;
 				dstp[dstp_offset+0] = srcp[x+src_pitch];
 				dstp[dstp_offset+1] = u;
 				dstp[dstp_offset+2] = srcp[x];
@@ -167,8 +167,8 @@ void TurnYUY2(const unsigned char *srcp, unsigned char *dstp, const int rowsize,
 			dstp_offset = (y<<1);
 			for (int x=0; x<rowsize; x+=4)
 			{
-				u = (srcp[-x+1] + srcp[-x+1+src_pitch])>>1;
-				v = (srcp[-x+3] + srcp[-x+3+src_pitch])>>1;
+				u = (srcp[-x+1] + srcp[-x+1+src_pitch] + 1) >> 1;
+				v = (srcp[-x+3] + srcp[-x+3+src_pitch] + 1) >> 1;
 				dstp[dstp_offset+0] = srcp[-x+2];
 				dstp[dstp_offset+1] = u;
 				dstp[dstp_offset+2] = srcp[-x+2+src_pitch];
