@@ -270,7 +270,7 @@ struct VideoInfo {
   }
 
   // Test for same colorspace
-  bool IsSameColorspace(const VideoInfo& vi) {
+  bool IsSameColorspace(const VideoInfo& vi) const {
     if (vi.pixel_type == pixel_type) return TRUE;
     if (IsYV12() && vi.IsYV12()) return TRUE;
     return FALSE;
