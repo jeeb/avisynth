@@ -173,14 +173,14 @@ class AudioDub : public IClip {
   * Class to mux the audio track of one clip with the video of another
  **/
 public:
-  AudioDub(PClip child1, PClip child2, IScriptEnvironment* env);
+  AudioDub(PClip child1, PClip child2, int mode, IScriptEnvironment* env);
   const VideoInfo& __stdcall GetVideoInfo();
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
   void __stdcall GetAudio(void* buf, __int64 start, __int64 count, IScriptEnvironment* env);
   bool __stdcall GetParity(int n);
   void __stdcall SetCacheHints(int cachehints,int frame_range) { };
 
-  static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env);
+  static AVSValue __cdecl Create(AVSValue args, void* mode, IScriptEnvironment* env);
 
 private:
   /*const*/ PClip vchild, achild;

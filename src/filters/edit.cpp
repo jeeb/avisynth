@@ -50,7 +50,8 @@ AVSFunction Edit_filters[] = {
   { "UnalignedSplice", "cc+", Splice::CreateUnaligned },    // clips
   { "AlignedSplice", "cc+", Splice::CreateAligned },        // clips
   { "Dissolve", "cc+i[fps]f", Dissolve::Create },           // clips, overlap frames[, fps]
-  { "AudioDub", "cc", AudioDub::Create },                   // video src, audio src
+  { "AudioDub", "cc", AudioDub::Create, (void*)0},          // video src, audio src
+  { "AudioDubEx", "cc", AudioDub::Create, (void*)1},        // video! src, audio! src
   { "Reverse", "c", Reverse::Create },                      // plays backwards
   { "FadeOut0", "ci[color]i[fps]f", Create_FadeOut0},       // # frames[, color][, fps]
   { "FadeOut", "ci[color]i[fps]f", Create_FadeOut},         // # frames[, color][, fps]
@@ -586,19 +587,25 @@ bool Dissolve::GetParity(int n)
  *******   AudioDub Filter  ******
  *********************************/
 
-AudioDub::AudioDub(PClip child1, PClip child2, IScriptEnvironment* env) 
+AudioDub::AudioDub(PClip child1, PClip child2, int mode, IScriptEnvironment* env) 
 {
   const VideoInfo& vi1 = child1->GetVideoInfo();
   const VideoInfo& vi2 = child2->GetVideoInfo();
   const VideoInfo *vi_video, *vi_audio;
-  if (vi1.HasVideo() && vi2.HasAudio()) {
-    vchild = child1; achild = child2;
-    vi_video = &vi1, vi_audio = &vi2;
-  } else if (vi2.HasVideo() && vi1.HasAudio()) {
-    vchild = child2; achild = child1;
-    vi_video = &vi2, vi_audio = &vi1;
-  } else {
-    env->ThrowError("AudioDub: need an audio and a video track");
+  if (mode) { // Unconditionally accept audio and video
+	vchild = child1; achild = child2;
+	vi_video = &vi1; vi_audio = &vi2;
+  }
+  else {
+	if (vi1.HasVideo() && vi2.HasAudio()) {
+	  vchild = child1; achild = child2;
+	  vi_video = &vi1, vi_audio = &vi2;
+	} else if (vi2.HasVideo() && vi1.HasAudio()) {
+	  vchild = child2; achild = child1;
+	  vi_video = &vi2, vi_audio = &vi1;
+	} else {
+	  env->ThrowError("AudioDub: need an audio and a video track");
+	}
   }
 
   vi = *vi_video;
@@ -633,9 +640,9 @@ void AudioDub::GetAudio(void* buf, __int64 start, __int64 count, IScriptEnvironm
 }
 
 
-AVSValue __cdecl AudioDub::Create(AVSValue args, void*, IScriptEnvironment* env) 
+AVSValue __cdecl AudioDub::Create(AVSValue args, void* mode, IScriptEnvironment* env) 
 {
-  return new AudioDub(args[0].AsClip(), args[1].AsClip(), env);
+  return new AudioDub(args[0].AsClip(), args[1].AsClip(), int(mode), env);
 }
 
 
