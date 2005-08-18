@@ -38,6 +38,9 @@
 
 #include "avisynth.h"
 #include <streams.h>
+#ifdef _DEBUG
+# include <stdio.h>
+#endif
 
 // For some reason KSDATAFORMAT_SUBTYPE_IEEE_FLOAT and KSDATAFORMAT_SUBTYPE_PCM doesn't work - we construct the GUID manually!
 const GUID SUBTYPE_IEEE_AVSPCM  = {0x00000001, 0x0000, 0x0010, {0x80, 0x00, 0x00, 0xaa, 0x00, 0x38, 0x9b, 0x71}};
@@ -63,6 +66,44 @@ const GUID SUBTYPE_IEEE_AVSFLOAT  = {0x00000003, 0x0000, 0x0010, {0x80, 0x00, 0x
 
 
 class GetSample;
+
+
+class GetSampleEnumMediaTypes : public IEnumMediaTypes {
+  long refcnt;
+  GetSample* const parent;
+  unsigned pos, count;
+public:
+  GetSampleEnumMediaTypes(GetSample* _parent, unsigned _count, unsigned _pos=0);
+
+// IUnknown::
+  
+  ULONG __stdcall AddRef() { InterlockedIncrement(&refcnt); return refcnt; }
+  ULONG __stdcall Release() {
+    if (!InterlockedDecrement(&refcnt)) {
+      delete this;
+      return 0;
+    } else {
+      return refcnt;
+    }
+  }
+  HRESULT __stdcall QueryInterface(REFIID iid, void** ppv) {
+    if      (iid == IID_IUnknown)        *ppv = static_cast<IUnknown*>(this);
+    else if (iid == IID_IEnumMediaTypes) *ppv = static_cast<IEnumMediaTypes*>(this);
+    else {
+      *ppv = 0;
+      return E_NOINTERFACE;
+    }
+    AddRef();
+    return S_OK;
+  }
+
+// IEnumMediaTypes::
+
+  HRESULT __stdcall Next(ULONG cMediaTypes, AM_MEDIA_TYPE** ppMediaTypes, ULONG* pcFetched);
+  HRESULT __stdcall Skip(ULONG cMediaTypes);
+  HRESULT __stdcall Reset();
+  HRESULT __stdcall Clone(IEnumMediaTypes** ppEnum);
+};
 
 
 class GetSampleEnumPins : public IEnumPins {
@@ -116,17 +157,39 @@ class GetSample : public IBaseFilter, public IPin, public IMemInputPin {
 
   HANDLE evtDoneWithSample, evtNewSampleReady;
 
-  __int64 sample_start_time, sample_end_time;
-  bool load_audio;
-  bool load_video;
+  __int64 segment_start_time, sample_start_time, sample_end_time;
+  const bool load_audio;
+  const bool load_video;
 
-  bool startGraphTimeout;
+  bool graphTimeout;
+
+  const char * const streamName;
+
+  AM_MEDIA_TYPE *am_media_type;
+
+  unsigned media, no_my_media_types;
+  AM_MEDIA_TYPE *my_media_types[5];
 
 public:
+  enum {
+  	mediaNONE   = 0,
+  	mediaYUV9   = 1<<0, // not implemented
+  	mediaYV12   = 1<<1,
+  	mediaYUY2   = 1<<2,
+  	mediaARGB   = 1<<3,
+  	mediaRGB32  = 1<<4,
+  	mediaRGB24  = 1<<5,
+  	mediaRGB    = mediaARGB | mediaRGB32 | mediaRGB24,
+  	mediaYUV    = mediaYUV9 | mediaYV12 | mediaYUY2,
+  	mediaAUTO   = mediaRGB | mediaYUV
+  };
+  
+  int avg_time_per_frame;
+
   int a_sample_bytes;
   BYTE* av_buffer;         // Killed on StopGraph
 
-  GetSample(bool _load_audio, bool _load_video);
+  GetSample(bool _load_audio, bool _load_video, unsigned _media);
   ~GetSample();
 
   // These are utility functions for use by DirectShowSource.  Note that
@@ -137,20 +200,21 @@ public:
   bool IsConnected() { return !!source_pin; }
   bool IsEndOfStream() { return end_of_stream; }
   const VideoInfo& GetVideoInfo() { return vi; }
-  PVideoFrame GetCurrentFrame(IScriptEnvironment* env);
-  __int64 GetSampleStartTime() { return sample_start_time; }
-  __int64 GetSampleEndTime() { return sample_end_time; }
-  void WaitForStart();
+  PVideoFrame GetCurrentFrame(IScriptEnvironment* env, int n, bool _TrapTimeouts, DWORD &timeout);
+  __int64 GetSampleStartTime() { return segment_start_time + sample_start_time; }
+  __int64 GetSampleEndTime() { return segment_start_time + sample_end_time; }
+  bool WaitForStart(DWORD &timeout);
+  const AM_MEDIA_TYPE *GetMediaType(unsigned pos);
 
   // These all cause the other thread (the one used by the DirectShow filter
   // graph side of things) to do it's thing and cycle. Hopefully it is blocked
   // again as they exit, a timeouts from StartGraph violates this.
 
-  void StartGraph();
+  HRESULT StartGraph();
   void StopGraph();
   void PauseGraph();
   HRESULT SeekTo(__int64 pos);
-  bool NextSample();
+  bool NextSample(DWORD &timeout);
   
 // IUnknown::
 
@@ -223,20 +287,21 @@ class DirectShowSource : public IClip {
 
   VideoInfo vi;
   bool frame_units;
-  int avg_time_per_frame;
-  __int64 base_sample_time;
   int cur_frame;
-  bool no_search;
+  int seekmode;
   int audio_bytes_read;
   void CheckHresult(IScriptEnvironment* env, HRESULT hr, const char* msg, const char* msg2 = "");
   HRESULT LoadGraphFile(IGraphBuilder *pGraph, const WCHAR* wszName);
   bool convert_fps;
   void cleanUp();
 
+  const bool TrapTimeouts;
+  const DWORD WaitTimeout;
 
 public:
 
-  DirectShowSource(const char* filename, int _avg_time_per_frame, bool _seek, bool _enable_audio, bool _enable_video, bool _convert_fps, IScriptEnvironment* env);
+  DirectShowSource(const char* filename, int _avg_time_per_frame, int _seekmode, bool _enable_audio, bool _enable_video,
+                   bool _convert_fps, unsigned _media, int _timeout, IScriptEnvironment* env);
   ~DirectShowSource();
   const VideoInfo& __stdcall GetVideoInfo() { return vi; }
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
