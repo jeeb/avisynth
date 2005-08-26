@@ -817,6 +817,7 @@ AVSValue __cdecl Loop::Create(AVSValue args, void*, IScriptEnvironment* env)
 
 
 PClip __cdecl ColorClip(PClip a, int duration, int color, float fps, IScriptEnvironment* env) {
+	try {	// HIDE DAMN SEH COMPILER BUG!!!
   if (a->GetVideoInfo().HasVideo()) {
 	AVSValue blackness_args[] = { a, duration, color };
 	static const char* arg_names[3] = { 0, 0, "color" };
@@ -827,6 +828,8 @@ PClip __cdecl ColorClip(PClip a, int duration, int color, float fps, IScriptEnvi
 	static const char* arg_names[4] = { 0, 0, "color", "fps" };
 	return env->Invoke("Blackness", AVSValue(blackness_args, 4), arg_names ).AsClip();
   }
+	}
+	catch (...) { throw; }
 }
 
 AVSValue __cdecl Create_FadeOut0(AVSValue args, void*,IScriptEnvironment* env) {
@@ -884,6 +887,7 @@ AVSValue __cdecl Create_FadeIn2(AVSValue args, void*,IScriptEnvironment* env) {
 }
 
 AVSValue __cdecl Create_FadeIO0(AVSValue args, void*, IScriptEnvironment* env) {
+	try {	// HIDE DAMN SEH COMPILER BUG!!!
   const int duration = args[1].AsInt();
   const int fadeclr = args[2].AsInt(0);
   const float fps = args[3].AsFloat(24);
@@ -891,9 +895,12 @@ AVSValue __cdecl Create_FadeIO0(AVSValue args, void*, IScriptEnvironment* env) {
   PClip b = ColorClip(a,duration,fadeclr,fps,env);
   AVSValue dissolve_args[] = { b, a, b, duration, fps };
   return env->Invoke("Dissolve", AVSValue(dissolve_args,5)).AsClip();
+	}
+	catch (...) { throw; }
 }
 
 AVSValue __cdecl Create_FadeIO(AVSValue args, void*, IScriptEnvironment* env) {
+	try {	// HIDE DAMN SEH COMPILER BUG!!!
   const int duration = args[1].AsInt();
   const int fadeclr = args[2].AsInt(0);
   const float fps = args[3].AsFloat(24);
@@ -901,9 +908,12 @@ AVSValue __cdecl Create_FadeIO(AVSValue args, void*, IScriptEnvironment* env) {
   PClip b = ColorClip(a,duration+1,fadeclr,fps,env);
   AVSValue dissolve_args[] = { b, a, b, duration, fps };
   return env->Invoke("Dissolve", AVSValue(dissolve_args,5)).AsClip();
+	}
+	catch (...) { throw; }
 }
 
 AVSValue __cdecl Create_FadeIO2(AVSValue args, void*, IScriptEnvironment* env) {
+	try {	// HIDE DAMN SEH COMPILER BUG!!!
   const int duration = args[1].AsInt();
   const int fadeclr = args[2].AsInt(0);
   const float fps = args[3].AsFloat(24);
@@ -911,6 +921,8 @@ AVSValue __cdecl Create_FadeIO2(AVSValue args, void*, IScriptEnvironment* env) {
   PClip b = ColorClip(a,duration+2,fadeclr,fps,env);
   AVSValue dissolve_args[] = { b, a, b, duration, fps };
   return env->Invoke("Dissolve", AVSValue(dissolve_args,5)).AsClip();
+	}
+	catch (...) { throw; }
 }
 
 

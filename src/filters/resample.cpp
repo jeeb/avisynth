@@ -1667,7 +1667,12 @@ PClip CreateResize(PClip clip, int target_width, int target_height, const AVSVal
 	try {	// HIDE DAMN SEH COMPILER BUG!!!
   const VideoInfo& vi = clip->GetVideoInfo();
   const double subrange_left = args[0].AsFloat(0), subrange_top = args[1].AsFloat(0);
-  const double subrange_width = args[2].AsFloat(vi.width), subrange_height = args[3].AsFloat(vi.height);
+
+  double subrange_width = args[2].AsFloat(vi.width), subrange_height = args[3].AsFloat(vi.height);
+  // Crop style syntax
+  if (subrange_width  <= 0.0) subrange_width  = vi.width  - subrange_width;
+  if (subrange_height <= 0.0) subrange_height = vi.height - subrange_height;
+
   PClip result = clip;
   bool H = ((subrange_width != vi.width) || (target_width != vi.width));
   bool V = ((subrange_height != vi.height) || (target_height != vi.height));
@@ -1715,14 +1720,20 @@ AVSValue __cdecl Create_BicubicResize(AVSValue args, void*, IScriptEnvironment* 
 
 AVSValue __cdecl Create_LanczosResize(AVSValue args, void*, IScriptEnvironment* env) 
 {
+	try {	// HIDE DAMN SEH COMPILER BUG!!!
   return CreateResize( args[0].AsClip(), args[1].AsInt(), args[2].AsInt(), &args[3], 
                        &LanczosFilter(args[7].AsInt(3)), env );
+	}
+	catch (...) { throw; }
 }
 
 AVSValue __cdecl Create_Lanczos4Resize(AVSValue args, void*, IScriptEnvironment* env) 
 {
+	try {	// HIDE DAMN SEH COMPILER BUG!!!
   return CreateResize( args[0].AsClip(), args[1].AsInt(), args[2].AsInt(), &args[3], 
                        &LanczosFilter(4), env );
+	}
+	catch (...) { throw; }
 }
 
 AVSValue __cdecl Create_Spline16Resize(AVSValue args, void*, IScriptEnvironment* env) 
@@ -1739,6 +1750,9 @@ AVSValue __cdecl Create_Spline36Resize(AVSValue args, void*, IScriptEnvironment*
 
 AVSValue __cdecl Create_GaussianResize(AVSValue args, void*, IScriptEnvironment* env) 
 {
+	try {	// HIDE DAMN SEH COMPILER BUG!!!
   return CreateResize( args[0].AsClip(), args[1].AsInt(), args[2].AsInt(), &args[3], 
                        &GaussianFilter(args[7].AsFloat(30.0f)), env );
+	}
+	catch (...) { throw; }
 }

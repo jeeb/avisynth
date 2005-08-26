@@ -184,6 +184,7 @@ RGBAdjust::RGBAdjust(PClip _child, double r,  double g,  double b,  double a,
                                    bool _analyze, IScriptEnvironment* env)
   : GenericVideoFilter(_child), analyze(_analyze)
 {
+	try {	// HIDE DAMN SEH COMPILER BUG!!!
   if (!vi.IsRGB())
     env->ThrowError("RGBAdjust requires RGB input");
 
@@ -199,6 +200,8 @@ RGBAdjust::RGBAdjust(PClip _child, double r,  double g,  double b,  double a,
 	mapB[i] = int(pow(min(max((bb + i * b)/255.0, 0.0), 1.0), bg) * 255.0 + 0.5);
 	mapA[i] = int(pow(min(max((ab + i * a)/255.0, 0.0), 1.0), ag) * 255.0 + 0.5);
   }
+	}
+	catch (...) { throw; }
 }
 
 
@@ -331,11 +334,14 @@ PVideoFrame __stdcall RGBAdjust::GetFrame(int n, IScriptEnvironment* env)
 
 AVSValue __cdecl RGBAdjust::Create(AVSValue args, void*, IScriptEnvironment* env) 
 {
+	try {	// HIDE DAMN SEH COMPILER BUG!!!
   return new RGBAdjust(args[ 0].AsClip(),
                        args[ 1].AsFloat(1), args[ 2].AsFloat(1), args[ 3].AsFloat(1), args[ 4].AsFloat(1),
                        args[ 5].AsFloat(0), args[ 6].AsFloat(0), args[ 7].AsFloat(0), args[ 8].AsFloat(0),
                        args[ 9].AsFloat(1), args[10].AsFloat(1), args[11].AsFloat(1), args[12].AsFloat(1),
                        args[13].AsBool(false), env );
+	}
+	catch (...) { throw; }
 }
 
 
@@ -353,6 +359,7 @@ Tweak::Tweak( PClip _child, double _hue, double _sat, double _bright, double _co
               IScriptEnvironment* env ) 
   : GenericVideoFilter(_child), coring(_coring), sse(_sse)
 {
+	try {	// HIDE DAMN SEH COMPILER BUG!!!
   if (vi.IsRGB())
 		env->ThrowError("Tweak: YUV data only (no RGB)");
   if (vi.width % 2)
@@ -387,6 +394,8 @@ Tweak::Tweak( PClip _child, double _hue, double _sat, double _bright, double _co
 		mapCos[i] = int(((i - 128) * COS * _sat + 128) * 256. + 128.5);
 		mapSin[i] = int( (i - 128) * SIN * _sat        * 256. +   0.5);
 	}
+	}
+	catch (...) { throw; }
 }
 
 
