@@ -1008,13 +1008,19 @@ TemporalSoften::TemporalSoften( PClip _child, unsigned radius, unsigned luma_thr
     scenechange (_scenechange),
     mode(_mode)
 {
-  if (!vi.IsYUV())
-    env->ThrowError("TemporalSoften: requires YUV input");
 
   child->SetCacheHints(CACHE_RANGE,kernel);
 
-  if ((vi.IsYUY2()) && (vi.width&7)) {
-    env->ThrowError("TemporalSoften: YUY2 source must be multiple of 8 in width.");
+  if (vi.IsRGB24()) {
+    env->ThrowError("TemporalSoften: RGB24 Not supported, use ConvertToRGB32().");
+  }
+
+  if ((vi.IsRGB32()) && (vi.width&1)) {
+    env->ThrowError("TemporalSoften: RGB32 source must be multiple of 2 in width.");
+  }
+
+  if ((vi.IsYUY2()) && (vi.width&3)) {
+    env->ThrowError("TemporalSoften: YUY2 source must be multiple of 4 in width.");
   }
 
   if (mode!=max(min(mode,2),1)) {
@@ -1027,6 +1033,9 @@ TemporalSoften::TemporalSoften( PClip _child, unsigned radius, unsigned luma_thr
   if (scenechange>0) {
     if (!(env->GetCPUFlags() & CPUF_INTEGER_SSE))
       env->ThrowError("TemporalSoften: Scenechange requires Integer SSE capable CPU.");
+    if (vi.IsRGB32()) {
+      env->ThrowError("TemporalSoften: Scenechange not available on RGB32");
+    }
   }
 
   scenechange *= ((vi.width/32)*32)*vi.height*vi.BytesFromPixels(1);
@@ -1041,12 +1050,15 @@ TemporalSoften::TemporalSoften( PClip _child, unsigned radius, unsigned luma_thr
   for (int i = 0; i<16;i++)
     divtab[i] = 32768/(i+1);
   int c = 0;
-  if (vi.IsYV12()) {
+  if (vi.IsPlanar()) {
     if (luma_thresh>0) {planes[c++] = PLANAR_Y; planes[c++] = luma_thresh;}
     if (chroma_thresh>0) { planes[c++] = PLANAR_V;planes[c++] =chroma_thresh; planes[c++] = PLANAR_U;planes[c++] = chroma_thresh;}
-  } else {
+  } else if (vi.IsYUY2()) {
     planes[c++]=0;
     planes[c++]=luma_thresh|(chroma_thresh<<8);
+  } else if (vi.IsRGB()) {  // For RGB We use Luma.
+    planes[c++]=0;
+    planes[c++]=luma_thresh|luma_thresh;
   }
   planes[c]=0;
   accum_line=(int*)_aligned_malloc(((vi.width*vi.BytesFromPixels(1)+FRAME_ALIGN-1)/8)*16,64);
