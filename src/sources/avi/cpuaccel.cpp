@@ -96,6 +96,12 @@ long __declspec(naked) CPUCheckForExtensions() {
 		and		ebx,00000020h	//set bit 5
 		or		ebp,ebx
 
+		mov		ebx,ecx
+		and		ebx,1 	//SSE3 is bit 1
+		shl		ebx,8
+		and		ebx,00000100h	//set bit 8
+		or		ebp,ebx
+
 		//check for vendor feature register (K6/Athlon).
 
 		mov		eax,80000000h
