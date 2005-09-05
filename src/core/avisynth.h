@@ -673,6 +673,7 @@ enum {
   CPUF_3DNOW_EXT		= 0x80,		// Athlon
   CPUF_X86_64       = 0xA0,   // Hammer (note: equiv. to 3DNow + SSE2, which only Hammer
                               //         will have anyway)
+  CPUF_SSE3		= 0x100,		    // Some P4 & Athlon 64.
 };
 #define MAX_INT 0x7fffffff
 #define MIN_INT -0x7fffffff
