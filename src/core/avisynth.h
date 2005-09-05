@@ -130,15 +130,6 @@ struct VideoInfo {
     CS_PLANAR = 1<<31
   };
 
-  // Chroma placement bits 24 -> 27
-  enum {
-    CS_UNKOWN_CHROMA_PLACEMENT = 0 <<24,
-    CS_MPEG1_CHROMA_PLACEMENT = 1 <<24,
-    CS_MPEG2_CHROMA_PLACEMENT = 2 <<24,
-    CS_YUY2_CHROMA_PLACEMENT = 3 <<24,
-    CS_TOPLEFT_CHROMA_PLACEMENT = 4 <<24
-  };
-
   // Specific colorformats
   enum { CS_UNKNOWN = 0,
          CS_BGR24 = 1<<0 | CS_BGR | CS_INTERLEAVED,
@@ -146,13 +137,8 @@ struct VideoInfo {
          CS_YUY2 = 1<<2 | CS_YUV | CS_INTERLEAVED,
          CS_YV12 = 1<<3 | CS_YUV | CS_PLANAR,  // y-v-u, planar
          CS_I420 = 1<<4 | CS_YUV | CS_PLANAR,  // y-u-v, planar
-         CS_IYUV = 1<<4 | CS_YUV | CS_PLANAR,  // same as above
-// New as of 2.6:
-         CS_YV24 = 1<<6 | CS_YUV | CS_PLANAR,  // YUV 4:4:4 planar
-         CS_YV16 = 1<<7 | CS_YUV | CS_PLANAR,  // YUV 4:2:2 planar
-         CS_Y8 = 1<<8 | CS_YUV | CS_PLANAR,  // Y 4:0:0 planar
-         CS_YV411 = 1<<9 | CS_YUV | CS_PLANAR,  // YUV 4:1:1 planar
-  };
+         CS_IYUV = 1<<4 | CS_YUV | CS_PLANAR  // same as above
+         };
   int pixel_type;                // changed to int as of 2.5
   
 
@@ -180,10 +166,6 @@ struct VideoInfo {
   bool IsYUV() const { return !!(pixel_type&CS_YUV ); }
   bool IsYUY2() const { return (pixel_type & CS_YUY2) == CS_YUY2; }  
   bool IsYV12() const { return ((pixel_type & CS_YV12) == CS_YV12)||((pixel_type & CS_I420) == CS_I420); }
-  bool IsYV24() const { return (pixel_type & CS_YV24) == CS_YV24; }  
-  bool IsYV16() const { return (pixel_type & CS_YV16) == CS_YV16; }  
-  bool IsY8() const { return (pixel_type & CS_Y8) == CS_Y8; }  
-  bool IsYV411() const { return (pixel_type & CS_YV411) == CS_YV411; }  
   bool IsColorSpace(int c_space) const { return ((pixel_type & c_space) == c_space); }
   bool Is(int property) const { return ((pixel_type & property)==property ); }
   bool IsPlanar() const { return !!(pixel_type & CS_PLANAR); }
@@ -195,7 +177,7 @@ struct VideoInfo {
   bool IsVPlaneFirst() const {return ((pixel_type & CS_YV12) == CS_YV12); }  // Don't use this 
   int BytesFromPixels(int pixels) const { return pixels * (BitsPerPixel()>>3); }   // Will not work on planar images, but will return only luma planes
   int RowSize() const { return BytesFromPixels(width); }  // Also only returns first plane on planar images
-  int BMPSize() const { if (IsPlanar()) {int p = height * ((RowSize()+3) & ~3); p+=p>>1; return p;  } return height * ((RowSize()+3) & ~3); }  // FIXME:  WRONG ON GENERAL PLANAR
+  int BMPSize() const { if (IsPlanar()) {int p = height * ((RowSize()+3) & ~3); p+=p>>1; return p;  } return height * ((RowSize()+3) & ~3); }
   __int64 AudioSamplesFromFrames(__int64 frames) const { return (fps_numerator && HasVideo()) ? ((__int64)(frames) * audio_samples_per_second * fps_denominator / fps_numerator) : 0; }
   int FramesFromAudioSamples(__int64 samples) const { return (fps_denominator && HasAudio()) ? (int)((samples * (__int64)fps_numerator)/((__int64)fps_denominator * (__int64)audio_samples_per_second)) : 0; }
   __int64 AudioSamplesFromBytes(__int64 bytes) const { return HasAudio() ? bytes / BytesPerAudioSample() : 0; }
@@ -212,18 +194,14 @@ struct VideoInfo {
   int BitsPerPixel() const { 
     switch (pixel_type) {
       case CS_BGR24:
-      case CS_YV24:
         return 24;
       case CS_BGR32:
         return 32;
       case CS_YUY2:
-      case CS_YV16:
         return 16;
       case CS_YV12:
       case CS_I420:
         return 12;
-      case CS_Y8:
-        return 8;
       default:
         return 0;
     }
@@ -348,8 +326,6 @@ class VideoFrame {
   int refcount;
   VideoFrameBuffer* const vfb;
   const int offset, pitch, row_size, height, offsetU, offsetV, pitchUV;  // U&V offsets are from top of picture.
-  int pixel_type;
-  const int row_sizeUV, heightUV;
 
   friend class PVideoFrame;
   void AddRef() { InterlockedIncrement((long *)&refcount); }
@@ -358,8 +334,8 @@ class VideoFrame {
   friend class ScriptEnvironment;
   friend class Cache;
 
-  VideoFrame(VideoFrameBuffer* _vfb, int _offset, int _pitch, int _row_size, int _height, int pixel_type);
-  VideoFrame(VideoFrameBuffer* _vfb, int _offset, int _pitch, int _row_size, int _height, int _offsetU, int _offsetV, int _pitchUV, int _row_sizeUV, int _heightUV, int pixel_type);
+  VideoFrame(VideoFrameBuffer* _vfb, int _offset, int _pitch, int _row_size, int _height);
+  VideoFrame(VideoFrameBuffer* _vfb, int _offset, int _pitch, int _row_size, int _height, int _offsetU, int _offsetV, int _pitchUV);
 
   void* operator new(unsigned size);
 // TESTME: OFFSET U/V may be switched to what could be expected from AVI standard!
@@ -369,14 +345,14 @@ public:
   int GetRowSize() const { return row_size; }
   int GetRowSize(int plane) const { 
     switch (plane) {
-    case PLANAR_U: case PLANAR_V: if (pitchUV) return row_sizeUV; else return 0;
-    case PLANAR_U_ALIGNED: 
-    case PLANAR_V_ALIGNED: {
-        int rUV = (row_sizeUV+FRAME_ALIGN-1)&(~(FRAME_ALIGN-1)); // Aligned rowsize
-        if (rUV<=pitchUV) 
-          return rUV; 
-        return row_sizeUV;
-      }
+    case PLANAR_U: case PLANAR_V: if (pitchUV) return row_size>>1; else return 0;
+    case PLANAR_U_ALIGNED: case PLANAR_V_ALIGNED: 
+      if (pitchUV) { 
+        int r = ((row_size+FRAME_ALIGN-1)&(~(FRAME_ALIGN-1)) )>>1; // Aligned rowsize
+        if (r<=pitchUV) 
+          return r; 
+        return row_size>>1; 
+      } else return 0;
     case PLANAR_Y_ALIGNED:
       int r = (row_size+FRAME_ALIGN-1)&(~(FRAME_ALIGN-1)); // Aligned rowsize
       if (r<=pitch) 
@@ -385,7 +361,7 @@ public:
     }
     return row_size; }
   int GetHeight() const { return height; }
-  int GetHeight(int plane) const {  switch (plane) {case PLANAR_U: case PLANAR_V: if (pitchUV) return heightUV; return 0;} return height; }
+  int GetHeight(int plane) const {  switch (plane) {case PLANAR_U: case PLANAR_V: if (pitchUV) return height>>1; return 0;} return height; }
 
   // generally you shouldn't use these three
   VideoFrameBuffer* GetFrameBuffer() const { return vfb; }
@@ -491,6 +467,7 @@ public:
 
 // smart pointer to VideoFrame
 class PVideoFrame {
+
   VideoFrame* p;
 
   void Init(VideoFrame* x) {
@@ -696,7 +673,6 @@ enum {
   CPUF_3DNOW_EXT		= 0x80,		// Athlon
   CPUF_X86_64       = 0xA0,   // Hammer (note: equiv. to 3DNow + SSE2, which only Hammer
                               //         will have anyway)
-  CPUF_SSE3			    = 0x100,		// PIV, Hammer
 };
 #define MAX_INT 0x7fffffff
 #define MIN_INT -0x7fffffff
