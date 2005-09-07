@@ -314,7 +314,7 @@ TCPClientThread::TCPClientThread(const char* hostname, int port, const char* com
   }
   _RPT0(0, "TCPClient: Connected to server!  Spawning thread.\n");
 
-  AfxBeginThread(StartClient, this , THREAD_PRIORITY_NORMAL, 0, 0, NULL);
+  AfxBeginThread(StartClient, this , THREAD_PRIORITY_ABOVE_NORMAL, 0, 0, NULL);
 
   thread_running = true;
 
@@ -517,14 +517,24 @@ void TCPClientThread::RecievePacket() {
   char* data = new char[dataSize];
   recieved = 0;
 
+  fd_set test_set;
+  timeval t;
+  t.tv_sec = 0;
+  t.tv_usec = 10000;  // 10 ms
+
   while (recieved < dataSize) {
-    int bytesRecv = recv(m_socket, (char*) & data[recieved], dataSize - recieved, 0 );
-    if (bytesRecv == WSAECONNRESET || bytesRecv <= 0) {
-      _RPT0(0, "TCPClient: Could not retrieve packet data!\n");
-      disconnect = true;
-      return ;
+    FD_ZERO(&test_set);
+    FD_SET(m_socket, &test_set);
+    select(0, &test_set, NULL, NULL, &t);
+    if (FD_ISSET(m_socket, &test_set)) {
+      int bytesRecv = recv(m_socket, (char*) & data[recieved], dataSize - recieved, 0 );
+      if (bytesRecv == WSAECONNRESET || bytesRecv <= 0) {
+        _RPT0(0, "TCPClient: Could not retrieve packet data!\n");
+        disconnect = true;
+        return ;
+      }
+      recieved += bytesRecv;
     }
-    recieved += bytesRecv;
   }
   reply->last_reply = new char[dataSize - 1];  // Freed in StartRequestLoop
   reply->last_reply_bytes = dataSize - 1;

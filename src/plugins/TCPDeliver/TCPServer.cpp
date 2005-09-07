@@ -161,10 +161,17 @@ TCPServerListener::TCPServerListener(int port, PClip _child, IScriptEnvironment*
 void TCPServerListener::Listen() {
   _RPT0(0, "TCPServer: Starting to Listen\n");
   fd_set test_set;
+  fd_set test_set2;
 
   timeval t;
-  t.tv_sec = 0;
-  t.tv_usec = 0;
+  t.tv_sec = 1;  // Shutdown test every second
+  t.tv_usec = 0;  
+
+  timeval t2; // Always nonblock
+  t2.tv_sec = 0;
+  t2.tv_usec = 0;
+
+
 
   ClientConnection s_list[FD_SETSIZE];
   int i;
@@ -181,7 +188,7 @@ void TCPServerListener::Listen() {
 
     FD_ZERO(&test_set);
     FD_SET(m_socket, &test_set);
-    select(0, &test_set, NULL, NULL, &t);
+    select(0, &test_set, NULL, NULL, &t2);
 
     if (FD_ISSET(m_socket, &test_set)) {
       AcceptClient(accept( m_socket, NULL, NULL ), &s_list[0]);
@@ -190,12 +197,25 @@ void TCPServerListener::Listen() {
 
 
     FD_ZERO(&test_set);
+    FD_ZERO(&test_set2);
 
-    for (i = 0; i < FD_SETSIZE; i++)
-      if (s_list[i].isConnected)
+    bool anyconnected = false;
+    for (i = 0; i < FD_SETSIZE; i++) {
+      if (s_list[i].isConnected) {
         FD_SET(s_list[i].s, &test_set);
+        if (s_list[i].isDataPending) {
+          FD_SET(s_list[i].s, &test_set2);
+        }
+        anyconnected = true;
+      }
+    }
 
-    select(0, &test_set, NULL, NULL, &t);
+    if (!anyconnected) {
+      Sleep(100);
+      continue;
+    }
+
+    select(0, &test_set, &test_set2, NULL, &t);
     bool request_handled = false;
 
     for (i = 0; i < FD_SETSIZE; i++) {
@@ -229,22 +249,23 @@ void TCPServerListener::Listen() {
     } // end for i
 
 
-    FD_ZERO(&test_set);
-
-    for (i = 0; i < FD_SETSIZE; i++)
-      if (s_list[i].isConnected && s_list[i].isDataPending)
-        FD_SET(s_list[i].s, &test_set);
-
-    select(0, NULL, &test_set, NULL, &t);  // Can we send?
     for (i = 0; i < FD_SETSIZE; i++) {
-      if (FD_ISSET(s_list[i].s, &test_set) && s_list[i].isDataPending ) {
+      if (FD_ISSET(s_list[i].s, &test_set2) && s_list[i].isDataPending ) {
         request_handled = true;
         SendPendingData(&s_list[i]);
       } // end if isDataPending
     }
 
-    if (!request_handled)
-      Sleep(1);  // If there has been nothing to do we might as well wait a bit.
+    if (!request_handled) {
+      t.tv_usec = 100000;  // If no request we allow it to wait 100 ms instead.
+      if (prefetch_frame > 0) {
+        _RPT1(0, "TCPServer: Prerequesting frame: %d", prefetch_frame);
+        child->GetFrame(prefetch_frame, env);  // We are idle - prefetch frame
+        prefetch_frame = -1;
+      }
+    } else {
+      t.tv_usec = 1000; // Allow 1ms before prefetching frame.
+    }
   } // while !shutdown
 
   closesocket(m_socket);
@@ -360,7 +381,7 @@ void TCPServerListener::SendPendingData(ClientConnection* cc) {
     return ;
   }
   int bytes_left = cc->totalPendingBytes - cc->pendingBytesSent;
-  int send_bytes = max(0, min(bytes_left, 1024 * 1024));
+  int send_bytes = max(0, min(bytes_left, 64 * 1024));
   //  int send_bytes = bytes_left;
 
   int r = send(cc->s, (const char*)(&cc->pendingData[cc->pendingBytesSent]), send_bytes, 0);
@@ -449,6 +470,7 @@ void TCPServerListener::SendFrameInfo(ServerReply* s, const char* request) {
   ClientRequestFrame f;
   memcpy(&f, request, sizeof(ClientRequestFrame));
   PVideoFrame src = child->GetFrame(f.n, env);
+  prefetch_frame = f.n + 1;
 
   ServerFrameInfo sfi;
   memset(&sfi, 0, sizeof(ServerFrameInfo));

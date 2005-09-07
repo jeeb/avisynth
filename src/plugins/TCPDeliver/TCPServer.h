@@ -135,6 +135,7 @@ private:
   PClip child;
   IScriptEnvironment* env;
   bool shutdown;
+  int prefetch_frame;
 };
 
 
