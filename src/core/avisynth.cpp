@@ -1699,11 +1699,19 @@ char* ScriptEnvironment::SaveString(const char* s, int len) {
 
 
 char* ScriptEnvironment::VSprintf(const char* fmt, void* val) {
-  char buf[4096];
-  _vsnprintf(buf, 4096, fmt, (va_list)val);
-  return ScriptEnvironment::SaveString(buf);
+  char *buf = NULL;
+  int size = 0, count = -1;
+  while (count == -1)
+  {
+    if (buf) delete[] buf;
+    size += 4096;
+    buf = new char[size];
+    count = _vsnprintf(buf, size-1, fmt, (va_list)val);
+  }
+  char *i = ScriptEnvironment::SaveString(buf);
+  delete[] buf;
+  return i;
 }
-
 
 char* ScriptEnvironment::Sprintf(const char* fmt, ...) {
   va_list val;
