@@ -618,7 +618,6 @@ long AudioStreamSource::_Read(void *buffer, long max_samples, long *lplBytes) {
 					throw MyWin32Error("AudioStreamSource", err);
 			}
 
-			if (!lSamples) fZeroRead = true;
 		} else
 			lSamples = *lplBytes = 0;
 
@@ -683,6 +682,9 @@ bool AudioStreamSource::Seek(long samples) {
 	//
 	// nAvgBytesPerSec / nBlockAlign = blocks per second.
 	// nSamplesPerSec * nBlockAlign / nAvgBytesPerSec = samples per block.
+
+	if (samples < end_samp)
+		fZeroRead = false;
 
 	if (hACStream) {
 		const WAVEFORMATEX *pwfex = aSrc->getWaveFormat();
