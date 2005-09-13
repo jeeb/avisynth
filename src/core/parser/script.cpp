@@ -314,25 +314,30 @@ AVSValue FAbs(AVSValue args, void* user_data, IScriptEnvironment* env) { return 
 AVSValue Abs(AVSValue args, void* user_data, IScriptEnvironment* env) { return abs(args[0].AsInt()); }
 AVSValue Sign(AVSValue args, void*, IScriptEnvironment* env) { return args[0].AsFloat()==0 ? 0 : args[0].AsFloat() > 0 ? 1 : -1; }
 
-AVSValue UCase(AVSValue args, void*, IScriptEnvironment* env) { return _strupr(_strdup(args[0].AsString())); }
-AVSValue LCase(AVSValue args, void*, IScriptEnvironment* env) { return _strlwr(_strdup(args[0].AsString())); }
+AVSValue UCase(AVSValue args, void*, IScriptEnvironment* env) { return _strupr(env->SaveString(args[0].AsString())); }
+AVSValue LCase(AVSValue args, void*, IScriptEnvironment* env) { return _strlwr(env->SaveString(args[0].AsString())); }
 
 AVSValue StrLen(AVSValue args, void*, IScriptEnvironment* env) { return int(strlen(args[0].AsString())); }
-AVSValue RevStr(AVSValue args, void*, IScriptEnvironment* env) { return _strrev(_strdup(args[0].AsString())); }
+AVSValue RevStr(AVSValue args, void*, IScriptEnvironment* env) { return _strrev(env->SaveString(args[0].AsString())); }
 
 AVSValue LeftStr(AVSValue args, void*, IScriptEnvironment* env)
- { char result[512] = "\0";
-
-   if (args[1].AsInt() < 0)
+ {
+   const int count = args[1].AsInt();
+   if (count < 0)
       env->ThrowError("LeftStr: Negative character count not allowed");
-   strncat(result, args[0].AsString(), args[1].AsInt());
-   return _strdup(result); }
+   char *result = new char[count+1];
+   if (!result) env->ThrowError("LeftStr: malloc failure!");
+   *result = 0;
+   strncat(result, args[0].AsString(), count);
+   AVSValue ret = env->SaveString(result);
+   delete[] result;
+   return ret; 
+ }
 
 AVSValue MidStr(AVSValue args, void*, IScriptEnvironment* env)
-{ char result[512] = "\0";
-  int maxlen, len, offset;
-
-  maxlen = strlen(args[0].AsString());
+{
+  int len, offset;
+  const int maxlen = strlen(args[0].AsString());
   if (args[1].AsInt() < 1)
       env->ThrowError("MidStr: Illegal character location");
   len = args[2].AsInt(maxlen);
@@ -340,19 +345,30 @@ AVSValue MidStr(AVSValue args, void*, IScriptEnvironment* env)
       env->ThrowError("MidStr: Illegal character count");
   offset = args[1].AsInt() - 1;
   if (maxlen <= offset) { offset = 0; len = 0;}
+  char *result = new char[len+1];
+  if (!result) env->ThrowError("MidStr: malloc failure!");
+  *result = 0;
   strncat(result, args[0].AsString()+offset, len);
-  return _strdup(result); }
+  AVSValue ret = env->SaveString(result);
+  delete[] result;
+  return ret;
+}
 
 AVSValue RightStr(AVSValue args, void*, IScriptEnvironment* env)
- { char result[512] = "\0";
+ {
    int offset;
-
    if (args[1].AsInt() < 0)
       env->ThrowError("RightStr: Negative character count not allowed");
    offset = strlen(args[0].AsString()) - args[1].AsInt();
    if (offset < 0) offset = 0;
+   char *result = new char[args[1].AsInt()+1];
+   if (!result) env->ThrowError("RightStr: malloc failure!");
+   *result = 0;
    strncat(result, args[0].AsString()+offset, args[1].AsInt());
-   return _strdup(result); }
+   AVSValue ret = env->SaveString(result);
+   delete[] result;
+   return ret; 
+ }
 
 AVSValue FindStr(AVSValue args, void*, IScriptEnvironment* env)
 { char *pdest;
@@ -361,7 +377,8 @@ AVSValue FindStr(AVSValue args, void*, IScriptEnvironment* env)
   pdest = strstr( args[0].AsString(),args[1].AsString() );
   result = pdest - args[0].AsString() +1;
   if (pdest == NULL) result = 0;
-  return result; }
+  return result; 
+}
 
 AVSValue Rand(AVSValue args, void* user_data, IScriptEnvironment* env)
  { int limit = args[0].AsInt(RAND_MAX);
