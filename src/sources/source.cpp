@@ -569,13 +569,18 @@ public:
 ********************************************************************/
 
 AVSValue __cdecl Create_SegmentedSource(AVSValue args, void* use_directshow, IScriptEnvironment* env) {
-  int avg_time_per_frame = (use_directshow && args[1].Defined()) ? int(10000000 / args[1].AsFloat() + 0.5) : 0;
   bool bAudio = !use_directshow && args[1].AsBool(true);
   const char* pixel_type;
   const char* fourCC;
+  const int inv_args_count = args.ArraySize();
+  AVSValue inv_args[9];
   if (!use_directshow) {
     pixel_type = args[2].AsString("");
     fourCC = args[3].AsString("");
+  }
+  else {
+    for (int i=1; i<inv_args_count ;i++)
+      inv_args[i] = args[i];
   }
   args = args[0];
   PClip result = 0;
@@ -595,8 +600,8 @@ AVSValue __cdecl Create_SegmentedSource(AVSValue args, void* use_directshow, ISc
           PClip clip;
         try {
           if (use_directshow) {
-            AVSValue inv_args[5] = { filename, avg_time_per_frame, true, true, true};
-            clip = env->Invoke("DirectShowSource",AVSValue(inv_args,5)).AsClip();
+            inv_args[0] = filename;
+            clip = env->Invoke("DirectShowSource",AVSValue(inv_args, inv_args_count)).AsClip();
           } else {
             clip =  (IClip*)(new AVISource(filename, bAudio, pixel_type, fourCC, 0, env));
           }
@@ -765,7 +770,10 @@ AVSFunction Source_filters[] = {
   { "WAVSource", "s+", AVISource::Create, (void*) AVISource::MODE_WAV },
   { "OpenDMLSource", "s+[audio]b[pixel_type]s[fourCC]s", AVISource::Create, (void*) AVISource::MODE_OPENDML },
   { "SegmentedAVISource", "s+[audio]b[pixel_type]s[fourCC]s", Create_SegmentedSource, (void*)0 },
-  { "SegmentedDirectShowSource", "s+[fps]f", Create_SegmentedSource, (void*)1 },
+  { "SegmentedDirectShowSource",
+// args				  0      1      2       3       4            5          6         7            8
+  	                 "s+[fps]f[seek]b[audio]b[video]b[convertfps]b[seekzero]b[timeout]i[pixel_type]s",
+					 Create_SegmentedSource, (void*)1 },
   { "BlankClip", "[clip]c*[length]i[width]i[height]i[pixel_type]s[fps]f[fps_denominator]i[audio_rate]i[stereo]b[sixteen_bit]b[color]i[color_yuv]i", Create_BlankClip },
   { "Blackness", "[clip]c*[length]i[width]i[height]i[pixel_type]s[fps]f[fps_denominator]i[audio_rate]i[stereo]b[sixteen_bit]b[color]i[color_yuv]i", Create_BlankClip },
   { "MessageClip", "s[width]i[height]i[shrink]b[text_color]i[halo_color]i[bg_color]i", Create_MessageClip },
