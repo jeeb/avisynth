@@ -845,6 +845,8 @@ string GetCpuMsg(IScriptEnvironment * env)
     ss << "SSE  ";
   if (flags & CPUF_SSE2)
     ss << "SSE2  ";
+  if (flags & CPUF_SSE3)
+    ss << "SSE3  ";
   if (flags & CPUF_3DNOW)
     ss << "3DNOW  ";
   if (flags & CPUF_3DNOW_EXT)
