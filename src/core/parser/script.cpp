@@ -469,11 +469,11 @@ int splint(float xa[], float ya[], float y2a[], int n, float x, float * y, bool 
 // the script functions 
 AVSValue AVSChr(AVSValue args, void*,IScriptEnvironment* env )
 {
-    char *s = new char[2];
+    char s[2];
 
 	s[0]=(char)(args[0].AsInt());
 	s[1]=0;
-    return s;
+    return env->SaveString(s);
 }
 
 AVSValue AVSTime(AVSValue args, void*,IScriptEnvironment* env )
@@ -482,9 +482,9 @@ AVSValue AVSTime(AVSValue args, void*,IScriptEnvironment* env )
 	struct tm * lt;
 	time(&lt_t);
 	lt = localtime (&lt_t);
-    char *s = new char[50];
-	strftime(s,50,args[0].AsString(""),lt);
-    return s;
+    char s[1024];
+	strftime(s,1024,args[0].AsString(""),lt);
+    return env->SaveString(s);
 }
 
 AVSValue Spline(AVSValue args, void*, IScriptEnvironment* env )
