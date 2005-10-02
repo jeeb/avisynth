@@ -19,6 +19,7 @@ CFG=avisynth - Win32 Debug
 !MESSAGE 
 !MESSAGE "avisynth - Win32 Release" (based on "Win32 (x86) Dynamic-Link Library")
 !MESSAGE "avisynth - Win32 Debug" (based on "Win32 (x86) Dynamic-Link Library")
+!MESSAGE "avisynth - Win32 RelSym" (based on "Win32 (x86) Dynamic-Link Library")
 !MESSAGE 
 
 # Begin Project
@@ -53,7 +54,7 @@ BSC32=bscmake.exe
 # ADD BSC32 /nologo
 LINK32=link.exe
 # ADD BASE LINK32 kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib /nologo /dll /machine:I386
-# ADD LINK32 ../distrib/lib/SoundTouch.lib ../distrib/lib/pfc.lib ../distrib/lib/devil.lib ../distrib/lib/softwire.lib msacm32.lib vfw32.lib kernel32.lib advapi32.lib version.lib user32.lib gdi32.lib ole32.lib uuid.lib winmm.lib oleaut32.lib /nologo /dll /machine:I386
+# ADD LINK32 ../distrib/lib/SoundTouch.lib ../distrib/lib/pfc.lib ../distrib/lib/devil.lib ../distrib/lib/softwire.lib msacm32.lib vfw32.lib kernel32.lib advapi32.lib version.lib user32.lib gdi32.lib ole32.lib uuid.lib winmm.lib oleaut32.lib /nologo /dll /machine:I386 /nodefaultlib:"LIBC"
 # SUBTRACT LINK32 /pdb:none /debug
 # Begin Custom Build
 InputPath=.\Release\avisynth.dll
@@ -100,12 +101,44 @@ SOURCE="$(InputPath)"
 PostBuild_Cmds=copy Debug\avisynth.dll $(SystemRoot)\system32	copy ..\distrib\bin\debug\devil-d.dll $(SystemRoot)\system32
 # End Special Build Tool
 
+!ELSEIF  "$(CFG)" == "avisynth - Win32 RelSym"
+
+# PROP BASE Use_MFC 0
+# PROP BASE Use_Debug_Libraries 0
+# PROP BASE Output_Dir "avisynth___Win32_RelSym"
+# PROP BASE Intermediate_Dir "avisynth___Win32_RelSym"
+# PROP BASE Ignore_Export_Lib 0
+# PROP BASE Target_Dir ""
+# PROP Use_MFC 0
+# PROP Use_Debug_Libraries 0
+# PROP Output_Dir "RelSym"
+# PROP Intermediate_Dir "RelSym"
+# PROP Ignore_Export_Lib 0
+# PROP Target_Dir ""
+# ADD BASE CPP /nologo /G6 /MD /W3 /GX /Zd /O2 /Op /Ob2 /D "NDEBUG" /D "INC_OLE2" /D "STRICT" /D "WIN32" /D "_WIN32" /D "_MT" /D "_DLL" /D "_MBCS" /D "_USRDLL" /D "AVISYNTH_C_EXPORTS" /Fr /Yu"stdafx.h" /FD /Gs /GF /c
+# ADD CPP /G6 /MD /W3 /GX /Zi /O2 /Op /Ob2 /D "NDEBUG" /D "INC_OLE2" /D "STRICT" /D "WIN32" /D "_WIN32" /D "_MT" /D "_DLL" /D "_MBCS" /D "_USRDLL" /D "AVISYNTH_C_EXPORTS" /FAs /FR /Yu"stdafx.h" /FD /Gs /GF /c
+# SUBTRACT CPP /nologo
+# ADD BASE MTL /nologo /D "NDEBUG" /mktyplib203 /win32
+# ADD MTL /D "NDEBUG" /mktyplib203 /win32
+# SUBTRACT MTL /nologo
+# ADD BASE RSC /l 0x409 /d "NDEBUG"
+# ADD RSC /l 0x409 /d "NDEBUG"
+BSC32=bscmake.exe
+# ADD BASE BSC32 /nologo
+# SUBTRACT BSC32 /nologo
+LINK32=link.exe
+# ADD BASE LINK32 ../distrib/lib/SoundTouch.lib ../distrib/lib/pfc.lib ../distrib/lib/devil.lib ../distrib/lib/softwire.lib msacm32.lib vfw32.lib kernel32.lib advapi32.lib version.lib user32.lib gdi32.lib ole32.lib uuid.lib winmm.lib oleaut32.lib /nologo /dll /machine:I386 /nodefaultlib:"LIBC"
+# SUBTRACT BASE LINK32 /pdb:none /debug
+# ADD LINK32 ../distrib/lib/pfc.lib ../distrib/lib/devil.lib ../distrib/lib/softwire.lib msacm32.lib vfw32.lib kernel32.lib advapi32.lib version.lib user32.lib gdi32.lib ole32.lib uuid.lib winmm.lib oleaut32.lib /dll /map /debug /debugtype:both /machine:I386 /nodefaultlib:"LIBC"
+# SUBTRACT LINK32 /nologo /verbose /profile /pdb:none /incremental:yes /force
+
 !ENDIF 
 
 # Begin Target
 
 # Name "avisynth - Win32 Release"
 # Name "avisynth - Win32 Debug"
+# Name "avisynth - Win32 RelSym"
 # Begin Group "Avisynth core"
 
 # PROP Default_Filter ""
@@ -650,7 +683,9 @@ SOURCE=.\sources\avi\VD_misc.h
 # Begin Source File
 
 SOURCE=.\sources\avi_source.cpp
+
 # PROP Exclude_From_Build 1
+
 # End Source File
 # Begin Source File
 
@@ -706,6 +741,20 @@ InputName=convert_a
 
 # End Custom Build
 
+!ELSEIF  "$(CFG)" == "avisynth - Win32 RelSym"
+
+# PROP BASE Ignore_Default_Tool 1
+# PROP Ignore_Default_Tool 1
+# Begin Custom Build - Assembling $(InputPath)...
+IntDir=.\RelSym
+InputPath=.\convert\convert_a.asm
+InputName=convert_a
+
+"$(IntDir)\$(InputName).obj" : $(SOURCE) "$(INTDIR)" "$(OUTDIR)"
+	ml.exe -c -coff -Cx -Fo$(IntDir)\$(InputName).obj .\convert\$(InputName).asm
+
+# End Custom Build
+
 !ENDIF 
 
 # End Source File
@@ -733,6 +782,25 @@ SOURCE=..\distrib\AviSynth.ico
 # Begin Source File
 
 SOURCE=.\core\resource.h
+# End Source File
+# Begin Source File
+
+SOURCE=..\distrib\include\SoundTouch\SoundTouch.cpp
+
+!IF  "$(CFG)" == "avisynth - Win32 Release"
+
+# PROP Exclude_From_Build 1
+
+!ELSEIF  "$(CFG)" == "avisynth - Win32 Debug"
+
+# PROP Exclude_From_Build 1
+
+!ELSEIF  "$(CFG)" == "avisynth - Win32 RelSym"
+
+# SUBTRACT CPP /YX /Yc /Yu
+
+!ENDIF 
+
 # End Source File
 # Begin Source File
 
