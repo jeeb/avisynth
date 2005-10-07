@@ -11,6 +11,8 @@ ovText = "AviSynth Authors:"+chr(13)+
 	\ "Wilbert Dijkhof"+chr(13)+
 	\ "Jonathan Ernst"+chr(13)+
 	\ "Ernst Peche"+chr(13)+
+	\ "Alexander Balakhnin"+chr(13)+
+	\ "Alex_e_Basta"+chr(13)+
 	\ "Arne Stäcker"+chr(13)+chr(13)+
 	\ "Contributions by:"+chr(13)+
 	\ "----------------------------"+chr(13)+
@@ -18,7 +20,7 @@ ovText = "AviSynth Authors:"+chr(13)+
 	\ "Peter Pawlowski, Olli Parviainen,"+chr(13)+
 	\ "Nicolas Capens, DevIL team,"+chr(13)+
 	\ "Donald Graft, poptones, ARDA"+chr(13)+
-	\ "Kevin Atkinson, many more..."+chr(13)+chr(13)+
+	\ "Kevin Atkinson, tritical, many more..."+chr(13)+chr(13)+
 	\ "Thanks to:"+chr(13)+
 	\ "----------------------------"+chr(13)+
 	\ "Everyone contributing to the project,"+chr(13)+
