@@ -257,6 +257,9 @@ AVSValue __cdecl EnsureVBRMP3Sync::Create(AVSValue args, void*, IScriptEnvironme
 
 MergeChannels::MergeChannels(PClip _clip, int _num_children, PClip* _child_array, IScriptEnvironment* env)
     : GenericVideoFilter(_clip), num_children(_num_children), child_array(_child_array) {
+  VideoInfo vi2;
+  PClip tclip;
+
   clip_channels = new int[num_children];
   clip_offset = new signed char * [num_children];
   clip_channels[0] = vi.AudioChannels();
@@ -285,6 +288,7 @@ MergeChannels::~MergeChannels() {
   }
   delete[] clip_channels;
   delete[] clip_offset;
+  delete[] child_array;
 }
 
 
@@ -929,13 +933,12 @@ AVSValue __cdecl Normalize::Create(AVSValue args, void*, IScriptEnvironment* env
 
 MixAudio::MixAudio(PClip _child, PClip _clip, double _track1_factor, double _track2_factor, IScriptEnvironment* env)
     : GenericVideoFilter(ConvertAudio::Create(_child, SAMPLE_INT16 | SAMPLE_FLOAT, SAMPLE_FLOAT)),
-    tclip(_clip),
     track1_factor(int(_track1_factor*131072.0 + 0.5)),
     track2_factor(int(_track2_factor*131072.0 + 0.5)),
     t1factor(float(_track1_factor)),
     t2factor(float(_track2_factor)) {
 
-  clip = ConvertAudio::Create(tclip, vi.SampleType(), vi.SampleType());  // Clip 2 should now be same type as clip 1.
+  clip = ConvertAudio::Create(_clip, vi.SampleType(), vi.SampleType());  // Clip 2 should now be same type as clip 1.
   const VideoInfo vi2 = clip->GetVideoInfo();
 
   if (vi.audio_samples_per_second != vi2.audio_samples_per_second)
