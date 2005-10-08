@@ -766,29 +766,39 @@ void __stdcall Normalize::GetAudio(void* buf, __int64 start, __int64 count, IScr
           if (sample < i_neg_volume) {	// Cope with MIN_SHORT
 		    i_neg_volume = sample;
 		    negpeaksampleno = chanXbcount*i+j;
+			if (sample <= -32767) {
+			  i = passes;
+			  break;
+			}
 		  }
 		  else if (sample > i_pos_volume) {
 			i_pos_volume = sample;
 			pospeaksampleno = chanXbcount*i+j;
+			if (sample == 32767) {
+			  i = passes;
+			  break;
+			}
 		  }
         }
       }
-      // Remaining samples
-      const __int64 rem_samples = vi.num_audio_samples % bcount;
-      const int chanXremcount = rem_samples * vi.AudioChannels();
+	  // Remaining samples
+	  if ((i_pos_volume != 32767) && (i_neg_volume > -32767)) {
+		const __int64 rem_samples = vi.num_audio_samples % bcount;
+		const int chanXremcount = rem_samples * vi.AudioChannels();
 
-      child->GetAudio(samples, bcount*passes, rem_samples, env);
-      for (int j = 0; j < chanXremcount; j++) {
-		const short sample=samples[j];
-        if (sample < i_neg_volume) {	// Cope with MIN_SHORT
-		  i_neg_volume = sample;
-		  negpeaksampleno = chanXbcount*passes+j;
+		child->GetAudio(samples, bcount*passes, rem_samples, env);
+		for (int j = 0; j < chanXremcount; j++) {
+		  const short sample=samples[j];
+		  if (sample < i_neg_volume) {	// Cope with MIN_SHORT
+			i_neg_volume = sample;
+			negpeaksampleno = chanXbcount*passes+j;
+		  }
+		  else if (sample > i_pos_volume) {
+			i_pos_volume = sample;
+			pospeaksampleno = chanXbcount*passes+j;
+		  }
 		}
-		else if (sample > i_pos_volume) {
-		  i_pos_volume = sample;
-		  pospeaksampleno = chanXbcount*passes+j;
-		}
-      }
+	  }
 	  if (bigbuff) delete[] samples;
 
 	  i_pos_volume = -i_pos_volume; // Remember -ve has 1 more range than +ve, i.e. -32768
@@ -823,7 +833,7 @@ void __stdcall Normalize::GetAudio(void* buf, __int64 start, __int64 count, IScr
 	  __int64 peaksampleno=-1;
 	  
       for (__int64 i = 0;i < passes;i++) {
-        child->GetAudio(buf, bcount*i, bcount, env);
+        child->GetAudio(samples, bcount*i, bcount, env);
         for (int j = 0;j < chanXbcount;j++) {
 		  const SFLOAT sample = fabs(samples[j]);
           if (sample > max_volume) {
@@ -836,7 +846,7 @@ void __stdcall Normalize::GetAudio(void* buf, __int64 start, __int64 count, IScr
       const __int64 rem_samples = vi.num_audio_samples % bcount;
       const int chanXremcount = rem_samples * vi.AudioChannels();
 
-      child->GetAudio(buf, bcount*passes, rem_samples, env);
+      child->GetAudio(samples, bcount*passes, rem_samples, env);
       for (int j = 0;j < chanXremcount;j++) {
 		const SFLOAT sample = fabs(samples[j]);
         if (sample > max_volume) {
