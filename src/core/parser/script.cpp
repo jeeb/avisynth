@@ -222,7 +222,7 @@ CWDChanger::~CWDChanger(void)
 AVSValue Assert(AVSValue args, void*, IScriptEnvironment* env) 
 {
   if (!args[0].AsBool())
-    env->ThrowError(args[1].Defined() ? args[1].AsString() : "Assert: assertion failed");
+    env->ThrowError("%s", args[1].Defined() ? args[1].AsString() : "Assert: assertion failed");
   return AVSValue();
 }
 
