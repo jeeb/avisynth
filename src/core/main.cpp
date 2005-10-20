@@ -172,12 +172,15 @@ BOOL APIENTRY DllMain(HANDLE hModule, ULONG ulReason, LPVOID lpReserved) {
 	switch(ulReason) {
 	case DLL_PROCESS_ATTACH:
 		hrfromcoinit = CoInitialize(NULL);
-		_RPT0(0,"Process attach\n");
+		_RPT1(0,"Process attach: gRefCnt = %ld\n", gRefCnt);
 		break;
 
 	case DLL_PROCESS_DETACH:
-                if(SUCCEEDED(hrfromcoinit)) CoUninitialize();
-		_RPT0(0,"Process detach\n");
+
+//		if (gRefCnt) Somehow prang this release!
+
+		if(SUCCEEDED(hrfromcoinit)) CoUninitialize();
+		_RPT1(0,"Process detach: gRefCnt = %ld\n", gRefCnt);
 		break;
 	}
 
@@ -328,7 +331,7 @@ STDMETHODIMP CAVIFileSynth::QueryInterface(const IID& iid, void **ppv) {
 
 	AddRef();
 
-	return NULL;
+	return NULL; // Maybe S_OK ???  ::FIXME::
 }
 
 STDMETHODIMP_(ULONG) CAVIFileSynth::AddRef() {
@@ -369,7 +372,7 @@ STDMETHODIMP CAVIStreamSynth::QueryInterface(const IID& iid, void **ppv) {
 
 	AddRef();
 
-	return NULL;
+	return NULL; // Maybe S_OK ???  ::FIXME::
 }
 
 STDMETHODIMP_(ULONG) CAVIStreamSynth::AddRef() {
