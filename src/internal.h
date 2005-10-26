@@ -36,8 +36,8 @@
 #ifndef __Internal_H__
 #define __Internal_H__
 
-#define AVS_VERSION 2.56
-#define AVS_VERSTR "AviSynth 2.56, build:"__DATE__" ["__TIME__"]"
+#define AVS_VERSION 2.57
+#define AVS_VERSTR "AviSynth 2.57, build:"__DATE__" ["__TIME__"]"
 
 
 // env->ManageCache() Non user keys definition
