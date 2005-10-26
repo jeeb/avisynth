@@ -76,7 +76,7 @@ public:
 		}
 		else if (vi.IsYUY2())
 		{
-			if (vi.height%2) env->ThrowError("Turn: YUY2 data must have MOD2 height");
+			if (vi.width%2) env->ThrowError("Turn: YUY2 data must have MOD2 height");
 			TurnFunc = TurnYUY2;
 		}
 		else if (vi.IsPlanar())
