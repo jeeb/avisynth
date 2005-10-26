@@ -124,11 +124,14 @@ LRESULT AVISource::DecompressBegin(LPBITMAPINFOHEADER lpbiSrc, LPBITMAPINFOHEADE
 
 LRESULT AVISource::DecompressFrame(int n, bool preroll, BYTE* buf) {
   _RPT2(0,"AVISource: Decompressing frame %d%s\n", n, preroll ? " (preroll)" : "");
+  long bytes_read;
   if (!hic) {
-    pvideo->Read(n, 1, buf, vi.BMPSize(), NULL, NULL);
+    bytes_read = vi.BMPSize();
+    pvideo->Read(n, 1, buf, vi.BMPSize(), &bytes_read, NULL);
+    dropped_frame = !bytes_read;
     return ICERR_OK;
   }
-  long bytes_read = srcbuffer_size;
+  bytes_read = srcbuffer_size;
   LRESULT err = pvideo->Read(n, 1, srcbuffer, srcbuffer_size, &bytes_read, NULL);
   while (err == AVIERR_BUFFERTOOSMALL || (err == 0 && !srcbuffer)) {
     delete[] srcbuffer;
