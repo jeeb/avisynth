@@ -296,33 +296,6 @@ DynamicAssembledCode FilteredResizeH::GenerateResizer(int gen_plane, IScriptEnvi
     }
     x86.paddd(mm3,mm7);
      x86.paddd(mm4,mm7);
-#if 0
-    x86.psrld(mm3,14);
-     x86.paddd(mm5,mm7);
-    x86.psrld(mm4,14);
-     x86.mov(eax,dword_ptr[&gen_temp_destp]);
-    x86.psrld(mm5,14);
-    if (isse) {
-        x86.pshufw(mm3,mm3,(char)248);      // 11111000
-         x86.pshufw(mm4,mm4,(char)143);     // 10001111
-        x86.pshufw(mm5,mm5,(char)248);
-         x86.packuswb(mm3, mm3); 
-        x86.packuswb(mm4, mm4);
-         x86.packuswb(mm5, mm5);
-        x86.por(mm3,mm4);
-    } else {
-        x86.packuswb(mm4, mm6);
-        x86.packuswb(mm3, mm6);
-        x86.packuswb(mm4, mm6);
-        x86.packuswb(mm5, mm6);
-        x86.packuswb(mm3, mm6);
-        x86.psllq(mm4, 16);
-        x86.packuswb(mm5, mm6);
-        x86.por(mm3,mm4);
-    }
-    x86.movd(dword_ptr[eax],mm3);  // Optme: Unaligned every second pixel
-    x86.movd(dword_ptr[eax+4],mm5);   // This is a potential 2 byte overwrite!
-#else
     x86.psrad(mm3,14);
      x86.paddd(mm5,mm7);
     x86.psrad(mm4,14);
@@ -332,7 +305,6 @@ DynamicAssembledCode FilteredResizeH::GenerateResizer(int gen_plane, IScriptEnvi
     x86.packssdw(mm5, mm6);        // [.... ....] [...5 ...4] => [.. .. .5 .4]
     x86.packuswb(mm3, mm5);        // [.. .. .5 .4] [.3 .2 .1 .0] => [..543210]
     x86.movq(qword_ptr[eax],mm3);  // This is a potential 2 byte overwrite!
-#endif
     x86.add(dword_ptr [&gen_temp_destp],6);
     x86.add(edi,filter_offset*3-8);
     x86.dec(dword_ptr [&gen_x]);
@@ -369,35 +341,6 @@ DynamicAssembledCode FilteredResizeH::GenerateResizer(int gen_plane, IScriptEnvi
       }
       x86.paddd(mm3,mm7);
       if (remainy) x86.paddd(mm4,mm7);
-#if 0
-      x86.psrld(mm3,14);
-      if (remainy) x86.psrld(mm4,14);
-
-      if (isse) {
-        x86.pshufw(mm3,mm3,(char)248);      // 11111000
-        x86.pshufw(mm4,mm4,(char)143);     // 10001111
-        x86.packuswb(mm3, mm3); 
-        x86.packuswb(mm4, mm4);
-        x86.mov(eax,dword_ptr[&gen_temp_destp]);
-        if (remainy) x86.por(mm3,mm4);
-      } else {  //MMX
-        x86.packuswb(mm3, mm6);
-        x86.packuswb(mm3, mm6);
-        if(remainy) {
-          x86.packuswb(mm4, mm6);
-          x86.packuswb(mm4, mm6);
-          x86.psllq(mm4, 16);
-          x86.por(mm3,mm4);
-        }
-        x86.mov(eax,dword_ptr[&gen_temp_destp]);
-      }
-      if (!remainy) { // Two pixels
-        x86.movd(mm0,dword_ptr[eax]);
-        x86.pand(mm3,qword_ptr[(int)&Mask3]);
-        x86.pand(mm0,qword_ptr[(int)&Mask1]);
-        x86.por(mm3,mm0);
-      }
-#else
       x86.psrad(mm3,14);
       if (remainy) { // Four pixels
 	    x86.psrad(mm4,14);
@@ -412,7 +355,6 @@ DynamicAssembledCode FilteredResizeH::GenerateResizer(int gen_plane, IScriptEnvi
         x86.pand(mm0,qword_ptr[(int)&Mask1]);
         x86.por(mm3,mm0);
       }
-#endif
       x86.movd(dword_ptr[eax],mm3); 
     }
     // End remaining pixels 
@@ -701,21 +643,10 @@ out_yv_aloopY:
         mov         edx,temp_dst
         paddd       mm1, mm6            ;Y1|Y1|Y0|Y0  (round)
         paddd       mm3, mm6            ;Y1|Y1|Y0|Y0  (round)
-#if 0
-        psrld       mm1, 14             ;mm1 = 0|y1|0|y0
-        psrld       mm3, 14             ;mm1 = 0|y1|0|y0
-        pshufw mm1,mm1,11111000b        ;mm1 = 0|0|y1|y0
-        pshufw mm3,mm3,10001111b        ;mm1 = y1|y0|0|0
-
-        packuswb    mm1, mm1            ;mm1 = ...|0|0|0|Y1y0
-        packuswb    mm3, mm3            ;mm3 = ...|0|0|Y1y0|0
-        por mm1,mm3
-#else
         psrad       mm1, 14             ;mm1 = --y1|--y0
         psrad       mm3, 14             ;mm3 = --y3|--y2
         packssdw    mm1, mm3            ;mm1 = -3|-2|-1|-0
         packuswb    mm1, mm1            ;mm1 = 3|2|1|0 3|2|1|0
-#endif
         movd        [edx], mm1
         add         temp_dst,4
         dec         x
@@ -792,21 +723,10 @@ out_yv_aloopY:
         mov         edx,temp_dst
         paddd       mm1, mm6            ;Y1|Y1|Y0|Y0  (round)
         paddd       mm3, mm6            ;Y1|Y1|Y0|Y0  (round)
-#if 0
-        psrld       mm1, 14             ;mm1 = 0|y1|0|y0
-        psrld       mm3, 14             ;mm1 = 0|y1|0|y0
-        packuswb    mm1, mm0            ;mm1 = ...|0|0|y1|y0 
-        packuswb    mm3, mm0            ;mm3 = ...|0|0|y1|y0
-        packuswb    mm1, mm0            ;mm1 = ...|0|0|0|Y1y0
-        packuswb    mm3, mm0            ;mm3 = ...|0|0|0|Y1y0
-        psllq       mm3,16              ;mm3= 0|0|y1y0|0
-        por mm1,mm3  
-#else
         psrad       mm1, 14             ;mm1 = --y1|--y0
         psrad       mm3, 14             ;mm3 = --y3|--y2
         packssdw    mm1, mm3            ;mm1 = -3|-2|-1|-0
         packuswb    mm1, mm1            ;mm1 = 3|2|1|0 3|2|1|0
-#endif
         movd        [edx], mm1
         add         temp_dst,4
         dec         x
@@ -1052,13 +972,8 @@ out_i_aloopUV:
          paddd       mm1, mm6            ;Y1|Y1|Y0|Y0  (round)
         pslld       mm3, 2              ; Shift up from 14 bits fraction to 16 bit fraction
          pxor        mm4,mm4             ;Clear mm4 - utilize shifter stall
-#if 0
-        psrld       mm1, 14             ;mm1 = 0|y1|0|y0
-         pmaxsw      mm3,mm4             ;Clamp at 0
-#else
         psrad       mm1, 14             ;mm1 = --y1|--y0
         pmaxsw      mm1,mm4             ;Clamp at 0
-#endif
         pand        mm3, mm5            ;mm3 = v| 0|u| 0
         por         mm3,mm1
         packuswb    mm3, mm3            ;mm3 = ...|v|y1|u|y0
@@ -1141,24 +1056,6 @@ out_i_aloopUV:
         dec         ecx
         paddd       mm3, mm2            ;accumulate
         jnz         aloopUV
-#if 0
-        movq        mm4, mm3            ; clip chroma at 0
-        psrad       mm3, 31
-        pandn       mm3, mm4        
- 
-        paddd       mm1, mm6            ;Y1|Y1|Y0|Y0  (round)
-        paddd       mm3, mm6            ; V| V| U| U  (round)
-        pslld       mm3, 2              ; Shift up from 14 bits fraction to 16 bit fraction
-                                
-        pand        mm3, mm5            ;mm3 = v| 0|u| 0
-
-        psrld       mm1, 14             ;mm1 = 0|y1|0|y0
-        por         mm3, mm1
-        packuswb    mm3, mm3            ;mm3 = ...|v|y1|u|y0
-        movd        [edx], mm3
-        add         edx, 4
-        dec         x
-#else
          paddd       mm1, mm6           ; Y1|Y1|Y0|Y0  (round)
         paddd       mm3, mm6            ; V| V| U| U  (round)
          psrad       mm1, 14            ; mm1 = 0|y1|0|y0
@@ -1172,7 +1069,6 @@ out_i_aloopUV:
          packuswb    mm3, mm3            ; mm3 = ...|v|y1|u|y0
         dec         x
         movd        [edx-4], mm3
-#endif
         jnz         xloopYUV
 		  pop ebx
         }
@@ -1614,10 +1510,10 @@ out_bloop:
 
 FilteredResizeV::~FilteredResizeV(void)
 {
-  if (resampling_pattern) _aligned_free(resampling_pattern);
-  if (resampling_patternUV) _aligned_free(resampling_patternUV);
-  if (yOfs) delete[] yOfs;
-  if (yOfsUV) delete[] yOfsUV;
+  if (resampling_pattern) { _aligned_free(resampling_pattern); resampling_pattern = 0; }
+  if (resampling_patternUV) { _aligned_free(resampling_patternUV); resampling_patternUV = 0; }
+  if (yOfs) { delete[] yOfs; yOfs = 0; }
+  if (yOfsUV) { delete[] yOfsUV; yOfsUV = 0; }
 }
 
 
