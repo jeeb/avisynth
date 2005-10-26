@@ -105,8 +105,8 @@ PostBuild_Cmds=copy Debug\avisynth.dll $(SystemRoot)\system32	copy ..\distrib\bi
 
 # PROP BASE Use_MFC 0
 # PROP BASE Use_Debug_Libraries 0
-# PROP BASE Output_Dir "avisynth___Win32_RelSym"
-# PROP BASE Intermediate_Dir "avisynth___Win32_RelSym"
+# PROP BASE Output_Dir "RelSym"
+# PROP BASE Intermediate_Dir "RelSym"
 # PROP BASE Ignore_Export_Lib 0
 # PROP BASE Target_Dir ""
 # PROP Use_MFC 0
@@ -683,9 +683,7 @@ SOURCE=.\sources\avi\VD_misc.h
 # Begin Source File
 
 SOURCE=.\sources\avi_source.cpp
-
 # PROP Exclude_From_Build 1
-
 # End Source File
 # Begin Source File
 
