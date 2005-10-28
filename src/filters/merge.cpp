@@ -171,7 +171,7 @@ PVideoFrame __stdcall Swap::GetFrame(int n, IScriptEnvironment* env) {
 	  if (TEST(1, 2) src->IsWritable()) { // if not in use abuse subframe to flip the UV plane pointers -- extremely fast but a bit naughty!
 		const int uvoffset = src->GetReadPtr(PLANAR_V) - src->GetReadPtr(PLANAR_U); // very naughty - don't do this at home!!
 
-		return env->Subframe(src,0, src->GetPitch(PLANAR_Y), src->GetRowSize(PLANAR_Y), src->GetHeight(PLANAR_Y), uvoffset, -uvoffset, src->GetPitch(PLANAR_V));
+		return env->SubframePlanar(src,0, src->GetPitch(PLANAR_Y), src->GetRowSize(PLANAR_Y), src->GetHeight(PLANAR_Y), uvoffset, -uvoffset, src->GetPitch(PLANAR_V));
 	  }
 	  else {
 		PVideoFrame dst = env->NewVideoFrame(vi);

@@ -39,7 +39,7 @@
 #ifndef __AVISYNTH_H__
 #define __AVISYNTH_H__
 
-enum { AVISYNTH_INTERFACE_VERSION = 2 };
+enum { AVISYNTH_INTERFACE_VERSION = 3 };
 
 
 /* Define all types necessary for interfacing with avisynth.dll
@@ -735,7 +735,7 @@ public:
 
   virtual bool __stdcall PlanarChromaAlignment(PlanarChromaAlignmentMode key) = 0;
 
-  virtual PVideoFrame __stdcall Subframe(PVideoFrame src, int rel_offset, int new_pitch, int new_row_size, int new_height, int rel_offsetU, int rel_offsetV, int new_pitchUV) = 0;
+  virtual PVideoFrame __stdcall SubframePlanar(PVideoFrame src, int rel_offset, int new_pitch, int new_row_size, int new_height, int rel_offsetU, int rel_offsetV, int new_pitchUV) = 0;
 };
 
 

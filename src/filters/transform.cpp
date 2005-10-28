@@ -284,7 +284,7 @@ PVideoFrame Crop::GetFrame(int n, IScriptEnvironment* env)
   if (!vi.IsPlanar())
     return env->Subframe(frame,top * frame->GetPitch() + left_bytes, frame->GetPitch(), vi.RowSize(), vi.height);
   else
-    return env->Subframe(frame,top * frame->GetPitch() + left_bytes, frame->GetPitch(), vi.RowSize(), vi.height, (top/2) * frame->GetPitch(PLANAR_U) + (left_bytes/2), (top/2) * frame->GetPitch(PLANAR_V) + (left_bytes/2), frame->GetPitch(PLANAR_U));
+    return env->SubframePlanar(frame,top * frame->GetPitch() + left_bytes, frame->GetPitch(), vi.RowSize(), vi.height, (top/2) * frame->GetPitch(PLANAR_U) + (left_bytes/2), (top/2) * frame->GetPitch(PLANAR_V) + (left_bytes/2), frame->GetPitch(PLANAR_U));
 }
 
 
