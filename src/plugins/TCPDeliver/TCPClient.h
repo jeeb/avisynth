@@ -44,6 +44,7 @@
 #include <winsock2.h>
 #include "avisynth.h"
 #include "TCPCompression.h"
+#include <ctype.h>
 
 AVSValue __cdecl Create_TCPClient(AVSValue args, void* user_data, IScriptEnvironment* env);
 
@@ -67,6 +68,7 @@ public:
   void SendRequest(char requestId, void* data, unsigned int bytes);
   void GetReply();
   bool IsDataPending();
+  void CleanUp();
 
 
   HANDLE evtClientReadyForRequest;   // Client is ready to recieve a new request.
@@ -80,7 +82,6 @@ private:
   void PushReply();
   void PopReply();
   void RecievePacket();
-  void CleanUp();
   char* client_request;
   unsigned int client_request_bytes;
   WSADATA wsaData;

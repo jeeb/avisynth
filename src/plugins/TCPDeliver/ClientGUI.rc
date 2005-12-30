@@ -2,6 +2,11 @@
 //
 #include "resource.h"
 
+// Generated Help ID header file
+#define APSTUDIO_HIDDEN_SYMBOLS
+#include "resource.hm"
+#undef APSTUDIO_HIDDEN_SYMBOLS
+
 #define APSTUDIO_READONLY_SYMBOLS
 /////////////////////////////////////////////////////////////////////////////
 //
@@ -89,8 +94,8 @@ END
 //
 
 VS_VERSION_INFO VERSIONINFO
- FILEVERSION 1,0,0,3
- PRODUCTVERSION 1,0,0,3
+ FILEVERSION 1,0,0,4
+ PRODUCTVERSION 1,0,0,4
  FILEFLAGSMASK 0x3fL
 #ifdef _DEBUG
  FILEFLAGS 0x1L
@@ -108,14 +113,14 @@ BEGIN
             VALUE "Comments", "\0"
             VALUE "CompanyName", "avisynth.org\0"
             VALUE "FileDescription", "TCPDeliver\0"
-            VALUE "FileVersion", "1, 0, 0, 3\0"
+            VALUE "FileVersion", "1, 0, 0, 4\0"
             VALUE "InternalName", "TCPDeliver\0"
-            VALUE "LegalCopyright", "Copyright © 2004, Klaus Post. \0"
+            VALUE "LegalCopyright", "Copyright © 2004-2006, Klaus Post. \0"
             VALUE "LegalTrademarks", "Released under GPL.\0"
             VALUE "OriginalFilename", "TCPDeliver.dll\0"
             VALUE "PrivateBuild", "\0"
             VALUE "ProductName", "AviSynth TCPDeliver\0"
-            VALUE "ProductVersion", "1, 0, 0, 3\0"
+            VALUE "ProductVersion", "1, 0, 0, 4\0"
             VALUE "SpecialBuild", "\0"
         END
     END
@@ -145,12 +150,12 @@ LANGUAGE LANG_ENGLISH, SUBLANG_ENGLISH_US
 // Dialog
 //
 
-IDD_CLIENTGUI DIALOG DISCARDABLE  0, 0, 281, 186
+IDD_CLIENTGUI DIALOGEX 0, 0, 281, 186
 STYLE WS_CHILD | WS_VISIBLE | WS_CAPTION
 CAPTION "TCP Deliver Client"
 FONT 8, "MS Sans Serif"
 BEGIN
-    EDITTEXT        IDC_IP,13,22,145,14,ES_AUTOHSCROLL
+    EDITTEXT        IDC_IP,13,22,145,14,ES_AUTOHSCROLL,0,HIDC_IP
     EDITTEXT        IDC_EDIT2,181,23,31,14,ES_AUTOHSCROLL
     RTEXT           "Port:",IDC_PORT_TEXT,157,22,21,13,SS_CENTERIMAGE
     GROUPBOX        "Connection Settings",IDC_STATIC,7,7,265,39

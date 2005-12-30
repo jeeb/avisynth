@@ -267,6 +267,11 @@ void TCPServerListener::Listen() {
       t.tv_usec = 1000; // Allow 1ms before prefetching frame.
     }
   } // while !shutdown
+  for (i = 0; i < FD_SETSIZE; i++) {
+    if (s_list[i].isConnected) {
+      closesocket(s_list[i].s);
+    }
+  }
 
   closesocket(m_socket);
   WSACleanup();

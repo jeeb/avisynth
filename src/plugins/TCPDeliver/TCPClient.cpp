@@ -123,7 +123,6 @@ PVideoFrame __stdcall TCPClient::GetFrame(int n, IScriptEnvironment* env) {
 
     incoming_pitch = fi->pitch;
     incoming_bytes = fi->data_size;
-    // Todo: Insert compression class.
 
     env->MakeWritable(&frame);
 
@@ -258,6 +257,7 @@ TCPClient::~TCPClient() {
   while (client->thread_running) {
     Sleep(10);
   }
+  client->CleanUp();
   delete client;
   _RPT0(0, "TCPClient: Thread killed.\n");
 
@@ -302,9 +302,13 @@ TCPClientThread::TCPClientThread(const char* hostname, int port, const char* com
     return ;
   }
 
+  hostent* host_info = gethostbyname(hostname);
+  char* host_ip = *(host_info->h_addr_list);
+  unsigned long addr = *(unsigned long*)(host_ip);
+
   // Set up the sockaddr structure
   service.sin_family = AF_INET;
-  service.sin_addr.s_addr = inet_addr(hostname);
+  service.sin_addr.s_addr = addr;
   service.sin_port = htons(port);
 
   if ( connect( m_socket, (SOCKADDR*) &service, sizeof(service) ) == SOCKET_ERROR) {
@@ -474,7 +478,6 @@ void TCPClientThread::StartRequestLoop() {
   CloseHandle(evtClientReplyReady);
   CloseHandle(evtClientReadyForRequest);
 
-  CleanUp();
   closesocket(m_socket);
   WSACleanup();
 
