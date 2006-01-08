@@ -161,7 +161,7 @@ public:
 	STDMETHODIMP WriteData(DWORD fcc, LPVOID lpBuffer, LONG cbBuffer);
 	STDMETHODIMP SetInfo(AVISTREAMINFOW *psi, LONG lSize);
 
-	void ReadHelper(void* lpBuffer, int lStart, int lSamples);
+	void ReadHelper(void* lpBuffer, int lStart, int lSamples, unsigned &code);
 	void ReadFrame(void* lpBuffer, int n);
 };
 
@@ -784,8 +784,109 @@ void CAVIStreamSynth::ReadFrame(void* lpBuffer, int n) {
 		 frame->GetHeight(PLANAR_U) );
 }
 
+#define OPT_OWN_SEH_HANDLER
+#ifdef OPT_OWN_SEH_HANDLER
+EXCEPTION_DISPOSITION __cdecl _Exp_except_handler2(struct _EXCEPTION_RECORD *ExceptionRecord, void * EstablisherFrame,
+												  struct _CONTEXT *ContextRecord, void * DispatcherContext)
+{
+  struct Est_Frame {  // My extended EXCEPTION_REGISTRATION record
+	void	  *prev;
+	void	  *handler;
+	unsigned  *retarg;	  // pointer where to stash exception code
+  };
 
-void CAVIStreamSynth::ReadHelper(void* lpBuffer, int lStart, int lSamples) {
+  if (ExceptionRecord->ExceptionFlags == 0)	  // First pass?
+	*(((struct Est_Frame *)EstablisherFrame)->retarg) = ExceptionRecord->ExceptionCode;
+
+  return ExceptionContinueSearch;
+}
+
+void CAVIStreamSynth::ReadHelper(void* lpBuffer, int lStart, int lSamples, unsigned &code) {
+  // It's illegal to call GetExceptionInformation() inside an __except
+  // block!  Hence this variable and the horrible hack below...
+
+  DWORD handler = (DWORD)_Exp_except_handler2;
+
+  __asm { // Build EXCEPTION_REGISTRATION record:
+  push	code		// Address of return argument
+  push	handler	    // Address of handler function
+  push	FS:[0]		// Address of previous handler
+  mov	FS:[0],esp	// Install new EXCEPTION_REGISTRATION
+  }
+
+  if (fAudio)
+    parent->filter_graph->GetAudio(lpBuffer, lStart, lSamples, parent->env);
+  else
+    ReadFrame(lpBuffer, lStart);
+
+  __asm { // Remove our EXCEPTION_REGISTRATION record
+  mov	eax,[esp]	// Get pointer to previous record
+  mov	FS:[0], eax	// Install previous record
+  add	esp, 12		// Clean our EXCEPTION_REGISTRATION off stack
+  }
+}
+
+static const char * const StringSystemError2(const unsigned code)
+{
+  switch (code) {
+  case STATUS_GUARD_PAGE_VIOLATION:      // 0x80000001
+    return "CAVIStreamSynth: System exception - Guard Page Violation";
+  case STATUS_DATATYPE_MISALIGNMENT:     // 0x80000002
+    return "CAVIStreamSynth: System exception - Datatype Misalignment";
+  case STATUS_BREAKPOINT:                // 0x80000003
+    return "CAVIStreamSynth: System exception - Breakpoint";
+  case STATUS_SINGLE_STEP:               // 0x80000004
+    return "CAVIStreamSynth: System exception - Single Step";
+  default:
+    break;
+  }
+  
+  switch (code) {
+  case STATUS_ACCESS_VIOLATION:          // 0xc0000005
+    return "CAVIStreamSynth: System exception - Access Violation";
+  case STATUS_IN_PAGE_ERROR:             // 0xc0000006
+    return "CAVIStreamSynth: System exception - In Page Error";
+  case STATUS_INVALID_HANDLE:            // 0xc0000008
+    return "CAVIStreamSynth: System exception - Invalid Handle";
+  case STATUS_NO_MEMORY:                 // 0xc0000017
+    return "CAVIStreamSynth: System exception - No Memory";
+  case STATUS_ILLEGAL_INSTRUCTION:       // 0xc000001d
+    return "CAVIStreamSynth: System exception - Illegal Instruction";
+  case STATUS_NONCONTINUABLE_EXCEPTION:  // 0xc0000025
+    return "CAVIStreamSynth: System exception - Noncontinuable Exception";
+  case STATUS_INVALID_DISPOSITION:       // 0xc0000026
+    return "CAVIStreamSynth: System exception - Invalid Disposition";
+  case STATUS_ARRAY_BOUNDS_EXCEEDED:     // 0xc000008c
+    return "CAVIStreamSynth: System exception - Array Bounds Exceeded";
+  case STATUS_FLOAT_DENORMAL_OPERAND:    // 0xc000008d
+    return "CAVIStreamSynth: System exception - Float Denormal Operand";
+  case STATUS_FLOAT_DIVIDE_BY_ZERO:      // 0xc000008e
+    return "CAVIStreamSynth: System exception - Float Divide by Zero";
+  case STATUS_FLOAT_INEXACT_RESULT:      // 0xc000008f
+    return "CAVIStreamSynth: System exception - Float Inexact Result";
+  case STATUS_FLOAT_INVALID_OPERATION:   // 0xc0000090
+    return "CAVIStreamSynth: System exception - Float Invalid Operation";
+  case STATUS_FLOAT_OVERFLOW:            // 0xc0000091
+    return "CAVIStreamSynth: System exception - Float Overflow";
+  case STATUS_FLOAT_STACK_CHECK:         // 0xc0000092
+    return "CAVIStreamSynth: System exception - Float Stack Check";
+  case STATUS_FLOAT_UNDERFLOW:           // 0xc0000093
+    return "CAVIStreamSynth: System exception - Float Underflow";
+  case STATUS_INTEGER_DIVIDE_BY_ZERO:    // 0xc0000094
+    return "CAVIStreamSynth: System exception - Integer Divide by Zero";
+  case STATUS_INTEGER_OVERFLOW:          // 0xc0000095
+    return "CAVIStreamSynth: System exception - Integer Overflow";
+  case STATUS_PRIVILEGED_INSTRUCTION:    // 0xc0000096
+    return "CAVIStreamSynth: System exception - Privileged Instruction";
+  case STATUS_STACK_OVERFLOW:            // 0xc00000fd
+    return "CAVIStreamSynth: System exception - Stack Overflow";
+  default:
+    break;
+  }
+  return 0;
+}
+#else
+void CAVIStreamSynth::ReadHelper(void* lpBuffer, int lStart, int lSamples, unsigned &xcode) {
   // It's illegal to call GetExceptionInformation() inside an __except
   // block!  Hence this variable and the horrible hack below...
 #ifndef _DEBUG
@@ -821,6 +922,7 @@ void CAVIStreamSynth::ReadHelper(void* lpBuffer, int lStart, int lSamples) {
   }
 #endif
 }
+#endif
 
 STDMETHODIMP CAVIStreamSynth::Read(LONG lStart, LONG lSamples, LPVOID lpBuffer, LONG cbBuffer, LONG *plBytes, LONG *plSamples) {
 
@@ -828,6 +930,7 @@ STDMETHODIMP CAVIStreamSynth::Read(LONG lStart, LONG lSamples, LPVOID lpBuffer, 
 //  _RPT2(0,"\tbuffer: %ld bytes at %p\n", cbBuffer, lpBuffer);
   int fp_state = _control87( 0, 0 );
   _control87( FP_STATE, 0xffffffff );
+  unsigned code = 0;
 
   if (fAudio) {
     if (lSamples == AVISTREAMREAD_CONVENIENT)
@@ -856,16 +959,31 @@ STDMETHODIMP CAVIStreamSynth::Read(LONG lStart, LONG lSamples, LPVOID lpBuffer, 
 #endif
       // VC compiler says "only one form of exception handling permitted per
       // function."  Sigh...
-      ReadHelper(lpBuffer, lStart, lSamples);
+      ReadHelper(lpBuffer, lStart, lSamples, code);
 #ifndef _DEBUG
     }
     catch (AvisynthError error) {
       parent->MakeErrorStream(error.msg);
-      ReadHelper(lpBuffer, lStart, lSamples);
+      ReadHelper(lpBuffer, lStart, lSamples, code);
     }
     catch (...) {
+#ifdef OPT_OWN_SEH_HANDLER
+      if (code != 0xE06D7363 && code != 0) {
+        const char * const extext = StringSystemError2(code);
+        if (extext) parent->MakeErrorStream(extext);
+        else 
+        {
+          char buf[512];
+          sprintf(buf,"CAVIStreamSynth: System exception - 0x%x", code);
+          parent->MakeErrorStream(buf);
+        }
+      }
+      else parent->MakeErrorStream("Avisynth: unknown exception");
+      code = 0;
+#else
       parent->MakeErrorStream("Avisynth: unknown exception");
-      ReadHelper(lpBuffer, lStart, lSamples);
+#endif
+      ReadHelper(lpBuffer, lStart, lSamples, code);
     }
   }
   catch (...) {
