@@ -311,10 +311,10 @@ PVideoFrame __stdcall Cache::GetFrame(int n, IScriptEnvironment* env)
   // When we have the possibility of cacheing, promote
   // the vfb to the head of the LRU list, CACHE_RANGE
   // frames are NOT promoted hence they are fair game
-  // for reuse as soon as they are unprotected. That
+  // for reuse as soon as they are unprotected. This
   // is a fair price to pay for their protection. If
-  // a 2nd filter is hiting the cache outside the radius of
-  // protection then n this case we do promote protected frames.
+  // a 2nd filter is hiting the cache outside the radius
+  // of protection then we do promote protected frames.
 
   if (cache_limit/CACHE_SCALE_FACTOR > h_span)
 	env->ManageCache(MC_PromoteVideoFrameBuffer, result->vfb);
@@ -386,6 +386,8 @@ Cache::CachedVideoFrame* Cache::GetACachedVideoFrame(const PVideoFrame& frame)
 
 void Cache::RegisterVideoFrame(CachedVideoFrame *i, const PVideoFrame& frame, int n, IScriptEnvironment* env) 
 {
+  if (i->vfb_protected) UnProtectVFB(i);
+  if (i->vfb_locked) UnlockVFB(i);
   ReturnVideoFrameBuffer(i, env); // Return old vfb to vfb pool for early reuse
 
   // copy all the info

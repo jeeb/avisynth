@@ -36,14 +36,10 @@
 #define __Cache_H__
 
 #include "../internal.h"
-//using namespace std;
 
 /********************************************************************
 ********************************************************************/
 
-// enum {
-//   CACHE_CLIENT_ID=256+1,
-//  };
 
 
 class Cache : public GenericVideoFilter 
@@ -63,7 +59,6 @@ private:
   struct CachedVideoFrame;
   void RegisterVideoFrame(CachedVideoFrame *i, const PVideoFrame& frame, int n, IScriptEnvironment* env);
   void FillZeros(void* buf, int start_offset, int count);
-//void ReleaseHintCache();
   void ResetCache(IScriptEnvironment* env);
   void ReturnVideoFrameBuffer(CachedVideoFrame *i, IScriptEnvironment* env);
   CachedVideoFrame* GetACachedVideoFrame(const PVideoFrame& frame);
@@ -86,7 +81,6 @@ private:
 	int faults;  // the number of times this frame was requested and found to be stale(modified)
 	bool vfb_locked;
 	bool vfb_protected;
-//  int status;
 
     CachedVideoFrame() { 
 		next=prev=this; 
@@ -94,20 +88,16 @@ private:
 		frame_number=-1; 
 		vfb_locked=false;
 		vfb_protected=false;
-//		status=0;
 	}
   };
   CachedVideoFrame video_frames;
 
+  // Video cache
   int h_policy;
-// hint vars:
-//CachedVideoFrame** h_video_frames;
-//int h_total_frames;
-//  int h_radius;
   int h_span;
   long protectcount;
 
-// Audio cache:
+  // Audio cache:
   int h_audiopolicy;
   int h_audioSize;
 	char * cache;
@@ -129,10 +119,10 @@ private:
   int fault_rate;   // A decaying average of 100 times the peak fault count, used to control vfb auto-locking
   int miss_count;   // Count of consecutive cache misses
   
-  enum {CACHE_ST_USED = 1<<0,
-        CACHE_ST_DELETEME = 1<<1,
-//      CACHE_ST_BEING_GENERATED = 1<<2,
-        CACHE_ST_HAS_BEEN_RELEASED = 1<<3
+  enum {
+	CACHE_ST_USED = 1<<0,
+	CACHE_ST_DELETEME = 1<<1,
+	CACHE_ST_HAS_BEEN_RELEASED = 1<<3
   };
 
 };
