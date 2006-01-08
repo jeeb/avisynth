@@ -112,7 +112,7 @@ void __stdcall ConvertAudio::GetAudio(void* buf, __int64 start, __int64 count, I
 // Someone with an AMD beast decide which code runs better SSE2 or 3DNow   :: FIXME
     if ((env->GetCPUFlags() & CPUF_3DNOW_EXT)) {
       convertToFloat_3DN(tempbuffer, tmp_fb, src_format, count*channels);
-    } else if (((int)tmp_fb & 3 == 0) && (env->GetCPUFlags() & CPUF_SSE2)) {
+    } else if (((((int)tmp_fb) & 3) == 0) && (env->GetCPUFlags() & CPUF_SSE2)) {
       convertToFloat_SSE2(tempbuffer, tmp_fb, src_format, count*channels);
     } else if ((env->GetCPUFlags() & CPUF_SSE)) {
       convertToFloat_SSE(tempbuffer, tmp_fb, src_format, count*channels);
