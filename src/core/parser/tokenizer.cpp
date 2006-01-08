@@ -37,6 +37,8 @@
 
 #include "tokenizer.h"
 
+#include <Float.h>
+
 
 
 /****************************
@@ -286,24 +288,38 @@ void Tokenizer::GetNumber()
 {
   // start by assuming an int and switch to float if necessary
   type = 'i';
-  integer=0;
+  integer = 0;
+  double dtemp = 0;
+  double place = 1;
+
   do {
     if (*pc == '.') {
       type = 'f';
-      floating_pt = float(integer);
-      float place = 1;
       ++pc;
       while (isdigit(*pc)) {
-        place /= 10;
-        floating_pt += place * (*pc - '0');
+        place *= 10;
+        dtemp = dtemp*10 + (*pc - '0');
         ++pc;
       }
       break;
     } else {
       integer = integer*10 + (*pc - '0');
+	  dtemp   = dtemp*10   + (*pc - '0');
     }
     ++pc;
   } while (isdigit(*pc) || *pc == '.');
+
+  dtemp /= place;
+  if (dtemp > FLT_MAX)
+	env->ThrowError("Tokenizer: Number is to big.");
+
+  if (type == 'f') {
+	floating_pt = dtemp;
+  }
+  else if (dtemp > INT_MAX) {
+	type = 'f';
+	floating_pt = dtemp;
+  }
 }
 
 
