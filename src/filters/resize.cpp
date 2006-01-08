@@ -138,13 +138,12 @@ PVideoFrame VerticalReduceBy2::GetFrame(int n, IScriptEnvironment* env) {
 void VerticalReduceBy2::mmx_process(const BYTE* srcp, int src_pitch, int row_size, BYTE* dstp, int dst_pitch, int height) {
   height--;
   static const __int64 add_2=0x0002000200020002;
-  __asm {
-    movq mm7,[add_2];
-  }
+
   if ((row_size&3)==0) {  // row width divideable with 4 (one dword per loop)
     __asm {
-	    push ebx  // avoid compiler bug
-		add [srcp],-4
+        push ebx  // avoid compiler bug
+        movq mm7,[add_2];
+        add [srcp],-4
         mov R_XOFFSET,0
         mov R_SRC,srcp
         mov R_DST,dstp
@@ -197,7 +196,7 @@ loopback_last:
         cmp  R_XOFFSET,[row_size]
         jl loopback_last						; Jump back
         emms
-		pop ebx
+        pop ebx
     }
   }
 }
@@ -383,18 +382,18 @@ void HorizontalReduceBy2::isse_process_yuy2(PVideoFrame src,BYTE* dstp, int dst_
   __declspec(align(8)) static const __int64 three_mask=0x0000ffff00000000;
   __declspec(align(8)) static const __int64 inv_0_mask=0xffffffffffff0000;
   __declspec(align(8)) static const __int64 inv_3_mask=0xffff0000ffffffff;
-  __asm {
-    movq mm6,[zero_mask];
-    movq mm7,[inv_0_mask];
-  }
+
 /**
  * The matrix is flipped, so the mmx registers are equivalent to
  *  the downward column, and pixels are then added sideways in parallel.
  * The last two pixels are handled seperately (as in the C-code), 
- *  with naiive code - but it's only the last pixel.
+ *  with native code - but it's only the last pixel.
  **/
   if ((row_size&3)==0) {  // row width divideable with 8 (one qword per loop)
     __asm {
+      movq mm6,[zero_mask];
+      movq mm7,[inv_0_mask];
+
       mov R_XOFFSET,0
 				add [srcp],-4
 				prefetchnta [srcp]
