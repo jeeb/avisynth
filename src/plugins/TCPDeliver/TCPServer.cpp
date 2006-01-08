@@ -391,7 +391,7 @@ void TCPServerListener::SendPendingData(ClientConnection* cc) {
 
   int r = send(cc->s, (const char*)(&cc->pendingData[cc->pendingBytesSent]), send_bytes, 0);
   if (r == SOCKET_ERROR || r < 0) {
-    _RPT0(0, "TCPServer: Could not send packet (SOCKET_ERROR). Connection closed\n", );
+    _RPT0(0, "TCPServer: Could not send packet (SOCKET_ERROR). Connection closed\n");
     closesocket(cc->s);
     cc->isConnected = false;
     cc->totalPendingBytes = 0;
