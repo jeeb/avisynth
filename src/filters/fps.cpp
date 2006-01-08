@@ -49,18 +49,107 @@ AVSFunction Fps_filters[] = {
   { "AssumeScaledFPS", "c[multiplier]i[divisor]i[sync_audio]b", AssumeScaledFPS::Create },
   { "AssumeFPS", "ci[]i[sync_audio]b", AssumeFPS::Create },      // dst framerate, sync audio?
   { "AssumeFPS", "cf[sync_audio]b", AssumeFPS::CreateFloat },    // dst framerate, sync audio?
+  { "AssumeFPS", "c[preset]s[sync_audio]b", AssumeFPS::CreatePreset }, // dst framerate, sync audio?
   { "AssumeFPS", "cc[sync_audio]b", AssumeFPS::CreateFromClip }, // clip with dst framerate, sync audio?
   { "ChangeFPS", "ci[]i[linear]b", ChangeFPS::Create },     // dst framerate, fetch all frames
   { "ChangeFPS", "cf[linear]b", ChangeFPS::CreateFloat },   // dst framerate, fetch all frames
+  { "ChangeFPS", "c[preset]s[linear]b", ChangeFPS::CreatePreset }, // dst framerate, fetch all frames
   { "ChangeFPS", "cc[linear]b", ChangeFPS::CreateFromClip },// clip with dst framerate, fetch all frames
   { "ConvertFPS", "ci[]i[zone]i[vbi]i", ConvertFPS::Create },      // dst framerate, zone lines, vbi lines
   { "ConvertFPS", "cf[zone]i[vbi]i", ConvertFPS::CreateFloat },    // dst framerate, zone lines, vbi lines
+  { "ConvertFPS", "c[preset]s[zone]i[vbi]i", ConvertFPS::CreatePreset }, // dst framerate, zone lines, vbi lines
   { "ConvertFPS", "cc[zone]i[vbi]i", ConvertFPS::CreateFromClip }, // clip with dst framerate, zone lines, vbi lines
   { 0 }
 };
 
 
 
+/***************************************
+ *******   Float to FPS utility   ******
+ ***************************************/
+
+void FloatToFPS(double n, int &num, int &den, IScriptEnvironment* env) 
+{
+#ifndef OPT_TRITICAL_DECIMAL // Max precision binary option - 1 in ~10^6.92
+	int d = 1;
+	while (n < 16777216 && d < 16777216) { n*=2; d*=2; } // 2^24, floats precision
+	num = int(n+0.5);
+	den = d;
+#else // Decimal option - 1 in (10^6.0-1)  -- Tritical Jan 2006
+	int d = 1;
+	while (n < 1000000.0 && d < 1000000) { n*=10.0; d*=10; }
+	int x = int(n+0.5), y = d, t;
+	while (y) { t = x%y; x = y; y = t; }
+	num = int(n+0.5)/x
+	den = d/x;
+#endif
+}
+
+
+
+/****************************************
+ *******   Preset to FPS utility   ****** -- Tritcal, IanB Jan 2006
+ ****************************************/
+
+// ::FIXME::
+// This is an excessivly generous selection of presets. I have added these as a
+// raw brain storm for candidates. Please add any and everything that might be
+// in anyway relevant. We will need to rationalise this list before do a release!
+
+void PresetToFPS(const char *name, const char *p, int &num, int &den, IScriptEnvironment* env) 
+{
+	if (0) { ; }
+	else if (lstrcmpi(p, "ntsc_film"      ) == 0) { num = 24000; den = 1001; }
+	else if (lstrcmpi(p, "ntsc_video"     ) == 0) { num = 30000; den = 1001; }
+	else if (lstrcmpi(p, "ntsc_double"    ) == 0) { num = 60000; den = 1001; }
+	else if (lstrcmpi(p, "ntsc_quad"      ) == 0) { num =120000; den = 1001; }
+										  
+	else if (lstrcmpi(p, "ntsc_film_rnd"  ) == 0) { num =  2997; den =  125; }
+	else if (lstrcmpi(p, "ntsc_video_rnd" ) == 0) { num =  2997; den =  100; }
+	else if (lstrcmpi(p, "ntsc_double_rnd") == 0) { num =  2997; den =   50; }
+	else if (lstrcmpi(p, "ntsc_quad_rnd"  ) == 0) { num =  2997; den =   25; }
+										  
+	else if (lstrcmpi(p, "true_film"      ) == 0) { num =    24; den =    1; }
+										  
+	else if (lstrcmpi(p, "pal_film"       ) == 0) { num =    25; den =    1; }
+	else if (lstrcmpi(p, "pal_video"      ) == 0) { num =    25; den =    1; }
+	else if (lstrcmpi(p, "pal_double"     ) == 0) { num =    50; den =    1; }
+	else if (lstrcmpi(p, "pal_quad"       ) == 0) { num =   100; den =    1; }
+										  
+	else if (lstrcmpi(p, "drop24"         ) == 0) { num = 24000; den = 1001; }
+	else if (lstrcmpi(p, "drop25"         ) == 0) { num = 25000; den = 1001; }
+	else if (lstrcmpi(p, "drop30"         ) == 0) { num = 30000; den = 1001; }
+	else if (lstrcmpi(p, "drop50"         ) == 0) { num = 50000; den = 1001; }
+	else if (lstrcmpi(p, "drop60"         ) == 0) { num = 60000; den = 1001; }
+	else if (lstrcmpi(p, "drop100"        ) == 0) { num =100000; den = 1001; }
+	else if (lstrcmpi(p, "drop120"        ) == 0) { num =120000; den = 1001; }
+										  
+	else if (lstrcmpi(p, "nondrop24"      ) == 0) { num =    24; den =    1; }
+	else if (lstrcmpi(p, "nondrop25"      ) == 0) { num =    25; den =    1; }
+	else if (lstrcmpi(p, "nondrop30"      ) == 0) { num =    30; den =    1; }
+	else if (lstrcmpi(p, "nondrop50"      ) == 0) { num =    50; den =    1; }
+	else if (lstrcmpi(p, "nondrop60"      ) == 0) { num =    60; den =    1; }
+	else if (lstrcmpi(p, "nondrop100"     ) == 0) { num =   100; den =    1; }
+	else if (lstrcmpi(p, "nondrop120"     ) == 0) { num =   120; den =    1; }
+										  
+	else if (lstrcmpi(p, "23.976"         ) == 0) { num = 24000; den = 1001; }
+	else if (lstrcmpi(p, "23.976!"        ) == 0) { num =  2997; den =  125; }
+	else if (lstrcmpi(p, "24.0"           ) == 0) { num =    24; den =    1; }
+	else if (lstrcmpi(p, "25.0"           ) == 0) { num =    25; den =    1; }
+	else if (lstrcmpi(p, "29.97"          ) == 0) { num = 30000; den = 1001; }
+	else if (lstrcmpi(p, "29.97!"         ) == 0) { num =  2997; den =  100; }
+	else if (lstrcmpi(p, "30.0"           ) == 0) { num =    30; den =    1; }
+	else if (lstrcmpi(p, "59.94"          ) == 0) { num = 60000; den = 1001; }
+	else if (lstrcmpi(p, "59.94!"         ) == 0) { num =  2997; den =   50; }
+	else if (lstrcmpi(p, "60.0"           ) == 0) { num =    60; den =    1; }
+	else if (lstrcmpi(p, "100.0"          ) == 0) { num =   100; den =    1; }
+	else if (lstrcmpi(p, "119.88"         ) == 0) { num =120000; den = 1001; }
+	else if (lstrcmpi(p, "119.88!"        ) == 0) { num =  2997; den =   25; }
+	else if (lstrcmpi(p, "120.0"          ) == 0) { num =   100; den =    1; }
+	else {
+	  env->ThrowError("%s: invalid preset value used.\n", name);
+	}
+}
 
 
 
@@ -123,11 +212,23 @@ AVSValue __cdecl AssumeFPS::Create(AVSValue args, void*, IScriptEnvironment* env
 
 AVSValue __cdecl AssumeFPS::CreateFloat(AVSValue args, void*, IScriptEnvironment* env)
 {
+	int num, den;
+
 	try {	// HIDE DAMN SEH COMPILER BUG!!!
-  double n = args[1].AsFloat();
-  int d = 1;
-  while (n < 16777216 && d < 16777216) { n*=2; d*=2; } // 2^24, floats precision
-  return new AssumeFPS(args[0].AsClip(), int(n+0.5), d, args[2].AsBool(false), env);
+	  FloatToFPS(args[1].AsFloat(), num, den, env);
+	  return new AssumeFPS(args[0].AsClip(), num, den, args[2].AsBool(false), env);
+	}
+	catch (...) { throw; }
+}
+
+// Tritical Jan 2006
+AVSValue __cdecl AssumeFPS::CreatePreset(AVSValue args, void*, IScriptEnvironment* env)
+{
+	int num, den;
+
+	try {	// HIDE DAMN SEH COMPILER BUG!!!
+	  PresetToFPS("AssumeFPS", args[1].AsString(), num, den, env);
+	  return new AssumeFPS(args[0].AsClip(), num, den, args[2].AsBool(false), env);
 	}
 	catch (...) { throw; }
 }
@@ -199,11 +300,23 @@ AVSValue __cdecl ChangeFPS::Create(AVSValue args, void*, IScriptEnvironment* env
 
 AVSValue __cdecl ChangeFPS::CreateFloat(AVSValue args, void*, IScriptEnvironment* env) 
 {
+	int num, den;
+
 	try {	// HIDE DAMN SEH COMPILER BUG!!!
-  double n = args[1].AsFloat();
-  int d = 1;
-  while (n < 16777216 && d < 16777216) { n*=2; d*=2; } // 2^24, floats precision
-  return new ChangeFPS(args[0].AsClip(), int(n+0.5), d, args[2].AsBool(true), env);
+	  FloatToFPS(args[1].AsFloat(), num, den, env);
+	  return new ChangeFPS(args[0].AsClip(), num, den, args[2].AsBool(true), env);
+	}
+	catch (...) { throw; }
+}
+
+// Tritical Jan 2006
+AVSValue __cdecl ChangeFPS::CreatePreset(AVSValue args, void*, IScriptEnvironment* env) 
+{
+	int num, den;
+
+	try {	// HIDE DAMN SEH COMPILER BUG!!!
+	  PresetToFPS("ChangeFPS", args[1].AsString(), num, den, env);
+	  return new ChangeFPS(args[0].AsClip(), num, den, args[2].AsBool(true), env);
 	}
 	catch (...) { throw; }
 }
@@ -234,74 +347,90 @@ ConvertFPS::ConvertFPS( PClip _child, int new_numerator, int new_denominator, in
                         int _vbi, IScriptEnvironment* env )
 	: GenericVideoFilter(_child), zone(_zone), vbi(_vbi), lps(0)
 {
-  if (!vi.IsYUY2())
-   env->ThrowError("ConvertFPS: requires YUY2 input");
+  if (zone >= 0 && !vi.IsYUY2()) // Tritical Jan 2006
+   env->ThrowError("ConvertFPS: zone >= 0 requires YUY2 input");
+
   fa = __int64(vi.fps_numerator) * new_denominator;
   fb = __int64(vi.fps_denominator) * new_numerator;
   if( zone >= 0 ) 
   {
     if( vbi < 0 ) vbi = 0;
-		if( vbi > vi.height ) vbi = vi.height;
-		lps = int( (vi.height + vbi) * fb / fa );
-		if( zone > lps )
-			env->ThrowError("ConvertFPS: 'zone' too large. Maximum allowed %d", lps);
-	} 
+    if( vbi > vi.height ) vbi = vi.height;
+    lps = int( (vi.height + vbi) * fb / fa );
+    if( zone > lps )
+      env->ThrowError("ConvertFPS: 'zone' too large. Maximum allowed %d", lps);
+  } 
   else if( 3*fb < (fa<<1) ) {
-	  int dec = MulDiv(vi.fps_numerator, 20000, vi.fps_denominator);
-      env->ThrowError("ConvertFPS: New frame rate too small. Must be greater than %d.%04d "
-				"Increase or use 'zone='", dec/30000, (dec/3)%10000);
-	}
-	vi.SetFPS(new_numerator, new_denominator);
-	vi.num_frames = int((vi.num_frames * fb + (fa>>1)) / fa);
+    int dec = MulDiv(vi.fps_numerator, 20000, vi.fps_denominator);
+    env->ThrowError("ConvertFPS: New frame rate too small. Must be greater than %d.%04d "
+                    "Increase or use 'zone='", dec/30000, (dec/3)%10000);
+  }
+  vi.SetFPS(new_numerator, new_denominator);
+  vi.num_frames = int((vi.num_frames * fb + (fa>>1)) / fa);
 }
 
 
 PVideoFrame __stdcall ConvertFPS::GetFrame(int n, IScriptEnvironment* env)
 {
-	static const int resolution = 6; //bits. Must be >= 4, or modify next line
+	static const int resolution =10; //bits. Must be >= 4, or modify next line
 	static const int threshold  = 1<<(resolution-4);
 	static const int one        = 1<<resolution;
 	static const int half       = 1<<(resolution-1);
 
 	int nsrc      = int( n * fa / fb );
 	int frac      = int( (((n*fa) % fb) << resolution) / fb );
-	int mix_ratio = one - min( int( (fb * (one - frac)) / fa ), one);
-
-	// Don't bother if the blend ratio is small
-	if( zone < 0 ) {
-		if( mix_ratio <= threshold )
-			return child->GetFrame(nsrc, env);
-		if( (one - mix_ratio) <= threshold )
-			return child->GetFrame(nsrc+1, env);
-	}
-
-	PVideoFrame a = child->GetFrame(nsrc, env);
-	PVideoFrame b = child->GetFrame(nsrc+1, env);
-	const BYTE*  b_data   = b->GetReadPtr();
-	int          b_pitch  = b->GetPitch();
-	const int    row_size = a->GetRowSize();
-	const int    height   = a->GetHeight();
 
 	if( zone < 0 ) {
 
    	// Mode 1: Blend full frames
+		int mix_ratio = one - min( int( (fb * (one - frac)) / fa ), one);
+
+		// Don't bother if the blend ratio is small
+		if( mix_ratio < threshold )
+			return child->GetFrame(nsrc, env);
+
+		if( mix_ratio > (one - threshold) )
+			return child->GetFrame(nsrc+1, env);
+
+		PVideoFrame a = child->GetFrame(nsrc, env);
+		PVideoFrame b = child->GetFrame(nsrc+1, env);
+
 		env->MakeWritable(&a);
-		BYTE* a_data   = a->GetWritePtr();
-		int   a_pitch  = a->GetPitch();
-		for (int y = 0; y < height; y++) {
-			for (int x = 0; x < row_size; x++)
-				a_data[x] += ((b_data[x] - a_data[x]) * mix_ratio + half) >> resolution;
-			a_data += a_pitch;
-			b_data += b_pitch;
+
+        // All pixel formats -- Tritical Jan 2006
+		int plane[3] = { PLANAR_Y, PLANAR_U, PLANAR_V };
+		int stop = vi.IsPlanar() ? 3 : 1;
+		for (int j=0; j<stop; ++j)
+		{
+			const BYTE*  b_data   = b->GetReadPtr();
+			int          b_pitch  = b->GetPitch();
+			BYTE*        a_data   = a->GetWritePtr();
+			int          a_pitch  = a->GetPitch();
+			int          row_size = a->GetRowSize();
+			int          height   = a->GetHeight();
+
+			for (int y = 0; y < height; y++) {
+				for (int x = 0; x < row_size; x++)
+					a_data[x] += ((b_data[x] - a_data[x]) * mix_ratio + half) >> resolution;
+				a_data += a_pitch;
+				b_data += b_pitch;
+			}
 		}
 		return a;
 
 	} else {
-
 	// Mode 2: Switch to next frame at the scan line corresponding to the source frame's timing.
 	// If zone > 0, perform a gradual transition, i.e. blend one frame into the next
 	// over the given number of lines.
 	
+		PVideoFrame a = child->GetFrame(nsrc, env);
+		PVideoFrame b = child->GetFrame(nsrc+1, env);
+		const BYTE*  b_data   = b->GetReadPtr();
+		int          b_pitch  = b->GetPitch();
+		const int    row_size = a->GetRowSize();
+		const int    height   = a->GetHeight();
+
+
 		BYTE *pd;
 		const BYTE *pa, *pb, *a_data = a->GetReadPtr();
 		int   a_pitch = a->GetPitch();
@@ -383,12 +512,23 @@ AVSValue __cdecl ConvertFPS::Create(AVSValue args, void*, IScriptEnvironment* en
 
 AVSValue __cdecl ConvertFPS::CreateFloat(AVSValue args, void*, IScriptEnvironment* env) 
 {
+	int num, den;
+
 	try {	// HIDE DAMN SEH COMPILER BUG!!!
-  double n = args[1].AsFloat();
-  int d = 1;
-  while (n < 16777216 && d < 16777216) { n*=2; d*=2; } // 2^24, floats precision
-  return new ConvertFPS( args[0].AsClip(), int(n+0.5), d, args[2].AsInt(-1), 
-                         args[3].AsInt(0), env );
+	  FloatToFPS(args[1].AsFloat(), num, den, env);
+	  return new ConvertFPS( args[0].AsClip(), num, den, args[2].AsInt(-1), args[3].AsInt(0), env );
+	}
+	catch (...) { throw; }
+}
+
+// Tritical Jan 2006
+AVSValue __cdecl ConvertFPS::CreatePreset(AVSValue args, void*, IScriptEnvironment* env) 
+{
+	int num, den;
+
+	try {	// HIDE DAMN SEH COMPILER BUG!!!
+	  PresetToFPS("ConvertFPS", args[1].AsString(), num, den, env);
+	  return new ConvertFPS(args[0].AsClip(), num, den, args[2].AsInt(-1), args[3].AsInt(0), env);
 	}
 	catch (...) { throw; }
 }

@@ -40,6 +40,10 @@
 /********************************************************************
 ********************************************************************/
 
+void FloatToFPS(double n, int &num, int &den, IScriptEnvironment* env);
+
+void PresetToFPS(const char *name, const char *p, int &num, int &den, IScriptEnvironment* env);
+
 class AssumeScaledFPS : public GenericVideoFilter 
 /**
   * Class to change the framerate without changing the frame count
@@ -60,6 +64,7 @@ public:
   AssumeFPS(PClip _child, int numerator, int denominator, bool sync_audio, IScriptEnvironment* env);
   static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env);
   static AVSValue __cdecl CreateFloat(AVSValue args, void*, IScriptEnvironment* env);
+  static AVSValue __cdecl CreatePreset(AVSValue args, void*, IScriptEnvironment* env);
   static AVSValue __cdecl CreateFromClip(AVSValue args, void*, IScriptEnvironment* env);
 };
 
@@ -76,6 +81,7 @@ public:
 
   static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env);
   static AVSValue __cdecl CreateFloat(AVSValue args, void*, IScriptEnvironment* env);
+  static AVSValue __cdecl CreatePreset(AVSValue args, void*, IScriptEnvironment* env);
   static AVSValue __cdecl CreateFromClip(AVSValue args, void*, IScriptEnvironment* env);
 
 private:
@@ -99,6 +105,7 @@ public:
 
   static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env);
   static AVSValue __cdecl CreateFloat(AVSValue args, void*, IScriptEnvironment* env);
+  static AVSValue __cdecl CreatePreset(AVSValue args, void*, IScriptEnvironment* env);
   static AVSValue __cdecl CreateFromClip(AVSValue args, void*, IScriptEnvironment* env);
 
 private:
