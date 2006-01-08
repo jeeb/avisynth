@@ -1,7 +1,7 @@
 !packhdr tempfile.exe "upx --best --q tempfile.exe"
 
-!DEFINE VERSION 2.5.6
-!DEFINE DATE 140705
+!DEFINE VERSION 2.5.7
+!DEFINE DATE 080106
 
 SetCompressor lzma
 !include "MUI.nsh"
