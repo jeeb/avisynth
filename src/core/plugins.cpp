@@ -104,6 +104,7 @@ static bool MyLoadLibrary(const char* filename, HMODULE* hmod, bool quiet, IScri
       return true;
     }
   }
+  FreeLibrary(*hmod);  // Tritical Jan 2006
   if (!quiet)
     env->ThrowError("LoadPlugin: too many plugins loaded already (max. %d)", max_plugins);
   return false;
