@@ -420,44 +420,54 @@ public:
     return state == 0 || state == 1;
   }
 
+  // Update $Plugin! -- Tritical Jan 2006
   void AddFunction(const char* name, const char* params, IScriptEnvironment::ApplyFunc apply, void* user_data) {
     if (prescanning && !plugins)
       env->ThrowError("FunctionTable in prescanning state but no plugin has been set");
+
     if (!IsValidParameterString(params))
       env->ThrowError("%s has an invalid parameter string (bug in filter)", name);
 
-    LocalFunction* f = new LocalFunction;
+    bool duse = false;
+    if      (lstrcmpi(name, "LoadPlugin")          == 0) duse = true;
+    else if (lstrcmpi(name, "LoadCPlugin")         == 0) duse = true;
+    else if (lstrcmpi(name, "Load_Stdcall_Plugin") == 0) duse = true;
+
     const char* alt_name = 0;
-    if (!prescanning) {
+    LocalFunction *f = NULL;
+    if (!duse) {
+      f = new LocalFunction;
       f->name = strdup(name);  // Tritical May 2005
       f->param_types = strdup(params);
-      f->apply = apply;
-      f->user_data = user_data;
-      f->prev = local_functions;
-      local_functions = f;
-    } else {
-      _RPT1(0, "  Function %s (prescan)\n", name);
-      f->name = strdup(name);     // needs to copy here since the plugin will be unloaded
-      f->param_types = strdup(params);
-      f->prev = plugins->plugin_functions;
-      plugins->plugin_functions = f;
+      if (!prescanning) {
+        f->apply = apply;
+        f->user_data = user_data;
+        f->prev = local_functions;
+        local_functions = f;
+      } else {
+        _RPT1(0, "  Function %s (prescan)\n", name);
+        f->prev = plugins->plugin_functions;
+        plugins->plugin_functions = f;
+      }
     }
 
+    LocalFunction *f2 = NULL;
     if (loadplugin_prefix) {
       _RPT1(0, "  Plugin name %s\n", loadplugin_prefix);
       char result[512];
       strcpy(result, loadplugin_prefix);
       strcat(result, "_");
       strcat(result, name);
-      LocalFunction* f2 = new LocalFunction;
-      memcpy(f2, f, sizeof(LocalFunction));
+      f2 = new LocalFunction;
       f2->name = strdup(result);     // needs to copy here since the plugin will be unloaded
       f2->param_types = strdup(params);     // needs to copy here since the plugin will be unloaded
-      alt_name =f2->name;
+      alt_name = f2->name;
       if (prescanning) {
         f2->prev = plugins->plugin_functions;
         plugins->plugin_functions = f2;
       } else {
+        f2->apply = apply;
+        f2->user_data = user_data;
         f2->prev = local_functions;
         local_functions = f2;
       }
@@ -468,36 +478,66 @@ public:
 // BEGIN *************************************************************
 #if 1
     if (prescanning) {
-    AVSValue fnplugin;
-    char *fnpluginnew;
-    try {
-      fnplugin = env->GetVar("$PluginFunctions$");
-      int string_len = strlen(fnplugin.AsString())+strlen(name)+2;
+      AVSValue fnplugin;
+      char *fnpluginnew;
+      try {
+        fnplugin = env->GetVar("$PluginFunctions$");
+        int string_len = strlen(fnplugin.AsString())+1;
+        
+        if (!duse)
+          string_len += strlen(name)+1;
 
-      if (alt_name)
-        string_len += strlen(alt_name)+1;
+        if (alt_name)
+          string_len += strlen(alt_name)+1;
 
-      fnpluginnew = new char[string_len];
-      strcpy(fnpluginnew, fnplugin.AsString());
-      strcat(fnpluginnew, " ");
-      strcat(fnpluginnew, name);
-      if (alt_name) {
+        fnpluginnew = new char[string_len];
+        strcpy(fnpluginnew, fnplugin.AsString());
         strcat(fnpluginnew, " ");
-        strcat(fnpluginnew, alt_name);
-      }
-      env->SetGlobalVar("$PluginFunctions$", AVSValue(env->SaveString(fnpluginnew, string_len)));
-      delete[] fnpluginnew;
+        if (!duse) strcat(fnpluginnew, name);
+        if (alt_name) {
+          strcat(fnpluginnew, " ");
+          strcat(fnpluginnew, alt_name);
+        }
+        env->SetGlobalVar("$PluginFunctions$", AVSValue(env->SaveString(fnpluginnew, string_len)));
+        delete[] fnpluginnew;
 
-    } catch (...) {
-      fnpluginnew = new char[strlen(name)+1];
-      strcpy(fnpluginnew, name);
-      env->SetGlobalVar("$PluginFunctions$", AVSValue(env->SaveString(fnpluginnew, strlen(name)+1)));
-      delete[] fnpluginnew;
-    }
-    char temp[1024] = "$Plugin!";
-    strcat(temp, name);
-    strcat(temp, "!Param$");
-    env->SetGlobalVar(env->SaveString(temp, 8+strlen(name)+7+1), AVSValue(params));
+      } catch (...) {
+        int string_len = 0;
+        if (!duse && alt_name)
+        {
+          string_len = strlen(name)+strlen(alt_name)+2;
+          fnpluginnew = new char[string_len];
+          strcpy(fnpluginnew, name);
+          strcat(fnpluginnew, " ");
+          strcat(fnpluginnew, alt_name);
+        }
+        else if (!duse)
+        {
+          string_len = strlen(name)+1;
+          fnpluginnew = new char[string_len];
+          strcpy(fnpluginnew, name);
+        }
+        else if (alt_name)
+        {
+          string_len = strlen(alt_name)+1;
+          fnpluginnew = new char[string_len];
+          strcpy(fnpluginnew, alt_name);
+        }
+        env->SetGlobalVar("$PluginFunctions$", AVSValue(env->SaveString(fnpluginnew, string_len)));
+        delete[] fnpluginnew;
+      }
+      char temp[1024] = "$Plugin!";
+      if (f) {
+        strcat(temp, name);
+        strcat(temp, "!Param$");
+        env->SetGlobalVar(env->SaveString(temp, 8+strlen(name)+7+1), AVSValue(f->param_types)); // Fizick
+      }
+      if (f2 && alt_name) {
+        strcpy(temp, "$Plugin!");
+        strcat(temp, alt_name);
+        strcat(temp, "!Param$");
+        env->SetGlobalVar(env->SaveString(temp, 8+strlen(alt_name)+7+1), AVSValue(f2->param_types));
+      }
     }
 #endif
 // END ***************************************************************
@@ -772,7 +812,7 @@ long ScriptEnvironment::refcount=0;
 ScriptEnvironment::ScriptEnvironment()
   : at_exit(This()),
     function_table(This()),
-	PlanarChromaAlignmentState(false){ // Change to "true" for 2.5.7
+  PlanarChromaAlignmentState(true){ // Change to "true" for 2.5.7
 
   if(InterlockedCompareExchange(&refcount, 1, 0) == 0)//tsp June 2005 Initialize Recycle bin
     g_Bin=new RecycleBin();
@@ -830,7 +870,7 @@ int ScriptEnvironment::SetMemoryMax(int mem) {
   if (memory_max < memory_used) memory_max = memory_used; // can't be less than we already have
   mem_limit = memory_used + (__int64)memstatus.dwAvailPhys - 5242880i64;
   if (memory_max > mem_limit) memory_max = mem_limit;     // can't be more than 5Mb less than total
-  if (memory_max < 16777216i64) memory_max = 16777216i64; // can't be less than 16Mb
+  if (memory_max < 4194304i64) memory_max = 4194304i64;	  // can't be less than 4Mb -- Tritical Jan 2006
   return (int)(memory_max/1048576i64);
 }
 
@@ -880,12 +920,18 @@ const char* ScriptEnvironment::GetPluginDirectory()
       return 0;
     DWORD size;
     if (RegQueryValueEx(AvisynthKey, RegPluginDir, 0, 0, 0, &size))
+	{
+      RegCloseKey(AvisynthKey); // Dave Brueck - Dec 2005
       return 0;
+    }
     plugin_dir = new char[size];
     if (RegQueryValueEx(AvisynthKey, RegPluginDir, 0, 0, (LPBYTE)plugin_dir, &size)) {
       delete[] plugin_dir;
+      RegCloseKey(AvisynthKey); // Dave Brueck - Dec 2005
       return 0;
     }
+    RegCloseKey(AvisynthKey); // Dave Brueck - Dec 2005
+
     // remove trailing backslashes
     int l = strlen(plugin_dir);
     while (plugin_dir[l-1] == '\\')
