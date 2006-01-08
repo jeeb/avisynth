@@ -566,9 +566,52 @@ AVSValue __cdecl load_c_plugin(AVSValue args, void * user_data,
 		env->ThrowError("Not An Avisynth 2 C Plugin: %s", filename);
 	AVS_ScriptEnvironment e;
 	e.env = env;
-	const char * s = func(&e);
+	AVS_ScriptEnvironment *pe;
+	pe = &e;
+	const char *s = NULL;
+	int callok = 1; // (stdcall)
+	__asm // Tritical - Jan 2006
+	{
+		push eax
+		push edx
+
+		push 0x12345678		// Stash a known value
+
+		mov eax, pe			// Env pointer
+		push eax			// Arg1
+		call func			// avisynth_c_plugin_init
+
+		lea edx, s			// return value is in eax
+		mov DWORD PTR[edx], eax
+
+		pop eax				// Get top of stack
+		cmp eax, 0x12345678	// Was it our known value?
+		je end				// Yes! Stack was cleaned up, was a stdcall
+
+		lea edx, callok
+		mov BYTE PTR[edx], 0 // Set callok to 0 (_cdecl)
+
+		pop eax				// Get 2nd top of stack
+		cmp eax, 0x12345678	// Was this our known value?
+		je end				// Yes! Stack is now correctly cleaned up, was a _cdecl
+
+		mov BYTE PTR[edx], 2 // Set callok to 2 (bad stack)
+end:
+		pop edx
+		pop eax
+	}
+	if (callok == 2)
+		env->ThrowError("Avisynth 2 C Plugin '%s' has corrupted the stack.", filename);
+#ifndef AVSC_USE_STDCALL
+	if (callok != 0)
+		env->ThrowError("Avisynth 2 C Plugin '%s' has wrong calling convention! Must be _cdecl.", filename);
+#else // AVSC_USE_STDCALL
+	if (callok != 1)
+		env->ThrowError("Avisynth 2 C Plugin '%s' has wrong calling convention! Must be stdcall.", filename);
+#endif // AVSC_USE_STDCALL
 	if (s == 0)
-		throw AvisynthError(s);
+		env->ThrowError("Avisynth 2 C Plugin '%s' returned a NULL pointer.", filename);
+
 	return AVSValue(s);
 }
 
