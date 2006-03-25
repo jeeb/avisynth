@@ -40,9 +40,9 @@
 /********************************************************************
 ********************************************************************/
 
-void FloatToFPS(double n, int &num, int &den, IScriptEnvironment* env);
+void FloatToFPS(double n, unsigned &num, unsigned &den, IScriptEnvironment* env);
 
-void PresetToFPS(const char *name, const char *p, int &num, int &den, IScriptEnvironment* env);
+void PresetToFPS(const char *name, const char *p, unsigned &num, unsigned &den, IScriptEnvironment* env);
 
 class AssumeScaledFPS : public GenericVideoFilter 
 /**
@@ -61,7 +61,7 @@ class AssumeFPS : public GenericVideoFilter
  **/
 {
 public:
-  AssumeFPS(PClip _child, int numerator, int denominator, bool sync_audio, IScriptEnvironment* env);
+  AssumeFPS(PClip _child, unsigned numerator, unsigned denominator, bool sync_audio, IScriptEnvironment* env);
   static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env);
   static AVSValue __cdecl CreateFloat(AVSValue args, void*, IScriptEnvironment* env);
   static AVSValue __cdecl CreatePreset(AVSValue args, void*, IScriptEnvironment* env);
@@ -75,7 +75,7 @@ class ChangeFPS : public GenericVideoFilter
  **/
 {
 public:
-  ChangeFPS(PClip _child, int new_numerator, int new_denominator, bool linear, IScriptEnvironment* env);
+  ChangeFPS(PClip _child, unsigned new_numerator, unsigned new_denominator, bool linear, IScriptEnvironment* env);
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
   bool __stdcall GetParity(int n);
 
@@ -98,7 +98,7 @@ class ConvertFPS : public GenericVideoFilter
  **/
 {
 public:
-  ConvertFPS( PClip _child, int new_numerator, int new_denominator, int _zone, 
+  ConvertFPS( PClip _child, unsigned new_numerator, unsigned new_denominator, int _zone, 
               int _vbi, IScriptEnvironment* env );
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
   bool __stdcall GetParity(int n);
