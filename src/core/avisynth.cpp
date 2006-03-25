@@ -429,10 +429,15 @@ public:
       env->ThrowError("%s has an invalid parameter string (bug in filter)", name);
 
     bool duse = false;
-    if      (lstrcmpi(name, "LoadPlugin")          == 0) duse = true;
-    else if (lstrcmpi(name, "LoadCPlugin")         == 0) duse = true;
-    else if (lstrcmpi(name, "Load_Stdcall_Plugin") == 0) duse = true;
 
+// Option for Tritcal - Nonstandard, manifestly changes behaviour
+#ifdef OPT_TRITICAL_NOOVERLOAD
+
+// Do not allow LoadPlugin or LoadCPlugin to be overloaded
+// to access the new function the alternate name must be used
+    if      (lstrcmpi(name, "LoadPlugin")  == 0) duse = true;
+    else if (lstrcmpi(name, "LoadCPlugin") == 0) duse = true;
+#endif
     const char* alt_name = 0;
     LocalFunction *f = NULL;
     if (!duse) {
@@ -476,7 +481,6 @@ public:
 // *** Make Plugin Functions readable for external apps            ***
 // *** Tobias Minich, Mar 2003                                     ***
 // BEGIN *************************************************************
-#if 1
     if (prescanning) {
       AVSValue fnplugin;
       char *fnpluginnew;
@@ -492,8 +496,10 @@ public:
 
         fnpluginnew = new char[string_len];
         strcpy(fnpluginnew, fnplugin.AsString());
-        strcat(fnpluginnew, " ");
-        if (!duse) strcat(fnpluginnew, name);
+        if (!duse) {
+          strcat(fnpluginnew, " ");
+          strcat(fnpluginnew, name);
+        }
         if (alt_name) {
           strcat(fnpluginnew, " ");
           strcat(fnpluginnew, alt_name);
@@ -539,7 +545,6 @@ public:
         env->SetGlobalVar(env->SaveString(temp, 8+strlen(alt_name)+7+1), AVSValue(f2->param_types));
       }
     }
-#endif
 // END ***************************************************************
 
   }
@@ -696,7 +701,7 @@ char* StringDump::SaveString(const char* s, int len) {
   if (len == -1)
     len = lstrlen(s);
   if (block_pos+len+1 > block_size) {
-    char* new_block = new char[block_size = max(block_size, len+1)];
+    char* new_block = new char[block_size = max(block_size, len+1+sizeof(char*))];
     _RPT0(0,"StringDump: Allocating new stringblock.\r\n");
     *(char**)new_block = current_block;   // beginning of block holds pointer to previous block
     current_block = new_block;
@@ -705,7 +710,7 @@ char* StringDump::SaveString(const char* s, int len) {
   char* result = current_block+block_pos;
   memcpy(result, s, len);
   result[len] = 0;
-  block_pos += len+1;
+  block_pos += (len+sizeof(char*)) & -sizeof(char*); // Keep 32bit aligned
   return result;
 }
 
@@ -960,10 +965,17 @@ bool ScriptEnvironment::LoadPluginsMatching(const char* pattern)
 //  strcpy(file, plugin_dir);
 //  strcat(file, "\\");
 //  strcat(file, pattern);
+  int count = 0;
   HANDLE hFind = FindFirstFile(pattern, &FileData);
   BOOL bContinue = (hFind != INVALID_HANDLE_VALUE);
   while (bContinue) {
     // we have to use full pathnames here
+    ++count;
+    if (count > 20) {
+      HMODULE* loaded_plugins = (HMODULE*)GetVar("$Plugins$").AsString();
+      FreeLibraries(loaded_plugins, this);
+      count = 0;
+    }
     GetFullPathName(FileData.cFileName, MAX_PATH, file, &dummy);
     function_table.PrescanPluginStart(file);
     LoadPlugin(AVSValue(&AVSValue(&AVSValue(file), 1), 1), (void*)true, this);
