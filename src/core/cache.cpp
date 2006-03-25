@@ -477,7 +477,7 @@ void __stdcall Cache::GetAudio(void* buf, __int64 start, __int64 count, IScriptE
     return;
 
   if ( (!vi.HasAudio()) || (start+count <= 0) || (start >= vi.num_audio_samples)) {
-    // Complely skip.
+    // Completely skip.
     FillZeros(buf, 0, count);
     return;
   }
