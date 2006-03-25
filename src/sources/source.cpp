@@ -316,11 +316,12 @@ public:
 
     int y = 0;
     
+	// Rec. ITU-R BT.801-1
 	if (vi.IsRGB32()) {
-		// these values are taken from http://www.greatdv.com/video/smptebars3.htm
 		// note we go bottom->top
 		static const int bottom_quarter[] =
-			{ 0x001d42, 0xebebeb, 0x2c005c, 0x101010,  0x070707, 0x101010, 0x181818,  0x101010 };
+// RGB[16..235]     -I     white        +Q     Black     -4ire     Black     +4ire     Black
+			{ 0x003a62, 0xebebeb, 0x4b0f7e, 0x101010,  0x070707, 0x101010, 0x191919,  0x101010 }; // Qlum=Ilum=13.4%
 		for (; y < h/4; ++y) {
 			int x = 0;
 			for (int i=0; i<4; ++i) {
@@ -337,7 +338,8 @@ public:
 		}
 		
 		static const int two_thirds_to_three_quarters[] =
-			{ 0x0f0fb4, 0x101010, 0xb410b4, 0x101010, 0x0db4b4, 0x101010, 0xb4b4b4 };
+// RGB[16..235]   Blue     Black  Magenta      Black      Cyan     Black    LtGrey
+			{ 0x1010b4, 0x101010, 0xb410b4, 0x101010, 0x10b4b4, 0x101010, 0xb4b4b4 };
 		for (; y < h/3; ++y) {
 			int x = 0;
 			for (int i=0; i<7; ++i) {
@@ -348,7 +350,8 @@ public:
 		}
 		
 		static const int top_two_thirds[] =
-			{ 0xb4b4b4, 0xb4b40c, 0x0db4b4, 0x0db40c, 0xb410b4, 0xb40f0e, 0x0f0fb4 };
+// RGB[16..235] LtGrey    Yellow      Cyan     Green   Magenta       Red      Blue
+			{ 0xb4b4b4, 0xb4b410, 0x10b4b4, 0x10b410, 0xb410b4, 0xb41010, 0x1010b4 };
 		for (; y < h; ++y) {
 			int x = 0;
 			for (int i=0; i<7; ++i) {
@@ -358,9 +361,10 @@ public:
 			p += pitch;
 		}
 	}
-	else if (vi.IsYUY2()) { // YUY2; [16,235]RGB -[rec601]-> [16,235]YUV calc'd by WilbertD
+	else if (vi.IsYUY2()) {
 		static const int top_two_thirds[] =
-			{ 0x80b480b4, 0x8ea12ca1, 0x2c829c82, 0x3b6f486f, 0xc454b754, 0xd3406440, 0x7222d222 }; //VYUY
+//                LtGrey      Yellow        Cyan       Green     Magenta         Red        Blue
+			{ 0x80b480b4, 0x8ea22ca2, 0x2c839c83, 0x3a704870, 0xc654b854, 0xd4416441, 0x7223d423 }; //VYUY
 		w >>= 1;
 		for (; y*3 < h*2; ++y) {
 			int x = 0;
@@ -372,7 +376,8 @@ public:
 		}
 
 		static const int two_thirds_to_three_quarters[] =
-			{ 0x7222d222, 0x80108010, 0xc454b754, 0x80108010, 0x2c829c82, 0x80108010, 0x80b480b4 }; //VYUY
+//                 Blue        Black     Magenta       Black        Cyan       Black      LtGrey
+			{ 0x7223d423, 0x80108010, 0xc654b854, 0x80108010, 0x2c839c83, 0x80108010, 0x80b480b4 }; //VYUY
 		for (; y*4 < h*3; ++y) {
 			int x = 0;
 			for (int i=0; i<7; i++) {
@@ -383,7 +388,8 @@ public:
 		}
 
 		static const int bottom_quarter[] =
-			{ 0x6f189818, 0x80eb80eb, 0x8f17a717, 0x80108010, 0x80078007, 0x80108010, 0x80188018, 0x80108010 };
+//                    -I       white          +Q       Black       -4ire       Black       +4ire       Black
+			{ 0x5f109e10, 0x80eb80eb, 0x9610af10, 0x80108010, 0x80078007, 0x80108010, 0x80198019, 0x80108010 }; //VYUY
 		for (; y < h; ++y) {
 			int x = 0;
 			for (int i=0; i<4; ++i) {
@@ -405,10 +411,10 @@ public:
 		BYTE* pV = (BYTE*)frame->GetWritePtr(PLANAR_V);
 		const int pitchY  = frame->GetPitch(PLANAR_Y)>>1;
 		const int pitchUV = frame->GetPitch(PLANAR_U);
-
-		static const unsigned short top_two_thirdsY[] = { 0xb4b4, 0xa1a1, 0x8282, 0x6f6f, 0x5454, 0x4040, 0x2222 };
-		static const BYTE top_two_thirdsU[] = { 0x80, 0x2c, 0x9c, 0x48, 0xb7, 0x64, 0xd2 };
-		static const BYTE top_two_thirdsV[] = { 0x80, 0x8e, 0x2c, 0x3b, 0xc4, 0xd3, 0x72 };
+//                                                        LtGrey  Yellow    Cyan   Green Magenta     Red    Blue
+		static const unsigned short top_two_thirdsY[] = { 0xb4b4, 0xa2a2, 0x8383, 0x7070, 0x5454, 0x4141, 0x2323 };
+		static const BYTE top_two_thirdsU[] =           {   0x80,   0x2c,   0x9c,   0x48,   0xb8,   0x64,   0xd4 };
+		static const BYTE top_two_thirdsV[] =           {   0x80,   0x8e,   0x2c,   0x3a,   0xc6,   0xd4,   0x72 };
 		w >>= 1;
 		h >>= 1;
 		for (; y*3 < h*2; ++y) {
@@ -421,10 +427,10 @@ public:
 				}
 			}
 			pY += pitchY*2; pU += pitchUV; pV += pitchUV;
-		}
-		static const unsigned short two_thirds_to_three_quartersY[] = { 0x2222, 0x1010, 0x5454, 0x1010, 0x8282, 0x1010, 0xb4b4 };
-		static const BYTE two_thirds_to_three_quartersU[] = { 0xd2, 0x80, 0xb7, 0x80, 0x9c, 0x80, 0x80 };
-		static const BYTE two_thirds_to_three_quartersV[] = { 0x72, 0x80, 0xc4, 0x80, 0x2c, 0x80, 0x80 };
+		} //                                                              Blue   Black Magenta   Black    Cyan   Black  LtGrey
+		static const unsigned short two_thirds_to_three_quartersY[] = { 0x2323, 0x1010, 0x5454, 0x1010, 0x8383, 0x1010, 0xb4b4 };
+		static const BYTE two_thirds_to_three_quartersU[] =           {   0xd4,   0x80,   0xb8,   0x80,   0x9c,   0x80,   0x80 };
+		static const BYTE two_thirds_to_three_quartersV[] =           {   0x72,   0x80,   0xc6,   0x80,   0x2c,   0x80,   0x80 };
 		for (; y*4 < h*3; ++y) {
 			int x = 0;
 			for (int i=0; i<7; i++) {
@@ -435,10 +441,10 @@ public:
 				}
 			}
 			pY += pitchY*2; pU += pitchUV; pV += pitchUV;
-		}
-		static const unsigned short bottom_quarterY[] = { 0x1818, 0xebeb, 0x1717, 0x1010, 0x0707, 0x1010, 0x1818, 0x1010 };
-		static const BYTE bottom_quarterU[] = { 0x98, 0x80, 0xa7, 0x80, 0x80, 0x80, 0x80, 0x80 };
-		static const BYTE bottom_quarterV[] = { 0x6f, 0x80, 0x8f, 0x80, 0x80, 0x80, 0x80, 0x80 };
+		} //                                                  -I   white      +Q   Black   -4ire   Black   +4ire   Black
+		static const unsigned short bottom_quarterY[] = { 0x1010, 0xebeb, 0x1010, 0x1010, 0x0707, 0x1010, 0x1919, 0x1010 };
+		static const BYTE bottom_quarterU[] =           {   0x9e,   0x80,   0xaf,   0x80,   0x80,   0x80,   0x80,   0x80 };
+		static const BYTE bottom_quarterV[] =           {   0x5f,   0x80,   0x96,   0x80,   0x80,   0x80,   0x80,   0x80 };
 		for (; y < h; ++y) {
 			int x = 0;
 			for (int i=0; i<4; ++i) {
