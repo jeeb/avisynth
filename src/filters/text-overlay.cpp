@@ -60,7 +60,7 @@ AVSFunction Text_filters[] = {
   { "Info", "c", FilterInfo::Create },  // clip
 
   { "Subtitle",
-	"cs[x]i[y]i[first_frame]i[last_frame]i[font]s[size]i[text_color]i[halo_color]i[align]i[spc]i", 
+	"cs[x]i[y]i[first_frame]i[last_frame]i[font]s[size]i[text_color]i[halo_color]i[align]i[spc]i[lsp]i", 
     Subtitle::Create },       // see docs!
 
   { "Compare",
@@ -671,12 +671,12 @@ AVSValue __cdecl ShowSMPTE::Create(AVSValue args, void*, IScriptEnvironment* env
 
 Subtitle::Subtitle( PClip _child, const char _text[], int _x, int _y, int _firstframe, 
                     int _lastframe, const char _fontname[], int _size, int _textcolor, 
-                    int _halocolor, int _align, int _spc )
+                    int _halocolor, int _align, int _spc, bool _multiline, int _lsp )
  : GenericVideoFilter(_child), antialiaser(0), text(_text), x(_x), y(_y), 
    firstframe(_firstframe), lastframe(_lastframe), fontname(MyStrdup(_fontname)), size(_size*8),
    textcolor(vi.IsYUV() ? RGB2YUV(_textcolor) : _textcolor),
    halocolor(vi.IsYUV() ? RGB2YUV(_halocolor) : _halocolor),
-   align(_align), spc(_spc)
+   align(_align), spc(_spc), multiline(_multiline), lsp(_lsp)
 {
 }
 
@@ -684,7 +684,7 @@ Subtitle::Subtitle( PClip _child, const char _text[], int _x, int _y, int _first
 
 Subtitle::~Subtitle(void) 
 {
-  free((void*)fontname);
+  delete[] fontname;
   delete antialiaser;
 }
 
@@ -723,6 +723,8 @@ AVSValue __cdecl Subtitle::Create(AVSValue args, void*, IScriptEnvironment* env)
     const int halo_color = args[9].AsInt(0);
     const int align = args[10].AsInt(args[2].AsInt(8)==-1?2:7);
     const int spc = args[11].AsInt(0);
+    const bool multiline = args[12].Defined();
+    const int lsp = args[12].AsInt(0);
     int defx, defy;
     switch (align) {
 	 case 1: case 4: case 7: defx = 8; break;
@@ -741,7 +743,8 @@ AVSValue __cdecl Subtitle::Create(AVSValue args, void*, IScriptEnvironment* env)
     if ((align < 1) || (align > 9))
      env->ThrowError("Subtitle: Align values are 1 - 9 mapped to your numeric pad");
 
-    return new Subtitle(clip, text, x, y, first_frame, last_frame, font, size, text_color, halo_color, align, spc);
+    return new Subtitle(clip, text, x, y, first_frame, last_frame, font, size,
+	                    text_color, halo_color, align, spc, multiline, lsp);
 }
 
 
@@ -774,7 +777,32 @@ void Subtitle::InitAntialiaser()
   if (x==-1) real_x = vi.width>>1;
   if (y==-1) real_y = (vi.height>>1);
 
-  TextOut(hdcAntialias, real_x*8+16, real_y*8+16, text, strlen(text));
+  if (!multiline) {
+	TextOut(hdcAntialias, real_x*8+16, real_y*8+16, text, strlen(text));
+  }
+  else {
+	// multiline patch -- tateu
+	char *pdest, *psrc;
+	int result, y_inc = real_y*8+16;
+	char search[] = "\\n";
+	psrc = (char *)text;
+	int length = strlen(psrc);
+
+	do {
+	  pdest = strstr(psrc, search);
+	  while (pdest != NULL && pdest != psrc && *(pdest-1)=='\\') { // \n escape -- foxyshadis
+		for (int i=pdest-psrc; i>0; i--) psrc[i] = psrc[i-1];
+		psrc++;
+		--length;
+		pdest = strstr(pdest+1, search);
+	  }
+	  result = pdest == NULL ? length : pdest - psrc;
+	  TextOut(hdcAntialias, real_x*8+16, y_inc, psrc, result);
+	  y_inc += size + lsp;
+	  psrc = pdest + 2;
+	  length -= result + 2;
+	} while (pdest != NULL && length > 0);
+  }
   GdiFlush();
 }
 
@@ -785,7 +813,7 @@ void Subtitle::InitAntialiaser()
 
 inline int CalcFontSize(int w, int h)
 {
-  enum { minFS=8, FS=128, minH=200, minW=352 };
+  enum { minFS=8, FS=128, minH=224, minW=388 };
 
   const int ws = (w < minW) ? (FS*w)/minW : FS;
   const int hs = (h < minH) ? (FS*h)/minH : FS;
@@ -822,12 +850,12 @@ const char* t_FLOAT32="Float 32 bit";
 const char* t_YES="YES";
 const char* t_NO="NO";
 const char* t_NONE="NONE";
-const char* t_TFF="Top Field First             ";
-const char* t_BFF="Bottom Field First          ";
-const char* t_ATFF="Assumed Top Field First    ";
-const char* t_ABFF="Assumed Bottom Field First ";
-const char* t_STFF="Top Field (Separated)      ";
-const char* t_SBFF="Bottom Field (Separated)   ";
+const char* t_TFF="Top Field First";
+const char* t_BFF="Bottom Field First";
+const char* t_ATFF="Assumed Top Field First";
+const char* t_ABFF="Assumed Bottom Field First";
+const char* t_STFF="Top Field (Separated)";
+const char* t_SBFF="Bottom Field (Separated)";
 
 
 string GetCpuMsg(IScriptEnvironment * env)
@@ -844,13 +872,13 @@ string GetCpuMsg(IScriptEnvironment * env)
   if (flags & CPUF_SSE)
     ss << "SSE  ";
   if (flags & CPUF_SSE2)
-    ss << "SSE2  ";
+    ss << "SSE2 ";
   if (flags & CPUF_SSE3)
-    ss << "SSE3  ";
+    ss << "SSE3 ";
   if (flags & CPUF_3DNOW)
-    ss << "3DNOW  ";
+    ss << "3DNOW ";
   if (flags & CPUF_3DNOW_EXT)
-    ss << "3DNOW_EXT  ";
+    ss << "3DNOW_EXT";
 
   return ss.str();
 }
@@ -886,39 +914,59 @@ PVideoFrame FilterInfo::GetFrame(int n, IScriptEnvironment* env)
         s_parity = vi.IsBFF() ? t_ABFF : t_BFF;
       }
     }
-    char text[400];
-    RECT r= { 32, 16, min(3440,vi.width*8), 768*2 };
-    sprintf(text,
-      "Frame: %-8u\n"
-      "ColorSpace: %s\n"
-      "Width:%4u pixels, Height:%4u pixels.\n"
-      "Frames per second: %7.4f\n"
-      "FieldBased (Separated) Video: %s\n"
-      "Parity: %s\n"
-      "Video Pitch: %4u bytes.\n"
-      "Has Audio: %s\n"
-      "Audio Channels: %-8u\n"
-      "Sample Type: %s\n"
-      "Samples Per Second: %4d\n"
-      "CPU detected: %s\n"
-      ,n
-      ,c_space
-      ,vi.width,vi.height
-      ,(float)vi.fps_numerator/(float)vi.fps_denominator
-      ,vi.IsFieldBased() ? t_YES : t_NO
-      ,s_parity
-      ,frame->GetPitch()
-      ,vi.HasAudio() ? t_YES : t_NO
-      ,vi.AudioChannels()
-      ,s_type
-      ,vi.audio_samples_per_second
-      ,GetCpuMsg(env).c_str()
+    char text[512];
+	int tlen;
+    RECT r= { 32, 16, min(3440,vi.width*8), 900*2 };
+	int vLenInMsecs = (int)(1000.0 * (double)vi.num_frames * (double)vi.fps_denominator / (double)vi.fps_numerator);
+	int cPosInMsecs = (int)(1000.0 * (double)n * (double)vi.fps_denominator / (double)vi.fps_numerator);
+
+    tlen = _snprintf(text, sizeof(text),
+      "Frame: %8u of %-8u\n"                                //  28
+      "Time: %02d:%02d:%02d:%03d of %02d:%02d:%02d:%03d\n"  //  35
+      "ColorSpace: %s\n"                                    //  18=13+5
+      "Width:%4u pixels, Height:%4u pixels.\n"              //  39
+      "Frames per second: %7.4f (%d/%d)\n"                  //  51=31+20
+      "FieldBased (Separated) Video: %s\n"                  //  35=32+3
+      "Parity: %s\n"                                        //  35=9+26
+      "Video Pitch: %5u bytes.\n"                           //  25
+      "Has Audio: %s\n"                                     //  15=12+3
+      , n, vi.num_frames
+      , (cPosInMsecs/(60*60*1000)), (cPosInMsecs/(60*1000))%60 ,(cPosInMsecs/1000)%60, cPosInMsecs%1000,
+        (vLenInMsecs/(60*60*1000)), (vLenInMsecs/(60*1000))%60 ,(vLenInMsecs/1000)%60, vLenInMsecs%1000 
+      , c_space
+      , vi.width, vi.height
+      , (float)vi.fps_numerator/(float)vi.fps_denominator, vi.fps_numerator, vi.fps_denominator
+      , vi.IsFieldBased() ? t_YES : t_NO
+      , s_parity
+      , frame->GetPitch()
+      , vi.HasAudio() ? t_YES : t_NO
+    );
+    if (vi.HasAudio()) {
+      int aLenInMsecs = (int)(1000.0 * (double)vi.num_audio_samples / (double)vi.audio_samples_per_second);
+	  tlen += _snprintf(text+tlen, sizeof(text)-tlen,
+		"Audio Channels: %-8u\n"                              //  25
+		"Sample Type: %s\n"                                   //  28=14+14
+		"Samples Per Second: %5d\n"                           //  26
+		"Audio length: %I64u samples. %02d:%02d:%02d:%03d\n"  //  57=37+20
+		, vi.AudioChannels()
+		, s_type
+		, vi.audio_samples_per_second
+		, vi.num_audio_samples,
+		  (aLenInMsecs/(60*60*1000)), (aLenInMsecs/(60*1000))%60, (aLenInMsecs/1000)%60, aLenInMsecs%1000
+	  );
+    }
+	else {
+	  strcpy(text+tlen,"\n");
+	  tlen += 1;
+	}
+    tlen += _snprintf(text+tlen, sizeof(text)-tlen,
+      "CPU detected: %s\n"                                  //  60=15+45
+      , GetCpuMsg(env).c_str()                              // 442
     );
 
     DrawText(hdcAntialias, text, -1, &r, 0);
     GdiFlush();
 
-    env->MakeWritable(&frame);
     BYTE* dstp = frame->GetWritePtr();
     int dst_pitch = frame->GetPitch();
     antialiaser.Apply(vi, &frame, dst_pitch );
@@ -1215,7 +1263,7 @@ comp_loopx:
     char text[400];
     RECT r= { 32, 16, min(3440,vi.width*8), 768+128 };
     double PSNR_overall = 10.0 * log10(bytecount_overall * 255.0 * 255.0 / SSD_overall);
-    sprintf(text,
+    _snprintf(text, sizeof(text), 
       "       Frame:  %-8u(   min  /   avg  /   max  )\n"
       "Mean Abs Dev:%8.4f  (%7.3f /%7.3f /%7.3f )\n"
       "    Mean Dev:%+8.4f  (%+7.3f /%+7.3f /%+7.3f )\n"
