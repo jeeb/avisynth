@@ -372,7 +372,7 @@ STDMETHODIMP CAVIStreamSynth::QueryInterface(const IID& iid, void **ppv) {
 
 	AddRef();
 
-	return NULL; // Maybe S_OK ???  ::FIXME::
+	return S_OK;
 }
 
 STDMETHODIMP_(ULONG) CAVIStreamSynth::AddRef() {
@@ -933,9 +933,15 @@ STDMETHODIMP CAVIStreamSynth::Read(LONG lStart, LONG lSamples, LPVOID lpBuffer, 
   unsigned code = 0;
 
   if (fAudio) {
+    // buffer overflow patch -- Avery Lee - Mar 2006
     if (lSamples == AVISTREAMREAD_CONVENIENT)
-      lSamples = (unsigned long)parent->vi->AudioSamplesFromFrames(1);
-    if (plBytes) *plBytes = (long)parent->vi->BytesFromAudioSamples(lSamples);
+      lSamples = (long)parent->vi->AudioSamplesFromFrames(1);
+    long bytes = (long)parent->vi->BytesFromAudioSamples(lSamples);
+    if (lpBuffer && bytes > cbBuffer) {
+      lSamples = (long)parent->vi->AudioSamplesFromBytes(cbBuffer);
+      bytes = (long)parent->vi->BytesFromAudioSamples(lSamples);
+    }
+    if (plBytes) *plBytes = bytes;
     if (plSamples) *plSamples = lSamples;
     if (!lpBuffer)
       return S_OK;
