@@ -152,7 +152,7 @@ PVideoFrame __stdcall ConditionalFilter::GetFrame(int n, IScriptEnvironment* env
 
     } else if (e1_result.IsFloat()) {
       f1 = e1_result.AsFloat();
-      if (!e1_result.IsFloat()) 
+      if (!e2_result.IsFloat()) 
         env->ThrowError("Conditional filter: Second expression did not return a float or an integer, as first expression.");
       f2 = e2_result.AsFloat();
     } else {
