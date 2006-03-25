@@ -1569,24 +1569,18 @@ PClip CreateResize(PClip clip, int target_width, int target_height, const AVSVal
   if (subrange_width  <= 0.0) subrange_width  = vi.width  - subrange_left + subrange_width;
   if (subrange_height <= 0.0) subrange_height = vi.height - subrange_top  + subrange_height;
 
-  PClip result = clip;
-  bool H = ((subrange_width != vi.width) || (target_width != vi.width));
-  bool V = ((subrange_height != vi.height) || (target_height != vi.height));
+  PClip result;
   // ensure that the intermediate area is maximal
   const double area_FirstH = subrange_height * target_width;
   const double area_FirstV = subrange_width * target_height;
   if (area_FirstH < area_FirstV)
   {
-    if (V)
       result = CreateResizeV(clip, subrange_top, subrange_height, target_height, f, env);
-    if (H)
       result = CreateResizeH(result, subrange_left, subrange_width, target_width, f, env);
   }
   else
   {
-    if (H)
       result = CreateResizeH(clip, subrange_left, subrange_width, target_width, f, env);
-    if (V)
       result = CreateResizeV(result, subrange_top, subrange_height, target_height, f, env);
   }
   return result;
