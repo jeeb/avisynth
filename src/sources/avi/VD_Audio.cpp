@@ -385,13 +385,14 @@ AudioStreamSource::AudioStreamSource(AudioSource *src, long first_samp, long max
 
 		if (acmFormatSuggest(NULL, iFormat, oFormat, dwOutputFormatSize, ACM_FORMATSUGGESTF_WFORMATTAG)) {
 			free(oFormat);
-			throw MyError("ACM failed to suggest a compatible PCM format");
+			throw MyError("No compatible ACM codec to decode audio stream 0x%04X to PCM.", iFormat->wFormatTag);
 		}
 
 		if (oFormat->wBitsPerSample!=8 && oFormat->wBitsPerSample!=16)
 				oFormat->wBitsPerSample=16;
 
-		if (oFormat->nChannels!=1 && oFormat->nChannels!=2)
+//		if (oFormat->nChannels!=1 && oFormat->nChannels!=2)
+		if (oFormat->nChannels==0)
 			oFormat->nChannels = 2;
 
 		oFormat->nBlockAlign		= (oFormat->wBitsPerSample/8) * oFormat->nChannels;
