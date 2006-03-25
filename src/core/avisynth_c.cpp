@@ -294,7 +294,7 @@ AVSValue __cdecl create_c_video_filter(AVSValue args, void * user_data,
 {
 	C_VideoFilter_UserData * d = (C_VideoFilter_UserData *)user_data;
 	AVS_ScriptEnvironment env(e0);
-	OutputDebugString("OK");
+//	OutputDebugString("OK");
 	AVS_Value res = (d->func)(&env, *(AVS_Value *)&args, d->user_data);
 	if (res.type == 'e') {
     throw AvisynthError(res.d.string);
@@ -308,18 +308,19 @@ AVSValue __cdecl create_c_video_filter(AVSValue args, void * user_data,
 
 extern "C"
 int AVSC_CC 
-  avs_add_function(AVS_ScriptEnvironment * env, const char * name, const char * params, 
+  avs_add_function(AVS_ScriptEnvironment * p, const char * name, const char * params, 
 				   AVS_ApplyFunc applyf, void * user_data)
 {
-	C_VideoFilter_UserData * d = new C_VideoFilter_UserData;
-	// When do I free d ????
-	env->error = 0;
+	C_VideoFilter_UserData *dd, *d = new C_VideoFilter_UserData;
+	p->error = 0;
 	d->func = applyf;
 	d->user_data = user_data;
+	dd = (C_VideoFilter_UserData *)p->env->SaveString((const char *)d, sizeof(C_VideoFilter_UserData));
+	delete d;
 	try {
-		env->env->AddFunction(name, params, create_c_video_filter, d);
+		p->env->AddFunction(name, params, create_c_video_filter, dd);
 	} catch (AvisynthError & err) {
-		env->error = err.msg;
+		p->error = err.msg;
 		return -1;
 	} 
 	return 0;
@@ -468,9 +469,11 @@ void AVSC_CC avs_at_exit(AVS_ScriptEnvironment * p,
                            AVS_ShutdownFunc function, void * user_data)
 {
   p->error = 0;
-  ShutdownFuncData * d = new ShutdownFuncData; // FIXME: When do I delete
+  ShutdownFuncData *dd, *d = new ShutdownFuncData;
   d->func = function;
   d->user_data = user_data;
+	dd = (ShutdownFuncData *)p->env->SaveString((const char *)d, sizeof(ShutdownFuncData));
+	delete d;
   p->env->AtExit(shutdown_func_bridge, d);
 }
 
