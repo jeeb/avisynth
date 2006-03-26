@@ -1,7 +1,7 @@
 !packhdr tempfile.exe "upx --best --q tempfile.exe"
 
 !DEFINE VERSION 2.5.7
-!DEFINE DATE 080106
+!DEFINE DATE 260306
 
 SetCompressor lzma
 !include "MUI.nsh"
@@ -182,8 +182,6 @@ Section /o "French Documentation" French
   File "..\..\Docs\french\*.*"
   SetOutPath $INSTDIR\Docs\french\corefilters
   File "..\..\Docs\french\corefilters\*.*"
-  SetOutPath $INSTDIR\Docs\french\externalfilters
-  File "..\..\Docs\french\externalfilters\*.*"
 
 SetShellVarContext All
 CreateShortCut "$SMPROGRAMS\AviSynth 2.5\French AviSynth Documentation.lnk" "$INSTDIR\Docs\french\index.htm"
@@ -204,6 +202,29 @@ Section /o "Italian Documentation" Italian
 
 SetShellVarContext All
 CreateShortCut "$SMPROGRAMS\AviSynth 2.5\Italian AviSynth Documentation.lnk" "$INSTDIR\Docs\italian\index.htm"
+
+SectionEnd
+
+Section /o "Portugese Documentation" Portugese
+  SetOutPath $INSTDIR\Docs
+  File "..\..\Docs\*.css"
+  SetOutPath $INSTDIR\Docs\portugese
+  File "..\..\Docs\portugese\*.*"
+  SetOutPath $INSTDIR\Docs\portugese\advancedtopics
+  File "..\..\Docs\portugese\advancedtopics\*.*"
+  SetOutPath $INSTDIR\Docs\portugese\corefilters
+  File "..\..\Docs\portugese\corefilters\*.*"
+  SetOutPath $INSTDIR\Docs\portugese\externalfilters
+  File "..\..\Docs\portugese\externalfilters\*.*"
+  SetOutPath $INSTDIR\Docs\portugese\pictures\advancedtopics
+  File "..\..\Docs\portugese\pictures\advancedtopics\*.*"
+  SetOutPath $INSTDIR\Docs\portugese\pictures\corefilters
+  File "..\..\Docs\portugese\pictures\corefilters\*.*"
+  SetOutPath $INSTDIR\Docs\portugese\pictures\externalfilters
+  File "..\..\Docs\portugese\pictures\externalfilters\*.*"
+
+SetShellVarContext All
+CreateShortCut "$SMPROGRAMS\AviSynth 2.5\Portugese AviSynth Documentation.lnk" "$INSTDIR\Docs\portugese\index.htm"
 
 SectionEnd
 
@@ -257,6 +278,7 @@ SubSectionEnd
   !insertmacro MUI_DESCRIPTION_TEXT  ${German} "Install German help"
   !insertmacro MUI_DESCRIPTION_TEXT  ${French} "Install French help"
   !insertmacro MUI_DESCRIPTION_TEXT  ${Italian} "Install Italian help"
+  !insertmacro MUI_DESCRIPTION_TEXT  ${Portugese} "Install Portugese help"
   !insertmacro MUI_DESCRIPTION_TEXT  ${Russian} "Install Russian help"
   !insertmacro MUI_DESCRIPTION_TEXT  ${SelectAssociation} "Select one or both associations"
   !insertmacro MUI_DESCRIPTION_TEXT  ${Associate1} "Open AVS files directly with Notepad to edit"
@@ -320,8 +342,6 @@ Section "Uninstall"
 
   Delete "$INSTDIR\Docs\french\corefilters\*.*"
   RMDir  "$INSTDIR\Docs\french\corefilters"
-  Delete "$INSTDIR\Docs\french\externalfilters\*.*"
-  RMDir  "$INSTDIR\Docs\french\externalfilters"
   Delete "$INSTDIR\Docs\french\*.*"
   RMDir  "$INSTDIR\Docs\french"
 
@@ -334,6 +354,22 @@ Section "Uninstall"
   RMDir  "$INSTDIR\Docs\italian\pictures"
   Delete "$INSTDIR\Docs\italian\*.*"
   RMDir  "$INSTDIR\Docs\italian"
+
+  Delete "$INSTDIR\Docs\portugese\advancedtopics\*.*"
+  RMDir  "$INSTDIR\Docs\portugese\advancedtopics"
+  Delete "$INSTDIR\Docs\portugese\corefilters\*.*"
+  RMDir  "$INSTDIR\Docs\portugese\corefilters"
+  Delete "$INSTDIR\Docs\portugese\externalfilters\*.*"
+  RMDir  "$INSTDIR\Docs\portugese\externalfilters"
+  Delete "$INSTDIR\Docs\portugese\pictures\advancedtopics\*.*"
+  RMDir  "$INSTDIR\Docs\portugese\pictures\advancedtopics"
+  Delete "$INSTDIR\Docs\portugese\pictures\corefilters\*.*"
+  RMDir  "$INSTDIR\Docs\portugese\pictures\corefilters"
+  Delete "$INSTDIR\Docs\portugese\pictures\externalfilters\*.*"
+  RMDir  "$INSTDIR\Docs\portugese\pictures\externalfilters"
+  RMDir  "$INSTDIR\Docs\portugese\pictures"
+  Delete "$INSTDIR\Docs\portugese\*.*"
+  RMDir  "$INSTDIR\Docs\portugese"
 
   Delete "$INSTDIR\Docs\russian\advancedtopics\*.*"
   RMDir  "$INSTDIR\Docs\russian\advancedtopics"
