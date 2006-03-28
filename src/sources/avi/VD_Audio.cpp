@@ -384,8 +384,19 @@ AudioStreamSource::AudioStreamSource(AudioSource *src, long first_samp, long max
 		oFormat->wFormatTag			= WAVE_FORMAT_PCM;
 
 		if (acmFormatSuggest(NULL, iFormat, oFormat, dwOutputFormatSize, ACM_FORMATSUGGESTF_WFORMATTAG)) {
-			free(oFormat);
-			throw MyError("No compatible ACM codec to decode audio stream 0x%04X to PCM.", iFormat->wFormatTag);
+			if(iFormat->wFormatTag == 0x0055 && iFormat->wBitsPerSample != 0) {
+				// Hack to get Fraunhoffer MP3 codec to accept data when wBitsPerSample==16
+				iFormat->wBitsPerSample = 0;
+
+				if (acmFormatSuggest(NULL, iFormat, oFormat, dwOutputFormatSize, ACM_FORMATSUGGESTF_WFORMATTAG)) {
+					free(oFormat);
+					throw MyError("No compatible ACM codec to decode MP3 (0x%04X) audio stream to PCM.", iFormat->wFormatTag);
+				}
+			}
+			else {
+				free(oFormat);
+				throw MyError("No compatible ACM codec to decode 0x%04X audio stream to PCM.", iFormat->wFormatTag);
+			}
 		}
 
 		if (oFormat->wBitsPerSample!=8 && oFormat->wBitsPerSample!=16)
