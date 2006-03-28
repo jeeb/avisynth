@@ -389,7 +389,7 @@ public:
 
 		static const int bottom_quarter[] =
 //                    -I       white          +Q       Black       -4ire       Black       +4ire       Black
-			{ 0x5f109e10, 0x80eb80eb, 0x9610af10, 0x80108010, 0x80078007, 0x80108010, 0x80198019, 0x80108010 }; //VYUY
+			{ 0x5f109e10, 0x80eb80eb, 0x9510ae10, 0x80108010, 0x80078007, 0x80108010, 0x80198019, 0x80108010 }; //VYUY
 		for (; y < h; ++y) {
 			int x = 0;
 			for (int i=0; i<4; ++i) {
@@ -443,8 +443,8 @@ public:
 			pY += pitchY*2; pU += pitchUV; pV += pitchUV;
 		} //                                                  -I   white      +Q   Black   -4ire   Black   +4ire   Black
 		static const unsigned short bottom_quarterY[] = { 0x1010, 0xebeb, 0x1010, 0x1010, 0x0707, 0x1010, 0x1919, 0x1010 };
-		static const BYTE bottom_quarterU[] =           {   0x9e,   0x80,   0xaf,   0x80,   0x80,   0x80,   0x80,   0x80 };
-		static const BYTE bottom_quarterV[] =           {   0x5f,   0x80,   0x96,   0x80,   0x80,   0x80,   0x80,   0x80 };
+		static const BYTE bottom_quarterU[] =           {   0x9e,   0x80,   0xae,   0x80,   0x80,   0x80,   0x80,   0x80 };
+		static const BYTE bottom_quarterV[] =           {   0x5f,   0x80,   0x95,   0x80,   0x80,   0x80,   0x80,   0x80 };
 		for (; y < h; ++y) {
 			int x = 0;
 			for (int i=0; i<4; ++i) {
