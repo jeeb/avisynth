@@ -331,7 +331,7 @@ STDMETHODIMP CAVIFileSynth::QueryInterface(const IID& iid, void **ppv) {
 
 	AddRef();
 
-	return NULL; // Maybe S_OK ???  ::FIXME::
+	return S_OK;
 }
 
 STDMETHODIMP_(ULONG) CAVIFileSynth::AddRef() {
