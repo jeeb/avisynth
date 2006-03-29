@@ -651,4 +651,11 @@ AVSC_API(AVS_ScriptEnvironment *) avs_create_script_environment(int version);
 AVSC_EXPORT
 const char * AVSC_CC avisynth_c_plugin_init(AVS_ScriptEnvironment* env);
 
+
+AVSC_API(void) avs_delete_script_environment(AVS_ScriptEnvironment *);
+
+
+AVSC_API(AVS_VideoFrame *) avs_subframe_planar(AVS_ScriptEnvironment *, AVS_VideoFrame * src, int rel_offset, int new_pitch, int new_row_size, int new_height, int rel_offsetU, int rel_offsetV, int new_pitchUV);
+// The returned video frame must be be released
+
 #endif

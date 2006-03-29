@@ -507,6 +507,24 @@ AVS_VideoFrame * AVSC_CC avs_subframe(AVS_ScriptEnvironment * p, AVS_VideoFrame 
 }
 
 extern "C"
+AVS_VideoFrame * AVSC_CC avs_subframe_planar(AVS_ScriptEnvironment * p, AVS_VideoFrame * src0, 
+							  int rel_offset, int new_pitch, int new_row_size, int new_height,
+							  int rel_offsetU, int rel_offsetV, int new_pitchUV)
+{
+	p->error = 0;
+	try {
+		PVideoFrame f0 = p->env->SubframePlanar((VideoFrame *)src0, rel_offset, new_pitch, new_row_size,
+												new_height, rel_offsetU, rel_offsetV, new_pitchUV);
+		AVS_VideoFrame * f;
+		new((PVideoFrame *)&f) PVideoFrame(f0);
+		return f;
+	} catch (AvisynthError err) {
+		p->error = err.msg;
+		return 0;
+	}
+}
+
+extern "C"
 int AVSC_CC avs_set_memory_max(AVS_ScriptEnvironment * p, int mem)
 {
 	p->error = 0;
@@ -540,6 +558,21 @@ AVS_ScriptEnvironment * AVSC_CC avs_create_script_environment(int version)
 	AVS_ScriptEnvironment * e = new AVS_ScriptEnvironment;
 	e->env = CreateScriptEnvironment(version);
 	return e;
+}
+
+
+/////////////////////////////////////////////////////////////////////
+//
+// 
+//
+
+extern "C" 
+void AVSC_CC avs_delete_script_environment(AVS_ScriptEnvironment * e)
+{
+	if (e) {
+		if (e->env) delete e->env;
+		delete e;
+	}
 }
 
 
