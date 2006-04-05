@@ -423,23 +423,27 @@ Animate::Animate( PClip context, int _first, int _last, const char* _name, const
   }
 
   memset(cache_stage, -1, sizeof(cache_stage));
+
   cache[0] = env->Invoke(name, AVSValue(args_before, num_args)).AsClip();
   cache_stage[0] = 0;
-  cache[1] = env->Invoke(name, AVSValue(args_after, num_args)).AsClip();
-  cache_stage[1] = last-first;
-
   VideoInfo vi1 = cache[0]->GetVideoInfo();
-  VideoInfo vi2 = cache[1]->GetVideoInfo();
-
-  if (vi1.width != vi2.width || vi1.height != vi2.height)
-    env->ThrowError("Animate: initial and final video frame sizes must match");
 
   if (range_limit) {
     VideoInfo vi = context->GetVideoInfo();
+
     if (vi.width != vi1.width || vi.height != vi1.height)
-     env->ThrowError("ApplyRange: Filtered and unfiltered video frame sizes must match");
+      env->ThrowError("ApplyRange: Filtered and unfiltered video frame sizes must match");
+      
     if (!vi.IsSameColorspace(vi1)) 
       env->ThrowError("ApplyRange: Filtered and unfiltered video colorspace must match");
+  }
+  else {
+    cache[1] = env->Invoke(name, AVSValue(args_after, num_args)).AsClip();
+    cache_stage[1] = last-first;
+    VideoInfo vi2 = cache[1]->GetVideoInfo();
+
+    if (vi1.width != vi2.width || vi1.height != vi2.height)
+      env->ThrowError("Animate: initial and final video frame sizes must match");
   }
 }
 
@@ -463,8 +467,9 @@ PVideoFrame __stdcall Animate::GetFrame(int n, IScriptEnvironment* env)
 {
   if (range_limit) {
     if ((n<first) || (n>last)) {
-      return args_after[0].AsClip()->GetFrame(n,env);
+      return args_after[0].AsClip()->GetFrame(n, env);
     }
+    return cache[0]->GetFrame(n, env);
   }
   int stage = min(max(n, first), last) - first;
   for (int i=0; i<cache_size; ++i)
@@ -480,7 +485,7 @@ PVideoFrame __stdcall Animate::GetFrame(int n, IScriptEnvironment* env)
   int scale = last-first;
   for (int a=0; a<num_args; ++a) {
     if (args_before[a].IsInt() && args_after[a].IsInt()) {
-      args_now[a] = int(((double)args_before[a].AsInt()*(scale-stage) + (double)args_after[a].AsInt()*stage) / scale + 0.5);
+      args_now[a] = int((Int32x32To64(args_before[a].AsInt(), scale-stage) + Int32x32To64(args_after[a].AsInt(), stage)) / scale);
     }
     else if (args_before[a].IsFloat() && args_after[a].IsFloat()) {
       args_now[a] = float(((double)args_before[a].AsFloat()*(scale-stage) + (double)args_after[a].AsFloat()*stage) / scale);
