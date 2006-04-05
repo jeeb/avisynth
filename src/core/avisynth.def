@@ -38,3 +38,5 @@ EXPORTS
   avs_take_clip
   avs_vsprintf
   avs_sprintf
+  avs_delete_script_environment
+  avs_subframe_planar
