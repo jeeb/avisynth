@@ -1,9 +1,10 @@
 !packhdr tempfile.exe "upx --best --q tempfile.exe"
 
 !DEFINE VERSION 2.5.7
-!DEFINE DATE 260402
+!DEFINE DATE 260404
 
 SetCompressor /solid lzma
+
 !include "MUI.nsh"
 !include WinMessages.nsh
 !include Sections.nsh
@@ -36,10 +37,7 @@ BRANDINGTEXT "AviSynth ${VERSION} -- [${DATE}]"
 OutFile "AviSynth_${DATE}.exe"
 SetOverwrite ON
 Caption "AviSynth ${VERSION}"
-SetOverwrite try
-; :FIXME: Restore nevershow for release
 ShowInstDetails show
-; ShowInstDetails nevershow
 CRCCheck ON
 
 ComponentText "AviSynth - the premiere frameserving tool available today.$\nCopyright © 2000 - 2006."
@@ -50,9 +48,8 @@ InstallDirRegKey HKLM SOFTWARE\AviSynth ""
 InstType Standard
 
 Section "!AviSynth Base (required)" Frameserving
-SectionIn RO
-
-ClearErrors
+  SectionIn RO
+  ClearErrors
   SetOutPath $SYSDIR
   File "..\src\release\AviSynth.dll"
   File "bin\devil.dll"
@@ -62,7 +59,7 @@ IfFileExists "$SYSDIR\msvcp60.dll" msvc60_exists
 msvc60_exists:
 
 IfErrors 0 dll_ok
-  MessageBox MB_OK "Could not copy avisynth.dll to system directory - Close down all applications that use Avisynth, and be sure to have write permission to the system directory, and try again."
+  MessageBox MB_OK "Could not copy avisynth.dll to system directory$\n$\nClose down all applications that use Avisynth, and be$\nsure to have write permission to the system directory,$\nand then try again."
   Abort
   
 dll_ok:
@@ -73,21 +70,20 @@ dll_ok:
 StrCmp "$0" "" 0 Plugin_exists
   CreateDirectory "$INSTDIR\plugins"
   StrCpy $0 "$INSTDIR\plugins"
+
 Plugin_exists:
   ClearErrors
-
   SetOutPath $0
   File "..\src\plugins\DirectShowSource\Release\DirectShowSource.dll"
   File "..\src\plugins\TCPDeliver\Release\TCPDeliver.dll"
   File "color_presets\colors_rgb.avsi"
 
 IfErrors 0 plug_ok
-  MessageBox MB_OK "Could not write to the Plugin Directory. Close down all applications that use Avisynth, and try again."
-; :FIXME: Restore abort for release
-  ClearErrors
-;  Abort
+  MessageBox MB_OK "Could not write to the Avisynth Plugin Directory.$\nClose down all applications that use Avisynth,$\nand then try again."
+  Abort
 
 plug_ok:
+  ClearErrors
   WriteRegStr HKLM "SOFTWARE\AviSynth" "" "$INSTDIR"
   WriteRegStr HKLM "SOFTWARE\AviSynth" "plugindir2_5" "$0"
 
@@ -97,12 +93,11 @@ plug_ok:
   WriteRegStr HKLM "SOFTWARE\Classes\.avs" "" "avsfile"
 
 IfErrors 0 mreg_ok
-  MessageBox MB_OK "You need administrator rights to install AviSynth! (Could not write to registry HKLM)"
-; :FIXME: Restore abort for release
-  ClearErrors
-;  Abort
+  MessageBox MB_OK "You need administrator rights to install AviSynth!$\n(Could not write to registry HKLM)"
+  Abort
 
 mreg_ok:
+  ClearErrors
   WriteRegStr HKCR "CLSID\{E6D6B700-124D-11D4-86F3-DB80AFD98778}" "" "AviSynth"
   WriteRegStr HKCR "CLSID\{E6D6B700-124D-11D4-86F3-DB80AFD98778}\InProcServer32" "" "AviSynth.dll"
   WriteRegStr HKCR "CLSID\{E6D6B700-124D-11D4-86F3-DB80AFD98778}\InProcServer32" "ThreadingModel" "Apartment"
@@ -122,10 +117,8 @@ mreg_ok:
   WriteRegStr HKCR "avifile\Extensions\AVS" "" "{E6D6B700-124D-11D4-86F3-DB80AFD98778}"
 
 IfErrors 0 creg_ok
-  MessageBox MB_OK "You need administrator rights to install AviSynth! (Could not write to registry HKCR)"
-; :FIXME: Restore abort for release
-  ClearErrors
-;  Abort
+  MessageBox MB_OK "You need administrator rights to install AviSynth!$\n(Could not write to registry HKCR)"
+  Abort
 
 creg_ok:
 ; These bits are for the administrator only
@@ -283,6 +276,7 @@ SubSection /e "Select Association" SelectAssociation
 
 Section /o "Associate AVS files with Notepad (open)" Associate1
   WriteRegStr HKCR "avsfile\shell\open\command" "" 'notepad.exe "%1"'
+  WriteRegStr HKCR "avs_auto_file\shell\open\command" "" 'notepad.exe "%1"'
 SectionEnd
 
 Section /o "Associate AVS files with Media Player 6.4 (play)" Associate2
@@ -433,7 +427,7 @@ Section "Uninstall"
 
 IfFileExists $INSTDIR 0 Removed
     MessageBox MB_YESNO|MB_ICONQUESTION \
-      "Do you want to remove the registry pointer to plugin directory (no files will be removed)?" IDNO Removed
+      "Do you want to remove the registry pointer to$\nplugin directory (no files will be removed)?" IDNO Removed
     DeleteRegKey HKLM "Software\AviSynth"
 Removed:
 
