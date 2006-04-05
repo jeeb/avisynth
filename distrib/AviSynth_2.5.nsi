@@ -1,9 +1,9 @@
 !packhdr tempfile.exe "upx --best --q tempfile.exe"
 
 !DEFINE VERSION 2.5.7
-!DEFINE DATE 260306
+!DEFINE DATE 260402
 
-SetCompressor lzma
+SetCompressor /solid lzma
 !include "MUI.nsh"
 !include WinMessages.nsh
 !include Sections.nsh
@@ -37,7 +37,9 @@ OutFile "AviSynth_${DATE}.exe"
 SetOverwrite ON
 Caption "AviSynth ${VERSION}"
 SetOverwrite try
-ShowInstDetails nevershow
+; :FIXME: Restore nevershow for release
+ShowInstDetails show
+; ShowInstDetails nevershow
 CRCCheck ON
 
 ComponentText "AviSynth - the premiere frameserving tool available today.$\nCopyright © 2000 - 2006."
@@ -59,71 +61,79 @@ IfFileExists "$SYSDIR\msvcp60.dll" msvc60_exists
   File "bin\msvcp60.dll"
 msvc60_exists:
 
-IfErrors dll_not_ok
-
+IfErrors 0 dll_ok
+  MessageBox MB_OK "Could not copy avisynth.dll to system directory - Close down all applications that use Avisynth, and be sure to have write permission to the system directory, and try again."
+  Abort
+  
+dll_ok:
   SetOutPath $INSTDIR
   File "GPL.txt"
 
-  WriteRegStr HKLM "SOFTWARE\AviSynth" "" "$INSTDIR"
-
   ReadRegStr $0 HKLM "SOFTWARE\AviSynth" "plugindir2_5"
-  StrCmp "$0" "" No_Plugin_exists Plugin_exists
-No_Plugin_exists:
+StrCmp "$0" "" 0 Plugin_exists
   CreateDirectory "$INSTDIR\plugins"
   StrCpy $0 "$INSTDIR\plugins"
 Plugin_exists:
-ClearErrors
-
-  WriteRegStr HKLM "SOFTWARE\AviSynth" "plugindir2_5" "$0"
-  WriteRegStr HKLM "SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\AviSynth" "DisplayName" "AviSynth 2.5"
-  WriteRegStr HKLM "SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\AviSynth" "UninstallString" '"$INSTDIR\Uninstall.exe"'
-  WriteRegStr HKLM "SOFTWARE\Classes\.avs" "" "avsfile"
-
-IfErrors mreg_not_ok
-  goto mreg_ok
-mreg_not_ok:
-  MessageBox MB_OK "You need administrator rights to install AviSynth! (Could not write to registry HKLM)"
-  Abort
-mreg_ok:
+  ClearErrors
 
   SetOutPath $0
   File "..\src\plugins\DirectShowSource\Release\DirectShowSource.dll"
   File "..\src\plugins\TCPDeliver\Release\TCPDeliver.dll"
   File "color_presets\colors_rgb.avsi"
 
-IfErrors plug_not_ok
-  goto plug_ok
-plug_not_ok:
+IfErrors 0 plug_ok
   MessageBox MB_OK "Could not write to the Plugin Directory. Close down all applications that use Avisynth, and try again."
-  Abort
-plug_ok:
+; :FIXME: Restore abort for release
+  ClearErrors
+;  Abort
 
+plug_ok:
+  WriteRegStr HKLM "SOFTWARE\AviSynth" "" "$INSTDIR"
+  WriteRegStr HKLM "SOFTWARE\AviSynth" "plugindir2_5" "$0"
+
+  WriteRegStr HKLM "SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\AviSynth" "DisplayName" "AviSynth 2.5"
+  WriteRegStr HKLM "SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\AviSynth" "UninstallString" '"$INSTDIR\Uninstall.exe"'
+  
+  WriteRegStr HKLM "SOFTWARE\Classes\.avs" "" "avsfile"
+
+IfErrors 0 mreg_ok
+  MessageBox MB_OK "You need administrator rights to install AviSynth! (Could not write to registry HKLM)"
+; :FIXME: Restore abort for release
+  ClearErrors
+;  Abort
+
+mreg_ok:
   WriteRegStr HKCR "CLSID\{E6D6B700-124D-11D4-86F3-DB80AFD98778}" "" "AviSynth"
-  WriteRegStr HKCR "CLSID\{E6D6B700-124D-11D4-86F3-DB80AFD98778}\InProcServer32" "" AviSynth.dll
-  WriteRegStr HKCR "avifile\Extensions\avs" "" "{E6D6B700-124D-11D4-86F3-DB80AFD98778}"
-  WriteRegStr HKCR "Media Type\Extensions\.avs" "" ""
-  WriteRegStr HKCR "Media Type\Extensions\.avs" "Source Filter" "{D3588AB0-0781-11CE-B03A-0020AF0BA770}"
+  WriteRegStr HKCR "CLSID\{E6D6B700-124D-11D4-86F3-DB80AFD98778}\InProcServer32" "" "AviSynth.dll"
   WriteRegStr HKCR "CLSID\{E6D6B700-124D-11D4-86F3-DB80AFD98778}\InProcServer32" "ThreadingModel" "Apartment"
 
-  WriteRegStr HKCR ".avsi" "" "avs_auto_file"
-  WriteRegStr HKCR "avs_auto_file" "" "AviSynth Autoload Script"
-  WriteRegStr HKCR "avs_auto_file\DefaultIcon" "" $SYSDIR\AviSynth.dll,0
+  WriteRegStr HKCR "Media Type\Extensions\.avs" "" ""
+  WriteRegStr HKCR "Media Type\Extensions\.avs" "Source Filter" "{D3588AB0-0781-11CE-B03A-0020AF0BA770}"
 
   WriteRegStr HKCR ".avs" "" "avsfile"
+  WriteRegStr HKCR ".avsi" "" "avs_auto_file"
+
+  WriteRegStr HKCR "avs_auto_file" "" "AviSynth Autoload Script"
+  WriteRegStr HKCR "avs_auto_file\DefaultIcon" "" "$SYSDIR\AviSynth.dll,0"
+
   WriteRegStr HKCR "avsfile" "" "AviSynth Script"
-  WriteRegStr HKCR "avsfile\DefaultIcon" "" $SYSDIR\AviSynth.dll,0
+  WriteRegStr HKCR "avsfile\DefaultIcon" "" "$SYSDIR\AviSynth.dll,0"
 
-IfErrors creg_not_ok
-  goto creg_ok
-creg_not_ok:
+  WriteRegStr HKCR "avifile\Extensions\AVS" "" "{E6D6B700-124D-11D4-86F3-DB80AFD98778}"
+
+IfErrors 0 creg_ok
   MessageBox MB_OK "You need administrator rights to install AviSynth! (Could not write to registry HKCR)"
-  Abort
-creg_ok:
+; :FIXME: Restore abort for release
+  ClearErrors
+;  Abort
 
-SetShellVarContext Current
-CreateDirectory  "$SMPROGRAMS\AviSynth 2.5"
+creg_ok:
+; These bits are for the administrator only
+  SetShellVarContext Current
+  CreateDirectory  "$SMPROGRAMS\AviSynth 2.5"
   CreateShortCut "$SMPROGRAMS\AviSynth 2.5\Uninstall AviSynth.lnk" "$INSTDIR\Uninstall.exe"
 
+; These bits are for everybody
   SetShellVarContext All
   CreateDirectory  "$SMPROGRAMS\AviSynth 2.5"
   CreateShortCut "$SMPROGRAMS\AviSynth 2.5\License.lnk" "$INSTDIR\GPL.txt"
@@ -133,13 +143,6 @@ CreateDirectory  "$SMPROGRAMS\AviSynth 2.5"
 
   Delete $INSTDIR\Uninstall.exe
   WriteUninstaller $INSTDIR\Uninstall.exe
-
-  goto dll_ok
-
-dll_not_ok:
-  MessageBox MB_OK "Could not copy avisynth.dll to system directory - Close down all applications that use Avisynth, and be sure to have write permission to the system directory, and try again."
-  Abort
-dll_ok:
 
   SetOutPath $INSTDIR\Examples
   File "Examples\*.*"
@@ -176,8 +179,8 @@ SectionIn 1
   SetOutPath $INSTDIR\Examples
   File "Examples\*.*"
 
-SetShellVarContext All
-CreateShortCut "$SMPROGRAMS\AviSynth 2.5\AviSynth Documentation.lnk" "$INSTDIR\Docs\english\index.htm"
+  SetShellVarContext All
+  CreateShortCut "$SMPROGRAMS\AviSynth 2.5\AviSynth Documentation.lnk" "$INSTDIR\Docs\english\index.htm"
 
 SectionEnd
 
@@ -192,8 +195,8 @@ Section /o "German Documentation" German
   SetOutPath $INSTDIR\Docs\german\externalfilters
   File "..\..\Docs\german\externalfilters\*.*"
 
-SetShellVarContext All
-CreateShortCut "$SMPROGRAMS\AviSynth 2.5\Deutsche AviSynth Dokumentation.lnk" "$INSTDIR\Docs\german\index.htm"
+  SetShellVarContext All
+  CreateShortCut "$SMPROGRAMS\AviSynth 2.5\Deutsche AviSynth Dokumentation.lnk" "$INSTDIR\Docs\german\index.htm"
 
 SectionEnd
 
@@ -205,8 +208,8 @@ Section /o "French Documentation" French
   SetOutPath $INSTDIR\Docs\french\corefilters
   File "..\..\Docs\french\corefilters\*.*"
 
-SetShellVarContext All
-CreateShortCut "$SMPROGRAMS\AviSynth 2.5\French AviSynth Documentation.lnk" "$INSTDIR\Docs\french\index.htm"
+  SetShellVarContext All
+  CreateShortCut "$SMPROGRAMS\AviSynth 2.5\French AviSynth Documentation.lnk" "$INSTDIR\Docs\french\index.htm"
 
 SectionEnd
 
@@ -222,8 +225,8 @@ Section /o "Italian Documentation" Italian
   SetOutPath $INSTDIR\Docs\italian\pictures\corefilters
   File "..\..\Docs\italian\pictures\corefilters\*.*"
 
-SetShellVarContext All
-CreateShortCut "$SMPROGRAMS\AviSynth 2.5\Italian AviSynth Documentation.lnk" "$INSTDIR\Docs\italian\index.htm"
+  SetShellVarContext All
+  CreateShortCut "$SMPROGRAMS\AviSynth 2.5\Italian AviSynth Documentation.lnk" "$INSTDIR\Docs\italian\index.htm"
 
 SectionEnd
 
@@ -245,8 +248,8 @@ Section /o "Portugese Documentation" Portugese
   SetOutPath $INSTDIR\Docs\portugese\pictures\externalfilters
   File "..\..\Docs\portugese\pictures\externalfilters\*.*"
 
-SetShellVarContext All
-CreateShortCut "$SMPROGRAMS\AviSynth 2.5\Portugese AviSynth Documentation.lnk" "$INSTDIR\Docs\portugese\index.htm"
+  SetShellVarContext All
+  CreateShortCut "$SMPROGRAMS\AviSynth 2.5\Portugese AviSynth Documentation.lnk" "$INSTDIR\Docs\portugese\index.htm"
 
 SectionEnd
 
@@ -268,8 +271,8 @@ Section /o "Russian Documentation" Russian
   SetOutPath $INSTDIR\Docs\russian\pictures\externalfilters
   File "..\..\Docs\russian\pictures\externalfilters\*.*"
 
-SetShellVarContext All
-CreateShortCut "$SMPROGRAMS\AviSynth 2.5\Russian AviSynth Documentation.lnk" "$INSTDIR\Docs\russian\index.htm"
+  SetShellVarContext All
+  CreateShortCut "$SMPROGRAMS\AviSynth 2.5\Russian AviSynth Documentation.lnk" "$INSTDIR\Docs\russian\index.htm"
 
 SectionEnd
 
@@ -291,7 +294,7 @@ Section /o "Add AviSynth Script to New Items menu" Associate3
   WriteRegStr HKCR ".avs\ShellNew" "NullFile" ""
 
 ; Template file
-;  SetOutPath $WINDIR\ShellNew
+;  SetOutPath $WINDIR\ShellNew or $TEMPLATES
 ;  File "Examples\Template.avs"
 ;  WriteRegStr HKCR ".avs\ShellNew" "FileName" "Template.avs"
 SectionEnd
@@ -326,14 +329,15 @@ FunctionEnd
 Section "Uninstall"
   Delete "$SYSDIR\devil.dll"
   Delete "$SYSDIR\AviSynth.dll"
-  DeleteRegKey HKLM "Software\Classes\avs"
-  DeleteRegKey HKCR ".avs"
+  DeleteRegKey HKLM "Software\Classes\.avs"
+  
   DeleteRegKey HKCR "CLSID\{E6D6B700-124D-11D4-86F3-DB80AFD98778}"
   DeleteRegKey HKCR "Media Type\Extensions\.avs"
-  DeleteRegKey HKCR "avifile\Extensions\avs"
-  DeleteRegKey HKCR "avsfile\DefaultIcon"
-  DeleteRegKey HKCR "avsfile\shell\open\command"
-  DeleteRegKey HKCR "avsfile\shell\play\command"
+  DeleteRegKey HKCR ".avs"
+  DeleteRegKey HKCR ".avsi"
+  DeleteRegKey HKCR "avs_auto_file"
+  DeleteRegKey HKCR "avsfile"
+  DeleteRegKey HKCR "avifile\Extensions\AVS"
 
   SetShellVarContext All
   Delete "$SMPROGRAMS\AviSynth 2.5\*.*"
@@ -349,6 +353,7 @@ Section "Uninstall"
 
   Delete "$INSTDIR\plugins\DirectShowSource.dll"
   Delete "$INSTDIR\plugins\TCPDeliver.dll"
+  Delete "$INSTDIR\plugins\colors_rgb.avsi"
 
   Delete "$INSTDIR\Docs\english\advancedtopics\*.*"
   RMDir  "$INSTDIR\Docs\english\advancedtopics"
@@ -420,7 +425,7 @@ Section "Uninstall"
   Delete "$INSTDIR\Docs\russian\*.*"
   RMDir  "$INSTDIR\Docs\russian"
 
-  Delete "$INSTDIR\Docs\*.*"
+  Delete "$INSTDIR\Docs\*.css"
   RMDir  "$INSTDIR\Docs"
   Delete "$INSTDIR\Uninstall.exe"
 
