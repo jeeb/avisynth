@@ -357,7 +357,7 @@ BOOL AudioStream::_isEnd() {
 AudioStreamSource::AudioStreamSource(AudioSource *src, long first_samp, long max_samples, BOOL allow_decompression) : AudioStream() {
 	WAVEFORMATEX *iFormat = src->getWaveFormat();
 	WAVEFORMATEX *oFormat;
-	MMRESULT res;
+	MMRESULT res = 0;
 
 	hACStream = NULL;
 	inputBuffer = outputBuffer = NULL;
@@ -369,9 +369,12 @@ AudioStreamSource::AudioStreamSource(AudioSource *src, long first_samp, long max
 	if (max_samples < 0)
 		max_samples = 0;
 
-	if (iFormat->wFormatTag != WAVE_FORMAT_PCM && allow_decompression) {
+	if (iFormat->wFormatTag != WAVE_FORMAT_PCM &&
+		iFormat->wFormatTag != WAVE_FORMAT_IEEE_FLOAT && allow_decompression) {
 		DWORD dwOutputBufferSize;
 		DWORD dwOutputFormatSize;
+		DWORD dwSuggest;
+		int i;
 
 		if (!AllocFormat(sizeof(WAVEFORMATEX)))
 			throw MyMemoryError();
@@ -381,44 +384,64 @@ AudioStreamSource::AudioStreamSource(AudioSource *src, long first_samp, long max
 
 		oFormat = (WAVEFORMATEX *)malloc(dwOutputFormatSize); //AllocFormat(dwOutputFormatSize);
 		if (!oFormat) throw MyMemoryError();
-		oFormat->wFormatTag			= WAVE_FORMAT_PCM;
 
-		if (acmFormatSuggest(NULL, iFormat, oFormat, dwOutputFormatSize, ACM_FORMATSUGGESTF_WFORMATTAG)) {
-			if(iFormat->wFormatTag == 0x0055 && iFormat->wBitsPerSample != 0) {
-				// Hack to get Fraunhoffer MP3 codec to accept data when wBitsPerSample==16
-				iFormat->wBitsPerSample = 0;
+#define MAX_TRIES 8
+		for (i=0; i<=MAX_TRIES; i++) {
+			switch (i) {
+			case 0: oFormat->wFormatTag = WAVE_FORMAT_IEEE_FLOAT;
+					oFormat->nChannels = iFormat->nChannels;
+					dwSuggest = ACM_FORMATSUGGESTF_WFORMATTAG | ACM_FORMATSUGGESTF_NCHANNELS;
+					break;
+			case 1: oFormat->nChannels = 0;
+					dwSuggest = ACM_FORMATSUGGESTF_WFORMATTAG;
+					break;
+			case 2: oFormat->wFormatTag = WAVE_FORMAT_PCM;
+					oFormat->nChannels = iFormat->nChannels;
+					oFormat->wBitsPerSample = 32;
+					dwSuggest = ACM_FORMATSUGGESTF_WFORMATTAG | ACM_FORMATSUGGESTF_NCHANNELS | ACM_FORMATSUGGESTF_WBITSPERSAMPLE;
+					break;
+			case 3: oFormat->wBitsPerSample = 24;
+					break;
+			case 4: oFormat->wBitsPerSample = 0;
+					dwSuggest = ACM_FORMATSUGGESTF_WFORMATTAG | ACM_FORMATSUGGESTF_NCHANNELS;
+					break;
+			case 5: oFormat->nChannels = 0;
+					oFormat->wBitsPerSample = 32;
+					dwSuggest = ACM_FORMATSUGGESTF_WFORMATTAG | ACM_FORMATSUGGESTF_WBITSPERSAMPLE;
+					break;
+			case 6: oFormat->wBitsPerSample = 24;
+					break;
+			case 7: oFormat->wBitsPerSample = 0;
+					dwSuggest = ACM_FORMATSUGGESTF_WFORMATTAG;
+					break;
+					// Hack to get Fraunhoffer MP3 codec to accept data when wBitsPerSample==16
+			case 8: if(iFormat->wFormatTag == 0x0055 && iFormat->wBitsPerSample != 0) {
+						iFormat->wBitsPerSample = 0;
+						break;
+					}
+					continue;
+			default: 
+					break;
+			}
+			if (acmFormatSuggest(NULL, iFormat, oFormat, dwOutputFormatSize, dwSuggest)) continue;
 
-				if (acmFormatSuggest(NULL, iFormat, oFormat, dwOutputFormatSize, ACM_FORMATSUGGESTF_WFORMATTAG)) {
-					free(oFormat);
-					throw MyError("No compatible ACM codec to decode MP3 (0x%04X) audio stream to PCM.", iFormat->wFormatTag);
-				}
-			}
-			else {
-				free(oFormat);
-				throw MyError("No compatible ACM codec to decode 0x%04X audio stream to PCM.", iFormat->wFormatTag);
-			}
+			if (oFormat->wBitsPerSample!=8  && oFormat->wBitsPerSample!=16 &&
+				oFormat->wBitsPerSample!=24 && oFormat->wBitsPerSample!=32)
+					oFormat->wBitsPerSample=16;
+
+			if (oFormat->nChannels==0)
+				oFormat->nChannels = 2;
+
+			oFormat->nBlockAlign		= (oFormat->wBitsPerSample/8) * oFormat->nChannels;
+			oFormat->nAvgBytesPerSec	= oFormat->nBlockAlign * oFormat->nSamplesPerSec;
+			oFormat->cbSize				= 0;
+
+
+			if (!(res = acmStreamOpen(&hACStream, NULL, iFormat, oFormat, NULL, 0, 0, ACM_STREAMOPENF_NONREALTIME)))
+				break;
 		}
-
-		if (oFormat->wBitsPerSample!=8 && oFormat->wBitsPerSample!=16)
-				oFormat->wBitsPerSample=16;
-
-//		if (oFormat->nChannels!=1 && oFormat->nChannels!=2)
-		if (oFormat->nChannels==0)
-			oFormat->nChannels = 2;
-
-		oFormat->nBlockAlign		= (oFormat->wBitsPerSample/8) * oFormat->nChannels;
-		oFormat->nAvgBytesPerSec	= oFormat->nBlockAlign * oFormat->nSamplesPerSec;
-		oFormat->cbSize				= 0;
-
-		memcpy(GetFormat(), oFormat, sizeof(WAVEFORMATEX));
-		free(oFormat);
-		oFormat = GetFormat();
-
-		memset(&ashBuffer, 0, sizeof ashBuffer);
-
-		res = acmStreamOpen(&hACStream, NULL, iFormat, oFormat, NULL, 0, 0, ACM_STREAMOPENF_NONREALTIME);
-
 		if (res) {
+			free(oFormat);
 			if (res == ACMERR_NOTPOSSIBLE) {
 				throw MyError(
 							"Error initializing audio stream decompression:\n"
@@ -431,6 +454,13 @@ AudioStreamSource::AudioStreamSource(AudioSource *src, long first_samp, long max
 			} else
 				throw MyError("Error initializing audio stream decompression.");
 		}
+		if (i > MAX_TRIES) {
+			free(oFormat);
+			throw MyError("No compatible ACM codec to decode 0x%04X audio stream to PCM.", iFormat->wFormatTag);
+		}
+
+		memcpy(GetFormat(), oFormat, sizeof(WAVEFORMATEX));
+		free(oFormat);
 
 		if (acmStreamSize(hACStream, INPUT_BUFFER_SIZE, &dwOutputBufferSize, ACM_STREAMSIZEF_SOURCE))
 			throw MyError("Error initializing audio stream output size.");
@@ -440,6 +470,7 @@ AudioStreamSource::AudioStreamSource(AudioSource *src, long first_samp, long max
 
 			throw MyMemoryError();
 
+		memset(&ashBuffer, 0, sizeof ashBuffer);
 		ashBuffer.cbStruct		= sizeof(ACMSTREAMHEADER);
 		ashBuffer.pbSrc			= (LPBYTE)inputBuffer;
 		ashBuffer.cbSrcLength	= INPUT_BUFFER_SIZE;
