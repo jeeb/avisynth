@@ -408,7 +408,9 @@ AVISource::AVISource(const char filename[], bool fAudio, const char pixel_type[]
           pwfx = audioStreamSource->GetFormat();
           vi.audio_samples_per_second = pwfx->nSamplesPerSec;
           vi.nchannels = pwfx->nChannels;
-          if (pwfx->wBitsPerSample == 16) {
+          if (pwfx->wFormatTag == WAVE_FORMAT_IEEE_FLOAT) {
+            vi.sample_type = SAMPLE_FLOAT;
+          } else if (pwfx->wBitsPerSample == 16) {
             vi.sample_type = SAMPLE_INT16;
           } else if (pwfx->wBitsPerSample == 8) {
             vi.sample_type = SAMPLE_INT8;

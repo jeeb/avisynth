@@ -120,7 +120,7 @@ public:
 	STDMETHODIMP WriteData(DWORD fcc, LPVOID lpBuffer, LONG cbBuffer);
 	STDMETHODIMP DeleteStream(DWORD fccType, LONG lParam);
 
-	//////////// IAVIFile
+	//////////// IAvisynthClipInfo
 
 	int __stdcall GetError(const char** ppszMessage);
 	bool __stdcall GetParity(int n);
@@ -489,7 +489,13 @@ bool CAVIFileSynth::DelayInit() {
 
           return_val.AsClip()->SetCacheHints(CACHE_ALL, 999); // Give the top level cache a big head start!!
 
-          filter_graph = ConvertAudio::Create(return_val.AsClip(), SAMPLE_INT8|SAMPLE_INT16|SAMPLE_INT24|SAMPLE_INT32, SAMPLE_INT16);  // Ensure samples are int     [filter_graph = return_val.AsClip();]
+#define OPT_SFLOAT_OUTPUT // Allow WAVE_FORMAT_IEEE_FLOAT audio output
+#ifndef OPT_SFLOAT_OUTPUT
+//        Ensure samples are int     
+          filter_graph = ConvertAudio::Create(return_val.AsClip(), SAMPLE_INT8|SAMPLE_INT16|SAMPLE_INT24|SAMPLE_INT32, SAMPLE_INT16);
+#else
+		  filter_graph = return_val.AsClip();
+#endif
 		}
         else
           throw AvisynthError("The script's return value was not a video clip");
@@ -1020,7 +1026,7 @@ STDMETHODIMP CAVIStreamSynth::ReadFormat(LONG lPos, LPVOID lpFormat, LONG *lpcbF
   if (fAudio) {
     WAVEFORMATEX wfx;
     memset(&wfx, 0, sizeof(wfx));
-    wfx.wFormatTag = 1;
+    wfx.wFormatTag = vi->IsSampleType(SAMPLE_FLOAT) ? WAVE_FORMAT_IEEE_FLOAT : WAVE_FORMAT_PCM;
     wfx.nChannels = vi->AudioChannels();  // Perhaps max out at 2?
     wfx.nSamplesPerSec = vi->SamplesPerSecond();
     wfx.wBitsPerSample = vi->BytesPerChannelSample() * 8;
