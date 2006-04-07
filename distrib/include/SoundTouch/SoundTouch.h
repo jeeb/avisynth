@@ -1,60 +1,73 @@
-/*****************************************************************************
- *
- * A main class for tempo/pitch/rate adjusting routines. 
- *
- * Initialize the object by setting up the sound stream parameters with the
- * 'setSampleRate' and 'setChannels' functions, and set the desired
- * tempo/pitch/rate settings with the corresponding functions.
- *
- * Notes:
- * * This class behaves like an first-in-first-out pipe: The samples to be 
- *  processed are fed into one of the pipe with the 'putSamples' function,
- *  and the ready, processed samples are read from the other end with the 
- *  'receiveSamples' function. 
- *
- * * The tempo/pitch/rate control parameters may freely be altered during 
- * processing.
- *
- * * The processing routines introduce a certain 'latency' between the
- * input and output, so that the inputted samples aren't immediately 
- * transferred to the output, and neither the number of output samples 
- * immediately available after inputting some samples isn't in direct 
- * relationship to the number of previously inputted samples.
- *
- * * This class utilizes classes 'tempochanger' to change tempo of the
- * sound (without changing pitch) and 'transposer' to change rate
- * (that is, both tempo and pitch) of the sound. The third available control 
- * 'pitch' (change pitch but maintain tempo) is produced by suitably 
- * combining the two preceding controls.
- *
- * Author        : Copyright (c) Olli Parviainen
- * Author e-mail : oparviai @ iki.fi
- *
- * Last changed  : $Date: 2003/12/27 11:54:16 $
- * File revision : $Revision: 1.7 $
- *
- * $Id: SoundTouch.h,v 1.7 2003/12/27 11:54:16 Olli Exp $
- *
- * License :
- *
- *  SoundTouch sound processing library
- *  Copyright (c) Olli Parviainen
- *
- *  This library is free software; you can redistribute it and/or
- *  modify it under the terms of the GNU Lesser General Public
- *  License as published by the Free Software Foundation; either
- *  version 2.1 of the License, or (at your option) any later version.
- *
- *  This library is distributed in the hope that it will be useful,
- *  but WITHOUT ANY WARRANTY; without even the implied warranty of
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
- *  Lesser General Public License for more details.
- *
- *  You should have received a copy of the GNU Lesser General Public
- *  License along with this library; if not, write to the Free Software
- *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
- *
- *****************************************************************************/
+//////////////////////////////////////////////////////////////////////////////
+///
+/// SoundTouch - main class for tempo/pitch/rate adjusting routines. 
+///
+/// Notes:
+/// - Initialize the SoundTouch object instance by setting up the sound stream 
+///   parameters with functions 'setSampleRate' and 'setChannels', then set 
+///   desired tempo/pitch/rate settings with the corresponding functions.
+///
+/// - The SoundTouch class behaves like a first-in-first-out pipeline: The 
+///   samples that are to be processed are fed into one of the pipe by calling
+///   function 'putSamples', while the ready processed samples can be read 
+///   from the other end of the pipeline with function 'receiveSamples'.
+/// 
+/// - The SoundTouch processing classes require certain sized 'batches' of 
+///   samples in order to process the sound. For this reason the classes buffer 
+///   incoming samples until there are enough of samples available for 
+///   processing, then they carry out the processing step and consequently
+///   make the processed samples available for outputting.
+/// 
+/// - For the above reason, the processing routines introduce a certain 
+///   'latency' between the input and output, so that the samples input to
+///   SoundTouch may not be immediately available in the output, and neither 
+///   the amount of outputtable samples may not immediately be in direct 
+///   relationship with the amount of previously input samples.
+///
+/// - The tempo/pitch/rate control parameters can be altered during processing.
+///   Please notice though that they aren't currently protected by semaphores,
+///   so in multi-thread application external semaphore protection may be
+///   required.
+///
+/// - This class utilizes classes 'TDStretch' for tempo change (without modifying
+///   pitch) and 'RateTransposer' for changing the playback rate (that is, both 
+///   tempo and pitch in the same ratio) of the sound. The third available control 
+///   'pitch' (change pitch but maintain tempo) is produced by a combination of
+///   combining the two other controls.
+///
+/// Author        : Copyright (c) Olli Parviainen
+/// Author e-mail : oparviai 'at' iki.fi
+/// SoundTouch WWW: http://www.surina.net/soundtouch
+///
+////////////////////////////////////////////////////////////////////////////////
+//
+// Last changed  : $Date: 2006/02/05 16:44:06 $
+// File revision : $Revision: 1.14 $
+//
+// $Id: SoundTouch.h,v 1.14 2006/02/05 16:44:06 Olli Exp $
+//
+////////////////////////////////////////////////////////////////////////////////
+//
+// License :
+//
+//  SoundTouch audio processing library
+//  Copyright (c) Olli Parviainen
+//
+//  This library is free software; you can redistribute it and/or
+//  modify it under the terms of the GNU Lesser General Public
+//  License as published by the Free Software Foundation; either
+//  version 2.1 of the License, or (at your option) any later version.
+//
+//  This library is distributed in the hope that it will be useful,
+//  but WITHOUT ANY WARRANTY; without even the implied warranty of
+//  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+//  Lesser General Public License for more details.
+//
+//  You should have received a copy of the GNU Lesser General Public
+//  License along with this library; if not, write to the Free Software
+//  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+//
+////////////////////////////////////////////////////////////////////////////////
 
 #ifndef SoundTouch_H
 #define SoundTouch_H
@@ -62,11 +75,14 @@
 #include "FIFOSamplePipe.h"
 #include "STTypes.h"
 
+namespace soundtouch
+{
+
 /// Soundtouch library version string
-#define SOUNDTOUCH_VERSION          "1.2.1"
+#define SOUNDTOUCH_VERSION          "1.3.1"
 
 /// SoundTouch library version id
-#define SOUNDTOUCH_VERSION_ID       010201
+#define SOUNDTOUCH_VERSION_ID       010301
 
 //
 // Available setting IDs for the 'setSetting' & 'get_setting' functions:
@@ -143,7 +159,7 @@ public:
     static const char *getVersionString();
 
     /// Get SoundTouch library version Id
-    static uint SoundTouch::getVersionId();
+    static uint getVersionId();
 
     /// Sets new rate control value. Normal rate = 1.0, smaller values
     /// represent slower rate, larger faster rates.
@@ -193,7 +209,7 @@ public:
     /// the input of the object. Notice that sample rate _has_to_ be set before
     /// calling this function, otherwise throws a runtime_error exception.
     virtual void putSamples(
-            const soundtouch::SAMPLETYPE *samples,  ///< Pointer to sample buffer.
+            const SAMPLETYPE *samples,  ///< Pointer to sample buffer.
             uint numSamples                         ///< Number of samples in buffer. Notice
                                                     ///< that in case of stereo-sound a single sample
                                                     ///< contains data for both channels.
@@ -218,6 +234,19 @@ public:
     uint getSetting(uint settingId    ///< Setting ID number, see SETTING_... defines.
                     ) const;
 
+    /// Returns number of samples currently unprocessed.
+    virtual uint numUnprocessedSamples() const;
+
+
+    /// Other handy functions that are implemented in the ancestor classes (see
+    /// classes 'FIFOProcessor' and 'FIFOSamplePipe')
+    ///
+    /// - receiveSamples() : Use this function to receive 'ready' processed samples from SoundTouch.
+    /// - numSamples()     : Get number of 'ready' samples that can be received with 
+    ///                      function 'receiveSamples()'
+    /// - isEmpty()        : Returns nonzero if there aren't any 'ready' samples.
+    /// - clear()          : Clears all samples from ready/processing buffers.
 };
 
+}
 #endif

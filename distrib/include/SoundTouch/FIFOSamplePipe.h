@@ -1,54 +1,59 @@
-/*****************************************************************************
- *
- * 'FIFOSamplePipe' : An abstract base class for classes that manipulate sound
- * samples by operating like a first-in-first-out pipe: New samples are fed
- * into one end of the pipe with the 'putSamples' function, and the processed
- * samples are received from the other end with the 'receiveSamples' function.
- *
- * 'FIFOProcessor' : A base class for classes the do signal processing with 
- * the samples while operating like a first-in-first-out pipe. When samples
- * are inputted with the 'putSamples' function, the class processes them
- * and moves the processed samples to the given 'output' pipe object, which
- * may be either another processing stage, or a fifo sample buffer object.
- *
- * Author        : Copyright (c) Olli Parviainen
- * Author e-mail : oparviai @ iki.fi
- * File created  : 13-Jan-2002
- *
- * Last changed  : $Date: 2003/12/27 10:00:51 $
- * File revision : $Revision: 1.5 $
- *
- * $Id: FIFOSamplePipe.h,v 1.5 2003/12/27 10:00:51 Olli Exp $
- *
- * License :
- * 
- *  SoundTouch sound processing library
- *  Copyright (c) Olli Parviainen
- *
- *  This library is free software; you can redistribute it and/or
- *  modify it under the terms of the GNU Lesser General Public
- *  License as published by the Free Software Foundation; either
- *  version 2.1 of the License, or (at your option) any later version.
- *
- *  This library is distributed in the hope that it will be useful,
- *  but WITHOUT ANY WARRANTY; without even the implied warranty of
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
- *  Lesser General Public License for more details.
- *
- *  You should have received a copy of the GNU Lesser General Public
- *  License along with this library; if not, write to the Free Software
- *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
- *
- *****************************************************************************/
+////////////////////////////////////////////////////////////////////////////////
+///
+/// 'FIFOSamplePipe' : An abstract base class for classes that manipulate sound
+/// samples by operating like a first-in-first-out pipe: New samples are fed
+/// into one end of the pipe with the 'putSamples' function, and the processed
+/// samples are received from the other end with the 'receiveSamples' function.
+///
+/// 'FIFOProcessor' : A base class for classes the do signal processing with 
+/// the samples while operating like a first-in-first-out pipe. When samples
+/// are input with the 'putSamples' function, the class processes them
+/// and moves the processed samples to the given 'output' pipe object, which
+/// may be either another processing stage, or a fifo sample buffer object.
+///
+/// Author        : Copyright (c) Olli Parviainen
+/// Author e-mail : oparviai 'at' iki.fi
+/// SoundTouch WWW: http://www.surina.net/soundtouch
+///
+////////////////////////////////////////////////////////////////////////////////
+//
+// Last changed  : $Date: 2006/02/05 16:44:06 $
+// File revision : $Revision: 1.8 $
+//
+// $Id: FIFOSamplePipe.h,v 1.8 2006/02/05 16:44:06 Olli Exp $
+//
+////////////////////////////////////////////////////////////////////////////////
+//
+// License :
+//
+//  SoundTouch audio processing library
+//  Copyright (c) Olli Parviainen
+//
+//  This library is free software; you can redistribute it and/or
+//  modify it under the terms of the GNU Lesser General Public
+//  License as published by the Free Software Foundation; either
+//  version 2.1 of the License, or (at your option) any later version.
+//
+//  This library is distributed in the hope that it will be useful,
+//  but WITHOUT ANY WARRANTY; without even the implied warranty of
+//  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+//  Lesser General Public License for more details.
+//
+//  You should have received a copy of the GNU Lesser General Public
+//  License along with this library; if not, write to the Free Software
+//  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+//
+////////////////////////////////////////////////////////////////////////////////
 
 #ifndef FIFOSamplePipe_H
 #define FIFOSamplePipe_H
 
 #include <assert.h>
 #include <stdlib.h>
-#include <memory.h>
 #include "STTypes.h"
-#include <stdexcept>
+
+namespace soundtouch
+{
 
 /// Abstract base class for FIFO (first-in-first-out) sample processing classes.
 class FIFOSamplePipe
@@ -59,13 +64,13 @@ public:
     /// Please be careful for not to corrupt the book-keeping!
     ///
     /// When using this function to output samples, also remember to 'remove' the
-    /// outputted samples from the buffer by calling the 
+    /// output samples from the buffer by calling the 
     /// 'receiveSamples(numSamples)' function
-    virtual soundtouch::SAMPLETYPE *ptrBegin() const = 0;
+    virtual SAMPLETYPE *ptrBegin() const = 0;
 
     /// Adds 'numSamples' pcs of samples from the 'samples' memory position to
     /// the sample buffer.
-    virtual void putSamples(const soundtouch::SAMPLETYPE *samples,  ///< Pointer to samples.
+    virtual void putSamples(const SAMPLETYPE *samples,  ///< Pointer to samples.
                             uint numSamples                         ///< Number of samples to insert.
                             ) = 0;
 
@@ -85,7 +90,7 @@ public:
     /// 'numsample' samples in the buffer, returns all that available.
     ///
     /// \return Number of samples returned.
-    virtual uint receiveSamples(soundtouch::SAMPLETYPE *output, ///< Buffer where to copy output samples.
+    virtual uint receiveSamples(SAMPLETYPE *output, ///< Buffer where to copy output samples.
                                 uint maxSamples                 ///< How many samples to receive at max.
                                 ) = 0;
 
@@ -114,7 +119,7 @@ public:
 /// so that samples that are fed into beginning of the pipe automatically go through 
 /// all the processing stages.
 ///
-/// When samples are inputted to this class, they're first processed and then put to 
+/// When samples are input to this class, they're first processed and then put to 
 /// the FIFO pipe that's defined as output of this class. This output pipe can be
 /// either other processing stage or a FIFO sample buffer.
 class FIFOProcessor :public FIFOSamplePipe
@@ -159,9 +164,9 @@ protected:
     /// Please be careful for not to corrupt the book-keeping!
     ///
     /// When using this function to output samples, also remember to 'remove' the
-    /// outputted samples from the buffer by calling the 
+    /// output samples from the buffer by calling the 
     /// 'receiveSamples(numSamples)' function
-    virtual soundtouch::SAMPLETYPE *ptrBegin() const
+    virtual SAMPLETYPE *ptrBegin() const
     {
         return output->ptrBegin();
     }
@@ -173,7 +178,7 @@ public:
     /// 'numsample' samples in the buffer, returns all that available.
     ///
     /// \return Number of samples returned.
-    virtual uint receiveSamples(soundtouch::SAMPLETYPE *outBuffer, ///< Buffer where to copy output samples.
+    virtual uint receiveSamples(SAMPLETYPE *outBuffer, ///< Buffer where to copy output samples.
                                 uint maxSamples                    ///< How many samples to receive at max.
                                 )
     {
@@ -206,5 +211,7 @@ public:
         return output->isEmpty();
     }
 };
+
+}
 
 #endif

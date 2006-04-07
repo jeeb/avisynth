@@ -1,48 +1,55 @@
-/*****************************************************************************
- *
- * A buffer class for temporarily storaging sound samples, operates as a 
- * first-in-first-out pipe.
- *
- * Samples are added to the end of the sample buffer with the 'putSamples' 
- * function, and are received from the beginning of the buffer by calling
- * the 'receiveSamples' function. The class automatically removes the 
- * outputted samples from the buffer as well as grows the storage size 
- * whenever necessary.
- *
- * Author        : Copyright (c) Olli Parviainen
- * Author e-mail : oparviai @ iki.fi
- * File created  : 13-Jan-2002
- *
- * Last changed  : $Date: 2003/12/27 10:00:51 $
- * File revision : $Revision: 1.6 $
- *
- * $Id: FIFOSampleBuffer.h,v 1.6 2003/12/27 10:00:51 Olli Exp $
- *
- * License :
- * 
- *  SoundTouch sound processing library
- *  Copyright (c) Olli Parviainen
- *
- *  This library is free software; you can redistribute it and/or
- *  modify it under the terms of the GNU Lesser General Public
- *  License as published by the Free Software Foundation; either
- *  version 2.1 of the License, or (at your option) any later version.
- *
- *  This library is distributed in the hope that it will be useful,
- *  but WITHOUT ANY WARRANTY; without even the implied warranty of
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
- *  Lesser General Public License for more details.
- *
- *  You should have received a copy of the GNU Lesser General Public
- *  License along with this library; if not, write to the Free Software
- *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
- *
- *****************************************************************************/
+////////////////////////////////////////////////////////////////////////////////
+///
+/// A buffer class for temporarily storaging sound samples, operates as a 
+/// first-in-first-out pipe.
+///
+/// Samples are added to the end of the sample buffer with the 'putSamples' 
+/// function, and are received from the beginning of the buffer by calling
+/// the 'receiveSamples' function. The class automatically removes the 
+/// output samples from the buffer as well as grows the storage size 
+/// whenever necessary.
+///
+/// Author        : Copyright (c) Olli Parviainen
+/// Author e-mail : oparviai 'at' iki.fi
+/// SoundTouch WWW: http://www.surina.net/soundtouch
+///
+////////////////////////////////////////////////////////////////////////////////
+//
+// Last changed  : $Date: 2006/02/05 16:44:06 $
+// File revision : $Revision: 1.9 $
+//
+// $Id: FIFOSampleBuffer.h,v 1.9 2006/02/05 16:44:06 Olli Exp $
+//
+////////////////////////////////////////////////////////////////////////////////
+//
+// License :
+//
+//  SoundTouch audio processing library
+//  Copyright (c) Olli Parviainen
+//
+//  This library is free software; you can redistribute it and/or
+//  modify it under the terms of the GNU Lesser General Public
+//  License as published by the Free Software Foundation; either
+//  version 2.1 of the License, or (at your option) any later version.
+//
+//  This library is distributed in the hope that it will be useful,
+//  but WITHOUT ANY WARRANTY; without even the implied warranty of
+//  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+//  Lesser General Public License for more details.
+//
+//  You should have received a copy of the GNU Lesser General Public
+//  License along with this library; if not, write to the Free Software
+//  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+//
+////////////////////////////////////////////////////////////////////////////////
 
 #ifndef FIFOSampleBuffer_H
 #define FIFOSampleBuffer_H
 
 #include "FIFOSamplePipe.h"
+
+namespace soundtouch
+{
 
 /// Sample buffer working in FIFO (first-in-first-out) principle. The class takes
 /// care of storage size adjustment and data moving during input/output operations.
@@ -53,11 +60,11 @@ class FIFOSampleBuffer : public FIFOSamplePipe
 {
 private:
     /// Sample buffer.
-    soundtouch::SAMPLETYPE *buffer;
+    SAMPLETYPE *buffer;
 
     // Raw unaligned buffer memory. 'buffer' is made aligned by pointing it to first
     // 16-byte aligned location of this buffer
-    soundtouch::SAMPLETYPE *bufferUnaligned;
+    SAMPLETYPE *bufferUnaligned;
 
     /// Sample buffer size in bytes
     uint sizeInBytes;
@@ -98,9 +105,9 @@ public:
     /// Please be careful for not to corrupt the book-keeping!
     ///
     /// When using this function to output samples, also remember to 'remove' the
-    /// outputted samples from the buffer by calling the 
+    /// output samples from the buffer by calling the 
     /// 'receiveSamples(numSamples)' function
-    virtual soundtouch::SAMPLETYPE *ptrBegin() const;
+    virtual SAMPLETYPE *ptrBegin() const;
 
     /// Returns a pointer to the end of the used part of the sample buffer (i.e. 
     /// where the new samples are to be inserted). This function may be used for 
@@ -110,7 +117,7 @@ public:
     /// When using this function as means for inserting new samples, also remember 
     /// to increase the sample count afterwards, by calling  the 
     /// 'putSamples(numSamples)' function.
-    soundtouch::SAMPLETYPE *ptrEnd(
+    SAMPLETYPE *ptrEnd(
                 uint slackCapacity   ///< How much free capacity (in samples) there _at least_ 
                                      ///< should be so that the caller can succesfully insert the 
                                      ///< desired samples to the buffer. If necessary, the function 
@@ -119,7 +126,7 @@ public:
 
     /// Adds 'numSamples' pcs of samples from the 'samples' memory position to
     /// the sample buffer.
-    virtual void putSamples(const soundtouch::SAMPLETYPE *samples,  ///< Pointer to samples.
+    virtual void putSamples(const SAMPLETYPE *samples,  ///< Pointer to samples.
                             uint numSamples                         ///< Number of samples to insert.
                             );
 
@@ -137,7 +144,7 @@ public:
     /// 'numsample' samples in the buffer, returns all that available.
     ///
     /// \return Number of samples returned.
-    virtual uint receiveSamples(soundtouch::SAMPLETYPE *output, ///< Buffer where to copy output samples.
+    virtual uint receiveSamples(SAMPLETYPE *output, ///< Buffer where to copy output samples.
                                 uint maxSamples                 ///< How many samples to receive at max.
                                 );
 
@@ -161,5 +168,7 @@ public:
     /// Clears all the samples.
     virtual void clear();
 };
+
+}
 
 #endif
