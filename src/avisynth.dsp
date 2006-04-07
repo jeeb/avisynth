@@ -129,7 +129,7 @@ BSC32=bscmake.exe
 LINK32=link.exe
 # ADD BASE LINK32 ../distrib/lib/SoundTouch.lib ../distrib/lib/pfc.lib ../distrib/lib/devil.lib ../distrib/lib/softwire.lib msacm32.lib vfw32.lib kernel32.lib advapi32.lib version.lib user32.lib gdi32.lib ole32.lib uuid.lib winmm.lib oleaut32.lib /nologo /dll /machine:I386 /nodefaultlib:"LIBC"
 # SUBTRACT BASE LINK32 /pdb:none /debug
-# ADD LINK32 ../distrib/lib/pfc.lib ../distrib/lib/devil.lib ../distrib/lib/softwire.lib msacm32.lib vfw32.lib kernel32.lib advapi32.lib version.lib user32.lib gdi32.lib ole32.lib uuid.lib winmm.lib oleaut32.lib /dll /map /debug /debugtype:both /machine:I386 /nodefaultlib:"LIBC"
+# ADD LINK32 ../distrib/lib/SoundTouch.lib ../distrib/lib/pfc.lib ../distrib/lib/devil.lib ../distrib/lib/softwire.lib msacm32.lib vfw32.lib kernel32.lib advapi32.lib version.lib user32.lib gdi32.lib ole32.lib uuid.lib winmm.lib oleaut32.lib /dll /map /debug /debugtype:both /machine:I386 /nodefaultlib:"LIBC"
 # SUBTRACT LINK32 /nologo /verbose /profile /pdb:none /incremental:yes /force
 
 !ENDIF 
@@ -780,25 +780,6 @@ SOURCE=..\distrib\AviSynth.ico
 # Begin Source File
 
 SOURCE=.\core\resource.h
-# End Source File
-# Begin Source File
-
-SOURCE=..\distrib\include\SoundTouch\SoundTouch.cpp
-
-!IF  "$(CFG)" == "avisynth - Win32 Release"
-
-# PROP Exclude_From_Build 1
-
-!ELSEIF  "$(CFG)" == "avisynth - Win32 Debug"
-
-# PROP Exclude_From_Build 1
-
-!ELSEIF  "$(CFG)" == "avisynth - Win32 RelSym"
-
-# SUBTRACT CPP /YX /Yc /Yu
-
-!ENDIF 
-
 # End Source File
 # Begin Source File
 
