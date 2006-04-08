@@ -67,7 +67,7 @@ public:
 static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env);
 
 
-AVSsoundtouch(PClip _child, double _tempo, double _rate, double _pitch, IScriptEnvironment* env)
+AVSsoundtouch(PClip _child, double _tempo, double _rate, double _pitch, const AVSValue* args, IScriptEnvironment* env)
 : GenericVideoFilter(ConvertAudio::Create(_child, SAMPLE_FLOAT, SAMPLE_FLOAT)), 
   tempo(_tempo/100.0), rate(_rate/100.0), pitch(_pitch/100.0)
 {
@@ -89,6 +89,7 @@ AVSsoundtouch(PClip _child, double _tempo, double _rate, double _pitch, IScriptE
     samplers[n]->setPitch(pitch);
     samplers[n]->setChannels(1);
     samplers[n]->setSampleRate(vi.audio_samples_per_second);
+    setSettings(samplers[n], args, env);
   }
 
   vi.num_audio_samples = vi.num_audio_samples / sample_multiplier;
@@ -99,6 +100,28 @@ AVSsoundtouch(PClip _child, double _tempo, double _rate, double _pitch, IScriptE
 
 	}
 	catch (...) { throw; }
+}
+
+static void AVSsoundtouch::setSettings(SoundTouch* sampler, const AVSValue* args, IScriptEnvironment* env)
+{
+
+  if (args[0].Defined()) sampler->setSetting(SETTING_SEQUENCE_MS,   args[0].AsInt());
+  if (args[1].Defined()) sampler->setSetting(SETTING_SEEKWINDOW_MS, args[1].AsInt());
+  if (args[2].Defined()) sampler->setSetting(SETTING_OVERLAP_MS,    args[2].AsInt());
+
+  if (args[3].Defined()) sampler->setSetting(SETTING_USE_QUICKSEEK, args[3].AsBool() ? 1 : 0);
+
+  if (args[4].Defined()) {
+	int i = args[4].AsInt();
+	if (i<0 || i%4 != 0)
+	  env->ThrowError("TimeStretch: AntiAliaser filter length must divisible by 4.");
+
+	if (i)
+	  sampler->setSetting(SETTING_AA_FILTER_LENGTH, i);
+	else
+	  sampler->setSetting(SETTING_USE_AA_FILTER,    0);
+  }
+  
 }
 
 void __stdcall AVSsoundtouch::GetAudio(void* buf, __int64 start, __int64 count, IScriptEnvironment* env)
@@ -205,7 +228,7 @@ private:
   float pitch;
 
 public:
-AVSStereoSoundTouch(PClip _child, double _tempo, double _rate, double _pitch, IScriptEnvironment* env)
+AVSStereoSoundTouch(PClip _child, double _tempo, double _rate, double _pitch, const AVSValue* args, IScriptEnvironment* env)
 : GenericVideoFilter(ConvertAudio::Create(_child, SAMPLE_FLOAT, SAMPLE_FLOAT)), 
   tempo(_tempo/100.0), rate(_rate/100.0), pitch(_pitch/100.0)
 {
@@ -223,6 +246,7 @@ AVSStereoSoundTouch(PClip _child, double _tempo, double _rate, double _pitch, IS
   sampler->setPitch(pitch);
   sampler->setChannels(2);
   sampler->setSampleRate(vi.audio_samples_per_second);
+  AVSsoundtouch::setSettings(sampler, args, env);
 
   vi.num_audio_samples = vi.num_audio_samples / sample_multiplier;
 
@@ -301,12 +325,14 @@ AVSValue __cdecl AVSsoundtouch::Create(AVSValue args, void*, IScriptEnvironment*
       args[1].AsFloat(100.0), 
       args[2].AsFloat(100.0), 
       args[3].AsFloat(100.0), 
+	  &args[4],
       env);
   }
   return new AVSsoundtouch(args[0].AsClip(), 
     args[1].AsFloat(100.0), 
     args[2].AsFloat(100.0), 
     args[3].AsFloat(100.0), 
+	&args[4],
     env);
 
 	}
@@ -315,8 +341,6 @@ AVSValue __cdecl AVSsoundtouch::Create(AVSValue args, void*, IScriptEnvironment*
 
 
 AVSFunction Soundtouch_filters[] = {
-  { "TimeStretch", "c[tempo]f[rate]f[pitch]f", AVSsoundtouch::Create },
+  { "TimeStretch", "c[tempo]f[rate]f[pitch]f[sequence]i[seekwindow]i[overlap]i[quickseek]b[aa]i", AVSsoundtouch::Create },
   { 0 }
 };
-
-
