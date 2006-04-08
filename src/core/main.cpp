@@ -489,14 +489,21 @@ bool CAVIFileSynth::DelayInit() {
 
           return_val.AsClip()->SetCacheHints(CACHE_ALL, 999); // Give the top level cache a big head start!!
 
-#define OPT_SFLOAT_OUTPUT // Allow WAVE_FORMAT_IEEE_FLOAT audio output
-#ifndef OPT_SFLOAT_OUTPUT
-//        Ensure samples are int     
-          filter_graph = ConvertAudio::Create(return_val.AsClip(), SAMPLE_INT8|SAMPLE_INT16|SAMPLE_INT24|SAMPLE_INT32, SAMPLE_INT16);
-#else
-		  filter_graph = return_val.AsClip();
-#endif
-		}
+          // Allow WAVE_FORMAT_IEEE_FLOAT audio output
+          bool AllowFloatAudio = false;
+
+          try {
+            AVSValue v = env->GetVar("OPT_AllowFloatAudio");
+            AllowFloatAudio = v.IsBool() ? v.AsBool() : false;
+          }
+          catch (IScriptEnvironment::NotFound) { }
+
+          if (AllowFloatAudio) 
+            filter_graph = return_val.AsClip();
+          else
+            // Ensure samples are int     
+            filter_graph = ConvertAudio::Create(return_val.AsClip(), SAMPLE_INT8|SAMPLE_INT16|SAMPLE_INT24|SAMPLE_INT32, SAMPLE_INT16);
+        }
         else
           throw AvisynthError("The script's return value was not a video clip");
         if (!filter_graph)
@@ -531,7 +538,7 @@ bool CAVIFileSynth::DelayInit() {
 #ifndef _DEBUG
     }
     catch (...) {
-	    _RPT0(1,"DelayInit() caught general exception!\n");
+      _RPT0(1,"DelayInit() caught general exception!\n");
       _clear87();
       __asm {emms};
       _control87( fp_state, 0xffffffff );
