@@ -1,7 +1,7 @@
 !packhdr tempfile.exe "upx --best --q tempfile.exe"
 
 !DEFINE VERSION 2.5.7
-!DEFINE DATE 260404
+!DEFINE DATE 080404
 
 SetCompressor /solid lzma
 
@@ -286,6 +286,7 @@ SectionEnd
 Section /o "Add AviSynth Script to New Items menu" Associate3
 ; Blank new file
   WriteRegStr HKCR ".avs\ShellNew" "NullFile" ""
+  WriteRegStr HKCR "avsfile\ShellNew" "NullFile" ""
 
 ; Template file
 ;  SetOutPath $WINDIR\ShellNew or $TEMPLATES
