@@ -27,36 +27,36 @@
 ConditionalReader::ConditionalReader(PClip _child, const char* filename, const char* _varname, bool _show, IScriptEnvironment* _env) :
   GenericVideoFilter(_child), variableName(_varname), show(_show), env(_env)
 {
-	FILE * f;
-	char *line;
-	int lines;
+  FILE * f;
+  char *line;
+  int lines;
 
   if ((f = fopen(filename, "rb")) == NULL)
-		env->ThrowError("ConditionalReader: Could not open file.");
+    env->ThrowError("ConditionalReader: Could not open file.");
 
   lines = 0;
   mode = MODE_UNKNOWN;
 
-	while ((line = readline(f)) != NULL) {
-		char *ptr;
-		int fields;
+  while ((line = readline(f)) != NULL) {
+    char *ptr;
+    int fields;
 
-		lines++;
+    lines++;
 
-		/* We skip spaces */
-		ptr = skipspaces(line);
+    /* We skip spaces */
+    ptr = skipspaces(line);
 
     /* Skip coment lines or empty lines */
-		if(iscomment(ptr) || *ptr == '\0') {
-			free(line);
-			continue;
-		}
+    if(iscomment(ptr) || *ptr == '\0') {
+      free(line);
+      continue;
+    }
 
     if (mode == MODE_UNKNOWN) {
       // We have not recieved a mode - We expect type.
       char* keyword [1024];
       char* type [1024];
-      fields = sscanf(ptr,"%1024s %1024s", keyword, type);
+      fields = sscanf(ptr,"%1023s %1023s", keyword, type);
       if (fields) {
         if (!lstrcmpi((const char*)keyword, "type")) {
           if (!lstrcmpi((const char*)type, "int")) {
@@ -78,22 +78,22 @@ ConditionalReader::ConditionalReader(PClip _child, const char* filename, const c
 
       char* keyword [1024];
       char* type [1024];
-      fields = sscanf(ptr,"%1024s %1024s", keyword, type);
+      fields = sscanf(ptr,"%1023s %1023s", keyword, type);
 
       if (!lstrcmpi((const char*)keyword, "default")) {
         AVSValue def = ConvertType((const char*)type, lines);
         SetRange(0, vi.num_frames-1, def);
-			  free(line);
+        free(line);
         continue;
       } // end if "default"
 
       if (ptr[0] == 'R' || ptr[0] == 'r') {  // Range
         ptr++;
-		    ptr = skipspaces(ptr);
+        ptr = skipspaces(ptr);
         int start;
         int stop;
         char* value [64];
-        fields = sscanf(ptr, "%d %d %64s", &start, &stop, value);
+        fields = sscanf(ptr, "%d %d %63s", &start, &stop, value);
 
         if (fields != 3) 
           ThrowLine("ConditionalReader: Could not read range in line %d", lines);
@@ -107,12 +107,12 @@ ConditionalReader::ConditionalReader(PClip _child, const char* filename, const c
           ThrowLine("ConditionalReader: Cannot interpolate booleans in line %d", lines);
 
         ptr++;
-		    ptr = skipspaces(ptr);
+        ptr = skipspaces(ptr);
         int start;
         int stop;
         char* start_value [64];
         char* stop_value [64];
-        fields = sscanf(ptr, "%d %d %64s %64s", &start, &stop, start_value, stop_value);
+        fields = sscanf(ptr, "%d %d %63s %63s", &start, &stop, start_value, stop_value);
 
         if (fields != 4) 
           ThrowLine("ConditionalReader: Could not read interpolation range in line %d", lines);
@@ -123,9 +123,9 @@ ConditionalReader::ConditionalReader(PClip _child, const char* filename, const c
         AVSValue set_stop = ConvertType((const char*)stop_value, lines);
 
         int range = stop-start;
+		float diff = set_stop.AsFloat() - set_start.AsFloat();
         for (int i = 0; i<=range; i++) {
           float where = (float)(i)/(float)range;
-          float diff = set_stop.AsFloat() - set_start.AsFloat();
           float n = where * diff + set_start.AsFloat();
           SetFrame(i+start, (mode == MODE_FLOAT)
                   ? AVSValue(n)
@@ -134,7 +134,7 @@ ConditionalReader::ConditionalReader(PClip _child, const char* filename, const c
       } else {
         char* value [64];
         int cframe;
-        fields = sscanf(ptr, "%d %64s", &cframe, value);
+        fields = sscanf(ptr, "%d %63s", &cframe, value);
         if (fields == 2) {
           AVSValue set = ConvertType((const char*)value, lines);
           SetFrame(cframe, set);
@@ -144,11 +144,11 @@ ConditionalReader::ConditionalReader(PClip _child, const char* filename, const c
       }
     
     } // End we have defined type
-  	free(line);
+    free(line);
   }// end while still some file left to read.
 
-	/* We are done with the file */
-	fclose(f);
+  /* We are done with the file */
+  fclose(f);
 
   if (mode == MODE_UNKNOWN)
     env->ThrowError("ConditionalReader: Mode was not defined!");
@@ -182,11 +182,24 @@ AVSValue ConditionalReader::ConvertType(const char* content, int line)
       return AVSValue(fval);
 
     case MODE_BOOL:
-      char* bval [6];
-      fields = sscanf(content, "%6s", bval);
+      char* bval [8];
+      fields = sscanf(content, "%7s", bval);
       if (!lstrcmpi((const char*)bval, "true")) {
         return AVSValue(true);
-      } else if (!lstrcmpi((const char*)bval, "false")) {
+      }
+      else if (!lstrcmpi((const char*)bval, "t")) {
+        return AVSValue(true);
+      }
+      else if (!lstrcmpi((const char*)bval, "yes")) {
+        return AVSValue(true);
+      }
+      else if (!lstrcmpi((const char*)bval, "false")) {
+        return AVSValue(false);
+      }
+      else if (!lstrcmpi((const char*)bval, "f")) {
+        return AVSValue(false);
+      }
+      else if (!lstrcmpi((const char*)bval, "no")) {
         return AVSValue(false);
       } 
       ThrowLine("ConditionalReader: Boolean value was not true or false in line %d", line);
@@ -283,9 +296,15 @@ ConditionalReader::~ConditionalReader(void)
 
 
 void ConditionalReader::ThrowLine(const char* err, int line) {
-  char* error = (char*)malloc(strlen(err)+16);
+  char* error = new char[strlen(err)+16];
   sprintf(error, err, line);
-  env->ThrowError(error);
+  try {
+    env->ThrowError(error);
+  }
+  catch (...) {
+    delete[] error;
+    throw;
+  }
 }
 
 
