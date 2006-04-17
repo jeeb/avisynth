@@ -185,6 +185,18 @@ private:
   int dst_bps;
 };
 
+class KillVideo : public GenericVideoFilter
+/**
+  * Removes audio from clip
+ **/
+{
+public:
+  KillVideo(PClip _clip);
+  PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env) { return NULL; };
+  static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment*);
+};
+
+
 class KillAudio : public GenericVideoFilter
 /**
   * Removes audio from clip

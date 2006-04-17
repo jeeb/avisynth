@@ -58,6 +58,7 @@ AVSFunction Audio_filters[] = {
                                 { "GetRightChannel", "c", GetChannel::Create_right },
                                 { "GetChannel", "ci+", GetChannel::Create_n },
                                 { "GetChannels", "ci+", GetChannel::Create_n },     // Alias to ease use!
+                                { "KillVideo", "c", KillVideo::Create },
                                 { "KillAudio", "c", KillAudio::Create },
                                 { "ConvertAudioTo16bit", "c", ConvertAudio::Create_16bit },   // in convertaudio.cpp
                                 { "ConvertAudioTo8bit", "c", ConvertAudio::Create_8bit },
@@ -528,6 +529,21 @@ AVSValue __cdecl GetChannel::Create_n(AVSValue args, void*, IScriptEnvironment* 
   }
   return Create_n(args[0].AsClip(), child_array, num_args);
 }
+
+/******************************
+ *******   Kill Video  ********
+ ******************************/
+
+KillVideo::KillVideo(PClip _clip)
+    : GenericVideoFilter(_clip) {
+  vi.width = 0;
+  vi.num_frames = 0;
+}
+
+AVSValue __cdecl KillVideo::Create(AVSValue args, void*, IScriptEnvironment*) {
+  return new KillVideo(args[0].AsClip());
+}
+
 
 /******************************
  *******   Kill Audio  ********
