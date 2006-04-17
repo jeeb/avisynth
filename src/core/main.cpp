@@ -48,6 +48,9 @@
 #include "../audio/audio.h"
 #include <float.h>
 
+const char _AVS_VERSTR[]    = AVS_VERSTR;
+const char _AVS_COPYRIGHT[] = AVS_VERSTR AVS_COPYRIGHT;
+
 static long gRefCnt=0;
 
 
@@ -172,7 +175,7 @@ BOOL APIENTRY DllMain(HANDLE hModule, ULONG ulReason, LPVOID lpReserved) {
 	switch(ulReason) {
 	case DLL_PROCESS_ATTACH:
 		hrfromcoinit = CoInitialize(NULL);
-		_RPT1(0,"Process attach: gRefCnt = %ld\n", gRefCnt);
+		_RPT2(0,"Process attach: hModule = 0x%08x, gRefCnt = %ld\n", hModule, gRefCnt);
 		break;
 
 	case DLL_PROCESS_DETACH:
@@ -180,7 +183,7 @@ BOOL APIENTRY DllMain(HANDLE hModule, ULONG ulReason, LPVOID lpReserved) {
 //		if (gRefCnt) Somehow prang this release!
 
 		if(SUCCEEDED(hrfromcoinit)) CoUninitialize();
-		_RPT1(0,"Process detach: gRefCnt = %ld\n", gRefCnt);
+		_RPT2(0,"Process detach: hModule = 0x%08x, gRefCnt = %ld\n", hModule, gRefCnt);
 		break;
 	}
 
@@ -399,6 +402,7 @@ STDMETHODIMP_(ULONG) CAVIStreamSynth::Release() {
 
 STDMETHODIMP CAVIFileSynth::CreateStream(PAVISTREAM *ppStream, AVISTREAMINFOW *psi) {
 	_RPT1(0,"%p->CAVIFileSynth::CreateStream()\n", this);
+	*ppStream = NULL;
 	return S_OK;//AVIERR_READONLY;
 }
 
@@ -564,28 +568,37 @@ STDMETHODIMP CAVIFileSynth::Info(AVIFILEINFOW *pfi, LONG lSize) {
 
 //	_RPT0(0,"CAVIFileSynth::Info()\n");
 
+	if (!pfi) return E_POINTER;
+
 	if (!DelayInit()) return E_FAIL;
 
-	pfi->dwMaxBytesPerSec		= 0;
-	pfi->dwFlags				= AVIFILEINFO_HASINDEX | AVIFILEINFO_ISINTERLEAVED;
-	pfi->dwCaps					= AVIFILECAPS_CANREAD | AVIFILECAPS_ALLKEYFRAMES | AVIFILECAPS_NOCOMPRESSION;
+	AVIFILEINFOW afi;
+
+    memset(&afi, 0, sizeof(afi));
+
+	afi.dwMaxBytesPerSec		= 0;
+	afi.dwFlags				= AVIFILEINFO_HASINDEX | AVIFILEINFO_ISINTERLEAVED;
+	afi.dwCaps					= AVIFILECAPS_CANREAD | AVIFILECAPS_ALLKEYFRAMES | AVIFILECAPS_NOCOMPRESSION;
 	
 	int nrStreams=0;
 	if (vi->HasVideo()==true)	nrStreams=1;
 	if (vi->HasAudio()==true)	nrStreams++;
 
-	pfi->dwStreams				= nrStreams;
-	pfi->dwSuggestedBufferSize	= 0;
-	pfi->dwWidth				= vi->width;
-	pfi->dwHeight				= vi->height;
-	pfi->dwEditCount			= 0;
+	afi.dwStreams				= nrStreams;
+	afi.dwSuggestedBufferSize	= 0;
+	afi.dwWidth				= vi->width;
+	afi.dwHeight				= vi->height;
+	afi.dwEditCount			= 0;
 
-    pfi->dwRate					= vi->fps_numerator;
-	pfi->dwScale				= vi->fps_denominator;
-	pfi->dwLength				= vi->num_frames;
+    afi.dwRate					= vi->fps_numerator;
+	afi.dwScale				= vi->fps_denominator;
+	afi.dwLength				= vi->num_frames;
 
-  wcscpy(pfi->szFileType, L"Avisynth");
+	wcscpy(afi.szFileType, L"Avisynth");
 
+
+    memset(pfi, 0, lSize);
+    memcpy(pfi, &afi, min(size_t(lSize), sizeof(afi)));
 	return S_OK;
 }
 
@@ -633,7 +646,7 @@ STDMETHODIMP CAVIFileSynth::GetStream(PAVISTREAM *ppStream, DWORD fccType, LONG 
 	} else
 		return AVIERR_NODATA;
 
-	return 0;
+	return S_OK;
 }
 
 
@@ -715,6 +728,8 @@ CAVIStreamSynth::~CAVIStreamSynth() {
 STDMETHODIMP_(LONG) CAVIStreamSynth::Info(AVISTREAMINFOW *psi, LONG lSize) {
 //	_RPT3(0,"%p->CAVIStreamSynth::Info(%p, %ld)\n", this, psi, lSize);
 
+	if (!psi) return E_POINTER;
+
 	AVISTREAMINFOW asi;
 
     const VideoInfo* const vi = parent->vi;
@@ -755,7 +770,7 @@ STDMETHODIMP_(LONG) CAVIStreamSynth::Info(AVISTREAMINFOW *psi, LONG lSize) {
 
     memset(psi, 0, lSize);
     memcpy(psi, &asi, min(size_t(lSize), sizeof(asi)));
-	return 0;
+	return S_OK;
 }
 
 STDMETHODIMP_(LONG) CAVIStreamSynth::FindSample(LONG lPos, LONG lFlags) {

@@ -38,7 +38,9 @@
 
 #define AVS_VERSION 2.57
 #define AVS_VERSTR "AviSynth 2.57, build:"__DATE__" ["__TIME__"]"
+#define AVS_COPYRIGHT "\n\xA9 2000-2006 Ben Rudiak-Gould, et al.\nhttp://www.avisynth.org"
 
+extern const char _AVS_VERSTR[], _AVS_COPYRIGHT[];
 
 // env->ManageCache() Non user keys definition
 // Define user accessible keys in avisynth.h
