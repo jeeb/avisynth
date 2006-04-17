@@ -38,9 +38,7 @@
 
 #include "avisynth.h"
 #include <streams.h>
-#ifdef _DEBUG
-# include <stdio.h>
-#endif
+#include <stdio.h>
 
 // For some reason KSDATAFORMAT_SUBTYPE_IEEE_FLOAT and KSDATAFORMAT_SUBTYPE_PCM doesn't work - we construct the GUID manually!
 const GUID SUBTYPE_IEEE_AVSPCM  = {0x00000001, 0x0000, 0x0010, {0x80, 0x00, 0x00, 0xaa, 0x00, 0x38, 0x9b, 0x71}};
@@ -65,15 +63,35 @@ const GUID SUBTYPE_IEEE_AVSFLOAT  = {0x00000003, 0x0000, 0x0010, {0x80, 0x00, 0x
 #include <errors.h>
 
 
+// Ahhgg we don't want all of vfw.h just for this
+#define WAVE_FORMAT_IEEE_FLOAT 0x0003
+
+
 class GetSample;
+
+
+// Log utility class
+struct LOG {
+  FILE* file;
+  int mask;
+  int count;
+
+  LOG() : file(NULL), mask(0), count(0) { };
+  void bump() { count += 1; };
+  void close(const char* s);
+};
 
 
 class GetSampleEnumMediaTypes : public IEnumMediaTypes {
   long refcnt;
   GetSample* const parent;
   unsigned pos, count;
+
+  LOG* log;
+
 public:
   GetSampleEnumMediaTypes(GetSample* _parent, unsigned _count, unsigned _pos=0);
+  ~GetSampleEnumMediaTypes();
 
 // IUnknown::
   
@@ -110,8 +128,12 @@ class GetSampleEnumPins : public IEnumPins {
   long refcnt;
   GetSample* const parent;
   int pos;
+  
+  LOG* log;
+
 public:
   GetSampleEnumPins(GetSample* _parent, int _pos=0);
+  ~GetSampleEnumPins();
 
 // IUnknown::
   
@@ -172,16 +194,16 @@ class GetSample : public IBaseFilter, public IPin, public IMemInputPin {
 
 public:
   enum {
-  	mediaNONE   = 0,
-  	mediaYUV9   = 1<<0, // not implemented
-  	mediaYV12   = 1<<1,
-  	mediaYUY2   = 1<<2,
-  	mediaARGB   = 1<<3,
-  	mediaRGB32  = 1<<4,
-  	mediaRGB24  = 1<<5,
-  	mediaRGB    = mediaARGB | mediaRGB32 | mediaRGB24,
-  	mediaYUV    = mediaYUV9 | mediaYV12 | mediaYUY2,
-  	mediaAUTO   = mediaRGB | mediaYUV
+    mediaNONE   = 0,
+    mediaYUV9   = 1<<0, // not implemented
+    mediaYV12   = 1<<1,
+    mediaYUY2   = 1<<2,
+    mediaARGB   = 1<<3,
+    mediaRGB32  = 1<<4,
+    mediaRGB24  = 1<<5,
+    mediaRGB    = mediaARGB | mediaRGB32 | mediaRGB24,
+    mediaYUV    = mediaYUV9 | mediaYV12 | mediaYUY2,
+    mediaAUTO   = mediaRGB | mediaYUV
   };
   
   int avg_time_per_frame;
@@ -189,7 +211,9 @@ public:
   int a_sample_bytes;
   BYTE* av_buffer;         // Killed on StopGraph
 
-  GetSample(bool _load_audio, bool _load_video, unsigned _media);
+  LOG* log;
+
+  GetSample(bool _load_audio, bool _load_video, unsigned _media, LOG* _log);
   ~GetSample();
 
   // These are utility functions for use by DirectShowSource.  Note that
@@ -298,10 +322,12 @@ class DirectShowSource : public IClip {
   const bool TrapTimeouts;
   const DWORD WaitTimeout;
 
+  LOG* log;
+
 public:
 
   DirectShowSource(const char* filename, int _avg_time_per_frame, int _seekmode, bool _enable_audio, bool _enable_video,
-                   bool _convert_fps, unsigned _media, int _timeout, IScriptEnvironment* env);
+                   bool _convert_fps, unsigned _media, int _timeout, int _frames, LOG* _log, IScriptEnvironment* env);
   ~DirectShowSource();
   const VideoInfo& __stdcall GetVideoInfo() { return vi; }
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
