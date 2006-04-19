@@ -71,14 +71,17 @@ class GetSample;
 
 
 // Log utility class
-struct LOG {
-  FILE* file;
-  int mask;
+class LOG {
   int count;
 
-  LOG() : file(NULL), mask(0), count(0) { };
-  void bump() { count += 1; };
-  void close(const char* s);
+public:
+  FILE* file;
+  const int mask;
+
+  LOG(const char* fn, int _mask, IScriptEnvironment* env);
+  ~LOG();
+  void AddRef() { count += 1; };
+  void DelRef(const char* s);
 };
 
 

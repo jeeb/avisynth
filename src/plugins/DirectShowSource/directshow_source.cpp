@@ -40,6 +40,10 @@
  *          Logging Utility         *
  ************************************/
 
+/* WARNING - For some stupid reason the compile chokes if I put ()'s around f in the macros
+   so that f & log->mask cannot be subverted by the caller. Therefore the brackets have to 
+   go in the calls to the macros. DAMN!!!!! */
+
 // Based on M$ _RPT<n> macros
 //
 // We print a timestamp, the objects address, the message
@@ -96,11 +100,19 @@ char* Tick() {
   return buf;
 }
 
-void LOG::close(const char* s) {
+LOG::LOG(const char* fn, int _mask, IScriptEnvironment* env) : mask(_mask), count(0) {
+  if (!(file = fopen(fn, "a")))
+	env->ThrowError("DirectShowSource: Not able to open log file, '%s' for appending.", fn);
+}
+
+LOG::~LOG() {
+  fclose(file);
+}
+
+void LOG::DelRef(const char* s) {
   fprintf(file, "%s fff 0x00000000 Close %s log %d.\n", Tick(), s, count);
 
   if (!(--count)) {
-    fclose(file);
     delete this;
   }
 };
@@ -139,7 +151,7 @@ GetSample::GetSample(bool _load_audio, bool _load_video, unsigned _media, LOG* _
   : load_audio(_load_audio), load_video(_load_video), media(_media),
     streamName(_load_audio ? "audio" : "video"), log(_log) {
 
-	log->bump();
+	if(log) log->AddRef();
 
     dssRPT1(dssNEW, "New GetSample (%s).\n", streamName);
 
@@ -191,7 +203,7 @@ GetSample::GetSample(bool _load_audio, bool _load_video, unsigned _media, LOG* _
     for (unsigned i=0; i<no_my_media_types; i++)
       delete my_media_types[i];
 
-    if (log) log->close(streamName);
+    if (log) log->DelRef(streamName);
   }
 
 
@@ -302,7 +314,7 @@ GetSample::GetSample(bool _load_audio, bool _load_video, unsigned _media, LOG* _
       return hr;
     }
     catch (...) {
-      dssRPT1(dssERROR|dssPROC, "StartGraph(%s) Unknown Exception!\n", streamName);
+      dssRPT1((dssERROR|dssPROC), "StartGraph(%s) Unknown Exception!\n", streamName);
       return E_FAIL;
     }
   }
@@ -379,7 +391,7 @@ SeekExit:
       ms->Release();
     }
     catch (...) {
-      dssRPT0(dssERROR|dssPROC, "SeekTo() Unknown Exception!\n");
+      dssRPT0((dssERROR|dssPROC), "SeekTo() Unknown Exception!\n");
       if (ms) ms->Release();
       return E_FAIL;
     }
@@ -880,7 +892,7 @@ SeekExit:
   }
 
   HRESULT __stdcall GetSample::EndOfStream() {
-    dssRPT0(dssSAMP|dssCMD, "GetSample::EndOfStream()\n");
+    dssRPT0((dssSAMP|dssCMD), "GetSample::EndOfStream()\n");
     end_of_stream = true;
     if (filter_graph) {
       IMediaEventSink* mes = NULL;
@@ -891,7 +903,7 @@ SeekExit:
         }
       }
       catch (...) {
-        dssRPT0(dssERROR|dssCMD, "GetSample::EndOfStream() Unknown Exception!\n");
+        dssRPT0((dssERROR|dssCMD), "GetSample::EndOfStream() Unknown Exception!\n");
         if (mes) mes->Release();
       }
     }
@@ -1374,7 +1386,7 @@ DirectShowSource::DirectShowSource(const char* filename, int _avg_time_per_frame
       if (frame_units)
         fc_failed = (FAILED(ms->GetDuration(&frame_count)) || frame_count == 0);
 
-      dssRPT2(dssNEG|dssCALL, "New Video: duration %I64d, frame_count %I64d.\n", duration, frame_count);
+      dssRPT2((dssNEG|dssCALL), "New Video: duration %I64d, frame_count %I64d.\n", duration, frame_count);
 
       if (convert_fps || fc_failed) frame_units = false;
 
@@ -1454,7 +1466,7 @@ DirectShowSource::DirectShowSource(const char* filename, int _avg_time_per_frame
         }
       }
 
-      dssRPT1(dssNEG|dssCALL, "New Audio: audio_dur %I64dx100ns.\n", audio_dur);
+      dssRPT1((dssNEG|dssCALL), "New Audio: audio_dur %I64dx100ns.\n", audio_dur);
 
       vi.num_audio_samples = (audio_dur * vi.audio_samples_per_second + 5000000) / 10000000;
     }
@@ -1803,13 +1815,11 @@ AVSValue __cdecl Create_DirectShowSource(AVSValue args, void*, IScriptEnvironmen
   }
   const int _frames = args[9].AsInt(0);
 
-  LOG* log=new LOG();
-  if (!log) env->ThrowError("DirectShowSource: No memory.");
+  LOG* log = NULL;
 
   if (args[10].Defined()) {
-    if (!(log->file = fopen(args[10].AsString(), "a")))
-      env->ThrowError("DirectShowSource: Not able to open log file, '%s' for appending.", args[10].AsString());
-    log->mask = args[11].AsInt(dssNEG | dssSAMP | dssERROR);
+	log = new LOG(args[10].AsString(), args[11].AsInt(dssNEG | dssSAMP | dssERROR), env);
+	if (!log) env->ThrowError("DirectShowSource: No memory for Log.");
   }
 
   if (!(audio && video)) { // Hey - simple!!
@@ -1824,8 +1834,8 @@ AVSValue __cdecl Create_DirectShowSource(AVSValue args, void*, IScriptEnvironmen
 
   int fnlen = strlen(filename);
   if ((fnlen >= 4) && !strcmpi(filename+fnlen-4,".grf")) {
-	log->bump();
-    log->close("Create_DirectShowSource");
+	log->AddRef();
+    log->DelRef("Create_DirectShowSource");
     env->ThrowError("DirectShowSource: Only 1 stream supported for .GRF files, one of Audio or Video must be disabled.");
   }
 
