@@ -1832,18 +1832,18 @@ AVSValue __cdecl Create_DirectShowSource(AVSValue args, void*, IScriptEnvironmen
     }
   }
 
-  int fnlen = strlen(filename);
-  if ((fnlen >= 4) && !strcmpi(filename+fnlen-4,".grf")) {
-	log->AddRef();
-    log->DelRef("Create_DirectShowSource");
-    env->ThrowError("DirectShowSource: Only 1 stream supported for .GRF files, one of Audio or Video must be disabled.");
-  }
+  PClip DS_audio;
+  PClip DS_video;
 
-	PClip DS_audio;
-	PClip DS_video;
+  bool audio_success = true;
+  bool video_success = true;
 
-	bool audio_success = true;
-	bool video_success = true;
+  if (log) log->AddRef();
+  try {
+    int fnlen = strlen(filename);
+    if ((fnlen >= 4) && !strcmpi(filename+fnlen-4,".grf")) {
+      env->ThrowError("DirectShowSource: Only 1 stream supported for .GRF files, one of Audio or Video must be disabled.");
+    }
 
 	const char *a_e_msg;
 	const char *v_e_msg;
@@ -1868,34 +1868,39 @@ AVSValue __cdecl Create_DirectShowSource(AVSValue args, void*, IScriptEnvironmen
 	  video_success = false;
 	}
 
+
 	if (!(audio_success || video_success)) {
 	  env->ThrowError("DirectShowSource: Could not open as video or audio.\r\n\r\n"
 										"Video returned:  \"%s\"\r\n\r\n"
 										"Audio returned:  \"%s\"\r\n", v_e_msg, a_e_msg);
 	}
-
-	if (!audio_success)
-	  return DS_video;
-
-	if (!video_success)
-	  return DS_audio;
-
-	AVSValue inv_args[2] = { DS_video, DS_audio }; 
-	PClip ds_all =  env->Invoke("AudioDub",AVSValue(inv_args,2)).AsClip();
-
-	return ds_all;
   }
+  catch (...) {
+    if (log) log->DelRef("Create_DirectShowSource Cleanup Handler");
+    throw;
+  }
+  if (log) log->DelRef("Create_DirectShowSource");
+
+  if (!audio_success)
+    return DS_video;
+
+  if (!video_success)
+    return DS_audio;
+
+  AVSValue inv_args[2] = { DS_video, DS_audio }; 
+  PClip ds_all =  env->Invoke("AudioDub",AVSValue(inv_args,2)).AsClip();
+
+  return ds_all;
+}
 
 
-
-  extern "C" __declspec(dllexport) const char* __stdcall AvisynthPluginInit2(IScriptEnvironment* env)
-  {
-    env->AddFunction("DirectShowSource",
+extern "C" __declspec(dllexport) const char* __stdcall AvisynthPluginInit2(IScriptEnvironment* env)
+{
+  env->AddFunction("DirectShowSource",
 // args   0      1      2       3       4            5          6
-         "s+[fps]f[seek]b[audio]b[video]b[convertfps]b[seekzero]b"
+       "s+[fps]f[seek]b[audio]b[video]b[convertfps]b[seekzero]b"
 //                 7            8            9        10        11
-         "[timeout]i[pixel_type]s[framecount]i[logfile]s[logmask]i",
-         Create_DirectShowSource, 0);
-    return "DirectShowSource";
-  }
-
+       "[timeout]i[pixel_type]s[framecount]i[logfile]s[logmask]i",
+       Create_DirectShowSource, 0);
+  return "DirectShowSource";
+}
