@@ -48,6 +48,48 @@
 #include "../audio/audio.h"
 #include <float.h>
 
+
+#ifndef _DEBUG
+// Release mode logging
+#define OPT_RELS_LOGGING
+#ifdef OPT_RELS_LOGGING
+
+#undef _RPT0
+#undef _RPT1
+#undef _RPT2
+#undef _RPT3
+#undef _RPT4
+
+#define _RPT0(rptno, msg)                     ReportMe(msg)                         
+#define _RPT1(rptno, msg, a1)                 ReportMe(msg, a1)                  
+#define _RPT2(rptno, msg, a1, a2)             ReportMe(msg, a1, a2)            
+#define _RPT3(rptno, msg, a1, a2, a3)         ReportMe(msg, a1, a2, a3)      
+#define _RPT4(rptno, msg, a1, a2, a3, a4)     ReportMe(msg, a1, a2, a3, a4)
+#define _RPT5(rptno, msg, a1, a2, a3, a4, a5) ReportMe(msg, a1, a2, a3, a4, a5)
+
+void ReportMe(const char * msg, ...) {
+  static char buf[256] = "";
+  va_list args;
+  int l = strlen(buf);
+
+  va_start(args, msg);
+  l = _vsnprintf(buf+l, sizeof(buf)-1-l, msg, args);
+  buf[sizeof(buf)-1] = 0;
+  va_end(args);
+
+  if (l == -1 || strchr(buf, '\n')) {
+    OutputDebugString(buf);
+    buf[0] = 0;
+  }
+}
+
+#else
+#define _RPT5(rptno, msg, a1, a2, a3, a4, a5)
+#endif
+#else
+#define _RPT5(rptno, msg, a1, a2, a3, a4, a5) _RPT4(msg, a1, a2, a3, a4)
+#endif
+
 const char _AVS_VERSTR[]    = AVS_VERSTR;
 const char _AVS_COPYRIGHT[] = AVS_VERSTR AVS_COPYRIGHT;
 
@@ -137,12 +179,14 @@ public:
 
 class CAVIStreamSynth;
 
-class CAVIStreamSynth: public IAVIStream {
+class CAVIStreamSynth: public IAVIStream, public IAVIStreaming {
 private:
 	long m_refs;
 
 	CAVIFileSynth *parent;
 	BOOL fAudio;
+    
+    char *sName;
 
 public:
 
@@ -170,6 +214,13 @@ public:
 		LONG FAR *plBytesWritten);
 	STDMETHODIMP WriteData(DWORD fcc, LPVOID lpBuffer, LONG cbBuffer);
 	STDMETHODIMP SetInfo(AVISTREAMINFOW *psi, LONG lSize);
+
+	//////////// IAVIStreaming
+
+	STDMETHODIMP Begin(LONG lStart, LONG lEnd, LONG lRate);
+	STDMETHODIMP End();
+
+	//////////// internal
 
 	void ReadHelper(void* lpBuffer, int lStart, int lSamples, unsigned &code);
 	void ReadFrame(void* lpBuffer, int n);
@@ -202,17 +253,16 @@ BOOL APIENTRY DllMain(HANDLE hModule, ULONG ulReason, LPVOID lpReserved) {
 extern "C" STDAPI DllGetClassObject(const CLSID& rclsid, const IID& riid, void **ppv);
 
 STDAPI DllGetClassObject(const CLSID& rclsid, const IID& riid, void **ppv) {
-	_RPT0(0,"DllGetClassObject()\n");
 
-	HRESULT hresult;
-	if (rclsid == CLSID_CAVIFileSynth) {
-		_RPT0(0,"\tCLSID: CAVIFileSynth\n");
-		hresult = CAVIFileSynth::Create(rclsid, riid, ppv);
-	} else {
-		hresult = CLASS_E_CLASSNOTAVAILABLE;
+	if (rclsid != CLSID_CAVIFileSynth) {
+        _RPT0(0,"DllGetClassObject() CLASS_E_CLASSNOTAVAILABLE\n");
+        return CLASS_E_CLASSNOTAVAILABLE;
 	}
+    _RPT0(0,"DllGetClassObject() CLSID: CAVIFileSynth\n");
 
-	_RPT1(0,"DllGetClassObject() exit, result=0x%X\n", hresult);
+    HRESULT hresult = CAVIFileSynth::Create(rclsid, riid, ppv);
+
+	_RPT2(0,"DllGetClassObject() result=0x%X, object=%p\n", hresult, *ppv);
 
 	return hresult;
 }
@@ -234,10 +284,18 @@ STDAPI DllCanUnloadNow() {
 //////////// IClassFactory
 
 STDMETHODIMP CAVIFileSynth::CreateInstance (LPUNKNOWN pUnkOuter, REFIID riid,  void * * ppvObj) {
-	_RPT1(0,"%p->CAVIFileSynth::CreateInstance()\n", this);
-	if (pUnkOuter) return CLASS_E_NOAGGREGATION;
 
-	return Create(CLSID_CAVIFileSynth, riid, ppvObj);
+	if (pUnkOuter) {
+      _RPT1(0,"%p->CAVIFileSynth::CreateInstance() CLASS_E_NOAGGREGATION\n", this);
+      return CLASS_E_NOAGGREGATION;
+    }
+    _RPT1(0,"%p->CAVIFileSynth::CreateInstance()\n", this);
+
+	HRESULT hresult = Create(CLSID_CAVIFileSynth, riid, ppvObj);
+
+	_RPT3(0,"%p->CAVIFileSynth::CreateInstance() result=0x%X, object=%p\n", this, hresult, *ppvObj);
+
+	return hresult;
 }
 
 STDMETHODIMP CAVIFileSynth::LockServer (BOOL fLock) {
@@ -296,7 +354,7 @@ STDMETHODIMP CAVIFileSynth::GetCurFile(LPOLESTR *lplpszFileName) {
 HRESULT CAVIFileSynth::Create(const CLSID& rclsid, const IID& riid, void **ppv) {
 	HRESULT hresult;
 
-	_RPT0(0,"CAVIFileSynth::Create()\n");
+//	_RPT0(0,"CAVIFileSynth::Create()\n");
 
 	CAVIFileSynth* pAVIFileSynth = new CAVIFileSynth(rclsid);
 
@@ -305,7 +363,7 @@ HRESULT CAVIFileSynth::Create(const CLSID& rclsid, const IID& riid, void **ppv) 
 	hresult = pAVIFileSynth->QueryInterface(riid, ppv);
 	pAVIFileSynth->Release();
 
-	_RPT1(0,"CAVIFileSynth::Create() exit, result=0x%X\n", hresult);
+//	_RPT1(0,"CAVIFileSynth::Create() exit, result=0x%X\n", hresult);
 
 	return hresult;
 }
@@ -314,11 +372,14 @@ HRESULT CAVIFileSynth::Create(const CLSID& rclsid, const IID& riid, void **ppv) 
 //////////// IUnknown
 
 STDMETHODIMP CAVIFileSynth::QueryInterface(const IID& iid, void **ppv) {
-	_RPT1(0,"%p->CAVIFileSynth::QueryInterface()\n", this);
 
-	if (!ppv) return E_POINTER;
+	if (!ppv) {
+        _RPT1(0,"%p->CAVIFileSynth::QueryInterface() E_POINTER\n", this);
+        return E_POINTER;
+    }
 
-	_RPT3(0,"\tGUID: {%08lx-%04x-%04x-", iid.Data1, iid.Data2, iid.Data3);
+	_RPT1(0,"%p->CAVIFileSynth::QueryInterface() ", this);
+	_RPT3(0,"{%08lx-%04x-%04x-", iid.Data1, iid.Data2, iid.Data3);
 	_RPT4(0,"%02x%02x-%02x%02x", iid.Data4[0], iid.Data4[1], iid.Data4[2], iid.Data4[3]);
 	_RPT4(0,"%02x%02x%02x%02x} (", iid.Data4[4], iid.Data4[5], iid.Data4[6], iid.Data4[7]);
 
@@ -341,7 +402,7 @@ STDMETHODIMP CAVIFileSynth::QueryInterface(const IID& iid, void **ppv) {
 		*ppv = (IAvisynthClipInfo *)this;
 		_RPT0(0,"IAvisynthClipInfo)\n");
 	} else {
-		_RPT0(0,"unknown!)\n");
+		_RPT0(0,"unsupported!)\n");
 		*ppv = NULL;
 		return E_NOINTERFACE;
 	}
@@ -352,17 +413,23 @@ STDMETHODIMP CAVIFileSynth::QueryInterface(const IID& iid, void **ppv) {
 }
 
 STDMETHODIMP_(ULONG) CAVIFileSynth::AddRef() {
-	_RPT3(0,"%p->CAVIFileSynth::AddRef() - entry gRefCnt = %d, m_refs = %d\n", this, gRefCnt, m_refs);
+
+	++m_refs;
     InterlockedIncrement(&gRefCnt);
-	return ++m_refs;
+
+	_RPT3(0,"%p->CAVIFileSynth::AddRef() gRefCnt=%d, m_refs=%d\n", this, gRefCnt, m_refs);
+
+	return m_refs;
 }
 
 STDMETHODIMP_(ULONG) CAVIFileSynth::Release() {
-	_RPT3(0,"%p->CAVIFileSynth::Release() - entry gRefCnt = %d, m_refs = %d\n", this, gRefCnt, m_refs);
 
     const int refs = --m_refs;
-	if (!refs) delete this;
     InterlockedDecrement(&gRefCnt);
+
+	_RPT3(0,"%p->CAVIFileSynth::Release() gRefCnt=%d, m_refs=%d\n", this, gRefCnt, refs);
+
+	if (!refs) delete this;
 	return refs;
 }
 
@@ -374,22 +441,28 @@ STDMETHODIMP_(ULONG) CAVIFileSynth::Release() {
 //////////// IUnknown
 
 STDMETHODIMP CAVIStreamSynth::QueryInterface(const IID& iid, void **ppv) {
-	_RPT1(0,"%p->CAVIStreamSynth::QueryInterface()\n", this);
 
-	if (!ppv) return E_POINTER;
+	if (!ppv) {
+        _RPT2(0,"%p->CAVIStreamSynth::QueryInterface() (%s) E_POINTER\n", this, sName);
+        return E_POINTER;
+    }
 
-	_RPT3(0,"\tGUID: {%08lx-%04x-%04x-", iid.Data1, iid.Data2, iid.Data3);
+	_RPT2(0,"%p->CAVIStreamSynth::QueryInterface() (%s) ", this, sName);
+	_RPT3(0,"{%08lx-%04x-%04x-", iid.Data1, iid.Data2, iid.Data3);
 	_RPT4(0,"%02x%02x-%02x%02x", iid.Data4[0], iid.Data4[1], iid.Data4[2], iid.Data4[3]);
 	_RPT4(0,"%02x%02x%02x%02x} (", iid.Data4[4], iid.Data4[5], iid.Data4[6], iid.Data4[7]);
 
 	if (iid == IID_IUnknown) {
-		*ppv = (IUnknown *)this;
+		*ppv = (IUnknown *)(IAVIStream *)this;
 		_RPT0(0,"IUnknown)\n");
 	} else if (iid == IID_IAVIStream) {
 		*ppv = (IAVIStream *)this;
 		_RPT0(0,"IAVIStream)\n");
+	} else if (iid == IID_IAVIStreaming) {
+		*ppv = (IAVIStreaming *)this;
+		_RPT0(0,"IAVIStreaming)\n");
 	} else {
-		_RPT0(0,"unknown)\n");
+		_RPT0(0,"unsupported!)\n");
 		*ppv = NULL;
 		return E_NOINTERFACE;
 	}
@@ -400,18 +473,23 @@ STDMETHODIMP CAVIStreamSynth::QueryInterface(const IID& iid, void **ppv) {
 }
 
 STDMETHODIMP_(ULONG) CAVIStreamSynth::AddRef() {
-	_RPT3(0,"%p->CAVIStreamSynth::AddRef() - entry gRefCnt = %d, m_refs = %d\n", this, gRefCnt, m_refs);
 
+	++m_refs;
     InterlockedIncrement(&gRefCnt);
-	return ++m_refs;
+
+	_RPT4(0,"%p->CAVIStreamSynth::AddRef() (%s) gRefCnt=%d, m_refs=%d\n", this, sName, gRefCnt, m_refs);
+
+	return m_refs;
 }
 
 STDMETHODIMP_(ULONG) CAVIStreamSynth::Release() {
-	_RPT3(0,"%p->CAVIStreamSynth::Release() - entry gRefCnt = %d, m_refs = %d\n", this, gRefCnt, m_refs);
 
     const int refs = --m_refs;
-	if (!refs) delete this;
     InterlockedDecrement(&gRefCnt);
+
+	_RPT4(0,"%p->CAVIStreamSynth::Release() (%s) gRefCnt=%d, m_refs=%d\n", this, sName, gRefCnt, m_refs);
+
+	if (!refs) delete this;
 	return refs;
 }
 
@@ -630,10 +708,23 @@ STDMETHODIMP CAVIFileSynth::Info(AVIFILEINFOW *pfi, LONG lSize) {
 	return S_OK;
 }
 
+static inline char BePrintable(int ch) {
+  ch &= 0xff;
+  return isprint(ch) ? ch : '.';
+}
+
+
 STDMETHODIMP CAVIFileSynth::GetStream(PAVISTREAM *ppStream, DWORD fccType, LONG lParam) {
 	CAVIStreamSynth *casr;
+	char fcc[5];
 
-	_RPT4(0,"%p->CAVIFileSynth::GetStream(%p, %08lx, %ld)\n", this, ppStream, fccType, lParam);
+	fcc[0] = BePrintable(fccType      );
+	fcc[1] = BePrintable(fccType >>  8);
+	fcc[2] = BePrintable(fccType >> 16);
+	fcc[3] = BePrintable(fccType >> 24);
+	fcc[4] = 0;
+
+	_RPT4(0,"%p->CAVIFileSynth::GetStream(*, %08x(%s), %ld)\n", this, fccType, fcc, lParam);
 
 	if (!DelayInit()) return E_FAIL;
 
@@ -708,6 +799,18 @@ bool __stdcall CAVIFileSynth::IsFieldBased() {
 //		CAVIStreamSynth
 //
 ////////////////////////////////////////////////////////////////////////
+//////////// IAVIStreaming
+
+STDMETHODIMP CAVIStreamSynth::Begin(LONG lStart, LONG lEnd, LONG lRate) {
+	_RPT5(0,"%p->CAVIStreamSynth::Begin(%ld, %ld, %ld) (%s)\n", this, lStart, lEnd, lRate, sName);
+	return S_OK;
+}
+
+STDMETHODIMP CAVIStreamSynth::End() {
+	_RPT2(0,"%p->CAVIStreamSynth::End() (%s)\n", this, sName);
+	return S_OK;
+}
+
 //////////// IAVIStream
 
 STDMETHODIMP CAVIStreamSynth::Create(LONG lParam1, LONG lParam2) {
@@ -736,6 +839,7 @@ STDMETHODIMP CAVIStreamSynth::WriteData(DWORD fcc, LPVOID lpBuffer, LONG cbBuffe
 }
 
 STDMETHODIMP CAVIStreamSynth::SetInfo(AVISTREAMINFOW *psi, LONG lSize) {
+	_RPT1(0,"%p->CAVIStreamSynth::SetInfo()\n", this);
 	return AVIERR_READONLY;
 }
 
@@ -743,7 +847,11 @@ STDMETHODIMP CAVIStreamSynth::SetInfo(AVISTREAMINFOW *psi, LONG lSize) {
 //////////// local
 
 CAVIStreamSynth::CAVIStreamSynth(CAVIFileSynth *parentPtr, bool isAudio) {
-  _RPT2(0,"%p->CAVIStreamSynth(%s)\n", this, isAudio ? "audio" : "video");
+
+  sName = isAudio ? "audio" : "video";
+
+  _RPT2(0,"%p->CAVIStreamSynth(%s)\n", this, sName);
+
   m_refs = 0; AddRef();
 
   parent			= parentPtr;
@@ -753,7 +861,7 @@ CAVIStreamSynth::CAVIStreamSynth(CAVIFileSynth *parentPtr, bool isAudio) {
 }
 
 CAVIStreamSynth::~CAVIStreamSynth() {
-  _RPT2(0,"%p->~CAVIStreamSynth(), gRefCnt = %d\n", this, gRefCnt);
+  _RPT3(0,"%p->~CAVIStreamSynth() (%s), gRefCnt = %d\n", this, sName, gRefCnt);
 
   if (parent)
     parent->Release();
@@ -763,7 +871,7 @@ CAVIStreamSynth::~CAVIStreamSynth() {
 //////////// IAVIStream
 
 STDMETHODIMP_(LONG) CAVIStreamSynth::Info(AVISTREAMINFOW *psi, LONG lSize) {
-	_RPT3(0,"%p->CAVIStreamSynth::Info(%p, %ld)\n", this, psi, lSize);
+	_RPT4(0,"%p->CAVIStreamSynth::Info(%p, %ld) (%s)\n", this, psi, lSize, sName);
 
 	if (!psi) return E_POINTER;
 
@@ -1051,8 +1159,8 @@ STDMETHODIMP CAVIStreamSynth::Read(LONG lStart, LONG lSamples, LPVOID lpBuffer, 
         if (extext) parent->MakeErrorStream(extext);
         else 
         {
-          char buf[512];
-          sprintf(buf,"CAVIStreamSynth: System exception - 0x%x", code);
+          char buf[64];
+          _snprintf(buf, 63,"CAVIStreamSynth: System exception - 0x%x", code);
           parent->MakeErrorStream(buf);
         }
       }
@@ -1078,7 +1186,7 @@ STDMETHODIMP CAVIStreamSynth::Read(LONG lStart, LONG lSamples, LPVOID lpBuffer, 
 }
 
 STDMETHODIMP CAVIStreamSynth::ReadFormat(LONG lPos, LPVOID lpFormat, LONG *lpcbFormat) {
-  _RPT1(0,"%p->CAVIStreamSynth::ReadFormat()\n", this);
+  _RPT2(0,"%p->CAVIStreamSynth::ReadFormat() (%s)\n", this, sName);
 
   if (!lpFormat) {
     *lpcbFormat = fAudio ? sizeof(WAVEFORMATEX) : sizeof(BITMAPINFOHEADER);
