@@ -431,7 +431,7 @@ AVSValue ExpMod::Evaluate(IScriptEnvironment* env)
     return x.AsInt() % y.AsInt();
   }
   else {
-    env->ThrowError("Evaluate: operands of `%' must be integers");
+    env->ThrowError("Evaluate: operands of `%%' must be integers");
     return 0;
   }
 }
