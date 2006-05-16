@@ -87,7 +87,7 @@ void ReportMe(const char * msg, ...) {
 #define _RPT5(rptno, msg, a1, a2, a3, a4, a5)
 #endif
 #else
-#define _RPT5(rptno, msg, a1, a2, a3, a4, a5) _RPT4(msg, a1, a2, a3, a4)
+#define _RPT5(rptno, msg, a1, a2, a3, a4, a5) _RPT4(rptno, msg, a1, a2, a3, a4)
 #endif
 
 const char _AVS_VERSTR[]    = AVS_VERSTR;
