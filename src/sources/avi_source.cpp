@@ -432,25 +432,19 @@ AVISource::AVISource(const char filename[], bool fAudio, const char pixel_type[]
     if (mode != MODE_WAV) {
       int keyframe = pvideo->NearestKeyFrame(0);
       PVideoFrame frame = env->NewVideoFrame(vi, -4);
-      LRESULT error = DecompressFrame(keyframe, false, frame->GetWritePtr());
-      if (error != ICERR_OK || (!frame)||(dropped_frame)) {   // shutdown, if init not succesful.
-/*
-        if (hic) {
-          !ex ? ICDecompressEnd(hic) : ICDecompressExEnd(hic);
-          ICClose(hic);
-        }
-        if (pvideo) delete pvideo;
-        if (aSrc) delete aSrc;
-        if (audioStreamSource) delete audioStreamSource;
-        if (pfile)
-          pfile->Release();
-        AVIFileExit();
-        if (pbiSrc)
-          free(pbiSrc);
-*/
+	  BYTE *ptr = frame->GetWritePtr();
+      LRESULT error = DecompressFrame(keyframe, false, ptr);
+      if (error != ICERR_OK || (!frame))   // shutdown, if init not succesful.
         env->ThrowError("AviSource: Could not decompress frame 0");
 
-      }
+	  // Cope with dud AVI files that start with drop
+	  // frames, just return the first key frame
+	  if (dropped_frame) {
+		keyframe = pvideo->NextKeyFrame(0);
+		error = DecompressFrame(keyframe, false, ptr);
+		if (error != ICERR_OK)   // shutdown, if init not succesful.
+		  env->ThrowError("AviSource: Could not decompress first keyframe %d", keyframe);
+	  }
       last_frame_no=0;
       last_frame=frame;
     }
