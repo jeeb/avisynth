@@ -848,7 +848,7 @@ SeekExit:
 	  }
 
 	  vi.width = pbi->biWidth;
-	  vi.height = pbi->biHeight;
+	  vi.height = (pbi->biHeight < 0) ? -pbi->biHeight : pbi->biHeight;
 
 	  if (_avg_time_per_frame) {
 		vi.SetFPS(10000000, _avg_time_per_frame);
