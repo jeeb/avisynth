@@ -46,13 +46,13 @@
 ********************************************************************/
 
 AVSFunction Convert_filters[] = {
-{ "ConvertToRGB", "c[matrix]s[interlaced]b", ConvertToRGB::Create },       // matrix can be "rec709", "PC.601" or "PC.709"
+{ "ConvertToRGB", "c[matrix]s[interlaced]b", ConvertToRGB::Create },       // matrix can be "rec601", rec709", "PC.601" or "PC.709"
   { "ConvertToRGB24", "c[matrix]s[interlaced]b", ConvertToRGB::Create24 },
   { "ConvertToRGB32", "c[matrix]s[interlaced]b", ConvertToRGB::Create32 },
   { "ConvertToYV12", "c[interlaced]b[matrix]s", ConvertToYV12::Create },  
   { "ConvertToYUY2", "c[interlaced]b[matrix]s", ConvertToYUY2::Create },  
   { "ConvertBackToYUY2", "c[matrix]s", ConvertBackToYUY2::Create },  
-  { "Greyscale", "c[matrix]s", Greyscale::Create },       // matrix can be "rec709" or "Average"
+  { "Greyscale", "c[matrix]s", Greyscale::Create },       // matrix can be "rec601", "rec709" or "Average"
   { 0 }
 };
 
@@ -379,8 +379,10 @@ ConvertToRGB::ConvertToRGB( PClip _child, bool rgb24, const char* matrix,
       theMatrix = PC_601;
     else if (!lstrcmpi(matrix, "PC.709"))
       theMatrix = PC_709;
+    else if (!lstrcmpi(matrix, "rec601"))
+      theMatrix = Rec601;
     else
-      env->ThrowError("ConvertToRGB: invalid \"matrix\" parameter (must be matrix=\"Rec709\", \"PC.601\" or \"PC.709\")");
+      env->ThrowError("ConvertToRGB: invalid \"matrix\" parameter (must be matrix=\"Rec601\", \"Rec709\", \"PC.601\" or \"PC.709\")");
   }
   use_mmx = (env->GetCPUFlags() & CPUF_MMX) != 0;
 
@@ -604,8 +606,10 @@ ConvertToYUY2::ConvertToYUY2(PClip _child, bool _interlaced, const char *matrix,
       theMatrix = PC_601;
     else if (!lstrcmpi(matrix, "PC.709"))
       theMatrix = PC_709;
+    else if (!lstrcmpi(matrix, "rec601"))
+      theMatrix = Rec601;
     else
-      env->ThrowError("ConvertToYUY2: invalid \"matrix\" parameter (must be matrix=\"Rec709\", \"PC.601\" or \"PC.709\")");
+      env->ThrowError("ConvertToYUY2: invalid \"matrix\" parameter (must be matrix=\"Rec601\", \"Rec709\", \"PC.601\" or \"PC.709\")");
   }
 
   vi.pixel_type = VideoInfo::CS_YUY2;
@@ -813,8 +817,10 @@ ConvertBackToYUY2::ConvertBackToYUY2(PClip _child, const char *matrix, IScriptEn
       theMatrix = PC_601;
     else if (!lstrcmpi(matrix, "PC.709"))
       theMatrix = PC_709;
+    else if (!lstrcmpi(matrix, "rec601"))
+      theMatrix = Rec601;
     else
-      env->ThrowError("ConvertBackToYUY2: invalid \"matrix\" parameter (must be matrix=\"Rec709\", \"PC.601\" or \"PC.709\")");
+      env->ThrowError("ConvertBackToYUY2: invalid \"matrix\" parameter (must be matrix=\"Rec601\", \"Rec709\", \"PC.601\" or \"PC.709\")");
   }
 
   vi.pixel_type = VideoInfo::CS_YUY2;
@@ -995,8 +1001,10 @@ Greyscale::Greyscale(PClip _child, const char* matrix, IScriptEnvironment* env)
       theMatrix = Rec709;
     else if (!lstrcmpi(matrix, "Average"))
       theMatrix = Average;
+    else if (!lstrcmpi(matrix, "rec601"))
+      theMatrix = Rec601;
     else
-      env->ThrowError("GreyScale: invalid \"matrix\" parameter (must be matrix=\"Rec709\" or \"Average\")");
+      env->ThrowError("GreyScale: invalid \"matrix\" parameter (must be matrix=\"Rec601\", \"Rec709\" or \"Average\")");
   }
 }
 
