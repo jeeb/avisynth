@@ -74,6 +74,8 @@ enum {
 Overlay::Overlay(PClip _child, AVSValue args, IScriptEnvironment *env) :
 GenericVideoFilter(_child) {
 
+  full_range = args[ARG_FULL_RANGE].AsBool(false);  // Maintain CCIR601 range when converting to/from RGB.
+
   // Make copy of the VideoInfo
   inputVi = (VideoInfo*)malloc(sizeof(VideoInfo));
   memcpy(inputVi, &vi, sizeof(VideoInfo));
@@ -93,8 +95,6 @@ GenericVideoFilter(_child) {
 
   greymask = args[ARG_GREYMASK].AsBool(true);  // Grey mask, default true
   ignore_conditional = args[ARG_IGNORE_CONDITIONAL].AsBool(false);  // Don't ignore conditionals by default
-  full_range = args[ARG_FULL_RANGE].AsBool(false);  // Maintain CCIR601 range when converting to/from RGB.
-
   if (args[ARG_MASK].Defined()) {  // Mask defined
     mask = args[ARG_MASK].AsClip();
     maskVi = mask->GetVideoInfo();
