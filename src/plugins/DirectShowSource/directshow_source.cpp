@@ -444,15 +444,15 @@ SeekExit:
   // IUnknown
 
   ULONG __stdcall GetSample::AddRef() { 
-    InterlockedIncrement(&refcnt); 
-    dssRPT1(dssREF, "GetSample::AddRef() -> %d\n", refcnt); 
-    return refcnt; 
+    ULONG ref = InterlockedIncrement(&refcnt); 
+    dssRPT1(dssREF, "GetSample::AddRef() -> %d\n", ref); 
+    return ref; 
   }
 
   ULONG __stdcall GetSample::Release() { 
-    InterlockedDecrement(&refcnt); 
-    dssRPT1(dssREF, "GetSample::Release() -> %d\n", refcnt); 
-    return refcnt; 
+    ULONG ref = InterlockedDecrement(&refcnt); 
+    dssRPT1(dssREF, "GetSample::Release() -> %d\n", ref); 
+    return ref; 
   }
 
   HRESULT __stdcall GetSample::QueryInterface(REFIID iid, void** ppv) {
@@ -599,13 +599,13 @@ SeekExit:
       dssRPT0(dssERROR, "GetSample::ReceiveConnection() ** E_POINTER **\n");
       return E_POINTER;
     }
-    if (source_pin) {
-      dssRPT0(dssERROR, "GetSample::ReceiveConnection() ** VFW_E_ALREADY_CONNECTED **\n");
-      return VFW_E_ALREADY_CONNECTED;
-    }
     if (state != State_Stopped) {
       dssRPT0(dssERROR, "GetSample::ReceiveConnection() ** VFW_E_NOT_STOPPED **\n");
       return VFW_E_NOT_STOPPED;
+    }
+    if (source_pin) {
+      dssRPT0(dssERROR, "GetSample::ReceiveConnection() ** VFW_E_ALREADY_CONNECTED **\n");
+      return VFW_E_ALREADY_CONNECTED;
     }
     if (GetSample::QueryAccept(pmt) != S_OK) {
 	  dssRPT0(dssERROR, "GetSample::ReceiveConnection() ** VFW_E_TYPE_NOT_ACCEPTED **\n");
@@ -720,7 +720,37 @@ SeekExit:
 	}
 
 // Handle audio:
+/*
+Audio: WAVE_FORMAT_EXTENSIBLE 48000Hz 6ch 6912Kbps
 
+AM_MEDIA_TYPE: 
+majortype: MEDIATYPE_Audio {73647561-0000-0010-8000-00AA00389B71}
+subtype: MEDIASUBTYPE_PCM {00000001-0000-0010-8000-00AA00389B71}
+formattype: FORMAT_WaveFormatEx {05589F81-C356-11CE-BF01-00AA0055595A}
+bFixedSizeSamples: 1
+bTemporalCompression: 0
+lSampleSize: 0
+cbFormat: 40
+
+WAVEFORMATEX:
+wFormatTag: WAVE_FORMAT_EXTENSIBLE = 0xfffe
+nChannels: 6
+nSamplesPerSec: 48000
+nAvgBytesPerSec: 864000
+nBlockAlign: 18
+wBitsPerSample: 24
+cbSize: 22 (extra bytes)
+
+WAVEFORMATEXTENSIBLE:
+wValidBitsPerSample: 24
+dwChannelMask: 0x0000003f
+SubFormat: KSDATAFORMAT_SUBTYPE_PCM {00000001-0000-0010-8000-00AA00389B71}
+
+pbFormat:
+0000: fe ff 06 00 80 bb 00 00 00 2f 0d 00 12 00 18 00 þÿ..€».../......
+0010: 16 00 18 00 3f 00 00 00 01 00 00 00 00 00 10 00 ....?...........
+0020: 80 00 00 aa 00 38 9b 71
+*/
     if (pmt->majortype == MEDIATYPE_Audio) {
       if (pmt->subtype != MEDIASUBTYPE_PCM  && pmt->subtype != MEDIASUBTYPE_IEEE_FLOAT ) {
         dssRPT1(dssNEG,  "*** Audio: Subtype rejected - %s\n", PrintGUID(&pmt->subtype));
@@ -761,10 +791,10 @@ SeekExit:
 		  WAVEFORMATEXTENSIBLE* _wext =  (WAVEFORMATEXTENSIBLE*)pmt->pbFormat;
 		  WAVEFORMATEXTENSIBLE wext =  *_wext;
 		  
-		  if (wext.Samples.wValidBitsPerSample != wext.Format.wBitsPerSample) {  // FIXME:  Allow bit padding!
-			dssRPT2(dssNEG,  "*** Audio: Cannot accept sound, if ValidBitsPerSample(%d) != BitsPerSample(%d)!\n",
+		  if (wext.Samples.wValidBitsPerSample != wext.Format.wBitsPerSample) {
+			dssRPT2(dssNEG,  "*** Audio: Warning ValidBitsPerSample(%d) != BitsPerSample(%d)!\n",
 					 wext.Samples.wValidBitsPerSample, wext.Format.wBitsPerSample);
-			return S_FALSE;
+//			return S_FALSE; // accept the data here - a postprocessing filter can repair it later
 		  }
 
 		  if (wext.SubFormat == SUBTYPE_IEEE_AVSFLOAT) {  // We have float audio.
@@ -778,7 +808,7 @@ SeekExit:
 
       vi.audio_samples_per_second = wex->nSamplesPerSec;
 
-      dssRPT4(dssNEG,  "*** Audio: Accepted! Channels:%d. Samples/sec:%d. Bits/sample:%d. Type:%d\n",
+      dssRPT4(dssNEG,  "*** Audio: Accepted! Channels:%d. Samples/sec:%d. Bits/sample:%d. Type:%x\n",
             wex->nChannels, wex->nSamplesPerSec, wex->wBitsPerSample, vi.sample_type);      
       return S_OK;
     }
@@ -1355,7 +1385,15 @@ DirectShowSource::DirectShowSource(const char* filename, int _avg_time_per_frame
       SetMicrosoftDVtoFullResolution(gb);
       DisableDeinterlacing(gb);
     }
-
+/*
+	if (_enable_audio) {
+	  SetWMAudioDecodeDMOtoHiResOutput(gb);
+scan for L"WMAudio Decode DMO"
+public const string g_wszWMACHiResOutput = "_HIRESOUTPUT";
+poke True into g_wszWMACHiResOutput 
+Reconnect GetSample input pin.
+	}
+*/
     // Prevent the graph from trying to run in "real time"
     // ... Disabled because it breaks ASF.  Now I know why
     // Avery swears so much.
