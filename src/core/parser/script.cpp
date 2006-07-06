@@ -371,7 +371,7 @@ AVSValue RightStr(AVSValue args, void*, IScriptEnvironment* env)
  }
 
 AVSValue FindStr(AVSValue args, void*, IScriptEnvironment* env)
-{ char *pdest;
+{ const char *pdest;
   int result;
 
   pdest = strstr( args[0].AsString(),args[1].AsString() );
