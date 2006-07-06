@@ -550,8 +550,7 @@ ShowSMPTE::ShowSMPTE(PClip _child, double _rate, const char* offset, int _offset
     dropframe = true;
   } 
   else {
-//    env->ThrowError("ShowSMPTE: rate argument must be 24, 25, 30, or 29.97");
-    env->ThrowError("ShowSMPTE: rate argument must be 23.976, 24, 25, 30, or 29.97");
+    env->ThrowError("ShowSMPTE: rate argument must be 23.976, 24, 25, 29.97 or 30");
   }
 
   if (offset) {
@@ -693,9 +692,9 @@ Subtitle::~Subtitle(void)
 PVideoFrame Subtitle::GetFrame(int n, IScriptEnvironment* env) 
 {
   PVideoFrame frame = child->GetFrame(n, env);
-  env->MakeWritable(&frame);
 
   if (n >= firstframe && n <= lastframe) {
+    env->MakeWritable(&frame);
     if (!antialiaser)
       InitAntialiaser();
     antialiaser->Apply(vi, &frame, frame->GetPitch());
