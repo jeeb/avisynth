@@ -36,6 +36,7 @@
 
 
 #include "stdafx.h"
+#include "blend_asm.h"
 
 
 /*******************
