@@ -537,7 +537,12 @@ AVSValue __cdecl GetChannel::Create_n(AVSValue args, void*, IScriptEnvironment* 
 KillVideo::KillVideo(PClip _clip)
     : GenericVideoFilter(_clip) {
   vi.width = 0;
+  vi.height= 0;
+  vi.fps_numerator  = 0;
+  vi.fps_denominator= 0;
   vi.num_frames = 0;
+  vi.pixel_type = 0;
+  vi.image_type = 0;
 }
 
 AVSValue __cdecl KillVideo::Create(AVSValue args, void*, IScriptEnvironment*) {
@@ -552,7 +557,9 @@ AVSValue __cdecl KillVideo::Create(AVSValue args, void*, IScriptEnvironment*) {
 KillAudio::KillAudio(PClip _clip)
     : GenericVideoFilter(_clip) {
   vi.audio_samples_per_second = 0;
+  vi.sample_type = 0;
   vi.num_audio_samples = 0;
+  vi.nchannels = 0;
 }
 
 AVSValue __cdecl KillAudio::Create(AVSValue args, void*, IScriptEnvironment*) {
