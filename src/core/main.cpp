@@ -414,17 +414,17 @@ STDMETHODIMP CAVIFileSynth::QueryInterface(const IID& iid, void **ppv) {
 
 STDMETHODIMP_(ULONG) CAVIFileSynth::AddRef() {
 
-	++m_refs;
+	const int refs = InterlockedIncrement(&m_refs);
     InterlockedIncrement(&gRefCnt);
 
-	_RPT3(0,"%p->CAVIFileSynth::AddRef() gRefCnt=%d, m_refs=%d\n", this, gRefCnt, m_refs);
+	_RPT3(0,"%p->CAVIFileSynth::AddRef() gRefCnt=%d, m_refs=%d\n", this, gRefCnt, refs);
 
-	return m_refs;
+	return refs;
 }
 
 STDMETHODIMP_(ULONG) CAVIFileSynth::Release() {
 
-    const int refs = --m_refs;
+    const int refs = InterlockedDecrement(&m_refs);
     InterlockedDecrement(&gRefCnt);
 
 	_RPT3(0,"%p->CAVIFileSynth::Release() gRefCnt=%d, m_refs=%d\n", this, gRefCnt, refs);
@@ -474,20 +474,20 @@ STDMETHODIMP CAVIStreamSynth::QueryInterface(const IID& iid, void **ppv) {
 
 STDMETHODIMP_(ULONG) CAVIStreamSynth::AddRef() {
 
-	++m_refs;
+	const int refs = InterlockedIncrement(&m_refs);
     InterlockedIncrement(&gRefCnt);
 
-	_RPT4(0,"%p->CAVIStreamSynth::AddRef() (%s) gRefCnt=%d, m_refs=%d\n", this, sName, gRefCnt, m_refs);
+	_RPT4(0,"%p->CAVIStreamSynth::AddRef() (%s) gRefCnt=%d, m_refs=%d\n", this, sName, gRefCnt, refs);
 
-	return m_refs;
+	return refs;
 }
 
 STDMETHODIMP_(ULONG) CAVIStreamSynth::Release() {
 
-    const int refs = --m_refs;
+    const int refs = InterlockedDecrement(&m_refs);
     InterlockedDecrement(&gRefCnt);
 
-	_RPT4(0,"%p->CAVIStreamSynth::Release() (%s) gRefCnt=%d, m_refs=%d\n", this, sName, gRefCnt, m_refs);
+	_RPT4(0,"%p->CAVIStreamSynth::Release() (%s) gRefCnt=%d, m_refs=%d\n", this, sName, gRefCnt, refs);
 
 	if (!refs) delete this;
 	return refs;
@@ -1150,7 +1150,10 @@ STDMETHODIMP CAVIStreamSynth::Read(LONG lStart, LONG lSamples, LPVOID lpBuffer, 
     }
     catch (AvisynthError error) {
       parent->MakeErrorStream(error.msg);
-      ReadHelper(lpBuffer, lStart, lSamples, code);
+      if (fAudio)
+	    throw;
+	  else
+	    ReadHelper(lpBuffer, lStart, lSamples, code);
     }
     catch (...) {
 #ifdef OPT_OWN_SEH_HANDLER
@@ -1169,7 +1172,10 @@ STDMETHODIMP CAVIStreamSynth::Read(LONG lStart, LONG lSamples, LPVOID lpBuffer, 
 #else
       parent->MakeErrorStream("Avisynth: unknown exception");
 #endif
-      ReadHelper(lpBuffer, lStart, lSamples, code);
+      if (fAudio)
+	    throw;
+	  else
+        ReadHelper(lpBuffer, lStart, lSamples, code);
     }
   }
   catch (...) {
@@ -1198,15 +1204,35 @@ STDMETHODIMP CAVIStreamSynth::ReadFormat(LONG lPos, LPVOID lpFormat, LONG *lpcbF
   const VideoInfo* const vi = parent->vi;
 
   if (fAudio) {
-    WAVEFORMATEX wfx;
-    memset(&wfx, 0, sizeof(wfx));
-    wfx.wFormatTag = vi->IsSampleType(SAMPLE_FLOAT) ? WAVE_FORMAT_IEEE_FLOAT : WAVE_FORMAT_PCM;
-    wfx.nChannels = vi->AudioChannels();
-    wfx.nSamplesPerSec = vi->SamplesPerSecond();
-    wfx.wBitsPerSample = vi->BytesPerChannelSample() * 8;
-    wfx.nBlockAlign = vi->BytesPerAudioSample();
-    wfx.nAvgBytesPerSec = wfx.nSamplesPerSec * wfx.nBlockAlign;
-    memcpy(lpFormat, &wfx, min(size_t(*lpcbFormat), sizeof(wfx)));
+	if (0) { // (vi->AudioChannels() > 2) // Perhaps we should be setting WAVE_FORMAT_EXTENSIBLE=0xfffe for > 2 channels
+	  const GUID KSDATAFORMAT_SUBTYPE_PCM       = {0x00000001, 0x0000, 0x0010, {0x80, 0x00, 0x00, 0xaa, 0x00, 0x38, 0x9b, 0x71}};
+	  const GUID KSDATAFORMAT_SUBTYPE_IEEE_FLOAT= {0x00000003, 0x0000, 0x0010, {0x80, 0x00, 0x00, 0xaa, 0x00, 0x38, 0x9b, 0x71}};
+	  WAVEFORMATEXTENSIBLE wfxt;
+
+	  memset(&wfxt, 0, sizeof(wfxt));
+	  wfxt.Format.wFormatTag = WAVE_FORMAT_EXTENSIBLE;
+	  wfxt.Format.nChannels = vi->AudioChannels();
+	  wfxt.Format.nSamplesPerSec = vi->SamplesPerSecond();
+	  wfxt.Format.wBitsPerSample = vi->BytesPerChannelSample() * 8;
+	  wfxt.Format.nBlockAlign = vi->BytesPerAudioSample();
+	  wfxt.Format.nAvgBytesPerSec = wfxt.Format.nSamplesPerSec * wfxt.Format.nBlockAlign;
+	  wfxt.Format.cbSize = sizeof(wfxt) - sizeof(wfxt.Format);
+	  wfxt.Samples.wValidBitsPerSample = wfxt.Format.wBitsPerSample;
+	  wfxt.dwChannelMask = SPEAKER_ALL;
+	  wfxt.SubFormat = vi->IsSampleType(SAMPLE_FLOAT) ? KSDATAFORMAT_SUBTYPE_IEEE_FLOAT : KSDATAFORMAT_SUBTYPE_PCM;
+	  memcpy(lpFormat, &wfxt, min(size_t(*lpcbFormat), sizeof(wfxt)));
+	}
+	else {
+	  WAVEFORMATEX wfx;
+	  memset(&wfx, 0, sizeof(wfx));
+	  wfx.wFormatTag = vi->IsSampleType(SAMPLE_FLOAT) ? WAVE_FORMAT_IEEE_FLOAT : WAVE_FORMAT_PCM;
+	  wfx.nChannels = vi->AudioChannels();
+	  wfx.nSamplesPerSec = vi->SamplesPerSecond();
+	  wfx.wBitsPerSample = vi->BytesPerChannelSample() * 8;
+	  wfx.nBlockAlign = vi->BytesPerAudioSample();
+	  wfx.nAvgBytesPerSec = wfx.nSamplesPerSec * wfx.nBlockAlign;
+	  memcpy(lpFormat, &wfx, min(size_t(*lpcbFormat), sizeof(wfx)));
+	}
   } else {
     BITMAPINFOHEADER bi;
     memset(&bi, 0, sizeof(bi));
