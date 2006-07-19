@@ -1531,13 +1531,16 @@ PClip CreateResizeH(PClip clip, double subrange_left, double subrange_width, int
   const VideoInfo& vi = clip->GetVideoInfo();
   if (subrange_left == 0 && subrange_width == target_width && subrange_width == vi.width) {
     return clip;
-  } else if (subrange_left == int(subrange_left) && subrange_width == target_width
-             && subrange_left >= 0 && subrange_left + subrange_width <= vi.width) 
-  {
-    return new Crop(int(subrange_left), 0, int(subrange_width), vi.height, 0, clip, env);
-  } else {
-    return new FilteredResizeH(clip, subrange_left, subrange_width, target_width, func, env);
   }
+
+  if (subrange_left == int(subrange_left) && subrange_width == target_width
+   && subrange_left >= 0 && subrange_left + subrange_width <= vi.width) {
+	if (vi.IsRGB() || ((int(subrange_left) | int(subrange_width)) & 1) == 0) {
+	  return new Crop(int(subrange_left), 0, int(subrange_width), vi.height, 0, clip, env);
+	}
+  }
+
+  return new FilteredResizeH(clip, subrange_left, subrange_width, target_width, func, env);
 }
 
 
@@ -1547,13 +1550,16 @@ PClip CreateResizeV(PClip clip, double subrange_top, double subrange_height, int
   const VideoInfo& vi = clip->GetVideoInfo();
   if (subrange_top == 0 && subrange_height == target_height && subrange_height == vi.height) {
     return clip;
-  } else if (subrange_top == int(subrange_top) && subrange_height == target_height
-             && subrange_top >= 0 && subrange_top + subrange_height <= vi.height) 
-  {
-    return new Crop(0, int(subrange_top), vi.width, int(subrange_height), 0, clip, env);
-  } else {
-    return new FilteredResizeV(clip, subrange_top, subrange_height, target_height, func, env);
   }
+
+  if (subrange_top == int(subrange_top) && subrange_height == target_height
+   && subrange_top >= 0 && subrange_top + subrange_height <= vi.height) {
+	if (vi.IsRGB() || vi.IsYUY2() || ((int(subrange_top) | int(subrange_height)) & 1) == 0) {
+	  return new Crop(0, int(subrange_top), vi.width, int(subrange_height), 0, clip, env);
+	}
+  }
+
+  return new FilteredResizeV(clip, subrange_top, subrange_height, target_height, func, env);
 }
 
 
