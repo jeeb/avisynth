@@ -592,7 +592,7 @@ PVideoFrame __stdcall ConvertFPS::GetFrame(int n, IScriptEnvironment* env)
 	if( zone < 0 ) {
 
    	// Mode 1: Blend full frames
-		int mix_ratio = one - min( int( (fb * (one - frac)) / fa ), one);
+		int mix_ratio = frac;
 
 		// Don't bother if the blend ratio is small
 		if( mix_ratio < threshold )
