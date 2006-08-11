@@ -179,6 +179,7 @@ class GetSample : public IBaseFilter, public IPin, public IMemInputPin {
   bool end_of_stream, flushing;
   IUnknown *m_pPos;  // Pointer to the CPosPassThru object.
   VideoInfo vi;
+  bool lockvi; // Format negotiation is allowed until DSS is fully created
 
   HANDLE evtDoneWithSample, evtNewSampleReady;
 
@@ -226,7 +227,7 @@ public:
 
   bool IsConnected() { return !!source_pin; }
   bool IsEndOfStream() { return end_of_stream; }
-  const VideoInfo& GetVideoInfo() { return vi; }
+  const VideoInfo& GetVideoInfo() { lockvi = true; return vi; }
   PVideoFrame GetCurrentFrame(IScriptEnvironment* env, int n, bool _TrapTimeouts, DWORD &timeout);
   __int64 GetSampleStartTime() { return segment_start_time + sample_start_time; }
   __int64 GetSampleEndTime() { return segment_start_time + sample_end_time; }
@@ -321,6 +322,9 @@ class DirectShowSource : public IClip {
   HRESULT LoadGraphFile(IGraphBuilder *pGraph, const WCHAR* wszName);
   bool convert_fps;
   void cleanUp();
+  void DirectShowSource::SetMicrosoftDVtoFullResolution(IGraphBuilder* gb);
+  void DirectShowSource::DisableDeinterlacing(IFilterGraph *pGraph);
+  void DirectShowSource::SetWMAudioDecoderDMOtoHiResOutput(IFilterGraph *pGraph);
 
   const bool TrapTimeouts;
   const DWORD WaitTimeout;

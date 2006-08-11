@@ -149,7 +149,7 @@ inline void InitMediaType(AM_MEDIA_TYPE* &media_type, const GUID &major, const G
 
 GetSample::GetSample(bool _load_audio, bool _load_video, unsigned _media, LOG* _log)
   : load_audio(_load_audio), load_video(_load_video), media(_media),
-    streamName(_load_audio ? "audio" : "video"), log(_log) {
+    streamName(_load_audio ? "audio" : "video"), log(_log), lockvi(false) {
 
 	if(log) log->AddRef();
 
@@ -766,20 +766,20 @@ pbFormat:
         return S_FALSE;
       }
 
-      vi.nchannels = wex->nChannels;
+      int sample_type = 0;
 
       if (wex->wFormatTag == WAVE_FORMAT_IEEE_FLOAT) {
-        vi.sample_type = SAMPLE_FLOAT;
+        sample_type = SAMPLE_FLOAT;
       }
       else {
         switch (wex->wBitsPerSample) {
-          case  8: vi.sample_type = SAMPLE_INT8;  break;
-          case 16: vi.sample_type = SAMPLE_INT16; break;
-          case 24: vi.sample_type = SAMPLE_INT24; break;
-          case 32: vi.sample_type = SAMPLE_INT32; break;
+          case  8: sample_type = SAMPLE_INT8;  break;
+          case 16: sample_type = SAMPLE_INT16; break;
+          case 24: sample_type = SAMPLE_INT24; break;
+          case 32: sample_type = SAMPLE_INT32; break;
           default:
-          dssRPT1(dssNEG,  "*** Audio: Unsupported number of bits per sample: %d\n", wex->wBitsPerSample);
-          return S_FALSE;
+			dssRPT1(dssNEG,  "*** Audio: Unsupported number of bits per sample: %d\n", wex->wBitsPerSample);
+			return S_FALSE;
         }
 
 		if (wex->wFormatTag == WAVE_FORMAT_EXTENSIBLE) {
@@ -798,7 +798,7 @@ pbFormat:
 		  }
 
 		  if (wext.SubFormat == SUBTYPE_IEEE_AVSFLOAT) {  // We have float audio.
-			vi.sample_type = SAMPLE_FLOAT;
+			sample_type = SAMPLE_FLOAT;
 		  } else if (wext.SubFormat != SUBTYPE_IEEE_AVSPCM) {
 			dssRPT1(dssNEG,  "*** Audio: Extended WAVE format must be float or PCM. %s\n", PrintGUID(&wext.SubFormat));
 			return S_FALSE;
@@ -806,50 +806,63 @@ pbFormat:
 		}
       }
 
+	  if (lockvi) {
+		if ( (vi.audio_samples_per_second != (int)wex->nSamplesPerSec)
+		  || (vi.nchannels                != wex->nChannels)
+		  || (vi.sample_type              != sample_type) ) {
+		  dssRPT4(dssNEG,  "*** Audio: Reject format change! Channels:%d. Samples/sec:%d. Bits/sample:%d. Type:%x\n",
+				wex->nChannels, wex->nSamplesPerSec, wex->wBitsPerSample, sample_type);      
+		  return S_FALSE;
+	    }
+	  }
+
       vi.audio_samples_per_second = wex->nSamplesPerSec;
+      vi.nchannels = wex->nChannels;
+      vi.sample_type = sample_type;
 
       dssRPT4(dssNEG,  "*** Audio: Accepted! Channels:%d. Samples/sec:%d. Bits/sample:%d. Type:%x\n",
-            wex->nChannels, wex->nSamplesPerSec, wex->wBitsPerSample, vi.sample_type);      
+            wex->nChannels, wex->nSamplesPerSec, wex->wBitsPerSample, sample_type);      
       return S_OK;
     }
 
 // Handle video:
 
 	if (pmt->majortype == MEDIATYPE_Video) {
+	  int pixel_type = 0;
 	  if        (pmt->subtype == MEDIASUBTYPE_YV12) {  
 		if (!(media & mediaYV12)) {
 		  dssRPT0(dssNEG,  "*** Video: Subtype denied - YV12\n");
 		  return S_FALSE;
 		}
-		vi.pixel_type = VideoInfo::CS_YV12;
+		pixel_type = VideoInfo::CS_YV12;
 
 	  } else if (pmt->subtype == MEDIASUBTYPE_YUY2) {
 		if (!(media & mediaYUY2)) {
 		  dssRPT0(dssNEG,  "*** Video: Subtype denied - YUY2\n");
 		  return S_FALSE;
 		}
-		vi.pixel_type = VideoInfo::CS_YUY2;
+		pixel_type = VideoInfo::CS_YUY2;
 
 	  } else if (pmt->subtype == MEDIASUBTYPE_RGB24) {
 		if (!(media & mediaRGB24)) {
 		  dssRPT0(dssNEG,  "*** Video: Subtype denied - RGB24\n");
 		  return S_FALSE;
 		}
-		vi.pixel_type = VideoInfo::CS_BGR24;
+		pixel_type = VideoInfo::CS_BGR24;
 
 	  } else if (pmt->subtype == MEDIASUBTYPE_RGB32) {
 		if (!(media & mediaRGB32)) {
 		  dssRPT0(dssNEG,  "*** Video: Subtype denied - RGB32\n");
 		  return S_FALSE;
 		}
-		vi.pixel_type = VideoInfo::CS_BGR32;
+		pixel_type = VideoInfo::CS_BGR32;
 
 	  } else if (pmt->subtype == MEDIASUBTYPE_ARGB32) {
 		if (!(media & mediaARGB)) {
 		  dssRPT0(dssNEG,  "*** Video: Subtype denied - ARGB32\n");
 		  return S_FALSE;
 		}
-		vi.pixel_type = VideoInfo::CS_BGR32;
+		pixel_type = VideoInfo::CS_BGR32;
 
 	  } else {
 		dssRPT1(dssNEG,  "*** Video: Subtype rejected - %s\n", PrintGUID(&pmt->subtype));
@@ -877,6 +890,17 @@ pbFormat:
 		return S_FALSE;
 	  }
 
+	  if (lockvi) {
+		if ( (vi.pixel_type != pixel_type)
+	      || (vi.width      != pbi->biWidth)
+	      || (vi.height     != ((pbi->biHeight < 0) ? -pbi->biHeight : pbi->biHeight)) ) {
+		  dssRPT3(dssNEG,  "*** Video: reject format change: %dx%d, pixel_type %x\n",
+				  pbi->biWidth, pbi->biHeight, pixel_type);
+		  return S_FALSE;
+	    }
+	  }
+
+	  vi.pixel_type = pixel_type;
 	  vi.width = pbi->biWidth;
 	  vi.height = (pbi->biHeight < 0) ? -pbi->biHeight : pbi->biHeight;
 
@@ -1265,7 +1289,7 @@ static HRESULT AttemptConnectFilters(IGraphBuilder* gb, IBaseFilter* connect_fil
   return S_OK;
 }
 
-static void SetMicrosoftDVtoFullResolution(IGraphBuilder* gb) {
+void DirectShowSource::SetMicrosoftDVtoFullResolution(IGraphBuilder* gb) {
   // Microsoft's DV codec defaults to half-resolution, to everyone's
   // great annoyance.  This will set it to full res if possible.
   // Note that IIPDVDec is not declared in older versions of
@@ -1278,6 +1302,7 @@ static void SetMicrosoftDVtoFullResolution(IGraphBuilder* gb) {
   while (S_OK == ef->Next(1, &bf, &fetched)) {
     IIPDVDec* pDVDec;
     if (SUCCEEDED(bf->QueryInterface(&pDVDec))) {
+      dssRPT1(dssINFO, "DVtoFullResolution() pDVDec=0x%08X\n", pDVDec);
       pDVDec->put_IPDisplay(DVRESOLUTION_FULL); // DVDECODERRESOLUTION_720x480);   // yes, this includes 720x576
       pDVDec->Release();
     }
@@ -1292,43 +1317,118 @@ static void SetMicrosoftDVtoFullResolution(IGraphBuilder* gb) {
 // available for download from MSDN.
 static const WCHAR *g_wszWMVCDecoderDeinterlacing = L"_DECODERDEINTERLACING";
 
-static void DisableDeinterlacing(IFilterGraph *pGraph)
+void DirectShowSource::DisableDeinterlacing(IFilterGraph *pGraph)
 {
-    IEnumFilters *pEnum = NULL;
-    IBaseFilter *pFilter;
-    ULONG cFetched;
- 
-    HRESULT hr = pGraph->EnumFilters(&pEnum);
-    if (FAILED(hr))
-        return;
+  IEnumFilters *pEnum = NULL;
+  IBaseFilter *pFilter;
+  ULONG cFetched;
 
-    while(pEnum->Next(1, &pFilter, &cFetched) == S_OK) {
-        FILTER_INFO FilterInfo;
-        hr = pFilter->QueryFilterInfo(&FilterInfo);
-        if (FAILED(hr))
-            continue;  // Maybe the next one will work.
+  HRESULT hr = pGraph->EnumFilters(&pEnum);
+  if (FAILED(hr))
+	return;
 
-        if (wcscmp(FilterInfo.achName, L"WMVideo Decoder DMO") == 0) {
-            IPropertyBag *pPropertyBag = NULL;
-            hr = pFilter->QueryInterface(IID_IPropertyBag, (void**)&pPropertyBag);
-            if(SUCCEEDED(hr)) {
-            VARIANT myVar;
-            VariantInit(&myVar);
-            // Disable decoder deinterlacing
-            myVar.vt   = VT_BOOL;
-            myVar.lVal = FALSE;
-            pPropertyBag->Write(g_wszWMVCDecoderDeinterlacing, &myVar);
-            }
-        }
+  while(pEnum->Next(1, &pFilter, &cFetched) == S_OK) {
+	FILTER_INFO FilterInfo;
 
-        // The FILTER_INFO structure holds a pointer to the Filter Graph
-        // Manager, with a reference count that must be released.
-        if (FilterInfo.pGraph != NULL)
-            FilterInfo.pGraph->Release();
-        pFilter->Release();
-    }
+	hr = pFilter->QueryFilterInfo(&FilterInfo);
+	if (SUCCEEDED(hr)) {
+	  if (wcscmp(FilterInfo.achName, L"WMVideo Decoder DMO") == 0) {
+		IPropertyBag *pPropertyBag = NULL;
 
-    pEnum->Release();
+		hr = pFilter->QueryInterface(IID_IPropertyBag, (void**)&pPropertyBag);
+		if(SUCCEEDED(hr)) {
+		  dssRPT1(dssINFO, "DisableDeinterlacing() pPropertyBag=0x%08X\n", pPropertyBag);
+		  VARIANT myVar;
+
+		  VariantInit(&myVar);
+		  // Disable decoder deinterlacing
+		  myVar.vt   = VT_BOOL;
+		  myVar.lVal = FALSE;
+		  pPropertyBag->Write(g_wszWMVCDecoderDeinterlacing, &myVar);
+
+		  pPropertyBag->Release();
+		}
+		else {
+		  dssRPT2(dssINFO, "DisableDeinterlacing() pFilter=0x%08X code=%X\n", pFilter, hr);
+		}
+	  }
+	  // The FILTER_INFO structure holds a pointer to the Filter Graph
+	  // Manager, with a reference count that must be released.
+	  if (FilterInfo.pGraph != NULL)
+		FilterInfo.pGraph->Release();
+	}
+	pFilter->Release();
+  }
+  pEnum->Release();
+}
+
+
+static const WCHAR *g_wszWMACHiResOutput = L"_HIRESOUTPUT";
+
+void DirectShowSource::SetWMAudioDecoderDMOtoHiResOutput(IFilterGraph *pGraph)
+{
+  IEnumFilters *pEnum = NULL;
+  IBaseFilter *pFilter;
+  ULONG cFetched;
+
+  HRESULT hr = pGraph->EnumFilters(&pEnum);
+  if (FAILED(hr))
+	return;
+
+  // Search graph for "WMAudio Decoder DMO"
+  while(pEnum->Next(1, &pFilter, &cFetched) == S_OK) {
+	FILTER_INFO FilterInfo;
+
+	hr = pFilter->QueryFilterInfo(&FilterInfo);
+	if (SUCCEEDED(hr)) {
+	  if (wcscmp(FilterInfo.achName, L"WMAudio Decoder DMO") == 0) {
+		IPropertyBag *pPropertyBag = NULL;
+
+		hr = pFilter->QueryInterface(IID_IPropertyBag, (void**)&pPropertyBag);
+		if(SUCCEEDED(hr)) {
+		  dssRPT1(dssINFO, "WMAudioDecoderDMOtoHiRes() pPropertyBag=0x%08X\n", pPropertyBag);
+		  VARIANT myVar;
+
+		  VariantInit(&myVar);
+		  // Enable full output capabilities
+		  myVar.vt      = VT_BOOL;
+		  myVar.boolVal = -1; // True
+		  pPropertyBag->Write(g_wszWMACHiResOutput, &myVar);
+
+		  pPropertyBag->Release();
+
+		  IEnumPins* ep;
+		  if (SUCCEEDED(pFilter->EnumPins(&ep))) {
+			ULONG fetched=1;
+			IPin* pin;
+			// Search for output pin
+			while (S_OK == ep->Next(1, &pin, &fetched)) {
+			  PIN_DIRECTION dir;
+			  pin->QueryDirection(&dir);
+			  if (dir == PINDIR_OUTPUT) {
+				// Reconnect output pin
+				hr = pGraph->Reconnect(pin);
+				if(FAILED(hr)) {
+				  dssRPT1(dssINFO, "WMAudioDecoderDMOtoHiRes() Reconnect failed, code = %X\n", hr);
+				}
+			  }
+			  pin->Release();
+			}
+			ep->Release();
+		  }
+		}
+		else {
+		  dssRPT2(dssINFO, "WMAudioDecoderDMOtoHiRes() pFilter=0x%08X code=%X\n", pFilter, hr);
+		}
+	  }
+	  // The FILTER_INFO structure holds a pointer to the Filter Graph
+	  // Manager, with a reference count that must be released.
+	  if (FilterInfo.pGraph != NULL)
+		FilterInfo.pGraph->Release();
+	}
+	pFilter->Release();
+  }
+  pEnum->Release();
 }
 
 
@@ -1385,15 +1485,11 @@ DirectShowSource::DirectShowSource(const char* filename, int _avg_time_per_frame
       SetMicrosoftDVtoFullResolution(gb);
       DisableDeinterlacing(gb);
     }
-/*
+
 	if (_enable_audio) {
-	  SetWMAudioDecodeDMOtoHiResOutput(gb);
-scan for L"WMAudio Decode DMO"
-public const string g_wszWMACHiResOutput = "_HIRESOUTPUT";
-poke True into g_wszWMACHiResOutput 
-Reconnect GetSample input pin.
+	  SetWMAudioDecoderDMOtoHiResOutput(gb);
 	}
-*/
+
     // Prevent the graph from trying to run in "real time"
     // ... Disabled because it breaks ASF.  Now I know why
     // Avery swears so much.
@@ -1402,6 +1498,19 @@ Reconnect GetSample input pin.
     SAFE_RELEASE(mf);
 
     CheckHresult(env, gb->QueryInterface(&ms), "couldn't get IMediaSeeking interface");
+
+	CheckHresult(env, get_sample.StartGraph(), "DirectShowSource : Graph refused to run.");
+
+	if (TrapTimeouts) {
+	  DWORD timeout = 2000;   // 2 seconds
+	  get_sample.WaitForStart(timeout);
+	}
+	else {
+	  DWORD timeout = max(5000, min(300000, WaitTimeout));   // 5 seconds to 5 minutes
+	  if (get_sample.WaitForStart(timeout))
+	    // If returning grey frames, trap on init!
+	    env->ThrowError("DirectShowSource : Timeout waiting for graph to start.");
+	}
 
     vi = get_sample.GetVideoInfo();
 
@@ -1509,14 +1618,6 @@ Reconnect GetSample input pin.
       vi.num_audio_samples = (audio_dur * vi.audio_samples_per_second + 5000000) / 10000000;
     }
     SAFE_RELEASE(ms);
-
-	CheckHresult(env, get_sample.StartGraph(), "DirectShowSource : Graph refused to run.");
-
-	if (!TrapTimeouts) {
-	  DWORD timeout = max(5000, min(300000, WaitTimeout));   // 5 seconds to 5 minutes
-	  if (get_sample.WaitForStart(timeout)) // If returning grey frames, trap on init!
-	    env->ThrowError("DirectShowSource : Timeout waiting for graph to start.");
-	}
 
     cur_frame = 0;
     audio_bytes_read = 0;
