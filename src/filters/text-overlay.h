@@ -53,6 +53,7 @@ public:
   Antialiaser(int width, int height, const char fontname[], int size, int textcolor, int halocolor);
   virtual ~Antialiaser();
   HDC GetDC();
+  void FreeDC();
   
   void Apply(const VideoInfo& vi, PVideoFrame* frame, int pitch);
 
@@ -137,7 +138,7 @@ public:
   static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env);  
 
 private:
-  void InitAntialiaser(void);
+  void InitAntialiaser(IScriptEnvironment* env);
   
   const int x, y, firstframe, lastframe, size, lsp;
   const bool multiline;

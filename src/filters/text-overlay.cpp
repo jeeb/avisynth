@@ -80,7 +80,7 @@ AVSFunction Text_filters[] = {
  *****************************/
 
 Antialiaser::Antialiaser(int width, int height, const char fontname[], int size, int _textcolor, int _halocolor)
- : w(width), h(height), textcolor(_textcolor), halocolor(_halocolor)
+ : w(width), h(height), textcolor(_textcolor), halocolor(_halocolor), alpha_calcs(0)
 {
   struct {
     BITMAPINFOHEADER bih;
@@ -100,34 +100,36 @@ Antialiaser::Antialiaser(int width, int height, const char fontname[], int size,
   b.clr[0].rgbBlue = b.clr[0].rgbGreen = b.clr[0].rgbRed = 0;
   b.clr[1].rgbBlue = b.clr[1].rgbGreen = b.clr[1].rgbRed = 255;
 
-  hdcAntialias = CreateCompatibleDC(NULL);
-  hbmAntialias = CreateDIBSection
-    ( hdcAntialias,
-      (BITMAPINFO *)&b,
-      DIB_RGB_COLORS,
-      &lpAntialiasBits,
-      NULL,
-      0 );
-  hbmDefault = (HBITMAP)SelectObject(hdcAntialias, hbmAntialias);
+  if (hdcAntialias = CreateCompatibleDC(NULL)) {
+	if (hbmAntialias = CreateDIBSection
+	  ( hdcAntialias,
+		(BITMAPINFO *)&b,
+		DIB_RGB_COLORS,
+		&lpAntialiasBits,
+		NULL,
+		0 )) {
+	  hbmDefault = (HBITMAP)SelectObject(hdcAntialias, hbmAntialias);
 
-  HFONT newfont = LoadFont(fontname, size, true, false);
-  hfontDefault = (HFONT)SelectObject(hdcAntialias, newfont);
+	  HFONT newfont = LoadFont(fontname, size, true, false);
+	  hfontDefault = newfont ? (HFONT)SelectObject(hdcAntialias, newfont) : 0;
 
-  SetMapMode(hdcAntialias, MM_TEXT);
-  SetTextColor(hdcAntialias, 0xffffff);
-  SetBkColor(hdcAntialias, 0);
+	  SetMapMode(hdcAntialias, MM_TEXT);
+	  SetTextColor(hdcAntialias, 0xffffff);
+	  SetBkColor(hdcAntialias, 0);
 
-  alpha_calcs = new unsigned short[width*height*4];
+	  alpha_calcs = new unsigned short[width*height*4];
 
-  dirty = true;
+	  if (!alpha_calcs) FreeDC();
+
+	  dirty = true;
+	}
+  }
 }
 
 
 Antialiaser::~Antialiaser() {
-  DeleteObject(SelectObject(hdcAntialias, hbmDefault));
-  DeleteObject(SelectObject(hdcAntialias, hfontDefault));
-  DeleteDC(hdcAntialias);
-  delete[] alpha_calcs;
+  FreeDC();
+  if (alpha_calcs) delete[] alpha_calcs;
 }
 
 
@@ -137,8 +139,26 @@ HDC Antialiaser::GetDC() {
 }
 
 
+void Antialiaser::FreeDC() {
+  if (hdcAntialias) {
+    if (hbmDefault) {
+	  DeleteObject(SelectObject(hdcAntialias, hbmDefault));
+	  hbmDefault = 0;
+	}
+    if (hfontDefault) {
+	  DeleteObject(SelectObject(hdcAntialias, hfontDefault));
+	  hfontDefault = 0;
+	}
+    DeleteDC(hdcAntialias);
+    hdcAntialias = 0;
+  }
+}
+
+
 void Antialiaser::Apply( const VideoInfo& vi, PVideoFrame* frame, int pitch)
 {
+  if (!alpha_calcs) return;
+
   if (vi.IsRGB32())
     ApplyRGB32((*frame)->GetWritePtr(), pitch);
   else if (vi.IsRGB24())
@@ -468,9 +488,11 @@ PVideoFrame ShowFrameNumber::GetFrame(int n, IScriptEnvironment* env) {
   n+=offset;
   if (n < 0) return frame;
 
+  HDC hdc = antialiaser.GetDC();
+  if (!hdc) return frame;
+
   env->MakeWritable(&frame);
 
-  HDC hdc = antialiaser.GetDC();
   SetTextAlign(hdc, TA_BASELINE|TA_LEFT);
   RECT r = { 0, 0, 32767, 32767 };
   FillRect(hdc, &r, (HBRUSH)GetStockObject(BLACK_BRUSH));
@@ -603,6 +625,9 @@ PVideoFrame __stdcall ShowSMPTE::GetFrame(int n, IScriptEnvironment* env)
   n+=offset_f;
   if (n < 0) return frame;
 
+  HDC hdc = antialiaser.GetDC();
+  if (!hdc) return frame;
+
   env->MakeWritable(&frame);
 
   if (dropframe) {
@@ -628,7 +653,6 @@ PVideoFrame __stdcall ShowSMPTE::GetFrame(int n, IScriptEnvironment* env)
   char text[16];
   wsprintf(text, "%02d:%02d:%02d:%02d", hour, min%60, sec%60, frames);
 
-  HDC hdc = antialiaser.GetDC();
   SetTextAlign(hdc, TA_BASELINE|TA_CENTER);
   // RECT r = { 0, 0, 32767, 32767 };
   // FillRect(hdc, &r, (HBRUSH)GetStockObject(BLACK_BRUSH));
@@ -696,15 +720,19 @@ PVideoFrame Subtitle::GetFrame(int n, IScriptEnvironment* env)
   if (n >= firstframe && n <= lastframe) {
     env->MakeWritable(&frame);
     if (!antialiaser)
-      InitAntialiaser();
-    antialiaser->Apply(vi, &frame, frame->GetPitch());
-  } else {
-    // if we get far enough away from the frames we're supposed to
-    // subtitle, then junk the buffered drawing information
-    if (antialiaser && (n < firstframe-10 || n > lastframe+10)) {
-      delete antialiaser;
-      antialiaser = 0;
-    }
+	  InitAntialiaser(env);
+    if (antialiaser) {
+	  antialiaser->Apply(vi, &frame, frame->GetPitch());
+	  // Release all the windows drawing stuff
+	  // and just keep the alpha calcs
+	  antialiaser->FreeDC();
+	}
+  }
+  // if we get far enough away from the frames we're supposed to
+  // subtitle, then junk the buffered drawing information
+  if (antialiaser && (n < firstframe-10 || n > lastframe+10 || n == vi.num_frames-1)) {
+	delete antialiaser;
+	antialiaser = 0;
   }
 
   return frame;
@@ -748,15 +776,16 @@ AVSValue __cdecl Subtitle::Create(AVSValue args, void*, IScriptEnvironment* env)
 
 
 
-void Subtitle::InitAntialiaser() 
+void Subtitle::InitAntialiaser(IScriptEnvironment* env) 
 {
   antialiaser = new Antialiaser(vi.width, vi.height, fontname, size, textcolor, halocolor);
-
-  HDC hdcAntialias = antialiaser->GetDC();
 
   int real_x = x;
   int real_y = y;
   unsigned int al = 0;
+
+  HDC hdcAntialias = antialiaser->GetDC();
+  if (!hdcAntialias) goto GDIError;
 
   switch (align) // This spec where [X, Y] is relative to the text (inverted logic)
   { case 1: al = TA_BOTTOM   | TA_LEFT; break;		// .----
@@ -770,14 +799,14 @@ void Subtitle::InitAntialiaser()
     case 9: al = TA_TOP      | TA_RIGHT; break;		// ----`
     default: al= TA_BASELINE | TA_LEFT; break;		// .____
   }
-  SetTextCharacterExtra(hdcAntialias, spc);
-  SetTextAlign(hdcAntialias, al);
+  if (SetTextCharacterExtra(hdcAntialias, spc) == 0x80000000) goto GDIError;
+  if (SetTextAlign(hdcAntialias, al) == GDI_ERROR) goto GDIError;
 
   if (x==-1) real_x = vi.width>>1;
   if (y==-1) real_y = (vi.height>>1);
 
   if (!multiline) {
-	TextOut(hdcAntialias, real_x*8+16, real_y*8+16, text, strlen(text));
+	if (!TextOut(hdcAntialias, real_x*8+16, real_y*8+16, text, strlen(text))) goto GDIError;
   }
   else {
 	// multiline patch -- tateu
@@ -796,13 +825,20 @@ void Subtitle::InitAntialiaser()
 		pdest = strstr(pdest+1, search);
 	  }
 	  result = pdest == NULL ? length : pdest - psrc;
-	  TextOut(hdcAntialias, real_x*8+16, y_inc, psrc, result);
+	  if (!TextOut(hdcAntialias, real_x*8+16, y_inc, psrc, result)) goto GDIError;
 	  y_inc += size + lsp;
 	  psrc = pdest + 2;
 	  length -= result + 2;
 	} while (pdest != NULL && length > 0);
   }
-  GdiFlush();
+  if (!GdiFlush()) goto GDIError;
+  return;
+
+GDIError:
+  delete antialiaser;
+  antialiaser = 0;
+
+  env->ThrowError("Subtitle: GDI or Insufficient Memory Error");
 }
 
 
@@ -886,8 +922,10 @@ string GetCpuMsg(IScriptEnvironment * env)
 PVideoFrame FilterInfo::GetFrame(int n, IScriptEnvironment* env) 
 {
   PVideoFrame frame = child->GetFrame(n, env);
-  env->MakeWritable(&frame);
   hdcAntialias = antialiaser.GetDC();
+  if (hdcAntialias) {
+	env->MakeWritable(&frame);
+
     const char* c_space;
     const char* s_type = t_NONE;
     const char* s_parity;
@@ -969,6 +1007,7 @@ PVideoFrame FilterInfo::GetFrame(int n, IScriptEnvironment* env)
     BYTE* dstp = frame->GetWritePtr();
     int dst_pitch = frame->GetPitch();
     antialiaser.Apply(vi, &frame, dst_pitch );
+  }
 
   return frame;
 }
@@ -1256,35 +1295,39 @@ comp_loopx:
     SSD_overall += SSD;  
   }
 
-  if (log) fprintf(log,"%6u  %8.4f  %+9.4f  %3d    %3d    %8.4f\n", n, MAD, MD, pos_D, neg_D, PSNR);
+  if (log)
+    fprintf(log,"%6u  %8.4f  %+9.4f  %3d    %3d    %8.4f\n", n, MAD, MD, pos_D, neg_D, PSNR);
   else {
-    HDC hdc = antialiaser.GetDC();
-    char text[400];
-    RECT r= { 32, 16, min(3440,vi.width*8), 768+128 };
-    double PSNR_overall = 10.0 * log10(bytecount_overall * 255.0 * 255.0 / SSD_overall);
-    _snprintf(text, sizeof(text), 
-      "       Frame:  %-8u(   min  /   avg  /   max  )\n"
-      "Mean Abs Dev:%8.4f  (%7.3f /%7.3f /%7.3f )\n"
-      "    Mean Dev:%+8.4f  (%+7.3f /%+7.3f /%+7.3f )\n"
-      " Max Pos Dev:%4d  \n"
-      " Max Neg Dev:%4d  \n"
-      "        PSNR:%6.2f dB ( %6.2f / %6.2f / %6.2f )\n"
-      "Overall PSNR:%6.2f dB\n", 
-      n,
-      MAD, MAD_min, MAD_tot / framecount, MD_max,
-      MD, MD_min, MD_tot / framecount, MD_max,
-      pos_D,
-      neg_D,
-      PSNR, PSNR_min, PSNR_tot / framecount, PSNR_max,
-      PSNR_overall
-    );
-    DrawText(hdc, text, -1, &r, 0);
-    GdiFlush();
-
     env->MakeWritable(&f1);
     BYTE* dstp = f1->GetWritePtr();
     int dst_pitch = f1->GetPitch();
-    antialiaser.Apply( vi, &f1, dst_pitch );
+
+    HDC hdc = antialiaser.GetDC();
+	if (hdc) {
+	  char text[400];
+	  RECT r= { 32, 16, min(3440,vi.width*8), 768+128 };
+	  double PSNR_overall = 10.0 * log10(bytecount_overall * 255.0 * 255.0 / SSD_overall);
+	  _snprintf(text, sizeof(text), 
+		"       Frame:  %-8u(   min  /   avg  /   max  )\n"
+		"Mean Abs Dev:%8.4f  (%7.3f /%7.3f /%7.3f )\n"
+		"    Mean Dev:%+8.4f  (%+7.3f /%+7.3f /%+7.3f )\n"
+		" Max Pos Dev:%4d  \n"
+		" Max Neg Dev:%4d  \n"
+		"        PSNR:%6.2f dB ( %6.2f / %6.2f / %6.2f )\n"
+		"Overall PSNR:%6.2f dB\n", 
+		n,
+		MAD, MAD_min, MAD_tot / framecount, MD_max,
+		MD, MD_min, MD_tot / framecount, MD_max,
+		pos_D,
+		neg_D,
+		PSNR, PSNR_min, PSNR_tot / framecount, PSNR_max,
+		PSNR_overall
+	  );
+	  DrawText(hdc, text, -1, &r, 0);
+	  GdiFlush();
+
+	  antialiaser.Apply( vi, &f1, dst_pitch );
+	}
 
     if (show_graph) {
       // original idea by Marc_FD
@@ -1355,6 +1398,8 @@ bool GetTextBoundingBox( const char* text, const char* fontname, int size, bool 
   if (hfont == NULL)
     return false;
   HDC hdc = GetDC(NULL);
+  if (hdc == NULL)
+	return false;
   HFONT hfontDefault = (HFONT)SelectObject(hdc, hfont);
   int old_map_mode = SetMapMode(hdc, MM_TEXT);
   UINT old_text_align = SetTextAlign(hdc, align);
@@ -1399,9 +1444,11 @@ void ApplyMessage( PVideoFrame* frame, const VideoInfo& vi, const char* message,
   }
   Antialiaser antialiaser(vi.width, vi.height, "Arial", size, textcolor, halocolor);
   HDC hdcAntialias = antialiaser.GetDC();
-  RECT r = { 4*8, 4*8, (vi.width-4)*8, (vi.height-4)*8 };
-  DrawText(hdcAntialias, message, lstrlen(message), &r, DT_NOPREFIX|DT_CENTER);
-  GdiFlush();
-  antialiaser.Apply(vi, frame, (*frame)->GetPitch());
+  if  (hdcAntialias) {
+	RECT r = { 4*8, 4*8, (vi.width-4)*8, (vi.height-4)*8 };
+	DrawText(hdcAntialias, message, lstrlen(message), &r, DT_NOPREFIX|DT_CENTER);
+	GdiFlush();
+	antialiaser.Apply(vi, frame, (*frame)->GetPitch());
+  }
 }
 
