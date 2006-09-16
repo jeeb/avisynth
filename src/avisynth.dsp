@@ -54,7 +54,7 @@ BSC32=bscmake.exe
 # ADD BSC32 /nologo
 LINK32=link.exe
 # ADD BASE LINK32 kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib /nologo /dll /machine:I386
-# ADD LINK32 ../distrib/lib/SoundTouch.lib ../distrib/lib/pfc.lib ../distrib/lib/devil.lib ../distrib/lib/softwire.lib msacm32.lib vfw32.lib kernel32.lib advapi32.lib version.lib user32.lib gdi32.lib ole32.lib uuid.lib winmm.lib oleaut32.lib /nologo /dll /machine:I386 /nodefaultlib:"LIBC"
+# ADD LINK32 ../distrib/lib/SoundTouch.lib ../distrib/lib/pfc.lib ../distrib/lib/devil.lib ../distrib/lib/softwire.lib msacm32.lib vfw32.lib kernel32.lib advapi32.lib version.lib user32.lib gdi32.lib ole32.lib uuid.lib winmm.lib oleaut32.lib /nologo /dll /map /machine:I386 /nodefaultlib:"LIBC"
 # SUBTRACT LINK32 /pdb:none /debug
 # Begin Custom Build
 InputPath=.\Release\avisynth.dll
