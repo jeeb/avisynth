@@ -1,7 +1,7 @@
 !packhdr tempfile.exe "upx --best --q tempfile.exe"
 
 !DEFINE VERSION 2.5.7
-!DEFINE DATE 220406
+!DEFINE DATE 160906
 
 SetCompressor /solid lzma
 
@@ -46,6 +46,7 @@ InstallDir "$PROGRAMFILES\AviSynth 2.5"
 InstallDirRegKey HKLM SOFTWARE\AviSynth ""
 
 InstType Standard
+InstType "Minimal"
 
 Section "!AviSynth Base (required)" Frameserving
   SectionIn RO
@@ -274,12 +275,12 @@ Subsectionend
 
 SubSection /e "Select Association" SelectAssociation
 
-Section /o "Associate AVS files with Notepad (open)" Associate1
+Section /o "Associate AVS with Notepad (open)" Associate1
   WriteRegStr HKCR "avsfile\shell\open\command" "" 'notepad.exe "%1"'
   WriteRegStr HKCR "avs_auto_file\shell\open\command" "" 'notepad.exe "%1"'
 SectionEnd
 
-Section /o "Associate AVS files with Media Player 6.4 (play)" Associate2
+Section /o "Associate AVS with Media Player 6.4 (play)" Associate2
   WriteRegStr HKCR "avsfile\shell\play\command" "" '"$PROGRAMFILES\Windows Media Player\mplayer2.exe" /Play "%L"'
 SectionEnd
 
@@ -301,6 +302,22 @@ SectionEnd
 SubSectionEnd
 
 
+SubSection "Select Extra Files" SelectExtraFiles
+
+Section /o "Install Avisynth.lib and Avisynth.exp" ExtraFiles1
+  SetOutPath $INSTDIR\Extras
+  File "..\src\release\AviSynth.lib"
+  File "..\src\release\AviSynth.exp"
+SectionEnd
+
+Section /o "Install Avisynth.map" ExtraFiles2
+  SetOutPath $INSTDIR\Extras
+  File "..\src\release\AviSynth.map"
+SectionEnd
+
+SubSectionEnd
+
+
   !insertmacro MUI_FUNCTION_DESCRIPTION_BEGIN
   !insertmacro MUI_DESCRIPTION_TEXT  ${Frameserving} "Install the main files for frameserving via AviSynth"
   !insertmacro MUI_DESCRIPTION_TEXT  ${Documentation} "Install help. Please select languages"
@@ -310,10 +327,13 @@ SubSectionEnd
   !insertmacro MUI_DESCRIPTION_TEXT  ${Italian} "Install Italian help"
   !insertmacro MUI_DESCRIPTION_TEXT  ${Portugese} "Install Portugese help"
   !insertmacro MUI_DESCRIPTION_TEXT  ${Russian} "Install Russian help"
-  !insertmacro MUI_DESCRIPTION_TEXT  ${SelectAssociation} "Select one or both associations"
+  !insertmacro MUI_DESCRIPTION_TEXT  ${SelectAssociation} "Select one or more associations"
   !insertmacro MUI_DESCRIPTION_TEXT  ${Associate1} "Open AVS files directly with Notepad to edit"
   !insertmacro MUI_DESCRIPTION_TEXT  ${Associate2} "Play AVS files directly with Media Player 6.4 (right click - play)"
   !insertmacro MUI_DESCRIPTION_TEXT  ${Associate3} "Create a new blank AviSynth Script (right click - new - AviSynth Script)"
+  !insertmacro MUI_DESCRIPTION_TEXT  ${SelectExtraFiles} "Select one or more additional files to install"
+  !insertmacro MUI_DESCRIPTION_TEXT  ${ExtraFiles1} "Install avisynth.lib and avisynth.exp for C interface developement"
+  !insertmacro MUI_DESCRIPTION_TEXT  ${ExtraFiles2} "Install avisynth.map file"
   !insertmacro MUI_FUNCTION_DESCRIPTION_END
 
 
@@ -422,6 +442,12 @@ Section "Uninstall"
 
   Delete "$INSTDIR\Docs\*.css"
   RMDir  "$INSTDIR\Docs"
+  
+  Delete "$INSTDIR\Extras\Avisynth.exp"
+  Delete "$INSTDIR\Extras\Avisynth.lib"
+  Delete "$INSTDIR\Extras\Avisynth.map"
+  RMDir  "$INSTDIR\Extras"
+
   Delete "$INSTDIR\Uninstall.exe"
 
   DeleteRegKey HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\AviSynth"
