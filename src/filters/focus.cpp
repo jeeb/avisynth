@@ -1076,6 +1076,7 @@ TemporalSoften::~TemporalSoften(void)
     delete[] planeP2;
     delete[] planePitch;
     delete[] planePitch2;
+    delete[] planeDisabled;
     _aligned_free(accum_line);
     _aligned_free(div_line);
     delete[] frames;
