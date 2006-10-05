@@ -487,21 +487,22 @@ void __stdcall GetChannel::GetAudio(void* buf, __int64 start, __int64 count, ISc
 
 
 PClip GetChannel::Create_left(PClip clip) {
-  int* ch = new int[1];
-  ch[0] = 0;
+
   if (clip->GetVideoInfo().AudioChannels() == 1)
     return clip;
-  else
-    return new GetChannel(clip, ch, 1);
+
+  int* ch = new int[1];
+  ch[0] = 0;
+  return new GetChannel(clip, ch, 1);
 }
 
 PClip GetChannel::Create_right(PClip clip) {
-  int* ch = new int[1];
-  ch[0] = 1;
   if (clip->GetVideoInfo().AudioChannels() == 1)
     return clip;
-  else
-    return new GetChannel(clip, ch, 1);
+
+  int* ch = new int[1];
+  ch[0] = 1;
+  return new GetChannel(clip, ch, 1);
 }
 
 PClip GetChannel::Create_n(PClip clip, int* n, int numchannels) {
@@ -595,6 +596,13 @@ AVSValue __cdecl DelayAudio::Create(AVSValue args, void*, IScriptEnvironment* en
 Amplify::Amplify(PClip _child, float* _volumes, int* _i_v)
     : GenericVideoFilter(ConvertAudio::Create(_child, SAMPLE_INT16 | SAMPLE_FLOAT | SAMPLE_INT32, SAMPLE_FLOAT)),
 volumes(_volumes), i_v(_i_v) { }
+
+
+Amplify::~Amplify()
+{
+    if (volumes) { delete[] volumes; volumes=0; }
+    if (i_v)     { delete[] i_v;     i_v=0;     }
+}
 
 
 void __stdcall Amplify::GetAudio(void* buf, __int64 start, __int64 count, IScriptEnvironment* env) {

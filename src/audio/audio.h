@@ -165,7 +165,10 @@ class GetChannel : public GenericVideoFilter
 public:
   GetChannel(PClip _clip, int* _channel, int numchannels);
   virtual ~GetChannel()
-   {if (tempbuffer_size) {delete[] tempbuffer;tempbuffer_size=0;}}
+  {
+    if (tempbuffer_size) {delete[] tempbuffer;tempbuffer_size=0;}
+    if (channel)         {delete[] channel;   channel=0;        }
+  }
 
   void __stdcall GetAudio(void* buf, __int64 start, __int64 count, IScriptEnvironment* env);
   static PClip Create_left(PClip clip);
@@ -233,6 +236,7 @@ class Amplify : public GenericVideoFilter
 {
 public:
   Amplify(PClip _child, float* _volumes, int* _i_v);
+  ~Amplify();
   void __stdcall GetAudio(void* buf, __int64 start, __int64 count, IScriptEnvironment* env);
 
   static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env);
