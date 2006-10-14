@@ -306,6 +306,12 @@ TCPClientThread::TCPClientThread(const char* hostname, int port, const char* com
   char* host_ip = *(host_info->h_addr_list);
   unsigned long addr = *(unsigned long*)(host_ip);
 
+  const static int sendbufsize = 1024; // Small send size
+  const static int rcvbufsize = 262144;   // Maximum rcv size
+
+  setsockopt(m_socket, SOL_SOCKET, SO_RCVBUF, (char *) &rcvbufsize, sizeof(rcvbufsize));
+  setsockopt(m_socket, SOL_SOCKET, SO_SNDBUF, (char *) &sendbufsize, sizeof(sendbufsize));
+
   // Set up the sockaddr structure
   service.sin_family = AF_INET;
   service.sin_addr.s_addr = addr;
@@ -317,6 +323,9 @@ TCPClientThread::TCPClientThread(const char* hostname, int port, const char* com
     return ;
   }
   _RPT0(0, "TCPClient: Connected to server!  Spawning thread.\n");
+
+  int one = 1;         // for 4.3 BSD style setsockopt()
+  setsockopt(m_socket, IPPROTO_TCP, TCP_NODELAY, (PCHAR )&one, sizeof(one));
 
   AfxBeginThread(StartClient, this , THREAD_PRIORITY_ABOVE_NORMAL, 0, 0, NULL);
 

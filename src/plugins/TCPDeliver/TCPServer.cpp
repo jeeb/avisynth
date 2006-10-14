@@ -257,7 +257,7 @@ void TCPServerListener::Listen() {
     }
 
     if (!request_handled) {
-      t.tv_usec = 100000;  // If no request we allow it to wait 100 ms instead.
+      t.tv_usec = 10000;  // If no request we allow it to wait 10 ms instead.
       if (prefetch_frame > 0) {
         _RPT1(0, "TCPServer: Prerequesting frame: %d", prefetch_frame);
         child->GetFrame(prefetch_frame, env);  // We are idle - prefetch frame
@@ -292,6 +292,14 @@ void TCPServerListener::AcceptClient(SOCKET AcceptSocket, ClientConnection* s_li
     s_list[slot].reset();
     s_list[slot].s = AcceptSocket;
     s_list[slot].isConnected = true;
+
+    int one = 1;         // for 4.3 BSD style setsockopt()
+    const static int sendbufsize = 262144; // Maximum send size
+    const static int rcvbufsize = 1024;   // Smaller rcv size
+
+    setsockopt(AcceptSocket, IPPROTO_TCP, TCP_NODELAY, (PCHAR )&one, sizeof(one));
+    setsockopt(AcceptSocket, SOL_SOCKET, SO_RCVBUF, (char *) &rcvbufsize, sizeof(rcvbufsize));
+    setsockopt(AcceptSocket, SOL_SOCKET, SO_SNDBUF, (char *) &sendbufsize, sizeof(sendbufsize));
 
   } else {
     _RPT0(0, "TCPServer: All slots full.\n");
