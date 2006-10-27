@@ -472,9 +472,9 @@ void AVSC_CC avs_at_exit(AVS_ScriptEnvironment * p,
   ShutdownFuncData *dd, *d = new ShutdownFuncData;
   d->func = function;
   d->user_data = user_data;
-	dd = (ShutdownFuncData *)p->env->SaveString((const char *)d, sizeof(ShutdownFuncData));
-	delete d;
-  p->env->AtExit(shutdown_func_bridge, d);
+  dd = (ShutdownFuncData *)p->env->SaveString((const char *)d, sizeof(ShutdownFuncData));
+  delete d;
+  p->env->AtExit(shutdown_func_bridge, dd);
 }
 
 extern "C"
