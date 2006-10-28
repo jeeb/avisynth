@@ -1,0 +1,68 @@
+<!DOCTYPE html
+          PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
+          "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html   xmlns   = "http://www.w3.org/1999/xhtml">
+<head>
+<link rel="STYLESHEET" href="filtersdk.css" type="text/css" />
+<title>SDKNecessaries</title>
+</head>
+<BODY>
+
+<div id="body">
+
+<h1><a style="text-decoration:none">
+    SDKNecessaries</a>
+    	<p>
+	</h1>
+
+<p>What is necessary to create an AviSynth plugin?</p>
+
+<h4>You must have some compatible development tool:</h4>
+
+<ul>
+<li>Microsoft Visual C/C++ 6, 7, 7.1, or 8</li>
+<li>Microsoft Visual C++ Toolkit 2003 (free, try search vctoolkitsetup.exe) with some IDE (e.g. free <a href="http://www.codeblocks.org">CodeBlocks</a>)</li>
+<li>Microsoft Visual C++ 2005 Express edition (<a href="http://msdn.microsoft.com/vstudio/express/visualc/default.aspx">free download</a>)</li>
+<li>Intel ICL Compiler v7 (?) or above</li>
+</ul>
+
+<h4>You also need in Microsoft Platform SDK (if it is not included with compiler).</h4>
+<p>Free download it from <a href=http://www.microsoft.com/downloads/details.aspx?familyid=EBA0128F-A770-45F1-86F3-7AB010B398A3&displaylang=en>Microsoft site</a>. 
+The last SDK that will work with VC 6.0 was the February 2003 Edition.
+</p>
+
+<h4>For some very special plugins (GPU) you may need in DirectX SDK.</h4>
+
+<h4>Finally, you must include small header file 'avisynth.h'.</h4> 
+<p>You can get it with this FilterSDK, download with AviSynth source code, or take from some plugin source package. 
+There are several versions of this header file from various AviSynth versions.
+<p>Header file avisynth.h from v2.5.0 to v2.5.5 have <code>AVISYNTH_INTERFACE_VERSION = 2.</code>
+Plugins compliled with them will (generally) work in AviSynth v2.5.0 to v2.5.7 (and above).
+But avisynth.h files from versions v2.5.0 - v2.5.5 (and betas) are not identical.  
+We recommend to use avisynth.h from versions 2.5.5 or later.
+Previous versions of avisynth.h are obsolete and has some bugs.
+<p>Header files avisynth.h from v2.5.6 and v2.5.7 are identical and have <code>AVISYNTH_INTERFACE_VERSION = 3.</code>
+Plugins compliled with them will work in v2.5.6, v2.5.7. They will also work in v2.5.5 and below, 
+if you do not use new interface features and do not call <code>env->CheckVersion</code> function.
+<p>New beeing developed AviSynth version 2.6.x will use new header avisynth.h probably with <code>AVISYNTH_INTERFACE_VERSION = 4.</code> 
+Plugins complied with AviSynth v2.5.x header will work in AviSynth 2.6.x too,
+but plugins compliled with new AviSynth v2.6.x header will probably not work in AviSynth v2.5.x.</p>
+<p>Generally good start is to take some similar plugin source code as a draft for improving or own development.
+Attention: there are many old plugins source code packages with older avisynth.h included.
+(for example, SimpleSample zip file contains avisynth.h file from from AviSynth v2.5.4). Simply replace it by new one.
+
+
+<h4>Plugin CPP source code must be compiled as Win32 DLL (multi-threaded or multi-threaded DLL) without MFC.</h4>
+<p>Of course, use Release build with optimization. Typical compiler switches are /MT /O2 and /dll /nologo for linker </p> 
+
+<p>You can NOT use other compiler like GNU C++ to create regular AviSynth plugins.
+You may also try to use some tools (GNU C++, Visual Basic, Delphi) 
+to create so called AviSynth C plugins with <a href="http://kevin.atkinson.dhs.org/avisynth_c/">AviSynth C API</a> 
+(but it is not mainsteam). 
+</p>
+
+<h3>Back to <a href="FilterSDK.htm">FilterSDK</a></h3>
+
+<p><kbd>$Date: 2006/10/28 20:18:14 $</kbd></p>
+</BODY>
+</html>

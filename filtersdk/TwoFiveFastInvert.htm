@@ -1,0 +1,148 @@
+<!DOCTYPE html
+          PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
+          "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html   xmlns   = "http://www.w3.org/1999/xhtml">
+<head>
+<link rel="STYLESHEET" href="filtersdk.css" type="text/css" />
+<title>TwoFiveFastInvert - AviSynth</title>
+</head>
+<BODY>
+
+<div id="body">
+
+<h1><a href="http://www.avisynth.org/TwoFiveFastInvert" style="text-decoration:none">
+    TwoFiveFastInvert</a>
+    	<p>
+	</h1>
+
+<p>Please not that the code below may not actually be faster than the <a href="TwoFiveInvert.html">TwoFiveInvert</a> sample, because the compiler doesn't handle 64 bit intergers very well.  However this is not the case when using <a href="MMX.html">MMX</a> or <a href="IntegerSSE.html">IntegerSSE</a>.</p>
+
+
+<p><tt>#include "avisynth.h"</tt></p>
+
+
+<p><tt>class Invert : public GenericVideoFilter {</tt></p>
+
+<dl><dd><tt>public:</tt>
+</dd>
+<dd><tt>    Invert(PClip _child) : GenericVideoFilter(_child) {}</tt>
+</dd>
+<dd><tt>    PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);</tt>
+</dd>
+</dl>
+<tt>};</tt>
+
+<p><tt>PVideoFrame __stdcall Invert::GetFrame(int n, IScriptEnvironment* env) {</tt></p>
+
+
+<dl><dd><tt>    PVideoFrame src = child->GetFrame(n, env);</tt>
+</dd>
+<dd><tt>    PVideoFrame dst = env->NewVideoFrame(vi);</tt>
+</dd>
+</dl>
+
+<dl><dd><tt>    const __int64* srcpY = (__int64*)src->GetReadPtr(PLANAR_Y);</tt>
+</dd>
+<dd><tt>    const __int64* srcpV = (__int64*)src->GetReadPtr(PLANAR_V);    </tt>
+</dd>
+<dd><tt>    const __int64* srcpU = (__int64*)src->GetReadPtr(PLANAR_U);</tt>
+</dd>
+</dl>
+
+<dl><dd><tt>    __int64* dstpY = (__int64*)dst->GetWritePtr(PLANAR_Y);</tt>
+</dd>
+<dd><tt>    __int64* dstpV = (__int64*)dst->GetWritePtr(PLANAR_V);    </tt>
+</dd>
+<dd><tt>    __int64* dstpU = (__int64*)dst->GetWritePtr(PLANAR_U);</tt>
+</dd>
+</dl>
+
+<dl><dd><tt>    const int src_pitchY = src->GetPitch(PLANAR_Y)/8;     // 8 bytes per loop</tt>
+</dd>
+<dd><tt>    const int src_pitchUV = src->GetPitch(PLANAR_V)/8;</tt>
+</dd>
+<dd><tt>    const int dst_pitchY = dst->GetPitch(PLANAR_Y)/8;</tt>
+</dd>
+<dd><tt>    const int dst_pitchUV = dst->GetPitch(PLANAR_U)/8;</tt>
+</dd>
+</dl>
+
+<dl><dd><tt>    const int row_sizeY = dst->GetRowSize(PLANAR_Y_ALIGNED)/8;       // Mod 16 size</tt>
+</dd>
+<dd><tt>    const int row_sizeUV = dst->GetRowSize(PLANAR_U_ALIGNED)/8;      // Mod 8 size</tt>
+</dd>
+</dl>
+
+<dl><dd><tt>    const int heightY = dst->GetHeight(PLANAR_Y);</tt>
+</dd>
+<dd><tt>    const int heightUV = dst->GetHeight(PLANAR_U);</tt>
+</dd>
+</dl>
+
+<dl><dd><tt>    __int64 inv = 0xffffffffffffffff;</tt>
+</dd>
+</dl>
+
+<dl><dd><tt>    for (int y = 0; y &lt; heightY; y++) {</tt>
+<dl><dd><tt>        for (int x = 0; x &lt; row_sizeY; x++)</tt>
+<dl><dd><tt>            dstpY[x] = srcpY[x] ^ inv;</tt>
+</dd>
+</dl>
+</dd>
+<dd><tt>        srcpY += src_pitchY;</tt>
+</dd>
+<dd><tt>        dstpY += dst_pitchY;</tt>
+</dd>
+</dl>
+</dd>
+<dd><tt>    }</tt>
+</dd>
+</dl>
+
+<dl><dd><tt>    for (int y = 0; y &lt; heightUV; y++) {</tt>
+<dl><dd><tt>        for (int x = 0; x &lt; row_sizeUV; x++) {</tt>
+<dl><dd><tt>            dstpU[x] = srcpU[x]  ^ inv;</tt>
+</dd>
+<dd><tt>            dstpV[x] = srcpV[x]  ^ inv;</tt>
+</dd>
+</dl>
+</dd>
+<dd><tt>        }</tt>
+</dd>
+<dd><tt>        srcpU += src_pitchUV;</tt>
+</dd>
+<dd><tt>        dstpU += dst_pitchUV;</tt>
+</dd>
+<dd><tt>        srcpV += src_pitchUV;</tt>
+</dd>
+<dd><tt>        dstpV += dst_pitchUV;</tt>
+</dd>
+</dl>
+</dd>
+<dd><tt>    }</tt>
+</dd>
+<dd><tt>    return dst;</tt>
+</dd>
+</dl>
+<tt>}</tt>
+
+<p><tt>AVSValue __cdecl Create_Invert(AVSValue args, void* user_data, IScriptEnvironment* env) {</tt></p>
+
+<dl><dd><tt>    return new Invert(args[0].AsClip());</tt>
+</dd>
+</dl>
+<tt>}</tt>
+
+<p><tt>extern "C" __declspec(dllexport) const char* __stdcall AvisynthPluginInit2(IScriptEnvironment* env) {</tt></p>
+
+<dl><dd><tt>    env->AddFunction("Invert", "c", Create_Invert, 0);</tt>
+</dd>
+<dd><tt>    return "`Invert' sample plugin";</tt>
+</dd>
+</dl>
+<tt>}</tt>
+
+<h3>Back to <a href="AviSynthTwoFiveSDK.html">AviSynthTwoFiveSDK</a></h3></div>
+<p><kbd>$Date: 2006/10/28 20:18:15 $</kbd></p>
+</BODY>
+</html>

@@ -315,6 +315,15 @@ Section /o "Install Avisynth.map" ExtraFiles2
   File "..\src\release\AviSynth.map"
 SectionEnd
 
+Section /o "Install FilterSDK" ExtraFiles3
+  SetOutPath $INSTDIR\FilterSDK
+  File "..\filtersdk\*.*"
+  SetOutPath $INSTDIR\FilterSDK\include
+  File "..\src\core\avisynth.h"
+  SetShellVarContext All
+  CreateShortCut "$SMPROGRAMS\AviSynth 2.5\FilterSDK Information.lnk" "$INSTDIR\FilterSDK\FilterSDK.htm"
+SectionEnd
+
 SubSectionEnd
 
 
@@ -334,6 +343,7 @@ SubSectionEnd
   !insertmacro MUI_DESCRIPTION_TEXT  ${SelectExtraFiles} "Select one or more additional files to install"
   !insertmacro MUI_DESCRIPTION_TEXT  ${ExtraFiles1} "Install avisynth.lib and avisynth.exp for C interface developement"
   !insertmacro MUI_DESCRIPTION_TEXT  ${ExtraFiles2} "Install avisynth.map file"
+  !insertmacro MUI_DESCRIPTION_TEXT  ${ExtraFiles3} "Install FilterSDK for AviSynth plugins development"
   !insertmacro MUI_FUNCTION_DESCRIPTION_END
 
 
@@ -447,6 +457,11 @@ Section "Uninstall"
   Delete "$INSTDIR\Extras\Avisynth.lib"
   Delete "$INSTDIR\Extras\Avisynth.map"
   RMDir  "$INSTDIR\Extras"
+
+  Delete "$INSTDIR\FilterSDK\include\avisynth.h"
+  RMDir  "$INSTDIR\FilterSDK\include"
+  Delete "$INSTDIR\FilterSDK\*.*"
+  RMDir  "$INSTDIR\FilterSDK"
 
   Delete "$INSTDIR\Uninstall.exe"
 

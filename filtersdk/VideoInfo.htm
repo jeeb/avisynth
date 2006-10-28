@@ -1,0 +1,97 @@
+<!DOCTYPE html
+          PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
+          "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html   xmlns   = "http://www.w3.org/1999/xhtml">
+<head>
+<link rel="STYLESHEET" href="filtersdk.css" type="text/css" />
+<title>VideoInfo - AviSynth</title>
+</head>
+<BODY>
+
+<div id="body">
+
+<h1><a href="http://www.avisynth.org/VideoInfo" style="text-decoration:none">
+    VideoInfo</a>
+    	<p>
+	</h1>
+
+
+<p>VideoInfo provides basic information about the clip your filter recieves.</p>
+
+
+<h3>Getting information from VideoInfo</h3>
+
+<p><code>  bool HasVideo() </code> </p>
+
+<p>This will return true if there is any video in the given clip.</p>
+
+
+<p><code>  bool HasAudio() </code></p>
+
+<p>This will return true if there is any audio in the given clip.</p>
+
+
+<p><code>  bool IsRGB() </code></p>
+
+<p>This will return true if the colorspace is RGB (in any way). 
+For now only RGB24 and RGB32 returns true, but future formats could also apply.</p>
+
+
+<p><code>  bool IsRGB24() </code></p>
+
+<p><code>  bool IsRGB32()</code></p>
+
+<p><code>  bool IsYUV()</code></p>
+
+<p>This will return true if the colorspace is YUV. For now YV12 and YUY2 returns true.</p>
+
+
+<p><code>  bool IsYUY2() </code></p>
+
+<p><code>  bool IsYV12() </code></p>
+
+<p>Note that I420 is also reported as YV12, because planes are automatically swapped.</p>
+
+
+<p><code>  bool IsPlanar() </code></p>
+
+<p>This will return true if the video is planar. For now only YV12 returns true, 
+but future formats might also do so. See <a href="PlanarImageFormat.htm">PlanarImageFormat</a>.</p>
+
+
+<p><code>  bool IsFieldBased() </code></p>
+
+<p>This will return true if the video has been through a 
+<a href="../corefilters/separatefields.htm">SeparateFields</a>, and the video has not been weaved yet. 
+Otherwise it will return false.</p>
+
+
+<p><code>  bool IsParityKnown()</code></p>
+
+<p><code>  bool IsBFF()</code></p>
+
+<p><code>  bool IsTFF()</code></p>
+
+
+
+<p><code>  bool IsColorSpace(int c_space)</code></p>
+
+<p>This function will check if the colorspace (VideoInfo.pixel_type) is the same as given c_space.</p>
+
+<p><code>  bool IsSameColorspace(const VideoInfo& vi2)</code></p> 
+
+<p>This function will compare two VideoInfos, and check if the colorspace is the same. 
+Note: It does not check imagesize or similar properties.</p>
+
+<p><code>  bool Is(int property) </code></p>
+
+<p>For future use. Currently works as IsColorSpace</p>
+
+<p>Threre are some other useful information in VideoInfo structure 
+(width, height, fps_numerator, fps_denominator, num_frames, various audio properties). 
+See 'avisynth.h' header file.</p>
+
+<h3>Back to <a href="InternalFunctions.htm">InternalFunctions</a></h3></div>
+<p><kbd>$Date: 2006/10/28 20:18:16 $</kbd></p>
+</BODY>
+</html>
