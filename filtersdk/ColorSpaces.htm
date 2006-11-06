@@ -15,6 +15,18 @@
     	<p>
 	</h1>
 
+<h2>RGB and YUV colorspaces</h2>
+<p>RGB and YUV are two different ways to represent colors. 
+In YUV colorspace there is one component that represent lightness (luma) 
+and two other components that represent color (chroma). 
+As long as the luma is conveyed with full detail, detail in the chroma components 
+can be reduced by subsampling (filtering, or averaging) which can be done in several ways 
+(thus there are multiple formats for storing a picture in YUV colorspace). 
+In RGB colorspace there are three components, one for the amount of Red, 
+one for the amount of Green and one for the amount of Blue. 
+Also in this colorspace there are multiple formats for storing a picture 
+which differ in the amount of samples are used for one of the three colors.</p>
+
 <h3>RGB Colorspaces</h3>
 <p>There are several RGB formats, but the two most widely used are known as RGB24 and RGB32.</p>
 
@@ -28,22 +40,36 @@ The reason RGB32 is considered the "best" format is purely from a programmers vi
 Handling RGB32 material is much easier than RGB24 material, 
 because most processors operate on 32bits at the time, and not 24.</p>
 
+<h2>YUV colorspace</h2>
+<p>There are several YUV formats. There are <a href="InterleavedImageFormat.htm">interleaved formats</a> 
+and <a href="PlanarImageFormat.htm">planar formats</a> (also called packed formats). 
+The main difference is how they are stored in memory.</p>
 
-<h3>YUY2 Colorspace</h3><p>YUY2 is also an <a href="InterleavedImageFormat.htm">InterleavedImageFormat</a>. 
+<p>Interleaved images have all color components needed to represent a pixel placed at the same place in memory. 
+For planar formats the data is not interleaved, but stored separately for each color channel (also called color plane). 
+For filter writers this means that they can write one simple function that is called three times, 
+one for each color channel, assuming that the operations are channel-independent (which is not always the case). 
+Again, using aligned for both color and luma channels will allow easy memory access. 
+The use of a planar format gives in most cases a significant speedup, 
+since all bytes of each plane can be treated the same way. 
+It can also give a speedup because your filter doesn't have to work on all planes, 
+if it only modifies one or two of them.</p>
+
+<h3>YUY2 Colorformat</h3><p>YUY2 is an <a href="InterleavedImageFormat.htm">InterleavedImageFormat</a>. 
 Bytes are arranged in memory like this:</p>
 
 
-<p><tt>YUYV|YUYV|YUYV|YUYV|YUYV|YUYV|...</tt></p>
+<p><code>YUYV|YUYV|YUYV|YUYV|YUYV|YUYV|...</code></p>
 
-<p><tt>^first byte in a row.</tt></p>
+<p><code>^first byte in a row.</code></p>
 
 
 <p>So each pixel horizontally shares UV (chroma) information with a neighboring pixel.</p>
 
 
 
-<h3>YV12 Colorspace</h3>
-<p>The YV12 colorspace is very different from RGB and YUY2 colorspaces. 
+<h3>YV12 Colorformat</h3>
+<p>The YV12 colorformat is very different from RGB and YUY2 colorformats. 
 The main different is that it is a <a href="PlanarImageFormat.htm">PlanarImageFormat</a>. 
 That means that the different color components are lying separate in memory.</p>
 
@@ -63,13 +89,13 @@ is the width of your image; the pitch and the actual byte-count of a line remain
 
 <p>The image is then laid out like this:</p>
 
-
+<code>
 <p>rrrrrrrrrrrrrrrrpppp</p>
 
 <p>rrrrrrrrrrrrrrrrpppp</p>
 
 <p>rrrrrrrrrrrrrrrrpppp</p>
-
+</code>
 
 <p>Where 'r' are the pixels inside the image used, and 'p' is the padding inserted after each line.</p>
 
@@ -78,8 +104,8 @@ but it is still possible to have mod2 width images, because the rowsize is diffe
 Similar the UV-planes always have a pitch that is a multiple of 8.</p>
 
 
-<p>When you request frame->GetRowSize(PLANAR_Y) you will get the rowsize of the pixels _inside_ the image. 
-When you request frame->GetRowSize(PLANAR_Y_ALIGNED) you will ALWAYS get 
+<p>When you request <code>frame->GetRowSize(PLANAR_Y)</code> you will get the rowsize of the pixels _inside_ the image. 
+When you request <code>frame->GetRowSize(PLANAR_Y_ALIGNED)</code> you will ALWAYS get 
 a rowsize that is a multiple of 16 (multiple of 8 on UV planes).</p>
 
 
@@ -98,7 +124,9 @@ that pitch can be even larger than the aligned rowsize - for instance after a cr
 <p>- Skip to next line, by adding pitch for the current plane. </p>
 
 
-<h4>YV12 interlacing</h4><p>YV12 handles interlaced chroma differently than compared to YUY2, 
+<h4>YV12 interlacing</h4>
+
+<p>YV12 handles interlaced chroma differently than compared to YUY2, 
 since YV12 only contains chroma information for every second line. </p>
 
 <p>To enable interlacing, chroma is stretched across two luma lines in the same field!  
@@ -123,20 +151,20 @@ That means that luma and chroma aren't directly mappable to lumaline/2 and lumal
 
 <p>Luma:</p>
 
-<p><tt>L1L1L1L1L1L1L1L1L1L1L1L1L1L1L1L1L1L1L1L1L1L1</tt></p>
+<p><code>L1L1L1L1L1L1L1L1L1L1L1L1L1L1L1L1L1L1L1L1L1L1</code></p>
 
-<p><tt>L2L2L2L2L2L2L2L2L2L2L2L2L2L2L2L2L2L2L2L2L2L2</tt></p>
+<p><code>L2L2L2L2L2L2L2L2L2L2L2L2L2L2L2L2L2L2L2L2L2L2</code></p>
 
-<p><tt>L3L3L3L3L3L3L3L3L3L3L3L3L3L3L3L3L3L3L3L3L3L3</tt></p>
+<p><code>L3L3L3L3L3L3L3L3L3L3L3L3L3L3L3L3L3L3L3L3L3L3</code></p>
 
-<p><tt>L4L4L4L4L4L4L4L4L4L4L4L4L4L4L4L4L4L4L4L4L4L4</tt></p>
+<p><code>L4L4L4L4L4L4L4L4L4L4L4L4L4L4L4L4L4L4L4L4L4L4</code></p>
 
 
 <p>Chroma that maps to luma plane above:</p>
 
-<p><tt>C1C1C1C1C1C1C1C1C1C1C1</tt></p>
+<p><code>C1C1C1C1C1C1C1C1C1C1C1</code></p>
 
-<p><tt>C2C2C2C2C2C2C2C2C2C2C2</tt></p>
+<p><code>C2C2C2C2C2C2C2C2C2C2C2</code></p>
 
 
 <p>Since luma L1 and L3 are in the same field, the chroma information in C1 
@@ -161,6 +189,6 @@ otherwise AviSynth will not create a new VideoFrame, but will throw an error.</p
 
 
 </div>
-<p><kbd>$Date: 2006/10/28 20:18:12 $</kbd></p>
+<p><kbd>$Date: 2006/11/06 18:04:02 $</kbd></p>
 </BODY>
 </html>

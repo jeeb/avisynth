@@ -14,7 +14,8 @@
     	<p>
 	</h1>
 
-<h2>Part 1: Actual memory storage</h2><p><em><strong>Warning:</strong> technical.</em> 
+<h2>Part 1: Actual memory storage</h2>
+<p><em><b>Warning:</b> technical.</em> 
 Most users will only need to read (and understand) Part 2.</p>
 
 
@@ -23,8 +24,9 @@ As noted elsewhere (like the <a href="../faq.htm">AviSynth FAQ</a>)
 there are two different colorspaces in v1.0x/2.0x, RGB and YUY2, with a third YV12 added in v2.5. 
 These colorspaces store their data in different ways.</p>
 
+<h3>Interleaved formats</h3>
 
-<p><strong>RGB</strong> (also known as RGB24): Every pixel is associated with three bytes of data: 
+<p><b>RGB</b> (also known as RGB24): Every pixel is associated with three bytes of data: 
 one red, one green, and one blue. They are interleaved (mixed) in the memory like this <tt>RGBRGBRGBRGB</tt>. 
 Since data is most easily read in words of four bytes, 
 most functions actually process 4 pixels at the same time in order to be able to read 3 words in a row. 
@@ -32,7 +34,7 @@ Usually memory is allocated as <tt>aligned</tt> which means that it always alloc
 Since the 3 to 4 relation isn't easy to map, RGB24 is very difficult to work with, and in general isn't recommended. </p>
 
 
-<p><strong>RGBA</strong> (also known as RGB32): This is an extension of RGB 
+<p><b>RGBA</b> (also known as RGB32): This is an extension of RGB 
 where a fourth color channel has been added. This is called the alpha channel, 
 and is a definition of transparency in the pixel. 
 For an explanation of how the alpha channel is used see <a href="../corefilters/layer.htm">Mask and Layer</a>. 
@@ -47,27 +49,45 @@ if you explicitly use (ConvertToRGB24).
 This is the recommended format for RGB-data.</p>
 
 
-<p><strong>YUY2</strong>: In this colorspace each pair of pixels will share the color data, 
+<p><b>YUY2</b>: In this colorspace each pair of pixels will share the color data, 
 as well as the data being interleaved like this <tt>YUYV|YUYV|YUYV|YUYV</tt>. 
-A memory access of one word will get all data for <strong>two</strong> pixels. 
+A memory access of one word will get all data for <b>two</b> pixels. 
 A pair should never be split, as this can create strange artifacts 
 when almost all functions in YUY2 assumes that they should read a full word and process that. 
 Even if they return the right width when they are done, 
 they will most likely have used invalid data when processing valid pixels.</p>
 
+<h3>Planar formats</h3>
 
-<p><strong>YV12</strong>: Now the real fun begins as this is a <a href="PlanarImageFormat.htm">PlanarImageFormat</a>. 
+<p>Now the real fun begins as this is a <a href="PlanarImageFormat.htm">PlanarImageFormat</a>. 
 This means that data is not <a href="InterleavedImageFormat.htm">interleaved</a>, 
-but stored separately for each color channel. 
+but stored separately for each color channel (also called color plane). 
 For filter writers this means that they can write one simple function that is called three times, 
-one for each color channel, assuming that the operations are channel-independent (not always the case). 
-Also, 4 pixels share the color data. These four pixels are a 2x2 matrix, 
-i.e. two pairs on adjacent lines in the same field. 
-As fields themselves are interleaved, this means that for fieldbased video line 1&amp;3 share color data, 
-as well as line 2&amp;4. Framebased video though has the more instinctive way of sharing color, 
-line 1&amp;2 share just as line 3&amp;4 does. Again, using <tt>aligned</tt> for both color 
-and luma channels will allow easy memory access, and again, 
-a 2x2 should never be split as this may create strange artifacts.</p>
+one for each color channel, assuming that the operations are channel-independent (which is not always the case). 
+Again, using <code>aligned</code> for both color and luma channels will allow easy memory access.</p>
+
+
+<p><b>Y8</b>: This colorformat is greyscale, i.e. contains no color. 
+It is the only format which is both planar and interleaved.</p>
+
+
+<p><b>YV12</b>: Four pixels share the color data. These four pixels are a 2x2 block, 
+i.e. two pairs on adjacent lines in the same field. As fields themselves are interleaved, 
+this means that for field-based video line 1&amp;3 share color data, as well as line 2&amp;4. 
+Frame-based video though has the more instinctive way of sharing color, line 1&amp;2 
+share just as line 3&amp;4 does. The 2x2 block should never be split as this may create strange artifacts.</p>
+
+
+<p><b>YV411</b>: Four pixels share the color data. These four pixels are a 1x4 block, 
+i.e. a quadruple. The 1x4 block should never be split as this may create strange artifacts.</p>
+
+
+<p><b>YV16</b>: In this colorspace each pair of pixels will share the color data. 
+The pair should never be split as this may create strange artifacts. It is a planar version of YUY2.</p>
+
+
+<p><b>YV24</b>: This color format has full color, i.e. each pixel has a unique color (just like RGB and RGBA).</p>
+
 
 
 
@@ -78,7 +98,7 @@ to take care of problems with memory reading at end of lines.
 <li> Interlaced (fieldbased) video requires double mod on height.
 </li>
 <li> Required modulos in different colorspaces.
-<ul ><li> <strong>RGB(A)</strong>
+<ul ><li> <b>RGB(A)</b>
 <ul ><li> width  mod-1 (no restriction)
 </li>
 <li> height mod-1 (no restriction) <em>if progressive</em>
@@ -87,7 +107,7 @@ to take care of problems with memory reading at end of lines.
 </li>
 </ul>
 </li>
-<li> <strong>YUY2</strong>
+<li> <b>YUY2</b>
 <ul ><li> width  mod-2 (even values)
 </li>
 <li> height mod-1 (no restriction) <em>if progressive</em>
@@ -96,7 +116,25 @@ to take care of problems with memory reading at end of lines.
 </li>
 </ul>
 </li>
-<li> <strong>YV12</strong>
+<li> <b>Y8</b>
+<ul ><li> width  mod-1 (no restriction)
+</li>
+<li> height mod-1 (no restriction) <em>if progressive</em>
+</li>
+<li> height mod-2                  <em>if interlaced</em>
+</li>
+</ul>
+</li>
+<li> <b>YV411</b>
+<ul ><li> width  mod-4
+</li>
+<li> height mod-1 (no restriction) <em>if progressive</em>
+</li>
+<li> height mod-1 (no restriction) <em>if interlaced</em>
+</li>
+</ul>
+</li>
+<li> <b>YV12</b>
 <ul ><li> width  mod-2 (even values)
 </li>
 <li> height mod-2 (even values)    <em>if progressive</em>
@@ -105,24 +143,42 @@ to take care of problems with memory reading at end of lines.
 </li>
 </ul>
 </li>
+<li> <b>YV16</b>
+<ul ><li> width  mod-2 (even values)
+</li>
+<li> height mod-1 (no restriction) <em>if progressive</em>
+</li>
+<li> height mod-2 (even values)    <em>if interlaced</em>
+</li>
+</ul>
+</li>
+<li> <b>YV24</b>
+<ul ><li> width  mod-1 (no restriction)
+</li>
+<li> height mod-1 (no restriction) <em>if progressive</em>
+</li>
+<li> height mod-2 (even values)    <em>if interlaced</em>
+</li>
+</ul>
+</li>
 </ul>
 </li>
 <li>Examples of valid <a href="../corefilters/crop.htm">Crops</a> with input 320x240 progressive
-<ul ><li> <strong>RGB(A)</strong>
+<ul ><li> <b>RGB(A)</b>
 <ul ><li>Crop(1,7,-32,-19)
 </li>
 <li>Crop(2,4,300,196)
 </li>
 </ul>
 </li>
-<li> <strong>YUY2</strong>
+<li> <b>YUY2</b>
 <ul ><li>Crop(2,7,-32,-19)
 </li>
 <li>Crop(2,4,300,196)
 </li>
 </ul>
 </li>
-<li> <strong>YV12</strong>
+<li> <b>YV12</b>
 <ul ><li>Crop(2,8,-32,-18)
 </li>
 <li>Crop(2,4,300,196)
@@ -146,6 +202,6 @@ want mod-16 on all resolutions etc.
 <p><tt>This page is a edited summary of <a href="http://forum.doom9.org/showthread.php?s=&threadid=40413&highlight=YV12">[this thread at Doom9's forum]</a></tt></p>
 
 </div>
-<p><kbd>$Date: 2006/10/28 20:18:13 $</kbd></p>
+<p><kbd>$Date: 2006/11/06 18:04:02 $</kbd></p>
 </BODY>
 </html>
