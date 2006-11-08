@@ -505,6 +505,7 @@ SeekExit:
     dssRPT1(dssCMD, "GetSample::Stop(), state was %d\n", state);
     state = State_Stopped;
     SetEvent(evtDoneWithSample);
+    graphTimeout = true;
     return S_OK;
   }
 
