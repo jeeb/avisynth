@@ -36,11 +36,13 @@ The last SDK that will work with VC 6.0 was the February 2003 Edition.
 <h4>Finally, you must include small header file 'avisynth.h'.</h4> 
 <p>You can get it with this FilterSDK, download with AviSynth source code, or take from some plugin source package. 
 There are several versions of this header file from various AviSynth versions.
+<p>Header file avisynth.h from v1.0.x to v2.0.x have <code>AVISYNTH_INTERFACE_VERSION = 1.</code> 
+Plugins compliled with them will be not (natively) compatible with AviSynth 2.5.x.</p>
 <p>Header file avisynth.h from v2.5.0 to v2.5.5 have <code>AVISYNTH_INTERFACE_VERSION = 2.</code>
 Plugins compliled with them will (generally) work in AviSynth v2.5.0 to v2.5.7 (and above).
 But avisynth.h files from versions v2.5.0 - v2.5.5 (and betas) are not identical.  
 We recommend to use avisynth.h from versions 2.5.5 or later.
-Previous versions of avisynth.h are obsolete and has some bugs.
+Previous versions of avisynth.h are obsolete and have some bugs.
 <p>Header files avisynth.h from v2.5.6 and v2.5.7 are identical and have <code>AVISYNTH_INTERFACE_VERSION = 3.</code>
 Plugins compliled with them will work in v2.5.6, v2.5.7. They will also work in v2.5.5 and below, 
 if you do not use new interface features and do not call <code>env->CheckVersion</code> function.
@@ -65,6 +67,6 @@ to create so called AviSynth C plugins with <a href="http://kevin.atkinson.dhs.o
 
 <h3>Back to <a href="FilterSDK.htm">FilterSDK</a></h3>
 
-<p><kbd>$Date: 2006/11/06 18:04:02 $</kbd></p>
+<p><kbd>$Date: 2006/11/08 20:40:17 $</kbd></p>
 </BODY>
 </html>
