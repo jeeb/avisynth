@@ -385,37 +385,48 @@ AudioStreamSource::AudioStreamSource(AudioSource *src, long first_samp, long max
 		oFormat = (WAVEFORMATEX *)malloc(dwOutputFormatSize); //AllocFormat(dwOutputFormatSize);
 		if (!oFormat) throw MyMemoryError();
 
-#define MAX_TRIES 8
+#define MAX_TRIES 10
 		for (i=0; i<=MAX_TRIES; i++) {
 			switch (i) {
 			case 0: oFormat->wFormatTag = WAVE_FORMAT_IEEE_FLOAT;
 					oFormat->nChannels = iFormat->nChannels;
+					oFormat->nSamplesPerSec = iFormat->nSamplesPerSec;
+					dwSuggest = ACM_FORMATSUGGESTF_WFORMATTAG | ACM_FORMATSUGGESTF_NCHANNELS | 
+						ACM_FORMATSUGGESTF_NSAMPLESPERSEC;
+					break;
+			case 1: oFormat->nSamplesPerSec = 0;
 					dwSuggest = ACM_FORMATSUGGESTF_WFORMATTAG | ACM_FORMATSUGGESTF_NCHANNELS;
 					break;
-			case 1: oFormat->nChannels = 0;
+			case 2: oFormat->nChannels = 0;
 					dwSuggest = ACM_FORMATSUGGESTF_WFORMATTAG;
 					break;
-			case 2: oFormat->wFormatTag = WAVE_FORMAT_PCM;
+			case 3: oFormat->wFormatTag = WAVE_FORMAT_PCM;
 					oFormat->nChannels = iFormat->nChannels;
 					oFormat->wBitsPerSample = 32;
-					dwSuggest = ACM_FORMATSUGGESTF_WFORMATTAG | ACM_FORMATSUGGESTF_NCHANNELS | ACM_FORMATSUGGESTF_WBITSPERSAMPLE;
+					oFormat->nSamplesPerSec = iFormat->nSamplesPerSec;
+					dwSuggest = ACM_FORMATSUGGESTF_WFORMATTAG | ACM_FORMATSUGGESTF_NCHANNELS | 
+						ACM_FORMATSUGGESTF_WBITSPERSAMPLE | ACM_FORMATSUGGESTF_NSAMPLESPERSEC;
 					break;
-			case 3: oFormat->wBitsPerSample = 24;
+			case 4: oFormat->nSamplesPerSec = 0;
+					dwSuggest = ACM_FORMATSUGGESTF_WFORMATTAG | ACM_FORMATSUGGESTF_NCHANNELS | 
+						ACM_FORMATSUGGESTF_WBITSPERSAMPLE;
 					break;
-			case 4: oFormat->wBitsPerSample = 0;
+			case 5: oFormat->wBitsPerSample = 24;
+					break;
+			case 6: oFormat->wBitsPerSample = 0;
 					dwSuggest = ACM_FORMATSUGGESTF_WFORMATTAG | ACM_FORMATSUGGESTF_NCHANNELS;
 					break;
-			case 5: oFormat->nChannels = 0;
+			case 7: oFormat->nChannels = 0;
 					oFormat->wBitsPerSample = 32;
 					dwSuggest = ACM_FORMATSUGGESTF_WFORMATTAG | ACM_FORMATSUGGESTF_WBITSPERSAMPLE;
 					break;
-			case 6: oFormat->wBitsPerSample = 24;
+			case 8: oFormat->wBitsPerSample = 24;
 					break;
-			case 7: oFormat->wBitsPerSample = 0;
+			case 9: oFormat->wBitsPerSample = 0;
 					dwSuggest = ACM_FORMATSUGGESTF_WFORMATTAG;
 					break;
 					// Hack to get Fraunhoffer MP3 codec to accept data when wBitsPerSample==16
-			case 8: if(iFormat->wFormatTag == 0x0055 && iFormat->wBitsPerSample != 0) {
+			case 10: if(iFormat->wFormatTag == 0x0055 && iFormat->wBitsPerSample != 0) {
 						iFormat->wBitsPerSample = 0;
 						break;
 					}
