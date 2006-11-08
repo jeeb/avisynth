@@ -600,8 +600,8 @@ volumes(_volumes), i_v(_i_v) { }
 
 Amplify::~Amplify()
 {
-    if (volumes) { delete[] volumes; volumes=0; }
-    if (i_v)     { delete[] i_v;     i_v=0;     }
+    if (volumes) { delete[] (float*)volumes; volumes=0; }
+    if (i_v)     { delete[] (int*)i_v;     i_v=0;     }
 }
 
 
