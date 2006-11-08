@@ -49,7 +49,7 @@ BEGIN
             VALUE "FileDescription", "Avisynth DirectShow Reader pluggin\0"
             VALUE "FileVersion", "2, 5, 7, 0\0"
             VALUE "InternalName", "DirectShowSource 2.5.7\0"
-            VALUE "LegalCopyright", "© 2000-2005 Ben Rudiak-Gould and others\0"
+            VALUE "LegalCopyright", "© 2000-2006 Ben Rudiak-Gould and others\0"
             VALUE "LegalTrademarks", " \0"
             VALUE "OriginalFilename", "DirectShowSource.dll\0"
             VALUE "PrivateBuild", " \0"
