@@ -148,6 +148,13 @@ double Spline36Filter::f(double value) {
  *** Gaussian filter ***
  ***********************/
 
+/* Solve taps from p*value*value < 9 as pow(2.0, -9.0) == 1.0/512.0 i.e 0.5 bit
+                     value*value < 9/p       p = param*0.1;
+                     value*value < 90/param
+                     value*value < 90/{0.1, 22.5, 30.0, 100.0}
+                     value*value < {900, 4.0, 3.0, 0.9}
+		                 value       < {30, 2.0, 1.73, 0.949}         */
+
 GaussianFilter::GaussianFilter(double p = 30.0) {
   param = min(100.0,max(0.1,p));
 }
@@ -210,7 +217,7 @@ int* GetResamplingPatternRGB( int original_width, double subrange_start, double 
     double total = 0.0;
 
     // Ensure that we have a valid position
-    double ok_pos = max(0.0,min(original_width,pos));
+    double ok_pos = max(0.0,min(original_width-1,pos));
 
     for (int j=0; j<fir_filter_size; ++j) {  // Accumulate all coefficients
       total += func->f((start_pos+j - ok_pos) * filter_step);
@@ -296,7 +303,7 @@ int* GetResamplingPatternYUV( int original_width, double subrange_start, double 
     double total = 0.0;
 
     // Ensure that we have a valid position
-    double ok_pos = max(0.0,min(original_width, pos)); 
+    double ok_pos = max(0.0,min(original_width-1, pos)); 
 
     for (int j=0; j<fir_filter_size; ++j) {  // Accumulate all coefficients
       total += func->f((start_pos + j - ok_pos) * filter_step);
