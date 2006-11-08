@@ -442,6 +442,8 @@ yloopback:
     mov edx,ebx
     sar ebx,5
     and edx,31
+    test ebx,ebx
+    jz  restloop
 align 16
 testloop:
 //    prefetchnta [esi+256]
