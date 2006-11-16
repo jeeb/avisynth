@@ -1510,7 +1510,7 @@ void BitBlt(BYTE* dstp, int dst_pitch, const BYTE* srcp, int src_pitch, int row_
     return;
   }
   if (height == 1 || (dst_pitch == src_pitch && src_pitch == row_size)) {
-    memcpy(dstp, srcp, src_pitch * height);
+    memcpy(dstp, srcp, row_size*height);
   } else {
     for (int y=height; y>0; --y) {
       memcpy(dstp, srcp, row_size);
