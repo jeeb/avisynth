@@ -470,15 +470,14 @@ testloop:
     test edx,edx
     jz outw
 
-    sar edx,2
 align 16
 restloop:
     movd mm0,[esi]
     pxor mm0, mm7
     movd [esi],mm0
     add esi,4
-    dec edx
-    jne restloop
+    sub edx,4
+    jg  restloop
 align 16
 outw:
     add esi,eax
