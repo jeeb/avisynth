@@ -183,7 +183,6 @@ class GetSample : public IBaseFilter, public IPin, public IMemInputPin {
 
   HANDLE evtDoneWithSample, evtNewSampleReady;
 
-  __int64 segment_start_time, sample_start_time, sample_end_time;
   const bool load_audio;
   const bool load_video;
 
@@ -195,6 +194,8 @@ class GetSample : public IBaseFilter, public IPin, public IMemInputPin {
 
   unsigned media, no_my_media_types;
   AM_MEDIA_TYPE *my_media_types[5];
+
+  PVideoFrame pvf;
 
 public:
   enum {
@@ -210,6 +211,8 @@ public:
     mediaAUTO   = mediaRGB | mediaYUV
   };
   
+  __int64 segment_start_time, segment_stop_time, sample_start_time, sample_end_time;
+
   int avg_time_per_frame;
 
   int a_sample_bytes;

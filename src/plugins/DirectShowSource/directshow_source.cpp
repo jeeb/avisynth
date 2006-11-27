@@ -35,6 +35,7 @@
 
 #include "directshow_source.h"
 
+#define DSS_VERSION "2.5.7"
 
 /************************************
  *          Logging Utility         *
@@ -103,6 +104,8 @@ char* Tick() {
 LOG::LOG(const char* fn, int _mask, IScriptEnvironment* env) : mask(_mask), count(0) {
   if (!(file = fopen(fn, "a")))
 	env->ThrowError("DirectShowSource: Not able to open log file, '%s' for appending.", fn);
+
+  fprintf(file, "%s fff 0x00000000 DirectShowSource " DSS_VERSION " build:"__DATE__" ["__TIME__"]\n", Tick());
 }
 
 LOG::~LOG() {
@@ -149,7 +152,7 @@ inline void InitMediaType(AM_MEDIA_TYPE* &media_type, const GUID &major, const G
 
 GetSample::GetSample(bool _load_audio, bool _load_video, unsigned _media, LOG* _log)
   : load_audio(_load_audio), load_video(_load_video), media(_media),
-    streamName(_load_audio ? "audio" : "video"), log(_log), lockvi(false) {
+    streamName(_load_audio ? "audio" : "video"), log(_log), lockvi(false), pvf(0) {
 
 	if(log) log->AddRef();
 
@@ -162,17 +165,19 @@ GetSample::GetSample(bool _load_audio, bool _load_video, unsigned _media, LOG* _
     pclock = 0;
     m_pPos =0;
     state = State_Stopped;
+    avg_time_per_frame = 0;
     a_sample_bytes = 0;
     av_buffer = 0;
     flushing = end_of_stream = false;
     memset(&vi, 0, sizeof(vi));
-    sample_end_time = sample_start_time = segment_start_time = 0;
+    sample_end_time = sample_start_time = segment_start_time = segment_stop_time = 0;
     evtDoneWithSample = ::CreateEvent(NULL, FALSE, FALSE, NULL);
     evtNewSampleReady = ::CreateEvent(NULL, FALSE, FALSE, NULL);
 
 	if (load_audio) {
 	  unsigned i=0;
 	  InitMediaType(my_media_types[i++], MEDIATYPE_Audio, MEDIASUBTYPE_PCM);
+	  InitMediaType(my_media_types[i++], MEDIATYPE_Audio, MEDIASUBTYPE_IEEE_FLOAT);
 	  no_my_media_types = i;
 	}
 	else {
@@ -234,12 +239,14 @@ GetSample::GetSample(bool _load_audio, bool _load_video, unsigned _media, LOG* _
   PVideoFrame GetSample::GetCurrentFrame(IScriptEnvironment* env, int n, bool _TrapTimeouts, DWORD &timeout) {
 
     if (WaitForStart(timeout))
-      if (_TrapTimeouts)
+      if (_TrapTimeouts) {
+        dssRPT1(dssERROR, "GetCurrentFrame() Timeout waiting for video frame=%d!\n", n);
         env->ThrowError("DirectShowSource : Timeout waiting for video.");
-
-    PVideoFrame pvf = env->NewVideoFrame(vi);;
+    }
 
     if (av_buffer) {
+
+      pvf = env->NewVideoFrame(vi);
 
       // Put any knowledge of video packing and alignment here and
       // keep it independant of any AviSynth packing and alignment.
@@ -272,8 +279,13 @@ GetSample::GetSample(bool _load_audio, bool _load_video, unsigned _media, LOG* _
         env->BitBlt(pvf->GetWritePtr(PLANAR_U), pvf->GetPitch(PLANAR_U), buf, (UVrowsize+1)&~1, UVrowsize, UVheight);
       }
     }
+    else if (pvf) {
+      dssRPT1(dssERROR, "GetCurrentFrame() Returning last good frame %d!\n", n);
+    }
     else {
       dssRPT1(dssERROR, "GetCurrentFrame() Returning ** BLANK ** frame %d!\n", n);
+
+      pvf = env->NewVideoFrame(vi);
 
       // If the graph still hasn't started yet we won't have a current frame
       // so dummy up a grey frame so at least things won't be fatal.
@@ -292,6 +304,7 @@ GetSample::GetSample(bool _load_audio, bool _load_video, unsigned _media, LOG* _
       IMediaControl* mc;
       filter_graph->QueryInterface(&mc);
       flushing = end_of_stream = false;
+      pvf = NULL; // Nuke current frame
       HRESULT hr = mc->Run();
       dssRPT2(dssPROC, "StartGraph(%s) mc->Run() = 0x%x\n", streamName, hr);
       if (hr == S_FALSE) {
@@ -324,6 +337,7 @@ GetSample::GetSample(bool _load_audio, bool _load_video, unsigned _media, LOG* _
     IMediaControl* mc;
     filter_graph->QueryInterface(&mc);
     SetEvent(evtDoneWithSample); // Free task if waiting
+    graphTimeout = true;
     mc->Stop();
     mc->Release();
     if (m_pPos)
@@ -430,6 +444,7 @@ SeekExit:
     SetEvent(evtDoneWithSample);  // We indicate that Receive can run again. We have now finished using the frame.
 
 	dssRPT1(dssPROC, "...NextSample() waiting for new sample...(%s)\n", streamName);
+    graphTimeout = false;
     if (WaitForSingleObject(evtNewSampleReady, timeout) == WAIT_TIMEOUT) {
 	  dssRPT1(dssERROR, "...NextSample() TIMEOUT waiting for new sample (%s)\n", streamName);
 	  timeout = 55;
@@ -789,19 +804,18 @@ pbFormat:
 			return S_FALSE;
 		  }
 		  // Override settings with extended data (float or >2 ch).
-		  WAVEFORMATEXTENSIBLE* _wext =  (WAVEFORMATEXTENSIBLE*)pmt->pbFormat;
-		  WAVEFORMATEXTENSIBLE wext =  *_wext;
-		  
-		  if (wext.Samples.wValidBitsPerSample != wext.Format.wBitsPerSample) {
-			dssRPT2(dssNEG,  "*** Audio: Warning ValidBitsPerSample(%d) != BitsPerSample(%d)!\n",
-					 wext.Samples.wValidBitsPerSample, wext.Format.wBitsPerSample);
-//			return S_FALSE; // accept the data here - a postprocessing filter can repair it later
-		  }
+          WAVEFORMATEXTENSIBLE* wext =  (WAVEFORMATEXTENSIBLE*)pmt->pbFormat;
 
-		  if (wext.SubFormat == SUBTYPE_IEEE_AVSFLOAT) {  // We have float audio.
-			sample_type = SAMPLE_FLOAT;
-		  } else if (wext.SubFormat != SUBTYPE_IEEE_AVSPCM) {
-			dssRPT1(dssNEG,  "*** Audio: Extended WAVE format must be float or PCM. %s\n", PrintGUID(&wext.SubFormat));
+          if (wext->Samples.wValidBitsPerSample != wext->Format.wBitsPerSample) {
+            dssRPT2(dssNEG,  "*** Audio: Warning ValidBitsPerSample(%d) != BitsPerSample(%d)!\n",
+                     wext->Samples.wValidBitsPerSample, wext->Format.wBitsPerSample);
+//          return S_FALSE; // accept the data here - a postprocessing filter can repair it later
+          }
+
+          if (wext->SubFormat == SUBTYPE_IEEE_AVSFLOAT) {  // We have float audio.
+            sample_type = SAMPLE_FLOAT;
+          } else if (wext->SubFormat != SUBTYPE_IEEE_AVSPCM) {
+            dssRPT1(dssNEG,  "*** Audio: Extended WAVE format must be float or PCM. %s\n", PrintGUID(&wext->SubFormat));
 			return S_FALSE;
 		  }
 		}
@@ -882,9 +896,9 @@ pbFormat:
 		VIDEOINFOHEADER2* vih2 = (VIDEOINFOHEADER2*)pmt->pbFormat;
 		_avg_time_per_frame = unsigned(vih2->AvgTimePerFrame);
 		pbi = &vih2->bmiHeader;
-  //      if (vih2->dwInterlaceFlags & AMINTERLACE_1FieldPerSample) {
-  //        vi.SetFieldBased(true);
-  //      }
+//      if (vih2->dwInterlaceFlags & AMINTERLACE_1FieldPerSample) {
+//        vi.SetFieldBased(true);
+//      }
 	  }
 	  else {
 		dssRPT1(dssNEG,  "*** Video: Format rejected - %s\n", PrintGUID(&pmt->formattype));
@@ -947,7 +961,7 @@ pbFormat:
   }
 
   HRESULT __stdcall GetSample::EndOfStream() {
-    dssRPT0((dssSAMP|dssCMD), "GetSample::EndOfStream()\n");
+    dssRPT1((dssSAMP|dssCMD), "GetSample::EndOfStream() (%s)\n", streamName);
     end_of_stream = true;
     if (filter_graph) {
       IMediaEventSink* mes = NULL;
@@ -968,14 +982,15 @@ pbFormat:
   }
 
   HRESULT __stdcall GetSample::BeginFlush() {
-    dssRPT0(dssCMD, "GetSample::BeginFlush()\n");
+    dssRPT1(dssCMD, "GetSample::BeginFlush() (%s)\n", streamName);
     flushing = true;
     SetEvent(evtDoneWithSample);
+    graphTimeout = true;
     return S_OK;
   }
 
   HRESULT __stdcall GetSample::EndFlush() {
-    dssRPT0(dssCMD, "GetSample::EndFlush()\n");
+    dssRPT1(dssCMD, "GetSample::EndFlush() (%s)\n", streamName);
     flushing = false;
     return S_OK;
   }
@@ -983,6 +998,7 @@ pbFormat:
   HRESULT __stdcall GetSample::NewSegment(REFERENCE_TIME tStart, REFERENCE_TIME tStop, double dRate) {
     dssRPT4(dssSAMP, "GetSample::NewSegment(%I64d, %I64d, %f) (%s)\n", tStart, tStop, dRate, streamName);
     segment_start_time = tStart;
+    segment_stop_time  = tStop;
     sample_end_time = sample_start_time = 0;
     return S_OK;
   }
@@ -1020,6 +1036,7 @@ pbFormat:
 
     pSamples->GetPointer(&av_buffer);
     int deltaT = avg_time_per_frame;
+
     if (load_audio) {  // audio
       a_sample_bytes = pSamples->GetActualDataLength();
       deltaT = MulDiv(a_sample_bytes, 10000000, vi.BytesPerAudioSample()*vi.SamplesPerSecond());
@@ -1033,8 +1050,14 @@ pbFormat:
     }
     else if (FAILED(result)) {
       dssRPT0(dssINFO, "GetTime failed!\n");
-      sample_start_time = sample_end_time;
-      sample_end_time += deltaT; // wing it
+      sample_start_time += deltaT; // wing it
+      sample_end_time = sample_start_time + deltaT;
+    }
+    // Yes +1! Some brain dead decoders think an acceptable implementation is
+    // STOP_TIME = START_TIME + 1, others get it just plain wrong i.e. Negative etc,
+    else if (sample_end_time <= sample_start_time+1) {
+      dssRPT1(dssINFO, "Got bogus stop time! %I64d\n", sample_end_time);
+      sample_end_time = sample_start_time + deltaT;
     }
     dssRPT4(dssSAMP, "Receive: %s sample time span x100ns %I64d to %I64d (%d)\n", streamName,
             sample_start_time, sample_end_time, DWORD(sample_end_time - sample_start_time));
@@ -1516,7 +1539,6 @@ DirectShowSource::DirectShowSource(const char* filename, int _avg_time_per_frame
     vi = get_sample.GetVideoInfo();
 
     if (vi.HasVideo()) {
-      bool fc_failed = true, mt_failed = true;
       __int64 frame_count = 0, duration = 0;
       GUID time_fmt = {0, 0, 0, {0, 0, 0, 0, 0, 0, 0, 0}};
 
@@ -1525,37 +1547,40 @@ DirectShowSource::DirectShowSource(const char* filename, int _avg_time_per_frame
       // so check what it currently is
       ms->GetTimeFormat(&time_fmt);
 
-      if (time_fmt == TIME_FORMAT_MEDIA_TIME)
-        mt_failed = (FAILED(ms->GetDuration(&duration)) || duration == 0);
+      if (time_fmt == TIME_FORMAT_MEDIA_TIME) ms->GetDuration(&duration);
+
+      if (duration <= 0) duration = get_sample.segment_stop_time-get_sample.segment_start_time;
 
       // run in frame mode if we can set time format to frame
       frame_units = SUCCEEDED(ms->SetTimeFormat(&TIME_FORMAT_FRAME));
 
-      if (frame_units)
-        fc_failed = (FAILED(ms->GetDuration(&frame_count)) || frame_count == 0);
+      if (frame_units) ms->GetDuration(&frame_count);
 
-      dssRPT2((dssNEG|dssCALL), "New Video: duration %I64d, frame_count %I64d.\n", duration, frame_count);
+      dssRPT2((dssNEG|dssCALL), "Directshow duration %I64d, frame_count %I64d.\n", duration, frame_count);
 
-      if (convert_fps || fc_failed) frame_units = false;
+      if (convert_fps || frame_count <= 0) frame_units = false;
 
-      if (mt_failed && !frame_units && !_frames) {
+      if (duration <= 0 && !frame_units && !_frames) {
         env->ThrowError("DirectShowSource: unable to determine the duration of the video.");
       }
 
       if (_avg_time_per_frame) { // User specified FPS
         get_sample.avg_time_per_frame = _avg_time_per_frame;
         vi.SetFPS(10000000, _avg_time_per_frame);
-        vi.num_frames = int(frame_units ? frame_count : duration / _avg_time_per_frame);
+        vi.num_frames = int(frame_units ? frame_count : (duration + (_avg_time_per_frame>>1)) / _avg_time_per_frame);
       }
       else {
         // this is exact (no rounding needed) because of the way the fps is set in GetSample
         get_sample.avg_time_per_frame = 10000000 / vi.fps_numerator * vi.fps_denominator;
+
         if (get_sample.avg_time_per_frame != 0) {
-          vi.num_frames = int(frame_units ? frame_count : duration / get_sample.avg_time_per_frame);
+          // We have all the info
+          vi.num_frames = int(frame_units ? frame_count :
+                              (duration + (get_sample.avg_time_per_frame>>1)) / get_sample.avg_time_per_frame);
         }
         else {
           // Try duration divided by frame count
-          if (fc_failed || mt_failed) {
+          if (frame_count <= 0 || duration <= 0) {
             env->ThrowError("DirectShowSource: I can't determine the frame rate\n"
                             "of the video, you must use the \"fps\" parameter."); // Note must match message below
           }
@@ -1592,6 +1617,9 @@ DirectShowSource::DirectShowSource(const char* filename, int _avg_time_per_frame
         }
       }
       if (_frames) vi.num_frames = _frames;
+
+      dssRPT4((dssNEG|dssCALL), "New Video: %dx%d, frame_count=%d, pixel type=%x.\n",
+	                            vi.width, vi.height, vi.num_frames, vi.pixel_type);
     }
 
     if (vi.HasAudio()) {
@@ -1607,16 +1635,20 @@ DirectShowSource::DirectShowSource(const char* filename, int _avg_time_per_frame
         // so check what it currently is
         ms->GetTimeFormat(&time_fmt);
 
-        if ( (time_fmt != TIME_FORMAT_MEDIA_TIME)
-          || FAILED(ms->GetDuration(&audio_dur))
-          || (audio_dur == 0) ) {
-            env->ThrowError("DirectShowSource: unable to determine the duration of the audio.");
+        if (time_fmt == TIME_FORMAT_MEDIA_TIME) ms->GetDuration(&audio_dur);
+
+        if (audio_dur == 0) audio_dur = get_sample.segment_stop_time-get_sample.segment_start_time;
+
+        if (audio_dur == 0) {
+            env->ThrowError("DirectShowSource: unable to determine the duration of the audio.\n"
+                            "Manually specify FPS and Framecount. Duration = Framecount / FPS");
         }
       }
 
-      dssRPT1((dssNEG|dssCALL), "New Audio: audio_dur %I64dx100ns.\n", audio_dur);
-
       vi.num_audio_samples = (audio_dur * vi.audio_samples_per_second + 5000000) / 10000000;
+
+      dssRPT2((dssNEG|dssCALL), "New Audio: audio_dur %I64dx100ns, samples %I64d.\n",
+                                audio_dur, vi.num_audio_samples);
     }
     SAFE_RELEASE(ms);
 
@@ -1664,7 +1696,7 @@ DirectShowSource::DirectShowSource(const char* filename, int _avg_time_per_frame
     n = max(min(n, vi.num_frames-1), 0); 
 
     // Ask for the frame whose [start_time ->T<- end_time] spans sample_time
-    const __int64 sample_time = Int32x32To64(n, get_sample.avg_time_per_frame) + (get_sample.avg_time_per_frame>>1);
+    const __int64 sample_time = (n == 0) ? 0 : Int32x32To64(n, get_sample.avg_time_per_frame) + (get_sample.avg_time_per_frame>>1);
 
     dssRPT2(dssCALL, "GetFrame: Frame %d time %I64dx100ns.\n", n, sample_time);
 
