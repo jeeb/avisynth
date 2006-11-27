@@ -3,6 +3,7 @@
 // Used by ClientGUI.rc
 //
 #define IDD_SERVERGUI                   101
+#define IDI_ICON                        103
 #define IDD_CLIENTGUI                   106
 #define IDC_IP                          1000
 #define IDC_EDIT2                       1001
