@@ -51,12 +51,12 @@ class AdjustFocusV : public GenericVideoFilter
  **/
 {
 public:
-  AdjustFocusV(double _amount, PClip _child);
+  AdjustFocusV(double _amount, PClip _child, bool _mmx);
   virtual ~AdjustFocusV(void);
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
 
 private:
-  bool chroma;
+  bool chroma, mmx;
   const int amount;
   uc* line;
 
@@ -73,11 +73,11 @@ class AdjustFocusH : public GenericVideoFilter
  **/
 {
 public:
-  AdjustFocusH(double _amount, PClip _child);
+  AdjustFocusH(double _amount, PClip _child, bool _mmx);
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
 
 private:
-  bool chroma;
+  bool chroma, mmx;
   const int amount;
 
 };
