@@ -177,8 +177,8 @@ GetSample::GetSample(bool _load_audio, bool _load_video, unsigned _media, LOG* _
 
 	if (load_audio) {
 	  unsigned i=0;
-	  InitMediaType(my_media_types[i++], MEDIATYPE_Audio, MEDIASUBTYPE_PCM);
 	  InitMediaType(my_media_types[i++], MEDIATYPE_Audio, MEDIASUBTYPE_IEEE_FLOAT);
+	  InitMediaType(my_media_types[i++], MEDIATYPE_Audio, MEDIASUBTYPE_PCM);
 	  no_my_media_types = i;
 	}
 	else {
@@ -725,11 +725,11 @@ SeekExit:
 
 	if      (pmt->majortype == MEDIATYPE_Video) {
 	  dssRPT1(dssNEG, "GetSample::QueryAccept(%s) MEDIATYPE_Video\n", streamName);
-	  if (load_audio) return S_FALSE;
+	  if (!load_video) return S_FALSE;
 	}
 	else if (pmt->majortype == MEDIATYPE_Audio) {
 	  dssRPT1(dssNEG, "GetSample::QueryAccept(%s) MEDIATYPE_Audio\n", streamName);
-	  if (load_video) return S_FALSE;
+	  if (!load_audio) return S_FALSE;
 	}
 	else {
 	  dssRPT2(dssNEG, "GetSample::QueryAccept(%s) reject major type %s\n", streamName, PrintGUID(&pmt->majortype));
@@ -773,13 +773,21 @@ pbFormat:
         dssRPT1(dssNEG,  "*** Audio: Subtype rejected - %s\n", PrintGUID(&pmt->subtype));
         return S_FALSE;
       }
-
+      if (pmt->formattype != FORMAT_WaveFormatEx) {
+        dssRPT1(dssNEG,  "*** Audio: Not FORMAT_WaveFormatEx - %s\n", PrintGUID(&pmt->formattype));
+        return S_FALSE;
+      }
+      if (pmt->cbFormat < sizeof(WAVEFORMATEX)) {
+        dssRPT2(dssNEG,  "*** Audio: AM_MEDIA_TYPE.cbFormat to small - %d of %d\n",
+                         pmt->cbFormat, sizeof(WAVEFORMATEX));
+        return S_FALSE;
+      }
       WAVEFORMATEX* wex = (WAVEFORMATEX*)pmt->pbFormat;
 
       if ((wex->wFormatTag != WAVE_FORMAT_PCM) &&
           (wex->wFormatTag != WAVE_FORMAT_IEEE_FLOAT) &&
           (wex->wFormatTag != WAVE_FORMAT_EXTENSIBLE)) {
-        dssRPT1(dssNEG,  "*** Audio: Not PCM after all??? - %s\n", PrintGUID(&pmt->formattype));
+        dssRPT1(dssNEG,  "*** Audio: Unsupported format - WAVEFORMATEX.wFormatTag=0x%04x\n", wex->wFormatTag);
         return S_FALSE;
       }
 
@@ -799,12 +807,17 @@ pbFormat:
 			return S_FALSE;
         }
 
-		if (wex->wFormatTag == WAVE_FORMAT_EXTENSIBLE) {
-		  if (wex->cbSize < 22) {
-			dssRPT1(dssNEG,  "*** Audio: Extended wave format structure wrong size: %d\n", wex->cbSize);
-			return S_FALSE;
-		  }
-		  // Override settings with extended data (float or >2 ch).
+        if (wex->wFormatTag == WAVE_FORMAT_EXTENSIBLE) {
+          if (pmt->cbFormat < sizeof(WAVEFORMATEXTENSIBLE)) {
+            dssRPT2(dssNEG,  "*** Audio: AM_MEDIA_TYPE.cbFormat to small - %d of %d\n",
+                             pmt->cbFormat, sizeof(WAVEFORMATEXTENSIBLE));
+            return S_FALSE;
+          }
+          if (wex->cbSize < 22) {
+            dssRPT1(dssNEG,  "*** Audio: Extended wave format structure wrong size: %d of 22\n", wex->cbSize);
+            return S_FALSE;
+          }
+          // Override settings with extended data (float or >2 ch).
           WAVEFORMATEXTENSIBLE* wext =  (WAVEFORMATEXTENSIBLE*)pmt->pbFormat;
 
           if (wext->Samples.wValidBitsPerSample != wext->Format.wBitsPerSample) {
@@ -816,10 +829,10 @@ pbFormat:
           if (wext->SubFormat == SUBTYPE_IEEE_AVSFLOAT) {  // We have float audio.
             sample_type = SAMPLE_FLOAT;
           } else if (wext->SubFormat != SUBTYPE_IEEE_AVSPCM) {
-            dssRPT1(dssNEG,  "*** Audio: Extended WAVE format must be float or PCM. %s\n", PrintGUID(&wext->SubFormat));
-			return S_FALSE;
-		  }
-		}
+            dssRPT1(dssNEG,  "*** Audio: Extended WAVE format must be Float or PCM. %s\n", PrintGUID(&wext->SubFormat));
+            return S_FALSE;
+          }
+        }
       }
 
 	  if (lockvi) {
