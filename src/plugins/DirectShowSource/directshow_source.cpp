@@ -94,6 +94,7 @@ char* Tick() {
   unsigned sec = tick % 60;
   tick /= 60;
   unsigned min = tick % 60;
+  tick /= 60;
   tick %= 99;
 
   _snprintf(buf, 15, "%02u:%02u:%02u.%03u", tick, min, sec, msec);
