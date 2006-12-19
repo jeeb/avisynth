@@ -257,13 +257,14 @@ void TCPServerListener::Listen() {
     }
 
     if (!request_handled) {
-      t.tv_usec = 10000;  // If no request we allow it to wait 10 ms instead.
+      t.tv_usec = 100000;  // If no request we allow it to wait 100 ms instead.
       if (prefetch_frame > 0) {
         _RPT1(0, "TCPServer: Prerequesting frame: %d", prefetch_frame);
         child->GetFrame(prefetch_frame, env);  // We are idle - prefetch frame
         prefetch_frame = -1;
       }
     } else {
+      t.tv_sec  = 0;
       t.tv_usec = 1000; // Allow 1ms before prefetching frame.
     }
   } // while !shutdown
