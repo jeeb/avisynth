@@ -66,6 +66,7 @@ IfErrors 0 dll_ok
 dll_ok:
   SetOutPath $INSTDIR
   File "GPL.txt"
+  File "lgpl_for_used_libs.txt"
 
   ReadRegStr $0 HKLM "SOFTWARE\AviSynth" "plugindir2_5"
 StrCmp "$0" "" 0 Plugin_exists
@@ -329,7 +330,7 @@ SubSectionEnd
 
   !insertmacro MUI_FUNCTION_DESCRIPTION_BEGIN
   !insertmacro MUI_DESCRIPTION_TEXT  ${Frameserving} "Install the main files for frameserving via AviSynth"
-  !insertmacro MUI_DESCRIPTION_TEXT  ${Documentation} "Install help. Please select languages"
+  !insertmacro MUI_DESCRIPTION_TEXT  ${Documentation} "Install help. Please select languages (non-English may be out of date)"
   !insertmacro MUI_DESCRIPTION_TEXT  ${English} "Install English help"
   !insertmacro MUI_DESCRIPTION_TEXT  ${German} "Install German help"
   !insertmacro MUI_DESCRIPTION_TEXT  ${French} "Install French help"
@@ -373,6 +374,7 @@ Section "Uninstall"
   RMDir  "$SMPROGRAMS\AviSynth 2.5"
 
   Delete "$INSTDIR\GPL.txt"
+  Delete "$INSTDIR\lgpl_for_used_libs.txt"
   Delete "$INSTDIR\Examples\*.*"
   RMDir  "$INSTDIR\Examples"
 
