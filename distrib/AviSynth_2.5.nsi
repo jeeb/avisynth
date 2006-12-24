@@ -1,7 +1,7 @@
 !packhdr tempfile.exe "upx --best --q tempfile.exe"
 
 !DEFINE VERSION 2.5.7
-!DEFINE DATE 160906
+!DEFINE DATE 241206
 
 SetCompressor /solid lzma
 
@@ -305,6 +305,16 @@ SubSectionEnd
 
 SubSection "Select Extra Files" SelectExtraFiles
 
+Section /o "Install FilterSDK" ExtraFiles3
+  SetOutPath $INSTDIR\FilterSDK
+  File "..\filtersdk\*.*"
+  SetOutPath $INSTDIR\FilterSDK\include
+  File "..\src\core\avisynth.h"
+  File "..\src\core\avisynth_c.h"
+  SetShellVarContext All
+  CreateShortCut "$SMPROGRAMS\AviSynth 2.5\FilterSDK Information.lnk" "$INSTDIR\FilterSDK\FilterSDK.htm"
+SectionEnd
+
 Section /o "Install Avisynth.lib and Avisynth.exp" ExtraFiles1
   SetOutPath $INSTDIR\Extras
   File "..\src\release\AviSynth.lib"
@@ -314,15 +324,6 @@ SectionEnd
 Section /o "Install Avisynth.map" ExtraFiles2
   SetOutPath $INSTDIR\Extras
   File "..\src\release\AviSynth.map"
-SectionEnd
-
-Section /o "Install FilterSDK" ExtraFiles3
-  SetOutPath $INSTDIR\FilterSDK
-  File "..\filtersdk\*.*"
-  SetOutPath $INSTDIR\FilterSDK\include
-  File "..\src\core\avisynth.h"
-  SetShellVarContext All
-  CreateShortCut "$SMPROGRAMS\AviSynth 2.5\FilterSDK Information.lnk" "$INSTDIR\FilterSDK\FilterSDK.htm"
 SectionEnd
 
 SubSectionEnd
@@ -461,6 +462,7 @@ Section "Uninstall"
   RMDir  "$INSTDIR\Extras"
 
   Delete "$INSTDIR\FilterSDK\include\avisynth.h"
+  Delete "$INSTDIR\FilterSDK\include\avisynth_c.h"
   RMDir  "$INSTDIR\FilterSDK\include"
   Delete "$INSTDIR\FilterSDK\*.*"
   RMDir  "$INSTDIR\FilterSDK"
