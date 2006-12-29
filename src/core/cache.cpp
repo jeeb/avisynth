@@ -45,8 +45,10 @@ struct {
   unsigned long vfb_stolen;
   unsigned long vfb_notfound;
   unsigned long vfb_never;
-  char tag[64];
-} g_Cache_stats = {0, 0, 0, 0, 0, 0, "resets, vfb_[found,modified,stolen,notfound,never]"};
+  long          vfb_locks;
+  long          vfb_protects;
+  char tag[72];
+} g_Cache_stats = {0, 0, 0, 0, 0, 0, 0, 0, "resets, vfb_[found,modified,stolen,notfound,never,locks,protects]"};
 
 
 AVSFunction Cache_filters[] = {
@@ -420,6 +422,7 @@ void Cache::LockVFB(CachedVideoFrame *i)
   if (!!i->vfb && !i->vfb_locked) {
 	i->vfb_locked = true;
 	InterlockedIncrement(&i->vfb->refcount);
+	++g_Cache_stats.vfb_locks;
   }
 }
 
@@ -429,6 +432,7 @@ void Cache::UnlockVFB(CachedVideoFrame *i)
   if (!!i->vfb && i->vfb_locked) {
 	i->vfb_locked = false;
 	InterlockedDecrement(&i->vfb->refcount);
+	--g_Cache_stats.vfb_locks;
   }
 }
 
@@ -450,6 +454,7 @@ void Cache::ProtectVFB(CachedVideoFrame *i, int n)
 	InterlockedIncrement(&protectcount);
 	i->vfb_protected = true;
 	InterlockedIncrement(&i->vfb->refcount);
+	++g_Cache_stats.vfb_protects;
   }
 }
 
@@ -460,6 +465,7 @@ void Cache::UnProtectVFB(CachedVideoFrame *i)
 	InterlockedDecrement(&i->vfb->refcount);
 	i->vfb_protected = false;
 	InterlockedDecrement(&protectcount);
+	--g_Cache_stats.vfb_protects;
   }
 }
 
@@ -521,6 +527,7 @@ void __stdcall Cache::GetAudio(void* buf, __int64 start, __int64 count, IScriptE
   }
 
 #ifdef _DEBUG
+  char dbgbuf[255];
   sprintf(dbgbuf, "CA:Get st:%.6d co:%.6d .cst:%.6d cco:%.6d, sc:%d\n",
                     int(start), int(count), int(cache_start), int(cache_count), int(ac_currentscore));
   _RPT0(0,dbgbuf);
@@ -596,6 +603,12 @@ void __stdcall Cache::GetAudio(void* buf, __int64 start, __int64 count, IScriptE
 /*********** C A C H E   H I N T S ************/
 
 void __stdcall Cache::SetCacheHints(int cachehints,int frame_range) {
+
+  if ((cachehints == GetMyThis) && (frame_range != 0)) {
+	*(int *)frame_range = (int)(void *)this;
+	return;
+  }
+
   _RPT3(0, "Cache:%x: Setting cache hints (hints:%d, range:%d )\n", this, cachehints, frame_range);
 
   if (cachehints == CACHE_AUDIO) {

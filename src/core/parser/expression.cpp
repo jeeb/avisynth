@@ -468,7 +468,8 @@ AVSValue ExpVariableReference::Evaluate(IScriptEnvironment* env)
   AVSValue result;
   try {
     // first look for a genuine variable
-    result = env->GetVar(name);
+	// No Tritical don't add a cache to this one, it's a Var
+    return env->GetVar(name);
   }
   catch (IScriptEnvironment::NotFound) {
     try {
@@ -487,10 +488,16 @@ AVSValue ExpVariableReference::Evaluate(IScriptEnvironment* env)
     }
   }
   // Add cache to Bracketless call of argless function
-  if (result.IsClip()) // Tritical Jan 2006
-    return new Cache(result.AsClip());
-  else
-    return result;
+  if (result.IsClip()) { // Tritical Jan 2006
+	int q = 0;
+	PClip p = result.AsClip();
+	
+	p->SetCacheHints(Cache::GetMyThis, (int)&q);
+
+	if (q != (int)(void *)p)
+      return new Cache(result.AsClip());
+  }
+  return result;
 }
 
 
@@ -581,8 +588,15 @@ ExpFunctionCall::~ExpFunctionCall(void)
 AVSValue ExpFunctionCall::Evaluate(IScriptEnvironment* env)
 {
   AVSValue result = Call(env);
-  if (result.IsClip())
-    return new Cache(result.AsClip());
-  else
-    return result;
+  if (result.IsClip()) {
+	int q = 0;
+	PClip p = result.AsClip();
+	
+	p->SetCacheHints(Cache::GetMyThis, (int)&q);
+
+	if (q != (int)(void *)p)
+      return new Cache(result.AsClip());
+  }
+
+  return result;
 }

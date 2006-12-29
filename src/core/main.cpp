@@ -596,8 +596,6 @@ bool CAVIFileSynth::DelayInit() {
         // store the script's return value (a video clip)
         if (return_val.IsClip()) {
 
-          return_val.AsClip()->SetCacheHints(CACHE_ALL, 999); // Give the top level cache a big head start!!
-
           // Allow WAVE_FORMAT_IEEE_FLOAT audio output
           bool AllowFloatAudio = false;
 
@@ -607,16 +605,25 @@ bool CAVIFileSynth::DelayInit() {
           }
           catch (IScriptEnvironment::NotFound) { }
 
-          if (AllowFloatAudio) 
-            filter_graph = return_val.AsClip();
-          else
-            // Ensure samples are int     
-            filter_graph = ConvertAudio::Create(return_val.AsClip(), SAMPLE_INT8|SAMPLE_INT16|SAMPLE_INT24|SAMPLE_INT32, SAMPLE_INT16);
+          filter_graph = return_val.AsClip();
+
+          if (!AllowFloatAudio) // Ensure samples are int     
+            filter_graph = ConvertAudio::Create(filter_graph, SAMPLE_INT8|SAMPLE_INT16|SAMPLE_INT24|SAMPLE_INT32, SAMPLE_INT16);
+
+		  int q = 0;
+		  filter_graph->SetCacheHints(Cache::GetMyThis, (int)&q);
+
+		  if (q != (int)(void *)filter_graph)
+			filter_graph = new Cache(filter_graph);
+
+          filter_graph->SetCacheHints(CACHE_ALL, 999); // Give the top level cache a big head start!!
         }
         else
           throw AvisynthError("The script's return value was not a video clip");
+
         if (!filter_graph)
           throw AvisynthError("The returned video clip was nil (this is a bug)");
+
         // get information about the clip
         vi = &filter_graph->GetVideoInfo();
 

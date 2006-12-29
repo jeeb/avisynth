@@ -55,6 +55,8 @@ public:
   static AVSValue __cdecl Create_Cache(AVSValue args, void*, IScriptEnvironment* env);
   void __stdcall GetAudio(void* buf, __int64 start, __int64 count, IScriptEnvironment* env);
 
+  enum {GetMyThis = 0x8666 };
+
 private:
   struct CachedVideoFrame;
   void RegisterVideoFrame(CachedVideoFrame *i, const PVideoFrame& frame, int n, IScriptEnvironment* env);
@@ -105,7 +107,6 @@ private:
 	int maxsamplecount;
 	__int64 cache_start;
 	__int64 cache_count;
-	char dbgbuf[255];
 
   // For audio cache prediction
   __int64 ac_expected_next;
