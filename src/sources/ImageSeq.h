@@ -100,7 +100,6 @@ public:
 private:
   void fileRead(istream & file, BYTE * dstPtr, const int pitch, const int row_size, const int height);
   bool checkProperties(ifstream & file, PVideoFrame & frame, IScriptEnvironment * env);
-  PVideoFrame ImageReader::FlipFrame(PVideoFrame src, IScriptEnvironment * env);
 
   char base_name[MAX_PATH + 1];
   const int start;
@@ -110,10 +109,9 @@ private:
 
   VideoInfo vi;
 
-  PVideoFrame static_frame;
-
   char filename[MAX_PATH + 1];
   bool should_flip;
+  int  framecopies;
       
   BITMAPFILEHEADER fileHeader;
   BITMAPINFOHEADER infoHeader;

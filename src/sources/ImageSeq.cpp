@@ -283,7 +283,7 @@ AVSValue __cdecl ImageWriter::Create(AVSValue args, void*, IScriptEnvironment* e
 ImageReader::ImageReader(const char * _base_name, const int _start, const int _end,
                          const float _fps, bool _use_DevIL, bool _info, const char * _pixel,
 						 IScriptEnvironment* env)
- : base_name(), start(_start), end(_end), use_DevIL(_use_DevIL), static_frame(NULL), info(_info)
+ : base_name(), start(_start), end(_end), use_DevIL(_use_DevIL), info(_info), framecopies(0)
 {
   // Generate full name
   if (IsAbsolutePath(_base_name))
@@ -308,6 +308,9 @@ ImageReader::ImageReader(const char * _base_name, const int _start, const int _e
   vi.fps_numerator = int(num+0.5);
   vi.fps_denominator = denom;
     
+  // undecorated filename means they want a single, static image
+  if( strcmp(filename, base_name) == 0 ) framecopies = vi.num_frames;
+
   if (use_DevIL == false)
   {
 	fileHeader.bfType = 0;
@@ -414,12 +417,6 @@ ImageReader::~ImageReader()
 
 PVideoFrame ImageReader::GetFrame(int n, IScriptEnvironment* env) 
 {
-  // check if we want a static image
-  if (static_frame != NULL)
-  {
-    return static_frame;
-  }
-
   ILenum err = IL_NO_ERROR;
 
   PVideoFrame frame = env->NewVideoFrame(vi);
@@ -480,11 +477,22 @@ PVideoFrame ImageReader::GetFrame(int n, IScriptEnvironment* env)
 	const ILenum linesize = width * (vi.IsRGB32() ? 4 : 3);
 
 	// Copy raster to AVS frame
-	for (int y=0; y<height; ++y)
-	{
-	  if (ilCopyPixels(0, y, 0, width, 1, 1, il_format, IL_UNSIGNED_BYTE, dstPtr) > linesize)
-		break; // Try not to spew all over memory
-	  dstPtr += pitch;
+	if (!should_flip) {
+	  for (int y=0; y<height; ++y)
+	  {
+		if (ilCopyPixels(0, y, 0, width, 1, 1, il_format, IL_UNSIGNED_BYTE, dstPtr) > linesize)
+		  break; // Try not to spew all over memory
+		dstPtr += pitch;
+	  }
+	}
+	else {
+	  dstPtr += pitch*(height-1);
+	  for (int y=0; y<height; ++y)
+	  {
+		if (ilCopyPixels(0, y, 0, width, 1, 1, il_format, IL_UNSIGNED_BYTE, dstPtr) > linesize)
+		  break; // Try not to spew all over memory
+		dstPtr -= pitch;
+	  }
 	}
 
     // Get errors if any    
@@ -501,10 +509,6 @@ PVideoFrame ImageReader::GetFrame(int n, IScriptEnvironment* env)
       ApplyMessage(&frame, vi, ss.str().c_str(), vi.width/4, TEXT_COLOR,0,0 , env);
       return frame;
     }
-
-	// Flip now (null-op, if not needed)
-////if ( ilGetInteger(IL_ORIGIN_MODE) == IL_ORIGIN_UPPER_LEFT, IL_ORIGIN_LOWER_LEFT ???
-	frame = FlipFrame(frame, env);
   }
   else {  /* treat as ebmp  */
     // Open file, ensure it has the expected properties
@@ -539,10 +543,6 @@ PVideoFrame ImageReader::GetFrame(int n, IScriptEnvironment* env)
     text << "Frame " << n << ".\nRead from \"" << filename << "\"";
     ApplyMessage(&frame, vi, text.str().c_str(), vi.width/4, TEXT_COLOR,0,0 , env);
   }
-
-  // undecorated filename means they want a single, static image
-  if( strcmp(filename, base_name) == 0 ) 
-    static_frame = frame;
 
   return frame;
 }
@@ -619,37 +619,22 @@ bool ImageReader::checkProperties(ifstream & file, PVideoFrame & frame, IScriptE
   return true;
 }
 
-PVideoFrame ImageReader::FlipFrame(PVideoFrame src, IScriptEnvironment * env) {
-  if (!should_flip)
-    return src;
-
-  PVideoFrame dst = env->NewVideoFrame(vi);
-  const BYTE* srcp = src->GetReadPtr();
-  BYTE* dstp = dst->GetWritePtr();
-  int row_size = src->GetRowSize();
-  int src_pitch = src->GetPitch();
-  int dst_pitch = dst->GetPitch();
-  env->BitBlt(dstp, dst_pitch, srcp + (vi.height-1) * src_pitch, -src_pitch, row_size, vi.height);
-  if (vi.IsPlanar()) {
-    srcp = src->GetReadPtr(PLANAR_U);
-    dstp = dst->GetWritePtr(PLANAR_U);
-    row_size = src->GetRowSize(PLANAR_U);
-    src_pitch = src->GetPitch(PLANAR_U);
-    dst_pitch = dst->GetPitch(PLANAR_U);
-    env->BitBlt(dstp, dst_pitch, srcp + (src->GetHeight(PLANAR_U)-1) * src_pitch, -src_pitch, row_size, src->GetHeight(PLANAR_U));
-    srcp = src->GetReadPtr(PLANAR_V);
-    dstp = dst->GetWritePtr(PLANAR_V);
-    env->BitBlt(dstp, dst_pitch, srcp + (src->GetHeight(PLANAR_U)-1) * src_pitch, -src_pitch, row_size, src->GetHeight(PLANAR_U));
-  }
-  return dst;
-}
-
 AVSValue __cdecl ImageReader::Create(AVSValue args, void*, IScriptEnvironment* env) 
 {
   const char * path = args[0].AsString("c:\\%06d.ebmp");
 
-  return new ImageReader(path, args[1].AsInt(0), args[2].AsInt(1000), args[3].AsFloat(24.0f), 
-                         args[4].AsBool(false), args[5].AsBool(false), args[6].AsString("rgb24"), env);
+  ImageReader *IR = new ImageReader(path, args[1].AsInt(0), args[2].AsInt(1000), args[3].AsFloat(24.0f), 
+                                    args[4].AsBool(false), args[5].AsBool(false), args[6].AsString("rgb24"), env);
+  // If we are returning a stream of 2 or more copies of the same image
+  // then use FreezeFrame and the Cache to minimise any reloading.
+  if (IR->framecopies > 1) {
+	AVSValue cache_args[1] = { IR };
+    AVSValue cache = env->Invoke("Cache", AVSValue(cache_args, 1));
+	AVSValue ff_args[4] = { cache, 0, IR->framecopies-1, 0 };
+    return env->Invoke("FreezeFrame", AVSValue(ff_args, 4)).AsClip();
+  }
+
+  return IR;
 
 }
 
