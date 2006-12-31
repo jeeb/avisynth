@@ -604,6 +604,7 @@ void __stdcall Cache::GetAudio(void* buf, __int64 start, __int64 count, IScriptE
 
 void __stdcall Cache::SetCacheHints(int cachehints,int frame_range) {
 
+  // Hack to detect if we are a cache, respond with our this pointer
   if ((cachehints == GetMyThis) && (frame_range != 0)) {
 	*(int *)frame_range = (int)(void *)this;
 	return;
@@ -710,7 +711,17 @@ Cache::~Cache() {
 
 AVSValue __cdecl Cache::Create_Cache(AVSValue args, void*, IScriptEnvironment* env) 
 {
-  return new Cache(args[0].AsClip());
-}
+  PClip p = args[0].AsClip();
 
+  if (p) {
+	int q = 0;
+	
+	// Check if "p" is a cache instance
+	p->SetCacheHints(Cache::GetMyThis, (int)&q);
+
+	// Do not cache another cache!
+	if (q != (int)(void *)p) return new Cache(p);
+  }
+  return p;
+}
 

@@ -489,13 +489,7 @@ AVSValue ExpVariableReference::Evaluate(IScriptEnvironment* env)
   }
   // Add cache to Bracketless call of argless function
   if (result.IsClip()) { // Tritical Jan 2006
-	int q = 0;
-	PClip p = result.AsClip();
-	
-	p->SetCacheHints(Cache::GetMyThis, (int)&q);
-
-	if (q != (int)(void *)p)
-      return new Cache(result.AsClip());
+    return Cache::Create_Cache(AVSValue(&result, 1), 0, env);
   }
   return result;
 }
@@ -588,14 +582,9 @@ ExpFunctionCall::~ExpFunctionCall(void)
 AVSValue ExpFunctionCall::Evaluate(IScriptEnvironment* env)
 {
   AVSValue result = Call(env);
-  if (result.IsClip()) {
-	int q = 0;
-	PClip p = result.AsClip();
-	
-	p->SetCacheHints(Cache::GetMyThis, (int)&q);
 
-	if (q != (int)(void *)p)
-      return new Cache(result.AsClip());
+  if (result.IsClip()) {
+    return Cache::Create_Cache(AVSValue(&result, 1), 0, env);
   }
 
   return result;
