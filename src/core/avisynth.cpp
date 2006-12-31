@@ -81,13 +81,14 @@ AVSFunction* builtin_functions[] = {
 // Global statistics counters
 struct {
   unsigned long CleanUps;
+  unsigned long Losses;
   unsigned long PlanA1;
   unsigned long PlanA2;
   unsigned long PlanB;
   unsigned long PlanC;
   unsigned long PlanD;
-  char tag[32];
-} g_Mem_stats = {0, 0, 0, 0, 0, 0, "CleanUps, Plan[A1,A2,B,C,D]"};
+  char tag[36];
+} g_Mem_stats = {0, 0, 0, 0, 0, 0, 0, "CleanUps, Losses, Plan[A1,A2,B,C,D]"};
 
 const HKEY RegRootKey = HKEY_LOCAL_MACHINE;
 const char RegAvisynthKey[] = "Software\\Avisynth";
@@ -1308,6 +1309,7 @@ LinkedVideoFrameBuffer* ScriptEnvironment::GetFrameBuffer2(int size) {
     }
     _RPT2(0,"Freed %d frames, consisting of %d bytes.\n",freed_count, freed);
     memory_used -= freed;
+	g_Mem_stats.Losses += freed_count;
   } 
 
   // Plan A: When we are below our memory usage :-
