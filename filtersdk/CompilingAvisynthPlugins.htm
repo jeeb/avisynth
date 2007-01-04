@@ -55,10 +55,27 @@
 
 <p>&lt;[T0B1A5]> ...</p>
 
+<h3>How to debug Avisynth plugins </h3>
+
+<p><a href="http://forum.doom9.org/showthread.php?t=107216">Donald Graft 'neuron2' wrote:</a></p>
+
+<p>Debugging Avisynth filter DLLs is easy; don't be scared by it. I can tell you how in VC++ 6. :)</p>
+
+<p>1. Build/Active configuration -> Debug.</p>
+
+<p>2. Project/Settings/Debug/General/Executable for debug session -> browse to a version of VirtualDub.exe and specify that.</p>
+
+<p>3. Project/Settings/Debug/Additional DLLs -- browse to the filter DLL in the Debug directory.</p>
+
+<p>4. Make an AVS script that loads and uses your filter -- be sure to load the Debug version!</p>
+
+<p>5. Build the code. Set breakpoints as required.</p>
+
+<p>6. Build/Start debug/Go. VirtualDub will execute. Open the AVS script in that VirtualDub instance.</p>
 
 <h3>Back to <a href="FilterSDK.htm">FilterSDK</a></h3>
 
-<p><kbd>$Date: 2006/11/24 18:21:25 $<br>
+<p><kbd>$Date: 2007/01/04 11:33:49 $<br>
 Original version of this document at <a href="http://www.avisynth.org/CompilingAvisynth">http://www.avisynth.org/CompilingAvisynth</a></kbd></p>
 </BODY>
 </html>
