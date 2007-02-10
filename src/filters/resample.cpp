@@ -52,6 +52,7 @@ AVSFunction Resample_filters[] = {
   { "Lanczos4Resize", "cii[src_left]f[src_top]f[src_width]f[src_height]f", Create_Lanczos4Resize},
   { "Spline16Resize", "cii[src_left]f[src_top]f[src_width]f[src_height]f", Create_Spline16Resize},
   { "Spline36Resize", "cii[src_left]f[src_top]f[src_width]f[src_height]f", Create_Spline36Resize},
+  { "Spline64Resize", "cii[src_left]f[src_top]f[src_width]f[src_height]f", Create_Spline64Resize},
   { "GaussResize", "cii[src_left]f[src_top]f[src_width]f[src_height]f[p]f", Create_GaussianResize},
   /**
     * Resize(PClip clip, dst_width, dst_height [src_left, src_top, src_width, int src_height,] )
@@ -1668,6 +1669,12 @@ AVSValue __cdecl Create_Spline36Resize(AVSValue args, void*, IScriptEnvironment*
 {
   return CreateResize( args[0].AsClip(), args[1].AsInt(), args[2].AsInt(), &args[3],
                        &Spline36Filter(), env );
+}
+
+AVSValue __cdecl Create_Spline64Resize(AVSValue args, void*, IScriptEnvironment* env)
+{
+  return CreateResize( args[0].AsClip(), args[1].AsInt(), args[2].AsInt(), &args[3],
+                       &Spline64Filter(), env );
 }
 
 AVSValue __cdecl Create_GaussianResize(AVSValue args, void*, IScriptEnvironment* env)

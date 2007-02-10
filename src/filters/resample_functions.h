@@ -154,6 +154,19 @@ public:
 private:
 };
 
+// Spline64
+class Spline64Filter : public ResamplingFunction
+/**
+  * Spline64 is like Spline36,  except that it uses 8x8=64 pixels.
+ **/
+{
+public:
+	double f(double x);
+	double support() { return 4.0; };
+
+private:
+};
+
 
 class GaussianFilter : public ResamplingFunction
 /**

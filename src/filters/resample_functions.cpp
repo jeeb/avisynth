@@ -134,12 +134,31 @@ double Spline16Filter::f(double value) {
 double Spline36Filter::f(double value) {
   value = fabs(value);
 
-  if (value < 1.0) {
-    return ( ( 13.0/11.0  * value - 453.0/ 209.0 ) * value - 3.0/ 209.0  ) * value + 1.0;
+  if        (value < 1.0) {
+    return ( ( 13.0/11.0  * (value    ) - 453.0/ 209.0 ) * (value    ) -   3.0/ 209.0 ) *(value    ) + 1.0;
   } else if (value < 2.0) {
-    return ( ( - 6.0/11.0  * (value-1.0) + 270.0/ 209.0 ) * (value-1.0) - 156.0/ 209.0 ) *(value-1.0);
+    return ( ( -6.0/11.0  * (value-1.0) + 270.0/ 209.0 ) * (value-1.0) - 156.0/ 209.0 ) *(value-1.0);
   } else if (value < 3.0) {
-    return  ( (    1.0/11.0  * (value-2.0) -  45.0/ 209.0 ) * (value-2.0) +  26.0/ 209.0 ) *(value-2.0);
+    return  ( ( 1.0/11.0  * (value-2.0) -  45.0/ 209.0 ) * (value-2.0) +  26.0/ 209.0 ) *(value-2.0);
+  }
+  return 0.0;
+}
+
+/***********************
+ *** Spline64 filter ***
+ ***********************/
+
+double Spline64Filter::f(double value) {
+  value = fabs(value);
+
+  if        (value < 1.0) {
+    return (( 49.0/41.0 * (value    ) - 6387.0/2911.0) * (value    ) -    3.0/2911.0) * (value    ) + 1.0;
+  } else if (value < 2.0) {
+    return ((-24.0/41.0 * (value-1.0) + 4032.0/2911.0) * (value-1.0) - 2328.0/2911.0) * (value-1.0);
+  } else if (value < 3.0) {
+    return ((  6.0/41.0 * (value-2.0) - 1008.0/2911.0) * (value-2.0) +  582.0/2911.0) * (value-2.0);
+  } else if (value < 4.0) {
+    return ((- 1.0/41.0 * (value-3.0) +  168.0/2911.0) * (value-3.0) -   97.0/2911.0) * (value-3.0);
   }
   return 0.0;
 }
@@ -153,7 +172,7 @@ double Spline36Filter::f(double value) {
                      value*value < 90/param
                      value*value < 90/{0.1, 22.5, 30.0, 100.0}
                      value*value < {900, 4.0, 3.0, 0.9}
-		                 value       < {30, 2.0, 1.73, 0.949}         */
+                     value       < {30, 2.0, 1.73, 0.949}         */
 
 GaussianFilter::GaussianFilter(double p = 30.0) {
   param = min(100.0,max(0.1,p));
