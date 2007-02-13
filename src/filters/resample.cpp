@@ -50,6 +50,7 @@ AVSFunction Resample_filters[] = {
   { "BicubicResize", "cii[b]f[c]f[src_left]f[src_top]f[src_width]f[src_height]f", Create_BicubicResize },
   { "LanczosResize", "cii[src_left]f[src_top]f[src_width]f[src_height]f[taps]i", Create_LanczosResize},
   { "Lanczos4Resize", "cii[src_left]f[src_top]f[src_width]f[src_height]f", Create_Lanczos4Resize},
+  { "BlackmanResize", "cii[src_left]f[src_top]f[src_width]f[src_height]f[taps]i", Create_BlackmanResize},
   { "Spline16Resize", "cii[src_left]f[src_top]f[src_width]f[src_height]f", Create_Spline16Resize},
   { "Spline36Resize", "cii[src_left]f[src_top]f[src_width]f[src_height]f", Create_Spline36Resize},
   { "Spline64Resize", "cii[src_left]f[src_top]f[src_width]f[src_height]f", Create_Spline64Resize},
@@ -1655,6 +1656,15 @@ AVSValue __cdecl Create_Lanczos4Resize(AVSValue args, void*, IScriptEnvironment*
 	try {	// HIDE DAMN SEH COMPILER BUG!!!
   return CreateResize( args[0].AsClip(), args[1].AsInt(), args[2].AsInt(), &args[3],
                        &LanczosFilter(4), env );
+	}
+	catch (...) { throw; }
+}
+
+AVSValue __cdecl Create_BlackmanResize(AVSValue args, void*, IScriptEnvironment* env)
+{
+	try {	// HIDE DAMN SEH COMPILER BUG!!!
+  return CreateResize( args[0].AsClip(), args[1].AsInt(), args[2].AsInt(), &args[3],
+                       &BlackmanFilter(args[7].AsInt(4)), env );
 	}
 	catch (...) { throw; }
 }

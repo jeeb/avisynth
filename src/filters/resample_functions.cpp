@@ -113,6 +113,30 @@ double LanczosFilter::f(double value) {
 
 
 /***********************
+ *** Blackman filter ***
+ ***********************/
+BlackmanFilter::BlackmanFilter(int t = 4) {
+   taps = (double)(max( 1,min(100,t)));
+   rtaps = 1.0/taps;
+}
+
+double BlackmanFilter::f(double value) {
+   value = fabs(value);
+
+  if (value < taps) {
+    if (value == 0.0) {
+      return 1.0;
+    } else {
+      value *= M_PI;
+      return (sin(value) / value) * (0.42 + 0.5*cos(value*rtaps) + 0.08*cos(2*value*rtaps));
+    }
+  } else {
+    return 0.0;
+  }
+}
+
+
+/***********************
  *** Spline16 filter ***
  ***********************/
 

@@ -114,18 +114,18 @@ private:
   double taps;
 };
 
-// Lanczos4Resize
-class Lanczos4Filter : public ResamplingFunction
+class BlackmanFilter : public ResamplingFunction
 /**
-  * Lanczos4 filter, used in Lanczos4Resize
+  * Blackman filter, used in BlackmanResize
  **/
 {
 public:
+  BlackmanFilter(int taps);
 	double f(double x);
-	double support() { return 4.0; };
+	double support() { return taps; };
 
 private:
-	double sinc(double value);
+  double taps, rtaps;
 };
 
 // Spline16
