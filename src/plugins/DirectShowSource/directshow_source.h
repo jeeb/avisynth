@@ -215,7 +215,7 @@ public:
 
   int avg_time_per_frame;
 
-  int a_sample_bytes;
+  int av_sample_bytes;
   BYTE* av_buffer;         // Killed on StopGraph
 
   LOG* log;

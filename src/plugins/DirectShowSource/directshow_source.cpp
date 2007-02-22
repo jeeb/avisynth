@@ -167,7 +167,7 @@ GetSample::GetSample(bool _load_audio, bool _load_video, unsigned _media, LOG* _
     m_pPos =0;
     state = State_Stopped;
     avg_time_per_frame = 0;
-    a_sample_bytes = 0;
+    av_sample_bytes = 0;
     av_buffer = 0;
     flushing = end_of_stream = false;
     memset(&vi, 0, sizeof(vi));
@@ -257,27 +257,47 @@ GetSample::GetSample(bool _load_audio, bool _load_video, unsigned _media, LOG* _
       if (!vi.IsPlanar()) { // Packed formats have rows 32bit aligned
 
         const int rowsize = pvf->GetRowSize();
-        env->BitBlt(pvf->GetWritePtr(), pvf->GetPitch(), buf, (rowsize+3)&~3, rowsize, pvf->GetHeight());
+        const int height  = pvf->GetHeight();
+        int stride;
+
+        // Check for rows not being 32 bit aligned
+        if (((rowsize*height + 3)&~3) == ((av_sample_bytes+3)&~3)) {
+          stride = rowsize;
+        } else  {
+          stride  = (rowsize+3)&~3;
+        }
+
+        env->BitBlt(pvf->GetWritePtr(), pvf->GetPitch(), buf, stride, rowsize, height);
       }
       else {
 
         const int rowsize = pvf->GetRowSize(PLANAR_Y);
         const int height  = pvf->GetHeight(PLANAR_Y);
-
-        // All planar formats have Y rows 32bit aligned
-        env->BitBlt(pvf->GetWritePtr(PLANAR_Y), pvf->GetPitch(PLANAR_Y), buf, (rowsize+3)&~3, rowsize, height);
-
         const int UVrowsize = pvf->GetRowSize(PLANAR_V);
         const int UVheight  = pvf->GetHeight(PLANAR_V);
+        int stride;
+        int UVstride;
 
-        // YV12 format has UV rows 16bit aligned with
+        // Check for rows not being 32 bit aligned
+        if (((rowsize*height + 2*UVrowsize*UVheight + 3)&~3) == ((av_sample_bytes+3)&~3)) {
+          stride    = rowsize;
+          UVstride  = UVrowsize;
+        } else {
+          // Planar formats should have Y rows 32bit aligned
+          stride    = (rowsize+3)&~3;
+          // YV12 format should have UV rows 16bit aligned
+          UVstride  = (UVrowsize+1)&~1;
+        }
+
+        env->BitBlt(pvf->GetWritePtr(PLANAR_Y), pvf->GetPitch(PLANAR_Y), buf, stride, rowsize, height);
+
         // V plane first, after aligned end of Y plane
-        buf += ((rowsize+3)&~3) * height;
-        env->BitBlt(pvf->GetWritePtr(PLANAR_V), pvf->GetPitch(PLANAR_V), buf, (UVrowsize+1)&~1, UVrowsize, UVheight);
+        buf += stride * height;
+        env->BitBlt(pvf->GetWritePtr(PLANAR_V), pvf->GetPitch(PLANAR_V), buf, UVstride, UVrowsize, UVheight);
 
         // And U plane last, after aligned end of V plane
-        buf += ((UVrowsize+1)&~1) * UVheight;
-        env->BitBlt(pvf->GetWritePtr(PLANAR_U), pvf->GetPitch(PLANAR_U), buf, (UVrowsize+1)&~1, UVrowsize, UVheight);
+        buf += UVstride * UVheight;
+        env->BitBlt(pvf->GetWritePtr(PLANAR_U), pvf->GetPitch(PLANAR_U), buf, UVstride, UVrowsize, UVheight);
       }
     }
     else if (pvf) {
@@ -1051,10 +1071,10 @@ pbFormat:
     pSamples->GetPointer(&av_buffer);
     int deltaT = avg_time_per_frame;
 
+    av_sample_bytes = pSamples->GetActualDataLength();
     if (load_audio) {  // audio
-      a_sample_bytes = pSamples->GetActualDataLength();
-      deltaT = MulDiv(a_sample_bytes, 10000000, vi.BytesPerAudioSample()*vi.SamplesPerSecond());
-      dssRPT1(dssSAMP, "Receive: Got %d bytes of audio data.\n",a_sample_bytes);
+      deltaT = MulDiv(av_sample_bytes, 10000000, vi.BytesPerAudioSample()*vi.SamplesPerSecond());
+      dssRPT1(dssSAMP, "Receive: Got %d bytes of audio data.\n",av_sample_bytes);
     }
 
     HRESULT result = pSamples->GetTime(&sample_start_time, &sample_end_time);
@@ -1085,7 +1105,7 @@ pbFormat:
     } while ((wait_result == WAIT_TIMEOUT) && (state != State_Stopped));
 
     av_buffer = 0;
-    a_sample_bytes = 0;
+    av_sample_bytes = 0;
 
     dssRPT1(dssINFO, "Receive() - returning. (%s)\n", streamName);
 
@@ -1789,7 +1809,7 @@ DirectShowSource::DirectShowSource(const char* filename, int _avg_time_per_frame
       next_sample -= vi.AudioSamplesFromBytes(audio_bytes_read);
       audio_bytes_read = 0;
 
-      const __int64 avail_samples = vi.AudioSamplesFromBytes(get_sample.a_sample_bytes);
+      const __int64 avail_samples = vi.AudioSamplesFromBytes(get_sample.av_sample_bytes);
       if ( ((seekmode != 2) && (start < next_sample))
         // Seek=true and Seekzero=true and stepping back
         || ((seekmode == 1) && (start >= next_sample+avail_samples+50000))) {
@@ -1850,12 +1870,12 @@ DirectShowSource::DirectShowSource(const char* filename, int _avg_time_per_frame
 			env->ThrowError("DirectShowSource : Timeout waiting for audio.");
 
         while (skip_left > 0) {
-          if (get_sample.a_sample_bytes-audio_bytes_read >= skip_left) {
+          if (get_sample.av_sample_bytes-audio_bytes_read >= skip_left) {
             audio_bytes_read += skip_left;
             break;
           }
-          skip_left -= get_sample.a_sample_bytes-audio_bytes_read;
-          audio_bytes_read = get_sample.a_sample_bytes;
+          skip_left -= get_sample.av_sample_bytes-audio_bytes_read;
+          audio_bytes_read = get_sample.av_sample_bytes;
           
           if (get_sample.NextSample(timeout))
             audio_bytes_read = 0;
@@ -1875,10 +1895,10 @@ DirectShowSource::DirectShowSource(const char* filename, int _avg_time_per_frame
         env->ThrowError("DirectShowSource : Timeout waiting for audio.");
     while (bytes_left) {
       // Can we read from the Directshow filters buffer?
-      if (get_sample.a_sample_bytes - audio_bytes_read > 0) { // Copy as many bytes as needed.
+      if (get_sample.av_sample_bytes - audio_bytes_read > 0) { // Copy as many bytes as needed.
 
         // This many bytes can be safely read.
-        const int available_bytes = min(bytes_left, get_sample.a_sample_bytes - audio_bytes_read);
+        const int available_bytes = min(bytes_left, get_sample.av_sample_bytes - audio_bytes_read);
         dssRPT2(dssCALL, "GetAudio: Memcpy %d offset, %d bytes.\n", bytes_filled, available_bytes);
 
         memcpy(&samples[bytes_filled], &get_sample.av_buffer[audio_bytes_read], available_bytes);
