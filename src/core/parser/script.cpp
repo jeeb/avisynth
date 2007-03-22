@@ -91,8 +91,8 @@ AVSFunction Script_functions[] = {
   { "audiolengthf", "c", AudioLengthF }, // at least this will give an order of the size
   { "audiochannels", "c", AudioChannels },
   { "audiobits", "c", AudioBits },
-  { "IsAudioFloat", "c", IsFloat },
-  { "IsAudioInt", "c", IsInt },
+  { "IsAudioFloat", "c", IsAudioFloat },
+  { "IsAudioInt", "c", IsAudioInt },
   { "IsRGB", "c", IsRGB },
   { "IsYUY2", "c", IsYUY2 },
   { "IsYUV", "c", IsYUV },
@@ -151,12 +151,6 @@ AVSFunction Script_functions[] = {
 
 
 
-
-
-
-
-
-
 /**********************************
  *******   Script Function   ******
  *********************************/
@@ -188,16 +182,6 @@ void ScriptFunction::Delete(void* self, IScriptEnvironment*)
 
 
 
-
-
-
-
-
-
-
-
-
-
 /***********************************
  *******   Helper Functions   ******
  **********************************/
@@ -209,13 +193,11 @@ CWDChanger::CWDChanger(const char* new_cwd)
   restore = (save_cwd_success && set_cwd_success);
 }
 
-
 CWDChanger::~CWDChanger(void)
 {
   if (restore)
     SetCurrentDirectory(old_working_directory);
 }
-
 
 
 
@@ -538,7 +520,7 @@ AVSValue AudioLengthF(AVSValue args, void*, IScriptEnvironment* env) { return (d
 AVSValue AudioChannels(AVSValue args, void*, IScriptEnvironment* env) { return VI(args[0]).HasAudio() ? VI(args[0]).nchannels : 0; }
 AVSValue AudioBits(AVSValue args, void*, IScriptEnvironment* env) { return VI(args[0]).BytesPerChannelSample()*8; }
 AVSValue IsAudioFloat(AVSValue args, void*, IScriptEnvironment* env) { return VI(args[0]).IsSampleType(SAMPLE_FLOAT); }
-AVSValue IsAudioInt(AVSValue args, void*, IScriptEnvironment* env) { return !VI(args[0]).IsSampleType(SAMPLE_FLOAT); }
+AVSValue IsAudioInt(AVSValue args, void*, IScriptEnvironment* env) { return VI(args[0]).IsSampleType(SAMPLE_INT8 | SAMPLE_INT16 | SAMPLE_INT24 | SAMPLE_INT32 ); }
 
 AVSValue IsRGB(AVSValue args, void*, IScriptEnvironment* env) { return VI(args[0]).IsRGB(); }
 AVSValue IsRGB24(AVSValue args, void*, IScriptEnvironment* env) { return VI(args[0]).IsRGB24(); }
