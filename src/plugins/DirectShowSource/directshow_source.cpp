@@ -1531,8 +1531,9 @@ DirectShowSource::DirectShowSource(const char* filename, int _avg_time_per_frame
                           "Graph must have 1 output pin that will bid 8, 16, 24 or 32 bit PCM or IEEE Float.");
       }
     } else {
-      CheckHresult(env, gb->RenderFile(filenameW, NULL), "couldn't open file ", filename);
-      if (!get_sample.IsConnected()) {
+      HRESULT RFHresult = gb->RenderFile(filenameW, NULL);
+      if (!get_sample.IsConnected()) { // Ignore arbitary errors, run with what we got
+        CheckHresult(env, RFHresult, "couldn't open file ", filename);
         env->ThrowError("DirectShowSource: RenderFile, the filter graph manager won't talk to me");
       }
     }
