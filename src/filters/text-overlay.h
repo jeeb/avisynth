@@ -143,7 +143,7 @@ private:
   const int x, y, firstframe, lastframe, size, lsp;
   const bool multiline;
   const int textcolor, halocolor, align, spc;
-  char* const fontname;
+  const char* const fontname;
   const char* const text;
   Antialiaser* antialiaser;  
 };
@@ -213,11 +213,6 @@ inline static HFONT LoadFont(const char name[], int size, bool bold, bool italic
                      italic, FALSE, FALSE, DEFAULT_CHARSET, OUT_DEFAULT_PRECIS,
                      CLIP_DEFAULT_PRECIS, DEFAULT_QUALITY, FF_DONTCARE | DEFAULT_PITCH, name );
 }
-
-inline char* MyStrdup(const char* s) {
-  return lstrcpy(new char[(lstrlen(s)+1)], s);
-}
-
 
 
 #endif  // __Text_overlay_H__

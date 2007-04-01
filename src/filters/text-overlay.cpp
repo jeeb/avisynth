@@ -654,8 +654,6 @@ PVideoFrame __stdcall ShowSMPTE::GetFrame(int n, IScriptEnvironment* env)
   wsprintf(text, "%02d:%02d:%02d:%02d", hour, min%60, sec%60, frames);
 
   SetTextAlign(hdc, TA_BASELINE|TA_CENTER);
-  // RECT r = { 0, 0, 32767, 32767 };
-  // FillRect(hdc, &r, (HBRUSH)GetStockObject(BLACK_BRUSH));
   TextOut(hdc, x*8, y*8-48, text, strlen(text));
   GdiFlush();
 
@@ -696,7 +694,7 @@ Subtitle::Subtitle( PClip _child, const char _text[], int _x, int _y, int _first
                     int _lastframe, const char _fontname[], int _size, int _textcolor, 
                     int _halocolor, int _align, int _spc, bool _multiline, int _lsp )
  : GenericVideoFilter(_child), antialiaser(0), text(_text), x(_x), y(_y), 
-   firstframe(_firstframe), lastframe(_lastframe), fontname(MyStrdup(_fontname)), size(_size*8),
+   firstframe(_firstframe), lastframe(_lastframe), fontname(_fontname), size(_size*8),
    textcolor(vi.IsYUV() ? RGB2YUV(_textcolor) : _textcolor),
    halocolor(vi.IsYUV() ? RGB2YUV(_halocolor) : _halocolor),
    align(_align), spc(_spc), multiline(_multiline), lsp(_lsp)
@@ -707,7 +705,6 @@ Subtitle::Subtitle( PClip _child, const char _text[], int _x, int _y, int _first
 
 Subtitle::~Subtitle(void) 
 {
-  delete[] fontname;
   delete antialiaser;
 }
 
@@ -740,38 +737,39 @@ PVideoFrame Subtitle::GetFrame(int n, IScriptEnvironment* env)
 
 AVSValue __cdecl Subtitle::Create(AVSValue args, void*, IScriptEnvironment* env) 
 {
-    PClip clip = args[0].AsClip();
-    const char* text = args[1].AsString();
-    const int first_frame = args[4].AsInt(0);
-    const int last_frame = args[5].AsInt(clip->GetVideoInfo().num_frames-1);
-    const char* const font = args[6].AsString("Arial");
-    const int size = args[7].AsInt(18);
-    const int text_color = args[8].AsInt(0xFFFF00);
-    const int halo_color = args[9].AsInt(0);
-    const int align = args[10].AsInt(args[2].AsInt(8)==-1?2:7);
-    const int spc = args[11].AsInt(0);
-    const bool multiline = args[12].Defined();
-    const int lsp = args[12].AsInt(0);
-    int defx, defy;
-    switch (align) {
-	 case 1: case 4: case 7: defx = 8; break;
-     case 2: case 5: case 8: defx = -1; break;
-     case 3: case 6: case 9: defx = clip->GetVideoInfo().width-8; break;
-     default: defx = 8; break; }
-    switch (align) {
-     case 1: case 2: case 3: defy = clip->GetVideoInfo().height-2; break;
-     case 4: case 5: case 6: defy = -1; break;
-	 case 7: case 8: case 9: defy = 0; break;
-     default: defy = size; break; }
+  PClip clip = args[0].AsClip();
+  const char* text = args[1].AsString();
 
-    const int x = args[2].AsInt(defx);
-    const int y = args[3].AsInt(defy);
+  const int first_frame = args[4].AsInt(0);
+  const int last_frame = args[5].AsInt(clip->GetVideoInfo().num_frames-1);
+  const char* font = args[6].AsString("Arial");
+  const int size = args[7].AsInt(18);
+  const int text_color = args[8].AsInt(0xFFFF00);
+  const int halo_color = args[9].AsInt(0);
+  const int align = args[10].AsInt(args[2].AsInt(8)==-1?2:7);
+  const int spc = args[11].AsInt(0);
+  const bool multiline = args[12].Defined();
+  const int lsp = args[12].AsInt(0);
+  int defx, defy;
+  switch (align) {
+    case 1: case 4: case 7: defx = 8; break;
+    case 2: case 5: case 8: defx = -1; break;
+    case 3: case 6: case 9: defx = clip->GetVideoInfo().width-8; break;
+    default: defx = 8; break; }
+  switch (align) {
+    case 1: case 2: case 3: defy = clip->GetVideoInfo().height-2; break;
+    case 4: case 5: case 6: defy = -1; break;
+    case 7: case 8: case 9: defy = 0; break;
+    default: defy = size; break; }
 
-    if ((align < 1) || (align > 9))
-     env->ThrowError("Subtitle: Align values are 1 - 9 mapped to your numeric pad");
+  const int x = args[2].AsInt(defx);
+  const int y = args[3].AsInt(defy);
 
-    return new Subtitle(clip, text, x, y, first_frame, last_frame, font, size,
-	                    text_color, halo_color, align, spc, multiline, lsp);
+  if ((align < 1) || (align > 9))
+   env->ThrowError("Subtitle: Align values are 1 - 9 mapped to your numeric pad");
+
+  return new Subtitle(clip, text, x, y, first_frame, last_frame, font, size,
+                      text_color, halo_color, align, spc, multiline, lsp);
 }
 
 
@@ -924,8 +922,6 @@ PVideoFrame FilterInfo::GetFrame(int n, IScriptEnvironment* env)
   PVideoFrame frame = child->GetFrame(n, env);
   hdcAntialias = antialiaser.GetDC();
   if (hdcAntialias) {
-	env->MakeWritable(&frame);
-
     const char* c_space;
     const char* s_type = t_NONE;
     const char* s_parity;
@@ -962,7 +958,7 @@ PVideoFrame FilterInfo::GetFrame(int n, IScriptEnvironment* env)
       "Time: %02d:%02d:%02d:%03d of %02d:%02d:%02d:%03d\n"  //  35
       "ColorSpace: %s\n"                                    //  18=13+5
       "Width:%4u pixels, Height:%4u pixels.\n"              //  39
-      "Frames per second: %7.4f (%d/%d)\n"                  //  51=31+20
+      "Frames per second: %7.4f (%u/%u)\n"                  //  51=31+20
       "FieldBased (Separated) Video: %s\n"                  //  35=32+3
       "Parity: %s\n"                                        //  35=9+26
       "Video Pitch: %5u bytes.\n"                           //  25
@@ -1004,6 +1000,7 @@ PVideoFrame FilterInfo::GetFrame(int n, IScriptEnvironment* env)
     DrawText(hdcAntialias, text, -1, &r, 0);
     GdiFlush();
 
+    env->MakeWritable(&frame);
     BYTE* dstp = frame->GetWritePtr();
     int dst_pitch = frame->GetPitch();
     antialiaser.Apply(vi, &frame, dst_pitch );
