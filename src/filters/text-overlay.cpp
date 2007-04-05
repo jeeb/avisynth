@@ -55,7 +55,11 @@ AVSFunction Text_filters[] = {
 
   { "ShowSMPTE",
 	"c[fps]f[offset]s[offset_f]i[x]i[y]i[font]s[size]i[text_color]i[halo_color]i",
-	ShowSMPTE::Create },
+	ShowSMPTE::CreateSMTPE },
+
+  { "ShowTime",
+	"c[offset_f]i[x]i[y]i[font]s[size]i[text_color]i[halo_color]i",
+	ShowSMPTE::CreateTime },
 
   { "Info", "c", FilterInfo::Create },  // clip
 
@@ -168,7 +172,8 @@ void Antialiaser::Apply( const VideoInfo& vi, PVideoFrame* frame, int pitch)
   else if (vi.IsYV12())
     ApplyYV12((*frame)->GetWritePtr(), pitch,
               (*frame)->GetPitch(PLANAR_U),
-			  (*frame)->GetWritePtr(PLANAR_U), (*frame)->GetWritePtr(PLANAR_V) );
+			  (*frame)->GetWritePtr(PLANAR_U),
+			  (*frame)->GetWritePtr(PLANAR_V) );
 }
 
 
@@ -181,34 +186,35 @@ void Antialiaser::ApplyYV12(BYTE* buf, int pitch, int pitchUV, BYTE* bufU, BYTE*
   const int w4 = w*4;
   unsigned short* alpha = alpha_calcs + yb*w4;
   buf  += pitch*yb;
-  bufU += pitchUV*yb/2;
-  bufV += pitchUV*yb/2;
+  bufU += (pitchUV*yb)>>1;
+  bufV += (pitchUV*yb)>>1;
 
   for (int y=yb; y<=yt; y+=2) {
     for (int x=xl; x<=xr; x+=2) {
-      const int basealpha00 = alpha[x*4+0];
-      const int basealpha10 = alpha[x*4+4];
-      const int basealpha01 = alpha[x*4+0+w4];
-      const int basealpha11 = alpha[x*4+4+w4];
+      const int x4 = x<<2;
+      const int basealpha00 = alpha[x4+0];
+      const int basealpha10 = alpha[x4+4];
+      const int basealpha01 = alpha[x4+0+w4];
+      const int basealpha11 = alpha[x4+4+w4];
       const int basealphaUV = basealpha00 + basealpha10 + basealpha01 + basealpha11;
 
       if (basealphaUV != 256) {
-        buf[x+0]       = (buf[x+0]       * basealpha00 + alpha[x*4+3]   ) >> 6;
-        buf[x+1]       = (buf[x+1]       * basealpha10 + alpha[x*4+7]   ) >> 6;
-        buf[x+0+pitch] = (buf[x+0+pitch] * basealpha01 + alpha[x*4+3+w4]) >> 6;
-        buf[x+1+pitch] = (buf[x+1+pitch] * basealpha11 + alpha[x*4+7+w4]) >> 6;
+        buf[x+0]       = (buf[x+0]       * basealpha00 + alpha[x4+3]   ) >> 6;
+        buf[x+1]       = (buf[x+1]       * basealpha10 + alpha[x4+7]   ) >> 6;
+        buf[x+0+pitch] = (buf[x+0+pitch] * basealpha01 + alpha[x4+3+w4]) >> 6;
+        buf[x+1+pitch] = (buf[x+1+pitch] * basealpha11 + alpha[x4+7+w4]) >> 6;
 
-        const int au  = alpha[x*4+2] + alpha[x*4+6] + alpha[x*4+2+w4] + alpha[x*4+6+w4];
+        const int au  = alpha[x4+2] + alpha[x4+6] + alpha[x4+2+w4] + alpha[x4+6+w4];
         bufU[x>>1] = (bufU[x>>1] * basealphaUV + au) >> 8;
 
-        const int av  = alpha[x*4+1] + alpha[x*4+5] + alpha[x*4+1+w4] + alpha[x*4+5+w4];
+        const int av  = alpha[x4+1] + alpha[x4+5] + alpha[x4+1+w4] + alpha[x4+5+w4];
         bufV[x>>1] = (bufV[x>>1] * basealphaUV + av) >> 8;
       }
     }
-    buf += pitch*2;
+    buf += pitch<<1;
     bufU += pitchUV;
     bufV += pitchUV;
-    alpha += w*8;
+    alpha += w<<3;
   }
 }
 
@@ -564,13 +570,17 @@ ShowSMPTE::ShowSMPTE(PClip _child, double _rate, const char* offset, int _offset
     dropframe = false;
   } 
   else if (_rate == 30) {
-  rate = 30;
-  dropframe = false;
+    rate = 30;
+    dropframe = false;
   } 
   else if (_rate > 29.969 && _rate < 29.971) {
     rate = 30;
     dropframe = true;
   } 
+  else if (_rate == 0) {
+    rate = 0; // Display hh:mm:ss.mmm
+    dropframe = false;
+  }
   else {
     env->ThrowError("ShowSMPTE: rate argument must be 23.976, 24, 25, 29.97 or 30");
   }
@@ -645,13 +655,24 @@ PVideoFrame __stdcall ShowSMPTE::GetFrame(int n, IScriptEnvironment* env)
 	}
   }
 
-  int frames = n % rate;
-  int sec = n/rate;
-  int min = sec/60;
-  int hour = sec/3600;
+  char text[17];
 
-  char text[16];
-  wsprintf(text, "%02d:%02d:%02d:%02d", hour, min%60, sec%60, frames);
+  if (rate > 0) {
+    int frames = n % rate;
+    int sec = n/rate;
+    int min = sec/60;
+    int hour = sec/3600;
+
+    wsprintf(text, "%02d:%02d:%02d:%02d", hour, min%60, sec%60, frames);
+  }
+  else {
+    int ms = (int)(((__int64)n * vi.fps_denominator * 1000 / (__int64)vi.fps_numerator)%1000);
+    int sec = (__int64)n * vi.fps_denominator / vi.fps_numerator;
+    int min = sec/60;
+    int hour = sec/3600;
+
+    wsprintf(text, "%02d:%02d:%02d.%03d", hour, min%60, sec%60, ms);
+  }
 
   SetTextAlign(hdc, TA_BASELINE|TA_CENTER);
   TextOut(hdc, x*8, y*8-48, text, strlen(text));
@@ -662,7 +683,7 @@ PVideoFrame __stdcall ShowSMPTE::GetFrame(int n, IScriptEnvironment* env)
   return frame;
 }
 
-AVSValue __cdecl ShowSMPTE::Create(AVSValue args, void*, IScriptEnvironment* env)
+AVSValue __cdecl ShowSMPTE::CreateSMTPE(AVSValue args, void*, IScriptEnvironment* env)
 {
   PClip clip = args[0].AsClip();
   double def_rate = (double)args[0].AsClip()->GetVideoInfo().fps_numerator / (double)args[0].AsClip()->GetVideoInfo().fps_denominator;
@@ -678,6 +699,21 @@ AVSValue __cdecl ShowSMPTE::Create(AVSValue args, void*, IScriptEnvironment* env
   const int text_color = args[8].AsInt(0xFFFF00);
   const int halo_color = args[9].AsInt(0);
   return new ShowSMPTE(clip, dfrate, offset, offset_f, x, y, font, size, text_color, halo_color, env);
+}
+
+AVSValue __cdecl ShowSMPTE::CreateTime(AVSValue args, void*, IScriptEnvironment* env)
+{
+  PClip clip = args[0].AsClip();
+  const int offset_f = args[1].AsInt(0);
+  const int xreal = args[0].AsClip()->GetVideoInfo().width;
+  const int x = args[2].AsInt(xreal*0.5);
+  const int yreal = args[0].AsClip()->GetVideoInfo().height;
+  const int y = args[3].AsInt(yreal);
+  const char* font = args[4].AsString("Arial");
+  const int size = args[5].AsInt(24);
+  const int text_color = args[6].AsInt(0xFFFF00);
+  const int halo_color = args[7].AsInt(0);
+  return new ShowSMPTE(clip, 0.0, NULL, offset_f, x, y, font, size, text_color, halo_color, env);
 }
 
 
@@ -737,39 +773,38 @@ PVideoFrame Subtitle::GetFrame(int n, IScriptEnvironment* env)
 
 AVSValue __cdecl Subtitle::Create(AVSValue args, void*, IScriptEnvironment* env) 
 {
-  PClip clip = args[0].AsClip();
-  const char* text = args[1].AsString();
+    PClip clip = args[0].AsClip();
+    const char* text = args[1].AsString();
+    const int first_frame = args[4].AsInt(0);
+    const int last_frame = args[5].AsInt(clip->GetVideoInfo().num_frames-1);
+    const char* font = args[6].AsString("Arial");
+    const int size = args[7].AsInt(18);
+    const int text_color = args[8].AsInt(0xFFFF00);
+    const int halo_color = args[9].AsInt(0);
+    const int align = args[10].AsInt(args[2].AsInt(8)==-1?2:7);
+    const int spc = args[11].AsInt(0);
+    const bool multiline = args[12].Defined();
+    const int lsp = args[12].AsInt(0);
+    int defx, defy;
+    switch (align) {
+	 case 1: case 4: case 7: defx = 8; break;
+     case 2: case 5: case 8: defx = -1; break;
+     case 3: case 6: case 9: defx = clip->GetVideoInfo().width-8; break;
+     default: defx = 8; break; }
+    switch (align) {
+     case 1: case 2: case 3: defy = clip->GetVideoInfo().height-2; break;
+     case 4: case 5: case 6: defy = -1; break;
+	 case 7: case 8: case 9: defy = 0; break;
+     default: defy = size; break; }
 
-  const int first_frame = args[4].AsInt(0);
-  const int last_frame = args[5].AsInt(clip->GetVideoInfo().num_frames-1);
-  const char* font = args[6].AsString("Arial");
-  const int size = args[7].AsInt(18);
-  const int text_color = args[8].AsInt(0xFFFF00);
-  const int halo_color = args[9].AsInt(0);
-  const int align = args[10].AsInt(args[2].AsInt(8)==-1?2:7);
-  const int spc = args[11].AsInt(0);
-  const bool multiline = args[12].Defined();
-  const int lsp = args[12].AsInt(0);
-  int defx, defy;
-  switch (align) {
-    case 1: case 4: case 7: defx = 8; break;
-    case 2: case 5: case 8: defx = -1; break;
-    case 3: case 6: case 9: defx = clip->GetVideoInfo().width-8; break;
-    default: defx = 8; break; }
-  switch (align) {
-    case 1: case 2: case 3: defy = clip->GetVideoInfo().height-2; break;
-    case 4: case 5: case 6: defy = -1; break;
-    case 7: case 8: case 9: defy = 0; break;
-    default: defy = size; break; }
+    const int x = args[2].AsInt(defx);
+    const int y = args[3].AsInt(defy);
 
-  const int x = args[2].AsInt(defx);
-  const int y = args[3].AsInt(defy);
+    if ((align < 1) || (align > 9))
+     env->ThrowError("Subtitle: Align values are 1 - 9 mapped to your numeric pad");
 
-  if ((align < 1) || (align > 9))
-   env->ThrowError("Subtitle: Align values are 1 - 9 mapped to your numeric pad");
-
-  return new Subtitle(clip, text, x, y, first_frame, last_frame, font, size,
-                      text_color, halo_color, align, spc, multiline, lsp);
+    return new Subtitle(clip, text, x, y, first_frame, last_frame, font, size,
+	                    text_color, halo_color, align, spc, multiline, lsp);
 }
 
 
@@ -929,6 +964,7 @@ PVideoFrame FilterInfo::GetFrame(int n, IScriptEnvironment* env)
     if (vi.IsRGB32()) c_space=t_RGB32;
     if (vi.IsYV12()) c_space=t_YV12;
     if (vi.IsYUY2()) c_space=t_YUY2;
+
     if (vi.SampleType()==SAMPLE_INT8) s_type=t_INT8;
     if (vi.SampleType()==SAMPLE_INT16) s_type=t_INT16;
     if (vi.SampleType()==SAMPLE_INT24) s_type=t_INT24;
@@ -1000,7 +1036,7 @@ PVideoFrame FilterInfo::GetFrame(int n, IScriptEnvironment* env)
     DrawText(hdcAntialias, text, -1, &r, 0);
     GdiFlush();
 
-    env->MakeWritable(&frame);
+	env->MakeWritable(&frame);
     BYTE* dstp = frame->GetWritePtr();
     int dst_pitch = frame->GetPitch();
     antialiaser.Apply(vi, &frame, dst_pitch );
