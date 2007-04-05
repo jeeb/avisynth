@@ -156,8 +156,8 @@ PVideoFrame Histogram::DrawMode5(int n, IScriptEnvironment* env) {
   if ((src->GetHeight()<dst->GetHeight()) || (src->GetRowSize() < dst->GetRowSize())) {
     memset(dstp, 16, imgSize);
     int imgSizeU = dst->GetHeight(PLANAR_U) * dst->GetPitch(PLANAR_U);
-    memset(dst->GetWritePtr(PLANAR_U) , 127, imgSizeU);
-    memset(dst->GetWritePtr(PLANAR_V), 127, imgSizeU);
+    memset(dst->GetWritePtr(PLANAR_U) , 128, imgSizeU);
+    memset(dst->GetWritePtr(PLANAR_V), 128, imgSizeU);
   }
 
   env->BitBlt(dstp, dst->GetPitch(), src->GetReadPtr(), src->GetPitch(), src->GetRowSize(), src->GetHeight());
@@ -175,7 +175,7 @@ PVideoFrame Histogram::DrawMode5(int n, IScriptEnvironment* env) {
   aud_clip->GetAudio(samples, max(0,start), count, env);
   
   int c = (int)count;
-  for (int i=1; i < count;i++) {
+  for (int i=1; i < c;i++) {
     int l1 = (int)samples[i*2-2];
     int r1 = (int)samples[i*2-1];
     int l2 = (int)samples[i*2];
@@ -220,7 +220,7 @@ PVideoFrame Histogram::DrawMode4(int n, IScriptEnvironment* env) {
   aud_clip->GetAudio(samples, max(0,start), count, env);
   
   int c = (int)count;
-  for (int i=1; i < count;i++) {
+  for (int i=1; i < c;i++) {
     int l1 = (int)samples[i*2-2];
     int r1 = (int)samples[i*2-1];
     int l2 = (int)samples[i*2];
@@ -245,9 +245,9 @@ PVideoFrame Histogram::DrawMode4(int n, IScriptEnvironment* env) {
   if (vi.IsPlanar()) {
     srcp = src->GetWritePtr(PLANAR_U);
     imgSize = src->GetHeight(PLANAR_U) * src->GetPitch(PLANAR_U);
-    memset(srcp, 127, imgSize);
+    memset(srcp, 128, imgSize);
     srcp = src->GetWritePtr(PLANAR_V);
-    memset(srcp, 127, imgSize);
+    memset(srcp, 128, imgSize);
   }
   delete[] samples;
   return src;
@@ -277,9 +277,9 @@ PVideoFrame Histogram::DrawMode3(int n, IScriptEnvironment* env) {
   if (vi.IsPlanar()) {
     srcp = src->GetWritePtr(PLANAR_U);
     imgsize = src->GetHeight(PLANAR_U) * src->GetPitch(PLANAR_U);
-    memset(srcp, 127, imgsize);
+    memset(srcp, 128, imgsize);
     srcp = src->GetWritePtr(PLANAR_V);
-    memset(srcp, 127, imgsize);
+    memset(srcp, 128, imgsize);
   }
   return src;
 }
@@ -295,8 +295,8 @@ PVideoFrame Histogram::DrawMode2(int n, IScriptEnvironment* env) {
   if (src->GetHeight()<dst->GetHeight()) {
     memset(p, 16, imgSize);
     int imgSizeU = dst->GetHeight(PLANAR_U) * dst->GetPitch(PLANAR_U);
-    memset(dst->GetWritePtr(PLANAR_U) , 127, imgSizeU);
-    memset(dst->GetWritePtr(PLANAR_V), 127, imgSizeU);
+    memset(dst->GetWritePtr(PLANAR_U) , 128, imgSizeU);
+    memset(dst->GetWritePtr(PLANAR_V), 128, imgSizeU);
   }
 
 
@@ -358,7 +358,7 @@ PVideoFrame Histogram::DrawMode2(int n, IScriptEnvironment* env) {
 
     // Erase all
     for (y=128;y<dst->GetHeight(PLANAR_U);y++) {
-      memset(&pdstb[y*dst->GetPitch(PLANAR_U)], 127, 128);
+      memset(&pdstb[y*dst->GetPitch(PLANAR_U)], 128, 128);
     }
 
     for (y=0;y<128;y++) {
@@ -373,7 +373,7 @@ PVideoFrame Histogram::DrawMode2(int n, IScriptEnvironment* env) {
 
     // Erase all
     for (y=128;y<dst->GetHeight(PLANAR_U);y++) {
-      memset(&pdstb[y*dst->GetPitch(PLANAR_V)], 127, 128);
+      memset(&pdstb[y*dst->GetPitch(PLANAR_V)], 128, 128);
     }
 
     for (y=0;y<128;y++) {
@@ -398,8 +398,8 @@ PVideoFrame Histogram::DrawMode1(int n, IScriptEnvironment* env) {
   if (src->GetHeight()<dst->GetHeight()) {
     memset(p, 16, imgSize);
     int imgSizeU = dst->GetHeight(PLANAR_U) * dst->GetPitch(PLANAR_U);
-    memset(dst->GetWritePtr(PLANAR_U) , 127, imgSizeU);
-    memset(dst->GetWritePtr(PLANAR_V), 127, imgSizeU);
+    memset(dst->GetWritePtr(PLANAR_U) , 128, imgSizeU);
+    memset(dst->GetWritePtr(PLANAR_V), 128, imgSizeU);
   }
 
   env->BitBlt(p, dst->GetPitch(), src->GetReadPtr(), src->GetPitch(), src->GetRowSize(), src->GetHeight());
@@ -530,8 +530,8 @@ PVideoFrame Histogram::DrawMode1(int n, IScriptEnvironment* env) {
     int dstPitchUV = dst->GetPitch(PLANAR_U);
 
     for (y=0;y<dst->GetHeight(PLANAR_U);y++) {
-      memset(&pdstbU[y*dstPitchUV], 127, 128);
-      memset(&pdstbV[y*dstPitchUV], 127, 128);
+      memset(&pdstbU[y*dstPitchUV], 128, 128);
+      memset(&pdstbV[y*dstPitchUV], 128, 128);
     }
 
     // Draw Unsafe zone (Y-graph)
