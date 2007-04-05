@@ -56,7 +56,7 @@ public:
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
 
 private:
-  bool chroma, mmx;
+  const bool mmx;
   const int amount;
   uc* line;
 
@@ -77,7 +77,7 @@ public:
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
 
 private:
-  bool chroma, mmx;
+  const bool mmx;
   const int amount;
 
 };
