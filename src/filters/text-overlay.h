@@ -110,7 +110,8 @@ public:
 			int _textcolor, int _halocolor, IScriptEnvironment* env);
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
 
-  static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env);
+  static AVSValue __cdecl CreateSMTPE(AVSValue args, void*, IScriptEnvironment* env);
+  static AVSValue __cdecl CreateTime(AVSValue args, void*, IScriptEnvironment* env);
 
 private:
   Antialiaser antialiaser;
