@@ -133,7 +133,7 @@ Interleave::Interleave(int _num_children, const PClip* _child_array, IScriptEnvi
     const VideoInfo& vi2 = child_array[i]->GetVideoInfo();
     if (vi.width != vi2.width || vi.height != vi2.height)
       env->ThrowError("Interleave: videos must be of the same size.");
-    if ((vi.pixel_type != vi2.pixel_type) && (!(vi.IsYV12() && vi2.IsYV12())))  // Fix for I420.
+    if (!vi.IsSameColorspace(vi2))
       env->ThrowError("Interleave: video formats don't match");
     
     vi.num_frames = max(vi.num_frames, (vi2.num_frames - 1) * num_children + i + 1);

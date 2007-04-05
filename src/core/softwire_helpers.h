@@ -32,6 +32,9 @@
 // which is not derived from or based on Avisynth, such as 3rd-party filters,
 // import and export plugins, or graphical user interfaces.
 
+#ifndef __Softwire_Helpers_H__
+#define __Softwire_Helpers_H__
+
 #include "../internal.h"
 #include "../../distrib/include/softwire/CodeGenerator.hpp"
 
@@ -51,3 +54,4 @@ public:
 
 };
 
+#endif //__Softwire_Helpers_H__

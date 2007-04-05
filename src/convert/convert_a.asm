@@ -124,8 +124,8 @@ YUV2RGB_INNER_LOOP	MACRO	uyvy,rgb32,no_next_pixel
 ;; overlap, except at the end and in the three lines marked ***.
 ;; revised 4july,2002 to properly set alpha in rgb32 to default "on" & other small memory optimizations
 
-	movd		mm0,[esi]
-	 movd		 mm5,[esi+4]
+	movd		mm0, DWORD PTR [esi] ; DWORD PTR for compatibility woth masm8
+	 movd		 mm5, DWORD PTR [esi+4]
 	movq		mm1,mm0
 	GET_Y		mm0,&uyvy	; mm0 = __________Y1__Y0
 	 movq		 mm4,mm5
@@ -134,7 +134,7 @@ YUV2RGB_INNER_LOOP	MACRO	uyvy,rgb32,no_next_pixel
 	movq		mm2,mm5		; *** avoid reload from [esi+4]
 	 GET_UV		 mm5,&uyvy	; mm5 = __________V2__U2
 	psubw		mm0,[edx+ofs_x0000_0000_0010_0010]	; (Y-16)
-	 movd		 mm6,[esi+8-4*(no_next_pixel)]
+	 movd		 mm6, DWORD PTR [esi+8-4*(no_next_pixel)]
 	GET_UV		mm2,&uyvy	; mm2 = __________V2__U2
 	 psubw		 mm4,[edx+ofs_x0000_0000_0010_0010]	; (Y-16)
 	paddw		mm2,mm1		; 2*UV1=UV0+UV2
@@ -213,12 +213,12 @@ IF &rgb32
 ELSE
 	psrlq	mm0,8		; pack the two quadwords into 12 bytes
 	psllq	mm4,8		; (note: the two shifts above leave
-	movd	[edi-12],mm0	; mm0,4 = __RRGGBBrrggbb__)
+	movd	DWORD PTR [edi-12],mm0	; mm0,4 = __RRGGBBrrggbb__)
 	psrlq	mm0,32
 	por	mm4,mm0
-	movd	[edi-8],mm4
+	movd	DWORD PTR [edi-8],mm4
 	psrlq	mm4,32
-	movd	[edi-4],mm4
+	movd	DWORD PTR [edi-4],mm4
 ENDIF
 
 	ENDM

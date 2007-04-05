@@ -99,7 +99,6 @@ public:
 
 private:
   /*const*/ int left, top, right, bot, clr;
-  BYTE* mybuffer;
 };
 
 

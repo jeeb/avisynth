@@ -118,9 +118,9 @@ PVideoFrame __stdcall StackVertical::GetFrame(int n, IScriptEnvironment* env)
   BYTE* dstp2U = dstpU + dst_pitchUV * src1->GetHeight(PLANAR_U);
   BYTE* dstp2V = dstpV + dst_pitchUV * src1->GetHeight(PLANAR_V);
 
-  if (vi.IsYV12())
+  if (vi.IsPlanar())
   {
-    // Copy YV12 
+    // Copy Planar
     BitBlt(dstp, dst_pitch, src1p, src1_pitch, row_size, src1_height);
     BitBlt(dstp2, dst_pitch, src2p, src2_pitch, row_size, src2_height);
 
@@ -130,15 +130,8 @@ PVideoFrame __stdcall StackVertical::GetFrame(int n, IScriptEnvironment* env)
     BitBlt(dstpV, dst_pitchUV, src1pV, src1_pitchUV, row_sizeUV, src1_heightUV);
     BitBlt(dstp2V, dst_pitchUV, src2pV, src2_pitchUV, row_sizeUV, src2_heightUV);
   } else {
-    // I'll leave the planar BitBlts (no-ops) in for compatibility with future planar formats
     BitBlt(dstp, dst_pitch, src1p, src1_pitch, row_size, src1_height);
     BitBlt(dstp2, dst_pitch, src2p, src2_pitch, row_size, src2_height);
-
-    BitBlt(dstpU, dst_pitchUV, src1pU, src1_pitchUV, row_sizeUV, src1_heightUV);
-    BitBlt(dstp2U, dst_pitchUV, src2pU, src2_pitchUV, row_sizeUV, src2_heightUV);
-
-    BitBlt(dstpV, dst_pitchUV, src1pV, src1_pitchUV, row_sizeUV, src1_heightUV);
-    BitBlt(dstp2V, dst_pitchUV, src2pV, src2_pitchUV, row_sizeUV, src2_heightUV);
   }
   return dst;
 }
@@ -276,6 +269,7 @@ PVideoFrame __stdcall ShowFiveVersions::GetFrame(int n, IScriptEnvironment* env)
   const int dst_pitch = dst->GetPitch();
   const int dst_pitchUV = dst->GetPitch(PLANAR_U);
   const int height = dst->GetHeight()/2;
+  const int heightUV = dst->GetHeight(PLANAR_U)/2;
 
   if (vi.IsYUV()) {
     const int wg = dst->GetRowSize()/6;
@@ -283,12 +277,13 @@ PVideoFrame __stdcall ShowFiveVersions::GetFrame(int n, IScriptEnvironment* env)
       memset(dstp + ((height+i)*dst_pitch),        128, wg);
       memset(dstp + ((height+i)*dst_pitch) + wg*5, 128, wg);
     }
-    if (vi.IsYV12()) {
-      for (int i=0; i<height/2; i++){
-	memset(dstpU + ((height/2+i)*dst_pitchUV),            128, wg/2);
-	memset(dstpU + ((height/2+i)*dst_pitchUV) + (wg*5)/2, 128, wg/2);
-	memset(dstpV + ((height/2+i)*dst_pitchUV),            128, wg/2);
-	memset(dstpV + ((height/2+i)*dst_pitchUV) + (wg*5)/2, 128, wg/2);
+    if (vi.IsPlanar() /* && !vi.IsY8() */) {
+      const int wgUV = dst->GetRowSize(PLANAR_U)/6;
+      for (int i=0; i<heightUV; i++){
+        memset(dstpU + ((heightUV+i)*dst_pitchUV),          128, wgUV);
+        memset(dstpU + ((heightUV+i)*dst_pitchUV) + wgUV*5, 128, wgUV);
+        memset(dstpV + ((heightUV+i)*dst_pitchUV),          128, wgUV);
+        memset(dstpV + ((heightUV+i)*dst_pitchUV) + wgUV*5, 128, wgUV);
       }
     }
   }
@@ -303,7 +298,7 @@ PVideoFrame __stdcall ShowFiveVersions::GetFrame(int n, IScriptEnvironment* env)
   for (int c=0; c<5; ++c) 
   {
     PVideoFrame src = child[c]->GetFrame(n, env);
-	if (vi.IsYV12()) {
+	if (vi.IsPlanar()) {
 	  const BYTE* srcpY = src->GetReadPtr(PLANAR_Y);
 	  const BYTE* srcpU = src->GetReadPtr(PLANAR_U);
 	  const BYTE* srcpV = src->GetReadPtr(PLANAR_V);
@@ -317,14 +312,14 @@ PVideoFrame __stdcall ShowFiveVersions::GetFrame(int n, IScriptEnvironment* env)
 	  BYTE* dstp2U = dstpU + (c>>1) * src_row_sizeUV;
 	  BYTE* dstp2V = dstpV + (c>>1) * src_row_sizeUV;
 	  if (c&1) {
-		dstp2 += (height * dst_pitch) + vi.width/6;
-		dstp2U += (height/2 * dst_pitchUV) + vi.width/12;
-		dstp2V += (height/2 * dst_pitchUV) + vi.width/12;
+		dstp2 += (height * dst_pitch) + src_row_sizeY/6;
+		dstp2U += (heightUV * dst_pitchUV) + src_row_sizeUV/6;
+		dstp2V += (heightUV * dst_pitchUV) + src_row_sizeUV/6;
 	  }
 
 	  BitBlt(dstp2, dst_pitch, srcpY, src_pitchY, src_row_sizeY, height);
-	  BitBlt(dstp2U, dst_pitchUV, srcpU, src_pitchUV, src_row_sizeUV, height/2);
-	  BitBlt(dstp2V, dst_pitchUV, srcpV, src_pitchUV, src_row_sizeUV, height/2);
+	  BitBlt(dstp2U, dst_pitchUV, srcpU, src_pitchUV, src_row_sizeUV, heightUV);
+	  BitBlt(dstp2V, dst_pitchUV, srcpV, src_pitchUV, src_row_sizeUV, heightUV);
 	}
 	else {
 	  const BYTE* srcp = src->GetReadPtr();

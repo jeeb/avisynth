@@ -36,7 +36,7 @@
 
 #include "audio.h"
 
-#define BIGBUFFSIZE (256*1024) // Use a 256Kb buffer for EnsureVBRMP3Sync seeking & Normalize scanning
+#define BIGBUFFSIZE (2048*1024) // Use a 2Mb buffer for EnsureVBRMP3Sync seeking & Normalize scanning
 
 /********************************************************************
 ***** Declare index of new filters for Avisynth's filter engine *****

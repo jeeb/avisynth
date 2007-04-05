@@ -384,7 +384,7 @@ PVideoFrame Invert::GetFrame(int n, IScriptEnvironment* env)
     ConvertFrame(pf, pitch, rowsize, height, mask);
   }
 
-  if (vi.IsYV12()) {
+  if (vi.IsPlanar()) {
     if (doY)
       ConvertFrame(pf, pitch, f->GetRowSize(PLANAR_Y_ALIGNED), height, 0xffffffff);
     if (doU)
@@ -2366,7 +2366,7 @@ PVideoFrame __stdcall Subtract::GetFrame(int n, IScriptEnvironment* env)
   const BYTE* src2p = src2->GetReadPtr();
   int row_size = src1->GetRowSize();
 
-  if (vi.IsYV12()) {
+  if (vi.IsPlanar() /*  && !vi.IsY8()) */ ) {
     for (int y=0; y<vi.height; y++) {
       for (int x=0; x<row_size; x++) {
         src1p[x] = max(0,min(255,(src1p[x] - src2p[x]) + 126));

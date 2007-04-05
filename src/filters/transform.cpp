@@ -129,14 +129,14 @@ PVideoFrame FlipHorizontal::GetFrame(int n, IScriptEnvironment* env) {
     return dst;
   }
   if (vi.IsPlanar()) {  //For planar always 1bpp
-		srcp+=row_size-1;
-		for (int y=0; y<h;y++) { // Loop planar luma.
-			for (int x=0; x<row_size; x++) {
-				dstp[x] = srcp[-x];
-			}
-			srcp += src_pitch;
-			dstp += dst_pitch;
-		}
+    srcp+=row_size-1;
+    for (int y=0; y<h;y++) { // Loop planar luma.
+      for (int x=0; x<row_size; x++) {
+        dstp[x] = srcp[-x];
+      }
+      srcp += src_pitch;
+      dstp += dst_pitch;
+    }
 
     srcp = src->GetReadPtr(PLANAR_U);
     dstp = dst->GetWritePtr(PLANAR_U);
@@ -166,14 +166,14 @@ PVideoFrame FlipHorizontal::GetFrame(int n, IScriptEnvironment* env) {
   }
   srcp+=row_size-bpp;
   if (vi.IsRGB32()) {
-		for (int y=0; y<h;y++) { // Loop for RGB
-			for (int x=0; x<row_size/4; x++) {
-				((int*)dstp)[x] = ((int*)srcp)[-x];
-			}
-			srcp += src_pitch;
-			dstp += dst_pitch;
-		}
-		return dst;
+    for (int y=0; y<h;y++) { // Loop for RGB
+      for (int x=0; x<row_size/4; x++) {
+          ((int*)dstp)[x] = ((int*)srcp)[-x];
+      }
+      srcp += src_pitch;
+      dstp += dst_pitch;
+    }
+    return dst;
   }
   for (int y=0; y<h;y++) { // Loop for RGB
     for (int x=0; x<row_size; x+=bpp) {
@@ -282,9 +282,12 @@ PVideoFrame Crop::GetFrame(int n, IScriptEnvironment* env)
   }
 
   if (!vi.IsPlanar())
-    return env->Subframe(frame,top * frame->GetPitch() + left_bytes, frame->GetPitch(), vi.RowSize(), vi.height);
+    return env->Subframe(frame, top * frame->GetPitch() + left_bytes, frame->GetPitch(), vi.RowSize(), vi.height);
   else
-    return env->SubframePlanar(frame,top * frame->GetPitch() + left_bytes, frame->GetPitch(), vi.RowSize(), vi.height, (top/2) * frame->GetPitch(PLANAR_U) + (left_bytes/2), (top/2) * frame->GetPitch(PLANAR_V) + (left_bytes/2), frame->GetPitch(PLANAR_U));
+    return env->SubframePlanar(frame, top * frame->GetPitch() + left_bytes, frame->GetPitch(), vi.RowSize(), vi.height,
+                                      (top/2) * frame->GetPitch(PLANAR_U) + (left_bytes/2),
+                                      (top/2) * frame->GetPitch(PLANAR_V) + (left_bytes/2),
+                                      frame->GetPitch(PLANAR_U));
 }
 
 
@@ -303,7 +306,7 @@ AVSValue __cdecl Crop::Create(AVSValue args, void*, IScriptEnvironment* env)
  *****************************/
 
 AddBorders::AddBorders(int _left, int _top, int _right, int _bot, int _clr, PClip _child)
- : GenericVideoFilter(_child), left(_left), top(_top), right(_right), bot(_bot), clr(_clr), mybuffer(0)
+ : GenericVideoFilter(_child), left(_left), top(_top), right(_right), bot(_bot), clr(_clr)
 {
   if (vi.IsYUV()) {
     // YUY2 can only add even amounts
@@ -320,7 +323,6 @@ AddBorders::AddBorders(int _left, int _top, int _right, int _bot, int _clr, PCli
   }
   vi.width += left+right;
   vi.height += top+bot;
-//  child->SetCacheHints(CACHE_NOTHING,0);
 }
 
 
@@ -343,22 +345,13 @@ PVideoFrame AddBorders::GetFrame(int n, IScriptEnvironment* env)
   const int middle_black = dst_pitch - src_row_size;
   const int final_black = bot * dst_pitch + vi.BytesFromPixels(right) 
                           + (dst_pitch - dst_row_size);
-
-  const int initial_blackUV = (top/2) * dst->GetPitch(PLANAR_U) + left/2;
-  const int middle_blackUV = dst->GetPitch(PLANAR_U) - src->GetRowSize(PLANAR_U);
-  const int final_blackUV = (bot/2) * dst->GetPitch(PLANAR_U) + (right/2)
-                          + (dst->GetPitch(PLANAR_U)- dst->GetRowSize(PLANAR_U));
-
-
-  if (vi.IsYV12()) {
-    BitBlt(dstp+initial_black, dst_pitch, srcp, src_pitch, src_row_size, src_height);
-    BitBlt(dst->GetWritePtr(PLANAR_U)+initial_blackUV, dst->GetPitch(PLANAR_U), src->GetReadPtr(PLANAR_U), src->GetPitch(PLANAR_U), src->GetRowSize(PLANAR_U), src->GetHeight(PLANAR_U));
-    BitBlt(dst->GetWritePtr(PLANAR_V)+initial_blackUV, dst->GetPitch(PLANAR_V), src->GetReadPtr(PLANAR_V), src->GetPitch(PLANAR_V), src->GetRowSize(PLANAR_V), src->GetHeight(PLANAR_V));
+  if (vi.IsPlanar()) {
     const unsigned int colr = RGB2YUV(clr);
-    short YBlack=(colr>>16)&0xff | ((colr>>8)&0xff00);
-    unsigned char VBlack=(colr)&0xff;
-    unsigned char UBlack=(colr>>8)&0xff;
+    const unsigned short YBlack=(colr>>16)&0xff | ((colr>>8)&0xff00);
+    const unsigned char  UBlack=(colr>>8)&0xff;
+    const unsigned char  VBlack=(colr)&0xff;
 
+    BitBlt(dstp+initial_black, dst_pitch, srcp, src_pitch, src_row_size, src_height);
     for (int a=0; a<initial_black; a += 2)
       *(unsigned short*)(dstp+a) = YBlack;
     dstp += initial_black + src_row_size;
@@ -370,6 +363,12 @@ PVideoFrame AddBorders::GetFrame(int n, IScriptEnvironment* env)
     for (int c=0; c<final_black; c += 2)
       *(unsigned short*)(dstp+c) = YBlack;
 
+    const int initial_blackUV = (top/2) * dst->GetPitch(PLANAR_U) + left/2;
+    const int middle_blackUV  = dst->GetPitch(PLANAR_U) - src->GetRowSize(PLANAR_U);
+    const int final_blackUV   = (bot/2) * dst->GetPitch(PLANAR_U) + (right/2)
+                              + (dst->GetPitch(PLANAR_U)- dst->GetRowSize(PLANAR_U));
+
+    BitBlt(dst->GetWritePtr(PLANAR_U)+initial_blackUV, dst->GetPitch(PLANAR_U), src->GetReadPtr(PLANAR_U), src->GetPitch(PLANAR_U), src->GetRowSize(PLANAR_U), src->GetHeight(PLANAR_U));
     dstp = dst->GetWritePtr(PLANAR_U);
     for (a=0; a<initial_blackUV; a++)
       *(unsigned char*)(dstp+a) = UBlack;
@@ -382,6 +381,7 @@ PVideoFrame AddBorders::GetFrame(int n, IScriptEnvironment* env)
     for (c=0; c<final_blackUV; c ++)
       *(unsigned char*)(dstp+c) = UBlack;
 
+    BitBlt(dst->GetWritePtr(PLANAR_V)+initial_blackUV, dst->GetPitch(PLANAR_V), src->GetReadPtr(PLANAR_V), src->GetPitch(PLANAR_V), src->GetRowSize(PLANAR_V), src->GetHeight(PLANAR_V));
     dstp = dst->GetWritePtr(PLANAR_V);
     for (a=0; a<initial_blackUV; a++)
       *(unsigned char*)(dstp+a) = VBlack;
@@ -393,12 +393,12 @@ PVideoFrame AddBorders::GetFrame(int n, IScriptEnvironment* env)
     }
     for (c=0; c<final_blackUV; c++)
       *(unsigned char*)(dstp+c) = VBlack;
-
-  } else if (vi.IsYUY2()) {
-    BitBlt(dstp+initial_black, dst_pitch, srcp, src_pitch, src_row_size, src_height);
+  }
+  else if (vi.IsYUY2()) {
     const unsigned int colr = RGB2YUV(clr);
     const unsigned __int32 black = (colr>>16) * 0x010001 + ((colr>>8)&255) * 0x0100 + (colr&255) * 0x01000000;
-//    const unsigned __int32 black = 0x80108010;
+
+    BitBlt(dstp+initial_black, dst_pitch, srcp, src_pitch, src_row_size, src_height);
     for (int a=0; a<initial_black; a += 4)
       *(unsigned __int32*)(dstp+a) = black;
     dstp += initial_black + src_row_size;
@@ -409,51 +409,45 @@ PVideoFrame AddBorders::GetFrame(int n, IScriptEnvironment* env)
     }
     for (int c=0; c<final_black; c += 4)
       *(unsigned __int32*)(dstp+c) = black;
-  } else {
-    if (vi.IsRGB24()){
-      BitBlt(dstp+initial_black, dst_pitch, srcp, src_pitch, src_row_size, src_height);
-      const int ofs = dst_pitch - dst_row_size;
-      const unsigned char clr0 = (clr & 0xFF);
-      const unsigned short clr1 = (clr >> 8);
-      for (int i=0; i<initial_black; i+=3) {
-       dstp[i] = clr0; *(unsigned __int16*)(dstp+i+1) = clr1;
-       if (i % dst_pitch >= dst_row_size - 3) i += ofs;
-       } //for i
-    dstp += initial_black + src_row_size;
-    for (int y=src_height-1; y>0; --y) {
-      if (middle_black) {
-      for (i=0; i<middle_black; i+=3) {
-       dstp[i] = clr0; *(unsigned __int16*)(dstp+i+1) = clr1;
-       if (i == vi.BytesFromPixels(right)-3) i += ofs;
-       } // for i
-      } // if middle_black
-      dstp += dst_pitch;
-    } // for y
-      for (i=0; i<final_black; i+=3) {
-       dstp[i] = clr0; *(unsigned __int16*)(dstp+i+1) = clr1;
-       if (i % dst_pitch == vi.BytesFromPixels(right)-3) i += ofs;
-       } // for i
-       } // if vi.IsRGB24
-   else {
-    BitBlt(dstp+initial_black, dst_pitch, srcp, src_pitch, src_row_size, src_height);
-      for (int i=0; i<initial_black; i+=4) {
-       *(unsigned __int32*)(dstp+i) = clr;
-       } // for i
-    dstp += initial_black + src_row_size;
-    for (int y=src_height-1; y>0; --y) {
-      if (middle_black) {
-      for (i=0; i<middle_black; i+=4)
-       *(unsigned __int32*)(dstp+i) = clr;
-    } // if middle_black
-      dstp += dst_pitch;
-    } // for y
-      for (i=0; i<final_black; i+=4)
-       *(unsigned __int32*)(dstp+i) = clr;
-  } // end else vi.IsRGB24
   }
+  else if (vi.IsRGB24()) {
+    const int ofs = dst_pitch - dst_row_size;
+    const unsigned char  clr0 = (clr & 0xFF);
+    const unsigned short clr1 = (clr >> 8);
+
+    BitBlt(dstp+initial_black, dst_pitch, srcp, src_pitch, src_row_size, src_height);
+    for (int i=0; i<initial_black; i+=3) {
+      dstp[i] = clr0; *(unsigned __int16*)(dstp+i+1) = clr1;
+      if (i % dst_pitch >= dst_row_size - 3) i += ofs;
+    } //for i
+    dstp += initial_black + src_row_size;
+    for (int y=src_height-1; y>0; --y) {
+      for (i=0; i<middle_black; i+=3) {
+        dstp[i] = clr0; *(unsigned __int16*)(dstp+i+1) = clr1;
+        if (i == vi.BytesFromPixels(right)-3) i += ofs;
+      } // for i
+      dstp += dst_pitch;
+    } // for y
+    for (i=0; i<final_black; i+=3) {
+      dstp[i] = clr0; *(unsigned __int16*)(dstp+i+1) = clr1;
+      if (i % dst_pitch == vi.BytesFromPixels(right)-3) i += ofs;
+    } // for i
+  } // if vi.IsRGB24
+  else {
+    BitBlt(dstp+initial_black, dst_pitch, srcp, src_pitch, src_row_size, src_height);
+    for (int i=0; i<initial_black; i+=4)
+      *(unsigned __int32*)(dstp+i) = clr;
+    dstp += initial_black + src_row_size;
+    for (int y=src_height-1; y>0; --y) {
+      for (i=0; i<middle_black; i+=4)
+        *(unsigned __int32*)(dstp+i) = clr;
+      dstp += dst_pitch;
+    } // for y
+    for (i=0; i<final_black; i+=4)
+      *(unsigned __int32*)(dstp+i) = clr;
+  } // end else
   return dst;
 }
-
 
 
 
@@ -462,13 +456,6 @@ AVSValue __cdecl AddBorders::Create(AVSValue args, void*, IScriptEnvironment* en
   return new AddBorders( args[1].AsInt(), args[2].AsInt(), args[3].AsInt(), 
                          args[4].AsInt(), args[5].AsInt(0), args[0].AsClip() );
 }
-
-
-
-
-
-
-
 
 
 

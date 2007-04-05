@@ -38,6 +38,7 @@
 #ifndef _SUPEREQ_H_
 #define _SUPEREQ_H_
 
+#pragma warning(disable:4430) // disable default-int error
 #include "../internal.h"
 #include "../../distrib/include/pfc/pfc.h"
 #include <math.h>

@@ -70,7 +70,7 @@ public:
   PExpression(const PExpression& p) { Init(p.e); }
   void operator=(Expression* p) { Set(p); }
   void operator=(const PExpression& p) { Set(p.e); }
-  operator!() const { return !e; }
+  int operator!() const { return !e; }
   operator void*() const { return e; }
   Expression* operator->() const { return e; }
   ~PExpression() { Release(); }

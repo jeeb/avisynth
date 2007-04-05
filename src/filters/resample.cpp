@@ -45,16 +45,16 @@
 ********************************************************************/
 
 AVSFunction Resample_filters[] = {
-  { "PointResize", "cii[src_left]f[src_top]f[src_width]f[src_height]f", Create_PointResize },
-  { "BilinearResize", "cii[src_left]f[src_top]f[src_width]f[src_height]f", Create_BilinearResize },
-  { "BicubicResize", "cii[b]f[c]f[src_left]f[src_top]f[src_width]f[src_height]f", Create_BicubicResize },
-  { "LanczosResize", "cii[src_left]f[src_top]f[src_width]f[src_height]f[taps]i", Create_LanczosResize},
-  { "Lanczos4Resize", "cii[src_left]f[src_top]f[src_width]f[src_height]f", Create_Lanczos4Resize},
-  { "BlackmanResize", "cii[src_left]f[src_top]f[src_width]f[src_height]f[taps]i", Create_BlackmanResize},
-  { "Spline16Resize", "cii[src_left]f[src_top]f[src_width]f[src_height]f", Create_Spline16Resize},
-  { "Spline36Resize", "cii[src_left]f[src_top]f[src_width]f[src_height]f", Create_Spline36Resize},
-  { "Spline64Resize", "cii[src_left]f[src_top]f[src_width]f[src_height]f", Create_Spline64Resize},
-  { "GaussResize", "cii[src_left]f[src_top]f[src_width]f[src_height]f[p]f", Create_GaussianResize},
+  { "PointResize", "cii[src_left]f[src_top]f[src_width]f[src_height]f", FilteredResize::Create_PointResize },
+  { "BilinearResize", "cii[src_left]f[src_top]f[src_width]f[src_height]f", FilteredResize::Create_BilinearResize },
+  { "BicubicResize", "cii[b]f[c]f[src_left]f[src_top]f[src_width]f[src_height]f", FilteredResize::Create_BicubicResize },
+  { "LanczosResize", "cii[src_left]f[src_top]f[src_width]f[src_height]f[taps]i", FilteredResize::Create_LanczosResize},
+  { "Lanczos4Resize", "cii[src_left]f[src_top]f[src_width]f[src_height]f", FilteredResize::Create_Lanczos4Resize},
+  { "BlackmanResize", "cii[src_left]f[src_top]f[src_width]f[src_height]f[taps]i", FilteredResize::Create_BlackmanResize},
+  { "Spline16Resize", "cii[src_left]f[src_top]f[src_width]f[src_height]f", FilteredResize::Create_Spline16Resize},
+  { "Spline36Resize", "cii[src_left]f[src_top]f[src_width]f[src_height]f", FilteredResize::Create_Spline36Resize},
+  { "Spline64Resize", "cii[src_left]f[src_top]f[src_width]f[src_height]f", FilteredResize::Create_Spline64Resize},
+  { "GaussResize", "cii[src_left]f[src_top]f[src_width]f[src_height]f[p]f", FilteredResize::Create_GaussianResize},
   /**
     * Resize(PClip clip, dst_width, dst_height [src_left, src_top, src_width, int src_height,] )
     *
@@ -90,11 +90,12 @@ FilteredResizeH::FilteredResizeH( PClip _child, double subrange_left, double sub
   {
     if ((target_width&1) && (vi.IsYUY2()))
       env->ThrowError("Resize: YUY2 width must be even");
-    if ((target_width&3) && (vi.IsYV12()))
-      env->ThrowError("Resize: YV12 width must be mutiple of 4.");
+    if ((target_width&1) && (vi.IsYV12()))
+      env->ThrowError("Resize: YV12 width must be even.");
 
     tempY = (BYTE*) _aligned_malloc(original_width*2+4+32, 64);   // aligned for Athlon cache line
     tempUV = (BYTE*) _aligned_malloc(original_width*4+8+32, 64);  // aligned for Athlon cache line
+
     if (vi.IsYV12()) {
       pattern_chroma = GetResamplingPatternYUV( vi.width>>1, subrange_left/2.0, subrange_width/2.0,
         target_width>>1, func, true, tempY, env );
@@ -186,6 +187,11 @@ DynamicAssembledCode FilteredResizeH::GenerateResizer(int gen_plane, IScriptEnvi
     }
   }
 
+  if (!(vi_src_width && vi_dst_width && vi_height)) { // Skip
+    x86.ret();
+    return DynamicAssembledCode(x86, env, "ResizeH: ISSE code could not be compiled.");
+  }
+
   int* array = (gen_plane == PLANAR_Y) ? pattern_luma : pattern_chroma;
   int fir_filter_size = array[0];
   int filter_offset=fir_filter_size*8+8;  // This is the length from one pixel pair to another
@@ -208,6 +214,7 @@ DynamicAssembledCode FilteredResizeH::GenerateResizer(int gen_plane, IScriptEnvi
 
     x86.mov(dword_ptr [&gen_h],vi_height);  // This is our y counter.
 
+    x86.align(16);
     x86.label("yloop");
 
     x86.mov(eax,dword_ptr [&gen_dstp]);
@@ -225,6 +232,9 @@ DynamicAssembledCode FilteredResizeH::GenerateResizer(int gen_plane, IScriptEnvi
       if ((!(i%prefetchevery)) && (i*16+256<vi_src_width) && isse && unroll_fetch) {
          //Prefetch only once per cache line
        x86.prefetchnta(dword_ptr [esi+256]);
+      }
+      if (!unroll_fetch) {  // Loop on if not unrolling
+        x86.align(16);
       }
       x86.label("fetch_loopback");
       x86.movq(mm0, qword_ptr[esi]);        // Move pixels into mmx-registers
@@ -336,7 +346,7 @@ DynamicAssembledCode FilteredResizeH::GenerateResizer(int gen_plane, IScriptEnvi
       x86.add(edi,filter_offset*3-8);
       x86.dec(dword_ptr [&gen_x]);
       x86.jnz("xloop");
-	}
+    }
 
     // Process any remaining pixels
 
@@ -371,11 +381,11 @@ DynamicAssembledCode FilteredResizeH::GenerateResizer(int gen_plane, IScriptEnvi
       if (remainy) x86.paddd(mm4,mm7);
       x86.psrad(mm3,14);
       if (remainy) { // Four pixels
-	      x86.psrad(mm4,14);
+        x86.psrad(mm4,14);
         x86.packssdw(mm3, mm4);      // [...3 ...2] [...1 ...0] => [.3 .2 .1 .0]
         x86.mov(eax,dword_ptr[&gen_temp_destp]);
         x86.packuswb(mm3, mm6);      // [.. .. .. ..] [.3 .2 .1 .0] => [....3210]
-	    } else { // Two pixels
+      } else { // Two pixels
         x86.packssdw(mm3, mm6);      // [.... ....] [...1 ...0] => [.. .. .1 .0]
         x86.mov(eax,dword_ptr[&gen_temp_destp]);
         x86.packuswb(mm3, mm6);      // [.. .. .. ..] [.. .. .1 .0] => [......10]
@@ -419,7 +429,7 @@ PVideoFrame __stdcall FilteredResizeH::GetFrame(int n, IScriptEnvironment* env)
   BYTE* dstp = dst->GetWritePtr();
   int src_pitch = src->GetPitch();
   int dst_pitch = dst->GetPitch();
-  if (vi.IsYV12()) {
+  if (vi.IsPlanar()) {
     int plane = 0;
     if (use_dynamic_code) {  // Use dynamic compilation?
       gen_src_pitch = src_pitch;
@@ -427,25 +437,26 @@ PVideoFrame __stdcall FilteredResizeH::GetFrame(int n, IScriptEnvironment* env)
       gen_srcp = (BYTE*)srcp;
       gen_dstp = dstp;
       assemblerY.Call();
+      if (src->GetRowSize(PLANAR_U)) {
+        gen_src_pitch = src->GetPitch(PLANAR_U);
+        gen_dst_pitch = dst->GetPitch(PLANAR_U);
+        if (vi.IsVPlaneFirst()) {  // Process in order - also to avoid 2 byte overwrite, when rowsize=pitch=(mod6 rowsize).
+          gen_srcp = (BYTE*)src->GetReadPtr(PLANAR_V);
+          gen_dstp = dst->GetWritePtr(PLANAR_V);
+          assemblerUV.Call();
 
-      gen_src_pitch = src->GetPitch(PLANAR_U);
-      gen_dst_pitch = dst->GetPitch(PLANAR_U);
-      if (vi.IsVPlaneFirst()) {  // Process in order - also to avoid 2 byte overwrite, when rowsize=pitch=(mod6 rowszie).
-        gen_srcp = (BYTE*)src->GetReadPtr(PLANAR_V);
-        gen_dstp = dst->GetWritePtr(PLANAR_V);
-        assemblerUV.Call();
+          gen_srcp = (BYTE*)src->GetReadPtr(PLANAR_U);
+          gen_dstp = dst->GetWritePtr(PLANAR_U);
+          assemblerUV.Call();
+        } else {
+          gen_srcp = (BYTE*)src->GetReadPtr(PLANAR_U);
+          gen_dstp = dst->GetWritePtr(PLANAR_U);
+          assemblerUV.Call();
 
-        gen_srcp = (BYTE*)src->GetReadPtr(PLANAR_U);
-        gen_dstp = dst->GetWritePtr(PLANAR_U);
-        assemblerUV.Call();
-      } else {
-        gen_srcp = (BYTE*)src->GetReadPtr(PLANAR_U);
-        gen_dstp = dst->GetWritePtr(PLANAR_U);
-        assemblerUV.Call();
-
-        gen_srcp = (BYTE*)src->GetReadPtr(PLANAR_V);
-        gen_dstp = dst->GetWritePtr(PLANAR_V);
-        assemblerUV.Call();
+          gen_srcp = (BYTE*)src->GetReadPtr(PLANAR_V);
+          gen_dstp = dst->GetWritePtr(PLANAR_V);
+          assemblerUV.Call();
+        }
       }
       return dst;
     }
@@ -1307,7 +1318,7 @@ PVideoFrame __stdcall FilteredResizeV::GetFrame(int n, IScriptEnvironment* env)
     int shUV = src->GetHeight(PLANAR_U);
     pitch_gUV = src->GetPitch(PLANAR_U);
 
-	  if (!yOfsUV)
+    if (!yOfsUV)
       yOfsUV = new int[shUV];
 
     for (int i = 0; i < shUV; i++)
@@ -1318,7 +1329,7 @@ PVideoFrame __stdcall FilteredResizeV::GetFrame(int n, IScriptEnvironment* env)
     int sh = src->GetHeight();
     pitch_gY = src->GetPitch(PLANAR_Y);
 
-	  if (!yOfs)
+    if (!yOfs)
       yOfs = new int[sh];
 
     for (int i = 0; i < sh; i++)
@@ -1356,6 +1367,10 @@ PVideoFrame __stdcall FilteredResizeV::GetFrame(int n, IScriptEnvironment* env)
       case 0: // Default for interleaved
         break;
     }
+
+    if (!xloops)
+      continue;
+
   __asm {
 //    emms
 	push        ebx
@@ -1553,7 +1568,7 @@ FilteredResizeV::~FilteredResizeV(void)
  *******   Resampling Factory Methods   *******
  **********************************************/
 
-PClip CreateResizeH(PClip clip, double subrange_left, double subrange_width, int target_width,
+PClip FilteredResize::CreateResizeH(PClip clip, double subrange_left, double subrange_width, int target_width,
                     ResamplingFunction* func, IScriptEnvironment* env)
 {
   const VideoInfo& vi = clip->GetVideoInfo();
@@ -1563,16 +1578,18 @@ PClip CreateResizeH(PClip clip, double subrange_left, double subrange_width, int
 
   if (subrange_left == int(subrange_left) && subrange_width == target_width
    && subrange_left >= 0 && subrange_left + subrange_width <= vi.width) {
-	if (vi.IsRGB() || ((int(subrange_left) | int(subrange_width)) & 1) == 0) {
-	  return new Crop(int(subrange_left), 0, int(subrange_width), vi.height, 0, clip, env);
-	}
+    if (((int(subrange_left) | int(subrange_width)) & 1) == 0) {
+      return new Crop(int(subrange_left), 0, int(subrange_width), vi.height, 0, clip, env);
+    }
+    if (!vi.IsYUY2() && !vi.IsYV12()) {
+      return new Crop(int(subrange_left), 0, int(subrange_width), vi.height, 0, clip, env);
+    }
   }
-
   return new FilteredResizeH(clip, subrange_left, subrange_width, target_width, func, env);
 }
 
 
-PClip CreateResizeV(PClip clip, double subrange_top, double subrange_height, int target_height,
+PClip FilteredResize::CreateResizeV(PClip clip, double subrange_top, double subrange_height, int target_height,
                     ResamplingFunction* func, IScriptEnvironment* env)
 {
   const VideoInfo& vi = clip->GetVideoInfo();
@@ -1582,16 +1599,18 @@ PClip CreateResizeV(PClip clip, double subrange_top, double subrange_height, int
 
   if (subrange_top == int(subrange_top) && subrange_height == target_height
    && subrange_top >= 0 && subrange_top + subrange_height <= vi.height) {
-	if (vi.IsRGB() || vi.IsYUY2() || ((int(subrange_top) | int(subrange_height)) & 1) == 0) {
-	  return new Crop(0, int(subrange_top), vi.width, int(subrange_height), 0, clip, env);
-	}
+    if (((int(subrange_top) | int(subrange_height)) & 1) == 0) {
+      return new Crop(0, int(subrange_top), vi.width, int(subrange_height), 0, clip, env);
+    }
+    if (!vi.IsYV12()) {
+      return new Crop(0, int(subrange_top), vi.width, int(subrange_height), 0, clip, env);
+    }
   }
-
   return new FilteredResizeV(clip, subrange_top, subrange_height, target_height, func, env);
 }
 
 
-PClip CreateResize(PClip clip, int target_width, int target_height, const AVSValue* args,
+PClip FilteredResize::CreateResize(PClip clip, int target_width, int target_height, const AVSValue* args,
                    ResamplingFunction* f, IScriptEnvironment* env)
 {
 	try {	// HIDE DAMN SEH COMPILER BUG!!!
@@ -1622,27 +1641,27 @@ PClip CreateResize(PClip clip, int target_width, int target_height, const AVSVal
 	catch (...) { throw; }
 }
 
-AVSValue __cdecl Create_PointResize(AVSValue args, void*, IScriptEnvironment* env)
+AVSValue __cdecl FilteredResize::Create_PointResize(AVSValue args, void*, IScriptEnvironment* env)
 {
   return CreateResize( args[0].AsClip(), args[1].AsInt(), args[2].AsInt(), &args[3],
                        &PointFilter(), env );
 }
 
 
-AVSValue __cdecl Create_BilinearResize(AVSValue args, void*, IScriptEnvironment* env)
+AVSValue __cdecl FilteredResize::Create_BilinearResize(AVSValue args, void*, IScriptEnvironment* env)
 {
   return CreateResize( args[0].AsClip(), args[1].AsInt(), args[2].AsInt(), &args[3],
                        &TriangleFilter(), env );
 }
 
 
-AVSValue __cdecl Create_BicubicResize(AVSValue args, void*, IScriptEnvironment* env)
+AVSValue __cdecl FilteredResize::Create_BicubicResize(AVSValue args, void*, IScriptEnvironment* env)
 {
   return CreateResize( args[0].AsClip(), args[1].AsInt(), args[2].AsInt(), &args[5],
                        &MitchellNetravaliFilter(args[3].AsFloat(1./3.), args[4].AsFloat(1./3.)), env );
 }
 
-AVSValue __cdecl Create_LanczosResize(AVSValue args, void*, IScriptEnvironment* env)
+AVSValue __cdecl FilteredResize::Create_LanczosResize(AVSValue args, void*, IScriptEnvironment* env)
 {
 	try {	// HIDE DAMN SEH COMPILER BUG!!!
   return CreateResize( args[0].AsClip(), args[1].AsInt(), args[2].AsInt(), &args[3],
@@ -1651,7 +1670,7 @@ AVSValue __cdecl Create_LanczosResize(AVSValue args, void*, IScriptEnvironment* 
 	catch (...) { throw; }
 }
 
-AVSValue __cdecl Create_Lanczos4Resize(AVSValue args, void*, IScriptEnvironment* env)
+AVSValue __cdecl FilteredResize::Create_Lanczos4Resize(AVSValue args, void*, IScriptEnvironment* env)
 {
 	try {	// HIDE DAMN SEH COMPILER BUG!!!
   return CreateResize( args[0].AsClip(), args[1].AsInt(), args[2].AsInt(), &args[3],
@@ -1660,7 +1679,7 @@ AVSValue __cdecl Create_Lanczos4Resize(AVSValue args, void*, IScriptEnvironment*
 	catch (...) { throw; }
 }
 
-AVSValue __cdecl Create_BlackmanResize(AVSValue args, void*, IScriptEnvironment* env)
+AVSValue __cdecl FilteredResize::Create_BlackmanResize(AVSValue args, void*, IScriptEnvironment* env)
 {
 	try {	// HIDE DAMN SEH COMPILER BUG!!!
   return CreateResize( args[0].AsClip(), args[1].AsInt(), args[2].AsInt(), &args[3],
@@ -1669,25 +1688,25 @@ AVSValue __cdecl Create_BlackmanResize(AVSValue args, void*, IScriptEnvironment*
 	catch (...) { throw; }
 }
 
-AVSValue __cdecl Create_Spline16Resize(AVSValue args, void*, IScriptEnvironment* env)
+AVSValue __cdecl FilteredResize::Create_Spline16Resize(AVSValue args, void*, IScriptEnvironment* env)
 {
   return CreateResize( args[0].AsClip(), args[1].AsInt(), args[2].AsInt(), &args[3],
                        &Spline16Filter(), env );
 }
 
-AVSValue __cdecl Create_Spline36Resize(AVSValue args, void*, IScriptEnvironment* env)
+AVSValue __cdecl FilteredResize::Create_Spline36Resize(AVSValue args, void*, IScriptEnvironment* env)
 {
   return CreateResize( args[0].AsClip(), args[1].AsInt(), args[2].AsInt(), &args[3],
                        &Spline36Filter(), env );
 }
 
-AVSValue __cdecl Create_Spline64Resize(AVSValue args, void*, IScriptEnvironment* env)
+AVSValue __cdecl FilteredResize::Create_Spline64Resize(AVSValue args, void*, IScriptEnvironment* env)
 {
   return CreateResize( args[0].AsClip(), args[1].AsInt(), args[2].AsInt(), &args[3],
                        &Spline64Filter(), env );
 }
 
-AVSValue __cdecl Create_GaussianResize(AVSValue args, void*, IScriptEnvironment* env)
+AVSValue __cdecl FilteredResize::Create_GaussianResize(AVSValue args, void*, IScriptEnvironment* env)
 {
 	try {	// HIDE DAMN SEH COMPILER BUG!!!
   return CreateResize( args[0].AsClip(), args[1].AsInt(), args[2].AsInt(), &args[3],

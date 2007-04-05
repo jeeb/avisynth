@@ -84,20 +84,21 @@ PVideoFrame VerticalReduceBy2::GetFrame(int n, IScriptEnvironment* env) {
   if (vi.IsPlanar()) {
     mmx_process(srcp,src_pitch, row_size, dstp,dst_pitch,dst->GetHeight(PLANAR_Y));
 
-    src_pitch = src->GetPitch(PLANAR_V);
-    dst_pitch = dst->GetPitch(PLANAR_V);
-    row_size = src->GetRowSize(PLANAR_V_ALIGNED);
-    dstp = dst->GetWritePtr(PLANAR_V);
-    srcp = src->GetReadPtr(PLANAR_V);
-    mmx_process(srcp,src_pitch, row_size, dstp,dst_pitch,dst->GetHeight(PLANAR_V));
+    if (src->GetRowSize(PLANAR_V)) {
+      src_pitch = src->GetPitch(PLANAR_V);
+      dst_pitch = dst->GetPitch(PLANAR_V);
+      row_size = src->GetRowSize(PLANAR_V_ALIGNED);
+      dstp = dst->GetWritePtr(PLANAR_V);
+      srcp = src->GetReadPtr(PLANAR_V);
+      mmx_process(srcp,src_pitch, row_size, dstp,dst_pitch,dst->GetHeight(PLANAR_V));
 
-    src_pitch = src->GetPitch(PLANAR_U);
-    dst_pitch = dst->GetPitch(PLANAR_U);
-    row_size = src->GetRowSize(PLANAR_U_ALIGNED);
-    dstp = dst->GetWritePtr(PLANAR_U);
-    srcp = src->GetReadPtr(PLANAR_U);
-    mmx_process(srcp,src_pitch, row_size, dstp,dst_pitch,dst->GetHeight(PLANAR_U));
-
+      src_pitch = src->GetPitch(PLANAR_U);
+      dst_pitch = dst->GetPitch(PLANAR_U);
+      row_size = src->GetRowSize(PLANAR_U_ALIGNED);
+      dstp = dst->GetWritePtr(PLANAR_U);
+      srcp = src->GetReadPtr(PLANAR_U);
+      mmx_process(srcp,src_pitch, row_size, dstp,dst_pitch,dst->GetHeight(PLANAR_U));
+    }
     return dst;
 
   }
@@ -237,7 +238,7 @@ PVideoFrame HorizontalReduceBy2::GetFrame(int n, IScriptEnvironment* env)
 
   BYTE* dstp = dst->GetWritePtr();
 
-  if (vi.IsYV12()) {
+  if (vi.IsPlanar()) {
     const BYTE* srcp = src->GetReadPtr(PLANAR_Y);
     int yloops=dst->GetHeight(PLANAR_Y);
     int xloops=dst->GetRowSize(PLANAR_Y)-1;

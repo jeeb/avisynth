@@ -322,7 +322,7 @@ PVideoFrame __stdcall Color::GetFrame(int frame, IScriptEnvironment* env)
 		  }
 		  srcp = (unsigned long *)((unsigned char *)srcp + modulo) ;
 	  }
-  } else if (vi.IsYV12()) {
+  } else if (vi.IsPlanar()) {
 	  BYTE* srcp2 = (BYTE*) src->GetWritePtr();
     for (j = 0; j < h; j++) {
 		  for (i=0; i<w; i++) {
