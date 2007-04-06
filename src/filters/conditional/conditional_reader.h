@@ -39,12 +39,11 @@ private:
   float* floatVal;
   const char* variableName;
   int mode;
-  IScriptEnvironment* env;
 
-  AVSValue ConvertType(const char* content, int line);
+  AVSValue ConvertType(const char* content, int line, IScriptEnvironment* env);
   void SetRange(int start_frame, int stop_frame, AVSValue v);
   void SetFrame(int framenumber, AVSValue v);
-  void ThrowLine(const char* err, int line);
+  void ThrowLine(const char* err, int line, IScriptEnvironment* env);
   AVSValue GetFrameValue(int framenumber);
 
 public:
@@ -190,7 +189,6 @@ private:
 	int linecheck;	// 0=write each line, 1=write only if first expression == true, -1 = write at start, -2 = write at end
 	bool flush;
 	bool append;
-	IScriptEnvironment* env;
 
 	char filename[255];
 	char mode[10];	//file open mode
