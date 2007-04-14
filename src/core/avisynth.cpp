@@ -1,4 +1,4 @@
- // Avisynth v2.5.  Copyright 2002 Ben Rudiak-Gould et al.
+// Avisynth v2.5.  Copyright 2007 Ben Rudiak-Gould et al.
 // http://www.avisynth.org
 
 // This program is free software; you can redistribute it and/or modify
@@ -42,6 +42,7 @@ using std::string;
 #include "../internal.h"
 #include "./parser/script.h"
 #include "memcpy_amd.h"
+#include "cache.h"
 
 #ifdef _MSC_VER
   #define strnicmp(a,b,c) _strnicmp(a,b,c)
@@ -792,7 +793,7 @@ private:
   VarTable* global_var_table;
   VarTable* var_table;
 
-  LinkedVideoFrameBuffer video_frame_buffers, lost_video_frame_buffers;
+  LinkedVideoFrameBuffer video_frame_buffers, lost_video_frame_buffers, *unpromotedvfbs;
   __int64 memory_max, memory_used;
 
   LinkedVideoFrameBuffer* NewFrameBuffer(int size);
@@ -810,6 +811,10 @@ private:
   void ExportFilters();
   bool PlanarChromaAlignmentState;
 
+  Cache* CacheHead;
+
+  HRESULT hrfromcoinit;
+
   static long refcount; // Global to all ScriptEnvironment objects
 };
 
@@ -818,30 +823,42 @@ long ScriptEnvironment::refcount=0;
 ScriptEnvironment::ScriptEnvironment()
   : at_exit(This()),
     function_table(This()),
+  CacheHead(0), hrfromcoinit(E_FAIL),
+  unpromotedvfbs(&video_frame_buffers),
   PlanarChromaAlignmentState(true){ // Change to "true" for 2.5.7
 
-  if(InterlockedCompareExchange(&refcount, 1, 0) == 0)//tsp June 2005 Initialize Recycle bin
-    g_Bin=new RecycleBin();
-  else
-    InterlockedIncrement(&refcount);
+  try {
+    hrfromcoinit = CoInitialize(NULL);
 
-  MEMORYSTATUS memstatus;
-  GlobalMemoryStatus(&memstatus);
-  // Minimum 16MB, otherwise available physical memory/4, no maximum
-  if (memstatus.dwAvailPhys  > 64*1024*1024)
-    memory_max = (__int64)memstatus.dwAvailPhys >> 2;
-  else
-    memory_max = 16777216i64;
-  memory_used = 0i64;
-  global_var_table = new VarTable(0, 0);
-  var_table = new VarTable(0, global_var_table);
-  global_var_table->Set("true", true);
-  global_var_table->Set("false", false);
-  global_var_table->Set("yes", true);
-  global_var_table->Set("no", false);
+    if(InterlockedCompareExchange(&refcount, 1, 0) == 0)//tsp June 2005 Initialize Recycle bin
+      g_Bin=new RecycleBin();
+    else
+      InterlockedIncrement(&refcount);
 
-  PrescanPlugins();
-  ExportFilters();
+    MEMORYSTATUS memstatus;
+    GlobalMemoryStatus(&memstatus);
+    // Minimum 16MB, otherwise available physical memory/4, no maximum
+    if (memstatus.dwAvailPhys  > 64*1024*1024)
+      memory_max = (__int64)memstatus.dwAvailPhys >> 2;
+    else
+      memory_max = 16777216i64;
+    memory_used = 0i64;
+    global_var_table = new VarTable(0, 0);
+    var_table = new VarTable(0, global_var_table);
+    global_var_table->Set("true", true);
+    global_var_table->Set("false", false);
+    global_var_table->Set("yes", true);
+    global_var_table->Set("no", false);
+
+    PrescanPlugins();
+    ExportFilters();
+  }
+  catch (AvisynthError err) {
+    if(SUCCEEDED(hrfromcoinit)) CoUninitialize();
+    // Needs must, to not loose the text we
+    // must leak a little memory.
+    throw AvisynthError(strdup(err.msg));
+  }
 }
 
 ScriptEnvironment::~ScriptEnvironment() {
@@ -849,6 +866,7 @@ ScriptEnvironment::~ScriptEnvironment() {
     PopContext();
   while (global_var_table)
     PopContextGlobal();
+  unpromotedvfbs = &video_frame_buffers;
   LinkedVideoFrameBuffer* i = video_frame_buffers.prev;
   while (i != &video_frame_buffers) {
     LinkedVideoFrameBuffer* prev = i->prev;
@@ -865,6 +883,7 @@ ScriptEnvironment::~ScriptEnvironment() {
 	delete g_Bin;//tsp June 2005 Cleans up the heap
 	g_Bin=NULL;
   }
+  if(SUCCEEDED(hrfromcoinit)) CoUninitialize();
 }
 
 int ScriptEnvironment::SetMemoryMax(int mem) {
@@ -1217,6 +1236,9 @@ void* ScriptEnvironment::ManageCache(int key, void* data){
 	// Check to make sure the vfb wasn't discarded and is really a LinkedVideoFrameBuffer.
 	if ((lvfb->data == 0) || (lvfb->signature != LinkedVideoFrameBuffer::ident)) break;
 
+    // Adjust unpromoted sublist if required
+    if (unpromotedvfbs == lvfb) unpromotedvfbs = lvfb->next;
+
 	// Move unloved VideoFrameBuffer's to the end of the video_frame_buffers LRU list.
 	Relink(video_frame_buffers.prev, lvfb, &video_frame_buffers);
 
@@ -1238,8 +1260,25 @@ void* ScriptEnvironment::ManageCache(int key, void* data){
 	// Check to make sure the vfb wasn't discarded and is really a LinkedVideoFrameBuffer.
 	if ((lvfb->data == 0) || (lvfb->signature != LinkedVideoFrameBuffer::ident)) break;
 
+    // Adjust unpromoted sublist if required
+    if (unpromotedvfbs == lvfb) unpromotedvfbs = lvfb->next;
+
 	// Move loved VideoFrameBuffer's to the head of the video_frame_buffers LRU list.
     Relink(&video_frame_buffers, lvfb, video_frame_buffers.next);
+
+	return (void*)1;
+  }
+  // Register Cache instances onto a linked list, so all Cache instances
+  // can be poked as a single unit thru the PokeCache interface
+  case MC_RegisterCache:
+  {
+	Cache *cache = (Cache*)data;
+
+	if (CacheHead) CacheHead->priorCache = &(cache->nextCache);
+	cache->priorCache = &CacheHead;
+
+	cache->nextCache = CacheHead;
+	CacheHead = cache;
 
 	return (void*)1;
   }
@@ -1284,7 +1323,7 @@ LinkedVideoFrameBuffer* ScriptEnvironment::GetFrameBuffer2(int size) {
 
   // Before we allocate a new framebuffer, check our memory usage, and if we
   // are more than 12.5% above allowed usage discard some unreferenced frames.
-  if (memory_used >  memory_max + (memory_max >> 3) ) {
+  if (memory_used >  memory_max + max(size, (memory_max >> 3)) ) {
     ++g_Mem_stats.CleanUps;
     int freed = 0;
     int freed_count = 0;
@@ -1292,6 +1331,8 @@ LinkedVideoFrameBuffer* ScriptEnvironment::GetFrameBuffer2(int size) {
     for (i = video_frame_buffers.prev; i != &video_frame_buffers; i = i->prev) {
       if (i->GetRefcount() == 0) {
         if (i->next != i->prev) {
+          // Adjust unpromoted sublist if required
+          if (unpromotedvfbs == i) unpromotedvfbs = i->next;
           // Store size.
           freed += i->data_size;
           freed_count++;
@@ -1326,24 +1367,36 @@ LinkedVideoFrameBuffer* ScriptEnvironment::GetFrameBuffer2(int size) {
     return NewFrameBuffer(size);
   }
 
-  // Plan B: Steal the oldest existing free buffer of the same size
-  j = 0;
-  for (i = video_frame_buffers.prev; i != &video_frame_buffers; i = i->prev) {
-    if (i->GetRefcount() == 0) {
-      if (i->GetDataSize() == size) {
-        ++g_Mem_stats.PlanB;
-        return i;
-      }
-      if (i->GetDataSize() > size) {
-        if ((j == 0) || (i->GetDataSize() < j->GetDataSize())) j = i;
+  // To avoid Plan D we prod the caches to surrender any VFB's
+  // they maybe guarding. We start gently and ask for just the
+  // most recently locked VFB from previous cycles, then we ask
+  // for the most recently locked VFB, then we ask for all the
+  // locked VFB's. Next we start on the CACHE_RANGE protected
+  // VFB's, as an offset we promote these.
+  // Plan C is not invoked until the Cache's have been poked once.
+  for (int c=Cache::PC_Nil; c <= Cache::PC_UnProtectAll; c++) {
+    CacheHead->PokeCache(c, size, this);
+
+    // Plan B: Steal the oldest existing free buffer of the same size
+    j = 0;
+    for (i = video_frame_buffers.prev; i != &video_frame_buffers; i = i->prev) {
+      if (i->GetRefcount() == 0) {
+        if (i->GetDataSize() == size) {
+          ++g_Mem_stats.PlanB;
+          return i;
+        }
+        if (i->GetDataSize() > size) {
+          // Remember the smallest VFB that is bigger than our size
+          if ((j == 0) || (i->GetDataSize() < j->GetDataSize())) j = i;
+        }
       }
     }
-  }
 
-  // Plan C: Steal the oldest, smallest free buffer that is greater in size
-  if (j) {
-    ++g_Mem_stats.PlanC;
-    return j;
+    // Plan C: Steal the oldest, smallest free buffer that is greater in size
+    if (j && c > Cache::PC_Nil) {
+      ++g_Mem_stats.PlanC;
+      return j;
+    }
   }
 
   // Plan D: Allocate a new buffer, regardless of current memory usage
@@ -1354,11 +1407,18 @@ LinkedVideoFrameBuffer* ScriptEnvironment::GetFrameBuffer2(int size) {
 VideoFrameBuffer* ScriptEnvironment::GetFrameBuffer(int size) {
   LinkedVideoFrameBuffer* result = GetFrameBuffer2(size);
 #if 0
+# if 0
   // Link onto head of video_frame_buffers chain.
   Relink(&video_frame_buffers, result, video_frame_buffers.next);
-#else
+# else
   // Link onto tail of video_frame_buffers chain.
   Relink(video_frame_buffers.prev, result, &video_frame_buffers);
+# endif
+#else
+  // Link onto head of unpromoted video_frame_buffers chain.
+  Relink(unpromotedvfbs->prev, result, unpromotedvfbs);
+  // Adjust unpromoted sublist
+  unpromotedvfbs = result;
 #endif
   result->returned = false;
   return result;

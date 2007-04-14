@@ -1,4 +1,4 @@
-// Avisynth v2.5.  Copyright 2002 Ben Rudiak-Gould et al.
+// Avisynth v2.5.  Copyright 2007 Ben Rudiak-Gould et al.
 // http://www.avisynth.org
 
 // This program is free software; you can redistribute it and/or modify
@@ -229,23 +229,10 @@ private:
 };
 
 
-static HRESULT hrfromcoinit = E_FAIL;
 BOOL APIENTRY DllMain(HANDLE hModule, ULONG ulReason, LPVOID lpReserved) {
 
-	switch(ulReason) {
-	case DLL_PROCESS_ATTACH:
-		hrfromcoinit = CoInitialize(NULL);
-		_RPT2(0,"Process attach: hModule = 0x%08x, gRefCnt = %ld\n", hModule, gRefCnt);
-		break;
-
-	case DLL_PROCESS_DETACH:
-
-//		if (gRefCnt) Somehow prang this release!
-
-		if(SUCCEEDED(hrfromcoinit)) CoUninitialize();
-		_RPT2(0,"Process detach: hModule = 0x%08x, gRefCnt = %ld\n", hModule, gRefCnt);
-		break;
-	}
+  _RPT4(0,"DllMain: hModule=0x%08x, ulReason=%x, lpReserved=0x%08x, gRefCnt = %ld\n",
+        hModule, ulReason, lpReserved, gRefCnt);
 
   return TRUE;
 }
@@ -610,11 +597,7 @@ bool CAVIFileSynth::DelayInit() {
           if (!AllowFloatAudio) // Ensure samples are int     
             filter_graph = ConvertAudio::Create(filter_graph, SAMPLE_INT8|SAMPLE_INT16|SAMPLE_INT24|SAMPLE_INT32, SAMPLE_INT16);
 
-		  int q = 0;
-		  filter_graph->SetCacheHints(Cache::GetMyThis, (int)&q);
-
-		  if (q != (int)(void *)filter_graph)
-			filter_graph = new Cache(filter_graph);
+          filter_graph = Cache::Create_Cache(AVSValue(filter_graph), 0, env).AsClip();
 
           filter_graph->SetCacheHints(CACHE_ALL, 999); // Give the top level cache a big head start!!
         }
