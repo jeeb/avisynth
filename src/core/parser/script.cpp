@@ -122,8 +122,6 @@ AVSFunction Script_functions[] = {
   { "Assert", "b[message]s", Assert },
   { "Assert", "s", AssertEval },
 
-  { "Cache", "c", Cache::Create_Cache },
-
   { "SetMemoryMax", "i", SetMemoryMax },
 
   { "SetWorkingDir", "s", SetWorkingDir },

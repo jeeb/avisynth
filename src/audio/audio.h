@@ -126,8 +126,8 @@ public:
   EnsureVBRMP3Sync(PClip _clip);
 
   void __stdcall GetAudio(void* buf, __int64 start, __int64 count, IScriptEnvironment* env);
-  static PClip Create(PClip clip);
-  static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment*);
+  static PClip Create(PClip clip, IScriptEnvironment* env);
+  static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env);
 
 private:
   __int64 last_end;

@@ -36,17 +36,18 @@
 #ifndef __Internal_H__
 #define __Internal_H__
 
-#define AVS_VERSION 2.57
-#define AVS_VERSTR "AviSynth 2.57, build:"__DATE__" ["__TIME__"]"
-#define AVS_COPYRIGHT "\n\xA9 2000-2006 Ben Rudiak-Gould, et al.\nhttp://www.avisynth.org"
+#define AVS_VERSION 2.58
+#define AVS_VERSTR "AviSynth 2.58, build:"__DATE__" ["__TIME__"]"
+#define AVS_COPYRIGHT "\n\xA9 2000-2007 Ben Rudiak-Gould, et al.\nhttp://www.avisynth.org"
 
 extern const char _AVS_VERSTR[], _AVS_COPYRIGHT[];
 
 // env->ManageCache() Non user keys definition
 // Define user accessible keys in avisynth.h
 //
-#define MC_ReturnVideoFrameBuffer  0xFFFF0001
-#define MC_PromoteVideoFrameBuffer 0xFFFF0002
+enum {MC_ReturnVideoFrameBuffer =0xFFFF0001};
+enum {MC_PromoteVideoFrameBuffer=0xFFFF0002};
+enum {MC_RegisterCache          =0xFFFF0003};
 
 #include "core/avisynth.h"
 
@@ -73,8 +74,8 @@ PClip new_AssumeFrameBased(PClip _child);
 void BitBlt(BYTE* dstp, int dst_pitch, const BYTE* srcp, 
             int src_pitch, int row_size, int height);
 
-  void asm_BitBlt_ISSE(BYTE* dstp, int dst_pitch, const BYTE* srcp, int src_pitch, int row_size, int height);
-  void asm_BitBlt_MMX(BYTE* dstp, int dst_pitch, const BYTE* srcp, int src_pitch, int row_size, int height);
+void asm_BitBlt_ISSE(BYTE* dstp, int dst_pitch, const BYTE* srcp, int src_pitch, int row_size, int height);
+void asm_BitBlt_MMX(BYTE* dstp, int dst_pitch, const BYTE* srcp, int src_pitch, int row_size, int height);
 
 long GetCPUFlags();
 

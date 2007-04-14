@@ -238,15 +238,15 @@ void __stdcall EnsureVBRMP3Sync::GetAudio(void* buf, __int64 start, __int64 coun
 }
 
 
-PClip EnsureVBRMP3Sync::Create(PClip clip) {
-  PClip c = new EnsureVBRMP3Sync(clip);
-  PClip c2 = new Cache(c); // Very good idea to insert a cache here.
+PClip EnsureVBRMP3Sync::Create(PClip clip, IScriptEnvironment* env) {
+  AVSValue c = new EnsureVBRMP3Sync(clip);
+  PClip c2 = Cache::Create_Cache(c, 0, env).AsClip(); // Very good idea to insert a cache here.
   c2->SetCacheHints(CACHE_AUDIO, 1024*1024);
   return c2;
 }
 
-AVSValue __cdecl EnsureVBRMP3Sync::Create(AVSValue args, void*, IScriptEnvironment*) {
-  return Create(args[0].AsClip());
+AVSValue __cdecl EnsureVBRMP3Sync::Create(AVSValue args, void*, IScriptEnvironment* env) {
+  return Create(args[0].AsClip(), env);
 }
 
 
