@@ -202,7 +202,7 @@ AVSValue __cdecl FlipHorizontal::Create(AVSValue args, void*, IScriptEnvironment
  *****************************/
 
 Crop::Crop(int _left, int _top, int _width, int _height, int _align, PClip _child, IScriptEnvironment* env)
- : GenericVideoFilter(_child), align(_align)
+ : GenericVideoFilter(_child), align(_align), xsub(0), ysub(0)
 {
   /* Negative values -> VDub-style syntax
      Namely, Crop(a, b, -c, -d) will crop c pixels from the right and d pixels from the bottom.  
@@ -227,6 +227,8 @@ Crop::Crop(int _left, int _top, int _width, int _height, int _align, PClip _chil
     if (_width&1)
       env->ThrowError("Crop: YUV images can only be cropped by even numbers (right side).");
     if (vi.IsYV12()) {
+	  xsub=1;
+	  ysub=1;
       if (_top&1)
         env->ThrowError("Crop: YV12 images can only be cropped by even numbers (top).");
       if (_height&1)
@@ -247,13 +249,7 @@ Crop::Crop(int _left, int _top, int _width, int _height, int _align, PClip _chil
   vi.height = _height;
 
   if (align) {
-    align = 8;
-
-    if (env->GetCPUFlags() & CPUF_SSE2)
-      align = 16;
-
-    if (!(left_bytes & (align-1)))  // We already have alignment.
-      align=0;
+    align = (env->GetCPUFlags() & CPUF_SSE2) ? 15 : 7;
   }
 
 }
@@ -263,19 +259,27 @@ PVideoFrame Crop::GetFrame(int n, IScriptEnvironment* env)
 {
   PVideoFrame frame = child->GetFrame(n, env);
 
-  if (align) {
+  const BYTE* srcpY = frame->GetReadPtr(PLANAR_Y) + top *  frame->GetPitch(PLANAR_Y) + left_bytes;
+  const BYTE* srcpU = frame->GetReadPtr(PLANAR_U) + (top>>ysub) *  frame->GetPitch(PLANAR_U) + (left_bytes>>xsub);
+  const BYTE* srcpV = frame->GetReadPtr(PLANAR_V) + (top>>ysub) *  frame->GetPitch(PLANAR_V) + (left_bytes>>xsub);
+
+  int _align;
+
+  if (env->PlanarChromaAlignment(IScriptEnvironment::PlanarChromaAlignmentTest))
+    _align = align & ((int)srcpY|(int)srcpU|(int)srcpV);
+  else
+    _align = align & (int)srcpY;
+
+  if (_align) {
     PVideoFrame dst = env->NewVideoFrame(vi,align);  
 
-    env->BitBlt(dst->GetWritePtr(PLANAR_Y), dst->GetPitch(PLANAR_Y),
-      frame->GetReadPtr(PLANAR_Y) + top *  frame->GetPitch(PLANAR_Y) + left_bytes,
+    env->BitBlt(dst->GetWritePtr(PLANAR_Y), dst->GetPitch(PLANAR_Y), srcpY,
       frame->GetPitch(PLANAR_Y), dst->GetRowSize(PLANAR_Y), dst->GetHeight(PLANAR_Y));
 
-    env->BitBlt(dst->GetWritePtr(PLANAR_U), dst->GetPitch(PLANAR_U),
-      frame->GetReadPtr(PLANAR_U) + (top>>1) *  frame->GetPitch(PLANAR_U) + (left_bytes>>1),
+    env->BitBlt(dst->GetWritePtr(PLANAR_U), dst->GetPitch(PLANAR_U), srcpU,
       frame->GetPitch(PLANAR_U), dst->GetRowSize(PLANAR_U), dst->GetHeight(PLANAR_U));
 
-    env->BitBlt(dst->GetWritePtr(PLANAR_V), dst->GetPitch(PLANAR_V),
-      frame->GetReadPtr(PLANAR_V) + (top>>1) *  frame->GetPitch(PLANAR_V) + (left_bytes>>1),
+    env->BitBlt(dst->GetWritePtr(PLANAR_V), dst->GetPitch(PLANAR_V), srcpV,
       frame->GetPitch(PLANAR_V), dst->GetRowSize(PLANAR_V), dst->GetHeight(PLANAR_V));
 
     return dst;
@@ -285,8 +289,8 @@ PVideoFrame Crop::GetFrame(int n, IScriptEnvironment* env)
     return env->Subframe(frame, top * frame->GetPitch() + left_bytes, frame->GetPitch(), vi.RowSize(), vi.height);
   else
     return env->SubframePlanar(frame, top * frame->GetPitch() + left_bytes, frame->GetPitch(), vi.RowSize(), vi.height,
-                                      (top/2) * frame->GetPitch(PLANAR_U) + (left_bytes/2),
-                                      (top/2) * frame->GetPitch(PLANAR_V) + (left_bytes/2),
+                                      (top>>ysub) * frame->GetPitch(PLANAR_U) + (left_bytes>>xsub),
+                                      (top>>ysub) * frame->GetPitch(PLANAR_V) + (left_bytes>>xsub),
                                       frame->GetPitch(PLANAR_U));
 }
 
@@ -305,14 +309,16 @@ AVSValue __cdecl Crop::Create(AVSValue args, void*, IScriptEnvironment* env)
  *******   Add Borders   ******
  *****************************/
 
-AddBorders::AddBorders(int _left, int _top, int _right, int _bot, int _clr, PClip _child)
- : GenericVideoFilter(_child), left(_left), top(_top), right(_right), bot(_bot), clr(_clr)
+AddBorders::AddBorders(int _left, int _top, int _right, int _bot, int _clr, PClip _child, IScriptEnvironment* env)
+ : GenericVideoFilter(_child), left(_left), top(_top), right(_right), bot(_bot), clr(_clr), xsub(0), ysub(0)
 {
   if (vi.IsYUV()) {
     // YUY2 can only add even amounts
     left = left & -2;
     right = (right+1) & -2;
     if (vi.IsYV12()) {
+	  xsub=1;
+	  ysub=1;
       top=top& -2;
       bot=(bot+1)& -2;
     }
@@ -347,25 +353,25 @@ PVideoFrame AddBorders::GetFrame(int n, IScriptEnvironment* env)
                           + (dst_pitch - dst_row_size);
   if (vi.IsPlanar()) {
     const unsigned int colr = RGB2YUV(clr);
-    const unsigned short YBlack=(colr>>16)&0xff | ((colr>>8)&0xff00);
-    const unsigned char  UBlack=(colr>>8)&0xff;
-    const unsigned char  VBlack=(colr)&0xff;
+    const unsigned char YBlack=(colr>>16)&0xff;
+    const unsigned char UBlack=(colr>>8)&0xff;
+    const unsigned char VBlack=(colr)&0xff;
 
     BitBlt(dstp+initial_black, dst_pitch, srcp, src_pitch, src_row_size, src_height);
-    for (int a=0; a<initial_black; a += 2)
-      *(unsigned short*)(dstp+a) = YBlack;
+    for (int a=0; a<initial_black; a++)
+      *(unsigned char*)(dstp+a) = YBlack;
     dstp += initial_black + src_row_size;
     for (int y=src_height-1; y>0; --y) {
-      for (int b=0; b<middle_black; b += 2)
-        *(unsigned short*)(dstp+b) = YBlack;
+      for (int b=0; b<middle_black; b++)
+        *(unsigned char*)(dstp+b) = YBlack;
       dstp += dst_pitch;
     }
-    for (int c=0; c<final_black; c += 2)
-      *(unsigned short*)(dstp+c) = YBlack;
+    for (int c=0; c<final_black; c++)
+      *(unsigned char*)(dstp+c) = YBlack;
 
-    const int initial_blackUV = (top/2) * dst->GetPitch(PLANAR_U) + left/2;
+    const int initial_blackUV = (top>>ysub) * dst->GetPitch(PLANAR_U) + (left>>xsub);
     const int middle_blackUV  = dst->GetPitch(PLANAR_U) - src->GetRowSize(PLANAR_U);
-    const int final_blackUV   = (bot/2) * dst->GetPitch(PLANAR_U) + (right/2)
+    const int final_blackUV   = (bot>>ysub) * dst->GetPitch(PLANAR_U) + (right>>xsub)
                               + (dst->GetPitch(PLANAR_U)- dst->GetRowSize(PLANAR_U));
 
     BitBlt(dst->GetWritePtr(PLANAR_U)+initial_blackUV, dst->GetPitch(PLANAR_U), src->GetReadPtr(PLANAR_U), src->GetPitch(PLANAR_U), src->GetRowSize(PLANAR_U), src->GetHeight(PLANAR_U));
@@ -454,7 +460,7 @@ PVideoFrame AddBorders::GetFrame(int n, IScriptEnvironment* env)
 AVSValue __cdecl AddBorders::Create(AVSValue args, void*, IScriptEnvironment* env) 
 {
   return new AddBorders( args[1].AsInt(), args[2].AsInt(), args[3].AsInt(), 
-                         args[4].AsInt(), args[5].AsInt(0), args[0].AsClip() );
+                         args[4].AsInt(), args[5].AsInt(0), args[0].AsClip(), env);
 }
 
 
@@ -548,7 +554,7 @@ AVSValue __cdecl Create_Letterbox(AVSValue args, void*, IScriptEnvironment* env)
   if (vi.IsYUY2() && (right&1))
     env->ThrowError("LetterBox: Width must be divideable with 2 (Right side)");
 
-  return new AddBorders(left, top, right, bot, color, new Crop(left, top, vi.width-left-right, vi.height-top-bot, 0, clip, env));
+  return new AddBorders(left, top, right, bot, color, new Crop(left, top, vi.width-left-right, vi.height-top-bot, 0, clip, env), env);
 }
 
 

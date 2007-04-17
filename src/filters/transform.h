@@ -82,6 +82,7 @@ public:
 
 private:
   /*const*/ int left_bytes, top, align;
+  int xsub, ysub;
 };
 
 
@@ -92,13 +93,14 @@ class AddBorders : public GenericVideoFilter
  **/
 {  
 public:
-  AddBorders(int _left, int _top, int _right, int _bot, int _clr, PClip _child);
+  AddBorders(int _left, int _top, int _right, int _bot, int _clr, PClip _child, IScriptEnvironment* env);
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
 
   static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env);
 
 private:
   /*const*/ int left, top, right, bot, clr;
+  int xsub, ysub;
 };
 
 
