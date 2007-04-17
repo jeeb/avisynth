@@ -579,6 +579,12 @@ bool CAVIFileSynth::DelayInit() {
         // create a script environment and load the script into it
         env = CreateScriptEnvironment();
         if (!env) return false;
+      }
+      catch (AvisynthError error) {
+        error_msg = error.msg;
+		return false;
+	  }
+	  try {
         AVSValue return_val = env->Invoke("Import", szScriptName);
         // store the script's return value (a video clip)
         if (return_val.IsClip()) {
@@ -765,7 +771,7 @@ STDMETHODIMP CAVIFileSynth::GetStream(PAVISTREAM *ppStream, DWORD fccType, LONG 
 //////////// IAvisynthClipInfo
 
 int __stdcall CAVIFileSynth::GetError(const char** ppszMessage) {
-  if (!DelayInit())
+  if (!DelayInit() && !error_msg)
     error_msg = "Avisynth: script open failed!";
 
   if (ppszMessage)
