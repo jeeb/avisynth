@@ -1,7 +1,7 @@
 !packhdr tempfile.exe "upx --best --q tempfile.exe"
 
-!DEFINE VERSION 2.5.7
-!DEFINE DATE 070107
+!DEFINE VERSION 2.5.8
+!DEFINE DATE 070416
 
 SetCompressor /solid lzma
 
@@ -40,7 +40,7 @@ Caption "AviSynth ${VERSION}"
 ShowInstDetails show
 CRCCheck ON
 
-ComponentText "AviSynth - the premiere frameserving tool available today.$\nCopyright © 2000 - 2006."
+ComponentText "AviSynth - the premiere frameserving tool available today.$\nCopyright © 2000 - 2007."
 
 InstallDir "$PROGRAMFILES\AviSynth 2.5"
 InstallDirRegKey HKLM SOFTWARE\AviSynth ""
