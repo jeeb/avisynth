@@ -45,8 +45,8 @@
 AVSFunction Edit_filters[] = {  
   { "Trim", "cii[]b", Trim::Create },                       // first frame, last frame[, pad audio]
   { "FreezeFrame", "ciii", FreezeFrame::Create },           // first frame, last frame, source frame
-  { "DeleteFrame", "ci", DeleteFrame::Create },             // frame #
-  { "DuplicateFrame", "ci", DuplicateFrame::Create },       // frame #
+  { "DeleteFrame", "ci+", DeleteFrame::Create },             // frame #
+  { "DuplicateFrame", "ci+", DuplicateFrame::Create },       // frame #
   { "UnalignedSplice", "cc+", Splice::CreateUnaligned },    // clips
   { "AlignedSplice", "cc+", Splice::CreateAligned },        // clips
   { "Dissolve", "cc+i[fps]f", Dissolve::Create },           // clips, overlap frames[, fps]
@@ -170,20 +170,9 @@ AVSValue __cdecl FreezeFrame::Create(AVSValue args, void*, IScriptEnvironment* e
 }
 
 
-
-
-
-
-
 /******************************
  *******   Delete Frame  ******
  ******************************/
-
-AVSValue __cdecl DeleteFrame::Create(AVSValue args, void*, IScriptEnvironment* env) 
-{
-  return new DeleteFrame(args[1].AsInt(), args[0].AsClip());
-}
-
 
 DeleteFrame::DeleteFrame(int _frame, PClip _child)
  : GenericVideoFilter(_child), frame(_frame) { --vi.num_frames; }
@@ -200,9 +189,37 @@ bool DeleteFrame::GetParity(int n)
   return child->GetParity(n + (n>=frame)); 
 }
 
+AVSValue __cdecl DeleteFrame::Create(AVSValue args, void*, IScriptEnvironment* env) 
+{
+  const int n = args[1].ArraySize();
+  int m = n-1;
+  int *frames = new int[n];
 
+  frames[0] = args[1][0].AsInt();
+  for (int i=1; i<n; ++i) {
+    frames[i] = args[1][i].AsInt();
+    // Bubble insert
+    for (int j=0; j<i; ++j) {
+      // Remove duplicates
+      if (frames[i] == frames[j]) {
+        m -= 1;
+        frames[i] = MAX_INT;
+        break;
+      }
+      else if (frames[i] < frames[j]) {
+        const int t = frames[j];
+        frames[j] = frames[i];
+        frames[i] = t;
+      }
+    }
+  }
+  PClip result = args[0].AsClip();
+  for (int k=m; k>=0; --k)
+    result = new DeleteFrame(frames[k], result);
 
-
+  delete[] frames;
+  return result;
+}
 
 
 
@@ -228,12 +245,28 @@ bool DuplicateFrame::GetParity(int n)
 
 AVSValue __cdecl DuplicateFrame::Create(AVSValue args, void*, IScriptEnvironment* env) 
 {
-  return new DuplicateFrame(args[1].AsInt(), args[0].AsClip());
+  const int n = args[1].ArraySize();
+  int *frames = new int[n];
+
+  frames[0] = args[1][0].AsInt();
+  for (int i=1; i<n; ++i) {
+    frames[i] = args[1][i].AsInt();
+    // Bubble insert
+    for (int j=0; j<i; ++j) {
+      if (frames[i] < frames[j]) {
+        const int t = frames[j];
+        frames[j] = frames[i];
+        frames[i] = t;
+      }
+    }
+  }
+  PClip result = args[0].AsClip();
+  for (int k=n-1; k>=0; --k)
+    result = new DuplicateFrame(frames[k], result);
+
+  delete[] frames;
+  return result;
 }
-
-
-
-
 
 
 
