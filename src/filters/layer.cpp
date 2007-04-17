@@ -443,7 +443,7 @@ yloopback:
     sar ebx,5
     and edx,31
     test ebx,ebx
-    jz  restloop
+    jz  resttest
 align 16
 testloop:
 //    prefetchnta [esi+256]
@@ -467,6 +467,7 @@ testloop:
     dec ebx
     jne testloop
 
+resttest:
     test edx,edx
     jz outw
 
