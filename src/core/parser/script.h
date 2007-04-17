@@ -217,4 +217,7 @@ AVSValue HexValue(AVSValue args, void*, IScriptEnvironment* env);
 AVSValue HasVideo(AVSValue args, void*, IScriptEnvironment* env);
 AVSValue HasAudio(AVSValue args, void*, IScriptEnvironment* env);
 
+AVSValue AvsMin(AVSValue args, void*, IScriptEnvironment* env);
+AVSValue AvsMax(AVSValue args, void*, IScriptEnvironment* env);
+
 #endif  // __Script_H__

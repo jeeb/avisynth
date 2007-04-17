@@ -143,6 +143,9 @@ AVSFunction Script_functions[] = {
   
   { "HasVideo", "c", HasVideo },
   { "HasAudio", "c", HasAudio },
+
+  { "Min", "f+", AvsMin },
+  { "Max", "f+", AvsMax },
  
   { 0 }
 };
@@ -485,7 +488,7 @@ AVSValue Spline(AVSValue args, void*, IScriptEnvironment* env )
 
 	n = coordinates.ArraySize() ;
 
-	if (n<4 || n&1) env->ThrowError("Two few arguments for Spline");
+	if (n<4 || n&1) env->ThrowError("To few arguments for Spline");
 
 	n=n/2;
 	for (i=1; i<=n; i++) {
@@ -575,3 +578,61 @@ AVSValue Float(AVSValue args, void*,IScriptEnvironment* env) { return args[0].As
 
 AVSValue Value(AVSValue args, void*, IScriptEnvironment* env) { char *stopstring; return strtod(args[0].AsString(),&stopstring); }
 AVSValue HexValue(AVSValue args, void*, IScriptEnvironment* env) { char *stopstring; return strtol(args[0].AsString(),&stopstring,16); }
+
+AVSValue AvsMin(AVSValue args, void*, IScriptEnvironment* env )
+{
+  int i;
+  bool isInt = true;
+
+  const int n = args[0].ArraySize();
+  if (n < 2) env->ThrowError("To few arguments for Min");
+
+  // If all numbers are Ints return an Int
+  for (i=0; i < n; i++)
+    if (!args[0][i].IsInt()) {
+      isInt = false;
+      break;
+  }
+
+  if (isInt) {
+    int V = args[0][0].AsInt();
+    for (i=1; i < n; i++)
+      V = min(V, args[0][i].AsInt());
+    return V;
+  }
+  else {
+    double V = args[0][0].AsFloat();
+    for (i=1; i < n; i++)
+      V = min(V, args[0][i].AsFloat());
+    return V;
+  }
+}
+
+AVSValue AvsMax(AVSValue args, void*, IScriptEnvironment* env )
+{
+  int i;
+  bool isInt = true;
+
+  const int n = args[0].ArraySize();
+  if (n < 2) env->ThrowError("To few arguments for Max");
+
+  // If all numbers are Ints return an Int
+  for (i=0; i < n; i++)
+    if (!args[0][i].IsInt()) {
+      isInt = false;
+      break;
+  }
+
+  if (isInt) {
+    int V = args[0][0].AsInt();
+    for (i=1; i < n; i++)
+      V = max(V, args[0][i].AsInt());
+    return V;
+  }
+  else {
+    double V = args[0][0].AsFloat();
+    for (i=1; i < n; i++)
+      V = max(V, args[0][i].AsFloat());
+    return V;
+  }
+}
