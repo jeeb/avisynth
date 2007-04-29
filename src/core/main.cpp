@@ -938,23 +938,27 @@ void CAVIStreamSynth::ReadFrame(void* lpBuffer, int n) {
   if (!frame)
     parent->env->ThrowError("Avisynth error: generated video frame was nil (this is a bug)");
 
-//  VideoInfo vi = parent->filter_graph->GetVideoInfo();
+  VideoInfo vi = parent->filter_graph->GetVideoInfo();
   const int pitch    = frame->GetPitch();
   const int row_size = frame->GetRowSize();
   const int height   = frame->GetHeight();
 
   // BMP scanlines are always dword-aligned
   const int out_pitch = (row_size+3) & -4;
+  int out_pitchUV = (frame->GetRowSize(PLANAR_U)+3) & -4;
+  if (vi.IsYV12()) {  // We know this has special alignment.
+    out_pitchUV = out_pitch / 2;
+  }
 
   BitBlt((BYTE*)lpBuffer, out_pitch, frame->GetReadPtr(), pitch, row_size, height);
 
   BitBlt((BYTE*)lpBuffer + (out_pitch*height),
-         out_pitch/2,               frame->GetReadPtr(PLANAR_V),
+         out_pitchUV,               frame->GetReadPtr(PLANAR_V),
 		 frame->GetPitch(PLANAR_V), frame->GetRowSize(PLANAR_V),
 		 frame->GetHeight(PLANAR_V) );
 
-  BitBlt((BYTE*)lpBuffer + (out_pitch*height + frame->GetHeight(PLANAR_V)*out_pitch/2),
-         out_pitch/2,               frame->GetReadPtr(PLANAR_U),
+  BitBlt((BYTE*)lpBuffer + (out_pitch*height + frame->GetHeight(PLANAR_V)*out_pitchUV),
+         out_pitchUV,               frame->GetReadPtr(PLANAR_U),
 		 frame->GetPitch(PLANAR_U), frame->GetRowSize(PLANAR_U),
 		 frame->GetHeight(PLANAR_U) );
 }
@@ -1213,9 +1217,18 @@ STDMETHODIMP CAVIStreamSynth::ReadFormat(LONG lPos, LPVOID lpFormat, LONG *lpcbF
 
   if (!lpcbFormat) return E_POINTER;
 
+  bool UseWaveExtensible = false;
+  try {
+	AVSValue v = parent->env->GetVar("OPT_UseWaveExtensible");
+	UseWaveExtensible = v.IsBool() ? v.AsBool() : false;
+  }
+  catch (IScriptEnvironment::NotFound) { }
+
   if (!lpFormat) {
-    *lpcbFormat = fAudio ? sizeof(WAVEFORMATEX) : sizeof(BITMAPINFOHEADER);
-	  return S_OK;
+    *lpcbFormat = fAudio ? ( UseWaveExtensible ? sizeof(WAVEFORMATEXTENSIBLE)
+                                               : sizeof(WAVEFORMATEX) )
+                         : sizeof(BITMAPINFOHEADER);
+    return S_OK;
   }
 
   memset(lpFormat, 0, *lpcbFormat);
@@ -1223,14 +1236,6 @@ STDMETHODIMP CAVIStreamSynth::ReadFormat(LONG lPos, LPVOID lpFormat, LONG *lpcbF
   const VideoInfo* const vi = parent->vi;
 
   if (fAudio) {
-	bool UseWaveExtensible = false;
-
-	try {
-	  AVSValue v = parent->env->GetVar("OPT_UseWaveExtensible");
-	  UseWaveExtensible = v.IsBool() ? v.AsBool() : false;
-	}
-	catch (IScriptEnvironment::NotFound) { }
-
 	if (UseWaveExtensible) {  // Use WAVE_FORMAT_EXTENSIBLE audio output format 
 	  const GUID KSDATAFORMAT_SUBTYPE_PCM       = {0x00000001, 0x0000, 0x0010, {0x80, 0x00, 0x00, 0xaa, 0x00, 0x38, 0x9b, 0x71}};
 	  const GUID KSDATAFORMAT_SUBTYPE_IEEE_FLOAT= {0x00000003, 0x0000, 0x0010, {0x80, 0x00, 0x00, 0xaa, 0x00, 0x38, 0x9b, 0x71}};
@@ -1245,9 +1250,23 @@ STDMETHODIMP CAVIStreamSynth::ReadFormat(LONG lPos, LPVOID lpFormat, LONG *lpcbF
 	  wfxt.Format.nAvgBytesPerSec = wfxt.Format.nSamplesPerSec * wfxt.Format.nBlockAlign;
 	  wfxt.Format.cbSize = sizeof(wfxt) - sizeof(wfxt.Format);
 	  wfxt.Samples.wValidBitsPerSample = wfxt.Format.wBitsPerSample;
-	  wfxt.dwChannelMask = SPEAKER_ALL;
+
+	  const int SpeakerMasks[8] = { 0,
+	    0x00004, // 1         Cf
+		0x00003, // 2   Lf Rf
+		0x00007, // 3   Lf Rf Cf
+		0x00033, // 4   Lf Rf       Lr Rr
+		0x00037, // 5   Lf Rf Cf    Lr Rr
+		0x0003F, // 5.1 Lf Rf Cf Sw Lr Rr
+		0x0013F, // 6.1 Lf Rf Cf Sw Lr Rr Cr
+	  };
+	  wfxt.dwChannelMask = (unsigned)vi->AudioChannels() <= 7 ? SpeakerMasks[vi->AudioChannels()]
+	                     : (unsigned)vi->AudioChannels() <=18 ? DWORD(-1) >> (32-vi->AudioChannels())
+						 : SPEAKER_ALL;
+
 	  wfxt.SubFormat = vi->IsSampleType(SAMPLE_FLOAT) ? KSDATAFORMAT_SUBTYPE_IEEE_FLOAT : KSDATAFORMAT_SUBTYPE_PCM;
-	  memcpy(lpFormat, &wfxt, min(size_t(*lpcbFormat), sizeof(wfxt)));
+	  *lpcbFormat = min(*lpcbFormat, sizeof(wfxt));
+	  memcpy(lpFormat, &wfxt, size_t(*lpcbFormat));
 	}
 	else {
 	  WAVEFORMATEX wfx;
@@ -1258,7 +1277,8 @@ STDMETHODIMP CAVIStreamSynth::ReadFormat(LONG lPos, LPVOID lpFormat, LONG *lpcbF
 	  wfx.wBitsPerSample = vi->BytesPerChannelSample() * 8;
 	  wfx.nBlockAlign = vi->BytesPerAudioSample();
 	  wfx.nAvgBytesPerSec = wfx.nSamplesPerSec * wfx.nBlockAlign;
-	  memcpy(lpFormat, &wfx, min(size_t(*lpcbFormat), sizeof(wfx)));
+	  *lpcbFormat = min(*lpcbFormat, sizeof(wfx));
+	  memcpy(lpFormat, &wfx, size_t(*lpcbFormat));
 	}
   } else {
     BITMAPINFOHEADER bi;
@@ -1278,7 +1298,8 @@ STDMETHODIMP CAVIStreamSynth::ReadFormat(LONG lPos, LPVOID lpFormat, LONG *lpcbF
         _ASSERT(FALSE);
       }
     bi.biSizeImage = vi->BMPSize();
-    memcpy(lpFormat, &bi, min(size_t(*lpcbFormat), sizeof(bi)));
+    *lpcbFormat = min(*lpcbFormat, sizeof(bi));
+    memcpy(lpFormat, &bi, size_t(*lpcbFormat));
   }
   return S_OK;
 }
