@@ -62,8 +62,6 @@ inline void YUV2RGB(int y, int u, int v, BYTE* out)
 
   int scaled_y = (y - 16) * int((255.0/219.0)*65536+0.5);
 
-  _PixelClip PixelClip;
-
   out[0] = ScaledPixelClip(scaled_y + (u-128) * cbu); // blue
   out[1] = ScaledPixelClip(scaled_y - (u-128) * cgu - (v-128) * cgv); // green
   out[2] = ScaledPixelClip(scaled_y + (v-128) * crv); // red
@@ -76,8 +74,6 @@ inline int RGB2YUV(int rgb)
   const int cyb = int(0.114*219/255*65536+0.5);
   const int cyg = int(0.587*219/255*65536+0.5);
   const int cyr = int(0.299*219/255*65536+0.5);
-
-  _PixelClip PixelClip;
 
   // y can't overflow
   int y = (cyb*(rgb&255) + cyg*((rgb>>8)&255) + cyr*((rgb>>16)&255) + 0x108000) >> 16;
