@@ -51,9 +51,11 @@ public:
     ModeClassic=0,
 	ModeLevels,
 	ModeColor,
+	ModeColor2,
 	ModeLuma,
 	ModeStereo,
 	ModeOverlay,
+	ModeAudioLevels
   };
 
   Histogram(PClip _child, Mode _mode, IScriptEnvironment* env);
@@ -61,13 +63,16 @@ public:
   PVideoFrame Histogram::DrawModeClassic    (int n, IScriptEnvironment* env);
   PVideoFrame Histogram::DrawModeLevels     (int n, IScriptEnvironment* env);
   PVideoFrame Histogram::DrawModeColor      (int n, IScriptEnvironment* env);
+  PVideoFrame Histogram::DrawModeColor2     (int n, IScriptEnvironment* env);
   PVideoFrame Histogram::DrawModeLuma       (int n, IScriptEnvironment* env);
   PVideoFrame Histogram::DrawModeStereo     (int n, IScriptEnvironment* env);
   PVideoFrame Histogram::DrawModeOverlay    (int n, IScriptEnvironment* env);
+  PVideoFrame Histogram::DrawModeAudioLevels(int n, IScriptEnvironment* env);
 
   static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env);
 private:
   Mode mode;
+  int deg15c[24], deg15s[24];
   PClip aud_clip;
 };
 
