@@ -47,18 +47,27 @@ class Histogram : public GenericVideoFilter
  **/
 {
 public:
-  Histogram(PClip _child, int _mode, IScriptEnvironment* env);
+  enum Mode {
+    ModeClassic=0,
+	ModeLevels,
+	ModeColor,
+	ModeLuma,
+	ModeStereo,
+	ModeOverlay,
+  };
+
+  Histogram(PClip _child, Mode _mode, IScriptEnvironment* env);
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
-  PVideoFrame Histogram::DrawMode0(int n, IScriptEnvironment* env);
-  PVideoFrame Histogram::DrawMode1(int n, IScriptEnvironment* env);
-  PVideoFrame Histogram::DrawMode2(int n, IScriptEnvironment* env);
-  PVideoFrame Histogram::DrawMode3(int n, IScriptEnvironment* env);
-  PVideoFrame Histogram::DrawMode4(int n, IScriptEnvironment* env);
-  PVideoFrame Histogram::DrawMode5(int n, IScriptEnvironment* env);
+  PVideoFrame Histogram::DrawModeClassic    (int n, IScriptEnvironment* env);
+  PVideoFrame Histogram::DrawModeLevels     (int n, IScriptEnvironment* env);
+  PVideoFrame Histogram::DrawModeColor      (int n, IScriptEnvironment* env);
+  PVideoFrame Histogram::DrawModeLuma       (int n, IScriptEnvironment* env);
+  PVideoFrame Histogram::DrawModeStereo     (int n, IScriptEnvironment* env);
+  PVideoFrame Histogram::DrawModeOverlay    (int n, IScriptEnvironment* env);
 
   static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env);
 private:
-  int mode;
+  Mode mode;
   PClip aud_clip;
 };
 

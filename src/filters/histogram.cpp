@@ -57,16 +57,16 @@ AVSFunction Histogram_filters[] = {
  *******   Histogram Filter   ******
  **********************************/
 
-Histogram::Histogram(PClip _child, int _mode, IScriptEnvironment* env) 
+Histogram::Histogram(PClip _child, Mode _mode, IScriptEnvironment* env) 
   : GenericVideoFilter(_child), mode(_mode)
 {
 
-  if (mode ==0) {
+  if (mode == ModeClassic) {
     if (!vi.IsYUV())
       env->ThrowError("Histogram: YUV data only");
     vi.width += 256;
   }
-  if (mode ==1) {
+  if (mode == ModeLevels) {
     if (!vi.IsYUV())
       env->ThrowError("Histogram: YUV data only");
     if (!vi.IsPlanar())
@@ -75,7 +75,7 @@ Histogram::Histogram(PClip _child, int _mode, IScriptEnvironment* env)
     vi.height = max(256,vi.height);
   }
 
-  if (mode ==2) {
+  if (mode == ModeColor) {
     if (!vi.IsYUV())
       env->ThrowError("Histogram: YUV data only");
     if (!vi.IsPlanar())
@@ -84,22 +84,22 @@ Histogram::Histogram(PClip _child, int _mode, IScriptEnvironment* env)
     vi.height = max(256,vi.height);
   }
 
-  if (mode ==3) {
+  if (mode == ModeLuma) {
     if (!vi.IsYUV())
       env->ThrowError("Histogram: Luma mode only available in YUV.");
   }
 
-  if ((mode == 4)||(mode==5)) {
+  if ((mode == ModeStereo)||(mode==ModeOverlay)) {
 
     child->SetCacheHints(CACHE_AUDIO,4096*1024);
 
     if (!vi.HasVideo()) {
-      mode = 4; // force mode to 4.
+      mode = ModeStereo; // force mode to ModeStereo.
       vi.fps_numerator = 25;
       vi.fps_denominator = 1;
       vi.num_frames = vi.FramesFromAudioSamples(vi.num_audio_samples);
     }
-    if (mode == 5)  {
+    if (mode == ModeOverlay)  {
       vi.height = max(512, vi.height);
       vi.width = max(512, vi.width);
       if(!vi.IsYV12())
@@ -121,24 +121,24 @@ Histogram::Histogram(PClip _child, int _mode, IScriptEnvironment* env)
 PVideoFrame __stdcall Histogram::GetFrame(int n, IScriptEnvironment* env) 
 {
   switch (mode) {
-  case 0:
-    return DrawMode0(n, env);
-  case 1:
-    return DrawMode1(n, env);
-  case 2:
-    return DrawMode2(n, env);
-  case 3:
-    return DrawMode3(n, env);
-  case 4:
-    return DrawMode4(n, env);
-  case 5:
-    return DrawMode5(n, env);
+  case ModeClassic:
+    return DrawModeClassic(n, env);
+  case ModeLevels:
+    return DrawModeLevels(n, env);
+  case ModeColor:
+    return DrawModeColor(n, env);
+  case ModeLuma:
+    return DrawModeLuma(n, env);
+  case ModeStereo:
+    return DrawModeStereo(n, env);
+  case ModeOverlay:
+    return DrawModeOverlay(n, env);
   }
-  return DrawMode0(n, env);
+  return DrawModeClassic(n, env);
 }
 
 
-PVideoFrame Histogram::DrawMode5(int n, IScriptEnvironment* env) {
+PVideoFrame Histogram::DrawModeOverlay(int n, IScriptEnvironment* env) {
   PVideoFrame dst = env->NewVideoFrame(vi);
 
   __int64 start = vi.AudioSamplesFromFrames(n); 
@@ -202,7 +202,7 @@ PVideoFrame Histogram::DrawMode5(int n, IScriptEnvironment* env) {
 }
 
 
-PVideoFrame Histogram::DrawMode4(int n, IScriptEnvironment* env) {
+PVideoFrame Histogram::DrawModeStereo(int n, IScriptEnvironment* env) {
   PVideoFrame src = env->NewVideoFrame(vi);
   env->MakeWritable(&src);
   __int64 start = vi.AudioSamplesFromFrames(n); 
@@ -253,7 +253,7 @@ PVideoFrame Histogram::DrawMode4(int n, IScriptEnvironment* env) {
   return src;
 }
 
-PVideoFrame Histogram::DrawMode3(int n, IScriptEnvironment* env) {
+PVideoFrame Histogram::DrawModeLuma(int n, IScriptEnvironment* env) {
   PVideoFrame src = child->GetFrame(n, env);
   env->MakeWritable(&src);
   int w = src->GetRowSize();
@@ -285,7 +285,7 @@ PVideoFrame Histogram::DrawMode3(int n, IScriptEnvironment* env) {
 }
 
 
-PVideoFrame Histogram::DrawMode2(int n, IScriptEnvironment* env) {
+PVideoFrame Histogram::DrawModeColor(int n, IScriptEnvironment* env) {
   PVideoFrame dst = env->NewVideoFrame(vi);
   BYTE* p = dst->GetWritePtr();
   PVideoFrame src = child->GetFrame(n, env);
@@ -318,8 +318,8 @@ PVideoFrame Histogram::DrawMode2(int n, IScriptEnvironment* env) {
         int u = pU[y*p+x];
         int v = pV[y*p+x];
         histUV[v*256+u]++;
-      } // end for x
-    } // end for y
+      }
+    }
 
 
     // Plot Histogram on Y.
@@ -389,7 +389,7 @@ PVideoFrame Histogram::DrawMode2(int n, IScriptEnvironment* env) {
 
 
 
-PVideoFrame Histogram::DrawMode1(int n, IScriptEnvironment* env) {
+PVideoFrame Histogram::DrawModeLevels(int n, IScriptEnvironment* env) {
   PVideoFrame dst = env->NewVideoFrame(vi);
   BYTE* p = dst->GetWritePtr();
   PVideoFrame src = child->GetFrame(n, env);
@@ -570,7 +570,7 @@ PVideoFrame Histogram::DrawMode1(int n, IScriptEnvironment* env) {
 }
 
 
-PVideoFrame Histogram::DrawMode0(int n, IScriptEnvironment* env) 
+PVideoFrame Histogram::DrawModeClassic(int n, IScriptEnvironment* env) 
 {
   PVideoFrame dst = env->NewVideoFrame(vi);
   BYTE* p = dst->GetWritePtr();
@@ -680,25 +680,25 @@ AVSValue __cdecl Histogram::Create(AVSValue args, void*, IScriptEnvironment* env
 {
   const char* st_m = args[1].AsString("classic");
 
-  int mode = 0; 
+  Mode mode = ModeClassic; 
 
   if (!lstrcmpi(st_m, "classic"))
-    mode = 0;
+    mode = ModeClassic;
 
   if (!lstrcmpi(st_m, "levels"))
-    mode = 1;
+    mode = ModeLevels;
 
   if (!lstrcmpi(st_m, "color"))
-    mode = 2;
+    mode = ModeColor;
 
   if (!lstrcmpi(st_m, "luma"))
-    mode = 3;
+    mode = ModeLuma;
 
   if (!lstrcmpi(st_m, "stereo"))
-    mode = 4;
+    mode = ModeStereo;
 
   if (!lstrcmpi(st_m, "stereooverlay"))
-    mode = 5;
+    mode = ModeOverlay;
 
   return new Histogram(args[0].AsClip(), mode, env);
 }
