@@ -556,7 +556,7 @@ PVideoFrame ShowChannel::GetFrame(int n, IScriptEnvironment* env)
   if (input_type == VideoInfo::CS_BGR32) {
     if (vi.pixel_type == VideoInfo::CS_BGR32)
     {
-  	if (f->IsWritable()) {
+      if (f->IsWritable()) {
         // we can do it in-place
         BYTE* dstp = f->GetWritePtr();
         
@@ -566,10 +566,9 @@ PVideoFrame ShowChannel::GetFrame(int n, IScriptEnvironment* env)
           }
           dstp += pitch;
         }
-      
         return f;
       }
-  	else {
+      else {
         PVideoFrame dst = env->NewVideoFrame(vi);
         BYTE * dstp = dst->GetWritePtr();
         const int dstpitch = dst->GetPitch();
@@ -582,9 +581,8 @@ PVideoFrame ShowChannel::GetFrame(int n, IScriptEnvironment* env)
           pf   += pitch;
           dstp += dstpitch;
         }
-    
         return dst;
-  	}
+      }
     }
     else if (vi.pixel_type == VideoInfo::CS_BGR24)
     {    
@@ -599,7 +597,6 @@ PVideoFrame ShowChannel::GetFrame(int n, IScriptEnvironment* env)
         pf   += pitch;
         dstp += dstpitch;
       }
-    
       return dst;
     }
     else if (vi.pixel_type == VideoInfo::CS_YUY2)
@@ -620,49 +617,52 @@ PVideoFrame ShowChannel::GetFrame(int n, IScriptEnvironment* env)
         pf -= pitch;
         dstp += dstpitch;
       }      
- 
       return dst;
     }
-    else if (vi.pixel_type == VideoInfo::CS_YV12)
+    else
     {
-      int i, j;  // stupid VC6
- 
-      PVideoFrame dst = env->NewVideoFrame(vi);
-      BYTE * dstp = dst->GetWritePtr();
-      int dstpitch = dst->GetPitch();
-      int dstrowsize = dst->GetRowSize();
- 
-      // RGB is upside-down
-      pf += (height-1) * pitch;
- 
-      for (i=0; i<height; ++i) {
-        for (j=0; j<dstrowsize; ++j) {
-          dstp[j] = pf[j*4 + channel]; 
+      if ((vi.pixel_type == VideoInfo::CS_YV12)) // || (vi.pixel_type == VideoInfo::CS_Y8))
+      {
+        int i, j;  // stupid VC6
+   
+        PVideoFrame dst = env->NewVideoFrame(vi);
+        BYTE * dstp = dst->GetWritePtr();
+        int dstpitch = dst->GetPitch();
+        int dstrowsize = dst->GetRowSize();
+   
+        // RGB is upside-down
+        pf += (height-1) * pitch;
+   
+        for (i=0; i<height; ++i) {
+          for (j=0; j<dstrowsize; ++j) {
+            dstp[j] = pf[j*4 + channel]; 
+          }
+          pf -= pitch;
+          dstp += dstpitch;
         }
-        pf -= pitch;
-        dstp += dstpitch;
-      }
- 
-      dstpitch = dst->GetPitch(PLANAR_U);
-      dstrowsize = dst->GetRowSize(PLANAR_U_ALIGNED)/4;
-      const int dstheight = dst->GetHeight(PLANAR_U);
-      BYTE * dstpu = dst->GetWritePtr(PLANAR_U);
-      BYTE * dstpv = dst->GetWritePtr(PLANAR_V);
-      for (i=0; i<dstheight; ++i) {      
-        for (j=0; j<dstrowsize; ++j) {
-          ((unsigned int*) dstpu)[j] = ((unsigned int*) dstpv)[j] = 0x80808080;
+        if (vi.pixel_type == VideoInfo::CS_YV12)
+        {
+          dstpitch = dst->GetPitch(PLANAR_U);
+          dstrowsize = dst->GetRowSize(PLANAR_U_ALIGNED)/4;
+          const int dstheight = dst->GetHeight(PLANAR_U);
+          BYTE * dstpu = dst->GetWritePtr(PLANAR_U);
+          BYTE * dstpv = dst->GetWritePtr(PLANAR_V);
+          for (i=0; i<dstheight; ++i) {      
+            for (j=0; j<dstrowsize; ++j) {
+              ((unsigned int*) dstpu)[j] = ((unsigned int*) dstpv)[j] = 0x80808080;
+            }
+            dstpu += dstpitch;
+            dstpv += dstpitch;
+          }
         }
-        dstpu += dstpitch;
-        dstpv += dstpitch;
+        return dst;
       }
- 
-      return dst;
     }
   }
   else if (input_type == VideoInfo::CS_BGR24) {
     if (vi.pixel_type == VideoInfo::CS_BGR24)
     {
-  	if (f->IsWritable()) {
+      if (f->IsWritable()) {
         // we can do it in-place
         BYTE* dstp = f->GetWritePtr();
         
@@ -672,10 +672,9 @@ PVideoFrame ShowChannel::GetFrame(int n, IScriptEnvironment* env)
           }
           dstp += pitch;
         }
-      
         return f;
       }
-  	else {
+      else {
         PVideoFrame dst = env->NewVideoFrame(vi);
         BYTE * dstp = dst->GetWritePtr();
         const int dstpitch = dst->GetPitch();
@@ -687,9 +686,8 @@ PVideoFrame ShowChannel::GetFrame(int n, IScriptEnvironment* env)
           pf   += pitch;
           dstp += dstpitch;
         }
-    
         return dst;
-  	}
+      }
     }
     else if (vi.pixel_type == VideoInfo::CS_BGR32)
     {    
@@ -704,7 +702,6 @@ PVideoFrame ShowChannel::GetFrame(int n, IScriptEnvironment* env)
         pf   += pitch;
         dstp += dstpitch;
       }
-    
       return dst;
     }
     else if (vi.pixel_type == VideoInfo::CS_YUY2)
@@ -725,46 +722,48 @@ PVideoFrame ShowChannel::GetFrame(int n, IScriptEnvironment* env)
         pf -= pitch;
         dstp += dstpitch;
       }      
- 
       return dst;
     }
-    else if (vi.pixel_type == VideoInfo::CS_YV12)
+    else
     {
-      int i, j;  // stupid VC6
- 
-      PVideoFrame dst = env->NewVideoFrame(vi);
-      BYTE * dstp = dst->GetWritePtr();
-      int dstpitch = dst->GetPitch();
-      int dstrowsize = dst->GetRowSize();
- 
-      // RGB is upside-down
-      pf += (height-1) * pitch;
- 
-      for (i=0; i<height; ++i) {
-        for (j=0; j<dstrowsize; ++j) {
-          dstp[j] = pf[j*3 + channel]; 
+      if ((vi.pixel_type == VideoInfo::CS_YV12)) // || (vi.pixel_type == VideoInfo::CS_Y8))
+      {
+        int i, j;  // stupid VC6
+   
+        PVideoFrame dst = env->NewVideoFrame(vi);
+        BYTE * dstp = dst->GetWritePtr();
+        int dstpitch = dst->GetPitch();
+        int dstrowsize = dst->GetRowSize();
+   
+        // RGB is upside-down
+        pf += (height-1) * pitch;
+   
+        for (i=0; i<height; ++i) {
+          for (j=0; j<dstrowsize; ++j) {
+            dstp[j] = pf[j*3 + channel]; 
+          }
+          pf -= pitch;
+          dstp += dstpitch;
         }
-        pf -= pitch;
-        dstp += dstpitch;
-      }
- 
-      dstpitch = dst->GetPitch(PLANAR_U);
-      dstrowsize = dst->GetRowSize(PLANAR_U_ALIGNED)/4;
-      int dstheight = dst->GetHeight(PLANAR_U);
-      BYTE * dstpu = dst->GetWritePtr(PLANAR_U);
-      BYTE * dstpv = dst->GetWritePtr(PLANAR_V);
-      for (i=0; i<dstheight; ++i) {      
-        for (j=0; j<dstrowsize; ++j) {
-          ((unsigned int*) dstpu)[j] = ((unsigned int*) dstpv)[j] = 0x80808080;
+        if (vi.pixel_type == VideoInfo::CS_YV12)
+        {
+          dstpitch = dst->GetPitch(PLANAR_U);
+          dstrowsize = dst->GetRowSize(PLANAR_U_ALIGNED)/4;
+          const int dstheight = dst->GetHeight(PLANAR_U);
+          BYTE * dstpu = dst->GetWritePtr(PLANAR_U);
+          BYTE * dstpv = dst->GetWritePtr(PLANAR_V);
+          for (i=0; i<dstheight; ++i) {      
+            for (j=0; j<dstrowsize; ++j) {
+              ((unsigned int*) dstpu)[j] = ((unsigned int*) dstpv)[j] = 0x80808080;
+            }
+            dstpu += dstpitch;
+            dstpv += dstpitch;
+          }
         }
-        dstpu += dstpitch;
-        dstpv += dstpitch;
+        return dst;
       }
- 
-      return dst;
     }
   }
-
   env->ThrowError("ShowChannel: unexpected end of function");
   return f;
 }
@@ -788,13 +787,13 @@ MergeRGB::MergeRGB(PClip _child, PClip _blue, PClip _green, PClip _red, PClip _a
                    const char * pixel_type, IScriptEnvironment* env)
   : GenericVideoFilter(_child), blue(_blue), green(_green), red(_red), alpha(_alpha),
     viB(blue->GetVideoInfo()), viG(green->GetVideoInfo()), viR(red->GetVideoInfo()),
-	viA(((alpha) ? alpha : child)->GetVideoInfo()), myname((alpha) ? "MergeARGB" : "MergeRGB")
+    viA(((alpha) ? alpha : child)->GetVideoInfo()), myname((alpha) ? "MergeARGB" : "MergeRGB")
 {
 
   if (!lstrcmpi(pixel_type, "rgb32")) {
     vi.pixel_type = VideoInfo::CS_BGR32;
-	if (alpha && (viA.pixel_type == VideoInfo::CS_BGR24))
-	  env->ThrowError("MergeARGB: Alpha source channel may not be RGB24");
+    if (alpha && (viA.pixel_type == VideoInfo::CS_BGR24))
+      env->ThrowError("MergeARGB: Alpha source channel may not be RGB24");
   } 
   else if (!lstrcmpi(pixel_type, "rgb24")) {
     vi.pixel_type = VideoInfo::CS_BGR24;
@@ -843,9 +842,9 @@ PVideoFrame MergeRGB::GetFrame(int n, IScriptEnvironment* env)
   const int Rmodulo = Rpitch - R->GetRowSize();
 
   // Number of bytes per pixel (1, 2, 3 or 4)
-  const int Bstride = viB.BitsPerPixel()>>3;
-  const int Gstride = viG.BitsPerPixel()>>3;
-  const int Rstride = viR.BitsPerPixel()>>3;
+  const int Bstride = viB.IsPlanar() ? 1 : (viB.BitsPerPixel()>>3);
+  const int Gstride = viG.IsPlanar() ? 1 : (viG.BitsPerPixel()>>3);
+  const int Rstride = viR.IsPlanar() ? 1 : (viR.BitsPerPixel()>>3);
 
   // End of VFB
   BYTE const * yend = dstp + pitch*height;
@@ -854,10 +853,10 @@ PVideoFrame MergeRGB::GetFrame(int n, IScriptEnvironment* env)
     const int Apitch = (viA.IsYUV()) ? -(A->GetPitch()) : A->GetPitch();
     const BYTE* Ap = A->GetReadPtr() + ((Apitch < 0) ? Apitch * (1-height) : 3);
     const int Amodulo = Apitch - A->GetRowSize();
-    const int Astride = viA.BitsPerPixel()>>3;
+    const int Astride = viA.IsPlanar() ? 1 : (viA.BitsPerPixel()>>3);
 
     while (dstp < yend) {
-	  BYTE const * xend = dstp + rowsize;
+      BYTE const * xend = dstp + rowsize;
       while (dstp < xend) {
         *dstp++ = *Bp; Bp += Bstride;
         *dstp++ = *Gp; Gp += Gstride;
@@ -873,7 +872,7 @@ PVideoFrame MergeRGB::GetFrame(int n, IScriptEnvironment* env)
   }
   else if (vi.pixel_type == VideoInfo::CS_BGR32) { // RGB32 mode
     while (dstp < yend) {
-	  BYTE const * xend = dstp + rowsize;
+      BYTE const * xend = dstp + rowsize;
       while (dstp < xend) {
         *dstp++ = *Bp; Bp += Bstride;
         *dstp++ = *Gp; Gp += Gstride;
@@ -888,7 +887,7 @@ PVideoFrame MergeRGB::GetFrame(int n, IScriptEnvironment* env)
   }
   else if (vi.pixel_type == VideoInfo::CS_BGR24) { // RGB24 mode
     while (dstp < yend) {
-	  BYTE const * xend = dstp + rowsize;
+      BYTE const * xend = dstp + rowsize;
       while (dstp < xend) {
         *dstp++ = *Bp; Bp += Bstride;
         *dstp++ = *Gp; Gp += Gstride;
@@ -2337,6 +2336,8 @@ AVSValue __cdecl Layer::Create(AVSValue args, void*, IScriptEnvironment* env)
 /**********************************
  *******   Subtract Filter   ******
  *********************************/
+bool Subtract::DiffFlag = false;
+BYTE Subtract::Diff[513];
 
 Subtract::Subtract(PClip _child1, PClip _child2, IScriptEnvironment* env)
   : child1(_child1), child2(_child2)
@@ -2353,6 +2354,11 @@ Subtract::Subtract(PClip _child1, PClip _child2, IScriptEnvironment* env)
   vi = vi1;
   vi.num_frames = max(vi1.num_frames, vi2.num_frames);
   vi.num_audio_samples = max(vi1.num_audio_samples, vi2.num_audio_samples);
+
+  if (!DiffFlag) { // Init the global Diff table
+    DiffFlag = true;
+    for (int i=0; i<=512; i++) Diff[i] = max(0,min(255,i-129));
+  }
 }
 
 
@@ -2367,50 +2373,55 @@ PVideoFrame __stdcall Subtract::GetFrame(int n, IScriptEnvironment* env)
   const BYTE* src2p = src2->GetReadPtr();
   int row_size = src1->GetRowSize();
 
-  if (vi.IsPlanar() /*  && !vi.IsY8()) */ ) {
+  if (vi.IsPlanar()) {
     for (int y=0; y<vi.height; y++) {
       for (int x=0; x<row_size; x++) {
-        src1p[x] = max(0,min(255,(src1p[x] - src2p[x]) + 126));
+        src1p[x] = Diff[src1p[x] - src2p[x] + 126 + 129];
       }
       src1p += src1->GetPitch();
       src2p += src2->GetPitch();
     }
-    BYTE* src1p = src1->GetWritePtr(PLANAR_U);
-    const BYTE* src2p = src2->GetReadPtr(PLANAR_U);
-    BYTE* src1pV = src1->GetWritePtr(PLANAR_V);
-    const BYTE* src2pV = src2->GetReadPtr(PLANAR_V);
 
     row_size=src1->GetRowSize(PLANAR_U);
+    if (row_size) {
+      BYTE* src1p = src1->GetWritePtr(PLANAR_U);
+      const BYTE* src2p = src2->GetReadPtr(PLANAR_U);
+      BYTE* src1pV = src1->GetWritePtr(PLANAR_V);
+      const BYTE* src2pV = src2->GetReadPtr(PLANAR_V);
 
-    for (y=0; y<src1->GetHeight(PLANAR_U); y++) {
-      for (int x=0; x<row_size; x++) {
-        src1p[x] = max(0,min(255,(src1p[x] - src2p[x]) + 128));
-        src1pV[x] = max(0,min(255,(src1pV[x] - src2pV[x]) + 128));
+      for (y=0; y<src1->GetHeight(PLANAR_U); y++) {
+        for (int x=0; x<row_size; x++) {
+          src1p[x] = Diff[src1p[x] - src2p[x] + 128 + 129];
+          src1pV[x] = Diff[src1pV[x] - src2pV[x] + 128 + 129];
+        }
+        src1p += src1->GetPitch(PLANAR_U);
+        src2p += src2->GetPitch(PLANAR_U);
+        src1pV += src1->GetPitch(PLANAR_V);
+        src2pV += src2->GetPitch(PLANAR_V);
       }
-      src1p += src1->GetPitch(PLANAR_U);
-      src2p += src2->GetPitch(PLANAR_U);
-      src1pV += src1->GetPitch(PLANAR_V);
-      src2pV += src2->GetPitch(PLANAR_V);
     }
     return src1;
   } // End planar
 
-  for (int y=0; y<vi.height; ++y) 
-  {
-    // For YUY2, 50% gray is about (126,128,128) instead of (128,128,128).  Grr...
-    if (vi.IsYUY2()) {
+  // For YUY2, 50% gray is about (126,128,128) instead of (128,128,128).  Grr...
+  if (vi.IsYUY2()) {
+    for (int y=0; y<vi.height; ++y) {
       for (int x=0; x<row_size; x+=2) {
-        src1p[x] = max(0,min(255,src1p[x] - src2p[x] + 126));
-        src1p[x+1] = max(0,min(255,src1p[x+1] - src2p[x+1] + 128));
+        src1p[x] = Diff[src1p[x] - src2p[x] + 126 + 129];
+        src1p[x+1] = Diff[src1p[x+1] - src2p[x+1] + 128 + 129];
       }
-    } else {
-      for (int x=0; x<row_size; ++x)
-        src1p[x] = max(0,min(255,src1p[x] - src2p[x] + 128));
+      src1p += src1->GetPitch();
+      src2p += src2->GetPitch();
     }
-    src1p += src1->GetPitch();
-    src2p += src2->GetPitch();
   }
-
+  else { // RGB
+    for (int y=0; y<vi.height; ++y) {
+      for (int x=0; x<row_size; ++x)
+        src1p[x] = Diff[src1p[x] - src2p[x] + 128 + 129];
+	  src1p += src1->GetPitch();
+	  src2p += src2->GetPitch();
+    }
+  }
   return src1;
 }
 

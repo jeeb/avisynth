@@ -218,6 +218,10 @@ private:
   const PClip child1, child2;
   VideoInfo vi;
 
+// Common to all instances
+  static bool DiffFlag;
+  static BYTE Diff[513];
+
 };
 
 
