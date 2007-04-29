@@ -1,9 +1,9 @@
 #ifndef _PFC_STRING_H_
 #define _PFC_STRING_H_
 
-#ifndef WCHAR
-typedef unsigned short WCHAR;
-#endif
+//#ifndef WCHAR
+//typedef unsigned short WCHAR;
+//#endif
 
 bool is_path_separator(unsigned c);
 bool is_path_bad_char(unsigned c);
@@ -491,7 +491,7 @@ public:
 	inline const T * operator = (const string_simple_t<T> & param) {set_string(param);return get_ptr();}
 	inline const T * operator += (const T * src) {add_string(src);return get_ptr();}
 
-	inline string_simple(const string_simple_t<T> & param) {ptr = t_strdup(param);}
+	inline int string_simple(const string_simple_t<T> & param) {ptr = t_strdup(param);}
 	inline void reset() {if (ptr) {mem_ops<T>::free(ptr);ptr=0;}}
 	inline bool is_empty() {return !ptr || !*ptr;}
 	inline unsigned length() {return t_strlen(get_ptr());}

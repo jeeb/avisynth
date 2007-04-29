@@ -800,6 +800,7 @@ private:
 
   LinkedVideoFrameBuffer* GetFrameBuffer2(int size);
   VideoFrameBuffer* GetFrameBuffer(int size);
+  long CPU_id;
 
   // helper for Invoke
   int Flatten(const AVSValue& src, AVSValue* dst, int index, int max, const char** arg_names=0);
@@ -819,6 +820,7 @@ private:
 };
 
 long ScriptEnvironment::refcount=0;
+extern long CPUCheckForExtensions();  // in cpuaccel.cpp
 
 ScriptEnvironment::ScriptEnvironment()
   : at_exit(This()),
@@ -829,6 +831,8 @@ ScriptEnvironment::ScriptEnvironment()
 
   try {
     hrfromcoinit = CoInitialize(NULL);
+
+    CPU_id = CPUCheckForExtensions();
 
     if(InterlockedCompareExchange(&refcount, 1, 0) == 0)//tsp June 2005 Initialize Recycle bin
       g_Bin=new RecycleBin();
@@ -908,14 +912,13 @@ void ScriptEnvironment::CheckVersion(int version) {
     ThrowError("Plugin was designed for a later version of Avisynth (%d)", version);
 }
 
-extern long CPUCheckForExtensions();  // in cpuaccel.cpp
 
 long GetCPUFlags() {
   static long lCPUExtensionsAvailable = CPUCheckForExtensions();
   return lCPUExtensionsAvailable;
 }
 
-long ScriptEnvironment::GetCPUFlags() { return ::GetCPUFlags(); }
+long ScriptEnvironment::GetCPUFlags() { return CPU_id; }
 
 void ScriptEnvironment::AddFunction(const char* name, const char* params, ApplyFunc apply, void* user_data) {
   function_table.AddFunction(name, params, apply, user_data);
@@ -1383,6 +1386,7 @@ LinkedVideoFrameBuffer* ScriptEnvironment::GetFrameBuffer2(int size) {
       if (i->GetRefcount() == 0) {
         if (i->GetDataSize() == size) {
           ++g_Mem_stats.PlanB;
+          InterlockedIncrement((long*)&i->sequence_number);  // Signal to the cache that the vfb has been stolen
           return i;
         }
         if (i->GetDataSize() > size) {
@@ -1395,6 +1399,7 @@ LinkedVideoFrameBuffer* ScriptEnvironment::GetFrameBuffer2(int size) {
     // Plan C: Steal the oldest, smallest free buffer that is greater in size
     if (j && c > Cache::PC_Nil) {
       ++g_Mem_stats.PlanC;
+      InterlockedIncrement((long*)&j->sequence_number);  // Signal to the cache that the vfb has been stolen
       return j;
     }
   }

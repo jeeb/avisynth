@@ -54,15 +54,15 @@ void (*TurnPlanFunc) (const unsigned char *srcp_y, unsigned char *dstp_y,
 				  const int rowsize, const int height,
 				  const int rowsizeUV, const int heightUV,
 				  const int src_pitch_y, const int dst_pitch_y,
-				  const int src_pitch_uv, const int dst_pitch_uv,
-				  const int direction);
+				  const int src_pitch_u, const int dst_pitch_uv,
+				  const int src_pitch_v, const int direction);
 
 	int			direction;
 
 public:
     Turn(PClip _child, int _direction, IScriptEnvironment* env):GenericVideoFilter(_child){
 		if (_direction) {
-			int src_height = vi.height;
+			const int src_height = vi.height;
 			vi.height = vi.width;
 			vi.width = src_height;
 		}

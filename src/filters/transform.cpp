@@ -77,7 +77,7 @@ PVideoFrame FlipVertical::GetFrame(int n, IScriptEnvironment* env) {
   int src_pitch = src->GetPitch();
   int dst_pitch = dst->GetPitch();
   env->BitBlt(dstp, dst_pitch, srcp + (vi.height-1) * src_pitch, -src_pitch, row_size, vi.height);
-  if (vi.IsPlanar()) {
+  if (src->GetPitch(PLANAR_U)) {
     srcp = src->GetReadPtr(PLANAR_U);
     dstp = dst->GetWritePtr(PLANAR_U);
     row_size = src->GetRowSize(PLANAR_U);
@@ -138,31 +138,33 @@ PVideoFrame FlipHorizontal::GetFrame(int n, IScriptEnvironment* env) {
       dstp += dst_pitch;
     }
 
-    srcp = src->GetReadPtr(PLANAR_U);
-    dstp = dst->GetWritePtr(PLANAR_U);
-    row_size = src->GetRowSize(PLANAR_U);
-    src_pitch = src->GetPitch(PLANAR_U);
-    dst_pitch = dst->GetPitch(PLANAR_U);
-    h = src->GetHeight(PLANAR_U);
-    srcp+=row_size-1;
-    for (y=0; y<h;y++) {
-      for (int x=0; x<row_size; x++) {
-        dstp[x] = srcp[-x];
+    if (src->GetPitch(PLANAR_U)) {
+      srcp = src->GetReadPtr(PLANAR_U);
+      dstp = dst->GetWritePtr(PLANAR_U);
+      row_size = src->GetRowSize(PLANAR_U);
+      src_pitch = src->GetPitch(PLANAR_U);
+      dst_pitch = dst->GetPitch(PLANAR_U);
+      h = src->GetHeight(PLANAR_U);
+      srcp+=row_size-1;
+      for (y=0; y<h;y++) {
+        for (int x=0; x<row_size; x++) {
+          dstp[x] = srcp[-x];
+        }
+        srcp += src_pitch;
+        dstp += dst_pitch;
       }
-      srcp += src_pitch;
-      dstp += dst_pitch;
-    }
-    srcp = src->GetReadPtr(PLANAR_V);
-    dstp = dst->GetWritePtr(PLANAR_V);
-    srcp+=row_size-1;
-    for (y=0; y<h;y++) {
-      for (int x=0; x<row_size; x++) {
-        dstp[x] = srcp[-x];
+      srcp = src->GetReadPtr(PLANAR_V);
+      dstp = dst->GetWritePtr(PLANAR_V);
+      srcp+=row_size-1;
+      for (y=0; y<h;y++) {
+        for (int x=0; x<row_size; x++) {
+          dstp[x] = srcp[-x];
+        }
+        srcp += src_pitch;
+        dstp += dst_pitch;
       }
-      srcp += src_pitch;
-      dstp += dst_pitch;
     }
-		return dst;
+    return dst;
   }
   srcp+=row_size-bpp;
   if (vi.IsRGB32()) {
@@ -265,13 +267,13 @@ PVideoFrame Crop::GetFrame(int n, IScriptEnvironment* env)
 
   int _align;
 
-  if (env->PlanarChromaAlignment(IScriptEnvironment::PlanarChromaAlignmentTest))
+  if (frame->GetPitch(PLANAR_U) && (!vi.IsYV12() || env->PlanarChromaAlignment(IScriptEnvironment::PlanarChromaAlignmentTest)))
     _align = align & ((int)srcpY|(int)srcpU|(int)srcpV);
   else
     _align = align & (int)srcpY;
 
   if (_align) {
-    PVideoFrame dst = env->NewVideoFrame(vi,align);  
+    PVideoFrame dst = env->NewVideoFrame(vi, align+1);  
 
     env->BitBlt(dst->GetWritePtr(PLANAR_Y), dst->GetPitch(PLANAR_Y), srcpY,
       frame->GetPitch(PLANAR_Y), dst->GetRowSize(PLANAR_Y), dst->GetHeight(PLANAR_Y));
@@ -285,7 +287,7 @@ PVideoFrame Crop::GetFrame(int n, IScriptEnvironment* env)
     return dst;
   }
 
-  if (!vi.IsPlanar())
+  if (!frame->GetPitch(PLANAR_U))
     return env->Subframe(frame, top * frame->GetPitch() + left_bytes, frame->GetPitch(), vi.RowSize(), vi.height);
   else
     return env->SubframePlanar(frame, top * frame->GetPitch() + left_bytes, frame->GetPitch(), vi.RowSize(), vi.height,
@@ -369,36 +371,38 @@ PVideoFrame AddBorders::GetFrame(int n, IScriptEnvironment* env)
     for (int c=0; c<final_black; c++)
       *(unsigned char*)(dstp+c) = YBlack;
 
-    const int initial_blackUV = (top>>ysub) * dst->GetPitch(PLANAR_U) + (left>>xsub);
-    const int middle_blackUV  = dst->GetPitch(PLANAR_U) - src->GetRowSize(PLANAR_U);
-    const int final_blackUV   = (bot>>ysub) * dst->GetPitch(PLANAR_U) + (right>>xsub)
-                              + (dst->GetPitch(PLANAR_U)- dst->GetRowSize(PLANAR_U));
+    if (src->GetPitch(PLANAR_U)) {
+      const int initial_blackUV = (top>>ysub) * dst->GetPitch(PLANAR_U) + (left>>xsub);
+      const int middle_blackUV  = dst->GetPitch(PLANAR_U) - src->GetRowSize(PLANAR_U);
+      const int final_blackUV   = (bot>>ysub) * dst->GetPitch(PLANAR_U) + (right>>xsub)
+                                + (dst->GetPitch(PLANAR_U)- dst->GetRowSize(PLANAR_U));
 
-    BitBlt(dst->GetWritePtr(PLANAR_U)+initial_blackUV, dst->GetPitch(PLANAR_U), src->GetReadPtr(PLANAR_U), src->GetPitch(PLANAR_U), src->GetRowSize(PLANAR_U), src->GetHeight(PLANAR_U));
-    dstp = dst->GetWritePtr(PLANAR_U);
-    for (a=0; a<initial_blackUV; a++)
-      *(unsigned char*)(dstp+a) = UBlack;
-    dstp += initial_blackUV + src->GetRowSize(PLANAR_U);
-    for (y=src->GetHeight(PLANAR_U)-1; y>0; --y) {
-      for (int b=0; b<middle_blackUV; b++)
-        *(unsigned char*)(dstp+b) = UBlack;
-      dstp += dst->GetPitch(PLANAR_U);
-    }
-    for (c=0; c<final_blackUV; c ++)
-      *(unsigned char*)(dstp+c) = UBlack;
+      BitBlt(dst->GetWritePtr(PLANAR_U)+initial_blackUV, dst->GetPitch(PLANAR_U), src->GetReadPtr(PLANAR_U), src->GetPitch(PLANAR_U), src->GetRowSize(PLANAR_U), src->GetHeight(PLANAR_U));
+      dstp = dst->GetWritePtr(PLANAR_U);
+      for (a=0; a<initial_blackUV; a++)
+        *(unsigned char*)(dstp+a) = UBlack;
+      dstp += initial_blackUV + src->GetRowSize(PLANAR_U);
+      for (y=src->GetHeight(PLANAR_U)-1; y>0; --y) {
+        for (int b=0; b<middle_blackUV; b++)
+          *(unsigned char*)(dstp+b) = UBlack;
+        dstp += dst->GetPitch(PLANAR_U);
+      }
+      for (c=0; c<final_blackUV; c ++)
+        *(unsigned char*)(dstp+c) = UBlack;
 
-    BitBlt(dst->GetWritePtr(PLANAR_V)+initial_blackUV, dst->GetPitch(PLANAR_V), src->GetReadPtr(PLANAR_V), src->GetPitch(PLANAR_V), src->GetRowSize(PLANAR_V), src->GetHeight(PLANAR_V));
-    dstp = dst->GetWritePtr(PLANAR_V);
-    for (a=0; a<initial_blackUV; a++)
-      *(unsigned char*)(dstp+a) = VBlack;
-    dstp += initial_blackUV + src->GetRowSize(PLANAR_U);
-    for (y=src->GetHeight(PLANAR_U)-1; y>0; --y) {
-      for (int b=0; b<middle_blackUV; b++)
-        *(unsigned char*)(dstp+b) = VBlack;
-      dstp += dst->GetPitch(PLANAR_U);
+      BitBlt(dst->GetWritePtr(PLANAR_V)+initial_blackUV, dst->GetPitch(PLANAR_V), src->GetReadPtr(PLANAR_V), src->GetPitch(PLANAR_V), src->GetRowSize(PLANAR_V), src->GetHeight(PLANAR_V));
+      dstp = dst->GetWritePtr(PLANAR_V);
+      for (a=0; a<initial_blackUV; a++)
+        *(unsigned char*)(dstp+a) = VBlack;
+      dstp += initial_blackUV + src->GetRowSize(PLANAR_U);
+      for (y=src->GetHeight(PLANAR_U)-1; y>0; --y) {
+        for (int b=0; b<middle_blackUV; b++)
+          *(unsigned char*)(dstp+b) = VBlack;
+        dstp += dst->GetPitch(PLANAR_U);
+      }
+      for (c=0; c<final_blackUV; c++)
+        *(unsigned char*)(dstp+c) = VBlack;
     }
-    for (c=0; c<final_blackUV; c++)
-      *(unsigned char*)(dstp+c) = VBlack;
   }
   else if (vi.IsYUY2()) {
     const unsigned int colr = RGB2YUV(clr);

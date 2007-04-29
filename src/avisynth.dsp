@@ -224,6 +224,10 @@ SOURCE=.\core\Error.h
 # End Source File
 # Begin Source File
 
+SOURCE=.\core\info.h
+# End Source File
+# Begin Source File
+
 SOURCE=.\internal.h
 # End Source File
 # Begin Source File

@@ -277,9 +277,9 @@ PVideoFrame __stdcall ShowFiveVersions::GetFrame(int n, IScriptEnvironment* env)
       memset(dstp + ((height+i)*dst_pitch),        128, wg);
       memset(dstp + ((height+i)*dst_pitch) + wg*5, 128, wg);
     }
-    if (vi.IsPlanar() /* && !vi.IsY8() */) {
+    if (dst_pitchUV) {
       const int wgUV = dst->GetRowSize(PLANAR_U)/6;
-      for (int i=0; i<heightUV; i++){
+      for (int i=0; i<heightUV; i++) {
         memset(dstpU + ((heightUV+i)*dst_pitchUV),          128, wgUV);
         memset(dstpU + ((heightUV+i)*dst_pitchUV) + wgUV*5, 128, wgUV);
         memset(dstpV + ((heightUV+i)*dst_pitchUV),          128, wgUV);
