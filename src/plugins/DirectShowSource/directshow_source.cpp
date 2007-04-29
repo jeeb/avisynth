@@ -35,7 +35,7 @@
 
 #include "directshow_source.h"
 
-#define DSS_VERSION "2.5.7"
+#define DSS_VERSION "2.5.8"
 
 /************************************
  *          Logging Utility         *

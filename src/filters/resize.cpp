@@ -219,7 +219,6 @@ loopback_last:
 
 HorizontalReduceBy2::HorizontalReduceBy2(PClip _child, IScriptEnvironment* env)
 : GenericVideoFilter(_child), mybuffer(0)
-//: GenericVideoFilter(FillBorder::Create(_child)), mybuffer(0)
 {
   if (vi.IsYUY2() && (vi.width & 3))
     env->ThrowError("HorizontalReduceBy2: YUY2 image width must be even");
