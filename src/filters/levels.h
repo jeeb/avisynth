@@ -57,8 +57,6 @@ public:
 
 private:
   BYTE map[256], mapchroma[256];
-
-  _PixelClip PixelClip;
 };
 
 
@@ -88,10 +86,10 @@ class Tweak : public GenericVideoFilter
 {
 public:
   Tweak( PClip _child, double _hue, double _sat, double _bright, double _cont, bool _coring, bool _sse,
-         IScriptEnvironment* env );
+                       int _startHue, int _endHue, int _maxSat, int _minSat, int _interp,
+					   IScriptEnvironment* env );
 
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
-  AVSValue __cdecl Tweak::FilterInfo(int request);
 
   static AVSValue __cdecl Create(AVSValue args, void* user_data, IScriptEnvironment* env);
 
@@ -101,14 +99,19 @@ private:
 	bool coring, sse;
 
 	BYTE map[256];
-	int mapCos[256], mapSin[256];
+	unsigned short mapUV[256*256];
 };
-
 
 /**** ASM Routines ****/
 
 void asm_tweak_ISSE_YUY2( BYTE *srcp, int w, int h, int modulo, __int64 hue, __int64 satcont, 
                      __int64 bright );
+
+
+/* Helper function for Tweak and MaskHS filters */
+bool ProcessPixel(int X, int Y, int Sat, int startHue, int endHue,
+                  int maxSat, int minSat, int p, int &iSat);
+
 
 using namespace SoftWire; 
 
