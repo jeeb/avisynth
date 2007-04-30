@@ -603,8 +603,7 @@ PVideoFrame Histogram::DrawModeColor(int n, IScriptEnvironment* env) {
   if (vi.IsPlanar()) {
     env->BitBlt(dst->GetWritePtr(PLANAR_U), dst->GetPitch(PLANAR_U), src->GetReadPtr(PLANAR_U), src->GetPitch(PLANAR_U), src->GetRowSize(PLANAR_U), src->GetHeight(PLANAR_U));
     env->BitBlt(dst->GetWritePtr(PLANAR_V), dst->GetPitch(PLANAR_V), src->GetReadPtr(PLANAR_V), src->GetPitch(PLANAR_V), src->GetRowSize(PLANAR_V), src->GetHeight(PLANAR_V));
-    int histUV[256*256];
-    memset(histUV, 0, 256*256);
+    int histUV[256*256] = {0};
 
     const BYTE* pU = src->GetReadPtr(PLANAR_U);
     const BYTE* pV = src->GetReadPtr(PLANAR_V);
@@ -705,12 +704,9 @@ PVideoFrame Histogram::DrawModeLevels(int n, IScriptEnvironment* env) {
     env->BitBlt(dst->GetWritePtr(PLANAR_U), dst->GetPitch(PLANAR_U), src->GetReadPtr(PLANAR_U), src->GetPitch(PLANAR_U), src->GetRowSize(PLANAR_U), src->GetHeight(PLANAR_U));
     env->BitBlt(dst->GetWritePtr(PLANAR_V), dst->GetPitch(PLANAR_V), src->GetReadPtr(PLANAR_V), src->GetPitch(PLANAR_V), src->GetRowSize(PLANAR_V), src->GetHeight(PLANAR_V));
 
-    int histY[256];
-    int histU[256];
-    int histV[256];
-    memset(histY, 0, 256);
-    memset(histU, 0, 256);
-    memset(histV, 0, 256);
+    int histY[256] = {0};
+    int histU[256] = {0};
+    int histV[256] = {0};
 
     const BYTE* pY = src->GetReadPtr(PLANAR_Y);
     const BYTE* pU = src->GetReadPtr(PLANAR_U);
@@ -868,8 +864,8 @@ PVideoFrame Histogram::DrawModeLevels(int n, IScriptEnvironment* env) {
 
 PVideoFrame Histogram::DrawModeClassic(int n, IScriptEnvironment* env)
 {
-  const int S1 = ((235-84) << (16+4)) / (vi.width-256);
-  const int S2 = ((235-16) << (16+4)) / (vi.width-256);
+  const int S1 = ((235-84) << 16) / (vi.width-256);
+  const int S2 = ((235-16) << 16) / (vi.width-256);
 
   PVideoFrame dst = env->NewVideoFrame(vi);
   BYTE* p = dst->GetWritePtr();
@@ -881,8 +877,7 @@ PVideoFrame Histogram::DrawModeClassic(int n, IScriptEnvironment* env)
 
 	// luma
     for (int y=0; y<src->GetHeight(PLANAR_Y); ++y) {
-      int hist[256];
-      memset(hist, 0, 256);
+      int hist[256] = {0};
       int x;
       for (x=0; x<vi.width-256; ++x) {
         hist[p[x]]++;
@@ -928,8 +923,7 @@ PVideoFrame Histogram::DrawModeClassic(int n, IScriptEnvironment* env)
     }
   } else {
     for (int y=0; y<src->GetHeight(); ++y) { // YUY2
-      int hist[256];
-      memset(hist, 0, 256);
+      int hist[256] = {0};
       int x;
       for (x=0; x<vi.width-256; ++x) {
         hist[p[x*2]]++;
