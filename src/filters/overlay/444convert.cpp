@@ -180,6 +180,7 @@ void Convert444FromYUY2::ConvertImageLumaOnly(PVideoFrame src, Image444* dst, IS
 
 // ISSE_Convert444ChromaToYV12:
 // by Klaus Post, Copyright 2004.
+// and Ian Brabham Copyright 2007.
 //
 // src_rowsize must be mod 16 (dst_rowsize mod 8)
 // Operates on 16x2 input pixels per loop for best possible pairability.
@@ -189,81 +190,137 @@ void ISSE_Convert444ChromaToYV12(unsigned char *dstp, const unsigned char *srcp,
         const int dst_pitch, const int src_pitch,
         const int src_rowsize, const int src_height)
 {
-  static const __int64 onesW = 0x0001000100010001;
-  static const __int64 onesD = 0x0000000100000001;
   int src_pitch2 = src_pitch * 2;
   __asm {
-	push    ebx
-    mov     eax,[dstp]
-    mov     ebx,[srcp]
-    mov     ecx, ebx
-    add     ecx, [src_pitch]  // ecx  = 1 line src offset
-    
-    mov     edx,[src_rowsize]
-    xor     edi,edi
-    mov     esi,[src_height]
-    pxor    mm7,mm7
-    movq    mm6,[onesW]
-    movq    mm5,[onesD]
-    align 16
+	push     ebx
+    mov      eax,[dstp]
+    mov      ebx,[srcp]
+    mov      ecx, ebx
+    add      ecx, [src_pitch]  // ecx  = 1 line src offset
+            
+    mov      edx,[src_rowsize]
+    xor      edi,edi
+    mov      esi,[src_height]
+    pcmpeqb  mm7,mm7
+    psrlw    mm7, 8          // 00ff 00ff 00ff 00ff
+    align    16
+loopx:      
+    movq     mm0, [ebx+edi*2]  // u4U4 u3U3 u2U2 u1U1
+    movq     mm1, [ecx+edi*2]  // u4U4 u3U3 u2U2 u1U1  (Next line)
+            
+    movq     mm2, [ebx+edi*2+8]  // u8U8 u7U7 U6U6 u5U5
+    movq     mm3, [ecx+edi*2+8]  // u8U8 u7U7 u6U6 u5U5  (Next line)
+            
+    pavgb    mm0,mm1         // Average with next line
+    pavgb    mm2,mm3         // Average with next line
+            
+    movq     mm1,mm0
+    psrlw    mm0, 8          // 00u4 00u3 00u2 00u1
+    movq     mm3,mm2
+    psrlw    mm2, 8          // 00u8 00u7 00u6 00u5
+    pavgb    mm0,mm1         // xxU4 xxU3 xxU2 xxU1
+    pavgb    mm2,mm3         // xxU8 xxU7 xxU6 xxU5
+    pand     mm0,mm7         // 00U4 00U3 00U2 00U1
+    pand     mm2,mm7         // 00U8 00U7 00U6 00U5
+            
+    add      edi,8
+    packuswb mm0,mm2         // U8U7 U6U5 U4U3 U2U1
+            
+    cmp      edi,edx
+    movq     [eax+edi-8],mm0
+            
+    jl       loopx
+            
+    mov      edi,0
+    add      eax,[dst_pitch]
+    add      ecx,[src_pitch2]
+    add      ebx,[src_pitch2]
+    dec      esi
+            
+    jnz      loopx
+            
+    emms    
+	pop      ebx
+  }
+}
+
+// MMX_Convert444ChromaToYV12:
+// by Ian Brabham Copyright 2007.
+//
+// src_rowsize must be mod 16 (dst_rowsize mod 8)
+// Operates on 16x2 input pixels per loop for best possible pairability.
+
+
+void MMX_Convert444ChromaToYV12(unsigned char *dstp, const unsigned char *srcp,
+        const int dst_pitch, const int src_pitch,
+        const int src_rowsize, const int src_height)
+{
+  static const __int64 onesW = 0x0001000100010001;
+  static const __int64 twosW = 0x0002000200020002;
+  int src_pitch2 = src_pitch * 2;
+  __asm {
+	push      ebx
+    mov       eax,[dstp]
+    mov       ebx,[srcp]
+    mov       ecx, ebx
+    add       ecx, [src_pitch]  // ecx  = 1 line src offset
+
+    mov       edx,[src_rowsize]
+    xor       edi,edi
+    mov       esi,[src_height]
+    pxor      mm7,mm7
+    movq      mm6,[onesW]
+    movq      mm5,[twosW]
+
+    align     16
 loopx:
-    movq    mm0, [ebx+edi*2]  // U4U4 U3U3 U2U2 U1U1
-    movq    mm1, [ecx+edi*2]  // U4U4 U3U3 U2U2 U1U1  (Next line)
+    movq      mm0, [ebx+edi*2]    // u4U4 u3U3 u2U2 u1U1
+    movq      mm1, [ecx+edi*2]    // u4U4 u3U3 u2U2 u1U1  (Next line)
+    movq      mm2,mm0
+    movq      mm3,mm1
 
-    movq    mm2, [ebx+edi*2+8]  // U4U4 U3U3 U2U2 U1U1
-    movq    mm3, [ecx+edi*2+8]  // U4U4 U3U3 U2U2 U1U1  (Next line)
-  
-    pavgb   mm0,mm1         // Average with next line
-     pavgb    mm2,mm3       // Average with next line
+    punpcklbw mm0, mm7      // 00u2 00U2 00u1 00U1
+    punpcklbw mm1, mm7      // 00u2 00U2 00u1 00U1  (Next line)
+    punpckhbw mm2, mm7      // 00u4 00U4 00u3 00U3
+    paddw     mm0, mm1      // Add with next line
+    punpckhbw mm3, mm7      // 00u4 00U4 00u3 00U3  (Next line)
+    pmaddwd   mm0, mm6      // 0000 0U2. 0000 0U1.
+    paddw     mm2, mm3      // Add with next line
+     movq      mm1, [ebx+edi*2+8]  // u8U8 u7U7 U6U6 u5U5
+    pmaddwd   mm2, mm6      // 0000 0U4. 0000 0U3.
+     movq      mm4, [ecx+edi*2+8]  // u8U8 u7U7 u6U6 u5U5  (Next line)
+    packssdw  mm0, mm2      // 0U4. 0U3. 0U2. 0U1.
+     movq      mm3,mm1
+     movq      mm2,mm4
+     punpcklbw mm1, mm7      // 00u6 00U6 00u5 00U5
+     punpcklbw mm2, mm7      // 00u6 00U6 00u5 00U5  (Next line)
+     punpckhbw mm3, mm7      // 00u8 00U8 00u7 00U7
+     paddw     mm1, mm2      // Add with next line
+     punpckhbw mm4, mm7      // 00u8 00U8 00u7 00U7  (Next line)
+     pmaddwd   mm1, mm6      // 0000 0U6. 0000 0U5.
+     paddw     mm3, mm4      // Add with next line
+     pmaddwd   mm3, mm6      // 0000 0U8. 0000 0U7.
+     packssdw  mm1, mm3      // 0U8. 0U7. 0U6. 0U5.
+    paddw     mm0, mm5      // Add rounder
+     paddw     mm1, mm5      // Add rounder
+    psrlw     mm0, 2        // 00U4 00U3 00U2 00U1
+     psrlw     mm1, 2        // 00U8 00U7 00U6 00U5
+    add       edi,8
+    packuswb  mm0,mm1       // U8U7 U6U5 U4U3 U2U1
+    cmp       edi,edx
+    movq      [eax+edi-8],mm0
+    jl        loopx
 
-    movq    mm1,mm0
-     movq   mm4,mm2
+    mov       edi,0
+    add       eax,[dst_pitch]
+    add       ecx,[src_pitch2]
+    add       ebx,[src_pitch2]
+    dec       esi
 
-    punpcklbw mm0, mm7
-    punpckhbw mm1, mm7
-
-    pmaddwd   mm0, mm6
-     punpcklbw  mm2, mm7
-
-    pmaddwd   mm1, mm6
-     punpckhbw  mm4, mm7
-
-    pmaddwd   mm2, mm6
-     paddd    mm0, mm5
-
-    pmaddwd   mm4, mm6
-     paddd    mm1, mm5
-
-    psrld   mm0, 1
-     paddd    mm2, mm5
-
-    psrld   mm1, 1
-     paddd    mm4, mm5
-
-    psrld   mm2, 1
-     psrld    mm4, 1
-
-    packssdw  mm0, mm1
-     packssdw mm2, mm4
-
-    packuswb  mm0, mm2
-
-    movq    [eax+edi], mm0
-
-    add     edi,8
-    cmp     edi,edx
-    jl      loopx
-
-    mov     edi,0
-    add     eax,[dst_pitch]
-    add     ecx,[src_pitch2]
-    add     ebx,[src_pitch2]
-    dec     esi
-
-    jnz     loopx
+    jnz       loopx
 
     emms
-	pop     ebx
+	pop       ebx
   }
 }
 
@@ -288,8 +345,13 @@ PVideoFrame Convert444ToYV12::ConvertImage(Image444* src, PVideoFrame dst, IScri
 
   if (GetCPUFlags() & CPUF_INTEGER_SSE) {
 
-  ISSE_Convert444ChromaToYV12(dstU, srcU, dstUVpitch, srcUVpitch, w, h);
-  ISSE_Convert444ChromaToYV12(dstV, srcV, dstUVpitch, srcUVpitch, w, h);
+    ISSE_Convert444ChromaToYV12(dstU, srcU, dstUVpitch, srcUVpitch, w, h);
+    ISSE_Convert444ChromaToYV12(dstV, srcV, dstUVpitch, srcUVpitch, w, h);
+
+  } else if (GetCPUFlags() & CPUF_MMX) {
+
+	MMX_Convert444ChromaToYV12(dstU, srcU, dstUVpitch, srcUVpitch, w, h);
+	MMX_Convert444ChromaToYV12(dstV, srcV, dstUVpitch, srcUVpitch, w, h);
 
   } else {
     for (int y=0; y<h; y++) {
