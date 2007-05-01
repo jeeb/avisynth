@@ -357,6 +357,7 @@ BOOL AudioStream::_isEnd() {
 AudioStreamSource::AudioStreamSource(AudioSource *src, long first_samp, long max_samples, BOOL allow_decompression) : AudioStream() {
 	WAVEFORMATEX *iFormat = src->getWaveFormat();
 	WAVEFORMATEX *oFormat;
+	WAVEFORMATEX  tFormat;
 	MMRESULT res = 0;
 
 	hACStream = NULL;
@@ -368,6 +369,16 @@ AudioStreamSource::AudioStreamSource(AudioSource *src, long first_samp, long max
 
 	if (max_samples < 0)
 		max_samples = 0;
+
+    // Undo any Wave Format Extensible back to standard Wave FormatEx
+	if (iFormat->wFormatTag == WAVE_FORMAT_EXTENSIBLE &&
+	    iFormat->cbSize == sizeof(WAVEFORMATEXTENSIBLE)-sizeof(WAVEFORMATEX))
+    {
+      memcpy(&tFormat, iFormat, sizeof(WAVEFORMATEX));
+      tFormat.cbSize = 0;
+      tFormat.wFormatTag = (WORD)((WAVEFORMATEXTENSIBLE*)iFormat)->SubFormat.Data1;
+      iFormat = &tFormat;
+	}
 
 	if (iFormat->wFormatTag != WAVE_FORMAT_PCM &&
 		iFormat->wFormatTag != WAVE_FORMAT_IEEE_FLOAT && allow_decompression) {
