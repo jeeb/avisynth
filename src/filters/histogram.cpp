@@ -161,12 +161,16 @@ PVideoFrame __stdcall Histogram::GetFrame(int n, IScriptEnvironment* env)
   return DrawModeClassic(n, env);
 }
 
+__inline void MixLuma(BYTE &src, int value, int alpha) {
+  src += ((value - (int)src) * alpha) >> 8;
+}
+
 PVideoFrame Histogram::DrawModeAudioLevels(int n, IScriptEnvironment* env) {
   PVideoFrame src = child->GetFrame(n, env);
   env->MakeWritable(&src);
-  int w = src->GetRowSize();
-  int h = src->GetHeight();
-  int channels = vi.AudioChannels();
+  const int w = src->GetRowSize();
+  const int h = src->GetHeight();
+  const int channels = vi.AudioChannels();
 
   int bar_w = 60;  // Must be divideable by 4 (for subsampling)
   int total_width = (1+channels*2)*bar_w; // Total width in pixels.
@@ -178,22 +182,29 @@ PVideoFrame Histogram::DrawModeAudioLevels(int n, IScriptEnvironment* env) {
   int bar_h = vi.height;
 
   // Get audio for current frame.
-  __int64 start = vi.AudioSamplesFromFrames(n);
-  __int64 end = vi.AudioSamplesFromFrames(n+1);
-  __int64 count = end-start;
-  signed short* samples = new signed short[(int)count*vi.AudioChannels()];
+  const __int64 start = vi.AudioSamplesFromFrames(n);
+  const int count = vi.AudioSamplesFromFrames(1);
+  signed short* samples = new signed short[count*channels];
 
   aud_clip->GetAudio(samples, max(0,start), count, env);
 
-  // Find maximum volume.
-  int c = (int)count;
-  int* channel_max = new int[channels];
+  // Find maximum volume and rms.
+  int*     channel_max = new int[channels];
+  __int64* channel_rms = new __int64[channels];
+
+  const int c = count*channels;
   {for (int ch = 0; ch<channels; ch++) {
     int max_vol=0;
-    for (int i=0; i < c;i++) {
-      max_vol = max(max_vol, abs((int)samples[i*channels+ch]));
+    __int64 rms_vol=0;
+	
+    for (int i=ch; i < c; i+=channels) {
+      int sample = samples[i];
+	  sample *= sample;
+      rms_vol += sample;
+      max_vol = max(max_vol, sample);
     }
     channel_max[ch] = max_vol;
+    channel_rms[ch] = rms_vol;
   }}
 
   // Draw bars
@@ -206,21 +217,21 @@ PVideoFrame Histogram::DrawModeAudioLevels(int n, IScriptEnvironment* env) {
   int ySubS = 1; // vi.GetPlaneHeightSubsampling(PLANAR_U);
 
   // Draw Dotted lines
-  int lines = 16;  // Line every 6dB  (96/6)
-  int* lines_y = new int[lines];
+  const int lines = 16;  // Line every 6dB  (96/6)
+  int lines_y[lines];
   float line_every = (float)bar_h / (float)lines;
   char text[32];
   for (int i=0; i<lines; i++) {
     lines_y[i] = (int)(line_every*i);
     if (!(i&1)) {
-      _snprintf(text, sizeof(text), "-%ddB", i*6);
+      _snprintf(text, sizeof(text), "%3ddB", -i*6);
       DrawString(src, 0, i ? lines_y[i]-10 : 0, text);
     }
   }
-  for (int x=0; x<w; x++) {
-    if (!(x&3)) {
+  for (int x=bar_w-16; x<total_width-bar_w+16; x++) {
+    if (!(x&12)) {
       for (int i=0; i<lines; i++) {
-        srcpY[x+lines_y[i]*Ypitch] = 0xff;
+        srcpY[x+lines_y[i]*Ypitch] = 200;
       }
     }
   }
@@ -228,35 +239,59 @@ PVideoFrame Histogram::DrawModeAudioLevels(int n, IScriptEnvironment* env) {
   {for (int ch = 0; ch<channels; ch++) {
     int max = channel_max[ch];
     double ch_db = 96;
-    if (max>0) {
-       ch_db = 8.685889638 * log(32768.0/(double)max);
-    }
-    int x_pos = ((ch*2)+1)*bar_w;
-    int x_end = x_pos+bar_w;
+    if (max > 0) ch_db = -8.685889638/2. * log((double)max/(32768.0*32768.0));
+
+    __int64 rms = channel_rms[ch] / count;
+    double ch_rms = 96;
+    if (rms > 0) ch_rms = -8.685889638/2. * log((double)rms/(32768.0*32768.0));
+
+    int x_pos = ((ch*2)+1)*bar_w+8;
+    int x_end = x_pos+bar_w-8;
     int y_pos = (int)(((double)bar_h*ch_db) / 96.0);
+    int y_mid = (int)(((double)bar_h*ch_rms) / 96.0);
     int y_end = src->GetHeight(PLANAR_Y);
-    // Luma
-    {for (int y = y_pos; y<y_end; y++) {
+    // Luma                          Red   Blue
+    int y_val = (max>=32767*32767) ?  78 :  90;
+    int a_val = (max>=32767*32767) ?  96 : 128;
+    {for (int y = y_pos; y<y_mid; y++) {
       for (int x = x_pos; x < x_end; x++) {
-        srcpY[x+y*Ypitch] = 0x48;
+        MixLuma(srcpY[x+y*Ypitch], y_val, a_val);
+      }
+    }} //                      Yellow Green
+    y_val = (max>=32767*32767) ? 216 : 137;
+    a_val = (max>=32767*32767) ? 160 : 128;
+    {for (int y = y_mid; y<y_end; y++) {
+      for (int x = x_pos; x < x_end; x++) {
+        MixLuma(srcpY[x+y*Ypitch], y_val, a_val);
       }
     }}
     // Chroma
     x_pos >>= xSubS;
     x_end >>= xSubS;
     y_pos >>= ySubS;
-    y_end = src->GetHeight(PLANAR_U);
-    BYTE u_val = 0;
-    BYTE v_val = (max>=32767) ? 0xff : 0;
-    {for (int y = y_pos; y<y_end; y++) {
+    y_mid >>= ySubS;
+    y_end = src->GetHeight(PLANAR_U);//Red  Blue
+    BYTE u_val = (max>=32767*32767) ?  92 : 212;
+    BYTE v_val = (max>=32767*32767) ? 233 : 114;
+    {for (int y = y_pos; y<y_mid; y++) {
+      for (int x = x_pos; x < x_end; x++) {
+        srcpU[x+y*UVpitch] = u_val;
+        srcpV[x+y*UVpitch] = v_val;
+      }
+    }} //                      Yellow Green
+    u_val = (max>=32767*32767) ?  44 :  58;
+    v_val = (max>=32767*32767) ? 142 :  40;
+    {for (int y = y_mid; y<y_end; y++) {
       for (int x = x_pos; x < x_end; x++) {
         srcpU[x+y*UVpitch] = u_val;
         srcpV[x+y*UVpitch] = v_val;
       }
     }}
     // Draw text
-    _snprintf(text, sizeof(text), "%5.2fdB", (float)-ch_db);
-    DrawString(src, x_pos<<xSubS, vi.height-20, text);
+    _snprintf(text, sizeof(text), "%6.2fdB", (float)-ch_db);
+    DrawString(src, ((ch*2)+1)*bar_w, vi.height-40, text);
+    _snprintf(text, sizeof(text), "%6.2fdB", (float)-ch_rms);
+    DrawString(src, ((ch*2)+1)*bar_w, vi.height-20, text);
 
   }}
 
