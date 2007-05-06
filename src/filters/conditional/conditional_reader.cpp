@@ -32,7 +32,7 @@ ConditionalReader::ConditionalReader(PClip _child, const char* filename, const c
   int lines;
 
   if ((f = fopen(filename, "rb")) == NULL)
-    env->ThrowError("ConditionalReader: Could not open file.");
+    env->ThrowError("ConditionalReader: Could not open file '%s'.", filename);
 
   lines = 0;
   mode = MODE_UNKNOWN;
@@ -329,7 +329,7 @@ AVSValue __cdecl ConditionalReader::Create(AVSValue args, void* user_data, IScri
 Write::Write (PClip _child, const char _filename[], AVSValue args, int _linecheck, bool _append, bool _flush, IScriptEnvironment* env):
 	GenericVideoFilter(_child), linecheck(_linecheck), flush(_flush), append(_append)
 {
-	strncpy(filename, _filename, 254);
+	_fullpath(filename, _filename, 254);
 	arrsize = __min(args.ArraySize(), maxWriteArgs);
 	int i;
 	
@@ -346,7 +346,7 @@ Write::Write (PClip _child, const char _filename[], AVSValue args, int _linechec
 	}
 
 	fout = fopen(filename, mode);	//append or purge file
-	if (!fout) env->ThrowError("Write: File cannot be opened.");
+	if (!fout) env->ThrowError("Write: File '%s' cannot be opened.", filename);
 	
 	if (flush) fclose(fout);	//will be reopened in FileOut
 
@@ -404,7 +404,7 @@ void Write::FileOut(IScriptEnvironment* env) {
 	if (flush) {
 		fout = fopen(filename, mode);
 		if (!fout) {
-			if (env) env->ThrowError("Write: File cannot be opened.");
+			if (env) env->ThrowError("Write: File '%s' cannot be opened.", filename);
 			return;
 		}
 	}
