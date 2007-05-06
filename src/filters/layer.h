@@ -83,13 +83,13 @@ class ColorKeyMask : public GenericVideoFilter
 **/
 {
 public:
-  ColorKeyMask(PClip _child, int _color, int _tolerance, IScriptEnvironment *env);
+  ColorKeyMask(PClip _child, int _color, int _tolB, int _tolG, int _tolR, IScriptEnvironment *env);
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment *env);
 
   static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env);
 
 private:
-  int color, tol;
+  const int color, tolB, tolG, tolR;
 };
 
 

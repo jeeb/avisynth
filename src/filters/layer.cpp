@@ -49,7 +49,7 @@
 
 AVSFunction Layer_filters[] = {
   { "Mask", "cc", Mask::Create },     // clip, mask
-  { "ColorKeyMask", "cii", ColorKeyMask::Create },    // clip, color, tolerance
+  { "ColorKeyMask", "ci[]i[]i[]i", ColorKeyMask::Create },    // clip, color, tolerance[R, toleranceG, toleranceB]
   { "ResetMask", "c", ResetMask::Create },
   { "Invert", "c[channels]s", Invert::Create },
   { "ShowAlpha", "c[pixel_type]s", ShowChannel::Create, (void*)3 },
@@ -178,8 +178,8 @@ AVSValue __cdecl Mask::Create(AVSValue args, void*, IScriptEnvironment* env)
  **************************************/
 
 
-ColorKeyMask::ColorKeyMask(PClip _child, int _color, int _tolerance, IScriptEnvironment *env)
-  : GenericVideoFilter(_child), color(_color & 0xffffff), tol(_tolerance)
+ColorKeyMask::ColorKeyMask(PClip _child, int _color, int _tolB, int _tolG, int _tolR, IScriptEnvironment *env)
+  : GenericVideoFilter(_child), color(_color & 0xffffff), tolB(_tolB & 0xff), tolG(_tolG & 0xff), tolR(_tolR & 0xff)
 {
   if (!vi.IsRGB32())
     env->ThrowError("ColorKeyMask: requires RGB32 input");
@@ -201,23 +201,25 @@ PVideoFrame __stdcall ColorKeyMask::GetFrame(int n, IScriptEnvironment *env)
 
     for (int y=0; y<vi.height; y++) {
       for (int x=0; x<rowsize; x+=4) {
-        if (IsClose(pf[x],B,tol) && IsClose(pf[x+1],G,tol) && IsClose(pf[x+2],R,tol))
+        if (IsClose(pf[x],B,tolB) && IsClose(pf[x+1],G,tolG) && IsClose(pf[x+2],R,tolR))
           pf[x+3]=0;
       }
       pf += pitch;
     }
   } else { // MMX
     const int height = vi.height;
-    const __int64 col8 = (__int64)color << 32 | color;
-    const __int64 tol8 = ((__int64)tol * 0x0001010100010101i64) | 0xff000000ff000000i64;
+    const int col8 = color;
+    const int tol8 = 0xff000000 | (tolR << 16) | (tolG << 8) | tolB;
     const int xloopcount = -(rowsize & -8);
     pf -= xloopcount;
     __asm {
       mov       esi, pf
       mov       edx, height
       pxor      mm0, mm0
-      movq      mm1, col8
-      movq      mm2, tol8
+      movd      mm1, col8
+	  punpckldq mm1, mm1
+      movd      mm2, tol8
+	  punpckldq mm2, mm2
 
 yloop:
       mov       ecx, xloopcount
@@ -265,7 +267,10 @@ not_odd:
 
 AVSValue __cdecl ColorKeyMask::Create(AVSValue args, void*, IScriptEnvironment* env) 
 {
-  return new ColorKeyMask(args[0].AsClip(), args[1].AsInt(0), args[2].AsInt(10), env);
+  return new ColorKeyMask(args[0].AsClip(), args[1].AsInt(0),
+                          args[2].AsInt(10),
+						  args[3].AsInt(args[2].AsInt(10)),
+						  args[4].AsInt(args[2].AsInt(10)), env);
 }
 
 
