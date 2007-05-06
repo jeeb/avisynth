@@ -1563,10 +1563,10 @@ void DrawDigit(PVideoFrame &dst, int x, int y, int num)
 			dpY = &dst->GetWritePtr(PLANAR_Y)[(x + tx) + (y + ty) * pitchY];
 			if (font[num][ty] & (1 << (15 - tx)))
 			{
-				*dpY = 235;
+				*dpY = 230;
 			} else
 			{
-				*dpY = (unsigned char) ((*dpY * 3) >> 2);
+				*dpY = (unsigned char) (((*dpY-16) * 7) >> 3) + 16;
 			}
 		}
 	}
@@ -1590,11 +1590,11 @@ void DrawDigit(PVideoFrame &dst, int x, int y, int num)
 				  *dpV = 128;
 			  } else
 			  {
-				  *dpU = (unsigned char) ((*dpU + 128) >> 1);
-				  *dpV = (unsigned char) ((*dpV + 128) >> 1);
+				  *dpU = (unsigned char) (((*dpU - 128) * 7) >> 3) + 128;
+				  *dpV = (unsigned char) (((*dpV - 128) * 7) >> 3) + 128;
 			  }
-      }
-		}
+		  }
+	  }
 	}
 }
 
@@ -1615,23 +1615,23 @@ void DrawDigitYUY2(PVideoFrame &dst, int x, int y, int num)
 			unsigned char *dp = &dst->GetWritePtr()[(x + tx) * 2 + (y + ty) * pitch];
 			if (font[num][ty] & (1 << (15 - tx))) {
 				if (tx & 1) {
-					dp[0] = 250;
-					dp[-1] = 128;
+					dp[0] = 230;
+					dp[-1]= 128;
 					dp[1] = 128;
 				} else {
-					dp[0] = 250;
+					dp[0] = 230;
 					dp[1] = 128;
 					dp[3] = 128;
 				}
 			} else {
 				if (tx & 1) {
-					dp[0] = (unsigned char) ((dp[0] * 3) >> 2);
-					dp[-1] = (unsigned char) ((dp[-1] + 128) >> 1);
-					dp[1] = (unsigned char) ((dp[1] + 128) >> 1);
+					dp[0] = (unsigned char) (((dp[0]-16)  * 7) >> 3) + 16;
+					dp[-1]= (unsigned char) (((dp[-1]-128)* 7) >> 3) + 128;
+					dp[1] = (unsigned char) (((dp[1]-128) * 7) >> 3) + 128;
 				} else {
-					dp[0] = (unsigned char) ((dp[0] * 3) >> 2);
-					dp[1] = (unsigned char) ((dp[1] + 128) >> 1);
-					dp[3] = (unsigned char) ((dp[3] + 128) >> 1);
+					dp[0] = (unsigned char) (((dp[0]- 16) * 7) >> 3) + 16;
+					dp[1] = (unsigned char) (((dp[1]-128) * 7) >> 3) + 128;
+					dp[3] = (unsigned char) (((dp[3]-128) * 7) >> 3) + 128;
 				}
 			}
 		}
@@ -1662,9 +1662,9 @@ void DrawDigitRGB32(PVideoFrame &dst, int x, int y, int num)
 					dp[1] = 250;
 					dp[2] = 250;
 			} else {
-				dp[0] = (unsigned char) ((dp[0] * 3) >> 2);
-				dp[1] = (unsigned char) ((dp[1] * 3) >> 2);
-				dp[2] = (unsigned char) ((dp[2] * 3) >> 2);
+				dp[0] = (unsigned char) ((dp[0] * 7) >> 3);
+				dp[1] = (unsigned char) ((dp[1] * 7) >> 3);
+				dp[2] = (unsigned char) ((dp[2] * 7) >> 3);
 			}
 		}
 	}
