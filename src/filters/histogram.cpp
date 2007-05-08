@@ -296,6 +296,7 @@ PVideoFrame Histogram::DrawModeAudioLevels(int n, IScriptEnvironment* env) {
   }}
 
   delete[] channel_max;
+  delete[] channel_rms;
   delete[] samples;
   return src;
 }
