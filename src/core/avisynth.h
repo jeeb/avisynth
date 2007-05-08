@@ -405,7 +405,8 @@ enum {
   CACHE_RANGE=1,
   CACHE_ALL=2,
   CACHE_AUDIO=3,
-  CACHE_AUDIO_NONE=4
+  CACHE_AUDIO_NONE=4,
+  CACHE_AUDIO_AUTO=5
  };
 
 // Base class for all filters.

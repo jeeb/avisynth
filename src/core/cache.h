@@ -114,7 +114,6 @@ private:
 
   // Audio cache:
   int h_audiopolicy;
-  int h_audioSize;
   char * cache;
   int samplesize;
   int maxsamplecount;

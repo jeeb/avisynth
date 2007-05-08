@@ -74,7 +74,7 @@ long Cache::cacheDepth = 0;
 
 
 Cache::Cache(PClip _child, IScriptEnvironment* env) 
- : GenericVideoFilter(_child), nextCache(NULL), priorCache(NULL), Tick(0)
+ : GenericVideoFilter(_child), nextCache(NULL), cache(0), priorCache(NULL), Tick(0)
 { 
   h_policy = CACHE_ALL;  // Since hints are not used per default, this is to describe the lowest default cache mode.
   h_audiopolicy = CACHE_NOTHING;  // Don't cache audio per default.
@@ -93,6 +93,8 @@ Cache::Cache(PClip _child, IScriptEnvironment* env)
 
   maxframe = -1;
   minframe = vi.num_frames;
+
+  samplesize = vi.BytesPerAudioSample();
 
   // Join all the rest of the caches
   env->ManageCache(MC_RegisterCache, this);
@@ -578,7 +580,7 @@ void __stdcall Cache::GetAudio(void* buf, __int64 start, __int64 count, IScriptE
   }
 
   if (start+count > vi.num_audio_samples) {  // Partial ending skip
-    FillZeros(buf, 0 , count);  // Fill all samples
+    FillZeros(buf, (vi.num_audio_samples - start), count - (vi.num_audio_samples - start));  // Fill end samples
     count = (vi.num_audio_samples - start);
   }
 
@@ -592,11 +594,11 @@ void __stdcall Cache::GetAudio(void* buf, __int64 start, __int64 count, IScriptE
   ac_currentscore = max(min(ac_currentscore, 450), -10000000);
 
   if (h_audiopolicy == CACHE_NOTHING && ac_currentscore <=0) {
-    SetCacheHints(CACHE_AUDIO, 0);
+    SetCacheHints(CACHE_AUDIO_AUTO, 0);
     _RPT1(0, "CacheAudio:%x: Automatically adding audiocache!\n", this);
   }
 
-  if (h_audiopolicy == CACHE_AUDIO  && (ac_currentscore > 400) ) {
+  if (h_audiopolicy == CACHE_AUDIO_AUTO  && (ac_currentscore > 400) ) {
     SetCacheHints(CACHE_AUDIO_NONE, 0);
     _RPT1(0, "CacheAudio:%x: Automatically deleting cache!\n", this);
   }
@@ -617,61 +619,58 @@ void __stdcall Cache::GetAudio(void* buf, __int64 start, __int64 count, IScriptE
 
   int shiftsamples;
 
-  if (count>maxsamplecount) {    //is cache big enough?
+  while (count>maxsamplecount) {    //is cache big enough?
     _RPT1(0, "CA:%x:Cache too small->caching last audio\n", this);
     ac_too_small_count++;
 
 // But the current cache might have 99% of what was requested??
 
-// Populate "buf" with whats available BEFORE any resizing!
-// Only GetAudio() the missing bits, worst case the whole lot,
-// best case a small chunk at the begining or the end. Then
-// repopulate the cache aligned with the end of "buf".
-
-    if (ac_too_small_count > 2 && (maxsamplecount < vi.AudioSamplesFromBytes(4095*1024))) {  // Max size = 4MB!
+    if (ac_too_small_count > 2 && (maxsamplecount < vi.AudioSamplesFromBytes(4096*1024))) {  // Max size = 4MB!
       //automatically upsize cache!
-      int new_size = vi.BytesFromAudioSamples(count)+1024;
+      int new_size = (vi.BytesFromAudioSamples(count)+8192) & -8192;
       new_size = min(4096*1024, new_size);
       _RPT2(0, "CacheAudio:%x: Autoupsizing buffer to %d bytes!", this, new_size);
-      SetCacheHints(CACHE_AUDIO, new_size); // updates maxsamplecount!!
+      SetCacheHints(h_audiopolicy, new_size); // updates maxsamplecount!!
+      ac_too_small_count = 0;
     }
+    else {
+      child->GetAudio(buf, start, count, env);
 
-    child->GetAudio(buf, start, count, env);
+      cache_count = min(count, maxsamplecount); // Remember maxsamplecount gets updated
+      cache_start = start+count-cache_count;
+      BYTE *buff=(BYTE *)buf;
+      buff += vi.BytesFromAudioSamples(cache_start - start);
+      memcpy(cache, buff, vi.BytesFromAudioSamples(cache_count));
 
-    cache_count = min(count, maxsamplecount); // Remember maxsamplecount gets updated
-    cache_start = start+count-cache_count;
-    BYTE *buff=(BYTE *)buf;
-    buff += vi.BytesFromAudioSamples(cache_start - start);
-    memcpy(cache, buff, vi.BytesFromAudioSamples(cache_count));
-    return;
+      return;
+    }
   }
 
-// Maybe :- if ( (start+count<cache_start) || ... i.e. there is no overlap at all
-
-  if ( (start<cache_start) || (start>=(cache_start+cache_count)) ){ //first sample is before or behind cache -> restart cache
+  if ((start < cache_start) || (start >= cache_start+maxsamplecount)) { //first sample is before cache or beyond linear reach -> restart cache
     _RPT1(0,"CA:%x: Restart\n", this);
 
     cache_count = min(count, maxsamplecount);
     cache_start = start;
     child->GetAudio(cache, cache_start, cache_count, env);
-  } else {  //at least start sample is in cache
-    if ( start + count > cache_start + cache_count ) {//cache is too short. Else all is already in the cache
-      if ((start - cache_start + count)>maxsamplecount) {  //cache shifting is necessary
-        shiftsamples = start - cache_start + count - maxsamplecount;
+  }
+  else {
+    if (start+count > cache_start+cache_count) { // Does the cache fail to cover the request?
+      if (start+count > cache_start+maxsamplecount) {  // Is cache shifting necessary?
+        shiftsamples = (start+count) - (cache_start+maxsamplecount);
 
-// Q. Why this test? - A. To make the most of having to do a memmove
         if ( (start - cache_start)/2 > shiftsamples ) {  //shift half cache if possible
           shiftsamples = (start - cache_start)/2;
         }
-
-        memmove(cache, cache+shiftsamples*samplesize,(cache_count-shiftsamples)*samplesize);
-
+        if (shiftsamples >= cache_count) {
+          shiftsamples = cache_count; // Preserve linear access
+        }
+        else {
+          memmove(cache, cache+shiftsamples*samplesize,(cache_count-shiftsamples)*samplesize);
+        }
         cache_start = cache_start + shiftsamples;
         cache_count = cache_count - shiftsamples;
       }
-
-// Good read just enough to complete the current request
-      //append to cache
+      // Read just enough to complete the current request, append it to the cache
       child->GetAudio(cache + cache_count*samplesize, cache_start + cache_count, start+count-(cache_start+cache_count), env);
       cache_count += start+count-(cache_start+cache_count);
     }
@@ -694,7 +693,7 @@ void __stdcall Cache::SetCacheHints(int cachehints,int frame_range) {
 
   _RPT3(0, "Cache:%x: Setting cache hints (hints:%d, range:%d )\n", this, cachehints, frame_range);
 
-  if (cachehints == CACHE_AUDIO) {
+  if (cachehints == CACHE_AUDIO || cachehints == CACHE_AUDIO_AUTO) {
 
     if (!vi.HasAudio())
       return;
@@ -706,26 +705,37 @@ void __stdcall Cache::SetCacheHints(int cachehints,int frame_range) {
     if (h_audiopolicy != CACHE_NOTHING && (frame_range == 0))   // We already have a policy - no need for a default one.
       return;
 
-    if (h_audiopolicy != CACHE_NOTHING) 
-      delete[] cache;       
-
-    h_audiopolicy = CACHE_AUDIO;
+    h_audiopolicy = cachehints;
 
     if (frame_range == 0)
       frame_range=64*1024;
 
+    char *oldcache = cache;
     cache = new char[frame_range];
-    samplesize = vi.BytesPerAudioSample();
-    maxsamplecount = frame_range/samplesize - 1;
-    cache_start=0;
-    cache_count=0;  
-    ac_too_small_count = 0;
+    if (cache) {
+      maxsamplecount = frame_range/samplesize;
+      if (oldcache) {
+        // Keep old cache contents
+        cache_count = min(cache_count, maxsamplecount);
+        memcpy(cache, oldcache, vi.BytesFromAudioSamples(cache_count));
+        delete[] oldcache;
+      }
+      else {
+        cache_start=0;
+        cache_count=0;  
+      }
+    }
+    else {
+      cache = oldcache;
+    }
     return;
   }
 
   if (cachehints == CACHE_AUDIO_NONE) {
-    if (h_audiopolicy != CACHE_NOTHING) 
+    if (cache) {
       delete[] cache;
+      cache = 0;
+    }
     h_audiopolicy = CACHE_NOTHING;
   }
 
@@ -773,8 +783,10 @@ Cache::~Cache() {
   if (nextCache) nextCache->priorCache = priorCache;
   *priorCache = nextCache;
   
-  if (h_audiopolicy != CACHE_NOTHING)
+  if (cache) {
     delete[] cache;
+    cache = 0;
+  }
 
   CachedVideoFrame *k, *j;
   for (k = video_frames.next; k!=&video_frames;)
