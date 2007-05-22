@@ -1,6 +1,6 @@
 ovText = "AviSynth Authors:"+chr(13)+
 	\ "----------------------------"+chr(13)+
-	\ "Ben Radiak Gould"+chr(13)+
+	\ "Ben Rudiak-Gould"+chr(13)+
 	\ "Klaus Post"+chr(13)+
 	\ "Richard Berg"+chr(13)+
 	\ "Dividee"+chr(13)+
