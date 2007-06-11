@@ -85,7 +85,7 @@ void Tokenizer::NextToken() {
         env->ThrowError("Script error: `\\' can only appear at the beginning or end of a line");
       }
     } else if (*pc == '\n' || *pc == '\r') {
-      // skip newline if it's followed by backslash or `{'
+      // skip newline if it's followed by backslash or `{'     }
       const char* const old_pc = pc;
       const int old_line = line;
       do {
@@ -107,6 +107,32 @@ void Tokenizer::NextToken() {
       while (*pc != 0 && *pc != '\n' && *pc != '\r')
         pc++;
       break;
+    } else if (pc[0] == '/' && pc[1] == '*') {    // Block comment /* */
+        const char *end = strstr(pc+2, "*/");
+        if (!end)
+          env->ThrowError("Parse error: block comment missing closing */");
+
+        for (const char *cp = pc+2; cp < end; cp++) {
+          if (*cp == '\n') { line++; }
+        }
+        pc = end+2;
+      continue;
+    } else if (pc[0] == '[' && pc[1] == '*') {    // Nestable block comment [* *]
+        const char *end = strstr(pc+2, "*]");
+        const char *nest = strstr(pc+2, "[*");
+
+		while (nest && nest+1 < end) {
+          end = strstr(end+2, "*]");
+          nest = strstr(nest+2, "[*");
+		}
+        if (!end)
+          env->ThrowError("Parse error: nestable block comment missing closing *]");
+
+        for (const char *cp = pc+2; cp < end; cp++) {
+          if (*cp == '\n') { line++; }
+        }
+        pc = end+2;
+      continue;
     } else {
       break;
     }
