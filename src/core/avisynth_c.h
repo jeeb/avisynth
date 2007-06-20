@@ -166,7 +166,7 @@ AVSC_INLINE int avs_has_audio(const AVS_VideoInfo * p)
         { return (p->audio_samples_per_second!=0); }
 
 AVSC_INLINE int avs_is_rgb(const AVS_VideoInfo * p) 
-        { return (p->pixel_type&AVS_CS_BGR); }
+        { return !!(p->pixel_type&AVS_CS_BGR); }
 
 AVSC_INLINE int avs_is_rgb24(const AVS_VideoInfo * p) 
         { return (p->pixel_type&AVS_CS_BGR24)==AVS_CS_BGR24; } // Clear out additional properties
@@ -174,8 +174,8 @@ AVSC_INLINE int avs_is_rgb24(const AVS_VideoInfo * p)
 AVSC_INLINE int avs_is_rgb32(const AVS_VideoInfo * p) 
         { return (p->pixel_type & AVS_CS_BGR32) == AVS_CS_BGR32 ; }
 
-AVSC_INLINE int avs_is_yuy(const AVS_VideoInfo * p) 
-        { return (p->pixel_type&AVS_CS_YUV ); }
+AVSC_INLINE int avs_is_yuv(const AVS_VideoInfo * p) 
+        { return !!(p->pixel_type&AVS_CS_YUV ); }
 
 AVSC_INLINE int avs_is_yuy2(const AVS_VideoInfo * p) 
         { return (p->pixel_type & AVS_CS_YUY2) == AVS_CS_YUY2; }  
@@ -190,19 +190,19 @@ AVSC_INLINE int avs_is_property(const AVS_VideoInfo * p, int property)
         { return ((p->pixel_type & property)==property ); }
 
 AVSC_INLINE int avs_is_planar(const AVS_VideoInfo * p) 
-        { return (p->pixel_type & AVS_CS_PLANAR); }
+        { return !!(p->pixel_type & AVS_CS_PLANAR); }
         
 AVSC_INLINE int avs_is_field_based(const AVS_VideoInfo * p) 
-        { return (p->image_type & AVS_IT_FIELDBASED); }
+        { return !!(p->image_type & AVS_IT_FIELDBASED); }
 
 AVSC_INLINE int avs_is_parity_known(const AVS_VideoInfo * p) 
-        { return ((p->image_type & AVS_IT_FIELDBASED)&&(p->image_type & (AVS_IT_BFF||AVS_IT_TFF))); }
+        { return ((p->image_type & AVS_IT_FIELDBASED)&&(p->image_type & (AVS_IT_BFF | AVS_IT_TFF))); }
 
 AVSC_INLINE int avs_is_bff(const AVS_VideoInfo * p) 
-        { return (p->image_type & AVS_IT_BFF); }
+        { return !!(p->image_type & AVS_IT_BFF); }
 
 AVSC_INLINE int avs_is_tff(const AVS_VideoInfo * p) 
-        { return (p->image_type & AVS_IT_TFF); }
+        { return !!(p->image_type & AVS_IT_TFF); }
 
 AVSC_INLINE int avs_bits_per_pixel(const AVS_VideoInfo * p) 
 { 
