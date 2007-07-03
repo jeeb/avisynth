@@ -122,7 +122,7 @@ AVSFunction Script_functions[] = {
   { "Assert", "b[message]s", Assert },
   { "Assert", "s", AssertEval },
 
-  { "SetMemoryMax", "i", SetMemoryMax },
+  { "SetMemoryMax", "[]i", SetMemoryMax },
 
   { "SetWorkingDir", "s", SetWorkingDir },
   { "Exist", "s", Exist },
@@ -277,7 +277,7 @@ AVSValue Import(AVSValue args, void*, IScriptEnvironment* env)
 
 
 
-AVSValue SetMemoryMax(AVSValue args, void*, IScriptEnvironment* env) { return env->SetMemoryMax(args[0].AsInt()); }
+AVSValue SetMemoryMax(AVSValue args, void*, IScriptEnvironment* env) { return env->SetMemoryMax(args[0].AsInt(0)); }
 AVSValue SetWorkingDir(AVSValue args, void*, IScriptEnvironment* env) { return env->SetWorkingDir(args[0].AsString()); }
 
 AVSValue Muldiv(AVSValue args, void*,IScriptEnvironment* env) { return int(MulDiv(args[0].AsInt(), args[1].AsInt(), args[2].AsInt())); }
