@@ -33,7 +33,7 @@ typedef OperandXMM64 XMM64;
 typedef OperandREF REF;
 typedef OperandSTR STR;
 
-typedef Encoding* enc;
+#define enc virtual Encoding*
 
 enc aaa(){return x86(0);}
 enc aas(){return x86(1);}
@@ -2720,5 +2720,7 @@ enc db(REF a){return x86(1255,a);}
 enc db(char* a){return x86(1255,(STR)a);}
 enc align(REF a){return x86(1256,a);}
 enc align(int a){return x86(1256,(IMM)a);}
+
+#undef enc
 
 #endif   // SOFTWIRE_NO_INTRINSICS

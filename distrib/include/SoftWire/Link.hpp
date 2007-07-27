@@ -41,7 +41,7 @@ namespace SoftWire
 			delete n;
 			n = nextNext;
 		}
-		n = 0;
+
 		t = 0;
 	}
 

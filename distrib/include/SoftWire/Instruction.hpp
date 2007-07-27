@@ -90,23 +90,13 @@ namespace SoftWire
 			int flags;
 		};
 
-		Instruction(const Syntax &instruction);
+		Instruction();
+		Instruction(const Syntax *syntax);
 
 		~Instruction();
 
-		Instruction *getNext() const;
-
-		void attach(Instruction *instruction);
-		void attachNew(const Syntax &instruction);
+		Instruction &operator=(const Instruction &instruction);
 		
-		void resetMatch();
-		bool matchSyntax() const;
-		void matchMnemonic(const char *mnemonic);
-		void matchSpecifier(Specifier::Type sizeSpecifier);
-		void matchFirstOperand(const Operand &operand);
-		void matchSecondOperand(const Operand &operand);
-		void matchThirdOperand(const Operand &operand);
-
 		Operand::Type getFirstOperand() const;
 		Operand::Type getSecondOperand() const;
 		Operand::Type getThirdOperand() const;
@@ -120,16 +110,11 @@ namespace SoftWire
 		int approximateSize() const;
 
 	private:
-		bool syntaxMatch;
-
-		const Syntax &syntax;
+		const Syntax *syntax;
 		Specifier::Type specifier;
 		Operand::Type firstOperand;
 		Operand::Type secondOperand;
 		Operand::Type thirdOperand;
-		int flags;
-
-		Instruction *next;
 
 		void extractOperands(const char *syntax);
 	};

@@ -13,7 +13,7 @@ namespace SoftWire
 	public:
 		Loader(const Linker &linker);
 
-		~Loader();
+		virtual ~Loader();
 
 		void (*callable(const char *entryLabel = 0))();
 		void (*finalize(const char *entryLabel = 0))();
@@ -23,6 +23,8 @@ namespace SoftWire
 
 		const char *getListing();
 		void clearListing();
+		void reset();
+		int instructionCount();
 
 	private:
 		const Linker &linker;

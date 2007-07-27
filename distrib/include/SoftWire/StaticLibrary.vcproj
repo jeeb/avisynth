@@ -28,7 +28,7 @@
 				WarningLevel="3"
 				Detect64BitPortabilityProblems="FALSE"
 				DebugInformationFormat="4"
-				ForcedIncludeFiles="MemoryManager.hpp"/>
+				ForcedIncludeFiles=""/>
 			<Tool
 				Name="VCCustomBuildTool"/>
 			<Tool
@@ -74,7 +74,7 @@
 				WarningLevel="3"
 				Detect64BitPortabilityProblems="FALSE"
 				DebugInformationFormat="3"
-				ForcedIncludeFiles="MemoryManager.hpp"/>
+				ForcedIncludeFiles=""/>
 			<Tool
 				Name="VCCustomBuildTool"/>
 			<Tool
@@ -111,7 +111,10 @@
 				RelativePath="..\SoftWire\Assembler.cpp">
 			</File>
 			<File
-				RelativePath="CodeGenerator.cpp">
+				RelativePath=".\CodeGenerator.cpp">
+			</File>
+			<File
+				RelativePath=".\Emulator.cpp">
 			</File>
 			<File
 				RelativePath="..\SoftWire\Encoding.cpp">
@@ -132,28 +135,16 @@
 				RelativePath="..\SoftWire\Loader.cpp">
 			</File>
 			<File
-				RelativePath="..\SoftWire\Macro.cpp">
-			</File>
-			<File
-				RelativePath=".\MemoryManager.cpp">
-			</File>
-			<File
 				RelativePath="Operand.cpp">
 			</File>
 			<File
-				RelativePath="..\SoftWire\Parser.cpp">
+				RelativePath=".\Optimizer.cpp">
 			</File>
 			<File
-				RelativePath="..\SoftWire\Scanner.cpp">
+				RelativePath=".\RegisterAllocator.cpp">
 			</File>
 			<File
 				RelativePath="..\SoftWire\Synthesizer.cpp">
-			</File>
-			<File
-				RelativePath="..\SoftWire\Token.cpp">
-			</File>
-			<File
-				RelativePath="..\SoftWire\TokenList.cpp">
 			</File>
 		</Filter>
 		<Filter
@@ -163,19 +154,16 @@
 				RelativePath="..\SoftWire\Assembler.hpp">
 			</File>
 			<File
-				RelativePath="..\SoftWire\CharType.hpp">
+				RelativePath=".\CodeGenerator.hpp">
 			</File>
 			<File
-				RelativePath="CodeGenerator.hpp">
+				RelativePath=".\Emulator.hpp">
 			</File>
 			<File
 				RelativePath="..\SoftWire\Encoding.hpp">
 			</File>
 			<File
 				RelativePath="..\SoftWire\Error.hpp">
-			</File>
-			<File
-				RelativePath="..\SoftWire\File.hpp">
 			</File>
 			<File
 				RelativePath="..\SoftWire\Instruction.hpp">
@@ -196,31 +184,22 @@
 				RelativePath="..\SoftWire\Loader.hpp">
 			</File>
 			<File
-				RelativePath="..\SoftWire\Macro.hpp">
-			</File>
-			<File
-				RelativePath=".\MemoryManager.hpp">
-			</File>
-			<File
 				RelativePath="Operand.hpp">
 			</File>
 			<File
-				RelativePath="..\SoftWire\Parser.hpp">
+				RelativePath=".\Optimizer.hpp">
 			</File>
 			<File
-				RelativePath="..\SoftWire\Scanner.hpp">
+				RelativePath=".\RegisterAllocator.hpp">
 			</File>
 			<File
-				RelativePath="..\SoftWire\String.hpp">
+				RelativePath=".\SoftWire.hpp">
+			</File>
+			<File
+				RelativePath=".\String.hpp">
 			</File>
 			<File
 				RelativePath="..\SoftWire\Synthesizer.hpp">
-			</File>
-			<File
-				RelativePath="..\SoftWire\Token.hpp">
-			</File>
-			<File
-				RelativePath="..\SoftWire\TokenList.hpp">
 			</File>
 		</Filter>
 	</Files>

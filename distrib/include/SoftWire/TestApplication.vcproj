@@ -147,34 +147,7 @@
 		<Filter
 			Name="Header Files"
 			Filter="h;hpp;hxx;hm;inl">
-			<File
-				RelativePath="Assembler.hpp">
-			</File>
-			<File
-				RelativePath="Intrinsics.hpp">
-			</File>
-			<File
-				RelativePath="Operand.hpp">
-			</File>
 		</Filter>
-		<File
-			RelativePath="AlphaBlend.asm">
-		</File>
-		<File
-			RelativePath="CrossProduct.asm">
-		</File>
-		<File
-			RelativePath="Factorial.asm">
-		</File>
-		<File
-			RelativePath="HelloWorld.asm">
-		</File>
-		<File
-			RelativePath="Mandelbrot.asm">
-		</File>
-		<File
-			RelativePath="SetBits.asm">
-		</File>
 	</Files>
 	<Globals>
 	</Globals>

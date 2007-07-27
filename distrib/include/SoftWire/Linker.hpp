@@ -10,7 +10,7 @@ namespace SoftWire
 	public:
 		Linker();
 
-		~Linker();
+		virtual ~Linker();
 
 		static void *resolveExternal(const char *name);
 		static void defineExternal(void *pointer, const char *name);

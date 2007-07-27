@@ -1,51 +1,18 @@
 #include "InstructionSet.hpp"
 
-#include "String.hpp"
 #include "Error.hpp"
-#include "Scanner.hpp"
-#include "Token.hpp"
 #include "Operand.hpp"
-
-#include <stdlib.h>
+#include "String.hpp"
 
 namespace SoftWire
 {
 	InstructionSet::InstructionSet()
 	{
-		Instruction **instructionList = new Instruction*[numInstructions()];
-		intrinsicMap = new Instruction*[numInstructions()];
+		intrinsicMap = new Instruction[numInstructions()];
 
 		for(int k = 0; k < numInstructions(); k++)
 		{
-			instructionList[k] = new Instruction(instructionSet[k]);
-			intrinsicMap[k] = instructionList[k];
-		}
-
-		qsort(instructionList, numInstructions(), sizeof(Instruction*), compareSyntax);
-
-		instructionMap = new Entry[numMnemonics()];
-
-		int j = 0;
-		int i = 0;
-
-		while(i < numInstructions())
-		{
-			instructionMap[j].mnemonic = instructionList[i]->getMnemonic();
-			instructionMap[j].instruction = instructionList[i++];
-
-			while(i < numInstructions() && stricmp(instructionList[i - 1]->getMnemonic(), instructionList[i]->getMnemonic()) == 0)
-			{
-				instructionMap[j].instruction->attach(instructionList[i++]);
-			}
-
-			j++;
-		}
-
-		delete[] instructionList;
-
-		if(j != numMnemonics())
-		{
-			throw INTERNAL_ERROR;
+			intrinsicMap[k] = Instruction(&instructionSet[k]);
 		}
 
 	//	generateIntrinsics();   // Uncomment this line when you make changes to the instruction set
@@ -53,42 +20,12 @@ namespace SoftWire
 
 	InstructionSet::~InstructionSet()
 	{
-		delete[] instructionMap;
 		delete[] intrinsicMap;
 	}
 
 	const Instruction *InstructionSet::instruction(int i)
 	{
-		return intrinsicMap[i];
-	}
-
-	Instruction *InstructionSet::query(const char *mnemonic) const
-	{
-		if(!instructionMap)
-		{
-			throw INTERNAL_ERROR;
-		}
-
-		Entry *query = (Entry*)bsearch(mnemonic, instructionMap, numMnemonics(), sizeof(Entry), compareEntry);
-
-		if(!query)
-		{
-			return 0;
-		}
-
-		query->instruction->resetMatch();
-
-		return query->instruction;
-	}
-
-	int InstructionSet::compareSyntax(const void *element1, const void *element2)
-	{
-		return stricmp((*(Instruction**)element1)->getMnemonic(), (*(Instruction**)element2)->getMnemonic());
-	}
-
-	int InstructionSet::compareEntry(const void *mnemonic, const void *entry)
-	{
-		return stricmp((char*)mnemonic, ((Entry*)entry)->mnemonic);
+		return &intrinsicMap[i];
 	}
 
 	Instruction::Syntax InstructionSet::instructionSet[] =
@@ -169,7 +106,7 @@ namespace SoftWire
 		{"ADDSD",			"xmmreg,xmm64",				"p2 0F 58 /r",			Instruction::CPU_WILLAMETTE | Instruction::CPU_SSE2}, 
 		{"ADDSS",			"xmmreg,xmm32",				"p3 0F 58 /r",			Instruction::CPU_KATMAI | Instruction::CPU_SSE},
 		{"ADDSUBPD",		"xmmreg,r/m128",			"66 0F D0 /r",			Instruction::CPU_PNI},
-		{"ADDSUBPS",		"xmmreg,r/m128",			"F2 0F D0 /r",			Instruction::CPU_PNI},
+		{"ADDSUBPS",		"xmmreg,r/m128",			"p2 0F D0 /r",			Instruction::CPU_PNI},
 		{"AND",				"r/m8,reg8",				"20 /r",				Instruction::CPU_8086},
 		{"AND",				"r/m16,reg16",				"po 21 /r",				Instruction::CPU_8086},
 		{"AND",				"r/m32,reg32",				"po 21 /r",				Instruction::CPU_386},
@@ -419,7 +356,7 @@ namespace SoftWire
 		{"LOCK DEC",		"BYTE mem8",				"p0 FE /1",				Instruction::CPU_8086},
 		{"LOCK DEC",		"WORD mem16",				"p0 po FF /1",			Instruction::CPU_8086},
 		{"LOCK DEC",		"DWORD mem32",				"p0 po FF /1",			Instruction::CPU_386},
-		{"DIV",				"BYTE r/m8",				"p0 F6 /6",				Instruction::CPU_8086},
+		{"DIV",				"BYTE r/m8",				"F6 /6",				Instruction::CPU_8086},
 		{"DIV",				"WORD r/m16",				"po F7 /6",				Instruction::CPU_8086},
 		{"DIV",				"DWORD r/m32",				"po F7 /6",				Instruction::CPU_386},
 		{"DIVPD",			"xmmreg,r/m128",			"66 0F 5E /r",			Instruction::CPU_WILLAMETTE | Instruction::CPU_SSE2}, 
@@ -623,9 +560,9 @@ namespace SoftWire
 		{"FYL2XP1",			"",							"D9 F9",				Instruction::CPU_8086 | Instruction::CPU_FPU},
 		{"HLT",				"",							"F4",					Instruction::CPU_8086},
 		{"HADDPD",			"xmmreg,r/m128",			"66 0F 7C /r",			Instruction::CPU_PNI},
-		{"HADDPS",			"xmmreg,r/m128",			"F2 0F 7C /r",			Instruction::CPU_PNI},
+		{"HADDPS",			"xmmreg,r/m128",			"p2 0F 7C /r",			Instruction::CPU_PNI},
 		{"HSUBPD",			"xmmreg,r/m128",			"66 0F 7D /r",			Instruction::CPU_PNI},
-		{"HSUBPS",			"xmmreg,r/m128",			"F2 0F 7D /r",			Instruction::CPU_PNI},
+		{"HSUBPS",			"xmmreg,r/m128",			"p2 0F 7D /r",			Instruction::CPU_PNI},
 	//	{"IBTS",			"r/m16,reg16",				"po 0F A7 /r",			Instruction::CPU_386 | Instruction::CPU_UNDOC},
 	//	{"IBTS",			"r/m32,reg32",				"po 0F A7 /r",			Instruction::CPU_386 | Instruction::CPU_UNDOC},
 		{"IDIV",			"BYTE r/m8",				"F6 /7",				Instruction::CPU_8086},
@@ -843,17 +780,17 @@ namespace SoftWire
 		{"MOVD",			"r/m32,mmreg",				"0F 7E /r",				Instruction::CPU_PENTIUM | Instruction::CPU_MMX},
 		{"MOVD",			"xmmreg,r/m32",				"66 0F 6E /r",			Instruction::CPU_WILLAMETTE | Instruction::CPU_SSE2},
 		{"MOVD",			"r/m32,xmmreg",				"66 0F 7E /r",			Instruction::CPU_WILLAMETTE | Instruction::CPU_SSE2}, 
-		{"MOVDQ2Q",			"mmreg,xmmreg",				"p2 OF D6 /r",			Instruction::CPU_WILLAMETTE | Instruction::CPU_SSE2}, 
-		{"MOVDQA",			"xmmreg,r/m128",			"66 OF 6F /r",			Instruction::CPU_WILLAMETTE | Instruction::CPU_SSE2}, 
-		{"MOVDQA",			"r/m128,xmmreg",			"66 OF 7F /r",			Instruction::CPU_WILLAMETTE | Instruction::CPU_SSE2}, 
-		{"MOVDQU",			"xmmreg,r/m128",			"p3 OF 6F /r",			Instruction::CPU_WILLAMETTE | Instruction::CPU_SSE2},
-		{"MOVDQU",			"r/m128,xmmreg",			"p3 OF 7F /r",			Instruction::CPU_WILLAMETTE | Instruction::CPU_SSE2}, 
-		{"LDDQU",			"xmmreg,mem",				"F2 0F F0 /r",			Instruction::CPU_PNI},  
-		{"MOVHPD",			"xmmreg,mem64",				"66 OF 16 /r",			Instruction::CPU_WILLAMETTE | Instruction::CPU_SSE2},
-		{"MOVHPD",			"mem64,xmmreg",				"66 OF 17 /r",			Instruction::CPU_WILLAMETTE | Instruction::CPU_SSE2}, 
+		{"MOVDQ2Q",			"mmreg,xmmreg",				"p2 0F D6 /r",			Instruction::CPU_WILLAMETTE | Instruction::CPU_SSE2}, 
+		{"MOVDQA",			"xmmreg,r/m128",			"66 0F 6F /r",			Instruction::CPU_WILLAMETTE | Instruction::CPU_SSE2}, 
+		{"MOVDQA",			"r/m128,xmmreg",			"66 0F 7F /r",			Instruction::CPU_WILLAMETTE | Instruction::CPU_SSE2}, 
+		{"MOVDQU",			"xmmreg,r/m128",			"p3 0F 6F /r",			Instruction::CPU_WILLAMETTE | Instruction::CPU_SSE2},
+		{"MOVDQU",			"r/m128,xmmreg",			"p3 0F 7F /r",			Instruction::CPU_WILLAMETTE | Instruction::CPU_SSE2}, 
+		{"LDDQU",			"xmmreg,mem",				"p2 0F F0 /r",			Instruction::CPU_PNI},  
+		{"MOVHPD",			"xmmreg,mem64",				"66 0F 16 /r",			Instruction::CPU_WILLAMETTE | Instruction::CPU_SSE2},
+		{"MOVHPD",			"mem64,xmmreg",				"66 0F 17 /r",			Instruction::CPU_WILLAMETTE | Instruction::CPU_SSE2}, 
 		{"MOVHLPS",			"xmmreg,xmmreg",			"0F 12 /r",				Instruction::CPU_KATMAI | Instruction::CPU_SSE},
-		{"MOVLPD",			"xmmreg,mem64",				"66 OF 12 /r",			Instruction::CPU_WILLAMETTE | Instruction::CPU_SSE2},
-		{"MOVLPD",			"mem64,xmmreg",				"66 OF 13 /r",			Instruction::CPU_WILLAMETTE | Instruction::CPU_SSE2}, 
+		{"MOVLPD",			"xmmreg,mem64",				"66 0F 12 /r",			Instruction::CPU_WILLAMETTE | Instruction::CPU_SSE2},
+		{"MOVLPD",			"mem64,xmmreg",				"66 0F 13 /r",			Instruction::CPU_WILLAMETTE | Instruction::CPU_SSE2}, 
 		{"MOVHPS",			"xmmreg,mem64",				"0F 16 /r",				Instruction::CPU_KATMAI | Instruction::CPU_SSE},
 		{"MOVHPS",			"mem64,xmmreg",				"0F 17 /r",				Instruction::CPU_KATMAI | Instruction::CPU_SSE},
 		{"MOVHPS",			"xmmreg,xmmreg",			"0F 16 /r",				Instruction::CPU_KATMAI | Instruction::CPU_SSE},
@@ -871,7 +808,7 @@ namespace SoftWire
 		{"MOVQ",			"r/m64,mmreg",				"0F 7F /r",				Instruction::CPU_PENTIUM | Instruction::CPU_MMX},
 		{"MOVQ",			"xmmreg,xmm64",				"p3 0F 7E /r",			Instruction::CPU_WILLAMETTE | Instruction::CPU_SSE2},
 		{"MOVQ",			"xmm64,xmmreg",				"66 0F D6 /r",			Instruction::CPU_WILLAMETTE | Instruction::CPU_SSE2}, 
-		{"MOVQ2DQ",			"xmmreg,mmreg",				"p3 OF D6 /r",			Instruction::CPU_WILLAMETTE | Instruction::CPU_SSE2}, 
+		{"MOVQ2DQ",			"xmmreg,mmreg",				"p3 0F D6 /r",			Instruction::CPU_WILLAMETTE | Instruction::CPU_SSE2}, 
 		{"MOVSB",			"",							"A4",					Instruction::CPU_8086},
 		{"MOVSW",			"",							"po A5",				Instruction::CPU_8086},
 		{"MOVSD",			"",							"po A5",				Instruction::CPU_386},
@@ -885,9 +822,9 @@ namespace SoftWire
 		{"MOVSX",			"reg16,r/m8",				"po 0F BE /r",			Instruction::CPU_386},
 		{"MOVSX",			"reg32,r/m8",				"po 0F BE /r",			Instruction::CPU_386},
 		{"MOVSX",			"reg32,r/m16",				"po 0F BF /r",			Instruction::CPU_386},
-		{"MOVSHDUP",		"xmmreg,r/m128",			"F3 0F 16 /r",			Instruction::CPU_PNI},
-		{"MOVSLDUP",		"xmmreg,r/m128",			"F3 0F 12 /r",			Instruction::CPU_PNI},
-		{"MOVDDUP",			"xmmreg,r/m128",			"F2 0F 12 /r",			Instruction::CPU_PNI},
+		{"MOVSHDUP",		"xmmreg,r/m128",			"p3 0F 16 /r",			Instruction::CPU_PNI},
+		{"MOVSLDUP",		"xmmreg,r/m128",			"p3 0F 12 /r",			Instruction::CPU_PNI},
+		{"MOVDDUP",			"xmmreg,r/m128",			"p2 0F 12 /r",			Instruction::CPU_PNI},
 		{"MOVZX",			"reg16,r/m8",				"po 0F B6 /r",			Instruction::CPU_386},
 		{"MOVZX",			"reg32,r/m8",				"po 0F B6 /r",			Instruction::CPU_386},
 		{"MOVZX",			"reg32,r/m16",				"po 0F B7 /r",			Instruction::CPU_386},
@@ -1563,7 +1500,7 @@ namespace SoftWire
 		fprintf(file, "typedef OperandREF REF;\n");
 		fprintf(file, "typedef OperandSTR STR;\n");
 		fprintf(file, "\n");
-		fprintf(file, "typedef Encoding* enc;\n");
+		fprintf(file, "#define enc virtual Encoding*\n");
 		fprintf(file, "\n");
 
 		struct InstructionSignature
@@ -1584,7 +1521,7 @@ namespace SoftWire
 
 		for(int t = 0; t < numInstructions(); t++)
 		{
-			Instruction *instruction = intrinsicMap[t];
+			const Instruction *instruction = &intrinsicMap[t];
 
 			char mnemonic[256] = {0};
 			strcpy(mnemonic, instruction->getMnemonic());
@@ -1746,7 +1683,9 @@ namespace SoftWire
 			}
 		}
 
-		fprintf(file, "\n#endif   // SOFTWIRE_NO_INTRINSICS\n");
+		fprintf(file, "\n");
+		fprintf(file, "#undef enc\n\n");
+		fprintf(file, "#endif   // SOFTWIRE_NO_INTRINSICS\n");
 
 		delete[] uniqueSignature;
 		fclose(file);

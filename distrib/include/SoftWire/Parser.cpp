@@ -8,6 +8,15 @@
 
 namespace SoftWire
 {
+	#error Important: In newer versions of SoftWire the built-in file assembler might be removed.
+	#error Classes like the Parser, Scanner, Token would be deprecated. The reason for this is
+	#error that it is in the way of new development, and has no added value for me any more.
+	#error Run-time intrinsics are far more powerful, while the file assembler hasn't changed a
+	#error single bit for a whole year. The file assembler would still be available in older 
+	#error versions of course. If you are using the file assembler and/or would like to keep it in
+	#error newer versions, for any reason, please let me know! E-mail: nicolas@capens.net
+	#error Remove these lines to continue compilation.
+
 	Parser::Parser(TokenList &tokenList, Synthesizer &synthesizer, const InstructionSet &instructionSet) : tokenList(tokenList), synthesizer(synthesizer), instructionSet(instructionSet)
 	{
 	}

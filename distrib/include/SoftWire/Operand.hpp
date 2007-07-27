@@ -131,12 +131,12 @@ namespace SoftWire
 
 		union
 		{
-			int value;   // For immediates
-			Encoding::Reg reg;   // For registers
-			Encoding::Reg baseReg;   // For memory references;
+			int value;     // For immediates
+			int reg;       // For registers
+			int baseReg;   // For memory references;
 		};
 
-		Encoding::Reg indexReg;
+		int indexReg;
 		int scale;
 		int displacement;
 
@@ -162,8 +162,6 @@ namespace SoftWire
 		static bool isR_M(const Operand &operand);
 		static bool isStr(const Operand &operand);
 
-		static OperandREG scanReg(const char *string);
-
 		const char *regName() const;
 		const char *indexName() const;
 
@@ -173,7 +171,7 @@ namespace SoftWire
 		{
 			Type type;
 			const char *notation;
-			Encoding::Reg reg;
+			int reg;   // Index
 		};
 
 		static const Register registerSet[];
@@ -678,22 +676,12 @@ namespace SoftWire
 
 		explicit OperandR_M32(const Operand &reg)
 		{
-			type = OPERAND_REG32;
+			type = reg.type;
 			baseReg = reg.baseReg;
 			indexReg = reg.indexReg;
 			scale = reg.scale;
 			displacement = reg.displacement;
 			reference = reg.reference;
-		}
-
-		explicit OperandR_M32(const OperandMEM32 &mem)
-		{
-			type = OPERAND_MEM32;
-			baseReg = mem.baseReg;
-			indexReg = mem.indexReg;
-			scale = mem.scale;
-			displacement = mem.displacement;
-			reference = mem.reference;
 		}
 	};
 
@@ -709,19 +697,9 @@ namespace SoftWire
 			reference = 0;
 		}
 
-		explicit OperandR_M16(const OperandMEM16 &mem)
-		{
-			type = OPERAND_MEM16;
-			baseReg = mem.baseReg;
-			indexReg = mem.indexReg;
-			scale = mem.scale;
-			displacement = mem.displacement;
-			reference = mem.reference;
-		}
-
 		explicit OperandR_M16(const Operand &reg)
 		{
-			type = OPERAND_REG16;
+			type = reg.type;
 			baseReg = reg.baseReg;
 			indexReg = reg.indexReg;
 			scale = reg.scale;
@@ -752,19 +730,9 @@ namespace SoftWire
 			reference = 0;
 		}
 
-		explicit OperandR_M8(const OperandMEM8 &mem)
-		{
-			type = OPERAND_MEM8;
-			baseReg = mem.baseReg;
-			indexReg = mem.indexReg;
-			scale = mem.scale;
-			displacement = mem.displacement;
-			reference = mem.reference;
-		}
-
 		explicit OperandR_M8(const Operand &reg)
 		{
-			type = OPERAND_REG8;
+			type = reg.type;
 			baseReg = reg.baseReg;
 			indexReg = reg.indexReg;
 			scale = reg.scale;
@@ -805,19 +773,9 @@ namespace SoftWire
 			reference = 0;
 		}
 
-		explicit OperandR_M64(const OperandMEM64 &mem)
-		{
-			type = OPERAND_MEM64;
-			baseReg = mem.baseReg;
-			indexReg = mem.indexReg;
-			scale = mem.scale;
-			displacement = mem.displacement;
-			reference = mem.reference;
-		}
-
 		explicit OperandR_M64(const Operand &reg)
 		{
-			type = OPERAND_MMREG;
+			type = reg.type;
 			baseReg = reg.baseReg;
 			indexReg = reg.indexReg;
 			scale = reg.scale;
@@ -838,19 +796,9 @@ namespace SoftWire
 			reference = 0;
 		}
 
-		explicit OperandR_M128(const OperandMEM128 &mem)
-		{
-			type = OPERAND_MEM128;
-			baseReg = mem.baseReg;
-			indexReg = mem.indexReg;
-			scale = mem.scale;
-			displacement = mem.displacement;
-			reference = mem.reference;
-		}
-
 		explicit OperandR_M128(const Operand &reg)
 		{
-			type = OPERAND_XMMREG;
+			type = reg.type;
 			baseReg = reg.baseReg;
 			indexReg = reg.indexReg;
 			scale = reg.scale;
@@ -871,19 +819,9 @@ namespace SoftWire
 			reference = 0;
 		}
 
-		explicit OperandXMM32(const OperandMEM32 &mem)
-		{
-			type = OPERAND_MEM32;
-			baseReg = mem.baseReg;
-			indexReg = mem.indexReg;
-			scale = mem.scale;
-			displacement = mem.displacement;
-			reference = mem.reference;
-		}
-
 		explicit OperandXMM32(const Operand &reg)
 		{
-			type = OPERAND_XMMREG;
+			type = reg.type;
 			baseReg = reg.baseReg;
 			indexReg = reg.indexReg;
 			scale = reg.scale;
@@ -904,19 +842,9 @@ namespace SoftWire
 			reference = 0;
 		}
 
-		explicit OperandXMM64(const OperandMEM64 &mem)
-		{
-			type = OPERAND_MEM64;
-			baseReg = mem.baseReg;
-			indexReg = mem.indexReg;
-			scale = mem.scale;
-			displacement = mem.displacement;
-			reference = mem.reference;
-		}
-
 		explicit OperandXMM64(const Operand &reg)
 		{
-			type = OPERAND_MMREG;
+			type = reg.type;
 			baseReg = reg.baseReg;
 			indexReg = reg.indexReg;
 			scale = reg.scale;
@@ -944,7 +872,7 @@ namespace SoftWire
 
 	struct OperandREGxX : OperandREF
 	{
-		OperandREGxX(Encoding::Reg reg = Encoding::REG_UNKNOWN)
+		OperandREGxX(int reg = Encoding::REG_UNKNOWN)
 		{
 			type = OPERAND_REG32;
 			this->reg = reg;
@@ -967,7 +895,7 @@ namespace SoftWire
 
 	struct OperandREG32 : OperandR_M32, OperandREF, OperandREG
 	{
-		OperandREG32(Encoding::Reg reg = Encoding::REG_UNKNOWN)
+		OperandREG32(int reg = Encoding::REG_UNKNOWN)
 		{
 			type = OPERAND_REG32;
 			this->reg = reg;
@@ -1002,7 +930,7 @@ namespace SoftWire
 
 	struct OperandREG16 : OperandR_M16, OperandREG
 	{
-		OperandREG16(Encoding::Reg reg = Encoding::REG_UNKNOWN)
+		OperandREG16(int reg = Encoding::REG_UNKNOWN)
 		{
 			type = OPERAND_REG16;
 			this->reg = reg;
@@ -1026,7 +954,7 @@ namespace SoftWire
 
 	struct OperandREG8 : OperandR_M8, OperandREG
 	{
-		OperandREG8(Encoding::Reg reg = Encoding::REG_UNKNOWN)
+		OperandREG8(int reg = Encoding::REG_UNKNOWN)
 		{
 			type = OPERAND_REG8;
 			this->reg = reg;
@@ -1057,7 +985,7 @@ namespace SoftWire
 
 	struct OperandFPUREG : virtual Operand, OperandREG
 	{
-		OperandFPUREG(Encoding::Reg reg = Encoding::REG_UNKNOWN)
+		OperandFPUREG(int reg = Encoding::REG_UNKNOWN)
 		{
 			type = OPERAND_FPUREG;
 			this->reg = reg;
@@ -1067,7 +995,7 @@ namespace SoftWire
 
 	struct OperandMMREG : OperandR_M64, OperandREG
 	{
-		OperandMMREG(Encoding::Reg reg = Encoding::REG_UNKNOWN)
+		OperandMMREG(int reg = Encoding::REG_UNKNOWN)
 		{
 			type = OPERAND_MMREG;
 			this->reg = reg;
@@ -1084,7 +1012,7 @@ namespace SoftWire
 
 	struct OperandXMMREG : OperandR_M128, OperandXMM32, OperandXMM64, OperandREG
 	{
-		OperandXMMREG(Encoding::Reg reg = Encoding::REG_UNKNOWN)
+		OperandXMMREG(int reg = Encoding::REG_UNKNOWN)
 		{
 			type = OPERAND_XMMREG;
 			this->reg = reg;

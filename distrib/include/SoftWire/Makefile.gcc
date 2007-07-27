@@ -1,6 +1,6 @@
 CC = c++
 OBJEXT = .o
-SOURCES = Assembler.cpp CodeGenerator.cpp Encoding.cpp Error.cpp Instruction.cpp InstructionSet.cpp Loader.cpp Operand.cpp Parser.cpp Scanner.cpp Synthesizer.cpp Token.cpp Linker.cpp Macro.cpp TokenList.cpp
+SOURCES = Assembler.cpp CodeGenerator.cpp Encoding.cpp Error.cpp Instruction.cpp InstructionSet.cpp Loader.cpp Operand.cpp Synthesizer.cpp Linker.cpp RegisterAllocator.cpp Optimizer.cpp Emulator.cpp
 TESTSOURCE = Test.cpp
 OBJECTS = $(addsuffix $(OBJEXT), $(basename $(SOURCES)))
 TESTOBJECTS = $(addsuffix $(OBJEXT), $(basename $(TESTSOURCE)))

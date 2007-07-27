@@ -1,8 +1,8 @@
 #include "Encoding.hpp"
 
 #include "Error.hpp"
-#include "String.hpp"
 #include "Instruction.hpp"
+#include "String.hpp"
 
 namespace SoftWire
 {
@@ -268,6 +268,11 @@ namespace SoftWire
 	void Encoding::retain()
 	{
 		emit = true;
+	}
+
+	bool Encoding::isEmitting()
+	{
+		return emit;
 	}
 
 	int Encoding::writeCode(unsigned char *buffer, bool write) const

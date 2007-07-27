@@ -3,14 +3,17 @@
 #include "Error.hpp"
 #include "String.hpp"
 
-#include <stdio.h>
-#include <stdlib.h>
-
 namespace SoftWire
 {
-	Instruction::Instruction(const Syntax &instruction) : syntax(instruction)
+	Instruction::Instruction()
 	{
-		extractOperands(instruction.operands);
+	}
+
+	Instruction::Instruction(const Syntax *syntax)
+	{
+		this->syntax = syntax;
+
+		extractOperands(syntax->operands);
 
 		if(secondOperand == Operand::OPERAND_IMM8)
 		{
@@ -20,23 +23,22 @@ namespace SoftWire
 				secondOperand = Operand::OPERAND_EXT8;
 			}
 		}
-
-		syntaxMatch = false;
-		flags = instruction.flags;
-		next = 0;
 	}
 
 	Instruction::~Instruction()
 	{
-		// Avoid call stack overflow
-		while(next)
-		{
-			Instruction *nextNext = next->next;
-			next->next = 0;
-			delete next;
-			next = nextNext;
-		}
-		next = 0;
+	}
+
+	Instruction &Instruction::operator=(const Instruction &instruction)
+	{
+		syntax = instruction.syntax;
+
+		specifier = instruction.specifier;
+		firstOperand = instruction.firstOperand;
+		secondOperand = instruction.secondOperand;
+		thirdOperand = instruction.thirdOperand;
+
+		return *this;
 	}
 
 	void Instruction::extractOperands(const char *syntax)
@@ -51,12 +53,12 @@ namespace SoftWire
 		secondOperand = Operand::OPERAND_VOID;
 		thirdOperand = Operand::OPERAND_VOID;
 
-		char *string = strdup(syntax);
+		char string[256];
+		strncpy(string, syntax, 255);
 		const char *token = strtok(string, " ,");
 
 		if(!token)
 		{
-			delete[] string;
 			return;
 		}
 
@@ -68,7 +70,6 @@ namespace SoftWire
 
 			if(!token)
 			{
-				delete[] string;
 				return;
 			}
 		}
@@ -81,7 +82,6 @@ namespace SoftWire
 
 			if(token == 0)
 			{
-				delete[] string;
 				return;
 			}
 		}
@@ -94,7 +94,6 @@ namespace SoftWire
 
 			if(token == 0)
 			{
-				delete[] string;
 				return;
 			}
 		}
@@ -107,12 +106,9 @@ namespace SoftWire
 
 			if(token == 0)
 			{
-				delete[] string;
 				return;
 			}
 		}
-
-		delete[] string;
 
 		if(token == 0)
 		{
@@ -124,223 +120,9 @@ namespace SoftWire
 		}
 	}
 
-	void Instruction::attach(Instruction *instruction)
-	{
-		if(!next)
-		{
-			next = instruction;
-		}
-		else
-		{
-			next->attach(instruction);
-		}
-	}
-
-	void Instruction::attachNew(const Syntax &instruction)
-	{
-		if(!next)
-		{
-			next = new Instruction(instruction);
-		}
-		else
-		{
-			next->attachNew(instruction);
-		}
-	}
-
-	Instruction *Instruction::getNext() const
-	{
-		return next;
-	}
-
-	bool Instruction::matchSyntax() const
-	{
-		return syntaxMatch;	
-	}
-
-	void Instruction::resetMatch()
-	{
-		syntaxMatch = true;
-
-		if(next)
-		{
-			next->resetMatch();
-		}
-	}
-
-	void Instruction::matchMnemonic(const char *mnemonic)
-	{
-		if(next)
-		{
-			next->matchMnemonic(mnemonic);
-		}
-
-		if(!syntaxMatch) return;
-
-		if(stricmp(syntax.mnemonic, mnemonic) == 0)
-		{
-			syntaxMatch = true;
-		}
-		else
-		{
-			syntaxMatch = false;
-		}
-	}
-
-	void Instruction::matchSpecifier(Specifier::Type specifier)
-	{
-		if(next)
-		{
-			next->matchSpecifier(specifier);
-		}
-
-		if(!syntaxMatch) return;
-
-		if(this->specifier == Specifier::TYPE_UNKNOWN)
-		{
-			if(specifier != Specifier::TYPE_UNKNOWN)
-			{
-				if(firstOperand == Operand::OPERAND_R_M8 || secondOperand == Operand::OPERAND_R_M8)
-				{
-					syntaxMatch = specifier == Specifier::TYPE_BYTE;
-				}
-				else if(firstOperand == Operand::OPERAND_R_M16 || secondOperand == Operand::OPERAND_R_M16)
-				{
-					syntaxMatch = specifier == Specifier::TYPE_WORD;
-				}
-				else if(firstOperand == Operand::OPERAND_R_M32 || secondOperand == Operand::OPERAND_R_M32)
-				{
-					syntaxMatch = specifier == Specifier::TYPE_DWORD;
-				}
-				else if(firstOperand == Operand::OPERAND_R_M64 || secondOperand == Operand::OPERAND_R_M64)
-				{
-					syntaxMatch = (specifier == Specifier::TYPE_QWORD || specifier == Specifier::TYPE_MMWORD);
-				}
-				else if(firstOperand == Operand::OPERAND_R_M128 || secondOperand == Operand::OPERAND_R_M128)
-				{
-					syntaxMatch = specifier == Specifier::TYPE_XMMWORD;
-				}
-				else
-				{
-					syntaxMatch = true;
-				}
-			}
-			else
-			{
-				syntaxMatch = true;
-			}
-		}
-		else if(this->specifier != Specifier::TYPE_UNKNOWN)   // Explicit specifier
-		{
-			if(this->specifier == specifier)
-			{
-				syntaxMatch = true;
-			}
-			else if(specifier == Specifier::TYPE_UNKNOWN)   // Specifiers are optional
-			{
-				syntaxMatch = true;
-			}
-			else
-			{
-				syntaxMatch = false;
-			}
-		}
-		else
-		{
-			syntaxMatch = false;
-		}
-	}
-
-	void Instruction::matchFirstOperand(const Operand &operand)
-	{
-		if(next)
-		{
-			next->matchFirstOperand(operand);
-		}
-
-		if(!syntaxMatch) return;
-
-		if(operand.isSubtypeOf(firstOperand))
-		{
-			syntaxMatch = true;
-		}
-		else if(operand.type == Operand::OPERAND_MEM && firstOperand & Operand::OPERAND_MEM)
-		{
-			if(syntaxMatch)   // Explicit size specfier
-			{
-				syntaxMatch = true;
-			}
-			else if(secondOperand != Operand::OPERAND_UNKNOWN)   // Implicit size specifier
-			{
-				syntaxMatch = true;
-			}
-			else
-			{
-				syntaxMatch = false;
-			}
-		}
-		else
-		{
-			syntaxMatch = false;
-		}
-	}
-
-	void Instruction::matchSecondOperand(const Operand &operand)
-	{
-		if(next)
-		{
-			next->matchSecondOperand(operand);
-		}
-
-		if(!syntaxMatch) return;
-
-		if(operand.isSubtypeOf(secondOperand))
-		{
-			syntaxMatch = true;
-		}
-		else if(operand.type == Operand::OPERAND_MEM && secondOperand & Operand::OPERAND_MEM)
-		{
-			if(syntaxMatch)   // Explicit size specfier
-			{
-				syntaxMatch = true;
-			}
-			else if(firstOperand != Operand::OPERAND_UNKNOWN)   // Implicit size specifier
-			{
-				syntaxMatch = true;
-			}
-			else
-			{
-				syntaxMatch = false;
-			}
-		}
-		else
-		{
-			syntaxMatch = false;
-		}
-	}
-
-	void Instruction::matchThirdOperand(const Operand &operand)
-	{
-		if(next)
-		{
-			next->matchThirdOperand(operand);
-		}
-
-		if(!syntaxMatch) return;
-
-		if(operand.isSubtypeOf(thirdOperand))
-		{
-			syntaxMatch = true;
-		}
-		else
-		{
-			syntaxMatch = false;
-		}
-	}
-
 	const char *Instruction::getMnemonic() const
 	{
-		return syntax.mnemonic;
+		return syntax->mnemonic;
 	}
 
 	Operand::Type Instruction::getFirstOperand() const
@@ -360,22 +142,22 @@ namespace SoftWire
 
 	const char *Instruction::getOperandSyntax() const
 	{
-		return syntax.operands;
+		return syntax->operands;
 	}
 
 	const char *Instruction::getEncoding() const
 	{
-		return syntax.encoding;
+		return syntax->encoding;
 	}
 
 	bool Instruction::is32Bit() const
 	{
-		return (flags & CPU_386) == CPU_386;
+		return (syntax->flags & CPU_386) == CPU_386;
 	}
 
 	int Instruction::approximateSize() const
 	{
-		const char *format = syntax.encoding;
+		const char *format = syntax->encoding;
 
 		if(!format)
 		{

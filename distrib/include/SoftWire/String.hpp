@@ -1,15 +1,15 @@
 #ifndef SoftWire_String_hpp
 #define SoftWire_String_hpp
 
-#include "CharType.hpp"
-
 #include <stdio.h>
 #include <stdarg.h>
 #include <string.h>
+#include <stdlib.h>
+#include <ctype.h>
 
 namespace SoftWire
 {
-#ifdef _MSC_VER
+#ifdef WIN32
 	inline int vsnprintf(char *buffer, size_t count, const char *format, va_list argptr)
 	{
 		return _vsnprintf(buffer, count, format, argptr);
@@ -38,6 +38,13 @@ namespace SoftWire
 		return string;
 	}
 #endif
+
+	inline char *strdup(const char *string)
+	{
+		if(!string) return 0;
+		char *duplicate = new char[strlen(string) + 1];
+		return strcpy(duplicate, string);
+	}
 }
 
 #endif   // SoftWire_String_hpp

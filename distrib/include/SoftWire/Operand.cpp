@@ -319,27 +319,6 @@ namespace SoftWire
 		{OPERAND_XMMREG,	"xmm7", Encoding::XMM7}
 	};
 
-	OperandREG Operand::scanReg(const char *string)
-	{
-		if(string)
-		{
-			for(int i = 0; i < sizeof(registerSet) / sizeof(Operand::Register); i++)
-			{
-				if(stricmp(string, registerSet[i].notation) == 0)
-				{
-					OperandREG reg;
-
-					reg.type = registerSet[i].type;
-					reg.reg = registerSet[i].reg;
-
-					return reg;
-				}
-			}
-		}
-
-		return Operand(OPERAND_UNKNOWN);
-	}
-
 	const char *Operand::regName() const
 	{
 		for(int i = 0; i < sizeof(registerSet) / sizeof(Operand::Register); i++)

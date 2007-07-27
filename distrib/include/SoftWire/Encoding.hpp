@@ -15,14 +15,31 @@ namespace SoftWire
 		{
 			REG_UNKNOWN = -1,
 
-			AL = 0, AX = 0, EAX = 0, ST0 = 0, MM0 = 0, XMM0 = 0,
-			CL = 1, CX = 1, ECX = 1, ST1 = 1, MM1 = 1, XMM1 = 1,
-			DL = 2, DX = 2, EDX = 2, ST2 = 2, MM2 = 2, XMM2 = 2,
-			BL = 3, BX = 3, EBX = 3, ST3 = 3, MM3 = 3, XMM3 = 3,
-			AH = 4, SP = 4, ESP = 4, ST4 = 4, MM4 = 4, XMM4 = 4,
-			CH = 5, BP = 5, EBP = 5, ST5 = 5, MM5 = 5, XMM5 = 5,
-			DH = 6, SI = 6, ESI = 6, ST6 = 6, MM6 = 6, XMM6 = 6,
-			BH = 7, DI = 7, EDI = 7, ST7 = 7, MM7 = 7, XMM7 = 7
+			REG_0 = 0, AL = 0, AX = 0, EAX = 0, ST0 = 0, MM0 = 0, XMM0 = 0,
+			REG_1 = 1, CL = 1, CX = 1, ECX = 1, ST1 = 1, MM1 = 1, XMM1 = 1,
+			REG_2 = 2, DL = 2, DX = 2, EDX = 2, ST2 = 2, MM2 = 2, XMM2 = 2,
+			REG_3 = 3, BL = 3, BX = 3, EBX = 3, ST3 = 3, MM3 = 3, XMM3 = 3,
+			REG_4 = 4, AH = 4, SP = 4, ESP = 4, ST4 = 4, MM4 = 4, XMM4 = 4,
+			REG_5 = 5, CH = 5, BP = 5, EBP = 5, ST5 = 5, MM5 = 5, XMM5 = 5,
+			REG_6 = 6, DH = 6, SI = 6, ESI = 6, ST6 = 6, MM6 = 6, XMM6 = 6,
+			REG_7 = 7, BH = 7, DI = 7, EDI = 7, ST7 = 7, MM7 = 7, XMM7 = 7
+		};
+
+		enum Mod
+		{
+			MOD_NO_DISP = 0,
+			MOD_BYTE_DISP = 1,
+			MOD_DWORD_DISP = 2,
+			MOD_REG = 3
+		};
+
+		enum Scale
+		{
+			SCALE_UNKNOWN = 0,
+			SCALE_1 = 0,
+			SCALE_2 = 1,
+			SCALE_4 = 2,
+			SCALE_8 = 3
 		};
 
 		Encoding(const Instruction *instruction = 0);
@@ -63,6 +80,7 @@ namespace SoftWire
 		// Prevent or enable writing to output
 		Encoding *reserve();
 		void retain();
+		bool isEmitting();
 
 		int printCode(char *buffer) const;
 
@@ -76,23 +94,6 @@ namespace SoftWire
 			char *literal;
 		};
 		bool relative;
-
-		enum Mod
-		{
-			MOD_NO_DISP = 0,
-			MOD_BYTE_DISP = 1,
-			MOD_DWORD_DISP = 2,
-			MOD_REG = 3
-		};
-
-		enum Scale
-		{
-			SCALE_UNKNOWN = 0,
-			SCALE_1 = 0,
-			SCALE_2 = 1,
-			SCALE_4 = 2,
-			SCALE_8 = 3
-		};
 
 		struct
 		{

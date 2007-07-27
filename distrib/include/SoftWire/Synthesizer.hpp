@@ -13,7 +13,7 @@ namespace SoftWire
 	public:
 		Synthesizer();
 
-		~Synthesizer();
+		virtual ~Synthesizer();
 
 		void reset();
 
@@ -34,10 +34,10 @@ namespace SoftWire
 		Operand::Type firstType;
 		Operand::Type secondType;
 
-		Encoding::Reg firstReg;
-		Encoding::Reg secondReg;
-		Encoding::Reg baseReg;
-		Encoding::Reg indexReg;
+		int firstReg;
+		int secondReg;
+		int baseReg;
+		int indexReg;
 
 		int scale;
 

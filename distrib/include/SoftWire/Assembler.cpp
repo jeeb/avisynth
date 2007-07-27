@@ -1,15 +1,12 @@
 #include "Assembler.hpp"
 
-#include "Token.hpp"
-#include "Scanner.hpp"
-#include "Parser.hpp"
 #include "Linker.hpp"
 #include "Loader.hpp"
 #include "Error.hpp"
-#include "String.hpp"
 #include "Operand.hpp"
 #include "Synthesizer.hpp"
 #include "InstructionSet.hpp"
+#include "String.hpp"
 
 #include <time.h>
 
@@ -82,100 +79,21 @@ namespace SoftWire
 	int Assembler::referenceCount = 0;
 	bool Assembler::listingEnabled = true;
 
-	Assembler::Assembler(const char *sourceFile)
+	Assembler::Assembler()
 	{
-		try
+		echoFile = 0;
+		entryLabel = 0;
+
+		if(!instructionSet)
 		{
-			errors = new char[1];
-			errors[0] = '\0';
-			echoFile = 0;
-
-			if(sourceFile)
-			{
-				entryLabel = strdup(sourceFile);
-				char *dot = strrchr(entryLabel, '.');
-
-				if(dot)
-				{
-					*dot = '\0';
-				}
-				else
-				{
-					throw Error("Input file must have extension");
-				}
-			}
-			else
-			{
-				entryLabel = 0;
-			}
-
-			if(!instructionSet)
-			{
-				instructionSet = new InstructionSet();
-			}
-			referenceCount++;
-
-			linker = new Linker();
-			loader = new Loader(*linker);
-			synthesizer = new Synthesizer();
-
-			if(sourceFile)
-			{
-				scanner = new Scanner();
-				parser = new Parser(*scanner, *synthesizer, *instructionSet);
-
-				scanner->scanFile(sourceFile);
-				assembleFile();
-			}
-			else
-			{
-				scanner = 0;
-				parser = 0;
-			}
+			instructionSet = new InstructionSet();
 		}
-		catch(const Error &error)
-		{
-			handleError(error.getString());
-		}
-	}
+	
+		referenceCount++;
 
-	Assembler::Assembler(const char *sourceString, const char *entryPoint)
-	{
-		try
-		{
-			errors = new char[1];
-			errors[0] = '\0';
-			echoFile = 0;
-
-			if (entryPoint)
-			{
-				entryLabel = strdup(entryPoint);
-			}
-			else
-			{
-				entryLabel = 0;
-			}
-
-			if(!instructionSet)
-			{
-				instructionSet = new InstructionSet();
-			}
-			referenceCount++;
-
-			linker = new Linker();
-			loader = new Loader(*linker);
-			synthesizer = new Synthesizer();
-
-			scanner = new Scanner();
-			parser = new Parser(*scanner, *synthesizer, *instructionSet);
-
-			scanner->scanString(sourceString);
-			assembleFile();
-		}
-		catch(const Error &error)
-		{
-			handleError(error.getString());
-		}
+		linker = new Linker();
+		loader = new Loader(*linker);
+		synthesizer = new Synthesizer();
 	}
 
 	Assembler::~Assembler()
@@ -189,9 +107,6 @@ namespace SoftWire
 		delete loader;
 		loader = 0;
 
-		delete scanner;
-		scanner = 0;
-
 		delete synthesizer;
 		synthesizer = 0;
 
@@ -202,55 +117,13 @@ namespace SoftWire
 			instructionSet = 0;
 		}
 
-		delete parser;
-		parser = 0;
-
-		delete[] errors;
-		errors = 0;
-
 		delete[] echoFile;
 		echoFile = 0;
 	}
 
-	void Assembler::assembleFile()
-	{
-		if(!scanner)
-		{
-			throw INTERNAL_ERROR;
-		}
-
-		scanner->rewind();
-
-		while(!scanner->isEndOfFile())
-		{
-			assembleLine();
-
-			if(scanner->isEndOfLine() && !scanner->isEndOfFile())
-			{
-				scanner->advance();
-			}
-		}
-
-		delete scanner;
-		scanner = 0;
-
-		delete parser;
-		parser = 0;
-	}
-
-	void Assembler::defineExternal(void *pointer, const char *name)
-	{
-		Linker::defineExternal(pointer, name);
-	}
-
-	void Assembler::defineSymbol(int value, const char *name)
-	{
-		Scanner::defineSymbol(value, name);
-	}
-
 	void (*Assembler::callable(const char *entryLabel))()
 	{
-		if(!loader || errors[0] != '\0') return 0;
+		if(!loader) return 0;
 
 		if(entryLabel)
 		{
@@ -269,17 +142,8 @@ namespace SoftWire
 		delete linker;
 		linker = 0;
 
-		delete scanner;
-		scanner = 0;
-
 		delete synthesizer;
 		synthesizer = 0;
-
-		delete parser;
-		parser = 0;
-
-		delete[] errors;
-		errors = 0;
 
 		delete[] echoFile;
 		echoFile = 0;
@@ -289,11 +153,11 @@ namespace SoftWire
 			delete[] this->entryLabel;
 			this->entryLabel = 0;
 
-			return loader->callable(entryLabel);
+			return loader->finalize(entryLabel);
 		}
 		else
 		{
-			return loader->callable(this->entryLabel);
+			return loader->finalize(this->entryLabel);
 		}
 	}
 
@@ -302,38 +166,6 @@ namespace SoftWire
 		if(!loader) return 0;
 
 		return loader->acquire();
-	}
-
-	void Assembler::assembleLine()
-	{
-		if(!parser || !loader) throw INTERNAL_ERROR;
-
-		const Encoding &encoding = parser->parseLine();
-		loader->appendEncoding(encoding);
-	}
-
-	const char *Assembler::getErrors() const
-	{
-		return errors;
-	}
-
-	void Assembler::handleError(const char *error)
-	{
-		const char *sourceLine = "<intrinsic>";
-		if(parser) sourceLine = parser->skipLine();
-
-		int previousLength = 0;
-		if(errors) previousLength = strlen(errors);
-		int newLength = previousLength + strlen(error) + strlen(sourceLine) + 16;
-
-		delete[] errors;
-		errors = new char[newLength];
-
-		strcpy(errors, "error: ");
-		strcat(errors, error);
-		strcat(errors, "\n\t");
-		strcat(errors, sourceLine);
-		strcat(errors, "\n");
 	}
 
 	const char *Assembler::getListing() const
@@ -385,6 +217,23 @@ namespace SoftWire
 		fclose(file);
 	}
 
+	void Assembler::reset()
+	{
+		if(!loader) return;
+
+		loader->reset();
+	}
+
+	int Assembler::instructionCount()
+	{
+		if(!loader)
+		{
+			return 0;
+		}
+
+		return loader->instructionCount();
+	}
+
 	void Assembler::enableListing()
 	{
 		listingEnabled = true;
@@ -397,65 +246,49 @@ namespace SoftWire
 
 	Encoding *Assembler::x86(int instructionID, const Operand &firstOperand, const Operand &secondOperand, const Operand &thirdOperand)
 	{
-		try
+		if(!loader || !synthesizer || !instructionSet) throw INTERNAL_ERROR;
+
+		const Instruction *instruction = instructionSet->instruction(instructionID);
+
+		if(echoFile)
 		{
-			if(!loader || !synthesizer || !instructionSet) throw INTERNAL_ERROR;
+			FILE *file = fopen(echoFile, "at");
 
-			const Instruction *instruction = instructionSet->instruction(instructionID);
+			fprintf(file, "\t%s", instruction->getMnemonic());
+			if(!Operand::isVoid(firstOperand)) fprintf(file, "\t%s", firstOperand.string());
+			if(!Operand::isVoid(secondOperand)) fprintf(file, ",\t%s", secondOperand.string());
+			if(!Operand::isVoid(thirdOperand)) fprintf(file, ",\t%s", thirdOperand.string());
+			fprintf(file, "\n");
 
-			if(echoFile)
-			{
-				FILE *file = fopen(echoFile, "at");
-
-				fprintf(file, "\t%s", instruction->getMnemonic());
-				if(!Operand::isVoid(firstOperand)) fprintf(file, "\t%s", firstOperand.string());
-				if(!Operand::isVoid(secondOperand)) fprintf(file, ",\t%s", secondOperand.string());
-				if(!Operand::isVoid(thirdOperand)) fprintf(file, ",\t%s", thirdOperand.string());
-				fprintf(file, "\n");
-
-				fclose(file);
-			}
-
-			synthesizer->reset();
-
-			synthesizer->encodeFirstOperand(firstOperand);
-			synthesizer->encodeSecondOperand(secondOperand);
-			synthesizer->encodeThirdOperand(thirdOperand);
-			const Encoding &encoding = synthesizer->encodeInstruction(instruction);
-
-			return loader->appendEncoding(encoding);
-		}
-		catch(Error &error)
-		{
-			handleError(error.getString());
+			fclose(file);
 		}
 
-		return 0;
+		synthesizer->reset();
+
+		synthesizer->encodeFirstOperand(firstOperand);
+		synthesizer->encodeSecondOperand(secondOperand);
+		synthesizer->encodeThirdOperand(thirdOperand);
+		const Encoding &encoding = synthesizer->encodeInstruction(instruction);
+
+		return loader->appendEncoding(encoding);
 	}
 
 	void Assembler::label(const char *label)
 	{
-		try
+		if(!loader || !synthesizer) return;
+
+		if(echoFile)
 		{
-			if(!loader || !synthesizer) return;
-
-			if(echoFile)
-			{
-				FILE *file = fopen(echoFile, "at");
-				fprintf(file, "%s:\n", label);
-				fclose(file);
-			}
-
-			synthesizer->reset();
-
-			synthesizer->defineLabel(label);
-			const Encoding &encoding = synthesizer->encodeInstruction(0);
-
-			loader->appendEncoding(encoding);
+			FILE *file = fopen(echoFile, "at");
+			fprintf(file, "%s:\n", label);
+			fclose(file);
 		}
-		catch(Error &error)
-		{
-			handleError(error.getString());
-		}
+
+		synthesizer->reset();
+
+		synthesizer->defineLabel(label);
+		const Encoding &encoding = synthesizer->encodeInstruction(0);
+
+		loader->appendEncoding(encoding);
 	}
 };

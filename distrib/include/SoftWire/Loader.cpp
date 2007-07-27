@@ -3,22 +3,25 @@
 #include "Encoding.hpp"
 #include "Error.hpp"
 #include "Linker.hpp"
-#include "String.hpp"
 
-#ifdef _MSC_VER
+#include <string.h>
+
+#ifdef WIN32
 	#include <windows.h>
+#elif __unix__
+	#include <sys/mman.h>
 #endif
 
 namespace SoftWire
 {
 	Loader::Loader(const Linker &linker) : linker(linker)
 	{
-		possession = true;
-		finalized = false;
-
 		machineCode = 0;
 		instructions = 0;
 		listing = 0;
+		possession = true;
+
+		reset();
 	}
 
 	Loader::~Loader()
@@ -67,6 +70,14 @@ namespace SoftWire
 			loadCode();
 		}
 
+		finalized = true;
+
+		delete instructions;
+		instructions = 0;
+
+		delete[] listing;
+		listing = 0;
+
 		if(!entryLabel)
 		{
 			return (void(*)())machineCode;
@@ -78,14 +89,6 @@ namespace SoftWire
 		{
 			throw Error("Entry point '%s' not found", entryLabel);
 		}
-
-		finalized = true;
-
-		delete instructions;
-		instructions = 0;
-
-		delete[] listing;
-		listing = 0;
 
 		return (void(*)())entryPoint;
 	}
@@ -116,6 +119,8 @@ namespace SoftWire
 		#ifdef WIN32
 			unsigned long oldProtection;
 			VirtualProtect(machineCode, length, PAGE_EXECUTE_READWRITE, &oldProtection);
+		#elif __unix__
+			mprotect(machineCode, length, PROT_READ | PROT_WRITE | PROT_EXEC);
 		#endif
 
 		Instruction *instruction = instructions;
@@ -275,5 +280,44 @@ namespace SoftWire
 	{
 		delete[] listing;
 		listing = 0;
+	}
+
+	void Loader::reset()
+	{
+		if(possession)
+		{
+			delete[] machineCode;
+			machineCode = 0;
+		}
+
+		machineCode = 0;
+
+		delete instructions;
+		instructions = 0;
+
+		delete[] listing;
+		listing = 0;
+
+		possession = true;
+		finalized = false;
+	}
+
+	int Loader::instructionCount()
+	{
+		Instruction *instruction = instructions;
+
+		int count = 0;
+
+		while(instruction)
+		{
+			if(instruction->isEmitting())
+			{
+				count++;
+			}
+			
+			instruction = instruction->next();
+		}
+
+		return count;
 	}
 }

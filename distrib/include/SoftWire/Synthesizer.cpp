@@ -4,8 +4,6 @@
 #include "Error.hpp"
 #include "String.hpp"
 
-#include <stdlib.h>
-
 namespace SoftWire
 {
 	Synthesizer::Synthesizer() : encoding(0)
@@ -278,7 +276,7 @@ namespace SoftWire
 			case MOD_RM_6:
 			case MOD_RM_7:
 				encodeModField();
-				encoding.modRM.reg = (Encoding::Reg)(format[1] - '0');
+				encoding.modRM.reg = format[1] - '0';
 				encodeR_MField(instruction);
 
 				encodeSibByte();
@@ -337,6 +335,12 @@ namespace SoftWire
 					encoding.O1 = opcode;
 
 					encoding.format.O2 = true;
+				}
+				else if(encoding.O1 == 0x66)   // Operand size prefix for SSE2
+				{
+					encoding.addPrefix(0x66);   // HACK: Might not be valid for later instruction sets
+
+					encoding.O1 = opcode;
 				}
 				else if(encoding.O1 == 0x9B)   // FWAIT
 				{
@@ -400,7 +404,15 @@ namespace SoftWire
 			}
 			else if(!encoding.displacement)
 			{
-				encoding.modRM.mod = Encoding::MOD_NO_DISP;
+				if(baseReg == Encoding::EBP)
+				{
+					encoding.modRM.mod = Encoding::MOD_BYTE_DISP;
+					encoding.format.D1 = true;	
+				}
+				else
+				{
+					encoding.modRM.mod = Encoding::MOD_NO_DISP;
+				}
 			}
 			else if((char)encoding.displacement == encoding.displacement)
 			{
@@ -517,8 +529,7 @@ namespace SoftWire
 	{
 		if(scale == 0 && indexReg == Encoding::REG_UNKNOWN)
 		{
-			if((baseReg == Encoding::REG_UNKNOWN) ||
-			   (encoding.modRM.r_m != Encoding::ESP && encoding.modRM.r_m != Encoding::EBP))
+			if(baseReg == Encoding::REG_UNKNOWN || encoding.modRM.r_m != Encoding::ESP)
 			{
 				if(encoding.format.SIB)
 				{
@@ -548,7 +559,7 @@ namespace SoftWire
 			}
 			else   // Switch base and index
 			{
-				Encoding::Reg tempReg;
+				int tempReg;
 
 				tempReg = indexReg;
 				indexReg = baseReg;

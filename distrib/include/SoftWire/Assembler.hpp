@@ -7,8 +7,6 @@ namespace SoftWire
 {
 	class Synthesizer;
 	class Instruction;
-	class Scanner;
-	class Parser;
 	class Linker;
 	class Loader;
 	class Error;
@@ -17,18 +15,13 @@ namespace SoftWire
 	class Assembler
 	{
 	public:
-		Assembler(const char *fileName = 0);
-		Assembler(const char *sourceString, const char *entryPoint);
+		Assembler();
 
-		~Assembler();
+		virtual ~Assembler();
 
 		// Run-time intrinsics
 		void label(const char *label);
 		#include "Intrinsics.hpp"
-
-		// Methods for passing data references
-		static void defineExternal(void *pointer, const char *name);
-		static void defineSymbol(int value, const char *name);
 
 		// Retrieve binary code
 		void (*callable(const char *entryLabel = 0))();
@@ -36,11 +29,12 @@ namespace SoftWire
 		void *acquire();
 
 		// Error and debugging methods
-		const char *getErrors() const;
 		const char *getListing() const;
 		void clearListing() const;
 		void setEchoFile(const char *echoFile, const char *mode = "wt");
 		void annotate(const char *format, ...);
+		void reset();
+		int instructionCount();
 
 		static void enableListing();   // Default on
 		static void disableListing();
@@ -120,25 +114,14 @@ namespace SoftWire
 		static InstructionSet *instructionSet;
 		static int referenceCount;
 
-		Scanner *scanner;
-		Parser *parser;
 		Synthesizer *synthesizer;
 		Linker *linker;
 		Loader *loader;
 
-		char *errors;
 		char *echoFile;
-
-		void assembleFile();
-		void assembleLine();
-
-		void handleError(const char *error);
 
 		static bool listingEnabled;
 	};
-
-	#define ASM_EXPORT(x) Assembler::defineExternal((void*)&x, #x);
-	#define ASM_DEFINE(x) Assembler::defineSymbol(x, #x);
 }
 
 #endif   // SoftWire_Assembler_hpp
