@@ -7,7 +7,7 @@ namespace SoftWire
 {
 	class CodeGenerator : public Emulator
 	{
-		class Variable
+		class Variable 
 		{
 		public:
 			virtual ~Variable();
@@ -392,6 +392,20 @@ namespace SoftWire
 		void free(Variable &var1, Variable &var2, Variable &var3);
 		void free(Variable &var1, Variable &var2, Variable &var3, Variable &var4);
 		void free(Variable &var1, Variable &var2, Variable &var3, Variable &var4, Variable &var5);
+
+	friend class Variable;
+	friend class Byte;
+	friend class Char;
+	friend class Word;
+	friend class Short;
+	friend class Dword;
+	friend class Int;
+	friend class Qword;
+	friend class Word4;
+	friend class Dword2;
+	friend class Float;
+	friend class Xword;
+	friend class Float4;
 
 	private:
 		Dword arg;
