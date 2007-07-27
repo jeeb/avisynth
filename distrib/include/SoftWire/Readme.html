@@ -1,0 +1,485 @@
+<TITLE>Readme</TITLE>
+<DIV ms_positioning="text2D" Design_Time_Lock="True" style="LEFT: 8px; POSITION: absolute; TOP: 8px; Design_Time_Lock: True"
+	id="DIV1">
+	<P><U><STRONG>Summary</STRONG></U></P>
+	<P>SoftWire is a class library written in object-oriented C++ for compiling 
+		assembly code. It can be used in projects to generate x86 machine code at 
+		run-time as an alternative to self-modifying code. Scripting languages might 
+		also benefit by using SoftWire as a JIT-compiler back-end. It also allows to 
+		eliminate jumps for variables which are temporarily constant during run-time, 
+		like for efficient graphics processing by constructing an optimised pipeline. 
+		Because of its possibility for 'instruction rewiring' by run-time conditional 
+		compilation, I named it "SoftWire". It is targeted only at developers with a 
+		good knowledge of C++ and x86 assembly.</P>
+	<P>This document applies to SoftWire 4.0.1 and newer versions.</P>
+	<P><STRONG><U>Content</U></STRONG></P>
+	<OL>
+		<LI>
+		Demo
+		<LI>
+		Compilation
+		<LI>
+		Syntax
+		<LI>
+		Run-Time Intrinsics
+		<LI>
+		Automatic Register Allocation
+		<LI>
+		Design
+		<LI>
+		Licence Conditions
+		<LI>
+		Contributions &amp; Credits
+		<LI>
+		Bugs &amp; Feature Requests
+		<LI>
+			Acknowledgements</LI></OL>
+	<P><U><STRONG>1. Demo</STRONG></U></P>
+	<P>The demo application assembles seven test routines: HelloWorld.asm shows that it 
+		is possible to call external functions, like printf. SetBits.asm is a function 
+		to set a number of bits in a buffer, starting from a given bit. 
+		CrossProduct.asm shows the use of floating-point instructions, macros and 
+		inline functions. AlpahBlend.asm uses MMX instructions for blending 32-bit 
+		colors, and conditionally compiles for Katmai compatible or older processors. 
+		It also shows how to define static data. Factorial.asm calculates a factorial 
+		by recursively calling itself. Mandelbrot.asm draws the Mandelbrot fractal in 
+		ASCII. The last test shows the use of run-time intrinsics.</P>
+	<P>Execute SoftWire.exe at your own risk! It has been tested on many systems, but I 
+		make no guarantee that it will work on yours.</P>
+	<P>For more projects that use SoftWire, check out <A href="http://softwire.sourceforge.net/extra">
+			http://softwire.sourceforge.net/extra</A>.</P>
+	<P><U><STRONG>2. Compilation</STRONG></U></P>
+	<P>
+		This library was developed with Visual C++ .NET&nbsp;and has project and 
+		workspace files for this compiler included. Solution files for Visual C++ 6.0 
+		and makefiles for Dev-C++ and GCC are also included. For GCC you will need a 
+		recent version which supports nameless structs. Should you have any problems 
+		compiling the code, please mail me at <A href="mailto:nicolas@capens.net">nicolas@capens.net</A>.</P>
+	<P>Compilation with GCC requires the -fno-operator-names option. This is needed to 
+		avoid an error with functions named <FONT face="Courier New" size="2">and</FONT>,
+		<FONT face="Courier New" size="2">not</FONT>, <FONT face="Courier New" size="2">or</FONT>
+		and <FONT face="Courier New" size="2">xor</FONT>, which are according to the 
+		C++ standard reserved keyword. For more information see the Run-Time Intrinsics 
+		section.</P>
+	<P><U><STRONG>3. Syntax</STRONG></U></P>
+	<P>Before reading this detailed information it is best to take a look at Test.cpp 
+		and the .asm files to see the basics of what SoftWire has to offer...</P>
+	<P>The source line layout is similar to that from NASM and the Visual C++ inline 
+		assembler:<BR>
+		<FONT face="Courier New" size="2">label:&nbsp;&nbsp;&nbsp; instruction 
+			operands&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ; comment</FONT></P>
+	<P>The assembler can accept a file with the .asm extension. This file is treated as 
+		one block of code, but subroutines and data can be created with labels. 
+		Execution will start at the lablel with the same name as the file, unless an 
+		other entry point has been defined. The assembler generates only 32-bit code 
+		for processors compatible with the 386 or above.</P>
+	<P>C/C++ comments are also supported. The assembler is case-sensitive, except for 
+		instructions and registers. Labels are like in inline assembler and cannot have 
+		special characters like $, #, @, ~, ?, etc.</P>
+	<P>Specifiers are always optional, but when the assembler has multiple possible 
+		instructions you can't predict the behaviour without using a specifier. For 
+		example, the assembler can't know if the code <FONT face="Courier New" size="2">fld 
+			[esi]</FONT> uses single or double precision floating-point numbers without 
+		a <FONT face="Courier New" size="2">DWORD</FONT> or <FONT face="Courier New" size="2">
+			QWORD</FONT> specifier. The <FONT face="Courier New" size="2">PTR</FONT> keyword 
+		is optional. The <FONT face="Courier New" size="2">NEAR</FONT> or <FONT face="Courier New" size="2">
+			SHORT</FONT> keywords can be used for jumps or calls and are equivalent.</P>
+	<P>The assembler supports the MMX, 3DNow!, Pentium Pro, SSE and SSE2 instruction 
+		set. Some specific instructions have been removed because they are unsafe 
+		and/or not useful for 32-bit protected mode:</P>
+	<UL>
+		<LI>
+		Privileged instructions
+		<LI>
+		FAR calls and jumps
+		<LI>
+		Undocumented instructions
+		<LI>
+		Extended precision 80-bit FPU instructions
+		<LI>
+		State save/restore instructions
+		<LI>
+			Segment/debug/control/table registers</LI></UL>
+	<P>This is very similar to the Visual C++ inline assembler. It should not limit you 
+		for 'normal' use of this run-time assembler. For more details, take a look at 
+		the InstructionSet.cpp file. You can always write your own machine-code by 
+		defining it as static data.</P>
+	<P>You can define static data with the <FONT face="Courier New" size="2">DB</FONT>, <FONT face="Courier New" size="2">
+			DW</FONT> and <FONT face="Courier New" size="2">DD</FONT> keywords. By 
+		using a label, the address of this data can be referenced. The data will be 
+		created at the location of the definition, so it's advisable to put it after 
+		the return or before the function label. Since there is no standard way to 
+		declare local data, you should put everything on the stack yourself. Local data 
+		is not that usefull for a run-time assembler anyway. You could use the 'cdecl' 
+		calling convention (standard in Visual C++) to let the caller push the 
+		arguments on the stack and remove them after the function has been called. 
+		Subroutines can also be created by using labels. To create arrays of static 
+		data, you can use <FONT face="Courier New" size="2">DB[#]</FONT>, <FONT face="Courier New" size="2">
+			DW[#]</FONT> and <FONT face="Courier New" size="2">DD[#]</FONT>. All 
+		variables will be aligned on their natural boundaries.</P>
+	<P>To align data or code yourself, you can use the <FONT face="Courier New" size="2">ALIGN</FONT>
+		keyword. For efficiency, jump labels should be 16 byte aligned, and for most 
+		SSE instructions the data also has to be 16 byte aligned. The assembler will 
+		use <FONT face="Courier New" size="2">NOP</FONT> instructions for padding for 
+		both data and code alignment.</P>
+	<P>External data can be declared by using the <FONT face="Courier New" size="2">Assembler::defineExternal</FONT>
+		method in your C++ code. A handy macro defined in <EM>Assembler.hpp</EM> makes 
+		it possible to export a function like printf with <FONT face="Courier New" size="2">
+			ASM_EXPORT(printf)</FONT>. Externals can be any kind of data defined in 
+		your C++ application, and are treated like void pointers. Externals should be 
+		declared before assembling the file. They do not have to be re-declared in the 
+		assembly code.</P>
+	<P>For constants, only numbers and character constants are supported. They can be 
+		in binary, octal, decimal or hexadecimal base, with the usual pre- or 
+		postfixes. All constant expressions are evaluated, inclusing those of data 
+		definitions and memory references. String literals can be created by using <FONT face="Courier New" size="2">
+			DB</FONT> and double quotation marks.</P>
+	<P>Conditional compilation can be controlled with the <FONT face="Courier New" size="2">
+			#if</FONT>, <FONT face="Courier New" size="2">#elif</FONT>, <FONT face="Courier New" size="2">
+			#else</FONT> and <FONT face="Courier New" size="2">#endif</FONT> precompiler 
+		directives. The <FONT face="Courier New" size="2">ASM_DEFINE</FONT> macro can 
+		be used to send an integer to the assembler which can be used after the <FONT face="Courier New" size="2">
+			#if</FONT> and <FONT face="Courier New" size="2">#elif</FONT> directives. 
+		Boolean expressions are evaluated as in C/C++.</P>
+	<P>This powerful feature can be used to generate many different specific functions 
+		without having to code completely new ones. It can eliminate jumps in the 
+		assembly code to generate exactly the optmized function you need. An example of 
+		this is an SIMD optimized vertex pipeline for 3D graphics. Without conditional 
+		compilation, many comparisons and jumps would be needed per vertex to transform 
+		and light it correctly for the current settings. With run-time conditional 
+		compilation, these instructions can be eliminated, leaving only the wanted 
+		instructions, while still being able to handle thousands of setting 
+		combinations. It also allows to write different code for other processors, 
+		without needing a control statement in your high-performance assembly code and 
+		without the need to write it as separate functions which are difficult to 
+		maintain.</P>
+	<P>The preprocessor also supports <FONT face="Courier New" size="2">#include</FONT> 
+		and <FONT face="Courier New" size="2">#define</FONT>. There is also an <FONT face="Courier New" size="2">
+			inline</FONT> keyword, which behaves like <FONT face="Courier New" size="2">#define</FONT>
+		but produces less error-prone code (caused by nested macros) and has a nicer 
+		syntax for multiple lines:</P>
+	<P><FONT face="Courier New" size="2">inline macroName(argument1, argument2, ...)<BR>
+			{<BR>
+			&nbsp;&nbsp;&nbsp; code block<BR>
+			}</FONT></P>
+	<P>It is a nice way of defining new instructions, and it even allows to define 
+		'instructions' to be emulated with x86 assembly, like DirectX shader 
+		instructions! With normal macros, the only problem for doing this would be that 
+		you need parenthesis around the arguments. But even this is solved with the 
+		inline macros. You can simply use the above macro like this:</P>
+	<PRE>macroName argument1, argument2, ...</PRE>
+	<P>When you don't write an open parenthesis, SoftWire will automatically assume 
+		that you want to use this 'implicit' argument list. The argument list stops at 
+		the end of the line, so it is not possible to nest multiple macros without 
+		using parenthesis.</P>
+	<P>
+		Sometimes it can be rather unhandy to work with the Assembler class if all you 
+		need is the machine code. To&nbsp;have the&nbsp;control&nbsp;over the code and 
+		safely delete the Assembler instance without destroying the code, use the <FONT face="Courier New" size="2">
+			Assembler::aquire()</FONT> method. This method returns the pointer to the 
+		machine code, and tells the Assembler not to delete it at the destructor. Note 
+		that it is still necessary to first use <FONT face="Courier New" size="2">Assembler::callable(entryLabel)</FONT>
+		to get the pointer(s) to your function(s). If <FONT face="Courier New" size="2">aquire()</FONT>
+		is called before any call to <FONT face="Courier New" size="2">callable()</FONT>, 
+		it will return zero.</P>
+	<P>To minimize memory usage,&nbsp;call Assembler::finalize() after retrieving the 
+		pointers to the functions. This is especially useful for sub-classing 
+		Assembler. It will delete all temporary memory used by the scanner, parser, 
+		instruction table and intermediate code. Any futher assembling tasks like using 
+		a run-time intrinsic will result in an exception to be thrown. The generated 
+		machine code is still property of Assembler unless you also call aquire().</P>
+	<P><STRONG><U>4. Run-Time Intrinsics</U></STRONG></P>
+	<P>SoftWire also supports another form of run-time code generation. With every 
+		assembly instruction corresponds a member function of Assembler with the same 
+		name. These functions encode the corresponding instruction and put it in the 
+		Loader so it is ready to execute. These run-time intrinsics are ideal for 
+		writing a compiler back-end. Because it is all written in C++, things like 
+		conditional compilation become trivial. Check the tutorial at 
+		softwire.sourceforge.net for practical information.</P>
+	<P>You need to construct a <FONT face="Courier New" size="2">SoftWire::CodeGenerator</FONT>, 
+		after including <EM>CodeGenerator.hpp</EM>.</P>
+	<P>You can use the usual register names directly when deriving from <FONT face="Courier New" size="2">
+			CodeGenerator</FONT> . For example <FONT face="Courier New" size="2">add(eax, 
+			ebx);</FONT> is valid in&nbsp;<FONT face="Courier New" size="2">CodeGenerator</FONT>
+		's scope and its subclasses. For memory operands, you need to use <FONT face="Courier New" size="2">
+			dword_ptr [...]</FONT> and the like. Note that all syntax checks should 
+		happen at compile-time. An exception is that it's impossible to check the scale 
+		factor in a memory reference.</P>
+	<P>To add labels, you need to use the <FONT face="Courier New" size="2">Assembler::label()</FONT>
+		method. For example to create an array of 100 uninitialized bytes:</P>
+	<PRE>label("table");<BR>db(byte_ptr [100]);</PRE>
+	<P>
+		Note that it doesn't matter if you use <FONT face="Courier New" size="2">byte_ptr</FONT>
+		or any other specifier here, it is only needed to have a valid C++ syntax. To 
+		reference the data or function at&nbsp;a label, also use a string literal. This 
+		works on any instruction which can accept a 32-bit immediate, like <FONT face="Courier New" size="2">
+			jmp</FONT>, <FONT face="Courier New" size="2">call</FONT>, <FONT face="Courier New" size="2">
+			push</FONT>, <FONT face="Courier New" size="2">dd</FONT>, etc.</P>
+	<P>Take a look at <FONT face="Courier New" size="2">testIntrinsics()</FONT> in 
+		Test.cpp for&nbsp;some simple working example code. Check the tutorial at 
+		softwire.sourceforge.net for detailed examples. The swShader project 
+		(sw-shader.sourceforge.net) also uses run-time intrinsics intensively.</P>
+	<P>Because <FONT face="Courier New" size="2">and</FONT>, <FONT face="Courier New" size="2">
+			not</FONT>, <FONT face="Courier New" size="2">or</FONT> and <FONT face="Courier New" size="2">
+			xor</FONT> are both assembly instructions and reserved C++ keywords, the 
+		compiler should ignore them. In Visual C++ they are not recognised as keywords, 
+		but with GCC you need the <FONT face="Courier New" size="2">-fno-operator-names</FONT>
+		option to allow run-time intrinsics.</P>
+	<P>To simplify debugging of a code generator which uses intrinsics, there is an <FONT face="Courier New" size="2">
+			Assembler::setEchoFile</FONT> method. This function takes the name of a 
+		file where SoftWire will copy the textual assembly code corresponding with 
+		the&nbsp;intrinsic. This way you can check the output without using a 
+		disassembler. There's also an <FONT face="Courier New" size="2">Assembler::annotate</FONT>
+		method to comment your generated code.&nbsp;It will put a&nbsp;semicolon at the 
+		start of the line,&nbsp;so the echo file can also be used as the input for 
+		SoftWire.</P>
+	<P>
+		The <EM>Intrinsics.hpp</EM> file can take a while to compile.&nbsp;If run-time 
+		intrinsics are not needed in your project but fast compilation is a must, 
+		define <FONT face="Courier New" size="2">SOFTWIRE_NO_INTRINSICS</FONT> before 
+		including <EM>Assembler.hpp</EM>.</P>
+	<P><STRONG><U>5. Automatic Register Allocation</U></STRONG></P>
+	<P>Now that you know how run-time intrinsics work, let's take this to the next 
+		level. I already mentioned that things like conditional compilation become 
+		trivial because it's all written in C++, but we can do lot's more like 
+		eliminating redundant operation with peephole optimization, and automatic 
+		register allocation.</P>
+	<P>The latter has been integrated into SoftWire 4.0.0 and newer versions. Basically 
+		what it does is mapping variables in memory to registers. When there are more 
+		variables than physical registers, it automatically spills registers. This 
+		enables you to implement any kind of compiler, from a full-blown C++ compiler 
+		to a simple scripting language without worrying about the low-level stuff. It's 
+		almost like directly writing intermediate code!</P>
+	<P>Because this adds an extra level of abstraction it is not implemented in the 
+		Assembler class, but in a subclass called <FONT face="Courier New" size="2">CodeGenerator</FONT>
+		. The main reason it was not added to Assembler is because if you only need a 
+		simple assembler you can define <FONT face="Courier New" size="2">SOFTWIRE_NO_INTRINSICS
+		</FONT>to keep things lightweight. The CodeGenerator class could later also 
+		feature optimizations like scheduling which do not guarantee a 1-to-1 mapping 
+		of the assembly code to the machine code.</P>
+	<P>The first and most important new method is <FONT face="Courier New" size="2">CodeGenerator::r32()</FONT>. 
+		It takes a memory reference as argument and returns a general purpose register 
+		(not including esp and ebp). For MMX and SSE registers you can use <FONT face="Courier New" size="2">
+			CodeGenerator::r64()</FONT> and <FONT face="Courier New" size="2">CodeGenerator::r128()</FONT>
+		respectively. It is advisable to derive your own code generator from&nbsp;<FONT face="Courier New" size="2">CodeGenerator</FONT>
+		so the class name can be ommited. Example:</P>
+	<P dir="ltr" style="MARGIN-RIGHT: 0px"><FONT face="Courier New" size="2">class 
+			ScriptCompiler : pulic CodeGenerator<BR>
+			{<BR>
+			public:<BR>
+			void generateCode()<BR>
+			{</FONT><FONT face="Courier New" size="2">
+			<BR>
+			&nbsp; static int foo;</FONT><FONT face="Courier New" size="2">
+			<BR>
+			&nbsp; mov(r32(&amp;foo), 0x12345678);</FONT><FONT face="Courier New" size="2">
+			<BR>
+			...</FONT></P>
+	<P>It works just as well with non-static variables, like variables on the stack:</P>
+	<PRE>mov(r32(esp+12), 0x12345678);</PRE>
+	<P><FONT face="Times New Roman">Or if you're indexing an array of ints 'array' with an 
+			index 'index' and store that in 'value':</FONT></P>
+	<PRE>mov(r32(&amp;value), dword_ptr[r32(&amp;array)+r32(&amp;index)*4]);</PRE>
+	<P>So there is no need to worry anymore what register is used where or if it is 
+		available. You treat them all like variables in memory and SoftWire 
+		automatically places them into registers.</P>
+	<P>After the operations on the variable are done, we would like to write it back to 
+		memory. This&nbsp;can be&nbsp;done with the&nbsp;<FONT face="Courier New" size="2">spill()</FONT>
+		method, which takes&nbsp;a register or&nbsp;reference as argument. The register 
+		to which the variable is allocated then becomes available again. Another method 
+		that does this is <FONT face="Courier New" size="2">free()</FONT>. The 
+		difference with spill is that&nbsp;free does not write the variable's data back 
+		to memory. This is useful for registers that are only needed temporarily, more 
+		about that later. When an instruction can only work on for example eax, you 
+		should spill or free eax before using this instruction. Also beware that at 
+		branches you have to spill all used variables. This can also be done with the <FONT face="Courier New" size="2">
+			spillAll() <FONT face="Times New Roman" size="3">method, or with <FONT face="Courier New" size="2">
+					freeAll()</FONT> if you've written back all results yourself.</FONT></FONT></P>
+	<P>The above example is not optimal, since SoftWire will copy the data from 
+		[esp+12] to the allocated register, and it then immediately gets overwritten 
+		with 0x12345678. To eliminate this redundant copying, use the <FONT face="Courier New" size="2">
+			x32()</FONT> method instead, or x64/x128 for MMX/SSE. This function works 
+		just like r32 but does not copy the data from the memory reference to the 
+		register. This is mainly useful for temporary registers. Have a look at the <FONT face="Courier New" size="2">
+			TestRegisterAllocator</FONT> class in Test.cpp for a working example.</P>
+	<P>Because some intermediate instructions can be complex and require temporary 
+		variables in physical registers for speed, there's also the <FONT face="Courier New" size="2">
+			t32()</FONT> method, or t64/t128 for MMX/SSE. This function does not take a 
+		reference to a memory location as argument, but only an index.&nbsp;The 
+		function returns a register that will never be spilled. Therefore you can only 
+		use indices 0 to 5 for 32-bit registers and 0 to 7 for MMX/SSE registers. The 
+		difference with using the registers directly is that it does not interfere with 
+		the regiser allocator, and if necessary it spills the register with lowest 
+		priority first. So there is no 1-to-1 mapping of t32 registers to the physical 
+		registers. Free them as soon as possible to avoid unnecessary spilling or 
+		running out of registers! To avoid this complexity, just stick to the r32 or 
+		x32 functions. The only advantage of t32 is that you don't need a memory 
+		location where the register can be written to if it needs to be spilled.</P>
+	<P>To optimize memory accesses, there is also a <FONT face="Courier New" size="2">m32()</FONT>
+		method, or m64/m128 for MMX/SSE. This function returns either a register or a 
+		memory reference. many instructions can accept a r/m32 argument, and of course 
+		registers are more efficient. If the variable is already located in a register, 
+		m32 will return that register, else it will return the memory reference.
+	</P>
+	<P>The register allocator assumes that all six general purpose registers are 
+		available, and all MMX and SSE registers. It is your task to save and restore 
+		registers before using automatic register allocation.</P>
+	<P>The spilling heuristic uses&nbsp;the access frequency to find the best candidate 
+		for spilling. When a register is allocated, it has the highest priority, 
+		meaning that it is the worst candidate for the next spill. For every access of 
+		a register, all other registers loose priority. This also means that less 
+		recently used registers have a lower priority. When spilling is needed, the 
+		register with lowest priority is written back to its memory location.</P>
+	<P>The <FONT face="Courier New" size="2">CodeGenerator</FONT> class automatically 
+		does some trivial peephole optimizations. To disable this behaviour, define <FONT face="Courier New" size="2">
+			SOFTWIRE_NO_PEEPHOLE</FONT> before including <EM>CodeGenerator.hpp</EM>.</P>
+	<P><U><STRONG>6. Design</STRONG></U></P>
+	<P>The whole library is encapsulated in a namespace called <FONT face="Courier New" size="2">
+			SoftWire</FONT>. This is to prevent name clashes with other projects.</P>
+	<P>The only class you'll need for assembling a file and getting a pointer to the 
+		callable code is <FONT face="Courier New" size="2">Assembler</FONT>. It has to 
+		be constructed with the name of the .asm file which contains the assembly code. 
+		The assembler treats it as one block of code, and you can get a void pointer to 
+		the assembled code by calling the <FONT face="Courier New" size="2">callable()</FONT>
+		method. By default the entry point will be a label with the same name as the 
+		file. You can also pass the name of a label as the entry point if you want to 
+		start excecution from another line. To effectively call the function, you first 
+		need to cast it to an appropriate&nbsp;function pointer. When the Assembler is 
+		destructed, it also deletes the assembled code. To prevent this and control the 
+		lifetime of the code yourself, call the <FONT face="Courier New" size="2">acquire()</FONT>
+		method. This will return a pointer to the start of the code. This is not 
+		necessarily the entry point of the code, so you still need to use <FONT face="Courier New" size="2">
+			callable()<FONT face="Times New Roman" size="3">.</FONT></FONT></P>
+	<P>The first class the assembler will use for processing the assembly file is the <FONT face="Courier New" size="2">
+			Scanner</FONT>. This class has the task to break up the source code into 
+		words, called tokens. It is also resposible for the preprocessing tasks like 
+		file inclusion, conditional compilation and macro expansion. The <FONT face="Courier New" size="2">
+			Macro</FONT> class helps with this last task.</P>
+	<P>The tokens are stored in a <FONT face="Courier New" size="2">Token</FONT> class. 
+		The scanner also recognizes tokens as being identifiers, constants or 
+		punctuators. The scanner does not recognize keywords (except preprocessor 
+		directives) and does no syntax checking. The whole file is scanned at once and 
+		the tokens are placed in a <FONT face="Courier New" size="2">TokenList</FONT> class.</P>
+	<P>Every source line of tokens then goes to the <FONT face="Courier New" size="2">Parser</FONT>. 
+		It will recognize the keywords, check the syntax and pass the information like 
+		mnemonic and registers to the code generator.</P>
+	<P>The code generation is done with the <FONT face="Courier New" size="2">Synthesizer</FONT>
+		class. It will put the information from the parsed instruction into bytes for 
+		the machine code.</P>
+	<P>The rules for the code generation are stored in the <FONT face="Courier New" size="2">
+			InstructionSet</FONT> class. The parser uses this class to select the 
+		matching instruction(s), and the synthesizer uses it to know how to encode the 
+		instruction.</P>
+	<P>The bytes from the synthesizer are stored into an <FONT face="Courier New" size="2">Encoding</FONT>
+		class. It also stores information about labels and references to labels to 
+		resolve jump addresses.</P>
+	<P>All encodings are stored in the <FONT face="Courier New" size="2">Loader</FONT> class. 
+		After all instructions have been assembled, this class will resolve all the 
+		references and write the machine-code bytes into a buffer. Externally declared 
+		data will be resolved by the assembler's <FONT face="Courier New" size="2">Linker</FONT>
+		class. The loader also searches for the code entry point. When the assembler is 
+		destructed, the assembled code is also destroyed, except when using <FONT face="Courier New" size="2">
+			acquire()</FONT>. The linker data is also cleared.</P>
+	<P>When a syntax error occurs, the assembler throws an <FONT face="Courier New" size="2">
+			Error</FONT> class. This class simply holds a string with the error 
+		description. This message will be printed to the console by using the <FONT face="Courier New" size="2">
+			DebugOutput::printf</FONT> method. You can easily use your custom error 
+		output system by deriving from the DebugOutput class. Besides syntax errors, 
+		the assembler might also throw internal errors. This is an alternative to <FONT face="Courier New" size="2">
+			assert()</FONT>, so it should not happen. If you get an internal error, or 
+		worse, an unhandled exception, please contact the author.</P>
+	<P>Run-time intrinsics are generated by the <FONT face="Courier New" size="2">InstructionSet</FONT>, 
+		and stored in <EM>Intrinsics.hpp</EM> . You need to uncomment the&nbsp;<FONT face="Courier New" size="2">generateIntrinsics()</FONT>
+		line in the <FONT face="Courier New" size="2">InstructionSet</FONT> constructor 
+		when you've made changes to the instruction set and need new intrinsics. Do not 
+		attempt to modify the <EM>Intrinsics.hpp</EM> file manually. The arguments for 
+		the intrinsics are defined in <EM>Operand.hpp</EM>.</P>
+	<P>Automatic register allocation is controlled by the&nbsp;<FONT face="Courier New" size="2">CodeGenerator</FONT>
+		class. For every physical register it keeps a reference to the memory location 
+		it is associated with. When spilling is needed it writes the least frequently 
+		used register back to memory.</P>
+	<P><U><STRONG>7. License Conditions</STRONG></U></P>
+	<P>All source files&nbsp;fall under the LGPL (License.txt)&nbsp;and are Copyright 
+		(C) 2002-2003 Nicolas Capens:</P>
+	<P>If you extend the possibilities of the classes in these files, please send your 
+		changes to the copyright holder(s). Do not change this file or License.txt, but 
+		use a change log. If you only derive from a class to write your own specific 
+		implementation, you don't have to release the source code of your whole 
+		project, just give credit where due. This can be done by mentioning my name in 
+		your credits list and/or providing a link to the original SoftWire source code 
+		(e.g.<A href="http://softwire.sourceforge.net">http://softwire.sourceforge.net</A>).</P>
+	<P>
+		Don't hesitate to contact me and show what you've created with&nbsp;SoftWire!</P>
+	<P><U><STRONG>8. Contributions &amp; Credits</STRONG></U></P>
+	<UL>
+		<LI>
+		Jude Venn: helped porting SoftWire to UNIX/Linux by providing alternative 
+		functions for the Microsoft specific code (File.hpp, String.hpp, CharType.hpp). 
+		He also wrote Makefile.gcc to easily compile SoftWire with GCC.
+		<LI>
+		'Carrot': reported and fixed missing FMULP and other variants and JNEA 
+		misspelling.
+		<LI>
+		Walt Woods: reported and fixed memory leak in InstructionSet. Reported bug with 
+		"push imm" instruction not pushing dwords for small integers. Fixed stack 
+		overflow with TokenLink destructor.
+		<LI>
+		Edwin Young: reported 16-bit register bug in Factorial.asm.
+		<LI>
+		'tawai': reported bug with single-argument IMUL instruction.
+		<LI>
+		Rene Dudfield: reported 3DNow! instruction encoding bugs. Helped SoftWire 3.0.0 
+		to compiler under Linux.
+		<LI>
+		Oscar Fuentes: reported missing&nbsp;addressing mode&nbsp;for run-time 
+		intrinsics and helped SoftWire 3 to compile with GCC and Intel compilers. 
+		Suggested methods to change ownership of machine code.
+		<LI>
+		Florian Bösch: Reported bugs in run-time intrinsics with references to labels.
+		<LI>
+		Blake Pelton: Reported small memory leaks caused by strdup() use.
+		<LI>
+		'IanM': Contributed changes to assemble from source string.
+		<LI>
+			Dario Pelella: Fixed "push imm" bug with specifiers. Reported FPU instructions 
+			bug with '+r' encoding.</LI></UL>
+	<P>If you feel like you should also have been mentioned on this list (or be removed 
+		or have something changed), please do not hesitate to contact me 
+		to&nbsp;correct this mistake.</P>
+	<P>Why are contributions, bug fixes and copyrights not indicated in the code? I do 
+		not like this because in my opinion source files should be kept as readable as 
+		possible. I think it is very annoying that you first have to scroll past a huge 
+		block of comments that don't have anything to do with the code itself. Source 
+		files are for code. Licence and readme files are for the things not directly 
+		related to the code but to the library as a whole. If you cannot agree with 
+		this point of view and have some strong arguments, please contact me to discuss 
+		it.</P>
+	<P><U><STRONG>9. Bugs &amp; Feature Requests</STRONG></U></P>
+	<P>SoftWire is a work-in-progress, so every kind of feedback is welcome, good or 
+		bad. I'm also always willing to help you out if you don't get something 
+		working. If you're a C++ guru and you would have designed some parts 
+		differently, I'm all ears. Contact me via e-mail at <A href="mailto:nicolas@capens.net">
+			nicolas@capens.net</A>.</P>
+	<P><U><STRONG>10. Acknowledgements</STRONG></U></P>
+	<P>Special thanks to:</P>
+	<UL>
+		<LI>
+		The creators of NASM, for their detailed overview of the x86 instruction set
+		<LI>
+			<A href="http://www.sandpile.org">www.sandpile.org</A>, for its great 
+		resources about IA-32 encoding rules
+		<LI>
+			Everyone at <A href="http://www.flipcode.com">www.flipcode.com</A> who has 
+			helped me directly or indirectly to make this project possible: <A href="http://www.flipcode.com/cgi-bin/msg.cgi?showThread=COTD-SoftWire&amp;forum=cotd&amp;id=-1">
+				http://www.flipcode.com/cgi-bin/msg.cgi?showThread=COTD-SoftWire&amp;forum=cotd&amp;id=-1</A>
+		<LI>
+		Jude Venn, for helping me get started with UNIX and GCC.
+		<LI>
+			Paul Nettle, author of the memory manager (<A href="http://www.FluidStudios.com">http://www.FluidStudios.com</A>
+		).
+		<LI>
+			Anyone who reported bugs or suggested useful features.</LI></UL>
+	<P>Kind regards,</P>
+	<P>Nicolas Capens</P>
+	<P>Copyright (C) 2002-2004 Nicolas Capens - <A href="mailto:nicolas@capens.net">nicolas@capens.net</A></P>
+</DIV>
