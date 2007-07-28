@@ -226,10 +226,6 @@ SOURCE=.\RegisterAllocator.hpp
 # End Source File
 # Begin Source File
 
-SOURCE=.\SoftWire.hpp
-# End Source File
-# Begin Source File
-
 SOURCE=.\String.hpp
 # End Source File
 # Begin Source File
