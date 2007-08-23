@@ -337,11 +337,7 @@ void Antialiaser::GetAlphaRect() {
     BYTE* src = (BYTE*)lpAntialiasBits + ((h-y-1)*8 + 20) * srcpitch + 2;
     int wt = w;
     do {
-      int alpha1, alpha2;
       int i;
-      BYTE bmasks[8], tmasks[8];
-
-      alpha1 = alpha2 = 0;
 
 /*      BYTE tmp = 0;
       for (i=0; i<8; i++) {
@@ -412,34 +408,32 @@ void Antialiaser::GetAlphaRect() {
 		if (y  >= yt) yt=y;
 		if (y  <= yb) yb=y;
 
-        for (i=0; i<8; i++)
-          alpha1 += bitcnt[src[srcpitch*i]];
-
+        int alpha1, alpha2;
         BYTE cenmask = 0, mask1, mask2;
 
+        alpha1 = alpha2 = 0;
+
         for(i=0; i<=8; i++) {
-          cenmask |= (BYTE)(((long)-src[srcpitch*i  ])>>31);
-          cenmask |= bitexl[src[srcpitch*i-1]];
-          cenmask |= bitexr[src[srcpitch*i+1]];
+          cenmask |= bitexl[        src[srcpitch*i-1]];
+          alpha1  += bitcnt[        src[srcpitch*i  ]];
+          cenmask |= (BYTE)(((long)-src[srcpitch*i  ])>>31); // (x==0) ? 0 : 0xff
+          cenmask |= bitexr[        src[srcpitch*i+1]];
         }
 
         mask1 = mask2 = cenmask;
 
         for(i=0; i<8; i++) {
-          mask1 |= (BYTE)(((long)-src[srcpitch*(-i)])>>31);
-          mask1 |= bitexl[src[srcpitch*(-8+i)-1]];
-          mask1 |= bitexr[src[srcpitch*(-8+1)+1]];
-          mask2 |= (BYTE)(((long)-src[srcpitch*(8+i)])>>31);
-          mask2 |= bitexl[src[srcpitch*(8+i)-1]];
-          mask2 |= bitexr[src[srcpitch*(8+i)+1]];
+          mask1 |= bitexl[        src[srcpitch*(-1-i)-1]];
+          mask1 |= (BYTE)(((long)-src[srcpitch*(-1-i)  ])>>31);
+          mask1 |= bitexr[        src[srcpitch*(-1-i)+1]];
 
-          tmasks[i] = mask1;
-          bmasks[i] = mask2;
-        }
+          mask2 |= bitexl[        src[srcpitch*(8+i)-1]];
+          mask2 |= (BYTE)(((long)-src[srcpitch*(8+i)  ])>>31);
+          mask2 |= bitexr[        src[srcpitch*(8+i)+1]];
 
-        for(i=0; i<8; i++) {
-          alpha2 += bitcnt[cenmask | tmasks[7-i] | bmasks[i]];
+          alpha2 += bitcnt[ mask1 | mask2 ];
         }
+        
 		dest[0] = 64 - alpha2;
 		dest[1] = BVtext * alpha1 + BVhalo * (alpha2-alpha1);
 		dest[2] = GUtext * alpha1 + GUhalo * (alpha2-alpha1);
