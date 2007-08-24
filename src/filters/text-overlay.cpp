@@ -413,7 +413,7 @@ void Antialiaser::GetAlphaRect() {
 
         alpha1 = alpha2 = 0;
 
-        for(i=0; i<=8; i++) {
+        for(i=0; i<8; i++) {
           cenmask |= bitexl[        src[srcpitch*i-1]];
           alpha1  += bitcnt[        src[srcpitch*i  ]];
           cenmask |= (BYTE)(((long)-src[srcpitch*i  ])>>31); // (x==0) ? 0 : 0xff
