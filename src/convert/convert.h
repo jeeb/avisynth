@@ -82,7 +82,7 @@ inline int RGB2YUV(int rgb)
   int u = ScaledPixelClip((b_y >> 10) * int(1/2.018*1024+0.5) + 0x800000);
   int r_y = (rgb & 0xFF0000) - scaled_y;
   int v = ScaledPixelClip((r_y >> 10) * int(1/1.596*1024+0.5) + 0x800000);
-  return (y*256+u)*256+v;
+  return ((y*256+u)*256+v) | (rgb & 0xff000000);
 }
 
 

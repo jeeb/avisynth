@@ -50,7 +50,8 @@ class Antialiaser
  **/
 {  
 public:
-  Antialiaser(int width, int height, const char fontname[], int size, int textcolor, int halocolor);
+  Antialiaser(int width, int height, const char fontname[], int size,
+	  int textcolor, int halocolor, int font_width=0, int font_angle=0, bool _interlaced=false);
   virtual ~Antialiaser();
   HDC GetDC();
   void FreeDC();
@@ -70,7 +71,7 @@ private:
   HFONT hfontDefault;
   HBITMAP hbmDefault;
   unsigned short* alpha_calcs;
-  bool dirty;
+  bool dirty, interlaced;
   const int textcolor, halocolor;
   int xl, yt, xr, yb; // sub-rectangle containing live text
 
@@ -86,7 +87,7 @@ class ShowFrameNumber : public GenericVideoFilter
 {  
 public:
   ShowFrameNumber(PClip _child, bool _scroll, int _offset, int _x, int _y, const char _fontname[], int _size,
-			int _textcolor, int _halocolor, IScriptEnvironment* env);
+			int _textcolor, int _halocolor, int font_width, int font_angle, IScriptEnvironment* env);
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
 
   static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env);
@@ -107,7 +108,7 @@ class ShowSMPTE : public GenericVideoFilter
 {
 public:
   ShowSMPTE(PClip _child, double _rate, const char* _offset, int _offset_f, int _x, int _y, const char _fontname[], int _size,
-			int _textcolor, int _halocolor, IScriptEnvironment* env);
+			int _textcolor, int _halocolor, int font_width, int font_angle, IScriptEnvironment* env);
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
 
   static AVSValue __cdecl CreateSMTPE(AVSValue args, void*, IScriptEnvironment* env);
@@ -132,7 +133,7 @@ class Subtitle : public GenericVideoFilter
 public:
   Subtitle( PClip _child, const char _text[], int _x, int _y, int _firstframe, int _lastframe, 
             const char _fontname[], int _size, int _textcolor, int _halocolor, int _align, 
-            int _spc, bool _multiline, int _lsp );
+            int _spc, bool _multiline, int _lsp, int _font_width, int _font_angle, bool _interlaced );
   virtual ~Subtitle(void);
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
   
@@ -141,8 +142,8 @@ public:
 private:
   void InitAntialiaser(IScriptEnvironment* env);
   
-  const int x, y, firstframe, lastframe, size, lsp;
-  const bool multiline;
+  const int x, y, firstframe, lastframe, size, lsp, font_width, font_angle;
+  const bool multiline, interlaced;
   const int textcolor, halocolor, align, spc;
   const char* const fontname;
   const char* const text;
@@ -213,9 +214,9 @@ bool GetTextBoundingBox( const char* text, const char* fontname, int size, bool 
 
 /**** Inline helper functions ****/
 
-inline static HFONT LoadFont(const char name[], int size, bool bold, bool italic) 
+inline static HFONT LoadFont(const char name[], int size, bool bold, bool italic, int width=0, int angle=0) 
 {
-  return CreateFont( size, 0, 0, 0, bold ? FW_BOLD : FW_NORMAL,
+  return CreateFont( size, width, angle, angle, bold ? FW_BOLD : FW_NORMAL,
                      italic, FALSE, FALSE, DEFAULT_CHARSET, OUT_DEFAULT_PRECIS,
                      CLIP_DEFAULT_PRECIS, DEFAULT_QUALITY, FF_DONTCARE | DEFAULT_PITCH, name );
 }
