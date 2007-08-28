@@ -185,7 +185,7 @@ public:
 
 private:
   const PClip child1, child2;
-  const int levelA, levelB,T;
+  const int levelB, T;
   const bool chroma;
   int map1[256], map2[256], ydest, xdest, ysrc, xsrc, ofsX, ofsY, ycount, xcount, overlay_frames;
   const  char* Op;
