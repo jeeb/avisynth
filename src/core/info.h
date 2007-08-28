@@ -1572,7 +1572,7 @@ void DrawDigit(PVideoFrame &dst, int x, int y, int num)
 	}
   int UVw = dst->GetRowSize(PLANAR_U);
   if (UVw) {    
-	  int pitchUV = dst->GetPitch(PLANAR_V);
+    int pitchUV = dst->GetPitch(PLANAR_V);
     BYTE* dstpU = dst->GetWritePtr(PLANAR_U);
     BYTE* dstpV = dst->GetWritePtr(PLANAR_V);
     int xSubS = dst->GetRowSize(PLANAR_Y) / UVw;
@@ -1658,9 +1658,9 @@ void DrawDigitRGB32(PVideoFrame &dst, int x, int y, int num)
 		for (int ty = 0; ty < 20; ty++) {
 			unsigned char *dp = &dst->GetWritePtr()[(x + tx) * 4 + (dst->GetHeight() - (y + ty)) * pitch];
 			if (font[num][ty] & (1 << (15 - tx))) {
-					dp[0] = 250;
-					dp[1] = 250;
-					dp[2] = 250;
+				dp[0] = 250;
+				dp[1] = 250;
+				dp[2] = 250;
 			} else {
 				dp[0] = (unsigned char) ((dp[0] * 7) >> 3);
 				dp[1] = (unsigned char) ((dp[1] * 7) >> 3);

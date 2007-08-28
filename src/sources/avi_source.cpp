@@ -331,64 +331,82 @@ AVISource::AVISource(const char filename[], bool fAudio, const char pixel_type[]
       if (pvideo) {
         LocateVideoCodec(fourCC, env);
         if (hic) {
+          bool forcedType = !(pixel_type[0] == 0);
+
           bool fYV12  = lstrcmpi(pixel_type, "YV12" ) == 0 || pixel_type[0] == 0;
           bool fYUY2  = lstrcmpi(pixel_type, "YUY2" ) == 0 || pixel_type[0] == 0;
           bool fRGB32 = lstrcmpi(pixel_type, "RGB32") == 0 || pixel_type[0] == 0;
           bool fRGB24 = lstrcmpi(pixel_type, "RGB24") == 0 || pixel_type[0] == 0;
           if (!(fYV12 || fYUY2 || fRGB32 || fRGB24))
-            env->ThrowError("AVISource: requested format should be YV12, YUY2, RGB32 or RGB24");
+            env->ThrowError("AVISource: requested format must be YV12, YUY2, RGB32 or RGB24");
 
           // try to decompress to YV12, YUY2, RGB32, and RGB24 in turn
           memset(&biDst, 0, sizeof(BITMAPINFOHEADER));
           biDst.biSize = sizeof(BITMAPINFOHEADER);
           biDst.biWidth = vi.width;
           biDst.biHeight = vi.height;
-          biDst.biCompression = '21VY';
-          biDst.biBitCount = 12;
           biDst.biPlanes = 1;
-          int xwidth=(vi.width+3)&(~3);
-          biDst.biSizeImage = xwidth * vi.height + ((xwidth>>1) * vi.height);
+          bool bOpen = true;
 
-          if (fYV12 && ICERR_OK == ICDecompressQuery(hic, pbiSrc, &biDst)) {
+          // YV12
+          if (fYV12 && bOpen) {
             vi.pixel_type = VideoInfo::CS_YV12;
-            _RPT0(0,"AVISource: Opening as YV12.\n");
-          } else {
-            biDst.biSizeImage = ((vi.width*2+3)&~3) * vi.height;
-            biDst.biCompression = '2YUY';
-            biDst.biBitCount = 16;
-            if (fYUY2 && ICERR_OK == ICDecompressQuery(hic, pbiSrc, &biDst)) {
-              vi.pixel_type = VideoInfo::CS_YUY2;
-              _RPT0(0,"AVISource: Opening as YUY2.\n");
-            } else {
-              biDst.biCompression = BI_RGB;
-              biDst.biBitCount = 32;
-              biDst.biSizeImage = vi.width*vi.height*4;
-              if (fRGB32 && ICERR_OK == ICDecompressQuery(hic, pbiSrc, &biDst)) {
-                vi.pixel_type = VideoInfo::CS_BGR32;
-                _RPT0(0,"AVISource: Opening as RGB32.\n");
-              } else {
-                biDst.biBitCount = 24;
-                biDst.biSizeImage = ((vi.width*3+3)&~3) * vi.height;
-                if (fRGB24 && ICERR_OK == ICDecompressQuery(hic, pbiSrc, &biDst)) {
-                  vi.pixel_type = VideoInfo::CS_BGR24;
-                  _RPT0(0,"AVISource: Opening as RGB24.\n");
-                } else {
-                  if (fYUY2 && (fRGB32 || fRGB24) && fYV12)
-                    env->ThrowError("AVISource: the video decompressor couldn't produce YUY2 or RGB output");
-                  else if (fYV12)
-                    env->ThrowError("AVISource: the video decompressor couldn't produce YV12 output");
-                  else if (fYUY2)
-                    env->ThrowError("AVISource: the video decompressor couldn't produce YUY2 output");
-                  else if (fRGB32)
-                    env->ThrowError("AVISource: the video decompressor couldn't produce RGB32 output");
-                  else if (fRGB24)
-                    env->ThrowError("AVISource: the video decompressor couldn't produce RGB24 output");
-                  else
-                    env->ThrowError("AVISource: internal error");
-                }
-              }
+            biDst.biSizeImage = vi.BMPSize();
+            biDst.biCompression = '21VY';
+            biDst.biBitCount = 12;
+            if (ICERR_OK == ICDecompressQuery(hic, pbiSrc, &biDst)) {
+              _RPT0(0,"AVISource: Opening as YV12.\n");
+              bOpen = false;  // Skip further attempts
+            } else if (forcedType) {
+               env->ThrowError("AVISource: the video decompressor couldn't produce YV12 output");
             }
           }
+
+          // YUY2
+          if (fYUY2 && bOpen) {
+            vi.pixel_type = VideoInfo::CS_YUY2;
+            biDst.biSizeImage = vi.BMPSize();
+            biDst.biCompression = '2YUY';
+            biDst.biBitCount = 16;
+            if (ICERR_OK == ICDecompressQuery(hic, pbiSrc, &biDst)) {
+              _RPT0(0,"AVISource: Opening as YUY2.\n");
+              bOpen = false;  // Skip further attempts
+            } else if (forcedType) {
+               env->ThrowError("AVISource: the video decompressor couldn't produce YUY2 output");
+            }
+          }
+
+          // RGB32
+          if (fRGB32 && bOpen) {
+            vi.pixel_type = VideoInfo::CS_BGR32;
+            biDst.biSizeImage = vi.BMPSize();
+            biDst.biCompression = BI_RGB;
+            biDst.biBitCount = 32;
+            if (ICERR_OK == ICDecompressQuery(hic, pbiSrc, &biDst)) {
+              _RPT0(0,"AVISource: Opening as RGB32.\n");
+              bOpen = false;  // Skip further attempts
+            } else if (forcedType) {
+               env->ThrowError("AVISource: the video decompressor couldn't produce RGB32 output");
+            }
+          }
+
+          // RGB24
+          if (fRGB24 && bOpen) {
+            vi.pixel_type = VideoInfo::CS_BGR24;
+            biDst.biBitCount = 24;
+            biDst.biSizeImage = vi.BMPSize();
+            if (ICERR_OK == ICDecompressQuery(hic, pbiSrc, &biDst)) {
+              vi.pixel_type = VideoInfo::CS_BGR24;
+              _RPT0(0,"AVISource: Opening as RGB24.\n");
+            } else if (forcedType) {
+               env->ThrowError("AVISource: the video decompressor couldn't produce RGB24 output");
+            }
+          }
+
+          // No takers!
+          if (bOpen)
+            env->ThrowError("AviSource: Could not open video stream in any supported format.");
+
           DecompressBegin(pbiSrc, &biDst);
         }
       } else {
