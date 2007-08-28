@@ -421,6 +421,7 @@ void Antialiaser::GetAlphaRect() {
 		if (interlaced) {
 		  for(i=-4; i<12; i++) // For interlaced include extra half cells above and below
 			alpha1 += bitcnt[src[srcpitch*i]];
+		  alpha1 += 1;
 		  alpha1 /= 2;
 		}
 		else {
@@ -1129,16 +1130,16 @@ Compare::Compare(PClip _child1, PClip _child2, const char* channels, const char 
     env->ThrowError("Compare: Clips have unknown format. RGB24, RGB32, YUY2 and YUV Planar supported.");
 
   if (channels[0] == 0) {
-    if (vi.IsRGB32() || vi.IsRGB24())
+    if (vi.IsRGB())
       channels = "RGB";
-    else if (vi.IsYUY2() || vi.IsPlanar())
+    else if (vi.IsYUV())
       channels = "YUV";
-    else env->ThrowError("Compare: Clips have unknown format. RGB24, RGB32, YUY2 and YUV Planar supported.");
+    else env->ThrowError("Compare: Clips have unknown colorspace. RGB24, RGB32, YUY2 and YUV Planar supported.");
   }
 
   planar_plane = 0;
   mask = 0;
-  for (WORD i = 0; i < strlen(channels); i++) {
+  for (int i = 0; i < strlen(channels); i++) {
     if (vi.IsRGB()) {
       switch (channels[i]) {
       case 'b':
@@ -1148,7 +1149,7 @@ Compare::Compare(PClip _child1, PClip _child2, const char* channels, const char 
       case 'r':
       case 'R': mask |= 0x00ff0000; break;
       case 'a':
-      case 'A': mask |= 0xff000000; break;
+      case 'A': mask |= 0xff000000; if (vi.IsRGB32()) break; // else fall thru
       default: env->ThrowError("Compare: invalid channel: %c", channels[i]);
       }
       if (vi.IsRGB24()) mask &= 0x00ffffff;   // no alpha channel in RGB24
@@ -1225,26 +1226,27 @@ AVSValue __cdecl Compare::Create(AVSValue args, void*, IScriptEnvironment *env)
             env);
 }
 
-void Compare::Compare_ISSE(DWORD mask, bool vi_IsRGB24, int incr, const BYTE * f1ptr, int pitch1, 
-				  const BYTE * f2ptr, int pitch2, int rowsize, int height,
-				   int &SAD_sum, int &SD_sum, int &pos_D,  int &neg_D, double &SSD_sum)
+void Compare::Compare_ISSE(DWORD mask, int incr,
+                           const BYTE * f1ptr, int pitch1, 
+                           const BYTE * f2ptr, int pitch2,
+                           int rowsize, int height,
+                           int &SAD_sum, int &SD_sum, int &pos_D,  int &neg_D, double &SSD_sum)
 { 
-	// rowsize multiple of 8 for YUV Planar, RGB32 and YUY2; 6 for RGB24
-	// incr must be 3 for RGB24 and 4 for others
-	// SAD_sum, SD_sum, SSD_sum are incremented (must be properly initialized)
-	int SAD = 0, SD = 0;
-    const _int64 mask64 = (__int64)mask << (vi_IsRGB24 ? 24: 32) | mask;
+    // rowsize multiple of 8 for YUV Planar, RGB32 and YUY2; 6 for RGB24
+    // incr must be 3 for RGB24 and 4 for others
+    // SAD_sum, SD_sum, SSD_sum are incremented (must be properly initialized)
+    int SAD = 0, SD = 0;
     const int incr2 = incr * 2;
-    __int64 iSSD;
-    unsigned __int64 pos_D8 = 0, neg_D8 = 0;
+
+    __declspec(align(8)) __int64 iSSD;
+    __declspec(align(8)) __int64 mask64 = (__int64)mask << ((incr == 3) ? 24: 32) | mask;
+    __declspec(align(8)) unsigned __int64 pos_D8 = 0, neg_D8 = 0;
 
     __asm {
-	  push    ebx
       mov     esi, f1ptr
       mov     edi, f2ptr
       add     esi, rowsize
       add     edi, rowsize
-      mov     ebx, height
       xor     eax, eax      ; sum of squared differences low
       xor     edx, edx      ; sum of squared differences high
       pxor    mm7, mm7      ; sum of absolute differences
@@ -1297,7 +1299,7 @@ comp_loopx:
       movd    ecx, mm3
       add     eax, ecx
       adc     edx, 0
-      dec     ebx
+      dec     height
       jne     comp_loopy
 
       movd    SAD, mm7
@@ -1305,18 +1307,17 @@ comp_loopx:
       mov     DWORD PTR [iSSD], eax
       mov     DWORD PTR [iSSD+4], edx
       emms
-	  pop     ebx
     }
     SSD_sum += (double)iSSD;
-    for (int i=0; i<8; i++) {
+    for (int i=0; i<incr2; i++) {
       pos_D = max(pos_D, (int)(pos_D8 & 0xff));
       neg_D = max(neg_D, (int)(neg_D8 & 0xff));
       pos_D8 >>= 8;
       neg_D8 >>= 8;
     }
     neg_D = -neg_D;
-	SAD_sum += SAD;
-	SD_sum += SD;
+    SAD_sum += SAD;
+    SD_sum  += SD;
 }
 
 
@@ -1335,150 +1336,87 @@ PVideoFrame __stdcall Compare::GetFrame(int n, IScriptEnvironment* env)
   int bytecount = 0;
   const int incr = vi.IsRGB24() ? 3 : 4;
 
-  if (vi.IsRGB24() || vi.IsYUY2() || vi.IsRGB32())
-  {
+  if (vi.IsRGB24() || vi.IsYUY2() || vi.IsRGB32()) {
 
-  const BYTE* f1ptr = f1->GetReadPtr();
-  const BYTE* f2ptr = f2->GetReadPtr();
-  const int pitch1 = f1->GetPitch();
-  const int pitch2 = f2->GetPitch();
-  const int rowsize = f1->GetRowSize();
-  const int height = f1->GetHeight();
+    const BYTE* f1ptr = f1->GetReadPtr();
+    const BYTE* f2ptr = f2->GetReadPtr();
+    const int pitch1 = f1->GetPitch();
+    const int pitch2 = f2->GetPitch();
+    const int rowsize = f1->GetRowSize();
+    const int height = f1->GetHeight();
 
-  bytecount = rowsize * height * masked_bytes / 4;
+    bytecount = rowsize * height * masked_bytes / 4;
 
-  if (((rowsize & 7) && !vi.IsRGB24()) ||       // rowsize must be a multiple or 8 for RGB32 and YUY2
-    ((rowsize % 6) && vi.IsRGB24()) ||          // or 6 for RGB24
-    !(env->GetCPUFlags() & CPUF_INTEGER_SSE)) { // to use the ISSE routine
-    for (int y = 0; y < height; y++) {
-      row_SSD = 0;
-      for (int x = 0; x < rowsize; x += incr) {
-        DWORD p1 = *(DWORD *)(f1ptr + x) & mask;
-        DWORD p2 = *(DWORD *)(f2ptr + x) & mask;
-        int d0 = (p1 & 0xff) - (p2 & 0xff);
-        int d1 = ((p1 >> 8) & 0xff) - ((p2 & 0xff00) >> 8);
-        int d2 = ((p1 >>16) & 0xff) - ((p2 & 0xff0000) >> 16);
-        int d3 = (p1 >> 24) - (p2 >> 24);
-        SD += d0 + d1 + d2 + d3;
-        SAD += abs(d0) + abs(d1) + abs(d2) + abs(d3);
-        row_SSD += d0 * d0 + d1 * d1 + d2 * d2 + d3 * d3;
-        pos_D = max(max(max(max(pos_D,d0),d1),d2),d3);
-        neg_D = min(min(min(min(neg_D,d0),d1),d2),d3);
+    if (((rowsize & 7) && !vi.IsRGB24()) ||       // rowsize must be a multiple or 8 for RGB32 and YUY2
+       ((rowsize % 6) && vi.IsRGB24()) ||          // or 6 for RGB24
+       !(env->GetCPUFlags() & CPUF_INTEGER_SSE)) { // to use the ISSE routine
+      for (int y = 0; y < height; y++) {
+        row_SSD = 0;
+        for (int x = 0; x < rowsize; x += incr) {
+          DWORD p1 = *(DWORD *)(f1ptr + x) & mask;
+          DWORD p2 = *(DWORD *)(f2ptr + x) & mask;
+          int d0 = (p1 & 0xff) - (p2 & 0xff);
+          int d1 = ((p1 >> 8) & 0xff) - ((p2 & 0xff00) >> 8);
+          int d2 = ((p1 >>16) & 0xff) - ((p2 & 0xff0000) >> 16);
+          int d3 = (p1 >> 24) - (p2 >> 24);
+          SD += d0 + d1 + d2 + d3;
+          SAD += abs(d0) + abs(d1) + abs(d2) + abs(d3);
+          row_SSD += d0 * d0 + d1 * d1 + d2 * d2 + d3 * d3;
+          pos_D = max(max(max(max(pos_D,d0),d1),d2),d3);
+          neg_D = min(min(min(min(neg_D,d0),d1),d2),d3);
+        }
+        SSD += row_SSD;
+        f1ptr += pitch1;
+        f2ptr += pitch2;
       }
-      SSD += row_SSD;
-      f1ptr += pitch1;
-      f2ptr += pitch2;
+    } else {        // ISSE version; rowsize multiple of 8 for RGB32 and YUY2; 6 for RGB24
+      Compare_ISSE(mask, incr, f1ptr, pitch1, f2ptr, pitch2, rowsize, height,
+                   SAD, SD, pos_D, neg_D, SSD);
     }
-  } else {        // ISSE version; rowsize multiple of 8 for RGB32 and YUY2; 6 for RGB24
-	Compare_ISSE(mask, vi.IsRGB24(), incr, f1ptr, pitch1, f2ptr, pitch2, rowsize, height,
-				 SAD, SD, pos_D, neg_D, SSD);
   }
- } else { // Planar
+  else { // Planar
   
-	  if (planar_plane & PLANAR_Y) {
+    int planes[3] = {PLANAR_Y, PLANAR_U, PLANAR_V};
+    for (int p=0; p<3; p++) {
+      const int plane = planes[p];
 
-		  const BYTE* f1ptr = f1->GetReadPtr(PLANAR_Y);
-		  const BYTE* f2ptr = f2->GetReadPtr(PLANAR_Y);
-		  const int pitch1 = f1->GetPitch(PLANAR_Y);
-		  const int pitch2 = f2->GetPitch(PLANAR_Y);
-		  const int rowsize = f1->GetRowSize(PLANAR_Y);
-		  const int height = f1->GetHeight(PLANAR_Y);
+	  if (planar_plane & plane) {
 
-		  bytecount += rowsize * height;
+        const BYTE* f1ptr = f1->GetReadPtr(plane);
+        const BYTE* f2ptr = f2->GetReadPtr(plane);
+        const int pitch1 = f1->GetPitch(plane);
+        const int pitch2 = f2->GetPitch(plane);
+        const int rowsize = f1->GetRowSize(plane);
+        const int height = f1->GetHeight(plane);
 
-		  if ((rowsize & 7) || !(env->GetCPUFlags() & CPUF_INTEGER_SSE)) { 
-			// rowsize must be a multiple 8 to use the ISSE routine
-			for (int y = 0; y < height; y++) {
-			  row_SSD = 0;
-			  for (int x = 0; x < rowsize; x += 1) {
-				int p1 = *(f1ptr + x);
-				int p2 = *(f2ptr + x);
-				int d0 = p1 - p2;
-				SD += d0;
-				SAD += abs(d0);
-				row_SSD += d0 * d0;
-				pos_D = max(pos_D,d0);
-				neg_D = min(neg_D,d0);
-			  }
-			  SSD += row_SSD;
-			  f1ptr += pitch1;
-			  f2ptr += pitch2;
-			}
-		  } else {
-		  		Compare_ISSE(mask, vi.IsRGB24(), incr, f1ptr, pitch1, f2ptr, pitch2, rowsize, height,
-					SAD, SD, pos_D, neg_D, SSD);
-		  }
+        bytecount += rowsize * height;
+
+        if ((rowsize & 7) || !(env->GetCPUFlags() & CPUF_INTEGER_SSE)) { 
+          // rowsize must be a multiple 8 to use the ISSE routine
+          for (int y = 0; y < height; y++) {
+            row_SSD = 0;
+            for (int x = 0; x < rowsize; x += 1) {
+              int p1 = *(f1ptr + x);
+              int p2 = *(f2ptr + x);
+              int d0 = p1 - p2;
+              SD += d0;
+              SAD += abs(d0);
+              row_SSD += d0 * d0;
+              pos_D = max(pos_D,d0);
+              neg_D = min(neg_D,d0);
+            }
+            SSD += row_SSD;
+            f1ptr += pitch1;
+            f2ptr += pitch2;
+          }
+        }
+        else {
+         Compare_ISSE(mask, incr, f1ptr, pitch1, f2ptr, pitch2, rowsize, height,
+                      SAD, SD, pos_D, neg_D, SSD);
+        }
+      }
+    }
   }
-  if (planar_plane & PLANAR_U) {
-
-		  const BYTE* f1ptr = f1->GetReadPtr(PLANAR_U);
-		  const BYTE* f2ptr = f2->GetReadPtr(PLANAR_U);
-		  const int pitch1 = f1->GetPitch(PLANAR_U);
-		  const int pitch2 = f2->GetPitch(PLANAR_U);
-		  const int rowsize = f1->GetRowSize(PLANAR_U);
-		  const int height = f1->GetHeight(PLANAR_U);
-
-		  bytecount += rowsize * height;
-
-		  if ((rowsize & 7) || !(env->GetCPUFlags() & CPUF_INTEGER_SSE)) { 
-			// rowsize must be a multiple 8 to use the ISSE routine
-			for (int y = 0; y < height; y++) {
-			  row_SSD = 0;
-			  for (int x = 0; x < rowsize; x += 1) {
-				int p1 = *(f1ptr + x);
-				int p2 = *(f2ptr + x);
-				int d0 = p1 - p2;
-				SD += d0;
-				SAD += abs(d0);
-				row_SSD += d0 * d0;
-				pos_D = max(pos_D,d0);
-				neg_D = min(neg_D,d0);
-			  }
-			  SSD += row_SSD;
-			  f1ptr += pitch1;
-			  f2ptr += pitch2;
-			}
-		  } else {
-		  		Compare_ISSE(mask, vi.IsRGB24(), incr, f1ptr, pitch1, f2ptr, pitch2, rowsize, height,
-					SAD, SD, pos_D, neg_D, SSD);
-		  }
-  }
-  if (planar_plane & PLANAR_V) {
-
-		  const BYTE* f1ptr = f1->GetReadPtr(PLANAR_V);
-		  const BYTE* f2ptr = f2->GetReadPtr(PLANAR_V);
-		  const int pitch1 = f1->GetPitch(PLANAR_V);
-		  const int pitch2 = f2->GetPitch(PLANAR_V);
-		  const int rowsize = f1->GetRowSize(PLANAR_V);
-		  const int height = f1->GetHeight(PLANAR_V);
-
-		  bytecount += rowsize * height;
-
-		  if ((rowsize & 7) || !(env->GetCPUFlags() & CPUF_INTEGER_SSE)) { 
-			// rowsize must be a multiple 8 to use the ISSE routine
-			for (int y = 0; y < height; y++) {
-			  row_SSD = 0;
-			  for (int x = 0; x < rowsize; x += 1) {
-				int p1 = *(f1ptr + x);
-				int p2 = *(f2ptr + x);
-				int d0 = p1 - p2;
-				SD += d0;
-				SAD += abs(d0);
-				row_SSD += d0 * d0;
-				pos_D = max(pos_D,d0);
-				neg_D = min(neg_D,d0);
-			  }
-			  SSD += row_SSD;
-			  f1ptr += pitch1;
-			  f2ptr += pitch2;
-			}
-		  } else {
-		  		Compare_ISSE(mask, vi.IsRGB24(), incr, f1ptr, pitch1, f2ptr, pitch2, rowsize, height,
-					SAD, SD, pos_D, neg_D, SSD);
-		  }
-  }
-  
- }
 
   double MAD = (double)SAD / bytecount;
   double MD = (double)SD / bytecount;

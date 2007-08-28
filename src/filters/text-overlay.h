@@ -193,9 +193,11 @@ private:
   double bytecount_overall, SSD_overall;
   int framecount;
   int planar_plane;
-  void Compare_ISSE(DWORD mask, bool vi_IsRGB24, int incr, const BYTE * f1ptr, int pitch1, 
-				  const BYTE * f2ptr, int pitch2, int rowsize, int height,
-				   int &SAD_sum, int &SD_sum, int &pos_D,  int &neg_D, double &SSD_sum);
+  void Compare_ISSE(DWORD mask, int incr,
+	                const BYTE * f1ptr, int pitch1, 
+				    const BYTE * f2ptr, int pitch2,
+					int rowsize, int height,
+				    int &SAD_sum, int &SD_sum, int &pos_D,  int &neg_D, double &SSD_sum);
 
 };
 
