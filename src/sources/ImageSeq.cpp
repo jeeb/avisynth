@@ -256,7 +256,7 @@ void ImageWriter::fileWrite(ostream & file, const BYTE * srcPtr, const int pitch
   int dummy = 0;      
   int padding = (4 - (row_size % 4)) % 4;
 
-  for(UINT i=0; i < height; ++i)
+  for(int i=0; i < height; ++i)
   {
     file.write(reinterpret_cast<const char *>( srcPtr ), row_size);
     file.write(reinterpret_cast<char *>( &dummy ), padding); // pad with 0's to mod-4
@@ -299,7 +299,7 @@ ImageReader::ImageReader(const char * _base_name, const int _start, const int _e
   }
   _snprintf(filename, sizeof filename, base_name, start);
 
-  memfill(vi, 0, sizeof(vi));
+  memset(&vi, 0, sizeof(vi));
 
   // Invariants
   vi.num_frames = -start + end + 1;  // make sure each frame can be requested
