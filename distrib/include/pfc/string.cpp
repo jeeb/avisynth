@@ -559,7 +559,7 @@ void pfc_float_to_string(char * out,double val,unsigned precision,bool b_sign)
 	char temp[64];
 	if (val<0) {*(out++) = '-'; val = -val;}
 	else if (b_sign) {*(out++) = '+';}
-	_i64toa((__int64)(val * pow(10,precision)),temp,10);
+	_i64toa((__int64)(val * pow(10.0,(int)precision)),temp,10);
 	unsigned len = strlen(temp);
 	if (len <= precision)
 	{
