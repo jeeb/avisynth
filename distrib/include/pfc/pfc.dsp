@@ -19,7 +19,7 @@ CFG=pfc - Win32 Debug
 !MESSAGE 
 !MESSAGE "pfc - Win32 Release" (based on "Win32 (x86) Static Library")
 !MESSAGE "pfc - Win32 Debug" (based on "Win32 (x86) Static Library")
-!MESSAGE "pfc - Win32 Release ANSI" (based on "Win32 (x86) Static Library")
+!MESSAGE "pfc - Win32 Relsym" (based on "Win32 (x86) Static Library")
 !MESSAGE 
 
 # Begin Project
@@ -38,13 +38,13 @@ RSC=rc.exe
 # PROP BASE Target_Dir ""
 # PROP Use_MFC 0
 # PROP Use_Debug_Libraries 0
-# PROP Output_Dir "Release_unicode"
-# PROP Intermediate_Dir "Release_unicode"
+# PROP Output_Dir "..\..\..\src\Release"
+# PROP Intermediate_Dir "Release"
 # PROP Target_Dir ""
-F90=df.exe
 MTL=midl.exe
+F90=df.exe
 # ADD BASE CPP /nologo /W3 /GX /O2 /D "WIN32" /D "NDEBUG" /D "_MBCS" /D "_LIB" /YX /FD /c
-# ADD CPP /nologo /MD /W3 /GX- /O1 /D "WIN32" /D "NDEBUG" /D "_MBCS" /D "_LIB" /D "pfc" /D "UNICODE" /D "_UNICODE" /Yu"pfc.h" /FD /c
+# ADD CPP /nologo /G6 /MD /W3 /GX /O2 /D "WIN32" /D "NDEBUG" /D "_MBCS" /D "_LIB" /D "pfc" /FR /YX /FD /c
 # ADD BASE RSC /l 0x409 /d "NDEBUG"
 # ADD RSC /l 0x409 /d "NDEBUG"
 BSC32=bscmake.exe
@@ -63,13 +63,13 @@ LIB32=link.exe -lib
 # PROP BASE Target_Dir ""
 # PROP Use_MFC 0
 # PROP Use_Debug_Libraries 1
-# PROP Output_Dir "Debug_unicode"
-# PROP Intermediate_Dir "Debug_unicode"
+# PROP Output_Dir "..\..\..\src\Debug"
+# PROP Intermediate_Dir "Debug"
 # PROP Target_Dir ""
-F90=df.exe
 MTL=midl.exe
+F90=df.exe
 # ADD BASE CPP /nologo /W3 /Gm /GX /ZI /Od /D "WIN32" /D "_DEBUG" /D "_MBCS" /D "_LIB" /YX /FD /GZ /c
-# ADD CPP /nologo /MDd /W3 /Gm /GX /ZI /Od /D "WIN32" /D "_DEBUG" /D "_MBCS" /D "_LIB" /D "pfc" /D "UNICODE" /D "_UNICODE" /Yu"pfc.h" /FD /GZ /c
+# ADD CPP /nologo /G6 /MDd /W3 /Gm /Gi /GX /ZI /Od /D "WIN32" /D "_DEBUG" /D "_MBCS" /D "_LIB" /D "pfc" /FR /YX /FD /GZ /c
 # ADD BASE RSC /l 0x409 /d "_DEBUG"
 # ADD RSC /l 0x409 /d "_DEBUG"
 BSC32=bscmake.exe
@@ -79,22 +79,23 @@ LIB32=link.exe -lib
 # ADD BASE LIB32 /nologo
 # ADD LIB32 /nologo
 
-!ELSEIF  "$(CFG)" == "pfc - Win32 Release ANSI"
+!ELSEIF  "$(CFG)" == "pfc - Win32 Relsym"
 
 # PROP BASE Use_MFC 0
 # PROP BASE Use_Debug_Libraries 0
-# PROP BASE Output_Dir "pfc___Win32_Release_ANSI0"
-# PROP BASE Intermediate_Dir "pfc___Win32_Release_ANSI0"
+# PROP BASE Output_Dir "Relsym"
+# PROP BASE Intermediate_Dir "Relsym"
 # PROP BASE Target_Dir ""
 # PROP Use_MFC 0
 # PROP Use_Debug_Libraries 0
-# PROP Output_Dir "Release_ANSI"
-# PROP Intermediate_Dir "Release_ANSI"
+# PROP Output_Dir "..\..\..\src\Relsym"
+# PROP Intermediate_Dir "Relsym"
 # PROP Target_Dir ""
-F90=df.exe
 MTL=midl.exe
-# ADD BASE CPP /nologo /MD /W3 /GX /O1 /D "WIN32" /D "NDEBUG" /D "_MBCS" /D "_LIB" /D "pfc" /D "UNICODE" /D "_UNICODE" /YX /FD /c
-# ADD CPP /nologo /MD /W3 /GX /O1 /D "WIN32" /D "NDEBUG" /D "_MBCS" /D "_LIB" /D "pfc" /YX /FD /c
+F90=df.exe
+# ADD BASE CPP /nologo /G6 /MD /W3 /GX /O2 /D "WIN32" /D "NDEBUG" /D "_MBCS" /D "_LIB" /D "pfc" /FR /FD /c
+# SUBTRACT BASE CPP /YX /Yc /Yu
+# ADD CPP /nologo /G6 /MD /W3 /GX /O2 /D "WIN32" /D "NDEBUG" /D "_MBCS" /D "_LIB" /D "pfc" /FAs /FR /YX /FD /c
 # ADD BASE RSC /l 0x409 /d "NDEBUG"
 # ADD RSC /l 0x409 /d "NDEBUG"
 BSC32=bscmake.exe
@@ -110,14 +111,50 @@ LIB32=link.exe -lib
 
 # Name "pfc - Win32 Release"
 # Name "pfc - Win32 Debug"
-# Name "pfc - Win32 Release ANSI"
-# Begin Source File
+# Name "pfc - Win32 Relsym"
+# Begin Group "Source Files"
 
-SOURCE=.\bit_array.h
-# End Source File
+# PROP Default_Filter "cpp;c;cxx;rc;def;r;odl;idl;hpj;bat"
 # Begin Source File
 
 SOURCE=.\byte_order_helper.cpp
+# End Source File
+# Begin Source File
+
+SOURCE=.\cfg_var.cpp
+# End Source File
+# Begin Source File
+
+SOURCE=.\guid.cpp
+# End Source File
+# Begin Source File
+
+SOURCE=.\mem_block.cpp
+# End Source File
+# Begin Source File
+
+SOURCE=.\profiler.cpp
+# End Source File
+# Begin Source File
+
+SOURCE=.\stdafx.cpp
+# ADD CPP /Yc"pfc.h"
+# End Source File
+# Begin Source File
+
+SOURCE=.\string.cpp
+# End Source File
+# Begin Source File
+
+SOURCE=.\utf8.cpp
+# End Source File
+# End Group
+# Begin Group "Header Files"
+
+# PROP Default_Filter "h;hpp;hxx;hm;inl"
+# Begin Source File
+
+SOURCE=.\bit_array.h
 # End Source File
 # Begin Source File
 
@@ -126,10 +163,6 @@ SOURCE=.\byte_order_helper.h
 # Begin Source File
 
 SOURCE=.\cfg_memblock.h
-# End Source File
-# Begin Source File
-
-SOURCE=.\cfg_var.cpp
 # End Source File
 # Begin Source File
 
@@ -145,19 +178,11 @@ SOURCE=.\critsec.h
 # End Source File
 # Begin Source File
 
-SOURCE=.\guid.cpp
-# End Source File
-# Begin Source File
-
 SOURCE=.\guid.h
 # End Source File
 # Begin Source File
 
 SOURCE=.\list.h
-# End Source File
-# Begin Source File
-
-SOURCE=.\mem_block.cpp
 # End Source File
 # Begin Source File
 
@@ -173,10 +198,6 @@ SOURCE=.\pfc.h
 # End Source File
 # Begin Source File
 
-SOURCE=.\profiler.cpp
-# End Source File
-# Begin Source File
-
 SOURCE=.\profiler.h
 # End Source File
 # Begin Source File
@@ -185,32 +206,8 @@ SOURCE=.\ptr_list.h
 # End Source File
 # Begin Source File
 
-SOURCE=.\stdafx.cpp
-
-!IF  "$(CFG)" == "pfc - Win32 Release"
-
-# ADD CPP /Yc"pfc.h"
-
-!ELSEIF  "$(CFG)" == "pfc - Win32 Debug"
-
-# ADD CPP /Yc
-
-!ELSEIF  "$(CFG)" == "pfc - Win32 Release ANSI"
-
-!ENDIF 
-
-# End Source File
-# Begin Source File
-
-SOURCE=.\string.cpp
-# End Source File
-# Begin Source File
-
 SOURCE=.\string.h
 # End Source File
-# Begin Source File
-
-SOURCE=.\utf8.cpp
-# End Source File
+# End Group
 # End Target
 # End Project
