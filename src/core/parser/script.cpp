@@ -403,25 +403,29 @@ AVSValue Exist(AVSValue args, void*, IScriptEnvironment* env)
 void spline(float x[], float y[], int n, float y2[])
 {
 	int i,k;
-	float p, qn, sig, un, u[256];
+	float p, qn, sig, un, *u;
 
-	y2[1]=u[1]=0.0;
+	u = new float[n];
+
+	y2[1]=u[1]=0.0f;
 
 	for (i=2; i<=n-1; i++) {
 		sig = (x[i] - x[i-1])/(x[i+1] - x[i-1]);
-		p = sig * y2[i-1] + 2.0;
-		y2[i] = (sig - 1.0) / p;
+		p = sig * y2[i-1] + 2.0f;
+		y2[i] = (sig - 1.0f) / p;
 		u[i] = (y[i+1] - y[i])/(x[i+1] - x[i]) - (y[i] - y[i-1])/(x[i] - x[i-1]);
-		u[i] = (6.0*u[i]/(x[i+1] - x[i-1]) - sig*u[i-1])/p;
+		u[i] = (6.0f*u[i]/(x[i+1] - x[i-1]) - sig*u[i-1])/p;
 	}
-	qn=un=0.0;
-	y2[n]=(un - qn*u[n-1])/(qn * y2[n-1] + 1.0);
+	qn=un=0.0f;
+	y2[n]=(un - qn*u[n-1])/(qn * y2[n-1] + 1.0f);
 	for (k=n-1; k>=1; k--) {
 		y2[k] = y2[k] * y2[k+1] + u[k];
 	}
+
+	delete[] u;
 }
 
-int splint(float xa[], float ya[], float y2a[], int n, float x, float * y, bool cubic)
+int splint(float xa[], float ya[], float y2a[], int n, float x, float &y, bool cubic)
 {
 	int klo, khi, k;
 	float h,b,a;
@@ -434,17 +438,17 @@ int splint(float xa[], float ya[], float y2a[], int n, float x, float * y, bool 
 		else klo = k;
 	}
 	h = xa[khi] - xa[klo];
-	if (h==0.0) {
-		y=0;
+	if (h==0.0f) {
+		y=0.0f;
 		return -1;	// all x's have to be different
 	}
 	a = (xa[khi] - x)/h;
 	b = (x - xa[klo])/h;
 
 	if (cubic) {
-		*y = a * ya[klo] + b*ya[khi] + ((a*a*a - a)*y2a[klo] + (b*b*b - b)*y2a[khi]) * (h*h) / 6.0;
+		y = a * ya[klo] + b*ya[khi] + ((a*a*a - a)*y2a[klo] + (b*b*b - b)*y2a[khi]) * (h*h) / 6.0f;
 	} else {
-		*y = a * ya[klo] + b*ya[khi];
+		y = a * ya[klo] + b*ya[khi];
 	}
 	return 0;
 }
@@ -472,9 +476,7 @@ AVSValue AVSTime(AVSValue args, void*,IScriptEnvironment* env )
 
 AVSValue Spline(AVSValue args, void*, IScriptEnvironment* env )
 {
-    float xa[256];
-	float ya[256];
-	float y2a[256];
+    float *xa, *ya, *y2a;
 	int n;
 	float x,y;
 	int i;
@@ -491,6 +493,11 @@ AVSValue Spline(AVSValue args, void*, IScriptEnvironment* env )
 	if (n<4 || n&1) env->ThrowError("To few arguments for Spline");
 
 	n=n/2;
+
+    xa  = new float[n+1];
+    ya  = new float[n+1];
+    y2a = new float[n+1];
+
 	for (i=1; i<=n; i++) {
 		xa[i] = coordinates[(i-1)*2].AsFloat(0);
 		ya[i] = coordinates[(i-1)*2+1].AsFloat(0);
@@ -501,7 +508,12 @@ AVSValue Spline(AVSValue args, void*, IScriptEnvironment* env )
 	}
 	
 	spline(xa, ya, n, y2a);
-	splint(xa, ya, y2a, n, x, &y, cubic);
+	splint(xa, ya, y2a, n, x, y, cubic);
+
+    delete[] xa;
+    delete[] ya;
+    delete[] y2a;
+
 	return y;
 }
 
