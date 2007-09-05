@@ -80,7 +80,7 @@ AVSsoundtouch(PClip _child, double _tempo, double _rate, double _pitch, const AV
   sample_multiplier  = tempo / pitch;  // Do it the same way the library does it!
   sample_multiplier *= pitch * rate;
 
-  for(int n=0;n<last_nch;n++) 
+  for(UINT n=0;n<last_nch;n++) 
     samplers.add_item(new SoundTouch());
 
   for(n=0;n<last_nch;n++) {
@@ -128,7 +128,7 @@ void __stdcall AVSsoundtouch::GetAudio(void* buf, __int64 start, __int64 count, 
 {
 
   if (start != next_sample) {  // Reset on seek
-    for(int n=0;n<last_nch;n++)  // Clear all resamplers
+    for(UINT n=0;n<last_nch;n++)  // Clear all resamplers
       samplers[n]->clear();
 
     next_sample = start;
@@ -162,7 +162,7 @@ void __stdcall AVSsoundtouch::GetAudio(void* buf, __int64 start, __int64 count, 
       int samples_out = 0;
       int gotsamples = 0;
       do {
-        for(int n=0;n<last_nch;n++)  // Copies back samples from individual filters
+        for(UINT n=0;n<last_nch;n++)  // Copies back samples from individual filters
         {
           int old_g = gotsamples;
           gotsamples = samplers[n]->receiveSamples(passbuffer, BUFFERSIZE - samples_out);
@@ -187,7 +187,7 @@ void __stdcall AVSsoundtouch::GetAudio(void* buf, __int64 start, __int64 count, 
         child->GetAudio(dstbuffer, inputReadOffset, BUFFERSIZE, env);
         inputReadOffset += BUFFERSIZE;
 
-        for(int n=0;n<last_nch;n++)  // Copies n channels to separate buffers to individual filters
+        for(UINT n=0;n<last_nch;n++)  // Copies n channels to separate buffers to individual filters
         {
           UINT s;
           for(s=0;s<BUFFERSIZE;s++)
