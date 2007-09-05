@@ -53,7 +53,7 @@ void ConvertYV12ChromaTo444(unsigned char *dstp, const unsigned char *srcp,
     mov     ebx,[srcp]
     mov     ecx, eax
     add     ecx, [dst_pitch]  // ecx  = 1 line dst offset
-    
+
     mov     edx,[src_rowsize]
     xor     edi,edi
     mov     esi,[src_height]
@@ -70,7 +70,7 @@ loopx:
 
     movq    [eax+edi*2+8], mm1
     movq    [ecx+edi*2+8], mm1
-    
+
     add     edi,8
     cmp     edi,edx
     jl      loopx
@@ -89,7 +89,7 @@ loopx:
 }
 
 void Convert444FromYV12::ConvertImage(PVideoFrame src, Image444* dst, IScriptEnvironment* env) {
-  env->BitBlt(dst->GetPtr(PLANAR_Y), dst->pitch, 
+  env->BitBlt(dst->GetPtr(PLANAR_Y), dst->pitch,
     src->GetReadPtr(PLANAR_Y),src->GetPitch(PLANAR_Y), src->GetRowSize(PLANAR_Y), src->GetHeight());
 
   const BYTE* srcU = src->GetReadPtr(PLANAR_U);
@@ -102,7 +102,7 @@ void Convert444FromYV12::ConvertImage(PVideoFrame src, Image444* dst, IScriptEnv
 
   int dstUVpitch = dst->pitch;
 
-  int w = src->GetRowSize(PLANAR_U_ALIGNED);
+  int w = ((src->GetRowSize(PLANAR_U)+7)/8)*8;
   int h = src->GetHeight(PLANAR_U);
 
   ConvertYV12ChromaTo444(dstU, srcU, dstUVpitch, srcUVpitch, w, h);
@@ -112,7 +112,7 @@ void Convert444FromYV12::ConvertImage(PVideoFrame src, Image444* dst, IScriptEnv
 
 
 void Convert444FromYV12::ConvertImageLumaOnly(PVideoFrame src, Image444* dst, IScriptEnvironment* env) {
-  env->BitBlt(dst->GetPtr(PLANAR_Y), dst->pitch, 
+  env->BitBlt(dst->GetPtr(PLANAR_Y), dst->pitch,
     src->GetReadPtr(PLANAR_Y),src->GetPitch(PLANAR_Y), src->GetRowSize(PLANAR_Y), src->GetHeight());
 }
 
@@ -197,23 +197,23 @@ void ISSE_Convert444ChromaToYV12(unsigned char *dstp, const unsigned char *srcp,
     mov      ebx,[srcp]
     mov      ecx, ebx
     add      ecx, [src_pitch]  // ecx  = 1 line src offset
-            
+
     mov      edx,[src_rowsize]
     xor      edi,edi
     mov      esi,[src_height]
     pcmpeqb  mm7,mm7
     psrlw    mm7, 8          // 00ff 00ff 00ff 00ff
     align    16
-loopx:      
+loopx:
     movq     mm0, [ebx+edi*2]  // u4U4 u3U3 u2U2 u1U1
     movq     mm1, [ecx+edi*2]  // u4U4 u3U3 u2U2 u1U1  (Next line)
-            
+
     movq     mm2, [ebx+edi*2+8]  // u8U8 u7U7 U6U6 u5U5
     movq     mm3, [ecx+edi*2+8]  // u8U8 u7U7 u6U6 u5U5  (Next line)
-            
+
     pavgb    mm0,mm1         // Average with next line
     pavgb    mm2,mm3         // Average with next line
-            
+
     movq     mm1,mm0
     psrlw    mm0, 8          // 00u4 00u3 00u2 00u1
     movq     mm3,mm2
@@ -222,24 +222,24 @@ loopx:
     pavgb    mm2,mm3         // xxU8 xxU7 xxU6 xxU5
     pand     mm0,mm7         // 00U4 00U3 00U2 00U1
     pand     mm2,mm7         // 00U8 00U7 00U6 00U5
-            
+
     add      edi,8
     packuswb mm0,mm2         // U8U7 U6U5 U4U3 U2U1
-            
+
     cmp      edi,edx
     movq     [eax+edi-8],mm0
-            
+
     jl       loopx
-            
+
     mov      edi,0
     add      eax,[dst_pitch]
     add      ecx,[src_pitch2]
     add      ebx,[src_pitch2]
     dec      esi
-            
+
     jnz      loopx
-            
-    emms    
+
+    emms
 	pop      ebx
   }
 }
@@ -340,13 +340,13 @@ PVideoFrame Convert444ToYV12::ConvertImage(Image444* src, PVideoFrame dst, IScri
 
   int dstUVpitch = dst->GetPitch(PLANAR_U);
 
-  int w = dst->GetRowSize(PLANAR_U_ALIGNED);
+  int w = ((dst->GetRowSize(PLANAR_U)+7)/8)*8;
   int h = dst->GetHeight(PLANAR_U);
 
   if (GetCPUFlags() & CPUF_INTEGER_SSE) {
 
-    ISSE_Convert444ChromaToYV12(dstU, srcU, dstUVpitch, srcUVpitch, w, h);
-    ISSE_Convert444ChromaToYV12(dstV, srcV, dstUVpitch, srcUVpitch, w, h);
+	ISSE_Convert444ChromaToYV12(dstU, srcU, dstUVpitch, srcUVpitch, w, h);
+	ISSE_Convert444ChromaToYV12(dstV, srcV, dstUVpitch, srcUVpitch, w, h);
 
   } else if (GetCPUFlags() & CPUF_MMX) {
 
@@ -366,7 +366,7 @@ PVideoFrame Convert444ToYV12::ConvertImage(Image444* src, PVideoFrame dst, IScri
       dstV+=dstUVpitch;
   }
   }
-  
+
   return dst;
 }
 
@@ -387,7 +387,7 @@ PVideoFrame Convert444ToYUY2::ConvertImage(Image444* src, PVideoFrame dst, IScri
 
   int w = src->w();
   int h = src->h();
-  
+
   for (int y=0; y<h; y++) {
     for (int x=0; x<w; x+=2) {
       int x2 = x<<1;
@@ -429,7 +429,7 @@ PVideoFrame Convert444ToRGB::ConvertImage(Image444* src, PVideoFrame dst, IScrip
 
   dstP += h*dstPitch-dstPitch;
   int bpp = dst->GetRowSize()/w;
-  
+
   for (int y=0; y<h; y++) {
     int xRGB = 0;
     for (int x=0; x<w; x++) {
@@ -476,7 +476,7 @@ PVideoFrame Convert444NonCCIRToRGB::ConvertImage(Image444* src, PVideoFrame dst,
 
   dstP += h*dstPitch-dstPitch;
   int bpp = dst->GetRowSize()/w;
-  
+
   for (int y=0; y<h; y++) {
     int xRGB = 0;
     for (int x=0; x<w; x++) {
@@ -558,7 +558,7 @@ void Convert444FromRGB::ConvertImage(PVideoFrame src, Image444* dst, IScriptEnvi
       int r = srcP[RGBx+2];
 
       int y = (cyb*b + cyg*g + cyr*r + 0x108000) >> 16;
-      int scaled_y = (y - 16) * int(255.0/219.0*65536+0.5);  
+      int scaled_y = (y - 16) * int(255.0/219.0*65536+0.5);
       int b_y = (b << 16) - scaled_y;
       int r_y = (r << 16) - scaled_y;
 
