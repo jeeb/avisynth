@@ -441,11 +441,11 @@ void __stdcall SelectRangeEvery::GetAudio(void* buf, __int64 start, __int64 coun
     return;
   }
 
-  int samples_filled = 0;
+  __int64 samples_filled = 0;
   BYTE* samples = (BYTE*)buf;
   const int bps = vi.BytesPerAudioSample();
   int startframe = vi.FramesFromAudioSamples(start);
-  int general_offset = start - vi.AudioSamplesFromFrames(startframe);  // General compensation for startframe rounding.
+  __int64 general_offset = start - vi.AudioSamplesFromFrames(startframe);  // General compensation for startframe rounding.
 
   while (samples_filled < count) {
     const int iteration = startframe / length;                    // Which iteration is this.
