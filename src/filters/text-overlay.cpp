@@ -175,6 +175,18 @@ void Antialiaser::Apply( const VideoInfo& vi, PVideoFrame* frame, int pitch)
               (*frame)->GetPitch(PLANAR_U),
 			  (*frame)->GetWritePtr(PLANAR_U),
 			  (*frame)->GetWritePtr(PLANAR_V) );
+/* For 2.6
+  else if (vi.IsY8())
+    ApplyPlanar((*frame)->GetWritePtr(), pitch, 0, 0, 0, 0, 0);
+  else if (vi.IsPlanar())
+    ApplyPlanar((*frame)->GetWritePtr(), pitch,
+              (*frame)->GetPitch(PLANAR_U),
+			  (*frame)->GetWritePtr(PLANAR_U),
+			  (*frame)->GetWritePtr(PLANAR_V),
+			  vi.GetPlaneWidthSubsampling(PLANAR_U),
+			  vi.GetPlaneHeightSubsampling(PLANAR_U));
+
+*/
 }
 
 
@@ -218,6 +230,73 @@ void Antialiaser::ApplyYV12(BYTE* buf, int pitch, int pitchUV, BYTE* bufU, BYTE*
     alpha += w<<3;
   }
 }
+
+
+/* For 2.6
+void Antialiaser::ApplyPlanar(BYTE* buf, int pitch, int pitchUV, BYTE* bufU, BYTE* bufV, int shiftX, int shiftY) {
+  const int stepX = 1<<shiftX;
+  const int stepY = 1<<shiftY;
+
+  if (dirty) {
+    GetAlphaRect();
+    xl &= -stepX; xr |= stepX-1;
+    yb &= -stepY; yt |= stepY-1;
+  }
+  const int w4 = w*4;
+  unsigned short* alpha = alpha_calcs + yb*w4;
+  buf += pitch*yb;
+
+  // Apply Y
+  for (int y=yb; y<=yt; y+=1) {
+    for (int x=xl; x<=xr; x+=1) {
+      int x4 = x<<2;
+      const int basealpha = alpha[x4];
+
+      if (basealpha != 256) {
+        buf[x] = (buf[x] * basealpha + alpha[x4+3]) >> 8;
+      }
+    }
+    buf += pitch;
+    alpha += w4;
+  }
+
+  if (!bufU) return;
+
+  // This will not be fast, but it will be generic.
+  const int skipThresh = 256 << (shiftX+shiftY);
+  const int shifter = 8+shiftX+shiftY;
+
+  alpha = alpha_calcs + yb*w4;
+  bufU += (pitchUV*yb)>>shiftY;
+  bufV += (pitchUV*yb)>>shiftY;
+
+  for (y=yb; y<=yt; y+=stepY) {
+    int xs = xl>>shiftX;
+    for (int x=xl; x<=xr; x+=stepX) {
+      int basealphaUV = 0;
+      int au = 0;
+      int av = 0;
+      for (int i = 0; i<stepY; i++) {
+        int lookup = 0;
+        for (int j = 0; j<stepX; j++) {
+          basealphaUV += alpha[0+lookup];
+          au          += alpha[2+lookup];
+          av          += alpha[1+lookup];
+          lookup += 4;
+        }
+        alpha += w4;
+      }
+      if (basealphaUV != skipThresh) {
+        bufU[xs] = (bufU[xs] * basealphaUV + au) >> shifter;
+        bufV[xs] = (bufV[xs] * basealphaUV + av) >> shifter;
+      }
+      xs += 1;
+    }// end for x
+    bufU += pitchUV;
+    bufV += pitchUV;
+  }//end for y
+}
+*/
 
 
 void Antialiaser::ApplyYUY2(BYTE* buf, int pitch) {
@@ -699,8 +778,8 @@ PVideoFrame __stdcall ShowSMPTE::GetFrame(int n, IScriptEnvironment* env)
     wsprintf(text, "%02d:%02d:%02d:%02d", hour, min%60, sec%60, frames);
   }
   else {
-    int ms = (int)(((__int64)n * vi.fps_denominator * 1000 / (__int64)vi.fps_numerator)%1000);
-    int sec = (__int64)n * vi.fps_denominator / vi.fps_numerator;
+    int ms = (int)(((__int64)n * vi.fps_denominator * 1000 / vi.fps_numerator)%1000);
+    int sec = (int)((__int64)n * vi.fps_denominator / vi.fps_numerator);
     int min = sec/60;
     int hour = sec/3600;
 
@@ -724,7 +803,7 @@ AVSValue __cdecl ShowSMPTE::CreateSMTPE(AVSValue args, void*, IScriptEnvironment
   const char* offset = args[2].AsString(0);
   const int offset_f = args[3].AsInt(0);
   const int xreal = args[0].AsClip()->GetVideoInfo().width;
-  const int x = args[4].AsInt(xreal*0.5);
+  const int x = args[4].AsInt(xreal/2);
   const int yreal = args[0].AsClip()->GetVideoInfo().height;
   const int y = args[5].AsInt(yreal);
   const char* font = args[6].AsString("Arial");
@@ -741,7 +820,7 @@ AVSValue __cdecl ShowSMPTE::CreateTime(AVSValue args, void*, IScriptEnvironment*
   PClip clip = args[0].AsClip();
   const int offset_f = args[1].AsInt(0);
   const int xreal = args[0].AsClip()->GetVideoInfo().width;
-  const int x = args[2].AsInt(xreal*0.5);
+  const int x = args[2].AsInt(xreal/2);
   const int yreal = args[0].AsClip()->GetVideoInfo().height;
   const int y = args[3].AsInt(yreal);
   const char* font = args[4].AsString("Arial");
@@ -954,6 +1033,12 @@ const char* t_YV12="YV12";
 const char* t_YUY2="YUY2";
 const char* t_RGB32="RGB32";
 const char* t_RGB24="RGB24";
+/* For 2.6
+const char* t_YV24="YV24";
+const char* t_Y8="Y8";
+const char* t_YV16="YV16";
+const char* t_Y41P="YUV 411 Planar";
+*/
 const char* t_INT8="Integer 8 bit";
 const char* t_INT16="Integer 16 bit";
 const char* t_INT24="Integer 24 bit";
@@ -1008,6 +1093,12 @@ PVideoFrame FilterInfo::GetFrame(int n, IScriptEnvironment* env)
     if (vi.IsRGB32()) c_space=t_RGB32;
     if (vi.IsYV12()) c_space=t_YV12;
     if (vi.IsYUY2()) c_space=t_YUY2;
+/* For 2.6
+    if (vi.IsYV24()) c_space=t_YV24;
+    if (vi.IsY8()) c_space=t_Y8;
+    if (vi.IsYV16()) c_space=t_YV16;
+    if (vi.IsYV411()) c_space=t_Y41P;
+*/
 
     if (vi.SampleType()==SAMPLE_INT8) s_type=t_INT8;
     if (vi.SampleType()==SAMPLE_INT16) s_type=t_INT16;
@@ -1127,14 +1218,14 @@ Compare::Compare(PClip _child1, PClip _child2, const char* channels, const char 
     env->ThrowError("Compare: Clips must have same size.");
 
   if (!(vi.IsRGB24() || vi.IsYUY2() || vi.IsRGB32() || vi.IsPlanar()))
-    env->ThrowError("Compare: Clips have unknown format. RGB24, RGB32, YUY2 and YUV Planar supported.");
+    env->ThrowError("Compare: Clips have unknown pixel format. RGB24, RGB32, YUY2 and YUV Planar supported.");
 
   if (channels[0] == 0) {
     if (vi.IsRGB())
       channels = "RGB";
     else if (vi.IsYUV())
       channels = "YUV";
-    else env->ThrowError("Compare: Clips have unknown colorspace. RGB24, RGB32, YUY2 and YUV Planar supported.");
+    else env->ThrowError("Compare: Clips have unknown colorspace. RGB and YUV supported.");
   }
 
   planar_plane = 0;

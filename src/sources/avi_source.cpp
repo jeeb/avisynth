@@ -247,6 +247,16 @@ void AVISource::LocateVideoCodec(const char fourCC[], IScriptEnvironment* env) {
     vi.pixel_type = VideoInfo::CS_BGR32;
   } else if (pbiSrc->biCompression == BI_RGB && pbiSrc->biBitCount == 24) {
     vi.pixel_type = VideoInfo::CS_BGR24;
+/* For 2.6
+  } else if (pbiSrc->biCompression == '008Y') {
+    vi.pixel_type = VideoInfo::CS_Y8;
+  } else if (pbiSrc->biCompression == '42VY') {
+    vi.pixel_type = VideoInfo::CS_YV24;
+  } else if (pbiSrc->biCompression == '61VY') {
+    vi.pixel_type = VideoInfo::CS_YV16;
+  } else if (pbiSrc->biCompression == 'B14Y') {
+    vi.pixel_type = VideoInfo::CS_YV411;
+*/
 
   // otherwise, find someone who will decompress it
   } else {
@@ -333,20 +343,63 @@ AVISource::AVISource(const char filename[], bool fAudio, const char pixel_type[]
         if (hic) {
           bool forcedType = !(pixel_type[0] == 0);
 
+/* For 2.6
+          bool fY8    = lstrcmpi(pixel_type, "Y8"   ) == 0 || pixel_type[0] == 0;
+*/
           bool fYV12  = lstrcmpi(pixel_type, "YV12" ) == 0 || pixel_type[0] == 0;
+/* For 2.6
+          bool fYV16  = lstrcmpi(pixel_type, "YV16" ) == 0 || pixel_type[0] == 0;
+          bool fYV24  = lstrcmpi(pixel_type, "YV24" ) == 0 || pixel_type[0] == 0;
+          bool fYV411 = lstrcmpi(pixel_type, "YV411") == 0 || pixel_type[0] == 0;
+*/
           bool fYUY2  = lstrcmpi(pixel_type, "YUY2" ) == 0 || pixel_type[0] == 0;
           bool fRGB32 = lstrcmpi(pixel_type, "RGB32") == 0 || pixel_type[0] == 0;
           bool fRGB24 = lstrcmpi(pixel_type, "RGB24") == 0 || pixel_type[0] == 0;
           if (!(fYV12 || fYUY2 || fRGB32 || fRGB24))
             env->ThrowError("AVISource: requested format must be YV12, YUY2, RGB32 or RGB24");
 
-          // try to decompress to YV12, YUY2, RGB32, and RGB24 in turn
+/* For 2.6
+          if (!(fY8 || fYV12 || fYV16 || fYV24 || fYV411 || fYUY2 || fRGB32 || fRGB24))
+            env->ThrowError("AVISource: requested format must be one of YV24, YV16, YV12, YV411, YUY2, Y8, RGB32 or RGB24");
+*/
+
+          // try to decompress to YV12, YV411, YV16, YV24, YUY2, Y8, RGB32, and RGB24 in turn
           memset(&biDst, 0, sizeof(BITMAPINFOHEADER));
           biDst.biSize = sizeof(BITMAPINFOHEADER);
           biDst.biWidth = vi.width;
           biDst.biHeight = vi.height;
           biDst.biPlanes = 1;
           bool bOpen = true;
+
+/* For 2.6
+          // YV24
+          if (fYV24 && bOpen) {
+            vi.pixel_type = VideoInfo::CS_YV24;
+            biDst.biSizeImage = vi.BMPSize();
+            biDst.biCompression = '42VY';
+            biDst.biBitCount = 24;
+            if (ICERR_OK == ICDecompressQuery(hic, pbiSrc, &biDst)) {
+              _RPT0(0,"AVISource: Opening as YV24.\n");
+              bOpen = false;  // Skip further attempts
+            } else if (forcedType) {
+               env->ThrowError("AVISource: the video decompressor couldn't produce YV24 output");
+            }
+          }
+
+          // YV16
+          if (fYV16 && bOpen) {
+            vi.pixel_type = VideoInfo::CS_YV16;
+            biDst.biSizeImage = vi.BMPSize();
+            biDst.biCompression = '61VY';
+            biDst.biBitCount = 16;
+            if (ICERR_OK == ICDecompressQuery(hic, pbiSrc, &biDst)) {
+              _RPT0(0,"AVISource: Opening as YV16.\n");
+              bOpen = false;  // Skip further attempts
+            } else if (forcedType) {
+               env->ThrowError("AVISource: the video decompressor couldn't produce YV16 output");
+            }
+          }
+*/
 
           // YV12
           if (fYV12 && bOpen) {
@@ -361,6 +414,24 @@ AVISource::AVISource(const char filename[], bool fAudio, const char pixel_type[]
                env->ThrowError("AVISource: the video decompressor couldn't produce YV12 output");
             }
           }
+
+/* For 2.6
+// ::FIXME:: Is this the most appropriate order.  Not sure about YUY2 vrs YV411
+
+          // YV411
+          if (fYV411 && bOpen) {
+            vi.pixel_type = VideoInfo::CS_YV411;
+            biDst.biSizeImage = vi.BMPSize();
+            biDst.biCompression = 'B14Y';
+            biDst.biBitCount = 16;
+            if (ICERR_OK == ICDecompressQuery(hic, pbiSrc, &biDst)) {
+              _RPT0(0,"AVISource: Opening as YV411.\n");
+              bOpen = false;  // Skip further attempts
+            } else if (forcedType) {
+               env->ThrowError("AVISource: the video decompressor couldn't produce YV411 output");
+            }
+          }
+*/
 
           // YUY2
           if (fYUY2 && bOpen) {
@@ -402,6 +473,22 @@ AVISource::AVISource(const char filename[], bool fAudio, const char pixel_type[]
                env->ThrowError("AVISource: the video decompressor couldn't produce RGB24 output");
             }
           }
+
+/* For 2.6
+          // Y8
+          if (fY8 && bOpen) {
+            vi.pixel_type = VideoInfo::CS_Y8;
+            biDst.biSizeImage = vi.BMPSize();
+            biDst.biCompression = '008Y';
+            biDst.biBitCount = 8;
+            if (ICERR_OK == ICDecompressQuery(hic, pbiSrc, &biDst)) {
+              _RPT0(0,"AVISource: Opening as Y8.\n");
+              bOpen = false;  // Skip further attempts
+            } else if (forcedType) {
+               env->ThrowError("AVISource: the video decompressor couldn't produce Y8 output");
+            }
+          }
+*/
 
           // No takers!
           if (bOpen)
@@ -450,19 +537,19 @@ AVISource::AVISource(const char filename[], bool fAudio, const char pixel_type[]
     if (mode != MODE_WAV) {
       int keyframe = pvideo->NearestKeyFrame(0);
       PVideoFrame frame = env->NewVideoFrame(vi, -4);
-	  BYTE *ptr = frame->GetWritePtr();
+      BYTE *ptr = frame->GetWritePtr();
       LRESULT error = DecompressFrame(keyframe, false, ptr);
       if (error != ICERR_OK || (!frame))   // shutdown, if init not succesful.
         env->ThrowError("AviSource: Could not decompress frame 0");
 
-	  // Cope with dud AVI files that start with drop
-	  // frames, just return the first key frame
-	  if (dropped_frame) {
-		keyframe = pvideo->NextKeyFrame(0);
-		error = DecompressFrame(keyframe, false, ptr);
-		if (error != ICERR_OK)   // shutdown, if init not succesful.
-		  env->ThrowError("AviSource: Could not decompress first keyframe %d", keyframe);
-	  }
+      // Cope with dud AVI files that start with drop
+      // frames, just return the first key frame
+      if (dropped_frame) {
+        keyframe = pvideo->NextKeyFrame(0);
+        error = DecompressFrame(keyframe, false, ptr);
+        if (error != ICERR_OK)   // shutdown, if init not succesful.
+          env->ThrowError("AviSource: Could not decompress first keyframe %d", keyframe);
+      }
       last_frame_no=0;
       last_frame=frame;
     }

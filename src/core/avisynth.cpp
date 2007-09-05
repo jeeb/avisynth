@@ -825,9 +825,9 @@ extern long CPUCheckForExtensions();  // in cpuaccel.cpp
 ScriptEnvironment::ScriptEnvironment()
   : at_exit(This()),
     function_table(This()),
-  CacheHead(0), hrfromcoinit(E_FAIL),
-  unpromotedvfbs(&video_frame_buffers),
-  PlanarChromaAlignmentState(true){ // Change to "true" for 2.5.7
+    CacheHead(0), hrfromcoinit(E_FAIL),
+    unpromotedvfbs(&video_frame_buffers),
+    PlanarChromaAlignmentState(true){ // Change to "true" for 2.5.7
 
   try {
     hrfromcoinit = CoInitialize(NULL);
@@ -902,7 +902,7 @@ int ScriptEnvironment::SetMemoryMax(int mem) {
   if (mem > 0) {
     MEMORYSTATUS memstatus;
     __int64 mem_limit;
- 
+
     GlobalMemoryStatus(&memstatus);
     memory_max = mem * 1048576i64;                          // mem as megabytes
     if (memory_max < memory_used) memory_max = memory_used; // can't be less than we already have

@@ -340,11 +340,11 @@ void Tokenizer::GetNumber()
 	env->ThrowError("Tokenizer: Number is to big.");
 
   if (type == 'f') {
-	floating_pt = dtemp;
+	floating_pt = (float)dtemp;
   }
   else if (dtemp > INT_MAX) {
 	type = 'f';
-	floating_pt = dtemp;
+	floating_pt = (float)dtemp;
   }
 }
 

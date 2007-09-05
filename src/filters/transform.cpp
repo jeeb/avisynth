@@ -229,8 +229,8 @@ Crop::Crop(int _left, int _top, int _width, int _height, int _align, PClip _chil
     if (_width&1)
       env->ThrowError("Crop: YUV images can only be cropped by even numbers (right side).");
     if (vi.IsYV12()) {
-	  xsub=1;
-	  ysub=1;
+      xsub=1;
+      ysub=1;
       if (_top&1)
         env->ThrowError("Crop: YV12 images can only be cropped by even numbers (top).");
       if (_height&1)
@@ -273,7 +273,7 @@ PVideoFrame Crop::GetFrame(int n, IScriptEnvironment* env)
     _align = align & (int)srcpY;
 
   if (_align) {
-    PVideoFrame dst = env->NewVideoFrame(vi, align+1);  
+    PVideoFrame dst = env->NewVideoFrame(vi, align+1);
 
     env->BitBlt(dst->GetWritePtr(PLANAR_Y), dst->GetPitch(PLANAR_Y), srcpY,
       frame->GetPitch(PLANAR_Y), dst->GetRowSize(PLANAR_Y), dst->GetHeight(PLANAR_Y));
@@ -319,8 +319,8 @@ AddBorders::AddBorders(int _left, int _top, int _right, int _bot, int _clr, PCli
     left = left & -2;
     right = (right+1) & -2;
     if (vi.IsYV12()) {
-	  xsub=1;
-	  ysub=1;
+      xsub=1;
+      ysub=1;
       top=top& -2;
       bot=(bot+1)& -2;
     }

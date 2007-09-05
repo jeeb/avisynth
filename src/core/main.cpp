@@ -51,7 +51,7 @@
 
 #ifndef _DEBUG
 // Release mode logging
-//#define OPT_RELS_LOGGING
+#define OPT_RELS_LOGGING
 #ifdef OPT_RELS_LOGGING
 
 #undef _RPT0
@@ -551,7 +551,7 @@ STDMETHODIMP CAVIFileSynth::Open(LPCSTR szFile, UINT mode, LPCOLESTR lpszFileNam
 
 //	_RPT3(0,"%p->CAVIFileSynth::Open(\"%s\", 0x%08lx)\n", this, szFile, mode);
 
-	if (mode & (OF_CREATE|OF_WRITE))
+    if (mode & (OF_CREATE|OF_WRITE))
       return E_FAIL;
 
     delete env;   // just in case
@@ -582,9 +582,9 @@ bool CAVIFileSynth::DelayInit() {
       }
       catch (AvisynthError error) {
         error_msg = error.msg;
-		return false;
-	  }
-	  try {
+        return false;
+      }
+      try {
         AVSValue return_val = env->Invoke("Import", szScriptName);
         // store the script's return value (a video clip)
         if (return_val.IsClip()) {
@@ -615,7 +615,19 @@ bool CAVIFileSynth::DelayInit() {
 
         // get information about the clip
         vi = &filter_graph->GetVideoInfo();
-
+/**** FORCED CONVERSIONS FOR NOW - ENABLE WHEN IMPLEMENTED  ****/
+/*
+        if (vi->IsYV16() || vi->IsYV411()) {
+          AVSValue args[1] = { filter_graph };
+          filter_graph = env->Invoke("ConvertToYUY2", AVSValue(args,1)).AsClip();
+          vi = &filter_graph->GetVideoInfo();
+        }
+        if (vi->IsYV24()) {
+          AVSValue args[1] = { filter_graph };
+          filter_graph = env->Invoke("ConvertToRGB32", AVSValue(args,1)).AsClip();
+          vi = &filter_graph->GetVideoInfo();
+        }
+*/
         if (vi->IsYV12()&&(vi->width&3))
           throw AvisynthError("Avisynth error: YV12 images for output must have a width divisible by 4 (use crop)!");
         if (vi->IsYUY2()&&(vi->width&3))
@@ -629,7 +641,7 @@ bool CAVIFileSynth::DelayInit() {
           filter_graph = env->Invoke("MessageClip", AVSValue(args, 2), arg_names).AsClip();
           vi = &filter_graph->GetVideoInfo();
         }
-		catch (AvisynthError) {
+        catch (AvisynthError) {
           filter_graph = 0;
         }
       }
@@ -897,6 +909,16 @@ STDMETHODIMP_(LONG) CAVIStreamSynth::Info(AVISTREAMINFOW *psi, LONG lSize) {
         asi.fccHandler = '2YUY';
       else if (vi->IsYV12())
         asi.fccHandler = '21VY'; 
+/* For 2.6
+      else if (vi->IsY8())
+        asi.fccHandler = '008Y'; 
+      else if (vi->IsYV24())
+        asi.fccHandler = '42VY'; 
+      else if (vi->IsYV16()) 
+        asi.fccHandler = '61VY'; 
+      else if (vi->IsYV411()) 
+        asi.fccHandler = 'B14Y'; 
+*/
       else {
         _ASSERT(FALSE);
       }
@@ -1294,6 +1316,16 @@ STDMETHODIMP CAVIStreamSynth::ReadFormat(LONG lPos, LPVOID lpFormat, LONG *lpcbF
         bi.biCompression = '2YUY';
       else if (vi->IsYV12())
         bi.biCompression = '21VY';
+/* For 2.6
+      else if (vi->IsY8())
+        bi.biCompression = '008Y'; 
+      else if (vi->IsYV24())
+        bi.biCompression = '42VY'; 
+      else if (vi->IsYV16()) 
+        bi.biCompression = '61VY'; 
+      else if (vi->IsYV411()) 
+        bi.biCompression = 'B14Y'; 
+*/
       else {
         _ASSERT(FALSE);
       }

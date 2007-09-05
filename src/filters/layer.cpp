@@ -368,9 +368,9 @@ PVideoFrame Invert::GetFrame(int n, IScriptEnvironment* env)
     if (ch == 'y')
       doY = true;
     if (ch == 'u')
-      doU = true;
+      doU = true; // !vi.IsY8();
     if (ch == 'v')
-      doV = true;
+      doV = true; // !vi.IsY8();
   }
 
   if (vi.IsYUY2()) {

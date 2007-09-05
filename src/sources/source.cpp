@@ -154,12 +154,22 @@ static AVSValue __cdecl Create_BlankClip(AVSValue args, void*, IScriptEnvironmen
       vi.pixel_type = VideoInfo::CS_YUY2;
     } else if (!lstrcmpi(pixel_type_string, "YV12")) {
       vi.pixel_type = VideoInfo::CS_YV12;
+/* For 2.6
+    } else if (!lstrcmpi(pixel_type_string, "YV24")) {
+      vi.pixel_type = VideoInfo::CS_YV24;
+    } else if (!lstrcmpi(pixel_type_string, "YV16")) {
+      vi.pixel_type = VideoInfo::CS_YV16;
+    } else if (!lstrcmpi(pixel_type_string, "Y8")) {
+      vi.pixel_type = VideoInfo::CS_Y8;
+    } else if (!lstrcmpi(pixel_type_string, "YV411")) {
+      vi.pixel_type = VideoInfo::CS_YV411;
+*/
     } else if (!lstrcmpi(pixel_type_string, "RGB24")) {
       vi.pixel_type = VideoInfo::CS_BGR24;
     } else if (!lstrcmpi(pixel_type_string, "RGB32")) {
       vi.pixel_type = VideoInfo::CS_BGR32;
     } else {
-      env->ThrowError("BlankClip: pixel_type must be \"RGB32\", \"RGB24\", \"YV12\" or \"YUY2\"");
+      env->ThrowError("BlankClip: pixel_type must be \"RGB32\", \"RGB24\", \"YV12\""/*, \"YV24\", \"YV16\", \"Y8\", \"YV411\"*/" or \"YUY2\"");
     }
   }
   else {
