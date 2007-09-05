@@ -1029,7 +1029,7 @@ __inline int ConvertAudio::Saturate_int24(float n) {
 __inline int ConvertAudio::Saturate_int32(float n) {
     if (n <= (float)MIN_INT) return MIN_INT;  
     if (n >= (float)MAX_INT) return MAX_INT;
-    return (int)(n)+0.5f;
+    return (int)(n+0.5f);
 }
 
 
