@@ -83,8 +83,8 @@ FilteredResizeH::FilteredResizeH( PClip _child, double subrange_left, double sub
 
   original_width = _child->GetVideoInfo().width;
 
-  if (target_width<4)
-    env->ThrowError("Resize: Width must be bigger than or equal to 4.");
+  if (target_width<=0)
+    env->ThrowError("Resize: Width must be greater than 0.");
 
   if (vi.IsYUV())
   {
@@ -141,9 +141,11 @@ FilteredResizeH::FilteredResizeH( PClip _child, double subrange_left, double sub
 
 
 DynamicAssembledCode FilteredResizeH::GenerateResizer(int gen_plane, IScriptEnvironment* env) {
-  __declspec(align(8))static const __int64 FPround = 0x0000200000002000; // 16384/2
-  __declspec(align(8)) static const __int64 Mask1 =  0x00000000ffff0000;
-  __declspec(align(8)) static const __int64 Mask3 =  0x000000000000ffff;
+  __declspec(align(8)) static const __int64 FPround   =  0x0000200000002000; // 16384/2
+  __declspec(align(8)) static const __int64 Mask2_pix =  0x000000000000ffff;
+  __declspec(align(8)) static const __int64 Mask1_pix_inv =  0xffffffffffffff00;
+  __declspec(align(8)) static const __int64 Mask2_pix_inv =  0xffffffffffff0000;
+  __declspec(align(8)) static const __int64 Mask3_pix_inv =  0xffffffffff000000;
 
   Assembler x86;   // This is the class that assembles the code.
 
@@ -197,6 +199,8 @@ DynamicAssembledCode FilteredResizeH::GenerateResizer(int gen_plane, IScriptEnvi
   int filter_offset=fir_filter_size*8+8;  // This is the length from one pixel pair to another
   int* cur_luma = array+2;
 
+  int six_loops = (vi_dst_width-2)/6;  // How many loops can we do safely, with 6 pixels.
+
   if (true) {
     // Store registers
     x86.push(eax);
@@ -209,8 +213,8 @@ DynamicAssembledCode FilteredResizeH::GenerateResizer(int gen_plane, IScriptEnvi
 
     // Initialize registers.
     x86.mov(eax,(int)&FPround);
-    x86.movq(mm7, qword_ptr[eax]);  // Rounder for final division. Not touched!
     x86.pxor(mm6,mm6);  // Cleared mmx register - Not touched!
+    x86.movq(mm7, qword_ptr[eax]);  // Rounder for final division. Not touched!
 
     x86.mov(dword_ptr [&gen_h],vi_height);  // This is our y counter.
 
@@ -220,181 +224,275 @@ DynamicAssembledCode FilteredResizeH::GenerateResizer(int gen_plane, IScriptEnvi
     x86.mov(eax,dword_ptr [&gen_dstp]);
     x86.mov(dword_ptr [&gen_temp_destp],eax);
 
-    x86.mov(dword_ptr [&gen_x],(1+vi_dst_width)/6);
-    x86.mov(edi, dword_ptr[&tempY]);
     x86.mov(esi, dword_ptr[&gen_srcp]);
+    x86.mov(edi, dword_ptr[&tempY]);
+
+    // Unpack source bytes to words in tempY buffer
 
     for (int i=0;i<mod16_w;i++) {
-      if (!unroll_fetch) {  // Should we create a loop instead of unrolling?
-        x86.mov(ebx, mod16_w);
-        i = mod16_w;  // Jump out of loop
-      }
       if ((!(i%prefetchevery)) && (i*16+256<vi_src_width) && isse && unroll_fetch) {
          //Prefetch only once per cache line
-       x86.prefetchnta(dword_ptr [esi+256]);
+        x86.prefetchnta(dword_ptr [esi+256]);
       }
-      if (!unroll_fetch) {  // Loop on if not unrolling
+      if (!unroll_fetch) {  // Should we create a loop instead of unrolling?
+        i = mod16_w;  // Jump out of loop
+        x86.mov(ebx, mod16_w);
         x86.align(16);
+        x86.label("fetch_loopback");
       }
-      x86.label("fetch_loopback");
       x86.movq(mm0, qword_ptr[esi]);        // Move pixels into mmx-registers
        x86.movq(mm1, qword_ptr[esi+8]);
       x86.movq(mm2,mm0);
-       x86.movq(mm3,mm1);
-      x86.punpcklbw(mm0,mm6);     // Unpack bytes -> words
+       x86.punpcklbw(mm0,mm6);     // Unpack bytes -> words
+      x86.movq(mm3,mm1);
        x86.punpcklbw(mm1,mm6);
-      x86.punpckhbw(mm2,mm6);
+      x86.add(esi,16);
+       x86.punpckhbw(mm2,mm6);
+      x86.add(edi,32);
        x86.punpckhbw(mm3,mm6);
+      if (!unroll_fetch)   // Loop on if not unrolling
+        x86.dec(ebx);
       if ((!avoid_stlf) || (!isse)) {
-        x86.movq(qword_ptr[edi],mm0);        // Store unpacked pixels in temporary space.
-        x86.movq(qword_ptr[edi+8],mm2);
-        x86.movq(qword_ptr[edi+16],mm1);
-        x86.movq(qword_ptr[edi+24],mm3);
+        x86.movq(qword_ptr[edi-32],mm0);        // Store unpacked pixels in temporary space.
+        x86.movq(qword_ptr[edi+8-32],mm2);
+        x86.movq(qword_ptr[edi+16-32],mm1);
+        x86.movq(qword_ptr[edi+24-32],mm3);
       } else {  // Code to avoid store->load forward size mismatch.
-        x86.movd(dword_ptr [edi],mm0);
-        x86.movd(dword_ptr [edi+8],mm2);
-        x86.movd(dword_ptr [edi+16],mm1);
-        x86.movd(dword_ptr [edi+24],mm3);
+        x86.movd(dword_ptr [edi-32],mm0);
+        x86.movd(dword_ptr [edi+8-32],mm2);
+        x86.movd(dword_ptr [edi+16-32],mm1);
+        x86.movd(dword_ptr [edi+24-32],mm3);
         x86.pswapd(mm0,mm0);				// 3DNow instruction!!
         x86.pswapd(mm1,mm1);
         x86.pswapd(mm2,mm2);
         x86.pswapd(mm3,mm3);
-        x86.movd(dword_ptr [edi+4],mm0);
-        x86.movd(dword_ptr [edi+8+4],mm2);
-        x86.movd(dword_ptr [edi+16+4],mm1);
-        x86.movd(dword_ptr [edi+24+4],mm3);
+        x86.movd(dword_ptr [edi+4-32],mm0);
+        x86.movd(dword_ptr [edi+8+4-32],mm2);
+        x86.movd(dword_ptr [edi+16+4-32],mm1);
+        x86.movd(dword_ptr [edi+24+4-32],mm3);
       }
-      x86.add(esi,16);
-      x86.add(edi,32);
-      if (!unroll_fetch) {  // Loop on if not unrolling
-        x86.dec(ebx);
+      if (!unroll_fetch)   // Loop on if not unrolling
         x86.jnz("fetch_loopback");
-      }
     }
-    if (mod16_remain==3) {
+    switch (mod16_remain) {
+    case 3:
       x86.movq(mm0, qword_ptr[esi]);        // Move 12 pixels into mmx-registers
-      x86.movd(mm1, dword_ptr[esi+8]);
+       x86.movd(mm1, dword_ptr[esi+8]);
       x86.movq(mm2,mm0);
-      x86.punpcklbw(mm0,mm6);               // Unpack bytes -> words
+       x86.punpcklbw(mm0,mm6);               // Unpack bytes -> words
       x86.punpckhbw(mm2,mm6);
-      x86.punpcklbw(mm1,mm6);
+       x86.punpcklbw(mm1,mm6);
       x86.movq(qword_ptr[edi],mm0);         // Store 12 unpacked pixels in temporary space.
-      x86.movq(qword_ptr[edi+8],mm2);
+       x86.movq(qword_ptr[edi+8],mm2);
       x86.movq(qword_ptr[edi+16],mm1);
-    }
-    else if (mod16_remain==2) {
+      break;
+    case 2:
       x86.movq(mm0, qword_ptr[esi]);        // Move 8 pixels into mmx-registers
       x86.movq(mm2,mm0);
-      x86.punpcklbw(mm0,mm6);               // Unpack bytes -> words
+       x86.punpcklbw(mm0,mm6);               // Unpack bytes -> words
       x86.punpckhbw(mm2,mm6);
-      x86.movq(qword_ptr[edi],mm0);         // Store 8 unpacked pixels in temporary space.
+       x86.movq(qword_ptr[edi],mm0);         // Store 8 unpacked pixels in temporary space.
       x86.movq(qword_ptr[edi+8],mm2);
-    }
-    else if (mod16_remain==1) {
+      break;
+    case 1:
       x86.movd(mm0,dword_ptr [esi]);        // Move 4 pixels into mmx-registers
       x86.punpcklbw(mm0,mm6);               // Unpack bytes -> words
       x86.movq(qword_ptr[edi],mm0);         // Store 4 unpacked pixels in temporary space.
-    }
-    else if (mod16_remain!=0) {
+      break;
+    case 0:
+      break;
+    default:
       env->ThrowError("Resize: FilteredResizeH::GenerateResizer illegal state %d.", mod16_remain);  // Opps!
     }
+
+    // Calculate destination pixels
 
     x86.mov(edi, (int)cur_luma);  // First there are offsets into the tempY planes, defining where the filter starts
                                   // After that there is (filter_size) constants for multiplying.
                                   // Next pixel pair is put after (filter_offset) bytes.
 
-    if ((1+vi_dst_width)/6) {       // Do we have at least 1 loops worth to do?
-      x86.align(16);
-      x86.label("xloop");
+    if (six_loops) {       // Do we have at least 1 loops worth to do?
+      if (six_loops > 1) { // Do we have more than 1 loop to do?
+        x86.mov(dword_ptr [&gen_x],six_loops);
+        x86.align(16);
+        x86.label("xloop");
+      }
       x86.mov(eax,dword_ptr [edi]);   // Move pointers of first pixel pair into registers
       x86.mov(ebx,dword_ptr [edi+4]);
       x86.mov(ecx,dword_ptr [edi+filter_offset]);     // Move pointers of next pixel pair into registers
       x86.mov(edx,dword_ptr [edi+filter_offset+4]);
+      x86.movq(mm3,mm7);  // Start with rounder!
       x86.mov(esi,dword_ptr [edi+(filter_offset*2)]);   // Move pointers of next pixel pair into registers
+      x86.movq(mm5,mm7);
       x86.mov(ebp,dword_ptr [edi+(filter_offset*2)+4]);
-      x86.pxor(mm3,mm3);
-      x86.pxor(mm5,mm5);
-      x86.pxor(mm4,mm4);
+      x86.movq(mm4,mm7);
       x86.add(edi,8); // cur_luma++
 
       for (i=0;i<fir_filter_size;i++) {       // Unroll filter inner loop based on the filter size.
           x86.movd(mm0, dword_ptr[eax+i*4]);
-          x86.movd(mm1, dword_ptr[ecx+i*4]);
+           x86.movd(mm1, dword_ptr[ecx+i*4]);
           x86.punpckldq(mm0, qword_ptr[ebx+i*4]);
-          x86.punpckldq(mm1, qword_ptr[edx+i*4]);
+           x86.punpckldq(mm1, qword_ptr[edx+i*4]);
           x86.pmaddwd(mm0, qword_ptr[edi+i*8]);
-          x86.movd(mm2, dword_ptr[esi+i*4]);
+           x86.movd(mm2, dword_ptr[esi+i*4]);
           x86.pmaddwd(mm1,qword_ptr[edi+filter_offset+(i*8)]);
-          x86.punpckldq(mm2, qword_ptr[ebp+i*4]);
+           x86.punpckldq(mm2, qword_ptr[ebp+i*4]);
           x86.paddd(mm3, mm0);
-          x86.pmaddwd(mm2, qword_ptr[edi+(filter_offset*2)+(i*8)]);
+           x86.pmaddwd(mm2, qword_ptr[edi+(filter_offset*2)+(i*8)]);
           x86.paddd(mm4, mm1);
-          x86.paddd(mm5, mm2);
+           x86.paddd(mm5, mm2);
       }
-      x86.paddd(mm3,mm7);
-       x86.paddd(mm4,mm7);
       x86.psrad(mm3,14);
-       x86.paddd(mm5,mm7);
-      x86.psrad(mm4,14);
        x86.mov(eax,dword_ptr[&gen_temp_destp]);
+      x86.psrad(mm4,14);
+       x86.add(dword_ptr [&gen_temp_destp],6);
       x86.psrad(mm5,14);
        x86.packssdw(mm3, mm4);       // [...3 ...2] [...1 ...0] => [.3 .2 .1 .0]
-      x86.packssdw(mm5, mm6);        // [.... ....] [...5 ...4] => [.. .. .5 .4]
-      x86.packuswb(mm3, mm5);        // [.. .. .5 .4] [.3 .2 .1 .0] => [..543210]
-      x86.movq(qword_ptr[eax],mm3);  // This is a potential 2 byte overwrite!
-      x86.add(dword_ptr [&gen_temp_destp],6);
-      x86.add(edi,filter_offset*3-8);
-      x86.dec(dword_ptr [&gen_x]);
-      x86.jnz("xloop");
+      x86.packssdw(mm5, mm6);        // [...z ...z] [...5 ...4] => [.z .z .5 .4]
+       x86.add(edi,filter_offset*3-8);
+      x86.packuswb(mm3, mm5);        // [.z .z .5 .4] [.3 .2 .1 .0] => [zz543210]
+      if (six_loops > 1) {   // Do we have more than 1 loop to do?
+         x86.dec(dword_ptr [&gen_x]);
+        x86.movq(qword_ptr[eax],mm3);  // This was a potential 2 byte overwrite!
+         x86.jnz("xloop");
+      } else {
+        x86.movq(qword_ptr[eax],mm3);  // This was a potential 2 byte overwrite!
+      }
     }
 
     // Process any remaining pixels
 
-    int remainy = vi_dst_width%6;
-    if (remainy==1)
-      remainy=0;
+//      vi_dst_width;                              1,2,3,4,5,6,7,8,9,A,B,C,D,E,F,10
+//      vi_dst_width-2                            -1,0,1,2,3,4,5,6,7,8,9,A,B,C,D,E,F
+//      six_loops = (vi_dst_width-2)/6;            0,0,0,0,0,0,0,1,1,1,1,1,1,2,2,2,2
+    int remainx = vi_dst_width-(six_loops*6); //   1,2,3,4,5,6,7,2,3,4,5,6,7,2,3,4,5,6,7
 
-    if (remainy) {
-      remainy++;
-      remainy/=2;  // This will be either 1 or 2.
-      remainy--;   // 0 if two pixels 1 if four.
+    while (remainx>=4) {
       x86.mov(eax,dword_ptr [edi]);
       x86.mov(ebx,dword_ptr [edi+4]);
-      x86.pxor(mm3,mm3);
-      if (remainy) {
-        x86.mov(ecx,dword_ptr [edi+filter_offset]);
-        x86.mov(edx,dword_ptr [edi+filter_offset+4]);
-        x86.pxor(mm4,mm4);
-      }
+      x86.movq(mm3,mm7);  // Used for pix 1+2
+      x86.mov(ecx,dword_ptr [edi+filter_offset]);
+      x86.movq(mm4,mm7);  // Used for pix 3+4
+      x86.mov(edx,dword_ptr [edi+filter_offset+4]);
+
       x86.add(edi,8); // cur_luma++
       for (i=0;i<fir_filter_size;i++) {
         x86.movd(mm0, dword_ptr [eax+i*4]);
-        if (remainy) x86.movd(mm1, dword_ptr [ecx+i*4]);
+         x86.movd(mm1, dword_ptr [ecx+i*4]);
         x86.punpckldq(mm0, qword_ptr[ebx+i*4]);
-        if (remainy) x86.punpckldq(mm1, qword_ptr[edx+i*4]);
+         x86.punpckldq(mm1, qword_ptr[edx+i*4]);
         x86.pmaddwd(mm0, qword_ptr[edi+i*8]);
-        if (remainy) x86.pmaddwd(mm1, qword_ptr[edi+filter_offset+(i*8)]);
+         x86.pmaddwd(mm1, qword_ptr[edi+filter_offset+(i*8)]);
         x86.paddd(mm3, mm0);
-        if (remainy) x86.paddd(mm4, mm1);
+         x86.paddd(mm4, mm1);
       }
-      x86.paddd(mm3,mm7);
-      if (remainy) x86.paddd(mm4,mm7);
       x86.psrad(mm3,14);
-      if (remainy) { // Four pixels
-        x86.psrad(mm4,14);
-        x86.packssdw(mm3, mm4);      // [...3 ...2] [...1 ...0] => [.3 .2 .1 .0]
-        x86.mov(eax,dword_ptr[&gen_temp_destp]);
-        x86.packuswb(mm3, mm6);      // [.. .. .. ..] [.3 .2 .1 .0] => [....3210]
-      } else { // Two pixels
-        x86.packssdw(mm3, mm6);      // [.... ....] [...1 ...0] => [.. .. .1 .0]
-        x86.mov(eax,dword_ptr[&gen_temp_destp]);
-        x86.packuswb(mm3, mm6);      // [.. .. .. ..] [.. .. .1 .0] => [......10]
-        x86.movd(mm0,dword_ptr[eax]);
-        x86.pand(mm0,qword_ptr[(int)&Mask1]);
-        x86.por(mm3,mm0);
+      x86.psrad(mm4,14);
+      x86.mov(eax,dword_ptr[&gen_temp_destp]);
+      x86.packssdw(mm3, mm4);      // [...3 ...2] [...1 ...0] => [.3 .2 .1 .0]
+      x86.packuswb(mm3, mm6);      // [.. .. .. ..] [.3 .2 .1 .0] => [....3210]
+
+      x86.movd(dword_ptr[eax],mm3); 
+      remainx -= 4;
+      if (remainx) {
+        x86.add(dword_ptr [&gen_temp_destp],4);
+        x86.add(edi,filter_offset*2-8);
       }
-      x86.movd(dword_ptr[eax],mm3);
     }
+    if (remainx==3) {
+      x86.mov(eax,dword_ptr [edi]);
+      x86.movq(mm3,mm7);  // Used for pix 1+2
+      x86.mov(ebx,dword_ptr [edi+4]);
+      x86.movq(mm4,mm7);  // Used for pix 3
+      x86.mov(ecx,dword_ptr [edi+filter_offset]);
+
+      x86.add(edi,8); // cur_luma++
+      for (i=0;i<fir_filter_size;i++) {
+        x86.movd(mm0, dword_ptr [eax+i*4]);
+         x86.movd(mm1, dword_ptr [ecx+i*4]);
+        x86.punpckldq(mm0, qword_ptr[ebx+i*4]);
+         x86.pmaddwd(mm1, qword_ptr[edi+filter_offset+(i*8)]);
+        x86.pmaddwd(mm0, qword_ptr[edi+i*8]);
+         x86.paddd(mm4, mm1);
+        x86.paddd(mm3, mm0);
+      }
+       x86.psrad(mm4,14);
+      x86.psrad(mm3,14);
+       x86.mov(eax,dword_ptr[&gen_temp_destp]);
+      x86.packssdw(mm3, mm4);      // [...z ...2] [...1 ...0] => [.z .2 .1 .0]
+       x86.movd(mm0,dword_ptr[eax]);
+      x86.packuswb(mm3, mm6);      // [.. .. .. ..] [.z .2 .1 .0] => [....z210]
+       x86.pand(mm0,qword_ptr[(int)&Mask3_pix_inv]);
+      x86.por(mm3,mm0);
+      
+      x86.movd(dword_ptr[eax],mm3); 
+      remainx = 0;
+    }
+    if (remainx==2) {
+      x86.mov(eax,dword_ptr [edi]);
+      x86.movq(mm3,mm7);  // Used for pix 1+2
+      x86.mov(ebx,dword_ptr [edi+4]);
+
+      x86.add(edi,8); // cur_luma++
+      for (i=0;i<fir_filter_size;i+=2) {
+        const int j = i+1;
+        if (j < fir_filter_size) {
+          x86.movd(mm0, dword_ptr [eax+i*4]);
+           x86.movd(mm1, dword_ptr [eax+j*4]);
+          x86.punpckldq(mm0, qword_ptr[ebx+i*4]);
+           x86.punpckldq(mm1, qword_ptr[ebx+j*4]);
+          x86.pmaddwd(mm0, qword_ptr[edi+i*8]);
+           x86.pmaddwd(mm1, qword_ptr[edi+j*8]);
+          x86.paddd(mm3, mm0);
+          x86.paddd(mm3, mm1);
+        } else {
+          x86.movd(mm0, dword_ptr [eax+i*4]);
+          x86.punpckldq(mm0, qword_ptr[ebx+i*4]);
+          x86.pmaddwd(mm0, qword_ptr[edi+i*8]);
+          x86.paddd(mm3, mm0);
+        }
+      }
+       x86.mov(eax,dword_ptr[&gen_temp_destp]);
+      x86.psrad(mm3,14);
+       x86.movd(mm0,dword_ptr[eax]);
+      x86.packssdw(mm3, mm6);      // [...z ...z] [...1 ...0] => [.z .z .1 .0]
+       x86.pand(mm0,qword_ptr[(int)&Mask2_pix_inv]);
+      x86.packuswb(mm3, mm6);      // [.z .z .z .z] [.z .z .1 .0] => [zzzzzz10]
+       x86.por(mm3,mm0);
+       x86.movd(dword_ptr[eax],mm3); 
+      remainx = 0;
+    }
+    if (remainx==1) {
+      x86.mov(eax,dword_ptr [edi]);
+      x86.movq(mm3,mm7);  // Used for pix 1
+
+      x86.add(edi,8); // cur_luma++
+      for (i=0;i<fir_filter_size;i+=2) {
+        const int j = i+1;
+        if (j < fir_filter_size) {
+          x86.movd(mm0, dword_ptr [eax+i*4]);
+           x86.movd(mm1, dword_ptr [eax+j*4]);
+          x86.pmaddwd(mm0, qword_ptr[edi+i*8]);
+           x86.pmaddwd(mm1, qword_ptr[edi+j*8]);
+          x86.paddd(mm3, mm0);
+          x86.paddd(mm3, mm1);
+        } else {
+          x86.movd(mm0, dword_ptr [eax+i*4]);
+          x86.pmaddwd(mm0, qword_ptr[edi+i*8]);
+          x86.paddd(mm3, mm0);
+        }
+      }
+       x86.mov(eax,dword_ptr[&gen_temp_destp]);
+      x86.psrad(mm3,14);
+       x86.movd(mm0,dword_ptr[eax]);
+      x86.pand(mm3,qword_ptr[(int)&Mask2_pix]);
+       x86.pand(mm0,qword_ptr[(int)&Mask1_pix_inv]);
+      x86.packuswb(mm3, mm6);      // [.z .z .z .z] [.z .z .Z .0] => [zzzzzzZ0]
+      x86.por(mm3,mm0);
+      x86.movd(dword_ptr[eax],mm3); 
+      remainx = 0;
+    }
+
     // End remaining pixels
 
     x86.mov(eax,dword_ptr [&gen_src_pitch]);
@@ -440,23 +538,14 @@ PVideoFrame __stdcall FilteredResizeH::GetFrame(int n, IScriptEnvironment* env)
       if (src->GetRowSize(PLANAR_U)) {  // Y8 is finished here
         gen_src_pitch = src->GetPitch(PLANAR_U);
         gen_dst_pitch = dst->GetPitch(PLANAR_U);
-        if (vi.IsVPlaneFirst()) {  // Process in order - also to avoid 2 byte overwrite, when rowsize=pitch=(mod6 rowsize).
-          gen_srcp = (BYTE*)src->GetReadPtr(PLANAR_V);
-          gen_dstp = dst->GetWritePtr(PLANAR_V);
-          assemblerUV.Call();
 
-          gen_srcp = (BYTE*)src->GetReadPtr(PLANAR_U);
-          gen_dstp = dst->GetWritePtr(PLANAR_U);
-          assemblerUV.Call();
-        } else {
-          gen_srcp = (BYTE*)src->GetReadPtr(PLANAR_U);
-          gen_dstp = dst->GetWritePtr(PLANAR_U);
-          assemblerUV.Call();
+        gen_srcp = (BYTE*)src->GetReadPtr(PLANAR_U);
+        gen_dstp = dst->GetWritePtr(PLANAR_U);
+        assemblerUV.Call();
 
-          gen_srcp = (BYTE*)src->GetReadPtr(PLANAR_V);
-          gen_dstp = dst->GetWritePtr(PLANAR_V);
-          assemblerUV.Call();
-        }
+        gen_srcp = (BYTE*)src->GetReadPtr(PLANAR_V);
+        gen_dstp = dst->GetWritePtr(PLANAR_V);
+        assemblerUV.Call();
       }
       return dst;
     }
