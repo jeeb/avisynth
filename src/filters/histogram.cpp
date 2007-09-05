@@ -69,21 +69,21 @@ Histogram::Histogram(PClip _child, Mode _mode, IScriptEnvironment* env)
 
   if (mode == ModeLevels) {
     if (!vi.IsPlanar())
-      env->ThrowError("Histogram: Levels mode only available in YV12.");
+      env->ThrowError("Histogram: Levels mode only available in PLANAR.");
     vi.width += 256;
     vi.height = max(256,vi.height);
   }
 
   if (mode == ModeColor) {
     if (!vi.IsPlanar())
-      env->ThrowError("Histogram: Color mode only available in YV12.");
+      env->ThrowError("Histogram: Color mode only available in PLANAR.");
     vi.width += 256;
     vi.height = max(256,vi.height);
   }
 
   if (mode == ModeColor2) {
     if (!vi.IsPlanar())
-      env->ThrowError("Histogram: Color2 mode only available in YV12.");
+      env->ThrowError("Histogram: Color2 mode only available in PLANAR.");
 
     vi.width += 256;
     vi.height = max(256,vi.height);
@@ -183,7 +183,7 @@ PVideoFrame Histogram::DrawModeAudioLevels(int n, IScriptEnvironment* env) {
 
   // Get audio for current frame.
   const __int64 start = vi.AudioSamplesFromFrames(n);
-  const int count = vi.AudioSamplesFromFrames(1);
+  const int count = (int)(vi.AudioSamplesFromFrames(1));
   signed short* samples = new signed short[count*channels];
 
   aud_clip->GetAudio(samples, max(0,start), count, env);
@@ -800,7 +800,7 @@ PVideoFrame Histogram::DrawModeLevels(int n, IScriptEnvironment* env) {
       maxval = max(histY[i], maxval);
     }
 
-    float scale = 64.0 / maxval;
+    float scale = 64.0f / maxval;
 
     for (int x=0;x<256;x++) {
       float scaled_h = (float)histY[x] * scale;
@@ -810,7 +810,7 @@ PVideoFrame Histogram::DrawModeLevels(int n, IScriptEnvironment* env) {
       for (y=64+1 ; y > h ; y--) {
         pdstb[x+y*dstPitch] = 235;
       }
-      if (left) pdstb[x+h*dstPitch] = pdstb[x+h*dstPitch]+left;
+      pdstb[x+h*dstPitch] = 16+left;
     }
 
     // Draw U
@@ -819,7 +819,7 @@ PVideoFrame Histogram::DrawModeLevels(int n, IScriptEnvironment* env) {
       maxval = max(histU[i], maxval);
     }
 
-    scale = 64.0 / maxval;
+    scale = 64.0f / maxval;
 
     for (x=0;x<256;x++) {
       float scaled_h = (float)histU[x] * scale;
@@ -829,7 +829,7 @@ PVideoFrame Histogram::DrawModeLevels(int n, IScriptEnvironment* env) {
       for (y=128+16+1 ; y > h ; y--) {
         pdstb[x+y*dstPitch] = 235;
       }
-      if (left) pdstb[x+h*dstPitch] = pdstb[x+h*dstPitch]+left;
+      pdstb[x+h*dstPitch] = 16+left;
     }
 
     // Draw V
@@ -838,7 +838,7 @@ PVideoFrame Histogram::DrawModeLevels(int n, IScriptEnvironment* env) {
       maxval = max(histV[i], maxval);
     }
 
-    scale = 64.0 / maxval;
+    scale = 64.0f / maxval;
 
     for (x=0;x<256;x++) {
       float scaled_h = (float)histV[x] * scale;
@@ -847,7 +847,7 @@ PVideoFrame Histogram::DrawModeLevels(int n, IScriptEnvironment* env) {
       for (y=192+32+1 ; y > h ; y--) {
         pdstb[x+y*dstPitch] = 235;
       }
-      if (left) pdstb[x+h*dstPitch] = pdstb[x+h*dstPitch]+left;
+      pdstb[x+h*dstPitch] = 16+left;
     }
 
     // Draw chroma
@@ -920,13 +920,13 @@ PVideoFrame Histogram::DrawModeClassic(int n, IScriptEnvironment* env)
       }
       for (x=0; x<256; ++x) {
         if (x<16) {
-          p[vi.width+x-256] = max(min(235, (hist[x]*S1)>>16 + 16), 84);
+          p[vi.width+x-256] = max(min(235, ((hist[x]*S1)>>16) + 16), 84);
         } else if (x>234) {
-          p[vi.width+x-256] = max(min(235, (hist[x]*S1)>>16 + 16), 84);
+          p[vi.width+x-256] = max(min(235, ((hist[x]*S1)>>16) + 16), 84);
         } else if (x==124) {
-          p[vi.width+x-256] = max(min(235, (hist[x]*S1)>>16 + 16), 84);
+          p[vi.width+x-256] = max(min(235, ((hist[x]*S1)>>16) + 16), 84);
         } else {
-	      p[vi.width+x-256] = max(min(235, (hist[x]*S2)>>16 + 16), 16);
+	      p[vi.width+x-256] = max(min(235, ((hist[x]*S2)>>16) + 16), 16);
         }
       }
       p += dst->GetPitch();
@@ -966,31 +966,31 @@ PVideoFrame Histogram::DrawModeClassic(int n, IScriptEnvironment* env)
 	  }
       for (x=0; x<256; x+=2) {
         if (x<16) {
-	      p[x*2+vi.width*2-512] = max(min(235, (hist[x]*S1)>>16 + 16), 84);
+	      p[x*2+vi.width*2-512] = max(min(235, ((hist[x]*S1)>>16) + 16), 84);
           p[x*2+vi.width*2-511] = 16;
 		} else if (x>235) {
-          p[x*2+vi.width*2-512] = max(min(235, (hist[x]*S1)>>16 + 16), 84);
+          p[x*2+vi.width*2-512] = max(min(235, ((hist[x]*S1)>>16) + 16), 84);
 		  p[x*2+vi.width*2-511] = 16;
 		} else if (x==124) {
-          p[x*2+vi.width*2-512] = max(min(235, (hist[x]*S1)>>16 + 16), 84);
+          p[x*2+vi.width*2-512] = max(min(235, ((hist[x]*S1)>>16) + 16), 84);
 	      p[x*2+vi.width*2-511] = 160;
 		} else {
-	      p[x*2+vi.width*2-512] = max(min(235, (hist[x]*S2)>>16 + 16), 16);
+	      p[x*2+vi.width*2-512] = max(min(235, ((hist[x]*S2)>>16) + 16), 16);
 		  p[x*2+vi.width*2-511] = 128;
 		}
 	  }
       for (x=1; x<256; x+=2) {
 	    if (x<16) {
-	      p[x*2+vi.width*2-512] = max(min(235, (hist[x]*S1)>>16 + 16), 84);
+	      p[x*2+vi.width*2-512] = max(min(235, ((hist[x]*S1)>>16) + 16), 84);
           p[x*2+vi.width*2-511] = 160;
 		} else if (x>235) {
-          p[x*2+vi.width*2-512] = max(min(235, (hist[x]*S1)>>16 + 16), 84);
+          p[x*2+vi.width*2-512] = max(min(235, ((hist[x]*S1)>>16) + 16), 84);
 		  p[x*2+vi.width*2-511] = 160;
 		} else if (x==125) {
-          p[x*2+vi.width*2-512] = max(min(235, (hist[x]*S1)>>16 + 16), 84);
+          p[x*2+vi.width*2-512] = max(min(235, ((hist[x]*S1)>>16) + 16), 84);
 		  p[x*2+vi.width*2-511] = 16;
 		} else {
-          p[x*2+vi.width*2-512] = max(min(235, (hist[x]*S2)>>16 + 16), 16);
+          p[x*2+vi.width*2-512] = max(min(235, ((hist[x]*S2)>>16) + 16), 16);
 		  p[x*2+vi.width*2-511] = 128;
 		}
 	  }
