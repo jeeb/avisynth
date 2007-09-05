@@ -117,7 +117,7 @@ void __stdcall AVSsupereq::GetAudio(void* buf, __int64 start, __int64 count, ISc
     dst_samples_filled=0;
 
     eqs.delete_all();
-    int n;
+    UINT n;
     for(n=0;n<last_nch;n++)
       eqs.add_item(new supereq<float>);
     double bands[N_BANDS];
@@ -151,7 +151,7 @@ void __stdcall AVSsupereq::GetAudio(void* buf, __int64 start, __int64 count, ISc
       child->GetAudio(dstbuffer, inputReadOffset, last_srate, env);
       inputReadOffset += last_srate;
 
-			for(int n=0;n<last_nch;n++)  // Copies n channels to separate buffers to individual filters
+			for(UINT n=0;n<last_nch;n++)  // Copies n channels to separate buffers to individual filters
 			{
 				UINT s;
 				for(s=0;s<last_srate;s++)
