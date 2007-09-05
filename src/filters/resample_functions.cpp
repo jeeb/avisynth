@@ -235,7 +235,7 @@ int* GetResamplingPatternRGB( int original_width, double subrange_start, double 
   double pos;
 
   if (original_width <= filter_support) {
-    env->ThrowError("Resize: Source image too small for this resize method");
+    env->ThrowError("Resize: Source image too small for this resize method. Width=%d, Support=%d", original_width, (int)filter_support);
   }
 
   if (fir_filter_size == 1) // PointResize
@@ -320,7 +320,7 @@ int* GetResamplingPatternYUV( int original_width, double subrange_start, double 
     pos = subrange_start + ((subrange_width - target_width) / (target_width*2));
 
   if (original_width <= filter_support) {
-    env->ThrowError("Resize: Source image too small for this resize method");
+    env->ThrowError("Resize: Source image too small for this resize method. Width=%d, Support=%d", original_width, (int)filter_support);
   }
 
   for (int i=0; i<target_width_a; ++i) {
