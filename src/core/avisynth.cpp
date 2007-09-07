@@ -815,6 +815,7 @@ private:
   Cache* CacheHead;
 
   HRESULT hrfromcoinit;
+  DWORD coinitThreadId;
 
   static long refcount; // Global to all ScriptEnvironment objects
 };
@@ -825,12 +826,22 @@ extern long CPUCheckForExtensions();  // in cpuaccel.cpp
 ScriptEnvironment::ScriptEnvironment()
   : at_exit(This()),
     function_table(This()),
-    CacheHead(0), hrfromcoinit(E_FAIL),
+    CacheHead(0), hrfromcoinit(E_FAIL), coinitThreadId(0),
     unpromotedvfbs(&video_frame_buffers),
     PlanarChromaAlignmentState(true){ // Change to "true" for 2.5.7
 
   try {
+    // Make sure COM is initialised
     hrfromcoinit = CoInitialize(NULL);
+
+    // If it was already init'd then decrement
+    // the use count and leave it alone!
+    if(hrfromcoinit == S_FALSE) {
+      hrfromcoinit=E_FAIL;
+      CoUninitialize();
+    }
+    // Remember our threadId.
+    coinitThreadId=GetCurrentThreadId();
 
     CPU_id = CPUCheckForExtensions();
 
@@ -866,7 +877,10 @@ ScriptEnvironment::ScriptEnvironment()
     ExportFilters();
   }
   catch (AvisynthError err) {
-    if(SUCCEEDED(hrfromcoinit)) CoUninitialize();
+    if(SUCCEEDED(hrfromcoinit)) {
+      hrfromcoinit=E_FAIL;
+      CoUninitialize();
+    }
     // Needs must, to not loose the text we
     // must leak a little memory.
     throw AvisynthError(strdup(err.msg));
@@ -895,7 +909,12 @@ ScriptEnvironment::~ScriptEnvironment() {
 	delete g_Bin;//tsp June 2005 Cleans up the heap
 	g_Bin=NULL;
   }
-  if(SUCCEEDED(hrfromcoinit)) CoUninitialize();
+  // If we init'd COM and this is the right thread then release it
+  // If it's the wrong threadId then tuff, nothing we can do.
+  if(SUCCEEDED(hrfromcoinit) && (coinitThreadId == GetCurrentThreadId())) {
+    hrfromcoinit=E_FAIL;
+    CoUninitialize();
+  }
 }
 
 int ScriptEnvironment::SetMemoryMax(int mem) {
