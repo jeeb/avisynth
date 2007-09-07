@@ -1194,7 +1194,10 @@ HRESULT CAVIStreamSynth::Read2(LONG lStart, LONG lSamples, LPVOID lpBuffer, LONG
     }
     catch (...) {
 #ifdef OPT_OWN_SEH_HANDLER
-      if (code[0] != 0xE06D7363 && code[0] != 0) {
+      if (code[0] == 0xE06D7363) {
+	    parent->MakeErrorStream("Avisynth: unhandled C++ exception");
+	  }
+      else if (code[0]) {
 		char buf[128];
         const char * const extext = StringSystemError2(code[0]);
         if (extext) {
