@@ -103,7 +103,8 @@ char* Tick() {
 }
 
 LOG::LOG(const char* fn, int _mask, IScriptEnvironment* env) : mask(_mask), count(0) {
-  if (!(file = fopen(fn, "a")))
+  file = fopen(fn, "a");
+  if (!file)
 	env->ThrowError("DirectShowSource: Not able to open log file, '%s' for appending.", fn);
 
   fprintf(file, "%s fff 0x00000000 DirectShowSource " DSS_VERSION " build:"__DATE__" ["__TIME__"]\n", Tick());
@@ -415,7 +416,7 @@ GetSample::GetSample(bool _load_audio, bool _load_video, unsigned _media, LOG* _
 
       if (FAILED(hr = ms->GetPositions(&pCurrent, &pStop)) || (pCurrent == -1)) {
         dssRPT1(dssERROR, "GetPositions failed! 0x%x\n", hr);
-        pCurrent = GetSampleEndTime(); // Wing it from last the sample delived
+        pCurrent = GetSampleStartTime(); // Wing it from last the sample delived
       }
 
       pCurrent = pos - pCurrent;
@@ -1038,6 +1039,7 @@ pbFormat:
     dssRPT4(dssSAMP, "GetSample::NewSegment(%I64d, %I64d, %f) (%s)\n", tStart, tStop, dRate, streamName);
     segment_start_time = tStart;
     segment_stop_time  = tStop;
+    time_of_last_frame = int(sample_end_time - sample_start_time);
     sample_end_time = sample_start_time = 0;
     return S_OK;
   }
@@ -1607,25 +1609,21 @@ DirectShowSource::DirectShowSource(const char* filename, int _avg_time_per_frame
       if (_avg_time_per_frame) { // User specified FPS
         get_sample.avg_time_per_frame = _avg_time_per_frame;
         vi.SetFPS(10000000, _avg_time_per_frame);
-        vi.num_frames = int(frame_units ? frame_count : (duration + (_avg_time_per_frame>>1)) / _avg_time_per_frame);
+        vi.num_frames = int(frame_units ? frame_count : (duration + (_avg_time_per_frame-1)) / _avg_time_per_frame); // Ceil()
       }
       else {
         // this is exact (no rounding needed) because of the way the fps is set in GetSample
-        get_sample.avg_time_per_frame = 10000000 / vi.fps_numerator * vi.fps_denominator;
+        get_sample.avg_time_per_frame = 10000000 / vi.fps_numerator * vi.fps_denominator; // Floor()
 
         if (get_sample.avg_time_per_frame != 0) {
           // We have all the info
           vi.num_frames = int(frame_units ? frame_count :
-                              (duration + (get_sample.avg_time_per_frame>>1)) / get_sample.avg_time_per_frame);
+                              (duration + (get_sample.avg_time_per_frame-1)) / get_sample.avg_time_per_frame); // Ceil()
         }
         else {
           // Try duration divided by frame count
-          if (frame_count <= 0 || duration <= 0) {
-            env->ThrowError("DirectShowSource: I can't determine the frame rate\n"
-                            "of the video, you must use the \"fps\" parameter."); // Note must match message below
-          }
-          else {
-            get_sample.avg_time_per_frame = int((duration + (frame_count>>1)) / frame_count);
+          if (frame_count > 0 && duration > 0) {
+            get_sample.avg_time_per_frame = int((duration + (frame_count>>1)) / frame_count); // Round()
             vi.num_frames = int(frame_count);
 
             unsigned __int64 numerator   = 10000000 * frame_count;
@@ -1654,12 +1652,52 @@ DirectShowSource::DirectShowSource(const char* filename, int _avg_time_per_frame
               vi.fps_denominator = (unsigned)denominator;
             }
           }
+          // Try duration of first frame
+          else {
+            switch (get_sample.time_of_last_frame) {
+              case 160000: case 170000:
+                vi.fps_numerator   = 60000;
+                vi.fps_denominator = 1001;
+                get_sample.avg_time_per_frame = 166833;
+                break;
+
+              case 200000:
+                vi.fps_numerator   = 50;
+                vi.fps_denominator = 1;
+                get_sample.avg_time_per_frame = 200000;
+                break;
+
+              case 330000: case 340000:
+                vi.fps_numerator   = 30000;
+                vi.fps_denominator = 1001;
+                get_sample.avg_time_per_frame = 333667;
+                break;
+
+              case 400000:
+                vi.fps_numerator   = 25;
+                vi.fps_denominator = 1;
+                get_sample.avg_time_per_frame = 400000;
+                break;
+
+              case 410000: case 420000:
+                vi.fps_numerator   = 24000;
+                vi.fps_denominator = 1001;
+                get_sample.avg_time_per_frame = 417083;
+                break;
+
+              default:
+                env->ThrowError("DirectShowSource: I can't determine the frame rate\n"
+                                "of the video, you must use the \"fps\" parameter."); // Note must match message below
+            }
+            vi.num_frames = int(frame_units ? frame_count :
+               (duration*vi.fps_numerator + vi.fps_denominator*10000000i64 - 1) / (vi.fps_denominator*10000000i64) ); // Ceil()
+          }
         }
       }
       if (_frames) vi.num_frames = _frames;
 
       dssRPT4((dssNEG|dssCALL), "New Video: %dx%d, frame_count=%d, pixel type=%x.\n",
-	                            vi.width, vi.height, vi.num_frames, vi.pixel_type);
+                                vi.width, vi.height, vi.num_frames, vi.pixel_type);
     }
 
     if (vi.HasAudio()) {
@@ -1685,7 +1723,7 @@ DirectShowSource::DirectShowSource(const char* filename, int _avg_time_per_frame
         }
       }
 
-      vi.num_audio_samples = (audio_dur * vi.audio_samples_per_second + 5000000) / 10000000;
+      vi.num_audio_samples = (audio_dur * vi.audio_samples_per_second + 9999999) / 10000000; // Ceil()
 
       dssRPT2((dssNEG|dssCALL), "New Audio: audio_dur %I64dx100ns, samples %I64d.\n",
                                 audio_dur, vi.num_audio_samples);
@@ -1731,6 +1769,7 @@ DirectShowSource::DirectShowSource(const char* filename, int _avg_time_per_frame
     }
   }
 
+#if 0
   PVideoFrame __stdcall DirectShowSource::GetFrame(int n, IScriptEnvironment* env) {
     DWORD timeout = WaitTimeout;
     n = max(min(n, vi.num_frames-1), 0); 
@@ -1802,6 +1841,71 @@ DirectShowSource::DirectShowSource(const char* filename, int _avg_time_per_frame
     return get_sample.GetCurrentFrame(env, n, TrapTimeouts, timeout);
   }
 
+#else
+
+  PVideoFrame __stdcall DirectShowSource::GetFrame(int n, IScriptEnvironment* env) {
+    DWORD timeout = WaitTimeout;
+
+    n = max(min(n, vi.num_frames-1), 0); 
+    // Ask for the frame whose start_time == T
+    const __int64 sample_time = Int32x32To64(n, get_sample.avg_time_per_frame);
+
+    dssRPT2(dssCALL, "GetFrame: Frame %d start time %I64dx100ns.\n", n, sample_time);
+
+    HRESULT hr = S_OK;
+    switch (seekmode) {
+      case 0: // Seekzero
+        if (n < cur_frame)
+          hr = get_sample.SeekTo(0);  // stepping back
+        break;
+
+      case 1: // Seek
+        if (n < cur_frame) {
+          hr = get_sample.SeekTo(sample_time);
+        }
+        else if (convert_fps) {
+          if (sample_time > get_sample.GetSampleStartTime() + get_sample.avg_time_per_frame*10)
+            hr = get_sample.SeekTo(sample_time);
+        }
+        else {
+          if (n > cur_frame+10)
+            hr = get_sample.SeekTo(sample_time);
+        }
+        break;
+
+      case 2: // No_Search
+        break;
+
+      default:
+        env->ThrowError("DirectShowSource : Invalid seek mode %d", seekmode);
+    }
+    if (FAILED(hr))
+      env->ThrowError("DirectShowSource : The video Graph failed to restart after seeking. Status = 0x%x", hr);
+
+    if (convert_fps) {
+      while (get_sample.GetSampleStartTime() <= sample_time) {
+        sampleStartTime = get_sample.GetSampleStartTime();
+        cur_frame = int(sampleStartTime / get_sample.avg_time_per_frame); // Floor()
+        currentFrame = get_sample.GetCurrentFrame(env, n, TrapTimeouts, timeout);
+        if(!get_sample.NextSample(timeout)) break;
+      }
+      dssRPT3(dssCALL, "GetFrame: VFR Frame %d time span x100ns %I64d to %I64d\n", n,
+              sampleStartTime, get_sample.GetSampleStartTime());
+    }
+    else {
+      while (cur_frame < n) {
+        if (!get_sample.NextSample(timeout)) break;
+        cur_frame++;
+      }
+      currentFrame = get_sample.GetCurrentFrame(env, n, TrapTimeouts, timeout);
+      dssRPT3(dssCALL, "GetFrame: CFR Frame %d time span x100ns %I64d to %I64d\n", n,
+              get_sample.GetSampleStartTime(), get_sample.GetSampleEndTime());
+    }
+
+    return currentFrame;
+  }
+#endif
+
 
   void __stdcall DirectShowSource::GetAudio(void* buf, __int64 start, __int64 count, IScriptEnvironment* env) {
     DWORD timeout = WaitTimeout;
@@ -1820,7 +1924,7 @@ DirectShowSource::DirectShowSource(const char* filename, int _avg_time_per_frame
         // Seek=true and Seekzero=true and stepping back
         || ((seekmode == 1) && (start >= next_sample+avail_samples+50000))) {
         // Seek=true and a long hop forwards
-        const __int64 seekTo = (seekmode == 0) ? 0 : (start*10000000 + (vi.audio_samples_per_second>>1)) / vi.audio_samples_per_second;
+        const __int64 seekTo = (seekmode == 0) ? 0 : (start*10000000 + (vi.audio_samples_per_second>>1)) / vi.audio_samples_per_second; // Round()
         dssRPT1(dssCALL, "GetAudio: SeekTo %I64dx100ns media time.\n", seekTo);
 
 		HRESULT hr = get_sample.SeekTo(seekTo);
@@ -1837,7 +1941,7 @@ DirectShowSource::DirectShowSource(const char* filename, int _avg_time_per_frame
 		  if (!get_sample.WaitForStart(timeout)) {
 			// We have stopped and started the graph many unseekable streams
 			// reset to 0, others don't move. Try to get our position
-			next_sample = (get_sample.GetSampleStartTime() * vi.audio_samples_per_second + 5000000) / 10000000;
+			next_sample = (get_sample.GetSampleStartTime() * vi.audio_samples_per_second + 5000000) / 10000000; // Round()
 		  }
 		}
 		else {
@@ -2005,7 +2109,7 @@ AVSValue __cdecl Create_DirectShowSource(AVSValue args, void*, IScriptEnvironmen
 
   const bool seek     = args[2].AsBool(true);
   const bool seekzero = args[6].AsBool(false);
-  const int  seekmode = seek ? (seekzero ? 0 : 1) : 2; // seek_zero, seek, no_search
+  const int  seekmode = seek ? (seekzero ? 0 : 1) : 2; // 0=seek_zero, 1=seek, 2=no_search
 
   const int _timeout  = args[7].AsInt(60000); // Default timeout = 1 minute
 
@@ -2057,8 +2161,8 @@ AVSValue __cdecl Create_DirectShowSource(AVSValue args, void*, IScriptEnvironmen
       env->ThrowError("DirectShowSource: Only 1 stream supported for .GRF files, one of Audio or Video must be disabled.");
     }
 
-	const char *a_e_msg;
-	const char *v_e_msg;
+	const char *a_e_msg = "";
+	const char *v_e_msg = "";
 
 	try {
 	  DS_audio = new DirectShowSource(filename, _avg_time_per_frame, seekmode, true , false,

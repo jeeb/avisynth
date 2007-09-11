@@ -214,6 +214,7 @@ public:
   __int64 segment_start_time, segment_stop_time, sample_start_time, sample_end_time;
 
   int avg_time_per_frame;
+  int time_of_last_frame;
 
   int av_sample_bytes;
   BYTE* av_buffer;         // Killed on StopGraph
@@ -312,27 +313,32 @@ static void SetMicrosoftDVtoFullResolution(IGraphBuilder* gb);
 
 class DirectShowSource : public IClip {
 
+  __int64 sampleStartTime;
+  __int64 next_sample;
+
   GetSample get_sample;
   IGraphBuilder* gb;
-  __int64 next_sample;
+
+  PVideoFrame currentFrame;
 
   VideoInfo vi;
   bool frame_units;
+  bool convert_fps;
   int cur_frame;
   int seekmode;
   int audio_bytes_read;
-  void CheckHresult(IScriptEnvironment* env, HRESULT hr, const char* msg, const char* msg2 = "");
-  HRESULT LoadGraphFile(IGraphBuilder *pGraph, const WCHAR* wszName);
-  bool convert_fps;
-  void cleanUp();
-  void DirectShowSource::SetMicrosoftDVtoFullResolution(IGraphBuilder* gb);
-  void DirectShowSource::DisableDeinterlacing(IFilterGraph *pGraph);
-  void DirectShowSource::SetWMAudioDecoderDMOtoHiResOutput(IFilterGraph *pGraph);
 
   const bool TrapTimeouts;
   const DWORD WaitTimeout;
 
   LOG* log;
+
+  void CheckHresult(IScriptEnvironment* env, HRESULT hr, const char* msg, const char* msg2 = "");
+  HRESULT LoadGraphFile(IGraphBuilder *pGraph, const WCHAR* wszName);
+  void cleanUp();
+  void DirectShowSource::SetMicrosoftDVtoFullResolution(IGraphBuilder* gb);
+  void DirectShowSource::DisableDeinterlacing(IFilterGraph *pGraph);
+  void DirectShowSource::SetWMAudioDecoderDMOtoHiResOutput(IFilterGraph *pGraph);
 
 public:
 
