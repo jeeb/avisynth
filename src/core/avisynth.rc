@@ -54,7 +54,7 @@ END
 //
 
 VS_VERSION_INFO VERSIONINFO
- FILEVERSION 2,5,8,0
+ FILEVERSION 2,5,8,1
  PRODUCTVERSION 2,5,8,0
  FILEFLAGSMASK 0x3fL
 #ifdef _DEBUG
@@ -73,7 +73,7 @@ BEGIN
             VALUE "Comments", "Homepage: http://www.avisynth.org\0"
             VALUE "CompanyName", "The Public\0"
             VALUE "FileDescription", "Avisynth video processing scripting language\0"
-            VALUE "FileVersion", "2, 5, 8, 0\0"
+            VALUE "FileVersion", "2, 5, 8, 1\0"
             VALUE "InternalName", "AviSynth 2.5.8\0"
             VALUE "LegalCopyright", "© 2000-2007 Ben Rudiak-Gould and others\0"
             VALUE "LegalTrademarks", "\0"
