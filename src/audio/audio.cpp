@@ -65,6 +65,7 @@ AVSFunction Audio_filters[] = {
                                 { "ConvertAudioTo24bit", "c", ConvertAudio::Create_24bit },
                                 { "ConvertAudioTo32bit", "c", ConvertAudio::Create_32bit },
                                 { "ConvertAudioToFloat", "c", ConvertAudio::Create_float },
+                                { "ConvertAudio", "cii", ConvertAudio::Create_Any }, // For plugins to Invoke()
                                 { 0 }
                               };
 
@@ -73,6 +74,12 @@ AVSFunction Audio_filters[] = {
 // in AVI. So for now convert back to 16 bit always.
 
 // Always! FIXME: Most int64's are often cropped to ints - count is ok to be int, but not start
+
+// For plugins to env->Invoke()
+
+AVSValue __cdecl ConvertAudio::Create_Any(AVSValue args, void*, IScriptEnvironment*) {
+  return Create(args[0].AsClip(), args[1].AsInt(), args[2].AsInt());
+}
 
 // For explicit conversions
 
