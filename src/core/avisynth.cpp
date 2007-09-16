@@ -60,8 +60,9 @@ extern AVSFunction Audio_filters[], Combine_filters[], Convert_filters[],
                    Script_functions[], Source_filters[], Text_filters[],
                    Transform_filters[], Merge_filters[], Color_filters[],
                    Debug_filters[], Image_filters[], Turn_filters[],
-                                     Conditional_filters[], Conditional_funtions_filters[],
+                   Conditional_filters[], Conditional_funtions_filters[],
                    CPlugin_filters[], Cache_filters[],SSRC_filters[],
+                   Greyscale_filters[], Swap_filters[],
                    SuperEq_filters[], Overlay_filters[], Soundtouch_filters[];
 
 
@@ -74,9 +75,10 @@ AVSFunction* builtin_functions[] = {
                    Script_functions, Source_filters, Text_filters,
                    Transform_filters, Merge_filters, Color_filters,
                    Debug_filters, Image_filters, Turn_filters,
-                                     Conditional_filters, Conditional_funtions_filters,
+                   Conditional_filters, Conditional_funtions_filters,
                    Plugin_functions, CPlugin_filters, Cache_filters,
                    SSRC_filters, SuperEq_filters, Overlay_filters,
+                   Greyscale_filters, Swap_filters,
                    Soundtouch_filters };
 
 // Global statistics counters
@@ -489,7 +491,7 @@ public:
       try {
         fnplugin = env->GetVar("$PluginFunctions$");
         int string_len = strlen(fnplugin.AsString())+1;
-        
+
         if (!duse)
           string_len += strlen(name)+1;
 

@@ -102,7 +102,8 @@ extern "C"
  *******   Colorspace GenericVideoFilter Classes   ******
  *******************************************************/
 
-class RGB24to32 : public GenericVideoFilter 
+
+class RGB24to32 : public GenericVideoFilter
 /**
   * RGB -> RGBA, setting alpha channel to 255
   */
@@ -113,7 +114,7 @@ public:
 };
 
 
-class RGB32to24 : public GenericVideoFilter 
+class RGB32to24 : public GenericVideoFilter
 /**
   * Class to strip alpha channel
   */
@@ -122,7 +123,7 @@ public:
   RGB32to24(PClip src);
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
 };
-  
+
 
 class ConvertToRGB : public GenericVideoFilter 
 /**
@@ -215,6 +216,7 @@ private:
   enum {Rec601 = 0, Rec709, Average };
 
 };
+
 
 
 

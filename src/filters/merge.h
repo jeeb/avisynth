@@ -34,7 +34,7 @@
 
 
 // Avisynth filter: YUV merge
-// by Klaus Post (kp@interact.dk)
+// by Klaus Post
 // adapted by Richard Berg (avisynth-dev@richardberg.net)
 
 

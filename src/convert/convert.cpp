@@ -49,10 +49,9 @@ AVSFunction Convert_filters[] = {
 { "ConvertToRGB", "c[matrix]s[interlaced]b", ConvertToRGB::Create },       // matrix can be "rec601", rec709", "PC.601" or "PC.709"
   { "ConvertToRGB24", "c[matrix]s[interlaced]b", ConvertToRGB::Create24 },
   { "ConvertToRGB32", "c[matrix]s[interlaced]b", ConvertToRGB::Create32 },
-  { "ConvertToYV12", "c[interlaced]b[matrix]s", ConvertToYV12::Create },  
-  { "ConvertToYUY2", "c[interlaced]b[matrix]s", ConvertToYUY2::Create },  
-  { "ConvertBackToYUY2", "c[matrix]s", ConvertBackToYUY2::Create },  
-  { "Greyscale", "c[matrix]s", Greyscale::Create },       // matrix can be "rec601", "rec709" or "Average"
+  { "ConvertToYV12", "c[interlaced]b[matrix]s", ConvertToYV12::Create },
+  { "ConvertToYUY2", "c[interlaced]b[matrix]s", ConvertToYUY2::Create },
+  { "ConvertBackToYUY2", "c[matrix]s", ConvertBackToYUY2::Create },
   { 0 }
 };
 
@@ -61,14 +60,14 @@ AVSFunction Convert_filters[] = {
  *******   RGB Helper Classes   ******
  *************************************/
 
-RGB24to32::RGB24to32(PClip src) 
-  : GenericVideoFilter(src) 
+RGB24to32::RGB24to32(PClip src)
+  : GenericVideoFilter(src)
 {
   vi.pixel_type = VideoInfo::CS_BGR32;
 }
 
 
-PVideoFrame __stdcall RGB24to32::GetFrame(int n, IScriptEnvironment* env) 
+PVideoFrame __stdcall RGB24to32::GetFrame(int n, IScriptEnvironment* env)
 {
   PVideoFrame src = child->GetFrame(n, env);
   PVideoFrame dst = env->NewVideoFrame(vi);
@@ -183,8 +182,8 @@ copy_1:
     align 16
 no_copy:
     add			esi,[src_pitch]
-    add			edi,[dst_pitch]    
-    
+    add			edi,[dst_pitch]
+
     dec			[h]
     jnz			yloop
     emms
@@ -209,14 +208,14 @@ no_copy:
 
 
 
-RGB32to24::RGB32to24(PClip src) 
-: GenericVideoFilter(src) 
+RGB32to24::RGB32to24(PClip src)
+: GenericVideoFilter(src)
 {
   vi.pixel_type = VideoInfo::CS_BGR24;
 }
 
 
-PVideoFrame __stdcall RGB32to24::GetFrame(int n, IScriptEnvironment* env) 
+PVideoFrame __stdcall RGB32to24::GetFrame(int n, IScriptEnvironment* env)
 {
   PVideoFrame src = child->GetFrame(n, env);
   PVideoFrame dst = env->NewVideoFrame(vi);
@@ -249,19 +248,19 @@ yloop:
 xloop:
     movq mm0,[ebx+esi]    ; a1r1 g1b1 a0r0 g0b0
     movq mm1,[ebx+esi+8]  ; a3r3 g3b3 a2r2 g2b2
-    
+
     movq mm2,mm0      ; a1r1 g1b1 a0r0 g0b0
     movq mm3,mm1      ; a3r3 g3b3 a2r2 g2b2
-    
+
     pand mm0,mm6      ; 0000 0000 00r0 g0b0
-    pand mm1,mm6      ; 0000 0000 00r2 g2b2 
+    pand mm1,mm6      ; 0000 0000 00r2 g2b2
 
     pand mm2,mm7      ; 00r1 g1b1 0000 0000
-    movq mm4,mm1      ; 0000 0000 00r2 g2b2 
+    movq mm4,mm1      ; 0000 0000 00r2 g2b2
 
     psrlq mm2,8       ; 0000 r1g1 b100 0000
     pand mm3,mm7      ; 00r3 g3b3 0000 0000
-    
+
     psllq mm4,48      ; g2b2 0000 0000 0000
     por mm0,mm2       ; 0000 r1g1 b1r0 g0b0
 
@@ -279,7 +278,7 @@ xloop:
     cmp ebx,[x_loops]
     jl xloop
 
-    
+
     cmp edx,0
     je no_copy
     cmp edx,2
@@ -289,7 +288,7 @@ xloop:
 //copy 3
     add esi,ebx
     add edi,ecx
-    movsb 
+    movsb
     movsb
     movsb
     inc esi
@@ -335,8 +334,8 @@ copy_1:
     align 16
 no_copy:
     add esi,[src_pitch]
-    add edi,[dst_pitch]    
-    
+    add edi,[dst_pitch]
+
     dec eax
     jnz yloop
     emms
@@ -366,9 +365,9 @@ no_copy:
  *******   Convert to RGB / RGBA   ******
  ***************************************/
 
-ConvertToRGB::ConvertToRGB( PClip _child, bool rgb24, const char* matrix, 
-                            IScriptEnvironment* env ) 
-  : GenericVideoFilter(_child) 
+ConvertToRGB::ConvertToRGB( PClip _child, bool rgb24, const char* matrix,
+                            IScriptEnvironment* env )
+  : GenericVideoFilter(_child)
 {
   theMatrix = Rec601;
   is_yv12=false;
@@ -392,12 +391,12 @@ ConvertToRGB::ConvertToRGB( PClip _child, bool rgb24, const char* matrix,
 }
 
 
-PVideoFrame __stdcall ConvertToRGB::GetFrame(int n, IScriptEnvironment* env) 
+PVideoFrame __stdcall ConvertToRGB::GetFrame(int n, IScriptEnvironment* env)
 {
   PVideoFrame src = child->GetFrame(n, env);
   const int src_pitch = src->GetPitch();
   const BYTE* srcp = src->GetReadPtr();
-  
+
   int src_rowsize = __min(src_pitch, (src->GetRowSize()+7) & -8);
   // assumption: is_yuy2
   if (use_mmx && ((src_rowsize & 7) == 0) && (src_rowsize >= 16)) {
@@ -408,7 +407,7 @@ PVideoFrame __stdcall ConvertToRGB::GetFrame(int n, IScriptEnvironment* env)
 
     (vi.IsRGB24() ? mmx_YUY2toRGB24 : mmx_YUY2toRGB32)(srcp, dstp,
       srcp + vi.height * src_pitch, src_pitch, src_rowsize, theMatrix);
-	  
+
 	if (vi.width & 3) {  // Did we extend off the right edge of picture?
 	  const int dst_pitch = dst->GetPitch();
 	  const int x2 = (vi.width-2) * 2;
@@ -427,7 +426,7 @@ PVideoFrame __stdcall ConvertToRGB::GetFrame(int n, IScriptEnvironment* env)
 	const int dst_pitch = dst->GetPitch();
 	BYTE* dstp = dst->GetWritePtr();
 
-	if (vi.IsRGB32()) {    
+	if (vi.IsRGB32()) {
 	  srcp += vi.height * src_pitch;
 	  for (int y=vi.height; y>0; --y) {
 		srcp -= src_pitch;
@@ -456,13 +455,13 @@ PVideoFrame __stdcall ConvertToRGB::GetFrame(int n, IScriptEnvironment* env)
 }
 
 
-AVSValue __cdecl ConvertToRGB::Create(AVSValue args, void*, IScriptEnvironment* env) 
+AVSValue __cdecl ConvertToRGB::Create(AVSValue args, void*, IScriptEnvironment* env)
 {
   PClip clip = args[0].AsClip();
   const char* const matrix = args[1].AsString(0);
   const VideoInfo& vi = clip->GetVideoInfo();
   if (vi.IsYUV()) {
-    if (vi.IsYV12()) {
+    if (vi.IsPlanar()) {
       return new ConvertToRGB(new ConvertToYUY2(clip,args[2].AsBool(false),NULL,env), false, matrix, env);
     }
     return new ConvertToRGB(clip, false, matrix, env);
@@ -472,13 +471,13 @@ AVSValue __cdecl ConvertToRGB::Create(AVSValue args, void*, IScriptEnvironment* 
 }
 
 
-AVSValue __cdecl ConvertToRGB::Create32(AVSValue args, void*, IScriptEnvironment* env) 
+AVSValue __cdecl ConvertToRGB::Create32(AVSValue args, void*, IScriptEnvironment* env)
 {
   PClip clip = args[0].AsClip();
   const char* const matrix = args[1].AsString(0);
   const VideoInfo vi = clip->GetVideoInfo();
   if (vi.IsYUV()) {
-    if (vi.IsYV12()) {
+    if (vi.IsPlanar()) {
        return new ConvertToRGB(new ConvertToYUY2(clip,args[2].AsBool(false),NULL,env), false, matrix, env);
     }
     return new ConvertToRGB(clip, false, matrix, env);
@@ -489,13 +488,13 @@ AVSValue __cdecl ConvertToRGB::Create32(AVSValue args, void*, IScriptEnvironment
 }
 
 
-AVSValue __cdecl ConvertToRGB::Create24(AVSValue args, void*, IScriptEnvironment* env) 
+AVSValue __cdecl ConvertToRGB::Create24(AVSValue args, void*, IScriptEnvironment* env)
 {
   PClip clip = args[0].AsClip();
   const char* const matrix = args[1].AsString(0);
   const VideoInfo& vi = clip->GetVideoInfo();
   if (vi.IsYUV()) {
-    if (vi.IsYV12()) {
+    if (vi.IsPlanar()) {
        return new ConvertToRGB(new ConvertToYUY2(clip,args[2].AsBool(false),NULL,env), true, matrix, env);
     }
     return new ConvertToRGB(clip, true, matrix, env);
@@ -511,7 +510,7 @@ AVSValue __cdecl ConvertToRGB::Create24(AVSValue args, void*, IScriptEnvironment
 
 
 ConvertToYV12::ConvertToYV12(PClip _child, bool _interlaced, IScriptEnvironment* env)
-  : GenericVideoFilter(_child), 
+  : GenericVideoFilter(_child),
   interlaced(_interlaced)
 {
   if (vi.width & 1)
@@ -524,7 +523,7 @@ ConvertToYV12::ConvertToYV12(PClip _child, bool _interlaced, IScriptEnvironment*
   if (vi.IsYUY2()) isYUY2 = true;
   if (vi.IsRGB32()) isRGB32 = true;
   if (vi.IsRGB24()) isRGB24 = true;
- 
+
   vi.pixel_type = VideoInfo::CS_YV12;
 
   if ((env->GetCPUFlags() & CPUF_MMX) == 0)
@@ -532,27 +531,27 @@ ConvertToYV12::ConvertToYV12(PClip _child, bool _interlaced, IScriptEnvironment*
 }
 
 PVideoFrame __stdcall ConvertToYV12::GetFrame(int n, IScriptEnvironment* env) {
-  PVideoFrame src = child->GetFrame(n, env);  
+  PVideoFrame src = child->GetFrame(n, env);
   PVideoFrame dst = env->NewVideoFrame(vi);
 
   if (isYUY2) {
     if (interlaced) {
 		  if ((env->GetCPUFlags() & CPUF_INTEGER_SSE)) {
-        isse_yuy2_i_to_yv12(src->GetReadPtr(), src->GetRowSize(), src->GetPitch(), 
+        isse_yuy2_i_to_yv12(src->GetReadPtr(), src->GetRowSize(), src->GetPitch(),
           dst->GetWritePtr(PLANAR_Y), dst->GetWritePtr(PLANAR_U), dst->GetWritePtr(PLANAR_V), dst->GetPitch(PLANAR_Y),dst->GetPitch(PLANAR_U),
           src->GetHeight());
       } else {
-        mmx_yuy2_i_to_yv12(src->GetReadPtr(), src->GetRowSize(), src->GetPitch(), 
+        mmx_yuy2_i_to_yv12(src->GetReadPtr(), src->GetRowSize(), src->GetPitch(),
           dst->GetWritePtr(PLANAR_Y), dst->GetWritePtr(PLANAR_U), dst->GetWritePtr(PLANAR_V), dst->GetPitch(PLANAR_Y),dst->GetPitch(PLANAR_U),
           src->GetHeight());
       }
     } else {
 		  if ((env->GetCPUFlags() & CPUF_INTEGER_SSE)) {
-        isse_yuy2_to_yv12(src->GetReadPtr(), src->GetRowSize(), src->GetPitch(), 
+        isse_yuy2_to_yv12(src->GetReadPtr(), src->GetRowSize(), src->GetPitch(),
           dst->GetWritePtr(PLANAR_Y), dst->GetWritePtr(PLANAR_U), dst->GetWritePtr(PLANAR_V), dst->GetPitch(PLANAR_Y),dst->GetPitch(PLANAR_U),
           src->GetHeight());
       } else {
-        mmx_yuy2_to_yv12(src->GetReadPtr(), src->GetRowSize(), src->GetPitch(), 
+        mmx_yuy2_to_yv12(src->GetReadPtr(), src->GetRowSize(), src->GetPitch(),
           dst->GetWritePtr(PLANAR_Y), dst->GetWritePtr(PLANAR_U), dst->GetWritePtr(PLANAR_V), dst->GetPitch(PLANAR_Y),dst->GetPitch(PLANAR_U),
           src->GetHeight());
       }
@@ -563,7 +562,7 @@ PVideoFrame __stdcall ConvertToYV12::GetFrame(int n, IScriptEnvironment* env) {
 
 }
 
-AVSValue __cdecl ConvertToYV12::Create(AVSValue args, void*, IScriptEnvironment* env) 
+AVSValue __cdecl ConvertToYV12::Create(AVSValue args, void*, IScriptEnvironment* env)
 {
   PClip clip = args[0].AsClip();
   const VideoInfo& vi = clip->GetVideoInfo();
@@ -579,6 +578,10 @@ AVSValue __cdecl ConvertToYV12::Create(AVSValue args, void*, IScriptEnvironment*
 }
 
 
+
+
+
+
 /**********************************
  *******   Convert to YUY2   ******
  *********************************/
@@ -586,10 +589,10 @@ AVSValue __cdecl ConvertToYV12::Create(AVSValue args, void*, IScriptEnvironment*
 ConvertToYUY2::ConvertToYUY2(PClip _child, bool _interlaced, const char *matrix, IScriptEnvironment* env)
   : GenericVideoFilter(_child), interlaced(_interlaced),src_cs(vi.pixel_type)
 {
-  if (vi.height&3 && vi.IsYV12() && interlaced) 
+  if (vi.height&3 && vi.IsYV12() && interlaced)
     env->ThrowError("ConvertToYUY2: Cannot convert from interlaced YV12 if height is not multiple of 4. Use Crop!");
 
-  if (vi.height&1 && vi.IsYV12() ) 
+  if (vi.height&1 && vi.IsYV12() )
     env->ThrowError("ConvertToYUY2: Cannot convert from YV12 if height is not even. Use Crop!");
 
   if (vi.width & 1)
@@ -615,7 +618,7 @@ ConvertToYUY2::ConvertToYUY2(PClip _child, bool _interlaced, const char *matrix,
   vi.pixel_type = VideoInfo::CS_YUY2;
 }
 
-PVideoFrame __stdcall ConvertToYUY2::GetFrame(int n, IScriptEnvironment* env) 
+PVideoFrame __stdcall ConvertToYUY2::GetFrame(int n, IScriptEnvironment* env)
 {
   PVideoFrame src = child->GetFrame(n, env);
   if ((env->GetCPUFlags() & CPUF_MMX)) {
@@ -633,23 +636,23 @@ PVideoFrame __stdcall ConvertToYUY2::GetFrame(int n, IScriptEnvironment* env)
 		  return dst;
     }
   }
-  if (((src_cs&VideoInfo::CS_YV12)==VideoInfo::CS_YV12)||((src_cs&VideoInfo::CS_I420)==VideoInfo::CS_I420)) {  
+  if (((src_cs&VideoInfo::CS_YV12)==VideoInfo::CS_YV12)||((src_cs&VideoInfo::CS_I420)==VideoInfo::CS_I420)) {
     PVideoFrame dst = env->NewVideoFrame(vi,32);  // We need a bit more pitch here.
     BYTE* yuv = dst->GetWritePtr();
     if (interlaced) {
 		  if ((env->GetCPUFlags() & CPUF_INTEGER_SSE)) {
-        isse_yv12_i_to_yuy2(src->GetReadPtr(PLANAR_Y), src->GetReadPtr(PLANAR_U), src->GetReadPtr(PLANAR_V), src->GetRowSize(PLANAR_Y_ALIGNED), src->GetPitch(PLANAR_Y), src->GetPitch(PLANAR_U), 
+        isse_yv12_i_to_yuy2(src->GetReadPtr(PLANAR_Y), src->GetReadPtr(PLANAR_U), src->GetReadPtr(PLANAR_V), src->GetRowSize(PLANAR_Y_ALIGNED), src->GetPitch(PLANAR_Y), src->GetPitch(PLANAR_U),
                       yuv, dst->GetPitch() ,src->GetHeight());
       } else {
-        mmx_yv12_i_to_yuy2(src->GetReadPtr(PLANAR_Y), src->GetReadPtr(PLANAR_U), src->GetReadPtr(PLANAR_V), src->GetRowSize(PLANAR_Y_ALIGNED), src->GetPitch(PLANAR_Y), src->GetPitch(PLANAR_U), 
+        mmx_yv12_i_to_yuy2(src->GetReadPtr(PLANAR_Y), src->GetReadPtr(PLANAR_U), src->GetReadPtr(PLANAR_V), src->GetRowSize(PLANAR_Y_ALIGNED), src->GetPitch(PLANAR_Y), src->GetPitch(PLANAR_U),
                     yuv, dst->GetPitch() ,src->GetHeight());
       }
     } else {
 		  if ((env->GetCPUFlags() & CPUF_INTEGER_SSE)) {
-        isse_yv12_to_yuy2(src->GetReadPtr(PLANAR_Y), src->GetReadPtr(PLANAR_U), src->GetReadPtr(PLANAR_V), src->GetRowSize(PLANAR_Y_ALIGNED), src->GetPitch(PLANAR_Y), src->GetPitch(PLANAR_U), 
+        isse_yv12_to_yuy2(src->GetReadPtr(PLANAR_Y), src->GetReadPtr(PLANAR_U), src->GetReadPtr(PLANAR_V), src->GetRowSize(PLANAR_Y_ALIGNED), src->GetPitch(PLANAR_Y), src->GetPitch(PLANAR_U),
                       yuv, dst->GetPitch() ,src->GetHeight());
       } else {
-        mmx_yv12_to_yuy2(src->GetReadPtr(PLANAR_Y), src->GetReadPtr(PLANAR_U), src->GetReadPtr(PLANAR_V), src->GetRowSize(PLANAR_Y_ALIGNED), src->GetPitch(PLANAR_Y), src->GetPitch(PLANAR_U), 
+        mmx_yv12_to_yuy2(src->GetReadPtr(PLANAR_Y), src->GetReadPtr(PLANAR_U), src->GetReadPtr(PLANAR_V), src->GetRowSize(PLANAR_Y_ALIGNED), src->GetPitch(PLANAR_Y), src->GetPitch(PLANAR_U),
                       yuv, dst->GetPitch() ,src->GetHeight());
       }
     }
@@ -673,9 +676,9 @@ PVideoFrame __stdcall ConvertToYUY2::GetFrame(int n, IScriptEnvironment* env)
     const int ku  = int(127./(255.*(1.0-0.114))*32768+0.5);
     const int kv  = int(127./(255.*(1.0-0.299))*32768+0.5);
 
-    for (int y=vi.height; y>0; --y) 
+    for (int y=vi.height; y>0; --y)
     {
-      for (int x = 0; x < vi.width; x += 2) 
+      for (int x = 0; x < vi.width; x += 2)
       {
         const BYTE* const rgb_next = rgb + rgb_inc;
         // y1 and y2 can't overflow
@@ -702,9 +705,9 @@ PVideoFrame __stdcall ConvertToYUY2::GetFrame(int n, IScriptEnvironment* env)
     const int ku  = int(127./(255.*(1.0-0.0721))*32768+0.5);
     const int kv  = int(127./(255.*(1.0-0.2125))*32768+0.5);
 
-    for (int y=vi.height; y>0; --y) 
+    for (int y=vi.height; y>0; --y)
     {
-      for (int x = 0; x < vi.width; x += 2) 
+      for (int x = 0; x < vi.width; x += 2)
       {
         const BYTE* const rgb_next = rgb + rgb_inc;
         // y1 and y2 can't overflow
@@ -731,9 +734,9 @@ PVideoFrame __stdcall ConvertToYUY2::GetFrame(int n, IScriptEnvironment* env)
     const int ku  = int(112./(255.*(1.0-0.0721))*32768+0.5);
     const int kv  = int(112./(255.*(1.0-0.2125))*32768+0.5);
 
-    for (int y=vi.height; y>0; --y) 
+    for (int y=vi.height; y>0; --y)
     {
-      for (int x = 0; x < vi.width; x += 2) 
+      for (int x = 0; x < vi.width; x += 2)
       {
         const BYTE* const rgb_next = rgb + rgb_inc;
         // y1 and y2 can't overflow
@@ -756,10 +759,10 @@ PVideoFrame __stdcall ConvertToYUY2::GetFrame(int n, IScriptEnvironment* env)
     const int cyb = int(0.114*219/255*65536+0.5);
     const int cyg = int(0.587*219/255*65536+0.5);
     const int cyr = int(0.299*219/255*65536+0.5);
- 
-    for (int y=vi.height; y>0; --y) 
+
+    for (int y=vi.height; y>0; --y)
     {
-      for (int x = 0; x < vi.width; x += 2) 
+      for (int x = 0; x < vi.width; x += 2)
       {
         const BYTE* const rgb_next = rgb + rgb_inc;
         // y1 and y2 can't overflow
@@ -784,7 +787,7 @@ PVideoFrame __stdcall ConvertToYUY2::GetFrame(int n, IScriptEnvironment* env)
 }
 
 
-AVSValue __cdecl ConvertToYUY2::Create(AVSValue args, void*, IScriptEnvironment* env) 
+AVSValue __cdecl ConvertToYUY2::Create(AVSValue args, void*, IScriptEnvironment* env)
 {
   PClip clip = args[0].AsClip();
   if (clip->GetVideoInfo().IsYUY2())
@@ -827,7 +830,7 @@ ConvertBackToYUY2::ConvertBackToYUY2(PClip _child, const char *matrix, IScriptEn
 }
 
 
-PVideoFrame __stdcall ConvertBackToYUY2::GetFrame(int n, IScriptEnvironment* env) 
+PVideoFrame __stdcall ConvertBackToYUY2::GetFrame(int n, IScriptEnvironment* env)
 {
   PVideoFrame src = child->GetFrame(n, env);
 	if ((env->GetCPUFlags() & CPUF_MMX)) {
@@ -863,9 +866,9 @@ PVideoFrame __stdcall ConvertBackToYUY2::GetFrame(int n, IScriptEnvironment* env
     const int ku  = int(127./(255.*(1.0-0.114))*65536+0.5);
     const int kv  = int(127./(255.*(1.0-0.299))*65536+0.5);
 
-    for (int y=vi.height; y>0; --y) 
+    for (int y=vi.height; y>0; --y)
     {
-      for (int x = 0; x < vi.width; x += 2) 
+      for (int x = 0; x < vi.width; x += 2)
       {
         const BYTE* const rgb_next = rgb + rgb_inc;
         // y1 and y2 can't overflow
@@ -892,9 +895,9 @@ PVideoFrame __stdcall ConvertBackToYUY2::GetFrame(int n, IScriptEnvironment* env
     const int ku  = int(127./(255.*(1.0-0.0721))*65536+0.5);
     const int kv  = int(127./(255.*(1.0-0.2125))*65536+0.5);
 
-    for (int y=vi.height; y>0; --y) 
+    for (int y=vi.height; y>0; --y)
     {
-      for (int x = 0; x < vi.width; x += 2) 
+      for (int x = 0; x < vi.width; x += 2)
       {
         const BYTE* const rgb_next = rgb + rgb_inc;
         // y1 and y2 can't overflow
@@ -921,9 +924,9 @@ PVideoFrame __stdcall ConvertBackToYUY2::GetFrame(int n, IScriptEnvironment* env
     const int ku  = int(112./(255.*(1.0-0.0721))*32768+0.5);
     const int kv  = int(112./(255.*(1.0-0.2125))*32768+0.5);
 
-    for (int y=vi.height; y>0; --y) 
+    for (int y=vi.height; y>0; --y)
     {
-      for (int x = 0; x < vi.width; x += 2) 
+      for (int x = 0; x < vi.width; x += 2)
       {
         const BYTE* const rgb_next = rgb + rgb_inc;
         // y1 and y2 can't overflow
@@ -947,9 +950,9 @@ PVideoFrame __stdcall ConvertBackToYUY2::GetFrame(int n, IScriptEnvironment* env
     const int cyg = int(0.587*219/255*65536+0.5);
     const int cyr = int(0.299*219/255*65536+0.5);
 
-    for (int y=vi.height; y>0; --y) 
+    for (int y=vi.height; y>0; --y)
     {
-      for (int x = 0; x < vi.width; x += 2) 
+      for (int x = 0; x < vi.width; x += 2)
       {
         const BYTE* const rgb_next = rgb + rgb_inc;
         // y1 and y2 can't overflow
@@ -973,7 +976,7 @@ PVideoFrame __stdcall ConvertBackToYUY2::GetFrame(int n, IScriptEnvironment* env
   return dst;
 }
 
-AVSValue __cdecl ConvertBackToYUY2::Create(AVSValue args, void*, IScriptEnvironment* env) 
+AVSValue __cdecl ConvertBackToYUY2::Create(AVSValue args, void*, IScriptEnvironment* env)
 {
   PClip clip = args[0].AsClip();
   if (!clip->GetVideoInfo().IsYUY2())
@@ -989,6 +992,12 @@ AVSValue __cdecl ConvertBackToYUY2::Create(AVSValue args, void*, IScriptEnvironm
 /*************************************
  *******   Convert to Greyscale ******
  ************************************/
+
+AVSFunction Greyscale_filters[] = {
+  { "Greyscale", "c[matrix]s", Greyscale::Create },       // matrix can be "rec601", "rec709" or "Average"
+  { "Grayscale", "c[matrix]s", Greyscale::Create },
+  { 0 }
+};
 
 Greyscale::Greyscale(PClip _child, const char* matrix, IScriptEnvironment* env)
  : GenericVideoFilter(_child)
@@ -1009,7 +1018,7 @@ Greyscale::Greyscale(PClip _child, const char* matrix, IScriptEnvironment* env)
 }
 
 
-PVideoFrame Greyscale::GetFrame(int n, IScriptEnvironment* env) 
+PVideoFrame Greyscale::GetFrame(int n, IScriptEnvironment* env)
 {
   PVideoFrame frame = child->GetFrame(n, env);
   env->MakeWritable(&frame);
@@ -1017,44 +1026,44 @@ PVideoFrame Greyscale::GetFrame(int n, IScriptEnvironment* env)
   int pitch = frame->GetPitch();
   int myy = vi.height;
   int myx = vi.width;
-  if (vi.IsYV12()) {
-	pitch = frame->GetPitch(PLANAR_U)/4;
-	int *srcpUV = (int*)frame->GetWritePtr(PLANAR_U);
-	myx = frame->GetRowSize(PLANAR_U_ALIGNED)/4;
-	myy = frame->GetHeight(PLANAR_U);
-	  for (int y=0; y<myy; y++) {
-		for (int x=0; x<myx; x++) {
-		  srcpUV[x] = 0x80808080;  // mod 8
-		}
-		srcpUV += pitch;
-	  }
-	pitch = frame->GetPitch(PLANAR_V)/4;
-	srcpUV = (int*)frame->GetWritePtr(PLANAR_V);
-	myx = frame->GetRowSize(PLANAR_V_ALIGNED)/4;
-	myy = frame->GetHeight(PLANAR_V);
-	  for (y=0; y<myy; ++y) {
-		for (int x=0; x<myx; x++) {
-		  srcpUV[x] = 0x80808080;  // mod 8
-		}
-		srcpUV += pitch;
-	  }
-  }
-  else if (vi.IsYUY2() && (env->GetCPUFlags() & CPUF_MMX)) {
-	__declspec(align(8)) static const __int64 oxooffooffooffooff = 0x00ff00ff00ff00ff; 
-	__declspec(align(8)) static const __int64 ox80oo80oo80oo80oo = 0x8000800080008000; 
-                                                                                       
-	  myx = __min(pitch>>1, (myx+3) & -4);	// Try for mod 8                           
-	  __asm {
-	  	push		ebx						; daft compiler assumes this is preserved!!!
 
-		movq		mm7,oxooffooffooffooff
-		movq		mm6,ox80oo80oo80oo80oo
+  if (vi.IsPlanar()) {
+    pitch = frame->GetPitch(PLANAR_U)/4;
+    int *srcpUV = (int*)frame->GetWritePtr(PLANAR_U);
+    myx = frame->GetRowSize(PLANAR_U_ALIGNED)/4;
+    myy = frame->GetHeight(PLANAR_U);
+    for (int y=0; y<myy; y++) {
+      for (int x=0; x<myx; x++) {
+        srcpUV[x] = 0x80808080;  // mod 8
+      }
+      srcpUV += pitch;
+    }
+    pitch = frame->GetPitch(PLANAR_V)/4;
+    srcpUV = (int*)frame->GetWritePtr(PLANAR_V);
+    myx = frame->GetRowSize(PLANAR_V_ALIGNED)/4;
+    myy = frame->GetHeight(PLANAR_V);
+    for (y=0; y<myy; ++y) {
+      for (int x=0; x<myx; x++) {
+        srcpUV[x] = 0x80808080;  // mod 8
+      }
+      srcpUV += pitch;
+    }
+  }
+
+  else if (vi.IsYUY2() && (env->GetCPUFlags() & CPUF_MMX)) {
+
+	  myx = __min(pitch>>1, (myx+3) & -4);	// Try for mod 8
+	  __asm {
+		pcmpeqw		mm7,mm7
+		pcmpeqw		mm6,mm6
+		psrlw		mm7,8					; 0x00ff00ff00ff00ff
+		psllw		mm6,15					; 0x8000800080008000
 		mov			esi,srcp				; data pointer
-		mov			ebx,pitch				; pitch
+		mov			eax,pitch				; pitch
 		mov			edx,myy					; height
 		mov			edi,myx					; aligned width
-		sub			ebx,edi
-		sub			ebx,edi					; modulo = pitch - rowsize
+		sub			eax,edi
+		sub			eax,edi					; modulo = pitch - rowsize
 		shr			edi,1					; number of dwords
 
 		align		16
@@ -1084,7 +1093,7 @@ xloop1:
 		por			mm1,mm6
 		movq		[esi+0],mm0				; update 2 pixels
 		movq		[esi+8],mm1
-		
+
 		movq		mm2,[esi+16]
 		movq		mm3,[esi+24]
 		pand		mm2,mm7
@@ -1111,7 +1120,7 @@ xloop1:
 		por			mm3,mm6
 		movq		[esi+48],mm2
 		movq		[esi+56],mm3
-		
+
 		sub			ecx,16					; count-=16
 		add			esi,64					; srcp+=16
 
@@ -1143,11 +1152,10 @@ xlend2:
 		add			esi,4					; srcp++
 
 xlend3:
-		add			esi,ebx
+		add			esi,eax
 		dec			edx
 		jnle		yloop
 		emms
-		pop			ebx
 	  }
   }
   else if (vi.IsYUY2()) {
@@ -1169,9 +1177,7 @@ xlend3:
 	const int cyr709 = int(0.2125*32768+0.5);
 
 	__int64 rgb2lum;
-    __declspec(align(8)) static const __int64 oxoooo4ooooooooooo=0x0000400000000000;
-    __declspec(align(8)) static const __int64 oxffooooooffoooooo=0xff000000ff000000;
-	
+
 	if (theMatrix == Rec709)
 	  rgb2lum = ((__int64)cyr709 << 32) | (cyg709 << 16) | cyb709;
 	else if (theMatrix == Average)
@@ -1180,15 +1186,17 @@ xlend3:
 	  rgb2lum = ((__int64)cyr << 32) | (cyg << 16) | cyb;
 
     __asm {
-	  	push		ebx					; daft compiler assumes this is preserved!!!
 		mov			edi,srcp
+		pcmpeqd		mm1,mm1
 		pxor		mm0,mm0
-		movq		mm1,oxoooo4ooooooooooo
+		psrlq		mm1,63				; 0x0000000000000001
+		pcmpeqd		mm3,mm3
+		psllq		mm1,46				; 0x0000400000000000
 		movq		mm2,rgb2lum
-		movq		mm3,oxffooooooffoooooo
+		pslld		mm3,24				; 0xff000000ff000000
 
 		xor			ecx,ecx
-		mov			ebx,myy
+		mov			eax,myy
 		mov			edx,myx
 
 		align		16
@@ -1244,11 +1252,10 @@ rgb2lum_even:
 		add			edi,pitch
 		mov			edx,myx
 		xor			ecx,ecx
-		dec			ebx
+		dec			eax
 		jnle		rgb2lum_mmxloop
 
 		emms
-		pop			ebx
     }
   }
   else if (vi.IsRGB()) {  // RGB C
@@ -1264,7 +1271,7 @@ rgb2lum_even:
 		  int greyscale=((srcp[0]*4725)+(srcp[1]*46884)+(srcp[2]*13927)+32768)>>16; // This is the correct brigtness calculations (standardized in Rec. 709)
 		  srcp[0]=srcp[1]=srcp[2]=greyscale;
 		  srcp += rgb_inc;
-		} 
+		}
 		p_count+=pitch;
 		srcp=p_count;
 	  }
@@ -1277,7 +1284,7 @@ rgb2lum_even:
 		  int greyscale=((srcp[0]+srcp[1]+srcp[2])*21845+32768)>>16; // This is the average of R, G & B
 		  srcp[0]=srcp[1]=srcp[2]=greyscale;
 		  srcp += rgb_inc;
-		} 
+		}
 		p_count+=pitch;
 		srcp=p_count;
 	  }
@@ -1292,7 +1299,7 @@ rgb2lum_even:
 		  int greyscale=((srcp[0]*7471)+(srcp[1]*38470)+(srcp[2]*19595)+32768)>>16; // This produces similar results as YUY2 (luma calculation)
 		  srcp[0]=srcp[1]=srcp[2]=greyscale;
 		  srcp += rgb_inc;
-		} 
+		}
 		p_count+=pitch;
 		srcp=p_count;
 	  }
@@ -1302,7 +1309,7 @@ rgb2lum_even:
 }
 
 
-AVSValue __cdecl Greyscale::Create(AVSValue args, void*, IScriptEnvironment* env) 
+AVSValue __cdecl Greyscale::Create(AVSValue args, void*, IScriptEnvironment* env)
 {
   return new Greyscale(args[0].AsClip(), args[1].AsString(0), env);
 }
