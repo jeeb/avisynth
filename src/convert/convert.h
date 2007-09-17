@@ -103,28 +103,6 @@ extern "C"
  *******************************************************/
 
 
-class RGB24to32 : public GenericVideoFilter
-/**
-  * RGB -> RGBA, setting alpha channel to 255
-  */
-{
-public:
-  RGB24to32(PClip src);
-  PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
-};
-
-
-class RGB32to24 : public GenericVideoFilter
-/**
-  * Class to strip alpha channel
-  */
-{
-public:
-  RGB32to24(PClip src);
-  PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
-};
-
-
 class ConvertToRGB : public GenericVideoFilter 
 /**
   * Class to handle conversion to RGB & RGBA
@@ -196,25 +174,6 @@ private:
   int theMatrix;
   enum {Rec601=0, Rec709=1, PC_601=2, PC_709=3 };	// Note! convert_yuy2.cpp assumes these values
   
-};
-
-
-
-class Greyscale : public GenericVideoFilter 
-/**
-  * Class to convert video to greyscale
- **/
-{
-public:
-  Greyscale(PClip _child, const char* matrix, IScriptEnvironment* env);
-  PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
-
-  static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env);
-
-private:
-  int theMatrix;
-  enum {Rec601 = 0, Rec709, Average };
-
 };
 
 
