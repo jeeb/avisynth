@@ -457,6 +457,14 @@ SOURCE=.\filters\fps.h
 # End Source File
 # Begin Source File
 
+SOURCE=.\filters\greyscale.cpp
+# End Source File
+# Begin Source File
+
+SOURCE=.\filters\greyscale.h
+# End Source File
+# Begin Source File
+
 SOURCE=.\filters\histogram.cpp
 # End Source File
 # Begin Source File
@@ -494,6 +502,14 @@ SOURCE=.\filters\misc.cpp
 # Begin Source File
 
 SOURCE=.\filters\misc.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\filters\planeswap.cpp
+# End Source File
+# Begin Source File
+
+SOURCE=.\filters\planeswap.h
 # End Source File
 # Begin Source File
 
@@ -759,6 +775,14 @@ InputName=convert_a
 
 !ENDIF 
 
+# End Source File
+# Begin Source File
+
+SOURCE=.\convert\convert_rgb.cpp
+# End Source File
+# Begin Source File
+
+SOURCE=.\convert\convert_rgb.h
 # End Source File
 # Begin Source File
 
