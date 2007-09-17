@@ -138,43 +138,6 @@ private:
 };
 
 
-class ConvertToYUY2 : public GenericVideoFilter 
-/**
-  * Class for conversions to YUY2
- **/
-{
-public:
-  ConvertToYUY2(PClip _child, bool _interlaced, const char *matrix, IScriptEnvironment* env);
-  PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
-
-  static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env);
-
-private:
-  const int src_cs;  // Source colorspace
-  const bool interlaced;
-
-  int theMatrix;
-  enum {Rec601=0, Rec709=1, PC_601=2, PC_709=3 };	// Note! convert_yuy2.cpp assumes these values
-};
-
-class ConvertBackToYUY2 : public GenericVideoFilter 
-/**
-  * Class for conversions to YUY2 (With Chroma copy)
- **/
-{
-public:
-  ConvertBackToYUY2(PClip _child, const char *matrix, IScriptEnvironment* env);
-  PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
-
-  static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env);
-
-private:
-  const bool rgb32;
-
-  int theMatrix;
-  enum {Rec601=0, Rec709=1, PC_601=2, PC_709=3 };	// Note! convert_yuy2.cpp assumes these values
-  
-};
 
 
 

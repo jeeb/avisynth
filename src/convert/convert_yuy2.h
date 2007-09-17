@@ -32,7 +32,50 @@
 // which is not derived from or based on Avisynth, such as 3rd-party filters,
 // import and export plugins, or graphical user interfaces.
 
+#ifndef __Convert_YUY2_H__
+#define __Convert_YUY2_H__
+
 #include "../internal.h"
+#include "convert_yv12.h"
+
+
+class ConvertToYUY2 : public GenericVideoFilter 
+/**
+  * Class for conversions to YUY2
+ **/
+{
+public:
+  ConvertToYUY2(PClip _child, bool _interlaced, const char *matrix, IScriptEnvironment* env);
+  PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
+
+  static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env);
+
+private:
+  const int src_cs;  // Source colorspace
+  const bool interlaced;
+
+  int theMatrix;
+  enum {Rec601=0, Rec709=1, PC_601=2, PC_709=3 };	// Note! convert_yuy2.cpp assumes these values
+};
+
+class ConvertBackToYUY2 : public GenericVideoFilter 
+/**
+  * Class for conversions to YUY2 (With Chroma copy)
+ **/
+{
+public:
+  ConvertBackToYUY2(PClip _child, const char *matrix, IScriptEnvironment* env);
+  PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
+
+  static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env);
+
+private:
+  const bool rgb32;
+
+  int theMatrix;
+  enum {Rec601=0, Rec709=1, PC_601=2, PC_709=3 };	// Note! convert_yuy2.cpp assumes these values
+  
+};
 
 
 void mmx_ConvertRGB32toYUY2(unsigned int *src,unsigned int *dst,int src_pitch, int dst_pitch,int w, int h, int matrix);
@@ -40,3 +83,4 @@ void mmx_ConvertRGB24toYUY2(unsigned int *src,unsigned int *dst,int src_pitch, i
 void mmx_ConvertRGB32toYUY2_Dup(unsigned int *src,unsigned int *dst,int src_pitch, int dst_pitch,int w, int h, int matrix);
 void mmx_ConvertRGB24toYUY2_Dup(unsigned int *src,unsigned int *dst,int src_pitch, int dst_pitch,int w, int h, int matrix);
 
+#endif // __Convert_YUY2_H__
