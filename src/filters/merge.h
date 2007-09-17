@@ -47,31 +47,6 @@
 /****************************************************
 ****************************************************/
 
-class Swap : public GenericVideoFilter
-/**
-  * Swaps planar channels
- **/
-{
-public:
-  Swap(PClip _child, PClip _clip, PClip _clipY, int _mode, int _test, IScriptEnvironment* env);  
-  PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
-
-  static AVSValue __cdecl CreateUV(AVSValue args, void* user_data, IScriptEnvironment* env);
-  static AVSValue __cdecl CreateUToY(AVSValue args, void* user_data, IScriptEnvironment* env);
-  static AVSValue __cdecl CreateVToY(AVSValue args, void* user_data, IScriptEnvironment* env);
-  static AVSValue __cdecl CreateYToUV(AVSValue args, void* user_data, IScriptEnvironment* env);
-  static AVSValue __cdecl CreateYToYUV(AVSValue args, void* user_data, IScriptEnvironment* env);
-
-private:
-  PClip clip, clipY;
-  int mode;
-  int test;
-
-  enum {SwapUV=1, UToY, VToY, YToUV};
-};
-
-
-
 class MergeChroma : public GenericVideoFilter
 /**
   * Merge the chroma planes of one clip into another, preserving luma
