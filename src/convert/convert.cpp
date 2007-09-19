@@ -161,7 +161,7 @@ AVSValue __cdecl ConvertToRGB::Create(AVSValue args, void*, IScriptEnvironment* 
   const VideoInfo& vi = clip->GetVideoInfo();
   if (vi.IsYUV()) {
     if (vi.IsPlanar()) {
-      return new ConvertToRGB(new ConvertToYUY2(clip,args[2].AsBool(false),NULL,env), false, matrix, env);
+      return new ConvertToRGB(new ConvertToYUY2(clip,false,args[2].AsBool(false),NULL,env), false, matrix, env);
     }
     return new ConvertToRGB(clip, false, matrix, env);
   } else {
@@ -177,7 +177,7 @@ AVSValue __cdecl ConvertToRGB::Create32(AVSValue args, void*, IScriptEnvironment
   const VideoInfo vi = clip->GetVideoInfo();
   if (vi.IsYUV()) {
     if (vi.IsPlanar()) {
-       return new ConvertToRGB(new ConvertToYUY2(clip,args[2].AsBool(false),NULL,env), false, matrix, env);
+       return new ConvertToRGB(new ConvertToYUY2(clip,false,args[2].AsBool(false),NULL,env), false, matrix, env);
     }
     return new ConvertToRGB(clip, false, matrix, env);
   } else if (vi.IsRGB24())
@@ -194,7 +194,7 @@ AVSValue __cdecl ConvertToRGB::Create24(AVSValue args, void*, IScriptEnvironment
   const VideoInfo& vi = clip->GetVideoInfo();
   if (vi.IsYUV()) {
     if (vi.IsPlanar()) {
-       return new ConvertToRGB(new ConvertToYUY2(clip,args[2].AsBool(false),NULL,env), true, matrix, env);
+       return new ConvertToRGB(new ConvertToYUY2(clip,false,args[2].AsBool(false),NULL,env), true, matrix, env);
     }
     return new ConvertToRGB(clip, true, matrix, env);
   } else if (vi.IsRGB32())
@@ -266,7 +266,7 @@ AVSValue __cdecl ConvertToYV12::Create(AVSValue args, void*, IScriptEnvironment*
   PClip clip = args[0].AsClip();
   const VideoInfo& vi = clip->GetVideoInfo();
   if (vi.IsRGB()) {
-  	return new ConvertToYV12(new ConvertToYUY2(clip,false,args[2].AsString(0),env),args[1].AsBool(false),env);
+  	return new ConvertToYV12(new ConvertToYUY2(clip,false,false,args[2].AsString(0),env),args[1].AsBool(false),env);
   } else {
     if (args[2].Defined())
       env->ThrowError("ConvertToYV12: invalid \"matrix\" parameter (RGB data only)");

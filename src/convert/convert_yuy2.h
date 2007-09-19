@@ -37,28 +37,46 @@
 
 #include "../internal.h"
 #include "convert_yv12.h"
+#include "../core/softwire_helpers.h"
 
 
-class ConvertToYUY2 : public GenericVideoFilter 
+class ConvertToYUY2 : public GenericVideoFilter, public CodeGenerator
 /**
   * Class for conversions to YUY2
  **/
 {
 public:
-  ConvertToYUY2(PClip _child, bool _interlaced, const char *matrix, IScriptEnvironment* env);
+  ConvertToYUY2(PClip _child, bool _dupl, bool _interlaced, const char *matrix, IScriptEnvironment* env);
+  ~ConvertToYUY2();
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
 
   static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env);
 
 private:
-  const int src_cs;  // Source colorspace
   const bool interlaced;
 
+protected:
+  void GenerateAssembly(bool rgb24, bool dupl, bool sub, int w, IScriptEnvironment* env);
+  void mmx_ConvertRGBtoYUY2(const BYTE *src,BYTE *dst,int src_pitch, int dst_pitch, int h);
+  DynamicAssembledCode assembly;
+
+  const int src_cs;  // Source colorspace
   int theMatrix;
   enum {Rec601=0, Rec709=1, PC_601=2, PC_709=3 };	// Note! convert_yuy2.cpp assumes these values
+
+  // Variables for dynamic code.
+  const BYTE* dyn_src;
+  BYTE* dyn_dst;
+
+  // These must be set BEFORE creating the generator, and CANNOT be changed at runtime!
+  const __int64* dyn_cybgr;
+  const __int64* dyn_fpix_mul;
+  const int* dyn_fraction;
+  const int* dyn_y1y2_mult;
+
 };
 
-class ConvertBackToYUY2 : public GenericVideoFilter 
+class ConvertBackToYUY2 : public ConvertToYUY2
 /**
   * Class for conversions to YUY2 (With Chroma copy)
  **/
@@ -70,17 +88,8 @@ public:
   static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env);
 
 private:
-  const bool rgb32;
-
-  int theMatrix;
-  enum {Rec601=0, Rec709=1, PC_601=2, PC_709=3 };	// Note! convert_yuy2.cpp assumes these values
-  
+  void mmxYV24toYUY2(const unsigned char *py, const unsigned char *pu, const unsigned char *pv,
+                     unsigned char *dst, int pitch1Y, int pitch1UV, int pitch2, int width, int height);
 };
-
-
-void mmx_ConvertRGB32toYUY2(unsigned int *src,unsigned int *dst,int src_pitch, int dst_pitch,int w, int h, int matrix);
-void mmx_ConvertRGB24toYUY2(unsigned int *src,unsigned int *dst,int src_pitch, int dst_pitch,int w, int h, int matrix);
-void mmx_ConvertRGB32toYUY2_Dup(unsigned int *src,unsigned int *dst,int src_pitch, int dst_pitch,int w, int h, int matrix);
-void mmx_ConvertRGB24toYUY2_Dup(unsigned int *src,unsigned int *dst,int src_pitch, int dst_pitch,int w, int h, int matrix);
 
 #endif // __Convert_YUY2_H__
