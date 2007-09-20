@@ -1,7 +1,7 @@
 !packhdr tempfile.exe "upx --best --q tempfile.exe"
 
 !DEFINE VERSION 2.5.8
-!DEFINE DATE 070416
+!DEFINE DATE 070920
 
 SetCompressor /solid lzma
 
@@ -47,6 +47,7 @@ InstallDirRegKey HKLM SOFTWARE\AviSynth ""
 
 InstType Standard
 InstType "Minimal"
+InstType "Full"
 
 Section "!AviSynth Base (required)" Frameserving
   SectionIn RO
@@ -152,7 +153,7 @@ SectionEnd
 Subsection "Documentation" Documentation
 
 Section "English Documentation" English
-SectionIn 1
+SectionIn 1 3
 
   SetOutPath $INSTDIR\Docs
   File "..\..\Docs\*.css"
@@ -181,6 +182,7 @@ SectionEnd
 
 
 Section /o "German Documentation" German
+  SectionIn 3
   SetOutPath $INSTDIR\Docs
   File "..\..\Docs\*.css"
   SetOutPath $INSTDIR\Docs\german
@@ -196,6 +198,7 @@ Section /o "German Documentation" German
 SectionEnd
 
 Section /o "French Documentation" French
+  SectionIn 3
   SetOutPath $INSTDIR\Docs
   File "..\..\Docs\*.css"
   SetOutPath $INSTDIR\Docs\french
@@ -209,6 +212,7 @@ Section /o "French Documentation" French
 SectionEnd
 
 Section /o "Italian Documentation" Italian
+  SectionIn 3
   SetOutPath $INSTDIR\Docs
   File "..\..\Docs\*.css"
   SetOutPath $INSTDIR\Docs\italian
@@ -226,6 +230,7 @@ Section /o "Italian Documentation" Italian
 SectionEnd
 
 Section /o "Portugese Documentation" Portugese
+  SectionIn 3
   SetOutPath $INSTDIR\Docs
   File "..\..\Docs\*.css"
   SetOutPath $INSTDIR\Docs\portugese
@@ -249,6 +254,7 @@ Section /o "Portugese Documentation" Portugese
 SectionEnd
 
 Section /o "Russian Documentation" Russian
+  SectionIn 3
   SetOutPath $INSTDIR\Docs
   File "..\..\Docs\*.css"
   SetOutPath $INSTDIR\Docs\russian
@@ -277,15 +283,18 @@ Subsectionend
 SubSection /e "Select Association" SelectAssociation
 
 Section /o "Associate AVS with Notepad (open)" Associate1
+  SectionIn 3
   WriteRegStr HKCR "avsfile\shell\open\command" "" 'notepad.exe "%1"'
   WriteRegStr HKCR "avs_auto_file\shell\open\command" "" 'notepad.exe "%1"'
 SectionEnd
 
 Section /o "Associate AVS with Media Player 6.4 (play)" Associate2
+  SectionIn 3
   WriteRegStr HKCR "avsfile\shell\play\command" "" '"$PROGRAMFILES\Windows Media Player\mplayer2.exe" /Play "%L"'
 SectionEnd
 
 Section /o "Add AviSynth Script to New Items menu" Associate3
+  SectionIn 3
 ; Blank new file
   WriteRegStr HKCR ".avs\ShellNew" "NullFile" ""
   WriteRegStr HKCR "avsfile\ShellNew" "NullFile" ""
@@ -296,16 +305,13 @@ Section /o "Add AviSynth Script to New Items menu" Associate3
 ;  WriteRegStr HKCR ".avs\ShellNew" "FileName" "Template.avs"
 SectionEnd
 
-Section ""
-
-SectionEnd
-
 SubSectionEnd
 
 
 SubSection "Select Extra Files" SelectExtraFiles
 
 Section /o "Install FilterSDK" ExtraFiles3
+  SectionIn 3
   SetOutPath $INSTDIR\FilterSDK
   File "..\filtersdk\*.*"
   SetOutPath $INSTDIR\FilterSDK\include
@@ -316,12 +322,14 @@ Section /o "Install FilterSDK" ExtraFiles3
 SectionEnd
 
 Section /o "Install Avisynth.lib and Avisynth.exp" ExtraFiles1
+  SectionIn 3
   SetOutPath $INSTDIR\Extras
   File "..\src\release\AviSynth.lib"
   File "..\src\release\AviSynth.exp"
 SectionEnd
 
 Section /o "Install Avisynth.map" ExtraFiles2
+  SectionIn 3
   SetOutPath $INSTDIR\Extras
   File "..\src\release\AviSynth.map"
 SectionEnd
