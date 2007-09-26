@@ -496,62 +496,120 @@ void Antialiaser::GetAlphaRect() {
 
         alpha1 = alpha2 = 0;
 
-		// How many lit pixels in the centre cell?
 		if (interlaced) {
+		  // How many lit pixels in the centre cell?
 		  for(i=-4; i<12; i++) // For interlaced include extra half cells above and below
 			alpha1 += bitcnt[src[srcpitch*i]];
+
+		  if (alpha1) {
+			// If we have any lit pixels we fully occupy the cell.
+			alpha2 = 64;
+		  }
+		  else {
+			// No lit pixels here so build the halo mask from the neighbours
+			BYTE cenmask = 0;
+
+			// Check left and right neighbours, extend the halo
+			// mask 8 pixels in from the nearest lit pixels.
+			for(i=-4; i<12; i++) { // For interlaced include extra half cells above and below
+			  cenmask |= bitexl[src[srcpitch*i-1]];
+			  cenmask |= bitexr[src[srcpitch*i+1]];
+			}
+
+			if (cenmask == 0xFF) {
+			  // If we have hard adjacent lit pixels we fully occupy this cell.
+			  alpha2 = 64;
+			}
+			else {
+			  BYTE tmasks[16], mask;
+
+			  mask = cenmask;
+			  for(i=-4; i<0; i++)
+				tmasks[11-i] = mask;
+			  for(i=0; i<12; i++) {  // For interlaced include extra half cells above
+				// Check the 3.5 cells above
+				mask |= bitexl[ src[srcpitch*(-1-i)-1] ];
+				mask |=    - !! src[srcpitch*(-1-i)  ];
+				mask |= bitexr[ src[srcpitch*(-1-i)+1] ];
+				tmasks[11-i] = mask;
+			  }
+
+			  mask = cenmask;
+			  for(i=-4; i<0; i++)
+				alpha2 += bitcnt[tmasks[i+4] | mask];
+			  for(i=0; i<12; i++) {  // For interlaced include extra half cells below
+				// Check the 3.5 cells below
+				mask |= bitexl[ src[srcpitch*(8+i)-1] ];
+				mask |=    - !! src[srcpitch*(8+i)  ];
+				mask |= bitexr[ src[srcpitch*(8+i)+1] ];
+
+				alpha2 += bitcnt[tmasks[i+4] | mask];
+			  }
+			  alpha2 += 1;
+			  alpha2 /= 2;
+			}
+		  }
 		  alpha1 += 1;
 		  alpha1 /= 2;
 		}
 		else {
+		  // How many lit pixels in the centre cell?
 		  for(i=0; i<8; i++)
 			alpha1 += bitcnt[src[srcpitch*i]];
-		}
 
-		if (alpha1) {
-		  // If we have any lit pixels we fully occupy the cell.
-		  alpha2 = 64;
-		}
-		else {
-		  // No lit pixels here so check the neighbours
-		  BYTE cenmask = 0, mask1, mask2;
-
-		  // Check left and right neighbours for lit pixels
-		  for(i=0; i<8; i++) {
-			cenmask |= bitexl[src[srcpitch*i-1]];
-			cenmask |= bitexr[src[srcpitch*i+1]];
-		  }
-
-		  if (cenmask == 0xFF) {
-			// If we have hard adjacent lit pixels we fully occupy this cell.
+		  if (alpha1) {
+			// If we have any lit pixels we fully occupy the cell.
 			alpha2 = 64;
 		  }
 		  else {
-			mask1 = mask2 = cenmask;
+			// No lit pixels here so build the halo mask from the neighbours
+			BYTE cenmask = 0;
 
+			// Check left and right neighbours, extend the halo
+			// mask 8 pixels in from the nearest lit pixels.
 			for(i=0; i<8; i++) {
-			  // Check the 3 cells above
-			  mask1 |= bitexl[        src[srcpitch*(-1-i)-1]];
-			  mask1 |= (BYTE)(((long)-src[srcpitch*(-1-i)  ])>>31);
-			  mask1 |= bitexr[        src[srcpitch*(-1-i)+1]];
+			  cenmask |= bitexl[src[srcpitch*i-1]];
+			  cenmask |= bitexr[src[srcpitch*i+1]];
+			}
 
-			  // Check the 3 cells below
-			  mask2 |= bitexl[        src[srcpitch*(8+i)-1]];
-			  mask2 |= (BYTE)(((long)-src[srcpitch*(8+i)  ])>>31);
-			  mask2 |= bitexr[        src[srcpitch*(8+i)+1]];
+			if (cenmask == 0xFF) {
+			  // If we have hard adjacent lit pixels we fully occupy this cell.
+			  alpha2 = 64;
+			}
+			else {
+			  BYTE tmasks[8], mask;
 
-			  // Strength of occupancy based on neighbours distance
-			  alpha2 += bitcnt[ mask1 | mask2 ];
+			  mask = cenmask;
+			  for(i=0; i<8; i++) {
+				// Check the 3 cells above
+				mask |= bitexl[ src[srcpitch*(-1-i)-1] ];
+				mask |=    - !! src[srcpitch*(-1-i)  ];
+				mask |= bitexr[ src[srcpitch*(-1-i)+1] ];
+				tmasks[7-i] = mask;
+			  }
+
+			  mask = cenmask;
+			  for(i=0; i<8; i++) {
+				// Check the 3 cells below
+				mask |= bitexl[ src[srcpitch*(8+i)-1] ];
+				mask |=    - !! src[srcpitch*(8+i)  ];
+				mask |= bitexr[ src[srcpitch*(8+i)+1] ];
+
+				alpha2 += bitcnt[tmasks[i] | mask];
+			  }
 			}
 		  }
 		}
-        
+
+		alpha2 -= alpha1;        
+		alpha2 *= Ahalo;
+		alpha1 *= Atext;
         // Pre calulate table for quick use  --  Pc = (Pc * dest[0] + dest[c]) >> 8;
 
-		dest[0] = (64*516*255 - Atext*alpha1 - Ahalo*(alpha2-alpha1))>>15;
-		dest[1] = (BVtext * Atext*alpha1 + BVhalo * Ahalo*(alpha2-alpha1))>>15;
-		dest[2] = (GUtext * Atext*alpha1 + GUhalo * Ahalo*(alpha2-alpha1))>>15;
-		dest[3] = (RYtext * Atext*alpha1 + RYhalo * Ahalo*(alpha2-alpha1))>>15;
+		dest[0] = (64*516*255 - alpha1 -          alpha2)>>15;
+		dest[1] = (    BVtext * alpha1 + BVhalo * alpha2)>>15;
+		dest[2] = (    GUtext * alpha1 + GUhalo * alpha2)>>15;
+		dest[3] = (    RYtext * alpha1 + RYhalo * alpha2)>>15;
       }
 	  else {
 		dest[0] = 256;
