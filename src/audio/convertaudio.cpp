@@ -194,22 +194,25 @@ void ConvertAudio::convertToFloat(char* inbuf, float* outbuf, char sample_type, 
   int i;
   switch (sample_type) {
     case SAMPLE_INT8: {
+      const float divisor = float(1.0 / 128);
       unsigned char* samples = (unsigned char*)inbuf;
       for (i=0;i<count;i++) 
-        outbuf[i]=((float)samples[i]-128.0f) / 128.0f;
+        outbuf[i]=(samples[i]-128) * divisor;
       break;
       }
     case SAMPLE_INT16: {
+      const float divisor = float(1.0 / 32768);
       signed short* samples = (signed short*)inbuf;
       for (i=0;i<count;i++) 
-        outbuf[i]=(float)samples[i] / 32768.0f;
+        outbuf[i]=samples[i] * divisor;
       break;
       }
 
     case SAMPLE_INT32: {
+      const float divisor = float(1.0 / MAX_INT);
       signed int* samples = (signed int*)inbuf;
       for (i=0;i<count;i++) 
-        outbuf[i]=(float)samples[i] / (float)(MAX_INT);
+        outbuf[i]=samples[i] * divisor;
       break;     
     }
     case SAMPLE_FLOAT: {
@@ -219,10 +222,11 @@ void ConvertAudio::convertToFloat(char* inbuf, float* outbuf, char sample_type, 
       break;     
     }
     case SAMPLE_INT24: {
+      const float divisor = float(1.0 / (unsigned)(1<<31));
       unsigned char* samples = (unsigned char*)inbuf;
       for (i=0;i<count;i++) {
         signed int tval = (samples[i*3]<<8) | (samples[i*3+1] << 16) | (samples[i*3+2] << 24); 
-        outbuf[i] = (float)(tval / 256) / (float)(1<<23);
+        outbuf[i] = tval * divisor;
       }
       break;
     }
@@ -238,9 +242,10 @@ void ConvertAudio::convertToFloat_SSE(char* inbuf, float* outbuf, char sample_ty
   int i;
   switch (sample_type) {
     case SAMPLE_INT8: {
+      const float divisor = float(1.0 / 128);
       unsigned char* samples = (unsigned char*)inbuf;
       for (i=0;i<count;i++) 
-        outbuf[i]=((float)samples[i]-128.0f) / 128.0f;
+        outbuf[i]=(samples[i]-128) * divisor;
       break;
       }
     case SAMPLE_INT16: {
@@ -312,7 +317,7 @@ c32_loop:
         }
       }
       for (i=0; i<c_miss; i++) {
-        outbuf[i+c_loop]=(float)samples[i+c_loop] * divisor;
+        outbuf[i+c_loop]=samples[i+c_loop] * divisor;
       }
       break;
     }
@@ -325,10 +330,11 @@ c32_loop:
     }
 
     case SAMPLE_INT24: {
+      const float divisor = float(1.0 / (unsigned)(1<<31));
       unsigned char* samples = (unsigned char*)inbuf;
       for (i=0;i<count;i++) {
         signed int tval = (samples[i*3]<<8) | (samples[i*3+1] << 16) | (samples[i*3+2] << 24); 
-        outbuf[i] = (float)(tval / 256) / (float)(1<<23);
+        outbuf[i] = tval * divisor;
       }
       break;
     }
@@ -346,9 +352,10 @@ void ConvertAudio::convertToFloat_SSE2(char* inbuf, float* outbuf, char sample_t
   int i;
   switch (sample_type) {
     case SAMPLE_INT8: {
+      const float divisor = float(1.0 / 128);
       unsigned char* samples = (unsigned char*)inbuf;
       for (i=0;i<count;i++) 
-        outbuf[i]=((float)samples[i]-128.0f) / 128.0f;
+        outbuf[i]=(samples[i]-128) * divisor;
       break;
       }
     case SAMPLE_INT16: {
@@ -448,9 +455,62 @@ c32_loop:
 
     case SAMPLE_INT24: {
       unsigned char* samples = (unsigned char*)inbuf;
-      for (i=0;i<count;i++) {
-        signed int tval = (samples[i*3]<<8) | (samples[i*3+1] << 16) | (samples[i*3+2] << 24); 
-        outbuf[i] = (float)(tval / 256) / (float)(1<<23);
+      const float divisor = float(1.0 / (unsigned)(1<<31));
+
+      while (((int)outbuf & 15) && count) { // dqword align outbuf
+        const signed int tval = (samples[0]<<8) | (samples[1] << 16) | (samples[2] << 24); 
+        *outbuf++ = divisor * tval;
+        samples += 3;
+        count-=1;
+      }
+      
+      int c_miss = count & 7;
+      if (c_miss == 0 && count != 0) c_miss=8;
+      int c_loop = count-c_miss; // in samples
+
+      if (c_loop) {        
+        __asm {
+          xor      eax, eax               // count
+          mov      edx, [c_loop]
+          mov      esi, [samples];
+          shl      edx, 2                 // in input bytes (*4)
+          movss    xmm7, [divisor]
+          mov      edi, [outbuf];
+          shufps   xmm7, xmm7, 00000000b
+          align 16
+c24_loop:
+          movd       xmm0, [esi+0]         //  baaa
+          movd       xmm4, [esi+3]         //  cbbb
+          movd       xmm5, [esi+6]         //  dccc
+          punpckldq  xmm0, xmm4            //  .... | .... | cbbb | baaa
+          movd       xmm6, [esi+9]         //  eddd
+          movd       xmm1, [esi+12]        //  feee
+          punpckldq  xmm5, xmm6            //  .... | .... | eddd | dccc
+          movd       xmm2, [esi+15]        //  gfff
+          movd       xmm3, [esi+18]        //  hggg
+          punpckldq  xmm1, xmm2            //  .... | .... | gfff | feee
+          movd       xmm4, [esi+21]        //  xhhh
+          add        esi,24
+          punpckldq  xmm3, xmm4            //  .... | .... | xhhh | hggg
+          punpcklqdq xmm0, xmm5            //  eddd | dccc | cbbb | baaa
+          punpcklqdq xmm1, xmm3            //  xhhh | hggg | gfff | feee
+          pslld      xmm0, 8               //  ddd0 | ccc0 | bbb0 | aaa0
+          pslld      xmm1, 8               //  hhh0 | ggg0 | fff0 | eee0
+          cvtdq2ps   xmm0, xmm0            //  xd | xc | xb | xa
+          cvtdq2ps   xmm1, xmm1            //  xh | xg | xf | xe
+          mulps      xmm0, xmm7            //  *=1/(1<<31).0
+          add        eax,32
+          mulps      xmm1, xmm7            //  *=1/(1<<31).0
+          movaps     [edi+eax-32], xmm0    //  store xd | xc | xb | xa
+          cmp        eax, edx
+          movaps     [edi+eax-16], xmm1    //  store xh | xg | xf | xe
+          jne        c24_loop
+          emms
+        }
+      }
+      for (i=c_loop;i<count;i++) {
+        const signed int tval = (samples[i*3]<<8) | (samples[i*3+1] << 16) | (samples[i*3+2] << 24); 
+        outbuf[i] = divisor * tval;
       }
       break;
     }
@@ -468,13 +528,14 @@ void ConvertAudio::convertToFloat_3DN(char* inbuf, float* outbuf, char sample_ty
   int i;
   switch (sample_type) {
     case SAMPLE_INT8: {
+      const float divisor = float(1.0 / 128);
       unsigned char* samples = (unsigned char*)inbuf;
       for (i=0;i<count;i++) 
-        outbuf[i]=((float)samples[i]-128.0f) / 128.0f;
+        outbuf[i]=(samples[i]-128) * divisor;
       break;
       }
     case SAMPLE_INT16: {
-      float divisor = 1.0 / 32768.0;
+      const float divisor = float(1.0 / 32768);
       signed short* samples = (signed short*)inbuf;
       int c_miss = count & 3;
       int c_loop = (count - c_miss);  // Number of samples.
@@ -512,7 +573,7 @@ c16_loop:
       break;
     }
     case SAMPLE_INT32: {
-      float divisor = (float)1.0 / (float)MAX_INT;
+      const float divisor = float(1.0 / MAX_INT);
       signed int* samples = (signed int*)inbuf;
       int c_miss = count & 3;
       int c_loop = count-c_miss; // in samples
@@ -555,10 +616,46 @@ c32_loop:
     }
 
     case SAMPLE_INT24: {
+      const float divisor = float(1.0 / (unsigned)(1<<31));
       unsigned char* samples = (unsigned char*)inbuf;
-      for (i=0;i<count;i++) {
-        signed int tval = (samples[i*3]<<8) | (samples[i*3+1] << 16) | (samples[i*3+2] << 24); 
-        outbuf[i] = (float)(tval / 256) / (float)(1<<23);
+      int c_miss = count & 3;
+      if (c_miss == 0 && count != 0) c_miss=4;
+      int c_loop = count-c_miss; // in samples
+      if (c_loop) {        
+        __asm {
+          xor eax,eax                   // count
+          mov edx, [c_loop]
+          shl edx, 2                     // in input bytes (*4)
+          mov esi, [samples];
+          mov edi, [outbuf];
+          movd mm7,[divisor]
+          pshufw mm7,mm7, 01000100b
+          align 16
+c24_loop:
+          movd mm1, [esi+0]              //  0 0 | baaa
+          movd mm0, [esi+3]              //  0 0 | cbbb
+          movd mm2, [esi+6]              //  0 0 | dccc
+          movd mm3, [esi+9]              //  0 0 | xddd
+          add esi,12
+          punpckldq mm1, mm0             //  cbbb | baaa
+          punpckldq mm2, mm3             //  xddd | dccc
+          pslld mm1, 8                   //  bbb0 | aaa0
+          pslld mm2, 8                   //  ddd0 | ccc0
+          pi2fd mm1, mm1                 //  xb=float(b) | xa=float(a)
+          pi2fd mm2, mm2                 //  xb=float(d) | xa=float(c)
+          pfmul mm1,mm7                  //  x / (1<<31).0
+          add eax,16
+          pfmul mm2,mm7                  //  x / (1<<31).0
+          movq [edi+eax-16], mm1         //  store xb | xa
+          cmp eax, edx
+          movq [edi+eax+8-16], mm2       //  store xd | xc
+          jne c24_loop
+          emms
+        }
+      }
+      for (i=c_loop;i<count;i++) {
+        const signed int tval = (samples[i*3]<<8) | (samples[i*3+1] << 16) | (samples[i*3+2] << 24); 
+        outbuf[i] = divisor * tval;
       }
       break;
     }
@@ -585,7 +682,7 @@ void ConvertAudio::convertFromFloat_3DN(float* inbuf,void* outbuf, char sample_t
       break;
       }
     case SAMPLE_INT16: {
-      float multiplier = 32768.0;
+      const float multiplier = 32768.0f;
       signed short* samples = (signed short*)outbuf;
       int c_miss = count & 3;
       int c_loop = count-c_miss; // in samples
@@ -621,13 +718,13 @@ c16f_loop:
         }
       }
       for (i=0; i<c_miss; i++) {
-        samples[i+c_loop]=Saturate_int16(inbuf[i+c_loop] * 32768.0f);
+        samples[i+c_loop]=Saturate_int16(inbuf[i+c_loop] * multiplier);
       }
       break;
     }
 
     case SAMPLE_INT32: {
-      float multiplier = (float)MAX_INT;
+      const float multiplier = (float)MAX_INT;
       signed int* samples = (signed int*)outbuf;
       int c_miss = count & 3;
       int c_loop = count-c_miss; // in samples
@@ -657,17 +754,61 @@ c32f_loop:
         }
       }
       for (i=0; i<c_miss; i++) {
-        samples[i+c_loop]=Saturate_int32(inbuf[i+c_loop] * (float)(MAX_INT));
+        samples[i+c_loop]=Saturate_int32(inbuf[i+c_loop] * multiplier);
       }
       break;
     }
     case SAMPLE_INT24: {
+      const float multiplier =  (float)(1<<23);        // 0x00800000
+      const float maxF       =  (float)((1<<23) - 1);  // 0x007fffff
+      const float minF       = -(float)(1<<23);        // 0xff800000
       unsigned char* samples = (unsigned char*)outbuf;
-      for (i=0;i<count;i++) {
-        signed int tval = Saturate_int24(inbuf[i] * (float)(1<<23));
-        samples[i*3] = tval & 0xff;
-        samples[i*3+1] = (tval & 0xff00)>>8;
-        samples[i*3+2] = (tval & 0xff0000)>>16;
+      int c_miss = count & 3;
+      if (c_miss == 0 && count != 0) c_miss=4;
+      int c_loop = count-c_miss; // in samples
+      if (c_loop) {        
+        __asm {
+          xor eax,eax                   // input offset count
+          mov edx, [c_loop]
+          shl edx, 2                     // in input bytes (*4)
+          movd mm7,[multiplier]
+          mov esi, [inbuf];
+          mov edi, [outbuf];
+          movd mm6,[maxF]               // Maximum value
+          pshufw mm7,mm7, 01000100b
+          movd mm5,[minF]               // Minimum value
+          pshufw mm6,mm6, 01000100b
+          pshufw mm5,mm5, 01000100b
+          align 16
+c24f_loop:
+          movq mm1, [esi+eax]            //  b b | a a
+          movq mm2, [esi+eax+8]          //  d d | c c
+          pfmul mm1,mm7                  // x * 24 bit
+          pfmul mm2,mm7                  // x * 24 bit
+          pfmax mm1,mm5
+          pfmax mm2,mm5
+          pfmin mm1,mm6
+          pfmin mm2,mm6
+          pf2id mm1, mm1                 //  xb=int(b) | xa=int(a)
+          pf2id mm2, mm2                 //  xb=int(d) | xa=int(c)            
+          pshufw mm3,mm1,11101110b       //  xb | xb
+          pshufw mm4,mm2,11101110b       //  xd | xd
+          movd [edi], mm1                //  store xa
+          movd [edi+3], mm3              //  store xb
+          movd [edi+6], mm2              //  store xc
+          movd [edi+9], mm4              //  store xd + 1 byte of crap
+          add eax,16
+          add edi,12
+          cmp eax, edx
+          jne c24f_loop
+          emms
+        }
+      }
+      for (i=0;i<c_miss;i++) {
+        signed int tval = Saturate_int24(inbuf[i+c_loop] * multiplier);
+        samples[(i+c_loop)*3] = tval & 0xff;
+        samples[((i+c_loop)*3)+1] = (tval & 0xff00)>>8;
+        samples[((i+c_loop)*3)+2] = (tval & 0xff0000)>>16;
       }
       break;
     }
@@ -743,12 +884,12 @@ void ConvertAudio::convertFromFloat_SSE(float* inbuf,void* outbuf, char sample_t
       int sleft = count & 3;
       count -= sleft;
 
-      float mult[4];
-      mult[0]=mult[1]=mult[2]=mult[3] = 32768.0;
+      const float mult = 32768.0f;
 
       if (count) {        
 		_asm {
-		  movups   xmm7, [mult]
+          movss    xmm7, [mult]
+          shufps   xmm7, xmm7, 00000000b
 		  mov      eax, inbuf
 		  mov      ecx, count
 		  xor      edx, edx
@@ -771,7 +912,7 @@ cf16_loop:
 		}
       }
       for (i=0;i<sleft;i++) {
-        samples[count+i]=Saturate_int16(inbuf[count+i] * 32768.0f);
+        samples[count+i]=Saturate_int16(inbuf[count+i] * mult);
       }
 
       break;
@@ -782,19 +923,16 @@ cf16_loop:
       int sleft = count & 3;
       count -= sleft;
 
-      float mult  = (float)(MAX_INT);  // (2^23)<<8  
-//      float limit = 2147483520.0f;     // (2^24-1)<<7
+      const float mult  = (float)(MAX_INT);  // (2^23)<<8  
 
       if (count) {
 		int temp[7];
         _asm {
 		  lea      esi, [temp]
           movss    xmm7, [mult]
-//          movss    xmm6, [limit]
 		  add      esi, 15
           shufps   xmm7, xmm7, 00000000b
 		  and      esi, -16                    // dqword align
-//          shufps   xmm6, xmm6, 00000000b
 
           mov      eax, inbuf
           mov      ecx, count
@@ -805,7 +943,6 @@ cf16_loop:
 cf32_loop:
           movups   xmm0, [eax+edx]             // xd | xc | xb | xa
           mulps    xmm0, xmm7                  // *= MAX_INT
-#if 1
           movhlps  xmm1, xmm0                  // xx | xx | xd | xc
           cvtps2pi mm0, xmm0                   // float -> bb | aa  --  -ve Signed Saturation
 		  cmpnltps xmm0, xmm7                  // !(xd | xc | xb | xa < MAX_INT)
@@ -814,13 +951,6 @@ cf32_loop:
           add      edx,16
 		  pxor     mm0, [esi]                  // 0x80000000 -> 0x7FFFFFFF if +ve saturation
 		  pxor     mm1, [esi+8]
-#else
-          minps    xmm0, xmm6                  // x=min(x, Limit)  --  +ve Signed Saturation -- LAME!!!
-          add      edx,16
-          movhlps  xmm1, xmm0                  // xx | xx | xd | xc
-          cvtps2pi mm0, xmm0                   // float -> bb | aa  --  -ve Signed Saturation
-          cvtps2pi mm1, xmm1                   // float -> dd | cc  --  -ve Signed Saturation
-#endif
           movq     [edi+edx-16], mm0           // store bb | aa
           cmp      ecx, edx
           movq     [edi+edx-8], mm1            // store dd | cc
@@ -829,7 +959,7 @@ cf32_loop:
         }
       }
       for (i=0;i<sleft;i++) {
-        samples[count+i]=Saturate_int32(inbuf[count+i] * (float)(MAX_INT));
+        samples[count+i]=Saturate_int32(inbuf[count+i] * mult);
       }
 
       break;
@@ -926,22 +1056,19 @@ cf16_loop:
         break;
       }
 
+      const float mult = (float)(MAX_INT);  // (2^23)<<8
+
       while (((int)samples & 15) && count) { // dqword align outbuf
-        *samples++=Saturate_int32(*inbuf++ * (float)(MAX_INT));
+        *samples++=Saturate_int32(*inbuf++ * mult);
         count-=1;
       }
       int sleft = count & 7;
       count -= sleft;
 
-      float mult  = (float)(MAX_INT);  // (2^23)<<8
-//      float limit = 2147483520.0f;     // (2^24-1)<<7
-
       if (count) {
         _asm {
           movss    xmm7, [mult]
-//          movss    xmm6, [limit]
           shufps   xmm7, xmm7, 00000000b
-//          shufps   xmm6, xmm6, 00000000b
 
           mov      eax, inbuf
           mov      ecx, count
@@ -954,10 +1081,6 @@ cf32_loop:
 		  movups   xmm1, [eax+edx+16]          // xh | xg | xf | xe         
           mulps    xmm0, xmm7                  // *= MAX_INT
           mulps    xmm1, xmm7                  // *= MAX_INT
-#if 1
-// Bloody Intel and their "indefinite integer value" it
-// is no use to man or beast, we need proper saturation
-// like AMD does with their 3DNow instructions. Grrr!!!
 		  cvtps2dq xmm2, xmm0                  // float -> dd | cc | bb | aa  --  -ve Signed Saturation
 		  cvtps2dq xmm3, xmm1                  // float -> hh | gg | ff | ee  --  -ve Signed Saturation
 		  cmpnltps xmm0, xmm7                  // !(xd | xc | xb | xa < MAX_INT)
@@ -965,13 +1088,6 @@ cf32_loop:
           add      edx,32
 		  pxor     xmm2, xmm0                  // 0x80000000 -> 0x7FFFFFFF if +ve saturation
 		  pxor     xmm3, xmm1
-#else
-		  minps    xmm0, xmm6                  // x=min(x, Limit)  --  +ve Signed Saturation  --  LAME!!!
-		  minps    xmm1, xmm6                  // x=min(x, Limit)  --  +ve Signed Saturation
-		  cvtps2dq xmm2, xmm0                  // float -> dd | cc | bb | aa  --  -ve Signed Saturation
-		  add      edx,32
-		  cvtps2dq xmm3, xmm1                  // float -> hh | gg | ff | ee  --  -ve Signed Saturation
-#endif
           movdqa   [edi+edx-32], xmm2          // store dd | cc | bb | aa
           cmp      ecx, edx
           movdqa   [edi+edx-16], xmm3          // store hh | gg | ff | ee
@@ -980,16 +1096,81 @@ cf32_loop:
         }
       }
       for (i=0;i<sleft;i++) {
-        samples[count+i]=Saturate_int32(inbuf[count+i] * (float)(MAX_INT));
+        samples[count+i]=Saturate_int32(inbuf[count+i] * mult);
       }
 
       break;
     }
     case SAMPLE_INT24: {
+      const float mult =  (float)(1<<23);        // 0x00800000
+      const float maxF =  (float)((1<<23) - 1);  // 0x007fffff
+      const float minF = -(float)(1<<23);        // 0xff800000
+
       unsigned char* samples = (unsigned char*)outbuf;
-      for (i=0;i<count;i++) {
-        signed int tval = Saturate_int24(inbuf[i] * (float)(1<<23));
-        samples[i*3] = tval & 0xff;
+
+      while (((int)inbuf & 15) && count) { // dqword align inbuf
+        const signed int tval = Saturate_int24(*inbuf++ * mult);
+        samples[0] = tval & 0xff;
+        samples[1] = (tval & 0xff00)>>8;
+        samples[2] = (tval & 0xff0000)>>16;
+        samples += 3;
+        count -= 1;
+      }
+      int sleft = count & 7;
+      if (sleft == 0 && count != 0) sleft=8;
+      count -= sleft;
+
+      if (count) {
+        _asm {
+          movss    xmm7, [mult]
+          movss    xmm6, [maxF]
+          movss    xmm5, [minF]
+          shufps   xmm7, xmm7, 00000000b
+          shufps   xmm6, xmm6, 00000000b
+          shufps   xmm5, xmm5, 00000000b
+          mov      eax, inbuf
+          mov      ecx, count
+          xor      edx, edx
+          shl      ecx, 2
+          mov      edi, samples
+          align    16
+cf24_loop:
+          movaps   xmm0, [eax+edx]             // xd | xc | xb | xa         
+          add      edi,24
+          movaps   xmm1, [eax+edx+16]          // xh | xg | xf | xe         
+
+          mulps    xmm0, xmm7                  // *= 1<<23
+          mulps    xmm1, xmm7
+          minps    xmm0, xmm6                  // min(x, 1<<23-1)
+          minps    xmm1, xmm6
+          maxps    xmm0, xmm5                  // max(x, -1<<23)
+          maxps    xmm1, xmm5
+          cvtps2dq xmm2, xmm0                  // float -> dd | cc | bb | aa
+          cvtps2dq xmm3, xmm1                  // float -> hh | gg | ff | ee
+
+          movd     [edi+ 0-24], xmm2           // store aaa
+          pshufd   xmm0, xmm2, 00111001b       // aa | dd | cc | bb
+          psrldq   xmm2, 8                     // 00 | 00 | dd | cc
+          movd     [edi+ 3-24], xmm0           // store bbb
+          psrldq   xmm0, 8                     // 00 | 00 | aa | dd
+          movd     [edi+ 6-24], xmm2           // store ccc
+          add      edx,32
+          movd     [edi+ 9-24], xmm0           // store ddd
+          pshufd   xmm1, xmm3, 00111001b       // ee | hh | gg | ff
+          movd     [edi+12-24], xmm3           // store eee
+          psrldq   xmm3, 8                     // 00 | 00 | hh | gg
+          movd     [edi+15-24], xmm1           // store fff
+          psrldq   xmm1, 8                     // 00 | 00 | ee | hh
+          movd     [edi+18-24], xmm3           // store ggg
+          cmp      ecx, edx
+          movd     [edi+21-24], xmm1           // store hhh + 1 byte of crap
+          jne      cf24_loop
+          emms
+        }
+      }
+      for (i=count;i<count+sleft;i++) {
+        const signed int tval = Saturate_int24(inbuf[i] * mult);
+        samples[i*3+0] = tval & 0xff;
         samples[i*3+1] = (tval & 0xff00)>>8;
         samples[i*3+2] = (tval & 0xff0000)>>16;
       }
@@ -1009,26 +1190,26 @@ cf32_loop:
 
 __inline int ConvertAudio::Saturate_int8(float n) {
     if (n <= -128.0f) return -128;
-    if (n >= 127.0f) return 127;
+    if (n >=  127.0f) return  127;
     return (int)(n+0.5f);
 }
 
 
 __inline short ConvertAudio::Saturate_int16(float n) {
     if (n <= -32768.0f) return -32768;
-    if (n >= 32767.0f) return 32767;
+    if (n >=  32767.0f) return  32767;
     return (short)(n+0.5f);
 }
 
 __inline int ConvertAudio::Saturate_int24(float n) {
-    if (n <= (float)-(1<<23)) return -(1<<23);
+    if (n <= (float)-(1<<23)   ) return -(1<<23);
     if (n >= (float)((1<<23)-1)) return ((1<<23)-1);
     return (int)(n+0.5f);
 }
 
 __inline int ConvertAudio::Saturate_int32(float n) {
-    if (n <= (float)MIN_INT) return MIN_INT;  
-    if (n >= (float)MAX_INT) return MAX_INT;
+    if (n <= -2147483648.0f) return 0x80000000;  
+    if (n >=  2147483647.0f) return 0x7fffffff;
     return (int)(n+0.5f);
 }
 
