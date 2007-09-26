@@ -108,31 +108,37 @@ void Tokenizer::NextToken() {
         pc++;
       break;
     } else if (pc[0] == '/' && pc[1] == '*') {    // Block comment /* */
-        const char *end = strstr(pc+2, "*/");
-        if (!end)
-          env->ThrowError("Parse error: block comment missing closing */");
+      const char *end = strstr(pc+2, "*/");
+      if (!end)
+        env->ThrowError("Parse error: block comment missing closing */");
 
-        for (const char *cp = pc+2; cp < end; cp++) {
-          if (*cp == '\n') { line++; }
-        }
-        pc = end+2;
+      for (const char *cp = pc+2; cp < end; cp++) {
+        if (*cp == '\n') { line++; }
+      }
+      pc = end+2;
       continue;
+    } else if (pc[0] == '*' && pc[1] == '/') {
+      env->ThrowError("Parse error: orphan block comment closing */");
+
     } else if (pc[0] == '[' && pc[1] == '*') {    // Nestable block comment [* *]
-        const char *end = strstr(pc+2, "*]");
-        const char *nest = strstr(pc+2, "[*");
+      const char *end = strstr(pc+2, "*]");
+      const char *nest = strstr(pc+2, "[*");
 
-		while (nest && nest+1 < end) {
-          end = strstr(end+2, "*]");
-          nest = strstr(nest+2, "[*");
-		}
-        if (!end)
-          env->ThrowError("Parse error: nestable block comment missing closing *]");
+      while (nest && nest+1 < end) {
+        end = strstr(end+2, "*]");
+        nest = strstr(nest+2, "[*");
+      }
+      if (!end)
+        env->ThrowError("Parse error: nestable block comment missing closing *]");
 
-        for (const char *cp = pc+2; cp < end; cp++) {
-          if (*cp == '\n') { line++; }
-        }
-        pc = end+2;
+      for (const char *cp = pc+2; cp < end; cp++) {
+        if (*cp == '\n') { line++; }
+      }
+      pc = end+2;
       continue;
+    } else if (pc[0] == '*' && pc[1] == ']') {
+      env->ThrowError("Parse error: orphan nestable block comment closing *]");
+
     } else {
       break;
     }
