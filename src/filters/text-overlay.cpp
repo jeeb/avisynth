@@ -511,7 +511,7 @@ void Antialiaser::GetAlphaRect() {
 
 			// Check left and right neighbours, extend the halo
 			// mask 8 pixels in from the nearest lit pixels.
-			for(i=-4; i<12; i++) { // For interlaced include extra half cells above and below
+			for(i=0; i<8; i++) {
 			  cenmask |= bitexl[src[srcpitch*i-1]];
 			  cenmask |= bitexr[src[srcpitch*i+1]];
 			}
