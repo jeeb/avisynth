@@ -378,9 +378,15 @@ void Antialiaser::GetAlphaRect() {
               bitexl[256],    // expand to left bit
               bitexr[256];    // expand to right bit
   static bool fInited = false;
+  static unsigned short gamma[129]; // Gamma lookups
 
   if (!fInited) {
+    fInited = true;
     int i;
+
+    const double scale = 516*64/sqrt(128);
+    for(i=0; i<=128; i++)
+      gamma[i]=unsigned short(sqrt(i) * scale + 0.5); // Gamma = 2.0
 
     for(i=0; i<256; i++) {
       BYTE b=0, l=0, r=0;
@@ -398,16 +404,14 @@ void Antialiaser::GetAlphaRect() {
       bitexl[i] = l;
       bitexr[i] = r;
     }
-
-    fInited = true;
   }
 
   const int RYtext = ((textcolor>>16)&255), GUtext = ((textcolor>>8)&255), BVtext = (textcolor&255);
   const int RYhalo = ((halocolor>>16)&255), GUhalo = ((halocolor>>8)&255), BVhalo = (halocolor&255);
 
   // Scaled Alpha
-  const int Atext = (255 - ((textcolor >> 24) & 0xFF) ) * 516;
-  const int Ahalo = (255 - ((halocolor >> 24) & 0xFF) ) * 516;
+  const int Atext = 255 - ((textcolor >> 24) & 0xFF);
+  const int Ahalo = 255 - ((halocolor >> 24) & 0xFF);
 
   const int srcpitch = (w+4+3) & -4;
 
@@ -436,7 +440,7 @@ void Antialiaser::GetAlphaRect() {
         tmp |= src[srcpitch*(8+i)+1];
       }
 */
-      DWORD tmp;
+      DWORD tmp = interlaced;
       __asm {           // test if the whole area isn't just plain black
         mov edx, srcpitch
         mov esi, src
@@ -444,10 +448,33 @@ void Antialiaser::GetAlphaRect() {
         dec esi
         shl ecx, 3
         sub esi, ecx  ; src - 8*pitch - 1
+        cmp tmp,-1
+        jnz do32
+
+        lea edi,[esi+edx*2]
+        xor eax,eax
+        xor ecx,ecx
+        jmp do24
+do32:
+        sar ecx, 1
+        sub esi, ecx  ; src - 12*pitch - 1
         lea edi,[esi+edx*2]
 
-        mov eax, [esi]  ; repeat 24 times
+        mov eax, [esi]  ; repeat 32 times
         mov ecx, [esi+edx]
+        lea esi,[esi+edx*4]
+        or eax, [edi]
+        or ecx, [edi+edx]
+        lea edi,[edi+edx*4]
+        or eax, [esi]
+        or ecx, [esi+edx]
+        lea esi,[esi+edx*4]
+        or eax, [edi]
+        or ecx, [edi+edx]
+        lea edi,[edi+edx*4]
+do24:
+        or eax, [esi]  ; repeat 24 times
+        or ecx, [esi+edx]
         lea esi,[esi+edx*4]
         or eax, [edi]
         or ecx, [edi+edx]
@@ -497,69 +524,77 @@ void Antialiaser::GetAlphaRect() {
         alpha1 = alpha2 = 0;
 
 		if (interlaced) {
-		  // How many lit pixels in the centre cell?
-		  for(i=-4; i<12; i++) // For interlaced include extra half cells above and below
-			alpha1 += bitcnt[src[srcpitch*i]];
-
-		  if (alpha1) {
-			// If we have any lit pixels we fully occupy the cell.
-			alpha2 = 64;
-		  }
-		  else {
-			// No lit pixels here so build the halo mask from the neighbours
-			BYTE cenmask = 0;
-
+		  BYTE topmask=0, cenmask=0, botmask=0;
+		  BYTE hmasks[16], mask;
+		  
+		  for(i=-4; i<12; i++) {// For interlaced include extra half cells above and below
+			mask = src[srcpitch*i];
+			// How many lit pixels in the centre cell?
+			alpha1 += bitcnt[mask];
+			// turn on all halo bits if cell has any lit pixels
+			mask = - !! mask;
 			// Check left and right neighbours, extend the halo
 			// mask 8 pixels in from the nearest lit pixels.
-			for(i=0; i<8; i++) {
-			  cenmask |= bitexl[src[srcpitch*i-1]];
-			  cenmask |= bitexr[src[srcpitch*i+1]];
-			}
-
-			if (cenmask == 0xFF) {
-			  // If we have hard adjacent lit pixels we fully occupy this cell.
-			  alpha2 = 64;
-			}
-			else {
-			  BYTE tmasks[16], mask;
-
-			  mask = cenmask;
-			  for(i=-4; i<0; i++)
-				tmasks[11-i] = mask;
-			  for(i=0; i<12; i++) {  // For interlaced include extra half cells above
-				// Check the 3.5 cells above
-				mask |= bitexl[ src[srcpitch*(-1-i)-1] ];
-				mask |=    - !! src[srcpitch*(-1-i)  ];
-				mask |= bitexr[ src[srcpitch*(-1-i)+1] ];
-				tmasks[11-i] = mask;
-			  }
-
-			  mask = cenmask;
-			  for(i=-4; i<0; i++)
-				alpha2 += bitcnt[tmasks[i+4] | mask];
-			  for(i=0; i<12; i++) {  // For interlaced include extra half cells below
-				// Check the 3.5 cells below
-				mask |= bitexl[ src[srcpitch*(8+i)-1] ];
-				mask |=    - !! src[srcpitch*(8+i)  ];
-				mask |= bitexr[ src[srcpitch*(8+i)+1] ];
-
-				alpha2 += bitcnt[tmasks[i+4] | mask];
-			  }
-			  alpha2 += 1;
-			  alpha2 /= 2;
-			}
+			mask |= bitexr[src[srcpitch*i-1]];
+			mask |= bitexl[src[srcpitch*i+1]];
+			hmasks[i+4] = mask;
 		  }
-		  alpha1 += 1;
-		  alpha1 /= 2;
+
+		  // Extend halo vertically to 8x8 blocks
+		  for(i=-4; i<4;  i++) topmask |= hmasks[i+4];
+		  for(i=0;  i<8;  i++) cenmask |= hmasks[i+4];
+		  for(i=4;  i<12; i++) botmask |= hmasks[i+4];
+		  // Check the 3x1.5 cells above
+		  for(mask = topmask, i=-4; i<4; i++) {
+			mask |= bitexr[ src[srcpitch*(i+8)-1] ];
+			mask |=    - !! src[srcpitch*(i+8)  ];
+			mask |= bitexl[ src[srcpitch*(i+8)+1] ];
+			hmasks[i+4] |= mask;
+		  }
+		  for(mask = cenmask, i=0; i<8; i++) {
+			mask |= bitexr[ src[srcpitch*(i+8)-1] ];
+			mask |=    - !! src[srcpitch*(i+8)  ];
+			mask |= bitexl[ src[srcpitch*(i+8)+1] ];
+			hmasks[i+4] |= mask;
+		  }
+		  for(mask = botmask, i=4; i<12; i++) {
+			mask |= bitexr[ src[srcpitch*(i+8)-1] ];
+			mask |=    - !! src[srcpitch*(i+8)  ];
+			mask |= bitexl[ src[srcpitch*(i+8)+1] ];
+			hmasks[i+4] |= mask;
+		  }
+		  // Check the 3x1.5 cells below
+		  for(mask = botmask, i=11; i>=4; i--) {
+			mask |= bitexr[ src[srcpitch*(i-8)-1] ];
+			mask |=    - !! src[srcpitch*(i-8)  ];
+			mask |= bitexl[ src[srcpitch*(i-8)+1] ];
+			hmasks[i+4] |= mask;
+		  }
+		  for(mask = cenmask,i=7; i>=0; i--) {
+			mask |= bitexr[ src[srcpitch*(i-8)-1] ];
+			mask |=    - !! src[srcpitch*(i-8)  ];
+			mask |= bitexl[ src[srcpitch*(i-8)+1] ];
+			hmasks[i+4] |= mask;
+		  }
+		  for(mask = topmask, i=3; i>=-4; i--) {
+			mask |= bitexr[ src[srcpitch*(i-8)-1] ];
+			mask |=    - !! src[srcpitch*(i-8)  ];
+			mask |= bitexl[ src[srcpitch*(i-8)+1] ];
+			hmasks[i+4] |= mask;
+		  }
+		  // count the halo pixels
+		  for(i=0; i<16; i++)
+			alpha2 += bitcnt[hmasks[i]];
 		}
 		else {
 		  // How many lit pixels in the centre cell?
 		  for(i=0; i<8; i++)
 			alpha1 += bitcnt[src[srcpitch*i]];
+		  alpha1 *=2;
 
 		  if (alpha1) {
 			// If we have any lit pixels we fully occupy the cell.
-			alpha2 = 64;
+			alpha2 = 128;
 		  }
 		  else {
 			// No lit pixels here so build the halo mask from the neighbours
@@ -568,38 +603,41 @@ void Antialiaser::GetAlphaRect() {
 			// Check left and right neighbours, extend the halo
 			// mask 8 pixels in from the nearest lit pixels.
 			for(i=0; i<8; i++) {
-			  cenmask |= bitexl[src[srcpitch*i-1]];
-			  cenmask |= bitexr[src[srcpitch*i+1]];
+			  cenmask |= bitexr[src[srcpitch*i-1]];
+			  cenmask |= bitexl[src[srcpitch*i+1]];
 			}
 
 			if (cenmask == 0xFF) {
 			  // If we have hard adjacent lit pixels we fully occupy this cell.
-			  alpha2 = 64;
+			  alpha2 = 128;
 			}
 			else {
-			  BYTE tmasks[8], mask;
+			  BYTE hmasks[8], mask;
 
 			  mask = cenmask;
 			  for(i=0; i<8; i++) {
 				// Check the 3 cells above
-				mask |= bitexl[ src[srcpitch*(-1-i)-1] ];
-				mask |=    - !! src[srcpitch*(-1-i)  ];
-				mask |= bitexr[ src[srcpitch*(-1-i)+1] ];
-				tmasks[7-i] = mask;
+				mask |= bitexr[ src[srcpitch*(i+8)-1] ];
+				mask |=    - !! src[srcpitch*(i+8)  ];
+				mask |= bitexl[ src[srcpitch*(i+8)+1] ];
+				hmasks[i] = mask;
 			  }
 
 			  mask = cenmask;
-			  for(i=0; i<8; i++) {
+			  for(i=7; i>=0; i--) {
 				// Check the 3 cells below
-				mask |= bitexl[ src[srcpitch*(8+i)-1] ];
-				mask |=    - !! src[srcpitch*(8+i)  ];
-				mask |= bitexr[ src[srcpitch*(8+i)+1] ];
+				mask |= bitexr[ src[srcpitch*(i-8)-1] ];
+				mask |=    - !! src[srcpitch*(i-8)  ];
+				mask |= bitexl[ src[srcpitch*(i-8)+1] ];
 
-				alpha2 += bitcnt[tmasks[i] | mask];
+				alpha2 += bitcnt[hmasks[i] | mask];
 			  }
+			  alpha2 *=2;
 			}
 		  }
 		}
+		alpha2  = gamma[alpha2];
+		alpha1  = gamma[alpha1];
 
 		alpha2 -= alpha1;        
 		alpha2 *= Ahalo;
