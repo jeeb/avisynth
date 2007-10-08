@@ -993,15 +993,15 @@ EXCEPTION_DISPOSITION __cdecl _Exp_except_handler2(struct _EXCEPTION_RECORD *Exc
   struct Est_Frame {  // My extended EXCEPTION_REGISTRATION record
 	void	  *prev;
 	void	  *handler;
-	unsigned  *retarg[4];	  // pointer where to stash exception code
+	unsigned  *retarg;	  // pointer where to stash exception code
   };
 
   if (ExceptionRecord->ExceptionFlags == 0)	{  // First pass?
-	*(((struct Est_Frame *)EstablisherFrame)->retarg[0]) = ExceptionRecord->ExceptionCode;
-	*(((struct Est_Frame *)EstablisherFrame)->retarg[1]) = (unsigned)ExceptionRecord->ExceptionAddress;
+	(((struct Est_Frame *)EstablisherFrame)->retarg)[0] = ExceptionRecord->ExceptionCode;
+	(((struct Est_Frame *)EstablisherFrame)->retarg)[1] = (unsigned)ExceptionRecord->ExceptionAddress;
 	if (ExceptionRecord->NumberParameters >= 2)	{  // Extra Info?
-	  *(((struct Est_Frame *)EstablisherFrame)->retarg[2]) = ExceptionRecord->ExceptionInformation[0];
-	  *(((struct Est_Frame *)EstablisherFrame)->retarg[3]) = ExceptionRecord->ExceptionInformation[1];
+	  (((struct Est_Frame *)EstablisherFrame)->retarg)[2] = ExceptionRecord->ExceptionInformation[0];
+	  (((struct Est_Frame *)EstablisherFrame)->retarg)[3] = ExceptionRecord->ExceptionInformation[1];
 	}
   }
   return ExceptionContinueSearch;
@@ -1211,7 +1211,7 @@ HRESULT CAVIStreamSynth::Read2(LONG lStart, LONG lSamples, LPVOID lpBuffer, LONG
         else {
           _snprintf(buf, 127, "CAVIStreamSynth: Unknown system exception - 0x%x at 0x%x", code[0], code[1]);
         }
-		parent->MakeErrorStream(buf);
+		parent->MakeErrorStream(parent->env->SaveString(buf));
       }
       else parent->MakeErrorStream("Avisynth: unknown exception");
       code[0] = 0;
