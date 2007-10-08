@@ -555,6 +555,7 @@ SeekExit:
   HRESULT __stdcall GetSample::Run(REFERENCE_TIME tStart) {
     dssRPT2(dssCMD, "GetSample::Run(%I64d), state was %d\n", tStart, state);
     state = State_Running;
+    ResetEvent(evtDoneWithSample);
     return S_OK;
   }
 
@@ -1024,7 +1025,7 @@ pbFormat:
   HRESULT __stdcall GetSample::BeginFlush() {
     dssRPT1(dssCMD, "GetSample::BeginFlush() (%s)\n", streamName);
     flushing = true;
-    SetEvent(evtDoneWithSample);
+    PulseEvent(evtDoneWithSample); // Free task if waiting
     graphTimeout = true;
     return S_OK;
   }
@@ -1506,7 +1507,7 @@ DirectShowSource::DirectShowSource(const char* filename, int _avg_time_per_frame
                                    bool _enable_audio, bool _enable_video, bool _convert_fps, unsigned _media,
                                    int _timeout, int _frames, LOG* _log, IScriptEnvironment* env)
   : get_sample(_enable_audio, _enable_video, _media, _log), seekmode(_seekmode), convert_fps(_convert_fps),
-    gb(NULL), TrapTimeouts(_timeout < 0), WaitTimeout(abs(_timeout)), log(_log) {
+    gb(NULL), currentFrame(0), TrapTimeouts(_timeout < 0), WaitTimeout(abs(_timeout)), log(_log) {
 
   dssRPT0(dssNEW, "New DirectShowSource.\n");
 
@@ -1855,21 +1856,28 @@ DirectShowSource::DirectShowSource(const char* filename, int _avg_time_per_frame
     HRESULT hr = S_OK;
     switch (seekmode) {
       case 0: // Seekzero
-        if (n < cur_frame)
+        if (n < cur_frame) {
           hr = get_sample.SeekTo(0);  // stepping back
+          cur_frame = 0;
+		}
         break;
 
       case 1: // Seek
         if (n < cur_frame) {
           hr = get_sample.SeekTo(sample_time);
+          cur_frame = n;
         }
         else if (convert_fps) {
-          if (sample_time > get_sample.GetSampleStartTime() + get_sample.avg_time_per_frame*10)
+          if (sample_time > get_sample.GetSampleStartTime() + get_sample.avg_time_per_frame*30) {
             hr = get_sample.SeekTo(sample_time);
+            cur_frame = n;
+          }
         }
         else {
-          if (n > cur_frame+10)
+          if (n > cur_frame+30) {
             hr = get_sample.SeekTo(sample_time);
+            cur_frame = n;
+          }
         }
         break;
 
@@ -1883,7 +1891,7 @@ DirectShowSource::DirectShowSource(const char* filename, int _avg_time_per_frame
       env->ThrowError("DirectShowSource : The video Graph failed to restart after seeking. Status = 0x%x", hr);
 
     if (convert_fps) {
-      while (get_sample.GetSampleStartTime() <= sample_time) {
+      while (get_sample.GetSampleStartTime() <= sample_time || !currentFrame) {
         sampleStartTime = get_sample.GetSampleStartTime();
         cur_frame = int(sampleStartTime / get_sample.avg_time_per_frame); // Floor()
         currentFrame = get_sample.GetCurrentFrame(env, n, TrapTimeouts, timeout);
