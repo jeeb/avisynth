@@ -42,8 +42,8 @@
 ********************************************************************/
 
 AVSFunction Overlay_filters[] = {
-  { "Overlay", "cc[x]i[y]i[mask]c[opacity]f[mode]s[greymask]b[output]s[ignore_conditional]b[PC_Range]b", Overlay::Create },   
-    // 0, src clip 
+  { "Overlay", "cc[x]i[y]i[mask]c[opacity]f[mode]s[greymask]b[output]s[ignore_conditional]b[PC_Range]b", Overlay::Create },
+    // 0, src clip
     // 1, overlay clip
     // 2, x
     // 3, y
@@ -56,7 +56,7 @@ AVSFunction Overlay_filters[] = {
     // 10, full YUV range.
   { 0 }
 };
- 
+
 enum {
   ARG_SRC = 0,
   ARG_OVERLAY = 1,
@@ -85,7 +85,7 @@ GenericVideoFilter(_child) {
   offset_x = args[ARG_X].AsInt(0);
   offset_y = args[ARG_Y].AsInt(0);
 
-  overlay = args[ARG_OVERLAY].AsClip();  
+  overlay = args[ARG_OVERLAY].AsClip();
   overlayVi = overlay->GetVideoInfo();
   overlayConv = SelectInputCS(&overlayVi, env);
 
@@ -119,16 +119,16 @@ GenericVideoFilter(_child) {
     }
 
   }
-   
+
   inputConv = SelectInputCS(inputVi, env);
 
   if (!inputConv) {
     env->ThrowError("Overlay: Colorspace not supported.");
   }
-  
+
   if (args[ARG_OUTPUT].Defined())
     outputConv = SelectOutputCS(args[ARG_OUTPUT].AsString(),env);
-  else 
+  else
     outputConv = SelectOutputCS(0, env);
 
   img = new Image444(vi.width, vi.height);
@@ -150,8 +150,10 @@ Overlay::~Overlay() {
   }
   overlayImg->free();
   delete overlayImg;
-  img->free();
-  delete img;
+  if (img) {
+    img->free();
+    delete img;
+  }
   free(inputVi);
   delete func;
   delete outputConv;
@@ -186,12 +188,12 @@ PVideoFrame __stdcall Overlay::GetFrame(int n, IScriptEnvironment *env) {
 
 
   // fetch current mask (if given)
-  
+
   if (mask) {
     PVideoFrame Mframe = mask->GetFrame(n, env);
     if (greymask)
       maskConv->ConvertImageLumaOnly(Mframe, maskImg, env);
-    else 
+    else
       maskConv->ConvertImage(Mframe, maskImg, env);
 
     img->ReturnOriginal(true);
@@ -302,21 +304,21 @@ ConvertFrom444* Overlay::SelectOutputCS(const char* name, IScriptEnvironment* en
 
   if (!lstrcmpi(name, "RGB")) {
     vi.pixel_type = VideoInfo::CS_BGR32;
-    if (full_range) 
+    if (full_range)
       return new Convert444NonCCIRToRGB();
     return new Convert444ToRGB();
   }
 
   if (!lstrcmpi(name, "RGB32")) {
     vi.pixel_type = VideoInfo::CS_BGR32;
-    if (full_range) 
+    if (full_range)
       return new Convert444NonCCIRToRGB();
     return new Convert444ToRGB();
   }
 
   if (!lstrcmpi(name, "RGB24")) {
     vi.pixel_type = VideoInfo::CS_BGR24;
-    if (full_range) 
+    if (full_range)
       return new Convert444NonCCIRToRGB();
     return new Convert444ToRGB();
   }
@@ -349,7 +351,7 @@ ConvertTo444* Overlay::SelectInputCS(VideoInfo* VidI, IScriptEnvironment* env) {
       c = new Convert444FromRGB();
     c->SetVideoInfo(VidI);
     return c;
-  } 
+  }
   return 0;
 }
 
@@ -386,8 +388,8 @@ void Overlay::ClipFrames(Image444* input, Image444* overlay, int x, int y) {
     overlay->SubFrame(0,0,overlay->w(), input->h());
   }
 
-  // Clip right/ bottom of input 
-  
+  // Clip right/ bottom of input
+
   if(input->w() > overlay->w()) {
     input->SubFrame(0,0, overlay->w(), input->h());
   }
