@@ -236,6 +236,9 @@ PVideoFrame __stdcall Cache::childGetFrame(int n, IScriptEnvironment* env)
   PVideoFrame result = child->GetFrame(n, env);
   InterlockedDecrement(&cacheDepth);
 
+  if (!result)
+    env->ThrowError("Cache: Filter returned NULL PVideoFrame");
+
 #ifdef _DEBUG
   int *p=(int *)(result->vfb->data);
   if ((p[-4] != 0xDEADBEAF)
