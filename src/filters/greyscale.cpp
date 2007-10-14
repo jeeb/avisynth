@@ -222,9 +222,9 @@ xlend3:
 	const int cyg = int(0.587*32768+0.5);
 	const int cyr = int(0.299*32768+0.5);
 
-	const int cyb709 = int(0.0721*32768+0.5);
-	const int cyg709 = int(0.7154*32768+0.5);
-	const int cyr709 = int(0.2125*32768+0.5);
+	const int cyb709 = int(0.0722*32768+0.5);
+	const int cyg709 = int(0.7152*32768+0.5);
+	const int cyr709 = int(0.2126*32768+0.5);
 
 	__int64 rgb2lum;
 
@@ -312,13 +312,13 @@ rgb2lum_even:
     BYTE* p_count = srcp;
     const int rgb_inc = vi.IsRGB32() ? 4 : 3;
 	if (theMatrix == Rec709) {
-//	  const int cyb709 = int(0.0721*65536+0.5); //  4725
-//	  const int cyg709 = int(0.7154*65536+0.5); // 46884
-//	  const int cyr709 = int(0.2125*65536+0.5); // 13927
+//	  const int cyb709 = int(0.0722*65536+0.5); //  4732
+//	  const int cyg709 = int(0.7152*65536+0.5); // 46871
+//	  const int cyr709 = int(0.2126*65536+0.5); // 13933
 
 	  for (int y=0; y<vi.height; ++y) {
 		for (int x=0; x<vi.width; x++) {
-		  int greyscale=((srcp[0]*4725)+(srcp[1]*46884)+(srcp[2]*13927)+32768)>>16; // This is the correct brigtness calculations (standardized in Rec. 709)
+		  int greyscale=((srcp[0]*4732)+(srcp[1]*46871)+(srcp[2]*13933)+32768)>>16; // This is the correct brigtness calculations (standardized in Rec. 709)
 		  srcp[0]=srcp[1]=srcp[2]=greyscale;
 		  srcp += rgb_inc;
 		}

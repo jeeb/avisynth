@@ -36,20 +36,32 @@
 
 #include "convert_yuy2.h"
 
+//  const int cyb = int(0.114*219/255*32768+0.5);  // 0x0C88
+//  const int cyg = int(0.587*219/255*32768+0.5);  // 0x4087
+//  const int cyr = int(0.299*219/255*32768+0.5);  // 0x20DE
 
-//  const int cyb = int(0.114*219/255*32768+0.5); // 0x0C88
-//  const int cyg = int(0.587*219/255*32768+0.5); // 0x4087
-//  const int cyr = int(0.299*219/255*32768+0.5); // 0x20DE
+//  const int cyb = int(0.0722*219/255*32768+0.5); // 0x07F0
+//  const int cyg = int(0.7152*219/255*32768+0.5); // 0x4E9F
+//  const int cyr = int(0.2126*219/255*32768+0.5); // 0x175F
+
+//  const int cyb = int(0.114*32768+0.5);          // 0x0E97
+//  const int cyg = int(0.587*32768+0.5);          // 0x4B23
+//  const int cyr = int(0.299*32768+0.5);          // 0x2646
+
+//  const int cyb = int(0.0722*32768+0.5);         // 0x093E
+//  const int cyg = int(0.7152*32768+0.5);         // 0x5B8C
+//  const int cyr = int(0.2126*32768+0.5);         // 0x1B36
+
 //__declspec(align(8)) const __int64 cybgr_64 = (__int64)cyb|(((__int64)cyg)<<16)|(((__int64)cyr)<<32);
   __declspec(align(8)) static const __int64 cybgr_64[4] ={0x000020DE40870C88,
-                                                          0x0000175C4EA507ED,
+                                                          0x0000175F4E9F07F0,
                                                           0x000026464B230E97,
-                                                          0x00001B335B92093B};
+                                                          0x00001B365B8C093E};
 
   __declspec(align(8)) static const __int64 fpix_mul[4] ={0x0000503300003F74,    //=(1/((1-0.299)*255/112)<<15+0.5),  (1/((1-0.114)*255/112)<<15+0.5)
-                                                          0x0000476400003C97,    //=(1/((1-0.2125)*255/112)<<15+0.5), (1/((1-0.0721)*255/112)<<15+0.5)
+                                                          0x0000476600003C6E,    //=(1/((1-0.2126)*255/112)<<15+0.5), (1/((1-0.0722)*255/112)<<15+0.5)
                                                           0x00005AF1000047F4,    //=(1/((1-0.299)*255/127)<<15+0.5),  (1/((1-0.114)*255/127)<<15+0.5)
-                                                          0x000050F3000044B4};   //=(1/((1-0.2125)*255/127)<<15+0.5), (1/((1-0.0721)*255/127)<<15+0.5)
+                                                          0x000050F6000044B6};   //=(1/((1-0.2126)*255/127)<<15+0.5), (1/((1-0.0722)*255/127)<<15+0.5)
 
   __declspec(align(8)) static const __int64 rb_mask     = 0x0000ffff0000ffff;    //=Mask for unpacked R and B
   __declspec(align(8)) static const __int64 fpix_add    = 0x0080800000808000;    //=(128.5) << 16
@@ -232,12 +244,12 @@ PVideoFrame __stdcall ConvertToYUY2::GetFrame(int n, IScriptEnvironment* env)
       yuv += yuv_offset;
     }
   } else if (theMatrix == PC_709) {
-    const int cyb = int(0.0721*65536+0.5);
-    const int cyg = int(0.7154*65536+0.5);
-    const int cyr = int(0.2125*65536+0.5);
+    const int cyb = int(0.0722*65536+0.5);
+    const int cyg = int(0.7152*65536+0.5);
+    const int cyr = int(0.2126*65536+0.5);
 
-    const int ku  = int(127./(255.*(1.0-0.0721))*32768+0.5);
-    const int kv  = int(127./(255.*(1.0-0.2125))*32768+0.5);
+    const int ku  = int(127./(255.*(1.0-0.0722))*32768+0.5);
+    const int kv  = int(127./(255.*(1.0-0.2126))*32768+0.5);
 
     for (int y=vi.height; y>0; --y)
     {
@@ -261,12 +273,12 @@ PVideoFrame __stdcall ConvertToYUY2::GetFrame(int n, IScriptEnvironment* env)
       yuv += yuv_offset;
     }
   } else if (theMatrix == Rec709) {
-    const int cyb = int(0.0721*219/255*65536+0.5);
-    const int cyg = int(0.7154*219/255*65536+0.5);
-    const int cyr = int(0.2125*219/255*65536+0.5);
+    const int cyb = int(0.0722*219/255*65536+0.5);
+    const int cyg = int(0.7152*219/255*65536+0.5);
+    const int cyr = int(0.2126*219/255*65536+0.5);
 
-    const int ku  = int(112./(255.*(1.0-0.0721))*32768+0.5);
-    const int kv  = int(112./(255.*(1.0-0.2125))*32768+0.5);
+    const int ku  = int(112./(255.*(1.0-0.0722))*32768+0.5);
+    const int kv  = int(112./(255.*(1.0-0.2126))*32768+0.5);
 
     for (int y=vi.height; y>0; --y)
     {
@@ -481,12 +493,12 @@ PVideoFrame __stdcall ConvertBackToYUY2::GetFrame(int n, IScriptEnvironment* env
       yuv += yuv_offset;
     }
   } else if (theMatrix == PC_709) {
-    const int cyb = int(0.0721*65536+0.5);
-    const int cyg = int(0.7154*65536+0.5);
-    const int cyr = int(0.2125*65536+0.5);
+    const int cyb = int(0.0722*65536+0.5);
+    const int cyg = int(0.7152*65536+0.5);
+    const int cyr = int(0.2126*65536+0.5);
 
-    const int ku  = int(127./(255.*(1.0-0.0721))*65536+0.5);
-    const int kv  = int(127./(255.*(1.0-0.2125))*65536+0.5);
+    const int ku  = int(127./(255.*(1.0-0.0722))*65536+0.5);
+    const int kv  = int(127./(255.*(1.0-0.2126))*65536+0.5);
 
     for (int y=vi.height; y>0; --y)
     {
@@ -510,12 +522,12 @@ PVideoFrame __stdcall ConvertBackToYUY2::GetFrame(int n, IScriptEnvironment* env
       yuv += yuv_offset;
     }
   } else if (theMatrix == Rec709) {
-    const int cyb = int(0.0721*219/255*65536+0.5);
-    const int cyg = int(0.7154*219/255*65536+0.5);
-    const int cyr = int(0.2125*219/255*65536+0.5);
+    const int cyb = int(0.0722*219/255*65536+0.5);
+    const int cyg = int(0.7152*219/255*65536+0.5);
+    const int cyr = int(0.2126*219/255*65536+0.5);
 
-    const int ku  = int(112./(255.*(1.0-0.0721))*32768+0.5);
-    const int kv  = int(112./(255.*(1.0-0.2125))*32768+0.5);
+    const int ku  = int(112./(255.*(1.0-0.0722))*32768+0.5);
+    const int kv  = int(112./(255.*(1.0-0.2126))*32768+0.5);
 
     for (int y=vi.height; y>0; --y)
     {
