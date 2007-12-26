@@ -91,9 +91,15 @@ Color::Color(PClip _child, double _gain_y, double _off_y, double _gamma_y, doubl
 
 PVideoFrame __stdcall Color::GetFrame(int frame, IScriptEnvironment* env)
 {
+	PVideoFrame src;
+	unsigned long *srcp;
+//	PVideoFrame dst;
+//	unsigned long *dstp;
+	int pitch, w, h;
 	int i,j,wby4;
 	int modulo;
 //	int dmodulo;
+//	int dpitch;
 	PIXELDATA	pixel;
 
 #ifdef _DEBUG
@@ -106,7 +112,6 @@ PVideoFrame __stdcall Color::GetFrame(int frame, IScriptEnvironment* env)
 #endif
   if (colorbars) {
     PVideoFrame dst= env->NewVideoFrame(vi);
-    env->MakeWritable(&dst);
     int* pdst=(int*)dst->GetWritePtr(PLANAR_Y);
     int Y=16+abs(219-((frame+219)%438));
     Y|=(Y<<8)|(Y<<16)|(Y<<24);
@@ -143,6 +148,7 @@ PVideoFrame __stdcall Color::GetFrame(int frame, IScriptEnvironment* env)
 //	dpitch = dst->GetPitch();
 //	dmodulo = dpitch - dst->GetRowSize();
   if (analyze||autowhite||autogain) {
+    unsigned int accum_Y[256],accum_U[256],accum_V[256];
     for (int i=0;i<256;i++) {
       accum_Y[i]=0;
       accum_U[i]=0;
@@ -542,6 +548,7 @@ void Color::MakeGammaLUT(void)
 
 }
 
+#ifdef _DEBUG
 void	Color::YUV2RGB(int y, int u, int v, int *r, int *g, int *b, int matrix)
 {
   if (matrix==0) {
@@ -631,6 +638,7 @@ void	Color::CheckYUV(PIXELDATA *pixel0, PIXELDATA *pixel, COUNT *y, COUNT *u, CO
 	if(pixel->yuv.v > v->max)			{ v->max = pixel->yuv.v;}
 	v->ave += pixel->yuv.v;
 }
+#endif
 
 bool Color::CheckParms(const char *_levels, const char *_matrix, const char *_opt)
 {
