@@ -406,12 +406,15 @@ PVideoFrame Convert444ToYUY2::ConvertImage(Image444* src, PVideoFrame dst, IScri
 
 /*****   YUV 4:4:4 -> RGB24/32   *******/
 
+#define Kr 0.299
+#define Kg 0.587
+#define Kb 0.114
 
 PVideoFrame Convert444ToRGB::ConvertImage(Image444* src, PVideoFrame dst, IScriptEnvironment* env) {
-  const int crv = int(1.403*255/219*65536+0.5);
-  const int cbu = int(1.770*255/219*65536+0.5);
-  const int cgu = int(0.344*255/219*65536+0.5);
-  const int cgv = int(0.714*255/219*65536+0.5);
+  const int crv = int(2*(1-Kr)       * 255.0/224.0 * 65536+0.5);
+  const int cgv = int(2*(1-Kr)*Kr/Kg * 255.0/224.0 * 65536+0.5);
+  const int cgu = int(2*(1-Kb)*Kb/Kg * 255.0/224.0 * 65536+0.5);
+  const int cbu = int(2*(1-Kb)       * 255.0/224.0 * 65536+0.5);
 
   env->MakeWritable(&dst);
 
@@ -433,17 +436,13 @@ PVideoFrame Convert444ToRGB::ConvertImage(Image444* src, PVideoFrame dst, IScrip
   for (int y=0; y<h; y++) {
     int xRGB = 0;
     for (int x=0; x<w; x++) {
-      int Y = ((srcY[x] - 16) * int(255.0/219.0*65536+0.5))>>16;
-      int U = ((srcU[x] - 128) * int(255.0/239.0*65536+0.5))>>16;
-      int V = ((srcV[x] - 128) * int(255.0/239.0*65536+0.5))>>16;
+      const int Y = (srcY[x] -  16) * int(255.0/219.0*65536+0.5);
+      const int U =  srcU[x] - 128;
+      const int V =  srcV[x] - 128;
 
-      int r = Y + ((V * crv)>>16);
-      int b = Y + ((U * cbu)>>16);
-      int g = Y - ((V * cgv + U * cgu)>>16);
-
-      dstP[xRGB] = min(max(b,0),255);
-      dstP[xRGB+1] = min(max(g,0),255);
-      dstP[xRGB+2] = min(max(r,0),255);
+      dstP[xRGB+0] = ScaledPixelClip(Y + U * cbu);
+      dstP[xRGB+1] = ScaledPixelClip(Y - U * cgu - V * cgv);
+      dstP[xRGB+2] = ScaledPixelClip(Y           + V * crv);
       xRGB += bpp;
     }
     srcY+=srcPitch;
@@ -455,10 +454,10 @@ PVideoFrame Convert444ToRGB::ConvertImage(Image444* src, PVideoFrame dst, IScrip
 }
 
 PVideoFrame Convert444NonCCIRToRGB::ConvertImage(Image444* src, PVideoFrame dst, IScriptEnvironment* env) {
-  const int crv = int(1.403*65536+0.5);
-  const int cbu = int(1.770*65536+0.5);
-  const int cgu = int(0.344*65536+0.5);
-  const int cgv = int(0.714*65536+0.5);
+  const int crv = int(2*(1-Kr)       * 65536+0.5);
+  const int cgv = int(2*(1-Kr)*Kr/Kg * 65536+0.5);
+  const int cgu = int(2*(1-Kb)*Kb/Kg * 65536+0.5);
+  const int cbu = int(2*(1-Kb)       * 65536+0.5);
 
   env->MakeWritable(&dst);
 
@@ -480,17 +479,13 @@ PVideoFrame Convert444NonCCIRToRGB::ConvertImage(Image444* src, PVideoFrame dst,
   for (int y=0; y<h; y++) {
     int xRGB = 0;
     for (int x=0; x<w; x++) {
-      int Y = srcY[x];
-      int U = srcU[x] - 128;
-      int V = srcV[x] - 128;
+      const int Y = srcY[x]*65536;
+      const int U = srcU[x] - 128;
+      const int V = srcV[x] - 128;
 
-      int r = Y + ((V * crv)>>16);
-      int b = Y + ((U * cbu)>>16);
-      int g = Y - ((V * cgv + U * cgu)>>16);
-
-      dstP[xRGB] = min(max(b,0),255);
-      dstP[xRGB+1] = min(max(g,0),255);
-      dstP[xRGB+2] = min(max(r,0),255);
+      dstP[xRGB+0] = ScaledPixelClip(Y + U * cbu);
+      dstP[xRGB+1] = ScaledPixelClip(Y - U * cgu - V * cgv);
+      dstP[xRGB+2] = ScaledPixelClip(Y           + V * crv);
       xRGB += bpp;
     }
     srcY+=srcPitch;
@@ -522,7 +517,7 @@ void Convert444FromRGB::ConvertImageLumaOnly(PVideoFrame src, Image444* dst, ISc
   for (int y=0; y<h; y++) {
     int RGBx = 0;
     for (int x=0; x<w; x++) {
-      dstY[x] = srcP[RGBx];
+      dstY[x] = srcP[RGBx]; // Blue channel only ???
       RGBx+=bpp;
     }
     srcP-=srcPitch;
@@ -531,9 +526,12 @@ void Convert444FromRGB::ConvertImageLumaOnly(PVideoFrame src, Image444* dst, ISc
 }
 
 void Convert444FromRGB::ConvertImage(PVideoFrame src, Image444* dst, IScriptEnvironment* env) {
-  const int cyb = int(0.114*219/255*65536+0.5);
-  const int cyg = int(0.587*219/255*65536+0.5);
-  const int cyr = int(0.299*219/255*65536+0.5);
+  const int cyr = int(Kr * 219/255 * 65536 + 0.5);
+  const int cyg = int(Kg * 219/255 * 65536 + 0.5);
+  const int cyb = int(Kb * 219/255 * 65536 + 0.5);
+
+  const int kv = int(2048 / (2*(1-Kr) * 255.0/224.0) + 0.5);
+  const int ku = int(2048 / (2*(1-Kb) * 255.0/224.0) + 0.5);
 
   const BYTE* srcP = src->GetReadPtr();
   int srcPitch = src->GetPitch();
@@ -542,29 +540,29 @@ void Convert444FromRGB::ConvertImage(PVideoFrame src, Image444* dst, IScriptEnvi
   BYTE* dstU = dst->GetPtr(PLANAR_U);
   BYTE* dstV = dst->GetPtr(PLANAR_V);
 
-  int dstPitch = dst->pitch;
+  const int dstPitch = dst->pitch;
 
-  int w = dst->w();
-  int h = dst->h();
+  const int w = dst->w();
+  const int h = dst->h();
 
-  int bpp = src->GetRowSize()/w;
+  const int bpp = src->GetRowSize()/w;
   srcP += h*srcPitch-srcPitch;
 
   for (int y=0; y<h; y++) {
     int RGBx = 0;
     for (int x=0; x<w; x++) {
-      int b = srcP[RGBx];
-      int g = srcP[RGBx+1];
-      int r = srcP[RGBx+2];
+      const int b = srcP[RGBx+0];
+      const int g = srcP[RGBx+1];
+      const int r = srcP[RGBx+2];
 
-      int y = (cyb*b + cyg*g + cyr*r + 0x108000) >> 16;
-      int scaled_y = (y - 16) * int(255.0/219.0*65536+0.5);
-      int b_y = (b << 16) - scaled_y;
-      int r_y = (r << 16) - scaled_y;
+      const int y = (cyb*b + cyg*g + cyr*r + 0x108000) >> 16; // 0x108000 = 16.5 * 65536
+      const int scaled_y = (y - 16) * int(255.0/219.0*2048+0.5);
+      const int b_y = (b << 11) - scaled_y;
+      const int r_y = (r << 11) - scaled_y;
 
       dstY[x] = y;
-      dstU[x] = ((b_y >> 10) * int(1/2.018*1024+0.5) + 0x800000)>>16;
-      dstV[x] = ((r_y >> 10) * int(1/1.596*1024+0.5) + 0x800000)>>16;
+      dstU[x] = (b_y * ku + 0x20000000)>>22; // 0x20000000 = 128 << 22
+      dstV[x] = (r_y * kv + 0x20000000)>>22;
 
       RGBx += bpp;
     }
@@ -578,37 +576,40 @@ void Convert444FromRGB::ConvertImage(PVideoFrame src, Image444* dst, IScriptEnvi
 }
 
 void Convert444NonCCIRFromRGB::ConvertImage(PVideoFrame src, Image444* dst, IScriptEnvironment* env) {
-  const int cyb = int(0.114*65536+0.5);
-  const int cyg = int(0.587*65536+0.5);
-  const int cyr = int(0.299*65536+0.5);
+  const int cyb = int(Kb * 65536 + 0.5);
+  const int cyg = int(Kg * 65536 + 0.5);
+  const int cyr = int(Kr * 65536 + 0.5);
+
+  const int kv = int(65536 / (2*(1-Kr)) + 0.5);
+  const int ku = int(65536 / (2*(1-Kb)) + 0.5);
 
   const BYTE* srcP = src->GetReadPtr();
-  int srcPitch = src->GetPitch();
+  const int srcPitch = src->GetPitch();
 
   BYTE* dstY = dst->GetPtr(PLANAR_Y);
   BYTE* dstU = dst->GetPtr(PLANAR_U);
   BYTE* dstV = dst->GetPtr(PLANAR_V);
 
-  int dstPitch = dst->pitch;
+  const int dstPitch = dst->pitch;
 
-  int w = dst->w();
-  int h = dst->h();
+  const int w = dst->w();
+  const int h = dst->h();
 
-  int bpp = src->GetRowSize()/w;
+  const int bpp = src->GetRowSize()/w;
   srcP += h*srcPitch-srcPitch;
 
   for (int y=0; y<h; y++) {
     int RGBx = 0;
     for (int x=0; x<w; x++) {
-      int b = srcP[RGBx];
-      int g = srcP[RGBx+1];
-      int r = srcP[RGBx+2];
+      const int b = srcP[RGBx+0];
+      const int g = srcP[RGBx+1];
+      const int r = srcP[RGBx+2];
 
-      int y = (cyb*b + cyg*g + cyr*r + 0x8000) >> 16;
+      const int y = (cyb*b + cyg*g + cyr*r + 0x8000) >> 16; // 0x8000 = 0.5 * 65536
 
       dstY[x] = y;
-      dstU[x] = ((b - y) * int(1/2.018*65536.0+0.5) + 0x800000)>>16;
-      dstV[x] = ((r - y) * int(1/1.596*65536.0+0.5) + 0x800000)>>16;
+      dstU[x] = ((b - y) * ku + 0x800000)>>16; // 0x800000 = 128 * 65536
+      dstV[x] = ((r - y) * kv + 0x800000)>>16;
 
       RGBx+=bpp;
     }
