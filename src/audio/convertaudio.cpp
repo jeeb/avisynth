@@ -83,6 +83,183 @@ ConvertAudio::ConvertAudio(PClip _clip, int _sample_type)
     }
   }
 
+/*******************************************/
+
+void convert24To16(char* inbuf, void* outbuf, int count) {
+    unsigned char*  in  = (unsigned char*)inbuf;
+    unsigned short* out = (unsigned short*)outbuf;
+
+    for (int i=0;i<count;i++)
+      out[i] = in[i*3+1] | (in[i*3+2] << 8); 
+}
+
+void convert24To16_MMX(char* inbuf, void* outbuf, int count) {
+    unsigned char*  in  = (unsigned char*)inbuf;
+    unsigned short* out = (unsigned short*)outbuf;
+
+    const int c_loop = count & ~7;
+
+    if (c_loop) {        
+      __asm {
+        xor        eax, eax             //  counter
+        mov        edx, [c_loop]
+        mov        esi, [inbuf];
+        shl        edx, 1               //  bytes (*2)
+        movd       mm0, [esi+0]         //  baaa    DO NOT UNDERRUN BUFFER!!!
+        mov        edi, [outbuf];
+        pslld      mm0, 8               //  aaa0
+		jmp        c24_start
+
+        align 16
+c24_loop:
+        movd       mm0, [esi-1]         //  aaax
+c24_start:
+        movd       mm1, [esi+5]         //  cccb
+        punpckldq  mm0, [esi+2]         //  bbba | aaax
+        movd       mm2, [esi+11]        //  eeed
+        punpckldq  mm1, [esi+8]         //  dddc | cccb
+        movd       mm3, [esi+17]        //  gggf
+        punpckldq  mm2, [esi+14]        //  fffe | eeed
+        psrad      mm0, 16              //  --bb | --aa
+        punpckldq  mm3, [esi+20]        //  hhhg | gggf
+        psrad      mm1, 16              //  --dd | --cc
+        add        esi, 24
+        psrad      mm2, 16              //  --ff | --ee
+        add        eax, 16
+        psrad      mm3, 16              //  --hh | --gg
+		packssdw   mm0, mm1             // dd | cc | bb | aa
+		packssdw   mm2, mm3             // hh | gg | ff | ee
+        movq       [edi+eax-16], mm0    //  store dd | cc | bb | aa
+        cmp        eax, edx
+        movq       [edi+eax-8],  mm2    //  store hh | gg | ff | ee
+        jne        c24_loop
+        emms
+      }
+    }
+    for (int i=c_loop;i<count;i++)
+      out[i] = in[i*3+1] | (in[i*3+2] << 8); 
+}
+
+/*******************************************/
+
+void convert16To8(char* inbuf, void* outbuf, int count) {
+    signed short*  in  = (signed short*)inbuf;
+    unsigned char* out = (unsigned char*)outbuf;
+
+    for (int i=0;i<count;i++) 
+      out[i] = (in[i] >> 8) + 128;
+}
+
+void convert16To8_MMX(char* inbuf, void* outbuf, int count) {
+    signed short*  in  = (signed short*)inbuf;
+    unsigned char* out = (unsigned char*)outbuf;
+
+    const int c_loop = count & ~15;
+
+    if (c_loop) {        
+      __asm {
+        xor        eax, eax             //  counter
+        mov        edx, [c_loop]
+		pcmpeqw    mm7, mm7             //  ffff | ffff | ffff | ffff
+        mov        esi, [inbuf];
+		psrlw      mm7, 15              //  0001 | 0001 | 0001 | 0001
+        mov        edi, [outbuf];
+		psllw      mm7, 7               //  128 |  128 |  128 |  128
+
+        align 16
+c16_loop:
+        movq       mm0, [esi+0]         //  dd | cc | bb | aa
+        movq       mm1, [esi+8]         //  hh | gg | ff | ee
+        psraw      mm0, 8               //  -d | -c | -b | -a
+        movq       mm2, [esi+16]        //  ll | kk | jj | ii
+        psraw      mm1, 8               //  -h | -g | -f | -e
+        movq       mm3, [esi+24]        //  pp | oo | nn | mm
+        add        esi, 32
+        psraw      mm2, 8               //  -l | -k | -j | -i
+        paddw      mm0, mm7             //  0d | 0c | 0b | 0a
+        paddw      mm1, mm7             //  0h | 0g | 0f | 0e
+        psraw      mm3, 8               //  -p | -o | -n | -m
+        paddw      mm2, mm7             //  0l | 0k | 0j | 0i
+        paddw      mm3, mm7             //  0p | 0o | 0n | 0m
+		packuswb   mm0, mm1             //  hgfedcba
+        add        eax, 16
+		packuswb   mm2, mm3             //  ponmlkji
+        movq       [edi+eax-16], mm0    //  store hgfedcba
+        cmp        eax, edx
+        movq       [edi+eax-8],  mm2    //  store ponmlkji
+        jne        c16_loop
+        emms
+      }
+    }
+    for (int i=c_loop;i<count;i++)
+      out[i] = (in[i] >> 8) + 128;
+}
+
+/*******************************************/
+
+void convert8To16(char* inbuf, void* outbuf, int count) {
+    unsigned char* in  = (unsigned char*)inbuf;
+    signed short*  out = (signed short*)outbuf;
+
+    // 8 Bit data is stored += 128
+
+    // signed 16 bit data is composed of signed 8 bit data
+    // times 256 + (signed 8 bit data + 128)
+
+    // This make 0x7f(255-128) -> 0x7fff & 0x80(0-128) -> 0x8000
+
+    for (int i=0;i<count;i++)
+      out[i] = ((in[i]-128) << 8) | in[i];
+}
+
+void convert8To16_MMX(char* inbuf, void* outbuf, int count) {
+    unsigned char* in  = (unsigned char*)inbuf;
+    signed short*  out = (signed short*)outbuf;
+
+    const int c_loop = count & ~15;
+
+    if (c_loop) {        
+      __asm {
+        xor        eax, eax             //  counter
+        mov        edx, [c_loop]
+        mov        esi, [inbuf];
+		pcmpeqw    mm7, mm7             //  ffff | ffff | ffff | ffff
+        shl        edx, 1               //  bytes (*2)
+		psllw      mm7, 7               //  -128 | -128 | -128 | -128
+        mov        edi, [outbuf];
+		packsswb   mm7, mm7             //  -128x8
+
+        align 16
+c8_loop:
+        movq       mm4, [esi+0]         //  hgfedcba
+        movq       mm5, [esi+8]         //  ponmlkji
+        add        esi, 16
+		movq       mm0, mm4
+		movq       mm1, mm4
+		paddb      mm4, mm7             //  HGFEDCBA :: X-=128
+		movq       mm2, mm5
+		movq       mm3, mm5
+		paddb      mm5, mm7             //  PONMLKJI :: X-=128
+		punpcklbw  mm0, mm4             //  Dd | Cc | Bb | Aa
+        add        eax,32
+		punpckhbw  mm1, mm4             //  Hh | Gg | Ff | Ee
+        movq       [edi+eax-32], mm0    //  store Dd | Cc | Bb | Aa
+		punpcklbw  mm2, mm5             //  Ll | Kk | Jj | Ii
+        movq       [edi+eax-24], mm1    //  store Hh | Gg | Ff | Ee
+		punpckhbw  mm3, mm5             //  Pp | Oo | Nn | Mm
+        movq       [edi+eax-16], mm2    //  store Ll | Kk | Jj | Ii
+        cmp        eax, edx
+        movq       [edi+eax-8],  mm3    //  store Pp | Oo | Nn | Mm
+        jne        c8_loop
+        emms
+      }
+    }
+    for (int i=c_loop;i<count;i++)
+      out[i] = ((in[i]-128) << 8) | in[i];
+}
+
+/*******************************************/
+
 void __stdcall ConvertAudio::GetAudio(void* buf, __int64 start, __int64 count, IScriptEnvironment* env) 
 {
   int channels=vi.AudioChannels();
@@ -101,6 +278,32 @@ void __stdcall ConvertAudio::GetAudio(void* buf, __int64 start, __int64 count, I
   }
 
   child->GetAudio(tempbuffer, start, count, env);
+
+  // Special fast cases
+  if (src_format == SAMPLE_INT24 && dst_format == SAMPLE_INT16) {
+    if ((env->GetCPUFlags() & CPUF_MMX)) {
+      convert24To16_MMX(tempbuffer, buf, count*channels);
+    } else {
+      convert24To16(tempbuffer, buf, count*channels);
+	}
+	return;
+  }
+  if (src_format == SAMPLE_INT8 && dst_format == SAMPLE_INT16) {
+    if ((env->GetCPUFlags() & CPUF_MMX)) {
+      convert8To16_MMX(tempbuffer, buf, count*channels);
+    } else {
+      convert8To16(tempbuffer, buf, count*channels);
+	}
+	return;
+  }
+  if (src_format == SAMPLE_INT16 && dst_format == SAMPLE_INT8) {
+    if ((env->GetCPUFlags() & CPUF_MMX)) {
+      convert16To8_MMX(tempbuffer, buf, count*channels);
+    } else {
+      convert16To8(tempbuffer, buf, count*channels);
+	}
+	return;
+  }
 
   float* tmp_fb;
   if (dst_format == SAMPLE_FLOAT)  // Skip final copy, if samples are to be float
@@ -139,21 +342,28 @@ void __stdcall ConvertAudio::GetAudio(void* buf, __int64 start, __int64 count, I
 
 /* SAMPLE_INT16 <-> SAMPLE_INT32
 
- * S32 = S16 << 16
+ * S32 = (S16 << 16) + (S16 + 32768)
+ *
+ *       0x7fff -> 0x7fffffff
+ *       0x8000 -> 0x80000000
  *
  * short *d=dest, *s=src;
  *
- *   *d++ = 0;
+ *   *d++ = *s + 32768;
  *   *d++ = *s++;
  *
  * for (i=0; i< count*ch; i++) {
- *   d[i*2] = 0;
+ *   d[i*2]   = s[i] + 32768;
  *   d[i*2+1] = s[i];
  * }
 
+ *   movq       mm7,[=32768]
+ 
  *   movq       mm0,[s]
- *    pxor      mm1,mm1
- *   pxor       mm2,mm2
+ *    movq      mm1,mm7
+ *   movq       mm2,mm7
+ *    paddw     mm1,mm0
+ *   paddw      mm2,mm0
  *    punpcklwd mm1,mm0
  *   d+=16
  *    punpckhwd mm2,mm0
@@ -171,7 +381,7 @@ void __stdcall ConvertAudio::GetAudio(void* buf, __int64 start, __int64 count, I
  *   d[i] = (s[i]+0x00008000) >> 16;
  * }
 
- *   movq    mm7,[0x0000800000008000]
+ *   movq    mm7,[=0x0000800000008000]
  * 
  *   movq     mm0,[s]
  *    movq    mm1,[s+8]
@@ -354,12 +564,64 @@ void ConvertAudio::convertToFloat_SSE2(char* inbuf, float* outbuf, char sample_t
     case SAMPLE_INT8: {
       const float divisor = float(1.0 / 128);
       unsigned char* samples = (unsigned char*)inbuf;
-      for (i=0;i<count;i++) 
-        outbuf[i]=(samples[i]-128) * divisor;
-      break;
+
+      while (((int)outbuf & 15) && count) { // dqword align outbuf
+        *outbuf++ = (*samples++ - 128) * divisor;
+		count-=1;
       }
+	  
+      int c_miss = count & 15;
+      int c_loop = (count - c_miss);  // Number of samples.
+
+      if (c_loop) {        
+        __asm {
+          xor       eax, eax                  // count
+          mov       edx, [c_loop]
+          mov       esi, [samples];
+          mov       edi, [outbuf];
+          pcmpeqw   xmm6, xmm6                //  ffff | ffff | ffff | ffff | ffff | ffff | ffff | ffff
+          movss     xmm7, [divisor]
+          psllw     xmm6, 7                   //  -128w X 8
+          shufps    xmm7, xmm7, 00000000b
+          packsswb  xmm6, xmm6                //  -128b X 16
+          align     16
+c8_loop:
+          movdqu    xmm3, [esi+eax]           //  ponmlkjihgfedcba
+          add       eax,16
+          paddb     xmm3, xmm6                //  +=-128x16
+          cmp       eax, edx
+          punpcklbw xmm1, xmm3                //  Hx | Gx | Fx | Ex | Dx | Cx | Bx | Ax
+          punpckhbw xmm3, xmm3                //  PP | OO | NN | MM | LL | KK | JJ | II
+          punpcklwd xmm0, xmm1                //  Dxyy | Cxyy | Bxyy | Axyy
+          punpckhwd xmm1, xmm1                //  HxHx | GxGx | FxFx | ExEx
+          punpcklwd xmm2, xmm3                //  LLzz | KKzz | JJzz | IIzz
+          punpckhwd xmm3, xmm3                //  PPPP | OOOO | NNNN | MMMM
+          psrad     xmm0, 24                  //  sign extend
+          psrad     xmm1, 24                  //  sign extend
+          psrad     xmm2, 24                  //  sign extend
+          psrad     xmm3, 24                  //  sign extend
+          cvtdq2ps  xmm0, xmm0                //  -D | -C | -B | -A -> float
+          cvtdq2ps  xmm1, xmm1                //  -H | -G | -F | -E -> float
+          cvtdq2ps  xmm2, xmm2                //  -L | -K | -J | -I -> float
+          cvtdq2ps  xmm3, xmm3                //  -P | -O | -N | -M -> float
+          mulps     xmm0, xmm7                //  *=1./128
+          mulps     xmm1, xmm7                //  *=1./128
+          mulps     xmm2, xmm7                //  *=1./128
+          mulps     xmm3, xmm7                //  *=1./128
+          movaps    [edi+eax*4-64], xmm0      //  store xd | xc | xb | xa
+          movaps    [edi+eax*4-48], xmm1      //  store xh | xg | xf | xe
+          movaps    [edi+eax*4-32], xmm2      //  store xl | xk | xj | xi
+          movaps    [edi+eax*4-16], xmm3      //  store xp | xo | xn | xm
+          jne       c8_loop
+          emms
+        }
+      }
+      for (i=0; i<c_miss; i++)
+        outbuf[i+c_loop]=(samples[i+c_loop]-128) * divisor;
+      break;
+    }
     case SAMPLE_INT16: {
-      const float divisor = 1.0 / 32768.0;
+      const float divisor = 1.0 / 32768;
       signed short* samples = (signed short*)inbuf;
 
       while (((int)outbuf & 15) && count) { // dqword align outbuf
@@ -992,41 +1254,94 @@ void ConvertAudio::convertFromFloat_SSE2(float* inbuf,void* outbuf, char sample_
   switch (sample_type) {
     case SAMPLE_INT8: {
       unsigned char* samples = (unsigned char*)outbuf;
-      for (i=0;i<count;i++) 
-        samples[i]=(unsigned char)Saturate_int8(inbuf[i] * 128.0f)+128;
-      break;
+
+      while (((int)inbuf & 15) && count) { // dqword align inbuf
+        *samples++ = (unsigned char)Saturate_int8(*inbuf++ * 128.0f)+128;
+        count-=1;
       }
+
+      int sleft = count & 15;
+      count -= sleft;
+
+      const float mult = 128.0f;
+
+      if (count) {
+        _asm {
+          pcmpeqw  xmm6, xmm6                  //  ffff | ffff | ffff | ffff | ffff | ffff | ffff | ffff
+          movss    xmm7, [mult]                //  128.0f
+          psllw    xmm6, 7                     //  -128 | -128 | -128 | -128 | -128 | -128 | -128 | -128
+          shufps   xmm7, xmm7, 00000000b       //  128.0fx4
+          packsswb xmm6, xmm6                  //  -128x16
+
+          mov      eax, inbuf
+          mov      ecx, count
+          xor      edx, edx
+          mov      edi, samples
+          align    16
+cf8_loop:
+          movaps   xmm0, [eax+edx*4]           // xd | xc | xb | xa         
+          movaps   xmm1, [eax+edx*4+16]        // xh | xg | xf | xe         
+          movaps   xmm2, [eax+edx*4+32]        // xl | xk | xj | xi         
+          movaps   xmm3, [eax+edx*4+48]        // xp | xo | xn | xm         
+          mulps    xmm0, xmm7                  // *= 128.0f
+          mulps    xmm1, xmm7                  // *= 128.0f
+          mulps    xmm2, xmm7                  // *= 128.0f
+          mulps    xmm3, xmm7                  // *= 128.0f
+          minps    xmm0, xmm7                  // x=min(x, 128.0f)  --  +ve Signed Saturation > 2^31
+          minps    xmm1, xmm7                  // x=min(x, 128.0f)  --  +ve Signed Saturation > 2^31
+          minps    xmm2, xmm7                  // x=min(x, 128.0f)  --  +ve Signed Saturation > 2^31
+          minps    xmm3, xmm7                  // x=min(x, 128.0f)  --  +ve Signed Saturation > 2^31
+          cvtps2dq xmm0, xmm0                  // float -> dd | cc | bb | aa
+          cvtps2dq xmm1, xmm1                  // float -> hh | gg | ff | ee
+          cvtps2dq xmm2, xmm2                  // float -> ll | kk | jj | ii
+          cvtps2dq xmm3, xmm3                  // float -> pp | oo | nn | mm
+          packssdw xmm0, xmm1                  // h g | f e | d c | b a  --  +/-ve Signed Saturation > 2^15
+          packssdw xmm2, xmm3                  // p o | n m | l k | j i  --  +/-ve Signed Saturation > 2^15
+          packsswb xmm0, xmm2                  // p o n m l k j i h g f e d c b a  --  +/-ve Signed Saturation > 2^8
+          add      edx,16
+          paddb    xmm0, xmm6                  // +=128
+          cmp      ecx, edx
+          movdqu   [edi+edx-16], xmm0          // store p o n m l k j i h g f e d c b a
+          jne      cf8_loop
+          emms
+        }
+      }
+      for (i=0;i<sleft;i++)
+        samples[count+i]=(unsigned char)Saturate_int8(inbuf[count+i] * 128.0f)+128;
+
+      break;
+    }
+
     case SAMPLE_INT16: {
       signed short* samples = (signed short*)outbuf;
 
-      if ((int)samples & 1) {  // could never dqword align outbuf
+      if ((int)inbuf & 3) {  // could never dqword align inbuf
         convertFromFloat_SSE(inbuf, outbuf, sample_type, count);
         break;
       }
 
-      while (((int)samples & 15) && count) { // dqword align outbuf
-        *samples++ = Saturate_int16(*inbuf++ * 32768.0f);
+      const float mult = 32768.0f;
+
+      while (((int)inbuf & 15) && count) { // dqword align inbuf
+        *samples++ = Saturate_int16(*inbuf++ * mult);
         count-=1;
       }
-
       int sleft = count & 7;
       count -= sleft;
 
-      float mult[4];
-      mult[0]=mult[1]=mult[2]=mult[3] = 32768.0;
-
       if (count) {
 		_asm {
-		  movups   xmm7, [mult]
+          movss    xmm7, [mult]                //  32768.0f
 		  mov      eax, inbuf
+          shufps   xmm7, xmm7, 00000000b       //  32768.0fx4
 		  mov      ecx, count
 		  xor      edx, edx
 		  shl      ecx, 1
 		  mov      edi, samples
 		  align    16
 cf16_loop:
-		  movups   xmm0, [eax+edx*2]           // xd | xc | xb | xa         
-		  movups   xmm1, [eax+edx*2+16]        // xh | xg | xf | xe         
+		  movaps   xmm0, [eax+edx*2]           // xd | xc | xb | xa         
+		  movaps   xmm1, [eax+edx*2+16]        // xh | xg | xf | xe         
 		  mulps    xmm0, xmm7                  // *= MAX_SHORT
 		  mulps    xmm1, xmm7                  // *= MAX_SHORT
 		  minps    xmm0, xmm7                  // x=min(x, MAX_SHORT)  --  +ve Signed Saturation > 2^31
@@ -1036,7 +1351,7 @@ cf16_loop:
 		  add      edx,16
 		  packssdw xmm2, xmm3                  // h g | f e | d c | b a  --  +/-ve Signed Saturation > 2^15
 		  cmp      ecx, edx
-		  movdqa   [edi+edx-16], xmm2          // store h g | f e | d c | b a
+		  movdqu   [edi+edx-16], xmm2          // store h g | f e | d c | b a
 		  jne      cf16_loop
 		  emms
 		}
@@ -1068,9 +1383,8 @@ cf16_loop:
       if (count) {
         _asm {
           movss    xmm7, [mult]
-          shufps   xmm7, xmm7, 00000000b
-
           mov      eax, inbuf
+          shufps   xmm7, xmm7, 00000000b
           mov      ecx, count
           xor      edx, edx
           shl      ecx, 2
