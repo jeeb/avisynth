@@ -41,18 +41,30 @@ AVSFunction Conditional_funtions_filters[] = {
   {  "AverageLuma","c", AveragePlane::Create_y },
   {  "AverageChromaU","c", AveragePlane::Create_u },
   {  "AverageChromaV","c", AveragePlane::Create_v },
+//{  "AverageSat","c", AverageSat::Create }, Sum(SatLookup[U,V])/N, SatLookup[U,V]=1.4087*sqrt((U-128)**2+(V-128)**2)
+//{  "AverageHue","c", AverageHue::Create }, Sum(HueLookup[U,V])/N, HueLookup[U,V]=40.5845*Atan2(U-128,V-128)
+
   {  "RGBDifference","cc", ComparePlane::Create_rgb },
   {  "LumaDifference","cc", ComparePlane::Create_y },
   {  "ChromaUDifference","cc", ComparePlane::Create_u },
   {  "ChromaVDifference","cc", ComparePlane::Create_v },
+//{  "SatDifference","cc", CompareSat::Create }, Sum(Abs(SatLookup[U1,V1]-SatLookup[U2,V2]))/N
+//{  "HueDifference","cc", CompareHue::Create }, Sum(Abs(HueLookup[U1,V1]-HueLookup[U2,V2]))/N
+
   {  "YDifferenceFromPrevious","c", ComparePlane::Create_prev_y },
   {  "UDifferenceFromPrevious","c", ComparePlane::Create_prev_u },
   {  "VDifferenceFromPrevious","c", ComparePlane::Create_prev_v },
   {  "RGBDifferenceFromPrevious","c", ComparePlane::Create_prev_rgb },
+//{  "SatDifferenceFromPrevious","cc", CompareSat::Create_prev },
+//{  "HueDifferenceFromPrevious","cc", CompareHue::Create_prev },
+
   {  "YDifferenceToNext","c", ComparePlane::Create_next_y },
   {  "UDifferenceToNext","c", ComparePlane::Create_next_u },
   {  "VDifferenceToNext","c", ComparePlane::Create_next_v },
   {  "RGBDifferenceToNext","c", ComparePlane::Create_next_rgb },
+//{  "SatDifferenceFromNext","cc", CompareSat::Create_next },
+//{  "HueDifferenceFromNext","cc", CompareHue::Create_next },
+
   {  "YPlaneMax","c[threshold]f", MinMaxPlane::Create_max_y },
   {  "YPlaneMin","c[threshold]f", MinMaxPlane::Create_min_y },
   {  "YPlaneMedian","c", MinMaxPlane::Create_median_y },
@@ -65,6 +77,16 @@ AVSFunction Conditional_funtions_filters[] = {
   {  "VPlaneMin","c[threshold]f", MinMaxPlane::Create_min_v },
   {  "VPlaneMedian","c", MinMaxPlane::Create_median_v },
   {  "VPlaneMinMaxDifference","c[threshold]f", MinMaxPlane::Create_minmax_v },
+
+//{  "SatMax","c[threshold]f", MinMaxPlane::Create_maxsat },  ++accum[SatLookup[U,V]]
+//{  "SatMin","c[threshold]f", MinMaxPlane::Create_minsat },
+//{  "SatMedian","c", MinMaxPlane::Create_mediansat },
+//{  "SatMinMaxDifference","c[threshold]f", MinMaxPlane::Create_minmaxsat },
+
+//{  "HueMax","c[threshold]f", MinMaxPlane::Create_maxhue },  ++accum[HueLookup[U,V]]
+//{  "HueMin","c[threshold]f", MinMaxPlane::Create_minhue },
+//{  "HueMedian","c", MinMaxPlane::Create_medianhue },
+//{  "HueMinMaxDifference","c[threshold]f", MinMaxPlane::Create_minmaxhue },
 
 //  {  "" },
   { 0 }
@@ -109,18 +131,18 @@ AVSValue AveragePlane::AvgPlane(AVSValue clip, void* user_data, int plane, IScri
 		int h = src->GetHeight(plane);
 		int w = src->GetRowSize(plane);
 		int pitch = src->GetPitch(plane);
-		w=(w/16)*16;
 
-		int b = isse_average_plane(srcp, h, w, pitch);
+		unsigned int b = 0;
+		if (w & -16) b = isse_average_plane(srcp,           h, (w & -16), pitch);
+		if (w &  15) b +=   C_average_plane(srcp+(w & -16), h, (w &  15), pitch);
 
-		if (!b) b=1;
 		float f = (float)b / (float)(h * w);
 
 		return (AVSValue)f;
 }
 
 // Average plane
-int AveragePlane::C_average_plane(const BYTE* c_plane, int height, int width, int c_pitch) {
+unsigned int AveragePlane::C_average_plane(const BYTE* c_plane, int height, int width, int c_pitch) {
   unsigned int accum = 0;
   for (int y = 0; y < height; y++) {
     for (int x = 0; x < width; x++) {
@@ -131,9 +153,9 @@ int AveragePlane::C_average_plane(const BYTE* c_plane, int height, int width, in
   return accum;
 }
 
-int AveragePlane::isse_average_plane(const BYTE* c_plane, int height, int width, int c_pitch) {
+unsigned int AveragePlane::isse_average_plane(const BYTE* c_plane, int height, int width, int c_pitch) {
   int hp=height;
-  int returnvalue=0xbadbad00;
+  unsigned int returnvalue=0xbadbad00;
   __asm {
 	push ebx
     xor ebx,ebx     // Height
@@ -274,22 +296,24 @@ AVSValue ComparePlane::CmpPlane(AVSValue clip, AVSValue clip2, void* user_data, 
 		int w = src->GetRowSize(plane);
 		int pitch = src->GetPitch(plane);
 		int pitch2 = src2->GetPitch(plane);
-		w=(w/16)*16;
 
-		int b;
+		unsigned int b = 0;
     if (vi.IsRGB32()) {
-      if (ISSE)
-        b = isse_scenechange_rgb_16(srcp, srcp2, h, w, pitch, pitch2);
+      if (ISSE) {
+        if (w & -16) b = isse_scenechange_rgb_16(srcp,           srcp2,           h, (w & -16), pitch, pitch2);
+        if (w &  15) b +=   C_scenechange_rgb_16(srcp+(w & -16), srcp2+(w & -16), h, (w &  15), pitch, pitch2);
+			}
       else
         b = C_scenechange_rgb_16(srcp, srcp2, h, w, pitch, pitch2);
     } else {
-      if (ISSE)
-        b = isse_scenechange_16(srcp, srcp2, h, w, pitch, pitch2);
+      if (ISSE) {
+        if (w & -16) b = isse_scenechange_16(srcp,           srcp2,           h, (w & -16), pitch, pitch2);
+        if (w &  15) b +=   C_scenechange_16(srcp+(w & -16), srcp2+(w & -16), h, (w &  15), pitch, pitch2);
+			}
       else 
         b = C_scenechange_16(srcp, srcp2, h, w, pitch, pitch2);
     }
 
-		if (!b) b=1;
 		float f = (float)b / (float)(h * w);
     if (vi.IsRGB32()) 
       f = f * 4.0 / 3.0;
@@ -331,18 +355,20 @@ AVSValue ComparePlane::CmpPlaneSame(AVSValue clip, void* user_data, int offset, 
 		int w = src->GetRowSize(plane);
 		int pitch = src->GetPitch(plane);
 		int pitch2 = src2->GetPitch(plane);
-		w=(w/16)*16;
 
-
-		int b;
+		unsigned int b = 0;
     if (vi.IsRGB32()) {
-      if (ISSE)
-       b = isse_scenechange_rgb_16(srcp, srcp2, h, w, pitch, pitch2);
+      if (ISSE) {
+        if (w & -16) b = isse_scenechange_rgb_16(srcp,           srcp2,           h, (w & -16), pitch, pitch2);
+        if (w &  15) b +=   C_scenechange_rgb_16(srcp+(w & -16), srcp2+(w & -16), h, (w &  15), pitch, pitch2);
+      }
       else 
        b = C_scenechange_rgb_16(srcp, srcp2, h, w, pitch, pitch2);
     } else {
-      if (ISSE)
-        b = isse_scenechange_16(srcp, srcp2, h, w, pitch, pitch2);  
+      if (ISSE) {
+        if (w & -16) b = isse_scenechange_16(srcp,           srcp2,           h, (w & -16), pitch, pitch2);
+        if (w &  15) b +=   C_scenechange_16(srcp+(w & -16), srcp2+(w & -16), h, (w &  15), pitch, pitch2);
+      }
       else
         b = C_scenechange_16(srcp, srcp2, h, w, pitch, pitch2);  
     }
@@ -367,7 +393,7 @@ AVSValue __cdecl MinMaxPlane::Create_min_y(AVSValue args, void* user_data, IScri
 }
 
 AVSValue __cdecl MinMaxPlane::Create_median_y(AVSValue args, void* user_data, IScriptEnvironment* env) {
-	return MinMax(args[0],user_data, 0.0f, PLANAR_Y, MEDIAN, env);
+	return MinMax(args[0],user_data, 50.0f, PLANAR_Y, MIN, env);
 }
 
 AVSValue __cdecl MinMaxPlane::Create_minmax_y(AVSValue args, void* user_data, IScriptEnvironment* env) {
@@ -385,7 +411,7 @@ AVSValue __cdecl MinMaxPlane::Create_min_u(AVSValue args, void* user_data, IScri
 }
 
 AVSValue __cdecl MinMaxPlane::Create_median_u(AVSValue args, void* user_data, IScriptEnvironment* env) {
-	return MinMax(args[0],user_data, 0.0f, PLANAR_U, MEDIAN, env);
+	return MinMax(args[0],user_data, 50.0f, PLANAR_U, MIN, env);
 }
 
 AVSValue __cdecl MinMaxPlane::Create_minmax_u(AVSValue args, void* user_data, IScriptEnvironment* env) {
@@ -402,7 +428,7 @@ AVSValue __cdecl MinMaxPlane::Create_min_v(AVSValue args, void* user_data, IScri
 }
 
 AVSValue __cdecl MinMaxPlane::Create_median_v(AVSValue args, void* user_data, IScriptEnvironment* env) {
-	return MinMax(args[0],user_data, 0.0f, PLANAR_V, MEDIAN, env);
+	return MinMax(args[0],user_data, 50.0f, PLANAR_V, MIN, env);
 }
 
 AVSValue __cdecl MinMaxPlane::Create_minmax_v(AVSValue args, void* user_data, IScriptEnvironment* env) {
@@ -454,17 +480,12 @@ AVSValue MinMaxPlane::MinMax(AVSValue clip, void* user_data, float threshold, in
   threshold /=100.0f;  // Thresh now 0-1
   threshold = max(0.0f,min(threshold,1.0f));
 
-  if (mode == MEDIAN) {
-    mode = MIN;
-    threshold =0.5f;
-  }
-
-  int tpixels = (int)((float)pixels*threshold);
+  unsigned int tpixels = (unsigned int)((float)pixels*threshold);
 
 
   // Find the value we need.
   if (mode == MIN) {
-    int counted=0;
+    unsigned int counted=0;
     for (int i = 0; i< 256;i++) {
       counted += accum[i];
       if (counted>tpixels)
@@ -474,7 +495,7 @@ AVSValue MinMaxPlane::MinMax(AVSValue clip, void* user_data, float threshold, in
   }
 
   if (mode == MAX) {
-    int counted=0;
+    unsigned int counted=0;
     for (int i = 255; i>=0;i--) {
       counted += accum[i];
       if (counted>tpixels)
@@ -484,31 +505,34 @@ AVSValue MinMaxPlane::MinMax(AVSValue clip, void* user_data, float threshold, in
   }
   
   if (mode == MINMAX_DIFFERENCE) {
-    int counted=0;
-    int t_min = -1;
-    int t_max = -1;
+    unsigned int counted=0;
+    int i, t_min = 0;
     // Find min
-    for (int i = 0; (i < 256) && (t_min<0);i++) {
+    for (i = 0; i < 256;i++) {
       counted += accum[i];
-      if (counted>tpixels)
+      if (counted>tpixels) {
         t_min=i;
+        break;
+      }
     }
 
     // Find max
     counted=0;
-    for (i = 255; (i>=0)&&(t_max<0);i--) {
+    int t_max = 255;
+    for (i = 255; i>=0;i--) {
       counted += accum[i];
-      if (counted>tpixels)
+      if (counted>tpixels) {
         t_max=i;
+        break;
+      }
     }
 
-    return AVSValue(max(0,t_max-t_min));  // We do not allow results <0 to be returned
-
+    return AVSValue(t_max-t_min);  // results <0 will be returned if threshold > 50
   }
   return AVSValue(-1);
 }
 
-int ComparePlane::C_scenechange_16(const BYTE* c_plane, const BYTE* tplane, int height, int width, int c_pitch, int t_pitch) {
+unsigned int ComparePlane::C_scenechange_16(const BYTE* c_plane, const BYTE* tplane, int height, int width, int c_pitch, int t_pitch) {
   unsigned int accum = 0;
   for (int y = 0; y < height; y++) {
     for (int x = 0; x < width; x++) {
@@ -521,7 +545,7 @@ int ComparePlane::C_scenechange_16(const BYTE* c_plane, const BYTE* tplane, int 
 
 }
 
-int ComparePlane::C_scenechange_rgb_16(const BYTE* c_plane, const BYTE* tplane, int height, int width, int c_pitch, int t_pitch) {
+unsigned int ComparePlane::C_scenechange_rgb_16(const BYTE* c_plane, const BYTE* tplane, int height, int width, int c_pitch, int t_pitch) {
   unsigned int accum = 0;
   for (int y = 0; y < height; y++) {
     for (int x = 0; x < width; x+=4) {
@@ -552,10 +576,10 @@ int ComparePlane::C_scenechange_rgb_16(const BYTE* c_plane, const BYTE* tplane, 
  *********************/
 
 
-int ComparePlane::isse_scenechange_16(const BYTE* c_plane, const BYTE* tplane, int height, int width, int c_pitch, int t_pitch) {
+unsigned int ComparePlane::isse_scenechange_16(const BYTE* c_plane, const BYTE* tplane, int height, int width, int c_pitch, int t_pitch) {
   int wp=width;
   int hp=height;
-  int returnvalue=0xbadbad00;
+  unsigned int returnvalue=0xbadbad00;
   __asm {
 	push ebx
     xor ebx,ebx     // Height
@@ -619,11 +643,11 @@ endframe:
  *********************/
 
 
-int ComparePlane::isse_scenechange_rgb_16(const BYTE* c_plane, const BYTE* tplane, int height, int width, int c_pitch, int t_pitch) {
+unsigned int ComparePlane::isse_scenechange_rgb_16(const BYTE* c_plane, const BYTE* tplane, int height, int width, int c_pitch, int t_pitch) {
    __declspec(align(8)) static const __int64 Mask1 =  0x00ffffff00ffffff;
   int wp=width;
   int hp=height;
-  int returnvalue=0xbadbad00;
+  unsigned int returnvalue=0xbadbad00;
   __asm {
 	push ebx
     xor ebx,ebx     // Height
