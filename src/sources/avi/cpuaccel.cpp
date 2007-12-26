@@ -53,7 +53,7 @@ long __declspec(naked) CPUCheckForExtensions() {
 		push	ebx
 
 		xor		ebp,ebp			//cpu flags - if we don't have CPUID, we probably
-								      //won't want to try FPU optimizations.
+								//won't want to try FPU optimizations.
 
 		//check for CPUID.
 
@@ -97,9 +97,30 @@ long __declspec(naked) CPUCheckForExtensions() {
 		or		ebp,ebx
 
 		mov		ebx,ecx
-		and		ebx,1 	//SSE3 is bit 1
+		and		ebx,1 	//SSE3 is bit 0
 		shl		ebx,8
 		and		ebx,00000100h	//set bit 8
+		or		ebp,ebx
+
+		mov		ebx,ecx
+		shr		ebx,8		//SSSE3 is bit 8
+		and		ebx,1 	
+		shl		ebx,9
+		and		ebx,00000200h	//set bit 9
+		or		ebp,ebx
+
+		mov		ebx,ecx
+		shr		ebx,18		//SSE4 is bit 18
+		and		ebx,1 	
+		shl		ebx,10
+		and		ebx,00000400h	//set bit 10
+		or		ebp,ebx
+
+		mov		ebx,ecx
+		shr		ebx,19		//SSE4.2 is bit 19
+		and		ebx,1 	
+		shl		ebx,11
+		and		ebx,00000800h	//set bit 11
 		or		ebp,ebx
 
 		//check for vendor feature register (K6/Athlon).
