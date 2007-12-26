@@ -145,13 +145,16 @@ void* VideoFrame::operator new(unsigned) {
 
 
 VideoFrame::VideoFrame(VideoFrameBuffer* _vfb, int _offset, int _pitch, int _row_size, int _height)
-  : refcount(0), vfb(_vfb), offset(_offset), pitch(_pitch), row_size(_row_size), height(_height),offsetU(_offset),offsetV(_offset),pitchUV(0)  // PitchUV=0 so this doesn't take up additional space
+  : refcount(0), vfb(_vfb), offset(_offset), pitch(_pitch), row_size(_row_size), height(_height),
+    offsetU(_offset),offsetV(_offset),pitchUV(0)  // PitchUV=0 so this doesn't take up additional space
 {
   InterlockedIncrement(&vfb->refcount);
 }
 
-VideoFrame::VideoFrame(VideoFrameBuffer* _vfb, int _offset, int _pitch, int _row_size, int _height, int _offsetU, int _offsetV, int _pitchUV)
-  : refcount(0), vfb(_vfb), offset(_offset), pitch(_pitch), row_size(_row_size), height(_height),offsetU(_offsetU),offsetV(_offsetV),pitchUV(_pitchUV)
+VideoFrame::VideoFrame(VideoFrameBuffer* _vfb, int _offset, int _pitch, int _row_size, int _height,
+                       int _offsetU, int _offsetV, int _pitchUV)
+  : refcount(0), vfb(_vfb), offset(_offset), pitch(_pitch), row_size(_row_size), height(_height),
+    offsetU(_offsetU),offsetV(_offsetV),pitchUV(_pitchUV)
 {
   InterlockedIncrement(&vfb->refcount);
 }
@@ -160,8 +163,11 @@ VideoFrame* VideoFrame::Subframe(int rel_offset, int new_pitch, int new_row_size
   return new VideoFrame(vfb, offset+rel_offset, new_pitch, new_row_size, new_height);
 }
 
-VideoFrame* VideoFrame::Subframe(int rel_offset, int new_pitch, int new_row_size, int new_height, int rel_offsetU, int rel_offsetV, int new_pitchUV) const {
-  return new VideoFrame(vfb, offset+rel_offset, new_pitch, new_row_size, new_height, rel_offsetU+offsetU, rel_offsetV+offsetV, new_pitchUV);
+
+VideoFrame* VideoFrame::Subframe(int rel_offset, int new_pitch, int new_row_size, int new_height,
+                                 int rel_offsetU, int rel_offsetV, int new_pitchUV) const {
+  return new VideoFrame(vfb, offset+rel_offset, new_pitch, new_row_size, new_height,
+                        rel_offsetU+offsetU, rel_offsetV+offsetV, new_pitchUV);
 }
 
 
@@ -1093,7 +1099,7 @@ void ScriptEnvironment::ExportFilters()
 
 
 PVideoFrame ScriptEnvironment::NewPlanarVideoFrame(int width, int height, int align, bool U_first) {
-  int UVpitch, pitch;
+  int UVpitch, Uoffset, Voffset, pitch;
 
   if (align<0) {
 // Forced alignment - pack Y as specified, pack UV half that
@@ -1112,11 +1118,11 @@ PVideoFrame ScriptEnvironment::NewPlanarVideoFrame(int width, int height, int al
 	UVpitch = (pitch+1)>>1;  // UV plane, width = 1/2 byte per pixel - can't align UV planes seperately.
   }
 
-  int size = pitch * height + UVpitch * height;
-  int _align = (align < FRAME_ALIGN) ? FRAME_ALIGN : align;
+  const int size = pitch * height + UVpitch * height;
+  const int _align = (align < FRAME_ALIGN) ? FRAME_ALIGN : align;
   VideoFrameBuffer* vfb = GetFrameBuffer(size+(_align*4));
   if (!vfb)
-    ThrowError("NewPlanarVideoFrame: Returned 0 size image!");
+    ThrowError("NewPlanarVideoFrame: Returned 0 image pointer!");
 #ifdef _DEBUG
   {
     static const BYTE filler[] = { 0x0A, 0x11, 0x0C, 0xA7, 0xED };
@@ -1127,10 +1133,8 @@ PVideoFrame ScriptEnvironment::NewPlanarVideoFrame(int width, int height, int al
     }
   }
 #endif
-//  int offset = (-int(vfb->GetWritePtr())) & (align-1);  // align first line offset
-  int offset = int(vfb->GetWritePtr()) & (FRAME_ALIGN-1);  // align first line offset
-  offset = (FRAME_ALIGN - offset)%FRAME_ALIGN;
-  int Uoffset, Voffset;
+  const int offset = (-int(vfb->GetWritePtr())) & (FRAME_ALIGN-1);  // align first line offset
+
   if (U_first) {
     Uoffset = offset + pitch * height;
     Voffset = offset + pitch * height + UVpitch * (height>>1);
@@ -1143,10 +1147,12 @@ PVideoFrame ScriptEnvironment::NewPlanarVideoFrame(int width, int height, int al
 
 
 PVideoFrame ScriptEnvironment::NewVideoFrame(int row_size, int height, int align) {
-  int pitch = (row_size+align-1) / align * align;
-  int size = pitch * height;
-  int _align = (align < FRAME_ALIGN) ? FRAME_ALIGN : align;
+  const int pitch = (row_size+align-1) / align * align;
+  const int size = pitch * height;
+  const int _align = (align < FRAME_ALIGN) ? FRAME_ALIGN : align;
   VideoFrameBuffer* vfb = GetFrameBuffer(size+(_align*4));
+  if (!vfb)
+    ThrowError("NewVideoFrame: Returned 0 image pointer!");
 #ifdef _DEBUG
   {
     static const BYTE filler[] = { 0x0A, 0x11, 0x0C, 0xA7, 0xED };
@@ -1157,9 +1163,7 @@ PVideoFrame ScriptEnvironment::NewVideoFrame(int row_size, int height, int align
     }
   }
 #endif
-  int offset = int(vfb->GetWritePtr()) & (FRAME_ALIGN-1);  // align first line offset
-  offset = (FRAME_ALIGN - offset)%FRAME_ALIGN;
-//  int offset = (-int(vfb->GetWritePtr())) & (align-1);  // align first line offset  (alignment is free here!)
+  const int offset = (-int(vfb->GetWritePtr())) & (FRAME_ALIGN-1);  // align first line offset  (alignment is free here!)
   return new VideoFrame(vfb, offset, pitch, row_size, height);
 }
 
@@ -1192,7 +1196,7 @@ PVideoFrame __stdcall ScriptEnvironment::NewVideoFrame(const VideoInfo& vi, int 
     } else {
       align = max(align,FRAME_ALIGN);
     }
-    return ScriptEnvironment::NewVideoFrame(vi.RowSize(), vi.height, align);
+    return NewVideoFrame(vi.RowSize(), vi.height, align);
   }
 }
 
@@ -1206,21 +1210,22 @@ bool ScriptEnvironment::MakeWritable(PVideoFrame* pvf) {
   // Otherwise, allocate a new frame (using NewVideoFrame) and
   // copy the data into it.  Then modify the passed PVideoFrame
   // to point to the new buffer.
-    const int row_size = vf->GetRowSize();
-    const int height = vf->GetHeight();
-    PVideoFrame dst;
-    if (vf->GetPitch(PLANAR_U)) {  // we have no videoinfo, so we can only assume that it is Planar
-      dst = NewPlanarVideoFrame(row_size, height, FRAME_ALIGN,false);  // Always V first on internal images
-    } else {
-      dst = NewVideoFrame(row_size, height, FRAME_ALIGN);
-    }
-    BitBlt(dst->GetWritePtr(), dst->GetPitch(), vf->GetReadPtr(), vf->GetPitch(), row_size, height);
-    // Blit More planes (pitch, rowsize and height should be 0, if none is present)
-    BitBlt(dst->GetWritePtr(PLANAR_V), dst->GetPitch(PLANAR_V), vf->GetReadPtr(PLANAR_V), vf->GetPitch(PLANAR_V), vf->GetRowSize(PLANAR_V), vf->GetHeight(PLANAR_V));
-    BitBlt(dst->GetWritePtr(PLANAR_U), dst->GetPitch(PLANAR_U), vf->GetReadPtr(PLANAR_U), vf->GetPitch(PLANAR_U), vf->GetRowSize(PLANAR_U), vf->GetHeight(PLANAR_U));
+  const int row_size = vf->GetRowSize();
+  const int height = vf->GetHeight();
+  PVideoFrame dst;
 
-    *pvf = dst;
-    return true;
+  if (vf->GetPitch(PLANAR_U)) {  // we have no videoinfo, so we assume that it is Planar if it has a U plane.
+    dst = NewPlanarVideoFrame(row_size, height, FRAME_ALIGN,false);  // Always V first on internal images
+  } else {
+    dst = NewVideoFrame(row_size, height, FRAME_ALIGN);
+  }
+  BitBlt(dst->GetWritePtr(), dst->GetPitch(), vf->GetReadPtr(), vf->GetPitch(), row_size, height);
+  // Blit More planes (pitch, rowsize and height should be 0, if none is present)
+  BitBlt(dst->GetWritePtr(PLANAR_V), dst->GetPitch(PLANAR_V), vf->GetReadPtr(PLANAR_V), vf->GetPitch(PLANAR_V), vf->GetRowSize(PLANAR_V), vf->GetHeight(PLANAR_V));
+  BitBlt(dst->GetWritePtr(PLANAR_U), dst->GetPitch(PLANAR_U), vf->GetReadPtr(PLANAR_U), vf->GetPitch(PLANAR_U), vf->GetRowSize(PLANAR_U), vf->GetHeight(PLANAR_U));
+
+  *pvf = dst;
+  return true;
 }
 
 
@@ -1246,7 +1251,8 @@ PVideoFrame __stdcall ScriptEnvironment::Subframe(PVideoFrame src, int rel_offse
 }
 
 //tsp June 2005 new function compliments the above function
-PVideoFrame __stdcall ScriptEnvironment::SubframePlanar(PVideoFrame src, int rel_offset, int new_pitch, int new_row_size, int new_height, int rel_offsetU, int rel_offsetV, int new_pitchUV) {
+PVideoFrame __stdcall ScriptEnvironment::SubframePlanar(PVideoFrame src, int rel_offset, int new_pitch, int new_row_size,
+                                                        int new_height, int rel_offsetU, int rel_offsetV, int new_pitchUV) {
   return src->Subframe(rel_offset, new_pitch, new_row_size, new_height, rel_offsetU, rel_offsetV, new_pitchUV);
 }
 
