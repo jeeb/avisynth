@@ -86,7 +86,7 @@ class _PixelClip {
 public:
   _PixelClip() {  
     memset(clip, 0, buffer);
-    for (int i=0; i<256; ++i) clip[i+buffer] = i;
+    for (int i=0; i<256; ++i) clip[i+buffer] = (BYTE)i;
     memset(clip+buffer+256, 255, buffer);
   }
   BYTE operator()(int i) { return clip[i+buffer]; }
