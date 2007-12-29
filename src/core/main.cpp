@@ -1153,6 +1153,12 @@ HRESULT CAVIStreamSynth::Read2(LONG lStart, LONG lSamples, LPVOID lpBuffer, LONG
     // buffer overflow patch -- Avery Lee - Mar 2006
     if (lSamples == AVISTREAMREAD_CONVENIENT)
       lSamples = (long)parent->vi->AudioSamplesFromFrames(1);
+
+    if (__int64(lStart)+lSamples > parent->vi->num_audio_samples) {
+      lSamples = (long)(parent->vi->num_audio_samples - lStart);
+      if (lSamples < 0) lSamples = 0;
+    }
+
     long bytes = (long)parent->vi->BytesFromAudioSamples(lSamples);
     if (lpBuffer && bytes > cbBuffer) {
       lSamples = (long)parent->vi->AudioSamplesFromBytes(cbBuffer);
@@ -1160,10 +1166,16 @@ HRESULT CAVIStreamSynth::Read2(LONG lStart, LONG lSamples, LPVOID lpBuffer, LONG
     }
     if (plBytes) *plBytes = bytes;
     if (plSamples) *plSamples = lSamples;
-    if (!lpBuffer)
+    if (!lpBuffer || !lSamples)
       return S_OK;
 
   } else {
+    if (lStart >= parent->vi->num_frames) {
+      if (plSamples) *plSamples = 0;
+      if (plBytes) *plBytes = 0;
+      return S_OK;
+    }
+
     int image_size = parent->vi->BMPSize();
     if (plSamples) *plSamples = 1;
     if (plBytes) *plBytes = image_size;
