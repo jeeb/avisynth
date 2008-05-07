@@ -479,7 +479,7 @@ ChangeFPS::ChangeFPS(PClip _child, unsigned new_numerator, unsigned new_denomina
 
 PVideoFrame __stdcall ChangeFPS::GetFrame(int n, IScriptEnvironment* env)
 {
-  int getframe = int(((__int64)n * a + (b>>1)) / b);  // Which frame to get next?
+  int getframe = int((n * a) / b); // Use Floor! - Which frame to get next?
 
   if (linear) {
     if ((lastframe < (getframe-1)) && (getframe - lastframe < 10)) {  // Do not decode more than 10 frames
@@ -497,7 +497,7 @@ PVideoFrame __stdcall ChangeFPS::GetFrame(int n, IScriptEnvironment* env)
 
 bool __stdcall ChangeFPS::GetParity(int n)
 {
-  return child->GetParity( int((n * a + (b>>1)) / b) );
+  return child->GetParity( int((n * a) / b) ); // Use Floor!
 }
 
 
