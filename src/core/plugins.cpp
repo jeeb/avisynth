@@ -61,7 +61,7 @@ static bool MyLoadLibrary(const char* filename, HMODULE* hmod, bool quiet, IScri
   try {
     loaded_plugins = (HMODULE*)env->GetVar("$Plugins$").AsString();
   }  // Tritical May 2005
-  catch (...) { // probably should be IScriptEnvironment::NotFound
+  catch (IScriptEnvironment::NotFound) {
     HMODULE plugins[max_plugins]; // buffer to clone on stack
 
     memset(plugins, 0, max_plugins*sizeof(HMODULE));
@@ -70,7 +70,7 @@ static bool MyLoadLibrary(const char* filename, HMODULE* hmod, bool quiet, IScri
     try {
         loaded_plugins = (HMODULE*)env->GetVar("$Plugins$").AsString();
     }
-    catch(...) { // probably should be IScriptEnvironment::NotFound
+    catch(IScriptEnvironment::NotFound) {
       if (!quiet)
         env->ThrowError("LoadPlugin: unable to get plugin list $Plugins$, loading \"%s\"", filename);
       return false;
@@ -1108,7 +1108,7 @@ AVSValue LoadVirtualdubPlugin(AVSValue args, void*, IScriptEnvironment* env) {
   try {
     loaded_modules = (FilterModule*)env->GetVar("$LoadVirtualdubPlugin$").AsString();
   }
-  catch (...) {} // probably should be IScriptEnvironment::NotFound
+  catch (IScriptEnvironment::NotFound) {}
 
   for (FilterModule* i = loaded_modules; i; i = i->next) {
     if (i->hInstModule == hmodule) {
