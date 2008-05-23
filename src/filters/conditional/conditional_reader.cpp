@@ -24,7 +24,7 @@
 #include "../text-overlay.h"
 
 
-ConditionalReader::ConditionalReader(PClip _child, const char* filename, const char* _varname, bool _show, IScriptEnvironment* env) :
+ConditionalReader::ConditionalReader(PClip _child, const char* filename, const char _varname[], bool _show, IScriptEnvironment* env) :
   GenericVideoFilter(_child), variableName(_varname), show(_show)
 {
   FILE * f;
