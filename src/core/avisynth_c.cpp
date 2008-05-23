@@ -406,7 +406,7 @@ int AVSC_CC avs_set_var(AVS_ScriptEnvironment * p, const char* name, AVS_Value v
 {
 	p->error = 0;
 	try {
-		return p->env->SetVar(name, *(const AVSValue *)(&val));
+		return p->env->SetVar(p->env->SaveString(name), *(const AVSValue *)(&val));
 	} catch (AvisynthError err) {
 		p->error = err.msg;
 		return -1;
@@ -418,7 +418,7 @@ int AVSC_CC avs_set_global_var(AVS_ScriptEnvironment * p, const char* name, AVS_
 {
 	p->error = 0;
 	try {
-		return p->env->SetGlobalVar(name, *(const AVSValue *)(&val));
+		return p->env->SetGlobalVar(p->env->SaveString(name), *(const AVSValue *)(&val));
 	} catch (AvisynthError err) {
 		p->error = err.msg;
 		return -1;
