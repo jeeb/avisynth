@@ -176,7 +176,7 @@ class GetSample : public IBaseFilter, public IPin, public IMemInputPin {
   IFilterGraph* filter_graph;  // not refcounted
   IReferenceClock* pclock;  // not refcounted
   FILTER_STATE state;
-  bool end_of_stream, flushing;
+  bool end_of_stream, flushing, seeking;
   IUnknown *m_pPos;  // Pointer to the CPosPassThru object.
   VideoInfo vi;
   bool lockvi; // Format negotiation is allowed until DSS is fully created
@@ -242,10 +242,10 @@ public:
   // graph side of things) to do it's thing and cycle. Hopefully it is blocked
   // again as they exit, a timeouts from StartGraph violates this.
 
-  HRESULT StartGraph();
-  void StopGraph();
-  void PauseGraph();
-  HRESULT SeekTo(__int64 pos);
+  HRESULT StartGraph(IGraphBuilder* gb);
+  void StopGraph(IGraphBuilder* gb);
+  void PauseGraph(IGraphBuilder* gb);
+  HRESULT SeekTo(__int64 pos, IGraphBuilder* gb);
   bool NextSample(DWORD &timeout);
   
 // IUnknown::
@@ -301,6 +301,10 @@ public:
   HRESULT __stdcall Receive(IMediaSample* pSamples);
   HRESULT __stdcall ReceiveMultiple(IMediaSample** ppSamples, long nSamples, long* nSamplesProcessed);
   HRESULT __stdcall ReceiveCanBlock();
+
+private:
+  HRESULT InternalQueryAccept(const AM_MEDIA_TYPE* pmt, VideoInfo &vi);
+
 };
 
 
