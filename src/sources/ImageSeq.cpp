@@ -87,8 +87,7 @@ static bool IsAbsolutePath(const char* path)
 
 ImageWriter::ImageWriter(PClip _child, const char * _base_name, const int _start, const int _end,
                          const char * _ext, bool _info, IScriptEnvironment* env)
- : GenericVideoFilter(_child), base_name(_base_name), start(_start),
-    end(_end), ext(_ext), info(_info)
+ : GenericVideoFilter(_child), base_name(_base_name), ext(_ext), info(_info)
 {  
   if (!lstrcmpi(ext, "ebmp")) 
   {
@@ -118,7 +117,18 @@ ImageWriter::ImageWriter(PClip _child, const char * _base_name, const int _start
       env->ThrowError("ImageWriter: DevIL requires RGB input");
 
     ilInit();
-  } 
+  }
+
+  start = max(_start, 0);
+
+  if (_end==0)
+    end = vi.num_frames-1;
+  else if (_end<0)
+    end = start - _end - 1;
+  else
+    end = _end;
+
+  end = max(end, start);
 }
 
 
@@ -138,8 +148,8 @@ PVideoFrame ImageWriter::GetFrame(int n, IScriptEnvironment* env)
 {
   PVideoFrame frame = child->GetFrame(n, env);
   
-  // check bounds (where end=0 implies no upper bound)
-  if (n < start || (end > 0 && n > end) )
+  // check bounds
+  if ((n<start)||(n>end))
   {
     if (info) {
       ostringstream ss;
@@ -278,7 +288,8 @@ AVSValue __cdecl ImageWriter::Create(AVSValue args, void*, IScriptEnvironment* e
 {
   return new ImageWriter(args[0].AsClip(),
                          env->SaveString(args[1].AsString("c:\\")),
-                         args[2].AsInt(0), args[3].AsInt(0),
+                         args[2].AsInt(0),
+						 args[3].AsInt(0),
                          env->SaveString(args[4].AsString("ebmp")),
                          args[5].AsBool(false), env);
 }
@@ -292,7 +303,7 @@ AVSValue __cdecl ImageWriter::Create(AVSValue args, void*, IScriptEnvironment* e
 ImageReader::ImageReader(const char * _base_name, const int _start, const int _end,
                          const float _fps, bool _use_DevIL, bool _info, const char * _pixel,
 						 IScriptEnvironment* env)
- : base_name(), start(_start), end(_end), use_DevIL(_use_DevIL), info(_info), framecopies(0)
+ : base_name(), start(_start), use_DevIL(_use_DevIL), info(_info), framecopies(0)
 {
   // Generate full name
   if (IsAbsolutePath(_base_name))
@@ -311,7 +322,7 @@ ImageReader::ImageReader(const char * _base_name, const int _start, const int _e
   memset(&vi, 0, sizeof(vi));
 
   // Invariants
-  vi.num_frames = -start + end + 1;  // make sure each frame can be requested
+  vi.num_frames = -start + _end + 1;  // make sure each frame can be requested
   vi.audio_samples_per_second = 0;  
   double num = _fps;  // calculate fps as num/denom for vi
   int denom = 1;

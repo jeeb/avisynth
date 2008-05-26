@@ -55,7 +55,7 @@ class ImageWriter : public GenericVideoFilter
  **/
 {  
 public:
-  ImageWriter(PClip _child, const char * _base_name, const int start, const int end, const char * _ext, bool _info, IScriptEnvironment* env);
+  ImageWriter(PClip _child, const char * _base_name, const int _start, const int _end, const char * _ext, bool _info, IScriptEnvironment* env);
   ~ImageWriter();
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
 
@@ -68,8 +68,8 @@ private:
   
   const char * base_name;
   const char * ext;
-  const int start;
-  const int end;
+  int start;
+  int end;
 
   BITMAPFILEHEADER fileHeader;
   BITMAPINFOHEADER infoHeader;
@@ -103,7 +103,6 @@ private:
 
   char base_name[MAX_PATH + 1];
   const int start;
-  const int end;
   bool use_DevIL;
   bool info;
 
