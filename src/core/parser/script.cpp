@@ -223,7 +223,7 @@ AVSValue AssertEval(AVSValue args, void*, IScriptEnvironment* env)
 
 AVSValue Eval(AVSValue args, void*, IScriptEnvironment* env) 
 {
-  char *filename = args[1].AsString(0);
+  const char *filename = args[1].AsString(0);
   if (filename) filename = env->SaveString(filename);
   ScriptParser parser(env, args[0].AsString(), filename);
   PExpression exp = parser.Parse();
