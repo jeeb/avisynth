@@ -559,33 +559,46 @@ public:
 
   }
 
-  AVSFunction* Lookup(const char* search_name, const AVSValue* args, int num_args, bool* pstrict) {
-    for (int strict = 1; strict >= 0; --strict) {
-      *pstrict = strict&1;
-      // first, look in loaded plugins
-      for (LocalFunction* p = local_functions; p; p = p->prev)
-        if (!lstrcmpi(p->name, search_name) && TypeMatch(p->param_types, args, num_args, strict&1, env))
-          return p;
-      // now looks in prescanned plugins
-      for (Plugin* pp = plugins; pp; pp = pp->prev)
-        for (LocalFunction* p = pp->plugin_functions; p; p = p->prev)
-          if (!lstrcmpi(p->name, search_name) && TypeMatch(p->param_types, args, num_args, strict&1, env)) {
-            _RPT2(0, "Loading plugin %s (lookup for function %s)\n", pp->name, p->name);
-            // sets reloading in case the plugin is performing env->FunctionExists() calls
-            reloading = true;
-            LoadPlugin(AVSValue(&AVSValue(&AVSValue(pp->name), 1), 1), (void*)false, env);
-            reloading = false;
-            // just in case the function disappeared from the plugin, avoid infinte recursion
-            RemovePlugin(pp);
-            // restart the search
-            return Lookup(search_name, args, num_args, pstrict);
-          }
-      // finally, look for a built-in function
-      for (int i = 0; i < sizeof(builtin_functions)/sizeof(builtin_functions[0]); ++i)
-        for (AVSFunction* j = builtin_functions[i]; j->name; ++j)
-          if (!lstrcmpi(j->name, search_name) && TypeMatch(j->param_types, args, num_args, strict&1, env))
-            return j;
-    }
+  AVSFunction* Lookup(const char* search_name, const AVSValue* args, int num_args,
+                      bool* pstrict, int args_names_count, const char** arg_names) {
+    int oanc;
+    do {
+      for (int strict = 1; strict >= 0; --strict) {
+        *pstrict = strict&1;
+        // first, look in loaded plugins
+        for (LocalFunction* p = local_functions; p; p = p->prev)
+          if (!lstrcmpi(p->name, search_name) &&
+              TypeMatch(p->param_types, args, num_args, strict&1, env) &&
+              ArgNameMatch(p->param_types, args_names_count, arg_names))
+            return p;
+        // now looks in prescanned plugins
+        for (Plugin* pp = plugins; pp; pp = pp->prev)
+          for (LocalFunction* p = pp->plugin_functions; p; p = p->prev)
+            if (!lstrcmpi(p->name, search_name) &&
+                TypeMatch(p->param_types, args, num_args, strict&1, env) &&
+                ArgNameMatch(p->param_types, args_names_count, arg_names)) { 
+              _RPT2(0, "Loading plugin %s (lookup for function %s)\n", pp->name, p->name);
+              // sets reloading in case the plugin is performing env->FunctionExists() calls
+              reloading = true;
+              LoadPlugin(AVSValue(&AVSValue(&AVSValue(pp->name), 1), 1), (void*)false, env);
+              reloading = false;
+              // just in case the function disappeared from the plugin, avoid infinte recursion
+              RemovePlugin(pp);
+              // restart the search
+              return Lookup(search_name, args, num_args, pstrict, args_names_count, arg_names);
+            }
+        // finally, look for a built-in function
+        for (int i = 0; i < sizeof(builtin_functions)/sizeof(builtin_functions[0]); ++i)
+          for (AVSFunction* j = builtin_functions[i]; j->name; ++j)
+            if (!lstrcmpi(j->name, search_name) &&
+                TypeMatch(j->param_types, args, num_args, strict&1, env) &&
+                ArgNameMatch(j->param_types, args_names_count, arg_names))
+              return j;
+      }
+      // Try again without arg name matching
+      oanc = args_names_count;
+      args_names_count = 0;
+    } while (oanc);
     return 0;
   }
 
@@ -675,10 +688,47 @@ public:
     }
 
     // We're out of args.  We have a match if one of the following is true:
-    // (a) we're out of params; (b) remaining params are named; (c) we're
-    // at a '+' or '*'.
-    return    *param_types == '\0' || *param_types == '['
-           || *param_types == '+' || param_types[0] == '*' || param_types[1] == '*';
+    // (a) we're out of params.
+	// (b) remaining params are named i.e. optional.
+    // (c) we're at a '+' or '*' and any remaining params are optional.
+
+    if (*param_types == '+'  || *param_types == '*')
+	  param_types += 1;
+
+    if (*param_types == '\0' || *param_types == '[')
+	  return true;
+
+	while (param_types[1] == '*') {
+	  param_types += 2;
+      if (*param_types == '\0' || *param_types == '[')
+	    return true;
+    }
+
+	return false;
+  }
+
+  bool ArgNameMatch(const char* param_types, int args_names_count, const char** arg_names) {
+
+	for (int i=0; i<args_names_count; ++i) {
+	  if (arg_names[i]) {
+		bool found = false;
+		int len = strlen(arg_names[i]);
+		for (const char* p = param_types; *p; ++p) {
+		  if (*p == '[') {
+			p += 1;
+			const char* q = strchr(p, ']');
+			if (!q) return false;
+			if (len == q-p && !strnicmp(arg_names[i], p, q-p)) {
+			  found = true;
+			  break;
+			}
+			p = q+1;
+		  }
+		}
+		if (!found) return false;
+	  }
+	}
+	return true;
   }
 };
 
@@ -1492,6 +1542,8 @@ AVSValue ScriptEnvironment::Invoke(const char* name, const AVSValue args, const 
   AVSFunction *f;
   AVSValue retval;
 
+  const int args_names_count = (arg_names && args.IsArray()) ? args.ArraySize() : 0;
+
   AVSValue *args1 = new AVSValue[ScriptParser::max_args]; // Save stack space - put on heap!!!
 
   try {
@@ -1499,7 +1551,7 @@ AVSValue ScriptEnvironment::Invoke(const char* name, const AVSValue args, const 
 	args2_count = Flatten(args, args1, 0, ScriptParser::max_args, arg_names);
 
 	// find matching function
-	f = function_table.Lookup(name, args1, args2_count, &strict);
+	f = function_table.Lookup(name, args1, args2_count, &strict, args_names_count, arg_names);
 	if (!f)
 	  throw NotFound();
   }
@@ -1547,43 +1599,39 @@ AVSValue ScriptEnvironment::Invoke(const char* name, const AVSValue args, const 
 	const int args3_count = dst_index;
 
 	// copy named args
-	if (args.IsArray() && arg_names) {
-	  const int array_size = args.ArraySize();
-	  for (int i=0; i<array_size; ++i) {
-		if (arg_names[i]) {
-		  int named_arg_index = 0;
-		  for (const char* p = f->param_types; *p; ++p) {
-			if (*p == '*' || *p == '+') {
-			  continue;   // without incrementing named_arg_index
-			} else if (*p == '[') {
-			  p += 1;
-			  const char* q = strchr(p, ']');
-			  if (!q) break;
-			  if (strlen(arg_names[i]) == unsigned(q-p) && !strnicmp(arg_names[i], p, q-p)) {
-				// we have a match
-				if (args3[named_arg_index].Defined()) {
-				  ThrowError("Script error: the named argument \"%s\" was passed more than once to %s", arg_names[i], name);
-				} else if (args[i].IsArray()) {
-				  ThrowError("Script error: can't pass an array as a named argument");
-				} else if (args[i].Defined() && !FunctionTable::SingleTypeMatch(q[1], args[i], false)) {
-				  ThrowError("Script error: the named argument \"%s\" to %s had the wrong type", arg_names[i], name);
-				} else {
-				  args3[named_arg_index] = args[i];
-				  goto success;
-				}
+	for (int i=0; i<args_names_count; ++i) {
+	  if (arg_names[i]) {
+		int named_arg_index = 0;
+		for (const char* p = f->param_types; *p; ++p) {
+		  if (*p == '*' || *p == '+') {
+			continue;   // without incrementing named_arg_index
+		  } else if (*p == '[') {
+			p += 1;
+			const char* q = strchr(p, ']');
+			if (!q) break;
+			if (strlen(arg_names[i]) == unsigned(q-p) && !strnicmp(arg_names[i], p, q-p)) {
+			  // we have a match
+			  if (args3[named_arg_index].Defined()) {
+				ThrowError("Script error: the named argument \"%s\" was passed more than once to %s", arg_names[i], name);
+			  } else if (args[i].IsArray()) {
+				ThrowError("Script error: can't pass an array as a named argument");
+			  } else if (args[i].Defined() && !FunctionTable::SingleTypeMatch(q[1], args[i], false)) {
+				ThrowError("Script error: the named argument \"%s\" to %s had the wrong type", arg_names[i], name);
 			  } else {
-				p = q+1;
+				args3[named_arg_index] = args[i];
+				goto success;
 			  }
+			} else {
+			  p = q+1;
 			}
-			named_arg_index++;
 		  }
-		  // failure
-		  ThrowError("Script error: %s does not have a named argument \"%s\"", name, arg_names[i]);
-success:;
+		  named_arg_index++;
 		}
+		// failure
+		ThrowError("Script error: %s does not have a named argument \"%s\"", name, arg_names[i]);
+success:;
 	  }
 	}
-
 	// ... and we're finally ready to make the call
 	retval = f->apply(AVSValue(args3, args3_count), f->user_data, this);
   }
