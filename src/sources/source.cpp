@@ -136,12 +136,16 @@ static AVSValue __cdecl Create_BlankClip(AVSValue args, void*, IScriptEnvironmen
 
   VideoInfo vi;
 
-  if (args[0].ArraySize() == 1) {
+  if ((args[0].ArraySize() == 1) && (!args[12].Defined())) {
     vi_default = args[0][0].AsClip()->GetVideoInfo();
     parity = args[0][0].AsClip()->GetParity(0);
   }
   else if (args[0].ArraySize() != 0) {
     env->ThrowError("BlankClip: Only 1 Template clip allowed.");
+  }
+  else if (args[12].Defined()) {
+    vi_default = args[12].AsClip()->GetVideoInfo();
+    parity = args[12].AsClip()->GetParity(0);
   }
 
   vi.num_frames = args[1].AsInt(vi_default.num_frames);
@@ -194,12 +198,33 @@ static AVSValue __cdecl Create_BlankClip(AVSValue args, void*, IScriptEnvironmen
 
   vi.audio_samples_per_second = args[7].AsInt(vi_default.audio_samples_per_second);
 
-  if (args[8].Defined())
-    vi.nchannels = args[8].AsBool() ? 2 : 1;
+  if (args[8].IsBool())
+    vi.nchannels = args[8].AsBool() ? 2 : 1; // stereo=True
+  else if (args[8].IsInt())
+    vi.nchannels = args[8].AsInt();          // channels=2
   else
     vi.nchannels = vi_default.nchannels;
 
-  vi.sample_type = args[9].AsInt(vi_default.sample_type);
+  if (args[9].IsBool())
+    vi.sample_type = args[9].AsBool() ? SAMPLE_INT16 : SAMPLE_FLOAT; // sixteen_bit=True
+  else if (args[9].IsString()) {
+    const char* sample_type_string = args[9].AsString();
+    if        (!lstrcmpi(sample_type_string, "8bit" )) {  // sample_type="8Bit"
+      vi.sample_type = SAMPLE_INT8;
+    } else if (!lstrcmpi(sample_type_string, "16bit")) {  // sample_type="16Bit"
+      vi.sample_type = SAMPLE_INT16;
+    } else if (!lstrcmpi(sample_type_string, "24bit")) {  // sample_type="24Bit"
+      vi.sample_type = SAMPLE_INT24;
+    } else if (!lstrcmpi(sample_type_string, "32bit")) {  // sample_type="32Bit"
+      vi.sample_type = SAMPLE_INT32;
+    } else if (!lstrcmpi(sample_type_string, "float")) {  // sample_type="Float"
+      vi.sample_type = SAMPLE_FLOAT;
+    } else {
+      env->ThrowError("BlankClip: sample_type must be \"8bit\", \"16bit\", \"24bit\", \"32bit\" or \"float\"");
+    }
+  } else
+    vi.sample_type = vi_default.sample_type;
+
   vi.width++; // cheat HasVideo() call for Audio Only clips
   vi.num_audio_samples = vi.AudioSamplesFromFrames(vi.num_frames);
   vi.width--;
@@ -207,14 +232,14 @@ static AVSValue __cdecl Create_BlankClip(AVSValue args, void*, IScriptEnvironmen
   int color = args[10].AsInt(0);
   int mode = COLOR_MODE_RGB;
   if (args[11].Defined()) {
-	if (color != 0) // Not quite 100% test
-	  env->ThrowError("BlankClip: color and color_yuv are mutually exclusive");
-	if (!vi.IsYUV())
-	  env->ThrowError("BlankClip: color_yuv only valid for YUV color spaces");
+    if (color != 0) // Not quite 100% test
+      env->ThrowError("BlankClip: color and color_yuv are mutually exclusive");
+    if (!vi.IsYUV())
+      env->ThrowError("BlankClip: color_yuv only valid for YUV color spaces");
     color = args[11].AsInt();
     mode=COLOR_MODE_YUV;
-	if ((unsigned)color > 0xffffff)
-	  env->ThrowError("BlankClip: color_yuv must be between 0 and %d($ffffff)", 0xffffff);
+    if ((unsigned)color > 0xffffff)
+      env->ThrowError("BlankClip: color_yuv must be between 0 and %d($ffffff)", 0xffffff);
   }
 
   return new StaticImage(vi, CreateBlankFrame(vi, color, mode, env), parity);
@@ -784,11 +809,14 @@ AVSFunction Source_filters[] = {
   { "OpenDMLSource", "s+[audio]b[pixel_type]s[fourCC]s", AVISource::Create, (void*) AVISource::MODE_OPENDML },
   { "SegmentedAVISource", "s+[audio]b[pixel_type]s[fourCC]s", Create_SegmentedSource, (void*)0 },
   { "SegmentedDirectShowSource",
-// args				  0      1      2       3       4            5          6         7            8
-  	                 "s+[fps]f[seek]b[audio]b[video]b[convertfps]b[seekzero]b[timeout]i[pixel_type]s",
-					 Create_SegmentedSource, (void*)1 },
-  { "BlankClip", "[clip]c*[length]i[width]i[height]i[pixel_type]s[fps]f[fps_denominator]i[audio_rate]i[stereo]b[sixteen_bit]b[color]i[color_yuv]i", Create_BlankClip },
-  { "Blackness", "[clip]c*[length]i[width]i[height]i[pixel_type]s[fps]f[fps_denominator]i[audio_rate]i[stereo]b[sixteen_bit]b[color]i[color_yuv]i", Create_BlankClip },
+// args               0      1      2       3       4            5          6         7            8
+                     "s+[fps]f[seek]b[audio]b[video]b[convertfps]b[seekzero]b[timeout]i[pixel_type]s",
+                     Create_SegmentedSource, (void*)1 },
+// args             0         1       2        3            4     5                 6            7        8             9       10          11     12
+  { "BlankClip", "[]c*[length]i[width]i[height]i[pixel_type]s[fps]f[fps_denominator]i[audio_rate]i[stereo]b[sixteen_bit]b[color]i[color_yuv]i[clip]c", Create_BlankClip },
+  { "BlankClip", "[]c*[length]i[width]i[height]i[pixel_type]s[fps]f[fps_denominator]i[audio_rate]i[channels]i[sample_type]s[color]i[color_yuv]i[clip]c", Create_BlankClip },
+  { "Blackness", "[]c*[length]i[width]i[height]i[pixel_type]s[fps]f[fps_denominator]i[audio_rate]i[stereo]b[sixteen_bit]b[color]i[color_yuv]i[clip]c", Create_BlankClip },
+  { "Blackness", "[]c*[length]i[width]i[height]i[pixel_type]s[fps]f[fps_denominator]i[audio_rate]i[channels]i[sample_type]s[color]i[color_yuv]i[clip]c", Create_BlankClip },
   { "MessageClip", "s[width]i[height]i[shrink]b[text_color]i[halo_color]i[bg_color]i", Create_MessageClip },
   { "ColorBars", "[width]i[height]i[pixel_type]s", ColorBars::Create },
   { "Tone", "[length]f[frequency]f[samplerate]i[channels]i[type]s[level]f", Tone::Create },
