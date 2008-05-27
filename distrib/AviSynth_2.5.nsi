@@ -1,7 +1,7 @@
 !packhdr tempfile.exe "upx --best --q tempfile.exe"
 
 !DEFINE VERSION 2.5.8
-!DEFINE DATE 070920
+!DEFINE DATE 080527
 
 SetCompressor /solid lzma
 
@@ -17,6 +17,8 @@ SetCompressor /solid lzma
 !define MUI_FINISHPAGE_LINK_LOCATION "http://www.avisynth.org/"
 !define MUI_INSTFILESPAGE_COLORS "C5DEFB 000000"
 !define MUI_INSTFILESPAGE_PROGRESSBAR "colored"
+!define MUI_FINISHPAGE_NOAUTOCLOSE
+!define MUI_UNFINISHPAGE_NOAUTOCLOSE
 
 ;Pages------------------------------
 
@@ -26,12 +28,21 @@ SetCompressor /solid lzma
   !insertmacro MUI_PAGE_DIRECTORY
   !insertmacro MUI_PAGE_INSTFILES
   !insertmacro MUI_PAGE_FINISH
+
   !insertmacro MUI_UNPAGE_CONFIRM
   !insertmacro MUI_UNPAGE_INSTFILES
 
 ;----------------------------------
 
-!insertmacro MUI_LANGUAGE "English"
+!insertmacro MUI_LANGUAGE "English"    ; 1033
+!insertmacro MUI_LANGUAGE "German"     ; 1031
+!insertmacro MUI_LANGUAGE "French"     ; 1036
+!insertmacro MUI_LANGUAGE "Italian"    ; 1040
+!insertmacro MUI_LANGUAGE "Portuguese" ; 2070
+!insertmacro MUI_LANGUAGE "Russian"    ; 1049
+
+!insertmacro MUI_RESERVEFILE_LANGDLL
+
 NAME "AviSynth"
 BRANDINGTEXT "AviSynth ${VERSION} -- [${DATE}]"
 OutFile "AviSynth_${DATE}.exe"
@@ -40,17 +51,25 @@ Caption "AviSynth ${VERSION}"
 ShowInstDetails show
 CRCCheck ON
 
-ComponentText "AviSynth - the premiere frameserving tool available today.$\nCopyright © 2000 - 2007."
+ComponentText "AviSynth - the premiere frameserving tool available today.$\nCopyright © 2000 - 2008."
 
 InstallDir "$PROGRAMFILES\AviSynth 2.5"
 InstallDirRegKey HKLM SOFTWARE\AviSynth ""
 
 InstType Standard
 InstType "Minimal"
+InstType "Standalone"
 InstType "Full"
 
-Section "!AviSynth Base (required)" Frameserving
-  SectionIn RO
+Var AdminInstall
+
+Subsection "!AviSynth Base (required)" Frameserving
+
+Section "Install files in System directory" SystemInstall
+  SectionIn 1 2 4 RO
+  
+  StrCpy $AdminInstall "Yes"
+  
   ClearErrors
   SetOutPath $SYSDIR
   File "..\src\release\AviSynth.dll"
@@ -109,13 +128,12 @@ mreg_ok:
   WriteRegStr HKCR "Media Type\Extensions\.avs" "Source Filter" "{D3588AB0-0781-11CE-B03A-0020AF0BA770}"
 
   WriteRegStr HKCR ".avs" "" "avsfile"
-  WriteRegStr HKCR ".avsi" "" "avs_auto_file"
-
-  WriteRegStr HKCR "avs_auto_file" "" "AviSynth Autoload Script"
-  WriteRegStr HKCR "avs_auto_file\DefaultIcon" "" "$SYSDIR\AviSynth.dll,0"
-
   WriteRegStr HKCR "avsfile" "" "AviSynth Script"
   WriteRegStr HKCR "avsfile\DefaultIcon" "" "$SYSDIR\AviSynth.dll,0"
+
+  WriteRegStr HKCR ".avsi" "" "avs_auto_file"
+  WriteRegStr HKCR "avs_auto_file" "" "AviSynth Autoload Script"
+  WriteRegStr HKCR "avs_auto_file\DefaultIcon" "" "$SYSDIR\AviSynth.dll,0"
 
   WriteRegStr HKCR "avifile\Extensions\AVS" "" "{E6D6B700-124D-11D4-86F3-DB80AFD98778}"
 
@@ -137,9 +155,6 @@ creg_ok:
   WriteINIStr    "$SMPROGRAMS\AviSynth 2.5\AviSynth Online.url" "InternetShortcut" "URL" "http://www.avisynth.org"
   WriteINIStr    "$SMPROGRAMS\AviSynth 2.5\Download Plugins.url" "InternetShortcut" "URL" "http://www.avisynth.org/warpenterprises/"
 
-  Delete $INSTDIR\Uninstall.exe
-  WriteUninstaller $INSTDIR\Uninstall.exe
-
   SetOutPath $INSTDIR\Examples
   File "Examples\*.*"
   CreateShortCut "$SMPROGRAMS\AviSynth 2.5\Example Scripts.lnk" "$INSTDIR\Examples"
@@ -149,11 +164,36 @@ creg_ok:
 
 SectionEnd
 
+Section /o "Install files in product directory" StandAlone
+SectionIn 3 RO
+
+  StrCpy $AdminInstall "No"
+
+  ClearErrors
+  SetOutPath $INSTDIR
+  File "..\src\release\AviSynth.dll"
+  File "bin\devil.dll"
+  File "bin\msvcp60.dll"
+
+  File "Avisynth_Template.reg"
+
+  File "GPL.txt"
+  File "lgpl_for_used_libs.txt"
+
+  SetOutPath "$INSTDIR\plugins"
+  File "..\src\plugins\DirectShowSource\Release\DirectShowSource.dll"
+  File "..\src\plugins\TCPDeliver\Release\TCPDeliver.dll"
+  File "color_presets\colors_rgb.avsi"
+
+SectionEnd
+
+Subsectionend
+
 
 Subsection "Documentation" Documentation
 
-Section "English Documentation" English
-SectionIn 1 3
+Section /o "English Documentation" English
+SectionIn 1 3 4
 
   SetOutPath $INSTDIR\Docs
   File "..\..\Docs\*.css"
@@ -176,13 +216,14 @@ SectionIn 1 3
   File "Examples\*.*"
 
   SetShellVarContext All
+  StrCmp $AdminInstall "No" +2
   CreateShortCut "$SMPROGRAMS\AviSynth 2.5\AviSynth Documentation.lnk" "$INSTDIR\Docs\english\index.htm"
 
 SectionEnd
 
 
 Section /o "German Documentation" German
-  SectionIn 3
+  SectionIn 4
   SetOutPath $INSTDIR\Docs
   File "..\..\Docs\*.css"
   SetOutPath $INSTDIR\Docs\german
@@ -193,12 +234,13 @@ Section /o "German Documentation" German
   File "..\..\Docs\german\externalfilters\*.*"
 
   SetShellVarContext All
+  StrCmp $AdminInstall "No" +2
   CreateShortCut "$SMPROGRAMS\AviSynth 2.5\Deutsche AviSynth Dokumentation.lnk" "$INSTDIR\Docs\german\index.htm"
 
 SectionEnd
 
 Section /o "French Documentation" French
-  SectionIn 3
+  SectionIn 4
   SetOutPath $INSTDIR\Docs
   File "..\..\Docs\*.css"
   SetOutPath $INSTDIR\Docs\french
@@ -207,12 +249,13 @@ Section /o "French Documentation" French
   File "..\..\Docs\french\corefilters\*.*"
 
   SetShellVarContext All
+  StrCmp $AdminInstall "No" +2
   CreateShortCut "$SMPROGRAMS\AviSynth 2.5\French AviSynth Documentation.lnk" "$INSTDIR\Docs\french\index.htm"
 
 SectionEnd
 
 Section /o "Italian Documentation" Italian
-  SectionIn 3
+  SectionIn 4
   SetOutPath $INSTDIR\Docs
   File "..\..\Docs\*.css"
   SetOutPath $INSTDIR\Docs\italian
@@ -225,12 +268,13 @@ Section /o "Italian Documentation" Italian
   File "..\..\Docs\italian\pictures\corefilters\*.*"
 
   SetShellVarContext All
+  StrCmp $AdminInstall "No" +2
   CreateShortCut "$SMPROGRAMS\AviSynth 2.5\Italian AviSynth Documentation.lnk" "$INSTDIR\Docs\italian\index.htm"
 
 SectionEnd
 
 Section /o "Portugese Documentation" Portugese
-  SectionIn 3
+  SectionIn 4
   SetOutPath $INSTDIR\Docs
   File "..\..\Docs\*.css"
   SetOutPath $INSTDIR\Docs\portugese
@@ -249,12 +293,13 @@ Section /o "Portugese Documentation" Portugese
   File "..\..\Docs\portugese\pictures\externalfilters\*.*"
 
   SetShellVarContext All
+  StrCmp $AdminInstall "No" +2
   CreateShortCut "$SMPROGRAMS\AviSynth 2.5\Portugese AviSynth Documentation.lnk" "$INSTDIR\Docs\portugese\index.htm"
 
 SectionEnd
 
 Section /o "Russian Documentation" Russian
-  SectionIn 3
+  SectionIn 4
   SetOutPath $INSTDIR\Docs
   File "..\..\Docs\*.css"
   SetOutPath $INSTDIR\Docs\russian
@@ -273,6 +318,7 @@ Section /o "Russian Documentation" Russian
   File "..\..\Docs\russian\pictures\externalfilters\*.*"
 
   SetShellVarContext All
+  StrCmp $AdminInstall "No" +2
   CreateShortCut "$SMPROGRAMS\AviSynth 2.5\Russian AviSynth Documentation.lnk" "$INSTDIR\Docs\russian\index.htm"
 
 SectionEnd
@@ -280,22 +326,27 @@ SectionEnd
 Subsectionend
 
 
-SubSection /e "Select Association" SelectAssociation
+SubSection "Select Association" SelectAssociation
 
 Section /o "Associate AVS with Notepad (open)" Associate1
-  SectionIn 3
+  SectionIn 1 4
+  StrCmp $AdminInstall "No" +3
   WriteRegStr HKCR "avsfile\shell\open\command" "" 'notepad.exe "%1"'
   WriteRegStr HKCR "avs_auto_file\shell\open\command" "" 'notepad.exe "%1"'
+  
 SectionEnd
 
 Section /o "Associate AVS with Media Player 6.4 (play)" Associate2
-  SectionIn 3
+  SectionIn 1 4
+  StrCmp $AdminInstall "No" +2
   WriteRegStr HKCR "avsfile\shell\play\command" "" '"$PROGRAMFILES\Windows Media Player\mplayer2.exe" /Play "%L"'
+
 SectionEnd
 
 Section /o "Add AviSynth Script to New Items menu" Associate3
-  SectionIn 3
+  SectionIn 1 4
 ; Blank new file
+  StrCmp $AdminInstall "No" +3
   WriteRegStr HKCR ".avs\ShellNew" "NullFile" ""
   WriteRegStr HKCR "avsfile\ShellNew" "NullFile" ""
 
@@ -311,25 +362,27 @@ SubSectionEnd
 SubSection "Select Extra Files" SelectExtraFiles
 
 Section /o "Install FilterSDK" ExtraFiles3
-  SectionIn 3
+  SectionIn 4
   SetOutPath $INSTDIR\FilterSDK
   File "..\filtersdk\*.*"
   SetOutPath $INSTDIR\FilterSDK\include
   File "..\src\core\avisynth.h"
   File "..\src\core\avisynth_c.h"
   SetShellVarContext All
+  StrCmp $AdminInstall "No" +2
   CreateShortCut "$SMPROGRAMS\AviSynth 2.5\FilterSDK Information.lnk" "$INSTDIR\FilterSDK\FilterSDK.htm"
+
 SectionEnd
 
 Section /o "Install Avisynth.lib and Avisynth.exp" ExtraFiles1
-  SectionIn 3
+  SectionIn 4
   SetOutPath $INSTDIR\Extras
   File "..\src\release\AviSynth.lib"
   File "..\src\release\AviSynth.exp"
 SectionEnd
 
 Section /o "Install Avisynth.map" ExtraFiles2
-  SectionIn 3
+  SectionIn 4
   SetOutPath $INSTDIR\Extras
   File "..\src\release\AviSynth.map"
 SectionEnd
@@ -337,8 +390,19 @@ SectionEnd
 SubSectionEnd
 
 
+Function .onInit
+  !insertmacro MUI_LANGDLL_DISPLAY
+
+  SetCurInstType 0
+
+FunctionEnd
+
+
   !insertmacro MUI_FUNCTION_DESCRIPTION_BEGIN
+
   !insertmacro MUI_DESCRIPTION_TEXT  ${Frameserving} "Install the main files for frameserving via AviSynth"
+  !insertmacro MUI_DESCRIPTION_TEXT  ${SystemInstall} "Install the main files in the System directory"
+  !insertmacro MUI_DESCRIPTION_TEXT  ${StandAlone} "Install the main files in the Product directory (Nonfunctional non-Admin install) (Must choose Standalone template)"
   !insertmacro MUI_DESCRIPTION_TEXT  ${Documentation} "Install help. Please select languages (non-English may be out of date)"
   !insertmacro MUI_DESCRIPTION_TEXT  ${English} "Install English help"
   !insertmacro MUI_DESCRIPTION_TEXT  ${German} "Install German help"
@@ -354,8 +418,13 @@ SubSectionEnd
   !insertmacro MUI_DESCRIPTION_TEXT  ${ExtraFiles1} "Install avisynth.lib and avisynth.exp for C interface developement"
   !insertmacro MUI_DESCRIPTION_TEXT  ${ExtraFiles2} "Install avisynth.map file"
   !insertmacro MUI_DESCRIPTION_TEXT  ${ExtraFiles3} "Install FilterSDK for AviSynth plugins development"
+
   !insertmacro MUI_FUNCTION_DESCRIPTION_END
 
+
+Function un.onInit
+  !insertmacro MUI_UNGETLANGUAGE
+FunctionEnd
 
 Function un.onUninstSuccess
   MessageBox MB_OK "Uninstall has been successfully completed."
