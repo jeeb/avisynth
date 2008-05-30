@@ -1,7 +1,7 @@
 !packhdr tempfile.exe "upx --best --q tempfile.exe"
 
 !DEFINE VERSION 2.5.8
-!DEFINE DATE 080527
+!DEFINE /date DATE "%y%m%d"
 
 SetCompressor /solid lzma
 
@@ -13,7 +13,7 @@ SetCompressor /solid lzma
 !define MUI_ABORTWARNING
 ;!define MUI_WELCOMEFINISHPAGE_BITMAP "${NSISDIR}\Welcome.bmp"
 !define MUI_COMPONENTSPAGE_SMALLDESC
-!define MUI_FINISHPAGE_LINK "Visit the AviSynth website for the latest news and support"
+!define MUI_FINISHPAGE_LINK $(FINISHPAGE_TEXT)
 !define MUI_FINISHPAGE_LINK_LOCATION "http://www.avisynth.org/"
 !define MUI_INSTFILESPAGE_COLORS "C5DEFB 000000"
 !define MUI_INSTFILESPAGE_PROGRESSBAR "colored"
@@ -36,12 +36,256 @@ SetCompressor /solid lzma
 
 !insertmacro MUI_LANGUAGE "English"    ; 1033
 !insertmacro MUI_LANGUAGE "German"     ; 1031
-!insertmacro MUI_LANGUAGE "French"     ; 1036
-!insertmacro MUI_LANGUAGE "Italian"    ; 1040
-!insertmacro MUI_LANGUAGE "Portuguese" ; 2070
+;!insertmacro MUI_LANGUAGE "French"     ; 1036
+;!insertmacro MUI_LANGUAGE "Italian"    ; 1040
+!insertmacro MUI_LANGUAGE "Japanese"   ; 1041
+;!insertmacro MUI_LANGUAGE "Portuguese" ; 2070
 !insertmacro MUI_LANGUAGE "Russian"    ; 1049
 
 !insertmacro MUI_RESERVEFILE_LANGDLL
+
+
+;----------------------------------
+!define AvsLang ${LANG_English}
+;
+; Code page 1033
+;
+;----------------------------------
+LangString AVS_Standard             ${AvsLang} "Standard"
+LangString AVS_Minimal              ${AvsLang} "Minimal"
+LangString AVS_Standalone           ${AvsLang} "Standalone"
+LangString AVS_Full                 ${AvsLang} "Full"
+
+LangString FINISHPAGE_TEXT          ${AvsLang} "Visit the AviSynth website for the latest news and support"
+LangString COMPONENT_TEXT           ${AvsLang} "AviSynth - the premiere frameserving tool available today.$\nCopyright © 2000 - 2008."
+LangString Frameserving_Text        ${AvsLang} "AviSynth Base (required)"
+LangString SystemInstall_Text       ${AvsLang} "Install files in System directory"
+LangString InUseMsg_Text            ${AvsLang} "Could not copy avisynth.dll to system directory$\n$\nClose down all applications that use Avisynth, and be$\nsure to have write permission to the system directory,$\nand then try again."
+LangString PlugDir_Text             ${AvsLang} "Could not write to the Avisynth Plugin Directory.$\nClose down all applications that use Avisynth,$\nand then try again."
+LangString AdminRightsHKLM_Text     ${AvsLang} "You need administrator rights to install AviSynth!$\n(Could not write to registry HKLM)"
+LangString AdminRightsHKCR_Text     ${AvsLang} "You need administrator rights to install AviSynth!$\n(Could not write to registry HKCR)"
+LangString StandAlone_Text          ${AvsLang} "Install files in product directory"
+LangString Documentation_Text       ${AvsLang} "Documentation"
+LangString English_Text             ${AvsLang} "English Documentation"
+LangString German_Text              ${AvsLang} "German Documentation"
+LangString French_Text              ${AvsLang} "French Documentation"
+LangString Italian_Text             ${AvsLang} "Italian Documentation"
+LangString Portugese_Text           ${AvsLang} "Portuguese Documentation"
+LangString Russian_Text             ${AvsLang} "Russian Documentation"
+LangString SelectAssociation_Text   ${AvsLang} "Select Association"
+LangString Associate1_Text          ${AvsLang} "Associate AVS with Notepad (open)"
+LangString Associate2_Text          ${AvsLang} "Associate AVS with Media Player 6.4 (play)"
+LangString Associate3_Text          ${AvsLang} "Add AviSynth Script to New Items menu"
+LangString SelectExtraFiles_Text    ${AvsLang} "Select Extra Files"
+LangString ExtraFiles3_Text         ${AvsLang} "Install FilterSDK"
+LangString ExtraFiles1_Text         ${AvsLang} "Install Avisynth.lib and Avisynth.exp"
+LangString ExtraFiles2_Text         ${AvsLang} "Install Avisynth.map"
+
+LangString Frameserving_Bubble      ${AvsLang} "Install the main files for frameserving via AviSynth"
+LangString SystemInstall_Bubble     ${AvsLang} "Install the main files in the System directory"
+LangString StandAlone_Bubble        ${AvsLang} "Install the main files in the Product directory (Nonfunctional non-Admin install) (Must choose Standalone template)"
+LangString Documentation_Bubble     ${AvsLang} "Install help. Please select languages (non-English may be out of date)"
+LangString English_Bubble           ${AvsLang} "Install English help"
+LangString German_Bubble            ${AvsLang} "Install German help"
+LangString French_Bubble            ${AvsLang} "Install French help"
+LangString Italian_Bubble           ${AvsLang} "Install Italian help"
+LangString Portugese_Bubble         ${AvsLang} "Install Portuguese help"
+LangString Russian_Bubble           ${AvsLang} "Install Russian help"
+LangString SelectAssociation_Bubble ${AvsLang} "Select one or more associations"
+LangString Associate1_Bubble        ${AvsLang} "Open AVS files directly with Notepad to edit"
+LangString Associate2_Bubble        ${AvsLang} "Play AVS files directly with Media Player 6.4 (right click - play)"
+LangString Associate3_Bubble        ${AvsLang} "Create a new blank AviSynth Script (right click - new - AviSynth Script)"
+LangString SelectExtraFiles_Bubble  ${AvsLang} "Select one or more additional files to install"
+LangString ExtraFiles1_Bubble       ${AvsLang} "Install avisynth.lib and avisynth.exp for C interface developement"
+LangString ExtraFiles2_Bubble       ${AvsLang} "Install avisynth.map file"
+LangString ExtraFiles3_Bubble       ${AvsLang} "Install FilterSDK for AviSynth plugins development"
+
+LangString Uninstall_Text           ${AvsLang} "Uninstall has been successfully completed."
+LangString RemoveReg_Text           ${AvsLang} "Do you want to remove the registry pointer to$\nplugin directory (no files will be removed)?"
+!undef AvsLang
+
+
+;----------------------------------
+!define AvsLang ${LANG_German}
+;
+; Code page 1031
+;
+;----------------------------------
+LangString AVS_Standard             ${AvsLang} "Standard"
+LangString AVS_Minimal              ${AvsLang} "Minimales"
+LangString AVS_Standalone           ${AvsLang} "Allein stehend"
+LangString AVS_Full                 ${AvsLang} "Volle"
+
+LangString FINISHPAGE_TEXT          ${AvsLang} "Besichtigen Sie die AviSynth Web site für die spätesten Nachrichten und stützen Sie sich"
+LangString COMPONENT_TEXT           ${AvsLang} "AviSynth - das frameserving Werkzeug der Premiere vorhanden heute.$\nCopyright © 2000 - 2008."
+LangString Frameserving_Text        ${AvsLang} "AviSynth Base (required)"
+LangString SystemInstall_Text       ${AvsLang} "Install files in System directory"
+LangString InUseMsg_Text            ${AvsLang} "Could not copy avisynth.dll to system directory$\n$\nClose down all applications that use Avisynth, and be$\nsure to have write permission to the system directory,$\nand then try again."
+LangString PlugDir_Text             ${AvsLang} "Could not write to the Avisynth Plugin Directory.$\nClose down all applications that use Avisynth,$\nand then try again."
+LangString AdminRightsHKLM_Text     ${AvsLang} "You need administrator rights to install AviSynth!$\n(Could not write to registry HKLM)"
+LangString AdminRightsHKCR_Text     ${AvsLang} "You need administrator rights to install AviSynth!$\n(Could not write to registry HKCR)"
+LangString StandAlone_Text          ${AvsLang} "Install files in product directory"
+LangString Documentation_Text       ${AvsLang} "Dokumentation"
+LangString English_Text             ${AvsLang} "Englischen Dokumentation"
+LangString German_Text              ${AvsLang} "Deutsche Dokumentation"
+LangString French_Text              ${AvsLang} "Französischen Dokumentation"
+LangString Italian_Text             ${AvsLang} "Italienischen Dokumentation"
+LangString Portugese_Text           ${AvsLang} "Portugiesischen Dokumentation"
+LangString Russian_Text             ${AvsLang} "Russischen Dokumentation"
+LangString SelectAssociation_Text   ${AvsLang} "Select Association"
+LangString Associate1_Text          ${AvsLang} "Associate AVS with Notepad (open)"
+LangString Associate2_Text          ${AvsLang} "Associate AVS with Media Player 6.4 (play)"
+LangString Associate3_Text          ${AvsLang} "Add AviSynth Script to New Items menu"
+LangString SelectExtraFiles_Text    ${AvsLang} "Select Extra Files"
+LangString ExtraFiles3_Text         ${AvsLang} "Install FilterSDK"
+LangString ExtraFiles1_Text         ${AvsLang} "Install Avisynth.lib and Avisynth.exp"
+LangString ExtraFiles2_Text         ${AvsLang} "Install Avisynth.map"
+
+LangString Frameserving_Bubble      ${AvsLang} "Install the main files for frameserving via AviSynth"
+LangString SystemInstall_Bubble     ${AvsLang} "Install the main files in the System directory"
+LangString StandAlone_Bubble        ${AvsLang} "Install the main files in the Product directory (Nonfunctional non-Admin install) (Must choose Standalone template)"
+LangString Documentation_Bubble     ${AvsLang} "Install help. Please select languages (non-English may be out of date)"
+LangString English_Bubble           ${AvsLang} "Install English help"
+LangString German_Bubble            ${AvsLang} "Bringen Sie deutsche Hilfe an"
+LangString French_Bubble            ${AvsLang} "Install French help"
+LangString Italian_Bubble           ${AvsLang} "Install Italian help"
+LangString Portugese_Bubble         ${AvsLang} "Install Portuguese help"
+LangString Russian_Bubble           ${AvsLang} "Install Russian help"
+LangString SelectAssociation_Bubble ${AvsLang} "Select one or more associations"
+LangString Associate1_Bubble        ${AvsLang} "Open AVS files directly with Notepad to edit"
+LangString Associate2_Bubble        ${AvsLang} "Play AVS files directly with Media Player 6.4 (right click - play)"
+LangString Associate3_Bubble        ${AvsLang} "Create a new blank AviSynth Script (right click - new - AviSynth Script)"
+LangString SelectExtraFiles_Bubble  ${AvsLang} "Select one or more additional files to install"
+LangString ExtraFiles1_Bubble       ${AvsLang} "Install avisynth.lib and avisynth.exp for C interface developement"
+LangString ExtraFiles2_Bubble       ${AvsLang} "Install avisynth.map file"
+LangString ExtraFiles3_Bubble       ${AvsLang} "Install FilterSDK for AviSynth plugins development"
+
+LangString Uninstall_Text           ${AvsLang} "Uninstall has been successfully completed."
+LangString RemoveReg_Text           ${AvsLang} "Do you want to remove the registry pointer to$\nplugin directory (no files will be removed)?"
+!undef AvsLang
+
+
+;----------------------------------
+!define AvsLang ${LANG_Japanese}
+;
+; Code page 1041
+;
+;----------------------------------
+LangString AVS_Standard             ${AvsLang} "Standard"
+LangString AVS_Minimal              ${AvsLang} "Minimal"
+LangString AVS_Standalone           ${AvsLang} "Standalone"
+LangString AVS_Full                 ${AvsLang} "Full"
+
+LangString FINISHPAGE_TEXT          ${AvsLang} "Visit the AviSynth website for the latest news and support"
+LangString COMPONENT_TEXT           ${AvsLang} "AviSynth - the premiere frameserving tool available today.$\nCopyright © 2000 - 2008."
+LangString Frameserving_Text        ${AvsLang} "AviSynth Base (required)"
+LangString SystemInstall_Text       ${AvsLang} "Install files in System directory"
+LangString InUseMsg_Text            ${AvsLang} "Could not copy avisynth.dll to system directory$\n$\nClose down all applications that use Avisynth, and be$\nsure to have write permission to the system directory,$\nand then try again."
+LangString PlugDir_Text             ${AvsLang} "Could not write to the Avisynth Plugin Directory.$\nClose down all applications that use Avisynth,$\nand then try again."
+LangString AdminRightsHKLM_Text     ${AvsLang} "You need administrator rights to install AviSynth!$\n(Could not write to registry HKLM)"
+LangString AdminRightsHKCR_Text     ${AvsLang} "You need administrator rights to install AviSynth!$\n(Could not write to registry HKCR)"
+LangString StandAlone_Text          ${AvsLang} "Install files in product directory"
+LangString Documentation_Text       ${AvsLang} "Documentation"
+LangString English_Text             ${AvsLang} "English Documentation"
+LangString German_Text              ${AvsLang} "German Documentation"
+LangString French_Text              ${AvsLang} "French Documentation"
+LangString Italian_Text             ${AvsLang} "Italian Documentation"
+LangString Portugese_Text           ${AvsLang} "Portuguese Documentation"
+LangString Russian_Text             ${AvsLang} "Russian Documentation"
+LangString SelectAssociation_Text   ${AvsLang} "Select Association"
+LangString Associate1_Text          ${AvsLang} "Associate AVS with Notepad (open)"
+LangString Associate2_Text          ${AvsLang} "Associate AVS with Media Player 6.4 (play)"
+LangString Associate3_Text          ${AvsLang} "Add AviSynth Script to New Items menu"
+LangString SelectExtraFiles_Text    ${AvsLang} "Select Extra Files"
+LangString ExtraFiles3_Text         ${AvsLang} "Install FilterSDK"
+LangString ExtraFiles1_Text         ${AvsLang} "Install Avisynth.lib and Avisynth.exp"
+LangString ExtraFiles2_Text         ${AvsLang} "Install Avisynth.map"
+
+LangString Frameserving_Bubble      ${AvsLang} "Install the main files for frameserving via AviSynth"
+LangString SystemInstall_Bubble     ${AvsLang} "Install the main files in the System directory"
+LangString StandAlone_Bubble        ${AvsLang} "Install the main files in the Product directory (Nonfunctional non-Admin install) (Must choose Standalone template)"
+LangString Documentation_Bubble     ${AvsLang} "Install help. Please select languages (non-English may be out of date)"
+LangString English_Bubble           ${AvsLang} "Install English help"
+LangString German_Bubble            ${AvsLang} "Install German help"
+LangString French_Bubble            ${AvsLang} "Install French help"
+LangString Italian_Bubble           ${AvsLang} "Install Italian help"
+LangString Portugese_Bubble         ${AvsLang} "Install Portuguese help"
+LangString Russian_Bubble           ${AvsLang} "Install Russian help"
+LangString SelectAssociation_Bubble ${AvsLang} "Select one or more associations"
+LangString Associate1_Bubble        ${AvsLang} "Open AVS files directly with Notepad to edit"
+LangString Associate2_Bubble        ${AvsLang} "Play AVS files directly with Media Player 6.4 (right click - play)"
+LangString Associate3_Bubble        ${AvsLang} "Create a new blank AviSynth Script (right click - new - AviSynth Script)"
+LangString SelectExtraFiles_Bubble  ${AvsLang} "Select one or more additional files to install"
+LangString ExtraFiles1_Bubble       ${AvsLang} "Install avisynth.lib and avisynth.exp for C interface developement"
+LangString ExtraFiles2_Bubble       ${AvsLang} "Install avisynth.map file"
+LangString ExtraFiles3_Bubble       ${AvsLang} "Install FilterSDK for AviSynth plugins development"
+
+LangString Uninstall_Text           ${AvsLang} "Uninstall has been successfully completed."
+LangString RemoveReg_Text           ${AvsLang} "Do you want to remove the registry pointer to$\nplugin directory (no files will be removed)?"
+!undef AvsLang
+
+
+;----------------------------------
+!define AvsLang ${LANG_Russian}
+;
+; Code page 1049
+;
+;----------------------------------
+LangString AVS_Standard             ${AvsLang} "Standard"
+LangString AVS_Minimal              ${AvsLang} "Minimal"
+LangString AVS_Standalone           ${AvsLang} "Standalone"
+LangString AVS_Full                 ${AvsLang} "Full"
+
+LangString FINISHPAGE_TEXT          ${AvsLang} "Visit the AviSynth website for the latest news and support"
+LangString COMPONENT_TEXT           ${AvsLang} "AviSynth - the premiere frameserving tool available today.$\nCopyright © 2000 - 2008."
+LangString Frameserving_Text        ${AvsLang} "AviSynth Base (required)"
+LangString SystemInstall_Text       ${AvsLang} "Install files in System directory"
+LangString InUseMsg_Text            ${AvsLang} "Could not copy avisynth.dll to system directory$\n$\nClose down all applications that use Avisynth, and be$\nsure to have write permission to the system directory,$\nand then try again."
+LangString PlugDir_Text             ${AvsLang} "Could not write to the Avisynth Plugin Directory.$\nClose down all applications that use Avisynth,$\nand then try again."
+LangString AdminRightsHKLM_Text     ${AvsLang} "You need administrator rights to install AviSynth!$\n(Could not write to registry HKLM)"
+LangString AdminRightsHKCR_Text     ${AvsLang} "You need administrator rights to install AviSynth!$\n(Could not write to registry HKCR)"
+LangString StandAlone_Text          ${AvsLang} "Install files in product directory"
+LangString Documentation_Text       ${AvsLang} "Documentation"
+LangString English_Text             ${AvsLang} "English Documentation"
+LangString German_Text              ${AvsLang} "German Documentation"
+LangString French_Text              ${AvsLang} "French Documentation"
+LangString Italian_Text             ${AvsLang} "Italian Documentation"
+LangString Portugese_Text           ${AvsLang} "Portuguese Documentation"
+LangString Russian_Text             ${AvsLang} "Russian Documentation"
+LangString SelectAssociation_Text   ${AvsLang} "Select Association"
+LangString Associate1_Text          ${AvsLang} "Associate AVS with Notepad (open)"
+LangString Associate2_Text          ${AvsLang} "Associate AVS with Media Player 6.4 (play)"
+LangString Associate3_Text          ${AvsLang} "Add AviSynth Script to New Items menu"
+LangString SelectExtraFiles_Text    ${AvsLang} "Select Extra Files"
+LangString ExtraFiles3_Text         ${AvsLang} "Install FilterSDK"
+LangString ExtraFiles1_Text         ${AvsLang} "Install Avisynth.lib and Avisynth.exp"
+LangString ExtraFiles2_Text         ${AvsLang} "Install Avisynth.map"
+
+LangString Frameserving_Bubble      ${AvsLang} "Install the main files for frameserving via AviSynth"
+LangString SystemInstall_Bubble     ${AvsLang} "Install the main files in the System directory"
+LangString StandAlone_Bubble        ${AvsLang} "Install the main files in the Product directory (Nonfunctional non-Admin install) (Must choose Standalone template)"
+LangString Documentation_Bubble     ${AvsLang} "Install help. Please select languages (non-English may be out of date)"
+LangString English_Bubble           ${AvsLang} "Install English help"
+LangString German_Bubble            ${AvsLang} "Install German help"
+LangString French_Bubble            ${AvsLang} "Install French help"
+LangString Italian_Bubble           ${AvsLang} "Install Italian help"
+LangString Portugese_Bubble         ${AvsLang} "Install Portuguese help"
+LangString Russian_Bubble           ${AvsLang} "Install Russian help"
+LangString SelectAssociation_Bubble ${AvsLang} "Select one or more associations"
+LangString Associate1_Bubble        ${AvsLang} "Open AVS files directly with Notepad to edit"
+LangString Associate2_Bubble        ${AvsLang} "Play AVS files directly with Media Player 6.4 (right click - play)"
+LangString Associate3_Bubble        ${AvsLang} "Create a new blank AviSynth Script (right click - new - AviSynth Script)"
+LangString SelectExtraFiles_Bubble  ${AvsLang} "Select one or more additional files to install"
+LangString ExtraFiles1_Bubble       ${AvsLang} "Install avisynth.lib and avisynth.exp for C interface developement"
+LangString ExtraFiles2_Bubble       ${AvsLang} "Install avisynth.map file"
+LangString ExtraFiles3_Bubble       ${AvsLang} "Install FilterSDK for AviSynth plugins development"
+
+LangString Uninstall_Text           ${AvsLang} "Uninstall has been successfully completed."
+LangString RemoveReg_Text           ${AvsLang} "Do you want to remove the registry pointer to$\nplugin directory (no files will be removed)?"
+!undef AvsLang
+
+
+;----------------------------------
 
 NAME "AviSynth"
 BRANDINGTEXT "AviSynth ${VERSION} -- [${DATE}]"
@@ -51,25 +295,25 @@ Caption "AviSynth ${VERSION}"
 ShowInstDetails show
 CRCCheck ON
 
-ComponentText "AviSynth - the premiere frameserving tool available today.$\nCopyright © 2000 - 2008."
+ComponentText $(COMPONENT_TEXT)
 
 InstallDir "$PROGRAMFILES\AviSynth 2.5"
 InstallDirRegKey HKLM SOFTWARE\AviSynth ""
 
-InstType Standard
-InstType "Minimal"
-InstType "Standalone"
-InstType "Full"
+InstType $(AVS_Standard)
+InstType $(AVS_Minimal)
+InstType $(AVS_Standalone)
+InstType $(AVS_Full)
 
 Var AdminInstall
 
-Subsection "!AviSynth Base (required)" Frameserving
+Subsection "!$(Frameserving_Text)" Frameserving
 
-Section "Install files in System directory" SystemInstall
+Section $(SystemInstall_Text) SystemInstall
   SectionIn 1 2 4 RO
-  
+
   StrCpy $AdminInstall "Yes"
-  
+
   ClearErrors
   SetOutPath $SYSDIR
   File "..\src\release\AviSynth.dll"
@@ -80,9 +324,9 @@ IfFileExists "$SYSDIR\msvcp60.dll" msvc60_exists
 msvc60_exists:
 
 IfErrors 0 dll_ok
-  MessageBox MB_OK "Could not copy avisynth.dll to system directory$\n$\nClose down all applications that use Avisynth, and be$\nsure to have write permission to the system directory,$\nand then try again."
+  MessageBox MB_OK $(InUseMsg_Text)
   Abort
-  
+
 dll_ok:
   SetOutPath $INSTDIR
   File "GPL.txt"
@@ -101,7 +345,7 @@ Plugin_exists:
   File "color_presets\colors_rgb.avsi"
 
 IfErrors 0 plug_ok
-  MessageBox MB_OK "Could not write to the Avisynth Plugin Directory.$\nClose down all applications that use Avisynth,$\nand then try again."
+  MessageBox MB_OK $(PlugDir_Text)
   Abort
 
 plug_ok:
@@ -111,11 +355,11 @@ plug_ok:
 
   WriteRegStr HKLM "SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\AviSynth" "DisplayName" "AviSynth 2.5"
   WriteRegStr HKLM "SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\AviSynth" "UninstallString" '"$INSTDIR\Uninstall.exe"'
-  
+
   WriteRegStr HKLM "SOFTWARE\Classes\.avs" "" "avsfile"
 
 IfErrors 0 mreg_ok
-  MessageBox MB_OK "You need administrator rights to install AviSynth!$\n(Could not write to registry HKLM)"
+  MessageBox MB_OK $(AdminRightsHKLM_Text)
   Abort
 
 mreg_ok:
@@ -138,7 +382,7 @@ mreg_ok:
   WriteRegStr HKCR "avifile\Extensions\AVS" "" "{E6D6B700-124D-11D4-86F3-DB80AFD98778}"
 
 IfErrors 0 creg_ok
-  MessageBox MB_OK "You need administrator rights to install AviSynth!$\n(Could not write to registry HKCR)"
+  MessageBox MB_OK $(AdminRightsHKCR_Text)
   Abort
 
 creg_ok:
@@ -164,7 +408,7 @@ creg_ok:
 
 SectionEnd
 
-Section /o "Install files in product directory" StandAlone
+Section /o  $(StandAlone_Text) StandAlone
 SectionIn 3 RO
 
   StrCpy $AdminInstall "No"
@@ -190,9 +434,9 @@ SectionEnd
 Subsectionend
 
 
-Subsection "Documentation" Documentation
+Subsection  $(Documentation_Text) Documentation
 
-Section /o "English Documentation" English
+Section /o  $(English_Text) English
 SectionIn 1 3 4
 
   SetOutPath $INSTDIR\Docs
@@ -211,7 +455,7 @@ SectionIn 1 3 4
   File "..\..\Docs\english\pictures\corefilters\*.*"
   SetOutPath $INSTDIR\Docs\english\pictures\externalfilters
   File "..\..\Docs\english\pictures\externalfilters\*.*"
-  
+
   SetOutPath $INSTDIR\Examples
   File "Examples\*.*"
 
@@ -222,7 +466,7 @@ SectionIn 1 3 4
 SectionEnd
 
 
-Section /o "German Documentation" German
+Section /o  $(German_Text) German
   SectionIn 4
   SetOutPath $INSTDIR\Docs
   File "..\..\Docs\*.css"
@@ -239,7 +483,7 @@ Section /o "German Documentation" German
 
 SectionEnd
 
-Section /o "French Documentation" French
+Section /o  $(French_Text) French
   SectionIn 4
   SetOutPath $INSTDIR\Docs
   File "..\..\Docs\*.css"
@@ -254,7 +498,7 @@ Section /o "French Documentation" French
 
 SectionEnd
 
-Section /o "Italian Documentation" Italian
+Section /o  $(Italian_Text) Italian
   SectionIn 4
   SetOutPath $INSTDIR\Docs
   File "..\..\Docs\*.css"
@@ -273,7 +517,7 @@ Section /o "Italian Documentation" Italian
 
 SectionEnd
 
-Section /o "Portugese Documentation" Portugese
+Section /o  $(Portugese_Text) Portugese
   SectionIn 4
   SetOutPath $INSTDIR\Docs
   File "..\..\Docs\*.css"
@@ -298,7 +542,7 @@ Section /o "Portugese Documentation" Portugese
 
 SectionEnd
 
-Section /o "Russian Documentation" Russian
+Section /o  $(Russian_Text) Russian
   SectionIn 4
   SetOutPath $INSTDIR\Docs
   File "..\..\Docs\*.css"
@@ -326,24 +570,24 @@ SectionEnd
 Subsectionend
 
 
-SubSection "Select Association" SelectAssociation
+SubSection  $(SelectAssociation_Text) SelectAssociation
 
-Section /o "Associate AVS with Notepad (open)" Associate1
+Section /o  $(Associate1_Text) Associate1
   SectionIn 1 4
   StrCmp $AdminInstall "No" +3
   WriteRegStr HKCR "avsfile\shell\open\command" "" 'notepad.exe "%1"'
   WriteRegStr HKCR "avs_auto_file\shell\open\command" "" 'notepad.exe "%1"'
-  
+
 SectionEnd
 
-Section /o "Associate AVS with Media Player 6.4 (play)" Associate2
+Section /o  $(Associate2_Text) Associate2
   SectionIn 1 4
   StrCmp $AdminInstall "No" +2
   WriteRegStr HKCR "avsfile\shell\play\command" "" '"$PROGRAMFILES\Windows Media Player\mplayer2.exe" /Play "%L"'
 
 SectionEnd
 
-Section /o "Add AviSynth Script to New Items menu" Associate3
+Section /o  $(Associate3_Text) Associate3
   SectionIn 1 4
 ; Blank new file
   StrCmp $AdminInstall "No" +3
@@ -359,9 +603,9 @@ SectionEnd
 SubSectionEnd
 
 
-SubSection "Select Extra Files" SelectExtraFiles
+SubSection  $(SelectExtraFiles_Text) SelectExtraFiles
 
-Section /o "Install FilterSDK" ExtraFiles3
+Section /o  $(ExtraFiles3_Text) ExtraFiles3
   SectionIn 4
   SetOutPath $INSTDIR\FilterSDK
   File "..\filtersdk\*.*"
@@ -374,14 +618,14 @@ Section /o "Install FilterSDK" ExtraFiles3
 
 SectionEnd
 
-Section /o "Install Avisynth.lib and Avisynth.exp" ExtraFiles1
+Section /o  $(ExtraFiles1_Text) ExtraFiles1
   SectionIn 4
   SetOutPath $INSTDIR\Extras
   File "..\src\release\AviSynth.lib"
   File "..\src\release\AviSynth.exp"
 SectionEnd
 
-Section /o "Install Avisynth.map" ExtraFiles2
+Section /o  $(ExtraFiles2_Text) ExtraFiles2
   SectionIn 4
   SetOutPath $INSTDIR\Extras
   File "..\src\release\AviSynth.map"
@@ -400,24 +644,24 @@ FunctionEnd
 
   !insertmacro MUI_FUNCTION_DESCRIPTION_BEGIN
 
-  !insertmacro MUI_DESCRIPTION_TEXT  ${Frameserving} "Install the main files for frameserving via AviSynth"
-  !insertmacro MUI_DESCRIPTION_TEXT  ${SystemInstall} "Install the main files in the System directory"
-  !insertmacro MUI_DESCRIPTION_TEXT  ${StandAlone} "Install the main files in the Product directory (Nonfunctional non-Admin install) (Must choose Standalone template)"
-  !insertmacro MUI_DESCRIPTION_TEXT  ${Documentation} "Install help. Please select languages (non-English may be out of date)"
-  !insertmacro MUI_DESCRIPTION_TEXT  ${English} "Install English help"
-  !insertmacro MUI_DESCRIPTION_TEXT  ${German} "Install German help"
-  !insertmacro MUI_DESCRIPTION_TEXT  ${French} "Install French help"
-  !insertmacro MUI_DESCRIPTION_TEXT  ${Italian} "Install Italian help"
-  !insertmacro MUI_DESCRIPTION_TEXT  ${Portugese} "Install Portugese help"
-  !insertmacro MUI_DESCRIPTION_TEXT  ${Russian} "Install Russian help"
-  !insertmacro MUI_DESCRIPTION_TEXT  ${SelectAssociation} "Select one or more associations"
-  !insertmacro MUI_DESCRIPTION_TEXT  ${Associate1} "Open AVS files directly with Notepad to edit"
-  !insertmacro MUI_DESCRIPTION_TEXT  ${Associate2} "Play AVS files directly with Media Player 6.4 (right click - play)"
-  !insertmacro MUI_DESCRIPTION_TEXT  ${Associate3} "Create a new blank AviSynth Script (right click - new - AviSynth Script)"
-  !insertmacro MUI_DESCRIPTION_TEXT  ${SelectExtraFiles} "Select one or more additional files to install"
-  !insertmacro MUI_DESCRIPTION_TEXT  ${ExtraFiles1} "Install avisynth.lib and avisynth.exp for C interface developement"
-  !insertmacro MUI_DESCRIPTION_TEXT  ${ExtraFiles2} "Install avisynth.map file"
-  !insertmacro MUI_DESCRIPTION_TEXT  ${ExtraFiles3} "Install FilterSDK for AviSynth plugins development"
+  !insertmacro MUI_DESCRIPTION_TEXT ${Frameserving}       $(Frameserving_Bubble)
+  !insertmacro MUI_DESCRIPTION_TEXT ${SystemInstall}      $(SystemInstall_Bubble)
+  !insertmacro MUI_DESCRIPTION_TEXT ${StandAlone}         $(StandAlone_Bubble)
+  !insertmacro MUI_DESCRIPTION_TEXT ${Documentation}      $(Documentation_Bubble)
+  !insertmacro MUI_DESCRIPTION_TEXT ${English}            $(English_Bubble)
+  !insertmacro MUI_DESCRIPTION_TEXT ${German}             $(German_Bubble)
+  !insertmacro MUI_DESCRIPTION_TEXT ${French}             $(French_Bubble)
+  !insertmacro MUI_DESCRIPTION_TEXT ${Italian}            $(Italian_Bubble)
+  !insertmacro MUI_DESCRIPTION_TEXT ${Portugese}          $(Portugese_Bubble)
+  !insertmacro MUI_DESCRIPTION_TEXT ${Russian}            $(Russian_Bubble)
+  !insertmacro MUI_DESCRIPTION_TEXT ${SelectAssociation}  $(SelectAssociation_Bubble)
+  !insertmacro MUI_DESCRIPTION_TEXT ${Associate1}         $(Associate1_Bubble)
+  !insertmacro MUI_DESCRIPTION_TEXT ${Associate2}         $(Associate2_Bubble)
+  !insertmacro MUI_DESCRIPTION_TEXT ${Associate3}         $(Associate3_Bubble)
+  !insertmacro MUI_DESCRIPTION_TEXT ${SelectExtraFiles}   $(SelectExtraFiles_Bubble)
+  !insertmacro MUI_DESCRIPTION_TEXT ${ExtraFiles1}        $(ExtraFiles1_Bubble)
+  !insertmacro MUI_DESCRIPTION_TEXT ${ExtraFiles2}        $(ExtraFiles2_Bubble)
+  !insertmacro MUI_DESCRIPTION_TEXT ${ExtraFiles3}        $(ExtraFiles3_Bubble)
 
   !insertmacro MUI_FUNCTION_DESCRIPTION_END
 
@@ -427,14 +671,14 @@ Function un.onInit
 FunctionEnd
 
 Function un.onUninstSuccess
-  MessageBox MB_OK "Uninstall has been successfully completed."
+  MessageBox MB_OK $(Uninstall_Text)
 FunctionEnd
 
 Section "Uninstall"
   Delete "$SYSDIR\devil.dll"
   Delete "$SYSDIR\AviSynth.dll"
   DeleteRegKey HKLM "Software\Classes\.avs"
-  
+
   DeleteRegKey HKCR "CLSID\{E6D6B700-124D-11D4-86F3-DB80AFD98778}"
   DeleteRegKey HKCR "Media Type\Extensions\.avs"
   DeleteRegKey HKCR ".avs"
@@ -532,7 +776,7 @@ Section "Uninstall"
 
   Delete "$INSTDIR\Docs\*.css"
   RMDir  "$INSTDIR\Docs"
-  
+
   Delete "$INSTDIR\Extras\Avisynth.exp"
   Delete "$INSTDIR\Extras\Avisynth.lib"
   Delete "$INSTDIR\Extras\Avisynth.map"
@@ -549,8 +793,7 @@ Section "Uninstall"
   DeleteRegKey HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\AviSynth"
 
 IfFileExists $INSTDIR 0 Removed
-    MessageBox MB_YESNO|MB_ICONQUESTION \
-      "Do you want to remove the registry pointer to$\nplugin directory (no files will be removed)?" IDNO Removed
+    MessageBox MB_YESNO|MB_ICONQUESTION $(RemoveReg_Text) IDNO Removed
     DeleteRegKey HKLM "Software\AviSynth"
 Removed:
 
