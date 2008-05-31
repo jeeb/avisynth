@@ -36,6 +36,7 @@ SetCompressor /solid lzma
 
 !insertmacro MUI_LANGUAGE "English"    ; 1033
 !insertmacro MUI_LANGUAGE "German"     ; 1031
+!insertmacro MUI_LANGUAGE "Greek"      ; 1253
 !insertmacro MUI_LANGUAGE "French"     ; 1036
 ;!insertmacro MUI_LANGUAGE "Italian"    ; 1040
 !insertmacro MUI_LANGUAGE "Japanese"   ; 1041
@@ -70,6 +71,7 @@ LangString English_Text             ${AvsLang} "English Documentation"
 LangString German_Text              ${AvsLang} "German Documentation"
 LangString French_Text              ${AvsLang} "French Documentation"
 LangString Italian_Text             ${AvsLang} "Italian Documentation"
+LangString Japanese_Text            ${AvsLang} "Japanese Documentation"
 LangString Portugese_Text           ${AvsLang} "Portuguese Documentation"
 LangString Russian_Text             ${AvsLang} "Russian Documentation"
 LangString SelectAssociation_Text   ${AvsLang} "Select Association"
@@ -89,6 +91,7 @@ LangString English_Bubble           ${AvsLang} "Install English help"
 LangString German_Bubble            ${AvsLang} "Install German help"
 LangString French_Bubble            ${AvsLang} "Install French help"
 LangString Italian_Bubble           ${AvsLang} "Install Italian help"
+LangString Japanese_Bubble          ${AvsLang} "Install Japanese help"
 LangString Portugese_Bubble         ${AvsLang} "Install Portuguese help"
 LangString Russian_Bubble           ${AvsLang} "Install Russian help"
 LangString SelectAssociation_Bubble ${AvsLang} "Select one or more associations"
@@ -102,6 +105,7 @@ LangString ExtraFiles3_Bubble       ${AvsLang} "Install FilterSDK for AviSynth p
 
 LangString Uninstall_Text           ${AvsLang} "Uninstall has been successfully completed."
 LangString RemoveReg_Text           ${AvsLang} "Do you want to remove the registry pointer to$\nplugin directory (no files will be removed)?"
+
 !undef AvsLang
 
 
@@ -130,6 +134,7 @@ LangString English_Text             ${AvsLang} "Englischen Dokumentation"
 LangString German_Text              ${AvsLang} "Deutsche Dokumentation"
 LangString French_Text              ${AvsLang} "Franzφsischen Dokumentation"
 LangString Italian_Text             ${AvsLang} "Italienischen Dokumentation"
+LangString Japanese_Text            ${AvsLang} "Japanisch Dokumentation"
 LangString Portugese_Text           ${AvsLang} "Portugiesischen Dokumentation"
 LangString Russian_Text             ${AvsLang} "Russischen Dokumentation"
 LangString SelectAssociation_Text   ${AvsLang} "Select Association"
@@ -145,12 +150,13 @@ LangString Frameserving_Bubble      ${AvsLang} "Install the main files for frame
 LangString SystemInstall_Bubble     ${AvsLang} "Install the main files in the System directory"
 LangString StandAlone_Bubble        ${AvsLang} "Install the main files in the Product directory (Nonfunctional non-Admin install) (Must choose Standalone template)"
 LangString Documentation_Bubble     ${AvsLang} "Install help. Please select languages (non-English may be out of date)"
-LangString English_Bubble           ${AvsLang} "Install English help"
-LangString German_Bubble            ${AvsLang} "Bringen Sie deutsche Hilfe an"
-LangString French_Bubble            ${AvsLang} "Install French help"
-LangString Italian_Bubble           ${AvsLang} "Install Italian help"
-LangString Portugese_Bubble         ${AvsLang} "Install Portuguese help"
-LangString Russian_Bubble           ${AvsLang} "Install Russian help"
+LangString English_Bubble           ${AvsLang} "Bringen sie englischen hilfe an"
+LangString German_Bubble            ${AvsLang} "Bringen sie deutsche hilfe an"
+LangString French_Bubble            ${AvsLang} "Bringen sie franzφsischen hilfe an"
+LangString Italian_Bubble           ${AvsLang} "Bringen sie italienischen hilfe an"
+LangString Japanese_Bubble          ${AvsLang} "Bringen sie japanisch hilfe an"
+LangString Portugese_Bubble         ${AvsLang} "Bringen sie portugiesischen hilfe an"
+LangString Russian_Bubble           ${AvsLang} "Bringen sie russischen hilfe an"
 LangString SelectAssociation_Bubble ${AvsLang} "Select one or more associations"
 LangString Associate1_Bubble        ${AvsLang} "Open AVS files directly with Notepad to edit"
 LangString Associate2_Bubble        ${AvsLang} "Play AVS files directly with Media Player 6.4 (right click - play)"
@@ -162,7 +168,72 @@ LangString ExtraFiles3_Bubble       ${AvsLang} "Install FilterSDK for AviSynth p
 
 LangString Uninstall_Text           ${AvsLang} "Uninstall has been successfully completed."
 LangString RemoveReg_Text           ${AvsLang} "Do you want to remove the registry pointer to$\nplugin directory (no files will be removed)?"
+
 !undef AvsLang
+
+
+;----------------------------------
+!define AvsLang ${LANG_Greek}
+;
+; Code page 1032 or 1253 ???
+;
+;----------------------------------
+LangString AVS_Standard             ${AvsLang} "Τυπική"
+LangString AVS_Minimal              ${AvsLang} "Βασική"
+LangString AVS_Standalone           ${AvsLang} "Αυτόνομη"
+LangString AVS_Full                 ${AvsLang} "Πλήρης"
+
+LangString FINISHPAGE_TEXT          ${AvsLang} "Επισκεφτείτε την ιστοσελίδα του AviSynth για τις πιο πρόσφατες ειδήσεις και υποστήριξη"
+LangString COMPONENT_TEXT           ${AvsLang} "AviSynth - Το πρώτο εργαλείο εξυπηρέτησης πλαισίων βίντεο διαθέσιμο σήμερα.$\nCopyright © 2000 - 2008."
+LangString Frameserving_Text        ${AvsLang} "AviSynth Βασική (απαιτείται)"
+LangString SystemInstall_Text       ${AvsLang} "Εγκατάσταση αρχείων στο φάκελο Συστήματος"
+LangString InUseMsg_Text            ${AvsLang} "Αδυναμία εγγραφής του avisynth.dll στο φάκελο συστήματος$\n$\nΤερματίστε όλες τις εφαρμογές που χρησιμοποιούν το Avisynth,$\nεπιβεβαιώστε ότι έχετε δικαιώματα εγγραφής στο φάκελο συστήματος$\nκαι προσπαθήστε ξανά."
+LangString PlugDir_Text             ${AvsLang} "Αδυναμία εγγραφής στο φάκελο Προσθέτων του Avisynth.$\nΤερματίστε όλες τις εφαρμογές που χρησιμοποιούν το Avisynth$\nκαι προσπαθήστε ξανά."
+LangString AdminRightsHKLM_Text     ${AvsLang} "Απαιτούνται δικαιώματα διαχειριστή για να εγκαταστήσετε το AviSynth!$\n(Αδυναμία εγγραφής στο μητρώο HKLM)"
+LangString AdminRightsHKCR_Text     ${AvsLang} "Απαιτούνται δικαιώματα διαχειριστή για να εγκαταστήσετε το AviSynth!$\n(Αδυναμία εγγραφής στο μητρώο HKCR)"
+LangString StandAlone_Text          ${AvsLang} "Εγκατάσταση αρχείων στο φάκελο του προϊόντος"
+LangString Documentation_Text       ${AvsLang} "Τεκμηρίωση"
+LangString English_Text             ${AvsLang} "Αγγλική Τεκμηρίωση"
+LangString German_Text              ${AvsLang} "Γερμανική Τεκμηρίωση"
+LangString French_Text              ${AvsLang} "Γαλλική Τεκμηρίωση"
+LangString Italian_Text             ${AvsLang} "Ιταλική Τεκμηρίωση"
+LangString Japanese_Text            ${AvsLang} "Japanese Τεκμηρίωση"
+LangString Portugese_Text           ${AvsLang} "Πορτογαλική Τεκμηρίωση"
+LangString Russian_Text             ${AvsLang} "Ρωσική Τεκμηρίωση"
+LangString SelectAssociation_Text   ${AvsLang} "Επιλέξτε Συσχέτιση"
+LangString Associate1_Text          ${AvsLang} "Συσχέτιση αρχείων AVS με το Notepad (άνοιγμα)"
+LangString Associate2_Text          ${AvsLang} "Συσχέτιση αρχείων AVS με το Media Player 6.4 (αναπαραγωγή)"
+LangString Associate3_Text          ${AvsLang} "Προσθήκη AviSynth Script στο μενού Δημιουργία"
+LangString SelectExtraFiles_Text    ${AvsLang} "Επιλέξτε πρόσθετα στοιχεία"
+LangString ExtraFiles3_Text         ${AvsLang} "Εγκατάσταση FilterSDK"
+LangString ExtraFiles1_Text         ${AvsLang} "Εγκατάσταση Avisynth.lib και Avisynth.exp"
+LangString ExtraFiles2_Text         ${AvsLang} "Εγκατάσταση Avisynth.map"
+
+LangString Frameserving_Bubble      ${AvsLang} "Εγκατάσταση κύριων αρχείων για εξυπηρέτηση πλαισίων βίντεο μέσω AviSynth"
+LangString SystemInstall_Bubble     ${AvsLang} "Εγκατάσταση των κύριων αρχείων στο φάκελο Συστήματος"
+LangString StandAlone_Bubble        ${AvsLang} "Εγκατάσταση των κύριων αρχείων στο φάκελο του Προϊόντος (μη λειτουργική εγκατάσταση εάν δεν είστε Διαχειριστής) (Πρέπει να επιλέξετε Αυτόνομη εγκατάσταση)"
+LangString Documentation_Bubble     ${AvsLang} "Εγκατάσταση βοήθειας. Παρακαλώ επιλέξτε γλώσσες (οι μη-Αγγλικές ενδέχεται να μην είναι πλήρως ενημερωμένες)"
+LangString English_Bubble           ${AvsLang} "Εγκατάσταση Αγγλικής βοήθειας"
+LangString German_Bubble            ${AvsLang} "Εγκατάσταση Γερμανικής βοήθειας"
+LangString French_Bubble            ${AvsLang} "Εγκατάσταση Γαλλικής βοήθειας"
+LangString Italian_Bubble           ${AvsLang} "Εγκατάσταση Ιταλικής βοήθειας"
+LangString Japanese_Bubble          ${AvsLang} "Εγκατάσταση Japanese βοήθειας"
+LangString Portugese_Bubble         ${AvsLang} "Εγκατάσταση Πορτογαλικής βοήθειας"
+LangString Russian_Bubble           ${AvsLang} "Εγκατάσταση Ρωσικής βοήθειας"
+LangString SelectAssociation_Bubble ${AvsLang} "Επιλέξτε μία ή περισσότερες συσχετίσεις"
+LangString Associate1_Bubble        ${AvsLang} "Άνοιγμα αρχείων AVS απευθείας με το Notepad για επεξεργασία"
+LangString Associate2_Bubble        ${AvsLang} "Αναπαραγωγή αρχείων AVS απευθείας με το Media Player 6.4 (δεξί κλικ - play)"
+LangString Associate3_Bubble        ${AvsLang} "Δημιουργία νέου αρχείου AviSynth Script (δεξί κλικ - Δημιουργία - AviSynth Script)"
+LangString SelectExtraFiles_Bubble  ${AvsLang} "Επιλογή ενός ή περισσότερων πρόσθετων στοιχείων προς εγκατάσταση"
+LangString ExtraFiles1_Bubble       ${AvsLang} "Εγκατάσταση avisynth.lib και avisynth.exp για ανάπτυξη με διεπαφή C"
+LangString ExtraFiles2_Bubble       ${AvsLang} "Εγκατάσταση αρχείου avisynth.map"
+LangString ExtraFiles3_Bubble       ${AvsLang} "Εγκατάσταση FilterSDK για ανάπτυξη προσθέτων του AviSynth"
+
+LangString Uninstall_Text           ${AvsLang} "Η κατάργηση της εγκατάστασης ολοκληρώθηκε με επιτυχία."
+LangString RemoveReg_Text           ${AvsLang} "Θέλετε να καταργήσετε την εγγραφή μητρώου που δείχνει προς το$\nφάκελο προσθέτων (κανένα αρχείο δε θα διαγραφεί);"
+
+!undef AvsLang
+
 
 
 ;----------------------------------
@@ -190,6 +261,7 @@ LangString English_Text             ${AvsLang} "Documentation en anglais"
 LangString German_Text              ${AvsLang} "Documentation en allemand"
 LangString French_Text              ${AvsLang} "Documentation en franηais"
 LangString Italian_Text             ${AvsLang} "Documentation en italien"
+LangString Japanese_Text            ${AvsLang} "Documentation en japonais"
 LangString Portugese_Text           ${AvsLang} "Documentation en portugais"
 LangString Russian_Text             ${AvsLang} "Documentation en russe"
 LangString SelectAssociation_Text   ${AvsLang} "Selectionnez les associations"
@@ -209,6 +281,7 @@ LangString English_Bubble           ${AvsLang} "Installer aide en anglais"
 LangString German_Bubble            ${AvsLang} "Installer aide en allemand"
 LangString French_Bubble            ${AvsLang} "Installer aide en franηais"
 LangString Italian_Bubble           ${AvsLang} "Installer aide en italien"
+LangString Japanese_Bubble          ${AvsLang} "Installer aide en japonais"
 LangString Portugese_Bubble         ${AvsLang} "Installer aide en portugais"
 LangString Russian_Bubble           ${AvsLang} "Installer aide en russe"
 LangString SelectAssociation_Bubble ${AvsLang} "Sιlectionnez une ou plusieurs associations"
@@ -222,6 +295,7 @@ LangString ExtraFiles3_Bubble       ${AvsLang} "Installer FilterSDK pour le dιve
 
 LangString Uninstall_Text           ${AvsLang} "Dιsintallation rιussie."
 LangString RemoveReg_Text           ${AvsLang} "Voulez-vous supprimer le pointeur de la base de registre vers$\nle rιpertoire des plugin (aucun fichier ne sera supprimι)?"
+
 !undef AvsLang
 
 
@@ -231,57 +305,59 @@ LangString RemoveReg_Text           ${AvsLang} "Voulez-vous supprimer le pointeu
 ; Code page 1041
 ;
 ;----------------------------------
-LangString AVS_Standard             ${AvsLang} "Standard"
-LangString AVS_Minimal              ${AvsLang} "Minimal"
-LangString AVS_Standalone           ${AvsLang} "Standalone"
-LangString AVS_Full                 ${AvsLang} "Full"
+LangString AVS_Standard             ${AvsLang} "ζ¨™ζΊ–"
+LangString AVS_Minimal              ${AvsLang} "ζ€ε°"
+LangString AVS_Standalone           ${AvsLang} "γ‚Ήγ‚Ώγƒ³γƒ‰γ‚Άγƒ­γƒΌγƒ³"
+LangString AVS_Full                 ${AvsLang} "γƒ•γƒ«"
 
-LangString FINISHPAGE_TEXT          ${AvsLang} "Visit the AviSynth website for the latest news and support"
-LangString COMPONENT_TEXT           ${AvsLang} "AviSynth - the premiere frameserving tool available today.$\nCopyright © 2000 - 2008."
-LangString Frameserving_Text        ${AvsLang} "AviSynth Base (required)"
-LangString SystemInstall_Text       ${AvsLang} "Install files in System directory"
-LangString InUseMsg_Text            ${AvsLang} "Could not copy avisynth.dll to system directory$\n$\nClose down all applications that use Avisynth, and be$\nsure to have write permission to the system directory,$\nand then try again."
-LangString PlugDir_Text             ${AvsLang} "Could not write to the Avisynth Plugin Directory.$\nClose down all applications that use Avisynth,$\nand then try again."
-LangString AdminRightsHKLM_Text     ${AvsLang} "You need administrator rights to install AviSynth!$\n(Could not write to registry HKLM)"
-LangString AdminRightsHKCR_Text     ${AvsLang} "You need administrator rights to install AviSynth!$\n(Could not write to registry HKCR)"
-LangString StandAlone_Text          ${AvsLang} "Install files in product directory"
-LangString Documentation_Text       ${AvsLang} "Documentation"
-LangString English_Text             ${AvsLang} "English Documentation"
-LangString German_Text              ${AvsLang} "German Documentation"
-LangString French_Text              ${AvsLang} "French Documentation"
-LangString Italian_Text             ${AvsLang} "Italian Documentation"
-LangString Portugese_Text           ${AvsLang} "Portuguese Documentation"
-LangString Russian_Text             ${AvsLang} "Russian Documentation"
-LangString SelectAssociation_Text   ${AvsLang} "Select Association"
-LangString Associate1_Text          ${AvsLang} "Associate AVS with Notepad (open)"
-LangString Associate2_Text          ${AvsLang} "Associate AVS with Media Player 6.4 (play)"
-LangString Associate3_Text          ${AvsLang} "Add AviSynth Script to New Items menu"
-LangString SelectExtraFiles_Text    ${AvsLang} "Select Extra Files"
-LangString ExtraFiles3_Text         ${AvsLang} "Install FilterSDK"
-LangString ExtraFiles1_Text         ${AvsLang} "Install Avisynth.lib and Avisynth.exp"
-LangString ExtraFiles2_Text         ${AvsLang} "Install Avisynth.map"
+LangString FINISHPAGE_TEXT          ${AvsLang} "ζ€ζ–°γƒ‹γƒ¥γƒΌγ‚Ήγ¨γ‚µγƒγƒΌγƒγ«γ¤γ„γ¦γ― AviSynth ε…¬εΌγ‚µγ‚¤γƒγ‚’γ”θ¦§γγ γ•γ„γ€‚"
+LangString COMPONENT_TEXT           ${AvsLang} "AviSynth - ηΎε¨ε©η”¨ε―θƒ½γª Premiere γƒ•γƒ¬γƒΌγƒ γ‚µγƒΌγƒ“γƒ³γ‚°γƒ„γƒΌγƒ«$\nCopyright (c) 2000 - 2008."
+LangString Frameserving_Text        ${AvsLang} "AviSynth εΊζ¬οΌεΏ…ι οΌ‰"
+LangString SystemInstall_Text       ${AvsLang} "γƒ•γ‚΅γ‚¤γƒ«γ‚’γ‚·γ‚Ήγƒ†γƒ γƒ‡γ‚£γƒ¬γ‚―γƒγƒªγ«γ‚¤γƒ³γ‚ΉγƒγƒΌγƒ«γ—γΎγ™γ€‚"
+LangString InUseMsg_Text            ${AvsLang} "avisynth.dll γ‚’γ‚·γ‚Ήγƒ†γƒ γƒ‡γ‚£γƒ¬γ‚―γƒγƒªγ«γ‚¤γƒ³γ‚ΉγƒγƒΌγƒ«γ§γγΎγ›γ‚“γ§γ—γγ€‚$\n$\nAviSynth γ‚’δ½Ώη”¨γ™γ‚‹γ™γΉγ¦γ®γ‚Άγƒ—γƒªγ‚±γƒΌγ‚·γƒ§γƒ³γ‚’ι–‰γγ€$\nγ‚·γ‚Ήγƒ†γƒ γƒ‡γ‚£γƒ¬γ‚―γƒγƒªγΈγ®ζ›ΈγθΎΌγΏζ¨©ι™γγ‚γ‚‹γ‹ηΆΊθªγ—γ¦γγ γ•γ„γ€‚$\nγγ®γ‚γ¨γ§γ€γ‚‚γ†δΈ€εΊ¦θ©¦γ—γ¦γγ γ•γ„γ€‚"
+LangString PlugDir_Text             ${AvsLang} "AviSynth γƒ—γƒ©γ‚°γ‚¤γƒ³γƒ‡γ‚£γƒ¬γ‚―γƒγƒªγ«ζ›ΈγθΎΌγ‚γΎγ›γ‚“γ§γ—γγ€‚$\nAviSynth γ‚’δ½Ώη”¨γ™γ‚‹γ™γΉγ¦γ®γ‚Άγƒ—γƒªγ‚±γƒΌγ‚·γƒ§γƒ³γ‚’ι–‰γγ¦γ‹γ‚‰γ€$\nγ‚‚γ†δΈ€εΊ¦θ©¦γ—γ¦γγ γ•γ„γ€‚"
+LangString AdminRightsHKLM_Text     ${AvsLang} "AviSynth γ‚’γ‚¤γƒ³γ‚ΉγƒγƒΌγƒ«γ™γ‚‹γ«γ―η®΅η†θ€…ζ¨©ι™γεΏ…θ¦γ§γ™οΌ$\nοΌγƒ¬γ‚Έγ‚Ήγƒγƒª HKLM γ«ζ›ΈγθΎΌγ‚γΎγ›γ‚“γ§γ—γοΌ‰"
+LangString AdminRightsHKCR_Text     ${AvsLang} "AviSynth γ‚’γ‚¤γƒ³γ‚ΉγƒγƒΌγƒ«γ™γ‚‹γ«γ―η®΅η†θ€…ζ¨©ι™γεΏ…θ¦γ§γ™οΌ$\nοΌγƒ¬γ‚Έγ‚Ήγƒγƒª HKCR γ«ζ›ΈγθΎΌγ‚γΎγ›γ‚“γ§γ—γοΌ‰"
+LangString StandAlone_Text          ${AvsLang} "product γƒ‡γ‚£γƒ¬γ‚―γƒγƒªγ«γƒ•γ‚΅γ‚¤γƒ«γ‚’γ‚¤γƒ³γ‚ΉγƒγƒΌγƒ«γ—γΎγ™γ€‚"
+LangString Documentation_Text       ${AvsLang} "γƒγƒ«γƒ—"
+LangString English_Text             ${AvsLang} "θ‹±θª"
+LangString German_Text              ${AvsLang} "γƒ‰γ‚¤γƒ„θª"
+LangString French_Text              ${AvsLang} "γƒ•γƒ©γƒ³γ‚Ήθª"
+LangString Italian_Text             ${AvsLang} "γ‚¤γ‚Ώγƒªγ‚Άθª"
+LangString Japanese_Text            ${AvsLang} "ζ—¥ζ¬θª"
+LangString Portugese_Text           ${AvsLang} "γƒγƒ«γƒγ‚¬γƒ«θª"
+LangString Russian_Text             ${AvsLang} "γƒ­γ‚·γ‚Άθª"
+LangString SelectAssociation_Text   ${AvsLang} "ι–Άι€£δ»γ‘γ®ιΈζ"
+LangString Associate1_Text          ${AvsLang} "AVS γ‚’γƒ΅γƒΆεΈ³γ«ι–Άι€£δ»γ‘οΌι–‹γοΌ‰"
+LangString Associate2_Text          ${AvsLang} "AVS γ‚’ Media Player 6.4 γ«ι–Άι€£δ»γ‘οΌε†η”οΌ‰"
+LangString Associate3_Text          ${AvsLang} "AviSynth Script γ‚’ζ–°θ¦δ½ζγƒ΅γƒ‹γƒ¥γƒΌγ«θΏ½ε "
+LangString SelectExtraFiles_Text    ${AvsLang} "θΏ½ε γƒ•γ‚΅γ‚¤γƒ«γ®ιΈζ"
+LangString ExtraFiles3_Text         ${AvsLang} "FilterSDK γ®γ‚¤γƒ³γ‚ΉγƒγƒΌγƒ«"
+LangString ExtraFiles1_Text         ${AvsLang} "Avisynth.lib γ¨ Avisynth.exp γ®γ‚¤γƒ³γ‚ΉγƒγƒΌγƒ«"
+LangString ExtraFiles2_Text         ${AvsLang} "Avisynth.map γ®γ‚¤γƒ³γ‚ΉγƒγƒΌγƒ«"
 
-LangString Frameserving_Bubble      ${AvsLang} "Install the main files for frameserving via AviSynth"
-LangString SystemInstall_Bubble     ${AvsLang} "Install the main files in the System directory"
-LangString StandAlone_Bubble        ${AvsLang} "Install the main files in the Product directory (Nonfunctional non-Admin install) (Must choose Standalone template)"
-LangString Documentation_Bubble     ${AvsLang} "Install help. Please select languages (non-English may be out of date)"
-LangString English_Bubble           ${AvsLang} "Install English help"
-LangString German_Bubble            ${AvsLang} "Install German help"
-LangString French_Bubble            ${AvsLang} "Install French help"
-LangString Italian_Bubble           ${AvsLang} "Install Italian help"
-LangString Portugese_Bubble         ${AvsLang} "Install Portuguese help"
-LangString Russian_Bubble           ${AvsLang} "Install Russian help"
-LangString SelectAssociation_Bubble ${AvsLang} "Select one or more associations"
-LangString Associate1_Bubble        ${AvsLang} "Open AVS files directly with Notepad to edit"
-LangString Associate2_Bubble        ${AvsLang} "Play AVS files directly with Media Player 6.4 (right click - play)"
-LangString Associate3_Bubble        ${AvsLang} "Create a new blank AviSynth Script (right click - new - AviSynth Script)"
-LangString SelectExtraFiles_Bubble  ${AvsLang} "Select one or more additional files to install"
-LangString ExtraFiles1_Bubble       ${AvsLang} "Install avisynth.lib and avisynth.exp for C interface developement"
-LangString ExtraFiles2_Bubble       ${AvsLang} "Install avisynth.map file"
-LangString ExtraFiles3_Bubble       ${AvsLang} "Install FilterSDK for AviSynth plugins development"
+LangString Frameserving_Bubble      ${AvsLang} "AviSynth ηµη”±γ§γƒ•γƒ¬γƒΌγƒ γ‚µγƒΌγƒ“γƒ³γ‚°γ™γ‚‹γγ‚γ®δΈ»θ¦γªγƒ•γ‚΅γ‚¤γƒ«γ‚’γ‚¤γƒ³γ‚ΉγƒγƒΌγƒ«γ„γΎγ™γ€‚"
+LangString SystemInstall_Bubble     ${AvsLang} "δΈ»θ¦γªγƒ•γ‚΅γ‚¤γƒ«γ‚’γ‚·γ‚Ήγƒ†γƒ γƒ‡γ‚£γƒ¬γ‚―γƒγƒªγ«γ‚¤γƒ³γ‚ΉγƒγƒΌγƒ«γ—γΎγ™γ€‚"
+LangString StandAlone_Bubble        ${AvsLang} "δΈ»θ¦γªγƒ•γ‚΅γ‚¤γƒ«γ‚’ Product γƒ‡γ‚£γƒ¬γ‚―γƒγƒªγ«γ‚¤γƒ³γ‚ΉγƒγƒΌγƒ«γ—γΎγ™οΌιζ©θƒ½η„γªιη®΅η†θ€…γ‚¤γƒ³γ‚ΉγƒγƒΌγƒ«οΌ‰οΌγ‚Ήγ‚Ώγƒ³γƒ‰γ‚Άγƒ­γƒΌγƒ³γƒ†γƒ³γƒ—γƒ¬γƒΌγƒγ‚’ιΈζγ™γ‚‹εΏ…θ¦γγ‚γ‚γΎγ™οΌ‰"
+LangString Documentation_Bubble     ${AvsLang} "γƒγƒ«γƒ—γ‚’γ‚¤γƒ³γ‚ΉγƒγƒΌγƒ«γ—γΎγ™γ€‚θ¨€θªγ‚’ιΈζγ—γ¦γγ γ•γ„οΌθ‹±θªδ»¥ε¤–γ―ε†…ε®Ήγε¤γ„γ‹γ‚‚γ—γ‚γΎγ›γ‚“οΌ‰"
+LangString English_Bubble           ${AvsLang} "θ‹±θªγ®γƒγƒ«γƒ—γ‚’γ‚¤γƒ³γ‚ΉγƒγƒΌγƒ«γ—γΎγ™"
+LangString German_Bubble            ${AvsLang} "γƒ‰γ‚¤γƒ„θªγ®γƒγƒ«γƒ—γ‚’γ‚¤γƒ³γ‚ΉγƒγƒΌγƒ«γ—γΎγ™"
+LangString French_Bubble            ${AvsLang} "γƒ•γƒ©γƒ³γ‚Ήθªγ®γƒγƒ«γƒ—γ‚’γ‚¤γƒ³γ‚ΉγƒγƒΌγƒ«γ—γΎγ™"
+LangString Italian_Bubble           ${AvsLang} "γ‚¤γ‚Ώγƒªγ‚Άθªγ®γƒγƒ«γƒ—γ‚’γ‚¤γƒ³γ‚ΉγƒγƒΌγƒ«γ—γΎγ™"
+LangString Japanese_Bubble          ${AvsLang} "ζ—¥ζ¬θªγ®γƒγƒ«γƒ—γ‚’γ‚¤γƒ³γ‚ΉγƒγƒΌγƒ«γ—γΎγ™"
+LangString Portugese_Bubble         ${AvsLang} "γƒγƒ«γƒγ‚¬γƒ«θªγ®γƒγƒ«γƒ—γ‚’γ‚¤γƒ³γ‚ΉγƒγƒΌγƒ«γ—γΎγ™"
+LangString Russian_Bubble           ${AvsLang} "γƒ­γ‚·γ‚Άθªγ®γƒγƒ«γƒ—γ‚’γ‚¤γƒ³γ‚ΉγƒγƒΌγƒ«γ—γΎγ™"
+LangString SelectAssociation_Bubble ${AvsLang} "1 γ¤δ»¥δΈγ®ι–Άι€£δ»γ‘γ‚’ιΈζγ™γ‚‹γ“γ¨γγ§γγΎγ™"
+LangString Associate1_Bubble        ${AvsLang} "AVS γƒ•γ‚΅γ‚¤γƒ«γ‚’η·¨ι›†γ™γ‚‹γγ‚γ«γƒ΅γƒΆεΈ³γ‚’δ½Ώγ£γ¦η›΄ζ¥ι–‹γγΎγ™"
+LangString Associate2_Bubble        ${AvsLang} "AVS γƒ•γ‚΅γ‚¤γƒ«γ‚’ Media Player 6.4 γ‚’δ½Ώγ£γ¦η›΄ζ¥ε†η”γ—γΎγ™οΌε³γ‚―γƒªγƒƒγ‚― - playοΌ‰"
+LangString Associate3_Bubble        ${AvsLang} "ζ–°γ—γ„η©Ίγ® AviSynth γ‚Ήγ‚―γƒªγƒ—γƒγ‚’δ½ζγ—γΎγ™οΌε³γ‚―γƒªγƒƒγ‚― - ζ–°θ¦δ½ζ - AviSynth ScriptοΌ‰"
+LangString SelectExtraFiles_Bubble  ${AvsLang} "γ‚¤γƒ³γ‚ΉγƒγƒΌγƒ«γ™γ‚‹θΏ½ε γƒ•γ‚΅γ‚¤γƒ«γ‚’ 1 γ¤δ»¥δΈιΈζγ™γ‚‹γ“γ¨γγ§γγΎγ™"
+LangString ExtraFiles1_Bubble       ${AvsLang} "C θ¨€θªγ‚¤γƒ³γ‚ΏγƒΌγƒ•γ‚§γ‚¤γ‚Ήι–‹η™Ίη”¨γ® avisynth.lib γ¨ avisynth.exp γ‚’γ‚¤γƒ³γ‚ΉγƒγƒΌγƒ«γ—γΎγ™"
+LangString ExtraFiles2_Bubble       ${AvsLang} "avisynth.map γ‚’γ‚¤γƒ³γ‚ΉγƒγƒΌγƒ«γ—γΎγ™"
+LangString ExtraFiles3_Bubble       ${AvsLang} "AviSynth γƒ—γƒ©γ‚°γ‚¤γƒ³ι–‹η™Ίη”¨γ® FilterSDK γ‚’γ‚¤γƒ³γ‚ΉγƒγƒΌγƒ«γ—γΎγ™"
 
-LangString Uninstall_Text           ${AvsLang} "Uninstall has been successfully completed."
-LangString RemoveReg_Text           ${AvsLang} "Do you want to remove the registry pointer to$\nplugin directory (no files will be removed)?"
+LangString Uninstall_Text           ${AvsLang} "γ‚Άγƒ³γ‚¤γƒ³γ‚ΉγƒγƒΌγƒ«γ―ζ­£εΈΈγ«ε®δΊ†γ—γΎγ—γγ€‚"
+LangString RemoveReg_Text           ${AvsLang} "γƒ—γƒ©γ‚°γ‚¤γƒ³γƒ‡γ‚£γƒ¬γ‚―γƒγƒªγΈγ®γƒ¬γ‚Έγ‚Ήγƒγƒªγƒγ‚¤γƒ³γ‚Ώγ‚’ε‰ι™¤γ—γΎγ™γ‹οΌ$\nοΌγƒ•γ‚΅γ‚¤γƒ«γ―ε‰ι™¤γ•γ‚γΎγ›γ‚“οΌ‰"
 !undef AvsLang
 
 
@@ -310,6 +386,7 @@ LangString English_Text             ${AvsLang} "English Documentation"
 LangString German_Text              ${AvsLang} "German Documentation"
 LangString French_Text              ${AvsLang} "French Documentation"
 LangString Italian_Text             ${AvsLang} "Italian Documentation"
+LangString Japanese_Text            ${AvsLang} "Japanese Documentation"
 LangString Portugese_Text           ${AvsLang} "Portuguese Documentation"
 LangString Russian_Text             ${AvsLang} "Russian Documentation"
 LangString SelectAssociation_Text   ${AvsLang} "Select Association"
@@ -329,6 +406,7 @@ LangString English_Bubble           ${AvsLang} "Install English help"
 LangString German_Bubble            ${AvsLang} "Install German help"
 LangString French_Bubble            ${AvsLang} "Install French help"
 LangString Italian_Bubble           ${AvsLang} "Install Italian help"
+LangString Japanese_Bubble          ${AvsLang} "Install Japanese help"
 LangString Portugese_Bubble         ${AvsLang} "Install Portuguese help"
 LangString Russian_Bubble           ${AvsLang} "Install Russian help"
 LangString SelectAssociation_Bubble ${AvsLang} "Select one or more associations"
@@ -342,6 +420,7 @@ LangString ExtraFiles3_Bubble       ${AvsLang} "Install FilterSDK for AviSynth p
 
 LangString Uninstall_Text           ${AvsLang} "Uninstall has been successfully completed."
 LangString RemoveReg_Text           ${AvsLang} "Do you want to remove the registry pointer to$\nplugin directory (no files will be removed)?"
+
 !undef AvsLang
 
 
@@ -577,6 +656,12 @@ Section /o  $(Italian_Text) Italian
 
 SectionEnd
 
+Section /o  $(Japanese_Text) Japanese
+
+; Place holder
+
+SectionEnd
+
 Section /o  $(Portugese_Text) Portugese
   SectionIn 4
   SetOutPath $INSTDIR\Docs
@@ -688,7 +773,9 @@ SectionEnd
 Section /o  $(ExtraFiles2_Text) ExtraFiles2
   SectionIn 4
   SetOutPath $INSTDIR\Extras
-  File "..\src\release\AviSynth.map"
+  File "..\src\Release\AviSynth.map"
+  File "..\src\plugins\TCPDeliver\Release\TCPDeliver.map"
+  File "..\src\plugins\DirectShowSource\Release\DirectShowSource.map"
 SectionEnd
 
 SubSectionEnd
@@ -711,8 +798,8 @@ Function .onInit
 ;    StrCmp $LANGUAGE ${LANG_Italian} 0 +2
 ;    SectionSetInstTypes ${Italian} $0
 
-;    StrCmp $LANGUAGE ${LANG_Japanese} 0 +2
-;    SectionSetInstTypes ${Japanese} $0
+    StrCmp $LANGUAGE ${LANG_Japanese} 0 +2
+    SectionSetInstTypes ${Japanese} $0
 
 ;    StrCmp $LANGUAGE ${LANG_Portuguese} 0 +2
 ;    SectionSetInstTypes ${Portuguese} $0
@@ -736,6 +823,7 @@ FunctionEnd
   !insertmacro MUI_DESCRIPTION_TEXT ${German}             $(German_Bubble)
   !insertmacro MUI_DESCRIPTION_TEXT ${French}             $(French_Bubble)
   !insertmacro MUI_DESCRIPTION_TEXT ${Italian}            $(Italian_Bubble)
+  !insertmacro MUI_DESCRIPTION_TEXT ${Japanese}           $(Japanese_Bubble)
   !insertmacro MUI_DESCRIPTION_TEXT ${Portugese}          $(Portugese_Bubble)
   !insertmacro MUI_DESCRIPTION_TEXT ${Russian}            $(Russian_Bubble)
   !insertmacro MUI_DESCRIPTION_TEXT ${SelectAssociation}  $(SelectAssociation_Bubble)
