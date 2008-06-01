@@ -235,7 +235,6 @@ LangString RemoveReg_Text           ${AvsLang} "Θέλετε να καταργήσετε την εγγραφ
 !undef AvsLang
 
 
-
 ;----------------------------------
 !define AvsLang ${LANG_French}
 ;
@@ -310,7 +309,7 @@ LangString AVS_Minimal              ${AvsLang} "Ε¬"
 LangString AVS_Standalone           ${AvsLang} "ƒXƒ^ƒ“ƒhƒAƒ[ƒ“"
 LangString AVS_Full                 ${AvsLang} "ƒtƒ‹"
 
-LangString FINISHPAGE_TEXT          ${AvsLang} "ΕVƒjƒ…[ƒX‚ΖƒTƒ|[ƒg‚Ι‚Β‚Ά‚Δ‚Ν AviSynth φ®ƒTƒCƒg‚π‚²——‚­‚Ύ‚³‚ΆB"
+LangString FINISHPAGE_TEXT          ${AvsLang} "ΕVƒjƒ…[ƒX‚ΖƒTƒ|[ƒg‚Ι‚Β‚Ά‚Δ‚Ν$\nAviSynth φ®ƒTƒCƒg‚π‚²——‚­‚Ύ‚³‚ΆB"
 LangString COMPONENT_TEXT           ${AvsLang} "AviSynth - »έ——p‰Β”\‚Θ Premiere ƒtƒ[ƒ€ƒT[ƒrƒ“ƒOƒc[ƒ‹$\nCopyright (c) 2000 - 2008."
 LangString Frameserving_Text        ${AvsLang} "AviSynth ξ–{i•K{j"
 LangString SystemInstall_Text       ${AvsLang} "ƒtƒ@ƒCƒ‹‚πƒVƒXƒeƒ€ƒfƒBƒƒNƒgƒ‚ΙƒCƒ“ƒXƒg[ƒ‹‚µ‚ά‚·B"
@@ -338,7 +337,7 @@ LangString ExtraFiles2_Text         ${AvsLang} "Avisynth.map ‚ΜƒCƒ“ƒXƒg[ƒ‹"
 
 LangString Frameserving_Bubble      ${AvsLang} "AviSynth o—R‚Εƒtƒ[ƒ€ƒT[ƒrƒ“ƒO‚·‚ι‚½‚ί‚Με—v‚Θƒtƒ@ƒCƒ‹‚πƒCƒ“ƒXƒg[ƒ‹‚Ά‚ά‚·B"
 LangString SystemInstall_Bubble     ${AvsLang} "ε—v‚Θƒtƒ@ƒCƒ‹‚πƒVƒXƒeƒ€ƒfƒBƒƒNƒgƒ‚ΙƒCƒ“ƒXƒg[ƒ‹‚µ‚ά‚·B"
-LangString StandAlone_Bubble        ${AvsLang} "ε—v‚Θƒtƒ@ƒCƒ‹‚π Product ƒfƒBƒƒNƒgƒ‚ΙƒCƒ“ƒXƒg[ƒ‹‚µ‚ά‚·i”ρ‹@”\“I‚Θ”ρΗ—ÒƒCƒ“ƒXƒg[ƒ‹jiƒXƒ^ƒ“ƒhƒAƒ[ƒ“ƒeƒ“ƒvƒ[ƒg‚π‘I‘π‚·‚ι•K—v‚ª‚ ‚θ‚ά‚·j"
+LangString StandAlone_Bubble        ${AvsLang} "ε—v‚Θƒtƒ@ƒCƒ‹‚π Product ƒfƒBƒƒNƒgƒ‚ΙƒCƒ“ƒXƒg[ƒ‹‚µ‚ά‚·B"
 LangString Documentation_Bubble     ${AvsLang} "ƒwƒ‹ƒv‚πƒCƒ“ƒXƒg[ƒ‹‚µ‚ά‚·BΎκ‚π‘I‘π‚µ‚Δ‚­‚Ύ‚³‚Άi‰pκΘO‚Ν“ΰ—e‚ªΓ‚Ά‚©‚ΰ‚µ‚κ‚ά‚Ή‚ρj"
 LangString English_Bubble           ${AvsLang} "‰pκ‚Μƒwƒ‹ƒv‚πƒCƒ“ƒXƒg[ƒ‹‚µ‚ά‚·"
 LangString German_Bubble            ${AvsLang} "ƒhƒCƒcκ‚Μƒwƒ‹ƒv‚πƒCƒ“ƒXƒg[ƒ‹‚µ‚ά‚·"
