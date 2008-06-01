@@ -173,6 +173,8 @@ LangString RemoveReg_Text           ${AvsLang} "Do you want to remove the regist
 
 
 ;----------------------------------
+; By gzarkadas -- http://forum.doom9.org/member.php?u=83686
+;----------------------------------
 !define AvsLang ${LANG_Greek}
 ;
 ; Code page 1032 or 1253 ???
@@ -236,6 +238,14 @@ LangString RemoveReg_Text           ${AvsLang} "Èİëåôå íá êáôáñãŞóåôå ôçí åããñáö
 
 
 ;----------------------------------
+; By manusse -- http://forum.doom9.org/member.php?u=85746
+;----------------------------------
+;
+; Correct long ModernUI standard string, was   "Sélectionnez le type d'installation :"
+;
+LangString ^ComponentsSubText1  ${LANG_French} "Sélectionnez installation :"
+;
+;----------------------------------
 !define AvsLang ${LANG_French}
 ;
 ; Code page 1036
@@ -251,10 +261,10 @@ LangString COMPONENT_TEXT           ${AvsLang} "AviSynth - Le serveur d'image de
 LangString Frameserving_Text        ${AvsLang} "AviSynth Base (requis)"
 LangString SystemInstall_Text       ${AvsLang} "Installation des fichiers dans le dossier System"
 LangString InUseMsg_Text            ${AvsLang} "Impossible de copier avisynth.dll vers le dossier system$\n$\nFermez toutes les applications qui utilisent, et$\nvérifiez que vous avez les droits en écriture sur le dossier system,$\net ensuite réessayez."
-LangString PlugDir_Text             ${AvsLang} "Impossible d'écrire dans le répertoire Avisynth Plugin.$\nFermez toutes les applications qui utilisent Avisynth,$\net ensuite réessayez."
+LangString PlugDir_Text             ${AvsLang} "Impossible d'écrire dans le dossier Avisynth Plugin.$\nFermez toutes les applications qui utilisent Avisynth,$\net ensuite réessayez."
 LangString AdminRightsHKLM_Text     ${AvsLang} "Vous avez besoin des droits administrateur pour installer AviSynth!$\n(Impossible d'écrire dans la base de registre HKLM)"
 LangString AdminRightsHKCR_Text     ${AvsLang} "Vous avez besoin des droits administrateur pour installer AviSynth!$\n(Impossible d'écrire dans la base de registre HKCR)"
-LangString StandAlone_Text          ${AvsLang} "Installation des fichiers dans le répertoire Product"
+LangString StandAlone_Text          ${AvsLang} "Installation des fichiers dans le dossier d'installation"
 LangString Documentation_Text       ${AvsLang} "Documentation"
 LangString English_Text             ${AvsLang} "Documentation en anglais"
 LangString German_Text              ${AvsLang} "Documentation en allemand"
@@ -274,7 +284,7 @@ LangString ExtraFiles2_Text         ${AvsLang} "Installer Avisynth.map"
 
 LangString Frameserving_Bubble      ${AvsLang} "Installer les fichiers principaux pour faire du frameserving grâce à AviSynth"
 LangString SystemInstall_Bubble     ${AvsLang} "Installer les fichiers principaux dans le dossier System"
-LangString StandAlone_Bubble        ${AvsLang} "Installer les fichiers principaux dans le dossier Product (installation non-Admin et non fonctionnelles) (Choisir le profil d'installation Autonome)"
+LangString StandAlone_Bubble        ${AvsLang} "Installer fichiers dans dossier d'installation (instal. non-Admin et non fonctionnelle) (Choisir instal. Autonome)"
 LangString Documentation_Bubble     ${AvsLang} "Installer l'aide. Merci de choisir les langues désirées (à part l'anglais, elles ne sont probablement pas à jour)"
 LangString English_Bubble           ${AvsLang} "Installer aide en anglais"
 LangString German_Bubble            ${AvsLang} "Installer aide en allemand"
@@ -293,11 +303,13 @@ LangString ExtraFiles2_Bubble       ${AvsLang} "Installer le fichier avisynth.ma
 LangString ExtraFiles3_Bubble       ${AvsLang} "Installer FilterSDK pour le développement de plugins AviSynth"
 
 LangString Uninstall_Text           ${AvsLang} "Désintallation réussie."
-LangString RemoveReg_Text           ${AvsLang} "Voulez-vous supprimer le pointeur de la base de registre vers$\nle répertoire des plugin (aucun fichier ne sera supprimé)?"
+LangString RemoveReg_Text           ${AvsLang} "Voulez-vous supprimer le pointeur de la base de registre vers$\nle dossier des plugins (aucun fichier ne sera supprimé)?"
 
 !undef AvsLang
 
 
+;----------------------------------
+; By niiyan - http://forum.doom9.org/member.php?u=17179
 ;----------------------------------
 !define AvsLang ${LANG_Japanese}
 ;
@@ -309,15 +321,15 @@ LangString AVS_Minimal              ${AvsLang} "Å¬"
 LangString AVS_Standalone           ${AvsLang} "ƒXƒ^ƒ“ƒhƒAƒ[ƒ“"
 LangString AVS_Full                 ${AvsLang} "ƒtƒ‹"
 
-LangString FINISHPAGE_TEXT          ${AvsLang} "ÅVƒjƒ…[ƒX‚ÆƒTƒ|[ƒg‚É‚Â‚¢‚Ä‚Í$\nAviSynth Œö®ƒTƒCƒg‚ğ‚²——‚­‚¾‚³‚¢B"
+LangString FINISHPAGE_TEXT          ${AvsLang} "AviSynth Web ƒTƒCƒgihttp://avisynth.org/j"
 LangString COMPONENT_TEXT           ${AvsLang} "AviSynth - Œ»İ—˜—p‰Â”\‚È Premiere ƒtƒŒ[ƒ€ƒT[ƒrƒ“ƒOƒc[ƒ‹$\nCopyright (c) 2000 - 2008."
-LangString Frameserving_Text        ${AvsLang} "AviSynth Šî–{i•K{j"
-LangString SystemInstall_Text       ${AvsLang} "ƒtƒ@ƒCƒ‹‚ğƒVƒXƒeƒ€ƒfƒBƒŒƒNƒgƒŠ‚ÉƒCƒ“ƒXƒg[ƒ‹‚µ‚Ü‚·B"
+LangString Frameserving_Text        ${AvsLang} "AviSynth Šî–{ƒtƒ@ƒCƒ‹i•K{j"
+LangString SystemInstall_Text       ${AvsLang} "ƒVƒXƒeƒ€ƒfƒBƒŒƒNƒgƒŠ‚ÉƒCƒ“ƒXƒg[ƒ‹"
 LangString InUseMsg_Text            ${AvsLang} "avisynth.dll ‚ğƒVƒXƒeƒ€ƒfƒBƒŒƒNƒgƒŠ‚ÉƒCƒ“ƒXƒg[ƒ‹‚Å‚«‚Ü‚¹‚ñ‚Å‚µ‚½B$\n$\nAviSynth ‚ğg—p‚·‚é‚·‚×‚Ä‚ÌƒAƒvƒŠƒP[ƒVƒ‡ƒ“‚ğ•Â‚¶A$\nƒVƒXƒeƒ€ƒfƒBƒŒƒNƒgƒŠ‚Ö‚Ì‘‚«‚İŒ ŒÀ‚ª‚ ‚é‚©Šm”F‚µ‚Ä‚­‚¾‚³‚¢B$\n‚»‚Ì‚ ‚Æ‚ÅA‚à‚¤ˆê“x‚µ‚Ä‚­‚¾‚³‚¢B"
 LangString PlugDir_Text             ${AvsLang} "AviSynth ƒvƒ‰ƒOƒCƒ“ƒfƒBƒŒƒNƒgƒŠ‚É‘‚«‚ß‚Ü‚¹‚ñ‚Å‚µ‚½B$\nAviSynth ‚ğg—p‚·‚é‚·‚×‚Ä‚ÌƒAƒvƒŠƒP[ƒVƒ‡ƒ“‚ğ•Â‚¶‚Ä‚©‚çA$\n‚à‚¤ˆê“x‚µ‚Ä‚­‚¾‚³‚¢B"
 LangString AdminRightsHKLM_Text     ${AvsLang} "AviSynth ‚ğƒCƒ“ƒXƒg[ƒ‹‚·‚é‚É‚ÍŠÇ—ÒŒ ŒÀ‚ª•K—v‚Å‚·I$\niƒŒƒWƒXƒgƒŠ HKLM ‚É‘‚«‚ß‚Ü‚¹‚ñ‚Å‚µ‚½j"
 LangString AdminRightsHKCR_Text     ${AvsLang} "AviSynth ‚ğƒCƒ“ƒXƒg[ƒ‹‚·‚é‚É‚ÍŠÇ—ÒŒ ŒÀ‚ª•K—v‚Å‚·I$\niƒŒƒWƒXƒgƒŠ HKCR ‚É‘‚«‚ß‚Ü‚¹‚ñ‚Å‚µ‚½j"
-LangString StandAlone_Text          ${AvsLang} "product ƒfƒBƒŒƒNƒgƒŠ‚Éƒtƒ@ƒCƒ‹‚ğƒCƒ“ƒXƒg[ƒ‹‚µ‚Ü‚·B"
+LangString StandAlone_Text          ${AvsLang} "w’èæ‚ÌƒfƒBƒŒƒNƒgƒŠ‚ÉƒCƒ“ƒXƒg[ƒ‹"
 LangString Documentation_Text       ${AvsLang} "ƒwƒ‹ƒv"
 LangString English_Text             ${AvsLang} "‰pŒê"
 LangString German_Text              ${AvsLang} "ƒhƒCƒcŒê"
@@ -335,9 +347,9 @@ LangString ExtraFiles3_Text         ${AvsLang} "FilterSDK ‚ÌƒCƒ“ƒXƒg[ƒ‹"
 LangString ExtraFiles1_Text         ${AvsLang} "Avisynth.lib ‚Æ Avisynth.exp ‚ÌƒCƒ“ƒXƒg[ƒ‹"
 LangString ExtraFiles2_Text         ${AvsLang} "Avisynth.map ‚ÌƒCƒ“ƒXƒg[ƒ‹"
 
-LangString Frameserving_Bubble      ${AvsLang} "AviSynth Œo—R‚ÅƒtƒŒ[ƒ€ƒT[ƒrƒ“ƒO‚·‚é‚½‚ß‚Ìå—v‚Èƒtƒ@ƒCƒ‹‚ğƒCƒ“ƒXƒg[ƒ‹‚¢‚Ü‚·B"
-LangString SystemInstall_Bubble     ${AvsLang} "å—v‚Èƒtƒ@ƒCƒ‹‚ğƒVƒXƒeƒ€ƒfƒBƒŒƒNƒgƒŠ‚ÉƒCƒ“ƒXƒg[ƒ‹‚µ‚Ü‚·B"
-LangString StandAlone_Bubble        ${AvsLang} "å—v‚Èƒtƒ@ƒCƒ‹‚ğ Product ƒfƒBƒŒƒNƒgƒŠ‚ÉƒCƒ“ƒXƒg[ƒ‹‚µ‚Ü‚·B"
+LangString Frameserving_Bubble      ${AvsLang} "AviSynth Œo—R‚ÅƒtƒŒ[ƒ€ƒT[ƒrƒ“ƒO‚·‚é‚½‚ß‚Ìå—v‚Èƒtƒ@ƒCƒ‹‚ğƒCƒ“ƒXƒg[ƒ‹‚µ‚Ü‚·"
+LangString SystemInstall_Bubble     ${AvsLang} "ƒVƒXƒeƒ€ƒfƒBƒŒƒNƒgƒŠ‚ÉƒCƒ“ƒXƒg[ƒ‹‚µ‚Ü‚·i’Êíj"
+LangString StandAlone_Bubble        ${AvsLang} "w’èæ‚ÌƒfƒBƒŒƒNƒgƒŠ‚ÉƒCƒ“ƒXƒg[ƒ‹‚µ‚Ü‚·iƒXƒ^ƒ“ƒhƒAƒ[ƒ“‚Ì‚İB—vƒpƒXEƒŒƒWƒXƒgƒŠİ’èj"
 LangString Documentation_Bubble     ${AvsLang} "ƒwƒ‹ƒv‚ğƒCƒ“ƒXƒg[ƒ‹‚µ‚Ü‚·BŒ¾Œê‚ğ‘I‘ğ‚µ‚Ä‚­‚¾‚³‚¢i‰pŒêˆÈŠO‚Í“à—e‚ªŒÃ‚¢‚©‚à‚µ‚ê‚Ü‚¹‚ñj"
 LangString English_Bubble           ${AvsLang} "‰pŒê‚Ìƒwƒ‹ƒv‚ğƒCƒ“ƒXƒg[ƒ‹‚µ‚Ü‚·"
 LangString German_Bubble            ${AvsLang} "ƒhƒCƒcŒê‚Ìƒwƒ‹ƒv‚ğƒCƒ“ƒXƒg[ƒ‹‚µ‚Ü‚·"
@@ -361,6 +373,8 @@ LangString RemoveReg_Text           ${AvsLang} "ƒvƒ‰ƒOƒCƒ“ƒfƒBƒŒƒNƒgƒŠ‚Ö‚ÌƒŒƒWƒX
 !undef AvsLang
 
 
+;----------------------------------
+; Hopefully soon by Fizick :D
 ;----------------------------------
 !define AvsLang ${LANG_Russian}
 ;
