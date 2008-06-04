@@ -50,7 +50,7 @@ LangString Frameserving_Bubble      ${AvsLang} "Nainstalovat hlavní soubory, slo
 LangString SystemInstall_Bubble     ${AvsLang} "Nainstalovat hlavní soubory do systémové složky"
 LangString StandAlone_Bubble        ${AvsLang} "Nainstalovat hlavní soubory do složky programu \
                                                 (nefunkèní instalace bez administrátora) \
-												(nutno vybrat $\"samostatnou$\" instalaci)"
+                                                (nutno vybrat $\"samostatnou$\" instalaci)"
 LangString Documentation_Bubble     ${AvsLang} "Nainstalovat nápovìdu; zvolte jazyk \
                                                 (ve všech nemusí být aktuální)"
 LangString English_Bubble           ${AvsLang} "Nainstalovat anglickou nápovìdu"

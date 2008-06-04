@@ -49,7 +49,10 @@ LangString ExtraFiles2_Text         ${AvsLang} "Avisynth.map のインストール"
 LangString Frameserving_Bubble      ${AvsLang} "AviSynth 経由でフレームサービングするための主要なファイルをインストールします"
 LangString SystemInstall_Bubble     ${AvsLang} "システムディレクトリにインストールします（通常）"
 LangString StandAlone_Bubble        ${AvsLang} "指定先のディレクトリにインストールします（スタンドアローンのみ。要パス・レジストリ設定）"
+
+
 LangString Documentation_Bubble     ${AvsLang} "ヘルプをインストールします。言語を選択してください（英語以外は内容が古いかもしれません）"
+
 LangString English_Bubble           ${AvsLang} "英語のヘルプをインストールします"
 LangString German_Bubble            ${AvsLang} "ドイツ語のヘルプをインストールします"
 LangString French_Bubble            ${AvsLang} "フランス語のヘルプをインストールします"

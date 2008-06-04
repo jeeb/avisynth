@@ -50,6 +50,7 @@ LangString Frameserving_Bubble      ${AvsLang} "Устанавливает базовые файлы для 
 LangString SystemInstall_Bubble     ${AvsLang} "Устанавливает базовые файлы в системную папку (system32)"
 LangString StandAlone_Bubble        ${AvsLang} "Устанавливает базовые файлы в папку программы \
                                                 (нужна ручная настройка пути и ключей реестра!)"
+
 LangString Documentation_Bubble     ${AvsLang} "Устанавливает справку. Пожалуйста выберите языки \
                                                 (не-английская может быть устаревшей)"
 LangString English_Bubble           ${AvsLang} "Устанавливает английскую справку"

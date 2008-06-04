@@ -1,4 +1,6 @@
 ;----------------------------------
+; Original texts
+;----------------------------------
 ;
 ; English -- Code page 1033
 ;
@@ -47,8 +49,10 @@ LangString ExtraFiles2_Text         ${AvsLang} "Install Avisynth.map"
 LangString Frameserving_Bubble      ${AvsLang} "Install the main files for frameserving via AviSynth"
 LangString SystemInstall_Bubble     ${AvsLang} "Install the main files in the System directory"
 LangString StandAlone_Bubble        ${AvsLang} "Install the main files in the Product directory \
-                                                (Nonfunctional non-Admin install) (Must choose Standalone template)"
-LangString Documentation_Bubble     ${AvsLang} "Install help. Please select languages (non-English may be out of date)"
+                                                (Nonfunctional non-Admin install) \
+                                                (Must choose Standalone template)"
+LangString Documentation_Bubble     ${AvsLang} "Install help. Please select languages \
+                                                (non-English may be out of date)"
 LangString English_Bubble           ${AvsLang} "Install English help"
 LangString German_Bubble            ${AvsLang} "Install German help"
 LangString French_Bubble            ${AvsLang} "Install French help"

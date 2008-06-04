@@ -2,7 +2,7 @@
 ; By gzarkadas -- http://forum.doom9.org/member.php?u=83686
 ;----------------------------------
 ;
-; Code page 1253
+; Greek -- Code page 1253
 ;
 ;----------------------------------
 LangString AVS_Standard             ${AvsLang} "Τυπική"
