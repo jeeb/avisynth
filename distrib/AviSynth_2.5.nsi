@@ -14,22 +14,26 @@ SetCompressor /solid lzma
 !define MUI_ABORTWARNING
 ;!define MUI_WELCOMEFINISHPAGE_BITMAP "${NSISDIR}\Welcome.bmp"
 !define MUI_COMPONENTSPAGE_SMALLDESC
-;!define MUI_UI_COMPONENTSPAGE_SMALLDESC "AVS_UIs.exe"
+!define MUI_UI_COMPONENTSPAGE_SMALLDESC "AVS_UI.exe"
 !define MUI_FINISHPAGE_LINK $(FINISHPAGE_TEXT)
 !define MUI_FINISHPAGE_LINK_LOCATION "http://www.avisynth.org/"
 !define MUI_INSTFILESPAGE_COLORS "C5DEFB 000000"
 !define MUI_INSTFILESPAGE_PROGRESSBAR "colored"
 !define MUI_FINISHPAGE_NOAUTOCLOSE
 !define MUI_UNFINISHPAGE_NOAUTOCLOSE
+!define MUI_LANGDLL_ALLLANGUAGES
 
 ;----------------------------------
 
-; Tweak the finish page paremters -- Max out the MUI_FINISHPAGE_LINK field width.
+; Tweak the finish page paremters -- Max out the MUI_FINISHPAGE_LINK field width & make 2 high.
 
   Function AVS_Finish_Pre
 
-;   !insertmacro MUI_INSTALLOPTIONS_WRITE "ioSpecial.ini" "Field 4" "Left"   "120"
-    !insertmacro MUI_INSTALLOPTIONS_WRITE "ioSpecial.ini" "Field 4" "Right"  "332"
+    !insertmacro MUI_INSTALLOPTIONS_WRITE "ioSpecial.ini" "Field 3" "Bottom" "165" ; 175
+    !insertmacro MUI_INSTALLOPTIONS_WRITE "ioSpecial.ini" "Field 4" "Top"    "165" ; 175
+;   !insertmacro MUI_INSTALLOPTIONS_WRITE "ioSpecial.ini" "Field 4" "Left"   "120" ; 120
+    !insertmacro MUI_INSTALLOPTIONS_WRITE "ioSpecial.ini" "Field 4" "Right"  "330" ; 315
+;   !insertmacro MUI_INSTALLOPTIONS_WRITE "ioSpecial.ini" "Field 3" "Bottom" "185" ; 185
 
   FunctionEnd
 
@@ -63,6 +67,8 @@ SetCompressor /solid lzma
 ;----------------------------------
 
 !insertmacro AVS_LANGUAGE "English"    ; 1033
+
+!insertmacro AVS_LANGUAGE "Czech"      ; 1029
 !insertmacro AVS_LANGUAGE "German"     ; 1031
 !insertmacro AVS_LANGUAGE "Greek"      ; 1253
 !insertmacro AVS_LANGUAGE "French"     ; 1036
