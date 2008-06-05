@@ -10,24 +10,24 @@ LangString AVS_Minimal              ${AvsLang} "Å¬"
 LangString AVS_Standalone           ${AvsLang} "ƒXƒ^ƒ“ƒhƒAƒ[ƒ“"
 LangString AVS_Full                 ${AvsLang} "ƒtƒ‹"
 
-LangString FINISHPAGE_TEXT          ${AvsLang} "AviSynth Web ƒTƒCƒgihttp://avisynth.org/j"
-LangString COMPONENT_TEXT           ${AvsLang} "AviSynth - Œ»İ—˜—p‰Â”\‚È Premiere ƒtƒŒ[ƒ€ƒT[ƒrƒ“ƒOƒc[ƒ‹$\n\
+LangString FINISHPAGE_TEXT          ${AvsLang} "AviSynth Web ƒTƒCƒg (http://avisynth.org/)"
+LangString COMPONENT_TEXT           ${AvsLang} "AviSynth - ¡“ú‚©‚çg‚¦‚é Premiere ƒtƒŒ[ƒ€ƒT[ƒrƒ“ƒOƒc[ƒ‹$\n\
                                                 Copyright (c) 2000 - 2008."
 
-LangString Frameserving_Text        ${AvsLang} "AviSynth Šî–{ƒtƒ@ƒCƒ‹i•K{j"
+LangString Frameserving_Text        ${AvsLang} "AviSynth Šî–{ƒtƒ@ƒCƒ‹ (•K{)"
 LangString SystemInstall_Text       ${AvsLang} "ƒVƒXƒeƒ€ƒfƒBƒŒƒNƒgƒŠ‚ÉƒCƒ“ƒXƒg[ƒ‹"
-LangString InUseMsg_Text            ${AvsLang} "avisynth.dll ‚ğƒVƒXƒeƒ€ƒfƒBƒŒƒNƒgƒŠ‚ÉƒCƒ“ƒXƒg[ƒ‹‚Å‚«‚Ü‚¹‚ñ‚Å‚µ‚½B$\n$\n\
-                                                AviSynth ‚ğg—p‚·‚é‚·‚×‚Ä‚ÌƒAƒvƒŠƒP[ƒVƒ‡ƒ“‚ğ•Â‚¶A$\n\
-                                                ƒVƒXƒeƒ€ƒfƒBƒŒƒNƒgƒŠ‚Ö‚Ì‘‚«‚İŒ ŒÀ‚ª‚ ‚é‚©Šm”F‚µ‚Ä‚­‚¾‚³‚¢B$\n\
-                                                ‚»‚Ì‚ ‚Æ‚ÅA‚à‚¤ˆê“x‚µ‚Ä‚­‚¾‚³‚¢B"
-LangString PlugDir_Text             ${AvsLang} "AviSynth ƒvƒ‰ƒOƒCƒ“ƒfƒBƒŒƒNƒgƒŠ‚É‘‚«‚ß‚Ü‚¹‚ñ‚Å‚µ‚½B$\n\
+LangString InUseMsg_Text            ${AvsLang} "avisynth.dll ‚ğƒVƒXƒeƒ€ƒfƒBƒŒƒNƒgƒŠ‚ÉƒCƒ“ƒXƒg[ƒ‹‚Å‚«‚Ü‚¹‚ñ‚Å‚µ‚½$\n$\n\
+                                                AviSynth ‚ğg—p‚·‚é‚·‚×‚Ä‚ÌƒAƒvƒŠƒP[ƒVƒ‡ƒ“‚ğ•Â‚¶AƒVƒXƒeƒ€$\n\
+                                                ƒfƒBƒŒƒNƒgƒŠ‚Ö‚Ì‘‚«‚İŒ ŒÀ‚ğŠm”F‚µ‚Ä‚­‚¾‚³‚¢$\n\
+                                                ‚»‚Ì‚ ‚Æ‚ÅA‚à‚¤ˆê“x‚µ‚Ä‚­‚¾‚³‚¢"
+LangString PlugDir_Text             ${AvsLang} "AviSynth ƒvƒ‰ƒOƒCƒ“ƒfƒBƒŒƒNƒgƒŠ‚É‘‚«‚ß‚Ü‚¹‚ñ‚Å‚µ‚½$\n\
                                                 AviSynth ‚ğg—p‚·‚é‚·‚×‚Ä‚ÌƒAƒvƒŠƒP[ƒVƒ‡ƒ“‚ğ•Â‚¶‚Ä‚©‚çA$\n\
                                                 ‚à‚¤ˆê“x‚µ‚Ä‚­‚¾‚³‚¢B"
 LangString AdminRightsHKLM_Text     ${AvsLang} "AviSynth ‚ğƒCƒ“ƒXƒg[ƒ‹‚·‚é‚É‚ÍŠÇ—ÒŒ ŒÀ‚ª•K—v‚Å‚·I$\n\
-                                                iƒŒƒWƒXƒgƒŠ HKLM ‚É‘‚«‚ß‚Ü‚¹‚ñ‚Å‚µ‚½j"
+                                                (ƒŒƒWƒXƒgƒŠ HKLM ‚É‘‚«‚ß‚Ü‚¹‚ñ‚Å‚µ‚½)"
 LangString AdminRightsHKCR_Text     ${AvsLang} "AviSynth ‚ğƒCƒ“ƒXƒg[ƒ‹‚·‚é‚É‚ÍŠÇ—ÒŒ ŒÀ‚ª•K—v‚Å‚·I$\n\
-                                                iƒŒƒWƒXƒgƒŠ HKCR ‚É‘‚«‚ß‚Ü‚¹‚ñ‚Å‚µ‚½j"
-LangString StandAlone_Text          ${AvsLang} "w’èæ‚ÌƒfƒBƒŒƒNƒgƒŠ‚ÉƒCƒ“ƒXƒg[ƒ‹"
+                                                (ƒŒƒWƒXƒgƒŠ HKCR ‚É‘‚«‚ß‚Ü‚¹‚ñ‚Å‚µ‚½)"
+LangString StandAlone_Text          ${AvsLang} "w’èæƒfƒBƒŒƒNƒgƒŠ‚ÉƒCƒ“ƒXƒg[ƒ‹"
 
 LangString Documentation_Text       ${AvsLang} "ƒwƒ‹ƒv"
 LangString English_Text             ${AvsLang} "‰pŒê"
@@ -38,8 +38,8 @@ LangString Japanese_Text            ${AvsLang} "“ú–{Œê"
 LangString Portugese_Text           ${AvsLang} "ƒ|ƒ‹ƒgƒKƒ‹Œê"
 LangString Russian_Text             ${AvsLang} "ƒƒVƒAŒê"
 LangString SelectAssociation_Text   ${AvsLang} "ŠÖ˜A•t‚¯‚Ì‘I‘ğ"
-LangString Associate1_Text          ${AvsLang} "AVS ‚ğƒƒ‚’ ‚ÉŠÖ˜A•t‚¯iŠJ‚­j"
-LangString Associate2_Text          ${AvsLang} "AVS ‚ğ Media Player 6.4 ‚ÉŠÖ˜A•t‚¯iÄ¶j"
+LangString Associate1_Text          ${AvsLang} "AVS ‚ğƒƒ‚’ ‚ÉŠÖ˜A•t‚¯ (ŠJ‚­)"
+LangString Associate2_Text          ${AvsLang} "AVS ‚ğ Media Player 6.4 ‚ÉŠÖ˜A•t‚¯ (Ä¶)"
 LangString Associate3_Text          ${AvsLang} "AviSynth Script ‚ğV‹Kì¬ƒƒjƒ…[‚É’Ç‰Á"
 LangString SelectExtraFiles_Text    ${AvsLang} "’Ç‰Áƒtƒ@ƒCƒ‹‚Ì‘I‘ğ"
 LangString ExtraFiles3_Text         ${AvsLang} "FilterSDK ‚ÌƒCƒ“ƒXƒg[ƒ‹"
@@ -47,11 +47,11 @@ LangString ExtraFiles1_Text         ${AvsLang} "Avisynth.lib ‚Æ Avisynth.exp ‚Ìƒ
 LangString ExtraFiles2_Text         ${AvsLang} "Avisynth.map ‚ÌƒCƒ“ƒXƒg[ƒ‹"
 
 LangString Frameserving_Bubble      ${AvsLang} "AviSynth Œo—R‚ÅƒtƒŒ[ƒ€ƒT[ƒrƒ“ƒO‚·‚é‚½‚ß‚Ìå—v‚Èƒtƒ@ƒCƒ‹‚ğƒCƒ“ƒXƒg[ƒ‹‚µ‚Ü‚·"
-LangString SystemInstall_Bubble     ${AvsLang} "ƒVƒXƒeƒ€ƒfƒBƒŒƒNƒgƒŠ‚ÉƒCƒ“ƒXƒg[ƒ‹‚µ‚Ü‚·i’Êíj"
-LangString StandAlone_Bubble        ${AvsLang} "w’èæ‚ÌƒfƒBƒŒƒNƒgƒŠ‚ÉƒCƒ“ƒXƒg[ƒ‹‚µ‚Ü‚·iƒXƒ^ƒ“ƒhƒAƒ[ƒ“‚Ì‚İB—vƒpƒXEƒŒƒWƒXƒgƒŠİ’èj"
+LangString SystemInstall_Bubble     ${AvsLang} "ƒVƒXƒeƒ€ƒfƒBƒŒƒNƒgƒŠ‚ÉƒCƒ“ƒXƒg[ƒ‹‚µ‚Ü‚· (•W€)"
+LangString StandAlone_Bubble        ${AvsLang} "w’èæ‚ÌƒfƒBƒŒƒNƒgƒŠ‚ÉƒCƒ“ƒXƒg[ƒ‹‚µ‚Ü‚· \
+                                                (ƒXƒ^ƒ“ƒhƒAƒ[ƒ“‚Ì‚İB—vƒpƒX•ƒŒƒWƒXƒgƒŠİ’è)"
 
-
-LangString Documentation_Bubble     ${AvsLang} "ƒwƒ‹ƒv‚ğƒCƒ“ƒXƒg[ƒ‹‚µ‚Ü‚·BŒ¾Œê‚ğ‘I‘ğ‚µ‚Ä‚­‚¾‚³‚¢i‰pŒêˆÈŠO‚Í“à—e‚ªŒÃ‚¢‚©‚à‚µ‚ê‚Ü‚¹‚ñj"
+LangString Documentation_Bubble     ${AvsLang} "ƒwƒ‹ƒv‚ğƒCƒ“ƒXƒg[ƒ‹‚µ‚Ü‚·BŒ¾Œê‚ğ‘I‘ğ‚µ‚Ä‚­‚¾‚³‚¢ (‰pŒêˆÈŠO‚Í“à—e‚ªŒÃ‚¢‚©‚à‚µ‚ê‚Ü‚¹‚ñ)"
 
 LangString English_Bubble           ${AvsLang} "‰pŒê‚Ìƒwƒ‹ƒv‚ğƒCƒ“ƒXƒg[ƒ‹‚µ‚Ü‚·"
 LangString German_Bubble            ${AvsLang} "ƒhƒCƒcŒê‚Ìƒwƒ‹ƒv‚ğƒCƒ“ƒXƒg[ƒ‹‚µ‚Ü‚·"
@@ -61,14 +61,14 @@ LangString Japanese_Bubble          ${AvsLang} "“ú–{Œê‚Ìƒwƒ‹ƒv‚ğƒCƒ“ƒXƒg[ƒ‹‚µ‚Ü
 LangString Portugese_Bubble         ${AvsLang} "ƒ|ƒ‹ƒgƒKƒ‹Œê‚Ìƒwƒ‹ƒv‚ğƒCƒ“ƒXƒg[ƒ‹‚µ‚Ü‚·"
 LangString Russian_Bubble           ${AvsLang} "ƒƒVƒAŒê‚Ìƒwƒ‹ƒv‚ğƒCƒ“ƒXƒg[ƒ‹‚µ‚Ü‚·"
 LangString SelectAssociation_Bubble ${AvsLang} "1 ‚ÂˆÈã‚ÌŠÖ˜A•t‚¯‚ğ‘I‘ğ‚·‚é‚±‚Æ‚ª‚Å‚«‚Ü‚·"
-LangString Associate1_Bubble        ${AvsLang} "AVS ƒtƒ@ƒCƒ‹‚ğ•ÒW‚·‚é‚½‚ß‚Éƒƒ‚’ ‚ğg‚Á‚Ä’¼ÚŠJ‚«‚Ü‚·"
-LangString Associate2_Bubble        ${AvsLang} "AVS ƒtƒ@ƒCƒ‹‚ğ Media Player 6.4 ‚ğg‚Á‚Ä’¼ÚÄ¶‚µ‚Ü‚·i‰EƒNƒŠƒbƒN - playj"
-LangString Associate3_Bubble        ${AvsLang} "V‚µ‚¢‹ó‚Ì AviSynth ƒXƒNƒŠƒvƒg‚ğì¬‚µ‚Ü‚·i‰EƒNƒŠƒbƒN - V‹Kì¬ - AviSynth Scriptj"
+LangString Associate1_Bubble        ${AvsLang} "AVS ƒtƒ@ƒCƒ‹‚ğ•ÒW‚·‚é‚½‚ß‚Éƒƒ‚’ ‚Å’¼ÚŠJ‚«‚Ü‚·"
+LangString Associate2_Bubble        ${AvsLang} "AVS ƒtƒ@ƒCƒ‹‚ğ Media Player 6.4 ‚ğg‚Á‚Ä’¼ÚÄ¶‚µ‚Ü‚· (‰EƒNƒŠƒbƒN - play)"
+LangString Associate3_Bubble        ${AvsLang} "V‚µ‚¢‹ó‚Ì AviSynth ƒXƒNƒŠƒvƒg‚ğì¬‚µ‚Ü‚· (‰EƒNƒŠƒbƒN - V‹Kì¬ - AviSynth Script)"
 LangString SelectExtraFiles_Bubble  ${AvsLang} "ƒCƒ“ƒXƒg[ƒ‹‚·‚é’Ç‰Áƒtƒ@ƒCƒ‹‚ğ 1 ‚ÂˆÈã‘I‘ğ‚·‚é‚±‚Æ‚ª‚Å‚«‚Ü‚·"
 LangString ExtraFiles1_Bubble       ${AvsLang} "C Œ¾ŒêƒCƒ“ƒ^[ƒtƒFƒCƒXŠJ”­—p‚Ì avisynth.lib ‚Æ avisynth.exp ‚ğƒCƒ“ƒXƒg[ƒ‹‚µ‚Ü‚·"
 LangString ExtraFiles2_Bubble       ${AvsLang} "avisynth.map ‚ğƒCƒ“ƒXƒg[ƒ‹‚µ‚Ü‚·"
 LangString ExtraFiles3_Bubble       ${AvsLang} "AviSynth ƒvƒ‰ƒOƒCƒ“ŠJ”­—p‚Ì FilterSDK ‚ğƒCƒ“ƒXƒg[ƒ‹‚µ‚Ü‚·"
 
 LangString Uninstall_Text           ${AvsLang} "ƒAƒ“ƒCƒ“ƒXƒg[ƒ‹‚Í³í‚ÉŠ®—¹‚µ‚Ü‚µ‚½B"
-LangString RemoveReg_Text           ${AvsLang} "ƒvƒ‰ƒOƒCƒ“ƒfƒBƒŒƒNƒgƒŠ‚Ö‚ÌƒŒƒWƒXƒgƒŠƒ|ƒCƒ“ƒ^‚ğíœ‚µ‚Ü‚·‚©H$\n\
-                                                iƒtƒ@ƒCƒ‹‚Ííœ‚³‚ê‚Ü‚¹‚ñj"
+LangString RemoveReg_Text           ${AvsLang} "ƒvƒ‰ƒOƒCƒ“ƒfƒBƒŒƒNƒgƒŠ‚Ö‚ÌƒŒƒWƒXƒgƒŠƒ|ƒCƒ“ƒ^‚ğ$\n\
+                                                íœ‚µ‚Ü‚·‚©H (ƒtƒ@ƒCƒ‹‚Ííœ‚³‚ê‚Ü‚¹‚ñ)"
