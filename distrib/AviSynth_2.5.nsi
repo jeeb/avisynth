@@ -72,7 +72,7 @@ SetCompressor /solid lzma
 !insertmacro AVS_LANGUAGE "German"     ; 1031
 !insertmacro AVS_LANGUAGE "Greek"      ; 1253
 !insertmacro AVS_LANGUAGE "French"     ; 1036
-; !insertmacro AVS_LANGUAGE "Italian"    ; 1040
+!insertmacro AVS_LANGUAGE "Italian"    ; 1040
 !insertmacro AVS_LANGUAGE "Japanese"   ; 1041
 ; !insertmacro AVS_LANGUAGE "Portuguese" ; 2070
 !insertmacro AVS_LANGUAGE "Russian"    ; 1049
