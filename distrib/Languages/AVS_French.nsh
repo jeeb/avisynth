@@ -48,9 +48,9 @@ LangString ExtraFiles2_Text         ${AvsLang} "Installer Avisynth.map"
 
 LangString Frameserving_Bubble      ${AvsLang} "Installer les fichiers principaux pour faire du frameserving grâce à AviSynth"
 LangString SystemInstall_Bubble     ${AvsLang} "Installer les fichiers principaux dans le dossier System"
-LangString StandAlone_Bubble        ${AvsLang} "Installer fichiers dans dossier d'installation \
-                                                (instal. non-Admin et non fonctionnelle) \
-                                                (Choisir instal. Autonome)"
+LangString StandAlone_Bubble        ${AvsLang} "Installer les fichiers principaux dans le dossier d'installation \
+                                                (installation non-Admin et non fonctionnelles) \
+                                                (Choisir installation Autonome)"
 LangString Documentation_Bubble     ${AvsLang} "Installer l'aide. Merci de choisir les langues désirées \
                                                 (à part l'anglais, elles ne sont probablement pas à jour)"
 LangString English_Bubble           ${AvsLang} "Installer aide en anglais"
