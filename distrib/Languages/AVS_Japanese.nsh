@@ -10,23 +10,23 @@ LangString AVS_Minimal              ${AvsLang} "最小"
 LangString AVS_Standalone           ${AvsLang} "スタンドアローン"
 LangString AVS_Full                 ${AvsLang} "フル"
 
-LangString FINISHPAGE_TEXT          ${AvsLang} "最新ニュースとサポートについては、AviSynth Web サイトをご覧ください"
+LangString FINISHPAGE_TEXT          ${AvsLang} "最新ニュースとサポートについては AviSynth Web サイトをご覧ください。"
 LangString COMPONENT_TEXT           ${AvsLang} "AviSynth - 今日から使える Premiere フレームサービングツール$\n\
                                                 Copyright (c) 2000 - 2008."
 
 LangString Frameserving_Text        ${AvsLang} "AviSynth 基本ファイル（必須）"
 LangString SystemInstall_Text       ${AvsLang} "システムディレクトリにインストール"
-LangString InUseMsg_Text            ${AvsLang} "avisynth.dll をシステムディレクトリにインストールできませんでした$\n$\n\
+LangString InUseMsg_Text            ${AvsLang} "avisynth.dll をシステムディレクトリにインストールできませんでした。$\n$\n\
                                                 AviSynth を使用するすべてのアプリケーションを閉じ、システム$\n\
-                                                ディレクトリへの書き込み権限を確認してください$\n\
-                                                そのあとで、もう一度試してください"
-LangString PlugDir_Text             ${AvsLang} "AviSynth プラグインディレクトリに書き込めませんでした$\n\
+                                                ディレクトリへの書き込み権限を確認してください。$\n\
+                                                そのあとで、もう一度試してください。"
+LangString PlugDir_Text             ${AvsLang} "AviSynth プラグインディレクトリに書き込めませんでした。$\n\
                                                 AviSynth を使用するすべてのアプリケーションを閉じてから、$\n\
                                                 もう一度試してください。"
-LangString AdminRightsHKLM_Text     ${AvsLang} "AviSynth をインストールするには管理者権限が必要です！$\n\
-                                               （レジストリ HKLM に書き込めませんでした）"
-LangString AdminRightsHKCR_Text     ${AvsLang} "AviSynth をインストールするには管理者権限が必要です！$\n\
-                                               （レジストリ HKCR に書き込めませんでした）"
+LangString AdminRightsHKLM_Text     ${AvsLang} "AviSynth をインストールするには管理者権限が必要です$\n\
+                                               （レジストリ HKLM に書き込めませんでした）！"
+LangString AdminRightsHKCR_Text     ${AvsLang} "AviSynth をインストールするには管理者権限が必要です$\n\
+                                               （レジストリ HKCR に書き込めませんでした）！"
 LangString StandAlone_Text          ${AvsLang} "指定先ディレクトリにインストール"
 
 LangString Documentation_Text       ${AvsLang} "ヘルプ"
@@ -46,32 +46,32 @@ LangString ExtraFiles3_Text         ${AvsLang} "FilterSDK のインストール"
 LangString ExtraFiles1_Text         ${AvsLang} "Avisynth.lib と Avisynth.exp のインストール"
 LangString ExtraFiles2_Text         ${AvsLang} "Avisynth.map のインストール"
 
-LangString Frameserving_Bubble      ${AvsLang} "AviSynth 経由でフレームサービングするための主要なファイルをインストールします"
-LangString SystemInstall_Bubble     ${AvsLang} "システムディレクトリにインストールします（標準）"
+LangString Frameserving_Bubble      ${AvsLang} "AviSynth 経由でフレームサービングするための主要なファイルをインストールします。"
+LangString SystemInstall_Bubble     ${AvsLang} "システムディレクトリにインストールします（通常）。"
 LangString StandAlone_Bubble        ${AvsLang} "指定先のディレクトリにインストールします \
-                                               （動作にはパスとレジストリの設定が必要。スタンドアローンのみ）"
+                                               （動作にはパスとレジストリの設定が必要。スタンドアローンのみ）。"
 
-LangString Documentation_Bubble     ${AvsLang} "ヘルプをインストールします。言語を選択してください（英語以外は内容が古いかもしれません）"
+LangString Documentation_Bubble     ${AvsLang} "ヘルプをインストールします。言語を選択してください（英語以外は内容が古いかもしれません）。"
 
-LangString English_Bubble           ${AvsLang} "英語のヘルプをインストールします"
-LangString German_Bubble            ${AvsLang} "ドイツ語のヘルプをインストールします"
-LangString French_Bubble            ${AvsLang} "フランス語のヘルプをインストールします"
-LangString Italian_Bubble           ${AvsLang} "イタリア語のヘルプをインストールします"
-LangString Japanese_Bubble          ${AvsLang} "日本語のヘルプをインストールします"
-LangString Portugese_Bubble         ${AvsLang} "ポルトガル語のヘルプをインストールします"
-LangString Russian_Bubble           ${AvsLang} "ロシア語のヘルプをインストールします"
-LangString SelectAssociation_Bubble ${AvsLang} "1 つ以上の関連付けを選択することができます"
-LangString Associate1_Bubble        ${AvsLang} "AVS ファイルを編集するためにメモ帳で直接開きます"
-LangString Associate2_Bubble        ${AvsLang} "AVS ファイルを Media Player 6.4 を使って直接再生します（右クリック - play）"
-LangString Associate3_Bubble        ${AvsLang} "新しい空の AviSynth スクリプトを作成します（右クリック - 新規作成 - AviSynth Script）"
-LangString SelectExtraFiles_Bubble  ${AvsLang} "インストールする追加ファイルを 1 つ以上選択することができます"
-LangString ExtraFiles1_Bubble       ${AvsLang} "C 言語インターフェイス開発用の avisynth.lib と avisynth.exp をインストールします"
-LangString ExtraFiles2_Bubble       ${AvsLang} "avisynth.map をインストールします"
-LangString ExtraFiles3_Bubble       ${AvsLang} "AviSynth プラグイン開発用の FilterSDK をインストールします"
+LangString English_Bubble           ${AvsLang} "英語のヘルプをインストールします。"
+LangString German_Bubble            ${AvsLang} "ドイツ語のヘルプをインストールします。"
+LangString French_Bubble            ${AvsLang} "フランス語のヘルプをインストールします。"
+LangString Italian_Bubble           ${AvsLang} "イタリア語のヘルプをインストールします。"
+LangString Japanese_Bubble          ${AvsLang} "日本語のヘルプをインストールします。"
+LangString Portugese_Bubble         ${AvsLang} "ポルトガル語のヘルプをインストールします。"
+LangString Russian_Bubble           ${AvsLang} "ロシア語のヘルプをインストールします。"
+LangString SelectAssociation_Bubble ${AvsLang} "1 つ以上の関連付けを選択することができます。"
+LangString Associate1_Bubble        ${AvsLang} "AVS ファイルを編集するためにメモ帳で直接開きます。"
+LangString Associate2_Bubble        ${AvsLang} "AVS ファイルを Media Player 6.4 を使って直接再生します（右クリック - play）。"
+LangString Associate3_Bubble        ${AvsLang} "新しい空の AviSynth スクリプトを作成します（右クリック - 新規作成 - AviSynth Script）。"
+LangString SelectExtraFiles_Bubble  ${AvsLang} "インストールする追加ファイルを 1 つ以上選択することができます。"
+LangString ExtraFiles1_Bubble       ${AvsLang} "C 言語インターフェイス開発用の avisynth.lib と avisynth.exp をインストールします。"
+LangString ExtraFiles2_Bubble       ${AvsLang} "avisynth.map をインストールします。"
+LangString ExtraFiles3_Bubble       ${AvsLang} "AviSynth プラグイン開発用の FilterSDK をインストールします。"
 
 LangString Uninstall_Text           ${AvsLang} "アンインストールは正常に完了しました。"
 LangString RemoveReg_Text           ${AvsLang} "プラグインディレクトリへのレジストリポインタを$\n\
-                                                削除しますか？（ファイルは削除されません）"
+                                                削除しますか（ファイルは削除されません）？"
 
 ; LangString Czech_Text               ${AvsLang} "チェコ語"
 ; LangString Greek_Text               ${AvsLang} "ギリシャ語"
