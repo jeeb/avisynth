@@ -51,7 +51,6 @@ SetCompressor /solid lzma
   !insertmacro MUI_UNPAGE_CONFIRM
   !insertmacro MUI_UNPAGE_INSTFILES
 
-
 ;----------------------------------
 ;Languages-------------------------
 ;----------------------------------
@@ -205,7 +204,7 @@ creg_ok:
 SectionEnd
 
 Section /o  $(StandAlone_Text) StandAlone
-SectionIn 3 RO
+  SectionIn 3 RO
 
   StrCpy $AdminInstall "No"
 
@@ -220,7 +219,7 @@ SectionIn 3 RO
   File "GPL.txt"
   File "lgpl_for_used_libs.txt"
 
-  SetOutPath "$INSTDIR\plugins"
+  SetOutPath "$INSTDIR\Plugins"
   File "..\src\plugins\DirectShowSource\Release\DirectShowSource.dll"
   File "..\src\plugins\TCPDeliver\Release\TCPDeliver.dll"
   File "color_presets\colors_rgb.avsi"
@@ -233,23 +232,23 @@ Subsectionend
 Subsection  $(Documentation_Text) Documentation
 
 Section /o  $(English_Text) English
-SectionIn 1 3 4
+  SectionIn 1 3 4
 
   SetOutPath $INSTDIR\Docs
   File "..\..\Docs\*.css"
-  SetOutPath $INSTDIR\Docs\english
+  SetOutPath $INSTDIR\Docs\English
   File "..\..\Docs\english\*.*"
-  SetOutPath $INSTDIR\Docs\english\advancedtopics
+  SetOutPath $INSTDIR\Docs\English\advancedtopics
   File "..\..\Docs\english\advancedtopics\*.*"
-  SetOutPath $INSTDIR\Docs\english\corefilters
+  SetOutPath $INSTDIR\Docs\English\corefilters
   File "..\..\Docs\english\corefilters\*.*"
-  SetOutPath $INSTDIR\Docs\english\externalfilters
+  SetOutPath $INSTDIR\Docs\English\externalfilters
   File "..\..\Docs\english\externalfilters\*.*"
-  SetOutPath $INSTDIR\Docs\english\pictures\advancedtopics
+  SetOutPath $INSTDIR\Docs\English\pictures\advancedtopics
   File "..\..\Docs\english\pictures\advancedtopics\*.*"
-  SetOutPath $INSTDIR\Docs\english\pictures\corefilters
+  SetOutPath $INSTDIR\Docs\English\pictures\corefilters
   File "..\..\Docs\english\pictures\corefilters\*.*"
-  SetOutPath $INSTDIR\Docs\english\pictures\externalfilters
+  SetOutPath $INSTDIR\Docs\English\pictures\externalfilters
   File "..\..\Docs\english\pictures\externalfilters\*.*"
 
   SetOutPath $INSTDIR\Examples
@@ -257,25 +256,24 @@ SectionIn 1 3 4
 
   SetShellVarContext All
   StrCmp $AdminInstall "No" +2
-  CreateShortCut "$SMPROGRAMS\AviSynth 2.5\AviSynth Documentation.lnk" "$INSTDIR\Docs\english\index.htm"
+  CreateShortCut "$SMPROGRAMS\AviSynth 2.5\AviSynth Documentation.lnk" "$INSTDIR\Docs\English\index.htm"
 
 SectionEnd
-
 
 Section /o  $(German_Text) German
   SectionIn 4
   SetOutPath $INSTDIR\Docs
   File "..\..\Docs\*.css"
-  SetOutPath $INSTDIR\Docs\german
+  SetOutPath $INSTDIR\Docs\German
   File "..\..\Docs\german\*.*"
-  SetOutPath $INSTDIR\Docs\german\corefilters
+  SetOutPath $INSTDIR\Docs\German\corefilters
   File "..\..\Docs\german\corefilters\*.*"
-  SetOutPath $INSTDIR\Docs\german\externalfilters
+  SetOutPath $INSTDIR\Docs\German\externalfilters
   File "..\..\Docs\german\externalfilters\*.*"
 
   SetShellVarContext All
   StrCmp $AdminInstall "No" +2
-  CreateShortCut "$SMPROGRAMS\AviSynth 2.5\Deutsche AviSynth Dokumentation.lnk" "$INSTDIR\Docs\german\index.htm"
+  CreateShortCut "$SMPROGRAMS\AviSynth 2.5\Deutsche AviSynth Dokumentation.lnk" "$INSTDIR\Docs\German\index.htm"
 
 SectionEnd
 
@@ -283,14 +281,14 @@ Section /o  $(French_Text) French
   SectionIn 4
   SetOutPath $INSTDIR\Docs
   File "..\..\Docs\*.css"
-  SetOutPath $INSTDIR\Docs\french
+  SetOutPath $INSTDIR\Docs\French
   File "..\..\Docs\french\*.*"
-  SetOutPath $INSTDIR\Docs\french\corefilters
+  SetOutPath $INSTDIR\Docs\French\corefilters
   File "..\..\Docs\french\corefilters\*.*"
 
   SetShellVarContext All
   StrCmp $AdminInstall "No" +2
-  CreateShortCut "$SMPROGRAMS\AviSynth 2.5\French AviSynth Documentation.lnk" "$INSTDIR\Docs\french\index.htm"
+  CreateShortCut "$SMPROGRAMS\AviSynth 2.5\French AviSynth Documentation.lnk" "$INSTDIR\Docs\French\index.htm"
 
 SectionEnd
 
@@ -298,24 +296,55 @@ Section /o  $(Italian_Text) Italian
   SectionIn 4
   SetOutPath $INSTDIR\Docs
   File "..\..\Docs\*.css"
-  SetOutPath $INSTDIR\Docs\italian
+  SetOutPath $INSTDIR\Docs\Italian
   File "..\..\Docs\italian\*.*"
-  SetOutPath $INSTDIR\Docs\italian\corefilters
+  SetOutPath $INSTDIR\Docs\Italian\corefilters
   File "..\..\Docs\italian\corefilters\*.*"
-  SetOutPath $INSTDIR\Docs\italian\externalfilters
+  SetOutPath $INSTDIR\Docs\Italian\externalfilters
   File "..\..\Docs\italian\externalfilters\*.*"
-  SetOutPath $INSTDIR\Docs\italian\pictures\corefilters
+  SetOutPath $INSTDIR\Docs\Italian\pictures\corefilters
   File "..\..\Docs\italian\pictures\corefilters\*.*"
 
   SetShellVarContext All
   StrCmp $AdminInstall "No" +2
-  CreateShortCut "$SMPROGRAMS\AviSynth 2.5\Italian AviSynth Documentation.lnk" "$INSTDIR\Docs\italian\index.htm"
+  CreateShortCut "$SMPROGRAMS\AviSynth 2.5\Italian AviSynth Documentation.lnk" "$INSTDIR\Docs\Italian\index.htm"
 
 SectionEnd
 
 Section /o  $(Japanese_Text) Japanese
+  SectionIn 4
 
-; Place holder
+  SetOverwrite ON
+  
+  SetOutPath $INSTDIR\Docs
+  File "..\..\Docs\*.css"
+
+  SetOutPath $INSTDIR\Docs\Japanese
+  File "..\..\Docs\english\*.*"
+  File "..\..\Docs\japanese\*.*"  ; Overwrite with the translated versions
+
+  SetOutPath $INSTDIR\Docs\Japanese\advancedtopics
+  File "..\..\Docs\english\advancedtopics\*.*"
+
+  SetOutPath $INSTDIR\Docs\Japanese\corefilters
+  File "..\..\Docs\english\corefilters\*.*"
+  File "..\..\Docs\japanese\corefilters\*.*"  ; Overwrite with the translated versions
+
+  SetOutPath $INSTDIR\Docs\Japanese\externalfilters
+  File "..\..\Docs\english\externalfilters\*.*"
+
+  SetOutPath $INSTDIR\Docs\Japanese\pictures\advancedtopics
+  File "..\..\Docs\english\pictures\advancedtopics\*.*"
+
+  SetOutPath $INSTDIR\Docs\Japanese\pictures\corefilters
+  File "..\..\Docs\english\pictures\corefilters\*.*"
+
+  SetOutPath $INSTDIR\Docs\Japanese\pictures\externalfilters
+  File "..\..\Docs\english\pictures\externalfilters\*.*"
+
+  SetShellVarContext All
+  StrCmp $AdminInstall "No" +2
+  CreateShortCut "$SMPROGRAMS\AviSynth 2.5\Japanese AviSynth Documentation.lnk" "$INSTDIR\Docs\Japanese\index.htm"
 
 SectionEnd
 
@@ -323,24 +352,24 @@ Section /o  $(Portugese_Text) Portugese
   SectionIn 4
   SetOutPath $INSTDIR\Docs
   File "..\..\Docs\*.css"
-  SetOutPath $INSTDIR\Docs\portugese
+  SetOutPath $INSTDIR\Docs\Portugese
   File "..\..\Docs\portugese\*.*"
-  SetOutPath $INSTDIR\Docs\portugese\advancedtopics
+  SetOutPath $INSTDIR\Docs\Portugese\advancedtopics
   File "..\..\Docs\portugese\advancedtopics\*.*"
-  SetOutPath $INSTDIR\Docs\portugese\corefilters
+  SetOutPath $INSTDIR\Docs\Portugese\corefilters
   File "..\..\Docs\portugese\corefilters\*.*"
-  SetOutPath $INSTDIR\Docs\portugese\externalfilters
+  SetOutPath $INSTDIR\Docs\Portugese\externalfilters
   File "..\..\Docs\portugese\externalfilters\*.*"
-  SetOutPath $INSTDIR\Docs\portugese\pictures\advancedtopics
+  SetOutPath $INSTDIR\Docs\Portugese\pictures\advancedtopics
   File "..\..\Docs\portugese\pictures\advancedtopics\*.*"
-  SetOutPath $INSTDIR\Docs\portugese\pictures\corefilters
+  SetOutPath $INSTDIR\Docs\Portugese\pictures\corefilters
   File "..\..\Docs\portugese\pictures\corefilters\*.*"
-  SetOutPath $INSTDIR\Docs\portugese\pictures\externalfilters
+  SetOutPath $INSTDIR\Docs\Portugese\pictures\externalfilters
   File "..\..\Docs\portugese\pictures\externalfilters\*.*"
 
   SetShellVarContext All
   StrCmp $AdminInstall "No" +2
-  CreateShortCut "$SMPROGRAMS\AviSynth 2.5\Portugese AviSynth Documentation.lnk" "$INSTDIR\Docs\portugese\index.htm"
+  CreateShortCut "$SMPROGRAMS\AviSynth 2.5\Portugese AviSynth Documentation.lnk" "$INSTDIR\Docs\Portugese\index.htm"
 
 SectionEnd
 
@@ -348,24 +377,24 @@ Section /o  $(Russian_Text) Russian
   SectionIn 4
   SetOutPath $INSTDIR\Docs
   File "..\..\Docs\*.css"
-  SetOutPath $INSTDIR\Docs\russian
+  SetOutPath $INSTDIR\Docs\Russian
   File "..\..\Docs\russian\*.*"
-  SetOutPath $INSTDIR\Docs\russian\advancedtopics
+  SetOutPath $INSTDIR\Docs\Russian\advancedtopics
   File "..\..\Docs\russian\advancedtopics\*.*"
-  SetOutPath $INSTDIR\Docs\russian\corefilters
+  SetOutPath $INSTDIR\Docs\Russian\corefilters
   File "..\..\Docs\russian\corefilters\*.*"
-  SetOutPath $INSTDIR\Docs\russian\externalfilters
+  SetOutPath $INSTDIR\Docs\Russian\externalfilters
   File "..\..\Docs\russian\externalfilters\*.*"
-  SetOutPath $INSTDIR\Docs\russian\pictures\advancedtopics
+  SetOutPath $INSTDIR\Docs\Russian\pictures\advancedtopics
   File "..\..\Docs\russian\pictures\advancedtopics\*.*"
-  SetOutPath $INSTDIR\Docs\russian\pictures\corefilters
+  SetOutPath $INSTDIR\Docs\Russian\pictures\corefilters
   File "..\..\Docs\russian\pictures\corefilters\*.*"
-  SetOutPath $INSTDIR\Docs\russian\pictures\externalfilters
+  SetOutPath $INSTDIR\Docs\Russian\pictures\externalfilters
   File "..\..\Docs\russian\pictures\externalfilters\*.*"
 
   SetShellVarContext All
   StrCmp $AdminInstall "No" +2
-  CreateShortCut "$SMPROGRAMS\AviSynth 2.5\Russian AviSynth Documentation.lnk" "$INSTDIR\Docs\russian\index.htm"
+  CreateShortCut "$SMPROGRAMS\AviSynth 2.5\Russian AviSynth Documentation.lnk" "$INSTDIR\Docs\Russian\index.htm"
 
 SectionEnd
 
@@ -437,6 +466,7 @@ SectionEnd
 
 SubSectionEnd
 
+;----------------------------------
 
 Function .onInit
   !insertmacro MUI_LANGDLL_DISPLAY
@@ -452,8 +482,8 @@ Function .onInit
     StrCmp $LANGUAGE ${LANG_French} 0 +2
     SectionSetInstTypes ${French} $0
 
-;    StrCmp $LANGUAGE ${LANG_Italian} 0 +2
-;    SectionSetInstTypes ${Italian} $0
+    StrCmp $LANGUAGE ${LANG_Italian} 0 +2
+    SectionSetInstTypes ${Italian} $0
 
     StrCmp $LANGUAGE ${LANG_Japanese} 0 +2
     SectionSetInstTypes ${Japanese} $0
@@ -469,6 +499,7 @@ Function .onInit
 
 FunctionEnd
 
+;----------------------------------
 
   !insertmacro MUI_FUNCTION_DESCRIPTION_BEGIN
 
@@ -533,75 +564,91 @@ Section "Uninstall"
   Delete "$INSTDIR\plugins\TCPDeliver.dll"
   Delete "$INSTDIR\plugins\colors_rgb.avsi"
 
-  Delete "$INSTDIR\Docs\english\advancedtopics\*.*"
-  RMDir  "$INSTDIR\Docs\english\advancedtopics"
-  Delete "$INSTDIR\Docs\english\corefilters\*.*"
-  RMDir  "$INSTDIR\Docs\english\corefilters"
-  Delete "$INSTDIR\Docs\english\externalfilters\*.*"
-  RMDir  "$INSTDIR\Docs\english\externalfilters"
-  Delete "$INSTDIR\Docs\english\pictures\advancedtopics\*.*"
-  RMDir  "$INSTDIR\Docs\english\pictures\advancedtopics"
-  Delete "$INSTDIR\Docs\english\pictures\corefilters\*.*"
-  RMDir  "$INSTDIR\Docs\english\pictures\corefilters"
-  Delete "$INSTDIR\Docs\english\pictures\externalfilters\*.*"
-  RMDir  "$INSTDIR\Docs\english\pictures\externalfilters"
-  RMDir  "$INSTDIR\Docs\english\pictures"
-  Delete "$INSTDIR\Docs\english\*.*"
-  RMDir  "$INSTDIR\Docs\english"
+  Delete "$INSTDIR\Docs\English\advancedtopics\*.*"
+  RMDir  "$INSTDIR\Docs\English\advancedtopics"
+  Delete "$INSTDIR\Docs\English\corefilters\*.*"
+  RMDir  "$INSTDIR\Docs\English\corefilters"
+  Delete "$INSTDIR\Docs\English\externalfilters\*.*"
+  RMDir  "$INSTDIR\Docs\English\externalfilters"
+  Delete "$INSTDIR\Docs\English\pictures\advancedtopics\*.*"
+  RMDir  "$INSTDIR\Docs\English\pictures\advancedtopics"
+  Delete "$INSTDIR\Docs\English\pictures\corefilters\*.*"
+  RMDir  "$INSTDIR\Docs\English\pictures\corefilters"
+  Delete "$INSTDIR\Docs\English\pictures\externalfilters\*.*"
+  RMDir  "$INSTDIR\Docs\English\pictures\externalfilters"
+  RMDir  "$INSTDIR\Docs\English\pictures"
+  Delete "$INSTDIR\Docs\English\*.*"
+  RMDir  "$INSTDIR\Docs\English"
 
-  Delete "$INSTDIR\Docs\german\corefilters\*.*"
-  RMDir  "$INSTDIR\Docs\german\corefilters"
-  Delete "$INSTDIR\Docs\german\externalfilters\*.*"
-  RMDir  "$INSTDIR\Docs\german\externalfilters"
-  Delete "$INSTDIR\Docs\german\*.*"
-  RMDir  "$INSTDIR\Docs\german"
+  Delete "$INSTDIR\Docs\German\corefilters\*.*"
+  RMDir  "$INSTDIR\Docs\German\corefilters"
+  Delete "$INSTDIR\Docs\German\externalfilters\*.*"
+  RMDir  "$INSTDIR\Docs\German\externalfilters"
+  Delete "$INSTDIR\Docs\German\*.*"
+  RMDir  "$INSTDIR\Docs\German"
 
-  Delete "$INSTDIR\Docs\french\corefilters\*.*"
-  RMDir  "$INSTDIR\Docs\french\corefilters"
-  Delete "$INSTDIR\Docs\french\*.*"
-  RMDir  "$INSTDIR\Docs\french"
+  Delete "$INSTDIR\Docs\French\corefilters\*.*"
+  RMDir  "$INSTDIR\Docs\French\corefilters"
+  Delete "$INSTDIR\Docs\French\*.*"
+  RMDir  "$INSTDIR\Docs\French"
 
-  Delete "$INSTDIR\Docs\italian\corefilters\*.*"
-  RMDir  "$INSTDIR\Docs\italian\corefilters"
-  Delete "$INSTDIR\Docs\italian\externalfilters\*.*"
-  RMDir  "$INSTDIR\Docs\italian\externalfilters"
-  Delete "$INSTDIR\Docs\italian\pictures\corefilters\*.*"
-  RMDir  "$INSTDIR\Docs\italian\pictures\corefilters"
-  RMDir  "$INSTDIR\Docs\italian\pictures"
-  Delete "$INSTDIR\Docs\italian\*.*"
-  RMDir  "$INSTDIR\Docs\italian"
+  Delete "$INSTDIR\Docs\Italian\corefilters\*.*"
+  RMDir  "$INSTDIR\Docs\Italian\corefilters"
+  Delete "$INSTDIR\Docs\Italian\externalfilters\*.*"
+  RMDir  "$INSTDIR\Docs\Italian\externalfilters"
+  Delete "$INSTDIR\Docs\Italian\pictures\corefilters\*.*"
+  RMDir  "$INSTDIR\Docs\Italian\pictures\corefilters"
+  RMDir  "$INSTDIR\Docs\Italian\pictures"
+  Delete "$INSTDIR\Docs\Italian\*.*"
+  RMDir  "$INSTDIR\Docs\Italian"
 
-  Delete "$INSTDIR\Docs\portugese\advancedtopics\*.*"
-  RMDir  "$INSTDIR\Docs\portugese\advancedtopics"
-  Delete "$INSTDIR\Docs\portugese\corefilters\*.*"
-  RMDir  "$INSTDIR\Docs\portugese\corefilters"
-  Delete "$INSTDIR\Docs\portugese\externalfilters\*.*"
-  RMDir  "$INSTDIR\Docs\portugese\externalfilters"
-  Delete "$INSTDIR\Docs\portugese\pictures\advancedtopics\*.*"
-  RMDir  "$INSTDIR\Docs\portugese\pictures\advancedtopics"
-  Delete "$INSTDIR\Docs\portugese\pictures\corefilters\*.*"
-  RMDir  "$INSTDIR\Docs\portugese\pictures\corefilters"
-  Delete "$INSTDIR\Docs\portugese\pictures\externalfilters\*.*"
-  RMDir  "$INSTDIR\Docs\portugese\pictures\externalfilters"
-  RMDir  "$INSTDIR\Docs\portugese\pictures"
-  Delete "$INSTDIR\Docs\portugese\*.*"
-  RMDir  "$INSTDIR\Docs\portugese"
+  Delete "$INSTDIR\Docs\Japanese\advancedtopics\*.*"
+  RMDir  "$INSTDIR\Docs\Japanese\advancedtopics"
+  Delete "$INSTDIR\Docs\Japanese\corefilters\*.*"
+  RMDir  "$INSTDIR\Docs\Japanese\corefilters"
+  Delete "$INSTDIR\Docs\Japanese\externalfilters\*.*"
+  RMDir  "$INSTDIR\Docs\Japanese\externalfilters"
+  Delete "$INSTDIR\Docs\Japanese\pictures\advancedtopics\*.*"
+  RMDir  "$INSTDIR\Docs\Japanese\pictures\advancedtopics"
+  Delete "$INSTDIR\Docs\Japanese\pictures\corefilters\*.*"
+  RMDir  "$INSTDIR\Docs\Japanese\pictures\corefilters"
+  Delete "$INSTDIR\Docs\Japanese\pictures\externalfilters\*.*"
+  RMDir  "$INSTDIR\Docs\Japanese\pictures\externalfilters"
+  RMDir  "$INSTDIR\Docs\Japanese\pictures"
+  Delete "$INSTDIR\Docs\Japanese\*.*"
+  RMDir  "$INSTDIR\Docs\Japanese"
 
-  Delete "$INSTDIR\Docs\russian\advancedtopics\*.*"
-  RMDir  "$INSTDIR\Docs\russian\advancedtopics"
-  Delete "$INSTDIR\Docs\russian\corefilters\*.*"
-  RMDir  "$INSTDIR\Docs\russian\corefilters"
-  Delete "$INSTDIR\Docs\russian\externalfilters\*.*"
-  RMDir  "$INSTDIR\Docs\russian\externalfilters"
-  Delete "$INSTDIR\Docs\russian\pictures\advancedtopics\*.*"
-  RMDir  "$INSTDIR\Docs\russian\pictures\advancedtopics"
-  Delete "$INSTDIR\Docs\russian\pictures\corefilters\*.*"
-  RMDir  "$INSTDIR\Docs\russian\pictures\corefilters"
-  Delete "$INSTDIR\Docs\russian\pictures\externalfilters\*.*"
-  RMDir  "$INSTDIR\Docs\russian\pictures\externalfilters"
-  RMDir  "$INSTDIR\Docs\russian\pictures"
-  Delete "$INSTDIR\Docs\russian\*.*"
-  RMDir  "$INSTDIR\Docs\russian"
+  Delete "$INSTDIR\Docs\Portugese\advancedtopics\*.*"
+  RMDir  "$INSTDIR\Docs\Portugese\advancedtopics"
+  Delete "$INSTDIR\Docs\Portugese\corefilters\*.*"
+  RMDir  "$INSTDIR\Docs\Portugese\corefilters"
+  Delete "$INSTDIR\Docs\Portugese\externalfilters\*.*"
+  RMDir  "$INSTDIR\Docs\Portugese\externalfilters"
+  Delete "$INSTDIR\Docs\Portugese\pictures\advancedtopics\*.*"
+  RMDir  "$INSTDIR\Docs\Portugese\pictures\advancedtopics"
+  Delete "$INSTDIR\Docs\Portugese\pictures\corefilters\*.*"
+  RMDir  "$INSTDIR\Docs\Portugese\pictures\corefilters"
+  Delete "$INSTDIR\Docs\Portugese\pictures\externalfilters\*.*"
+  RMDir  "$INSTDIR\Docs\Portugese\pictures\externalfilters"
+  RMDir  "$INSTDIR\Docs\Portugese\pictures"
+  Delete "$INSTDIR\Docs\Portugese\*.*"
+  RMDir  "$INSTDIR\Docs\Portugese"
+
+  Delete "$INSTDIR\Docs\Russian\advancedtopics\*.*"
+  RMDir  "$INSTDIR\Docs\Russian\advancedtopics"
+  Delete "$INSTDIR\Docs\Russian\corefilters\*.*"
+  RMDir  "$INSTDIR\Docs\Russian\corefilters"
+  Delete "$INSTDIR\Docs\Russian\externalfilters\*.*"
+  RMDir  "$INSTDIR\Docs\Russian\externalfilters"
+  Delete "$INSTDIR\Docs\Russian\pictures\advancedtopics\*.*"
+  RMDir  "$INSTDIR\Docs\Russian\pictures\advancedtopics"
+  Delete "$INSTDIR\Docs\Russian\pictures\corefilters\*.*"
+  RMDir  "$INSTDIR\Docs\Russian\pictures\corefilters"
+  Delete "$INSTDIR\Docs\Russian\pictures\externalfilters\*.*"
+  RMDir  "$INSTDIR\Docs\Russian\pictures\externalfilters"
+  RMDir  "$INSTDIR\Docs\Russian\pictures"
+  Delete "$INSTDIR\Docs\Russian\*.*"
+  RMDir  "$INSTDIR\Docs\Russian"
 
   Delete "$INSTDIR\Docs\*.css"
   RMDir  "$INSTDIR\Docs"
