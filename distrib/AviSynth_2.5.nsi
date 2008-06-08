@@ -65,16 +65,17 @@ SetCompressor /solid lzma
 ;
 ;----------------------------------
 
-!insertmacro AVS_LANGUAGE "English"    ; 1033
-
-!insertmacro AVS_LANGUAGE "Czech"      ; 1029
-!insertmacro AVS_LANGUAGE "German"     ; 1031
-!insertmacro AVS_LANGUAGE "Greek"      ; 1253
-!insertmacro AVS_LANGUAGE "French"     ; 1036
-!insertmacro AVS_LANGUAGE "Italian"    ; 1040
-!insertmacro AVS_LANGUAGE "Japanese"   ; 1041
-; !insertmacro AVS_LANGUAGE "Portuguese" ; 2070
-!insertmacro AVS_LANGUAGE "Russian"    ; 1049
+!insertmacro AVS_LANGUAGE "English"      ; 1033
+                                        
+!insertmacro AVS_LANGUAGE "Czech"        ; 1029
+!insertmacro AVS_LANGUAGE "German"       ; 1031
+!insertmacro AVS_LANGUAGE "Greek"        ; 1253
+!insertmacro AVS_LANGUAGE "French"       ; 1036
+!insertmacro AVS_LANGUAGE "Italian"      ; 1040
+!insertmacro AVS_LANGUAGE "Japanese"     ; 1041
+!insertmacro AVS_LANGUAGE "PortugueseBR" ; 1046
+!insertmacro AVS_LANGUAGE "Portuguese"   ; 2070
+!insertmacro AVS_LANGUAGE "Russian"      ; 1049
 
 !insertmacro MUI_RESERVEFILE_LANGDLL
 
@@ -348,28 +349,28 @@ Section /o  $(Japanese_Text) Japanese
 
 SectionEnd
 
-Section /o  $(Portugese_Text) Portugese
+Section /o  $(Portugese_Text) Portuguese
   SectionIn 4
   SetOutPath $INSTDIR\Docs
   File "..\..\Docs\*.css"
-  SetOutPath $INSTDIR\Docs\Portugese
+  SetOutPath $INSTDIR\Docs\Portuguese
   File "..\..\Docs\portugese\*.*"
-  SetOutPath $INSTDIR\Docs\Portugese\advancedtopics
+  SetOutPath $INSTDIR\Docs\Portuguese\advancedtopics
   File "..\..\Docs\portugese\advancedtopics\*.*"
-  SetOutPath $INSTDIR\Docs\Portugese\corefilters
+  SetOutPath $INSTDIR\Docs\Portuguese\corefilters
   File "..\..\Docs\portugese\corefilters\*.*"
-  SetOutPath $INSTDIR\Docs\Portugese\externalfilters
+  SetOutPath $INSTDIR\Docs\Portuguese\externalfilters
   File "..\..\Docs\portugese\externalfilters\*.*"
-  SetOutPath $INSTDIR\Docs\Portugese\pictures\advancedtopics
+  SetOutPath $INSTDIR\Docs\Portuguese\pictures\advancedtopics
   File "..\..\Docs\portugese\pictures\advancedtopics\*.*"
-  SetOutPath $INSTDIR\Docs\Portugese\pictures\corefilters
+  SetOutPath $INSTDIR\Docs\Portuguese\pictures\corefilters
   File "..\..\Docs\portugese\pictures\corefilters\*.*"
-  SetOutPath $INSTDIR\Docs\Portugese\pictures\externalfilters
+  SetOutPath $INSTDIR\Docs\Portuguese\pictures\externalfilters
   File "..\..\Docs\portugese\pictures\externalfilters\*.*"
 
   SetShellVarContext All
   StrCmp $AdminInstall "No" +2
-  CreateShortCut "$SMPROGRAMS\AviSynth 2.5\Portugese AviSynth Documentation.lnk" "$INSTDIR\Docs\Portugese\index.htm"
+  CreateShortCut "$SMPROGRAMS\AviSynth 2.5\Portuguese AviSynth Documentation.lnk" "$INSTDIR\Docs\Portuguese\index.htm"
 
 SectionEnd
 
@@ -488,8 +489,11 @@ Function .onInit
     StrCmp $LANGUAGE ${LANG_Japanese} 0 +2
     SectionSetInstTypes ${Japanese} $0
 
-;    StrCmp $LANGUAGE ${LANG_Portuguese} 0 +2
-;    SectionSetInstTypes ${Portuguese} $0
+    StrCmp $LANGUAGE ${LANG_PortugueseBR} 0 +2
+    SectionSetInstTypes ${Portuguese} $0
+
+    StrCmp $LANGUAGE ${LANG_Portuguese} 0 +2
+    SectionSetInstTypes ${Portuguese} $0
 
     StrCmp $LANGUAGE ${LANG_Russian} 0 +2
     SectionSetInstTypes ${Russian} $0
@@ -512,7 +516,7 @@ FunctionEnd
   !insertmacro MUI_DESCRIPTION_TEXT ${French}             $(French_Bubble)
   !insertmacro MUI_DESCRIPTION_TEXT ${Italian}            $(Italian_Bubble)
   !insertmacro MUI_DESCRIPTION_TEXT ${Japanese}           $(Japanese_Bubble)
-  !insertmacro MUI_DESCRIPTION_TEXT ${Portugese}          $(Portugese_Bubble)
+  !insertmacro MUI_DESCRIPTION_TEXT ${Portuguese}         $(Portugese_Bubble)
   !insertmacro MUI_DESCRIPTION_TEXT ${Russian}            $(Russian_Bubble)
   !insertmacro MUI_DESCRIPTION_TEXT ${SelectAssociation}  $(SelectAssociation_Bubble)
   !insertmacro MUI_DESCRIPTION_TEXT ${Associate1}         $(Associate1_Bubble)
@@ -618,21 +622,21 @@ Section "Uninstall"
   Delete "$INSTDIR\Docs\Japanese\*.*"
   RMDir  "$INSTDIR\Docs\Japanese"
 
-  Delete "$INSTDIR\Docs\Portugese\advancedtopics\*.*"
-  RMDir  "$INSTDIR\Docs\Portugese\advancedtopics"
-  Delete "$INSTDIR\Docs\Portugese\corefilters\*.*"
-  RMDir  "$INSTDIR\Docs\Portugese\corefilters"
-  Delete "$INSTDIR\Docs\Portugese\externalfilters\*.*"
-  RMDir  "$INSTDIR\Docs\Portugese\externalfilters"
-  Delete "$INSTDIR\Docs\Portugese\pictures\advancedtopics\*.*"
-  RMDir  "$INSTDIR\Docs\Portugese\pictures\advancedtopics"
-  Delete "$INSTDIR\Docs\Portugese\pictures\corefilters\*.*"
-  RMDir  "$INSTDIR\Docs\Portugese\pictures\corefilters"
-  Delete "$INSTDIR\Docs\Portugese\pictures\externalfilters\*.*"
-  RMDir  "$INSTDIR\Docs\Portugese\pictures\externalfilters"
-  RMDir  "$INSTDIR\Docs\Portugese\pictures"
-  Delete "$INSTDIR\Docs\Portugese\*.*"
-  RMDir  "$INSTDIR\Docs\Portugese"
+  Delete "$INSTDIR\Docs\Portuguese\advancedtopics\*.*"
+  RMDir  "$INSTDIR\Docs\Portuguese\advancedtopics"
+  Delete "$INSTDIR\Docs\Portuguese\corefilters\*.*"
+  RMDir  "$INSTDIR\Docs\Portuguese\corefilters"
+  Delete "$INSTDIR\Docs\Portuguese\externalfilters\*.*"
+  RMDir  "$INSTDIR\Docs\Portuguese\externalfilters"
+  Delete "$INSTDIR\Docs\Portuguese\pictures\advancedtopics\*.*"
+  RMDir  "$INSTDIR\Docs\Portuguese\pictures\advancedtopics"
+  Delete "$INSTDIR\Docs\Portuguese\pictures\corefilters\*.*"
+  RMDir  "$INSTDIR\Docs\Portuguese\pictures\corefilters"
+  Delete "$INSTDIR\Docs\Portuguese\pictures\externalfilters\*.*"
+  RMDir  "$INSTDIR\Docs\Portuguese\pictures\externalfilters"
+  RMDir  "$INSTDIR\Docs\Portuguese\pictures"
+  Delete "$INSTDIR\Docs\Portuguese\*.*"
+  RMDir  "$INSTDIR\Docs\Portuguese"
 
   Delete "$INSTDIR\Docs\Russian\advancedtopics\*.*"
   RMDir  "$INSTDIR\Docs\Russian\advancedtopics"
