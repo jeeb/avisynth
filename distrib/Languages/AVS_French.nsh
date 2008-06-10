@@ -17,7 +17,7 @@ LangString COMPONENT_TEXT           ${AvsLang} "AviSynth - Le serveur d'image de
 LangString Frameserving_Text        ${AvsLang} "AviSynth Base (requis)"
 LangString SystemInstall_Text       ${AvsLang} "Installation des fichiers dans le dossier System"
 LangString InUseMsg_Text            ${AvsLang} "Impossible de copier avisynth.dll vers le dossier system$\n$\n\
-                                                Fermez toutes les applications qui utilisent, et$\n\
+                                                Fermez toutes les applications qui utilisent Avisynth, et$\n\
                                                 vérifiez que vous avez les droits en écriture sur le dossier system,$\n\
                                                 et ensuite réessayez."
 LangString PlugDir_Text             ${AvsLang} "Impossible d'écrire dans le dossier Avisynth Plugin.$\n\
