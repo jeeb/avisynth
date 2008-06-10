@@ -459,10 +459,21 @@ Dissolve::Dissolve(PClip _child1, PClip _child2, int _overlap, double fps, IScri
 	audio_fade_start = vi.num_audio_samples - __int64(Int32x32To64(vi.SamplesPerSecond(), overlap)/fps+0.5);
 	audio_fade_end = vi.num_audio_samples-1;
   }
+  audio_overlap = int(audio_fade_end - audio_fade_start);
+
+  if (video_fade_start < 0) video_fade_start= 0;
+  if (audio_fade_start < 0) audio_fade_start= 0;
 
   vi.num_frames = video_fade_start + vi2.num_frames;
   vi.num_audio_samples = audio_fade_start + vi2.num_audio_samples;
 }
+
+
+bool Dissolve::GetParity(int n) 
+{
+  return (n < video_fade_start) ? child->GetParity(n) : child2->GetParity(n - video_fade_start);
+}
+
 
 PVideoFrame Dissolve::GetFrame(int n, IScriptEnvironment* env) 
 {
@@ -474,7 +485,7 @@ PVideoFrame Dissolve::GetFrame(int n, IScriptEnvironment* env)
   PVideoFrame a = child->GetFrame(n, env);
   PVideoFrame b = child2->GetFrame(n - video_fade_start, env);
 
-  const int multiplier = n - video_fade_start + 1;
+  const int multiplier = n - video_fade_end + overlap;
 
   if ((env->GetCPUFlags() & CPUF_MMX) && (!(a->GetRowSize(PLANAR_Y_ALIGNED)&7)) ) {  // MMX and Video is mod 8
     int weight = (multiplier * 32767) / (overlap+1);
@@ -553,7 +564,7 @@ void Dissolve::GetAudio(void* buf, __int64 start, __int64 count, IScriptEnvironm
   
   const int nch = vi.AudioChannels();
   const int countXnch = count*nch;
-  const int denominator = (audio_fade_end - audio_fade_start);
+  const int denominator = audio_overlap;
   int numerator = (audio_fade_end - start);
   
   if (vi.IsSampleType(SAMPLE_INT16)) {
@@ -600,12 +611,6 @@ void Dissolve::GetAudio(void* buf, __int64 start, __int64 count, IScriptEnvironm
 
   env->ThrowError("Dissolve: Wow - this should never happend!");
 
-}
-
-
-bool Dissolve::GetParity(int n) 
-{
-  return (n < video_fade_start) ? child->GetParity(n) : child2->GetParity(n - video_fade_start);
 }
 
 

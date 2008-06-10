@@ -160,6 +160,7 @@ private:
   const int overlap;
   int video_fade_start, video_fade_end;
   __int64 audio_fade_start, audio_fade_end;
+  int audio_overlap;
   BYTE* audbuffer;
   int audbufsize;
   void EnsureBuffer(int minsize);
