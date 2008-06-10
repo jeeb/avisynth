@@ -238,13 +238,13 @@ Section /o  $(English_Text) English
   SetOutPath $INSTDIR\Docs
   File "..\..\Docs\*.css"
   SetOutPath $INSTDIR\Docs\English
-  File "..\..\Docs\english\*.*"
+  File "..\..\Docs\english\*.htm"
   SetOutPath $INSTDIR\Docs\English\advancedtopics
-  File "..\..\Docs\english\advancedtopics\*.*"
+  File "..\..\Docs\english\advancedtopics\*.htm"
   SetOutPath $INSTDIR\Docs\English\corefilters
-  File "..\..\Docs\english\corefilters\*.*"
+  File "..\..\Docs\english\corefilters\*.htm"
   SetOutPath $INSTDIR\Docs\English\externalfilters
-  File "..\..\Docs\english\externalfilters\*.*"
+  File "..\..\Docs\english\externalfilters\*.htm"
   SetOutPath $INSTDIR\Docs\English\pictures\advancedtopics
   File "..\..\Docs\english\pictures\advancedtopics\*.*"
   SetOutPath $INSTDIR\Docs\English\pictures\corefilters
@@ -266,11 +266,11 @@ Section /o  $(German_Text) German
   SetOutPath $INSTDIR\Docs
   File "..\..\Docs\*.css"
   SetOutPath $INSTDIR\Docs\German
-  File "..\..\Docs\german\*.*"
+  File "..\..\Docs\german\*.htm"
   SetOutPath $INSTDIR\Docs\German\corefilters
-  File "..\..\Docs\german\corefilters\*.*"
+  File "..\..\Docs\german\corefilters\*.htm"
   SetOutPath $INSTDIR\Docs\German\externalfilters
-  File "..\..\Docs\german\externalfilters\*.*"
+  File "..\..\Docs\german\externalfilters\*.htm"
 
   SetShellVarContext All
   StrCmp $AdminInstall "No" +2
@@ -283,9 +283,9 @@ Section /o  $(French_Text) French
   SetOutPath $INSTDIR\Docs
   File "..\..\Docs\*.css"
   SetOutPath $INSTDIR\Docs\French
-  File "..\..\Docs\french\*.*"
+  File "..\..\Docs\french\*.htm"
   SetOutPath $INSTDIR\Docs\French\corefilters
-  File "..\..\Docs\french\corefilters\*.*"
+  File "..\..\Docs\french\corefilters\*.htm"
 
   SetShellVarContext All
   StrCmp $AdminInstall "No" +2
@@ -298,11 +298,11 @@ Section /o  $(Italian_Text) Italian
   SetOutPath $INSTDIR\Docs
   File "..\..\Docs\*.css"
   SetOutPath $INSTDIR\Docs\Italian
-  File "..\..\Docs\italian\*.*"
+  File "..\..\Docs\italian\*.htm"
   SetOutPath $INSTDIR\Docs\Italian\corefilters
-  File "..\..\Docs\italian\corefilters\*.*"
+  File "..\..\Docs\italian\corefilters\*.htm"
   SetOutPath $INSTDIR\Docs\Italian\externalfilters
-  File "..\..\Docs\italian\externalfilters\*.*"
+  File "..\..\Docs\italian\externalfilters\*.htm"
   SetOutPath $INSTDIR\Docs\Italian\pictures\corefilters
   File "..\..\Docs\italian\pictures\corefilters\*.*"
 
@@ -321,18 +321,19 @@ Section /o  $(Japanese_Text) Japanese
   File "..\..\Docs\*.css"
 
   SetOutPath $INSTDIR\Docs\Japanese
-  File "..\..\Docs\english\*.*"
-  File "..\..\Docs\japanese\*.*"  ; Overwrite with the translated versions
+  File "..\..\Docs\english\*.htm"
+  File "..\..\Docs\japanese\*.htm"  ; Overwrite with the translated versions
+  File "..\..\Docs\japanese\ja.css"
 
   SetOutPath $INSTDIR\Docs\Japanese\advancedtopics
-  File "..\..\Docs\english\advancedtopics\*.*"
+  File "..\..\Docs\english\advancedtopics\*.htm"
 
   SetOutPath $INSTDIR\Docs\Japanese\corefilters
-  File "..\..\Docs\english\corefilters\*.*"
-  File "..\..\Docs\japanese\corefilters\*.*"  ; Overwrite with the translated versions
+  File "..\..\Docs\english\corefilters\*.htm"
+  File "..\..\Docs\japanese\corefilters\*.htm"  ; Overwrite with the translated versions
 
   SetOutPath $INSTDIR\Docs\Japanese\externalfilters
-  File "..\..\Docs\english\externalfilters\*.*"
+  File "..\..\Docs\english\externalfilters\*.htm"
 
   SetOutPath $INSTDIR\Docs\Japanese\pictures\advancedtopics
   File "..\..\Docs\english\pictures\advancedtopics\*.*"
@@ -354,13 +355,13 @@ Section /o  $(Portugese_Text) Portuguese
   SetOutPath $INSTDIR\Docs
   File "..\..\Docs\*.css"
   SetOutPath $INSTDIR\Docs\Portuguese
-  File "..\..\Docs\portugese\*.*"
+  File "..\..\Docs\portugese\*.htm"
   SetOutPath $INSTDIR\Docs\Portuguese\advancedtopics
-  File "..\..\Docs\portugese\advancedtopics\*.*"
+  File "..\..\Docs\portugese\advancedtopics\*.htm"
   SetOutPath $INSTDIR\Docs\Portuguese\corefilters
-  File "..\..\Docs\portugese\corefilters\*.*"
+  File "..\..\Docs\portugese\corefilters\*.htm"
   SetOutPath $INSTDIR\Docs\Portuguese\externalfilters
-  File "..\..\Docs\portugese\externalfilters\*.*"
+  File "..\..\Docs\portugese\externalfilters\*.htm"
   SetOutPath $INSTDIR\Docs\Portuguese\pictures\advancedtopics
   File "..\..\Docs\portugese\pictures\advancedtopics\*.*"
   SetOutPath $INSTDIR\Docs\Portuguese\pictures\corefilters
@@ -379,13 +380,14 @@ Section /o  $(Russian_Text) Russian
   SetOutPath $INSTDIR\Docs
   File "..\..\Docs\*.css"
   SetOutPath $INSTDIR\Docs\Russian
-  File "..\..\Docs\russian\*.*"
+  File "..\..\Docs\russian\*.htm"
+  File "..\..\Docs\russian\gpl-rus.txt"
   SetOutPath $INSTDIR\Docs\Russian\advancedtopics
-  File "..\..\Docs\russian\advancedtopics\*.*"
+  File "..\..\Docs\russian\advancedtopics\*.htm"
   SetOutPath $INSTDIR\Docs\Russian\corefilters
-  File "..\..\Docs\russian\corefilters\*.*"
+  File "..\..\Docs\russian\corefilters\*.htm"
   SetOutPath $INSTDIR\Docs\Russian\externalfilters
-  File "..\..\Docs\russian\externalfilters\*.*"
+  File "..\..\Docs\russian\externalfilters\*.htm"
   SetOutPath $INSTDIR\Docs\Russian\pictures\advancedtopics
   File "..\..\Docs\russian\pictures\advancedtopics\*.*"
   SetOutPath $INSTDIR\Docs\Russian\pictures\corefilters
@@ -539,8 +541,17 @@ Function un.onUninstSuccess
 FunctionEnd
 
 Section "Uninstall"
-  Delete "$SYSDIR\devil.dll"
+Retry:
+  ClearErrors
   Delete "$SYSDIR\AviSynth.dll"
+  Delete "$SYSDIR\devil.dll"
+
+  IfErrors 0 Ignore
+  MessageBox MB_ABORTRETRYIGNORE|MB_DEFBUTTON2|MB_ICONEXCLAMATION \
+             "$(InUseMsg_Text)" /SD IDIGNORE IDIGNORE Ignore IDRETRY Retry
+  DetailPrint "AviSynth.dll or DevIL.dll was inuse or protected."
+  Abort
+Ignore:
   DeleteRegKey HKLM "Software\Classes\.avs"
 
   DeleteRegKey HKCR "CLSID\{E6D6B700-124D-11D4-86F3-DB80AFD98778}"
@@ -675,7 +686,7 @@ Section "Uninstall"
   DeleteRegKey HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\AviSynth"
 
 IfFileExists $INSTDIR 0 Removed
-    MessageBox MB_YESNO|MB_ICONQUESTION $(RemoveReg_Text) IDNO Removed
+    MessageBox MB_YESNO|MB_ICONQUESTION|MB_DEFBUTTON2 $(RemoveReg_Text) IDNO Removed
     DeleteRegKey HKLM "Software\AviSynth"
 Removed:
 
