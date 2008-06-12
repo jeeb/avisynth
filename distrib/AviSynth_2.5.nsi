@@ -324,6 +324,9 @@ Section /o  $(Japanese_Text) Japanese
   File "..\..\Docs\english\*.htm"
   File "..\..\Docs\japanese\*.htm"  ; Overwrite with the translated versions
   File "..\..\Docs\japanese\ja.css"
+  File "..\..\Docs\japanese\filelist.txt"
+  File "..\..\Docs\japanese\readme_en.txt"
+  File "..\..\Docs\japanese\readme_ja.txt"
 
   SetOutPath $INSTDIR\Docs\Japanese\advancedtopics
   File "..\..\Docs\english\advancedtopics\*.htm"
