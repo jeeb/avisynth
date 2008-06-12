@@ -173,6 +173,7 @@ GetSample::GetSample(bool _load_audio, bool _load_video, unsigned _media, LOG* _
 
     am_media_type = 0;
     refcnt = 1;
+	Allocator = 0;
     source_pin = 0;
     filter_graph = 0;
     pclock = 0;
@@ -207,7 +208,7 @@ GetSample::GetSample(bool _load_audio, bool _load_video, unsigned _media, LOG* _
   }
 
   GetSample::~GetSample() {
-    dssRPT0(dssNEW, "~GetSample.\n");
+    dssRPT1(dssNEW, "~GetSample(%s).\n", streamName);
 
     if (am_media_type)
       DeleteMediaType(am_media_type);
@@ -221,6 +222,12 @@ GetSample::GetSample(bool _load_audio, bool _load_video, unsigned _media, LOG* _
 
     for (unsigned i=0; i<no_my_media_types; i++)
       delete my_media_types[i];
+
+    if (Allocator) {
+      dssRPT1(dssNEW, "Releasing Allocator 0x%08x.\n", Allocator);
+      Allocator->Release();
+      Allocator = 0;
+    }
 
     if (log) log->DelRef(streamName);
   }
@@ -350,7 +357,7 @@ GetSample::GetSample(bool _load_audio, bool _load_video, unsigned _media, LOG* _
         // Damn! graph is stuffing around and has not started (yet?)
         OAFilterState fs = State_Stopped;
         hr = mc->GetState(5000, &fs); // Give it 5 seconds to sort itself out
-        dssRPT3(dssPROC, "StartGraph(%s) mc->GetState(&%d) = 0x%x\n", streamName, fs, hr);
+        dssRPT3(dssPROC, "StartGraph(%s) mc->GetState(%s) = 0x%x\n", streamName, PrintState(FILTER_STATE(fs)), hr);
         if ((fs == State_Running) && ((hr == S_OK) || (hr == VFW_S_STATE_INTERMEDIATE)))
           hr = S_OK; // It is good or still may become good
         else if (SUCCEEDED(hr))
@@ -570,6 +577,12 @@ SeekExit:
     state = State_Stopped;
     SetEvent(evtDoneWithSample);
     graphTimeout = true;
+/*
+    if (Allocator) {
+      HRESULT result = Allocator->Decommit();
+      dssRPT2(dssNEW, "GetSample::Stop(), %x = 0x%08x->Decommit().\n", result, Allocator);
+    }
+*/
     return S_OK;
   }
 
@@ -706,6 +719,13 @@ SeekExit:
 	if (am_media_type)
 	  DeleteMediaType(am_media_type);
     am_media_type = 0;
+
+    if (Allocator) {
+      dssRPT1(dssNEW, "Releasing Allocator 0x%08x.\n", Allocator);
+      Allocator->Release();
+      Allocator = 0;
+    }
+
     dssRPT0(dssCMD, "GetSample::Disconnect()\n");
     return S_OK;
   }
@@ -1098,12 +1118,31 @@ pbFormat:
   // IMemInputPin
 
   HRESULT __stdcall GetSample::GetAllocator(IMemAllocator** ppAllocator) {
-    dssRPT0(dssCMD, "GetSample::GetAllocator() E_NOTIMPL\n");
-    return E_NOTIMPL;
+	if (!ppAllocator) {
+      dssRPT0(dssCMD, "GetSample::GetAllocator() E_POINTER\n");
+      return E_POINTER;
+    }
+    if (!Allocator) {
+      dssRPT0(dssCMD, "GetSample::GetAllocator() VFW_E_NO_ALLOCATOR\n");
+      return VFW_E_NO_ALLOCATOR;
+    }
+    dssRPT1(dssCMD, "GetSample::GetAllocator(0x%08x)\n", Allocator);
+    Allocator->AddRef();
+    *ppAllocator = Allocator;
+    return S_OK;
   }
 
   HRESULT __stdcall GetSample::NotifyAllocator(IMemAllocator* pAllocator, BOOL bReadOnly) {
-    dssRPT3(dssCMD, "GetSample::NotifyAllocator(0x%08x, %x) (%s)\n", pAllocator, bReadOnly, streamName);
+    dssRPT4(dssCMD, "GetSample::NotifyAllocator(0x%08x, %x) was 0x%08x (%s)\n", pAllocator, bReadOnly, Allocator, streamName);
+	if (!pAllocator) {
+      dssRPT0(dssCMD, "GetSample::NotifyAllocator() E_POINTER\n");
+      return E_POINTER;
+    }
+    if (Allocator) {
+      Allocator->Release();
+    }
+    Allocator = pAllocator;
+    Allocator->AddRef();
     return S_OK;
   }
 
@@ -1112,9 +1151,9 @@ pbFormat:
 	  dssRPT0(dssERROR, "GetSample::GetAllocatorRequirements(*pProps) E_POINTER\n");
 	  return E_POINTER;
     }
-    dssRPT4(dssCMD, "GetSample::GetAllocatorRequirements(%d, %d, %d, %d)\n",
+    dssRPT4(dssCMD, "GetSample::GetAllocatorRequirements(%d, %d, %d, %d) E_NOTIMPL\n",
 	        pProps->cBuffers, pProps->cbBuffer, pProps->cbAlign, pProps->cbPrefix);
-    return S_OK;
+    return E_NOTIMPL;
   }
 
   HRESULT __stdcall GetSample::Receive(IMediaSample* pSamples) {

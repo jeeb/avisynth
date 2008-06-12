@@ -172,6 +172,7 @@ public:
 class GetSample : public IBaseFilter, public IPin, public IMemInputPin {
 
   long refcnt;
+  IMemAllocator* Allocator;  // refcounted
   IPin* source_pin;  // not refcounted
   IFilterGraph* filter_graph;  // not refcounted
   IReferenceClock* pclock;  // not refcounted
