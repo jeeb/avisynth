@@ -1,0 +1,74 @@
+;----------------------------------
+; Translated by Micha³ Trzebiatowski (19.06.2008) <mtrz@users.sourceforge.net>
+;----------------------------------
+;
+; Polish -- Code page 1045
+;
+;----------------------------------
+LangString AVS_Standard             ${AvsLang} "Standardowy"
+LangString AVS_Minimal              ${AvsLang} "Minimalny"
+LangString AVS_Standalone           ${AvsLang} "Pojedynczy"
+LangString AVS_Full                 ${AvsLang} "Pe³ny"
+
+LangString FINISHPAGE_TEXT          ${AvsLang} "OdwieŸ stronê internetow¹ AviSynth dla najnowszych wiadomoœci i pomocy."
+LangString COMPONENT_TEXT           ${AvsLang} "AviSynth - czo³owe narzêdzie frameserving.$\n\
+                                                Copyright © 2000 - 2008."
+
+LangString Frameserving_Text        ${AvsLang} "Podstawa AviSynth (niezbêdna)"
+LangString SystemInstall_Text       ${AvsLang} "Zainstaluj pliki do folderu systemu"
+LangString InUseMsg_Text            ${AvsLang} "Nie mo¿na skopiowaæ avisynth.dll do folderu systemu$\n$\n\
+                                                Zamknij wszystkie aplikacje które u¿ywaj¹ Avisynth,$\n\
+                                                upewnij siê czy masz zezwolenie zapisu do folderu systemu$\n\
+                                                i spróbuj ponownie."
+LangString PlugDir_Text             ${AvsLang} "Nie mo¿na zapisaæ do folderu wtyczek Avisynth.$\n\
+                                                Zamknij wszystkie aplikacje które u¿ywaj¹ Avisynth$\n\
+                                                i spróbuj ponownie."
+LangString AdminRightsHKLM_Text     ${AvsLang} "Do zainstalowania AviSynth potrzebne s¹ prawa administratorskie!$\n\
+                                                (Nie mo¿na wpisywaæ do rejestru HKLM)"
+LangString AdminRightsHKCR_Text     ${AvsLang} "Do zainstalowania AviSynth potrzebne s¹ prawa administratorskie!$\n\
+                                                (Nie mo¿na wpisywaæ do rejestru HKCR)"
+LangString StandAlone_Text          ${AvsLang} "Zainstaluj pliki w folderze programu"
+
+LangString Documentation_Text       ${AvsLang} "Dokumentacja"
+LangString English_Text             ${AvsLang} "Angielska dokumentacja"
+LangString German_Text              ${AvsLang} "Niemiecka dokumentacja"
+LangString French_Text              ${AvsLang} "Francuska dokumentacja"
+LangString Italian_Text             ${AvsLang} "W³oska documentation"
+LangString Japanese_Text            ${AvsLang} "Japoñska dokumentacja"
+LangString Portugese_Text           ${AvsLang} "Portugalska dokumentacja"
+LangString Russian_Text             ${AvsLang} "Rosyjska dokumentacja"
+LangString SelectAssociation_Text   ${AvsLang} "Wybierz po³¹czenie"
+LangString Associate1_Text          ${AvsLang} "Po³¹cz AVS z Notatnikiem (otwieraj)"
+LangString Associate2_Text          ${AvsLang} "Po³¹cz AVS z Media Playerem 6.4 (odtwarzaj)"
+LangString Associate3_Text          ${AvsLang} "Dodaj skrypt AviSynth w menu kontekstowym. Pozycja (Nowy...)"
+LangString SelectExtraFiles_Text    ${AvsLang} "Wybierz dodatkowe pliki"
+LangString ExtraFiles3_Text         ${AvsLang} "Zainstaluj FilterSDK"
+LangString ExtraFiles1_Text         ${AvsLang} "Zainstaluj Avisynth.lib i Avisynth.exp"
+LangString ExtraFiles2_Text         ${AvsLang} "Zainstaluj Avisynth.map"
+
+LangString Frameserving_Bubble      ${AvsLang} "Zainstaluj g³ówne pliki dla frameserving przez AviSynth"
+LangString SystemInstall_Bubble     ${AvsLang} "Zainstaluj g³ówne pliki do folderu systemu"
+LangString StandAlone_Bubble        ${AvsLang} "Zainstaluj g³ówne pliki do folderu programu \
+                                                (niefunkcjonuj¹ca instalacja bez administratora) \
+                                                (Musisz wybraæ pojedynczy typ instalacji)"
+LangString Documentation_Bubble     ${AvsLang} "Zainstaluj pomoc. Proszê wybraæ jêzyk \
+                                                (angielska pomoc jest najbardziej aktualna)"
+LangString English_Bubble           ${AvsLang} "Zainstaluj angielsk¹ pomoc"
+LangString German_Bubble            ${AvsLang} "Zainstaluj niemieck¹ pomoc"
+LangString French_Bubble            ${AvsLang} "Zainstaluj francusk¹ pomoc"
+LangString Italian_Bubble           ${AvsLang} "Zainstaluj w³osk¹ pomoc"
+LangString Japanese_Bubble          ${AvsLang} "Zainstaluj japoñsk¹ pomoc"
+LangString Portugese_Bubble         ${AvsLang} "Zainstaluj portugalsk¹ pomoc"
+LangString Russian_Bubble           ${AvsLang} "Zainstaluj rosyjsk¹ pomoc"
+LangString SelectAssociation_Bubble ${AvsLang} "Wybierz jedno lub wiêcej po³¹czeñ"
+LangString Associate1_Bubble        ${AvsLang} "Otwórz pliki AVS dla zmian bezpoœrednio w Notatniku"
+LangString Associate2_Bubble        ${AvsLang} "Odtwórz pliki AVS bezpoœrednio w Media Player 6.4 (prawy przycisk - odtwarzanie)"
+LangString Associate3_Bubble        ${AvsLang} "Utwórz nowy pusty skrypt AviSynth (prawy przycisk - Nowy - AviSynth Script)"
+LangString SelectExtraFiles_Bubble  ${AvsLang} "Wybierz jeden lub wiêcej dodatkowych plików do zainstalowania"
+LangString ExtraFiles1_Bubble       ${AvsLang} "Zainstaluj avisynth.lib i avisynth.exp dla oprogramowania interfejsu C"
+LangString ExtraFiles2_Bubble       ${AvsLang} "Zainstaluj plik avisynth.map"
+LangString ExtraFiles3_Bubble       ${AvsLang} "Zainstaluj FilterSDK dla oprogramowania wtyczek AviSynth"
+
+LangString Uninstall_Text           ${AvsLang} "Odinstalowanie zakoñczy³o siê pomyœlnie."
+LangString RemoveReg_Text           ${AvsLang} "Czy chcesz usun¹æ powi¹zanie do folderu wtyczek$\n\
+                                                w rejestrze (nie usuwa to ¿adnych plików)?"
