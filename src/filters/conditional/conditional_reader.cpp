@@ -373,6 +373,8 @@ PVideoFrame __stdcall Write::GetFrame(int n, IScriptEnvironment* env) {
 	if (linecheck<0) return tmpframe;	//do nothing here when writing only start or end
 
 	AVSValue prev_last = env->GetVar("last");  // Store previous last
+	AVSValue prev_current_frame = GetVar(env, "current_frame");  // Store previous current_frame
+
 	env->SetVar("last",(AVSValue)child);       // Set implicit last (to avoid recursive stack calls?)
 	env->SetVar("current_frame",n);
 	
@@ -381,6 +383,7 @@ PVideoFrame __stdcall Write::GetFrame(int n, IScriptEnvironment* env) {
 	}
 
 	env->SetVar("last",prev_last);       // Restore implicit last
+	env->SetVar("current_frame",prev_current_frame);       // Restore current_frame
 
 	return tmpframe;
 

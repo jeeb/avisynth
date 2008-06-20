@@ -54,6 +54,18 @@ public:
 };
 
 
+// Helper function - exception protected wrapper
+
+inline AVSValue GetVar(IScriptEnvironment* env, const char* name) {
+  try {
+    return env->GetVar(name);
+  }
+  catch (IScriptEnvironment::NotFound) {}
+
+  return AVSValue();
+}
+
+
 /*****************************************************************************
  *  Helper code from XviD (http://www.xvid.org)
  *
