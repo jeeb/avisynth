@@ -15,7 +15,7 @@ LangString COMPONENT_TEXT           ${AvsLang} "AviSynth - czo³owe narzêdzie fra
                                                 Copyright © 2000 - 2008."
 
 LangString Frameserving_Text        ${AvsLang} "Podstawa AviSynth (niezbêdna)"
-LangString SystemInstall_Text       ${AvsLang} "Zainstaluj pliki do folderu systemu"
+LangString SystemInstall_Text       ${AvsLang} "Zainstaluj pliki w folderze systemu"
 LangString InUseMsg_Text            ${AvsLang} "Nie mo¿na skopiowaæ avisynth.dll do folderu systemu$\n$\n\
                                                 Zamknij wszystkie aplikacje które u¿ywaj¹ Avisynth,$\n\
                                                 upewnij siê czy masz zezwolenie zapisu do folderu systemu$\n\
@@ -47,8 +47,8 @@ LangString ExtraFiles1_Text         ${AvsLang} "Zainstaluj Avisynth.lib i Avisyn
 LangString ExtraFiles2_Text         ${AvsLang} "Zainstaluj Avisynth.map"
 
 LangString Frameserving_Bubble      ${AvsLang} "Zainstaluj g³ówne pliki dla frameserving przez AviSynth"
-LangString SystemInstall_Bubble     ${AvsLang} "Zainstaluj g³ówne pliki do folderu systemu"
-LangString StandAlone_Bubble        ${AvsLang} "Zainstaluj g³ówne pliki do folderu programu \
+LangString SystemInstall_Bubble     ${AvsLang} "Zainstaluj g³ówne pliki w folderze systemu"
+LangString StandAlone_Bubble        ${AvsLang} "Zainstaluj g³ówne pliki w folderze programu \
                                                 (niefunkcjonuj¹ca instalacja bez administratora) \
                                                 (Musisz wybraæ pojedynczy typ instalacji)"
 LangString Documentation_Bubble     ${AvsLang} "Zainstaluj pomoc. Proszê wybraæ jêzyk \
