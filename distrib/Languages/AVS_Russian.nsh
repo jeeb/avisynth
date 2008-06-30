@@ -53,13 +53,13 @@ LangString StandAlone_Bubble        ${AvsLang} "Устанавливает базовые файлы в па
                                                 (нужна ручная настройка пути и ключей реестра!)"
 
 LangString Documentation_Bubble     ${AvsLang} "Устанавливает справку. Пожалуйста выберите языки \
-                                                (не-английская может быть устаревшей)"
+                                                (не-английские могут быть устаревшими)"
 LangString English_Bubble           ${AvsLang} "Устанавливает английскую справку"
 LangString German_Bubble            ${AvsLang} "Устанавливает немецкую справку"
 LangString French_Bubble            ${AvsLang} "Устанавливает французскую справку"
 LangString Italian_Bubble           ${AvsLang} "Устанавливает итальянскую справку"
 LangString Japanese_Bubble          ${AvsLang} "Устанавливает японскую справку"
-LangString Polish_Bubble            ${AvsLang} "Устанавливает polish справку"
+LangString Polish_Bubble            ${AvsLang} "Устанавливает польскую справку"
 LangString Portugese_Bubble         ${AvsLang} "Устанавливает португальскую справку"
 LangString Russian_Bubble           ${AvsLang} "Устанавливает русскую справку"
 LangString SelectAssociation_Bubble ${AvsLang} "Задайте одну или несколько файловых ассоциаций в системе"
@@ -68,9 +68,9 @@ LangString Associate2_Bubble        ${AvsLang} "Воспроизводить AVS файлы в Media
 LangString Associate3_Bubble        ${AvsLang} "Создавать новый пустой AviSynth скрипт (правая кнопка - Создать - AviSynth Script)"
 LangString SelectExtraFiles_Bubble  ${AvsLang} "Выберите один или несколько дополнительных файлов для установки (разработчикам)"
 LangString ExtraFiles1_Bubble       ${AvsLang} "Устанавливает avisynth.lib и avisynth.exp для разработки C интерфейса"
-LangString ExtraFiles2_Bubble       ${AvsLang} "Устанавливает avisynth.map"
+LangString ExtraFiles2_Bubble       ${AvsLang} "Устанавливает avisynth.map для отладки"
 LangString ExtraFiles3_Bubble       ${AvsLang} "Устанавливает FilterSDK для разработки AviSynth плагинов"
 
-LangString Uninstall_Text           ${AvsLang} "де-инсталляция успешно завершена."
+LangString Uninstall_Text           ${AvsLang} "Де-инсталляция успешно завершена."
 LangString RemoveReg_Text           ${AvsLang} "Хотите ли вы удалить указатель в реестре на $\n\
                                                 папку плагинов (файлы удалены не будут)?"
