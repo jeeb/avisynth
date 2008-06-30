@@ -354,6 +354,21 @@ Section /o  $(Japanese_Text) Japanese
 
 SectionEnd
 
+Section /o  $(Polish_Text) Polish
+  SectionIn 4
+  SetOutPath $INSTDIR\Docs\Polish
+  File "..\..\Docs\Polish\*.*"
+  SetOutPath $INSTDIR\Docs\Polish\wew
+  File "..\..\Docs\Polish\wew\*.*"
+  SetOutPath $INSTDIR\Docs\Polish\zew
+  File "..\..\Docs\Polish\zew\*.*"
+
+  SetShellVarContext All
+  StrCmp $AdminInstall "No" +2
+  CreateShortCut "$SMPROGRAMS\AviSynth 2.5\Polish AviSynth Documentation.lnk" "$INSTDIR\Docs\Polish\default.htm"
+
+SectionEnd
+
 Section /o  $(Portugese_Text) Portuguese
   SectionIn 4
   SetOutPath $INSTDIR\Docs
@@ -495,6 +510,9 @@ Function .onInit
     StrCmp $LANGUAGE ${LANG_Japanese} 0 +2
     SectionSetInstTypes ${Japanese} $0
 
+    StrCmp $LANGUAGE ${LANG_Polish} 0 +2
+    SectionSetInstTypes ${Polish} $0
+
     StrCmp $LANGUAGE ${LANG_PortugueseBR} 0 +2
     SectionSetInstTypes ${Portuguese} $0
 
@@ -522,6 +540,7 @@ FunctionEnd
   !insertmacro MUI_DESCRIPTION_TEXT ${French}             $(French_Bubble)
   !insertmacro MUI_DESCRIPTION_TEXT ${Italian}            $(Italian_Bubble)
   !insertmacro MUI_DESCRIPTION_TEXT ${Japanese}           $(Japanese_Bubble)
+  !insertmacro MUI_DESCRIPTION_TEXT ${Polish}             $(Polish_Bubble)
   !insertmacro MUI_DESCRIPTION_TEXT ${Portuguese}         $(Portugese_Bubble)
   !insertmacro MUI_DESCRIPTION_TEXT ${Russian}            $(Russian_Bubble)
   !insertmacro MUI_DESCRIPTION_TEXT ${SelectAssociation}  $(SelectAssociation_Bubble)
@@ -636,6 +655,13 @@ Ignore:
   RMDir  "$INSTDIR\Docs\Japanese\pictures"
   Delete "$INSTDIR\Docs\Japanese\*.*"
   RMDir  "$INSTDIR\Docs\Japanese"
+
+  Delete "$INSTDIR\Docs\Polish\zew\*.*"
+  RMDir  "$INSTDIR\Docs\Polish\zew"
+  Delete "$INSTDIR\Docs\Polish\wew\*.*"
+  RMDir  "$INSTDIR\Docs\Polish\wew"
+  Delete "$INSTDIR\Docs\Polish\*.*"
+  RMDir  "$INSTDIR\Docs\Polish"
 
   Delete "$INSTDIR\Docs\Portuguese\advancedtopics\*.*"
   RMDir  "$INSTDIR\Docs\Portuguese\advancedtopics"
