@@ -1,5 +1,5 @@
 ;----------------------------------
-; Translated by Micha³ Trzebiatowski (19.06.2008) <mtrz@users.sourceforge.net>
+; Translated by Micha³ Trzebiatowski (19.06.2008)
 ;----------------------------------
 ;
 ; Polish -- Code page 1045
@@ -35,7 +35,7 @@ LangString German_Text              ${AvsLang} "Niemiecka dokumentacja"
 LangString French_Text              ${AvsLang} "Francuska dokumentacja"
 LangString Italian_Text             ${AvsLang} "W³oska documentation"
 LangString Japanese_Text            ${AvsLang} "Japoñska dokumentacja"
-LangString Polish_Text              ${AvsLang} "Polish dokumentacja"
+LangString Polish_Text              ${AvsLang} "Polska dokumentacja"
 LangString Portugese_Text           ${AvsLang} "Portugalska dokumentacja"
 LangString Russian_Text             ${AvsLang} "Rosyjska dokumentacja"
 LangString SelectAssociation_Text   ${AvsLang} "Wybierz po³¹czenie"
@@ -59,7 +59,7 @@ LangString German_Bubble            ${AvsLang} "Zainstaluj niemieck¹ pomoc"
 LangString French_Bubble            ${AvsLang} "Zainstaluj francusk¹ pomoc"
 LangString Italian_Bubble           ${AvsLang} "Zainstaluj w³osk¹ pomoc"
 LangString Japanese_Bubble          ${AvsLang} "Zainstaluj japoñsk¹ pomoc"
-LangString Polish_Bubble            ${AvsLang} "Zainstaluj polish pomoc"
+LangString Polish_Bubble            ${AvsLang} "Zainstaluj polsk¹ pomoc"
 LangString Portugese_Bubble         ${AvsLang} "Zainstaluj portugalsk¹ pomoc"
 LangString Russian_Bubble           ${AvsLang} "Zainstaluj rosyjsk¹ pomoc"
 LangString SelectAssociation_Bubble ${AvsLang} "Wybierz jedno lub wiêcej po³¹czeñ"
