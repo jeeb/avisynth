@@ -1,14 +1,14 @@
 ;----------------------------------
-; Translated by Micha³ Trzebiatowski (19.06.2008)
+; Translated by Micha³ Trzebiatowski (30.06.2008)
 ;----------------------------------
 ;
 ; Polish -- Code page 1045
 ;
 ;----------------------------------
-LangString AVS_Standard             ${AvsLang} "Standardowy"
-LangString AVS_Minimal              ${AvsLang} "Minimalny"
-LangString AVS_Standalone           ${AvsLang} "Pojedynczy"
-LangString AVS_Full                 ${AvsLang} "Pe³ny"
+LangString AVS_Standard             ${AvsLang} "Standardowa"
+LangString AVS_Minimal              ${AvsLang} "Minimalna"
+LangString AVS_Standalone           ${AvsLang} "Pojedyncza"
+LangString AVS_Full                 ${AvsLang} "Pe³na"
 
 LangString FINISHPAGE_TEXT          ${AvsLang} "OdwieŸ stronê internetow¹ AviSynth dla najnowszych wiadomoœci i pomocy."
 LangString COMPONENT_TEXT           ${AvsLang} "AviSynth - czo³owe narzêdzie frameserving.$\n\
