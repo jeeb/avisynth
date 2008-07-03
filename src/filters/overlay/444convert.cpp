@@ -137,12 +137,11 @@ void Convert444FromYUY2::ConvertImage(PVideoFrame src, Image444* dst, IScriptEnv
   for (int y=0; y<h; y++) {
     for (int x=0; x<w; x+=2) {
       int x2 = x<<1;
-      dstY[x] = srcP[x2];
-      dstU[x] = dstU[x+1] = srcP[x2+1];
-      dstV[x] = dstV[x+1] = srcP[x2+3];
+      dstY[x]   = srcP[x2];
+      dstU[x]   = dstU[x+1] = srcP[x2+1];
+      dstV[x]   = dstV[x+1] = srcP[x2+3];
       dstY[x+1] = srcP[x2+2];
     }
-
     srcP+=srcPitch;
 
     dstY+=dstPitch;
@@ -167,10 +166,9 @@ void Convert444FromYUY2::ConvertImageLumaOnly(PVideoFrame src, Image444* dst, IS
   for (int y=0; y<h; y++) {
     for (int x=0; x<w; x+=2) {
       int x2 = x<<1;
-      dstY[x] = srcP[x2];
+      dstY[x]   = srcP[x2];
       dstY[x+1] = srcP[x2+2];
     }
-
     srcP+=srcPitch;
     dstY+=dstPitch;
   }
@@ -359,14 +357,13 @@ PVideoFrame Convert444ToYV12::ConvertImage(Image444* src, PVideoFrame dst, IScri
         int x2 = x<<1;
         dstU[x] = (srcU[x2] + srcU[x2+1] + srcU[x2+srcUVpitch] + srcU[x2+srcUVpitch+1] + 2)>>2;
         dstV[x] = (srcV[x2] + srcV[x2+1] + srcV[x2+srcUVpitch] + srcV[x2+srcUVpitch+1] + 2)>>2;
-    }
+      }
       srcU+=srcUVpitch*2;
       srcV+=srcUVpitch*2;
       dstU+=dstUVpitch;
       dstV+=dstUVpitch;
+    }
   }
-  }
-
   return dst;
 }
 
@@ -391,7 +388,7 @@ PVideoFrame Convert444ToYUY2::ConvertImage(Image444* src, PVideoFrame dst, IScri
   for (int y=0; y<h; y++) {
     for (int x=0; x<w; x+=2) {
       int x2 = x<<1;
-      dstP[x2] = srcY[x];
+      dstP[x2]   = srcY[x];
       dstP[x2+1] = (srcU[x] + srcU[x+1] + 1)>>1;
       dstP[x2+2] = srcY[x+1];
       dstP[x2+3] = (srcV[x] + srcV[x+1] + 1)>>1;
@@ -613,7 +610,6 @@ void Convert444NonCCIRFromRGB::ConvertImage(PVideoFrame src, Image444* dst, IScr
 
       RGBx+=bpp;
     }
-
     srcP-=srcPitch;
 
     dstY+=dstPitch;

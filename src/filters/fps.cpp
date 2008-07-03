@@ -350,7 +350,7 @@ void PresetToFPS(const char *name, const char *p, unsigned &num, unsigned &den, 
 	else if (lstrcmpi(p, "100.0"            ) == 0) { num =   100; den =    1; }
 	else if (lstrcmpi(p, "119.88"           ) == 0) { num =120000; den = 1001; }
 	else if (lstrcmpi(p, "119.88!"          ) == 0) { num =  2997; den =   25; }
-	else if (lstrcmpi(p, "120.0"            ) == 0) { num =   100; den =    1; }
+	else if (lstrcmpi(p, "120.0"            ) == 0) { num =   120; den =    1; }
 */
 	else {
 	  env->ThrowError("%s: invalid preset value used.\n", name);

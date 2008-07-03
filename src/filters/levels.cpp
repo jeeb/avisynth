@@ -406,10 +406,10 @@ Tweak::Tweak( PClip _child, double _hue, double _sat, double _bright, double _co
     const bool allPixels = (startHue == 0.0 && endHue == 360.0 && _maxSat == 150.0 && _minSat == 0.0);
 
 // The new "mapping" C code is faster than the iSSE code on my 3GHz P4HT - Make it optional
-	if (sse && (!allPixels || coring || !vi.IsYUY2()))
-		env->ThrowError("Tweak: SSE option only available for YUY2 with coring=false and no options.");
-	if (sse && !(env->GetCPUFlags() & CPUF_INTEGER_SSE))
-		env->ThrowError("Tweak: SSE option needs an iSSE capable processor");
+    if (sse && (!allPixels || coring || !vi.IsYUY2()))
+        env->ThrowError("Tweak: SSE option only available for YUY2 with coring=false and no options.");
+    if (sse && !(env->GetCPUFlags() & CPUF_INTEGER_SSE))
+        env->ThrowError("Tweak: SSE option needs an iSSE capable processor");
 
     if (startHue < 0.0 || startHue >= 360.0)
           env->ThrowError("Tweak: startHue must be greater than or equal to 0.0 and less than 360.0");
@@ -491,12 +491,13 @@ PVideoFrame __stdcall Tweak::GetFrame(int n, IScriptEnvironment* env)
 	int src_pitch = src->GetPitch();
 	int height = src->GetHeight();
 	int row_size = src->GetRowSize();
-	
+
 	if (vi.IsYUY2()) {
 		if (sse && !coring && (env->GetCPUFlags() & CPUF_INTEGER_SSE)) {
 			const __int64 hue64 = (in64 Cos<<48) + (in64 (-Sin)<<32) + (in64 Sin<<16) + in64 Cos;
 			const __int64 satcont64 = (in64 Sat<<48) + (in64 Cont<<32) + (in64 Sat<<16) + in64 Cont;
 			const __int64 bright64 = (in64 Bright<<32) + in64 Bright;
+
 			asm_tweak_ISSE_YUY2(srcp, row_size>>2, height, src_pitch-row_size, hue64, satcont64, bright64);   
 			return src;
 		}
