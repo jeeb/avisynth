@@ -40,7 +40,7 @@ SetCompressor /solid lzma
 ;Pages------------------------------
 
 ;  !insertmacro MUI_PAGE_WELCOME
-  !insertmacro MUI_PAGE_LICENSE "GPL.txt"
+  !insertmacro MUI_PAGE_LICENSE $(AVS_GPL_Text)
   !insertmacro MUI_PAGE_COMPONENTS
   !insertmacro MUI_PAGE_DIRECTORY
   !insertmacro MUI_PAGE_INSTFILES
@@ -65,6 +65,8 @@ SetCompressor /solid lzma
 ;
 ;----------------------------------
 
+!verbose push
+!verbose 2
 !insertmacro AVS_LANGUAGE "English"      ; 1033
                                         
 !insertmacro AVS_LANGUAGE "Czech"        ; 1029
@@ -77,6 +79,7 @@ SetCompressor /solid lzma
 !insertmacro AVS_LANGUAGE "PortugueseBR" ; 1046
 !insertmacro AVS_LANGUAGE "Portuguese"   ; 2070
 !insertmacro AVS_LANGUAGE "Russian"      ; 1049
+!verbose pop
 
 !insertmacro MUI_RESERVEFILE_LANGDLL
 
@@ -126,7 +129,7 @@ IfErrors 0 dll_ok
 
 dll_ok:
   SetOutPath $INSTDIR
-  File "GPL.txt"
+  File "gpl*.txt"
   File "lgpl_for_used_libs.txt"
 
   ReadRegStr $0 HKLM "SOFTWARE\AviSynth" "plugindir2_5"
@@ -186,19 +189,22 @@ creg_ok:
 ; These bits are for the administrator only
   SetShellVarContext Current
   CreateDirectory  "$SMPROGRAMS\AviSynth 2.5"
-  CreateShortCut "$SMPROGRAMS\AviSynth 2.5\Uninstall AviSynth.lnk" "$INSTDIR\Uninstall.exe"
+  CreateShortCut "$SMPROGRAMS\AviSynth 2.5\$(Start_Uninstall).lnk" "$INSTDIR\Uninstall.exe"
 
 ; These bits are for everybody
   SetShellVarContext All
   CreateDirectory  "$SMPROGRAMS\AviSynth 2.5"
-  CreateShortCut "$SMPROGRAMS\AviSynth 2.5\License.lnk" "$INSTDIR\GPL.txt"
-  CreateShortCut "$SMPROGRAMS\AviSynth 2.5\Plugin Directory.lnk" "$INSTDIR\Plugins"
-  WriteINIStr    "$SMPROGRAMS\AviSynth 2.5\AviSynth Online.url" "InternetShortcut" "URL" "http://www.avisynth.org"
-  WriteINIStr    "$SMPROGRAMS\AviSynth 2.5\Download Plugins.url" "InternetShortcut" "URL" "http://www.avisynth.org/warpenterprises/"
+  CreateShortCut "$SMPROGRAMS\AviSynth 2.5\$(Start_License).lnk" "$INSTDIR\$(AVS_GPL_File)"
+  CreateShortCut "$SMPROGRAMS\AviSynth 2.5\$(Start_Plugin).lnk" "$INSTDIR\Plugins"
+  WriteINIStr    "$SMPROGRAMS\AviSynth 2.5\$(Start_Online).url" "InternetShortcut" "URL" "http://www.avisynth.org"
+  WriteINIStr    "$SMPROGRAMS\AviSynth 2.5\$(Start_Download).url" "InternetShortcut" "URL" "http://www.avisynth.org/warpenterprises/"
 
   SetOutPath $INSTDIR\Examples
+!verbose push
+!verbose 2
   File "Examples\*.*"
-  CreateShortCut "$SMPROGRAMS\AviSynth 2.5\Example Scripts.lnk" "$INSTDIR\Examples"
+!verbose pop
+  CreateShortCut "$SMPROGRAMS\AviSynth 2.5\$(Start_Example).lnk" "$INSTDIR\Examples"
 
   Delete $INSTDIR\Uninstall.exe
   WriteUninstaller $INSTDIR\Uninstall.exe
@@ -218,7 +224,7 @@ Section /o  $(StandAlone_Text) StandAlone
 
   File "Avisynth_Template.reg"
 
-  File "GPL.txt"
+  File "gpl*.txt"
   File "lgpl_for_used_libs.txt"
 
   SetOutPath "$INSTDIR\Plugins"
@@ -239,6 +245,8 @@ Section /o  $(English_Text) English
   SetOutPath $INSTDIR\Docs
   File "..\..\Docs\*.css"
   SetOutPath $INSTDIR\Docs\English
+!verbose push
+!verbose 2
   File "..\..\Docs\english\*.htm"
   SetOutPath $INSTDIR\Docs\English\advancedtopics
   File "..\..\Docs\english\advancedtopics\*.htm"
@@ -252,13 +260,14 @@ Section /o  $(English_Text) English
   File "..\..\Docs\english\pictures\corefilters\*.*"
   SetOutPath $INSTDIR\Docs\English\pictures\externalfilters
   File "..\..\Docs\english\pictures\externalfilters\*.*"
+!verbose pop
 
   SetOutPath $INSTDIR\Examples
   File "Examples\*.*"
 
   SetShellVarContext All
   StrCmp $AdminInstall "No" +2
-  CreateShortCut "$SMPROGRAMS\AviSynth 2.5\AviSynth Documentation.lnk" "$INSTDIR\Docs\English\index.htm"
+  CreateShortCut "$SMPROGRAMS\AviSynth 2.5\$(Start_Doc_English).lnk" "$INSTDIR\Docs\English\index.htm"
 
 SectionEnd
 
@@ -267,15 +276,18 @@ Section /o  $(German_Text) German
   SetOutPath $INSTDIR\Docs
   File "..\..\Docs\*.css"
   SetOutPath $INSTDIR\Docs\German
+!verbose push
+!verbose 2
   File "..\..\Docs\german\*.htm"
   SetOutPath $INSTDIR\Docs\German\corefilters
   File "..\..\Docs\german\corefilters\*.htm"
   SetOutPath $INSTDIR\Docs\German\externalfilters
   File "..\..\Docs\german\externalfilters\*.htm"
+!verbose pop
 
   SetShellVarContext All
   StrCmp $AdminInstall "No" +2
-  CreateShortCut "$SMPROGRAMS\AviSynth 2.5\Deutsche AviSynth Dokumentation.lnk" "$INSTDIR\Docs\German\index.htm"
+  CreateShortCut "$SMPROGRAMS\AviSynth 2.5\$(Start_Doc_German).lnk" "$INSTDIR\Docs\German\index.htm"
 
 SectionEnd
 
@@ -284,13 +296,16 @@ Section /o  $(French_Text) French
   SetOutPath $INSTDIR\Docs
   File "..\..\Docs\*.css"
   SetOutPath $INSTDIR\Docs\French
+!verbose push
+!verbose 2
   File "..\..\Docs\french\*.htm"
   SetOutPath $INSTDIR\Docs\French\corefilters
   File "..\..\Docs\french\corefilters\*.htm"
+!verbose pop
 
   SetShellVarContext All
   StrCmp $AdminInstall "No" +2
-  CreateShortCut "$SMPROGRAMS\AviSynth 2.5\French AviSynth Documentation.lnk" "$INSTDIR\Docs\French\index.htm"
+  CreateShortCut "$SMPROGRAMS\AviSynth 2.5\$(Start_Doc_French).lnk" "$INSTDIR\Docs\French\index.htm"
 
 SectionEnd
 
@@ -299,6 +314,8 @@ Section /o  $(Italian_Text) Italian
   SetOutPath $INSTDIR\Docs
   File "..\..\Docs\*.css"
   SetOutPath $INSTDIR\Docs\Italian
+!verbose push
+!verbose 2
   File "..\..\Docs\italian\*.htm"
   SetOutPath $INSTDIR\Docs\Italian\corefilters
   File "..\..\Docs\italian\corefilters\*.htm"
@@ -306,10 +323,11 @@ Section /o  $(Italian_Text) Italian
   File "..\..\Docs\italian\externalfilters\*.htm"
   SetOutPath $INSTDIR\Docs\Italian\pictures\corefilters
   File "..\..\Docs\italian\pictures\corefilters\*.*"
+!verbose pop
 
   SetShellVarContext All
   StrCmp $AdminInstall "No" +2
-  CreateShortCut "$SMPROGRAMS\AviSynth 2.5\Italian AviSynth Documentation.lnk" "$INSTDIR\Docs\Italian\index.htm"
+  CreateShortCut "$SMPROGRAMS\AviSynth 2.5\$(Start_Doc_Italian).lnk" "$INSTDIR\Docs\Italian\index.htm"
 
 SectionEnd
 
@@ -322,6 +340,8 @@ Section /o  $(Japanese_Text) Japanese
   File "..\..\Docs\*.css"
 
   SetOutPath $INSTDIR\Docs\Japanese
+!verbose push
+!verbose 2
   File "..\..\Docs\english\*.htm"
   File "..\..\Docs\japanese\*.htm"  ; Overwrite with the translated versions
   File "..\..\Docs\japanese\ja.css"
@@ -347,10 +367,11 @@ Section /o  $(Japanese_Text) Japanese
 
   SetOutPath $INSTDIR\Docs\Japanese\pictures\externalfilters
   File "..\..\Docs\english\pictures\externalfilters\*.*"
+!verbose pop
 
   SetShellVarContext All
   StrCmp $AdminInstall "No" +2
-  CreateShortCut "$SMPROGRAMS\AviSynth 2.5\Japanese AviSynth Documentation.lnk" "$INSTDIR\Docs\Japanese\index.htm"
+  CreateShortCut "$SMPROGRAMS\AviSynth 2.5\$(Start_Doc_Japanese).lnk" "$INSTDIR\Docs\Japanese\index.htm"
 
 SectionEnd
 
@@ -359,13 +380,16 @@ Section /o  $(Polish_Text) Polish
   SetOutPath $INSTDIR\Docs\Polish
   File "..\..\Docs\Polish\*.*"
   SetOutPath $INSTDIR\Docs\Polish\wew
+!verbose push
+!verbose 2
   File "..\..\Docs\Polish\wew\*.*"
   SetOutPath $INSTDIR\Docs\Polish\zew
   File "..\..\Docs\Polish\zew\*.*"
+!verbose pop
 
   SetShellVarContext All
   StrCmp $AdminInstall "No" +2
-  CreateShortCut "$SMPROGRAMS\AviSynth 2.5\Polish AviSynth Documentation.lnk" "$INSTDIR\Docs\Polish\default.htm"
+  CreateShortCut "$SMPROGRAMS\AviSynth 2.5\$(Start_Doc_Polish).lnk" "$INSTDIR\Docs\Polish\default.htm"
 
 SectionEnd
 
@@ -374,6 +398,8 @@ Section /o  $(Portugese_Text) Portuguese
   SetOutPath $INSTDIR\Docs
   File "..\..\Docs\*.css"
   SetOutPath $INSTDIR\Docs\Portuguese
+!verbose push
+!verbose 2
   File "..\..\Docs\portugese\*.htm"
   SetOutPath $INSTDIR\Docs\Portuguese\advancedtopics
   File "..\..\Docs\portugese\advancedtopics\*.htm"
@@ -387,10 +413,11 @@ Section /o  $(Portugese_Text) Portuguese
   File "..\..\Docs\portugese\pictures\corefilters\*.*"
   SetOutPath $INSTDIR\Docs\Portuguese\pictures\externalfilters
   File "..\..\Docs\portugese\pictures\externalfilters\*.*"
+!verbose pop
 
   SetShellVarContext All
   StrCmp $AdminInstall "No" +2
-  CreateShortCut "$SMPROGRAMS\AviSynth 2.5\Portuguese AviSynth Documentation.lnk" "$INSTDIR\Docs\Portuguese\index.htm"
+  CreateShortCut "$SMPROGRAMS\AviSynth 2.5\$(Start_Doc_Portuguese).lnk" "$INSTDIR\Docs\Portuguese\index.htm"
 
 SectionEnd
 
@@ -399,6 +426,8 @@ Section /o  $(Russian_Text) Russian
   SetOutPath $INSTDIR\Docs
   File "..\..\Docs\*.css"
   SetOutPath $INSTDIR\Docs\Russian
+!verbose push
+!verbose 2
   File "..\..\Docs\russian\*.htm"
   File "..\..\Docs\russian\gpl-rus.txt"
   SetOutPath $INSTDIR\Docs\Russian\advancedtopics
@@ -413,10 +442,11 @@ Section /o  $(Russian_Text) Russian
   File "..\..\Docs\russian\pictures\corefilters\*.*"
   SetOutPath $INSTDIR\Docs\Russian\pictures\externalfilters
   File "..\..\Docs\russian\pictures\externalfilters\*.*"
+!verbose pop
 
   SetShellVarContext All
   StrCmp $AdminInstall "No" +2
-  CreateShortCut "$SMPROGRAMS\AviSynth 2.5\Russian AviSynth Documentation.lnk" "$INSTDIR\Docs\Russian\index.htm"
+  CreateShortCut "$SMPROGRAMS\AviSynth 2.5\$(Start_Doc_Russian).lnk" "$INSTDIR\Docs\Russian\index.htm"
 
 SectionEnd
 
@@ -461,13 +491,16 @@ SubSection  $(SelectExtraFiles_Text) SelectExtraFiles
 Section /o  $(ExtraFiles3_Text) ExtraFiles3
   SectionIn 4
   SetOutPath $INSTDIR\FilterSDK
+!verbose push
+!verbose 2
   File "..\filtersdk\*.*"
+!verbose pop
   SetOutPath $INSTDIR\FilterSDK\include
   File "..\src\core\avisynth.h"
   File "..\src\core\avisynth_c.h"
   SetShellVarContext All
   StrCmp $AdminInstall "No" +2
-  CreateShortCut "$SMPROGRAMS\AviSynth 2.5\FilterSDK Information.lnk" "$INSTDIR\FilterSDK\FilterSDK.htm"
+  CreateShortCut "$SMPROGRAMS\AviSynth 2.5\$(Start_FilterSDK).lnk" "$INSTDIR\FilterSDK\FilterSDK.htm"
 
 SectionEnd
 
@@ -593,7 +626,7 @@ Ignore:
   Delete "$SMPROGRAMS\AviSynth 2.5\*.*"
   RMDir  "$SMPROGRAMS\AviSynth 2.5"
 
-  Delete "$INSTDIR\GPL.txt"
+  Delete "$INSTDIR\gpl*.txt"
   Delete "$INSTDIR\lgpl_for_used_libs.txt"
   Delete "$INSTDIR\Examples\*.*"
   RMDir  "$INSTDIR\Examples"

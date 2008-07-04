@@ -74,3 +74,29 @@ LangString ExtraFiles3_Bubble       ${AvsLang} "FilterSDK zur AviSynth-Plugin-En
 LangString Uninstall_Text           ${AvsLang} "Deinstallation war erfolgreich."
 LangString RemoveReg_Text           ${AvsLang} "Möchten Sie den Verweis auf das Plugin-Verzeichnis aus der Registry entfernen$\n\
                                                 (Es werden keine Dateien gelöscht)?"
+
+; Names for the Start Menu
+
+LangString Start_Uninstall          ${AvsLang} "Deinstall AviSynth"
+LangString Start_License            ${AvsLang} "Lizenz"
+LangString Start_Plugin             ${AvsLang} "Plugin-Verzeichnis"
+LangString Start_Online             ${AvsLang} "AviSynth Online"
+LangString Start_Download           ${AvsLang} "Download Plugins"
+LangString Start_Example            ${AvsLang} "Example Scripts"
+LangString Start_FilterSDK          ${AvsLang} "FilterSDK Dokumentation"
+
+LangString Start_Doc_English        ${AvsLang} "Englische Avisynth Dokumentation"
+LangString Start_Doc_German         ${AvsLang} "Deutsche Avisynth Dokumentation"
+LangString Start_Doc_French         ${AvsLang} "Französische Avisynth Dokumentation"
+LangString Start_Doc_Italian        ${AvsLang} "Italienische Avisynth Dokumentation"
+LangString Start_Doc_Japanese       ${AvsLang} "Japanische Avisynth Dokumentation"
+LangString Start_Doc_Polish         ${AvsLang} "Polnische Avisynth Dokumentation"
+LangString Start_Doc_Portuguese     ${AvsLang} "Portugiesische Avisynth Dokumentation"
+LangString Start_Doc_Russian        ${AvsLang} "Russische Avisynth Dokumentation"
+
+; Licence file
+
+LangString         AVS_GPL_File     ${AvsLang} "GPL.txt"
+LicenseLangString  AVS_GPL_text     ${AvsLang} "GPL.txt"
+
+; End of file

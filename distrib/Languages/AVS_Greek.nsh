@@ -74,3 +74,29 @@ LangString ExtraFiles3_Bubble       ${AvsLang} "Εγκατάσταση FilterSDK για ανάπτυ
 LangString Uninstall_Text           ${AvsLang} "Η κατάργηση της εγκατάστασης ολοκληρώθηκε με επιτυχία."
 LangString RemoveReg_Text           ${AvsLang} "Θέλετε να καταργήσετε την εγγραφή μητρώου που δείχνει προς το$\n\
                                                 φάκελο προσθέτων (κανένα αρχείο δε θα διαγραφεί);"
+
+; Names for the Start Menu
+
+LangString Start_Uninstall          ${AvsLang} "Απεγκατάσταση AviSynth"
+LangString Start_License            ${AvsLang} "Άδεια χρήσης"
+LangString Start_Plugin             ${AvsLang} "Φάκελος προσθέτων"
+LangString Start_Online             ${AvsLang} "Κεντρική σελίδα του AviSynth"
+LangString Start_Download           ${AvsLang} "Μεταφόρτωση προσθέτων"
+LangString Start_Example            ${AvsLang} "Παραδείγματα προγραμμάτων"
+LangString Start_FilterSDK          ${AvsLang} "Τεκμηρίωση FilterSDK"
+                                                
+LangString Start_Doc_English        ${AvsLang} "Αγγλική τεκμηρίωση AviSynth"
+LangString Start_Doc_German         ${AvsLang} "Γερμανική τεκμηρίωση AviSynth"
+LangString Start_Doc_French         ${AvsLang} "Γαλλική τεκμηρίωση AviSynth"
+LangString Start_Doc_Italian        ${AvsLang} "Ιταλική τεκμηρίωση AviSynth"
+LangString Start_Doc_Japanese       ${AvsLang} "Ιαπωνική τεκμηρίωση AviSynth"
+LangString Start_Doc_Polish         ${AvsLang} "Πολωνική τεκμηρίωση AviSynth"
+LangString Start_Doc_Portuguese     ${AvsLang} "Πορτογαλική τεκμηρίωση AviSynth"
+LangString Start_Doc_Russian        ${AvsLang} "Ρωσική τεκμηρίωση AviSynth"
+
+; Licence file
+
+LangString         AVS_GPL_File     ${AvsLang} "GPL.txt"
+LicenseLangString  AVS_GPL_text     ${AvsLang} "GPL.txt"
+
+; End of file

@@ -54,14 +54,14 @@ LangString StandAlone_Bubble        ${AvsLang} "Installer les fichiers principau
                                                 (Choisir installation Autonome)"
 LangString Documentation_Bubble     ${AvsLang} "Installer l'aide. Merci de choisir les langues désirées \
                                                 (à part l'anglais, elles ne sont probablement pas à jour)"
-LangString English_Bubble           ${AvsLang} "Installer aide en anglais"
-LangString German_Bubble            ${AvsLang} "Installer aide en allemand"
-LangString French_Bubble            ${AvsLang} "Installer aide en français"
-LangString Italian_Bubble           ${AvsLang} "Installer aide en italien"
-LangString Japanese_Bubble          ${AvsLang} "Installer aide en japonais"
-LangString Polish_Bubble            ${AvsLang} "Installer aide en polonais"
-LangString Portugese_Bubble         ${AvsLang} "Installer aide en portugais"
-LangString Russian_Bubble           ${AvsLang} "Installer aide en russe"
+LangString English_Bubble           ${AvsLang} "Installer l'aide en anglais"
+LangString German_Bubble            ${AvsLang} "Installer l'aide en allemand"
+LangString French_Bubble            ${AvsLang} "Installer l'aide en français"
+LangString Italian_Bubble           ${AvsLang} "Installer l'aide en italien"
+LangString Japanese_Bubble          ${AvsLang} "Installer l'aide en japonais"
+LangString Polish_Bubble            ${AvsLang} "Installer l'aide en polonais"
+LangString Portugese_Bubble         ${AvsLang} "Installer l'aide en portugais"
+LangString Russian_Bubble           ${AvsLang} "Installer l'aide en russe"
 LangString SelectAssociation_Bubble ${AvsLang} "Sélectionnez une ou plusieurs associations"
 LangString Associate1_Bubble        ${AvsLang} "Ouvrir les fichiers AVS directement avec le Bloc-Notes pour les éditer"
 LangString Associate2_Bubble        ${AvsLang} "Lire les fichiers AVS directement avec Media Player 6.4 (clic droit - lecture)"
@@ -78,3 +78,29 @@ LangString RemoveReg_Text           ${AvsLang} "Voulez-vous supprimer le pointeu
 ; Correct long ModernUI standard string, was   "Sélectionnez le type d'installation :"
 LangString ^ComponentsSubText1      ${AvsLang} "Sélectionnez installation :"
 ;----------------------------------
+
+; Names for the Start Menu
+
+LangString Start_Uninstall          ${AvsLang} "Uninstall AviSynth"
+LangString Start_License            ${AvsLang} "License"
+LangString Start_Plugin             ${AvsLang} "Plugin Directory"
+LangString Start_Online             ${AvsLang} "AviSynth Online"
+LangString Start_Download           ${AvsLang} "Download Plugins"
+LangString Start_Example            ${AvsLang} "Example Scripts"
+LangString Start_FilterSDK          ${AvsLang} "FilterSDK Information"
+
+LangString Start_Doc_English        ${AvsLang} "AviSynth Documentation"
+LangString Start_Doc_German         ${AvsLang} "German AviSynth Documentation"
+LangString Start_Doc_French         ${AvsLang} "French AviSynth Documentation"
+LangString Start_Doc_Italian        ${AvsLang} "Italian AviSynth Documentation"
+LangString Start_Doc_Japanese       ${AvsLang} "Japanese AviSynth Documentation"
+LangString Start_Doc_Polish         ${AvsLang} "Polish AviSynth Documentation"
+LangString Start_Doc_Portuguese     ${AvsLang} "Portuguese AviSynth Documentation"
+LangString Start_Doc_Russian        ${AvsLang} "Russian AviSynth Documentation"
+
+; Licence file
+
+LangString         AVS_GPL_File     ${AvsLang} "GPL.txt"
+LicenseLangString  AVS_GPL_text     ${AvsLang} "GPL.txt"
+
+; End of file

@@ -74,3 +74,29 @@ LangString ExtraFiles3_Bubble       ${AvsLang} "Nainstalovat FilterSDK (pro vývo
 LangString Uninstall_Text           ${AvsLang} "Odinstace probìhla úspìšnì."
 LangString RemoveReg_Text           ${AvsLang} "Pøejete si odstranit odkaz na složku s pluginy$\n\
                                                 z registrù (žádné soubory nebudou odebrány)?"
+
+; Names for the Start Menu
+
+LangString Start_Uninstall          ${AvsLang} "Odinstalovat AviSynth"
+LangString Start_License            ${AvsLang} "Licence"
+LangString Start_Plugin             ${AvsLang} "Adresáø s pluginy"
+LangString Start_Online             ${AvsLang} "AviSynth na webu"
+LangString Start_Download           ${AvsLang} "Stažení pluginù"
+LangString Start_Example            ${AvsLang} "Ukázky skriptù"
+LangString Start_FilterSDK          ${AvsLang} "Informace o FilterSDK"
+                                                
+LangString Start_Doc_English        ${AvsLang} "Anglická dokumentace k AviSynthu"
+LangString Start_Doc_German         ${AvsLang} "Nìmecká dokumentace k AviSynthu"
+LangString Start_Doc_French         ${AvsLang} "Francouzská dokumentace k AviSynthu"
+LangString Start_Doc_Italian        ${AvsLang} "Italská dokumentace k AviSynthu"
+LangString Start_Doc_Japanese       ${AvsLang} "Japonská dokumentace k AviSynthu"
+LangString Start_Doc_Polish         ${AvsLang} "Polská dokumentace k AviSynthu"
+LangString Start_Doc_Portuguese     ${AvsLang} "Portugalská dokumentace k AviSynthu"
+LangString Start_Doc_Russian        ${AvsLang} "Ruská dokumentace k AviSynthu"
+                                                
+; Licence file
+
+LangString         AVS_GPL_File     ${AvsLang} "GPL.txt"
+LicenseLangString  AVS_GPL_text     ${AvsLang} "GPL.txt"
+
+; End of file

@@ -74,3 +74,29 @@ LangString ExtraFiles3_Bubble       ${AvsLang} "Installa FilterSDK per lo svilup
 LangString Uninstall_Text           ${AvsLang} "Disinstallazione completata con successo."
 LangString RemoveReg_Text           ${AvsLang} "Vuoi rimuovere il puntamento alla cartella dei plugin$\n\
                                                 dal registro (nessun file verrà rimosso)?"
+
+; Names for the Start Menu
+
+LangString Start_Uninstall          ${AvsLang} "Disinstalla AviSynth"
+LangString Start_License            ${AvsLang} "Licenza"
+LangString Start_Plugin             ${AvsLang} "Cartella dei plugin"
+LangString Start_Online             ${AvsLang} "Home page di AviSynth"
+LangString Start_Download           ${AvsLang} "Scarica nuovi plugin"
+LangString Start_Example            ${AvsLang} "Scripts di esempio"
+LangString Start_FilterSDK          ${AvsLang} "Informazioni su FilterSDK"
+
+LangString Start_Doc_English        ${AvsLang} "Documentazione in Inglese"
+LangString Start_Doc_German         ${AvsLang} "Documentazione in Tedesco"
+LangString Start_Doc_French         ${AvsLang} "Documentazione in Francese"
+LangString Start_Doc_Italian        ${AvsLang} "Documentazione in Italiano"
+LangString Start_Doc_Japanese       ${AvsLang} "Documentazione in Giapponese"
+LangString Start_Doc_Polish         ${AvsLang} "Documentazione in Polacco"
+LangString Start_Doc_Portuguese     ${AvsLang} "Documentazione in Portoghese"
+LangString Start_Doc_Russian        ${AvsLang} "Documentazione in Russo"
+
+; Licence file
+
+LangString         AVS_GPL_File     ${AvsLang} "gpl.it.txt"
+LicenseLangString  AVS_GPL_text     ${AvsLang} "gpl.it.txt"
+
+; End of file
