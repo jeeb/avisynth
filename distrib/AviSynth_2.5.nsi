@@ -379,17 +379,17 @@ Section /o  $(Polish_Text) Polish
   SectionIn 4
   SetOutPath $INSTDIR\Docs\Polish
   File "..\..\Docs\Polish\*.*"
-  SetOutPath $INSTDIR\Docs\Polish\wew
+  SetOutPath $INSTDIR\Docs\Polish\corefilters
 !verbose push
 !verbose 2
-  File "..\..\Docs\Polish\wew\*.*"
-  SetOutPath $INSTDIR\Docs\Polish\zew
-  File "..\..\Docs\Polish\zew\*.*"
+  File "..\..\Docs\Polish\corefilters\*.*"
+  SetOutPath $INSTDIR\Docs\Polish\externalfilters
+  File "..\..\Docs\Polish\externalfilters\*.*"
 !verbose pop
 
   SetShellVarContext All
   StrCmp $AdminInstall "No" +2
-  CreateShortCut "$SMPROGRAMS\AviSynth 2.5\$(Start_Doc_Polish).lnk" "$INSTDIR\Docs\Polish\default.htm"
+  CreateShortCut "$SMPROGRAMS\AviSynth 2.5\$(Start_Doc_Polish).lnk" "$INSTDIR\Docs\Polish\index.htm"
 
 SectionEnd
 
@@ -689,10 +689,10 @@ Ignore:
   Delete "$INSTDIR\Docs\Japanese\*.*"
   RMDir  "$INSTDIR\Docs\Japanese"
 
-  Delete "$INSTDIR\Docs\Polish\zew\*.*"
-  RMDir  "$INSTDIR\Docs\Polish\zew"
-  Delete "$INSTDIR\Docs\Polish\wew\*.*"
-  RMDir  "$INSTDIR\Docs\Polish\wew"
+  Delete "$INSTDIR\Docs\Polish\corefilters\*.*"
+  RMDir  "$INSTDIR\Docs\Polish\corefilters"
+  Delete "$INSTDIR\Docs\Polish\externalfilters\*.*"
+  RMDir  "$INSTDIR\Docs\Polish\externalfilters"
   Delete "$INSTDIR\Docs\Polish\*.*"
   RMDir  "$INSTDIR\Docs\Polish"
 
