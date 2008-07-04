@@ -86,22 +86,22 @@ SetFont /LANG=${AvsLang} "MS Shell Dlg" 9 ; "MS UI Gothic" 9 ;
 
 ; Names for the Start Menu
 
-LangString Start_Uninstall          ${AvsLang} "Uninstall AviSynth"
-LangString Start_License            ${AvsLang} "License"
-LangString Start_Plugin             ${AvsLang} "Plugin Directory"
-LangString Start_Online             ${AvsLang} "AviSynth Online"
-LangString Start_Download           ${AvsLang} "Download Plugins"
-LangString Start_Example            ${AvsLang} "Example Scripts"
-LangString Start_FilterSDK          ${AvsLang} "FilterSDK Information"
+LangString Start_Uninstall          ${AvsLang} "AviSynth のアンインストール"
+LangString Start_License            ${AvsLang} "ライセンス"
+LangString Start_Plugin             ${AvsLang} "プラグインディレクトリ"
+LangString Start_Online             ${AvsLang} "AviSynth オンライン"
+LangString Start_Download           ${AvsLang} "プラグインのダウンロード"
+LangString Start_Example            ${AvsLang} "サンプルスクリプト"
+LangString Start_FilterSDK          ${AvsLang} "フィルタ SDK 情報"
 
-LangString Start_Doc_English        ${AvsLang} "AviSynth Documentation"
-LangString Start_Doc_German         ${AvsLang} "German AviSynth Documentation"
-LangString Start_Doc_French         ${AvsLang} "French AviSynth Documentation"
-LangString Start_Doc_Italian        ${AvsLang} "Italian AviSynth Documentation"
-LangString Start_Doc_Japanese       ${AvsLang} "Japanese AviSynth Documentation"
-LangString Start_Doc_Polish         ${AvsLang} "Polish AviSynth Documentation"
-LangString Start_Doc_Portuguese     ${AvsLang} "Portuguese AviSynth Documentation"
-LangString Start_Doc_Russian        ${AvsLang} "Russian AviSynth Documentation"
+LangString Start_Doc_English        ${AvsLang} "AviSynth ヘルプ（英語）"
+LangString Start_Doc_German         ${AvsLang} "AviSynth ヘルプ（ドイツ語）"
+LangString Start_Doc_French         ${AvsLang} "AviSynth ヘルプ（フランス語）"
+LangString Start_Doc_Italian        ${AvsLang} "AviSynth ヘルプ（イタリア語）"
+LangString Start_Doc_Japanese       ${AvsLang} "AviSynth ヘルプ（日本語）"
+LangString Start_Doc_Polish         ${AvsLang} "AviSynth ヘルプ（ポーランド語）"
+LangString Start_Doc_Portuguese     ${AvsLang} "AviSynth ヘルプ（ポルトガル語）"
+LangString Start_Doc_Russian        ${AvsLang} "AviSynth ヘルプ（ロシア語）"
 
 ; Licence file
 
