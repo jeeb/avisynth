@@ -71,7 +71,7 @@ LangString ExtraFiles1_Bubble       ${AvsLang} "Installer avisynth.lib et avisyn
 LangString ExtraFiles2_Bubble       ${AvsLang} "Installer le fichier avisynth.map"
 LangString ExtraFiles3_Bubble       ${AvsLang} "Installer FilterSDK pour le développement de plugins AviSynth"
 
-LangString Uninstall_Text           ${AvsLang} "Désintallation réussie."
+LangString Uninstall_Text           ${AvsLang} "Désinstallation réussie."
 LangString RemoveReg_Text           ${AvsLang} "Voulez-vous supprimer le pointeur de la base de registre vers$\n\
                                                 le dossier des plugins (aucun fichier ne sera supprimé)?"
 ;----------------------------------
@@ -81,22 +81,22 @@ LangString ^ComponentsSubText1      ${AvsLang} "Sélectionnez installation :"
 
 ; Names for the Start Menu
 
-LangString Start_Uninstall          ${AvsLang} "Uninstall AviSynth"
-LangString Start_License            ${AvsLang} "License"
-LangString Start_Plugin             ${AvsLang} "Plugin Directory"
-LangString Start_Online             ${AvsLang} "AviSynth Online"
-LangString Start_Download           ${AvsLang} "Download Plugins"
-LangString Start_Example            ${AvsLang} "Example Scripts"
-LangString Start_FilterSDK          ${AvsLang} "FilterSDK Information"
+LangString Start_Uninstall          ${AvsLang} "Désinstaller AviSynth"
+LangString Start_License            ${AvsLang} "Licence"
+LangString Start_Plugin             ${AvsLang} "Dossier des plugins"
+LangString Start_Online             ${AvsLang} "Visiter le site web d'AviSynth"
+LangString Start_Download           ${AvsLang} "Télécharger de nouveaux plugins"
+LangString Start_Example            ${AvsLang} "Scripts d'exemple"
+LangString Start_FilterSDK          ${AvsLang} "Information sur le FilterSDK"
 
-LangString Start_Doc_English        ${AvsLang} "AviSynth Documentation"
-LangString Start_Doc_German         ${AvsLang} "German AviSynth Documentation"
-LangString Start_Doc_French         ${AvsLang} "French AviSynth Documentation"
-LangString Start_Doc_Italian        ${AvsLang} "Italian AviSynth Documentation"
-LangString Start_Doc_Japanese       ${AvsLang} "Japanese AviSynth Documentation"
-LangString Start_Doc_Polish         ${AvsLang} "Polish AviSynth Documentation"
-LangString Start_Doc_Portuguese     ${AvsLang} "Portuguese AviSynth Documentation"
-LangString Start_Doc_Russian        ${AvsLang} "Russian AviSynth Documentation"
+LangString Start_Doc_English        ${AvsLang} "Documentation en anglais"
+LangString Start_Doc_German         ${AvsLang} "Documentation en allemand"
+LangString Start_Doc_French         ${AvsLang} "Documentation en français"
+LangString Start_Doc_Italian        ${AvsLang} "Documentation en italien"
+LangString Start_Doc_Japanese       ${AvsLang} "Documentation en japonais"
+LangString Start_Doc_Polish         ${AvsLang} "Documentation en polonais"
+LangString Start_Doc_Portuguese     ${AvsLang} "Documentation en portugais"
+LangString Start_Doc_Russian        ${AvsLang} "Documentation en russe"
 
 ; Licence file
 
