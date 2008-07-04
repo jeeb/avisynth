@@ -77,22 +77,22 @@ LangString RemoveReg_Text           ${AvsLang} "Хотите ли вы удалить указатель в
 
 ; Names for the Start Menu
 
-LangString Start_Uninstall          ${AvsLang} "Uninstall AviSynth"
-LangString Start_License            ${AvsLang} "License"
-LangString Start_Plugin             ${AvsLang} "Plugin Directory"
-LangString Start_Online             ${AvsLang} "AviSynth Online"
-LangString Start_Download           ${AvsLang} "Download Plugins"
-LangString Start_Example            ${AvsLang} "Example Scripts"
-LangString Start_FilterSDK          ${AvsLang} "FilterSDK Information"
+LangString Start_Uninstall          ${AvsLang} "Удалить AviSynth"
+LangString Start_License            ${AvsLang} "Лицензия"
+LangString Start_Plugin             ${AvsLang} "Папка плагинов"
+LangString Start_Online             ${AvsLang} "AviSynth сайт"
+LangString Start_Download           ${AvsLang} "Скачать плагины"
+LangString Start_Example            ${AvsLang} "Примеры скриптов"
+LangString Start_FilterSDK          ${AvsLang} "FilterSDK информация"
 
 LangString Start_Doc_English        ${AvsLang} "AviSynth Documentation"
-LangString Start_Doc_German         ${AvsLang} "German AviSynth Documentation"
-LangString Start_Doc_French         ${AvsLang} "French AviSynth Documentation"
-LangString Start_Doc_Italian        ${AvsLang} "Italian AviSynth Documentation"
-LangString Start_Doc_Japanese       ${AvsLang} "Japanese AviSynth Documentation"
-LangString Start_Doc_Polish         ${AvsLang} "Polish AviSynth Documentation"
-LangString Start_Doc_Portuguese     ${AvsLang} "Portuguese AviSynth Documentation"
-LangString Start_Doc_Russian        ${AvsLang} "Russian AviSynth Documentation"
+LangString Start_Doc_German         ${AvsLang} "Немецкая докуметация по AviSynth"
+LangString Start_Doc_French         ${AvsLang} "Французская документация по AviSynth"
+LangString Start_Doc_Italian        ${AvsLang} "Итальянская документация по AviSynth"
+LangString Start_Doc_Japanese       ${AvsLang} "Японская документация по AviSynth"
+LangString Start_Doc_Polish         ${AvsLang} "Польская документация по AviSynth"
+LangString Start_Doc_Portuguese     ${AvsLang} "Португальская документация по AviSynth"
+LangString Start_Doc_Russian        ${AvsLang} "Русская документация по AviSynth"
 
 ; Licence file
 
