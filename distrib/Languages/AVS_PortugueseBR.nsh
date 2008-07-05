@@ -77,22 +77,22 @@ LangString RemoveReg_Text           ${AvsLang} "Você deseja remover o direcionam
 
 ; Names for the Start Menu
 
-LangString Start_Uninstall          ${AvsLang} "Uninstall AviSynth"
-LangString Start_License            ${AvsLang} "License"
-LangString Start_Plugin             ${AvsLang} "Plugin Directory"
+LangString Start_Uninstall          ${AvsLang} "Desinstalar AviSynth"
+LangString Start_License            ${AvsLang} "Licensa"
+LangString Start_Plugin             ${AvsLang} "Pasta de Plugins"
 LangString Start_Online             ${AvsLang} "AviSynth Online"
-LangString Start_Download           ${AvsLang} "Download Plugins"
-LangString Start_Example            ${AvsLang} "Example Scripts"
-LangString Start_FilterSDK          ${AvsLang} "FilterSDK Information"
-
-LangString Start_Doc_English        ${AvsLang} "AviSynth Documentation"
-LangString Start_Doc_German         ${AvsLang} "German AviSynth Documentation"
-LangString Start_Doc_French         ${AvsLang} "French AviSynth Documentation"
-LangString Start_Doc_Italian        ${AvsLang} "Italian AviSynth Documentation"
-LangString Start_Doc_Japanese       ${AvsLang} "Japanese AviSynth Documentation"
-LangString Start_Doc_Polish         ${AvsLang} "Polish AviSynth Documentation"
-LangString Start_Doc_Portuguese     ${AvsLang} "Portuguese AviSynth Documentation"
-LangString Start_Doc_Russian        ${AvsLang} "Russian AviSynth Documentation"
+LangString Start_Download           ${AvsLang} "Baixar Plugins"
+LangString Start_Example            ${AvsLang} "Scripts de Exemplo"
+LangString Start_FilterSDK          ${AvsLang} "Informação sobre FilterSDK"
+                                               
+LangString Start_Doc_English        ${AvsLang} "Documentação em Inglês"
+LangString Start_Doc_German         ${AvsLang} "Documentação em Alemão"
+LangString Start_Doc_French         ${AvsLang} "Documentação em Francês"
+LangString Start_Doc_Italian        ${AvsLang} "Documentação em Italiano"
+LangString Start_Doc_Japanese       ${AvsLang} "Documentação em Japonês"
+LangString Start_Doc_Polish         ${AvsLang} "Documentação em Polonês"
+LangString Start_Doc_Portuguese     ${AvsLang} "Documentação em Português"
+LangString Start_Doc_Russian        ${AvsLang} "Documentação em Russo"
 
 ; Licence file
 
