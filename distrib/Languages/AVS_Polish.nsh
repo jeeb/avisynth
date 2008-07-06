@@ -85,14 +85,14 @@ LangString Start_Download           ${AvsLang} "Download Plugins"
 LangString Start_Example            ${AvsLang} "Example Scripts"
 LangString Start_FilterSDK          ${AvsLang} "FilterSDK Information"
 
-LangString Start_Doc_English        ${AvsLang} "AviSynth Documentation"
-LangString Start_Doc_German         ${AvsLang} "German AviSynth Documentation"
-LangString Start_Doc_French         ${AvsLang} "French AviSynth Documentation"
-LangString Start_Doc_Italian        ${AvsLang} "Italian AviSynth Documentation"
-LangString Start_Doc_Japanese       ${AvsLang} "Japanese AviSynth Documentation"
-LangString Start_Doc_Polish         ${AvsLang} "Polish AviSynth Documentation"
-LangString Start_Doc_Portuguese     ${AvsLang} "Portuguese AviSynth Documentation"
-LangString Start_Doc_Russian        ${AvsLang} "Russian AviSynth Documentation"
+LangString Start_Doc_English        ${AvsLang} "Angielska dokumentacja"    ; "AviSynth Documentation"
+LangString Start_Doc_German         ${AvsLang} "Niemiecka dokumentacja"    ; "German AviSynth Documentation"
+LangString Start_Doc_French         ${AvsLang} "Francuska dokumentacja"    ; "French AviSynth Documentation"
+LangString Start_Doc_Italian        ${AvsLang} "W³oska documentation"      ; "Italian AviSynth Documentation"
+LangString Start_Doc_Japanese       ${AvsLang} "Japoñska dokumentacja"     ; "Japanese AviSynth Documentation"
+LangString Start_Doc_Polish         ${AvsLang} "Polska dokumentacja"       ; "Polish AviSynth Documentation"
+LangString Start_Doc_Portuguese     ${AvsLang} "Portugalska dokumentacja"  ; "Portuguese AviSynth Documentation"
+LangString Start_Doc_Russian        ${AvsLang} "Rosyjska dokumentacja"     ; "Russian AviSynth Documentation"
 
 ; Licence file
 
