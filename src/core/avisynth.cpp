@@ -912,7 +912,8 @@ ScriptEnvironment::ScriptEnvironment()
     GlobalMemoryStatus(&memstatus);
     // Minimum 16MB
     // else physical memory/4
-    // plus 0.5 physical memory in excess of 256MB
+    // else 0.5 physical memory in excess of 256MB
+    // Maximum 1GB
     if      (memstatus.dwAvailPhys    > 256*1024*1024)
       memory_max = ((__int64)memstatus.dwAvailPhys >> 1) - 64*1024*1024;
     else if (memstatus.dwAvailPhys    > 64*1024*1024)
@@ -920,7 +921,7 @@ ScriptEnvironment::ScriptEnvironment()
     else
       memory_max = 16*1024*1024;
 
-    if (memory_max <= 0) // More than 2GB
+    if (memory_max <= 0 || memory_max > 1024*1024*1024) // More than 1GB
       memory_max = 1024*1024*1024;
 
     memory_used = 0i64;
