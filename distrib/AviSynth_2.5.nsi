@@ -1,10 +1,32 @@
 !packhdr tempfile.exe "upx --best --q tempfile.exe"
 
+!DEFINE ISSUE 3
 !DEFINE VERSION 2.5.8
 !DEFINE /date DATE "%y%m%d"
 
+;----------------------------------
+
+VIProductVersion "${VERSION}.${ISSUE}"
+
+VIAddVersionKey "ProductName"      "Avisynth 2.5"
+VIAddVersionKey "Comments"         "Homepage: http://www.avisynth.org"
+VIAddVersionKey "CompanyName"      "The Public"
+VIAddVersionKey "LegalCopyright"   "© 2000-2008 Ben Rudiak-Gould and others"
+VIAddVersionKey "FileDescription"  "Avisynth installer"
+VIAddVersionKey "FileVersion"      "${VERSION}.${ISSUE}"
+VIAddVersionKey "ProductVersion"   "${VERSION}"
+VIAddVersionKey "OriginalFilename" "AviSynth_${DATE}.exe"
+
+;VIAddVersionKey "InternalName"     ""
+;VIAddVersionKey "LegalTrademarks"  ""
+;VIAddVersionKey "PrivateBuild"     ""
+;VIAddVersionKey "SpecialBuild"     ""
+
+;----------------------------------
+
 SetCompressor /solid lzma
 
+;----------------------------------
 
 !include "MUI.nsh"
 !include WinMessages.nsh
@@ -40,7 +62,7 @@ SetCompressor /solid lzma
 ;Pages------------------------------
 
 ;  !insertmacro MUI_PAGE_WELCOME
-  !insertmacro MUI_PAGE_LICENSE $(AVS_GPL_Text)
+  !insertmacro MUI_PAGE_LICENSE $(AVS_GPL_text)
   !insertmacro MUI_PAGE_COMPONENTS
   !insertmacro MUI_PAGE_DIRECTORY
   !insertmacro MUI_PAGE_INSTFILES
@@ -58,15 +80,17 @@ SetCompressor /solid lzma
 !macro AVS_LANGUAGE LANGUAGE
   !insertmacro MUI_LANGUAGE ${LANGUAGE}
 ;
+  !echo "Process Languages\AVS_${LANGUAGE}.nsh"
+  !verbose push
+  !verbose 2
   !define AvsLang ${LANG_${LANGUAGE}}
   !include "Languages\AVS_${LANGUAGE}.nsh"
   !undef AvsLang
+  !verbose pop
 !macroend
 ;
 ;----------------------------------
 
-!verbose push
-!verbose 2
 !insertmacro AVS_LANGUAGE "English"      ; 1033
                                         
 !insertmacro AVS_LANGUAGE "Czech"        ; 1029
@@ -79,7 +103,6 @@ SetCompressor /solid lzma
 !insertmacro AVS_LANGUAGE "PortugueseBR" ; 1046
 !insertmacro AVS_LANGUAGE "Portuguese"   ; 2070
 !insertmacro AVS_LANGUAGE "Russian"      ; 1049
-!verbose pop
 
 !insertmacro MUI_RESERVEFILE_LANGDLL
 
@@ -200,6 +223,7 @@ creg_ok:
   WriteINIStr    "$SMPROGRAMS\AviSynth 2.5\$(Start_Download).url" "InternetShortcut" "URL" "http://www.avisynth.org/warpenterprises/"
 
   SetOutPath $INSTDIR\Examples
+!echo " -- Supressed"
 !verbose push
 !verbose 2
   File "Examples\*.*"
@@ -245,6 +269,7 @@ Section /o  $(English_Text) English
   SetOutPath $INSTDIR\Docs
   File "..\..\Docs\*.css"
   SetOutPath $INSTDIR\Docs\English
+!echo " -- Supressed"
 !verbose push
 !verbose 2
   File "..\..\Docs\english\*.htm"
@@ -276,6 +301,7 @@ Section /o  $(German_Text) German
   SetOutPath $INSTDIR\Docs
   File "..\..\Docs\*.css"
   SetOutPath $INSTDIR\Docs\German
+!echo " -- Supressed"
 !verbose push
 !verbose 2
   File "..\..\Docs\german\*.htm"
@@ -296,6 +322,7 @@ Section /o  $(French_Text) French
   SetOutPath $INSTDIR\Docs
   File "..\..\Docs\*.css"
   SetOutPath $INSTDIR\Docs\French
+!echo " -- Supressed"
 !verbose push
 !verbose 2
   File "..\..\Docs\french\*.htm"
@@ -314,6 +341,7 @@ Section /o  $(Italian_Text) Italian
   SetOutPath $INSTDIR\Docs
   File "..\..\Docs\*.css"
   SetOutPath $INSTDIR\Docs\Italian
+!echo " -- Supressed"
 !verbose push
 !verbose 2
   File "..\..\Docs\italian\*.htm"
@@ -340,6 +368,7 @@ Section /o  $(Japanese_Text) Japanese
   File "..\..\Docs\*.css"
 
   SetOutPath $INSTDIR\Docs\Japanese
+!echo " -- Supressed"
 !verbose push
 !verbose 2
   File "..\..\Docs\english\*.htm"
@@ -380,6 +409,7 @@ Section /o  $(Polish_Text) Polish
   SetOutPath $INSTDIR\Docs\Polish
   File "..\..\Docs\Polish\*.*"
   SetOutPath $INSTDIR\Docs\Polish\corefilters
+!echo " -- Supressed"
 !verbose push
 !verbose 2
   File "..\..\Docs\Polish\corefilters\*.*"
@@ -398,6 +428,7 @@ Section /o  $(Portugese_Text) Portuguese
   SetOutPath $INSTDIR\Docs
   File "..\..\Docs\*.css"
   SetOutPath $INSTDIR\Docs\Portuguese
+!echo " -- Supressed"
 !verbose push
 !verbose 2
   File "..\..\Docs\portugese\*.htm"
@@ -426,6 +457,7 @@ Section /o  $(Russian_Text) Russian
   SetOutPath $INSTDIR\Docs
   File "..\..\Docs\*.css"
   SetOutPath $INSTDIR\Docs\Russian
+!echo " -- Supressed"
 !verbose push
 !verbose 2
   File "..\..\Docs\russian\*.htm"
@@ -491,6 +523,7 @@ SubSection  $(SelectExtraFiles_Text) SelectExtraFiles
 Section /o  $(ExtraFiles3_Text) ExtraFiles3
   SectionIn 4
   SetOutPath $INSTDIR\FilterSDK
+!echo " -- Supressed"
 !verbose push
 !verbose 2
   File "..\filtersdk\*.*"
@@ -625,7 +658,9 @@ Ignore:
   SetShellVarContext Current
   Delete "$SMPROGRAMS\AviSynth 2.5\*.*"
   RMDir  "$SMPROGRAMS\AviSynth 2.5"
-
+!echo " -- Supressed"
+!verbose push
+!verbose 2
   Delete "$INSTDIR\gpl*.txt"
   Delete "$INSTDIR\lgpl_for_used_libs.txt"
   Delete "$INSTDIR\Examples\*.*"
@@ -743,7 +778,7 @@ Ignore:
   RMDir  "$INSTDIR\FilterSDK\include"
   Delete "$INSTDIR\FilterSDK\*.*"
   RMDir  "$INSTDIR\FilterSDK"
-
+!verbose pop
   Delete "$INSTDIR\Uninstall.exe"
 
   DeleteRegKey HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\AviSynth"
