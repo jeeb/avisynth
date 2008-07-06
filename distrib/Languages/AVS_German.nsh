@@ -77,13 +77,13 @@ LangString RemoveReg_Text           ${AvsLang} "Möchten Sie den Verweis auf das 
 
 ; Names for the Start Menu
 
-LangString Start_Uninstall          ${AvsLang} "Deinstall AviSynth"
-LangString Start_License            ${AvsLang} "Lizenz"
-LangString Start_Plugin             ${AvsLang} "Plugin-Verzeichnis"
-LangString Start_Online             ${AvsLang} "AviSynth Online"
-LangString Start_Download           ${AvsLang} "Download Plugins"
-LangString Start_Example            ${AvsLang} "Example Scripts"
-LangString Start_FilterSDK          ${AvsLang} "FilterSDK Dokumentation"
+LangString Start_Uninstall          ${AvsLang} "Deinstallieren Sie AviSynth"  ; "Uninstall AviSynth"
+LangString Start_License            ${AvsLang} "Lizenz"                       ; "License"
+LangString Start_Plugin             ${AvsLang} "Plugin-Verzeichnis"           ; "Plugin Directory"
+LangString Start_Online             ${AvsLang} "AviSynth Webseite"            ; "AviSynth Online"
+LangString Start_Download           ${AvsLang} "Herunterladen Plugins"        ; "Download Plugins"
+LangString Start_Example            ${AvsLang} "Beispiel-Scripts"             ; "Example Scripts"
+LangString Start_FilterSDK          ${AvsLang} "FilterSDK Dokumentation"      ; "FilterSDK Information"
 
 LangString Start_Doc_English        ${AvsLang} "Englische Avisynth Dokumentation"
 LangString Start_Doc_German         ${AvsLang} "Deutsche Avisynth Dokumentation"
