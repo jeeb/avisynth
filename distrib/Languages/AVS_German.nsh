@@ -96,7 +96,7 @@ LangString Start_Doc_Russian        ${AvsLang} "Russische Avisynth Dokumentation
 
 ; Licence file
 
-LangString         AVS_GPL_File     ${AvsLang} "GPL.txt"
-LicenseLangString  AVS_GPL_text     ${AvsLang} "GPL.txt"
+LangString         AVS_GPL_File     ${AvsLang} "gpl-de.txt"
+LicenseLangString  AVS_GPL_text     ${AvsLang} "gpl-de.txt"
 
 ; End of file
