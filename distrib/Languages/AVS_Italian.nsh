@@ -79,7 +79,7 @@ LangString RemoveReg_Text           ${AvsLang} "Vuoi rimuovere il puntamento all
 
 LangString Start_Uninstall          ${AvsLang} "Disinstalla AviSynth"
 LangString Start_License            ${AvsLang} "Licenza"
-LangString Start_License_Lang       ${AvsLang} "Licenza in Italiano"
+LangString Start_License_Lang       ${AvsLang} "Licenza in italiano"
 LangString Start_Plugin             ${AvsLang} "Cartella dei plugin"
 LangString Start_Online             ${AvsLang} "Home page di AviSynth"
 LangString Start_Download           ${AvsLang} "Scarica nuovi plugin"
