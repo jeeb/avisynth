@@ -88,7 +88,7 @@ SetFont /LANG=${AvsLang} "MS Shell Dlg" 9 ; "MS UI Gothic" 9 ;
 
 LangString Start_Uninstall          ${AvsLang} "AviSynth のアンインストール"
 LangString Start_License            ${AvsLang} "ライセンス"
-LangString Start_License_Lang       ${AvsLang} "Japanese ライセンス"
+LangString Start_License_Lang       ${AvsLang} "ライセンス（日本語訳）"
 LangString Start_Plugin             ${AvsLang} "プラグインディレクトリ"
 LangString Start_Online             ${AvsLang} "AviSynth オンライン"
 LangString Start_Download           ${AvsLang} "プラグインのダウンロード"
