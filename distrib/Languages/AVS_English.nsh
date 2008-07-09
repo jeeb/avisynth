@@ -79,6 +79,7 @@ LangString RemoveReg_Text           ${AvsLang} "Do you want to remove the regist
 
 LangString Start_Uninstall          ${AvsLang} "Uninstall AviSynth"
 LangString Start_License            ${AvsLang} "License"
+LangString Start_License_Lang       ${AvsLang} "Your Language License"
 LangString Start_Plugin             ${AvsLang} "Plugin Directory"
 LangString Start_Online             ${AvsLang} "AviSynth Online"
 LangString Start_Download           ${AvsLang} "Download Plugins"
@@ -96,7 +97,6 @@ LangString Start_Doc_Russian        ${AvsLang} "Russian AviSynth Documentation"
 
 ; Licence file
 
-LangString         AVS_GPL_File     ${AvsLang} "GPL.txt"
-LicenseLangString  AVS_GPL_text     ${AvsLang} "GPL.txt"
+; !define AvsLicenceFile "gpl.txt"
 
 ; End of file

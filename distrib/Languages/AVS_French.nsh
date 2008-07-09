@@ -83,6 +83,7 @@ LangString ^ComponentsSubText1      ${AvsLang} "Sélectionnez installation :"
 
 LangString Start_Uninstall          ${AvsLang} "Désinstaller AviSynth"
 LangString Start_License            ${AvsLang} "Licence"
+LangString Start_License_Lang       ${AvsLang} "Licence en français"
 LangString Start_Plugin             ${AvsLang} "Dossier des plugins"
 LangString Start_Online             ${AvsLang} "Visiter le site web d'AviSynth"
 LangString Start_Download           ${AvsLang} "Télécharger de nouveaux plugins"
@@ -100,7 +101,6 @@ LangString Start_Doc_Russian        ${AvsLang} "Documentation en russe"
 
 ; Licence file
 
-LangString         AVS_GPL_File     ${AvsLang} "gpl-fr.txt"
-LicenseLangString  AVS_GPL_text     ${AvsLang} "gpl-fr.txt"
+!define AvsLicenceFile "gpl-fr.txt"
 
 ; End of file

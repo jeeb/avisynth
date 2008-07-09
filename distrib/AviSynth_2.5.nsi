@@ -2,7 +2,10 @@
 
 !DEFINE ISSUE 3
 !DEFINE VERSION 2.5.8
+
 !DEFINE /date DATE "%y%m%d"
+
+!DEFINE AvsDefaultLicenceFile "gpl.txt"
 
 ;----------------------------------
 
@@ -62,7 +65,13 @@ SetCompressor /solid lzma
 ;Pages------------------------------
 
 ;  !insertmacro MUI_PAGE_WELCOME
-  !insertmacro MUI_PAGE_LICENSE $(AVS_GPL_text)
+
+  !define      MUI_LICENSEPAGE_BUTTON $(AVSLicenceBtn)
+  !insertmacro MUI_PAGE_LICENSE $(AVS_GPL_Lang_Text)
+
+  !define      MUI_PAGE_CUSTOMFUNCTION_PRE AVS_License_Pre
+  !insertmacro MUI_PAGE_LICENSE ${AvsDefaultLicenceFile}
+
   !insertmacro MUI_PAGE_COMPONENTS
   !insertmacro MUI_PAGE_DIRECTORY
   !insertmacro MUI_PAGE_INSTFILES
@@ -85,6 +94,21 @@ SetCompressor /solid lzma
   !verbose 2
   !define AvsLang ${LANG_${LANGUAGE}}
   !include "Languages\AVS_${LANGUAGE}.nsh"
+
+  !ifndef AvsLicenceFile
+    !define AvsLicenceFile ${AvsDefaultLicenceFile}
+  !endif
+
+  !if ${AvsLicenceFile} == ${AvsDefaultLicenceFile}
+    LangString AVSLicenceBtn ${AvsLang} $(^AgreeBtn)
+  !else
+    LangString AVSLicenceBtn ${AvsLang} $(^NextBtn)
+  !endif
+
+  LangString        AVS_GPL_Lang_File ${AvsLang} ${AvsLicenceFile}
+  LicenseLangString AVS_GPL_Lang_Text ${AvsLang} ${AvsLicenceFile}
+
+  !undef AvsLicenceFile
   !undef AvsLang
   !verbose pop
 !macroend
@@ -106,6 +130,15 @@ SetCompressor /solid lzma
 
 !insertmacro MUI_RESERVEFILE_LANGDLL
 
+
+;------------------------------
+
+  Function AVS_License_Pre
+
+    StrCmp $(AVS_GPL_Lang_File) ${AvsDefaultLicenceFile} 0 +2
+      Abort
+
+  FunctionEnd
 
 ;----------------------------------
 
@@ -217,7 +250,11 @@ creg_ok:
 ; These bits are for everybody
   SetShellVarContext All
   CreateDirectory  "$SMPROGRAMS\AviSynth 2.5"
-  CreateShortCut "$SMPROGRAMS\AviSynth 2.5\$(Start_License).lnk" "$INSTDIR\$(AVS_GPL_File)"
+
+  CreateShortCut "$SMPROGRAMS\AviSynth 2.5\$(Start_License).lnk" "$INSTDIR\${AvsDefaultLicenceFile}"
+  StrCmp $(AVS_GPL_Lang_File) ${AvsDefaultLicenceFile} +2
+    CreateShortCut "$SMPROGRAMS\AviSynth 2.5\$(Start_License_Lang).lnk" "$INSTDIR\$(AVS_GPL_Lang_File)"
+
   CreateShortCut "$SMPROGRAMS\AviSynth 2.5\$(Start_Plugin).lnk" "$INSTDIR\Plugins"
   WriteINIStr    "$SMPROGRAMS\AviSynth 2.5\$(Start_Online).url" "InternetShortcut" "URL" "http://www.avisynth.org"
   WriteINIStr    "$SMPROGRAMS\AviSynth 2.5\$(Start_Download).url" "InternetShortcut" "URL" "http://www.avisynth.org/warpenterprises/"
