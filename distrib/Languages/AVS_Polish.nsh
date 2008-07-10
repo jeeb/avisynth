@@ -1,5 +1,5 @@
 ;----------------------------------
-; Translated by Micha³ Trzebiatowski (30.06.2008)
+; Translated by Micha³ Trzebiatowski (09.07.2008)
 ;----------------------------------
 ;
 ; Polish -- Code page 1045
@@ -33,7 +33,7 @@ LangString Documentation_Text       ${AvsLang} "Dokumentacja"
 LangString English_Text             ${AvsLang} "Angielska dokumentacja"
 LangString German_Text              ${AvsLang} "Niemiecka dokumentacja"
 LangString French_Text              ${AvsLang} "Francuska dokumentacja"
-LangString Italian_Text             ${AvsLang} "W³oska documentation"
+LangString Italian_Text             ${AvsLang} "W³oska dokumentacja"
 LangString Japanese_Text            ${AvsLang} "Japoñska dokumentacja"
 LangString Polish_Text              ${AvsLang} "Polska dokumentacja"
 LangString Portugese_Text           ${AvsLang} "Portugalska dokumentacja"
@@ -77,23 +77,23 @@ LangString RemoveReg_Text           ${AvsLang} "Czy chcesz usun¹æ powi¹zanie do 
 
 ; Names for the Start Menu
 
-LangString Start_Uninstall          ${AvsLang} "Uninstall AviSynth"
-LangString Start_License            ${AvsLang} "License"
-LangString Start_License_Lang       ${AvsLang} "Polska License"
-LangString Start_Plugin             ${AvsLang} "Plugin Directory"
-LangString Start_Online             ${AvsLang} "AviSynth Online"
-LangString Start_Download           ${AvsLang} "Download Plugins"
-LangString Start_Example            ${AvsLang} "Example Scripts"
-LangString Start_FilterSDK          ${AvsLang} "FilterSDK Information"
+LangString Start_Uninstall          ${AvsLang} "Odinstaluj AviSynth"
+LangString Start_License            ${AvsLang} "Licencja"
+LangString Start_License_Lang       ${AvsLang} "Licencja po polsku"
+LangString Start_Plugin             ${AvsLang} "Folder wtyczek"
+LangString Start_Online             ${AvsLang} "AviSynth w internecie"
+LangString Start_Download           ${AvsLang} "Œci¹gnij wtyczki"
+LangString Start_Example            ${AvsLang} "Przyk³adowe skrypty"
+LangString Start_FilterSDK          ${AvsLang} "Informacje o FilterSDK"
 
-LangString Start_Doc_English        ${AvsLang} "Angielska dokumentacja"    ; "AviSynth Documentation"
-LangString Start_Doc_German         ${AvsLang} "Niemiecka dokumentacja"    ; "German AviSynth Documentation"
-LangString Start_Doc_French         ${AvsLang} "Francuska dokumentacja"    ; "French AviSynth Documentation"
-LangString Start_Doc_Italian        ${AvsLang} "W³oska documentation"      ; "Italian AviSynth Documentation"
-LangString Start_Doc_Japanese       ${AvsLang} "Japoñska dokumentacja"     ; "Japanese AviSynth Documentation"
-LangString Start_Doc_Polish         ${AvsLang} "Polska dokumentacja"       ; "Polish AviSynth Documentation"
-LangString Start_Doc_Portuguese     ${AvsLang} "Portugalska dokumentacja"  ; "Portuguese AviSynth Documentation"
-LangString Start_Doc_Russian        ${AvsLang} "Rosyjska dokumentacja"     ; "Russian AviSynth Documentation"
+LangString Start_Doc_English        ${AvsLang} "Angielska dokumentacja"
+LangString Start_Doc_German         ${AvsLang} "Niemiecka dokumentacja"
+LangString Start_Doc_French         ${AvsLang} "Francuska dokumentacja"
+LangString Start_Doc_Italian        ${AvsLang} "W³oska dokumentacja"
+LangString Start_Doc_Japanese       ${AvsLang} "Japoñska dokumentacja"
+LangString Start_Doc_Polish         ${AvsLang} "Polska dokumentacja"
+LangString Start_Doc_Portuguese     ${AvsLang} "Portugalska dokumentacja"
+LangString Start_Doc_Russian        ${AvsLang} "Rosyjska dokumentacja"
 
 ; Licence file
 
