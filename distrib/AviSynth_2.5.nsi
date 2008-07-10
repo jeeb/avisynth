@@ -5,7 +5,7 @@
 
 !DEFINE /date DATE "%y%m%d"
 
-!DEFINE AvsDefaultLicenceFile "gpl.txt"
+!DEFINE AVS_DefaultLicenceFile "gpl.txt"
 
 ;----------------------------------
 
@@ -48,32 +48,22 @@ SetCompressor /solid lzma
 !define MUI_UNFINISHPAGE_NOAUTOCLOSE
 !define MUI_LANGDLL_ALLLANGUAGES
 
-;----------------------------------
-
-; Tweak the finish page paremters -- Max out the MUI_FINISHPAGE_LINK field width & make 2 high.
-
-  Function AVS_Finish_Pre
-
-    !insertmacro MUI_INSTALLOPTIONS_WRITE "ioSpecial.ini" "Field 3" "Bottom" "165" ; 175
-    !insertmacro MUI_INSTALLOPTIONS_WRITE "ioSpecial.ini" "Field 4" "Top"    "165" ; 175
-;   !insertmacro MUI_INSTALLOPTIONS_WRITE "ioSpecial.ini" "Field 4" "Left"   "120" ; 120
-    !insertmacro MUI_INSTALLOPTIONS_WRITE "ioSpecial.ini" "Field 4" "Right"  "330" ; 315
-;   !insertmacro MUI_INSTALLOPTIONS_WRITE "ioSpecial.ini" "Field 3" "Bottom" "185" ; 185
-
-  FunctionEnd
-
 ;Pages------------------------------
 
 ;  !insertmacro MUI_PAGE_WELCOME
 
-  !define      MUI_LICENSEPAGE_BUTTON $(AVSLicenceBtn)
+  !define      MUI_PAGE_CUSTOMFUNCTION_PRE AVS_License1_Pre
+  !define      MUI_LICENSEPAGE_BUTTON $(AVS_LicenceBtn)
   !insertmacro MUI_PAGE_LICENSE $(AVS_GPL_Lang_Text)
 
-  !define      MUI_PAGE_CUSTOMFUNCTION_PRE AVS_License_Pre
-  !insertmacro MUI_PAGE_LICENSE ${AvsDefaultLicenceFile}
+  !define      MUI_PAGE_CUSTOMFUNCTION_PRE  AVS_License2_Pre
+  !define      MUI_PAGE_CUSTOMFUNCTION_SHOW AVS_License2_Show
+  !insertmacro MUI_PAGE_LICENSE ${AVS_DefaultLicenceFile}
 
   !insertmacro MUI_PAGE_COMPONENTS
+
   !insertmacro MUI_PAGE_DIRECTORY
+
   !insertmacro MUI_PAGE_INSTFILES
 
   !define      MUI_PAGE_CUSTOMFUNCTION_PRE AVS_Finish_Pre
@@ -96,14 +86,16 @@ SetCompressor /solid lzma
   !include "Languages\AVS_${LANGUAGE}.nsh"
 
   !ifndef AvsLicenceFile
-    !define AvsLicenceFile ${AvsDefaultLicenceFile}
+    !define AvsLicenceFile ${AVS_DefaultLicenceFile}
   !endif
 
-  !if ${AvsLicenceFile} == ${AvsDefaultLicenceFile}
-    LangString AVSLicenceBtn ${AvsLang} $(^AgreeBtn)
+  !if ${AvsLicenceFile} == ${AVS_DefaultLicenceFile}
+    LangString AVS_LicenceBtn ${AvsLang} $(^AgreeBtn)
   !else
-    LangString AVSLicenceBtn ${AvsLang} $(^NextBtn)
+    LangString AVS_LicenceBtn ${AvsLang} $(^NextBtn)
   !endif
+
+  LangString        AVS_TranslateBtn  ${AvsLang} "&Translate"
 
   LangString        AVS_GPL_Lang_File ${AvsLang} ${AvsLicenceFile}
   LicenseLangString AVS_GPL_Lang_Text ${AvsLang} ${AvsLicenceFile}
@@ -130,13 +122,57 @@ SetCompressor /solid lzma
 
 !insertmacro MUI_RESERVEFILE_LANGDLL
 
+;----------------------------------
+; Page Callback Functions
+;----------------------------------
 
-;------------------------------
+; Skip page at startup if we have a translated GPL.txt
 
-  Function AVS_License_Pre
+  Var StartUp
+  Function AVS_License1_Pre
 
-    StrCmp $(AVS_GPL_Lang_File) ${AvsDefaultLicenceFile} 0 +2
+    StrCmp $(AVS_GPL_Lang_File) ${AVS_DefaultLicenceFile} +4
+      StrCmp $StartUp "No" +3
+        StrCpy $StartUp "No"
+        Abort
+
+  FunctionEnd
+
+;----------------------------------
+
+; Skip page if we do not have a translated GPL.txt
+
+  Function AVS_License2_Pre
+
+    StrCmp $(AVS_GPL_Lang_File) ${AVS_DefaultLicenceFile} 0 +2
       Abort
+
+  FunctionEnd
+
+;----------------------------------
+
+; Change Back button text to "Translate"
+
+  Function AVS_License2_Show
+    Push $0
+
+    GetDlgItem $0 $HWNDPARENT 3 ; Back button
+    SendMessage $0 ${WM_SETTEXT} 0 "STR:$(AVS_TranslateBtn)"
+
+    Pop $0
+  FunctionEnd
+
+;----------------------------------
+
+; Tweak the finish page paremters -- Max out the MUI_FINISHPAGE_LINK field width & make 2 high.
+
+  Function AVS_Finish_Pre
+
+    !insertmacro MUI_INSTALLOPTIONS_WRITE "ioSpecial.ini" "Field 3" "Bottom" "165" ; 175
+    !insertmacro MUI_INSTALLOPTIONS_WRITE "ioSpecial.ini" "Field 4" "Top"    "165" ; 175
+;   !insertmacro MUI_INSTALLOPTIONS_WRITE "ioSpecial.ini" "Field 4" "Left"   "120" ; 120
+    !insertmacro MUI_INSTALLOPTIONS_WRITE "ioSpecial.ini" "Field 4" "Right"  "330" ; 315
+;   !insertmacro MUI_INSTALLOPTIONS_WRITE "ioSpecial.ini" "Field 3" "Bottom" "185" ; 185
 
   FunctionEnd
 
@@ -251,8 +287,8 @@ creg_ok:
   SetShellVarContext All
   CreateDirectory  "$SMPROGRAMS\AviSynth 2.5"
 
-  CreateShortCut "$SMPROGRAMS\AviSynth 2.5\$(Start_License).lnk" "$INSTDIR\${AvsDefaultLicenceFile}"
-  StrCmp $(AVS_GPL_Lang_File) ${AvsDefaultLicenceFile} +2
+  CreateShortCut "$SMPROGRAMS\AviSynth 2.5\$(Start_License).lnk" "$INSTDIR\${AVS_DefaultLicenceFile}"
+  StrCmp $(AVS_GPL_Lang_File) ${AVS_DefaultLicenceFile} +2
     CreateShortCut "$SMPROGRAMS\AviSynth 2.5\$(Start_License_Lang).lnk" "$INSTDIR\$(AVS_GPL_Lang_File)"
 
   CreateShortCut "$SMPROGRAMS\AviSynth 2.5\$(Start_Plugin).lnk" "$INSTDIR\Plugins"
@@ -594,6 +630,9 @@ SubSectionEnd
 ;----------------------------------
 
 Function .onInit
+
+  StrCpy $StartUp "Yes"
+
   !insertmacro MUI_LANGDLL_DISPLAY
 
 ; Match Language with Online Documentation Set
