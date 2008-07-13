@@ -10,18 +10,18 @@ LangString AVS_Minimal              ${AvsLang} "Minimal"
 LangString AVS_Standalone           ${AvsLang} "Standalone"
 LangString AVS_Full                 ${AvsLang} "Voll"
 
-LangString FINISHPAGE_TEXT          ${AvsLang} "Besuchen Sie die AviSynth Webseite für die neuesten Nachrichten und Support"
+LangString FINISHPAGE_TEXT          ${AvsLang} "Besuchen Sie die AviSynth-Webseite für die Neuigkeiten und Unterstützung"
 LangString COMPONENT_TEXT           ${AvsLang} "AviSynth - der führende Frameserver.$\n\
                                                 Copyright © 2000 - 2008."
 
 LangString Frameserving_Text        ${AvsLang} "AviSynth Basis (erforderlich)"
 LangString SystemInstall_Text       ${AvsLang} "Dateien ins System-Verzeichnis installieren"
 LangString InUseMsg_Text            ${AvsLang} "avisynth.dll konnte nicht ins System-Verzeichnis kopiert werden$\n$\n\
-                                                Schliessen Sie alle Anwendungen, die AviSynth verwenden,$\n\
+                                                Schließen Sie alle Anwendungen, die AviSynth verwenden,$\n\
                                                 stellen Sie sicher, dass sie Schreibrechte für das System-Verzeichnis haben,$\n\
                                                 und versuchen Sie es danach bitte nochmals."
 LangString PlugDir_Text             ${AvsLang} "Es konnte nicht ins Avisynth Plugin Verzeichnis geschrieben werden.$\n\
-                                                Schliessen Sie alle Anwendungen, die AviSynth verwenden,$\n\
+                                                Schließen Sie alle Anwendungen, die AviSynth verwenden,$\n\
                                                 und versuchen Sie es danach nochmals."
 LangString AdminRightsHKLM_Text     ${AvsLang} "Zur Installation von AviSynth sind Administrator-Rechte notwendig!$\n\
                                                 (Es konnte nicht in die Registry HKLM geschrieben werden)"
@@ -47,13 +47,13 @@ LangString ExtraFiles3_Text         ${AvsLang} "FilterSDK installieren"
 LangString ExtraFiles1_Text         ${AvsLang} "Avisynth.lib und Avisynth.exp installieren"
 LangString ExtraFiles2_Text         ${AvsLang} "Avisynth.map installieren"
 
-LangString Frameserving_Bubble      ${AvsLang} "Die wichtigsten Dateien installieren, um den AviSynth-frameserver zu betreiben"
+LangString Frameserving_Bubble      ${AvsLang} "Die wichtigsten Dateien installieren, um den AviSynth-Frameserver zu betreiben"
 LangString SystemInstall_Bubble     ${AvsLang} "Die wichtigsten Dateien ins System-Verzeichnis installieren"
 LangString StandAlone_Bubble        ${AvsLang} "Die wichtigsten Dateien ins AviSynth-Verzeichnis installieren \
                                                 (nicht funktionsfähige Nicht-Admin-Installation) \
                                                 (Es muss die Standalone-Vorlage ausgewählt werden)"
 LangString Documentation_Bubble     ${AvsLang} "Die Hilfe installieren. Bitte wählen Sie die Sprache aus \
-                                                (alle ausser Englisch können veraltet sein)"
+                                                (alles ausser Englisch kann veraltet sein)"
 LangString English_Bubble           ${AvsLang} "Englische Hilfe installieren"
 LangString German_Bubble            ${AvsLang} "Deutsche Hilfe installieren"
 LangString French_Bubble            ${AvsLang} "Französische Hilfe installieren"
@@ -77,12 +77,12 @@ LangString RemoveReg_Text           ${AvsLang} "Möchten Sie den Verweis auf das 
 
 ; Names for the Start Menu
 
-LangString Start_Uninstall          ${AvsLang} "Deinstalliere AviSynth" 
+LangString Start_Uninstall          ${AvsLang} "AviSynth deinstallieren" 
 LangString Start_License            ${AvsLang} "Lizenz"
-LangString Start_License_Lang       ${AvsLang} "Lizenz in Deutsche"
+LangString Start_License_Lang       ${AvsLang} "Lizenz in Deutsch"
 LangString Start_Plugin             ${AvsLang} "Plugin-Verzeichnis"
 LangString Start_Online             ${AvsLang} "AviSynth Webseite"
-LangString Start_Download           ${AvsLang} "Lade Plugins herunter"
+LangString Start_Download           ${AvsLang} "Plugins herunterladen"
 LangString Start_Example            ${AvsLang} "Beispiel-Scripts"
 LangString Start_FilterSDK          ${AvsLang} "FilterSDK Informationen"
 
