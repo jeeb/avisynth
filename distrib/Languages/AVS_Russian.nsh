@@ -95,8 +95,15 @@ LangString Start_Doc_Polish         ${AvsLang} "Польская документация по AviSynt
 LangString Start_Doc_Portuguese     ${AvsLang} "Португальская документация по AviSynth"
 LangString Start_Doc_Russian        ${AvsLang} "Русская документация по AviSynth"
 
+; Translation and matching Return license buttons
+
+LangString AVS_TranslateBtn         ${AvsLang} "&Translation"
+LangString AVS_ReturnBtn            ${AvsLang} $(^BackBtn) ; "Re&turn" ; $(^NextBtn) ;
+
 ; Licence file
 
 !define AvsLicenceFile "gpl-ru.txt"
+
+; Language specific NSIS patches
 
 ; End of file

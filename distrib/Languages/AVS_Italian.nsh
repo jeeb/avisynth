@@ -95,8 +95,15 @@ LangString Start_Doc_Polish         ${AvsLang} "Documentazione in Polacco"
 LangString Start_Doc_Portuguese     ${AvsLang} "Documentazione in Portoghese"
 LangString Start_Doc_Russian        ${AvsLang} "Documentazione in Russo"
 
+; Translation and matching Return license buttons
+
+LangString AVS_TranslateBtn         ${AvsLang} "&Translation"
+LangString AVS_ReturnBtn            ${AvsLang} $(^BackBtn) ; "Re&turn" ; $(^NextBtn) ;
+
 ; Licence file
 
 !define AvsLicenceFile "gpl-it.txt"
+
+; Language specific NSIS patches
 
 ; End of file

@@ -92,10 +92,8 @@ SetCompressor /solid lzma
   !if ${AvsLicenceFile} == ${AVS_DefaultLicenceFile}
     LangString AVS_LicenceBtn ${AvsLang} $(^AgreeBtn)
   !else
-    LangString AVS_LicenceBtn ${AvsLang} $(^NextBtn)
+    LangString AVS_LicenceBtn ${AvsLang} $(AVS_ReturnBtn)
   !endif
-
-  LangString        AVS_TranslateBtn  ${AvsLang} "&Translate"
 
   LangString        AVS_GPL_Lang_File ${AvsLang} ${AvsLicenceFile}
   LicenseLangString AVS_GPL_Lang_Text ${AvsLang} ${AvsLicenceFile}
@@ -221,8 +219,11 @@ IfErrors 0 dll_ok
 
 dll_ok:
   SetOutPath $INSTDIR
-  File "gpl*.txt"
+  File ${AVS_DefaultLicenceFile}
   File "lgpl_for_used_libs.txt"
+
+  SetOutPath "$INSTDIR\License Translations"
+  File "gpl-*.txt"
 
   ReadRegStr $0 HKLM "SOFTWARE\AviSynth" "plugindir2_5"
 StrCmp "$0" "" 0 Plugin_exists
@@ -278,18 +279,13 @@ IfErrors 0 creg_ok
   Abort
 
 creg_ok:
-; These bits are for the administrator only
-  SetShellVarContext Current
-  CreateDirectory  "$SMPROGRAMS\AviSynth 2.5"
-  CreateShortCut "$SMPROGRAMS\AviSynth 2.5\$(Start_Uninstall).lnk" "$INSTDIR\Uninstall.exe"
-
 ; These bits are for everybody
   SetShellVarContext All
   CreateDirectory  "$SMPROGRAMS\AviSynth 2.5"
 
   CreateShortCut "$SMPROGRAMS\AviSynth 2.5\$(Start_License).lnk" "$INSTDIR\${AVS_DefaultLicenceFile}"
   StrCmp $(AVS_GPL_Lang_File) ${AVS_DefaultLicenceFile} +2
-    CreateShortCut "$SMPROGRAMS\AviSynth 2.5\$(Start_License_Lang).lnk" "$INSTDIR\$(AVS_GPL_Lang_File)"
+    CreateShortCut "$SMPROGRAMS\AviSynth 2.5\$(Start_License_Lang).lnk" "$INSTDIR\License Translations\$(AVS_GPL_Lang_File)"
 
   CreateShortCut "$SMPROGRAMS\AviSynth 2.5\$(Start_Plugin).lnk" "$INSTDIR\Plugins"
   WriteINIStr    "$SMPROGRAMS\AviSynth 2.5\$(Start_Online).url" "InternetShortcut" "URL" "http://www.avisynth.org"
@@ -306,6 +302,11 @@ creg_ok:
   Delete $INSTDIR\Uninstall.exe
   WriteUninstaller $INSTDIR\Uninstall.exe
 
+; These bits are for the administrator only
+  SetShellVarContext Current
+  CreateDirectory  "$SMPROGRAMS\AviSynth 2.5"
+  CreateShortCut "$SMPROGRAMS\AviSynth 2.5\$(Start_Uninstall).lnk" "$INSTDIR\Uninstall.exe"
+
 SectionEnd
 
 Section /o  $(StandAlone_Text) StandAlone
@@ -321,8 +322,11 @@ Section /o  $(StandAlone_Text) StandAlone
 
   File "Avisynth_Template.reg"
 
-  File "gpl*.txt"
+  File ${AVS_DefaultLicenceFile}
   File "lgpl_for_used_libs.txt"
+
+  SetOutPath "$INSTDIR\License Translations"
+  File "gpl-*.txt"
 
   SetOutPath "$INSTDIR\Plugins"
   File "..\src\plugins\DirectShowSource\Release\DirectShowSource.dll"
@@ -737,8 +741,12 @@ Ignore:
 !echo " -- Supressed"
 !verbose push
 !verbose 2
-  Delete "$INSTDIR\gpl*.txt"
+  Delete "$INSTDIR\${AVS_DefaultLicenceFile}"
   Delete "$INSTDIR\lgpl_for_used_libs.txt"
+
+  Delete "$INSTDIR\License Translations\gpl-*.txt"
+  RmDir  "$INSTDIR\License Translations"
+
   Delete "$INSTDIR\Examples\*.*"
   RMDir  "$INSTDIR\Examples"
 

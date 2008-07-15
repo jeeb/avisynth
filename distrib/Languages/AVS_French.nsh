@@ -74,10 +74,6 @@ LangString ExtraFiles3_Bubble       ${AvsLang} "Installer FilterSDK pour le déve
 LangString Uninstall_Text           ${AvsLang} "Désinstallation réussie."
 LangString RemoveReg_Text           ${AvsLang} "Voulez-vous supprimer le pointeur de la base de registre vers$\n\
                                                 le dossier des plugins (aucun fichier ne sera supprimé)?"
-;----------------------------------
-; Correct long ModernUI standard string, was   "Sélectionnez le type d'installation :"
-LangString ^ComponentsSubText1      ${AvsLang} "Sélectionnez installation :"
-;----------------------------------
 
 ; Names for the Start Menu
 
@@ -99,8 +95,20 @@ LangString Start_Doc_Polish         ${AvsLang} "Documentation en polonais"
 LangString Start_Doc_Portuguese     ${AvsLang} "Documentation en portugais"
 LangString Start_Doc_Russian        ${AvsLang} "Documentation en russe"
 
+; Translation and matching Return license buttons
+
+LangString AVS_TranslateBtn         ${AvsLang} "&Traduire" ; "Afficher la licence en français"
+LangString AVS_ReturnBtn            ${AvsLang} $(^BackBtn) ; "Re&turn" ; $(^NextBtn) ;
+
 ; Licence file
 
 !define AvsLicenceFile "gpl-fr.txt"
+
+; Language specific NSIS patches
+
+;----------------------------------
+; Correct long ModernUI standard string, was   "Sélectionnez le type d'installation :"
+LangString ^ComponentsSubText1      ${AvsLang} "Sélectionnez installation :"
+;----------------------------------
 
 ; End of file

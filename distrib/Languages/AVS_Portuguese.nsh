@@ -85,7 +85,7 @@ LangString Start_Online             ${AvsLang} "AviSynth Online"
 LangString Start_Download           ${AvsLang} "Baixar Plugins"
 LangString Start_Example            ${AvsLang} "Scripts de Exemplo"
 LangString Start_FilterSDK          ${AvsLang} "Informação sobre FilterSDK"
-                                               
+
 LangString Start_Doc_English        ${AvsLang} "Documentação em Inglês"
 LangString Start_Doc_German         ${AvsLang} "Documentação em Alemão"
 LangString Start_Doc_French         ${AvsLang} "Documentação em Francês"
@@ -95,8 +95,15 @@ LangString Start_Doc_Polish         ${AvsLang} "Documentação em Polonês"
 LangString Start_Doc_Portuguese     ${AvsLang} "Documentação em Português"
 LangString Start_Doc_Russian        ${AvsLang} "Documentação em Russo"
 
+; Translation and matching Return license buttons
+
+LangString AVS_TranslateBtn         ${AvsLang} "&Translation"
+LangString AVS_ReturnBtn            ${AvsLang} $(^BackBtn) ; "Re&turn" ; $(^NextBtn) ;
+
 ; Licence file
 
 !define AvsLicenceFile "gpl-pt.txt"
+
+; Language specific NSIS patches
 
 ; End of file

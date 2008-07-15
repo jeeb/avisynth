@@ -50,9 +50,10 @@ LangString ExtraFiles2_Text         ${AvsLang} "Avisynth.map のインストール"
 LangString Frameserving_Bubble      ${AvsLang} "AviSynth 経由でフレームサービングするための主要なファイルをインストールします。"
 LangString SystemInstall_Bubble     ${AvsLang} "システムディレクトリにインストールします（通常）"
 LangString StandAlone_Bubble        ${AvsLang} "指定先のディレクトリにインストールします \
-                                               （動作にはパスとレジストリの設定が必要。スタンドアローンのみ）"
+                                                （動作にはパスとレジストリの設定が必要。スタンドアローンのみ）"
 
 LangString Documentation_Bubble     ${AvsLang} "ヘルプをインストールします。言語を選択してください（英語以外は内容が古いかもしれません）"
+
 LangString English_Bubble           ${AvsLang} "英語のヘルプをインストールします。"
 LangString German_Bubble            ${AvsLang} "ドイツ語のヘルプをインストールします。"
 LangString French_Bubble            ${AvsLang} "フランス語のヘルプをインストールします。"
@@ -73,16 +74,6 @@ LangString ExtraFiles3_Bubble       ${AvsLang} "AviSynth プラグイン開発用の Filt
 LangString Uninstall_Text           ${AvsLang} "アンインストールは正常に完了しました。"
 LangString RemoveReg_Text           ${AvsLang} "プラグインディレクトリへのレジストリポインタを$\n\
                                                 削除しますか？（ファイルは削除されません）"
-;----------------------------------
-; Change font was "ＭＳ Ｐゴシック" 9
-SetFont /LANG=${AvsLang} "MS Shell Dlg" 9 ; "MS UI Gothic" 9 ; 
-;----------------------------------
-
-; LangString Czech_Text               ${AvsLang} "チェコ語"
-; LangString Greek_Text               ${AvsLang} "ギリシャ語"
-
-; LangString Czech_Bubble             ${AvsLang} "チェコ語のヘルプをインストールします"
-; LangString Greek_Bubble             ${AvsLang} "ギリシャ語のヘルプをインストールします"
 
 ; Names for the Start Menu
 
@@ -104,8 +95,26 @@ LangString Start_Doc_Polish         ${AvsLang} "AviSynth ヘルプ（ポーランド語）"
 LangString Start_Doc_Portuguese     ${AvsLang} "AviSynth ヘルプ（ポルトガル語）"
 LangString Start_Doc_Russian        ${AvsLang} "AviSynth ヘルプ（ロシア語）"
 
+; Translation and matching Return license buttons
+
+LangString AVS_TranslateBtn         ${AvsLang} "日本語訳"
+LangString AVS_ReturnBtn            ${AvsLang} $(^BackBtn) ; "Re&turn" ; $(^NextBtn) ;
+
 ; Licence file
 
 !define AvsLicenceFile "gpl-ja.txt"
+
+; Language specific NSIS patches
+
+;----------------------------------
+; Change font was "ＭＳ Ｐゴシック" 9
+SetFont /LANG=${AvsLang} "MS Shell Dlg" 9 ; "MS UI Gothic" 9 ; 
+;----------------------------------
+
+; LangString Czech_Text               ${AvsLang} "チェコ語"
+; LangString Greek_Text               ${AvsLang} "ギリシャ語"
+
+; LangString Czech_Bubble             ${AvsLang} "チェコ語のヘルプをインストールします"
+; LangString Greek_Bubble             ${AvsLang} "ギリシャ語のヘルプをインストールします"
 
 ; End of file

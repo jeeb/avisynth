@@ -85,7 +85,7 @@ LangString Start_Online             ${AvsLang} "Κεντρική σελίδα του AviSynth"
 LangString Start_Download           ${AvsLang} "Μεταφόρτωση προσθέτων"
 LangString Start_Example            ${AvsLang} "Παραδείγματα προγραμμάτων"
 LangString Start_FilterSDK          ${AvsLang} "Τεκμηρίωση FilterSDK"
-                                                
+
 LangString Start_Doc_English        ${AvsLang} "Αγγλική τεκμηρίωση AviSynth"
 LangString Start_Doc_German         ${AvsLang} "Γερμανική τεκμηρίωση AviSynth"
 LangString Start_Doc_French         ${AvsLang} "Γαλλική τεκμηρίωση AviSynth"
@@ -95,8 +95,15 @@ LangString Start_Doc_Polish         ${AvsLang} "Πολωνική τεκμηρίωση AviSynth"
 LangString Start_Doc_Portuguese     ${AvsLang} "Πορτογαλική τεκμηρίωση AviSynth"
 LangString Start_Doc_Russian        ${AvsLang} "Ρωσική τεκμηρίωση AviSynth"
 
+; Translation and matching Return license buttons
+
+LangString AVS_TranslateBtn         ${AvsLang} "&Translation"
+LangString AVS_ReturnBtn            ${AvsLang} $(^BackBtn) ; "Re&turn" ; $(^NextBtn) ;
+
 ; Licence file
 
 !define AvsLicenceFile "gpl-el.txt"
+
+; Language specific NSIS patches
 
 ; End of file
