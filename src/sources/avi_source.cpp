@@ -136,11 +136,17 @@ LRESULT AVISource::DecompressFrame(int n, bool preroll, BYTE* buf) {
   while (err == AVIERR_BUFFERTOOSMALL || (err == 0 && !srcbuffer)) {
     delete[] srcbuffer;
     pvideo->Read(n, 1, 0, srcbuffer_size, &bytes_read, NULL);
-    srcbuffer = new BYTE[srcbuffer_size = bytes_read];
+    srcbuffer_size = bytes_read;
+    srcbuffer = new BYTE[bytes_read + 16]; // Provide 16 hidden guard bytes for HuffYUV, Xvid, etc bug
     err = pvideo->Read(n, 1, srcbuffer, srcbuffer_size, &bytes_read, NULL);
   }
   dropped_frame = !bytes_read;
   if (dropped_frame) return ICERR_OK;  // If frame is 0 bytes (dropped), return instead of attempt decompressing as Vdub.
+
+  // Fill guard bytes with 0xA5's for Xvid bug
+  memset(srcbuffer + bytes_read, 0xA5, 16);
+  // and a Null terminator for good measure
+  srcbuffer[bytes_read + 15] = 0;
 
   int flags = preroll ? ICDECOMPRESS_PREROLL : 0;
   flags |= dropped_frame ? ICDECOMPRESS_NULLFRAME : 0;
@@ -464,11 +470,12 @@ AVISource::AVISource(const char filename[], bool fAudio, const char pixel_type[]
           // RGB24
           if (fRGB24 && bOpen) {
             vi.pixel_type = VideoInfo::CS_BGR24;
-            biDst.biBitCount = 24;
             biDst.biSizeImage = vi.BMPSize();
+            biDst.biCompression = BI_RGB;
+            biDst.biBitCount = 24;
             if (ICERR_OK == ICDecompressQuery(hic, pbiSrc, &biDst)) {
-              vi.pixel_type = VideoInfo::CS_BGR24;
               _RPT0(0,"AVISource: Opening as RGB24.\n");
+              bOpen = false;  // Skip further attempts
             } else if (forcedType) {
                env->ThrowError("AVISource: the video decompressor couldn't produce RGB24 output");
             }
