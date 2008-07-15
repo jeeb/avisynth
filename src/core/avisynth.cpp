@@ -1499,6 +1499,12 @@ LinkedVideoFrameBuffer* ScriptEnvironment::GetFrameBuffer2(int size) {
 
 VideoFrameBuffer* ScriptEnvironment::GetFrameBuffer(int size) {
   LinkedVideoFrameBuffer* result = GetFrameBuffer2(size);
+
+  if (!result->data) {
+	(int)(result->data_size) = 0;
+    ThrowError("GetFrameBuffer: Returned a VFB with a 0 data pointer!\nI think we have run out of memory folks!");
+  }
+
 #if 0
 # if 0
   // Link onto head of video_frame_buffers chain.
