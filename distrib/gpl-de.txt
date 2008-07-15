@@ -6,45 +6,45 @@
                   http://www.gnu.org/licenses/gpl-2.0.html.
 
 
-    Diese Übersetzung wurde ursprünglich erstellt von Katja Lachmann Übersetzungen
-    im Auftrag der S.u.S.E. GmbH - http://www.suse.de. Sie wurde überarbeitet von
-    Peter Gerwinski, G-N-U GmbH - http://www.g-n-u.de (31. Oktober 1996, 4. Juni 2000).
+   Diese Übersetzung wurde ursprünglich erstellt von Katja Lachmann Übersetzungen
+   im Auftrag der S.u.S.E. GmbH - http://www.suse.de. Sie wurde überarbeitet von
+   Peter Gerwinski, G-N-U GmbH - http://www.g-n-u.de (31 Oktober 1996, 4 Juni 2000)
 
 
-    Diese Übersetzung wird mit der Absicht angeboten, das Verständnis der GNU
-    General Public License (GNU GPL) zu erleichtern. Es handelt sich jedoch nicht
-    um eine offizielle oder im rechtlichen Sinne anerkannte Übersetzung.
+   Diese Übersetzung wird mit der Absicht angeboten, das Verständnis der GNU
+   General Public License (GNU GPL) zu erleichtern. Es handelt sich jedoch nicht
+   um eine offizielle oder im rechtlichen Sinne anerkannte Übersetzung.
 
-    Die Free Software Foundation (FSF) ist nicht der Herausgeber dieser Übersetzung,
-    und sie hat diese Übersetzung auch nicht als rechtskräftigen Ersatz für die
-    Original-GNU-GPL anerkannt. Da die Übersetzung nicht sorgfältig von Anwälten
-    überprüft wurde, können die Übersetzer nicht garantieren, daß die Übersetzung
-    die rechtlichen Aussagen der GNU GPL exakt wiedergibt. Wenn Sie sichergehen
-    wollen, daß von Ihnen geplante Aktivitäten im Sinne der GNU GPL gestattet
-    sind, halten Sie sich bitte an die englischsprachige Originalversion.
+   Die Free Software Foundation (FSF) ist nicht der Herausgeber dieser Übersetzung,
+   und sie hat diese Übersetzung auch nicht als rechtskräftigen Ersatz für die
+   Original-GNU-GPL anerkannt. Da die Übersetzung nicht sorgfältig von Anwälten
+   überprüft wurde, können die Übersetzer nicht garantieren, daß die Übersetzung
+   die rechtlichen Aussagen der GNU GPL exakt wiedergibt. Wenn Sie sichergehen
+   wollen, daß von Ihnen geplante Aktivitäten im Sinne der GNU GPL gestattet
+   sind, halten Sie sich bitte an die englischsprachige Originalversion.
 
-    Die Übersetzer und die Free Software Foundation möchten Sie darum bitten, diese
-    Übersetzung nicht als offizielle Lizenzbedingungen für von Ihnen geschriebene
-    Programme zu verwenden. Bitte benutzen Sie hierfür stattdessen die von der Free
-    Software Foundation herausgegebene englischsprachige Originalversion.
+   Die Übersetzer und die Free Software Foundation möchten Sie darum bitten, diese
+   Übersetzung nicht als offizielle Lizenzbedingungen für von Ihnen geschriebene
+   Programme zu verwenden. Bitte benutzen Sie hierfür stattdessen die von der Free
+   Software Foundation herausgegebene englischsprachige Originalversion.
 
 
 
-    This is a translation of the GNU General Public License into German. This
-    translation is distributed in the hope that it will facilitate understanding, but
-    it is not an official or legally approved translation.
+   This is a translation of the GNU General Public License into German. This
+   translation is distributed in the hope that it will facilitate understanding, but
+   it is not an official or legally approved translation.
 
-    The Free Software Foundation is not the publisher of this translation and has not
-    approved it as a legal substitute for the authentic GNU General Public License.
-    The translation has not been reviewed carefully by lawyers, and therefore the
-    translator cannot be sure that it exactly represents the legal meaning of the
-    GNU General Public License. If you wish to be sure whether your planned
-    activities are permitted by the GNU General Public License, please refer
-    to the authentic English version.
+   The Free Software Foundation is not the publisher of this translation and has not
+   approved it as a legal substitute for the authentic GNU General Public License.
+   The translation has not been reviewed carefully by lawyers, and therefore the
+   translator cannot be sure that it exactly represents the legal meaning of the
+   GNU General Public License. If you wish to be sure whether your planned
+   activities are permitted by the GNU General Public License, please refer
+   to the authentic English version.
 
-    The translators and the Free Software Foundation strongly urge you not to use
-    this translation as the official distribution terms for your programs; instead, please
-    use the authentic English version published by the Free Software Foundation.
+   The translators and the Free Software Foundation strongly urge you not to use
+   this translation as the official distribution terms for your programs; instead, please
+   use the authentic English version published by the Free Software Foundation.
 
 
 
