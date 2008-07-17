@@ -8,7 +8,7 @@
 
    Diese Übersetzung wurde ursprünglich erstellt von Katja Lachmann Übersetzungen
    im Auftrag der S.u.S.E. GmbH - http://www.suse.de. Sie wurde überarbeitet von
-   Peter Gerwinski, G-N-U GmbH - http://www.g-n-u.de (31 Oktober 1996, 4 Juni 2000)
+   Peter Gerwinski, G-N-U GmbH - http://www.g-n-u.de (31. Oktober 1996, 4. Juni 2000)
 
 
    Diese Übersetzung wird mit der Absicht angeboten, das Verständnis der GNU
