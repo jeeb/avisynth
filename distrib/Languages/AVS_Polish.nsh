@@ -1,5 +1,5 @@
 ;----------------------------------
-; Translated by Micha³ Trzebiatowski (09.07.2008)
+; Translated by Micha³ Trzebiatowski (15.07.2008)
 ;----------------------------------
 ;
 ; Polish -- Code page 1045
@@ -10,7 +10,7 @@ LangString AVS_Minimal              ${AvsLang} "Minimalna"
 LangString AVS_Standalone           ${AvsLang} "Pojedyncza"
 LangString AVS_Full                 ${AvsLang} "Pe³na"
 
-LangString FINISHPAGE_TEXT          ${AvsLang} "OdwieŸ stronê internetow¹ AviSynth dla najnowszych wiadomoœci i pomocy."
+LangString FINISHPAGE_TEXT          ${AvsLang} "OdwieŸ stronê domow¹ AviSynth dla najnowszych wiadomoœci i pomocy."
 LangString COMPONENT_TEXT           ${AvsLang} "AviSynth - czo³owe narzêdzie frameserving.$\n\
                                                 Copyright © 2000 - 2008."
 
@@ -81,7 +81,7 @@ LangString Start_Uninstall          ${AvsLang} "Odinstaluj AviSynth"
 LangString Start_License            ${AvsLang} "Licencja"
 LangString Start_License_Lang       ${AvsLang} "Licencja po polsku"
 LangString Start_Plugin             ${AvsLang} "Folder wtyczek"
-LangString Start_Online             ${AvsLang} "Strona Domowa AviSynth"
+LangString Start_Online             ${AvsLang} "Strona g³ówna AviSynth"
 LangString Start_Download           ${AvsLang} "Œci¹gnij wtyczki"
 LangString Start_Example            ${AvsLang} "Przyk³adowe skrypty"
 LangString Start_FilterSDK          ${AvsLang} "Informacje o FilterSDK"
@@ -97,8 +97,8 @@ LangString Start_Doc_Russian        ${AvsLang} "Rosyjska dokumentacja"
 
 ; Translation and matching Return license buttons
 
-LangString AVS_TranslateBtn         ${AvsLang} "&Tlumaczenie"
-LangString AVS_ReturnBtn            ${AvsLang} $(^BackBtn) ; "Re&turn" ; $(^NextBtn) ;
+LangString AVS_TranslateBtn         ${AvsLang} "&T³umaczenie"
+LangString AVS_ReturnBtn            ${AvsLang} $(^BackBtn)
 
 ; Licence file
 
