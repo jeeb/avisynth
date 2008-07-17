@@ -97,8 +97,8 @@ LangString Start_Doc_Russian        ${AvsLang} "Ρωσική τεκμηρίωση AviSynth"
 
 ; Translation and matching Return license buttons
 
-LangString AVS_TranslateBtn         ${AvsLang} "&Translation"
-LangString AVS_ReturnBtn            ${AvsLang} $(^BackBtn) ; "Re&turn" ; $(^NextBtn) ;
+LangString AVS_TranslateBtn         ${AvsLang} "&Μετάφραση"
+LangString AVS_ReturnBtn            ${AvsLang} "&Πίσω"
 
 ; Licence file
 
