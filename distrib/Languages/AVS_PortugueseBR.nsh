@@ -97,7 +97,7 @@ LangString Start_Doc_Russian        ${AvsLang} "Documentação em Russo"
 
 ; Translation and matching Return license buttons
 
-LangString AVS_TranslateBtn         ${AvsLang} "&Translation"
+LangString AVS_TranslateBtn         ${AvsLang} "&Tradução" ; "&Tranlation"
 LangString AVS_ReturnBtn            ${AvsLang} $(^BackBtn) ; "Re&turn" ; $(^NextBtn) ;
 
 ; Licence file
