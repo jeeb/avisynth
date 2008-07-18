@@ -54,14 +54,14 @@ LangString StandAlone_Bubble        ${AvsLang} "Устанавливает базовые файлы в па
 
 LangString Documentation_Bubble     ${AvsLang} "Устанавливает справку. Пожалуйста выберите языки \
                                                 (не-английские могут быть устаревшими)"
-LangString English_Bubble           ${AvsLang} "Устанавливает английскую справку"
-LangString German_Bubble            ${AvsLang} "Устанавливает немецкую справку"
-LangString French_Bubble            ${AvsLang} "Устанавливает французскую справку"
-LangString Italian_Bubble           ${AvsLang} "Устанавливает итальянскую справку"
-LangString Japanese_Bubble          ${AvsLang} "Устанавливает японскую справку"
-LangString Polish_Bubble            ${AvsLang} "Устанавливает польскую справку"
-LangString Portugese_Bubble         ${AvsLang} "Устанавливает португальскую справку"
-LangString Russian_Bubble           ${AvsLang} "Устанавливает русскую справку"
+LangString English_Bubble           ${AvsLang} "Устанавливает справку на английском"
+LangString German_Bubble            ${AvsLang} "Устанавливает справку на немецком"
+LangString French_Bubble            ${AvsLang} "Устанавливает справку на французском"
+LangString Italian_Bubble           ${AvsLang} "Устанавливает справку на итальянском"
+LangString Japanese_Bubble          ${AvsLang} "Устанавливает справку на японском"
+LangString Polish_Bubble            ${AvsLang} "Устанавливает справку на польском"
+LangString Portugese_Bubble         ${AvsLang} "Устанавливает справку на португальском"
+LangString Russian_Bubble           ${AvsLang} "Устанавливает справку на русском"
 LangString SelectAssociation_Bubble ${AvsLang} "Задайте одну или несколько файловых ассоциаций в системе"
 LangString Associate1_Bubble        ${AvsLang} "Открывать AVS файлы прямо в Блокноте для редактирования"
 LangString Associate2_Bubble        ${AvsLang} "Воспроизводить AVS файлы в Media Player 6.4 (правая кнопка - play)"
@@ -79,15 +79,15 @@ LangString RemoveReg_Text           ${AvsLang} "Хотите ли вы удалить указатель в
 
 LangString Start_Uninstall          ${AvsLang} "Удалить AviSynth"
 LangString Start_License            ${AvsLang} "Лицензия"
-LangString Start_License_Lang       ${AvsLang} "Русская Лицензия"
+LangString Start_License_Lang       ${AvsLang} "Русский перевод лицензии"
 LangString Start_Plugin             ${AvsLang} "Папка плагинов"
 LangString Start_Online             ${AvsLang} "AviSynth сайт"
 LangString Start_Download           ${AvsLang} "Скачать плагины"
 LangString Start_Example            ${AvsLang} "Примеры скриптов"
 LangString Start_FilterSDK          ${AvsLang} "FilterSDK информация"
 
-LangString Start_Doc_English        ${AvsLang} "AviSynth Documentation"
-LangString Start_Doc_German         ${AvsLang} "Немецкая докуметация по AviSynth"
+LangString Start_Doc_English        ${AvsLang} "Английская документация по AviSynth"
+LangString Start_Doc_German         ${AvsLang} "Немецкая документация по AviSynth"
 LangString Start_Doc_French         ${AvsLang} "Французская документация по AviSynth"
 LangString Start_Doc_Italian        ${AvsLang} "Итальянская документация по AviSynth"
 LangString Start_Doc_Japanese       ${AvsLang} "Японская документация по AviSynth"
@@ -97,7 +97,7 @@ LangString Start_Doc_Russian        ${AvsLang} "Русская документация по AviSynth
 
 ; Translation and matching Return license buttons
 
-LangString AVS_TranslateBtn         ${AvsLang} "&Translation"
+LangString AVS_TranslateBtn         ${AvsLang} "&Перевод"
 LangString AVS_ReturnBtn            ${AvsLang} $(^BackBtn) ; "Re&turn" ; $(^NextBtn) ;
 
 ; Licence file
