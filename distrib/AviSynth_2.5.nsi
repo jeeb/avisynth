@@ -459,7 +459,6 @@ Section /o  $(Japanese_Text) Japanese
   File "..\..\Docs\english\advancedtopics\*.htm"
 
   SetOutPath $INSTDIR\Docs\Japanese\corefilters
-  File "..\..\Docs\english\corefilters\*.htm"
   File "..\..\Docs\japanese\corefilters\*.htm"  ; Overwrite with the translated versions
 
   SetOutPath $INSTDIR\Docs\Japanese\externalfilters
