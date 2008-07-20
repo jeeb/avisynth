@@ -79,7 +79,7 @@ LangString RemoveReg_Text           ${AvsLang} "Θέλετε να καταργήσετε την εγγραφ
 
 LangString Start_Uninstall          ${AvsLang} "Απεγκατάσταση AviSynth"
 LangString Start_License            ${AvsLang} "Άδεια χρήσης"
-LangString Start_License_Lang       ${AvsLang} "Greek Άδεια χρήσης"
+LangString Start_License_Lang       ${AvsLang} "Ελληνική άδεια χρήσης"
 LangString Start_Plugin             ${AvsLang} "Φάκελος προσθέτων"
 LangString Start_Online             ${AvsLang} "Κεντρική σελίδα του AviSynth"
 LangString Start_Download           ${AvsLang} "Μεταφόρτωση προσθέτων"
