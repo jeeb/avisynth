@@ -27,7 +27,7 @@ LangString AdminRightsHKLM_Text     ${AvsLang} "AviSynth ‚ğƒCƒ“ƒXƒg[ƒ‹‚·‚é‚É‚ÍŠ
                                                iƒŒƒWƒXƒgƒŠ HKLM ‚É‘‚«‚ß‚Ü‚¹‚ñ‚Å‚µ‚½j"
 LangString AdminRightsHKCR_Text     ${AvsLang} "AviSynth ‚ğƒCƒ“ƒXƒg[ƒ‹‚·‚é‚É‚ÍŠÇ—ÒŒ ŒÀ‚ª•K—v‚Å‚·I$\n\
                                                iƒŒƒWƒXƒgƒŠ HKCR ‚É‘‚«‚ß‚Ü‚¹‚ñ‚Å‚µ‚½j"
-LangString StandAlone_Text          ${AvsLang} "w’èæƒfƒBƒŒƒNƒgƒŠ‚ÉƒCƒ“ƒXƒg[ƒ‹"
+LangString StandAlone_Text          ${AvsLang} "»•iƒfƒBƒŒƒNƒgƒŠ‚ÉƒCƒ“ƒXƒg[ƒ‹"
 
 LangString Documentation_Text       ${AvsLang} "ƒwƒ‹ƒv"
 LangString English_Text             ${AvsLang} "‰pŒê"
