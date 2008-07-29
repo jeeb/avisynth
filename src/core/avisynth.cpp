@@ -174,11 +174,11 @@ VideoFrame* VideoFrame::Subframe(int rel_offset, int new_pitch, int new_row_size
 VideoFrameBuffer::VideoFrameBuffer() : refcount(0), data(0), data_size(0), sequence_number(0) {}
 
 
-#ifdef _DEBUG  // Add 64 guard bytes front and back -- cache can check them after every GetFrame() call
+#ifdef _DEBUG  // Add 16 guard bytes front and back -- cache can check them after every GetFrame() call
 VideoFrameBuffer::VideoFrameBuffer(int size) : 
   refcount(0), 
   data((new BYTE[size+32])+16), 
-  data_size(size), 
+  data_size(data ? size : 0), 
   sequence_number(0) {
   InterlockedIncrement(&sequence_number); 
   int *p=(int *)data;
@@ -204,7 +204,7 @@ VideoFrameBuffer::~VideoFrameBuffer() {
 #else
 
 VideoFrameBuffer::VideoFrameBuffer(int size)
- : refcount(0), data(new BYTE[size]), data_size(size), sequence_number(0) { InterlockedIncrement(&sequence_number); }
+ : refcount(0), data(new BYTE[size]), data_size(data ? size : 0), sequence_number(0) { InterlockedIncrement(&sequence_number); }
 
 VideoFrameBuffer::~VideoFrameBuffer() {
 //  _ASSERTE(refcount == 0);
@@ -1413,8 +1413,8 @@ LinkedVideoFrameBuffer* ScriptEnvironment::GetFrameBuffer2(int size) {
   LinkedVideoFrameBuffer *i, *j;
 
   // Before we allocate a new framebuffer, check our memory usage, and if we
-  // are more than 12.5% above allowed usage discard some unreferenced frames.
-  if (memory_used >  memory_max + max(size, (memory_max >> 3)) ) {
+  // are 12.5% or more above allowed usage discard some unreferenced frames.
+  if (memory_used >=  memory_max + max(size, (memory_max >> 3)) ) {
     ++g_Mem_stats.CleanUps;
     int freed = 0;
     int freed_count = 0;
@@ -1500,9 +1500,27 @@ LinkedVideoFrameBuffer* ScriptEnvironment::GetFrameBuffer2(int size) {
 VideoFrameBuffer* ScriptEnvironment::GetFrameBuffer(int size) {
   LinkedVideoFrameBuffer* result = GetFrameBuffer2(size);
 
-  if (!result->data) {
-	(int)(result->data_size) = 0;
-    ThrowError("GetFrameBuffer: Returned a VFB with a 0 data pointer!\nI think we have run out of memory folks!");
+  if (!result || !result->data) {
+    // Damn! we got a NULL from malloc
+    _RPT3(0, "GetFrameBuffer failure, size=%d, memory_max=%I64d, memory_used=%I64d", size, memory_max, memory_used);
+
+    // Put that VFB on the lost souls chain
+    if (result) Relink(lost_video_frame_buffers.prev, result, &lost_video_frame_buffers);
+
+    // Set memory_max to 12.5% below memory_used 
+    memory_max = max(4*1024*1024, memory_used - max(size, (memory_used/9)));
+
+    // Retry the request
+    result = GetFrameBuffer2(size);
+
+    if (!result || !result->data) {
+      // Damn!! Damn!! we are really screwed, winge!
+      if (result) Relink(lost_video_frame_buffers.prev, result, &lost_video_frame_buffers);
+
+      ThrowError("GetFrameBuffer: Returned a VFB with a 0 data pointer!\n"
+                 "size=%d, max=%I64d, used=%I64d\n"
+                 "I think we have run out of memory folks!", size, memory_max, memory_used);
+    }
   }
 
 #if 0
@@ -1943,8 +1961,9 @@ void ScriptEnvironment::ThrowError(const char* fmt, ...) {
   va_list val;
   va_start(val, fmt);
   char buf[8192];
-  wvsprintf(buf, fmt, val);
+  _vsnprintf(buf,sizeof(buf)-1, fmt, val);
   va_end(val);
+  buf[sizeof(buf)-1] = '\0';
   throw AvisynthError(ScriptEnvironment::SaveString(buf));
 }
 
