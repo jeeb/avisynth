@@ -900,8 +900,24 @@ PVideoFrame Histogram::DrawModeLevels(int n, IScriptEnvironment* env) {
 
 PVideoFrame Histogram::DrawModeClassic(int n, IScriptEnvironment* env)
 {
-  const int S1 = ((235-84) << 16) / (vi.width-256);
-  const int S2 = ((235-16) << 16) / (vi.width-256);
+  static BYTE exptab[256];
+  static bool init = false;
+  static int E167;
+
+  if (!init) {
+	init = true;
+
+	const double K = log(0.5/219)/255; // approx -1/42
+
+	exptab[0] = 16;
+    for (int i=1; i<255; i++) {
+	  exptab[i] = BYTE(16.5 + 219 * (1-exp(i*K)));
+	  if (exptab[i] <= 235-68) E167 = i;
+	}
+	exptab[255] = 235;
+  }
+
+  const int w = vi.width-256;
 
   PVideoFrame dst = env->NewVideoFrame(vi);
   BYTE* p = dst->GetWritePtr();
@@ -915,18 +931,15 @@ PVideoFrame Histogram::DrawModeClassic(int n, IScriptEnvironment* env)
     for (int y=0; y<src->GetHeight(PLANAR_Y); ++y) {
       int hist[256] = {0};
       int x;
-      for (x=0; x<vi.width-256; ++x) {
+      for (x=0; x<w; ++x) {
         hist[p[x]]++;
       }
+      BYTE* const q = p + w;
       for (x=0; x<256; ++x) {
-        if (x<16) {
-          p[vi.width+x-256] = max(min(235, ((hist[x]*S1)>>16) + 16), 84);
-        } else if (x>234) {
-          p[vi.width+x-256] = max(min(235, ((hist[x]*S1)>>16) + 16), 84);
-        } else if (x==124) {
-          p[vi.width+x-256] = max(min(235, ((hist[x]*S1)>>16) + 16), 84);
+        if (x<16 || x==124 || x>234) {
+          q[x] = exptab[min(E167, hist[x])] + 68;
         } else {
-	      p[vi.width+x-256] = max(min(235, ((hist[x]*S2)>>16) + 16), 16);
+	      q[x] = exptab[min(255, hist[x])];
         }
       }
       p += dst->GetPitch();
@@ -934,23 +947,23 @@ PVideoFrame Histogram::DrawModeClassic(int n, IScriptEnvironment* env)
 
 	// chroma
     if (dst->GetPitch(PLANAR_U)) {
-      BYTE* p2 = dst->GetWritePtr(PLANAR_U);
-      BYTE* p3 = dst->GetWritePtr(PLANAR_V);
-      int subs = 1; // vi.GetPlaneWidthSubsampling(PLANAR_U);
+      const int subs = 1; // vi.GetPlaneWidthSubsampling(PLANAR_U);
+      const int fact = 1<<subs;
+
+      BYTE* p2 = dst->GetWritePtr(PLANAR_U) + (w >> subs);
+      BYTE* p3 = dst->GetWritePtr(PLANAR_V) + (w >> subs);
+
       for (int y2=0; y2<src->GetHeight(PLANAR_U); ++y2) {
-        for (int x=0; x<256; x+=(1<<subs)) {
-          if (x<16) {
-            p2[(vi.width + x-256) >> subs] = 16;
-            p3[(vi.width + x-256) >> subs] = 160;
-          } else if (x>234) {
-            p2[(vi.width + x-256) >> subs] = 16;
-            p3[(vi.width + x-256) >> subs] = 160;
+        for (int x=0; x<256; x+=fact) {
+          if (x<16 || x>235) {
+            p2[x >> subs] = 16;
+            p3[x >> subs] = 160;
           } else if (x==124) {
-            p2[(vi.width + x-256) >> subs] = 160;
-            p3[(vi.width + x-256) >> subs] = 16;
+            p2[x >> subs] = 160;
+            p3[x >> subs] = 16;
           } else {
-            p2[(vi.width + x-256) >> subs] = 128;
-            p3[(vi.width + x-256) >> subs] = 128;
+            p2[x >> subs] = 128;
+            p3[x >> subs] = 128;
           }
         }
         p2 += dst->GetPitch(PLANAR_U);
@@ -961,40 +974,29 @@ PVideoFrame Histogram::DrawModeClassic(int n, IScriptEnvironment* env)
     for (int y=0; y<src->GetHeight(); ++y) { // YUY2
       int hist[256] = {0};
       int x;
-      for (x=0; x<vi.width-256; ++x) {
+      for (x=0; x<w; ++x) {
         hist[p[x*2]]++;
 	  }
+      BYTE* const q = p + w*2;
       for (x=0; x<256; x+=2) {
-        if (x<16) {
-	      p[x*2+vi.width*2-512] = max(min(235, ((hist[x]*S1)>>16) + 16), 84);
-          p[x*2+vi.width*2-511] = 16;
-		} else if (x>235) {
-          p[x*2+vi.width*2-512] = max(min(235, ((hist[x]*S1)>>16) + 16), 84);
-		  p[x*2+vi.width*2-511] = 16;
+        if (x<16 || x>235) {
+          q[x*2+0] = exptab[min(E167, hist[x])] + 68;
+		  q[x*2+1] = 16;
+          q[x*2+2] = exptab[min(E167, hist[x+1])] + 68;
+		  q[x*2+3] = 160;
 		} else if (x==124) {
-          p[x*2+vi.width*2-512] = max(min(235, ((hist[x]*S1)>>16) + 16), 84);
-	      p[x*2+vi.width*2-511] = 160;
+          q[x*2+0] = exptab[min(E167, hist[x])] + 68;
+	      q[x*2+1] = 160;
+          q[x*2+2] = exptab[min(E167, hist[x+1])] + 68;
+		  q[x*2+3] = 16;
 		} else {
-	      p[x*2+vi.width*2-512] = max(min(235, ((hist[x]*S2)>>16) + 16), 16);
-		  p[x*2+vi.width*2-511] = 128;
+	      q[x*2+0] = exptab[min(255, hist[x])];
+		  q[x*2+1] = 128;
+          q[x*2+2] = exptab[min(255, hist[x+1])];
+		  q[x*2+3] = 128;
 		}
 	  }
-      for (x=1; x<256; x+=2) {
-	    if (x<16) {
-	      p[x*2+vi.width*2-512] = max(min(235, ((hist[x]*S1)>>16) + 16), 84);
-          p[x*2+vi.width*2-511] = 160;
-		} else if (x>235) {
-          p[x*2+vi.width*2-512] = max(min(235, ((hist[x]*S1)>>16) + 16), 84);
-		  p[x*2+vi.width*2-511] = 160;
-		} else if (x==125) {
-          p[x*2+vi.width*2-512] = max(min(235, ((hist[x]*S1)>>16) + 16), 84);
-		  p[x*2+vi.width*2-511] = 16;
-		} else {
-          p[x*2+vi.width*2-512] = max(min(235, ((hist[x]*S2)>>16) + 16), 16);
-		  p[x*2+vi.width*2-511] = 128;
-		}
-	  }
-     p += dst->GetPitch();
+      p += dst->GetPitch();
 	}
   }
   return dst;
