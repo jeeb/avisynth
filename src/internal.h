@@ -46,8 +46,9 @@ extern const char _AVS_VERSTR[], _AVS_COPYRIGHT[];
 // Define user accessible keys in avisynth.h
 //
 enum {MC_ReturnVideoFrameBuffer =0xFFFF0001};
-enum {MC_PromoteVideoFrameBuffer=0xFFFF0002};
-enum {MC_RegisterCache          =0xFFFF0003};
+enum {MC_ManageVideoFrameBuffer =0xFFFF0002};
+enum {MC_PromoteVideoFrameBuffer=0xFFFF0003};
+enum {MC_RegisterCache          =0xFFFF0004};
 
 #include "core/avisynth.h"
 

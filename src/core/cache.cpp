@@ -408,6 +408,8 @@ PVideoFrame __stdcall Cache::GetFrame(int n, IScriptEnvironment* env)
 
   if (cache_limit/CACHE_SCALE_FACTOR > h_span)
 	env->ManageCache(MC_PromoteVideoFrameBuffer, result->vfb);
+  else
+	env->ManageCache(MC_ManageVideoFrameBuffer, result->vfb);
 
   if (!cvf) cvf=GetACachedVideoFrame(result, env);
 

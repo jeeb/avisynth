@@ -222,9 +222,9 @@ public:
   LinkedVideoFrameBuffer *prev, *next;
   bool returned;
   const int signature; // Used by ManageCache to ensure that the VideoFrameBuffer 
-                         // it casts is really a LinkedVideoFrameBuffer
-  LinkedVideoFrameBuffer(int size) : VideoFrameBuffer(size), signature(ident) { next=prev=this; }
-  LinkedVideoFrameBuffer() : signature(ident) { next=prev=this; }
+                       // it casts is really a LinkedVideoFrameBuffer
+  LinkedVideoFrameBuffer(int size) : VideoFrameBuffer(size), returned(true), signature(ident) { next=prev=this; }
+  LinkedVideoFrameBuffer() : returned(true), signature(ident) { next=prev=this; }
 };
 
 
@@ -912,17 +912,14 @@ ScriptEnvironment::ScriptEnvironment()
     GlobalMemoryStatus(&memstatus);
     // Minimum 16MB
     // else physical memory/4
-    // else 0.5 physical memory in excess of 256MB
-    // Maximum 1GB
-    if      (memstatus.dwAvailPhys    > 256*1024*1024)
-      memory_max = ((__int64)memstatus.dwAvailPhys >> 1) - 64*1024*1024;
-    else if (memstatus.dwAvailPhys    > 64*1024*1024)
+    // Maximum 0.5GB
+    if (memstatus.dwAvailPhys    > 64*1024*1024)
       memory_max = (__int64)memstatus.dwAvailPhys >> 2;
     else
       memory_max = 16*1024*1024;
 
-    if (memory_max <= 0 || memory_max > 1024*1024*1024) // More than 1GB
-      memory_max = 1024*1024*1024;
+    if (memory_max <= 0 || memory_max > 512*1024*1024) // More than 0.5GB
+      memory_max = 512*1024*1024;
 
     memory_used = 0i64;
     global_var_table = new VarTable(0, 0);
@@ -981,10 +978,17 @@ int ScriptEnvironment::SetMemoryMax(int mem) {
     MEMORYSTATUS memstatus;
     __int64 mem_limit;
 
-    GlobalMemoryStatus(&memstatus);
+    GlobalMemoryStatus(&memstatus); // Correct call for a 32Bit process. -Ex gives numbers we cannot use!
+
     memory_max = mem * 1048576i64;                          // mem as megabytes
     if (memory_max < memory_used) memory_max = memory_used; // can't be less than we already have
-    mem_limit = memory_used + (__int64)memstatus.dwAvailPhys - 5242880i64;
+
+	if (memstatus.dwAvailVirtual < memstatus.dwAvailPhys) // Check for big memory in Vista64
+	  mem_limit = (__int64)memstatus.dwAvailVirtual;
+	else
+      mem_limit = (__int64)memstatus.dwAvailPhys;
+
+    mem_limit += memory_used - 5242880i64;
     if (memory_max > mem_limit) memory_max = mem_limit;     // can't be more than 5Mb less than total
     if (memory_max < 4194304i64) memory_max = 4194304i64;	  // can't be less than 4Mb -- Tritical Jan 2006
   }
@@ -1338,6 +1342,20 @@ void* ScriptEnvironment::ManageCache(int key, void* data){
 
 	return (void*)1;
   }
+  // Allow the cache to designate a VideoFrameBuffer as being managed thus
+  // preventing it being reused as soon as it becomes free.
+  case MC_ManageVideoFrameBuffer:
+  {
+	LinkedVideoFrameBuffer *lvfb = (LinkedVideoFrameBuffer*)data;
+
+	// Check to make sure the vfb wasn't discarded and is really a LinkedVideoFrameBuffer.
+	if ((lvfb->data == 0) || (lvfb->signature != LinkedVideoFrameBuffer::ident)) break;
+
+	// Flag it as not returned, i.e. currently managed
+	lvfb->returned = false;
+
+	return (void*)1;
+  }
   // Allow the cache to designate a VideoFrameBuffer as cacheable thus
   // requesting it be moved to the head of the video_frame_buffers LRU list.
   case MC_PromoteVideoFrameBuffer:
@@ -1356,6 +1374,9 @@ void* ScriptEnvironment::ManageCache(int key, void* data){
 
 	// Move loved VideoFrameBuffer's to the head of the video_frame_buffers LRU list.
     Relink(&video_frame_buffers, lvfb, video_frame_buffers.next);
+
+	// Flag it as not returned, i.e. currently managed
+	lvfb->returned = false;
 
 	return (void*)1;
   }
@@ -1507,11 +1528,15 @@ VideoFrameBuffer* ScriptEnvironment::GetFrameBuffer(int size) {
     // Put that VFB on the lost souls chain
     if (result) Relink(lost_video_frame_buffers.prev, result, &lost_video_frame_buffers);
 
+	__int64 save_max = memory_max;
+
     // Set memory_max to 12.5% below memory_used 
     memory_max = max(4*1024*1024, memory_used - max(size, (memory_used/9)));
 
     // Retry the request
     result = GetFrameBuffer2(size);
+
+	memory_max = save_max;
 
     if (!result || !result->data) {
       // Damn!! Damn!! we are really screwed, winge!
@@ -1537,7 +1562,8 @@ VideoFrameBuffer* ScriptEnvironment::GetFrameBuffer(int size) {
   // Adjust unpromoted sublist
   unpromotedvfbs = result;
 #endif
-  result->returned = false;
+  // Flag it as returned, i.e. currently not managed
+  result->returned = true;
   return result;
 }
 
