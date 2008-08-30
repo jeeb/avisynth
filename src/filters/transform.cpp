@@ -312,7 +312,7 @@ AVSValue __cdecl Crop::Create(AVSValue args, void*, IScriptEnvironment* env)
  *****************************/
 
 AddBorders::AddBorders(int _left, int _top, int _right, int _bot, int _clr, PClip _child, IScriptEnvironment* env)
- : GenericVideoFilter(_child), left(_left), top(_top), right(_right), bot(_bot), clr(_clr), xsub(0), ysub(0)
+ : GenericVideoFilter(_child), left(max(0,_left)), top(max(0,_top)), right(max(0,_right)), bot(max(0,_bot)), clr(_clr), xsub(0), ysub(0)
 {
   if (vi.IsYUV()) {
     // YUY2 can only add even amounts
@@ -566,5 +566,9 @@ AVSValue __cdecl Create_CropBottom(AVSValue args, void*, IScriptEnvironment* env
 {
   PClip clip = args[0].AsClip();
   const VideoInfo& vi = clip->GetVideoInfo();
+
+  if (args[1].AsInt() >= vi.height) // Must be >= otherwise it is interpreted wrong by crop()
+    env->ThrowError("CropBottom: You cannot specify a crop that is greater than the picture height.");  
+
   return new Crop(0, 0, vi.width, vi.height - args[1].AsInt(), 0, clip, env);
 }
