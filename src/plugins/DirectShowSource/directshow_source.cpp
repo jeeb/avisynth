@@ -404,6 +404,12 @@ GetSample::GetSample(bool _load_audio, bool _load_video, unsigned _media, LOG* _
 
     dssRPT1(dssPROC, "SeekTo() seeking to new position %I64d\n", pos);
 
+	// If trying to seek past the known end of stream just exit.
+	if (end_of_stream && pos >= GetSampleStartTime()) {
+      dssRPT1(dssPROC, "SeekTo() End_of_stream last samples position %I64d\n", GetSampleStartTime());
+	  return S_OK;
+	}
+
 	seeking = true;
 
     IMediaControl* mc = NULL;
