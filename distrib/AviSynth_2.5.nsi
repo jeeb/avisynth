@@ -1,6 +1,6 @@
 !packhdr tempfile.exe "upx --best --q tempfile.exe"
 
-!DEFINE ISSUE 3
+!DEFINE ISSUE 4
 !DEFINE VERSION 2.5.8
 
 !DEFINE /date DATE "%y%m%d"
