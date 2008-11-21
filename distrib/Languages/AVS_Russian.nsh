@@ -38,6 +38,7 @@ LangString Japanese_Text            ${AvsLang} "Японская документация"
 LangString Polish_Text              ${AvsLang} "Польская документация"
 LangString Portugese_Text           ${AvsLang} "Португальская документация"
 LangString Russian_Text             ${AvsLang} "Русская документация"
+LangString Czech_Text               ${AvsLang} "Чешская документация"
 LangString SelectAssociation_Text   ${AvsLang} "Выберите ассоциации файлов"
 LangString Associate1_Text          ${AvsLang} "Ассоциировать AVS с Блокнотом (открыть)"
 LangString Associate2_Text          ${AvsLang} "Ассоциировать AVS с Media Player 6.4 (play)"
@@ -62,6 +63,7 @@ LangString Japanese_Bubble          ${AvsLang} "Устанавливает справку на японско
 LangString Polish_Bubble            ${AvsLang} "Устанавливает справку на польском"
 LangString Portugese_Bubble         ${AvsLang} "Устанавливает справку на португальском"
 LangString Russian_Bubble           ${AvsLang} "Устанавливает справку на русском"
+LangString Czech_Bubble             ${AvsLang} "Устанавливает справку на чешском"
 LangString SelectAssociation_Bubble ${AvsLang} "Задайте одну или несколько файловых ассоциаций в системе"
 LangString Associate1_Bubble        ${AvsLang} "Открывать AVS файлы прямо в Блокноте для редактирования"
 LangString Associate2_Bubble        ${AvsLang} "Воспроизводить AVS файлы в Media Player 6.4 (правая кнопка - play)"
@@ -94,6 +96,7 @@ LangString Start_Doc_Japanese       ${AvsLang} "Японская документация по AviSynt
 LangString Start_Doc_Polish         ${AvsLang} "Польская документация по AviSynth"
 LangString Start_Doc_Portuguese     ${AvsLang} "Португальская документация по AviSynth"
 LangString Start_Doc_Russian        ${AvsLang} "Русская документация по AviSynth"
+LangString Start_Doc_Czech          ${AvsLang} "Чешская документация по AviSynth"
 
 ; Translation and matching Return license buttons
 
