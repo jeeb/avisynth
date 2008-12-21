@@ -1995,7 +1995,7 @@ DirectShowSource::DirectShowSource(const char* filename, int _avg_time_per_frame
       env->ThrowError("DirectShowSource : The video Graph failed to restart after seeking. Status = 0x%x", hr);
 
     if (convert_fps) {
-      while (get_sample.GetSampleStartTime() <= sample_time || !currentFrame) {
+      while (get_sample.GetSampleStartTime() <= (sample_time+5000) || !currentFrame) { // Allow 0.5 millisecond roundup
         sampleStartTime = get_sample.GetSampleStartTime();
         cur_frame = int(sampleStartTime / get_sample.avg_time_per_frame); // Floor()
         currentFrame = get_sample.GetCurrentFrame(env, n, TrapTimeouts, timeout);
