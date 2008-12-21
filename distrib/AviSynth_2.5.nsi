@@ -1,6 +1,6 @@
 !packhdr tempfile.exe "upx --best --q tempfile.exe"
 
-!DEFINE ISSUE 4
+!DEFINE ISSUE 5
 !DEFINE VERSION 2.5.8
 
 !DEFINE /date DATE "%y%m%d"
@@ -373,6 +373,32 @@ Section /o  $(English_Text) English
 
 SectionEnd
 
+Section /o  $(Czech_Text) Czech
+  SectionIn 4
+  SetOutPath $INSTDIR\Docs
+  File "..\..\Docs\*.css"
+  SetOutPath $INSTDIR\Docs\Czech
+!echo " -- Supressed"
+!verbose push
+!verbose 2
+  File "..\..\Docs\czech\*.htm"
+  File "..\..\Docs\czech\gpl-cs.txt"
+  SetOutPath $INSTDIR\Docs\Czech\advancedtopics
+  File "..\..\Docs\czech\advancedtopics\*.htm"
+  SetOutPath $INSTDIR\Docs\Czech\corefilters
+  File "..\..\Docs\czech\corefilters\*.htm"
+  SetOutPath $INSTDIR\Docs\Czech\pictures\advancedtopics
+  File "..\..\Docs\czech\pictures\advancedtopics\*.*"
+  SetOutPath $INSTDIR\Docs\Czech\pictures\corefilters
+  File "..\..\Docs\czech\pictures\corefilters\*.*"
+!verbose pop
+
+  SetShellVarContext All
+  StrCmp $AdminInstall "No" +2
+  CreateShortCut "$SMPROGRAMS\AviSynth 2.5\$(Start_Doc_Czech).lnk" "$INSTDIR\Docs\Czech\index.htm"
+
+SectionEnd
+
 Section /o  $(German_Text) German
   SectionIn 4
   SetOutPath $INSTDIR\Docs
@@ -459,7 +485,7 @@ Section /o  $(Japanese_Text) Japanese
   File "..\..\Docs\english\advancedtopics\*.htm"
 
   SetOutPath $INSTDIR\Docs\Japanese\corefilters
-  File "..\..\Docs\japanese\corefilters\*.htm"  ; Overwrite with the translated versions
+  File "..\..\Docs\japanese\corefilters\*.htm"
 
   SetOutPath $INSTDIR\Docs\Japanese\externalfilters
   File "..\..\Docs\english\externalfilters\*.htm"
@@ -483,14 +509,14 @@ SectionEnd
 Section /o  $(Polish_Text) Polish
   SectionIn 4
   SetOutPath $INSTDIR\Docs\Polish
-  File "..\..\Docs\Polish\*.*"
+  File "..\..\Docs\polish\*.*"
   SetOutPath $INSTDIR\Docs\Polish\corefilters
 !echo " -- Supressed"
 !verbose push
 !verbose 2
-  File "..\..\Docs\Polish\corefilters\*.*"
+  File "..\..\Docs\polish\corefilters\*.*"
   SetOutPath $INSTDIR\Docs\Polish\externalfilters
-  File "..\..\Docs\Polish\externalfilters\*.*"
+  File "..\..\Docs\polish\externalfilters\*.*"
 !verbose pop
 
   SetShellVarContext All
@@ -643,6 +669,9 @@ Function .onInit
   Push $0
     SectionGetInstTypes ${English} $0
 
+    StrCmp $LANGUAGE ${LANG_Czech} 0 +2
+    SectionSetInstTypes ${Czech} $0
+
     StrCmp $LANGUAGE ${LANG_German} 0 +2
     SectionSetInstTypes ${German} $0
 
@@ -681,6 +710,7 @@ FunctionEnd
   !insertmacro MUI_DESCRIPTION_TEXT ${StandAlone}         $(StandAlone_Bubble)
   !insertmacro MUI_DESCRIPTION_TEXT ${Documentation}      $(Documentation_Bubble)
   !insertmacro MUI_DESCRIPTION_TEXT ${English}            $(English_Bubble)
+  !insertmacro MUI_DESCRIPTION_TEXT ${Czech}              $(Czech_Bubble)
   !insertmacro MUI_DESCRIPTION_TEXT ${German}             $(German_Bubble)
   !insertmacro MUI_DESCRIPTION_TEXT ${French}             $(French_Bubble)
   !insertmacro MUI_DESCRIPTION_TEXT ${Italian}            $(Italian_Bubble)
@@ -768,6 +798,16 @@ Ignore:
   RMDir  "$INSTDIR\Docs\English\pictures"
   Delete "$INSTDIR\Docs\English\*.*"
   RMDir  "$INSTDIR\Docs\English"
+
+  Delete "$INSTDIR\Docs\Czech\corefilters\*.*"
+  RMDir  "$INSTDIR\Docs\Czech\corefilters"
+  Delete "$INSTDIR\Docs\Czech\externalfilters\*.*"
+  RMDir  "$INSTDIR\Docs\Czech\externalfilters"
+  Delete "$INSTDIR\Docs\Czech\pictures\corefilters\*.*"
+  RMDir  "$INSTDIR\Docs\Czech\pictures\corefilters"
+  RMDir  "$INSTDIR\Docs\Czech\pictures"
+  Delete "$INSTDIR\Docs\Czech\*.*"
+  RMDir  "$INSTDIR\Docs\Czech"
 
   Delete "$INSTDIR\Docs\German\corefilters\*.*"
   RMDir  "$INSTDIR\Docs\German\corefilters"
