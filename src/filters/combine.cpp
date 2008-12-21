@@ -256,7 +256,7 @@ ShowFiveVersions::ShowFiveVersions(PClip* children, IScriptEnvironment* env)
       env->ThrowError("ShowFiveVersions: video attributes of all clips must match");
   }
 
-  vi.width *= 3;
+  vi.width  *= 3;
   vi.height *= 2;
 }
 
@@ -302,22 +302,22 @@ PVideoFrame __stdcall ShowFiveVersions::GetFrame(int n, IScriptEnvironment* env)
 	  const BYTE* srcpY = src->GetReadPtr(PLANAR_Y);
 	  const BYTE* srcpU = src->GetReadPtr(PLANAR_U);
 	  const BYTE* srcpV = src->GetReadPtr(PLANAR_V);
-	  const int src_pitchY = src->GetPitch(PLANAR_Y);
+	  const int src_pitchY  = src->GetPitch(PLANAR_Y);
 	  const int src_pitchUV = src->GetPitch(PLANAR_U);
-	  const int src_row_sizeY = src->GetRowSize(PLANAR_Y);
+	  const int src_row_sizeY  = src->GetRowSize(PLANAR_Y);
 	  const int src_row_sizeUV = src->GetRowSize(PLANAR_U);
 
 	  // staggered arrangement
-	  BYTE* dstp2 = dstp + (c>>1) * src_row_sizeY;
+	  BYTE* dstp2  = dstp  + (c>>1) * src_row_sizeY;
 	  BYTE* dstp2U = dstpU + (c>>1) * src_row_sizeUV;
 	  BYTE* dstp2V = dstpV + (c>>1) * src_row_sizeUV;
 	  if (c&1) {
-		dstp2 += (height * dst_pitch) + src_row_sizeY/6;
-		dstp2U += (heightUV * dst_pitchUV) + src_row_sizeUV/6;
-		dstp2V += (heightUV * dst_pitchUV) + src_row_sizeUV/6;
+		dstp2  += (height   * dst_pitch)   + src_row_sizeY /2;
+		dstp2U += (heightUV * dst_pitchUV) + src_row_sizeUV/2;
+		dstp2V += (heightUV * dst_pitchUV) + src_row_sizeUV/2;
 	  }
 
-	  BitBlt(dstp2, dst_pitch, srcpY, src_pitchY, src_row_sizeY, height);
+	  BitBlt(dstp2,  dst_pitch,   srcpY, src_pitchY,  src_row_sizeY,  height);
 	  BitBlt(dstp2U, dst_pitchUV, srcpU, src_pitchUV, src_row_sizeUV, heightUV);
 	  BitBlt(dstp2V, dst_pitchUV, srcpV, src_pitchUV, src_row_sizeUV, heightUV);
 	}
