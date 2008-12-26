@@ -7,7 +7,7 @@
 ;----------------------------------
 LangString AVS_Standard             ${AvsLang} "Стандартная"
 LangString AVS_Minimal              ${AvsLang} "Минимальная"
-LangString AVS_Standalone           ${AvsLang} "Частично портативная"
+LangString AVS_Standalone           ${AvsLang} "Только распаковка файлов"
 LangString AVS_Full                 ${AvsLang} "Полная"
 
 LangString FINISHPAGE_TEXT          ${AvsLang} "Посетите сайт AviSynth для новостей и поддержки"
@@ -50,8 +50,9 @@ LangString ExtraFiles2_Text         ${AvsLang} "Установить Avisynth.map"
 
 LangString Frameserving_Bubble      ${AvsLang} "Устанавливает базовые файлы для фреймсервера AviSynth"
 LangString SystemInstall_Bubble     ${AvsLang} "Устанавливает базовые файлы в системную папку (system32)"
-LangString StandAlone_Bubble        ${AvsLang} "Устанавливает базовые файлы в папку программы \
-                                                (нужна ручная настройка пути и ключей реестра!)"
+LangString StandAlone_Bubble        ${AvsLang} "Распаковывает базовые файлы в 'Program Files'. \
+                                                Нефункциональная! Но без прав Администратора. \
+                                                Для установки 'Только распаковка файлов'."
 
 LangString Documentation_Bubble     ${AvsLang} "Устанавливает справку. Пожалуйста выберите языки \
                                                 (не-английские могут быть устаревшими)"
