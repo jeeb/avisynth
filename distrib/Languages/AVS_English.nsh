@@ -7,7 +7,7 @@
 ;----------------------------------
 LangString AVS_Standard             ${AvsLang} "Standard"
 LangString AVS_Minimal              ${AvsLang} "Minimal"
-LangString AVS_Standalone           ${AvsLang} "Standalone Unpack Files"
+LangString AVS_Standalone           ${AvsLang} "Standalone, Unpack Files only"
 LangString AVS_Full                 ${AvsLang} "Full"
 
 LangString FINISHPAGE_TEXT          ${AvsLang} "Visit the AviSynth website for the latest news and support"
@@ -52,7 +52,7 @@ LangString Frameserving_Bubble      ${AvsLang} "Install the main files for frame
 LangString SystemInstall_Bubble     ${AvsLang} "Install the main files in the System directory"
 LangString StandAlone_Bubble        ${AvsLang} "Unpack all the files into the Product directory \
                                                 (Nonfunctional non-Admin unpack) \
-                                                (Must choose 'Standalone Unpack Files' type of install)"
+                                                (Must choose 'Standalone, Unpack Files only' type of install)"
 LangString Documentation_Bubble     ${AvsLang} "Install help. Please select languages \
                                                 (non-English may be out of date)"
 LangString English_Bubble           ${AvsLang} "Install English help"
