@@ -7,7 +7,7 @@
 ;----------------------------------
 LangString AVS_Standard             ${AvsLang} "•W€"
 LangString AVS_Minimal              ${AvsLang} "Å¬"
-LangString AVS_Standalone           ${AvsLang} "ƒXƒ^ƒ“ƒhƒAƒ[ƒ“"
+LangString AVS_Standalone           ${AvsLang} "ƒXƒ^ƒ“ƒhƒAƒ[ƒ“iƒtƒ@ƒCƒ‹“WŠJ‚Ì‚İj"
 LangString AVS_Full                 ${AvsLang} "ƒtƒ‹"
 
 LangString FINISHPAGE_TEXT          ${AvsLang} "ÅVƒjƒ…[ƒX‚ÆƒTƒ|[ƒg‚É‚Â‚¢‚Ä‚Í AviSynth Web ƒTƒCƒg‚ğ‚²——‚­‚¾‚³‚¢B"
@@ -49,14 +49,14 @@ LangString ExtraFiles1_Text         ${AvsLang} "Avisynth.lib ‚Æ Avisynth.exp ‚Ìƒ
 LangString ExtraFiles2_Text         ${AvsLang} "Avisynth.map ‚ÌƒCƒ“ƒXƒg[ƒ‹"
 
 LangString Frameserving_Bubble      ${AvsLang} "AviSynth Œo—R‚ÅƒtƒŒ[ƒ€ƒT[ƒrƒ“ƒO‚·‚é‚½‚ß‚Ìå—v‚Èƒtƒ@ƒCƒ‹‚ğƒCƒ“ƒXƒg[ƒ‹‚µ‚Ü‚·B"
-LangString SystemInstall_Bubble     ${AvsLang} "ƒVƒXƒeƒ€ƒfƒBƒŒƒNƒgƒŠ‚ÉƒCƒ“ƒXƒg[ƒ‹‚µ‚Ü‚·i’Êíj"
-LangString StandAlone_Bubble        ${AvsLang} "w’èæ‚ÌƒfƒBƒŒƒNƒgƒŠ‚ÉƒCƒ“ƒXƒg[ƒ‹‚µ‚Ü‚· \
-                                                i“®ì‚É‚ÍƒpƒX‚ÆƒŒƒWƒXƒgƒŠ‚Ìİ’è‚ª•K—vBƒXƒ^ƒ“ƒhƒAƒ[ƒ“‚Ì‚İj"
-
-LangString Documentation_Bubble     ${AvsLang} "ƒwƒ‹ƒv‚ğƒCƒ“ƒXƒg[ƒ‹‚µ‚Ü‚·BŒ¾Œê‚ğ‘I‘ğ‚µ‚Ä‚­‚¾‚³‚¢i‰pŒêˆÈŠO‚Í“à—e‚ªŒÃ‚¢‚©‚à‚µ‚ê‚Ü‚¹‚ñj"
-
+LangString SystemInstall_Bubble     ${AvsLang} "å—v‚Èƒtƒ@ƒCƒ‹‚ğƒVƒXƒeƒ€ƒfƒBƒŒƒNƒgƒŠ‚ÉƒCƒ“ƒXƒg[ƒ‹‚µ‚Ü‚·i’Êíj"
+LangString StandAlone_Bubble        ${AvsLang} "‚·‚×‚Ä‚Ìƒtƒ@ƒCƒ‹‚ğ»•iƒfƒBƒŒƒNƒgƒŠ‚É“WŠJ‚µ‚Ü‚·\
+                                                i‹@”\‚µ‚È‚¢A”ñŠÇ—ÒŒü‚¯‚Ì“WŠJj\
+                                                iƒCƒ“ƒXƒg[ƒ‹ƒ^ƒCƒvuƒXƒ^ƒ“ƒhƒAƒ[ƒ“iƒtƒ@ƒCƒ‹“WŠJ‚Ì‚İjv‚ğ‘I‘ğ‚·‚é•K—v‚ ‚èj"
+LangString Documentation_Bubble     ${AvsLang} "ƒwƒ‹ƒv‚ğƒCƒ“ƒXƒg[ƒ‹‚µ‚Ü‚·BŒ¾Œê‚ğ‘I‘ğ‚µ‚Ä‚­‚¾‚³‚¢\
+                                                i‰pŒêˆÈŠO‚Í“à—e‚ªŒÃ‚¢‚©‚à‚µ‚ê‚Ü‚¹‚ñj"
 LangString English_Bubble           ${AvsLang} "‰pŒê‚Ìƒwƒ‹ƒv‚ğƒCƒ“ƒXƒg[ƒ‹‚µ‚Ü‚·B"
-LangString Czech_Bubble             ${AvsLang} "ƒ`ƒFƒRŒê‚Ìƒwƒ‹ƒv‚ğƒCƒ“ƒXƒg[ƒ‹‚µ‚Ü‚·"
+LangString Czech_Bubble             ${AvsLang} "ƒ`ƒFƒRŒê‚Ìƒwƒ‹ƒv‚ğƒCƒ“ƒXƒg[ƒ‹‚µ‚Ü‚·B"
 LangString French_Bubble            ${AvsLang} "ƒtƒ‰ƒ“ƒXŒê‚Ìƒwƒ‹ƒv‚ğƒCƒ“ƒXƒg[ƒ‹‚µ‚Ü‚·B"
 LangString German_Bubble            ${AvsLang} "ƒhƒCƒcŒê‚Ìƒwƒ‹ƒv‚ğƒCƒ“ƒXƒg[ƒ‹‚µ‚Ü‚·B"
 LangString Italian_Bubble           ${AvsLang} "ƒCƒ^ƒŠƒAŒê‚Ìƒwƒ‹ƒv‚ğƒCƒ“ƒXƒg[ƒ‹‚µ‚Ü‚·B"
@@ -114,10 +114,8 @@ LangString AVS_ReturnBtn            ${AvsLang} $(^BackBtn) ; "Re&turn" ; $(^Next
 SetFont /LANG=${AvsLang} "MS Shell Dlg" 9 ; "MS UI Gothic" 9 ; 
 ;----------------------------------
 
-; LangString Czech_Text               ${AvsLang} "ƒ`ƒFƒRŒê"
 ; LangString Greek_Text               ${AvsLang} "ƒMƒŠƒVƒƒŒê"
 
-; LangString Czech_Bubble             ${AvsLang} "ƒ`ƒFƒRŒê‚Ìƒwƒ‹ƒv‚ğƒCƒ“ƒXƒg[ƒ‹‚µ‚Ü‚·"
 ; LangString Greek_Bubble             ${AvsLang} "ƒMƒŠƒVƒƒŒê‚Ìƒwƒ‹ƒv‚ğƒCƒ“ƒXƒg[ƒ‹‚µ‚Ü‚·"
 
 ; End of file
