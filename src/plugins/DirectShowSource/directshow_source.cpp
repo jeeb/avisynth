@@ -645,8 +645,27 @@ SeekExit:
   }
 
   HRESULT __stdcall GetSample::FindPin(LPCWSTR Id, IPin** ppPin) { // See QueryID
-    dssRPT1(dssCMD, "GetSample::FindPin(%ls, ppPin) E_NOTIMPL\n", Id);
-    return E_NOTIMPL;
+    if (!Id) {
+      dssRPT0(dssERROR, "GetSample::FindPin(Id, ppPin) ** E_POINTER **\n");
+      return E_POINTER;
+    }
+
+    if (!ppPin) {
+      dssRPT1(dssERROR, "GetSample::FindPin(%ls, ppPin) ** E_POINTER **\n", Id);
+      return E_POINTER;
+    }
+
+    if (lstrcmpW(L"GetSample01", Id)) {
+      dssRPT1(dssERROR, "GetSample::FindPin(%ls, ppPin) ** VFW_E_NOT_FOUND **\n", Id);
+      *ppPin = NULL;
+      return VFW_E_NOT_FOUND;
+    }
+
+    dssRPT1(dssCMD, "GetSample::FindPin(%ls, ppPin)\n", Id);
+
+    *ppPin = static_cast<IPin*>(this);
+
+    return S_OK;
   }
 
   HRESULT __stdcall GetSample::QueryFilterInfo(FILTER_INFO* pInfo) {
