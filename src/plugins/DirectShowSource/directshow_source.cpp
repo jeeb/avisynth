@@ -665,6 +665,8 @@ SeekExit:
 
     *ppPin = static_cast<IPin*>(this);
 
+    AddRef();
+
     return S_OK;
   }
 
