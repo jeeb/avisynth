@@ -228,6 +228,10 @@ SOURCE=.\core\info.h
 # End Source File
 # Begin Source File
 
+SOURCE=.\core\interface.cpp
+# End Source File
+# Begin Source File
+
 SOURCE=.\internal.h
 # End Source File
 # Begin Source File
