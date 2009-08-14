@@ -85,43 +85,38 @@ long __declspec(naked) CPUCheckForExtensions() {
 		or		ebp,ebx			//set bit 2 if MMX exists
 
 		mov		ebx,edx
-		and		edx,02000000h	//SSE is bit 25
-		shr		edx,25
-		neg		edx
-		and		edx,00000018h	//set bits 3 and 4 if SSE exists
-		or		ebp,edx
+		and		ebx,02000000h	//SSE is bit 25
+		shr		ebx,25
+		neg		ebx
+		and		ebx,00000018h	//set bits 3 and 4 if SSE exists
+		or		ebp,ebx
 
+		mov		ebx,edx
 		and		ebx,04000000h	//SSE2 is bit 26
 		shr		ebx,21
-		and		ebx,00000020h	//set bit 5
-		or		ebp,ebx
+		or		ebp,ebx			//set bit 5
+
+		//look for SSE3, SSSE3, SSE4.1 , SSE4.2
 
 		mov		ebx,ecx
-		and		ebx,1 	//SSE3 is bit 0
+		and		ebx,00000001h	//SSE3 is bit 0
 		shl		ebx,8
-		and		ebx,00000100h	//set bit 8
-		or		ebp,ebx
+		or		ebp,ebx			//set bit 8
 
 		mov		ebx,ecx
-		shr		ebx,8		//SSSE3 is bit 8
-		and		ebx,1 	
-		shl		ebx,9
-		and		ebx,00000200h	//set bit 9
-		or		ebp,ebx
+		and		ebx,00000200h	//SSSE3 is bit 9
+//		sh?		ebx,0
+		or		ebp,ebx			//set bit 9
 
 		mov		ebx,ecx
-		shr		ebx,18		//SSE4 is bit 18
-		and		ebx,1 	
-		shl		ebx,10
-		and		ebx,00000400h	//set bit 10
-		or		ebp,ebx
+		and		ebx,00080000h	//SSE4.1 is bit 19
+		shr		ebx,9
+		or		ebp,ebx			//set bit 10
 
 		mov		ebx,ecx
-		shr		ebx,19		//SSE4.2 is bit 19
-		and		ebx,1 	
-		shl		ebx,11
-		and		ebx,00000800h	//set bit 11
-		or		ebp,ebx
+		and		ebx,00100000h	//SSE4.2 is bit 20
+		shr		ebx,9
+		or		ebp,ebx			//set bit 11
 
 		//check for vendor feature register (K6/Athlon).
 
