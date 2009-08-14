@@ -70,6 +70,8 @@ Histogram::Histogram(PClip _child, Mode _mode, IScriptEnvironment* env)
   if (mode == ModeLevels) {
     if (!vi.IsPlanar())
       env->ThrowError("Histogram: Levels mode only available in PLANAR.");
+    if (vi.IsY8())
+      env->ThrowError("Histogram: Levels mode not available in Y8.");
     vi.width += 256;
     vi.height = max(256,vi.height);
   }
@@ -77,6 +79,8 @@ Histogram::Histogram(PClip _child, Mode _mode, IScriptEnvironment* env)
   if (mode == ModeColor) {
     if (!vi.IsPlanar())
       env->ThrowError("Histogram: Color mode only available in PLANAR.");
+    if (vi.IsY8())
+      env->ThrowError("Histogram: Color mode not available in Y8.");
     vi.width += 256;
     vi.height = max(256,vi.height);
   }
@@ -84,6 +88,8 @@ Histogram::Histogram(PClip _child, Mode _mode, IScriptEnvironment* env)
   if (mode == ModeColor2) {
     if (!vi.IsPlanar())
       env->ThrowError("Histogram: Color2 mode only available in PLANAR.");
+    if (vi.IsY8())
+      env->ThrowError("Histogram: Color2 mode not available in Y8.");
 
     vi.width += 256;
     vi.height = max(256,vi.height);
@@ -113,9 +119,9 @@ Histogram::Histogram(PClip _child, Mode _mode, IScriptEnvironment* env)
       vi.height = max(512, vi.height);
       vi.width = max(512, vi.width);
       if(!vi.IsPlanar())
-        env->ThrowError("Histogram: StereoOverlay must be YV12");
+        env->ThrowError("Histogram: StereoOverlay requires a Planar video format (YV12, YV24, etc).");
     } else {
-      vi.pixel_type = VideoInfo::CS_YV12;
+      vi.pixel_type = VideoInfo::CS_Y8; // ::FIXME:: This changes the expected behaviour! i.e. was YV12
       vi.height = 512;
       vi.width = 512;
     }
@@ -131,6 +137,8 @@ Histogram::Histogram(PClip _child, Mode _mode, IScriptEnvironment* env)
     child->SetCacheHints(CACHE_AUDIO,4096*1024);
     if (!vi.IsPlanar())
       env->ThrowError("Histogram: Audiolevels mode only available in planar YUV.");
+    if (vi.IsY8())
+      env->ThrowError("Histogram: AudioLevels mode not available in Y8.");
 
     aud_clip = ConvertAudio::Create(child,SAMPLE_INT16,SAMPLE_INT16);
 
@@ -213,8 +221,8 @@ PVideoFrame Histogram::DrawModeAudioLevels(int n, IScriptEnvironment* env) {
   BYTE* srcpU = src->GetWritePtr(PLANAR_U);
   BYTE* srcpV = src->GetWritePtr(PLANAR_V);
   int UVpitch = src->GetPitch(PLANAR_U);
-  int xSubS = 1; // vi.GetPlaneWidthSubsampling(PLANAR_U);
-  int ySubS = 1; // vi.GetPlaneHeightSubsampling(PLANAR_U);
+  int xSubS = vi.GetPlaneWidthSubsampling(PLANAR_U);
+  int ySubS = vi.GetPlaneHeightSubsampling(PLANAR_U);
 
   // Draw Dotted lines
   const int lines = 16;  // Line every 6dB  (96/6)
@@ -407,12 +415,6 @@ PVideoFrame Histogram::DrawModeStereo(int n, IScriptEnvironment* env) {
   for (int y = 0; y < 512;y+=16)
     srcp[y*p+256] = (srcp[y*p+256]>127) ? 16 : 235 ;
 
-  srcp = src->GetWritePtr(PLANAR_U);
-  imgSize = src->GetHeight(PLANAR_U) * src->GetPitch(PLANAR_U);
-  memset(srcp, 128, imgSize);
-  srcp = src->GetWritePtr(PLANAR_V);
-  memset(srcp, 128, imgSize);
-
   delete[] samples;
   return src;
 }
@@ -475,8 +477,8 @@ PVideoFrame Histogram::DrawModeColor2(int n, IScriptEnvironment* env) {
     unsigned char* pdstbV = dst->GetWritePtr(PLANAR_V);
     pdstb += src->GetRowSize(PLANAR_Y);
 
-    int swidth = 1; // vi.GetPlaneWidthSubsampling(PLANAR_U);
-    int sheight = 1; // vi.GetPlaneHeightSubsampling(PLANAR_U);
+    int swidth = vi.GetPlaneWidthSubsampling(PLANAR_U);
+    int sheight = vi.GetPlaneHeightSubsampling(PLANAR_U);
 
     int p = dst->GetPitch(PLANAR_Y);
     int p2 = dst->GetPitch(PLANAR_U);
@@ -687,8 +689,8 @@ PVideoFrame Histogram::DrawModeColor(int n, IScriptEnvironment* env) {
     pdstb = dst->GetWritePtr(PLANAR_U);
     pdstb += src->GetRowSize(PLANAR_U);
 
-	int swidth = 1; // vi.GetPlaneWidthSubsampling(PLANAR_U);
-	int sheight = 1; // vi.GetPlaneHeightSubsampling(PLANAR_U);
+	int swidth = vi.GetPlaneWidthSubsampling(PLANAR_U);
+	int sheight = vi.GetPlaneHeightSubsampling(PLANAR_U);
 
     // Erase all
     for (y=(256>>sheight); y<dst->GetHeight(PLANAR_U); y++) {
@@ -800,7 +802,7 @@ PVideoFrame Histogram::DrawModeLevels(int n, IScriptEnvironment* env) {
       maxval = max(histY[i], maxval);
     }
 
-    float scale = 64.0f / maxval;
+    float scale = float(64.0 / maxval);
 
     for (int x=0;x<256;x++) {
       float scaled_h = (float)histY[x] * scale;
@@ -819,7 +821,7 @@ PVideoFrame Histogram::DrawModeLevels(int n, IScriptEnvironment* env) {
       maxval = max(histU[i], maxval);
     }
 
-    scale = 64.0f / maxval;
+    scale = float(64.0 / maxval);
 
     for (x=0;x<256;x++) {
       float scaled_h = (float)histU[x] * scale;
@@ -838,7 +840,7 @@ PVideoFrame Histogram::DrawModeLevels(int n, IScriptEnvironment* env) {
       maxval = max(histV[i], maxval);
     }
 
-    scale = 64.0f / maxval;
+    scale = float(64.0 / maxval);
 
     for (x=0;x<256;x++) {
       float scaled_h = (float)histV[x] * scale;
@@ -858,8 +860,8 @@ PVideoFrame Histogram::DrawModeLevels(int n, IScriptEnvironment* env) {
 
     // Clear chroma
     int dstPitchUV = dst->GetPitch(PLANAR_U);
-	int swidth = 1; // vi.GetPlaneWidthSubsampling(PLANAR_U);
-	int sheight = 1; // vi.GetPlaneHeightSubsampling(PLANAR_U);
+	int swidth = vi.GetPlaneWidthSubsampling(PLANAR_U);
+	int sheight = vi.GetPlaneHeightSubsampling(PLANAR_U);
 
     for (y=0; y<dst->GetHeight(PLANAR_U); y++) {
       memset(&pdstbU[y*dstPitchUV], 128, 256>>swidth);
@@ -947,7 +949,7 @@ PVideoFrame Histogram::DrawModeClassic(int n, IScriptEnvironment* env)
 
 	// chroma
     if (dst->GetPitch(PLANAR_U)) {
-      const int subs = 1; // vi.GetPlaneWidthSubsampling(PLANAR_U);
+      const int subs = vi.GetPlaneWidthSubsampling(PLANAR_U);
       const int fact = 1<<subs;
 
       BYTE* p2 = dst->GetWritePtr(PLANAR_U) + (w >> subs);

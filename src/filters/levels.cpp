@@ -50,6 +50,7 @@ AVSFunction Levels_filters[] = {
   { "Levels", "cifiii[coring]b", Levels::Create },        // src_low, gamma, src_high, dst_low, dst_high 
   { "RGBAdjust", "c[r]f[g]f[b]f[a]f[rb]f[gb]f[bb]f[ab]f[rg]f[gg]f[bg]f[ag]f[analyze]b", RGBAdjust::Create },
   { "Tweak", "c[hue]f[sat]f[bright]f[cont]f[coring]b[sse]b[startHue]f[endHue]f[maxSat]f[minSat]f[interp]f", Tweak::Create },
+  { "MaskHS", "c[startHue]f[endHue]f[maxSat]f[minSat]f[coring]b", MaskHS::Create },
   { "Limiter", "c[min_luma]i[max_luma]i[min_chroma]i[max_chroma]i[show]s", Limiter::Create },
   { 0 }
 };
@@ -411,6 +412,11 @@ Tweak::Tweak( PClip _child, double _hue, double _sat, double _bright, double _co
     if (sse && !(env->GetCPUFlags() & CPUF_INTEGER_SSE))
         env->ThrowError("Tweak: SSE option needs an iSSE capable processor");
 
+    if (vi.IsY8()) {
+        if (!(_hue == 0.0 && _sat == 1.0 && allPixels))
+        env->ThrowError("Tweak: bright and cont are the only options available for Y8.");
+    }
+
     if (startHue < 0.0 || startHue >= 360.0)
           env->ThrowError("Tweak: startHue must be greater than or equal to 0.0 and less than 360.0");
 
@@ -628,6 +634,170 @@ x_loop:
 		emms
 		ret
 	};
+}
+
+
+/**********************
+******   MaskHS   *****
+**********************/
+
+MaskHS::MaskHS( PClip _child, double startHue, double endHue, double _maxSat, double _minSat, bool coring, 
+                IScriptEnvironment* env ) 
+  : GenericVideoFilter(_child)
+{
+  try {  // HIDE DAMN SEH COMPILER BUG!!!
+    if (vi.IsRGB())
+          env->ThrowError("MaskHS: YUV data only (no RGB)");
+
+    if (vi.IsY8()) {
+        env->ThrowError("MaskHS: clip must contain chroma.");
+    }
+
+    if (startHue < 0.0 || startHue >= 360.0)
+          env->ThrowError("MaskHS: startHue must be greater than or equal to 0.0 and less than 360.0");
+
+    if (endHue <= 0.0 || endHue > 360.0)
+          env->ThrowError("MaskHS: endHue must be greater than 0.0 and less than or equal to 360.0");
+
+    if (_minSat >= _maxSat)
+          env->ThrowError("MaskHS: MinSat must be less than MaxSat");
+
+    if (_minSat < 0.0 || _minSat >= 150.0)
+          env->ThrowError("MaskHS: minSat must be greater than or equal to 0 and less than 150.");
+
+    if (_maxSat <= 0.0 || _maxSat > 150.0)
+          env->ThrowError("MaskHS: maxSat must be greater than 0 and less than or equal to 150.");
+
+
+    const int maxY = coring ? 235 : 255;
+    const int minY = coring ? 16 : 0;
+
+    // 100% equals sat=119 (= maximal saturation of valid RGB (R=255,G=B=0)
+    // 150% (=180) - 100% (=119) overshoot
+    const double minSat = 1.19 * _minSat;
+    const double maxSat = 1.19 * _maxSat;
+
+    // apply mask
+    for (int u = 0; u < 256; u++) {
+      const int destu = u-128;
+      for (int v = 0; v < 256; v++) {
+        const int destv = v-128;
+        int iSat = 0; // won't be used in MaskHS; interpolation is skipped since p==0:
+        if (ProcessPixel(destv, destu, startHue, endHue, maxSat, minSat, 0.0, iSat)) {
+          mapY[(u<<8)|v] = maxY;
+        } else {
+          mapY[(u<<8)|v] = minY;
+        }
+      }
+    }
+// #define MaskPointResizing
+#ifndef MaskPointResizing
+    vi.width  >>= vi.GetPlaneWidthSubsampling(PLANAR_U);
+    vi.height >>= vi.GetPlaneHeightSubsampling(PLANAR_U);
+#endif
+    vi.pixel_type = VideoInfo::CS_Y8;
+  }
+  catch (...) { throw; }
+}
+
+
+
+PVideoFrame __stdcall MaskHS::GetFrame(int n, IScriptEnvironment* env)
+{
+	PVideoFrame src = child->GetFrame(n, env);
+	PVideoFrame dst = env->NewVideoFrame(vi);
+
+	unsigned char* dstp = dst->GetWritePtr();
+	int dst_pitch = dst->GetPitch();
+
+	// show mask
+	if (child->GetVideoInfo().IsYUY2()) {
+		const unsigned char* srcp = src->GetReadPtr();
+		const int src_pitch = src->GetPitch();
+		const int height = src->GetHeight();
+
+#ifndef MaskPointResizing
+		const int row_size = src->GetRowSize() >> 2;
+
+		for (int y = 0; y < height; y++) {
+			for (int x=0; x < row_size; x++) {
+				dstp[x] = mapY[( (srcp[x*4+1])<<8 ) | srcp[x*4+3]];
+			}
+			srcp += src_pitch;
+			dstp += dst_pitch;
+		}
+#else
+		const int row_size = src->GetRowSize();
+
+		for (int y = 0; y < height; y++) {
+			for (int xs=0, xd=0; xs < row_size; xs+=4, xd+=2) {
+				const BYTE mapped = mapY[( (srcp[xs+1])<<8 ) | srcp[xs+3]];
+				dstp[xd]   = mapped;
+				dstp[xd+1] = mapped;
+			}
+			srcp += src_pitch;
+			dstp += dst_pitch;
+		}
+#endif
+	} else if (child->GetVideoInfo().IsPlanar()) {
+		const int srcu_pitch = src->GetPitch(PLANAR_U);
+		const unsigned char* srcpu = src->GetReadPtr(PLANAR_U);
+		const unsigned char* srcpv = src->GetReadPtr(PLANAR_V);
+		const int row_sizeu = src->GetRowSize(PLANAR_U);
+		const int heightu = src->GetHeight(PLANAR_U);
+
+#ifndef MaskPointResizing
+		for (int y=0; y<heightu; ++y) {
+			for (int x=0; x<row_sizeu; ++x) {
+				dstp[x] = mapY[( (srcpu[x])<<8 ) | srcpv[x]];
+			}
+			dstp  += dst_pitch;
+			srcpu += srcu_pitch;
+			srcpv += srcu_pitch;
+		}
+#else
+		const int swidth = child->GetVideoInfo().GetPlaneWidthSubsampling(PLANAR_U);
+		const int sheight = child->GetVideoInfo().GetPlaneHeightSubsampling(PLANAR_U);
+		const int sw = 1<<swidth;
+		const int sh = 1<<sheight;
+
+		const int dpitch = dst_pitch << sheight;
+		for (int y=0; y<heightu; ++y) {
+			for (int x=0; x<row_sizeu; ++x) {
+				const BYTE mapped = mapY[( (srcpu[x])<<8 ) | srcpv[x]];
+				const int sx = x<<swidth;
+
+				for (int lumv=0; lumv<sh; ++lumv) {
+					const int sy = lumv*dst_pitch+sx;
+
+					for (int lumh=0; lumh<sw; ++lumh) {
+						dstp[sy+lumh] = mapped;
+					}
+				}
+			}
+			dstp  += dpitch;
+			srcpu += srcu_pitch;
+			srcpv += srcu_pitch;
+		}
+#endif
+	}
+	return dst;
+}
+
+
+
+AVSValue __cdecl MaskHS::Create(AVSValue args, void* user_data, IScriptEnvironment* env)
+{
+	try {	// HIDE DAMN SEH COMPILER BUG!!!
+	return new MaskHS(args[0].AsClip(),
+					  args[1].AsFloat(0.0),      // startHue
+					  args[2].AsFloat(360.0),    // endHue
+					  args[3].AsFloat(150.0),    // maxSat
+					  args[4].AsFloat(0.0),      // minSat
+					  args[5].AsBool(false),     // coring
+					  env);
+	}
+	catch (...) { throw; }
 }
 
 

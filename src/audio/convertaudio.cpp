@@ -342,7 +342,7 @@ void __stdcall ConvertAudio::GetAudio(void* buf, __int64 start, __int64 count, I
 
 /* SAMPLE_INT16 <-> SAMPLE_INT32
 
- * S32 = (S16 << 16) + (S16 + 32768)
+ * S32 = (S16 << 16) + (unsigned short)(S16 + 32768)
  *
  *       0x7fff -> 0x7fffffff
  *       0x8000 -> 0x80000000

@@ -338,14 +338,12 @@ AVSValue __cdecl ConvertToYUY2::Create(AVSValue args, void*, IScriptEnvironment*
   PClip clip = args[0].AsClip();
   if (clip->GetVideoInfo().IsYUY2())
     return clip;
-/* 2.6
   if (!clip->GetVideoInfo().IsYV12() && clip->GetVideoInfo().IsPlanar())  { // We have no direct conversions. Go to YV16.
     AVSValue new_args[3] = { clip, args[1].AsBool(false), args[2].AsString("rec601") };
     clip = ConvertToPlanarGeneric::CreateYV16(AVSValue(new_args, 3), NULL,  env).AsClip();
   }
   if (clip->GetVideoInfo().IsYV16())
     return new ConvertYV16ToYUY2(clip,  env);
-*/
   bool i=args[1].AsBool(false);
   return new ConvertToYUY2(clip, false, i, args[2].AsString(0), env);
 }
@@ -364,7 +362,7 @@ AVSValue __cdecl ConvertToYUY2::Create(AVSValue args, void*, IScriptEnvironment*
 ConvertBackToYUY2::ConvertBackToYUY2(PClip _child, const char *matrix, IScriptEnvironment* env)
   : ConvertToYUY2(_child, true, false, matrix, env)
 {
-  if (!_child->GetVideoInfo().IsRGB()) // 2.6 ( && !_child->GetVideoInfo().IsYV24())
+  if (!_child->GetVideoInfo().IsRGB() && !_child->GetVideoInfo().IsYV24())
     env->ThrowError("ConvertBackToYUY2: Use ConvertToYUY2 to convert non-RGB material to YUY2.");
 }
 
@@ -415,9 +413,8 @@ PVideoFrame __stdcall ConvertBackToYUY2::GetFrame(int n, IScriptEnvironment* env
 {
   PVideoFrame src = child->GetFrame(n, env);
 
-/* 2.6
   if ((src_cs&VideoInfo::CS_YV24)==VideoInfo::CS_YV24) {
-    PVideoFrame dst = env->NewVideoFrame(vi, 16);
+    PVideoFrame dst = env->NewVideoFrame(vi, 16); // YUY2 8 pixel aligned
     BYTE* dstp = dst->GetWritePtr();
 
     const BYTE* srcY = src->GetReadPtr(PLANAR_Y);
@@ -430,6 +427,7 @@ PVideoFrame __stdcall ConvertBackToYUY2::GetFrame(int n, IScriptEnvironment* env
       mmxYV24toYUY2(srcY, srcU, srcV, dstp,
                     src->GetPitch(PLANAR_Y), src->GetPitch(PLANAR_U), dst->GetPitch(),
                     awidth, vi.height);
+      return dst;
     }
 
     for (int y=0; y<vi.height; y++) {
@@ -446,7 +444,6 @@ PVideoFrame __stdcall ConvertBackToYUY2::GetFrame(int n, IScriptEnvironment* env
     }
     return dst;
   }
-*/
 
   PVideoFrame dst = env->NewVideoFrame(vi);
   BYTE* yuv = dst->GetWritePtr();

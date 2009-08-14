@@ -91,6 +91,12 @@ PVideoFrame FlipVertical::GetFrame(int n, IScriptEnvironment* env) {
   return dst;
 }
 
+/*
+bool FlipVertical::GetParity(int n) 
+{ 
+  return !child->GetParity(n);
+}
+*/
 
 AVSValue __cdecl FlipVertical::Create(AVSValue args, void*, IScriptEnvironment* env) 
 {
@@ -223,19 +229,22 @@ Crop::Crop(int _left, int _top, int _width, int _height, int _align, PClip _chil
   if (_height<=0)
     env->ThrowError("Crop: Destination height is 0 or less.");
   if (vi.IsYUV()) {
-    // YUY2 can only crop to even pixel boundaries horizontally
-    if (_left&1)
-      env->ThrowError("Crop: YUV images can only be cropped by even numbers (left side).");
-    if (_width&1)
-      env->ThrowError("Crop: YUV images can only be cropped by even numbers (right side).");
-    if (vi.IsYV12()) {
-      xsub=1;
-      ysub=1;
-      if (_top&1)
-        env->ThrowError("Crop: YV12 images can only be cropped by even numbers (top).");
-      if (_height&1)
-        env->ThrowError("Crop: YV12 images can only be cropped by even numbers (bottom).");
+    if (!vi.IsY8()) {
+      xsub=vi.GetPlaneWidthSubsampling(PLANAR_U);
+      ysub=vi.GetPlaneHeightSubsampling(PLANAR_U);
     }
+    const int xmask = (1 << xsub) - 1;
+    const int ymask = (1 << ysub) - 1;
+
+    // YUY2, etc, ... can only crop to even pixel boundaries horizontally
+    if (_left   & xmask)
+      env->ThrowError("Crop: YUV image can only be cropped by Mod %d (left side).", xmask+1);
+    if (_width  & xmask)
+      env->ThrowError("Crop: YUV image can only be cropped by Mod %d (right side).", xmask+1);
+    if (_top    & ymask)
+      env->ThrowError("Crop: YUV image can only be cropped by Mod %d (top).", ymask+1);
+    if (_height & ymask)
+      env->ThrowError("Crop: YUV image can only be cropped by Mod %d (bottom).", ymask+1);
   } else {
     // RGB is upside-down
     _top = vi.height - _height - _top;
@@ -315,16 +324,24 @@ AddBorders::AddBorders(int _left, int _top, int _right, int _bot, int _clr, PCli
  : GenericVideoFilter(_child), left(max(0,_left)), top(max(0,_top)), right(max(0,_right)), bot(max(0,_bot)), clr(_clr), xsub(0), ysub(0)
 {
   if (vi.IsYUV()) {
-    // YUY2 can only add even amounts
-    left = left & -2;
-    right = (right+1) & -2;
-    if (vi.IsYV12()) {
-      xsub=1;
-      ysub=1;
-      top=top& -2;
-      bot=(bot+1)& -2;
+    if (!vi.IsY8()) {
+      xsub=vi.GetPlaneWidthSubsampling(PLANAR_U);
+      ysub=vi.GetPlaneHeightSubsampling(PLANAR_U);
     }
 
+    const int xmask = (1 << xsub) - 1;
+    const int ymask = (1 << ysub) - 1;
+
+    // YUY2, etc, ... can only add even amounts
+    if (_left  & xmask)
+      env->ThrowError("AddBorders: YUV image can only add by Mod %d (left side).", xmask+1);
+    if (_right & xmask)
+      env->ThrowError("AddBorders: YUV image can only add by Mod %d (right side).", xmask+1);
+
+    if (_top   & ymask)
+      env->ThrowError("AddBorders: YUV image can only add by Mod %d (top).", ymask+1);
+    if (_bot   & ymask)
+      env->ThrowError("AddBorders: YUV image can only add by Mod %d (bottom).", ymask+1);
   } else {
     // RGB is upside-down
     int t = top; top = bot; bot = t;
@@ -553,11 +570,29 @@ AVSValue __cdecl Create_Letterbox(AVSValue args, void*, IScriptEnvironment* env)
     env->ThrowError("LetterBox: You cannot specify letterboxing that is bigger than the picture (height).");  
   if (right+left>=vi.width) // Must be >= otherwise it is interpreted wrong by crop()
     env->ThrowError("LetterBox: You cannot specify letterboxing that is bigger than the picture (width).");
-  if (vi.IsYUY2() && (left&1))
-    env->ThrowError("LetterBox: Width must be divideable with 2 (Left side)");
-  if (vi.IsYUY2() && (right&1))
-    env->ThrowError("LetterBox: Width must be divideable with 2 (Right side)");
 
+  if (vi.IsYUV()) {
+    int xsub = 0;
+    int ysub = 0;
+
+    if (!vi.IsY8()) {
+      xsub=vi.GetPlaneWidthSubsampling(PLANAR_U);
+      ysub=vi.GetPlaneHeightSubsampling(PLANAR_U);
+    }
+    const int xmask = (1 << xsub) - 1;
+    const int ymask = (1 << ysub) - 1;
+
+    // YUY2, etc, ... can only operate to even pixel boundaries
+    if (left  & xmask)
+      env->ThrowError("LetterBox: YUV images width must be divideable by %d (left side).", xmask+1);
+    if (right & xmask)
+      env->ThrowError("LetterBox: YUV images width must be divideable by %d (right side).", xmask+1);
+
+    if (top   & ymask)
+      env->ThrowError("LetterBox: YUV images height must be divideable by %d (top).", ymask+1);
+    if (bot   & ymask)
+      env->ThrowError("LetterBox: YUV images height must be divideable by %d (bottom).", ymask+1);
+  }
   return new AddBorders(left, top, right, bot, color, new Crop(left, top, vi.width-left-right, vi.height-top-bot, 0, clip, env), env);
 }
 
@@ -566,9 +601,5 @@ AVSValue __cdecl Create_CropBottom(AVSValue args, void*, IScriptEnvironment* env
 {
   PClip clip = args[0].AsClip();
   const VideoInfo& vi = clip->GetVideoInfo();
-
-  if (args[1].AsInt() >= vi.height) // Must be >= otherwise it is interpreted wrong by crop()
-    env->ThrowError("CropBottom: You cannot specify a crop that is greater than the picture height.");  
-
   return new Crop(0, 0, vi.width, vi.height - args[1].AsInt(), 0, clip, env);
 }

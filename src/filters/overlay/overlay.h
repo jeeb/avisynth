@@ -82,6 +82,7 @@ private:
   int op_offset;
   int con_x_offset;
   int con_y_offset;
+  int inputCS;
 };
 
 

@@ -945,7 +945,6 @@ STDMETHODIMP_(LONG) CAVIStreamSynth::Info(AVISTREAMINFOW *psi, LONG lSize) {
         asi.fccHandler = '2YUY';
       else if (vi->IsYV12())
         asi.fccHandler = '21VY'; 
-/* For 2.6
       else if (vi->IsY8())
         asi.fccHandler = '008Y'; 
       else if (vi->IsYV24())
@@ -954,7 +953,6 @@ STDMETHODIMP_(LONG) CAVIStreamSynth::Info(AVISTREAMINFOW *psi, LONG lSize) {
         asi.fccHandler = '61VY'; 
       else if (vi->IsYV411()) 
         asi.fccHandler = 'B14Y'; 
-*/
       else {
         _ASSERT(FALSE);
       }
@@ -1374,7 +1372,6 @@ STDMETHODIMP CAVIStreamSynth::ReadFormat(LONG lPos, LPVOID lpFormat, LONG *lpcbF
         bi.biCompression = '2YUY';
       else if (vi->IsYV12())
         bi.biCompression = '21VY';
-/* For 2.6
       else if (vi->IsY8())
         bi.biCompression = '008Y'; 
       else if (vi->IsYV24())
@@ -1383,7 +1380,6 @@ STDMETHODIMP CAVIStreamSynth::ReadFormat(LONG lPos, LPVOID lpFormat, LONG *lpcbF
         bi.biCompression = '61VY'; 
       else if (vi->IsYV411()) 
         bi.biCompression = 'B14Y'; 
-*/
       else {
         _ASSERT(FALSE);
       }

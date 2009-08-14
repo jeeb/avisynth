@@ -41,6 +41,8 @@
 
 #include "../internal.h"
 #include "turnfunc.h"
+#include "resample.h"
+#include "planeswap.h"
 
 
 class Turn : public GenericVideoFilter {
@@ -58,9 +60,12 @@ void (*TurnPlanFunc) (const unsigned char *srcp_y, unsigned char *dstp_y,
 				  const int src_pitch_v, const int direction);
 
 	int			direction;
+	PClip		Usource;
+	PClip		Vsource;
 
 public:
-    Turn(PClip _child, int _direction, IScriptEnvironment* env):GenericVideoFilter(_child){
+    Turn(PClip _child, int _direction, IScriptEnvironment* env)
+	 : GenericVideoFilter(_child), Usource(0), Vsource(0) {
 		if (_direction) {
 			const int src_height = vi.height;
 			vi.height = vi.width;
@@ -82,6 +87,35 @@ public:
 		else if (vi.IsPlanar())
 		{
 			TurnPlanFunc = TurnPlanar;
+			// rectangular formats?
+			if (direction && !vi.IsY8() && (vi.GetPlaneWidthSubsampling(PLANAR_U) != vi.GetPlaneHeightSubsampling(PLANAR_U)))
+			{
+				if (vi.width % (1<<vi.GetPlaneWidthSubsampling(PLANAR_U))) // YV16 & YV411
+					env->ThrowError("Turn: Planar data must have MOD %d height",
+									1<<vi.GetPlaneWidthSubsampling(PLANAR_U));
+
+				if (vi.height % (1<<vi.GetPlaneHeightSubsampling(PLANAR_U))) // No current formats
+					env->ThrowError("Turn: Planar data must have MOD %d width",
+									1<<vi.GetPlaneHeightSubsampling(PLANAR_U));
+
+				MitchellNetravaliFilter filter(1./3., 1./3.);
+				AVSValue subs[4] = { 0.0, 0.0, 0.0, 0.0 }; 
+
+				Usource = new SwapUVToY(child, SwapUVToY::UToY8, env);  
+				Vsource = new SwapUVToY(child, SwapUVToY::VToY8, env);
+
+				const VideoInfo vi_u = Usource->GetVideoInfo();
+
+				const int uv_height = (vi_u.height << vi.GetPlaneHeightSubsampling(PLANAR_U)) >> vi.GetPlaneWidthSubsampling(PLANAR_U);
+				const int uv_width  = (vi_u.width  << vi.GetPlaneWidthSubsampling(PLANAR_U))  >> vi.GetPlaneHeightSubsampling(PLANAR_U);
+
+				Usource = FilteredResize::CreateResize(Usource, uv_width, uv_height, subs, &filter, env);
+				Vsource = FilteredResize::CreateResize(Vsource, uv_width, uv_height, subs, &filter, env);
+			}
+		}
+		else
+		{
+			env->ThrowError("Turn: Image format not supported!");
 		}
 	};
 

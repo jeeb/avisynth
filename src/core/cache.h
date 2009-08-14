@@ -91,7 +91,7 @@ private:
     CachedVideoFrame *prev, *next;
     VideoFrameBuffer* vfb;
     int sequence_number;
-    int offset, pitch, row_size, height, offsetU, offsetV, pitchUV;
+    int offset, pitch, row_size, height, offsetU, offsetV, pitchUV, row_sizeUV, heightUV; // 2.60
     int frame_number;
     int faults;  // the number of times this frame was requested and found to be stale(modified)
     bool vfb_locked;

@@ -66,7 +66,7 @@ private:
 
   bool info;
   
-  const char * base_name;
+  char base_name[MAX_PATH + 1];
   const char * ext;
   int start;
   int end;

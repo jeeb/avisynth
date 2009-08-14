@@ -71,6 +71,9 @@ Greyscale::Greyscale(PClip _child, const char* matrix, IScriptEnvironment* env)
 PVideoFrame Greyscale::GetFrame(int n, IScriptEnvironment* env)
 {
   PVideoFrame frame = child->GetFrame(n, env);
+  if (vi.IsY8())
+    return frame;
+
   env->MakeWritable(&frame);
   BYTE* srcp = frame->GetWritePtr();
   int pitch = frame->GetPitch();
@@ -361,5 +364,11 @@ rgb2lum_even:
 
 AVSValue __cdecl Greyscale::Create(AVSValue args, void*, IScriptEnvironment* env)
 {
-  return new Greyscale(args[0].AsClip(), args[1].AsString(0), env);
+  PClip clip = args[0].AsClip();
+  const VideoInfo& vi = clip->GetVideoInfo();
+
+  if (vi.IsY8())
+    return clip;
+
+  return new Greyscale(clip, args[1].AsString(0), env);
 }

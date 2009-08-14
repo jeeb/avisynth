@@ -34,7 +34,8 @@
 
 
 // Avisynth filter: Plane Swap
-// by Klaus Post
+// by Klaus Post 
+
 
 
 #ifndef __Planeswap_H__
@@ -46,29 +47,58 @@
 /****************************************************
 ****************************************************/
 
-class Swap : public GenericVideoFilter
+class SwapUV : public GenericVideoFilter
 /**
-  * Swaps planar channels
+  * SwapUVs planar channels
  **/
 {
 public:
-  Swap(PClip _child, PClip _clip, PClip _clipY, int _mode, int _test, IScriptEnvironment* env);  
+  SwapUV(PClip _child, IScriptEnvironment* env);  
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
+  static AVSValue __cdecl CreateSwapUV(AVSValue args, void* user_data, IScriptEnvironment* env);
+private:
+  void isse_inplace_yuy2_swap(const BYTE* srcp, BYTE* dstp, int rowsize16, int rowsize8, int rowsize4, int height, int srcpitch, int dstpitch);
 
-  static AVSValue __cdecl CreateUV(AVSValue args, void* user_data, IScriptEnvironment* env);
+};
+
+
+class SwapUVToY : public GenericVideoFilter
+/**
+  * SwapUVToYs planar channels
+ **/
+{
+public:
+  SwapUVToY(PClip _child, int _mode, IScriptEnvironment* env);  
+  PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
   static AVSValue __cdecl CreateUToY(AVSValue args, void* user_data, IScriptEnvironment* env);
   static AVSValue __cdecl CreateVToY(AVSValue args, void* user_data, IScriptEnvironment* env);
+  static AVSValue __cdecl CreateUToY8(AVSValue args, void* user_data, IScriptEnvironment* env);
+  static AVSValue __cdecl CreateVToY8(AVSValue args, void* user_data, IScriptEnvironment* env);
+
+  enum {UToY=1, VToY, UToY8, VToY8, YUY2UToY8, YUY2VToY8};
+
+private:
+  int mode;
+};
+
+
+class SwapYToUV : public GenericVideoFilter
+/**
+  * SwapYToYUVs planar channels
+ **/
+{
+public:
+  SwapYToUV(PClip _child, PClip _clip, PClip _clipY, IScriptEnvironment* env);  
+  PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
   static AVSValue __cdecl CreateYToUV(AVSValue args, void* user_data, IScriptEnvironment* env);
   static AVSValue __cdecl CreateYToYUV(AVSValue args, void* user_data, IScriptEnvironment* env);
+
 
 private:
   PClip clip, clipY;
   int mode;
   int test;
-
-  enum {SwapUV=1, UToY, VToY, YToUV};
 };
-
 
 
 #endif  // __Planeswap_H__

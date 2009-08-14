@@ -1,4 +1,6 @@
-// Avisynth v2.5.  Copyright 2009 Ben Rudiak-Gould et al.
+// Avisynth v2.5.  Copyright 2002, 2005 Ben Rudiak-Gould et al.
+// Avisynth v2.6.  Copyright 2006 Klaus Post.
+// Avisynth v2.6.  Copyright 2009 Ian Brabham.
 // http://www.avisynth.org
 
 // This program is free software; you can redistribute it and/or modify
@@ -32,6 +34,19 @@
 // which is not derived from or based on Avisynth, such as 3rd-party filters,
 // import and export plugins, or graphical user interfaces.
 
+
+/* Maintenance notes :-
+ *
+ *   All the code here was formally baked into the avisynth.h interface.
+ *
+ *   Whenever you modify any code here please keep and mark the original
+ *   code with a block comment beginning with the word "Baked"
+ *
+ *   Be mindful with changes you do make that previous 2.5 plugins will
+ *   still have the original code active. This may require other defensive
+ *   or mitigating code elsewhere.
+ */
+
 #include "stdafx.h"
 
 #include "avisynth.h"
@@ -49,8 +64,22 @@ bool VideoInfo::IsRGB24() const { return (pixel_type&CS_BGR24)==CS_BGR24; } // C
 bool VideoInfo::IsRGB32() const { return (pixel_type & CS_BGR32) == CS_BGR32 ; }
 bool VideoInfo::IsYUV() const { return !!(pixel_type&CS_YUV ); }
 bool VideoInfo::IsYUY2() const { return (pixel_type & CS_YUY2) == CS_YUY2; }
-bool VideoInfo::IsYV12() const { return ((pixel_type & CS_YV12) == CS_YV12)||((pixel_type & CS_I420) == CS_I420); }
+
+bool VideoInfo::IsYV24()  const { return (pixel_type & CS_PLANAR_MASK) == CS_YV24;  }
+bool VideoInfo::IsYV16()  const { return (pixel_type & CS_PLANAR_MASK) == CS_YV16;  }
+bool VideoInfo::IsYV12()  const { return (pixel_type & CS_PLANAR_MASK) == CS_YV12;  }
+bool VideoInfo::IsY8()    const { return (pixel_type & CS_PLANAR_MASK) == CS_Y8;    }
+
+bool VideoInfo::IsYV411() const { return (pixel_type & CS_PLANAR_MASK) == CS_YV411; }
+//bool VideoInfo::IsYUV9()  const { return (pixel_type & CS_PLANAR_MASK) == CS_YUV9;  }
+
+/* Baked ********************
 bool VideoInfo::IsColorSpace(int c_space) const { return ((pixel_type & c_space) == c_space); }
+   Baked ********************/
+bool VideoInfo::IsColorSpace(int c_space) const {
+  return IsPlanar() ? ((pixel_type & CS_PLANAR_MASK) == c_space) : ((pixel_type & c_space) == c_space);
+}
+
 bool VideoInfo::Is(int property) const { return ((pixel_type & property)==property ); }
 bool VideoInfo::IsPlanar() const { return !!(pixel_type & CS_PLANAR); }
 bool VideoInfo::IsFieldBased() const { return !!(image_type & IT_FIELDBASED); }
@@ -58,11 +87,14 @@ bool VideoInfo::IsParityKnown() const { return ((image_type & IT_FIELDBASED)&&(i
 bool VideoInfo::IsBFF() const { return !!(image_type & IT_BFF); }
 bool VideoInfo::IsTFF() const { return !!(image_type & IT_TFF); }
 
+/* Baked ********************
 bool VideoInfo::IsVPlaneFirst() const {return ((pixel_type & CS_YV12) == CS_YV12); }  // Don't use this
 int VideoInfo::BytesFromPixels(int pixels) const { return pixels * (BitsPerPixel()>>3); }   // Will not work on planar images, but will return only luma planes
 int VideoInfo::RowSize() const { return BytesFromPixels(width); }  // Also only returns first plane on planar images
 int VideoInfo::BMPSize() const { if (IsPlanar()) {int p = height * ((RowSize()+3) & ~3); p+=p>>1; return p;  } return height * ((RowSize()+3) & ~3); }
 __int64 VideoInfo::AudioSamplesFromFrames(__int64 frames) const { return (fps_numerator && HasVideo()) ? ((__int64)(frames) * audio_samples_per_second * fps_denominator / fps_numerator) : 0; }
+   Baked ********************/
+__int64 VideoInfo::AudioSamplesFromFrames(int frames) const { return (fps_numerator && HasVideo()) ? ((__int64)(frames) * audio_samples_per_second * fps_denominator / fps_numerator) : 0; }
 int VideoInfo::FramesFromAudioSamples(__int64 samples) const { return (fps_denominator && HasAudio()) ? (int)((samples * (__int64)fps_numerator)/((__int64)fps_denominator * (__int64)audio_samples_per_second)) : 0; }
 __int64 VideoInfo::AudioSamplesFromBytes(__int64 bytes) const { return HasAudio() ? bytes / BytesPerAudioSample() : 0; }
 __int64 VideoInfo::BytesFromAudioSamples(__int64 samples) const { return samples * BytesPerAudioSample(); }
@@ -75,6 +107,7 @@ void VideoInfo::SetFieldBased(bool isfieldbased)  { if (isfieldbased) image_type
 void VideoInfo::Set(int property)  { image_type|=property; }
 void VideoInfo::Clear(int property)  { image_type&=~property; }
 
+/* Baked ********************
 int VideoInfo::BitsPerPixel() const {
   switch (pixel_type) {
     case CS_BGR24:
@@ -90,6 +123,7 @@ int VideoInfo::BitsPerPixel() const {
       return 0;
   }
 }
+   Baked ********************/
 
 int VideoInfo::BytesPerChannelSample() const {
   switch (sample_type) {
@@ -107,6 +141,101 @@ int VideoInfo::BytesPerChannelSample() const {
     _ASSERTE("Sample type not recognized!");
     return 0;
   }
+}
+
+bool VideoInfo::IsVPlaneFirst() const {
+  return !IsY8() && IsPlanar() && (pixel_type & (CS_VPlaneFirst | CS_UPlaneFirst)) == CS_VPlaneFirst;   // Shouldn't use this
+}
+
+int VideoInfo::BytesFromPixels(int pixels) const {
+  return !IsY8() && IsPlanar() ? pixels << ((pixel_type>>CS_Shift_Sample_Bits) & 3) : pixels * (BitsPerPixel()>>3);   // For planar images, will return luma plane
+}
+
+int VideoInfo::RowSize(int plane) const {
+  const int rowsize = BytesFromPixels(width);
+
+  switch (plane) {
+    case PLANAR_U: case PLANAR_V:
+      return (!IsY8() && IsPlanar()) ? rowsize>>GetPlaneWidthSubsampling(plane) : 0;
+
+    case PLANAR_U_ALIGNED: case PLANAR_V_ALIGNED:
+      return (!IsY8() && IsPlanar()) ? ((rowsize>>GetPlaneWidthSubsampling(plane))+FRAME_ALIGN-1)&(~(FRAME_ALIGN-1)) : 0; // Aligned rowsize
+
+    case PLANAR_Y_ALIGNED:
+      return (rowsize+FRAME_ALIGN-1)&(~(FRAME_ALIGN-1)); // Aligned rowsize
+  }
+  return rowsize;
+}
+
+int VideoInfo::BMPSize() const {
+  if (!IsY8() && IsPlanar()) {
+    // Y plane
+    int Ybytes = height * ((RowSize()+3) & ~3);
+    if (IsYV12()) {
+      return Ybytes + Ybytes/2;  // Legacy alignment
+    }
+    int UVbytes = (RowSize(PLANAR_U)+3) & ~3;
+    UVbytes *= height>>GetPlaneHeightSubsampling(PLANAR_U);
+    return Ybytes + UVbytes*2;
+  }
+  return height * ((RowSize()+3) & ~3);
+}
+
+int VideoInfo::GetPlaneWidthSubsampling(int plane) const {  // Subsampling in bitshifts!
+  if (plane == PLANAR_Y)  // No subsampling
+    return 0;
+  if (IsY8())
+    throw AvisynthError("Filter error: GetPlaneWidthSubsampling not available on Y8 pixel type.");
+  if (plane == PLANAR_U || plane == PLANAR_V) {
+    if (IsYUY2())
+      return 1;
+    else if (IsPlanar())
+      return ((pixel_type>>CS_Shift_Sub_Width)+1) & 3;
+    else
+      throw AvisynthError("Filter error: GetPlaneWidthSubsampling called with unsupported pixel type.");
+  }
+  throw AvisynthError("Filter error: GetPlaneWidthSubsampling called with unsupported plane.");
+  return 0;
+}
+
+int VideoInfo::GetPlaneHeightSubsampling(int plane) const {  // Subsampling in bitshifts!
+  if (plane == PLANAR_Y)  // No subsampling
+    return 0;
+  if (IsY8())
+    throw AvisynthError("Filter error: GetPlaneHeightSubsampling not available on Y8 pixel type.");
+  if (plane == PLANAR_U || plane == PLANAR_V) {
+    if (IsYUY2())
+      return 0;
+    else if (IsPlanar())
+      return ((pixel_type>>CS_Shift_Sub_Height)+1) & 3;
+    else
+      throw AvisynthError("Filter error: GetPlaneHeightSubsampling called with unsupported pixel type.");
+  }
+  throw AvisynthError("Filter error: GetPlaneHeightSubsampling called with supported plane.");
+  return 0;
+}
+
+int VideoInfo::BitsPerPixel() const {
+// Lookup Interleaved, calculate PLANAR's
+    switch (pixel_type) {
+      case CS_BGR24:
+        return 24;
+      case CS_BGR32:
+        return 32;
+      case CS_YUY2:
+        return 16;
+      case CS_Y8:
+        return 8;
+//    case CS_Y16:
+//      return 16;
+//    case CS_Y32:
+//      return 32;
+    }
+    if (IsPlanar()) {
+      const int S = IsYUV() ? GetPlaneWidthSubsampling(PLANAR_U) + GetPlaneHeightSubsampling(PLANAR_U) : 0;
+      return ( ((1<<S)+2) * (8<<((pixel_type>>CS_Shift_Sample_Bits) & 3)) ) >> S;
+    }
+    return 0;
 }
 
 // useful mutator
@@ -168,7 +297,10 @@ bool VideoInfo::IsSameColorspace(const VideoInfo& vi) const {
 // class VideoFrameBuffer
 
 const BYTE* VideoFrameBuffer::GetReadPtr() const { return data; }
+/* Baked ********************
 BYTE* VideoFrameBuffer::GetWritePtr() { ++sequence_number; return data; }
+   Baked ********************/
+BYTE* VideoFrameBuffer::GetWritePtr() { InterlockedIncrement(&sequence_number); return data; }
 int VideoFrameBuffer::GetDataSize() { return data_size; }
 int VideoFrameBuffer::GetSequenceNumber() { return sequence_number; }
 int VideoFrameBuffer::GetRefcount() { return refcount; }
@@ -179,6 +311,7 @@ int VideoFrameBuffer::GetRefcount() { return refcount; }
 
 // class VideoFrame
 
+/* Baked ********************
 void VideoFrame::AddRef() { InterlockedIncrement((long *)&refcount); }
 void VideoFrame::Release() { if (refcount==1) InterlockedDecrement(&vfb->refcount); InterlockedDecrement((long *)&refcount); }
 
@@ -224,9 +357,49 @@ BYTE* VideoFrame::GetWritePtr() const {
   }
   return IsWritable() ? (vfb->GetWritePtr() + offset) : 0;
 }
+   Baked ********************/
+
+void VideoFrame::AddRef() { InterlockedIncrement(&refcount); }
+void VideoFrame::Release() {
+  VideoFrameBuffer* _vfb = vfb;
+
+  if (!InterlockedDecrement(&refcount))
+    InterlockedDecrement(&_vfb->refcount);
+}
+
+int VideoFrame::GetPitch(int plane) const { switch (plane) {case PLANAR_U: case PLANAR_V: return pitchUV;} return pitch; }
+
+int VideoFrame::GetRowSize(int plane) const {
+  switch (plane) {
+  case PLANAR_U: case PLANAR_V: if (pitchUV) return row_sizeUV; else return 0;
+  case PLANAR_U_ALIGNED: case PLANAR_V_ALIGNED:
+    if (pitchUV) {
+      const int r = (row_sizeUV+FRAME_ALIGN-1)&(~(FRAME_ALIGN-1)); // Aligned rowsize
+      if (r<=pitchUV)
+        return r;
+      return row_sizeUV;
+    }
+    else return 0;
+  case PLANAR_ALIGNED: case PLANAR_Y_ALIGNED:
+    const int r = (row_size+FRAME_ALIGN-1)&(~(FRAME_ALIGN-1)); // Aligned rowsize
+    if (r<=pitch)
+      return r;
+    return row_size;
+  }
+  return row_size; }
+
+int VideoFrame::GetHeight(int plane) const {  switch (plane) {case PLANAR_U: case PLANAR_V: if (pitchUV) return heightUV; return 0;} return height; }
+
+// Generally you should not be using these two
+VideoFrameBuffer* VideoFrame::GetFrameBuffer() const { return vfb; }
+int VideoFrame::GetOffset(int plane) const { switch (plane) {case PLANAR_U: return offsetU;case PLANAR_V: return offsetV;default: return offset;}; }
+
+const BYTE* VideoFrame::GetReadPtr(int plane) const { return vfb->GetReadPtr() + GetOffset(plane); }
+
+bool VideoFrame::IsWritable() const { return (refcount == 1 && vfb->refcount == 1); }
 
 BYTE* VideoFrame::GetWritePtr(int plane) const {
-  if (plane==PLANAR_Y) {
+  if (!plane || plane == PLANAR_Y) {
     if (vfb->GetRefcount()>1) {
       _ASSERT(FALSE);
 //        throw AvisynthError("Internal Error - refcount was more than one!");
@@ -333,7 +506,10 @@ AVSValue::AVSValue(int i) { type = 'i'; integer = i; }
 AVSValue::AVSValue(float f) { type = 'f'; floating_pt = f; }
 AVSValue::AVSValue(double f) { type = 'f'; floating_pt = float(f); }
 AVSValue::AVSValue(const char* s) { type = 's'; string = s; }
+/* Baked ********************
 AVSValue::AVSValue(const AVSValue* a, int size) { type = 'a'; array = a; array_size = size; }
+   Baked ********************/
+AVSValue::AVSValue(const AVSValue* a, int size) { type = 'a'; array = a; array_size = (short)size; }
 AVSValue::AVSValue(const AVSValue& v) { Assign(&v, true); }
 
 AVSValue::~AVSValue() { if (IsClip() && clip) clip->Release(); }
@@ -357,11 +533,19 @@ bool AVSValue::AsBool() const { _ASSERTE(IsBool()); return boolean; }
 int AVSValue::AsInt() const { _ASSERTE(IsInt()); return integer; }
 //  int AsLong() const { _ASSERTE(IsLong()); return IsInt()?integer:longlong; }
 const char* AVSValue::AsString() const { _ASSERTE(IsString()); return IsString()?string:0; }
+/* Baked ********************
 double AVSValue::AsFloat() const { _ASSERTE(IsFloat()); return IsInt()?integer:floating_pt; }
+   Baked ********************/
+float AVSValue::AsFloat() const { _ASSERTE(IsFloat()); return IsInt()?integer:floating_pt; }
 
 bool AVSValue::AsBool(bool def) const { _ASSERTE(IsBool()||!Defined()); return IsBool() ? boolean : def; }
 int AVSValue::AsInt(int def) const { _ASSERTE(IsInt()||!Defined()); return IsInt() ? integer : def; }
+/* Baked ********************
 double AVSValue::AsFloat(double def) const { _ASSERTE(IsFloat()||!Defined()); return IsInt() ? integer : type=='f' ? floating_pt : def; }
+   Baked ********************/
+double AVSValue::AsDblDef(double def) const { _ASSERTE(IsFloat()||!Defined()); return IsInt() ? integer : type=='f' ? floating_pt : def; }
+//float  AVSValue::AsFloat (double def) const { _ASSERTE(IsFloat()||!Defined()); return IsInt() ? integer : type=='f' ? floating_pt : (float)def; }
+float  AVSValue::AsFloat (float  def) const { _ASSERTE(IsFloat()||!Defined()); return IsInt() ? integer : type=='f' ? floating_pt : def; }
 const char* AVSValue::AsString(const char* def) const { _ASSERTE(IsString()||!Defined()); return IsString() ? string : def; }
 
 int AVSValue::ArraySize() const { _ASSERTE(IsArray()); return IsArray()?array_size:1; }

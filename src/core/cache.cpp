@@ -435,7 +435,8 @@ PVideoFrame __stdcall Cache::GetFrame(int n, IScriptEnvironment* env)
 VideoFrame* Cache::BuildVideoFrame(CachedVideoFrame *i, int n)
 {
   Relink(&video_frames, i, video_frames.next);   // move the matching cache entry to the front of the list
-  VideoFrame* result = new VideoFrame(i->vfb, i->offset, i->pitch, i->row_size, i->height, i->offsetU, i->offsetV, i->pitchUV);
+  VideoFrame* result = new VideoFrame(i->vfb, i->offset, i->pitch, i->row_size, i->height, i->offsetU, // 2.60
+                                      i->offsetV, i->pitchUV, i->row_sizeUV, i->heightUV); // 2.60
 
   // If we have asked for any same stale frame twice, leave frames locked.
   if (  (fault_rate <= 160)     // Reissued frames are not subject to locking at the lower fault rate
@@ -491,6 +492,9 @@ void Cache::RegisterVideoFrame(CachedVideoFrame *i, const PVideoFrame& frame, in
   i->pitchUV = frame->pitchUV;
   i->row_size = frame->row_size;
   i->height = frame->height;
+  i->row_sizeUV = frame->row_sizeUV; // 2.60
+  i->heightUV = frame->heightUV; // 2.60
+
   // Keep any fault history
   if (i->frame_number != n) {
     i->frame_number = n;

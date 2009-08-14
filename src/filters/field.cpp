@@ -376,8 +376,8 @@ AVSValue __cdecl Create_Bob(AVSValue args, void*, IScriptEnvironment* env)
   
   const VideoInfo& vi = clip->GetVideoInfo();
 
-  const double b = args[1].AsFloat(1./3.);
-  const double c = args[2].AsFloat(1./3.);
+  const double b = args[1].AsDblDef(1./3.);
+  const double c = args[2].AsDblDef(1./3.);
   const int new_height = args[3].AsInt(vi.height*2);
   MitchellNetravaliFilter filter(b, c);
   return new_AssumeFrameBased(new Fieldwise(new FilteredResizeV(clip, -0.25, vi.height, 

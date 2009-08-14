@@ -782,6 +782,22 @@ InputName=convert_a
 # End Source File
 # Begin Source File
 
+SOURCE=.\convert\convert_matrix.cpp
+# End Source File
+# Begin Source File
+
+SOURCE=.\convert\convert_matrix.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\convert\convert_planar.cpp
+# End Source File
+# Begin Source File
+
+SOURCE=.\convert\convert_planar.h
+# End Source File
+# Begin Source File
+
 SOURCE=.\convert\convert_rgb.cpp
 # End Source File
 # Begin Source File

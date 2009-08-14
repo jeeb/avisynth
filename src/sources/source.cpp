@@ -81,20 +81,23 @@ static PVideoFrame CreateBlankFrame(const VideoInfo& vi, int color, int mode, IS
     int color_yuv =(mode == COLOR_MODE_YUV) ? color : RGB2YUV(color);
     int Cval = (color_yuv>>16)&0xff;
     Cval |= (Cval<<8)|(Cval<<16)|(Cval<<24);
-    for (int i=0; i<size; i+=4)
+    {for (int i=0; i<size; i+=4)
       *(unsigned*)(p+i) = Cval;
+    }
     p = frame->GetWritePtr(PLANAR_U);
     size = frame->GetPitch(PLANAR_U) * frame->GetHeight(PLANAR_U);
     Cval = (color_yuv>>8)&0xff;
     Cval |= (Cval<<8)|(Cval<<16)|(Cval<<24);
-    for (i=0; i<size; i+=4)
+    {for (int i=0; i<size; i+=4)
       *(unsigned*)(p+i) = Cval;
+    }
     size = frame->GetPitch(PLANAR_V) * frame->GetHeight(PLANAR_V);
     p = frame->GetWritePtr(PLANAR_V);
     Cval = (color_yuv)&0xff;
     Cval |= (Cval<<8)|(Cval<<16)|(Cval<<24);
-    for (i=0; i<size; i+=4)
+    {for (int i=0; i<size; i+=4)
       *(unsigned*)(p+i) = Cval;
+    }
   } else if (vi.IsYUY2()) {
     int color_yuv =(mode == COLOR_MODE_YUV) ? color : RGB2YUV(color);
     unsigned d = ((color_yuv>>16)&255) * 0x010001 + ((color_yuv>>8)&255) * 0x0100 + (color_yuv&255) * 0x01000000;
@@ -158,22 +161,20 @@ static AVSValue __cdecl Create_BlankClip(AVSValue args, void*, IScriptEnvironmen
       vi.pixel_type = VideoInfo::CS_YUY2;
     } else if (!lstrcmpi(pixel_type_string, "YV12")) {
       vi.pixel_type = VideoInfo::CS_YV12;
-/* For 2.6
     } else if (!lstrcmpi(pixel_type_string, "YV24")) {
       vi.pixel_type = VideoInfo::CS_YV24;
     } else if (!lstrcmpi(pixel_type_string, "YV16")) {
       vi.pixel_type = VideoInfo::CS_YV16;
     } else if (!lstrcmpi(pixel_type_string, "Y8")) {
       vi.pixel_type = VideoInfo::CS_Y8;
-    } else if (!lstrcmpi(pixel_type_string, "YV411")) {
-      vi.pixel_type = VideoInfo::CS_YV411;
-*/
+//  } else if (!lstrcmpi(pixel_type_string, "YV411")) {
+//    vi.pixel_type = VideoInfo::CS_YV411;
     } else if (!lstrcmpi(pixel_type_string, "RGB24")) {
       vi.pixel_type = VideoInfo::CS_BGR24;
     } else if (!lstrcmpi(pixel_type_string, "RGB32")) {
       vi.pixel_type = VideoInfo::CS_BGR32;
     } else {
-      env->ThrowError("BlankClip: pixel_type must be \"RGB32\", \"RGB24\", \"YV12\""/*, \"YV24\", \"YV16\", \"Y8\", \"YV411\"*/" or \"YUY2\"");
+      env->ThrowError("BlankClip: pixel_type must be \"RGB32\", \"RGB24\", \"YV12\", \"YV24\", \"YV16\", \"Y8\", \"YV411\" or \"YUY2\"");
     }
   }
   else {
@@ -521,7 +522,7 @@ public:
 
 	  const double add_per_sample=ncycles/(double)nsamples;
 	  double second_offset=0.0;
-	  for (int i=0;i<nsamples;i++) {
+	  for (unsigned i=0;i<nsamples;i++) {
 		  audio[i] = sin(3.1415926535897932384626433832795*2.0*second_offset);
 		  second_offset+=add_per_sample;
 	  }
@@ -538,7 +539,7 @@ public:
     const int d_mod = vi.audio_samples_per_second*2;
     float* samples = (float*)buf;
 
-	int j = start % nsamples;
+	unsigned j = (unsigned)(start % nsamples);
     for (int i=0;i<count;i++) {
 	  samples[i*2]=audio[j];
 	  if (((start+i)%d_mod)>vi.audio_samples_per_second) {

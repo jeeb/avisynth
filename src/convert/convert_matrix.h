@@ -32,65 +32,41 @@
 // which is not derived from or based on Avisynth, such as 3rd-party filters,
 // import and export plugins, or graphical user interfaces.
 
-#ifndef __Convert_YUY2_H__
-#define __Convert_YUY2_H__
+// ConvertPlanar (c) 2005 by Klaus Post
+
+#ifndef __Convert_MATRIX_H__
+#define __Convert_MATRIX_H__
 
 #include "../internal.h"
-#include "convert_yv12.h"
-#include "convert_planar.h" // 2.60
 #include "../core/softwire_helpers.h"
 
 
-class ConvertToYUY2 : public GenericVideoFilter, public CodeGenerator
-/**
-  * Class for conversions to YUY2
- **/
+class MatrixGenerator3x3 : public  CodeGenerator
 {
 public:
-  ConvertToYUY2(PClip _child, bool _dupl, bool _interlaced, const char *matrix, IScriptEnvironment* env);
-  ~ConvertToYUY2();
-  PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
-
-  static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env);
-
-private:
-  const bool interlaced;
-
+  MatrixGenerator3x3();
+  ~MatrixGenerator3x3();
 protected:
-  void GenerateAssembly(bool rgb24, bool dupl, bool sub, int w, IScriptEnvironment* env);
-  void mmx_ConvertRGBtoYUY2(const BYTE *src,BYTE *dst,int src_pitch, int dst_pitch, int h);
+  void GenerateAssembly(int width, int faction_bits, bool upper32_ones, IScriptEnvironment* env);
+  void GeneratePacker(int width, IScriptEnvironment* env);
+  void GenerateUnPacker(int width, IScriptEnvironment* env);
   DynamicAssembledCode assembly;
-
-  const int src_cs;  // Source colorspace
-  int theMatrix;
-  enum {Rec601=0, Rec709=1, PC_601=2, PC_709=3 };	// Note! convert_yuy2.cpp assumes these values
-
-  // Variables for dynamic code.
-  const BYTE* dyn_src;
-  BYTE* dyn_dst;
-
-  // These must be set BEFORE creating the generator, and CANNOT be changed at runtime!
-  const __int64* dyn_cybgr;
-  const __int64* dyn_fpix_mul;
-  const int* dyn_fraction;
-  const int* dyn_y1y2_mult;
-
-};
-
-class ConvertBackToYUY2 : public ConvertToYUY2
-/**
-  * Class for conversions to YUY2 (With Chroma copy)
- **/
-{
-public:
-  ConvertBackToYUY2(PClip _child, const char *matrix, IScriptEnvironment* env);
-  PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
-
-  static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env);
-
+  DynamicAssembledCode unpacker;
+  DynamicAssembledCode packer;
+  BYTE* dyn_src;
+  BYTE* dyn_dest;
+  BYTE* dyn_matrix;
+  __int64 pre_add, post_add;
+  __int64 rounder;
+  int src_pixel_step;
+  int dest_pixel_step;
+  const BYTE** unpck_src;
+  BYTE** unpck_dst;
 private:
-  void mmxYV24toYUY2(const unsigned char *py, const unsigned char *pu, const unsigned char *pv,
-                     unsigned char *dst, int pitch1Y, int pitch1UV, int pitch2, int width, int height);
+  int last_pix;
+  __int64* aligned_rounder;
 };
 
-#endif // __Convert_YUY2_H__
+
+
+#endif

@@ -1,4 +1,6 @@
-// Avisynth v2.5.  Copyright 2009 Ben Rudiak-Gould et al.
+// Avisynth v2.5.  Copyright 2002, 2005 Ben Rudiak-Gould et al.
+// Avisynth v2.6.  Copyright 2006 Klaus Post.
+// Avisynth v2.6.  Copyright 2009 Ian Brabham.
 // http://www.avisynth.org
 
 // This program is free software; you can redistribute it and/or modify
@@ -19,19 +21,18 @@
 // Linking Avisynth statically or dynamically with other modules is making a
 // combined work based on Avisynth.  Thus, the terms and conditions of the GNU
 // General Public License cover the whole combination.
-//
-// As a special exception, the copyright holders of Avisynth give you
-// permission to link Avisynth with independent modules that communicate with
-// Avisynth solely through the interfaces defined in avisynth.h, regardless of the license
-// terms of these independent modules, and to copy and distribute the
-// resulting combined work under terms of your choice, provided that
-// every copy of the combined work is accompanied by a complete copy of
-// the source code of Avisynth (the version of Avisynth used to produce the
-// combined work), being distributed under the terms of the GNU General
-// Public License plus this exception.  An independent module is a module
-// which is not derived from or based on Avisynth, such as 3rd-party filters,
-// import and export plugins, or graphical user interfaces.
 
+
+/*
+Please NOTE! This version of avisynth.h DOES NOT have any special exemption!
+
+         While this version is under development you are fully
+       constrained by the terms of the GNU General Public License.
+
+ Any derivative software you may publish MUST include the full source code.
+
+    Normal licence conditions will be reapplied in a future version.
+*/
 
 
 
@@ -39,7 +40,7 @@
 #ifndef __AVISYNTH_H__
 #define __AVISYNTH_H__
 
-enum { AVISYNTH_INTERFACE_VERSION = 4 };
+enum { AVISYNTH_INTERFACE_VERSION = 5 };
 
 
 /* Define all types necessary for interfacing with avisynth.dll
@@ -111,13 +112,21 @@ enum {
    PLANAR_Y_ALIGNED=PLANAR_Y|PLANAR_ALIGNED,
    PLANAR_U_ALIGNED=PLANAR_U|PLANAR_ALIGNED,
    PLANAR_V_ALIGNED=PLANAR_V|PLANAR_ALIGNED,
+   PLANAR_A=1<<4,
+   PLANAR_R=1<<5,
+   PLANAR_G=1<<6,
+   PLANAR_B=1<<7,
+   PLANAR_A_ALIGNED=PLANAR_A|PLANAR_ALIGNED,
+   PLANAR_R_ALIGNED=PLANAR_R|PLANAR_ALIGNED,
+   PLANAR_G_ALIGNED=PLANAR_G|PLANAR_ALIGNED,
+   PLANAR_B_ALIGNED=PLANAR_B|PLANAR_ALIGNED,
   };
 
 class AvisynthError /* exception */ {
 public:
   const char* const msg;
   AvisynthError(const char* _msg) : msg(_msg) {}
-};
+}; // endclass AvisynthError
 
 struct VideoInfo {
   int width, height;    // width=0 means no video
@@ -126,22 +135,100 @@ struct VideoInfo {
   // This is more extensible than previous versions. More properties can be added seeminglesly.
 
   // Colorspace properties.
+/*
+7<<0  Planar Width Subsampling bits
+      Use (X+1) & 3 for GetPlaneWidthSubsampling
+        000 => 1        YV12, YV16
+        001 => 2        YV411, YUV9
+        010 => reserved
+        011 => 0        YV24
+        1xx => reserved
+
+1<<3  VPlaneFirst YV12, YV16, YV24, YV411, YUV9
+1<<4  UPlaneFirst I420
+
+7<<8  Planar Height Subsampling bits
+      Use ((X>>8)+1) & 3 for GetPlaneHeightSubsampling
+        000 => 1        YV12
+        001 => 2        YUV9
+        010 => reserved
+        011 => 0        YV16, YV24, YV411
+        1xx => reserved
+
+7<<16 Sample resolution bits
+        000 => 8
+        001 => 16
+        010 => 32
+        011 => reserved
+        1xx => reserved
+
+Planar match mask 1111.0000.0000.0111.0000.0111.0000.0111
+Planar signature  10xx.0000.0000.00xx.0000.00xx.00xx.00xx
+*/
   enum {
     CS_BGR = 1<<28,
     CS_YUV = 1<<29,
     CS_INTERLEAVED = 1<<30,
-    CS_PLANAR = 1<<31
-  };
+    CS_PLANAR = 1<<31,
+
+    CS_Shift_Sub_Width   =  0,
+    CS_Shift_Sub_Height  =  8,
+    CS_Shift_Sample_Bits = 16,
+
+    CS_Sub_Width_Mask    = 7 << CS_Shift_Sub_Width,
+    CS_Sub_Width_1       = 3 << CS_Shift_Sub_Width, // YV24
+    CS_Sub_Width_2       = 0 << CS_Shift_Sub_Width, // YV12, I420, YV16
+    CS_Sub_Width_4       = 1 << CS_Shift_Sub_Width, // YUV9, YV411
+
+    CS_VPlaneFirst       = 1 << 3, // YV12, YV16, YV24, YV411, YUV9
+    CS_UPlaneFirst       = 1 << 4, // I420
+
+    CS_Sub_Height_Mask   = 7 << CS_Shift_Sub_Height,
+    CS_Sub_Height_1      = 3 << CS_Shift_Sub_Height, // YV16, YV24, YV411
+    CS_Sub_Height_2      = 0 << CS_Shift_Sub_Height, // YV12, I420
+    CS_Sub_Height_4      = 1 << CS_Shift_Sub_Height, // YUV9
+
+    CS_Sample_Bits_Mask  = 7 << CS_Shift_Sample_Bits,
+    CS_Sample_Bits_8     = 0 << CS_Shift_Sample_Bits,
+    CS_Sample_Bits_16    = 1 << CS_Shift_Sample_Bits,
+    CS_Sample_Bits_32    = 2 << CS_Shift_Sample_Bits,
+
+    CS_PLANAR_MASK       = CS_PLANAR | CS_INTERLEAVED | CS_YUV | CS_BGR | CS_Sample_Bits_Mask | CS_Sub_Height_Mask | CS_Sub_Width_Mask,
 
   // Specific colorformats
-  enum { CS_UNKNOWN = 0,
-         CS_BGR24 = 1<<0 | CS_BGR | CS_INTERLEAVED,
-         CS_BGR32 = 1<<1 | CS_BGR | CS_INTERLEAVED,
-         CS_YUY2  = 1<<2 | CS_YUV | CS_INTERLEAVED,
-         CS_YV12  = 1<<3 | CS_YUV | CS_PLANAR,  // y-v-u, 4:2:0 planar
-         CS_I420  = 1<<4 | CS_YUV | CS_PLANAR,  // y-u-v, 4:2:0 planar
-         CS_IYUV  = 1<<4 | CS_YUV | CS_PLANAR,  // same as above
+    CS_UNKNOWN = 0,
+    CS_BGR24 = 1<<0 | CS_BGR | CS_INTERLEAVED,
+    CS_BGR32 = 1<<1 | CS_BGR | CS_INTERLEAVED,
+    CS_YUY2  = 1<<2 | CS_YUV | CS_INTERLEAVED,
+//  CS_YV12  = 1<<3  Reserved
+//  CS_I420  = 1<<4  Reserved
+    CS_RAW32 = 1<<5 | CS_INTERLEAVED,
+
+//  YV12 must be 0xA000008 2.5 Baked API will see all new planar as YV12
+//  I420 must be 0xA000010
+
+    CS_YV24  = CS_PLANAR | CS_YUV | CS_Sample_Bits_8 | CS_VPlaneFirst | CS_Sub_Height_1 | CS_Sub_Width_1,  // YUV 4:4:4 planar
+    CS_YV16  = CS_PLANAR | CS_YUV | CS_Sample_Bits_8 | CS_VPlaneFirst | CS_Sub_Height_1 | CS_Sub_Width_2,  // YUV 4:2:2 planar
+    CS_YV12  = CS_PLANAR | CS_YUV | CS_Sample_Bits_8 | CS_VPlaneFirst | CS_Sub_Height_2 | CS_Sub_Width_2,  // y-v-u, 4:2:0 planar
+    CS_I420  = CS_PLANAR | CS_YUV | CS_Sample_Bits_8 | CS_UPlaneFirst | CS_Sub_Height_2 | CS_Sub_Width_2,  // y-u-v, 4:2:0 planar
+    CS_IYUV  = CS_I420,
+    CS_YUV9  = CS_PLANAR | CS_YUV | CS_Sample_Bits_8 | CS_VPlaneFirst | CS_Sub_Height_4 | CS_Sub_Width_4,  // YUV 4:1:0 planar
+    CS_YV411 = CS_PLANAR | CS_YUV | CS_Sample_Bits_8 | CS_VPlaneFirst | CS_Sub_Height_1 | CS_Sub_Width_4,  // YUV 4:1:1 planar
+
+    CS_Y8    = CS_PLANAR | CS_INTERLEAVED | CS_YUV | CS_Sample_Bits_8,                                     // Y   4:0:0 planar
+/*
+    CS_YV48  = CS_PLANAR | CS_YUV | CS_Sample_Bits_16 | CS_VPlaneFirst | CS_Sub_Height_1 | CS_Sub_Width_1, // YUV 4:4:4 16bit samples
+    CS_Y16   = CS_PLANAR | CS_INTERLEAVED | CS_YUV | CS_Sample_Bits_16,                                    // Y   4:0:0 16bit samples
+
+    CS_YV96  = CS_PLANAR | CS_YUV | CS_Sample_Bits_32 | CS_VPlaneFirst | CS_Sub_Height_1 | CS_Sub_Width_1, // YUV 4:4:4 32bit samples
+    CS_Y32   = CS_PLANAR | CS_INTERLEAVED | CS_YUV | CS_Sample_Bits_32,                                    // Y   4:0:0 32bit samples
+
+    CS_PRGB  = CS_PLANAR | CS_RGB | CS_Sample_Bits_8,                                                      // Planar RGB
+    CS_RGB48 = CS_PLANAR | CS_RGB | CS_Sample_Bits_16,                                                     // Planar RGB 16bit samples
+    CS_RGB96 = CS_PLANAR | CS_RGB | CS_Sample_Bits_32,                                                     // Planar RGB 32bit samples
+*/
   };
+
   int pixel_type;                // changed to int as of 2.5
 
 
@@ -160,6 +247,15 @@ struct VideoInfo {
     IT_FIELDBASED = 1<<2
   };
 
+  // Chroma placement bits 20 -> 23  ::FIXME:: Really want a Class to support this
+  enum {
+    CS_UNKNOWN_CHROMA_PLACEMENT = 0 << 20,
+    CS_MPEG1_CHROMA_PLACEMENT   = 1 << 20,
+    CS_MPEG2_CHROMA_PLACEMENT   = 2 << 20,
+    CS_YUY2_CHROMA_PLACEMENT    = 3 << 20,
+    CS_TOPLEFT_CHROMA_PLACEMENT = 4 << 20
+  };
+
   // useful functions of the above
   bool HasVideo() const;
   bool HasAudio() const;
@@ -168,8 +264,16 @@ struct VideoInfo {
   bool IsRGB32() const;
   bool IsYUV() const;
   bool IsYUY2() const;
-  bool IsYV12() const;
+
+  bool IsYV24()  const;
+  bool IsYV16()  const;
+  bool IsYV12()  const;
+  bool IsYV411() const;
+//bool IsYUV9()  const;
+  bool IsY8()    const;
+
   bool IsColorSpace(int c_space) const;
+
   bool Is(int property) const;
   bool IsPlanar() const;
   bool IsFieldBased() const;
@@ -179,9 +283,10 @@ struct VideoInfo {
 
   bool IsVPlaneFirst() const;  // Don't use this
   int BytesFromPixels(int pixels) const;   // Will not work on planar images, but will return only luma planes
-  int RowSize() const;  // Also only returns first plane on planar images
+  int RowSize(int plane=0) const;
   int BMPSize() const;
-  __int64 AudioSamplesFromFrames(__int64 frames) const;
+
+  __int64 AudioSamplesFromFrames(int frames) const;
   int FramesFromAudioSamples(__int64 samples) const;
   __int64 AudioSamplesFromBytes(__int64 bytes) const;
   __int64 BytesFromAudioSamples(__int64 samples) const;
@@ -194,6 +299,8 @@ struct VideoInfo {
   void Set(int property);
   void Clear(int property);
 
+  int GetPlaneWidthSubsampling(int plane) const;   // Subsampling in bitshifts!
+  int GetPlaneHeightSubsampling(int plane) const;   // Subsampling in bitshifts!
   int BitsPerPixel() const;
 
   int BytesPerChannelSample() const;
@@ -207,7 +314,7 @@ struct VideoInfo {
   // Test for same colorspace
   bool IsSameColorspace(const VideoInfo& vi) const;
 
-};
+}; // endstruct VideoInfo
 
 
 
@@ -240,7 +347,7 @@ public:
   int GetDataSize();
   int GetSequenceNumber();
   int GetRefcount();
-};
+}; // endclass VideoFrameBuffer
 
 
 class IClip;
@@ -254,9 +361,10 @@ class AVSValue;
 // is overloaded to recycle class instances.
 
 class VideoFrame {
-  int refcount;
+  long refcount;
   VideoFrameBuffer* const vfb;
   const int offset, pitch, row_size, height, offsetU, offsetV, pitchUV;  // U&V offsets are from top of picture.
+  const int row_sizeUV, heightUV;
 
   friend class PVideoFrame;
   void AddRef();
@@ -266,35 +374,29 @@ class VideoFrame {
   friend class Cache;
 
   VideoFrame(VideoFrameBuffer* _vfb, int _offset, int _pitch, int _row_size, int _height);
-  VideoFrame(VideoFrameBuffer* _vfb, int _offset, int _pitch, int _row_size, int _height, int _offsetU, int _offsetV, int _pitchUV);
+  VideoFrame(VideoFrameBuffer* _vfb, int _offset, int _pitch, int _row_size, int _height, int _offsetU, int _offsetV, int _pitchUV, int _row_sizeUV, int _heightUV);
 
   void* operator new(unsigned size);
 // TESTME: OFFSET U/V may be switched to what could be expected from AVI standard!
 public:
-  int GetPitch() const;
-  int GetPitch(int plane) const;
-  int GetRowSize() const;
-  int GetRowSize(int plane) const;
-  int GetHeight() const;
-  int GetHeight(int plane) const;
+  int GetPitch(int plane=0) const;
+  int GetRowSize(int plane=0) const;
+  int GetHeight(int plane=0) const;
 
   // generally you shouldn't use these three
   VideoFrameBuffer* GetFrameBuffer() const;
-  int GetOffset() const;
-  int GetOffset(int plane) const;
+  int GetOffset(int plane=0) const;
 
-  // in plugins use env->SubFrame()
+  // in plugins use env->SubFrame() -- because implementation code is only available inside avisynth.dll. Doh!
   VideoFrame* Subframe(int rel_offset, int new_pitch, int new_row_size, int new_height) const;
   VideoFrame* Subframe(int rel_offset, int new_pitch, int new_row_size, int new_height, int rel_offsetU, int rel_offsetV, int pitchUV) const;
 
-  const BYTE* GetReadPtr() const;
-  const BYTE* GetReadPtr(int plane) const;
+  const BYTE* GetReadPtr(int plane=0) const;
   bool IsWritable() const;
-  BYTE* GetWritePtr() const;
-  BYTE* GetWritePtr(int plane) const;
+  BYTE* GetWritePtr(int plane=0) const;
 
   ~VideoFrame();
-};
+}; // endclass VideoFrame
 
 enum {
   CACHE_NOTHING=0,
@@ -309,7 +411,7 @@ enum {
 class IClip {
   friend class PClip;
   friend class AVSValue;
-  int refcnt;
+  long refcnt;
   void AddRef();
   void Release();
 public:
@@ -321,7 +423,7 @@ public:
   virtual void __stdcall SetCacheHints(int cachehints,int frame_range) = 0 ;  // We do not pass cache requests upwards, only to the next filter.
   virtual const VideoInfo& __stdcall GetVideoInfo() = 0;
   virtual __stdcall ~IClip();
-};
+}; // endclass IClip
 
 
 // smart pointer to IClip
@@ -350,7 +452,7 @@ public:
   bool operator!() const;
 
   ~PClip();
-};
+}; // endclass PClip
 
 
 // smart pointer to VideoFrame
@@ -375,7 +477,7 @@ public:
   bool operator!() const;
 
   ~PVideoFrame();
-};
+}; // endclass PVideoFrame
 
 
 class AVSValue {
@@ -413,11 +515,13 @@ public:
   int AsInt() const;
 //  int AsLong() const;
   const char* AsString() const;
-  double AsFloat() const;
+  float AsFloat() const;
 
   bool AsBool(bool def) const;
   int AsInt(int def) const;
-  double AsFloat(double def) const;
+  double AsDblDef(double def) const; // Value is still a float
+//float AsFloat(double def) const; // def demoted to a float
+  float AsFloat(float def) const;
   const char* AsString(const char* def) const;
 
   int ArraySize() const;
@@ -439,7 +543,7 @@ private:
   };
 
   void Assign(const AVSValue* src, bool init);
-};
+}; // endclass AVSValue
 
 
 // instantiable null filter
@@ -460,7 +564,7 @@ public:
 
 
 
-/* Helper classes useful to plugin authors */
+/* Helper classes useful to plugin authors */ // But we don't export the entry points, Doh!
 
 class AlignPlanar : public GenericVideoFilter
 {
@@ -601,7 +705,7 @@ public:
   virtual bool __stdcall PlanarChromaAlignment(PlanarChromaAlignmentMode key) = 0;
 
   virtual PVideoFrame __stdcall SubframePlanar(PVideoFrame src, int rel_offset, int new_pitch, int new_row_size, int new_height, int rel_offsetU, int rel_offsetV, int new_pitchUV) = 0;
-};
+}; // endclass IScriptEnvironment
 
 
 // avisynth.dll exports this; it's a way to use it as a library, without

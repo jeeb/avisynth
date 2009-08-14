@@ -61,7 +61,20 @@ PVideoFrame __stdcall Turn::GetFrame(int n, IScriptEnvironment* env) {
 
     PVideoFrame dst = env->NewVideoFrame(vi);
 
-	if (vi.IsPlanar())
+	if (Usource && Vsource) {
+		PVideoFrame usrc = Usource->GetFrame(n, env);
+		PVideoFrame vsrc = Vsource->GetFrame(n, env);
+
+		TurnPlanFunc( src->GetReadPtr(PLANAR_Y), dst->GetWritePtr(PLANAR_Y),
+					 usrc->GetReadPtr(PLANAR_Y), dst->GetWritePtr(PLANAR_U),
+					 vsrc->GetReadPtr(PLANAR_Y), dst->GetWritePtr(PLANAR_V),
+					  src->GetRowSize(PLANAR_Y), src->GetHeight(PLANAR_Y),
+					 usrc->GetRowSize(PLANAR_Y), usrc->GetHeight(PLANAR_Y),
+					  src->GetPitch(PLANAR_Y),   dst->GetPitch(PLANAR_Y),
+					 usrc->GetPitch(PLANAR_Y),   dst->GetPitch(PLANAR_U),
+					 vsrc->GetPitch(PLANAR_Y),   direction);
+	}
+	else if (vi.IsPlanar())
 		TurnPlanFunc(src->GetReadPtr(PLANAR_Y), dst->GetWritePtr(PLANAR_Y),
 					 src->GetReadPtr(PLANAR_U), dst->GetWritePtr(PLANAR_U),
 					 src->GetReadPtr(PLANAR_V), dst->GetWritePtr(PLANAR_V),

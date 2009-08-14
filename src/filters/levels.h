@@ -108,6 +108,21 @@ void asm_tweak_ISSE_YUY2( BYTE *srcp, int w, int h, int modulo, __int64 hue, __i
                      __int64 bright );
 
 
+
+class MaskHS : public GenericVideoFilter
+{
+public:
+  MaskHS( PClip _child, double _startHue, double _endHue, double _maxSat, double _minSat, bool _coring, IScriptEnvironment* env );
+
+  PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
+
+  static AVSValue __cdecl Create(AVSValue args, void* user_data, IScriptEnvironment* env);
+
+private:
+	BYTE mapY[256*256];
+};
+
+
 /* Helper function for Tweak and MaskHS filters */
 bool ProcessPixel(int X, int Y, double startHue, double endHue,
                   double maxSat, double minSat, double p, int &iSat);

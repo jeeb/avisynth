@@ -100,14 +100,14 @@ PVideoFrame __stdcall MergeChroma::GetFrame(int n, IScriptEnvironment* env)
 {
   PVideoFrame src = child->GetFrame(n, env);
 
-  if (weight<0.0001f) return src;
+  if (weight<0.0039f) return src;
 
   PVideoFrame chroma = clip->GetFrame(n, env);
 
   const int h = src->GetHeight();
   const int w = src->GetRowSize()>>1; // width in pixels
 
-  if (weight<0.9999f) {
+  if (weight<0.9961f) {
     if (vi.IsYUY2()) {
       env->MakeWritable(&src);
       unsigned int* srcp = (unsigned int*)src->GetWritePtr();
@@ -127,7 +127,7 @@ PVideoFrame __stdcall MergeChroma::GetFrame(int n, IScriptEnvironment* env)
       BYTE* srcpV = (BYTE*)src->GetWritePtr(PLANAR_V);
       BYTE* chromapV = (BYTE*)chroma->GetReadPtr(PLANAR_V);
 
-      if ((env->GetCPUFlags() & CPUF_INTEGER_SSE) && (weight>0.4999f) && (weight<0.5001f)) {
+      if ((env->GetCPUFlags() & CPUF_INTEGER_SSE) && (weight>0.4961f) && (weight<0.5039f)) {
         isse_avg_plane(srcpU,chromapU,src->GetPitch(PLANAR_U),chroma->GetPitch(PLANAR_U),src->GetRowSize(PLANAR_U_ALIGNED),src->GetHeight(PLANAR_U));
         isse_avg_plane(srcpV,chromapV,src->GetPitch(PLANAR_U),chroma->GetPitch(PLANAR_U),src->GetRowSize(PLANAR_V_ALIGNED),src->GetHeight(PLANAR_U));
       } else if (TEST(4, 8) (env->GetCPUFlags() & CPUF_MMX)) {
@@ -207,7 +207,7 @@ PVideoFrame __stdcall MergeLuma::GetFrame(int n, IScriptEnvironment* env)
 {
   PVideoFrame src = child->GetFrame(n, env);
 
-  if (weight<0.0001f) return src;
+  if (weight<0.0039f) return src;
 
   PVideoFrame luma = clip->GetFrame(n, env);
 
@@ -222,14 +222,14 @@ PVideoFrame __stdcall MergeLuma::GetFrame(int n, IScriptEnvironment* env)
     const int h = src->GetHeight();
     const int w = src->GetRowSize()>>1; // width in pixels
 
-    if (weight<0.9999f)
+    if (weight<0.9961f)
       ((TEST(4, 8) (env->GetCPUFlags() & CPUF_MMX)) ? mmx_weigh_luma : weigh_luma)
                (srcp,lumap,isrc_pitch,iluma_pitch,w,h,(int)(weight*32768.0f),32768-(int)(weight*32768.0f));
     else
       ((TEST(4, 8) (env->GetCPUFlags() & CPUF_MMX)) ? mmx_merge_luma : merge_luma)(srcp,lumap,isrc_pitch,iluma_pitch,w,h);
     return src;
   }  // Planar
-  if (weight>0.9999f) {
+  if (weight>0.9961f) {
     const VideoInfo& vi2 = clip->GetVideoInfo();
     if (TEST(1, 2) luma->IsWritable() && vi.IsSameColorspace(vi2)) {
       if (luma->GetRowSize(PLANAR_U)) {
@@ -249,12 +249,12 @@ PVideoFrame __stdcall MergeLuma::GetFrame(int n, IScriptEnvironment* env)
       }
       return dst;
     }
-  } else { // weight <= 0.9999f
+  } else { // weight <= 0.9961f
     env->MakeWritable(&src);
     BYTE* srcpY = (BYTE*)src->GetWritePtr(PLANAR_Y);
     BYTE* lumapY = (BYTE*)luma->GetReadPtr(PLANAR_Y);
 
-    if ((TEST(4, 8) (env->GetCPUFlags() & CPUF_INTEGER_SSE)) && (weight>0.4999f) && (weight<0.5001f)) {
+    if ((TEST(4, 8) (env->GetCPUFlags() & CPUF_INTEGER_SSE)) && (weight>0.4961f) && (weight<0.5039f)) {
       isse_avg_plane(srcpY,lumapY,src->GetPitch(PLANAR_Y),luma->GetPitch(PLANAR_Y),src->GetRowSize(PLANAR_Y_ALIGNED),src->GetHeight(PLANAR_Y));
     }
     else if (TEST(4, 8) (env->GetCPUFlags() & CPUF_MMX)) {
@@ -299,8 +299,8 @@ MergeAll::MergeAll(PClip _child, PClip _clip, float _weight, int _test, IScriptE
 
 PVideoFrame __stdcall MergeAll::GetFrame(int n, IScriptEnvironment* env)
 {
-  if (weight<0.0001f) return child->GetFrame(n, env);
-  if (weight>0.9999f) return clip->GetFrame(n, env);
+  if (weight<0.0039f) return child->GetFrame(n, env);
+  if (weight>0.9961f) return clip->GetFrame(n, env);
 
   PVideoFrame src  = child->GetFrame(n, env);
   PVideoFrame src2 =  clip->GetFrame(n, env);
@@ -316,7 +316,7 @@ PVideoFrame __stdcall MergeAll::GetFrame(int n, IScriptEnvironment* env)
   int src_rowsize8 = (src_rowsize + 7) & -8;
   if (src_rowsize8 > src_pitch) src_rowsize8 = src_pitch;
 
-  if (TEST(16, 32) (env->GetCPUFlags() & CPUF_INTEGER_SSE) && ((src_rowsize4 & 3)==0) && (weight>0.4999f) && (weight<0.5001f)) {
+  if (TEST(16, 32) (env->GetCPUFlags() & CPUF_INTEGER_SSE) && ((src_rowsize4 & 3)==0) && (weight>0.4961f) && (weight<0.5039f)) {
     isse_avg_plane(srcp, srcp2, src_pitch, src2->GetPitch(), src_rowsize4, src->GetHeight());
   }
   else if (TEST(4, 8) (env->GetCPUFlags() & CPUF_MMX) && ((src_rowsize8 & 7)==0)) {
@@ -343,7 +343,7 @@ PVideoFrame __stdcall MergeAll::GetFrame(int n, IScriptEnvironment* env)
     src_rowsize8 = (src_rowsize + 7) & -8;
     if (src_rowsize8 > src_pitch) src_rowsize8 = src_pitch;
  
-    if ((TEST(4, 8) (env->GetCPUFlags() & CPUF_INTEGER_SSE) && ((src_rowsize4 & 3)==0)) && (weight>0.4999f) && (weight<0.5001f)) {
+    if ((TEST(4, 8) (env->GetCPUFlags() & CPUF_INTEGER_SSE) && ((src_rowsize4 & 3)==0)) && (weight>0.4961f) && (weight<0.5039f)) {
       isse_avg_plane(srcpV, srcp2V, src_pitch, src2->GetPitch(PLANAR_U), src_rowsize4, src->GetHeight(PLANAR_U));
       isse_avg_plane(srcpU, srcp2U, src_pitch, src2->GetPitch(PLANAR_V), src_rowsize4, src->GetHeight(PLANAR_V));
     }
@@ -773,6 +773,8 @@ outy:
   } // end asm
 }
 
+// (a + b    ) >> 1 = (a & b) + ((a ^ b) >> 1)
+// (a + b + 1) >> 1 = (a | b) - ((a ^ b) >> 1)
 
 /*******************
  * Average two planes.

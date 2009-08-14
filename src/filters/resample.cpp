@@ -92,6 +92,10 @@ FilteredResizeH::FilteredResizeH( PClip _child, double subrange_left, double sub
       env->ThrowError("Resize: YUY2 width must be even");
     if ((target_width&1) && (vi.IsYV12()))
       env->ThrowError("Resize: YV12 width must be even.");
+    if ((target_width&1) && (vi.IsYV16()))
+      env->ThrowError("Resize: YV16 width must be even");
+    if ((target_width&3) && (vi.IsYV411()))
+      env->ThrowError("Resize: YV411 width must be mutiple of 4.");
 
     tempY = (BYTE*) _aligned_malloc(original_width*2+4+32, 64);   // aligned for Athlon cache line
     tempUV = (BYTE*) _aligned_malloc(original_width*4+8+32, 64);  // aligned for Athlon cache line
@@ -99,7 +103,13 @@ FilteredResizeH::FilteredResizeH( PClip _child, double subrange_left, double sub
     if (vi.IsYV12()) {
       pattern_chroma = GetResamplingPatternYUV( vi.width>>1, subrange_left/2.0, subrange_width/2.0,
         target_width>>1, func, true, tempY, env );
-    } else {
+    } else if (vi.IsYV24()) {
+      pattern_chroma = GetResamplingPatternYUV(vi.width, subrange_left, subrange_width,
+        target_width, func, true, tempY, env);
+    } else if (vi.IsYV16()) {
+      pattern_chroma = GetResamplingPatternYUV( vi.width>>1, subrange_left/2.0, subrange_width/2.0,
+        target_width>>1, func, true, tempY, env );
+    } else if (vi.IsYUY2()) {
       pattern_chroma = GetResamplingPatternYUV( vi.width>>1, subrange_left/2.0, subrange_width/2.0,
         target_width>>1, func, false, tempUV, env );
     }
@@ -115,7 +125,9 @@ FilteredResizeH::FilteredResizeH( PClip _child, double subrange_left, double sub
   if (use_dynamic_code) {
     if (vi.IsPlanar()) {
       assemblerY = GenerateResizer(PLANAR_Y, env);
-      assemblerUV = GenerateResizer(PLANAR_U, env);
+      if (!vi.IsY8()) {
+        assemblerUV = GenerateResizer(PLANAR_U, env);
+      }
     }
   }
 	}
@@ -150,9 +162,9 @@ DynamicAssembledCode FilteredResizeH::GenerateResizer(int gen_plane, IScriptEnvi
   Assembler x86;   // This is the class that assembles the code.
 
   // Set up variables for this plane.
-  int vi_height = (gen_plane == PLANAR_Y) ? vi.height : (vi.height/2);
-  int vi_dst_width = (gen_plane == PLANAR_Y) ? vi.width : (vi.width/2);
-  int vi_src_width = (gen_plane == PLANAR_Y) ? original_width : (original_width/2);
+  int vi_height = vi.height >> vi.GetPlaneHeightSubsampling(gen_plane);
+  int vi_dst_width = vi.width >> vi.GetPlaneWidthSubsampling(gen_plane);
+  int vi_src_width = original_width >> vi.GetPlaneWidthSubsampling(gen_plane);
 
   int mod16_w = ((3+vi_src_width)/16);  // Src size!
   int mod16_remain = (3+vi_src_width-(mod16_w*16))/4;  //Src size!
@@ -1377,7 +1389,11 @@ FilteredResizeV::FilteredResizeV( PClip _child, double subrange_top, double subr
   if (vi.IsRGB())
     subrange_top = vi.height - subrange_top - subrange_height;
   resampling_pattern = GetResamplingPatternRGB(vi.height, subrange_top, subrange_height, target_height, func, env);
-  resampling_patternUV = GetResamplingPatternRGB(vi.height>>1, subrange_top/2.0f, subrange_height/2.0f, target_height>>1, func, env);
+  if (vi.IsYV12()) {  // Subsample chroma. :FIXME: Wrong concept!
+    resampling_patternUV = GetResamplingPatternRGB(vi.height>>1, subrange_top/2.0, subrange_height/2.0, target_height>>1, func, env);
+  } else {  //Don't resample chroma.
+    resampling_patternUV = GetResamplingPatternRGB(vi.height, subrange_top, subrange_height, target_height, func, env);
+  }
   vi.height = target_height;
 
   pitch_gY = -1;
@@ -1667,10 +1683,13 @@ PClip FilteredResize::CreateResizeH(PClip clip, double subrange_left, double sub
 
   if (subrange_left == int(subrange_left) && subrange_width == target_width
    && subrange_left >= 0 && subrange_left + subrange_width <= vi.width) {
-    if (((int(subrange_left) | int(subrange_width)) & 1) == 0) {
+    if (((int(subrange_left) | int(subrange_width)) & 3) == 0) {
       return new Crop(int(subrange_left), 0, int(subrange_width), vi.height, 0, clip, env);
     }
-    if (!vi.IsYUY2() && !vi.IsYV12()) {
+    if (!vi.IsYV411() && ((int(subrange_left) | int(subrange_width)) & 1) == 0) {
+      return new Crop(int(subrange_left), 0, int(subrange_width), vi.height, 0, clip, env);
+    }
+    if (!vi.IsYV411() && !vi.IsYV16() && !vi.IsYUY2() && !vi.IsYV12()) {
       return new Crop(int(subrange_left), 0, int(subrange_width), vi.height, 0, clip, env);
     }
   }
@@ -1747,7 +1766,7 @@ AVSValue __cdecl FilteredResize::Create_BilinearResize(AVSValue args, void*, ISc
 AVSValue __cdecl FilteredResize::Create_BicubicResize(AVSValue args, void*, IScriptEnvironment* env)
 {
   return CreateResize( args[0].AsClip(), args[1].AsInt(), args[2].AsInt(), &args[5],
-                       &MitchellNetravaliFilter(args[3].AsFloat(1./3.), args[4].AsFloat(1./3.)), env );
+                       &MitchellNetravaliFilter(args[3].AsDblDef(1./3.), args[4].AsDblDef(1./3.)), env );
 }
 
 AVSValue __cdecl FilteredResize::Create_LanczosResize(AVSValue args, void*, IScriptEnvironment* env)

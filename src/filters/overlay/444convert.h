@@ -67,6 +67,18 @@ class ConvertFrom444 {
 };
 
 
+class Convert444FromYV24 : public ConvertTo444 {
+public:
+  void ConvertImage(PVideoFrame src_frame, Image444* dst_frame, IScriptEnvironment* env);
+  void ConvertImageLumaOnly(PVideoFrame src_frame, Image444* dst_frame, IScriptEnvironment* env);
+};
+
+class Convert444FromY8 : public ConvertTo444 {
+public:
+  void ConvertImage(PVideoFrame src_frame, Image444* dst_frame, IScriptEnvironment* env);
+  void ConvertImageLumaOnly(PVideoFrame src_frame, Image444* dst_frame, IScriptEnvironment* env);
+};
+
 class Convert444FromYV12 : public ConvertTo444 {
 public:
   void ConvertImage(PVideoFrame src_frame, Image444* dst_frame, IScriptEnvironment* env);
@@ -94,8 +106,17 @@ public:
   void ConvertImage(PVideoFrame src_frame, Image444* dst_frame, IScriptEnvironment* env);
 };
 
+class Convert444ToYV24 : public ConvertFrom444 {
+public:
+  PVideoFrame ConvertImage(Image444* src_frame, PVideoFrame dst_frame, IScriptEnvironment* env);
+};
 
 class Convert444ToYV12 : public ConvertFrom444 {
+public:
+  PVideoFrame ConvertImage(Image444* src_frame, PVideoFrame dst_frame, IScriptEnvironment* env);
+};
+
+class Convert444ToY8 : public ConvertFrom444 {
 public:
   PVideoFrame ConvertImage(Image444* src_frame, PVideoFrame dst_frame, IScriptEnvironment* env);
 };

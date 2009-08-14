@@ -90,11 +90,22 @@ GenericVideoFilter(_child) {
   overlayConv = SelectInputCS(&overlayVi, env);
 
   if (!overlayConv) {
-    env->ThrowError("Overlay: Overlay image colorspace not supported.");
+    AVSValue new_args[3] = { overlay, false, (full_range) ? "PC.601" : "rec601" };
+    try {
+      overlay = env->Invoke("ConvertToYV24", AVSValue(new_args, 3)).AsClip();
+    } catch (...)  {}
+
+    overlayVi = overlay->GetVideoInfo();
+    overlayConv = SelectInputCS(&overlayVi, env);
+
+    if (!overlayConv) {  // ok - now we've tried everything ;)
+      env->ThrowError("Overlay: Overlay image colorspace not supported.");
+    }
   }
 
   greymask = args[ARG_GREYMASK].AsBool(true);  // Grey mask, default true
   ignore_conditional = args[ARG_IGNORE_CONDITIONAL].AsBool(false);  // Don't ignore conditionals by default
+
   if (args[ARG_MASK].Defined()) {  // Mask defined
     mask = args[ARG_MASK].AsClip();
     maskVi = mask->GetVideoInfo();
@@ -107,7 +118,16 @@ GenericVideoFilter(_child) {
 
     maskConv = SelectInputCS(&maskVi, env);
     if (!maskConv) {
-       env->ThrowError("Overlay: Mask image colorspace not supported.");
+      AVSValue new_args[3] = { mask, false, (full_range) ? "PC.601" : "rec601" };
+
+      try {
+        mask = env->Invoke((greymask) ? "ConvertToY8" : "ConvertToYV24", AVSValue(new_args, 3)).AsClip();
+      } catch (...)  {}
+      maskVi = mask->GetVideoInfo();
+      maskConv = SelectInputCS(&maskVi, env);
+      if (!maskConv) {
+        env->ThrowError("Overlay: Mask image colorspace not supported.");
+      }
     }
 
     maskImg = new Image444(maskVi.width, maskVi.height);
@@ -120,10 +140,21 @@ GenericVideoFilter(_child) {
 
   }
 
+  inputCS = vi.pixel_type;
   inputConv = SelectInputCS(inputVi, env);
 
   if (!inputConv) {
-    env->ThrowError("Overlay: Colorspace not supported.");
+    AVSValue new_args[3] = { child, false, (full_range) ? "PC.601" : "rec601" };
+    try {
+      child = env->Invoke("ConvertToYV24", AVSValue(new_args, 3)).AsClip();
+    } catch (...)  {}
+
+    vi = child->GetVideoInfo();
+    memcpy(inputVi, &vi, sizeof(VideoInfo));
+    inputConv = SelectInputCS(inputVi, env);
+    if (!inputConv) {
+      env->ThrowError("Overlay: Colorspace not supported.");
+    }
   }
 
   if (args[ARG_OUTPUT].Defined())
@@ -168,7 +199,17 @@ PVideoFrame __stdcall Overlay::GetFrame(int n, IScriptEnvironment *env) {
 
     // Fetch current frame and convert it.
   PVideoFrame frame = child->GetFrame(n, env);
-  inputConv->ConvertImage(frame, img, env);
+  if (vi.IsYV24() && inputCS == vi.pixel_type) {  // Fast path
+    // This will be used to avoid two unneeded blits if input and output is yv24
+    // Note however, that this will break, if for some reason AviSynth in the future
+    // will choose different alignment on YV24 planes.
+    if (img)
+      delete img;
+    img = new Image444(frame->GetWritePtr(PLANAR_Y), frame->GetWritePtr(PLANAR_U), frame->GetWritePtr(PLANAR_U),
+      frame->GetRowSize(PLANAR_Y), frame->GetHeight(PLANAR_Y), frame->GetPitch(PLANAR_Y));
+  } else {
+    inputConv->ConvertImage(frame, img, env);
+  }
 
   // Fetch current overlay and convert it
   PVideoFrame Oframe = overlay->GetFrame(n, env);
@@ -217,6 +258,11 @@ PVideoFrame __stdcall Overlay::GetFrame(int n, IScriptEnvironment *env) {
     maskImg->ReturnOriginal(true);
 
   // Convert output image back
+  if (vi.IsYV24() && inputCS == vi.pixel_type) {  // Fast path
+    delete img;
+    img = NULL;
+    return frame;
+  }
 
   PVideoFrame f = env->NewVideoFrame(vi);
   f = outputConv->ConvertImage(img, f, env);
@@ -282,6 +328,10 @@ ConvertFrom444* Overlay::SelectOutputCS(const char* name, IScriptEnvironment* en
   if (!name) {
     if (vi.IsYV12()) {
       return new Convert444ToYV12();
+    } else if (vi.IsYV24()) {
+      return new Convert444ToYV24();
+    } else if (vi.IsY8()) {
+      return new Convert444ToY8();
     } else if (vi.IsYUY2()) {
       return new Convert444ToYUY2();
     } else if (vi.IsRGB()) {
@@ -300,6 +350,16 @@ ConvertFrom444* Overlay::SelectOutputCS(const char* name, IScriptEnvironment* en
   if (!lstrcmpi(name, "YV12")) {
     vi.pixel_type = VideoInfo::CS_YV12;
     return new Convert444ToYV12();
+  }
+
+  if (!lstrcmpi(name, "YV24")) {
+    vi.pixel_type = VideoInfo::CS_YV24;
+    return new Convert444ToYV24();
+  }
+
+  if (!lstrcmpi(name, "Y8")) {
+    vi.pixel_type = VideoInfo::CS_Y8;
+    return new Convert444ToY8();
   }
 
   if (!lstrcmpi(name, "RGB")) {
@@ -337,6 +397,14 @@ ConvertFrom444* Overlay::SelectOutputCS(const char* name, IScriptEnvironment* en
 ConvertTo444* Overlay::SelectInputCS(VideoInfo* VidI, IScriptEnvironment* env) {
   if (VidI->IsYV12()) {
     ConvertTo444* c = new Convert444FromYV12();
+    c->SetVideoInfo(VidI);
+    return c;
+  } else if (VidI->IsYV24()) {
+    ConvertTo444* c = new Convert444FromYV24();
+    c->SetVideoInfo(VidI);
+    return c;
+  } else if (VidI->IsY8()) {
+    ConvertTo444* c = new Convert444FromY8();
     c->SetVideoInfo(VidI);
     return c;
   } else if (VidI->IsYUY2()) {

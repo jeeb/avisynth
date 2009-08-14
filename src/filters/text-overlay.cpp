@@ -175,7 +175,6 @@ void Antialiaser::Apply( const VideoInfo& vi, PVideoFrame* frame, int pitch)
               (*frame)->GetPitch(PLANAR_U),
 			  (*frame)->GetWritePtr(PLANAR_U),
 			  (*frame)->GetWritePtr(PLANAR_V) );
-/* For 2.6
   else if (vi.IsY8())
     ApplyPlanar((*frame)->GetWritePtr(), pitch, 0, 0, 0, 0, 0);
   else if (vi.IsPlanar())
@@ -186,7 +185,6 @@ void Antialiaser::Apply( const VideoInfo& vi, PVideoFrame* frame, int pitch)
 			  vi.GetPlaneWidthSubsampling(PLANAR_U),
 			  vi.GetPlaneHeightSubsampling(PLANAR_U));
 
-*/
 }
 
 
@@ -232,7 +230,6 @@ void Antialiaser::ApplyYV12(BYTE* buf, int pitch, int pitchUV, BYTE* bufU, BYTE*
 }
 
 
-/* For 2.6
 void Antialiaser::ApplyPlanar(BYTE* buf, int pitch, int pitchUV, BYTE* bufU, BYTE* bufV, int shiftX, int shiftY) {
   const int stepX = 1<<shiftX;
   const int stepY = 1<<shiftY;
@@ -296,7 +293,6 @@ void Antialiaser::ApplyPlanar(BYTE* buf, int pitch, int pitchUV, BYTE* bufU, BYT
     bufV += pitchUV;
   }//end for y
 }
-*/
 
 
 void Antialiaser::ApplyYUY2(BYTE* buf, int pitch) {
@@ -1129,12 +1125,10 @@ const char* t_YV12="YV12";
 const char* t_YUY2="YUY2";
 const char* t_RGB32="RGB32";
 const char* t_RGB24="RGB24";
-/* For 2.6
 const char* t_YV24="YV24";
 const char* t_Y8="Y8";
 const char* t_YV16="YV16";
 const char* t_Y41P="YUV 411 Planar";
-*/
 const char* t_INT8="Integer 8 bit";
 const char* t_INT16="Integer 16 bit";
 const char* t_INT24="Integer 24 bit";
@@ -1189,12 +1183,10 @@ PVideoFrame FilterInfo::GetFrame(int n, IScriptEnvironment* env)
     if (vi.IsRGB32()) c_space=t_RGB32;
     if (vi.IsYV12()) c_space=t_YV12;
     if (vi.IsYUY2()) c_space=t_YUY2;
-/* For 2.6
     if (vi.IsYV24()) c_space=t_YV24;
     if (vi.IsY8()) c_space=t_Y8;
     if (vi.IsYV16()) c_space=t_YV16;
     if (vi.IsYV411()) c_space=t_Y41P;
-*/
 
     if (vi.SampleType()==SAMPLE_INT8) s_type=t_INT8;
     if (vi.SampleType()==SAMPLE_INT16) s_type=t_INT16;
