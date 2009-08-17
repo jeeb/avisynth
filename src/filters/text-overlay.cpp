@@ -246,8 +246,8 @@ void Antialiaser::ApplyPlanar(BYTE* buf, int pitch, int pitchUV, BYTE* bufU, BYT
   // Apply Y
   for (int y=yb; y<=yt; y+=1) {
     for (int x=xl; x<=xr; x+=1) {
-      int x4 = x<<2;
-      const int basealpha = alpha[x4];
+      const int x4 = x<<2;
+      const int basealpha = alpha[x4+0];
 
       if (basealpha != 256) {
         buf[x] = (buf[x] * basealpha + alpha[x4+3]) >> 8;
@@ -262,35 +262,35 @@ void Antialiaser::ApplyPlanar(BYTE* buf, int pitch, int pitchUV, BYTE* bufU, BYT
   // This will not be fast, but it will be generic.
   const int skipThresh = 256 << (shiftX+shiftY);
   const int shifter = 8+shiftX+shiftY;
+  const int UVw4 = w<<(2+shiftY);
+  const int xlshiftX = xl>>shiftX;
 
   alpha = alpha_calcs + yb*w4;
   bufU += (pitchUV*yb)>>shiftY;
   bufV += (pitchUV*yb)>>shiftY;
 
   for (y=yb; y<=yt; y+=stepY) {
-    int xs = xl>>shiftX;
-    for (int x=xl; x<=xr; x+=stepX) {
+    for (int x=xl, xs=xlshiftX; x<=xr; x+=stepX, xs+=1) {
+      unsigned short* UValpha = alpha + x*4;
       int basealphaUV = 0;
       int au = 0;
       int av = 0;
       for (int i = 0; i<stepY; i++) {
-        int lookup = 0;
         for (int j = 0; j<stepX; j++) {
-          basealphaUV += alpha[0+lookup];
-          au          += alpha[2+lookup];
-          av          += alpha[1+lookup];
-          lookup += 4;
+          basealphaUV += UValpha[0 + j*4];
+          av          += UValpha[1 + j*4];
+          au          += UValpha[2 + j*4];
         }
-        alpha += w4;
+        UValpha += w4;
       }
       if (basealphaUV != skipThresh) {
         bufU[xs] = (bufU[xs] * basealphaUV + au) >> shifter;
         bufV[xs] = (bufV[xs] * basealphaUV + av) >> shifter;
       }
-      xs += 1;
     }// end for x
-    bufU += pitchUV;
-    bufV += pitchUV;
+    bufU  += pitchUV;
+    bufV  += pitchUV;
+    alpha += UVw4;
   }//end for y
 }
 
