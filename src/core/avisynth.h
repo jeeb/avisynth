@@ -162,8 +162,9 @@ struct VideoInfo {
         011 => reserved
         1xx => reserved
 
-Planar match mask 1111.0000.0000.0111.0000.0111.0000.0111
-Planar signature  10xx.0000.0000.00xx.0000.00xx.00xx.00xx
+Planar match mask  1111.0000.0000.0111.0000.0111.0000.0111
+Planar signature   10xx.0000.0000.00xx.0000.00xx.00xx.00xx
+Planar filter mask 1111.1111.1111.1111.1111.1111.1100.1111
 */
   enum {
     CS_BGR = 1<<28,
@@ -194,6 +195,7 @@ Planar signature  10xx.0000.0000.00xx.0000.00xx.00xx.00xx
     CS_Sample_Bits_32    = 2 << CS_Shift_Sample_Bits,
 
     CS_PLANAR_MASK       = CS_PLANAR | CS_INTERLEAVED | CS_YUV | CS_BGR | CS_Sample_Bits_Mask | CS_Sub_Height_Mask | CS_Sub_Width_Mask,
+    CS_PLANAR_FILTER     = ~( CS_VPlaneFirst | CS_UPlaneFirst ),
 
   // Specific colorformats
     CS_UNKNOWN = 0,

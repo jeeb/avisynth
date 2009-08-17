@@ -65,19 +65,19 @@ bool VideoInfo::IsRGB32() const { return (pixel_type & CS_BGR32) == CS_BGR32 ; }
 bool VideoInfo::IsYUV() const { return !!(pixel_type&CS_YUV ); }
 bool VideoInfo::IsYUY2() const { return (pixel_type & CS_YUY2) == CS_YUY2; }
 
-bool VideoInfo::IsYV24()  const { return (pixel_type & CS_PLANAR_MASK) == CS_YV24;  }
-bool VideoInfo::IsYV16()  const { return (pixel_type & CS_PLANAR_MASK) == CS_YV16;  }
-bool VideoInfo::IsYV12()  const { return (pixel_type & CS_PLANAR_MASK) == CS_YV12;  }
-bool VideoInfo::IsY8()    const { return (pixel_type & CS_PLANAR_MASK) == CS_Y8;    }
+bool VideoInfo::IsYV24()  const { return (pixel_type & CS_PLANAR_MASK) == (CS_YV24  & CS_PLANAR_FILTER); }
+bool VideoInfo::IsYV16()  const { return (pixel_type & CS_PLANAR_MASK) == (CS_YV16  & CS_PLANAR_FILTER); }
+bool VideoInfo::IsYV12()  const { return (pixel_type & CS_PLANAR_MASK) == (CS_YV12  & CS_PLANAR_FILTER); }
+bool VideoInfo::IsY8()    const { return (pixel_type & CS_PLANAR_MASK) == (CS_Y8    & CS_PLANAR_FILTER); }
 
-bool VideoInfo::IsYV411() const { return (pixel_type & CS_PLANAR_MASK) == CS_YV411; }
-//bool VideoInfo::IsYUV9()  const { return (pixel_type & CS_PLANAR_MASK) == CS_YUV9;  }
+bool VideoInfo::IsYV411() const { return (pixel_type & CS_PLANAR_MASK) == (CS_YV411 & CS_PLANAR_FILTER); }
+//bool VideoInfo::IsYUV9()  const { return (pixel_type & CS_PLANAR_MASK) == (CS_YUV9  & CS_PLANAR_FILTER); }
 
 /* Baked ********************
 bool VideoInfo::IsColorSpace(int c_space) const { return ((pixel_type & c_space) == c_space); }
    Baked ********************/
 bool VideoInfo::IsColorSpace(int c_space) const {
-  return IsPlanar() ? ((pixel_type & CS_PLANAR_MASK) == c_space) : ((pixel_type & c_space) == c_space);
+  return IsPlanar() ? ((pixel_type & CS_PLANAR_MASK) == (c_space & CS_PLANAR_FILTER)) : ((pixel_type & c_space) == c_space);
 }
 
 bool VideoInfo::Is(int property) const { return ((pixel_type & property)==property ); }
