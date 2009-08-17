@@ -87,7 +87,18 @@ void ReportMe(const char * msg, ...) {
 #define _RPT5(rptno, msg, a1, a2, a3, a4, a5)
 #endif
 #else
-#define _RPT5(rptno, msg, a1, a2, a3, a4, a5) _RPT4(rptno, msg, a1, a2, a3, a4)
+# ifdef _RPT_BASE
+#define _RPT5(rptno, msg, a1, a2, a3, a4, a5) \
+        _RPT_BASE((rptno, NULL, 0, NULL, msg, a1, a2, a3, a4, a5))
+# else
+#  ifdef _CrtDbgBreak
+#define _RPT5(rptno, msg, a1, a2, a3, a4, a5) \
+        do { if ((1 == _CrtDbgReport(rptno, NULL, 0, NULL, msg, a1, a2, a3, a4, a5))) \
+                _CrtDbgBreak(); } while (0)
+#  else
+#define _RPT5(rptno, msg, a1, a2, a3, a4, a5)
+#  endif
+# endif
 #endif
 
 const char _AVS_VERSTR[]    = AVS_VERSTR;
@@ -1002,21 +1013,29 @@ void CAVIStreamSynth::ReadFrame(void* lpBuffer, int n) {
   // BMP scanlines are always dword-aligned
   const int out_pitch = (row_size+3) & -4;
   int out_pitchUV = (frame->GetRowSize(PLANAR_U)+3) & -4;
+
+  // Set default VFW output plane order.
+  // VDub wants YUV for YV24 and YV16 and YVU for YV12.
+  int plane1 = PLANAR_U;
+  int plane2 = PLANAR_V;
+
   if (vi.IsYV12()) {  // We know this has special alignment.
     out_pitchUV = out_pitch / 2;
+    plane1 = PLANAR_V;
+    plane2 = PLANAR_U;
   }
 
   BitBlt((BYTE*)lpBuffer, out_pitch, frame->GetReadPtr(), pitch, row_size, height);
 
   BitBlt((BYTE*)lpBuffer + (out_pitch*height),
-         out_pitchUV,               frame->GetReadPtr(PLANAR_V),
-		 frame->GetPitch(PLANAR_V), frame->GetRowSize(PLANAR_V),
-		 frame->GetHeight(PLANAR_V) );
+         out_pitchUV,               frame->GetReadPtr(plane1),
+		 frame->GetPitch(plane1), frame->GetRowSize(plane1),
+		 frame->GetHeight(plane1) );
 
-  BitBlt((BYTE*)lpBuffer + (out_pitch*height + frame->GetHeight(PLANAR_V)*out_pitchUV),
-         out_pitchUV,               frame->GetReadPtr(PLANAR_U),
-		 frame->GetPitch(PLANAR_U), frame->GetRowSize(PLANAR_U),
-		 frame->GetHeight(PLANAR_U) );
+  BitBlt((BYTE*)lpBuffer + (out_pitch*height + frame->GetHeight(plane1)*out_pitchUV),
+         out_pitchUV,               frame->GetReadPtr(plane2),
+		 frame->GetPitch(plane2), frame->GetRowSize(plane2),
+		 frame->GetHeight(plane2) );
 }
 
 #define OPT_OWN_SEH_HANDLER
