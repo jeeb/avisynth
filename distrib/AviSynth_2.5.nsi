@@ -1,7 +1,7 @@
 !packhdr tempfile.exe "upx --best --q tempfile.exe"
 
-!DEFINE ISSUE 5
-!DEFINE VERSION 2.5.8
+!DEFINE ISSUE 0
+!DEFINE VERSION 2.6.0
 
 !DEFINE /date DATE "%y%m%d"
 
@@ -9,12 +9,34 @@
 
 ;----------------------------------
 
+; Call with "MakeNSISw /DFILE ..." to activate
+
+!ifndef FILE
+  !define FILE "File"
+!else
+  !undef FILE
+  !define FILE ";" ; Set to ";" to make fileless demo
+!endif
+
+;----------------------------------
+
+; Call with "MakeNSISw /DDOCFILE ..." to activate
+
+!ifndef DOCFILE
+  !define DOCFILE "File"
+!else
+  !undef DOCFILE
+  !define DOCFILE ";" ; Set to ";" to make docless demo
+!endif
+
+;----------------------------------
+
 VIProductVersion "${VERSION}.${ISSUE}"
 
-VIAddVersionKey "ProductName"      "Avisynth 2.5"
+VIAddVersionKey "ProductName"      "Avisynth 2.6"
 VIAddVersionKey "Comments"         "Homepage: http://www.avisynth.org"
 VIAddVersionKey "CompanyName"      "The Public"
-VIAddVersionKey "LegalCopyright"   "© 2000-2008 Ben Rudiak-Gould and others"
+VIAddVersionKey "LegalCopyright"   "© 2000-2009 Ben Rudiak-Gould and others"
 VIAddVersionKey "FileDescription"  "Avisynth installer"
 VIAddVersionKey "FileVersion"      "${VERSION}.${ISSUE}"
 VIAddVersionKey "ProductVersion"   "${VERSION}"
@@ -64,7 +86,9 @@ SetCompressor /solid lzma
 
   !insertmacro MUI_PAGE_DIRECTORY
 
+!if "File" == "${FILE}"
   !insertmacro MUI_PAGE_INSTFILES
+!endif
 
   !define      MUI_PAGE_CUSTOMFUNCTION_PRE AVS_Finish_Pre
   !insertmacro MUI_PAGE_FINISH
@@ -206,11 +230,11 @@ Section $(SystemInstall_Text) SystemInstall
 
   ClearErrors
   SetOutPath $SYSDIR
-  File "..\src\release\AviSynth.dll"
-  File "bin\devil.dll"
+  ${File} "..\src\release\AviSynth.dll"
+  ${File} "bin\devil.dll"
 
 IfFileExists "$SYSDIR\msvcp60.dll" msvc60_exists
-  File "bin\msvcp60.dll"
+  ${File} "bin\msvcp60.dll"
 msvc60_exists:
 
 IfErrors 0 dll_ok
@@ -219,11 +243,11 @@ IfErrors 0 dll_ok
 
 dll_ok:
   SetOutPath $INSTDIR
-  File ${AVS_DefaultLicenceFile}
-  File "lgpl_for_used_libs.txt"
+  ${File} ${AVS_DefaultLicenceFile}
+  ${File} "lgpl_for_used_libs.txt"
 
   SetOutPath "$INSTDIR\License Translations"
-  File "gpl-*.txt"
+  ${File} "gpl-*.txt"
 
   ReadRegStr $0 HKLM "SOFTWARE\AviSynth" "plugindir2_5"
 StrCmp "$0" "" 0 Plugin_exists
@@ -233,9 +257,9 @@ StrCmp "$0" "" 0 Plugin_exists
 Plugin_exists:
   ClearErrors
   SetOutPath $0
-  File "..\src\plugins\DirectShowSource\Release\DirectShowSource.dll"
-  File "..\src\plugins\TCPDeliver\Release\TCPDeliver.dll"
-  File "color_presets\colors_rgb.avsi"
+  ${File} "..\src\plugins\DirectShowSource\Release\DirectShowSource.dll"
+  ${File} "..\src\plugins\TCPDeliver\Release\TCPDeliver.dll"
+  ${File} "color_presets\colors_rgb.avsi"
 
 IfErrors 0 plug_ok
   MessageBox MB_OK $(PlugDir_Text)
@@ -295,7 +319,7 @@ creg_ok:
 !echo " -- Supressed"
 !verbose push
 !verbose 2
-  File "Examples\*.*"
+  ${File} "Examples\*.*"
 !verbose pop
   CreateShortCut "$SMPROGRAMS\AviSynth 2.5\$(Start_Example).lnk" "$INSTDIR\Examples"
 
@@ -316,22 +340,22 @@ Section /o  $(StandAlone_Text) StandAlone
 
   ClearErrors
   SetOutPath $INSTDIR
-  File "..\src\release\AviSynth.dll"
-  File "bin\devil.dll"
-  File "bin\msvcp60.dll"
+  ${File} "..\src\release\AviSynth.dll"
+  ${File} "bin\devil.dll"
+  ${File} "bin\msvcp60.dll"
 
-  File "Avisynth_Template.reg"
+  ${File} "Avisynth_Template.reg"
 
-  File ${AVS_DefaultLicenceFile}
-  File "lgpl_for_used_libs.txt"
+  ${File} ${AVS_DefaultLicenceFile}
+  ${File} "lgpl_for_used_libs.txt"
 
   SetOutPath "$INSTDIR\License Translations"
-  File "gpl-*.txt"
+  ${File} "gpl-*.txt"
 
   SetOutPath "$INSTDIR\Plugins"
-  File "..\src\plugins\DirectShowSource\Release\DirectShowSource.dll"
-  File "..\src\plugins\TCPDeliver\Release\TCPDeliver.dll"
-  File "color_presets\colors_rgb.avsi"
+  ${File} "..\src\plugins\DirectShowSource\Release\DirectShowSource.dll"
+  ${File} "..\src\plugins\TCPDeliver\Release\TCPDeliver.dll"
+  ${File} "color_presets\colors_rgb.avsi"
 
 SectionEnd
 
@@ -344,28 +368,28 @@ Section /o  $(English_Text) English
   SectionIn 1 3 4
 
   SetOutPath $INSTDIR\Docs
-  File "..\..\Docs\*.css"
+  ${DocFile} "..\..\Docs\*.css"
   SetOutPath $INSTDIR\Docs\English
 !echo " -- Supressed"
 !verbose push
 !verbose 2
-  File "..\..\Docs\english\*.htm"
+  ${DocFile} "..\..\Docs\english\*.htm"
   SetOutPath $INSTDIR\Docs\English\advancedtopics
-  File "..\..\Docs\english\advancedtopics\*.htm"
+  ${DocFile} "..\..\Docs\english\advancedtopics\*.htm"
   SetOutPath $INSTDIR\Docs\English\corefilters
-  File "..\..\Docs\english\corefilters\*.htm"
+  ${DocFile} "..\..\Docs\english\corefilters\*.htm"
   SetOutPath $INSTDIR\Docs\English\externalfilters
-  File "..\..\Docs\english\externalfilters\*.htm"
+  ${DocFile} "..\..\Docs\english\externalfilters\*.htm"
   SetOutPath $INSTDIR\Docs\English\pictures\advancedtopics
-  File "..\..\Docs\english\pictures\advancedtopics\*.*"
+  ${DocFile} "..\..\Docs\english\pictures\advancedtopics\*.*"
   SetOutPath $INSTDIR\Docs\English\pictures\corefilters
-  File "..\..\Docs\english\pictures\corefilters\*.*"
+  ${DocFile} "..\..\Docs\english\pictures\corefilters\*.*"
   SetOutPath $INSTDIR\Docs\English\pictures\externalfilters
-  File "..\..\Docs\english\pictures\externalfilters\*.*"
+  ${DocFile} "..\..\Docs\english\pictures\externalfilters\*.*"
 !verbose pop
 
   SetOutPath $INSTDIR\Examples
-  File "Examples\*.*"
+  ${File} "Examples\*.*"
 
   SetShellVarContext All
   StrCmp $AdminInstall "No" +2
@@ -376,21 +400,21 @@ SectionEnd
 Section /o  $(Czech_Text) Czech
   SectionIn 4
   SetOutPath $INSTDIR\Docs
-  File "..\..\Docs\*.css"
+  ${DocFile} "..\..\Docs\*.css"
   SetOutPath $INSTDIR\Docs\Czech
 !echo " -- Supressed"
 !verbose push
 !verbose 2
-  File "..\..\Docs\czech\*.htm"
-  File "..\..\Docs\czech\gpl-cs.txt"
+  ${DocFile} "..\..\Docs\czech\*.htm"
+  ${DocFile} "..\..\Docs\czech\gpl-cs.txt"
   SetOutPath $INSTDIR\Docs\Czech\advancedtopics
-  File "..\..\Docs\czech\advancedtopics\*.htm"
+  ${DocFile} "..\..\Docs\czech\advancedtopics\*.htm"
   SetOutPath $INSTDIR\Docs\Czech\corefilters
-  File "..\..\Docs\czech\corefilters\*.htm"
+  ${DocFile} "..\..\Docs\czech\corefilters\*.htm"
   SetOutPath $INSTDIR\Docs\Czech\pictures\advancedtopics
-  File "..\..\Docs\czech\pictures\advancedtopics\*.*"
+  ${DocFile} "..\..\Docs\czech\pictures\advancedtopics\*.*"
   SetOutPath $INSTDIR\Docs\Czech\pictures\corefilters
-  File "..\..\Docs\czech\pictures\corefilters\*.*"
+  ${DocFile} "..\..\Docs\czech\pictures\corefilters\*.*"
 !verbose pop
 
   SetShellVarContext All
@@ -402,16 +426,16 @@ SectionEnd
 Section /o  $(German_Text) German
   SectionIn 4
   SetOutPath $INSTDIR\Docs
-  File "..\..\Docs\*.css"
+  ${DocFile} "..\..\Docs\*.css"
   SetOutPath $INSTDIR\Docs\German
 !echo " -- Supressed"
 !verbose push
 !verbose 2
-  File "..\..\Docs\german\*.htm"
+  ${DocFile} "..\..\Docs\german\*.htm"
   SetOutPath $INSTDIR\Docs\German\corefilters
-  File "..\..\Docs\german\corefilters\*.htm"
+  ${DocFile} "..\..\Docs\german\corefilters\*.htm"
   SetOutPath $INSTDIR\Docs\German\externalfilters
-  File "..\..\Docs\german\externalfilters\*.htm"
+  ${DocFile} "..\..\Docs\german\externalfilters\*.htm"
 !verbose pop
 
   SetShellVarContext All
@@ -423,14 +447,14 @@ SectionEnd
 Section /o  $(French_Text) French
   SectionIn 4
   SetOutPath $INSTDIR\Docs
-  File "..\..\Docs\*.css"
+  ${DocFile} "..\..\Docs\*.css"
   SetOutPath $INSTDIR\Docs\French
 !echo " -- Supressed"
 !verbose push
 !verbose 2
-  File "..\..\Docs\french\*.htm"
+  ${DocFile} "..\..\Docs\french\*.htm"
   SetOutPath $INSTDIR\Docs\French\corefilters
-  File "..\..\Docs\french\corefilters\*.htm"
+  ${DocFile} "..\..\Docs\french\corefilters\*.htm"
 !verbose pop
 
   SetShellVarContext All
@@ -442,18 +466,18 @@ SectionEnd
 Section /o  $(Italian_Text) Italian
   SectionIn 4
   SetOutPath $INSTDIR\Docs
-  File "..\..\Docs\*.css"
+  ${DocFile} "..\..\Docs\*.css"
   SetOutPath $INSTDIR\Docs\Italian
 !echo " -- Supressed"
 !verbose push
 !verbose 2
-  File "..\..\Docs\italian\*.htm"
+  ${DocFile} "..\..\Docs\italian\*.htm"
   SetOutPath $INSTDIR\Docs\Italian\corefilters
-  File "..\..\Docs\italian\corefilters\*.htm"
+  ${DocFile} "..\..\Docs\italian\corefilters\*.htm"
   SetOutPath $INSTDIR\Docs\Italian\externalfilters
-  File "..\..\Docs\italian\externalfilters\*.htm"
+  ${DocFile} "..\..\Docs\italian\externalfilters\*.htm"
   SetOutPath $INSTDIR\Docs\Italian\pictures\corefilters
-  File "..\..\Docs\italian\pictures\corefilters\*.*"
+  ${DocFile} "..\..\Docs\italian\pictures\corefilters\*.*"
 !verbose pop
 
   SetShellVarContext All
@@ -468,36 +492,36 @@ Section /o  $(Japanese_Text) Japanese
   SetOverwrite ON
   
   SetOutPath $INSTDIR\Docs
-  File "..\..\Docs\*.css"
+  ${DocFile} "..\..\Docs\*.css"
 
   SetOutPath $INSTDIR\Docs\Japanese
 !echo " -- Supressed"
 !verbose push
 !verbose 2
-  File "..\..\Docs\english\*.htm"
-  File "..\..\Docs\japanese\*.htm"  ; Overwrite with the translated versions
-  File "..\..\Docs\japanese\ja.css"
-  File "..\..\Docs\japanese\filelist.txt"
-  File "..\..\Docs\japanese\readme_en.txt"
-  File "..\..\Docs\japanese\readme_ja.txt"
+  ${DocFile} "..\..\Docs\english\*.htm"
+  ${DocFile} "..\..\Docs\japanese\*.htm"  ; Overwrite with the translated versions
+  ${DocFile} "..\..\Docs\japanese\ja.css"
+  ${DocFile} "..\..\Docs\japanese\filelist.txt"
+  ${DocFile} "..\..\Docs\japanese\readme_en.txt"
+  ${DocFile} "..\..\Docs\japanese\readme_ja.txt"
 
   SetOutPath $INSTDIR\Docs\Japanese\advancedtopics
-  File "..\..\Docs\english\advancedtopics\*.htm"
+  ${DocFile} "..\..\Docs\english\advancedtopics\*.htm"
 
   SetOutPath $INSTDIR\Docs\Japanese\corefilters
-  File "..\..\Docs\japanese\corefilters\*.htm"
+  ${DocFile} "..\..\Docs\japanese\corefilters\*.htm"
 
   SetOutPath $INSTDIR\Docs\Japanese\externalfilters
-  File "..\..\Docs\english\externalfilters\*.htm"
+  ${DocFile} "..\..\Docs\english\externalfilters\*.htm"
 
   SetOutPath $INSTDIR\Docs\Japanese\pictures\advancedtopics
-  File "..\..\Docs\english\pictures\advancedtopics\*.*"
+  ${DocFile} "..\..\Docs\english\pictures\advancedtopics\*.*"
 
   SetOutPath $INSTDIR\Docs\Japanese\pictures\corefilters
-  File "..\..\Docs\english\pictures\corefilters\*.*"
+  ${DocFile} "..\..\Docs\english\pictures\corefilters\*.*"
 
   SetOutPath $INSTDIR\Docs\Japanese\pictures\externalfilters
-  File "..\..\Docs\english\pictures\externalfilters\*.*"
+  ${DocFile} "..\..\Docs\english\pictures\externalfilters\*.*"
 !verbose pop
 
   SetShellVarContext All
@@ -509,14 +533,14 @@ SectionEnd
 Section /o  $(Polish_Text) Polish
   SectionIn 4
   SetOutPath $INSTDIR\Docs\Polish
-  File "..\..\Docs\polish\*.*"
+  ${DocFile} "..\..\Docs\polish\*.*"
   SetOutPath $INSTDIR\Docs\Polish\corefilters
 !echo " -- Supressed"
 !verbose push
 !verbose 2
-  File "..\..\Docs\polish\corefilters\*.*"
+  ${DocFile} "..\..\Docs\polish\corefilters\*.*"
   SetOutPath $INSTDIR\Docs\Polish\externalfilters
-  File "..\..\Docs\polish\externalfilters\*.*"
+  ${DocFile} "..\..\Docs\polish\externalfilters\*.*"
 !verbose pop
 
   SetShellVarContext All
@@ -528,24 +552,24 @@ SectionEnd
 Section /o  $(Portugese_Text) Portuguese
   SectionIn 4
   SetOutPath $INSTDIR\Docs
-  File "..\..\Docs\*.css"
+  ${DocFile} "..\..\Docs\*.css"
   SetOutPath $INSTDIR\Docs\Portuguese
 !echo " -- Supressed"
 !verbose push
 !verbose 2
-  File "..\..\Docs\portugese\*.htm"
+  ${DocFile} "..\..\Docs\portugese\*.htm"
   SetOutPath $INSTDIR\Docs\Portuguese\advancedtopics
-  File "..\..\Docs\portugese\advancedtopics\*.htm"
+  ${DocFile} "..\..\Docs\portugese\advancedtopics\*.htm"
   SetOutPath $INSTDIR\Docs\Portuguese\corefilters
-  File "..\..\Docs\portugese\corefilters\*.htm"
+  ${DocFile} "..\..\Docs\portugese\corefilters\*.htm"
   SetOutPath $INSTDIR\Docs\Portuguese\externalfilters
-  File "..\..\Docs\portugese\externalfilters\*.htm"
+  ${DocFile} "..\..\Docs\portugese\externalfilters\*.htm"
   SetOutPath $INSTDIR\Docs\Portuguese\pictures\advancedtopics
-  File "..\..\Docs\portugese\pictures\advancedtopics\*.*"
+  ${DocFile} "..\..\Docs\portugese\pictures\advancedtopics\*.*"
   SetOutPath $INSTDIR\Docs\Portuguese\pictures\corefilters
-  File "..\..\Docs\portugese\pictures\corefilters\*.*"
+  ${DocFile} "..\..\Docs\portugese\pictures\corefilters\*.*"
   SetOutPath $INSTDIR\Docs\Portuguese\pictures\externalfilters
-  File "..\..\Docs\portugese\pictures\externalfilters\*.*"
+  ${DocFile} "..\..\Docs\portugese\pictures\externalfilters\*.*"
 !verbose pop
 
   SetShellVarContext All
@@ -557,25 +581,25 @@ SectionEnd
 Section /o  $(Russian_Text) Russian
   SectionIn 4
   SetOutPath $INSTDIR\Docs
-  File "..\..\Docs\*.css"
+  ${DocFile} "..\..\Docs\*.css"
   SetOutPath $INSTDIR\Docs\Russian
 !echo " -- Supressed"
 !verbose push
 !verbose 2
-  File "..\..\Docs\russian\*.htm"
-  File "..\..\Docs\russian\gpl-rus.txt"
+  ${DocFile} "..\..\Docs\russian\*.htm"
+  ${DocFile} "..\..\Docs\russian\gpl-rus.txt"
   SetOutPath $INSTDIR\Docs\Russian\advancedtopics
-  File "..\..\Docs\russian\advancedtopics\*.htm"
+  ${DocFile} "..\..\Docs\russian\advancedtopics\*.htm"
   SetOutPath $INSTDIR\Docs\Russian\corefilters
-  File "..\..\Docs\russian\corefilters\*.htm"
+  ${DocFile} "..\..\Docs\russian\corefilters\*.htm"
   SetOutPath $INSTDIR\Docs\Russian\externalfilters
-  File "..\..\Docs\russian\externalfilters\*.htm"
+  ${DocFile} "..\..\Docs\russian\externalfilters\*.htm"
   SetOutPath $INSTDIR\Docs\Russian\pictures\advancedtopics
-  File "..\..\Docs\russian\pictures\advancedtopics\*.*"
+  ${DocFile} "..\..\Docs\russian\pictures\advancedtopics\*.*"
   SetOutPath $INSTDIR\Docs\Russian\pictures\corefilters
-  File "..\..\Docs\russian\pictures\corefilters\*.*"
+  ${DocFile} "..\..\Docs\russian\pictures\corefilters\*.*"
   SetOutPath $INSTDIR\Docs\Russian\pictures\externalfilters
-  File "..\..\Docs\russian\pictures\externalfilters\*.*"
+  ${DocFile} "..\..\Docs\russian\pictures\externalfilters\*.*"
 !verbose pop
 
   SetShellVarContext All
@@ -613,7 +637,7 @@ Section /o  $(Associate3_Text) Associate3
 
 ; Template file
 ;  SetOutPath $WINDIR\ShellNew or $TEMPLATES
-;  File "Examples\Template.avs"
+;  ${File} "Examples\Template.avs"
 ;  WriteRegStr HKCR ".avs\ShellNew" "FileName" "Template.avs"
 SectionEnd
 
@@ -628,11 +652,11 @@ Section /o  $(ExtraFiles3_Text) ExtraFiles3
 !echo " -- Supressed"
 !verbose push
 !verbose 2
-  File "..\filtersdk\*.*"
+  ${DocFile} "..\filtersdk\*.*"
 !verbose pop
   SetOutPath $INSTDIR\FilterSDK\include
-  File "..\src\core\avisynth.h"
-  File "..\src\core\avisynth_c.h"
+  ${File} "..\src\core\avisynth.h"
+  ${File} "..\src\core\avisynth_c.h"
   SetShellVarContext All
   StrCmp $AdminInstall "No" +2
   CreateShortCut "$SMPROGRAMS\AviSynth 2.5\$(Start_FilterSDK).lnk" "$INSTDIR\FilterSDK\FilterSDK.htm"
@@ -642,16 +666,16 @@ SectionEnd
 Section /o  $(ExtraFiles1_Text) ExtraFiles1
   SectionIn 4
   SetOutPath $INSTDIR\Extras
-  File "..\src\release\AviSynth.lib"
-  File "..\src\release\AviSynth.exp"
+  ${File} "..\src\release\AviSynth.lib"
+  ${File} "..\src\release\AviSynth.exp"
 SectionEnd
 
 Section /o  $(ExtraFiles2_Text) ExtraFiles2
   SectionIn 4
   SetOutPath $INSTDIR\Extras
-  File "..\src\Release\AviSynth.map"
-  File "..\src\plugins\TCPDeliver\Release\TCPDeliver.map"
-  File "..\src\plugins\DirectShowSource\Release\DirectShowSource.map"
+  ${File} "..\src\Release\AviSynth.map"
+  ${File} "..\src\plugins\TCPDeliver\Release\TCPDeliver.map"
+  ${File} "..\src\plugins\DirectShowSource\Release\DirectShowSource.map"
 SectionEnd
 
 SubSectionEnd
