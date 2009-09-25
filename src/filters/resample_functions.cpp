@@ -208,6 +208,24 @@ double GaussianFilter::f(double value) {
 	return pow(2.0, - p*value*value);
 }
 
+/***********************
+ *** Sinc filter ***
+ ***********************/
+SincFilter::SincFilter(int t = 4) {
+   taps = (double)(max( 1,min(20,t)));
+}
+
+double SincFilter::f(double value) {
+   value = fabs(value);
+
+  if (abs(value)>0.000001) {
+    return sin(value*M_PI)/(value*M_PI);
+  } else {
+    return 1.0;
+  }
+}
+
+
 
 /******************************
  **** Resampling Patterns  ****

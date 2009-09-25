@@ -63,6 +63,13 @@ public:
   virtual double support() = 0;
 };
 
+int* GetResamplingPatternRGB(int original_width, double subrange_start, double subrange_width,
+                                    int target_width, ResamplingFunction* func, IScriptEnvironment* env);
+
+int* GetResamplingPatternYUV(int original_width, double subrange_start, double subrange_width,
+                                    int target_width, ResamplingFunction* func, bool luma, BYTE *temp,
+                                    IScriptEnvironment* env);
+
 class PointFilter : public ResamplingFunction 
 /**
   * Nearest neighbour (point sampler), used in PointResize
@@ -182,12 +189,19 @@ private:
  double param;
 };
 
-int* GetResamplingPatternRGB(int original_width, double subrange_start, double subrange_width,
-                                    int target_width, ResamplingFunction* func, IScriptEnvironment* env);
+class SincFilter : public ResamplingFunction
+/**
+  * Sinc filter, used in SincResize
+ **/
+{
+public:
+  SincFilter(int taps);
+	double f(double x);
+	double support() { return taps; };
 
-int* GetResamplingPatternYUV(int original_width, double subrange_start, double subrange_width,
-                                    int target_width, ResamplingFunction* func, bool luma, BYTE *temp,
-                                    IScriptEnvironment* env);
+private:
+  double taps;
+};
 
 
 #endif  // __Reample_Functions_H__

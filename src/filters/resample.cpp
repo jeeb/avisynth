@@ -55,6 +55,7 @@ AVSFunction Resample_filters[] = {
   { "Spline36Resize", "cii[src_left]f[src_top]f[src_width]f[src_height]f", FilteredResize::Create_Spline36Resize},
   { "Spline64Resize", "cii[src_left]f[src_top]f[src_width]f[src_height]f", FilteredResize::Create_Spline64Resize},
   { "GaussResize", "cii[src_left]f[src_top]f[src_width]f[src_height]f[p]f", FilteredResize::Create_GaussianResize},
+  { "SincResize", "cii[src_left]f[src_top]f[src_width]f[src_height]f[taps]i", FilteredResize::Create_SincResize},
   /**
     * Resize(PClip clip, dst_width, dst_height [src_left, src_top, src_width, int src_height,] )
     *
@@ -100,6 +101,7 @@ FilteredResizeH::FilteredResizeH( PClip _child, double subrange_left, double sub
     tempY = (BYTE*) _aligned_malloc(original_width*2+4+32, 64);   // aligned for Athlon cache line
     tempUV = (BYTE*) _aligned_malloc(original_width*4+8+32, 64);  // aligned for Athlon cache line
 
+    //  :FIXME: Wrong concept!
     if (vi.IsYV12()) {
       pattern_chroma = GetResamplingPatternYUV( vi.width>>1, subrange_left/2.0, subrange_width/2.0,
         target_width>>1, func, true, tempY, env );
@@ -109,9 +111,14 @@ FilteredResizeH::FilteredResizeH( PClip _child, double subrange_left, double sub
     } else if (vi.IsYV16()) {
       pattern_chroma = GetResamplingPatternYUV( vi.width>>1, subrange_left/2.0, subrange_width/2.0,
         target_width>>1, func, true, tempY, env );
+    } else if (vi.IsYV411()) {
+      pattern_chroma = GetResamplingPatternYUV( vi.width>>2, subrange_left/4.0, subrange_width/4.0,
+        target_width>>2, func, true, tempY, env );
     } else if (vi.IsYUY2()) {
       pattern_chroma = GetResamplingPatternYUV( vi.width>>1, subrange_left/2.0, subrange_width/2.0,
         target_width>>1, func, false, tempUV, env );
+    } else if (!vi.IsY8()) {
+      env->ThrowError("ResizeH: Opps we seem to be missing some code.");
     }
     pattern_luma = GetResamplingPatternYUV(vi.width, subrange_left, subrange_width, target_width, func, true, tempY, env);
   }
@@ -1389,7 +1396,8 @@ FilteredResizeV::FilteredResizeV( PClip _child, double subrange_top, double subr
   if (vi.IsRGB())
     subrange_top = vi.height - subrange_top - subrange_height;
   resampling_pattern = GetResamplingPatternRGB(vi.height, subrange_top, subrange_height, target_height, func, env);
-  if (vi.IsYV12()) {  // Subsample chroma. :FIXME: Wrong concept!
+  // :FIXME: Wrong concept!
+  if (vi.IsYV12()) {  // Subsample chroma.
     resampling_patternUV = GetResamplingPatternRGB(vi.height>>1, subrange_top/2.0, subrange_height/2.0, target_height>>1, func, env);
   } else {  //Don't resample chroma.
     resampling_patternUV = GetResamplingPatternRGB(vi.height, subrange_top, subrange_height, target_height, func, env);
@@ -1822,3 +1830,13 @@ AVSValue __cdecl FilteredResize::Create_GaussianResize(AVSValue args, void*, ISc
 	}
 	catch (...) { throw; }
 }
+
+AVSValue __cdecl FilteredResize::Create_SincResize(AVSValue args, void*, IScriptEnvironment* env)
+{
+	try {	// HIDE DAMN SEH COMPILER BUG!!!
+  return CreateResize( args[0].AsClip(), args[1].AsInt(), args[2].AsInt(), &args[3],
+                       &SincFilter(args[7].AsInt(4)), env );
+	}
+	catch (...) { throw; }
+}
+
