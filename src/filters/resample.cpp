@@ -103,27 +103,27 @@ FilteredResizeH::FilteredResizeH( PClip _child, double subrange_left, double sub
 
     //  :FIXME: Wrong concept!
     if (vi.IsYV12()) {
-      pattern_chroma = GetResamplingPatternYUV( vi.width>>1, subrange_left/2.0, subrange_width/2.0,
-        target_width>>1, func, true, tempY, env );
+      pattern_chroma = func->GetResamplingPatternYUV( vi.width>>1, subrange_left/2.0, subrange_width/2.0,
+        target_width>>1, true, tempY, env );
     } else if (vi.IsYV24()) {
-      pattern_chroma = GetResamplingPatternYUV(vi.width, subrange_left, subrange_width,
-        target_width, func, true, tempY, env);
+      pattern_chroma = func->GetResamplingPatternYUV(vi.width, subrange_left, subrange_width,
+        target_width, true, tempY, env);
     } else if (vi.IsYV16()) {
-      pattern_chroma = GetResamplingPatternYUV( vi.width>>1, subrange_left/2.0, subrange_width/2.0,
-        target_width>>1, func, true, tempY, env );
+      pattern_chroma = func->GetResamplingPatternYUV( vi.width>>1, subrange_left/2.0, subrange_width/2.0,
+        target_width>>1, true, tempY, env );
     } else if (vi.IsYV411()) {
-      pattern_chroma = GetResamplingPatternYUV( vi.width>>2, subrange_left/4.0, subrange_width/4.0,
-        target_width>>2, func, true, tempY, env );
+      pattern_chroma = func->GetResamplingPatternYUV( vi.width>>2, subrange_left/4.0, subrange_width/4.0,
+        target_width>>2, true, tempY, env );
     } else if (vi.IsYUY2()) {
-      pattern_chroma = GetResamplingPatternYUV( vi.width>>1, subrange_left/2.0, subrange_width/2.0,
-        target_width>>1, func, false, tempUV, env );
+      pattern_chroma = func->GetResamplingPatternYUV( vi.width>>1, subrange_left/2.0, subrange_width/2.0,
+        target_width>>1, false, tempUV, env );
     } else if (!vi.IsY8()) {
       env->ThrowError("ResizeH: Opps we seem to be missing some code.");
     }
-    pattern_luma = GetResamplingPatternYUV(vi.width, subrange_left, subrange_width, target_width, func, true, tempY, env);
+    pattern_luma = func->GetResamplingPatternYUV(vi.width, subrange_left, subrange_width, target_width, true, tempY, env);
   }
   else
-    pattern_luma = GetResamplingPatternRGB(vi.width, subrange_left, subrange_width, target_width, func, env);
+    pattern_luma = func->GetResamplingPatternRGB(vi.width, subrange_left, subrange_width, target_width, env);
 
   vi.width = target_width;
 
@@ -1395,12 +1395,12 @@ FilteredResizeV::FilteredResizeV( PClip _child, double subrange_top, double subr
     env->ThrowError("Resize: YV12 destination height must be multiple of 2.");
   if (vi.IsRGB())
     subrange_top = vi.height - subrange_top - subrange_height;
-  resampling_pattern = GetResamplingPatternRGB(vi.height, subrange_top, subrange_height, target_height, func, env);
+  resampling_pattern = func->GetResamplingPatternRGB(vi.height, subrange_top, subrange_height, target_height, env);
   // :FIXME: Wrong concept!
   if (vi.IsYV12()) {  // Subsample chroma.
-    resampling_patternUV = GetResamplingPatternRGB(vi.height>>1, subrange_top/2.0, subrange_height/2.0, target_height>>1, func, env);
+    resampling_patternUV = func->GetResamplingPatternRGB(vi.height>>1, subrange_top/2.0, subrange_height/2.0, target_height>>1, env);
   } else {  //Don't resample chroma.
-    resampling_patternUV = GetResamplingPatternRGB(vi.height, subrange_top, subrange_height, target_height, func, env);
+    resampling_patternUV = func->GetResamplingPatternRGB(vi.height, subrange_top, subrange_height, target_height, env);
   }
   vi.height = target_height;
 

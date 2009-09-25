@@ -231,8 +231,8 @@ double SincFilter::f(double value) {
  **** Resampling Patterns  ****
  *****************************/
 
-int* GetResamplingPatternRGB( int original_width, double subrange_start, double subrange_width,
-                              int target_width, ResamplingFunction* func, IScriptEnvironment* env )
+int* ResamplingFunction::GetResamplingPatternRGB( int original_width, double subrange_start,
+                              double subrange_width, int target_width, IScriptEnvironment* env )
 /**
   * This function returns a resampling "program" which is interpreted by the 
   * FilteredResize filters.  It handles edge conditions so FilteredResize    
@@ -241,7 +241,7 @@ int* GetResamplingPatternRGB( int original_width, double subrange_start, double 
 {
   double scale = double(target_width) / subrange_width;
   double filter_step = min(scale, 1.0);
-  double filter_support = func->support() / filter_step;
+  double filter_support = support() / filter_step;
   int fir_filter_size = int(ceil(filter_support*2));
   int* result = (int*) _aligned_malloc((1 + target_width*(1+fir_filter_size)) * 4, 64);
 
@@ -281,7 +281,7 @@ int* GetResamplingPatternRGB( int original_width, double subrange_start, double 
     double ok_pos = max(0.0,min(original_width-1,pos));
 
     for (int j=0; j<fir_filter_size; ++j) {  // Accumulate all coefficients
-      total += func->f((start_pos+j - ok_pos) * filter_step);
+      total += f((start_pos+j - ok_pos) * filter_step);
     }
 
     if (total == 0.0) {
@@ -295,7 +295,7 @@ int* GetResamplingPatternRGB( int original_width, double subrange_start, double 
     double total2 = 0.0;
 
     for (int k=0; k<fir_filter_size; ++k) {
-      double total3 = total2 + func->f((start_pos+k - ok_pos) * filter_step) / total;
+      double total3 = total2 + f((start_pos+k - ok_pos) * filter_step) / total;
       *cur++ = int(total3*FPScale+0.5) - int(total2*FPScale+0.5);
       total2 = total3;
     }
@@ -307,9 +307,9 @@ int* GetResamplingPatternRGB( int original_width, double subrange_start, double 
 }
 
 
-int* GetResamplingPatternYUV( int original_width, double subrange_start, double subrange_width,
-                              int target_width, ResamplingFunction* func, bool luma, BYTE *temp,
-                              IScriptEnvironment* env )
+int* ResamplingFunction::GetResamplingPatternYUV( int original_width, double subrange_start,
+                                         double subrange_width, int target_width, bool luma,
+                                         BYTE *temp, IScriptEnvironment* env )
 /**
   * Same as with the RGB case, but with special
   * allowances for YUV-MMX code
@@ -317,7 +317,7 @@ int* GetResamplingPatternYUV( int original_width, double subrange_start, double 
 {
   double scale = double(target_width) / subrange_width;
   double filter_step = min(scale, 1.0);
-  double filter_support = func->support() / filter_step;
+  double filter_support = support() / filter_step;
   int fir_filter_size = int(ceil(filter_support*2));
   int fir_fs_mmx = (fir_filter_size / 2) +1;  // number of loops in MMX code
   int target_width_a=(target_width+15)&(~15);
@@ -367,7 +367,7 @@ int* GetResamplingPatternYUV( int original_width, double subrange_start, double 
     double ok_pos = max(0.0,min(original_width-1, pos)); 
 
     for (int j=0; j<fir_filter_size; ++j) {  // Accumulate all coefficients
-      total += func->f((start_pos + j - ok_pos) * filter_step);
+      total += f((start_pos + j - ok_pos) * filter_step);
     }
 
     if (total == 0.0) {
@@ -382,7 +382,7 @@ int* GetResamplingPatternYUV( int original_width, double subrange_start, double 
     int oldCoeff = 0;
 
     for (int k=0; k<fir_filter_size; ++k) {
-      double total3 = total2 + func->f((start_pos+k - ok_pos) * filter_step) / total;
+      double total3 = total2 + f((start_pos+k - ok_pos) * filter_step) / total;
       int coeff = int(total3*FPScale+0.5) - int(total2*FPScale+0.5);
       total2 = total3;
 
