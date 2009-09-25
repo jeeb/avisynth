@@ -63,7 +63,6 @@ private:
   int* /*const*/ pattern_luma;
   int* /*const*/ pattern_chroma;
   int original_width;
-  bool use_dynamic_code;
 
   BYTE *tempY, *tempUV;
 // These must be properly set when running the filter:
