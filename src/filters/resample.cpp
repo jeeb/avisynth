@@ -128,9 +128,11 @@ FilteredResizeH::FilteredResizeH( PClip _child, double subrange_left, double sub
   vi.width = target_width;
 
   if (vi.IsPlanar()) {
-    assemblerY = GenerateResizer(PLANAR_Y, env);
+    assemblerY         = GenerateResizer(PLANAR_Y, false, env);
+    assemblerY_aligned = GenerateResizer(PLANAR_Y, true,  env);
     if (!vi.IsY8()) {
-      assemblerUV = GenerateResizer(PLANAR_U, env);
+      assemblerUV         = GenerateResizer(PLANAR_U, false, env);
+      assemblerUV_aligned = GenerateResizer(PLANAR_U, true,  env);
     }
   }
 	}	catch (...) { throw; }
@@ -140,6 +142,7 @@ FilteredResizeH::FilteredResizeH( PClip _child, double subrange_left, double sub
  * Dynamically Assembled Resampler
  *
  * (c) 2003, Klaus Post
+ * (c) 2009, Ian Brabham
  *
  * Dynamic version of the Horizontal resizer
  *
@@ -150,11 +153,15 @@ FilteredResizeH::FilteredResizeH( PClip _child, double subrange_left, double sub
  * Too much code to workaround for the 6 pixels, and
  *  still not quite perfect. Though still faster than
  *  the original code.
+ * New SSE2 unpacker does 64 bytes per cycle, many times
+ *  faster, contributes approx +5% to overall speed.
+ *
+ * :TODO: SSE2 version of main code
  **********************************/
 
 
 
-DynamicAssembledCode FilteredResizeH::GenerateResizer(int gen_plane, IScriptEnvironment* env) {
+DynamicAssembledCode FilteredResizeH::GenerateResizer(int gen_plane, bool source_aligned, IScriptEnvironment* env) {
   __declspec(align(8)) static const __int64 FPround       = 0x0000200000002000; // 16384/2
   __declspec(align(8)) static const __int64 Mask2_pix     = 0x000000000000ffff;
   __declspec(align(8)) static const __int64 Mask1_pix_inv = 0xffffffffffffff00;
@@ -172,6 +179,9 @@ DynamicAssembledCode FilteredResizeH::GenerateResizer(int gen_plane, IScriptEnvi
   int mod16_remain = (3+vi_src_width-(mod16_w*16))/4;  //Src size!
 
   bool isse = !!(env->GetCPUFlags() & CPUF_INTEGER_SSE);
+  bool sse2 = !!(env->GetCPUFlags() & CPUF_SSE2);
+  bool sse3 = !!(env->GetCPUFlags() & CPUF_SSE3);
+  bool sse4 = !!(env->GetCPUFlags() & CPUF_SSE4);
 
   int prefetchevery = 2;
   if ((env->GetCPUFlags() & CPUF_3DNOW_EXT)||((env->GetCPUFlags() & CPUF_SSE2))) {
@@ -213,6 +223,9 @@ DynamicAssembledCode FilteredResizeH::GenerateResizer(int gen_plane, IScriptEnvi
   // Initialize registers.
   x86.mov(eax,(int)&FPround);
   x86.pxor(mm6,mm6);  // Cleared mmx register - Not touched!
+  if (sse2)
+    x86.pxor(xmm6,xmm6);
+
   x86.movq(mm7, qword_ptr[eax]);  // Rounder for final division. Not touched!
 
   x86.mov(dword_ptr [&gen_h],vi_height);  // This is our y counter.
@@ -221,6 +234,9 @@ DynamicAssembledCode FilteredResizeH::GenerateResizer(int gen_plane, IScriptEnvi
   x86.label("yloop");
 
   x86.mov(esi, dword_ptr[&gen_srcp]);
+  if (isse | sse2)
+    x86.prefetchnta(dword_ptr [esi]);  //Prefetch current cache line
+
   x86.mov(eax,dword_ptr [&gen_dstp]);
   x86.mov(edi, dword_ptr[&tempY]);
   x86.mov(dword_ptr [&gen_temp_destp],eax);
@@ -228,34 +244,155 @@ DynamicAssembledCode FilteredResizeH::GenerateResizer(int gen_plane, IScriptEnvi
 
   // Unpack source bytes to words in tempY buffer
 
-  for (int i=0;i<mod16_w;i++) {
-    if ((!(i%prefetchevery)) && ((prefetchevery+i)*16 < vi_src_width) && isse && unroll_fetch) {
-       //Prefetch only once per cache line
-      x86.prefetchnta(dword_ptr [esi+(prefetchevery*16)]);
+  if (sse2) {
+    int mod64_w = mod16_w / 4;
+    int mod64_r = mod16_w % 4;
+    if (!mod64_r && mod64_w) {
+      mod64_w -= 1;
+      mod64_r += 4;
     }
-    if (!unroll_fetch) {  // Should we create a loop instead of unrolling?
-      i = mod16_w;  // Jump out of loop
-      x86.mov(ebx, mod16_w);
-      x86.align(16);
-      x86.label("fetch_loopback");
-    }
-    x86.movq(mm0, qword_ptr[esi]);        // Move pixels into mmx-registers
-     x86.movq(mm1, qword_ptr[esi+8]);
-    x86.movq(mm2,mm0);
-     x86.punpcklbw(mm0,mm6);     // Unpack bytes -> words
-    x86.movq(mm3,mm1);
-     x86.punpcklbw(mm1,mm6);
-    x86.add(esi,16);
-     x86.punpckhbw(mm2,mm6);
-    x86.add(edi,32);
-     x86.punpckhbw(mm3,mm6);
-    if (!unroll_fetch)   // Loop on if not unrolling
-      x86.dec(ebx);
 
-    x86.movq(qword_ptr[edi-32],mm0);        // Store unpacked pixels in temporary space.
-    x86.movq(qword_ptr[edi+8-32],mm2);
-    x86.movq(qword_ptr[edi+16-32],mm1);
-    x86.movq(qword_ptr[edi+24-32],mm3);
+    if (mod64_w) {
+      if (mod64_w > 1) {
+        x86.mov(        ebx, mod64_w);
+        x86.align(16);
+        x86.label("fetch_loopback");
+      }
+      x86.prefetchnta(  dword_ptr [esi+64]);         //Prefetch one cache line ahead for single use
+      if (source_aligned) {                          // Load source
+        if (sse4) {
+          x86.movntdqa( xmm0, xmmword_ptr[esi]);     // fetch aligned dq word for single use
+          x86.movntdqa( xmm1, xmmword_ptr[esi+16]);
+          x86.movntdqa( xmm2, xmmword_ptr[esi+32]);
+          x86.movntdqa( xmm3, xmmword_ptr[esi+48]);
+        } else {
+          x86.movdqa(   xmm0, xmmword_ptr[esi]);     // fetch aligned dq word
+          x86.movdqa(   xmm1, xmmword_ptr[esi+16]);
+          x86.movdqa(   xmm2, xmmword_ptr[esi+32]);
+          x86.movdqa(   xmm3, xmmword_ptr[esi+48]);
+        }
+      } else {
+        if (sse3) {
+          x86.lddqu(    xmm0, xmmword_ptr[esi]);     // fast fetch unaligned dq word
+          x86.lddqu(    xmm1, xmmword_ptr[esi+16]);
+          x86.lddqu(    xmm2, xmmword_ptr[esi+32]);
+          x86.lddqu(    xmm3, xmmword_ptr[esi+48]);
+        } else {
+          x86.movdqu(   xmm0, xmmword_ptr[esi]);     // fetch unaligned dq word
+          x86.movdqu(   xmm1, xmmword_ptr[esi+16]);
+          x86.movdqu(   xmm2, xmmword_ptr[esi+32]);
+          x86.movdqu(   xmm3, xmmword_ptr[esi+48]);
+        }
+      }                                              // Unpack bytes -> words
+      x86.punpckhbw(    xmm4, xmm0);                 // xmm4 can contain junk, as this is cleared below.
+      x86.punpckhbw(    xmm5, xmm1);
+      x86.punpcklbw(    xmm0, xmm6);
+      x86.punpcklbw(    xmm1, xmm6);
+      x86.add(          esi, 64);
+      x86.psrlw(        xmm4, 8);                    // This will also clear out the junk in
+      x86.add(          edi, 128);                   // xmm4 that was there before the unpack
+      x86.psrlw(        xmm5, 8);
+      x86.movdqa(       xmmword_ptr[edi-128], xmm0);
+      x86.movdqa(       xmmword_ptr[edi-112], xmm4);
+      x86.movdqa(       xmmword_ptr[edi- 96], xmm1);
+      x86.movdqa(       xmmword_ptr[edi- 80], xmm5);
+
+      x86.punpckhbw(    xmm4, xmm2);
+      x86.punpckhbw(    xmm5, xmm3);
+      x86.punpcklbw(    xmm2, xmm6);
+      x86.punpcklbw(    xmm3, xmm6);
+      x86.psrlw(        xmm4, 8);
+      if (mod64_w > 1)
+        x86.dec(        ebx);
+
+      x86.psrlw(        xmm5, 8);
+      x86.movdqa(       xmmword_ptr[edi- 64], xmm2);
+      x86.movdqa(       xmmword_ptr[edi- 48], xmm4);
+      x86.movdqa(       xmmword_ptr[edi- 32], xmm3);
+      x86.movdqa(       xmmword_ptr[edi- 16], xmm5);
+      if (mod64_w > 1)
+        x86.jnz(        "fetch_loopback");
+    }
+
+    if (source_aligned) {                            // Do the remainder
+      if (sse4) {
+        if (mod64_r > 0) x86.movntdqa( xmm0, xmmword_ptr[esi]);     // 16 pixels
+        if (mod64_r > 1) x86.movntdqa( xmm1, xmmword_ptr[esi+16]);  // 32 pixels
+        if (mod64_r > 2) x86.movntdqa( xmm2, xmmword_ptr[esi+32]);  // 48 pixels
+        if (mod64_r > 3) x86.movntdqa( xmm3, xmmword_ptr[esi+48]);  // 64 pixels
+      } else {
+        if (mod64_r > 0) x86.movdqa(   xmm0, xmmword_ptr[esi]);
+        if (mod64_r > 1) x86.movdqa(   xmm1, xmmword_ptr[esi+16]);
+        if (mod64_r > 2) x86.movdqa(   xmm2, xmmword_ptr[esi+32]);
+        if (mod64_r > 3) x86.movdqa(   xmm3, xmmword_ptr[esi+48]);
+      }
+    } else {
+      if (sse3) {
+        if (mod64_r > 0) x86.lddqu(    xmm0, xmmword_ptr[esi]);
+        if (mod64_r > 1) x86.lddqu(    xmm1, xmmword_ptr[esi+16]);
+        if (mod64_r > 2) x86.lddqu(    xmm2, xmmword_ptr[esi+32]);
+        if (mod64_r > 3) x86.lddqu(    xmm3, xmmword_ptr[esi+48]);
+      } else {
+        if (mod64_r > 0) x86.movdqu(   xmm0, xmmword_ptr[esi]);
+        if (mod64_r > 1) x86.movdqu(   xmm1, xmmword_ptr[esi+16]);
+        if (mod64_r > 2) x86.movdqu(   xmm2, xmmword_ptr[esi+32]);
+        if (mod64_r > 3) x86.movdqu(   xmm3, xmmword_ptr[esi+48]);
+      }
+    }
+    if (mod64_r > 0) x86.punpckhbw(    xmm4, xmm0);
+    if (mod64_r > 1) x86.punpckhbw(    xmm5, xmm1);
+    if (mod64_r > 0) x86.punpcklbw(    xmm0, xmm6);
+    if (mod64_r > 1) x86.punpcklbw(    xmm1, xmm6);
+    if (mod64_r > 0) x86.psrlw(        xmm4, 8);
+    if (mod64_r > 1) x86.psrlw(        xmm5, 8);
+    if (mod64_r > 0) x86.movdqa(       xmmword_ptr[edi+  0], xmm0);
+    if (mod64_r > 0) x86.movdqa(       xmmword_ptr[edi+ 16], xmm4);
+    if (mod64_r > 1) x86.movdqa(       xmmword_ptr[edi+ 32], xmm1);
+    if (mod64_r > 1) x86.movdqa(       xmmword_ptr[edi+ 48], xmm5);
+
+    if (mod64_r > 2) x86.punpckhbw(    xmm4, xmm2);
+    if (mod64_r > 3) x86.punpckhbw(    xmm5, xmm3);
+    if (mod64_r > 2) x86.punpcklbw(    xmm2, xmm6);
+    if (mod64_r > 3) x86.punpcklbw(    xmm3, xmm6);
+    if (mod64_r > 2) x86.psrlw(        xmm4, 8);
+    if (mod64_r > 3) x86.psrlw(        xmm5, 8);
+    if (mod64_r > 2) x86.movdqa(       xmmword_ptr[edi+ 64], xmm2);
+    if (mod64_r > 2) x86.movdqa(       xmmword_ptr[edi+ 80], xmm4);
+    if (mod64_r > 3) x86.movdqa(       xmmword_ptr[edi+ 96], xmm3);
+    if (mod64_r > 3) x86.movdqa(       xmmword_ptr[edi+112], xmm5);
+
+    if (mod64_r > 0) x86.add(          esi, mod64_r*16);
+    if (mod64_r > 0) x86.add(          edi, mod64_r*32);
+  } else {
+    for (int i=0;i<mod16_w;i++) {
+      if ((!(i%prefetchevery)) && ((prefetchevery+i)*16 < vi_src_width) && isse && unroll_fetch) {
+         //Prefetch only once per cache line
+        x86.prefetchnta(dword_ptr [esi+(prefetchevery*16)]);
+      }
+      if (!unroll_fetch) {  // Should we create a loop instead of unrolling?
+        i = mod16_w;  // Jump out of loop
+        x86.mov(ebx, mod16_w);
+        x86.align(16);
+        x86.label("fetch_loopback");
+      }
+      x86.movq(mm0, qword_ptr[esi]);        // Move pixels into mmx-registers
+       x86.movq(mm1, qword_ptr[esi+8]);
+      x86.movq(mm2,mm0);
+       x86.punpcklbw(mm0,mm6);     // Unpack bytes -> words
+      x86.movq(mm3,mm1);
+       x86.punpcklbw(mm1,mm6);
+      x86.add(esi,16);
+       x86.punpckhbw(mm2,mm6);
+      x86.add(edi,32);
+       x86.punpckhbw(mm3,mm6);
+      if (!unroll_fetch)   // Loop on if not unrolling
+        x86.dec(ebx);
+
+      x86.movq(qword_ptr[edi-32],mm0);        // Store unpacked pixels in temporary space.
+      x86.movq(qword_ptr[edi+8-32],mm2);
+      x86.movq(qword_ptr[edi+16-32],mm1);
+      x86.movq(qword_ptr[edi+24-32],mm3);
+    }
     if (!unroll_fetch)   // Loop on if not unrolling
       x86.jnz("fetch_loopback");
   }
@@ -518,18 +655,28 @@ PVideoFrame __stdcall FilteredResizeH::GetFrame(int n, IScriptEnvironment* env)
     gen_dst_pitch = dst_pitch;
     gen_srcp = (BYTE*)srcp;
     gen_dstp = dstp;
-    assemblerY.Call();
+    if (((int)gen_srcp & 15) || (gen_src_pitch & 15))
+      assemblerY.Call();
+    else 
+      assemblerY_aligned.Call();
+
     if (src->GetRowSize(PLANAR_U)) {  // Y8 is finished here
       gen_src_pitch = src->GetPitch(PLANAR_U);
       gen_dst_pitch = dst->GetPitch(PLANAR_U);
 
       gen_srcp = (BYTE*)src->GetReadPtr(PLANAR_U);
       gen_dstp = dst->GetWritePtr(PLANAR_U);
-      assemblerUV.Call();
+      if (((int)gen_srcp & 15) || (gen_src_pitch & 15))
+        assemblerUV.Call();
+      else 
+        assemblerUV_aligned.Call();
 
       gen_srcp = (BYTE*)src->GetReadPtr(PLANAR_V);
       gen_dstp = dst->GetWritePtr(PLANAR_V);
-      assemblerUV.Call();
+      if (((int)gen_srcp & 15) || (gen_src_pitch & 15))
+        assemblerUV.Call();
+      else 
+        assemblerUV_aligned.Call();
     }
     return dst;
   } else
@@ -1022,6 +1169,8 @@ FilteredResizeH::~FilteredResizeH(void)
   }
   assemblerY.Free();
   assemblerUV.Free();
+  assemblerY_aligned.Free();
+  assemblerUV_aligned.Free();
 }
 
 

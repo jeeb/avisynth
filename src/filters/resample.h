@@ -55,10 +55,12 @@ public:
                    ResamplingFunction* func, IScriptEnvironment* env );
   virtual ~FilteredResizeH(void);
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
-  DynamicAssembledCode GenerateResizer(int gen_plane, IScriptEnvironment* env);
+  DynamicAssembledCode GenerateResizer(int gen_plane, bool source_aligned, IScriptEnvironment* env);
 private:
   DynamicAssembledCode assemblerY;
   DynamicAssembledCode assemblerUV;
+  DynamicAssembledCode assemblerY_aligned;
+  DynamicAssembledCode assemblerUV_aligned;
   
   int* /*const*/ pattern_luma;
   int* /*const*/ pattern_chroma;
