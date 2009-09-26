@@ -577,19 +577,19 @@ void __stdcall Cache::GetAudio(void* buf, __int64 start, __int64 count, IScriptE
 
   if ( (!vi.HasAudio()) || (start+count <= 0) || (start >= vi.num_audio_samples)) {
     // Completely skip.
-    FillZeros(buf, 0, count);
+    FillZeros(buf, 0, (int)count);
     return;
   }
 
   if (start < 0) {  // Partial initial skip
-    FillZeros(buf, 0, -start);  // Fill all samples before 0 with silence.
+    FillZeros(buf, 0, (int)-start);  // Fill all samples before 0 with silence.
     count += start;  // Subtract start bytes from count.
     buf = ((BYTE*)buf) - (int)(start*vi.BytesPerAudioSample());   
     start = 0;
   }
 
   if (start+count > vi.num_audio_samples) {  // Partial ending skip
-    FillZeros(buf, (vi.num_audio_samples - start), count - (vi.num_audio_samples - start));  // Fill end samples
+    FillZeros(buf, (int)(vi.num_audio_samples - start), (int)(count - (vi.num_audio_samples - start)));  // Fill end samples
     count = (vi.num_audio_samples - start);
   }
 
@@ -626,8 +626,6 @@ void __stdcall Cache::GetAudio(void* buf, __int64 start, __int64 count, IScriptE
   _RPT0(0,dbgbuf);
 #endif
 
-  int shiftsamples;
-
   while (count>maxsamplecount) {    //is cache big enough?
     _RPT1(0, "CA:%x:Cache too small->caching last audio\n", this);
     ac_too_small_count++;
@@ -636,7 +634,7 @@ void __stdcall Cache::GetAudio(void* buf, __int64 start, __int64 count, IScriptE
 
     if (ac_too_small_count > 2 && (maxsamplecount < vi.AudioSamplesFromBytes(4096*1024))) {  // Max size = 4MB!
       //automatically upsize cache!
-      int new_size = (vi.BytesFromAudioSamples(count)+8192) & -8192;
+      int new_size = (int)(vi.BytesFromAudioSamples(count)+8192) & -8192; // Yes +1 to +8192 bytes
       new_size = min(4096*1024, new_size);
       _RPT2(0, "CacheAudio:%x: Autoupsizing buffer to %d bytes!", this, new_size);
       SetCacheHints(h_audiopolicy, new_size); // updates maxsamplecount!!
@@ -649,7 +647,7 @@ void __stdcall Cache::GetAudio(void* buf, __int64 start, __int64 count, IScriptE
       cache_start = start+count-cache_count;
       BYTE *buff=(BYTE *)buf;
       buff += vi.BytesFromAudioSamples(cache_start - start);
-      memcpy(cache, buff, vi.BytesFromAudioSamples(cache_count));
+      memcpy(cache, buff, (size_t)vi.BytesFromAudioSamples(cache_count));
 
       return;
     }
@@ -665,19 +663,20 @@ void __stdcall Cache::GetAudio(void* buf, __int64 start, __int64 count, IScriptE
   else {
     if (start+count > cache_start+cache_count) { // Does the cache fail to cover the request?
       if (start+count > cache_start+maxsamplecount) {  // Is cache shifting necessary?
-        shiftsamples = (start+count) - (cache_start+maxsamplecount);
+        int shiftsamples = (int)((start+count) - (cache_start+maxsamplecount)); // Align end of cache with end of request
 
         if ( (start - cache_start)/2 > shiftsamples ) {  //shift half cache if possible
-          shiftsamples = (start - cache_start)/2;
+          shiftsamples = (int)((start - cache_start)/2);
         }
-        if (shiftsamples >= cache_count) {
-          shiftsamples = cache_count; // Preserve linear access
+        if (shiftsamples >= cache_count) { // Can we save any existing data
+          cache_start = start+count - maxsamplecount; // Maximise linear access
+          cache_count = 0;
         }
         else {
-          memmove(cache, cache+shiftsamples*samplesize,(cache_count-shiftsamples)*samplesize);
+          memmove(cache, cache+shiftsamples*samplesize, (size_t)((cache_count-shiftsamples)*samplesize));
+          cache_start = cache_start + shiftsamples;
+          cache_count = cache_count - shiftsamples;
         }
-        cache_start = cache_start + shiftsamples;
-        cache_count = cache_count - shiftsamples;
       }
       // Read just enough to complete the current request, append it to the cache
       child->GetAudio(cache + cache_count*samplesize, cache_start + cache_count, start+count-(cache_start+cache_count), env);
@@ -686,7 +685,7 @@ void __stdcall Cache::GetAudio(void* buf, __int64 start, __int64 count, IScriptE
   }
 
   //copy cache to buf
-  memcpy(buf,cache + (start - cache_start)*samplesize, count*samplesize);
+  memcpy(buf,cache + (start - cache_start)*samplesize, (size_t)(count*samplesize));
 
 }
 
@@ -726,7 +725,7 @@ void __stdcall Cache::SetCacheHints(int cachehints,int frame_range) {
       if (oldcache) {
         // Keep old cache contents
         cache_count = min(cache_count, maxsamplecount);
-        memcpy(cache, oldcache, vi.BytesFromAudioSamples(cache_count));
+        memcpy(cache, oldcache, (size_t)(vi.BytesFromAudioSamples(cache_count)));
         delete[] oldcache;
       }
       else {
