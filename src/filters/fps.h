@@ -40,7 +40,9 @@
 /********************************************************************
 ********************************************************************/
 
-void FloatToFPS(double n, unsigned &num, unsigned &den, IScriptEnvironment* env);
+AVSValue __cdecl ContinuedCreate(AVSValue args, void* key, IScriptEnvironment* env);
+
+void FloatToFPS(const char *name, float n, unsigned &num, unsigned &den, IScriptEnvironment* env);
 
 void PresetToFPS(const char *name, const char *p, unsigned &num, unsigned &den, IScriptEnvironment* env);
 

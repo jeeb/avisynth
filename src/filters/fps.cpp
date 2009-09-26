@@ -63,6 +63,9 @@ AVSFunction Fps_filters[] = {
   { "ConvertFPS", "cs[zone]i[vbi]i", ConvertFPS::CreatePreset }, // dst framerate, zone lines, vbi lines
   { "ConvertFPS", "cc[zone]i[vbi]i", ConvertFPS::CreateFromClip }, // clip with dst framerate, zone lines, vbi lines
 
+  { "ContinuedDenominator", "f[]i[limit]i", ContinuedCreate, (void*)0 },
+  { "ContinuedNumerator",   "f[]i[limit]i", ContinuedCreate, (void*)1 },
+
   { 0 }
 };
 
@@ -103,7 +106,7 @@ static bool float_to_frac(float input, unsigned &num, unsigned &den)
 
   // if too small try to pull result from the reciprocal
   if (exponent < -31) {
-    return float_to_frac(1.0/input, den, num);
+    return float_to_frac((float)(1.0/input), den, num);
   }
 
   // if exponent is too large try removing leading 0's of mantissa
@@ -213,7 +216,7 @@ static void reduce_frac(unsigned &num, unsigned &den, unsigned limit)
   unsigned n0 = 0, n1 = 1, n2, nx = num;    // numerators
   unsigned d0 = 1, d1 = 0, d2, dx = den;  // denominators
   unsigned a2, ax, amin;  // integer parts of quotients
-  unsigned f1, f2;        // fractional parts of quotients
+  unsigned f1 = 0, f2;        // fractional parts of quotients
   int i = 0;  // number of loop iterations
 
   while (1) { // calculate convergents
@@ -250,17 +253,49 @@ static void reduce_frac(unsigned &num, unsigned &den, unsigned limit)
     }
     else {
       // calculate best semiconvergent
-      num   = n0 + n1 * ax;
+      num = n0 + n1 * ax;
       den = d0 + d1 * ax;
     }
   }
 }
 
+
+AVSValue __cdecl ContinuedCreate(AVSValue args, void* key, IScriptEnvironment* env)
+{
+  unsigned num, den;
+
+  if (args[1].IsInt()) { // num, den[, limit] form
+    if (args[0].IsFloat()) {
+      num = (unsigned)args[0].AsFloat();
+      if ((float)num != args[0].AsFloat()) {
+        env->ThrowError("ContinuedFraction: Numerator must be an integer.\n");
+      }
+    } else {
+      num = args[0].AsInt();
+    }
+    den = args[1].AsInt();
+    reduce_frac(num, den, (unsigned)args[2].AsInt(1001));
+  } else { // float[, limit] form
+    if (args[2].IsInt()) {
+      if (float_to_frac(args[0].AsFloat(), num, den)) {
+        env->ThrowError("ContinuedFraction: Float value out of range for rational pair.\n");
+      }
+      reduce_frac(num, den, (unsigned)args[2].AsInt());
+    } else {
+      if (reduce_float(args[0].AsFloat(), num, den)) {
+        env->ThrowError("ContinuedFraction: Float value out of range for rational pair.\n");
+      }
+    }
+  }
+  return AVSValue((int)(key ? num : den));
+}
+
+
 /***************************************
  *******   Float to FPS utility   ******
  ***************************************/
 
-void FloatToFPS(const char *name, double n, unsigned &num, unsigned &den, IScriptEnvironment* env)
+void FloatToFPS(const char *name, float n, unsigned &num, unsigned &den, IScriptEnvironment* env)
 {
   if (n <= 0)
     env->ThrowError("%s: FPS must be greater then 0.\n", name);
@@ -269,23 +304,23 @@ void FloatToFPS(const char *name, double n, unsigned &num, unsigned &den, IScrip
   unsigned u = (unsigned)(n*1001+0.5);
 
   // Check for the 30000/1001 multiples
-  x = (u/30000*30000)/1001.0;
-  if (x == (float)n) { num = u; den= 1001; return; }
+  x = (float)((u/30000*30000)/1001.0);
+  if (x == n) { num = u; den= 1001; return; }
 
   // Check for the 24000/1001 multiples
-  x = (u/24000*24000)/1001.0;
-  if (x == (float)n) { num = u; den= 1001; return; }
+  x = (float)((u/24000*24000)/1001.0);
+  if (x == n) { num = u; den= 1001; return; }
 
   if (n < 14.986) {
     // Check for the 30000/1001 factors
     u = (unsigned)(30000/n+0.5);
-    x = 30000.0/(u/1001*1001);
-    if (x == (float)n) { num = 30000; den= u; return; }
+    x = (float)(30000.0/(u/1001*1001));
+    if (x == n) { num = 30000; den= u; return; }
 
     // Check for the 24000/1001 factors
     u = (unsigned)(24000/n+0.5);
-    x = 24000.0/(u/1001*1001);
-    if (x == (float)n) { num = 24000; den= u; return; }
+    x = (float)(24000.0/(u/1001*1001));
+    if (x == n) { num = 24000; den= u; return; }
   }
 
   // Find the rational pair with the smallest denominator
