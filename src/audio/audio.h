@@ -62,7 +62,7 @@
 
 #define IzeroEPSILON 1E-21               /* Max error acceptable in Izero */
 
-static const long double PI = 3.14159265358979323846;
+static const double PI = 3.14159265358979323846;
 
 static __inline short IntToShort(int v, const int scl)
 {
@@ -78,7 +78,7 @@ static __inline short IntToShort(int v, const int scl)
 
 static double Izero(double x);
 static void LpFilter(double c[], int N, double frq, double Beta, int Num);
-static int makeFilter(short   Imp[], double *dLpScl, unsigned short Nwing, double Froll, double Beta);
+static int makeFilter(short   Imp[], double &dLpScl, unsigned short Nwing, double Froll, double Beta);
 static int makeFilter(SFLOAT fImp[], double  dLpScl, unsigned short Nwing, double Froll, double Beta);
 
 
@@ -247,8 +247,8 @@ private:
   const float* volumes;
   const int* i_v;
 
- static __inline double dBtoScaleFactor(double dB)
- { return pow(10.0, dB/20.0);};
+ static __inline float dBtoScaleFactorf(float dB)
+ { return powf(10.0f, dB/20.0f);};
 };
 
 

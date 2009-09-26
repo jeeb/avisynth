@@ -148,12 +148,12 @@ void __stdcall ConvertToMono::GetAudio(void* buf, __int64 start, __int64 count, 
   if (tempbuffer_size) {
     if (tempbuffer_size < count) {
       delete[] tempbuffer;
-      tempbuffer = new char[count * channels * vi.BytesPerChannelSample()];
-      tempbuffer_size = count;
+      tempbuffer = new char[(unsigned)(count * channels * vi.BytesPerChannelSample())];
+      tempbuffer_size = (int)count;
     }
   } else {
-    tempbuffer = new char[count * channels * vi.BytesPerChannelSample()];
-    tempbuffer_size = count;
+    tempbuffer = new char[(unsigned)(count * channels * vi.BytesPerChannelSample())];
+    tempbuffer_size = (int)count;
   }
 
   child->GetAudio(tempbuffer, start, count, env);
@@ -303,11 +303,11 @@ MergeChannels::~MergeChannels() {
 void __stdcall MergeChannels::GetAudio(void* buf, __int64 start, __int64 count, IScriptEnvironment* env) {
   if (tempbuffer_size < count) {
     if (tempbuffer_size) delete[] tempbuffer;
-    tempbuffer = new signed char[count * vi.BytesPerAudioSample()];
-    tempbuffer_size = count;
+    tempbuffer = new signed char[(unsigned)(count * vi.BytesPerAudioSample())];
+    tempbuffer_size = (int)count;
   }
   // Get audio:
-  const int channel_offset = count * vi.BytesPerChannelSample();  // Offset per channel
+  const int channel_offset = (int)count * vi.BytesPerChannelSample();  // Offset per channel
   int i, c_channel = 0;
 
   for (i = 0;i < num_children;i++) {
@@ -398,21 +398,21 @@ AVSValue __cdecl MergeChannels::Create(AVSValue args, void*, IScriptEnvironment*
   if (args[0].IsArray()) {
     num_args = args[0].ArraySize();
     if (num_args == 1)
-      return args[0];
+      return args[0][0];
 
     child_array = new PClip[num_args];
     for (int i = 0; i < num_args; ++i)
       child_array[i] = args[0][i].AsClip();
 
     return new MergeChannels(args[0][0].AsClip(), num_args, child_array, env);
-
-  } else {
-    num_args = 2;
-    child_array = new PClip[num_args];
-    child_array[0] = args[0].AsClip();
-    child_array[1] = args[1].AsClip();
   }
-  return new MergeChannels(args[0].AsClip(), num_args, child_array, env);
+  // MonoToStereo Case
+  num_args = 2;
+  child_array = new PClip[num_args];
+  child_array[0] = GetChannel::Create_left(args[0].AsClip());
+  child_array[1] = GetChannel::Create_right(args[1].AsClip());
+
+  return new MergeChannels(child_array[0], num_args, child_array, env);
 }
 
 
@@ -437,8 +437,8 @@ GetChannel::GetChannel(PClip _clip, int* _channel, int _numchannels)
 void __stdcall GetChannel::GetAudio(void* buf, __int64 start, __int64 count, IScriptEnvironment* env) {
   if (tempbuffer_size < count) {
     if (tempbuffer_size) delete[] tempbuffer;
-    tempbuffer = new char[count * src_bps];
-    tempbuffer_size = count;
+    tempbuffer = new char[(unsigned)(count * src_bps)];
+    tempbuffer_size = (int)count;
   }
   child->GetAudio(tempbuffer, start, count, env);
   
@@ -615,7 +615,7 @@ Amplify::~Amplify()
 void __stdcall Amplify::GetAudio(void* buf, __int64 start, __int64 count, IScriptEnvironment* env) {
   child->GetAudio(buf, start, count, env);
   int channels = vi.AudioChannels();
-  int countXchannels = count*channels; 
+  int countXchannels = (int)count*channels; 
 
   if (vi.SampleType() == SAMPLE_INT16) {
 // Talk about crap assembler code, who taught this compiler how to do 64bits!
@@ -750,7 +750,7 @@ AVSValue __cdecl Amplify::Create_dB(AVSValue args, void*, IScriptEnvironment* en
   float* child_array = new float[ch];
   int* i_child_array = new int[ch];
   for (int i = 0; i < ch; ++i) {
-    child_array[i] = dBtoScaleFactor(args_c[min(i, num_args - 1)].AsFloat());
+    child_array[i] = dBtoScaleFactorf(args_c[min(i, num_args - 1)].AsFloat());
     i_child_array[i] = int(child_array[i] * 131072.0f + 0.5f);
   }
   return new Amplify(args[0].AsClip(), child_array, i_child_array);
@@ -793,14 +793,14 @@ void __stdcall Normalize::GetAudio(void* buf, __int64 start, __int64 count, IScr
 
       const __int64 passes = vi.num_audio_samples / bcount;
 	  __int64 negpeaksampleno=-1, pospeaksampleno=-1;
-      short i_pos_volume = 0;
-      short i_neg_volume = 0;
-      const int chanXbcount = bcount * vi.AudioChannels();
+      int i_pos_volume = 0;
+      int i_neg_volume = 0;
+      const int chanXbcount = (int)bcount * vi.AudioChannels();
 
       for (__int64 i = 0; i < passes; i++) {
         child->GetAudio(samples, bcount*i, bcount, env);
         for (int j = 0; j < chanXbcount; j++) {
-		  const short sample=samples[j];
+		  const int sample=samples[j];
           if (sample < i_neg_volume) {	// Cope with MIN_SHORT
 		    i_neg_volume = sample;
 		    negpeaksampleno = chanXbcount*i+j;
@@ -822,11 +822,11 @@ void __stdcall Normalize::GetAudio(void* buf, __int64 start, __int64 count, IScr
 	  // Remaining samples
 	  if ((i_pos_volume != 32767) && (i_neg_volume > -32767)) {
 		const __int64 rem_samples = vi.num_audio_samples % bcount;
-		const int chanXremcount = rem_samples * vi.AudioChannels();
+		const int chanXremcount = (int)rem_samples * vi.AudioChannels();
 
 		child->GetAudio(samples, bcount*passes, rem_samples, env);
 		for (int j = 0; j < chanXremcount; j++) {
-		  const short sample=samples[j];
+		  const int sample=samples[j];
 		  if (sample < i_neg_volume) {	// Cope with MIN_SHORT
 			i_neg_volume = sample;
 			negpeaksampleno = chanXbcount*passes+j;
@@ -866,14 +866,14 @@ void __stdcall Normalize::GetAudio(void* buf, __int64 start, __int64 count, IScr
 	    }
 	  }
 
-      const int chanXbcount = bcount * vi.AudioChannels();
+      const int chanXbcount = (int)bcount * vi.AudioChannels();
       const __int64 passes = vi.num_audio_samples / bcount;
 	  __int64 peaksampleno=-1;
 	  
       for (__int64 i = 0;i < passes;i++) {
         child->GetAudio(samples, bcount*i, bcount, env);
         for (int j = 0;j < chanXbcount;j++) {
-		  const SFLOAT sample = fabs(samples[j]);
+		  const SFLOAT sample = fabsf(samples[j]);
           if (sample > max_volume) {
 		    max_volume = sample;
 			peaksampleno = chanXbcount*i+j;
@@ -882,11 +882,11 @@ void __stdcall Normalize::GetAudio(void* buf, __int64 start, __int64 count, IScr
       }
       // Remaining samples
       const __int64 rem_samples = vi.num_audio_samples % bcount;
-      const int chanXremcount = rem_samples * vi.AudioChannels();
+      const int chanXremcount = (int)rem_samples * vi.AudioChannels();
 
       child->GetAudio(samples, bcount*passes, rem_samples, env);
       for (int j = 0;j < chanXremcount;j++) {
-		const SFLOAT sample = fabs(samples[j]);
+		const SFLOAT sample = fabsf(samples[j]);
         if (sample > max_volume) {
 		  max_volume = sample;
 		  peaksampleno = chanXbcount*passes+j;
@@ -899,7 +899,7 @@ void __stdcall Normalize::GetAudio(void* buf, __int64 start, __int64 count, IScr
     }
   }
 
-  const int chanXcount = count * vi.AudioChannels();
+  const int chanXcount = (int)count * vi.AudioChannels();
 
   if (vi.SampleType() == SAMPLE_INT16) {
     const int factor = (int)(max_factor * 131072.0f + 0.5f);
@@ -971,7 +971,7 @@ PVideoFrame __stdcall Normalize::GetFrame(int n, IScriptEnvironment* env) {
 
 AVSValue __cdecl Normalize::Create(AVSValue args, void*, IScriptEnvironment* env) {
 
-  return new Normalize(args[0].AsClip(), args[1].AsFloat(1.0), args[2].AsBool(false));
+  return new Normalize(args[0].AsClip(), args[1].AsFloat(1.0f), args[2].AsBool(false));
 }
 
 
@@ -1003,12 +1003,12 @@ void __stdcall MixAudio::GetAudio(void* buf, __int64 start, __int64 count, IScri
   if (tempbuffer_size) {
     if (tempbuffer_size < count) {
       delete[] tempbuffer;
-      tempbuffer = new signed char[count * vi.BytesPerAudioSample()];
-      tempbuffer_size = count;
+      tempbuffer = new signed char[(unsigned)(count * vi.BytesPerAudioSample())];
+      tempbuffer_size = (int)count;
     }
   } else {
-    tempbuffer = new signed char[count * vi.BytesPerAudioSample()];
-    tempbuffer_size = count;
+    tempbuffer = new signed char[(unsigned)(count * vi.BytesPerAudioSample())];
+    tempbuffer_size = (int)count;
   }
 
   child->GetAudio(buf, start, count, env);
@@ -1076,8 +1076,8 @@ saturate3:
 
 AVSValue __cdecl MixAudio::Create(AVSValue args, void*, IScriptEnvironment* env) {
 	try {	// HIDE DAMN SEH COMPILER BUG!!!
-  double track1_factor = args[2].AsFloat(0.5);
-  double track2_factor = args[3].AsFloat(1.0 - track1_factor);
+  double track1_factor = args[2].AsDblDef(0.5);
+  double track2_factor = args[3].AsDblDef(1.0 - track1_factor);
   return new MixAudio(args[0].AsClip(), args[1].AsClip(), track1_factor, track2_factor, env);
 	}
 	catch (...) { throw; }
@@ -1114,14 +1114,14 @@ ResampleAudio::ResampleAudio(PClip _child, int _target_rate_n, int _target_rate_
   vi.audio_samples_per_second = target_rate;
 
   if (vi.IsSampleType(SAMPLE_INT16)) {
-	double dLpScl;
+	double dLpScl = 0.0;
 
 	// Load interpolate ratio table
 	for (int i=0; i<=Amask; i++)
   	  Amasktab[i] = (i<<16) | (Amask+1-i);   /* a is between 0 and 1 */
 
 	// generate filter coefficients
-	makeFilter(Imp, &dLpScl, Nwing, 0.90, 9);
+	makeFilter(Imp, dLpScl, Nwing, 0.90, 9);
 	Imp[Nwing] = 0; // for "interpolation" beyond last coefficient
 
 	/* Account for increased filter gain when using factors less than 1 */
@@ -1182,8 +1182,8 @@ void __stdcall ResampleAudio::GetAudio(void* buf, __int64 start, __int64 count, 
     child->GetAudio(buf, start, count, env);
     return ;
   }
-  __int64 src_start = __int64(start / factor * (1 << Np) + 0.5);
-  __int64 src_end = __int64(((start + count) / factor) * (1 << Np) + 0.5);
+  __int64 src_start = __int64(((long double)start           / factor) * (1 << Np) + 0.5);
+  __int64 src_end   = __int64(((long double)(start + count) / factor) * (1 << Np) + 0.5);
   const __int64 source_samples = ((src_end - src_start) >> Np) + 2 * Xoff + 1;
   const int source_bytes = vi.BytesFromAudioSamples(source_samples);
 
@@ -1397,6 +1397,9 @@ AVSValue __cdecl ResampleAudio::Create(AVSValue args, void*, IScriptEnvironment*
  *
  * Uses MM0, MM1
  */
+#pragma warning( push )
+#pragma warning (disable: 4799)   //function '...' has no EMMS instruction
+
 void FilterUD_mmx(short *Xp, unsigned Ph, int _inc, int _dhb, short *p_Imp, unsigned End) {
 
   unsigned Ho  = (Ph * (unsigned)_dhb) >> Np;
@@ -1445,6 +1448,7 @@ loop1:
 donone:
   }
 }
+#pragma warning( pop )
 
 
 // FilterUD SAMPLE_INT16 Version
@@ -1532,13 +1536,13 @@ double Izero(double x) {
 
 
 void LpFilter(double c[], int N, double frq, double Beta, int Num) {
-  double IBeta, temp, inm1;
   int i;
 
   /* Calculate ideal lowpass filter impulse response coefficients: */
   c[0] = 2.0 * frq;
+  const double PIdivNum  = PI / Num;
   for (i = 1; i < N; i++) {
-    temp = PI * (double)i / (double)Num;
+    const double temp = PIdivNum * i;
     c[i] = sin(2.0 * temp * frq) / temp; /* Analog sinc function, cutoff = frq */
   }
 
@@ -1548,10 +1552,10 @@ void LpFilter(double c[], int N, double frq, double Beta, int Num) {
    * You're supposed to really truncate the window here, not ramp
    * it to zero. This helps reduce the first sidelobe.
    */
-  IBeta = 1.0 / Izero(Beta);
-  inm1 = 1.0 / ((double)(N - 1));
+  const double IBeta = 1.0 / Izero(Beta);
+  const double inm1 = 1.0 / (N - 1);
   for (i = 1; i < N; i++) {
-    temp = (double)i * inm1;
+    const double temp = i * inm1;
     c[i] *= Izero(Beta * sqrt(1.0 - temp * temp)) * IBeta;
   }
 }
@@ -1566,7 +1570,7 @@ void LpFilter(double c[], int N, double frq, double Beta, int Num) {
  */
 
 // makeFilter SAMPLE_INT16 Version
-int makeFilter( short Imp[], double *dLpScl, unsigned short Nwing, double Froll, double Beta) {
+int makeFilter( short Imp[], double &dLpScl, unsigned short Nwing, double Froll, double Beta) {
   static const int MAXNWING = 8192;
   static double ImpR[MAXNWING];
 
@@ -1601,13 +1605,13 @@ int makeFilter( short Imp[], double *dLpScl, unsigned short Nwing, double Froll,
     Maxh = max(Maxh, fabs(ImpR[i]));
 
   Scl = ((1 << (Nh - 1)) - 1) / Maxh;     /* Map largest coeff to 16-bit maximum */
-  *dLpScl = fabs((1 << (NLpScl + Nh)) / (DCgain * Scl));
+  dLpScl = fabs((1 << (NLpScl + Nh)) / (DCgain * Scl));
 
   /* Scale filter coefficients for Nh bits and convert to integer */
   if (ImpR[0] < 0)                /* Need pos 1st value for LpScl storage */
     Scl = -Scl;
   for (i = 0; i < Nwing; i++)         /* Scale & round them */
-    Imp[i] = int(ImpR[i] * Scl + 0.5);
+    Imp[i] = short(ImpR[i] * Scl + 0.5);
 
   return (0);
 }
@@ -1650,7 +1654,7 @@ int makeFilter( SFLOAT fImp[], double dLpScl, unsigned short Nwing, double Froll
   if (ImpR[0] < 0)                /* Need pos 1st value for LpScl storage */
     Scl = -Scl;
   for (i = 0; i < Nwing; i++)         /* Scale them */
-    fImp[i] = ImpR[i] * Scl;
+    fImp[i] = (SFLOAT)(ImpR[i] * Scl);
 
   return (0);
 }
