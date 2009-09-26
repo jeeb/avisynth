@@ -128,11 +128,16 @@ FilteredResizeH::FilteredResizeH( PClip _child, double subrange_left, double sub
   vi.width = target_width;
 
   if (vi.IsPlanar()) {
-    assemblerY         = GenerateResizer(PLANAR_Y, false, env);
-    assemblerY_aligned = GenerateResizer(PLANAR_Y, true,  env);
-    if (!vi.IsY8()) {
-      assemblerUV         = GenerateResizer(PLANAR_U, false, env);
-      assemblerUV_aligned = GenerateResizer(PLANAR_U, true,  env);
+    try {
+      assemblerY         = GenerateResizer(PLANAR_Y, false, env);
+      assemblerY_aligned = GenerateResizer(PLANAR_Y, true,  env);
+      if (!vi.IsY8()) {
+        assemblerUV         = GenerateResizer(PLANAR_U, false, env);
+        assemblerUV_aligned = GenerateResizer(PLANAR_U, true,  env);
+      }
+    }
+    catch (SoftWire::Error err) {
+       env->ThrowError("Resize: SoftWire exception : %s", err.getString());
     }
   }
 	}	catch (...) { throw; }
@@ -182,6 +187,9 @@ DynamicAssembledCode FilteredResizeH::GenerateResizer(int gen_plane, bool source
   bool sse2 = !!(env->GetCPUFlags() & CPUF_SSE2);
   bool sse3 = !!(env->GetCPUFlags() & CPUF_SSE3);
   bool sse4 = !!(env->GetCPUFlags() & CPUF_SSE4);
+
+  if (source_aligned && !sse2) // No fast aligned version without SSE2+
+    return DynamicAssembledCode();
 
   int prefetchevery = 2;
   if ((env->GetCPUFlags() & CPUF_3DNOW_EXT)||((env->GetCPUFlags() & CPUF_SSE2))) {
@@ -655,7 +663,7 @@ PVideoFrame __stdcall FilteredResizeH::GetFrame(int n, IScriptEnvironment* env)
     gen_dst_pitch = dst_pitch;
     gen_srcp = (BYTE*)srcp;
     gen_dstp = dstp;
-    if (((int)gen_srcp & 15) || (gen_src_pitch & 15))
+    if (((int)gen_srcp & 15) || (gen_src_pitch & 15) || !assemblerY_aligned)
       assemblerY.Call();
     else 
       assemblerY_aligned.Call();
@@ -666,14 +674,14 @@ PVideoFrame __stdcall FilteredResizeH::GetFrame(int n, IScriptEnvironment* env)
 
       gen_srcp = (BYTE*)src->GetReadPtr(PLANAR_U);
       gen_dstp = dst->GetWritePtr(PLANAR_U);
-      if (((int)gen_srcp & 15) || (gen_src_pitch & 15))
+      if (((int)gen_srcp & 15) || (gen_src_pitch & 15) || !assemblerUV_aligned)
         assemblerUV.Call();
       else 
         assemblerUV_aligned.Call();
 
       gen_srcp = (BYTE*)src->GetReadPtr(PLANAR_V);
       gen_dstp = dst->GetWritePtr(PLANAR_V);
-      if (((int)gen_srcp & 15) || (gen_src_pitch & 15))
+      if (((int)gen_srcp & 15) || (gen_src_pitch & 15) || !assemblerUV_aligned)
         assemblerUV.Call();
       else 
         assemblerUV_aligned.Call();
@@ -1213,11 +1221,16 @@ FilteredResizeV::FilteredResizeV( PClip _child, double subrange_top, double subr
 
   vi.height = target_height;
 
-  assemblerY = GenerateResizer(PLANAR_Y, false, env);
-  assemblerY_aligned = GenerateResizer(PLANAR_Y, true, env);
-  if (vi.IsPlanar() && !vi.IsY8()) {
-    assemblerUV = GenerateResizer(PLANAR_U, false, env);
-    assemblerUV_aligned = GenerateResizer(PLANAR_U, true, env);
+  try {
+    assemblerY         = GenerateResizer(PLANAR_Y, false, env);
+    assemblerY_aligned = GenerateResizer(PLANAR_Y, true, env);
+    if (vi.IsPlanar() && !vi.IsY8()) {
+      assemblerUV         = GenerateResizer(PLANAR_U, false, env);
+      assemblerUV_aligned = GenerateResizer(PLANAR_U, true, env);
+    }
+  }
+  catch (SoftWire::Error err) {
+     env->ThrowError("Resize: SoftWire exception : %s", err.getString());
   }
 }
 
@@ -1275,7 +1288,10 @@ PVideoFrame __stdcall FilteredResizeV::GetFrame(int n, IScriptEnvironment* env)
         srcp = src->GetReadPtr(PLANAR_V);
         y = dst->GetHeight(PLANAR_V);
         yOfs2 = this->yOfsUV;
-        (((int)srcp & 15) || (src_pitch & 15)) ? assemblerUV.Call() : assemblerUV_aligned.Call();
+        if (((int)srcp & 15) || (src_pitch & 15) || !assemblerUV_aligned)
+          assemblerUV.Call();
+        else
+          assemblerUV_aligned.Call();
         break;
       case 1: // U Plane
         dstp = dst->GetWritePtr(PLANAR_U);
@@ -1285,11 +1301,17 @@ PVideoFrame __stdcall FilteredResizeV::GetFrame(int n, IScriptEnvironment* env)
         dst_pitch = dst->GetPitch(PLANAR_U);
         yOfs2 = this->yOfsUV;
         plane--; // skip case 0
-        (((int)srcp & 15) || (src_pitch & 15)) ? assemblerUV.Call() : assemblerUV_aligned.Call();
+        if (((int)srcp & 15) || (src_pitch & 15) || !assemblerUV_aligned)
+          assemblerUV.Call();
+        else
+          assemblerUV_aligned.Call();
         break;
       case 3: // Y plane for planar
       case 0: // Default for interleaved
-        (((int)srcp & 15) || (src_pitch & 15)) ? assemblerY.Call() : assemblerY_aligned.Call();
+        if (((int)srcp & 15) || (src_pitch & 15) || !assemblerY_aligned)
+          assemblerY.Call();
+        else
+          assemblerY_aligned.Call();
         break;
     }
   } // end while
@@ -1315,17 +1337,21 @@ FilteredResizeV::~FilteredResizeV(void)
  * Dynamically Assembled Resampler
  *
  * (c) 2007, Klaus Post
+ * (c) 2009, Ian Brabham
  *
  * Dynamic version of the Vertical resizer
  *
  * The Algorithm is the same, except this
- *  one is able to process 16 pixels in parallel in SSSE3, 4 pixels in MMX.
+ *  one is able to process 16 pixels in parallel in SSE2+, 8 pixels in MMX.
  * The inner loop filter is unrolled based on the
  *  exact filter size.
- * SSSE3 version is approximately twice as fast as MMX, 
- * PSNR is more than 67dB to MMX version using 4 taps.
- * align parameter indicates if source plane and pitch is 16 bit aligned for ssse3.
- * dest should always be 16 bit aligned.
+ * SSSE3 version is approximately twice as fast as original MMX, 
+ * SSE2 version is approximately 60% faster than new MMX, 
+ * New mmx version is approximately 55% faster than original MMX, 
+ * SSSE3 PSNR is more than 67dB to MMX version using 4 taps. i.e <1 bit
+ * SSE2 is bit identical with MMX.
+ * align parameter indicates if source plane and pitch is 16 byte aligned for sse2+.
+ * dest should always be 16 byte aligned.
  **********************************/
 
 
@@ -1338,15 +1364,18 @@ DynamicAssembledCode FilteredResizeV::GenerateResizer(int gen_plane, bool aligne
   Assembler x86;   // This is the class that assembles the code.
   bool ssse3 = !!(env->GetCPUFlags() & CPUF_SSSE3);  // We have one version for SSSE3 and one for plain MMX.
   bool sse3  = !!(env->GetCPUFlags() & CPUF_SSE3);   // We have specialized load routine for SSE3.
+  bool sse2  = !!(env->GetCPUFlags() & CPUF_SSE2);
+  bool isse  = !!(env->GetCPUFlags() & CPUF_INTEGER_SSE);
+
+  if (aligned && !sse2) // No fast aligned version without SSE2+
+    return DynamicAssembledCode();
+
   int xloops = 0;
   int y = vi.height;
 
   int* array = (gen_plane == PLANAR_U || gen_plane == PLANAR_V) ? resampling_patternUV : resampling_pattern ;
   int fir_filter_size = array[0];
   int* cur = &array[1];
-
-  if (fir_filter_size > 8)  // We will get too many rounding errors. Probably only lanczos if taps parameter is modified.
-    ssse3 = false;
 
   if (vi.IsPlanar()) {
     xloops = vi.width >> vi.GetPlaneWidthSubsampling(gen_plane);
@@ -1355,111 +1384,57 @@ DynamicAssembledCode FilteredResizeV::GenerateResizer(int gen_plane, bool aligne
     xloops = vi.BytesFromPixels(vi.width);
   }
 
-  if (ssse3) 
+  if (sse2)
     xloops = ((xloops+15) / 16) * 16;
   else
-    xloops = (xloops+3) / 4;
+    xloops = (xloops+7) / 8;
 
 
   // Store registers
-  x86.push(eax);
-  x86.push(ebx);
-  x86.push(ecx);
-  x86.push(edx);
-  x86.push(esi);
-  x86.push(edi);
-  x86.push(ebp);
+  x86.push(           eax);
+  x86.push(           ebx);
+  x86.push(           ecx);
+  x86.push(           edx);
+  x86.push(           esi);
+  x86.push(           edi);
+  x86.push(           ebp);
 
-  if (!ssse3) { 
-    x86.mov(        edx, (int)cur);                  // edx = &array[1] -> start_pos
-    x86.mov(        ebp, dword_ptr[(int)&src_pitch]);
-    x86.mov(        ebx, dword_ptr[(int)&dst_pitch]);
-    x86.mov(        edi, y);                         // edi = vi.height
-    x86.pxor(       mm0, mm0); 
-    x86.movq(       mm6, qword_ptr[(int)&FPround]);  // Rounder for final division. Not touched!
-    x86.align(16);
-x86.label("yloop");
-    x86.mov(        esi, dword_ptr[(int)&yOfs2]);    // int pitch_table[height] = {0, src_pitch, src_pitch*2, ...}
-    x86.mov(        eax, dword_ptr[edx]);            // eax = *cur = start_pos
-    x86.mov(        esi, dword_ptr[esi+eax*4]);      // esi = yOfs[*cur] = start_pos * src_pitch
-    x86.add(        edx, 4);                         // cur++  (*cur = coeff[0])
-    x86.add(        esi, dword_ptr[(int)&srcp]);     // esi = srcp + yOfs[*cur] = srcp + start_pos * src_pitch
-    x86.xor(        ecx, ecx);                       // ecx = x = 0
-    x86.pxor(       mm7, mm7);
-    x86.pxor(       mm1, mm1);                       // total = 0
-    x86.align(16);
-x86.label("xloop");
-    x86.lea(        eax, dword_ptr[esi+ecx*4]);      // eax = srcp2 = srcp + x
-    for (int i = 0; i< fir_filter_size; i++) {
-      x86.movd(       mm2, dword_ptr[eax]);          // mm2 = *srcp2 = 0|0|0|0|d|c|b|a
-      x86.movd(       mm3, dword_ptr[edx+i*4]);      // mm3 = cur[b] = 0|coeff[i]
-      x86.punpcklbw(  mm2, mm0);                     // mm2 = 0d|0c|0b|0a
-      x86.punpckldq(  mm3, mm3);                     // mm3 = --co|--co
-      x86.movq(       mm4, mm2);
-      x86.punpcklwd(  mm2, mm0);                     // mm2 = 00|0b|00|0a
-      x86.add(        eax, ebp);                     // srcp2 += src_pitch
-      x86.pmaddwd(    mm2, mm3);                     // mm2 =  b*co|a*co
-      x86.punpckhwd(  mm4, mm0);                     // mm4 = 00|0d|00|0c
-      x86.pmaddwd(    mm4, mm3);                     // mm4 =  d*co|c*co
-      x86.paddd(      mm1, mm2);
-      x86.paddd(      mm7, mm4);                     // accumulate
-    }
-    x86.paddd(      mm1, mm6);                       // Add rounder
-    x86.paddd(      mm7, mm6);
-    x86.mov(        eax, dword_ptr[(int)&dstp]);
-    x86.pslld(      mm1, 2);                         // 14 bits -> 16bit fraction [00FF....|00FF....]
-    x86.pslld(      mm7, 2);                         // compensate the fact that FPScale = 16384
-    x86.packuswb(   mm1, mm7);                       // mm1 = d|_|c|_|b|_|a|_
-    x86.psrlw(      mm1, 8);                         // mm1 = 0|d|0|c|0|b|0|a
-    x86.packuswb(   mm1, mm2);                       // mm1 = 0|0|0|0|d|c|b|a
-    x86.movd(       dword_ptr[eax+ecx*4], mm1);      // dstp[x] = d|c|b|a
-    x86.pxor(       mm7, mm7);
-    x86.inc(        ecx);                            // x += 1
-    x86.pxor(       mm1, mm1);                       // total = 0
-    x86.cmp(        ecx, xloops);
-    x86.jnz(        "xloop");
-    x86.add(        eax, ebx);                       // dstp += dst_pitch
-    x86.lea(        edx, dword_ptr[edx+(fir_filter_size*4)]); // cur += fir_filter_size
-    x86.mov(        dword_ptr[(int)&dstp], eax);
-    x86.dec(        edi);                            // y -= 1
-    x86.jnz(        "yloop");
-
-  } else {  // ssse3
-
-    x86.mov(edx, (int)cur);
-    x86.mov(ebp, dword_ptr[(int)&src_pitch]);
-    x86.mov(ebx, dword_ptr[(int)&dst_pitch]);
-    x86.mov(edi, y);
-    x86.movq(xmm6, qword_ptr[(int)&FProundSSSE3]);        // Rounder for final division. Not touched!
-    x86.movq(xmm0, qword_ptr[(int)&UnpackByteShuffle]);   // Rounder for final division. Not touched!
-    x86.pxor(xmm5, xmm5);                                 // zeroes
-    x86.punpcklqdq(xmm6,xmm6);
-    x86.punpcklqdq(xmm0,xmm0);
-    x86.align(16);
-
-x86.label("yloop");
-    x86.mov(esi,  dword_ptr[(int)&yOfs2]);
-    x86.mov(eax, dword_ptr[edx]);                         //eax = *cur
-    x86.mov(esi, dword_ptr[esi+eax*4]);
-    x86.add(edx, 4);                                      //cur++
-    x86.add(esi, dword_ptr[(int)&srcp]);                  //esi = srcp + yOfs[*cur]
-    x86.xor(ecx, ecx);                                    //ecx = x = 0
-    x86.pxor(xmm7, xmm7);                                 // Accumulator 1
-    x86.pxor(xmm1, xmm1);                                 // Acc 2 = total = 0
-    x86.align(16);
-
-x86.label("xloop");
-    x86.lea(eax, dword_ptr[esi+ecx]);                     //eax = srcp2 = srcp + x
-    if (aligned) {
-      x86.movdqa(   xmm4, xmmword_ptr[eax]);              //xmm4 = p|o|n|m|l|k|j|i|h|g|f|e|d|c|b|a
+  if (ssse3 && fir_filter_size <= 8) { // We will get too many rounding errors. Probably only lanczos etc
+                                       // if taps parameter is large and very high downscale ratios. 
+    x86.mov(          edx, (int)cur);
+    x86.mov(          ebp, dword_ptr[(int)&src_pitch]);
+    x86.mov(          ebx, dword_ptr[(int)&dst_pitch]);
+    x86.mov(          edi, y);
+    x86.movq(         xmm6, qword_ptr[(int)&FProundSSSE3]);        // Rounder for final division. Not touched!
+    x86.movq(         xmm0, qword_ptr[(int)&UnpackByteShuffle]);   // Rounder for final division. Not touched!
+    x86.pxor(         xmm5, xmm5);                                 // zeroes
+    x86.punpcklqdq(   xmm6, xmm6);
+    x86.punpcklqdq(   xmm0, xmm0);
+                      
+    x86.align(16);    
+x86.label("yloop");  
+    x86.mov(          esi, dword_ptr[(int)&yOfs2]);
+    x86.mov(          eax, dword_ptr[edx]);               // eax = *cur
+    x86.add(          edx, 4);                            // cur++
+    x86.mov(          esi, dword_ptr[esi+eax*4]);
+    x86.xor(          ecx, ecx);                          // ecx = x = 0
+    x86.add(          esi, dword_ptr[(int)&srcp]);        // esi = srcp + yOfs[*cur]
+    x86.movdqa(       xmm1, xmm6);                        // Init with rounder
+    x86.movdqa(       xmm7, xmm6);
+                      
+    x86.align(16);    
+x86.label("xloop");  
+    x86.lea(          eax, dword_ptr[esi+ecx]);           // eax = srcp2 = srcp + x
+    if (aligned) {    
+      x86.movdqa(     xmm4, xmmword_ptr[eax]);            // xmm4 = p|o|n|m|l|k|j|i|h|g|f|e|d|c|b|a
     } else if (sse3) {
-      x86.lddqu(   xmm4, xmmword_ptr[eax]);
-    } else {
-      x86.movdqu(   xmm4, xmmword_ptr[eax]);
+      x86.lddqu(      xmm4, xmmword_ptr[eax]); // SSE3
+    } else {          
+      x86.movdqu(     xmm4, xmmword_ptr[eax]);
     }
 
     for (int i = 0; i< fir_filter_size; i++) {
-      x86.movd(       xmm3, dword_ptr[edx+i*4]);          //mm3 = cur[b] = 0|co
+      x86.movd(       xmm3, dword_ptr[edx+i*4]);          // mm3 = cur[b] = 0|co
       x86.movdqa(     xmm2, xmm4);
       x86.punpckhbw(  xmm4, xmm5);                        // mm4 = *srcp2 = 0p|0o|0n|0m|0l|0k|0j|0i
       x86.punpcklbw(  xmm2, xmm5);                        // mm2 = *srcp2 = 0h|0g|0f|0e|0d|0c|0b|0a
@@ -1467,45 +1442,267 @@ x86.label("xloop");
       x86.psllw(      xmm2, 7);                           // Extend to signed word
       x86.psllw(      xmm4, 7);                           // Extend to signed word
       x86.add(        eax, ebp);                          // srcp2 += src_pitch
-      x86.pmulhrsw(   xmm2, xmm3);                        // Multiply 14bit(coeff) x 16bit (signed) -> 16bit signed and rounded result.  [h|g|f|e|d|c|b|a]
-      x86.pmulhrsw(   xmm3, xmm4);                        // Multiply [p|o|n|m|l|k|j|i]
+      x86.pmulhrsw(   xmm2, xmm3); // SSSE3               // Multiply [h|g|f|e|d|c|b|a] 14bit(coeff) x 16bit(signed) ->
+      x86.pmulhrsw(   xmm3, xmm4); // SSSE3               // Multiply [p|o|n|m|l|k|j|i] 16bit signed and rounded result.
       if (i<fir_filter_size-1) {                          // Load early for next loop
         if (aligned)
-          x86.movdqa(   xmm4, xmmword_ptr[eax]);            // xmm4 = p|o|n|m|l|k|j|i|h|g|f|e|d|c|b|a
+          x86.movdqa( xmm4, xmmword_ptr[eax]);            // xmm4 = p|o|n|m|l|k|j|i|h|g|f|e|d|c|b|a
+        else if (sse3)
+          x86.lddqu(  xmm4, xmmword_ptr[eax]); // SSE3
         else
-          x86.movdqu(   xmm4, xmmword_ptr[eax]);
+          x86.movdqu( xmm4, xmmword_ptr[eax]);
       }
       x86.paddsw(     xmm1, xmm2);                        // Accumulate: h|g|f|e|d|c|b|a (signed words)
       x86.paddsw(     xmm7, xmm3);                        // Accumulate: p|o|n|m|l|k|j|i
     }
+    x86.psraw(        xmm1, 6);                           // Compensate fraction
+    x86.psraw(        xmm7, 6);                           // Compensate fraction
+    x86.mov(          eax, dword_ptr[(int)&dstp]);
+    x86.packuswb(     xmm1, xmm7);                        // mm1 = p|o|n|m|l|k|j|i|h|g|f|e|d|c|b|a
+    x86.add(          ecx, 16);
+    x86.movdqa(       xmm7, xmm6);
+    x86.movdqa(       xmmword_ptr[eax+ecx-16], xmm1);     // Dest should always be aligned.
+    x86.cmp(          ecx, xloops);
+    x86.movdqa(       xmm1, xmm6);                        // Init with rounder
+    x86.jl(           "xloop");
+
+    x86.add(          eax, ebx);
+    x86.lea(          edx, dword_ptr[edx+(fir_filter_size*4)]); //cur += fir_filter_size
+    x86.dec(          edi);
+    x86.mov(          dword_ptr[(int)&dstp], eax);
+    x86.jnz(          "yloop");
+  }
+  else if (sse2) {
+  // eax ebx ecx edx esi edi ebp
+  // xmm0 xmm1 xmm2 xmm3 xmm4 xmm5 xmm6 xmm7
+    x86.mov(     edx, (int)cur);                  // edx = &array[1] -> start_pos
+    x86.mov(     ebp, dword_ptr[(int)&src_pitch]);
+    x86.mov(     ebx, dword_ptr[(int)&dst_pitch]);
+    x86.mov(     edi, y);                         // edi = vi.height
+
+    x86.align(16);
+x86.label("yloop");
+    x86.mov(     esi, dword_ptr[(int)&yOfs2]);    // int pitch_table[height] = {0, src_pitch, src_pitch*2, ...}
+    x86.mov(     eax, dword_ptr[edx]);            // eax = *cur = start_pos
+    x86.mov(     esi, dword_ptr[esi+eax*4]);      // esi = yOfs[*cur] = start_pos * src_pitch
+    x86.add(     edx, 4);                         // cur++  (*cur = coeff[0])
+    x86.add(     esi, dword_ptr[(int)&srcp]);     // esi = srcp + yOfs[*cur] = srcp + start_pos * src_pitch
+    x86.xor(     ecx, ecx);                       // ecx = x = 0
+
+    x86.align(16);
+x86.label("xloop");
+    x86.lea(          eax,  dword_ptr[esi+ecx]);  // eax = srcp2 = srcp + x
+    x86.movd(         xmm7, dword_ptr[(int)&FPround]);// Rounder for final division.
+    if (aligned)
+      x86.movdqa(     xmm0, xmmword_ptr[eax]);    // xmm0 = *srcp2 = p|o|n|m|l|k|j|i|h|g|f|e|d|c|b|a
+    else if (sse3)
+      x86.lddqu(      xmm0, xmmword_ptr[eax]); // SSE3
+    else
+      x86.movdqu(     xmm0, xmmword_ptr[eax]);
+    x86.pshufd(       xmm7, xmm7, 0x00);          // totalPONM
+    x86.movdqa(       xmm6, xmm7);                // totalLKJI
+    x86.movdqa(       xmm5, xmm7);                // totalHGFE
+    x86.movdqa(       xmm4, xmm7);                // totalDCBA
+    int i=0;
+    for ( ; i < fir_filter_size/2; i++) { // Doing row pairs
+      if (aligned)
+        x86.movdqa(     xmm2, xmmword_ptr[eax+ebp]);// xmm2 = *(srcp2+src_pitch) = P|O|N|M|L|K|J|I|H|G|F|E|D|C|B|A
+      else if (sse3)
+        x86.lddqu(      xmm2, xmmword_ptr[eax+ebp]); // SSE3
+      else
+        x86.movdqu(     xmm2, xmmword_ptr[eax+ebp]);
+
+      x86.movq(       xmm3, qword_ptr[edx+i*8]);  // xmm3 = cur[b] = 00|00|--coeff[i+1]|--coeff[i]
+      x86.lea(        eax,  dword_ptr[eax+ebp*2]);// srcp2 += src_pitch*2
+      x86.movdqa(     xmm1, xmm0);                // xmm1                      = p|o|n|m|l|k|j|i|h|g|f|e|d|c|b|a
+      x86.packssdw(   xmm3, xmm3);                // xmm3 = 00|00|00|00|CO|co|CO|co
+
+      x86.punpcklbw(  xmm0, xmm2);                // xmm0 = Hh|Gg|Ff|Ee|Dd|Cc|Bb|Aa
+      x86.punpckhbw(  xmm1, xmm2);                // xmm1 = Pp|Oo|Nn|Mm|Ll|Kk|Jj|Ii
+      x86.pshufd(     xmm3, xmm3, 0x00);          // xmm3 = CO|co|CO|co|CO|co|CO|co
+
+      x86.punpckhbw(  xmm2, xmm0);                // xmm2 = HP|hO|GN|gM|FL|fK|EJ|eI
+      x86.punpcklbw(  xmm0, xmm0);                // xmm0 = DD|dd|CC|cc|BB|bb|AA|aa
+      x86.psrlw(      xmm2, 8);                   // xmm2 = 0H|0h|0G|0g|0F|0f|0E|0e
+      x86.psrlw(      xmm0, 8);                   // xmm0 = 0D|0d|0C|0c|0B|0b|0A|0a
+
+      x86.pmaddwd(    xmm2, xmm3);                // xmm2 =  H*CO+h*co|G*CO+g*co|F*CO+f*co|E*CO+e*co
+      x86.pmaddwd(    xmm0, xmm3);                // xmm0 =  D*CO+d*co|C*CO+c*co|B*CO+b*co|A*CO+a*co
+      x86.paddd(      xmm5, xmm2);                // accumulateHGFE
+      x86.paddd(      xmm4, xmm0);                // accumulateDCBA
+
+      x86.pxor(       xmm0, xmm0);
+      x86.movdqa(     xmm2, xmm1);                // xmm2 = Pp|Oo|Nn|Mm|Ll|Kk|Jj|Ii
+      x86.punpcklbw(  xmm1, xmm0);                // xmm1 = 0L|0l|0K|0k|0J|0j|0I|0i
+      x86.punpckhbw(  xmm2, xmm0);                // xmm2 = 0P|0p|0O|0o|0N|0n|0M|0m
+
+      if (i*2 < fir_filter_size-2) {              // Load early for next loop
+        if (aligned)
+          x86.movdqa( xmm0, xmmword_ptr[eax]);    // xmm0 = *srcp2 = p|o|n|m|l|k|j|i|h|g|f|e|d|c|b|a
+        else if (sse3)
+          x86.lddqu(  xmm0, xmmword_ptr[eax]); // SSE3
+        else
+          x86.movdqu( xmm0, xmmword_ptr[eax]);
+      }
+      x86.pmaddwd(    xmm1, xmm3);                // xmm1 =  L*CO+l*co|K*CO+k*co|J*CO+j*co|I*CO+i*co
+      x86.pmaddwd(    xmm2, xmm3);                // xmm4 =  P*CO+p*co|O*CO+o*co|N*CO+n*co|M*CO+m*co
+      x86.paddd(      xmm6, xmm1);                // accumulateLKJI
+      x86.paddd(      xmm7, xmm2);                // accumulatePONM
+    }
+    if (i*2 < fir_filter_size) { // Do last odd row
+      x86.movd(       xmm3, dword_ptr[edx+i*8]);  // xmm3 = cur[b] = 00|00|00|--coeff[i]
+      x86.pxor(       xmm2, xmm2);
+      x86.punpckhbw(  xmm1, xmm0);                // xmm1 = p.|o.|n.|m.|l.|k.|j.|i.
+      x86.pshufd(     xmm3, xmm3, 0x00);          // xmm3 = --co|--co|--co|--co
+      x86.punpcklbw(  xmm0, xmm2);                // xmm0 = 0h|0g|0f|0e|0d|0c|0b|0a 
+      x86.pslld(      xmm3, 16);                  // xmm3 = co|00|co|00|co|00|co|00
+      x86.psrlw(      xmm1, 8);                   // xmm1 = 0p|0o|0n|0m|0l|0k|0j|0i
+      x86.punpckhwd(  xmm2, xmm0);                // xmm2 = 0h|..|0g|..|0f|..|0e|..
+      x86.punpcklwd(  xmm0, xmm0);                // xmm0 = 0d|0d|0c|0c|0b|0b|0a|0a
+      x86.pmaddwd(    xmm2, xmm3);                // xmm2 =  h*co|g*co|f*co|e*co
+      x86.pmaddwd(    xmm0, xmm3);                // xmm0 =  d*co|c*co|b*co|a*co
+      x86.paddd(      xmm5, xmm2);                // accumulateHGFE
+      x86.paddd(      xmm4, xmm0);                // accumulateDCBA
+      x86.punpckhwd(  xmm2, xmm1);                // xmm2 = 0p|..|0o|..|0n|..|0m|..
+      x86.punpcklwd(  xmm1, xmm1);                // xmm1 = 0l|0l|0k|0k|0j|0j|0i|0i
+      x86.pmaddwd(    xmm2, xmm3);                // xmm4 =  p*co|o*co|n*co|m*co
+      x86.pmaddwd(    xmm1, xmm3);                // xmm1 =  l*co|k*co|j*co|i*co
+      x86.paddd(      xmm7, xmm2);                // accumulatePONM
+      x86.paddd(      xmm6, xmm1);                // accumulateLKJI
+    }
+    x86.psrad(        xmm4, 14);                  // 14 bits -> 16bit fraction [--FF....|--FF....]
+    x86.psrad(        xmm5, 14);                  // compensate the fact that FPScale = 16384
+    x86.psrad(        xmm6, 14);
+    x86.psrad(        xmm7, 14);
+    x86.packssdw(     xmm4, xmm5);                // xmm4 = 0h|0g|0f|0e|0d|0c|0b|0a
+    x86.mov(          eax, dword_ptr[(int)&dstp]);
+    x86.packssdw(     xmm6, xmm7);                // xmm6 = 0p|0o|0n|0m|0l|0k|0j|0i
+    x86.add(          ecx, 16);                   // x += 16
+    x86.packuswb(     xmm4, xmm6);                // xmm4 = p|o|n|m|l|k|j|i|h|g|f|e|d|c|b|a
+    x86.cmp(          ecx, xloops);
+    x86.movdqa(       xmmword_ptr[eax+ecx-16], xmm4); // dstp[x] = p|o|n|m|l|k|j|i|h|g|f|e|d|c|b|a
+    x86.jnz(          "xloop");
+                     
+    x86.lea(          edx, dword_ptr[edx+(fir_filter_size*4)]); // cur += fir_filter_size
+    x86.add(          eax, ebx);                  // dstp += dst_pitch
+    x86.dec(          edi);                       // y -= 1
+    x86.mov(          dword_ptr[(int)&dstp], eax);
+    x86.jnz(          "yloop");
+  }
+  else {
+  // eax ebx ecx edx esi edi ebp
+  // mm0 mm1 mm2 mm3 mm4 mm5 mm6 mm7
+    x86.mov(        edx, (int)cur);              // edx = &array[1] -> start_pos
+    x86.mov(        ebp, dword_ptr[(int)&src_pitch]);
+    x86.mov(        ebx, dword_ptr[(int)&dst_pitch]);
+    x86.mov(        edi, y);                     // edi = vi.height
+
+    x86.align(16);
+x86.label("yloop");
+    x86.mov(        esi, dword_ptr[(int)&yOfs2]);// int pitch_table[height] = {0, src_pitch, src_pitch*2, ...}
+    x86.mov(        eax, dword_ptr[edx]);        // eax = *cur = start_pos
+    x86.mov(        esi, dword_ptr[esi+eax*4]);  // esi = yOfs[*cur] = start_pos * src_pitch
+    x86.add(        edx, 4);                     // cur++  (*cur = coeff[0])
+    x86.add(        esi, dword_ptr[(int)&srcp]); // esi = srcp + yOfs[*cur] = srcp + start_pos * src_pitch
+    x86.xor(        ecx, ecx);                   // ecx = x = 0
+
+    x86.align(16);
+x86.label("xloop");
+    x86.lea(        eax, qword_ptr[esi+ecx*8]);  // eax = srcp2 = srcp + x
+    x86.movq(       mm7, qword_ptr[(int)&FPround]);// totalHG = Rounder for final division.
+    x86.movq(       mm0, qword_ptr[eax]);        // mm0 = *srcp2             = h|g|f|e|d|c|b|a
+    x86.movq(       mm6, mm7);                   // totalFE
+    x86.movq(       mm5, mm7);                   // totalDC
+    x86.movq(       mm4, mm7);                   // totalBA
+    int i=0;
+    for ( ; i < fir_filter_size/2; i++) { // Doing row pairs
+      x86.movq(       mm2, qword_ptr[eax+ebp]);  // mm2 = *(srcp2+src_pitch) = H|G|F|E|D|C|B|A
+      x86.movq(       mm3, qword_ptr[edx+i*8]);  // mm3 = cur[b] = --coeff[i+1]|--coeff[i]
+      x86.lea(        eax, qword_ptr[eax+ebp*2]);// srcp2 += src_pitch*2
+      x86.movq(       mm1, mm0);                 // mm1                      = h|g|f|e|d|c|b|a
+      x86.packssdw(   mm3, mm3);                 // mm3 = CO|co|CO|co
+
+      x86.punpcklbw(  mm0, mm2);                 // mm0 = Dd|Cc|Bb|Aa
+      x86.punpckhbw(  mm1, mm2);                 // mm1 = Hh|Gg|Ff|Ee
+
+      x86.punpckhbw(  mm2, mm0);                 // mm2 = DH|dG|CF|cE
+      x86.punpcklbw(  mm0, mm0);                 // mm0 = BB|bb|AA|aa
+      x86.psrlw(      mm2, 8);                   // mm2 = 0D|0d|0C|0c
+      x86.psrlw(      mm0, 8);                   // mm0 = 0B|0b|0A|0a
+
+      x86.pmaddwd(    mm2, mm3);                 // mm2 = D*CO+d*co|C*CO+c*co
+      x86.pmaddwd(    mm0, mm3);                 // mm0 = B*CO+b*co|A*CO+a*co
+      x86.paddd(      mm5, mm2);                 // accumulateDC
+      x86.paddd(      mm4, mm0);                 // accumulateBA
+
+      x86.pxor(       mm0, mm0);
+      x86.movq(       mm2, mm1);                 // mm2 = Hh|Gg|Ff|Ee
+      x86.punpcklbw(  mm1, mm0);                 // mm1 = 0F|0f|0E|0e
+      x86.punpckhbw(  mm2, mm0);                 // mm2 = 0H|0h|0G|0g
+
+      if (i*2 < fir_filter_size-2)               // Load early for next loop
+        x86.movq(     mm0, qword_ptr[eax]);      // mm0 = *srcp2             = h|g|f|e|d|c|b|a
+
+      x86.pmaddwd(    mm1, mm3);                 // mm1 = F*CO+f*co|E*CO+e*co
+      x86.pmaddwd(    mm2, mm3);                 // mm2 = H*CO+h*co|G*CO+g*co
+      x86.paddd(      mm6, mm1);                 // accumulateFE
+      x86.paddd(      mm7, mm2);                 // accumulateHG
+    }
+    if (i*2 < fir_filter_size) { // Do last odd row
+      x86.movd(       mm3, dword_ptr[edx+i*8]);  // mm3 = cur[b] = 0|--coeff[i]
+      x86.pxor(       mm2, mm2);
+      x86.punpckhbw(  mm1, mm0);                 // mm1 = h.|g.|f.|e.
+      if (isse) {
+        x86.punpcklbw(mm0, mm2);                 // mm0 = 0d|0c|0b|0a
+        x86.pshufw(   mm3, mm3, 0x33);           // mm3 = co|00|co|00
+      } else {
+        x86.punpckldq(mm3, mm3);                 // mm3 = --co|--co
+        x86.punpcklbw(mm0, mm2);                 // mm0 = 0d|0c|0b|0a
+        x86.pslld(    mm3, 16);                  // mm3 = co|00|co|00
+      }
+      x86.psrlw(      mm1, 8);                   // mm1 = 0h|0g|0f|0e
+      x86.punpckhwd(  mm2, mm0);                 // mm2 = 0d|..|0c|..
+      x86.punpcklwd(  mm0, mm0);                 // mm0 = 0b|0b|0a|0a
+      x86.pmaddwd(    mm2, mm3);                 // mm2 =  d*co|c*co
+      x86.pmaddwd(    mm0, mm3);                 // mm0 =  b*co|a*co
+      x86.paddd(      mm5, mm2);                 // accumulateDC
+      x86.paddd(      mm4, mm0);                 // accumulateBA
+      x86.punpckhwd(  mm2, mm1);                 // mm2 = 0h|..|0g|..
+      x86.punpcklwd(  mm1, mm1);                 // mm1 = 0f|0f|0e|0e
+      x86.pmaddwd(    mm2, mm3);                 // mm2 =  h*co|g*co
+      x86.pmaddwd(    mm1, mm3);                 // mm1 =  f*co|e*co
+      x86.paddd(      mm7, mm2);                 // accumulateHG
+      x86.paddd(      mm6, mm1);                 // accumulateFE
+    }
+    x86.psrad(      mm4, 14);                    // 14 bits -> 16bit fraction [--FF....|--FF....]
+    x86.psrad(      mm5, 14);                    // compensate the fact that FPScale = 16384
+    x86.psrad(      mm6, 14);
+    x86.psrad(      mm7, 14);
+    x86.packssdw(   mm4, mm5);                   // mm4 = 0d|0c|0b|0a
     x86.mov(        eax, dword_ptr[(int)&dstp]);
-    x86.paddsw(     xmm1, xmm6);                          // Add rounder
-    x86.paddsw(     xmm7, xmm6);
-    x86.psraw(      xmm1, 6);                             // Compensate fraction
-    x86.psraw(      xmm7, 6);                             // Compensate fraction
-    x86.packuswb(   xmm1, xmm7);                          // mm1 = p|o|n|m|l|k|j|i|h|g|f|e|d|c|b|a
-    x86.pxor(       xmm7, xmm7);
-    x86.movdqa(     xmmword_ptr[eax+ecx], xmm1);          // Dest should always be aligned.
-    x86.add(        ecx, 16);
-    x86.pxor(       xmm1, xmm1);                          //total = 0
+    x86.packssdw(   mm6, mm7);                   // mm6 = 0h|0g|0f|0e
+    x86.inc(        ecx);                        // x += 1
+    x86.packuswb(   mm4, mm6);                   // mm4 = h|g|f|e|d|c|b|a
     x86.cmp(        ecx, xloops);
-    x86.jl(         "xloop");
-    x86.add(        eax, ebx);
-    x86.lea(        edx, dword_ptr[edx+(fir_filter_size*4)]);        //cur += fir_filter_size
+    x86.movq(       qword_ptr[eax+ecx*8-8], mm4); // dstp[x] = h|g|f|e|d|c|b|a
+    x86.jnz(        "xloop");
+
+    x86.lea(        edx, dword_ptr[edx+(fir_filter_size*4)]);        // cur += fir_filter_size
+    x86.add(        eax, ebx);                   // dstp += dst_pitch
+    x86.dec(        edi);                        // y -= 1
     x86.mov(        dword_ptr[(int)&dstp], eax);
-    x86.dec(        edi);
     x86.jnz(        "yloop");
   }
   // No more mmx for now
   x86.emms();
   // Restore registers
-  x86.pop(ebp);
-  x86.pop(edi);
-  x86.pop(esi);
-  x86.pop(edx);
-  x86.pop(ecx);
-  x86.pop(ebx);
-  x86.pop(eax);
+  x86.pop(          ebp);
+  x86.pop(          edi);
+  x86.pop(          esi);
+  x86.pop(          edx);
+  x86.pop(          ecx);
+  x86.pop(          ebx);
+  x86.pop(          eax);
   x86.ret();
 
   return DynamicAssembledCode(x86, env, "ResizeV: Dynamic code could not be compiled.");
