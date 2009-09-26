@@ -38,20 +38,56 @@
 #include "softwire_helpers.h"
 
 
+static void ReportException(EXCEPTION_POINTERS* ei, BYTE* ret) {
+  enum { buffsize=127 };
+  static char buff[buffsize+1];
+
+  const DWORD code  = ei->ExceptionRecord->ExceptionCode;
+  const BYTE* addr  = (BYTE*)ei->ExceptionRecord->ExceptionAddress;
+  const UINT  info0 = ei->ExceptionRecord->ExceptionInformation[0];
+  const UINT  info1 = ei->ExceptionRecord->ExceptionInformation[1];
+  const UINT  offst = (addr >= ret) ? addr - ret : 0xffffffff - (ret - addr) + 1;
+  
+  switch (code) {
+  case EXCEPTION_ACCESS_VIOLATION:
+    _snprintf(buff, buffsize, "Softwire: caught an access violation at 0x%08x(code+%u),\n"
+                              "attempting to %s 0x%08x", 
+                              addr, offst, info0 ? "write to" : "read from", info1);
+    break;
+
+  case EXCEPTION_ILLEGAL_INSTRUCTION:
+    _snprintf(buff, buffsize, "Softwire: illegal instruction at 0x%08x(code+%u),\n"
+                              "code bytes : %02x %02x %02x %02x %02x %02x %02x %02x ...",
+                              addr, offst, addr[0], addr[1], addr[2], addr[3],
+                                           addr[4], addr[5], addr[6], addr[7]); 
+    break;
+
+  default:
+    _snprintf(buff, buffsize, "Softwire: exception 0x%08x at 0x%08x(code+%u)", code, addr, offst);
+  }
+
+  buff[buffsize] = '\0';
+  throw AvisynthError(buff);
+
+}
+
+
 DynamicAssembledCode::DynamicAssembledCode(Assembler &x86, IScriptEnvironment* env, const char * err_msg) {
   entry = 0;
   const char* soft_err = "";
+
   try {
     entry = (void(*)())x86.callable();
   } catch (Error _err) { soft_err = _err.getString(); }
+
   if(!entry)
   {
-    _RPT0(0,"SoftWire Compilation error:");
-    _RPT0(0,soft_err);
-    _RPT0(0,"\n");
+    _RPT1(0,"SoftWire Compilation error: %s\n", soft_err);
     env->ThrowError(err_msg);
   }
+
   ret = (BYTE*)x86.acquire();
+
 #ifdef _DEBUG
   int bytes=0;
 //  while (ret[bytes]!=0xCC) { bytes++; };
@@ -60,8 +96,69 @@ DynamicAssembledCode::DynamicAssembledCode(Assembler &x86, IScriptEnvironment* e
 #endif
 }
 
+// No Args Call
 void DynamicAssembledCode::Call() const {
-  if (ret) entry();
+  EXCEPTION_POINTERS* ei = 0;
+
+  if (ret) {
+    __try {
+      entry();
+    }
+    __except ( ei = GetExceptionInformation(),
+               (GetExceptionCode() >> 28) == 0xC )
+               //  0=EXCEPTION_CONTINUE_SEARCH
+               //  1=EXCEPTION_EXECUTE_HANDLER
+               // -1=EXCEPTION_CONTINUE_EXECUTION
+    {
+      ReportException(ei, ret);
+    }
+  }
+}
+  
+
+  /*
+   * On entry here [esp+4] will contain arg1,
+   * [esp+8] will contain arg2, [esp+12] ...
+   *
+   * When calling the assembler the code will be like
+   *   lea    eax, ebp[arg1]
+   *   push   eax
+   *   call   ecx[entry]
+   *   add    esp, 4
+   *   ...    ..., eax   // eax has result
+   *
+   * Typically do something like this to get all the args
+   *   x86.push(  ebp);
+   *   x86.mov(   ebp, dword_ptr[esp+4 + 4]);
+   *
+   *   x86.mov(   eax, dword_ptr[ebp +  0]);    // arg1
+   *   x86.mov(   ebx, dword_ptr[ebp +  4]);    // arg2
+   *   x86.mov(   ecx, dword_ptr[ebp +  8]);    // arg3
+   *   x86.mov(   edx, dword_ptr[ebp + 12]);    // arg4
+   * ...
+   *   x86.mov(   eax, ...                      // result
+   *   x86.pop(   ebp);
+   *   x86.ret();
+   */
+
+// Call with Args, optionally returning an int
+int DynamicAssembledCode::Call(int arg1, ...) const {
+  EXCEPTION_POINTERS* ei = 0;
+
+  if (ret) {
+    __try { 
+      return ((int (*)(int *))entry)(&arg1);
+    }
+    __except ( ei = GetExceptionInformation(),
+               (GetExceptionCode() >> 28) == 0xC )
+             //  0=EXCEPTION_CONTINUE_SEARCH
+             //  1=EXCEPTION_EXECUTE_HANDLER
+             // -1=EXCEPTION_CONTINUE_EXECUTION
+    {
+      ReportException(ei, ret);
+    }
+  }
+  return 0;
 }
   
 void DynamicAssembledCode::Free() {
@@ -69,4 +166,32 @@ void DynamicAssembledCode::Free() {
 }
 
 
+#if 0
+class TestAsm : public  CodeGenerator {
 
+public:
+  static AVSValue __cdecl Create_TestAsm(AVSValue args, void*, IScriptEnvironment* env) {
+    int i, j, k;
+    DynamicAssembledCode code;
+    Assembler x86;
+
+    x86.push(  ebp);
+    x86.mov(   ebp, dword_ptr[esp+4+4]);
+    x86.mov(   eax, dword_ptr[ebp+0]);     // arg1
+    x86.add(   eax, dword_ptr[ebp+4]);     // arg2
+    x86.pop(   ebp);
+    x86.ret();
+    
+    code = DynamicAssembledCode(x86, env, "TestAsm: Code could not be compiled.");
+
+    j = args[0].AsInt();
+    k = args[1].AsInt();
+
+    i = code.Call(j, k);
+
+    code.Free();
+
+    return i;
+  }
+};
+#endif

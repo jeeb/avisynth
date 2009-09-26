@@ -49,9 +49,15 @@ public:
   DynamicAssembledCode() {ret = 0;};
   DynamicAssembledCode(Assembler &x86, IScriptEnvironment* env, const char * err_msg = "");
 
+// No Args
   void Call() const;
+
+// With Args, optionally returning an int
+  int __cdecl Call(int, ...) const;
+
   void Free();
 
+  bool operator!() const { return !ret; }
 };
 
 #endif //__Softwire_Helpers_H__
