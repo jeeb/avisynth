@@ -497,7 +497,7 @@ public:
 // BEGIN *************************************************************
     if (prescanning) {
       AVSValue fnplugin;
-      char *fnpluginnew;
+      char *fnpluginnew=0;
       try {
         fnplugin = env->GetVar("$PluginFunctions$");
         int string_len = strlen(fnplugin.AsString())+1;
@@ -543,8 +543,10 @@ public:
           fnpluginnew = new char[string_len];
           strcpy(fnpluginnew, alt_name);
         }
-        env->SetGlobalVar("$PluginFunctions$", AVSValue(env->SaveString(fnpluginnew, string_len)));
-        delete[] fnpluginnew;
+        if (fnpluginnew) {
+          env->SetGlobalVar("$PluginFunctions$", AVSValue(env->SaveString(fnpluginnew, string_len)));
+          delete[] fnpluginnew;
+        }
       }
       char temp[1024] = "$Plugin!";
       if (f) {
@@ -564,11 +566,11 @@ public:
   }
 
   AVSFunction* Lookup(const char* search_name, const AVSValue* args, int num_args,
-                      bool* pstrict, int args_names_count, const char** arg_names) {
+                      bool &pstrict, int args_names_count, const char** arg_names) {
     int oanc;
     do {
       for (int strict = 1; strict >= 0; --strict) {
-        *pstrict = strict&1;
+        pstrict = strict&1;
         // first, look in loaded plugins
         for (LocalFunction* p = local_functions; p; p = p->prev)
           if (!lstrcmpi(p->name, search_name) &&
@@ -1109,8 +1111,8 @@ bool ScriptEnvironment::LoadPluginsMatching(const char* pattern)
 
 void ScriptEnvironment::PrescanPlugins()
 {
-  const char* plugin_dir;
-  if (plugin_dir = GetPluginDirectory())
+  const char* plugin_dir = GetPluginDirectory();
+  if (plugin_dir)
   {
     WIN32_FIND_DATA FileData;
     HANDLE hFind = FindFirstFile(plugin_dir, &FileData);
@@ -1598,7 +1600,7 @@ int ScriptEnvironment::Flatten(const AVSValue& src, AVSValue* dst, int index, in
 AVSValue ScriptEnvironment::Invoke(const char* name, const AVSValue args, const char** arg_names) {
 
   int args2_count;
-  bool strict;
+  bool strict = false;
   AVSFunction *f;
   AVSValue retval;
 
@@ -1611,7 +1613,7 @@ AVSValue ScriptEnvironment::Invoke(const char* name, const AVSValue args, const 
 	args2_count = Flatten(args, args1, 0, ScriptParser::max_args, arg_names);
 
 	// find matching function
-	f = function_table.Lookup(name, args1, args2_count, &strict, args_names_count, arg_names);
+	f = function_table.Lookup(name, args1, args2_count, strict, args_names_count, arg_names);
 	if (!f)
 	  throw NotFound();
   }
@@ -1994,14 +1996,15 @@ char* ScriptEnvironment::Sprintf(const char* fmt, ...) {
 
 void ScriptEnvironment::ThrowError(const char* fmt, ...) {
   char buf[8192];
+  va_list val;
+  va_start(val, fmt);
   try {
-    va_list val;
-    va_start(val, fmt);
     _vsnprintf(buf,sizeof(buf)-1, fmt, val);
-    va_end(val);
+    if (!this) throw this; // Force inclusion of try catch code!
   } catch (...) {
     strcpy(buf,"Exception while processing ScriptEnvironment::ThrowError().");
   }
+  va_end(val);
   buf[sizeof(buf)-1] = '\0';
   throw AvisynthError(ScriptEnvironment::SaveString(buf));
 }

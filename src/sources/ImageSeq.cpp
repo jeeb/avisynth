@@ -446,11 +446,8 @@ ImageReader::ImageReader(const char * _base_name, const int _start, const int _e
 
     ilDeleteImages(1, &myImage);
 
-    if (err != IL_NO_ERROR)
-    {
-      ostringstream ss;
-      ss << "ImageReader: error '" << getErrStr(err) << "' in DevIL library\n reading file " << filename;
-      env->ThrowError(ss.str().c_str());
+    if (err != IL_NO_ERROR) {
+      env->ThrowError("ImageReader: error '%s' in DevIL library.\nreading file %s", getErrStr(err), filename);
     }
     // work around DevIL upside-down bug with compressed images
     should_flip = false;

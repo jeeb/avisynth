@@ -291,7 +291,7 @@ PVideoFrame __stdcall ScriptClip::GetFrame(int n, IScriptEnvironment* env) {
   if (only_eval) return child->GetFrame(n,env);
   
   const char* error = NULL;
-  VideoInfo vi2;
+  VideoInfo vi2 = vi;
   if (!result.IsClip()) {
     error = "ScriptClip: Function did not return a video clip!";
   } else {

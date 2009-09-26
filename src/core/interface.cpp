@@ -195,7 +195,6 @@ int VideoInfo::GetPlaneWidthSubsampling(int plane) const {  // Subsampling in bi
       throw AvisynthError("Filter error: GetPlaneWidthSubsampling called with unsupported pixel type.");
   }
   throw AvisynthError("Filter error: GetPlaneWidthSubsampling called with unsupported plane.");
-  return 0;
 }
 
 int VideoInfo::GetPlaneHeightSubsampling(int plane) const {  // Subsampling in bitshifts!
@@ -212,7 +211,6 @@ int VideoInfo::GetPlaneHeightSubsampling(int plane) const {  // Subsampling in b
       throw AvisynthError("Filter error: GetPlaneHeightSubsampling called with unsupported pixel type.");
   }
   throw AvisynthError("Filter error: GetPlaneHeightSubsampling called with supported plane.");
-  return 0;
 }
 
 int VideoInfo::BitsPerPixel() const {
@@ -417,8 +415,8 @@ VideoFrame::~VideoFrame() { InterlockedDecrement(&vfb->refcount); }
 
 // class IClip
 
-void IClip::AddRef() { InterlockedIncrement((long *)&refcnt); }
-void IClip::Release() { InterlockedDecrement((long *)&refcnt); if (!refcnt) delete this; }
+void IClip::AddRef() { InterlockedIncrement(&refcnt); }
+void IClip::Release() { if (!InterlockedDecrement(&refcnt)) delete this; }
 
 IClip::IClip() : refcnt(0) {}
 

@@ -107,14 +107,16 @@ Antialiaser::Antialiaser(int width, int height, const char fontname[], int size,
   b.clr[0].rgbBlue = b.clr[0].rgbGreen = b.clr[0].rgbRed = 0;
   b.clr[1].rgbBlue = b.clr[1].rgbGreen = b.clr[1].rgbRed = 255;
 
-  if (hdcAntialias = CreateCompatibleDC(NULL)) {
-	if (hbmAntialias = CreateDIBSection
+  hdcAntialias = CreateCompatibleDC(NULL);
+  if (hdcAntialias) {
+	hbmAntialias = CreateDIBSection
 	  ( hdcAntialias,
 		(BITMAPINFO *)&b,
 		DIB_RGB_COLORS,
 		&lpAntialiasBits,
 		NULL,
-		0 )) {
+		0 );
+	if (hbmAntialias) {
 	  hbmDefault = (HBITMAP)SelectObject(hdcAntialias, hbmAntialias);
 
 	  HFONT newfont = LoadFont(fontname, size, true, false, font_width, font_angle);
@@ -380,9 +382,9 @@ void Antialiaser::GetAlphaRect() {
     fInited = true;
     int i;
 
-    const double scale = 516*64/sqrt(128);
+    const double scale = 516*64/sqrt(128.0);
     for(i=0; i<=128; i++)
-      gamma[i]=unsigned short(sqrt(i) * scale + 0.5); // Gamma = 2.0
+      gamma[i]=unsigned short(sqrt((double)i) * scale + 0.5); // Gamma = 2.0
 
     for(i=0; i<256; i++) {
       BYTE b=0, l=0, r=0;
@@ -1176,7 +1178,7 @@ PVideoFrame FilterInfo::GetFrame(int n, IScriptEnvironment* env)
   PVideoFrame frame = child->GetFrame(n, env);
   hdcAntialias = antialiaser.GetDC();
   if (hdcAntialias) {
-    const char* c_space;
+    const char* c_space = "Unknown";
     const char* s_type = t_NONE;
     const char* s_parity;
     if (vi.IsRGB24()) c_space=t_RGB24;

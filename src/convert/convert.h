@@ -134,7 +134,7 @@ public:
   static AVSValue __cdecl Create(AVSValue args,void*, IScriptEnvironment* env);
 
 private:
-  bool isYUY2, isRGB32, isRGB24, interlaced;
+  bool interlaced;
 };
 
 

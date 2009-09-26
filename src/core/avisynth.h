@@ -645,6 +645,10 @@ enum {
   CPUF_X86_64       =  0xA0,   //  Hammer (note: equiv. to 3DNow + SSE2, which
                                //          only Hammer will have anyway)
   CPUF_SSE3         = 0x100,   //  PIV+, Hammer
+  CPUF_SSSE3        = 0x200,   //  Core 2
+  CPUF_SSE4			= 0x400,   //  Penryn, Wolfdale, Yorkfield
+  CPUF_SSE4_1		= 0x400,
+  CPUF_SSE4_2		= 0x800,   //  Nehalem
 };
 #define MAX_INT 0x7fffffff
 #define MIN_INT -0x7fffffff  // ::FIXME:: research why this is not 0x80000000

@@ -89,8 +89,8 @@ PVideoFrame __stdcall AdjustFocusV::GetFrame(int n, IScriptEnvironment* env)
 	uc* linea = (uc*)(((int)line+15) & -16); // Align 16
 
 	if (vi.IsPlanar()) {
-    int plane,cplane;
-		for(cplane=0;cplane<3;cplane++) {
+		for(int cplane=0;cplane<3;cplane++) {
+			int plane=0;
 			if (cplane==0)  plane = PLANAR_Y;
 			if (cplane==1)  plane = PLANAR_U;
 			if (cplane==2)  plane = PLANAR_V;
@@ -281,11 +281,11 @@ PVideoFrame __stdcall AdjustFocusH::GetFrame(int n, IScriptEnvironment* env)
 	env->MakeWritable(&frame); // Damn! This screws FillBorder
 
 	if (vi.IsPlanar()) {
-    int plane,cplane;
-		for(cplane=0;cplane<3;cplane++) {
-		if (cplane==0) plane = PLANAR_Y;
-		if (cplane==1) plane = PLANAR_U;
-		if (cplane==2) plane = PLANAR_V;
+		for(int cplane=0;cplane<3;cplane++) {
+			int plane=0;
+			if (cplane==0) plane = PLANAR_Y;
+			if (cplane==1) plane = PLANAR_U;
+			if (cplane==2) plane = PLANAR_V;
 			const int row_size = frame->GetRowSize(plane);
 			uc* q = frame->GetWritePtr(plane);
 			const int pitch = frame->GetPitch(plane);
@@ -297,7 +297,6 @@ PVideoFrame __stdcall AdjustFocusH::GetFrame(int n, IScriptEnvironment* env)
 			} 
 		}
 	} else {
-		const int row_size = vi.RowSize();
 		uc* q = frame->GetWritePtr();
 		const int pitch = frame->GetPitch();
 		if (vi.IsYUY2()) {
@@ -899,7 +898,7 @@ out_row_loop_ex:
 AVSValue __cdecl Create_Sharpen(AVSValue args, void*, IScriptEnvironment* env) 
 {
 	try {	// HIDE DAMN SEH COMPILER BUG!!!
-  const double amountH = args[1].AsFloat(), amountV = args[2].AsFloat(amountH);
+  const double amountH = args[1].AsFloat(), amountV = args[2].AsDblDef(amountH);
   const bool mmx = args[3].AsBool(true) && (env->GetCPUFlags() & CPUF_MMX);
 
   if (amountH < -1.5849625 || amountH > 1.0 || amountV < -1.5849625 || amountV > 1.0) // log2(3)
@@ -928,7 +927,7 @@ AVSValue __cdecl Create_Sharpen(AVSValue args, void*, IScriptEnvironment* env)
 AVSValue __cdecl Create_Blur(AVSValue args, void*, IScriptEnvironment* env) 
 {
 	try {	// HIDE DAMN SEH COMPILER BUG!!!
-  const double amountH = args[1].AsFloat(), amountV = args[2].AsFloat(amountH);
+  const double amountH = args[1].AsFloat(), amountV = args[2].AsDblDef(amountH);
   const bool mmx = args[3].AsBool(true) && (env->GetCPUFlags() & CPUF_MMX);
 
   if (amountH < -1.0 || amountH > 1.5849625 || amountV < -1.0 || amountV > 1.5849625) // log2(3)

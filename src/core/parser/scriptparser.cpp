@@ -271,19 +271,17 @@ PExpression ScriptParser::ParseAssignment(void)
     Expect('=');
     PExpression exp = ParseConditional();
     return new ExpGlobalAssignment(name, exp);
-  } else {
-    PExpression exp = ParseConditional();
-    if (tokenizer.IsOperator('=')) {
-      const char* name = exp->GetLvalue();
-      if (!name)
-        env->ThrowError("Script error: left operand of `=' must be a variable name");
-      tokenizer.NextToken();
-      exp = ParseConditional();
-      return new ExpAssignment(name, exp);
-    } else {
-      return exp;
-    }
   }
+  PExpression exp = ParseConditional();
+  if (tokenizer.IsOperator('=')) {
+    const char* name = exp->GetLvalue();
+    if (!name)
+      env->ThrowError("Script error: left operand of `=' must be a variable name");
+    tokenizer.NextToken();
+    exp = ParseConditional();
+    return new ExpAssignment(name, exp);
+  }
+  return exp;
 }
 
 
@@ -297,9 +295,7 @@ PExpression ScriptParser::ParseConditional(void)
     PExpression c = ParseConditional();
     return new ExpConditional(a, b, c);
   }
-  else {
-    return a;
-  }
+  return a;
 }
 
 PExpression ScriptParser::ParseOr(void) 
@@ -310,9 +306,7 @@ PExpression ScriptParser::ParseOr(void)
     PExpression right = ParseOr();
     return new ExpOr(left, right);
   }
-  else {
-    return left;
-  }
+  return left;
 }
 
 PExpression ScriptParser::ParseAnd(void) 
@@ -323,9 +317,7 @@ PExpression ScriptParser::ParseAnd(void)
     PExpression right = ParseAnd();
     return new ExpAnd(left, right);
   }
-  else {
-    return left;
-  }
+  return left;
 }
 
 
@@ -364,20 +356,19 @@ PExpression ScriptParser::ParseAddition(bool negationOnHold) //update exterior c
   if (plus || minus || doubleplus) {
     tokenizer.NextToken();
     PExpression right = ParseAddition(minus);
-    if (doubleplus)
+    if (doubleplus) {
       return new ExpDoublePlus(left, right);
-    else 
-      return new ExpPlus(left, right);   //no longer ExpMinus  'right' will be negated when needed
+    }
+    return new ExpPlus(left, right);   //no longer ExpMinus  'right' will be negated when needed
   }
-  else
-    return left;
+  return left;
 }
 
 PExpression ScriptParser::ParseMultiplication(bool negationOnHold) 
 {
   PExpression left = ParseUnary();
 
-  do {
+  for (;;) {
     bool mult = tokenizer.IsOperator('*');
     bool div = tokenizer.IsOperator('/');
     bool mod = tokenizer.IsOperator('%');
@@ -394,7 +385,6 @@ PExpression ScriptParser::ParseMultiplication(bool negationOnHold)
     else
       left = new ExpMod(left, right);
   }
-  while(true);
 
   if (negationOnHold)   //negate the factorised result if needed
     left = new ExpNegate(left);
@@ -446,43 +436,41 @@ PExpression ScriptParser::ParseFunction(PExpression context)
     // variable
     return new ExpVariableReference(name);
   }
-  else {
-    // function
-    PExpression args[max_args];
-    const char* arg_names[max_args];
-    memset(arg_names, 0, sizeof(arg_names));
-    int i=0;
-    if (context)
-      args[i++] = context;
-    if (tokenizer.IsOperator('(')) {
-      tokenizer.NextToken();
-      bool need_comma = false;
-      for (;;) {
-        if (tokenizer.IsOperator(')')) {
-          tokenizer.NextToken();
-          break;
-        }
-        if (need_comma) {
-          Expect(',', "Script error: expected a , or )");
-        }
-        // check for named argument syntax (name=val)
-        if (tokenizer.IsIdentifier()) {
-          Tokenizer lookahead(&tokenizer);
-          if (lookahead.IsOperator('=')) {
-            arg_names[i] = tokenizer.AsIdentifier();
-            tokenizer.NextToken();
-            tokenizer.NextToken();
-          }
-        }
-        if (i == max_args) {
-          env->ThrowError("Script error: argument list too long");
-        }
-        args[i++] = ParseConditional();
-        need_comma = true;
+  // function
+  PExpression args[max_args];
+  const char* arg_names[max_args];
+  memset(arg_names, 0, sizeof(arg_names));
+  int i=0;
+  if (context)
+    args[i++] = context;
+  if (tokenizer.IsOperator('(')) {
+    tokenizer.NextToken();
+    bool need_comma = false;
+    for (;;) {
+      if (tokenizer.IsOperator(')')) {
+        tokenizer.NextToken();
+        break;
       }
+      if (need_comma) {
+        Expect(',', "Script error: expected a , or )");
+      }
+      // check for named argument syntax (name=val)
+      if (tokenizer.IsIdentifier()) {
+        Tokenizer lookahead(&tokenizer);
+        if (lookahead.IsOperator('=')) {
+          arg_names[i] = tokenizer.AsIdentifier();
+          tokenizer.NextToken();
+          tokenizer.NextToken();
+        }
+      }
+      if (i == max_args) {
+        env->ThrowError("Script error: argument list too long");
+      }
+      args[i++] = ParseConditional();
+      need_comma = true;
     }
-    return new ExpFunctionCall(name, args, arg_names, i, !!context);
   }
+  return new ExpFunctionCall(name, args, arg_names, i, !!context);
 }
 
 PExpression ScriptParser::ParseAtom(void)

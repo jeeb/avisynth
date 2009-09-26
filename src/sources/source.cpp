@@ -61,7 +61,7 @@ public:
     : vi(_vi), frame(_frame), parity(_parity) {}
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env) { return frame; }
   void __stdcall GetAudio(void* buf, __int64 start, __int64 count, IScriptEnvironment* env) {
-    memset(buf, 0, vi.BytesFromAudioSamples(count));
+    memset(buf, 0, (size_t)vi.BytesFromAudioSamples(count));
   }
   const VideoInfo& __stdcall GetVideoInfo() { return vi; }
   bool __stdcall GetParity(int n) { return (vi.IsFieldBased() ? (n&1) : false) ^ parity; }
@@ -124,6 +124,9 @@ static PVideoFrame CreateBlankFrame(const VideoInfo& vi, int color, int mode, IS
 static AVSValue __cdecl Create_BlankClip(AVSValue args, void*, IScriptEnvironment* env) {
   VideoInfo vi_default;
   memset(&vi_default, 0, sizeof(VideoInfo));
+
+  VideoInfo vi = vi_default;
+
   vi_default.fps_denominator=1;
   vi_default.fps_numerator=24;
   vi_default.height=480;
@@ -136,8 +139,6 @@ static AVSValue __cdecl Create_BlankClip(AVSValue args, void*, IScriptEnvironmen
   vi_default.sample_type=SAMPLE_INT16;
   vi_default.SetFieldBased(false);
   bool parity=false;
-
-  VideoInfo vi;
 
   if ((args[0].ArraySize() == 1) && (!args[12].Defined())) {
     vi_default = args[0][0].AsClip()->GetVideoInfo();
@@ -167,8 +168,8 @@ static AVSValue __cdecl Create_BlankClip(AVSValue args, void*, IScriptEnvironmen
       vi.pixel_type = VideoInfo::CS_YV16;
     } else if (!lstrcmpi(pixel_type_string, "Y8")) {
       vi.pixel_type = VideoInfo::CS_Y8;
-//  } else if (!lstrcmpi(pixel_type_string, "YV411")) {
-//    vi.pixel_type = VideoInfo::CS_YV411;
+    } else if (!lstrcmpi(pixel_type_string, "YV411")) {
+      vi.pixel_type = VideoInfo::CS_YV411;
     } else if (!lstrcmpi(pixel_type_string, "RGB24")) {
       vi.pixel_type = VideoInfo::CS_BGR24;
     } else if (!lstrcmpi(pixel_type_string, "RGB32")) {
@@ -523,7 +524,7 @@ public:
 	  const double add_per_sample=ncycles/(double)nsamples;
 	  double second_offset=0.0;
 	  for (unsigned i=0;i<nsamples;i++) {
-		  audio[i] = sin(3.1415926535897932384626433832795*2.0*second_offset);
+		  audio[i] = (SFLOAT)sin(3.1415926535897932384626433832795*2.0*second_offset);
 		  second_offset+=add_per_sample;
 	  }
 	}
@@ -612,8 +613,8 @@ public:
 
 AVSValue __cdecl Create_SegmentedSource(AVSValue args, void* use_directshow, IScriptEnvironment* env) {
   bool bAudio = !use_directshow && args[1].AsBool(true);
-  const char* pixel_type;
-  const char* fourCC;
+  const char* pixel_type = 0;
+  const char* fourCC = 0;
   const int inv_args_count = args.ArraySize();
   AVSValue inv_args[9];
   if (!use_directshow) {
@@ -676,7 +677,7 @@ public:
 class SineGenerator : public SampleGenerator {
 public:
   SineGenerator() {}
-  SFLOAT getValueAt(double where) {return sinf(PI * where* 2.0);}
+  SFLOAT getValueAt(double where) {return (SFLOAT)sin(PI * where* 2.0);}
 };
 
 
@@ -708,11 +709,11 @@ public:
 
   SFLOAT getValueAt(double where) {
     if (where<=0.25) {
-      return (where*4.0);
+      return (SFLOAT)(where*4.0);
     } else if (where<=0.75) {
-      return ((-4.0*(where-0.50)));
+      return (SFLOAT)((-4.0*(where-0.50)));
     } else {
-      return ((4.0*(where-1.00)));
+      return (SFLOAT)((4.0*(where-1.00)));
     }
   }
 };
@@ -722,7 +723,7 @@ public:
   SawtoothGenerator() {}
 
   SFLOAT getValueAt(double where) {
-    return 2.0*(where-0.5);
+    return (SFLOAT)(2.0*(where-0.5));
   }
 };
 
@@ -738,7 +739,7 @@ class Tone : public IClip {
 
 public:
 
-  Tone(float _length, double _freq, int _samplerate, int _ch, const char* _type, float _level, IScriptEnvironment* env):
+  Tone(float _length, float _freq, int _samplerate, int _ch, const char* _type, float _level, IScriptEnvironment* env):
              freq(_freq), samplerate(_samplerate), ch(_ch), add_per_sample(_freq/_samplerate), level(_level) {
     memset(&vi, 0, sizeof(VideoInfo));
     vi.sample_type = SAMPLE_FLOAT;
@@ -783,8 +784,8 @@ public:
 
   static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env) {
 	try {	// HIDE DAMN SEH COMPILER BUG!!!
-	    return new Tone(args[0].AsFloat(10.0), args[1].AsFloat(440), args[2].AsInt(48000),
-		                args[3].AsInt(2), args[4].AsString("Sine"), args[5].AsFloat(1.0), env);
+	    return new Tone(args[0].AsFloat(10.0f), args[1].AsFloat(440.0f), args[2].AsInt(48000),
+		                args[3].AsInt(2), args[4].AsString("Sine"), args[5].AsFloat(1.0f), env);
 	}
 	catch (...) { throw; }
   }
