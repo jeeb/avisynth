@@ -28,12 +28,12 @@ namespace SoftWire
 
 		Instruction *intrinsicMap;
 
-		static Instruction::Syntax instructionSet[];
-
-		static int numInstructions();
-		static int numMnemonics();
+		static const Instruction::Syntax instructionSet[];
+		static const int numInstructions;
 
 		void generateIntrinsics();
+
+		static int strcmp(const char *string1, const char *string2);
 	};
 }
 

@@ -20,6 +20,22 @@ namespace SoftWire
 	const OperandREG8 Assembler::ch(Encoding::CH);
 	const OperandREG8 Assembler::dh(Encoding::DH);
 	const OperandREG8 Assembler::bh(Encoding::BH);
+	const OperandAL Assembler::r0b;
+	const OperandCL Assembler::r1b;
+	const OperandREG8 Assembler::r2b(Encoding::R2);
+	const OperandREG8 Assembler::r3b(Encoding::R3);
+	const OperandREG8 Assembler::r4b(Encoding::R4);
+	const OperandREG8 Assembler::r5b(Encoding::R5);
+	const OperandREG8 Assembler::r6b(Encoding::R6);
+	const OperandREG8 Assembler::r7b(Encoding::R7);
+	const OperandREG8 Assembler::r8b(Encoding::R8);
+	const OperandREG8 Assembler::r9b(Encoding::R9);
+	const OperandREG8 Assembler::r10b(Encoding::R10);
+	const OperandREG8 Assembler::r11b(Encoding::R11);
+	const OperandREG8 Assembler::r12b(Encoding::R12);
+	const OperandREG8 Assembler::r13b(Encoding::R13);
+	const OperandREG8 Assembler::r14b(Encoding::R14);
+	const OperandREG8 Assembler::r15b(Encoding::R15);
 
 	const OperandAX Assembler::ax;
 	const OperandCX Assembler::cx;
@@ -29,6 +45,22 @@ namespace SoftWire
 	const OperandREG16 Assembler::bp(Encoding::BP);
 	const OperandREG16 Assembler::si(Encoding::SI);
 	const OperandREG16 Assembler::di(Encoding::DI);
+	const OperandAX Assembler::r0w;
+	const OperandCX Assembler::r1w;
+	const OperandDX Assembler::r2w;
+	const OperandREG16 Assembler::r3w(Encoding::R3);
+	const OperandREG16 Assembler::r4w(Encoding::R4);
+	const OperandREG16 Assembler::r5w(Encoding::R5);
+	const OperandREG16 Assembler::r6w(Encoding::R6);
+	const OperandREG16 Assembler::r7w(Encoding::R7);
+	const OperandREG16 Assembler::r8w(Encoding::R8);
+	const OperandREG16 Assembler::r9w(Encoding::R9);
+	const OperandREG16 Assembler::r10w(Encoding::R10);
+	const OperandREG16 Assembler::r11w(Encoding::R11);
+	const OperandREG16 Assembler::r12w(Encoding::R12);
+	const OperandREG16 Assembler::r13w(Encoding::R13);
+	const OperandREG16 Assembler::r14w(Encoding::R14);
+	const OperandREG16 Assembler::r15w(Encoding::R15);
 
 	const OperandEAX Assembler::eax;
 	const OperandECX Assembler::ecx;
@@ -38,6 +70,47 @@ namespace SoftWire
 	const OperandREG32 Assembler::ebp(Encoding::EBP);
 	const OperandREG32 Assembler::esi(Encoding::ESI);
 	const OperandREG32 Assembler::edi(Encoding::EDI);
+	const OperandEAX Assembler::r0d;
+	const OperandECX Assembler::r1d;
+	const OperandREG32 Assembler::r2d(Encoding::R2);
+	const OperandREG32 Assembler::r3d(Encoding::R3);
+	const OperandREG32 Assembler::r4d(Encoding::R4);
+	const OperandREG32 Assembler::r5d(Encoding::R5);
+	const OperandREG32 Assembler::r6d(Encoding::R6);
+	const OperandREG32 Assembler::r7d(Encoding::R7);
+	const OperandREG32 Assembler::r8d(Encoding::R8);
+	const OperandREG32 Assembler::r9d(Encoding::R9);
+	const OperandREG32 Assembler::r10d(Encoding::R10);
+	const OperandREG32 Assembler::r11d(Encoding::R11);
+	const OperandREG32 Assembler::r12d(Encoding::R12);
+	const OperandREG32 Assembler::r13d(Encoding::R13);
+	const OperandREG32 Assembler::r14d(Encoding::R14);
+	const OperandREG32 Assembler::r15d(Encoding::R15);
+
+	const OperandREG64 Assembler::rax(Encoding::R0);
+	const OperandREG64 Assembler::rcx(Encoding::R1);
+	const OperandREG64 Assembler::rdx(Encoding::R2);
+	const OperandREG64 Assembler::rbx(Encoding::R3);
+	const OperandREG64 Assembler::rsp(Encoding::R4);
+	const OperandREG64 Assembler::rbp(Encoding::R5);
+	const OperandREG64 Assembler::rsi(Encoding::R6);
+	const OperandREG64 Assembler::rdi(Encoding::R7);
+	const OperandREG64 Assembler::r0(Encoding::R0);
+	const OperandREG64 Assembler::r1(Encoding::R1);
+	const OperandREG64 Assembler::r2(Encoding::R2);
+	const OperandREG64 Assembler::r3(Encoding::R3);
+	const OperandREG64 Assembler::r4(Encoding::R4);
+	const OperandREG64 Assembler::r5(Encoding::R5);
+	const OperandREG64 Assembler::r6(Encoding::R6);
+	const OperandREG64 Assembler::r7(Encoding::R7);
+	const OperandREG64 Assembler::r8(Encoding::R8);
+	const OperandREG64 Assembler::r9(Encoding::R9);
+	const OperandREG64 Assembler::r10(Encoding::R10);
+	const OperandREG64 Assembler::r11(Encoding::R11);
+	const OperandREG64 Assembler::r12(Encoding::R12);
+	const OperandREG64 Assembler::r13(Encoding::R13);
+	const OperandREG64 Assembler::r14(Encoding::R14);
+	const OperandREG64 Assembler::r15(Encoding::R15);
 
 	const OperandST0 Assembler::st;
 	const OperandST0 Assembler::st0;
@@ -79,7 +152,7 @@ namespace SoftWire
 	int Assembler::referenceCount = 0;
 	bool Assembler::listingEnabled = true;
 
-	Assembler::Assembler()
+	Assembler::Assembler(bool x64) : x64(x64)
 	{
 		echoFile = 0;
 		entryLabel = 0;
@@ -92,8 +165,8 @@ namespace SoftWire
 		referenceCount++;
 
 		linker = new Linker();
-		loader = new Loader(*linker);
-		synthesizer = new Synthesizer();
+		loader = new Loader(*linker, x64);
+		synthesizer = new Synthesizer(x64);
 	}
 
 	Assembler::~Assembler()
@@ -193,8 +266,8 @@ namespace SoftWire
 			this->echoFile = strdup(echoFile);
 
 			FILE *file = fopen(echoFile, mode);
-			const int t = time(0);
-			fprintf(file, "\n;%s\n", ctime((long*)&t));
+			const time_t t = time(0);
+			fprintf(file, "\n;%s\n", ctime(&t));
 			fclose(file);
 		}
 	}

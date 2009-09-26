@@ -55,13 +55,13 @@ namespace SoftWire
 
 		struct State
 		{
-			Allocation ERX[8];
-			Allocation MM[8];
-			Allocation XMM[8];
+			Allocation GPR[16];
+			Allocation MMX[16];
+			Allocation XMM[16];
 		};
 
 	public:
-		RegisterAllocator();
+		RegisterAllocator(bool x64 = false); // Default to true on X64 platform
 
 		virtual ~RegisterAllocator();
 
@@ -78,7 +78,7 @@ namespace SoftWire
 		void spill(const OperandREG32 &r32);
 
 		OperandMMREG r64(const OperandREF &ref, bool copy = true);
-		OperandR_M64 m64(const OperandREF &ref);
+		OperandMM64 m64(const OperandREF &ref);
 		void free(const OperandMMREG &r64);
 		void spill(const OperandMMREG &r64);
 
@@ -112,7 +112,7 @@ namespace SoftWire
 		using Assembler::movq;
 		Encoding *movq(OperandMMREG r64i, OperandMMREG r64j);
 		Encoding *movq(OperandMMREG r64, OperandMEM64 m64);
-		Encoding *movq(OperandMMREG r64, OperandR_M64 r_m64);
+		Encoding *movq(OperandMMREG r64, OperandMM64 r_m64);
 
 		using Assembler::movaps;
 		Encoding *movaps(OperandXMMREG r128i, OperandXMMREG r128j);
@@ -143,9 +143,9 @@ namespace SoftWire
 		Encoding *x86(int instructionID, const Operand &firstOperand, const Operand &secondOperand, const Operand &thirdOperand);
 
 		// Current allocation data
-		static Allocation ERX[8];
-		static Allocation MM[8];
-		static Allocation XMM[8];
+		static Allocation GPR[16];
+		static Allocation MMX[16];
+		static Allocation XMM[16];
 
 	private:
 		void markModified(const Operand &op);

@@ -2,7 +2,7 @@
 
 namespace SoftWire
 {
-	Optimizer::Optimizer()
+	Optimizer::Optimizer(bool x64) : RegisterAllocator(x64)
 	{
 	}
 

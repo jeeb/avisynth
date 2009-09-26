@@ -49,6 +49,9 @@ namespace SoftWire
 		P2 = encoding.P2;
 		P3 = encoding.P3;
 		P4 = encoding.P4;
+		REX.b = encoding.REX.b;
+		O4 = encoding.O4;
+		O3 = encoding.O3;
 		O2 = encoding.O2;
 		O1 = encoding.O1;
 		modRM.b = encoding.modRM.b;
@@ -75,6 +78,9 @@ namespace SoftWire
 		format.P2 = false;
 		format.P3 = false;
 		format.P4 = false;
+		format.REX = false;
+		format.O4 = false;
+		format.O3 = false;
 		format.O2 = false;
 		format.O1 = false;
 		format.modRM = false;
@@ -92,6 +98,9 @@ namespace SoftWire
 		P2 = 0xCC;
 		P3 = 0xCC;
 		P4 = 0xCC;
+		REX.b = 0xCC;
+		O4 = 0xCC;
+		O3 = 0xCC;
 		O2 = 0xCC;
 		O1 = 0xCC;
 		modRM.b = 0xCC;
@@ -144,6 +153,11 @@ namespace SoftWire
 		return immediate;
 	}
 
+	__int64 Encoding::getDisplacement() const
+	{
+		return displacement;
+	}
+
 	int Encoding::length(const unsigned char *output) const
 	{
 		return writeCode((unsigned char*)output, false);
@@ -182,12 +196,12 @@ namespace SoftWire
 		this->immediate = immediate;
 	}
 
-	void Encoding::setDisplacement(int displacement)
+	void Encoding::setDisplacement(__int64 displacement)
 	{
 		this->displacement = displacement;
 	}
 
-	void Encoding::addDisplacement(int displacement)
+	void Encoding::addDisplacement(__int64 displacement)
 	{
 		this->displacement += displacement;
 	}
@@ -246,6 +260,11 @@ namespace SoftWire
 	bool Encoding::hasImmediate() const
 	{
 		return format.I1 || format.I2 || format.I3 || format.I4;
+	}
+
+	bool Encoding::isRipRelative() const
+	{
+		return modRM.mod == 0 && modRM.r_m == 5;
 	}
 
 	void Encoding::setAddress(const unsigned char *address)
@@ -325,6 +344,9 @@ namespace SoftWire
 			if(format.P2)		OUTPUT_BYTE(P2);
 			if(format.P3)		OUTPUT_BYTE(P3);
 			if(format.P4)		OUTPUT_BYTE(P4);
+			if(format.REX)		OUTPUT_BYTE(REX.b);
+			if(format.O4)		OUTPUT_BYTE(O4);
+			if(format.O3)		OUTPUT_BYTE(O3);
 			if(format.O2)		OUTPUT_BYTE(O2);
 			if(format.O1)		OUTPUT_BYTE(O1);
 			if(format.modRM)	OUTPUT_BYTE(modRM.b);
@@ -341,33 +363,51 @@ namespace SoftWire
 
 		#undef OUTPUT_BYTE
 
-		return buffer - start;
+		return (int)(buffer - start);
 	}
 
 	int Encoding::align(unsigned char *buffer, int alignment, bool write)
 	{
 		if(alignment > 64) throw Error("Alignment greater than 64");
 
-		unsigned char *start = buffer;
-
-		int padding = alignment - (int)buffer % alignment;
+		int padding = (int)(alignment - (__int64)buffer % alignment);
 
 		if(padding == alignment)
 		{
 			padding = 0;
 		}
 
-		for(int i = 0; i < padding; i++)
+		if(write)
 		{
-			if(write)
+			int i = 0;
+
+			while(i + 3 <= padding)
 			{
-				*buffer = 0x90;   // NOP
+				// 3-byte NOP
+				*buffer++ = 0x66;
+				*buffer++ = 0x66;
+				*buffer++ = 0x90;
+
+				i += 3;
 			}
 
-			buffer++;
+			if(i + 2 <= padding)
+			{
+				// 2-byte NOP
+				*buffer++ = 0x66;
+				*buffer++ = 0x90;
+
+				i += 2;
+			}
+
+			if(i + 1 <= padding)
+			{
+				// 1-byte NOP
+				*buffer++ = 0x90;
+			}
 		}
 
-		return buffer - start;
+		return padding;
 	}
 
 	int Encoding::printCode(char *buffer) const
@@ -381,6 +421,9 @@ namespace SoftWire
 		if(format.P2)		{sprintf(buffer, "%.2X ", P2);		buffer += 3;}
 		if(format.P3)		{sprintf(buffer, "%.2X ", P3);		buffer += 3;}
 		if(format.P4)		{sprintf(buffer, "%.2X ", P4);		buffer += 3;}
+		if(format.REX)		{sprintf(buffer, "%.2X ", REX);		buffer += 3;}
+		if(format.O4)		{sprintf(buffer, "%.2X ", O4);		buffer += 3;}
+		if(format.O3)		{sprintf(buffer, "%.2X ", O3);		buffer += 3;}
 		if(format.O2)		{sprintf(buffer, "%.2X ", O2);		buffer += 3;}
 		if(format.O1)		{sprintf(buffer, "%.2X ", O1);		buffer += 3;}
 		if(format.modRM)	{sprintf(buffer, "%.2X ", modRM.b);	buffer += 3;}
@@ -396,6 +439,6 @@ namespace SoftWire
 
 		sprintf(buffer++, "\n");
 
-		return buffer - start;
+		return (int)(buffer - start);
 	}
 }

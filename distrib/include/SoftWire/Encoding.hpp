@@ -15,14 +15,22 @@ namespace SoftWire
 		{
 			REG_UNKNOWN = -1,
 
-			REG_0 = 0, AL = 0, AX = 0, EAX = 0, ST0 = 0, MM0 = 0, XMM0 = 0,
-			REG_1 = 1, CL = 1, CX = 1, ECX = 1, ST1 = 1, MM1 = 1, XMM1 = 1,
-			REG_2 = 2, DL = 2, DX = 2, EDX = 2, ST2 = 2, MM2 = 2, XMM2 = 2,
-			REG_3 = 3, BL = 3, BX = 3, EBX = 3, ST3 = 3, MM3 = 3, XMM3 = 3,
-			REG_4 = 4, AH = 4, SP = 4, ESP = 4, ST4 = 4, MM4 = 4, XMM4 = 4,
-			REG_5 = 5, CH = 5, BP = 5, EBP = 5, ST5 = 5, MM5 = 5, XMM5 = 5,
-			REG_6 = 6, DH = 6, SI = 6, ESI = 6, ST6 = 6, MM6 = 6, XMM6 = 6,
-			REG_7 = 7, BH = 7, DI = 7, EDI = 7, ST7 = 7, MM7 = 7, XMM7 = 7
+			R0 = 0, AL = 0, AX = 0, EAX = 0, RAX = 0, ST0 = 0, MM0 = 0, XMM0 = 0,
+			R1 = 1, CL = 1, CX = 1, ECX = 1, RCX = 1, ST1 = 1, MM1 = 1, XMM1 = 1,
+			R2 = 2, DL = 2, DX = 2, EDX = 2, RDX = 2, ST2 = 2, MM2 = 2, XMM2 = 2,
+			R3 = 3, BL = 3, BX = 3, EBX = 3, RBX = 3, ST3 = 3, MM3 = 3, XMM3 = 3,
+			R4 = 4, AH = 4, SP = 4, ESP = 4, RSP = 4, ST4 = 4, MM4 = 4, XMM4 = 4,
+			R5 = 5, CH = 5, BP = 5, EBP = 5, RBP = 5, ST5 = 5, MM5 = 5, XMM5 = 5,
+			R6 = 6, DH = 6, SI = 6, ESI = 6, RSI = 6, ST6 = 6, MM6 = 6, XMM6 = 6,
+			R7 = 7, BH = 7, DI = 7, EDI = 7, RDI = 7, ST7 = 7, MM7 = 7, XMM7 = 7,
+			R8 = 8,
+			R9 = 9,
+			R10 = 10,
+			R11 = 11,
+			R12 = 12,
+			R13 = 13,
+			R14 = 14,
+			R15 = 15
 		};
 
 		enum Mod
@@ -55,6 +63,7 @@ namespace SoftWire
 		const char *getReference() const;
 		const char *getLiteral() const;
 		int getImmediate() const;
+		__int64 getDisplacement() const;
 
 		void addPrefix(unsigned char p);
 
@@ -62,8 +71,8 @@ namespace SoftWire
 		int writeCode(unsigned char *buffer, bool write = true) const;
 
 		void setImmediate(int immediate);
-		void setDisplacement(int displacement);
-		void addDisplacement(int displacement);
+		void setDisplacement(__int64 displacement);
+		void addDisplacement(__int64 displacement);
 		void setJumpOffset(int offset);
 		void setCallOffset(int offset);
 		void setLabel(const char *label);
@@ -73,6 +82,7 @@ namespace SoftWire
 		bool absoluteReference() const;
 		bool hasDisplacement() const;
 		bool hasImmediate() const;
+		bool isRipRelative() const;
 
 		void setAddress(const unsigned char *address);
 		const unsigned char *getAddress() const;
@@ -101,6 +111,9 @@ namespace SoftWire
 			bool P2 : 1;
 			bool P3 : 1;
 			bool P4 : 1;
+			bool REX : 1;
+			bool O4 : 1;
+			bool O3 : 1;
 			bool O2 : 1;
 			bool O1 : 1;
 			bool modRM : 1;
@@ -119,8 +132,26 @@ namespace SoftWire
 		unsigned char P2;
 		unsigned char P3;
 		unsigned char P4;
+		struct
+		{
+			union
+			{
+				struct
+				{
+					unsigned char B : 1;
+					unsigned char X : 1;
+					unsigned char R : 1;
+					unsigned char W : 1;
+					unsigned char prefix : 4;
+				};
+
+				unsigned char b;
+			};
+		} REX;
 		unsigned char O1;   // Opcode
 		unsigned char O2;
+		unsigned char O3;   
+		unsigned char O4;
 		struct
 		{
 			union
@@ -151,7 +182,7 @@ namespace SoftWire
 		} SIB;
 		union
 		{
-			int displacement;
+			__int64 displacement;
 
 			struct
 			{

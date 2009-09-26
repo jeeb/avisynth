@@ -4,9 +4,9 @@
 
 namespace SoftWire
 {
-	RegisterAllocator::Allocation RegisterAllocator::ERX[8];
-	RegisterAllocator::Allocation RegisterAllocator::MM[8];
-	RegisterAllocator::Allocation RegisterAllocator::XMM[8];
+	RegisterAllocator::Allocation RegisterAllocator::GPR[16];
+	RegisterAllocator::Allocation RegisterAllocator::MMX[16];
+	RegisterAllocator::Allocation RegisterAllocator::XMM[16];
 
 	bool RegisterAllocator::autoEMMS = false;
 	bool RegisterAllocator::copyPropagation = true;
@@ -15,15 +15,19 @@ namespace SoftWire
 	bool RegisterAllocator::minimalRestore = true;
 	bool RegisterAllocator::dropUnmodified = true;
 
-	RegisterAllocator::RegisterAllocator()
+	RegisterAllocator::RegisterAllocator(bool x64) : Assembler(x64)
 	{
 		// Completely eraze allocation state
-		for(int i = 0; i < 8; i++)
+		{for(int i = 0; i < 16; i++)
 		{
-			ERX[i].free();
-			MM[i].free();
+			GPR[i].free();
 			XMM[i].free();
-		}
+		}}
+
+		{for(int i = 0; i < 8; i++)
+		{
+			MMX[i].free();
+		}}
 	}
 
 	RegisterAllocator::~RegisterAllocator()
@@ -31,8 +35,8 @@ namespace SoftWire
 		// Completely eraze allocation state
 		for(int i = 0; i < 8; i++)
 		{
-			ERX[i].free();
-			MM[i].free();
+			GPR[i].free();
+			MMX[i].free();
 			XMM[i].free();
 		}
 	}
@@ -52,9 +56,9 @@ namespace SoftWire
 
 			for(int i = 0; i < 4; i++)
 			{
-				if(ERX[i].priority < priority)
+				if(GPR[i].priority < priority)
 				{
-					priority = ERX[i].priority;
+					priority = GPR[i].priority;
 					candidate = i;
 				}
 			}
@@ -91,7 +95,7 @@ namespace SoftWire
 		{
 			if(i == Encoding::ESP || i == Encoding::EBP) continue;
 
-			if(ERX[i].reference == ref)
+			if(GPR[i].reference == ref)
 			{
 				return prioritize32(i);
 			}
@@ -104,21 +108,21 @@ namespace SoftWire
 			{
 				if(i == Encoding::ESP || i == Encoding::EBP) continue;
 
-				if(ERX[i].priority == 0 && ERX[i].spill.reference == ref)
+				if(GPR[i].priority == 0 && GPR[i].spill.reference == ref)
 				{
-					if(ERX[i].spillInstruction)
+					if(GPR[i].spillInstruction)
 					{
-						ERX[i].spillInstruction->reserve();
+						GPR[i].spillInstruction->reserve();
 					}
 
-					ERX[i].reference = ERX[i].spill.reference;
-					ERX[i].partial = ERX[i].spill.partial;
-					ERX[i].priority = ERX[i].spill.priority;
-					ERX[i].copyInstruction = ERX[i].spill.copyInstruction;
-					ERX[i].loadInstruction = ERX[i].spill.loadInstruction;
-					ERX[i].spillInstruction = ERX[i].spill.spillInstruction;
+					GPR[i].reference = GPR[i].spill.reference;
+					GPR[i].partial = GPR[i].spill.partial;
+					GPR[i].priority = GPR[i].spill.priority;
+					GPR[i].copyInstruction = GPR[i].spill.copyInstruction;
+					GPR[i].loadInstruction = GPR[i].spill.loadInstruction;
+					GPR[i].spillInstruction = GPR[i].spill.spillInstruction;
 
-					ERX[i].spill.free();
+					GPR[i].spill.free();
 
 					return prioritize32(i);
 				}
@@ -130,7 +134,7 @@ namespace SoftWire
 		{
 			if(i == Encoding::ESP || i == Encoding::EBP) continue;
 
-			if(ERX[i].priority == 0 && ERX[i].spill.priority == 0)
+			if(GPR[i].priority == 0 && GPR[i].spill.priority == 0)
 			{
 				return allocate32(i, ref, copy, partial);
 			}
@@ -140,7 +144,7 @@ namespace SoftWire
 		{
 			if(i == Encoding::ESP || i == Encoding::EBP) continue;
 
-			if(ERX[i].priority == 0)
+			if(GPR[i].priority == 0)
 			{
 				return allocate32(i, ref, copy, partial);
 			}
@@ -155,12 +159,12 @@ namespace SoftWire
 		{
 			if(i == Encoding::ESP || i == Encoding::EBP) continue;
 
-			if(ERX[i].priority < priority)
+			if(GPR[i].priority < priority)
 			{
-				priority = ERX[i].priority;
+				priority = GPR[i].priority;
 				candidate = i;
 
-				if(!ERX[i].modified && ERX[i].priority < 0xFFFFFFFF - 2)
+				if(!GPR[i].modified && GPR[i].priority < 0xFFFFFFFF - 2)
 				{
 					betterCandidate = i;
 				}
@@ -174,19 +178,19 @@ namespace SoftWire
 
 		Encoding *spillInstruction = spill32(candidate);
 
-		ERX[candidate].spill.reference = ERX[candidate].reference;
-		ERX[candidate].spill.priority = ERX[candidate].priority;
-		ERX[candidate].spill.partial = ERX[candidate].partial;
-		ERX[candidate].spill.copyInstruction = ERX[candidate].copyInstruction;
-		ERX[candidate].spill.loadInstruction = ERX[candidate].loadInstruction;
-		ERX[candidate].spill.spillInstruction = ERX[candidate].spillInstruction;
+		GPR[candidate].spill.reference = GPR[candidate].reference;
+		GPR[candidate].spill.priority = GPR[candidate].priority;
+		GPR[candidate].spill.partial = GPR[candidate].partial;
+		GPR[candidate].spill.copyInstruction = GPR[candidate].copyInstruction;
+		GPR[candidate].spill.loadInstruction = GPR[candidate].loadInstruction;
+		GPR[candidate].spill.spillInstruction = GPR[candidate].spillInstruction;
 
-		ERX[candidate].reference = 0;
-		ERX[candidate].priority = 0;
-		ERX[candidate].partial = 0;
-		ERX[candidate].copyInstruction = 0;
-		ERX[candidate].loadInstruction = 0;
-		ERX[candidate].spillInstruction = spillInstruction;
+		GPR[candidate].reference = 0;
+		GPR[candidate].priority = 0;
+		GPR[candidate].partial = 0;
+		GPR[candidate].copyInstruction = 0;
+		GPR[candidate].loadInstruction = 0;
+		GPR[candidate].spillInstruction = spillInstruction;
 
 		return allocate32(candidate, ref, copy, partial);
 	}
@@ -200,7 +204,7 @@ namespace SoftWire
 		{
 			if(i == Encoding::ESP || i == Encoding::EBP) continue;
 
-			if(ERX[i].reference == ref)
+			if(GPR[i].reference == ref)
 			{
 				return prioritize32(i);
 			}
@@ -213,21 +217,21 @@ namespace SoftWire
 			{
 				if(i == Encoding::ESP || i == Encoding::EBP) continue;
 
-				if(ERX[i].priority == 0 && ERX[i].spill.reference == ref)
+				if(GPR[i].priority == 0 && GPR[i].spill.reference == ref)
 				{
-					if(ERX[i].spillInstruction)
+					if(GPR[i].spillInstruction)
 					{
-						ERX[i].spillInstruction->reserve();
+						GPR[i].spillInstruction->reserve();
 					}
 
-					ERX[i].reference = ERX[i].spill.reference;
-					ERX[i].partial = ERX[i].spill.partial;
-					ERX[i].priority = ERX[i].spill.priority;
-					ERX[i].copyInstruction = ERX[i].spill.copyInstruction;
-					ERX[i].loadInstruction = ERX[i].spill.loadInstruction;
-					ERX[i].spillInstruction = ERX[i].spill.spillInstruction;
+					GPR[i].reference = GPR[i].spill.reference;
+					GPR[i].partial = GPR[i].spill.partial;
+					GPR[i].priority = GPR[i].spill.priority;
+					GPR[i].copyInstruction = GPR[i].spill.copyInstruction;
+					GPR[i].loadInstruction = GPR[i].spill.loadInstruction;
+					GPR[i].spillInstruction = GPR[i].spill.spillInstruction;
 
-					ERX[i].spill.free();
+					GPR[i].spill.free();
 
 					return prioritize32(i);
 				}
@@ -239,14 +243,14 @@ namespace SoftWire
 
 	OperandREG32 RegisterAllocator::allocate32(int i, const OperandREF &ref, bool copy, int partial)
 	{
-		ERX[i].reference = ref;
-		ERX[i].partial = partial;
+		GPR[i].reference = ref;
+		GPR[i].partial = partial;
 
 		prioritize32(i);
 
 		Encoding *loadInstruction = 0;
-		Encoding *spillInstruction = ERX[i].spillInstruction;
-		AllocationData spillAllocation = ERX[i].spill;
+		Encoding *spillInstruction = GPR[i].spillInstruction;
+		AllocationData spillAllocation = GPR[i].spill;
 
 		if(copy)
 		{
@@ -255,10 +259,10 @@ namespace SoftWire
 			else                  loadInstruction = mov(OperandREG32(i), dword_ptr [ref]);
 		}
 
-		ERX[i].loadInstruction = loadInstruction;
-		ERX[i].spillInstruction = spillInstruction;
-		ERX[i].spill = spillAllocation;
-		ERX[i].modified = false;
+		GPR[i].loadInstruction = loadInstruction;
+		GPR[i].spillInstruction = spillInstruction;
+		GPR[i].spill = spillAllocation;
+		GPR[i].modified = false;
 
 		return OperandREG32(i);
 	}
@@ -266,16 +270,16 @@ namespace SoftWire
 	OperandREG32 RegisterAllocator::prioritize32(int i)
 	{
 		// Give highest priority
-		ERX[i].priority = 0xFFFFFFFF;
+		GPR[i].priority = 0xFFFFFFFF;
 
 		// Decrease priority of other registers
 		for(int j = 0; j < 8; j++)
 		{
 			if(i == Encoding::ESP || i == Encoding::EBP) continue;
 
-			if(j != i && ERX[j].priority)
+			if(j != i && GPR[j].priority)
 			{
-				ERX[j].priority--;
+				GPR[j].priority--;
 			}
 		}
 
@@ -284,51 +288,51 @@ namespace SoftWire
 
 	void RegisterAllocator::free32(int i)
 	{
-		if(ERX[i].loadInstruction && loadElimination)
+		if(GPR[i].loadInstruction && loadElimination)
 		{
-			ERX[i].loadInstruction->reserve();
-			ERX[i].loadInstruction = 0;
+			GPR[i].loadInstruction->reserve();
+			GPR[i].loadInstruction = 0;
 		}
 
-		if(ERX[i].copyInstruction && copyPropagation)
+		if(GPR[i].copyInstruction && copyPropagation)
 		{
-			ERX[i].copyInstruction->reserve();
-			ERX[i].copyInstruction = 0;
+			GPR[i].copyInstruction->reserve();
+			GPR[i].copyInstruction = 0;
 		}
 
-		ERX[i].reference = 0;
-		ERX[i].partial = 0;
-		ERX[i].priority = 0;
+		GPR[i].reference = 0;
+		GPR[i].partial = 0;
+		GPR[i].priority = 0;
 	}
 
 	Encoding *RegisterAllocator::spill32(int i)
 	{
 		// Register loaded but not used, eliminate load and don't spill
-		if(ERX[i].loadInstruction && loadElimination)
+		if(GPR[i].loadInstruction && loadElimination)
 		{
-			ERX[i].loadInstruction->reserve();
-			ERX[i].loadInstruction = 0;
+			GPR[i].loadInstruction->reserve();
+			GPR[i].loadInstruction = 0;
 	
-			ERX[i].reference = 0;
-			ERX[i].priority = 0;
-			ERX[i].partial = 0;
-			ERX[i].copyInstruction = 0;
-			ERX[i].loadInstruction = 0;
-		//	ERX[i].spillInstruction = 0;   // NOTE: Keep previous spill info
+			GPR[i].reference = 0;
+			GPR[i].priority = 0;
+			GPR[i].partial = 0;
+			GPR[i].copyInstruction = 0;
+			GPR[i].loadInstruction = 0;
+		//	GPR[i].spillInstruction = 0;   // NOTE: Keep previous spill info
 	
 			return 0;
 		}
 
 		Encoding *spillInstruction = 0;
 
-		if(ERX[i].reference != 0 && (ERX[i].modified || !dropUnmodified))
+		if(GPR[i].reference != 0 && (GPR[i].modified || !dropUnmodified))
 		{
-			     if(ERX[i].partial == 1) spillInstruction = mov(byte_ptr [ERX[i].reference], OperandREG8(i));
-			else if(ERX[i].partial == 2) spillInstruction = mov(word_ptr [ERX[i].reference], OperandREG16(i));
-			else                         spillInstruction = mov(dword_ptr [ERX[i].reference], OperandREG32(i));
+			     if(GPR[i].partial == 1) spillInstruction = mov(byte_ptr [GPR[i].reference], OperandREG8(i));
+			else if(GPR[i].partial == 2) spillInstruction = mov(word_ptr [GPR[i].reference], OperandREG16(i));
+			else                         spillInstruction = mov(dword_ptr [GPR[i].reference], OperandREG32(i));
 		}
 
-		ERX[i].free();
+		GPR[i].free();
 
 		return spillInstruction;
 	}
@@ -350,7 +354,7 @@ namespace SoftWire
 		// Check if already allocated
 		{for(int i = 0; i < 8; i++)
 		{
-			if(MM[i].reference == ref)
+			if(MMX[i].reference == ref)
 			{
 				return prioritize64(i);
 			}
@@ -361,21 +365,21 @@ namespace SoftWire
 		{
 			for(int i = 0; i < 8; i++)
 			{
-				if(MM[i].priority == 0 && MM[i].spill.reference == ref)
+				if(MMX[i].priority == 0 && MMX[i].spill.reference == ref)
 				{
-					if(MM[i].spillInstruction)
+					if(MMX[i].spillInstruction)
 					{
-						MM[i].spillInstruction->reserve();
+						MMX[i].spillInstruction->reserve();
 					}
 
-					MM[i].reference = MM[i].spill.reference;
-					MM[i].partial = MM[i].spill.partial;
-					MM[i].priority = MM[i].spill.priority;
-					MM[i].copyInstruction = MM[i].spill.copyInstruction;
-					MM[i].loadInstruction = MM[i].spill.loadInstruction;
-					MM[i].spillInstruction = MM[i].spill.spillInstruction;
+					MMX[i].reference = MMX[i].spill.reference;
+					MMX[i].partial = MMX[i].spill.partial;
+					MMX[i].priority = MMX[i].spill.priority;
+					MMX[i].copyInstruction = MMX[i].spill.copyInstruction;
+					MMX[i].loadInstruction = MMX[i].spill.loadInstruction;
+					MMX[i].spillInstruction = MMX[i].spill.spillInstruction;
 
-					MM[i].spill.free();
+					MMX[i].spill.free();
 
 					return prioritize64(i);
 				}
@@ -385,7 +389,7 @@ namespace SoftWire
 		// Search for free registers
 		{for(int i = 0; i < 8; i++)
 		{
-			if(MM[i].priority == 0 && MM[i].spill.priority == 0)
+			if(MMX[i].priority == 0 && MMX[i].spill.priority == 0)
 			{
 				return allocate64(i, ref, copy);
 			}
@@ -393,7 +397,7 @@ namespace SoftWire
 
 		{for(int i = 0; i < 8; i++)
 		{
-			if(MM[i].priority == 0)
+			if(MMX[i].priority == 0)
 			{
 				return allocate64(i, ref, copy);
 			}
@@ -406,12 +410,12 @@ namespace SoftWire
 
 		{for(int i = 0; i < 8; i++)
 		{
-			if(MM[i].priority < priority)
+			if(MMX[i].priority < priority)
 			{
-				priority = MM[i].priority;
+				priority = MMX[i].priority;
 				candidate = i;
 
-				if(!MM[i].modified && MM[i].priority < 0xFFFFFFFF - 2)
+				if(!MMX[i].modified && MMX[i].priority < 0xFFFFFFFF - 2)
 				{
 					betterCandidate = i;
 				}
@@ -425,31 +429,31 @@ namespace SoftWire
 
 		Encoding *spillInstruction = spill64(candidate);
 
-		MM[candidate].spill.reference = MM[candidate].reference;
-		MM[candidate].spill.priority = MM[candidate].priority;
-		MM[candidate].spill.partial = MM[candidate].partial;
-		MM[candidate].spill.copyInstruction = MM[candidate].copyInstruction;
-		MM[candidate].spill.loadInstruction = MM[candidate].loadInstruction;
-		MM[candidate].spill.spillInstruction = MM[candidate].spillInstruction;
+		MMX[candidate].spill.reference = MMX[candidate].reference;
+		MMX[candidate].spill.priority = MMX[candidate].priority;
+		MMX[candidate].spill.partial = MMX[candidate].partial;
+		MMX[candidate].spill.copyInstruction = MMX[candidate].copyInstruction;
+		MMX[candidate].spill.loadInstruction = MMX[candidate].loadInstruction;
+		MMX[candidate].spill.spillInstruction = MMX[candidate].spillInstruction;
 
-		MM[candidate].reference = 0;
-		MM[candidate].priority = 0;
-		MM[candidate].partial = 0;
-		MM[candidate].copyInstruction = 0;
-		MM[candidate].loadInstruction = 0;
-		MM[candidate].spillInstruction = spillInstruction;
+		MMX[candidate].reference = 0;
+		MMX[candidate].priority = 0;
+		MMX[candidate].partial = 0;
+		MMX[candidate].copyInstruction = 0;
+		MMX[candidate].loadInstruction = 0;
+		MMX[candidate].spillInstruction = spillInstruction;
 
 		return allocate64(candidate, ref, copy);
 	}
 
-	OperandR_M64 RegisterAllocator::m64(const OperandREF &ref)
+	OperandMM64 RegisterAllocator::m64(const OperandREF &ref)
 	{
 		if(ref == 0) throw Error("Cannot dereference 0");
 
 		// Check if already allocated
 		for(int i = 0; i < 8; i++)
 		{
-			if(MM[i].reference == ref)
+			if(MMX[i].reference == ref)
 			{
 				return prioritize64(i);
 			}
@@ -460,49 +464,49 @@ namespace SoftWire
 		{
 			for(int i = 0; i < 8; i++)
 			{
-				if(MM[i].priority == 0 && MM[i].spill.reference == ref)
+				if(MMX[i].priority == 0 && MMX[i].spill.reference == ref)
 				{
-					if(MM[i].spillInstruction)
+					if(MMX[i].spillInstruction)
 					{
-						MM[i].spillInstruction->reserve();
+						MMX[i].spillInstruction->reserve();
 					}
 
-					MM[i].reference = MM[i].spill.reference;
-					MM[i].partial = MM[i].spill.partial;
-					MM[i].priority = MM[i].spill.priority;
-					MM[i].copyInstruction = MM[i].spill.copyInstruction;
-					MM[i].loadInstruction = MM[i].spill.loadInstruction;
-					MM[i].spillInstruction = MM[i].spill.spillInstruction;
+					MMX[i].reference = MMX[i].spill.reference;
+					MMX[i].partial = MMX[i].spill.partial;
+					MMX[i].priority = MMX[i].spill.priority;
+					MMX[i].copyInstruction = MMX[i].spill.copyInstruction;
+					MMX[i].loadInstruction = MMX[i].spill.loadInstruction;
+					MMX[i].spillInstruction = MMX[i].spill.spillInstruction;
 
-					MM[i].spill.free();
+					MMX[i].spill.free();
 
 					return prioritize64(i);
 				}
 			}
 		}
 
-		return (OperandR_M64)qword_ptr [ref];
+		return (OperandMM64)qword_ptr [ref];
 	}
 
 	OperandMMREG RegisterAllocator::allocate64(int i, const OperandREF &ref, bool copy)
 	{
-		MM[i].reference = ref;
+		MMX[i].reference = ref;
 
 		prioritize64(i);
 
 		Encoding *loadInstruction = 0;
-		Encoding *spillInstruction = MM[i].spillInstruction;
-		AllocationData spillAllocation = MM[i].spill;
+		Encoding *spillInstruction = MMX[i].spillInstruction;
+		AllocationData spillAllocation = MMX[i].spill;
 
 		if(copy)
 		{
 			loadInstruction = movq(OperandMMREG(i), qword_ptr [ref]);
 		}
 
-		MM[i].loadInstruction = loadInstruction;
-		MM[i].spillInstruction = spillInstruction;
-		MM[i].spill = spillAllocation;
-		MM[i].modified = false;
+		MMX[i].loadInstruction = loadInstruction;
+		MMX[i].spillInstruction = spillInstruction;
+		MMX[i].spill = spillAllocation;
+		MMX[i].modified = false;
 
 		return OperandMMREG(i);
 	}
@@ -510,14 +514,14 @@ namespace SoftWire
 	OperandMMREG RegisterAllocator::prioritize64(int i)
 	{
 		// Give highest priority
-		MM[i].priority = 0xFFFFFFFF;
+		MMX[i].priority = 0xFFFFFFFF;
 
 		// Decrease priority of other registers
 		for(int j = 0; j < 8; j++)
 		{
-			if(j != i && MM[j].priority)
+			if(j != i && MMX[j].priority)
 			{
-				MM[j].priority--;
+				MMX[j].priority--;
 			}
 		}
 
@@ -526,29 +530,29 @@ namespace SoftWire
 
 	void RegisterAllocator::free64(int i)
 	{
-		bool free = (MM[i].priority != 0);
+		bool free = (MMX[i].priority != 0);
 
-		if(MM[i].loadInstruction && loadElimination)
+		if(MMX[i].loadInstruction && loadElimination)
 		{
-			MM[i].loadInstruction->reserve();
-			MM[i].loadInstruction = 0;
+			MMX[i].loadInstruction->reserve();
+			MMX[i].loadInstruction = 0;
 		}
 
-		if(MM[i].copyInstruction && copyPropagation)
+		if(MMX[i].copyInstruction && copyPropagation)
 		{
-			MM[i].copyInstruction->reserve();
-			MM[i].copyInstruction = 0;
+			MMX[i].copyInstruction->reserve();
+			MMX[i].copyInstruction = 0;
 		}
 
-		MM[i].reference = 0;
-		MM[i].partial = 0;
-		MM[i].priority = 0;
+		MMX[i].reference = 0;
+		MMX[i].partial = 0;
+		MMX[i].priority = 0;
 
 		if(free && autoEMMS)
 		{
 			{for(int i = 0; i < 8; i++)
 			{
-				if(MM[i].priority != 0)
+				if(MMX[i].priority != 0)
 				{
 					return;
 				}
@@ -560,7 +564,7 @@ namespace SoftWire
 			// Completely eraze MMX allocation state
 			{for(int i = 0; i < 8; i++)
 			{
-				MM[i].free();
+				MMX[i].free();
 			}}
 		}
 	}
@@ -568,29 +572,29 @@ namespace SoftWire
 	Encoding *RegisterAllocator::spill64(int i)
 	{
 		// Register loaded but not used, eliminate load and don't spill
-		if(MM[i].loadInstruction && loadElimination)
+		if(MMX[i].loadInstruction && loadElimination)
 		{
-			MM[i].loadInstruction->reserve();
-			MM[i].loadInstruction = 0;
+			MMX[i].loadInstruction->reserve();
+			MMX[i].loadInstruction = 0;
 	
-			MM[i].reference = 0;
-			MM[i].priority = 0;
-			MM[i].partial = 0;
-			MM[i].copyInstruction = 0;
-			MM[i].loadInstruction = 0;
-		//	MM[i].spillInstruction = 0;   // NOTE: Keep previous spill info
+			MMX[i].reference = 0;
+			MMX[i].priority = 0;
+			MMX[i].partial = 0;
+			MMX[i].copyInstruction = 0;
+			MMX[i].loadInstruction = 0;
+		//	MMX[i].spillInstruction = 0;   // NOTE: Keep previous spill info
 	
 			return 0;
 		}
 
 		Encoding *spillInstruction = 0;
 
-		if(MM[i].reference != 0 && (MM[i].modified || !dropUnmodified))
+		if(MMX[i].reference != 0 && (MMX[i].modified || !dropUnmodified))
 		{
-			spillInstruction = movq(qword_ptr [MM[i].reference], OperandMMREG(i));
+			spillInstruction = movq(qword_ptr [MMX[i].reference], OperandMMREG(i));
 		}
 
-		MM[i].free();
+		MMX[i].free();
 
 		return spillInstruction;
 	}
@@ -864,7 +868,7 @@ namespace SoftWire
 		{
 			if(i == Encoding::ESP || i == Encoding::EBP) continue;
 
-			if(ERX[i].reference == ref)
+			if(GPR[i].reference == ref)
 			{
 				free32(i);
 			}
@@ -872,7 +876,7 @@ namespace SoftWire
 
 		{for(int i = 0; i < 8; i++)
 		{
-			if(MM[i].reference == ref)
+			if(MMX[i].reference == ref)
 			{
 				free64(i);
 			}
@@ -893,7 +897,7 @@ namespace SoftWire
 		{
 			if(i == Encoding::ESP || i == Encoding::EBP) continue;
 
-			if(ERX[i].reference == ref)
+			if(GPR[i].reference == ref)
 			{
 				spill32(i);
 			}
@@ -901,7 +905,7 @@ namespace SoftWire
 
 		{for(int i = 0; i < 8; i++)
 		{
-			if(MM[i].reference == ref)
+			if(MMX[i].reference == ref)
 			{
 				spill64(i);
 			}
@@ -918,12 +922,12 @@ namespace SoftWire
 
 	void RegisterAllocator::freeAll()
 	{
-		{for(int i = 0; i < 8; i++)
+		for(int i = 0; i < 8; i++)
 		{
 			if(i == Encoding::ESP || i == Encoding::EBP) continue;
 
 			free32(i);
-		}}
+		}
 
 		{for(int i = 0; i < 8; i++)
 		{
@@ -1003,8 +1007,8 @@ namespace SoftWire
 
 		{for(int i = 0; i < 8; i++)
 		{
-			state.ERX[i] = ERX[i];
-			state.MM[i] = MM[i];
+			state.GPR[i] = GPR[i];
+			state.MMX[i] = MMX[i];
 			state.XMM[i] = XMM[i];
 		}}
 
@@ -1021,12 +1025,12 @@ namespace SoftWire
 
 		{for(int i = 0; i < 8; i++)
 		{
-			if(ERX[i].reference != state.ERX[i].reference)
+			if(GPR[i].reference != state.GPR[i].reference)
 			{
 				spill32(i);
 			}
 
-			if(MM[i].reference != state.MM[i].reference)
+			if(MMX[i].reference != state.MMX[i].reference)
 			{
 				spill64(i);
 			}
@@ -1039,14 +1043,14 @@ namespace SoftWire
 
 		{for(int i = 0; i < 8; i++)
 		{
-			if(ERX[i].reference != state.ERX[i].reference && state.ERX[i].reference != 0)
+			if(GPR[i].reference != state.GPR[i].reference && state.GPR[i].reference != 0)
 			{
-				allocate32(i, state.ERX[i].reference, true, state.ERX[i].partial);
+				allocate32(i, state.GPR[i].reference, true, state.GPR[i].partial);
 			}
 
-			if(MM[i].reference != state.MM[i].reference && state.MM[i].reference != 0)
+			if(MMX[i].reference != state.MMX[i].reference && state.MMX[i].reference != 0)
 			{
-				allocate64(i, state.MM[i].reference, true);
+				allocate64(i, state.MMX[i].reference, true);
 			}
 
 			if(XMM[i].reference != state.XMM[i].reference && state.XMM[i].reference != 0)
@@ -1075,25 +1079,25 @@ namespace SoftWire
 		if(r32i == r32j) return 0;
 
 		// Register overwritten, when not used, eliminate load instruction
-		if(ERX[r32i.reg].loadInstruction && loadElimination)
+		if(GPR[r32i.reg].loadInstruction && loadElimination)
 		{
-			ERX[r32i.reg].loadInstruction->reserve();
-			ERX[r32i.reg].loadInstruction = 0;
+			GPR[r32i.reg].loadInstruction->reserve();
+			GPR[r32i.reg].loadInstruction = 0;
 		}
 
 		// Register overwritten, when not used, eliminate copy instruction
-		if(ERX[r32i.reg].copyInstruction && copyPropagation)
+		if(GPR[r32i.reg].copyInstruction && copyPropagation)
 		{
-			ERX[r32i.reg].copyInstruction->reserve();
-			ERX[r32i.reg].copyInstruction = 0;
+			GPR[r32i.reg].copyInstruction->reserve();
+			GPR[r32i.reg].copyInstruction = 0;
 		}
 
-		Encoding *spillInstruction = ERX[r32i.reg].spillInstruction;
-		AllocationData spillAllocation = ERX[r32i.reg].spill;
+		Encoding *spillInstruction = GPR[r32i.reg].spillInstruction;
+		AllocationData spillAllocation = GPR[r32i.reg].spill;
 
 		Encoding *mov = Assembler::mov(r32i, r32j);
 		
-		if(ERX[r32i.reg].reference == 0 || ERX[r32j.reg].reference == 0)   // Return if not in allocation table
+		if(GPR[r32i.reg].reference == 0 || GPR[r32j.reg].reference == 0)   // Return if not in allocation table
 		{
 			return mov;
 		}
@@ -1102,11 +1106,11 @@ namespace SoftWire
 		if(mov && copyPropagation)
 		{
 			swap32(r32i.reg, r32j.reg);
-			ERX[r32i.reg].copyInstruction = mov;
+			GPR[r32i.reg].copyInstruction = mov;
 		}
 
-		ERX[r32i.reg].spillInstruction = spillInstruction;
-		ERX[r32i.reg].spill = spillAllocation;
+		GPR[r32i.reg].spillInstruction = spillInstruction;
+		GPR[r32i.reg].spill = spillAllocation;
 		
 		return mov;
 	}
@@ -1119,26 +1123,26 @@ namespace SoftWire
 		}
 
 		// Register overwritten, when not used, eliminate load instruction
-		if(ERX[r32.reg].loadInstruction && loadElimination)
+		if(GPR[r32.reg].loadInstruction && loadElimination)
 		{
-			ERX[r32.reg].loadInstruction->reserve();
-			ERX[r32.reg].loadInstruction = 0;
+			GPR[r32.reg].loadInstruction->reserve();
+			GPR[r32.reg].loadInstruction = 0;
 		}
 
 		// Register overwritten, when not used, eliminate copy instruction
-		if(ERX[r32.reg].copyInstruction && copyPropagation)
+		if(GPR[r32.reg].copyInstruction && copyPropagation)
 		{
-			ERX[r32.reg].copyInstruction->reserve();
-			ERX[r32.reg].copyInstruction = 0;
+			GPR[r32.reg].copyInstruction->reserve();
+			GPR[r32.reg].copyInstruction = 0;
 		}
 
-		Encoding *spillInstruction = ERX[r32.reg].spillInstruction;
-		AllocationData spillAllocation = ERX[r32.reg].spill;
+		Encoding *spillInstruction = GPR[r32.reg].spillInstruction;
+		AllocationData spillAllocation = GPR[r32.reg].spill;
 
 		Encoding *mov = Assembler::mov(r32, m32);
 
-		ERX[r32.reg].spillInstruction = spillInstruction;
-		ERX[r32.reg].spill = spillAllocation;
+		GPR[r32.reg].spillInstruction = spillInstruction;
+		GPR[r32.reg].spill = spillAllocation;
 
 		return mov;
 	}
@@ -1160,25 +1164,25 @@ namespace SoftWire
 		if(r64i == r64j) return 0;
 
 		// Register overwritten, when not used, eliminate load instruction
-		if(MM[r64i.reg].loadInstruction && loadElimination)
+		if(MMX[r64i.reg].loadInstruction && loadElimination)
 		{
-			MM[r64i.reg].loadInstruction->reserve();
-			MM[r64i.reg].loadInstruction = 0;
+			MMX[r64i.reg].loadInstruction->reserve();
+			MMX[r64i.reg].loadInstruction = 0;
 		}
 
 		// Register overwritten, when not used, eliminate copy instruction
-		if(MM[r64i.reg].copyInstruction && copyPropagation)
+		if(MMX[r64i.reg].copyInstruction && copyPropagation)
 		{
-			MM[r64i.reg].copyInstruction->reserve();
-			MM[r64i.reg].copyInstruction = 0;
+			MMX[r64i.reg].copyInstruction->reserve();
+			MMX[r64i.reg].copyInstruction = 0;
 		}
 
-		Encoding *spillInstruction = MM[r64i.reg].spillInstruction;
-		AllocationData spillAllocation = MM[r64i.reg].spill;
+		Encoding *spillInstruction = MMX[r64i.reg].spillInstruction;
+		AllocationData spillAllocation = MMX[r64i.reg].spill;
 
 		Encoding *movq = Assembler::movq(r64i, r64j);
 		
-		if(MM[r64i.reg].reference == 0 || MM[r64j.reg].reference == 0)   // Return if not in allocation table
+		if(MMX[r64i.reg].reference == 0 || MMX[r64j.reg].reference == 0)   // Return if not in allocation table
 		{
 			return movq;
 		}
@@ -1187,11 +1191,11 @@ namespace SoftWire
 		if(movq && copyPropagation)
 		{
 			swap64(r64i.reg, r64j.reg);
-			MM[r64i.reg].copyInstruction = movq;
+			MMX[r64i.reg].copyInstruction = movq;
 		}
 
-		MM[r64i.reg].spillInstruction = spillInstruction;
-		MM[r64i.reg].spill = spillAllocation;
+		MMX[r64i.reg].spillInstruction = spillInstruction;
+		MMX[r64i.reg].spill = spillAllocation;
 		
 		return movq;
 	}
@@ -1199,31 +1203,31 @@ namespace SoftWire
 	Encoding *RegisterAllocator::movq(OperandMMREG r64, OperandMEM64 m64)
 	{
 		// Register overwritten, when not used, eliminate load instruction
-		if(MM[r64.reg].loadInstruction && loadElimination)
+		if(MMX[r64.reg].loadInstruction && loadElimination)
 		{
-			MM[r64.reg].loadInstruction->reserve();
-			MM[r64.reg].loadInstruction = 0;
+			MMX[r64.reg].loadInstruction->reserve();
+			MMX[r64.reg].loadInstruction = 0;
 		}
 
 		// Register overwritten, when not used, eliminate copy instruction
-		if(MM[r64.reg].copyInstruction && copyPropagation)
+		if(MMX[r64.reg].copyInstruction && copyPropagation)
 		{
-			MM[r64.reg].copyInstruction->reserve();
-			MM[r64.reg].copyInstruction = 0;
+			MMX[r64.reg].copyInstruction->reserve();
+			MMX[r64.reg].copyInstruction = 0;
 		}
 
-		Encoding *spillInstruction = MM[r64.reg].spillInstruction;
-		AllocationData spillAllocation = MM[r64.reg].spill;
+		Encoding *spillInstruction = MMX[r64.reg].spillInstruction;
+		AllocationData spillAllocation = MMX[r64.reg].spill;
 
 		Encoding *movq = Assembler::movq(r64, m64);
 
-		MM[r64.reg].spillInstruction = spillInstruction;
-		MM[r64.reg].spill = spillAllocation;
+		MMX[r64.reg].spillInstruction = spillInstruction;
+		MMX[r64.reg].spill = spillAllocation;
 
 		return movq;
 	}
 
-	Encoding *RegisterAllocator::movq(OperandMMREG r64, OperandR_M64 r_m64)
+	Encoding *RegisterAllocator::movq(OperandMMREG r64, OperandMM64 r_m64)
 	{
 		if(r_m64.isSubtypeOf(Operand::OPERAND_MMREG))
 		{
@@ -1387,7 +1391,8 @@ namespace SoftWire
 	{
 		if(Operand::isReg(op))
 		{
-			if(op.type == Operand::OPERAND_REG32 ||
+			if(op.type == Operand::OPERAND_REG64 ||
+			   op.type == Operand::OPERAND_REG32 ||
 			   op.type == Operand::OPERAND_REG16 ||
 			   op.type == Operand::OPERAND_REG8 ||
 			   op.type == Operand::OPERAND_EAX ||
@@ -1400,51 +1405,51 @@ namespace SoftWire
 			{
 				if(op.reg == Encoding::ESP || op.reg == Encoding::EBP) return;
 
-				if(ERX[op.reg].copyInstruction)
+				if(GPR[op.reg].copyInstruction)
 				{
-					ERX[op.reg].copyInstruction->retain();
-					ERX[op.reg].copyInstruction = 0;
+					GPR[op.reg].copyInstruction->retain();
+					GPR[op.reg].copyInstruction = 0;
 				}
 
-				if(ERX[op.reg].loadInstruction)
+				if(GPR[op.reg].loadInstruction)
 				{
-					ERX[op.reg].loadInstruction->retain();
-					ERX[op.reg].loadInstruction = 0;
+					GPR[op.reg].loadInstruction->retain();
+					GPR[op.reg].loadInstruction = 0;
 				}
 
-				if(ERX[op.reg].spillInstruction)
+				if(GPR[op.reg].spillInstruction)
 				{
-					ERX[op.reg].spillInstruction->retain();
-					ERX[op.reg].spillInstruction = 0;
+					GPR[op.reg].spillInstruction->retain();
+					GPR[op.reg].spillInstruction = 0;
 
-					ERX[op.reg].spill.free();
+					GPR[op.reg].spill.free();
 				}
 
-				ERX[op.reg].modified = true;
+				GPR[op.reg].modified = true;
 			}
 			else if(op.type == Operand::OPERAND_MMREG)
 			{
-				if(MM[op.reg].copyInstruction)
+				if(MMX[op.reg].copyInstruction)
 				{
-					MM[op.reg].copyInstruction->retain();
-					MM[op.reg].copyInstruction = 0;
+					MMX[op.reg].copyInstruction->retain();
+					MMX[op.reg].copyInstruction = 0;
 				}
 
-				if(MM[op.reg].loadInstruction)
+				if(MMX[op.reg].loadInstruction)
 				{
-					MM[op.reg].loadInstruction->retain();
-					MM[op.reg].loadInstruction = 0;
+					MMX[op.reg].loadInstruction->retain();
+					MMX[op.reg].loadInstruction = 0;
 				}
 
-				if(MM[op.reg].spillInstruction)
+				if(MMX[op.reg].spillInstruction)
 				{
-					MM[op.reg].spillInstruction->retain();
-					MM[op.reg].spillInstruction = 0;
+					MMX[op.reg].spillInstruction->retain();
+					MMX[op.reg].spillInstruction = 0;
 
-					MM[op.reg].spill.free();
+					MMX[op.reg].spill.free();
 				}
 
-				MM[op.reg].modified = true;
+				MMX[op.reg].modified = true;
 			}
 			else if(op.type == Operand::OPERAND_XMMREG)
 			{
@@ -1496,7 +1501,8 @@ namespace SoftWire
 	{
 		if(Operand::isReg(op))
 		{
-			if(op.type == Operand::OPERAND_REG32 ||
+			if(op.type == Operand::OPERAND_REG64 ||
+			   op.type == Operand::OPERAND_REG32 ||
 			   op.type == Operand::OPERAND_REG16 ||
 			   op.type == Operand::OPERAND_REG8 ||
 			   op.type == Operand::OPERAND_EAX ||
@@ -1509,46 +1515,46 @@ namespace SoftWire
 			{
 				if(op.reg == Encoding::ESP || op.reg == Encoding::EBP) return;
 
-				if(ERX[op.reg].copyInstruction)
+				if(GPR[op.reg].copyInstruction)
 				{
-					ERX[op.reg].copyInstruction->retain();
-					ERX[op.reg].copyInstruction = 0;
+					GPR[op.reg].copyInstruction->retain();
+					GPR[op.reg].copyInstruction = 0;
 				}
 
-				if(ERX[op.reg].loadInstruction)
+				if(GPR[op.reg].loadInstruction)
 				{
-					ERX[op.reg].loadInstruction->retain();
-					ERX[op.reg].loadInstruction = 0;
+					GPR[op.reg].loadInstruction->retain();
+					GPR[op.reg].loadInstruction = 0;
 				}
 
-				if(ERX[op.reg].spillInstruction)
+				if(GPR[op.reg].spillInstruction)
 				{
-					ERX[op.reg].spillInstruction->retain();
-					ERX[op.reg].spillInstruction = 0;
+					GPR[op.reg].spillInstruction->retain();
+					GPR[op.reg].spillInstruction = 0;
 
-					ERX[op.reg].spill.free();
+					GPR[op.reg].spill.free();
 				}
 			}
 			else if(op.type == Operand::OPERAND_MMREG)
 			{
-				if(MM[op.reg].copyInstruction)
+				if(MMX[op.reg].copyInstruction)
 				{
-					MM[op.reg].copyInstruction->retain();
-					MM[op.reg].copyInstruction = 0;
+					MMX[op.reg].copyInstruction->retain();
+					MMX[op.reg].copyInstruction = 0;
 				}
 
-				if(MM[op.reg].loadInstruction)
+				if(MMX[op.reg].loadInstruction)
 				{
-					MM[op.reg].loadInstruction->retain();
-					MM[op.reg].loadInstruction = 0;
+					MMX[op.reg].loadInstruction->retain();
+					MMX[op.reg].loadInstruction = 0;
 				}
 
-				if(MM[op.reg].spillInstruction)
+				if(MMX[op.reg].spillInstruction)
 				{
-					MM[op.reg].spillInstruction->retain();
-					MM[op.reg].spillInstruction = 0;
+					MMX[op.reg].spillInstruction->retain();
+					MMX[op.reg].spillInstruction = 0;
 
-					MM[op.reg].spill.free();
+					MMX[op.reg].spill.free();
 				}
 			}
 			else if(op.type == Operand::OPERAND_XMMREG)
@@ -1597,8 +1603,8 @@ namespace SoftWire
 
 	void RegisterAllocator::swap32(int i, int j)
 	{
-		Allocation *source = &ERX[j];
-		Allocation *destination = &ERX[i];
+		Allocation *source = &GPR[j];
+		Allocation *destination = &GPR[i];
 
 		// Swap references, priorities, etc.
 		OperandREF swapRef = source->reference;
@@ -1620,8 +1626,8 @@ namespace SoftWire
 
 	void RegisterAllocator::swap64(int i, int j)
 	{
-		Allocation *source = &MM[j];
-		Allocation *destination = &MM[i];
+		Allocation *source = &MMX[j];
+		Allocation *destination = &MMX[i];
 
 		// Swap references, priorities, etc.
 		OperandREF swapRef = source->reference;

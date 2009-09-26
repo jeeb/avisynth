@@ -6,7 +6,7 @@
 
 namespace SoftWire
 {
-	Synthesizer::Synthesizer() : encoding(0)
+	Synthesizer::Synthesizer(bool x64) : encoding(0), x64(x64)
 	{
 		reset();
 	}
@@ -80,10 +80,6 @@ namespace SoftWire
 		{
 			encodeImmediate(firstOperand.value);
 			referenceLabel(firstOperand.reference);
-		}
-		else if(Operand::isStr(firstType))
-		{
-			encodeLiteral(firstOperand.reference);
 		}
 		else if(!Operand::isVoid(firstType))
 		{
@@ -202,6 +198,11 @@ namespace SoftWire
 		if(!instruction) return encoding;
 		encoding.instruction = instruction;
 
+		if(x64 && instruction->isInvalid64())
+		{
+			throw Error("Invalid instruction for x86-64 long mode");
+		}
+
 		const char *format = instruction->getEncoding();
 
 		if(!format) throw INTERNAL_ERROR;
@@ -235,19 +236,23 @@ namespace SoftWire
 				}
 				break;
 			case ADD_REG:
+				encodeRexByte(instruction);
 				if(encoding.format.O1)
 				{
 					if(Operand::isReg(firstType) && firstType != Operand::OPERAND_ST0)
 					{
-						encoding.O1 += firstReg;
+						encoding.O1 += firstReg & 0x7;
+						encoding.REX.B = (firstReg & 0x8) >> 3;
 					}
 					else if(Operand::isReg(secondType))
 					{
-						encoding.O1 += secondReg;
+						encoding.O1 += secondReg & 0x7;
+						encoding.REX.B = (secondReg & 0x8) >> 3;
 					}
 					else if(Operand::isReg(firstType) && firstType == Operand::OPERAND_ST0)
 					{
-						encoding.O1 += firstReg;
+						encoding.O1 += firstReg & 0x7;
+						encoding.REX.B = (firstReg & 0x8) >> 3;
 					}
 					else
 					{
@@ -260,12 +265,11 @@ namespace SoftWire
 				}
 				break;
 			case EFF_ADDR:
+				encodeRexByte(instruction);
 				encodeModField();
 				encodeRegField(instruction);
 				encodeR_MField(instruction);
-
-				encodeSibByte();
-
+				encodeSibByte(instruction);
 				break;
 			case MOD_RM_0:
 			case MOD_RM_1:
@@ -275,12 +279,14 @@ namespace SoftWire
 			case MOD_RM_5:
 			case MOD_RM_6:
 			case MOD_RM_7:
+				encodeRexByte(instruction);
 				encodeModField();
 				encoding.modRM.reg = format[1] - '0';
 				encodeR_MField(instruction);
-
-				encodeSibByte();
-
+				encodeSibByte(instruction);
+				break;
+			case QWORD_IMM:
+				throw INTERNAL_ERROR;   // FIXME: Unimplemented
 				break;
 			case DWORD_IMM:
 				encoding.format.I1 = true;
@@ -319,8 +325,8 @@ namespace SoftWire
 					encoding.O1 = (unsigned char)opcode;
 
 					encoding.format.O1 = true;
-				}
-				else if(!encoding.format.O2 &&
+        }
+				else if((!encoding.format.O2)/* &&
 				        (encoding.O1 == 0x0F ||
 				         encoding.O1 == 0xD8 ||
 				         encoding.O1 == 0xD9 ||
@@ -329,14 +335,29 @@ namespace SoftWire
 				         encoding.O1 == 0xDC ||
 				         encoding.O1 == 0xDD ||
 				         encoding.O1 == 0xDE ||
-				         encoding.O1 == 0xDF))
+				         encoding.O1 == 0xDF || encoding.O1 == 0x66)*/)
 				{
 					encoding.O2 = encoding.O1;
 					encoding.O1 = opcode;
 
 					encoding.format.O2 = true;
 				}
-				else if(encoding.O1 == 0x66)   // Operand size prefix for SSE2
+        else if (encoding.format.O2 && !encoding.format.O3) {
+					encoding.O3 = encoding.O2;
+					encoding.O2 = encoding.O1;
+					encoding.O1 = opcode;
+
+					encoding.format.O3 = true;
+        }
+        else if (encoding.format.O3 && !encoding.format.O4) {
+					encoding.O4 = encoding.O3;
+					encoding.O3 = encoding.O2;
+					encoding.O2 = encoding.O1;
+					encoding.O1 = opcode; 
+
+					encoding.format.O4 = true;
+        }
+/*				else if(encoding.O1 == 0x66)   // Operand size prefix for SSE2
 				{
 					encoding.addPrefix(0x66);   // HACK: Might not be valid for later instruction sets
 
@@ -348,6 +369,7 @@ namespace SoftWire
 
 					encoding.O1 = opcode;
 				}
+*/
 				else   // 3DNow!, SSE or SSE2 instruction, opcode as immediate
 				{
 					encoding.format.I1 = true;
@@ -373,6 +395,24 @@ namespace SoftWire
 		}
 
 		return encoding;
+	}
+
+	void Synthesizer::encodeRexByte(const Instruction *instruction)
+	{
+		if(instruction->is64Bit() || firstReg > 0x07 || secondReg > 0x07 || baseReg > 0x07 || indexReg > 0x07)
+		{
+			encoding.format.REX = true;
+			encoding.REX.prefix = 0x4;
+			encoding.REX.W = 0;
+			encoding.REX.R = 0;
+			encoding.REX.X = 0;
+			encoding.REX.B = 0;
+		}
+
+		if(instruction->is64Bit())
+		{
+			encoding.REX.W = true;
+		}
 	}
 
 	void Synthesizer::encodeModField()
@@ -432,6 +472,8 @@ namespace SoftWire
 
 	void Synthesizer::encodeR_MField(const Instruction *instruction)
 	{
+		int r_m;
+
 		if(Operand::isReg(instruction->getFirstOperand()) &&
 		   Operand::isR_M(instruction->getSecondOperand()))
 		{
@@ -439,16 +481,16 @@ namespace SoftWire
 			{
 				if(baseReg == Encoding::REG_UNKNOWN)
 				{
-					encoding.modRM.r_m = Encoding::EBP;   // Static address
+					r_m = Encoding::EBP;   // Static address
 				}
 				else
 				{
-					encoding.modRM.r_m = baseReg;
+					r_m = baseReg;
 				}
 			}
 			else if(Operand::isReg(secondType))
 			{
-				encoding.modRM.r_m = secondReg;
+				r_m = secondReg;
 			}
 			else
 			{
@@ -462,16 +504,16 @@ namespace SoftWire
 			{
 				if(baseReg == Encoding::REG_UNKNOWN)
 				{
-					encoding.modRM.r_m = Encoding::EBP;   // Static address
+					r_m = Encoding::EBP;   // Static address
 				}
 				else
 				{
-					encoding.modRM.r_m = baseReg;
+					r_m = baseReg;
 				}
 			}
 			else if(Operand::isReg(firstType))
 			{
-				encoding.modRM.r_m = firstReg;
+				r_m = firstReg;
 			}
 			else
 			{
@@ -484,48 +526,56 @@ namespace SoftWire
 			{
 				if(baseReg != Encoding::REG_UNKNOWN)
 				{
-					encoding.modRM.r_m = baseReg;
+					r_m = baseReg;
 				}
 				else
 				{
-					encoding.modRM.r_m = Encoding::EBP;   // Displacement only
+					r_m = Encoding::EBP;   // Displacement only
 				}
 			}
 			else if(Operand::isReg(firstType))
 			{
-				encoding.modRM.r_m = firstReg;
+				r_m = firstReg;
 			}
 			else
 			{
 				throw INTERNAL_ERROR;   // Syntax error should be caught by parser
 			}
 		}
+
+		encoding.modRM.r_m = r_m & 0x07;
+		encoding.REX.B = (r_m & 0x8) >> 3;
 	}
 
 	void Synthesizer::encodeRegField(const Instruction *instruction)
 	{
+		int reg;
+
 		if(Operand::isReg(instruction->getFirstOperand()) &&
 		   Operand::isR_M(instruction->getSecondOperand()))
 		{
-			encoding.modRM.reg = firstReg;
+			reg = firstReg;
 		}
 		else if(Operand::isR_M(instruction->getFirstOperand()) &&
 		        Operand::isReg(instruction->getSecondOperand()))
 		{
-			encoding.modRM.reg = secondReg;
+			reg = secondReg;
 		}
 		else if(Operand::isReg(instruction->getFirstOperand()) &&
 		        Operand::isImm(instruction->getSecondOperand()))   // IMUL working on the same register
 		{
-			encoding.modRM.reg = firstReg;
+			reg = firstReg;			
 		}
 		else
 		{
 			throw INTERNAL_ERROR;
 		}
+
+		encoding.modRM.reg = reg & 0x07;
+		encoding.REX.R = (reg & 0x8) >> 3;
 	}
 
-	void Synthesizer::encodeSibByte()
+	void Synthesizer::encodeSibByte(const Instruction *instruction)
 	{
 		if(scale == 0 && indexReg == Encoding::REG_UNKNOWN)
 		{
@@ -579,12 +629,14 @@ namespace SoftWire
 		}
 		else
 		{
-			encoding.SIB.base = baseReg;
+			encoding.SIB.base = baseReg & 0x7;
+			encoding.REX.X = (baseReg & 0x8) >> 3;
 		}
 
 		if(indexReg != Encoding::REG_UNKNOWN)
 		{
-			encoding.SIB.index = indexReg;
+			encoding.SIB.index = indexReg & 0x7;
+			encoding.REX.X = (indexReg & 0x8) >> 3;
 		}
 		else
 		{

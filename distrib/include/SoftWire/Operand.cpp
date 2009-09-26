@@ -187,10 +187,6 @@ namespace SoftWire
 
 			snprintf(string, 255, "%s]", string);
 		}
-		else if(isStr(type))
-		{
-			return notation;
-		}
 		else
 		{
 			throw INTERNAL_ERROR;
@@ -224,11 +220,6 @@ namespace SoftWire
 		return (type & OPERAND_R_M) == type;
 	}
 
-	bool Operand::isStr(Type type)
-	{
-		return (type & OPERAND_STR) == type;
-	}
-
 	bool Operand::isVoid(const Operand &operand)
 	{
 		return isVoid(operand.type);
@@ -252,11 +243,6 @@ namespace SoftWire
 	bool Operand::isR_M(const Operand &operand)
 	{
 		return isR_M(operand.type);
-	}
-
-	bool Operand::isStr(const Operand &operand)
-	{
-		return isStr(operand.type);
 	}
 
 	const Operand::Register Operand::registerSet[] =
@@ -358,10 +344,12 @@ namespace SoftWire
 		{OPERAND_IMM8,		"imm8"},
 		{OPERAND_IMM16,		"imm16"},
 		{OPERAND_IMM32,		"imm32"},
+	//	{OPERAND_IMM64,		"imm64"},
 
 		{OPERAND_AL,		"AL"},
 		{OPERAND_AX,		"AX"},
 		{OPERAND_EAX,		"EAX"},
+		{OPERAND_RAX,		"RAX"},
 		{OPERAND_DX,		"DX"},
 		{OPERAND_CL,		"CL"},
 		{OPERAND_CX,		"CX"},
@@ -371,6 +359,7 @@ namespace SoftWire
 		{OPERAND_REG8,		"reg8"},
 		{OPERAND_REG16,		"reg16"},
 		{OPERAND_REG32,		"reg32"},
+		{OPERAND_REG64,		"reg64"},
 		{OPERAND_FPUREG,	"fpureg"},
 		{OPERAND_MMREG,		"mmreg"},
 		{OPERAND_XMMREG,	"xmmreg"},
@@ -390,8 +379,7 @@ namespace SoftWire
 
 		{OPERAND_XMM32,		"xmm32"},
 		{OPERAND_XMM64,		"xmm64"},
-
-		{OPERAND_STR,		"str"}
+		{OPERAND_MM64,		"mm64"}
 	};
 
 	Operand::Type Operand::scanSyntax(const char *string)

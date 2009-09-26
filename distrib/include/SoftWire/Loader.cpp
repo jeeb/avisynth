@@ -14,7 +14,7 @@
 
 namespace SoftWire
 {
-	Loader::Loader(const Linker &linker) : linker(linker)
+	Loader::Loader(const Linker &linker, bool x64) : linker(linker), x64(x64)
 	{
 		machineCode = 0;
 		instructions = 0;
@@ -160,8 +160,14 @@ namespace SoftWire
 			}
 			else if(encoding.hasImmediate() && encoding.relativeReference())
 			{
-				int offset = encoding.getImmediate() - (int)currentCode - encoding.length(currentCode);
-				encoding.setCallOffset(offset);
+				__int64 offset = encoding.getImmediate() - (__int64)currentCode - encoding.length(currentCode);
+				encoding.setCallOffset((int)offset);
+			}
+
+			if(x64 && encoding.isRipRelative())
+			{
+				__int64 displacement = encoding.getDisplacement() - (__int64)currentCode - encoding.length(currentCode);
+				encoding.setDisplacement(displacement);
 			}
 
 			currentCode += encoding.writeCode(currentCode);

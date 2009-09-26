@@ -8,7 +8,7 @@ namespace SoftWire
 	class Optimizer : public RegisterAllocator
 	{
 	protected:
-		Optimizer();
+		Optimizer(bool x64);
 
 		virtual ~Optimizer();
 	};

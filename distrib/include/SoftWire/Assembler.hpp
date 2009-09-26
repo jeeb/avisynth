@@ -15,7 +15,7 @@ namespace SoftWire
 	class Assembler
 	{
 	public:
-		Assembler();
+		Assembler(bool x64 = false); // Default to true on X64 platform
 
 		virtual ~Assembler();
 
@@ -47,6 +47,22 @@ namespace SoftWire
 		static const OperandREG8 ch;
 		static const OperandREG8 dh;
 		static const OperandREG8 bh;
+		static const OperandAL r0b;
+		static const OperandCL r1b;
+		static const OperandREG8 r2b;
+		static const OperandREG8 r3b;
+		static const OperandREG8 r4b;
+		static const OperandREG8 r5b;
+		static const OperandREG8 r6b;
+		static const OperandREG8 r7b;
+		static const OperandREG8 r8b;
+		static const OperandREG8 r9b;
+		static const OperandREG8 r10b;
+		static const OperandREG8 r11b;
+		static const OperandREG8 r12b;
+		static const OperandREG8 r13b;
+		static const OperandREG8 r14b;
+		static const OperandREG8 r15b;
 
 		static const OperandAX ax;
 		static const OperandCX cx;
@@ -56,6 +72,22 @@ namespace SoftWire
 		static const OperandREG16 bp;
 		static const OperandREG16 si;
 		static const OperandREG16 di;
+		static const OperandAX r0w;
+		static const OperandCX r1w;
+		static const OperandDX r2w;
+		static const OperandREG16 r3w;
+		static const OperandREG16 r4w;
+		static const OperandREG16 r5w;
+		static const OperandREG16 r6w;
+		static const OperandREG16 r7w;
+		static const OperandREG16 r8w;
+		static const OperandREG16 r9w;
+		static const OperandREG16 r10w;
+		static const OperandREG16 r11w;
+		static const OperandREG16 r12w;
+		static const OperandREG16 r13w;
+		static const OperandREG16 r14w;
+		static const OperandREG16 r15w;
 
 		static const OperandEAX eax;
 		static const OperandECX ecx;
@@ -65,6 +97,47 @@ namespace SoftWire
 		static const OperandREG32 ebp;
 		static const OperandREG32 esi;
 		static const OperandREG32 edi;
+		static const OperandEAX r0d;
+		static const OperandECX r1d;
+		static const OperandREG32 r2d;
+		static const OperandREG32 r3d;
+		static const OperandREG32 r4d;
+		static const OperandREG32 r5d;
+		static const OperandREG32 r6d;
+		static const OperandREG32 r7d;
+		static const OperandREG32 r8d;
+		static const OperandREG32 r9d;
+		static const OperandREG32 r10d;
+		static const OperandREG32 r11d;
+		static const OperandREG32 r12d;
+		static const OperandREG32 r13d;
+		static const OperandREG32 r14d;
+		static const OperandREG32 r15d;
+
+		static const OperandREG64 rax;
+		static const OperandREG64 rcx;
+		static const OperandREG64 rdx;
+		static const OperandREG64 rbx;
+		static const OperandREG64 rsp;
+		static const OperandREG64 rbp;
+		static const OperandREG64 rsi;
+		static const OperandREG64 rdi;
+		static const OperandREG64 r0;
+		static const OperandREG64 r1;
+		static const OperandREG64 r2;
+		static const OperandREG64 r3;
+		static const OperandREG64 r4;
+		static const OperandREG64 r5;
+		static const OperandREG64 r6;
+		static const OperandREG64 r7;
+		static const OperandREG64 r8;
+		static const OperandREG64 r9;
+		static const OperandREG64 r10;
+		static const OperandREG64 r11;
+		static const OperandREG64 r12;
+		static const OperandREG64 r13;
+		static const OperandREG64 r14;
+		static const OperandREG64 r15;
 
 		static const OperandST0 st;
 		static const OperandST0 st0;
@@ -107,6 +180,8 @@ namespace SoftWire
 		                      const Operand &firstOperand = Operand::OPERAND_VOID,
 		                      const Operand &secondOperand = Operand::OPERAND_VOID,
 		                      const Operand &thirdOperand = Operand::OPERAND_VOID);   // Assemble run-time intrinsic
+
+		const bool x64;
 
 	private:
 		char *entryLabel;

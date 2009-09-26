@@ -11,7 +11,7 @@ namespace SoftWire
 	class Synthesizer
 	{
 	public:
-		Synthesizer();
+		Synthesizer(bool x64 = false); // Default to true on X64 platform
 
 		virtual ~Synthesizer();
 
@@ -29,6 +29,8 @@ namespace SoftWire
 		const Encoding &encodeInstruction(const Instruction *instruction);
 
 	private:
+		const bool x64;
+
 		Encoding encoding;
 
 		Operand::Type firstType;
@@ -49,11 +51,11 @@ namespace SoftWire
 
 		void referenceLabel(const char *label);
 
+		void encodeRexByte(const Instruction *instruction);
 		void encodeModField();
 		void encodeR_MField(const Instruction *instruction);
 		void encodeRegField(const Instruction *instruction);
-
-		void encodeSibByte();
+		void encodeSibByte(const Instruction *instruction);
 	};
 }
 

@@ -24,7 +24,15 @@ namespace SoftWire
 			if(stackUpdate)
 			{
 				stackTop += 16;
-				stackUpdate->setImmediate(stackTop);
+
+				if(!cg->x64)
+				{
+					stackUpdate->setImmediate(stackTop);
+				}
+				else
+				{
+					stackUpdate->setImmediate(32+stackTop+128);
+				}
 			}
 			else if(stackTop != -128)   // Skip arg
 			{
@@ -42,8 +50,8 @@ namespace SoftWire
 
 		for(int i = 0; i < 8; i++)
 		{
-			if(ERX[i].reference.baseReg == Encoding::EBP && ERX[i].reference.displacement > previous) return;
-			if(MM[i].reference.baseReg  == Encoding::EBP && MM[i].reference.displacement  > previous) return;
+			if(GPR[i].reference.baseReg == Encoding::EBP && GPR[i].reference.displacement > previous) return;
+			if(MMX[i].reference.baseReg == Encoding::EBP && MMX[i].reference.displacement > previous) return;
 			if(XMM[i].reference.baseReg == Encoding::EBP && XMM[i].reference.displacement > previous) return;
 		}
 		
@@ -79,7 +87,7 @@ namespace SoftWire
 	{
 	}
 
-	CodeGenerator::Char::Char(char c)
+	CodeGenerator::Char::Char(unsigned char c)
 	{
 		cg->mov(*this, c);
 	}
@@ -252,19 +260,19 @@ namespace SoftWire
 		return temp;
 	}
 
-	CodeGenerator::Char &CodeGenerator::Char::operator+=(char c)
+	CodeGenerator::Char &CodeGenerator::Char::operator+=(unsigned char c)
 	{
 		cg->add(*this, c);
 		return *this;
 	}
 
-	CodeGenerator::Char &CodeGenerator::Char::operator-=(char c)
+	CodeGenerator::Char &CodeGenerator::Char::operator-=(unsigned char c)
 	{
 		cg->sub(*this, c);
 		return *this;
 	}
 
-	CodeGenerator::Char &CodeGenerator::Char::operator*=(char c)
+	CodeGenerator::Char &CodeGenerator::Char::operator*=(unsigned char c)
 	{
 		cg->exclude(eax);
 		cg->mov(al, *this);
@@ -273,7 +281,7 @@ namespace SoftWire
 		return *this;
 	}
 
-	CodeGenerator::Char &CodeGenerator::Char::operator/=(char c)
+	CodeGenerator::Char &CodeGenerator::Char::operator/=(unsigned char c)
 	{
 		cg->exclude(eax);
 		cg->exclude(edx);
@@ -284,7 +292,7 @@ namespace SoftWire
 		return *this;
 	}
 
-	CodeGenerator::Char &CodeGenerator::Char::operator%=(char c)
+	CodeGenerator::Char &CodeGenerator::Char::operator%=(unsigned char c)
 	{
 		cg->exclude(eax);
 		cg->exclude(edx);
@@ -295,7 +303,7 @@ namespace SoftWire
 		return *this;
 	}
 
-	CodeGenerator::Char &CodeGenerator::Char::operator<<=(char c)
+	CodeGenerator::Char &CodeGenerator::Char::operator<<=(unsigned char c)
 	{
 		cg->exclude(ecx);
 		cg->exclude(edx);
@@ -305,7 +313,7 @@ namespace SoftWire
 		return *this;
 	}
 
-	CodeGenerator::Char &CodeGenerator::Char::operator>>=(char c)
+	CodeGenerator::Char &CodeGenerator::Char::operator>>=(unsigned char c)
 	{
 		cg->exclude(ecx);
 		cg->exclude(edx);
@@ -315,25 +323,25 @@ namespace SoftWire
 		return *this;
 	}
 
-	CodeGenerator::Char &CodeGenerator::Char::operator&=(char c)
+	CodeGenerator::Char &CodeGenerator::Char::operator&=(unsigned char c)
 	{
 		cg->and(*this, c);
 		return *this;
 	}
 
-	CodeGenerator::Char &CodeGenerator::Char::operator^=(char c)
+	CodeGenerator::Char &CodeGenerator::Char::operator^=(unsigned char c)
 	{
 		cg->xor(*this, c);
 		return *this;
 	}
 
-	CodeGenerator::Char &CodeGenerator::Char::operator|=(char c)
+	CodeGenerator::Char &CodeGenerator::Char::operator|=(unsigned char c)
 	{
 		cg->or(*this, c);
 		return *this;
 	}
 
-	CodeGenerator::Char CodeGenerator::Char::operator+(char c)
+	CodeGenerator::Char CodeGenerator::Char::operator+(unsigned char c)
 	{
 		Char temp;
 		temp = *this;
@@ -341,7 +349,7 @@ namespace SoftWire
 		return temp;
 	}
 
-	CodeGenerator::Char CodeGenerator::Char::operator-(char c)
+	CodeGenerator::Char CodeGenerator::Char::operator-(unsigned char c)
 	{
 		Char temp;
 		temp = *this;
@@ -349,7 +357,7 @@ namespace SoftWire
 		return temp;		
 	}
 
-	CodeGenerator::Char CodeGenerator::Char::operator*(char c)
+	CodeGenerator::Char CodeGenerator::Char::operator*(unsigned char c)
 	{
 		Char temp;
 		temp = *this;
@@ -357,7 +365,7 @@ namespace SoftWire
 		return temp;
 	}
 
-	CodeGenerator::Char CodeGenerator::Char::operator/(char c)
+	CodeGenerator::Char CodeGenerator::Char::operator/(unsigned char c)
 	{
 		Char temp;
 		temp = *this;
@@ -365,7 +373,7 @@ namespace SoftWire
 		return temp;
 	}
 
-	CodeGenerator::Char CodeGenerator::Char::operator%(char c)
+	CodeGenerator::Char CodeGenerator::Char::operator%(unsigned char c)
 	{
 		Char temp;
 		temp = *this;
@@ -373,7 +381,7 @@ namespace SoftWire
 		return temp;
 	}
 
-	CodeGenerator::Char CodeGenerator::Char::operator<<(char c)
+	CodeGenerator::Char CodeGenerator::Char::operator<<(unsigned char c)
 	{
 		Char temp;
 		temp = *this;
@@ -381,7 +389,7 @@ namespace SoftWire
 		return temp;
 	}
 
-	CodeGenerator::Char CodeGenerator::Char::operator>>(char c)
+	CodeGenerator::Char CodeGenerator::Char::operator>>(unsigned char c)
 	{
 		Char temp;
 		temp = *this;
@@ -389,7 +397,7 @@ namespace SoftWire
 		return temp;
 	}
 
-	CodeGenerator::Char CodeGenerator::Char::operator&(char c)
+	CodeGenerator::Char CodeGenerator::Char::operator&(unsigned char c)
 	{
 		Char temp;
 		temp = *this;
@@ -397,7 +405,7 @@ namespace SoftWire
 		return temp;
 	}
 
-	CodeGenerator::Char CodeGenerator::Char::operator^(char c)
+	CodeGenerator::Char CodeGenerator::Char::operator^(unsigned char c)
 	{
 		Char temp;
 		temp = *this;
@@ -405,7 +413,7 @@ namespace SoftWire
 		return temp;
 	}
 
-	CodeGenerator::Char CodeGenerator::Char::operator|(char c)
+	CodeGenerator::Char CodeGenerator::Char::operator|(unsigned char c)
 	{
 		Char temp;
 		temp = *this;
@@ -426,7 +434,7 @@ namespace SoftWire
 	{
 	}
 
-	CodeGenerator::Short::Short(short s)
+	CodeGenerator::Short::Short(unsigned short s)
 	{
 		cg->mov(*this, s);
 	}
@@ -596,25 +604,25 @@ namespace SoftWire
 		return temp;
 	}
 
-	CodeGenerator::Short &CodeGenerator::Short::operator+=(short s)
+	CodeGenerator::Short &CodeGenerator::Short::operator+=(unsigned short s)
 	{
 		cg->add(*this, s);
 		return *this;
 	}
 
-	CodeGenerator::Short &CodeGenerator::Short::operator-=(short s)
+	CodeGenerator::Short &CodeGenerator::Short::operator-=(unsigned short s)
 	{
 		cg->sub(*this, s);
 		return *this;
 	}
 
-	CodeGenerator::Short &CodeGenerator::Short::operator*=(short s)
+	CodeGenerator::Short &CodeGenerator::Short::operator*=(unsigned short s)
 	{
 		cg->imul(*this, s);
 		return *this;
 	}
 
-	CodeGenerator::Short &CodeGenerator::Short::operator/=(short s)
+	CodeGenerator::Short &CodeGenerator::Short::operator/=(unsigned short s)
 	{
 		cg->exclude(eax);
 		cg->exclude(edx);
@@ -625,7 +633,7 @@ namespace SoftWire
 		return *this;
 	}
 
-	CodeGenerator::Short &CodeGenerator::Short::operator%=(short s)
+	CodeGenerator::Short &CodeGenerator::Short::operator%=(unsigned short s)
 	{
 		cg->exclude(eax);
 		cg->exclude(edx);
@@ -636,7 +644,7 @@ namespace SoftWire
 		return *this;
 	}
 
-	CodeGenerator::Short &CodeGenerator::Short::operator<<=(short s)
+	CodeGenerator::Short &CodeGenerator::Short::operator<<=(unsigned short s)
 	{
 		cg->exclude(ecx);
 		cg->exclude(edx);
@@ -646,7 +654,7 @@ namespace SoftWire
 		return *this;
 	}
 
-	CodeGenerator::Short &CodeGenerator::Short::operator>>=(short s)
+	CodeGenerator::Short &CodeGenerator::Short::operator>>=(unsigned short s)
 	{
 		cg->exclude(ecx);
 		cg->exclude(edx);
@@ -656,25 +664,25 @@ namespace SoftWire
 		return *this;
 	}
 
-	CodeGenerator::Short &CodeGenerator::Short::operator&=(short s)
+	CodeGenerator::Short &CodeGenerator::Short::operator&=(unsigned short s)
 	{
 		cg->and(*this, s);
 		return *this;
 	}
 
-	CodeGenerator::Short &CodeGenerator::Short::operator^=(short s)
+	CodeGenerator::Short &CodeGenerator::Short::operator^=(unsigned short s)
 	{
 		cg->xor(*this, s);
 		return *this;
 	}
 
-	CodeGenerator::Short &CodeGenerator::Short::operator|=(short s)
+	CodeGenerator::Short &CodeGenerator::Short::operator|=(unsigned short s)
 	{
 		cg->or(*this, s);
 		return *this;
 	}
 
-	CodeGenerator::Short CodeGenerator::Short::operator+(short s)
+	CodeGenerator::Short CodeGenerator::Short::operator+(unsigned short s)
 	{
 		Short temp;
 		temp = *this;
@@ -682,7 +690,7 @@ namespace SoftWire
 		return temp;
 	}
 
-	CodeGenerator::Short CodeGenerator::Short::operator-(short s)
+	CodeGenerator::Short CodeGenerator::Short::operator-(unsigned short s)
 	{
 		Short temp;
 		temp = *this;
@@ -690,7 +698,7 @@ namespace SoftWire
 		return temp;		
 	}
 
-	CodeGenerator::Short CodeGenerator::Short::operator*(short s)
+	CodeGenerator::Short CodeGenerator::Short::operator*(unsigned short s)
 	{
 		Short temp;
 		temp = *this;
@@ -698,7 +706,7 @@ namespace SoftWire
 		return temp;
 	}
 
-	CodeGenerator::Short CodeGenerator::Short::operator/(short s)
+	CodeGenerator::Short CodeGenerator::Short::operator/(unsigned short s)
 	{
 		Short temp;
 		temp = *this;
@@ -706,7 +714,7 @@ namespace SoftWire
 		return temp;
 	}
 
-	CodeGenerator::Short CodeGenerator::Short::operator%(short s)
+	CodeGenerator::Short CodeGenerator::Short::operator%(unsigned short s)
 	{
 		Short temp;
 		temp = *this;
@@ -714,7 +722,7 @@ namespace SoftWire
 		return temp;
 	}
 
-	CodeGenerator::Short CodeGenerator::Short::operator<<(short s)
+	CodeGenerator::Short CodeGenerator::Short::operator<<(unsigned short s)
 	{
 		Short temp;
 		temp = *this;
@@ -722,7 +730,7 @@ namespace SoftWire
 		return temp;
 	}
 
-	CodeGenerator::Short CodeGenerator::Short::operator>>(short s)
+	CodeGenerator::Short CodeGenerator::Short::operator>>(unsigned short s)
 	{
 		Short temp;
 		temp = *this;
@@ -730,7 +738,7 @@ namespace SoftWire
 		return temp;
 	}
 
-	CodeGenerator::Short CodeGenerator::Short::operator&(short s)
+	CodeGenerator::Short CodeGenerator::Short::operator&(unsigned short s)
 	{
 		Short temp;
 		temp = *this;
@@ -738,7 +746,7 @@ namespace SoftWire
 		return temp;
 	}
 
-	CodeGenerator::Short CodeGenerator::Short::operator^(short s)
+	CodeGenerator::Short CodeGenerator::Short::operator^(unsigned short s)
 	{
 		Short temp;
 		temp = *this;
@@ -746,7 +754,7 @@ namespace SoftWire
 		return temp;
 	}
 
-	CodeGenerator::Short CodeGenerator::Short::operator|(short s)
+	CodeGenerator::Short CodeGenerator::Short::operator|(unsigned short s)
 	{
 		Short temp;
 		temp = *this;
@@ -767,7 +775,7 @@ namespace SoftWire
 	{
 	}
 
-	CodeGenerator::Int::Int(int i)
+	CodeGenerator::Int::Int(unsigned int i)
 	{
 		cg->mov(*this, i);
 	}
@@ -937,25 +945,25 @@ namespace SoftWire
 		return temp;
 	}
 
-	CodeGenerator::Int &CodeGenerator::Int::operator+=(int i)
+	CodeGenerator::Int &CodeGenerator::Int::operator+=(unsigned int i)
 	{
 		cg->add(*this, i);
 		return *this;
 	}
 
-	CodeGenerator::Int &CodeGenerator::Int::operator-=(int i)
+	CodeGenerator::Int &CodeGenerator::Int::operator-=(unsigned int i)
 	{
 		cg->sub(*this, i);
 		return *this;
 	}
 
-	CodeGenerator::Int &CodeGenerator::Int::operator*=(int i)
+	CodeGenerator::Int &CodeGenerator::Int::operator*=(unsigned int i)
 	{
 		cg->imul(*this, i);
 		return *this;
 	}
 
-	CodeGenerator::Int &CodeGenerator::Int::operator/=(int i)
+	CodeGenerator::Int &CodeGenerator::Int::operator/=(unsigned int i)
 	{
 		cg->exclude(eax);
 		cg->exclude(edx);
@@ -966,7 +974,7 @@ namespace SoftWire
 		return *this;
 	}
 
-	CodeGenerator::Int &CodeGenerator::Int::operator%=(int i)
+	CodeGenerator::Int &CodeGenerator::Int::operator%=(unsigned int i)
 	{
 		cg->exclude(eax);
 		cg->exclude(edx);
@@ -977,7 +985,7 @@ namespace SoftWire
 		return *this;
 	}
 
-	CodeGenerator::Int &CodeGenerator::Int::operator<<=(int i)
+	CodeGenerator::Int &CodeGenerator::Int::operator<<=(unsigned int i)
 	{
 		cg->exclude(ecx);
 		cg->exclude(edx);
@@ -987,7 +995,7 @@ namespace SoftWire
 		return *this;
 	}
 
-	CodeGenerator::Int &CodeGenerator::Int::operator>>=(int i)
+	CodeGenerator::Int &CodeGenerator::Int::operator>>=(unsigned int i)
 	{
 		cg->exclude(ecx);
 		cg->exclude(edx);
@@ -997,25 +1005,25 @@ namespace SoftWire
 		return *this;
 	}
 
-	CodeGenerator::Int &CodeGenerator::Int::operator&=(int i)
+	CodeGenerator::Int &CodeGenerator::Int::operator&=(unsigned int i)
 	{
 		cg->and(*this, i);
 		return *this;
 	}
 
-	CodeGenerator::Int &CodeGenerator::Int::operator^=(int i)
+	CodeGenerator::Int &CodeGenerator::Int::operator^=(unsigned int i)
 	{
 		cg->xor(*this, i);
 		return *this;
 	}
 
-	CodeGenerator::Int &CodeGenerator::Int::operator|=(int i)
+	CodeGenerator::Int &CodeGenerator::Int::operator|=(unsigned int i)
 	{
 		cg->or(*this, i);
 		return *this;
 	}
 
-	CodeGenerator::Int CodeGenerator::Int::operator+(int i)
+	CodeGenerator::Int CodeGenerator::Int::operator+(unsigned int i)
 	{
 		Int temp;
 		temp = *this;
@@ -1023,7 +1031,7 @@ namespace SoftWire
 		return temp;
 	}
 
-	CodeGenerator::Int CodeGenerator::Int::operator-(int i)
+	CodeGenerator::Int CodeGenerator::Int::operator-(unsigned int i)
 	{
 		Int temp;
 		temp = *this;
@@ -1031,7 +1039,7 @@ namespace SoftWire
 		return temp;		
 	}
 
-	CodeGenerator::Int CodeGenerator::Int::operator*(int i)
+	CodeGenerator::Int CodeGenerator::Int::operator*(unsigned int i)
 	{
 		Int temp;
 		temp = *this;
@@ -1039,7 +1047,7 @@ namespace SoftWire
 		return temp;
 	}
 
-	CodeGenerator::Int CodeGenerator::Int::operator/(int i)
+	CodeGenerator::Int CodeGenerator::Int::operator/(unsigned int i)
 	{
 		Int temp;
 		temp = *this;
@@ -1047,7 +1055,7 @@ namespace SoftWire
 		return temp;
 	}
 
-	CodeGenerator::Int CodeGenerator::Int::operator%(int i)
+	CodeGenerator::Int CodeGenerator::Int::operator%(unsigned int i)
 	{
 		Int temp;
 		temp = *this;
@@ -1055,7 +1063,7 @@ namespace SoftWire
 		return temp;
 	}
 
-	CodeGenerator::Int CodeGenerator::Int::operator<<(int i)
+	CodeGenerator::Int CodeGenerator::Int::operator<<(unsigned int i)
 	{
 		Int temp;
 		temp = *this;
@@ -1063,7 +1071,7 @@ namespace SoftWire
 		return temp;
 	}
 
-	CodeGenerator::Int CodeGenerator::Int::operator>>(int i)
+	CodeGenerator::Int CodeGenerator::Int::operator>>(unsigned int i)
 	{
 		Int temp;
 		temp = *this;
@@ -1071,7 +1079,7 @@ namespace SoftWire
 		return temp;
 	}
 
-	CodeGenerator::Int CodeGenerator::Int::operator&(int i)
+	CodeGenerator::Int CodeGenerator::Int::operator&(unsigned int i)
 	{
 		Int temp;
 		temp = *this;
@@ -1079,7 +1087,7 @@ namespace SoftWire
 		return temp;
 	}
 
-	CodeGenerator::Int CodeGenerator::Int::operator^(int i)
+	CodeGenerator::Int CodeGenerator::Int::operator^(unsigned int i)
 	{
 		Int temp;
 		temp = *this;
@@ -1087,7 +1095,7 @@ namespace SoftWire
 		return temp;
 	}
 
-	CodeGenerator::Int CodeGenerator::Int::operator|(int i)
+	CodeGenerator::Int CodeGenerator::Int::operator|(unsigned int i)
 	{
 		Int temp;
 		temp = *this;
@@ -1709,7 +1717,7 @@ namespace SoftWire
 		return temp;
 	}
 
-	CodeGenerator::CodeGenerator()
+	CodeGenerator::CodeGenerator(bool x64) : Emulator(x64)
 	{
 		cg = this;
 	}
@@ -1726,18 +1734,32 @@ namespace SoftWire
 	{
 		cg = this;
 
-		mov(arg, esp);
+		if(!x64)
+		{
+			mov(arg, esp);
 
-		push(edi);
-		push(esi);
-		push(ebx);
+			push(edi);
+			push(esi);
+			push(ebx);
 
-		push(ebp);
-		mov(ebp, esp);
-		stackUpdate =
-		sub(ebp, stackTop);
-		lea(esp, dword_ptr [ebp-128-12]);
-		and(ebp, 0xFFFFFFF0);
+			push(ebp);
+			mov(ebp, esp);
+			stackUpdate =
+			sub(ebp, stackTop);
+			lea(esp, dword_ptr [ebp-128-12]);
+			and(ebp, 0xFFFFFFF0);
+		}
+		else
+		{
+			push(rbp);
+			push(rbx);
+			push(r12);
+			push(r13);
+			push(r14);
+			push(r15);
+			stackUpdate =
+			sub(rsp, 32+stackTop+128);
+		}
 	};
 
 	OperandMEM32 CodeGenerator::argument(int i)
@@ -1749,12 +1771,25 @@ namespace SoftWire
 	{
 		cg = this;
 
-		add(esp, stackTop + 128 + 12);
-		pop(ebp);
+		if(!x64)
+		{
+			add(esp, stackTop+128+12);
+			pop(ebp);
 
-		pop(ebx);
-		pop(esi);
-		pop(edi);
+			pop(ebx);
+			pop(esi);
+			pop(edi);
+		}
+		else
+		{
+			add(rsp, 32+stackTop+128);
+			pop(r15);
+			pop(r14);
+			pop(r13);
+			pop(r12);
+			pop(rbx);
+			pop(rbp);
+		}
 
 		ret();
 	}

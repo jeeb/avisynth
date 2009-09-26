@@ -7,6 +7,10 @@
 #include <stdlib.h>
 #include <ctype.h>
 
+#ifdef __GNUC__
+	#include <sys/types.h>
+#endif
+
 namespace SoftWire
 {
 #ifdef WIN32
@@ -18,17 +22,24 @@ namespace SoftWire
 	static int (*snprintf)(char *buffer, size_t count, const char *format, ...) = _snprintf;
 #endif
 
-#ifdef __GNUG__
+#ifdef __GNUC__
+	typedef int64_t __int64;
+
 	inline int stricmp(const char *string1, const char *string2)
 	{
 		return strcasecmp(string1, string2);
+	}
+
+	inline int _getch()
+	{
+		return getch();
 	}
 #endif
 
 #ifndef strlwr
 	inline char *strlwr(char *string)
 	{
-		int n = strlen(string);
+		int n = (int)strlen(string);
 
 		for(int i = 0; i < n; i++)
 		{

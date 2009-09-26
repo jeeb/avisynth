@@ -150,9 +150,24 @@ namespace SoftWire
 		return syntax->encoding;
 	}
 
+	bool Instruction::is16Bit() const
+	{
+		return (syntax->flags & CPU_386) != CPU_386;
+	}
+
 	bool Instruction::is32Bit() const
 	{
 		return (syntax->flags & CPU_386) == CPU_386;
+	}
+
+	bool Instruction::is64Bit() const
+	{
+		return (syntax->flags & CPU_X64) == CPU_X64;
+	}
+
+	bool Instruction::isInvalid64() const
+	{
+		return (syntax->flags & CPU_INVALID64) == CPU_INVALID64;
 	}
 
 	int Instruction::approximateSize() const

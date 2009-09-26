@@ -13,7 +13,7 @@ namespace SoftWire
 		static void disableEmulateSSE();
 
 	protected:
-		Emulator();
+		Emulator(bool x64);
 
 		virtual ~Emulator();
 
@@ -102,7 +102,7 @@ namespace SoftWire
 
 		Encoding *cvtpi2ps(OperandXMMREG xmm, OperandMMREG mm);
 		Encoding *cvtpi2ps(OperandXMMREG xmm, OperandMEM64 mem64);
-		Encoding *cvtpi2ps(OperandXMMREG xmm, OperandR_M64 r_m64);
+		Encoding *cvtpi2ps(OperandXMMREG xmm, OperandMM64 r_m64);
 
 		Encoding *cvtps2pi(OperandMMREG mm, OperandXMMREG xmm);
 		Encoding *cvtps2pi(OperandMMREG mm, OperandMEM64 mem64);
@@ -197,11 +197,11 @@ namespace SoftWire
 
 		Encoding *pavgb(OperandMMREG mmi, OperandMMREG mmj);
 		Encoding *pavgb(OperandMMREG mm, OperandMEM64 m64);
-		Encoding *pavgb(OperandMMREG mm, OperandR_M64 r_m64);
+		Encoding *pavgb(OperandMMREG mm, OperandMM64 r_m64);
 
 		Encoding *pavgw(OperandMMREG mmi, OperandMMREG mmj);
 		Encoding *pavgw(OperandMMREG mm, OperandMEM64 m64);
-		Encoding *pavgw(OperandMMREG mm, OperandR_M64 r_m64);
+		Encoding *pavgw(OperandMMREG mm, OperandMM64 r_m64);
 
 		Encoding *pextrw(OperandREG32 r32, OperandMMREG mm, unsigned char c);
 		Encoding *pinsrw(OperandMMREG mm, OperandREG16 r16, unsigned char c);
@@ -210,23 +210,23 @@ namespace SoftWire
 
 		Encoding *pmaxsw(OperandMMREG mmi, OperandMMREG mmj);
 		Encoding *pmaxsw(OperandMMREG mm, OperandMEM64 m64);
-		Encoding *pmaxsw(OperandMMREG mm, OperandR_M64 r_m64);
+		Encoding *pmaxsw(OperandMMREG mm, OperandMM64 r_m64);
 
 		Encoding *pmaxub(OperandMMREG mmi, OperandMMREG mmj);
 		Encoding *pmaxub(OperandMMREG mm, OperandMEM64 m64);
-		Encoding *pmaxub(OperandMMREG mm, OperandR_M64 r_m64);
+		Encoding *pmaxub(OperandMMREG mm, OperandMM64 r_m64);
 
 		Encoding *pminsw(OperandMMREG mmi, OperandMMREG mmj);
 		Encoding *pminsw(OperandMMREG mm, OperandMEM64 m64);
-		Encoding *pminsw(OperandMMREG mm, OperandR_M64 r_m64);
+		Encoding *pminsw(OperandMMREG mm, OperandMM64 r_m64);
 
 		Encoding *pminub(OperandMMREG mmi, OperandMMREG mmj);
 		Encoding *pminub(OperandMMREG mm, OperandMEM64 m64);
-		Encoding *pminub(OperandMMREG mm, OperandR_M64 r_m64);
+		Encoding *pminub(OperandMMREG mm, OperandMM64 r_m64);
 
 		Encoding *pmulhuw(OperandMMREG mmi, OperandMMREG mmj);
 		Encoding *pmulhuw(OperandMMREG mm, OperandMEM64 m64);
-		Encoding *pmulhuw(OperandMMREG mm, OperandR_M64 r_m64);
+		Encoding *pmulhuw(OperandMMREG mm, OperandMM64 r_m64);
 
 		Encoding *prefetchnta(OperandMEM mem);
 		Encoding *prefetcht0(OperandMEM mem);
@@ -235,7 +235,7 @@ namespace SoftWire
 
 		Encoding *pshufw(OperandMMREG mmi, OperandMMREG mmj, unsigned char c);
 		Encoding *pshufw(OperandMMREG mm, OperandMEM64 m64, unsigned char c);
-		Encoding *pshufw(OperandMMREG mm, OperandR_M64 r_m64, unsigned char c);
+		Encoding *pshufw(OperandMMREG mm, OperandMM64 r_m64, unsigned char c);
 
 		Encoding *rcpps(OperandXMMREG xmmi, OperandXMMREG xmmj);
 		Encoding *rcpps(OperandXMMREG xmm, OperandMEM128 mem128);

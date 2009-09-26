@@ -8,7 +8,7 @@ namespace SoftWire
 
 	bool Emulator::emulateSSE = false;
 
-	Emulator::Emulator()
+	Emulator::Emulator(bool x64) : Optimizer(x64)
 	{
 	}
 
@@ -1102,7 +1102,7 @@ namespace SoftWire
 		return Optimizer::cvtpi2ps(xmm, mem64);
 	}
 
-	Encoding *Emulator::cvtpi2ps(OperandXMMREG xmm, OperandR_M64 r_m64)
+	Encoding *Emulator::cvtpi2ps(OperandXMMREG xmm, OperandMM64 r_m64)
 	{
 		if(r_m64.type == Operand::OPERAND_MMREG) return cvtpi2ps(xmm, (OperandMMREG)r_m64);
 		else                                     return cvtpi2ps(xmm, (OperandMEM64)r_m64);
@@ -1185,7 +1185,7 @@ namespace SoftWire
 
 			fstcw(word_ptr [&fpuCW1]);
 			fstcw(word_ptr [&fpuCW2]);
-			or(word_ptr [&fpuCW2], (short)0x0C00);
+			or(word_ptr [&fpuCW2], (unsigned short)0x0C00);
 			fldcw(word_ptr [&fpuCW2]);
 
 			fld(dword_ptr [&sse[i][0]]);
@@ -1214,7 +1214,7 @@ namespace SoftWire
 
 			fstcw(word_ptr [&fpuCW1]);
 			fstcw(word_ptr [&fpuCW2]);
-			or(word_ptr [&fpuCW2], (short)0x0C00);
+			or(word_ptr [&fpuCW2], (unsigned short)0x0C00);
 			fldcw(word_ptr [&fpuCW2]);
 
 			fld((OperandMEM32)(mem64+0));
@@ -1348,7 +1348,7 @@ namespace SoftWire
 
 			fstcw(word_ptr [&fpuCW1]);
 			fstcw(word_ptr [&fpuCW2]);
-			or(word_ptr [&fpuCW2], (short)0x0C00);
+			or(word_ptr [&fpuCW2], (unsigned short)0x0C00);
 			fldcw(word_ptr [&fpuCW2]);
 
 			fld(dword_ptr [&sse[i][0]]);
@@ -1374,7 +1374,7 @@ namespace SoftWire
 
 			fstcw(word_ptr [&fpuCW1]);
 			fstcw(word_ptr [&fpuCW2]);
-			or(word_ptr [&fpuCW2], (short)0x0C00);
+			or(word_ptr [&fpuCW2], (unsigned short)0x0C00);
 			fldcw(word_ptr [&fpuCW2]);
 
 			fld(mem32);
@@ -2562,8 +2562,52 @@ namespace SoftWire
 		
 		return Optimizer::pavgb(mm, m64);
 	}
+/*
+					mov			edi, src1p
+					mov			esi, src2p
+					mov			ebx, myy
+					movq		mm0, ox7f7f7f7f7f7f7f7f	;get shift mask
 
-	Encoding *Emulator::pavgb(OperandMMREG mm, OperandR_M64 r_m64)
+				fastyuy32loop:
+						mov         edx, myx
+						xor         ecx, ecx
+						shr			edx,1
+
+				    	align 16
+					fastyuy32xloop:
+							//---- fetch src1/dest
+
+							movq		mm7, [edi + ecx*8] ;src1/dest;
+							movq		mm6, [esi + ecx*8] ;src2
+							movq		mm5, mm7
+							pxor		mm7, mm6
+# if 1			// ------------------------------------------------
+						// Use (a + b + 1) >> 1 = (a | b) - ((a ^ b) >> 1)
+							por			mm6, mm5
+							psrlq		mm7, 1		// Fuck Intel! Where is psrlb
+							inc         ecx
+							pand		mm7, mm0
+							psubb		mm6, mm7
+# else			// ------------------------------------------------
+						// Use (a + b) >> 1 = (a & b) + ((a ^ b) >> 1)
+							pand		mm6, mm5
+							psrlq		mm7, 1		// Fuck Intel! Where is psrlb
+							inc         ecx
+							pand		mm7, mm0
+							paddb		mm6, mm7
+# endif			// ------------------------------------------------
+							cmp         ecx, edx
+							movq        [edi + ecx*8 - 8],mm6
+						jnz         fastyuy32xloop
+
+						add			edi, src1_pitch
+						add			esi, src2_pitch
+						dec		ebx
+					jnz		fastyuy32loop
+					emms
+*/
+
+	Encoding *Emulator::pavgb(OperandMMREG mm, OperandMM64 r_m64)
 	{
 		if(r_m64.type == Operand::OPERAND_MMREG) return pavgb(mm, (OperandMMREG)r_m64);
 		else                                     return pavgb(mm, (OperandMEM64)r_m64);
@@ -2655,7 +2699,7 @@ namespace SoftWire
 		return Optimizer::pavgw(mm, m64);
 	}
 
-	Encoding *Emulator::pavgw(OperandMMREG mm, OperandR_M64 r_m64)
+	Encoding *Emulator::pavgw(OperandMMREG mm, OperandMM64 r_m64)
 	{
 		if(r_m64.type == Operand::OPERAND_MMREG) return pavgw(mm, (OperandMMREG)r_m64);
 		else                                     return pavgw(mm, (OperandMEM64)r_m64);
@@ -2737,7 +2781,7 @@ namespace SoftWire
 		return Optimizer::pmaxsw(mm, m64);
 	}
 
-	Encoding *Emulator::pmaxsw(OperandMMREG mm, OperandR_M64 r_m64)
+	Encoding *Emulator::pmaxsw(OperandMMREG mm, OperandMM64 r_m64)
 	{
 		if(emulateSSE)
 		{
@@ -2767,7 +2811,7 @@ namespace SoftWire
 		return Optimizer::pmaxub(mm, m64);
 	}
 
-	Encoding *Emulator::pmaxub(OperandMMREG mm, OperandR_M64 r_m64)
+	Encoding *Emulator::pmaxub(OperandMMREG mm, OperandMM64 r_m64)
 	{
 		if(emulateSSE)
 		{
@@ -2797,7 +2841,7 @@ namespace SoftWire
 		return Optimizer::pminsw(mm, m64);
 	}
 
-	Encoding *Emulator::pminsw(OperandMMREG mm, OperandR_M64 r_m64)
+	Encoding *Emulator::pminsw(OperandMMREG mm, OperandMM64 r_m64)
 	{
 		if(emulateSSE)
 		{
@@ -2827,7 +2871,7 @@ namespace SoftWire
 		return Optimizer::pminub(mm, m64);
 	}
 
-	Encoding *Emulator::pminub(OperandMMREG mm, OperandR_M64 r_m64)
+	Encoding *Emulator::pminub(OperandMMREG mm, OperandMM64 r_m64)
 	{
 		if(emulateSSE)
 		{
@@ -2914,7 +2958,7 @@ namespace SoftWire
 		return Optimizer::pmulhuw(mm, m64);
 	}
 
-	Encoding *Emulator::pmulhuw(OperandMMREG mm, OperandR_M64 r_m64)
+	Encoding *Emulator::pmulhuw(OperandMMREG mm, OperandMM64 r_m64)
 	{
 		if(r_m64.type == Operand::OPERAND_MMREG) return pmulhuw(mm, (OperandMMREG)r_m64);
 		else                                     return pmulhuw(mm, (OperandMEM64)r_m64);
@@ -3017,7 +3061,7 @@ namespace SoftWire
 		return Optimizer::pshufw(mm, m64, c);
 	}
 
-	Encoding *Emulator::pshufw(OperandMMREG mm, OperandR_M64 r_m64, unsigned char c)
+	Encoding *Emulator::pshufw(OperandMMREG mm, OperandMM64 r_m64, unsigned char c)
 	{
 		if(r_m64.type == Operand::OPERAND_MMREG) return pshufw(mm, (OperandMMREG)r_m64, c);
 		else                                     return pshufw(mm, (OperandMEM64)r_m64, c);

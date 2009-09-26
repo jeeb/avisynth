@@ -11,7 +11,7 @@ namespace SoftWire
 	class Loader
 	{
 	public:
-		Loader(const Linker &linker);
+		Loader(const Linker &linker, bool x64 = false); // Default to true on X64 platform
 
 		virtual ~Loader();
 
@@ -34,6 +34,7 @@ namespace SoftWire
 		unsigned char *machineCode;
 		char *listing;
 
+		const bool x64;   // Long mode
 		bool possession;
 		bool finalized;
 

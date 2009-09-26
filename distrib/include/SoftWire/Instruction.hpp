@@ -36,6 +36,7 @@ namespace SoftWire
 		BYTE_IMM	= ('i' << 8) | 'b',
 		WORD_IMM	= ('i' << 8) | 'w',
 		DWORD_IMM	= ('i' << 8) | 'd',
+		QWORD_IMM	= ('i' << 8) | 'q',
 		BYTE_REL	= ('-' << 8) | 'b',
 		DWORD_REL	= ('-' << 8) | 'i',
 		LOCK_PRE	= ('p' << 8) | '0',
@@ -79,7 +80,14 @@ namespace SoftWire
 			CPU_SMM			= 0x00040000,   // System Management Mode, standby mode
 
 			CPU_UNDOC		= 0x00080000,   // Undocumented, also not supported by Visual Studio inline assembler
-			CPU_PRIV		= 0x00100000    // Priviledged, run-time compiled OS kernel anyone?
+			CPU_PRIV		= 0x00100000,   // Priviledged
+
+			CPU_X64			= 0x00200000 | CPU_SSE2,    // x86-64
+			CPU_INVALID64	= 0x00400000,    // Invalid instruction in x86-64 long mode
+
+			CPU_SSSE3		= 0x00800000 | CPU_PNI,
+			CPU_SSE4_1		= 0x01000000 | CPU_SSSE3,
+			CPU_SSE4_2	= 0x02000000 | CPU_SSE4_1
 		};
 
 		struct Syntax
@@ -105,7 +113,10 @@ namespace SoftWire
 		const char *getOperandSyntax() const;
 		const char *getEncoding() const;
 		
+		bool is16Bit() const;
 		bool is32Bit() const;
+		bool is64Bit() const;
+		bool isInvalid64() const;
 
 		int approximateSize() const;
 
