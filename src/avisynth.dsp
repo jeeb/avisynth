@@ -44,7 +44,7 @@ RSC=rc.exe
 # PROP Ignore_Export_Lib 0
 # PROP Target_Dir ""
 # ADD BASE CPP /nologo /MT /W3 /GX /O2 /D "WIN32" /D "NDEBUG" /D "_WINDOWS" /D "_MBCS" /D "_USRDLL" /D "AVISYNTH_EXPORTS" /YX /FD /c
-# ADD CPP /nologo /G6 /MD /W3 /GX /Zd /O2 /Op /Ob2 /D "NDEBUG" /D "INC_OLE2" /D "STRICT" /D "WIN32" /D "_WIN32" /D "_MT" /D "_DLL" /D "_MBCS" /D "_USRDLL" /D "AVISYNTH_C_EXPORTS" /Fr /Yu"stdafx.h" /FD /Gs /GF /c
+# ADD CPP /nologo /G6 /MD /W4 /GX /Zd /O2 /Op /Ob2 /D "NDEBUG" /D "INC_OLE2" /D "STRICT" /D "WIN32" /D "_WIN32" /D "_MT" /D "_DLL" /D "_MBCS" /D "_USRDLL" /D "AVISYNTH_C_EXPORTS" /Fr /Yu"stdafx.h" /FD /Gs /GF /c
 # ADD BASE MTL /nologo /D "NDEBUG" /mktyplib203 /win32
 # ADD MTL /nologo /D "NDEBUG" /mktyplib203 /win32
 # ADD BASE RSC /l 0x409 /d "NDEBUG"
@@ -84,7 +84,7 @@ PostBuild_Cmds=copy ..\distrib\bin\devil.dll $(SystemRoot)\system32
 # PROP Ignore_Export_Lib 0
 # PROP Target_Dir ""
 # ADD BASE CPP /nologo /MTd /W3 /Gm /GX /ZI /Od /D "WIN32" /D "_DEBUG" /D "_WINDOWS" /D "_MBCS" /D "_USRDLL" /D "AVISYNTH_EXPORTS" /YX /FD /GZ /c
-# ADD CPP /nologo /G6 /MDd /W3 /Gm /GX /ZI /Od /D "IL_DEBUG" /D "_DEBUG" /D "DEBUG" /D "INC_OLE2" /D "STRICT" /D "WIN32" /D "_WIN32" /D "_MT" /D "_DLL" /D "_MBCS" /D "_USRDLL" /D "AVISYNTH_C_EXPORTS" /Fr /Yu"stdafx.h" /FD /GZ /GF /c
+# ADD CPP /nologo /G6 /MDd /W4 /Gm /GX /ZI /Od /D "IL_DEBUG" /D "_DEBUG" /D "DEBUG" /D "INC_OLE2" /D "STRICT" /D "WIN32" /D "_WIN32" /D "_MT" /D "_DLL" /D "_MBCS" /D "_USRDLL" /D "AVISYNTH_C_EXPORTS" /Fr /Yu"stdafx.h" /FD /GZ /GF /c
 # ADD BASE MTL /nologo /D "_DEBUG" /mktyplib203 /win32
 # ADD MTL /nologo /D "_DEBUG" /mktyplib203 /win32
 # ADD BASE RSC /l 0x409 /d "_DEBUG"
@@ -116,7 +116,7 @@ PostBuild_Cmds=copy Debug\avisynth.dll $(SystemRoot)\system32	copy ..\distrib\bi
 # PROP Ignore_Export_Lib 0
 # PROP Target_Dir ""
 # ADD BASE CPP /nologo /G6 /MD /W3 /GX /Zd /O2 /Op /Ob2 /D "NDEBUG" /D "INC_OLE2" /D "STRICT" /D "WIN32" /D "_WIN32" /D "_MT" /D "_DLL" /D "_MBCS" /D "_USRDLL" /D "AVISYNTH_C_EXPORTS" /Fr /Yu"stdafx.h" /FD /Gs /GF /c
-# ADD CPP /G6 /MD /W3 /GX /Zi /O2 /Op /Ob2 /D "NDEBUG" /D "INC_OLE2" /D "STRICT" /D "WIN32" /D "_WIN32" /D "_MT" /D "_DLL" /D "_MBCS" /D "_USRDLL" /D "AVISYNTH_C_EXPORTS" /FAs /FR /Yu"stdafx.h" /FD /Gs /GF /c
+# ADD CPP /G6 /MD /W4 /GX /Zi /O2 /Op /Ob2 /D "NDEBUG" /D "INC_OLE2" /D "STRICT" /D "WIN32" /D "_WIN32" /D "_MT" /D "_DLL" /D "_MBCS" /D "_USRDLL" /D "AVISYNTH_C_EXPORTS" /FAs /FR /Yu"stdafx.h" /FD /Gs /GF /c
 # SUBTRACT CPP /nologo
 # ADD BASE MTL /nologo /D "NDEBUG" /mktyplib203 /win32
 # ADD MTL /D "NDEBUG" /mktyplib203 /win32
@@ -237,6 +237,7 @@ SOURCE=.\internal.h
 # Begin Source File
 
 SOURCE=.\core\main.cpp
+# ADD CPP /W3
 # SUBTRACT CPP /YX /Yc /Yu
 # End Source File
 # Begin Source File
@@ -638,6 +639,7 @@ SOURCE=.\sources\avi\AVIIndex.h
 # Begin Source File
 
 SOURCE=.\sources\avi\AVIReadHandler.cpp
+# ADD CPP /W3
 # End Source File
 # Begin Source File
 
@@ -690,6 +692,7 @@ SOURCE=.\sources\avi\list.h
 # Begin Source File
 
 SOURCE=.\sources\avi\VD_Audio.cpp
+# ADD CPP /W3
 # End Source File
 # Begin Source File
 
@@ -832,7 +835,7 @@ SOURCE=.\core\resource.h
 # Begin Source File
 
 SOURCE=.\stdafx.cpp
-# ADD CPP /Yc"stdafx.h"
+# ADD CPP /W3 /Yc"stdafx.h"
 # End Source File
 # Begin Source File
 
