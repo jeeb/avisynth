@@ -39,8 +39,9 @@
 
 #include "../internal.h"
 #include "convert_matrix.h"
+#include "../filters/resample.h"
 
-enum {Rec601=0, Rec709=1, PC_601=2, PC_709=3 };
+enum {Rec601=0, Rec709=1, PC_601=2, PC_709=3, AVERAGE=4 };
 
 static int getMatrix( const char* matrix, IScriptEnvironment* env) {
   if (matrix) {
@@ -56,11 +57,18 @@ static int getMatrix( const char* matrix, IScriptEnvironment* env) {
       return PC_601;
     else if (!lstrcmpi(matrix, "PC709"))
       return PC_709;
+    else if (!lstrcmpi(matrix, "AVERAGE"))
+      return AVERAGE;
   }
   env->ThrowError("Convert: Unknown colormatrix");
   return Rec601; // Default colorspace conversion for AviSynth
 }
 
+enum   {PLACEMENT_MPEG2, PLACEMENT_MPEG1, PLACEMENT_DV } ;
+
+static int getPlacement( const char* placement, IScriptEnvironment* env);
+
+static ResamplingFunction* getResampler( const char* resampler, IScriptEnvironment* env);
 
 
 class ConvertToY8 : public GenericVideoFilter
@@ -131,14 +139,18 @@ public:
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
   static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env);
 private:
-  void conv422toYUV422(const unsigned char *py, const unsigned char *pu, const unsigned char *pv, unsigned char *dst, 
+  void conv422toYUV422(const unsigned char *py, const unsigned char *pu,
+					   const unsigned char *pv, unsigned char *dst,
 					   int pitch1Y, int pitch1UV, int pitch2, int width, int height);
 };
 
 class ConvertToPlanarGeneric : public GenericVideoFilter
 {
 public:
-  ConvertToPlanarGeneric(PClip src, int dst_space, bool interlaced, AVSValue* UsubsSampling, AVSValue* VsubsSampling, IScriptEnvironment* env);
+  ConvertToPlanarGeneric(PClip src, int dst_space, bool interlaced,
+                         AVSValue* UsubsSampling, AVSValue* VsubsSampling,
+                         int cp,  const AVSValue* ChromaResampler,
+                         IScriptEnvironment* env);
   ~ConvertToPlanarGeneric() {}
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
   static AVSValue __cdecl CreateYV12(AVSValue args, void*, IScriptEnvironment* env);   
