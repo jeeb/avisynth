@@ -61,6 +61,7 @@ class AVISource : public IClip {
   bool ex;
   bool dropped_frame;
   bool bIsType1;
+  bool bInvertFrames;
 
   PVideoFrame last_frame;
   int last_frame_no;
@@ -206,7 +207,8 @@ void AVISource::LocateVideoCodec(const char fourCC[], IScriptEnvironment* env) {
   // type-1 DV, we're going to have to fake it.
 
   if (bIsType1) {
-    if (!(pbiSrc = (BITMAPINFOHEADER *)malloc(size))) env->ThrowError("AviSource: Could not allocate BITMAPINFOHEADER.");
+    pbiSrc = (BITMAPINFOHEADER *)malloc(size);
+    if (!pbiSrc) env->ThrowError("AviSource: Could not allocate BITMAPINFOHEADER.");
 
     pbiSrc->biSize      = sizeof(BITMAPINFOHEADER);
     pbiSrc->biWidth     = 720;
@@ -232,7 +234,7 @@ void AVISource::LocateVideoCodec(const char fourCC[], IScriptEnvironment* env) {
   }
 
   vi.width = pbiSrc->biWidth;
-  vi.height = pbiSrc->biHeight;
+  vi.height = pbiSrc->biHeight < 0 ? -pbiSrc->biHeight : pbiSrc->biHeight;
   vi.SetFPS(asi.dwRate, asi.dwScale);
   vi.num_frames = asi.dwLength;
 
@@ -251,8 +253,10 @@ void AVISource::LocateVideoCodec(const char fourCC[], IScriptEnvironment* env) {
     vi.pixel_type = VideoInfo::CS_I420;
   } else if (pbiSrc->biCompression == BI_RGB && pbiSrc->biBitCount == 32) {
     vi.pixel_type = VideoInfo::CS_BGR32;
+    if (pbiSrc->biHeight < 0) bInvertFrames = true;
   } else if (pbiSrc->biCompression == BI_RGB && pbiSrc->biBitCount == 24) {
     vi.pixel_type = VideoInfo::CS_BGR24;
+    if (pbiSrc->biHeight < 0) bInvertFrames = true;
   } else if (pbiSrc->biCompression == '008Y') {
     vi.pixel_type = VideoInfo::CS_Y8;
   } else if (pbiSrc->biCompression == '  8Y') {
@@ -300,6 +304,7 @@ AVISource::AVISource(const char filename[], bool fAudio, const char pixel_type[]
   pfile=0;
   bIsType1 = false;
   hic = 0;
+  bInvertFrames = false;
 
   AVIFileInit();
   try {
@@ -593,12 +598,13 @@ PVideoFrame AVISource::GetFrame(int n, IScriptEnvironment* env) {
     if (last_frame_no < n && last_frame_no >= keyframe)
       keyframe = last_frame_no+1;
     if (keyframe < 0) keyframe = 0;
-    bool not_found_yet=false;
+    bool not_found_yet;
 
     PVideoFrame frame = env->NewVideoFrame(vi, -4);
     BYTE* frameWritePtr = frame->GetWritePtr();
 
     do {
+      not_found_yet=false;
       for (int i = keyframe; i <= n; ++i) {
         LRESULT error = DecompressFrame(i, i != n, frameWritePtr);
         // we don't want dropped frames to throw an error
@@ -617,6 +623,23 @@ PVideoFrame AVISource::GetFrame(int n, IScriptEnvironment* env) {
           env->ThrowError("AVISource: could not find valid keyframe for frame %d.", n);
         }
       }
+      else if (bInvertFrames) {
+        const int h2 = frame->GetHeight() >> 1;
+        const int w4 = frame->GetPitch() >> 2;
+        long *pT = (long *)frameWritePtr;
+        long *pB = pT + w4 * (frame->GetHeight() - 1);
+
+        // Inplace flip RGB frame
+        for(int y=0; y<h2; ++y) {
+          for(int x=0; x<w4; ++x) {
+            const long t = pT[x];
+            pT[x] = pB[x];
+            pB[x] = t;
+          }
+          pT += w4;
+          pB -= w4;
+        }
+      }
 
     } while(not_found_yet);
   }
@@ -627,7 +650,7 @@ void AVISource::GetAudio(void* buf, __int64 start, __int64 count, IScriptEnviron
   __int64 bytes_read=0, samples_read=0;
 
   if (start < 0) {
-    int bytes = vi.BytesFromAudioSamples(min(-start, count));
+    int bytes = (int)vi.BytesFromAudioSamples(min(-start, count));
     memset(buf, 0, bytes);
     buf = (char*)buf + bytes;
     count -= vi.AudioSamplesFromBytes(bytes);
@@ -637,12 +660,12 @@ void AVISource::GetAudio(void* buf, __int64 start, __int64 count, IScriptEnviron
   if (audioStreamSource) {
     if (start != audio_stream_pos)
         audioStreamSource->Seek(start);
-    samples_read = audioStreamSource->Read(buf, count, (long *)&bytes_read);
+    samples_read = audioStreamSource->Read(buf, (long)count, (long *)&bytes_read);
     audio_stream_pos = start + samples_read;
   }
 
   if (samples_read < count)
-    memset((char*)buf + bytes_read, 0, vi.BytesFromAudioSamples(count) - bytes_read);
+    memset((char*)buf + bytes_read, 0, (size_t)(vi.BytesFromAudioSamples(count) - bytes_read));
 }
 
 bool AVISource::GetParity(int n) { return false; }
