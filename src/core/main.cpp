@@ -134,6 +134,8 @@ private:
 
     CRITICAL_SECTION cs_filter_graph;
 
+    bool VDubPlanarHack;
+
     bool DelayInit();
     bool DelayInit2();
 
@@ -553,6 +555,8 @@ CAVIFileSynth::CAVIFileSynth(const CLSID& rclsid) {
 
     error_msg = 0;
 
+    VDubPlanarHack = false;
+
     InitializeCriticalSection(&cs_filter_graph);
 }
 
@@ -667,6 +671,14 @@ bool CAVIFileSynth::DelayInit2() {
           throw AvisynthError("Avisynth error: YV12 images for output must have a width divisible by 4 (use crop)!");
         if (vi->IsYUY2()&&(vi->width&3))
           throw AvisynthError("Avisynth error: YUY2 images for output must have a width divisible by 4 (use crop)!");
+
+        // Hack YV16 and YV24 chroma plane order for old VDub's
+        try {
+          AVSValue v = env->GetVar("OPT_VDubPlanarHack");
+          VDubPlanarHack = v.IsBool() ? v.AsBool() : false;
+        }
+        catch (IScriptEnvironment::NotFound) { }
+
       }
       catch (AvisynthError error) {
         error_msg = error.msg;
@@ -767,7 +779,7 @@ STDMETHODIMP CAVIFileSynth::Info(AVIFILEINFOW *pfi, LONG lSize) {
 
 static inline char BePrintable(int ch) {
   ch &= 0xff;
-  return isprint(ch) ? ch : '.';
+  return (char)(isprint(ch) ? ch : '.');
 }
 
 
@@ -1015,9 +1027,14 @@ void CAVIStreamSynth::ReadFrame(void* lpBuffer, int n) {
   int out_pitchUV = (frame->GetRowSize(PLANAR_U)+3) & -4;
 
   // Set default VFW output plane order.
-  // VDub wants YUV for YV24 and YV16 and YVU for YV12.
-  int plane1 = PLANAR_U;
-  int plane2 = PLANAR_V;
+  int plane1 = PLANAR_V;
+  int plane2 = PLANAR_U;
+
+  // Old VDub wants YUV for YV24 and YV16 and YVU for YV12.
+  if (parent->VDubPlanarHack) {
+    plane1 = PLANAR_U;
+    plane2 = PLANAR_V;
+  }
 
   if (vi.IsYV12()) {  // We know this has special alignment.
     out_pitchUV = out_pitch / 2;
@@ -1028,12 +1045,12 @@ void CAVIStreamSynth::ReadFrame(void* lpBuffer, int n) {
   BitBlt((BYTE*)lpBuffer, out_pitch, frame->GetReadPtr(), pitch, row_size, height);
 
   BitBlt((BYTE*)lpBuffer + (out_pitch*height),
-         out_pitchUV,               frame->GetReadPtr(plane1),
+         out_pitchUV,             frame->GetReadPtr(plane1),
 		 frame->GetPitch(plane1), frame->GetRowSize(plane1),
 		 frame->GetHeight(plane1) );
 
   BitBlt((BYTE*)lpBuffer + (out_pitch*height + frame->GetHeight(plane1)*out_pitchUV),
-         out_pitchUV,               frame->GetReadPtr(plane2),
+         out_pitchUV,             frame->GetReadPtr(plane2),
 		 frame->GetPitch(plane2), frame->GetRowSize(plane2),
 		 frame->GetHeight(plane2) );
 }
