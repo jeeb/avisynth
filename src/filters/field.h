@@ -257,12 +257,13 @@ private:
 };
 
 class SelectRangeEvery : public GenericVideoFilter {
-	int every, length;
+  int every, length;
   bool audio;
+  PClip achild;
 public:
-	SelectRangeEvery(PClip _child, int _every, int _length, int _offset, bool _audio, IScriptEnvironment* env);
-	PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
-	bool __stdcall GetParity(int n);
+  SelectRangeEvery(PClip _child, int _every, int _length, int _offset, bool _audio, IScriptEnvironment* env);
+  PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
+  bool __stdcall GetParity(int n);
   static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env);
   void __stdcall SelectRangeEvery::GetAudio(void* buf, __int64 start, __int64 count, IScriptEnvironment* env);
 
@@ -276,7 +277,5 @@ static AVSValue __cdecl Create_Weave(AVSValue args, void*, IScriptEnvironment* e
 static AVSValue __cdecl Create_Pulldown(AVSValue args, void*, IScriptEnvironment* env);
 static AVSValue __cdecl Create_SwapFields(AVSValue args, void*, IScriptEnvironment* env);
 static AVSValue __cdecl Create_Bob(AVSValue args, void*, IScriptEnvironment* env);
-static PClip new_SeparateFields(PClip _child, IScriptEnvironment* env);
-static PClip new_AssumeFrameBased(PClip _child);
 
 #endif  // __Field_H__

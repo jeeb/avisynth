@@ -331,7 +331,7 @@ PVideoFrame __stdcall Fieldwise::GetFrame(int n, IScriptEnvironment* env)
  ********   Factory Methods   *******
  ***********************************/
 
-AVSValue __cdecl Create_DoubleWeave(AVSValue args, void*, IScriptEnvironment* env) 
+static AVSValue __cdecl Create_DoubleWeave(AVSValue args, void*, IScriptEnvironment* env) 
 {
   PClip clip = args[0].AsClip();
   if (clip->GetVideoInfo().IsFieldBased())
@@ -341,7 +341,7 @@ AVSValue __cdecl Create_DoubleWeave(AVSValue args, void*, IScriptEnvironment* en
 }
 
 
-AVSValue __cdecl Create_Weave(AVSValue args, void*, IScriptEnvironment* env) 
+static AVSValue __cdecl Create_Weave(AVSValue args, void*, IScriptEnvironment* env) 
 {
   PClip clip = args[0].AsClip();
   if (!clip->GetVideoInfo().IsFieldBased())
@@ -350,7 +350,7 @@ AVSValue __cdecl Create_Weave(AVSValue args, void*, IScriptEnvironment* env)
 }
 
 
-AVSValue __cdecl Create_Pulldown(AVSValue args, void*, IScriptEnvironment* env) 
+static AVSValue __cdecl Create_Pulldown(AVSValue args, void*, IScriptEnvironment* env) 
 {
   PClip clip = args[0].AsClip();
   PClip* child_array = new PClip[2];
@@ -360,19 +360,19 @@ AVSValue __cdecl Create_Pulldown(AVSValue args, void*, IScriptEnvironment* env)
 }
 
 
-AVSValue __cdecl Create_SwapFields(AVSValue args, void*, IScriptEnvironment* env) 
+static AVSValue __cdecl Create_SwapFields(AVSValue args, void*, IScriptEnvironment* env) 
 {
   return new SelectEvery(new DoubleWeaveFields(new ComplementParity(
     new SeparateFields(args[0].AsClip(), env))), 2, 0);
 }
 
 
-AVSValue __cdecl Create_Bob(AVSValue args, void*, IScriptEnvironment* env)
+static AVSValue __cdecl Create_Bob(AVSValue args, void*, IScriptEnvironment* env)
 {
 	try {	// HIDE DAMN SEH COMPILER BUG!!!
   PClip clip = args[0].AsClip();
   if (!clip->GetVideoInfo().IsFieldBased()) 
-    clip = new_SeparateFields(clip, env);
+    clip = new SeparateFields(clip, env);
   
   const VideoInfo& vi = clip->GetVideoInfo();
 
@@ -380,7 +380,7 @@ AVSValue __cdecl Create_Bob(AVSValue args, void*, IScriptEnvironment* env)
   const double c = args[2].AsDblDef(1./3.);
   const int new_height = args[3].AsInt(vi.height*2);
   MitchellNetravaliFilter filter(b, c);
-  return new_AssumeFrameBased(new Fieldwise(new FilteredResizeV(clip, -0.25, vi.height, 
+  return new AssumeFrameBased(new Fieldwise(new FilteredResizeV(clip, -0.25, vi.height, 
                                                                 new_height, &filter, env),
                                             new FilteredResizeV(clip, +0.25, vi.height, 
                                                                 new_height, &filter, env)));  
@@ -389,22 +389,11 @@ AVSValue __cdecl Create_Bob(AVSValue args, void*, IScriptEnvironment* env)
 }
 
 
-PClip new_SeparateFields(PClip _child, IScriptEnvironment* env) 
-{
-  return new SeparateFields(_child, env);
-}
-
-
-PClip new_AssumeFrameBased(PClip _child) 
-{
-  return new AssumeFrameBased(_child);
-}
-
-
-
 SelectRangeEvery::SelectRangeEvery(PClip _child, int _every, int _length, int _offset, bool _audio, IScriptEnvironment* env)
-    : GenericVideoFilter(_child), audio(_audio)
+    : GenericVideoFilter(_child), audio(_audio), achild(_child)
 {
+  const __int64 num_audio_samples = vi.num_audio_samples;
+
   AVSValue trimargs[3] = { _child, _offset, 0};
   PClip c = env->Invoke("Trim",AVSValue(trimargs,3)).AsClip();
   child = c;
@@ -416,8 +405,10 @@ SelectRangeEvery::SelectRangeEvery(PClip _child, int _every, int _length, int _o
   const int n = vi.num_frames;
   vi.num_frames = (n/every)*length+(n%every<length?n%every:length);
 
-  if (vi.HasAudio()) {
+  if (audio && vi.HasAudio()) {
     vi.num_audio_samples = vi.AudioSamplesFromFrames(vi.num_frames);
+  } else {
+    vi.num_audio_samples = num_audio_samples; // Undo Trim's work!
   }
 }
 
@@ -437,7 +428,8 @@ bool __stdcall SelectRangeEvery::GetParity(int n)
 void __stdcall SelectRangeEvery::GetAudio(void* buf, __int64 start, __int64 count, IScriptEnvironment* env)
 {
   if (!audio) {
-    child->GetAudio(buf, start, count, env);
+	// Use original unTrim'd child
+    achild->GetAudio(buf, start, count, env);
     return;
   }
 
@@ -453,7 +445,8 @@ void __stdcall SelectRangeEvery::GetAudio(void* buf, __int64 start, __int64 coun
     const int iteration_left = length - iteration_into;           // How many frames is left of this iteration.
 
     const __int64 iteration_left_samples = vi.AudioSamplesFromFrames(iteration_left);
-    const __int64 getsamples = min(iteration_left_samples, count-samples_filled);   // This is the number of samples we can get without either having to skip, or being finished.
+    // This is the number of samples we can get without either having to skip, or being finished.
+    const __int64 getsamples = min(iteration_left_samples, count-samples_filled);
     const __int64 start_offset = vi.AudioSamplesFromFrames(iteration * every + iteration_into) + general_offset;
 
     child->GetAudio(&samples[samples_filled*bps], start_offset, getsamples, env);
