@@ -1399,8 +1399,143 @@ DynamicAssembledCode FilteredResizeV::GenerateResizer(int gen_plane, bool aligne
   x86.push(           edi);
   x86.push(           ebp);
 
-  if (ssse3 && fir_filter_size <= 8) { // We will get too many rounding errors. Probably only lanczos etc
-                                       // if taps parameter is large and very high downscale ratios. 
+  if (fir_filter_size == 1) {                 // Fast PointResize
+// eax ebx ecx edx esi edi ebp
+// mm0 mm1 mm2 mm3 mm4 mm5 mm6 mm7
+// xmm0 XMM1 xmm2 XMM3 xmm4 XMM5 xmm6 XMM7
+    x86.mov(          edx, (int)cur);              // edx = &array[1] -> start_pos
+    x86.mov(          ebx, dword_ptr[(int)&dst_pitch]);
+    x86.mov(          ebp, dword_ptr[(int)&dstp]);
+    x86.mov(          edi, y);                     // edi = vi.height
+
+    x86.align(16);
+x86.label("yloop");
+    x86.mov(          esi, dword_ptr[(int)&yOfs2]);// int pitch_table[height] = {0, src_pitch, src_pitch*2, ...}
+    x86.mov(          eax, dword_ptr[edx]);        // eax = *cur = start_pos
+    x86.lea(          edx, dword_ptr[edx+(fir_filter_size*4)+4]); // cur += fir_filter_size+1
+    x86.mov(          esi, dword_ptr[esi+eax*4]);  // esi = yOfs[*cur] = start_pos * src_pitch
+    x86.mov(          eax, ebp);                   // eax = dstp
+    x86.add(          esi, dword_ptr[(int)&srcp]); // esi = srcp + yOfs[*cur] = srcp + start_pos * src_pitch
+    x86.add(          ebp, ebx);                   // dstp += dst_pitch
+                 
+    if (sse2) {
+      int ploops = xloops / 64;
+      int plrem  = xloops % 64;
+      if (!plrem && ploops) {
+        ploops -=  1;
+        plrem  += 64;
+      }
+      if (ploops>1) {
+        x86.mov(      ecx, ploops);
+        x86.align(16);
+x86.label("xloop");
+      }
+      if (ploops) {
+        if (aligned) {
+          x86.movdqa( xmm0, xmmword_ptr[esi+ 0]);  // xmm0 = *(srcp2= srcp + x) = p|o|n|m|l|k|j|i|h|g|f|e|d|c|b|a
+          x86.movdqa( xmm2, xmmword_ptr[esi+16]);
+          x86.movdqa( xmm4, xmmword_ptr[esi+32]);
+          x86.movdqa( xmm6, xmmword_ptr[esi+48]);
+        } else if (sse3) {
+          x86.lddqu(  xmm0, xmmword_ptr[esi+ 0]); // SSE3
+          x86.lddqu(  xmm2, xmmword_ptr[esi+16]);
+          x86.lddqu(  xmm4, xmmword_ptr[esi+32]);
+          x86.lddqu(  xmm6, xmmword_ptr[esi+48]);
+        } else {
+          x86.movdqu( xmm0, xmmword_ptr[esi+ 0]);
+          x86.movdqu( xmm2, xmmword_ptr[esi+16]);
+          x86.movdqu( xmm4, xmmword_ptr[esi+32]);
+          x86.movdqu( xmm6, xmmword_ptr[esi+48]);
+        }
+        x86.add(      esi, 64);
+
+        x86.movdqa(   xmmword_ptr[eax+ 0], xmm0);   // dstp[x] = p|o|n|m|l|k|j|i|h|g|f|e|d|c|b|a
+        x86.movdqa(   xmmword_ptr[eax+16], xmm2);
+        x86.movdqa(   xmmword_ptr[eax+32], xmm4);
+        x86.movdqa(   xmmword_ptr[eax+48], xmm6);
+        x86.add(      eax, 64);
+      }
+      if (ploops>1)
+        x86.loop(     "xloop");
+      if (aligned) {
+        if (plrem> 0) x86.movdqa( xmm0, xmmword_ptr[esi+ 0]);
+        if (plrem>16) x86.movdqa( xmm2, xmmword_ptr[esi+16]);
+        if (plrem>32) x86.movdqa( xmm4, xmmword_ptr[esi+32]);
+        if (plrem>48) x86.movdqa( xmm6, xmmword_ptr[esi+48]);
+      } else if (sse3) {
+        if (plrem> 0) x86.lddqu(  xmm0, xmmword_ptr[esi+ 0]);
+        if (plrem>16) x86.lddqu(  xmm2, xmmword_ptr[esi+16]);
+        if (plrem>32) x86.lddqu(  xmm4, xmmword_ptr[esi+32]);
+        if (plrem>48) x86.lddqu(  xmm6, xmmword_ptr[esi+48]);
+      } else {
+        if (plrem> 0) x86.movdqu( xmm0, xmmword_ptr[esi+ 0]);
+        if (plrem>16) x86.movdqu( xmm2, xmmword_ptr[esi+16]);
+        if (plrem>32) x86.movdqu( xmm4, xmmword_ptr[esi+32]);
+        if (plrem>48) x86.movdqu( xmm6, xmmword_ptr[esi+48]);
+      }
+      if (plrem> 0) x86.movdqa(   xmmword_ptr[eax+ 0], xmm0);
+      if (plrem>16) x86.movdqa(   xmmword_ptr[eax+16], xmm2);
+      if (plrem>32) x86.movdqa(   xmmword_ptr[eax+32], xmm4);
+      if (plrem>48) x86.movdqa(   xmmword_ptr[eax+48], xmm6);
+    }
+    else { // MMX
+      int ploops = xloops / 8;
+      int plrem  = xloops % 8;
+      if (!plrem && ploops) {
+        ploops -= 1;
+        plrem  += 8;
+      }
+      if (ploops>1) {
+        x86.mov(      ecx, ploops);
+        x86.align(16);
+x86.label("xloop");
+      }
+      if (ploops) {
+        x86.movq(     mm0, qword_ptr[esi+ 0]);  // mm0 = *(srcp2= srcp + x) = h|g|f|e|d|c|b|a
+        x86.movq(     mm1, qword_ptr[esi+ 8]);
+        x86.movq(     mm2, qword_ptr[esi+16]);
+        x86.movq(     mm3, qword_ptr[esi+24]);
+        x86.movq(     mm4, qword_ptr[esi+32]);
+        x86.movq(     mm5, qword_ptr[esi+40]);
+        x86.movq(     mm6, qword_ptr[esi+48]);
+        x86.movq(     mm7, qword_ptr[esi+56]);
+        x86.add(      esi, 64);
+
+        x86.movq(     qword_ptr[eax+ 0], mm0); // dstp[x] = h|g|f|e|d|c|b|a
+        x86.movq(     qword_ptr[eax+ 8], mm1);
+        x86.movq(     qword_ptr[eax+16], mm2);
+        x86.movq(     qword_ptr[eax+24], mm3);
+        x86.movq(     qword_ptr[eax+32], mm4);
+        x86.movq(     qword_ptr[eax+40], mm5);
+        x86.movq(     qword_ptr[eax+48], mm6);
+        x86.movq(     qword_ptr[eax+56], mm7);
+        x86.add(      eax, 64);
+      }
+      if (ploops>1)
+        x86.loop(     "xloop");
+      if (plrem>0) x86.movq( mm0, qword_ptr[esi+ 0]);
+      if (plrem>1) x86.movq( mm1, qword_ptr[esi+ 8]);
+      if (plrem>2) x86.movq( mm2, qword_ptr[esi+16]);
+      if (plrem>3) x86.movq( mm3, qword_ptr[esi+24]);
+      if (plrem>4) x86.movq( mm4, qword_ptr[esi+32]);
+      if (plrem>5) x86.movq( mm5, qword_ptr[esi+40]);
+      if (plrem>6) x86.movq( mm6, qword_ptr[esi+48]);
+      if (plrem>7) x86.movq( mm7, qword_ptr[esi+56]);
+
+      if (plrem>0) x86.movq( qword_ptr[eax+ 0], mm0);
+      if (plrem>1) x86.movq( qword_ptr[eax+ 8], mm1);
+      if (plrem>2) x86.movq( qword_ptr[eax+16], mm2);
+      if (plrem>3) x86.movq( qword_ptr[eax+24], mm3);
+      if (plrem>4) x86.movq( qword_ptr[eax+32], mm4);
+      if (plrem>5) x86.movq( qword_ptr[eax+40], mm5);
+      if (plrem>6) x86.movq( qword_ptr[eax+48], mm6);
+      if (plrem>7) x86.movq( qword_ptr[eax+56], mm7);
+    }
+    x86.dec(        edi);                       // y -= 1
+    x86.jnz(        "yloop");
+  }
+  else if (ssse3 && fir_filter_size <= 8) { // We will get too many rounding errors. Probably only lanczos etc
+                                            // if taps parameter is large and very high downscale ratios. 
     x86.mov(          edx, (int)cur);
     x86.mov(          ebp, dword_ptr[(int)&src_pitch]);
     x86.mov(          ebx, dword_ptr[(int)&dst_pitch]);
