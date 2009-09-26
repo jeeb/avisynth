@@ -38,7 +38,6 @@
 #include "stdafx.h"
 
 #include "convert_planar.h"
-#include "../filters/resample.h"
 #include "../filters/planeswap.h"
 #include "../filters/field.h"
 
@@ -87,6 +86,11 @@ ConvertToY8::ConvertToY8(PClip src, int in_matrix, IScriptEnvironment* env) : Ge
       *m++ = (signed short)(0.7152*32768.0+0.5);  //G
       *m++ = (signed short)(0.2126*32768.0+0.5);  //R
       offset_y = 0;
+    } else if (in_matrix == AVERAGE) {
+      *m++ = (signed short)(32768.0/3 + 0.5);  //B
+      *m++ = (signed short)(32768.0/3 + 0.5);  //G
+      *m++ = (signed short)(32768.0/3 + 0.5);  //R
+      offset_y = 0;
     } else {
       _aligned_free(matrix);
       matrix = 0;
@@ -110,7 +114,7 @@ PVideoFrame __stdcall ConvertToY8::GetFrame(int n, IScriptEnvironment* env) {
   PVideoFrame dst = env->NewVideoFrame(vi);
 
   if (blit_luma_only) {
-// Add private ScriptEnvironment function to clone planes -- avoid a needless blit
+// Add private ScriptEnvironment function to clone planes -- avoid a needless blit :FIXME:
 //  return new VideoFrame(src->vfb, src->offset, src->pitch, src->row_size, src->height, src->offset, src->offset, 0, 0, 0);
     env->BitBlt(dst->GetWritePtr(PLANAR_Y), dst->GetPitch(PLANAR_Y),
                 src->GetReadPtr(PLANAR_Y),  src->GetPitch(PLANAR_Y),
@@ -158,15 +162,18 @@ PVideoFrame __stdcall ConvertToY8::GetFrame(int n, IScriptEnvironment* env) {
       return dst;
     }
 
-    const signed short* m = matrix;
+    const srcMod = srcPitch + (vi.width * pixel_step);
+    const int m0 = matrix[0];
+    const int m1 = matrix[1];
+    const int m2 = matrix[2];
     for (int y=0; y<vi.height; y++) {
       for (int x=0; x<vi.width; x++) {
-        const int Y = offset_y + (((int)m[0] * srcp[0] + (int)m[1] * srcp[1] + (int)m[2] * srcp[2] + 16384)>>15);
-        *dstY++ = PixelClip(Y);  // All the safety we can wish for.
+        const int Y = offset_y + ((m0 * srcp[0] + m1 * srcp[1] + m2 * srcp[2] + 16384) >> 15);
+        dstY[x] = PixelClip(Y);  // All the safety we can wish for.
         srcp += pixel_step;
       }
-      srcp -= srcPitch + (vi.width * pixel_step);
-      dstY += dstPitch - vi.width;
+      srcp -= srcMod;
+      dstY += dstPitch;
     }
   }
   return dst;
@@ -183,36 +190,33 @@ void ConvertToY8::convRGB32toY8(const unsigned char *src, unsigned char *py,
 		mov			edi,py
 		mov			eax,rest			; this->matrix
 
-		pxor		mm0,mm0
-
 		movd		mm1,offset_y
 		pcmpeqd		mm2,mm2
 		paddd		mm1,mm1
+		pxor		mm0,mm0
 		psubd		mm1,mm2				; +=0.5
-		psllq		mm1,46				; 0x0008400000000000
-
 		movq		mm2,[eax]			; [0|cyr|cyg|cyb]
-
-		mov			eax,height
 
 		mov			edx,width
 		mov			ecx,3
+		mov			eax,height
 		and			ecx,edx				; ecx remainder
+		psllq		mm1,46				; 0x0008400000000000
 		sub			edx,ecx				; edx width mod 4
 
-		mov			rest,offset do_3			; Program line tail processing routine
 		cmp			ecx,3
+		mov			rest,offset do_3	; Program line tail processing routine
 		je			start
 
-		mov			rest,offset do_2
 		cmp			ecx,2
+		mov			rest,offset do_2
 		je			start
 
-		mov			rest,offset do_1
 		cmp			ecx,1
+		mov			rest,offset do_1
 		je			start
 
-		mov			rest,offset nexty			; None, fall straight thru
+		mov			rest,offset nexty	; None, fall straight thru
 		jmp			start
 
 		align		16
@@ -229,24 +233,22 @@ do_1:
 		movd		[edi+ecx],mm6		; write 1 pixel
 
 		jmp			nexty
-// FIXME interleave MMX instructions to destall after testing		
+
 		align		16
 do_2:
 		movq		mm6,[esi+ecx*4]		; Get pixels 1 & 0
 		movq		mm5,mm6				; duplicate pixels
-
 		punpcklbw	mm6,mm0				; [00la|00rr|00gg|00bb]			-- 0
-		pmaddwd		mm6,mm2				; [0*a+cyr*r|cyg*g+cyb*b]		-- 0
-		punpckldq	mm7,mm6				; [loDWmm6|junk]				-- 0
-		paddd		mm6,mm7				; [hiDWmm6+32768+loDWmm6|junk]	-- 0
-		paddd		mm6,mm1				; +=0.5
-		psrad		mm6,15				; -> 8 bit result				-- 0
-
 		punpckhbw	mm5,mm0	 			; [00ha|00rr|00gg|00bb]         -- 1
+		pmaddwd		mm6,mm2				; [0*a+cyr*r|cyg*g+cyb*b]		-- 0
 		pmaddwd		mm5,mm2				; [0*a+cyr*r|cyg*g+cyb*b]       -- 1
+		punpckldq	mm7,mm6				; [loDWmm6|junk]				-- 0
 		punpckldq	mm3,mm5				; [loDWmm5|junk]				-- 1
+		paddd		mm6,mm7				; [hiDWmm6+32768+loDWmm6|junk]	-- 0
 		paddd		mm5,mm3				; [hiDWmm5+32768+loDWmm5|junk]	-- 1
+		paddd		mm6,mm1				; +=0.5
 		paddd		mm5,mm1				; +=0.5
+		psrad		mm6,15				; -> 8 bit result				-- 0
 		psrad		mm5,15				; -> 8 bit result				-- 1
 
 		punpckhwd	mm6,mm5				; [....|....|..11|..00]
@@ -258,32 +260,30 @@ do_2:
 		align		16
 do_3:
 		movq		mm6,[esi+ecx*4]		; Get pixels 1 & 0
+		movd		mm4,[esi+ecx*4+8]	; Get pixel 2
 		movq		mm5,mm6				; duplicate pixels
 
 		punpcklbw	mm6,mm0				; [00la|00rr|00gg|00bb]			-- 0
-		pmaddwd		mm6,mm2				; [0*a+cyr*r|cyg*g+cyb*b]		-- 0
-		punpckldq	mm7,mm6				; [loDWmm6|junk]				-- 0
-		paddd		mm6,mm7				; [hiDWmm6+32768+loDWmm6|junk]	-- 0
-		paddd		mm6,mm1				; +=0.5
-		psrad		mm6,15				; -> 8 bit result				-- 0
-
 		punpckhbw	mm5,mm0	 			; [00ha|00rr|00gg|00bb]         -- 1
+		pmaddwd		mm6,mm2				; [0*a+cyr*r|cyg*g+cyb*b]		-- 0
 		pmaddwd		mm5,mm2				; [0*a+cyr*r|cyg*g+cyb*b]       -- 1
+		punpckldq	mm7,mm6				; [loDWmm6|junk]				-- 0
 		punpckldq	mm3,mm5				; [loDWmm5|junk]				-- 1
-		paddd		mm5,mm3				; [hiDWmm5+32768+loDWmm5|junk]	-- 1
-		paddd		mm5,mm1				; +=0.5
-		psrad		mm5,15				; -> 8 bit result				-- 1
-
-		movd		mm4,[esi+ecx*4+8]	; Get pixel 2
+		paddd		mm6,mm7				; [hiDWmm6+32768+loDWmm6|junk]	-- 0
 		punpcklbw	mm4,mm0				; [00la|00rr|00gg|00bb]			-- 2
+		paddd		mm5,mm3				; [hiDWmm5+32768+loDWmm5|junk]	-- 1
 		pmaddwd		mm4,mm2				; [0*a+cyr*r|cyg*g+cyb*b]		-- 2
+		paddd		mm6,mm1				; +=0.5
 		punpckldq	mm7,mm4				; [loDWmm4|junk]				-- 2
+		paddd		mm5,mm1				; +=0.5
 		paddd		mm4,mm7				; [hiDWmm4+32768+loDWmm4|junk]	-- 2
+		psrad		mm6,15				; -> 8 bit result				-- 0
 		paddd		mm4,mm1				; +=0.5
+		psrad		mm5,15				; -> 8 bit result				-- 1
 		psrad		mm4,15				; -> 8 bit result				-- 2
-
 		punpckhwd	mm6,mm5				; [....|....|..11|..00]
 		punpckhwd	mm4,mm0				; [....|....|....|..22]
+
 		punpckldq	mm6,mm4				; [....|..22|..11|..00]
 		packuswb	mm6,mm0				; [..|..|..|..|..|22|11|00]
 		movd		[edi+ecx],mm6		; write 3 pixels
@@ -291,13 +291,12 @@ do_3:
 		align		16
 nexty:
 		add			esi,pitch1
-		add			edi,pitch2y
 		dec			eax
+		add			edi,pitch2y
 start:
+		xor			ecx,ecx
 		test		eax,eax
 		jz			done
-
-		xor			ecx,ecx
 
 		cmp			ecx,edx				; break >= myx & ~3
 		jb			loop4
@@ -307,49 +306,45 @@ start:
 		align		16
 loop4:
 		movq		mm6,[esi+ecx*4]		; Get pixels 1 & 0
+		movq		mm4,[esi+ecx*4+8]	; Get pixels 3 & 2
 		movq		mm5,mm6				; duplicate pixels
 
 		punpcklbw	mm6,mm0				; [00la|00rr|00gg|00bb]			-- 0
-		pmaddwd		mm6,mm2				; [0*a+cyr*r|cyg*g+cyb*b]		-- 0
-		punpckldq	mm7,mm6				; [loDWmm6|junk]				-- 0
-		paddd		mm6,mm7				; [hiDWmm6+32768+loDWmm6|junk]	-- 0
-		paddd		mm6,mm1				; +=0.5
-		psrad		mm6,15				; -> 8 bit result				-- 0
-
 		punpckhbw	mm5,mm0	 			; [00ha|00rr|00gg|00bb]         -- 1
+		pmaddwd		mm6,mm2				; [0*a+cyr*r|cyg*g+cyb*b]		-- 0
 		pmaddwd		mm5,mm2				; [0*a+cyr*r|cyg*g+cyb*b]       -- 1
+		punpckldq	mm7,mm6				; [loDWmm6|junk]				-- 0
 		punpckldq	mm3,mm5				; [loDWmm5|junk]				-- 1
+		paddd		mm6,mm7				; [hiDWmm6+32768+loDWmm6|junk]	-- 0
 		paddd		mm5,mm3				; [hiDWmm5+32768+loDWmm5|junk]	-- 1
+		paddd		mm6,mm1				; +=0.5
 		paddd		mm5,mm1				; +=0.5
+		psrad		mm6,15				; -> 8 bit result				-- 0
 		psrad		mm5,15				; -> 8 bit result				-- 1
 
+		movq		mm3,mm4				; duplicate pixels
 		punpckhwd	mm6,mm5				; [....|....|..11|..00]
 
-		movq		mm4,[esi+ecx*4+8]	; Get pixels 3 & 2
-		movq		mm3,mm4				; duplicate pixels
-
 		punpcklbw	mm4,mm0				; [00la|00rr|00gg|00bb]			-- 2
-		pmaddwd		mm4,mm2				; [0*a+cyr*r|cyg*g+cyb*b]		-- 2
-		punpckldq	mm7,mm4				; [loDWmm4|junk]				-- 2
-		paddd		mm4,mm7				; [hiDWmm4+32768+loDWmm4|junk]	-- 2
-		paddd		mm4,mm1				; +=0.5
-		psrad		mm4,15				; -> 8 bit result				-- 2
-
 		punpckhbw	mm3,mm0	 			; [00ha|00rr|00gg|00bb]         -- 3
+		pmaddwd		mm4,mm2				; [0*a+cyr*r|cyg*g+cyb*b]		-- 2
 		pmaddwd		mm3,mm2				; [0*a+cyr*r|cyg*g+cyb*b]       -- 3
+		punpckldq	mm7,mm4				; [loDWmm4|junk]				-- 2
 		punpckldq	mm5,mm3				; [loDWmm3|junk]				-- 3
+		paddd		mm4,mm7				; [hiDWmm4+32768+loDWmm4|junk]	-- 2
 		paddd		mm3,mm5				; [hiDWmm3+32768+loDWmm3|junk]	-- 3
+		paddd		mm4,mm1				; +=0.5
 		paddd		mm3,mm1				; +=0.5
+		psrad		mm4,15				; -> 8 bit result				-- 2
 		psrad		mm3,15				; -> 8 bit result				-- 3
 
 		punpckhwd	mm4,mm3				; [....|....|..33|..22]
 
 		punpckldq	mm6,mm4				; [..33|..22|..11|..00]
-		packuswb	mm6,mm0				; [..|..|..|..|33|22|11|00]
-		movd		[edi+ecx],mm6		; write 4 pixels
-
 		add			ecx,4				; loop counter
+		packuswb	mm6,mm0				; [..|..|..|..|33|22|11|00]
 		cmp			ecx,edx				; break >= myx & ~3
+		movd		[edi+ecx-4],mm6		; write 4 pixels
 		jb			loop4
 
 		jmp			[rest]				; do_{n} remainder
@@ -444,6 +439,10 @@ ConvertRGBToYV24::ConvertRGBToYV24(PClip src, int in_matrix, IScriptEnvironment*
 
     BuildMatrix(0.2126, /* 0.7152 */ 0.0722, 255, 127,  0, shift);
   }
+  else if (in_matrix == AVERAGE) {
+
+    BuildMatrix(1.0/3, /* 1.0/3 */ 1.0/3, 255, 127,  0, shift);
+  }
   else {
     _aligned_free(matrix);
     matrix = 0;
@@ -459,7 +458,7 @@ ConvertRGBToYV24::ConvertRGBToYV24(PClip src, int in_matrix, IScriptEnvironment*
   unpck_src = new const BYTE*[1];
   unpck_dst = new BYTE*[3];
   unpck_src[0] = dyn_dest;
-  this->GenerateUnPacker(vi.width+7, env);
+  this->GenerateUnPacker(vi.width, env);
 }
 
 ConvertRGBToYV24::~ConvertRGBToYV24() {
@@ -643,6 +642,10 @@ ConvertYV24ToRGB::ConvertYV24ToRGB(PClip src, int in_matrix, int _pixel_step, IS
 
     BuildMatrix(0.2126, /* 0.7152 */ 0.0722, 255, 127,  0, shift);
   }
+  else if (in_matrix == AVERAGE) {
+
+    BuildMatrix(1.0/3, /* 1.0/3 */ 1.0/3, 255, 127,  0, shift);
+  }
   else {
     _aligned_free(matrix);
     matrix = 0;
@@ -657,7 +660,7 @@ ConvertYV24ToRGB::ConvertYV24ToRGB(PClip src, int in_matrix, int _pixel_step, IS
   unpck_src = new const BYTE*[3];
   unpck_dst = new BYTE*[1];
   unpck_dst[0] = dyn_src;
-  this->GeneratePacker(vi.width+7, env);
+  this->GeneratePacker(vi.width, env);
 }
 
 ConvertYV24ToRGB::~ConvertYV24ToRGB() {
@@ -1036,6 +1039,7 @@ AVSValue __cdecl ConvertYV16ToYUY2::Create(AVSValue args, void*, IScriptEnvironm
 
 ConvertToPlanarGeneric::ConvertToPlanarGeneric(PClip src, int dst_space, bool interlaced,
                                                AVSValue* UsubSampling, AVSValue* VsubSampling,
+                                               int cp,  const AVSValue* chromaResampler,
                                                IScriptEnvironment* env) : GenericVideoFilter(src) {
   Y8input = vi.IsY8();
 
@@ -1065,6 +1069,21 @@ ConvertToPlanarGeneric::ConvertToPlanarGeneric(PClip src, int dst_space, bool in
     case VideoInfo::CS_I420:
       uv_width /= 2;
       uv_height /=  2;
+      switch (cp) {
+        case PLACEMENT_MPEG2:
+          UsubSampling[1] = AVSValue(0.5); // Override U chroma placement if source is YV12
+          VsubSampling[1] = AVSValue(0.5); // Override V chroma placement if source is YV12
+          break;
+        case PLACEMENT_DV:
+          UsubSampling[1] = AVSValue(0.5); // Override U chroma placement if source is YV12
+          VsubSampling[1] = AVSValue(1.5); // Override V chroma placement if source is YV12
+          break;
+        case PLACEMENT_MPEG1:
+          UsubSampling[0] = AVSValue(0.5); // Override U chroma placement if source is YV12
+          VsubSampling[0] = AVSValue(0.5); // Override V chroma placement if source is YV12
+          UsubSampling[1] = AVSValue(0.5); // Override U chroma placement if source is YV12
+          VsubSampling[1] = AVSValue(0.5); // Override V chroma placement if source is YV12
+      }
       break;
     case VideoInfo::CS_YV24:
       uv_width /= 1; uv_height /= 1;
@@ -1080,23 +1099,19 @@ ConvertToPlanarGeneric::ConvertToPlanarGeneric(PClip src, int dst_space, bool in
 
   }
 
-  if (vi.IsYV12()) {
-    UsubSampling[1] = AVSValue(0.5); // Override Y chroma placement if destination is YV12
-    VsubSampling[1] = AVSValue(0.5); // Override Y chroma placement if destination is YV12
-  }
-
   vi.pixel_type = dst_space;
 
   if (!Y8input) {
-    MitchellNetravaliFilter filter(1./3., 1./3.);
-    UsubSampling[2] = AVSValue(Usource->GetVideoInfo().width+UsubSampling[0].AsFloat(0.0));
-    UsubSampling[3] = AVSValue(Usource->GetVideoInfo().height+UsubSampling[1].AsFloat(0.0));
-    VsubSampling[2] = AVSValue(Vsource->GetVideoInfo().width+VsubSampling[0].AsFloat(0.0));
-    VsubSampling[3] = AVSValue(Vsource->GetVideoInfo().height+VsubSampling[1].AsFloat(0.0));
-    Usource = FilteredResize::CreateResize(Usource, uv_width, uv_height, UsubSampling, &filter, env);
-    Vsource = FilteredResize::CreateResize(Vsource, uv_width, uv_height, VsubSampling, &filter, env);
+    ResamplingFunction *filter = getResampler(chromaResampler->AsString("bicubic"), env);
+    UsubSampling[2] = AVSValue(Usource->GetVideoInfo().width+UsubSampling[0].AsFloat());
+    UsubSampling[3] = AVSValue(Usource->GetVideoInfo().height+UsubSampling[1].AsFloat());
+    VsubSampling[2] = AVSValue(Vsource->GetVideoInfo().width+VsubSampling[0].AsFloat());
+    VsubSampling[3] = AVSValue(Vsource->GetVideoInfo().height+VsubSampling[1].AsFloat());
+    Usource = FilteredResize::CreateResize(Usource, uv_width, uv_height, UsubSampling, filter, env);
+    Vsource = FilteredResize::CreateResize(Vsource, uv_width, uv_height, VsubSampling, filter, env);
     if (interlaced) Usource = new SelectEvery(new DoubleWeaveFields(Usource), 2, 0);
     if (interlaced) Vsource = new SelectEvery(new DoubleWeaveFields(Vsource), 2, 0);
+    delete filter;
   }
 }
 
@@ -1136,8 +1151,23 @@ AVSValue __cdecl ConvertToPlanarGeneric::CreateYV12(AVSValue args, void*, IScrip
     env->ThrowError("ConvertToYV12: Can only convert from Planar YUV.");
 
   bool interlaced = args[1].AsBool(false);
-  AVSValue subs[4] = { 0.0, -0.5, 0.0, 0.0 }; // Move chroma down 0.5 lines
-  clip = new ConvertToPlanarGeneric(clip ,VideoInfo::CS_YV12,args[1].AsBool(false),subs, subs, env);
+  AVSValue Usubs[4] = { 0.0, -0.5/(1 << clip->GetVideoInfo().GetPlaneHeightSubsampling(PLANAR_U)), 0.0, 0.0 }; // Move chroma down 0.5 lines
+  AVSValue Vsubs[4] = { 0.0, -0.5/(1 << clip->GetVideoInfo().GetPlaneHeightSubsampling(PLANAR_V)), 0.0, 0.0 }; // Move chroma down 0.5 lines
+  int cp = getPlacement(args[3].AsString("MPEG2"), env);
+  switch (cp) {
+        case PLACEMENT_DV:
+          Usubs[1] = AVSValue(-0.5/(1 << clip->GetVideoInfo().GetPlaneHeightSubsampling(PLANAR_U))); // Override U chroma placement if source is YV12
+          Vsubs[1] = AVSValue(-1.5/(1 << clip->GetVideoInfo().GetPlaneHeightSubsampling(PLANAR_V))); // Override V chroma placement if source is YV12
+          break;
+        case PLACEMENT_MPEG1:
+          Usubs[0] = AVSValue(-0.5/(1 << clip->GetVideoInfo().GetPlaneWidthSubsampling(PLANAR_U))); // Override U chroma placement if source is YV12
+          Vsubs[0] = AVSValue(-0.5/(1 << clip->GetVideoInfo().GetPlaneWidthSubsampling(PLANAR_V))); // Override V chroma placement if source is YV12
+          Usubs[1] = AVSValue(-0.5/(1 << clip->GetVideoInfo().GetPlaneHeightSubsampling(PLANAR_U))); // Override U chroma placement if source is YV12
+          Vsubs[1] = AVSValue(-0.5/(1 << clip->GetVideoInfo().GetPlaneHeightSubsampling(PLANAR_V))); // Override V chroma placement if source is YV12
+        case PLACEMENT_MPEG2:
+          break;  // Already set (default)
+  }
+  clip = new ConvertToPlanarGeneric(clip ,VideoInfo::CS_YV12,args[1].AsBool(false),Usubs, Vsubs, cp, &args[4], env);
   return clip;
 }
 
@@ -1156,8 +1186,10 @@ AVSValue __cdecl ConvertToPlanarGeneric::CreateYV16(AVSValue args, void*, IScrip
   if (!clip->GetVideoInfo().IsPlanar())
     env->ThrowError("ConvertToYV16: Can only convert from Planar YUV.");
 
-  AVSValue subs[4] = { 0.0, 0.0, 0.0, 0.0 };
-  clip = new ConvertToPlanarGeneric(clip ,VideoInfo::CS_YV16,args[1].AsBool(false),subs, subs, env);
+  AVSValue Usubs[4] = { 0.0, 0.0, 0.0, 0.0 };
+  AVSValue Vsubs[4] = { 0.0, 0.0, 0.0, 0.0 };
+  int cp = getPlacement(args[3].AsString("MPEG2"), env);
+  clip = new ConvertToPlanarGeneric(clip, VideoInfo::CS_YV16, args[1].AsBool(false), Usubs, Vsubs, cp, &args[4], env);
   return clip;
 }
 
@@ -1176,8 +1208,10 @@ AVSValue __cdecl ConvertToPlanarGeneric::CreateYV24(AVSValue args, void*, IScrip
   if (!clip->GetVideoInfo().IsPlanar())
     env->ThrowError("ConvertToYV24: Can only convert from Planar YUV.");
 
-  AVSValue subs[4] = { 0.0, 0.0, 0.0, 0.0 };
-  clip = new ConvertToPlanarGeneric(clip ,VideoInfo::CS_YV24,args[1].AsBool(false),subs, subs, env);
+  AVSValue Usubs[4] = { 0.0, 0.0, 0.0, 0.0 };
+  AVSValue Vsubs[4] = { 0.0, 0.0, 0.0, 0.0 };
+  int cp = getPlacement(args[3].AsString("MPEG2"), env);
+  clip = new ConvertToPlanarGeneric(clip, VideoInfo::CS_YV24, args[1].AsBool(false), Usubs, Vsubs, cp, &args[4], env);
   return clip;
 }
 
@@ -1196,7 +1230,54 @@ AVSValue __cdecl ConvertToPlanarGeneric::CreateYV411(AVSValue args, void*, IScri
   if (!clip->GetVideoInfo().IsPlanar())
     env->ThrowError("ConvertToYV411: Can only convert from Planar YUV.");
 
-  AVSValue subs[4] = { 0.0, 0.0, 0.0, 0.0 };
-  clip = new ConvertToPlanarGeneric(clip ,VideoInfo::CS_YV411,args[1].AsBool(false),subs, subs, env);
+  AVSValue Usubs[4] = { 0.0, 0.0, 0.0, 0.0 };
+  AVSValue Vsubs[4] = { 0.0, 0.0, 0.0, 0.0 };
+  int cp = getPlacement(args[3].AsString("MPEG2"), env);
+  clip = new ConvertToPlanarGeneric(clip, VideoInfo::CS_YV411, args[1].AsBool(false), Usubs, Vsubs, cp, &args[4], env);
   return clip;
+}
+
+
+static int getPlacement( const char* placement, IScriptEnvironment* env) {
+  if (placement) {
+    if (!lstrcmpi(placement, "mpeg2"))
+      return PLACEMENT_MPEG2;
+    if (!lstrcmpi(placement, "mpeg1"))
+      return PLACEMENT_MPEG1;
+    if (!lstrcmpi(placement, "dv"))
+      return PLACEMENT_DV;
+  }
+  env->ThrowError("Convert: Unknown chromaplacement");
+  return PLACEMENT_MPEG2;
+}
+
+
+static ResamplingFunction* getResampler( const char* resampler, IScriptEnvironment* env) {
+  if (resampler) {
+    if      (!lstrcmpi(resampler, "point"))
+      return new PointFilter();
+    else if (!lstrcmpi(resampler, "bilinear"))
+      return new TriangleFilter();
+    else if (!lstrcmpi(resampler, "bicubic"))
+      return new MitchellNetravaliFilter(1./3,1./3); // Parse out optional B= and C= from string
+    else if (!lstrcmpi(resampler, "lanczos"))
+      return new LanczosFilter(3); // Parse out optional Taps= from string
+    else if (!lstrcmpi(resampler, "lanczos4"))
+      return new LanczosFilter(4);
+    else if (!lstrcmpi(resampler, "blackman"))
+      return new BlackmanFilter(4);
+    else if (!lstrcmpi(resampler, "spline16"))
+      return new Spline16Filter();
+    else if (!lstrcmpi(resampler, "spline36"))
+      return new Spline36Filter();
+    else if (!lstrcmpi(resampler, "spline64"))
+      return new Spline64Filter();
+    else if (!lstrcmpi(resampler, "gauss"))
+      return new GaussianFilter(30.0); // Parse out optional P= from string
+    else if (!lstrcmpi(resampler, "sinc"))
+      return new SincFilter(4); // Parse out optional Taps= from string
+    else
+      env->ThrowError("Convert: Unknown chroma resampler, '%s'", resampler);
+  }
+  return new MitchellNetravaliFilter(1./3,1./3); // Default colorspace conversion for AviSynth
 }
