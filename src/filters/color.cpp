@@ -49,7 +49,8 @@ AVSFunction Color_filters[] = {
 					 "c[gain_y]f[off_y]f[gamma_y]f[cont_y]f" \
 					 "[gain_u]f[off_u]f[gamma_u]f[cont_u]f" \
 					 "[gain_v]f[off_v]f[gamma_v]f[cont_v]f" \
-					 "[levels]s[opt]s[matrix]s[showyuv]b[analyze]b[autowhite]b[autogain]b",
+					 "[levels]s[opt]s[matrix]s[showyuv]b" \
+					 "[analyze]b[autowhite]b[autogain]b[conditional]b",
            Color::Create },
   { 0 }
 };
@@ -58,12 +59,13 @@ AVSFunction Color_filters[] = {
 Color::Color(PClip _child, double _gain_y, double _off_y, double _gamma_y, double _cont_y,
 						double _gain_u, double _off_u, double _gamma_u, double _cont_u,
 						double _gain_v, double _off_v, double _gamma_v, double _cont_v,
-						const char *_levels, const char *_opt, const char *_matrix, bool _colorbars, bool _analyze, bool _autowhite, bool _autogain,
+						const char *_levels, const char *_opt, const char *_matrix, 
+						bool _colorbars, bool _analyze, bool _autowhite, bool _autogain, bool _conditional,
 						IScriptEnvironment* env) :
 				GenericVideoFilter(_child),
 				y_gain(_gain_y), y_bright(_off_y), y_gamma(_gamma_y),y_contrast(_cont_y),
 				u_gain(_gain_u), u_bright(_off_u), u_gamma(_gamma_u),u_contrast(_cont_u),
-				v_gain(_gain_v), v_bright(_off_v), v_gamma(_gamma_v),v_contrast(_cont_v)
+				v_gain(_gain_v), v_bright(_off_v), v_gamma(_gamma_v),v_contrast(_cont_v), conditional(_conditional)
 {
     try {	// HIDE DAMN SEH COMPILER BUG!!!
 		if (!vi.IsYUV())
@@ -93,23 +95,12 @@ PVideoFrame __stdcall Color::GetFrame(int frame, IScriptEnvironment* env)
 {
 	PVideoFrame src;
 	unsigned long *srcp;
-//	PVideoFrame dst;
-//	unsigned long *dstp;
 	int pitch, w, h;
 	int i,j,wby4;
 	int modulo;
-//	int dmodulo;
-//	int dpitch;
 	PIXELDATA	pixel;
+	bool updateLUT = false;
 
-#ifdef _DEBUG
-	COUNT y0,u0,v0;
-	COUNT y,u,v;
-	COUNT r,g,b;
-	COUNT r0,g0,b0;
-	PIXELDATA	pixel0;
-	int   total,totalby2;
-#endif
   if (colorbars) {
     PVideoFrame dst= env->NewVideoFrame(vi);
     int* pdst=(int*)dst->GetWritePtr(PLANAR_Y);
@@ -143,10 +134,6 @@ PVideoFrame __stdcall Color::GetFrame(int frame, IScriptEnvironment* env)
 	h = src->GetHeight();
 	wby4 = w / 4;
 	modulo = pitch - w;
-//	dst = env->NewVideoFrame(vi);
-//	dstp = (unsigned long *) dst->GetWritePtr();
-//	dpitch = dst->GetPitch();
-//	dmodulo = dpitch - dst->GetRowSize();
   if (analyze||autowhite||autogain) {
     unsigned int accum_Y[256],accum_U[256],accum_V[256];
     for (int i=0;i<256;i++) {
@@ -263,37 +250,17 @@ PVideoFrame __stdcall Color::GetFrame(int frame, IScriptEnvironment* env)
         y_bright = -(int)(scale * (double)(Amin_y)-16);
       }
     }
-	  MakeGammaLUT();
+    updateLUT = true;
   }
 
-#ifdef _DEBUG
-	total = wby4 * h;
-	totalby2 = total / 2;
+  if (conditional) {
+    if ( ReadConditionals(env) ) updateLUT = true;
+  }
 
-	y.min  = u.min  = v.min  = 255;
-	y.max  = u.max  = v.max  = 0;
-	y.ave  = u.ave  = v.ave  = 0;
-	y.over  = u.over  = v.over  = 0;
-	y.under = u.under = v.under = 0;
+  if (updateLUT) {
+    MakeGammaLUT();
+  }
 
-	y0.min = u0.min = v0.min = 255;
-	y0.max = u0.max = v0.max = 0;
-	y0.ave = u0.ave = v0.ave = 0;
-	y0.over  = u0.over  = v0.over  = 0;
-	y0.under = u0.under = v0.under = 0;
-
-	r.min   = g.min   = b.min   = 255;
-	r.max   = g.max   = b.max   = 0;
-	r.ave   = g.ave   = b.ave   = 0;
-	r.over  = g.over  = b.over  = 0;
-	r.under = g.under = b.under = 0;
-
-	r0.min   = g0.min   = b0.min   = 255;
-	r0.max   = g0.max   = b0.max   = 0;
-	r0.ave   = g0.ave   = b0.ave   = 0;
-	r0.over  = g0.over  = b0.over  = 0;
-	r0.under = g0.under = b0.under = 0;
-#endif
   if (vi.IsYUY2()) {
 	  for (j = 0; j < h; j++)
 	  {
@@ -301,30 +268,11 @@ PVideoFrame __stdcall Color::GetFrame(int frame, IScriptEnvironment* env)
 		  {
 			  pixel.data = *srcp;
 
-#ifdef _DEBUG
-			pixel0.data = pixel.data;
-			CheckYUV(NULL, &pixel, &y0, &u0, &v0, 0);
-			
-			YUV2RGB(pixel.yuv.y0, pixel.yuv.u, pixel.yuv.v, &r0.d, &g0.d, &b0.d, matrix);
-			CheckRGB(&r0, &g0, &b0);
-			YUV2RGB(pixel.yuv.y1, pixel.yuv.u, pixel.yuv.v, &r0.d, &g0.d, &b0.d, matrix);
-			CheckRGB(&r0, &g0, &b0);
-#endif 
-
 			  pixel.yuv.y0 = LUT_Y[pixel.yuv.y0];
 			  pixel.yuv.u  = LUT_U[pixel.yuv.u ];
 			  pixel.yuv.y1 = LUT_Y[pixel.yuv.y1];
 			  pixel.yuv.v  = LUT_V[pixel.yuv.v ];
 			  *srcp++ = pixel.data;
-
-#ifdef _DEBUG
-			CheckYUV(&pixel0, &pixel, &y, &u, &v, 1);
-
-			YUV2RGB(pixel.yuv.y0, pixel.yuv.u, pixel.yuv.v, &r.d, &g.d, &b.d, matrix);
-			CheckRGB(&r, &g, &b);
-			YUV2RGB(pixel.yuv.y1, pixel.yuv.u, pixel.yuv.v, &r.d, &g.d, &b.d, matrix);
-			CheckRGB(&r, &g, &b);
-#endif
 		  }
 		  srcp = (unsigned long *)((unsigned char *)srcp + modulo) ;
 	  }
@@ -354,49 +302,6 @@ PVideoFrame __stdcall Color::GetFrame(int frame, IScriptEnvironment* env)
 	    srcp2 +=  pitch;
     }
   }
-
-#ifdef _DEBUG
-/*
-	y.ave  = ( y.ave+total)/total/2; u.ave  = ( u.ave+totalby2)/total;   v.ave  = ( v.ave+totalby2)/total;
-	y0.ave = (y0.ave+total)/total/2; u0.ave = (u0.ave+totalby2)/total;   v0.ave = (v0.ave+totalby2)/total;
-	r.ave  = ( r.ave+total)/total/2; g.ave  = ( g.ave+total   )/total/2; b.ave  = ( b.ave+total   )/total/2;
-	r0.ave = (r0.ave+total)/total/2; g0.ave = (g0.ave+total   )/total/2; b0.ave = (b0.ave+total   )/total/2;
-
-  char buf[256];
-  OutputDebugString("\n");
-	sprintf(buf,"frame=%05d  minimun   Src=[Y:%03d  U:%03d  V:%03d  R:%03d  G:%03d  B:%03d]" \
-				"  Dst=[Y:%03d  U:%03d  V:%03d  R:%03d  G:%03d  B:%03d]",
-				frame, y0.min,u0.min,v0.min, r0.min,g0.min,b0.min,
-				y.min,u.min,v.min, r.min,g.min,b.min);
-	OutputDebugString(buf);
-
-	sprintf(buf,"             maximum   Src=[Y:%03d  U:%03d  V:%03d  R:%03d  G:%03d  B:%03d]" \
-				"  Dst=[Y:%03d  U:%03d  V:%03d  R:%03d  G:%03d  B:%03d]",
-				y0.max,u0.max,v0.max, r0.max,g0.max,b0.max,
-				y.max,u.max,v.max, r.max,g.max,b.max);
-	OutputDebugString(buf);
-
-	sprintf(buf,"             average   Src=[Y:%03d  U:%03d  V:%03d  R:%03d  G:%03d  B:%03d]" \
-				"  Dst=[Y:%03d  U:%03d  V:%03d  R:%03d  G:%03d  B:%03d]",
-				y0.ave,u0.ave,v0.ave, r0.ave,g0.ave,b0.ave,
-				y.ave,u.ave,v.ave, r.ave,g.ave,b.ave);
-	OutputDebugString(buf);
-
-	sprintf(buf,"             underflow Src=[Y:%3d  U:%3d  V:%3d  R:%3d  G:%3d  B:%3d]" \
-				"  Dst=[Y:%3d  U:%3d  V:%3d  R:%3d  G:%3d  B:%3d]",
-				y0.under,u0.under,v0.under, r0.under,g0.under,b0.under,
-				y.under,u.under,v.under, r.under,g.under,b.under
-			);
-	OutputDebugString(buf);
-
-	sprintf(buf,"             overflow  Src=[Y:%3d  U:%3d  V:%3d  R:%3d  G:%3d  B:%3d]" \
-				"  Dst=[Y:%3d  U:%3d  V:%3d  R:%3d  G:%3d  B:%3d]",
-				y0.over,u0.over,v0.over, r0.over,g0.over,b0.over,
-				y.over,u.over,v.over, r.over,g.over,b.over
-			);
-	OutputDebugString(buf);
-*/
-#endif
 
 	return src;
 }
@@ -548,97 +453,40 @@ void Color::MakeGammaLUT(void)
 
 }
 
-#ifdef _DEBUG
-void	Color::YUV2RGB(int y, int u, int v, int *r, int *g, int *b, int matrix)
-{
-  if (matrix==0) {
-	  const int cy  = int((255.0/219.0)*65536+0.5);
-	  const int crv = int(1.596*65536+0.5);
-	  const int cgv = int(0.813*65536+0.5);
-	  const int cgu = int(0.391*65536+0.5);
-	  const int cbu = int(2.018*65536+0.5);
-	  int scaled_y = (y - 16) * cy;
-	  *b = ((scaled_y + (u-128) * cbu) + 2^15) >> 16;					// blue
-	  *g = ((scaled_y - (u-128) * cgu - (v-128) * cgv) + 2^15) >> 16;	// green
-	  *r = ((scaled_y + (v-128) * crv) + 2^15) >> 16;					// red
-  } else {
-	  // ITU-R Recommendation  BT.709
-	  const int cy  = 19077;
-	  const int crv = 3960 * 2;
-	  const int cgv = -4363 * 2;
-	  const int cgu = -1744 * 2;
-	  const int cbu = 17307 * 2;
-	  const int shift = 14;
-	  int scaled_y = (y - 16) * cy;
-	  *b = ((scaled_y + (u-128) * cbu) + 2^13) >> 14;					// blue
-	  *g = ((scaled_y - (u-128) * cgu - (v-128) * cgv) + 2^13) >> 14;	// green
-	  *r = ((scaled_y + (v-128) * crv) + 2^13) >> 14;					// red
-  }
+#define READ_CONDITIONAL(x,y) \
+try {\
+  AVSValue cv = env->GetVar("coloryuv_" x);\
+  if (cv.IsFloat()) {\
+    const double t = cv.AsFloat();\
+    if (y != t) {\
+      changed = true;\
+      y = t;\
+    }\
+  }\
+} catch (IScriptEnvironment::NotFound) {}
+
+bool Color::ReadConditionals(IScriptEnvironment* env) {
+	bool changed = false;
+
+  READ_CONDITIONAL("gain_y", y_gain);
+  READ_CONDITIONAL("gain_u", u_gain);
+  READ_CONDITIONAL("gain_v", v_gain);
+  READ_CONDITIONAL("off_y", y_bright);
+  READ_CONDITIONAL("off_u", u_bright);
+  READ_CONDITIONAL("off_v", v_bright);
+  READ_CONDITIONAL("gamma_y", y_gamma);
+//READ_CONDITIONAL("gamma_u", u_gamma);
+//READ_CONDITIONAL("gamma_v", v_gamma);
+  READ_CONDITIONAL("cont_y", y_contrast);
+  READ_CONDITIONAL("cont_u", u_contrast);
+  READ_CONDITIONAL("cont_v", v_contrast);
+
+  return changed;
 }
 
+#undef READ_CONDITIONAL
 
-void	Color::CheckRGB(COUNT *r, COUNT *b, COUNT *g)
-{
-	if(r->d < 0)		{ r->under++;	/*r->d = 0;*/	}
-	if(r->d > 255)		{ r->over++;	/*r->d = 255;*/	}
-	if(g->d < 0)		{ g->under++;	/*g->d = 0;*/	}
-	if(g->d > 255)		{ g->over++;	/*g->d = 255;*/	}
-	if(b->d < 0)		{ b->under++;	/*b->d = 0;*/	}
-	if(b->d > 255)		{ b->over++;	/*b->d = 255;*/	}
-	if(r->d < r->min)	{ r->min = r->d;	}
-	if(g->d < g->min)	{ g->min = g->d;	}
-	if(b->d < b->min)	{ b->min = b->d;	}
-	if(r->d > r->max)	{ r->max = r->d;	}
-	if(g->d > g->max)	{ g->max = g->d;	}
-	if(b->d > b->max)	{ b->max = b->d;	}
-	r->ave += r->d;
-	g->ave += g->d;
-	b->ave += b->d;
-}	
 
-void	Color::CheckYUV(PIXELDATA *pixel0, PIXELDATA *pixel, COUNT *y, COUNT *u, COUNT *v, int terget )
-{
-	if(!terget)	{
-		if(pixel->yuv.y0 < 16)			{ y->under++;	}
-		if(pixel->yuv.y0 > 235)			{ y->over++;	}
-		if(pixel->yuv.y1 < 16)			{ y->under++;	}
-		if(pixel->yuv.y1 > 235)			{ y->over++;	}
-	} else {
-		if(pixel0->yuv.y0 <= y_thresh1)	{ y->under++;	}
-		if(pixel0->yuv.y0 >= y_thresh2)	{ y->over++;	}
-		if(pixel0->yuv.y1 <= y_thresh1)	{ y->under++;	}
-		if(pixel0->yuv.y1 >= y_thresh2)	{ y->over++;	}
-	}
-	if(pixel->yuv.y0 < y->min)			{ y->min = pixel->yuv.y0;}
-	if(pixel->yuv.y0 > y->max)			{ y->max = pixel->yuv.y0;}
-	if(pixel->yuv.y1 < y->min)			{ y->min = pixel->yuv.y1;}
-	if(pixel->yuv.y1 > y->max)			{ y->max = pixel->yuv.y1;}
-	y->ave += pixel->yuv.y0;
-	y->ave += pixel->yuv.y1;
-
-	if(!terget)	{
-		if(pixel->yuv.u < 16)			{ u->under++;	}
-		if(pixel->yuv.u > 240)			{ u->over++;	}
-	} else {
-		if(pixel0->yuv.u <= u_thresh1)	{ u->under++;	}
-		if(pixel0->yuv.u >= u_thresh2)	{ u->over++;	}
-	}
-	if(pixel->yuv.u < u->min)			{ u->min = pixel->yuv.u;}
-	if(pixel->yuv.u > u->max)			{ u->max = pixel->yuv.u;}
-	u->ave += pixel->yuv.u;
-
-	if(!terget)	{
-		if(pixel->yuv.v < 16)			{ v->under++;	}
-		if(pixel->yuv.v > 240)			{ v->over++;	}
-	} else {
-		if(pixel0->yuv.v <= v_thresh1)	{ v->under++;	}
-		if(pixel0->yuv.v >= v_thresh2)	{ v->over++;	}
-	}
-	if(pixel->yuv.v < v->min)			{ v->min = pixel->yuv.v;}
-	if(pixel->yuv.v > v->max)			{ v->max = pixel->yuv.v;}
-	v->ave += pixel->yuv.v;
-}
-#endif
 
 bool Color::CheckParms(const char *_levels, const char *_matrix, const char *_opt)
 {
@@ -729,18 +577,18 @@ void Color::DumpLUT(void)
 AVSValue __cdecl Color::Create(AVSValue args, void* user_data, IScriptEnvironment* env) {
     try {	// HIDE DAMN SEH COMPILER BUG!!!
 		return new Color(args[0].AsClip(),
-						args[1].AsFloat(0.0),		// gain_y
-						args[2].AsFloat(0.0),		// off_y      bright
-						args[3].AsFloat(0.0),		// gamma_y
-						args[4].AsFloat(0.0),		// cont_y
-						args[5].AsFloat(0.0),		// gain_u
-						args[6].AsFloat(0.0),		// off_u      bright
-						args[7].AsFloat(0.0),		// gamma_u
-						args[8].AsFloat(0.0),		// cont_u
-						args[9].AsFloat(0.0),		// gain_v
-						args[10].AsFloat(0.0),		// off_v
-						args[11].AsFloat(0.0),		// gamma_v
-						args[12].AsFloat(0.0),		// cont_v
+						args[ 1].AsFloat(0.0f),		// gain_y
+						args[ 2].AsFloat(0.0f),		// off_y      bright
+						args[ 3].AsFloat(0.0f),		// gamma_y
+						args[ 4].AsFloat(0.0f),		// cont_y
+						args[ 5].AsFloat(0.0f),		// gain_u
+						args[ 6].AsFloat(0.0f),		// off_u      bright
+						args[ 7].AsFloat(0.0f),		// gamma_u
+						args[ 8].AsFloat(0.0f),		// cont_u
+						args[ 9].AsFloat(0.0f),		// gain_v
+						args[10].AsFloat(0.0f),		// off_v
+						args[11].AsFloat(0.0f),		// gamma_v
+						args[12].AsFloat(0.0f),		// cont_v
 						args[13].AsString(""),		// levels = "", "TV->PC", "PC->TV"
 						args[14].AsString(""),		// opt = "", "coring"
 						args[15].AsString(""),		// matrix = "", "rec.709"
@@ -748,6 +596,7 @@ AVSValue __cdecl Color::Create(AVSValue args, void* user_data, IScriptEnvironmen
 						args[17].AsBool(false),		// analyze
 						args[18].AsBool(false),		// autowhite
 						args[19].AsBool(false),		// autogain
+						args[20].AsBool(false),		// conditional
 						env);
 	}
 	catch (...) { throw; }
