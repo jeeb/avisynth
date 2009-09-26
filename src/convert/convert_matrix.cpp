@@ -68,7 +68,7 @@ void MatrixGenerator3x3::GeneratePacker(int width, IScriptEnvironment* env) {
 
   Assembler x86;   // This is the class that assembles the code.
 
-  const int loops = width / 8;
+  const int loops = (width+7) / 8;
 
   // Store registers
   x86.push(eax);
@@ -93,6 +93,7 @@ void MatrixGenerator3x3::GeneratePacker(int width, IScriptEnvironment* env) {
   x86.xor(esi, esi);
 
   x86.mov(edx, loops);
+  x86.align(16);
   x86.label("loopback");
 
   x86.movq(mm0,qword_ptr[eax+esi]);         // S1R1Q1P1s1r1q1p1
@@ -111,17 +112,15 @@ void MatrixGenerator3x3::GeneratePacker(int width, IScriptEnvironment* env) {
 
   x86.punpcklwd(mm0,mm2);                   // +1q3q2q1+1p3p2p1
   x86.punpckhwd(mm1,mm2);                   // +1s3s2s1+1r3r2r1
+  x86.add(esi, 8);
   x86.punpcklwd(mm4,mm6);                   // +1Q3Q2Q1+1P3P2P1
   x86.punpckhwd(mm5,mm6);                   // +1S3S2S1+1R3R2R1
-
-  x86.movq(qword_ptr[edi+esi*4+ 0],mm0);    // +1q3q2q1+1p3p2p1
-  x86.movq(qword_ptr[edi+esi*4+ 8],mm1);    // +1s3s2s1+1r3r2r1
-  x86.movq(qword_ptr[edi+esi*4+16],mm4);    // +1Q3Q2Q1+1P3P2P1
-  x86.movq(qword_ptr[edi+esi*4+24],mm5);    // +1S3S2S1+1R3R2R1
-
-  x86.add(esi, 8);
-
   x86.dec(edx);
+  x86.movq(qword_ptr[edi+esi*4-32],mm0);    // +1q3q2q1+1p3p2p1
+  x86.movq(qword_ptr[edi+esi*4-24],mm1);    // +1s3s2s1+1r3r2r1
+  x86.movq(qword_ptr[edi+esi*4-16],mm4);    // +1Q3Q2Q1+1P3P2P1
+  x86.movq(qword_ptr[edi+esi*4- 8],mm5);    // +1S3S2S1+1R3R2R1
+
   x86.jnz("loopback");
 
   x86.emms();
@@ -149,11 +148,13 @@ void MatrixGenerator3x3::GeneratePacker(int width, IScriptEnvironment* env) {
 
 
 void MatrixGenerator3x3::GenerateUnPacker(int width, IScriptEnvironment* env) {
+  __declspec(align(16)) static const __int64 Shuf[] =  {0x0d0905010c080400,0xffffffff0e0a0602}; // x x x x 14 10 6 2 13 9 5 1 12 8 4 0
 
   Assembler x86;   // This is the class that assembles the code.
 
-  const int loops = width / 8;
+  const int loops = (width+7) / 8;
 
+  bool ssse3 = !!(env->GetCPUFlags() & CPUF_SSSE3);  // We have one version for SSSE3 and one for plain MMX.
 
   // Store registers
   x86.push(eax);
@@ -174,48 +175,76 @@ void MatrixGenerator3x3::GenerateUnPacker(int width, IScriptEnvironment* env) {
   x86.mov(ebx, dword_ptr [edx+sizeof(BYTE*)]);   // Plane 2 dest
   x86.mov(ecx, dword_ptr [edx+sizeof(BYTE*)*2]); // Plane 3 dest, edx free
 
-  x86.pxor(mm6,mm6);
-  x86.xor(edi, edi);
+  if (ssse3) {
+    x86.movdqa(xmm7,xmmword_ptr[&Shuf]);
+    x86.xor(edi, edi);
+    x86.mov(edx, loops);
 
-  x86.mov(edx, loops);
-  x86.label("loopback");
+    x86.align(16);
+    x86.label("loopback");
 
-  x86.movq(mm0,qword_ptr[esi+edi*4]);    // XXP3P2P1xxp3p2p1
-  x86.movq(mm1,qword_ptr[esi+edi*4+8]);  // XXQ3Q2Q1xxq3q2q1
-  x86.movq(mm2,qword_ptr[esi+edi*4+16]); // XXR3R2R1xxr3r2r1
-  x86.movq(mm3,qword_ptr[esi+edi*4+24]); // XXS3S2S1xxs3s2s1
+    x86.movdqa(xmm0,xmmword_ptr[esi+edi*4]);    // XXQ3Q2Q1xxq3q2q1XXP3P2P1xxp3p2p1
+    x86.movdqa(xmm1,xmmword_ptr[esi+edi*4+16]); // XXS3S2S1xxs3s2s1XXR3R2R1xxr3r2r1
+    x86.pshufb(xmm0,xmm7);                      // 00000000Q3q3P3p3Q2q2P2p2Q1q1P1p1
+    x86.pshufb(xmm1,xmm7);                      // 00000000S3s3R3r3S2s2R2r2S1s1R1r1
+    x86.movdqa(xmm4,xmm0);
+    x86.punpckldq(xmm0,xmm1);                   // S2s2R2r2Q2q2P2p2S1s1R1r1Q1q1P1p1
+    x86.punpckhdq(xmm4,xmm1);                   // 0000000000000000S3s3R3r3Q3q3P3p3
+    x86.movq(qword_ptr[eax+edi],xmm0);          // Store: S1s1R1r1Q1q1P1p1
+    x86.punpckhqdq(xmm0,xmm0);                  // S2s2R2r2Q2q2P2p2S2s2R2r2Q2q2P2p2
+    x86.movq(qword_ptr[ecx+edi],xmm4);          // Store: S3s3R3r3Q3q3P3p3
+    x86.add(edi,8);
+    x86.dec(edx);
+    x86.movq(qword_ptr[ebx+edi-8],xmm0);        // Store: S2s2R2r2Q2q2P2p2
 
-  x86.punpckldq(mm4,mm0);                // xxp3p2p1........
-  x86.punpckldq(mm5,mm1);                // xxq3q2q1........
-  x86.punpckldq(mm6,mm2);                // xxr3r2r1........
-  x86.punpckldq(mm7,mm3);                // xxs3s2s1........
+    x86.jnz("loopback");
+  } else {
+    x86.pxor(mm6,mm6);
+    x86.xor(edi, edi);
 
-  x86.punpckhbw(mm4,mm0);                // XXxxP3p3P2p2P1p1
-  x86.punpckhbw(mm5,mm1);                // XXxxQ3q3Q2q2Q1q1
-  x86.punpckhbw(mm6,mm2);                // XXxxR3r3R2r2R1r1
-  x86.punpckhbw(mm7,mm3);                // XXxxS3s3S2s2S1s1
+    x86.mov(edx, loops);
 
-  x86.movq(mm0,mm4);                     // XXxxP3p3P2p2P1p1
-  x86.movq(mm2,mm6);                     // XXxxR3r3R2r2R1r1
+    x86.align(16);
+    x86.label("loopback");
 
-  x86.punpcklwd(mm4,mm5);                // Q2q2P2p2Q1q1P1p1
-  x86.punpckhwd(mm0,mm5);                // XXxxXXxxQ3q3P3p3
-  x86.punpcklwd(mm6,mm7);                // S2s2R2r2S1s1R1r1
-  x86.punpckhwd(mm2,mm7);                // XXxxXXxxS3q3R3r3
+    x86.movq(mm0,qword_ptr[esi+edi*4]);    // XXP3P2P1xxp3p2p1
+    x86.movq(mm1,qword_ptr[esi+edi*4+8]);  // XXQ3Q2Q1xxq3q2q1
+    x86.movq(mm2,qword_ptr[esi+edi*4+16]); // XXR3R2R1xxr3r2r1
+    x86.movq(mm3,qword_ptr[esi+edi*4+24]); // XXS3S2S1xxs3s2s1
 
-  x86.movq(mm1,mm4);                     // Q2q2P2p2Q1q1P1p1
-  x86.punpckldq(mm4,mm6);                // S1s1R1r1Q1q1P1p1
-  x86.punpckhdq(mm1,mm6);                // S2s2R2r2Q2q2P2p2
-  x86.punpckldq(mm0,mm2);                // S3s3R3r3Q3q3P3p3
+    x86.punpckldq(mm4,mm0);                // xxp3p2p1........
+    x86.punpckldq(mm5,mm1);                // xxq3q2q1........
+    x86.punpckldq(mm6,mm2);                // xxr3r2r1........
+    x86.punpckldq(mm7,mm3);                // xxs3s2s1........
 
-  x86.movq(qword_ptr[eax+edi],mm4);      // S1s1R1r1Q1q1P1p1
-  x86.movq(qword_ptr[ebx+edi],mm1);      // S2s2R2r2Q2q2P2p2
-  x86.movq(qword_ptr[ecx+edi],mm0);      // S3s3R3r3Q3q3P3p3
+    x86.punpckhbw(mm4,mm0);                // XXxxP3p3P2p2P1p1
+    x86.punpckhbw(mm5,mm1);                // XXxxQ3q3Q2q2Q1q1
+    x86.punpckhbw(mm6,mm2);                // XXxxR3r3R2r2R1r1
+    x86.punpckhbw(mm7,mm3);                // XXxxS3s3S2s2S1s1
 
-  x86.add(edi,8);
-  x86.dec(edx);
-  x86.jnz("loopback");
-  x86.emms();
+    x86.movq(mm0,mm4);                     // XXxxP3p3P2p2P1p1
+    x86.movq(mm2,mm6);                     // XXxxR3r3R2r2R1r1
+
+    x86.punpcklwd(mm4,mm5);                // Q2q2P2p2Q1q1P1p1
+    x86.punpckhwd(mm0,mm5);                // XXxxXXxxQ3q3P3p3
+    x86.punpcklwd(mm6,mm7);                // S2s2R2r2S1s1R1r1
+    x86.punpckhwd(mm2,mm7);                // XXxxXXxxS3q3R3r3
+
+    x86.movq(mm1,mm4);                     // Q2q2P2p2Q1q1P1p1
+    x86.punpckldq(mm4,mm6);                // S1s1R1r1Q1q1P1p1
+    x86.punpckhdq(mm1,mm6);                // S2s2R2r2Q2q2P2p2
+    x86.punpckldq(mm0,mm2);                // S3s3R3r3Q3q3P3p3
+
+    x86.movq(qword_ptr[eax+edi],mm4);      // S1s1R1r1Q1q1P1p1
+    x86.movq(qword_ptr[ebx+edi],mm1);      // S2s2R2r2Q2q2P2p2
+    x86.add(edi,8);
+    x86.dec(edx);
+
+    x86.movq(qword_ptr[ecx+edi-8],mm0);    // S3s3R3r3Q3q3P3p3
+
+    x86.jnz("loopback");
+    x86.emms();
+  }
     // Restore registers
   x86.pop(ebp);
   x86.pop(edi);
@@ -249,6 +278,7 @@ void MatrixGenerator3x3::GenerateAssembly(int width, int frac_bits, bool rgb_out
   Assembler x86;   // This is the class that assembles the code.
 
   bool unroll = false;   // Unrolled code ~30% slower on Athlon XP.
+  bool ssse3 = !!(env->GetCPUFlags() & CPUF_SSSE3);
 
   int loops = (width+1) / 2;
 
@@ -294,6 +324,14 @@ void MatrixGenerator3x3::GenerateAssembly(int width, int frac_bits, bool rgb_out
     x86.mov(    eax, (int)&post_add);
   }
 
+  if (ssse3) {   //SSSE3 does not modify mm5 or mm7, so we only load/initialize it once
+    x86.movq(       mm5, qword_ptr [ebx+16]);            // matrix[2]
+    if (rgb_out)
+      x86.pxor(     mm7, mm7);
+    else
+      x86.movq(     mm7, qword_ptr [ebx+24]);            // matrix[3] = 0xff000000ff000000
+  }
+
   if (!unroll) {  // Should we create a loop instead of unrolling?
     x86.mov(ecx, loops);
     x86.align(16);
@@ -309,117 +347,168 @@ void MatrixGenerator3x3::GenerateAssembly(int width, int frac_bits, bool rgb_out
  * edi: destination
  *****/
   for (int i=0; i<loops; i++) {
-    if (src_pixel_step == 4) {  // Load both.
-      x86.movq(      mm0, qword_ptr[esi]);
-      if (rgb_out) {
-        x86.pxor(    mm7, mm7);
-      } else {
-        x86.movq(    mm7, qword_ptr [ebx+24]);            // matrix[3] = 0xff000000ff000000
-        x86.por(     mm0, mm7);
+    if (ssse3) {
+      if (src_pixel_step == 4) {  // Load both.
+        x86.movq(      mm6, qword_ptr[esi]);                // ARGB|argb or 1VUY|1vuy
+        if (!rgb_out)
+          x86.por(     mm6, mm7);                           // FRGB|frgb
+        x86.movq(      mm1, mm6);
+        x86.punpcklbw( mm6, mm7);                           // ffff|00rr|00gg|00bb or 0001|00vv|00uu|00yy
+        x86.punpckhbw( mm1, mm7);                           // FFFF|00RR|00GG|00BB or 0001|00VV|00UU|00YY
+      } else { // RGB24
+        x86.movd(      mm6, dword_ptr[esi]);                // 0000Brgb
+        x86.movd(      mm1, dword_ptr[esi+src_pixel_step]); // 0000?RGB
+        if (!rgb_out) {
+          x86.por(     mm6, mm7);                           // 0000frgb
+          x86.por(     mm1, mm7);                           // 0000FRGB
+        }
+        x86.punpcklbw( mm6, mm7);                           // ffff|00rr|00gg|00bb - Unpack bytes -> words Lo
+        x86.punpcklbw( mm1, mm7);                           // FFFF|00RR|00GG|00BB - Unpack bytes -> words Hi
       }
-      x86.movq(      mm1, mm0);
-      x86.punpcklbw( mm0, mm7);                           // Unpack bytes -> words Lo
-      x86.punpckhbw( mm1, mm7);                           // Unpack bytes -> words Hi
-    } else {
-      x86.movd(      mm0, dword_ptr[esi]);
-      if (rgb_out) {
-        x86.pxor(    mm7, mm7);
-        x86.movd(    mm1, dword_ptr[esi+src_pixel_step]);
-      } else {
-        x86.movq(    mm7, qword_ptr [ebx+24]);            // matrix[3] = 0xff000000ff000000
-        x86.movd(    mm1, dword_ptr[esi+src_pixel_step]);
-        x86.por(     mm0, mm7);
-        x86.por(     mm1, mm7);
+      if (pre_add) {
+        x86.paddw(     mm6, mm2);                           // += 0|-128|-128|-16 or 0
+        x86.paddw(     mm1, mm2);
       }
-      x86.punpcklbw( mm0, mm7);                           // Unpack bytes -> words Lo
-      x86.punpcklbw( mm1, mm7);                           // Unpack bytes -> words Hi
-    }
-    if (pre_add) {
-      x86.paddw(     mm0, mm2);
-      x86.paddw(     mm1, mm2);
-    }
-    x86.movq(        mm4, qword_ptr [ebx]);               // matrix[0]
+      x86.movq(        mm0, qword_ptr [ebx]);               // matrix[0]
+
+      x86.movq(        mm2, mm6);
 // Element 1/3
-    x86.movq(        mm2, mm0);
-    x86.pmaddwd(     mm0, mm4);                           // Part 1/3 Lo
+      x86.pmaddwd(     mm6, mm0);                           // Part 1/3 Lo - [b|a]
+      x86.movq(        mm3, mm1);
+      x86.pmaddwd(     mm1, mm0);                           // Part 1/3 Hi - [B|A]
 
-    x86.movq(        mm3, mm1);
-    x86.pmaddwd(     mm1, mm4);                           // mm4 free
+      x86.movq(        mm0, qword_ptr [ebx+8]);             // matrix[1]
+      x86.phaddd(      mm6, mm1);                           // [X=A+B, x=a+b]
 
-    x86.punpckldq(   mm6, mm0);                           // Move mm0 lower to mm6 upper
-    x86.punpckldq(   mm5, mm1);                           // Move mm1 lower to mm5 upper
+      x86.movq(        mm4, mm2);
+// Element 2/3
+      x86.pmaddwd(     mm2, mm0);                           // Part 2/3 Lo - [d|c]
+      x86.movq(        mm1, mm3);
+      x86.pmaddwd(     mm3, mm0);                           // Part 2/3 Hi - [D|C]
+// Element 3/3
+      x86.pmaddwd(     mm4, mm5);                           // Part 3/3 Lo - [f|e]
+      x86.phaddd(      mm2, mm3);                           // [Y=C+D, y=c+d]
+      x86.pmaddwd(     mm1, mm5);                           // Part 3/3 Hi - [F|E]
 
-    x86.paddd(       mm6, mm0);                           // First Lo ready in upper
-    x86.paddd(       mm5, mm1);                           // First Hi ready in upper
+      x86.psrad(       mm6, frac_bits);                     // Shift down - [---X|---x]
+      x86.phaddd(      mm4, mm1);                           // [Z=E+F, z=e+f]
+      x86.psrad(       mm2, frac_bits);                     // Shift down - [---Y|---y]
+      x86.movq(        mm0, mm6);                           // pixel 1
+      x86.psrad(       mm4, frac_bits);                     // Shift down - [---Z|---z]
 
-    x86.movq(        mm4, qword_ptr [ebx+8]);             // matrix[1]
-    x86.punpckhdq(   mm6, mm5);                           // Move [mm5, mm6] uppers to mm6[upper, lower]
+      x86.punpckldq(   mm0, mm2);                           // Move mm2 lower to mm0 upper - [---y|---x]
+      x86.punpckhdq(   mm6, mm2);                           // Move mm6 upper to lower, with mm2 upper - [---Y|---X]
+
+    } else {  // we don't have phaddd
+
+      if (src_pixel_step == 4) {  // Load both.
+        x86.movq(      mm0, qword_ptr[esi]);                // ARGB|argb or 1VUY|1vuy
+        if (rgb_out) {
+          x86.pxor(    mm7, mm7);
+        } else {
+          x86.movq(    mm7, qword_ptr [ebx+24]);            // matrix[3] = 0xff000000ff000000
+          x86.por(     mm0, mm7);                           // FRGB|frgb
+        }
+        x86.movq(      mm1, mm0);
+        x86.punpcklbw( mm0, mm7);                           // ffff|00rr|00gg|00bb or 0001|00vv|00uu|00yy
+        x86.punpckhbw( mm1, mm7);                           // FFFF|00RR|00GG|00BB or 0001|00VV|00UU|00YY
+      } else { // RGB24
+        x86.movd(      mm0, dword_ptr[esi]);                // 0000Brgb
+        if (rgb_out) {
+          x86.pxor(    mm7, mm7);
+          x86.movd(    mm1, dword_ptr[esi+src_pixel_step]); // 0000?RGB
+        } else {
+          x86.movq(    mm7, qword_ptr [ebx+24]);            // matrix[3] = 0xff000000ff000000
+          x86.movd(    mm1, dword_ptr[esi+src_pixel_step]); // 0000?RGB
+          x86.por(     mm0, mm7);                           // 0000frgb
+          x86.por(     mm1, mm7);                           // 0000FRGB
+        }
+        x86.punpcklbw( mm0, mm7);                           // ffff|00rr|00gg|00bb - Unpack bytes -> words Lo
+        x86.punpcklbw( mm1, mm7);                           // FFFF|00RR|00GG|00BB - Unpack bytes -> words Hi
+      }
+      if (pre_add) {
+        x86.paddw(     mm0, mm2);                           // += 0|-128|-128|-16 or 0
+        x86.paddw(     mm1, mm2);
+      }
+      x86.movq(        mm4, qword_ptr [ebx]);               // matrix[0]
+// Element 1/3
+      x86.movq(        mm2, mm0);
+      x86.pmaddwd(     mm0, mm4);                           // Part 1/3 Lo - [b|a]
+
+      x86.movq(        mm3, mm1);
+      x86.pmaddwd(     mm1, mm4);                           // Part 1/3 Hi - [B|A]
+
+      x86.punpckldq(   mm6, mm0);                           // Move mm0 lower to mm6 upper - [a|?]
+      x86.punpckldq(   mm5, mm1);                           // Move mm1 lower to mm5 upper - [A|?]
+
+      x86.paddd(       mm6, mm0);                           // First Lo ready in upper - [x=a+b|a+?]
+      x86.paddd(       mm5, mm1);                           // First Hi ready in upper - [X=A+B|A+?]
+
+      x86.movq(        mm4, qword_ptr [ebx+8]);             // matrix[1]
+      x86.punpckhdq(   mm6, mm5);                           // Move [mm5, mm6] uppers to mm6 [X, x]
 
 // Element 2/3
-    x86.movq(        mm0, mm2);
-    x86.pmaddwd(     mm2, mm4);                           // Part 2/3
+      x86.movq(        mm0, mm2);
+      x86.pmaddwd(     mm2, mm4);                           // Part 2/3 Lo - [d|c]
 
-    x86.movq(        mm1, mm3);
-    x86.pmaddwd(     mm3, mm4);                           // mm4 free
+      x86.movq(        mm1, mm3);
+      x86.pmaddwd(     mm3, mm4);                           // Part 2/3 Hi - [D|C]
 
-    x86.punpckldq(   mm7, mm2);                           // Move mm2 lower to mm7 upper
-    x86.punpckldq(   mm5, mm3);                           // Move mm3 lower to mm5 upper
+      x86.punpckldq(   mm7, mm2);                           // Move mm2 lower to mm7 upper - [c|?]
+      x86.punpckldq(   mm5, mm3);                           // Move mm3 lower to mm5 upper - [C|?]
 
-     x86.movq(       mm4, qword_ptr [ebx+16]);            // matrix[2]
-    x86.paddd(       mm7, mm2);                           // Second Lo ready in upper
+      x86.movq(        mm4, qword_ptr [ebx+16]);            // matrix[2]
+      x86.paddd(       mm7, mm2);                           // Second Lo ready in upper - [y=c+d|c+?]
 
-     x86.pmaddwd(    mm0, mm4);                           // Part 3/3
-    x86.paddd(       mm5, mm3);                           // Second Hi ready in upper
+      x86.pmaddwd(     mm0, mm4);                           // Part 3/3 Lo - [f|e]
+      x86.paddd(       mm5, mm3);                           // Second Hi ready in upper - [Y=C+D|C+?]
 
-     x86.pmaddwd(    mm1, mm4);                           // mm4 free
-    x86.punpckhdq(   mm7, mm5);                           // Move uppers[mm5, mm7]  to mm7[upper, lower]
+      x86.pmaddwd(     mm1, mm4);                           // Part 3/3 Hi - [F|E]
+      x86.punpckhdq(   mm7, mm5);                           // Move uppers[mm5, mm7]  to mm7 [Y, y]
 
 // Element 3/3
 
-    x86.punpckldq(   mm4, mm0);                           // Move mm2 lower to mm4 upper
-    x86.punpckldq(   mm5, mm1);                           // Move mm3 lower to mm5 upper
+      x86.punpckldq(   mm4, mm0);                           // Move mm0 lower to mm4 upper - [e|?]
+      x86.punpckldq(   mm5, mm1);                           // Move mm1 lower to mm5 upper - [E|?]
 
-    x86.paddd(       mm4, mm0);                           // Third Lo ready in upper
-    x86.paddd(       mm5, mm1);                           // Third Hi ready in upper
+      x86.paddd(       mm4, mm0);                           // Third Lo ready in upper - [z=e+f|e+?]
+      x86.paddd(       mm5, mm1);                           // Third Hi ready in upper - [Z=E+F|E+?]
 
-    x86.punpckhdq(   mm4, mm5);                           // Move uppers[mm5, mm4]  to mm4[upper, lower]
+      x86.psrad(       mm6, frac_bits);                     // Shift down - [---X|---x]
 
-    x86.psrad(       mm6, frac_bits);                     // Shift down
-    x86.psrad(       mm7, frac_bits);                     // Shift down
-    x86.movq(        mm0, mm6);                           // pixel 1
-    x86.psrad(       mm4, frac_bits);                     // Shift down
+      x86.punpckhdq(   mm4, mm5);                           // Move uppers[mm5, mm4]  to mm4[Z, z]
+      x86.psrad(       mm7, frac_bits);                     // Shift down - [---Y|---y]
+      x86.movq(        mm0, mm6);                           // pixel 1
+      x86.psrad(       mm4, frac_bits);                     // Shift down - [---Z|---z]
 
-    x86.punpckldq(   mm0, mm7);                           // Move mm7 lower to mm0 upper
-    x86.punpckhdq(   mm6, mm7);                           // Move mm6 high to low, put mm7 high in upper pixel 2
+      x86.punpckldq(   mm0, mm7);                           // Move mm7 lower to mm0 upper - [---y|---x]
+      x86.punpckhdq(   mm6, mm7);                           // Move mm6 upper to lower, with mm7 upper - [---Y|---X]
 
-    if (post_add) {
-      x86.movq(      mm2, qword_ptr[eax]);
     }
+    x86.packssdw(    mm0, mm4);                           // Pack results into words (pixel 1 ready) - [-Z|-z|-y|-x]
+    x86.punpckhdq(   mm4, mm4);                           //                                           [---Z|---Z]
 
-    x86.packssdw(    mm0, mm4);                           // Pack results into words (pixel 1 ready)
-    x86.punpckhdq(   mm4, mm4);
-    x86.packssdw(    mm6, mm4);                           // Pack results into words (pixel 2 ready)
+    if (post_add || pre_add)
+      x86.movq(      mm2, qword_ptr[eax]);
+
+    x86.packssdw(    mm6, mm4);                           // Pack results into words (pixel 2 ready) - [-Z|-Z|-Y|-X]
 
     if (post_add) {
-      x86.paddw(     mm0, mm2);
+      x86.paddw(     mm0, mm2);                           // += 0|128|128|16 or 0
       x86.paddw(     mm6, mm2);
     }
 
-    if (pre_add) {
-      x86.movq(      mm2, qword_ptr[eax]);
-    }
+    x86.add(         esi, src_pixel_step*2);
 
     if (dest_pixel_step == 4) {
       x86.packuswb(  mm0, mm6);                           // Into bytes
 
-      x86.add(       esi, src_pixel_step*2);
-      if (rgb_out) { // Set alpha channel
+      if (rgb_out)   // Set alpha channel
         x86.por(     mm0, qword_ptr [ebx+24]);            // matrix[3] = 0xff000000ff000000
-      }
+
       x86.movq(      qword_ptr[edi], mm0);                // Store
     } else {
       x86.packuswb(  mm0, mm0);                           // Into bytes
-      x86.add(       esi, src_pixel_step*2);
       x86.packuswb(  mm6, mm6);                           // Into bytes
 
       x86.movd(      dword_ptr[edi], mm0);                // Store
@@ -443,16 +532,17 @@ void MatrixGenerator3x3::GenerateAssembly(int width, int frac_bits, bool rgb_out
     x86.mov(         dword_ptr[edi-dest_pixel_step], ebx);  // Store new pixel
   }
 
-   x86.emms();
-    // Restore registers
-   x86.pop(          ebp);
-   x86.pop(          edi);
-   x86.pop(          esi);
-   x86.pop(          edx);
-   x86.pop(          ecx);
-   x86.pop(          ebx);
-   x86.pop(          eax);
-   x86.ret();
+  x86.emms();
+   // Restore registers
+  x86.pop(          ebp);
+  x86.pop(          edi);
+  x86.pop(          esi);
+  x86.pop(          edx);
+  x86.pop(          ecx);
+  x86.pop(          ebx);
+  x86.pop(          eax);
+  x86.ret();
+
   assembly = DynamicAssembledCode(x86, env, "ConvertMatrix: Dynamic MMX code could not be compiled.");
 }
 
