@@ -1,4 +1,4 @@
-// Avisynth v2.5.  Copyright 2002 Ben Rudiak-Gould et al.
+// Avisynth v2.5.  Copyright 2002-2009 Ben Rudiak-Gould et al.
 // http://www.avisynth.org
 
 // This program is free software; you can redistribute it and/or modify
@@ -47,17 +47,16 @@
 ***** Declare index of new filters for Avisynth's filter engine *****
 ********************************************************************/
 
-AVSFunction Convert_filters[] = {
-{ "ConvertToRGB", "c[matrix]s[interlaced]b", ConvertToRGB::Create },       // matrix can be "rec601", rec709", "PC.601" or "PC.709"
-  { "ConvertToRGB24", "c[matrix]s[interlaced]b", ConvertToRGB::Create24 },
-  { "ConvertToRGB32", "c[matrix]s[interlaced]b", ConvertToRGB::Create32 },
-  { "ConvertToY8", "c[matrix]s", ConvertToY8::Create },
-  { "ConvertToYV12", "c[interlaced]b[matrix]s", ConvertToYV12::Create },
-  { "ConvertToYV24", "c[interlaced]b[matrix]s",  ConvertToPlanarGeneric::CreateYV24},
-  { "ConvertToYV16", "c[interlaced]b[matrix]s",  ConvertToPlanarGeneric::CreateYV16},
-//{ "ConvertToYV411", "c[interlaced]b[matrix]s", ConvertToPlanarGeneric::CreateYV411}, USE ConvertToPlanar!
-//{ "ConvertToPlanar", "c <vsub, hsub, ...> [interlaced]b[matrix]s", ConvertToPlanarGeneric::CreateYV411}, :FIXME:
-  { "ConvertToYUY2", "c[interlaced]b[matrix]s", ConvertToYUY2::Create },
+AVSFunction Convert_filters[] = {       // matrix can be "rec601", rec709", "PC.601" or "PC.709"
+  { "ConvertToRGB",   "c[matrix]s[interlaced]b[chromaplacement]s[chromaresample]s", ConvertToRGB::Create },
+  { "ConvertToRGB24", "c[matrix]s[interlaced]b[chromaplacement]s[chromaresample]s", ConvertToRGB::Create24 },
+  { "ConvertToRGB32", "c[matrix]s[interlaced]b[chromaplacement]s[chromaresample]s", ConvertToRGB::Create32 },
+  { "ConvertToY8",    "c[matrix]s", ConvertToY8::Create },
+  { "ConvertToYV12",  "c[interlaced]b[matrix]s[chromaplacement]s[chromaresample]s", ConvertToYV12::Create },
+  { "ConvertToYV24",  "c[interlaced]b[matrix]s[chromaplacement]s[chromaresample]s", ConvertToPlanarGeneric::CreateYV24},
+  { "ConvertToYV16",  "c[interlaced]b[matrix]s[chromaplacement]s[chromaresample]s", ConvertToPlanarGeneric::CreateYV16},
+  { "ConvertToYV411", "c[interlaced]b[matrix]s[chromaplacement]s[chromaresample]s", ConvertToPlanarGeneric::CreateYV411},
+  { "ConvertToYUY2",  "c[interlaced]b[matrix]s[chromaplacement]s[chromaresample]s", ConvertToYUY2::Create },
   { "ConvertBackToYUY2", "c[matrix]s", ConvertBackToYUY2::Create },
   { 0 }
 };
@@ -105,56 +104,56 @@ PVideoFrame __stdcall ConvertToRGB::GetFrame(int n, IScriptEnvironment* env)
   int src_rowsize = __min(src_pitch, (src->GetRowSize()+7) & -8);
   // assumption: is_yuy2
   if (use_mmx && ((src_rowsize & 7) == 0) && (src_rowsize >= 16)) {
-	VideoInfo vi2 = vi;
-	vi2.width=src_rowsize / 2;
-	PVideoFrame dst = env->NewVideoFrame(vi2,-2); // force pitch == rowsize
-	BYTE* dstp = dst->GetWritePtr();
+    VideoInfo vi2 = vi;
+    vi2.width=src_rowsize / 2;
+    PVideoFrame dst = env->NewVideoFrame(vi2,-2); // force pitch == rowsize
+    BYTE* dstp = dst->GetWritePtr();
 
     (vi.IsRGB24() ? mmx_YUY2toRGB24 : mmx_YUY2toRGB32)(srcp, dstp,
       srcp + vi.height * src_pitch, src_pitch, src_rowsize, theMatrix);
 
-	if (vi.width & 3) {  // Did we extend off the right edge of picture?
-	  const int dst_pitch = dst->GetPitch();
-	  const int x2 = (vi.width-2) * 2;
-	  const int xE = (vi.width-1) * (vi2.BitsPerPixel()>>3);
-	  srcp += vi.height * src_pitch;
-	  for (int y=vi.height; y>0; --y) {
-		srcp -= src_pitch;
-		YUV2RGB(srcp[x2+2], srcp[x2+1], srcp[x2+3], &dstp[xE]);
-		dstp += dst_pitch;
-	  }
-	}
-	return env->Subframe(dst,0, dst->GetPitch(), vi2.BytesFromPixels(vi.width), vi.height);
+    if (vi.width & 3) {  // Did we extend off the right edge of picture?
+      const int dst_pitch = dst->GetPitch();
+      const int x2 = (vi.width-2) * 2;
+      const int xE = (vi.width-1) * (vi2.BitsPerPixel()>>3);
+      srcp += vi.height * src_pitch;
+      for (int y=vi.height; y>0; --y) {
+        srcp -= src_pitch;
+        YUV2RGB(srcp[x2+2], srcp[x2+1], srcp[x2+3], &dstp[xE]);
+        dstp += dst_pitch;
+      }
+    }
+    return env->Subframe(dst,0, dst->GetPitch(), vi2.BytesFromPixels(vi.width), vi.height);
   }
   else {
-	PVideoFrame dst = env->NewVideoFrame(vi);
-	const int dst_pitch = dst->GetPitch();
-	BYTE* dstp = dst->GetWritePtr();
+    PVideoFrame dst = env->NewVideoFrame(vi);
+    const int dst_pitch = dst->GetPitch();
+    BYTE* dstp = dst->GetWritePtr();
 
-	if (vi.IsRGB32()) {
-	  srcp += vi.height * src_pitch;
-	  for (int y=vi.height; y>0; --y) {
-		srcp -= src_pitch;
-		for (int x=0; x<vi.width; x+=2) {
-		  YUV2RGB(srcp[x*2+0], srcp[x*2+1], srcp[x*2+3], &dstp[x*4]);
-		  dstp[x*4+3] = 255;
-		  YUV2RGB(srcp[x*2+2], srcp[x*2+1], srcp[x*2+3], &dstp[x*4+4]);
-		  dstp[x*4+7] = 255;
-		}
-		dstp += dst_pitch;
-	  }
-	}
-	else if (vi.IsRGB24()) {
-	  srcp += vi.height * src_pitch;
-	  for (int y=vi.height; y>0; --y) {
-		srcp -= src_pitch;
-		for (int x=0; x<vi.width; x+=2) {
-		  YUV2RGB(srcp[x*2+0], srcp[x*2+1], srcp[x*2+3], &dstp[x*3]);
-		  YUV2RGB(srcp[x*2+2], srcp[x*2+1], srcp[x*2+3], &dstp[x*3+3]);
-		}
-		dstp += dst_pitch;
-	  }
-	}
+    if (vi.IsRGB32()) {
+      srcp += vi.height * src_pitch;
+      for (int y=vi.height; y>0; --y) {
+        srcp -= src_pitch;
+        for (int x=0; x<vi.width; x+=2) {
+          YUV2RGB(srcp[x*2+0], srcp[x*2+1], srcp[x*2+3], &dstp[x*4]);
+          dstp[x*4+3] = 255;
+          YUV2RGB(srcp[x*2+2], srcp[x*2+1], srcp[x*2+3], &dstp[x*4+4]);
+          dstp[x*4+7] = 255;
+        }
+        dstp += dst_pitch;
+      }
+    }
+    else if (vi.IsRGB24()) {
+      srcp += vi.height * src_pitch;
+      for (int y=vi.height; y>0; --y) {
+        srcp -= src_pitch;
+        for (int x=0; x<vi.width; x+=2) {
+          YUV2RGB(srcp[x*2+0], srcp[x*2+1], srcp[x*2+3], &dstp[x*3]);
+          YUV2RGB(srcp[x*2+2], srcp[x*2+1], srcp[x*2+3], &dstp[x*3+3]);
+        }
+        dstp += dst_pitch;
+      }
+    }
     return dst;
   }
 }
@@ -167,8 +166,8 @@ AVSValue __cdecl ConvertToRGB::Create(AVSValue args, void*, IScriptEnvironment* 
   const VideoInfo& vi = clip->GetVideoInfo();
   if (vi.IsYUV()) {
     if (vi.IsPlanar()) {
-      AVSValue new_args[3] = { clip, args[2].AsBool(false), matrix };
-      clip = ConvertToPlanarGeneric::CreateYV24(AVSValue(new_args, 3), NULL, env).AsClip();
+      AVSValue new_args[5] = { clip, args[2].AsBool(false), matrix, args[3].AsString("MPEG2"), args[4].AsString("Bicubic") };
+      clip = ConvertToPlanarGeneric::CreateYV24(AVSValue(new_args, 5), NULL, env).AsClip();
       return new ConvertYV24ToRGB(clip, getMatrix(args[1].AsString("rec601"), env), 4 , env);
     }
     return new ConvertToRGB(clip, false, matrix, env);
@@ -185,8 +184,8 @@ AVSValue __cdecl ConvertToRGB::Create32(AVSValue args, void*, IScriptEnvironment
   const VideoInfo vi = clip->GetVideoInfo();
   if (vi.IsYUV()) {
     if (vi.IsPlanar()) {
-      AVSValue new_args[3] = { clip, args[2].AsBool(false), matrix };
-      clip = ConvertToPlanarGeneric::CreateYV24(AVSValue(new_args, 3), NULL, env).AsClip();
+      AVSValue new_args[5] = { clip, args[2].AsBool(false), matrix, args[3].AsString("MPEG2"), args[4].AsString("Bicubic") };
+      clip = ConvertToPlanarGeneric::CreateYV24(AVSValue(new_args, 5), NULL, env).AsClip();
       return new ConvertYV24ToRGB(clip, getMatrix(args[1].AsString("rec601"), env), 4 , env);
     }
     return new ConvertToRGB(clip, false, matrix, env);
@@ -204,8 +203,8 @@ AVSValue __cdecl ConvertToRGB::Create24(AVSValue args, void*, IScriptEnvironment
   const VideoInfo& vi = clip->GetVideoInfo();
   if (vi.IsYUV()) {
     if (vi.IsPlanar()) {
-      AVSValue new_args[3] = { clip, args[2].AsBool(false), matrix };
-      clip = ConvertToPlanarGeneric::CreateYV24(AVSValue(new_args, 3), NULL, env).AsClip();
+      AVSValue new_args[5] = { clip, args[2].AsBool(false), matrix, args[3].AsString("MPEG2"), args[4].AsString("Bicubic") };
+      clip = ConvertToPlanarGeneric::CreateYV24(AVSValue(new_args, 5), NULL, env).AsClip();
       return new ConvertYV24ToRGB(clip, getMatrix(args[1].AsString("rec601"), env), 3 , env);
     }
     return new ConvertToRGB(clip, true, matrix, env);
@@ -226,14 +225,15 @@ ConvertToYV12::ConvertToYV12(PClip _child, bool _interlaced, IScriptEnvironment*
 {
   if (vi.width & 1)
     env->ThrowError("ConvertToYV12: Image width must be multiple of 2");
+
   if (interlaced && (vi.height & 3))
     env->ThrowError("ConvertToYV12: Interlaced image height must be multiple of 4");
+
   if ((!interlaced) && (vi.height & 1))
     env->ThrowError("ConvertToYV12: Image height must be multiple of 2");
-  isYUY2=isRGB32=isRGB24=false;
-  if (vi.IsYUY2()) isYUY2 = true;
-  if (vi.IsRGB32()) isRGB32 = true;
-  if (vi.IsRGB24()) isRGB24 = true;
+
+  if (!vi.IsYUY2())
+    env->ThrowError("ConvertToYV12: Source must be YUY2.");
 
   vi.pixel_type = VideoInfo::CS_YV12;
 
@@ -245,27 +245,25 @@ PVideoFrame __stdcall ConvertToYV12::GetFrame(int n, IScriptEnvironment* env) {
   PVideoFrame src = child->GetFrame(n, env);
   PVideoFrame dst = env->NewVideoFrame(vi);
 
-  if (isYUY2) {
-    if (interlaced) {
-		  if ((env->GetCPUFlags() & CPUF_INTEGER_SSE)) {
-        isse_yuy2_i_to_yv12(src->GetReadPtr(), src->GetRowSize(), src->GetPitch(),
-          dst->GetWritePtr(PLANAR_Y), dst->GetWritePtr(PLANAR_U), dst->GetWritePtr(PLANAR_V), dst->GetPitch(PLANAR_Y),dst->GetPitch(PLANAR_U),
-          src->GetHeight());
-      } else {
-        mmx_yuy2_i_to_yv12(src->GetReadPtr(), src->GetRowSize(), src->GetPitch(),
-          dst->GetWritePtr(PLANAR_Y), dst->GetWritePtr(PLANAR_U), dst->GetWritePtr(PLANAR_V), dst->GetPitch(PLANAR_Y),dst->GetPitch(PLANAR_U),
-          src->GetHeight());
-      }
+  if (interlaced) {
+    if ((env->GetCPUFlags() & CPUF_INTEGER_SSE)) {
+      isse_yuy2_i_to_yv12(src->GetReadPtr(), src->GetRowSize(), src->GetPitch(),
+                          dst->GetWritePtr(PLANAR_Y), dst->GetWritePtr(PLANAR_U), dst->GetWritePtr(PLANAR_V),
+                          dst->GetPitch(PLANAR_Y), dst->GetPitch(PLANAR_U), src->GetHeight());
     } else {
-		  if ((env->GetCPUFlags() & CPUF_INTEGER_SSE)) {
-        isse_yuy2_to_yv12(src->GetReadPtr(), src->GetRowSize(), src->GetPitch(),
-          dst->GetWritePtr(PLANAR_Y), dst->GetWritePtr(PLANAR_U), dst->GetWritePtr(PLANAR_V), dst->GetPitch(PLANAR_Y),dst->GetPitch(PLANAR_U),
-          src->GetHeight());
-      } else {
-        mmx_yuy2_to_yv12(src->GetReadPtr(), src->GetRowSize(), src->GetPitch(),
-          dst->GetWritePtr(PLANAR_Y), dst->GetWritePtr(PLANAR_U), dst->GetWritePtr(PLANAR_V), dst->GetPitch(PLANAR_Y),dst->GetPitch(PLANAR_U),
-          src->GetHeight());
-      }
+      mmx_yuy2_i_to_yv12(src->GetReadPtr(), src->GetRowSize(), src->GetPitch(),
+                          dst->GetWritePtr(PLANAR_Y), dst->GetWritePtr(PLANAR_U), dst->GetWritePtr(PLANAR_V),
+                          dst->GetPitch(PLANAR_Y), dst->GetPitch(PLANAR_U), src->GetHeight());
+    }
+  } else {
+    if ((env->GetCPUFlags() & CPUF_INTEGER_SSE)) {
+      isse_yuy2_to_yv12(src->GetReadPtr(), src->GetRowSize(), src->GetPitch(),
+                        dst->GetWritePtr(PLANAR_Y), dst->GetWritePtr(PLANAR_U), dst->GetWritePtr(PLANAR_V),
+                        dst->GetPitch(PLANAR_Y), dst->GetPitch(PLANAR_U), src->GetHeight());
+    } else {
+      mmx_yuy2_to_yv12(src->GetReadPtr(), src->GetRowSize(), src->GetPitch(),
+                       dst->GetWritePtr(PLANAR_Y), dst->GetWritePtr(PLANAR_U), dst->GetWritePtr(PLANAR_V),
+                       dst->GetPitch(PLANAR_Y), dst->GetPitch(PLANAR_U), src->GetHeight());
     }
   }
 
@@ -277,14 +275,13 @@ AVSValue __cdecl ConvertToYV12::Create(AVSValue args, void*, IScriptEnvironment*
 {
   PClip clip = args[0].AsClip();
   const VideoInfo& vi = clip->GetVideoInfo();
+
   if (vi.IsYV12()) return clip;
-  if (vi.IsYUY2())
-    return  new ConvertToYV12(clip,args[1].AsBool(false),env);
-  if (vi.IsRGB())
-    return ConvertToPlanarGeneric::CreateYV12(args,0,env);
-  if (vi.IsPlanar())
-    return ConvertToPlanarGeneric::CreateYV12(args,0,env);
-  return clip;
+
+  if (vi.IsYUY2() && !args[3].Defined() && !args[4].Defined())  // User has not requested a special subsampling, do it fast!
+    return new ConvertToYV12(clip,args[1].AsBool(false),env);
+
+  return ConvertToPlanarGeneric::CreateYV12(args,0,env);
 }
 
 
