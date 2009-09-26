@@ -52,10 +52,8 @@ class AVSsupereq : public GenericVideoFilter
 {
 private:
 	ptr_list_simple<supereq_base> eqs;
-	UINT last_nch,last_srate;
 	paramlist paramroot;
 	eq_config my_eq;
-	mem_block_t<audio_sample> interlace_buf;
 
   int dstbuffer_size;
   int dst_samples_filled;
@@ -67,13 +65,14 @@ private:
 
 public:
 static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env);
+static AVSValue __cdecl Create_Custom(AVSValue args, void*, IScriptEnvironment* env);
 
 
 AVSsupereq(PClip _child, const char* filename, IScriptEnvironment* env)
 : GenericVideoFilter(ConvertAudio::Create(_child, SAMPLE_FLOAT, SAMPLE_FLOAT))
 {
-  last_nch = vi.AudioChannels();
-  last_srate = vi.audio_samples_per_second;
+  const unsigned last_nch   = (unsigned)vi.AudioChannels();
+  const unsigned last_srate = (unsigned)vi.audio_samples_per_second;
   
   FILE *settingsfile;
   settingsfile = fopen(filename, "r");		
@@ -91,7 +90,7 @@ AVSsupereq(PClip _child, const char* filename, IScriptEnvironment* env)
     env->ThrowError("SuperEQ: Could not open file");
   }
   
-  UINT n;
+  unsigned n;
   for(n=0;n<last_nch;n++)
     eqs.add_item(new supereq<float>);
   double bands[N_BANDS];
@@ -100,9 +99,37 @@ AVSsupereq(PClip _child, const char* filename, IScriptEnvironment* env)
   for(n=0;n<last_nch;n++)
     eqs[n]->equ_makeTable(bands,&paramroot,(double)last_srate);
 
-  dstbuffer = new SFLOAT[vi.audio_samples_per_second * vi.AudioChannels()];  // Our buffer can minimum contain one second.
-  passbuffer = new SFLOAT[vi.audio_samples_per_second * vi.AudioChannels()];  // Our buffer can minimum contain one second.
-  dstbuffer_size = vi.audio_samples_per_second;
+  dstbuffer = new SFLOAT[last_srate * last_nch];  // Our buffer can minimum contain one second.
+  passbuffer = new SFLOAT[last_srate];  // Our buffer can minimum contain one second.
+  dstbuffer_size = last_srate;
+
+  next_sample = 0;  // Next output sample
+  inputReadOffset = 0;  // Next input sample
+  dst_samples_filled = 0;
+}
+
+AVSsupereq(PClip _child, float* values, IScriptEnvironment* env)
+: GenericVideoFilter(ConvertAudio::Create(_child, SAMPLE_FLOAT, SAMPLE_FLOAT))
+{
+  const unsigned last_nch   = (unsigned)vi.AudioChannels();
+  const unsigned last_srate = (unsigned)vi.audio_samples_per_second;
+  
+  int n;
+  for(n=0;n<N_BANDS;n++) {
+      my_eq.bands[n] = (-values[n]+20);
+  }
+  
+  for(n=0;n<last_nch;n++)
+    eqs.add_item(new supereq<float>);
+  double bands[N_BANDS];
+  //    my_eq = cfg_eq;
+  setup_bands(my_eq,bands);
+  for(n=0;n<last_nch;n++)
+    eqs[n]->equ_makeTable(bands,&paramroot,(double)last_srate);
+
+  dstbuffer = new SFLOAT[last_srate * last_nch];  // Our buffer can minimum contain one second.
+  passbuffer = new SFLOAT[last_srate];  // Our buffer can minimum contain one second.
+  dstbuffer_size = last_srate;
 
   next_sample = 0;  // Next output sample
   inputReadOffset = 0;  // Next input sample
@@ -111,13 +138,15 @@ AVSsupereq(PClip _child, const char* filename, IScriptEnvironment* env)
 
 void __stdcall AVSsupereq::GetAudio(void* buf, __int64 start, __int64 count, IScriptEnvironment* env)
 {
+  const unsigned last_nch   = (unsigned)vi.AudioChannels();
+  const unsigned last_srate = (unsigned)vi.audio_samples_per_second;
 
   if (start != next_sample) {  // Reset on seek
     inputReadOffset = start;  // Reset at new read position.
     dst_samples_filled=0;
 
     eqs.delete_all();
-    UINT n;
+    unsigned n;
     for(n=0;n<last_nch;n++)
       eqs.add_item(new supereq<float>);
     double bands[N_BANDS];
@@ -151,33 +180,42 @@ void __stdcall AVSsupereq::GetAudio(void* buf, __int64 start, __int64 count, ISc
       child->GetAudio(dstbuffer, inputReadOffset, last_srate, env);
       inputReadOffset += last_srate;
 
-			for(UINT n=0;n<last_nch;n++)  // Copies n channels to separate buffers to individual filters
-			{
-				UINT s;
-				for(s=0;s<last_srate;s++)
-					passbuffer[s]=dstbuffer[s*last_nch+n];
-				
-				eqs[n]->write_samples(passbuffer, last_srate);
-			}
+      {for (unsigned n=0; n<last_nch; n++) { // Copies n channels to separate buffers to individual filters
+        SFLOAT *db = dstbuffer + n;
+        for (int s=0, r=0; s<last_srate; s++, r+=last_nch)
+          passbuffer[s] = db[r];
+
+        eqs[n]->write_samples(passbuffer, last_srate);
+      }}
 
       // Read back samples from filter
-		  int samples_out = 0;
-		  for(n=0;n<last_nch;n++)  // Copies back samples from individual filters
-		  {
-			  SFLOAT *data_out = eqs[n]->get_output(&samples_out);
+      int samples_out = 0;
+      {for (unsigned n=0; n<last_nch; n++) { // Copies back samples from individual filters
+        SFLOAT *data_out = eqs[n]->get_output(&samples_out);
         // Check temp buffer size
         if (dstbuffer_size < samples_out) {
-          if (dstbuffer_size)
-            delete[] dstbuffer;
-          dstbuffer = new SFLOAT[samples_out*last_nch];
-          dstbuffer_size = samples_out;
+          if (n) { // Extremely unlikely but if it happens we need to transcribe the old buf.
+            SFLOAT *db = new SFLOAT[samples_out*last_nch];
+            if (dstbuffer_size) {
+              memcpy(db, dstbuffer, dstbuffer_size*sizeof(SFLOAT)*last_nch);
+              delete[] dstbuffer;
+			}
+            dstbuffer = db;
+            dstbuffer_size = samples_out;
+          }
+          else {
+            if (dstbuffer_size)
+              delete[] dstbuffer;
+            dstbuffer = new SFLOAT[samples_out*last_nch];
+            dstbuffer_size = samples_out;
+          }
         }
-			  UINT s;
-			  for(s=0;s<(UINT)samples_out;s++)
-				  dstbuffer[s*last_nch+n]=data_out[s];
-      }
-			dst_samples_filled = samples_out;
-		}  
+        SFLOAT *db = dstbuffer + n;
+        for (int s=0, r=0; s<samples_out; s++, r+=last_nch)
+          db[r] = data_out[s];
+      }}
+      dst_samples_filled = samples_out;
+    }  
   } while (!buffer_full);
   next_sample += count;
 }
@@ -195,9 +233,19 @@ AVSValue __cdecl AVSsupereq::Create(AVSValue args, void*, IScriptEnvironment* en
   return new AVSsupereq(args[0].AsClip(), args[1].AsString(), env);
 }
 
+AVSValue __cdecl AVSsupereq::Create_Custom(AVSValue args, void*, IScriptEnvironment* env) {
+  float eq[N_BANDS];
+  AVSValue args_c = args[1];
+  const int num_args = args_c.ArraySize();
+  for (int i = 0; i<N_BANDS; i++) {
+    eq[i] = i<num_args ? args_c[i].AsFloat() : 0.0f;
+  }
+  return new AVSsupereq(args[0].AsClip(), eq, env);
+}
 
 AVSFunction SuperEq_filters[] = {
   { "SuperEQ", "cs", AVSsupereq::Create },
+  { "SuperEQ", "cf+", AVSsupereq::Create_Custom },
   { 0 }
 };
 
