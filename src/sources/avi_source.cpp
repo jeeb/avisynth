@@ -554,6 +554,23 @@ AVISource::AVISource(const char filename[], bool fAudio, const char pixel_type[]
         if (error != ICERR_OK)   // shutdown, if init not succesful.
           env->ThrowError("AviSource: Could not decompress first keyframe %d", keyframe);
       }
+      if (bInvertFrames) {
+        const int h2 = frame->GetHeight() >> 1;
+        const int w4 = frame->GetPitch() >> 2;
+        long *pT = (long *)ptr;
+        long *pB = pT + w4 * (frame->GetHeight() - 1);
+
+        // Inplace flip RGB frame
+        for(int y=0; y<h2; ++y) {
+          for(int x=0; x<w4; ++x) {
+            const long t = pT[x];
+            pT[x] = pB[x];
+            pB[x] = t;
+          }
+          pT += w4;
+          pB -= w4;
+        }
+      }
       last_frame_no=0;
       last_frame=frame;
     }
