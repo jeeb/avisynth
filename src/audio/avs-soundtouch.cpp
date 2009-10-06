@@ -39,6 +39,7 @@
 #include "stdafx.h"
 
 #include "avs-soundtouch.h"
+#include "convertaudio.h"
 
 
 #define BUFFERSIZE 8192

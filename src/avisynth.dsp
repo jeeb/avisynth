@@ -184,6 +184,10 @@ SOURCE=.\core\alignplanar.cpp
 # End Source File
 # Begin Source File
 
+SOURCE=.\core\alignplanar.h
+# End Source File
+# Begin Source File
+
 SOURCE=.\core\avisynth.cpp
 # End Source File
 # Begin Source File
@@ -286,6 +290,10 @@ SOURCE=".\audio\avs-soundtouch.h"
 # Begin Source File
 
 SOURCE=.\audio\convertaudio.cpp
+# End Source File
+# Begin Source File
+
+SOURCE=.\audio\convertaudio.h
 # End Source File
 # Begin Source File
 

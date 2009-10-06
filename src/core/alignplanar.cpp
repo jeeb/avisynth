@@ -41,6 +41,7 @@
 
 #include "stdafx.h"
 #include "avisynth.h"
+#include "alignplanar.h"
 
 
 AlignPlanar::AlignPlanar(PClip _clip) : GenericVideoFilter(_clip) {}

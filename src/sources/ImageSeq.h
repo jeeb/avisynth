@@ -92,7 +92,7 @@ public:
   void __stdcall GetAudio(void* buf, __int64 start, __int64 count, IScriptEnvironment* env) {}
   const VideoInfo& __stdcall GetVideoInfo() { return vi; }
   bool __stdcall GetParity(int n) { return false; }
-  void __stdcall SetCacheHints(int cachehints,int frame_range) { };
+  int __stdcall SetCacheHints(int cachehints,int frame_range) { return 0; };
   
   
   static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env);

@@ -35,6 +35,7 @@
 #include "stdafx.h"
 
 #include "edit.h"
+#include "../audio/convertaudio.h"
 
 
 
@@ -203,7 +204,7 @@ AVSValue __cdecl DeleteFrame::Create(AVSValue args, void*, IScriptEnvironment* e
       // Remove duplicates
       if (frames[i] == frames[j]) {
         m -= 1;
-        frames[i] = MAX_INT;
+        frames[i] = INT_MAX;
         break;
       }
       else if (frames[i] < frames[j]) {

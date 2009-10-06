@@ -45,7 +45,8 @@
 #include <math.h>
 
 #include "../internal.h"
-#include "../audio/audio.h"
+#include "../core/cache.h"
+#include "../audio/convertaudio.h"
 #include <float.h>
 
 

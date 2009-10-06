@@ -40,7 +40,7 @@ public:
 	void __stdcall GetAudio(void * buf, __int64 start, __int64 count, IScriptEnvironment* env);
 	const VideoInfo & __stdcall GetVideoInfo();
 	bool __stdcall GetParity(int n);
-	void __stdcall SetCacheHints(int cachehints,int frame_range);
+	int __stdcall SetCacheHints(int cachehints,int frame_range);
 	__stdcall ~C_VideoFilter();
 };
 
@@ -115,15 +115,17 @@ bool __stdcall C_VideoFilter::GetParity(int n)
 	}
 }
 
-void __stdcall C_VideoFilter::SetCacheHints(int cachehints, int frame_range) 
+int __stdcall C_VideoFilter::SetCacheHints(int cachehints, int frame_range) 
 {
 	if (d.set_cache_hints) {
 		d.error = 0;
-		d.set_cache_hints(&d, cachehints, frame_range);
+		int res = d.set_cache_hints(&d, cachehints, frame_range);
 		if (d.error)
 			throw AvisynthError(d.error);
+		return res;
 	}
-	// We do not pass cache requests upwards, only to the next filter.
+	// We do not pass cache requests upwards, only to the hosted filter.
+	return 0;
 }
 
 C_VideoFilter::~C_VideoFilter()
@@ -212,8 +214,7 @@ int AVSC_CC avs_set_cache_hints(AVS_Clip * p, int cachehints, int frame_range)  
 {
 	try {
 		p->error = 0;
-		p->clip->SetCacheHints(cachehints, frame_range);
-		return 0;
+		return p->clip->SetCacheHints(cachehints, frame_range);
 	} catch (AvisynthError err) {
 		p->error = err.msg;
 		return -1;
@@ -570,7 +571,10 @@ extern "C"
 void AVSC_CC avs_delete_script_environment(AVS_ScriptEnvironment * e)
 {
 	if (e) {
-		if (e->env) delete e->env;
+		if (e->env) {
+			e->env->DeleteScriptEnvironment();
+			e->env = 0;
+		}
 		delete e;
 	}
 }

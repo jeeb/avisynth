@@ -323,7 +323,7 @@ public:
   }
 
   bool __stdcall GetParity(int n) { return false; }
-  void __stdcall SetCacheHints(int cachehints,int frame_range) { };
+  int __stdcall SetCacheHints(int cachehints,int frame_range) { return 0; };
 
   static AVSValue __cdecl Create(AVSValue args, void* user_data, IScriptEnvironment* env) {
     args = args[0];

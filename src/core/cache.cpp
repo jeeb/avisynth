@@ -53,10 +53,10 @@ struct {
 
 AVSFunction Cache_filters[] = {
   { "Cache", "c", Cache::Create_Cache },
-  { "InternalCache", "c", Cache::Create_Cache },                    
+  { "InternalCache", "c", Cache::Create_Cache },
   { 0 }
 };
- 
+
 
 enum {CACHE_SCALE_FACTOR      =  16}; // Granularity fraction for cache size - 1/16th
 enum {MAX_CACHE_MISSES        = 100}; // Consecutive misses before a reset
@@ -73,9 +73,9 @@ unsigned long Cache::Clock = 1;
 long Cache::cacheDepth = 0;
 
 
-Cache::Cache(PClip _child, IScriptEnvironment* env) 
+Cache::Cache(PClip _child, IScriptEnvironment* env)
  : GenericVideoFilter(_child), nextCache(NULL), cache(0), priorCache(NULL), Tick(0)
-{ 
+{
   h_policy = CACHE_ALL;  // Since hints are not used per default, this is to describe the lowest default cache mode.
   h_audiopolicy = CACHE_NOTHING;  // Don't cache audio per default.
 
@@ -212,7 +212,7 @@ purge_old_frame:
   j = i->next;
   video_frames.prev = i;
   i->next = &video_frames;
-  
+
   // Delete the excess CachedVideoFrames
   while (j != &video_frames) {
 	i = j->next;
@@ -230,8 +230,8 @@ purge_old_frame:
 // that violate that, for those are the ones that are going to cause problems.
 
 
-PVideoFrame __stdcall Cache::childGetFrame(int n, IScriptEnvironment* env) 
-{ 
+PVideoFrame __stdcall Cache::childGetFrame(int n, IScriptEnvironment* env)
+{
   InterlockedIncrement(&cacheDepth);
   PVideoFrame result = child->GetFrame(n, env);
   InterlockedDecrement(&cacheDepth);
@@ -259,7 +259,7 @@ PVideoFrame __stdcall Cache::childGetFrame(int n, IScriptEnvironment* env)
 }
 
 
-// Unfortunatly the code for "return child->GetFrame(n,env);" seems highly likely 
+// Unfortunatly the code for "return child->GetFrame(n,env);" seems highly likely
 // to generate code that relies on the contents of the ebx register being preserved
 // across the call. By inserting a "mov ebx,ebx" before the call the compiler can
 // be convinced the ebx register has been changed and emit altermate code that is not
@@ -268,14 +268,14 @@ PVideoFrame __stdcall Cache::childGetFrame(int n, IScriptEnvironment* env)
 // The other half of the problem is when using inline assembler, __asm, that uses the
 // ebx register together with a medium amount of C++ code around it, the optimizer
 // dutifully restructures the emited C++ code to remove all it's ebx references, forgets
-// about the __asm ebx references, and thinks it's okay to removes the push/pop ebx 
+// about the __asm ebx references, and thinks it's okay to removes the push/pop ebx
 // from the entry prologue.
 //
 // Together they are a smoking gun!
 
 
-PVideoFrame __stdcall Cache::GetFrame(int n, IScriptEnvironment* env) 
-{ 
+PVideoFrame __stdcall Cache::GetFrame(int n, IScriptEnvironment* env)
+{
   if (cacheDepth == 0) Clock+=1;
   Tick = Clock;
 
@@ -348,7 +348,7 @@ PVideoFrame __stdcall Cache::GetFrame(int n, IScriptEnvironment* env)
 
 		cvf = i; // Remember this entry!
 		break;
-	  } // if (ifn == n) 
+	  } // if (ifn == n)
 
 	  if (ifn < iminframe) iminframe = ifn;
 	  if (ifn > imaxframe) imaxframe = ifn;
@@ -389,7 +389,7 @@ PVideoFrame __stdcall Cache::GetFrame(int n, IScriptEnvironment* env)
 	  miss_count = 0x80000000; // Hugh negative
 	}
   } // if (n>=minframe ... else
-  
+
   if (fault_rate > 0) --fault_rate;  // decay fault rate
 
   _RPT4(0, "Cache:%x: generating frame %d, cache from %d to %d\n", this, n, minframe, maxframe);
@@ -478,7 +478,7 @@ Cache::CachedVideoFrame* Cache::GetACachedVideoFrame(const PVideoFrame& frame, I
 }
 
 
-void Cache::RegisterVideoFrame(CachedVideoFrame *i, const PVideoFrame& frame, int n, IScriptEnvironment* env) 
+void Cache::RegisterVideoFrame(CachedVideoFrame *i, const PVideoFrame& frame, int n, IScriptEnvironment* env)
 {
   ReturnVideoFrameBuffer(i, env); // Return old vfb to vfb pool for early reuse
 
@@ -572,7 +572,7 @@ void Cache::FillZeros(void* buf, int start_offset, int count) {
 }
 
 void __stdcall Cache::GetAudio(void* buf, __int64 start, __int64 count, IScriptEnvironment* env) {
-  if (count <= 0) 
+  if (count <= 0)
     return;
 
   if ( (!vi.HasAudio()) || (start+count <= 0) || (start >= vi.num_audio_samples)) {
@@ -584,7 +584,7 @@ void __stdcall Cache::GetAudio(void* buf, __int64 start, __int64 count, IScriptE
   if (start < 0) {  // Partial initial skip
     FillZeros(buf, 0, (int)-start);  // Fill all samples before 0 with silence.
     count += start;  // Subtract start bytes from count.
-    buf = ((BYTE*)buf) - (int)(start*vi.BytesPerAudioSample());   
+    buf = ((BYTE*)buf) - (int)(start*vi.BytesPerAudioSample());
     start = 0;
   }
 
@@ -691,12 +691,11 @@ void __stdcall Cache::GetAudio(void* buf, __int64 start, __int64 count, IScriptE
 
 /*********** C A C H E   H I N T S ************/
 
-void __stdcall Cache::SetCacheHints(int cachehints,int frame_range) {
+int __stdcall Cache::SetCacheHints(int cachehints,int frame_range) {
 
   // Hack to detect if we are a cache, respond with our this pointer
-  if ((cachehints == GetMyThis) && (frame_range != 0)) {
-	*(int *)frame_range = (int)(void *)this;
-	return;
+  if (cachehints == GetMyThis) {
+	return (int)(void *)this;
   }
 
   _RPT3(0, "Cache:%x: Setting cache hints (hints:%d, range:%d )\n", this, cachehints, frame_range);
@@ -704,14 +703,14 @@ void __stdcall Cache::SetCacheHints(int cachehints,int frame_range) {
   if (cachehints == CACHE_AUDIO || cachehints == CACHE_AUDIO_AUTO) {
 
     if (!vi.HasAudio())
-      return;
+      return 0;
 
     // Range means for audio.
     // 0 == Create a default buffer (64kb).
     // Positive. Allocate X bytes for cache.
 
     if (h_audiopolicy != CACHE_NOTHING && (frame_range == 0))   // We already have a policy - no need for a default one.
-      return;
+      return 0;
 
     h_audiopolicy = cachehints;
 
@@ -730,13 +729,13 @@ void __stdcall Cache::SetCacheHints(int cachehints,int frame_range) {
       }
       else {
         cache_start=0;
-        cache_count=0;  
+        cache_count=0;
       }
     }
     else {
       cache = oldcache;
     }
-    return;
+    return 0;
   }
 
   if (cachehints == CACHE_AUDIO_NONE) {
@@ -762,13 +761,13 @@ void __stdcall Cache::SetCacheHints(int cachehints,int frame_range) {
 	  cache_limit = _cache_limit;
 
     cache_init  = cache_limit/CACHE_SCALE_FACTOR;
-    return;
+    return 0;
   }
 
   if (cachehints == CACHE_NOTHING) {
 
     h_policy = CACHE_NOTHING;  // filter requested no caching.
-    return;
+    return 0;
   }
 
   if (cachehints == CACHE_RANGE) {
@@ -776,12 +775,13 @@ void __stdcall Cache::SetCacheHints(int cachehints,int frame_range) {
     h_policy = CACHE_RANGE;  // An explicit cache of radius "frame_range" around the current frame, n.
 
     if (frame_range <= h_span)  // Use the largest size when we have multiple clients
-      return;
+      return 0;
 
     h_span = frame_range;
 	if (h_span > MAX_CACHE_RANGE) h_span=MAX_CACHE_RANGE;
   }
-} 
+  return 0;
+}
 
 /*********** C L E A N U P ************/
 
@@ -790,7 +790,7 @@ Cache::~Cache() {
   _ASSERTE(*priorCache == this);
   if (nextCache) nextCache->priorCache = priorCache;
   *priorCache = nextCache;
-  
+
   if (cache) {
     delete[] cache;
     cache = 0;
@@ -809,23 +809,23 @@ Cache::~Cache() {
 
 /*********** C R E A T E ************/
 
-AVSValue __cdecl Cache::Create_Cache(AVSValue args, void*, IScriptEnvironment* env) 
+AVSValue __cdecl Cache::Create_Cache(AVSValue args, void*, IScriptEnvironment* env)
 {
   PClip p=0;
 
   if (args.IsClip())
-	  p = args.AsClip();
+      p = args.AsClip();
   else
-	  p = args[0].AsClip();
+      p = args[0].AsClip();
 
   if (p) {
-	int q = 0;
-	
-	// Check if "p" is a cache instance
-	p->SetCacheHints(GetMyThis, (int)&q);
+    int q = 0;
 
-	// Do not cache another cache!
-	if (q != (int)(void *)p) return new Cache(p, env);
+    if (p->GetVersion() >= 5) // AVISYNTH_INTERFACE_VERSION which supports this
+      q = p->SetCacheHints(GetMyThis, 0); // Check if "p" is a cache instance
+
+    // Do not cache another cache!
+    if (q != (int)(void *)p) return new Cache(p, env);
   }
   return p;
 }

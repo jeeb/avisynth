@@ -36,11 +36,19 @@
 #define __Transform_H__
 
 #include "../internal.h"
-#include "../convert/convert.h"
 
 
 /********************************************************************
 ********************************************************************/
+
+
+class FillBorder : public GenericVideoFilter
+{
+public:
+  FillBorder(PClip _clip);
+  static PClip Create(PClip clip);
+  PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
+};
 
 
 class FlipVertical : public GenericVideoFilter 

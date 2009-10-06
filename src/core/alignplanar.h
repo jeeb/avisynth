@@ -1,4 +1,4 @@
-// Avisynth v2.5.  Copyright 2002 Ben Rudiak-Gould et al.
+// Avisynth v2.5.  Copyright 2009 Ben Rudiak-Gould et al.
 // http://www.avisynth.org
 
 // This program is free software; you can redistribute it and/or modify
@@ -32,47 +32,17 @@
 // which is not derived from or based on Avisynth, such as 3rd-party filters,
 // import and export plugins, or graphical user interfaces.
 
-#ifndef __SSRC_Audio_H__
-#define __SSRC_Audio_H__
-
-typedef float REAL;
-
-#include "../internal.h"
-#include "convertaudio.h"
-#include "ssrc.h"
+#ifndef __Align_Planar_H__
+#define __Align_Planar_H__
 
 
-
-class SSRC : public GenericVideoFilter 
-/**
-  * Class to resample the audio stream
- **/
+class AlignPlanar : public GenericVideoFilter
 {
 public:
-  SSRC(PClip _child, int _target_rate, bool _fast, IScriptEnvironment* env);
-  ~SSRC() {
-     if (srcbuffer) delete[] srcbuffer;
-    }
-  void __stdcall GetAudio(void* buf, __int64 start, __int64 count, IScriptEnvironment* env);
-  static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env);
-
-private:
-  const int target_rate;
-  int source_rate;
-  int srcbuffer_size;
-  bool skip_conversion;
-  double factor;
-  int input_samples;
-  bool fast;
-
-  SFLOAT* srcbuffer;
-  __int64 next_sample;
-  __int64 inputReadOffset;
-
-	Resampler_base * res;
-
+  AlignPlanar(PClip _clip);
+  static PClip Create(PClip clip);
+  PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
 };
 
 
-#endif  // __SSRC_Audio_H__
-
+#endif //__Align_Planar_H__

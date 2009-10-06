@@ -65,7 +65,7 @@ public:
   }
   const VideoInfo& __stdcall GetVideoInfo() { return vi; }
   bool __stdcall GetParity(int n) { return (vi.IsFieldBased() ? (n&1) : false) ^ parity; }
-  void __stdcall SetCacheHints(int cachehints,int frame_range) { };
+  int __stdcall SetCacheHints(int cachehints,int frame_range) { return 0; };
 };
 
 
@@ -533,7 +533,7 @@ public:
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env) { return frame; }
   bool __stdcall GetParity(int n) { return false; }
   const VideoInfo& __stdcall GetVideoInfo() { return vi; }
-  void __stdcall SetCacheHints(int cachehints,int frame_range) { };
+  int __stdcall SetCacheHints(int cachehints,int frame_range) { return 0; };
 
   void __stdcall GetAudio(void* buf, __int64 start, __int64 count, IScriptEnvironment* env) {
 #if 1
@@ -793,7 +793,7 @@ public:
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env) { return NULL; }
   const VideoInfo& __stdcall GetVideoInfo() { return vi; }
   bool __stdcall GetParity(int n) { return false; }
-  void __stdcall SetCacheHints(int cachehints,int frame_range) { };
+  int __stdcall SetCacheHints(int cachehints,int frame_range) { return 0; };
 
 };
 

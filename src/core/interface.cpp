@@ -407,7 +407,10 @@ BYTE* VideoFrame::GetWritePtr(int plane) const {
   return vfb->data + GetOffset(plane);
 }
 
+/* Baked ********************
 VideoFrame::~VideoFrame() { InterlockedDecrement(&vfb->refcount); }
+   Baked ********************/
+VideoFrame::~VideoFrame() { Release(); }
 
 // end class VideoFrame
 
@@ -415,6 +418,10 @@ VideoFrame::~VideoFrame() { InterlockedDecrement(&vfb->refcount); }
 
 // class IClip
 
+/* Baked ********************
+  void AddRef() { InterlockedIncrement((long *)&refcnt); }
+  void Release() { InterlockedDecrement((long *)&refcnt); if (!refcnt) delete this; }
+   Baked ********************/
 void IClip::AddRef() { InterlockedIncrement(&refcnt); }
 void IClip::Release() { if (!InterlockedDecrement(&refcnt)) delete this; }
 

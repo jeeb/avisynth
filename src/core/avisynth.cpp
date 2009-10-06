@@ -782,7 +782,6 @@ char* StringDump::SaveString(const char* s, int len) {
 
 
 class AtExiter {
-  IScriptEnvironment* const env;
   struct AtExitRec {
     const IScriptEnvironment::ShutdownFunc func;
     void* const user_data;
@@ -791,22 +790,23 @@ class AtExiter {
       : func(_func), user_data(_user_data), next(_next) {}
   };
   AtExitRec* atexit_list;
+
 public:
-  AtExiter(IScriptEnvironment* _env) : env(_env) {
+  AtExiter() {
     atexit_list = 0;
   }
+
   void Add(IScriptEnvironment::ShutdownFunc f, void* d) {
     atexit_list = new AtExitRec(f, d, atexit_list);
   }
-  ~AtExiter() {
-#if 1
+
+  void Excute() {
     while (atexit_list) {
       AtExitRec* next = atexit_list->next;
       atexit_list->func(atexit_list->user_data, env);
       delete atexit_list;
       atexit_list = next;
     }
-#endif
   }
 };
 
@@ -842,6 +842,7 @@ public:
   void* __stdcall ManageCache(int key, void* data);
   bool __stdcall PlanarChromaAlignment(IScriptEnvironment::PlanarChromaAlignmentMode key);
   PVideoFrame __stdcall SubframePlanar(PVideoFrame src, int rel_offset, int new_pitch, int new_row_size, int new_height, int rel_offsetU, int rel_offsetV, int new_pitchUV);
+  void __stdcall DeleteScriptEnvironment();
 
 private:
   // Tritical May 2005
@@ -888,7 +889,7 @@ long ScriptEnvironment::refcount=0;
 extern long CPUCheckForExtensions();  // in cpuaccel.cpp
 
 ScriptEnvironment::ScriptEnvironment()
-  : at_exit(This()),
+  : at_exit(),
     function_table(This()),
     CacheHead(0), hrfromcoinit(E_FAIL), coinitThreadId(0),
     unpromotedvfbs(&video_frame_buffers),
@@ -950,6 +951,10 @@ ScriptEnvironment::ScriptEnvironment()
 }
 
 ScriptEnvironment::~ScriptEnvironment() {
+  // Before we start to pull the world apart
+  // give every one their last wish.
+  at_exit.Execute(this);
+
   while (var_table)
     PopContext();
   while (global_var_table)
@@ -2007,6 +2012,13 @@ void ScriptEnvironment::ThrowError(const char* fmt, ...) {
   va_end(val);
   buf[sizeof(buf)-1] = '\0';
   throw AvisynthError(ScriptEnvironment::SaveString(buf));
+}
+
+
+void __stdcall ScriptEnvironment::DeleteScriptEnvironment() {
+  // Provide a method to delete this ScriptEnvironment in
+  // the same malloc context in which it was created below.
+  delete this;
 }
 
 

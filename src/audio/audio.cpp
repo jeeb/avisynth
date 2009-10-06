@@ -35,6 +35,7 @@
 #include "stdafx.h"
 
 #include "audio.h"
+#include "convertaudio.h"
 
 #define BIGBUFFSIZE (2048*1024) // Use a 2Mb buffer for EnsureVBRMP3Sync seeking & Normalize scanning
 

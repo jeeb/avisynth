@@ -37,6 +37,7 @@
 
 #include "histogram.h"
 #include "../core/info.h"
+#include "../audio/convertaudio.h"
 
 
 

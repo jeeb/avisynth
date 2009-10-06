@@ -418,11 +418,13 @@ class IClip {
   void Release();
 public:
   IClip();
-  virtual int __stdcall GetVersion();
+  virtual int __stdcall GetVersion(); // :FIXME: Perhaps this remain baked!
+         /* { return AVISYNTH_INTERFACE_VERSION; }; Do we want the base ver or the host ver? */
   virtual PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env) = 0;
   virtual bool __stdcall GetParity(int n) = 0;  // return field parity if field_based, else parity of first field in frame
   virtual void __stdcall GetAudio(void* buf, __int64 start, __int64 count, IScriptEnvironment* env) = 0;  // start and count are in samples
-  virtual void __stdcall SetCacheHints(int cachehints,int frame_range) = 0 ;  // We do not pass cache requests upwards, only to the next filter.
+  /* Need to check GetVersion first, pre v5 will return random crap from EAX reg. */
+  virtual int __stdcall SetCacheHints(int cachehints,int frame_range) = 0 ;  // We do not pass cache requests upwards, only to the next filter.
   virtual const VideoInfo& __stdcall GetVideoInfo() = 0;
   virtual __stdcall ~IClip();
 }; // endclass IClip
@@ -559,13 +561,13 @@ public:
   void __stdcall GetAudio(void* buf, __int64 start, __int64 count, IScriptEnvironment* env) { child->GetAudio(buf, start, count, env); }
   const VideoInfo& __stdcall GetVideoInfo() { return vi; }
   bool __stdcall GetParity(int n) { return child->GetParity(n); }
-  void __stdcall SetCacheHints(int cachehints,int frame_range) { } ;  // We do not pass cache requests upwards, only to the next filter.
+  int __stdcall SetCacheHints(int cachehints,int frame_range) { return 0; } ;  // We do not pass cache requests upwards, only to the next filter.
 };
 
 
 
 
-
+#if 0
 /* Helper classes useful to plugin authors */ // But we don't export the entry points, Doh!
 
 class AlignPlanar : public GenericVideoFilter
@@ -596,7 +598,7 @@ class ConvertAudio : public GenericVideoFilter
 public:
   ConvertAudio(PClip _clip, int prefered_format);
   void __stdcall GetAudio(void* buf, __int64 start, __int64 count, IScriptEnvironment* env);
-  void __stdcall SetCacheHints(int cachehints,int frame_range);  // We do pass cache requests upwards, to the cache!
+  int __stdcall SetCacheHints(int cachehints,int frame_range);  // We do pass cache requests upwards, to the cache!
 
   static PClip Create(PClip clip, int sample_type, int prefered_type);
   static AVSValue __cdecl Create_float(AVSValue args, void*, IScriptEnvironment*);
@@ -629,29 +631,31 @@ private:
   SFLOAT *floatbuffer;
   int tempbuffer_size;
 };
-
+#endif
 
 // For GetCPUFlags.  These are backwards-compatible with those in VirtualDub.
 enum {
-                    /* slowest CPU to support extension */
+                    /* oldest CPU to support extension */
   CPUF_FORCE        =  0x01,   //  N/A
   CPUF_FPU          =  0x02,   //  386/486DX
   CPUF_MMX          =  0x04,   //  P55C, K6, PII
   CPUF_INTEGER_SSE  =  0x08,   //  PIII, Athlon
   CPUF_SSE          =  0x10,   //  PIII, Athlon XP/MP
-  CPUF_SSE2         =  0x20,   //  PIV, Hammer
+  CPUF_SSE2         =  0x20,   //  PIV, K8
   CPUF_3DNOW        =  0x40,   //  K6-2
   CPUF_3DNOW_EXT    =  0x80,   //  Athlon
   CPUF_X86_64       =  0xA0,   //  Hammer (note: equiv. to 3DNow + SSE2, which
                                //          only Hammer will have anyway)
-  CPUF_SSE3         = 0x100,   //  PIV+, Hammer
+  CPUF_SSE3         = 0x100,   //  PIV+, K8 Venice
   CPUF_SSSE3        = 0x200,   //  Core 2
   CPUF_SSE4			= 0x400,   //  Penryn, Wolfdale, Yorkfield
   CPUF_SSE4_1		= 0x400,
   CPUF_SSE4_2		= 0x800,   //  Nehalem
 };
+#if 0
 #define MAX_INT 0x7fffffff
 #define MIN_INT -0x7fffffff  // ::FIXME:: research why this is not 0x80000000
+#endif
 
 
 
@@ -711,6 +715,9 @@ public:
   virtual bool __stdcall PlanarChromaAlignment(PlanarChromaAlignmentMode key) = 0;
 
   virtual PVideoFrame __stdcall SubframePlanar(PVideoFrame src, int rel_offset, int new_pitch, int new_row_size, int new_height, int rel_offsetU, int rel_offsetV, int new_pitchUV) = 0;
+
+  virtual void __stdcall DeleteScriptEnvironment() = 0;
+
 }; // endclass IScriptEnvironment
 
 

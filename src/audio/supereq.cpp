@@ -25,6 +25,7 @@ Copyright © 2003, Klaus Post
 #include "stdafx.h"
 #include "supereq.h"
 #include "paramlist.h"
+#include "convertaudio.h"
 
 
 

@@ -39,6 +39,7 @@
 #include "stdafx.h"
 
 #include "../core/avisynth.h"
+#include "convertaudio.h"
 
 // There are two type parameters. Acceptable sample types and a prefered sample type.
 // If the current clip is already one of the defined types in sampletype, this will be returned.
@@ -53,9 +54,9 @@ PClip ConvertAudio::Create(PClip clip, int sample_type, int prefered_type)
 }
 
 
-void __stdcall ConvertAudio::SetCacheHints(int cachehints,int frame_range)
+int __stdcall ConvertAudio::SetCacheHints(int cachehints,int frame_range)
 {   // We do pass cache requests upwards, to the next filter.
-  child->SetCacheHints(cachehints, frame_range);
+  return child->SetCacheHints(cachehints, frame_range);
 }
 
 
@@ -419,7 +420,7 @@ void ConvertAudio::convertToFloat(char* inbuf, float* outbuf, char sample_type, 
       }
 
     case SAMPLE_INT32: {
-      const float divisor = float(1.0 / MAX_INT);
+      const float divisor = float(1.0 / (unsigned)(1<<31));
       signed int* samples = (signed int*)inbuf;
       for (i=0;i<count;i++) 
         outbuf[i]=samples[i] * divisor;
@@ -497,7 +498,7 @@ c16_loop:
       break;
     }
     case SAMPLE_INT32: {
-      const float divisor = float(1.0 / MAX_INT);
+      const float divisor = float(1.0 / (unsigned)(1<<31));
       signed int* samples = (signed int*)inbuf;
       int c_miss = count & 3;
       int c_loop = count-c_miss; // in samples
@@ -519,7 +520,7 @@ c32_loop:
           cvtpi2ps xmm1, mm1             //  d d | c c -> float
 		  movlhps  xmm0, xmm1            //  xd  xc || xb  xa
           add      eax, 16
-          mulps    xmm0, xmm7             //  *=1/MAX_INT
+          mulps    xmm0, xmm7             //  *=1/MAX_INT31
           cmp      eax, edx
           movups   [edi+eax-16], xmm0     //  store xd | xc | xb | xa
           jne      c32_loop
@@ -666,7 +667,7 @@ c16_loop:
       break;
     }
     case SAMPLE_INT32: {
-      const float divisor = float(1.0 / MAX_INT);
+      const float divisor = float(1.0 / (unsigned)(1<<31));
       signed int* samples = (signed int*)inbuf;
 
       while (((int)outbuf & 15) && count) { // dqword align outbuf
@@ -692,9 +693,9 @@ c32_loop:
           movdqu   xmm1, [esi+eax+16]     //  hh | gg | ff | ee
           cvtdq2ps xmm2, xmm0             //  xd | xc | xb | xa
           cvtdq2ps xmm3, xmm1             //  xh | xg | xf | xe
-          mulps    xmm2, xmm7             //  *=1/MAX_INT
+          mulps    xmm2, xmm7             //  *=1/MAX_INT31
           add      eax,32
-          mulps    xmm3, xmm7             //  *=1/MAX_INT
+          mulps    xmm3, xmm7             //  *=1/MAX_INT31
           movaps   [edi+eax-32], xmm2     //  store xd | xc | xb | xa
           cmp      eax, edx
           movaps   [edi+eax-16], xmm3     //  store xh | xg | xf | xe
@@ -835,7 +836,7 @@ c16_loop:
       break;
     }
     case SAMPLE_INT32: {
-      const float divisor = float(1.0 / MAX_INT);
+      const float divisor = float(1.0 / (unsigned)(1<<31));
       signed int* samples = (signed int*)inbuf;
       int c_miss = count & 3;
       int c_loop = count-c_miss; // in samples
@@ -986,7 +987,7 @@ c16f_loop:
     }
 
     case SAMPLE_INT32: {
-      const float multiplier = (float)MAX_INT;
+      const float multiplier = (float)((unsigned)(1<<31));
       signed int* samples = (signed int*)outbuf;
       int c_miss = count & 3;
       int c_loop = count-c_miss; // in samples
@@ -1106,7 +1107,7 @@ void ConvertAudio::convertFromFloat(float* inbuf,void* outbuf, char sample_type,
     case SAMPLE_INT32: {
       signed int* samples = (signed int*)outbuf;
       for (i=0;i<count;i++) 
-        samples[i]= Saturate_int32(inbuf[i] * (float)(MAX_INT));
+        samples[i]= Saturate_int32(inbuf[i] * (float)((unsigned)(1<<31)));
       break;     
     }
     case SAMPLE_INT24: {
@@ -1185,7 +1186,7 @@ cf16_loop:
       int sleft = count & 3;
       count -= sleft;
 
-      const float mult  = (float)(MAX_INT);  // (2^23)<<8  
+      const float mult  = (float)((unsigned)(1<<31));  // (2^23)<<8  
 
       if (count) {
 		int temp[7];
@@ -1204,10 +1205,10 @@ cf16_loop:
           align    16
 cf32_loop:
           movups   xmm0, [eax+edx]             // xd | xc | xb | xa
-          mulps    xmm0, xmm7                  // *= MAX_INT
+          mulps    xmm0, xmm7                  // *= MAX_INT31
           movhlps  xmm1, xmm0                  // xx | xx | xd | xc
           cvtps2pi mm0, xmm0                   // float -> bb | aa  --  -ve Signed Saturation
-		  cmpnltps xmm0, xmm7                  // !(xd | xc | xb | xa < MAX_INT)
+		  cmpnltps xmm0, xmm7                  // !(xd | xc | xb | xa < MAX_INT31)
           cvtps2pi mm1, xmm1                   // float -> dd | cc  --  -ve Signed Saturation
           movdqa   [esi], xmm0                 // md | mc | mb | ma                          -- YUCK!!!
           add      edx,16
@@ -1371,7 +1372,7 @@ cf16_loop:
         break;
       }
 
-      const float mult = (float)(MAX_INT);  // (2^23)<<8
+      const float mult = (float)((unsigned)(1<<31));  // (2^23)<<8
 
       while (((int)samples & 15) && count) { // dqword align outbuf
         *samples++=Saturate_int32(*inbuf++ * mult);
@@ -1393,12 +1394,12 @@ cf16_loop:
 cf32_loop:
 		  movups   xmm0, [eax+edx]             // xd | xc | xb | xa         
 		  movups   xmm1, [eax+edx+16]          // xh | xg | xf | xe         
-          mulps    xmm0, xmm7                  // *= MAX_INT
-          mulps    xmm1, xmm7                  // *= MAX_INT
+          mulps    xmm0, xmm7                  // *= MAX_INT31
+          mulps    xmm1, xmm7                  // *= MAX_INT31
 		  cvtps2dq xmm2, xmm0                  // float -> dd | cc | bb | aa  --  -ve Signed Saturation
 		  cvtps2dq xmm3, xmm1                  // float -> hh | gg | ff | ee  --  -ve Signed Saturation
-		  cmpnltps xmm0, xmm7                  // !(xd | xc | xb | xa < MAX_INT)
-		  cmpnltps xmm1, xmm7                  // !(xh | xg | xf | xe < MAX_INT)
+		  cmpnltps xmm0, xmm7                  // !(xd | xc | xb | xa < MAX_INT31)
+		  cmpnltps xmm1, xmm7                  // !(xh | xg | xf | xe < MAX_INT31)
           add      edx,32
 		  pxor     xmm2, xmm0                  // 0x80000000 -> 0x7FFFFFFF if +ve saturation
 		  pxor     xmm3, xmm1
