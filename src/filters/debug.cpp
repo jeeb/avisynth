@@ -84,7 +84,7 @@ public:
 ***** Declare index of new filters for Avisynth's filter engine *****
 ********************************************************************/
 
-AVSFunction Debug_filters[] = {
+extern const AVSFunction Debug_filters[] = {
   { "Null", "c[copy]s", Null::Create },     // clip, copy
   { "SetPlanarLegacyAlignment", "cb", PlanarLegacyAlignment::Create },     // clip, legacy alignment
   { 0,0,0 }

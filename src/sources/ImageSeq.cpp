@@ -45,7 +45,7 @@
 ***** Declare index of new filters for Avisynth's filter engine *****
 ********************************************************************/
 
-AVSFunction Image_filters[] = {
+extern const AVSFunction Image_filters[] = {
   { "ImageWriter", "c[file]s[start]i[end]i[type]s[info]b", ImageWriter::Create }, 
     // clip, base filename, start, end, image format/extension, info
   { "ImageReader", "[file]s[start]i[end]i[fps]f[use_devil]b[info]b[pixel_type]s", ImageReader::Create }, 

@@ -51,7 +51,7 @@ struct {
 } g_Cache_stats = {0, 0, 0, 0, 0, 0, 0, 0, "resets, vfb_[found,modified,stolen,notfound,never,locks,protects]"};
 
 
-AVSFunction Cache_filters[] = {
+extern const AVSFunction Cache_filters[] = {
   { "Cache", "c", Cache::Create_Cache },
   { "InternalCache", "c", Cache::Create_Cache },
   { 0 }

@@ -162,7 +162,7 @@ PVideoFrame __stdcall ConvertToY8::GetFrame(int n, IScriptEnvironment* env) {
       return dst;
     }
 
-    const srcMod = srcPitch + (vi.width * pixel_step);
+    const int srcMod = srcPitch + (vi.width * pixel_step);
     const int m0 = matrix[0];
     const int m1 = matrix[1];
     const int m2 = matrix[2];

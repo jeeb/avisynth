@@ -43,7 +43,7 @@
 #include "turn.h"
 
 
-AVSFunction Turn_filters[] = {
+extern const AVSFunction Turn_filters[] = {
   { "TurnLeft","c",Turn::Create_TurnLeft },
   { "TurnRight","c",Turn::Create_TurnRight },
   { "Turn180","c",Turn::Create_Turn180 },

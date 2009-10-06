@@ -48,7 +48,7 @@ using namespace std;
 ***** Declare index of new filters for Avisynth's filter engine *****
 ********************************************************************/
 
-AVSFunction Text_filters[] = {
+extern const AVSFunction Text_filters[] = {
   { "ShowFrameNumber",
 	"c[scroll]b[offset]i[x]i[y]i[font]s[size]f[text_color]i[halo_color]i[font_width]f[font_angle]f",
 	ShowFrameNumber::Create },
@@ -246,7 +246,7 @@ void Antialiaser::ApplyPlanar(BYTE* buf, int pitch, int pitchUV, BYTE* bufU, BYT
   buf += pitch*yb;
 
   // Apply Y
-  for (int y=yb; y<=yt; y+=1) {
+  {for (int y=yb; y<=yt; y+=1) {
     for (int x=xl; x<=xr; x+=1) {
       const int x4 = x<<2;
       const int basealpha = alpha[x4+0];
@@ -257,7 +257,7 @@ void Antialiaser::ApplyPlanar(BYTE* buf, int pitch, int pitchUV, BYTE* bufU, BYT
     }
     buf += pitch;
     alpha += w4;
-  }
+  }}
 
   if (!bufU) return;
 
@@ -271,7 +271,7 @@ void Antialiaser::ApplyPlanar(BYTE* buf, int pitch, int pitchUV, BYTE* bufU, BYT
   bufU += (pitchUV*yb)>>shiftY;
   bufV += (pitchUV*yb)>>shiftY;
 
-  for (y=yb; y<=yt; y+=stepY) {
+  {for (int y=yb; y<=yt; y+=stepY) {
     for (int x=xl, xs=xlshiftX; x<=xr; x+=stepX, xs+=1) {
       unsigned short* UValpha = alpha + x*4;
       int basealphaUV = 0;
@@ -293,7 +293,7 @@ void Antialiaser::ApplyPlanar(BYTE* buf, int pitch, int pitchUV, BYTE* bufU, BYT
     bufU  += pitchUV;
     bufV  += pitchUV;
     alpha += UVw4;
-  }//end for y
+  }}//end for y
 }
 
 
@@ -380,13 +380,13 @@ void Antialiaser::GetAlphaRect() {
 
   if (!fInited) {
     fInited = true;
-    int i;
 
     const double scale = 516*64/sqrt(128.0);
-    for(i=0; i<=128; i++)
+    {for(int i=0; i<=128; i++)
       gamma[i]=unsigned short(sqrt((double)i) * scale + 0.5); // Gamma = 2.0
+    }
 
-    for(i=0; i<256; i++) {
+	{for(int i=0; i<256; i++) {
       BYTE b=0, l=0, r=0;
 
       if (i&  1) { b=1; l|=0x01; r|=0xFF; }
@@ -401,7 +401,7 @@ void Antialiaser::GetAlphaRect() {
       bitcnt[i] = b;
       bitexl[i] = l;
       bitexr[i] = r;
-    }
+    }}
   }
 
   const int RYtext = ((textcolor>>16)&255), GUtext = ((textcolor>>8)&255), BVtext = (textcolor&255);
@@ -1123,28 +1123,28 @@ FilterInfo::~FilterInfo(void)
 {
 }
 
-const char* t_YV12="YV12";
-const char* t_YUY2="YUY2";
-const char* t_RGB32="RGB32";
-const char* t_RGB24="RGB24";
-const char* t_YV24="YV24";
-const char* t_Y8="Y8";
-const char* t_YV16="YV16";
-const char* t_Y41P="YUV 411 Planar";
-const char* t_INT8="Integer 8 bit";
-const char* t_INT16="Integer 16 bit";
-const char* t_INT24="Integer 24 bit";
-const char* t_INT32="Integer 32 bit";
-const char* t_FLOAT32="Float 32 bit";
-const char* t_YES="YES";
-const char* t_NO="NO";
-const char* t_NONE="NONE";
-const char* t_TFF ="Top Field First            ";
-const char* t_BFF ="Bottom Field First         ";
-const char* t_ATFF="Assumed Top Field First    ";
-const char* t_ABFF="Assumed Bottom Field First ";
-const char* t_STFF="Top Field (Separated)      ";
-const char* t_SBFF="Bottom Field (Separated)   ";
+const char* const t_YV12="YV12";
+const char* const t_YUY2="YUY2";
+const char* const t_RGB32="RGB32";
+const char* const t_RGB24="RGB24";
+const char* const t_YV24="YV24";
+const char* const t_Y8="Y8";
+const char* const t_YV16="YV16";
+const char* const t_Y41P="YUV 411 Planar";
+const char* const t_INT8="Integer 8 bit";
+const char* const t_INT16="Integer 16 bit";
+const char* const t_INT24="Integer 24 bit";
+const char* const t_INT32="Integer 32 bit";
+const char* const t_FLOAT32="Float 32 bit";
+const char* const t_YES="YES";
+const char* const t_NO="NO";
+const char* const t_NONE="NONE";
+const char* const t_TFF ="Top Field First            ";
+const char* const t_BFF ="Bottom Field First         ";
+const char* const t_ATFF="Assumed Top Field First    ";
+const char* const t_ABFF="Assumed Bottom Field First ";
+const char* const t_STFF="Top Field (Separated)      ";
+const char* const t_SBFF="Bottom Field (Separated)   ";
 
 
 string GetCpuMsg(IScriptEnvironment * env)
@@ -1320,7 +1320,8 @@ Compare::Compare(PClip _child1, PClip _child2, const char* channels, const char 
 
   planar_plane = 0;
   mask = 0;
-  for (int i = 0; i < strlen(channels); i++) {
+  const unsigned length = strlen(channels);
+  for (unsigned i = 0; i < length; i++) {
     if (vi.IsRGB()) {
       switch (channels[i]) {
       case 'b':
@@ -1334,7 +1335,7 @@ Compare::Compare(PClip _child1, PClip _child2, const char* channels, const char 
       default: env->ThrowError("Compare: invalid channel: %c", channels[i]);
       }
       if (vi.IsRGB24()) mask &= 0x00ffffff;   // no alpha channel in RGB24
-	} else if (vi.IsPlanar()) {
+    } else if (vi.IsPlanar()) {
       switch (channels[i]) {
       case 'y':
       case 'Y': mask |= 0xffffffff; planar_plane |= PLANAR_Y; break;

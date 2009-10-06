@@ -46,13 +46,12 @@ using std::string;
 
 #ifdef _MSC_VER
   #define strnicmp(a,b,c) _strnicmp(a,b,c)
-  #define strdup(a) _strdup(a)
 #else
   #define _RPT1(x,y,z) ((void)0)
 #endif
 
 
-extern AVSFunction Audio_filters[], Combine_filters[], Convert_filters[],
+extern const AVSFunction Audio_filters[], Combine_filters[], Convert_filters[],
                    Convolution_filters[], Edit_filters[], Field_filters[],
                    Focus_filters[], Fps_filters[], Histogram_filters[],
                    Layer_filters[], Levels_filters[], Misc_filters[],
@@ -66,7 +65,7 @@ extern AVSFunction Audio_filters[], Combine_filters[], Convert_filters[],
                    SuperEq_filters[], Overlay_filters[], Soundtouch_filters[];
 
 
-AVSFunction* builtin_functions[] = {
+const AVSFunction* builtin_functions[] = {
                    Audio_filters, Combine_filters, Convert_filters,
                    Convolution_filters, Edit_filters, Field_filters,
                    Focus_filters, Fps_filters, Histogram_filters,
@@ -333,7 +332,7 @@ public:
       env->ThrowError("FunctionTable: Not in prescanning state");
     _RPT1(0, "Prescanning plugin: %s\n", name);
     Plugin* p = new Plugin;
-    p->name = strdup(name);
+    p->name = _strdup(name);
     p->plugin_functions = 0;
     p->prev = plugins;
     plugins = p;
@@ -456,8 +455,8 @@ public:
     LocalFunction *f = NULL;
     if (!duse) {
       f = new LocalFunction;
-      f->name = strdup(name);  // Tritical May 2005
-      f->param_types = strdup(params);
+      f->name = _strdup(name);  // Tritical May 2005
+      f->param_types = _strdup(params);
       if (!prescanning) {
         f->apply = apply;
         f->user_data = user_data;
@@ -478,8 +477,8 @@ public:
       strcat(result, "_");
       strcat(result, name);
       f2 = new LocalFunction;
-      f2->name = strdup(result);     // needs to copy here since the plugin will be unloaded
-      f2->param_types = strdup(params);     // needs to copy here since the plugin will be unloaded
+      f2->name = _strdup(result);     // needs to copy here since the plugin will be unloaded
+      f2->param_types = _strdup(params);     // needs to copy here since the plugin will be unloaded
       alt_name = f2->name;
       if (prescanning) {
         f2->prev = plugins->plugin_functions;
@@ -565,8 +564,8 @@ public:
 
   }
 
-  AVSFunction* Lookup(const char* search_name, const AVSValue* args, int num_args,
-                      bool &pstrict, int args_names_count, const char** arg_names) {
+  const AVSFunction* Lookup(const char* search_name, const AVSValue* args, int num_args,
+                      bool &pstrict, int args_names_count, const char* const* arg_names) {
     int oanc;
     do {
       for (int strict = 1; strict >= 0; --strict) {
@@ -595,7 +594,7 @@ public:
             }
         // finally, look for a built-in function
         for (int i = 0; i < sizeof(builtin_functions)/sizeof(builtin_functions[0]); ++i)
-          for (AVSFunction* j = builtin_functions[i]; j->name; ++j)
+          for (const AVSFunction* j = builtin_functions[i]; j->name; ++j)
             if (!lstrcmpi(j->name, search_name) &&
                 TypeMatch(j->param_types, args, num_args, strict&1, env) &&
                 ArgNameMatch(j->param_types, args_names_count, arg_names))
@@ -619,7 +618,7 @@ public:
             return true;
     }
     for (int i = 0; i < sizeof(builtin_functions)/sizeof(builtin_functions[0]); ++i)
-      for (AVSFunction* j = builtin_functions[i]; j->name; ++j)
+      for (const AVSFunction* j = builtin_functions[i]; j->name; ++j)
         if (!lstrcmpi(j->name, search_name))
           return true;
     return false;
@@ -713,7 +712,7 @@ public:
 	return false;
   }
 
-  bool ArgNameMatch(const char* param_types, int args_names_count, const char** arg_names) {
+  bool ArgNameMatch(const char* param_types, int args_names_count, const char* const* arg_names) {
 
 	for (int i=0; i<args_names_count; ++i) {
 	  if (arg_names[i]) {
@@ -800,7 +799,7 @@ public:
     atexit_list = new AtExitRec(f, d, atexit_list);
   }
 
-  void Excute() {
+  void Execute(IScriptEnvironment* env) {
     while (atexit_list) {
       AtExitRec* next = atexit_list->next;
       atexit_list->func(atexit_list->user_data, env);
@@ -822,7 +821,7 @@ public:
   void __stdcall ThrowError(const char* fmt, ...);
   void __stdcall AddFunction(const char* name, const char* params, ApplyFunc apply, void* user_data=0);
   bool __stdcall FunctionExists(const char* name);
-  AVSValue __stdcall Invoke(const char* name, const AVSValue args, const char** arg_names=0);
+  AVSValue __stdcall Invoke(const char* name, const AVSValue args, const char* const* arg_names=0);
   AVSValue __stdcall GetVar(const char* name);
   bool __stdcall SetVar(const char* name, const AVSValue& val);
   bool __stdcall SetGlobalVar(const char* name, const AVSValue& val);
@@ -868,7 +867,7 @@ private:
   long CPU_id;
 
   // helper for Invoke
-  int Flatten(const AVSValue& src, AVSValue* dst, int index, int max, const char** arg_names=0);
+  int Flatten(const AVSValue& src, AVSValue* dst, int index, int max, const char* const* arg_names=0);
 
   IScriptEnvironment* This() { return this; }
   const char* GetPluginDirectory();
@@ -946,7 +945,7 @@ ScriptEnvironment::ScriptEnvironment()
     }
     // Needs must, to not loose the text we
     // must leak a little memory.
-    throw AvisynthError(strdup(err.msg));
+    throw AvisynthError(_strdup(err.msg));
   }
 }
 
@@ -1151,7 +1150,7 @@ void ScriptEnvironment::ExportFilters()
   string builtin_names;
 
   for (int i = 0; i < sizeof(builtin_functions)/sizeof(builtin_functions[0]); ++i) {
-    for (AVSFunction* j = builtin_functions[i]; j->name; ++j) {
+    for (const AVSFunction* j = builtin_functions[i]; j->name; ++j) {
       builtin_names += j->name;
       builtin_names += " ";
       
@@ -1584,7 +1583,7 @@ VideoFrameBuffer* ScriptEnvironment::GetFrameBuffer(int size) {
 }
 
 
-int ScriptEnvironment::Flatten(const AVSValue& src, AVSValue* dst, int index, int max, const char** arg_names) {
+int ScriptEnvironment::Flatten(const AVSValue& src, AVSValue* dst, int index, int max, const char* const* arg_names) {
   if (src.IsArray()) {
     const int array_size = src.ArraySize();
     for (int i=0; i<array_size; ++i) {
@@ -1602,11 +1601,11 @@ int ScriptEnvironment::Flatten(const AVSValue& src, AVSValue* dst, int index, in
 }
 
 
-AVSValue ScriptEnvironment::Invoke(const char* name, const AVSValue args, const char** arg_names) {
+AVSValue ScriptEnvironment::Invoke(const char* name, const AVSValue args, const char* const* arg_names) {
 
   int args2_count;
   bool strict = false;
-  AVSFunction *f;
+  const AVSFunction *f;
   AVSValue retval;
 
   const int args_names_count = (arg_names && args.IsArray()) ? args.ArraySize() : 0;

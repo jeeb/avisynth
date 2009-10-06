@@ -43,15 +43,15 @@
 
 #include "merge.h"
 
-__declspec(align(8)) static __int64 I1=0x00ff00ff00ff00ff;  // Luma mask
-__declspec(align(8)) static __int64 I2=0xff00ff00ff00ff00;  // Chroma mask
-__declspec(align(8)) static __int64 rounder = 0x0000400000004000;  // (0.5)<<15 in each dword
+__declspec(align(8)) static const __int64 I1=0x00ff00ff00ff00ff;  // Luma mask
+__declspec(align(8)) static const __int64 I2=0xff00ff00ff00ff00;  // Chroma mask
+__declspec(align(8)) static const __int64 rounder = 0x0000400000004000;  // (0.5)<<15 in each dword
 
 /********************************************************************
 ***** Declare index of new filters for Avisynth's filter engine *****
 ********************************************************************/
 #if 0  // Set to 1 to expose test harness
-AVSFunction Merge_filters[] = {
+extern const AVSFunction Merge_filters[] = {
   { "Merge", "cc[weight]f[test]i", MergeAll::Create },  // src, src2, weight
   { "MergeChroma", "cc[chromaweight]f[test]i", MergeChroma::Create },  // src, chroma src, weight
   { "MergeLuma", "cc[lumaweight]f[test]i", MergeLuma::Create },      // src, luma src, weight
@@ -60,7 +60,7 @@ AVSFunction Merge_filters[] = {
 #define TEST(off, on) !!(test & on) || !(test & off) &&
 #define TESTARG(n) args[n].AsInt(0) 
 #else
-AVSFunction Merge_filters[] = {
+extern const AVSFunction Merge_filters[] = {
   { "Merge", "cc[weight]f", MergeAll::Create },  // src, src2, weight
   { "MergeChroma", "cc[chromaweight]f", MergeChroma::Create },  // src, chroma src, weight
   { "MergeLuma", "cc[lumaweight]f", MergeLuma::Create },      // src, luma src, weight

@@ -1143,7 +1143,7 @@ AVSValue LoadVirtualdubPlugin(AVSValue args, void*, IScriptEnvironment* env) {
 }
 
 
-AVSFunction Plugin_functions[] = {
+extern const AVSFunction Plugin_functions[] = {
   { "LoadPlugin", "s+", LoadPlugin, (void*)false },
   { "LoadVirtualdubPlugin", "ss[preroll]i", LoadVirtualdubPlugin },
   { "LoadVFAPIPlugin", "ss", LoadVFAPIPlugin },

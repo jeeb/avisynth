@@ -41,7 +41,7 @@
 ***** Declare index of new filters for Avisynth's filter engine *****
 ********************************************************************/
 
-AVSFunction SSRC_filters[] = {
+extern const AVSFunction SSRC_filters[] = {
   { "SSRC", "ci[fast]b", SSRC::Create },
   { 0 }
 };

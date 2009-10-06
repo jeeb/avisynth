@@ -53,7 +53,14 @@
  * Requires mod 8 pitch.
  *************************************/
 
-__declspec(align(8)) static const __int64 add_ones=0x0101010101010101;
+__declspec(align(8)) static const __int64 mask1	   = 0x00ff00ff00ff00ff;
+__declspec(align(8)) static const __int64 mask2	   = 0xff00ff00ff00ff00;
+                                                   
+__declspec(align(8)) static const __int64 add_1	   = 0x0001000100010001;
+__declspec(align(8)) static const __int64 add_2	   = 0x0002000200020002;
+__declspec(align(8)) static const __int64 add_64   = 0x0002000200020002;
+
+__declspec(align(8)) static const __int64 add_ones = 0x0101010101010101;
 
 
 void isse_yv12_i_to_yuy2(const BYTE* srcY, const BYTE* srcU, const BYTE* srcV, int src_rowsize, int src_pitch, int src_pitch_uv, 
@@ -570,10 +577,10 @@ yloop_test:
  *************************************/
 
 
-void mmx_yv12_i_to_yuy2(const BYTE* srcY, const BYTE* srcU, const BYTE* srcV, int src_rowsize, int src_pitch, int src_pitch_uv, 
+void mmx_yv12_i_to_yuy2(const BYTE* srcY, const BYTE* srcU, const BYTE* srcV,
+                    int src_rowsize, int src_pitch, int src_pitch_uv, 
                     BYTE* dst, int dst_pitch,
                     int height) {
-  __declspec(align(8)) static __int64 add_64=0x0002000200020002;
   const BYTE** srcp= new const BYTE*[3];
   int src_pitch_uv2 = src_pitch_uv*2;
   int src_pitch_uv4 = src_pitch_uv*4;
@@ -858,10 +865,10 @@ yloop_test:
  *************************************/
 
 
-void mmx_yv12_to_yuy2(const BYTE* srcY, const BYTE* srcU, const BYTE* srcV, int src_rowsize, int src_pitch, int src_pitch_uv, 
+void mmx_yv12_to_yuy2(const BYTE* srcY, const BYTE* srcU, const BYTE* srcV,
+                    int src_rowsize, int src_pitch, int src_pitch_uv, 
                     BYTE* dst, int dst_pitch,
                     int height) {
-  __declspec(align(8)) static __int64 add_64=0x0002000200020002;
   const BYTE** srcp= new const BYTE*[3];
   int src_pitch_uv2 = src_pitch_uv*2;
   int skipnext = 0;
@@ -1116,9 +1123,6 @@ void isse_yuy2_to_yv12(const BYTE* src, int src_rowsize, int src_pitch,
                     BYTE* dstY, BYTE* dstU, BYTE* dstV, int dst_pitchY, int dst_pitchUV,
                     int height) {
 
-__declspec(align(8)) static __int64 mask1	= 0x00ff00ff00ff00ff;
-__declspec(align(8)) static __int64 mask2	= 0xff00ff00ff00ff00;
-
   const BYTE** dstp= new const BYTE*[4];
   dstp[0]=dstY;
   dstp[1]=dstY+dst_pitchY;
@@ -1231,9 +1235,6 @@ yloop_test:
 void isse_yuy2_i_to_yv12(const BYTE* src, int src_rowsize, int src_pitch, 
                     BYTE* dstY, BYTE* dstU, BYTE* dstV, int dst_pitchY, int dst_pitchUV,
                     int height) {
-
-__declspec(align(8)) static __int64 mask1	= 0x00ff00ff00ff00ff;
-__declspec(align(8)) static __int64 mask2	= 0xff00ff00ff00ff00;
 
   const BYTE** dstp= new const BYTE*[4];
   dstp[0]=dstY;
@@ -1425,10 +1426,6 @@ void mmx_yuy2_to_yv12(const BYTE* src, int src_rowsize, int src_pitch,
                     BYTE* dstY, BYTE* dstU, BYTE* dstV, int dst_pitchY, int dst_pitchUV,
                     int height) {
 
-__declspec(align(8)) static __int64 mask1	= 0x00ff00ff00ff00ff;
-__declspec(align(8)) static __int64 mask2	= 0xff00ff00ff00ff00;
-__declspec(align(8)) static __int64 add_1	= 0x0001000100010001;
-
   const BYTE** dstp= new const BYTE*[4];
   dstp[0]=dstY;
   dstp[1]=dstY+dst_pitchY;
@@ -1551,10 +1548,6 @@ yloop_test:
 void mmx_yuy2_i_to_yv12(const BYTE* src, int src_rowsize, int src_pitch, 
                     BYTE* dstY, BYTE* dstU, BYTE* dstV, int dst_pitchY, int dst_pitchUV,
                     int height) {
-
-__declspec(align(8)) static __int64 mask1	= 0x00ff00ff00ff00ff;
-__declspec(align(8)) static __int64 mask2	= 0xff00ff00ff00ff00;
-__declspec(align(8)) static __int64 add_2	= 0x0002000200020002;
 
   const BYTE** dstp= new const BYTE*[4];
   dstp[0]=dstY;

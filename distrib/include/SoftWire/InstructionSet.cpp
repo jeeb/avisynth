@@ -1773,7 +1773,7 @@ namespace SoftWire
 
 			char mnemonic[256] = {0};
 			strcpy(mnemonic, instruction->getMnemonic());
-			strlwr(mnemonic);
+			_strlwr(mnemonic);
 			if(mnemonic[3] == ' ') mnemonic[3] = '_';	// Append REP prefix
 			if(mnemonic[4] == ' ') mnemonic[4] = '_';   // Append LOCK prefix
 			if(mnemonic[5] == ' ') mnemonic[5] = '_';   // Append REPNE/REPNZ prefix

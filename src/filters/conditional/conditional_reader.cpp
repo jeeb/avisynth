@@ -384,7 +384,7 @@ AVSValue ConditionalReader::ConvertType(const char* content, int line, IScriptEn
       // Could not find one, add it
       if (!str) {
         str = new StringCache;
-        str->string = strdup(content);
+        str->string = _strdup(content);
         str->next   = stringcache;
         stringcache = str;
       }

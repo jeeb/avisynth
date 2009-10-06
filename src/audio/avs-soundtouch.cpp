@@ -52,7 +52,7 @@ class AVSsoundtouch : public GenericVideoFilter
 private:
   ptr_list_simple<SoundTouch> samplers;
 
-   UINT last_nch;
+  unsigned last_nch;
   int dst_samples_filled;
 
   SFLOAT* dstbuffer;
@@ -81,17 +81,18 @@ AVSsoundtouch(PClip _child, float _tempo, float _rate, float _pitch, const AVSVa
   sample_multiplier  = tempo / pitch;  // Do it the same way the library does it!
   sample_multiplier *= pitch * rate;
 
-  for(UINT n=0;n<last_nch;n++) 
+  {for(unsigned n=0; n<last_nch; n++) 
     samplers.add_item(new SoundTouch());
+  }
 
-  for(n=0;n<last_nch;n++) {
+  {for(unsigned n=0; n<last_nch; n++) {
     samplers[n]->setRate(rate);
     samplers[n]->setTempo(tempo);
     samplers[n]->setPitch(pitch);
     samplers[n]->setChannels(1);
     samplers[n]->setSampleRate(vi.audio_samples_per_second);
     setSettings(samplers[n], args, env);
-  }
+  }}
 
   vi.num_audio_samples = (__int64)((long double)(vi.num_audio_samples) / sample_multiplier);
 
@@ -129,7 +130,7 @@ void __stdcall AVSsoundtouch::GetAudio(void* buf, __int64 start, __int64 count, 
 {
 
   if (start != next_sample) {  // Reset on seek
-    for(UINT n=0;n<last_nch;n++)  // Clear all resamplers
+    for(unsigned n=0; n<last_nch; n++)  // Clear all resamplers
       samplers[n]->clear();
 
     next_sample = start;
@@ -163,8 +164,7 @@ void __stdcall AVSsoundtouch::GetAudio(void* buf, __int64 start, __int64 count, 
       int samples_out = 0;
       int gotsamples = 0;
       do {
-        for(UINT n=0;n<last_nch;n++)  // Copies back samples from individual filters
-        {
+        for(unsigned n=0; n<last_nch; n++) {  // Copies back samples from individual filters
           int old_g = gotsamples;
           gotsamples = samplers[n]->receiveSamples(passbuffer, BUFFERSIZE - samples_out);
 
@@ -173,9 +173,8 @@ void __stdcall AVSsoundtouch::GetAudio(void* buf, __int64 start, __int64 count, 
               _RPT1(0,"SoundTouch: Got %d too few samples!!!\n", gotsamples-old_g);
             }
           }
-          UINT s;
-          for(s=0;s<(UINT)gotsamples;s++)
-            dstbuffer[(samples_out+s)*last_nch + n] = passbuffer[s];
+          for(int s=0, r=samples_out*last_nch + n; s<gotsamples; s++, r+=last_nch)
+            dstbuffer[r] = passbuffer[s];
         }
         samples_out += gotsamples;
 
@@ -188,11 +187,9 @@ void __stdcall AVSsoundtouch::GetAudio(void* buf, __int64 start, __int64 count, 
         child->GetAudio(dstbuffer, inputReadOffset, BUFFERSIZE, env);
         inputReadOffset += BUFFERSIZE;
 
-        for(UINT n=0;n<last_nch;n++)  // Copies n channels to separate buffers to individual filters
-        {
-          UINT s;
-          for(s=0;s<BUFFERSIZE;s++)
-            passbuffer[s] = dstbuffer[s*last_nch + n];
+        for(unsigned n=0; n<last_nch; n++) {  // Copies n channels to separate buffers to individual filters
+          for(unsigned s=0, r=n; s<BUFFERSIZE; s++, r+=last_nch)
+            passbuffer[s] = dstbuffer[r];
           
           samplers[n]->putSamples(passbuffer, BUFFERSIZE);
         }
@@ -341,7 +338,7 @@ AVSValue __cdecl AVSsoundtouch::Create(AVSValue args, void*, IScriptEnvironment*
 }
 
 
-AVSFunction Soundtouch_filters[] = {
+extern const AVSFunction Soundtouch_filters[] = {
   { "TimeStretch", "c[tempo]f[rate]f[pitch]f[sequence]i[seekwindow]i[overlap]i[quickseek]b[aa]i", AVSsoundtouch::Create },
   { 0 }
 };

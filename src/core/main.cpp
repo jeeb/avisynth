@@ -684,7 +684,7 @@ bool CAVIFileSynth::DelayInit2() {
       catch (AvisynthError error) {
         error_msg = error.msg;
         AVSValue args[2] = { error.msg, 0xff3333 };
-        static const char* arg_names[2] = { 0, "text_color" };
+        static const char* const arg_names[2] = { 0, "text_color" };
         try {
           filter_graph = env->Invoke("MessageClip", AVSValue(args, 2), arg_names).AsClip();
           vi = &filter_graph->GetVideoInfo();

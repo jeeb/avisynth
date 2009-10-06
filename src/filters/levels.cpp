@@ -46,7 +46,7 @@
 ***** Declare index of new filters for Avisynth's filter engine *****
 ********************************************************************/
 
-AVSFunction Levels_filters[] = {
+extern const AVSFunction Levels_filters[] = {
   { "Levels", "cifiii[coring]b", Levels::Create },        // src_low, gamma, src_high, dst_low, dst_high 
   { "RGBAdjust", "c[r]f[g]f[b]f[a]f[rb]f[gb]f[bb]f[ab]f[rg]f[gg]f[bg]f[ag]f[analyze]b", RGBAdjust::Create },
   { "Tweak", "c[hue]f[sat]f[bright]f[cont]f[coring]b[sse]b[startHue]f[endHue]f[maxSat]f[minSat]f[interp]f", Tweak::Create },
@@ -124,29 +124,29 @@ PVideoFrame __stdcall Levels::GetFrame(int n, IScriptEnvironment* env)
     }
   } 
   else if (vi.IsPlanar()){
-    for (int y=0; y<vi.height; ++y) {
+    {for (int y=0; y<vi.height; ++y) {
       for (int x=0; x<vi.width; ++x) {
         p[x] = map[p[x]];
       }
       p += pitch;
-    }
+    }}
     pitch = frame->GetPitch(PLANAR_U);
     p = frame->GetWritePtr(PLANAR_U);
     int w=frame->GetRowSize(PLANAR_U);
     int h=frame->GetHeight(PLANAR_U);
-    for (y=0; y<h; ++y) {
+    {for (int y=0; y<h; ++y) {
       for (int x=0; x<w; ++x) {
         p[x] = mapchroma[p[x]];
       }
       p += pitch;
-    }
+    }}
     p = frame->GetWritePtr(PLANAR_V);
-    for (y=0; y<h; ++y) {
+    {for (int y=0; y<h; ++y) {
       for (int x=0; x<w; ++x) {
         p[x] = mapchroma[p[x]];
       }
       p += pitch;
-    }
+    }}
 
   } else if (vi.IsRGB()) {
     const int row_size = frame->GetRowSize();
@@ -247,11 +247,11 @@ PVideoFrame __stdcall RGBAdjust::GetFrame(int n, IScriptEnvironment* env)
 		
 		p = frame->GetWritePtr();
 
-		for (int i=0;i<256;i++) {
+		{for (int i=0;i<256;i++) {
 			accum_r[i]=0;
 			accum_g[i]=0;
 			accum_b[i]=0;
-		}
+		}}
 
 		for (int y=0;y<h;y++) {
 			for (int x=0;x<w;x+=t) {
@@ -275,7 +275,7 @@ PVideoFrame __stdcall RGBAdjust::GetFrame(int n, IScriptEnvironment* env)
 		int At_256=(pixels+128)/256; // When 1/256th of all pixels have been reached, trigger "Loose min/max"
 
 		
-		for (i=0;i<256;i++) {
+		{for (int i=0;i<256;i++) {
 			avg_r+=(float)accum_r[i]*(float)i;
 			avg_g+=(float)accum_g[i]*(float)i;
 			avg_b+=(float)accum_b[i]*(float)i;
@@ -291,17 +291,17 @@ PVideoFrame __stdcall RGBAdjust::GetFrame(int n, IScriptEnvironment* env)
 			if (!Ahit_maxr) {Amax_r+=accum_r[255-i]; if (Amax_r>At_256){Ahit_maxr=true; Amax_r=255-i;} }
 			if (!Ahit_maxg) {Amax_g+=accum_g[255-i]; if (Amax_g>At_256){Ahit_maxg=true; Amax_g=255-i;} }
 			if (!Ahit_maxb) {Amax_b+=accum_b[255-i]; if (Amax_b>At_256){Ahit_maxb=true; Amax_b=255-i;} }
-		}
+		}}
 		
 		float Favg_r=avg_r/pixels;
 		float Favg_g=avg_g/pixels;
 		float Favg_b=avg_b/pixels;
 
-		for (i=0;i<256;i++) {
+		{for (int i=0;i<256;i++) {
 			st_r+=(float)accum_r[i]*(float (i-Favg_r)*(i-Favg_r));
 			st_g+=(float)accum_g[i]*(float (i-Favg_g)*(i-Favg_g));
 			st_b+=(float)accum_b[i]*(float (i-Favg_b)*(i-Favg_b));
-		}
+		}}
 		
 		float Fst_r=sqrt(st_r/pixels);
 		float Fst_g=sqrt(st_g/pixels);
@@ -526,21 +526,20 @@ PVideoFrame __stdcall Tweak::GetFrame(int n, IScriptEnvironment* env)
 			srcp += src_pitch;
 		}
 	} else if (vi.IsPlanar()) {
-		int y;  // VC6 scoping sucks - Yes!
-		for (y=0; y<height; ++y) {
+		{for (int y=0; y<height; ++y) {
 			for (int x=0; x<row_size; ++x) {
 				/* brightness and contrast */
 				srcp[x] = map[srcp[x]];
 			}
 			srcp += src_pitch;
-		}
+		}}
 
 		src_pitch = src->GetPitch(PLANAR_U);
 		BYTE * srcpu = src->GetWritePtr(PLANAR_U);
 		BYTE * srcpv = src->GetWritePtr(PLANAR_V);
 		row_size = src->GetRowSize(PLANAR_U);
 		height = src->GetHeight(PLANAR_U);
-		for (y=0; y<height; ++y) {
+		{for (int y=0; y<height; ++y) {
 			for (int x=0; x<row_size; ++x) {
 				/* hue and saturation */
 				const int u = srcpu[x];
@@ -551,7 +550,7 @@ PVideoFrame __stdcall Tweak::GetFrame(int n, IScriptEnvironment* env)
 			}
 			srcpu += src_pitch;
 			srcpv += src_pitch;
-		}
+		}}
 	}
 
 	return src;
@@ -811,6 +810,9 @@ Limiter::Limiter(PClip _child, int _min_luma, int _max_luma, int _min_chroma, in
   show(enum SHOW(_show)) {
   if (!vi.IsYUV())
       env->ThrowError("Limiter: Source must be YUV");
+
+  if(show != show_none && vi.IsYUY2() && vi.IsYV12())
+      env->ThrowError("Limiter: Source must be YV12 or YUY2 with show option.");
 
   if ((min_luma<0)||(min_luma>255))
       env->ThrowError("Limiter: Invalid minimum luma");
@@ -1101,7 +1103,7 @@ PVideoFrame __stdcall Limiter::GetFrame(int n, IScriptEnvironment* env) {
       return frame;
     }
 
-    for(int y = 0; y < height; y++) {
+    {for(int y = 0; y < height; y++) {
       for(int x = 0; x < row_size; x++) {
         if(srcp[x] < min_luma )
           srcp[x] = min_luma;
@@ -1109,7 +1111,7 @@ PVideoFrame __stdcall Limiter::GetFrame(int n, IScriptEnvironment* env) {
           srcp[x] = max_luma;        
       }
       srcp += pitch;
-    }
+    }}
     // Prepare for chroma
     srcp = frame->GetWritePtr(PLANAR_U);
     unsigned char* srcpV = frame->GetWritePtr(PLANAR_V);
@@ -1119,7 +1121,7 @@ PVideoFrame __stdcall Limiter::GetFrame(int n, IScriptEnvironment* env) {
     if (!pitch)
       return frame;
 
-    for(y = 0; y < height; y++) {
+    {for(int y = 0; y < height; y++) {
       for(int x = 0; x < row_size; x++) {
         if(srcp[x] < min_chroma)
           srcp[x] = min_chroma;
@@ -1132,7 +1134,7 @@ PVideoFrame __stdcall Limiter::GetFrame(int n, IScriptEnvironment* env) {
       }
       srcp += pitch;
       srcpV += pitch;
-    }
+    }}
   }
   return frame;
 }
@@ -1192,7 +1194,7 @@ DynamicAssembledCode Limiter::create_emulator(int row_size, int height, IScriptE
         x86.mov(edx, dword_ptr [ebx + (i*32)]);
       }
     }
-    for (int i=0;i<mod32_w;i++) {
+    {for (int i=0;i<mod32_w;i++) {
       // This loop processes 32 bytes at the time.
       // All remaining pixels are handled by the next loop.
       if ((!(i%prefetchevery)) && (!hard_prefetch)) {
@@ -1223,15 +1225,15 @@ DynamicAssembledCode Limiter::create_emulator(int row_size, int height, IScriptE
         x86.movntq(qword_ptr [ebx+24],mm3);
       }
       x86.add(ebx,32);
-    }
-    for (i=0;i<remain_4;i++) {
+    }}
+    {for (int i=0;i<remain_4;i++) {
       // Here we process any pixels not being within mod32.
       x86.movd(mm0,dword_ptr [ebx]);
       x86.pminub(mm0,mm7);
       x86.pmaxub(mm0,mm6);      
       x86.movd(dword_ptr [ebx],mm0);
       x86.add(ebx,4);
-    }
+    }}
     x86.add(ebx,ecx);
     x86.dec(eax);
     x86.jnz("yloop");

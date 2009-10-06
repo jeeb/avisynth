@@ -46,7 +46,7 @@
 ***** Declare index of new filters for Avisynth's filter engine *****
 ********************************************************************/
 
-AVSFunction Convolution_filters[] = {
+extern const AVSFunction Convolution_filters[] = {
 // Please when adding parameters try not to break the legacy order - IanB July 2004
 	{ "GeneralConvolution", "c[bias]i[matrix]s[divisor]f[auto]b", GeneralConvolution::Create },
     /**
@@ -186,7 +186,7 @@ PVideoFrame __stdcall GeneralConvolution::GetFrame(int n, IScriptEnvironment* en
   pbyG0 = pbyG;
   pbyB0 = pbyB;
 
-  for(int y = 0; y < h; y++)
+  {for(int y = 0; y < h; y++)
   {
     for(int x = 0; x < w; x++)
     {
@@ -196,7 +196,7 @@ PVideoFrame __stdcall GeneralConvolution::GetFrame(int n, IScriptEnvironment* en
       *pbyB0++ = (BYTE)(*srcp++ & 0x000000ff);
     }
     srcp = (Pixel32 *)((char *)srcp + modulo);
-  }
+  }}
 
   int iA, iR, iG, iB, x0, x1, x2, x3, x4;
 
@@ -211,9 +211,9 @@ PVideoFrame __stdcall GeneralConvolution::GetFrame(int n, IScriptEnvironment* en
     iCountT = 0;
     
   // Truncate instead of round - keep in the spirit of the original code
-  int iCountDiv = (double)0x100000 / (iCountT == 0 ? divisor : (double)iCountT * divisor);
+  int iCountDiv = (int)(0x100000 / (iCountT == 0 ? divisor : iCountT * divisor));
 
-  for(y = 0; y < h; y++)
+  {for(int y = 0; y < h; y++)
   {
     pbyA0                                 = pbyA + y * w;
     pbyR0 = pbyR1 = pbyR2 = pbyR3 = pbyR4 = pbyR + y * w;
@@ -304,7 +304,7 @@ PVideoFrame __stdcall GeneralConvolution::GetFrame(int n, IScriptEnvironment* en
 
       *dstp++ = (iA << 24) + (iR << 16) + (iG << 8) + iB;
     }
-  }
+  }}
 
   return dst;
 }

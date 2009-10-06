@@ -25,19 +25,23 @@ namespace SoftWire
 #ifdef __GNUC__
 	typedef int64_t __int64;
 
-	inline int stricmp(const char *string1, const char *string2)
+#ifndef _stricmp
+	inline int _stricmp(const char *string1, const char *string2)
 	{
 		return strcasecmp(string1, string2);
 	}
+#endif
 
+#ifndef _getch
 	inline int _getch()
 	{
 		return getch();
 	}
 #endif
+#endif
 
-#ifndef strlwr
-	inline char *strlwr(char *string)
+#ifndef _strlwr
+	inline char *_strlwr(char *string)
 	{
 		int n = (int)strlen(string);
 

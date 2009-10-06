@@ -656,7 +656,7 @@ end:
 }
 
 
-AVSFunction CPlugin_filters[] = {
+extern const AVSFunction CPlugin_filters[] = {
     {"LoadCPlugin", "s", load_c_plugin },
     {"Load_Stdcall_Plugin", "s", load_c_plugin },
     { 0 }

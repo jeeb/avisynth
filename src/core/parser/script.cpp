@@ -38,15 +38,11 @@
 #include "script.h"
 #include <time.h>
  
-#ifdef _MSC_VER
-  #define itoa(a,b,c) _itoa(a,b,c)
-#endif
-
 /********************************************************************
 ***** Declare index of new filters for Avisynth's filter engine *****
 ********************************************************************/
 
-AVSFunction Script_functions[] = {
+extern const AVSFunction Script_functions[] = {
   { "muldiv", "iii", Muldiv },
 
   { "floor", "f", Floor },
@@ -577,7 +573,7 @@ AVSValue String(AVSValue args, void*, IScriptEnvironment* env)
   } else {	// standard behaviour
 	  if (args[0].IsInt()) {
 		char s[12];
-		return env->SaveString(itoa(args[0].AsInt(), s, 10));
+		return env->SaveString(_itoa(args[0].AsInt(), s, 10));
 	  }
 	  if (args[0].IsFloat()) {
 		char s[30];

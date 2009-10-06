@@ -45,7 +45,7 @@
 ***** Declare index of new filters for Avisynth's filter engine *****
 ********************************************************************/
 
-AVSFunction Transform_filters[] = {
+extern const AVSFunction Transform_filters[] = {
   { "FlipVertical", "c", FlipVertical::Create },     
   { "FlipHorizontal", "c", FlipHorizontal::Create },     
   { "Crop", "ciiii[align]b", Crop::Create },              // left, top, width, height *OR*
@@ -123,7 +123,7 @@ PVideoFrame FlipHorizontal::GetFrame(int n, IScriptEnvironment* env) {
   if (vi.IsYUY2()) { // Avoid flipping UV in YUY2 mode.
     srcp+=row_size;
     srcp-=4;
-    for (int y=0; y<h;y++) {
+    for (int y=0; y<h; y++) {
       for (int x=0; x<row_size; x+=4) {
         dstp[x] = srcp[-x+2];
         dstp[x+1] = srcp[-x+1];
@@ -137,13 +137,13 @@ PVideoFrame FlipHorizontal::GetFrame(int n, IScriptEnvironment* env) {
   }
   if (vi.IsPlanar()) {  //For planar always 1bpp
     srcp+=row_size-1;
-    for (int y=0; y<h;y++) { // Loop planar luma.
+    {for (int y=0; y<h; y++) { // Loop planar luma.
       for (int x=0; x<row_size; x++) {
         dstp[x] = srcp[-x];
       }
       srcp += src_pitch;
       dstp += dst_pitch;
-    }
+    }}
 
     if (src->GetPitch(PLANAR_U)) {
       srcp = src->GetReadPtr(PLANAR_U);
@@ -153,29 +153,29 @@ PVideoFrame FlipHorizontal::GetFrame(int n, IScriptEnvironment* env) {
       dst_pitch = dst->GetPitch(PLANAR_U);
       h = src->GetHeight(PLANAR_U);
       srcp+=row_size-1;
-      for (y=0; y<h;y++) {
+      {for (int y=0; y<h; y++) {
         for (int x=0; x<row_size; x++) {
           dstp[x] = srcp[-x];
         }
         srcp += src_pitch;
         dstp += dst_pitch;
-      }
+      }}
       srcp = src->GetReadPtr(PLANAR_V);
       dstp = dst->GetWritePtr(PLANAR_V);
       srcp+=row_size-1;
-      for (y=0; y<h;y++) {
+      {for (int y=0; y<h; y++) {
         for (int x=0; x<row_size; x++) {
           dstp[x] = srcp[-x];
         }
         srcp += src_pitch;
         dstp += dst_pitch;
-      }
+      }}
     }
     return dst;
   }
   srcp+=row_size-bpp;
   if (vi.IsRGB32()) {
-    for (int y=0; y<h;y++) { // Loop for RGB
+    for (int y=0; y<h; y++) { // Loop for RGB
       for (int x=0; x<row_size/4; x++) {
           ((int*)dstp)[x] = ((int*)srcp)[-x];
       }
@@ -184,9 +184,9 @@ PVideoFrame FlipHorizontal::GetFrame(int n, IScriptEnvironment* env) {
     }
     return dst;
   }
-  for (int y=0; y<h;y++) { // Loop for RGB
+  for (int y=0; y<h; y++) { // Loop for RGB
     for (int x=0; x<row_size; x+=bpp) {
-      for (int i=0;i<bpp;i++) {
+      for (int i=0; i<bpp; i++) {
         dstp[x+i] = srcp[-x+i];
       }
     }
@@ -397,29 +397,32 @@ PVideoFrame AddBorders::GetFrame(int n, IScriptEnvironment* env)
 
       BitBlt(dst->GetWritePtr(PLANAR_U)+initial_blackUV, dst->GetPitch(PLANAR_U), src->GetReadPtr(PLANAR_U), src->GetPitch(PLANAR_U), src->GetRowSize(PLANAR_U), src->GetHeight(PLANAR_U));
       dstp = dst->GetWritePtr(PLANAR_U);
-      for (a=0; a<initial_blackUV; a++)
+      {for (int a=0; a<initial_blackUV; a++)
         *(unsigned char*)(dstp+a) = UBlack;
+      }
       dstp += initial_blackUV + src->GetRowSize(PLANAR_U);
-      for (y=src->GetHeight(PLANAR_U)-1; y>0; --y) {
+      {for (int y=src->GetHeight(PLANAR_U)-1; y>0; --y) {
         for (int b=0; b<middle_blackUV; b++)
           *(unsigned char*)(dstp+b) = UBlack;
         dstp += dst->GetPitch(PLANAR_U);
-      }
-      for (c=0; c<final_blackUV; c ++)
+      }}
+      {for (int c=0; c<final_blackUV; c ++)
         *(unsigned char*)(dstp+c) = UBlack;
-
+      }
       BitBlt(dst->GetWritePtr(PLANAR_V)+initial_blackUV, dst->GetPitch(PLANAR_V), src->GetReadPtr(PLANAR_V), src->GetPitch(PLANAR_V), src->GetRowSize(PLANAR_V), src->GetHeight(PLANAR_V));
       dstp = dst->GetWritePtr(PLANAR_V);
-      for (a=0; a<initial_blackUV; a++)
+      {for (int a=0; a<initial_blackUV; a++)
         *(unsigned char*)(dstp+a) = VBlack;
+      }
       dstp += initial_blackUV + src->GetRowSize(PLANAR_U);
-      for (y=src->GetHeight(PLANAR_U)-1; y>0; --y) {
+      {for (int y=src->GetHeight(PLANAR_U)-1; y>0; --y) {
         for (int b=0; b<middle_blackUV; b++)
           *(unsigned char*)(dstp+b) = VBlack;
         dstp += dst->GetPitch(PLANAR_U);
-      }
-      for (c=0; c<final_blackUV; c++)
+      }}
+      {for (int c=0; c<final_blackUV; c++)
         *(unsigned char*)(dstp+c) = VBlack;
+      }
     }
   }
   else if (vi.IsYUY2()) {
@@ -444,35 +447,37 @@ PVideoFrame AddBorders::GetFrame(int n, IScriptEnvironment* env)
     const unsigned short clr1 = (clr >> 8);
 
     BitBlt(dstp+initial_black, dst_pitch, srcp, src_pitch, src_row_size, src_height);
-    for (int i=0; i<initial_black; i+=3) {
+    {for (int i=0; i<initial_black; i+=3) {
       dstp[i] = clr0; *(unsigned __int16*)(dstp+i+1) = clr1;
       if (i % dst_pitch >= dst_row_size - 3) i += ofs;
-    } //for i
+    }} //for i
     dstp += initial_black + src_row_size;
     for (int y=src_height-1; y>0; --y) {
-      for (i=0; i<middle_black; i+=3) {
+      for (int i=0; i<middle_black; i+=3) {
         dstp[i] = clr0; *(unsigned __int16*)(dstp+i+1) = clr1;
         if (i == vi.BytesFromPixels(right)-3) i += ofs;
       } // for i
       dstp += dst_pitch;
     } // for y
-    for (i=0; i<final_black; i+=3) {
+    {for (int i=0; i<final_black; i+=3) {
       dstp[i] = clr0; *(unsigned __int16*)(dstp+i+1) = clr1;
       if (i % dst_pitch == vi.BytesFromPixels(right)-3) i += ofs;
-    } // for i
+    }} // for i
   } // if vi.IsRGB24
   else {
     BitBlt(dstp+initial_black, dst_pitch, srcp, src_pitch, src_row_size, src_height);
-    for (int i=0; i<initial_black; i+=4)
+    {for (int i=0; i<initial_black; i+=4)
       *(unsigned __int32*)(dstp+i) = clr;
-    dstp += initial_black + src_row_size;
+    }
+	dstp += initial_black + src_row_size;
     for (int y=src_height-1; y>0; --y) {
-      for (i=0; i<middle_black; i+=4)
+      for (int i=0; i<middle_black; i+=4)
         *(unsigned __int32*)(dstp+i) = clr;
       dstp += dst_pitch;
     } // for y
-    for (i=0; i<final_black; i+=4)
+    {for (int i=0; i<final_black; i+=4)
       *(unsigned __int32*)(dstp+i) = clr;
+	}
   } // end else
   return dst;
 }
@@ -514,26 +519,26 @@ PVideoFrame __stdcall FillBorder::GetFrame(int n, IScriptEnvironment* env) {
   int h=src->GetHeight(PLANAR_Y);
 
   Ydata = &Ydata[src->GetRowSize(PLANAR_Y)-1];
-  for (int y=0;y<h;y++){
-    for (int x=1;x<=fillp;x++) {
+  {for (int y=0; y<h; y++) {
+    for (int x=1; x<=fillp; x++) {
       Ydata[x]=Ydata[0];
     }
     Ydata+=src->GetPitch(PLANAR_Y);
-  }
+  }}
 
   fillp=src->GetRowSize(PLANAR_U_ALIGNED) - src->GetRowSize(PLANAR_U);
   Udata = &Udata[src->GetRowSize(PLANAR_U)-1];
   Vdata = &Vdata[src->GetRowSize(PLANAR_V)-1];
   h=src->GetHeight(PLANAR_U);
 
-  for (y=0;y<h;y++){
-    for (int x=1;x<=fillp;x++) {
+  {for (int y=0; y<h; y++) {
+    for (int x=1; x<=fillp; x++) {
       Udata[x]=Udata[0];
       Vdata[x]=Vdata[0];
     }
     Udata+=src->GetPitch(PLANAR_U);
     Vdata+=src->GetPitch(PLANAR_V);
-  }
+  }}
   return src;
 }
  

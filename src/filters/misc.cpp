@@ -46,7 +46,7 @@
 ***** Declare index of new filters for Avisynth's filter engine *****
 ********************************************************************/
 
-AVSFunction Misc_filters[] = {
+extern const AVSFunction Misc_filters[] = {
   { "FixLuminance", "cif", FixLuminance::Create },    // clip, intercept, slope
   { "FixBrokenChromaUpsampling", "c", FixBrokenChromaUpsampling::Create },
   { "PeculiarBlend", "ci", PeculiarBlend::Create },   // clip, cutoff    

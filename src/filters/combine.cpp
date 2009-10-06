@@ -44,7 +44,7 @@
 ***** Declare index of new filters for Avisynth's filter engine *****
 ********************************************************************/
 
-AVSFunction Combine_filters[] = {
+extern const AVSFunction Combine_filters[] = {
   { "StackVertical", "cc+", StackVertical::Create },
   { "StackHorizontal", "cc+", StackHorizontal::Create },
   { "ShowFiveVersions", "ccccc", ShowFiveVersions::Create },

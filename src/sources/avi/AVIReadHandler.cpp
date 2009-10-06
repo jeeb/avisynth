@@ -1097,7 +1097,7 @@ HRESULT AVIReadStream::Read(long lStart, long lSamples, void *lpBuffer, long cbB
 
 			// read data
 			
-			unsigned size = avie2->size & 0x7FFFFFFF;
+			long size = avie2->size & 0x7FFFFFFF;
 
 			if (psnData->cache && fStreamingActive && size < psnData->cache->getMaxRead()) {
 //OutputDebugString("[v] attempting cached read\n");
@@ -1284,7 +1284,7 @@ AVIReadHandler::AVIReadHandler(PAVIFILE paf) {
 		const char *s;
 
 		if (pAvisynthClipInfo->GetError(&s)) {
-			char* msg = strdup(s);
+			char* msg = _strdup(s);
 			pAvisynthClipInfo->Release();
 			paf->Release();
 			try {

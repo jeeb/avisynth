@@ -45,7 +45,7 @@
 ***** Declare index of new filters for Avisynth's filter engine *****
 ********************************************************************/
 
-AVSFunction Focus_filters[] = {
+extern const AVSFunction Focus_filters[] = {
   { "Blur", "cf[]f[mmx]b", Create_Blur },                     // amount [-1.0 - 1.5849625] -- log2(3)
   { "Sharpen", "cf[]f[mmx]b", Create_Sharpen },               // amount [-1.5849625 - 1.0]
   { "TemporalSoften", "ciii[scenechange]i[mode]i", TemporalSoften::Create }, // radius, luma_threshold, chroma_threshold
@@ -334,7 +334,8 @@ void AFH_RGB32_C(uc* p, int height, const int pitch, const int width, const int 
 		uc gg = p[1];
 		uc rr = p[2];
 		uc aa = p[3];
-		for (int x = 0; x < width-1; ++x) 
+		int x;
+		for (x = 0; x < width-1; ++x) 
 		{
 			uc b = ScaledPixelClip(p[x*4+0] * center_weight + (bb + p[x*4+4]) * outer_weight);
 			bb = p[x*4+0]; p[x*4+0] = b;
@@ -480,7 +481,8 @@ void AFH_YUY2_C(uc* p, int height, const int pitch, const int width, const int a
 		uc yy = p[0];
 		uc uv = p[1];
 		uc vu = p[3];
-		for (int x = 0; x < width-2; ++x) 
+		int x;
+		for (x = 0; x < width-2; ++x) 
 		{
 			uc y = ScaledPixelClip(p[x*2+0] * center_weight + (yy + p[x*2+2]) * outer_weight);
 			yy   = p[x*2+0];
@@ -718,7 +720,8 @@ void AFH_RGB24_C(uc* p, int height, const int pitch, const int width, const int 
       uc bb = p[0];
       uc gg = p[1];
       uc rr = p[2];
-      for (int x = 0; x < width-1; ++x) 
+      int x;
+	  for (x = 0; x < width-1; ++x) 
       {
         uc b = ScaledPixelClip(p[x*3+0] * center_weight + (bb + p[x*3+3]) * outer_weight);
         bb = p[x*3+0]; p[x*3+0] = b;
@@ -745,7 +748,8 @@ void AFH_YV12_C(uc* p, int height, const int pitch, const int row_size, const in
 	uc pp,l;
 	for (int y = height; y>0; --y) {
 		l = p[0];
-		for (int x = 1; x < row_size-1; ++x) {
+		int x;
+		for (x = 1; x < row_size-1; ++x) {
 			pp = ScaledPixelClip(p[x] * center_weight + (l + p[x+1]) * outer_weight);
 			l=p[x]; p[x]=pp;
 		}
@@ -1075,30 +1079,30 @@ PVideoFrame TemporalSoften::GetFrame(int n, IScriptEnvironment* env)
     return child->GetFrame(n,env);
     
 
-  for (int p=0;p<16;p++)
+  {for (int p=0; p<16; p++) {
     planeDisabled[p]=false;
-
+  }}
   
-  for (p=n-radius;p<=n+radius;p++) {
+  {for (int p=n-radius; p<=n+radius; p++) {
     frames[p+radius-n] = child->GetFrame(min(vi.num_frames-1,max(p,0)), env);
-  }
+  }}
 
   env->MakeWritable(&frames[radius]);
 
   do {
     int c_thresh = planes[c+1];  // Threshold for current plane.
     int d=0;
-    for (int i = 0;i<radius; i++) { // Fetch all planes sequencially
+    {for (int i = 0; i<radius; i++) { // Fetch all planes sequencially
       planePitch[d] = frames[i]->GetPitch(planes[c]);
       planeP[d++] = frames[i]->GetReadPtr(planes[c]);
-    }
+    }}
 
     BYTE* c_plane= frames[radius]->GetWritePtr(planes[c]);
 
-    for (i = 1;i<=radius;i++) { // Fetch all planes sequencially
+    {for (int i = 1; i<=radius; i++) { // Fetch all planes sequencially
       planePitch[d] = frames[radius+i]->GetPitch(planes[c]);
       planeP[d++] = frames[radius+i]->GetReadPtr(planes[c]);
-    }
+    }}
     
     int rowsize=frames[radius]->GetRowSize(planes[c]|PLANAR_ALIGNED);
     int h = frames[radius]->GetHeight(planes[c]);
@@ -1108,7 +1112,7 @@ PVideoFrame TemporalSoften::GetFrame(int n, IScriptEnvironment* env)
     if (scenechange>0) {
       int d2=0;
       bool skiprest = false;
-      for (int i = radius-1;i>=0;i--) { // Check frames backwards
+      {for (int i = radius-1; i>=0; i--) { // Check frames backwards
         if ((!skiprest) && (!planeDisabled[i])) {
           int scenevalues = isse_scenechange(c_plane, planeP[i], h, frames[radius]->GetRowSize(planes[c]), pitch, planePitch[i]);
           if (scenevalues < scenechange) {
@@ -1121,9 +1125,9 @@ PVideoFrame TemporalSoften::GetFrame(int n, IScriptEnvironment* env)
         } else {
           planeDisabled[i] = true;
         }
-      }
+      }}
       skiprest = false;
-      for (i = 0;i<radius;i++) { // Check forward frames
+      {for (int i = 0; i<radius; i++) { // Check forward frames
         if ((!skiprest)  && (!planeDisabled[i+radius]) ) {   // Disable this frame on next plane (so that Y can affect UV)
           int scenevalues = isse_scenechange(c_plane, planeP[i+radius], h, frames[radius]->GetRowSize(planes[c]), pitch,  planePitch[i+radius]);
           if (scenevalues < scenechange) {
@@ -1136,13 +1140,13 @@ PVideoFrame TemporalSoften::GetFrame(int n, IScriptEnvironment* env)
         } else {
           planeDisabled[i+radius] = true;
         }
-      }
+      }}
       
       //Copy back
-      for (i=0;i<d2;i++) {
+      {for (int i=0;i<d2;i++) {
         planeP[i]=planeP2[i];
         planePitch[i]=planePitch2[i];
-      }
+      }}
       d = d2;
     }
 
@@ -1192,8 +1196,14 @@ PVideoFrame TemporalSoften::GetFrame(int n, IScriptEnvironment* env)
 }
 
 
+static const __int64 low_ffff = 0x000000000000ffffi64;
+static const __int64 indexer  = 0x0101010101010101i64;
+static const __int64 full     = 0xffffffffffffffffi64;
+
+static const __int64 add64    = (__int64)(16384) | ((__int64)(16384)<<32);
+
+
 void TemporalSoften::mmx_accumulate_line(const BYTE* c_plane, const BYTE** planeP, int planes, int rowsize, __int64* t) {
-  static const __int64 indexer = 0x0101010101010101i64;
   const __int64 t2 = *t;
   int* _accum_line=accum_line;
   int* _div_line=div_line;
@@ -1272,7 +1282,6 @@ outloop:
 
 
 void TemporalSoften::isse_accumulate_line(const BYTE* c_plane, const BYTE** planeP, int planes, int rowsize, __int64* t) {
-  static const __int64 indexer = 0x0101010101010101i64;
   const __int64 t2 = *t;
   int* _accum_line=accum_line;
   int* _div_line=div_line;
@@ -1350,8 +1359,6 @@ outloop:
 
 
 void TemporalSoften::isse_accumulate_line_mode2(const BYTE* c_plane, const BYTE** planeP, int planes, int rowsize, __int64* t, int div) {
-  static __int64 full = 0xffffffffffffffffi64;
-  static const __int64 add64 = (__int64)(16384) | ((__int64)(16384)<<32);
   const __int64 t2 = *t;
   __int64 div64 = (__int64)(div) | ((__int64)(div)<<16) | ((__int64)(div)<<32) | ((__int64)(div)<<48);
   div>>=1;
@@ -1457,9 +1464,6 @@ outloop:
 }
 
 void TemporalSoften::mmx_accumulate_line_mode2(const BYTE* c_plane, const BYTE** planeP, int planes, int rowsize, __int64* t, int div) {
-  static const __int64 full = 0xffffffffffffffffi64;
-  static const __int64 low_ffff = 0x000000000000ffffi64;
-  static const __int64 add64 = (__int64)(16384) | ((__int64)(16384)<<32);
   const __int64 t2 = *t;
 
   __int64 div64 = (__int64)(div) | ((__int64)(div)<<16) | ((__int64)(div)<<32) | ((__int64)(div)<<48);
@@ -1571,7 +1575,6 @@ outloop:
 
 
 int TemporalSoften::isse_scenechange(const BYTE* c_plane, const BYTE* tplane, int height, int width, int c_pitch, int t_pitch) {
-  __declspec(align(8)) static __int64 full = 0xffffffffffffffffi64;
   int wp=(width/32)*32;
   int hp=height;
   int returnvalue=0xbadbad00;

@@ -45,7 +45,7 @@
 ***** Declare index of new filters for Avisynth's filter engine *****
 ********************************************************************/
 
-AVSFunction Resize_filters[] = {
+extern const AVSFunction Resize_filters[] = {
   { "VerticalReduceBy2", "c", VerticalReduceBy2::Create },        // src clip
   { "HorizontalReduceBy2", "c", HorizontalReduceBy2::Create },    // src clip
   { "ReduceBy2", "c", Create_ReduceBy2 },                         // src clip
@@ -64,8 +64,19 @@ AVSFunction Resize_filters[] = {
 VerticalReduceBy2::VerticalReduceBy2(PClip _child, IScriptEnvironment* env)
  : GenericVideoFilter(_child)
 {
+  if (vi.IsPlanar() && !vi.IsY8()) {
+    const int mod  = 2 << vi.GetPlaneHeightSubsampling(PLANAR_U);
+    const int mask = mod - 1;
+    if (vi.height & mask)
+      env->ThrowError("VerticalReduceBy2: Planar source height must be divisible by %d.", mod);    
+  }
+
+  if (vi.height & 1)
+    env->ThrowError("HorizontalReduceBy2: Image height must be even");
+
   original_height = vi.height;
   vi.height >>= 1;
+
   if (vi.height<3) {
     env->ThrowError("VerticalReduceBy2: Image too small to be reduced by 2.");    
   }
@@ -78,34 +89,36 @@ PVideoFrame VerticalReduceBy2::GetFrame(int n, IScriptEnvironment* env) {
   int src_pitch = src->GetPitch();
   int dst_pitch = dst->GetPitch();
   int row_size = src->GetRowSize();
+  int a_row_size = (row_size+3) & ~3;
   BYTE* dstp = dst->GetWritePtr();
   const BYTE* srcp = src->GetReadPtr();
 
   if (vi.IsPlanar()) {
-    mmx_process(srcp,src_pitch, row_size, dstp,dst_pitch,dst->GetHeight(PLANAR_Y));
+    mmx_process(srcp, src_pitch, a_row_size, dstp, dst_pitch, dst->GetHeight(PLANAR_Y));
 
     if (src->GetRowSize(PLANAR_V)) {
       src_pitch = src->GetPitch(PLANAR_V);
       dst_pitch = dst->GetPitch(PLANAR_V);
-      row_size = src->GetRowSize(PLANAR_V_ALIGNED);
+      a_row_size = (src->GetRowSize(PLANAR_V)+3) & ~3;
       dstp = dst->GetWritePtr(PLANAR_V);
       srcp = src->GetReadPtr(PLANAR_V);
-      mmx_process(srcp,src_pitch, row_size, dstp,dst_pitch,dst->GetHeight(PLANAR_V));
+      mmx_process(srcp, src_pitch, a_row_size, dstp, dst_pitch, dst->GetHeight(PLANAR_V));
 
       src_pitch = src->GetPitch(PLANAR_U);
       dst_pitch = dst->GetPitch(PLANAR_U);
-      row_size = src->GetRowSize(PLANAR_U_ALIGNED);
+      a_row_size = (src->GetRowSize(PLANAR_U)+3) & ~3;
       dstp = dst->GetWritePtr(PLANAR_U);
       srcp = src->GetReadPtr(PLANAR_U);
-      mmx_process(srcp,src_pitch, row_size, dstp,dst_pitch,dst->GetHeight(PLANAR_U));
+      mmx_process(srcp, src_pitch, a_row_size, dstp, dst_pitch, dst->GetHeight(PLANAR_U));
     }
     return dst;
 
   }
 
   if ((env->GetCPUFlags() & CPUF_MMX)) {
-    if ((row_size&3)==0) {  // row width divideable with 4 (one dword per loop)
-      mmx_process(srcp,src_pitch, row_size, dstp,dst_pitch,vi.height);
+    // aligned row width divideable within pitch (one dword per loop)
+    if (a_row_size<=src_pitch && a_row_size<=dst_pitch) {
+      mmx_process(srcp, src_pitch, a_row_size, dstp, dst_pitch, vi.height);
       return dst;
     }
   } 
@@ -152,7 +165,7 @@ void VerticalReduceBy2::mmx_process(const BYTE* srcp, int src_pitch, int row_siz
         mov R_DST_PITCH,[dst_pitch]
         mov R_YLEFT,[height]
 loopback:
-      pxor mm1,mm1
+        pxor mm1,mm1
         punpckhbw mm0,[R_SRC]  // line0
         punpckhbw mm1,[R_SRC+R_SRC_PITCH]  // line1
         punpckhbw mm2,[R_SRC+R_SRC_PITCH*2]  // line2
@@ -179,7 +192,7 @@ loopback:
         
         // last line 
 loopback_last:
-      pxor mm1,mm1
+        pxor mm1,mm1
         punpckhbw mm0,[R_SRC]  // line0
         punpckhbw mm1,[R_SRC+R_SRC_PITCH]  // line1
         psrlw mm0,8
@@ -220,8 +233,19 @@ loopback_last:
 HorizontalReduceBy2::HorizontalReduceBy2(PClip _child, IScriptEnvironment* env)
 : GenericVideoFilter(_child), mybuffer(0)
 {
+  if (vi.IsPlanar() && !vi.IsY8()) {
+    const int mod  = 2 << vi.GetPlaneWidthSubsampling(PLANAR_U);
+    const int mask = mod - 1;
+    if (vi.width & mask)
+      env->ThrowError("HorizontalReduceBy2: Planar source width must be divisible by %d.", mod);    
+  }
+
+  if (vi.width & 1)
+    env->ThrowError("HorizontalReduceBy2: Image width must be even");
+
   if (vi.IsYUY2() && (vi.width & 3))
-    env->ThrowError("HorizontalReduceBy2: YUY2 image width must be even");
+    env->ThrowError("HorizontalReduceBy2: YUY2 output image width must be even");
+
   source_width = vi.width;
   vi.width >>= 1;
 }
@@ -241,7 +265,7 @@ PVideoFrame HorizontalReduceBy2::GetFrame(int n, IScriptEnvironment* env)
     const BYTE* srcp = src->GetReadPtr(PLANAR_Y);
     int yloops=dst->GetHeight(PLANAR_Y);
     int xloops=dst->GetRowSize(PLANAR_Y)-1;
-    for (int y = 0; y<yloops; y++) {
+    {for (int y = 0; y<yloops; y++) {
       for (int x = 0; x<xloops; x++) {
         dstp[0] = (srcp[0] + 2*srcp[1] + srcp[2] + 2) >> 2;
         dstp ++;
@@ -250,14 +274,14 @@ PVideoFrame HorizontalReduceBy2::GetFrame(int n, IScriptEnvironment* env)
       dstp[0] = (srcp[0] + srcp[1] +1 ) >> 1;
       dstp += dst_gap+1;
       srcp += src_gap+2;
-    }
+    }}
     srcp = src->GetReadPtr(PLANAR_U);
     dstp = dst->GetWritePtr(PLANAR_U);
     src_gap = src->GetPitch(PLANAR_U) - src->GetRowSize(PLANAR_U);
     dst_gap = dst->GetPitch(PLANAR_U) - dst->GetRowSize(PLANAR_U);
     yloops=dst->GetHeight(PLANAR_U);
     xloops=dst->GetRowSize(PLANAR_U)-1;
-    for (y = 0; y<yloops; y++) {
+    {for (int y = 0; y<yloops; y++) {
       for (int x = 0; x<xloops; x++) {
         dstp[0] = (srcp[0] + 2*srcp[1] + srcp[2] + 2) >> 2;
         dstp ++;
@@ -266,10 +290,10 @@ PVideoFrame HorizontalReduceBy2::GetFrame(int n, IScriptEnvironment* env)
       dstp[0] = (srcp[0] + srcp[1] +1 ) >> 1;
       dstp += dst_gap+1;
       srcp += src_gap+2;
-    }
+    }}
     srcp = src->GetReadPtr(PLANAR_V);
     dstp = dst->GetWritePtr(PLANAR_V);
-    for (y = 0; y<yloops; y++) {
+    {for (int y = 0; y<yloops; y++) {
       for (int x = 0; x<xloops; x++) {
         dstp[0] = (srcp[0] + 2*srcp[1] + srcp[2] + 2) >> 2;
         dstp ++;
@@ -278,7 +302,7 @@ PVideoFrame HorizontalReduceBy2::GetFrame(int n, IScriptEnvironment* env)
       dstp[0] = (srcp[0] + srcp[1] +1 ) >> 1;
       dstp += dst_gap+1;
       srcp += src_gap+2;
-    }
+    }}
   } else if (vi.IsYUY2()  && (!(vi.width&3))) {
     if (env->GetCPUFlags() & CPUF_INTEGER_SSE) {
 			isse_process_yuy2(src,dstp,dst_pitch);

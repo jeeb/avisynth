@@ -44,7 +44,7 @@
 #include "color.h"
 #include "text-overlay.h"
 
-AVSFunction Color_filters[] = {
+extern const AVSFunction Color_filters[] = {
   { "ColorYUV",
 					 "c[gain_y]f[off_y]f[gamma_y]f[cont_y]f" \
 					 "[gain_u]f[off_u]f[gamma_u]f[cont_u]f" \
@@ -491,9 +491,9 @@ bool Color::ReadConditionals(IScriptEnvironment* env) {
 bool Color::CheckParms(const char *_levels, const char *_matrix, const char *_opt)
 {
 	int i;
-	static const char	*LevelsTbl[] = { "", "TV->PC", "PC->TV", "PC->TV.Y" },
-		*MatrixTbl[] = { "", "rec.709" },
-		*OptTbl[] = { "", "coring" };
+	static const char * const LevelsTbl[] = { "", "TV->PC", "PC->TV", "PC->TV.Y" };
+	static const char * const MatrixTbl[] = { "", "rec.709" };
+	static const char * const OptTbl[]    = { "", "coring" };
 
 	levels = -1;
 	if (_levels) {

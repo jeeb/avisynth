@@ -31,7 +31,7 @@ namespace SoftWire
 		{
 			for(int i = 0; i < sizeof(specifierSet) / sizeof(Specifier); i++)
 			{
-				if(stricmp(string, specifierSet[i].notation) == 0)
+				if(_stricmp(string, specifierSet[i].notation) == 0)
 				{
 					return specifierSet[i].type;
 				}		
@@ -192,7 +192,7 @@ namespace SoftWire
 			throw INTERNAL_ERROR;
 		}
 
-		return strlwr(string);
+		return _strlwr(string);
 	}
 
 	bool Operand::isVoid(Type type)
@@ -388,7 +388,7 @@ namespace SoftWire
 		{
 			for(int i = 0; i < sizeof(syntaxSet) / sizeof(Operand::Register); i++)
 			{
-				if(stricmp(string, syntaxSet[i].notation) == 0)
+				if(_stricmp(string, syntaxSet[i].notation) == 0)
 				{
 					return syntaxSet[i].type;
 				}

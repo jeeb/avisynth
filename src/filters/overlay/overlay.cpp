@@ -41,7 +41,7 @@
 ***** Declare index of new filters for Avisynth's filter engine *****
 ********************************************************************/
 
-AVSFunction Overlay_filters[] = {
+extern const AVSFunction Overlay_filters[] = {
   { "Overlay", "cc[x]i[y]i[mask]c[opacity]f[mode]s[greymask]b[output]s[ignore_conditional]b[PC_Range]b", Overlay::Create },
     // 0, src clip
     // 1, overlay clip

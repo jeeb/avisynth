@@ -40,7 +40,7 @@
 #include "../text-overlay.h"
 #include "conditional_reader.h"
 
-AVSFunction Conditional_filters[] = {
+extern const AVSFunction Conditional_filters[] = {
   {  "ConditionalFilter","cccsss[show]b", ConditionalFilter::Create },
   {  "ScriptClip", "cs[show]b[after_frame]b", ScriptClip::Create },
   {  "ConditionalReader", "css[show]b", ConditionalReader::Create },
@@ -100,8 +100,8 @@ ConditionalFilter::ConditionalFilter(PClip _child, PClip _source1, PClip _source
     vi.sample_type = vi1.sample_type;
   }
 
-const char* t_TRUE="TRUE"; 
-const char* t_FALSE="FALSE";
+const char* const t_TRUE="TRUE"; 
+const char* const t_FALSE="FALSE";
 
 
 PVideoFrame __stdcall ConditionalFilter::GetFrame(int n, IScriptEnvironment* env) {

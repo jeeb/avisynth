@@ -45,7 +45,7 @@
 ***** Declare index of new filters for Avisynth's filter engine *****
 ********************************************************************/
 
-AVSFunction Field_filters[] = {
+extern const AVSFunction Field_filters[] = {
   { "ComplementParity", "c", ComplementParity::Create },
   { "AssumeTFF", "c", AssumeParity::Create, (void*)true },
   { "AssumeBFF", "c", AssumeParity::Create, (void*)false },

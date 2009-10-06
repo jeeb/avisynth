@@ -38,7 +38,7 @@
 #include "conditional_functions.h"
 
 
-AVSFunction Conditional_funtions_filters[] = {
+extern const AVSFunction Conditional_funtions_filters[] = {
   {  "AverageLuma","c", AveragePlane::Create_y },
   {  "AverageChromaU","c", AveragePlane::Create_u },
   {  "AverageChromaV","c", AveragePlane::Create_v },

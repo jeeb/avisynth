@@ -48,7 +48,7 @@
 ***** Declare index of new filters for Avisynth's filter engine *****
 ********************************************************************/
 
-AVSFunction Swap_filters[] = {
+extern const AVSFunction Swap_filters[] = {
   {  "SwapUV","c", SwapUV::CreateSwapUV },
   {  "UToY","c", SwapUVToY::CreateUToY },
   {  "VToY","c", SwapUVToY::CreateVToY },
@@ -334,20 +334,20 @@ PVideoFrame __stdcall SwapUVToY::GetFrame(int n, IScriptEnvironment* env) {
   const int myy = dst->GetHeight(PLANAR_U);
 
   int *srcpUV = (int*)dst->GetWritePtr(PLANAR_U);
-  for (int y=0; y<myy; y++) {
+  {for (int y=0; y<myy; y++) {
 	for (int x=0; x<myx; x++) {
 	  srcpUV[x] = 0x80808080;  // mod 8
 	}
 	srcpUV += pitch;
-  }
+  }}
 
   srcpUV = (int*)dst->GetWritePtr(PLANAR_V);
-  for (y=0; y<myy; ++y) {
+  {for (int y=0; y<myy; ++y) {
 	for (int x=0; x<myx; x++) {
 	  srcpUV[x] = 0x80808080;  // mod 8
 	}
 	srcpUV += pitch;
-  }
+  }}
   return dst;
 }
 

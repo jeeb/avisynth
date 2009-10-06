@@ -308,7 +308,7 @@ void string_base::add_string_upper(const char * src,unsigned len)
 
 void string_base::to_lower()
 {
-	char * temp = strdup(get_ptr());
+	char * temp = _strdup(get_ptr());
 	reset();
 	add_string_lower(temp);
 	free(temp);
@@ -316,7 +316,7 @@ void string_base::to_lower()
 
 void string_base::to_upper()
 {
-	char * temp = strdup(get_ptr());
+	char * temp = _strdup(get_ptr());
 	reset();
 	add_string_upper(temp);
 	free(temp);

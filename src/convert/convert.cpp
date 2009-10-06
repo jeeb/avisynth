@@ -47,7 +47,7 @@
 ***** Declare index of new filters for Avisynth's filter engine *****
 ********************************************************************/
 
-AVSFunction Convert_filters[] = {       // matrix can be "rec601", rec709", "PC.601" or "PC.709"
+extern const AVSFunction Convert_filters[] = {       // matrix can be "rec601", rec709", "PC.601" or "PC.709"
   { "ConvertToRGB",   "c[matrix]s[interlaced]b[chromaplacement]s[chromaresample]s", ConvertToRGB::Create },
   { "ConvertToRGB24", "c[matrix]s[interlaced]b[chromaplacement]s[chromaresample]s", ConvertToRGB::Create24 },
   { "ConvertToRGB32", "c[matrix]s[interlaced]b[chromaplacement]s[chromaresample]s", ConvertToRGB::Create32 },

@@ -43,7 +43,7 @@
 ***** Declare index of new filters for Avisynth's filter engine *****
 ********************************************************************/
 
-AVSFunction Audio_filters[] = {
+extern const AVSFunction Audio_filters[] = {
                                 { "DelayAudio", "cf", DelayAudio::Create },
                                 { "AmplifydB", "cf+", Amplify::Create_dB },
                                 { "Amplify", "cf+", Amplify::Create },
@@ -1224,9 +1224,9 @@ void __stdcall ResampleAudio::GetAudio(void* buf, __int64 start, __int64 count, 
 	short* dst_end = &dst[count * ch];
 
 	if (env->GetCPUFlags() & CPUF_MMX) {
-	  static int r_Na     = 1 << (Na-1);
-	  static int r_Nhxn   = 1 << (Nhxn-1);
-	  static int r_NLpScl = 1 << (NLpScl-1);
+	  static const int r_Na     = 1 << (Na-1);
+	  static const int r_Nhxn   = 1 << (Nhxn-1);
+	  static const int r_NLpScl = 1 << (NLpScl-1);
 	  const int inc = ch * sizeof(short);
 	  int posNp = int(pos >> Np);
 

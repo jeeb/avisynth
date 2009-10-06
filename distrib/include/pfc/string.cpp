@@ -156,7 +156,7 @@ void string_printf::g_run(string_base & out,const char * fmt,va_list list)
 					char temp[8*sizeof(int)];
 					int val = va_arg(list,int);
 					if (force_sign && val>0) out.add_char('+');
-					itoa(val,temp,10);
+					_itoa(val,temp,10);
 					int len = strlen(temp);
 					if (pad>len) out.add_chars(padchar,pad-len);
 					out.add_string(temp);

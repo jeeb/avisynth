@@ -332,12 +332,12 @@ class VideoFrameBuffer {
   const int data_size;
   // sequence_number is incremented every time the buffer is changed, so
   // that stale views can tell they're no longer valid.
-  long sequence_number;
+  volatile long sequence_number;
 
   friend class VideoFrame;
   friend class Cache;
   friend class ScriptEnvironment;
-  long refcount;
+  volatile long refcount;
 
 public:
   VideoFrameBuffer(int size);
@@ -363,7 +363,7 @@ class AVSValue;
 // is overloaded to recycle class instances.
 
 class VideoFrame {
-  long refcount;
+  volatile long refcount;
   VideoFrameBuffer* const vfb;
   const int offset, pitch, row_size, height, offsetU, offsetV, pitchUV;  // U&V offsets are from top of picture.
   const int row_sizeUV, heightUV;
@@ -413,7 +413,7 @@ enum {
 class IClip {
   friend class PClip;
   friend class AVSValue;
-  long refcnt;
+  volatile long refcnt;
   void AddRef();
   void Release();
 public:
@@ -678,7 +678,7 @@ public:
 
   virtual void __stdcall AddFunction(const char* name, const char* params, ApplyFunc apply, void* user_data) = 0;
   virtual bool __stdcall FunctionExists(const char* name) = 0;
-  virtual AVSValue __stdcall Invoke(const char* name, const AVSValue args, const char** arg_names=0) = 0;
+  virtual AVSValue __stdcall Invoke(const char* name, const AVSValue args, const char* const* arg_names=0) = 0;
 
   virtual AVSValue __stdcall GetVar(const char* name) = 0;
   virtual bool __stdcall SetVar(const char* name, const AVSValue& val) = 0;

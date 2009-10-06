@@ -43,7 +43,7 @@
 ***** Declare index of new filters for Avisynth's filter engine *****
 ********************************************************************/
 
-AVSFunction Edit_filters[] = {  
+extern const AVSFunction Edit_filters[] = {  
   { "Trim", "cii[]b", Trim::Create },                       // first frame, last frame[, pad audio]
   { "FreezeFrame", "ciii", FreezeFrame::Create },           // first frame, last frame, source frame
   { "DeleteFrame", "ci+", DeleteFrame::Create },             // frame #
@@ -572,7 +572,8 @@ void Dissolve::GetAudio(void* buf, __int64 start, __int64 count, IScriptEnvironm
     short *const a = (short*)buf;
     const short *const b = (short*)audbuffer;
 
-    for (int i=0; i<countXnch; i+=nch) {
+    int i;
+	for (i=0; i<countXnch; i+=nch) {
       if (numerator <= 0) {                          // Past end of dissolve
         break;
       }
@@ -593,7 +594,8 @@ void Dissolve::GetAudio(void* buf, __int64 start, __int64 count, IScriptEnvironm
     SFLOAT *const a = (SFLOAT*)buf;
     const SFLOAT *const b = (SFLOAT*)audbuffer;
 
-    for (int i=0; i<countXnch; i+=nch) {
+    int i;
+	for (i=0; i<countXnch; i+=nch) {
       if (numerator <= 0) {                          // Past end of dissolve
         break;
       }
@@ -859,12 +861,12 @@ PClip __cdecl ColorClip(PClip a, int duration, int color, float fps, IScriptEnvi
 	try {	// HIDE DAMN SEH COMPILER BUG!!!
   if (a->GetVideoInfo().HasVideo()) {
 	AVSValue blackness_args[] = { a, duration, color };
-	static const char* arg_names[3] = { 0, 0, "color" };
+	static const char* const arg_names[3] = { 0, 0, "color" };
 	return env->Invoke("Blackness", AVSValue(blackness_args, 3), arg_names ).AsClip();
   }
   else {
 	AVSValue blackness_args[] = { a, duration, color, fps };
-	static const char* arg_names[4] = { 0, 0, "color", "fps" };
+	static const char* const arg_names[4] = { 0, 0, "color", "fps" };
 	return env->Invoke("Blackness", AVSValue(blackness_args, 4), arg_names ).AsClip();
   }
 	}

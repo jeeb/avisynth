@@ -804,7 +804,7 @@ AVSValue __cdecl Create_Version(AVSValue args, void*, IScriptEnvironment* env) {
 }
 
 
-AVSFunction Source_filters[] = {
+extern const AVSFunction Source_filters[] = {
   { "AVISource", "s+[audio]b[pixel_type]s[fourCC]s", AVISource::Create, (void*) AVISource::MODE_NORMAL },
   { "AVIFileSource", "s+[audio]b[pixel_type]s[fourCC]s", AVISource::Create, (void*) AVISource::MODE_AVIFILE },
   { "WAVSource", "s+", AVISource::Create, (void*) AVISource::MODE_WAV },

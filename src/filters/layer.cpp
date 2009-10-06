@@ -47,7 +47,7 @@
 ***** Declare index of new filters for Avisynth's filter engine *****
 ********************************************************************/
 
-AVSFunction Layer_filters[] = {
+extern const AVSFunction Layer_filters[] = {
   { "Mask", "cc", Mask::Create },     // clip, mask
   { "ColorKeyMask", "ci[]i[]i[]i", ColorKeyMask::Create },    // clip, color, tolerance[B, toleranceG, toleranceR]
   { "ResetMask", "c", ResetMask::Create },
@@ -109,9 +109,9 @@ PVideoFrame __stdcall Mask::GetFrame(int n, IScriptEnvironment* env)
 	const int myx = vi.width;
 	const int myy = vi.height;
 
-	__declspec(align(8)) static __int64 rgb2lum = ((__int64)cyr << 32) | (cyg << 16) | cyb;
-	__declspec(align(8)) static __int64 alpha_mask=0x00ffffff00ffffff;
-	__declspec(align(8)) static __int64 color_mask=0xff000000ff000000;
+	__declspec(align(8)) static const const __int64 rgb2lum = ((__int64)cyr << 32) | (cyg << 16) | cyb;
+	__declspec(align(8)) static const const __int64 alpha_mask=0x00ffffff00ffffff;
+	__declspec(align(8)) static const const __int64 color_mask=0xff000000ff000000;
 /*
   for (int y=0; y<vi.height; ++y)
   {
@@ -218,8 +218,8 @@ PVideoFrame __stdcall ColorKeyMask::GetFrame(int n, IScriptEnvironment *env)
       pxor      mm0, mm0
       movd      mm1, col8
       movd      mm2, tol8
-	  punpckldq mm1, mm1
-	  punpckldq mm2, mm2
+      punpckldq mm1, mm1
+      punpckldq mm2, mm2
 
 yloop:
       mov       ecx, xloopcount
@@ -269,8 +269,8 @@ AVSValue __cdecl ColorKeyMask::Create(AVSValue args, void*, IScriptEnvironment* 
 {
   return new ColorKeyMask(args[0].AsClip(), args[1].AsInt(0),
                           args[2].AsInt(10),
-						  args[3].AsInt(args[2].AsInt(10)),
-						  args[4].AsInt(args[2].AsInt(10)), env);
+                          args[3].AsInt(args[2].AsInt(10)),
+                          args[4].AsInt(args[2].AsInt(10)), env);
 }
 
 
@@ -508,7 +508,7 @@ AVSValue Invert::Create(AVSValue args, void*, IScriptEnvironment* env)
 ShowChannel::ShowChannel(PClip _child, const char * pixel_type, int _channel, IScriptEnvironment* env)
   : GenericVideoFilter(_child), channel(_channel), input_type(_child->GetVideoInfo().pixel_type)
 {
-  const char const* ShowText[4] = {"Blue", "Green", "Red", "Alpha"};
+  static const char * const ShowText[4] = {"Blue", "Green", "Red", "Alpha"};
 
   if ((channel == 3) && !vi.IsRGB32())
     env->ThrowError("ShowAlpha: RGB32 data only");
@@ -628,8 +628,6 @@ PVideoFrame ShowChannel::GetFrame(int n, IScriptEnvironment* env)
     {
       if ((vi.pixel_type == VideoInfo::CS_YV12) || (vi.pixel_type == VideoInfo::CS_Y8))
       {
-        int i, j;  // stupid VC6
-
         PVideoFrame dst = env->NewVideoFrame(vi);
         BYTE * dstp = dst->GetWritePtr();
         int dstpitch = dst->GetPitch();
@@ -638,8 +636,8 @@ PVideoFrame ShowChannel::GetFrame(int n, IScriptEnvironment* env)
         // RGB is upside-down
         pf += (height-1) * pitch;
 
-        for (i=0; i<height; ++i) {
-          for (j=0; j<dstrowsize; ++j) {
+        for (int i=0; i<height; ++i) {
+          for (int j=0; j<dstrowsize; ++j) {
             dstp[j] = pf[j*4 + channel];
           }
           pf -= pitch;
@@ -652,8 +650,8 @@ PVideoFrame ShowChannel::GetFrame(int n, IScriptEnvironment* env)
           const int dstheight = dst->GetHeight(PLANAR_U);
           BYTE * dstpu = dst->GetWritePtr(PLANAR_U);
           BYTE * dstpv = dst->GetWritePtr(PLANAR_V);
-          for (i=0; i<dstheight; ++i) {
-            for (j=0; j<dstrowsize; ++j) {
+          for (int i=0; i<dstheight; ++i) {
+            for (int j=0; j<dstrowsize; ++j) {
               ((unsigned int*) dstpu)[j] = ((unsigned int*) dstpv)[j] = 0x80808080;
             }
             dstpu += dstpitch;
@@ -987,12 +985,12 @@ PVideoFrame __stdcall Layer::GetFrame(int n, IScriptEnvironment* env)
 	const int myy = ycount;
 
 
-		__declspec(align(8)) static __int64 oxooffooffooffooff=0x00ff00ff00ff00ff;  // Luma mask
-		__declspec(align(8)) static __int64 oxffooffooffooffoo=0xff00ff00ff00ff00;  // Chroma mask
-		__declspec(align(8)) static __int64 oxoo80oo80oo80oo80=0x0080008000800080;  // Null Chroma
-		__declspec(align(8)) static __int64 ox7f7f7f7f7f7f7f7f=0x7f7f7f7f7f7f7f7f;  // FAST shift mask
-		__declspec(align(8)) static __int64	ox0101010101010101=0x0101010101010101;  // FAST lsb mask
-		__declspec(align(8)) static __int64	ox00000001        =0x0000000000000001;  // QWORD(1)
+		__declspec(align(8)) static const __int64 oxooffooffooffooff=0x00ff00ff00ff00ff;  // Luma mask
+		__declspec(align(8)) static const __int64 oxffooffooffooffoo=0xff00ff00ff00ff00;  // Chroma mask
+		__declspec(align(8)) static const __int64 oxoo80oo80oo80oo80=0x0080008000800080;  // Null Chroma
+		__declspec(align(8)) static const __int64 ox7f7f7f7f7f7f7f7f=0x7f7f7f7f7f7f7f7f;  // FAST shift mask
+		__declspec(align(8)) static const __int64 ox0101010101010101=0x0101010101010101;  // FAST lsb mask
+		__declspec(align(8)) static const __int64 ox00000001        =0x0000000000000001;  // QWORD(1)
 
 	if(vi.IsYUY2()){
 
@@ -1002,7 +1000,7 @@ PVideoFrame __stdcall Layer::GetFrame(int n, IScriptEnvironment* env)
 		src2p += (src2_pitch * ysrc) + (xsrc * 2);
 		const int myx = xcount >> 1;
 
-		__int64	 thresh=0x0000000000000000 | ((T & 0xFF) <<48)| ((T & 0xFF) <<32)| ((T & 0xFF) <<16)| (T & 0xFF);
+		int thresh= ((T & 0xFF) <<16)| (T & 0xFF);
 
 		if (!lstrcmpi(Op, "Mul"))
 		{
@@ -1514,9 +1512,10 @@ PVideoFrame __stdcall Layer::GetFrame(int n, IScriptEnvironment* env)
 
 							movd		mm7, [edi + ecx*4] ;src1/dest;
 							movd		mm6, [esi + ecx*4] ;src2
-							movq		mm1, thresh				;we'll need this in a minute
+							movd		mm1, thresh				;we'll need this in a minute
 							movq		mm4,mm7					;temp mm4=mm7
 							pand		mm7,mm2					;mask for luma	src1__YY__YY__YY__YY
+							punpckldq	mm1,mm1					;mm1= 00th|00th|00th|00th
 							movq		mm5,mm6					;temp mm5=mm6
 							pand		mm6,mm2					;mask for luma	src2__YY__YY__YY__YY
 
@@ -1591,9 +1590,10 @@ PVideoFrame __stdcall Layer::GetFrame(int n, IScriptEnvironment* env)
 
 							movd		mm7, [edi + ecx*4] ;src1/dest;
 							movd		mm6, [esi + ecx*4] ;src2
-							movq		mm1, thresh				;we'll need this in a minute
+							movd		mm1, thresh				;we'll need this in a minute
 							movq		mm4,mm7					;temp mm4=mm7
 							pand		mm7,mm2					;mask for luma	src1__YY__YY__YY__YY
+							punpckldq	mm1,mm1					;mm1= 00th|00th|00th|00th
 							pand		mm4,mm3					;mask for chroma	src1VV__UU__VV__UU__
 							movq		mm5,mm6					;temp mm5=mm6
 							pand		mm6,mm2					;mask for luma	src2__YY__YY__YY__YY
@@ -1650,7 +1650,7 @@ PVideoFrame __stdcall Layer::GetFrame(int n, IScriptEnvironment* env)
 		const int cyb = int(0.114*32768+0.5);
 		const int cyg = int(0.587*32768+0.5);
 		const int cyr = int(0.299*32768+0.5);
-		__declspec(align(8)) static const unsigned __int64 rgb2lum = ((__int64)cyr << 32) | (cyg << 16) | cyb;
+		__declspec(align(8)) static const __int64 rgb2lum = ((__int64)cyr << 32) | (cyg << 16) | cyb;
 
 		BYTE* src1p = src1->GetWritePtr();
 		const BYTE* src2p = src2->GetReadPtr();
@@ -1659,7 +1659,7 @@ PVideoFrame __stdcall Layer::GetFrame(int n, IScriptEnvironment* env)
 		src1p += (src1_pitch * ydest) + (xdest * 4);
 		src2p += (src2_pitch * ysrc) + (xsrc * 4);
 
-		__int64	 thresh=0x0000000000000000 | (T & 0xFF);
+		int thresh = T & 0xFF;
 
 		if (!lstrcmpi(Op, "Mul"))
 		{
@@ -1920,11 +1920,12 @@ PVideoFrame __stdcall Layer::GetFrame(int n, IScriptEnvironment* env)
 				punpckldq	mm5, mm3			;ready to add partial products src2
 				 psrld		mm2, 8				;mm2= 0000|0000|0000|00aa*
 				paddd		mm3, mm5			;32 bit result src2
-				 psrlq		mm4, 47				;8 bit result src2
+				movd		mm5, thresh			;get threshold
 				psrlq		mm3, 47				;8 bit result src1
+				 psrlq		mm4, 47				;8 bit result src2
 		//----- end rgb -> monochrome
 		//----- now monochrome src2 in mm4, monochrome src1 in mm3 can be used for pixel compare
-				paddw		mm3, thresh			;add threshold to src1
+				paddw		mm3, mm5			;add threshold to src1
 				 punpcklwd	mm2, mm2			;mm2= 0000|0000|00aa*|00aa*
 				pcmpgtd		mm4, mm3			;and see if src1 still greater
 				 punpckldq	mm2, mm2			;mm2= 00aa*|00aa*|00aa*|00aa*
@@ -1991,11 +1992,12 @@ PVideoFrame __stdcall Layer::GetFrame(int n, IScriptEnvironment* env)
 				punpckldq	mm5, mm3			;ready to add partial products src2
 				 psrld		mm2, 8				;mm2= 0000|0000|0000|00aa*
 				paddd		mm3, mm5			;32 bit result src2
+				movd		mm5, thresh			;get threshold
 				 psrlq		mm4, 47				;8 bit result src2
 				psrlq		mm3, 47				;8 bit result src1
 		//----- end rgb -> monochrome
 		//----- now monochrome src2 in mm4, monochrome src1 in mm3 can be used for pixel compare
-				 paddw		mm4, thresh			;add threshold to src2
+				 paddw		mm4, mm5			;add threshold to src2
 				punpcklwd	mm2, mm2			;mm2= 0000|0000|00aa*|00aa*
 				 pcmpgtd	mm3, mm4			;and see if src1 less
 				punpckldq	mm2, mm2			;mm2= 00aa*|00aa*|00aa*|00aa*
@@ -2295,7 +2297,7 @@ PVideoFrame __stdcall Subtract::GetFrame(int n, IScriptEnvironment* env)
       BYTE* src1pV = src1->GetWritePtr(PLANAR_V);
       const BYTE* src2pV = src2->GetReadPtr(PLANAR_V);
 
-      for (y=0; y<src1->GetHeight(PLANAR_U); y++) {
+      for (int y=0; y<src1->GetHeight(PLANAR_U); y++) {
         for (int x=0; x<row_size; x++) {
           src1p[x] = Diff[src1p[x] - src2p[x] + 128 + 129];
           src1pV[x] = Diff[src1pV[x] - src2pV[x] + 128 + 129];
@@ -2324,8 +2326,9 @@ PVideoFrame __stdcall Subtract::GetFrame(int n, IScriptEnvironment* env)
     for (int y=0; y<vi.height; ++y) {
       for (int x=0; x<row_size; ++x)
         src1p[x] = Diff[src1p[x] - src2p[x] + 128 + 129];
-	  src1p += src1->GetPitch();
-	  src2p += src2->GetPitch();
+
+      src1p += src1->GetPitch();
+      src2p += src2->GetPitch();
     }
   }
   return src1;

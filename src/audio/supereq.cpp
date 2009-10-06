@@ -115,18 +115,20 @@ AVSsupereq(PClip _child, float* values, IScriptEnvironment* env)
   const unsigned last_nch   = (unsigned)vi.AudioChannels();
   const unsigned last_srate = (unsigned)vi.audio_samples_per_second;
   
-  int n;
-  for(n=0;n<N_BANDS;n++) {
+  unsigned n;
+  for(n=0; n<N_BANDS; n++) {
       my_eq.bands[n] = (-values[n]+20);
   }
   
-  for(n=0;n<last_nch;n++)
+  for(n=0; n<last_nch; n++)
     eqs.add_item(new supereq<float>);
+
   double bands[N_BANDS];
   //    my_eq = cfg_eq;
-  setup_bands(my_eq,bands);
-  for(n=0;n<last_nch;n++)
-    eqs[n]->equ_makeTable(bands,&paramroot,(double)last_srate);
+  setup_bands(my_eq, bands);
+
+  for(n=0; n<last_nch; n++)
+    eqs[n]->equ_makeTable(bands, &paramroot, (double)last_srate);
 
   dstbuffer = new SFLOAT[last_srate * last_nch];  // Our buffer can minimum contain one second.
   passbuffer = new SFLOAT[last_srate];  // Our buffer can minimum contain one second.
@@ -244,7 +246,7 @@ AVSValue __cdecl AVSsupereq::Create_Custom(AVSValue args, void*, IScriptEnvironm
   return new AVSsupereq(args[0].AsClip(), eq, env);
 }
 
-AVSFunction SuperEq_filters[] = {
+extern const AVSFunction SuperEq_filters[] = {
   { "SuperEQ", "cs", AVSsupereq::Create },
   { "SuperEQ", "cf+", AVSsupereq::Create_Custom },
   { 0 }
