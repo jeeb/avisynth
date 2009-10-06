@@ -484,7 +484,7 @@ ConditionalReader::~ConditionalReader(void)
 }
 
 
-ConditionalReader::CleanUp(void) 
+void ConditionalReader::CleanUp(void) 
 {
   switch (mode) {
     case MODE_INT:
@@ -552,34 +552,28 @@ static const char WplusT[] = "w+t";
 
 
 Write::Write (PClip _child, const char* _filename, AVSValue args, int _linecheck, bool _append, bool _flush, IScriptEnvironment* env):
-	GenericVideoFilter(_child), linecheck(_linecheck), flush(_flush), append(_append)
+	GenericVideoFilter(_child), linecheck(_linecheck), flush(_flush), append(_append), arglist(0)
 {
 	_fullpath(filename, _filename, _MAX_PATH);
-	arrsize = __min(args.ArraySize(), maxWriteArgs);
-	int i;
-	
-	for (i=0; i<arrsize; i++) {
-		arglist[i].expression = args[i].AsString(EMPTY);
-		arglist[i].string = EMPTY;
-	}
 
-	if (append) {
-		mode = AplusT;
-	} else {
-		mode = WplusT;
-	}
-
-	fout = fopen(filename, mode);	//append or purge file
+	fout = fopen(filename, append ? AplusT : WplusT);	//append or purge file
 	if (!fout) env->ThrowError("Write: File '%s' cannot be opened.", filename);
 	
 	if (flush) fclose(fout);	//will be reopened in FileOut
 
-	mode = AplusT;	// in GetFrame always appending
+	arrsize = args.ArraySize();
+
+	arglist = new exp_res[arrsize];
+
+	for (int i=0; i<arrsize; i++) {
+		arglist[i].expression = args[i].AsString(EMPTY);
+		arglist[i].string = EMPTY;
+	}
 
 	if (linecheck == -1) {	//write at start
 		env->SetVar("current_frame",-1);
 		Write::DoEval(env);
-		Write::FileOut(env);
+		Write::FileOut(env, AplusT);
 	}
 	if (linecheck == -2) {	//write at end, evaluate right now
 		env->SetVar("current_frame",-2);
@@ -603,7 +597,7 @@ PVideoFrame __stdcall Write::GetFrame(int n, IScriptEnvironment* env) {
 	env->SetVar("current_frame",n);
 	
 	if (Write::DoEval(env)) {
-		Write::FileOut(env);
+		Write::FileOut(env, AplusT);
 	}
 
 	env->SetVar("last",prev_last);       // Restore implicit last
@@ -614,19 +608,15 @@ PVideoFrame __stdcall Write::GetFrame(int n, IScriptEnvironment* env) {
 };
 
 Write::~Write(void) {
-	if (append) {
-		mode = AplusT;
-	} else {
-		mode = WplusT;
-	}
-
 	if (linecheck == -2) {	//write at end
-		Write::FileOut(0);
+		Write::FileOut(0, append ? AplusT : WplusT); // Allow for retruncating at actual end
 	}
 	if (!flush) fclose(fout);
+
+	delete[] arglist;
 };
 
-void Write::FileOut(IScriptEnvironment* env) {
+void Write::FileOut(IScriptEnvironment* env, const char* mode) {
 	int i;
 	if (flush) {
 		fout = fopen(filename, mode);

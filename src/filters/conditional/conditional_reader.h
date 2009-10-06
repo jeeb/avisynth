@@ -56,7 +56,7 @@ private:
   void SetFrame(int framenumber, AVSValue v);
   void ThrowLine(const char* err, int line, IScriptEnvironment* env);
   AVSValue GetFrameValue(int framenumber);
-  CleanUp(void);
+  void CleanUp(void);
 
 public:
   ConditionalReader(PClip _child, const char* filename, const char _varname[], bool _show, IScriptEnvironment* env);
@@ -83,8 +83,6 @@ inline AVSValue GetVar(IScriptEnvironment* env, const char* name) {
 ** Ernst Peché, 2004
 */
 
-#define maxWriteArgs 32
-
 class Write : public GenericVideoFilter
 {
 private:
@@ -94,12 +92,15 @@ private:
 	bool append;
 
 	char filename[_MAX_PATH];
-	const char* mode;	//file open mode
 	int arrsize;
 	struct exp_res {
 		const char* expression;
 		const char* string;
-	} arglist[maxWriteArgs];	//max 32 args
+	};
+	exp_res* arglist;
+
+	bool DoEval(IScriptEnvironment* env);
+	void FileOut(IScriptEnvironment* env, const char* mode);
 
 public:
     Write(PClip _child, const char* _filename, AVSValue args, int _linecheck, bool _flush, bool _append, IScriptEnvironment* env);
@@ -109,6 +110,4 @@ public:
 	static AVSValue __cdecl Create_If(AVSValue args, void* user_data, IScriptEnvironment* env);
 	static AVSValue __cdecl Create_Start(AVSValue args, void* user_data, IScriptEnvironment* env);
 	static AVSValue __cdecl Create_End(AVSValue args, void* user_data, IScriptEnvironment* env);
-	bool DoEval(IScriptEnvironment* env);
-	void FileOut(IScriptEnvironment* env);
 };

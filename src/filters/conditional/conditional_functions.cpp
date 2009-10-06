@@ -312,9 +312,12 @@ AVSValue ComparePlane::CmpPlane(AVSValue clip, AVSValue clip2, void* user_data, 
       b = C_scenechange_16(srcp, srcp2, h, w, pitch, pitch2);
   }
 
-  float f = (float)b / (float)(h * w);
+  float f;
+
   if (vi.IsRGB32())
-    f = f * 4.0 / 3.0;
+    f = (float)((double)(b * 4) / (h * w * 3));
+  else
+    f = (float)((double)b / (h * w));
 
   return (AVSValue)f;
 }
@@ -372,10 +375,12 @@ AVSValue ComparePlane::CmpPlaneSame(AVSValue clip, void* user_data, int offset, 
       b = C_scenechange_16(srcp, srcp2, h, w, pitch, pitch2);
   }
 
-  float f = (float)b / (float)(h * w);
+  float f;
 
   if (vi.IsRGB32())
-    f = f * 4.0 / 3.0;
+    f = (float)((double)(b * 4) / (h * w * 3));
+  else
+    f = (float)((double)b / (h * w));
 
   return (AVSValue)f;
 }
