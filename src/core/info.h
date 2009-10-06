@@ -5,7 +5,7 @@
 // TO DO: Clean up - and move functions to a .c file.
 // TO DO: Check coordinates for out-of-image writes.
 
-unsigned short font[][20] = {
+const unsigned short font[][20] = {
 //STARTCHAR space
 	{
 		0x0000,0x0000,0x0000,0x0000,
@@ -486,7 +486,7 @@ unsigned short font[][20] = {
 		0x3000,0x3000,0x3f00,0x0000,
 		0x0000,0x0000,0x0000,0x0000,
 	},
-	//STARTCHAR 
+	//STARTCHAR \ 
 	{
 		0x0000,0x0000,0x0000,0x3000,
 		0x3000,0x1800,0x1800,0x0c00,
@@ -1550,17 +1550,21 @@ typedef unsigned long Pixel32;
 
 #endif
 
-void DrawDigit(PVideoFrame &dst, int x, int y, int num) 
+void DrawDigit(PVideoFrame &dst, int x, int y, int num)
 {
+	extern const unsigned short font[][20];
 	int tx, ty;
 	unsigned char *dpY, *dpU, *dpV;
 
-	int pitchY = dst->GetPitch(PLANAR_Y);
+	if (num < 0) num = 0;
+
+	const int pitchY = dst->GetPitch(PLANAR_Y);
+	BYTE* const dstpY = dst->GetWritePtr(PLANAR_Y);
 	for (tx = 0; tx < 10; tx++)
 	{
 		for (ty = 0; ty < 20; ty++)
 		{
-			dpY = &dst->GetWritePtr(PLANAR_Y)[(x + tx) + (y + ty) * pitchY];
+			dpY = &dstpY[(x + tx) + (y + ty) * pitchY];
 			if (font[num][ty] & (1 << (15 - tx)))
 			{
 				*dpY = 230;
@@ -1570,49 +1574,52 @@ void DrawDigit(PVideoFrame &dst, int x, int y, int num)
 			}
 		}
 	}
-  int UVw = dst->GetRowSize(PLANAR_U);
-  if (UVw) {    
-    int pitchUV = dst->GetPitch(PLANAR_V);
-    BYTE* dstpU = dst->GetWritePtr(PLANAR_U);
-    BYTE* dstpV = dst->GetWritePtr(PLANAR_V);
-    int xSubS = dst->GetRowSize(PLANAR_Y) / UVw;
-    int ySubS = dst->GetHeight(PLANAR_Y) / dst->GetHeight(PLANAR_U);
-  
-	  for (tx = 0; tx < 10; tx++)
-	  {
-		  for (ty = 0; ty < 20; ty++)
-		  {
-			  dpU = &dstpU[((x + tx)/xSubS) + ((y + ty)/ySubS) * pitchUV];
-			  dpV = &dstpV[((x + tx)/xSubS) + ((y + ty)/ySubS) * pitchUV];
-			  if (font[num][ty] & (1 << (15 - tx)))
-			  {
-				  *dpU = 128;
-				  *dpV = 128;
-			  } else
-			  {
-				  *dpU = (unsigned char) (((*dpU - 128) * 7) >> 3) + 128;
-				  *dpV = (unsigned char) (((*dpV - 128) * 7) >> 3) + 128;
-			  }
-		  }
-	  }
+	const int UVw = dst->GetRowSize(PLANAR_U);
+	if (UVw) {
+		const int pitchUV = dst->GetPitch(PLANAR_V);
+		BYTE* const dstpU = dst->GetWritePtr(PLANAR_U);
+		BYTE* const dstpV = dst->GetWritePtr(PLANAR_V);
+		const int xSubS = dst->GetRowSize(PLANAR_Y) / UVw;
+		const int ySubS = dst->GetHeight(PLANAR_Y) / dst->GetHeight(PLANAR_U);
+
+		for (tx = 0; tx < 10; tx++)
+		{
+			for (ty = 0; ty < 20; ty++)
+			{
+				dpU = &dstpU[((x + tx)/xSubS) + ((y + ty)/ySubS) * pitchUV];
+				dpV = &dstpV[((x + tx)/xSubS) + ((y + ty)/ySubS) * pitchUV];
+				if (font[num][ty] & (1 << (15 - tx)))
+				{
+					*dpU = 128;
+					*dpV = 128;
+				} else
+				{
+					*dpU = (unsigned char) (((*dpU - 128) * 7) >> 3) + 128;
+					*dpV = (unsigned char) (((*dpV - 128) * 7) >> 3) + 128;
+				}
+			}
+		}
 	}
 }
 
-void DrawString(PVideoFrame &dst, int x, int y, const char *s) 
+void DrawString(PVideoFrame &dst, int x, int y, const char *s)
 {
 	for (int xx = 0; *s; ++s, ++xx) {
 		DrawDigit(dst, x + xx*10, y, *s - ' ');
 	}
 }
 
-void DrawDigitYUY2(PVideoFrame &dst, int x, int y, int num) 
+void DrawDigitYUY2(PVideoFrame &dst, int x, int y, int num)
 {
-	extern unsigned short font[][20];
+	extern const unsigned short font[][20];
 
-	int pitch = dst->GetPitch();
+	if (num < 0) num = 0;
+
+	const int pitch = dst->GetPitch();
+	BYTE* const dstp = dst->GetWritePtr();
 	for (int tx = 0; tx < 10; tx++) {
 		for (int ty = 0; ty < 20; ty++) {
-			unsigned char *dp = &dst->GetWritePtr()[(x + tx) * 2 + (y + ty) * pitch];
+			unsigned char *dp = &dstp[(x + tx) * 2 + (y + ty) * pitch];
 			if (font[num][ty] & (1 << (15 - tx))) {
 				if (tx & 1) {
 					dp[0] = 230;
@@ -1638,7 +1645,7 @@ void DrawDigitYUY2(PVideoFrame &dst, int x, int y, int num)
 	}
 }
 
-void DrawStringYUY2(PVideoFrame &dst, int x, int y, const char *s) 
+void DrawStringYUY2(PVideoFrame &dst, int x, int y, const char *s)
 {
 	for (int xx = 0; *s; ++s, ++xx) {
 		DrawDigitYUY2(dst, x + xx*10, y, *s - ' ');
@@ -1646,17 +1653,18 @@ void DrawStringYUY2(PVideoFrame &dst, int x, int y, const char *s)
 }
 
 
-
-
-
-void DrawDigitRGB32(PVideoFrame &dst, int x, int y, int num) 
+void DrawDigitRGB32(PVideoFrame &dst, int x, int y, int num)
 {
-	extern unsigned short font[][20];
+	extern const unsigned short font[][20];
 
-	int pitch = dst->GetPitch();
+	if (num < 0) num = 0;
+
+	const int pitch = dst->GetPitch();
+	const int height = dst->GetHeight();
+	BYTE* const dstp = dst->GetWritePtr();
 	for (int tx = 0; tx < 10; tx++) {
 		for (int ty = 0; ty < 20; ty++) {
-			unsigned char *dp = &dst->GetWritePtr()[(x + tx) * 4 + (dst->GetHeight() - (y + ty)) * pitch];
+			unsigned char *dp = &dstp[(x + tx) * 4 + (height - (y + ty)) * pitch];
 			if (font[num][ty] & (1 << (15 - tx))) {
 				dp[0] = 250;
 				dp[1] = 250;
@@ -1670,10 +1678,43 @@ void DrawDigitRGB32(PVideoFrame &dst, int x, int y, int num)
 	}
 }
 
-void DrawStringRGB32(PVideoFrame &dst, int x, int y, const char *s) 
+void DrawStringRGB32(PVideoFrame &dst, int x, int y, const char *s)
 {
 	for (int xx = 0; *s; ++s, ++xx) {
 		DrawDigitRGB32(dst, x + xx*10, y, *s - ' ');
+	}
+}
+
+
+void DrawDigitRGB24(PVideoFrame &dst, int x, int y, int num)
+{
+	extern const unsigned short font[][20];
+
+	if (num < 0) num = 0;
+
+	const int pitch = dst->GetPitch();
+	const int height = dst->GetHeight();
+	BYTE* const dstp = dst->GetWritePtr();
+	for (int tx = 0; tx < 10; tx++) {
+		for (int ty = 0; ty < 20; ty++) {
+			unsigned char *dp = &dstp[(x + tx) * 3 + (height - (y + ty)) * pitch];
+			if (font[num][ty] & (1 << (15 - tx))) {
+				dp[0] = 250;
+				dp[1] = 250;
+				dp[2] = 250;
+			} else {
+				dp[0] = (unsigned char) ((dp[0] * 7) >> 3);
+				dp[1] = (unsigned char) ((dp[1] * 7) >> 3);
+				dp[2] = (unsigned char) ((dp[2] * 7) >> 3);
+			}
+		}
+	}
+}
+
+void DrawStringRGB24(PVideoFrame &dst, int x, int y, const char *s)
+{
+	for (int xx = 0; *s; ++s, ++xx) {
+		DrawDigitRGB24(dst, x + xx*10, y, *s - ' ');
 	}
 }
 
