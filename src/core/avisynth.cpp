@@ -113,17 +113,17 @@ public:
 
 class RecycleBin {  // Tritical May 2005
 public:
-	LinkedVideoFrame* g_VideoFrame_recycle_bin;
-	RecycleBin() : g_VideoFrame_recycle_bin(NULL) { };
-	~RecycleBin()
-	{
-		for (LinkedVideoFrame*i=g_VideoFrame_recycle_bin; i;)
-		{
-			LinkedVideoFrame* j = i->next;
-			operator delete(i);
-			i = j;
-		}
-	}
+    LinkedVideoFrame* g_VideoFrame_recycle_bin;
+    RecycleBin() : g_VideoFrame_recycle_bin(NULL) { };
+    ~RecycleBin()
+    {
+        for (LinkedVideoFrame*i=g_VideoFrame_recycle_bin; i;)
+        {
+            LinkedVideoFrame* j = i->next;
+            operator delete(i);
+            i = j;
+        }
+    }
 };
 
 
@@ -178,12 +178,12 @@ VideoFrameBuffer::VideoFrameBuffer() : refcount(0), data(0), data_size(0), seque
 
 
 #ifdef _DEBUG  // Add 16 guard bytes front and back -- cache can check them after every GetFrame() call
-VideoFrameBuffer::VideoFrameBuffer(int size) : 
-  refcount(0), 
-  data((new BYTE[size+32])+16), 
-  data_size(data ? size : 0), 
+VideoFrameBuffer::VideoFrameBuffer(int size) :
+  refcount(0),
+  data((new BYTE[size+32])+16),
+  data_size(data ? size : 0),
   sequence_number(0) {
-  InterlockedIncrement(&sequence_number); 
+  InterlockedIncrement(&sequence_number);
   int *p=(int *)data;
   p[-4] = 0xDEADBEAF;
   p[-3] = 0xDEADBEAF;
@@ -224,7 +224,7 @@ public:
   enum {ident = 0x00AA5500};
   LinkedVideoFrameBuffer *prev, *next;
   bool returned;
-  const int signature; // Used by ManageCache to ensure that the VideoFrameBuffer 
+  const int signature; // Used by ManageCache to ensure that the VideoFrameBuffer
                        // it casts is really a LinkedVideoFrameBuffer
   LinkedVideoFrameBuffer(int size) : VideoFrameBuffer(size), returned(true), signature(ident) { next=prev=this; }
   LinkedVideoFrameBuffer() : returned(true), signature(ident) { next=prev=this; }
@@ -313,8 +313,8 @@ public:
   ~FunctionTable() {
     while (local_functions) {
       LocalFunction* prev = local_functions->prev;
-	  free((void*)local_functions->name);  // Tritical May 2005
-	  free((void*)local_functions->param_types);
+      free((void*)local_functions->name);  // Tritical May 2005
+      free((void*)local_functions->param_types);
       delete local_functions;
       local_functions = prev;
     }
@@ -581,7 +581,7 @@ public:
           for (LocalFunction* p = pp->plugin_functions; p; p = p->prev)
             if (!lstrcmpi(p->name, search_name) &&
                 TypeMatch(p->param_types, args, num_args, strict&1, env) &&
-                ArgNameMatch(p->param_types, args_names_count, arg_names)) { 
+                ArgNameMatch(p->param_types, args_names_count, arg_names)) {
               _RPT2(0, "Loading plugin %s (lookup for function %s)\n", pp->name, p->name);
               // sets reloading in case the plugin is performing env->FunctionExists() calls
               reloading = true;
@@ -694,46 +694,46 @@ public:
 
     // We're out of args.  We have a match if one of the following is true:
     // (a) we're out of params.
-	// (b) remaining params are named i.e. optional.
+    // (b) remaining params are named i.e. optional.
     // (c) we're at a '+' or '*' and any remaining params are optional.
 
     if (*param_types == '+'  || *param_types == '*')
-	  param_types += 1;
+      param_types += 1;
 
     if (*param_types == '\0' || *param_types == '[')
-	  return true;
+      return true;
 
-	while (param_types[1] == '*') {
-	  param_types += 2;
+    while (param_types[1] == '*') {
+      param_types += 2;
       if (*param_types == '\0' || *param_types == '[')
-	    return true;
+        return true;
     }
 
-	return false;
+    return false;
   }
 
   bool ArgNameMatch(const char* param_types, int args_names_count, const char* const* arg_names) {
 
-	for (int i=0; i<args_names_count; ++i) {
-	  if (arg_names[i]) {
-		bool found = false;
-		int len = strlen(arg_names[i]);
-		for (const char* p = param_types; *p; ++p) {
-		  if (*p == '[') {
-			p += 1;
-			const char* q = strchr(p, ']');
-			if (!q) return false;
-			if (len == q-p && !strnicmp(arg_names[i], p, q-p)) {
-			  found = true;
-			  break;
-			}
-			p = q+1;
-		  }
-		}
-		if (!found) return false;
-	  }
-	}
-	return true;
+    for (int i=0; i<args_names_count; ++i) {
+      if (arg_names[i]) {
+        bool found = false;
+        int len = strlen(arg_names[i]);
+        for (const char* p = param_types; *p; ++p) {
+          if (*p == '[') {
+            p += 1;
+            const char* q = strchr(p, ']');
+            if (!q) return false;
+            if (len == q-p && !strnicmp(arg_names[i], p, q-p)) {
+              found = true;
+              break;
+            }
+            p = q+1;
+          }
+        }
+        if (!found) return false;
+      }
+    }
+    return true;
   }
 };
 
@@ -972,8 +972,8 @@ ScriptEnvironment::~ScriptEnvironment() {
     i = prev;
   }
   if(!InterlockedDecrement((long*)&refcount)){
-	delete g_Bin;//tsp June 2005 Cleans up the heap
-	g_Bin=NULL;
+    delete g_Bin;//tsp June 2005 Cleans up the heap
+    g_Bin=NULL;
   }
   // If we init'd COM and this is the right thread then release it
   // If it's the wrong threadId then tuff, nothing we can do.
@@ -993,14 +993,14 @@ int ScriptEnvironment::SetMemoryMax(int mem) {
     memory_max = mem * 1048576i64;                          // mem as megabytes
     if (memory_max < memory_used) memory_max = memory_used; // can't be less than we already have
 
-	if (memstatus.dwAvailVirtual < memstatus.dwAvailPhys) // Check for big memory in Vista64
-	  mem_limit = (__int64)memstatus.dwAvailVirtual;
-	else
+    if (memstatus.dwAvailVirtual < memstatus.dwAvailPhys) // Check for big memory in Vista64
+      mem_limit = (__int64)memstatus.dwAvailVirtual;
+    else
       mem_limit = (__int64)memstatus.dwAvailPhys;
 
     mem_limit += memory_used - 5242880i64;
     if (memory_max > mem_limit) memory_max = mem_limit;     // can't be more than 5Mb less than total
-    if (memory_max < 4194304i64) memory_max = 4194304i64;	  // can't be less than 4Mb -- Tritical Jan 2006
+    if (memory_max < 4194304i64) memory_max = 4194304i64;   // can't be less than 4Mb -- Tritical Jan 2006
   }
   return (int)(memory_max/1048576i64);
 }
@@ -1050,7 +1050,7 @@ const char* ScriptEnvironment::GetPluginDirectory()
       return 0;
     DWORD size;
     if (RegQueryValueEx(AvisynthKey, RegPluginDir, 0, 0, 0, &size))
-	{
+    {
       RegCloseKey(AvisynthKey); // Dave Brueck - Dec 2005
       return 0;
     }
@@ -1068,14 +1068,14 @@ const char* ScriptEnvironment::GetPluginDirectory()
       l--;
     plugin_dir[l]=0;
     SetGlobalVar("$PluginDir$", AVSValue(SaveString(plugin_dir)));  // Tritical May 2005
-	delete[] plugin_dir;
-	try {
-		plugin_dir = (char*)GetVar("$PluginDir$").AsString();
-	}
-	catch (...)
-	{
-		return 0;
-	}
+    delete[] plugin_dir;
+    try {
+        plugin_dir = (char*)GetVar("$PluginDir$").AsString();
+    }
+    catch (...)
+    {
+        return 0;
+    }
   }
   return plugin_dir;
 }
@@ -1153,7 +1153,7 @@ void ScriptEnvironment::ExportFilters()
     for (const AVSFunction* j = builtin_functions[i]; j->name; ++j) {
       builtin_names += j->name;
       builtin_names += " ";
-      
+
       string param_id = string("$Plugin!") + j->name + "!Param$";
       SetGlobalVar( SaveString(param_id.c_str(), param_id.length() + 1), AVSValue(j->param_types) );
     }
@@ -1251,7 +1251,7 @@ PVideoFrame __stdcall ScriptEnvironment::NewVideoFrame(const VideoInfo& vi, int 
     const int xmod  = 1 << vi.GetPlaneWidthSubsampling (PLANAR_U);
     const int xmask = xmod - 1;
     if (vi.width & xmask)
-      ThrowError("Filter Error: Attempted to request a planar frame that wasn't mod%d in width!", xmod);      
+      ThrowError("Filter Error: Attempted to request a planar frame that wasn't mod%d in width!", xmod);
 
     const int ymod  = 1 << vi.GetPlaneHeightSubsampling(PLANAR_U);
     const int ymask = ymod - 1;
@@ -1338,77 +1338,77 @@ void* ScriptEnvironment::ManageCache(int key, void* data){
   // allowing it to be reused in favour of any of it's older siblings.
   case MC_ReturnVideoFrameBuffer:
   {
-	LinkedVideoFrameBuffer *lvfb = (LinkedVideoFrameBuffer*)data;
+    LinkedVideoFrameBuffer *lvfb = (LinkedVideoFrameBuffer*)data;
 
-	// The Cache volunteers VFB's it no longer tracks for reuse. This closes the loop
-	// for Memory Management. MC_PromoteVideoFrameBuffer moves VideoFrameBuffer's to
-	// the head of the list and here we move unloved VideoFrameBuffer's to the end.
+    // The Cache volunteers VFB's it no longer tracks for reuse. This closes the loop
+    // for Memory Management. MC_PromoteVideoFrameBuffer moves VideoFrameBuffer's to
+    // the head of the list and here we move unloved VideoFrameBuffer's to the end.
 
-	// Check to make sure the vfb wasn't discarded and is really a LinkedVideoFrameBuffer.
-	if ((lvfb->data == 0) || (lvfb->signature != LinkedVideoFrameBuffer::ident)) break;
+    // Check to make sure the vfb wasn't discarded and is really a LinkedVideoFrameBuffer.
+    if ((lvfb->data == 0) || (lvfb->signature != LinkedVideoFrameBuffer::ident)) break;
 
     // Adjust unpromoted sublist if required
     if (unpromotedvfbs == lvfb) unpromotedvfbs = lvfb->next;
 
-	// Move unloved VideoFrameBuffer's to the end of the video_frame_buffers LRU list.
-	Relink(video_frame_buffers.prev, lvfb, &video_frame_buffers);
+    // Move unloved VideoFrameBuffer's to the end of the video_frame_buffers LRU list.
+    Relink(video_frame_buffers.prev, lvfb, &video_frame_buffers);
 
-	// Flag it as returned, i.e. for immediate reuse.
-	lvfb->returned = true;
+    // Flag it as returned, i.e. for immediate reuse.
+    lvfb->returned = true;
 
-	return (void*)1;
+    return (void*)1;
   }
   // Allow the cache to designate a VideoFrameBuffer as being managed thus
   // preventing it being reused as soon as it becomes free.
   case MC_ManageVideoFrameBuffer:
   {
-	LinkedVideoFrameBuffer *lvfb = (LinkedVideoFrameBuffer*)data;
+    LinkedVideoFrameBuffer *lvfb = (LinkedVideoFrameBuffer*)data;
 
-	// Check to make sure the vfb wasn't discarded and is really a LinkedVideoFrameBuffer.
-	if ((lvfb->data == 0) || (lvfb->signature != LinkedVideoFrameBuffer::ident)) break;
+    // Check to make sure the vfb wasn't discarded and is really a LinkedVideoFrameBuffer.
+    if ((lvfb->data == 0) || (lvfb->signature != LinkedVideoFrameBuffer::ident)) break;
 
-	// Flag it as not returned, i.e. currently managed
-	lvfb->returned = false;
+    // Flag it as not returned, i.e. currently managed
+    lvfb->returned = false;
 
-	return (void*)1;
+    return (void*)1;
   }
   // Allow the cache to designate a VideoFrameBuffer as cacheable thus
   // requesting it be moved to the head of the video_frame_buffers LRU list.
   case MC_PromoteVideoFrameBuffer:
   {
-	LinkedVideoFrameBuffer *lvfb = (LinkedVideoFrameBuffer*)data;
+    LinkedVideoFrameBuffer *lvfb = (LinkedVideoFrameBuffer*)data;
 
-	// When a cache instance detects attempts to refetch previously generated frames
-	// it starts to promote VFB's to the head of the video_frame_buffers LRU list.
-	// Previously all VFB's cycled to the head now only cacheable ones do.
+    // When a cache instance detects attempts to refetch previously generated frames
+    // it starts to promote VFB's to the head of the video_frame_buffers LRU list.
+    // Previously all VFB's cycled to the head now only cacheable ones do.
 
-	// Check to make sure the vfb wasn't discarded and is really a LinkedVideoFrameBuffer.
-	if ((lvfb->data == 0) || (lvfb->signature != LinkedVideoFrameBuffer::ident)) break;
+    // Check to make sure the vfb wasn't discarded and is really a LinkedVideoFrameBuffer.
+    if ((lvfb->data == 0) || (lvfb->signature != LinkedVideoFrameBuffer::ident)) break;
 
     // Adjust unpromoted sublist if required
     if (unpromotedvfbs == lvfb) unpromotedvfbs = lvfb->next;
 
-	// Move loved VideoFrameBuffer's to the head of the video_frame_buffers LRU list.
+    // Move loved VideoFrameBuffer's to the head of the video_frame_buffers LRU list.
     Relink(&video_frame_buffers, lvfb, video_frame_buffers.next);
 
-	// Flag it as not returned, i.e. currently managed
-	lvfb->returned = false;
+    // Flag it as not returned, i.e. currently managed
+    lvfb->returned = false;
 
-	return (void*)1;
+    return (void*)1;
   }
   // Register Cache instances onto a linked list, so all Cache instances
   // can be poked as a single unit thru the PokeCache interface
   case MC_RegisterCache:
   {
-	Cache *cache = (Cache*)data;
+    Cache *cache = (Cache*)data;
 
-	if (CacheHead) CacheHead->priorCache = &(cache->nextCache);
-	cache->priorCache = &CacheHead;
+    if (CacheHead) CacheHead->priorCache = &(cache->nextCache);
+    cache->priorCache = &CacheHead;
 
-	cache->nextCache = CacheHead;
-	CacheHead = cache;
+    cache->nextCache = CacheHead;
+    CacheHead = cache;
 
-	return (void*)1;
+    return (void*)1;
   }
   default:
     break;
@@ -1424,12 +1424,12 @@ bool ScriptEnvironment::PlanarChromaAlignment(IScriptEnvironment::PlanarChromaAl
   {
   case IScriptEnvironment::PlanarChromaAlignmentOff:
   {
-	PlanarChromaAlignmentState = false;
+    PlanarChromaAlignmentState = false;
     break;
   }
   case IScriptEnvironment::PlanarChromaAlignmentOn:
   {
-	PlanarChromaAlignmentState = true;
+    PlanarChromaAlignmentState = true;
     break;
   }
   default:
@@ -1478,8 +1478,8 @@ LinkedVideoFrameBuffer* ScriptEnvironment::GetFrameBuffer2(int size) {
     }
     _RPT2(0,"Freed %d frames, consisting of %d bytes.\n",freed_count, freed);
     memory_used -= freed;
-	g_Mem_stats.Losses += freed_count;
-  } 
+    g_Mem_stats.Losses += freed_count;
+  }
 
   // Plan A: When we are below our memory usage :-
   if (memory_used + size < memory_max) {
@@ -1543,15 +1543,15 @@ VideoFrameBuffer* ScriptEnvironment::GetFrameBuffer(int size) {
     // Put that VFB on the lost souls chain
     if (result) Relink(lost_video_frame_buffers.prev, result, &lost_video_frame_buffers);
 
-	const __int64 save_max = memory_max;
+    const __int64 save_max = memory_max;
 
-    // Set memory_max to 12.5% below memory_used 
+    // Set memory_max to 12.5% below memory_used
     memory_max = max(4*1024*1024, memory_used - max(size, (memory_used/9)));
 
     // Retry the request
     result = GetFrameBuffer2(size);
 
-	memory_max = save_max;
+    memory_max = save_max;
 
     if (!result || !result->data) {
       // Damn!! Damn!! we are really screwed, winge!
@@ -1613,17 +1613,17 @@ AVSValue ScriptEnvironment::Invoke(const char* name, const AVSValue args, const 
   AVSValue *args1 = new AVSValue[ScriptParser::max_args]; // Save stack space - put on heap!!!
 
   try {
-	// flatten unnamed args
-	args2_count = Flatten(args, args1, 0, ScriptParser::max_args, arg_names);
+    // flatten unnamed args
+    args2_count = Flatten(args, args1, 0, ScriptParser::max_args, arg_names);
 
-	// find matching function
-	f = function_table.Lookup(name, args1, args2_count, strict, args_names_count, arg_names);
-	if (!f)
-	  throw NotFound();
+    // find matching function
+    f = function_table.Lookup(name, args1, args2_count, strict, args_names_count, arg_names);
+    if (!f)
+      throw NotFound();
   }
   catch (...) {
     delete[] args1;
-	throw;
+    throw;
   }
 
   // collapse the 1024 element array
@@ -1640,71 +1640,71 @@ AVSValue ScriptEnvironment::Invoke(const char* name, const AVSValue args, const 
   AVSValue *args3 = new AVSValue[maxarg3];
 
   try {
-	while (*p) {
-	  if (*p == '[') {
-		p = strchr(p+1, ']');
-		if (!p) break;
-		p++;
-	  } else if (p[1] == '*' || p[1] == '+') {
-		int start = src_index;
-		while (src_index < args2_count && FunctionTable::SingleTypeMatch(*p, args2[src_index], strict))
-		  src_index++;
-		args3[dst_index++] = AVSValue(&args2[start], src_index - start); // can't delete args2 early because of this
-		p += 2;
-	  } else {
-		if (src_index < args2_count)
-		  args3[dst_index] = args2[src_index];
-		src_index++;
-		dst_index++;
-		p++;
-	  }
-	}
-	if (src_index < args2_count)
-	  ThrowError("Too many arguments to function %s", name);
+    while (*p) {
+      if (*p == '[') {
+        p = strchr(p+1, ']');
+        if (!p) break;
+        p++;
+      } else if (p[1] == '*' || p[1] == '+') {
+        int start = src_index;
+        while (src_index < args2_count && FunctionTable::SingleTypeMatch(*p, args2[src_index], strict))
+          src_index++;
+        args3[dst_index++] = AVSValue(&args2[start], src_index - start); // can't delete args2 early because of this
+        p += 2;
+      } else {
+        if (src_index < args2_count)
+          args3[dst_index] = args2[src_index];
+        src_index++;
+        dst_index++;
+        p++;
+      }
+    }
+    if (src_index < args2_count)
+      ThrowError("Too many arguments to function %s", name);
 
-	const int args3_count = dst_index;
+    const int args3_count = dst_index;
 
-	// copy named args
-	for (int i=0; i<args_names_count; ++i) {
-	  if (arg_names[i]) {
-		int named_arg_index = 0;
-		for (const char* p = f->param_types; *p; ++p) {
-		  if (*p == '*' || *p == '+') {
-			continue;   // without incrementing named_arg_index
-		  } else if (*p == '[') {
-			p += 1;
-			const char* q = strchr(p, ']');
-			if (!q) break;
-			if (strlen(arg_names[i]) == unsigned(q-p) && !strnicmp(arg_names[i], p, q-p)) {
-			  // we have a match
-			  if (args3[named_arg_index].Defined()) {
-				ThrowError("Script error: the named argument \"%s\" was passed more than once to %s", arg_names[i], name);
-			  } else if (args[i].IsArray()) {
-				ThrowError("Script error: can't pass an array as a named argument");
-			  } else if (args[i].Defined() && !FunctionTable::SingleTypeMatch(q[1], args[i], false)) {
-				ThrowError("Script error: the named argument \"%s\" to %s had the wrong type", arg_names[i], name);
-			  } else {
-				args3[named_arg_index] = args[i];
-				goto success;
-			  }
-			} else {
-			  p = q+1;
-			}
-		  }
-		  named_arg_index++;
-		}
-		// failure
-		ThrowError("Script error: %s does not have a named argument \"%s\"", name, arg_names[i]);
+    // copy named args
+    for (int i=0; i<args_names_count; ++i) {
+      if (arg_names[i]) {
+        int named_arg_index = 0;
+        for (const char* p = f->param_types; *p; ++p) {
+          if (*p == '*' || *p == '+') {
+            continue;   // without incrementing named_arg_index
+          } else if (*p == '[') {
+            p += 1;
+            const char* q = strchr(p, ']');
+            if (!q) break;
+            if (strlen(arg_names[i]) == unsigned(q-p) && !strnicmp(arg_names[i], p, q-p)) {
+              // we have a match
+              if (args3[named_arg_index].Defined()) {
+                ThrowError("Script error: the named argument \"%s\" was passed more than once to %s", arg_names[i], name);
+              } else if (args[i].IsArray()) {
+                ThrowError("Script error: can't pass an array as a named argument");
+              } else if (args[i].Defined() && !FunctionTable::SingleTypeMatch(q[1], args[i], false)) {
+                ThrowError("Script error: the named argument \"%s\" to %s had the wrong type", arg_names[i], name);
+              } else {
+                args3[named_arg_index] = args[i];
+                goto success;
+              }
+            } else {
+              p = q+1;
+            }
+          }
+          named_arg_index++;
+        }
+        // failure
+        ThrowError("Script error: %s does not have a named argument \"%s\"", name, arg_names[i]);
 success:;
-	  }
-	}
-	// ... and we're finally ready to make the call
-	retval = f->apply(AVSValue(args3, args3_count), f->user_data, this);
+      }
+    }
+    // ... and we're finally ready to make the call
+    retval = f->apply(AVSValue(args3, args3_count), f->user_data, this);
   }
   catch (...) {
     delete[] args3;
-	delete[] args2;
-	throw;
+    delete[] args2;
+    throw;
   }
   delete[] args3;
   delete[] args2;
