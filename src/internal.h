@@ -49,6 +49,7 @@ enum {MC_ReturnVideoFrameBuffer =0xFFFF0001};
 enum {MC_ManageVideoFrameBuffer =0xFFFF0002};
 enum {MC_PromoteVideoFrameBuffer=0xFFFF0003};
 enum {MC_RegisterCache          =0xFFFF0004};
+enum {MC_IncVFBRefcount         =0xFFFF0005};
 
 #include "core/avisynth.h"
 

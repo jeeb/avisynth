@@ -394,7 +394,13 @@ int VideoFrame::GetOffset(int plane) const { switch (plane) {case PLANAR_U: retu
 
 const BYTE* VideoFrame::GetReadPtr(int plane) const { return vfb->GetReadPtr() + GetOffset(plane); }
 
-bool VideoFrame::IsWritable() const { return (refcount == 1 && vfb->refcount == 1); }
+bool VideoFrame::IsWritable() const {
+  if (refcount == 1 && vfb->refcount == 1) {
+    vfb->GetWritePtr(); // Bump sequence number
+    return true;
+  }
+  return false;
+}
 
 BYTE* VideoFrame::GetWritePtr(int plane) const {
   if (!plane || plane == PLANAR_Y) {
@@ -402,7 +408,7 @@ BYTE* VideoFrame::GetWritePtr(int plane) const {
       _ASSERT(FALSE);
 //        throw AvisynthError("Internal Error - refcount was more than one!");
     }
-    return IsWritable() ? vfb->GetWritePtr() + GetOffset(plane) : 0;
+    return (refcount == 1 && vfb->refcount == 1) ? vfb->GetWritePtr() + GetOffset(plane) : 0;
   }
   return vfb->data + GetOffset(plane);
 }

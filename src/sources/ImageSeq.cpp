@@ -54,6 +54,9 @@ extern const AVSFunction Image_filters[] = {
   { 0 }
 };
 
+// Since devIL isn't threadsafe, we need to ensure that only one thread at the time requests frames
+CRITICAL_SECTION FramesCriticalSection;
+volatile long refcount = 0;
 
 static char* GetWorkingDir(char* buf, size_t bufSize)
 {
@@ -129,7 +132,18 @@ ImageWriter::ImageWriter(PClip _child, const char * _base_name, const int _start
     if (!(vi.IsY8()||vi.IsRGB()))
       env->ThrowError("ImageWriter: DevIL requires RGB or Y8 input");
 
+    if (InterlockedCompareExchange(&refcount, 1, 0) == 0) {
+      if (!InitializeCriticalSectionAndSpinCount(&FramesCriticalSection, 1000) ) {
+        InterlockedExchange(&refcount, 0);
+        env->ThrowError("ImageWriter: Could not initialize critical section");
+      }
+    }
+    else
+      InterlockedIncrement(&refcount);
+
+    EnterCriticalSection(&FramesCriticalSection);
     ilInit();
+    LeaveCriticalSection(&FramesCriticalSection);
   }
 
   start = max(_start, 0);
@@ -147,11 +161,13 @@ ImageWriter::ImageWriter(PClip _child, const char * _base_name, const int _start
 
 ImageWriter::~ImageWriter()
 {
-  if (!lstrcmpi(ext, "ebmp"))
-  {
-  }
-  else {
+  if (!!lstrcmpi(ext, "ebmp")) {
+    EnterCriticalSection(&FramesCriticalSection);
     ilShutDown();
+    LeaveCriticalSection(&FramesCriticalSection);
+
+    if(!InterlockedDecrement(&refcount))
+      DeleteCriticalSection(&FramesCriticalSection);
   }
 }
 
@@ -228,6 +244,7 @@ PVideoFrame ImageWriter::GetFrame(int n, IScriptEnvironment* env)
     file.close();
   }
   else { /* Use DevIL library */
+    EnterCriticalSection(&FramesCriticalSection);
 
     // Set up DevIL    
     ILuint myImage=0;
@@ -260,6 +277,8 @@ PVideoFrame ImageWriter::GetFrame(int n, IScriptEnvironment* env)
     
     // Clean up
     ilDeleteImages(1, &myImage);
+
+    LeaveCriticalSection(&FramesCriticalSection);
 
     if (err != IL_NO_ERROR)
     {   
@@ -413,6 +432,17 @@ ImageReader::ImageReader(const char * _base_name, const int _start, const int _e
 
   if (use_DevIL == true) {  // attempt to open via DevIL
 
+    if (InterlockedCompareExchange(&refcount, 1, 0) == 0) {
+      if (!InitializeCriticalSectionAndSpinCount(&FramesCriticalSection, 1000) ) {
+        InterlockedExchange(&refcount, 0);
+        env->ThrowError("ImageReader: Could not initialize critical section");
+      }
+    }
+    else
+      InterlockedIncrement(&refcount);
+
+    EnterCriticalSection(&FramesCriticalSection);
+
     ilInit();
     
     ILuint myImage=0;
@@ -437,6 +467,7 @@ ImageReader::ImageReader(const char * _base_name, const int _start, const int _e
       vi.pixel_type = VideoInfo::CS_Y8;
     }
     else {
+      LeaveCriticalSection(&FramesCriticalSection);
       env->ThrowError("ImageReader: supports the following pixel types: RGB24, RGB32 or Y8");
     }
 
@@ -445,6 +476,8 @@ ImageReader::ImageReader(const char * _base_name, const int _start, const int _e
     ILenum err = ilGetError();
 
     ilDeleteImages(1, &myImage);
+
+    LeaveCriticalSection(&FramesCriticalSection);
 
     if (err != IL_NO_ERROR) {
       env->ThrowError("ImageReader: error '%s' in DevIL library.\nreading file %s", getErrStr(err), filename);
@@ -469,7 +502,12 @@ ImageReader::ImageReader(const char * _base_name, const int _start, const int _e
 ImageReader::~ImageReader()
 {
   if (use_DevIL) {
+    EnterCriticalSection(&FramesCriticalSection);
     ilShutDown();
+    LeaveCriticalSection(&FramesCriticalSection);
+
+    if(!InterlockedDecrement(&refcount))
+      DeleteCriticalSection(&FramesCriticalSection);
   }
 }
 
@@ -497,6 +535,8 @@ PVideoFrame ImageReader::GetFrame(int n, IScriptEnvironment* env)
   
   if (use_DevIL)  /* read using DevIL */
   {    
+    EnterCriticalSection(&FramesCriticalSection);
+
     // Setup
     ILuint myImage=0;
     ilGenImages(1, &myImage);
@@ -508,6 +548,8 @@ PVideoFrame ImageReader::GetFrame(int n, IScriptEnvironment* env)
 
       // Cleanup
       ilDeleteImages(1, &myImage);
+
+      LeaveCriticalSection(&FramesCriticalSection);
 
       memset(WritePtr, 0, pitch * height);  // Black frame
       if ((info) || (err != IL_COULD_NOT_OPEN_FILE)) {
@@ -524,6 +566,8 @@ PVideoFrame ImageReader::GetFrame(int n, IScriptEnvironment* env)
       // Cleanup
       ilDeleteImages(1, &myImage);
 
+      LeaveCriticalSection(&FramesCriticalSection);
+
       memset(WritePtr, 0, pitch * height);       
       ApplyMessage(&frame, vi, "ImageReader: images must have identical heights", vi.width/4, TEXT_COLOR,0,0 , env);
       return frame;
@@ -532,6 +576,8 @@ PVideoFrame ImageReader::GetFrame(int n, IScriptEnvironment* env)
     {
       // Cleanup
       ilDeleteImages(1, &myImage);
+
+      LeaveCriticalSection(&FramesCriticalSection);
 
       memset(WritePtr, 0, pitch * height);       
       ApplyMessage(&frame, vi, "ImageReader: images must have identical widths", vi.width/4, TEXT_COLOR,0,0 , env);
@@ -568,6 +614,8 @@ PVideoFrame ImageReader::GetFrame(int n, IScriptEnvironment* env)
 
     // Cleanup
     ilDeleteImages(1, &myImage);
+
+    LeaveCriticalSection(&FramesCriticalSection);
 
     if (err != IL_NO_ERROR)
     {

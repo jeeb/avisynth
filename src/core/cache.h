@@ -1,4 +1,4 @@
-// Avisynth v2.5.  Copyright 2007 Ben Rudiak-Gould et al.
+// Avisynth v2.6.  Copyright 2002-2009 Ben Rudiak-Gould et al.
 // http://www.avisynth.org
 
 // This program is free software; you can redistribute it and/or modify
@@ -74,16 +74,16 @@ private:
   enum {GetMyThis = 0x8666 };
 
   struct CachedVideoFrame;
-  void RegisterVideoFrame(CachedVideoFrame *i, const PVideoFrame& frame, int n, IScriptEnvironment* env);
+  void RegisterVideoFrame(CachedVideoFrame *i, const PVideoFrame& frame);
   void FillZeros(void* buf, int start_offset, int count);
   void ResetCache(IScriptEnvironment* env);
   void ReturnVideoFrameBuffer(CachedVideoFrame *i, IScriptEnvironment* env);
   CachedVideoFrame* GetACachedVideoFrame(const PVideoFrame& frame, IScriptEnvironment* env);
   VideoFrame* BuildVideoFrame(CachedVideoFrame *i, int n);
-  void LockVFB(CachedVideoFrame *i);
-  void UnlockVFB(CachedVideoFrame *i);
+  bool LockVFB(CachedVideoFrame *i, IScriptEnvironment* env);
+  bool UnlockVFB(CachedVideoFrame *i);
   void ProtectVFB(CachedVideoFrame *i, int n);
-  void UnProtectVFB(CachedVideoFrame *i);
+  bool UnProtectVFB(CachedVideoFrame *i);
   PVideoFrame __stdcall childGetFrame(int n, IScriptEnvironment* env);
 
   struct CachedVideoFrame 
@@ -93,16 +93,18 @@ private:
     int sequence_number;
     int offset, pitch, row_size, height, offsetU, offsetV, pitchUV, row_sizeUV, heightUV; // 2.60
     int frame_number;
-    int faults;  // the number of times this frame was requested and found to be stale(modified)
-    bool vfb_locked;
-    bool vfb_protected;
+    long faults;  // the number of times this frame was requested and found to be stale(modified)
+    long vfb_locked;
+    long vfb_protected;
+//    int status;
 
     CachedVideoFrame() { 
         next=prev=this; 
         vfb=0; 
         frame_number=-1; 
-        vfb_locked=false;
-        vfb_protected=false;
+        vfb_locked=0;
+        vfb_protected=0;
+//        status=0;
     }
   };
   CachedVideoFrame video_frames;
@@ -111,8 +113,10 @@ private:
   int h_policy;
   int h_span;
   long protectcount;
+//  CRITICAL_SECTION cs_cache_V;
 
   // Audio cache:
+//  CRITICAL_SECTION cs_cache_A;
   int h_audiopolicy;
   char * cache;
   int samplesize;
@@ -122,19 +126,19 @@ private:
 
   // For audio cache prediction
   __int64 ac_expected_next;
-  int ac_currentscore;
+  long ac_currentscore;
   int ac_too_small_count;
 
   // Cached range limits
   int minframe, maxframe;
   int cache_init;   // The Initial cache size
-  int cache_limit;  // 16 time the current maximum number of CachedVideoFrame entries
-  int fault_rate;   // A decaying average of 100 times the peak fault count, used to control vfb auto-locking
-  int miss_count;   // Count of consecutive cache misses
+  long cache_limit;  // 16 time the current maximum number of CachedVideoFrame entries
+  long fault_rate;   // A decaying average of 100 times the peak fault count, used to control vfb auto-locking
+  long miss_count;   // Count of consecutive cache misses
 
   unsigned long Tick;
   // These are global to all Cache instances
-  static unsigned long Clock;
+  static long Clock;
   static long cacheDepth;
 };
 

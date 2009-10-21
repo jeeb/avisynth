@@ -1,4 +1,4 @@
-// Avisynth v2.5.  Copyright 2007 Ben Rudiak-Gould et al.
+// Avisynth v2.6.  Copyright 2002-2009 Ben Rudiak-Gould et al.
 // http://www.avisynth.org
 
 // This program is free software; you can redistribute it and/or modify
@@ -50,6 +50,9 @@ using std::string;
   #define _RPT1(x,y,z) ((void)0)
 #endif
 
+#ifndef YieldProcessor // low power spin idle
+  #define YieldProcessor() __asm { rep nop }
+#endif
 
 extern const AVSFunction Audio_filters[], Combine_filters[], Convert_filters[],
                    Convolution_filters[], Edit_filters[], Field_filters[],
@@ -113,11 +116,11 @@ public:
 
 class RecycleBin {  // Tritical May 2005
 public:
-    LinkedVideoFrame* g_VideoFrame_recycle_bin;
+    LinkedVideoFrame* volatile g_VideoFrame_recycle_bin;
     RecycleBin() : g_VideoFrame_recycle_bin(NULL) { };
     ~RecycleBin()
     {
-        for (LinkedVideoFrame*i=g_VideoFrame_recycle_bin; i;)
+        for (LinkedVideoFrame* i=g_VideoFrame_recycle_bin; i;)
         {
             LinkedVideoFrame* j = i->next;
             operator delete(i);
@@ -134,17 +137,25 @@ static RecycleBin *g_Bin=0;
 void* VideoFrame::operator new(unsigned) {
   // CriticalSection
   for (LinkedVideoFrame* i = g_Bin->g_VideoFrame_recycle_bin; i; i = i->next)
-    if (i->vf.refcount == 0)
+    if (InterlockedCompareExchange(&i->vf.refcount, 1, 0) == 0)
       return &i->vf;
+
   LinkedVideoFrame* result = (LinkedVideoFrame*)::operator new(sizeof(LinkedVideoFrame));
-  result->next = g_Bin->g_VideoFrame_recycle_bin;
-  g_Bin->g_VideoFrame_recycle_bin = result;
+  result->vf.refcount=1;
+
+  // SEt 13 Aug 2009
+  for (;;) {
+    result->next = g_Bin->g_VideoFrame_recycle_bin;
+    if (InterlockedCompareExchangePointer((void *volatile *)&g_Bin->g_VideoFrame_recycle_bin, result, result->next) == result->next) break;
+    YieldProcessor(); // low power spin idle
+  }
+
   return &result->vf;
 }
 
 
 VideoFrame::VideoFrame(VideoFrameBuffer* _vfb, int _offset, int _pitch, int _row_size, int _height)
-  : refcount(0), vfb(_vfb), offset(_offset), pitch(_pitch), row_size(_row_size), height(_height),
+  : refcount(1), vfb(_vfb), offset(_offset), pitch(_pitch), row_size(_row_size), height(_height),
     offsetU(_offset),offsetV(_offset),pitchUV(0), row_sizeUV(0), heightUV(0)  // PitchUV=0 so this doesn't take up additional space
 {
   InterlockedIncrement(&vfb->refcount);
@@ -152,11 +163,14 @@ VideoFrame::VideoFrame(VideoFrameBuffer* _vfb, int _offset, int _pitch, int _row
 
 VideoFrame::VideoFrame(VideoFrameBuffer* _vfb, int _offset, int _pitch, int _row_size, int _height,
                        int _offsetU, int _offsetV, int _pitchUV, int _row_sizeUV, int _heightUV)
-  : refcount(0), vfb(_vfb), offset(_offset), pitch(_pitch), row_size(_row_size), height(_height),
+  : refcount(1), vfb(_vfb), offset(_offset), pitch(_pitch), row_size(_row_size), height(_height),
     offsetU(_offsetU),offsetV(_offsetV),pitchUV(_pitchUV), row_sizeUV(_row_sizeUV), heightUV(_heightUV)
 {
   InterlockedIncrement(&vfb->refcount);
 }
+
+// Hack note :- Use of SubFrame will require an "InterlockedDecrement(&retval->refcount);" after
+// assignement to a PVideoFrame, the same as for a "New VideoFrame" to keep the refcount consistant.
 
 VideoFrame* VideoFrame::Subframe(int rel_offset, int new_pitch, int new_row_size, int new_height) const {
   return new VideoFrame(vfb, offset+rel_offset, new_pitch, new_row_size, new_height);
@@ -174,12 +188,12 @@ VideoFrame* VideoFrame::Subframe(int rel_offset, int new_pitch, int new_row_size
 }
 
 
-VideoFrameBuffer::VideoFrameBuffer() : refcount(0), data(0), data_size(0), sequence_number(0) {}
+VideoFrameBuffer::VideoFrameBuffer() : refcount(1), data(0), data_size(0), sequence_number(0) {}
 
 
 #ifdef _DEBUG  // Add 16 guard bytes front and back -- cache can check them after every GetFrame() call
 VideoFrameBuffer::VideoFrameBuffer(int size) :
-  refcount(0),
+  refcount(1),
   data((new BYTE[size+32])+16),
   data_size(data ? size : 0),
   sequence_number(0) {
@@ -207,7 +221,7 @@ VideoFrameBuffer::~VideoFrameBuffer() {
 #else
 
 VideoFrameBuffer::VideoFrameBuffer(int size)
- : refcount(0), data(new BYTE[size]), data_size(data ? size : 0), sequence_number(0) { InterlockedIncrement(&sequence_number); }
+ : refcount(1), data(new BYTE[size]), data_size(data ? size : 0), sequence_number(0) { InterlockedIncrement(&sequence_number); }
 
 VideoFrameBuffer::~VideoFrameBuffer() {
 //  _ASSERTE(refcount == 0);
@@ -881,10 +895,17 @@ private:
   HRESULT hrfromcoinit;
   DWORD coinitThreadId;
 
-  static long refcount; // Global to all ScriptEnvironment objects
+  volatile static long refcount; // Global to all ScriptEnvironment objects
+
+  static CRITICAL_SECTION cs_relink_video_frame_buffer;//tsp July 2005.
+
+  CRITICAL_SECTION cs_var_table;
+
+  bool closing;                 // Used to avoid deadlock, if vartable is being accessed while shutting down (Popcontext)
 };
 
-long ScriptEnvironment::refcount=0;
+volatile long ScriptEnvironment::refcount=0;
+CRITICAL_SECTION ScriptEnvironment::cs_relink_video_frame_buffer;
 extern long CPUCheckForExtensions();  // in cpuaccel.cpp
 
 ScriptEnvironment::ScriptEnvironment()
@@ -892,6 +913,7 @@ ScriptEnvironment::ScriptEnvironment()
     function_table(This()),
     CacheHead(0), hrfromcoinit(E_FAIL), coinitThreadId(0),
     unpromotedvfbs(&video_frame_buffers),
+    closing(false),
     PlanarChromaAlignmentState(true){ // Change to "true" for 2.5.7
 
   try {
@@ -910,9 +932,17 @@ ScriptEnvironment::ScriptEnvironment()
     CPU_id = CPUCheckForExtensions();
 
     if(InterlockedCompareExchange(&refcount, 1, 0) == 0)//tsp June 2005 Initialize Recycle bin
+    {
       g_Bin=new RecycleBin();
+
+      // tsp June 2005 might have to change the spincount or use InitializeCriticalSection
+      // if it should run on WinNT 4 without SP3 or better.
+      InitializeCriticalSectionAndSpinCount(&cs_relink_video_frame_buffer, 8000);
+    }
     else
       InterlockedIncrement(&refcount);
+
+    InitializeCriticalSectionAndSpinCount(&cs_var_table, 4000);
 
     MEMORYSTATUS memstatus;
     GlobalMemoryStatus(&memstatus);
@@ -954,10 +984,14 @@ ScriptEnvironment::~ScriptEnvironment() {
   // give every one their last wish.
   at_exit.Execute(this);
 
+  closing = true;
+
   while (var_table)
     PopContext();
+
   while (global_var_table)
     PopContextGlobal();
+
   unpromotedvfbs = &video_frame_buffers;
   LinkedVideoFrameBuffer* i = video_frame_buffers.prev;
   while (i != &video_frame_buffers) {
@@ -971,10 +1005,15 @@ ScriptEnvironment::~ScriptEnvironment() {
     delete i;
     i = prev;
   }
-  if(!InterlockedDecrement((long*)&refcount)){
+
+  if(!InterlockedDecrement(&refcount)){
     delete g_Bin;//tsp June 2005 Cleans up the heap
     g_Bin=NULL;
+    DeleteCriticalSection(&cs_relink_video_frame_buffer);//tsp July 2005
   }
+
+  DeleteCriticalSection(&cs_var_table);
+
   // If we init'd COM and this is the right thread then release it
   // If it's the wrong threadId then tuff, nothing we can do.
   if(SUCCEEDED(hrfromcoinit) && (coinitThreadId == GetCurrentThreadId())) {
@@ -1027,15 +1066,34 @@ void ScriptEnvironment::AddFunction(const char* name, const char* params, ApplyF
 }
 
 AVSValue ScriptEnvironment::GetVar(const char* name) {
-  return var_table->Get(name);
+  if (closing) return AVSValue();  // We easily risk  being inside the critical section below, while deleting variables.
+  EnterCriticalSection(&cs_var_table);
+  AVSValue retval;
+  try  {
+    retval = var_table->Get(name);
+  }
+  catch(...)  {
+    LeaveCriticalSection(&cs_var_table);
+    throw;
+  }
+  LeaveCriticalSection(&cs_var_table);
+  return retval;
 }
 
 bool ScriptEnvironment::SetVar(const char* name, const AVSValue& val) {
-  return var_table->Set(name, val);
+  if (closing) return true;  // We easily risk  being inside the critical section below, while deleting variables.
+  EnterCriticalSection(&cs_var_table);
+  bool retval = var_table->Set(name, val);
+  LeaveCriticalSection(&cs_var_table);
+  return retval;
 }
 
 bool ScriptEnvironment::SetGlobalVar(const char* name, const AVSValue& val) {
-  return global_var_table->Set(name, val);
+  if (closing) return true;  // We easily risk  being inside the critical section below, while deleting variables.
+  EnterCriticalSection(&cs_var_table);
+  bool retval = global_var_table->Set(name, val);
+  LeaveCriticalSection(&cs_var_table);
+  return retval;
 }
 
 const char* ScriptEnvironment::GetPluginDirectory()
@@ -1044,7 +1102,7 @@ const char* ScriptEnvironment::GetPluginDirectory()
   try {
     plugin_dir = (char*)GetVar("$PluginDir$").AsString();
   }
-  catch (...) {
+  catch (IScriptEnvironment::NotFound) {
     HKEY AvisynthKey;
     if (RegOpenKeyEx(RegRootKey, RegAvisynthKey, 0, KEY_READ, &AvisynthKey))
       return 0;
@@ -1070,12 +1128,15 @@ const char* ScriptEnvironment::GetPluginDirectory()
     SetGlobalVar("$PluginDir$", AVSValue(SaveString(plugin_dir)));  // Tritical May 2005
     delete[] plugin_dir;
     try {
-        plugin_dir = (char*)GetVar("$PluginDir$").AsString();
+      plugin_dir = (char*)GetVar("$PluginDir$").AsString();
     }
     catch (...)
     {
-        return 0;
+      return 0;
     }
+  }
+  catch (...) {
+    return 0;
   }
   return plugin_dir;
 }
@@ -1241,6 +1302,9 @@ PVideoFrame __stdcall ScriptEnvironment::NewVideoFrame(const VideoInfo& vi, int 
     default:
       ThrowError("Filter Error: Filter attempted to create VideoFrame with invalid pixel_type.");
   }
+
+  PVideoFrame retval;
+
   // If align is negative, it will be forced, if not it may be made bigger
   if (align < 0)
     align = -align;
@@ -1259,21 +1323,31 @@ PVideoFrame __stdcall ScriptEnvironment::NewVideoFrame(const VideoInfo& vi, int 
       ThrowError("Filter Error: Attempted to request a planar frame that wasn't mod%d in height!", ymod);
 
     const int heightUV = vi.height >> vi.GetPlaneHeightSubsampling(PLANAR_U);
-    return NewPlanarVideoFrame(vi.RowSize(PLANAR_Y), vi.height, vi.RowSize(PLANAR_U), heightUV, align, !vi.IsVPlaneFirst());
+    retval=NewPlanarVideoFrame(vi.RowSize(PLANAR_Y), vi.height, vi.RowSize(PLANAR_U), heightUV, align, !vi.IsVPlaneFirst());
   }
   else {
     if ((vi.width&1)&&(vi.IsYUY2()))
       ThrowError("Filter Error: Attempted to request an YUY2 frame that wasn't mod2 in width.");
-    return NewVideoFrame(vi.RowSize(), vi.height, align);
+
+    retval=NewVideoFrame(vi.RowSize(), vi.height, align);
   }
+  // After the VideoFrame has been assigned to a PVideoFrame it is safe to decrement the refcount (from 2 to 1).
+  InterlockedDecrement(&retval->vfb->refcount);
+  InterlockedDecrement(&retval->refcount);
+  return retval;
 }
 
 bool ScriptEnvironment::MakeWritable(PVideoFrame* pvf) {
   const PVideoFrame& vf = *pvf;
+
+  EnterCriticalSection(&cs_relink_video_frame_buffer);//we don't want cacheMT::LockVFB to mess up the refcount
   // If the frame is already writable, do nothing.
   if (vf->IsWritable()) {
+    LeaveCriticalSection(&cs_relink_video_frame_buffer);
     return false;
   }
+
+  LeaveCriticalSection(&cs_relink_video_frame_buffer);
 
   // Otherwise, allocate a new frame (using NewVideoFrame) and
   // copy the data into it.  Then modify the passed PVideoFrame
@@ -1290,10 +1364,17 @@ bool ScriptEnvironment::MakeWritable(PVideoFrame* pvf) {
   } else {
     dst = NewVideoFrame(row_size, height, FRAME_ALIGN);
   }
+
+  //After the VideoFrame has been assigned to a PVideoFrame it is safe to decrement the refcount (from 2 to 1).
+  InterlockedDecrement(&dst->vfb->refcount);
+  InterlockedDecrement(&dst->refcount);
+
   BitBlt(dst->GetWritePtr(), dst->GetPitch(), vf->GetReadPtr(), vf->GetPitch(), row_size, height);
   // Blit More planes (pitch, rowsize and height should be 0, if none is present)
-  BitBlt(dst->GetWritePtr(PLANAR_V), dst->GetPitch(PLANAR_V), vf->GetReadPtr(PLANAR_V), vf->GetPitch(PLANAR_V), vf->GetRowSize(PLANAR_V), vf->GetHeight(PLANAR_V));
-  BitBlt(dst->GetWritePtr(PLANAR_U), dst->GetPitch(PLANAR_U), vf->GetReadPtr(PLANAR_U), vf->GetPitch(PLANAR_U), vf->GetRowSize(PLANAR_U), vf->GetHeight(PLANAR_U));
+  BitBlt(dst->GetWritePtr(PLANAR_V), dst->GetPitch(PLANAR_V), vf->GetReadPtr(PLANAR_V),
+         vf->GetPitch(PLANAR_V), vf->GetRowSize(PLANAR_V), vf->GetHeight(PLANAR_V));
+  BitBlt(dst->GetWritePtr(PLANAR_U), dst->GetPitch(PLANAR_U), vf->GetReadPtr(PLANAR_U),
+         vf->GetPitch(PLANAR_U), vf->GetRowSize(PLANAR_U), vf->GetHeight(PLANAR_U));
 
   *pvf = dst;
   return true;
@@ -1305,29 +1386,39 @@ void ScriptEnvironment::AtExit(IScriptEnvironment::ShutdownFunc function, void* 
 }
 
 void ScriptEnvironment::PushContext(int level) {
+  EnterCriticalSection(&cs_var_table);
   var_table = new VarTable(var_table, global_var_table);
+  LeaveCriticalSection(&cs_var_table);
 }
 
 void ScriptEnvironment::PopContext() {
+  EnterCriticalSection(&cs_var_table);
   var_table = var_table->Pop();
+  LeaveCriticalSection(&cs_var_table);
 }
 
 void ScriptEnvironment::PopContextGlobal() {
+  EnterCriticalSection(&cs_var_table);
   global_var_table = global_var_table->Pop();
+  LeaveCriticalSection(&cs_var_table);
 }
 
 
 PVideoFrame __stdcall ScriptEnvironment::Subframe(PVideoFrame src, int rel_offset, int new_pitch, int new_row_size, int new_height) {
-  return src->Subframe(rel_offset, new_pitch, new_row_size, new_height);
+  PVideoFrame retval = src->Subframe(rel_offset, new_pitch, new_row_size, new_height);
+  InterlockedDecrement(&retval->refcount);
+  return retval;
 }
 
 //tsp June 2005 new function compliments the above function
 PVideoFrame __stdcall ScriptEnvironment::SubframePlanar(PVideoFrame src, int rel_offset, int new_pitch, int new_row_size,
                                                         int new_height, int rel_offsetU, int rel_offsetV, int new_pitchUV) {
-  return src->Subframe(rel_offset, new_pitch, new_row_size, new_height, rel_offsetU, rel_offsetV, new_pitchUV);
+  PVideoFrame retval = src->Subframe(rel_offset, new_pitch, new_row_size, new_height, rel_offsetU, rel_offsetV, new_pitchUV);
+  InterlockedDecrement(&retval->refcount);
+  return retval;
 }
 
-void* ScriptEnvironment::ManageCache(int key, void* data){
+void* ScriptEnvironment::ManageCache(int key, void* data) {
 // An extensible interface for providing system or user access to the
 // ScriptEnvironment class without extending the IScriptEnvironment
 // definition.
@@ -1338,6 +1429,8 @@ void* ScriptEnvironment::ManageCache(int key, void* data){
   // allowing it to be reused in favour of any of it's older siblings.
   case MC_ReturnVideoFrameBuffer:
   {
+    if (!data) break;
+
     LinkedVideoFrameBuffer *lvfb = (LinkedVideoFrameBuffer*)data;
 
     // The Cache volunteers VFB's it no longer tracks for reuse. This closes the loop
@@ -1346,6 +1439,8 @@ void* ScriptEnvironment::ManageCache(int key, void* data){
 
     // Check to make sure the vfb wasn't discarded and is really a LinkedVideoFrameBuffer.
     if ((lvfb->data == 0) || (lvfb->signature != LinkedVideoFrameBuffer::ident)) break;
+
+    EnterCriticalSection(&cs_relink_video_frame_buffer); //Don't want to mess up with GetFrameBuffer(2)
 
     // Adjust unpromoted sublist if required
     if (unpromotedvfbs == lvfb) unpromotedvfbs = lvfb->next;
@@ -1356,12 +1451,16 @@ void* ScriptEnvironment::ManageCache(int key, void* data){
     // Flag it as returned, i.e. for immediate reuse.
     lvfb->returned = true;
 
+    LeaveCriticalSection(&cs_relink_video_frame_buffer);
+
     return (void*)1;
   }
   // Allow the cache to designate a VideoFrameBuffer as being managed thus
   // preventing it being reused as soon as it becomes free.
   case MC_ManageVideoFrameBuffer:
   {
+    if (!data) break;
+
     LinkedVideoFrameBuffer *lvfb = (LinkedVideoFrameBuffer*)data;
 
     // Check to make sure the vfb wasn't discarded and is really a LinkedVideoFrameBuffer.
@@ -1376,6 +1475,8 @@ void* ScriptEnvironment::ManageCache(int key, void* data){
   // requesting it be moved to the head of the video_frame_buffers LRU list.
   case MC_PromoteVideoFrameBuffer:
   {
+    if (!data) break;
+
     LinkedVideoFrameBuffer *lvfb = (LinkedVideoFrameBuffer*)data;
 
     // When a cache instance detects attempts to refetch previously generated frames
@@ -1384,6 +1485,8 @@ void* ScriptEnvironment::ManageCache(int key, void* data){
 
     // Check to make sure the vfb wasn't discarded and is really a LinkedVideoFrameBuffer.
     if ((lvfb->data == 0) || (lvfb->signature != LinkedVideoFrameBuffer::ident)) break;
+
+    EnterCriticalSection(&cs_relink_video_frame_buffer); //Don't want to mess up with GetFrameBuffer(2)
 
     // Adjust unpromoted sublist if required
     if (unpromotedvfbs == lvfb) unpromotedvfbs = lvfb->next;
@@ -1394,13 +1497,19 @@ void* ScriptEnvironment::ManageCache(int key, void* data){
     // Flag it as not returned, i.e. currently managed
     lvfb->returned = false;
 
+    LeaveCriticalSection(&cs_relink_video_frame_buffer);
+
     return (void*)1;
   }
   // Register Cache instances onto a linked list, so all Cache instances
   // can be poked as a single unit thru the PokeCache interface
   case MC_RegisterCache:
   {
+    if (!data) break;
+
     Cache *cache = (Cache*)data;
+
+    EnterCriticalSection(&cs_relink_video_frame_buffer); // Borrow this lock in case of post compile graph mutation
 
     if (CacheHead) CacheHead->priorCache = &(cache->nextCache);
     cache->priorCache = &CacheHead;
@@ -1408,8 +1517,28 @@ void* ScriptEnvironment::ManageCache(int key, void* data){
     cache->nextCache = CacheHead;
     CacheHead = cache;
 
+    LeaveCriticalSection(&cs_relink_video_frame_buffer);
+
     return (void*)1;
   }
+  // Provide the Caches with a safe method to reclaim a
+  // VideoFrameBuffer without conflict with GetFrameBuffer(2)
+  case MC_IncVFBRefcount:
+  {
+    if (!data) break;
+
+    VideoFrameBuffer *vfb = (VideoFrameBuffer*)data;
+
+    EnterCriticalSection(&cs_relink_video_frame_buffer); //Don't want to mess up with GetFrameBuffer(2)
+
+    // Bump the refcount while under lock
+    InterlockedIncrement(&vfb->refcount);
+
+    LeaveCriticalSection(&cs_relink_video_frame_buffer);
+
+    return (void*)1;
+  }
+
   default:
     break;
   }
@@ -1457,7 +1586,7 @@ LinkedVideoFrameBuffer* ScriptEnvironment::GetFrameBuffer2(int size) {
     int freed_count = 0;
     // Deallocate enough unused frames.
     for (i = video_frame_buffers.prev; i != &video_frame_buffers; i = i->prev) {
-      if (i->GetRefcount() == 0) {
+      if (InterlockedCompareExchange(&i->refcount, 1, 0) == 0) {
         if (i->next != i->prev) {
           // Adjust unpromoted sublist if required
           if (unpromotedvfbs == i) unpromotedvfbs = i->next;
@@ -1485,9 +1614,11 @@ LinkedVideoFrameBuffer* ScriptEnvironment::GetFrameBuffer2(int size) {
   if (memory_used + size < memory_max) {
     //   Part 1: look for a returned free buffer of the same size and reuse it
     for (i = video_frame_buffers.prev; i != &video_frame_buffers; i = i->prev) {
-      if (i->returned && (i->GetRefcount() == 0) && (i->GetDataSize() == size)) {
-        ++g_Mem_stats.PlanA1;
-        return i;
+      if (i->returned && (i->GetDataSize() == size)) {
+        if (InterlockedCompareExchange(&i->refcount, 1, 0) == 0) {
+          ++g_Mem_stats.PlanA1;
+          return i;
+        }
       }
     }
     //   Part 2: else just allocate a new buffer
@@ -1502,31 +1633,41 @@ LinkedVideoFrameBuffer* ScriptEnvironment::GetFrameBuffer2(int size) {
   // locked VFB's. Next we start on the CACHE_RANGE protected
   // VFB's, as an offset we promote these.
   // Plan C is not invoked until the Cache's have been poked once.
+  j = 0;
   for (int c=Cache::PC_Nil; c <= Cache::PC_UnProtectAll; c++) {
     if (CacheHead) CacheHead->PokeCache(c, size, this);
 
     // Plan B: Steal the oldest existing free buffer of the same size
-    j = 0;
     for (i = video_frame_buffers.prev; i != &video_frame_buffers; i = i->prev) {
-      if (i->GetRefcount() == 0) {
+      if (InterlockedCompareExchange(&i->refcount, 1, 0) == 0) {
         if (i->GetDataSize() == size) {
           ++g_Mem_stats.PlanB;
-          InterlockedIncrement((long*)&i->sequence_number);  // Signal to the cache that the vfb has been stolen
+          if (j) InterlockedDecrement(&j->refcount);  // Release any alternate candidate
+          InterlockedIncrement(&i->sequence_number);  // Signal to the cache that the vfb has been stolen
           return i;
         }
-        if (i->GetDataSize() > size) {
-          // Remember the smallest VFB that is bigger than our size
-          if ((j == 0) || (i->GetDataSize() < j->GetDataSize())) j = i;
+        if ( // Remember the smallest VFB that is bigger than our size
+             (c > Cache::PC_Nil || !CacheHead) &&              // Pass 2 OR no PokeCache
+             i->GetDataSize() > size           &&              // Bigger
+             (j == 0 || i->GetDataSize() < j->GetDataSize())   // Not got one OR better candidate
+        ) {
+          if (j) InterlockedDecrement(&j->refcount);  // Release any alternate candidate
+          j = i;
+        }
+        else { // not usefull so free again
+          InterlockedDecrement(&i->refcount);
         }
       }
     }
 
     // Plan C: Steal the oldest, smallest free buffer that is greater in size
-    if (j && c > Cache::PC_Nil) {
+    if (j) {
       ++g_Mem_stats.PlanC;
-      InterlockedIncrement((long*)&j->sequence_number);  // Signal to the cache that the vfb has been stolen
+      InterlockedIncrement(&j->sequence_number);  // Signal to the cache that the vfb has been stolen
       return j;
     }
+
+    if (!CacheHead) break; // No PokeCache so cache state will not change in next loop iterations
   }
 
   // Plan D: Allocate a new buffer, regardless of current memory usage
@@ -1535,6 +1676,8 @@ LinkedVideoFrameBuffer* ScriptEnvironment::GetFrameBuffer2(int size) {
 }
 
 VideoFrameBuffer* ScriptEnvironment::GetFrameBuffer(int size) {
+  EnterCriticalSection(&cs_relink_video_frame_buffer);
+
   LinkedVideoFrameBuffer* result = GetFrameBuffer2(size);
   if (!result || !result->data) {
     // Damn! we got a NULL from malloc
@@ -1556,6 +1699,8 @@ VideoFrameBuffer* ScriptEnvironment::GetFrameBuffer(int size) {
     if (!result || !result->data) {
       // Damn!! Damn!! we are really screwed, winge!
       if (result) Relink(lost_video_frame_buffers.prev, result, &lost_video_frame_buffers);
+
+      LeaveCriticalSection(&cs_relink_video_frame_buffer);
 
       ThrowError("GetFrameBuffer: Returned a VFB with a 0 data pointer!\n"
                  "size=%d, max=%I64d, used=%I64d\n"
@@ -1579,6 +1724,8 @@ VideoFrameBuffer* ScriptEnvironment::GetFrameBuffer(int size) {
 #endif
   // Flag it as returned, i.e. currently not managed
   result->returned = true;
+
+  LeaveCriticalSection(&cs_relink_video_frame_buffer);
   return result;
 }
 
@@ -1970,7 +2117,13 @@ void ScriptEnvironment::BitBlt(BYTE* dstp, int dst_pitch, const BYTE* srcp, int 
 
 
 char* ScriptEnvironment::SaveString(const char* s, int len) {
-  return string_dump.SaveString(s, len);
+  // This function is mostly used to save strings for variables
+  // so it is fairly acceptable that it shares the same critical
+  // section as the vartable
+  EnterCriticalSection(&cs_var_table);
+  char* retval = string_dump.SaveString(s, len);
+  LeaveCriticalSection(&cs_var_table);
+  return retval;
 }
 
 
