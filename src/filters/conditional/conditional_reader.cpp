@@ -398,8 +398,8 @@ AVSValue ConditionalReader::ConvertType(const char* content, int line, IScriptEn
 
 void ConditionalReader::SetRange(int start_frame, int stop_frame, AVSValue v) {
   int i;
-  start_frame = max(min(start_frame+offset, vi.num_frames-1), 0);
-  stop_frame = max(min(stop_frame+offset, vi.num_frames-1), 0);
+  start_frame = max(start_frame+offset, 0);
+  stop_frame = min(stop_frame+offset, vi.num_frames-1);
   int p;
   float q;
   bool r;
