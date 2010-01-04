@@ -132,14 +132,12 @@ ImageWriter::ImageWriter(PClip _child, const char * _base_name, const int _start
     if (!(vi.IsY8()||vi.IsRGB()))
       env->ThrowError("ImageWriter: DevIL requires RGB or Y8 input");
 
-    if (InterlockedCompareExchange(&refcount, 1, 0) == 0) {
+    if (InterlockedIncrement(&refcount) == 1) {
       if (!InitializeCriticalSectionAndSpinCount(&FramesCriticalSection, 1000) ) {
         InterlockedExchange(&refcount, 0);
         env->ThrowError("ImageWriter: Could not initialize critical section");
       }
     }
-    else
-      InterlockedIncrement(&refcount);
 
     EnterCriticalSection(&FramesCriticalSection);
     ilInit();
@@ -166,7 +164,7 @@ ImageWriter::~ImageWriter()
     ilShutDown();
     LeaveCriticalSection(&FramesCriticalSection);
 
-    if(!InterlockedDecrement(&refcount))
+    if (InterlockedDecrement(&refcount) == 0)
       DeleteCriticalSection(&FramesCriticalSection);
   }
 }
@@ -363,7 +361,7 @@ ImageReader::ImageReader(const char * _base_name, const int _start, const int _e
   vi.fps_denominator = denom;
     
   // undecorated filename means they want a single, static image
-  if( strcmp(filename, base_name) == 0 ) framecopies = vi.num_frames;
+  if (strcmp(filename, base_name) == 0) framecopies = vi.num_frames;
 
   if (use_DevIL == false)
   {
@@ -432,14 +430,12 @@ ImageReader::ImageReader(const char * _base_name, const int _start, const int _e
 
   if (use_DevIL == true) {  // attempt to open via DevIL
 
-    if (InterlockedCompareExchange(&refcount, 1, 0) == 0) {
+    if (InterlockedIncrement(&refcount) == 1) {
       if (!InitializeCriticalSectionAndSpinCount(&FramesCriticalSection, 1000) ) {
         InterlockedExchange(&refcount, 0);
         env->ThrowError("ImageReader: Could not initialize critical section");
       }
     }
-    else
-      InterlockedIncrement(&refcount);
 
     EnterCriticalSection(&FramesCriticalSection);
 
@@ -506,7 +502,7 @@ ImageReader::~ImageReader()
     ilShutDown();
     LeaveCriticalSection(&FramesCriticalSection);
 
-    if(!InterlockedDecrement(&refcount))
+    if (InterlockedDecrement(&refcount) == 0)
       DeleteCriticalSection(&FramesCriticalSection);
   }
 }
