@@ -111,16 +111,13 @@ ConvertToY8::~ConvertToY8() {
 
 PVideoFrame __stdcall ConvertToY8::GetFrame(int n, IScriptEnvironment* env) {
   PVideoFrame src = child->GetFrame(n, env);
-  PVideoFrame dst = env->NewVideoFrame(vi);
 
   if (blit_luma_only) {
-// Add private ScriptEnvironment function to clone planes -- avoid a needless blit :FIXME:
-//  return new VideoFrame(src->vfb, src->offset, src->pitch, src->row_size, src->height, src->offset, src->offset, 0, 0, 0);
-    env->BitBlt(dst->GetWritePtr(PLANAR_Y), dst->GetPitch(PLANAR_Y),
-                src->GetReadPtr(PLANAR_Y),  src->GetPitch(PLANAR_Y),
-                src->GetRowSize(PLANAR_Y_ALIGNED), src->GetHeight(PLANAR_Y));
-    return dst;
+	// Abuse Subframe to snatch the Y plane
+	return env->Subframe(src, 0, src->GetPitch(PLANAR_Y), src->GetRowSize(PLANAR_Y), src->GetHeight(PLANAR_Y));
   }
+
+  PVideoFrame dst = env->NewVideoFrame(vi);
 
   if (yuy2_input) {
 
