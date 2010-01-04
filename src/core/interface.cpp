@@ -425,8 +425,8 @@ VideoFrame::~VideoFrame() { Release(); }
 // class IClip
 
 /* Baked ********************
-  void AddRef() { InterlockedIncrement((long *)&refcnt); }
-  void Release() { InterlockedDecrement((long *)&refcnt); if (!refcnt) delete this; }
+  void IClip::AddRef() { InterlockedIncrement((long *)&refcnt); }
+  void IClip::Release() { InterlockedDecrement((long *)&refcnt); if (!refcnt) delete this; }
    Baked ********************/
 void IClip::AddRef() { InterlockedIncrement(&refcnt); }
 void IClip::Release() { if (!InterlockedDecrement(&refcnt)) delete this; }
