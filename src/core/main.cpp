@@ -570,7 +570,8 @@ CAVIFileSynth::~CAVIFileSynth() {
 
     filter_graph = 0;
     
-	delete env;
+    if (env) env->DeleteScriptEnvironment();
+    env = 0;
 
     DeleteCriticalSection(&cs_filter_graph);
 }
@@ -583,7 +584,7 @@ STDMETHODIMP CAVIFileSynth::Open(LPCSTR szFile, UINT mode, LPCOLESTR lpszFileNam
     if (mode & (OF_CREATE|OF_WRITE))
       return E_FAIL;
 
-    delete env;   // just in case
+    if (env) env->DeleteScriptEnvironment();   // just in case
     env = 0;
     filter_graph = 0;
     vi = 0;
@@ -1378,6 +1379,12 @@ STDMETHODIMP CAVIStreamSynth::ReadFormat(LONG lPos, LPVOID lpFormat, LONG *lpcbF
 	  wfxt.dwChannelMask = (unsigned)vi->AudioChannels() <= 7 ? SpeakerMasks[vi->AudioChannels()]
 	                     : (unsigned)vi->AudioChannels() <=18 ? DWORD(-1) >> (32-vi->AudioChannels())
 						 : SPEAKER_ALL;
+
+      try {
+        AVSValue v = parent->env->GetVar("OPT_dwChannelMask");
+        if (v.IsInt()) wfxt.dwChannelMask = (unsigned)(v.AsInt());
+      }
+      catch (IScriptEnvironment::NotFound) { }
 
 	  wfxt.SubFormat = vi->IsSampleType(SAMPLE_FLOAT) ? KSDATAFORMAT_SUBTYPE_IEEE_FLOAT : KSDATAFORMAT_SUBTYPE_PCM;
 	  *lpcbFormat = min(*lpcbFormat, sizeof(wfxt));
