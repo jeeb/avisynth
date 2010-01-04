@@ -38,9 +38,6 @@
 #include "../internal.h"
 
 
-_PixelClip PixelClip;
-
-
 
 
 #define uc unsigned char
