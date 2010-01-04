@@ -246,7 +246,7 @@ void AVISource::LocateVideoCodec(const char fourCC[], IScriptEnvironment* env) {
   }
 
   // see if we can handle the video format directly
-  if (pbiSrc->biCompression == '2YUY') {
+  if (pbiSrc->biCompression == '2YUY') { // :FIXME: Handle UYVY, etc
     vi.pixel_type = VideoInfo::CS_YUY2;
   } else if (pbiSrc->biCompression == '21VY') {
     vi.pixel_type = VideoInfo::CS_YV12;
@@ -437,7 +437,7 @@ AVISource::AVISource(const char filename[], bool fAudio, const char pixel_type[]
           if (fYUY2 && bOpen) {
             vi.pixel_type = VideoInfo::CS_YUY2;
             biDst.biSizeImage = vi.BMPSize();
-            biDst.biCompression = '2YUY';
+            biDst.biCompression = '2YUY'; // :FIXME: Handle UYVY, etc
             biDst.biBitCount = 16;
             if (ICERR_OK == ICDecompressQuery(hic, pbiSrc, &biDst)) {
               _RPT0(0,"AVISource: Opening as YUY2.\n");
@@ -489,8 +489,14 @@ AVISource::AVISource(const char filename[], bool fAudio, const char pixel_type[]
               if (ICERR_OK == ICDecompressQuery(hic, pbiSrc, &biDst)) {
                 _RPT0(0,"AVISource: Opening as Y8.\n");
                 bOpen = false;  // Skip further attempts
-              } else if (forcedType) {
-                 env->ThrowError("AVISource: the video decompressor couldn't produce Y8 output");
+              } else {
+                biDst.biCompression = 'YERG';
+                if (ICERR_OK == ICDecompressQuery(hic, pbiSrc, &biDst)) {
+                  _RPT0(0,"AVISource: Opening as GREY.\n");
+                  bOpen = false;  // Skip further attempts
+                } else if (forcedType) {
+                   env->ThrowError("AVISource: the video decompressor couldn't produce Y8 output");
+                }
               }
             }
           }
