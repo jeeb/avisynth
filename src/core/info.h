@@ -1,3 +1,6 @@
+// original IT0051 by thejam79
+// add YV12 mode by minamina 2003/05/01
+//
 // Borrowed from the author of IT.dll, whose name I
 // could not determine. Modified for YV12 by Donald Graft.
 // RGB32 Added by Klaus Post
