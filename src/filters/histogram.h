@@ -53,12 +53,13 @@ public:
 	ModeColor,
 	ModeColor2,
 	ModeLuma,
+	ModeStereoY8,
 	ModeStereo,
 	ModeOverlay,
 	ModeAudioLevels
   };
 
-  Histogram(PClip _child, Mode _mode, IScriptEnvironment* env);
+  Histogram(PClip _child, Mode _mode, AVSValue _option, IScriptEnvironment* env);
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
   PVideoFrame Histogram::DrawModeClassic    (int n, IScriptEnvironment* env);
   PVideoFrame Histogram::DrawModeLevels     (int n, IScriptEnvironment* env);
@@ -74,6 +75,7 @@ private:
   Mode mode;
   int deg15c[24], deg15s[24];
   PClip aud_clip;
+  AVSValue option;
 };
 
 
