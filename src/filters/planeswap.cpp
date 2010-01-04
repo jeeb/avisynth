@@ -84,14 +84,14 @@ PVideoFrame __stdcall SwapUV::GetFrame(int n, IScriptEnvironment* env) {
   
   if (vi.IsPlanar()) {
     // Abuse subframe to flip the UV plane pointers -- extremely fast but a bit naughty!
-    const int uvoffset = src->GetReadPtr(PLANAR_V) - src->GetReadPtr(PLANAR_U); // very naughty - don't do this at home!!
+    const int uvoffset = src->GetOffset(PLANAR_V) - src->GetOffset(PLANAR_U); // very naughty - don't do this at home!!
         
     return env->SubframePlanar(src, 0, src->GetPitch(PLANAR_Y), src->GetRowSize(PLANAR_Y), src->GetHeight(PLANAR_Y),
                          uvoffset, -uvoffset, src->GetPitch(PLANAR_V));
   }
   else if (vi.IsYUY2()) { // YUY2
-    if (src->IsWritable()) {
-      BYTE* srcp = src->GetWritePtr();
+    BYTE* srcp = src->GetWritePtr(); // Returns 0 if not writable
+    if (srcp) {
       for (int y=0; y<vi.height; y++) {
         for (int x = 0; x < src->GetRowSize(); x+=4) {
           const BYTE t = srcp[x+3]; // This is surprisingly fast,
@@ -293,19 +293,18 @@ PVideoFrame __stdcall SwapUVToY::GetFrame(int n, IScriptEnvironment* env) {
 
   // Planar
 
-  PVideoFrame dst = env->NewVideoFrame(vi);
-
   if (mode==UToY8) {
-// Add private ScriptEnvironment function to clone planes -- avoid a needless blit
-//  return new VideoFrame(src->vfb, src->offsetU, src->pitchUV, src->row_sizeUV, src->heightUV, src->offsetU, src->offsetU, 0, 0, 0, vi.pixel_type);
-	env->BitBlt(dst->GetWritePtr(PLANAR_Y),dst->GetPitch(PLANAR_Y),src->GetReadPtr(PLANAR_U),src->GetPitch(PLANAR_U),dst->GetRowSize(),dst->GetHeight());
-	return dst;
+    const int offset = src->GetOffset(PLANAR_U) - src->GetOffset(PLANAR_Y); // very naughty - don't do this at home!!
+	// Abuse Subframe to snatch the U plane
+	return env->Subframe(src, offset, src->GetPitch(PLANAR_U), src->GetRowSize(PLANAR_U), src->GetHeight(PLANAR_U));
   }
   else if (mode == VToY8) {
-//  return new VideoFrame(src->vfb, src->offsetV, src->pitchUV, src->row_sizeUV, src->heightUV, src->offsetV, src->offsetV, 0, 0, 0, vi.pixel_type);
-	env->BitBlt(dst->GetWritePtr(PLANAR_Y),dst->GetPitch(PLANAR_Y),src->GetReadPtr(PLANAR_V),src->GetPitch(PLANAR_V),dst->GetRowSize(),dst->GetHeight());
-	return dst;
+    const int offset = src->GetOffset(PLANAR_V) - src->GetOffset(PLANAR_Y); // very naughty - don't do this at home!!
+	// Abuse Subframe to snatch the V plane
+	return env->Subframe(src, offset, src->GetPitch(PLANAR_V), src->GetRowSize(PLANAR_V), src->GetHeight(PLANAR_V));
   }
+
+  PVideoFrame dst = env->NewVideoFrame(vi);
 
   if (mode==YUY2UToY8 || mode==YUY2VToY8) {  // YUY2 U To Y
 	const BYTE* srcp = src->GetReadPtr();
@@ -389,28 +388,22 @@ SwapYToUV::SwapYToUV(PClip _child, PClip _clip, PClip _clipY, IScriptEnvironment
         env->ThrowError("YToUV: Y clip does not have the same height of the UV clips! (YUY2 mode)");
       vi.height *= 2;
     }
-    if (vi.IsPlanar()) {  // Autodetect destination colorformat
-      if (vi3.width % vi.width || vi3.height % vi.height) 
-        env->ThrowError("YToUV: Width and/or height not divideable by other planes");
+    if (vi.IsPlanar()) {  // Autogenerate destination colorformat
+      vi.pixel_type = VideoInfo::CS_YV12; // CS_Sub_Width_2 and CS_Sub_Height_2 are 0
 
-      if (vi3.width == vi.width * 2 && vi3.height == vi.height * 2) {
-        vi.pixel_type = VideoInfo::CS_YV12;
-        vi.width *=2; vi.height *=2;
-
-      } else if (vi3.width == vi.width * 1 && vi3.height == vi.height * 1) {
-        vi.width *=1; vi.height *=1;
-        vi.pixel_type = VideoInfo::CS_YV24;
-
-      } else if (vi3.width == vi.width * 2 && vi3.height == vi.height * 1) {
-        vi.width *=2; vi.height *=1;
-        vi.pixel_type = VideoInfo::CS_YV16;
-
-      } else if (vi3.width == vi.width * 4 && vi3.height == vi.height * 1) {
-        vi.width *=4; vi.height *=1;
-        vi.pixel_type = VideoInfo::CS_YV411;
-
-      } else
-        env->ThrowError("YToUV: Video proportions does not match any internal colorspace.");
+      if (vi3.width == vi.width)
+        vi.pixel_type |= VideoInfo::CS_Sub_Width_1;
+      else if (vi3.width == vi.width * 4)
+        vi.pixel_type |= VideoInfo::CS_Sub_Width_4;
+      else if (vi3.width != vi.width * 2)
+        env->ThrowError("YToUV: Video width ratio does not match any internal colorspace.");
+	   
+	  if (vi3.height == vi.height)
+        vi.pixel_type |= VideoInfo::CS_Sub_Height_1;
+	  else if (vi3.height == vi.height * 4)
+        vi.pixel_type |= VideoInfo::CS_Sub_Height_4;
+	  else if (vi3.height != vi.height * 2)
+        env->ThrowError("YToUV: Video height ratio does not match any internal colorspace.");
     }
   } else {
     if (vi.IsY8())  // We default to YV12
