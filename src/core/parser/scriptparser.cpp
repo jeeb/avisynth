@@ -160,8 +160,13 @@ void ScriptParser::ParseFunctionDefinition(void)
 
 PExpression ScriptParser::ParseBlock(bool braced) 
 {
-  if (braced)
+  if (braced) {
+    // allow newlines (and hence comments) before '{' -- Gavino 7 Dec 2009
+    while (tokenizer.IsNewline())
+      tokenizer.NextToken();
+
     Expect('{');
+  }
 
   // the purpose of this array and the accompanying code is to produce
   // a nice balanced binary tree of ExpSequence objects, so that the
