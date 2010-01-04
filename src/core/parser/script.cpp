@@ -74,7 +74,8 @@ extern const AVSFunction Script_functions[] = {
 
   { "Select", "i.+", Select },
 
-  { "nop","",NOP },
+  { "nop","", NOP },
+  { "undefined", "", Undefined },
 
   { "width", "c", Width },
   { "height", "c", Height },
@@ -84,6 +85,8 @@ extern const AVSFunction Script_functions[] = {
   { "frameratedenominator", "c", FrameRateDenominator },
   { "audiorate", "c", AudioRate },
   { "audiolength", "c", AudioLength },  // Fixme: Add int64 to script
+  { "audiolengthlo", "c[]i", AudioLengthLo },
+  { "audiolengthhi", "c[]i", AudioLengthHi },
   { "audiolengthf", "c", AudioLengthF }, // at least this will give an order of the size
   { "audiochannels", "c", AudioChannels },
   { "audiobits", "c", AudioBits },
@@ -93,6 +96,8 @@ extern const AVSFunction Script_functions[] = {
   { "IsYUY2", "c", IsYUY2 },
   { "IsYUV", "c", IsYUV },
   { "IsYV12", "c", IsYV12 },
+  { "IsYV16", "c", IsYV16 },
+  { "IsYV24", "c", IsYV24 },
   { "IsPlanar", "c", IsPlanar },
   { "IsInterleaved", "c", IsInterleaved },
   { "IsRGB24", "c", IsRGB24 },
@@ -399,6 +404,8 @@ AVSValue Select(AVSValue args, void*, IScriptEnvironment* env)
 
 AVSValue NOP(AVSValue args, void*, IScriptEnvironment* env) { return NULL;}
 
+AVSValue Undefined(AVSValue args, void*, IScriptEnvironment* env) { return AVSValue();}
+
 AVSValue Exist(AVSValue args, void*, IScriptEnvironment* env)
  { struct _finddata_t c_file;
    const char *filename = args[0].AsString();
@@ -540,6 +547,8 @@ AVSValue FrameRateNumerator(AVSValue args, void*, IScriptEnvironment* env) { ret
 AVSValue FrameRateDenominator(AVSValue args, void*, IScriptEnvironment* env) { return (int)VI(args[0]).fps_denominator; } // unsigned long truncated to int
 AVSValue AudioRate(AVSValue args, void*, IScriptEnvironment* env) { return VI(args[0]).audio_samples_per_second; }
 AVSValue AudioLength(AVSValue args, void*, IScriptEnvironment* env) { return (int)VI(args[0]).num_audio_samples; }  // Truncated to int
+AVSValue AudioLengthLo(AVSValue args, void*, IScriptEnvironment* env) { return (int)(VI(args[0]).num_audio_samples % (unsigned)args[1].AsInt(1000000000)); }
+AVSValue AudioLengthHi(AVSValue args, void*, IScriptEnvironment* env) { return (int)(VI(args[0]).num_audio_samples / (unsigned)args[1].AsInt(1000000000)); }
 AVSValue AudioLengthF(AVSValue args, void*, IScriptEnvironment* env) { return (double)VI(args[0]).num_audio_samples; } // at least this will give an order of the size
 AVSValue AudioChannels(AVSValue args, void*, IScriptEnvironment* env) { return VI(args[0]).HasAudio() ? VI(args[0]).nchannels : 0; }
 AVSValue AudioBits(AVSValue args, void*, IScriptEnvironment* env) { return VI(args[0]).BytesPerChannelSample()*8; }
@@ -552,6 +561,8 @@ AVSValue IsRGB32(AVSValue args, void*, IScriptEnvironment* env) { return VI(args
 AVSValue IsYUV(AVSValue args, void*, IScriptEnvironment* env) { return VI(args[0]).IsYUV(); }
 AVSValue IsYUY2(AVSValue args, void*, IScriptEnvironment* env) { return VI(args[0]).IsYUY2(); }
 AVSValue IsYV12(AVSValue args, void*, IScriptEnvironment* env) { return VI(args[0]).IsYV12(); }
+AVSValue IsYV16(AVSValue args, void*, IScriptEnvironment* env) { return VI(args[0]).IsYV16(); }
+AVSValue IsYV24(AVSValue args, void*, IScriptEnvironment* env) { return VI(args[0]).IsYV24(); }
 AVSValue IsPlanar(AVSValue args, void*, IScriptEnvironment* env) { return VI(args[0]).IsPlanar(); }
 AVSValue IsInterleaved(AVSValue args, void*, IScriptEnvironment* env) { return VI(args[0]).IsColorSpace(VideoInfo::CS_INTERLEAVED); }
 AVSValue IsFieldBased(AVSValue args, void*, IScriptEnvironment* env) { return VI(args[0]).IsFieldBased(); }

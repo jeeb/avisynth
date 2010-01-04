@@ -146,6 +146,8 @@ AVSValue FrameRateNumerator(AVSValue args, void*, IScriptEnvironment* env);
 AVSValue FrameRateDenominator(AVSValue args, void*, IScriptEnvironment* env);
 AVSValue AudioRate(AVSValue args, void*, IScriptEnvironment* env);
 AVSValue AudioLength(AVSValue args, void*, IScriptEnvironment* env);
+AVSValue AudioLengthLo(AVSValue args, void*, IScriptEnvironment* env);
+AVSValue AudioLengthHi(AVSValue args, void*, IScriptEnvironment* env);
 AVSValue AudioLengthF(AVSValue args, void*, IScriptEnvironment* env);
 AVSValue AudioChannels(AVSValue args, void*, IScriptEnvironment* env);
 AVSValue AudioBits(AVSValue args, void*, IScriptEnvironment* env);
@@ -154,6 +156,8 @@ AVSValue IsAudioInt(AVSValue args, void*, IScriptEnvironment* env);
 
 AVSValue IsRGB(AVSValue args, void*, IScriptEnvironment* env);
 AVSValue IsYV12(AVSValue args, void*, IScriptEnvironment* env);
+AVSValue IsYV16(AVSValue args, void*, IScriptEnvironment* env);
+AVSValue IsYV24(AVSValue args, void*, IScriptEnvironment* env);
 AVSValue IsYUY2(AVSValue args, void*, IScriptEnvironment* env);
 AVSValue IsYUV(AVSValue args, void*, IScriptEnvironment* env);
 AVSValue IsRGB24(AVSValue args, void*, IScriptEnvironment* env);
@@ -199,6 +203,8 @@ AVSValue Rand(AVSValue args, void* user_data, IScriptEnvironment* env);
 AVSValue Select(AVSValue args, void*, IScriptEnvironment* env);
 
 AVSValue NOP(AVSValue args, void*, IScriptEnvironment* env);
+
+AVSValue Undefined(AVSValue args, void*, IScriptEnvironment* env);
 
 AVSValue Exist(AVSValue args, void*, IScriptEnvironment* env);
 
