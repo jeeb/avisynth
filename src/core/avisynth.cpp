@@ -99,13 +99,16 @@ const HKEY RegRootKey = HKEY_LOCAL_MACHINE;
 const char RegAvisynthKey[] = "Software\\Avisynth";
 const char RegPluginDir[] = "PluginDir2_5";
 
-extern const char* loadplugin_prefix;
+
+_PixelClip PixelClip;
+
+
+extern const char* loadplugin_prefix;  // in plugin.cpp
 
 // in plugins.cpp
 AVSValue LoadPlugin(AVSValue args, void* user_data, IScriptEnvironment* env);
 void FreeLibraries(void* loaded_plugins, IScriptEnvironment* env);
 
-//extern const char* loadplugin_prefix;  // in plugin.cpp
 
 
 class LinkedVideoFrame {
@@ -980,9 +983,6 @@ ScriptEnvironment::ScriptEnvironment()
 }
 
 ScriptEnvironment::~ScriptEnvironment() {
-  // Before we start to pull the world apart
-  // give every one their last wish.
-  at_exit.Execute(this);
 
   closing = true;
 
@@ -1013,6 +1013,10 @@ ScriptEnvironment::~ScriptEnvironment() {
   }
 
   DeleteCriticalSection(&cs_var_table);
+
+  // Before we start to pull the world apart
+  // give every one their last wish.
+  at_exit.Execute(this);
 
   // If we init'd COM and this is the right thread then release it
   // If it's the wrong threadId then tuff, nothing we can do.
