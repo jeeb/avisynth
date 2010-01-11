@@ -7,7 +7,7 @@
 ;----------------------------------
 LangString AVS_Standard             ${AvsLang} "Standartní"
 LangString AVS_Minimal              ${AvsLang} "Minimální"
-LangString AVS_Standalone           ${AvsLang} "Samostatná"
+LangString AVS_Standalone           ${AvsLang} "Samostatná, Unpack Files only" ; To be translated
 LangString AVS_Full                 ${AvsLang} "Plná"
 
 LangString FINISHPAGE_TEXT          ${AvsLang} "Technickou podporu a novinky naleznete na webových stránkách AviSynthu"

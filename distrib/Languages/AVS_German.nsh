@@ -7,7 +7,7 @@
 ;----------------------------------
 LangString AVS_Standard             ${AvsLang} "Standard"
 LangString AVS_Minimal              ${AvsLang} "Minimal"
-LangString AVS_Standalone           ${AvsLang} "Standalone"
+LangString AVS_Standalone           ${AvsLang} "Standalone, Unpack files only" ; To be translated
 LangString AVS_Full                 ${AvsLang} "Voll"
 
 LangString FINISHPAGE_TEXT          ${AvsLang} "Besuchen Sie die AviSynth-Webseite für die Neuigkeiten und Unterstützung"
