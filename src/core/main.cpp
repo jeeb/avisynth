@@ -52,7 +52,7 @@
 
 #ifndef _DEBUG
 // Release mode logging
-#define OPT_RELS_LOGGING
+// #define OPT_RELS_LOGGING
 #ifdef OPT_RELS_LOGGING
 
 #undef _RPT0
