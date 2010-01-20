@@ -95,6 +95,21 @@ ConvertToRGB::ConvertToRGB( PClip _child, bool rgb24, const char* matrix,
 }
 
 
+inline void YUV2RGB2(int y, int u0, int u1, int v0, int v1, BYTE* out) 
+{
+  const int crv = int(1.596*32768+0.5);
+  const int cgv = int(0.813*32768+0.5);
+  const int cgu = int(0.391*32768+0.5);
+  const int cbu = int(2.018*32768+0.5);
+
+  const int scaled_y = (y - 16) * int((255.0/219.0)*65536+0.5);
+
+  out[0] = ScaledPixelClip(scaled_y + (u0+u1-256) * cbu);                     // blue
+  out[1] = ScaledPixelClip(scaled_y - (u0+u1-256) * cgu - (v0+v1-256) * cgv); // green
+  out[2] = ScaledPixelClip(scaled_y                     + (v0+v1-256) * crv); // red
+}
+
+
 PVideoFrame __stdcall ConvertToRGB::GetFrame(int n, IScriptEnvironment* env)
 {
   PVideoFrame src = child->GetFrame(n, env);
@@ -134,12 +149,17 @@ PVideoFrame __stdcall ConvertToRGB::GetFrame(int n, IScriptEnvironment* env)
       srcp += vi.height * src_pitch;
       for (int y=vi.height; y>0; --y) {
         srcp -= src_pitch;
-        for (int x=0; x<vi.width; x+=2) {
+        int x;
+        for (x=0; x<vi.width-2; x+=2) {
           YUV2RGB(srcp[x*2+0], srcp[x*2+1], srcp[x*2+3], &dstp[x*4]);
+          YUV2RGB2(srcp[x*2+2], srcp[x*2+1], srcp[x*2+5], srcp[x*2+3], srcp[x*2+7], &dstp[x*4+4]);
           dstp[x*4+3] = 255;
-          YUV2RGB(srcp[x*2+2], srcp[x*2+1], srcp[x*2+3], &dstp[x*4+4]);
           dstp[x*4+7] = 255;
         }
+        YUV2RGB(srcp[x*2+0], srcp[x*2+1], srcp[x*2+3], &dstp[x*4]);
+        YUV2RGB(srcp[x*2+2], srcp[x*2+1], srcp[x*2+3], &dstp[x*4+4]);
+        dstp[x*4+3] = 255;
+        dstp[x*4+7] = 255;
         dstp += dst_pitch;
       }
     }
@@ -147,10 +167,13 @@ PVideoFrame __stdcall ConvertToRGB::GetFrame(int n, IScriptEnvironment* env)
       srcp += vi.height * src_pitch;
       for (int y=vi.height; y>0; --y) {
         srcp -= src_pitch;
-        for (int x=0; x<vi.width; x+=2) {
+        int x;
+        for (x=0; x<vi.width-2; x+=2) {
           YUV2RGB(srcp[x*2+0], srcp[x*2+1], srcp[x*2+3], &dstp[x*3]);
-          YUV2RGB(srcp[x*2+2], srcp[x*2+1], srcp[x*2+3], &dstp[x*3+3]);
+          YUV2RGB2(srcp[x*2+2], srcp[x*2+1], srcp[x*2+5], srcp[x*2+3], srcp[x*2+7], &dstp[x*3+3]);
         }
+        YUV2RGB(srcp[x*2+0], srcp[x*2+1], srcp[x*2+3], &dstp[x*3]);
+        YUV2RGB(srcp[x*2+2], srcp[x*2+1], srcp[x*2+3], &dstp[x*3+3]);
         dstp += dst_pitch;
       }
     }
@@ -161,57 +184,76 @@ PVideoFrame __stdcall ConvertToRGB::GetFrame(int n, IScriptEnvironment* env)
 
 AVSValue __cdecl ConvertToRGB::Create(AVSValue args, void*, IScriptEnvironment* env)
 {
+  const bool haveOpts = args[3].Defined() || args[4].Defined();
   PClip clip = args[0].AsClip();
   const char* const matrix = args[1].AsString(0);
   const VideoInfo& vi = clip->GetVideoInfo();
-  if (vi.IsYUV()) {
-    if (vi.IsPlanar()) {
-      AVSValue new_args[5] = { clip, args[2].AsBool(false), matrix, args[3].AsString("MPEG2"), args[4].AsString("Bicubic") };
-      clip = ConvertToPlanarGeneric::CreateYV24(AVSValue(new_args, 5), NULL, env).AsClip();
-      return new ConvertYV24ToRGB(clip, getMatrix(args[1].AsString("rec601"), env), 4 , env);
-    }
-    return new ConvertToRGB(clip, false, matrix, env);
-  } else {
-    return clip;
+
+  if (vi.IsPlanar()) {
+    AVSValue new_args[5] = { clip, args[2].AsBool(false), matrix, args[3].AsString("MPEG2"), args[4].AsString("Bicubic") };
+    clip = ConvertToPlanarGeneric::CreateYV24(AVSValue(new_args, 5), NULL, env).AsClip();
+    return new ConvertYV24ToRGB(clip, getMatrix(args[1].AsString("rec601"), env), 4 , env);
   }
+
+  if (haveOpts)
+    env->ThrowError("ConvertToRGB: ChromaPlacement and ChromaResample options are not supported.");
+
+  if (vi.IsYUV())
+    return new ConvertToRGB(clip, false, matrix, env);
+
+  return clip;
 }
 
 
 AVSValue __cdecl ConvertToRGB::Create32(AVSValue args, void*, IScriptEnvironment* env)
 {
+  const bool haveOpts = args[3].Defined() || args[4].Defined();
   PClip clip = args[0].AsClip();
   const char* const matrix = args[1].AsString(0);
   const VideoInfo vi = clip->GetVideoInfo();
-  if (vi.IsYUV()) {
-    if (vi.IsPlanar()) {
-      AVSValue new_args[5] = { clip, args[2].AsBool(false), matrix, args[3].AsString("MPEG2"), args[4].AsString("Bicubic") };
-      clip = ConvertToPlanarGeneric::CreateYV24(AVSValue(new_args, 5), NULL, env).AsClip();
-      return new ConvertYV24ToRGB(clip, getMatrix(args[1].AsString("rec601"), env), 4 , env);
-    }
+
+  if (vi.IsPlanar()) {
+    AVSValue new_args[5] = { clip, args[2].AsBool(false), matrix, args[3].AsString("MPEG2"), args[4].AsString("Bicubic") };
+    clip = ConvertToPlanarGeneric::CreateYV24(AVSValue(new_args, 5), NULL, env).AsClip();
+    return new ConvertYV24ToRGB(clip, getMatrix(args[1].AsString("rec601"), env), 4 , env);
+  }
+
+  if (haveOpts)
+    env->ThrowError("ConvertToRGB32: ChromaPlacement and ChromaResample options are not supported.");
+
+  if (vi.IsYUV())
     return new ConvertToRGB(clip, false, matrix, env);
-  } else if (vi.IsRGB24())
+
+  if (vi.IsRGB24())
     return new RGB24to32(clip);
-  else
-    return clip;
+
+  return clip;
 }
 
 
 AVSValue __cdecl ConvertToRGB::Create24(AVSValue args, void*, IScriptEnvironment* env)
 {
+  const bool haveOpts = args[3].Defined() || args[4].Defined();
   PClip clip = args[0].AsClip();
   const char* const matrix = args[1].AsString(0);
   const VideoInfo& vi = clip->GetVideoInfo();
-  if (vi.IsYUV()) {
-    if (vi.IsPlanar()) {
-      AVSValue new_args[5] = { clip, args[2].AsBool(false), matrix, args[3].AsString("MPEG2"), args[4].AsString("Bicubic") };
-      clip = ConvertToPlanarGeneric::CreateYV24(AVSValue(new_args, 5), NULL, env).AsClip();
-      return new ConvertYV24ToRGB(clip, getMatrix(args[1].AsString("rec601"), env), 3 , env);
-    }
+
+  if (vi.IsPlanar()) {
+    AVSValue new_args[5] = { clip, args[2].AsBool(false), matrix, args[3].AsString("MPEG2"), args[4].AsString("Bicubic") };
+    clip = ConvertToPlanarGeneric::CreateYV24(AVSValue(new_args, 5), NULL, env).AsClip();
+    return new ConvertYV24ToRGB(clip, getMatrix(args[1].AsString("rec601"), env), 3 , env);
+  }
+
+  if (haveOpts)
+    env->ThrowError("ConvertToRGB24: ChromaPlacement and ChromaResample options are not supported.");
+
+  if (vi.IsYUV())
     return new ConvertToRGB(clip, true, matrix, env);
-  } else if (vi.IsRGB32())
+
+  if (vi.IsRGB32())
     return new RGB32to24(clip);
-  else
-    return clip;
+
+  return clip;
 }
 
 /**********************************
