@@ -319,28 +319,37 @@ public:
     if (audio) delete audio;
   }
 
-  ColorBars(int w, int h, const char* pixel_type, IScriptEnvironment* env) {
+  ColorBars(int w, int h, const char* pixel_type, int type, IScriptEnvironment* env) {
     memset(&vi, 0, sizeof(VideoInfo));
     vi.width = w;
     vi.height = h;
     vi.fps_numerator = 30000;
     vi.fps_denominator = 1001;
     vi.num_frames = 107892;   // 1 hour
-    if (lstrcmpi(pixel_type, "RGB32") == 0) {
+    if (type) { // ColorbarsHD
+        if (lstrcmpi(pixel_type, "YV24") != 0)
+          env->ThrowError("ColorBarsHD: pixel_type must be \"YV24\"");
+
+        vi.pixel_type = VideoInfo::CS_YV24;
+    }
+    else if (lstrcmpi(pixel_type, "RGB32") == 0) {
         vi.pixel_type = VideoInfo::CS_BGR32;
     }
-	else if (lstrcmpi(pixel_type, "YUY2") == 0) { // YUY2
+    else if (lstrcmpi(pixel_type, "YUY2") == 0) { // YUY2
         vi.pixel_type = VideoInfo::CS_YUY2;
-		if (w & 1)
+        if (w & 1)
           env->ThrowError("ColorBars: YUY2 width must be even!");
     }
-	else if (lstrcmpi(pixel_type, "YV12") == 0) { // YV12
-		vi.pixel_type = VideoInfo::CS_YV12;
-		if ((w & 1) || (h & 1))
-		env->ThrowError("ColorBars: YV12 both height and width must be even!");
-	}
-	else {
-      env->ThrowError("ColorBars: pixel_type must be \"RGB32\", \"YUY2\" or \"YV12\"");
+    else if (lstrcmpi(pixel_type, "YV12") == 0) { // YV12
+        vi.pixel_type = VideoInfo::CS_YV12;
+        if ((w & 1) || (h & 1))
+        env->ThrowError("ColorBars: YV12 both height and width must be even!");
+    }
+    else if (lstrcmpi(pixel_type, "YV24") == 0) { // YV24
+        vi.pixel_type = VideoInfo::CS_YV24;
+    }
+    else {
+      env->ThrowError("ColorBars: pixel_type must be \"RGB32\", \"YUY2\" , \"YV12\" or \"YV24\"");
     }
     vi.sample_type = SAMPLE_FLOAT;
     vi.nchannels = 2;
@@ -353,8 +362,194 @@ public:
 
     int y = 0;
     
+	// HD colorbars arib_std_b28
+	// Rec709 yuv values calculated by jmac698, Jan 2010, for Midzuki
+	if (type) { // ColorbarsHD
+		BYTE* pY = (BYTE*)frame->GetWritePtr(PLANAR_Y);
+		BYTE* pU = (BYTE*)frame->GetWritePtr(PLANAR_U);
+		BYTE* pV = (BYTE*)frame->GetWritePtr(PLANAR_V);
+		const int pitchY  = frame->GetPitch(PLANAR_Y);
+		const int pitchUV = frame->GetPitch(PLANAR_U);
+
+//		Nearest 16:9 pixel exact sizes
+//		56*X x 12*Y
+//		 728 x  480  ntsc anamorphic
+//		 728 x  576  pal anamorphic
+//		 840 x  480
+//		1008 x  576
+//		1288 x  720 <- default
+//		1456 x 1080  hd anamorphic
+//		1904 x 1080
+
+		const int c = (w*3+14)/28; // 1/7th of 3/4 of width
+		const int d = (w-c*7+1)/2; // remaining 1/8th of width
+
+		const int p4 = (3*h+6)/12; // 3/12th of height
+		const int p23 = (h+6)/12;  // 1/12th of height
+		const int p1 = h-p23*2-p4; // remaining 7/12th of height
+
+//                          75%  Rec709 -- Grey40 Grey75 Yellow  Cyan   Green Magenta  Red   Blue
+		static const BYTE pattern1Y[] = {    104,   180,   168,   145,   134,    63,    51,    28 };
+		static const BYTE pattern1U[] = {    128,   128,    44,   147,    63,   193,   109,   212 };
+		static const BYTE pattern1V[] = {    128,   128,   136,    44,    52,   204,   212,   120 };
+		for (; y < p1; ++y) { // Pattern 1
+			int x = 0;
+			for (; x < d; ++x) {
+				pY[x] = pattern1Y[0]; // 40% Grey
+				pU[x] = pattern1U[0];
+				pV[x] = pattern1V[0];
+			}
+			for (int i=1; i<8; i++) {
+				for (int j=0; j < c; ++j, ++x) {
+					pY[x] = pattern1Y[i]; // 75% Colour bars
+					pU[x] = pattern1U[i];
+					pV[x] = pattern1V[i];
+				}
+			}
+			for (; x < w; ++x) {
+				pY[x] = pattern1Y[0]; // 40% Grey
+				pU[x] = pattern1U[0];
+				pV[x] = pattern1V[0];
+			}
+			pY += pitchY; pU += pitchUV; pV += pitchUV;
+		} //              100% Rec709       Cyan  Blue Yellow  Red    +I Grey75  White
+		static const BYTE pattern23Y[] = {   188,   32,  219,   63,   16,  180,  235 };
+		static const BYTE pattern23U[] = {   154,  240,   16,  102,   98,  128,  128 };
+		static const BYTE pattern23V[] = {    16,  118,  138,  240,  161,  128,  128 };
+		for (; y < p1+p23; ++y) { // Pattern 2
+			int x = 0;
+			for (; x < d; ++x) {
+				pY[x] = pattern23Y[0]; // 100% Cyan
+				pU[x] = pattern23U[0];
+				pV[x] = pattern23V[0];
+			}
+			for (; x < c+d; ++x) {
+				pY[x] = pattern23Y[4]; // +I or Grey75 or White ???
+				pU[x] = pattern23U[4];
+				pV[x] = pattern23V[4];
+			}
+			for (; x < c*7+d; ++x) {
+				pY[x] = pattern23Y[5]; // 75% White
+				pU[x] = pattern23U[5];
+				pV[x] = pattern23V[5];
+			}
+			for (; x < w; ++x) {
+				pY[x] = pattern23Y[1]; // 100% Blue
+				pU[x] = pattern23U[1];
+				pV[x] = pattern23V[1];
+			}
+			pY += pitchY; pU += pitchUV; pV += pitchUV;
+		}
+		for (; y < p1+p23*2; ++y) { // Pattern 3
+			int x = 0;
+			for (; x < d; ++x) {
+				pY[x] = pattern23Y[2]; // 100% Yellow
+				pU[x] = pattern23U[2];
+				pV[x] = pattern23V[2];
+			}
+			for (int j=0; j < c*7; ++j, ++x) { // Y-Ramp
+				pY[x] = 16 + (220*j)/(c*7);
+				pU[x] = 128;
+				pV[x] = 128;
+			}
+			for (; x < w; ++x) {
+				pY[x] = pattern23Y[3]; // 100% Red
+				pU[x] = pattern23U[3];
+				pV[x] = pattern23V[3];
+			}
+			pY += pitchY; pU += pitchUV; pV += pitchUV;
+		} //                             Grey15 Black White Black   -2% Black   +2% Black   +4% Black
+		static const BYTE pattern4Y[] = {    49,   16,  235,   16,   12,   16,   20,   16,   25,   16 };
+		static const BYTE pattern4U[] = {   128,  128,  128,  128,  128,  128,  128,  128,  128,  128 };
+		static const BYTE pattern4V[] = {   128,  128,  128,  128,  128,  128,  128,  128,  128,  128 };
+		static const BYTE pattern4W[] = {     0,    9,   21,   26,   28,   30,   32,   34,   36,   42 }; // in 6th's
+		for (; y < h; ++y) { // Pattern 4
+			int x = 0;
+			for (; x < d; ++x) {
+				pY[x] = pattern4Y[0]; // 15% Grey
+				pU[x] = pattern4U[0];
+				pV[x] = pattern4V[0];
+			}
+			for (int i=1; i<=9; i++) {
+				for (; x < d+(pattern4W[i]*c+3)/6; ++x) {
+					pY[x] = pattern4Y[i];
+					pU[x] = pattern4U[i];
+					pV[x] = pattern4V[i];
+				}
+			}
+			for (; x < w; ++x) {
+				pY[x] = pattern4Y[0]; // 15% Grey
+				pU[x] = pattern4U[0];
+				pV[x] = pattern4V[0];
+			}
+			pY += pitchY; pU += pitchUV; pV += pitchUV;
+		}
+	}
 	// Rec. ITU-R BT.801-1
-	if (vi.IsRGB32()) {
+	else if (vi.IsYV24()) {
+		BYTE* pY = (BYTE*)frame->GetWritePtr(PLANAR_Y);
+		BYTE* pU = (BYTE*)frame->GetWritePtr(PLANAR_U);
+		BYTE* pV = (BYTE*)frame->GetWritePtr(PLANAR_V);
+		const int pitchY  = frame->GetPitch(PLANAR_Y);
+		const int pitchUV = frame->GetPitch(PLANAR_U);
+//                                              LtGrey  Yellow    Cyan   Green Magenta     Red    Blue
+		static const BYTE top_two_thirdsY[] = {   0xb4,   0xa2,   0x83,   0x70,   0x54,   0x41,   0x23 };
+		static const BYTE top_two_thirdsU[] = {   0x80,   0x2c,   0x9c,   0x48,   0xb8,   0x64,   0xd4 };
+		static const BYTE top_two_thirdsV[] = {   0x80,   0x8e,   0x2c,   0x3a,   0xc6,   0xd4,   0x72 };
+
+		for (; y*3 < h*2; ++y) {
+			int x = 0;
+			for (int i=0; i<7; i++) {
+				for (; x < (w*(i+1)+3)/7; ++x) {
+					pY[x] = top_two_thirdsY[i];
+					pU[x] = top_two_thirdsU[i];
+					pV[x] = top_two_thirdsV[i];
+				}
+			}
+			pY += pitchY; pU += pitchUV; pV += pitchUV;
+		} //                                                    Blue   Black Magenta   Black    Cyan   Black  LtGrey
+		static const BYTE two_thirds_to_three_quartersY[] = {   0x23,   0x10,   0x54,   0x10,   0x83,   0x10,   0xb4 };
+		static const BYTE two_thirds_to_three_quartersU[] = {   0xd4,   0x80,   0xb8,   0x80,   0x9c,   0x80,   0x80 };
+		static const BYTE two_thirds_to_three_quartersV[] = {   0x72,   0x80,   0xc6,   0x80,   0x2c,   0x80,   0x80 };
+		for (; y*4 < h*3; ++y) {
+			int x = 0;
+			for (int i=0; i<7; i++) {
+				for (; x < (w*(i+1)+3)/7; ++x) {
+					pY[x] = two_thirds_to_three_quartersY[i];
+					pU[x] = two_thirds_to_three_quartersU[i];
+					pV[x] = two_thirds_to_three_quartersV[i];
+				}
+			}
+			pY += pitchY; pU += pitchUV; pV += pitchUV;
+		} //                                        -I   white      +Q   Black   -4ire   Black   +4ire   Black
+		static const BYTE bottom_quarterY[] = {   0x10,   0xeb,   0x10,   0x10,   0x07,   0x10,   0x19,   0x10 };
+		static const BYTE bottom_quarterU[] = {   0x9e,   0x80,   0xae,   0x80,   0x80,   0x80,   0x80,   0x80 };
+		static const BYTE bottom_quarterV[] = {   0x5f,   0x80,   0x95,   0x80,   0x80,   0x80,   0x80,   0x80 };
+		for (; y < h; ++y) {
+			int x = 0;
+			for (int i=0; i<4; ++i) {
+				for (; x < (w*(i+1)*5+14)/28; ++x) {
+					pY[x] = bottom_quarterY[i];
+					pU[x] = bottom_quarterU[i];
+					pV[x] = bottom_quarterV[i];
+				}
+			}
+			for (int j=4; j<7; ++j) {
+				for (; x < (w*(j+12)+10)/21; ++x) {
+					pY[x] = bottom_quarterY[j];
+					pU[x] = bottom_quarterU[j];
+					pV[x] = bottom_quarterV[j];
+				}
+			}
+			for (; x < w; ++x) {
+				pY[x] = bottom_quarterY[7];
+				pU[x] = bottom_quarterU[7];
+				pV[x] = bottom_quarterV[7];
+			}
+			pY += pitchY; pU += pitchUV; pV += pitchUV;
+		}
+	}
+	else if (vi.IsRGB32()) {
 		// note we go bottom->top
 		static const int bottom_quarter[] =
 // RGB[16..235]     -I     white        +Q     Black     -4ire     Black     +4ire     Black
@@ -537,11 +732,11 @@ public:
 
   void __stdcall GetAudio(void* buf, __int64 start, __int64 count, IScriptEnvironment* env) {
 #if 1
-    const int d_mod = vi.audio_samples_per_second*2;
-    float* samples = (float*)buf;
+	const int d_mod = vi.audio_samples_per_second*2;
+	float* samples = (float*)buf;
 
 	unsigned j = (unsigned)(start % nsamples);
-    for (int i=0;i<count;i++) {
+	for (int i=0;i<count;i++) {
 	  samples[i*2]=audio[j];
 	  if (((start+i)%d_mod)>vi.audio_samples_per_second) {
 		samples[i*2+1]=audio[j];
@@ -576,8 +771,12 @@ public:
 #endif
   }
 
-  static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env) {
-    return new ColorBars(args[0].AsInt(640), args[1].AsInt(480), args[2].AsString("RGB32"), env);
+  static AVSValue __cdecl Create(AVSValue args, void* _type, IScriptEnvironment* env) {
+    const int type = (int)_type;
+
+    return new ColorBars(args[0].AsInt(   type ? 1288 : 640),
+                         args[1].AsInt(   type ?  720 : 480),
+                         args[2].AsString(type ? "YV24" : "RGB32"), type, env);
   }
 };
 
@@ -804,6 +1003,30 @@ AVSValue __cdecl Create_Version(AVSValue args, void*, IScriptEnvironment* env) {
 }
 
 
+AVSValue __cdecl Create_DirectShowSource(AVSValue args, void*, IScriptEnvironment* env) {
+
+  env->ThrowError("DirectShowSource: DirectShowSource.dll cannot be found.");
+
+  return AVSValue();
+}
+
+
+AVSValue __cdecl Create_TCPServer(AVSValue args, void*, IScriptEnvironment* env) {
+
+  env->ThrowError("TCPServer: TCPDeliver.dll cannot be found.");
+
+  return AVSValue();
+}
+
+
+AVSValue __cdecl Create_TCPClient(AVSValue args, void*, IScriptEnvironment* env) {
+
+  env->ThrowError("TCPSource: TCPDeliver.dll  cannot be found.");
+
+  return AVSValue();
+}
+
+
 extern const AVSFunction Source_filters[] = {
   { "AVISource", "s+[audio]b[pixel_type]s[fourCC]s", AVISource::Create, (void*) AVISource::MODE_NORMAL },
   { "AVIFileSource", "s+[audio]b[pixel_type]s[fourCC]s", AVISource::Create, (void*) AVISource::MODE_AVIFILE },
@@ -820,10 +1043,15 @@ extern const AVSFunction Source_filters[] = {
   { "Blackness", "[]c*[length]i[width]i[height]i[pixel_type]s[fps]f[fps_denominator]i[audio_rate]i[stereo]b[sixteen_bit]b[color]i[color_yuv]i[clip]c", Create_BlankClip },
   { "Blackness", "[]c*[length]i[width]i[height]i[pixel_type]s[fps]f[fps_denominator]i[audio_rate]i[channels]i[sample_type]s[color]i[color_yuv]i[clip]c", Create_BlankClip },
   { "MessageClip", "s[width]i[height]i[shrink]b[text_color]i[halo_color]i[bg_color]i", Create_MessageClip },
-  { "ColorBars", "[width]i[height]i[pixel_type]s", ColorBars::Create },
+  { "ColorBars", "[width]i[height]i[pixel_type]s", ColorBars::Create, (void*)0 },
+  { "ColorBarsHD", "[width]i[height]i[pixel_type]s", ColorBars::Create, (void*)1 },
   { "Tone", "[length]f[frequency]f[samplerate]i[channels]i[type]s[level]f", Tone::Create },
 
   { "Version", "", Create_Version },
+
+  { "DirectShowSource", "s+[fps]f[seek]b[audio]b[video]b[convertfps]b[seekzero]b[timeout]i[pixel_type]s[framecount]i[logfile]s[logmask]i", Create_DirectShowSource },
+  { "TCPServer", "c[port]i", Create_TCPServer },
+  { "TCPSource", "s[port]i[compression]s", Create_TCPClient },
+
   { 0,0,0 }
 };
-
