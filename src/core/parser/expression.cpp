@@ -474,18 +474,19 @@ AVSValue ExpVariableReference::Evaluate(IScriptEnvironment* env)
   AVSValue result;
   try {
     // first look for a genuine variable
-	// No Tritical don't add a cache to this one, it's a Var
+    // No Tritical don't add a cache to this one, it's a Var
     return env->GetVar(name);
   }
   catch (IScriptEnvironment::NotFound) {
+    // Swap order to match ::Call below -- Gavino Jan 2010
     try {
-      // next look for a single-arg function taking implicit "last"
-      result = env->Invoke(name, env->GetVar("last"));
+      // next look for an argless function
+      result = env->Invoke(name, AVSValue(0,0));
     }
     catch (IScriptEnvironment::NotFound) {
       try {
-        // finally look for an argless function
-        result = env->Invoke(name, AVSValue(0,0));
+        // finally look for a single-arg function taking implicit "last"
+        result = env->Invoke(name, env->GetVar("last"));
       }
       catch (IScriptEnvironment::NotFound) {
         env->ThrowError("I don't know what \"%s\" means", name);
