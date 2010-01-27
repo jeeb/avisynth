@@ -277,7 +277,7 @@ GetSample::GetSample(bool _load_audio, bool _load_video, unsigned _media, LOG* _
       if (!vi.IsPlanar()) { // Packed formats have rows 32bit aligned
 
         const int rowsize = pvf->GetRowSize();
-        const int height  = pvf->GetHeight();
+        int height  = pvf->GetHeight();
         int stride;
 
         // Check for rows not being 32 bit aligned
@@ -287,14 +287,20 @@ GetSample::GetSample(bool _load_audio, bool _load_video, unsigned _media, LOG* _
           stride  = (rowsize+3)&~3;
         }
 
+        // Check input size is adequate
+        if (av_sample_bytes < height*stride) {
+          dssRPT2(dssERROR, "GetCurrentFrame() Input buffer to small, %d expecting %d!\n", av_sample_bytes, height*stride);
+          height = av_sample_bytes/stride;
+        }
+
         env->BitBlt(pvf->GetWritePtr(), pvf->GetPitch(), buf, stride, rowsize, height);
       }
       else {
 
-        const int rowsize = pvf->GetRowSize(PLANAR_Y);
-        const int height  = pvf->GetHeight(PLANAR_Y);
+        const int rowsize   = pvf->GetRowSize(PLANAR_Y);
         const int UVrowsize = pvf->GetRowSize(PLANAR_V);
-        const int UVheight  = pvf->GetHeight(PLANAR_V);
+        int height    = pvf->GetHeight(PLANAR_Y);
+        int UVheight  = pvf->GetHeight(PLANAR_V);
         int stride;
         int UVstride;
 
@@ -309,7 +315,20 @@ GetSample::GetSample(bool _load_audio, bool _load_video, unsigned _media, LOG* _
           UVstride  = (UVrowsize+1)&~1;
         }
 
+        // Check input size is adequate
+        if (av_sample_bytes < height*stride) {
+          dssRPT2(dssERROR, "GetCurrentFrame() Input buffer to small, %d expecting %d!\n", av_sample_bytes, height*stride);
+          height = av_sample_bytes/stride;
+        }
+
         env->BitBlt(pvf->GetWritePtr(PLANAR_Y), pvf->GetPitch(PLANAR_Y), buf, stride, rowsize, height);
+
+        // Check input size is adequate
+        if (av_sample_bytes < height*stride+2*UVheight*UVstride) {
+          dssRPT2(dssERROR, "GetCurrentFrame() Input buffer to small, %d expecting %d!\n",
+                            av_sample_bytes, height*stride+2*UVheight*UVstride);
+          UVheight = (av_sample_bytes-height*stride)/(2*UVstride);
+        }
 
         // V plane first, after aligned end of Y plane
         buf += stride * height;
@@ -348,11 +367,11 @@ GetSample::GetSample(bool _load_audio, bool _load_video, unsigned _media, LOG* _
       pvf = NULL; // Nuke current frame
       HRESULT hr = mc->Run();
       dssRPT2(dssPROC, "StartGraph(%s) mc->Run() = 0x%x\n", streamName, hr);
-	  // Retry!!
+      // Retry!!
       if (hr == E_FAIL) {
         hr = mc->Run();
         dssRPT2(dssPROC, "Retry(%s) mc->Run() = 0x%x\n", streamName, hr);
-	  }
+      }
       if (hr == S_FALSE) {
         // Damn! graph is stuffing around and has not started (yet?)
         OAFilterState fs = State_Stopped;
@@ -832,7 +851,11 @@ SeekExit:
   HRESULT __stdcall GetSample::QueryAccept(const AM_MEDIA_TYPE* pmt) {
     VideoInfo tmp = vi;
 
-    return InternalQueryAccept(pmt, tmp);
+    HRESULT result = InternalQueryAccept(pmt, tmp);
+
+    if (result == S_OK) vi = tmp;
+
+    return result;
   }
 
   HRESULT GetSample::InternalQueryAccept(const AM_MEDIA_TYPE* pmt, VideoInfo &vi) {
