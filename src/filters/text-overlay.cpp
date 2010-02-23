@@ -909,8 +909,8 @@ AVSValue __cdecl ShowSMPTE::CreateSMTPE(AVSValue args, void*, IScriptEnvironment
   const int offset_f = args[3].AsInt(0);
   const int xreal = args[0].AsClip()->GetVideoInfo().width/2;
   const int yreal = args[0].AsClip()->GetVideoInfo().height-8;
-  const int x = int(args[4].AsFloat(xreal)*8+0.5);
-  const int y = int(args[5].AsFloat(yreal)*8+0.5);
+  const int x = int(args[4].AsDblDef(xreal)*8+0.5);
+  const int y = int(args[5].AsDblDef(yreal)*8+0.5);
   const char* font = args[6].AsString("Arial");
   const int size = int(args[7].AsFloat(24)*8+0.5);
   const int text_color = args[8].AsInt(0xFFFF00);
@@ -926,8 +926,8 @@ AVSValue __cdecl ShowSMPTE::CreateTime(AVSValue args, void*, IScriptEnvironment*
   const int offset_f = args[1].AsInt(0);
   const int xreal = args[0].AsClip()->GetVideoInfo().width/2;
   const int yreal = args[0].AsClip()->GetVideoInfo().height-8;
-  const int x = int(args[2].AsFloat(xreal)*8+0.5);
-  const int y = int(args[3].AsFloat(yreal)*8+0.5);
+  const int x = int(args[2].AsDblDef(xreal)*8+0.5);
+  const int y = int(args[3].AsDblDef(yreal)*8+0.5);
   const char* font = args[4].AsString("Arial");
   const int size = int(args[5].AsFloat(24)*8+0.5);
   const int text_color = args[6].AsInt(0xFFFF00);
@@ -1027,8 +1027,8 @@ AVSValue __cdecl Subtitle::Create(AVSValue args, void*, IScriptEnvironment* env)
 	 case 7: case 8: case 9: defy = 0; break;
      default: defy = (size+4)/8; break; }
 
-    const int x = int(args[2].AsFloat(defx)*8+0.5);
-    const int y = int(args[3].AsFloat(defy)*8+0.5);
+    const int x = int(args[2].AsDblDef(defx)*8+0.5);
+    const int y = int(args[3].AsDblDef(defy)*8+0.5);
 
     return new Subtitle(clip, text, x, y, first_frame, last_frame, font, size, text_color,
 	                    halo_color, align, spc, multiline, lsp, font_width, font_angle, interlaced);

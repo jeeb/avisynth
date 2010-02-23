@@ -185,7 +185,7 @@ void __stdcall AVSsupereq::GetAudio(void* buf, __int64 start, __int64 count, ISc
 
       {for (unsigned n=0; n<last_nch; n++) { // Copies n channels to separate buffers to individual filters
         SFLOAT *db = dstbuffer + n;
-        for (int s=0, r=0; s<last_srate; s++, r+=last_nch)
+        for (unsigned s=0, r=0; s<last_srate; s++, r+=last_nch)
           passbuffer[s] = db[r];
 
         eqs[n]->write_samples(passbuffer, last_srate);

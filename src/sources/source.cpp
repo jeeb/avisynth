@@ -186,7 +186,7 @@ static AVSValue __cdecl Create_BlankClip(AVSValue args, void*, IScriptEnvironmen
     vi.pixel_type = VideoInfo::CS_BGR32;
 
 
-  double n = args[5].AsFloat(double(vi_default.fps_numerator));
+  double n = args[5].AsDblDef(double(vi_default.fps_numerator));
 
   if (args[5].Defined() && !args[6].Defined()) {
     unsigned d = 1;

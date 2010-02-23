@@ -1897,7 +1897,7 @@ PClip FilteredResize::CreateResize(PClip clip, int target_width, int target_heig
   const VideoInfo& vi = clip->GetVideoInfo();
   const double subrange_left = args[0].AsFloat(0), subrange_top = args[1].AsFloat(0);
 
-  double subrange_width = args[2].AsFloat(vi.width), subrange_height = args[3].AsFloat(vi.height);
+  double subrange_width = args[2].AsDblDef(vi.width), subrange_height = args[3].AsDblDef(vi.height);
   // Crop style syntax
   if (subrange_width  <= 0.0) subrange_width  = vi.width  - subrange_left + subrange_width;
   if (subrange_height <= 0.0) subrange_height = vi.height - subrange_top  + subrange_height;

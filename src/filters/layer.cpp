@@ -109,9 +109,9 @@ PVideoFrame __stdcall Mask::GetFrame(int n, IScriptEnvironment* env)
 	const int myx = vi.width;
 	const int myy = vi.height;
 
-	__declspec(align(8)) static const const __int64 rgb2lum = ((__int64)cyr << 32) | (cyg << 16) | cyb;
-	__declspec(align(8)) static const const __int64 alpha_mask=0x00ffffff00ffffff;
-	__declspec(align(8)) static const const __int64 color_mask=0xff000000ff000000;
+	__declspec(align(8)) static const __int64 rgb2lum = ((__int64)cyr << 32) | (cyg << 16) | cyb;
+	__declspec(align(8)) static const __int64 alpha_mask=0x00ffffff00ffffff;
+	__declspec(align(8)) static const __int64 color_mask=0xff000000ff000000;
 /*
   for (int y=0; y<vi.height; ++y)
   {

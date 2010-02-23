@@ -1186,7 +1186,7 @@ void __stdcall ResampleAudio::GetAudio(void* buf, __int64 start, __int64 count, 
   __int64 src_start = __int64(((long double)start           / factor) * (1 << Np) + 0.5);
   __int64 src_end   = __int64(((long double)(start + count) / factor) * (1 << Np) + 0.5);
   const __int64 source_samples = ((src_end - src_start) >> Np) + 2 * Xoff + 1;
-  const int source_bytes = vi.BytesFromAudioSamples(source_samples);
+  const int source_bytes = (int)vi.BytesFromAudioSamples(source_samples);
 
   __int64 pos = (int(src_start & Pmask)) + (Xoff << Np);
   int ch = vi.AudioChannels();

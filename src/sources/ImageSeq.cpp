@@ -90,7 +90,7 @@ static bool IsAbsolutePath(const char* path)
 
 ImageWriter::ImageWriter(PClip _child, const char * _base_name, const int _start, const int _end,
                          const char * _ext, bool _info, IScriptEnvironment* env)
- : GenericVideoFilter(_child), base_name(), ext(_ext), info(_info)
+ : GenericVideoFilter(_child), ext(_ext), info(_info)
 {  
   // Generate full name
   if (IsAbsolutePath(_base_name))
@@ -134,8 +134,11 @@ ImageWriter::ImageWriter(PClip _child, const char * _base_name, const int _start
 
     if (InterlockedIncrement(&refcount) == 1) {
       if (!InitializeCriticalSectionAndSpinCount(&FramesCriticalSection, 1000) ) {
-        InterlockedExchange(&refcount, 0);
-        env->ThrowError("ImageWriter: Could not initialize critical section");
+        DWORD error = GetLastError();
+        if (error) {
+          InterlockedExchange(&refcount, 0);
+          env->ThrowError("ImageWriter: Could not initialize critical section, 0x%x", error);
+        }
       }
     }
 
@@ -333,7 +336,7 @@ AVSValue __cdecl ImageWriter::Create(AVSValue args, void*, IScriptEnvironment* e
 ImageReader::ImageReader(const char * _base_name, const int _start, const int _end,
                          const float _fps, bool _use_DevIL, bool _info, const char * _pixel,
                          IScriptEnvironment* env)
- : base_name(), start(_start), use_DevIL(_use_DevIL), info(_info), framecopies(0)
+ : start(_start), use_DevIL(_use_DevIL), info(_info), framecopies(0)
 {
   // Generate full name
   if (IsAbsolutePath(_base_name))
@@ -432,8 +435,11 @@ ImageReader::ImageReader(const char * _base_name, const int _start, const int _e
 
     if (InterlockedIncrement(&refcount) == 1) {
       if (!InitializeCriticalSectionAndSpinCount(&FramesCriticalSection, 1000) ) {
-        InterlockedExchange(&refcount, 0);
-        env->ThrowError("ImageReader: Could not initialize critical section");
+        DWORD error = GetLastError();
+        if (error) {
+          InterlockedExchange(&refcount, 0);
+          env->ThrowError("ImageReader: Could not initialize critical section, 0x%x", error);
+        }
       }
     }
 

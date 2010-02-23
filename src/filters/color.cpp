@@ -109,20 +109,20 @@ PVideoFrame __stdcall Color::GetFrame(int frame, IScriptEnvironment* env)
     for (int i = 0;i<224*224;i++)
       pdst[i] = Y;
     unsigned char* pdstb = dst->GetWritePtr(PLANAR_U);
-    for (unsigned int y=0;y<224;y++) {
-      for (unsigned int x=0;x<224;x++) {
+    {for (int y=0;y<224;y++) {
+      for (int x=0;x<224;x++) {
         pdstb[x] = 16+x;
       }
       pdstb += dst->GetPitch(PLANAR_U);
-    }
+    }}
 
     pdstb = dst->GetWritePtr(PLANAR_V);
-    for (y=0;y<224;y++) {
-      for (unsigned int x=0;x<224;x++) {
+    {for (int y=0;y<224;y++) {
+      for (int x=0;x<224;x++) {
         pdstb[x] = 16+y;
       }
       pdstb += dst->GetPitch(PLANAR_U);
-    }
+    }}
     return dst;
   }
 	src = child->GetFrame(frame, env);
@@ -153,19 +153,19 @@ PVideoFrame __stdcall Color::GetFrame(int frame, IScriptEnvironment* env)
       }
       pitch = src->GetPitch(PLANAR_U);
 	    srcp2 = (BYTE*) src->GetReadPtr(PLANAR_U);
-      for (y=0;y<h/2;y++) {
+      {for (int y=0;y<h/2;y++) {
         for (int x=0;x<w/2;x++) {
           accum_U[srcp2[x]]++;
         }
         srcp2+=pitch;
-      }
+      }}
 	    srcp2 = (BYTE*) src->GetReadPtr(PLANAR_V);
-      for (y=0;y<h/2;y++) {
+      {for (int y=0;y<h/2;y++) {
         for (int x=0;x<w/2;x++) {
           accum_V[srcp2[x]]++;
         }
         srcp2+=pitch;
-      }
+      }}
       pitch = src->GetPitch(PLANAR_Y);
     } else {  // YUY2
       uvdiv=2;
