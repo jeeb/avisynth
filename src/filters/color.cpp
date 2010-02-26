@@ -136,7 +136,7 @@ PVideoFrame __stdcall Color::GetFrame(int frame, IScriptEnvironment* env)
 	modulo = pitch - w;
   if (analyze||autowhite||autogain) {
     unsigned int accum_Y[256],accum_U[256],accum_V[256];
-    for (int i=0;i<256;i++) {
+    for (i=0;i<256;i++) {
       accum_Y[i]=0;
       accum_U[i]=0;
       accum_V[i]=0;

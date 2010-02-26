@@ -387,12 +387,13 @@ AVSValue Rand(AVSValue args, void* user_data, IScriptEnvironment* env)
 
    if (scale_mode) {
       double f = 1.0 / (RAND_MAX + 1.0);
-      return int(f * rand() * limit); }
-    else { //modulus mode
+      return int(f * rand() * limit);
+   }
+   else { //modulus mode
       int s = (limit < 0 ? -1 : 1);
       if (limit==0) return 0;
        else return s * rand() % limit;
-         }
+   }
  }
 
 AVSValue Select(AVSValue args, void*, IScriptEnvironment* env)
@@ -542,14 +543,14 @@ static inline const VideoInfo& VI(const AVSValue& arg) { return arg.AsClip()->Ge
 AVSValue Width(AVSValue args, void*, IScriptEnvironment* env) { return VI(args[0]).width; }
 AVSValue Height(AVSValue args, void*, IScriptEnvironment* env) { return VI(args[0]).height; }
 AVSValue FrameCount(AVSValue args, void*, IScriptEnvironment* env) { return VI(args[0]).num_frames; }
-AVSValue FrameRate(AVSValue args, void*, IScriptEnvironment* env) { const VideoInfo& vi = VI(args[0]); return (double)vi.fps_numerator / (double)vi.fps_denominator; } // maximise available precision
+AVSValue FrameRate(AVSValue args, void*, IScriptEnvironment* env) { const VideoInfo& vi = VI(args[0]); return (double)vi.fps_numerator / vi.fps_denominator; } // maximise available precision
 AVSValue FrameRateNumerator(AVSValue args, void*, IScriptEnvironment* env) { return (int)VI(args[0]).fps_numerator; } // unsigned long truncated to int
 AVSValue FrameRateDenominator(AVSValue args, void*, IScriptEnvironment* env) { return (int)VI(args[0]).fps_denominator; } // unsigned long truncated to int
 AVSValue AudioRate(AVSValue args, void*, IScriptEnvironment* env) { return VI(args[0]).audio_samples_per_second; }
 AVSValue AudioLength(AVSValue args, void*, IScriptEnvironment* env) { return (int)VI(args[0]).num_audio_samples; }  // Truncated to int
 AVSValue AudioLengthLo(AVSValue args, void*, IScriptEnvironment* env) { return (int)(VI(args[0]).num_audio_samples % (unsigned)args[1].AsInt(1000000000)); }
 AVSValue AudioLengthHi(AVSValue args, void*, IScriptEnvironment* env) { return (int)(VI(args[0]).num_audio_samples / (unsigned)args[1].AsInt(1000000000)); }
-AVSValue AudioLengthF(AVSValue args, void*, IScriptEnvironment* env) { return (double)VI(args[0]).num_audio_samples; } // at least this will give an order of the size
+AVSValue AudioLengthF(AVSValue args, void*, IScriptEnvironment* env) { return (float)VI(args[0]).num_audio_samples; } // at least this will give an order of the size
 AVSValue AudioChannels(AVSValue args, void*, IScriptEnvironment* env) { return VI(args[0]).HasAudio() ? VI(args[0]).nchannels : 0; }
 AVSValue AudioBits(AVSValue args, void*, IScriptEnvironment* env) { return VI(args[0]).BytesPerChannelSample()*8; }
 AVSValue IsAudioFloat(AVSValue args, void*, IScriptEnvironment* env) { return VI(args[0]).IsSampleType(SAMPLE_FLOAT); }
@@ -635,7 +636,7 @@ AVSValue AvsMin(AVSValue args, void*, IScriptEnvironment* env )
     return V;
   }
   else {
-    double V = args[0][0].AsFloat();
+    float V = args[0][0].AsFloat();
     for (i=1; i < n; i++)
       V = min(V, args[0][i].AsFloat());
     return V;
@@ -664,7 +665,7 @@ AVSValue AvsMax(AVSValue args, void*, IScriptEnvironment* env )
     return V;
   }
   else {
-    double V = args[0][0].AsFloat();
+    float V = args[0][0].AsFloat();
     for (i=1; i < n; i++)
       V = max(V, args[0][i].AsFloat());
     return V;

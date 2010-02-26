@@ -1075,7 +1075,7 @@ void Subtitle::InitAntialiaser(IScriptEnvironment* env)
 	char *pdest, *psrc;
 	int result, y_inc = real_y+16;
 	char search[] = "\\n";
-	psrc = _text = strdup(text); // don't mangle the string constant -- Gavino
+	psrc = _text = _strdup(text); // don't mangle the string constant -- Gavino
 	if (!_text) goto GDIError;
 	int length = strlen(psrc);
 
