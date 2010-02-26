@@ -671,7 +671,8 @@ PVideoFrame AVISource::GetFrame(int n, IScriptEnvironment* env) {
 }
 
 void AVISource::GetAudio(void* buf, __int64 start, __int64 count, IScriptEnvironment* env) {
-  __int64 bytes_read=0, samples_read=0;
+  long bytes_read=0;
+  __int64 samples_read=0;
 
   if (start < 0) {
     int bytes = (int)vi.BytesFromAudioSamples(min(-start, count));
@@ -683,8 +684,8 @@ void AVISource::GetAudio(void* buf, __int64 start, __int64 count, IScriptEnviron
 
   if (audioStreamSource) {
     if (start != audio_stream_pos)
-        audioStreamSource->Seek(start);
-    samples_read = audioStreamSource->Read(buf, (long)count, (long *)&bytes_read);
+        audioStreamSource->Seek((long)start);
+    samples_read = audioStreamSource->Read(buf, (long)count, &bytes_read);
     audio_stream_pos = start + samples_read;
   }
 
