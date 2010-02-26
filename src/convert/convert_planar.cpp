@@ -1099,6 +1099,16 @@ ConvertToPlanarGeneric::ConvertToPlanarGeneric(PClip src, int dst_space, bool in
   vi.pixel_type = dst_space;
 
   if (!Y8input) {
+    const int xmod  = 1 << vi.GetPlaneWidthSubsampling(PLANAR_U);
+    const int xmask = xmod - 1;
+    if (vi.width & xmask)
+      env->ThrowError("Convert: Cannot convert if width isn't mod%d!", xmod);
+
+    const int ymod  = 1 << vi.GetPlaneHeightSubsampling(PLANAR_U);
+    const int ymask = ymod - 1;
+    if (vi.height & ymask)
+      env->ThrowError("Convert: Cannot convert if height isn't mod%d!", ymod);
+
     ResamplingFunction *filter = getResampler(chromaResampler->AsString("bicubic"), env);
     UsubSampling[2] = AVSValue(Usource->GetVideoInfo().width+UsubSampling[0].AsFloat());
     UsubSampling[3] = AVSValue(Usource->GetVideoInfo().height+UsubSampling[1].AsFloat());
