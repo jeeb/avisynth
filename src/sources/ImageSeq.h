@@ -84,7 +84,7 @@ class ImageReader : public IClip
 public:
   ImageReader(const char * _base_name, const int _start, const int _end,
               const float _fps, bool _use_DevIL, bool _info, const char * _pixel,
-			  IScriptEnvironment* env);
+			  bool _animation, IScriptEnvironment* env);
   ~ImageReader();
 
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
@@ -96,6 +96,7 @@ public:
   
   
   static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env);
+  static AVSValue __cdecl CreateAnimated(AVSValue args, void*, IScriptEnvironment* env);
 
 private:
   void fileRead(istream & file, BYTE * dstPtr, const int pitch, const int row_size, const int height);
@@ -105,6 +106,7 @@ private:
   const int start;
   bool use_DevIL;
   bool info;
+  bool animation;
 
   VideoInfo vi;
 
