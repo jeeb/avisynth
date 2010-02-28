@@ -411,6 +411,8 @@ Section /o  $(Czech_Text) Czech
   ${DocFile} "..\..\Docs\czech\advancedtopics\*.htm"
   SetOutPath $INSTDIR\Docs\Czech\corefilters
   ${DocFile} "..\..\Docs\czech\corefilters\*.htm"
+  SetOutPath $INSTDIR\Docs\Czech\externalfilters
+  ${DocFile} "..\..\Docs\czech\externalfilters\*.htm"
   SetOutPath $INSTDIR\Docs\Czech\pictures\advancedtopics
   ${DocFile} "..\..\Docs\czech\pictures\advancedtopics\*.*"
   SetOutPath $INSTDIR\Docs\Czech\pictures\corefilters
@@ -823,10 +825,14 @@ Ignore:
   Delete "$INSTDIR\Docs\English\*.*"
   RMDir  "$INSTDIR\Docs\English"
 
+  Delete "$INSTDIR\Docs\Czechh\advancedtopics\*.*"
+  RMDir  "$INSTDIR\Docs\Czech\advancedtopics"
   Delete "$INSTDIR\Docs\Czech\corefilters\*.*"
   RMDir  "$INSTDIR\Docs\Czech\corefilters"
   Delete "$INSTDIR\Docs\Czech\externalfilters\*.*"
   RMDir  "$INSTDIR\Docs\Czech\externalfilters"
+  Delete "$INSTDIR\Docs\Czech\pictures\advancedtopics\*.*"
+  RMDir  "$INSTDIR\Docs\Czech\pictures\advancedtopics"
   Delete "$INSTDIR\Docs\Czech\pictures\corefilters\*.*"
   RMDir  "$INSTDIR\Docs\Czech\pictures\corefilters"
   RMDir  "$INSTDIR\Docs\Czech\pictures"
