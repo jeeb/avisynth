@@ -1,0 +1,40 @@
+<!DOCTYPE html
+          PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
+          "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html   xmlns   = "http://www.w3.org/1999/xhtml">
+<head>
+<link rel="STYLESHEET" href="filtersdk.css" type="text/css" />
+<title>VideoInfo - AviSynth</title>
+</head>
+<BODY>
+
+<h1>Colorspace properties</h1>
+
+<p>In AviSynth v2.58, the colorspace properties are:</p>
+<pre> // Colorspace properties.
+ enum {
+   CS_BGR = 1&lt;&lt;28,
+   CS_YUV = 1&lt;&lt;29,
+   CS_INTERLEAVED = 1&lt;&lt;30,
+   CS_PLANAR = 1&lt;&lt;31
+ };
+ 
+ // Specific colorformats
+ enum { CS_UNKNOWN = 0,
+        CS_BGR24 = 1&lt;&lt;0 | CS_BGR | CS_INTERLEAVED,
+        CS_BGR32 = 1&lt;&lt;1 | CS_BGR | CS_INTERLEAVED,
+        CS_YUY2  = 1&lt;&lt;2 | CS_YUV | CS_INTERLEAVED,
+        CS_YV12  = 1&lt;&lt;3 | CS_YUV | CS_PLANAR,  // y-v-u, 4:2:0 planar
+        CS_I420  = 1&lt;&lt;4 | CS_YUV | CS_PLANAR,  // y-u-v, 4:2:0 planar
+        CS_IYUV  = 1&lt;&lt;4 | CS_YUV | CS_PLANAR,  // same as above
+ };</pre>
+<p>Thus CS_YV12 gives for example:</p>
+<pre> CS_YV12  = 1&lt;&lt;3 | CS_YUV | CS_PLANAR
+          = 1000 | 1000.0000.0000.0000.0000.0000.0000.0000 | 10.0000.0000.0000.0000.0000.0000.0000
+          = 1010.0000.0000.0000.0000.0000.0000.1000</pre>
+<h3>Back to <a href="VideoInfo.htm">VideoInfo</a></h3>
+<p><kbd>$Date: 2010/03/13 14:51:46 $<br>
+Original version of this document <a href="http://www.avisynth.org/VideoInfo">http://www.avisynth.org/VideoInfo</a>
+</kbd></p>
+</BODY>
+</html>
