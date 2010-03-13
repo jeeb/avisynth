@@ -8,14 +8,9 @@
 </head>
 <BODY>
 
-<div id="body">
+<h1>SDKNecessaries</h1>
 
-<h1><a style="text-decoration:none">
-    SDKNecessaries</a>
-    	<p>
-	</h1>
-
-<p>What is necessary to create an AviSynth plugin?</p>
+<p><b>What is necessary to create an AviSynth plugin?</b></p>
 
 <h4>You must have some compatible development tool:</h4>
 
@@ -37,7 +32,7 @@ As a partial workaround you can add free Visual C++ Toolkit 2003 optimizing comp
 The last SDK that will work with VC 6.0 was the February 2003 Edition.
 </p>
 
-<h4>For some very special plugins (GPU) you may need in DirectX SDK.</h4>
+<p>For some very special plugins (GPU) you may need in DirectX SDK.</p>
 
 <h4>Finally, you must include small header file 'avisynth.h'.</h4> 
 <p>You can get it with this FilterSDK, download with AviSynth source code, or take from some plugin source package. 
@@ -58,8 +53,9 @@ but plugins compliled with new AviSynth v2.6.x header will probably not work in 
 <p>Generally good start is to take some similar plugin source code as a draft for improving or own development.
 Attention: there are many old plugins source code packages with older avisynth.h included.
 (for example, SimpleSample zip file contains avisynth.h file from from AviSynth v2.5.4). Simply replace it by new one.
+<h4>Compiling options</h4>
 
-<h4>Plugin CPP source code must be compiled as Win32 DLL (multi-threaded or multi-threaded DLL) without MFC.</h4>
+<p>Plugin CPP source code must be compiled as Win32 DLL (multi-threaded or multi-threaded DLL) without MFC.</p>
 
 <p>Notes. If you use Visual C++ Toolkit 2003 itself (without VC++ 7), you can not build plugin as multi-treaded DLL: 
 the toolkit missed some libraries, in particular msvcrt.lib. You can get additional libs with MS .NET 1.1 SDK (free download)
@@ -69,14 +65,27 @@ or simply use multi-treaded option (IMHO it is better - no need in MSVCRT71.DLL)
 
 <p>See <a href="CompilingAvisynthPlugins.htm">step by step instructions.</a></p>
 
-<p>You can NOT use other compiler like GNU C++ to create regular AviSynth plugins.
-You may also try to use some tools (GNU C++, Visual Basic, Delphi) 
-to create so called AviSynth C plugins with <a href="http://kevin.atkinson.dhs.org/avisynth_c/">AviSynth C API</a> 
-(but it is not mainsteam). 
-</p>
+<h4>Other compilers 
+</h4>
+
+<p>You can NOT use other compiler like GNU C++ to create regular AviSynth
+plugins.</p>
+<p>You may also try to use some tools (GNU C++, Visual Basic, Delphi) to create
+so called AviSynth C plugins with AviSynth C API (but it is not mainsteam).</p>
+<p>Original AviSynth C API by Kevin Atkinson is at <a href="http://kevin.atkinson.dhs.org/avisynth_c/" class="external free" title="http://kevin.atkinson.dhs.org/avisynth_c/" rel="nofollow">http://kevin.atkinson.dhs.org/avisynth_c/</a></p>
+<p>Updated version of AviSynth C API header and library files are distributed
+with AviSynth since v2.5.7.</p>
+<p>There is also <a href="http://forum.doom9.org/showthread.php?t=98327" class="external text" title="http://forum.doom9.org/showthread.php?t=98327" rel="nofollow">Pascal
+conversion of avisynth_c.h</a> by Myrsloik</p>
+<p>Some info about <a href="http://forum.doom9.org/showthread.php?t=125370" class="external text" title="http://forum.doom9.org/showthread.php?t=125370" rel="nofollow">Using
+in Visual Basic</a></p>
+<p><a href="http://forum.doom9.org/showthread.php?t=126530" class="external text" title="http://forum.doom9.org/showthread.php?t=126530" rel="nofollow">PureBasic
+port of the Avisynth C Interface</a> by Inc</p>
+<p>There is also <a href="http://www.codeplex.com/AvsFilterNet" class="external text" title="http://www.codeplex.com/AvsFilterNet" rel="nofollow">AvsFilterNet</a>
+wrapper for Avisynth in .NET (any .NET language) by SAPikachu, see <a href="http://forum.doom9.org/showthread.php?t=144663" class="external text" title="http://forum.doom9.org/showthread.php?t=144663" rel="nofollow">discussion</a></p>
 
 <h3>Back to <a href="FilterSDK.htm">FilterSDK</a></h3>
 
-<p><kbd>$Date: 2006/12/21 19:27:37 $</kbd></p>
+<p><kbd>$Date: 2010/03/13 14:52:05 $</kbd></p>
 </BODY>
 </html>

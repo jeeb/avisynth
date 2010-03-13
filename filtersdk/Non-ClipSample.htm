@@ -25,10 +25,10 @@ see <a href="http://forum.doom9.org/showthread.php?t=132026"> discussion</a>):
 <pre>
  AVSValue Sin(AVSValue args, void* user_data, IScriptEnvironment* env) { return sin(args[0].AsFloat()); }
  
- extern "C" __declspec(dllexport) const char* __stdcall
+ extern &quot;C&quot; __declspec(dllexport) const char* __stdcall
  AvisynthPluginInit2(IScriptEnvironment* env) {
-    env->AddFunction("sin", "f", Sin, 0);
-    return "sin";
+    env-&gt;AddFunction(&quot;sin&quot;, &quot;f&quot;, Sin, 0);
+    return &quot;sin&quot;;
  }
 </pre>
 You don't even need a class/constructor, come to think of it. 
@@ -67,12 +67,12 @@ Here is sample code of plugin with non-clip function:
  	V1.0. Based on AverageLuma internal filter and SimpleSample
  
  	Usage:
- 	ScriptClip(" Subtitle(String(NonClipSample())) ")
+ 	ScriptClip(&quot; Subtitle(String(NonClipSample())) &quot;)
  */
  
  //following 2 includes needed
- #include "windows.h"
- #include "avisynth.h"
+ #include &quot;windows.h&quot;
+ #include &quot;avisynth.h&quot;
  
  // The function is called for every frame in conditional environment. 
  // Unlike usual clip functions, it returns not frames of clip but single (scalar) value
@@ -85,38 +85,38 @@ Here is sample code of plugin with non-clip function:
  	// Get function paramenters from input args array
  
  		if (!args[0].IsClip()) // check validity
- 			env->ThrowError("NonClipSample: No clip supplied!");
+ 			env-&gt;ThrowError(&quot;NonClipSample: No clip supplied!&quot;);
  
  		PClip child = args[0].AsClip(); // very first parameter is source clip
  
  	// Get clip video information
- 		VideoInfo vi = child->GetVideoInfo(); 
+ 		VideoInfo vi = child-&gt;GetVideoInfo(); 
  
  		if (!vi.IsPlanar())
- 			env->ThrowError("NonClipSample: Only planar images (as YV12) supported!");
+ 			env-&gt;ThrowError(&quot;NonClipSample: Only planar images (as YV12) supported!&quot;);
  
  	// get current frame number
  
- 		AVSValue cn = env->GetVar("current_frame"); 
+ 		AVSValue cn = env-&gt;GetVar(&quot;current_frame&quot;); 
  		if (!cn.IsInt())
- 			env->ThrowError("NonClipSample: This filter can only be used within Conditional Filter");
+ 			env-&gt;ThrowError(&quot;NonClipSample: This filter can only be used within Conditional Filter&quot;);
  
  		int n = cn.AsInt(); // frame number
  
  	// Get source frame and its properties
  
- 		PVideoFrame src = child->GetFrame(n,env); // source frame (smart pointer)
+ 		PVideoFrame src = child-&gt;GetFrame(n,env); // source frame (smart pointer)
  		int plane = PLANAR_Y; // set plane to PLANAR_Y 
- 		const BYTE* srcp = src->GetReadPtr(plane); // pointer to plane data (framebuffer)
- 		int height = src->GetHeight(plane);
- 		int width = src->GetRowSize(plane);
- 		int pitch = src->GetPitch(plane);
+ 		const BYTE* srcp = src-&gt;GetReadPtr(plane); // pointer to plane data (framebuffer)
+ 		int height = src-&gt;GetHeight(plane);
+ 		int width = src-&gt;GetRowSize(plane);
+ 		int pitch = src-&gt;GetPitch(plane);
  	
  	// calculate result of our function
  		unsigned int sum = 0; // init sum
  
- 		for (int h=0; h < height; h++) {      
- 			for (int w = 0; w < width; w++) { 
+ 		for (int h=0; h &lt; height; h++) {      
+ 			for (int w = 0; w &lt; width; w++) { 
  				sum += srcp[w];          // sum each byte from source
  			}
  			srcp = srcp + pitch; // to next line
@@ -130,8 +130,8 @@ Here is sample code of plugin with non-clip function:
  // The following function is the function that actually registers the filter in AviSynth
  // It is called automatically, when the plugin is loaded to see which functions this filter contains.
  
- extern "C" __declspec(dllexport) const char* __stdcall AvisynthPluginInit2(IScriptEnvironment* env) {
-     env->AddFunction("NonClipSample", "c", NonClipSample, 0);
+ extern &quot;C&quot; __declspec(dllexport) const char* __stdcall AvisynthPluginInit2(IScriptEnvironment* env) {
+     env-&gt;AddFunction(&quot;NonClipSample&quot;, &quot;c&quot;, NonClipSample, 0);
     // The AddFunction has the following paramters:
     // AddFunction(Filtername , Arguments, Function to call,0);
     
@@ -144,7 +144,7 @@ Here is sample code of plugin with non-clip function:
  
  	 // The word inside the [ ] lets you used named parameters in your script
  
-    return "NonClipSample plugin";
+    return &quot;NonClipSample plugin&quot;;
     // A freeform name of the plugin.
  } 
 </pre>
@@ -152,12 +152,12 @@ Compile it as DLL like other AviSynth plugins
 
 <h2>Not processing frames plugin with Avisynth AtExit function</h2>
 
-This plugin does not processing frames. 
+This plugin does not process frames. 
 It loads a font into Windows and automatically unloads it 
 after avisynth is done running. 
-To run code at the end of the script, it register an <code>env->AtExit</code> procedure.
+To run code at the end of the script, it registers an <code>env->AtExit</code> procedure.
 See <a href="http://forum.doom9.org/showthread.php?t=130383">discussion</a>. 
-(MessageBox debug lines were removed).
+(MessageBox debug lines were removed.)
 <pre>
  /* LoadFont for avisynth
    
@@ -173,33 +173,33 @@ See <a href="http://forum.doom9.org/showthread.php?t=130383">discussion</a>.
  */
  
  #include <windows.h>
- #include "avisynth.h"
+ #include &quot;avisynth.h&quot;
  
  void __cdecl UnLoadFont(void* user_data, IScriptEnvironment* env);
  
  AVSValue __cdecl Create_LoadFont(AVSValue args, void* user_data, IScriptEnvironment* env) {
  
-   char *file = args[1].AsString("");
+   char *file = args[1].AsString(&quot;&quot;);
  
    // and now load the font
-   if ( (AddFontResource( file )) > 0 )
+   if ( (AddFontResource( file )) &gt; 0 )
    {
       SendMessage(HWND_BROADCAST, WM_FONTCHANGE, 0, 0);
  
-      env->AtExit(UnLoadFont, strdup(file) ); // register the procedure
+      env-&gt;AtExit(UnLoadFont, strdup(file) ); // register the procedure
    }
    else
    {
-      env->ThrowError("LoadFont: Font load '%s' failed.", file);
+      env-&gt;ThrowError(&quot;LoadFont: Font load '%s' failed.&quot;, file);
    }
    return args[0];
  }
  
- extern "C" __declspec(dllexport) const char* __stdcall AvisynthPluginInit2(IScriptEnvironment* env)
+ extern &quot;C&quot; __declspec(dllexport) const char* __stdcall AvisynthPluginInit2(IScriptEnvironment* env)
  {
-    env->AddFunction("LoadFont", "c[FONT]s", Create_LoadFont, 0);
+    env-&gt;AddFunction(&quot;LoadFont&quot;, &quot;c[FONT]s&quot;, Create_LoadFont, 0);
  
-    return "'LoadFont' LoadFont plugin";
+    return &quot;'LoadFont' LoadFont plugin&quot;;
     // A freeform name of the plugin.
  }
  
@@ -207,9 +207,9 @@ See <a href="http://forum.doom9.org/showthread.php?t=130383">discussion</a>.
  {
    char *loadedFont = (char*)user_data;
  
-   if (loadedFont && *loadedFont)
+   if (loadedFont &amp;&amp; *loadedFont)
    {
-      if ( RemoveFontResource(loadedFont) > 0 )
+      if ( RemoveFontResource(loadedFont) &gt; 0 )
       {
          SendMessage(HWND_BROADCAST, WM_FONTCHANGE, 0, 0);
       }
@@ -220,7 +220,7 @@ See <a href="http://forum.doom9.org/showthread.php?t=130383">discussion</a>.
 </pre> 
 <h3>Back to <a href="FilterSDK.htm">FilterSDK</a></h3>
 
-<p><kbd>$Date: 2008/01/13 09:55:56 $<br>
+<p><kbd>$Date: 2010/03/13 14:52:05 $<br>
 Online mediaWiki version of this document is at 
 <a href="http://avisynth.org/mediawiki/Filter_SDK/Non-clip_sample">http://avisynth.org/mediawiki/Filter_SDK/Non-clip_sample</a>
 </kbd></p>

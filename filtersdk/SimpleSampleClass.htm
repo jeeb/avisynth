@@ -12,6 +12,7 @@
 
 <h1><a href="http://www.avisynth.org/SimpleSample" style="text-decoration:none">
     SimpleSampleClass </a>
+</h1>
     	<p>
 	</h1>
 
@@ -42,8 +43,8 @@
 //=============== SECTION #1: Includes and Prototypes  =================
 
 //following two includes are needed
-#include "windows.h"
-#include "avisynth.h"
+#include &quot;windows.h&quot;
+#include &quot;avisynth.h&quot;
 
 
 
@@ -52,7 +53,7 @@
 //--------------------------------------------------------------
 // Prototype AvisynthPluginInit2()
 //
-// Avisynth calls this when you do LoadPlugin("c:\myplugin.dll").
+// Avisynth calls this when you do LoadPlugin(&quot;c:\myplugin.dll&quot;).
 // All the fancy stuff on the front is for the external call to your dll.
 // Basically you use this to add your function to Avisynth.
 // 
@@ -65,7 +66,7 @@
 //
 //---------------------------------------------------------------
 
-extern "C" __declspec(dllexport) const char* __stdcall AvisynthPluginInit2(IScriptEnvironment* env);
+extern &quot;C&quot; __declspec(dllexport) const char* __stdcall AvisynthPluginInit2(IScriptEnvironment* env);
 
 
 
@@ -110,7 +111,7 @@ AVSValue __cdecl Create_SimpleSample(AVSValue args, void* user_data, IScriptEnvi
 // don't care about the other ones, you get the built in functionality ... which
 // probably does things like return zero.
 //
-// At the risk of repeating ... we really only care about rwo functions.
+// At the risk of repeating ... we really only care about two functions.
 // SimpleSample() and GetFrame()
 //
 //---------------------------------------------------------------
@@ -130,7 +131,7 @@ public:
 //--------------------------------------------------------------
 // AvisynthPluginInit2()
 //
-// Avisynth calls this when you do LoadPlugin("c:\myplugin.dll").
+// Avisynth calls this when you do LoadPlugin(&quot;c:\myplugin.dll&quot;).
 // All the fancy stuff on the front is for the external call to your dll.
 // Basically you use this to add your function to Avisynth.
 // 
@@ -142,10 +143,10 @@ public:
 // Returns - Looks like it returns a string.  Did you know?
 //
 //---------------------------------------------------------------
-extern "C" __declspec(dllexport) const char* __stdcall AvisynthPluginInit2(IScriptEnvironment* env) {
+extern &quot;C&quot; __declspec(dllexport) const char* __stdcall AvisynthPluginInit2(IScriptEnvironment* env) {
 
 	//--- We use the pointer back to Avisynth to call its 'AddFunction' function.
-	//--- Add just one function which a script will call as "SimpleSample",
+	//--- Add just one function which a script will call as &quot;SimpleSample&quot;,
 
 	//--- takes a single argument which is a video [c]lip 
 	//--- There are more types: along with 'i'nt and 's'tring you can specify 'b'ool, 'f'loat, and 'c'lip
@@ -157,14 +158,14 @@ extern "C" __declspec(dllexport) const char* __stdcall AvisynthPluginInit2(IScri
 	//--- That last 0 is where you could pass a pointer to a bunch of data.  The pointer
 	//--- would be passed back to you when Avisynth calls Create_SimpleSample.
 
-    env->AddFunction("SimpleSample", "c", Create_SimpleSample, 0);
+    env-&gt;AddFunction(&quot;SimpleSample&quot;, &quot;c&quot;, Create_SimpleSample, 0);
 
 
 	//--- Did you know LoadPlugin() returns a string?  Do you think you favorite plugins
 	//--- pass back secret messages?  Who checks ?
 
 
-    return "`SimpleSample' SimpleSample plugin";
+    return &quot;`SimpleSample' SimpleSample plugin&quot;;
 }
 
 
@@ -254,7 +255,7 @@ PVideoFrame __stdcall SimpleSample::GetFrame(int n, IScriptEnvironment* env) {
 	//--- Below ... we report an error back to Avisynth ... we only do YUY2 data.
 
 	if (vi.IsYV12()) // is input not YUY2
-		env->ThrowError("SimpleSample: input to filter must be in YUY2");
+		env-&gt;ThrowError(&quot;SimpleSample: input to filter must be in YUY2&quot;);
 	
 
 	//--- That mysterious child is there from GenericVideoFilter.
@@ -264,32 +265,32 @@ PVideoFrame __stdcall SimpleSample::GetFrame(int n, IScriptEnvironment* env) {
 	//--- We need a place to build our output frame before we pass it back.
 	//--- Avisynth has a handy built in method.  Just call it and tell it what type of frame
 	//--- we want ... and we get one we can muck with.  vi defines the input type.  If we want another
-	//--- type like RGB at 1/2 the size, we make a different videoInfo sturcture and
+	//--- type like RGB at 1/2 the size, we make a different videoInfo structure and
 	//--- use that instead to create our output.
 
-	PVideoFrame src = child->GetFrame(n, env);
-	PVideoFrame dst = env->NewVideoFrame(vi);
+	PVideoFrame src = child-&gt;GetFrame(n, env);
+	PVideoFrame dst = env-&gt;NewVideoFrame(vi);
 	
 
 	//--- Gotta do this to read and write from/to the source and destination.  src and dst are classes.
 	//--- We can't just change their data.  We need to call their functions to change them.  The ones
 	//--- below give us pointers to their main pixel data.
 
-	const unsigned char* srcp = src->GetReadPtr();
-	unsigned char* dstp = dst->GetWritePtr();
+	const unsigned char* srcp = src-&gt;GetReadPtr();
+	unsigned char* dstp = dst-&gt;GetWritePtr();
 	
 	
 	//--- We want to know the width (in bytes) and height (in pixels) of the source and dest frames so 
-	//--- we can loop thru their pixels.  Pitch is the number of bytes from the begining of one
-	//--- image row to the beginning of the next.  This may be different than width because there
+	//--- we can loop thru their pixels.  Pitch is the number of bytes from the start of one
+	//--- image row to the start of the next.  This may be different than width because there
 	//--- may be space at the end of each row that pads for better memory alignment.
 
-	const int dst_pitch = dst->GetPitch();
-	const int dst_width = dst->GetRowSize();
-	const int dst_height = dst->GetHeight();
-	const int src_pitch = src->GetPitch();
-	const int src_width = src->GetRowSize();
-	const int src_height = src->GetHeight();
+	const int dst_pitch = dst-&gt;GetPitch();
+	const int dst_width = dst-&gt;GetRowSize();
+	const int dst_height = dst-&gt;GetHeight();
+	const int src_pitch = src-&gt;GetPitch();
+	const int src_width = src-&gt;GetRowSize();
+	const int src_height = src-&gt;GetHeight();
 
 
 
@@ -312,6 +313,6 @@ PVideoFrame __stdcall SimpleSample::GetFrame(int n, IScriptEnvironment* env) {
 
 </pre>
 <h3>Back to <a href="SimpleSample.htm">SimpleSample</a></h3></div>
-<p><kbd>$Date: 2006/11/06 18:04:02 $</kbd></p>
+<p><kbd>$Date: 2010/03/13 14:52:05 $</kbd></p>
 </BODY>
 </html>
