@@ -91,13 +91,13 @@ PVideoFrame SeparateFields::GetFrame(int n, IScriptEnvironment* env)
 {
   PVideoFrame frame = child->GetFrame(n>>1, env);
   if (vi.IsPlanar()) {
-    const bool topfield = (child->GetParity(n)+n)&1;
+    const bool topfield = GetParity(n);
     const int UVoffset = !topfield ? frame->GetPitch(PLANAR_U) : 0;
     const int Yoffset = !topfield ? frame->GetPitch(PLANAR_Y) : 0;
     return env->SubframePlanar(frame,Yoffset, frame->GetPitch()*2, frame->GetRowSize(), frame->GetHeight()>>1,
 	                       UVoffset, UVoffset, frame->GetPitch(PLANAR_U)*2);
   }
-  return env->Subframe(frame,(GetParity(n) ^ vi.IsYUY2()) * frame->GetPitch(),
+  return env->Subframe(frame,(GetParity(n) ^ vi.IsYUY2()) ? frame->GetPitch() : 0,
                          frame->GetPitch()*2, frame->GetRowSize(), frame->GetHeight()>>1);  
 }
 
