@@ -270,8 +270,31 @@ plug_ok:
   WriteRegStr HKLM "SOFTWARE\AviSynth" "" "$INSTDIR"
   WriteRegStr HKLM "SOFTWARE\AviSynth" "plugindir2_5" "$0"
 
-  WriteRegStr HKLM "SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\AviSynth" "DisplayName" "AviSynth 2.5"
+  WriteRegStr HKLM "SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\AviSynth" "DisplayName" "AviSynth 2.6"
   WriteRegStr HKLM "SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\AviSynth" "UninstallString" '"$INSTDIR\Uninstall.exe"'
+  WriteRegStr HKLM "SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\AviSynth" "Publisher" "GPL Public release."
+  WriteRegStr HKLM "SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\AviSynth" "DisplayIcon" "$SYSDIR\AviSynth.dll,0"
+  WriteRegStr HKLM "SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\AviSynth" "DisplayVersion" "${VERSION}.${ISSUE}"
+  WriteRegStr HKLM "SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\AviSynth" "URLInfoAbout" "http://avisynth.org/"
+
+; Other Add/Remove Software registry keys
+
+; "Comments"		(string) - A comment describing the installer package
+; "EstimatedSize"	(DWORD)  - The size of the installed files (in KB) 
+; "HelpLink"		(string) - Link to the support website
+; "HelpTelephone"	(string) - Telephone number for support
+; "InstallLocation"	(string) - Installation directory ($INSTDIR)
+; "InstallSource"	(string) - Location where the application was installed from
+; "ModifyPath"		(string) - Path and filename of the application modify program
+; "NoModify"		(DWORD)  - 1 if uninstaller has no option to modify the installed application
+; "NoRepair"		(DWORD)  - 1 if the uninstaller has no option to repair the installation 
+; "ProductID"		(string) - Product ID of the application
+; "RegCompany"		(string) - Registered company of the application
+; "RegOwner"		(string) - Registered owner of the application
+; "URLUpdateInfo"	(string) - Link to the website for application updates
+; "VersionMajor"	(DWORD)  - Major version number of the application
+; "VersionMinor"	(DWORD)  - Minor version number of the application 
+
 
   WriteRegStr HKLM "SOFTWARE\Classes\.avs" "" "avsfile"
 
@@ -825,7 +848,7 @@ Ignore:
   Delete "$INSTDIR\Docs\English\*.*"
   RMDir  "$INSTDIR\Docs\English"
 
-  Delete "$INSTDIR\Docs\Czechh\advancedtopics\*.*"
+  Delete "$INSTDIR\Docs\Czech\advancedtopics\*.*"
   RMDir  "$INSTDIR\Docs\Czech\advancedtopics"
   Delete "$INSTDIR\Docs\Czech\corefilters\*.*"
   RMDir  "$INSTDIR\Docs\Czech\corefilters"
