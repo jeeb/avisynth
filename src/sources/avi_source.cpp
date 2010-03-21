@@ -71,7 +71,7 @@ class AVISource : public IClip {
   __int64 audio_stream_pos;
 
   LRESULT DecompressBegin(LPBITMAPINFOHEADER lpbiSrc, LPBITMAPINFOHEADER lpbiDst);
-  LRESULT DecompressFrame(int n, bool preroll, BYTE* buf);
+  LRESULT DecompressFrame(int n, bool preroll, PVideoFrame &frame, IScriptEnvironment* env);
 
   void CheckHresult(HRESULT hr, const char* msg, IScriptEnvironment* env);
   bool AttemptCodecNegotiation(DWORD fccHandler, BITMAPINFOHEADER* bmih);
@@ -124,13 +124,39 @@ LRESULT AVISource::DecompressBegin(LPBITMAPINFOHEADER lpbiSrc, LPBITMAPINFOHEADE
     lpbiDst, 0, 0, 0, lpbiDst->biWidth, lpbiDst->biHeight);
 }
 
-LRESULT AVISource::DecompressFrame(int n, bool preroll, BYTE* buf) {
+LRESULT AVISource::DecompressFrame(int n, bool preroll, PVideoFrame &frame, IScriptEnvironment* env) {
   _RPT2(0,"AVISource: Decompressing frame %d%s\n", n, preroll ? " (preroll)" : "");
+  BYTE* buf = frame->GetWritePtr();
   long bytes_read;
   if (!hic) {
     bytes_read = vi.BMPSize();
     pvideo->Read(n, 1, buf, vi.BMPSize(), &bytes_read, NULL);
     dropped_frame = !bytes_read;
+    if (!vi.IsY8() && vi.IsPlanar()) {
+	  const int sizeY  = vi.RowSize(PLANAR_Y) * vi.height;
+	  const int sizeUV = vi.RowSize(PLANAR_U) * vi.height >> vi.GetPlaneHeightSubsampling(PLANAR_U);
+
+      const long packedbytes = (sizeY + 2*sizeUV + 3) & ~3;
+
+	  // Is this frame packed or have rows DWORD aligned?
+      if (((bytes_read+3)&~3) == packedbytes) {
+        int offsetU = frame->GetOffset(PLANAR_U);
+        int offsetV = frame->GetOffset(PLANAR_V);
+
+        if (offsetU < offsetV) {
+          offsetU = sizeY        - offsetU;
+          offsetV = sizeY+sizeUV - offsetV;
+        }
+        else {
+          offsetU = sizeY+sizeUV - offsetU;
+          offsetV = sizeY        - offsetV;
+        }
+
+        // set pitch = rowsize
+        frame = env->SubframePlanar(frame, 0, vi.RowSize(PLANAR_Y), vi.RowSize(PLANAR_Y),
+                                    vi.height, offsetU, offsetV, vi.RowSize(PLANAR_U));
+      }
+    }
     return ICERR_OK;
   }
   bytes_read = srcbuffer_size;
@@ -548,8 +574,7 @@ AVISource::AVISource(const char filename[], bool fAudio, const char pixel_type[]
     if (mode != MODE_WAV) {
       int keyframe = pvideo->NearestKeyFrame(0);
       PVideoFrame frame = env->NewVideoFrame(vi, -4);
-      BYTE *ptr = frame->GetWritePtr();
-      LRESULT error = DecompressFrame(keyframe, false, ptr);
+      LRESULT error = DecompressFrame(keyframe, false, frame, env);
       if (error != ICERR_OK || (!frame))   // shutdown, if init not succesful.
         env->ThrowError("AviSource: Could not decompress frame 0");
 
@@ -557,14 +582,14 @@ AVISource::AVISource(const char filename[], bool fAudio, const char pixel_type[]
       // frames, just return the first key frame
       if (dropped_frame) {
         keyframe = pvideo->NextKeyFrame(0);
-        error = DecompressFrame(keyframe, false, ptr);
+        error = DecompressFrame(keyframe, false, frame, env);
         if (error != ICERR_OK)   // shutdown, if init not succesful.
           env->ThrowError("AviSource: Could not decompress first keyframe %d", keyframe);
       }
       if (bInvertFrames) {
         const int h2 = frame->GetHeight() >> 1;
         const int w4 = frame->GetPitch() >> 2;
-        long *pT = (long *)ptr;
+        long *pT = (long *)frame->GetWritePtr();
         long *pB = pT + w4 * (frame->GetHeight() - 1);
 
         // Inplace flip RGB frame
@@ -625,12 +650,11 @@ PVideoFrame AVISource::GetFrame(int n, IScriptEnvironment* env) {
     bool not_found_yet;
 
     PVideoFrame frame = env->NewVideoFrame(vi, -4);
-    BYTE* frameWritePtr = frame->GetWritePtr();
 
     do {
       not_found_yet=false;
       for (int i = keyframe; i <= n; ++i) {
-        LRESULT error = DecompressFrame(i, i != n, frameWritePtr);
+        LRESULT error = DecompressFrame(i, i != n, frame, env);
         // we don't want dropped frames to throw an error
         // Experiment to remove ALL error reporting, so it will always return last valid frame.
         if (error != ICERR_OK && !dropped_frame) {
@@ -650,7 +674,7 @@ PVideoFrame AVISource::GetFrame(int n, IScriptEnvironment* env) {
       else if (bInvertFrames) {
         const int h2 = frame->GetHeight() >> 1;
         const int w4 = frame->GetPitch() >> 2;
-        long *pT = (long *)frameWritePtr;
+        long *pT = (long *)frame->GetWritePtr();
         long *pB = pT + w4 * (frame->GetHeight() - 1);
 
         // Inplace flip RGB frame
