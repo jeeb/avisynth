@@ -136,6 +136,9 @@ private:
     CRITICAL_SECTION cs_filter_graph;
 
     bool VDubPlanarHack;
+    bool AVIPadScanlines;
+
+    int ImageSize();
 
     bool DelayInit();
     bool DelayInit2();
@@ -557,6 +560,7 @@ CAVIFileSynth::CAVIFileSynth(const CLSID& rclsid) {
     error_msg = 0;
 
     VDubPlanarHack = false;
+    AVIPadScanlines = false;
 
     InitializeCriticalSection(&cs_filter_graph);
 }
@@ -668,16 +672,23 @@ bool CAVIFileSynth::DelayInit2() {
           filter_graph = env->Invoke("ConvertToRGB32", AVSValue(args,1)).AsClip();
           vi = &filter_graph->GetVideoInfo();
         }
-*/
+
         if (vi->IsYV12()&&(vi->width&3))
           throw AvisynthError("Avisynth error: YV12 images for output must have a width divisible by 4 (use crop)!");
         if (vi->IsYUY2()&&(vi->width&3))
           throw AvisynthError("Avisynth error: YUY2 images for output must have a width divisible by 4 (use crop)!");
-
+*/
         // Hack YV16 and YV24 chroma plane order for old VDub's
         try {
           AVSValue v = env->GetVar("OPT_VDubPlanarHack");
           VDubPlanarHack = v.IsBool() ? v.AsBool() : false;
+        }
+        catch (IScriptEnvironment::NotFound) { }
+
+        // Option to have scanlines mod4 padded in all pixel formats
+        try {
+          AVSValue v = env->GetVar("OPT_AVIPadScanlines");
+          AVIPadScanlines = v.IsBool() ? v.AsBool() : false;
         }
         catch (IScriptEnvironment::NotFound) { }
 
@@ -962,7 +973,7 @@ STDMETHODIMP_(LONG) CAVIStreamSynth::Info(AVISTREAMINFOW *psi, LONG lSize) {
       asi.dwSampleSize = bytes_per_sample;
       wcscpy(asi.szName, L"Avisynth audio #1");
     } else {
-      const int image_size = vi->BMPSize();
+      const int image_size = parent->ImageSize();
       asi.fccHandler = 'UNKN';
       if (vi->IsRGB()) 
         asi.fccHandler = ' BID';
@@ -1014,6 +1025,25 @@ STDMETHODIMP_(LONG) CAVIStreamSynth::FindSample(LONG lPos, LONG lFlags) {
 ////////////////////////////////////////////////////////////////////////
 //////////// local
 
+int CAVIFileSynth::ImageSize() {
+  int image_size;
+
+  if (vi->IsRGB() || vi->IsYUY2() || vi->IsY8() || AVIPadScanlines) {
+    image_size = vi->BMPSize();
+  }
+  else { // Packed size
+    image_size = vi->RowSize(PLANAR_U);
+    if (image_size) {
+      image_size  *= vi->height;
+      image_size >>= vi->GetPlaneHeightSubsampling(PLANAR_U);
+      image_size  *= 2;
+    }
+    image_size += vi->RowSize(PLANAR_Y) * vi->height;
+  }
+  return image_size;
+}
+
+
 void CAVIStreamSynth::ReadFrame(void* lpBuffer, int n) {
   PVideoFrame frame = parent->filter_graph->GetFrame(n, parent->env);
   if (!frame)
@@ -1024,24 +1054,28 @@ void CAVIStreamSynth::ReadFrame(void* lpBuffer, int n) {
   const int row_size = frame->GetRowSize();
   const int height   = frame->GetHeight();
 
-  // BMP scanlines are always dword-aligned
-  const int out_pitch = (row_size+3) & -4;
-  int out_pitchUV = (frame->GetRowSize(PLANAR_U)+3) & -4;
+  int out_pitch;
+  int out_pitchUV;
+
+  // BMP scanlines are dword-aligned
+  if (vi.IsRGB() || vi.IsYUY2() || vi.IsY8() || parent->AVIPadScanlines) {
+    out_pitch = (row_size+3) & ~3;
+    out_pitchUV = (frame->GetRowSize(PLANAR_U)+3) & ~3;
+  }
+  // Planar scanlines are packed
+  else {
+    out_pitch = row_size;
+    out_pitchUV = frame->GetRowSize(PLANAR_U);
+  }
 
   // Set default VFW output plane order.
   int plane1 = PLANAR_V;
   int plane2 = PLANAR_U;
 
   // Old VDub wants YUV for YV24 and YV16 and YVU for YV12.
-  if (parent->VDubPlanarHack) {
+  if (parent->VDubPlanarHack && !vi.IsYV12()) {
     plane1 = PLANAR_U;
     plane2 = PLANAR_V;
-  }
-
-  if (vi.IsYV12()) {  // We know this has special alignment.
-    out_pitchUV = out_pitch / 2;
-    plane1 = PLANAR_V;
-    plane2 = PLANAR_U;
   }
 
   BitBlt((BYTE*)lpBuffer, out_pitch, frame->GetReadPtr(), pitch, row_size, height);
@@ -1228,20 +1262,22 @@ HRESULT CAVIStreamSynth::Read2(LONG lStart, LONG lSamples, LPVOID lpBuffer, LONG
   _control87( FP_STATE, 0xffffffff );
   unsigned code[4] = {0, 0, 0, 0};
 
+  const VideoInfo* const vi = parent->vi;
+
   if (fAudio) {
     // buffer overflow patch -- Avery Lee - Mar 2006
     if (lSamples == AVISTREAMREAD_CONVENIENT)
-      lSamples = (long)parent->vi->AudioSamplesFromFrames(1);
+      lSamples = (long)vi->AudioSamplesFromFrames(1);
 
-    if (__int64(lStart)+lSamples > parent->vi->num_audio_samples) {
-      lSamples = (long)(parent->vi->num_audio_samples - lStart);
+    if (__int64(lStart)+lSamples > vi->num_audio_samples) {
+      lSamples = (long)(vi->num_audio_samples - lStart);
       if (lSamples < 0) lSamples = 0;
     }
 
-    long bytes = (long)parent->vi->BytesFromAudioSamples(lSamples);
+    long bytes = (long)vi->BytesFromAudioSamples(lSamples);
     if (lpBuffer && bytes > cbBuffer) {
-      lSamples = (long)parent->vi->AudioSamplesFromBytes(cbBuffer);
-      bytes = (long)parent->vi->BytesFromAudioSamples(lSamples);
+      lSamples = (long)vi->AudioSamplesFromBytes(cbBuffer);
+      bytes = (long)vi->BytesFromAudioSamples(lSamples);
     }
     if (plBytes) *plBytes = bytes;
     if (plSamples) *plSamples = lSamples;
@@ -1249,13 +1285,13 @@ HRESULT CAVIStreamSynth::Read2(LONG lStart, LONG lSamples, LPVOID lpBuffer, LONG
       return S_OK;
 
   } else {
-    if (lStart >= parent->vi->num_frames) {
+    if (lStart >= vi->num_frames) {
       if (plSamples) *plSamples = 0;
       if (plBytes) *plBytes = 0;
       return S_OK;
     }
 
-    int image_size = parent->vi->BMPSize();
+    const int image_size = parent->ImageSize();
     if (plSamples) *plSamples = 1;
     if (plBytes) *plBytes = image_size;
 
@@ -1410,24 +1446,26 @@ STDMETHODIMP CAVIStreamSynth::ReadFormat(LONG lPos, LPVOID lpFormat, LONG *lpcbF
     bi.biHeight = vi->height;
     bi.biPlanes = 1;
     bi.biBitCount = vi->BitsPerPixel();
-      if (vi->IsRGB()) 
-        bi.biCompression = BI_RGB;
-      else if (vi->IsYUY2())
-        bi.biCompression = '2YUY';
-      else if (vi->IsYV12())
-        bi.biCompression = '21VY';
-      else if (vi->IsY8())
-        bi.biCompression = '008Y'; 
-      else if (vi->IsYV24())
-        bi.biCompression = '42VY'; 
-      else if (vi->IsYV16()) 
-        bi.biCompression = '61VY'; 
-      else if (vi->IsYV411()) 
-        bi.biCompression = 'B14Y'; 
-      else {
-        _ASSERT(FALSE);
-      }
-    bi.biSizeImage = vi->BMPSize();
+
+    if (vi->IsRGB()) 
+      bi.biCompression = BI_RGB;
+    else if (vi->IsYUY2())
+      bi.biCompression = '2YUY';
+    else if (vi->IsYV12())
+      bi.biCompression = '21VY';
+    else if (vi->IsY8())
+      bi.biCompression = '008Y'; 
+    else if (vi->IsYV24())
+      bi.biCompression = '42VY'; 
+    else if (vi->IsYV16()) 
+      bi.biCompression = '61VY'; 
+    else if (vi->IsYV411()) 
+      bi.biCompression = 'B14Y'; 
+    else {
+      _ASSERT(FALSE);
+    }
+
+    bi.biSizeImage = parent->ImageSize();
     *lpcbFormat = min(*lpcbFormat, sizeof(bi));
     memcpy(lpFormat, &bi, size_t(*lpcbFormat));
   }

@@ -170,12 +170,8 @@ int VideoInfo::RowSize(int plane) const {
 int VideoInfo::BMPSize() const {
   if (!IsY8() && IsPlanar()) {
     // Y plane
-    int Ybytes = height * ((RowSize()+3) & ~3);
-    if (IsYV12()) {
-      return Ybytes + Ybytes/2;  // Legacy alignment
-    }
-    int UVbytes = (RowSize(PLANAR_U)+3) & ~3;
-    UVbytes *= height>>GetPlaneHeightSubsampling(PLANAR_U);
+    const int Ybytes  = ((RowSize(PLANAR_Y)+3) & ~3) * height;
+    const int UVbytes = ((RowSize(PLANAR_U)+3) & ~3) * height >> GetPlaneHeightSubsampling(PLANAR_U);
     return Ybytes + UVbytes*2;
   }
   return height * ((RowSize()+3) & ~3);
