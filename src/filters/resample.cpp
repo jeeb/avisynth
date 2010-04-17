@@ -1035,6 +1035,7 @@ out_i_aloopUV:
     int fir_filter_size = pattern_luma[0];
     int* pattern_lumaP1 = pattern_luma+1 - fir_filter_size;
     static const __int64 xFF000000 = 0xFF000000;
+    static const __int64 FPround   = 0x0000200000002000;  // 16384/2
     __asm {
 	  push        ebx
       mov         esi, srcp
@@ -1048,12 +1049,12 @@ out_i_aloopUV:
       align 16
     xloop24:
       mov         eax, fir_filter_size
+      movq        mm0, FPround              ;btotal, gtotal
       lea         edx, [edx+eax*4]          ;cur += fir_filter_size
+      movq        mm1, mm0                  ;rtotal
       mov         ebx, [edx]
-      lea         ebx, [ebx+ebx*2]          ;ebx = ofs = *cur * 3
       add         edx, 4                    ;cur++
-      pxor        mm0, mm0                  ;btotal, gtotal
-      pxor        mm1, mm1                  ;rtotal
+      lea         ebx, [ebx+ebx*2]          ;ebx = ofs = *cur * 3
       lea         edx, [edx+eax*4]          ;cur += fir_filter_size
       add         ebx, esi                  ;ebx = srcp + ofs*3
       lea         eax, [eax+eax*2]          ;eax = a = fir_filter_size*3
@@ -1061,33 +1062,33 @@ out_i_aloopUV:
     aloop24:
       sub         edx, 4                    ;cur--
       sub         eax, 3
+      movd        mm5, [edx]                ;mm5 =    00|co (co = coefficient)
       movd        mm7, [ebx+eax]            ;mm7 = srcp[ofs+a] = 0|0|0|0|x|r|g|b
+      packssdw    mm5, mm2
       punpcklbw   mm7, mm2                  ;mm7 = 0x|0r|0g|0b
+      punpckldq   mm5, mm5                  ;mm5 =    co|co
       movq        mm6, mm7
       punpcklwd   mm7, mm2                  ;mm7 = 00|0g|00|0b
       punpckhwd   mm6, mm2                  ;mm6 = 00|0x|00|0r
-      movd        mm5, [edx]                ;mm5 =    00|co (co = coefficient)
-      packssdw    mm5, mm2
-      punpckldq   mm5, mm5                  ;mm5 =    co|co
       pmaddwd     mm7, mm5                  ;mm7 =  g*co|b*co
       pmaddwd     mm6, mm5                  ;mm6 =  x*co|r*co
       paddd       mm0, mm7
       paddd       mm1, mm6
       jnz         aloop24
+
       pslld       mm0, 2
       pslld       mm1, 2                    ;compensate the fact that FPScale = 16384
       packuswb    mm0, mm1                  ;mm0 = x|_|r|_|g|_|b|_
       psrlw       mm0, 8                    ;mm0 = 0|x|0|r|0|g|0|b
       packuswb    mm0, mm2                  ;mm0 = 0|0|0|0|x|r|g|b
-      pslld       mm0, 8
-      psrld       mm0, 8                    ;mm0 = 0|0|0|0|0|r|g|b
       movd        mm3, [edi+ecx]            ;mm3 = 0|0|0|0|x|r|g|b (dst)
+      pslld       mm0, 8                    ;mm0 = 0|0|0|0|r|g|b|0
       pand        mm3, mm4                  ;mm3 = 0|0|0|0|x|0|0|0 (dst)
-      por         mm3, mm0
-      movd        [edi+ecx], mm3
-
+      psrld       mm0, 8                    ;mm0 = 0|0|0|0|0|r|g|b
       add         ecx, 3
+      por         mm3, mm0
       cmp         ecx, w
+      movd        [edi+ecx-3], mm3
       jnz         xloop24
 
       add         esi, src_pitch
@@ -1105,11 +1106,14 @@ out_i_aloopUV:
     int w = vi.width;
     int fir_filter_size = pattern_luma[0];
     int* pattern_lumaP1 = &pattern_luma[1] - fir_filter_size;
+    static const int FPround = 0x00002000;  // 16384/2
 
     __asm {
 	  push        ebx
       mov         esi, srcp
+      movd        mm3, FPround
       mov         edi, dstp
+	  punpckldq   mm3, mm3
       pxor        mm2, mm2
       align 16
     yloop32:
@@ -1118,40 +1122,40 @@ out_i_aloopUV:
       align 16
     xloop32:
       mov         eax, fir_filter_size
+      movq        mm0, mm3                  ;btotal, gtotal
       lea         edx, [edx+eax*4]          ;cur += fir_filter_size
+      movq        mm1, mm3                  ;atotal, rtotal
       mov         ebx, [edx]
-      shl         ebx, 2                    ;ebx = ofs = *cur * 4
       add         edx, 4                    ;cur++
-      pxor        mm0, mm0                  ;btotal, gtotal
-      pxor        mm1, mm1                  ;atotal, rtotal
+      shl         ebx, 2                    ;ebx = ofs = *cur * 4
       lea         edx, [edx+eax*4]          ;cur += fir_filter_size
       add         ebx, esi                  ;ebx = srcp + ofs*4
       align 16
     aloop32:
       sub         edx, 4                    ;cur--
-      dec         eax
-      movd        mm7, [ebx+eax*4]          ;mm7 = srcp[ofs+a] = 0|0|0|0|a|r|g|b
+      movd        mm7, [ebx+eax*4-4]        ;mm7 = srcp[ofs+a] = 0|0|0|0|a|r|g|b
+      movd        mm5, [edx]                ;mm5 =    00|co (co = coefficient)
       punpcklbw   mm7, mm2                  ;mm7 = 0a|0r|0g|0b
+      packssdw    mm5, mm2
       movq        mm6, mm7
       punpcklwd   mm7, mm2                  ;mm7 = 00|0g|00|0b
-      punpckhwd   mm6, mm2                  ;mm6 = 00|0a|00|0r
-      movd        mm5, [edx]                ;mm5 =    00|co (co = coefficient)
-      packssdw    mm5, mm2
       punpckldq   mm5, mm5                  ;mm5 =    co|co
+      punpckhwd   mm6, mm2                  ;mm6 = 00|0a|00|0r
       pmaddwd     mm7, mm5                  ;mm7 =  g*co|b*co
+      dec         eax
       pmaddwd     mm6, mm5                  ;mm6 =  a*co|r*co
       paddd       mm0, mm7
       paddd       mm1, mm6
       jnz         aloop32
+
       pslld       mm0, 2
       pslld       mm1, 2                    ;compensate the fact that FPScale = 16384
       packuswb    mm0, mm1                  ;mm0 = a|_|r|_|g|_|b|_
       psrlw       mm0, 8                    ;mm0 = 0|a|0|r|0|g|0|b
-      packuswb    mm0, mm2                  ;mm0 = 0|0|0|0|a|r|g|b
-      movd        [edi+ecx*4], mm0
-
       inc         ecx
+      packuswb    mm0, mm2                  ;mm0 = 0|0|0|0|a|r|g|b
       cmp         ecx, w
+      movd        [edi+ecx*4-4], mm0
       jnz         xloop32
 
       add         esi, src_pitch
