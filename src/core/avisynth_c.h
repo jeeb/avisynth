@@ -699,45 +699,44 @@ typedef struct AVS_Library AVS_Library;
 
 struct AVS_Library {
   HMODULE handle;
-  struct {
-    AVSC_DECLARE_FUNC(avs_add_function);
-    AVSC_DECLARE_FUNC(avs_at_exit);
-    AVSC_DECLARE_FUNC(avs_bit_blt);
-    AVSC_DECLARE_FUNC(avs_check_version);
-    AVSC_DECLARE_FUNC(avs_clip_get_error);
-    AVSC_DECLARE_FUNC(avs_copy_clip);
-    AVSC_DECLARE_FUNC(avs_copy_value);
-    AVSC_DECLARE_FUNC(avs_copy_video_frame);
-    AVSC_DECLARE_FUNC(avs_create_script_environment);
-    AVSC_DECLARE_FUNC(avs_delete_script_environment);
-    AVSC_DECLARE_FUNC(avs_function_exists);
-    AVSC_DECLARE_FUNC(avs_get_audio);
-    AVSC_DECLARE_FUNC(avs_get_cpu_flags);
-    AVSC_DECLARE_FUNC(avs_get_frame);
-    AVSC_DECLARE_FUNC(avs_get_parity);
-    AVSC_DECLARE_FUNC(avs_get_var);
-    AVSC_DECLARE_FUNC(avs_get_version);
-    AVSC_DECLARE_FUNC(avs_get_video_info);
-    AVSC_DECLARE_FUNC(avs_invoke);
-    AVSC_DECLARE_FUNC(avs_make_writable);
-    AVSC_DECLARE_FUNC(avs_new_c_filter);
-    AVSC_DECLARE_FUNC(avs_new_video_frame_a);
-    AVSC_DECLARE_FUNC(avs_release_clip);
-    AVSC_DECLARE_FUNC(avs_release_value);
-    AVSC_DECLARE_FUNC(avs_release_video_frame);
-    AVSC_DECLARE_FUNC(avs_save_string);
-    AVSC_DECLARE_FUNC(avs_set_cache_hints);
-    AVSC_DECLARE_FUNC(avs_set_global_var);
-    AVSC_DECLARE_FUNC(avs_set_memory_max);
-    AVSC_DECLARE_FUNC(avs_set_to_clip);
-    AVSC_DECLARE_FUNC(avs_set_var);
-    AVSC_DECLARE_FUNC(avs_set_working_dir);
-    AVSC_DECLARE_FUNC(avs_sprintf);
-    AVSC_DECLARE_FUNC(avs_subframe);
-    AVSC_DECLARE_FUNC(avs_subframe_planar);
-    AVSC_DECLARE_FUNC(avs_take_clip);
-    AVSC_DECLARE_FUNC(avs_vsprintf);
-  } func;
+
+  AVSC_DECLARE_FUNC(avs_add_function);
+  AVSC_DECLARE_FUNC(avs_at_exit);
+  AVSC_DECLARE_FUNC(avs_bit_blt);
+  AVSC_DECLARE_FUNC(avs_check_version);
+  AVSC_DECLARE_FUNC(avs_clip_get_error);
+  AVSC_DECLARE_FUNC(avs_copy_clip);
+  AVSC_DECLARE_FUNC(avs_copy_value);
+  AVSC_DECLARE_FUNC(avs_copy_video_frame);
+  AVSC_DECLARE_FUNC(avs_create_script_environment);
+  AVSC_DECLARE_FUNC(avs_delete_script_environment);
+  AVSC_DECLARE_FUNC(avs_function_exists);
+  AVSC_DECLARE_FUNC(avs_get_audio);
+  AVSC_DECLARE_FUNC(avs_get_cpu_flags);
+  AVSC_DECLARE_FUNC(avs_get_frame);
+  AVSC_DECLARE_FUNC(avs_get_parity);
+  AVSC_DECLARE_FUNC(avs_get_var);
+  AVSC_DECLARE_FUNC(avs_get_version);
+  AVSC_DECLARE_FUNC(avs_get_video_info);
+  AVSC_DECLARE_FUNC(avs_invoke);
+  AVSC_DECLARE_FUNC(avs_make_writable);
+  AVSC_DECLARE_FUNC(avs_new_c_filter);
+  AVSC_DECLARE_FUNC(avs_new_video_frame_a);
+  AVSC_DECLARE_FUNC(avs_release_clip);
+  AVSC_DECLARE_FUNC(avs_release_value);
+  AVSC_DECLARE_FUNC(avs_release_video_frame);
+  AVSC_DECLARE_FUNC(avs_save_string);
+  AVSC_DECLARE_FUNC(avs_set_cache_hints);
+  AVSC_DECLARE_FUNC(avs_set_global_var);
+  AVSC_DECLARE_FUNC(avs_set_memory_max);
+  AVSC_DECLARE_FUNC(avs_set_to_clip);
+  AVSC_DECLARE_FUNC(avs_set_var);
+  AVSC_DECLARE_FUNC(avs_set_working_dir);
+  AVSC_DECLARE_FUNC(avs_sprintf);
+  AVSC_DECLARE_FUNC(avs_subframe);
+  AVSC_DECLARE_FUNC(avs_subframe_planar);
+  AVSC_DECLARE_FUNC(avs_take_clip);
+  AVSC_DECLARE_FUNC(avs_vsprintf);
 };
 
 #undef AVSC_DECLARE_FUNC
@@ -754,8 +753,8 @@ AVSC_INLINE AVS_Library * avs_load_library() {
 #define __AVSC_STRINGIFY(x) #x
 #define AVSC_STRINGIFY(x) __AVSC_STRINGIFY(x)
 #define AVSC_LOAD_FUNC(name) {\
-  library->func.name = (name##_func) GetProcAddress(library->handle, AVSC_STRINGIFY(name));\
-  if (library->func.name == NULL)\
+  library->name = (name##_func) GetProcAddress(library->handle, AVSC_STRINGIFY(name));\
+  if (library->name == NULL)\
     goto fail;\
 }
 
