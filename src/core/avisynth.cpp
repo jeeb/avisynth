@@ -309,7 +309,7 @@ class FunctionTable {
   };
 
   struct Plugin {
-    char* name;
+    const char* name;
     LocalFunction* plugin_functions;
     Plugin* prev;
   };
@@ -330,8 +330,6 @@ public:
   ~FunctionTable() {
     while (local_functions) {
       LocalFunction* prev = local_functions->prev;
-      free((void*)local_functions->name);  // Tritical May 2005
-      free((void*)local_functions->param_types);
       delete local_functions;
       local_functions = prev;
     }
@@ -349,7 +347,7 @@ public:
       env->ThrowError("FunctionTable: Not in prescanning state");
     _RPT1(0, "Prescanning plugin: %s\n", name);
     Plugin* p = new Plugin;
-    p->name = _strdup(name);
+    p->name = name;
     p->plugin_functions = 0;
     p->prev = plugins;
     plugins = p;
@@ -360,8 +358,6 @@ public:
     LocalFunction* cur = p->plugin_functions;
     while (cur) {
       LocalFunction* prev = cur->prev;
-      free((void*)cur->name);
-      free((void*)cur->param_types);
       delete cur;
       cur = prev;
     }
@@ -372,7 +368,6 @@ public:
       while (pp->prev != p) pp = pp->prev;
       pp->prev = p->prev;
     }
-    free(p->name);
     delete p;
   }
 
@@ -472,8 +467,8 @@ public:
     LocalFunction *f = NULL;
     if (!duse) {
       f = new LocalFunction;
-      f->name = _strdup(name);  // Tritical May 2005
-      f->param_types = _strdup(params);
+      f->name = name;
+      f->param_types = params;
       if (!prescanning) {
         f->apply = apply;
         f->user_data = user_data;
@@ -494,8 +489,8 @@ public:
       strcat(result, "_");
       strcat(result, name);
       f2 = new LocalFunction;
-      f2->name = _strdup(result);     // needs to copy here since the plugin will be unloaded
-      f2->param_types = _strdup(params);     // needs to copy here since the plugin will be unloaded
+      f2->name = env->SaveString(result);     // needs to copy here since the plugin will be unloaded
+      f2->param_types = params;     // needs to copy here since the plugin will be unloaded
       alt_name = f2->name;
       if (prescanning) {
         f2->prev = plugins->plugin_functions;
@@ -1067,7 +1062,7 @@ long GetCPUFlags() {
 long ScriptEnvironment::GetCPUFlags() { return CPU_id; }
 
 void ScriptEnvironment::AddFunction(const char* name, const char* params, ApplyFunc apply, void* user_data) {
-  function_table.AddFunction(name, params, apply, user_data);
+  function_table.AddFunction(ScriptEnvironment::SaveString(name), ScriptEnvironment::SaveString(params), apply, user_data);
 }
 
 AVSValue ScriptEnvironment::GetVar(const char* name) {
@@ -1168,8 +1163,9 @@ bool ScriptEnvironment::LoadPluginsMatching(const char* pattern)
       count = 0;
     }
     GetFullPathName(FileData.cFileName, MAX_PATH, file, &dummy);
-    function_table.PrescanPluginStart(file);
-    LoadPlugin(AVSValue(&AVSValue(&AVSValue(file), 1), 1), (void*)true, this);
+	const char *_file = ScriptEnvironment::SaveString(file);
+    function_table.PrescanPluginStart(_file);
+    LoadPlugin(AVSValue(&AVSValue(&AVSValue(_file), 1), 1), (void*)true, this);
     bContinue = FindNextFile(hFind, &FileData);
     if (!bContinue) {
       FindClose(hFind);
