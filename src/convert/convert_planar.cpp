@@ -1174,7 +1174,7 @@ AVSValue __cdecl ConvertToPlanarGeneric::CreateYV12(AVSValue args, void*, IScrip
         case PLACEMENT_MPEG2:
           break;  // Already set (default)
   }
-  clip = new ConvertToPlanarGeneric(clip ,VideoInfo::CS_YV12,args[1].AsBool(false),Usubs, Vsubs, cp, &args[4], env);
+  clip = new ConvertToPlanarGeneric(clip, VideoInfo::CS_YV12, interlaced, Usubs, Vsubs, cp, &args[4], env);
   return clip;
 }
 
