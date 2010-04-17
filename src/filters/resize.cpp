@@ -72,7 +72,7 @@ VerticalReduceBy2::VerticalReduceBy2(PClip _child, IScriptEnvironment* env)
   }
 
   if (vi.height & 1)
-    env->ThrowError("HorizontalReduceBy2: Image height must be even");
+    env->ThrowError("VerticalReduceBy2: Image height must be even");
 
   original_height = vi.height;
   vi.height >>= 1;
