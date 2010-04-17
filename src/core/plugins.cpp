@@ -83,7 +83,7 @@ static bool MyLoadLibrary(const char* filename, HMODULE* hmod, bool quiet, IScri
     if (quiet)
       return false;
     else
-      env->ThrowError("LoadPlugin: unable to load \"%s\"", filename);
+      env->ThrowError("LoadPlugin: unable to load \"%s\", error=0x%x", filename, GetLastError());
   // see if we've loaded this already, and add it to the list if not
   for (int j=0; j<max_plugins; ++j) {
     if (loaded_plugins[j] == *hmod) {
@@ -1093,7 +1093,7 @@ AVSValue LoadVirtualdubPlugin(AVSValue args, void*, IScriptEnvironment* env) {
 
   HMODULE hmodule = LoadLibrary(szModule);
   if (!hmodule)
-    env->ThrowError("LoadVirtualdubPlugin: Error opening \"%s\"", szModule);
+    env->ThrowError("LoadVirtualdubPlugin: Error opening \"%s\", error=0x%x", szModule, GetLastError());
 
   FilterModuleInitProc initProc   = (FilterModuleInitProc  )GetProcAddress(hmodule, "VirtualdubFilterModuleInit2");
   FilterModuleDeinitProc deinitProc = (FilterModuleDeinitProc)GetProcAddress(hmodule, "VirtualdubFilterModuleDeinit");

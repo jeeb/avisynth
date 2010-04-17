@@ -593,7 +593,7 @@ AVSValue __cdecl load_c_plugin(AVSValue args, void * user_data,
 	const char * filename = args[0].AsString();
 	HMODULE plugin = LoadLibrary(filename);
 	if (!plugin)
-		env->ThrowError("Unable to load C Plugin: %s", filename);
+		env->ThrowError("Unable to load C Plugin: \"%s\", error=0x%x", filename, GetLastError());
     AvisynthCPluginInitFunc func = 0;
 #ifndef AVSC_USE_STDCALL
     func = (AvisynthCPluginInitFunc)GetProcAddress(plugin, "avisynth_c_plugin_init");
