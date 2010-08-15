@@ -805,13 +805,53 @@ PVideoFrame Histogram::DrawModeLevels(int n, IScriptEnvironment* env) {
       memset(&pdstb[y*dstPitch], 16, 256);
     }}
 
-    // Draw Unsafe zone (UV-graph)
-    {for (int y=64+16; y<128+16+2; y++) {
-      for (int x=0; x<16; x++) {
+    // Draw Unsafe zone (Y-graph)
+    {for (int y=0; y<=64; y++) {
+	  int x=0;
+      for ( ; x<16; x++) {
         pdstb[dstPitch*y+x] = 32;
-        pdstb[dstPitch*y+x+240] = 32;
-        pdstb[dstPitch*(y+80)+x] = 32;
-        pdstb[dstPitch*(y+80)+x+240] = 32;
+      }
+	  x += 220;
+      for ( ; x<256; x++) {
+        pdstb[dstPitch*y+x] = 32;
+      }
+    }}
+
+    // Draw Unsafe zone (UV-graph)
+
+	// x=0-16, R=G=255, B=0; x=128, R=G=B=0; x=240-255, R=G=0, B=255
+    // Draw upper gradient
+    {for (int y=64+16; y<=128+16; y++) {
+	  int x=0;
+      for ( ; x<15; x++) {
+        pdstb[dstPitch*y+x] = 210/2;
+      }
+      for ( ; x<=128; x++) {
+        pdstb[dstPitch*y+x] = ((128-x)*15)>>3; // *1.875
+      }
+      for ( ; x<=240; x++) {
+        pdstb[dstPitch*y+x] = ((x-128)*24001)>>16; // *0.366
+      }
+      for ( ; x<256; x++) {
+        pdstb[dstPitch*y+x] = 41/2;
+      }
+    }}
+
+	// x=0-16, R=0, G=B=255; x=128, R=G=B=0; x=240-255, R=255, G=B=0
+    //  Draw lower gradient
+    {for (int y=128+32; y<=128+64+32; y++) {
+	  int x=0;
+      for ( ; x<15; x++) {
+        pdstb[dstPitch*y+x] = 170/2;
+      }
+      for ( ; x<=128; x++) {
+        pdstb[dstPitch*y+x] = ((128-x)*99515)>>16; // *1.518
+      }
+      for ( ; x<=240; x++) {
+        pdstb[dstPitch*y+x] = ((x-128)*47397)>>16; // *0.723
+      }
+      for ( ; x<256; x++) {
+        pdstb[dstPitch*y+x] = 81/2;
       }
     }}
 
@@ -912,17 +952,33 @@ PVideoFrame Histogram::DrawModeLevels(int n, IScriptEnvironment* env) {
       }}
     }}
 
+	// x=16, R=G=255, B=0; x=128, R=G=B=0; x=240, R=G=0, B=255
     // Draw upper gradient
     {for (int y=((64+16)>>sheight); y<=((128+16)>>sheight); y++) {
-      for (int x=0; x<(256>>swidth); x++) {
+	  int x=0;
+      for ( ; x<(16>>swidth); x++) {
+        pdstbU[dstPitchUV*y+x] = 16+112/2;
+      }
+      for ( ; x<=(240>>swidth); x++) {
         pdstbU[dstPitchUV*y+x] = x<<swidth;
+      }
+      for ( ; x<(256>>swidth); x++) {
+        pdstbU[dstPitchUV*y+x] = 240-112/2;
       }
     }}
 
+	// x=16, R=0, G=B=255; x=128, R=G=B=0; x=240, R=255, G=B=0
     //  Draw lower gradient
     {for (int y=((128+32)>>sheight); y<=((128+64+32)>>sheight); y++) {
-      for (int x=0; x<(256>>swidth); x++) {
+	  int x=0;
+      for ( ; x<(16>>swidth); x++) {
+        pdstbV[dstPitchUV*y+x] = 16+112/2;
+      }
+      for ( ; x<=(240>>swidth); x++) {
         pdstbV[dstPitchUV*y+x] = x<<swidth;
+      }
+      for ( ; x<(256>>swidth); x++) {
+        pdstbV[dstPitchUV*y+x] = 240-112/2;
       }
     }}
   }
