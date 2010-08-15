@@ -187,7 +187,7 @@ PVideoFrame ImageWriter::GetFrame(int n, IScriptEnvironment* env)
       ostringstream ss;
       ss << "ImageWriter: frame " << n << " not in range";
       env->MakeWritable(&frame);
-      ApplyMessage(&frame, vi, ss.str().c_str(), vi.width/4, TEXT_COLOR,0,0 , env);
+      env->ApplyMessage(&frame, vi, ss.str().c_str(), vi.width/4, TEXT_COLOR, 0, 0);
     }
     return frame;
   }
@@ -206,7 +206,7 @@ PVideoFrame ImageWriter::GetFrame(int n, IScriptEnvironment* env)
       ostringstream ss;
       ss << "ImageWriter: could not create file '" << filename << "'";
       env->MakeWritable(&frame);
-      ApplyMessage(&frame, vi, ss.str().c_str(), vi.width/4, TEXT_COLOR,0,0 , env);
+      env->ApplyMessage(&frame, vi, ss.str().c_str(), vi.width/4, TEXT_COLOR, 0, 0);
       return frame;
     }
 
@@ -288,7 +288,7 @@ PVideoFrame ImageWriter::GetFrame(int n, IScriptEnvironment* env)
       ostringstream ss;
       ss << "ImageWriter: error '" << getErrStr(err) << "' in DevIL library\n writing file " << filename;
       env->MakeWritable(&frame);
-      ApplyMessage(&frame, vi, ss.str().c_str(), vi.width/4, TEXT_COLOR,0,0 , env);
+      env->ApplyMessage(&frame, vi, ss.str().c_str(), vi.width/4, TEXT_COLOR, 0, 0);
       return frame;
     }
   }
@@ -298,7 +298,7 @@ PVideoFrame ImageWriter::GetFrame(int n, IScriptEnvironment* env)
     ostringstream text;
     text << "Frame " << n << " written to: " << filename;
     env->MakeWritable(&frame);
-    ApplyMessage(&frame, vi, text.str().c_str(), vi.width/4, TEXT_COLOR,0,0 , env);
+    env->ApplyMessage(&frame, vi, text.str().c_str(), vi.width/4, TEXT_COLOR, 0, 0);
   }
 
   return frame;
@@ -592,7 +592,7 @@ PVideoFrame ImageReader::GetFrame(int n, IScriptEnvironment* env)
       if ((info) || (err != IL_COULD_NOT_OPEN_FILE)) {
         ostringstream ss;
         ss << "ImageReader: error '" << getErrStr(err) << "' in DevIL library\n opening file \"" << filename << "\"";
-        ApplyMessage(&frame, vi, ss.str().c_str(), vi.width/4, TEXT_COLOR,0,0 , env);
+        env->ApplyMessage(&frame, vi, ss.str().c_str(), vi.width/4, TEXT_COLOR, 0, 0);
       }
       return frame;
     }
@@ -612,7 +612,7 @@ PVideoFrame ImageReader::GetFrame(int n, IScriptEnvironment* env)
           ostringstream ss;
           ss << "ImageSourceAnim: error '" << getErrStr(err) << "' in DevIL library\n"
                 "processing image " << n << " from file \"" << filename << "\"";
-          ApplyMessage(&frame, vi, ss.str().c_str(), vi.width/4, TEXT_COLOR,0,0 , env);
+          env->ApplyMessage(&frame, vi, ss.str().c_str(), vi.width/4, TEXT_COLOR, 0, 0);
         }
         return frame;
       }
@@ -627,7 +627,7 @@ PVideoFrame ImageReader::GetFrame(int n, IScriptEnvironment* env)
       LeaveCriticalSection(&FramesCriticalSection);
 
       memset(WritePtr, 0, pitch * height);
-      ApplyMessage(&frame, vi, "ImageReader: images must have identical heights", vi.width/4, TEXT_COLOR,0,0 , env);
+      env->ApplyMessage(&frame, vi, "ImageReader: images must have identical heights", vi.width/4, TEXT_COLOR, 0, 0);
       return frame;
     }
 
@@ -639,7 +639,7 @@ PVideoFrame ImageReader::GetFrame(int n, IScriptEnvironment* env)
       LeaveCriticalSection(&FramesCriticalSection);
 
       memset(WritePtr, 0, pitch * height);
-      ApplyMessage(&frame, vi, "ImageReader: images must have identical widths", vi.width/4, TEXT_COLOR,0,0 , env);
+      env->ApplyMessage(&frame, vi, "ImageReader: images must have identical widths", vi.width/4, TEXT_COLOR, 0, 0);
       return frame;
     }
 
@@ -681,7 +681,7 @@ PVideoFrame ImageReader::GetFrame(int n, IScriptEnvironment* env)
       memset(WritePtr, 0, pitch * height);
       ostringstream ss;
       ss << "ImageReader: error '" << getErrStr(err) << "' in DevIL library\n reading file \"" << filename << "\"";
-      ApplyMessage(&frame, vi, ss.str().c_str(), vi.width/4, TEXT_COLOR,0,0 , env);
+      env->ApplyMessage(&frame, vi, ss.str().c_str(), vi.width/4, TEXT_COLOR, 0, 0);
       return frame;
     }
   }
@@ -727,7 +727,7 @@ PVideoFrame ImageReader::GetFrame(int n, IScriptEnvironment* env)
     // overlay on video output: progress indicator
     ostringstream text;
     text << "Frame " << n << ".\nRead from \"" << filename << "\"";
-    ApplyMessage(&frame, vi, text.str().c_str(), vi.width/4, TEXT_COLOR,0,0 , env);
+    env->ApplyMessage(&frame, vi, text.str().c_str(), vi.width/4, TEXT_COLOR, 0, 0);
   }
 
   return frame;
@@ -750,7 +750,7 @@ bool ImageReader::checkProperties(ifstream & file, PVideoFrame & frame, IScriptE
 {
   if (!file.is_open())
   {
-    if (info) ApplyMessage(&frame, vi, "ImageReader: cannot open file", vi.width/4, TEXT_COLOR,0,0 , env);
+    if (info) env->ApplyMessage(&frame, vi, "ImageReader: cannot open file", vi.width/4, TEXT_COLOR, 0, 0);
     return false;
   }
 
@@ -762,43 +762,43 @@ bool ImageReader::checkProperties(ifstream & file, PVideoFrame & frame, IScriptE
 
   if (tempFileHeader.bfType != fileHeader.bfType)
   {
-    ApplyMessage(&frame, vi, "ImageReader: invalid (E)BMP file", vi.width/4, TEXT_COLOR,0,0 , env);
+    env->ApplyMessage(&frame, vi, "ImageReader: invalid (E)BMP file", vi.width/4, TEXT_COLOR, 0, 0);
     return false;
   }
 
   if (tempInfoHeader.biWidth != infoHeader.biWidth)
   {
-    ApplyMessage(&frame, vi, "ImageReader: image widths must be identical", vi.width/4, TEXT_COLOR,0,0 , env);
+    env->ApplyMessage(&frame, vi, "ImageReader: image widths must be identical", vi.width/4, TEXT_COLOR, 0, 0);
     return false;
   }
 
   if (tempInfoHeader.biHeight != infoHeader.biHeight)
   {
-    ApplyMessage(&frame, vi, "ImageReader: image heights must be identical", vi.width/4, TEXT_COLOR,0,0 , env);
+    env->ApplyMessage(&frame, vi, "ImageReader: image heights must be identical", vi.width/4, TEXT_COLOR, 0, 0);
     return false;
   }
 
   if (tempInfoHeader.biPlanes != infoHeader.biPlanes)
   {
-    ApplyMessage(&frame, vi, "ImageReader: images must have the same number of planes", vi.width/4, TEXT_COLOR,0,0 , env);
+    env->ApplyMessage(&frame, vi, "ImageReader: images must have the same number of planes", vi.width/4, TEXT_COLOR, 0, 0);
     return false;
   }
 
   if (tempInfoHeader.biBitCount != infoHeader.biBitCount)
   {
-    ApplyMessage(&frame, vi, "ImageReader: images must have identical bits per pixel", vi.width/4, TEXT_COLOR,0,0 , env);
+    env->ApplyMessage(&frame, vi, "ImageReader: images must have identical bits per pixel", vi.width/4, TEXT_COLOR, 0, 0);
     return false;
   }
 
   if (tempFileHeader.bfSize != fileHeader.bfSize)
   {
-    ApplyMessage(&frame, vi, "ImageReader: raster sizes must be identical", vi.width/4, TEXT_COLOR,0,0 , env);
+    env->ApplyMessage(&frame, vi, "ImageReader: raster sizes must be identical", vi.width/4, TEXT_COLOR, 0, 0);
     return false;
   }
 
   if (tempInfoHeader.biCompression != 0)
   {
-    ApplyMessage(&frame, vi, "ImageReader: EBMP reader cannot handle compressed images", vi.width/4, TEXT_COLOR,0,0 , env);
+    env->ApplyMessage(&frame, vi, "ImageReader: EBMP reader cannot handle compressed images", vi.width/4, TEXT_COLOR, 0, 0);
     return false;
   }
 

@@ -37,8 +37,6 @@
 
 #include "levels.h"
 
-#include "text-overlay.h"
-
 
 
 
@@ -325,7 +323,7 @@ PVideoFrame __stdcall RGBAdjust::GetFrame(int n, IScriptEnvironment* env)
 			Amin_r,Amin_g,Amin_b,
 			Amax_r,Amax_g,Amax_b
 			);
-		ApplyMessage(&frame, vi, text, vi.width/4, 0xa0a0a0,0,0 , env );
+		env->ApplyMessage(&frame, vi, text, vi.width/4, 0xa0a0a0, 0, 0);
 	}
   return frame;
 }

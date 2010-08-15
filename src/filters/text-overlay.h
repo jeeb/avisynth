@@ -36,7 +36,6 @@
 #define __Text_overlay_H__
 
 #include "../internal.h"
-#include "../convert/convert.h"
 
 
 /********************************************************************

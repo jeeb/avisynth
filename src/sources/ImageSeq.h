@@ -44,7 +44,6 @@
 using namespace std;
 
 #include "../internal.h"
-#include "../filters/text-overlay.h"  // for messages
 
 #include "../../distrib/include/il/il.h"
 

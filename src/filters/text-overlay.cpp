@@ -37,6 +37,8 @@
 
 #include "text-overlay.h"
 
+#include "../convert/convert.h"  // for RGB2YUV
+
 #include<string>
 #include<sstream>
 

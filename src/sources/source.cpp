@@ -252,10 +252,6 @@ static AVSValue __cdecl Create_BlankClip(AVSValue args, void*, IScriptEnvironmen
 ********************************************************************/
 
 // in text-overlay.cpp
-extern void ApplyMessage(PVideoFrame* frame, const VideoInfo& vi,
-  const char* message, int size, int textcolor, int halocolor, int bgcolor,
-  IScriptEnvironment* env);
-
 extern bool GetTextBoundingBox(const char* text, const char* fontname,
   int size, bool bold, bool italic, int align, int* width, int* height);
 
@@ -266,8 +262,8 @@ PClip Create_MessageClip(const char* message, int width, int height, int pixel_t
   for (size = 24*8; /*size>=9*8*/; size-=4) {
     int text_width, text_height;
     GetTextBoundingBox(message, "Arial", size, true, false, TA_TOP | TA_CENTER, &text_width, &text_height);
-    text_width = ((text_width>>3)+8+3) & -4;
-    text_height = ((text_height>>3)+8+1) & -2;
+    text_width = ((text_width>>3)+8+7) & ~7;
+    text_height = ((text_height>>3)+8+1) & ~1;
     if (size<=9*8 || ((width<=0 || text_width<=width) && (height<=0 || text_height<=height))) {
       if (width <= 0 || (shrink && width>text_width))
         width = text_width;
@@ -287,7 +283,7 @@ PClip Create_MessageClip(const char* message, int width, int height, int pixel_t
   vi.num_frames = 240;
 
   PVideoFrame frame = CreateBlankFrame(vi, bgcolor, COLOR_MODE_RGB, env);
-  ApplyMessage(&frame, vi, message, size, textcolor, halocolor, bgcolor, env);
+  env->ApplyMessage(&frame, vi, message, size, textcolor, halocolor, bgcolor);
   return new StaticImage(vi, frame, false);
 };
 

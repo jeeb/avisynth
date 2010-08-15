@@ -42,7 +42,6 @@
 */
 
 #include "color.h"
-#include "text-overlay.h"
 
 extern const AVSFunction Color_filters[] = {
   { "ColorYUV",
@@ -231,7 +230,7 @@ PVideoFrame __stdcall Color::GetFrame(int frame, IScriptEnvironment* env)
       Amax_y,Amax_u,Amax_v
       );
 
-      ApplyMessage(&src, vi, text, vi.width/4, 0xa0a0a0,0,0 , env );
+      env->ApplyMessage(&src, vi, text, vi.width/4, 0xa0a0a0, 0, 0);
       if (!(autowhite||autogain)) {
         return src;
       }

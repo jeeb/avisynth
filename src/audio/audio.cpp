@@ -962,7 +962,7 @@ PVideoFrame __stdcall Normalize::GetFrame(int n, IScriptEnvironment* env) {
       // maxdb = (20 * log(factor)) / log(10);
       sprintf(text, "Amplify Factor: %8.4f\nAmplify DB: %8.4f\nAt Frame: %d", max_factor, maxdb, frameno);
     }
-    ApplyMessage(&src, vi, text, vi.width / 4, 0xf0f080, 0, 0 , env );
+    env->ApplyMessage(&src, vi, text, vi.width / 4, 0xf0f080, 0, 0);
     return src;
   }
   return child->GetFrame(n, env);

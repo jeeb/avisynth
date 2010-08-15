@@ -35,7 +35,6 @@
 #include "stdafx.h"
 
 #include "focus.h"
-#include "text-overlay.h"
 
 
 
