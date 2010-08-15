@@ -66,18 +66,6 @@ public:
 };
 
 
-// Helper function - exception protected wrapper
-
-inline AVSValue GetVar(IScriptEnvironment* env, const char* name) {
-  try {
-    return env->GetVar(name);
-  }
-  catch (IScriptEnvironment::NotFound) {}
-
-  return AVSValue();
-}
-
-
 /* ------------------------------------------------------------------------------
 ** Write function to evaluate expressions per frame and write the results to file
 ** Ernst Peché, 2004
