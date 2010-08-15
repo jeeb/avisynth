@@ -102,22 +102,23 @@ PVideoFrame __stdcall Mask::GetFrame(int n, IScriptEnvironment* env)
 	const int src1_pitch = src1->GetPitch();
 	const int src2_pitch = src2->GetPitch();
 
+	const int myx = vi.width;
+	const int myy = vi.height;
+
 	const int cyb = int(0.114*32768+0.5);
 	const int cyg = int(0.587*32768+0.5);
 	const int cyr = int(0.299*32768+0.5);
 
-	const int myx = vi.width;
-	const int myy = vi.height;
-
 	__declspec(align(8)) static const __int64 rgb2lum = ((__int64)cyr << 32) | (cyg << 16) | cyb;
-	__declspec(align(8)) static const __int64 alpha_mask=0x00ffffff00ffffff;
-	__declspec(align(8)) static const __int64 color_mask=0xff000000ff000000;
+
+	static const int alpha_mask=0x00ffffff;
+	static const int color_mask=0xff000000;
+	static const int rounder   =16384;
 /*
-  for (int y=0; y<vi.height; ++y)
-  {
+  for (int y=0; y<vi.height; ++y) {
 	  for (int x=0; x<vi.width; ++x)
-		  src1p[x*4+3] = (cyb*src2p[x*src2_pixels] + cyg*src2p[x*src2_pixels+1] +
-                    cyr*src2p[x*src2_pixels+2] + 0x8000) >> 16;
+		  src1p[x*4+3] = (cyb*src2p[x*4+0] + cyg*src2p[x*4+1] +
+                    cyr*src2p[x*4+2] + 16384) >> 15;
 
     src1p += src1_pitch;
     src2p += src2_pitch;
@@ -128,20 +129,25 @@ PVideoFrame __stdcall Mask::GetFrame(int n, IScriptEnvironment* env)
 		mov			esi, src2p
 		mov			eax, myy
 		movq		mm1, rgb2lum
-		movq		mm2, alpha_mask
-		movq		mm3, color_mask
-		xor         ecx, ecx
+		movd		mm2, alpha_mask
+		movd		mm3, color_mask
+		movd		mm7, rounder
+		punpckldq	mm2, mm2
+		punpckldq	mm3, mm3
+		punpckldq	mm7, mm7
+		xor			ecx, ecx
 		pxor		mm0, mm0
-		mov         edx, myx
+		mov			edx, myx
 		align		16
 mask_mmxloop:
-			movd		mm6, [esi + ecx*4] ; pipeline in next mask pixel RGB
+			movd		mm6, [esi + ecx*4]	; pipeline in next mask pixel RGB
 			 movd		mm4, [edi + ecx*4]	;get color RGBA
-			punpcklbw	mm6,mm0				;mm6= 00aa|00rr|00gg|00bb [src2]
-			pmaddwd		mm6,mm1				;partial monochrome result
-			punpckldq	mm5,mm6				;ready to add
-			paddd		mm6, mm5			;32 bit result
-			psrlq		mm6, 23				;8 bit result
+			punpcklbw	mm6, mm0			;mm6= 00aa|00rr|00gg|00bb [src2]
+			pmaddwd		mm6, mm1			;partial monochrome result
+			punpckldq	mm5, mm6			;ready to add
+			 paddd		mm6, mm7			;rounding
+			paddd		mm6, mm5			;32 bit result in high top dword
+			psrlq		mm6, 15+8			;8 bit result
 			 pand		mm4, mm2			;strip out old alpha
 			pand		mm6, mm3			;clear any possible junk
 			 inc		ecx					;point to next - aka loop counter
