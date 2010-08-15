@@ -37,7 +37,6 @@
 
 #include "conditional.h"
 #include "../../core/parser/scriptparser.h"
-#include "../text-overlay.h"
 #include "conditional_reader.h"
 
 extern const AVSFunction Conditional_filters[] = {
@@ -53,6 +52,18 @@ extern const AVSFunction Conditional_filters[] = {
 };
 
 #define W_DIVISOR 5  // Width divisor for onscreen messages
+
+// Helper function - exception protected wrapper
+
+inline AVSValue GetVar(IScriptEnvironment* env, const char* name) {
+  try {
+    return env->GetVar(name);
+  }
+  catch (IScriptEnvironment::NotFound) {}
+
+  return AVSValue();
+}
+
 
 /********************************
  * Conditional filter
@@ -130,7 +141,7 @@ PVideoFrame __stdcall ConditionalFilter::GetFrame(int n, IScriptEnvironment* env
 
     PVideoFrame dst = source1->GetFrame(n,env);
     env->MakeWritable(&dst);
-    ApplyMessage(&dst, vi1, error_msg, vi.width/W_DIVISOR, 0xa0a0a0,0,0 , env );
+    env->ApplyMessage(&dst, vi1, error_msg, vi.width/W_DIVISOR, 0xa0a0a0, 0, 0);
     env->SetVar("last",prev_last);       // Restore implicit last
     env->SetVar("current_frame",prev_current_frame);       // Restore current_frame
     return dst;
@@ -139,41 +150,61 @@ PVideoFrame __stdcall ConditionalFilter::GetFrame(int n, IScriptEnvironment* env
   env->SetVar("last",prev_last);       // Restore implicit last
   env->SetVar("current_frame",prev_current_frame);       // Restore current_frame
 
-  int test_int=false;
+  bool test_int=false;
+  bool test_string=false;
 
   int e1 = 0;
   int e2 = 0;
   float f1 = 0.0f;
   float f2 = 0.0f;
   try {
-    if (e1_result.IsInt() || e1_result.IsBool()) {
+    if (e1_result.IsString()) {
+      if (!e2_result.IsString())
+        env->ThrowError("Conditional filter: Second expression did not return a string, as in first string expression.");
+      test_string = true;
       test_int = true;
-      e1 = e1_result.IsInt() ? e1_result.AsInt() : e1_result.AsBool();
+      e1 = lstrcmp(e1_result.AsString(), e2_result.AsString());
+      e2 = 0;
+
+    } else if (e1_result.IsBool()) {
       if (!(e2_result.IsInt() || e2_result.IsBool()))
-        env->ThrowError("Conditional filter: Second expression did not return an integer or bool, as first expression.");
+        env->ThrowError("Conditional filter: Second expression did not return an integer or bool, as in first bool expression.");
+      test_int = true;
+      e1 = e1_result.AsBool();
       e2 = e2_result.IsInt() ? e2_result.AsInt() : e2_result.AsBool();
+
+    } else if (e1_result.IsInt()) {
+      if (e2_result.IsInt() || e2_result.IsBool()) {
+        test_int = true;
+        e1 = e1_result.AsInt();
+        e2 = e2_result.IsInt() ? e2_result.AsInt() : e2_result.AsBool();
+      } else if (e2_result.IsFloat()) {
+        f1 = e1_result.AsFloat();
+        f2 = e2_result.AsFloat();
+      } else
+        env->ThrowError("Conditional filter: Second expression did not return a float, integer or bool, as in first integer expression.");
 
     } else if (e1_result.IsFloat()) {
       f1 = e1_result.AsFloat();
       if (!e2_result.IsFloat()) 
-        env->ThrowError("Conditional filter: Second expression did not return a float or an integer, as first expression.");
+        env->ThrowError("Conditional filter: Second expression did not return a float or an integer, as in first float expression.");
       f2 = e2_result.AsFloat();
     } else {
-      env->ThrowError("ConditionalFilter: First condition did not return an int, bool or float!");
+      env->ThrowError("ConditionalFilter: First expression did not return an integer, bool or float!");
     }
   } catch (AvisynthError error) {    
     const char* error_msg = error.msg;  
 
     PVideoFrame dst = source1->GetFrame(n,env);
     env->MakeWritable(&dst);
-    ApplyMessage(&dst, vi1, error_msg, vi.width/W_DIVISOR, 0xa0a0a0,0,0 , env );
+    env->ApplyMessage(&dst, vi1, error_msg, vi.width/W_DIVISOR, 0xa0a0a0, 0, 0);
     return dst;
   }
 
 
   bool state = false;
 
-  if (test_int) {
+  if (test_int) { // String and Int compare
     if (evaluator&EQUALS) 
       if (e1 == e2) state = true;
 
@@ -182,6 +213,7 @@ PVideoFrame __stdcall ConditionalFilter::GetFrame(int n, IScriptEnvironment* env
 
     if (evaluator&LESSTHAN) 
       if (e1 < e2) state = true;
+
   } else {  // Float compare
     if (evaluator&EQUALS) 
       if (fabs(f1-f2)<0.000001f) state = true;   // Exact equal will sometimes be rounded to wrong values.
@@ -195,15 +227,22 @@ PVideoFrame __stdcall ConditionalFilter::GetFrame(int n, IScriptEnvironment* env
 
   if (show) {
       char text[400];
-      if (test_int) {
-        sprintf(text,
+      if (test_string) {
+        _snprintf(text, sizeof(text)-1,
+          "Left side Conditional Result:%.40s\n"
+          "Right side Conditional Result:%.40s\n"
+          "Evaluate result: %s\n",
+          e1_result.AsString(), e2_result.AsString(), (state) ? t_TRUE : t_FALSE
+        );
+      } else if (test_int) {
+        _snprintf(text, sizeof(text)-1,
           "Left side Conditional Result:%i\n"
           "Right side Conditional Result:%i\n"
           "Evaluate result: %s\n",
           e1, e2, (state) ? t_TRUE : t_FALSE
         );
       } else {
-        sprintf(text,
+        _snprintf(text, sizeof(text)-1,
           "Left side Conditional Result:%7.4f\n"
           "Right side Conditional Result:%7.4f\n"
           "Evaluate result: %s\n", 
@@ -213,7 +252,7 @@ PVideoFrame __stdcall ConditionalFilter::GetFrame(int n, IScriptEnvironment* env
 
       PVideoFrame dst = (state) ? source1->GetFrame(min(vi1.num_frames-1,n),env) : source2->GetFrame(min(vi2.num_frames-1,n),env);
       env->MakeWritable(&dst);
-      ApplyMessage(&dst, vi, text, vi.width/4, 0xa0a0a0,0,0 , env );
+      env->ApplyMessage(&dst, vi, text, vi.width/4, 0xa0a0a0, 0, 0);
 
     return dst;
   }
@@ -258,7 +297,7 @@ PVideoFrame __stdcall ScriptClip::GetFrame(int n, IScriptEnvironment* env) {
   if (show) {
     PVideoFrame dst = child->GetFrame(n,env);
     env->MakeWritable(&dst);
-    ApplyMessage(&dst, vi, script.AsString(), vi.width/6, 0xa0a0a0,0,0 , env );
+    env->ApplyMessage(&dst, vi, script.AsString(), vi.width/6, 0xa0a0a0, 0, 0);
     env->SetVar("last",prev_last);       // Restore implicit last
     env->SetVar("current_frame",prev_current_frame);       // Restore current_frame
     return dst;
@@ -278,7 +317,7 @@ PVideoFrame __stdcall ScriptClip::GetFrame(int n, IScriptEnvironment* env) {
 
     PVideoFrame dst = child->GetFrame(n,env);
     env->MakeWritable(&dst);
-    ApplyMessage(&dst, vi, error_msg, vi.width/W_DIVISOR, 0xa0a0a0,0,0 , env );
+    env->ApplyMessage(&dst, vi, error_msg, vi.width/W_DIVISOR, 0xa0a0a0, 0, 0);
     env->SetVar("last",prev_last);       // Restore implicit last
     env->SetVar("current_frame",prev_current_frame);       // Restore current_frame
     return dst;
@@ -308,7 +347,7 @@ PVideoFrame __stdcall ScriptClip::GetFrame(int n, IScriptEnvironment* env) {
   if (error != NULL) {
     PVideoFrame dst = child->GetFrame(n,env);
     env->MakeWritable(&dst);
-    ApplyMessage(&dst, vi, error, vi.width/W_DIVISOR, 0xa0a0a0,0,0 , env );
+    env->ApplyMessage(&dst, vi, error, vi.width/W_DIVISOR, 0xa0a0a0, 0, 0);
     return dst;
   }
 
