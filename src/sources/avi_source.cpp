@@ -133,28 +133,32 @@ LRESULT AVISource::DecompressFrame(int n, bool preroll, PVideoFrame &frame, IScr
     pvideo->Read(n, 1, buf, vi.BMPSize(), &bytes_read, NULL);
     dropped_frame = !bytes_read;
     if (!vi.IsY8() && vi.IsPlanar()) {
-	  const int sizeY  = vi.RowSize(PLANAR_Y) * vi.height;
-	  const int sizeUV = vi.RowSize(PLANAR_U) * vi.height >> vi.GetPlaneHeightSubsampling(PLANAR_U);
+      const int rowsizeY  = vi.RowSize(PLANAR_Y);
+      const int rowsizeUV = vi.RowSize(PLANAR_U);
+
+      const int sizeY  = rowsizeY  * vi.height;
+      const int sizeUV = rowsizeUV * vi.height >> vi.GetPlaneHeightSubsampling(PLANAR_U);
 
       const long packedbytes = (sizeY + 2*sizeUV + 3) & ~3;
 
-	  // Is this frame packed or have rows DWORD aligned?
+      // Is this frame packed or have rows DWORD aligned?
       if (((bytes_read+3)&~3) == packedbytes) {
+        const int offsetY = frame->GetOffset(PLANAR_Y);
+
         int offsetU = frame->GetOffset(PLANAR_U);
         int offsetV = frame->GetOffset(PLANAR_V);
 
         if (offsetU < offsetV) {
-          offsetU = sizeY        - offsetU;
-          offsetV = sizeY+sizeUV - offsetV;
+          offsetU = offsetY+sizeY        - offsetU;
+          offsetV = offsetY+sizeY+sizeUV - offsetV;
         }
         else {
-          offsetU = sizeY+sizeUV - offsetU;
-          offsetV = sizeY        - offsetV;
+          offsetU = offsetY+sizeY+sizeUV - offsetU;
+          offsetV = offsetY+sizeY        - offsetV;
         }
 
         // set pitch = rowsize
-        frame = env->SubframePlanar(frame, 0, vi.RowSize(PLANAR_Y), vi.RowSize(PLANAR_Y),
-                                    vi.height, offsetU, offsetV, vi.RowSize(PLANAR_U));
+        frame = env->SubframePlanar(frame, 0, rowsizeY, rowsizeY, vi.height, offsetU, offsetV, rowsizeUV);
       }
     }
     return ICERR_OK;
@@ -574,8 +578,11 @@ AVISource::AVISource(const char filename[], bool fAudio, const char pixel_type[]
     if (mode != MODE_WAV) {
       int keyframe = pvideo->NearestKeyFrame(0);
       PVideoFrame frame = env->NewVideoFrame(vi, -4);
+      if (!frame)   // shutdown, if init not succesful.
+        env->ThrowError("AviSource: Could not allocate frame 0");
+
       LRESULT error = DecompressFrame(keyframe, false, frame, env);
-      if (error != ICERR_OK || (!frame))   // shutdown, if init not succesful.
+      if (error != ICERR_OK)   // shutdown, if init not succesful.
         env->ThrowError("AviSource: Could not decompress frame 0");
 
       // Cope with dud AVI files that start with drop
@@ -588,7 +595,7 @@ AVISource::AVISource(const char filename[], bool fAudio, const char pixel_type[]
       }
       if (bInvertFrames) {
         const int h2 = frame->GetHeight() >> 1;
-        const int w4 = frame->GetPitch() >> 2;
+        const int w4 = (frame->GetRowSize()+3) >> 2;
         long *pT = (long *)frame->GetWritePtr();
         long *pB = pT + w4 * (frame->GetHeight() - 1);
 
@@ -647,33 +654,36 @@ PVideoFrame AVISource::GetFrame(int n, IScriptEnvironment* env) {
     if (last_frame_no < n && last_frame_no >= keyframe)
       keyframe = last_frame_no+1;
     if (keyframe < 0) keyframe = 0;
-    bool not_found_yet;
 
+    bool frameok = false;
     PVideoFrame frame = env->NewVideoFrame(vi, -4);
+    if (!frame)
+      env->ThrowError("AviSource: Could not allocate frame %d", n);
 
+    bool not_found_yet;
     do {
       not_found_yet=false;
       for (int i = keyframe; i <= n; ++i) {
         LRESULT error = DecompressFrame(i, i != n, frame, env);
-        // we don't want dropped frames to throw an error
-        // Experiment to remove ALL error reporting, so it will always return last valid frame.
-        if (error != ICERR_OK && !dropped_frame) {
-          //        env->ThrowError("AVISource: failed to decompress frame %d (error %d)", i, error);
-        }
-        last_frame_no = i;
-        if ((!dropped_frame) && frame && (error == ICERR_OK)) last_frame = frame;   // Better safe than sorry
+        if ((!dropped_frame) && (error == ICERR_OK)) frameok = true;   // Better safe than sorry
       }
-      if (!last_frame) {  // Last keyframe was not valid.
-        not_found_yet=true;
-        int key_pre=keyframe;
+      last_frame_no = n;
+
+      if (!last_frame && !frameok) {  // Last keyframe was not valid.
+        const int key_pre=keyframe;
         keyframe = pvideo->NearestKeyFrame(keyframe-1);
-        if (keyframe == key_pre) {
+        if (keyframe < 0) keyframe = 0;
+        if (keyframe == key_pre)
           env->ThrowError("AVISource: could not find valid keyframe for frame %d.", n);
-        }
+
+        not_found_yet=true;
       }
-      else if (bInvertFrames) {
+    } while(not_found_yet);
+
+    if (frameok) {
+      if (bInvertFrames) {
         const int h2 = frame->GetHeight() >> 1;
-        const int w4 = frame->GetPitch() >> 2;
+        const int w4 = (frame->GetRowSize()+3) >> 2;
         long *pT = (long *)frame->GetWritePtr();
         long *pB = pT + w4 * (frame->GetHeight() - 1);
 
@@ -688,8 +698,8 @@ PVideoFrame AVISource::GetFrame(int n, IScriptEnvironment* env) {
           pB -= w4;
         }
       }
-
-    } while(not_found_yet);
+      last_frame = frame;
+    }
   }
   return last_frame;
 }
