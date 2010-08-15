@@ -88,4 +88,17 @@ private:
 };
 
 
+class SkewRows : public GenericVideoFilter 
+/**
+  * Class to recast the row alignment of a frame
+ **/
+{
+public:
+  SkewRows(PClip _child, int skew, IScriptEnvironment* env);
+  PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
+
+  static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env);
+};
+
+
 #endif  // __Misc_H__

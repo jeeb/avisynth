@@ -50,6 +50,7 @@ extern const AVSFunction Misc_filters[] = {
   { "FixLuminance", "cif", FixLuminance::Create },    // clip, intercept, slope
   { "FixBrokenChromaUpsampling", "c", FixBrokenChromaUpsampling::Create },
   { "PeculiarBlend", "ci", PeculiarBlend::Create },   // clip, cutoff    
+  { "SkewRows", "ci", SkewRows::Create },   // clip, skew    
   { 0,0,0 }
 };
 
@@ -141,7 +142,7 @@ AVSValue __cdecl FixBrokenChromaUpsampling::Create( AVSValue args, void*,
 
 /*********************************
  *******   Peculiar Blend   ******
- ********************************/
+ *********************************/
 
 PeculiarBlend::PeculiarBlend(PClip _child, int _cutoff, IScriptEnvironment* env)
  : GenericVideoFilter(_child), cutoff(_cutoff)
@@ -182,4 +183,70 @@ PVideoFrame PeculiarBlend::GetFrame(int n, IScriptEnvironment* env) {
 AVSValue __cdecl PeculiarBlend::Create(AVSValue args, void*, IScriptEnvironment* env) 
 {
   return new PeculiarBlend(args[0].AsClip(), args[1].AsInt(), env);
+}
+
+
+
+
+
+
+/********************************
+ *******     SkewRows      ******
+ ********************************/
+
+SkewRows::SkewRows(PClip _child, int skew, IScriptEnvironment* env)
+ : GenericVideoFilter(_child)
+{
+  if (!vi.IsY8() && vi.IsPlanar())
+    env->ThrowError("SkewRows: requires non Planar input");
+
+  if (vi.IsYUY2() && skew&1)
+    env->ThrowError("SkewRows: For YUY2 skew must be even");
+
+  vi.height *= vi.width;
+  vi.width  += skew;
+  vi.height += vi.width-1; // Ceiling
+  vi.height /= vi.width;
+}
+
+
+PVideoFrame SkewRows::GetFrame(int n, IScriptEnvironment* env) {
+
+  PVideoFrame src = child->GetFrame(n, env);
+  PVideoFrame dst = env->NewVideoFrame(vi);
+
+  const int srowsize = src->GetRowSize();
+  const int spitch   = src->GetPitch();
+  const BYTE *sptr   = src->GetReadPtr();
+
+  const int drowsize = dst->GetRowSize();
+  const int dpitch   = dst->GetPitch();
+  BYTE *dptr         = dst->GetWritePtr();
+
+  const int ssize = src->GetHeight()*srowsize;
+
+  int s=0, d=0;
+  for (int i=0; i < ssize; i++) {
+    if (s >= srowsize) {
+      s = 0;
+      sptr += spitch;
+    }
+    if (d >= drowsize) {
+      d = 0;
+      dptr += dpitch;
+    }
+    dptr[d++] = sptr[s++];
+  }
+
+  while (d < drowsize)
+    dptr[d++] = 128;
+
+  return dst;
+
+}
+
+
+AVSValue __cdecl SkewRows::Create(AVSValue args, void*, IScriptEnvironment* env) 
+{
+  return new SkewRows(args[0].AsClip(), args[1].AsInt(), env);
 }
