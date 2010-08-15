@@ -17,8 +17,6 @@
 
 #include "stdafx.h"
 
-#include "../../filters/misc.h"
-
 extern long CPUCheckForExtensions();  // in cpuaccel.cpp
 
 long __declspec(naked) MulDivTrunc(long a, long b, long c) {
