@@ -21,7 +21,6 @@
 #include "stdafx.h"
 
 #include "conditional_reader.h"
-#include "../text-overlay.h"
 
 
 /*****************************************************************************
@@ -147,6 +146,18 @@ iscomment(char *string)
 	}
 
 	return(iscomment);
+}
+
+
+// Helper function - exception protected wrapper
+
+inline AVSValue GetVar(IScriptEnvironment* env, const char* name) {
+  try {
+    return env->GetVar(name);
+  }
+  catch (IScriptEnvironment::NotFound) {}
+
+  return AVSValue();
 }
 
 
@@ -529,7 +540,7 @@ PVideoFrame __stdcall ConditionalReader::GetFrame(int n, IScriptEnvironment* env
   if (show) {
     AVSValue v2 = env->Invoke("String", v);
     env->MakeWritable(&src);
-    ApplyMessage(&src, vi, v2.AsString(""), vi.width/2, 0xa0a0a0,0,0 , env );
+    env->ApplyMessage(&src, vi, v2.AsString(""), vi.width/2, 0xa0a0a0, 0, 0);
   }
   return src;
 }
