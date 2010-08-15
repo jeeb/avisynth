@@ -1225,21 +1225,32 @@ void ScriptEnvironment::ExportFilters()
 }
 
 
-PVideoFrame ScriptEnvironment::NewPlanarVideoFrame(int row_size, int height, int row_sizeUV, int heightUV, int align, bool U_first) {
-  int pitchUV, Uoffset, Voffset;
+PVideoFrame ScriptEnvironment::NewPlanarVideoFrame(int row_size, int height, int row_sizeUV, int heightUV, int _align, bool U_first) {
+  int align, pitchUV, Uoffset, Voffset;
+
+  // If align is negative, it will be forced, if not it may be made bigger
+  if (_align < 0)
+    align = -_align;
+  else
+    align = max(_align, FRAME_ALIGN);
+
   const int pitch = (row_size+align-1) / align * align;
 
-  if (!PlanarChromaAlignmentState && (row_size == row_sizeUV*2) && (height == heightUV*2)) { // Meet old 2.5 series API expectations for YV12
-    // Forced alignment - pack Y as specified, pack UV half that
+  if (_align < 0) {
+    // Forced alignment - pack Y as specified, pack UV subsample of that
+    pitchUV = MulDiv(pitch, row_sizeUV, row_size);  // Don't align UV planes seperately.
+  }
+  else if (!PlanarChromaAlignmentState && (row_size == row_sizeUV*2) && (height == heightUV*2)) { // Meet old 2.5 series API expectations for YV12
+    // Legacy alignment - pack Y as specified, pack UV half that
     pitchUV = (pitch+1)>>1;  // UV plane, width = 1/2 byte per pixel - don't align UV planes seperately.
-  } else {
+  }
+  else {
     // Align planes seperately
     pitchUV = (row_sizeUV+align-1) / align * align;
   }
 
   const int size = pitch * height + 2 * pitchUV * heightUV;
-  const int _align = (align < FRAME_ALIGN) ? FRAME_ALIGN : align;
-  VideoFrameBuffer* vfb = GetFrameBuffer(size+(_align*4));
+  VideoFrameBuffer* vfb = GetFrameBuffer(size + (align < FRAME_ALIGN ? FRAME_ALIGN*4 : align*4));
   if (!vfb)
     ThrowError("NewPlanarVideoFrame: Returned 0 image pointer!");
 #ifdef _DEBUG
@@ -1266,12 +1277,18 @@ PVideoFrame ScriptEnvironment::NewPlanarVideoFrame(int row_size, int height, int
 
 
 PVideoFrame ScriptEnvironment::NewVideoFrame(int row_size, int height, int align) {
+  // If align is negative, it will be forced, if not it may be made bigger
+  if (align < 0)
+    align = -align;
+  else
+    align = max(align, FRAME_ALIGN);
+
   const int pitch = (row_size+align-1) / align * align;
   const int size = pitch * height;
   const int _align = (align < FRAME_ALIGN) ? FRAME_ALIGN : align;
   VideoFrameBuffer* vfb = GetFrameBuffer(size+(_align*4));
   if (!vfb)
-    ThrowError("NewVideoFrame: Returned 0 image pointer!");
+    ThrowError("NewVideoFrame: Returned 0 frame buffer pointer!");
 #ifdef _DEBUG
   {
     static const BYTE filler[] = { 0x0A, 0x11, 0x0C, 0xA7, 0xED };
@@ -1305,12 +1322,6 @@ PVideoFrame __stdcall ScriptEnvironment::NewVideoFrame(const VideoInfo& vi, int 
   }
 
   PVideoFrame retval;
-
-  // If align is negative, it will be forced, if not it may be made bigger
-  if (align < 0)
-    align = -align;
-  else
-    align = max(align,FRAME_ALIGN);
 
   if (vi.IsPlanar() && !vi.IsY8()) { // Planar requires different math ;)
     const int xmod  = 1 << vi.GetPlaneWidthSubsampling (PLANAR_U);
@@ -2136,6 +2147,7 @@ char* ScriptEnvironment::VSprintf(const char* fmt, void* val) {
     if (buf) delete[] buf;
     size += 4096;
     buf = new char[size];
+    if (!buf) return 0;
     count = _vsnprintf(buf, size-1, fmt, (va_list)val);
   }
   char *i = ScriptEnvironment::SaveString(buf);
