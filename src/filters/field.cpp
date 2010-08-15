@@ -265,11 +265,14 @@ PVideoFrame DoubleWeaveFrames::GetFrame(int n, IScriptEnvironment* env)
     PVideoFrame a = child->GetFrame(n>>1, env);
     PVideoFrame b = child->GetFrame((n+1)>>1, env);
     bool parity = this->GetParity(n);
-//  env->MakeWritable(&a);
-    if (a->IsWritable()) 
-    {
+
+    if (a->IsWritable()) {
       CopyAlternateLines(a, b, !parity);
       return a;
+    } 
+    else if (b->IsWritable()) {
+      CopyAlternateLines(b, a, parity);
+      return b;
     } 
     else {
       PVideoFrame result = env->NewVideoFrame(vi);
