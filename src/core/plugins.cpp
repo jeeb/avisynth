@@ -153,7 +153,7 @@ AVSValue LoadPlugin(AVSValue args, void* user_data, IScriptEnvironment* env) {
   }
   if (loadplugin_prefix) free((void*)loadplugin_prefix);  // Tritical May 2005
   loadplugin_prefix = 0;
-  return result ? AVSValue(result) : AVSValue();
+  return result ? AVSValue(env->SaveString(result)) : AVSValue();
 }
 
 
@@ -801,8 +801,9 @@ extern char exception_conversion_buffer[2048];    // in AVIReadHandler.cpp
 static void FilterThrowExcept(const char *format, ...) {
   va_list val;
   va_start(val, format);
-  wvsprintf(exception_conversion_buffer, format, val);
+  _vsnprintf(exception_conversion_buffer, sizeof(exception_conversion_buffer)-1, format, val);
   va_end(val);
+  exception_conversion_buffer[sizeof(exception_conversion_buffer)-1] = '\0';
   throw AvisynthError(exception_conversion_buffer);
 }
 
@@ -1125,8 +1126,6 @@ AVSValue LoadVirtualdubPlugin(AVSValue args, void*, IScriptEnvironment* env) {
   fm->preroll = preroll;
   fm->next = loaded_modules;
   fm->prev = 0;
-  if (fm->next)
-    fm->next->prev = fm;
 
   int ver_hi = VIRTUALDUB_FILTERDEF_VERSION;
   int ver_lo = VIRTUALDUB_FILTERDEF_COMPATIBLE;
@@ -1135,6 +1134,9 @@ AVSValue LoadVirtualdubPlugin(AVSValue args, void*, IScriptEnvironment* env) {
     delete fm;
     env->ThrowError("LoadVirtualdubPlugin: Error initializing module \"%s\"", szModule);
   }
+
+  if (fm->next)
+    fm->next->prev = fm;
 
   env->SetGlobalVar("$LoadVirtualdubPlugin$", (const char*)fm);
   env->AtExit(FreeFilterModule, fm);
