@@ -93,6 +93,18 @@ extern const AVSFunction Conditional_funtions_filters[] = {
 };
 
 
+// Helper function - exception protected wrapper
+
+inline AVSValue GetVar(IScriptEnvironment* env, const char* name) {
+  try {
+    return env->GetVar(name);
+  }
+  catch (IScriptEnvironment::NotFound) {}
+
+  return AVSValue();
+}
+
+
 AVSValue __cdecl AveragePlane::Create_y(AVSValue args, void* user_data, IScriptEnvironment* env) {
   return AvgPlane(args[0],user_data, PLANAR_Y, env);
 }
@@ -119,9 +131,9 @@ AVSValue AveragePlane::AvgPlane(AVSValue clip, void* user_data, int plane, IScri
   if (!vi.IsPlanar())
     env->ThrowError("Average Plane: Only planar images (as YV12) supported!");
 
-  AVSValue cn = env->GetVar("current_frame");
+  AVSValue cn = GetVar(env, "current_frame");
   if (!cn.IsInt())
-    env->ThrowError("Average Plane: This filter can only be used within ConditionalFilter");
+    env->ThrowError("Average Plane: This filter can only be used within run-time filters");
 
   int n = cn.AsInt();
 
@@ -274,13 +286,10 @@ AVSValue ComparePlane::CmpPlane(AVSValue clip, AVSValue clip2, void* user_data, 
     plane = 0;
   }
 
-  if (vi.height!=vi2.height || vi.width != vi2.width)
-    env->ThrowError("Plane Difference: Images are not the same size!");
 
-
-  AVSValue cn = env->GetVar("current_frame");
+  AVSValue cn = GetVar(env, "current_frame");
   if (!cn.IsInt())
-    env->ThrowError("Compare Plane: This filter can only be used within ConditionalFilter");
+    env->ThrowError("Compare Plane: This filter can only be used within run-time filters");
 
   int n = cn.AsInt();
   n = min(max(n,0),vi.num_frames-1);
@@ -290,10 +299,15 @@ AVSValue ComparePlane::CmpPlane(AVSValue clip, AVSValue clip2, void* user_data, 
 
   const BYTE* srcp = src->GetReadPtr(plane);
   const BYTE* srcp2 = src2->GetReadPtr(plane);
-  int h = src->GetHeight(plane);
-  int w = src->GetRowSize(plane);
-  int pitch = src->GetPitch(plane);
-  int pitch2 = src2->GetPitch(plane);
+  const int h = src->GetHeight(plane);
+  const int w = src->GetRowSize(plane);
+  const int pitch = src->GetPitch(plane);
+  const int h2 = src2->GetHeight(plane);
+  const int w2 = src2->GetRowSize(plane);
+  const int pitch2 = src2->GetPitch(plane);
+
+  if (h != h2 || w != w2)
+    env->ThrowError("Plane Difference: Images are not the same size!");
 
   unsigned int b = 0;
   if (vi.IsRGB32()) {
@@ -340,9 +354,9 @@ AVSValue ComparePlane::CmpPlaneSame(AVSValue clip, void* user_data, int offset, 
       env->ThrowError("Plane Difference: Only planar images (as YV12) supported!");
   }
 
-  AVSValue cn = env->GetVar("current_frame");
+  AVSValue cn = GetVar(env, "current_frame");
   if (!cn.IsInt())
-    env->ThrowError("Compare Plane: This filter can only be used within ConditionalFilter");
+    env->ThrowError("Compare Plane: This filter can only be used within run-time filters");
 
   int n = cn.AsInt();
   n = min(max(n,0),vi.num_frames);
@@ -453,9 +467,9 @@ AVSValue MinMaxPlane::MinMax(AVSValue clip, void* user_data, float threshold, in
     env->ThrowError("MinMax: Image must be planar");
 
   // Get current frame number
-  AVSValue cn = env->GetVar("current_frame");
+  AVSValue cn = GetVar(env, "current_frame");
   if (!cn.IsInt())
-    env->ThrowError("Compare Plane: This filter can only be used within ConditionalFilter");
+    env->ThrowError("Compare Plane: This filter can only be used within run-time filters");
 
   int n = cn.AsInt();
 
