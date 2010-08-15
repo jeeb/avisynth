@@ -23,14 +23,14 @@ bool IsRGB();</pre>
 <p>This will return true if the colorspace is <a href="http://avisynth.org/mediawiki/RGB" title="RGB">RGB</a>
 (in any way). The first two return true if the clip has the specific RGB
 colorspace (<a href="ColorSpaces.htm" title="RGB24">RGB24</a> and <a href="ColorSpaces.htm" title="RGB32">RGB32</a>).
-The third return true for any YUV colorspace; future formats could also apply.</p>
+The third returns true for any RGB colorspace; future formats could also apply.</p>
 <pre>bool IsYUY2();
 bool IsYV12();
 bool IsYUV();</pre>
 <p>This will return true if the colorspace is <a href="ColorSpaces.htm" title="YUV">YUV</a>
 (in any way). The first two return true if the clip has the specific YUV
 colorspace (<a href="ColorSpaces.htm" title="YUY2">YUY2</a> and <a href="ColorSpaces.htm" title="YV12">YV12</a>).
-The third return true for any RGB colorspace; future formats could also apply.
+The third returns true for any YUV colorspace; future formats could also apply.
 Note that I420 is also reported as YV12, because planes are automatically
 swapped.</p>
 <pre>bool IsColorSpace(int c_space);</pre>
@@ -183,7 +183,7 @@ same as testtype.</p>
 'avisynth.h' header file.</p>
 
 <h3>Back to <a href="InternalFunctions.htm">InternalFunctions</a></h3>
-<p><kbd>$Date: 2010/03/13 14:51:46 $<br>
+<p><kbd>$Date: 2010/08/15 13:51:15 $<br>
 Original version of this document <a href="http://www.avisynth.org/VideoInfo">http://www.avisynth.org/VideoInfo</a>
 </kbd></p>
 </BODY>
