@@ -40,3 +40,4 @@ EXPORTS
   avs_sprintf
   avs_delete_script_environment
   avs_subframe_planar
+  avs_get_error

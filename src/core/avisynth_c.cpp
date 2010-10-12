@@ -333,6 +333,12 @@ int AVSC_CC
 //
 
 extern "C"
+const char * AVSC_CC avs_get_error(AVS_ScriptEnvironment * p) // return 0 if no error
+{
+	return p->error;
+}
+
+extern "C"
 long AVSC_CC avs_get_cpu_flags(AVS_ScriptEnvironment * p)
 {
 	p->error = 0;
@@ -398,7 +404,12 @@ AVS_Value AVSC_CC avs_get_var(AVS_ScriptEnvironment * p, const char* name)
 	try {
 		AVSValue v0 = p->env->GetVar(name);
 		new ((AVSValue *)&v) AVSValue(v0);
-	} catch (IScriptEnvironment::NotFound) {}
+	}
+	catch (IScriptEnvironment::NotFound) {}
+	catch (AvisynthError err) {
+		p->error = err.msg;
+		v = avs_new_value_error(p->error);
+	}
 	return v;
 }
 
@@ -430,25 +441,38 @@ extern "C"
 AVS_VideoFrame * AVSC_CC avs_new_video_frame_a(AVS_ScriptEnvironment * p, const AVS_VideoInfo *  vi, int align)
 {
 	p->error = 0;
-	PVideoFrame f0 = p->env->NewVideoFrame(*(const VideoInfo *)vi, align);
-	AVS_VideoFrame * f;
-	new((PVideoFrame *)&f) PVideoFrame(f0);
-	return f;
+	try {
+		PVideoFrame f0 = p->env->NewVideoFrame(*(const VideoInfo *)vi, align);
+		AVS_VideoFrame * f;
+		new((PVideoFrame *)&f) PVideoFrame(f0);
+		return f;
+	} catch (AvisynthError err) {
+		p->error = err.msg;
+	}
+	return 0;
 }
 
 extern "C"
 int AVSC_CC avs_make_writable(AVS_ScriptEnvironment * p, AVS_VideoFrame * * pvf)
 {
 	p->error = 0;
-	int res = p->env->MakeWritable((PVideoFrame *)(pvf));
-	return res;
+	try {
+		return p->env->MakeWritable((PVideoFrame *)(pvf));
+	} catch (AvisynthError err) {
+		p->error = err.msg;
+	}
+	return -1;
 }
 
 extern "C"
 void AVSC_CC avs_bit_blt(AVS_ScriptEnvironment * p, BYTE * dstp, int dst_pitch, const BYTE * srcp, int src_pitch, int row_size, int height)
 {
 	p->error = 0;
-	p->env->BitBlt(dstp, dst_pitch, srcp, src_pitch, row_size, height);
+	try {
+		p->env->BitBlt(dstp, dst_pitch, srcp, src_pitch, row_size, height);
+	} catch (AvisynthError err) {
+		p->error = err.msg;
+	}
 }
 
 struct ShutdownFuncData
@@ -557,7 +581,12 @@ extern "C"
 AVS_ScriptEnvironment * AVSC_CC avs_create_script_environment(int version)
 {
 	AVS_ScriptEnvironment * e = new AVS_ScriptEnvironment;
-	e->env = CreateScriptEnvironment(version);
+	try {
+		e->env = CreateScriptEnvironment(version);
+	} catch (AvisynthError err) {
+		e->error = err.msg;
+		e->env = 0;
+	}
 	return e;
 }
 
@@ -572,7 +601,9 @@ void AVSC_CC avs_delete_script_environment(AVS_ScriptEnvironment * e)
 {
 	if (e) {
 		if (e->env) {
-			e->env->DeleteScriptEnvironment();
+			try {
+				e->env->DeleteScriptEnvironment();
+			} catch (AvisynthError) { }
 			e->env = 0;
 		}
 		delete e;

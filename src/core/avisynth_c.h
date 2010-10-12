@@ -494,7 +494,7 @@ AVSC_INLINE int avs_array_size(AVS_Value v)
 AVSC_INLINE AVS_Value avs_array_elt(AVS_Value v, int index) 
         { return avs_is_array(v) ? v.d.array[index] : v; }
 
-// only use these functions on am AVS_Value that does not already have
+// only use these functions on an AVS_Value that does not already have
 // an active value.  Remember, treat AVS_Value as a fat pointer.
 AVSC_INLINE AVS_Value avs_new_value_bool(int v0) 
         { AVS_Value v; v.type = 'b'; v.d.boolean = v0 == 0 ? 0 : 1; return v; }   
@@ -602,6 +602,8 @@ enum {
   AVS_CPUF_SSE4_2     = 0x800,   //  Nehalem
 };
 
+
+AVSC_API(const char *, avs_get_error)(AVS_ScriptEnvironment *); // return 0 if no error
 
 AVSC_API(long, avs_get_cpu_flags)(AVS_ScriptEnvironment *);
 AVSC_API(int, avs_check_version)(AVS_ScriptEnvironment *, int version);
@@ -737,6 +739,7 @@ struct AVS_Library {
   AVSC_DECLARE_FUNC(avs_subframe_planar);
   AVSC_DECLARE_FUNC(avs_take_clip);
   AVSC_DECLARE_FUNC(avs_vsprintf);
+  AVSC_DECLARE_FUNC(avs_get_error);
 };
 
 #undef AVSC_DECLARE_FUNC
@@ -795,6 +798,7 @@ AVSC_INLINE AVS_Library * avs_load_library() {
   AVSC_LOAD_FUNC(avs_subframe_planar);
   AVSC_LOAD_FUNC(avs_take_clip);
   AVSC_LOAD_FUNC(avs_vsprintf);
+  AVSC_LOAD_FUNC(avs_get_error);
 
 #undef __AVSC_STRINGIFY
 #undef AVSC_STRINGIFY
