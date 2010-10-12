@@ -226,4 +226,8 @@ AVSValue HasAudio(AVSValue args, void*, IScriptEnvironment* env);
 AVSValue AvsMin(AVSValue args, void*, IScriptEnvironment* env);
 AVSValue AvsMax(AVSValue args, void*, IScriptEnvironment* env);
 
+AVSValue ScriptName(AVSValue args, void*, IScriptEnvironment* env);
+AVSValue ScriptFile(AVSValue args, void*, IScriptEnvironment* env);
+AVSValue ScriptDir (AVSValue args, void*, IScriptEnvironment* env);
+
 #endif  // __Script_H__

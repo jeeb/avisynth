@@ -148,6 +148,10 @@ extern const AVSFunction Script_functions[] = {
   { "Min", "f+", AvsMin },
   { "Max", "f+", AvsMax },
  
+  { "ScriptName", "", ScriptName },
+  { "ScriptFile", "", ScriptFile },
+  { "ScriptDir",  "", ScriptDir  },
+ 
   { 0 }
 };
 
@@ -236,12 +240,27 @@ AVSValue Apply(AVSValue args, void*, IScriptEnvironment* env)
   return env->Invoke(args[0].AsString(), args[1]);
 }
 
+// Helper function - exception protected wrapper
+
+inline AVSValue GetVar(IScriptEnvironment* env, const char* name) {
+  try {
+    return env->GetVar(name);
+  }
+  catch (IScriptEnvironment::NotFound) {}
+
+  return AVSValue();
+}
 
 
 AVSValue Import(AVSValue args, void*, IScriptEnvironment* env) 
 {
   args = args[0];
   AVSValue result;
+
+  AVSValue lastScriptName = GetVar(env, "$ScriptName$");
+  AVSValue lastScriptFile = GetVar(env, "$ScriptFile$");
+  AVSValue lastScriptDir  = GetVar(env, "$ScriptDir$");
+
   for (int i=0; i<args.ArraySize(); ++i) {
     const char* script_name = args[i].AsString();
 
@@ -261,14 +280,20 @@ AVSValue Import(AVSValue args, void*, IScriptEnvironment* env)
     if (h == INVALID_HANDLE_VALUE)
       env->ThrowError("Import: couldn't open \"%s\"", full_path);
 
+    env->SetGlobalVar("$ScriptName$", env->SaveString(script_name));
+    env->SetGlobalVar("$ScriptFile$", env->SaveString(file_part));
+
     *file_part = 0;
     CWDChanger change_cwd(full_path);
 
+    env->SetGlobalVar("$ScriptDir$", env->SaveString(full_path));
+
     DWORD size = GetFileSize(h, NULL);
     DynamicCharBuffer buf(size+1);
-    if (!ReadFile(h, buf, size, &size, NULL))
-      env->ThrowError("Import: unable to read \"%s\"", script_name);
+    BOOL status = ReadFile(h, buf, size, &size, NULL);
     CloseHandle(h);
+    if (!status)
+      env->ThrowError("Import: unable to read \"%s\"", script_name);
 
     // Give Unicode smartarses a hint they need to use ANSI encoding
     if (size >= 2) {
@@ -288,10 +313,17 @@ AVSValue Import(AVSValue args, void*, IScriptEnvironment* env)
     result = env->Invoke("Eval", AVSValue(eval_args, 2));
   }
 
+  env->SetGlobalVar("$ScriptName$", lastScriptName);
+  env->SetGlobalVar("$ScriptFile$", lastScriptFile);
+  env->SetGlobalVar("$ScriptDir$",  lastScriptDir);
+
   return result;
 }
 
 
+AVSValue ScriptName(AVSValue args, void*, IScriptEnvironment* env) { return GetVar(env, "$ScriptName$"); }
+AVSValue ScriptFile(AVSValue args, void*, IScriptEnvironment* env) { return GetVar(env, "$ScriptFile$"); }
+AVSValue ScriptDir (AVSValue args, void*, IScriptEnvironment* env) { return GetVar(env, "$ScriptDir$" ); }
 
 AVSValue SetMemoryMax(AVSValue args, void*, IScriptEnvironment* env) { return env->SetMemoryMax(args[0].AsInt(0)); }
 AVSValue SetWorkingDir(AVSValue args, void*, IScriptEnvironment* env) { return env->SetWorkingDir(args[0].AsString()); }
@@ -307,7 +339,7 @@ AVSValue Cos(AVSValue args, void* user_data, IScriptEnvironment* env) { return c
 AVSValue Pi(AVSValue args, void* user_data, IScriptEnvironment* env) { return 3.14159265358979323; }
 AVSValue Log(AVSValue args, void* user_data, IScriptEnvironment* env) { return log(args[0].AsFloat()); }
 AVSValue Exp(AVSValue args, void* user_data, IScriptEnvironment* env) { return exp(args[0].AsFloat()); }
-AVSValue Pow(AVSValue args, void* user_data, IScriptEnvironment* env) {	return pow(args[0].AsFloat(),args[1].AsFloat()); }
+AVSValue Pow(AVSValue args, void* user_data, IScriptEnvironment* env) { return pow(args[0].AsFloat(),args[1].AsFloat()); }
 AVSValue Sqrt(AVSValue args, void* user_data, IScriptEnvironment* env) { return sqrt(args[0].AsFloat()); }
 AVSValue FAbs(AVSValue args, void* user_data, IScriptEnvironment* env) { return fabs(args[0].AsFloat()); }
 AVSValue Abs(AVSValue args, void* user_data, IScriptEnvironment* env) { return abs(args[0].AsInt()); }
