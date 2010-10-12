@@ -246,7 +246,7 @@ PVideoFrame Histogram::DrawModeAudioLevels(int n, IScriptEnvironment* env) {
     lines_y[i] = (int)(line_every*i);
     if (!(i&1)) {
       _snprintf(text, sizeof(text), "%3ddB", -i*6);
-      DrawString(src, 0, i ? lines_y[i]-10 : 0, text);
+      DrawStringPlanar(src, 0, i ? lines_y[i]-10 : 0, text);
     }
   }
   for (int x=bar_w-16; x<total_width-bar_w+16; x++) {
@@ -310,9 +310,9 @@ PVideoFrame Histogram::DrawModeAudioLevels(int n, IScriptEnvironment* env) {
     }}
     // Draw text
     _snprintf(text, sizeof(text), "%6.2fdB", (float)-ch_db);
-    DrawString(src, ((ch*2)+1)*bar_w, vi.height-40, text);
+    DrawStringPlanar(src, ((ch*2)+1)*bar_w, vi.height-40, text);
     _snprintf(text, sizeof(text), "%6.2fdB", (float)-ch_rms);
-    DrawString(src, ((ch*2)+1)*bar_w, vi.height-20, text);
+    DrawStringPlanar(src, ((ch*2)+1)*bar_w, vi.height-20, text);
 
   }}
 

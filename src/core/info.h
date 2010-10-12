@@ -1547,6 +1547,7 @@ const unsigned short font[][20] = {
 	}
 };
 
+#if 0
 #ifndef Pixel32
 
 typedef unsigned long Pixel32;
@@ -1556,47 +1557,51 @@ typedef unsigned long Pixel32;
 void DrawDigit(PVideoFrame &dst, int x, int y, int num)
 {
 	extern const unsigned short font[][20];
-	int tx, ty;
-	unsigned char *dpY, *dpU, *dpV;
 
 	if (num < 0) num = 0;
 
 	const int pitchY = dst->GetPitch(PLANAR_Y);
-	BYTE* const dstpY = dst->GetWritePtr(PLANAR_Y);
-	for (tx = 0; tx < 10; tx++)
-	{
-		for (ty = 0; ty < 20; ty++)
-		{
-			dpY = &dstpY[(x + tx) + (y + ty) * pitchY];
-			if (font[num][ty] & (1 << (15 - tx)))
-			{
+	BYTE* dstpY = dst->GetWritePtr(PLANAR_Y) + x + y*pitchY;
+
+	for (int ty = 0; ty < 20; ty++, dstpY+=pitchY) {
+		BYTE *dpY = dstpY;
+		unsigned int fontline = font[num][ty];
+
+		for (int tx = 0; tx < 10; tx++, dpY++, fontline<<=1) {
+			if (fontline & 0x8000) {
 				*dpY = 230;
-			} else
-			{
+			} else {
 				*dpY = (unsigned char) (((*dpY-16) * 7) >> 3) + 16;
 			}
 		}
 	}
+
 	const int UVw = dst->GetRowSize(PLANAR_U);
 	if (UVw) {
-		const int pitchUV = dst->GetPitch(PLANAR_V);
-		BYTE* const dstpU = dst->GetWritePtr(PLANAR_U);
-		BYTE* const dstpV = dst->GetWritePtr(PLANAR_V);
 		const int xSubS = dst->GetRowSize(PLANAR_Y) / UVw;
 		const int ySubS = dst->GetHeight(PLANAR_Y) / dst->GetHeight(PLANAR_U);
+		const int pitchUV = dst->GetPitch(PLANAR_V);
 
-		for (tx = 0; tx < 10; tx++)
-		{
-			for (ty = 0; ty < 20; ty++)
-			{
-				dpU = &dstpU[((x + tx)/xSubS) + ((y + ty)/ySubS) * pitchUV];
-				dpV = &dstpV[((x + tx)/xSubS) + ((y + ty)/ySubS) * pitchUV];
-				if (font[num][ty] & (1 << (15 - tx)))
-				{
+		unsigned int fontmask = 0;
+		for (int i=0; i<xSubS; i++) {
+			fontmask >>= 1;
+			fontmask |= 0x8000;
+		}
+
+		BYTE* dstpU = dst->GetWritePtr(PLANAR_U) + x/xSubS + (y/ySubS)*pitchUV;
+		BYTE* dstpV = dst->GetWritePtr(PLANAR_V) + x/xSubS + (y/ySubS)*pitchUV;
+
+		for (int ty = 0; ty < 20; ty+=ySubS, dstpU+=pitchUV, dstpV+=pitchUV) {
+			BYTE *dpU = dstpU;
+			BYTE *dpV = dstpV;
+			unsigned int fontline = 0;
+			for (int m=0; m<ySubS; m++) fontline |= font[num][ty+m];
+
+			for (int tx = 0; tx < 10; tx+=xSubS, dpU++, dpV++, fontline<<=xSubS) {
+				if (fontline & fontmask) {
 					*dpU = 128;
 					*dpV = 128;
-				} else
-				{
+				} else {
 					*dpU = (unsigned char) (((*dpU - 128) * 7) >> 3) + 128;
 					*dpV = (unsigned char) (((*dpV - 128) * 7) >> 3) + 128;
 				}
@@ -1611,7 +1616,113 @@ void DrawString(PVideoFrame &dst, int x, int y, const char *s)
 		DrawDigit(dst, x + xx*10, y, *s - ' ');
 	}
 }
+#else
+void DrawStringPlanar(PVideoFrame &dst, int x, int y, const char *s, int len=0)
+{
+	const int height = dst->GetHeight(PLANAR_Y);
+	const int pitchY = dst->GetPitch(PLANAR_Y);
 
+	// Default string length
+	if (len == 0) len = strlen(s);
+
+	// Chop text if exceed right margin
+	if (len*10 > pitchY-x) len = (pitchY-x)/10;
+
+	int si = 0, xs=0;
+	// Chop 1st char if exceed left margin
+	if (x < 0) {
+		si = (-x)/10;
+		xs = (-x)%10;
+		x = 0;
+	}
+
+	int ys=0, ye=20;
+	// Chop font if exceed bottom margin
+	if (y > height-20)
+		ye = height - y;
+
+	// Chop font if exceed top margin
+	if (y < 0) {
+		ys = -y;
+		y = 0;
+	}
+
+	BYTE* dstpY = dst->GetWritePtr(PLANAR_Y) + x + y*pitchY;
+
+	for (int ty = ys; ty < ye; ty++, dstpY+=pitchY) {
+		BYTE *dpY = dstpY;
+
+		int num = s[si] - ' ';
+		if (num < 0) num = 0;
+		unsigned int fontline = font[num][ty]<<xs;
+		int _xs = xs;
+
+		for (int i=si ; i < len; i++) {
+			for (int tx = _xs; tx < 10; tx++, dpY++, fontline<<=1) {
+				if (fontline & 0x8000) {
+					dpY[0] = 230;
+				} else {
+					dpY[0] = (unsigned char) (((dpY[0]-16) * 7) >> 3) + 16;
+				}
+			}
+
+			_xs = 0;
+			num = s[i+1] - ' ';
+			if (num < 0) num = 0;
+			fontline = font[num][ty];
+		}
+	}
+
+	const int UVw = dst->GetRowSize(PLANAR_U);
+	if (UVw) {
+		// .SubS = 1, 2 or 4
+		const int xSubS = dst->GetRowSize(PLANAR_Y) / UVw;
+		const int ySubS = height / dst->GetHeight(PLANAR_U);
+		const int pitchUV = dst->GetPitch(PLANAR_V);
+
+		// fontmask = 0x8000, 0xC000 or 0xF000
+		unsigned int fontmask = 0;
+		for (int i=0; i<xSubS; i++) {
+			fontmask >>= 1;
+			fontmask |= 0x8000;
+		}
+
+		BYTE* dstpU = dst->GetWritePtr(PLANAR_U) + x/xSubS + (y/ySubS)*pitchUV;
+		BYTE* dstpV = dst->GetWritePtr(PLANAR_V) + x/xSubS + (y/ySubS)*pitchUV;
+
+		for (int ty = ys; ty < ye; ty+=ySubS, dstpU+=pitchUV, dstpV+=pitchUV) {
+			BYTE *dpU = dstpU;
+			BYTE *dpV = dstpV;
+
+			int num = s[si] - ' ';
+			if (num < 0) num = 0;
+			unsigned int fontline = 0;
+			for (int m=0; m<ySubS; m++) fontline |= font[num][ty+m];
+			fontline <<= xs;
+			int _xs = xs;
+
+			for (int i=si ; i < len; i++) {
+				for (int tx = _xs; tx < 10; tx+=xSubS, dpU++, dpV++, fontline<<=xSubS) {
+					if (fontline & fontmask) {
+						dpU[0] = 128;
+						dpV[0] = 128;
+					} else {
+						dpU[0] = (unsigned char) (((dpU[0] - 128) * 7) >> 3) + 128;
+						dpV[0] = (unsigned char) (((dpV[0] - 128) * 7) >> 3) + 128;
+					}
+				}
+
+				_xs = 0;
+				num = s[i+1] - ' ';
+				if (num < 0) num = 0;
+				fontline = 0;
+				for (int m=0; m<ySubS; m++) fontline |= font[num][ty+m];
+			}
+		}
+	}
+}
+#endif
+#if 0
 void DrawDigitYUY2(PVideoFrame &dst, int x, int y, int num)
 {
 	extern const unsigned short font[][20];
@@ -1619,12 +1730,15 @@ void DrawDigitYUY2(PVideoFrame &dst, int x, int y, int num)
 	if (num < 0) num = 0;
 
 	const int pitch = dst->GetPitch();
-	BYTE* const dstp = dst->GetWritePtr();
-	for (int tx = 0; tx < 10; tx++) {
-		for (int ty = 0; ty < 20; ty++) {
-			unsigned char *dp = &dstp[(x + tx) * 2 + (y + ty) * pitch];
-			if (font[num][ty] & (1 << (15 - tx))) {
-				if (tx & 1) {
+	BYTE* dstp = dst->GetWritePtr() + x*2 + y*pitch;
+
+	for (int ty = 0; ty < 20; ty++, dstp+=pitch) {
+		BYTE* dp = dstp;
+		unsigned int fontline = font[num][ty];
+
+		for (int tx = 0; tx < 10; tx++, dp+=2, fontline<<=1) {
+			if (fontline & 0x8000) {
+				if (x+tx & 1) {
 					dp[0] = 230;
 					dp[-1]= 128;
 					dp[1] = 128;
@@ -1634,7 +1748,7 @@ void DrawDigitYUY2(PVideoFrame &dst, int x, int y, int num)
 					dp[3] = 128;
 				}
 			} else {
-				if (tx & 1) {
+				if (x+tx & 1) {
 					dp[0] = (unsigned char) (((dp[0]-16)  * 7) >> 3) + 16;
 					dp[-1]= (unsigned char) (((dp[-1]-128)* 7) >> 3) + 128;
 					dp[1] = (unsigned char) (((dp[1]-128) * 7) >> 3) + 128;
@@ -1654,21 +1768,97 @@ void DrawStringYUY2(PVideoFrame &dst, int x, int y, const char *s)
 		DrawDigitYUY2(dst, x + xx*10, y, *s - ' ');
 	}
 }
+#else
+void DrawStringYUY2(PVideoFrame &dst, int x, int y, const char *s, int len=0)
+{
+	const int height = dst->GetHeight();
+	const int pitch = dst->GetPitch();
 
+	// Default string length
+	if (len == 0) len = strlen(s);
 
+	// Chop text if exceed right margin
+	if (len*20 > pitch-x*2) len = (pitch-x*2)/20;
+
+	int si = 0, xs=0;
+	// Chop 1st char if exceed left margin
+	if (x < 0) {
+		si = (-x)/10;
+		xs = (-x)%10;
+		x = 0;
+	}
+
+	int ys=0, ye=20;
+	// Chop font if exceed bottom margin
+	if (y > height-20)
+		ye = height - y;
+
+	// Chop font if exceed top margin
+	if (y < 0) {
+		ys = -y;
+		y = 0;
+	}
+
+	BYTE* dstp = dst->GetWritePtr() + x*2 + y*pitch;
+
+	for (int ty = ys; ty < ye; ty++, dstp+=pitch) {
+		BYTE* dp = dstp;
+
+		int num = s[si] - ' ';
+		if (num < 0) num = 0;
+		unsigned int fontline = font[num][ty]<<xs;
+		int _xs = xs;
+
+		for (int i=si ; i < len; i++) {
+			for (int tx = _xs; tx < 10; tx++, dp+=2, fontline<<=1) {
+				if (fontline & 0x8000) {
+					if (int(dp) & 2) { // Assume dstp is dword aligned
+						dp[0] = 230;
+						dp[-1]= 128;
+						dp[1] = 128;
+					} else {
+						dp[0] = 230;
+						dp[1] = 128;
+						dp[3] = 128;
+					}
+				} else {
+					if (int(dp) & 2) {
+						dp[0] = (unsigned char) (((dp[0]-16)  * 7) >> 3) + 16;
+						dp[-1]= (unsigned char) (((dp[-1]-128)* 7) >> 3) + 128;
+						dp[1] = (unsigned char) (((dp[1]-128) * 7) >> 3) + 128;
+					} else {
+						dp[0] = (unsigned char) (((dp[0]- 16) * 7) >> 3) + 16;
+						dp[1] = (unsigned char) (((dp[1]-128) * 7) >> 3) + 128;
+						dp[3] = (unsigned char) (((dp[3]-128) * 7) >> 3) + 128;
+					}
+				}
+			}
+
+			_xs = 0;
+			num = s[i+1] - ' ';
+			if (num < 0) num = 0;
+			fontline = font[num][ty];
+		}
+	}
+}
+#endif
+#if 0
 void DrawDigitRGB32(PVideoFrame &dst, int x, int y, int num)
 {
 	extern const unsigned short font[][20];
 
 	if (num < 0) num = 0;
 
-	const int pitch = dst->GetPitch();
 	const int height = dst->GetHeight();
-	BYTE* const dstp = dst->GetWritePtr();
-	for (int tx = 0; tx < 10; tx++) {
-		for (int ty = 0; ty < 20; ty++) {
-			unsigned char *dp = &dstp[(x + tx) * 4 + (height - (y + ty)) * pitch];
-			if (font[num][ty] & (1 << (15 - tx))) {
+	const int pitch = dst->GetPitch();
+	BYTE* dstp = dst->GetWritePtr() + x*4 + (height-1 - y)*pitch;
+
+	for (int ty = 0; ty < 20; ty++, dstp-=pitch) {
+		BYTE* dp = dstp;
+		unsigned int fontline = font[num][ty];
+
+		for (int tx = 0; tx < 10; tx++, dp+=4, fontline<<=1) {
+			if (fontline & 0x8000) {
 				dp[0] = 250;
 				dp[1] = 250;
 				dp[2] = 250;
@@ -1687,21 +1877,85 @@ void DrawStringRGB32(PVideoFrame &dst, int x, int y, const char *s)
 		DrawDigitRGB32(dst, x + xx*10, y, *s - ' ');
 	}
 }
+#else
+void DrawStringRGB32(PVideoFrame &dst, int x, int y, const char *s, int len=0)
+{
+	const int height = dst->GetHeight();
+	const int pitch = dst->GetPitch();
 
+	// Default string length
+	if (len == 0) len = strlen(s);
 
+	// Chop text if exceed right margin
+	if (len*40 > pitch-x*4) len = (pitch-x*4)/40;
+
+	int si = 0, xs=0;
+	// Chop 1st char if exceed left margin
+	if (x < 0) {
+		si = (-x)/10;
+		xs = (-x)%10;
+		x = 0;
+	}
+
+	int ys=0, ye=20;
+	// Chop font if exceed bottom margin
+	if (y > height-20)
+		ye = height - y;
+
+	// Chop font if exceed top margin
+	if (y < 0) {
+		ys = -y;
+		y = 0;
+	}
+
+	BYTE* dstp = dst->GetWritePtr() + x*4 + (height-1 - y)*pitch;
+
+	for (int ty = ys; ty < ye; ty++, dstp-=pitch) {
+		BYTE* dp = dstp;
+
+		int num = s[si] - ' ';
+		if (num < 0) num = 0;
+		unsigned int fontline = font[num][ty]<<xs;
+		int _xs = xs;
+
+		for (int i=si ; i < len; i++) {
+			for (int tx = _xs; tx < 10; tx++, dp+=4, fontline<<=1) {
+				if (fontline & 0x8000) {
+					dp[0] = 250;
+					dp[1] = 250;
+					dp[2] = 250;
+				} else {
+					dp[0] = (unsigned char) ((dp[0] * 7) >> 3);
+					dp[1] = (unsigned char) ((dp[1] * 7) >> 3);
+					dp[2] = (unsigned char) ((dp[2] * 7) >> 3);
+				}
+			}
+
+			_xs = 0;
+			num = s[i+1] - ' ';
+			if (num < 0) num = 0;
+			fontline = font[num][ty];
+		}
+	}
+}
+#endif
+#if 0
 void DrawDigitRGB24(PVideoFrame &dst, int x, int y, int num)
 {
 	extern const unsigned short font[][20];
 
 	if (num < 0) num = 0;
 
-	const int pitch = dst->GetPitch();
 	const int height = dst->GetHeight();
-	BYTE* const dstp = dst->GetWritePtr();
-	for (int tx = 0; tx < 10; tx++) {
-		for (int ty = 0; ty < 20; ty++) {
-			unsigned char *dp = &dstp[(x + tx) * 3 + (height - (y + ty)) * pitch];
-			if (font[num][ty] & (1 << (15 - tx))) {
+	const int pitch = dst->GetPitch();
+	BYTE* dstp = dst->GetWritePtr() + x*3 + (height-1 - y)*pitch;
+
+	for (int ty = 0; ty < 20; ty++, dstp-=pitch) {
+		BYTE* dp = dstp;
+		unsigned int fontline = font[num][ty];
+
+		for (int tx = 0; tx < 10; tx++, dp+=3, fontline<<=1) {
+			if (fontline & 0x8000) {
 				dp[0] = 250;
 				dp[1] = 250;
 				dp[2] = 250;
@@ -1720,4 +1974,65 @@ void DrawStringRGB24(PVideoFrame &dst, int x, int y, const char *s)
 		DrawDigitRGB24(dst, x + xx*10, y, *s - ' ');
 	}
 }
+#else
+void DrawStringRGB24(PVideoFrame &dst, int x, int y, const char *s, int len=0)
+{
+	const int height = dst->GetHeight();
+	const int pitch = dst->GetPitch();
 
+	// Default string length
+	if (len == 0) len = strlen(s);
+
+	// Chop text if exceed right margin
+	if (len*30 > pitch-x*3) len = (pitch-x*3)/30;
+
+	int si = 0, xs=0;
+	// Chop 1st char if exceed left margin
+	if (x < 0) {
+		si = (-x)/10;
+		xs = (-x)%10;
+		x = 0;
+	}
+
+	int ys=0, ye=20;
+	// Chop font if exceed bottom margin
+	if (y > height-20)
+		ye = height - y;
+
+	// Chop font if exceed top margin
+	if (y < 0) {
+		ys = -y;
+		y = 0;
+	}
+
+	BYTE* dstp = dst->GetWritePtr() + x*3 + (height-1 - y)*pitch;
+
+	for (int ty = ys; ty < ye; ty++, dstp-=pitch) {
+		BYTE* dp = dstp;
+
+		int num = s[si] - ' ';
+		if (num < 0) num = 0;
+		unsigned int fontline = font[num][ty]<<xs;
+		int _xs = xs;
+
+		for (int i=si ; i < len; i++) {
+			for (int tx = _xs; tx < 10; tx++, dp+=3, fontline<<=1) {
+				if (fontline & 0x8000) {
+					dp[0] = 250;
+					dp[1] = 250;
+					dp[2] = 250;
+				} else {
+					dp[0] = (unsigned char) ((dp[0] * 7) >> 3);
+					dp[1] = (unsigned char) ((dp[1] * 7) >> 3);
+					dp[2] = (unsigned char) ((dp[2] * 7) >> 3);
+				}
+			}
+
+			_xs = 0;
+			num = s[i+1] - ' ';
+			if (num < 0) num = 0;
+			fontline = font[num][ty];
+		}
+	}
+}
+#endif
