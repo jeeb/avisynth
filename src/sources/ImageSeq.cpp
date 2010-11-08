@@ -107,6 +107,11 @@ ImageWriter::ImageWriter(PClip _child, const char * _base_name, const int _start
     _snprintf(base_name, sizeof base_name, "%s%s", cwd, _base_name);
   }
 
+  if (strchr(base_name, '%') == NULL) {
+    base_name[(sizeof base_name)-8] = '\0';
+    strcat(base_name, "%06d.%s"); // Append default formating
+  }
+
   if (!lstrcmpi(ext, "ebmp"))
   {
     // construct file header
@@ -193,9 +198,10 @@ PVideoFrame ImageWriter::GetFrame(int n, IScriptEnvironment* env)
   }
 
   // construct filename
-  ostringstream fn_oss;
-  fn_oss << base_name << setfill('0') << setw(6) << n << '.' << ext;
-  string filename = fn_oss.str();
+  char temp[MAX_PATH + 1];
+  _snprintf(temp, MAX_PATH, base_name, n, ext, 0, 0);
+  temp[MAX_PATH] = '\0';
+  string filename = temp;
 
   if (!lstrcmpi(ext, "ebmp"))  /* Use internal 'ebmp' writer */
   {
