@@ -73,9 +73,10 @@ private:
   char src_format;
   char dst_format;
   int src_bps;
-  char *tempbuffer;
-  SFLOAT *floatbuffer;
   int tempbuffer_size;
+  char *tempbuffer;
+  int floatbuffer_size;
+  SFLOAT *floatbuffer;
 };
 
 #endif //__Convert_Audio_H__

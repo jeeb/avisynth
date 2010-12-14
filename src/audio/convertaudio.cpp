@@ -74,15 +74,19 @@ ConvertAudio::ConvertAudio(PClip _clip, int _sample_type)
   src_bps=vi.BytesPerChannelSample();  // Store old size
   vi.sample_type=dst_format;
   tempbuffer_size=0;
+  floatbuffer_size=0;
 }
 
-  ConvertAudio::~ConvertAudio() {
-    if (tempbuffer_size) {
-      _aligned_free(tempbuffer); 
-      _aligned_free(floatbuffer); 
-      tempbuffer_size=0;
-    }
+ConvertAudio::~ConvertAudio() {
+  if (tempbuffer_size) {
+    _aligned_free(tempbuffer); 
+    tempbuffer_size=0;
   }
+  if (floatbuffer_size) {
+    _aligned_free(floatbuffer); 
+    floatbuffer_size=0;
+  }
+}
 
 /*******************************************/
 
@@ -264,17 +268,10 @@ c8_loop:
 void __stdcall ConvertAudio::GetAudio(void* buf, __int64 start, __int64 count, IScriptEnvironment* env) 
 {
   int channels=vi.AudioChannels();
-  if (tempbuffer_size) {
-    if (tempbuffer_size<count) {
-      _aligned_free(tempbuffer);
-      _aligned_free(floatbuffer);
-      tempbuffer = (char *) _aligned_malloc((int)count*src_bps*channels, 16);
-      floatbuffer = (SFLOAT*) _aligned_malloc((int)count*channels*sizeof(SFLOAT), 16);
-      tempbuffer_size=(int)count;
-    }
-  } else {
+
+  if (tempbuffer_size<count) {
+    if (tempbuffer_size) _aligned_free(tempbuffer);
     tempbuffer = (char *) _aligned_malloc((int)count*src_bps*channels, 16);
-    floatbuffer = (SFLOAT*)_aligned_malloc((int)count*channels*sizeof(SFLOAT),16);
     tempbuffer_size=(int)count;
   }
 
@@ -309,15 +306,21 @@ void __stdcall ConvertAudio::GetAudio(void* buf, __int64 start, __int64 count, I
   float* tmp_fb;
   if (dst_format == SAMPLE_FLOAT)  // Skip final copy, if samples are to be float
 	tmp_fb = (float*)buf;
-  else
+  else {
+    if (floatbuffer_size < count) {
+      if (floatbuffer_size) _aligned_free(floatbuffer);
+      floatbuffer = (SFLOAT*)_aligned_malloc((int)count*channels*sizeof(SFLOAT),16);
+      floatbuffer_size=(int)count;
+    }
 	tmp_fb = floatbuffer;
+  }
 
   if (src_format != SAMPLE_FLOAT) {  // Skip initial copy, if samples are already float
 // Someone with an AMD beast decide which code runs better SSE2 or 3DNow   :: FIXME
-    if ((env->GetCPUFlags() & CPUF_3DNOW_EXT)) {
-      convertToFloat_3DN(tempbuffer, tmp_fb, src_format, (int)count*channels);
-    } else if (((((int)tmp_fb) & 3) == 0) && (env->GetCPUFlags() & CPUF_SSE2)) {
+	if (((((int)tmp_fb) & 3) == 0) && (env->GetCPUFlags() & CPUF_SSE2)) {
       convertToFloat_SSE2(tempbuffer, tmp_fb, src_format, (int)count*channels);
+    } else if ((env->GetCPUFlags() & CPUF_3DNOW_EXT)) {
+      convertToFloat_3DN(tempbuffer, tmp_fb, src_format, (int)count*channels);
     } else if ((env->GetCPUFlags() & CPUF_SSE)) {
       convertToFloat_SSE(tempbuffer, tmp_fb, src_format, (int)count*channels);
     } else {
@@ -329,10 +332,10 @@ void __stdcall ConvertAudio::GetAudio(void* buf, __int64 start, __int64 count, I
 
   if (dst_format != SAMPLE_FLOAT) {  // Skip final copy, if samples are to be float
 // Someone with an AMD beast decide which code runs better SSE2 or 3DNow   :: FIXME
-	if ((env->GetCPUFlags() & CPUF_3DNOW_EXT)) {
-	  convertFromFloat_3DN(tmp_fb, buf, dst_format, (int)count*channels);
-	} else if ((env->GetCPUFlags() & CPUF_SSE2)) {
+	if ((env->GetCPUFlags() & CPUF_SSE2)) {
 	  convertFromFloat_SSE2(tmp_fb, buf, dst_format, (int)count*channels);
+	} else if ((env->GetCPUFlags() & CPUF_3DNOW_EXT)) {
+	  convertFromFloat_3DN(tmp_fb, buf, dst_format, (int)count*channels);
 	} else if ((env->GetCPUFlags() & CPUF_SSE)) {
 	  convertFromFloat_SSE(tmp_fb, buf, dst_format, (int)count*channels);
 	} else {
