@@ -1193,6 +1193,20 @@ static const char * const StringSystemError2(const unsigned code)
   default:
     break;
   }
+  
+  switch (code) {
+  case 0xC0000135:                       // 0xc0000135
+    return "DLL Not Found";
+  case 0xC0000142:                       // 0xc0000142
+    return "DLL Initialization Failed";
+  case 0xC06d007E:                       // 0xc06d007e
+    return "Delay-load Module Not Found";
+  case 0xC06d007F:                       // 0xc06d007e
+    return "Delay-load Proceedure Not Found";
+  default:
+    break;
+  }
+  
   return 0;
 }
 #else
@@ -1403,17 +1417,18 @@ STDMETHODIMP CAVIStreamSynth::ReadFormat(LONG lPos, LPVOID lpFormat, LONG *lpcbF
 	  wfxt.Format.cbSize = sizeof(wfxt) - sizeof(wfxt.Format);
 	  wfxt.Samples.wValidBitsPerSample = wfxt.Format.wBitsPerSample;
 
-	  const int SpeakerMasks[8] = { 0,
-	    0x00004, // 1         Cf
+	  const int SpeakerMasks[9] = { 0,
+		0x00004, // 1   -- -- Cf
 		0x00003, // 2   Lf Rf
 		0x00007, // 3   Lf Rf Cf
-		0x00033, // 4   Lf Rf       Lr Rr
-		0x00037, // 5   Lf Rf Cf    Lr Rr
+		0x00033, // 4   Lf Rf -- -- Lr Rr
+		0x00037, // 5   Lf Rf Cf -- Lr Rr
 		0x0003F, // 5.1 Lf Rf Cf Sw Lr Rr
-		0x0013F, // 6.1 Lf Rf Cf Sw Lr Rr Cr
+		0x0013F, // 6.1 Lf Rf Cf Sw Lr Rr -- -- Cr
+		0x0063F, // 7.1 Lf Rf Cf Sw Lr Rr -- -- -- Ls Rs
 	  };
-	  wfxt.dwChannelMask = (unsigned)vi->AudioChannels() <= 7 ? SpeakerMasks[vi->AudioChannels()]
-	                     : (unsigned)vi->AudioChannels() <=18 ? DWORD(-1) >> (32-vi->AudioChannels())
+	  wfxt.dwChannelMask = (unsigned)vi->AudioChannels() <= 8 ? SpeakerMasks[vi->AudioChannels()]
+						 : (unsigned)vi->AudioChannels() <=18 ? DWORD(-1) >> (32-vi->AudioChannels())
 						 : SPEAKER_ALL;
 
       try {
