@@ -91,7 +91,7 @@ PVideoFrame __stdcall SwapUV::GetFrame(int n, IScriptEnvironment* env) {
   }
   else if (vi.IsYUY2()) { // YUY2
     BYTE* srcp = src->GetWritePtr(); // Returns 0 if not writable
-    if (srcp) {
+    if (srcp) { // Do it in place!
       for (int y=0; y<vi.height; y++) {
         for (int x = 0; x < src->GetRowSize(); x+=4) {
           const BYTE t = srcp[x+3]; // This is surprisingly fast,
@@ -102,7 +102,7 @@ PVideoFrame __stdcall SwapUV::GetFrame(int n, IScriptEnvironment* env) {
       }
       return src;
     }
-	else { // avoid the cost of a frame blit, we have to parse the frame anyway
+    else { // avoid the cost of a frame blit, we have to parse the frame anyway
       const BYTE* srcp = src->GetReadPtr();
       PVideoFrame dst = env->NewVideoFrame(vi);
       
@@ -139,7 +139,8 @@ PVideoFrame __stdcall SwapUV::GetFrame(int n, IScriptEnvironment* env) {
 }
 
 
-void SwapUV::isse_inplace_yuy2_swap(const BYTE* srcp, BYTE* dstp, int rowsize16, int rowsize8, int rowsize4, int height, int srcpitch, int dstpitch) {
+void SwapUV::isse_inplace_yuy2_swap(const BYTE* srcp, BYTE* dstp, int rowsize16, int rowsize8,
+                                    int rowsize4, int height, int srcpitch, int dstpitch) {
         __asm {
             pcmpeqb   mm7,mm7			; 0xffffffffffffffff
             psrlw     mm7,8 			; 0x00ff00ff00ff00ff
@@ -247,13 +248,8 @@ SwapUVToY::SwapUVToY(PClip _child, int _mode, IScriptEnvironment* env)
   vi.height >>= vi.GetPlaneHeightSubsampling(PLANAR_U);
   vi.width  >>= vi.GetPlaneWidthSubsampling(PLANAR_U);
 
-  if(mode == UToY8 || mode == VToY8) {
+  if (mode == UToY8 || mode == VToY8 || mode == YUY2UToY8 || mode == YUY2VToY8)
     vi.pixel_type = VideoInfo::CS_Y8;
-  }
-
-  if(mode == YUY2UToY8 || mode == YUY2VToY8) {
-    vi.pixel_type = VideoInfo::CS_Y8;
-  }
 
 }
 
@@ -262,69 +258,71 @@ PVideoFrame __stdcall SwapUVToY::GetFrame(int n, IScriptEnvironment* env) {
   PVideoFrame src = child->GetFrame(n, env);
 
   if (vi.IsYUY2()) {  // YUY2 interleaved
-	PVideoFrame dst = env->NewVideoFrame(vi);
-	const BYTE* srcp = src->GetReadPtr();
-	short* dstp = (short*)dst->GetWritePtr();
-	const int srcpitch = src->GetPitch();
-	const int dstpitch = dst->GetPitch()>>1;
-	const int endx = dst->GetRowSize()>>1;
-	if (mode==UToY) {
-	  for (int y=0; y<vi.height; y++) {
-		for (int x = 0; x < endx; x+=2) {
-		  dstp[x  ] = 0x8000 | srcp[x*4+1];
-		  dstp[x+1] = 0x8000 | srcp[x*4+5];
-		}
-		srcp += srcpitch;
-		dstp += dstpitch;
-	  }
-	}
-	else if (mode==VToY) {
-	  for (int y=0; y<vi.height; y++) {
-		for (int x = 0; x < endx; x+=2) {
-		  dstp[x  ] = 0x8000 | srcp[x*4+3];
-		  dstp[x+1] = 0x8000 | srcp[x*4+7];
-		}
-		srcp += srcpitch;
-		dstp += dstpitch;
-	  }
-	}
-	return dst;
+    PVideoFrame dst = env->NewVideoFrame(vi);
+    const BYTE* srcp = src->GetReadPtr();
+    short* dstp = (short*)dst->GetWritePtr();
+    const int srcpitch = src->GetPitch();
+    const int dstpitch = dst->GetPitch()>>1;
+    const int endx = dst->GetRowSize()>>1;
+    if (mode==UToY) {
+      for (int y=0; y<vi.height; y++) {
+        for (int x = 0; x < endx; x+=2) {
+          dstp[x  ] = 0x8000 | srcp[x*4+1];
+          dstp[x+1] = 0x8000 | srcp[x*4+5];
+        }
+        srcp += srcpitch;
+        dstp += dstpitch;
+      }
+    }
+    else if (mode==VToY) {
+      for (int y=0; y<vi.height; y++) {
+        for (int x = 0; x < endx; x+=2) {
+          dstp[x  ] = 0x8000 | srcp[x*4+3];
+          dstp[x+1] = 0x8000 | srcp[x*4+7];
+        }
+        srcp += srcpitch;
+        dstp += dstpitch;
+      }
+    }
+    return dst;
   }
 
   // Planar
 
   if (mode==UToY8) {
     const int offset = src->GetOffset(PLANAR_U) - src->GetOffset(PLANAR_Y); // very naughty - don't do this at home!!
-	// Abuse Subframe to snatch the U plane
-	return env->Subframe(src, offset, src->GetPitch(PLANAR_U), src->GetRowSize(PLANAR_U), src->GetHeight(PLANAR_U));
+    // Abuse Subframe to snatch the U plane
+    return env->Subframe(src, offset, src->GetPitch(PLANAR_U), src->GetRowSize(PLANAR_U), src->GetHeight(PLANAR_U));
   }
   else if (mode == VToY8) {
     const int offset = src->GetOffset(PLANAR_V) - src->GetOffset(PLANAR_Y); // very naughty - don't do this at home!!
-	// Abuse Subframe to snatch the V plane
-	return env->Subframe(src, offset, src->GetPitch(PLANAR_V), src->GetRowSize(PLANAR_V), src->GetHeight(PLANAR_V));
+    // Abuse Subframe to snatch the V plane
+    return env->Subframe(src, offset, src->GetPitch(PLANAR_V), src->GetRowSize(PLANAR_V), src->GetHeight(PLANAR_V));
   }
 
   PVideoFrame dst = env->NewVideoFrame(vi);
 
   if (mode==YUY2UToY8 || mode==YUY2VToY8) {  // YUY2 U To Y
-	const BYTE* srcp = src->GetReadPtr();
-	BYTE* dstp = (BYTE*)dst->GetWritePtr(PLANAR_Y);
-	srcp += (mode==YUY2UToY8) ? 1 : 3;
-	for (int y=0; y<vi.height; y++) {
-	  for (int x = 0; x < vi.width; x++) {
-		dstp[x] = srcp[(x<<2)];
-	  }
-	  srcp += src->GetPitch();
-	  dstp += dst->GetPitch(PLANAR_Y);
-	}      
-	return dst;
+    const BYTE* srcp = src->GetReadPtr();
+    BYTE* dstp = (BYTE*)dst->GetWritePtr(PLANAR_Y);
+    srcp += (mode==YUY2UToY8) ? 1 : 3;
+    for (int y=0; y<vi.height; y++) {
+      for (int x = 0; x < vi.width; x++) {
+        dstp[x] = srcp[(x<<2)];
+      }
+      srcp += src->GetPitch();
+      dstp += dst->GetPitch(PLANAR_Y);
+    }      
+    return dst;
   }
 
   if (mode==UToY) {
-	env->BitBlt(dst->GetWritePtr(PLANAR_Y),dst->GetPitch(PLANAR_Y),src->GetReadPtr(PLANAR_U),src->GetPitch(PLANAR_U),dst->GetRowSize(),dst->GetHeight());
+    env->BitBlt(dst->GetWritePtr(PLANAR_Y), dst->GetPitch(PLANAR_Y),
+                src->GetReadPtr(PLANAR_U), src->GetPitch(PLANAR_U), dst->GetRowSize(), dst->GetHeight());
   }
   else if (mode==VToY) {
-	env->BitBlt(dst->GetWritePtr(PLANAR_Y),dst->GetPitch(PLANAR_Y),src->GetReadPtr(PLANAR_V),src->GetPitch(PLANAR_V),dst->GetRowSize(),dst->GetHeight());
+    env->BitBlt(dst->GetWritePtr(PLANAR_Y), dst->GetPitch(PLANAR_Y),
+                src->GetReadPtr(PLANAR_V), src->GetPitch(PLANAR_V), dst->GetRowSize(), dst->GetHeight());
   }
 
   // Clear chroma
@@ -334,18 +332,18 @@ PVideoFrame __stdcall SwapUVToY::GetFrame(int n, IScriptEnvironment* env) {
 
   int *srcpUV = (int*)dst->GetWritePtr(PLANAR_U);
   {for (int y=0; y<myy; y++) {
-	for (int x=0; x<myx; x++) {
-	  srcpUV[x] = 0x80808080;  // mod 8
-	}
-	srcpUV += pitch;
+    for (int x=0; x<myx; x++) {
+      srcpUV[x] = 0x80808080;  // mod 8
+    }
+    srcpUV += pitch;
   }}
 
   srcpUV = (int*)dst->GetWritePtr(PLANAR_V);
   {for (int y=0; y<myy; ++y) {
-	for (int x=0; x<myx; x++) {
-	  srcpUV[x] = 0x80808080;  // mod 8
-	}
-	srcpUV += pitch;
+    for (int x=0; x<myx; x++) {
+      srcpUV[x] = 0x80808080;  // mod 8
+    }
+    srcpUV += pitch;
   }}
   return dst;
 }
@@ -381,14 +379,16 @@ SwapYToUV::SwapYToUV(PClip _child, PClip _clip, PClip _clipY, IScriptEnvironment
   if (clipY) {
     if (vi.IsYUY2() != vi3.IsYUY2()) 
       env->ThrowError("YToUV: YUY2 Clips must have same colorspace (UV & Y mismatch) !");
+
     if (vi.IsYUY2()) {
-      if ((vi3.width/2)!=vi.width)
-        env->ThrowError("YToUV: Y clip does not have the double width of the UV clips!");
-      if (vi.IsYUY2() && vi3.height!=vi.height)
+      if (vi3.height != vi.height)
         env->ThrowError("YToUV: Y clip does not have the same height of the UV clips! (YUY2 mode)");
-      vi.height *= 2;
+
+      vi.width *= 2;
+      if (vi3.width!=vi.width)
+        env->ThrowError("YToUV: Y clip does not have the double width of the UV clips!");
     }
-    if (vi.IsPlanar()) {  // Autogenerate destination colorformat
+    else {  // Autogenerate destination colorformat
       vi.pixel_type = VideoInfo::CS_YV12; // CS_Sub_Width_2 and CS_Sub_Height_2 are 0
 
       if (vi3.width == vi.width)
@@ -397,18 +397,24 @@ SwapYToUV::SwapYToUV(PClip _child, PClip _clip, PClip _clipY, IScriptEnvironment
         vi.pixel_type |= VideoInfo::CS_Sub_Width_4;
       else if (vi3.width != vi.width * 2)
         env->ThrowError("YToUV: Video width ratio does not match any internal colorspace.");
-	   
-	  if (vi3.height == vi.height)
+       
+      if (vi3.height == vi.height)
         vi.pixel_type |= VideoInfo::CS_Sub_Height_1;
-	  else if (vi3.height == vi.height * 4)
+      else if (vi3.height == vi.height * 4)
         vi.pixel_type |= VideoInfo::CS_Sub_Height_4;
-	  else if (vi3.height != vi.height * 2)
+      else if (vi3.height != vi.height * 2)
         env->ThrowError("YToUV: Video height ratio does not match any internal colorspace.");
     }
-  } else {
-    if (vi.IsY8())  // We default to YV12
-      vi.pixel_type = VideoInfo::CS_YV12;
-      vi.width *=2; vi.height *=2;
+  }
+  else {
+    if (vi.IsYUY2())
+      vi.width <<= 1;
+    else if (vi.IsY8())
+      vi.pixel_type = VideoInfo::CS_YV24;
+    else {
+      vi.height <<= vi.GetPlaneHeightSubsampling(PLANAR_U);
+      vi.width  <<= vi.GetPlaneWidthSubsampling(PLANAR_U);
+    }
   }
 }
 
@@ -458,13 +464,15 @@ PVideoFrame __stdcall SwapYToUV::GetFrame(int n, IScriptEnvironment* env) {
     return dst;
   }
   // Planar:
-  env->BitBlt(dst->GetWritePtr(PLANAR_U),dst->GetPitch(PLANAR_U),src->GetReadPtr(PLANAR_Y),src->GetPitch(PLANAR_Y),src->GetRowSize(PLANAR_Y),src->GetHeight(PLANAR_Y));
+  env->BitBlt(dst->GetWritePtr(PLANAR_U), dst->GetPitch(PLANAR_U),
+              src->GetReadPtr(PLANAR_Y), src->GetPitch(PLANAR_Y), src->GetRowSize(PLANAR_Y), src->GetHeight(PLANAR_Y));
   
   src = clip->GetFrame(n, env);
-  env->BitBlt(dst->GetWritePtr(PLANAR_V),dst->GetPitch(PLANAR_V),src->GetReadPtr(PLANAR_Y),src->GetPitch(PLANAR_Y),src->GetRowSize(PLANAR_Y),src->GetHeight(PLANAR_Y));
+  env->BitBlt(dst->GetWritePtr(PLANAR_V), dst->GetPitch(PLANAR_V),
+              src->GetReadPtr(PLANAR_Y), src->GetPitch(PLANAR_Y), src->GetRowSize(PLANAR_Y), src->GetHeight(PLANAR_Y));
   
   if (!clipY) {
-    // Luma = 126
+    // Luma = 126 (0x7e)
     const int pitch = dst->GetPitch(PLANAR_Y)/4;
     int *dstpY = (int*)dst->GetWritePtr(PLANAR_Y);
     const int myx = (dst->GetRowSize(PLANAR_Y)+3)/4;
@@ -477,7 +485,8 @@ PVideoFrame __stdcall SwapYToUV::GetFrame(int n, IScriptEnvironment* env) {
     }
   } else {
     src = clipY->GetFrame(n, env);
-    env->BitBlt(dst->GetWritePtr(PLANAR_Y),dst->GetPitch(PLANAR_Y),src->GetReadPtr(PLANAR_Y),src->GetPitch(PLANAR_Y),src->GetRowSize(PLANAR_Y),src->GetHeight(PLANAR_Y));
+    env->BitBlt(dst->GetWritePtr(PLANAR_Y), dst->GetPitch(PLANAR_Y),
+                src->GetReadPtr(PLANAR_Y), src->GetPitch(PLANAR_Y), src->GetRowSize(PLANAR_Y), src->GetHeight(PLANAR_Y));
   }
   return dst;
 }
