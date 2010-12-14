@@ -5,11 +5,11 @@
 // could not determine. Modified for YV12 by Donald Graft.
 // RGB32 Added by Klaus Post
 // Converted to generic planar, and now using exact coordinates - NOT character coordinates by Klaus Post
+// Refactor, DrawString...() is the primative, Oct 2010 Ian Brabham
 // TO DO: Clean up - and move functions to a .c file.
-// TO DO: Check coordinates for out-of-image writes.
 
 const unsigned short font[][20] = {
-//STARTCHAR space
+	//STARTCHAR space
 	{
 		0x0000,0x0000,0x0000,0x0000,
 		0x0000,0x0000,0x0000,0x0000,
@@ -1652,8 +1652,8 @@ void DrawStringPlanar(PVideoFrame &dst, int x, int y, const char *s, int len=0)
 	for (int ty = ys; ty < ye; ty++, dstpY+=pitchY) {
 		BYTE *dpY = dstpY;
 
-		int num = s[si] - ' ';
-		if (num < 0) num = 0;
+		int num = (s[si] - ' ') & 0xFF;
+		if (num >= 192) num = 0;
 		unsigned int fontline = font[num][ty]<<xs;
 		int _xs = xs;
 
@@ -1667,8 +1667,8 @@ void DrawStringPlanar(PVideoFrame &dst, int x, int y, const char *s, int len=0)
 			}
 
 			_xs = 0;
-			num = s[i+1] - ' ';
-			if (num < 0) num = 0;
+			num = (s[i+1] - ' ') & 0xFF;
+			if (num >= 192) num = 0;
 			fontline = font[num][ty];
 		}
 	}
@@ -1694,8 +1694,8 @@ void DrawStringPlanar(PVideoFrame &dst, int x, int y, const char *s, int len=0)
 			BYTE *dpU = dstpU;
 			BYTE *dpV = dstpV;
 
-			int num = s[si] - ' ';
-			if (num < 0) num = 0;
+			int num = (s[si] - ' ') & 0xFF;
+			if (num >= 192) num = 0;
 			unsigned int fontline = 0;
 			for (int m=0; m<ySubS; m++) fontline |= font[num][ty+m];
 			fontline <<= xs;
@@ -1713,8 +1713,8 @@ void DrawStringPlanar(PVideoFrame &dst, int x, int y, const char *s, int len=0)
 				}
 
 				_xs = 0;
-				num = s[i+1] - ' ';
-				if (num < 0) num = 0;
+				num = (s[i+1] - ' ') & 0xFF;
+				if (num >= 192) num = 0;
 				fontline = 0;
 				for (int m=0; m<ySubS; m++) fontline |= font[num][ty+m];
 			}
@@ -1804,8 +1804,8 @@ void DrawStringYUY2(PVideoFrame &dst, int x, int y, const char *s, int len=0)
 	for (int ty = ys; ty < ye; ty++, dstp+=pitch) {
 		BYTE* dp = dstp;
 
-		int num = s[si] - ' ';
-		if (num < 0) num = 0;
+		int num = (s[si] - ' ') & 0xFF;
+		if (num >= 192) num = 0;
 		unsigned int fontline = font[num][ty]<<xs;
 		int _xs = xs;
 
@@ -1835,8 +1835,8 @@ void DrawStringYUY2(PVideoFrame &dst, int x, int y, const char *s, int len=0)
 			}
 
 			_xs = 0;
-			num = s[i+1] - ' ';
-			if (num < 0) num = 0;
+			num = (s[i+1] - ' ') & 0xFF;
+			if (num >= 192) num = 0;
 			fontline = font[num][ty];
 		}
 	}
@@ -1913,8 +1913,8 @@ void DrawStringRGB32(PVideoFrame &dst, int x, int y, const char *s, int len=0)
 	for (int ty = ys; ty < ye; ty++, dstp-=pitch) {
 		BYTE* dp = dstp;
 
-		int num = s[si] - ' ';
-		if (num < 0) num = 0;
+		int num = (s[si] - ' ') & 0xFF;
+		if (num >= 192) num = 0;
 		unsigned int fontline = font[num][ty]<<xs;
 		int _xs = xs;
 
@@ -1932,8 +1932,8 @@ void DrawStringRGB32(PVideoFrame &dst, int x, int y, const char *s, int len=0)
 			}
 
 			_xs = 0;
-			num = s[i+1] - ' ';
-			if (num < 0) num = 0;
+			num = (s[i+1] - ' ') & 0xFF;
+			if (num >= 192) num = 0;
 			fontline = font[num][ty];
 		}
 	}
@@ -2010,8 +2010,8 @@ void DrawStringRGB24(PVideoFrame &dst, int x, int y, const char *s, int len=0)
 	for (int ty = ys; ty < ye; ty++, dstp-=pitch) {
 		BYTE* dp = dstp;
 
-		int num = s[si] - ' ';
-		if (num < 0) num = 0;
+		int num = (s[si] - ' ') & 0xFF;
+		if (num >= 192) num = 0;
 		unsigned int fontline = font[num][ty]<<xs;
 		int _xs = xs;
 
@@ -2029,8 +2029,8 @@ void DrawStringRGB24(PVideoFrame &dst, int x, int y, const char *s, int len=0)
 			}
 
 			_xs = 0;
-			num = s[i+1] - ' ';
-			if (num < 0) num = 0;
+			num = (s[i+1] - ' ') & 0xFF;
+			if (num >= 192) num = 0;
 			fontline = font[num][ty];
 		}
 	}
