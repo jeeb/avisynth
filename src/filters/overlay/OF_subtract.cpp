@@ -64,8 +64,8 @@ void OL_SubtractImage::BlendImageMask(Image444* base, Image444* overlay, Image44
           V = ((V*(32-multiplier)) + (128*(multiplier)))>>5;
           Y = 0;
         }
-        baseU[x] = (BYTE)U;
-        baseV[x] = (BYTE)V;
+        baseU[x] = (BYTE)min(255,max(U,0));
+        baseV[x] = (BYTE)min(255,max(V,0));
         baseY[x] = (BYTE)Y;
       }
       maskY += mask->pitch;
@@ -96,8 +96,8 @@ void OL_SubtractImage::BlendImageMask(Image444* base, Image444* overlay, Image44
           V = ((V*(32-multiplier)) + (128*(multiplier)))>>5;
           Y = 0;
         }
-        baseU[x] = (BYTE)U;
-        baseV[x] = (BYTE)V;
+        baseU[x] = (BYTE)min(255,max(U,0));
+        baseV[x] = (BYTE)min(255,max(V,0));
         baseY[x] = (BYTE)Y;
       }
       baseY += base->pitch;
@@ -140,8 +140,8 @@ void OL_SubtractImage::BlendImage(Image444* base, Image444* overlay) {
           V = ((V*(32-multiplier)) + (128*(multiplier)))>>5;
           Y = 0;
         }
-        baseU[x] = U;
-        baseV[x] = V;
+        baseU[x] = (BYTE)min(255,max(U,0));
+        baseV[x] = (BYTE)min(255,max(V,0));
         baseY[x] = (BYTE)max(Y,0);
       }
       baseY += base->pitch;
@@ -166,8 +166,8 @@ void OL_SubtractImage::BlendImage(Image444* base, Image444* overlay) {
           V = ((V*(32-multiplier)) + (128*(multiplier)))>>5;
           Y = 0;
         }
-        baseU[x] = (BYTE)U;
-        baseV[x] = (BYTE)V;
+        baseU[x] = (BYTE)min(255,max(U,0));
+        baseV[x] = (BYTE)min(255,max(V,0));
         baseY[x] = (BYTE)Y;
       }
       baseY += base->pitch;
