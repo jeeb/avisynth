@@ -45,7 +45,7 @@
 ********************************************************************/
 
 extern const AVSFunction Levels_filters[] = {
-  { "Levels", "cifiii[coring]b", Levels::Create },        // src_low, gamma, src_high, dst_low, dst_high 
+  { "Levels", "cifiii[coring]b[dither]b", Levels::Create },        // src_low, gamma, src_high, dst_low, dst_high
   { "RGBAdjust", "c[r]f[g]f[b]f[a]f[rb]f[gb]f[bb]f[ab]f[rg]f[gg]f[bg]f[ag]f[analyze]b", RGBAdjust::Create },
   { "Tweak", "c[hue]f[sat]f[bright]f[cont]f[coring]b[sse]b[startHue]f[endHue]f[maxSat]f[minSat]f[interp]f", Tweak::Create },
   { "MaskHS", "c[startHue]f[endHue]f[maxSat]f[minSat]f[coring]b", MaskHS::Create },
@@ -55,112 +55,246 @@ extern const AVSFunction Levels_filters[] = {
 
 
 
+__declspec(align(64)) static const BYTE ditherMap[256] = {
+#if 0
+  // default 0231 recursed table
+  0x00, 0x80, 0x20, 0xA0,  0x08, 0x88, 0x28, 0xA8,  0x02, 0x82, 0x22, 0xA2,  0x0A, 0x8A, 0x2A, 0xAA,
+  0xC0, 0x40, 0xE0, 0x60,  0xC8, 0x48, 0xE8, 0x68,  0xC2, 0x42, 0xE2, 0x62,  0xCA, 0x4A, 0xEA, 0x6A,
+  0x30, 0xB0, 0x10, 0x90,  0x38, 0xB8, 0x18, 0x98,  0x32, 0xB2, 0x12, 0x92,  0x3A, 0xBA, 0x1A, 0x9A,
+  0xF0, 0x70, 0xD0, 0x50,  0xF8, 0x78, 0xD8, 0x58,  0xF2, 0x72, 0xD2, 0x52,  0xFA, 0x7A, 0xDA, 0x5A,
+
+  0x0C, 0x8C, 0x2C, 0xAC,  0x04, 0x84, 0x24, 0xA4,  0x0E, 0x8E, 0x2E, 0xAE,  0x06, 0x86, 0x26, 0xA6,
+  0xCC, 0x4C, 0xEC, 0x6C,  0xC4, 0x44, 0xE4, 0x64,  0xCE, 0x4E, 0xEE, 0x6E,  0xC6, 0x46, 0xE6, 0x66,
+  0x3C, 0xBC, 0x1C, 0x9C,  0x34, 0xB4, 0x14, 0x94,  0x3E, 0xBE, 0x1E, 0x9E,  0x36, 0xB6, 0x16, 0x96,
+  0xFC, 0x7C, 0xDC, 0x5C,  0xF4, 0x74, 0xD4, 0x54,  0xFE, 0x7E, 0xDE, 0x5E,  0xF6, 0x76, 0xD6, 0x56,
+
+  0x03, 0x83, 0x23, 0xA3,  0x0B, 0x8B, 0x2B, 0xAB,  0x01, 0x81, 0x21, 0xA1,  0x09, 0x89, 0x29, 0xA9,
+  0xC3, 0x43, 0xE3, 0x63,  0xCB, 0x4B, 0xEB, 0x6B,  0xC1, 0x41, 0xE1, 0x61,  0xC9, 0x49, 0xE9, 0x69,
+  0x33, 0xB3, 0x13, 0x93,  0x3B, 0xBB, 0x1B, 0x9B,  0x31, 0xB1, 0x11, 0x91,  0x39, 0xB9, 0x19, 0x99,
+  0xF3, 0x73, 0xD3, 0x53,  0xFB, 0x7B, 0xDB, 0x5B,  0xF1, 0x71, 0xD1, 0x51,  0xF9, 0x79, 0xD9, 0x59,
+
+  0x0F, 0x8F, 0x2F, 0xAF,  0x07, 0x87, 0x27, 0xA7,  0x0D, 0x8D, 0x2D, 0xAD,  0x05, 0x85, 0x25, 0xA5,
+  0xCF, 0x4F, 0xEF, 0x6F,  0xC7, 0x47, 0xE7, 0x67,  0xCD, 0x4D, 0xED, 0x6D,  0xC5, 0x45, 0xE5, 0x65,
+  0x3F, 0xBF, 0x1F, 0x9F,  0x37, 0xB7, 0x17, 0x97,  0x3D, 0xBD, 0x1D, 0x9D,  0x35, 0xB5, 0x15, 0x95,
+  0xFF, 0x7F, 0xDF, 0x5F,  0xF7, 0x77, 0xD7, 0x57,  0xFD, 0x7D, 0xDD, 0x5D,  0xF5, 0x75, 0xD5, 0x55,
+#else
+  // improved "equal sum" modified table
+  0x00, 0xB0, 0x60, 0xD0,  0x0B, 0xBB, 0x6B, 0xDB,  0x06, 0xB6, 0x66, 0xD6,  0x0D, 0xBD, 0x6D, 0xDD,
+  0xC0, 0x70, 0x90, 0x20,  0xCB, 0x7B, 0x9B, 0x2B,  0xC6, 0x76, 0x96, 0x26,  0xCD, 0x7D, 0x9D, 0x2D,
+  0x30, 0x80, 0x50, 0xE0,  0x3B, 0x8B, 0x5B, 0xEB,  0x36, 0x86, 0x56, 0xE6,  0x3D, 0x8D, 0x5D, 0xED,
+  0xF0, 0x40, 0xA0, 0x10,  0xFB, 0x4B, 0xAB, 0x1B,  0xF6, 0x46, 0xA6, 0x16,  0xFD, 0x4D, 0xAD, 0x1D,
+
+  0x0C, 0xBC, 0x6C, 0xDC,  0x07, 0xB7, 0x67, 0xD7,  0x09, 0xB9, 0x69, 0xD9,  0x02, 0xB2, 0x62, 0xD2,
+  0xCC, 0x7C, 0x9C, 0x2C,  0xC7, 0x77, 0x97, 0x27,  0xC9, 0x79, 0x99, 0x29,  0xC2, 0x72, 0x92, 0x22,
+  0x3C, 0x8C, 0x5C, 0xEC,  0x37, 0x87, 0x57, 0xE7,  0x39, 0x89, 0x59, 0xE9,  0x32, 0x82, 0x52, 0xE2,
+  0xFC, 0x4C, 0xAC, 0x1C,  0xF7, 0x47, 0xA7, 0x17,  0xF9, 0x49, 0xA9, 0x19,  0xF2, 0x42, 0xA2, 0x12,
+
+  0x03, 0xB3, 0x63, 0xD3,  0x08, 0xB8, 0x68, 0xD8,  0x05, 0xB5, 0x65, 0xD5,  0x0E, 0xBE, 0x6E, 0xDE,
+  0xC3, 0x73, 0x93, 0x23,  0xC8, 0x78, 0x98, 0x28,  0xC5, 0x75, 0x95, 0x25,  0xCE, 0x7E, 0x9E, 0x2E,
+  0x33, 0x83, 0x53, 0xE3,  0x38, 0x88, 0x58, 0xE8,  0x35, 0x85, 0x55, 0xE5,  0x3E, 0x8E, 0x5E, 0xEE,
+  0xF3, 0x43, 0xA3, 0x13,  0xF8, 0x48, 0xA8, 0x18,  0xF5, 0x45, 0xA5, 0x15,  0xFE, 0x4E, 0xAE, 0x1E,
+
+  0x0F, 0xBF, 0x6F, 0xDF,  0x04, 0xB4, 0x64, 0xD4,  0x0A, 0xBA, 0x6A, 0xDA,  0x01, 0xB1, 0x61, 0xD1,
+  0xCF, 0x7F, 0x9F, 0x2F,  0xC4, 0x74, 0x94, 0x24,  0xCA, 0x7A, 0x9A, 0x2A,  0xC1, 0x71, 0x91, 0x21,
+  0x3F, 0x8F, 0x5F, 0xEF,  0x34, 0x84, 0x54, 0xE4,  0x3A, 0x8A, 0x5A, 0xEA,  0x31, 0x81, 0x51, 0xE1,
+  0xFF, 0x4F, 0xAF, 0x1F,  0xF4, 0x44, 0xA4, 0x14,  0xFA, 0x4A, 0xAA, 0x1A,  0xF1, 0x41, 0xA1, 0x11,
+#endif
+};
+
 /********************************
  *******   Levels Filter   ******
  ********************************/
 
-Levels::Levels( PClip _child, int in_min, double gamma, int in_max, int out_min, int out_max, bool coring, 
+Levels::Levels( PClip _child, int in_min, double gamma, int in_max, int out_min, int out_max, bool coring, bool _dither,
                 IScriptEnvironment* env )
-  : GenericVideoFilter(_child)
+  : GenericVideoFilter(_child), map(0), mapchroma(0), dither(_dither)
 {
 	try {	// HIDE DAMN SEH COMPILER BUG!!!
   if (gamma <= 0.0)
     env->ThrowError("Levels: gamma must be positive");
+
   gamma = 1/gamma;
+
   int divisor = in_max - in_min + (in_max == in_min);
-  if (vi.IsYUV()) 
-  {
-    for (int i=0; i<256; ++i) 
-    {
+  int scale = 1;
+  double bias  = 0.0;
+
+  if (dither) {
+    scale = 256;
+    divisor *= 256;
+    in_min  *= 256;
+    bias = -127.5;
+  }
+
+  map = new BYTE[256*scale];
+
+  if (vi.IsYUV()) {
+    mapchroma = new BYTE[256*scale];
+
+    for (int i=0; i<256*scale; ++i) {
       double p;
 
-      if (coring) 
-        p = ((i-16)*(255.0/219.0) - in_min) / divisor;
-      else 
-        p = double(i - in_min) / divisor;
+      if (coring)
+        p = ((bias + i - 16*scale)*(255.0/219.0) - in_min) / divisor;
+      else
+        p = (bias + i - in_min) / divisor;
 
       p = pow(min(max(p, 0.0), 1.0), gamma);
       p = p * (out_max - out_min) + out_min;
-      int pp;
 
-      if (coring) 
-        pp = int(p*(219.0/255.0)+16.5);
-      else 
-        pp = int(p+0.5);
+      if (coring)
+        map[i] = min(max(int(p*(219.0/255.0)+16.5),  16), 235);
+      else
+        map[i] = min(max(int(p+0.5), 0), 255);
 
-      map[i] = min(max(pp, (coring) ? 16 : 0), (coring) ? 235 : 255);
+      int q = ((bias + i - 128*scale) * (out_max-out_min)) / divisor + 128.5;
 
-      int q = ((i-128) * (out_max-out_min) + (divisor>>1)) / divisor + 128;
-      mapchroma[i] = min(max(q, (coring) ? 16 : 0), (coring) ? 240 : 255);
+      if (coring)
+        mapchroma[i] = min(max(q, 16), 240);
+      else
+        mapchroma[i] = min(max(q, 0), 255);
     }
-  } else if (vi.IsRGB()) {
-    for (int i=0; i<256; ++i) 
-    {
-      double p = double(i - in_min) / divisor;
+  }
+  else if (vi.IsRGB()) {
+    for (int i=0; i<256*scale; ++i) {
+      double p = (bias + i - in_min) / divisor;
       p = pow(min(max(p, 0.0), 1.0), gamma);
       p = p * (out_max - out_min) + out_min;
       map[i] = PixelClip(int(p+0.5));
     }
   }
+
 	}
 	catch (...) { throw; }
 }
 
-PVideoFrame __stdcall Levels::GetFrame(int n, IScriptEnvironment* env) 
+
+Levels::~Levels() {
+    if (map)       delete[] map;
+    if (mapchroma) delete[] mapchroma;
+}
+
+
+PVideoFrame __stdcall Levels::GetFrame(int n, IScriptEnvironment* env)
 {
   PVideoFrame frame = child->GetFrame(n, env);
   env->MakeWritable(&frame);
   BYTE* p = frame->GetWritePtr();
   int pitch = frame->GetPitch();
-  if (vi.IsYUY2()) {
-    for (int y=0; y<vi.height; ++y) {
-      for (int x=0; x<vi.width; ++x) {
-        p[x*2] = map[p[x*2]];
-        p[x*2+1] = mapchroma[p[x*2+1]];
+  if (dither) {
+    if (vi.IsYUY2()) {
+      for (int y=0; y<vi.height; ++y) {
+        const _y = (y << 4) & 0xf0;
+        for (int x=0; x<vi.width; ++x) {
+          p[x*2]   = map[ p[x*2]<<8 | ditherMap[(x&0x0f)|_y] ];
+        }
+        for (int z=0; z<vi.width/2; ++z) {
+          const int _dither = ditherMap[(z&0x0f)|_y];
+          p[z*4+1] = mapchroma[ p[z*4+1]<<8 | _dither ];
+          p[z*4+3] = mapchroma[ p[z*4+3]<<8 | _dither ];
+        }
+        p += pitch;
       }
-      p += pitch;
     }
-  } 
-  else if (vi.IsPlanar()) {
-    {for (int y=0; y<vi.height; ++y) {
-      for (int x=0; x<vi.width; ++x) {
-        p[x] = map[p[x]];
+    else if (vi.IsPlanar()) {
+      {for (int y=0; y<vi.height; ++y) {
+        const _y = (y << 4) & 0xf0;
+        for (int x=0; x<vi.width; ++x) {
+          p[x] = map[ p[x]<<8 | ditherMap[(x&0x0f)|_y] ];
+        }
+        p += pitch;
+      }}
+      pitch = frame->GetPitch(PLANAR_U);
+      const int w=frame->GetRowSize(PLANAR_U);
+      const int h=frame->GetHeight(PLANAR_U);
+      p = frame->GetWritePtr(PLANAR_U);
+      BYTE* q = frame->GetWritePtr(PLANAR_V);
+      {for (int y=0; y<h; ++y) {
+        const _y = (y << 4) & 0xf0;
+        for (int x=0; x<w; ++x) {
+          const int _dither = ditherMap[(x&0x0f)|_y];
+          p[x] = mapchroma[ p[x]<<8 | _dither ];
+          q[x] = mapchroma[ q[x]<<8 | _dither ];
+        }
+        p += pitch;
+        q += pitch;
+      }}
+    } else if (vi.IsRGB32()) {
+      for (int y=0; y<vi.height; ++y) {
+        const _y = (y << 4) & 0xf0;
+        for (int x=0; x<vi.width; ++x) {
+          const int _dither = ditherMap[(x&0x0f)|_y];
+          p[x*4+0] = map[ p[x*4+0]<<8 | _dither ];
+          p[x*4+1] = map[ p[x*4+1]<<8 | _dither ];
+          p[x*4+2] = map[ p[x*4+2]<<8 | _dither ];
+          p[x*4+3] = map[ p[x*4+3]<<8 | _dither ];
+        }
+        p += pitch;
       }
-      p += pitch;
-    }}
-    pitch = frame->GetPitch(PLANAR_U);
-    p = frame->GetWritePtr(PLANAR_U);
-    int w=frame->GetRowSize(PLANAR_U);
-    int h=frame->GetHeight(PLANAR_U);
-    {for (int y=0; y<h; ++y) {
-      for (int x=0; x<w; ++x) {
-        p[x] = mapchroma[p[x]];
+    } else if (vi.IsRGB24()) {
+      for (int y=0; y<vi.height; ++y) {
+        const _y = (y << 4) & 0xf0;
+        for (int x=0; x<vi.width; ++x) {
+          const int _dither = ditherMap[(x&0x0f)|_y];
+          p[x*3+0] = map[ p[x*3+0]<<8 | _dither ];
+          p[x*3+1] = map[ p[x*3+1]<<8 | _dither ];
+          p[x*3+2] = map[ p[x*3+2]<<8 | _dither ];
+        }
+        p += pitch;
       }
-      p += pitch;
-    }}
-    p = frame->GetWritePtr(PLANAR_V);
-    {for (int y=0; y<h; ++y) {
-      for (int x=0; x<w; ++x) {
-        p[x] = mapchroma[p[x]];
+    }
+  }
+  else {
+    if (vi.IsYUY2()) {
+      for (int y=0; y<vi.height; ++y) {
+        for (int x=0; x<vi.width; ++x) {
+          p[x*2] = map[p[x*2]];
+          p[x*2+1] = mapchroma[p[x*2+1]];
+        }
+        p += pitch;
       }
-      p += pitch;
-    }}
-  } else if (vi.IsRGB()) {
-    const int row_size = frame->GetRowSize();
-    for (int y=0; y<vi.height; ++y) {
-      for (int x=0; x<row_size; ++x) {
-        p[x] = map[p[x]];
+    }
+    else if (vi.IsPlanar()) {
+      {for (int y=0; y<vi.height; ++y) {
+        for (int x=0; x<vi.width; ++x) {
+          p[x] = map[p[x]];
+        }
+        p += pitch;
+      }}
+      pitch = frame->GetPitch(PLANAR_U);
+      p = frame->GetWritePtr(PLANAR_U);
+      const int w=frame->GetRowSize(PLANAR_U);
+      const int h=frame->GetHeight(PLANAR_U);
+      {for (int y=0; y<h; ++y) {
+        for (int x=0; x<w; ++x) {
+          p[x] = mapchroma[p[x]];
+        }
+        p += pitch;
+      }}
+      p = frame->GetWritePtr(PLANAR_V);
+      {for (int y=0; y<h; ++y) {
+        for (int x=0; x<w; ++x) {
+          p[x] = mapchroma[p[x]];
+        }
+        p += pitch;
+      }}
+    } else if (vi.IsRGB()) {
+      const int row_size = frame->GetRowSize();
+      for (int y=0; y<vi.height; ++y) {
+        for (int x=0; x<row_size; ++x) {
+          p[x] = map[p[x]];
+        }
+        p += pitch;
       }
-      p += pitch;
     }
   }
   return frame;
 }
 
-AVSValue __cdecl Levels::Create(AVSValue args, void*, IScriptEnvironment* env) 
+AVSValue __cdecl Levels::Create(AVSValue args, void*, IScriptEnvironment* env)
 {
-  return new Levels( args[0].AsClip(), args[1].AsInt(), args[2].AsFloat(), args[3].AsInt(), 
-                     args[4].AsInt(), args[5].AsInt(), args[6].AsBool(true), env );
+  return new Levels( args[0].AsClip(), args[1].AsInt(), args[2].AsFloat(), args[3].AsInt(),
+                     args[4].AsInt(), args[5].AsInt(), args[6].AsBool(true), args[7].AsBool(false), env );
 }
 
 
@@ -189,7 +323,7 @@ RGBAdjust::RGBAdjust(PClip _child, double r,  double g,  double b,  double a,
 
   rg=1/rg; gg=1/gg; bg=1/bg; ag=1/ag;
 
-  for (int i=0; i<256; ++i) 
+  for (int i=0; i<256; ++i)
   {
 	mapR[i] = int(pow(min(max((rb + i * r)/255.0, 0.0), 1.0), rg) * 255.0 + 0.5);
 	mapG[i] = int(pow(min(max((gb + i * g)/255.0, 0.0), 1.0), gg) * 255.0 + 0.5);
@@ -201,7 +335,7 @@ RGBAdjust::RGBAdjust(PClip _child, double r,  double g,  double b,  double a,
 }
 
 
-PVideoFrame __stdcall RGBAdjust::GetFrame(int n, IScriptEnvironment* env) 
+PVideoFrame __stdcall RGBAdjust::GetFrame(int n, IScriptEnvironment* env)
 {
   PVideoFrame frame = child->GetFrame(n, env);
   env->MakeWritable(&frame);
@@ -210,9 +344,9 @@ PVideoFrame __stdcall RGBAdjust::GetFrame(int n, IScriptEnvironment* env)
 
   if (vi.IsRGB32())
   {
-    for (int y=0; y<vi.height; ++y) 
+    for (int y=0; y<vi.height; ++y)
     {
-      for (int x=0; x < vi.width; ++x) 
+      for (int x=0; x < vi.width; ++x)
       {
         p[x*4]   = mapB[p[x*4]];
         p[x*4+1] = mapG[p[x*4+1]];
@@ -224,9 +358,9 @@ PVideoFrame __stdcall RGBAdjust::GetFrame(int n, IScriptEnvironment* env)
   }
   else if (vi.IsRGB24()) {
     const int row_size = frame->GetRowSize();
-    for (int y=0; y<vi.height; ++y) 
+    for (int y=0; y<vi.height; ++y)
     {
-      for (int x=0; x<row_size; x+=3) 
+      for (int x=0; x<row_size; x+=3)
       {
          p[x]   = mapB[p[x]];
          p[x+1] = mapG[p[x+1]];
@@ -277,9 +411,9 @@ PVideoFrame __stdcall RGBAdjust::GetFrame(int n, IScriptEnvironment* env)
 			avg_g+=(float)accum_g[i]*(float)i;
 			avg_b+=(float)accum_b[i]*(float)i;
 
-			if (accum_r[i]!=0) {max_r=i;hit_r=true;} else {if (!hit_r) min_r=i+1;} 
-			if (accum_g[i]!=0) {max_g=i;hit_g=true;} else {if (!hit_g) min_g=i+1;} 
-			if (accum_b[i]!=0) {max_b=i;hit_b=true;} else {if (!hit_b) min_b=i+1;} 
+			if (accum_r[i]!=0) {max_r=i;hit_r=true;} else {if (!hit_r) min_r=i+1;}
+			if (accum_g[i]!=0) {max_g=i;hit_g=true;} else {if (!hit_g) min_g=i+1;}
+			if (accum_b[i]!=0) {max_b=i;hit_b=true;} else {if (!hit_b) min_b=i+1;}
 
 			if (!Ahit_minr) {Amin_r+=accum_r[i]; if (Amin_r>At_256){Ahit_minr=true; Amin_r=i;} }
 			if (!Ahit_ming) {Amin_g+=accum_g[i]; if (Amin_g>At_256){Ahit_ming=true; Amin_g=i;} }
@@ -328,7 +462,7 @@ PVideoFrame __stdcall RGBAdjust::GetFrame(int n, IScriptEnvironment* env)
 }
 
 
-AVSValue __cdecl RGBAdjust::Create(AVSValue args, void*, IScriptEnvironment* env) 
+AVSValue __cdecl RGBAdjust::Create(AVSValue args, void*, IScriptEnvironment* env)
 {
 	try {	// HIDE DAMN SEH COMPILER BUG!!!
   return new RGBAdjust(args[ 0].AsClip(),
@@ -377,7 +511,7 @@ bool ProcessPixel(int X, int Y, double startHue, double endHue,
 	const double holdSat = W < 180.0*180.0 ? sqrt(W) : 180.0;
 
 	if (holdSat < minSat) { // within p of lower range
-		iSat += (int)((512 - iSat) * (minSat - holdSat) / p); 
+		iSat += (int)((512 - iSat) * (minSat - holdSat) / p);
 	} else { // within p of upper range
 		iSat += (int)((512 - iSat) * (holdSat - maxSat) / p);
 	}
@@ -391,8 +525,8 @@ bool ProcessPixel(int X, int Y, double startHue, double endHue,
 **********************/
 
 Tweak::Tweak( PClip _child, double _hue, double _sat, double _bright, double _cont, bool _coring, bool _sse,
-                            double startHue, double endHue, double _maxSat, double _minSat, double p, 
-                            IScriptEnvironment* env ) 
+                            double startHue, double endHue, double _maxSat, double _minSat, double p,
+                            IScriptEnvironment* env )
   : GenericVideoFilter(_child), coring(_coring), sse(_sse)
 {
   try {  // HIDE DAMN SEH COMPILER BUG!!!
@@ -508,7 +642,7 @@ PVideoFrame __stdcall Tweak::GetFrame(int n, IScriptEnvironment* env)
 			const __int64 satcont64 = (in64 Sat<<48) + (in64 Cont<<32) + (in64 Sat<<16) + in64 Cont;
 			const __int64 bright64 = (in64 Bright<<32) + in64 Bright;
 
-			asm_tweak_ISSE_YUY2(srcp, row_size>>2, height, src_pitch-row_size, hue64, satcont64, bright64);   
+			asm_tweak_ISSE_YUY2(srcp, row_size>>2, height, src_pitch-row_size, hue64, satcont64, bright64);
 			return src;
 		}
 
@@ -583,8 +717,8 @@ AVSValue __cdecl Tweak::Create(AVSValue args, void* user_data, IScriptEnvironmen
 
 
 // Integer SSE optimization by "Dividee".
-void __declspec(naked) asm_tweak_ISSE_YUY2( BYTE *srcp, int w, int h, int modulo, __int64 hue, 
-                                       __int64 satcont, __int64 bright ) 
+void __declspec(naked) asm_tweak_ISSE_YUY2( BYTE *srcp, int w, int h, int modulo, __int64 hue,
+                                       __int64 satcont, __int64 bright )
 {
 	static const __int64 norm = 0x0080001000800010i64;
 
@@ -644,8 +778,8 @@ x_loop:
 ******   MaskHS   *****
 **********************/
 
-MaskHS::MaskHS( PClip _child, double startHue, double endHue, double _maxSat, double _minSat, bool coring, 
-                IScriptEnvironment* env ) 
+MaskHS::MaskHS( PClip _child, double startHue, double endHue, double _maxSat, double _minSat, bool coring,
+                IScriptEnvironment* env )
   : GenericVideoFilter(_child)
 {
   try {  // HIDE DAMN SEH COMPILER BUG!!!
@@ -851,8 +985,8 @@ PVideoFrame __stdcall Limiter::GetFrame(int n, IScriptEnvironment* env) {
 					if      (srcp[x+2] < min_luma) { srcp[x+2] =  81; uv |= 1;}
 					else if (srcp[x+2] > max_luma) { srcp[x+2] = 145; uv |= 2;}
 					switch (uv) {
-						case 1: srcp[x+1] = 91; srcp[x+3] = 240; break;     // red:   Y= 81, U=91 and V=240 
-						case 2: srcp[x+1] = 54; srcp[x+3] =  34; break;     // green: Y=145, U=54 and V=34 
+						case 1: srcp[x+1] = 91; srcp[x+3] = 240; break;     // red:   Y= 81, U=91 and V=240
+						case 2: srcp[x+1] = 54; srcp[x+3] =  34; break;     // green: Y=145, U=54 and V=34
 						case 3: srcp[x  ] =     srcp[x+2] = 210;
 						        srcp[x+1] = 16; srcp[x+3] = 146; break;     // yellow:Y=210, U=16 and V=146
 						default: break;
@@ -871,8 +1005,8 @@ PVideoFrame __stdcall Limiter::GetFrame(int n, IScriptEnvironment* env) {
 					if      (srcp[x+2] < min_luma) { srcp[x+2] =  81; uv |= 1;}
 					else if (srcp[x+2] > max_luma) { srcp[x+2] = 145; uv |= 2;}
 					switch (uv) {
-						case 1: srcp[x+1] = 91; srcp[x+3] = 240; break;     // red:   Y=81, U=91 and V=240 
-						case 2: srcp[x+1] = 54; srcp[x+3] =  34; break;     // green: Y=145, U=54 and V=34 
+						case 1: srcp[x+1] = 91; srcp[x+3] = 240; break;     // red:   Y=81, U=91 and V=240
+						case 2: srcp[x+1] = 54; srcp[x+3] =  34; break;     // green: Y=145, U=54 and V=34
 						case 3: srcp[x+1] = 90; srcp[x+3] = 134; break;     // puke:  Y=81, U=90 and V=134
 						default: srcp[x+1] = srcp[x+3] = 128; break;        // olive: Y=145, U=90 and V=134
 					}
@@ -922,7 +1056,7 @@ PVideoFrame __stdcall Limiter::GetFrame(int n, IScriptEnvironment* env) {
     /** Run emulator if CPU supports it**/
     if (env->GetCPUFlags() & CPUF_INTEGER_SSE) {
       c_plane = srcp;
-      if (!luma_emulator) {  
+      if (!luma_emulator) {
         assemblerY = create_emulator(row_size, height, env);
         luma_emulator=true;
       }
@@ -948,7 +1082,7 @@ PVideoFrame __stdcall Limiter::GetFrame(int n, IScriptEnvironment* env) {
         srcp += pitch;
       }
       return frame;
-    }  
+    }
   } else if(vi.IsYV12()) {
 
 		if (show == show_luma) {    // Mark clamped pixels red/yellow/green over a colour image
@@ -969,8 +1103,8 @@ PVideoFrame __stdcall Limiter::GetFrame(int n, IScriptEnvironment* env) {
 					if      (srcn[x+1] < min_luma) { srcn[x+1] =  81; uv |= 1;}
 					else if (srcn[x+1] > max_luma) { srcn[x+1] = 145; uv |= 2;}
 					switch (uv) {
-						case 1: srcpU[x/2] = 91; srcpV[x/2] = 240; break;       // red:   Y=81, U=91 and V=240 
-						case 2: srcpU[x/2] = 54; srcpV[x/2] =  34; break;       // green: Y=145, U=54 and V=34 
+						case 1: srcpU[x/2] = 91; srcpV[x/2] = 240; break;       // red:   Y=81, U=91 and V=240
+						case 2: srcpU[x/2] = 54; srcpV[x/2] =  34; break;       // green: Y=145, U=54 and V=34
 						case 3: srcp[x]=srcp[x+2]=srcn[x]=srcn[x+2]=210;
 						        srcpU[x/2] = 16; srcpV[x/2] = 146; break;       // yellow:Y=210, U=16 and V=146
 						default: break;
@@ -1001,8 +1135,8 @@ PVideoFrame __stdcall Limiter::GetFrame(int n, IScriptEnvironment* env) {
 					if      (srcn[x+1] < min_luma) { srcn[x+1] =  81; uv |= 1;}
 					else if (srcn[x+1] > max_luma) { srcn[x+1] = 145; uv |= 2;}
 					switch (uv) {
-						case 1: srcpU[x/2] = 91; srcpV[x/2] = 240; break;       // red:   Y=81, U=91 and V=240 
-						case 2: srcpU[x/2] = 54; srcpV[x/2] =  34; break;       // green: Y=145, U=54 and V=34 
+						case 1: srcpU[x/2] = 91; srcpV[x/2] = 240; break;       // red:   Y=81, U=91 and V=240
+						case 2: srcpU[x/2] = 54; srcpV[x/2] =  34; break;       // green: Y=145, U=54 and V=34
 						case 3: srcpU[x/2] = 90; srcpV[x/2] = 134; break;       // puke:  Y=81, U=90 and V=134
 						default: srcpU[x/2] = srcpV[x/2] = 128; break;          // olive: Y=145, U=90 and V=134
 					}
@@ -1076,8 +1210,8 @@ PVideoFrame __stdcall Limiter::GetFrame(int n, IScriptEnvironment* env) {
 
 			for (int h=0; h < height; h+=1) {
 				for (int x = 0; x < row_size; x+=1) {
-					if      (srcp[x] < min_luma) { srcp[x] =  81; srcpU[x] = 91; srcpV[x] = 240; }       // red:   Y=81, U=91 and V=240 
-					else if (srcp[x] > max_luma) { srcp[x] = 145; srcpU[x] = 54; srcpV[x] =  34; }       // green: Y=145, U=54 and V=34 
+					if      (srcp[x] < min_luma) { srcp[x] =  81; srcpU[x] = 91; srcpV[x] = 240; }       // red:   Y=81, U=91 and V=240
+					else if (srcp[x] > max_luma) { srcp[x] = 145; srcpU[x] = 54; srcpV[x] =  34; }       // green: Y=145, U=54 and V=34
 				}
 				srcp  += pitch;
 				srcpV += pitchUV;
@@ -1092,8 +1226,8 @@ PVideoFrame __stdcall Limiter::GetFrame(int n, IScriptEnvironment* env) {
 
 			for (int h=0; h < height; h+=1) {
 				for (int x = 0; x < row_size; x+=1) {
-					if      (srcp[x] < min_luma) { srcp[x] =  81; srcpU[x] = 91; srcpV[x] = 240; }       // red:   Y=81, U=91 and V=240 
-					else if (srcp[x] > max_luma) { srcp[x] = 145; srcpU[x] = 54; srcpV[x] =  34; }       // green: Y=145, U=54 and V=34 
+					if      (srcp[x] < min_luma) { srcp[x] =  81; srcpU[x] = 91; srcpV[x] = 240; }       // red:   Y=81, U=91 and V=240
+					else if (srcp[x] > max_luma) { srcp[x] = 145; srcpU[x] = 54; srcpV[x] =  34; }       // green: Y=145, U=54 and V=34
 					else                         {                srcpU[x] =     srcpV[x] = 128; }       // grey
 				}
 				srcp  += pitch;
@@ -1196,7 +1330,7 @@ PVideoFrame __stdcall Limiter::GetFrame(int n, IScriptEnvironment* env) {
         if(srcp[x] < min_luma )
           srcp[x] = min_luma;
         else if(srcp[x] > max_luma)
-          srcp[x] = max_luma;        
+          srcp[x] = max_luma;
       }
       srcp += pitch;
     }}
@@ -1270,7 +1404,7 @@ DynamicAssembledCode Limiter::create_emulator(int row_size, int height, IScriptE
     x86.mov(eax, height);
     x86.mov(ebx, dword_ptr [&c_plane]);  // Pointer to the current plane
     x86.mov(ecx, dword_ptr [&modulo]);   // Modulo
-    x86.movd(mm7,dword_ptr [&emu_cmax]);  
+    x86.movd(mm7,dword_ptr [&emu_cmax]);
     x86.movd(mm6, dword_ptr [&emu_cmin]);
     x86.pshufw(mm7,mm7,0);  // Move thresholds into all 8 bytes
     x86.pshufw(mm6,mm6,0);
@@ -1318,7 +1452,7 @@ DynamicAssembledCode Limiter::create_emulator(int row_size, int height, IScriptE
       // Here we process any pixels not being within mod32.
       x86.movd(mm0,dword_ptr [ebx]);
       x86.pminub(mm0,mm7);
-      x86.pmaxub(mm0,mm6);      
+      x86.pmaxub(mm0,mm6);
       x86.movd(dword_ptr [ebx],mm0);
       x86.add(ebx,4);
     }}
@@ -1349,13 +1483,13 @@ AVSValue __cdecl Limiter::Create(AVSValue args, void* user_data, IScriptEnvironm
 	enum SHOW show = show_none;
 
 	if (option) {
-	  if      (lstrcmpi(option, "luma") == 0) 
+	  if      (lstrcmpi(option, "luma") == 0)
 			show = show_luma;
-	  else if (lstrcmpi(option, "luma_grey") == 0) 
+	  else if (lstrcmpi(option, "luma_grey") == 0)
 			show = show_luma_grey;
-	  else if (lstrcmpi(option, "chroma") == 0) 
+	  else if (lstrcmpi(option, "chroma") == 0)
 			show = show_chroma;
-	  else if (lstrcmpi(option, "chroma_grey") == 0) 
+	  else if (lstrcmpi(option, "chroma_grey") == 0)
 			show = show_chroma_grey;
 	  else
 			env->ThrowError("Limiter: show must be \"luma\", \"luma_grey\", \"chroma\" or \"chroma_grey\"");

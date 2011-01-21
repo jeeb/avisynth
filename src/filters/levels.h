@@ -50,13 +50,15 @@ class Levels : public GenericVideoFilter
  **/
 {
 public:
-  Levels( PClip _child, int in_min, double gamma, int in_max, int out_min, int out_max, bool coring,
+  Levels( PClip _child, int in_min, double gamma, int in_max, int out_min, int out_max, bool coring, bool _dither,
           IScriptEnvironment* env );
+  ~Levels();
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
   static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env);
 
 private:
-  BYTE map[256], mapchroma[256];
+  BYTE *map, *mapchroma;
+  const bool dither;
 };
 
 
