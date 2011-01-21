@@ -391,19 +391,33 @@ SwapYToUV::SwapYToUV(PClip _child, PClip _clip, PClip _clipY, IScriptEnvironment
     else {  // Autogenerate destination colorformat
       vi.pixel_type = VideoInfo::CS_YV12; // CS_Sub_Width_2 and CS_Sub_Height_2 are 0
 
-      if (vi3.width == vi.width)
+      if (vi3.width == vi.width) {
         vi.pixel_type |= VideoInfo::CS_Sub_Width_1;
-      else if (vi3.width == vi.width * 4)
+      }
+      else if (vi3.width == vi.width * 4) {
         vi.pixel_type |= VideoInfo::CS_Sub_Width_4;
-      else if (vi3.width != vi.width * 2)
+        vi.width *= 4;
+      }
+      else if (vi3.width != vi.width * 2) {
         env->ThrowError("YToUV: Video width ratio does not match any internal colorspace.");
+      }
+      else {
+        vi.width *= 2;
+      }
        
-      if (vi3.height == vi.height)
+      if (vi3.height == vi.height) {
         vi.pixel_type |= VideoInfo::CS_Sub_Height_1;
-      else if (vi3.height == vi.height * 4)
+      }
+      else if (vi3.height == vi.height * 4) {
         vi.pixel_type |= VideoInfo::CS_Sub_Height_4;
-      else if (vi3.height != vi.height * 2)
+        vi.height *= 4;
+      }
+      else if (vi3.height != vi.height * 2) {
         env->ThrowError("YToUV: Video height ratio does not match any internal colorspace.");
+      }
+      else {
+        vi.height *= 2;
+      }
     }
   }
   else {
