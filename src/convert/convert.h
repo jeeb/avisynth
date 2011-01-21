@@ -62,9 +62,24 @@ inline void YUV2RGB(int y, int u, int v, BYTE* out)
 
   int scaled_y = (y - 16) * int((255.0/219.0)*65536+0.5);
 
-  out[0] = ScaledPixelClip(scaled_y + (u-128) * cbu); // blue
+  out[0] = ScaledPixelClip(scaled_y + (u-128) * cbu);                 // blue
   out[1] = ScaledPixelClip(scaled_y - (u-128) * cgu - (v-128) * cgv); // green
-  out[2] = ScaledPixelClip(scaled_y + (v-128) * crv); // red
+  out[2] = ScaledPixelClip(scaled_y                 + (v-128) * crv); // red
+}
+
+
+inline void YUV2RGB2(int y, int u0, int u1, int v0, int v1, BYTE* out) 
+{
+  const int crv = int(1.596*32768+0.5);
+  const int cgv = int(0.813*32768+0.5);
+  const int cgu = int(0.391*32768+0.5);
+  const int cbu = int(2.018*32768+0.5);
+
+  const int scaled_y = (y - 16) * int((255.0/219.0)*65536+0.5);
+
+  out[0] = ScaledPixelClip(scaled_y + (u0+u1-256) * cbu);                     // blue
+  out[1] = ScaledPixelClip(scaled_y - (u0+u1-256) * cgu - (v0+v1-256) * cgv); // green
+  out[2] = ScaledPixelClip(scaled_y                     + (v0+v1-256) * crv); // red
 }
 
 

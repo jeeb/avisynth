@@ -48,15 +48,15 @@
 ********************************************************************/
 
 extern const AVSFunction Convert_filters[] = {       // matrix can be "rec601", rec709", "PC.601" or "PC.709"
-  { "ConvertToRGB",   "c[matrix]s[interlaced]b[chromaplacement]s[chromaresample]s", ConvertToRGB::Create },
-  { "ConvertToRGB24", "c[matrix]s[interlaced]b[chromaplacement]s[chromaresample]s", ConvertToRGB::Create24 },
-  { "ConvertToRGB32", "c[matrix]s[interlaced]b[chromaplacement]s[chromaresample]s", ConvertToRGB::Create32 },
+  { "ConvertToRGB",   "c[matrix]s[interlaced]b[ChromaInPlacement]s[chromaresample]s", ConvertToRGB::Create },
+  { "ConvertToRGB24", "c[matrix]s[interlaced]b[ChromaInPlacement]s[chromaresample]s", ConvertToRGB::Create24 },
+  { "ConvertToRGB32", "c[matrix]s[interlaced]b[ChromaInPlacement]s[chromaresample]s", ConvertToRGB::Create32 },
   { "ConvertToY8",    "c[matrix]s", ConvertToY8::Create },
-  { "ConvertToYV12",  "c[interlaced]b[matrix]s[chromaplacement]s[chromaresample]s", ConvertToYV12::Create },
-  { "ConvertToYV24",  "c[interlaced]b[matrix]s[chromaplacement]s[chromaresample]s", ConvertToPlanarGeneric::CreateYV24},
-  { "ConvertToYV16",  "c[interlaced]b[matrix]s[chromaplacement]s[chromaresample]s", ConvertToPlanarGeneric::CreateYV16},
-  { "ConvertToYV411", "c[interlaced]b[matrix]s[chromaplacement]s[chromaresample]s", ConvertToPlanarGeneric::CreateYV411},
-  { "ConvertToYUY2",  "c[interlaced]b[matrix]s[chromaplacement]s[chromaresample]s", ConvertToYUY2::Create },
+  { "ConvertToYV12",  "c[interlaced]b[matrix]s[ChromaInPlacement]s[chromaresample]s[ChromaOutPlacement]s", ConvertToYV12::Create },
+  { "ConvertToYV24",  "c[interlaced]b[matrix]s[ChromaInPlacement]s[chromaresample]s", ConvertToPlanarGeneric::CreateYV24},
+  { "ConvertToYV16",  "c[interlaced]b[matrix]s[ChromaInPlacement]s[chromaresample]s", ConvertToPlanarGeneric::CreateYV16},
+  { "ConvertToYV411", "c[interlaced]b[matrix]s[ChromaInPlacement]s[chromaresample]s", ConvertToPlanarGeneric::CreateYV411},
+  { "ConvertToYUY2",  "c[interlaced]b[matrix]s[ChromaInPlacement]s[chromaresample]s", ConvertToYUY2::Create },
   { "ConvertBackToYUY2", "c[matrix]s", ConvertBackToYUY2::Create },
   { 0 }
 };
@@ -92,21 +92,6 @@ ConvertToRGB::ConvertToRGB( PClip _child, bool rgb24, const char* matrix,
   if ((theMatrix != Rec601) && ((vi.width & 3) != 0) || !use_mmx)
     env->ThrowError("ConvertToRGB: Rec.709 and PC Levels support require MMX and horizontal width a multiple of 4");
   vi.pixel_type = rgb24 ? VideoInfo::CS_BGR24 : VideoInfo::CS_BGR32;
-}
-
-
-inline void YUV2RGB2(int y, int u0, int u1, int v0, int v1, BYTE* out) 
-{
-  const int crv = int(1.596*32768+0.5);
-  const int cgv = int(0.813*32768+0.5);
-  const int cgu = int(0.391*32768+0.5);
-  const int cbu = int(2.018*32768+0.5);
-
-  const int scaled_y = (y - 16) * int((255.0/219.0)*65536+0.5);
-
-  out[0] = ScaledPixelClip(scaled_y + (u0+u1-256) * cbu);                     // blue
-  out[1] = ScaledPixelClip(scaled_y - (u0+u1-256) * cgu - (v0+v1-256) * cgv); // green
-  out[2] = ScaledPixelClip(scaled_y                     + (v0+v1-256) * crv); // red
 }
 
 
@@ -318,9 +303,7 @@ AVSValue __cdecl ConvertToYV12::Create(AVSValue args, void*, IScriptEnvironment*
   PClip clip = args[0].AsClip();
   const VideoInfo& vi = clip->GetVideoInfo();
 
-  if (vi.IsYV12()) return clip;
-
-  if (vi.IsYUY2() && !args[3].Defined() && !args[4].Defined())  // User has not requested a special subsampling, do it fast!
+  if (vi.IsYUY2() && !args[3].Defined() && !args[4].Defined() && !args[5].Defined())  // User has not requested options, do it fast!
     return new ConvertToYV12(clip,args[1].AsBool(false),env);
 
   return ConvertToPlanarGeneric::CreateYV12(args,0,env);
