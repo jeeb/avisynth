@@ -121,7 +121,7 @@ PVideoFrame __stdcall Levels::GetFrame(int n, IScriptEnvironment* env)
       p += pitch;
     }
   } 
-  else if (vi.IsPlanar()){
+  else if (vi.IsPlanar()) {
     {for (int y=0; y<vi.height; ++y) {
       for (int x=0; x<vi.width; ++x) {
         p[x] = map[p[x]];
@@ -145,7 +145,6 @@ PVideoFrame __stdcall Levels::GetFrame(int n, IScriptEnvironment* env)
       }
       p += pitch;
     }}
-
   } else if (vi.IsRGB()) {
     const int row_size = frame->GetRowSize();
     for (int y=0; y<vi.height; ++y) {
@@ -215,7 +214,7 @@ PVideoFrame __stdcall RGBAdjust::GetFrame(int n, IScriptEnvironment* env)
     {
       for (int x=0; x < vi.width; ++x) 
       {
-        p[x*4] = mapB[p[x*4]];
+        p[x*4]   = mapB[p[x*4]];
         p[x*4+1] = mapG[p[x*4+1]];
         p[x*4+2] = mapR[p[x*4+2]];
         p[x*4+3] = mapA[p[x*4+3]];
@@ -229,7 +228,7 @@ PVideoFrame __stdcall RGBAdjust::GetFrame(int n, IScriptEnvironment* env)
     {
       for (int x=0; x<row_size; x+=3) 
       {
-         p[x] = mapB[p[x]];
+         p[x]   = mapB[p[x]];
          p[x+1] = mapG[p[x+1]];
          p[x+2] = mapR[p[x+2]];
       }
@@ -333,9 +332,9 @@ AVSValue __cdecl RGBAdjust::Create(AVSValue args, void*, IScriptEnvironment* env
 {
 	try {	// HIDE DAMN SEH COMPILER BUG!!!
   return new RGBAdjust(args[ 0].AsClip(),
-                       args[ 1].AsFloat(1), args[ 2].AsFloat(1), args[ 3].AsFloat(1), args[ 4].AsFloat(1),
-                       args[ 5].AsFloat(0), args[ 6].AsFloat(0), args[ 7].AsFloat(0), args[ 8].AsFloat(0),
-                       args[ 9].AsFloat(1), args[10].AsFloat(1), args[11].AsFloat(1), args[12].AsFloat(1),
+                       args[ 1].AsDblDef(1.0), args[ 2].AsDblDef(1.0), args[ 3].AsDblDef(1.0), args[ 4].AsDblDef(1.0),
+                       args[ 5].AsDblDef(0.0), args[ 6].AsDblDef(0.0), args[ 7].AsDblDef(0.0), args[ 8].AsDblDef(0.0),
+                       args[ 9].AsDblDef(1.0), args[10].AsDblDef(1.0), args[11].AsDblDef(1.0), args[12].AsDblDef(1.0),
                        args[13].AsBool(false), env );
 	}
 	catch (...) { throw; }
@@ -364,7 +363,7 @@ bool ProcessPixel(int X, int Y, double startHue, double endHue,
 	if (minSat*minSat <= W && W <= maxSat*maxSat) return true;
 
 	// p == 0 (no interpolation) needed for MaskHS
-	if (p == 0) return false;
+	if (p == 0.0) return false;
 
 	// Interpolation range is +/-p for p>0
 	const double max = min(maxSat+p, 180.0);
@@ -372,15 +371,15 @@ bool ProcessPixel(int X, int Y, double startHue, double endHue,
 
 	// Outside of [min-p, max+p] no adjustment
 	// minSat-p <= (U^2 + V^2) <= maxSat+p
-	if (W < min*min || max*max < W) return false; // don't adjust
+	if (W <= min*min || max*max <= W) return false; // don't adjust
 
 	// Interpolate saturation value
 	const double holdSat = W < 180.0*180.0 ? sqrt(W) : 180.0;
 
 	if (holdSat < minSat) { // within p of lower range
-		iSat += (int)((512 - iSat) * (minSat - holdSat) / (p+1.0)); 
+		iSat += (int)((512 - iSat) * (minSat - holdSat) / p); 
 	} else { // within p of upper range
-		iSat += (int)((512 - iSat) * (holdSat - maxSat) / (p+1.0));
+		iSat += (int)((512 - iSat) * (holdSat - maxSat) / p);
 	}
 	
 	return true;
@@ -430,8 +429,8 @@ Tweak::Tweak( PClip _child, double _hue, double _sat, double _bright, double _co
     if (_maxSat <= 0.0 || _maxSat > 150.0)
           env->ThrowError("Tweak: maxSat must be greater than 0 and less than or equal to 150.");
 
-    if (p>=32.0 || p<0.0)
-          env->ThrowError("Tweak: P must be greater than or equal to 0 and less than 32.");
+    if (p>=150.0 || p<0.0)
+          env->ThrowError("Tweak: Interp must be greater than or equal to 0 and less than 150.");
 
     Sat = (int) (_sat * 512);
     Cont = (int) (_cont * 512);
@@ -444,23 +443,30 @@ Tweak::Tweak( PClip _child, double _hue, double _sat, double _bright, double _co
     Sin = (int) (SIN * 4096 + 0.5);
     Cos = (int) (COS * 4096 + 0.5);
 
-    const int maxY = coring ? 235 : 255;
-    const int minY = coring ? 16 : 0;
-
-    const int maxUV = coring ? 240 : 255;
-    const int minUV = coring ? 16 : 0;
-
-    for (int i = 0; i < 256; i++)
-    {
-        /* brightness and contrast */
-        int y = int((i - 16)*_cont + _bright + 16.5);
-        map[i] = min(max(y,minY),maxY);
+    if (coring) {
+      for (int i = 0; i < 256; i++) {
+          /* brightness and contrast */
+          int y = int((i - 16)*_cont + _bright + 16.5);
+          map[i] = min(max(y, 16), 235);
+      }
+    }
+    else {
+      for (int i = 0; i < 256; i++) {
+          /* brightness and contrast */
+          int y = int(i*_cont + _bright + 0.5);
+          map[i] = min(max(y, 0), 255);
+      }
     }
 
     // 100% equals sat=119 (= maximal saturation of valid RGB (R=255,G=B=0)
     // 150% (=180) - 100% (=119) overshoot
     const double minSat = 1.19 * _minSat;
     const double maxSat = 1.19 * _maxSat;
+
+    p *= 1.19; // Same units as minSat/maxSat
+
+    const int maxUV = coring ? 240 : 255;
+    const int minUV = coring ? 16 : 0;
 
     for (int u = 0; u < 256; u++) {
       const int destu = u-128;
@@ -558,17 +564,17 @@ AVSValue __cdecl Tweak::Create(AVSValue args, void* user_data, IScriptEnvironmen
 {
 	try {	// HIDE DAMN SEH COMPILER BUG!!!
     return new Tweak(args[0].AsClip(),
-					 args[1].AsFloat(0.0),		// hue
-					 args[2].AsFloat(1.0),		// sat
-					 args[3].AsFloat(0.0),		// bright
-					 args[4].AsFloat(1.0),		// cont
+					 args[1].AsDblDef(0.0),		// hue
+					 args[2].AsDblDef(1.0),		// sat
+					 args[3].AsDblDef(0.0),		// bright
+					 args[4].AsDblDef(1.0),		// cont
 					 args[5].AsBool(true),      // coring
 					 args[6].AsBool(false),     // sse
-					 args[7].AsFloat(0.0),      // startHue
-					 args[8].AsFloat(360.0),    // endHue
-					 args[9].AsFloat(150.0),    // maxSat
-					 args[10].AsFloat(0.0),     // minSat
-					 args[11].AsFloat(16.0),	// interp
+					 args[7].AsDblDef(0.0),      // startHue
+					 args[8].AsDblDef(360.0),    // endHue
+					 args[9].AsDblDef(150.0),    // maxSat
+					 args[10].AsDblDef(0.0),     // minSat
+					 args[11].AsDblDef(16.0/1.19),// interp
 					 env);
 	}
 	catch (...) { throw; }
@@ -787,11 +793,11 @@ AVSValue __cdecl MaskHS::Create(AVSValue args, void* user_data, IScriptEnvironme
 {
 	try {	// HIDE DAMN SEH COMPILER BUG!!!
 	return new MaskHS(args[0].AsClip(),
-					  args[1].AsFloat(0.0),      // startHue
-					  args[2].AsFloat(360.0),    // endHue
-					  args[3].AsFloat(150.0),    // maxSat
-					  args[4].AsFloat(0.0),      // minSat
-					  args[5].AsBool(false),     // coring
+					  args[1].AsDblDef(  0.0),    // startHue
+					  args[2].AsDblDef(360.0),    // endHue
+					  args[3].AsDblDef(150.0),    // maxSat
+					  args[4].AsDblDef(  0.0),    // minSat
+					  args[5].AsBool(false),      // coring
 					  env);
 	}
 	catch (...) { throw; }
