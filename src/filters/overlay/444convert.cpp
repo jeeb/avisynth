@@ -653,8 +653,8 @@ void Convert444FromRGB::ConvertImage(PVideoFrame src, Image444* dst, IScriptEnvi
   const int cyg = int(Kg * 219/255 * 65536 + 0.5);
   const int cyb = int(Kb * 219/255 * 65536 + 0.5);
 
-  const int kv = int(2048 / (2*(1-Kr) * 255.0/224.0) + 0.5);
-  const int ku = int(2048 / (2*(1-Kb) * 255.0/224.0) + 0.5);
+  const int kv = int(32768 / (2*(1-Kr) * 255.0/224.0) + 0.5); // 20531
+  const int ku = int(32768 / (2*(1-Kb) * 255.0/224.0) + 0.5); // 16244
 
   const BYTE* srcP = src->GetReadPtr();
   int srcPitch = src->GetPitch();
@@ -679,13 +679,13 @@ void Convert444FromRGB::ConvertImage(PVideoFrame src, Image444* dst, IScriptEnvi
       const int r = srcP[RGBx+2];
 
       const int y = (cyb*b + cyg*g + cyr*r + 0x108000) >> 16; // 0x108000 = 16.5 * 65536
-      const int scaled_y = (y - 16) * int(255.0/219.0*2048+0.5);
-      const int b_y = (b << 11) - scaled_y;
-      const int r_y = (r << 11) - scaled_y;
+      const int scaled_y = (y - 16) * int(255.0/219.0*65536+0.5);
+      const int b_y = (b << 16) - scaled_y;
+      const int r_y = (r << 16) - scaled_y;
 
       dstY[x] = y;
-      dstU[x] = (b_y * ku + 0x20000000)>>22; // 0x20000000 = 128 << 22
-      dstV[x] = (r_y * kv + 0x20000000)>>22;
+      dstU[x] = ((b_y>>11) * ku + 0x8080000)>>20; // 0x8080000 = 128.5 << 20
+      dstV[x] = ((r_y>>11) * kv + 0x8080000)>>20;
 
       RGBx += bpp;
     }
@@ -731,8 +731,8 @@ void Convert444NonCCIRFromRGB::ConvertImage(PVideoFrame src, Image444* dst, IScr
       const int y = (cyb*b + cyg*g + cyr*r + 0x8000) >> 16; // 0x8000 = 0.5 * 65536
 
       dstY[x] = y;
-      dstU[x] = ((b - y) * ku + 0x800000)>>16; // 0x800000 = 128 * 65536
-      dstV[x] = ((r - y) * kv + 0x800000)>>16;
+      dstU[x] = ((b - y) * ku + 0x808000)>>16; // 0x808000 = 128.5 * 65536
+      dstV[x] = ((r - y) * kv + 0x808000)>>16;
 
       RGBx+=bpp;
     }
