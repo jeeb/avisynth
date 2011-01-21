@@ -229,6 +229,10 @@ Crop::Crop(int _left, int _top, int _width, int _height, int _align, PClip _chil
 
   if (_height<=0)
     env->ThrowError("Crop: Destination height is 0 or less.");
+
+  if (_left + _width > vi.width || _top + _height > vi.height)
+    env->ThrowError("Crop: you cannot use crop to enlarge or 'shift' a clip");
+
   if (vi.IsYUV()) {
     if (!vi.IsY8()) {
       xsub=vi.GetPlaneWidthSubsampling(PLANAR_U);
@@ -250,10 +254,6 @@ Crop::Crop(int _left, int _top, int _width, int _height, int _align, PClip _chil
     // RGB is upside-down
     _top = vi.height - _height - _top;
   }
-
-
-  if (_left + _width > vi.width || _top + _height > vi.height)
-    env->ThrowError("Crop: you cannot use crop to enlarge or 'shift' a clip");
 
   left_bytes = vi.BytesFromPixels(_left);
   top = _top;
