@@ -184,7 +184,7 @@ PVideoFrame __stdcall Levels::GetFrame(int n, IScriptEnvironment* env)
   if (dither) {
     if (vi.IsYUY2()) {
       for (int y=0; y<vi.height; ++y) {
-        const _y = (y << 4) & 0xf0;
+        const int _y = (y << 4) & 0xf0;
         for (int x=0; x<vi.width; ++x) {
           p[x*2]   = map[ p[x*2]<<8 | ditherMap[(x&0x0f)|_y] ];
         }
@@ -198,7 +198,7 @@ PVideoFrame __stdcall Levels::GetFrame(int n, IScriptEnvironment* env)
     }
     else if (vi.IsPlanar()) {
       {for (int y=0; y<vi.height; ++y) {
-        const _y = (y << 4) & 0xf0;
+        const int _y = (y << 4) & 0xf0;
         for (int x=0; x<vi.width; ++x) {
           p[x] = map[ p[x]<<8 | ditherMap[(x&0x0f)|_y] ];
         }
@@ -210,7 +210,7 @@ PVideoFrame __stdcall Levels::GetFrame(int n, IScriptEnvironment* env)
       p = frame->GetWritePtr(PLANAR_U);
       BYTE* q = frame->GetWritePtr(PLANAR_V);
       {for (int y=0; y<h; ++y) {
-        const _y = (y << 4) & 0xf0;
+        const int _y = (y << 4) & 0xf0;
         for (int x=0; x<w; ++x) {
           const int _dither = ditherMap[(x&0x0f)|_y];
           p[x] = mapchroma[ p[x]<<8 | _dither ];
@@ -221,7 +221,7 @@ PVideoFrame __stdcall Levels::GetFrame(int n, IScriptEnvironment* env)
       }}
     } else if (vi.IsRGB32()) {
       for (int y=0; y<vi.height; ++y) {
-        const _y = (y << 4) & 0xf0;
+        const int _y = (y << 4) & 0xf0;
         for (int x=0; x<vi.width; ++x) {
           const int _dither = ditherMap[(x&0x0f)|_y];
           p[x*4+0] = map[ p[x*4+0]<<8 | _dither ];
@@ -233,7 +233,7 @@ PVideoFrame __stdcall Levels::GetFrame(int n, IScriptEnvironment* env)
       }
     } else if (vi.IsRGB24()) {
       for (int y=0; y<vi.height; ++y) {
-        const _y = (y << 4) & 0xf0;
+        const int _y = (y << 4) & 0xf0;
         for (int x=0; x<vi.width; ++x) {
           const int _dither = ditherMap[(x&0x0f)|_y];
           p[x*3+0] = map[ p[x*3+0]<<8 | _dither ];
