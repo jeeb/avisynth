@@ -46,7 +46,7 @@
 
 extern const AVSFunction Levels_filters[] = {
   { "Levels", "cifiii[coring]b[dither]b", Levels::Create },        // src_low, gamma, src_high, dst_low, dst_high
-  { "RGBAdjust", "c[r]f[g]f[b]f[a]f[rb]f[gb]f[bb]f[ab]f[rg]f[gg]f[bg]f[ag]f[analyze]b", RGBAdjust::Create },
+  { "RGBAdjust", "c[r]f[g]f[b]f[a]f[rb]f[gb]f[bb]f[ab]f[rg]f[gg]f[bg]f[ag]f[analyze]b[dither]b", RGBAdjust::Create },
   { "Tweak", "c[hue]f[sat]f[bright]f[cont]f[coring]b[sse]b[startHue]f[endHue]f[maxSat]f[minSat]f[interp]f", Tweak::Create },
   { "MaskHS", "c[startHue]f[endHue]f[maxSat]f[minSat]f[coring]b", MaskHS::Create },
   { "Limiter", "c[min_luma]i[max_luma]i[min_chroma]i[max_chroma]i[show]s", Limiter::Create },
@@ -311,8 +311,8 @@ AVSValue __cdecl Levels::Create(AVSValue args, void*, IScriptEnvironment* env)
 RGBAdjust::RGBAdjust(PClip _child, double r,  double g,  double b,  double a,
                                    double rb, double gb, double bb, double ab,
                                    double rg, double gg, double bg, double ag,
-                                   bool _analyze, IScriptEnvironment* env)
-  : GenericVideoFilter(_child), analyze(_analyze)
+                                   bool _analyze, bool _dither, IScriptEnvironment* env)
+  : GenericVideoFilter(_child), analyze(_analyze), dither(_dither), mapR(0), mapG(0), mapB(0), mapA(0)
 {
 	try {	// HIDE DAMN SEH COMPILER BUG!!!
   if (!vi.IsRGB())
@@ -323,15 +323,48 @@ RGBAdjust::RGBAdjust(PClip _child, double r,  double g,  double b,  double a,
 
   rg=1/rg; gg=1/gg; bg=1/bg; ag=1/ag;
 
-  for (int i=0; i<256; ++i)
-  {
-	mapR[i] = int(pow(min(max((rb + i * r)/255.0, 0.0), 1.0), rg) * 255.0 + 0.5);
-	mapG[i] = int(pow(min(max((gb + i * g)/255.0, 0.0), 1.0), gg) * 255.0 + 0.5);
-	mapB[i] = int(pow(min(max((bb + i * b)/255.0, 0.0), 1.0), bg) * 255.0 + 0.5);
-	mapA[i] = int(pow(min(max((ab + i * a)/255.0, 0.0), 1.0), ag) * 255.0 + 0.5);
+  if (dither) {
+    mapR = new BYTE[256*256];
+    mapG = new BYTE[256*256];
+    mapB = new BYTE[256*256];
+    mapA = new BYTE[256*256];
+
+    for (int i=0; i<256*256; ++i) {
+      mapR[i] = int(pow(min(max((rb*256 + i * r -127.5)/(255.0*256), 0.0), 1.0), rg) * 255.0 + 0.5);
+      mapG[i] = int(pow(min(max((gb*256 + i * g -127.5)/(255.0*256), 0.0), 1.0), gg) * 255.0 + 0.5);
+      mapB[i] = int(pow(min(max((bb*256 + i * b -127.5)/(255.0*256), 0.0), 1.0), bg) * 255.0 + 0.5);
+      mapA[i] = int(pow(min(max((ab*256 + i * a -127.5)/(255.0*256), 0.0), 1.0), ag) * 255.0 + 0.5);
+    }
   }
+  else {
+    mapR = new BYTE[256];
+    mapG = new BYTE[256];
+    mapB = new BYTE[256];
+    mapA = new BYTE[256];
+
+    for (int i=0; i<256; ++i) {
+      mapR[i] = int(pow(min(max((rb + i * r)/255.0, 0.0), 1.0), rg) * 255.0 + 0.5);
+      mapG[i] = int(pow(min(max((gb + i * g)/255.0, 0.0), 1.0), gg) * 255.0 + 0.5);
+      mapB[i] = int(pow(min(max((bb + i * b)/255.0, 0.0), 1.0), bg) * 255.0 + 0.5);
+      mapA[i] = int(pow(min(max((ab + i * a)/255.0, 0.0), 1.0), ag) * 255.0 + 0.5);
+    }
+  }
+
+  if (vi.IsRGB24()) {
+    delete[] mapA;
+    mapA = 0;
+  }
+
 	}
 	catch (...) { throw; }
+}
+
+
+RGBAdjust::~RGBAdjust() {
+    if (mapR) delete[] mapR;
+    if (mapG) delete[] mapG;
+    if (mapB) delete[] mapB;
+    if (mapA) delete[] mapA;
 }
 
 
@@ -342,31 +375,55 @@ PVideoFrame __stdcall RGBAdjust::GetFrame(int n, IScriptEnvironment* env)
   BYTE* p = frame->GetWritePtr();
   const int pitch = frame->GetPitch();
 
-  if (vi.IsRGB32())
-  {
-    for (int y=0; y<vi.height; ++y)
-    {
-      for (int x=0; x < vi.width; ++x)
-      {
-        p[x*4]   = mapB[p[x*4]];
-        p[x*4+1] = mapG[p[x*4+1]];
-        p[x*4+2] = mapR[p[x*4+2]];
-        p[x*4+3] = mapA[p[x*4+3]];
+  if (dither) {
+    if (vi.IsRGB32()) {
+      for (int y=0; y<vi.height; ++y) {
+        const int _y = (y << 4) & 0xf0;
+        for (int x=0; x < vi.width; ++x) {
+          const int _dither = ditherMap[(x&0x0f)|_y];
+          p[x*4+0] = mapB[ p[x*4+0]<<8 | _dither ];
+          p[x*4+1] = mapG[ p[x*4+1]<<8 | _dither ];
+          p[x*4+2] = mapR[ p[x*4+2]<<8 | _dither ];
+          p[x*4+3] = mapA[ p[x*4+3]<<8 | _dither ];
+        }
+        p += pitch;
       }
-      p += pitch;
+    }
+    else if (vi.IsRGB24()) {
+      for (int y=0; y<vi.height; ++y) {
+        const int _y = (y << 4) & 0xf0;
+        for (int x=0; x < vi.width; ++x) {
+          const int _dither = ditherMap[(x&0x0f)|_y];
+          p[x*3+0] = mapB[ p[x*3+0]<<8 | _dither ];
+          p[x*3+1] = mapG[ p[x*3+1]<<8 | _dither ];
+          p[x*3+2] = mapR[ p[x*3+2]<<8 | _dither ];
+        }
+        p += pitch;
+      }
     }
   }
-  else if (vi.IsRGB24()) {
-    const int row_size = frame->GetRowSize();
-    for (int y=0; y<vi.height; ++y)
-    {
-      for (int x=0; x<row_size; x+=3)
-      {
-         p[x]   = mapB[p[x]];
-         p[x+1] = mapG[p[x+1]];
-         p[x+2] = mapR[p[x+2]];
+  else {
+    if (vi.IsRGB32()) {
+      for (int y=0; y<vi.height; ++y) {
+        for (int x=0; x < vi.width; ++x) {
+          p[x*4]   = mapB[p[x*4]];
+          p[x*4+1] = mapG[p[x*4+1]];
+          p[x*4+2] = mapR[p[x*4+2]];
+          p[x*4+3] = mapA[p[x*4+3]];
+        }
+        p += pitch;
       }
-      p += pitch;
+    }
+    else if (vi.IsRGB24()) {
+      const int row_size = frame->GetRowSize();
+      for (int y=0; y<vi.height; ++y) {
+        for (int x=0; x<row_size; x+=3) {
+           p[x]   = mapB[p[x]];
+           p[x+1] = mapG[p[x+1]];
+           p[x+2] = mapR[p[x+2]];
+        }
+        p += pitch;
+      }
     }
   }
 
@@ -469,7 +526,7 @@ AVSValue __cdecl RGBAdjust::Create(AVSValue args, void*, IScriptEnvironment* env
                        args[ 1].AsDblDef(1.0), args[ 2].AsDblDef(1.0), args[ 3].AsDblDef(1.0), args[ 4].AsDblDef(1.0),
                        args[ 5].AsDblDef(0.0), args[ 6].AsDblDef(0.0), args[ 7].AsDblDef(0.0), args[ 8].AsDblDef(0.0),
                        args[ 9].AsDblDef(1.0), args[10].AsDblDef(1.0), args[11].AsDblDef(1.0), args[12].AsDblDef(1.0),
-                       args[13].AsBool(false), env );
+                       args[13].AsBool(false), args[14].AsBool(false), env );
 	}
 	catch (...) { throw; }
 }

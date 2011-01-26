@@ -72,13 +72,15 @@ public:
   RGBAdjust(PClip _child, double r,  double g,  double b,  double a,
                           double rb, double gb, double bb, double ab,
                           double rg, double gg, double bg, double ag,
-                          bool _analyze, IScriptEnvironment* env);
+                          bool _analyze, bool _dither, IScriptEnvironment* env);
+  ~RGBAdjust();
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
   static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env);
 
 private:
-  BYTE mapR[256], mapG[256], mapB[256], mapA[256];
   bool analyze;
+  bool dither;
+  BYTE *mapR, *mapG, *mapB, *mapA;
 };
 
 
