@@ -95,6 +95,7 @@ struct {
   char tag[36];
 } g_Mem_stats = {0, 0, 0, 0, 0, 0, 0, "CleanUps, Losses, Plan[A1,A2,B,C,D]"};
 
+const HKEY RegUserKey = HKEY_CURRENT_USER;
 const HKEY RegRootKey = HKEY_LOCAL_MACHINE;
 const char RegAvisynthKey[] = "Software\\Avisynth";
 const char RegPluginDir[] = "PluginDir2_5";
@@ -1100,6 +1101,29 @@ bool ScriptEnvironment::SetGlobalVar(const char* name, const AVSValue& val) {
   return retval;
 }
 
+char* GetRegString(HKEY rootKey, const char path[], const char entry[]) {
+    HKEY AvisynthKey;
+
+    if (RegOpenKeyEx(rootKey, path, 0, KEY_READ, &AvisynthKey))
+      return 0;
+
+    DWORD size;
+    if (RegQueryValueEx(AvisynthKey, entry, 0, 0, 0, &size)) {
+      RegCloseKey(AvisynthKey); // Dave Brueck - Dec 2005
+      return 0;
+    }
+
+    char* retStr = new char[size];
+    if (!retStr || RegQueryValueEx(AvisynthKey, entry, 0, 0, (LPBYTE)retStr, &size)) {
+      delete[] retStr;
+      RegCloseKey(AvisynthKey); // Dave Brueck - Dec 2005
+      return 0;
+    }
+    RegCloseKey(AvisynthKey); // Dave Brueck - Dec 2005
+
+    return retStr;
+}
+
 const char* ScriptEnvironment::GetPluginDirectory()
 {
   char* plugin_dir;
@@ -1107,22 +1131,14 @@ const char* ScriptEnvironment::GetPluginDirectory()
     plugin_dir = (char*)GetVar("$PluginDir$").AsString();
   }
   catch (IScriptEnvironment::NotFound) {
-    HKEY AvisynthKey;
-    if (RegOpenKeyEx(RegRootKey, RegAvisynthKey, 0, KEY_READ, &AvisynthKey))
+	// Allow per user override of plugin directory - henktiggelaar, Jan 2011
+    plugin_dir = GetRegString(RegUserKey, RegAvisynthKey, RegPluginDir);
+
+	if (!plugin_dir) 
+      plugin_dir = GetRegString(RegRootKey, RegAvisynthKey, RegPluginDir);
+
+	if (!plugin_dir) 
       return 0;
-    DWORD size;
-    if (RegQueryValueEx(AvisynthKey, RegPluginDir, 0, 0, 0, &size))
-    {
-      RegCloseKey(AvisynthKey); // Dave Brueck - Dec 2005
-      return 0;
-    }
-    plugin_dir = new char[size];
-    if (RegQueryValueEx(AvisynthKey, RegPluginDir, 0, 0, (LPBYTE)plugin_dir, &size)) {
-      delete[] plugin_dir;
-      RegCloseKey(AvisynthKey); // Dave Brueck - Dec 2005
-      return 0;
-    }
-    RegCloseKey(AvisynthKey); // Dave Brueck - Dec 2005
 
     // remove trailing backslashes
     int l = strlen(plugin_dir);
