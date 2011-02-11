@@ -47,7 +47,7 @@
 extern const AVSFunction Levels_filters[] = {
   { "Levels", "cifiii[coring]b[dither]b", Levels::Create },        // src_low, gamma, src_high, dst_low, dst_high
   { "RGBAdjust", "c[r]f[g]f[b]f[a]f[rb]f[gb]f[bb]f[ab]f[rg]f[gg]f[bg]f[ag]f[analyze]b[dither]b", RGBAdjust::Create },
-  { "Tweak", "c[hue]f[sat]f[bright]f[cont]f[coring]b[sse]b[startHue]f[endHue]f[maxSat]f[minSat]f[interp]f", Tweak::Create },
+  { "Tweak", "c[hue]f[sat]f[bright]f[cont]f[coring]b[sse]b[startHue]f[endHue]f[maxSat]f[minSat]f[interp]f[dither]b", Tweak::Create },
   { "MaskHS", "c[startHue]f[endHue]f[maxSat]f[minSat]f[coring]b", MaskHS::Create },
   { "Limiter", "c[min_luma]i[max_luma]i[min_chroma]i[max_chroma]i[show]s", Limiter::Create },
   { 0 }
@@ -100,6 +100,15 @@ __declspec(align(64)) static const BYTE ditherMap[256] = {
   0xFF, 0x4F, 0xAF, 0x1F,  0xF4, 0x44, 0xA4, 0x14,  0xFA, 0x4A, 0xAA, 0x1A,  0xF1, 0x41, 0xA1, 0x11,
 #endif
 };
+
+
+__declspec(align(16)) static const BYTE ditherMap4[16] = {
+  0x0, 0xB, 0x6, 0xD,
+  0xC, 0x7, 0x9, 0x2,
+  0x3, 0x8, 0x5, 0xE,
+  0xF, 0x4, 0xA, 0x1,
+};
+
 
 /********************************
  *******   Levels Filter   ******
@@ -183,12 +192,13 @@ PVideoFrame __stdcall Levels::GetFrame(int n, IScriptEnvironment* env)
   int pitch = frame->GetPitch();
   if (dither) {
     if (vi.IsYUY2()) {
+      const int UVwidth = vi.width/2;
       for (int y=0; y<vi.height; ++y) {
         const int _y = (y << 4) & 0xf0;
         for (int x=0; x<vi.width; ++x) {
           p[x*2]   = map[ p[x*2]<<8 | ditherMap[(x&0x0f)|_y] ];
         }
-        for (int z=0; z<vi.width/2; ++z) {
+        for (int z=0; z<UVwidth; ++z) {
           const int _dither = ditherMap[(z&0x0f)|_y];
           p[z*4+1] = mapchroma[ p[z*4+1]<<8 | _dither ];
           p[z*4+3] = mapchroma[ p[z*4+3]<<8 | _dither ];
@@ -534,11 +544,11 @@ AVSValue __cdecl RGBAdjust::Create(AVSValue args, void*, IScriptEnvironment* env
 
 
 /* helper function for Tweak and MaskHS filters */
-bool ProcessPixel(int X, int Y, double startHue, double endHue,
+bool ProcessPixel(double X, double Y, double startHue, double endHue,
                   double maxSat, double minSat, double p, int &iSat)
 {
 	// a hue analog
-	double T = atan2((double)X, (double)Y) * 180.0 / 3.14159265358979323846;
+	double T = atan2(X, Y) * 180.0 / 3.14159265358979323846;
 	if ( T < 0.0) T += 360.0;
 
 	// startHue <= hue <= endHue
@@ -583,8 +593,8 @@ bool ProcessPixel(int X, int Y, double startHue, double endHue,
 
 Tweak::Tweak( PClip _child, double _hue, double _sat, double _bright, double _cont, bool _coring, bool _sse,
                             double startHue, double endHue, double _maxSat, double _minSat, double p,
-                            IScriptEnvironment* env )
-  : GenericVideoFilter(_child), coring(_coring), sse(_sse)
+                            bool _dither, IScriptEnvironment* env )
+  : GenericVideoFilter(_child), coring(_coring), sse(_sse), dither(_dither), map(0), mapUV(0)
 {
   try {  // HIDE DAMN SEH COMPILER BUG!!!
     if (vi.IsRGB())
@@ -595,7 +605,7 @@ Tweak::Tweak( PClip _child, double _hue, double _sat, double _bright, double _co
     const bool allPixels = (startHue == 0.0 && endHue == 360.0 && _maxSat == 150.0 && _minSat == 0.0);
 
 // The new "mapping" C code is faster than the iSSE code on my 3GHz P4HT - Make it optional
-    if (sse && (!allPixels || coring || !vi.IsYUY2()))
+    if (sse && (!allPixels || coring || dither || !vi.IsYUY2()))
         env->ThrowError("Tweak: SSE option only available for YUY2 with coring=false and no options.");
     if (sse && !(env->GetCPUFlags() & CPUF_INTEGER_SSE))
         env->ThrowError("Tweak: SSE option needs an iSSE capable processor");
@@ -634,18 +644,40 @@ Tweak::Tweak( PClip _child, double _hue, double _sat, double _bright, double _co
     Sin = (int) (SIN * 4096 + 0.5);
     Cos = (int) (COS * 4096 + 0.5);
 
-    if (coring) {
-      for (int i = 0; i < 256; i++) {
+    if (dither) {
+      map = new BYTE[256*256];
+
+      if (coring) {
+        for (int i = 0; i < 256*256; i++) {
           /* brightness and contrast */
-          int y = int((i - 16)*_cont + _bright + 16.5);
+          int y = int(((i - 16*256)*_cont + _bright*256 - 127.5)/256 + 16.5);
           map[i] = min(max(y, 16), 235);
+        }
+      }
+      else {
+        for (int i = 0; i < 256*256; i++) {
+          /* brightness and contrast */
+          int y = int((i*_cont + _bright*256 - 127.5)/256 + 0.5);
+          map[i] = min(max(y, 0), 255);
+        }
       }
     }
     else {
-      for (int i = 0; i < 256; i++) {
+      map = new BYTE[256];
+
+      if (coring) {
+        for (int i = 0; i < 256; i++) {
+          /* brightness and contrast */
+          int y = int((i - 16)*_cont + _bright + 16.5);
+          map[i] = min(max(y, 16), 235);
+        }
+      }
+      else {
+        for (int i = 0; i < 256; i++) {
           /* brightness and contrast */
           int y = int(i*_cont + _bright + 0.5);
           map[i] = min(max(y, 0), 255);
+        }
       }
     }
 
@@ -659,19 +691,45 @@ Tweak::Tweak( PClip _child, double _hue, double _sat, double _bright, double _co
     const int maxUV = coring ? 240 : 255;
     const int minUV = coring ? 16 : 0;
 
-    for (int u = 0; u < 256; u++) {
-      const int destu = u-128;
-      for (int v = 0; v < 256; v++) {
-        const int destv = v-128;
-        int iSat = Sat;
-        if (allPixels || ProcessPixel(destv, destu, startHue, endHue, maxSat, minSat, p, iSat)) {
-          int du = int ( (destu*COS + destv*SIN) * iSat ) >> 9;
-          int dv = int ( (destv*COS - destu*SIN) * iSat ) >> 9;
-          du = min(max(du+128,minUV),maxUV);
-          dv = min(max(dv+128,minUV),maxUV);
-          mapUV[(u<<8)|v]  = (unsigned short)(du | (dv<<8));
-        } else {
-          mapUV[(u<<8)|v]  = (unsigned short)(min(max(u,minUV),maxUV) | ((min(max(v,minUV),maxUV))<<8));
+    if (dither) {
+      mapUV = new unsigned short[256*256*16];
+
+      for (int d = 0; d < 16; d++) {
+        for (int u = 0; u < 256; u++) {
+          const double destu = ((u<<4|d) - 7.5)/16.0-128.0;
+          for (int v = 0; v < 256; v++) {
+            const double destv = ((v<<4|d) - 7.5)/16.0-128.0;
+            int iSat = Sat;
+            if (allPixels || ProcessPixel(destv, destu, startHue, endHue, maxSat, minSat, p, iSat)) {
+              int du = int ( (destu*COS + destv*SIN) * iSat + 0x100) >> 9;
+              int dv = int ( (destv*COS - destu*SIN) * iSat + 0x100) >> 9;
+              du = min(max(du+128,minUV),maxUV);
+              dv = min(max(dv+128,minUV),maxUV);
+              mapUV[(u<<12)|(v<<4)|d]  = (unsigned short)(du | (dv<<8));
+            } else {
+              mapUV[(u<<12)|(v<<4)|d]  = (unsigned short)(min(max(u,minUV),maxUV) | ((min(max(v,minUV),maxUV))<<8));
+            }
+          }
+        }
+      }
+    }
+    else {
+      mapUV = new unsigned short[256*256];
+
+      for (int u = 0; u < 256; u++) {
+        const double destu = u-128;
+        for (int v = 0; v < 256; v++) {
+          const double destv = v-128;
+          int iSat = Sat;
+          if (allPixels || ProcessPixel(destv, destu, startHue, endHue, maxSat, minSat, p, iSat)) {
+            int du = int ( (destu*COS + destv*SIN) * iSat ) >> 9;
+            int dv = int ( (destv*COS - destu*SIN) * iSat ) >> 9;
+            du = min(max(du+128,minUV),maxUV);
+            dv = min(max(dv+128,minUV),maxUV);
+            mapUV[(u<<8)|v]  = (unsigned short)(du | (dv<<8));
+          } else {
+            mapUV[(u<<8)|v]  = (unsigned short)(min(max(u,minUV),maxUV) | ((min(max(v,minUV),maxUV))<<8));
+          }
         }
       }
     }
@@ -680,6 +738,11 @@ Tweak::Tweak( PClip _child, double _hue, double _sat, double _bright, double _co
   catch (...) { throw; }
 }
 
+
+Tweak::~Tweak() {
+  if (map) delete[] map;
+  if (mapUV) delete[] mapUV;
+}
 
 
 PVideoFrame __stdcall Tweak::GetFrame(int n, IScriptEnvironment* env)
@@ -694,7 +757,7 @@ PVideoFrame __stdcall Tweak::GetFrame(int n, IScriptEnvironment* env)
 	int row_size = src->GetRowSize();
 
 	if (vi.IsYUY2()) {
-		if (sse && !coring && (env->GetCPUFlags() & CPUF_INTEGER_SSE)) {
+		if (sse && !coring && !dither && (env->GetCPUFlags() & CPUF_INTEGER_SSE)) {
 			const __int64 hue64 = (in64 Cos<<48) + (in64 (-Sin)<<32) + (in64 Sin<<16) + in64 Cos;
 			const __int64 satcont64 = (in64 Sat<<48) + (in64 Cont<<32) + (in64 Sat<<16) + in64 Cont;
 			const __int64 bright64 = (in64 Bright<<32) + in64 Bright;
@@ -703,49 +766,103 @@ PVideoFrame __stdcall Tweak::GetFrame(int n, IScriptEnvironment* env)
 			return src;
 		}
 
-		for (int y = 0; y < height; y++)
-		{
-			for (int x = 0; x < row_size; x+=4)
-			{
-				/* brightness and contrast */
-				srcp[x] = map[srcp[x]];
-				srcp[x+2] = map[srcp[x+2]];
-
-				/* hue and saturation */
-				const int u = srcp[x+1];
-				const int v = srcp[x+3];
-				const int mapped = mapUV[(u<<8) | v];
-				srcp[x+1] = (BYTE)(mapped&0xff);
-				srcp[x+3] = (BYTE)(mapped>>8);
+		if (dither) {
+			const int UVwidth = vi.width/2;
+			for (int y = 0; y < height; y++) {
+				{const int _y = (y << 4) & 0xf0;
+				for (int x = 0; x < vi.width; ++x) {
+					/* brightness and contrast */
+					srcp[x*2] = map[ srcp[x*2]<<8 | ditherMap[(x&0x0f)|_y] ];
+				}}
+				{const int _y = (y << 2) & 0xC;
+				for (int x = 0; x < UVwidth; ++x) {
+					const int _dither = ditherMap4[(x&0x3)|_y];
+					/* hue and saturation */
+					const int u = srcp[x*4+1];
+					const int v = srcp[x*4+3];
+					const int mapped = mapUV[(u<<12) | (v<<4) | _dither];
+					srcp[x*4+1] = (BYTE)(mapped&0xff);
+					srcp[x*4+3] = (BYTE)(mapped>>8);
+				}}
+				srcp += src_pitch;
 			}
-			srcp += src_pitch;
+		}
+		else {
+			for (int y = 0; y < height; y++)
+			{
+				for (int x = 0; x < row_size; x+=4)
+				{
+					/* brightness and contrast */
+					srcp[x] = map[srcp[x]];
+					srcp[x+2] = map[srcp[x+2]];
+
+					/* hue and saturation */
+					const int u = srcp[x+1];
+					const int v = srcp[x+3];
+					const int mapped = mapUV[(u<<8) | v];
+					srcp[x+1] = (BYTE)(mapped&0xff);
+					srcp[x+3] = (BYTE)(mapped>>8);
+				}
+				srcp += src_pitch;
+			}
 		}
 	} else if (vi.IsPlanar()) {
-		{for (int y=0; y<height; ++y) {
-			for (int x=0; x<row_size; ++x) {
-				/* brightness and contrast */
-				srcp[x] = map[srcp[x]];
+		if (dither) {
+			for (int y=0; y<height; ++y) {
+				const int _y = (y << 4) & 0xf0;
+				for (int x=0; x<row_size; ++x) {
+					/* brightness and contrast */
+					srcp[x] = map[ srcp[x]<<8 | ditherMap[(x&0x0f)|_y] ];
+				}
+				srcp += src_pitch;
 			}
-			srcp += src_pitch;
-		}}
+		}
+		else {
+			for (int y=0; y<height; ++y) {
+				for (int x=0; x<row_size; ++x) {
+					/* brightness and contrast */
+					srcp[x] = map[srcp[x]];
+				}
+				srcp += src_pitch;
+			}
+		}
 
 		src_pitch = src->GetPitch(PLANAR_U);
 		BYTE * srcpu = src->GetWritePtr(PLANAR_U);
 		BYTE * srcpv = src->GetWritePtr(PLANAR_V);
 		row_size = src->GetRowSize(PLANAR_U);
 		height = src->GetHeight(PLANAR_U);
-		{for (int y=0; y<height; ++y) {
-			for (int x=0; x<row_size; ++x) {
-				/* hue and saturation */
-				const int u = srcpu[x];
-				const int v = srcpv[x];
-				const int mapped = mapUV[(u<<8) | v];
-				srcpu[x] = (BYTE)(mapped&0xff);
-				srcpv[x] = (BYTE)(mapped>>8);
+
+		if (dither) {
+			for (int y=0; y<height; ++y) {
+				const int _y = (y << 2) & 0xC;
+				for (int x=0; x<row_size; ++x) {
+					const int _dither = ditherMap4[(x&0x3)|_y];
+					/* hue and saturation */
+					const int u = srcpu[x];
+					const int v = srcpv[x];
+					const int mapped = mapUV[(u<<12) | (v<<4) | _dither];
+					srcpu[x] = (BYTE)(mapped&0xff);
+					srcpv[x] = (BYTE)(mapped>>8);
+				}
+				srcpu += src_pitch;
+				srcpv += src_pitch;
 			}
-			srcpu += src_pitch;
-			srcpv += src_pitch;
-		}}
+		}
+		else {
+			for (int y=0; y<height; ++y) {
+				for (int x=0; x<row_size; ++x) {
+					/* hue and saturation */
+					const int u = srcpu[x];
+					const int v = srcpv[x];
+					const int mapped = mapUV[(u<<8) | v];
+					srcpu[x] = (BYTE)(mapped&0xff);
+					srcpv[x] = (BYTE)(mapped>>8);
+				}
+				srcpu += src_pitch;
+				srcpv += src_pitch;
+			}
+		}
 	}
 
 	return src;
@@ -761,11 +878,12 @@ AVSValue __cdecl Tweak::Create(AVSValue args, void* user_data, IScriptEnvironmen
 					 args[4].AsDblDef(1.0),		// cont
 					 args[5].AsBool(true),      // coring
 					 args[6].AsBool(false),     // sse
-					 args[7].AsDblDef(0.0),      // startHue
-					 args[8].AsDblDef(360.0),    // endHue
-					 args[9].AsDblDef(150.0),    // maxSat
-					 args[10].AsDblDef(0.0),     // minSat
+					 args[7].AsDblDef(0.0),     // startHue
+					 args[8].AsDblDef(360.0),   // endHue
+					 args[9].AsDblDef(150.0),   // maxSat
+					 args[10].AsDblDef(0.0),    // minSat
 					 args[11].AsDblDef(16.0/1.19),// interp
+					 args[12].AsBool(false),    // dither
 					 env);
 	}
 	catch (...) { throw; }
@@ -873,9 +991,9 @@ MaskHS::MaskHS( PClip _child, double startHue, double endHue, double _maxSat, do
 
     // apply mask
     for (int u = 0; u < 256; u++) {
-      const int destu = u-128;
+      const double destu = u-128;
       for (int v = 0; v < 256; v++) {
-        const int destv = v-128;
+        const double destv = v-128;
         int iSat = 0; // won't be used in MaskHS; interpolation is skipped since p==0:
         if (ProcessPixel(destv, destu, startHue, endHue, maxSat, minSat, 0.0, iSat)) {
           mapY[(u<<8)|v] = maxY;
