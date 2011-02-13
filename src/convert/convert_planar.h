@@ -49,18 +49,18 @@ static int getMatrix( const char* matrix, IScriptEnvironment* env) {
       return Rec601;
     if (!lstrcmpi(matrix, "rec709"))
       return Rec709;
-    else if (!lstrcmpi(matrix, "PC.601"))
+    if (!lstrcmpi(matrix, "PC.601"))
       return PC_601;
-    else if (!lstrcmpi(matrix, "PC.709"))
+    if (!lstrcmpi(matrix, "PC.709"))
       return PC_709;
-    else if (!lstrcmpi(matrix, "PC601"))
+    if (!lstrcmpi(matrix, "PC601"))
       return PC_601;
-    else if (!lstrcmpi(matrix, "PC709"))
+    if (!lstrcmpi(matrix, "PC709"))
       return PC_709;
-    else if (!lstrcmpi(matrix, "AVERAGE"))
+    if (!lstrcmpi(matrix, "AVERAGE"))
       return AVERAGE;
+    env->ThrowError("Convert: Unknown colormatrix");
   }
-  env->ThrowError("Convert: Unknown colormatrix");
   return Rec601; // Default colorspace conversion for AviSynth
 }
 

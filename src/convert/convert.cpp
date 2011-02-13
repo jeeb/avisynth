@@ -80,7 +80,11 @@ ConvertToRGB::ConvertToRGB( PClip _child, bool rgb24, const char* matrix,
       theMatrix = Rec709;
     else if (!lstrcmpi(matrix, "PC.601"))
       theMatrix = PC_601;
+    else if (!lstrcmpi(matrix, "PC601"))
+      theMatrix = PC_601;
     else if (!lstrcmpi(matrix, "PC.709"))
+      theMatrix = PC_709;
+    else if (!lstrcmpi(matrix, "PC709"))
       theMatrix = PC_709;
     else if (!lstrcmpi(matrix, "rec601"))
       theMatrix = Rec601;
@@ -175,9 +179,9 @@ AVSValue __cdecl ConvertToRGB::Create(AVSValue args, void*, IScriptEnvironment* 
   const VideoInfo& vi = clip->GetVideoInfo();
 
   if (vi.IsPlanar()) {
-    AVSValue new_args[5] = { clip, args[2].AsBool(false), matrix, args[3].AsString("MPEG2"), args[4].AsString("Bicubic") };
+    AVSValue new_args[5] = { clip, args[2], args[1], args[3], args[4] };
     clip = ConvertToPlanarGeneric::CreateYV24(AVSValue(new_args, 5), NULL, env).AsClip();
-    return new ConvertYV24ToRGB(clip, getMatrix(args[1].AsString("rec601"), env), 4 , env);
+    return new ConvertYV24ToRGB(clip, getMatrix(matrix, env), 4 , env);
   }
 
   if (haveOpts)
@@ -198,9 +202,9 @@ AVSValue __cdecl ConvertToRGB::Create32(AVSValue args, void*, IScriptEnvironment
   const VideoInfo vi = clip->GetVideoInfo();
 
   if (vi.IsPlanar()) {
-    AVSValue new_args[5] = { clip, args[2].AsBool(false), matrix, args[3].AsString("MPEG2"), args[4].AsString("Bicubic") };
+    AVSValue new_args[5] = { clip, args[2], args[1], args[3], args[4] };
     clip = ConvertToPlanarGeneric::CreateYV24(AVSValue(new_args, 5), NULL, env).AsClip();
-    return new ConvertYV24ToRGB(clip, getMatrix(args[1].AsString("rec601"), env), 4 , env);
+    return new ConvertYV24ToRGB(clip, getMatrix(matrix, env), 4 , env);
   }
 
   if (haveOpts)
@@ -224,9 +228,9 @@ AVSValue __cdecl ConvertToRGB::Create24(AVSValue args, void*, IScriptEnvironment
   const VideoInfo& vi = clip->GetVideoInfo();
 
   if (vi.IsPlanar()) {
-    AVSValue new_args[5] = { clip, args[2].AsBool(false), matrix, args[3].AsString("MPEG2"), args[4].AsString("Bicubic") };
+    AVSValue new_args[5] = { clip, args[2], args[1], args[3], args[4] };
     clip = ConvertToPlanarGeneric::CreateYV24(AVSValue(new_args, 5), NULL, env).AsClip();
-    return new ConvertYV24ToRGB(clip, getMatrix(args[1].AsString("rec601"), env), 3 , env);
+    return new ConvertYV24ToRGB(clip, getMatrix(matrix, env), 3 , env);
   }
 
   if (haveOpts)

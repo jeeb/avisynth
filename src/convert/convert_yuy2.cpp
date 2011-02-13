@@ -159,17 +159,16 @@ PVideoFrame __stdcall ConvertToYUY2::GetFrame(int n, IScriptEnvironment* env)
     return dst;
   }
 
+  PVideoFrame dst = env->NewVideoFrame(vi);
+  BYTE* yuv = dst->GetWritePtr();
+
   if (env->GetCPUFlags() & CPUF_MMX) {
-    PVideoFrame dst = env->NewVideoFrame(vi);
-    BYTE* yuv = dst->GetWritePtr();
-    mmx_ConvertRGBtoYUY2(src->GetReadPtr(), yuv ,src->GetPitch(), dst->GetPitch(), vi.height);
+    mmx_ConvertRGBtoYUY2(src->GetReadPtr(), yuv, src->GetPitch(), dst->GetPitch(), vi.height);
     return dst;
   }
 
 // non MMX machines.
 
-  PVideoFrame dst = env->NewVideoFrame(vi);
-  BYTE* yuv = dst->GetWritePtr();
   const BYTE* rgb = src->GetReadPtr() + (vi.height-1) * src->GetPitch();
 
   const int yuv_offset = dst->GetPitch() - dst->GetRowSize();
@@ -344,8 +343,7 @@ AVSValue __cdecl ConvertToYUY2::Create(AVSValue args, void*, IScriptEnvironment*
   if (clip->GetVideoInfo().IsPlanar()) {
     if (haveOpts || !clip->GetVideoInfo().IsYV12()) {
       // We have no direct conversions. Go to YV16.
-      AVSValue new_args[5] = { clip, args[1].AsBool(false), args[2].AsString("rec601"),
-                               args[3].AsString("MPEG2"), args[4].AsString("Bicubic") }; 
+      AVSValue new_args[5] = { clip, args[1], args[2], args[3], args[4] };
       clip = ConvertToPlanarGeneric::CreateYV16(AVSValue(new_args, 5), NULL,  env).AsClip();
     }
   }
@@ -380,7 +378,7 @@ ConvertBackToYUY2::ConvertBackToYUY2(PClip _child, const char *matrix, IScriptEn
 
 
 void ConvertBackToYUY2::mmxYV24toYUY2(const unsigned char *py, const unsigned char *pu, const unsigned char *pv,
-                                       unsigned char *dst, 
+                                       unsigned char *dst,
                                        int pitch1Y, int pitch1UV, int pitch2, int width, int height)
 {
     __asm
@@ -465,10 +463,10 @@ PVideoFrame __stdcall ConvertBackToYUY2::GetFrame(int n, IScriptEnvironment* env
       return dst;
   }
 
-  const BYTE* rgb = src->GetReadPtr() + (vi.height-1) * src->GetPitch();
+  const BYTE* rgb = src->GetReadPtr() + (vi.height-1) * src->GetPitch(); // Last line
 
   const int yuv_offset = dst->GetPitch() - dst->GetRowSize();
-  const int rgb_offset = -src->GetPitch() - src->GetRowSize();
+  const int rgb_offset = -src->GetPitch() - src->GetRowSize(); // moving upwards
   const int rgb_inc = (src_cs&VideoInfo::CS_BGR32)==VideoInfo::CS_BGR32 ? 4 : 3;
 
 /* Existing 0-1-0 Kernel version */
