@@ -47,24 +47,15 @@ public:
   MatrixGenerator3x3();
   ~MatrixGenerator3x3();
 protected:
-  void GenerateAssembly(int width, int faction_bits, bool upper32_ones, IScriptEnvironment* env);
+  void GenerateAssembly(int width, int faction_bits, bool upper32_ones,
+                        const __int64 *pre_add, const __int64 *post_add,
+                        const int src_pixel_step, const int dest_pixel_step,
+                        const signed short* matrix, IScriptEnvironment* env);
   void GeneratePacker(int width, IScriptEnvironment* env);
   void GenerateUnPacker(int width, IScriptEnvironment* env);
   DynamicAssembledCode assembly;
   DynamicAssembledCode unpacker;
   DynamicAssembledCode packer;
-  BYTE* dyn_src;
-  BYTE* dyn_dest;
-  BYTE* dyn_matrix;
-  __int64 pre_add, post_add;
-  __int64 rounder;
-  int src_pixel_step;
-  int dest_pixel_step;
-  const BYTE** unpck_src;
-  BYTE** unpck_dst;
-private:
-  int last_pix;
-  __int64* aligned_rounder;
 };
 
 

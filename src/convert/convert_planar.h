@@ -100,6 +100,7 @@ public:
 private:
   void BuildMatrix(double Kr, double Kb, int Sy, int Suv, int Oy, int shift);
   signed short* matrix;
+  BYTE* unpckbuf;
   int offset_y;
   int mul_out;
   int pixel_step;
@@ -128,6 +129,7 @@ public:
 private:
   void BuildMatrix(double Kr, double Kb, int Sy, int Suv, int Oy, int shift);
   signed short* matrix;
+  BYTE* packbuf;
   int offset_y;
   int pixel_step;
 };

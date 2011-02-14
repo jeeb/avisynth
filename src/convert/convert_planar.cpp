@@ -398,8 +398,13 @@ AVSValue __cdecl ConvertToY8::Create(AVSValue args, void*, IScriptEnvironment* e
  * (c) Klaus Post, 2005
  ******************************************************/
 
+// XMM_WORD ready
+__declspec(align(16)) static const __int64 Post_Add00[2] = { 0x008000800000, 0x008000800000 };
+__declspec(align(16)) static const __int64 Post_Add16[2] = { 0x008000800010, 0x008000800010 };
+
+
 ConvertRGBToYV24::ConvertRGBToYV24(PClip src, int in_matrix, IScriptEnvironment* env)
-  : GenericVideoFilter(src), matrix(0)  {
+  : GenericVideoFilter(src), matrix(0), unpckbuf(0)  {
 
   if (!vi.IsRGB())
     env->ThrowError("ConvertRGBToYV24: Only RGB data input accepted");
@@ -444,29 +449,23 @@ ConvertRGBToYV24::ConvertRGBToYV24(PClip src, int in_matrix, IScriptEnvironment*
     env->ThrowError("ConvertRGBToYV24: Unknown matrix.");
   }
 
-  dyn_matrix = (BYTE*)matrix;
-  dyn_dest = (BYTE*)_aligned_malloc(vi.width * 4 +32, 64);
-  this->src_pixel_step = pixel_step;
-  this->post_add = (offset_y & 0xffff) | ((__int64)(128 & 0xffff)<<16) | ((__int64)(128 & 0xffff)<<32);
-  this->GenerateAssembly(vi.width, shift, false, env);
+  // Thread unsafe!
+  unpckbuf = (BYTE*)_aligned_malloc(vi.width * 4 +32, 64);
+  const __int64 *post_add = offset_y == 16 ? &Post_Add16[0] : &Post_Add00[0];
+  this->GenerateAssembly(vi.width, shift, false, 0, post_add, pixel_step, 4, matrix, env);
 
-  unpck_src = new const BYTE*[1];
-  unpck_dst = new BYTE*[3];
-  unpck_src[0] = dyn_dest;
   this->GenerateUnPacker(vi.width, env);
 }
 
 ConvertRGBToYV24::~ConvertRGBToYV24() {
-  if (dyn_dest)
-    _aligned_free(dyn_dest);
-  dyn_dest = 0;
+  if (unpckbuf)
+    _aligned_free(unpckbuf);
+  unpckbuf = 0;
 
   if (matrix)
     _aligned_free(matrix);
   matrix = 0;
 
-  delete[] unpck_src;
-  delete[] unpck_dst;
 }
 
 
@@ -536,31 +535,25 @@ PVideoFrame __stdcall ConvertRGBToYV24::GetFrame(int n, IScriptEnvironment* env)
   const int UVpitch = dst->GetPitch(PLANAR_U);
 
   const int awidth = dst->GetRowSize(PLANAR_Y_ALIGNED);
-// FIXME fix code to make wide_enough redundant!
-  bool wide_enough = (!(vi.width & 1)); // We need to check if input is wide enough
 
-  if (!wide_enough) {
-    if (src->GetPitch()-src->GetRowSize() >= (vi.BytesFromPixels(1)))
-      wide_enough = true;  // We have one more pixel (at least) in width.
-  }
+  if (USE_DYNAMIC_COMPILER) {
+    srcp += (vi.height-1)*Spitch;
+//  BYTE* unpckbuf = (BYTE*)_aligned_malloc(vi.width * 4 +32, 64);
 
-  if (wide_enough && USE_DYNAMIC_COMPILER) {
-    dyn_src = srcp + (vi.height-1)*Spitch;
-
-    if (awidth & 7) {  // Should never happend, as all planar formats must have mod8 pitch
-      int* i_dyn_dest = (int*)dyn_dest;
+    if (awidth & 7) {  // Should never happend, as all planar formats should have mod16 pitch
+      int* iunpckbuf = (int*)unpckbuf;
       for (int y = 0; y < vi.height; y++) {
 
-        assembly.Call();
+        assembly.Call(srcp, unpckbuf);
 
         for (int x = 0; x < vi.width; x++) {
-          const int p = i_dyn_dest[x];
+          const int p = iunpckbuf[x];
           dstY[x] = p&0xff;
           dstU[x] = (p>>8)&0xff;
           dstV[x] = (p>>16)&0xff;
         }
 
-        dyn_src -= Spitch;
+        srcp -= Spitch;
 
         dstY += Ypitch;
         dstU += UVpitch;
@@ -570,20 +563,18 @@ PVideoFrame __stdcall ConvertRGBToYV24::GetFrame(int n, IScriptEnvironment* env)
     else {
       for (int y = 0; y < vi.height; y++) {
 
-        assembly.Call();
+        assembly.Call(srcp, unpckbuf);
 
-        unpck_dst[0] = dstY;
-        unpck_dst[1] = dstU;
-        unpck_dst[2] = dstV;
-        this->unpacker.Call();
+        this->unpacker.Call(unpckbuf, dstY, dstU, dstV);
 
-        dyn_src -= Spitch;
+        srcp -= Spitch;
 
         dstY += Ypitch;
         dstU += UVpitch;
         dstV += UVpitch;
       }
     }
+//  _aligned_free(unpckbuf);
     return dst;
   }
 
@@ -627,8 +618,13 @@ AVSValue __cdecl ConvertRGBToYV24::Create(AVSValue args, void*, IScriptEnvironme
  * (c) Klaus Post, 2005
  ******************************************************/
 
+// XMM_WORD ready
+__declspec(align(16)) static const __int64 Pre_Add00[2]  = { 0xff80ff800000, 0xff80ff800000 };
+__declspec(align(16)) static const __int64 Pre_Add16[2]  = { 0xff80ff80fff0, 0xff80ff80fff0 };
+
+
 ConvertYV24ToRGB::ConvertYV24ToRGB(PClip src, int in_matrix, int _pixel_step, IScriptEnvironment* env)
- : GenericVideoFilter(src), pixel_step(_pixel_step), matrix(0) {
+ : GenericVideoFilter(src), pixel_step(_pixel_step), matrix(0), packbuf(0) {
 
   if (!vi.IsYV24())
     env->ThrowError("ConvertYV24ToRGB: Only YV24 data input accepted");
@@ -671,29 +667,23 @@ ConvertYV24ToRGB::ConvertYV24ToRGB(PClip src, int in_matrix, int _pixel_step, IS
     matrix = 0;
     env->ThrowError("ConvertYV24ToRGB: Unknown matrix.");
   }
-  dyn_matrix = (BYTE*)matrix;
-  dyn_src = (BYTE*)_aligned_malloc(vi.width * 4 + 32, 64);
-  this->dest_pixel_step = pixel_step;
-  this->pre_add = (offset_y & 0xffff) | ((__int64)(-128 & 0xffff)<<16) | ((__int64)(-128 & 0xffff)<<32);
-  this->GenerateAssembly(vi.width, shift, true, env);
+  // Thread unsafe!
+  packbuf = (BYTE*)_aligned_malloc(vi.width * 4 + 32, 64);
+  const __int64 *pre_add = offset_y == -16 ? &Pre_Add16[0] : &Pre_Add00[0];
+  this->GenerateAssembly(vi.width, shift, true, pre_add, 0, 4, pixel_step, matrix, env);
 
-  unpck_src = new const BYTE*[3];
-  unpck_dst = new BYTE*[1];
-  unpck_dst[0] = dyn_src;
   this->GeneratePacker(vi.width, env);
 }
 
 ConvertYV24ToRGB::~ConvertYV24ToRGB() {
-  if (dyn_src)
-    _aligned_free(dyn_src);
-  dyn_src = 0;
+  if (packbuf)
+    _aligned_free(packbuf);
+  packbuf = 0;
 
   if (matrix)
     _aligned_free(matrix);
   matrix = 0;
 
-  delete[] unpck_src;
-  delete[] unpck_dst;
 }
 
 
@@ -765,39 +755,39 @@ PVideoFrame __stdcall ConvertYV24ToRGB::GetFrame(int n, IScriptEnvironment* env)
   const int Dpitch = dst->GetPitch();
 
   if (USE_DYNAMIC_COMPILER) {
-    dyn_dest = dstp + (vi.height-1)*Dpitch;
+    dstp += (vi.height-1)*Dpitch;
+//  BYTE* packbuf = (BYTE*)_aligned_malloc(vi.width * 4 + 32, 64);
 
-    if (awidth & 7) { // This should be very safe to assume to never happend
-      int* i_dyn_src = (int*)dyn_src;
+    if (awidth & 15) { // This should be very safe to assume to never happend
+      int* ipackbuf = (int*)packbuf;
 
       for (int y = 0; y < vi.height; y++) {
         for (int x = 0; x < vi.width; x++) {
-          i_dyn_src[x] = srcY[x] | (srcU[x] << 8 ) | (srcV[x] << 16) | (1<<24);
+          ipackbuf[x] = srcY[x] | (srcU[x] << 8 ) | (srcV[x] << 16) | (1 << 24);
         }
 
-        assembly.Call();
+        assembly.Call(packbuf, dstp);
 
         srcY += Ypitch;
         srcU += UVpitch;
         srcV += UVpitch;
-        dyn_dest -= Dpitch;
+        dstp -= Dpitch;
       }
     }
     else {
       for (int y = 0; y < vi.height; y++) {
-        unpck_src[0] = srcY;
-        unpck_src[1] = srcU;
-        unpck_src[2] = srcV;
-        this->packer.Call();
 
-        assembly.Call();
+        this->packer.Call(srcY, srcU, srcV, packbuf);
+
+        assembly.Call(packbuf, dstp);
 
         srcY += Ypitch;
         srcU += UVpitch;
         srcV += UVpitch;
-        dyn_dest -= Dpitch;
+        dstp -= Dpitch;
       }
     }
+//  _aligned_free(packbuf);
     return dst;
   }
 
