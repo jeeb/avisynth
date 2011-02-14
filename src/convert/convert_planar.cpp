@@ -355,13 +355,13 @@ void ConvertToY8::convYUV422toY8(const unsigned char *src, unsigned char *py,
        int pitch1, int pitch2y, int width, int height)
 {
 	int widthdiv2 = width>>1;
-	__int64 Ymask = 0x00FF00FF00FF00FFi64;
 	__asm
 	{
 		mov edi,[src]
 		mov edx,[py]
+		pcmpeqw mm5,mm5
 		mov ecx,widthdiv2
-		movq mm5,Ymask
+		psrlw mm5,8            ; 0x00FF00FF00FF00FFi64
 	yloop:
 		xor eax,eax
 		align 16
@@ -525,11 +525,17 @@ PVideoFrame __stdcall ConvertRGBToYV24::GetFrame(int n, IScriptEnvironment* env)
   PVideoFrame dst = env->NewVideoFrame(vi);
 
   const BYTE* srcp = src->GetReadPtr();
+
   BYTE* dstY = dst->GetWritePtr(PLANAR_Y);
   BYTE* dstU = dst->GetWritePtr(PLANAR_U);
   BYTE* dstV = dst->GetWritePtr(PLANAR_V);
 
-  int awidth = dst->GetRowSize(PLANAR_Y_ALIGNED);
+  const int Spitch = src->GetPitch();
+
+  const int Ypitch = dst->GetPitch(PLANAR_Y);
+  const int UVpitch = dst->GetPitch(PLANAR_U);
+
+  const int awidth = dst->GetRowSize(PLANAR_Y_ALIGNED);
 // FIXME fix code to make wide_enough redundant!
   bool wide_enough = (!(vi.width & 1)); // We need to check if input is wide enough
 
@@ -539,26 +545,44 @@ PVideoFrame __stdcall ConvertRGBToYV24::GetFrame(int n, IScriptEnvironment* env)
   }
 
   if (wide_enough && USE_DYNAMIC_COMPILER) {
-    int* i_dyn_dest = (int*)dyn_dest;
-    for (int y = 0; y < vi.height; y++) {
-      dyn_src = (unsigned char*)&srcp[(vi.height-y-1)*src->GetPitch()];
-      assembly.Call();
-      if (awidth & 7) {  // Should never happend, as all planar formats must have mod8 pitch
+    dyn_src = srcp + (vi.height-1)*Spitch;
+
+    if (awidth & 7) {  // Should never happend, as all planar formats must have mod8 pitch
+      int* i_dyn_dest = (int*)dyn_dest;
+      for (int y = 0; y < vi.height; y++) {
+
+        assembly.Call();
+
         for (int x = 0; x < vi.width; x++) {
-          int p = i_dyn_dest[x];
+          const int p = i_dyn_dest[x];
           dstY[x] = p&0xff;
           dstU[x] = (p>>8)&0xff;
           dstV[x] = (p>>16)&0xff;
         }
-      } else {
+
+        dyn_src -= Spitch;
+
+        dstY += Ypitch;
+        dstU += UVpitch;
+        dstV += UVpitch;
+      }
+    }
+    else {
+      for (int y = 0; y < vi.height; y++) {
+
+        assembly.Call();
+
         unpck_dst[0] = dstY;
         unpck_dst[1] = dstU;
         unpck_dst[2] = dstV;
         this->unpacker.Call();
+
+        dyn_src -= Spitch;
+
+        dstY += Ypitch;
+        dstU += UVpitch;
+        dstV += UVpitch;
       }
-      dstY += dst->GetPitch(PLANAR_Y);
-      dstU += dst->GetPitch(PLANAR_U);
-      dstV += dst->GetPitch(PLANAR_V);
     }
     return dst;
   }
@@ -566,7 +590,8 @@ PVideoFrame __stdcall ConvertRGBToYV24::GetFrame(int n, IScriptEnvironment* env)
   //Slow C-code.
 
   signed short* m = (signed short*)matrix;
-  srcp += src->GetPitch() * (vi.height-1);  // We start at last line
+  srcp += Spitch * (vi.height-1);  // We start at last line
+  const int Sstep = Spitch + (vi.width * pixel_step);
   for (int y = 0; y < vi.height; y++) {
     for (int x = 0; x < vi.width; x++) {
       int b = srcp[0];
@@ -580,10 +605,10 @@ PVideoFrame __stdcall ConvertRGBToYV24::GetFrame(int n, IScriptEnvironment* env)
       *dstV++ = PixelClip(V);
       srcp += pixel_step;
     }
-    srcp -= src->GetPitch() + (vi.width * pixel_step);
-    dstY += dst->GetPitch(PLANAR_Y) - vi.width;
-    dstU += dst->GetPitch(PLANAR_U) - vi.width;
-    dstV += dst->GetPitch(PLANAR_V) - vi.width;
+    srcp -= Sstep;
+    dstY += Ypitch - vi.width;
+    dstU += UVpitch - vi.width;
+    dstV += UVpitch - vi.width;
   }
   return dst;
 }
@@ -734,24 +759,44 @@ PVideoFrame __stdcall ConvertYV24ToRGB::GetFrame(int n, IScriptEnvironment* env)
 
   int awidth = src->GetRowSize(PLANAR_Y_ALIGNED);
 
+  const int Ypitch = src->GetPitch(PLANAR_Y);
+  const int UVpitch = src->GetPitch(PLANAR_U);
+
+  const int Dpitch = dst->GetPitch();
+
   if (USE_DYNAMIC_COMPILER) {
-    int* i_dyn_src = (int*)dyn_src;
-    for (int y = 0; y < vi.height; y++) {
-      if (awidth & 7) { // This should be very safe to assume to never happend
+    dyn_dest = dstp + (vi.height-1)*Dpitch;
+
+    if (awidth & 7) { // This should be very safe to assume to never happend
+      int* i_dyn_src = (int*)dyn_src;
+
+      for (int y = 0; y < vi.height; y++) {
         for (int x = 0; x < vi.width; x++) {
           i_dyn_src[x] = srcY[x] | (srcU[x] << 8 ) | (srcV[x] << 16) | (1<<24);
         }
-      } else {
+
+        assembly.Call();
+
+        srcY += Ypitch;
+        srcU += UVpitch;
+        srcV += UVpitch;
+        dyn_dest -= Dpitch;
+      }
+    }
+    else {
+      for (int y = 0; y < vi.height; y++) {
         unpck_src[0] = srcY;
         unpck_src[1] = srcU;
         unpck_src[2] = srcV;
         this->packer.Call();
+
+        assembly.Call();
+
+        srcY += Ypitch;
+        srcU += UVpitch;
+        srcV += UVpitch;
+        dyn_dest -= Dpitch;
       }
-      dyn_dest = &dstp[(vi.height-y-1)*dst->GetPitch()];
-      assembly.Call();
-      srcY += src->GetPitch(PLANAR_Y);
-      srcU += src->GetPitch(PLANAR_U);
-      srcV += src->GetPitch(PLANAR_V);
     }
     return dst;
   }
@@ -759,7 +804,7 @@ PVideoFrame __stdcall ConvertYV24ToRGB::GetFrame(int n, IScriptEnvironment* env)
   //Slow C-code.
 
   signed short* m = (signed short*)matrix;
-  dstp += dst->GetPitch() * (vi.height-1);  // We start at last line
+  dstp += Dpitch * (vi.height-1);  // We start at last line
   if (pixel_step == 4) {
     for (int y = 0; y < vi.height; y++) {
       for (int x = 0; x < vi.width; x++) {
@@ -769,18 +814,18 @@ PVideoFrame __stdcall ConvertYV24ToRGB::GetFrame(int n, IScriptEnvironment* env)
         int b = (((int)m[0] * Y + (int)m[1] * U + (int)m[ 2] * V + 4096)>>13);
         int g = (((int)m[4] * Y + (int)m[5] * U + (int)m[ 6] * V + 4096)>>13);
         int r = (((int)m[8] * Y + (int)m[9] * U + (int)m[10] * V + 4096)>>13);
-        dstp[0] = PixelClip(b);  // All the safety we can wish for.
-        dstp[1] = PixelClip(g);  // Probably needed here.
-        dstp[2] = PixelClip(r);
-        dstp[3] = 255; // alpha
-        dstp += 4;
+        dstp[x*4+0] = PixelClip(b);  // All the safety we can wish for.
+        dstp[x*4+1] = PixelClip(g);  // Probably needed here.
+        dstp[x*4+2] = PixelClip(r);
+        dstp[x*4+3] = 255; // alpha
       }
-      dstp -= dst->GetPitch() + (vi.width * pixel_step);
-      srcY += src->GetPitch(PLANAR_Y);
-      srcU += src->GetPitch(PLANAR_U);
-      srcV += src->GetPitch(PLANAR_V);
+      dstp -= Dpitch;
+      srcY += Ypitch;
+      srcU += UVpitch;
+      srcV += UVpitch;
     }
   } else {
+    const int Dstep = Dpitch + (vi.width * pixel_step);
     for (int y = 0; y < vi.height; y++) {
       for (int x = 0; x < vi.width; x++) {
         int Y = srcY[x] + offset_y;
@@ -794,10 +839,10 @@ PVideoFrame __stdcall ConvertYV24ToRGB::GetFrame(int n, IScriptEnvironment* env)
         dstp[2] = PixelClip(r);
         dstp += pixel_step;
       }
-      dstp -= dst->GetPitch() + (vi.width * pixel_step);
-      srcY += src->GetPitch(PLANAR_Y);
-      srcU += src->GetPitch(PLANAR_U);
-      srcV += src->GetPitch(PLANAR_V);
+      dstp -= Dstep;
+      srcY += Ypitch;
+      srcU += UVpitch;
+      srcV += UVpitch;
     }
   }
   return dst;
@@ -847,16 +892,14 @@ PVideoFrame __stdcall ConvertYUY2ToYV16::GetFrame(int n, IScriptEnvironment* env
     return dst;
   }
 
-  int w = vi.width/2;
+  const int w = vi.width/2;
 
   for (int y=0; y<vi.height; y++) { // ASM will probably not be faster here.
     for (int x=0; x<w; x++) {
-      int x2 = x<<1;
-      int x4 = x<<2;
-      dstY[x2] = srcP[x4];
-      dstY[x2+1] = srcP[x4+2];
-      dstU[x] = srcP[x4+1];
-      dstV[x] = srcP[x4+3];
+      dstY[x*2]   = srcP[x*4+0];
+      dstY[x*2+1] = srcP[x*4+2];
+      dstU[x]     = srcP[x*4+1];
+      dstV[x]     = srcP[x*4+3];
     }
     srcP += src->GetPitch();
     dstY += dst->GetPitch(PLANAR_Y);
@@ -954,16 +997,14 @@ PVideoFrame __stdcall ConvertYV16ToYUY2::GetFrame(int n, IScriptEnvironment* env
       dst->GetPitch(), awidth, vi.height);
   }
 
-  int w = vi.width/2;
+  const int w = vi.width/2;
 
   for (int y=0; y<vi.height; y++) { // ASM will probably not be faster here.
     for (int x=0; x<w; x++) {
-      int x2 = x<<1;
-      int x4 = x<<2;
-      dstp[x4] = srcY[x2];
-      dstp[x4+2] = srcY[x2+1];
-      dstp[x4+1] = srcU[x];
-      dstp[x4+3] = srcV[x];
+      dstp[x*4+0] = srcY[x*2];
+      dstp[x*4+1] = srcU[x];
+      dstp[x*4+2] = srcY[x*2+1];
+      dstp[x*4+3] = srcV[x];
     }
     srcY += src->GetPitch(PLANAR_Y);
     srcU += src->GetPitch(PLANAR_U);
