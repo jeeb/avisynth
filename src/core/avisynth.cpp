@@ -1131,13 +1131,13 @@ const char* ScriptEnvironment::GetPluginDirectory()
     plugin_dir = (char*)GetVar("$PluginDir$").AsString();
   }
   catch (IScriptEnvironment::NotFound) {
-	// Allow per user override of plugin directory - henktiggelaar, Jan 2011
+    // Allow per user override of plugin directory - henktiggelaar, Jan 2011
     plugin_dir = GetRegString(RegUserKey, RegAvisynthKey, RegPluginDir);
 
-	if (!plugin_dir) 
+    if (!plugin_dir)
       plugin_dir = GetRegString(RegRootKey, RegAvisynthKey, RegPluginDir);
 
-	if (!plugin_dir) 
+    if (!plugin_dir)
       return 0;
 
     // remove trailing backslashes
@@ -1183,7 +1183,7 @@ bool ScriptEnvironment::LoadPluginsMatching(const char* pattern)
       count = 0;
     }
     GetFullPathName(FileData.cFileName, MAX_PATH, file, &dummy);
-	const char *_file = ScriptEnvironment::SaveString(file);
+    const char *_file = ScriptEnvironment::SaveString(file);
     function_table.PrescanPluginStart(_file);
     LoadPlugin(AVSValue(&AVSValue(&AVSValue(_file), 1), 1), (void*)true, this);
     bContinue = FindNextFile(hFind, &FileData);

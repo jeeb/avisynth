@@ -142,12 +142,12 @@ void DynamicAssembledCode::Call() const {
    */
 
 // Call with Args, optionally returning an int
-int DynamicAssembledCode::Call(int arg1, ...) const {
+int DynamicAssembledCode::Call(const void* arg1, ...) const {
   EXCEPTION_POINTERS* ei = 0;
 
   if (ret) {
     __try { 
-      return ((int (*)(int *))entry)(&arg1);
+      return ((int (*)(const void* *))entry)(&arg1);
     }
     __except ( ei = GetExceptionInformation(),
                (GetExceptionCode() >> 28) == 0xC )

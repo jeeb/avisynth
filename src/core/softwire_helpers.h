@@ -53,7 +53,7 @@ public:
   void Call() const;
 
 // With Args, optionally returning an int
-  int __cdecl Call(int, ...) const;
+  int __cdecl Call(const void*, ...) const;
 
   void Free();
 
