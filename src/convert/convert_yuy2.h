@@ -57,23 +57,17 @@ private:
   const bool interlaced;
 
 protected:
-  void GenerateAssembly(bool rgb24, bool dupl, bool sub, int w, IScriptEnvironment* env);
+  void GenerateAssembly(bool rgb24, bool dupl, bool sub, int w, const __int64* ptr_cybgr, const __int64* ptr_fpix_mul,
+                        const int* ptr_fraction, const int* ptr_y1y2_mult, IScriptEnvironment* env); 
   void mmx_ConvertRGBtoYUY2(const BYTE *src,BYTE *dst,int src_pitch, int dst_pitch, int h);
   DynamicAssembledCode assembly;
+
+  void inline_rgbtoyuy2(const bool rec, const int cyb, const int cyg, const int cyr, const int ku, const int kv,
+                        const BYTE* rgb, BYTE* yuv, const int yuv_offset, const int rgb_offset, const int rgb_inc);
 
   const int src_cs;  // Source colorspace
   int theMatrix;
   enum {Rec601=0, Rec709=1, PC_601=2, PC_709=3 };	// Note! convert_yuy2.cpp assumes these values
-
-  // Variables for dynamic code.
-  const BYTE* dyn_src;
-  BYTE* dyn_dst;
-
-  // These must be set BEFORE creating the generator, and CANNOT be changed at runtime!
-  const __int64* dyn_cybgr;
-  const __int64* dyn_fpix_mul;
-  const int* dyn_fraction;
-  const int* dyn_y1y2_mult;
 
 };
 
