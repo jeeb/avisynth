@@ -169,7 +169,8 @@ Levels::Levels( PClip _child, int in_min, double gamma, int in_max, int out_min,
       double p = (bias + i - in_min) / divisor;
       p = pow(min(max(p, 0.0), 1.0), gamma);
       p = p * (out_max - out_min) + out_min;
-      map[i] = PixelClip(int(p+0.5));
+//    map[i] = PixelClip(int(p+0.5));
+      map[i] = min(max(int(p+0.5), 0), 255);
     }
   }
 
