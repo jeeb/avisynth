@@ -189,6 +189,11 @@ AVSValue HexValue(AVSValue args, void*, IScriptEnvironment* env);
 
 AVSValue Sign(AVSValue args, void*, IScriptEnvironment* env);
 
+AVSValue BitAnd(AVSValue args, void*, IScriptEnvironment* env);
+AVSValue BitNot(AVSValue args, void*, IScriptEnvironment* env);
+AVSValue BitOr(AVSValue args, void*, IScriptEnvironment* env);
+AVSValue BitXor(AVSValue args, void*, IScriptEnvironment* env);
+
 AVSValue UCase(AVSValue args, void*, IScriptEnvironment* env);
 AVSValue LCase(AVSValue args, void*, IScriptEnvironment* env);
 AVSValue StrLen(AVSValue args, void*, IScriptEnvironment* env);
@@ -197,6 +202,8 @@ AVSValue LeftStr(AVSValue args, void*, IScriptEnvironment* env);
 AVSValue MidStr(AVSValue args, void*, IScriptEnvironment* env);
 AVSValue RightStr(AVSValue args, void*, IScriptEnvironment* env);
 AVSValue FindStr(AVSValue args, void*, IScriptEnvironment* env);
+AVSValue StrCmp(AVSValue args, void*, IScriptEnvironment* env);
+AVSValue StrCmpi(AVSValue args, void*, IScriptEnvironment* env);
 
 AVSValue Rand(AVSValue args, void* user_data, IScriptEnvironment* env);
 

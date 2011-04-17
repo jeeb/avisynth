@@ -61,6 +61,11 @@ extern const AVSFunction Script_functions[] = {
   { "abs", "f", FAbs },
   { "sign","f",Sign},
 
+  { "bitand","ii",BitAnd},
+  { "bitnot" ,"i",BitNot},
+  { "bitor" ,"ii",BitOr},
+  { "bitxor","ii",BitXor},
+
   { "lcase","s",LCase},
   { "ucase","s",UCase},
   { "strlen","s",StrLen},
@@ -69,6 +74,9 @@ extern const AVSFunction Script_functions[] = {
   { "midstr","si[length]i",MidStr},
   { "rightstr","si",RightStr},
   { "findstr","ss",FindStr},
+
+  { "strcmp","ss",StrCmp},
+  { "strcmpi","ss",StrCmpi},
 
   { "rand", "[max]i[scale]b[seed]b", Rand },
 
@@ -345,6 +353,11 @@ AVSValue FAbs(AVSValue args, void* user_data, IScriptEnvironment* env) { return 
 AVSValue Abs(AVSValue args, void* user_data, IScriptEnvironment* env) { return abs(args[0].AsInt()); }
 AVSValue Sign(AVSValue args, void*, IScriptEnvironment* env) { return args[0].AsFloat()==0 ? 0 : args[0].AsFloat() > 0 ? 1 : -1; }
 
+AVSValue BitAnd(AVSValue args, void*, IScriptEnvironment* env) { return args[0].AsInt() & args[1].AsInt(); }
+AVSValue BitNot(AVSValue args, void*, IScriptEnvironment* env) { return ~args[0].AsInt(); }
+AVSValue BitOr(AVSValue args, void*, IScriptEnvironment* env)  { return args[0].AsInt() | args[1].AsInt(); }
+AVSValue BitXor(AVSValue args, void*, IScriptEnvironment* env) { return args[0].AsInt() ^ args[1].AsInt(); }
+
 AVSValue UCase(AVSValue args, void*, IScriptEnvironment* env) { return _strupr(env->SaveString(args[0].AsString())); }
 AVSValue LCase(AVSValue args, void*, IScriptEnvironment* env) { return _strlwr(env->SaveString(args[0].AsString())); }
 
@@ -400,6 +413,16 @@ AVSValue RightStr(AVSValue args, void*, IScriptEnvironment* env)
    delete[] result;
    return ret; 
  }
+
+AVSValue StrCmp(AVSValue args, void*, IScriptEnvironment* env)
+{
+  return lstrcmp( args[0].AsString(), args[1].AsString() );
+}
+
+AVSValue StrCmpi(AVSValue args, void*, IScriptEnvironment* env)
+{
+  return lstrcmpi( args[0].AsString(), args[1].AsString() );
+}
 
 AVSValue FindStr(AVSValue args, void*, IScriptEnvironment* env)
 { const char *pdest;
