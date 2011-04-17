@@ -64,7 +64,7 @@ ConvertToY8::ConvertToY8(PClip src, int in_matrix, IScriptEnvironment* env) : Ge
     rgb_input = true;
     pixel_step = vi.BytesFromPixels(1);
     vi.pixel_type = VideoInfo::CS_Y8;
-    matrix = (signed short*)_aligned_malloc(sizeof(short)*4, 64);
+    matrix = (signed short*)_aligned_malloc(sizeof(short)*4, 16);
     signed short* m = matrix;
     if (in_matrix == Rec601) {
       *m++ = (signed short)((219.0/255.0)*0.114*32768.0+0.5);  //B
@@ -354,14 +354,15 @@ done:
 void ConvertToY8::convYUV422toY8(const unsigned char *src, unsigned char *py,
        int pitch1, int pitch2y, int width, int height)
 {
-	int widthdiv2 = width>>1;
 	__asm
 	{
 		mov edi,[src]
 		mov edx,[py]
 		pcmpeqw mm5,mm5
-		mov ecx,widthdiv2
+		mov ecx,width
 		psrlw mm5,8            ; 0x00FF00FF00FF00FFi64
+        shr ecx,1
+		align 16
 	yloop:
 		xor eax,eax
 		align 16
@@ -903,8 +904,6 @@ void ConvertYUY2ToYV16::convYUV422to422(const unsigned char *src,
                                         unsigned char *py, unsigned char *pu, unsigned char *pv,
                                         int pitch1, int pitch2y, int pitch2uv, int width, int height)
 {
-	int widthdiv2 = width>>1;
-	__int64 Ymask = 0x00FF00FF00FF00FFi64;
 	__asm
 	{
         push ebx
@@ -912,8 +911,11 @@ void ConvertYUY2ToYV16::convYUV422to422(const unsigned char *src,
 		mov ebx,[py]
 		mov edx,[pu]
 		mov esi,[pv]
-		mov ecx,widthdiv2
-		movq mm5,Ymask
+		pcmpeqw mm5,mm5
+		mov ecx,width
+		psrlw mm5,8            ; 0x00FF00FF00FF00FFi64
+        shr ecx,1
+		align 16
 	yloop:
 		xor eax,eax
 		align 16
@@ -1008,15 +1010,15 @@ void ConvertYV16ToYUY2::conv422toYUV422(const unsigned char *py, const unsigned 
                                         unsigned char *dst,
                                         int pitch1Y, int pitch1UV, int pitch2, int width, int height)
 {
-	int widthdiv2 = width >> 1;
 	__asm
 	{
         push ebx
 		mov ebx,[py]
 		mov edx,[pu]
 		mov esi,[pv]
+		mov ecx,width
 		mov edi,[dst]
-		mov ecx,widthdiv2
+        shr ecx,1
 yloop:
 		xor eax,eax
 		align 16
