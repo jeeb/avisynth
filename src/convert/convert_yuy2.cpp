@@ -53,29 +53,23 @@
 //  const int cyr = int(0.2126*32768+0.5);         // 0x1B36
 
 //__declspec(align(8)) const __int64 cybgr_64 = (__int64)cyb|(((__int64)cyg)<<16)|(((__int64)cyr)<<32);
-  __declspec(align(8)) static const __int64 cybgr_64[4] ={0x000020DE40870C88,
-                                                          0x0000175F4E9F07F0,
-                                                          0x000026464B230E97,
-                                                          0x00001B365B8C093E};
+  __declspec(align(8)) static const __int64 cybgr_64[4]  ={0x000020DE40870C88,
+                                                           0x0000175F4E9F07F0,
+                                                           0x000026464B230E97,
+                                                           0x00001B365B8C093E};
 
-  __declspec(align(8)) static const __int64 fpix_mul[4] ={0x0000503300003F74,    //=(1/((1-0.299)*255/112)<<15+0.5),  (1/((1-0.114)*255/112)<<15+0.5)
-                                                          0x0000476600003C6E,    //=(1/((1-0.2126)*255/112)<<15+0.5), (1/((1-0.0722)*255/112)<<15+0.5)
-                                                          0x00005AF1000047F4,    //=(1/((1-0.299)*255/127)<<15+0.5),  (1/((1-0.114)*255/127)<<15+0.5)
-                                                          0x000050F6000044B6};   //=(1/((1-0.2126)*255/127)<<15+0.5), (1/((1-0.0722)*255/127)<<15+0.5)
+  __declspec(align(8)) static const __int64 y1y2_fpix[4] ={0x5033A29E3F74B61E,    //=(1/((1-0.299)*255/112)<<15+0.5),  (1/((1-0.114)*255/112)<<15+0.5)
+                                                           0x4766ACDD3C6EB9A3,    //=(1/((1-0.2126)*255/112)<<15+0.5), (1/((1-0.0722)*255/112)<<15+0.5)
+                                                           0x5AF1A50F47F4B80C,    //=(1/((1-0.299)*255/127)<<15+0.5),  (1/((1-0.114)*255/127)<<15+0.5)
+                                                           0x50F6AF0A44B6BB4A};   //=(1/((1-0.2126)*255/127)<<15+0.5), (1/((1-0.0722)*255/127)<<15+0.5)
 
-//__declspec(align(8)) static const __int64 rb_mask     = 0x0000ffff0000ffff;    //=Mask for unpacked R and B
-  __declspec(align(8)) static const __int64 fpix_add    = 0x0080800000808000;    //=(128.5) << 16
-//__declspec(align(8)) static const __int64 chroma_mask2= 0xffff0000ffff0000;
+  __declspec(align(16)) static const __int64 fpix_add    = 0x0080800000808000;    //=(128.5) << 16
+  __declspec(align(16)) static const __int64 fpix_rnd    = 0x0101000001010000;    //=(128.5) << 17
 
-  __declspec(align(8)) static const __int64 sub_64      = 0x000000000000FFC0; // -64
+  __declspec(align(16)) static const __int64 sub_64      = 0x0000FFC00000FFC0; // -64
 
 //static const int sub_32      = 0x0000FFE0;    // -32
   static const int sub_16      = 0x0000FFF0;    // -16
-
-  static const int y1y2_mult[4]={0x00004A85,    //=(255./219.) << 14
-                                 0x00004A85,
-                                 0x00004000,    //=1 << 14
-                                 0x00004000};
 
   static const int fraction[4] ={0x00084000,    //=(16.5) << 15 = 0x84000
                                  0x00084000,
@@ -119,8 +113,8 @@ ConvertToYUY2::ConvertToYUY2(PClip _child, bool _dupl, bool _interlaced, const c
 
   if ((env->GetCPUFlags() & CPUF_MMX) && vi.IsRGB()) {  // Generate MMX
     this->GenerateAssembly(vi.IsRGB24(), _dupl, (theMatrix < 2), vi.width,
-                           &cybgr_64[theMatrix], &fpix_mul[theMatrix],
-                           &fraction[theMatrix], &y1y2_mult[theMatrix], env);
+                           &cybgr_64[theMatrix], &y1y2_fpix[theMatrix],
+                           &fraction[theMatrix], env);
   }
 
   vi.pixel_type = VideoInfo::CS_YUY2;
@@ -269,36 +263,6 @@ inline void ConvertToYUY2::inline_rgbtoyuy2(const bool pcrange, const int cyb, c
   }
 }
 
-/* Original 0-1-1 Kernel versions
-
-        const BYTE* const rgb_next = rgb + rgb_inc;
-        // y1 and y2 can't overflow
-        const int y1 = (cyb*rgb[0] + cyg*rgb[1] + cyr*rgb[2] + 0x8000) >> 16;
-        yuv[0] = y1;
-        const int y2 = (cyb*rgb_next[0] + cyg*rgb_next[1] + cyr*rgb_next[2] + 0x8000) >> 16;
-        yuv[2] = y2;
-        const int scaled_y = y1+y2;
-        const int b_y = (rgb[0]+rgb_next[0]) - scaled_y;
-        yuv[1] = ScaledPixelClip(b_y * ku + 0x800000);  // u
-        const int r_y = (rgb[2]+rgb_next[2]) - scaled_y;
-        yuv[3] = ScaledPixelClip(r_y * kv + 0x800000);  // v
-        rgb = rgb_next + rgb_inc;
-        yuv += 4;
-
-        const BYTE* const rgb_next = rgb + rgb_inc;
-        // y1 and y2 can't overflow
-        const int y1 = (cyb*rgb[0] + cyg*rgb[1] + cyr*rgb[2] + 0x108000) >> 16;
-        yuv[0] = y1;
-        const int y2 = (cyb*rgb_next[0] + cyg*rgb_next[1] + cyr*rgb_next[2] + 0x108000) >> 16;
-        yuv[2] = y2;
-        const int scaled_y = (y1+y2 - 32) * int(255.0/219.0*32768+0.5);
-        const int b_y = ((rgb[0]+rgb_next[0]) << 15) - scaled_y;
-        yuv[1] = ScaledPixelClip((b_y >> 15) * ku + 0x800000);  // u
-        const int r_y = ((rgb[2]+rgb_next[2]) << 15) - scaled_y;
-        yuv[3] = ScaledPixelClip((r_y >> 15) * kv + 0x800000);  // v
-        rgb = rgb_next + rgb_inc;
-        yuv += 4;
-*/
 
 AVSValue __cdecl ConvertToYUY2::Create(AVSValue args, void*, IScriptEnvironment* env)
 {
@@ -342,61 +306,111 @@ ConvertBackToYUY2::ConvertBackToYUY2(PClip _child, const char *matrix, IScriptEn
 {
   if (!_child->GetVideoInfo().IsRGB() && !_child->GetVideoInfo().IsYV24())
     env->ThrowError("ConvertBackToYUY2: Use ConvertToYUY2 to convert non-RGB material to YUY2.");
+
+  if (_child->GetVideoInfo().IsYV24()) { // vi.IsYUY2
+    const int awidth = (vi.width+7) & -8;
+
+    GenerateYV24toYUY2(awidth, vi.height, env);
+  }
 }
 
 
-void ConvertBackToYUY2::mmxYV24toYUY2(const unsigned char *py, const unsigned char *pu, const unsigned char *pv,
-                                       unsigned char *dst,
-                                       int pitch1Y, int pitch1UV, int pitch2, int width, int height)
+void ConvertBackToYUY2::GenerateYV24toYUY2(int awidth, int height, IScriptEnvironment* env)
 {
-    __asm
-  {
-      mov       ecx,[py]
-      mov       edx,[pu]
-      mov       esi,[pv]
-      mov       edi,[dst]
-      pcmpeqb   mm7,mm7             ;ffffffffffffffff
-      psrlw     mm7,8               ;00ff00ff00ff00ff
-yloop:
-      xor       eax,eax
-      align     16
-xloop:
-#if 0
-      movq      xmm1,qword_ptr[edx+eax]        ;uUuUuUuU
-      movq      xmm2,qword_ptr[esi+eax]        ;vVvVvVvV
-      pand      xmm1,xmm7                      ;.U.U.U.U
-      psllw     xmm2,8                         ;V.V.V.V.
-      movq      xmm0,qword_ptr[ecx+eax]        ;YYYYYYYY
-      por       xmm1,xmm2                      ;VUVUVUVU
-      add       eax,8
-      punpcklbw xmm0,xmm1                      ;VYUYVYUYVYUYVYUY
-      cmp       eax,width
-      movdqa    xmmword_ptr[edi+eax*2-16],xmm0 ;store
-#else
-      movq      mm1,[edx+eax]       ;uUuUuUuU
-      movq      mm2,[esi+eax]       ;vVvVvVvV
-      pand      mm1,mm7             ;.U.U.U.U
-      psllw     mm2,8               ;V.V.V.V.
-      movq      mm0,[ecx+eax]       ;YYYYYYYY
-      por       mm1,mm2             ;VUVUVUVU
-      movq      mm3,mm0
-      punpcklbw mm0,mm1             ;VYUYVYUY
-      add       eax,8
-      punpckhbw mm3,mm1             ;VYUYVYUY
-      movq      [edi+eax*2-16],mm0  ;store
-      cmp       eax,width
-      movq      [edi+eax*2-8],mm3   ;store
-#endif
-      jl        xloop
+  bool sse2 = !!(env->GetCPUFlags() & CPUF_SSE2);
 
-      add       ecx,pitch1Y
-      add       edx,pitch1UV
-      add       esi,pitch1UV
-      add       edi,pitch2
-      dec       height
-      jnz       yloop
-      emms
+  enum {             // Argument offsets
+    py      = 0,
+    pu      = 4,
+    pv      = 8,
+    dst     = 12,
+    pitch1Y = 16,
+    pitch1UV= 20,
+    pitch2  = 24,
+  };
+
+  Assembler x86;   // This is the class that assembles the code.
+
+  // Store registers and get arg pointers
+  x86.push(        ebp);
+  x86.mov(         ebp, dword_ptr[esp+4+4]);           // Pointer to args list
+
+  x86.push(        eax);
+  x86.push(        ebx);
+  x86.push(        ecx);
+  x86.push(        edx);
+  x86.push(        edi);
+  x86.push(        esi);
+
+  x86.mov(         ecx, dword_ptr[ebp+py]);
+  x86.mov(         edx, dword_ptr[ebp+pu]);
+  x86.mov(         esi, dword_ptr[ebp+pv]);
+  x86.mov(         edi, dword_ptr[ebp+dst]);
+  if (sse2) {
+    x86.pcmpeqw(   xmm7, xmm7);                        // ffffffffffffffff
+    x86.mov(       ebx, height);
+    x86.psrlw(     xmm7, 8);                           // 00ff00ff00ff00ff
   }
+  else {
+    x86.pcmpeqw(   mm7, mm7);                          // ffffffffffffffff
+    x86.mov(       ebx, height);
+    x86.psrlw(     mm7, 8);                            // 00ff00ff00ff00ff
+  }
+  x86.align(    16);
+
+x86.label("yloop");
+  x86.xor(         eax, eax);
+  x86.align(    16);
+
+x86.label("xloop");
+  if (sse2) {
+    x86.movq(      xmm1, qword_ptr[edx+eax]);          // 00000000|uUuUuUuU
+    x86.movq(      xmm2, qword_ptr[esi+eax]);          // 00000000|vVvVvVvV
+    x86.pand(      xmm1, xmm7);                        // 00000000|.U.U.U.U
+    x86.psllw(     xmm2, 8);                           // 00000000|V.V.V.V.
+    x86.movq(      xmm0, qword_ptr[ecx+eax]);          // 00000000|YYYYYYYY
+    x86.por(       xmm1, xmm2);                        // 00000000|VUVUVUVU
+    x86.add(       eax, 8);
+    x86.punpcklbw( xmm0, xmm1);                        // VYUYVYUYVYUYVYUY
+    x86.cmp(       eax, awidth);
+    x86.movdqa(    xmmword_ptr[edi+eax*2-16], xmm0);   // store
+  }
+  else {
+    x86.movq(      mm1, qword_ptr[edx+eax]);           // uUuUuUuU
+    x86.movq(      mm2, qword_ptr[esi+eax]);           // vVvVvVvV
+    x86.pand(      mm1, mm7);                          // .U.U.U.U
+    x86.psllw(     mm2, 8);                            // V.V.V.V.
+    x86.movq(      mm0, qword_ptr[ecx+eax]);           // YYYYYYYY
+    x86.por(       mm1, mm2);                          // VUVUVUVU
+    x86.movq(      mm3, mm0);
+    x86.punpcklbw( mm0, mm1);                          // VYUYVYUY
+    x86.add(       eax, 8);
+    x86.punpckhbw( mm3, mm1);                          // VYUYVYUY
+    x86.movq(      qword_ptr[edi+eax*2-16], mm0);      // store
+    x86.cmp(       eax, awidth);
+    x86.movq(      qword_ptr[edi+eax*2-8],  mm3);      // store
+  }
+  x86.jl("xloop");
+
+  x86.add(         ecx, dword_ptr[ebp+pitch1Y]);
+  x86.add(         edx, dword_ptr[ebp+pitch1UV]);
+  x86.add(         esi, dword_ptr[ebp+pitch1UV]);
+  x86.add(         edi, dword_ptr[ebp+pitch2]);
+  x86.dec(         ebx);
+  x86.jnz("yloop");
+  if (!sse2)
+    x86.emms(      );
+
+  x86.pop(         esi);
+  x86.pop(         edi);
+  x86.pop(         edx);
+  x86.pop(         ecx);
+  x86.pop(         ebx);
+  x86.pop(         eax);
+  x86.pop(         ebp);
+  x86.ret();
+
+  assembly = DynamicAssembledCode(x86, env, "ConvertBackToYUY2: Dynamic MMX code could not be compiled.");
 }
 
 
@@ -416,10 +430,10 @@ PVideoFrame __stdcall ConvertBackToYUY2::GetFrame(int n, IScriptEnvironment* env
     const int pitchY  = src->GetPitch(PLANAR_Y);
     const int pitchUV = src->GetPitch(PLANAR_U);
 
-    const int awidth = min(pitchY, (vi.width+7) & -8);
+    const int awidth = (vi.width+7) & -8;
 
-    if (!(awidth&7) && (env->GetCPUFlags() & CPUF_MMX)) {  // Use MMX
-      mmxYV24toYUY2(srcY, srcU, srcV, dstp, pitchY, pitchUV, dpitch, awidth, vi.height);
+    if ((pitchY >= awidth) && (env->GetCPUFlags() & CPUF_MMX)) {  // Use MMX
+      assembly.Call(srcY, srcU, srcV, dstp, pitchY, pitchUV, dpitch);
       return dst;
     }
 
@@ -618,161 +632,189 @@ void ConvertToYUY2::mmx_ConvertRGBtoYUY2(const BYTE *src,BYTE *dst,int src_pitch
 /* Code for 1-2-1 & 0-1-0 kernels */
 
 void ConvertToYUY2::GenerateAssembly(bool rgb24, bool dupl, bool sub, int w,
-                                     const __int64* ptr_cybgr, const __int64* ptr_fpix_mul,
-                                     const int* ptr_fraction, const int* ptr_y1y2_mult,
-                                     IScriptEnvironment* env)  {
+                                     const __int64* ptr_cybgr, const __int64* ptr_y1y2_fpix,
+                                     const int* ptr_fraction, IScriptEnvironment* env)  {
   int lwidth_bytes = w;
   lwidth_bytes *= (rgb24) ? 3 : 4;    // Width in bytes
 
 #define SRC esi
 #define DST edi
-#define RGBOFFSET eax
+#define RGBEND eax
 
   Assembler x86;   // This is the class that assembles the code.
 // mm0 mm1 mm2 mm3 mm4 mm5 mm6 mm7
 
   // Store registers and get arg pointers
-  x86.push(      eax);
-  x86.mov(       eax,dword_ptr[esp+4+4]);// Pointer to args list
-  x86.push(      esi);
-  x86.mov(       SRC,dword_ptr[eax+0]);// arg1
-  x86.push(      edi);
+  x86.push(        eax);
+  x86.mov(         eax,dword_ptr[esp+4+4]);      // Pointer to args list
+  x86.push(        SRC);
+  x86.mov(         SRC,dword_ptr[eax+0]);        // arg1
+  x86.push(        DST);
+  x86.mov(         DST,dword_ptr[eax+4]);      // arg2
 
-  x86.movq(      mm2,qword_ptr[SRC]);  //mm2= XXR2 G2B2 XXR1 G1B1
-  x86.movq(      mm7,qword_ptr[ptr_cybgr]);
-  x86.punpcklbw( mm1,mm2);             // mm1= XXxx R1xx G1xx B1xx
-  if (rgb24) {
-    x86.psllq(   mm2,8);               // Compensate for RGB24
-  }
-  x86.movd(      mm0,dword_ptr[ptr_fraction]);
-  x86.psrlw(     mm1,8);               // mm1= 00XX 00R1 00G1 00B1
-  x86.mov(       DST,dword_ptr[eax+4]);// arg2
+  x86.movq(        mm2,qword_ptr[SRC]);        //mm2= XXR2 G2B2 XXR1 G1B1
+  x86.movq(        mm7,qword_ptr[ptr_cybgr]);
+  x86.mov(         RGBEND,lwidth_bytes);
+  x86.movd(        mm0,dword_ptr[ptr_fraction]);
+  x86.add(         RGBEND,SRC);
+  x86.sub(         DST,4);                     // Compensate for early +=4 below
+  x86.punpcklbw(   mm1,mm2);                   // mm1= XXxx R1xx G1xx B1xx
+  if (rgb24) {     
+    x86.psllq(     mm2,8);                     // Compensate for RGB24
+  }                
+  x86.cmp(         SRC,RGBEND);
+  x86.psrlw(       mm1,8);                     // mm1= 00XX 00R1 00G1 00B1
+  x86.jae(         "outloop");                 // Jump out of loop if true (width==0)
 
   if(!dupl) { // 1-2-1 mode
-    x86.movq(    mm3,mm1);             // mm3= 00XX 00R0 00G0 00B0
-    x86.movq(    mm5,mm1);             // mm5= 00XX 00R0 00G0 00B0
 
-    x86.pmaddwd( mm3,mm7);             // mm1= v2v2 v2v2 v1v1 v1v1   y0 //(cyb*rgb[0] + cyg*rgb[1] + cyr*rgb[2] + 0x108000)
-    x86.xor(     RGBOFFSET,RGBOFFSET);
-    x86.paddd(   mm3,mm0);             // Add rounding fraction (16.5)<<15 to lower dword only
-    x86.sub(     DST,4);               // Compensate for early +=4 below
-    x86.punpckldq(mm4,mm3);            // mm4= 00G1+00B1 xxxx xxxx
-    x86.paddd(   mm3,mm4);
-    x86.psrlq(   mm3,15+32);           // mm3= xxxx xxxx 0000 00y0 final value
-  } else {  // 0-1-0 mode
-    x86.xor(     RGBOFFSET,RGBOFFSET);
-    x86.sub(     DST,4);               // Compensate for early +=4 below
-  }
-
-  x86.align(     16);
-  x86.label("re_enter");
-  x86.cmp(       RGBOFFSET,lwidth_bytes);
-  x86.punpckhbw( mm2,mm0);             // mm2= 00XX 00R2 00G2 00B2
-  x86.jge(       "outloop");           // Jump out of loop if true (width==0)
-
-  if(!dupl) {  // 1-2-1 mode
-    x86.paddw(   mm5,mm1);             // mm5 += 00XX 00R1 00G1 00B1 accumulated RGB values (for b_y and r_y)
-    x86.pcmpeqd( mm6,mm6);             // mm6  = ffff ffff ffff ffff
-    x86.paddw(   mm5,mm1);             // mm5 += 00XX 00R1 00G1 00B1
-    x86.psrld(   mm6,16);              // mm6  = 0000 ffff 0000 ffff
-    x86.paddw(   mm5,mm2);             // mm5 += 00XX 00R2 00G2 00B2
-    x86.pand(    mm6,mm5);             // mm6  = 0000 0RRR 0000 0BBB Clear out accumulated G-value
-    x86.movq(    mm5,mm2);             // mm5  = 00XX 00R0 00G0 00B0 for next time
-  } else {  // 0-1-0 mode
-    x86.pcmpeqd( mm6,mm6);             // mm6  = ffff ffff ffff ffff
-    x86.psrld(   mm6,16);              // mm6  = 0000 ffff 0000 ffff
-    x86.pand(    mm6,mm1);             // Clear out accumulated G-value mm6= 0000 RRRR 0000 BBBB
-  }
-
-  x86.pmaddwd(   mm1,mm7);             // mm1= v2v2 v2v2 v1v1 v1v1   y1 //(cyb*rgb[0] + cyg*rgb[1] + cyr*rgb[2] + 0x108000)
-  x86.pmaddwd(   mm2,mm7);             // mm2= w2w2 w2w2 w1w1 w1w1   y2 //(cyb*rgbnext[0] + cyg*rgbnext[1] + cyr*rgbnext[2] + 0x108000)
-  x86.paddd(     mm1,mm0);             // Add rounding fraction (16.5)<<15 to lower dword only
-  x86.paddd(     mm2,mm0);             // Add rounding fraction (16.5)<<15 to lower dword only
-  x86.punpckldq( mm4,mm1);             // mm4= 00G1+00B1 xxxx xxxx
-  x86.paddd(     mm1,mm4);
-  x86.punpckldq( mm4,mm2);             // mm4= 00G2+00B2 xxxx xxxx
-  x86.psrlq(     mm1,15+32);           // mm1= 0000 0000 0000 00y1 final value
-  x86.paddd(     mm2,mm4);
-  x86.psrlq(     mm2,15+32);           // mm2= 0000 0000 0000 00y2 final value
-
-  // Damn, this is to hard to interleave properly
-  // with this 4 way decision based arrangment,
-  // but on P4 and Core2 it doesn't seem to matter,
-  // I guess the ooox is handling it just fine.
-  // However P3 and Atom suck here. If it matters
-  // then I guess we will need to do the 4 branches
-  // independantly so that interleaving can be done
-  // over the entire scope.
-
-  if (sub) {  // TV Scale, (X-16)*255/219, mode
-    x86.movd(    mm4,dword_ptr[ptr_y1y2_mult]);//0x00004A85,    //=(255./219.) << 14
-    if(!dupl) {  // 1-2-1 mode
-      x86.paddw( mm3,mm1);               // mm3 = y0 + y1
-      x86.paddw( mm3,mm1);               // mm3 = y0 + y1*2
-      x86.paddw( mm3,qword_ptr[&sub_64]);// mm3 = y0 + y1*2 - 64
-      x86.paddw( mm3,mm2);               // mm3 = y0 + y1*2 + y2 - 64
-    } else {  // 0-1-0 mode
-      x86.movd(  mm3,dword_ptr[&sub_16]);// mm3 = -16
-      x86.paddw( mm3,mm1);               // mm3 = y0 - 16
+// mm0 mm1 mm2 mm3 mm4 mm5 mm6 mm7
+    x86.punpckhbw( mm2,mm0);                   // mm2= 00XX 00R2 00G2 00B2
+    x86.movq(      mm6,mm1);                   // mm6 = 00XX 00R0 00G0 00B0
+    x86.movq(      mm5,mm2);                   // mm5 = 00XX 00R0 00G0 00B0 for next time
+    x86.pmaddwd(   mm2,mm7);                   // mm2 = partial y2 //(cyb*rgbnext[0] + cyg*rgbnext[1] + cyr*rgbnext[2] + 0x108000)
+    x86.paddw(     mm6,mm1);                   // mm6 += 00XX 00R1 00G1 00B1
+    x86.paddd(     mm2,mm0);                   // Add rounding fraction (16.5)<<15 to lower dword only
+    x86.paddw(     mm6,mm1);                   // mm6 += 00XX 00R1 00G1 00B1
+    x86.pmaddwd(   mm1,mm7);                   // mm1 = partial y1 //(cyb*rgb[0] + cyg*rgb[1] + cyr*rgb[2] + 0x108000)
+    x86.punpckldq( mm4,mm2);                   // mm4 = 00G2+00B2 xxxx xxxx
+    x86.paddd(     mm1,mm0);                   // Add rounding fraction (16.5)<<15 to lower dword only
+    x86.paddd(     mm2,mm4);                   // mm2 = 0000y2.. 0000???? 
+    x86.punpckldq( mm4,mm1);                   // mm4 = 00G1+00B1 xxxx xxxx
+    x86.psrld(     mm2,15);                    // mm2 = 000000y2 00000000 final value
+    x86.paddd(     mm1,mm4);                   // mm1 = 0000y1.. 0000???? 
+    x86.movq(      mm3,mm2);                   // mm3 = y2
+    x86.psrld(     mm1,15);                    // mm1 = 000000y1 00000000 final value
+    if (sub) { // TV Scale, (X-16)*255/219, mode
+      x86.movq(    mm4,qword_ptr[&sub_64]);    // mm4 = -64's
+    } else { // PC scale mode
+      x86.movq(    mm4,qword_ptr[&fpix_add]);  // 0x808000 for r_y and b_y
     }
-    x86.pmaddwd( mm3,mm4);               // mm3=scaled_y(latency 2 cycles)
-    x86.pslld(   mm6,14);                // Shift up accumulated R and B values (<<15 in C)
-    x86.punpckldq(mm3,mm3);              // Move scaled_y to upper dword mm3=SCALED_Y SCALED_Y
-    x86.psubd(   mm6,mm3);               // mm6 = b_y and r_y
-    if(!dupl) { // 1-2-1 mode
-      x86.movq(  mm3,mm2);               // Y0 = Y2 for next time
-      x86.psrad( mm6,15);                // Shift down b_y and r_y(>>10 in C-code)
-    } else { // 0-1-0 mode
-      x86.psrad( mm6,13);                // Shift down b_y and r_y(>>10 in C-code)
+    x86.paddw(     mm3,mm1);                   // mm3 = y0 + y2
+
+    x86.align(     16);
+    x86.label("loop");
+
+    x86.paddw(     mm6,mm5);                   // mm6 += 00XX 00R2 00G2 00B2
+    x86.paddw(     mm3,mm1);                   // mm3 = y0 + y1 + y2
+    x86.pslld(     mm6,16);                    // Clear out G-value mm6= RRRR 0000 BBBB 0000
+    x86.paddw(     mm3,mm1);                   // mm3 = y0 + y1*2 + y2
+    x86.punpckhdq( mm1,mm2);                   // mm1= 000000y2 000000y1
+    x86.movq(      mm2,qword_ptr[ptr_y1y2_fpix]);// 0x5033 A29E 3F74 B61E, =(1/((1-0.299)*255/112)<<15+0.5), (1/((1-0.114)*255/112)<<15+0.5)
+    if (sub) { // TV Scale, (X-16)*255/219, mode
+      x86.paddw(   mm3,mm4);                   // mm3 = y0 + y1*2 - 64
+      x86.movq(    mm4,qword_ptr[&fpix_add]);  // 0x808000 for r_y and b_y
     }
-  } else {  // PC scale mode
-    if(!dupl) {  // 1-2-1 mode
-      x86.paddw( mm3,mm1);               // mm3 = y0 + y1
-      x86.paddw( mm3,mm1);               // mm3 = y0 + y1*2
-      x86.paddw( mm3,mm2);               // mm3 = y0 + y1*2 + y2
-    } else {  // 0-1-0 mode
-      x86.movq(  mm3,mm1);               // mm3 = y0
+    x86.add(       DST,4);                     // Two pixels(packed)
+    x86.punpckhdq( mm3,mm3);                   // Copy scaled_y to lower dword mm3=SCALED_Y SCALED_Y
+    x86.add(       SRC, rgb24 ? 6 : 8);
+    x86.por(       mm6,mm3);                   // mm6 = 00r1 00y1 00b1 00y1
+    x86.cmp(       SRC,RGBEND);
+    x86.pmaddwd(   mm6,mm2);                   // Mult b_y and r_y 0x5033 A29E 3F74 B61E, =(1/((1-0.299)*255/112)<<15+0.5), (1/((1-0.114)*255/112)<<15+0.5)
+    x86.pcmpeqd(   mm3,mm3);                   // mm3  = ffff ffff ffff ffff
+    x86.psrad(     mm6,1);                     // mm6 /= 2
+    x86.pslld(     mm3,16);                    // mm3  = ffff 0000 ffff 0000
+    x86.paddd(     mm6,mm4);                   // Add 0x808000 to r_y and b_y
+    x86.movq(      mm2,qword_ptr[SRC]);        // mm2= XXR2 G2B2 XXR1 G1B1
+    x86.pand(      mm6,mm3);                   // Clear out fractions
+    x86.movq(      mm3,mm1);                   // Y0 = Y2 for next time
+    x86.por(       mm6,mm1);                   // mm6 = 00vv 00Y2 00uu 00Y1
+    x86.punpcklbw( mm1,mm2);                   // mm1= XXxx R1xx G1xx B1xx
+    x86.packuswb(  mm6,mm6);                   // mm6 = VVY2 UUY1 VVY2 UUY1
+    x86.psrlw(     mm1,8);                     // mm1= 00XX 00R1 00G1 00B1
+    x86.movd(      dword_ptr[DST],mm6);        // Store final pixel
+    if (rgb24) {
+      x86.psllq(   mm2,8);                     // Compensate for RGB24
     }
-    x86.punpckldq(mm3,mm3);              // Move scaled_y to upper dword mm3=SCALED_Y SCALED_Y
-    x86.psubd(   mm6,mm3);               // mm6 = b_y and r_y
-    if(!dupl) { // 1-2-1 mode
-      x86.movq(  mm3,mm2);               // Y0 = Y2 for next time
-      x86.psrad( mm6,1);                 // Shift down b_y and r_y(>>10 in C-code)
-    } else { // 0-1-0 mode
-      x86.pslld( mm6,1);                 // Shift up b_y and r_y(>>10 in C-code)
+    x86.jae(       "outloop");                 // Jump out of loop if true (width==0)
+    x86.punpckhbw( mm2,mm0);                   // mm2 = 00XX 00R2 00G2 00B2
+    x86.movq(      mm6,mm5);                   // mm6 = 00XX 00R0 00G0 00B0
+    x86.movq(      mm5,mm2);                   // mm5 = 00XX 00R0 00G0 00B0 for next time
+    x86.pmaddwd(   mm2,mm7);                   // mm2 = partial y2 //(cyb*rgbnext[0] + cyg*rgbnext[1] + cyr*rgbnext[2] + 0x108000)
+    x86.paddw(     mm6,mm1);                   // mm6 += 00XX 00R1 00G1 00B1
+    x86.paddd(     mm2,mm0);                   // Add rounding fraction (16.5)<<15 to lower dword only
+    x86.paddw(     mm6,mm1);                   // mm6 += 00XX 00R1 00G1 00B1
+    x86.pmaddwd(   mm1,mm7);                   // mm1 = partial y1 //(cyb*rgb[0] + cyg*rgb[1] + cyr*rgb[2] + 0x108000)
+    x86.punpckldq( mm4,mm2);                   // mm4 = 00G2+00B2 xxxx xxxx
+    x86.paddd(     mm1,mm0);                   // Add rounding fraction (16.5)<<15 to lower dword only
+    x86.paddd(     mm2,mm4);                   // mm2 = 0000y2.. 0000???? 
+    x86.punpckldq( mm4,mm1);                   // mm4 = 00G1+00B1 xxxx xxxx
+    x86.psrld(     mm2,15);                    // mm2 = 000000y2 00000000 final value
+    x86.paddd(     mm1,mm4);                   // mm1 = 0000y1.. 0000???? 
+    x86.paddw(     mm3,mm2);                   // mm3 = y0 + y2
+    x86.psrld(     mm1,15);                    // mm1 = 000000y1 00000000 final value
+    if (sub) { // TV Scale, (X-16)*255/219, mode
+      x86.movq(    mm4,qword_ptr[&sub_64]);    // mm4 = -64's
+    } else { // PC scale mode
+      x86.movq(    mm4,qword_ptr[&fpix_add]);  // 0x808000 for r_y and b_y
     }
+    x86.jmp(       "loop");                // loop if true
+
+  } else { // 0-1-0 mode
+
+// mm0 mm1 mm2 mm3 mm4 mm5 mm6 mm7
+    x86.movq(      mm5,qword_ptr[&fpix_add]);  // 0x808000 for add to r_y and b_y
+
+    x86.align(     16);
+    x86.label("loop");
+
+    x86.punpckhbw( mm2,mm0);                   // mm2= 00XX 00R2 00G2 00B2
+
+    x86.movq(      mm6,mm1);                   // mm6  = 00XX 00R1 00G1 00B1
+    x86.pmaddwd(   mm1,mm7);                   // mm1= v2v2 v2v2 v1v1 v1v1   y1 //(cyb*rgb[0] + cyg*rgb[1] + cyr*rgb[2] + 0x108000)
+    x86.pmaddwd(   mm2,mm7);                   // mm2= w2w2 w2w2 w1w1 w1w1   y2 //(cyb*rgbnext[0] + cyg*rgbnext[1] + cyr*rgbnext[2] + 0x108000)
+    x86.paddd(     mm1,mm0);                   // Add rounding fraction (16.5)<<15 to lower dword only
+    x86.paddd(     mm2,mm0);                   // Add rounding fraction (16.5)<<15 to lower dword only
+    x86.punpckldq( mm3,mm1);                   // mm3= 00G1+00B1 xxxx xxxx
+    x86.punpckldq( mm4,mm2);                   // mm4= 00G2+00B2 xxxx xxxx
+    x86.paddd(     mm1,mm3);
+    if (sub) { // TV Scale, (X-16)*255/219, mode
+      x86.movd(    mm3,dword_ptr[&sub_16]);    // mm3 = -16
+    }
+    x86.paddd(     mm2,mm4);
+    x86.pslld(     mm6,16);                    // Clear out G-value mm6= RRRR 0000 BBBB 0000
+    x86.punpckhdq( mm1,mm2);                   // mm1= 000y2... 000y1...
+    x86.movq(      mm4,qword_ptr[ptr_y1y2_fpix]);// 0x5033 A29E 3F74 B61E
+    x86.psrld(     mm1,15);                    // mm1= 000000y2 000000y1 final value
+
+    if (sub) { // TV Scale, (X-16)*255/219, mode
+      x86.paddw(   mm3,mm1);                   // mm3 = y1 - 16
+    } else { // PC scale mode
+      x86.movq(    mm3,mm1);                   // mm3 = y1
+    }
+
+    x86.punpckldq( mm3,mm3);                   // Copy scaled_y to upper dword mm3=SCALED_Y SCALED_Y
+    x86.add(       DST,4);                     // Two pixels(packed)
+    x86.por(       mm6,mm3);                   // mm6 = 00r1 00y1 00b1 00y1
+    x86.pcmpeqd(   mm3,mm3);                   // mm3  = ffff ffff ffff ffff
+    x86.paddw(     mm6,mm6);                   // mm6 = 0r10 0y10 0b10 0y10 -- Shift up
+    x86.pslld(     mm3,16);                    // mm3  = ffff 0000 ffff 0000
+    x86.pmaddwd(   mm6,mm4);                   // Mult b_y and r_y 0x5033 A29E 3F74 B61E, =(1/((1-0.299)*255/112)<<15+0.5), (1/((1-0.114)*255/112)<<15+0.5)
+    x86.add(       SRC, rgb24 ? 6 : 8);
+    x86.paddd(     mm6,mm5);                   // Add 0x808000 to r_y and b_y
+    x86.movq(      mm2,qword_ptr[SRC]);        // mm2= XXR2 G2B2 XXR1 G1B1
+    x86.pand(      mm6,mm3);                   // Clear out fractions
+    x86.cmp(       SRC,RGBEND);
+    x86.por(       mm6,mm1);                   // mm6 = 00vv 00Y2 00uu 00Y1
+    x86.punpcklbw( mm1,mm2);                   // mm1= XXxx R1xx G1xx B1xx
+    x86.packuswb(  mm6,mm6);                   // mm6 = VVY2 UUY1 VVY2 UUY1
+    x86.psrlw(     mm1,8);                     // mm1= 00XX 00R1 00G1 00B1
+    x86.movd(      dword_ptr[DST],mm6);        // Store final pixel
+    if (rgb24) {
+      x86.psllq(   mm2,8);                     // Compensate for RGB24
+    }
+    x86.jb(        "loop");                    // Jump loop if SRC below RGBEND
+// mm0 mm1 mm2 mm3 mm4 mm5 mm6 mm7
   }
-
-  x86.pcmpeqd(   mm4,mm4);             // mm4  = ffff ffff ffff ffff
-  x86.pmaddwd(   mm6,qword_ptr[ptr_fpix_mul]); // Mult b_y and r_y 0x0000503300003F74, =(1/((1-0.299)*255/112)<<15+0.5), (1/((1-0.114)*255/112)<<15+0.5)
-  x86.add(       RGBOFFSET, rgb24 ? 6 : 8);
-  x86.psllq(     mm2,16);              // mm2 Y2 shifted up
-  x86.paddd(     mm6,qword_ptr[&fpix_add]); // Add 0x808000 to r_y and b_y
-  x86.pslld(     mm4,16);              // mm4  = ffff 0000 ffff 0000
-  x86.por(       mm1,mm2);             // Or lumas together
-  x86.pand(      mm6,mm4);             // Clear out fractions
-  x86.add(       DST,4);               // Two pixels(packed)
-  x86.packuswb(  mm6,mm6);             // mm6 = VV00 UU00 VV00 UU00
-  x86.movq(      mm2,qword_ptr[SRC+RGBOFFSET]);      //mm2= XXR2 G2B2 XXR1 G1B1
-  x86.por(       mm6,mm1);             // mm6 = 0000 0000 vvY2 uuY1
-  x86.punpcklbw( mm1,mm2);             // mm1= XXxx R1xx G1xx B1xx
-  x86.movd(      dword_ptr[DST],mm6);  // Store final pixel
-  if (rgb24) {
-    x86.psllq(   mm2,8);               // Compensate for RGB24
-  }
-  x86.psrlw(     mm1,8);               // mm1= 00XX 00R1 00G1 00B1
-
-  x86.jmp(       "re_enter");          // loop if true
-
-  x86.align(     16);
+  x86.align(       16);
   x86.label("outloop");
-  x86.emms(      );
-   // Restore registers
-  x86.pop(       edi);
-  x86.pop(       esi);
-  x86.pop(       eax);
-  x86.ret(       );
-
+  x86.emms(        );
+  // Restore registers
+  x86.pop(         DST);
+  x86.pop(         SRC);
+  x86.pop(         eax);
+  x86.ret(         );
+                   
   assembly = DynamicAssembledCode(x86, env, "ConvertToYUY2: Dynamic MMX code could not be compiled.");
 }
 

@@ -57,8 +57,8 @@ private:
   const bool interlaced;
 
 protected:
-  void GenerateAssembly(bool rgb24, bool dupl, bool sub, int w, const __int64* ptr_cybgr, const __int64* ptr_fpix_mul,
-                        const int* ptr_fraction, const int* ptr_y1y2_mult, IScriptEnvironment* env); 
+  void GenerateAssembly(bool rgb24, bool dupl, bool sub, int w, const __int64* ptr_cybgr,
+                        const __int64* ptr_y1y2_fpix, const int* ptr_fraction, IScriptEnvironment* env); 
   void mmx_ConvertRGBtoYUY2(const BYTE *src,BYTE *dst,int src_pitch, int dst_pitch, int h);
   DynamicAssembledCode assembly;
 
@@ -82,9 +82,9 @@ public:
 
   static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env);
 
-private:
-  void mmxYV24toYUY2(const unsigned char *py, const unsigned char *pu, const unsigned char *pv,
-                     unsigned char *dst, int pitch1Y, int pitch1UV, int pitch2, int width, int height);
+protected:
+  void GenerateYV24toYUY2(int awidth, int height, IScriptEnvironment* env);
+
 };
 
 #endif // __Convert_YUY2_H__
