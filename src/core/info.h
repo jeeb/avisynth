@@ -1662,7 +1662,10 @@ void DrawStringPlanar(PVideoFrame &dst, int x, int y, const char *s, int len=0)
 				if (fontline & 0x8000) {
 					dpY[0] = 230;
 				} else {
-					dpY[0] = (unsigned char) (((dpY[0]-16) * 7) >> 3) + 16;
+//					dpY[0] = (unsigned char) (((dpY[0]-16) * 7) >> 3) + 16;
+//					dpY[0] = (unsigned char) ((dpY[0] * 7) >> 3) - ((16 * 7) >> 3) + 16;
+//					dpY[0] = (unsigned char) ((dpY[0] * 7) >> 3) - 14 + 16;
+					dpY[0] = (unsigned char) ((dpY[0] * 7) >> 3) + 2;
 				}
 			}
 
@@ -1707,8 +1710,11 @@ void DrawStringPlanar(PVideoFrame &dst, int x, int y, const char *s, int len=0)
 						dpU[0] = 128;
 						dpV[0] = 128;
 					} else {
-						dpU[0] = (unsigned char) (((dpU[0] - 128) * 7) >> 3) + 128;
-						dpV[0] = (unsigned char) (((dpV[0] - 128) * 7) >> 3) + 128;
+//						dpU[0] = (unsigned char) (((dpU[0] - 128) * 7) >> 3) + 128;
+//						dpU[0] = (unsigned char) ((dpU[0] * 7) >> 3) - ((128 * 7) >> 3) + 128;
+//						dpU[0] = (unsigned char) ((dpU[0] * 7) >> 3) - 112 + 128;
+						dpU[0] = (unsigned char) ((dpU[0] * 7) >> 3) + 16;
+						dpV[0] = (unsigned char) ((dpV[0] * 7) >> 3) + 16;
 					}
 				}
 
@@ -1823,13 +1829,13 @@ void DrawStringYUY2(PVideoFrame &dst, int x, int y, const char *s, int len=0)
 					}
 				} else {
 					if (int(dp) & 2) {
-						dp[0] = (unsigned char) (((dp[0]-16)  * 7) >> 3) + 16;
-						dp[-1]= (unsigned char) (((dp[-1]-128)* 7) >> 3) + 128;
-						dp[1] = (unsigned char) (((dp[1]-128) * 7) >> 3) + 128;
+						dp[0] = (unsigned char) ((dp[0] * 7) >> 3) + 2;
+						dp[-1]= (unsigned char) ((dp[-1]* 7) >> 3) + 16;
+						dp[1] = (unsigned char) ((dp[1] * 7) >> 3) + 16;
 					} else {
-						dp[0] = (unsigned char) (((dp[0]- 16) * 7) >> 3) + 16;
-						dp[1] = (unsigned char) (((dp[1]-128) * 7) >> 3) + 128;
-						dp[3] = (unsigned char) (((dp[3]-128) * 7) >> 3) + 128;
+						dp[0] = (unsigned char) ((dp[0] * 7) >> 3) + 2;
+						dp[1] = (unsigned char) ((dp[1] * 7) >> 3) + 16;
+						dp[3] = (unsigned char) ((dp[3] * 7) >> 3) + 16;
 					}
 				}
 			}
