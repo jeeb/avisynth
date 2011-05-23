@@ -48,6 +48,8 @@ MatrixGenerator3x3::MatrixGenerator3x3() { }
 
 MatrixGenerator3x3::~MatrixGenerator3x3() {
   assembly.Free();
+  unpacker.Free();
+  packer.Free();
 }
 
 /***************************
@@ -65,7 +67,7 @@ void MatrixGenerator3x3::GeneratePacker(int width, IScriptEnvironment* env) {
   Assembler x86;   // This is the class that assembles the code.
 
   bool sse2  = !!(env->GetCPUFlags() & CPUF_SSE2);
-  bool ssse3 = !!(env->GetCPUFlags() & CPUF_SSSE3);
+  bool fast128 = !!(env->GetCPUFlags() & (CPUF_SSE3|CPUF_SSSE3|CPUF_SSE4_1|CPUF_SSE4_2));
 
   const int loops  = (width+7) / 8;
   const int loopsA = (width+15) / 16;
@@ -130,9 +132,10 @@ void MatrixGenerator3x3::GeneratePacker(int width, IScriptEnvironment* env) {
 
     x86.mov(edx, loops);
 
-    // Surprisingly the Unaligned code path is faster on my P4, 
+    // Surprisingly the Unaligned code path is faster on my P4,
     // however my core2 loves the big code.
-    if (ssse3) { 
+    if (fast128) {
+	  // Check source planes are mod 16 aligned
       x86.test(eax, 0xF);
       x86.jnz("loopback");
 
@@ -252,8 +255,10 @@ void MatrixGenerator3x3::GenerateUnPacker(int width, IScriptEnvironment* env) {
   x86.mov(ebx, dword_ptr [eax+8]);               // Arg3 -- Plane 2 dest
   x86.mov(eax, dword_ptr [eax+4]);               // Arg2 -- Plane 1 dest
 
-  if (ssse3) {
-    x86.movdqa(xmm7,xmmword_ptr[&Shuf]);
+  if (sse2) {
+    if (ssse3) {
+      x86.movdqa(xmm7,xmmword_ptr[&Shuf]);
+    }
     x86.xor(edi, edi);
     x86.mov(edx, loops);
 
@@ -263,43 +268,22 @@ void MatrixGenerator3x3::GenerateUnPacker(int width, IScriptEnvironment* env) {
     x86.movdqa(xmm0,xmmword_ptr[esi+edi*4]);    // XXQ3Q2Q1xxq3q2q1XXP3P2P1xxp3p2p1
     x86.movdqa(xmm1,xmmword_ptr[esi+edi*4+16]); // XXS3S2S1xxs3s2s1XXR3R2R1xxr3r2r1
 
-    x86.pshufb(xmm0,xmm7);                      // 00000000Q3q3P3p3Q2q2P2p2Q1q1P1p1
-    x86.pshufb(xmm1,xmm7);                      // 00000000S3s3R3r3S2s2R2r2S1s1R1r1
+    if (ssse3) {
+      x86.pshufb(xmm0,xmm7);                    // 00000000Q3q3P3p3Q2q2P2p2Q1q1P1p1
+      x86.pshufb(xmm1,xmm7);                    // 00000000S3s3R3r3S2s2R2r2S1s1R1r1
+    } else {
+      x86.punpcklqdq(xmm2,xmm0);                // XXP3P2P1xxp3p2p1................
+      x86.punpcklqdq(xmm3,xmm1);                // XXR3R2R1xxr3r2r1................
 
-    x86.movdqa(xmm4,xmm0);
+      x86.punpckhbw(xmm2,xmm0);                 // XXXXQ3P3Q2P2Q1P1xxxxq3p3q2p2q1p1
+      x86.punpckhbw(xmm3,xmm1);                 // XXXXS3R3S2R2S1R1xxxxs3r3s2r2s1r1
 
-    x86.punpckldq(xmm0,xmm1);                   // S2s2R2r2Q2q2P2p2S1s1R1r1Q1q1P1p1
-    x86.punpckhdq(xmm4,xmm1);                   // 0000000000000000S3s3R3r3Q3q3P3p3
+      x86.punpcklqdq(xmm0,xmm2);                // xxxxq3p3q2p2q1p1................
+      x86.punpcklqdq(xmm1,xmm3);                // xxxxs3r3s2r2s1r1................
 
-    x86.movq(qword_ptr[eax+edi],xmm0);          // Store: S1s1R1r1Q1q1P1p1
-    x86.punpckhqdq(xmm0,xmm0);                  // S2s2R2r2Q2q2P2p2S2s2R2r2Q2q2P2p2
-    x86.movq(qword_ptr[ecx+edi],xmm4);          // Store: S3s3R3r3Q3q3P3p3
-    x86.add(edi,8);
-    x86.dec(edx);
-    x86.movq(qword_ptr[ebx+edi-8],xmm0);        // Store: S2s2R2r2Q2q2P2p2
-
-    x86.jnz("loopback");
-  } else if (sse2) {
-    x86.xor(edi, edi);
-    x86.mov(edx, loops);
-
-    x86.align(16);
-    x86.label("loopback");
-
-    x86.movdqa(xmm0,xmmword_ptr[esi+edi*4]);    // XXQ3Q2Q1xxq3q2q1XXP3P2P1xxp3p2p1
-    x86.movdqa(xmm1,xmmword_ptr[esi+edi*4+16]); // XXS3S2S1xxs3s2s1XXR3R2R1xxr3r2r1
-
-    x86.punpcklqdq(xmm2,xmm0);                  // XXP3P2P1xxp3p2p1................
-    x86.punpcklqdq(xmm3,xmm1);                  // XXR3R2R1xxr3r2r1................
-
-    x86.punpckhbw(xmm2,xmm0);                   // XXXXQ3P3Q2P2Q1P1xxxxq3p3q2p2q1p1
-    x86.punpckhbw(xmm3,xmm1);                   // XXXXS3R3S2R2S1R1xxxxs3r3s2r2s1r1
-
-    x86.punpcklqdq(xmm0,xmm2);                  // xxxxq3p3q2p2q1p1................
-    x86.punpcklqdq(xmm1,xmm3);                  // xxxxs3r3s2r2s1r1................
-
-    x86.punpckhbw(xmm0,xmm2);                   // XXxxXXxxQ3q3P3p3Q2q2P2p2Q1q1P1p1 
-    x86.punpckhbw(xmm1,xmm3);                   // XXxxXXxxS3s3R3r3S2s2R2r2S1s1R1r1 
+      x86.punpckhbw(xmm0,xmm2);                 // XXxxXXxxQ3q3P3p3Q2q2P2p2Q1q1P1p1
+      x86.punpckhbw(xmm1,xmm3);                 // XXxxXXxxS3s3R3r3S2s2R2r2S1s1R1r1
+    }
 
     x86.movdqa(xmm4,xmm0);
 
@@ -385,8 +369,6 @@ void MatrixGenerator3x3::GenerateUnPacker(int width, IScriptEnvironment* env) {
  *
  * 8 bytes/loop
  * 2 pixels/loop
- * Following MUST be initialized prior to GenerateAssembly:
- * pre_add, post_add, src_pixel_step, dest_pixel_step
  *
  * Faction is the fraction part in bits.
  * rgb_out requires every fourth byte in the input to be one (packer does this), masks alpha channel on output
@@ -518,7 +500,7 @@ void MatrixGenerator3x3::GenerateAssembly(int width, int frac_bits, bool rgb_out
         x86.punpckldq(   xmm0, xmm1);                          //  [---Y|---X|---y|---x]
         x86.punpckhdq(   xmm1, xmm1);                          //  [---Z|---Z|---z|---z]
 
-        x86.movdqa(      xmm6, xmm0);                          // 
+        x86.movdqa(      xmm6, xmm0);                          //
         x86.punpcklqdq(  xmm0, xmm1);                          //  [---z|---z|---y|---x]
         x86.punpckhqdq(  xmm6, xmm1);                          //  [---Z|---Z|---Y|---X]
 
