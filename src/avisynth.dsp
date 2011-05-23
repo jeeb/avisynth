@@ -817,6 +817,14 @@ SOURCE=.\convert\convert_rgb.h
 # End Source File
 # Begin Source File
 
+SOURCE=.\convert\convert_rgbtoy8.cpp
+# End Source File
+# Begin Source File
+
+SOURCE=.\convert\convert_rgbtoy8.h
+# End Source File
+# Begin Source File
+
 SOURCE=.\convert\convert_yuy2.cpp
 # End Source File
 # Begin Source File

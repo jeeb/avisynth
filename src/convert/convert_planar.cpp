@@ -97,6 +97,12 @@ ConvertToY8::ConvertToY8(PClip src, int in_matrix, IScriptEnvironment* env) : Ge
       env->ThrowError("ConvertToY8: Unknown matrix.");
     }
     *m = 0;  // Alpha
+ 
+    if (pixel_step == 4)
+      genRGB32toY8(vi.width, vi.height, offset_y, matrix, env);
+    else if (pixel_step == 3)
+      genRGB24toY8(vi.width, vi.height, offset_y, matrix, env);
+
     return;
   }
 
@@ -152,8 +158,8 @@ PVideoFrame __stdcall ConvertToY8::GetFrame(int n, IScriptEnvironment* env) {
     BYTE* dstY = dst->GetWritePtr(PLANAR_Y);
     const int dstPitch = dst->GetPitch(PLANAR_Y);
 
-    if (pixel_step == 4) {
-      convRGB32toY8(srcp, dstY, -srcPitch, dstPitch, vi.width, vi.height, offset_y);
+    if (pixel_step == 3 || pixel_step == 4) {
+      assembly.Call(srcp, dstY, -srcPitch, dstPitch);
       return dst;
     }
 
@@ -172,182 +178,6 @@ PVideoFrame __stdcall ConvertToY8::GetFrame(int n, IScriptEnvironment* env) {
     }
   }
   return dst;
-}
-
-
-void ConvertToY8::convRGB32toY8(const unsigned char *src, unsigned char *py,
-       int pitch1, int pitch2y, int width, int height, int offset_y)
-{
-	void *rest = (void *)matrix;
-
-	__asm {
-		mov			esi,src
-		mov			edi,py
-		mov			eax,rest			; this->matrix
-
-		movd		mm1,offset_y
-		pcmpeqd		mm2,mm2
-		paddd		mm1,mm1
-		pxor		mm0,mm0
-		psubd		mm1,mm2				; +=0.5
-		movq		mm2,[eax]			; [0|cyr|cyg|cyb]
-
-		mov			edx,width
-		mov			ecx,3
-		mov			eax,height
-		and			ecx,edx				; ecx remainder
-		psllq		mm1,46				; 0x0008400000000000
-		sub			edx,ecx				; edx width mod 4
-
-		cmp			ecx,3
-		mov			rest,offset do_3	; Program line tail processing routine
-		je			start
-
-		cmp			ecx,2
-		mov			rest,offset do_2
-		je			start
-
-		cmp			ecx,1
-		mov			rest,offset do_1
-		je			start
-
-		mov			rest,offset nexty	; None, fall straight thru
-		jmp			start
-
-		align		16
-do_1:
-		movd		mm6,[esi+ecx*4]		; Get 1 pixels
-		punpcklbw	mm6,mm0				; [00la|00rr|00gg|00bb]
-		pmaddwd		mm6,mm2				; [0*a+cyr*r|cyg*g+cyb*b]
-		punpckldq	mm7,mm6				; [loDWmm6|junk]
-		paddd		mm6,mm1				; +=0.5
-		paddd		mm6,mm7				; [hiDWmm6+32768+loDWmm6|junk]
-		psrad		mm6,15				; -> 8 bit result
-		punpckhwd	mm6,mm0				; [....|....|....|..00]
-		packuswb	mm6,mm0				; [..|..|..|..|..|..|..|00]
-		movd		[edi+ecx],mm6		; write 1 pixel
-
-		jmp			nexty
-
-		align		16
-do_2:
-		movq		mm6,[esi+ecx*4]		; Get pixels 1 & 0
-		movq		mm5,mm6				; duplicate pixels
-		punpcklbw	mm6,mm0				; [00la|00rr|00gg|00bb]			-- 0
-		punpckhbw	mm5,mm0	 			; [00ha|00rr|00gg|00bb]         -- 1
-		pmaddwd		mm6,mm2				; [0*a+cyr*r|cyg*g+cyb*b]		-- 0
-		pmaddwd		mm5,mm2				; [0*a+cyr*r|cyg*g+cyb*b]       -- 1
-		punpckldq	mm7,mm6				; [loDWmm6|junk]				-- 0
-		punpckldq	mm3,mm5				; [loDWmm5|junk]				-- 1
-		paddd		mm6,mm7				; [hiDWmm6+32768+loDWmm6|junk]	-- 0
-		paddd		mm5,mm3				; [hiDWmm5+32768+loDWmm5|junk]	-- 1
-		paddd		mm6,mm1				; +=0.5
-		paddd		mm5,mm1				; +=0.5
-		psrad		mm6,15				; -> 8 bit result				-- 0
-		psrad		mm5,15				; -> 8 bit result				-- 1
-
-		punpckhwd	mm6,mm5				; [....|....|..11|..00]
-		packuswb	mm6,mm0				; [..|..|..|..|..|..|11|00]
-		movd		[edi+ecx],mm6		; write 2 pixels
-
-		jmp			nexty
-
-		align		16
-do_3:
-		movq		mm6,[esi+ecx*4]		; Get pixels 1 & 0
-		movd		mm4,[esi+ecx*4+8]	; Get pixel 2
-		movq		mm5,mm6				; duplicate pixels
-
-		punpcklbw	mm6,mm0				; [00la|00rr|00gg|00bb]			-- 0
-		punpckhbw	mm5,mm0	 			; [00ha|00rr|00gg|00bb]         -- 1
-		pmaddwd		mm6,mm2				; [0*a+cyr*r|cyg*g+cyb*b]		-- 0
-		pmaddwd		mm5,mm2				; [0*a+cyr*r|cyg*g+cyb*b]       -- 1
-		punpckldq	mm7,mm6				; [loDWmm6|junk]				-- 0
-		punpckldq	mm3,mm5				; [loDWmm5|junk]				-- 1
-		paddd		mm6,mm7				; [hiDWmm6+32768+loDWmm6|junk]	-- 0
-		punpcklbw	mm4,mm0				; [00la|00rr|00gg|00bb]			-- 2
-		paddd		mm5,mm3				; [hiDWmm5+32768+loDWmm5|junk]	-- 1
-		pmaddwd		mm4,mm2				; [0*a+cyr*r|cyg*g+cyb*b]		-- 2
-		paddd		mm6,mm1				; +=0.5
-		punpckldq	mm7,mm4				; [loDWmm4|junk]				-- 2
-		paddd		mm5,mm1				; +=0.5
-		paddd		mm4,mm7				; [hiDWmm4+32768+loDWmm4|junk]	-- 2
-		psrad		mm6,15				; -> 8 bit result				-- 0
-		paddd		mm4,mm1				; +=0.5
-		psrad		mm5,15				; -> 8 bit result				-- 1
-		psrad		mm4,15				; -> 8 bit result				-- 2
-		punpckhwd	mm6,mm5				; [....|....|..11|..00]
-		punpckhwd	mm4,mm0				; [....|....|....|..22]
-
-		punpckldq	mm6,mm4				; [....|..22|..11|..00]
-		packuswb	mm6,mm0				; [..|..|..|..|..|22|11|00]
-		movd		[edi+ecx],mm6		; write 3 pixels
-
-		align		16
-nexty:
-		add			esi,pitch1
-		dec			eax
-		add			edi,pitch2y
-start:
-		xor			ecx,ecx
-		test		eax,eax
-		jz			done
-
-		cmp			ecx,edx				; break >= myx & ~3
-		jb			loop4
-
-		jmp			[rest]				; do_{n} remainder
-
-		align		16
-loop4:
-		movq		mm6,[esi+ecx*4]		; Get pixels 1 & 0
-		movq		mm4,[esi+ecx*4+8]	; Get pixels 3 & 2
-		movq		mm5,mm6				; duplicate pixels
-
-		punpcklbw	mm6,mm0				; [00la|00rr|00gg|00bb]			-- 0
-		punpckhbw	mm5,mm0	 			; [00ha|00rr|00gg|00bb]         -- 1
-		pmaddwd		mm6,mm2				; [0*a+cyr*r|cyg*g+cyb*b]		-- 0
-		pmaddwd		mm5,mm2				; [0*a+cyr*r|cyg*g+cyb*b]       -- 1
-		punpckldq	mm7,mm6				; [loDWmm6|junk]				-- 0
-		punpckldq	mm3,mm5				; [loDWmm5|junk]				-- 1
-		paddd		mm6,mm7				; [hiDWmm6+32768+loDWmm6|junk]	-- 0
-		paddd		mm5,mm3				; [hiDWmm5+32768+loDWmm5|junk]	-- 1
-		paddd		mm6,mm1				; +=0.5
-		paddd		mm5,mm1				; +=0.5
-		psrad		mm6,15				; -> 8 bit result				-- 0
-		psrad		mm5,15				; -> 8 bit result				-- 1
-
-		movq		mm3,mm4				; duplicate pixels
-		punpckhwd	mm6,mm5				; [....|....|..11|..00]
-
-		punpcklbw	mm4,mm0				; [00la|00rr|00gg|00bb]			-- 2
-		punpckhbw	mm3,mm0	 			; [00ha|00rr|00gg|00bb]         -- 3
-		pmaddwd		mm4,mm2				; [0*a+cyr*r|cyg*g+cyb*b]		-- 2
-		pmaddwd		mm3,mm2				; [0*a+cyr*r|cyg*g+cyb*b]       -- 3
-		punpckldq	mm7,mm4				; [loDWmm4|junk]				-- 2
-		punpckldq	mm5,mm3				; [loDWmm3|junk]				-- 3
-		paddd		mm4,mm7				; [hiDWmm4+32768+loDWmm4|junk]	-- 2
-		paddd		mm3,mm5				; [hiDWmm3+32768+loDWmm3|junk]	-- 3
-		paddd		mm4,mm1				; +=0.5
-		paddd		mm3,mm1				; +=0.5
-		psrad		mm4,15				; -> 8 bit result				-- 2
-		psrad		mm3,15				; -> 8 bit result				-- 3
-
-		punpckhwd	mm4,mm3				; [....|....|..33|..22]
-
-		punpckldq	mm6,mm4				; [..33|..22|..11|..00]
-		add			ecx,4				; loop counter
-		packuswb	mm6,mm0				; [..|..|..|..|33|22|11|00]
-		cmp			ecx,edx				; break >= myx & ~3
-		movd		[edi+ecx-4],mm6		; write 4 pixels
-		jb			loop4
-
-		jmp			[rest]				; do_{n} remainder
-
-		align		16
-done:
-		emms
-    }
 }
 
 
