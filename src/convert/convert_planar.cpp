@@ -916,7 +916,7 @@ ConvertToPlanarGeneric::ConvertToPlanarGeneric(PClip src, int dst_space, bool in
     float ydInV = 0.0f, tydInV = 0.0f, bydInV = 0.0f;
 
     if (vi.IsYV12()) {
-      switch (getPlacement(InPlacement.AsString(0), env)) {
+      switch (getPlacement(InPlacement, env)) {
         case PLACEMENT_DV:
           ydInU = 0.0f, tydInU = 0.0f, bydInU = 0.5f;
           ydInV = 1.0f, tydInV = 0.5f, bydInV = 1.0f;
@@ -946,7 +946,7 @@ ConvertToPlanarGeneric::ConvertToPlanarGeneric(PClip src, int dst_space, bool in
     float ydOutV = 0.0f, tydOutV = 0.0f, bydOutV = 0.0f;
 
     if (vi.IsYV12()) {
-      switch (getPlacement(OutPlacement.AsString(0), env)) {
+      switch (getPlacement(OutPlacement, env)) {
         case PLACEMENT_DV:
           ydOutU = 0.0f, tydOutU = 0.0f, bydOutU = 0.5f;
           ydOutV = 1.0f, tydOutV = 0.5f, bydOutV = 1.0f;
@@ -1041,7 +1041,7 @@ AVSValue __cdecl ConvertToPlanarGeneric::CreateYV12(AVSValue args, void*, IScrip
   PClip clip = args[0].AsClip();
 
   if (clip->GetVideoInfo().IsYV12()) {
-    if (!args[3].Defined() && !args[5].Defined())
+    if (getPlacement(args[3]) == getPlacement(args[5]))
       return clip;
   }
   else if (clip->GetVideoInfo().IsRGB())
@@ -1109,14 +1109,19 @@ AVSValue __cdecl ConvertToPlanarGeneric::CreateYV411(AVSValue args, void*, IScri
 }
 
 
-static int getPlacement( const char* placement, IScriptEnvironment* env) {
+static int getPlacement(const AVSValue& _placement, IScriptEnvironment* env) {
+  char* placement = _placement.AsString(0);
+
   if (placement) {
     if (!lstrcmpi(placement, "mpeg2"))
       return PLACEMENT_MPEG2;
+
     if (!lstrcmpi(placement, "mpeg1"))
       return PLACEMENT_MPEG1;
+
     if (!lstrcmpi(placement, "dv"))
       return PLACEMENT_DV;
+
     env->ThrowError("Convert: Unknown chromaplacement");
   }
   return PLACEMENT_MPEG2;
