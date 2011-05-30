@@ -62,8 +62,10 @@ extern const AVSFunction Merge_filters[] = {
 #else
 extern const AVSFunction Merge_filters[] = {
   { "Merge", "cc[weight]f", MergeAll::Create },  // src, src2, weight
-  { "MergeChroma", "cc[chromaweight]f", MergeChroma::Create },  // src, chroma src, weight
-  { "MergeLuma", "cc[lumaweight]f", MergeLuma::Create },      // src, luma src, weight
+  { "MergeChroma", "cc[weight]f", MergeChroma::Create },  // src, chroma src, weight
+  { "MergeChroma", "cc[chromaweight]f", MergeChroma::Create },  // Legacy!
+  { "MergeLuma", "cc[weight]f", MergeLuma::Create },      // src, luma src, weight
+  { "MergeLuma", "cc[lumaweight]f", MergeLuma::Create },      // Legacy!
   { 0 }
 };
 #define TEST(off, on)
