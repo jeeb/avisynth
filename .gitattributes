@@ -1,0 +1,4 @@
+*.rc    diff
+*.rc*   diff
+*.h     diff
+*.cpp   diff
