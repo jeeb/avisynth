@@ -1,0 +1,673 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|Win32">
+      <Configuration>Debug</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|Win32">
+      <Configuration>Release</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="RelSym|Win32">
+      <Configuration>RelSym</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Template|Win32">
+      <Configuration>Template</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <SccProjectName />
+    <SccLocalPath />
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Template|Win32'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='RelSym|Win32'" Label="Configuration">
+    <ConfigurationType>DynamicLibrary</ConfigurationType>
+    <UseOfMfc>false</UseOfMfc>
+    <CharacterSet>MultiByte</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
+    <ConfigurationType>DynamicLibrary</ConfigurationType>
+    <UseOfMfc>false</UseOfMfc>
+    <CharacterSet>MultiByte</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
+    <ConfigurationType>DynamicLibrary</ConfigurationType>
+    <UseOfMfc>false</UseOfMfc>
+    <CharacterSet>MultiByte</CharacterSet>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ImportGroup Label="ExtensionSettings">
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Template|Win32'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='RelSym|Win32'" Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+    <Import Project="$(VCTargetsPath)Microsoft.Cpp.UpgradeFromVC60.props" />
+  </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+    <Import Project="$(VCTargetsPath)Microsoft.Cpp.UpgradeFromVC60.props" />
+  </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+    <Import Project="$(VCTargetsPath)Microsoft.Cpp.UpgradeFromVC60.props" />
+  </ImportGroup>
+  <PropertyGroup Label="UserMacros" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <OutDir>.\Release\</OutDir>
+    <IntDir>.\Release\</IntDir>
+    <LinkIncremental>false</LinkIncremental>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <OutDir>.\Debug\</OutDir>
+    <IntDir>.\Debug\</IntDir>
+    <LinkIncremental>true</LinkIncremental>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='RelSym|Win32'">
+    <OutDir>.\RelSym\</OutDir>
+    <IntDir>.\RelSym\</IntDir>
+    <LinkIncremental>false</LinkIncremental>
+  </PropertyGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <ClCompile>
+      <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
+      <InlineFunctionExpansion>OnlyExplicitInline</InlineFunctionExpansion>
+      <StringPooling>true</StringPooling>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <Optimization>MaxSpeed</Optimization>
+      <SuppressStartupBanner>true</SuppressStartupBanner>
+      <WarningLevel>Level4</WarningLevel>
+      <DebugInformationFormat>OldStyle</DebugInformationFormat>
+      <PreprocessorDefinitions>NDEBUG;INC_OLE2;STRICT;WIN32;_WIN32;_MT;_DLL;_USRDLL;AVISYNTH_C_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AssemblerListingLocation>.\Release\</AssemblerListingLocation>
+      <BrowseInformation>true</BrowseInformation>
+      <PrecompiledHeaderOutputFile>.\Release\avisynth.pch</PrecompiledHeaderOutputFile>
+      <PrecompiledHeader>Use</PrecompiledHeader>
+      <PrecompiledHeaderFile>stdafx.h</PrecompiledHeaderFile>
+      <ObjectFileName>.\Release\</ObjectFileName>
+      <ProgramDataBaseFileName>.\Release\</ProgramDataBaseFileName>
+      <AdditionalOptions> /Gs </AdditionalOptions>
+    </ClCompile>
+    <Midl>
+      <SuppressStartupBanner>true</SuppressStartupBanner>
+      <PreprocessorDefinitions>NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <TypeLibraryName>.\Release\avisynth.tlb</TypeLibraryName>
+      <MkTypLibCompatible>true</MkTypLibCompatible>
+      <TargetEnvironment>Win32</TargetEnvironment>
+    </Midl>
+    <ResourceCompile>
+      <Culture>0x0409</Culture>
+      <PreprocessorDefinitions>NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ResourceCompile>
+    <Bscmake>
+      <SuppressStartupBanner>true</SuppressStartupBanner>
+      <OutputFile>.\Release\avisynth.bsc</OutputFile>
+    </Bscmake>
+    <Link>
+      <SuppressStartupBanner>true</SuppressStartupBanner>
+      <LinkDLL>true</LinkDLL>
+      <GenerateDebugInformation>false</GenerateDebugInformation>
+      <SubSystem>Console</SubSystem>
+      <IgnoreSpecificDefaultLibraries>LIBC;%(IgnoreSpecificDefaultLibraries)</IgnoreSpecificDefaultLibraries>
+      <OutputFile>.\Release\avisynth.dll</OutputFile>
+      <ImportLibrary>.\Release\avisynth.lib</ImportLibrary>
+      <AdditionalDependencies>../distrib/lib/DevIL.lib;$(IntDir)SoundTouch.lib;$(IntDir)pfc.lib;$(IntDir)softwire.lib;msacm32.lib;vfw32.lib;version.lib;winmm.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <ModuleDefinitionFile>.\core\avisynth.def</ModuleDefinitionFile>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <ClCompile>
+      <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
+      <InlineFunctionExpansion>Default</InlineFunctionExpansion>
+      <FunctionLevelLinking>false</FunctionLevelLinking>
+      <Optimization>Disabled</Optimization>
+      <SuppressStartupBanner>true</SuppressStartupBanner>
+      <WarningLevel>Level4</WarningLevel>
+      <MinimalRebuild>true</MinimalRebuild>
+      <DebugInformationFormat>EditAndContinue</DebugInformationFormat>
+      <StringPooling>true</StringPooling>
+      <PreprocessorDefinitions>IL_DEBUG;_DEBUG;DEBUG;INC_OLE2;STRICT;WIN32;_WIN32;_MT;_DLL;_USRDLL;AVISYNTH_C_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AssemblerListingLocation>.\Debug\</AssemblerListingLocation>
+      <BrowseInformation>true</BrowseInformation>
+      <PrecompiledHeaderOutputFile>.\Debug\avisynth.pch</PrecompiledHeaderOutputFile>
+      <PrecompiledHeader>Use</PrecompiledHeader>
+      <PrecompiledHeaderFile>stdafx.h</PrecompiledHeaderFile>
+      <ObjectFileName>.\Debug\</ObjectFileName>
+      <ProgramDataBaseFileName>.\Debug\</ProgramDataBaseFileName>
+      <BasicRuntimeChecks>EnableFastChecks</BasicRuntimeChecks>
+    </ClCompile>
+    <Midl>
+      <SuppressStartupBanner>true</SuppressStartupBanner>
+      <PreprocessorDefinitions>_DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <TypeLibraryName>.\Debug\avisynth.tlb</TypeLibraryName>
+      <MkTypLibCompatible>true</MkTypLibCompatible>
+      <TargetEnvironment>Win32</TargetEnvironment>
+    </Midl>
+    <ResourceCompile>
+      <Culture>0x0409</Culture>
+      <PreprocessorDefinitions>_DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ResourceCompile>
+    <Bscmake>
+      <SuppressStartupBanner>true</SuppressStartupBanner>
+      <OutputFile>.\Debug\avisynth.bsc</OutputFile>
+    </Bscmake>
+    <Link>
+      <SuppressStartupBanner>true</SuppressStartupBanner>
+      <LinkDLL>true</LinkDLL>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <SubSystem>Console</SubSystem>
+      <IgnoreSpecificDefaultLibraries>LIBC;%(IgnoreSpecificDefaultLibraries)</IgnoreSpecificDefaultLibraries>
+      <IgnoreAllDefaultLibraries>false</IgnoreAllDefaultLibraries>
+      <OutputFile>.\Debug\avisynth.dll</OutputFile>
+      <ImportLibrary>.\Debug\avisynth.lib</ImportLibrary>
+      <AdditionalDependencies>../distrib/lib/debug/devil-d.lib;$(IntDir)SoundTouch.lib;$(IntDir)pfc.lib;$(IntDir)softwire.lib;msacm32.lib;vfw32.lib;version.lib;winmm.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <ModuleDefinitionFile>.\core\avisynth.def</ModuleDefinitionFile>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='RelSym|Win32'">
+    <ClCompile>
+      <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
+      <InlineFunctionExpansion>OnlyExplicitInline</InlineFunctionExpansion>
+      <StringPooling>true</StringPooling>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <Optimization>MaxSpeed</Optimization>
+      <SuppressStartupBanner>false</SuppressStartupBanner>
+      <WarningLevel>Level4</WarningLevel>
+      <PreprocessorDefinitions>NDEBUG;INC_OLE2;STRICT;WIN32;_WIN32;_MT;_DLL;_USRDLL;AVISYNTH_C_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AssemblerOutput>AssemblyAndSourceCode</AssemblerOutput>
+      <AssemblerListingLocation>.\RelSym\</AssemblerListingLocation>
+      <BrowseInformation>true</BrowseInformation>
+      <PrecompiledHeaderOutputFile>.\RelSym\avisynth.pch</PrecompiledHeaderOutputFile>
+      <PrecompiledHeader>Use</PrecompiledHeader>
+      <PrecompiledHeaderFile>stdafx.h</PrecompiledHeaderFile>
+      <ObjectFileName>.\RelSym\</ObjectFileName>
+      <ProgramDataBaseFileName>.\RelSym\</ProgramDataBaseFileName>
+      <AdditionalOptions> /Gs </AdditionalOptions>
+    </ClCompile>
+    <Midl>
+      <SuppressStartupBanner>false</SuppressStartupBanner>
+      <PreprocessorDefinitions>NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <TypeLibraryName>.\RelSym\avisynth.tlb</TypeLibraryName>
+      <MkTypLibCompatible>true</MkTypLibCompatible>
+      <TargetEnvironment>Win32</TargetEnvironment>
+    </Midl>
+    <ResourceCompile>
+      <Culture>0x0409</Culture>
+      <PreprocessorDefinitions>NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ResourceCompile>
+    <Bscmake>
+      <SuppressStartupBanner>true</SuppressStartupBanner>
+      <OutputFile>.\RelSym\avisynth.bsc</OutputFile>
+    </Bscmake>
+    <Link>
+      <SuppressStartupBanner>true</SuppressStartupBanner>
+      <LinkDLL>true</LinkDLL>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <SubSystem>Console</SubSystem>
+      <IgnoreSpecificDefaultLibraries>LIBC;%(IgnoreSpecificDefaultLibraries)</IgnoreSpecificDefaultLibraries>
+      <OutputFile>.\RelSym\avisynth.dll</OutputFile>
+      <ImportLibrary>.\RelSym\avisynth.lib</ImportLibrary>
+      <AdditionalDependencies>../distrib/lib/DevIL.lib;$(IntDir)SoundTouch.lib;$(IntDir)pfc.lib;$(IntDir)softwire.lib;msacm32.lib;vfw32.lib;version.lib;winmm.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <ModuleDefinitionFile>.\core\avisynth.def</ModuleDefinitionFile>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemGroup>
+    <ClCompile Include="core\parser\expression.cpp">
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='Release|Win32'"> /Gs   /Gs </AdditionalOptions>
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='RelSym|Win32'"> /Gs   /Gs </AdditionalOptions>
+    </ClCompile>
+    <ClCompile Include="core\parser\script.cpp">
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='Release|Win32'"> /Gs   /Gs </AdditionalOptions>
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='RelSym|Win32'"> /Gs   /Gs </AdditionalOptions>
+    </ClCompile>
+    <ClCompile Include="core\parser\scriptparser.cpp">
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='Release|Win32'"> /Gs   /Gs </AdditionalOptions>
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='RelSym|Win32'"> /Gs   /Gs </AdditionalOptions>
+    </ClCompile>
+    <ClCompile Include="core\parser\tokenizer.cpp">
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='Release|Win32'"> /Gs   /Gs </AdditionalOptions>
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='RelSym|Win32'"> /Gs   /Gs </AdditionalOptions>
+    </ClCompile>
+    <ClCompile Include="core\alignplanar.cpp">
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='Release|Win32'"> /Gs   /Gs </AdditionalOptions>
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='RelSym|Win32'"> /Gs   /Gs </AdditionalOptions>
+    </ClCompile>
+    <ClCompile Include="core\avisynth.cpp">
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='Release|Win32'"> /Gs   /Gs </AdditionalOptions>
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='RelSym|Win32'"> /Gs   /Gs </AdditionalOptions>
+    </ClCompile>
+    <ClCompile Include="core\avisynth_c.cpp">
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='Release|Win32'"> /Gs   /Gs </AdditionalOptions>
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='RelSym|Win32'"> /Gs   /Gs </AdditionalOptions>
+    </ClCompile>
+    <ClCompile Include="core\cache.cpp">
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='Release|Win32'"> /Gs   /Gs </AdditionalOptions>
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='RelSym|Win32'"> /Gs   /Gs </AdditionalOptions>
+    </ClCompile>
+    <ClCompile Include="core\interface.cpp">
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='Release|Win32'"> /Gs   /Gs </AdditionalOptions>
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='RelSym|Win32'"> /Gs   /Gs </AdditionalOptions>
+    </ClCompile>
+    <ClCompile Include="core\main.cpp">
+      <WarningLevel Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Level3</WarningLevel>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+      </PrecompiledHeader>
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='Release|Win32'"> /Gs   /Gs </AdditionalOptions>
+      <WarningLevel Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Level3</WarningLevel>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+      </PrecompiledHeader>
+      <WarningLevel Condition="'$(Configuration)|$(Platform)'=='RelSym|Win32'">Level3</WarningLevel>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='RelSym|Win32'">
+      </PrecompiledHeader>
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='RelSym|Win32'"> /Gs   /Gs </AdditionalOptions>
+    </ClCompile>
+    <ClCompile Include="core\memcpy_amd.cpp">
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='Release|Win32'"> /Gs   /Gs </AdditionalOptions>
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='RelSym|Win32'"> /Gs   /Gs </AdditionalOptions>
+    </ClCompile>
+    <ClCompile Include="core\plugins.cpp">
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='Release|Win32'"> /Gs   /Gs </AdditionalOptions>
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='RelSym|Win32'"> /Gs   /Gs </AdditionalOptions>
+    </ClCompile>
+    <ClCompile Include="core\softwire_helpers.cpp">
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='Release|Win32'"> /Gs   /Gs </AdditionalOptions>
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='RelSym|Win32'"> /Gs   /Gs </AdditionalOptions>
+    </ClCompile>
+    <ClCompile Include="audio\audio.cpp">
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='Release|Win32'"> /Gs   /Gs </AdditionalOptions>
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='RelSym|Win32'"> /Gs   /Gs </AdditionalOptions>
+    </ClCompile>
+    <ClCompile Include="audio\avs-soundtouch.cpp">
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='Release|Win32'"> /Gs   /Gs </AdditionalOptions>
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='RelSym|Win32'"> /Gs   /Gs </AdditionalOptions>
+    </ClCompile>
+    <ClCompile Include="audio\convertaudio.cpp">
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='Release|Win32'"> /Gs   /Gs </AdditionalOptions>
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='RelSym|Win32'"> /Gs   /Gs </AdditionalOptions>
+    </ClCompile>
+    <ClCompile Include="audio\dbesi0.c">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+      </PrecompiledHeader>
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='Release|Win32'"> /Gs   /Gs </AdditionalOptions>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+      </PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='RelSym|Win32'">
+      </PrecompiledHeader>
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='RelSym|Win32'"> /Gs   /Gs </AdditionalOptions>
+    </ClCompile>
+    <ClCompile Include="audio\ssrc-convert.cpp">
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='Release|Win32'"> /Gs   /Gs </AdditionalOptions>
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='RelSym|Win32'"> /Gs   /Gs </AdditionalOptions>
+    </ClCompile>
+    <ClCompile Include="audio\ssrc.cpp">
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='Release|Win32'"> /Gs   /Gs </AdditionalOptions>
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='RelSym|Win32'"> /Gs   /Gs </AdditionalOptions>
+    </ClCompile>
+    <ClCompile Include="audio\supereq.cpp">
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='Release|Win32'"> /Gs   /Gs </AdditionalOptions>
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='RelSym|Win32'"> /Gs   /Gs </AdditionalOptions>
+    </ClCompile>
+    <ClCompile Include="filters\overlay\444convert.cpp">
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='Release|Win32'"> /Gs   /Gs </AdditionalOptions>
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='RelSym|Win32'"> /Gs   /Gs </AdditionalOptions>
+    </ClCompile>
+    <ClCompile Include="filters\overlay\blend_asm.cpp">
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='Release|Win32'"> /Gs   /Gs </AdditionalOptions>
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='RelSym|Win32'"> /Gs   /Gs </AdditionalOptions>
+    </ClCompile>
+    <ClCompile Include="filters\overlay\OF_add.cpp">
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='Release|Win32'"> /Gs   /Gs </AdditionalOptions>
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='RelSym|Win32'"> /Gs   /Gs </AdditionalOptions>
+    </ClCompile>
+    <ClCompile Include="filters\overlay\OF_blend.cpp">
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='Release|Win32'"> /Gs   /Gs </AdditionalOptions>
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='RelSym|Win32'"> /Gs   /Gs </AdditionalOptions>
+    </ClCompile>
+    <ClCompile Include="filters\overlay\OF_darken.cpp">
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='Release|Win32'"> /Gs   /Gs </AdditionalOptions>
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='RelSym|Win32'"> /Gs   /Gs </AdditionalOptions>
+    </ClCompile>
+    <ClCompile Include="filters\overlay\OF_difference.cpp">
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='Release|Win32'"> /Gs   /Gs </AdditionalOptions>
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='RelSym|Win32'"> /Gs   /Gs </AdditionalOptions>
+    </ClCompile>
+    <ClCompile Include="filters\overlay\OF_exclusion.cpp">
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='Release|Win32'"> /Gs   /Gs </AdditionalOptions>
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='RelSym|Win32'"> /Gs   /Gs </AdditionalOptions>
+    </ClCompile>
+    <ClCompile Include="filters\overlay\OF_lighten.cpp">
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='Release|Win32'"> /Gs   /Gs </AdditionalOptions>
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='RelSym|Win32'"> /Gs   /Gs </AdditionalOptions>
+    </ClCompile>
+    <ClCompile Include="filters\overlay\OF_lumaChroma.cpp">
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='Release|Win32'"> /Gs   /Gs </AdditionalOptions>
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='RelSym|Win32'"> /Gs   /Gs </AdditionalOptions>
+    </ClCompile>
+    <ClCompile Include="filters\overlay\OF_multiply.cpp">
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='Release|Win32'"> /Gs   /Gs </AdditionalOptions>
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='RelSym|Win32'"> /Gs   /Gs </AdditionalOptions>
+    </ClCompile>
+    <ClCompile Include="filters\overlay\OF_softhardlight.cpp">
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='Release|Win32'"> /Gs   /Gs </AdditionalOptions>
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='RelSym|Win32'"> /Gs   /Gs </AdditionalOptions>
+    </ClCompile>
+    <ClCompile Include="filters\overlay\OF_subtract.cpp">
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='Release|Win32'"> /Gs   /Gs </AdditionalOptions>
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='RelSym|Win32'"> /Gs   /Gs </AdditionalOptions>
+    </ClCompile>
+    <ClCompile Include="filters\overlay\overlay.cpp">
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='Release|Win32'"> /Gs   /Gs </AdditionalOptions>
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='RelSym|Win32'"> /Gs   /Gs </AdditionalOptions>
+    </ClCompile>
+    <ClCompile Include="filters\color.cpp">
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='Release|Win32'"> /Gs   /Gs </AdditionalOptions>
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='RelSym|Win32'"> /Gs   /Gs </AdditionalOptions>
+    </ClCompile>
+    <ClCompile Include="filters\combine.cpp">
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='Release|Win32'"> /Gs   /Gs </AdditionalOptions>
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='RelSym|Win32'"> /Gs   /Gs </AdditionalOptions>
+    </ClCompile>
+    <ClCompile Include="filters\convolution.cpp">
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='Release|Win32'"> /Gs   /Gs </AdditionalOptions>
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='RelSym|Win32'"> /Gs   /Gs </AdditionalOptions>
+    </ClCompile>
+    <ClCompile Include="filters\edit.cpp">
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='Release|Win32'"> /Gs   /Gs </AdditionalOptions>
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='RelSym|Win32'"> /Gs   /Gs </AdditionalOptions>
+    </ClCompile>
+    <ClCompile Include="filters\field.cpp">
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='Release|Win32'"> /Gs   /Gs </AdditionalOptions>
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='RelSym|Win32'"> /Gs   /Gs </AdditionalOptions>
+    </ClCompile>
+    <ClCompile Include="filters\focus.cpp">
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='Release|Win32'"> /Gs   /Gs </AdditionalOptions>
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='RelSym|Win32'"> /Gs   /Gs </AdditionalOptions>
+    </ClCompile>
+    <ClCompile Include="filters\fps.cpp">
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='Release|Win32'"> /Gs   /Gs </AdditionalOptions>
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='RelSym|Win32'"> /Gs   /Gs </AdditionalOptions>
+    </ClCompile>
+    <ClCompile Include="filters\greyscale.cpp">
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='Release|Win32'"> /Gs   /Gs </AdditionalOptions>
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='RelSym|Win32'"> /Gs   /Gs </AdditionalOptions>
+    </ClCompile>
+    <ClCompile Include="filters\histogram.cpp">
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='Release|Win32'"> /Gs   /Gs </AdditionalOptions>
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='RelSym|Win32'"> /Gs   /Gs </AdditionalOptions>
+    </ClCompile>
+    <ClCompile Include="filters\layer.cpp">
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='Release|Win32'"> /Gs   /Gs </AdditionalOptions>
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='RelSym|Win32'"> /Gs   /Gs </AdditionalOptions>
+    </ClCompile>
+    <ClCompile Include="filters\levels.cpp">
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='Release|Win32'"> /Gs   /Gs </AdditionalOptions>
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='RelSym|Win32'"> /Gs   /Gs </AdditionalOptions>
+    </ClCompile>
+    <ClCompile Include="filters\merge.cpp">
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='Release|Win32'"> /Gs   /Gs </AdditionalOptions>
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='RelSym|Win32'"> /Gs   /Gs </AdditionalOptions>
+    </ClCompile>
+    <ClCompile Include="filters\misc.cpp">
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='Release|Win32'"> /Gs   /Gs </AdditionalOptions>
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='RelSym|Win32'"> /Gs   /Gs </AdditionalOptions>
+    </ClCompile>
+    <ClCompile Include="filters\planeswap.cpp">
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='Release|Win32'"> /Gs   /Gs </AdditionalOptions>
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='RelSym|Win32'"> /Gs   /Gs </AdditionalOptions>
+    </ClCompile>
+    <ClCompile Include="filters\resample.cpp">
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='Release|Win32'"> /Gs   /Gs </AdditionalOptions>
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='RelSym|Win32'"> /Gs   /Gs </AdditionalOptions>
+    </ClCompile>
+    <ClCompile Include="filters\resample_functions.cpp">
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='Release|Win32'"> /Gs   /Gs </AdditionalOptions>
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='RelSym|Win32'"> /Gs   /Gs </AdditionalOptions>
+    </ClCompile>
+    <ClCompile Include="filters\resize.cpp">
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='Release|Win32'"> /Gs   /Gs </AdditionalOptions>
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='RelSym|Win32'"> /Gs   /Gs </AdditionalOptions>
+    </ClCompile>
+    <ClCompile Include="filters\text-overlay.cpp">
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='Release|Win32'"> /Gs   /Gs </AdditionalOptions>
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='RelSym|Win32'"> /Gs   /Gs </AdditionalOptions>
+    </ClCompile>
+    <ClCompile Include="filters\transform.cpp">
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='Release|Win32'"> /Gs   /Gs </AdditionalOptions>
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='RelSym|Win32'"> /Gs   /Gs </AdditionalOptions>
+    </ClCompile>
+    <ClCompile Include="filters\turn.cpp">
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='Release|Win32'"> /Gs   /Gs </AdditionalOptions>
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='RelSym|Win32'"> /Gs   /Gs </AdditionalOptions>
+    </ClCompile>
+    <ClCompile Include="filters\turnfunc.cpp">
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='Release|Win32'"> /Gs   /Gs </AdditionalOptions>
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='RelSym|Win32'"> /Gs   /Gs </AdditionalOptions>
+    </ClCompile>
+    <ClCompile Include="filters\conditional\conditional.cpp">
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='Release|Win32'"> /Gs   /Gs </AdditionalOptions>
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='RelSym|Win32'"> /Gs   /Gs </AdditionalOptions>
+    </ClCompile>
+    <ClCompile Include="filters\conditional\conditional_functions.cpp">
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='Release|Win32'"> /Gs   /Gs </AdditionalOptions>
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='RelSym|Win32'"> /Gs   /Gs </AdditionalOptions>
+    </ClCompile>
+    <ClCompile Include="filters\conditional\conditional_reader.cpp">
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='Release|Win32'"> /Gs   /Gs </AdditionalOptions>
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='RelSym|Win32'"> /Gs   /Gs </AdditionalOptions>
+    </ClCompile>
+    <ClCompile Include="filters\debug.cpp">
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='Release|Win32'"> /Gs   /Gs </AdditionalOptions>
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='RelSym|Win32'"> /Gs   /Gs </AdditionalOptions>
+    </ClCompile>
+    <ClCompile Include="sources\avi\AudioSource.cpp">
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='Release|Win32'"> /Gs   /Gs </AdditionalOptions>
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='RelSym|Win32'"> /Gs   /Gs </AdditionalOptions>
+    </ClCompile>
+    <ClCompile Include="sources\avi\AVIIndex.cpp">
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='Release|Win32'"> /Gs   /Gs </AdditionalOptions>
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='RelSym|Win32'"> /Gs   /Gs </AdditionalOptions>
+    </ClCompile>
+    <ClCompile Include="sources\avi\AVIReadHandler.cpp">
+      <WarningLevel Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Level3</WarningLevel>
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='Release|Win32'"> /Gs   /Gs </AdditionalOptions>
+      <WarningLevel Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Level3</WarningLevel>
+      <WarningLevel Condition="'$(Configuration)|$(Platform)'=='RelSym|Win32'">Level3</WarningLevel>
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='RelSym|Win32'"> /Gs   /Gs </AdditionalOptions>
+    </ClCompile>
+    <ClCompile Include="sources\avi\cpuaccel.cpp">
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='Release|Win32'"> /Gs   /Gs </AdditionalOptions>
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='RelSym|Win32'"> /Gs   /Gs </AdditionalOptions>
+    </ClCompile>
+    <ClCompile Include="sources\avi\DubSource.cpp">
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='Release|Win32'"> /Gs   /Gs </AdditionalOptions>
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='RelSym|Win32'"> /Gs   /Gs </AdditionalOptions>
+    </ClCompile>
+    <ClCompile Include="sources\avi\FastReadStream.cpp">
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='Release|Win32'"> /Gs   /Gs </AdditionalOptions>
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='RelSym|Win32'"> /Gs   /Gs </AdditionalOptions>
+    </ClCompile>
+    <ClCompile Include="sources\avi\File64.cpp">
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='Release|Win32'"> /Gs   /Gs </AdditionalOptions>
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='RelSym|Win32'"> /Gs   /Gs </AdditionalOptions>
+    </ClCompile>
+    <ClCompile Include="sources\avi\list.cpp">
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='Release|Win32'"> /Gs   /Gs </AdditionalOptions>
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='RelSym|Win32'"> /Gs   /Gs </AdditionalOptions>
+    </ClCompile>
+    <ClCompile Include="sources\avi\VD_Audio.cpp">
+      <WarningLevel Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Level3</WarningLevel>
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='Release|Win32'"> /Gs   /Gs </AdditionalOptions>
+      <WarningLevel Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Level3</WarningLevel>
+      <WarningLevel Condition="'$(Configuration)|$(Platform)'=='RelSym|Win32'">Level3</WarningLevel>
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='RelSym|Win32'"> /Gs   /Gs </AdditionalOptions>
+    </ClCompile>
+    <ClCompile Include="sources\avi\VD_misc.cpp">
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='Release|Win32'"> /Gs   /Gs </AdditionalOptions>
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='RelSym|Win32'"> /Gs   /Gs </AdditionalOptions>
+    </ClCompile>
+    <ClCompile Include="sources\avi_source.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='Release|Win32'"> /Gs   /Gs </AdditionalOptions>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='RelSym|Win32'">true</ExcludedFromBuild>
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='RelSym|Win32'"> /Gs   /Gs </AdditionalOptions>
+    </ClCompile>
+    <ClCompile Include="sources\ImageSeq.cpp">
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='Release|Win32'"> /Gs   /Gs </AdditionalOptions>
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='RelSym|Win32'"> /Gs   /Gs </AdditionalOptions>
+    </ClCompile>
+    <ClCompile Include="sources\source.cpp">
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='Release|Win32'"> /Gs   /Gs </AdditionalOptions>
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='RelSym|Win32'"> /Gs   /Gs </AdditionalOptions>
+    </ClCompile>
+    <ClCompile Include="convert\convert.cpp">
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='Release|Win32'"> /Gs   /Gs </AdditionalOptions>
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='RelSym|Win32'"> /Gs   /Gs </AdditionalOptions>
+    </ClCompile>
+    <ClCompile Include="convert\convert_matrix.cpp">
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='Release|Win32'"> /Gs   /Gs </AdditionalOptions>
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='RelSym|Win32'"> /Gs   /Gs </AdditionalOptions>
+    </ClCompile>
+    <ClCompile Include="convert\convert_planar.cpp">
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='Release|Win32'"> /Gs   /Gs </AdditionalOptions>
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='RelSym|Win32'"> /Gs   /Gs </AdditionalOptions>
+    </ClCompile>
+    <ClCompile Include="convert\convert_rgb.cpp">
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='Release|Win32'"> /Gs   /Gs </AdditionalOptions>
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='RelSym|Win32'"> /Gs   /Gs </AdditionalOptions>
+    </ClCompile>
+    <ClCompile Include="convert\convert_rgbtoy8.cpp">
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='Release|Win32'"> /Gs   /Gs </AdditionalOptions>
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='RelSym|Win32'"> /Gs   /Gs </AdditionalOptions>
+    </ClCompile>
+    <ClCompile Include="convert\convert_yuy2.cpp">
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='Release|Win32'"> /Gs   /Gs </AdditionalOptions>
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='RelSym|Win32'"> /Gs   /Gs </AdditionalOptions>
+    </ClCompile>
+    <ClCompile Include="convert\convert_yv12.cpp">
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='Release|Win32'"> /Gs   /Gs </AdditionalOptions>
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='RelSym|Win32'"> /Gs   /Gs </AdditionalOptions>
+    </ClCompile>
+    <ClCompile Include="stdafx.cpp">
+      <WarningLevel Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Level3</WarningLevel>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Create</PrecompiledHeader>
+      <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">stdafx.h</PrecompiledHeaderFile>
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='Release|Win32'"> /Gs   /Gs </AdditionalOptions>
+      <WarningLevel Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Level3</WarningLevel>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>
+      <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">stdafx.h</PrecompiledHeaderFile>
+      <WarningLevel Condition="'$(Configuration)|$(Platform)'=='RelSym|Win32'">Level3</WarningLevel>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='RelSym|Win32'">Create</PrecompiledHeader>
+      <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='RelSym|Win32'">stdafx.h</PrecompiledHeaderFile>
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='RelSym|Win32'"> /Gs   /Gs </AdditionalOptions>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="core\parser\expression.h" />
+    <ClInclude Include="core\parser\script.h" />
+    <ClInclude Include="core\parser\scriptparser.h" />
+    <ClInclude Include="core\parser\tokenizer.h" />
+    <ClInclude Include="core\alignplanar.h" />
+    <ClInclude Include="core\avisynth.h" />
+    <ClInclude Include="core\avisynth_c.h" />
+    <ClInclude Include="core\cache.h" />
+    <ClInclude Include="core\clip_info.h" />
+    <ClInclude Include="core\Error.h" />
+    <ClInclude Include="core\info.h" />
+    <ClInclude Include="internal.h" />
+    <ClInclude Include="core\memcpy_amd.h" />
+    <ClInclude Include="core\softwire_helpers.h" />
+    <ClInclude Include="audio\audio.h" />
+    <ClInclude Include="audio\avs-soundtouch.h" />
+    <ClInclude Include="audio\convertaudio.h" />
+    <ClInclude Include="audio\math_shared.h" />
+    <ClInclude Include="audio\paramlist.h" />
+    <ClInclude Include="audio\ssrc-convert.h" />
+    <ClInclude Include="audio\ssrc.h" />
+    <ClInclude Include="audio\supereq.h" />
+    <ClInclude Include="filters\overlay\444convert.h" />
+    <ClInclude Include="filters\overlay\blend_asm.h" />
+    <ClInclude Include="filters\overlay\imghelpers.h" />
+    <ClInclude Include="filters\overlay\overlay.h" />
+    <ClInclude Include="filters\overlay\overlayfunctions.h" />
+    <ClInclude Include="filters\color.h" />
+    <ClInclude Include="filters\combine.h" />
+    <ClInclude Include="filters\convolution.h" />
+    <ClInclude Include="filters\edit.h" />
+    <ClInclude Include="filters\field.h" />
+    <ClInclude Include="filters\focus.h" />
+    <ClInclude Include="filters\fps.h" />
+    <ClInclude Include="filters\greyscale.h" />
+    <ClInclude Include="filters\histogram.h" />
+    <ClInclude Include="filters\layer.h" />
+    <ClInclude Include="filters\levels.h" />
+    <ClInclude Include="filters\merge.h" />
+    <ClInclude Include="filters\misc.h" />
+    <ClInclude Include="filters\planeswap.h" />
+    <ClInclude Include="filters\resample.h" />
+    <ClInclude Include="filters\resample_functions.h" />
+    <ClInclude Include="filters\resize.h" />
+    <ClInclude Include="filters\text-overlay.h" />
+    <ClInclude Include="filters\transform.h" />
+    <ClInclude Include="filters\turn.h" />
+    <ClInclude Include="filters\turnfunc.h" />
+    <ClInclude Include="filters\conditional\conditional.h" />
+    <ClInclude Include="filters\conditional\conditional_functions.h" />
+    <ClInclude Include="filters\conditional\conditional_reader.h" />
+    <ClInclude Include="filters\debug.h" />
+    <ClInclude Include="sources\avi\AudioSource.h" />
+    <ClInclude Include="sources\avi\AVIIndex.h" />
+    <ClInclude Include="sources\avi\AVIReadHandler.h" />
+    <ClInclude Include="sources\avi\clip_info.h" />
+    <ClInclude Include="sources\avi\DubSource.h" />
+    <ClInclude Include="sources\avi\FastReadStream.h" />
+    <ClInclude Include="sources\avi\File64.h" />
+    <ClInclude Include="sources\avi\Fixes.h" />
+    <ClInclude Include="sources\avi\list.h" />
+    <ClInclude Include="sources\avi\VD_Audio.h" />
+    <ClInclude Include="sources\avi\VD_misc.h" />
+    <ClInclude Include="sources\ImageSeq.h" />
+    <ClInclude Include="convert\convert.h" />
+    <ClInclude Include="convert\convert_matrix.h" />
+    <ClInclude Include="convert\convert_planar.h" />
+    <ClInclude Include="convert\convert_rgb.h" />
+    <ClInclude Include="convert\convert_rgbtoy8.h" />
+    <ClInclude Include="convert\convert_yuy2.h" />
+    <ClInclude Include="convert\convert_yv12.h" />
+    <ClInclude Include="core\resource.h" />
+    <ClInclude Include="stdafx.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <CustomBuild Include="core\avisynth.def" />
+    <CustomBuild Include="convert\convert_a.asm">
+      <FileType>Document</FileType>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">ml.exe -c -coff -Cx -Fo$(IntDir)%(Filename).obj .\convert\%(Filename).asm</Command>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Assembling %(FullPath)...</Message>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">$(IntDir)\%(Filename).obj;%(Outputs)</Outputs>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">ml.exe -c -coff -Cx -Zi -Fo$(IntDir)%(Filename).obj .\convert\%(Filename).asm</Command>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Assembling %(FullPath)...</Message>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">$(IntDir)\%(Filename).obj;%(Outputs)</Outputs>
+      <Command Condition="'$(Configuration)|$(Platform)'=='RelSym|Win32'">ml.exe -c -coff -Cx -Fo$(IntDir)%(Filename).obj .\convert\%(Filename).asm</Command>
+      <Message Condition="'$(Configuration)|$(Platform)'=='RelSym|Win32'">Assembling %(FullPath)...</Message>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='RelSym|Win32'">$(IntDir)\%(Filename).obj;%(Outputs)</Outputs>
+    </CustomBuild>
+    <CustomBuild Include="..\distrib\AviSynth.ico" />
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="core\avisynth.rc">
+      <AdditionalIncludeDirectories Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">core;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">core;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories Condition="'$(Configuration)|$(Platform)'=='RelSym|Win32'">core;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ResourceCompile>
+  </ItemGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets">
+  </ImportGroup>
+</Project>

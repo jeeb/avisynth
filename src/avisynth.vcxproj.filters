@@ -1,0 +1,506 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="Avisynth core">
+      <UniqueIdentifier>{54582d05-bbec-4084-87db-e76a15d1ecb1}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Avisynth core\Parser">
+      <UniqueIdentifier>{7becfe02-6269-46f5-bebd-80d2da010931}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Filters">
+      <UniqueIdentifier>{d72a88c1-d599-498e-9bc8-4af0fdd5537f}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Filters\Audio">
+      <UniqueIdentifier>{4aa734a5-d121-4ac0-954f-a6b4a189411d}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Filters\Video">
+      <UniqueIdentifier>{5c26a12d-c535-42cd-b04c-58d89c09480d}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Filters\Video\Overlay">
+      <UniqueIdentifier>{cb4a5250-8fe8-4e6e-a40b-ec9c4456ef8f}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Filters\Conditional">
+      <UniqueIdentifier>{1dc27f9e-2725-4754-9ff8-4cdba16cca7c}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Filters\Other">
+      <UniqueIdentifier>{de76e9ba-dd51-4756-8fa2-190435908292}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Sources">
+      <UniqueIdentifier>{58b00c08-02ec-4d45-891a-d56fce0400c9}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Sources\Vdub AVI">
+      <UniqueIdentifier>{dfed181a-0f28-47a9-9e72-129e7e3159c5}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Conversion">
+      <UniqueIdentifier>{3e67fa6c-e8ef-4342-bc57-1e2aa3035839}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="core\parser\expression.cpp">
+      <Filter>Avisynth core\Parser</Filter>
+    </ClCompile>
+    <ClCompile Include="core\parser\script.cpp">
+      <Filter>Avisynth core\Parser</Filter>
+    </ClCompile>
+    <ClCompile Include="core\parser\scriptparser.cpp">
+      <Filter>Avisynth core\Parser</Filter>
+    </ClCompile>
+    <ClCompile Include="core\parser\tokenizer.cpp">
+      <Filter>Avisynth core\Parser</Filter>
+    </ClCompile>
+    <ClCompile Include="core\alignplanar.cpp">
+      <Filter>Avisynth core</Filter>
+    </ClCompile>
+    <ClCompile Include="core\avisynth.cpp">
+      <Filter>Avisynth core</Filter>
+    </ClCompile>
+    <ClCompile Include="core\avisynth_c.cpp">
+      <Filter>Avisynth core</Filter>
+    </ClCompile>
+    <ClCompile Include="core\cache.cpp">
+      <Filter>Avisynth core</Filter>
+    </ClCompile>
+    <ClCompile Include="core\interface.cpp">
+      <Filter>Avisynth core</Filter>
+    </ClCompile>
+    <ClCompile Include="core\main.cpp">
+      <Filter>Avisynth core</Filter>
+    </ClCompile>
+    <ClCompile Include="core\memcpy_amd.cpp">
+      <Filter>Avisynth core</Filter>
+    </ClCompile>
+    <ClCompile Include="core\plugins.cpp">
+      <Filter>Avisynth core</Filter>
+    </ClCompile>
+    <ClCompile Include="core\softwire_helpers.cpp">
+      <Filter>Avisynth core</Filter>
+    </ClCompile>
+    <ClCompile Include="audio\audio.cpp">
+      <Filter>Filters\Audio</Filter>
+    </ClCompile>
+    <ClCompile Include="audio\avs-soundtouch.cpp">
+      <Filter>Filters\Audio</Filter>
+    </ClCompile>
+    <ClCompile Include="audio\convertaudio.cpp">
+      <Filter>Filters\Audio</Filter>
+    </ClCompile>
+    <ClCompile Include="audio\dbesi0.c">
+      <Filter>Filters\Audio</Filter>
+    </ClCompile>
+    <ClCompile Include="audio\ssrc-convert.cpp">
+      <Filter>Filters\Audio</Filter>
+    </ClCompile>
+    <ClCompile Include="audio\ssrc.cpp">
+      <Filter>Filters\Audio</Filter>
+    </ClCompile>
+    <ClCompile Include="audio\supereq.cpp">
+      <Filter>Filters\Audio</Filter>
+    </ClCompile>
+    <ClCompile Include="filters\overlay\444convert.cpp">
+      <Filter>Filters\Video\Overlay</Filter>
+    </ClCompile>
+    <ClCompile Include="filters\overlay\blend_asm.cpp">
+      <Filter>Filters\Video\Overlay</Filter>
+    </ClCompile>
+    <ClCompile Include="filters\overlay\OF_add.cpp">
+      <Filter>Filters\Video\Overlay</Filter>
+    </ClCompile>
+    <ClCompile Include="filters\overlay\OF_blend.cpp">
+      <Filter>Filters\Video\Overlay</Filter>
+    </ClCompile>
+    <ClCompile Include="filters\overlay\OF_darken.cpp">
+      <Filter>Filters\Video\Overlay</Filter>
+    </ClCompile>
+    <ClCompile Include="filters\overlay\OF_difference.cpp">
+      <Filter>Filters\Video\Overlay</Filter>
+    </ClCompile>
+    <ClCompile Include="filters\overlay\OF_exclusion.cpp">
+      <Filter>Filters\Video\Overlay</Filter>
+    </ClCompile>
+    <ClCompile Include="filters\overlay\OF_lighten.cpp">
+      <Filter>Filters\Video\Overlay</Filter>
+    </ClCompile>
+    <ClCompile Include="filters\overlay\OF_lumaChroma.cpp">
+      <Filter>Filters\Video\Overlay</Filter>
+    </ClCompile>
+    <ClCompile Include="filters\overlay\OF_multiply.cpp">
+      <Filter>Filters\Video\Overlay</Filter>
+    </ClCompile>
+    <ClCompile Include="filters\overlay\OF_softhardlight.cpp">
+      <Filter>Filters\Video\Overlay</Filter>
+    </ClCompile>
+    <ClCompile Include="filters\overlay\OF_subtract.cpp">
+      <Filter>Filters\Video\Overlay</Filter>
+    </ClCompile>
+    <ClCompile Include="filters\overlay\overlay.cpp">
+      <Filter>Filters\Video\Overlay</Filter>
+    </ClCompile>
+    <ClCompile Include="filters\color.cpp">
+      <Filter>Filters\Video</Filter>
+    </ClCompile>
+    <ClCompile Include="filters\combine.cpp">
+      <Filter>Filters\Video</Filter>
+    </ClCompile>
+    <ClCompile Include="filters\convolution.cpp">
+      <Filter>Filters\Video</Filter>
+    </ClCompile>
+    <ClCompile Include="filters\edit.cpp">
+      <Filter>Filters\Video</Filter>
+    </ClCompile>
+    <ClCompile Include="filters\field.cpp">
+      <Filter>Filters\Video</Filter>
+    </ClCompile>
+    <ClCompile Include="filters\focus.cpp">
+      <Filter>Filters\Video</Filter>
+    </ClCompile>
+    <ClCompile Include="filters\fps.cpp">
+      <Filter>Filters\Video</Filter>
+    </ClCompile>
+    <ClCompile Include="filters\greyscale.cpp">
+      <Filter>Filters\Video</Filter>
+    </ClCompile>
+    <ClCompile Include="filters\histogram.cpp">
+      <Filter>Filters\Video</Filter>
+    </ClCompile>
+    <ClCompile Include="filters\layer.cpp">
+      <Filter>Filters\Video</Filter>
+    </ClCompile>
+    <ClCompile Include="filters\levels.cpp">
+      <Filter>Filters\Video</Filter>
+    </ClCompile>
+    <ClCompile Include="filters\merge.cpp">
+      <Filter>Filters\Video</Filter>
+    </ClCompile>
+    <ClCompile Include="filters\misc.cpp">
+      <Filter>Filters\Video</Filter>
+    </ClCompile>
+    <ClCompile Include="filters\planeswap.cpp">
+      <Filter>Filters\Video</Filter>
+    </ClCompile>
+    <ClCompile Include="filters\resample.cpp">
+      <Filter>Filters\Video</Filter>
+    </ClCompile>
+    <ClCompile Include="filters\resample_functions.cpp">
+      <Filter>Filters\Video</Filter>
+    </ClCompile>
+    <ClCompile Include="filters\resize.cpp">
+      <Filter>Filters\Video</Filter>
+    </ClCompile>
+    <ClCompile Include="filters\text-overlay.cpp">
+      <Filter>Filters\Video</Filter>
+    </ClCompile>
+    <ClCompile Include="filters\transform.cpp">
+      <Filter>Filters\Video</Filter>
+    </ClCompile>
+    <ClCompile Include="filters\turn.cpp">
+      <Filter>Filters\Video</Filter>
+    </ClCompile>
+    <ClCompile Include="filters\turnfunc.cpp">
+      <Filter>Filters\Video</Filter>
+    </ClCompile>
+    <ClCompile Include="filters\conditional\conditional.cpp">
+      <Filter>Filters\Conditional</Filter>
+    </ClCompile>
+    <ClCompile Include="filters\conditional\conditional_functions.cpp">
+      <Filter>Filters\Conditional</Filter>
+    </ClCompile>
+    <ClCompile Include="filters\conditional\conditional_reader.cpp">
+      <Filter>Filters\Conditional</Filter>
+    </ClCompile>
+    <ClCompile Include="filters\debug.cpp">
+      <Filter>Filters\Other</Filter>
+    </ClCompile>
+    <ClCompile Include="sources\avi\AudioSource.cpp">
+      <Filter>Sources\Vdub AVI</Filter>
+    </ClCompile>
+    <ClCompile Include="sources\avi\AVIIndex.cpp">
+      <Filter>Sources\Vdub AVI</Filter>
+    </ClCompile>
+    <ClCompile Include="sources\avi\AVIReadHandler.cpp">
+      <Filter>Sources\Vdub AVI</Filter>
+    </ClCompile>
+    <ClCompile Include="sources\avi\cpuaccel.cpp">
+      <Filter>Sources\Vdub AVI</Filter>
+    </ClCompile>
+    <ClCompile Include="sources\avi\DubSource.cpp">
+      <Filter>Sources\Vdub AVI</Filter>
+    </ClCompile>
+    <ClCompile Include="sources\avi\FastReadStream.cpp">
+      <Filter>Sources\Vdub AVI</Filter>
+    </ClCompile>
+    <ClCompile Include="sources\avi\File64.cpp">
+      <Filter>Sources\Vdub AVI</Filter>
+    </ClCompile>
+    <ClCompile Include="sources\avi\list.cpp">
+      <Filter>Sources\Vdub AVI</Filter>
+    </ClCompile>
+    <ClCompile Include="sources\avi\VD_Audio.cpp">
+      <Filter>Sources\Vdub AVI</Filter>
+    </ClCompile>
+    <ClCompile Include="sources\avi\VD_misc.cpp">
+      <Filter>Sources\Vdub AVI</Filter>
+    </ClCompile>
+    <ClCompile Include="sources\avi_source.cpp">
+      <Filter>Sources</Filter>
+    </ClCompile>
+    <ClCompile Include="sources\ImageSeq.cpp">
+      <Filter>Sources</Filter>
+    </ClCompile>
+    <ClCompile Include="sources\source.cpp">
+      <Filter>Sources</Filter>
+    </ClCompile>
+    <ClCompile Include="convert\convert.cpp">
+      <Filter>Conversion</Filter>
+    </ClCompile>
+    <ClCompile Include="convert\convert_matrix.cpp">
+      <Filter>Conversion</Filter>
+    </ClCompile>
+    <ClCompile Include="convert\convert_planar.cpp">
+      <Filter>Conversion</Filter>
+    </ClCompile>
+    <ClCompile Include="convert\convert_rgb.cpp">
+      <Filter>Conversion</Filter>
+    </ClCompile>
+    <ClCompile Include="convert\convert_rgbtoy8.cpp">
+      <Filter>Conversion</Filter>
+    </ClCompile>
+    <ClCompile Include="convert\convert_yuy2.cpp">
+      <Filter>Conversion</Filter>
+    </ClCompile>
+    <ClCompile Include="convert\convert_yv12.cpp">
+      <Filter>Conversion</Filter>
+    </ClCompile>
+    <ClCompile Include="stdafx.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="core\parser\expression.h">
+      <Filter>Avisynth core\Parser</Filter>
+    </ClInclude>
+    <ClInclude Include="core\parser\script.h">
+      <Filter>Avisynth core\Parser</Filter>
+    </ClInclude>
+    <ClInclude Include="core\parser\scriptparser.h">
+      <Filter>Avisynth core\Parser</Filter>
+    </ClInclude>
+    <ClInclude Include="core\parser\tokenizer.h">
+      <Filter>Avisynth core\Parser</Filter>
+    </ClInclude>
+    <ClInclude Include="core\alignplanar.h">
+      <Filter>Avisynth core</Filter>
+    </ClInclude>
+    <ClInclude Include="core\avisynth.h">
+      <Filter>Avisynth core</Filter>
+    </ClInclude>
+    <ClInclude Include="core\avisynth_c.h">
+      <Filter>Avisynth core</Filter>
+    </ClInclude>
+    <ClInclude Include="core\cache.h">
+      <Filter>Avisynth core</Filter>
+    </ClInclude>
+    <ClInclude Include="core\clip_info.h">
+      <Filter>Avisynth core</Filter>
+    </ClInclude>
+    <ClInclude Include="core\Error.h">
+      <Filter>Avisynth core</Filter>
+    </ClInclude>
+    <ClInclude Include="core\info.h">
+      <Filter>Avisynth core</Filter>
+    </ClInclude>
+    <ClInclude Include="internal.h">
+      <Filter>Avisynth core</Filter>
+    </ClInclude>
+    <ClInclude Include="core\memcpy_amd.h">
+      <Filter>Avisynth core</Filter>
+    </ClInclude>
+    <ClInclude Include="core\softwire_helpers.h">
+      <Filter>Avisynth core</Filter>
+    </ClInclude>
+    <ClInclude Include="audio\audio.h">
+      <Filter>Filters\Audio</Filter>
+    </ClInclude>
+    <ClInclude Include="audio\avs-soundtouch.h">
+      <Filter>Filters\Audio</Filter>
+    </ClInclude>
+    <ClInclude Include="audio\convertaudio.h">
+      <Filter>Filters\Audio</Filter>
+    </ClInclude>
+    <ClInclude Include="audio\math_shared.h">
+      <Filter>Filters\Audio</Filter>
+    </ClInclude>
+    <ClInclude Include="audio\paramlist.h">
+      <Filter>Filters\Audio</Filter>
+    </ClInclude>
+    <ClInclude Include="audio\ssrc-convert.h">
+      <Filter>Filters\Audio</Filter>
+    </ClInclude>
+    <ClInclude Include="audio\ssrc.h">
+      <Filter>Filters\Audio</Filter>
+    </ClInclude>
+    <ClInclude Include="audio\supereq.h">
+      <Filter>Filters\Audio</Filter>
+    </ClInclude>
+    <ClInclude Include="filters\overlay\444convert.h">
+      <Filter>Filters\Video\Overlay</Filter>
+    </ClInclude>
+    <ClInclude Include="filters\overlay\blend_asm.h">
+      <Filter>Filters\Video\Overlay</Filter>
+    </ClInclude>
+    <ClInclude Include="filters\overlay\imghelpers.h">
+      <Filter>Filters\Video\Overlay</Filter>
+    </ClInclude>
+    <ClInclude Include="filters\overlay\overlay.h">
+      <Filter>Filters\Video\Overlay</Filter>
+    </ClInclude>
+    <ClInclude Include="filters\overlay\overlayfunctions.h">
+      <Filter>Filters\Video\Overlay</Filter>
+    </ClInclude>
+    <ClInclude Include="filters\color.h">
+      <Filter>Filters\Video</Filter>
+    </ClInclude>
+    <ClInclude Include="filters\combine.h">
+      <Filter>Filters\Video</Filter>
+    </ClInclude>
+    <ClInclude Include="filters\convolution.h">
+      <Filter>Filters\Video</Filter>
+    </ClInclude>
+    <ClInclude Include="filters\edit.h">
+      <Filter>Filters\Video</Filter>
+    </ClInclude>
+    <ClInclude Include="filters\field.h">
+      <Filter>Filters\Video</Filter>
+    </ClInclude>
+    <ClInclude Include="filters\focus.h">
+      <Filter>Filters\Video</Filter>
+    </ClInclude>
+    <ClInclude Include="filters\fps.h">
+      <Filter>Filters\Video</Filter>
+    </ClInclude>
+    <ClInclude Include="filters\greyscale.h">
+      <Filter>Filters\Video</Filter>
+    </ClInclude>
+    <ClInclude Include="filters\histogram.h">
+      <Filter>Filters\Video</Filter>
+    </ClInclude>
+    <ClInclude Include="filters\layer.h">
+      <Filter>Filters\Video</Filter>
+    </ClInclude>
+    <ClInclude Include="filters\levels.h">
+      <Filter>Filters\Video</Filter>
+    </ClInclude>
+    <ClInclude Include="filters\merge.h">
+      <Filter>Filters\Video</Filter>
+    </ClInclude>
+    <ClInclude Include="filters\misc.h">
+      <Filter>Filters\Video</Filter>
+    </ClInclude>
+    <ClInclude Include="filters\planeswap.h">
+      <Filter>Filters\Video</Filter>
+    </ClInclude>
+    <ClInclude Include="filters\resample.h">
+      <Filter>Filters\Video</Filter>
+    </ClInclude>
+    <ClInclude Include="filters\resample_functions.h">
+      <Filter>Filters\Video</Filter>
+    </ClInclude>
+    <ClInclude Include="filters\resize.h">
+      <Filter>Filters\Video</Filter>
+    </ClInclude>
+    <ClInclude Include="filters\text-overlay.h">
+      <Filter>Filters\Video</Filter>
+    </ClInclude>
+    <ClInclude Include="filters\transform.h">
+      <Filter>Filters\Video</Filter>
+    </ClInclude>
+    <ClInclude Include="filters\turn.h">
+      <Filter>Filters\Video</Filter>
+    </ClInclude>
+    <ClInclude Include="filters\turnfunc.h">
+      <Filter>Filters\Video</Filter>
+    </ClInclude>
+    <ClInclude Include="filters\conditional\conditional.h">
+      <Filter>Filters\Conditional</Filter>
+    </ClInclude>
+    <ClInclude Include="filters\conditional\conditional_functions.h">
+      <Filter>Filters\Conditional</Filter>
+    </ClInclude>
+    <ClInclude Include="filters\conditional\conditional_reader.h">
+      <Filter>Filters\Conditional</Filter>
+    </ClInclude>
+    <ClInclude Include="filters\debug.h">
+      <Filter>Filters\Other</Filter>
+    </ClInclude>
+    <ClInclude Include="sources\avi\AudioSource.h">
+      <Filter>Sources\Vdub AVI</Filter>
+    </ClInclude>
+    <ClInclude Include="sources\avi\AVIIndex.h">
+      <Filter>Sources\Vdub AVI</Filter>
+    </ClInclude>
+    <ClInclude Include="sources\avi\AVIReadHandler.h">
+      <Filter>Sources\Vdub AVI</Filter>
+    </ClInclude>
+    <ClInclude Include="sources\avi\clip_info.h">
+      <Filter>Sources\Vdub AVI</Filter>
+    </ClInclude>
+    <ClInclude Include="sources\avi\DubSource.h">
+      <Filter>Sources\Vdub AVI</Filter>
+    </ClInclude>
+    <ClInclude Include="sources\avi\FastReadStream.h">
+      <Filter>Sources\Vdub AVI</Filter>
+    </ClInclude>
+    <ClInclude Include="sources\avi\File64.h">
+      <Filter>Sources\Vdub AVI</Filter>
+    </ClInclude>
+    <ClInclude Include="sources\avi\Fixes.h">
+      <Filter>Sources\Vdub AVI</Filter>
+    </ClInclude>
+    <ClInclude Include="sources\avi\list.h">
+      <Filter>Sources\Vdub AVI</Filter>
+    </ClInclude>
+    <ClInclude Include="sources\avi\VD_Audio.h">
+      <Filter>Sources\Vdub AVI</Filter>
+    </ClInclude>
+    <ClInclude Include="sources\avi\VD_misc.h">
+      <Filter>Sources\Vdub AVI</Filter>
+    </ClInclude>
+    <ClInclude Include="sources\ImageSeq.h">
+      <Filter>Sources</Filter>
+    </ClInclude>
+    <ClInclude Include="convert\convert.h">
+      <Filter>Conversion</Filter>
+    </ClInclude>
+    <ClInclude Include="convert\convert_matrix.h">
+      <Filter>Conversion</Filter>
+    </ClInclude>
+    <ClInclude Include="convert\convert_planar.h">
+      <Filter>Conversion</Filter>
+    </ClInclude>
+    <ClInclude Include="convert\convert_rgb.h">
+      <Filter>Conversion</Filter>
+    </ClInclude>
+    <ClInclude Include="convert\convert_rgbtoy8.h">
+      <Filter>Conversion</Filter>
+    </ClInclude>
+    <ClInclude Include="convert\convert_yuy2.h">
+      <Filter>Conversion</Filter>
+    </ClInclude>
+    <ClInclude Include="convert\convert_yv12.h">
+      <Filter>Conversion</Filter>
+    </ClInclude>
+    <ClInclude Include="core\resource.h" />
+    <ClInclude Include="stdafx.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="core\avisynth.rc">
+      <Filter>Avisynth core</Filter>
+    </ResourceCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <CustomBuild Include="core\avisynth.def">
+      <Filter>Avisynth core</Filter>
+    </CustomBuild>
+    <CustomBuild Include="convert\convert_a.asm">
+      <Filter>Conversion</Filter>
+    </CustomBuild>
+    <CustomBuild Include="..\distrib\AviSynth.ico" />
+  </ItemGroup>
+</Project>
