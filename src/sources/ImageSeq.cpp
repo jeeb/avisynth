@@ -198,15 +198,14 @@ PVideoFrame ImageWriter::GetFrame(int n, IScriptEnvironment* env)
   }
 
   // construct filename
-  char temp[MAX_PATH + 1];
-  _snprintf(temp, MAX_PATH, base_name, n, ext, 0, 0);
-  temp[MAX_PATH] = '\0';
-  string filename = temp;
+  char filename[MAX_PATH + 1];
+  _snprintf(filename, MAX_PATH, base_name, n, ext, 0, 0);
+  filename[MAX_PATH] = '\0';
 
   if (!lstrcmpi(ext, "ebmp"))  /* Use internal 'ebmp' writer */
   {
     // initialize file object
-    ofstream file(filename.c_str(), ios::out | ios::trunc | ios::binary);
+    ofstream file(filename, ios::out | ios::trunc | ios::binary);
     if (!file)
     {
       ostringstream ss;
@@ -275,10 +274,10 @@ PVideoFrame ImageWriter::GetFrame(int n, IScriptEnvironment* env)
       }
 
       // DevIL writer fails if the file exists, so delete first
-      DeleteFile(filename.c_str());
+      DeleteFile(filename);
 
       // Save to disk (format automatically inferred from extension)
-      ilSaveImage(const_cast<char * const> (filename.c_str()) );
+      ilSaveImage(filename);
     }
 
     // Get errors if any
@@ -361,7 +360,7 @@ ImageReader::ImageReader(const char * _base_name, const int _start, const int _e
     GetWorkingDir(cwd, sizeof cwd);
     _snprintf(base_name, sizeof base_name, "%s%s", cwd, _base_name);
   }
-  _snprintf(filename, sizeof filename, base_name, start);
+  _snprintf(filename, (sizeof filename)-1, base_name, start);
 
   memset(&vi, 0, sizeof(vi));
 
@@ -494,6 +493,7 @@ ImageReader::ImageReader(const char * _base_name, const int _start, const int _e
     if (animation) {
       vi.num_frames = ilGetInteger(IL_NUM_IMAGES);
       if (vi.num_frames == 0) {
+        LeaveCriticalSection(&FramesCriticalSection);
         env->ThrowError("ImageSourceAnim: DevIL can't detect the number of images in the animation");
       }
 
@@ -574,7 +574,7 @@ PVideoFrame ImageReader::GetFrame(int n, IScriptEnvironment* env)
   const int height = frame->GetHeight();
   const int width = vi.width;
 
-  _snprintf(filename, sizeof filename, base_name, n+start);
+  _snprintf(filename, (sizeof filename)-1, base_name, n+start);
 
   if (use_DevIL)  /* read using DevIL */
   {
@@ -821,8 +821,7 @@ AVSValue __cdecl ImageReader::Create(AVSValue args, void*, IScriptEnvironment* e
   // If we are returning a stream of 2 or more copies of the same image
   // then use FreezeFrame and the Cache to minimise any reloading.
   if (IR->framecopies > 1) {
-    AVSValue cache_args[1] = { IR };
-    AVSValue cache = env->Invoke("Cache", AVSValue(cache_args, 1));
+    AVSValue cache = env->Invoke("Cache", AVSValue(IR));
     AVSValue ff_args[4] = { cache, 0, IR->framecopies-1, 0 };
     return env->Invoke("FreezeFrame", AVSValue(ff_args, 4)).AsClip();
   }
@@ -840,7 +839,7 @@ AVSValue __cdecl ImageReader::CreateAnimated(AVSValue args, void*, IScriptEnviro
                          args[2].AsBool(false), args[3].AsString("rgb32"), /*animation*/ true, env);
 }
 
-string getErrStr(ILenum err)
+const char *const getErrStr(ILenum err)
 {
   if (err == IL_INVALID_ENUM)
     return "Invalid Enum";
@@ -855,7 +854,7 @@ string getErrStr(ILenum err)
   if (err == IL_ILLEGAL_OPERATION)
     return "Illegal operation";
   if (err == IL_ILLEGAL_FILE_VALUE)
-    return "Illegal file";
+    return "Illegal file value";
   if (err == IL_INVALID_FILE_HEADER)
     return "Illegal file header";
   if (err == IL_INVALID_PARAM)
