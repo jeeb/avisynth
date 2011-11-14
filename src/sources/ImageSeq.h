@@ -118,7 +118,7 @@ private:
 };
 
 
-string getErrStr(ILenum err);
+const char *const getErrStr(ILenum err);
 
 
 #endif // __Image_Sequence_H__
