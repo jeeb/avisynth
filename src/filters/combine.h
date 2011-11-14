@@ -48,21 +48,25 @@ class StackVertical : public IClip
  **/
 {
 public:
-  StackVertical(PClip _child1, PClip _child2, IScriptEnvironment* env);
+  StackVertical(PClip *_child_array, int _num_args, IScriptEnvironment* env);
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
   
   inline void __stdcall GetAudio(void* buf, __int64 start, __int64 count, IScriptEnvironment* env) 
-    { child1->GetAudio(buf, start, count, env); }
+    { child_array[0]->GetAudio(buf, start, count, env); }
   inline const VideoInfo& __stdcall GetVideoInfo() 
     { return vi; }
   inline bool __stdcall GetParity(int n) 
-    { return child1->GetParity(n); }
+    { return child_array[0]->GetParity(n); }
   int __stdcall SetCacheHints(int cachehints,int frame_range) { return 0; };
 
   static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env);
 
+  ~StackVertical()
+    { delete[] child_array; }
+
 private:
-  /*const*/ PClip child1, child2;
+  const int num_args;
+  PClip *child_array;
   VideoInfo vi;
 
 };
@@ -75,21 +79,25 @@ class StackHorizontal : public IClip
  **/
 {  
 public:
-  StackHorizontal(PClip _child1, PClip _child2, IScriptEnvironment* env);
+  StackHorizontal(PClip *_child_array, int _num_args, IScriptEnvironment* env);
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
 
   inline void __stdcall GetAudio(void* buf, __int64 start, __int64 count, IScriptEnvironment* env) 
-    { child1->GetAudio(buf, start, count, env); }
+    { child_array[0]->GetAudio(buf, start, count, env); }
   inline const VideoInfo& __stdcall GetVideoInfo() 
     { return vi; }
   inline bool __stdcall GetParity(int n) 
-    { return child1->GetParity(n); }
-
+    { return child_array[0]->GetParity(n); }
   int __stdcall SetCacheHints(int cachehints,int frame_range) { return 0; };
+
   static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env);
 
+  ~StackHorizontal()
+    { delete[] child_array; }
+
 private:
-  const PClip child1, child2;
+  const int num_args;
+  PClip *child_array;
   VideoInfo vi;
 
 };
