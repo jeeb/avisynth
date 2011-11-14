@@ -35,7 +35,6 @@
 #define __Audio_H__
 
 #include "../internal.h"
-#include "../core/cache.h"
 
 
 

@@ -248,8 +248,8 @@ void __stdcall EnsureVBRMP3Sync::GetAudio(void* buf, __int64 start, __int64 coun
 
 PClip EnsureVBRMP3Sync::Create(PClip clip, IScriptEnvironment* env) {
   AVSValue c = new EnsureVBRMP3Sync(clip);
-  PClip c2 = Cache::Create_Cache(c, 0, env).AsClip(); // Very good idea to insert a cache here.
-  c2->SetCacheHints(CACHE_AUDIO, 1024*1024);
+  PClip c2 = env->Invoke("Cache", c).AsClip(); // Very good idea to insert a cache here.
+  c2->SetCacheHints(CACHE_AUDIO, 1024*1024);   // And juice it up to 1Mb
   return c2;
 }
 
@@ -266,17 +266,15 @@ AVSValue __cdecl EnsureVBRMP3Sync::Create(AVSValue args, void*, IScriptEnvironme
 
 MergeChannels::MergeChannels(PClip _clip, int _num_children, PClip* _child_array, IScriptEnvironment* env)
     : GenericVideoFilter(_clip), num_children(_num_children), child_array(_child_array) {
-  VideoInfo vi2;
-  PClip tclip;
 
   clip_channels = new int[num_children];
   clip_offset = new signed char * [num_children];
   clip_channels[0] = vi.AudioChannels();
 
   for (int i = 1;i < num_children;i++) {
-    tclip = child_array[i];
+    PClip tclip = child_array[i];
     child_array[i] = ConvertAudio::Create(tclip, vi.SampleType(), vi.SampleType());  // Clip 2 should now be same type as clip 1.
-    vi2 = child_array[i]->GetVideoInfo();
+    const VideoInfo& vi2 = child_array[i]->GetVideoInfo();
 
     if (vi.audio_samples_per_second != vi2.audio_samples_per_second) {
       env->ThrowError("MergeChannels: Clips must have same sample rate! Use ResampleAudio()!");  // Could be removed for fun :)
@@ -1170,8 +1168,6 @@ ResampleAudio::ResampleAudio(PClip _child, int _target_rate_n, int _target_rate_
 
   double dh = min(double(Npc), factor * Npc);  /* Filter sampling period */
   dhb = int(dh * (1 << Na) + 0.5);
-
-//  child->SetCacheHints(CACHE_AUDIO, 0); // No longer needed, we recycle our Xoff extra samples
 
 	}
 	catch (...) { throw; }

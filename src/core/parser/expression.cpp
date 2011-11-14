@@ -36,7 +36,6 @@
 #include "stdafx.h"
 
 #include "expression.h"
-#include "../cache.h"
 
 
 
@@ -487,7 +486,7 @@ AVSValue ExpVariableReference::Evaluate(IScriptEnvironment* env)
   AVSValue result;
   try {
     // first look for a genuine variable
-    // No Tritical don't add a cache to this one, it's a Var
+    // Don't add a cache to this one, it's a Var
     return env->GetVar(name);
   }
   catch (IScriptEnvironment::NotFound) {
@@ -509,7 +508,7 @@ AVSValue ExpVariableReference::Evaluate(IScriptEnvironment* env)
   }
   // Add cache to Bracketless call of argless function
   if (result.IsClip()) { // Tritical Jan 2006
-    return Cache::Create_Cache(result, 0, env);
+    return env->Invoke("Cache", result);
   }
   return result;
 }
@@ -604,7 +603,7 @@ AVSValue ExpFunctionCall::Evaluate(IScriptEnvironment* env)
   AVSValue result = Call(env);
 
   if (result.IsClip()) {
-    return Cache::Create_Cache(result, 0, env);
+    return env->Invoke("Cache", result);
   }
 
   return result;
