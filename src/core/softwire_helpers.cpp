@@ -147,7 +147,7 @@ int DynamicAssembledCode::Call(const void* arg1, ...) const {
 
   if (ret) {
     __try { 
-      return ((int (*)(const void* *))entry)(&arg1);
+      return ((int (__cdecl*)(const void* *))entry)(&arg1);
     }
     __except ( ei = GetExceptionInformation(),
                (GetExceptionCode() >> 28) == 0xC )

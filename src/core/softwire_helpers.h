@@ -43,7 +43,7 @@ using namespace SoftWire;
 class DynamicAssembledCode {
 
   BYTE* ret;                //automatic deletion with ownership transfer (I assume new has been used to memory allocation)    
-  void (*entry)();        
+  void (__cdecl *entry)(void);        
    
 public:
   DynamicAssembledCode() {ret = 0;};
