@@ -93,7 +93,7 @@ LanczosFilter::LanczosFilter(int t = 3) {
 }
 
 double LanczosFilter::sinc(double value) {
-  if (value != 0.0) {
+  if (value > 0.000001) {
     value *= M_PI;
     return sin(value) / value;
   } else {
@@ -124,11 +124,11 @@ double BlackmanFilter::f(double value) {
    value = fabs(value);
 
   if (value < taps) {
-    if (value == 0.0) {
-      return 1.0;
-    } else {
+    if (value > 0.000001) {
       value *= M_PI;
       return (sin(value) / value) * (0.42 + 0.5*cos(value*rtaps) + 0.08*cos(2*value*rtaps));
+    } else {
+      return 1.0;
     }
   } else {
     return 0.0;
@@ -218,8 +218,9 @@ SincFilter::SincFilter(int t = 4) {
 double SincFilter::f(double value) {
    value = fabs(value);
 
-  if (abs(value)>0.000001) {
-    return sin(value*M_PI)/(value*M_PI);
+  if (value > 0.000001) {
+    value *= M_PI;
+    return sin(value)/value;
   } else {
     return 1.0;
   }
