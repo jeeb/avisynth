@@ -82,7 +82,7 @@ private:
   VideoFrame* BuildVideoFrame(CachedVideoFrame *i, int n);
   bool LockVFB(CachedVideoFrame *i, IScriptEnvironment* env);
   bool UnlockVFB(CachedVideoFrame *i);
-  void ProtectVFB(CachedVideoFrame *i, int n);
+  void ProtectVFB(CachedVideoFrame *i, int n, IScriptEnvironment* env);
   bool UnProtectVFB(CachedVideoFrame *i);
   PVideoFrame __stdcall childGetFrame(int n, IScriptEnvironment* env);
 

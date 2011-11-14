@@ -340,7 +340,7 @@ PVideoFrame __stdcall Cache::GetFrame(int n, IScriptEnvironment* env)
           LockVFB(i, env);  //  BuildVideoFrame expect the VFB to be locked
           EnterCriticalSection(&cs_cache_V);
           PVideoFrame retval=BuildVideoFrame(i, n);
-          InterlockedDecrement((long*)&retval->refcount);
+          InterlockedDecrement(&retval->refcount);
           LeaveCriticalSection(&cs_cache_V);
           return retval;
         }
@@ -475,7 +475,7 @@ PVideoFrame __stdcall Cache::GetFrame(int n, IScriptEnvironment* env)
 
   // If this is a CACHE_RANGE frame protect it
   if (h_span) {
-    ProtectVFB(cvf, n);
+    ProtectVFB(cvf, n, env);
   }
   // If we have asked for a frame twice, lock frames.
   else if (  (fault_rate >  100) // Generated frames are subject to locking at a lower fault rate
@@ -596,13 +596,13 @@ bool Cache::UnlockVFB(CachedVideoFrame *i)
   return false; // nop
 }
 
-void Cache::ProtectVFB(CachedVideoFrame *i, int n)
+void Cache::ProtectVFB(CachedVideoFrame *i, int n, IScriptEnvironment* env)
 {
   CachedVideoFrame* j = video_frames.prev;
 
   if (i->vfb && !InterlockedCompareExchange(&i->vfb_protected, 1, 0)) {
     InterlockedIncrement(&protectcount);
-    InterlockedIncrement(&i->vfb->refcount); // Might need to env->ManageCache(MC_IncVFBRefcount, i->vfb);
+    env->ManageCache(MC_IncVFBRefcount, i->vfb);
     InterlockedIncrement(&g_Cache_stats.vfb_protects);
   }
 
