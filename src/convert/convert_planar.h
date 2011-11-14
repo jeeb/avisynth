@@ -67,7 +67,7 @@ static int getMatrix( const char* matrix, IScriptEnvironment* env) {
 
 enum   {PLACEMENT_MPEG2, PLACEMENT_MPEG1, PLACEMENT_DV } ;
 
-static int getPlacement( const char* placement, IScriptEnvironment* env);
+static int getPlacement( const AVSValue& _placement, IScriptEnvironment* env);
 
 static ResamplingFunction* getResampler( const char* resampler, IScriptEnvironment* env);
 

@@ -1041,7 +1041,7 @@ AVSValue __cdecl ConvertToPlanarGeneric::CreateYV12(AVSValue args, void*, IScrip
   PClip clip = args[0].AsClip();
 
   if (clip->GetVideoInfo().IsYV12()) {
-    if (getPlacement(args[3]) == getPlacement(args[5]))
+    if (getPlacement(args[3], env) == getPlacement(args[5], env))
       return clip;
   }
   else if (clip->GetVideoInfo().IsRGB())
@@ -1110,7 +1110,7 @@ AVSValue __cdecl ConvertToPlanarGeneric::CreateYV411(AVSValue args, void*, IScri
 
 
 static int getPlacement(const AVSValue& _placement, IScriptEnvironment* env) {
-  char* placement = _placement.AsString(0);
+  const char* placement = _placement.AsString(0);
 
   if (placement) {
     if (!lstrcmpi(placement, "mpeg2"))
