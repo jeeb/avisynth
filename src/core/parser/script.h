@@ -125,15 +125,27 @@ AVSValue Floor(AVSValue args, void*, IScriptEnvironment* env);
 AVSValue Ceil(AVSValue args, void*, IScriptEnvironment* env);
 AVSValue Round(AVSValue args, void*, IScriptEnvironment* env);
 
-AVSValue Sin(AVSValue args, void* user_data, IScriptEnvironment* env);
+AVSValue Acos(AVSValue args, void* user_data, IScriptEnvironment* env);
+AVSValue Asin(AVSValue args, void* user_data, IScriptEnvironment* env);
+AVSValue Atan(AVSValue args, void* user_data, IScriptEnvironment* env);
+AVSValue Atan2(AVSValue args, void* user_data, IScriptEnvironment* env);
 AVSValue Cos(AVSValue args, void* user_data, IScriptEnvironment* env);
-AVSValue Pi(AVSValue args, void* user_data, IScriptEnvironment* env);
-AVSValue Log(AVSValue args, void* user_data, IScriptEnvironment* env);
+AVSValue Cosh(AVSValue args, void* user_data, IScriptEnvironment* env);
 AVSValue Exp(AVSValue args, void* user_data, IScriptEnvironment* env);
+AVSValue Fmod(AVSValue args, void* user_data, IScriptEnvironment* env);
+AVSValue Log(AVSValue args, void* user_data, IScriptEnvironment* env);
+AVSValue Log10(AVSValue args, void* user_data, IScriptEnvironment* env);
 AVSValue Pow(AVSValue args, void* user_data, IScriptEnvironment* env);
+AVSValue Sin(AVSValue args, void* user_data, IScriptEnvironment* env);
+AVSValue Sinh(AVSValue args, void* user_data, IScriptEnvironment* env);
+AVSValue Tan(AVSValue args, void* user_data, IScriptEnvironment* env);
+AVSValue Tanh(AVSValue args, void* user_data, IScriptEnvironment* env);
 AVSValue Sqrt(AVSValue args, void* user_data, IScriptEnvironment* env);
-AVSValue FAbs(AVSValue args, void* user_data, IScriptEnvironment* env);
+
 AVSValue Abs(AVSValue args, void* user_data, IScriptEnvironment* env);
+AVSValue FAbs(AVSValue args, void* user_data, IScriptEnvironment* env);
+AVSValue Pi(AVSValue args, void* user_data, IScriptEnvironment* env);
+AVSValue Sign(AVSValue args, void*, IScriptEnvironment* env);
 
 
 static inline const VideoInfo& VI(const AVSValue& arg);
@@ -168,6 +180,7 @@ AVSValue IsFieldBased(AVSValue args, void*, IScriptEnvironment* env);
 AVSValue IsFrameBased(AVSValue args, void*, IScriptEnvironment* env);
 AVSValue GetParity(AVSValue args, void*, IScriptEnvironment* env);
 AVSValue String(AVSValue args, void*, IScriptEnvironment* env);
+AVSValue Hex(AVSValue args, void*, IScriptEnvironment* env);
 
 AVSValue IsBool(AVSValue args, void*, IScriptEnvironment* env);
 AVSValue IsInt(AVSValue args, void*, IScriptEnvironment* env);
@@ -193,6 +206,10 @@ AVSValue BitAnd(AVSValue args, void*, IScriptEnvironment* env);
 AVSValue BitNot(AVSValue args, void*, IScriptEnvironment* env);
 AVSValue BitOr(AVSValue args, void*, IScriptEnvironment* env);
 AVSValue BitXor(AVSValue args, void*, IScriptEnvironment* env);
+
+AVSValue BitLShift(AVSValue args, void*, IScriptEnvironment* env);
+AVSValue BitRShiftL(AVSValue args, void*, IScriptEnvironment* env);
+AVSValue BitRShiftA(AVSValue args, void*, IScriptEnvironment* env);
 
 AVSValue UCase(AVSValue args, void*, IScriptEnvironment* env);
 AVSValue LCase(AVSValue args, void*, IScriptEnvironment* env);
