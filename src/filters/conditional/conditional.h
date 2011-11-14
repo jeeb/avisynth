@@ -37,6 +37,22 @@
 #include "../../internal.h"
 
 
+class ConditionalSelect : public GenericVideoFilter
+{
+public:
+  ConditionalSelect(PClip _child, const char _expression[], int _num_args, PClip *_child_array, bool _show, IScriptEnvironment* env);
+  ~ConditionalSelect();
+  PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
+  static AVSValue __cdecl Create(AVSValue args, void* user_data, IScriptEnvironment* env);
+
+private:
+  const char* const expression;
+  const int num_args;
+  PClip *child_array;
+  const bool show;
+};
+
+
 class ConditionalFilter : public GenericVideoFilter
 /**
   * Conditional 

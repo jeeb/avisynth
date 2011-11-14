@@ -40,6 +40,7 @@
 #include "conditional_reader.h"
 
 extern const AVSFunction Conditional_filters[] = {
+  {  "ConditionalSelect","csc+[show]b", ConditionalSelect::Create },
   {  "ConditionalFilter","cccsss[show]b", ConditionalFilter::Create },
   {  "ScriptClip", "cs[show]b[after_frame]b", ScriptClip::Create },
   {  "ConditionalReader", "css[show]b", ConditionalReader::Create },
@@ -66,19 +67,149 @@ inline AVSValue GetVar(IScriptEnvironment* env, const char* name) {
 
 
 /********************************
+ * Conditional Select
+ *
+ * Returns each one frame from N sources
+ * based on an integer evaluator.
+ ********************************/
+
+ConditionalSelect::ConditionalSelect(PClip _child, const char _expression[],
+                                     int _num_args, PClip *_child_array,
+                                     bool _show, IScriptEnvironment* env) :
+  GenericVideoFilter(_child), expression(_expression),
+  num_args(_num_args), child_array(_child_array), show(_show) {
+    
+  for (int i=0; i<num_args; i++) {
+    const VideoInfo& vin = child_array[i]->GetVideoInfo();
+
+    if (vi.height != vin.height)
+      env->ThrowError("ConditionalSelect: The sources must all have the same height!");
+
+    if (vi.width != vin.width)
+      env->ThrowError("ConditionalSelect: The sources must all have the same width!");
+
+    if (!vi.IsSameColorspace(vin))
+      env->ThrowError("ConditionalSelect: The sources must all be the same colorspace!");
+
+    if (vi.num_frames < vin.num_frames) // Max of all clips
+      vi.num_frames = vin.num_frames;
+  }
+}
+
+
+ConditionalSelect::~ConditionalSelect() {
+  delete[] child_array;
+}
+
+
+PVideoFrame __stdcall ConditionalSelect::GetFrame(int n, IScriptEnvironment* env) {
+
+  AVSValue prev_last = GetVar(env, "last");  // Store previous last
+  AVSValue prev_current_frame = GetVar(env, "current_frame");  // Store previous current_frame
+
+  env->SetVar("last", (AVSValue)child);      // Set implicit last
+  env->SetVar("current_frame", (AVSValue)n); // Set frame to be tested by the conditional filters.
+
+  AVSValue result;
+
+  try {
+    ScriptParser parser(env, expression, "[Conditional Select, Expression]");
+    PExpression exp = parser.Parse();
+    result = exp->Evaluate(env);
+
+    if (!result.IsInt())
+      env->ThrowError("Conditional Select: Expression must return an integer!");
+  }
+  catch (AvisynthError error) {    
+    env->SetVar("last", prev_last);                   // Restore implicit last
+    env->SetVar("current_frame", prev_current_frame); // Restore current_frame
+
+    const int num_frames = child->GetVideoInfo().num_frames;
+    PVideoFrame dst = child->GetFrame(min(num_frames-1, n), env);
+
+    env->MakeWritable(&dst);
+    env->ApplyMessage(&dst, vi, error.msg, vi.width/W_DIVISOR, 0xa0a0a0, 0, 0);
+
+    return dst;
+  }
+
+  env->SetVar("last", prev_last);                   // Restore implicit last
+  env->SetVar("current_frame", prev_current_frame); // Restore current_frame
+
+  const int i = result.AsInt();
+  
+  PVideoFrame dst;
+
+  if (i < 0 || i >= num_args) {
+    const int num_frames = child->GetVideoInfo().num_frames;
+    dst = child->GetFrame(min(num_frames-1, n), env);
+  }
+  else {
+    const int num_frames = child_array[i]->GetVideoInfo().num_frames;
+    dst = child_array[i]->GetFrame(min(num_frames-1, n), env);
+  }
+
+  if (show) {
+    char text[32];
+
+    _snprintf(text, sizeof(text)-1, "Expression Result:%i\n", result.AsInt());
+    text[sizeof(text)-1] = '\0';
+
+    env->MakeWritable(&dst);
+    env->ApplyMessage(&dst, vi, text, vi.width/4, 0xa0a0a0, 0, 0);
+  }
+
+  return dst;
+}
+
+
+AVSValue __cdecl ConditionalSelect::Create(AVSValue args, void* user_data, IScriptEnvironment* env)
+{
+  int num_args = 0;
+  PClip* child_array = 0;
+
+  if (!args[1].AsString(0))
+    env->ThrowError("Conditional Select: expression missing!");
+
+  if (args[2].IsArray()) {
+    num_args = args[2].ArraySize();
+    child_array = new PClip[num_args];
+
+    for (int i = 0; i < num_args; ++i) // Copy clips
+      child_array[i] = args[2][i].AsClip();
+  }
+  else if (args[2].IsClip()) { // Make easy to call with trivial 1 clip
+    num_args = 1;
+    child_array = new PClip[1];
+
+    child_array[0] = args[2].AsClip();
+  }
+  else {
+    env->ThrowError("Conditional Select: clip array not recognized!");
+  }
+
+  return new ConditionalSelect(args[0].AsClip(), args[1].AsString(), num_args, child_array, args[3].AsBool(false), env);
+}
+
+
+/********************************
  * Conditional filter
  *
  * Returns each one frame from two sources,
  * based on an evaluator.
  ********************************/
 
-ConditionalFilter::ConditionalFilter(PClip _child, PClip _source1, PClip _source2, AVSValue  _condition1, AVSValue  _evaluator, AVSValue  _condition2, bool _show, IScriptEnvironment* env) :
+ConditionalFilter::ConditionalFilter(PClip _child, PClip _source1, PClip _source2,
+                                     AVSValue  _condition1, AVSValue  _evaluator, AVSValue  _condition2,
+                                     bool _show, IScriptEnvironment* env) :
   GenericVideoFilter(_child), source1(_source1), source2(_source2),
   eval1(_condition1), eval2(_condition2), show(_show) {
     
     evaluator = NONE;
 
-    if (lstrcmpi(_evaluator.AsString(), "equals") == 0 || lstrcmpi(_evaluator.AsString(), "=") == 0 || lstrcmpi(_evaluator.AsString(), "==") == 0)
+    if (lstrcmpi(_evaluator.AsString(), "equals") == 0 ||
+        lstrcmpi(_evaluator.AsString(), "=") == 0 ||
+        lstrcmpi(_evaluator.AsString(), "==") == 0)
       evaluator = EQUALS;
     if (lstrcmpi(_evaluator.AsString(), "greaterthan") == 0 || lstrcmpi(_evaluator.AsString(), ">") == 0)
       evaluator = GREATERTHAN;
@@ -120,7 +251,7 @@ PVideoFrame __stdcall ConditionalFilter::GetFrame(int n, IScriptEnvironment* env
   VideoInfo vi1 = source1->GetVideoInfo();
   VideoInfo vi2 = source2->GetVideoInfo();
 
-  AVSValue prev_last = env->GetVar("last");  // Store previous last
+  AVSValue prev_last = GetVar(env, "last");  // Store previous last
   AVSValue prev_current_frame = GetVar(env, "current_frame");  // Store previous current_frame
 
   env->SetVar("last",(AVSValue)child);       // Set implicit last
@@ -288,7 +419,7 @@ ScriptClip::ScriptClip(PClip _child, AVSValue  _script, bool _show, bool _only_e
   }
 
 PVideoFrame __stdcall ScriptClip::GetFrame(int n, IScriptEnvironment* env) {
-  AVSValue prev_last = env->GetVar("last");  // Store previous last
+  AVSValue prev_last = GetVar(env, "last");  // Store previous last
   AVSValue prev_current_frame = GetVar(env, "current_frame");  // Store previous current_frame
 
   env->SetVar("last",(AVSValue)child);       // Set explicit last
