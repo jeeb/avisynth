@@ -597,8 +597,8 @@ void TCPServerListener::KillThread() {
   decode a client request.
  ***************************/
 
-TCPRecievePacket::TCPRecievePacket(SOCKET _s) : s(_s) {
-  isDisconnected = false;
+TCPRecievePacket::TCPRecievePacket(SOCKET _s)
+ : dataSize(0), data(0), isDisconnected(false), s(_s) {
   int recieved = 0;
 
   while (recieved < 4) {
@@ -618,7 +618,7 @@ TCPRecievePacket::TCPRecievePacket(SOCKET _s) : s(_s) {
     return ;
   }
 
-  data = (BYTE*)malloc(dataSize);
+  data = new BYTE[dataSize];
   recieved = 0;
   while (recieved < dataSize) {
     int bytesRecv = recv(s, (char*) & data[recieved], dataSize - recieved, 0 );
@@ -633,6 +633,6 @@ TCPRecievePacket::TCPRecievePacket(SOCKET _s) : s(_s) {
 
 TCPRecievePacket::~TCPRecievePacket() {
   if (dataSize > 0)
-    free(data);
+    delete [] data;
 }
 
