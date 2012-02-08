@@ -144,6 +144,42 @@ public:
 };
 
 
+class SeparateColumns : public GenericVideoFilter 
+/**
+  * Class to separate columns of video
+ **/
+{
+private:
+  const int interval;
+
+public:
+  SeparateColumns(PClip _child, int _interval, IScriptEnvironment* env);
+  PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
+  inline bool __stdcall GetParity(int n)
+    { return child->GetParity(n/interval); }
+
+  static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env); 
+};
+
+
+class SeparateRows : public GenericVideoFilter 
+/**
+  * Class to separate lines of video
+ **/
+{
+private:
+  const int interval;
+
+public:
+  SeparateRows(PClip _child, int _interval, IScriptEnvironment* env);
+  PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
+  inline bool __stdcall GetParity(int n)
+    { return child->GetParity(n/interval); }
+
+  static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env); 
+};
+
+
 class SeparateFields : public GenericVideoFilter 
 /**
   * Class to separate fields of interlaced video
