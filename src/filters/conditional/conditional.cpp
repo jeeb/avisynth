@@ -463,7 +463,20 @@ PVideoFrame __stdcall ScriptClip::GetFrame(int n, IScriptEnvironment* env) {
   const char* error = NULL;
   VideoInfo vi2 = vi;
   if (!result.IsClip()) {
-    error = "ScriptClip: Function did not return a video clip!";
+    if (result.IsBool())
+      error = "ScriptClip: Function did not return a video clip! (Was a bool)";
+    else if (result.IsInt())
+      error = "ScriptClip: Function did not return a video clip! (Was an int)";
+    else if (result.IsFloat())
+      error = "ScriptClip: Function did not return a video clip! (Was a float)";
+    else if (result.IsString())
+      error = "ScriptClip: Function did not return a video clip! (Was a string)";
+    else if (result.IsArray())
+      error = "ScriptClip: Function did not return a video clip! (Was an array)";
+    else if (!result.Defined())
+      error = "ScriptClip: Function did not return a video clip! (Was the undefined value)";
+    else
+      error = "ScriptClip: Function did not return a video clip! (type is unknown)";
   } else {
     vi2 = result.AsClip()->GetVideoInfo();
     if (!vi.IsSameColorspace(vi2)) { 
