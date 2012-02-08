@@ -202,7 +202,16 @@ AVSValue ScriptFunction::Execute(AVSValue args, void* user_data, IScriptEnvironm
   env->PushContext();
   for (int i=0; i<args.ArraySize(); ++i)
     env->SetVar(self->param_names[i], args[i]);
-  AVSValue result = self->body->Evaluate(env);
+
+  AVSValue result;
+  try {
+    result = self->body->Evaluate(env);
+  }
+  catch(...) {
+    env->PopContext();
+    throw;
+  }
+
   env->PopContext();
   return result;
 }
