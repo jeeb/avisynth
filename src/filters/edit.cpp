@@ -44,10 +44,17 @@
 ********************************************************************/
 
 extern const AVSFunction Edit_filters[] = {  
-  { "Trim", "cii[]b", Trim::Create },                       // first frame, last frame[, pad audio]
+  { "AudioTrim", "cff",          Trim::CreateA, (void*)Trim::Default}, // start time, end time
+  { "AudioTrim", "cf",           Trim::CreateA, (void*)Trim::Invalid}, // Throw Invalid argument to AudioTrim
+  { "AudioTrim", "cf[length]f",  Trim::CreateA, (void*)Trim::Length},  // start time, duration
+  { "AudioTrim", "cf[end]f",     Trim::CreateA, (void*)Trim::End},     // start time, end time
+  { "Trim", "cii[pad]b",         Trim::Create,  (void*)Trim::Default}, // first frame, last frame[, pad audio]
+  { "Trim", "ci[pad]b",          Trim::Create,  (void*)Trim::Invalid}, // Throw Invalid argument to Trim
+  { "Trim", "ci[length]i[pad]b", Trim::Create,  (void*)Trim::Length},  // first frame, frame count[, pad audio]
+  { "Trim", "ci[end]i[pad]b",    Trim::Create,  (void*)Trim::End},     // first frame, last frame[, pad audio]
   { "FreezeFrame", "ciii", FreezeFrame::Create },           // first frame, last frame, source frame
-  { "DeleteFrame", "ci+", DeleteFrame::Create },             // frame #
-  { "DuplicateFrame", "ci+", DuplicateFrame::Create },       // frame #
+  { "DeleteFrame", "ci+", DeleteFrame::Create },            // frame #
+  { "DuplicateFrame", "ci+", DuplicateFrame::Create },      // frame #
   { "UnalignedSplice", "cc+", Splice::CreateUnaligned },    // clips
   { "AlignedSplice", "cc+", Splice::CreateAligned },        // clips
   { "Dissolve", "cc+i[fps]f", Dissolve::Create },           // clips, overlap frames[, fps]
@@ -72,26 +79,127 @@ extern const AVSFunction Edit_filters[] = {
  
 
 /******************************
+ *******   AudioTrim Filter   ******
+ ******************************/
+
+Trim::Trim(double starttime, double endtime, PClip _child, int mode, IScriptEnvironment* env)
+ : GenericVideoFilter(_child) 
+{
+  __int64 esampleno = 0;
+
+  if (!vi.HasAudio())
+    env->ThrowError("AudioTrim: Cannot trim if there is no audio.");
+
+  audio_offset = min(max(__int64(starttime*vi.audio_samples_per_second + 0.5), 0), vi.num_audio_samples);
+
+  switch (mode) {
+    case Default:
+	  if (endtime == 0.0)
+		esampleno = vi.num_audio_samples;
+	  else if (endtime < 0.0)
+		esampleno = __int64((starttime-endtime)*vi.audio_samples_per_second + 0.5);
+	  else
+		esampleno = __int64(endtime*vi.audio_samples_per_second + 0.5);
+
+	  break;
+	case Length:
+	  if (endtime < 0.0)
+		env->ThrowError("AudioTrim: Length must be >= 0");
+
+	  esampleno = __int64((starttime+endtime)*vi.audio_samples_per_second + 0.5);
+
+	  break;
+	case End:
+	  if (endtime < starttime)
+		env->ThrowError("AudioTrim: End must be >= Start");
+
+	  esampleno = __int64(endtime*vi.audio_samples_per_second + 0.5);
+
+	  break;
+	default:
+	  env->ThrowError("Script error: Invalid arguments to function \"AudioTrim\"");
+  }
+
+  if (esampleno > vi.num_audio_samples)
+	esampleno = vi.num_audio_samples;
+
+  vi.num_audio_samples = esampleno - audio_offset;
+
+  if (vi.num_audio_samples < 0)
+	vi.num_audio_samples = 0;
+
+  firstframe= vi.FramesFromAudioSamples(audio_offset); // Floor
+
+  if (endtime == 0.0 && mode == Default)
+	vi.num_frames -= firstframe;
+  else
+	vi.num_frames = vi.FramesFromAudioSamples(vi.num_audio_samples + vi.AudioSamplesFromFrames(1) - 1); // Ceil
+
+  if (vi.num_frames < 0)
+	vi.num_frames = 0;
+
+}
+
+
+AVSValue __cdecl Trim::CreateA(AVSValue args, void* mode, IScriptEnvironment* env) 
+{
+  return new Trim(args[1].AsFloat(), args[2].AsFloat(), args[0].AsClip(), (int)mode, env);
+}
+
+
+/******************************
  *******   Trim Filter   ******
  ******************************/
 
-Trim::Trim(int _firstframe, int _lastframe, bool _padaudio, PClip _child, IScriptEnvironment* env) : GenericVideoFilter(_child) 
+Trim::Trim(int _firstframe, int _lastframe, bool _padaudio, PClip _child, int mode, IScriptEnvironment* env)
+ : GenericVideoFilter(_child) 
 {
-  int lastframe;
+  int lastframe = 0;
 
   if (!vi.HasVideo())
     env->ThrowError("Trim: Cannot trim if there is no video.");
 
   firstframe = min(max(_firstframe, 0), vi.num_frames-1);
 
-  if (_lastframe == 0)
-    lastframe = vi.num_frames-1;
-  else if (_lastframe < 0)
-    lastframe = firstframe - _lastframe - 1;
-  else
-    lastframe = _lastframe;
+  switch (mode) {
+    case Default:
+	  if (_lastframe == 0)
+		lastframe = vi.num_frames-1;
+	  else if (_lastframe < 0)
+		lastframe = firstframe - _lastframe - 1;
+	  else
+		lastframe = _lastframe;
 
-  lastframe = min(max(lastframe, firstframe), vi.num_frames-1);
+	  lastframe = min(max(lastframe, firstframe), vi.num_frames-1);
+
+	  break;
+
+	case Length:
+	  if (_lastframe < 0)
+		env->ThrowError("Trim: Length must be >= 0");
+
+	  lastframe = firstframe + _lastframe - 1;
+
+	  if (lastframe > vi.num_frames-1)
+	    lastframe = vi.num_frames-1;
+
+	  break;
+
+	case End:
+	  if (_lastframe < firstframe)
+		env->ThrowError("Trim: End must be >= Start");
+
+	  lastframe = _lastframe;
+
+	  if (lastframe > vi.num_frames-1)
+	    lastframe = vi.num_frames-1;
+
+	  break;
+
+	default:
+	  env->ThrowError("Script error: Invalid arguments to function \"Trim\"");
+  }
+
   vi.num_frames = lastframe+1 - firstframe;
 
   audio_offset = vi.AudioSamplesFromFrames(firstframe);
@@ -100,7 +208,7 @@ Trim::Trim(int _firstframe, int _lastframe, bool _padaudio, PClip _child, IScrip
   else {
 	__int64 samples;
 
-    if (_lastframe == 0)
+    if (_lastframe == 0 && mode == Default)
       samples = vi.num_audio_samples;
 	else {
 	  samples = vi.AudioSamplesFromFrames(lastframe+1);
@@ -133,9 +241,9 @@ bool Trim::GetParity(int n)
 }
 
 
-AVSValue __cdecl Trim::Create(AVSValue args, void*, IScriptEnvironment* env) 
+AVSValue __cdecl Trim::Create(AVSValue args, void* mode, IScriptEnvironment* env) 
 {
-  return new Trim(args[1].AsInt(), args[2].AsInt(), args[3].AsBool(true), args[0].AsClip(), env);
+  return new Trim(args[1].AsInt(), args[2].AsInt(), args[3].AsBool(true), args[0].AsClip(), (int)mode, env);
 }
 
 
