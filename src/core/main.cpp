@@ -45,8 +45,6 @@
 #include <math.h>
 
 #include "../internal.h"
-#include "../core/cache.h"
-#include "../audio/convertaudio.h"
 #include <float.h>
 
 
@@ -645,39 +643,34 @@ bool CAVIFileSynth::DelayInit2() {
 
           filter_graph = return_val.AsClip();
 
-          if (!AllowFloatAudio) // Ensure samples are int     
-            filter_graph = ConvertAudio::Create(filter_graph, SAMPLE_INT8|SAMPLE_INT16|SAMPLE_INT24|SAMPLE_INT32, SAMPLE_INT16);
+          if (!AllowFloatAudio && filter_graph->GetVideoInfo().IsSampleType(SAMPLE_FLOAT)) // Ensure samples are int     
+            filter_graph = env->Invoke("ConvertAudioTo16bit", AVSValue(&return_val, 1)).AsClip();
 
-          filter_graph = Cache::Create_Cache(AVSValue(filter_graph), 0, env).AsClip();
+          filter_graph = env->Invoke("Cache", AVSValue(filter_graph)).AsClip();
 
           filter_graph->SetCacheHints(CACHE_ALL, 999); // Give the top level cache a big head start!!
         }
+        else if (return_val.IsBool())
+          env->ThrowError("The script's return value was not a video clip, (Is a bool, %s).", return_val.AsBool() ? "True" : "False");
+        else if (return_val.IsInt())
+          env->ThrowError("The script's return value was not a video clip, (Is an int, %d).", return_val.AsInt());
+        else if (return_val.IsFloat())
+          env->ThrowError("The script's return value was not a video clip, (Is a float, %f).", return_val.AsFloat());
+        else if (return_val.IsString())
+          env->ThrowError("The script's return value was not a video clip, (Is a string, %s).", return_val.AsString());
+        else if (return_val.IsArray())
+          env->ThrowError("The script's return value was not a video clip, (Is an array[%d]).", return_val.ArraySize());
+        else if (!return_val.Defined())
+          env->ThrowError("The script's return value was not a video clip, (Is the undefined value).");
         else
-          throw AvisynthError("The script's return value was not a video clip");
+          env->ThrowError("The script's return value was not a video clip, (The type is unknown).");
 
         if (!filter_graph)
-          throw AvisynthError("The returned video clip was nil (this is a bug)");
+          env->ThrowError("The returned video clip was nil (this is a bug)");
 
         // get information about the clip
         vi = &filter_graph->GetVideoInfo();
-/**** FORCED CONVERSIONS FOR NOW - ENABLE WHEN IMPLEMENTED  ****/
-/*
-        if (vi->IsYV16() || vi->IsYV411()) {
-          AVSValue args[1] = { filter_graph };
-          filter_graph = env->Invoke("ConvertToYUY2", AVSValue(args,1)).AsClip();
-          vi = &filter_graph->GetVideoInfo();
-        }
-        if (vi->IsYV24()) {
-          AVSValue args[1] = { filter_graph };
-          filter_graph = env->Invoke("ConvertToRGB32", AVSValue(args,1)).AsClip();
-          vi = &filter_graph->GetVideoInfo();
-        }
 
-        if (vi->IsYV12()&&(vi->width&3))
-          throw AvisynthError("Avisynth error: YV12 images for output must have a width divisible by 4 (use crop)!");
-        if (vi->IsYUY2()&&(vi->width&3))
-          throw AvisynthError("Avisynth error: YUY2 images for output must have a width divisible by 4 (use crop)!");
-*/
         // Hack YV16 and YV24 chroma plane order for old VDub's
         try {
           AVSValue v = env->GetVar("OPT_VDubPlanarHack");
