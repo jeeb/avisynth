@@ -163,22 +163,23 @@ void __stdcall ConvertToMono::GetAudio(void* buf, __int64 start, __int64 count, 
     signed short* samples = (signed short*)buf;
     signed short* tempsamples = (signed short*)tempbuffer;
     const int rchannels = 65536 / channels;
-    
-    for (int i = 0; i < count; i++) {
+
+    for (int i = 0; i < (int)count; i++) { // Defeat slow default "(__int64)i < count"
       int tsample = 0;
-      for (int j = i*channels ; j < i*channels+channels; j++)
-        tsample += tempsamples[j]; // Accumulate samples
+      for (int j = 0 ; j < channels; j++)
+        tsample += *tempsamples++; // Accumulate samples
       samples[i] = (signed short)((tsample * rchannels + 32768) >> 16); // tsample * (1/channels) + 0.5
     }
-  } else if (vi.IsSampleType(SAMPLE_FLOAT)) {
+  }
+  else if (vi.IsSampleType(SAMPLE_FLOAT)) {
     SFLOAT* samples = (SFLOAT*)buf;
     SFLOAT* tempsamples = (SFLOAT*)tempbuffer;
     const SFLOAT f_rchannels = SFLOAT(1.0 / channels);
 
-    for (int i = 0; i < count; i++) {
+    for (int i = 0; i < (int)count; i++) { // Defeat slow default "(__int64)i < count"
       SFLOAT tsample = 0.0f;
-      for (int j = i*channels ; j < i*channels+channels; j++)
-        tsample += tempsamples[j]; // Accumulate samples
+      for (int j = 0 ; j < channels; j++)
+        tsample += *tempsamples++; // Accumulate samples
       samples[i] = (tsample * f_rchannels);
     }
   }
@@ -1034,15 +1035,15 @@ iloop3:
           movsx	 eax, WORD PTR [edi]		; *samples
           add	 edi, 2						; samples++
           imul	 [t1_factor]
-		  mov    ebx, eax
-		  mov    ecx, edx
+          mov	 ebx, 65536
+          xor	 ecx, ecx
+		  add    ebx, eax
           movsx	 eax, WORD PTR [esi]		; *clip_samples
-          add	 esi, 2						; clip_samples++
+		  adc    ecx, edx
           imul	 [t2_factor]
+          add	 esi, 2						; clip_samples++
           add	 eax, ebx
           adc	 edx, ecx
-          add	 eax, 65536
-          adc	 edx, 0
 
           cmp	 edx, -1					; if (nh < -1) return MIN_SHORT;
           jge	 notnegsat3
