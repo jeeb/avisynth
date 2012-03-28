@@ -31,18 +31,18 @@
 // Public License plus this exception.  An independent module is a module
 // which is not derived from or based on Avisynth, such as 3rd-party filters,
 // import and export plugins, or graphical user interfaces.
- 
+
 
 #include "directshow_source.h"
 
-#define DSS_VERSION "2.5.8"
+#define DSS_VERSION "2.6.0"
 
 /************************************
  *          Logging Utility         *
  ************************************/
 
 /* WARNING - For some stupid reason the compile chokes if I put ()'s around f in the macros
-   so that f & log->mask cannot be subverted by the caller. Therefore the brackets have to 
+   so that f & log->mask cannot be subverted by the caller. Therefore the brackets have to
    go in the calls to the macros. DAMN!!!!! */
 
 // Based on M$ _RPT<n> macros
@@ -88,7 +88,7 @@ char* Tick() {
   }
 
   tick -= firstTick;
-  
+
   unsigned msec = tick % 1000;
   tick /= 1000;
   unsigned sec = tick % 60;
@@ -133,7 +133,7 @@ char* PrintGUID(const GUID *g) {
               g->Data4[2], g->Data4[3], g->Data4[4], g->Data4[5], g->Data4[6], g->Data4[7]);
   }
   else {
-    strcpy(buf, "<null>");
+    lstrcpy(buf, "<null>");
   }
   return buf;
 }
@@ -195,10 +195,15 @@ GetSample::GetSample(bool _load_audio, bool _load_video, unsigned _media, LOG* _
 	  no_my_media_types = i;
 	}
 	else {
-	  // Make sure my_media_types[5] is long enough!
+	  // Make sure my_media_types[9] is long enough!
 	  unsigned i=0;
+//    In the order we want codecs to bid
 	  if (media & mediaYV12)   InitMediaType(my_media_types[i++], MEDIATYPE_Video, MEDIASUBTYPE_YV12);
 	  if (media & mediaYUY2)   InitMediaType(my_media_types[i++], MEDIATYPE_Video, MEDIASUBTYPE_YUY2);
+	  if (media & mediaAYUV)   InitMediaType(my_media_types[i++], MEDIATYPE_Video, MEDIASUBTYPE_AYUV); //Needs unpacking
+  	  if (media & mediaY41P)   InitMediaType(my_media_types[i++], MEDIATYPE_Video, MEDIASUBTYPE_Y41P); //Needs unpacking
+	  if (media & mediaY411)   InitMediaType(my_media_types[i++], MEDIATYPE_Video, MEDIASUBTYPE_Y411); //Needs unpacking
+//	  if (media & mediaYUV9)   InitMediaType(my_media_types[i++], MEDIATYPE_Video, MEDIASUBTYPE_YUV9);
 	  if (media & mediaARGB)   InitMediaType(my_media_types[i++], MEDIATYPE_Video, MEDIASUBTYPE_ARGB32);
 	  if (media & mediaRGB32)  InitMediaType(my_media_types[i++], MEDIATYPE_Video, MEDIASUBTYPE_RGB32);
 	  if (media & mediaRGB24)  InitMediaType(my_media_types[i++], MEDIATYPE_Video, MEDIASUBTYPE_RGB24);
@@ -296,47 +301,111 @@ GetSample::GetSample(bool _load_audio, bool _load_video, unsigned _media, LOG* _
         env->BitBlt(pvf->GetWritePtr(), pvf->GetPitch(), buf, stride, rowsize, height);
       }
       else {
+        if (vi.IsYV12()) {
+          const int rowsize   = pvf->GetRowSize(PLANAR_Y);
+          const int UVrowsize = pvf->GetRowSize(PLANAR_V);
+          int height    = pvf->GetHeight(PLANAR_Y);
+          int UVheight  = pvf->GetHeight(PLANAR_V);
+          int stride;
+          int UVstride;
 
-        const int rowsize   = pvf->GetRowSize(PLANAR_Y);
-        const int UVrowsize = pvf->GetRowSize(PLANAR_V);
-        int height    = pvf->GetHeight(PLANAR_Y);
-        int UVheight  = pvf->GetHeight(PLANAR_V);
-        int stride;
-        int UVstride;
+          // Check for rows not being 32 bit aligned
+          if (((rowsize*height + 2*UVrowsize*UVheight + 3)&~3) == ((av_sample_bytes+3)&~3)) {
+            stride    = rowsize;
+            UVstride  = UVrowsize;
+          } else {
+            // Planar formats should have Y rows 32bit aligned
+            stride    = (rowsize+3)&~3;
+            // YV12 format should have UV rows 16bit aligned
+            UVstride  = (UVrowsize+1)&~1;
+          }
 
-        // Check for rows not being 32 bit aligned
-        if (((rowsize*height + 2*UVrowsize*UVheight + 3)&~3) == ((av_sample_bytes+3)&~3)) {
-          stride    = rowsize;
-          UVstride  = UVrowsize;
-        } else {
-          // Planar formats should have Y rows 32bit aligned
-          stride    = (rowsize+3)&~3;
-          // YV12 format should have UV rows 16bit aligned
-          UVstride  = (UVrowsize+1)&~1;
+          // Check input size is adequate
+          if (av_sample_bytes < height*stride) {
+            dssRPT2(dssERROR, "GetCurrentFrame() Input buffer to small, %d expecting %d!\n", av_sample_bytes, height*stride);
+            height = av_sample_bytes/stride;
+          }
+
+          env->BitBlt(pvf->GetWritePtr(PLANAR_Y), pvf->GetPitch(PLANAR_Y), buf, stride, rowsize, height);
+
+          // Check input size is adequate
+          if (av_sample_bytes < height*stride+2*UVheight*UVstride) {
+            dssRPT2(dssERROR, "GetCurrentFrame() Input buffer to small, %d expecting %d!\n",
+                              av_sample_bytes, height*stride+2*UVheight*UVstride);
+            UVheight = (av_sample_bytes-height*stride)/(2*UVstride);
+          }
+
+          // V plane first, after aligned end of Y plane
+          buf += stride * height;
+          env->BitBlt(pvf->GetWritePtr(PLANAR_V), pvf->GetPitch(PLANAR_V), buf, UVstride, UVrowsize, UVheight);
+
+          // And U plane last, after aligned end of V plane
+          buf += UVstride * UVheight;
+          env->BitBlt(pvf->GetWritePtr(PLANAR_U), pvf->GetPitch(PLANAR_U), buf, UVstride, UVrowsize, UVheight);
+        } else {  // 4:1:1 or 4:4:4 which needs packed -> planar conversion.
+
+          const int rowsize = pvf->GetRowSize(PLANAR_Y);
+          int height  = pvf->GetHeight(PLANAR_Y);
+
+          BYTE* dstY = pvf->GetWritePtr(PLANAR_Y);
+          BYTE* dstU = pvf->GetWritePtr(PLANAR_U);
+          BYTE* dstV = pvf->GetWritePtr(PLANAR_V);
+          BYTE* srcP = buf;
+
+
+          if (vi.IsYV24()) {  // A0 Y0 U0 V0
+            int src_pitch = vi.width *4;  // Naturally aligned.
+
+            // Check input size is adequate
+            if (av_sample_bytes < height*src_pitch) {
+              dssRPT2(dssERROR, "GetCurrentFrame() Input buffer to small, %d expecting %d!\n", av_sample_bytes, height*src_pitch);
+              height = av_sample_bytes/src_pitch;
+            }
+
+            for (int y=0; y<height; y++) {
+              for(int x=0; x<rowsize; x++) {
+                  dstY[x] = srcP[(x*4)+1];
+                  dstU[x] = srcP[(x*4)+2];
+                  dstV[x] = srcP[(x*4)+3];
+              }
+              dstY += pvf->GetPitch(PLANAR_Y);
+              dstU += pvf->GetPitch(PLANAR_U);
+              dstV += pvf->GetPitch(PLANAR_V);
+              srcP += src_pitch;
+            }
+          } else if (vi.IsYV411()) {  // U0 Y0 V0 Y1   U4 Y2 V4 Y3   Y4 Y5 Y6 Y7
+            int src_pitch = (vi.width / 8) * 12;  // Naturally aligned.
+
+            // Check input size is adequate
+            if (av_sample_bytes < height*src_pitch) {
+              dssRPT2(dssERROR, "GetCurrentFrame() Input buffer to small, %d expecting %d!\n", av_sample_bytes, height*src_pitch);
+              height = av_sample_bytes/src_pitch;
+            }
+
+            for (int y=0; y<height; y++) {
+              int Yx = 0;
+              int UVx = 0;
+              for(int x=0; x<rowsize;x+=12) {
+                  dstU[UVx] = srcP[x];
+                  dstY[Yx++] = srcP[x+1];
+                  dstV[UVx++] = srcP[x+2];
+                  dstY[Yx++] = srcP[x+3];
+                  dstU[UVx] = srcP[x+4];
+                  dstY[Yx++] = srcP[x+5];
+                  dstV[UVx++] = srcP[x+6];
+                  dstY[Yx++] = srcP[x+7];
+                  dstY[Yx++] = srcP[x+8];
+                  dstY[Yx++] = srcP[x+9];
+                  dstY[Yx++] = srcP[x+10];
+                  dstY[Yx++] = srcP[x+11];
+              }
+              dstY += pvf->GetPitch(PLANAR_Y);
+              dstU += pvf->GetPitch(PLANAR_U);
+              dstV += pvf->GetPitch(PLANAR_V);
+              srcP += src_pitch;
+            }
+          }
         }
-
-        // Check input size is adequate
-        if (av_sample_bytes < height*stride) {
-          dssRPT2(dssERROR, "GetCurrentFrame() Input buffer to small, %d expecting %d!\n", av_sample_bytes, height*stride);
-          height = av_sample_bytes/stride;
-        }
-
-        env->BitBlt(pvf->GetWritePtr(PLANAR_Y), pvf->GetPitch(PLANAR_Y), buf, stride, rowsize, height);
-
-        // Check input size is adequate
-        if (av_sample_bytes < height*stride+2*UVheight*UVstride) {
-          dssRPT2(dssERROR, "GetCurrentFrame() Input buffer to small, %d expecting %d!\n",
-                            av_sample_bytes, height*stride+2*UVheight*UVstride);
-          UVheight = (av_sample_bytes-height*stride)/(2*UVstride);
-        }
-
-        // V plane first, after aligned end of Y plane
-        buf += stride * height;
-        env->BitBlt(pvf->GetWritePtr(PLANAR_V), pvf->GetPitch(PLANAR_V), buf, UVstride, UVrowsize, UVheight);
-
-        // And U plane last, after aligned end of V plane
-        buf += UVstride * UVheight;
-        env->BitBlt(pvf->GetWritePtr(PLANAR_U), pvf->GetPitch(PLANAR_U), buf, UVstride, UVrowsize, UVheight);
       }
     }
     else if (pvf) {
@@ -350,7 +419,8 @@ GetSample::GetSample(bool _load_audio, bool _load_video, unsigned _media, LOG* _
       // If the graph still hasn't started yet we won't have a current frame
       // so dummy up a grey frame so at least things won't be fatal.
 
-      memset(pvf->GetWritePtr(), 128, pvf->GetPitch()*(pvf->GetHeight()+pvf->GetHeight(PLANAR_U)));
+      memset(pvf->GetWritePtr(), 128, pvf->GetPitch()*pvf->GetHeight() +
+                                      pvf->GetPitch(PLANAR_U)*pvf->GetHeight(PLANAR_U)*2);
     }
     return pvf;
   }
@@ -453,9 +523,9 @@ GetSample::GetSample(bool _load_audio, bool _load_video, unsigned _media, LOG* _
 
 //    It looks like GetCapabilities() is a useless liar. So it seems the
 //    best thing is to just try the seeks and test the result code
-//  
+//
 //    ms->GetCapabilities(&dwCaps);
-    
+
       ms->SetTimeFormat(&TIME_FORMAT_MEDIA_TIME); // Setting can give E_NOTIMPL
 
       LONGLONG pCurrent = -1, pStop;
@@ -539,16 +609,16 @@ SeekExit:
 
   // IUnknown
 
-  ULONG __stdcall GetSample::AddRef() { 
-    ULONG ref = InterlockedIncrement(&refcnt); 
-    dssRPT1(dssREF, "GetSample::AddRef() -> %d\n", ref); 
-    return ref; 
+  ULONG __stdcall GetSample::AddRef() {
+    ULONG ref = InterlockedIncrement(&refcnt);
+    dssRPT1(dssREF, "GetSample::AddRef() -> %d\n", ref);
+    return ref;
   }
 
-  ULONG __stdcall GetSample::Release() { 
-    ULONG ref = InterlockedDecrement(&refcnt); 
-    dssRPT1(dssREF, "GetSample::Release() -> %d\n", ref); 
-    return ref; 
+  ULONG __stdcall GetSample::Release() {
+    ULONG ref = InterlockedDecrement(&refcnt);
+    dssRPT1(dssREF, "GetSample::Release() -> %d\n", ref);
+    return ref;
   }
 
   HRESULT __stdcall GetSample::QueryInterface(REFIID iid, void** ppv) {
@@ -571,11 +641,11 @@ SeekExit:
 
         if (FAILED(hr))  {
           *ppv = 0;
-          dssRPT1(dssERROR, "GetSample::QueryInterface(%s, ppv), Failed CreatePosPassThru!\n", PrintGUID(&iid)); 
+          dssRPT1(dssERROR, "GetSample::QueryInterface(%s, ppv), Failed CreatePosPassThru!\n", PrintGUID(&iid));
           return hr;
         }
       }
-      dssRPT1(dssCMD, "GetSample::QueryInterface(%s, ppv) -> m_pPos\n", PrintGUID(&iid)); 
+      dssRPT1(dssCMD, "GetSample::QueryInterface(%s, ppv) -> m_pPos\n", PrintGUID(&iid));
       return m_pPos->QueryInterface(iid, ppv);
     }
     else {
@@ -584,7 +654,7 @@ SeekExit:
       return E_NOINTERFACE;
     }
     AddRef();
-    dssRPT1(dssCMD, "GetSample::QueryInterface(%s, ppv)\n", PrintGUID(&iid)); 
+    dssRPT1(dssCMD, "GetSample::QueryInterface(%s, ppv)\n", PrintGUID(&iid));
     return S_OK;
   }
 
@@ -695,7 +765,7 @@ SeekExit:
       return E_POINTER;
     }
     dssRPT0(dssCMD, "GetSample::QueryFilterInfo()\n");
-    lstrcpyW(pInfo->achName, L"GetSample");
+    lstrcpynW(pInfo->achName, L"GetSample", MAX_FILTER_NAME);
     pInfo->pGraph = filter_graph;
     if (filter_graph) filter_graph->AddRef();
     return S_OK;
@@ -815,7 +885,7 @@ SeekExit:
     pInfo->pFilter = static_cast<IBaseFilter*>(this);
     AddRef();
     pInfo->dir = PINDIR_INPUT;
-    lstrcpyW(pInfo->achName, L"GetSample");
+    lstrcpynW(pInfo->achName, L"GetSample", MAX_PIN_NAME);
 	dssRPT1(dssCMD, "GetSample::QueryPinInfo() 0x%08x\n", this);
     return S_OK;
   }
@@ -881,7 +951,7 @@ SeekExit:
 /*
 Audio: WAVE_FORMAT_EXTENSIBLE 48000Hz 6ch 6912Kbps
 
-AM_MEDIA_TYPE: 
+AM_MEDIA_TYPE:
 majortype: MEDIATYPE_Audio {73647561-0000-0010-8000-00AA00389B71}
 subtype: MEDIASUBTYPE_PCM {00000001-0000-0010-8000-00AA00389B71}
 formattype: FORMAT_WaveFormatEx {05589F81-C356-11CE-BF01-00AA0055595A}
@@ -905,7 +975,7 @@ dwChannelMask: 0x0000003f
 SubFormat: KSDATAFORMAT_SUBTYPE_PCM {00000001-0000-0010-8000-00AA00389B71}
 
 pbFormat:
-0000: fe ff 06 00 80 bb 00 00 00 2f 0d 00 12 00 18 00 þÿ..€».../......
+0000: fe ff 06 00 80 bb 00 00 00 2f 0d 00 12 00 18 00 ........./......
 0010: 16 00 18 00 3f 00 00 00 01 00 00 00 00 00 10 00 ....?...........
 0020: 80 00 00 aa 00 38 9b 71
 */
@@ -986,7 +1056,7 @@ pbFormat:
 		  || (vi.nchannels                != wex->nChannels)
 		  || (vi.sample_type              != sample_type) ) {
 		  dssRPT4(dssNEG,  "*** Audio: Reject format change! Channels:%d. Samples/sec:%d. Bits/sample:%d. Type:%x\n",
-				wex->nChannels, wex->nSamplesPerSec, wex->wBitsPerSample, sample_type);      
+				wex->nChannels, wex->nSamplesPerSec, wex->wBitsPerSample, sample_type);
 		  return S_FALSE;
 	    }
 	  }
@@ -996,7 +1066,7 @@ pbFormat:
       vi.sample_type = sample_type;
 
       dssRPT4(dssNEG,  "*** Audio: Accepted! Channels:%d. Samples/sec:%d. Bits/sample:%d. Type:%x\n",
-            wex->nChannels, wex->nSamplesPerSec, wex->wBitsPerSample, sample_type);      
+            wex->nChannels, wex->nSamplesPerSec, wex->wBitsPerSample, sample_type);
       return S_OK;
     }
 
@@ -1004,12 +1074,33 @@ pbFormat:
 
 	if (pmt->majortype == MEDIATYPE_Video) {
 	  int pixel_type = 0;
-	  if        (pmt->subtype == MEDIASUBTYPE_YV12) {  
+	  if        (pmt->subtype == MEDIASUBTYPE_YV12) {
 		if (!(media & mediaYV12)) {
 		  dssRPT0(dssNEG,  "*** Video: Subtype denied - YV12\n");
 		  return S_FALSE;
 		}
 		pixel_type = VideoInfo::CS_YV12;
+
+	  } else if (pmt->subtype == MEDIASUBTYPE_Y411) {
+		if (!(media & mediaY411)) {
+		  dssRPT0(dssNEG,  "*** Video: Subtype denied - Y411\n");
+		  return S_FALSE;
+		}
+		pixel_type = VideoInfo::CS_YV411;
+
+	  } else if (pmt->subtype == MEDIASUBTYPE_Y41P) {
+		if (!(media & mediaY41P)) {
+		  dssRPT0(dssNEG,  "*** Video: Subtype denied - Y41P\n");
+		  return S_FALSE;
+		}
+		pixel_type = VideoInfo::CS_YV411;
+
+	  } else if (pmt->subtype == MEDIASUBTYPE_AYUV) {
+		if (!(media & mediaAYUV)) {
+		  dssRPT0(dssNEG,  "*** Video: Subtype denied - AYUV\n");
+		  return S_FALSE;
+		}
+		pixel_type = VideoInfo::CS_YV24;
 
 	  } else if (pmt->subtype == MEDIASUBTYPE_YUY2) {
 		if (!(media & mediaYUY2)) {
@@ -1467,7 +1558,7 @@ static HRESULT AttemptConnectFilters(IGraphBuilder* gb, IBaseFilter* connect_fil
   connect_filter->EnumPins(&ep_conn);
   IPin* p_conn;
 
-  if (FAILED(ep_conn->Next(1, &p_conn, &fetched))) 
+  if (FAILED(ep_conn->Next(1, &p_conn, &fetched)))
     return E_UNEXPECTED;
 
   while (S_OK ==(ef->Next(1, &bf, &fetched))) {
@@ -1523,10 +1614,10 @@ void DirectShowSource::SetMicrosoftDVtoFullResolution(IGraphBuilder* gb) {
     bf->Release();
   }
   ef->Release();
-  
+
 }
 
-// The following constant is from "wmcodecconst.h" in the 
+// The following constant is from "wmcodecconst.h" in the
 // "Windows Media Audio and Video Codec Interfaces download package"
 // available for download from MSDN.
 static const WCHAR *g_wszWMVCDecoderDeinterlacing = L"_DECODERDEINTERLACING";
@@ -1671,8 +1762,8 @@ DirectShowSource::DirectShowSource(const char* filename, int _avg_time_per_frame
 
     CheckHresult(env, gb->AddFilter(static_cast<IBaseFilter*>(&get_sample), L"GetSample"), "couldn't add GetSample filter");
 
-    int fnlen = strlen(filename);
-    bool load_grf = (fnlen >= 4) ? !strcmpi(filename+fnlen-4,".grf") : false;  // Detect ".GRF" extension and load as graph if so.
+    int fnlen = lstrlen(filename);
+    bool load_grf = (fnlen >= 4) ? !lstrcmpi(filename+fnlen-4,".grf") : false;  // Detect ".GRF" extension and load as graph if so.
 
     if (load_grf) {
       CheckHresult(env, LoadGraphFile(gb, filenameW), "Couldn't open GRF file.", filename);
@@ -1681,7 +1772,7 @@ DirectShowSource::DirectShowSource(const char* filename, int _avg_time_per_frame
       if (!get_sample.IsConnected()) {
         if (_enable_video)
           env->ThrowError("DirectShowSource: GRF file does not have a compatible open video pin.\n"
-                          "Graph must have 1 output pin that will bid RGB24, RGB32, ARGB, YUY2 or YV12");
+                          "Graph must have 1 output pin that will bid RGB24, RGB32, ARGB, YUY2, YV12, Y41P, Y411 or AYUV");
         else
           env->ThrowError("DirectShowSource: GRF file does not have a compatible open audio pin.\n"
                           "Graph must have 1 output pin that will bid 8, 16, 24 or 32 bit PCM or IEEE Float.");
@@ -1921,7 +2012,7 @@ DirectShowSource::DirectShowSource(const char* filename, int _avg_time_per_frame
 #if 0
   PVideoFrame __stdcall DirectShowSource::GetFrame(int n, IScriptEnvironment* env) {
     DWORD timeout = WaitTimeout;
-    n = max(min(n, vi.num_frames-1), 0); 
+    n = max(min(n, vi.num_frames-1), 0);
 
     // Ask for the frame whose [start_time ->T<- end_time] spans sample_time
     const __int64 sample_time = (n == 0) ? 0 : Int32x32To64(n, get_sample.avg_time_per_frame) + (get_sample.avg_time_per_frame>>1);
@@ -1995,7 +2086,7 @@ DirectShowSource::DirectShowSource(const char* filename, int _avg_time_per_frame
   PVideoFrame __stdcall DirectShowSource::GetFrame(int n, IScriptEnvironment* env) {
     DWORD timeout = WaitTimeout;
 
-    n = max(min(n, vi.num_frames-1), 0); 
+    n = max(min(n, vi.num_frames-1), 0);
     // Ask for the frame whose start_time == T
     const __int64 sample_time = Int32x32To64(n, get_sample.avg_time_per_frame);
 
@@ -2066,7 +2157,7 @@ DirectShowSource::DirectShowSource(const char* filename, int _avg_time_per_frame
   void __stdcall DirectShowSource::GetAudio(void* buf, __int64 start, __int64 count, IScriptEnvironment* env) {
     DWORD timeout = WaitTimeout;
     int bytes_filled = 0;
- 
+
     if (next_sample != start) {  // We have been searching!  Skip until sync!
 
       dssRPT2(dssCALL, "GetAudio: Seeking to %I64d previous was %I64d samples.\n", start, next_sample);
@@ -2091,7 +2182,7 @@ DirectShowSource::DirectShowSource(const char* filename, int _avg_time_per_frame
           // Seek succeeded!
           next_sample = start;
           audio_bytes_read = 0;
-        } 
+        }
 		else if (hr == S_FALSE) {
 		  // seek failed!
 		  if (!get_sample.WaitForStart(timeout)) {
@@ -2103,7 +2194,7 @@ DirectShowSource::DirectShowSource(const char* filename, int _avg_time_per_frame
 		else {
 		  env->ThrowError("DirectShowSource : The audio Graph failed to restart after seeking. Status = 0x%x", hr);
 		}
-      } 
+      }
 
       if (start < next_sample) { // We are behind sync - pad with 0
         const int fill_nsamples  = (int)min(next_sample - start, count);
@@ -2142,7 +2233,7 @@ DirectShowSource::DirectShowSource(const char* filename, int _avg_time_per_frame
           }
           skip_left -= get_sample.av_sample_bytes-audio_bytes_read;
           audio_bytes_read = get_sample.av_sample_bytes;
-          
+
           if (get_sample.NextSample(timeout))
             audio_bytes_read = 0;
           else
@@ -2217,8 +2308,8 @@ HRESULT DirectShowSource::LoadGraphFile(IGraphBuilder *pGraph, const WCHAR* wszN
     IStorage *pStorage = 0;
     if (S_OK != StgIsStorageFile(wszName)) return E_FAIL;
 
-    HRESULT hr = StgOpenStorage(wszName, 0, 
-        STGM_TRANSACTED | STGM_READ | STGM_SHARE_DENY_WRITE, 
+    HRESULT hr = StgOpenStorage(wszName, 0,
+        STGM_TRANSACTED | STGM_READ | STGM_SHARE_DENY_WRITE,
         0, 0, &pStorage);
     if (FAILED(hr)) return hr;
 
@@ -2228,7 +2319,7 @@ HRESULT DirectShowSource::LoadGraphFile(IGraphBuilder *pGraph, const WCHAR* wszN
     if (SUCCEEDED(hr))
     {
         IStream *pStream = 0;
-        hr = pStorage->OpenStream(L"ActiveMovieGraph", 0, 
+        hr = pStorage->OpenStream(L"ActiveMovieGraph", 0,
             STGM_READ | STGM_SHARE_EXCLUSIVE, 0, &pStream);
         if(SUCCEEDED(hr))
         {
@@ -2245,7 +2336,7 @@ HRESULT DirectShowSource::LoadGraphFile(IGraphBuilder *pGraph, const WCHAR* wszN
 /* As this is currently implemented we use two separate instance of DSS, one for video and
  * one for audio. This means we create two (2) filter graphs. An alternate implementation
  * would be to have a video GetSample::IPin object and a separate audio GetSample::IPin object
- * in the one filter graph. Possible problems with this idea could be related to independant 
+ * in the one filter graph. Possible problems with this idea could be related to independant
  * positioning of the Video and Audio streams within the one filter graph. */
 
 
@@ -2256,7 +2347,7 @@ AVSValue __cdecl Create_DirectShowSource(AVSValue args, void*, IScriptEnvironmen
 
   const char* filename = args[0][0].AsString();
   const int _avg_time_per_frame = args[1].Defined() ? int(10000000 / args[1].AsFloat() + 0.5) : 0;
-  
+
   const bool audio    = args[3].AsBool(true);
   const bool video    = args[4].AsBool(true);
 
@@ -2274,6 +2365,10 @@ AVSValue __cdecl Create_DirectShowSource(AVSValue args, void*, IScriptEnvironmen
     const char* pixel_type = args[8].AsString();
     if      (!lstrcmpi(pixel_type, "YUY2"))  { _media = GetSample::mediaYUY2; }
     else if (!lstrcmpi(pixel_type, "YV12"))  { _media = GetSample::mediaYV12; }
+//  else if (!lstrcmpi(pixel_type, "YUV9"))  { _media = GetSample::mediaYUV9; }
+    else if (!lstrcmpi(pixel_type, "Y41P"))  { _media = GetSample::mediaY41P; }
+    else if (!lstrcmpi(pixel_type, "Y411"))  { _media = GetSample::mediaY411; }
+    else if (!lstrcmpi(pixel_type, "AYUV"))  { _media = GetSample::mediaAYUV; }
     else if (!lstrcmpi(pixel_type, "RGB24")) { _media = GetSample::mediaRGB24; }
     else if (!lstrcmpi(pixel_type, "RGB32")) { _media = GetSample::mediaRGB32 | GetSample::mediaARGB; }
     else if (!lstrcmpi(pixel_type, "ARGB"))  { _media = GetSample::mediaARGB; }
@@ -2282,7 +2377,7 @@ AVSValue __cdecl Create_DirectShowSource(AVSValue args, void*, IScriptEnvironmen
     else if (!lstrcmpi(pixel_type, "AUTO"))  { _media = GetSample::mediaAUTO; }
     else {
       env->ThrowError("DirectShowSource: pixel_type must be \"RGB24\", \"RGB32\", \"ARGB\", "
-                                           "\"YUY2\", \"YV12\", \"RGB\", \"YUV\" or \"AUTO\"");
+                      "\"YUY2\", \"YV12\", \"AYUV\", \"Y41P\", \"Y411\", \"RGB\", \"YUV\" or \"AUTO\"");
     }
   }
   const int _frames = args[9].AsInt(0);
@@ -2312,8 +2407,8 @@ AVSValue __cdecl Create_DirectShowSource(AVSValue args, void*, IScriptEnvironmen
 
   if (log) log->AddRef();
   try {
-    int fnlen = strlen(filename);
-    if ((fnlen >= 4) && !strcmpi(filename+fnlen-4,".grf")) {
+    int fnlen = lstrlen(filename);
+    if ((fnlen >= 4) && !lstrcmpi(filename+fnlen-4,".grf")) {
       env->ThrowError("DirectShowSource: Only 1 stream supported for .GRF files, one of Audio or Video must be disabled.");
     }
 
@@ -2359,15 +2454,18 @@ AVSValue __cdecl Create_DirectShowSource(AVSValue args, void*, IScriptEnvironmen
   if (!video_success)
     return DS_audio;
 
-  AVSValue inv_args[2] = { DS_video, DS_audio }; 
+  AVSValue inv_args[2] = { DS_video, DS_audio };
   PClip ds_all =  env->Invoke("AudioDub",AVSValue(inv_args,2)).AsClip();
 
   return ds_all;
 }
 
+AVS_Linkage *AVS_linkage = 0;
 
-extern "C" __declspec(dllexport) const char* __stdcall AvisynthPluginInit2(IScriptEnvironment* env)
+extern "C" __declspec(dllexport) const char* __stdcall AvisynthPluginInit3(IScriptEnvironment* env, AVS_Linkage* vectors)
 {
+  AVS_linkage = vectors;
+
   env->AddFunction("DirectShowSource",
 // args   0      1      2       3       4            5          6
        "s+[fps]f[seek]b[audio]b[video]b[convertfps]b[seekzero]b"

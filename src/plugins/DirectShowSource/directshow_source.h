@@ -194,7 +194,7 @@ class GetSample : public IBaseFilter, public IPin, public IMemInputPin {
   AM_MEDIA_TYPE *am_media_type;
 
   unsigned media, no_my_media_types;
-  AM_MEDIA_TYPE *my_media_types[5];
+  AM_MEDIA_TYPE *my_media_types[9]; // 2.6
 
   PVideoFrame pvf;
 
@@ -207,8 +207,11 @@ public:
     mediaARGB   = 1<<3,
     mediaRGB32  = 1<<4,
     mediaRGB24  = 1<<5,
+    mediaAYUV   = 1<<6, // 2.6
+    mediaY411   = 1<<7, // 2.6
+    mediaY41P   = 1<<8, // 2.6
     mediaRGB    = mediaARGB | mediaRGB32 | mediaRGB24,
-    mediaYUV    = mediaYUV9 | mediaYV12 | mediaYUY2,
+    mediaYUV    = mediaYUV9 | mediaYV12 | mediaYUY2 | mediaAYUV | mediaY411 | mediaY41P,
     mediaAUTO   = mediaRGB | mediaYUV
   };
   
@@ -355,7 +358,7 @@ public:
 
 
   bool __stdcall GetParity(int n) { return false; }
-  void __stdcall SetCacheHints(int cachehints,int frame_range) { };
+  int __stdcall SetCacheHints(int cachehints,int frame_range) { return 0; };
 
   void __stdcall GetAudio(void* buf, __int64 start, __int64 count, IScriptEnvironment* env);
 
