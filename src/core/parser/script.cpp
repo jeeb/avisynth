@@ -91,6 +91,7 @@ extern const AVSFunction Script_functions[] = {
   { "midstr","si[length]i",MidStr},
   { "rightstr","si",RightStr},
   { "findstr","ss",FindStr},
+  { "fillstr","i[]s",FillStr},
 
   { "strcmp","ss",StrCmp},
   { "strcmpi","ss",StrCmpi},
@@ -110,8 +111,9 @@ extern const AVSFunction Script_functions[] = {
   { "frameratedenominator", "c", FrameRateDenominator },
   { "audiorate", "c", AudioRate },
   { "audiolength", "c", AudioLength },  // Fixme: Add int64 to script
-  { "audiolengthlo", "c[]i", AudioLengthLo },
-  { "audiolengthhi", "c[]i", AudioLengthHi },
+  { "audiolengthlo", "c[]i", AudioLengthLo }, // audiolength%i
+  { "audiolengthhi", "c[]i", AudioLengthHi }, // audiolength/i
+  { "audiolengths", "c", AudioLengthS }, // as a string
   { "audiolengthf", "c", AudioLengthF }, // at least this will give an order of the size
   { "audiochannels", "c", AudioChannels },
   { "audiobits", "c", AudioBits },
@@ -155,6 +157,7 @@ extern const AVSFunction Script_functions[] = {
   { "Exist", "s", Exist },
 
   { "Chr","i", AVSChr },
+  { "Ord","s", AVSOrd },
   { "Time", "s", AVSTime },
   { "Spline","[x]ff+[cubic]b", Spline },
 
@@ -570,7 +573,7 @@ int splint(float xa[], float ya[], float y2a[], int n, float x, float &y, bool c
 }
 
 // the script functions 
-AVSValue AVSChr(AVSValue args, void*,IScriptEnvironment* env )
+AVSValue AVSChr(AVSValue args, void* ,IScriptEnvironment* env )
 {
     char s[2];
 
@@ -579,7 +582,34 @@ AVSValue AVSChr(AVSValue args, void*,IScriptEnvironment* env )
     return env->SaveString(s);
 }
 
-AVSValue AVSTime(AVSValue args, void*,IScriptEnvironment* env )
+AVSValue AVSOrd(AVSValue args, void* ,IScriptEnvironment* env )
+{
+    return (int)args[0].AsString()[0];
+}
+
+AVSValue FillStr(AVSValue args, void* ,IScriptEnvironment* env )
+{
+    const int count = args[0].AsInt();
+    if (count <= 0)
+      env->ThrowError("FillStr: Repeat count must greater than zero!");
+
+    const char *str = args[1].AsString(" ");
+    const int len = lstrlen(str);
+    const int total = count * len;
+
+    char *buff = new char[total];
+    if (!buff)
+      env->ThrowError("FillStr: malloc failure!");
+
+    for (int i=0; i<total; i+=len)
+      memcpy(buff+i, str, len);
+
+    AVSValue ret = env->SaveString(buff, total);
+    delete[] buff;
+    return ret; 
+}
+
+AVSValue AVSTime(AVSValue args, void*, IScriptEnvironment* env )
 {
 	time_t lt_t;
 	struct tm * lt;
@@ -647,6 +677,7 @@ AVSValue AudioRate(AVSValue args, void*, IScriptEnvironment* env) { return VI(ar
 AVSValue AudioLength(AVSValue args, void*, IScriptEnvironment* env) { return (int)VI(args[0]).num_audio_samples; }  // Truncated to int
 AVSValue AudioLengthLo(AVSValue args, void*, IScriptEnvironment* env) { return (int)(VI(args[0]).num_audio_samples % (unsigned)args[1].AsInt(1000000000)); }
 AVSValue AudioLengthHi(AVSValue args, void*, IScriptEnvironment* env) { return (int)(VI(args[0]).num_audio_samples / (unsigned)args[1].AsInt(1000000000)); }
+AVSValue AudioLengthS(AVSValue args, void*, IScriptEnvironment* env) { char s[32]; return env->SaveString(_i64toa(VI(args[0]).num_audio_samples, s, 10)); } 
 AVSValue AudioLengthF(AVSValue args, void*, IScriptEnvironment* env) { return (float)VI(args[0]).num_audio_samples; } // at least this will give an order of the size
 AVSValue AudioChannels(AVSValue args, void*, IScriptEnvironment* env) { return VI(args[0]).HasAudio() ? VI(args[0]).nchannels : 0; }
 AVSValue AudioBits(AVSValue args, void*, IScriptEnvironment* env) { return VI(args[0]).BytesPerChannelSample()*8; }

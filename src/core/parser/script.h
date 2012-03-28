@@ -160,6 +160,7 @@ AVSValue AudioRate(AVSValue args, void*, IScriptEnvironment* env);
 AVSValue AudioLength(AVSValue args, void*, IScriptEnvironment* env);
 AVSValue AudioLengthLo(AVSValue args, void*, IScriptEnvironment* env);
 AVSValue AudioLengthHi(AVSValue args, void*, IScriptEnvironment* env);
+AVSValue AudioLengthS(AVSValue args, void*, IScriptEnvironment* env);
 AVSValue AudioLengthF(AVSValue args, void*, IScriptEnvironment* env);
 AVSValue AudioChannels(AVSValue args, void*, IScriptEnvironment* env);
 AVSValue AudioBits(AVSValue args, void*, IScriptEnvironment* env);
@@ -219,6 +220,7 @@ AVSValue LeftStr(AVSValue args, void*, IScriptEnvironment* env);
 AVSValue MidStr(AVSValue args, void*, IScriptEnvironment* env);
 AVSValue RightStr(AVSValue args, void*, IScriptEnvironment* env);
 AVSValue FindStr(AVSValue args, void*, IScriptEnvironment* env);
+AVSValue FillStr(AVSValue args, void*, IScriptEnvironment* env);
 AVSValue StrCmp(AVSValue args, void*, IScriptEnvironment* env);
 AVSValue StrCmpi(AVSValue args, void*, IScriptEnvironment* env);
 
@@ -234,6 +236,7 @@ AVSValue Exist(AVSValue args, void*, IScriptEnvironment* env);
 
 // WE ->
 AVSValue AVSChr(AVSValue args, void*, IScriptEnvironment* env);
+AVSValue AVSOrd(AVSValue args, void*, IScriptEnvironment* env);
 AVSValue AVSTime(AVSValue args, void*, IScriptEnvironment* env);
 AVSValue Spline(AVSValue args, void*, IScriptEnvironment* env);
 // WE <-
