@@ -778,6 +778,7 @@ StringDump::~StringDump() {
 char* StringDump::SaveString(const char* s, int len) {
   if (len == -1)
     len = lstrlen(s);
+
   if (block_pos+len+1 > block_size) {
     char* new_block = new char[block_size = max(block_size, len+1+sizeof(char*))];
     _RPT0(0,"StringDump: Allocating new stringblock.\r\n");
@@ -2168,9 +2169,9 @@ char* ScriptEnvironment::VSprintf(const char* fmt, void* val) {
     size += 4096;
     buf = new char[size];
     if (!buf) return 0;
-    count = _vsnprintf(buf, size-1, fmt, (va_list)val);
+    count = _vsnprintf(buf, size, fmt, (va_list)val);
   }
-  char *i = ScriptEnvironment::SaveString(buf);
+  char *i = ScriptEnvironment::SaveString(buf, count); // SaveString will add the NULL in len mode.
   delete[] buf;
   return i;
 }
@@ -2189,7 +2190,7 @@ void ScriptEnvironment::ThrowError(const char* fmt, ...) {
   va_list val;
   va_start(val, fmt);
   try {
-    _vsnprintf(buf,sizeof(buf)-1, fmt, val);
+    _vsnprintf(buf, sizeof(buf)-1, fmt, val);
     if (!this) throw this; // Force inclusion of try catch code!
   } catch (...) {
     strcpy(buf,"Exception while processing ScriptEnvironment::ThrowError().");
