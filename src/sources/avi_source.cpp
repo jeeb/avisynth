@@ -394,8 +394,15 @@ AVISource::AVISource(const char filename[], bool fAudio, const char pixel_type[]
           bool fRGB32 = lstrcmpi(pixel_type, "RGB32") == 0 || pixel_type[0] == 0;
           bool fRGB24 = lstrcmpi(pixel_type, "RGB24") == 0 || pixel_type[0] == 0;
 
+          if (lstrcmpi(pixel_type, "AUTO") == 0) {
+            fY8 = fYV12 = fYUY2 = fRGB32 = fRGB24 = true;
+          }
+          else if (lstrcmpi(pixel_type, "FULL") == 0) {
+            fY8 = fYV12 = fYV16 = fYV24 = fYV411 = fYUY2 = fRGB32 = fRGB24 = true;
+          }
+
           if (!(fY8 || fYV12 || fYV16 || fYV24 || fYV411 || fYUY2 || fRGB32 || fRGB24))
-            env->ThrowError("AVISource: requested format must be one of YV24, YV16, YV12, YV411, YUY2, Y8, RGB32 or RGB24");
+            env->ThrowError("AVISource: requested format must be one of YV24, YV16, YV12, YV411, YUY2, Y8, RGB32, RGB24, AUTO or FULL");
 
           // try to decompress to YV12, YV411, YV16, YV24, YUY2, Y8, RGB32, and RGB24 in turn
           memset(&biDst, 0, sizeof(BITMAPINFOHEADER));
