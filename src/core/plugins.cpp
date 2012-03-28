@@ -112,6 +112,7 @@ static bool MyLoadLibrary(const char* filename, HMODULE* hmod, bool quiet, IScri
 
 
 AVSValue LoadPlugin(AVSValue args, void* user_data, IScriptEnvironment* env) {
+  extern AVS_Linkage AVS_linkage; // In interface.cpp
   bool quiet = (user_data != 0);
   args = args[0];
   const char* result=0;
@@ -119,35 +120,37 @@ AVSValue LoadPlugin(AVSValue args, void* user_data, IScriptEnvironment* env) {
     HMODULE plugin;
     const char* plugin_name = args[i].AsString();
     if (MyLoadLibrary(plugin_name, &plugin, quiet, env)) {
-      typedef const char* (__stdcall *AvisynthPluginInitFunc)(IScriptEnvironment* env);
-      AvisynthPluginInitFunc AvisynthPluginInit = (AvisynthPluginInitFunc)GetProcAddress(plugin, "AvisynthPluginInit2");
-      if (!AvisynthPluginInit) {
-        AvisynthPluginInit = (AvisynthPluginInitFunc)GetProcAddress(plugin, "_AvisynthPluginInit2@4");
-/*
-        if (!AvisynthPluginInit) {  // Attempt C-plugin
-          AvisynthPluginInit = (AvisynthPluginInitFunc)GetProcAddress(plugin, "avisynth_c_plugin_init");
-          if (AvisynthPluginInit) {
-            FreeLibrary(plugin);
-            return env->Invoke("LoadCPlugin", args);
-          }
-        }
-*/
-        if (!AvisynthPluginInit) {  // Older version
-          FreeLibrary(plugin);
-          if (quiet) {
-            // remove the last handle from the list
-            HMODULE* loaded_plugins = (HMODULE*)env->GetVar("$Plugins$").AsString();
-            int j=0;
-            while (loaded_plugins[j+1]) j++;
-            loaded_plugins[j] = 0;
+      typedef const char* (__stdcall *AvisynthPluginInit3Func)(IScriptEnvironment* env, AVS_Linkage* vectors);
+      AvisynthPluginInit3Func AvisynthPluginInit3 = (AvisynthPluginInit3Func)GetProcAddress(plugin, "AvisynthPluginInit3");
+      if (!AvisynthPluginInit3) {
+        AvisynthPluginInit3 = (AvisynthPluginInit3Func)GetProcAddress(plugin, "_AvisynthPluginInit3@8");
+        if (!AvisynthPluginInit3) {  // Try for 2.5 version
+          typedef const char* (__stdcall *AvisynthPluginInit2Func)(IScriptEnvironment* env);
+          AvisynthPluginInit2Func AvisynthPluginInit2 = (AvisynthPluginInit2Func)GetProcAddress(plugin, "AvisynthPluginInit2");
+          if (!AvisynthPluginInit2) {
+            AvisynthPluginInit2 = (AvisynthPluginInit2Func)GetProcAddress(plugin, "_AvisynthPluginInit2@4");
+            if (!AvisynthPluginInit2) {  // Older version
+              FreeLibrary(plugin);
+              if (quiet) {
+                // remove the last handle from the list
+                HMODULE* loaded_plugins = (HMODULE*)env->GetVar("$Plugins$").AsString();
+                int j=0;
+                while (loaded_plugins[j+1]) j++;
+                loaded_plugins[j] = 0;
+              } else {
+                env->ThrowError("Plugin %s is not an AviSynth 2.6 or 2.5 plugin.",plugin_name);
+              }
+            } else {
+              result = AvisynthPluginInit2(env);
+            }
           } else {
-            env->ThrowError("Plugin %s is not an AviSynth 2.5 plugin.",plugin_name);
+            result = AvisynthPluginInit2(env);
           }
         } else {
-          result = AvisynthPluginInit(env);
+          result = AvisynthPluginInit3(env, &AVS_linkage);
         }
       } else {
-        result = AvisynthPluginInit(env);
+        result = AvisynthPluginInit3(env, &AVS_linkage);
       }
     }
   }
