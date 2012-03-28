@@ -199,14 +199,17 @@ PVideoFrame __stdcall Overlay::GetFrame(int n, IScriptEnvironment *env) {
 
     // Fetch current frame and convert it.
   PVideoFrame frame = child->GetFrame(n, env);
+
   if (vi.IsYV24() && inputCS == vi.pixel_type) {  // Fast path
-    // This will be used to avoid two unneeded blits if input and output is yv24
+    env->MakeWritable(&frame);
+
+    // This will be used to avoid two unneeded blits if input and output are yv24
     // Note however, that this will break, if for some reason AviSynth in the future
-    // will choose different alignment on YV24 planes.
+    // will choose unsuitable alignment on YV24 planes.
     if (img)
       delete img;
     img = new Image444(frame->GetWritePtr(PLANAR_Y), frame->GetWritePtr(PLANAR_U), frame->GetWritePtr(PLANAR_U),
-      frame->GetRowSize(PLANAR_Y), frame->GetHeight(PLANAR_Y), frame->GetPitch(PLANAR_Y));
+                       frame->GetRowSize(PLANAR_Y), frame->GetHeight(PLANAR_Y), frame->GetPitch(PLANAR_Y));
   } else {
     inputConv->ConvertImage(frame, img, env);
   }
@@ -218,7 +221,6 @@ PVideoFrame __stdcall Overlay::GetFrame(int n, IScriptEnvironment *env) {
   // Clip overlay to original image
   ClipFrames(img, overlayImg, offset_x + con_x_offset, offset_y + con_y_offset);
 
-
   if (overlayImg->IsSizeZero()) {
     // Convert output image back
     img->ReturnOriginal(true);
@@ -227,9 +229,7 @@ PVideoFrame __stdcall Overlay::GetFrame(int n, IScriptEnvironment *env) {
     return outputConv->ConvertImage(img, f, env);
   }
 
-
   // fetch current mask (if given)
-
   if (mask) {
     PVideoFrame Mframe = mask->GetFrame(n, env);
     if (greymask)
