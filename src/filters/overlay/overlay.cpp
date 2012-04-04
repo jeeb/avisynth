@@ -208,7 +208,7 @@ PVideoFrame __stdcall Overlay::GetFrame(int n, IScriptEnvironment *env) {
     // will choose unsuitable alignment on YV24 planes.
     if (img)
       delete img;
-    img = new Image444(frame->GetWritePtr(PLANAR_Y), frame->GetWritePtr(PLANAR_U), frame->GetWritePtr(PLANAR_U),
+    img = new Image444(frame->GetWritePtr(PLANAR_Y), frame->GetWritePtr(PLANAR_U), frame->GetWritePtr(PLANAR_V),
                        frame->GetRowSize(PLANAR_Y), frame->GetHeight(PLANAR_Y), frame->GetPitch(PLANAR_Y));
   } else {
     inputConv->ConvertImage(frame, img, env);
