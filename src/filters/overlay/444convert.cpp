@@ -59,16 +59,16 @@ void ConvertYV12ChromaTo444(unsigned char *dstp, const unsigned char *srcp,
     mov     esi,[src_height]
     align 16
 loopx:
-    movq    mm0, [ebx+edi]  // U8U7 U6U5 U4U3 U2U1
+    movd    mm0, [ebx+edi]    // U4U3 U2U1
+    movd    mm1, [ebx+edi+4]  // U8U7 U6U5
 
-    movq    mm1,mm0
-     punpcklbw  mm0, mm0        // U4U4 U3U3 U2U2 U1U1
+    punpcklbw mm0, mm0        // U4U4 U3U3 U2U2 U1U1
+    punpcklbw mm1, mm1        // U8U8 U7U7 U6U6 U5U5
 
-    punpckhbw mm1, mm1        // U8U8 U7U7 U6U6 U5U5
     movq    [eax+edi*2], mm0
-    movq    [ecx+edi*2], mm0
-
     movq    [eax+edi*2+8], mm1
+
+    movq    [ecx+edi*2], mm0
     movq    [ecx+edi*2+8], mm1
 
     add     edi,8
