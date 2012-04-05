@@ -291,7 +291,9 @@ PVideoFrame ImageWriter::GetFrame(int n, IScriptEnvironment* env)
     if (err != IL_NO_ERROR)
     {
       ostringstream ss;
-      ss << "ImageWriter: error '" << getErrStr(err) << "' in DevIL library\n writing file " << filename;
+      ss << "ImageWriter: error '" << getErrStr(err) << "' in DevIL library\n"
+	        "writing file \"" << filename << "\"\n"
+            "DevIL version " << DevIL_Version << ".";
       env->MakeWritable(&frame);
       env->ApplyMessage(&frame, vi, ss.str().c_str(), vi.width/4, TEXT_COLOR, 0, 0);
       return frame;
@@ -491,8 +493,8 @@ ImageReader::ImageReader(const char * _base_name, const int _start, const int _e
     }
 
     if (animation) {
-      vi.num_frames = ilGetInteger(IL_NUM_IMAGES);
-      if (vi.num_frames == 0) {
+      vi.num_frames = ilGetInteger(IL_NUM_IMAGES) + 1; // bug in DevIL (ilGetInteger is one off in 166 en 178)
+      if (vi.num_frames <= 0) {
         LeaveCriticalSection(&FramesCriticalSection);
         env->ThrowError("ImageSourceAnim: DevIL can't detect the number of images in the animation");
       }
@@ -512,16 +514,19 @@ ImageReader::ImageReader(const char * _base_name, const int _start, const int _e
     LeaveCriticalSection(&FramesCriticalSection);
 
     if (err != IL_NO_ERROR) {
-      env->ThrowError("ImageReader: error '%s' in DevIL library.\nreading file %s", getErrStr(err), filename);
+      env->ThrowError("ImageReader: error '%s' in DevIL library.\nreading file \"%s\"\nDevIL version %d.", getErrStr(err), filename, DevIL_Version);
     }
     // work around DevIL upside-down bug with compressed images
     should_flip = false;
     const char * ext = strrchr(_base_name, '.') + 1;
     if (  !lstrcmpi(ext, "jpeg") || !lstrcmpi(ext, "jpg") || !lstrcmpi(ext, "jpe") || !lstrcmpi(ext, "dds") ||
           !lstrcmpi(ext, "pal") || !lstrcmpi(ext, "psd") || !lstrcmpi(ext, "pcx") || !lstrcmpi(ext, "png") ||
-          !lstrcmpi(ext, "pbm") || !lstrcmpi(ext, "pgm") || !lstrcmpi(ext, "ppm") || !lstrcmpi(ext, "tif") ||
-          !lstrcmpi(ext, "tiff") || !lstrcmpi(ext, "gif") || !lstrcmpi(ext, "exr") || !lstrcmpi(ext, "jp2") ||
-          !lstrcmpi(ext, "hdr") )
+          !lstrcmpi(ext, "pbm") || !lstrcmpi(ext, "pgm") || !lstrcmpi(ext, "ppm") || !lstrcmpi(ext, "gif") ||
+          !lstrcmpi(ext, "exr") || !lstrcmpi(ext, "jp2") || !lstrcmpi(ext, "hdr") )
+    {
+      should_flip = true;
+    }
+    else if ((DevIL_Version > 166) && (!lstrcmpi(ext, "tif") || !lstrcmpi(ext, "tiff")))
     {
       should_flip = true;
     }
@@ -597,7 +602,9 @@ PVideoFrame ImageReader::GetFrame(int n, IScriptEnvironment* env)
       memset(WritePtr, 0, pitch * height);  // Black frame
       if ((info) || (err != IL_COULD_NOT_OPEN_FILE)) {
         ostringstream ss;
-        ss << "ImageReader: error '" << getErrStr(err) << "' in DevIL library\n opening file \"" << filename << "\"";
+        ss << "ImageReader: error '" << getErrStr(err) << "' in DevIL library\n"
+		      "opening file \"" << filename << "\"\n"
+              "DevIL version " << DevIL_Version << ".";
         env->ApplyMessage(&frame, vi, ss.str().c_str(), vi.width/4, TEXT_COLOR, 0, 0);
       }
       return frame;
@@ -617,61 +624,79 @@ PVideoFrame ImageReader::GetFrame(int n, IScriptEnvironment* env)
         if (info) {
           ostringstream ss;
           ss << "ImageSourceAnim: error '" << getErrStr(err) << "' in DevIL library\n"
-                "processing image " << n << " from file \"" << filename << "\"";
+                "processing image " << n << " from file \"" << filename << "\"\n"
+                "DevIL version " << DevIL_Version << ".";
           env->ApplyMessage(&frame, vi, ss.str().c_str(), vi.width/4, TEXT_COLOR, 0, 0);
         }
         return frame;
       }
     }
+    else {
+      // Check some parameters
+      if (ilGetInteger(IL_IMAGE_HEIGHT) != height)
+      {
+        // Cleanup
+        ilDeleteImages(1, &myImage);
 
-    // Check some parameters
-    if (ilGetInteger(IL_IMAGE_HEIGHT) != height)
-    {
-      // Cleanup
-      ilDeleteImages(1, &myImage);
+        LeaveCriticalSection(&FramesCriticalSection);
 
-      LeaveCriticalSection(&FramesCriticalSection);
+        memset(WritePtr, 0, pitch * height);
+        env->ApplyMessage(&frame, vi, "ImageReader: images must have identical heights", vi.width/4, TEXT_COLOR, 0, 0);
+        return frame;
+      }
 
-      memset(WritePtr, 0, pitch * height);
-      env->ApplyMessage(&frame, vi, "ImageReader: images must have identical heights", vi.width/4, TEXT_COLOR, 0, 0);
-      return frame;
-    }
+      if (ilGetInteger(IL_IMAGE_WIDTH) != width)
+      {
+        // Cleanup
+        ilDeleteImages(1, &myImage);
 
-    if (ilGetInteger(IL_IMAGE_WIDTH) != width)
-    {
-      // Cleanup
-      ilDeleteImages(1, &myImage);
+        LeaveCriticalSection(&FramesCriticalSection);
 
-      LeaveCriticalSection(&FramesCriticalSection);
-
-      memset(WritePtr, 0, pitch * height);
-      env->ApplyMessage(&frame, vi, "ImageReader: images must have identical widths", vi.width/4, TEXT_COLOR, 0, 0);
-      return frame;
+        memset(WritePtr, 0, pitch * height);
+        env->ApplyMessage(&frame, vi, "ImageReader: images must have identical widths", vi.width/4, TEXT_COLOR, 0, 0);
+        return frame;
+      }
     }
 
     const ILenum il_format = vi.IsY8() ? IL_LUMINANCE : ( vi.IsRGB32() ? IL_BGRA : IL_BGR );
     const ILenum linesize = width * ( vi.IsY8() ? 1 : ( vi.IsRGB32() ? 4 : 3 ) );
+    const int height_image = min(height, ilGetInteger(IL_IMAGE_HEIGHT));
+    const int width_image = min(width, ilGetInteger(IL_IMAGE_WIDTH));
+    const ILenum linesize_image = width_image * ( vi.IsY8() ? 1 : ( vi.IsRGB32() ? 4 : 3 ) );
+
+    if (!vi.IsY8()) {
+      // fill bottom with black pixels
+      memset(dstPtr, 0, pitch * (height-height_image));
+      dstPtr += pitch * (height-height_image);
+    }
 
     // Copy raster to AVS frame
 ////if (ilGetInteger(IL_ORIGIN_MODE) == IL_ORIGIN_UPPER_LEFT, IL_ORIGIN_LOWER_LEFT ???
     if (should_flip)
     {
       // Copy upside down
-      for (int y=height-1; y>=0; --y)
+      for (int y=height_image-1; y>=0; --y)
       {
-        if (ilCopyPixels(0, y, 0, width, 1, 1, il_format, IL_UNSIGNED_BYTE, dstPtr) > linesize)
+        if (ilCopyPixels(0, y, 0, width_image, 1, 1, il_format, IL_UNSIGNED_BYTE, dstPtr) > linesize)
           break; // Try not to spew all over memory
+        memset(dstPtr+linesize_image, 0, linesize-linesize_image);
         dstPtr += pitch;
       }
     }
     else {
       // Copy right side up
-      for (int y=0; y<height; ++y)
+      for (int y=0; y<height_image; ++y)
       {
-        if (ilCopyPixels(0, y, 0, width, 1, 1, il_format, IL_UNSIGNED_BYTE, dstPtr) > linesize)
+        if (ilCopyPixels(0, y, 0, width_image, 1, 1, il_format, IL_UNSIGNED_BYTE, dstPtr) > linesize)
           break; // Try not to spew all over memory
+        memset(dstPtr+linesize_image, 0, linesize-linesize_image);
         dstPtr += pitch;
       }
+    }
+
+    if (vi.IsY8()) {
+      // fill bottom with black pixels
+      memset(dstPtr, 0, pitch * (height-height_image));
     }
 
     // Get errors if any
@@ -686,7 +711,9 @@ PVideoFrame ImageReader::GetFrame(int n, IScriptEnvironment* env)
     {
       memset(WritePtr, 0, pitch * height);
       ostringstream ss;
-      ss << "ImageReader: error '" << getErrStr(err) << "' in DevIL library\n reading file \"" << filename << "\"";
+      ss << "ImageReader: error '" << getErrStr(err) << "' in DevIL library\n"
+            "reading file \"" << filename << "\"\n"
+            "DevIL version " << DevIL_Version << ".";
       env->ApplyMessage(&frame, vi, ss.str().c_str(), vi.width/4, TEXT_COLOR, 0, 0);
       return frame;
     }
@@ -732,7 +759,9 @@ PVideoFrame ImageReader::GetFrame(int n, IScriptEnvironment* env)
   if (info) {
     // overlay on video output: progress indicator
     ostringstream text;
-    text << "Frame " << n << ".\nRead from \"" << filename << "\"";
+    text << "Frame " << n << ".\n"
+            "Read from \"" << filename << "\"\n"
+            "DevIL version " << DevIL_Version << ".";
     env->ApplyMessage(&frame, vi, text.str().c_str(), vi.width/4, TEXT_COLOR, 0, 0);
   }
 
