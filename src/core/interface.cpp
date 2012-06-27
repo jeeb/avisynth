@@ -559,24 +559,40 @@ bool AVSValue::IsString() const { return type == 's'; }
 bool AVSValue::IsArray() const { return type == 'a'; }
 
 PClip AVSValue::AsClip() const { _ASSERTE(IsClip()); return IsClip()?clip:0; }
-bool AVSValue::AsBool() const { _ASSERTE(IsBool()); return boolean; }
-int AVSValue::AsInt() const { _ASSERTE(IsInt()); return integer; }
+
+bool AVSValue::AsBool1() const { _ASSERTE(IsBool()); return boolean; }
+bool AVSValue::AsBool() const { return AsBool1(); }
+
+int AVSValue::AsInt1() const { _ASSERTE(IsInt()); return integer; }
+int AVSValue::AsInt() const { return AsInt1(); }
 //  int AsLong() const { _ASSERTE(IsLong()); return IsInt()?integer:longlong; }
-const char* AVSValue::AsString() const { _ASSERTE(IsString()); return IsString()?string:0; }
+
+const char* AVSValue::AsString1() const { _ASSERTE(IsString()); return IsString()?string:0; }
+const char* AVSValue::AsString() const { return AVSValue::AsString1(); }
 /* Baked ********************
 double AVSValue::AsFloat() const { _ASSERTE(IsFloat()); return IsInt()?integer:floating_pt; }
    Baked ********************/
-float AVSValue::AsFloat() const { _ASSERTE(IsFloat()); return IsInt()?integer:floating_pt; }
 
-bool AVSValue::AsBool(bool def) const { _ASSERTE(IsBool()||!Defined()); return IsBool() ? boolean : def; }
-int AVSValue::AsInt(int def) const { _ASSERTE(IsInt()||!Defined()); return IsInt() ? integer : def; }
+float AVSValue::AsFloat1() const { _ASSERTE(IsFloat()); return IsInt()?integer:floating_pt; }
+float AVSValue::AsFloat() const { return AsFloat1(); }
+
+
+bool AVSValue::AsBool2(bool def) const { _ASSERTE(IsBool()||!Defined()); return IsBool() ? boolean : def; }
+bool AVSValue::AsBool(bool def) const { return AsBool2(def); }
+
+int AVSValue::AsInt2(int def) const { _ASSERTE(IsInt()||!Defined()); return IsInt() ? integer : def; }
+int AVSValue::AsInt(int def) const { return AsInt2(def); }
 /* Baked ********************
 double AVSValue::AsFloat(double def) const { _ASSERTE(IsFloat()||!Defined()); return IsInt() ? integer : type=='f' ? floating_pt : def; }
    Baked ********************/
 double AVSValue::AsDblDef(double def) const { _ASSERTE(IsFloat()||!Defined()); return IsInt() ? integer : type=='f' ? floating_pt : def; }
-//float  AVSValue::AsFloat (double def) const { _ASSERTE(IsFloat()||!Defined()); return IsInt() ? integer : type=='f' ? floating_pt : (float)def; }
-float  AVSValue::AsFloat (float  def) const { _ASSERTE(IsFloat()||!Defined()); return IsInt() ? integer : type=='f' ? floating_pt : def; }
-const char* AVSValue::AsString(const char* def) const { _ASSERTE(IsString()||!Defined()); return IsString() ? string : def; }
+//float  AVSValue::AsFloat(double def) const { _ASSERTE(IsFloat()||!Defined()); return IsInt() ? integer : type=='f' ? floating_pt : (float)def; }
+
+float  AVSValue::AsFloat2(float  def) const { _ASSERTE(IsFloat()||!Defined()); return IsInt() ? integer : type=='f' ? floating_pt : def; }
+float  AVSValue::AsFloat(float  def) const { return  AsFloat2(def); }
+
+const char* AVSValue::AsString2(const char* def) const { _ASSERTE(IsString()||!Defined()); return IsString() ? string : def; }
+const char* AVSValue::AsString(const char* def) const { return AVSValue::AsString2(def); }
 
 int AVSValue::ArraySize() const { _ASSERTE(IsArray()); return IsArray()?array_size:1; }
 
@@ -714,15 +730,15 @@ AVS_Linkage AVS_linkage = {                 // struct AVS_Linkage {
   &AVSValue::IsString,                      //   bool            (AVSValue::*IsString)() const;
   &AVSValue::IsArray,                       //   bool            (AVSValue::*IsArray)() const;
   &AVSValue::AsClip,                        //   PClip           (AVSValue::*AsClip)() const;
-  &AVSValue::AsBool,                        //   bool            (AVSValue::*AsBool)() const;
-  &AVSValue::AsInt,                         //   int             (AVSValue::*AsInt)() const;
-  &AVSValue::AsString,                      //   const char*     (AVSValue::*AsString)() const;
-  &AVSValue::AsFloat,                       //   float           (AVSValue::*AsFloat)() const;
-  &AVSValue::AsBool,                        //   bool            (AVSValue::*AsBool2)(bool def) const;
-  &AVSValue::AsInt,                         //   int             (AVSValue::*AsInt2)(int def) const;
+  &AVSValue::AsBool1,                       //   bool            (AVSValue::*AsBool1)() const;
+  &AVSValue::AsInt1,                        //   int             (AVSValue::*AsInt1)() const;
+  &AVSValue::AsString1,                     //   const char*     (AVSValue::*AsString1)() const;
+  &AVSValue::AsFloat1,                      //   float           (AVSValue::*AsFloat1)() const;
+  &AVSValue::AsBool2,                       //   bool            (AVSValue::*AsBool2)(bool def) const;
+  &AVSValue::AsInt2,                        //   int             (AVSValue::*AsInt2)(int def) const;
   &AVSValue::AsDblDef,                      //   double          (AVSValue::*AsDblDef)(double def) const;
-  &AVSValue::AsFloat,                       //   float           (AVSValue::*AsFloat2)(float def) const;
-  &AVSValue::AsString,                      //   const char*     (AVSValue::*AsString2)(const char* def) const;
+  &AVSValue::AsFloat2,                      //   float           (AVSValue::*AsFloat2)(float def) const;
+  &AVSValue::AsString2,                     //   const char*     (AVSValue::*AsString2)(const char* def) const;
   &AVSValue::ArraySize,                     //   int             (AVSValue::*ArraySize)() const;
 // end class AVSValue
 };                                          // }
