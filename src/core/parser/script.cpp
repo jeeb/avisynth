@@ -584,7 +584,7 @@ AVSValue AVSChr(AVSValue args, void* ,IScriptEnvironment* env )
 
 AVSValue AVSOrd(AVSValue args, void* ,IScriptEnvironment* env )
 {
-    return (int)args[0].AsString()[0];
+    return (int)args[0].AsString()[0] & 0xFF;
 }
 
 AVSValue FillStr(AVSValue args, void* ,IScriptEnvironment* env )
