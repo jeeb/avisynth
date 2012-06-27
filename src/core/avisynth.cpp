@@ -857,6 +857,7 @@ public:
   PVideoFrame __stdcall SubframePlanar(PVideoFrame src, int rel_offset, int new_pitch, int new_row_size, int new_height, int rel_offsetU, int rel_offsetV, int new_pitchUV);
   void __stdcall DeleteScriptEnvironment();
   void _stdcall ApplyMessage(PVideoFrame* frame, const VideoInfo& vi, const char* message, int size, int textcolor, int halocolor, int bgcolor);
+  const AVS_Linkage* const __stdcall GetAVSLinkage();
 
 private:
   // Tritical May 2005
@@ -2204,6 +2205,14 @@ void ScriptEnvironment::ThrowError(const char* fmt, ...) {
 extern void ApplyMessage(PVideoFrame* frame, const VideoInfo& vi,
   const char* message, int size, int textcolor, int halocolor, int bgcolor,
   IScriptEnvironment* env);
+
+
+const AVS_Linkage* const __stdcall ScriptEnvironment::GetAVSLinkage() {
+  extern const AVS_Linkage* const AVS_linkage; // In interface.cpp
+
+  return AVS_linkage;
+}
+
 
 void _stdcall ScriptEnvironment::ApplyMessage(PVideoFrame* frame, const VideoInfo& vi, const char* message, int size, int textcolor, int halocolor, int bgcolor) {
   ::ApplyMessage(frame, vi, message, size, textcolor, halocolor, bgcolor, this);

@@ -112,7 +112,7 @@ static bool MyLoadLibrary(const char* filename, HMODULE* hmod, bool quiet, IScri
 
 
 AVSValue LoadPlugin(AVSValue args, void* user_data, IScriptEnvironment* env) {
-  extern AVS_Linkage AVS_linkage; // In interface.cpp
+  extern const AVS_Linkage* const AVS_linkage; // In interface.cpp
   bool quiet = (user_data != 0);
   args = args[0];
   const char* result=0;
@@ -120,7 +120,7 @@ AVSValue LoadPlugin(AVSValue args, void* user_data, IScriptEnvironment* env) {
     HMODULE plugin;
     const char* plugin_name = args[i].AsString();
     if (MyLoadLibrary(plugin_name, &plugin, quiet, env)) {
-      typedef const char* (__stdcall *AvisynthPluginInit3Func)(IScriptEnvironment* env, AVS_Linkage* vectors);
+      typedef const char* (__stdcall *AvisynthPluginInit3Func)(IScriptEnvironment* env, const AVS_Linkage* const vectors);
       AvisynthPluginInit3Func AvisynthPluginInit3 = (AvisynthPluginInit3Func)GetProcAddress(plugin, "AvisynthPluginInit3");
       if (!AvisynthPluginInit3) {
         AvisynthPluginInit3 = (AvisynthPluginInit3Func)GetProcAddress(plugin, "_AvisynthPluginInit3@8");
@@ -147,10 +147,10 @@ AVSValue LoadPlugin(AVSValue args, void* user_data, IScriptEnvironment* env) {
             result = AvisynthPluginInit2(env);
           }
         } else {
-          result = AvisynthPluginInit3(env, &AVS_linkage);
+          result = AvisynthPluginInit3(env, AVS_linkage);
         }
       } else {
-        result = AvisynthPluginInit3(env, &AVS_linkage);
+        result = AvisynthPluginInit3(env, AVS_linkage);
       }
     }
   }

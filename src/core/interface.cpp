@@ -616,7 +616,7 @@ void AVSValue::Assign(const AVSValue* src, bool init) {
 
 /**********************************************************************/
 
-AVS_Linkage AVS_linkage = {                 // struct AVS_Linkage {
+static const AVS_Linkage avs_linkage = {    // struct AVS_Linkage {
 
   sizeof(AVS_Linkage),                      //   int Size;
 
@@ -742,6 +742,8 @@ AVS_Linkage AVS_linkage = {                 // struct AVS_Linkage {
   &AVSValue::ArraySize,                     //   int             (AVSValue::*ArraySize)() const;
 // end class AVSValue
 };                                          // }
+
+extern __declspec(dllexport) const AVS_Linkage* const AVS_linkage = &avs_linkage;
 
 
 /**********************************************************************/
