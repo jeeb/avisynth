@@ -130,14 +130,14 @@ public:
 
 
 /* Forward references */
-struct VideoInfo;
-class VideoFrameBuffer;
-class VideoFrame;
+struct __single_inheritance VideoInfo;
+class __single_inheritance VideoFrameBuffer;
+class __single_inheritance VideoFrame;
 class IClip;
-class PClip;
-class PVideoFrame;
+class __single_inheritance PClip;
+class __single_inheritance PVideoFrame;
 class IScriptEnvironment;
-class AVSValue;
+class __single_inheritance AVSValue;
 
 
 /*
@@ -281,10 +281,10 @@ struct AVS_Linkage {
   bool            (AVSValue::*IsString)() const;
   bool            (AVSValue::*IsArray)() const;
   PClip           (AVSValue::*AsClip)() const;
-  bool            (AVSValue::*AsBool)() const;
-  int             (AVSValue::*AsInt)() const;
-  const char*     (AVSValue::*AsString)() const;
-  float           (AVSValue::*AsFloat)() const;
+  bool            (AVSValue::*AsBool1)() const;
+  int             (AVSValue::*AsInt1)() const;
+  const char*     (AVSValue::*AsString1)() const;
+  float           (AVSValue::*AsFloat1)() const;
   bool            (AVSValue::*AsBool2)(bool def) const;
   int             (AVSValue::*AsInt2)(int def) const;
   double          (AVSValue::*AsDblDef)(double def) const;
@@ -304,7 +304,11 @@ struct AVS_Linkage {
 
 #else
 /* Macro resolution for code inside user plugin */
-extern AVS_Linkage *AVS_linkage;
+# ifdef AVS_LINKAGE_DLLIMPORT
+extern __declspec(dllimport) const AVS_Linkage* const AVS_linkage;
+# else
+extern const AVS_Linkage* AVS_linkage;
+# endif
 
 # ifndef offsetof
 #  include <stddef.h>
@@ -718,11 +722,11 @@ public:
   bool IsArray() const AVS_BakedCode( return AVS_LinkCall(IsArray)() )
 
   PClip AsClip() const AVS_BakedCode( return AVS_LinkCall(AsClip)() )
-  bool AsBool() const AVS_BakedCode( return AVS_LinkCall(AsBool)() )
-  int AsInt() const AVS_BakedCode( return AVS_LinkCall(AsInt)() )
+  bool AsBool() const AVS_BakedCode( return AVS_LinkCall(AsBool1)() )
+  int AsInt() const AVS_BakedCode( return AVS_LinkCall(AsInt1)() )
 //  int AsLong() const;
-  const char* AsString() const AVS_BakedCode( return AVS_LinkCall(AsString)() )
-  float AsFloat() const AVS_BakedCode( return AVS_LinkCall(AsFloat)() )
+  const char* AsString() const AVS_BakedCode( return AVS_LinkCall(AsString1)() )
+  float AsFloat() const AVS_BakedCode( return AVS_LinkCall(AsFloat1)() )
 
   bool AsBool(bool def) const AVS_BakedCode( return AVS_LinkCall(AsBool2)(def) )
   int AsInt(int def) const AVS_BakedCode( return AVS_LinkCall(AsInt2)(def) )
@@ -765,6 +769,16 @@ public:
   void            DESTRUCTOR();
   AVSValue&       OPERATOR_ASSIGN(const AVSValue& v);
   const AVSValue& OPERATOR_INDEX(int index) const;
+
+  bool            AsBool1() const;
+  int             AsInt1() const;
+  const char*     AsString1() const;
+  float           AsFloat1() const;
+
+  bool            AsBool2(bool def) const;
+  int             AsInt2(int def) const;
+  float           AsFloat2(float def) const;
+  const char*     AsString2(const char* def) const;
 #endif
 }; // end class AVSValue
 
@@ -941,6 +955,8 @@ public:
   virtual void __stdcall DeleteScriptEnvironment() = 0;
 
   virtual void _stdcall ApplyMessage(PVideoFrame* frame, const VideoInfo& vi, const char* message, int size, int textcolor, int halocolor, int bgcolor) = 0;
+
+  virtual const AVS_Linkage* const __stdcall GetAVSLinkage() = 0;
 
 }; // end class IScriptEnvironment
 

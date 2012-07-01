@@ -2460,9 +2460,9 @@ AVSValue __cdecl Create_DirectShowSource(AVSValue args, void*, IScriptEnvironmen
   return ds_all;
 }
 
-AVS_Linkage *AVS_linkage = 0;
+const AVS_Linkage *AVS_linkage = 0;
 
-extern "C" __declspec(dllexport) const char* __stdcall AvisynthPluginInit3(IScriptEnvironment* env, AVS_Linkage* vectors)
+extern "C" __declspec(dllexport) const char* __stdcall AvisynthPluginInit3(IScriptEnvironment* env, const AVS_Linkage* const vectors)
 {
   AVS_linkage = vectors;
 
