@@ -52,12 +52,12 @@ enum { AVISYNTH_INTERFACE_VERSION = 5 };
 
 // Raster types used by VirtualDub & Avisynth
 #define in64 (__int64)(unsigned short)
-typedef unsigned long	Pixel;    // this will break on 64-bit machines!
-typedef unsigned long	Pixel32;
-typedef unsigned char	Pixel8;
-typedef long			PixCoord;
-typedef long			PixDim;
-typedef long			PixOffset;
+typedef unsigned long   Pixel;    // this will break on 64-bit machines!
+typedef unsigned long   Pixel32;
+typedef unsigned char   Pixel8;
+typedef long            PixCoord;
+typedef long            PixDim;
+typedef long            PixOffset;
 
 
 /* Compiler-specific crap */
@@ -870,9 +870,9 @@ enum {
                                //          only Hammer will have anyway)
   CPUF_SSE3         = 0x100,   //  PIV+, K8 Venice
   CPUF_SSSE3        = 0x200,   //  Core 2
-  CPUF_SSE4			= 0x400,   //  Penryn, Wolfdale, Yorkfield
-  CPUF_SSE4_1		= 0x400,
-  CPUF_SSE4_2		= 0x800,   //  Nehalem
+  CPUF_SSE4         = 0x400,   //  Penryn, Wolfdale, Yorkfield
+  CPUF_SSE4_1       = 0x400,
+  CPUF_SSE4_2       = 0x800,   //  Nehalem
 };
 #if 0
 #define MAX_INT 0x7fffffff
@@ -930,9 +930,9 @@ public:
   virtual void* __stdcall ManageCache(int key, void* data) = 0;
 
   enum PlanarChromaAlignmentMode {
-			PlanarChromaAlignmentOff,
-			PlanarChromaAlignmentOn,
-			PlanarChromaAlignmentTest };
+            PlanarChromaAlignmentOff,
+            PlanarChromaAlignmentOn,
+            PlanarChromaAlignmentTest };
 
   virtual bool __stdcall PlanarChromaAlignment(PlanarChromaAlignmentMode key) = 0;
 
