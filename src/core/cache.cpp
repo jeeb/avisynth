@@ -684,6 +684,8 @@ void __stdcall Cache::GetAudio(void* buf, __int64 start, __int64 count, IScriptE
     _RPT1(0, "CacheAudio:%x: Automatically deleting cache!\n", this);
   }
 
+  ac_expected_next = start + count;
+
   if (h_audiopolicy == CACHE_NOTHING) {
     child->GetAudio(buf, start, count, env);
     return;  // We are ok to return now!
@@ -697,8 +699,6 @@ void __stdcall Cache::GetAudio(void* buf, __int64 start, __int64 count, IScriptE
 #endif
 
 //  EnterCriticalSection(&cs_cache_A);
-
-  ac_expected_next = start + count;
 
   while (count>maxsamplecount) {    //is cache big enough?
     _RPT1(0, "CA:%x:Cache too small->caching last audio\n", this);
