@@ -394,7 +394,9 @@ void MatrixGenerator3x3::GenerateAssembly(int width, int frac_bits, bool rgb_out
 
   int last_pix_mask = 0;
 
-  if (dest_pixel_step == 3)
+  if (rgb_out && (width & 1))
+    last_pix_mask = 0xffffffff;
+  else if (dest_pixel_step == 3)
     last_pix_mask = 0xff000000;
   else if (dest_pixel_step == 2)
     last_pix_mask = 0xffff0000;
@@ -713,7 +715,10 @@ void MatrixGenerator3x3::GenerateAssembly(int width, int frac_bits, bool rgb_out
 
   if (!sse2) x86.emms();
 
-  if (last_pix_mask) {
+  if (last_pix_mask == 0xffffffff) {
+    x86.pop(         dword_ptr[edi-dest_pixel_step]);  // Store saved pixel
+  }
+  else if (last_pix_mask) {
     x86.pop(         ebx);                                  // Load Stored pixel
     x86.mov(         ecx, dword_ptr[edi-dest_pixel_step]);  // Load new pixel
     x86.and(         ebx, last_pix_mask);
