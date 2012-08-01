@@ -1094,24 +1094,27 @@ static SFLOAT fAmasktab[Amask+1];
 
 ResampleAudio::ResampleAudio(PClip _child, int _target_rate_n, int _target_rate_d, IScriptEnvironment* env)
     : GenericVideoFilter(ConvertAudio::Create(_child, SAMPLE_INT16 | SAMPLE_FLOAT, SAMPLE_FLOAT)),
-	  target_rate((_target_rate_n + (_target_rate_d>>1))/_target_rate_d),
       factor(_target_rate_n / (double(_target_rate_d) * vi.audio_samples_per_second)) {
 	try {	// HIDE DAMN SEH COMPILER BUG!!!
   srcbuffer  = 0;
   fsrcbuffer = 0;
 
-  if ((target_rate == vi.audio_samples_per_second) || (vi.audio_samples_per_second == 0)) {
+  if (vi.audio_samples_per_second == 0) {
+    skip_conversion = true;
+    return ;
+  }
+
+  // To avoid overflow, implement as (A*B+C/2)/C = (A/C)*B + ((A%C)*B+C>>1)/C
+  const __int64 den = Int32x32To64(_target_rate_d, vi.audio_samples_per_second);
+  const __int64 num_audio_samples = (vi.num_audio_samples/den) * _target_rate_n + ((vi.num_audio_samples%den)*_target_rate_n + (den>>1))/den;
+
+  if (vi.num_audio_samples == num_audio_samples) {
     skip_conversion = true;
     return ;
   }
   skip_conversion = false;
-
-//vi.num_audio_samples = MulDiv(vi.num_audio_samples, target_rate, vi.audio_samples_per_second);
-
-  // To avoid overflow, implement as (A*B+C/2)/C = (A/C)*B + ((A%C)*B+C>>1)/C
-  const __int64 den = Int32x32To64(_target_rate_d, vi.audio_samples_per_second);
-  vi.num_audio_samples = (vi.num_audio_samples/den) * _target_rate_n + ((vi.num_audio_samples%den)*_target_rate_n + (den>>1))/den;
-  vi.audio_samples_per_second = target_rate;
+  vi.num_audio_samples = num_audio_samples;
+  vi.audio_samples_per_second = (_target_rate_n + (_target_rate_d>>1))/_target_rate_d;
 
   if (vi.IsSampleType(SAMPLE_INT16)) {
 	double dLpScl = 0.0;

@@ -309,16 +309,12 @@ public:
 
   static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env);
 
+  enum { Nwing = 8192, Nmult = 65 };   // Number of filter points, (Nwing>>Nhc)*2+1
+
 private:
   __int64 FilterUD(short  *Xp, short Ph, short Inc);
   SFLOAT  FilterUD(SFLOAT *Xp, short Ph, short Inc);
 
-  enum { Nwing = 8192, Nmult = 65 };   // Number of filter points, (Nwing>>Nhc)*2+1
-
-  short Imp[Nwing+1];
-  SFLOAT fImp[Nwing+1];
-
-  const int target_rate;
   const double factor;
   int Xoff, dtb, dhb;
   unsigned dtbe;
@@ -332,6 +328,11 @@ private:
   bool skip_conversion;
 
   __int64 last_start, last_samples;
+
+  union { // Share storage
+	SFLOAT fImp[Nwing+1];
+	short Imp[Nwing+1];
+  };
 };
 
 
