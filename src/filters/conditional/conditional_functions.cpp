@@ -289,7 +289,7 @@ AVSValue ComparePlane::CmpPlane(AVSValue clip, AVSValue clip2, void* user_data, 
 
   AVSValue cn = GetVar(env, "current_frame");
   if (!cn.IsInt())
-    env->ThrowError("Compare Plane: This filter can only be used within run-time filters");
+    env->ThrowError("Plane Difference: This filter can only be used within run-time filters");
 
   int n = cn.AsInt();
   n = min(max(n,0),vi.num_frames-1);
@@ -356,7 +356,7 @@ AVSValue ComparePlane::CmpPlaneSame(AVSValue clip, void* user_data, int offset, 
 
   AVSValue cn = GetVar(env, "current_frame");
   if (!cn.IsInt())
-    env->ThrowError("Compare Plane: This filter can only be used within run-time filters");
+    env->ThrowError("Plane Difference: This filter can only be used within run-time filters");
 
   int n = cn.AsInt();
   n = min(max(n,0),vi.num_frames);
@@ -469,7 +469,7 @@ AVSValue MinMaxPlane::MinMax(AVSValue clip, void* user_data, float threshold, in
   // Get current frame number
   AVSValue cn = GetVar(env, "current_frame");
   if (!cn.IsInt())
-    env->ThrowError("Compare Plane: This filter can only be used within run-time filters");
+    env->ThrowError("MinMax: This filter can only be used within run-time filters");
 
   int n = cn.AsInt();
 
