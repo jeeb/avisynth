@@ -1346,7 +1346,7 @@ PVideoFrame __stdcall ScriptEnvironment::NewVideoFrame(const VideoInfo& vi, int 
   PVideoFrame retval;
 
   if (vi.IsPlanar() && !vi.IsY8()) { // Planar requires different math ;)
-    const int xmod  = 1 << vi.GetPlaneWidthSubsampling (PLANAR_U);
+    const int xmod  = 1 << vi.GetPlaneWidthSubsampling(PLANAR_U);
     const int xmask = xmod - 1;
     if (vi.width & xmask)
       ThrowError("Filter Error: Attempted to request a planar frame that wasn't mod%d in width!", xmod);
