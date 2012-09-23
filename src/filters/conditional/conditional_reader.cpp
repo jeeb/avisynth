@@ -303,7 +303,7 @@ ConditionalReader::ConditionalReader(PClip _child, const char* filename, const c
             AVSValue set = ConvertType(type, lines, env);
             SetFrame(cframe, set);
           } else {
-            _RPT1(0,"ConditionalReader: Ignored line %d.\n", lines);
+            ThrowLine("ConditionalReader: Do not understand line %d", lines, env);
           }
         }
       
@@ -358,7 +358,7 @@ AVSValue ConditionalReader::ConvertType(const char* content, int line, IScriptEn
       char bval[8];
       bval[0] = '\0';
       fields = sscanf(content, "%7s", bval);
-      bval[8] = '\0';
+      bval[7] = '\0';
       if (!lstrcmpi(bval, "true")) {
         return AVSValue(true);
       }
@@ -582,13 +582,27 @@ Write::Write (PClip _child, const char* _filename, AVSValue args, int _linecheck
 	}
 
 	if (linecheck == -1) {	//write at start
-		env->SetVar("current_frame",-1);
+		AVSValue prev_last = env->GetVar("last");  // Store previous last
+		AVSValue prev_current_frame = GetVar(env, "current_frame");  // Store previous current_frame
+
+		env->SetVar("last", (AVSValue)child);       // Set implicit last
+		env->SetVar("current_frame", -1);
 		Write::DoEval(env);
 		Write::FileOut(env, AplusT);
+
+		env->SetVar("last", prev_last);       // Restore implicit last
+		env->SetVar("current_frame", prev_current_frame);       // Restore current_frame
 	}
 	if (linecheck == -2) {	//write at end, evaluate right now
-		env->SetVar("current_frame",-2);
+		AVSValue prev_last = env->GetVar("last");  // Store previous last
+		AVSValue prev_current_frame = GetVar(env, "current_frame");  // Store previous current_frame
+
+		env->SetVar("last", (AVSValue)child);       // Set implicit last
+		env->SetVar("current_frame", -2);
 		Write::DoEval(env);
+
+		env->SetVar("last", prev_last);       // Restore implicit last
+		env->SetVar("current_frame", prev_current_frame);       // Restore current_frame
 	}
 }
 
