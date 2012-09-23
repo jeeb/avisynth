@@ -383,8 +383,8 @@ AVSValue __cdecl DuplicateFrame::Create(AVSValue args, void*, IScriptEnvironment
  *******   Splice Filter  ******
  *******************************/
 
-Splice::Splice(PClip _child1, PClip _child2, bool realign_sound, IScriptEnvironment* env)
- : GenericVideoFilter(_child1), child2(_child2)
+Splice::Splice(PClip _child1, PClip _child2, bool realign_sound, bool _passCache, IScriptEnvironment* env)
+ : GenericVideoFilter(_child1), child2(_child2), passCache(_passCache)
 {
   VideoInfo vi2 = child2->GetVideoInfo();
 
@@ -471,12 +471,21 @@ bool Splice::GetParity(int n)
 }
 
 
+int Splice::SetCacheHints(int cachehints,int frame_range)
+{
+  if (passCache) {
+    child2->SetCacheHints(cachehints, frame_range);
+    return child->SetCacheHints(cachehints, frame_range);
+  }
+  return 0;  // We do not pass cache requests upwards.
+}
+
 
 AVSValue __cdecl Splice::CreateUnaligned(AVSValue args, void*, IScriptEnvironment* env) 
 {
   PClip result = args[0].AsClip();
   for (int i=0; i<args[1].ArraySize(); ++i)
-    result = new Splice(result, args[1][i].AsClip(), false, env);
+    result = new Splice(result, args[1][i].AsClip(), false, false, env);
   return result;
 }
 
@@ -486,12 +495,17 @@ AVSValue __cdecl Splice::CreateAligned(AVSValue args, void*, IScriptEnvironment*
 {
   PClip result = args[0].AsClip();
   for (int i=0; i<args[1].ArraySize(); ++i)
-    result = new Splice(result, args[1][i].AsClip(), true, env);
+    result = new Splice(result, args[1][i].AsClip(), true, false, env);
   return result;
 }
 
 
 
+/* Used internally to join clips without intervening caches. */
+PClip new_Splice(PClip _child1, PClip _child2, bool realign_sound, IScriptEnvironment* env) 
+{
+  return new Splice(_child1, _child2, realign_sound, true, env);
+}
 
 
 
@@ -1076,9 +1090,3 @@ AVSValue __cdecl Create_FadeIO2(AVSValue args, void*, IScriptEnvironment* env) {
 
 
 
-
-
-PClip new_Splice(PClip _child1, PClip _child2, bool realign_sound, IScriptEnvironment* env) 
-{
-  return new Splice(_child1, _child2, realign_sound, env);
-}

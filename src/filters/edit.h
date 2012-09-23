@@ -128,10 +128,11 @@ class Splice : public GenericVideoFilter
  **/
 {
 public:
-  Splice(PClip _child1, PClip _child2, bool realign_sound, IScriptEnvironment* env);
+  Splice(PClip _child1, PClip _child2, bool realign_sound, bool passCache, IScriptEnvironment* env);
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
   void __stdcall GetAudio(void* buf, __int64 start, __int64 count, IScriptEnvironment* env);
   bool __stdcall GetParity(int n);
+  int __stdcall SetCacheHints(int cachehints,int frame_range);
 
   static AVSValue __cdecl CreateUnaligned(AVSValue args, void*, IScriptEnvironment* env);
   static AVSValue __cdecl CreateAligned(AVSValue args, void*, IScriptEnvironment* env);
@@ -140,6 +141,7 @@ private:
   PClip child2;
   int video_switchover_point;
   __int64 audio_switchover_point;
+  const bool passCache;
 };
 
 
