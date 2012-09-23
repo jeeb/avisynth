@@ -80,6 +80,117 @@ public:
 
 
 
+/***********************************************
+ *******  Echo Filter  *******
+ *******  Call GetFrame on all source clips*****
+ ***********************************************/
+
+class Echo : public GenericVideoFilter 
+{ 
+private:
+  const int ClipCount;
+  PClip *clips;
+
+public:
+  Echo( PClip _child, const AVSValue _clips, IScriptEnvironment* env )
+     : GenericVideoFilter(_child), ClipCount(_clips.ArraySize()) {
+
+    clips = new PClip[ClipCount];
+    for (int i=0; i < ClipCount; i++)
+      clips[i] = _clips[i].AsClip();
+  }
+
+  ~Echo() {
+    delete[] clips;
+    clips = 0;
+  }
+
+  PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env) {
+
+	PVideoFrame src = child->GetFrame(n, env);
+
+    for (int i=0; i < ClipCount; i++)
+      clips[i]->GetFrame(n, env);           // run the GetFrame chains
+
+    return src;
+  }
+
+  static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env) {
+    return new Echo(args[0].AsClip(), args[1], env);
+  }
+
+};
+
+
+
+/***********************************************
+ ******  Preroll GetFrame/GetAudio Filter ******
+ ***********************************************/
+
+class Preroll : public GenericVideoFilter 
+{ 
+private:
+  const int videopr;
+  const __int64 audiopr;
+
+  int videonext;
+  __int64 audionext;
+
+public:
+  Preroll( PClip _child, const int _videopr, const float _audiopr, IScriptEnvironment* env )
+    : GenericVideoFilter(_child),
+      videopr(_videopr),
+      audiopr(__int64((double)_audiopr*vi.audio_samples_per_second+0.5)),
+      videonext(0),
+      audionext(0) { }
+
+  PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env) {
+    if (n != videonext) {
+      int i = n - videopr;
+      if (i < 0) i = 0;
+
+      // Optimise if n is within pr frames of last
+      if (i < videonext && n > videonext) i = videonext;
+
+      while (i < n) {
+        child->GetFrame(i, env);
+        i += 1;
+      }
+    }
+
+    videonext = n+1;
+    return child->GetFrame(n, env);
+  }
+
+  void __stdcall GetAudio(void* buf, __int64 start, __int64 count, IScriptEnvironment* env) {
+    if (start != audionext) {
+      __int64 s = start - audiopr;
+      if (s < 0) s = 0;
+
+      // Optimise if start is within pr sample of last
+      if (s < audionext && start > audionext) s = audionext;
+
+      while (s < start) {
+        __int64 c = start - s;
+        if (c > count) c = count;
+
+        child->GetAudio(buf, s, c, env);
+        s += c;
+      }
+    }
+
+    audionext = start+count;
+    child->GetAudio(buf, start, count, env);
+  }
+
+  static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env) {
+    return new Preroll(args[0].AsClip(), args[1].AsInt(0), args[2].AsDblDef(0.0), env);
+  }
+
+};
+
+
+
 /********************************************************************
 ***** Declare index of new filters for Avisynth's filter engine *****
 ********************************************************************/
@@ -87,6 +198,8 @@ public:
 extern const AVSFunction Debug_filters[] = {
   { "Null", "c[copy]s", Null::Create },     // clip, copy
   { "SetPlanarLegacyAlignment", "cb", PlanarLegacyAlignment::Create },     // clip, legacy alignment
+  { "Echo", "cc+", Echo::Create },
+  { "Preroll", "c[video]i[audio]f", Preroll::Create },
   { 0,0,0 }
 };
 
@@ -134,7 +247,7 @@ PVideoFrame __stdcall Null::GetFrame(int n, IScriptEnvironment* env)
   }
 
   // TODO: no support for planar formats!
-	if (!lstrcmpi(copy, "memcopy"))
+  if (!lstrcmpi(copy, "memcopy"))
   {
     PVideoFrame dst = env->NewVideoFrame(child->GetVideoInfo(), 16);
     if (dst->IsWritable() == false)
