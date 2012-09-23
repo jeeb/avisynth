@@ -115,6 +115,7 @@ extern const AVSFunction Script_functions[] = {
   { "audiolengthhi", "c[]i", AudioLengthHi }, // audiolength/i
   { "audiolengths", "c", AudioLengthS }, // as a string
   { "audiolengthf", "c", AudioLengthF }, // at least this will give an order of the size
+  { "audioduration", "c", AudioDuration }, // In seconds
   { "audiochannels", "c", AudioChannels },
   { "audiobits", "c", AudioBits },
   { "IsAudioFloat", "c", IsAudioFloat },
@@ -122,9 +123,11 @@ extern const AVSFunction Script_functions[] = {
   { "IsRGB", "c", IsRGB },
   { "IsYUY2", "c", IsYUY2 },
   { "IsYUV", "c", IsYUV },
+  { "IsY8", "c", IsY8 },
   { "IsYV12", "c", IsYV12 },
   { "IsYV16", "c", IsYV16 },
   { "IsYV24", "c", IsYV24 },
+  { "IsYV411", "c", IsYV411 },
   { "IsPlanar", "c", IsPlanar },
   { "IsInterleaved", "c", IsInterleaved },
   { "IsRGB24", "c", IsRGB24 },
@@ -181,6 +184,8 @@ extern const AVSFunction Script_functions[] = {
   { "ScriptFile", "", ScriptFile },
   { "ScriptDir",  "", ScriptDir  },
  
+  { "PixelType",  "c", PixelType  },
+ 
   { 0 }
 };
 
@@ -190,10 +195,13 @@ extern const AVSFunction Script_functions[] = {
  *******   Script Function   ******
  *********************************/
 
-ScriptFunction::ScriptFunction( const PExpression& _body, const char** _param_names, 
-                                int param_count ) 
+ScriptFunction::ScriptFunction( const PExpression& _body, const bool* _param_floats,
+                                const char** _param_names, int param_count ) 
   : body(_body) 
 {
+  param_floats = new bool[param_count];
+  memcpy(param_floats, _param_floats, param_count*sizeof(const bool));
+
   param_names = new const char*[param_count];
   memcpy(param_names, _param_names, param_count*sizeof(const char*));
 }
@@ -204,7 +212,8 @@ AVSValue ScriptFunction::Execute(AVSValue args, void* user_data, IScriptEnvironm
   ScriptFunction* self = (ScriptFunction*)user_data;
   env->PushContext();
   for (int i=0; i<args.ArraySize(); ++i)
-    env->SetVar(self->param_names[i], args[i]);
+    env->SetVar( self->param_names[i], // Force float args that are actually int to be float
+	            (self->param_floats[i] && args[i].IsInt()) ? float(args[i].AsInt()) : args[i]);
 
   AVSValue result;
   try {
@@ -667,6 +676,33 @@ AVSValue Spline(AVSValue args, void*, IScriptEnvironment* env )
 
 static inline const VideoInfo& VI(const AVSValue& arg) { return arg.AsClip()->GetVideoInfo(); }
 
+AVSValue PixelType (AVSValue args, void*, IScriptEnvironment* env) {
+  switch (VI(args[0]).pixel_type) {
+    case VideoInfo::CS_BGR24 :
+	  return "RGB24";
+    case VideoInfo::CS_BGR32 :
+	  return "RGB32";
+    case VideoInfo::CS_YUY2  :
+	  return "YUY2";
+    case VideoInfo::CS_YV24  :
+	  return "YV24";
+    case VideoInfo::CS_YV16  :
+	  return "YV16";
+    case VideoInfo::CS_YV12  :
+    case VideoInfo::CS_I420  :
+	  return "YV12";
+    case VideoInfo::CS_YUV9  :
+	  return "YUV9";
+    case VideoInfo::CS_YV411 :
+	  return "YV411";
+    case VideoInfo::CS_Y8    :
+	  return "Y8";
+	default:
+	  break;
+  }
+  return "";
+}
+
 AVSValue Width(AVSValue args, void*, IScriptEnvironment* env) { return VI(args[0]).width; }
 AVSValue Height(AVSValue args, void*, IScriptEnvironment* env) { return VI(args[0]).height; }
 AVSValue FrameCount(AVSValue args, void*, IScriptEnvironment* env) { return VI(args[0]).num_frames; }
@@ -679,6 +715,11 @@ AVSValue AudioLengthLo(AVSValue args, void*, IScriptEnvironment* env) { return (
 AVSValue AudioLengthHi(AVSValue args, void*, IScriptEnvironment* env) { return (int)(VI(args[0]).num_audio_samples / (unsigned)args[1].AsInt(1000000000)); }
 AVSValue AudioLengthS(AVSValue args, void*, IScriptEnvironment* env) { char s[32]; return env->SaveString(_i64toa(VI(args[0]).num_audio_samples, s, 10)); } 
 AVSValue AudioLengthF(AVSValue args, void*, IScriptEnvironment* env) { return (float)VI(args[0]).num_audio_samples; } // at least this will give an order of the size
+AVSValue AudioDuration(AVSValue args, void*, IScriptEnvironment* env) {
+  const VideoInfo& vi = VI(args[0]);
+  return (double)vi.num_audio_samples / vi.audio_samples_per_second;
+}
+
 AVSValue AudioChannels(AVSValue args, void*, IScriptEnvironment* env) { return VI(args[0]).HasAudio() ? VI(args[0]).nchannels : 0; }
 AVSValue AudioBits(AVSValue args, void*, IScriptEnvironment* env) { return VI(args[0]).BytesPerChannelSample()*8; }
 AVSValue IsAudioFloat(AVSValue args, void*, IScriptEnvironment* env) { return VI(args[0]).IsSampleType(SAMPLE_FLOAT); }
@@ -689,9 +730,11 @@ AVSValue IsRGB24(AVSValue args, void*, IScriptEnvironment* env) { return VI(args
 AVSValue IsRGB32(AVSValue args, void*, IScriptEnvironment* env) { return VI(args[0]).IsRGB32(); }
 AVSValue IsYUV(AVSValue args, void*, IScriptEnvironment* env) { return VI(args[0]).IsYUV(); }
 AVSValue IsYUY2(AVSValue args, void*, IScriptEnvironment* env) { return VI(args[0]).IsYUY2(); }
+AVSValue IsY8(AVSValue args, void*, IScriptEnvironment* env) { return VI(args[0]).IsY8(); }
 AVSValue IsYV12(AVSValue args, void*, IScriptEnvironment* env) { return VI(args[0]).IsYV12(); }
 AVSValue IsYV16(AVSValue args, void*, IScriptEnvironment* env) { return VI(args[0]).IsYV16(); }
 AVSValue IsYV24(AVSValue args, void*, IScriptEnvironment* env) { return VI(args[0]).IsYV24(); }
+AVSValue IsYV411(AVSValue args, void*, IScriptEnvironment* env) { return VI(args[0]).IsYV411(); }
 AVSValue IsPlanar(AVSValue args, void*, IScriptEnvironment* env) { return VI(args[0]).IsPlanar(); }
 AVSValue IsInterleaved(AVSValue args, void*, IScriptEnvironment* env) { return VI(args[0]).IsColorSpace(VideoInfo::CS_INTERLEAVED); }
 AVSValue IsFieldBased(AVSValue args, void*, IScriptEnvironment* env) { return VI(args[0]).IsFieldBased(); }

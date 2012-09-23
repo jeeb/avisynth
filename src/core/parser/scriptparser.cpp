@@ -94,6 +94,7 @@ void ScriptParser::ParseFunctionDefinition(void)
   tokenizer.NextToken();
   char param_types[4096];
   int param_chars=0;
+  bool param_floats[max_args];
   const char* param_names[max_args];
   int param_count=0;
   if (!tokenizer.IsOperator('{')) {
@@ -112,6 +113,7 @@ void ScriptParser::ParseFunctionDefinition(void)
         env->ThrowError("Script error: parameter list too long");
       }
 
+      param_floats[param_count] = false;
       char type = '.';
       Tokenizer lookahead(&tokenizer);
       if (lookahead.IsIdentifier() || lookahead.IsString()) {
@@ -119,7 +121,10 @@ void ScriptParser::ParseFunctionDefinition(void)
         if (tokenizer.IsIdentifier("val")) type = '.';
         else if (tokenizer.IsIdentifier("bool")) type = 'b';
         else if (tokenizer.IsIdentifier("int")) type = 'i';
-        else if (tokenizer.IsIdentifier("float")) type = 'f';
+        else if (tokenizer.IsIdentifier("float")) {
+          param_floats[param_count] = true;
+          type = 'f';
+        }
         else if (tokenizer.IsIdentifier("string")) type = 's';
         else if (tokenizer.IsIdentifier("clip")) type = 'c';
         else env->ThrowError("Script error: expected \"val\", \"bool\", \"int\", \"float\", \"string\", or \"clip\"");
@@ -152,7 +157,7 @@ void ScriptParser::ParseFunctionDefinition(void)
 
   param_types[param_chars] = 0;
   PExpression body = ParseBlock(true);
-  ScriptFunction* sf = new ScriptFunction(body, param_names, param_count);
+  ScriptFunction* sf = new ScriptFunction(body, param_floats, param_names, param_count);
   env->AtExit(ScriptFunction::Delete, sf);
   env->AddFunction(name, env->SaveString(param_types), ScriptFunction::Execute, sf);
 }

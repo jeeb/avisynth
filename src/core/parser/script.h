@@ -52,15 +52,19 @@ class ScriptFunction
  **/
 {
 public:
-  ScriptFunction(const PExpression& _body, const char** _param_names, int param_count);
+  ScriptFunction(const PExpression& _body, const bool* _param_floats, const char** _param_names, int param_count);
   virtual ~ScriptFunction() 
-    { delete[] param_names; }
+    {
+      delete[] param_floats;
+      delete[] param_names;
+    }
 
   static AVSValue Execute(AVSValue args, void* user_data, IScriptEnvironment* env);
   static void Delete(void* self, IScriptEnvironment*);
 
 private:
   const PExpression body;
+  bool *param_floats;
   const char** param_names;
 };
 
@@ -150,6 +154,7 @@ AVSValue Sign(AVSValue args, void*, IScriptEnvironment* env);
 
 static inline const VideoInfo& VI(const AVSValue& arg);
 
+AVSValue PixelType (AVSValue args, void*, IScriptEnvironment* env);
 AVSValue Width(AVSValue args, void*, IScriptEnvironment* env);
 AVSValue Height(AVSValue args, void*, IScriptEnvironment* env);
 AVSValue FrameCount(AVSValue args, void*, IScriptEnvironment* env);
@@ -162,15 +167,18 @@ AVSValue AudioLengthLo(AVSValue args, void*, IScriptEnvironment* env);
 AVSValue AudioLengthHi(AVSValue args, void*, IScriptEnvironment* env);
 AVSValue AudioLengthS(AVSValue args, void*, IScriptEnvironment* env);
 AVSValue AudioLengthF(AVSValue args, void*, IScriptEnvironment* env);
+AVSValue AudioDuration(AVSValue args, void*, IScriptEnvironment* env);
 AVSValue AudioChannels(AVSValue args, void*, IScriptEnvironment* env);
 AVSValue AudioBits(AVSValue args, void*, IScriptEnvironment* env);
 AVSValue IsAudioFloat(AVSValue args, void*, IScriptEnvironment* env);
 AVSValue IsAudioInt(AVSValue args, void*, IScriptEnvironment* env);
 
 AVSValue IsRGB(AVSValue args, void*, IScriptEnvironment* env);
+AVSValue IsY8(AVSValue args, void*, IScriptEnvironment* env);
 AVSValue IsYV12(AVSValue args, void*, IScriptEnvironment* env);
 AVSValue IsYV16(AVSValue args, void*, IScriptEnvironment* env);
 AVSValue IsYV24(AVSValue args, void*, IScriptEnvironment* env);
+AVSValue IsYV411(AVSValue args, void*, IScriptEnvironment* env);
 AVSValue IsYUY2(AVSValue args, void*, IScriptEnvironment* env);
 AVSValue IsYUV(AVSValue args, void*, IScriptEnvironment* env);
 AVSValue IsRGB24(AVSValue args, void*, IScriptEnvironment* env);
