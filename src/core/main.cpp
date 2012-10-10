@@ -648,7 +648,7 @@ bool CAVIFileSynth::DelayInit2() {
 
           filter_graph = env->Invoke("Cache", AVSValue(filter_graph)).AsClip();
 
-          filter_graph->SetCacheHints(CACHE_ALL, 999); // Give the top level cache a big head start!!
+          filter_graph->SetCacheHints(CACHE_GENERIC, 999); // Give the top level cache a big head start!!
         }
         else if (return_val.IsBool())
           env->ThrowError("The script's return value was not a video clip, (Is a bool, %s).", return_val.AsBool() ? "True" : "False");

@@ -117,14 +117,14 @@ private:
 
 class EnsureVBRMP3Sync : public GenericVideoFilter
 /**
-  * Class to convert audio to mono
+  * Ensure VBR mp3 sync, by always reading audio sequencially.
  **/
 {
 public:
   EnsureVBRMP3Sync(PClip _clip);
 
   void __stdcall GetAudio(void* buf, __int64 start, __int64 count, IScriptEnvironment* env);
-  static PClip Create(PClip clip, IScriptEnvironment* env);
+  int __stdcall SetCacheHints(int cachehints, int frame_range);
   static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env);
 
 private:

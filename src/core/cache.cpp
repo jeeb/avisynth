@@ -63,7 +63,7 @@ enum {CACHE_SCALE_FACTOR      =   1<<CACHE_SCALE_SHIFT};
 enum {MAX_CACHE_MISSES        = 100}; // Consecutive misses before a reset
 enum {MAX_CACHED_VIDEO_FRAMES = 200}; // Maximum number of VFB's that are tracked
 enum {MAX_CACHED_VF_SCALED    = MAX_CACHED_VIDEO_FRAMES<<CACHE_SCALE_SHIFT};
-enum {MAX_CACHE_RANGE         =  21}; // Maximum CACHE_RANGE span i.e. number of protected VFB's
+enum {MAX_CACHE_WINDOW        =  21}; // Maximum CACHE_WINDOW span i.e. number of protected VFB's
 
 
 /*******************************
@@ -81,8 +81,8 @@ Cache::Cache(PClip _child, IScriptEnvironment* env)
 //  InitializeCriticalSectionAndSpinCount(&cs_cache_V, 4000);
 //  InitializeCriticalSectionAndSpinCount(&cs_cache_A, 4000);
 
-  h_policy = CACHE_ALL;  // Since hints are not used per default, this is to describe the lowest default cache mode.
-  h_audiopolicy = CACHE_NOTHING;  // Don't cache audio per default.
+  h_policy = vi.HasVideo() ? CACHE_GENERIC : CACHE_NOTHING;  // Since hints are not used per default, this is to describe the lowest default cache mode.
+  h_audiopolicy = vi.HasAudio() ? CACHE_AUDIO_NONE : CACHE_AUDIO_NOTHING;  // Don't cache audio per default, auto mode.
 
   cache_limit = CACHE_SCALE_FACTOR / 2;  // Start half way towards 1 buffer
   cache_init  = 0;
@@ -93,6 +93,7 @@ Cache::Cache(PClip _child, IScriptEnvironment* env)
   h_span = 0;
   protectcount = 0;
 
+  maxsamplecount = 0;
   ac_expected_next = 0;
   ac_too_small_count = 0;
   ac_currentscore = 20;
@@ -104,6 +105,94 @@ Cache::Cache(PClip _child, IScriptEnvironment* env)
 
   // Join all the rest of the caches
   env->ManageCache(MC_RegisterCache, this);
+
+  childcost = 0; // Unsupported by child
+  childaccesscost = 0; // Unsupported by child
+
+  // For 2.6 filters ask about desired parent cache parameters
+  if (child->GetVersion() < 5) {
+    childthreadmode = CACHE_THREAD_UNSAFE; // 2.5 Default
+  }
+  else {
+    childthreadmode = CACHE_THREAD_CLASS; // 2.6 Default
+
+    const int vmode = child->SetCacheHints(CACHE_GETCHILD_CACHE_MODE, h_policy); // Cache ask Child for desired video cache mode
+    switch (vmode) {
+      case 0: // Unsupported by child
+        break;
+      case CACHE_NOTHING:       // Do not cache video.
+      case CACHE_WINDOW:        // Hard protect upto X frames within a range of X from the current frame N.
+      case CACHE_GENERIC:       // LRU cache upto X frames.
+      case CACHE_FORCE_GENERIC: // LRU cache upto X frames, override any previous CACHE_WINDOW.
+        // Cache ask Child for desired video cache size
+        SetCacheHints(vmode, child->SetCacheHints(CACHE_GETCHILD_CACHE_SIZE, h_policy == CACHE_WINDOW ? h_span : cache_init));
+        break;
+      default:
+        env->ThrowError("Cache: Filter returned invalid response to CACHE_GETCHILD_CACHE_MODE. %d", vmode);
+        break;
+    }
+
+    const int amode = child->SetCacheHints(CACHE_GETCHILD_AUDIO_MODE, h_audiopolicy); // Cache ask Child for desired audio cache mode
+    switch (amode) {
+      case 0: // Unsupported by child
+        break;
+      case CACHE_AUDIO:         // Explicitly do cache audio, X byte cache.
+      case CACHE_AUDIO_NOTHING: // Explicitly do not cache audio.
+      case CACHE_AUDIO_NONE:    // Audio cache off (auto mode), X byte intial cache.
+      case CACHE_AUDIO_AUTO:    // Audio cache on (auto mode), X byte intial cache.
+        // Cache ask Child for desired audio cache size
+        SetCacheHints(amode, child->SetCacheHints(CACHE_GETCHILD_AUDIO_SIZE, maxsamplecount * samplesize));
+        break;
+      default:
+        env->ThrowError("Cache: Filter returned invalid response to CACHE_GETCHILD_AUDIO_MODE. %d", amode);
+        break;
+    }
+
+    const int cost = child->SetCacheHints(CACHE_GETCHILD_COST, 0); // Cache ask Child for estimated processing cost.
+    switch (cost) {
+      case 0: // Unsupported by child
+        break;
+      case CACHE_COST_ZERO: // Child response of zero cost (ptr arithmetic only).
+      case CACHE_COST_UNIT: // Child response of unit cost (less than or equal 1 full frame blit).
+      case CACHE_COST_LOW:  // Child response of light cost. (Fast)
+      case CACHE_COST_MED:  // Child response of medium cost. (Real time)
+      case CACHE_COST_HI:   // Child response of heavy cost. (Slow)
+        childcost = cost;
+        break;
+      default:
+        env->ThrowError("Cache: Filter returned invalid response to CACHE_GETCHILD_COST. %d", cost);
+        break;
+    }
+
+    const int thread = child->SetCacheHints(CACHE_GETCHILD_THREAD_MODE, 0); // Cache ask Child for thread safetyness.
+    switch (thread) {
+      case 0: // Unsupported by child
+        break;
+      case CACHE_THREAD_UNSAFE: // Only 1 thread allowed for all instances. 2.5 filters default!
+      case CACHE_THREAD_CLASS: // Only 1 thread allowed for each instance. 2.6 filters default!
+      case CACHE_THREAD_SAFE: //  Allow all threads in any instance.
+      case CACHE_THREAD_OWN: // Safe but limit to 1 thread, internally threaded.
+        childthreadmode = thread;
+        break;
+      default:
+        env->ThrowError("Cache: Filter returned invalid response to CACHE_GETCHILD_THREAD_MODE. %d", thread);
+        break;
+    }
+
+    const int access = child->SetCacheHints(CACHE_GETCHILD_ACCESS_COST, 0); // Cache ask Child for preferred access pattern.
+    switch (access) {
+      case 0: // Unsupported by child
+        break;
+      case CACHE_ACCESS_RAND: // Filter is access order agnostic.
+      case CACHE_ACCESS_SEQ0: // Filter prefers sequential access (low cost)
+      case CACHE_ACCESS_SEQ1: // Filter needs sequential access (high cost)
+        childaccesscost = access;
+        break;
+      default:
+        env->ThrowError("Cache: Filter returned invalid response to CACHE_GETCHILD_ACCESS_COST. %d", access);
+        break;
+    }
+  }
 }
 
 
@@ -387,7 +476,7 @@ PVideoFrame __stdcall Cache::GetFrame(int n, IScriptEnvironment* env)
       if (ifn < iminframe) iminframe = ifn;
       if (ifn > imaxframe) imaxframe = ifn;
 
-      // Unprotect any frames out of CACHE_RANGE scope
+      // Unprotect any frames out of CACHE_WINDOW scope
       if (abs(ifn-n) >= h_span) {
         if (UnProtectVFB(i)) {
           _RPT3(0, "Cache:%x: A: Unprotect vfb %x for frame %d\n", this, i->vfb, ifn);
@@ -461,7 +550,7 @@ PVideoFrame __stdcall Cache::GetFrame(int n, IScriptEnvironment* env)
   RegisterVideoFrame(cvf, result);
 
   // When we have the possibility of cacheing, promote
-  // the vfb to the head of the LRU list, CACHE_RANGE
+  // the vfb to the head of the LRU list, CACHE_WINDOW
   // frames are NOT promoted hence they are fair game
   // for reuse as soon as they are unprotected. This
   // is a fair price to pay for their protection. If
@@ -473,7 +562,7 @@ PVideoFrame __stdcall Cache::GetFrame(int n, IScriptEnvironment* env)
   else
     env->ManageCache(MC_ManageVideoFrameBuffer, result->vfb);
 
-  // If this is a CACHE_RANGE frame protect it
+  // If this is a CACHE_WINDOW frame protect it
   if (h_span) {
     ProtectVFB(cvf, n, env);
   }
@@ -606,7 +695,7 @@ void Cache::ProtectVFB(CachedVideoFrame *i, int n, IScriptEnvironment* env)
     InterlockedIncrement(&g_Cache_stats.vfb_protects);
   }
 
-  // Unprotect any frames out of CACHE_RANGE scope
+  // Unprotect any frames out of CACHE_WINDOW scope
   while ((protectcount > h_span) && (j != &video_frames)){
     if ( (j != i) && (abs(n - j->frame_number) >= h_span) ) {
       if (UnProtectVFB(j)) {
@@ -674,26 +763,28 @@ void __stdcall Cache::GetAudio(void* buf, __int64 start, __int64 count, IScriptE
   else if (_cs > 90)
     ac_currentscore = 90;
 
-  if (h_audiopolicy == CACHE_NOTHING && ac_currentscore <= 0) {
-    SetCacheHints(CACHE_AUDIO_AUTO, 0);
-    _RPT1(0, "CacheAudio:%x: Automatically adding audiocache!\n", this);
+  if (h_audiopolicy == CACHE_AUDIO_NONE && ac_currentscore <= 0) {
+    int new_size = (int)(vi.BytesFromAudioSamples(count)+8191) & -8192;
+    new_size = min(4096*1024, new_size);
+    _RPT2(0, "CA:%x: Automatically adding %d byte audiocache!\n", this, new_size);
+    SetCacheHints(CACHE_AUDIO_AUTO, new_size);
   }
 
   if (h_audiopolicy == CACHE_AUDIO_AUTO  && (ac_currentscore > 80) ) {
+    _RPT1(0, "CA:%x: Automatically deleting cache!\n", this);
     SetCacheHints(CACHE_AUDIO_NONE, 0);
-    _RPT1(0, "CacheAudio:%x: Automatically deleting cache!\n", this);
   }
 
   ac_expected_next = start + count;
 
-  if (h_audiopolicy == CACHE_NOTHING) {
+  if (h_audiopolicy == CACHE_AUDIO_NONE || h_audiopolicy == CACHE_AUDIO_NOTHING) {
     child->GetAudio(buf, start, count, env);
     return;  // We are ok to return now!
   }
 
 #ifdef _DEBUG
   char dbgbuf[255];
-  sprintf(dbgbuf, "CA:Get st:%.6d co:%.6d .cst:%.6d cco:%.6d, sc:%d\n",
+  sprintf(dbgbuf, "CA:%x:Get st:%.6d co:%.6d .cst:%.6d cco:%.6d, cs:%d\n", this,
                     int(start), int(count), int(cache_start), int(cache_count), int(ac_currentscore));
   _RPT0(0, dbgbuf);
 #endif
@@ -706,16 +797,18 @@ void __stdcall Cache::GetAudio(void* buf, __int64 start, __int64 count, IScriptE
 
 // But the current cache might have 99% of what was requested??
 
-    if (ac_too_small_count > 2 && (maxsamplecount < vi.AudioSamplesFromBytes(4096*1024))) {  // Max size = 4MB!
+    if (ac_too_small_count > 2 && (maxsamplecount < vi.AudioSamplesFromBytes(8192*1024))) {  // Max size = 8MB!
       //automatically upsize cache!
-      int new_size = (int)(vi.BytesFromAudioSamples(count)+8192) & -8192; // Yes +1 to +8192 bytes
-      new_size = min(4096*1024, new_size);
-      _RPT2(0, "CacheAudio:%x: Autoupsizing buffer to %d bytes!", this, new_size);
+      int new_size = (int)(vi.BytesFromAudioSamples(max(count, cache_start+cache_count-start))+8192) & -8192; // Yes +1 to +8192 bytes
+      new_size = min(8192*1024, new_size);
+      _RPT2(0, "CA:%x: Autoupsizing buffer to %d bytes!\n", this, new_size);
       SetCacheHints(h_audiopolicy, new_size); // updates maxsamplecount!!
       ac_too_small_count = 0;
     }
     else {
+//      LeaveCriticalSection(&cs_cache_A);
       child->GetAudio(buf, start, count, env);
+//      EnterCriticalSection(&cs_cache_A);
 
       cache_count = min(count, maxsamplecount); // Remember maxsamplecount gets updated
       cache_start = start+count-cache_count;
@@ -729,7 +822,7 @@ void __stdcall Cache::GetAudio(void* buf, __int64 start, __int64 count, IScriptE
     }
   }
 
-  if ((start < cache_start) || (start >= cache_start+maxsamplecount)) { //first sample is before cache or beyond linear reach -> restart cache
+  if ((start < cache_start) || (start > cache_start+maxsamplecount)) { //first sample is before cache or beyond linear reach -> restart cache
     _RPT1(0, "CA:%x: Restart\n", this);
 
     cache_count = min(count, maxsamplecount);
@@ -772,94 +865,199 @@ void __stdcall Cache::GetAudio(void* buf, __int64 start, __int64 count, IScriptE
 
 int __stdcall Cache::SetCacheHints(int cachehints, int frame_range) {
 
-  // Detect if we are a cache, respond with our this pointer
-  if (cachehints == GetMyThis) {
-    return (int)(void *)this;
-  }
-
   _RPT3(0, "Cache:%x: Setting cache hints (hints:%d, range:%d )\n", this, cachehints, frame_range);
 
-  if (cachehints == CACHE_AUDIO || cachehints == CACHE_AUDIO_AUTO) {
+  switch (cachehints) {
+    // Detect if we are a cache, respond with our this pointer
+    case GetMyThis:
+      return (int)(void *)this;
 
-    if (!vi.HasAudio())
-      return 0;
 
-    // Range means for audio.
-    // 0 == Create a default buffer (64kb).
-    // Positive. Allocate X bytes for cache.
-    if (frame_range == 0) {
-      if (h_audiopolicy != CACHE_NOTHING)   // We already have a policy - no need for a default one.;
-        return 0;
+    // Ignore 2.5 CACHE_NOTHING requests
+    case CACHE_25_NOTHING:
+      break;
 
-      frame_range=64*1024;
-    }
+    // Map 2.5 CACHE_RANGE calls to CACHE_WINDOW
+    // force minimum range to 2
+    case CACHE_25_RANGE:
+      if (frame_range < 2) frame_range = 2;
+      SetCacheHints(CACHE_WINDOW, frame_range);
+      break;
 
-//    EnterCriticalSection(&cs_cache_A);
-    if (frame_range/samplesize > maxsamplecount) { // Only make bigger
-      char *newcache = new char[frame_range];
-      if (newcache) {
+    // Map 2.5 CACHE_ALL calls to CACHE_GENERIC
+    case CACHE_25_ALL:
+      SetCacheHints(CACHE_GENERIC, frame_range);
+      break;
 
-        maxsamplecount = frame_range/samplesize;
-        if (cache) {
-          // Keep old cache contents
-          cache_count = min(cache_count, maxsamplecount);
-          memcpy(newcache, cache, (size_t)(vi.BytesFromAudioSamples(cache_count)));
-          delete[] cache;
-        }
-        else {
-          cache_start=0;
-          cache_count=0;
-        }
-        cache = newcache;
+    // Map 2.5 CACHE_AUDIO calls to CACHE_AUDIO
+    case CACHE_25_AUDIO:
+      SetCacheHints(CACHE_AUDIO, frame_range);
+      break;
+
+    // Map 2.5 CACHE_AUDIO_NONE calls to CACHE_AUDIO_NONE
+    case CACHE_25_AUDIO_NONE:
+      SetCacheHints(CACHE_AUDIO_NONE, 0);
+      break;
+
+    // Map 2.5 CACHE_AUDIO_AUTO calls to CACHE_AUDIO_AUTO
+    case CACHE_25_AUDIO_AUTO:
+      SetCacheHints(CACHE_AUDIO_AUTO, frame_range);
+      break;
+
+
+    case CACHE_AUDIO:
+    case CACHE_AUDIO_AUTO:
+      if (!vi.HasAudio())
+        break;
+
+      // Range means for audio.
+      // 0 == Create a default buffer (64kb).
+      // Positive. Allocate X bytes for cache.
+      if (frame_range == 0) {
+        if (h_audiopolicy != CACHE_AUDIO_NONE)   // We already have a policy - no need for a default one.
+          break;
+
+        frame_range=256*1024;
       }
+
+  //    EnterCriticalSection(&cs_cache_A);
+      if (frame_range/samplesize > maxsamplecount) { // Only make bigger
+        char *newcache = new char[frame_range];
+        if (newcache) {
+          maxsamplecount = frame_range/samplesize;
+          if (cache) {
+            // Keep old cache contents
+            cache_count = min(cache_count, maxsamplecount);
+            memcpy(newcache, cache, (size_t)(vi.BytesFromAudioSamples(cache_count)));
+            delete[] cache;
+          }
+          else {
+            cache_start=0;
+            cache_count=0;
+          }
+          cache = newcache;
+        }
+      }
+
+      if (cache) h_audiopolicy = cachehints; // CACHE_AUDIO or CACHE_AUDIO_AUTO:
+  //    LeaveCriticalSection(&cs_cache_A);
+      break;
+
+    case CACHE_AUDIO_NONE:
+    case CACHE_AUDIO_NOTHING:
+  //    EnterCriticalSection(&cs_cache_A);
+      if (cache)
+        delete[] cache;
+
+      cache = 0;
+      cache_start = 0;
+      cache_count = 0;
+      maxsamplecount = 0;
+
+      h_audiopolicy = cachehints; // CACHE_AUDIO_NONE or CACHE_AUDIO_NOTHING
+  //    LeaveCriticalSection(&cs_cache_A);
+      break;
+
+
+    case CACHE_GET_AUDIO_POLICY: // Get the current audio policy.
+      return h_audiopolicy;
+
+    case CACHE_GET_AUDIO_SIZE: // Get the current audio cache size.
+      return maxsamplecount * samplesize;
+
+
+    case CACHE_GENERIC:
+    case CACHE_FORCE_GENERIC:
+    {
+      if (!vi.HasVideo())
+        break;
+
+      int _cache_init = min(MAX_CACHED_VIDEO_FRAMES, frame_range);
+
+      if (_cache_init > cache_init) // The max of all requests
+        cache_init  = _cache_init;
+
+      _cache_init <<= CACHE_SCALE_SHIFT; // Scale it
+
+      if (_cache_init > cache_limit)
+        cache_limit = _cache_init;
+
+      if (h_policy != CACHE_WINDOW || cachehints == CACHE_FORCE_GENERIC) {
+        h_policy = CACHE_GENERIC;  // This is default operation, a simple LRU cache
+        h_span = 0;
+      }
+
+      break;
     }
 
-    if (cache) h_audiopolicy = cachehints;
-//    LeaveCriticalSection(&cs_cache_A);
-  }
-  else if (cachehints == CACHE_AUDIO_NONE) {
+    case CACHE_NOTHING:
+      h_policy = CACHE_NOTHING;  // filter requested no caching.
+      break;
+
+    case CACHE_WINDOW:
+      if (!vi.HasVideo())
+        break;
+
+      if (frame_range > h_span)  // Use the largest size when we have multiple clients
+        h_span = min(MAX_CACHE_WINDOW, frame_range);
+
+      h_policy = CACHE_WINDOW;  // An explicit cache of radius "frame_range" around the current frame, n.
+      break;
+
+
+    case CACHE_GET_POLICY: // Get the current policy.
+      return h_policy;
+
+    case CACHE_GET_WINDOW: // Get the current window h_span.
+      return h_span;
+
+    case CACHE_GET_RANGE: // Get the current generic frame range.
+      return cache_init;
+
+
+    case CACHE_PREFETCH_FRAME:  // Queue request to prefetch frame N.
+//    QueueVideo(frame_range);
+      break;
+
+    case CACHE_PREFETCH_GO:  // Action video prefetches.
+//    PrefetchVideo((IScriptEnvironment*)frame_range);
+      break;
+
+
+    case CACHE_PREFETCH_AUDIO_BEGIN:  // Begin queue request to prefetch audio (take critical section).
 //    EnterCriticalSection(&cs_cache_A);
-    if (cache)
-      delete[] cache;
+//    prefetch_audio_startlo = 0;
+//    prefetch_audio_starthi = 0;
+//    prefetch_audio_count  = 0;
+      break;
 
-    cache = 0;
-    cache_start = 0;
-    cache_count = 0;
-    maxsamplecount = 0;
+    case CACHE_PREFETCH_AUDIO_STARTLO:  // Set low 32 bits of start.
+//    prefetch_audio_startlo = (unsigned int)frame_range;
+      break;
 
-    h_audiopolicy = CACHE_NOTHING;
+    case CACHE_PREFETCH_AUDIO_STARTHI:  // Set high 32 bits of start.
+//    prefetch_audio_starthi = (unsigned int)frame_range;
+      break;
+
+    case CACHE_PREFETCH_AUDIO_COUNT:  // Set low 32 bits of length.
+//    prefetch_audio_count = (unsigned int)frame_range;
+      break;
+
+    case CACHE_PREFETCH_AUDIO_COMMIT:  // Enqueue request transaction to prefetch audio (release critical section).
+//    __int64 start = (__int64(prefetch_audio_starthi) << 32) || prefetch_audio_startlo;
+//    __int64 count = prefetch_audio_count;
 //    LeaveCriticalSection(&cs_cache_A);
+//    QueueAudio(start, count);
+      break;
+
+    case CACHE_PREFETCH_AUDIO_GO:  // Action audio prefetch
+//    PrefetchAudio((IScriptEnvironment*)frame_range);
+      break;
+
+
+    default:
+      break;
   }
-
-
-  if (cachehints == CACHE_ALL) {
-    int _cache_init = min(MAX_CACHED_VIDEO_FRAMES, frame_range);
-
-    if (_cache_init > cache_init) // The max of all requests
-      cache_init  = _cache_init;
-
-    _cache_init <<= CACHE_SCALE_SHIFT; // Scale it
-
-    if (_cache_init > cache_limit)
-      cache_limit = _cache_init;
-
-    h_policy = CACHE_ALL;  // This is default operation, a simple LRU cache
-
-  }
-  else if (cachehints == CACHE_NOTHING) {
-
-    h_policy = CACHE_NOTHING;  // filter requested no caching.
-
-  }
-  else if (cachehints == CACHE_RANGE) {
-
-    if (frame_range > h_span)  // Use the largest size when we have multiple clients
-      h_span = min(MAX_CACHE_RANGE, frame_range);
-
-    h_policy = CACHE_RANGE;  // An explicit cache of radius "frame_range" around the current frame, n.
-
-  }
-
   return 0;
 }
 

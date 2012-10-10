@@ -247,15 +247,25 @@ void __stdcall EnsureVBRMP3Sync::GetAudio(void* buf, __int64 start, __int64 coun
 }
 
 
-PClip EnsureVBRMP3Sync::Create(PClip clip, IScriptEnvironment* env) {
-  AVSValue c = new EnsureVBRMP3Sync(clip);
-  PClip c2 = env->Invoke("Cache", c).AsClip(); // Very good idea to insert a cache here.
-  c2->SetCacheHints(CACHE_AUDIO, 1024*1024);   // And juice it up to 1Mb
-  return c2;
+int __stdcall EnsureVBRMP3Sync::SetCacheHints(int cachehints, int frame_range) {
+
+  // Enable CACHE_AUDIO on parent cache and juice it up to 1Mb
+
+  switch (cachehints) {
+    case CACHE_GETCHILD_AUDIO_MODE: // Parent Cache asking Child for desired audio cache mode
+      return CACHE_AUDIO;
+
+    case CACHE_GETCHILD_AUDIO_SIZE: // Parent Cache asking Child for desired audio cache size
+      return 1024*1024;
+
+    default:
+      break;
+  }
+  return 0;
 }
 
 AVSValue __cdecl EnsureVBRMP3Sync::Create(AVSValue args, void*, IScriptEnvironment* env) {
-  return Create(args[0].AsClip(), env);
+  return new EnsureVBRMP3Sync(args[0].AsClip());
 }
 
 

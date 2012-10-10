@@ -991,7 +991,7 @@ TemporalSoften::TemporalSoften( PClip _child, unsigned radius, unsigned luma_thr
     mode(_mode)
 {
 
-  child->SetCacheHints(CACHE_RANGE,kernel);
+  child->SetCacheHints(CACHE_WINDOW,kernel);
 
   if (vi.IsRGB24()) {
     env->ThrowError("TemporalSoften: RGB24 Not supported, use ConvertToRGB32().");

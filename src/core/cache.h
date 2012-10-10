@@ -71,7 +71,7 @@ protected:
   void PokeCache(int key, int size, IScriptEnvironment* env);
 
 private:
-  enum {GetMyThis = 0x8666 };
+  enum {GetMyThis = 0x8686 };
 
   struct CachedVideoFrame;
   void RegisterVideoFrame(CachedVideoFrame *i, const PVideoFrame& frame);
@@ -85,6 +85,11 @@ private:
   void ProtectVFB(CachedVideoFrame *i, int n, IScriptEnvironment* env);
   bool UnProtectVFB(CachedVideoFrame *i);
   PVideoFrame __stdcall childGetFrame(int n, IScriptEnvironment* env);
+
+//  void QueueVideo(int frame_range);
+//  void PrefetchVideo(IScriptEnvironment* env);
+//  void QueueAudio(_int64 start, _int64 count);
+//  void PrefetchAudio(IScriptEnvironment* env);
 
   struct CachedVideoFrame 
   {
@@ -126,8 +131,8 @@ private:
 
   // For audio cache prediction
   __int64 ac_expected_next;
-  long ac_currentscore;
   int ac_too_small_count;
+  long ac_currentscore;
 
   // Cached range limits
   int minframe, maxframe;
@@ -140,6 +145,15 @@ private:
   // These are global to all Cache instances
   static long Clock;
   static long cacheDepth;
+
+  int childcost;       // Child estimated processing cost.
+  int childaccesscost; // Child preferred access pattern.
+  int childthreadmode; // Child thread safetyness.
+
+//  unsigned int prefetch_audio_startlo;
+//  unsigned int prefetch_audio_starthi;
+//  unsigned int prefetch_audio_count;
+
 };
 
 #endif  // __Cache_H__
