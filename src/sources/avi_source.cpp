@@ -288,6 +288,8 @@ void AVISource::LocateVideoCodec(const char fourCC[], IScriptEnvironment* env) {
   } else if (pbiSrc->biCompression == BI_RGB && pbiSrc->biBitCount == 24) {
     vi.pixel_type = VideoInfo::CS_BGR24;
     if (pbiSrc->biHeight < 0) bInvertFrames = true;
+  } else if (pbiSrc->biCompression == 'YERG') {
+    vi.pixel_type = VideoInfo::CS_Y8;
   } else if (pbiSrc->biCompression == '008Y') {
     vi.pixel_type = VideoInfo::CS_Y8;
   } else if (pbiSrc->biCompression == '  8Y') {
