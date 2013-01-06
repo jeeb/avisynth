@@ -40,6 +40,7 @@
 #include "../audio/convertaudio.h"
 
 
+#define PI        3.141592653589793
 
 
 /********************************************************************
@@ -101,8 +102,8 @@ Histogram::Histogram(PClip _child, Mode _mode, AVSValue _option, IScriptEnvironm
     vi.height = max(256,vi.height);
 
     for (int y=0; y<24; y++) { // just inside the big circle
-      deg15c[y] = (int) ( 126.0*cos(y*3.14159/12.) + 0.5) + 127;
-      deg15s[y] = (int) (-126.0*sin(y*3.14159/12.) + 0.5) + 127;
+      deg15c[y] = (int) ( 126.0*cos(y*PI/12.) + 0.5) + 127;
+      deg15s[y] = (int) (-126.0*sin(y*PI/12.) + 0.5) + 127;
     }
   }
 

@@ -38,6 +38,7 @@
 #include "levels.h"
 
 
+#define PI        3.141592653589793
 
 
 /********************************************************************
@@ -549,7 +550,7 @@ bool ProcessPixel(double X, double Y, double startHue, double endHue,
                   double maxSat, double minSat, double p, int &iSat)
 {
 	// a hue analog
-	double T = atan2(X, Y) * 180.0 / 3.14159265358979323846;
+	double T = atan2(X, Y) * 180.0 / PI;
 	if ( T < 0.0) T += 360.0;
 
 	// startHue <= hue <= endHue
@@ -638,7 +639,7 @@ Tweak::Tweak( PClip _child, double _hue, double _sat, double _bright, double _co
     Cont = (int) (_cont * 512);
     Bright = (int) _bright;
 
-    const double Hue = (_hue * 3.14159265358979323846) / 180.0;
+    const double Hue = (_hue * PI) / 180.0;
     const double SIN = sin(Hue);
     const double COS = cos(Hue);
 
