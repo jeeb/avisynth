@@ -1130,15 +1130,30 @@ inline int CalcFontSize(int w, int h)
 
 
 FilterInfo::FilterInfo( PClip _child)
-: GenericVideoFilter(_child),
-antialiaser(vi.width, vi.height, "Courier New", CalcFontSize(vi.width, vi.height), vi.IsYUV() ? 0xD21092 : 0xFFFF00, vi.IsYUV() ? 0x108080 : 0) {
+: GenericVideoFilter(_child), vii(AdjustVi()),
+  antialiaser(vi.width, vi.height, "Courier New", CalcFontSize(vi.width, vi.height), vi.IsYUV() ? 0xD21092 : 0xFFFF00, vi.IsYUV() ? 0x108080 : 0) {
 }
-
 
 
 FilterInfo::~FilterInfo(void) 
 {
 }
+
+
+const VideoInfo& FilterInfo::AdjustVi() 
+{
+  if ( !vi.HasVideo() ) {
+    vi.fps_denominator=1;
+    vi.fps_numerator=24;
+    vi.height=480;
+    vi.num_frames=240;
+    vi.pixel_type=VideoInfo::CS_BGR32;
+    vi.width=640;
+    vi.SetFieldBased(false);
+  }
+  return child->GetVideoInfo();
+}
+
 
 const char* const t_YV12="YV12";
 const char* const t_YUY2="YUY2";
@@ -1199,79 +1214,103 @@ string GetCpuMsg(IScriptEnvironment * env)
 }
 
 
+bool FilterInfo::GetParity(int n)
+{
+  return vii.HasVideo() ? child->GetParity(n) : false;
+}
+
+
 PVideoFrame FilterInfo::GetFrame(int n, IScriptEnvironment* env) 
 {
-  PVideoFrame frame = child->GetFrame(n, env);
-  hdcAntialias = antialiaser.GetDC();
+  PVideoFrame frame = vii.HasVideo() ? child->GetFrame(n, env) : env->NewVideoFrame(vi);
+
+  if ( !vii.HasVideo() ) {
+	memset(frame->GetWritePtr(), 0, frame->GetPitch()*frame->GetHeight()); // Blank frame
+  }
+
+  HDC hdcAntialias = antialiaser.GetDC();
   if (hdcAntialias) {
     const char* c_space = "Unknown";
     const char* s_type = t_NONE;
     const char* s_parity;
-    if (vi.IsRGB24()) c_space=t_RGB24;
-    if (vi.IsRGB32()) c_space=t_RGB32;
-    if (vi.IsYV12()) c_space=t_YV12;
-    if (vi.IsYUY2()) c_space=t_YUY2;
-    if (vi.IsYV24()) c_space=t_YV24;
-    if (vi.IsY8()) c_space=t_Y8;
-    if (vi.IsYV16()) c_space=t_YV16;
-    if (vi.IsYV411()) c_space=t_Y41P;
-
-    if (vi.SampleType()==SAMPLE_INT8) s_type=t_INT8;
-    if (vi.SampleType()==SAMPLE_INT16) s_type=t_INT16;
-    if (vi.SampleType()==SAMPLE_INT24) s_type=t_INT24;
-    if (vi.SampleType()==SAMPLE_INT32) s_type=t_INT32;
-    if (vi.SampleType()==SAMPLE_FLOAT) s_type=t_FLOAT32;
-    if (vi.IsFieldBased()) {
-      if (child->GetParity(n)) {
-        s_parity = t_STFF;
-      } else {
-        s_parity = t_SBFF;
-      }
-    } else {
-      if (child->GetParity(n)) {
-        s_parity = vi.IsTFF() ? t_ATFF : t_TFF;
-      } else {
-        s_parity = vi.IsBFF() ? t_ABFF : t_BFF;
-      }
-    }
     char text[512];
 	int tlen;
     RECT r= { 32, 16, min(3440,vi.width*8), 900*2 };
-	int vLenInMsecs = (int)(1000.0 * (double)vi.num_frames * (double)vi.fps_denominator / (double)vi.fps_numerator);
-	int cPosInMsecs = (int)(1000.0 * (double)n * (double)vi.fps_denominator / (double)vi.fps_numerator);
 
-    tlen = _snprintf(text, sizeof(text),
-      "Frame: %8u of %-8u\n"                                //  28
-      "Time: %02d:%02d:%02d:%03d of %02d:%02d:%02d:%03d\n"  //  35
-      "ColorSpace: %s\n"                                    //  18=13+5
-      "Width:%4u pixels, Height:%4u pixels.\n"              //  39
-      "Frames per second: %7.4f (%u/%u)\n"                  //  51=31+20
-      "FieldBased (Separated) Video: %s\n"                  //  35=32+3
-      "Parity: %s\n"                                        //  35=9+26
-      "Video Pitch: %5u bytes.\n"                           //  25
-      "Has Audio: %s\n"                                     //  15=12+3
-      , n, vi.num_frames
-      , (cPosInMsecs/(60*60*1000)), (cPosInMsecs/(60*1000))%60 ,(cPosInMsecs/1000)%60, cPosInMsecs%1000,
-        (vLenInMsecs/(60*60*1000)), (vLenInMsecs/(60*1000))%60 ,(vLenInMsecs/1000)%60, vLenInMsecs%1000 
-      , c_space
-      , vi.width, vi.height
-      , (float)vi.fps_numerator/(float)vi.fps_denominator, vi.fps_numerator, vi.fps_denominator
-      , vi.IsFieldBased() ? t_YES : t_NO
-      , s_parity
-      , frame->GetPitch()
-      , vi.HasAudio() ? t_YES : t_NO
-    );
-    if (vi.HasAudio()) {
-      int aLenInMsecs = (int)(1000.0 * (double)vi.num_audio_samples / (double)vi.audio_samples_per_second);
+    if (vii.HasVideo()) {
+      if      (vii.IsRGB24()) c_space=t_RGB24;
+      else if (vii.IsRGB32()) c_space=t_RGB32;
+      else if (vii.IsYV12())  c_space=t_YV12;
+      else if (vii.IsYUY2())  c_space=t_YUY2;
+      else if (vii.IsYV24())  c_space=t_YV24;
+      else if (vii.IsY8())    c_space=t_Y8;
+      else if (vii.IsYV16())  c_space=t_YV16;
+      else if (vii.IsYV411()) c_space=t_Y41P;
+
+      if (vii.IsFieldBased()) {
+        if (child->GetParity(n)) {
+          s_parity = t_STFF;
+        } else {
+          s_parity = t_SBFF;
+        }
+      } else {
+        if (child->GetParity(n)) {
+          s_parity = vii.IsTFF() ? t_ATFF : t_TFF;
+        } else {
+          s_parity = vii.IsBFF() ? t_ABFF : t_BFF;
+        }
+      }
+      int vLenInMsecs = (int)(1000.0 * (double)vii.num_frames * (double)vii.fps_denominator / (double)vii.fps_numerator);
+      int cPosInMsecs = (int)(1000.0 * (double)n * (double)vii.fps_denominator / (double)vii.fps_numerator);
+
+      tlen = _snprintf(text, sizeof(text),
+        "Frame: %8u of %-8u\n"                                //  28
+        "Time: %02d:%02d:%02d.%03d of %02d:%02d:%02d.%03d\n"  //  35
+        "ColorSpace: %s\n"                                    //  18=13+5
+        "Width:%4u pixels, Height:%4u pixels.\n"              //  39
+        "Frames per second: %7.4f (%u/%u)\n"                  //  51=31+20
+        "FieldBased (Separated) Video: %s\n"                  //  35=32+3
+        "Parity: %s\n"                                        //  35=9+26
+        "Video Pitch: %5u bytes.\n"                           //  25
+        "Has Audio: %s\n"                                     //  15=12+3
+        , n, vii.num_frames
+        , (cPosInMsecs/(60*60*1000)), (cPosInMsecs/(60*1000))%60 ,(cPosInMsecs/1000)%60, cPosInMsecs%1000,
+          (vLenInMsecs/(60*60*1000)), (vLenInMsecs/(60*1000))%60 ,(vLenInMsecs/1000)%60, vLenInMsecs%1000 
+        , c_space
+        , vii.width, vii.height
+        , (float)vii.fps_numerator/(float)vii.fps_denominator, vii.fps_numerator, vii.fps_denominator
+        , vii.IsFieldBased() ? t_YES : t_NO
+        , s_parity
+        , frame->GetPitch()
+        , vii.HasAudio() ? t_YES : t_NO
+      );
+    }
+    else {
+      tlen = _snprintf(text, sizeof(text),
+        "Frame: %8u of %-8u\n"
+        "Has Video: NO\n"
+        "Has Audio: %s\n"
+        , n, vi.num_frames
+        , vii.HasAudio() ? t_YES : t_NO
+      );
+    }
+    if (vii.HasAudio()) {
+      if      (vii.SampleType()==SAMPLE_INT8)  s_type=t_INT8;
+      else if (vii.SampleType()==SAMPLE_INT16) s_type=t_INT16;
+      else if (vii.SampleType()==SAMPLE_INT24) s_type=t_INT24;
+      else if (vii.SampleType()==SAMPLE_INT32) s_type=t_INT32;
+      else if (vii.SampleType()==SAMPLE_FLOAT) s_type=t_FLOAT32;
+
+      int aLenInMsecs = (int)(1000.0 * (double)vii.num_audio_samples / (double)vii.audio_samples_per_second);
 	  tlen += _snprintf(text+tlen, sizeof(text)-tlen,
 		"Audio Channels: %-8u\n"                              //  25
 		"Sample Type: %s\n"                                   //  28=14+14
 		"Samples Per Second: %5d\n"                           //  26
-		"Audio length: %I64u samples. %02d:%02d:%02d:%03d\n"  //  57=37+20
-		, vi.AudioChannels()
+		"Audio length: %I64u samples. %02d:%02d:%02d.%03d\n"  //  57=37+20
+		, vii.AudioChannels()
 		, s_type
-		, vi.audio_samples_per_second
-		, vi.num_audio_samples,
+		, vii.audio_samples_per_second
+		, vii.num_audio_samples,
 		  (aLenInMsecs/(60*60*1000)), (aLenInMsecs/(60*1000))%60, (aLenInMsecs/1000)%60, aLenInMsecs%1000
 	  );
     }

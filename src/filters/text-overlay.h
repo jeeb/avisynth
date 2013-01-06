@@ -160,11 +160,14 @@ public:
   FilterInfo( PClip _child);
   virtual ~FilterInfo(void);
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
+  bool __stdcall GetParity(int n);
   
   static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env);  
 
 private:
-  HDC hdcAntialias;
+  const VideoInfo& AdjustVi();
+
+  const VideoInfo &vii;
   Antialiaser antialiaser;  
 };
 
