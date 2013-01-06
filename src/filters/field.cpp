@@ -52,7 +52,9 @@ extern const AVSFunction Field_filters[] = {
   { "AssumeFieldBased", "c", AssumeFieldBased::Create },
   { "AssumeFrameBased", "c", AssumeFrameBased::Create },
   { "SeparateColumns", "ci", SeparateColumns::Create },
+  { "WeaveColumns", "ci", WeaveColumns::Create },
   { "SeparateRows", "ci", SeparateRows::Create },
+  { "WeaveRows", "ci", WeaveRows::Create },
   { "SeparateFields", "c", SeparateFields::Create },
   { "Weave", "c", Create_Weave },
   { "DoubleWeave", "c", Create_DoubleWeave },
@@ -72,7 +74,7 @@ extern const AVSFunction Field_filters[] = {
 
 
 /*********************************
- *******   SeparateColumns   ******
+ *******   SeparateColumns  ******
  *********************************/
 
 SeparateColumns::SeparateColumns(PClip _child, int _interval, IScriptEnvironment* env)
@@ -114,13 +116,13 @@ PVideoFrame SeparateColumns::GetFrame(int n, IScriptEnvironment* env)
     const int srcpitchY = src->GetPitch(PLANAR_Y);
     const int dstpitchY = dst->GetPitch(PLANAR_Y);
     const int heightY = dst->GetHeight(PLANAR_Y);
-    const int widthY = dst->GetRowSize(PLANAR_Y);
+    const int rowsizeY = dst->GetRowSize(PLANAR_Y);
 
     const BYTE* srcpY = src->GetReadPtr(PLANAR_Y);
     BYTE* dstpY = dst->GetWritePtr(PLANAR_Y);
 
     for (int yY=0; yY<heightY; yY+=1) {
-      for (int i=m, j=0; j<widthY; i+=interval, j+=1) {
+      for (int i=m, j=0; j<rowsizeY; i+=interval, j+=1) {
         dstpY[j] = srcpY[i];
       }
       srcpY += srcpitchY;
@@ -130,36 +132,37 @@ PVideoFrame SeparateColumns::GetFrame(int n, IScriptEnvironment* env)
     const int srcpitchUV = src->GetPitch(PLANAR_U);
     const int dstpitchUV = dst->GetPitch(PLANAR_U);
     const int heightUV = dst->GetHeight(PLANAR_U);
-    const int widthUV = dst->GetRowSize(PLANAR_U);
+    const int rowsizeUV = dst->GetRowSize(PLANAR_U);
 
-    const BYTE* srcpV = src->GetReadPtr(PLANAR_V);
-    BYTE* dstpV = dst->GetWritePtr(PLANAR_V);
+    if (dstpitchUV) {
+      const BYTE* srcpV = src->GetReadPtr(PLANAR_V);
+      BYTE* dstpV = dst->GetWritePtr(PLANAR_V);
 
-    for (int yV=0; yV<heightUV; yV+=1) {
-      for (int i=m, j=0; j<widthUV; i+=interval, j+=1) {
-        dstpV[j] = srcpV[i];
+      for (int yV=0; yV<heightUV; yV+=1) {
+        for (int i=m, j=0; j<rowsizeUV; i+=interval, j+=1) {
+          dstpV[j] = srcpV[i];
+        }
+        srcpV += srcpitchUV;
+        dstpV += dstpitchUV;
       }
-      srcpV += srcpitchUV;
-      dstpV += dstpitchUV;
-    }
 
-    const BYTE* srcpU = src->GetReadPtr(PLANAR_U);
-    BYTE* dstpU = dst->GetWritePtr(PLANAR_U);
+      const BYTE* srcpU = src->GetReadPtr(PLANAR_U);
+      BYTE* dstpU = dst->GetWritePtr(PLANAR_U);
 
-    for (int yU=0; yU<heightUV; yU+=1) {
-      for (int i=m, j=0; j<widthUV; i+=interval, j+=1) {
-        dstpU[j] = srcpU[i];
+      for (int yU=0; yU<heightUV; yU+=1) {
+        for (int i=m, j=0; j<rowsizeUV; i+=interval, j+=1) {
+          dstpU[j] = srcpU[i];
+        }
+        srcpU += srcpitchUV;
+        dstpU += dstpitchUV;
       }
-      srcpU += srcpitchUV;
-      dstpU += dstpitchUV;
     }
-
   }
   else if (vi.IsYUY2()) {
     const int srcpitch = src->GetPitch();
     const int dstpitch = dst->GetPitch();
     const int height = dst->GetHeight();
-    const int width = dst->GetRowSize();
+    const int rowsize = dst->GetRowSize();
 
     const BYTE* srcp = src->GetReadPtr();
     BYTE* dstp = dst->GetWritePtr();
@@ -169,7 +172,7 @@ PVideoFrame SeparateColumns::GetFrame(int n, IScriptEnvironment* env)
     const int interval4 = interval*4;
 
     for (int y=0; y<height; y+=1) {
-      for (int i=m2, j=0; j<width; i+=interval4, j+=4) {
+      for (int i=m2, j=0; j<rowsize; i+=interval4, j+=4) {
         // Luma
         dstp[j+0] = srcp[i+0];
         dstp[j+2] = srcp[i+interval2];
@@ -185,7 +188,7 @@ PVideoFrame SeparateColumns::GetFrame(int n, IScriptEnvironment* env)
     const int srcpitch = src->GetPitch();
     const int dstpitch = dst->GetPitch();
     const int height = dst->GetHeight();
-    const int width = dst->GetRowSize();
+    const int rowsize = dst->GetRowSize();
 
     const BYTE* srcp = src->GetReadPtr();
     BYTE* dstp = dst->GetWritePtr();
@@ -194,7 +197,7 @@ PVideoFrame SeparateColumns::GetFrame(int n, IScriptEnvironment* env)
     const int interval3 = interval*3;
 
     for (int y=0; y<height; y+=1) {
-      for (int i=m3, j=0; j<width; i+=interval3, j+=3) {
+      for (int i=m3, j=0; j<rowsize; i+=interval3, j+=3) {
         dstp[j+0] = srcp[i+0];
         dstp[j+1] = srcp[i+1];
         dstp[j+2] = srcp[i+2];
@@ -204,20 +207,20 @@ PVideoFrame SeparateColumns::GetFrame(int n, IScriptEnvironment* env)
     }
   }
   else if (vi.IsRGB32()) {
-    const int srcpitch = src->GetPitch()>>2;
-    const int dstpitch = dst->GetPitch()>>2;
+    const int srcpitch4 = src->GetPitch()>>2;
+    const int dstpitch4 = dst->GetPitch()>>2;
     const int height = dst->GetHeight();
-    const int width = dst->GetRowSize()>>2;
+    const int rowsize4 = dst->GetRowSize()>>2;
 
-    const int* srcp = (const int*)src->GetReadPtr();
-    int* dstp = (int*)dst->GetWritePtr();
+    const int* srcp4 = (const int*)src->GetReadPtr();
+    int* dstp4 = (int*)dst->GetWritePtr();
 
     for (int y=0; y<height; y+=1) {
-      for (int i=m, j=0; j<width; i+=interval, j+=1) {
-        dstp[j] = srcp[i];
+      for (int i=m, j=0; j<rowsize4; i+=interval, j+=1) {
+        dstp4[j] = srcp4[i];
       }
-      srcp += srcpitch;
-      dstp += dstpitch;
+      srcp4 += srcpitch4;
+      dstp4 += dstpitch4;
     }
   }
   return dst;
@@ -230,6 +233,158 @@ AVSValue __cdecl SeparateColumns::Create(AVSValue args, void*, IScriptEnvironmen
     return args[0];
 
   return new SeparateColumns(args[0].AsClip(), args[1].AsInt(), env);
+}
+
+
+
+
+
+
+
+/*******************************
+ *******   WeaveColumns   ******
+ *******************************/
+
+WeaveColumns::WeaveColumns(PClip _child, int _period, IScriptEnvironment* env)
+ : GenericVideoFilter(_child), period(_period), inframes(vi.num_frames)
+{
+  if (_period <= 0)
+    env->ThrowError("WeaveColumns: period must be greater than zero.");
+
+  vi.width *= _period;
+  vi.MulDivFPS(1, _period);
+  vi.num_frames += _period-1; // Ceil!
+  vi.num_frames /= _period;
+}
+
+
+PVideoFrame WeaveColumns::GetFrame(int n, IScriptEnvironment* env) 
+{
+  const int b = n * period;
+
+  PVideoFrame dst = env->NewVideoFrame(vi);
+  BYTE *_dstp = dst->GetWritePtr();
+  const int dstpitch = dst->GetPitch();
+  BYTE *_dstpU = dst->GetWritePtr(PLANAR_U);
+  BYTE *_dstpV = dst->GetWritePtr(PLANAR_V);
+  const int dstpitchUV = dst->GetPitch(PLANAR_U);
+
+  for (int m=0; m<period; m++) {
+    const int f = b+m < inframes ? b+m : inframes-1;
+    PVideoFrame src = child->GetFrame(f, env);
+
+    if (vi.IsPlanar()) {
+      const int srcpitchY = src->GetPitch(PLANAR_Y);
+      const int heightY = src->GetHeight(PLANAR_Y);
+      const int rowsizeY = src->GetRowSize(PLANAR_Y);
+      const BYTE* srcpY = src->GetReadPtr(PLANAR_Y);
+      BYTE* dstpY = _dstp;
+
+      for (int yY=0; yY<heightY; yY+=1) {
+        for (int i=m, j=0; j<rowsizeY; i+=period, j+=1) {
+          dstpY[i] = srcpY[j];
+        }
+        srcpY += srcpitchY;
+        dstpY += dstpitch;
+      }
+
+      if (dstpitchUV) {
+        const int srcpitchUV = src->GetPitch(PLANAR_U);
+        const int heightUV = src->GetHeight(PLANAR_U);
+        const int rowsizeUV = src->GetRowSize(PLANAR_U);
+
+        const BYTE* srcpU = src->GetReadPtr(PLANAR_U);
+        BYTE* dstpU = _dstpU;
+
+        for (int yU=0; yU<heightUV; yU+=1) {
+          for (int i=m, j=0; j<rowsizeUV; i+=period, j+=1) {
+            dstpU[i] = srcpU[j];
+          }
+          srcpU += srcpitchUV;
+          dstpU += dstpitchUV;
+        }
+
+        const BYTE* srcpV = src->GetReadPtr(PLANAR_V);
+        BYTE* dstpV = _dstpV;
+
+        for (int yV=0; yV<heightUV; yV+=1) {
+          for (int i=m, j=0; j<rowsizeUV; i+=period, j+=1) {
+            dstpV[i] = srcpV[j];
+          }
+          srcpV += srcpitchUV;
+          dstpV += dstpitchUV;
+        }
+      }
+    }
+    else if (vi.IsYUY2()) {
+      const int srcpitch = src->GetPitch();
+      const int height = src->GetHeight();
+      const int rowsize = src->GetRowSize();
+      const BYTE* srcp = src->GetReadPtr();
+      BYTE* dstp = _dstp;
+      const int m2 = m*2;
+      const int period2 = period*2;
+      const int period4 = period*4;
+
+      for (int y=0; y<height; y+=1) {
+        for (int i=m2, j=0; j<rowsize; i+=period4, j+=4) {
+          // Luma
+          dstp[i+0]       = srcp[j+0];
+          dstp[i+period2] = srcp[j+2];
+          // Chroma
+          dstp[i+m2+1]    = srcp[j+1];
+          dstp[i+m2+3]    = srcp[j+3];
+        }
+        srcp += srcpitch;
+        dstp += dstpitch;
+      }
+    }
+    else if (vi.IsRGB24()) {
+      const int srcpitch = src->GetPitch();
+      const int height = src->GetHeight();
+      const int rowsize = src->GetRowSize();
+      const BYTE* srcp = src->GetReadPtr();
+      BYTE* dstp = _dstp;
+      const int m3 = m*3;
+      const int period3 = period*3;
+
+      for (int y=0; y<height; y+=1) {
+        for (int i=m3, j=0; j<rowsize; i+=period3, j+=3) {
+          dstp[i+0] = srcp[j+0];
+          dstp[i+1] = srcp[j+1];
+          dstp[i+2] = srcp[j+2];
+        }
+        srcp += srcpitch;
+        dstp += dstpitch;
+      }
+    }
+    else if (vi.IsRGB32()) {
+      const int srcpitch4 = src->GetPitch()>>2;
+      const int dstpitch4 = dstpitch>>2;
+      const int height = src->GetHeight();
+      const int rowsize4 = src->GetRowSize()>>2;
+      const int* srcp4 = (const int*)src->GetReadPtr();
+      int* dstp4 = (int*)_dstp;
+
+      for (int y=0; y<height; y+=1) {
+        for (int i=m, j=0; j<rowsize4; i+=period, j+=1) {
+          dstp4[i] = srcp4[j];
+        }
+        srcp4 += srcpitch4;
+        dstp4 += dstpitch4;
+      }
+    }
+  }
+  return dst;
+}
+
+
+AVSValue __cdecl WeaveColumns::Create(AVSValue args, void*, IScriptEnvironment* env) 
+{
+  if (args[1].AsInt() == 1)
+    return args[0];
+
+  return new WeaveColumns(args[0].AsClip(), args[1].AsInt(), env);
 }
 
 
@@ -270,7 +425,7 @@ PVideoFrame SeparateRows::GetFrame(int n, IScriptEnvironment* env)
 
   PVideoFrame frame = child->GetFrame(f, env);
 
-  if (vi.IsPlanar()) {
+  if (vi.IsPlanar() && !vi.IsY8()) {
     const int Ypitch   = frame->GetPitch(PLANAR_Y);
     const int UVpitch  = frame->GetPitch(PLANAR_U);
     const int Yoffset  = Ypitch  * m;
@@ -291,6 +446,84 @@ AVSValue __cdecl SeparateRows::Create(AVSValue args, void*, IScriptEnvironment* 
     return args[0];
 
   return new SeparateRows(args[0].AsClip(), args[1].AsInt(), env);
+}
+
+
+
+
+
+
+
+/****************************
+ *******   WeaveRows   ******
+ ****************************/
+
+WeaveRows::WeaveRows(PClip _child, int _period, IScriptEnvironment* env)
+ : GenericVideoFilter(_child), period(_period), inframes(vi.num_frames)
+{
+  if (_period <= 0)
+    env->ThrowError("WeaveRows: period must be greater than zero.");
+
+  vi.height *= _period;
+  vi.MulDivFPS(1, _period);
+  vi.num_frames += _period-1; // Ceil!
+  vi.num_frames /= _period;
+}
+
+
+PVideoFrame WeaveRows::GetFrame(int n, IScriptEnvironment* env) 
+{
+  const int b = n * period;
+  const int e = b + period;
+
+  PVideoFrame dst = env->NewVideoFrame(vi);
+  BYTE *dstp = dst->GetWritePtr();
+  const int dstpitch = dst->GetPitch();
+
+  if (vi.IsRGB()) { // RGB upsidedown
+    dstp += dstpitch * period;
+    for (int i=b; i<e; i++) {
+      dstp -= dstpitch;
+      const int j = i < inframes ? i : inframes-1;
+      PVideoFrame src = child->GetFrame(j, env);
+      BitBlt( dstp,              dstpitch * period,
+              src->GetReadPtr(), src->GetPitch(),
+              src->GetRowSize(), src->GetHeight() );
+    }
+  }
+  else {
+    BYTE *dstpU = dst->GetWritePtr(PLANAR_U);
+    BYTE *dstpV = dst->GetWritePtr(PLANAR_V);
+    const int dstpitchUV = dst->GetPitch(PLANAR_U);
+    for (int i=b; i<e; i++) {
+      const int j = i < inframes ? i : inframes-1;
+      PVideoFrame src = child->GetFrame(j, env);
+      BitBlt( dstp,              dstpitch * period,
+              src->GetReadPtr(), src->GetPitch(),
+              src->GetRowSize(), src->GetHeight() );
+      dstp += dstpitch;
+      if (dstpitchUV) {
+        BitBlt( dstpU,                     dstpitchUV * period,
+                src->GetReadPtr(PLANAR_U), src->GetPitch(PLANAR_U),
+                src->GetRowSize(PLANAR_U), src->GetHeight(PLANAR_U) );
+        BitBlt( dstpV,                     dstpitchUV * period,
+                src->GetReadPtr(PLANAR_V), src->GetPitch(PLANAR_V),
+                src->GetRowSize(PLANAR_V), src->GetHeight(PLANAR_V) );
+        dstpU += dstpitchUV;
+        dstpV += dstpitchUV;
+      }
+    }
+  }
+  return dst;
+}
+
+
+AVSValue __cdecl WeaveRows::Create(AVSValue args, void*, IScriptEnvironment* env) 
+{
+  if (args[1].AsInt() == 1)
+    return args[0];
+
+  return new WeaveRows(args[0].AsClip(), args[1].AsInt(), env);
 }
 
 

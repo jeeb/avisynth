@@ -162,6 +162,25 @@ public:
 };
 
 
+class WeaveColumns : public GenericVideoFilter 
+/**
+  * Class to weave columns of video
+ **/
+{
+private:
+  const int period;
+  const int inframes;
+
+public:
+  WeaveColumns(PClip _child, int _period, IScriptEnvironment* env);
+  PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
+  inline bool __stdcall GetParity(int n)
+    { return child->GetParity(n*period); }
+
+  static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env); 
+};
+
+
 class SeparateRows : public GenericVideoFilter 
 /**
   * Class to separate lines of video
@@ -175,6 +194,25 @@ public:
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
   inline bool __stdcall GetParity(int n)
     { return child->GetParity(n/interval); }
+
+  static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env); 
+};
+
+
+class WeaveRows : public GenericVideoFilter 
+/**
+  * Class to weave lines of video
+ **/
+{
+private:
+  const int period;
+  const int inframes;
+
+public:
+  WeaveRows(PClip _child, int _period, IScriptEnvironment* env);
+  PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
+  inline bool __stdcall GetParity(int n)
+    { return child->GetParity(n*period); }
 
   static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env); 
 };
