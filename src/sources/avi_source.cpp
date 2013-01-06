@@ -128,64 +128,87 @@ LRESULT AVISource::DecompressFrame(int n, bool preroll, PVideoFrame &frame, IScr
   _RPT2(0,"AVISource: Decompressing frame %d%s\n", n, preroll ? " (preroll)" : "");
   BYTE* buf = frame->GetWritePtr();
   long bytes_read;
+
   if (!hic) {
     bytes_read = vi.BMPSize();
-    pvideo->Read(n, 1, buf, vi.BMPSize(), &bytes_read, NULL);
+    pvideo->Read(n, 1, buf, bytes_read, &bytes_read, NULL);
     dropped_frame = !bytes_read;
-    if (!vi.IsY8() && vi.IsPlanar()) {
+    if (dropped_frame) return ICERR_OK;  // If frame is 0 bytes (dropped), return instead of attempt decompressing as Vdub.
+  }
+  else {
+    bytes_read = srcbuffer_size;
+    LRESULT err = pvideo->Read(n, 1, srcbuffer, srcbuffer_size, &bytes_read, NULL);
+    while (err == AVIERR_BUFFERTOOSMALL || (err == 0 && !srcbuffer)) {
+      delete[] srcbuffer;
+      pvideo->Read(n, 1, 0, srcbuffer_size, &bytes_read, NULL);
+      srcbuffer_size = bytes_read;
+      srcbuffer = new BYTE[bytes_read + 16]; // Provide 16 hidden guard bytes for HuffYUV, Xvid, etc bug
+      err = pvideo->Read(n, 1, srcbuffer, srcbuffer_size, &bytes_read, NULL);
+    }
+    dropped_frame = !bytes_read;
+    if (dropped_frame) return ICERR_OK;  // If frame is 0 bytes (dropped), return instead of attempt decompressing as Vdub.
+
+    // Fill guard bytes with 0xA5's for Xvid bug
+    memset(srcbuffer + bytes_read, 0xA5, 16);
+    // and a Null terminator for good measure
+    srcbuffer[bytes_read + 15] = 0;
+
+    int flags = preroll ? ICDECOMPRESS_PREROLL : 0;
+    flags |= dropped_frame ? ICDECOMPRESS_NULLFRAME : 0;
+    flags |= !pvideo->IsKeyFrame(n) ? ICDECOMPRESS_NOTKEYFRAME : 0;
+    pbiSrc->biSizeImage = bytes_read;
+    LRESULT result = !ex ? ICDecompress  (hic, flags, pbiSrc, srcbuffer, &biDst, buf)
+                         : ICDecompressEx(hic, flags, pbiSrc, srcbuffer,
+                                          0, 0, vi.width, vi.height,     &biDst, buf,
+                                          0, 0, vi.width, vi.height);
+    if (result != ICERR_OK) return result;
+  }
+  if (!vi.IsY8() && vi.IsPlanar()) {
+    // Is this frame packed or have rows DWORD aligned?
+    if (((bytes_read+3) & ~3) != ((vi.BMPSize()+3) & ~3)) {
+      // frame is packed
       const int rowsizeY  = vi.RowSize(PLANAR_Y);
       const int rowsizeUV = vi.RowSize(PLANAR_U);
 
       const int sizeY  = rowsizeY  * vi.height;
       const int sizeUV = rowsizeUV * vi.height >> vi.GetPlaneHeightSubsampling(PLANAR_U);
 
-      const long packedbytes = (sizeY + 2*sizeUV + 3) & ~3;
+      const int offsetY = frame->GetOffset(PLANAR_Y);
 
-      // Is this frame packed or have rows DWORD aligned?
-      if (((bytes_read+3)&~3) == packedbytes) {
-        const int offsetY = frame->GetOffset(PLANAR_Y);
+      int offsetU = frame->GetOffset(PLANAR_U);
+      int offsetV = frame->GetOffset(PLANAR_V);
 
-        int offsetU = frame->GetOffset(PLANAR_U);
-        int offsetV = frame->GetOffset(PLANAR_V);
-
-        if (offsetU < offsetV) {
-          offsetU = offsetY+sizeY        - offsetU;
-          offsetV = offsetY+sizeY+sizeUV - offsetV;
-        }
-        else {
-          offsetU = offsetY+sizeY+sizeUV - offsetU;
-          offsetV = offsetY+sizeY        - offsetV;
-        }
-
-        // set pitch = rowsize
-        frame = env->SubframePlanar(frame, 0, rowsizeY, rowsizeY, vi.height, offsetU, offsetV, rowsizeUV);
+      if (offsetU < offsetV) {
+        offsetU = offsetY+sizeY        - offsetU;
+        offsetV = offsetY+sizeY+sizeUV - offsetV;
       }
+      else {
+        offsetU = offsetY+sizeY+sizeUV - offsetU;
+        offsetV = offsetY+sizeY        - offsetV;
+      }
+
+      // set pitch = rowsize
+      frame = env->SubframePlanar(frame, 0, rowsizeY, rowsizeY, vi.height, offsetU, offsetV, rowsizeUV);
     }
-    return ICERR_OK;
   }
-  bytes_read = srcbuffer_size;
-  LRESULT err = pvideo->Read(n, 1, srcbuffer, srcbuffer_size, &bytes_read, NULL);
-  while (err == AVIERR_BUFFERTOOSMALL || (err == 0 && !srcbuffer)) {
-    delete[] srcbuffer;
-    pvideo->Read(n, 1, 0, srcbuffer_size, &bytes_read, NULL);
-    srcbuffer_size = bytes_read;
-    srcbuffer = new BYTE[bytes_read + 16]; // Provide 16 hidden guard bytes for HuffYUV, Xvid, etc bug
-    err = pvideo->Read(n, 1, srcbuffer, srcbuffer_size, &bytes_read, NULL);
+  else if (bInvertFrames) {
+    const int h2 = frame->GetHeight() >> 1;
+    const int w4 = (frame->GetRowSize()+3) >> 2;
+    long *pT = (long*)buf;
+    long *pB = pT + w4 * (frame->GetHeight() - 1);
+
+    // Inplace flip RGB frame
+    for(int y=0; y<h2; ++y) {
+      for(int x=0; x<w4; ++x) {
+        const long t = pT[x];
+        pT[x] = pB[x];
+        pB[x] = t;
+      }
+      pT += w4;
+      pB -= w4;
+    }
   }
-  dropped_frame = !bytes_read;
-  if (dropped_frame) return ICERR_OK;  // If frame is 0 bytes (dropped), return instead of attempt decompressing as Vdub.
-
-  // Fill guard bytes with 0xA5's for Xvid bug
-  memset(srcbuffer + bytes_read, 0xA5, 16);
-  // and a Null terminator for good measure
-  srcbuffer[bytes_read + 15] = 0;
-
-  int flags = preroll ? ICDECOMPRESS_PREROLL : 0;
-  flags |= dropped_frame ? ICDECOMPRESS_NULLFRAME : 0;
-  flags |= !pvideo->IsKeyFrame(n) ? ICDECOMPRESS_NOTKEYFRAME : 0;
-  pbiSrc->biSizeImage = bytes_read;
-  return !ex ? ICDecompress(hic, flags, pbiSrc, srcbuffer, &biDst, buf)
-    : ICDecompressEx(hic, flags, pbiSrc, srcbuffer, 0, 0, vi.width, vi.height, &biDst, buf, 0, 0, vi.width, vi.height);
+  return ICERR_OK;
 }
 
 
@@ -284,10 +307,8 @@ void AVISource::LocateVideoCodec(const char fourCC[], IScriptEnvironment* env) {
     vi.pixel_type = VideoInfo::CS_I420;
   } else if (pbiSrc->biCompression == BI_RGB && pbiSrc->biBitCount == 32) {
     vi.pixel_type = VideoInfo::CS_BGR32;
-    if (pbiSrc->biHeight < 0) bInvertFrames = true;
   } else if (pbiSrc->biCompression == BI_RGB && pbiSrc->biBitCount == 24) {
     vi.pixel_type = VideoInfo::CS_BGR24;
-    if (pbiSrc->biHeight < 0) bInvertFrames = true;
   } else if (pbiSrc->biCompression == 'YERG') {
     vi.pixel_type = VideoInfo::CS_Y8;
   } else if (pbiSrc->biCompression == '008Y') {
@@ -546,7 +567,11 @@ AVISource::AVISource(const char filename[], bool fAudio, const char pixel_type[]
 
           DecompressBegin(pbiSrc, &biDst);
         }
-      } else {
+        // Flip DIB formats if negative height
+        if ((pbiSrc->biHeight < 0) && (vi.IsRGB() || vi.IsY8()))
+          bInvertFrames = true;
+      }
+      else {
         env->ThrowError("AviSource: Could not locate video stream.");
       }
     }
@@ -601,23 +626,6 @@ AVISource::AVISource(const char filename[], bool fAudio, const char pixel_type[]
         error = DecompressFrame(keyframe, false, frame, env);
         if (error != ICERR_OK)   // shutdown, if init not succesful.
           env->ThrowError("AviSource: Could not decompress first keyframe %d", keyframe);
-      }
-      if (bInvertFrames) {
-        const int h2 = frame->GetHeight() >> 1;
-        const int w4 = (frame->GetRowSize()+3) >> 2;
-        long *pT = (long *)frame->GetWritePtr();
-        long *pB = pT + w4 * (frame->GetHeight() - 1);
-
-        // Inplace flip RGB frame
-        for(int y=0; y<h2; ++y) {
-          for(int x=0; x<w4; ++x) {
-            const long t = pT[x];
-            pT[x] = pB[x];
-            pB[x] = t;
-          }
-          pT += w4;
-          pB -= w4;
-        }
       }
       last_frame_no=0;
       last_frame=frame;
@@ -690,23 +698,6 @@ PVideoFrame AVISource::GetFrame(int n, IScriptEnvironment* env) {
     } while(not_found_yet);
 
     if (frameok) {
-      if (bInvertFrames) {
-        const int h2 = frame->GetHeight() >> 1;
-        const int w4 = (frame->GetRowSize()+3) >> 2;
-        long *pT = (long *)frame->GetWritePtr();
-        long *pB = pT + w4 * (frame->GetHeight() - 1);
-
-        // Inplace flip RGB frame
-        for(int y=0; y<h2; ++y) {
-          for(int x=0; x<w4; ++x) {
-            const long t = pT[x];
-            pT[x] = pB[x];
-            pB[x] = t;
-          }
-          pT += w4;
-          pB -= w4;
-        }
-      }
       last_frame = frame;
     }
   }
