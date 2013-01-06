@@ -70,6 +70,7 @@ extern const AVSFunction Script_functions[] = {
   { "abs", "i", Abs },
   { "abs", "f", FAbs },
   { "pi", "", Pi },
+  { "tau", "", Tau },
   { "sign","f",Sign},
 
   { "bitand","ii",BitAnd},
@@ -77,11 +78,33 @@ extern const AVSFunction Script_functions[] = {
   { "bitor" ,"ii",BitOr},
   { "bitxor","ii",BitXor},
 
-  { "bitlshift","ii",BitLShift},
+  { "bitlshift", "ii",BitLShift},
+  { "bitlshiftl","ii",BitLShift},
+  { "bitlshifta","ii",BitLShift},
+  { "bitlshiftu","ii",BitLShift},
+  { "bitlshifts","ii",BitLShift},
+  { "bitshl",    "ii",BitLShift},
+  { "bitsal",    "ii",BitLShift},
+
   { "bitrshiftl","ii",BitRShiftL},
-  { "bitrshiftu","ii",BitRShiftL},
   { "bitrshifta","ii",BitRShiftA},
+  { "bitrshiftu","ii",BitRShiftL},
   { "bitrshifts","ii",BitRShiftA},
+  { "bitshr",    "ii",BitRShiftL},
+  { "bitsar",    "ii",BitRShiftA},
+
+  { "bitlrotate","ii",BitRotateL},
+  { "bitrrotate","ii",BitRotateR},
+  { "bitrol","ii",BitRotateL},
+  { "bitror","ii",BitRotateR},
+
+  { "bitchg","ii",BitChg},
+  { "bitchange","ii",BitChg},
+  { "bitclr","ii",BitClr},
+  { "bitclear","ii",BitClr},
+  { "bitset","ii",BitSet},
+  { "bittst","ii",BitTst},
+  { "bittest","ii",BitTst},
 
   { "lcase","s",LCase},
   { "ucase","s",UCase},
@@ -400,7 +423,8 @@ AVSValue Sqrt(AVSValue args, void* user_data, IScriptEnvironment* env) { return 
 
 AVSValue Abs(AVSValue args, void* user_data, IScriptEnvironment* env) { return abs(args[0].AsInt()); }
 AVSValue FAbs(AVSValue args, void* user_data, IScriptEnvironment* env) { return fabs(args[0].AsFloat()); }
-AVSValue Pi(AVSValue args, void* user_data, IScriptEnvironment* env) { return 3.14159265358979323; }
+AVSValue Pi(AVSValue args, void* user_data, IScriptEnvironment* env)  { return 3.14159265358979324; }
+AVSValue Tau(AVSValue args, void* user_data, IScriptEnvironment* env) { return 6.28318530717958648; }
 AVSValue Sign(AVSValue args, void*, IScriptEnvironment* env) { return args[0].AsFloat()==0 ? 0 : args[0].AsFloat() > 0 ? 1 : -1; }
 
 AVSValue BitAnd(AVSValue args, void*, IScriptEnvironment* env) { return args[0].AsInt() & args[1].AsInt(); }
@@ -411,6 +435,71 @@ AVSValue BitXor(AVSValue args, void*, IScriptEnvironment* env) { return args[0].
 AVSValue BitLShift(AVSValue args, void*, IScriptEnvironment* env) { return args[0].AsInt() << args[1].AsInt(); }
 AVSValue BitRShiftL(AVSValue args, void*, IScriptEnvironment* env) { return int(unsigned(args[0].AsInt()) >> unsigned(args[1].AsInt())); }
 AVSValue BitRShiftA(AVSValue args, void*, IScriptEnvironment* env) { return args[0].AsInt() >> args[1].AsInt(); }
+
+
+int __declspec(naked) __stdcall a_rol(int arg1, int arg2) { // asm rol r/m32, CL
+    __asm {
+        mov  eax, [esp+4]
+        mov  ecx, [esp+8]
+        rol  eax, cl
+        ret  8
+    }
+}
+
+int __declspec(naked) __stdcall a_ror(int arg1, int arg2) { // asm ror r/m32, CL
+    __asm {
+        mov  eax, [esp+4]
+        mov  ecx, [esp+8]
+        ror  eax, cl
+        ret  8
+    }
+}
+
+int __declspec(naked) __stdcall a_btc(int arg1, int arg2) { // asm btc r/m32, r32
+    __asm {
+        mov  eax, [esp+4]
+        mov  ecx, [esp+8]
+        btc  eax, ecx
+        ret  8
+    }
+}
+
+int __declspec(naked) __stdcall a_btr(int arg1, int arg2) { // asm btr r/m32, r32
+    __asm {
+        mov  eax, [esp+4]
+        mov  ecx, [esp+8]
+        btr  eax, ecx
+        ret  8
+    }
+}
+
+int __declspec(naked) __stdcall a_bts(int arg1, int arg2) { // asm bts r/m32, r32
+    __asm {
+        mov  eax, [esp+4]
+        mov  ecx, [esp+8]
+        bts  eax, ecx
+        ret  8
+    }
+}
+
+int __declspec(naked) __stdcall a_bt (int arg1, int arg2) { // asm bt  r/m32, r32 -> CF, adc r/m32, 0
+    __asm {
+        mov  edx, [esp+4]
+        mov  ecx, [esp+8]
+        xor  eax, eax
+        bt   edx, ecx
+        adc  eax, 0
+        ret  8
+    }
+}
+
+AVSValue BitRotateL(AVSValue args, void*, IScriptEnvironment* env) { return a_rol(args[0].AsInt(), args[1].AsInt()); } // asm rol r/m32, CL
+AVSValue BitRotateR(AVSValue args, void*, IScriptEnvironment* env) { return a_ror(args[0].AsInt(), args[1].AsInt()); } // asm ror r/m32, CL
+
+AVSValue BitChg(AVSValue args, void*, IScriptEnvironment* env) { return a_btc(args[0].AsInt(), args[1].AsInt()); } // asm btc r/m32, r32
+AVSValue BitClr(AVSValue args, void*, IScriptEnvironment* env) { return a_btr(args[0].AsInt(), args[1].AsInt()); } // asm btr r/m32, r32
+AVSValue BitSet(AVSValue args, void*, IScriptEnvironment* env) { return a_bts(args[0].AsInt(), args[1].AsInt()); } // asm bts r/m32, r32
+AVSValue BitTst(AVSValue args, void*, IScriptEnvironment* env) { return a_bt (args[0].AsInt(), args[1].AsInt()); } // asm bt  r/m32, r32 -> CF, adc r/m32, 0
 
 AVSValue UCase(AVSValue args, void*, IScriptEnvironment* env) { return _strupr(env->SaveString(args[0].AsString())); }
 AVSValue LCase(AVSValue args, void*, IScriptEnvironment* env) { return _strlwr(env->SaveString(args[0].AsString())); }
@@ -785,7 +874,7 @@ AVSValue Frac(AVSValue args, void*, IScriptEnvironment* env) { return args[0].As
 AVSValue Float(AVSValue args, void*,IScriptEnvironment* env) { return args[0].AsFloat(); }
 
 AVSValue Value(AVSValue args, void*, IScriptEnvironment* env) { char *stopstring; return strtod(args[0].AsString(),&stopstring); }
-AVSValue HexValue(AVSValue args, void*, IScriptEnvironment* env) { char *stopstring; return strtol(args[0].AsString(),&stopstring,16); }
+AVSValue HexValue(AVSValue args, void*, IScriptEnvironment* env) { char *stopstring; return (int)strtoul(args[0].AsString(),&stopstring,16); }
 
 AVSValue AvsMin(AVSValue args, void*, IScriptEnvironment* env )
 {

@@ -149,6 +149,7 @@ AVSValue Sqrt(AVSValue args, void* user_data, IScriptEnvironment* env);
 AVSValue Abs(AVSValue args, void* user_data, IScriptEnvironment* env);
 AVSValue FAbs(AVSValue args, void* user_data, IScriptEnvironment* env);
 AVSValue Pi(AVSValue args, void* user_data, IScriptEnvironment* env);
+AVSValue Tau(AVSValue args, void* user_data, IScriptEnvironment* env);
 AVSValue Sign(AVSValue args, void*, IScriptEnvironment* env);
 
 
@@ -219,6 +220,14 @@ AVSValue BitXor(AVSValue args, void*, IScriptEnvironment* env);
 AVSValue BitLShift(AVSValue args, void*, IScriptEnvironment* env);
 AVSValue BitRShiftL(AVSValue args, void*, IScriptEnvironment* env);
 AVSValue BitRShiftA(AVSValue args, void*, IScriptEnvironment* env);
+
+AVSValue BitRotateL(AVSValue args, void*, IScriptEnvironment* env);
+AVSValue BitRotateR(AVSValue args, void*, IScriptEnvironment* env);
+
+AVSValue BitChg(AVSValue args, void*, IScriptEnvironment* env);
+AVSValue BitClr(AVSValue args, void*, IScriptEnvironment* env);
+AVSValue BitSet(AVSValue args, void*, IScriptEnvironment* env);
+AVSValue BitTst(AVSValue args, void*, IScriptEnvironment* env);
 
 AVSValue UCase(AVSValue args, void*, IScriptEnvironment* env);
 AVSValue LCase(AVSValue args, void*, IScriptEnvironment* env);
