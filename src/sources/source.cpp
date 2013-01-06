@@ -152,7 +152,34 @@ static AVSValue __cdecl Create_BlankClip(AVSValue args, void*, IScriptEnvironmen
     parity = args[12].AsClip()->GetParity(0);
   }
 
-  vi.num_frames = args[1].AsInt(vi_default.num_frames);
+  bool defHasVideo = vi_default.HasVideo();
+  bool defHasAudio = vi_default.HasAudio();
+
+  // If no default video
+  if ( !defHasVideo ) {
+    vi_default.fps_numerator=24;
+    vi_default.fps_denominator=1;
+
+    vi_default.num_frames = 240;
+
+    // If specify Width    or Height            or Pixel_Type
+    if ( args[2].Defined() || args[3].Defined() || args[4].Defined() ) {
+      vi_default.width=640;
+      vi_default.height=480;
+      vi_default.pixel_type=VideoInfo::CS_BGR32;
+
+      vi_default.SetFieldBased(false);
+      parity=false;
+    }
+  }
+
+  // If no default audio but specify Audio_rate or Channels     or Sample_Type
+  if ( !defHasAudio && ( args[7].Defined() || args[8].Defined() || args[9].Defined() ) ) {
+    vi_default.audio_samples_per_second=44100;
+    vi_default.nchannels=1;
+    vi_default.sample_type=SAMPLE_INT16;
+  }
+
   vi.width = args[2].AsInt(vi_default.width);
   vi.height = args[3].AsInt(vi_default.height);
 
@@ -226,6 +253,14 @@ static AVSValue __cdecl Create_BlankClip(AVSValue args, void*, IScriptEnvironmen
     }
   } else
     vi.sample_type = vi_default.sample_type;
+
+  // If we got an Audio only default clip make the default duration the same
+  if (!defHasVideo && defHasAudio) {
+    const __int64 denom = Int32x32To64(vi.fps_denominator, vi_default.audio_samples_per_second);
+    vi_default.num_frames = (vi_default.num_audio_samples * vi.fps_numerator + denom - 1) / denom; // ceiling
+  }
+
+  vi.num_frames = args[1].AsInt(vi_default.num_frames);
 
   vi.width++; // cheat HasVideo() call for Audio Only clips
   vi.num_audio_samples = vi.AudioSamplesFromFrames(vi.num_frames);
@@ -715,7 +750,7 @@ public:
 	  const double add_per_sample=ncycles/(double)nsamples;
 	  double second_offset=0.0;
 	  for (unsigned i=0;i<nsamples;i++) {
-		  audio[i] = (SFLOAT)sin(3.1415926535897932384626433832795*2.0*second_offset);
+		  audio[i] = (SFLOAT)sin(PI * 2.0 * second_offset);
 		  second_offset+=add_per_sample;
 	  }
 	}
@@ -756,7 +791,7 @@ public:
     float* samples = (float*)buf;
 
     for (int i=0;i<count;i++) {
-        samples[i*2]=sinf(3.1415926535897932384626433832795f*2.0f*(float)second_offset);
+        samples[i*2]=(SFLOAT)sin(PI * 2.0 * second_offset);
         if (((start+i)%d_mod)>vi.audio_samples_per_second) {
           samples[i*2+1]=samples[i*2];
         } else {
@@ -872,7 +907,7 @@ public:
 class SineGenerator : public SampleGenerator {
 public:
   SineGenerator() {}
-  SFLOAT getValueAt(double where) {return (SFLOAT)sin(PI * where* 2.0);}
+  SFLOAT getValueAt(double where) {return (SFLOAT)sin(PI * where * 2.0);}
 };
 
 
