@@ -142,7 +142,12 @@ public:
       videopr(_videopr),
       audiopr(__int64((double)_audiopr*vi.audio_samples_per_second+0.5)),
       videonext(0),
-      audionext(0) { }
+      audionext(0) {
+
+	// Force source filter to honour preroll
+    child->SetCacheHints(CACHE_NOTHING, 0);       // Disable Video cache
+    child->SetCacheHints(CACHE_AUDIO_NOTHING, 0); // Disable Audio cache
+  }
 
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env) {
     if (n != videonext) {
