@@ -482,7 +482,7 @@ int __declspec(naked) __stdcall a_bts(int arg1, int arg2) { // asm bts r/m32, r3
     }
 }
 
-int __declspec(naked) __stdcall a_bt (int arg1, int arg2) { // asm bt  r/m32, r32 -> CF, adc r/m32, 0
+bool __declspec(naked) __stdcall a_bt (int arg1, int arg2) { // asm bt  r/m32, r32 -> CF, adc r/m32, 0
     __asm {
         mov  edx, [esp+4]
         mov  ecx, [esp+8]
