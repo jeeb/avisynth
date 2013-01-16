@@ -358,7 +358,7 @@ GetSample::GetSample(bool _load_audio, bool _load_video, unsigned _media, LOG* _
           BYTE* dstV = pvf->GetWritePtr(PLANAR_V);
           BYTE* srcP = buf;
 
-          if (vi.IsYV24()) {  // A0 Y0 U0 V0
+          if (vi.IsYV24()) {  // V0 U0 Y0 A0
             int src_pitch = vi.width *4;  // Naturally aligned.
 
             // Check input size is adequate
@@ -369,9 +369,9 @@ GetSample::GetSample(bool _load_audio, bool _load_video, unsigned _media, LOG* _
 
             for (int y=0; y<height; y++) {
               for(int x=0; x<rowsize; x++) {
-                  dstY[x] = srcP[(x*4)+1];
-                  dstU[x] = srcP[(x*4)+2];
-                  dstV[x] = srcP[(x*4)+3];
+                  dstV[x] = srcP[(x*4)+0];
+                  dstU[x] = srcP[(x*4)+1];
+                  dstY[x] = srcP[(x*4)+2];
               }
               dstY += pvf->GetPitch(PLANAR_Y);
               dstU += pvf->GetPitch(PLANAR_U);
