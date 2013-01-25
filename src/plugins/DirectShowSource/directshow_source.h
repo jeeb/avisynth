@@ -40,10 +40,6 @@
 #include <streams.h>
 #include <stdio.h>
 
-// For some reason KSDATAFORMAT_SUBTYPE_IEEE_FLOAT and KSDATAFORMAT_SUBTYPE_PCM doesn't work - we construct the GUID manually!
-const GUID SUBTYPE_IEEE_AVSPCM  = {0x00000001, 0x0000, 0x0010, {0x80, 0x00, 0x00, 0xaa, 0x00, 0x38, 0x9b, 0x71}};
-const GUID SUBTYPE_IEEE_AVSFLOAT  = {0x00000003, 0x0000, 0x0010, {0x80, 0x00, 0x00, 0xaa, 0x00, 0x38, 0x9b, 0x71}};
-
 
 /********************************************************************
 ********************************************************************/
@@ -194,7 +190,7 @@ class GetSample : public IBaseFilter, public IPin, public IMemInputPin {
   AM_MEDIA_TYPE *am_media_type;
 
   unsigned media, no_my_media_types;
-  AM_MEDIA_TYPE *my_media_types[9]; // 2.6
+  AM_MEDIA_TYPE *my_media_types[16]; // 2.6
 
   PVideoFrame pvf;
 
@@ -210,9 +206,13 @@ public:
     mediaAYUV   = 1<<6, // 2.6
     mediaY411   = 1<<7, // 2.6
     mediaY41P   = 1<<8, // 2.6
+    mediaYV16   = 1<<9, // 2.6
+    mediaYV24   = 1<<10,// 2.6
     mediaRGB    = mediaARGB | mediaRGB32 | mediaRGB24,
     mediaYUV    = mediaYUV9 | mediaYV12 | mediaYUY2 | mediaAYUV | mediaY411 | mediaY41P,
-    mediaAUTO   = mediaRGB | mediaYUV
+    mediaYUVex  = mediaYUV  | mediaYV16 | mediaYV24,
+    mediaAUTO   = mediaRGB | mediaYUV,
+    mediaFULL   = mediaRGB | mediaYUVex
   };
   
   __int64 segment_start_time, segment_stop_time, sample_start_time, sample_end_time;
