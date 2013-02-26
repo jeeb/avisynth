@@ -419,9 +419,11 @@ AVISource::AVISource(const char filename[], bool fAudio, const char pixel_type[]
 
           if (lstrcmpi(pixel_type, "AUTO") == 0) {
             fY8 = fYV12 = fYUY2 = fRGB32 = fRGB24 = true;
+            forcedType = false;
           }
           else if (lstrcmpi(pixel_type, "FULL") == 0) {
             fY8 = fYV12 = fYV16 = fYV24 = fYV411 = fYUY2 = fRGB32 = fRGB24 = true;
+            forcedType = false;
           }
 
           if (!(fY8 || fYV12 || fYV16 || fYV24 || fYV411 || fYUY2 || fRGB32 || fRGB24))
