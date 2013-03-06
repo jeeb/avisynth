@@ -281,7 +281,7 @@ ConvertRGBToYV24::ConvertRGBToYV24(PClip src, int in_matrix, IScriptEnvironment*
   }
 
   // Thread unsafe!
-  unpckbuf = (BYTE*)_aligned_malloc(vi.width * 4 +32, 64);
+  unpckbuf = (BYTE*)_aligned_malloc(vi.width * 4 + 32, 64);
   const __int64 *post_add = offset_y == 16 ? &Post_Add16[0] : &Post_Add00[0];
   this->GenerateAssembly(vi.width, shift, false, 0, post_add, pixel_step, 4, matrix, env);
 
@@ -369,7 +369,7 @@ PVideoFrame __stdcall ConvertRGBToYV24::GetFrame(int n, IScriptEnvironment* env)
 
   if (USE_DYNAMIC_COMPILER) {
     srcp += (vi.height-1)*Spitch;
-//  BYTE* unpckbuf = (BYTE*)_aligned_malloc(vi.width * 4 +32, 64);
+//  BYTE* unpckbuf = (BYTE*)_aligned_malloc(vi.width * 4 + 32, 64);
 
     if (awidth & 7) {  // Should never happend, as all planar formats should have mod16 pitch
       int* iunpckbuf = (int*)unpckbuf;
@@ -499,7 +499,7 @@ ConvertYV24ToRGB::ConvertYV24ToRGB(PClip src, int in_matrix, int _pixel_step, IS
     env->ThrowError("ConvertYV24ToRGB: Unknown matrix.");
   }
   // Thread unsafe!
-  packbuf = (BYTE*)_aligned_malloc(vi.width * 4 + 32, 64);
+  packbuf = (BYTE*)_aligned_malloc(vi.width * 4 + 60, 64);
   const __int64 *pre_add = offset_y == -16 ? &Pre_Add16[0] : &Pre_Add00[0];
   this->GenerateAssembly(vi.width, shift, true, pre_add, 0, 4, pixel_step, matrix, env);
 
@@ -587,7 +587,7 @@ PVideoFrame __stdcall ConvertYV24ToRGB::GetFrame(int n, IScriptEnvironment* env)
 
   if (USE_DYNAMIC_COMPILER) {
     dstp += (vi.height-1)*Dpitch;
-//  BYTE* packbuf = (BYTE*)_aligned_malloc(vi.width * 4 + 32, 64);
+//  BYTE* packbuf = (BYTE*)_aligned_malloc(vi.width * 4 + 60, 64);
 
     if (awidth & 15) { // This should be very safe to assume to never happend
       int* ipackbuf = (int*)packbuf;
