@@ -16,16 +16,16 @@ instructions (for MS VC++ 6.0)</span></h2>
 software</a>.</p>
 <p>Open VC++. Select a new project: Go to the File tab -&gt; New. Select a Win32
 Dynamic-Link Library in the Projects tab:</p>
-<p><a href="http://avisynth.org/mediawiki/Image:Compiling_plugins.png" class="image" title="Image:Compiling_plugins.png&#8206;"><img alt="Image:Compiling_plugins.png?" src="Pictures/compiling_plugins.png" border="0" width="561" height="400"></a></p>
+<p><img border="0" src="Pictures/compiling_plugins.png" width="561" height="400"></p>
 <p>Add the location of your project and the Project Name. The location is the
 project folder where the source of your project will be.</p>
 <p>Select &quot;An empty DLL project&quot;:</p>
-<p><a href="http://avisynth.org/mediawiki/Image:Compiling_plugins2.png" class="image" title="Image:Compiling_plugins2.png&#8206;"><img alt="Image:Compiling_plugins2.png?" src="Pictures/compiling_plugins2.png" border="0" width="477" height="384"></a></p>
+<p><img src="Pictures/compiling_plugins2.png" border="0" width="477" height="384"></p>
 <p>Copy existing source files (*.cpp), headers (*.h) and avisynth.h in your
 project folder. If you started from scratch, you only need to copy avisynth.h in
 your project folder.</p>
 <p>Go to the Project tab -&gt; Add To Project -&gt; Files:</p>
-<p><a href="http://avisynth.org/mediawiki/Image:Compiling_plugins3.png" class="image" title="Image:Compiling_plugins3.png&#8206;"><img alt="Image:Compiling_plugins3.png?" src="Pictures/compiling_plugins3.png" border="0" width="522" height="196"></a></p>
+<p><img src="Pictures/compiling_plugins3.png" border="0" width="522" height="196"></p>
 <p>Add the existing source files (*.cpp), headers (*.h) and avisynth.h to your
 project. If you start from scratch, you need to a new files to your project:</p>
 <p>Go to the Project tab -&gt; Add To project -&gt; New:</p>
@@ -35,11 +35,11 @@ project. If you start from scratch, you need to a new files to your project:</p>
 build.</p>
 <p>If you go to the Project tab again -&gt; Settings. Then you should see
 something similar as this:</p>
-<p><a href="http://avisynth.org/mediawiki/Image:Compiling_plugins4.png" class="image" title="Image:Compiling_plugins4.png&#8206;"><img alt="Image:Compiling_plugins4.png?" src="Pictures/compiling_plugins4.png" border="0" width="577" height="372"></a></p>
+<p><img src="Pictures/compiling_plugins4.png" border="0" width="577" height="372"></p>
 <p>Save your workspace: File -&gt; Save Workspace.</p>
 <p>Finally, code your source/header files, and compile your plugin. Go to the
 Build tab -&gt; Build (...)</p>
-<p><a href="http://avisynth.org/mediawiki/Image:Compiling_plugins5.png" class="image" title="Image:Compiling_plugins5.png&#8206;"><img alt="Image:Compiling_plugins5.png?" src="Pictures/compiling_plugins5.png" border="0" width="450" height="318"></a></p>
+<p><img src="Pictures/compiling_plugins5.png" border="0" width="450" height="318"></p>
 <a name="How_to_debug_AviSynth_plugins"></a>
 <h2><span class="mw-headline">How to debug AviSynth plugins</span></h2>
 <p>Two ways are described to debug your plugin. An easy way using DebugView and
@@ -64,13 +64,13 @@ sprintf(BUF, &quot;framenr&nbsp;%d, text&nbsp;%s, height&nbsp;%d, pi&nbsp;%f\n&q
 OutputDebugString(BUF);
 </pre>
 <p>Thus:</p>
-<p><a href="http://avisynth.org/mediawiki/Image:Debugging_plugins1a.png" class="image" title="Image:Debugging_plugins1a.png"><img alt="Image:Debugging_plugins1a.png" src="Pictures/Debugging_plugins1a.png" border="0" width="706" height="388"></a></p>
+<p><img src="Pictures/Debugging_plugins1a.png" border="0" width="706" height="388"></p>
 <p>Nb,&nbsp;%d means integer,&nbsp;%s means string and&nbsp;%f means
 float/double. \n means add a new line.</p>
 <p>3) Compile a release build of your plugin.</p>
 <p>4) Open your script and scroll through it. You will see the following output
 in DebugView:</p>
-<p><a href="http://avisynth.org/mediawiki/Image:Debugging_plugins1b.png" class="image" title="Image:Debugging_plugins1b.png"><img alt="Image:Debugging_plugins1b.png" src="Pictures/Debugging_plugins1b.png" border="0" width="1010" height="468"></a></p>
+<p><img src="Pictures/Debugging_plugins1b.png" border="0" width="1010" height="468"></p>
 <p>In the example the script is loaded in line 26. After that some AviSynth
 output is captured. In the lines 57 and 58 the output of OutputDebugString is
 written.</p>
@@ -88,10 +88,10 @@ of your plugin.</p>
 <p>3. We will use VirtualDub.exe to debug your plugin. Go to Project tab, then
 select Settings -&gt; Debug -&gt; General -&gt; Executable for debug session
 -&gt; browse to a version of VirtualDub.exe and specify that:</p>
-<p><a href="http://avisynth.org/mediawiki/Image:Debugging_plugins2.png" class="image" title="Image:Debugging_plugins2.png"><img alt="Image:Debugging_plugins2.png" src="Pictures/Debugging_plugins2.png" border="0" width="577" height="372"></a></p>
+<p><img src="Pictures/Debugging_plugins2.png" border="0" width="577" height="372"></p>
 <p>4. Go to Project tab, then select Settings -&gt; Debug -&gt; Additional DLLs,
 and browse to the filter DLL in the Debug directory:</p>
-<p><a href="http://avisynth.org/mediawiki/Image:Debugging_plugins3.png" class="image" title="Image:Debugging_plugins3.png"><img alt="Image:Debugging_plugins3.png" src="Pictures/Debugging_plugins3.png" border="0" width="577" height="372"></a></p>
+<p><img src="Pictures/Debugging_plugins3.png" border="0" width="577" height="372"></p>
 <p>5. Make an AviSynth script that loads and uses your filter. Make sure to load
 the Debug version of your plugin! Thus for example:</p>
 <pre>LoadPlugin(&quot;F:\CompilingPlugins\SimpleSample\Debug\simplesample.dll&quot;)
@@ -102,14 +102,14 @@ SimpleSample(100)</pre>
 <p>6. Set breakpoints as required. You can do this by clicking with the right
 mouse button next to a statement in your code (in the grey section). For
 example:</p>
-<p><a href="http://avisynth.org/mediawiki/Image:Debugging_plugins4.png" class="image" title="Image:Debugging_plugins4.png"><img alt="Image:Debugging_plugins4.png" src="Pictures/Debugging_plugins4.png" border="0" width="334" height="348"></a></p>
+<p><img src="Pictures/Debugging_plugins4.png" border="0" width="334" height="348"></p>
 <p>Select the option: Insert/Remove Breakpoint:</p>
-<p><a href="http://avisynth.org/mediawiki/Image:Debugging_plugins5.png" class="image" title="Image:Debugging_plugins5.png"><img alt="Image:Debugging_plugins5.png" src="Pictures/Debugging_plugins5.png" border="0" width="766" height="452"></a></p>
+<p><img src="Pictures/Debugging_plugins5.png" border="0" width="766" height="452"></p>
 <p>7. Go to the Build tab, and select Start Debug -&gt; Go (or the shortcut F5).
 VirtualDub will execute. Open the AviSynth script in that VirtualDub instance.
 The code will execute up to your first breakpoint (at least if it follows that
 code path):</p>
-<p><a href="http://avisynth.org/mediawiki/Image:Debugging_plugins6.png" class="image" title="Image:Debugging_plugins6.png"><img alt="Image:Debugging_plugins6.png" src="Pictures/Debugging_plugins6.png" border="0" width="629" height="729"></a></p>
+<p><img src="Pictures/Debugging_plugins6.png" border="0" width="629" height="729"></p>
 <p>You will see a yellow arrow through your breakpoint.</p>
 <p>Above I also opened the 'variables output window'. It is under the View tab
 -&gt; Debug Windows -&gt; Variables. You can view the value of the variables
@@ -117,7 +117,7 @@ when stepping through your code. Use Debug -&gt; Step Into (or the shortcut F11)
 to step through your code. Use Debug -&gt; Step Over (or the shortcut F10) to
 step over function calls.</p>
 <p>When moving your mouse over a variable, you can also see the value of it:</p>
-<p><a href="http://avisynth.org/mediawiki/Image:Debugging_plugins7.png" class="image" title="Image:Debugging_plugins7.png"><img alt="Image:Debugging_plugins7.png" src="Pictures/Debugging_plugins7.png" border="0" width="941" height="338"></a></p>
+<p><img src="Pictures/Debugging_plugins7.png" border="0" width="941" height="338"></p>
 <p>If you want to set a breakpoint somewhere else, just remove the existing one
 (by right clicking on it). Put a new one somewhere and press F5.</p>
 <p>If you want to stop debugging, go to the Debug tab -&gt; Stop Debugging.</p>
@@ -254,9 +254,77 @@ with MS VC++ 2005</span></h3>
     SimpleSample.dll</li>
 </ul>
 
+<h2><span class="mw-headline">Compiling AviSynth Plugins step by step
+instructions (for MS VC++ 2008 Professional Edition)</span></h2>
+<ul>
+  <li>In this guide, we will compile the Example plugin from CPP for C
+    programmers, from <a href="http://forum.doom9.org/showthread.php?p=1538557#post1538557" class="external free" title="http://forum.doom9.org/showthread.php?p=1538557#post1538557" rel="nofollow">http://forum.doom9.org/showthread.php?p=1538557#post1538557</a>
+    or directly from <a href="http://www.mediafire.com/download.php?tc61m9otustmy29" class="external free" title="http://www.mediafire.com/download.php?tc61m9otustmy29" rel="nofollow">http://www.mediafire.com/download.php?tc61m9otustmy29</a></li>
+  <li>Start Microsoft Visual Studio 2008</li>
+  <li>Upon first start, you are asked to set up your environment. You may choose
+    the typical Visual C++ option</li>
+  <li>Choose File-&gt;New-&gt;Project or click the New Project icon</li>
+  <li>On the left pane, under Project Types, expand Visual C++ and select Win32</li>
+  <li>On the right pane, choose Win32 Console Application</li>
+  <li>Enter a name for your project (in this example we will use Example), click
+    OK</li>
+  <li>You may get an error: An error has occurred in this dialog, Error: 54,
+    Unspecified Error. This may be because you installed some windows updates
+    but didn't reboot yet. Click OK.</li>
+  <li>You are shown the current project settings. Click Next.</li>
+  <li>Under Application Type, click the DLL option. Under Additional options,
+    check the Empty project box.</li>
+  <li>A new directory is created, My Documents\Visual Studio
+    2008\Projects\Example</li>
+  <li>You need to extract the files from our example plugin into My
+    Documents\Visual Studio 2008\Projects\Example\Example</li>
+  <li>In the default layout, there is a Solution Explorer pane on the left side.
+    Right click Header Files, and select Add-&gt;Existing Item, select
+    avisynth.h and click Add</li>
+  <li>Continue to add the other files, Info.h and InfoF.h</li>
+  <li>Right click Source Files, select Add-&gt;Existing Item, and select
+    Example.cpp</li>
+  <li>Click Build-&gt;Build Solution (this will give errors!)</li>
+  <li>There's a lot of errors about OutputDebugStringW. To fix this, select
+    Project-&gt;Example Properties</li>
+  <li>In the left pane, Expand Configuration Properties, select General</li>
+  <li>In the right pane, click Character Set. Use the drop-down to select Use
+    Multi-Byte Character Set. Click OK.</li>
+  <li>Click Build-&gt;Build Solution (this may give errors!)</li>
+  <li>In the version 0.3 of the plugin, there was an error, 'example.cpp(610)&nbsp;:
+    error C4430: missing type specifier - int assumed'. To fix this,
+    double-click that error line to highlight it's location in the example.cpp
+    source file. Change 'const wstep = (vi.IsRGB24())&nbsp;? 3&nbsp;: 4; // 3
+    bytes for RGB24, &amp; 4 for RGB32.' to 'const int wstep = (vi.IsRGB24())&nbsp;?
+    3&nbsp;: 4; // 3 bytes for RGB24, &amp; 4 for RGB32.'</li>
+  <li>Click Build-&gt;Build Solution</li>
+  <li>If you get an error 'unresolved external symbol _main referenced in
+    function ___tmainCRTStartup', then you're trying to build an .exe. Use
+    Project-&gt;Example Properties, Configuration Properties, General, set
+    Configuration Type to Dynamic Library (.dll)</li>
+  <li>By default, a debug version is made. To change this,
+    Build-&gt;Configuration Manager, select Release in the left drop-down</li>
+  <li>You will have to re-apply the configuration changes: Project-&gt;Example
+    Properties, Configuration Properties, General, Configuration Type=Dynamic
+    Library (.dll) and Character Set=Use Multi-Byte Character Set</li>
+  <li>The following file should appear: My Documents\Visual Studio
+    2008\Projects\Example\Release\Example.dll. Note that there is also a
+    directory My Documents\Visual Studio 2008\Projects\Example\Example\Release
+    which contains only tempory files, but not the dll. This is set under
+    Project-&gt;Example Properties, General, Output
+    Directory=$(SolutionDir)$(ConfigurationName), Intermediate
+    Directory=$(ConfigurationName). In this case $(SolutionDir)=My
+    Documents\Visual Studio 2008\Projects\Example, $(ConfigurationName)=Release.</li>
+  <li>You need to copy Example.dll to your Avisynth plugins directory, and then
+    test it with the Example.avs file.</li>
+  <li>If everything worked, you can proceed to modify the example by following
+    the comments, or also using the SimnpleSample included in the Avisynth
+    distribution.</li>
+</ul>
+
 <h3>Back to <a href="FilterSDK.htm">FilterSDK</a></h3>
 
-<p><kbd>$Date: 2011/04/30 15:04:39 $<br>
+<p><kbd>$Date: 2013/03/19 18:21:15 $<br>
 Original version of this document at <a href="http://www.avisynth.org/CompilingAvisynth">http://www.avisynth.org/CompilingAvisynth</a></kbd></p>
 </BODY>
 </html>
