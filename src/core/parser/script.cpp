@@ -70,7 +70,9 @@ extern const AVSFunction Script_functions[] = {
   { "abs", "i", Abs },
   { "abs", "f", FAbs },
   { "pi", "", Pi },
+#ifdef OPT_ScriptFunctionTau
   { "tau", "", Tau },
+#endif
   { "sign","f",Sign},
 
   { "bitand","ii",BitAnd},
@@ -424,7 +426,9 @@ AVSValue Sqrt(AVSValue args, void* user_data, IScriptEnvironment* env) { return 
 AVSValue Abs(AVSValue args, void* user_data, IScriptEnvironment* env) { return abs(args[0].AsInt()); }
 AVSValue FAbs(AVSValue args, void* user_data, IScriptEnvironment* env) { return fabs(args[0].AsFloat()); }
 AVSValue Pi(AVSValue args, void* user_data, IScriptEnvironment* env)  { return 3.14159265358979324; }
+#ifdef OPT_ScriptFunctionTau
 AVSValue Tau(AVSValue args, void* user_data, IScriptEnvironment* env) { return 6.28318530717958648; }
+#endif
 AVSValue Sign(AVSValue args, void*, IScriptEnvironment* env) { return args[0].AsFloat()==0 ? 0 : args[0].AsFloat() > 0 ? 1 : -1; }
 
 AVSValue BitAnd(AVSValue args, void*, IScriptEnvironment* env) { return args[0].AsInt() & args[1].AsInt(); }

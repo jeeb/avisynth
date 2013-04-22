@@ -149,7 +149,9 @@ AVSValue Sqrt(AVSValue args, void* user_data, IScriptEnvironment* env);
 AVSValue Abs(AVSValue args, void* user_data, IScriptEnvironment* env);
 AVSValue FAbs(AVSValue args, void* user_data, IScriptEnvironment* env);
 AVSValue Pi(AVSValue args, void* user_data, IScriptEnvironment* env);
+#ifdef OPT_ScriptFunctionTau
 AVSValue Tau(AVSValue args, void* user_data, IScriptEnvironment* env);
+#endif
 AVSValue Sign(AVSValue args, void*, IScriptEnvironment* env);
 
 
