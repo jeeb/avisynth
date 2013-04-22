@@ -325,6 +325,7 @@ class Fieldwise : public GenericVideoFilter
 public:
   Fieldwise(PClip _child1, PClip _child2);
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
+  bool __stdcall GetParity(int n);
 
 private:
   PClip child2;

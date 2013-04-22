@@ -779,12 +779,19 @@ void DoubleWeaveFrames::CopyAlternateLines(const PVideoFrame& dst, const PVideoF
  *******************************/
 
 Fieldwise::Fieldwise(PClip _child1, PClip _child2) 
- : GenericVideoFilter(_child1), child2(_child2) {}
+ : GenericVideoFilter(_child1), child2(_child2)
+  { vi.SetFieldBased(false); } // Make FrameBased, leave IT_BFF and IT_TFF alone
 
 
 PVideoFrame __stdcall Fieldwise::GetFrame(int n, IScriptEnvironment* env) 
 {
   return (child->GetParity(n) ? child2 : child)->GetFrame(n, env);
+}
+
+
+bool __stdcall Fieldwise::GetParity(int n)
+{
+  return child->GetParity(n) ^ (n&1); // ^ = XOR
 }
 
 
@@ -846,10 +853,10 @@ static AVSValue __cdecl Create_Bob(AVSValue args, void*, IScriptEnvironment* env
   const double c = args[2].AsDblDef(1./3.);
   const int new_height = args[3].AsInt(vi.height*2);
   MitchellNetravaliFilter filter(b, c);
-  return new AssumeFrameBased(new Fieldwise(new FilteredResizeV(clip, -0.25, vi.height, 
-                                                                new_height, &filter, env),
-                                            new FilteredResizeV(clip, +0.25, vi.height, 
-                                                                new_height, &filter, env)));  
+  return new Fieldwise(new FilteredResizeV(clip, -0.25, vi.height, 
+                                           new_height, &filter, env),
+                       new FilteredResizeV(clip, +0.25, vi.height, 
+                                           new_height, &filter, env));  
 	}
 	catch (...) { throw; }
 }
