@@ -157,12 +157,13 @@ GenericVideoFilter(_child) {
     }
   }
 
-  if (args[ARG_OUTPUT].Defined())
-    outputConv = SelectOutputCS(args[ARG_OUTPUT].AsString(),env);
-  else
-    outputConv = SelectOutputCS(0, env);
+  outputConv = SelectOutputCS(args[ARG_OUTPUT].AsString(0),env);
 
-  img = new Image444(vi.width, vi.height);
+  if (vi.IsYV24() && inputCS == vi.pixel_type)  // Fast path
+    img = NULL;
+  else
+    img = new Image444(vi.width, vi.height);
+
   overlayImg = new Image444(overlayVi.width, overlayVi.height);
 
   func = SelectFunction(args[ARG_MODE].AsString("Blend"), env);
