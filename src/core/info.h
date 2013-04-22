@@ -1683,48 +1683,133 @@ void DrawStringPlanar(PVideoFrame &dst, int x, int y, const char *s, int len=0)
 		const int ySubS = height / dst->GetHeight(PLANAR_U);
 		const int pitchUV = dst->GetPitch(PLANAR_V);
 
-		// fontmask = 0x8000, 0xC000 or 0xF000
-		unsigned int fontmask = 0;
-		for (int i=0; i<xSubS; i++) {
-			fontmask >>= 1;
-			fontmask |= 0x8000;
-		}
-
 		BYTE* dstpU = dst->GetWritePtr(PLANAR_U) + x/xSubS + (y/ySubS)*pitchUV;
 		BYTE* dstpV = dst->GetWritePtr(PLANAR_V) + x/xSubS + (y/ySubS)*pitchUV;
+#if 0
+		if (10%xSubS == 0) {
+            // fontmask = 0x8000, 0xC000 or 0xF000
+            unsigned int fontmask = 0;
+            for (int i=0; i<xSubS; i++) {
+                fontmask >>= 1;
+                fontmask |= 0x8000;
+            }
 
-		for (int ty = ys; ty < ye; ty+=ySubS, dstpU+=pitchUV, dstpV+=pitchUV) {
-			BYTE *dpU = dstpU;
-			BYTE *dpV = dstpV;
+            for (int ty = ys; ty < ye; ty+=ySubS, dstpU+=pitchUV, dstpV+=pitchUV) {
+                BYTE *dpU = dstpU;
+                BYTE *dpV = dstpV;
 
-			int num = (s[si] - ' ') & 0xFF;
-			if (num >= 192) num = 0;
-			unsigned int fontline = 0;
-			for (int m=0; m<ySubS; m++) fontline |= font[num][ty+m];
-			fontline <<= xs;
-			int _xs = xs;
+                int num = (s[si] - ' ') & 0xFF;
+                if (num >= 192) num = 0;
+                unsigned int fontline = 0;
+                for (int m=0; m<ySubS; m++) fontline |= font[num][ty+m];
+                fontline <<= xs;
+                int _xs = xs;
 
-			for (int i=si ; i < len; i++) {
-				for (int tx = _xs; tx < 10; tx+=xSubS, dpU++, dpV++, fontline<<=xSubS) {
-					if (fontline & fontmask) {
-						dpU[0] = 128;
-						dpV[0] = 128;
-					} else {
-//						dpU[0] = (unsigned char) (((dpU[0] - 128) * 7) >> 3) + 128;
-//						dpU[0] = (unsigned char) ((dpU[0] * 7) >> 3) - ((128 * 7) >> 3) + 128;
-//						dpU[0] = (unsigned char) ((dpU[0] * 7) >> 3) - 112 + 128;
-						dpU[0] = (unsigned char) ((dpU[0] * 7) >> 3) + 16;
-						dpV[0] = (unsigned char) ((dpV[0] * 7) >> 3) + 16;
-					}
-				}
+                for (int i=si ; i < len; i++) {
+                    for (int tx = _xs; tx < 10; tx+=xSubS, dpU++, dpV++, fontline<<=xSubS) {
+                        if (fontline & fontmask) {
+                            dpU[0] = 128;
+                            dpV[0] = 128;
+                        } else {
+    //						dpU[0] = (unsigned char) (((dpU[0] - 128) * 7) >> 3) + 128;
+    //						dpU[0] = (unsigned char) ((dpU[0] * 7) >> 3) - ((128 * 7) >> 3) + 128;
+    //						dpU[0] = (unsigned char) ((dpU[0] * 7) >> 3) - 112 + 128;
+                            dpU[0] = (unsigned char) ((dpU[0] * 7) >> 3) + 16;
+                            dpV[0] = (unsigned char) ((dpV[0] * 7) >> 3) + 16;
+                        }
+                    }
 
-				_xs = 0;
-				num = (s[i+1] - ' ') & 0xFF;
-				if (num >= 192) num = 0;
-				fontline = 0;
-				for (int m=0; m<ySubS; m++) fontline |= font[num][ty+m];
-			}
+                    _xs = 0;
+                    num = (s[i+1] - ' ') & 0xFF;
+                    if (num >= 192) num = 0;
+                    fontline = 0;
+                    for (int m=0; m<ySubS; m++) fontline |= font[num][ty+m];
+                }
+            }
 		}
+		else {
+            for (int ty = ys; ty < ye; ty+=ySubS, dstpU+=pitchUV, dstpV+=pitchUV) {
+                for (int i=si*10+xs, j=0; i < len*10; i+=xSubS, j+=1) {
+                    dstpU[j] = 128;
+                    dstpV[j] = 128;
+                }
+            }
+		}
+#else
+        // fontmask = 0x2000000, 0x3000000 or 0x3C00000
+        unsigned int fontmask = 0;
+        for (int i=0; i<xSubS; i++) {
+            fontmask >>= 1;
+            fontmask |= 0x8000<<10;
+        }
+
+        // Roll in start index
+        s += si;
+        len -= si;
+
+        for (int ty = ys; ty < ye; ty+=ySubS) {
+            int i, j, num;
+            unsigned int fontline = 0;
+
+            num = (s[0] - ' ') & 0xFF;
+            if (num >= 192) num = 0;
+            // Or in vertical subsampling of glyph
+            {for (int m=0; m<ySubS; m++) fontline |= font[num][ty+m];}
+
+            fontline <<= 10; // Move 1st glyph up
+
+            num = (s[1] - ' ') & 0xFF;
+            if (num >= 192) num = 0;
+            // Or in vertical subsampling of 2nd glyph
+            {for (int m=0; m<ySubS; m++) fontline |= font[num][ty+m];}
+
+            // Cope with left crop of glyph
+            fontline <<= xs;
+            int _xs = xs;
+
+            for (i = 1, j = 0; i < len; i+=2) {
+                for (int tx = _xs; tx < 20; tx+=xSubS) {
+                    if (fontline & fontmask) {
+                        dstpU[j] = 128;
+                        dstpV[j] = 128;
+                    } else {
+                        dstpU[j] = (unsigned char) ((dstpU[j] * 7) >> 3) + 16;
+                        dstpV[j] = (unsigned char) ((dstpV[j] * 7) >> 3) + 16;
+                    }
+                    j += 1;
+                    fontline<<=xSubS;
+                }
+                _xs = 0;
+                fontline = 0;
+
+                num = (s[i+1] - ' ') & 0xFF;
+                if (num >= 192) num = 0;
+                {for (int m=0; m<ySubS; m++) fontline |= font[num][ty+m];}
+
+                fontline <<= 10;
+
+                num = (s[i+2] - ' ') & 0xFF;
+                if (num >= 192) num = 0;
+                {for (int m=0; m<ySubS; m++) fontline |= font[num][ty+m];}
+            }
+            // Do odd length last glyph
+            if (i == len) {
+                for (int tx = _xs; tx < 10; tx+=xSubS) {
+                    if (fontline & fontmask) {
+                        dstpU[j] = 128;
+                        dstpV[j] = 128;
+                    } else {
+                        dstpU[j] = (unsigned char) ((dstpU[j] * 7) >> 3) + 16;
+                        dstpV[j] = (unsigned char) ((dstpV[j] * 7) >> 3) + 16;
+                    }
+                    j += 1;
+                    fontline<<=xSubS;
+                }
+            }
+            dstpU+=pitchUV;
+            dstpV+=pitchUV;
+        }
+#endif
 	}
 }
 #endif
