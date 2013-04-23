@@ -502,6 +502,14 @@ SOURCE=.\filters\levels.h
 # End Source File
 # Begin Source File
 
+SOURCE=.\filters\limiter.cpp
+# End Source File
+# Begin Source File
+
+SOURCE=.\filters\limiter.h
+# End Source File
+# Begin Source File
+
 SOURCE=.\filters\merge.cpp
 # End Source File
 # Begin Source File
