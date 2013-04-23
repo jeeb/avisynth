@@ -226,6 +226,14 @@ PVideoFrame __stdcall Overlay::GetFrame(int n, IScriptEnvironment *env) {
     // Convert output image back
     img->ReturnOriginal(true);
     overlayImg->ReturnOriginal(true);
+
+    // Convert output image back
+    if (vi.IsYV24() && inputCS == vi.pixel_type) {  // Fast path
+      delete img;
+      img = NULL;
+      return frame;
+    }
+
     PVideoFrame f = env->NewVideoFrame(vi);
     return outputConv->ConvertImage(img, f, env);
   }
