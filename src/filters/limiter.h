@@ -32,8 +32,8 @@
 // which is not derived from or based on Avisynth, such as 3rd-party filters,
 // import and export plugins, or graphical user interfaces.
 
-#ifndef __Levels_H__
-#define __Levels_H__
+#ifndef __Limiter_H__
+#define __Limiter_H__
 
 #include "../internal.h"
 #include "../core/softwire_helpers.h"
@@ -41,97 +41,6 @@
 
 /********************************************************************
 ********************************************************************/
-
-
-
-class Levels : public GenericVideoFilter 
-/**
-  * Class for adjusting levels in a clip
- **/
-{
-public:
-  Levels( PClip _child, int in_min, double gamma, int in_max, int out_min, int out_max, bool coring, bool _dither,
-          IScriptEnvironment* env );
-  ~Levels();
-  PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
-  static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env);
-
-private:
-  BYTE *map, *mapchroma;
-  const bool dither;
-};
-
-
-
-class RGBAdjust : public GenericVideoFilter 
-/**
-  * Class for adjusting and analyzing colors in RGBA space
- **/
-{
-public:
-  RGBAdjust(PClip _child, double r,  double g,  double b,  double a,
-                          double rb, double gb, double bb, double ab,
-                          double rg, double gg, double bg, double ag,
-                          bool _analyze, bool _dither, IScriptEnvironment* env);
-  ~RGBAdjust();
-  PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
-  static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env);
-
-private:
-  bool analyze;
-  bool dither;
-  BYTE *mapR, *mapG, *mapB, *mapA;
-};
-
-
-
-
-class Tweak : public GenericVideoFilter
-{
-public:
-  Tweak( PClip _child, double _hue, double _sat, double _bright, double _cont, bool _coring, bool _sse,
-                       double _startHue, double _endHue, double _maxSat, double _minSat, double _interp,
-                       bool _dither, IScriptEnvironment* env );
-
-  ~Tweak();
-
-  PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
-
-  static AVSValue __cdecl Create(AVSValue args, void* user_data, IScriptEnvironment* env);
-
-private:
-    int Sin, Cos;
-    int Sat, Bright, Cont;
-    bool coring, sse, dither;
-
-    BYTE *map;
-    unsigned short *mapUV;
-};
-
-/**** ASM Routines ****/
-
-void asm_tweak_ISSE_YUY2( BYTE *srcp, int w, int h, int modulo, __int64 hue, __int64 satcont, 
-                     __int64 bright );
-
-
-
-class MaskHS : public GenericVideoFilter
-{
-public:
-  MaskHS( PClip _child, double _startHue, double _endHue, double _maxSat, double _minSat, bool _coring, IScriptEnvironment* env );
-
-  PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
-
-  static AVSValue __cdecl Create(AVSValue args, void* user_data, IScriptEnvironment* env);
-
-private:
-    BYTE mapY[256*256];
-};
-
-
-/* Helper function for Tweak and MaskHS filters */
-bool ProcessPixel(int X, int Y, double startHue, double endHue,
-                  double maxSat, double minSat, double p, int &iSat);
 
 
 using namespace SoftWire; 
@@ -164,5 +73,5 @@ private:
 };
 
 
-#endif  // __Levels_H__
+#endif  // __Limiter_H__
 
