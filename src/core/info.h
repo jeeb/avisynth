@@ -1647,33 +1647,37 @@ void DrawStringPlanar(PVideoFrame &dst, int x, int y, const char *s, int len=0)
 		y = 0;
 	}
 
+    // Roll in start index
+    s   += si;
+    len -= si;
+
 	BYTE* dstpY = dst->GetWritePtr(PLANAR_Y) + x + y*pitchY;
 
-	for (int ty = ys; ty < ye; ty++, dstpY+=pitchY) {
-		BYTE *dpY = dstpY;
-
-		int num = (s[si] - ' ') & 0xFF;
+	for (int ty = ys; ty < ye; ty++) {
+		int num = (s[0] - ' ') & 0xFF;
 		if (num >= 192) num = 0;
 		unsigned int fontline = font[num][ty]<<xs;
 		int _xs = xs;
-
-		for (int i=si ; i < len; i++) {
-			for (int tx = _xs; tx < 10; tx++, dpY++, fontline<<=1) {
+        int j = 0;
+		for (int i=0 ; i < len; i++) {
+			for (int tx = _xs; tx < 10; tx++) {
 				if (fontline & 0x8000) {
-					dpY[0] = 230;
+					dstpY[j] = 230;
 				} else {
-//					dpY[0] = (unsigned char) (((dpY[0]-16) * 7) >> 3) + 16;
-//					dpY[0] = (unsigned char) ((dpY[0] * 7) >> 3) - ((16 * 7) >> 3) + 16;
-//					dpY[0] = (unsigned char) ((dpY[0] * 7) >> 3) - 14 + 16;
-					dpY[0] = (unsigned char) ((dpY[0] * 7) >> 3) + 2;
+//					dstpY[j] = (unsigned char) (((dstpY[j]-16) * 7) >> 3) + 16;
+//					dstpY[j] = (unsigned char) ((dstpY[j] * 7) >> 3) - ((16 * 7) >> 3) + 16;
+//					dstpY[j] = (unsigned char) ((dstpY[j] * 7) >> 3) - 14 + 16;
+					dstpY[j] = (unsigned char) ((dstpY[j] * 7) >> 3) + 2;
 				}
+                j += 1;
+                fontline <<= 1;
 			}
-
 			_xs = 0;
 			num = (s[i+1] - ' ') & 0xFF;
 			if (num >= 192) num = 0;
 			fontline = font[num][ty];
 		}
+        dstpY += pitchY;
 	}
 
 	const int UVw = dst->GetRowSize(PLANAR_U);
@@ -1683,69 +1687,16 @@ void DrawStringPlanar(PVideoFrame &dst, int x, int y, const char *s, int len=0)
 		const int ySubS = height / dst->GetHeight(PLANAR_U);
 		const int pitchUV = dst->GetPitch(PLANAR_V);
 
-		BYTE* dstpU = dst->GetWritePtr(PLANAR_U) + x/xSubS + (y/ySubS)*pitchUV;
-		BYTE* dstpV = dst->GetWritePtr(PLANAR_V) + x/xSubS + (y/ySubS)*pitchUV;
-#if 0
-		if (10%xSubS == 0) {
-            // fontmask = 0x8000, 0xC000 or 0xF000
-            unsigned int fontmask = 0;
-            for (int i=0; i<xSubS; i++) {
-                fontmask >>= 1;
-                fontmask |= 0x8000;
-            }
+		const int offset = x/xSubS + (y/ySubS)*pitchUV;
+		BYTE* dstpU = dst->GetWritePtr(PLANAR_U) + offset;
+		BYTE* dstpV = dst->GetWritePtr(PLANAR_V) + offset;
 
-            for (int ty = ys; ty < ye; ty+=ySubS, dstpU+=pitchUV, dstpV+=pitchUV) {
-                BYTE *dpU = dstpU;
-                BYTE *dpV = dstpV;
-
-                int num = (s[si] - ' ') & 0xFF;
-                if (num >= 192) num = 0;
-                unsigned int fontline = 0;
-                for (int m=0; m<ySubS; m++) fontline |= font[num][ty+m];
-                fontline <<= xs;
-                int _xs = xs;
-
-                for (int i=si ; i < len; i++) {
-                    for (int tx = _xs; tx < 10; tx+=xSubS, dpU++, dpV++, fontline<<=xSubS) {
-                        if (fontline & fontmask) {
-                            dpU[0] = 128;
-                            dpV[0] = 128;
-                        } else {
-    //						dpU[0] = (unsigned char) (((dpU[0] - 128) * 7) >> 3) + 128;
-    //						dpU[0] = (unsigned char) ((dpU[0] * 7) >> 3) - ((128 * 7) >> 3) + 128;
-    //						dpU[0] = (unsigned char) ((dpU[0] * 7) >> 3) - 112 + 128;
-                            dpU[0] = (unsigned char) ((dpU[0] * 7) >> 3) + 16;
-                            dpV[0] = (unsigned char) ((dpV[0] * 7) >> 3) + 16;
-                        }
-                    }
-
-                    _xs = 0;
-                    num = (s[i+1] - ' ') & 0xFF;
-                    if (num >= 192) num = 0;
-                    fontline = 0;
-                    for (int m=0; m<ySubS; m++) fontline |= font[num][ty+m];
-                }
-            }
-		}
-		else {
-            for (int ty = ys; ty < ye; ty+=ySubS, dstpU+=pitchUV, dstpV+=pitchUV) {
-                for (int i=si*10+xs, j=0; i < len*10; i+=xSubS, j+=1) {
-                    dstpU[j] = 128;
-                    dstpV[j] = 128;
-                }
-            }
-		}
-#else
         // fontmask = 0x2000000, 0x3000000 or 0x3C00000
         unsigned int fontmask = 0;
         for (int i=0; i<xSubS; i++) {
             fontmask >>= 1;
             fontmask |= 0x8000<<10;
         }
-
-        // Roll in start index
-        s += si;
-        len -= si;
 
         for (int ty = ys; ty < ye; ty+=ySubS) {
             int i, j, num;
@@ -1773,6 +1724,9 @@ void DrawStringPlanar(PVideoFrame &dst, int x, int y, const char *s, int len=0)
                         dstpU[j] = 128;
                         dstpV[j] = 128;
                     } else {
+//						dstpU[j] = (unsigned char) (((dstpU[j] - 128) * 7) >> 3) + 128;
+//						dstpU[j] = (unsigned char) ((dstpU[j] * 7) >> 3) - ((128 * 7) >> 3) + 128;
+//						dstpU[j] = (unsigned char) ((dstpU[j] * 7) >> 3) - 112 + 128;
                         dstpU[j] = (unsigned char) ((dstpU[j] * 7) >> 3) + 16;
                         dstpV[j] = (unsigned char) ((dstpV[j] * 7) >> 3) + 16;
                     }
@@ -1809,7 +1763,6 @@ void DrawStringPlanar(PVideoFrame &dst, int x, int y, const char *s, int len=0)
             dstpU+=pitchUV;
             dstpV+=pitchUV;
         }
-#endif
 	}
 }
 #endif
