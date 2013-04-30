@@ -33,31 +33,28 @@
 // import and export plugins, or graphical user interfaces.
 
 
-#define INITGUID
+#include "stdafx.h"
+
 #define FP_STATE 0x9001f
 
-#define WIN32_LEAN_AND_MEAN
-#include <objbase.h>
-#include <vfw.h>
-#include <windows.h>
-#include <stdio.h>
-#include <malloc.h>
-#include <math.h>
-
 #include "../internal.h"
+
 #include <float.h>
 
 
 #ifndef _DEBUG
 // Release mode logging
 // #define OPT_RELS_LOGGING
-#ifdef OPT_RELS_LOGGING
+# ifdef OPT_RELS_LOGGING
 
 #undef _RPT0
 #undef _RPT1
 #undef _RPT2
 #undef _RPT3
 #undef _RPT4
+#  ifdef _RPT5
+#undef _RPT5
+#  endif
 
 #define _RPT0(rptno, msg)                     ReportMe(msg)                         
 #define _RPT1(rptno, msg, a1)                 ReportMe(msg, a1)                  
@@ -82,20 +79,24 @@ void ReportMe(const char * msg, ...) {
   }
 }
 
-#else
+# else
+#  ifndef _RPT5
 #define _RPT5(rptno, msg, a1, a2, a3, a4, a5)
-#endif
+#  endif
+# endif
 #else
-# ifdef _RPT_BASE
+# ifndef _RPT5
+#  ifdef _RPT_BASE
 #define _RPT5(rptno, msg, a1, a2, a3, a4, a5) \
         _RPT_BASE((rptno, NULL, 0, NULL, msg, a1, a2, a3, a4, a5))
-# else
-#  ifdef _CrtDbgBreak
+#  else
+#   ifdef _CrtDbgBreak
 #define _RPT5(rptno, msg, a1, a2, a3, a4, a5) \
         do { if ((1 == _CrtDbgReport(rptno, NULL, 0, NULL, msg, a1, a2, a3, a4, a5))) \
                 _CrtDbgBreak(); } while (0)
-#  else
+#   else
 #define _RPT5(rptno, msg, a1, a2, a3, a4, a5)
+#   endif
 #  endif
 # endif
 #endif

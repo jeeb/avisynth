@@ -107,7 +107,6 @@ PostBuild_Cmds=copy Debug\avisynth.dll $(SystemRoot)\system32	copy ..\distrib\bi
 # PROP BASE Use_Debug_Libraries 0
 # PROP BASE Output_Dir "RelSym"
 # PROP BASE Intermediate_Dir "RelSym"
-# PROP BASE Ignore_Export_Lib 0
 # PROP BASE Target_Dir ""
 # PROP Use_MFC 0
 # PROP Use_Debug_Libraries 0
@@ -115,8 +114,8 @@ PostBuild_Cmds=copy Debug\avisynth.dll $(SystemRoot)\system32	copy ..\distrib\bi
 # PROP Intermediate_Dir "RelSym"
 # PROP Ignore_Export_Lib 0
 # PROP Target_Dir ""
-# ADD BASE CPP /nologo /G6 /MD /W3 /GX /Zd /O2 /Op /Ob2 /D "NDEBUG" /D "INC_OLE2" /D "STRICT" /D "WIN32" /D "_WIN32" /D "_MT" /D "_DLL" /D "_MBCS" /D "_USRDLL" /D "AVISYNTH_C_EXPORTS" /Fr /Yu"stdafx.h" /FD /Gs /GF /c
-# ADD CPP /G6 /MD /W4 /GX /Zi /O2 /Op /Ob2 /D "NDEBUG" /D "INC_OLE2" /D "STRICT" /D "WIN32" /D "_WIN32" /D "_MT" /D "_DLL" /D "_MBCS" /D "_USRDLL" /D "AVISYNTH_C_EXPORTS" /D "AVISYNTH_CORE" /FAs /FR /Yu"stdafx.h" /FD /Gs /GF /c
+# ADD BASE CPP /nologo /MT /W3 /GX /O2 /D "WIN32" /D "NDEBUG" /D "_WINDOWS" /D "_MBCS" /D "_USRDLL" /D "AVISYNTH_EXPORTS" /YX /FD /c
+# ADD CPP /G6 /MD /W4 /GX /Zd /O2 /Op /Ob2 /D "NDEBUG" /D "INC_OLE2" /D "STRICT" /D "WIN32" /D "_WIN32" /D "_MT" /D "_DLL" /D "_MBCS" /D "_USRDLL" /D "AVISYNTH_C_EXPORTS" /D "AVISYNTH_CORE" /FAs /FR /Yu"stdafx.h" /FD /Gs /GF /c
 # SUBTRACT CPP /nologo
 # ADD BASE MTL /nologo /D "NDEBUG" /mktyplib203 /win32
 # ADD MTL /D "NDEBUG" /mktyplib203 /win32
@@ -128,9 +127,8 @@ BSC32=bscmake.exe
 # ADD BSC32 /nologo
 LINK32=link.exe
 # ADD BASE LINK32 kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib /nologo /dll /machine:I386
-# SUBTRACT BASE LINK32 /pdb:none /debug
 # ADD LINK32 ../distrib/lib/DevIL.lib $(IntDir)/SoundTouch.lib $(IntDir)/pfc.lib $(IntDir)/softwire.lib msacm32.lib vfw32.lib kernel32.lib advapi32.lib version.lib user32.lib gdi32.lib ole32.lib uuid.lib winmm.lib oleaut32.lib /nologo /dll /map /debug /debugtype:both /machine:I386 /nodefaultlib:"LIBC"
-# SUBTRACT LINK32 /verbose /profile /pdb:none /incremental:yes /force
+# SUBTRACT LINK32 /pdb:none
 
 !ENDIF 
 
@@ -241,8 +239,6 @@ SOURCE=.\internal.h
 # Begin Source File
 
 SOURCE=.\core\main.cpp
-# ADD CPP /W3
-# SUBTRACT CPP /YX /Yc /Yu
 # End Source File
 # Begin Source File
 
@@ -851,6 +847,11 @@ SOURCE=.\convert\convert_yv12.h
 # Begin Source File
 
 SOURCE=..\distrib\AviSynth.ico
+# End Source File
+# Begin Source File
+
+SOURCE=.\initguid.cpp
+# SUBTRACT CPP /YX /Yc /Yu
 # End Source File
 # Begin Source File
 
