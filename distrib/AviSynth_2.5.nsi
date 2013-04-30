@@ -1,6 +1,6 @@
 !packhdr tempfile.exe "upx --best --q tempfile.exe"
 
-!DEFINE ISSUE 3
+!DEFINE ISSUE 4
 !DEFINE VERSION 2.6.0
 
 !DEFINE /date DATE "%y%m%d"
@@ -678,6 +678,8 @@ Section /o  $(ExtraFiles3_Text) ExtraFiles3
 !verbose push
 !verbose 2
   ${DocFile} "..\filtersdk\*.*"
+  SetOutPath $INSTDIR\FilterSDK\Pictures
+  ${DocFile} "..\filtersdk\pictures\*.*"
 !verbose pop
   SetOutPath $INSTDIR\FilterSDK\include
   ${File} "..\src\core\avisynth.h"
@@ -952,6 +954,8 @@ Ignore:
   Delete "$INSTDIR\FilterSDK\include\avisynth.h"
   Delete "$INSTDIR\FilterSDK\include\avisynth_c.h"
   RMDir  "$INSTDIR\FilterSDK\include"
+  Delete "$INSTDIR\FilterSDK\Pictures\*.*"
+  RMDir  "$INSTDIR\FilterSDK\Pictures"
   Delete "$INSTDIR\FilterSDK\*.*"
   RMDir  "$INSTDIR\FilterSDK"
 !verbose pop
