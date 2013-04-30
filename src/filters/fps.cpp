@@ -265,13 +265,13 @@ AVSValue __cdecl ContinuedCreate(AVSValue args, void* key, IScriptEnvironment* e
   unsigned num, den;
 
   if (args[1].IsInt()) { // num, den[, limit] form
-    if (args[0].IsFloat()) {
+    if (args[0].IsInt()) {
+      num = args[0].AsInt();
+    } else { // IsFloat
       num = (unsigned)args[0].AsFloat();
-      if ((float)num != args[0].AsFloat()) {
+      if ((float)num != (float)args[0].AsFloat()) {
         env->ThrowError("ContinuedFraction: Numerator must be an integer.\n");
       }
-    } else {
-      num = args[0].AsInt();
     }
     den = args[1].AsInt();
     reduce_frac(num, den, (unsigned)args[2].AsInt(1001));

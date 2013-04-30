@@ -284,11 +284,11 @@ struct AVS_Linkage {
   bool            (AVSValue::*AsBool1)() const;
   int             (AVSValue::*AsInt1)() const;
   const char*     (AVSValue::*AsString1)() const;
-  float           (AVSValue::*AsFloat1)() const;
+  double          (AVSValue::*AsFloat1)() const;
   bool            (AVSValue::*AsBool2)(bool def) const;
   int             (AVSValue::*AsInt2)(int def) const;
   double          (AVSValue::*AsDblDef)(double def) const;
-  float           (AVSValue::*AsFloat2)(float def) const;
+  double          (AVSValue::*AsFloat2)(float def) const;
   const char*     (AVSValue::*AsString2)(const char* def) const;
   int             (AVSValue::*ArraySize)() const;
 // end class AVSValue
@@ -781,13 +781,13 @@ public:
   int AsInt() const AVS_BakedCode( return AVS_LinkCall(AsInt1)() )
 //  int AsLong() const;
   const char* AsString() const AVS_BakedCode( return AVS_LinkCall(AsString1)() )
-  float AsFloat() const AVS_BakedCode( return AVS_LinkCall(AsFloat1)() )
+  double AsFloat() const AVS_BakedCode( return AVS_LinkCall(AsFloat1)() )
 
   bool AsBool(bool def) const AVS_BakedCode( return AVS_LinkCall(AsBool2)(def) )
   int AsInt(int def) const AVS_BakedCode( return AVS_LinkCall(AsInt2)(def) )
   double AsDblDef(double def) const AVS_BakedCode( return AVS_LinkCall(AsDblDef)(def) ) // Value is still a float
 //float AsFloat(double def) const; // def demoted to a float
-  float AsFloat(float def) const AVS_BakedCode( return AVS_LinkCall(AsFloat2)(def) )
+  double AsFloat(float def) const AVS_BakedCode( return AVS_LinkCall(AsFloat2)(def) )
   const char* AsString(const char* def) const AVS_BakedCode( return AVS_LinkCall(AsString2)(def) )
 
   int ArraySize() const AVS_BakedCode( return AVS_LinkCall(ArraySize)() )
@@ -828,11 +828,11 @@ public:
   bool            AsBool1() const;
   int             AsInt1() const;
   const char*     AsString1() const;
-  float           AsFloat1() const;
+  double          AsFloat1() const;
 
   bool            AsBool2(bool def) const;
   int             AsInt2(int def) const;
-  float           AsFloat2(float def) const;
+  double          AsFloat2(float def) const;
   const char*     AsString2(const char* def) const;
 #endif
 }; // end class AVSValue

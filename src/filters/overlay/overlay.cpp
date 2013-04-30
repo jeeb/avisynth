@@ -81,7 +81,7 @@ GenericVideoFilter(_child) {
   memcpy(inputVi, &vi, sizeof(VideoInfo));
 
   mask = 0;
-  opacity = (int)(256.0*args[ARG_OPACITY].AsFloat(1.0)+0.5);
+  opacity = (int)(256.0*args[ARG_OPACITY].AsDblDef(1.0)+0.5);
   offset_x = args[ARG_X].AsInt(0);
   offset_y = args[ARG_Y].AsInt(0);
 

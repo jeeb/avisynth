@@ -148,7 +148,7 @@ AVSValue AveragePlane::AvgPlane(AVSValue clip, void* user_data, int plane, IScri
   if (w & -16) b = isse_average_plane(srcp,           h, (w & -16), pitch);
   if (w &  15) b +=   C_average_plane(srcp+(w & -16), h, (w &  15), pitch);
 
-  float f = (float)b / (float)(h * w);
+  float f = (float)((double)b / (h * w));
 
   return (AVSValue)f;
 }

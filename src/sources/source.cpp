@@ -969,13 +969,13 @@ class Tone : public IClip {
 
 public:
 
-  Tone(float _length, float _freq, int _samplerate, int _ch, const char* _type, float _level, IScriptEnvironment* env):
+  Tone(double _length, double _freq, int _samplerate, int _ch, const char* _type, float _level, IScriptEnvironment* env):
              freq(_freq), samplerate(_samplerate), ch(_ch), add_per_sample(_freq/_samplerate), level(_level) {
     memset(&vi, 0, sizeof(VideoInfo));
     vi.sample_type = SAMPLE_FLOAT;
     vi.nchannels = _ch;
     vi.audio_samples_per_second = _samplerate;
-    vi.num_audio_samples=(__int64)(_length*(float)vi.audio_samples_per_second);
+    vi.num_audio_samples=(__int64)(_length*vi.audio_samples_per_second+0.5);
 
     if (!lstrcmpi(_type, "Sine"))
       s = new SineGenerator();
@@ -1015,7 +1015,7 @@ public:
   static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env) {
 	try {	// HIDE DAMN SEH COMPILER BUG!!!
 	    return new Tone(args[0].AsFloat(10.0f), args[1].AsFloat(440.0f), args[2].AsInt(48000),
-		                args[3].AsInt(2), args[4].AsString("Sine"), args[5].AsFloat(1.0f), env);
+		                args[3].AsInt(2), args[4].AsString("Sine"), (float)args[5].AsFloat(1.0f), env);
 	}
 	catch (...) { throw; }
   }
