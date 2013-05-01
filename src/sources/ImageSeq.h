@@ -99,6 +99,8 @@ public:
 
 private:
   void fileRead(istream & file, BYTE * dstPtr, const int pitch, const int row_size, const int height);
+  void ImageReader::BlankFrame(PVideoFrame & frame);
+  void ImageReader::BlankApplyMessage(PVideoFrame & frame, const char * text, IScriptEnvironment * env);
   bool checkProperties(ifstream & file, PVideoFrame & frame, IScriptEnvironment * env);
 
   char base_name[MAX_PATH + 1];
