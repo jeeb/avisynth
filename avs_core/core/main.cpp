@@ -1397,8 +1397,12 @@ STDMETHODIMP CAVIStreamSynth::ReadFormat(LONG lPos, LPVOID lpFormat, LONG *lpcbF
 
   if (fAudio) {
 	if (UseWaveExtensible) {  // Use WAVE_FORMAT_EXTENSIBLE audio output format 
+#ifndef KSDATAFORMAT_SUBTYPE_PCM	// VS2005 does not define this
 	  const GUID KSDATAFORMAT_SUBTYPE_PCM       = {0x00000001, 0x0000, 0x0010, {0x80, 0x00, 0x00, 0xaa, 0x00, 0x38, 0x9b, 0x71}};
+#endif
+#ifndef KSDATAFORMAT_SUBTYPE_IEEE_FLOAT	// VS2005 does not define this
 	  const GUID KSDATAFORMAT_SUBTYPE_IEEE_FLOAT= {0x00000003, 0x0000, 0x0010, {0x80, 0x00, 0x00, 0xaa, 0x00, 0x38, 0x9b, 0x71}};
+#endif
 	  WAVEFORMATEXTENSIBLE wfxt;
 
 	  memset(&wfxt, 0, sizeof(wfxt));
