@@ -36,7 +36,7 @@
 #include "stdafx.h"
 
 #include "expression.h"
-
+#include "../exception.h"
 
 
 
@@ -48,89 +48,6 @@ AVSValue ExpSequence::Evaluate(IScriptEnvironment* env)
     if (last.IsClip()) env->SetVar("last", last);
     return b->Evaluate(env);
 }
-
-/* First cut for breaking out system exceptions from the evil and most
- * unhelpful "Evaluate: Unrecognized exception!".
- *
- * This initial version just decodes the exception code, latter if one
- * is so inclined the info structure could be pulled apart and the
- * state of the machine presented. So far just knowing "Integer Divide
- * by Zero" was happening has been a real boon.
- */
-static const char * const StringSystemError(const unsigned code)
-{
-  switch (code) {
-  case STATUS_GUARD_PAGE_VIOLATION:      // 0x80000001
-    return "Evaluate: System exception - Guard Page Violation";
-  case STATUS_DATATYPE_MISALIGNMENT:     // 0x80000002
-    return "Evaluate: System exception - Datatype Misalignment";
-  case STATUS_BREAKPOINT:                // 0x80000003
-    return "Evaluate: System exception - Breakpoint";
-  case STATUS_SINGLE_STEP:               // 0x80000004
-    return "Evaluate: System exception - Single Step";
-  default:
-    break;
-  }
-
-  switch (code) {
-  case STATUS_ACCESS_VIOLATION:          // 0xc0000005
-    return "Evaluate: System exception - Access Violation";
-  case STATUS_IN_PAGE_ERROR:             // 0xc0000006
-    return "Evaluate: System exception - In Page Error";
-  case STATUS_INVALID_HANDLE:            // 0xc0000008
-    return "Evaluate: System exception - Invalid Handle";
-  case STATUS_NO_MEMORY:                 // 0xc0000017
-    return "Evaluate: System exception - No Memory";
-  case STATUS_ILLEGAL_INSTRUCTION:       // 0xc000001d
-    return "Evaluate: System exception - Illegal Instruction";
-  case STATUS_NONCONTINUABLE_EXCEPTION:  // 0xc0000025
-    return "Evaluate: System exception - Noncontinuable Exception";
-  case STATUS_INVALID_DISPOSITION:       // 0xc0000026
-    return "Evaluate: System exception - Invalid Disposition";
-  case STATUS_ARRAY_BOUNDS_EXCEEDED:     // 0xc000008c
-    return "Evaluate: System exception - Array Bounds Exceeded";
-  case STATUS_FLOAT_DENORMAL_OPERAND:    // 0xc000008d
-    return "Evaluate: System exception - Float Denormal Operand";
-  case STATUS_FLOAT_DIVIDE_BY_ZERO:      // 0xc000008e
-    return "Evaluate: System exception - Float Divide by Zero";
-  case STATUS_FLOAT_INEXACT_RESULT:      // 0xc000008f
-    return "Evaluate: System exception - Float Inexact Result";
-  case STATUS_FLOAT_INVALID_OPERATION:   // 0xc0000090
-    return "Evaluate: System exception - Float Invalid Operation";
-  case STATUS_FLOAT_OVERFLOW:            // 0xc0000091
-    return "Evaluate: System exception - Float Overflow";
-  case STATUS_FLOAT_STACK_CHECK:         // 0xc0000092
-    return "Evaluate: System exception - Float Stack Check";
-  case STATUS_FLOAT_UNDERFLOW:           // 0xc0000093
-    return "Evaluate: System exception - Float Underflow";
-  case STATUS_INTEGER_DIVIDE_BY_ZERO:    // 0xc0000094
-    return "Evaluate: System exception - Integer Divide by Zero";
-  case STATUS_INTEGER_OVERFLOW:          // 0xc0000095
-    return "Evaluate: System exception - Integer Overflow";
-  case STATUS_PRIVILEGED_INSTRUCTION:    // 0xc0000096
-    return "Evaluate: System exception - Privileged Instruction";
-  case STATUS_STACK_OVERFLOW:            // 0xc00000fd
-    return "Evaluate: System exception - Stack Overflow";
-  default:
-    break;
-  }
-
-  switch (code) {
-  case 0xC0000135:                       // 0xc0000135
-    return "DLL Not Found";
-  case 0xC0000142:                       // 0xc0000142
-    return "DLL Initialization Failed";
-  case 0xC06d007E:                       // 0xc06d007e
-    return "Delay-load Module Not Found";
-  case 0xC06d007F:                       // 0xc06d007e
-    return "Delay-load Proceedure Not Found";
-  default:
-    break;
-  }
-  
-  return 0;
-}
-
 
 /* Damn! This is trickey, exp->Evaluate returns an AVSValue object, so the
  * stupid compiler builds a local one on the stack, calls the constructor,
@@ -148,79 +65,12 @@ void ExpExceptionTranslator::ChainEval(AVSValue &av, IScriptEnvironment* env)
   av = exp->Evaluate(env);
 }
 
-
-#if 0
-/* Damn! I can't call Evaluate directly from here because it returns an object
- * I have to call an interlude and pass an alias to the return value through.
- */
-void ExpExceptionTranslator::TrapEval(AVSValue &av, unsigned &excode, IScriptEnvironment* env) 
-{
-// XPsp2 bug with this
-  __try {
-    ChainEval(av, env);
-  }
-  __except (excode = _exception_code(), EXCEPTION_CONTINUE_SEARCH ) { }
-}
-
-#else
-  
-/* Damn! XPsp2 barfs at my use of SEH. So do my own exception handling routine.
- * Simple handler snaffles the exception code and stashes it where my extended
- * EXCEPTION_REGISTRATION record retarg pointer point, then just continue the
- * search. 
- */
-EXCEPTION_DISPOSITION __cdecl _Exp_except_handler(struct _EXCEPTION_RECORD *ExceptionRecord, void * EstablisherFrame,
-												  struct _CONTEXT *ContextRecord, void * DispatcherContext)
-{
-  struct Est_Frame {  // My extended EXCEPTION_REGISTRATION record
-	void	  *prev;
-	void	  *handler;
-	unsigned  *retarg;	  // pointer where to stash exception code
-  };
-
-  if (ExceptionRecord->ExceptionFlags == 0)	  // First pass?
-	*(((struct Est_Frame *)EstablisherFrame)->retarg) = ExceptionRecord->ExceptionCode;
-
-  return ExceptionContinueSearch;
-}
-
-
-/* Damn! XPsp2 barfs at my use of SEH, so do my own exception handling
- * Having to do this is pure filth!
- */
-void ExpExceptionTranslator::TrapEval(AVSValue &av, unsigned &excode, IScriptEnvironment* env) 
-{
-  DWORD handler = (DWORD)_Exp_except_handler;
- 
-  __asm { // Build EXCEPTION_REGISTRATION record:
-  push	excode		// Address of return argument
-  push	handler	    // Address of handler function
-  push	FS:[0]		// Address of previous handler
-  mov	FS:[0],esp	// Install new EXCEPTION_REGISTRATION
-  }
-
-  ChainEval(av, env);
-
-  __asm { // Remove our EXCEPTION_REGISTRATION record
-  mov	eax,[esp]	// Get pointer to previous record
-  mov	FS:[0], eax	// Install previous record
-  add	esp, 12		// Clean our EXCEPTION_REGISTRATION off stack
-  }
-}
-#endif
-
-
-/* Damn! You can't mix C++ exception handling and SEH in the one routine.
- * Call an interlude. And this is all because C++ doesn't provide any way
- * to expand system exceptions into there true cause or identity.
- */
-
 AVSValue ExpExceptionTranslator::Evaluate(IScriptEnvironment* env) 
 {
-  unsigned excode=0;
   try {
+    SehGuard seh_guard;
     AVSValue av;
-    TrapEval(av, excode, env);
+    ChainEval(av, env);
     return av;
   }
   catch (IScriptEnvironment::NotFound) {
@@ -229,18 +79,14 @@ AVSValue ExpExceptionTranslator::Evaluate(IScriptEnvironment* env)
   catch (AvisynthError) {
     throw;
   }
-  catch (...) {
-	if (excode == 0xE06D7363) // C++ Exception, 0xE0000000 | "\0msc"
-      env->ThrowError("Evaluate: Unhandled C++ exception!");
-
-	if (excode != 0) {
-	  const char * const extext = StringSystemError(excode);
-	  if (extext)
-		env->ThrowError(extext);
+  catch (SehException &seh) {
+    if (seh.m_msg)
+      env->ThrowError(seh.m_msg);
 	  else
-		env->ThrowError("Evaluate: System exception - 0x%x", excode);
-	}
-    env->ThrowError("Evaluate: Unrecognized exception!");
+      env->ThrowError("Evaluate: System exception - 0x%x", seh.m_code);
+  }
+  catch (...) {
+    env->ThrowError("Evaluate: Unhandled C++ exception!");
   }
   return 0;
 }

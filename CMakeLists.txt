@@ -19,6 +19,10 @@ IF( MSVC_IDE )  # Check for Visual Studio
     # We want our project to also run on Windows XP
     set(CMAKE_GENERATOR_TOOLSET "v110_xp" CACHE STRING "The compiler toolset to use for Visual Studio." FORCE)
   ENDIF()
+
+  # Enable C++ with SEH exceptions
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /EHa")
+
 ENDIF()
 
 add_subdirectory("avs_core")
