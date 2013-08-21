@@ -22,12 +22,6 @@ target_compile_definitions("AvsCore" PRIVATE AVISYNTH_CORE AVISYNTH_C_EXPORTS)
 target_link_libraries("AvsCore" "Winmm.lib" "Vfw32.lib" "Msacm32.lib" "Gdi32.lib" "User32.lib" "Advapi32.lib" "Ole32.lib")
 set_target_properties("AvsCore" PROPERTIES "OUTPUT_NAME" "AviSynth")
 
-# Specify include directory for dependent projects
-set(CMAKE_LIBRARY_PATH ${CMAKE_LIBRARY_PATH} ${CMAKE_CURRENT_SOURCE_DIR}/external)
-#find_package(DevIL)
-#target_link_libraries("AvsCore" ${IL_LIBRARIES})
-
-
 # Add source dependencies
 add_subdirectory("3rd_party/pfc")
 add_subdirectory("3rd_party/SoftWire")
