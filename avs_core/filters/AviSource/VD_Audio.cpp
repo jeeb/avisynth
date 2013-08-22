@@ -958,7 +958,7 @@ static long audio_downsample_mono8(void *dst, void *src, long *filter_bank, int 
 		else if (sum > 0x3fffff)
 			*d++ = 0xff;
 		else
-			*d++ = ((sum + 0x2000)>>14);
+			*d++ = (unsigned char)((sum + 0x2000)>>14);
 
 		accum += samp_frac;
 	} while(--cnt);
@@ -988,7 +988,7 @@ static long audio_downsample_mono16(void *dst, void *src, long *filter_bank, int
 		else if (sum > 0x1fffffff)
 			*d++ = 0x7fff;
 		else
-			*d++ = ((sum + 0x2000)>>14);
+			*d++ = (short)((sum + 0x2000)>>14);
 
 		accum += samp_frac;
 	} while(--cnt);
@@ -1021,14 +1021,14 @@ static long audio_downsample_stereo8(void *dst, void *src, long *filter_bank, in
 		else if (sum_l > 0x3fffff)
 			*d++ = 0xff;
 		else
-			*d++ = ((sum_l + 0x2000)>>14);
+			*d++ = (unsigned char)((sum_l + 0x2000)>>14);
 
 		if (sum_r < 0)
 			*d++ = 0;
 		else if (sum_r > 0x3fffff)
 			*d++ = 0xff;
 		else
-			*d++ = ((sum_r + 0x2000)>>14);
+			*d++ = (unsigned char)((sum_r + 0x2000)>>14);
 
 		accum += samp_frac;
 	} while(--cnt);
@@ -1061,14 +1061,14 @@ static long audio_downsample_stereo16(void *dst, void *src, long *filter_bank, i
 		else if (sum_l > 0x1fffffff)
 			*d++ = 0x7fff;
 		else
-			*d++ = ((sum_l + 0x2000)>>14);
+			*d++ = (short)((sum_l + 0x2000)>>14);
 
 		if (sum_r < -0x20000000)
 			*d++ = -0x8000;
 		else if (sum_r > 0x1fffffff)
 			*d++ = 0x7fff;
 		else
-			*d++ = ((sum_r + 0x2000)>>14);
+			*d++ = (short)((sum_r + 0x2000)>>14);
 
 		accum += samp_frac;
 	} while(--cnt);
@@ -1084,7 +1084,7 @@ static long audio_upsample_mono8(void *dst, void *src, long accum, long samp_fra
 		unsigned char *s_ptr = s + (accum>>19);
 		long frac = (accum>>3) & 0xffff;
 
-		*d++ = ((int)s_ptr[0] * (0x10000 - frac) + (int)s_ptr[1] * frac) >> 16;
+		*d++ = (unsigned char)(((int)s_ptr[0] * (0x10000 - frac) + (int)s_ptr[1] * frac) >> 16);
 		accum += samp_frac;
 	} while(--cnt);
 
@@ -1114,8 +1114,8 @@ static long audio_upsample_stereo8(void *dst, void *src, long accum, long samp_f
 		unsigned char *s_ptr = s + (accum>>19)*2;
 		long frac = (accum>>3) & 0xffff;
 
-		*d++ = ((int)s_ptr[0] * (0x10000 - frac) + (int)s_ptr[2] * frac) >> 16;
-		*d++ = ((int)s_ptr[1] * (0x10000 - frac) + (int)s_ptr[3] * frac) >> 16;
+		*d++ = (unsigned char)(((int)s_ptr[0] * (0x10000 - frac) + (int)s_ptr[2] * frac) >> 16);
+		*d++ = (unsigned char)(((int)s_ptr[1] * (0x10000 - frac) + (int)s_ptr[3] * frac) >> 16);
 		accum += samp_frac;
 	} while(--cnt);
 
@@ -1217,7 +1217,7 @@ AudioStreamResampler::AudioStreamResampler(AudioStream *src, long new_rate, bool
 	_RPT2(0,"AudioStreamResampler: converting from %ldHz to %ldHz\n", iFormat->nSamplesPerSec, new_rate);
 
 	if (integral_conversion)
-		if (new_rate > iFormat->nSamplesPerSec)
+		if ((DWORD)new_rate > iFormat->nSamplesPerSec)
 //			samp_frac = MulDiv(0x10000, new_rate + iFormat->nSamplesPerSec/2, iFormat->nSamplesPerSec);
 			samp_frac = 0x80000 / ((new_rate + iFormat->nSamplesPerSec/2) / iFormat->nSamplesPerSec); 
 		else

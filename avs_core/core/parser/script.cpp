@@ -740,7 +740,7 @@ AVSValue Spline(AVSValue args, void*, IScriptEnvironment* env )
 
 	AVSValue coordinates;
 
-	x = args[0].AsFloat(0);
+	x = (float)args[0].AsFloat(0);
 	coordinates = args[1];
 	cubic = args[2].AsBool(true);
 
@@ -755,8 +755,8 @@ AVSValue Spline(AVSValue args, void*, IScriptEnvironment* env )
     y2a = new float[n+1];
 
 	for (i=1; i<=n; i++) {
-		xa[i] = coordinates[(i-1)*2].AsFloat(0);
-		ya[i] = coordinates[(i-1)*2+1].AsFloat(0);
+		xa[i] = (float)coordinates[(i-1)*2].AsFloat(0);
+		ya[i] = (float)coordinates[(i-1)*2+1].AsFloat(0);
 	}
 
 	for (i=1; i<n; i++) {
@@ -910,7 +910,7 @@ AVSValue AvsMin(AVSValue args, void*, IScriptEnvironment* env )
     return V;
   }
   else {
-    float V = args[0][0].AsFloat();
+    float V = (float)args[0][0].AsFloat();
     for (i=1; i < n; i++)
       V = min(V, (float)args[0][i].AsFloat());
     return V;
@@ -939,7 +939,7 @@ AVSValue AvsMax(AVSValue args, void*, IScriptEnvironment* env )
     return V;
   }
   else {
-    float V = args[0][0].AsFloat();
+    float V = (float)args[0][0].AsFloat();
     for (i=1; i < n; i++)
       V = max(V, (float)args[0][i].AsFloat());
     return V;

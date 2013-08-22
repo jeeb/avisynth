@@ -425,7 +425,7 @@ void ConditionalReader::SetRange(int start_frame, int stop_frame, AVSValue v) {
       }
       break;
     case MODE_FLOAT:
-      q = v.AsFloat();
+      q = (float)v.AsFloat();
       for (i = start_frame; i <= stop_frame; i++) {
         floatVal[i] = q;
       }
@@ -457,7 +457,7 @@ void ConditionalReader::SetFrame(int framenumber, AVSValue v) {
       intVal[framenumber+offset] = v.AsInt();
       break;
     case MODE_FLOAT:
-      floatVal[framenumber+offset] = v.AsFloat();
+      floatVal[framenumber+offset] = (float)v.AsFloat();
       break;
     case MODE_BOOL:
       boolVal[framenumber+offset] = v.AsBool();

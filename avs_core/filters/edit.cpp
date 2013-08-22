@@ -526,7 +526,7 @@ PClip new_Splice(PClip _child1, PClip _child2, bool realign_sound, IScriptEnviro
 AVSValue __cdecl Dissolve::Create(AVSValue args, void*, IScriptEnvironment* env) 
 {
   const int overlap = args[2].AsInt();
-  const float fps = args[3].AsFloat(24.0f);
+  const float fps = (float)args[3].AsFloat(24.0f);
   PClip result = args[0].AsClip();
   for (int i=0; i < args[1].ArraySize(); ++i)
     result = new Dissolve(result, args[1][i].AsClip(), overlap, fps, env);
@@ -1000,7 +1000,7 @@ PClip __cdecl ColorClip(PClip a, int duration, int color, float fps, IScriptEnvi
 AVSValue __cdecl Create_FadeOut0(AVSValue args, void*,IScriptEnvironment* env) {
   const int duration = args[1].AsInt();
   const int fadeclr = args[2].AsInt(0);
-  const float fps = args[3].AsFloat(24.0f);
+  const float fps = (float)args[3].AsFloat(24.0f);
   PClip a = args[0].AsClip();
   PClip b = ColorClip(a,duration,fadeclr,fps,env);
   return new Dissolve(a, b, duration, fps, env);
@@ -1009,7 +1009,7 @@ AVSValue __cdecl Create_FadeOut0(AVSValue args, void*,IScriptEnvironment* env) {
 AVSValue __cdecl Create_FadeOut(AVSValue args, void*,IScriptEnvironment* env) {
   const int duration = args[1].AsInt();
   const int fadeclr = args[2].AsInt(0);
-  const float fps = args[3].AsFloat(24.0f);
+  const float fps = (float)args[3].AsFloat(24.0f);
   PClip a = args[0].AsClip();
   PClip b = ColorClip(a,duration+1,fadeclr,fps,env);
   return new Dissolve(a, b, duration, fps, env);
@@ -1018,7 +1018,7 @@ AVSValue __cdecl Create_FadeOut(AVSValue args, void*,IScriptEnvironment* env) {
 AVSValue __cdecl Create_FadeOut2(AVSValue args, void*,IScriptEnvironment* env) {
   const int duration = args[1].AsInt();
   const int fadeclr = args[2].AsInt(0);
-  const float fps = args[3].AsFloat(24.0f);
+  const float fps = (float)args[3].AsFloat(24.0f);
   PClip a = args[0].AsClip();
   PClip b = ColorClip(a,duration+2,fadeclr,fps,env);
   return new Dissolve(a, b, duration, fps, env);
@@ -1027,7 +1027,7 @@ AVSValue __cdecl Create_FadeOut2(AVSValue args, void*,IScriptEnvironment* env) {
 AVSValue __cdecl Create_FadeIn0(AVSValue args, void*,IScriptEnvironment* env) {
   const int duration = args[1].AsInt();
   const int fadeclr = args[2].AsInt(0);
-  const float fps = args[3].AsFloat(24.0f);
+  const float fps = (float)args[3].AsFloat(24.0f);
   PClip a = args[0].AsClip();
   PClip b = ColorClip(a,duration,fadeclr,fps,env);
   return new Dissolve(b, a, duration, fps, env);
@@ -1036,7 +1036,7 @@ AVSValue __cdecl Create_FadeIn0(AVSValue args, void*,IScriptEnvironment* env) {
 AVSValue __cdecl Create_FadeIn(AVSValue args, void*,IScriptEnvironment* env) {
   const int duration = args[1].AsInt();
   const int fadeclr = args[2].AsInt(0);
-  const float fps = args[3].AsFloat(24.0f);
+  const float fps = (float)args[3].AsFloat(24.0f);
   PClip a = args[0].AsClip();
   PClip b = ColorClip(a,duration+1,fadeclr,fps,env);
   return new Dissolve(b, a, duration, fps, env);
@@ -1045,7 +1045,7 @@ AVSValue __cdecl Create_FadeIn(AVSValue args, void*,IScriptEnvironment* env) {
 AVSValue __cdecl Create_FadeIn2(AVSValue args, void*,IScriptEnvironment* env) {
   const int duration = args[1].AsInt();
   const int fadeclr = args[2].AsInt(0);
-  const float fps = args[3].AsFloat(24.0f);
+  const float fps = (float)args[3].AsFloat(24.0f);
   PClip a = args[0].AsClip();
   PClip b = ColorClip(a,duration+2,fadeclr,fps,env);
   return new Dissolve(b, a, duration, fps, env);
@@ -1055,7 +1055,7 @@ AVSValue __cdecl Create_FadeIO0(AVSValue args, void*, IScriptEnvironment* env) {
 	try {	// HIDE DAMN SEH COMPILER BUG!!!
   const int duration = args[1].AsInt();
   const int fadeclr = args[2].AsInt(0);
-  const float fps = args[3].AsFloat(24.0f);
+  const float fps = (float)args[3].AsFloat(24.0f);
   PClip a = args[0].AsClip();
   PClip b = ColorClip(a,duration,fadeclr,fps,env);
   AVSValue dissolve_args[] = { b, a, b, duration, fps };
@@ -1068,7 +1068,7 @@ AVSValue __cdecl Create_FadeIO(AVSValue args, void*, IScriptEnvironment* env) {
 	try {	// HIDE DAMN SEH COMPILER BUG!!!
   const int duration = args[1].AsInt();
   const int fadeclr = args[2].AsInt(0);
-  const float fps = args[3].AsFloat(24.0f);
+  const float fps = (float)args[3].AsFloat(24.0f);
   PClip a = args[0].AsClip();
   PClip b = ColorClip(a,duration+1,fadeclr,fps,env);
   AVSValue dissolve_args[] = { b, a, b, duration, fps };
@@ -1081,7 +1081,7 @@ AVSValue __cdecl Create_FadeIO2(AVSValue args, void*, IScriptEnvironment* env) {
 	try {	// HIDE DAMN SEH COMPILER BUG!!!
   const int duration = args[1].AsInt();
   const int fadeclr = args[2].AsInt(0);
-  const float fps = args[3].AsFloat(24.0f);
+  const float fps = (float)args[3].AsFloat(24.0f);
   PClip a = args[0].AsClip();
   PClip b = ColorClip(a,duration+2,fadeclr,fps,env);
   AVSValue dissolve_args[] = { b, a, b, duration, fps };

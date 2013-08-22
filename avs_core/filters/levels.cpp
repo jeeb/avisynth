@@ -159,7 +159,7 @@ Levels::Levels( PClip _child, int in_min, double gamma, int in_max, int out_min,
       else
         map[i] = clamp(int(p+0.5), 0, 255);
 
-      int q = ((bias + i - 128*scale) * (out_max-out_min)) / divisor + 128.5;
+      int q = (int)(((bias + i - 128*scale) * (out_max-out_min)) / divisor + 128.5);
 
       if (coring)
         mapchroma[i] = clamp(q, 16, 240);

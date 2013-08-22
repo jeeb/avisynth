@@ -256,7 +256,7 @@ static AVSValue __cdecl Create_BlankClip(AVSValue args, void*, IScriptEnvironmen
   // If we got an Audio only default clip make the default duration the same
   if (!defHasVideo && defHasAudio) {
     const __int64 denom = Int32x32To64(vi.fps_denominator, vi_default.audio_samples_per_second);
-    vi_default.num_frames = (vi_default.num_audio_samples * vi.fps_numerator + denom - 1) / denom; // ceiling
+    vi_default.num_frames = (int)((vi_default.num_audio_samples * vi.fps_numerator + denom - 1) / denom); // ceiling
   }
 
   vi.num_frames = args[1].AsInt(vi_default.num_frames);

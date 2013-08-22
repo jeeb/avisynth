@@ -23,6 +23,9 @@ IF( MSVC_IDE )  # Check for Visual Studio
   # Enable C++ with SEH exceptions
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /EHa")
 
+  # Prevent VC++ from complaining about not using MS-specific functions
+  add_definitions("/D _CRT_SECURE_NO_WARNINGS")
+
 ENDIF()
 
 add_subdirectory("avs_core")
