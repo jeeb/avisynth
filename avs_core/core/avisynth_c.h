@@ -49,7 +49,7 @@
 
 #define AVSC_INLINE static __inline
 
-#ifdef AVISYNTH_C_EXPORTS
+#ifdef BUILDING_AVSCORE
 #  define AVSC_EXPORT EXTERN_C
 #  define AVSC_API(ret, name) EXTERN_C __declspec(dllexport) ret AVSC_CC name
 #else

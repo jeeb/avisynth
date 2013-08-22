@@ -16,7 +16,7 @@ add_library("AvsCore" SHARED ${AvsCore_Sources})
 # Specify include directories
 target_include_directories("AvsCore" PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 # Specify preprocessor definitions
-target_compile_definitions("AvsCore" PRIVATE AVISYNTH_CORE AVISYNTH_C_EXPORTS)
+target_compile_definitions("AvsCore" PRIVATE BUILDING_AVSCORE)
 
 # Windows DLL dependencies 
 target_link_libraries("AvsCore" "Winmm.lib" "Vfw32.lib" "Msacm32.lib" "Gdi32.lib" "User32.lib" "Advapi32.lib" "Ole32.lib")

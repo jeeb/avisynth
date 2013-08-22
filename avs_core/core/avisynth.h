@@ -293,7 +293,7 @@ struct AVS_Linkage {
 /**********************************************************************/
 };
 
-#ifdef AVISYNTH_CORE
+#ifdef BUILDING_AVSCORE
 /* Macro resolution for code inside Avisynth.dll */
 # define AVS_BakedCode(arg) ;
 # define AVS_LinkCall(arg)
@@ -581,7 +581,7 @@ public:
   BYTE* GetWritePtr(int plane=0) const AVS_BakedCode( return AVS_LinkCall(VFGetWritePtr)(plane) )
 
   ~VideoFrame() AVS_BakedCode( AVS_LinkCall(VideoFrame_DESTRUCTOR)() )
-#ifdef AVISYNTH_CORE
+#ifdef BUILDING_AVSCORE
 public:
   void DESTRUCTOR();  /* Damn compiler won't allow taking the address of reserved constructs, make a dummy interlude */
 #endif
@@ -697,7 +697,7 @@ public:
   bool operator!() const { return !p; }
 
   ~PClip() AVS_BakedCode( AVS_LinkCall(PClip_DESTRUCTOR)() )
-#ifdef AVISYNTH_CORE
+#ifdef BUILDING_AVSCORE
 public:
   void CONSTRUCTOR0();  /* Damn compiler won't allow taking the address of reserved constructs, make a dummy interlude */
   void CONSTRUCTOR1(const PClip& x);
@@ -731,7 +731,7 @@ public:
   bool operator!() const { return !p; }
 
   ~PVideoFrame() AVS_BakedCode( AVS_LinkCall(PVideoFrame_DESTRUCTOR)() )
-#ifdef AVISYNTH_CORE
+#ifdef BUILDING_AVSCORE
 public:
   void CONSTRUCTOR0();  /* Damn compiler won't allow taking the address of reserved constructs, make a dummy interlude */
   void CONSTRUCTOR1(const PVideoFrame& x);
@@ -806,7 +806,7 @@ private:
   };
 
   void Assign(const AVSValue* src, bool init);
-#ifdef AVISYNTH_CORE
+#ifdef BUILDING_AVSCORE
 public:
   void            CONSTRUCTOR0();  /* Damn compiler won't allow taking the address of reserved constructs, make a dummy interlude */
   void            CONSTRUCTOR1(IClip* c);
