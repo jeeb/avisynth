@@ -25,14 +25,14 @@ Copyright © 2003, Klaus Post
 #define _SUPEREQ_H_
 
 #include "../internal.h"
-#include "3rd_party/PFC/pfc.h"
+#include "3rd_party/PFC/mem_block.h"
 
 typedef SFLOAT audio_sample;
 typedef audio_sample REAL_inout;
 
 #include "math_shared.h"
 
-class NOVTABLE supereq_base
+class _declspec(novtable) supereq_base
 {
 public:
 	virtual void equ_makeTable(double *bc,class paramlist *param,double fs);

@@ -14,8 +14,8 @@ All rights reserved.
 *******************************************************/
 
 #include "stdafx.h"
-
 #include "ssrc.h"
+#include <cassert>
 
 #pragma warning(disable:4244)
 

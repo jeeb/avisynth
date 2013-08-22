@@ -205,9 +205,9 @@ void __stdcall AVSsoundtouch::GetAudio(void* buf, __int64 start, __int64 count, 
     delete[] dstbuffer;
     delete[] passbuffer;
 
-    for (size_t i = 0; i < samplers.size(); ++i) {
+    for (size_t i = 0; i < samplers.size(); ++i)
       delete samplers[i];
-}}
+  }
 };
 
 

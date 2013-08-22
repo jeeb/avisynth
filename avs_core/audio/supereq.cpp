@@ -26,6 +26,7 @@ Copyright © 2003, Klaus Post
 #include "supereq.h"
 #include "paramlist.h"
 #include "convertaudio.h"
+#include <vector>
 
 
 
@@ -52,7 +53,7 @@ static void setup_bands(const eq_config & src,double dst[N_BANDS])
 class AVSsupereq : public GenericVideoFilter 
 {
 private:
-	ptr_list_simple<supereq_base> eqs;
+	std::vector<supereq_base*> eqs;
 	paramlist paramroot;
 	eq_config my_eq;
 
@@ -93,7 +94,7 @@ AVSsupereq(PClip _child, const char* filename, IScriptEnvironment* env)
   
   unsigned n;
   for(n=0;n<last_nch;n++)
-    eqs.add_item(new supereq<float>);
+    eqs.push_back(new supereq<float>);
   double bands[N_BANDS];
   //    my_eq = cfg_eq;
   setup_bands(my_eq,bands);
@@ -121,7 +122,7 @@ AVSsupereq(PClip _child, float* values, IScriptEnvironment* env)
   }
   
   for(n=0; n<last_nch; n++)
-    eqs.add_item(new supereq<float>);
+    eqs.push_back(new supereq<float>);
 
   double bands[N_BANDS];
   //    my_eq = cfg_eq;
@@ -148,10 +149,13 @@ void __stdcall AVSsupereq::GetAudio(void* buf, __int64 start, __int64 count, ISc
     inputReadOffset = start;  // Reset at new read position.
     dst_samples_filled=0;
 
-    eqs.delete_all();
+    for (size_t i = 0; i < eqs.size(); ++i)
+      delete eqs[i];
+    eqs.clear();
+
     unsigned n;
     for(n=0;n<last_nch;n++)
-      eqs.add_item(new supereq<float>);
+      eqs.push_back(new supereq<float>);
     double bands[N_BANDS];
     setup_bands(my_eq,bands);
     for(n=0;n<last_nch;n++)
@@ -226,7 +230,8 @@ void __stdcall AVSsupereq::GetAudio(void* buf, __int64 start, __int64 count, ISc
 	{
     delete[] dstbuffer;
     delete[] passbuffer;
-		eqs.delete_all();
+    for (size_t i = 0; i < eqs.size(); ++i)
+      delete eqs[i];
 	}
 
 
