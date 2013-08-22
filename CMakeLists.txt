@@ -15,16 +15,22 @@ if(CMAKE_CONFIGURATION_TYPES)
 endif()
 
 IF( MSVC_IDE )  # Check for Visual Studio
+
   IF( NOT MSVC_VERSION VERSION_LESS 1700 )  # Check for v11 (VS 2012)
     # We want our project to also run on Windows XP
     set(CMAKE_GENERATOR_TOOLSET "v110_xp" CACHE STRING "The compiler toolset to use for Visual Studio." FORCE)
   ENDIF()
 
   # Enable C++ with SEH exceptions
+  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} /EHa")
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /EHa")
 
   # Prevent VC++ from complaining about not using MS-specific functions
   add_definitions("/D _CRT_SECURE_NO_WARNINGS")
+  
+  # Set additional optimization flags
+  set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} /Oy /Ot /GS-")
+  set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} /Oy /Ot /GS-")
 
 ENDIF()
 
