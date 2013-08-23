@@ -2,16 +2,16 @@
 # "Target Usage Requirements" and "Generator Toolset selection"
 CMAKE_MINIMUM_REQUIRED( VERSION 2.8.11 )
 
-# Find all the input files
+# Create library
+project("AvsCore")
 Include("Files.cmake")
+add_library("AvsCore" SHARED ${AvsCore_Sources})
+set_target_properties("AvsCore" PROPERTIES "OUTPUT_NAME" "AviSynth")
 
 IF( MSVC_IDE )  # Check for Visual Studio
   # Enable MASM-style assembler support
   enable_language(ASM_MASM)
 ENDIF()
-
-# Create library project
-add_library("AvsCore" SHARED ${AvsCore_Sources})
 
 # Specify include directories
 target_include_directories("AvsCore" PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
@@ -20,10 +20,18 @@ target_compile_definitions("AvsCore" PRIVATE BUILDING_AVSCORE)
 
 # Windows DLL dependencies 
 target_link_libraries("AvsCore" "Winmm.lib" "Vfw32.lib" "Msacm32.lib" "Gdi32.lib" "User32.lib" "Advapi32.lib" "Ole32.lib")
-set_target_properties("AvsCore" PROPERTIES "OUTPUT_NAME" "AviSynth")
 
 # Add source dependencies
 add_subdirectory("3rd_party/pfc")
 add_subdirectory("3rd_party/SoftWire")
 add_subdirectory("3rd_party/SoundTouch")
 target_link_libraries("AvsCore" "SoundTouch" "PFC" "SoftWire")
+
+if (MSVC_IDE)    
+  # Copy output to a common folder for easy deployment
+  add_custom_command(
+    TARGET AvsCore
+    POST_BUILD
+    COMMAND xcopy /Y \"$(TargetPath)\" \"${CMAKE_BINARY_DIR}/Output\"
+  )
+endif()
