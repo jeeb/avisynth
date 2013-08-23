@@ -112,5 +112,9 @@ private:
 
 const char *const getErrStr(ILenum err);
 
+// Since devIL isn't threadsafe, we need to ensure that only one thread at the time requests frames
+extern CRITICAL_SECTION FramesCriticalSection;
+extern volatile long refcount;
+extern volatile ILint DevIL_Version;
 
 #endif // __Image_Sequence_H__

@@ -10,6 +10,8 @@ project(${ProjectName})
 list (APPEND SourceFiles
     "ImageSeq.cpp"
     "ImageSeq.h"
+    "ImageReader.cpp"
+    "ImageWriter.cpp"
 )
 add_library(${ProjectName} SHARED ${SourceFiles})
 set_target_properties(${ProjectName} PROPERTIES "OUTPUT_NAME" ${PluginName})
