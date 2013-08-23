@@ -111,7 +111,7 @@ static const char * const StringSystemError(const unsigned code)
   assert(0);
 }
 
-void SehTranslatorFunction(unsigned int code, struct _EXCEPTION_POINTERS*)
+void SehTranslatorFunction(unsigned int code, struct _EXCEPTION_POINTERS *record)
 {
-    throw SehException(code, StringSystemError(code));
+  throw SehException(code, record->ExceptionRecord->ExceptionAddress, StringSystemError(code));
 }

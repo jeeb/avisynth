@@ -35,6 +35,7 @@
 
 #include "win.h"
 #include "minmax.h"
+#include "exception.h"
 #include <vfw.h>
 #include <cstdio>
 
@@ -248,7 +249,6 @@ private:
 
 	//////////// internal
 
-	void ReadHelper(void* lpBuffer, int lStart, int lSamples, unsigned code[4]);
 	void ReadFrame(void* lpBuffer, int n);
 
 	HRESULT Read2(LONG lStart, LONG lSamples, LPVOID lpBuffer, LONG cbBuffer, LONG *plBytes, LONG *plSamples);
@@ -1089,162 +1089,6 @@ void CAVIStreamSynth::ReadFrame(void* lpBuffer, int n) {
 		 frame->GetHeight(plane2) );
 }
 
-#define OPT_OWN_SEH_HANDLER
-#ifdef OPT_OWN_SEH_HANDLER
-EXCEPTION_DISPOSITION __cdecl _Exp_except_handler2(struct _EXCEPTION_RECORD *ExceptionRecord, void * EstablisherFrame,
-												  struct _CONTEXT *ContextRecord, void * DispatcherContext)
-{
-  struct Est_Frame {  // My extended EXCEPTION_REGISTRATION record
-	void	  *prev;
-	void	  *handler;
-	unsigned  *retarg;	  // pointer where to stash exception code
-  };
-
-  if (ExceptionRecord->ExceptionFlags == 0)	{  // First pass?
-	(((struct Est_Frame *)EstablisherFrame)->retarg)[0] = ExceptionRecord->ExceptionCode;
-	(((struct Est_Frame *)EstablisherFrame)->retarg)[1] = (unsigned)ExceptionRecord->ExceptionAddress;
-	if (ExceptionRecord->NumberParameters >= 2)	{  // Extra Info?
-	  (((struct Est_Frame *)EstablisherFrame)->retarg)[2] = ExceptionRecord->ExceptionInformation[0];
-	  (((struct Est_Frame *)EstablisherFrame)->retarg)[3] = ExceptionRecord->ExceptionInformation[1];
-	}
-  }
-  return ExceptionContinueSearch;
-}
-
-void CAVIStreamSynth::ReadHelper(void* lpBuffer, int lStart, int lSamples, unsigned code[4]) {
-
-  DWORD handler = (DWORD)_Exp_except_handler2;
-
-  __asm { // Build EXCEPTION_REGISTRATION record:
-  push	code		// Address of return argument
-  push	handler	    // Address of handler function
-  push	FS:[0]		// Address of previous handler
-  mov	FS:[0],esp	// Install new EXCEPTION_REGISTRATION
-  }
-
-  if (fAudio)
-    parent->filter_graph->GetAudio(lpBuffer, lStart, lSamples, parent->env);
-  else
-    ReadFrame(lpBuffer, lStart);
-
-  __asm { // Remove our EXCEPTION_REGISTRATION record
-  mov	eax,[esp]	// Get pointer to previous record
-  mov	FS:[0], eax	// Install previous record
-  add	esp, 12		// Clean our EXCEPTION_REGISTRATION off stack
-  }
-}
-
-static const char * const StringSystemError2(const unsigned code)
-{
-  switch (code) {
-  case STATUS_GUARD_PAGE_VIOLATION:      // 0x80000001
-    return "Guard Page Violation";
-  case STATUS_DATATYPE_MISALIGNMENT:     // 0x80000002
-    return "Datatype Misalignment";
-  case STATUS_BREAKPOINT:                // 0x80000003
-    return "Breakpoint";
-  case STATUS_SINGLE_STEP:               // 0x80000004
-    return "Single Step";
-  default:
-    break;
-  }
-  
-  switch (code) {
-  case STATUS_ACCESS_VIOLATION:          // 0xc0000005
-    return "*Access Violation";
-  case STATUS_IN_PAGE_ERROR:             // 0xc0000006
-    return "In Page Error";
-  case STATUS_INVALID_HANDLE:            // 0xc0000008
-    return "Invalid Handle";
-  case STATUS_NO_MEMORY:                 // 0xc0000017
-    return "No Memory";
-  case STATUS_ILLEGAL_INSTRUCTION:       // 0xc000001d
-    return "Illegal Instruction";
-  case STATUS_NONCONTINUABLE_EXCEPTION:  // 0xc0000025
-    return "Noncontinuable Exception";
-  case STATUS_INVALID_DISPOSITION:       // 0xc0000026
-    return "Invalid Disposition";
-  case STATUS_ARRAY_BOUNDS_EXCEEDED:     // 0xc000008c
-    return "Array Bounds Exceeded";
-  case STATUS_FLOAT_DENORMAL_OPERAND:    // 0xc000008d
-    return "Float Denormal Operand";
-  case STATUS_FLOAT_DIVIDE_BY_ZERO:      // 0xc000008e
-    return "Float Divide by Zero";
-  case STATUS_FLOAT_INEXACT_RESULT:      // 0xc000008f
-    return "Float Inexact Result";
-  case STATUS_FLOAT_INVALID_OPERATION:   // 0xc0000090
-    return "Float Invalid Operation";
-  case STATUS_FLOAT_OVERFLOW:            // 0xc0000091
-    return "Float Overflow";
-  case STATUS_FLOAT_STACK_CHECK:         // 0xc0000092
-    return "Float Stack Check";
-  case STATUS_FLOAT_UNDERFLOW:           // 0xc0000093
-    return "Float Underflow";
-  case STATUS_INTEGER_DIVIDE_BY_ZERO:    // 0xc0000094
-    return "Integer Divide by Zero";
-  case STATUS_INTEGER_OVERFLOW:          // 0xc0000095
-    return "Integer Overflow";
-  case STATUS_PRIVILEGED_INSTRUCTION:    // 0xc0000096
-    return "Privileged Instruction";
-  case STATUS_STACK_OVERFLOW:            // 0xc00000fd
-    return "Stack Overflow";
-  default:
-    break;
-  }
-  
-  switch (code) {
-  case 0xC0000135:                       // 0xc0000135
-    return "DLL Not Found";
-  case 0xC0000142:                       // 0xc0000142
-    return "DLL Initialization Failed";
-  case 0xC06d007E:                       // 0xc06d007e
-    return "Delay-load Module Not Found";
-  case 0xC06d007F:                       // 0xc06d007e
-    return "Delay-load Proceedure Not Found";
-  default:
-    break;
-  }
-  
-  return 0;
-}
-#else
-void CAVIStreamSynth::ReadHelper(void* lpBuffer, int lStart, int lSamples, unsigned &xcode[4]) {
-  // It's illegal to call GetExceptionInformation() inside an __except
-  // block!  Hence this variable and the horrible hack below...
-#ifndef _DEBUG
-  EXCEPTION_POINTERS* ei;
-  DWORD code;
-  __try { 
-#endif
-    if (fAudio)
-      parent->filter_graph->GetAudio(lpBuffer, lStart, lSamples, parent->env);
-    else
-      ReadFrame(lpBuffer, lStart);
-#ifndef _DEBUG
-  }
-  __except (ei = GetExceptionInformation(), code = GetExceptionCode(), (code >> 28) == 0xC) {
-    switch (code) {
-    case EXCEPTION_ACCESS_VIOLATION:
-      parent->env->ThrowError("Avisynth: caught an access violation at 0x%08x,\nattempting to %s 0x%08x",
-        ei->ExceptionRecord->ExceptionAddress,
-        ei->ExceptionRecord->ExceptionInformation[0] ? "write to" : "read from",
-        ei->ExceptionRecord->ExceptionInformation[1]);
-    case EXCEPTION_ILLEGAL_INSTRUCTION:
-      parent->env->ThrowError("Avisynth: illegal instruction at 0x%08x",
-        ei->ExceptionRecord->ExceptionAddress);
-    case EXCEPTION_INT_DIVIDE_BY_ZERO:
-      parent->env->ThrowError("Avisynth: division by zero at 0x%08x",
-        ei->ExceptionRecord->ExceptionAddress);
-    case EXCEPTION_STACK_OVERFLOW:
-      throw AvisynthError("Avisynth: stack overflow");
-    default:
-      parent->env->ThrowError("Avisynth: unknown exception 0x%08x at 0x%08x",
-        code, ei->ExceptionRecord->ExceptionAddress);
-    }
-  }
-#endif
-}
-#endif
 
 ////////////////////////////////////////////////////////////////////////
 //////////// IAVIStream
@@ -1319,48 +1163,28 @@ HRESULT CAVIStreamSynth::Read2(LONG lStart, LONG lSamples, LPVOID lpBuffer, LONG
   try {
     try {
 #endif
-      // VC compiler says "only one form of exception handling permitted per
-      // function."  Sigh...
-      ReadHelper(lpBuffer, lStart, lSamples, code);
+      SehGuard seh_guard;
+
+      if (fAudio)
+        parent->filter_graph->GetAudio(lpBuffer, lStart, lSamples, parent->env);
+      else
+        ReadFrame(lpBuffer, lStart);
+ 
 #ifndef _DEBUG
     }
-    catch (AvisynthError error) {
+    catch (AvisynthError &error) {
       parent->MakeErrorStream(error.msg);
-      if (fAudio)
-	    throw;
-	  else
-	    ReadHelper(lpBuffer, lStart, lSamples, code);
+      throw;
+    }
+    catch (SehException &seh) {
+		  char buf[256];
+      _snprintf(buf, 255, "CAVIStreamSynth: %s at 0x%x", seh.m_msg, seh.m_addr);
+		  parent->MakeErrorStream(parent->env->SaveString(buf));
+      throw;
     }
     catch (...) {
-#ifdef OPT_OWN_SEH_HANDLER
-      if (code[0] == 0xE06D7363) {
-	    parent->MakeErrorStream("Avisynth: unhandled C++ exception");
-	  }
-      else if (code[0]) {
-		char buf[128];
-        const char * const extext = StringSystemError2(code[0]);
-        if (extext) {
-		  if (extext[0] == '*') {
-			const char * const rwtext = code[2] ? "writing to" : "reading from";
-			_snprintf(buf, 127, "CAVIStreamSynth: System exception - %s at 0x%x, %s 0x%x", extext+1, code[1], rwtext, code[3]);
-		  }
-		  else
-			_snprintf(buf, 127, "CAVIStreamSynth: System exception - %s at 0x%x", extext, code[1]);
-		}
-        else {
-          _snprintf(buf, 127, "CAVIStreamSynth: Unknown system exception - 0x%x at 0x%x", code[0], code[1]);
-        }
-		parent->MakeErrorStream(parent->env->SaveString(buf));
-      }
-      else parent->MakeErrorStream("Avisynth: unknown exception");
-      code[0] = 0;
-#else
-      parent->MakeErrorStream("Avisynth: unknown exception");
-#endif
-      if (fAudio)
-	    throw;
-	  else
-        ReadHelper(lpBuffer, lStart, lSamples, code);
+      parent->MakeErrorStream("CAVIStreamSynth: unhandled C++ exception");
+      throw;
     }
   }
   catch (...) {

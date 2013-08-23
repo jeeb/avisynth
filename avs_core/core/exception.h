@@ -57,8 +57,9 @@ private:
 class SehException
 {
 public:
-  SehException(unsigned int code, const char* msg) : m_msg(msg), m_code(code) { }
-	const char* m_msg;
+  SehException(unsigned int code, const void* addr, const char* msg) : m_msg(msg), m_addr(addr), m_code(code) { }
+  const char* m_msg;
+  const void* m_addr;
   unsigned int m_code;
 };
 
