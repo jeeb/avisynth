@@ -40,6 +40,7 @@
 
 
 #include "merge.h"
+#include "../core/internal.h"
 
 __declspec(align(8)) static const __int64 I1=0x00ff00ff00ff00ff;  // Luma mask
 __declspec(align(8)) static const __int64 I2=0xff00ff00ff00ff00;  // Chroma mask

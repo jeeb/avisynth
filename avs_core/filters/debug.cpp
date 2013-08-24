@@ -36,6 +36,7 @@
 #include "debug.h"
 #include <avs/win.h>
 #include "../core/bitblt.h"
+#include "../core/internal.h"
 
 
 

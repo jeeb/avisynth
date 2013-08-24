@@ -32,11 +32,11 @@
 // which is not derived from or based on Avisynth, such as 3rd-party filters,
 // import and export plugins, or graphical user interfaces.
 
-#include "../core/internal.h"
+#include <avisynth.h>
+#include <avs/win.h>
 #include "softwire_helpers.h"
 #include <cstdio>
 #include <malloc.h>
-#include <avs/win.h>
 
 static void ReportException(EXCEPTION_POINTERS* ei, BYTE* ret) {
   enum { buffsize=127 };

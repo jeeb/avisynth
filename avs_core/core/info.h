@@ -8,6 +8,8 @@
 // Refactor, DrawString...() is the primative, Oct 2010 Ian Brabham
 // TO DO: Clean up - and move functions to a .c file.
 
+#include <cstring>
+
 const unsigned short font[][20] = {
 	//STARTCHAR space
 	{

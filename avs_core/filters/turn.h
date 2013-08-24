@@ -39,7 +39,7 @@
 */
 
 
-#include "../core/internal.h"
+#include <avisynth.h>
 #include "turnfunc.h"
 #include "resample.h"
 #include "planeswap.h"

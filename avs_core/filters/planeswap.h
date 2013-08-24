@@ -41,7 +41,7 @@
 #ifndef __Planeswap_H__
 #define __Planeswap_H__
 
-#include "../core/internal.h"
+#include <avisynth.h>
 
 
 /****************************************************

@@ -35,6 +35,7 @@
 
 #include <cmath>
 #include "cache.h"
+#include "internal.h"
 #include <avs/win.h>
 #include <avs/minmax.h>
 

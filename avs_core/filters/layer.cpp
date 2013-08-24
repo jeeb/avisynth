@@ -40,6 +40,7 @@
 #include "layer.h"
 #include <avs/win.h>
 #include <avs/minmax.h>
+#include "../core/internal.h"
 
 
 

@@ -33,6 +33,7 @@
 // import and export plugins, or graphical user interfaces.
 
 
+#include "internal.h"
 #include <avs/win.h>
 #include <avs/minmax.h>
 #include "bitblt.h"
@@ -43,7 +44,6 @@
 
 #define FP_STATE 0x9001f
 
-#include "../core/internal.h"
 
 #include <float.h>
 

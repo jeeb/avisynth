@@ -35,6 +35,7 @@
 #include <avisynth.h>
 #include <avs/win.h>
 #include <avs/minmax.h>
+#include "internal.h"
 
 #include "audio.h"
 #include "../convert/convert_audio.h"

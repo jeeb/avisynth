@@ -35,7 +35,7 @@
 #ifndef __Focus_H__
 #define __Focus_H__
 
-#include "../core/internal.h"
+#include <avisynth.h>
 #include <avs/win.h>
 
 

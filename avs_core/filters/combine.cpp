@@ -34,6 +34,7 @@
 
 #include "combine.h"
 #include "../core/bitblt.h"
+#include "../core/internal.h"
 #include <avs/win.h>
 #include <avs/minmax.h>
 #include <cmath>

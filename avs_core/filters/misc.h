@@ -36,7 +36,7 @@
 #define __Misc_H__
 
 
-#include "../core/internal.h"
+#include <avisynth.h>
 
 
 /********************************************************************

@@ -41,7 +41,7 @@
 #ifndef __Merge_H__
 #define __Merge_H__
 
-#include "../core/internal.h"
+#include <avisynth.h>
 
 
 /****************************************************

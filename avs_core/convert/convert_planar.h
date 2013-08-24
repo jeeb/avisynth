@@ -38,7 +38,7 @@
 #define __Convert_PLANAR_H__
 
 #include <avs/win.h>
-#include "../core/internal.h"
+#include <avisynth.h>
 #include "convert_matrix.h"
 #include "convert_rgbtoy8.h"
 #include "../filters/resample.h"

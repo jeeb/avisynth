@@ -36,6 +36,7 @@
 
 #include <avs/win.h>
 #include "overlay.h"
+#include "../core/internal.h"
 
 /********************************************************************
 ***** Declare index of new filters for Avisynth's filter engine *****

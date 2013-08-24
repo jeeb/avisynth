@@ -34,6 +34,7 @@
 
 #include "edit.h"
 #include "../convert/convert_audio.h"
+#include "../core/internal.h"
 #include <cmath>
 #include <climits>
 #include <avs/win.h>

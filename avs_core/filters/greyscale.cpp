@@ -36,6 +36,7 @@
 #include "greyscale.h"
 #include <avs/win.h>
 #include <cstdlib>
+#include "../core/internal.h"
 
 
 /*************************************

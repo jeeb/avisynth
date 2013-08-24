@@ -37,6 +37,7 @@
 #include <cmath>
 #include <cstdlib>
 #include "../../core/minmax.h"
+#include "../../core/internal.h"
 
 
 

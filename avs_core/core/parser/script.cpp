@@ -41,6 +41,7 @@
 #include <io.h>
 #include <avs/win.h>
 #include <avs/minmax.h>
+#include "../internal.h"
 
 
 /********************************************************************

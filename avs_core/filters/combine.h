@@ -35,7 +35,7 @@
 #ifndef __Combine_H__
 #define __Combine_H__
 
-#include "../core/internal.h"
+#include <avisynth.h>
 
 
 /********************************************************************

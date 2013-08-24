@@ -35,6 +35,7 @@
 
 #include "expression.h"
 #include "../exception.h"
+#include "../internal.h"
 #include <avs/win.h>
 
 

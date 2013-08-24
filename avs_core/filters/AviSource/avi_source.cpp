@@ -32,7 +32,7 @@
 // which is not derived from or based on Avisynth, such as 3rd-party filters,
 // import and export plugins, or graphical user interfaces.
 
-#include "../../core/internal.h"
+#include <avisynth.h>
 #include "../../convert/convert.h"
 #include "../../filters/transform.h"
 #include "../../core/alignplanar.h"

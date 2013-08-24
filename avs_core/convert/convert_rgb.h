@@ -35,7 +35,7 @@
 #ifndef __Convert_RGB_H__
 #define __Convert_RGB_H__
 
-#include "../core/internal.h"
+#include <avisynth.h>
 
 
 class RGB24to32 : public GenericVideoFilter

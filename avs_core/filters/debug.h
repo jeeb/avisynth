@@ -39,7 +39,7 @@
 #ifndef __Null_H__
 #define __Null_H__
 
-#include "../core/internal.h"
+#include <avisynth.h>
 
 
 class Null : public GenericVideoFilter 

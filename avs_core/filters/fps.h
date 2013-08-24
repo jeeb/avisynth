@@ -34,7 +34,7 @@
 #ifndef __FPS_H__
 #define __FPS_H__
 
-#include "../core/internal.h"
+#include <avisynth.h>
 
 
 /********************************************************************

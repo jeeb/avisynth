@@ -7,7 +7,7 @@
 // (at your option) any later version.
 //
 
-#include "../core/internal.h"
+#include <avisynth.h>
 #include <avisynth_c.h>
 #include <avs/win.h>
 #include <algorithm>
@@ -688,6 +688,7 @@ end:
 }
 
 
+#include "internal.h"
 extern const AVSFunction CPlugin_filters[] = {
     {"LoadCPlugin", "s", load_c_plugin },
     {"Load_Stdcall_Plugin", "s", load_c_plugin },

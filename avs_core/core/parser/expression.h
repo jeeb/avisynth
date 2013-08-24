@@ -35,7 +35,7 @@
 #ifndef __Expression_H__
 #define __Expression_H__
 
-#include "../../core/internal.h"
+#include <avisynth.h>
 
 
 /********************************************************************

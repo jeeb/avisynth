@@ -34,7 +34,7 @@
 // import and export plugins, or graphical user interfaces.
 
 
-#include "../../core/internal.h"
+#include <avisynth.h>
 
 
 class ConditionalSelect : public GenericVideoFilter

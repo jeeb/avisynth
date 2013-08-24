@@ -37,6 +37,7 @@
 #include <cstdlib>
 #include <malloc.h>
 #include "../core/minmax.h"
+#include "../core/internal.h"
 
  
 /********************************************************************

@@ -36,8 +36,7 @@
 #ifndef __Color_h
 #define __Color_h
 
-#include "../core/internal.h"
-
+#include <avisynth.h>
 
 typedef union {
 	DWORD	data;

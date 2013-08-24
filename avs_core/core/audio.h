@@ -34,7 +34,7 @@
 #ifndef __Audio_H__
 #define __Audio_H__
 
-#include "../core/internal.h"
+#include <avisynth.h>
 #include <cmath>
 
 

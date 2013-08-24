@@ -35,7 +35,7 @@
 #ifndef __Script_H__
 #define __Script_H__
 
-#include "../../core/internal.h"
+#include <avisynth.h>
 #include "expression.h"
 #include "scriptparser.h"
 #include <tchar.h>

@@ -35,7 +35,7 @@
 #ifndef __Greyscale_H__
 #define __Greyscale_H__
 
-#include "../core/internal.h"
+#include <avisynth.h>
 
 
 

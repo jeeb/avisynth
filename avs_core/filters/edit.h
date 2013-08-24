@@ -35,7 +35,7 @@
 #ifndef __Edit_H__
 #define __Edit_H__
 
-#include "../core/internal.h"
+#include <avisynth.h>
 #include "merge.h"
 
 /********************************************************************

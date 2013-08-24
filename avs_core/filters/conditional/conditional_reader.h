@@ -18,7 +18,7 @@
   sh0dan[at]stofanet.dk
 */
 
-#include "../../core/internal.h"
+#include <avisynth.h>
 #include <cstdio>
 #include <cstdlib>
 

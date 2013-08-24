@@ -35,7 +35,7 @@
 #ifndef __Text_overlay_H__
 #define __Text_overlay_H__
 
-#include "../core/internal.h"
+#include <avisynth.h>
 #include <avs/win.h>
 #include <cstdio>
 

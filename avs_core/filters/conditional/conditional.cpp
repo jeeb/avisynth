@@ -39,6 +39,7 @@
 #include <cmath>
 #include <avs/win.h>
 #include <avs/minmax.h>
+#include "../../core/internal.h"
 
 extern const AVSFunction Conditional_filters[] = {
   {  "ConditionalSelect","csc+[show]b", ConditionalSelect::Create },

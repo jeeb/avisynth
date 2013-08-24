@@ -37,7 +37,7 @@
 #ifndef __Convert_MATRIX_H__
 #define __Convert_MATRIX_H__
 
-#include "../core/internal.h"
+#include <avisynth.h>
 #include "../core/softwire_helpers.h"
 
 

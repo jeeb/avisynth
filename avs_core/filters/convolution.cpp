@@ -40,6 +40,7 @@
 // adapted from General Convolution 3D for VDub by Gunnar Thalin (guth@home.se)
 
 #include "Convolution.h"
+#include "../core/internal.h"
 
 
 /********************************************************************

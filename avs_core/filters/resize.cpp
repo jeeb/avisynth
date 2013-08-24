@@ -34,7 +34,7 @@
 
 
 #include "resize.h"
-
+#include "../core/internal.h"
 
 
 

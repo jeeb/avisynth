@@ -35,7 +35,7 @@
 #ifndef __Transform_H__
 #define __Transform_H__
 
-#include "../core/internal.h"
+#include <avisynth.h>
 
 
 /********************************************************************

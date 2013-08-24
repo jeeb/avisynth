@@ -35,7 +35,7 @@
 #ifndef __ScriptParser_H__
 #define __ScriptParser_H__
 
-#include "../../core/internal.h"
+#include <avisynth.h>
 #include "expression.h"
 #include "tokenizer.h"
 #include "script.h"

@@ -35,6 +35,7 @@
 
 #include "histogram.h"
 #include "../core/info.h"
+#include "../core/internal.h"
 #include "../convert/convert_audio.h"
 #include <avs/win.h>
 #include <avs/minmax.h>

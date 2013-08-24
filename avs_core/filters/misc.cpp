@@ -36,6 +36,7 @@
 #include "misc.h"
 #include "../core/minmax.h"
 #include "../core/bitblt.h"
+#include "../core/internal.h"
 
 
 
