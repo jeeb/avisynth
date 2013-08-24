@@ -41,6 +41,7 @@
 
 #include <avs/win.h>
 #include <objbase.h>
+#include "critical_guard.h"
 
 #include <string>
 #include <cstdarg>
@@ -1062,33 +1063,25 @@ void ScriptEnvironment::AddFunction(const char* name, const char* params, ApplyF
 
 AVSValue ScriptEnvironment::GetVar(const char* name) {
   if (closing) return AVSValue();  // We easily risk  being inside the critical section below, while deleting variables.
-  EnterCriticalSection(&cs_var_table);
-  AVSValue retval;
-  try  {
-    retval = var_table->Get(name);
+  
+  {
+    CriticalGuard lock(cs_var_table);
+    return var_table->Get(name);
   }
-  catch(...)  {
-    LeaveCriticalSection(&cs_var_table);
-    throw;
-  }
-  LeaveCriticalSection(&cs_var_table);
-  return retval;
 }
 
 bool ScriptEnvironment::SetVar(const char* name, const AVSValue& val) {
   if (closing) return true;  // We easily risk  being inside the critical section below, while deleting variables.
-  EnterCriticalSection(&cs_var_table);
-  bool retval = var_table->Set(name, val);
-  LeaveCriticalSection(&cs_var_table);
-  return retval;
+
+  CriticalGuard lock(cs_var_table);
+  return var_table->Set(name, val);
 }
 
 bool ScriptEnvironment::SetGlobalVar(const char* name, const AVSValue& val) {
   if (closing) return true;  // We easily risk  being inside the critical section below, while deleting variables.
-  EnterCriticalSection(&cs_var_table);
-  bool retval = global_var_table->Set(name, val);
-  LeaveCriticalSection(&cs_var_table);
-  return retval;
+
+  CriticalGuard lock(cs_var_table);
+  return global_var_table->Set(name, val);
 }
 
 char* GetRegString(HKEY rootKey, const char path[], const char entry[]) {
@@ -1362,14 +1355,14 @@ PVideoFrame __stdcall ScriptEnvironment::NewVideoFrame(const VideoInfo& vi, int 
 bool ScriptEnvironment::MakeWritable(PVideoFrame* pvf) {
   const PVideoFrame& vf = *pvf;
 
-  EnterCriticalSection(&cs_relink_video_frame_buffer);//we don't want cacheMT::LockVFB to mess up the refcount
-  // If the frame is already writable, do nothing.
-  if (vf->IsWritable()) {
-    LeaveCriticalSection(&cs_relink_video_frame_buffer);
-    return false;
-  }
+  {
+    //we don't want cacheMT::LockVFB to mess up the refcount
+    CriticalGuard lock(cs_relink_video_frame_buffer);
 
-  LeaveCriticalSection(&cs_relink_video_frame_buffer);
+    // If the frame is already writable, do nothing.
+    if (vf->IsWritable())
+      return false;
+  }
 
   // Otherwise, allocate a new frame (using NewVideoFrame) and
   // copy the data into it.  Then modify the passed PVideoFrame
@@ -1408,21 +1401,18 @@ void ScriptEnvironment::AtExit(IScriptEnvironment::ShutdownFunc function, void* 
 }
 
 void ScriptEnvironment::PushContext(int level) {
-  EnterCriticalSection(&cs_var_table);
+  CriticalGuard lock(cs_var_table);
   var_table = new VarTable(var_table, global_var_table);
-  LeaveCriticalSection(&cs_var_table);
 }
 
 void ScriptEnvironment::PopContext() {
-  EnterCriticalSection(&cs_var_table);
+  CriticalGuard lock(cs_var_table);
   var_table = var_table->Pop();
-  LeaveCriticalSection(&cs_var_table);
 }
 
 void ScriptEnvironment::PopContextGlobal() {
-  EnterCriticalSection(&cs_var_table);
+  CriticalGuard lock(cs_var_table);
   global_var_table = global_var_table->Pop();
-  LeaveCriticalSection(&cs_var_table);
 }
 
 
@@ -1462,7 +1452,7 @@ void* ScriptEnvironment::ManageCache(int key, void* data) {
     // Check to make sure the vfb wasn't discarded and is really a LinkedVideoFrameBuffer.
     if ((lvfb->data == 0) || (lvfb->signature != LinkedVideoFrameBuffer::ident)) break;
 
-    EnterCriticalSection(&cs_relink_video_frame_buffer); //Don't want to mess up with GetFrameBuffer(2)
+    CriticalGuard lock(cs_relink_video_frame_buffer); //Don't want to mess up with GetFrameBuffer(2)
 
     // Adjust unpromoted sublist if required
     if (unpromotedvfbs == lvfb) unpromotedvfbs = lvfb->next;
@@ -1472,8 +1462,6 @@ void* ScriptEnvironment::ManageCache(int key, void* data) {
 
     // Flag it as returned, i.e. for immediate reuse.
     lvfb->returned = true;
-
-    LeaveCriticalSection(&cs_relink_video_frame_buffer);
 
     return (void*)1;
   }
@@ -1508,7 +1496,7 @@ void* ScriptEnvironment::ManageCache(int key, void* data) {
     // Check to make sure the vfb wasn't discarded and is really a LinkedVideoFrameBuffer.
     if ((lvfb->data == 0) || (lvfb->signature != LinkedVideoFrameBuffer::ident)) break;
 
-    EnterCriticalSection(&cs_relink_video_frame_buffer); //Don't want to mess up with GetFrameBuffer(2)
+    CriticalGuard lock(cs_relink_video_frame_buffer); //Don't want to mess up with GetFrameBuffer(2)
 
     // Adjust unpromoted sublist if required
     if (unpromotedvfbs == lvfb) unpromotedvfbs = lvfb->next;
@@ -1518,8 +1506,6 @@ void* ScriptEnvironment::ManageCache(int key, void* data) {
 
     // Flag it as not returned, i.e. currently managed
     lvfb->returned = false;
-
-    LeaveCriticalSection(&cs_relink_video_frame_buffer);
 
     return (void*)1;
   }
@@ -1531,15 +1517,13 @@ void* ScriptEnvironment::ManageCache(int key, void* data) {
 
     Cache *cache = (Cache*)data;
 
-    EnterCriticalSection(&cs_relink_video_frame_buffer); // Borrow this lock in case of post compile graph mutation
+    CriticalGuard lock(cs_relink_video_frame_buffer); // Borrow this lock in case of post compile graph mutation
 
     if (CacheHead) CacheHead->priorCache = &(cache->nextCache);
     cache->priorCache = &CacheHead;
 
     cache->nextCache = CacheHead;
     CacheHead = cache;
-
-    LeaveCriticalSection(&cs_relink_video_frame_buffer);
 
     return (void*)1;
   }
@@ -1551,12 +1535,10 @@ void* ScriptEnvironment::ManageCache(int key, void* data) {
 
     VideoFrameBuffer *vfb = (VideoFrameBuffer*)data;
 
-    EnterCriticalSection(&cs_relink_video_frame_buffer); //Don't want to mess up with GetFrameBuffer(2)
+    CriticalGuard lock(cs_relink_video_frame_buffer); //Don't want to mess up with GetFrameBuffer(2)
 
     // Bump the refcount while under lock
     InterlockedIncrement(&vfb->refcount);
-
-    LeaveCriticalSection(&cs_relink_video_frame_buffer);
 
     return (void*)1;
   }
@@ -1698,7 +1680,7 @@ LinkedVideoFrameBuffer* ScriptEnvironment::GetFrameBuffer2(int size) {
 }
 
 VideoFrameBuffer* ScriptEnvironment::GetFrameBuffer(int size) {
-  EnterCriticalSection(&cs_relink_video_frame_buffer);
+  CriticalGuard lock(cs_relink_video_frame_buffer);
 
   LinkedVideoFrameBuffer* result = GetFrameBuffer2(size);
   if (!result || !result->data) {
@@ -1721,8 +1703,6 @@ VideoFrameBuffer* ScriptEnvironment::GetFrameBuffer(int size) {
     if (!result || !result->data) {
       // Damn!! Damn!! we are really screwed, winge!
       if (result) Relink(lost_video_frame_buffers.prev, result, &lost_video_frame_buffers);
-
-      LeaveCriticalSection(&cs_relink_video_frame_buffer);
 
       ThrowError("GetFrameBuffer: Returned a VFB with a 0 data pointer!\n"
                  "size=%d, max=%I64d, used=%I64d\n"
@@ -1747,7 +1727,6 @@ VideoFrameBuffer* ScriptEnvironment::GetFrameBuffer(int size) {
   // Flag it as returned, i.e. currently not managed
   result->returned = true;
 
-  LeaveCriticalSection(&cs_relink_video_frame_buffer);
   return result;
 }
 
@@ -1899,10 +1878,8 @@ char* ScriptEnvironment::SaveString(const char* s, int len) {
   // This function is mostly used to save strings for variables
   // so it is fairly acceptable that it shares the same critical
   // section as the vartable
-  EnterCriticalSection(&cs_var_table);
-  char* retval = string_dump.SaveString(s, len);
-  LeaveCriticalSection(&cs_var_table);
-  return retval;
+  CriticalGuard lock(cs_var_table);
+  return string_dump.SaveString(s, len);
 }
 
 
