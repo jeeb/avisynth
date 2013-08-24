@@ -33,8 +33,9 @@
 // import and export plugins, or graphical user interfaces.
 
 
-#include "win.h"
-#include "minmax.h"
+#include <avs/win.h>
+#include <avs/minmax.h>
+#include "bitblt.h"
 #include "exception.h"
 #include <vfw.h>
 #include <cstdio>

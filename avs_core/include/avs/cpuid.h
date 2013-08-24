@@ -1,6 +1,3 @@
-// Avisynth v2.5.  Copyright 2002 Ben Rudiak-Gould et al.
-// http://www.avisynth.org
-
 // This program is free software; you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
 // the Free Software Foundation; either version 2 of the License, or
@@ -32,59 +29,31 @@
 // which is not derived from or based on Avisynth, such as 3rd-party filters,
 // import and export plugins, or graphical user interfaces.
 
-// Overlay (c) 2003, 2004 by Klaus Post
+#ifndef AVSCORE_CPUID_H
+#define AVSCORE_CPUID_H
 
-#ifndef __Overlay_h
-#define __Overlay_h
-
-#include "../../core/internal.h"
-#include "444convert.h"
-#include "overlayfunctions.h"
-#include "blend_asm.h"
-
-
-class Overlay : public GenericVideoFilter
-/**
-  * 
-**/
-{
-public:
-  Overlay(PClip _child, AVSValue args, IScriptEnvironment *env);
-  PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment *env);
-  ~Overlay();
-  static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env);
-
-private:
-  OverlayFunction* SelectFunction(const char* name, IScriptEnvironment* env);
-  ConvertFrom444* SelectOutputCS(const char* name, IScriptEnvironment* env);
-  ConvertTo444* SelectInputCS(VideoInfo* VidI, IScriptEnvironment* env);  
-  void ClipFrames(Image444* input, Image444* overlay, int x, int y);
-  void FetchConditionals(IScriptEnvironment* env);
-
-  VideoInfo overlayVi;
-  VideoInfo maskVi;
-  VideoInfo* inputVi;
-
-  ConvertFrom444* outputConv;
-  ConvertTo444* inputConv;
-  ConvertTo444* overlayConv;
-  ConvertTo444* maskConv;
-  Image444* img;
-  Image444* overlayImg;
-  Image444* maskImg;
-  PClip overlay;
-  PClip mask;
-  int opacity;
-  OverlayFunction* func;
-  bool greymask;
-  bool ignore_conditional;
-  bool full_range;
-  int offset_x, offset_y;
-  int op_offset;
-  int con_x_offset;
-  int con_y_offset;
-  int inputCS;
+// For GetCPUFlags.  These are backwards-compatible with those in VirtualDub.
+enum {
+                    /* oldest CPU to support extension */
+  CPUF_FORCE        =  0x01,   //  N/A
+  CPUF_FPU          =  0x02,   //  386/486DX
+  CPUF_MMX          =  0x04,   //  P55C, K6, PII
+  CPUF_INTEGER_SSE  =  0x08,   //  PIII, Athlon
+  CPUF_SSE          =  0x10,   //  PIII, Athlon XP/MP
+  CPUF_SSE2         =  0x20,   //  PIV, K8
+  CPUF_3DNOW        =  0x40,   //  K6-2
+  CPUF_3DNOW_EXT    =  0x80,   //  Athlon
+  CPUF_X86_64       =  0xA0,   //  Hammer (note: equiv. to 3DNow + SSE2, which
+                               //          only Hammer will have anyway)
+  CPUF_SSE3         = 0x100,   //  PIV+, K8 Venice
+  CPUF_SSSE3        = 0x200,   //  Core 2
+  CPUF_SSE4         = 0x400,   //  Penryn, Wolfdale, Yorkfield
+  CPUF_SSE4_1       = 0x400,
+  CPUF_SSE4_2       = 0x800,   //  Nehalem
 };
 
+#ifdef BUILDING_AVSCORE
+long GetCPUFlags();
+#endif
 
-#endif //Overlay_h
+#endif // AVSCORE_CPUID_H

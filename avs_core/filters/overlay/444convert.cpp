@@ -35,6 +35,7 @@
 // Overlay (c) 2003, 2004 by Klaus Post
 
 #include "444convert.h"
+#include <avs/cpuid.h>
 #include <cstring>
 
 

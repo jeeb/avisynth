@@ -8,8 +8,8 @@
 //
 
 #include "../core/internal.h"
-#include "avisynth_c.h"
-#include "win.h"
+#include <avisynth_c.h>
+#include <avs/win.h>
 #include <algorithm>
 #include <cstdarg>
 

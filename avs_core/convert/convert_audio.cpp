@@ -36,7 +36,7 @@
 // Copyright (c) Klaus Post 2001 - 2004
 // Copyright (c) Ian Brabham 2005
 
-#include "../core/avisynth.h"
+#include <avisynth.h>
 #include "convert_audio.h"
 #include <malloc.h>
 

@@ -14,7 +14,7 @@ IF( MSVC_IDE )  # Check for Visual Studio
 ENDIF()
 
 # Specify include directories
-target_include_directories("AvsCore" PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+target_include_directories("AvsCore" PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
 # Specify preprocessor definitions
 target_compile_definitions("AvsCore" PRIVATE BUILDING_AVSCORE)
 

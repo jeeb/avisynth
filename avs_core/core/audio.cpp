@@ -32,12 +32,13 @@
 // which is not derived from or based on Avisynth, such as 3rd-party filters,
 // import and export plugins, or graphical user interfaces.
 
-#include "../core/avisynth.h"
+#include <avisynth.h>
+#include <avs/win.h>
+#include <avs/minmax.h>
+
 #include "audio.h"
 #include "../convert/convert_audio.h"
 #include <cstdio>
-#include "core/win.h"
-#include "core/minmax.h"
 
 #define BIGBUFFSIZE (2048*1024) // Use a 2Mb buffer for EnsureVBRMP3Sync seeking & Normalize scanning
 

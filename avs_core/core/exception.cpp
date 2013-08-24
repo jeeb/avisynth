@@ -39,7 +39,7 @@
  */
 
 #include "exception.h"
-#include "win.h"
+#include <avs/win.h>
 #include <cassert>
 
 static const char * const StringSystemError(const unsigned code)

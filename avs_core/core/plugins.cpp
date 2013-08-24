@@ -35,8 +35,10 @@
 
 #include <cstdio>
 #include <malloc.h>
-#include "win.h"
-#include "minmax.h"
+#include <avs/win.h>
+#include <avs/minmax.h>
+#include <avs/cpuid.h>
+#include "bitblt.h"
 #include "internal.h"
 
 const char* loadplugin_prefix = NULL;

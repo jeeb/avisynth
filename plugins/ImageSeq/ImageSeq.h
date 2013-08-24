@@ -40,7 +40,7 @@
 #include <cassert>
 
 #include "il.h"
-#include "core/win.h"
+#include <avs/win.h>
 
 
 class ImageWriter : public GenericVideoFilter 

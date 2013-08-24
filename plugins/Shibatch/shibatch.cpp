@@ -21,7 +21,7 @@ Copyright © 2003, Klaus Post
 
 *******************************************************/
 
-#include <core/avisynth.h>
+#include <avisynth.h>
 #include "ssrc-convert.h"
 #include "supereq.h"
 

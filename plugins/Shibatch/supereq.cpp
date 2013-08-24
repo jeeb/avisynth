@@ -26,7 +26,7 @@ Copyright © 2003, Klaus Post
 #include "paramlist.h"
 #include <vector>
 #include <core/minmax.h>
-#include <core/avisynth.h>
+#include <avisynth.h>
 
 
 

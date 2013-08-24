@@ -18,7 +18,7 @@ Copyright © 2003, Klaus Post
 *******************************************************/
 
 
-#include <core/avisynth.h>
+#include <avisynth.h>
 #include <malloc.h>
 #include <cstring>
 #include "PFC/mem_block.h"

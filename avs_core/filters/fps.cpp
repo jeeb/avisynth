@@ -34,8 +34,9 @@
 
 
 #include "fps.h"
-#include "core/win.h"
-#include "core/minmax.h"
+#include <avs/win.h>
+#include <avs/minmax.h>
+#include "../core/bitblt.h"
 
 
 

@@ -35,7 +35,8 @@
 
 #include "field.h"
 #include "resample.h"
-#include "core/minmax.h"
+#include "../core/minmax.h"
+#include "../core/bitblt.h"
 
 
 /********************************************************************

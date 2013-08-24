@@ -19,7 +19,7 @@
 //	Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
 #include <excpt.h>
-#include "cpuid.h"
+#include <avs/cpuid.h>
 
 #define CPUF_SUPPORTS_SSE                       (0x00000010L)
 #define CPUF_SUPPORTS_SSE2                      (0x00000020L)

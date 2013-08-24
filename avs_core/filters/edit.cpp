@@ -36,8 +36,8 @@
 #include "../convert/convert_audio.h"
 #include <cmath>
 #include <climits>
-#include "../core/win.h"
-#include "../core/minmax.h"
+#include <avs/win.h>
+#include <avs/minmax.h>
 
 
 

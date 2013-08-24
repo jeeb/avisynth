@@ -21,7 +21,7 @@
 #ifndef f_FILE64_H
 #define f_FILE64_H
 
-#include "../../core/win.h"
+#include <avs/win.h>
 #include <mmsystem.h>
 
 

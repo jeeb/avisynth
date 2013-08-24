@@ -921,8 +921,7 @@ private:
 };
 #endif
 
-#include "cpuid.h"
-#include "bitblt.h"
+#include <avs/cpuid.h>
 
 #if 0
 #define MAX_INT 0x7fffffff

@@ -38,9 +38,9 @@
 #define __Overlay_funcs_h
 
 #include "../../core/internal.h"
+#include "../../core/minmax.h"
 #include "imghelpers.h"
 #include "blend_asm.h"
-#include "core/minmax.h"
 
 class OverlayFunction {
 public:

@@ -51,7 +51,7 @@ enum {MC_PromoteVideoFrameBuffer=0xFFFF0003};
 enum {MC_RegisterCache          =0xFFFF0004};
 enum {MC_IncVFBRefcount         =0xFFFF0005};
 
-#include "core/avisynth.h"
+#include <avisynth.h>
 #include <cstring>
 
 

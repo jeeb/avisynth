@@ -36,7 +36,7 @@
 
 #include "overlayfunctions.h"
 #include <cmath>
-#include "core/minmax.h"
+#include "../../core/minmax.h"
 
 void OL_DifferenceImage::BlendImageMask(Image444* base, Image444* overlay, Image444* mask) {
   BYTE* baseY = base->GetPtr(PLANAR_Y);

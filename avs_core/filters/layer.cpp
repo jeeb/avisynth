@@ -38,8 +38,8 @@
 // by "poptones" (poptones@myrealbox.com)
 
 #include "layer.h"
-#include "../core/win.h"
-#include "../core/minmax.h"
+#include <avs/win.h>
+#include <avs/minmax.h>
 
 
 

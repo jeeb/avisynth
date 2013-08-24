@@ -34,7 +34,7 @@
 
 
 #include "greyscale.h"
-#include "core/win.h"
+#include <avs/win.h>
 #include <cstdlib>
 
 

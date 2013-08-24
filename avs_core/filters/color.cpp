@@ -35,8 +35,8 @@
 
 #include <cstdio>
 #include <cmath>
-#include "../core/win.h"
-#include "../core/minmax.h"
+#include <avs/win.h>
+#include <avs/minmax.h>
 
 
 /* Color YUV originally by Kiraru2002(masani)

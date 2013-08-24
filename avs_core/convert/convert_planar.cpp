@@ -39,8 +39,8 @@
 #include "../filters/planeswap.h"
 #include "../filters/field.h"
 #include <malloc.h>
-#include "../core/win.h"
-#include "../core/minmax.h"
+#include <avs/win.h>
+#include <avs/minmax.h>
 
 #define USE_DYNAMIC_COMPILER true
 

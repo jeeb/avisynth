@@ -37,7 +37,7 @@
 
 typedef float REAL;
 
-#include <core/avisynth.h>
+#include <avisynth.h>
 #include "ssrc.h"
 
 

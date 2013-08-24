@@ -33,8 +33,8 @@
 // import and export plugins, or graphical user interfaces.
  
 
-#include <core/avisynth.h>
-#include <core/win.h>
+#include <avisynth.h>
+#include <avs/win.h>
 
 #include <streams.h>
 #include <stdio.h>

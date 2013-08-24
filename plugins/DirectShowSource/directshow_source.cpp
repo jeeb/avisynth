@@ -34,7 +34,7 @@
 
 
 #include "directshow_source.h"
-#include <core/minmax.h>
+#include <avs/minmax.h>
 
 #define DSS_VERSION "2.6.0"
 

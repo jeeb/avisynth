@@ -4,8 +4,8 @@
 #ifndef f_ERROR_H
 #define f_ERROR_H
 
-#include "core/avisynth.h"
-#include "core/win.h"
+#include <avisynth.h>
+#include <avs/win.h>
 
 static inline AvisynthError MyMemoryError() {
   return AvisynthError("Out of memory");

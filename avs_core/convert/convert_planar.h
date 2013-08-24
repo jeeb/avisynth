@@ -37,11 +37,11 @@
 #ifndef __Convert_PLANAR_H__
 #define __Convert_PLANAR_H__
 
+#include <avs/win.h>
 #include "../core/internal.h"
 #include "convert_matrix.h"
 #include "convert_rgbtoy8.h"
 #include "../filters/resample.h"
-#include "../core/win.h"
 
 enum {Rec601=0, Rec709=1, PC_601=2, PC_709=3, AVERAGE=4 };
 

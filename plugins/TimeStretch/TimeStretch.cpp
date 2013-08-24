@@ -35,7 +35,7 @@
 // AviSynth -> SoundTouch interface (c) 2004, Klaus Post.
 
 #include <vector>
-#include <core/avisynth.h>
+#include <avisynth.h>
 #include "SoundTouch/SoundTouch.h"
 
 #define BUFFERSIZE 8192

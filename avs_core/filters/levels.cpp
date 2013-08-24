@@ -37,7 +37,7 @@
 #include "limiter.h"
 #include <cstdio>
 #include <cmath>
-#include "core/minmax.h"
+#include "../core/minmax.h"
 
 
 #define PI        3.141592653589793

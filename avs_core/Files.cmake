@@ -3,11 +3,8 @@ FILE(GLOB AvsCore_Sources RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}"
   "*.cpp"
   "*.h"
 
-  "audio/*.asm"
-  "audio/*.c"
-  "audio/*.cpp"
-  "audio/*.h"
-  "audio/*.def"
+  "include/*.h"
+  "include/avs/*.h"
 
   "convert/*.c"
   "convert/*.cpp"

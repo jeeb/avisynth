@@ -37,8 +37,8 @@
 #include "../../core/parser/scriptparser.h"
 #include "conditional_reader.h"
 #include <cmath>
-#include "../../core/win.h"
-#include "../../core/minmax.h"
+#include <avs/win.h>
+#include <avs/minmax.h>
 
 extern const AVSFunction Conditional_filters[] = {
   {  "ConditionalSelect","csc+[show]b", ConditionalSelect::Create },

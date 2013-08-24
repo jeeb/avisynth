@@ -35,8 +35,8 @@
 
 #include <cmath>
 #include "cache.h"
-#include "win.h"
-#include "minmax.h"
+#include <avs/win.h>
+#include <avs/minmax.h>
 
 #ifdef _DEBUG
 #include <cstdio>

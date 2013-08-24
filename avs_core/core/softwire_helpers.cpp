@@ -36,7 +36,7 @@
 #include "softwire_helpers.h"
 #include <cstdio>
 #include <malloc.h>
-#include "win.h"
+#include <avs/win.h>
 
 static void ReportException(EXCEPTION_POINTERS* ei, BYTE* ret) {
   enum { buffsize=127 };

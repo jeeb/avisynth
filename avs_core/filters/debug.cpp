@@ -34,7 +34,8 @@
 
 
 #include "debug.h"
-#include "../core/win.h"
+#include <avs/win.h>
+#include "../core/bitblt.h"
 
 
 

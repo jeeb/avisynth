@@ -31,7 +31,7 @@
 
 #include "bitblt.h"
 #include "memcpy_amd.h"
-#include "cpuid.h"
+#include <avs/cpuid.h>
 #include <cstring>
 
 // Assembler bitblit by Steady

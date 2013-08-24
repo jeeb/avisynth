@@ -24,7 +24,7 @@ Copyright © 2003, Klaus Post
 #ifndef _SUPEREQ_H_
 #define _SUPEREQ_H_
 
-#include <core/avisynth.h>
+#include <avisynth.h>
 #include <malloc.h>
 #include <cstring>
 #include "PFC/mem_block.h"

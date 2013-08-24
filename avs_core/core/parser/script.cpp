@@ -39,8 +39,8 @@
 #include <cstdlib>
 #include <cmath>
 #include <io.h>
-#include "../win.h"
-#include "../minmax.h"
+#include <avs/win.h>
+#include <avs/minmax.h>
 
 
 /********************************************************************

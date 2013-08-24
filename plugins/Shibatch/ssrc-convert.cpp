@@ -33,7 +33,7 @@
 // import and export plugins, or graphical user interfaces.
 
 #include "ssrc-convert.h"
-#include <core/win.h>
+#include <avs/win.h>
 
 
 /******************************************

@@ -21,7 +21,7 @@
 #ifndef f_AVIINDEX_H
 #define f_AVIINDEX_H
 
-#include "core/win.h"
+#include <avs/win.h>
 #include <vfw.h>
 
 class AVIIndexChainNode;

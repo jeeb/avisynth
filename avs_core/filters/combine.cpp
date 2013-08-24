@@ -33,8 +33,9 @@
 // import and export plugins, or graphical user interfaces.
 
 #include "combine.h"
-#include "../core/win.h"
-#include "../core/minmax.h"
+#include "../core/bitblt.h"
+#include <avs/win.h>
+#include <avs/minmax.h>
 #include <cmath>
 
 

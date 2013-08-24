@@ -21,7 +21,7 @@
 #ifndef f_VIRTUALDUB_FASTREADSTREAM_H
 #define f_VIRTUALDUB_FASTREADSTREAM_H
 
-#include "../../core/win.h"
+#include <avs/win.h>
 
 class FastReadStreamHeader;
 

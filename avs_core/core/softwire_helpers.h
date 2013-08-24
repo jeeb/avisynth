@@ -35,8 +35,8 @@
 #ifndef __Softwire_Helpers_H__
 #define __Softwire_Helpers_H__
 
-#include "../core/internal.h"
-#include "softwire/CodeGenerator.hpp"
+#include "internal.h"
+#include "../softwire/CodeGenerator.hpp"
 
 using namespace SoftWire; 
 

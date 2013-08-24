@@ -47,8 +47,8 @@
  *   or mitigating code elsewhere.
  */
 
-#include "avisynth.h"
-#include "win.h"
+#include <avisynth.h>
+#include <avs/win.h>
 
 
 /**********************************************************************/

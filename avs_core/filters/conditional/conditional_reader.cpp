@@ -20,8 +20,8 @@
 
 #include "conditional_reader.h"
 #include <cstdlib>
-#include "../../core/win.h"
-#include "../../core/minmax.h"
+#include <avs/win.h>
+#include <avs/minmax.h>
 
 
 /*****************************************************************************

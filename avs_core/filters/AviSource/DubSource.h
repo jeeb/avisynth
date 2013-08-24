@@ -18,7 +18,7 @@
 #ifndef f_DUBSOURCE_H
 #define f_DUBSOURCE_H
 
-#include "core/win.h"
+#include <avs/win.h>
 #include <vfw.h>
 
 class InputFile;

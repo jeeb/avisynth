@@ -34,7 +34,7 @@
 
 
 #include "tokenizer.h"
-#include "../win.h"
+#include <avs/win.h>
 
 #include <cfloat>
 #include <climits>

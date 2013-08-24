@@ -34,7 +34,7 @@
 
 
 
-#include <core/avisynth.h>
+#include <avisynth.h>
 #include "ImageSeq.h"
 
 // Since devIL isn't threadsafe, we need to ensure that only one thread at the time requests frames
