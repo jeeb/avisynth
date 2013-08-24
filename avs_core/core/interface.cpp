@@ -305,8 +305,8 @@ int VideoFrameBuffer::GetRefcount() const { return refcount; }
 // class VideoFrame
 
 /* Baked ********************
-void VideoFrame::AddRef() { InterlockedIncrement((long *)&refcount); }
-void VideoFrame::Release() { if (refcount==1) InterlockedDecrement(&vfb->refcount); InterlockedDecrement((long *)&refcount); }
+void VideoFrame::AddRef() { InterlockedIncrement((int *)&refcount); }
+void VideoFrame::Release() { if (refcount==1) InterlockedDecrement(&vfb->refcount); InterlockedDecrement((int *)&refcount); }
 
 int VideoFrame::GetPitch() const { return pitch; }
 int VideoFrame::GetPitch(int plane) const { switch (plane) {case PLANAR_U: case PLANAR_V: return pitchUV;} return pitch; }
@@ -421,8 +421,8 @@ void VideoFrame::DESTRUCTOR() { Release(); }
 // class IClip
 
 /* Baked ********************
-  void IClip::AddRef() { InterlockedIncrement((long *)&refcnt); }
-  void IClip::Release() { InterlockedDecrement((long *)&refcnt); if (!refcnt) delete this; }
+  void IClip::AddRef() { InterlockedIncrement((int *)&refcnt); }
+  void IClip::Release() { InterlockedDecrement((int *)&refcnt); if (!refcnt) delete this; }
    Baked ********************/
 void IClip::AddRef() { InterlockedIncrement(&refcnt); }
 void IClip::Release() { if (!InterlockedDecrement(&refcnt)) delete this; }

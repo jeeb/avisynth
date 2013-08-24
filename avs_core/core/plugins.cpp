@@ -218,7 +218,7 @@ struct VF_ReadData_Video {
   DWORD dwFrameNumberL;
   DWORD dwFrameNumberH;
   void  *lpData;
-  long  lPitch;
+  int  lPitch;
 };
 
 struct VF_ReadData_Audio {
@@ -407,7 +407,7 @@ public:
 
   virtual void ScriptError(int e)               =0;
   virtual char* TranslateScriptError(void* cse)   =0;
-  virtual char** AllocTempString(long l)            =0;
+  virtual char** AllocTempString(int l)            =0;
 
   virtual CScriptValue LookupObjectMember(CScriptObject *obj, void *, char *szIdent) = 0;
 };
@@ -499,7 +499,7 @@ public:
 
   virtual bool RectFill(PixCoord x1, PixCoord y1, PixDim dx, PixDim dy, Pixel32 c) const;
 
-  virtual bool Histogram(PixCoord x, PixCoord y, PixCoord dx, PixCoord dy, long *pHisto, int iHistoType) const;
+  virtual bool Histogram(PixCoord x, PixCoord y, PixCoord dx, PixCoord dy, int *pHisto, int iHistoType) const;
 
   //// NEW AS OF VIRTUALDUB V1.2B
 
@@ -588,7 +588,7 @@ struct FilterFunctions;
 typedef int  (*FilterInitProc     )(FilterActivation *fa, const FilterFunctions *ff);
 typedef void (*FilterDeinitProc   )(FilterActivation *fa, const FilterFunctions *ff);
 typedef int  (*FilterRunProc      )(const FilterActivation *fa, const FilterFunctions *ff);
-typedef long (*FilterParamProc    )(FilterActivation *fa, const FilterFunctions *ff);
+typedef int (*FilterParamProc    )(FilterActivation *fa, const FilterFunctions *ff);
 typedef int  (*FilterConfigProc   )(FilterActivation *fa, const FilterFunctions *ff, HWND hWnd);
 typedef void (*FilterStringProc   )(const FilterActivation *fa, const FilterFunctions *ff, char *buf);
 typedef int  (*FilterStartProc    )(FilterActivation *fa, const FilterFunctions *ff);
@@ -614,7 +614,7 @@ public:
   virtual void InitButton(HWND)=0;
   virtual void Close()=0;
   virtual bool SampleCurrentFrame()=0;
-  virtual long SampleFrames()=0;
+  virtual int SampleFrames()=0;
 };
 
 //////////
@@ -669,12 +669,12 @@ typedef struct FilterDefinition {
 
 class FilterStateInfo {
 public:
-  long  lCurrentFrame;        // current output frame
-  long  lMicrosecsPerFrame;     // microseconds per output frame
-  long  lCurrentSourceFrame;    // current source frame
-  long  lMicrosecsPerSrcFrame;    // microseconds per source frame
-  long  lSourceFrameMS;       // source frame timestamp
-  long  lDestFrameMS;       // output frame timestamp
+  int  lCurrentFrame;        // current output frame
+  int  lMicrosecsPerFrame;     // microseconds per output frame
+  int  lCurrentSourceFrame;    // current source frame
+  int  lMicrosecsPerSrcFrame;    // microseconds per source frame
+  int  lSourceFrameMS;       // source frame timestamp
+  int  lDestFrameMS;       // output frame timestamp
 };
 
 // VFBitmap: VBitmap extended to hold filter-specific information
@@ -697,7 +697,7 @@ public:
   void *filter_data;
   VFBitmap &dst, &src;
   VFBitmap *__reserved0, *const last;
-  unsigned long x1, y1, x2, y2;
+  unsigned int x1, y1, x2, y2;
 
   FilterStateInfo *pfsi;
   IFilterPreview *ifp;
@@ -718,7 +718,7 @@ struct FilterFunctions {
   void (*ExceptOutOfMemory)();        // ADDED: V6 (VirtualDub 1.4)
   void (*Except)(const char *format, ...);  // ADDED: V6 (VirtualDub 1.4)
 
-  long (*getCPUFlags)();            // ADDED: V6 (VirtualDub 1.4)
+  int (*getCPUFlags)();            // ADDED: V6 (VirtualDub 1.4)
 };
 
 
@@ -767,7 +767,7 @@ bool VBitmap::RectFill(PixCoord x1, PixCoord y1, PixDim dx, PixDim dy, Pixel32 c
   throw AvisynthError("Unsupported VBitmap method: RectFill");
 }
 
-bool VBitmap::Histogram(PixCoord x, PixCoord y, PixCoord dx, PixCoord dy, long *pHisto, int iHistoType) const
+bool VBitmap::Histogram(PixCoord x, PixCoord y, PixCoord dx, PixCoord dy, int *pHisto, int iHistoType) const
 {
   throw AvisynthError("Unsupported VBitmap method: Histogram");
 }
@@ -798,7 +798,7 @@ public:
     virtual void InitButton(HWND) {}
     virtual void Close() {}
     virtual bool SampleCurrentFrame() { return false; }
-    virtual long SampleFrames() { return 0; }
+    virtual int SampleFrames() { return 0; }
 };
 
 
@@ -857,7 +857,7 @@ public:
     }
   }
   char* TranslateScriptError(void* cse) { return ""; }
-  char** AllocTempString(long l) { return (char**)0; }
+  char** AllocTempString(int l) { return (char**)0; }
   CScriptValue LookupObjectMember(CScriptObject *obj, void *, char *szIdent) { return CScriptValue(); }
 };
 
@@ -920,7 +920,7 @@ public:
     SetVFBitmap(src, &vbLast);
     SetVFBitmap(src, &vbDst);
 
-    long flags = fd->paramProc ? fd->paramProc(&fa, &g_filterFuncs) : FILTERPARAM_SWAP_BUFFERS;
+    int flags = fd->paramProc ? fd->paramProc(&fa, &g_filterFuncs) : FILTERPARAM_SWAP_BUFFERS;
     bool two_buffers = !!(flags & FILTERPARAM_SWAP_BUFFERS);
     bool needs_last = !!(flags & FILTERPARAM_NEEDS_LAST);
     bool src_needs_hdc = (vbSrc.dwFlags & VFBitmap::NEEDS_HDC);

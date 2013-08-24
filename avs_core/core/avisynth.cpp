@@ -84,13 +84,13 @@ const AVSFunction* builtin_functions[] = {
 
 // Global statistics counters
 struct {
-  unsigned long CleanUps;
-  unsigned long Losses;
-  unsigned long PlanA1;
-  unsigned long PlanA2;
-  unsigned long PlanB;
-  unsigned long PlanC;
-  unsigned long PlanD;
+  unsigned int CleanUps;
+  unsigned int Losses;
+  unsigned int PlanA1;
+  unsigned int PlanA2;
+  unsigned int PlanB;
+  unsigned int PlanC;
+  unsigned int PlanD;
   char tag[36];
 } g_Mem_stats = {0, 0, 0, 0, 0, 0, 0, "CleanUps, Losses, Plan[A1,A2,B,C,D]"};
 
@@ -827,7 +827,7 @@ class ScriptEnvironment : public IScriptEnvironment {
 public:
   ScriptEnvironment();
   void __stdcall CheckVersion(int version);
-  long __stdcall GetCPUFlags();
+  int __stdcall GetCPUFlags();
   char* __stdcall SaveString(const char* s, int length = -1);
   char* __stdcall Sprintf(const char* fmt, ...);
   char* __stdcall VSprintf(const char* fmt, void* val);
@@ -1055,7 +1055,7 @@ void ScriptEnvironment::CheckVersion(int version) {
     ThrowError("Plugin was designed for a later version of Avisynth (%d)", version);
 }
 
-long ScriptEnvironment::GetCPUFlags() { return ::GetCPUFlags(); }
+int ScriptEnvironment::GetCPUFlags() { return ::GetCPUFlags(); }
 
 void ScriptEnvironment::AddFunction(const char* name, const char* params, ApplyFunc apply, void* user_data) {
   function_table.AddFunction(ScriptEnvironment::SaveString(name), ScriptEnvironment::SaveString(params), apply, user_data);
@@ -1584,7 +1584,7 @@ LinkedVideoFrameBuffer* ScriptEnvironment::GetFrameBuffer2(int size) {
 
   // Before we allocate a new framebuffer, check our memory usage, and if we
   // are 12.5% or more above allowed usage discard some unreferenced frames.
-  if (memory_used >=  memory_max + max((long long)size, (memory_max >> 3)) ) {
+  if (memory_used >=  memory_max + max((__int64)size, (memory_max >> 3)) ) {
     ++g_Mem_stats.CleanUps;
     int freed = 0;
     int freed_count = 0;
@@ -1693,7 +1693,7 @@ VideoFrameBuffer* ScriptEnvironment::GetFrameBuffer(int size) {
     const __int64 save_max = memory_max;
 
     // Set memory_max to 12.5% below memory_used
-    memory_max = max(4*1024*1024ll, memory_used - max((long long)size, (memory_used/9)));
+    memory_max = max(4*1024*1024ll, memory_used - max((__int64)size, (memory_used/9)));
 
     // Retry the request
     result = GetFrameBuffer2(size);

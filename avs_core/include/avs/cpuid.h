@@ -53,7 +53,7 @@ enum {
 };
 
 #ifdef BUILDING_AVSCORE
-long GetCPUFlags();
+int GetCPUFlags();
 #endif
 
 #endif // AVSCORE_CPUID_H

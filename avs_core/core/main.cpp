@@ -968,7 +968,7 @@ STDMETHODIMP_(LONG) CAVIStreamSynth::Info(AVISTREAMINFOW *psi, LONG lSize) {
       int bytes_per_sample = vi->BytesPerAudioSample();
       asi.dwScale = bytes_per_sample;
       asi.dwRate = vi->audio_samples_per_second * bytes_per_sample;
-      asi.dwLength = (unsigned long)vi->num_audio_samples;
+      asi.dwLength = (unsigned int)vi->num_audio_samples;
       asi.dwSampleSize = bytes_per_sample;
       wcscpy(asi.szName, L"Avisynth audio #1");
     } else {
@@ -1124,17 +1124,17 @@ HRESULT CAVIStreamSynth::Read2(LONG lStart, LONG lSamples, LPVOID lpBuffer, LONG
   if (fAudio) {
     // buffer overflow patch -- Avery Lee - Mar 2006
     if (lSamples == AVISTREAMREAD_CONVENIENT)
-      lSamples = (long)vi->AudioSamplesFromFrames(1);
+      lSamples = (int)vi->AudioSamplesFromFrames(1);
 
     if (__int64(lStart)+lSamples > vi->num_audio_samples) {
-      lSamples = (long)(vi->num_audio_samples - lStart);
+      lSamples = (int)(vi->num_audio_samples - lStart);
       if (lSamples < 0) lSamples = 0;
     }
 
-    long bytes = (long)vi->BytesFromAudioSamples(lSamples);
+    int bytes = (int)vi->BytesFromAudioSamples(lSamples);
     if (lpBuffer && bytes > cbBuffer) {
-      lSamples = (long)vi->AudioSamplesFromBytes(cbBuffer);
-      bytes = (long)vi->BytesFromAudioSamples(lSamples);
+      lSamples = (int)vi->AudioSamplesFromBytes(cbBuffer);
+      bytes = (int)vi->BytesFromAudioSamples(lSamples);
     }
     if (plBytes) *plBytes = bytes;
     if (plSamples) *plSamples = lSamples;

@@ -315,9 +315,9 @@ typedef struct AVS_VideoFrameBuffer {
   int data_size;
   // sequence_number is incremented every time the buffer is changed, so
   // that stale views can tell they're no longer valid.
-  volatile long sequence_number;
+  volatile int sequence_number;
 
-  volatile long refcount;
+  volatile int refcount;
 } AVS_VideoFrameBuffer;
 
 // VideoFrame holds a "window" into a VideoFrameBuffer.
@@ -325,7 +325,7 @@ typedef struct AVS_VideoFrameBuffer {
 // AVS_VideoFrame is layed out identicly to IVideoFrame
 // DO NOT USE THIS STRUCTURE DIRECTLY
 typedef struct AVS_VideoFrame {
-  volatile long refcount;
+  volatile int refcount;
   AVS_VideoFrameBuffer * vfb;
   int offset, pitch, row_size, height, offsetU, offsetV, pitchUV;  // U&V offsets are from top of picture.
   int row_sizeUV, heightUV;
@@ -605,7 +605,7 @@ enum {
 
 AVSC_API(const char *, avs_get_error)(AVS_ScriptEnvironment *); // return 0 if no error
 
-AVSC_API(long, avs_get_cpu_flags)(AVS_ScriptEnvironment *);
+AVSC_API(int, avs_get_cpu_flags)(AVS_ScriptEnvironment *);
 AVSC_API(int, avs_check_version)(AVS_ScriptEnvironment *, int version);
 
 AVSC_API(char *, avs_save_string)(AVS_ScriptEnvironment *, const char* s, int length);

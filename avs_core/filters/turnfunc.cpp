@@ -88,8 +88,8 @@ void TurnRGB32(const unsigned char *srcp, unsigned char *dstp, const int rowsize
 			   const int height, const int src_pitch, const int dst_pitch,
 			   const int direction)
 {
-	unsigned long *l_srcp = (unsigned long *)srcp;
-	unsigned long *l_dstp = (unsigned long *)dstp;
+	unsigned int *l_srcp = (unsigned int *)srcp;
+	unsigned int *l_dstp = (unsigned int *)dstp;
 	int l_rowsize = rowsize/4;
 	int l_src_pitch = src_pitch/4;
 	int l_dst_pitch = dst_pitch/4;

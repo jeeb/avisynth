@@ -1552,7 +1552,7 @@ const unsigned short font[][20] = {
 #if 0
 #ifndef Pixel32
 
-typedef unsigned long Pixel32;
+typedef unsigned int Pixel32;
 
 #endif
 

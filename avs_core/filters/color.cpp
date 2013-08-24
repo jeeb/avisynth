@@ -116,7 +116,7 @@ Color::Color(PClip _child, double _gain_y, double _off_y, double _gamma_y, doubl
 PVideoFrame __stdcall Color::GetFrame(int frame, IScriptEnvironment* env)
 {
 	PVideoFrame src;
-	unsigned long *srcp;
+	unsigned int *srcp;
 	int pitch, w, h;
 	int i,j,wby4;
 	int modulo;
@@ -150,7 +150,7 @@ PVideoFrame __stdcall Color::GetFrame(int frame, IScriptEnvironment* env)
 	src = child->GetFrame(frame, env);
 	env->MakeWritable(&src);
 
-	srcp = (unsigned long *) src->GetWritePtr();
+	srcp = (unsigned int *) src->GetWritePtr();
 	pitch = src->GetPitch();
 	w = src->GetRowSize();
 	h = src->GetHeight();
@@ -193,7 +193,7 @@ PVideoFrame __stdcall Color::GetFrame(int frame, IScriptEnvironment* env)
       uvdiv=2;
       for (int y=0;y<h;y++) {
         for (int x=0;x<wby4;x++) {
-          unsigned long p=srcp[x];
+          unsigned int p=srcp[x];
           accum_Y[p&0xff]++;
           accum_Y[(p>>16)&0xff]++;
           accum_U[(p>>8)&0xff]++;
@@ -201,7 +201,7 @@ PVideoFrame __stdcall Color::GetFrame(int frame, IScriptEnvironment* env)
         }
         srcp+=pitch/4;
       }
-      srcp=(unsigned long *)src->GetReadPtr();
+      srcp=(unsigned int *)src->GetReadPtr();
     }
     int pixels = vi.width*vi.height;
     float avg_u=0, avg_v=0, avg_y=0;
@@ -296,7 +296,7 @@ PVideoFrame __stdcall Color::GetFrame(int frame, IScriptEnvironment* env)
 			  pixel.yuv.v  = LUT_V[pixel.yuv.v ];
 			  *srcp++ = pixel.data;
 		  }
-		  srcp = (unsigned long *)((unsigned char *)srcp + modulo) ;
+		  srcp = (unsigned int *)((unsigned char *)srcp + modulo) ;
 	  }
   } else if (vi.IsPlanar()) {
 	  BYTE* srcp2 = (BYTE*) src->GetWritePtr();

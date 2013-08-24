@@ -454,9 +454,9 @@ PVideoFrame __stdcall Cache::GetFrame(int n, IScriptEnvironment* env)
 
         // Damn! The contents have changed
         // record the details, update the counters
-        long ifaults = InterlockedIncrement(&i->faults) * 100;
+        int ifaults = InterlockedIncrement(&i->faults) * 100;
         if (ifaults > 300) ifaults = 300;
-        const long _fault_rate = InterlockedExchangeAdd(&fault_rate, 30+c) + 30+c; // Bias by number of cache entries searched
+        const int _fault_rate = InterlockedExchangeAdd(&fault_rate, 30+c) + 30+c; // Bias by number of cache entries searched
         if (ifaults > _fault_rate) fault_rate = ifaults;
         else if (fault_rate > 300) fault_rate = 300;
 
@@ -756,7 +756,7 @@ void __stdcall Cache::GetAudio(void* buf, __int64 start, __int64 count, IScriptE
     count = (vi.num_audio_samples - start);
   }
 
-  long _cs = ac_currentscore;
+  int _cs = ac_currentscore;
   if (start < ac_expected_next)
     _cs = InterlockedExchangeAdd(&ac_currentscore, -5) - 5;  // revisiting old ground - a cache could help
   else if (start > ac_expected_next)
@@ -816,7 +816,7 @@ void __stdcall Cache::GetAudio(void* buf, __int64 start, __int64 count, IScriptE
       child->GetAudio(buf, start, count, env);
 //      EnterCriticalSection(&cs_cache_A);
 
-      cache_count = min(count, (long long)maxsamplecount); // Remember maxsamplecount gets updated
+      cache_count = min(count, (__int64)maxsamplecount); // Remember maxsamplecount gets updated
       cache_start = start+count-cache_count;
       BYTE *buff=(BYTE *)buf;
       buff += vi.BytesFromAudioSamples(cache_start - start);
@@ -831,7 +831,7 @@ void __stdcall Cache::GetAudio(void* buf, __int64 start, __int64 count, IScriptE
   if ((start < cache_start) || (start > cache_start+maxsamplecount)) { //first sample is before cache or beyond linear reach -> restart cache
     _RPT1(0, "CA:%x: Restart\n", this);
 
-    cache_count = min(count, (long long)maxsamplecount);
+    cache_count = min(count, (__int64)maxsamplecount);
     cache_start = start;
     child->GetAudio(cache, cache_start, cache_count, env);
   }
@@ -933,7 +933,7 @@ int __stdcall Cache::SetCacheHints(int cachehints, int frame_range) {
           maxsamplecount = frame_range/samplesize;
           if (cache) {
             // Keep old cache contents
-            cache_count = min(cache_count, (long long)maxsamplecount);
+            cache_count = min(cache_count, (__int64)maxsamplecount);
             memcpy(newcache, cache, (size_t)(vi.BytesFromAudioSamples(cache_count)));
             delete[] cache;
           }

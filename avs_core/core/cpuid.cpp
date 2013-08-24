@@ -26,8 +26,8 @@
 
 // This is ridiculous.
 
-static long g_lCPUExtensionsAvailable;
-static long CPUCheckForSSESupport() {
+static int g_lCPUExtensionsAvailable;
+static int CPUCheckForSSESupport() {
 	__try {
 //		__asm andps xmm0,xmm0
 
@@ -43,7 +43,7 @@ static long CPUCheckForSSESupport() {
 	return g_lCPUExtensionsAvailable;
 }
 
-static long __declspec(naked) CPUCheckForExtensions() {
+static int __declspec(naked) CPUCheckForExtensions() {
 	__asm {
 		push	ebp
 		push	edi
@@ -161,7 +161,7 @@ nocheck:
 	}
 }
 
-long GetCPUFlags() {
-  static long lCPUExtensionsAvailable = CPUCheckForExtensions();
+int GetCPUFlags() {
+  static int lCPUExtensionsAvailable = CPUCheckForExtensions();
   return lCPUExtensionsAvailable;
 }

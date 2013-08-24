@@ -141,7 +141,7 @@ private:
   long fault_rate;   // A decaying average of 100 times the peak fault count, used to control vfb auto-locking
   long miss_count;   // Count of consecutive cache misses
 
-  unsigned long Tick;
+  unsigned int Tick;
   // These are global to all Cache instances
   static long Clock;
   static long cacheDepth;

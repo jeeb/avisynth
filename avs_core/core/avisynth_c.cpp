@@ -340,7 +340,7 @@ const char * AVSC_CC avs_get_error(AVS_ScriptEnvironment * p) // return 0 if no 
 }
 
 extern "C"
-long AVSC_CC avs_get_cpu_flags(AVS_ScriptEnvironment * p)
+int AVSC_CC avs_get_cpu_flags(AVS_ScriptEnvironment * p)
 {
 	p->error = 0;
 	return p->env->GetCPUFlags();

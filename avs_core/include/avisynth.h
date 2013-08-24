@@ -48,12 +48,12 @@ enum { AVISYNTH_INTERFACE_VERSION = 5 };
 
 // Raster types used by VirtualDub & Avisynth
 #define in64 (__int64)(unsigned short)
-typedef unsigned long   Pixel;    // this will break on 64-bit machines!
-typedef unsigned long   Pixel32;
+typedef unsigned int    Pixel;    // this will break on 64-bit machines!
+typedef unsigned int    Pixel32;
 typedef unsigned char   Pixel8;
-typedef long            PixCoord;
-typedef long            PixDim;
-typedef long            PixOffset;
+typedef int             PixCoord;
+typedef int             PixDim;
+typedef int             PixOffset;
 typedef unsigned char   BYTE;
 
 
@@ -934,7 +934,7 @@ class IScriptEnvironment {
 public:
   virtual __stdcall ~IScriptEnvironment() {}
 
-  virtual /*static*/ long __stdcall GetCPUFlags() = 0;
+  virtual /*static*/ int __stdcall GetCPUFlags() = 0;
 
   virtual char* __stdcall SaveString(const char* s, int length = -1) = 0;
   virtual char* __stdcall Sprintf(const char* fmt, ...) = 0;
