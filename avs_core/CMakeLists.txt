@@ -22,7 +22,7 @@ target_compile_definitions("AvsCore" PRIVATE BUILDING_AVSCORE)
 target_link_libraries("AvsCore" "Winmm.lib" "Vfw32.lib" "Msacm32.lib" "Gdi32.lib" "User32.lib" "Advapi32.lib" "Ole32.lib")
 
 # Add source dependencies
-add_subdirectory("3rd_party/SoftWire")
+add_subdirectory("softwire")
 target_link_libraries("AvsCore" "SoftWire")
 
 if (MSVC_IDE)    
