@@ -26,7 +26,7 @@ Copyright © 2003, Klaus Post
 typedef SFLOAT audio_sample;
 typedef audio_sample REAL_inout;
 
-#include "math_shared.h"
+#include "fft.h"
 
 
 class Buffer

@@ -32,7 +32,7 @@ Copyright © 2003, Klaus Post
 typedef SFLOAT audio_sample;
 typedef audio_sample REAL_inout;
 
-#include "math_shared.h"
+#include "fft.h"
 
 AVSValue __cdecl Create_SuperEq(AVSValue args, void*, IScriptEnvironment* env);
 AVSValue __cdecl Create_SuperEqCustom(AVSValue args, void*, IScriptEnvironment* env);
@@ -104,7 +104,7 @@ private:
 			rfft_w = mem_ops<REAL>::realloc(rfft_w,rfft_wsize);
 		}
 
-		dsp_math<REAL>::rdft(n,isign,x,rfft_ip,rfft_w);
+		fft<REAL>::rdft(n,isign,x,rfft_ip,rfft_w);
 	}
 
 	REAL izero(REAL x)

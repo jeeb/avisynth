@@ -9,7 +9,7 @@ set(ProjectName "Plugin${PluginName}")
 project(${ProjectName})
 list (APPEND SourceFiles
     "dbesi0.c"
-    "math_shared.h"
+    "fft.h"
     "paramlist.h"
     "ssrc.cpp"
     "ssrc.h"

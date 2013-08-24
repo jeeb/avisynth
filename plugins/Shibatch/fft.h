@@ -8,7 +8,7 @@
 #define PI 3.1415926535897932384626433832795
 
 template<class REAL>
-class dsp_math
+class fft
 {
 public:
 	/*

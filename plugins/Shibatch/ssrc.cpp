@@ -346,7 +346,7 @@ public:
 		wsize     = n2b/2;
 		fft_w     = (REAL*)_aligned_malloc(sizeof(REAL)*wsize, 64);
 
-		dsp_math<REAL>::rdft(n2b,1,stage2,fft_ip,fft_w);
+		fft<REAL>::rdft(n2b,1,stage2,fft_ip,fft_w);
 	  }
 
 //	  delay=0;
@@ -507,7 +507,7 @@ public:
 
 			//for(i=0;i<n2b2;i++) printf("%d:%g ",i,buf2[ch][i]);
 
-			dsp_math<REAL>::rdft(n2b,1,buf2[ch],fft_ip,fft_w);
+			fft<REAL>::rdft(n2b,1,buf2[ch],fft_ip,fft_w);
 
 
 			buf2[ch][0] = stage2[0]*buf2[ch][0];
@@ -528,7 +528,7 @@ public:
 			buf2[ch][i*2+1] = im;
 			  }
 
-			dsp_math<REAL>::rdft(n2b,-1,buf2[ch],fft_ip,fft_w);
+			fft<REAL>::rdft(n2b,-1,buf2[ch],fft_ip,fft_w);
 
 			for(i=osc,j=0;i<n2b2;i+=osf,j++)
 			  {
@@ -719,7 +719,7 @@ public:
     wsize     = n1b/2;
     fft_w     = (REAL*)_aligned_malloc(sizeof(REAL)*wsize, 64);
 
-    dsp_math<REAL>::rdft(n1b,1,stage1,fft_ip,fft_w);
+    fft<REAL>::rdft(n1b,1,stage1,fft_ip,fft_w);
   }
 
   /* Make stage 2 filter */
@@ -901,7 +901,7 @@ public:
 	    rps = i - n1b2;
 	    rp += j;
 
-	    dsp_math<REAL>::rdft(n1b,1,buf1[ch],fft_ip,fft_w);
+	    fft<REAL>::rdft(n1b,1,buf1[ch],fft_ip,fft_w);
 
 	    buf1[ch][0] = stage1[0]*buf1[ch][0];
 	    buf1[ch][1] = stage1[1]*buf1[ch][1]; 
@@ -917,7 +917,7 @@ public:
 		buf1[ch][i*2+1] = im;
 	      }
 
-	    dsp_math<REAL>::rdft(n1b,-1,buf1[ch],fft_ip,fft_w);
+	    fft<REAL>::rdft(n1b,-1,buf1[ch],fft_ip,fft_w);
 
 	    for(i=0;i<n1b2;i++) {
 	      buf2[ch][n2x+1+i] += buf1[ch][i];
