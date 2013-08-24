@@ -35,7 +35,7 @@
 #ifndef __Resample_H__
 #define __Resample_H__
 
-#include "../internal.h"
+#include "../core/internal.h"
 #include "resample_functions.h"
 #include "transform.h"
 #include "../core/softwire_helpers.h"

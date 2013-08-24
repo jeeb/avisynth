@@ -35,7 +35,7 @@
 #ifndef __Levels_H__
 #define __Levels_H__
 
-#include "../internal.h"
+#include "../core/internal.h"
 
 
 /********************************************************************

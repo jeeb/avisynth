@@ -42,7 +42,7 @@
 
 #define FP_STATE 0x9001f
 
-#include "../internal.h"
+#include "../core/internal.h"
 
 #include <float.h>
 

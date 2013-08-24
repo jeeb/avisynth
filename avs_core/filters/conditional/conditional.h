@@ -34,7 +34,7 @@
 // import and export plugins, or graphical user interfaces.
 
 
-#include "../../internal.h"
+#include "../../core/internal.h"
 
 
 class ConditionalSelect : public GenericVideoFilter

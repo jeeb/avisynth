@@ -33,7 +33,7 @@
 // import and export plugins, or graphical user interfaces.
 
 #include "edit.h"
-#include "../audio/convertaudio.h"
+#include "../convert/convert_audio.h"
 #include <cmath>
 #include <climits>
 #include "../core/win.h"

@@ -7,7 +7,7 @@
 // (at your option) any later version.
 //
 
-#include "../internal.h"
+#include "../core/internal.h"
 #include "avisynth_c.h"
 #include "win.h"
 #include <algorithm>

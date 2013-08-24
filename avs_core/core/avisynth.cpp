@@ -32,7 +32,7 @@
 // which is not derived from or based on Avisynth, such as 3rd-party filters,
 // import and export plugins, or graphical user interfaces.
 
-#include "../internal.h"
+#include "../core/internal.h"
 #include "./parser/script.h"
 #include "cache.h"
 #include "minmax.h"

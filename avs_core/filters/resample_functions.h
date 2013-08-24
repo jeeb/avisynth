@@ -35,7 +35,7 @@
 #ifndef __Resample_Functions_H__
 #define __Resample_Functions_H__
 
-#include "../internal.h"
+#include "../core/internal.h"
 
 // Original value: 65536
 // 2 bits sacrificed because of 16 bit signed MMX multiplication

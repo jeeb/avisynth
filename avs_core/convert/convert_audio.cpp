@@ -37,7 +37,7 @@
 // Copyright (c) Ian Brabham 2005
 
 #include "../core/avisynth.h"
-#include "convertaudio.h"
+#include "convert_audio.h"
 #include <malloc.h>
 
 // There are two type parameters. Acceptable sample types and a prefered sample type.

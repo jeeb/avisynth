@@ -41,7 +41,7 @@
 #ifndef __GeneralConvolution_H__
 #define __GeneralConvolution_H__
 
-#include "../internal.h"
+#include "../core/internal.h"
 
 
 /*****************************************

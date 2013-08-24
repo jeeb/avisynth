@@ -37,7 +37,7 @@
 #ifndef __Overlay_funcs_h
 #define __Overlay_funcs_h
 
-#include "../../internal.h"
+#include "../../core/internal.h"
 #include "imghelpers.h"
 #include "blend_asm.h"
 #include "core/minmax.h"

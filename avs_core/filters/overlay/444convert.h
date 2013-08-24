@@ -37,7 +37,7 @@
 #ifndef __444Convert_h
 #define __444Convert_h
 
-#include "../../internal.h"
+#include "../../core/internal.h"
 #include "imghelpers.h"
 
 class ConvertTo444 {

@@ -36,7 +36,7 @@
 #ifndef __Color_h
 #define __Color_h
 
-#include "../internal.h"
+#include "../core/internal.h"
 
 
 typedef union {

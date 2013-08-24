@@ -36,7 +36,7 @@
 #ifndef __Tokenizer_H__
 #define __Tokenizer_H__
 
-#include "../../internal.h"
+#include "../../core/internal.h"
 
 
 /*********************************************************

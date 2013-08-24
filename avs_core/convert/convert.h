@@ -35,7 +35,7 @@
 #ifndef __Convert_H__
 #define __Convert_H__
 
-#include "../internal.h"
+#include "../core/internal.h"
 #include "../filters/field.h"
 #include "../filters/transform.h"
 

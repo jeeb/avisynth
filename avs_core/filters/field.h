@@ -35,7 +35,7 @@
 #ifndef __Field_H__
 #define __Field_H__
 
-#include "../internal.h"
+#include "../core/internal.h"
 
 
 /**********************************************************************

@@ -18,7 +18,7 @@
   sh0dan[at]stofanet.dk
 */
 
-#include "../../internal.h"
+#include "../../core/internal.h"
 #include <cstdio>
 #include <cstdlib>
 

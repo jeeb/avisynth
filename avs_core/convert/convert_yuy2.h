@@ -35,7 +35,7 @@
 #ifndef __Convert_YUY2_H__
 #define __Convert_YUY2_H__
 
-#include "../internal.h"
+#include "../core/internal.h"
 #include "convert_yv12.h"
 #include "convert_planar.h" // 2.60
 #include "../core/softwire_helpers.h"

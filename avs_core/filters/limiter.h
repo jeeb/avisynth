@@ -35,7 +35,7 @@
 #ifndef __Limiter_H__
 #define __Limiter_H__
 
-#include "../internal.h"
+#include "../core/internal.h"
 #include "../core/softwire_helpers.h"
 
 

@@ -39,7 +39,7 @@
 #ifndef __Null_H__
 #define __Null_H__
 
-#include "../internal.h"
+#include "../core/internal.h"
 
 
 class Null : public GenericVideoFilter 

@@ -37,7 +37,7 @@
 #ifndef __Convert_RGBtoY8_H__
 #define __Convert_RGBtoY8_H__
 
-#include "../internal.h"
+#include "../core/internal.h"
 #include "../core/softwire_helpers.h"
 
 

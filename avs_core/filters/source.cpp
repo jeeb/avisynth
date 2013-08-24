@@ -33,7 +33,7 @@
 // import and export plugins, or graphical user interfaces.
 
 
-#include "../internal.h"
+#include "../core/internal.h"
 #include "../convert/convert.h"
 #include "transform.h"
 #include "AviSource/avi_source.h"

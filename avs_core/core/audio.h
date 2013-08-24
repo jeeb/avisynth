@@ -34,7 +34,7 @@
 #ifndef __Audio_H__
 #define __Audio_H__
 
-#include "../internal.h"
+#include "../core/internal.h"
 #include <cmath>
 
 

@@ -42,7 +42,7 @@
 #ifndef __Layer_H__
 #define __Layer_H__
 
-#include "../internal.h"
+#include "../core/internal.h"
 
 
 /********************************************************************

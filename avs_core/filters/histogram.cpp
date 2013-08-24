@@ -35,7 +35,7 @@
 
 #include "histogram.h"
 #include "../core/info.h"
-#include "../audio/convertaudio.h"
+#include "../convert/convert_audio.h"
 #include "core/win.h"
 #include "core/minmax.h"
 #include <cstdio>

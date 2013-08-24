@@ -34,7 +34,7 @@
 #ifndef __Histogram_H__
 #define __Histogram_H__
 
-#include "../internal.h"
+#include "../core/internal.h"
 
 
 /********************************************************************

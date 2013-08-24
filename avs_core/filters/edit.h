@@ -35,7 +35,7 @@
 #ifndef __Edit_H__
 #define __Edit_H__
 
-#include "../internal.h"
+#include "../core/internal.h"
 #include "merge.h"
 
 /********************************************************************

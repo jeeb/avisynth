@@ -34,7 +34,7 @@
 
 #include "../core/avisynth.h"
 #include "audio.h"
-#include "convertaudio.h"
+#include "../convert/convert_audio.h"
 #include <cstdio>
 #include "core/win.h"
 #include "core/minmax.h"

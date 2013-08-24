@@ -35,7 +35,7 @@
 #ifndef __Text_overlay_H__
 #define __Text_overlay_H__
 
-#include "../internal.h"
+#include "../core/internal.h"
 #include "core/win.h"
 #include <cstdio>
 

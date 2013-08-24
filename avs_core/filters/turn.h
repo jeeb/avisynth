@@ -39,7 +39,7 @@
 */
 
 
-#include "../internal.h"
+#include "../core/internal.h"
 #include "turnfunc.h"
 #include "resample.h"
 #include "planeswap.h"
