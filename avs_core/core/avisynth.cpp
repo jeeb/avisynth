@@ -248,32 +248,18 @@ public:
   LinkedVideoFrameBuffer() : returned(true), signature(ident) { next=prev=this; }
 };
 
-
+#include "hashtable.h"
 class VarTable {
+
   VarTable* const dynamic_parent;
   VarTable* const lexical_parent;
-
-  struct Variable {
-    Variable* next;
-    const char* const name;
-    AVSValue val;
-    Variable(const char* _name, Variable* _next) : name(_name), next(_next) {}
-  };
-
-  Variable variables;   // first entry is "last"
+  hashtable<AVSValue> variables;
 
 public:
-  VarTable(VarTable* _dynamic_parent, VarTable* _lexical_parent)
-    : dynamic_parent(_dynamic_parent), lexical_parent(_lexical_parent), variables("last", 0) {}
-
-  ~VarTable() {
-    Variable* v = variables.next;
-    while (v) {
-      Variable* next = v->next;
-      delete v;
-      v = next;
-    }
-  }
+  VarTable(VarTable* _dynamic_parent, VarTable* _lexical_parent) :
+    dynamic_parent(_dynamic_parent), lexical_parent(_lexical_parent),
+    variables(1873)    // a prime number
+  {}
 
   VarTable* Pop() {
     VarTable* _dynamic_parent = this->dynamic_parent;
@@ -282,12 +268,13 @@ public:
   }
 
   bool Get(const char* name, AVSValue *val) {
-    for (Variable* v = &variables; v; v = v->next) {
-      if (!lstrcmpi(name, v->name)) {
-        *val = v->val;
-        return true;
-      }
+    AVSValue *v = variables.get(name);
+    if (v != NULL)
+    {
+      *val = *v;
+      return true;
     }
+
     if (lexical_parent)
       return lexical_parent->Get(name, val);
     else
@@ -295,14 +282,7 @@ public:
   }
 
   bool Set(const char* name, const AVSValue& val) {
-    for (Variable* v = &variables; v; v = v->next)
-      if (!lstrcmpi(name, v->name)) {
-        v->val = val;
-        return false;
-      }
-    variables.next = new Variable(name, variables.next);
-    variables.next->val = val;
-    return true;
+    return variables.add(name, val);
   }
 };
 
