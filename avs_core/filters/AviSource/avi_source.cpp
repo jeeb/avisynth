@@ -546,7 +546,7 @@ AVISource::AVISource(const char filename[], bool fAudio, const char pixel_type[]
 
     if (mode != MODE_WAV) {
       int keyframe = pvideo->NearestKeyFrame(0);
-      PVideoFrame frame = env->NewVideoFrame(vi, -4);
+      PVideoFrame frame = env->NewVideoFrame(vi);
       if (!frame)   // shutdown, if init not succesful.
         env->ThrowError("AviSource: Could not allocate frame 0");
 
@@ -608,7 +608,7 @@ PVideoFrame AVISource::GetFrame(int n, IScriptEnvironment* env) {
     if (keyframe < 0) keyframe = 0;
 
     bool frameok = false;
-    PVideoFrame frame = env->NewVideoFrame(vi, -4);
+    PVideoFrame frame = env->NewVideoFrame(vi);
     if (!frame)
       env->ThrowError("AviSource: Could not allocate frame %d", n);
 
