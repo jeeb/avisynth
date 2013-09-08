@@ -39,10 +39,6 @@
 #define _SUPEREQ_H_
 
 #include "../internal.h"
-#include <math.h>
-#include "3rd_party/PFC/pfc.h"
 #include "3rd_party/SoundTouch/SoundTouch.h"
-
-
 
 #endif

@@ -40,6 +40,7 @@
 
 #include "avs-soundtouch.h"
 #include "convertaudio.h"
+#include <vector>
 
 
 #define BUFFERSIZE 8192
@@ -50,7 +51,7 @@ using namespace soundtouch;
 class AVSsoundtouch : public GenericVideoFilter 
 {
 private:
-  ptr_list_simple<SoundTouch> samplers;
+  std::vector<SoundTouch*> samplers;
 
   unsigned last_nch;
   int dst_samples_filled;
@@ -82,7 +83,7 @@ AVSsoundtouch(PClip _child, float _tempo, float _rate, float _pitch, const AVSVa
   sample_multiplier *= pitch * rate;
 
   {for(unsigned n=0; n<last_nch; n++) 
-    samplers.add_item(new SoundTouch());
+    samplers.push_back(new SoundTouch());
   }
 
   {for(unsigned n=0; n<last_nch; n++) {
@@ -203,8 +204,10 @@ void __stdcall AVSsoundtouch::GetAudio(void* buf, __int64 start, __int64 count, 
   {
     delete[] dstbuffer;
     delete[] passbuffer;
-    samplers.delete_all();
-}
+
+    for (size_t i = 0; i < samplers.size(); ++i) {
+      delete samplers[i];
+}}
 };
 
 
