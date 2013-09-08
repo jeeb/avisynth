@@ -39,8 +39,6 @@
 // iSSE code by Ian Brabham
 
 
-#include "stdafx.h"
-
 #include "merge.h"
 
 __declspec(align(8)) static const __int64 I1=0x00ff00ff00ff00ff;  // Luma mask

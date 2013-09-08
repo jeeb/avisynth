@@ -36,10 +36,9 @@
 // Copyright (c) Klaus Post 2001 - 2004
 // Copyright (c) Ian Brabham 2005
 
-#include "stdafx.h"
-
 #include "../core/avisynth.h"
 #include "convertaudio.h"
+#include <malloc.h>
 
 // There are two type parameters. Acceptable sample types and a prefered sample type.
 // If the current clip is already one of the defined types in sampletype, this will be returned.

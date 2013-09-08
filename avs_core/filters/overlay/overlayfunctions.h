@@ -40,12 +40,13 @@
 #include "../../internal.h"
 #include "imghelpers.h"
 #include "blend_asm.h"
+#include "core/minmax.h"
 
 class OverlayFunction {
 public:
   OverlayFunction() {
   }
-  void setOpacity(int _opacity) { opacity = max(0,min(_opacity,256)); inv_opacity = 256-opacity; }
+  void setOpacity(int _opacity) { opacity = clamp(_opacity,0,256); inv_opacity = 256-opacity; }
   void setEnv(IScriptEnvironment *_env) { env = _env;}
   virtual void BlendImage(Image444* base, Image444* overlay) = 0;
   virtual void BlendImageMask(Image444* base, Image444* overlay, Image444* mask) = 0;

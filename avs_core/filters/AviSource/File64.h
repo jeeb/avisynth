@@ -21,6 +21,10 @@
 #ifndef f_FILE64_H
 #define f_FILE64_H
 
+#include "../../core/win.h"
+#include <mmsystem.h>
+
+
 class File64 {
 public:
 	HANDLE hFile, hFileUnbuffered;

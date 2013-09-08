@@ -38,6 +38,8 @@
 #include "../../internal.h"
 #include "expression.h"
 #include "scriptparser.h"
+#include <tchar.h>
+#include <tchar.h>
 
 
 /********************************************************************
@@ -86,7 +88,7 @@ public:
   virtual ~CWDChanger(void);  
 
 private:
-  TCHAR old_working_directory[MAX_PATH];
+  TCHAR *old_working_directory;
   bool restore;
 };
 

@@ -18,9 +18,10 @@
   sh0dan[at]stofanet.dk
 */
 
-#include "stdafx.h"
-
 #include "conditional_reader.h"
+#include <cstdlib>
+#include "../../core/win.h"
+#include "../../core/minmax.h"
 
 
 /*****************************************************************************
@@ -469,7 +470,7 @@ void ConditionalReader::SetFrame(int framenumber, AVSValue v) {
 
 // Get the value of a frame.
 AVSValue ConditionalReader::GetFrameValue(int framenumber) {
-  framenumber = max(min(framenumber, vi.num_frames-1), 0);
+  framenumber = clamp(framenumber, 0, vi.num_frames-1);
 
   switch (mode) {
     case MODE_INT:

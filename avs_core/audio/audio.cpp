@@ -32,10 +32,12 @@
 // which is not derived from or based on Avisynth, such as 3rd-party filters,
 // import and export plugins, or graphical user interfaces.
 
-#include "stdafx.h"
-
+#include "../core/avisynth.h"
 #include "audio.h"
 #include "convertaudio.h"
+#include <cstdio>
+#include "core/win.h"
+#include "core/minmax.h"
 
 #define BIGBUFFSIZE (2048*1024) // Use a 2Mb buffer for EnsureVBRMP3Sync seeking & Normalize scanning
 
@@ -1224,7 +1226,7 @@ void __stdcall ResampleAudio::GetAudio(void* buf, __int64 start, __int64 count, 
 	else if (offset > 0)
 	  memmove(srcbuffer, srcbuffer+offset*ch, overlap*ch<<1); // slow
 
-	last_samples= max(overlap, source_samples);                     // Samples for next time
+	last_samples= max<long long>(overlap, source_samples);                     // Samples for next time
 
     if (source_samples-overlap > 0)                                 // Get the rest of the source samples
 	  child->GetAudio(&srcbuffer[overlap*ch], last_start+overlap, source_samples-overlap, env);
@@ -1365,7 +1367,7 @@ nofix:
 	  overlap = 0;
 	else if (offset > 0)
 	  memcpy(fsrcbuffer, fsrcbuffer+offset*ch, overlap*ch<<2);
-	last_samples= max(overlap, source_samples);
+	last_samples= max<long long>(overlap, source_samples);
 
     if (source_samples-overlap > 0)
 	  child->GetAudio(&fsrcbuffer[overlap*ch], last_start+overlap, source_samples-overlap, env);

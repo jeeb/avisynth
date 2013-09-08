@@ -33,10 +33,8 @@
 // import and export plugins, or graphical user interfaces.
 
 
-#include "stdafx.h"
-
-
 #include "debug.h"
+#include "../core/win.h"
 
 
 

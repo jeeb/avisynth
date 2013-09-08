@@ -47,9 +47,8 @@
  *   or mitigating code elsewhere.
  */
 
-#include "stdafx.h"
-
 #include "avisynth.h"
+#include "win.h"
 
 
 /**********************************************************************/

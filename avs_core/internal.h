@@ -52,7 +52,7 @@ enum {MC_RegisterCache          =0xFFFF0004};
 enum {MC_IncVFBRefcount         =0xFFFF0005};
 
 #include "core/avisynth.h"
-
+#include <cstring>
 
 
 struct AVSFunction {

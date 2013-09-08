@@ -17,14 +17,15 @@
 
 //#include "VirtualDub.h"
 
-#include "stdafx.h"
-
 #include <crtdbg.h>
+#include <cassert>
+#include <limits>
 
 //#include "gui.h"
 //#include "crash.h"
 
-#include "../../core/Error.h"
+#include "Error.h"
+#include "core/minmax.h"
 #include "AudioSource.h"
 
 #include "VD_Audio.h"
@@ -585,7 +586,8 @@ long AudioStreamSource::_Read(void *buffer, long max_samples, long *lplBytes) {
 			// hmm... data still in the output buffer?
 
 			if (ashBuffer.cbDstLengthUsed>0) {
-				long tc = min(lBytesLeft, ashBuffer.cbDstLengthUsed);
+        assert(ashBuffer.cbDstLengthUsed <= (DWORD)std::numeric_limits<long>::max);
+				long tc = min(lBytesLeft, (long)ashBuffer.cbDstLengthUsed);
 
 				if (lPreskip) {
 					if (tc > lPreskip)
@@ -1703,7 +1705,7 @@ void *AudioCompressor::Compress(long lInputSamples, long *lplSrcInputSamples, lo
 			long lSamplesToRead;
 
 			do {
-				lSamplesToRead = min(lInputSamples, (INPUT_BUFFER_SIZE - ashBuffer.cbSrcLength)/bytesPerInputSample);
+				lSamplesToRead = min(lInputSamples, (INPUT_BUFFER_SIZE - (long)ashBuffer.cbSrcLength)/bytesPerInputSample);
 
 				ltActualSamples = source->Read((char *)inputBuffer + ashBuffer.cbSrcLength, lSamplesToRead,
 							&ltActualBytes);

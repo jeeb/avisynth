@@ -35,7 +35,6 @@
 // Overlay (c) 2003, 2004 by Klaus Post
 
 
-#include "stdafx.h"
 #include "blend_asm.h"
 
 

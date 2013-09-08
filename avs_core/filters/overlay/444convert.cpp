@@ -34,9 +34,8 @@
 
 // Overlay (c) 2003, 2004 by Klaus Post
 
-#include "stdafx.h"
-
 #include "444convert.h"
+#include <cstring>
 
 
 

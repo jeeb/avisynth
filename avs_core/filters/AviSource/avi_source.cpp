@@ -32,8 +32,6 @@
 // which is not derived from or based on Avisynth, such as 3rd-party filters,
 // import and export plugins, or graphical user interfaces.
 
-#include "../../stdafx.h"
-
 #include "../../internal.h"
 #include "../../convert/convert.h"
 #include "../../filters/transform.h"
@@ -42,6 +40,7 @@
 #include "VD_Audio.h"
 #include "AVIReadHandler.h"
 #include "avi_source.h"
+#include "../../core/minmax.h"
 
 
 LRESULT AVISource::DecompressBegin(LPBITMAPINFOHEADER lpbiSrc, LPBITMAPINFOHEADER lpbiDst) {
@@ -598,7 +597,7 @@ const VideoInfo& AVISource::GetVideoInfo() { return vi; }
 
 PVideoFrame AVISource::GetFrame(int n, IScriptEnvironment* env) {
 
-  n = min(max(n, 0), vi.num_frames-1);
+  n = clamp(n, 0, vi.num_frames-1);
   dropped_frame=false;
   if (n != last_frame_no) {
     // find the last keyframe

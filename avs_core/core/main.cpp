@@ -33,7 +33,11 @@
 // import and export plugins, or graphical user interfaces.
 
 
-#include "stdafx.h"
+#include "win.h"
+#include "minmax.h"
+#include <vfw.h>
+#include <cstdio>
+
 
 #define FP_STATE 0x9001f
 
@@ -1436,7 +1440,7 @@ STDMETHODIMP CAVIStreamSynth::ReadFormat(LONG lPos, LPVOID lpFormat, LONG *lpcbF
       catch (IScriptEnvironment::NotFound) { }
 
 	  wfxt.SubFormat = vi->IsSampleType(SAMPLE_FLOAT) ? KSDATAFORMAT_SUBTYPE_IEEE_FLOAT : KSDATAFORMAT_SUBTYPE_PCM;
-	  *lpcbFormat = min(*lpcbFormat, sizeof(wfxt));
+	  *lpcbFormat = min((size_t)*lpcbFormat, sizeof(wfxt));
 	  memcpy(lpFormat, &wfxt, size_t(*lpcbFormat));
 	}
 	else {
@@ -1448,7 +1452,7 @@ STDMETHODIMP CAVIStreamSynth::ReadFormat(LONG lPos, LPVOID lpFormat, LONG *lpcbF
 	  wfx.wBitsPerSample = vi->BytesPerChannelSample() * 8;
 	  wfx.nBlockAlign = vi->BytesPerAudioSample();
 	  wfx.nAvgBytesPerSec = wfx.nSamplesPerSec * wfx.nBlockAlign;
-	  *lpcbFormat = min(*lpcbFormat, sizeof(wfx));
+	  *lpcbFormat = min((size_t)*lpcbFormat, sizeof(wfx));
 	  memcpy(lpFormat, &wfx, size_t(*lpcbFormat));
 	}
   } else {
@@ -1479,7 +1483,7 @@ STDMETHODIMP CAVIStreamSynth::ReadFormat(LONG lPos, LPVOID lpFormat, LONG *lpcbF
     }
 
     bi.biSizeImage = parent->ImageSize();
-    *lpcbFormat = min(*lpcbFormat, sizeof(bi));
+    *lpcbFormat = min((size_t)*lpcbFormat, sizeof(bi));
     memcpy(lpFormat, &bi, size_t(*lpcbFormat));
   }
   return S_OK;

@@ -32,12 +32,11 @@
 // which is not derived from or based on Avisynth, such as 3rd-party filters,
 // import and export plugins, or graphical user interfaces.
 
-#include "stdafx.h"
-
 #include "focus.h"
-
-
-
+#include <cmath>
+#include <cstdlib>
+#include <malloc.h>
+#include "../core/minmax.h"
 
  
 /********************************************************************
@@ -983,9 +982,9 @@ AVSValue __cdecl Create_Blur(AVSValue args, void*, IScriptEnvironment* env)
 TemporalSoften::TemporalSoften( PClip _child, unsigned radius, unsigned luma_thresh, 
                                 unsigned chroma_thresh, int _scenechange, int _mode, IScriptEnvironment* env )
   : GenericVideoFilter  (_child),
-    chroma_threshold    (min(chroma_thresh,255)),
-    luma_threshold      (min(luma_thresh,255)),
-    kernel              (2*min(radius,MAX_RADIUS)+1),
+    chroma_threshold    (min(chroma_thresh,255u)),
+    luma_threshold      (min(luma_thresh,255u)),
+    kernel              (2*min(radius,(unsigned int)MAX_RADIUS)+1),
     scaletab_MMX        (NULL),
     scenechange (_scenechange),
     mode(_mode)
@@ -1005,7 +1004,7 @@ TemporalSoften::TemporalSoften( PClip _child, unsigned radius, unsigned luma_thr
     env->ThrowError("TemporalSoften: YUY2 source must be multiple of 4 in width.");
   }
 
-  if (mode!=max(min(mode,2),1)) {
+  if (mode!=clamp(mode,1,2)) {
     env->ThrowError("TemporalSoften: Mode must be 1 or 2.");
   }
 
@@ -1083,7 +1082,7 @@ PVideoFrame TemporalSoften::GetFrame(int n, IScriptEnvironment* env)
   }}
   
   {for (int p=n-radius; p<=n+radius; p++) {
-    frames[p+radius-n] = child->GetFrame(min(vi.num_frames-1,max(p,0)), env);
+    frames[p+radius-n] = child->GetFrame(clamp(p, 0, vi.num_frames-1), env);
   }}
 
   env->MakeWritable(&frames[radius]);
@@ -1672,7 +1671,7 @@ PVideoFrame SpatialSoften::GetFrame(int n, IScriptEnvironment* env)
   {
     const BYTE* line[65];    // better not make diameter bigger than this...
     for (int h=0; h<diameter; ++h)
-      line[h] = &srcp[src_pitch * min(max(y+h-(diameter>>1), 0), vi.height-1)];
+      line[h] = &srcp[src_pitch * clamp(y+h-(diameter>>1), 0, vi.height-1)];
     int x;
 
     int edge = (diameter+1) & -4;

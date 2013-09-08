@@ -37,6 +37,9 @@
 #ifndef __Overlay_helpers_h
 #define __Overlay_helpers_h
 
+#include <malloc.h>
+#include "core/minmax.h"
+
 class Image444 {
 private:
   BYTE* Y_plane;

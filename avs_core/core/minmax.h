@@ -1,6 +1,3 @@
-// Avisynth v2.5.  Copyright 2002 Ben Rudiak-Gould et al.
-// http://www.avisynth.org
-
 // This program is free software; you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
 // the Free Software Foundation; either version 2 of the License, or
@@ -32,46 +29,26 @@
 // which is not derived from or based on Avisynth, such as 3rd-party filters,
 // import and export plugins, or graphical user interfaces.
 
-// Alignplanar
-// Copyright (c) Klaus Post 2001 - 2005
+#ifndef AVSCORE_MINMAX_H
+#define AVSCORE_MINMAX_H
 
-/******************************
- *******   AlignPlanar   ******
- *****************************/
-
-#include "avisynth.h"
-#include "alignplanar.h"
-
-
-AlignPlanar::AlignPlanar(PClip _clip) : GenericVideoFilter(_clip) {}
-
-PVideoFrame __stdcall AlignPlanar::GetFrame(int n, IScriptEnvironment* env) {
-  int plane = (env->PlanarChromaAlignment(IScriptEnvironment::PlanarChromaAlignmentTest)) ? PLANAR_U_ALIGNED : PLANAR_Y_ALIGNED;
-
-  PVideoFrame src = child->GetFrame(n, env);
-
-  if (!(src->GetRowSize(plane)&(FRAME_ALIGN-1)))
-    return src;
-
-  PVideoFrame dst = env->NewVideoFrame(vi);
-
-  if ((dst->GetRowSize(PLANAR_Y_ALIGNED)&(FRAME_ALIGN-1))) 
-    env->ThrowError("AlignPlanar: [internal error] Returned frame was not aligned!");
-
-  env->BitBlt(dst->GetWritePtr(), dst->GetPitch(), src->GetReadPtr(), src->GetPitch(), src->GetRowSize(), src->GetHeight());
-  env->BitBlt(dst->GetWritePtr(PLANAR_V), dst->GetPitch(PLANAR_V), src->GetReadPtr(PLANAR_V), src->GetPitch(PLANAR_V), src->GetRowSize(PLANAR_V), src->GetHeight(PLANAR_V));
-  env->BitBlt(dst->GetWritePtr(PLANAR_U), dst->GetPitch(PLANAR_U), src->GetReadPtr(PLANAR_U), src->GetPitch(PLANAR_U), src->GetRowSize(PLANAR_U), src->GetHeight(PLANAR_U));
-
-  return dst;
-}
-
-
-PClip AlignPlanar::Create(PClip clip) 
+template<typename T>
+T min(T v1, T v2)
 {
-  if (!clip->GetVideoInfo().IsPlanar()) {  // If not planar, already ok.
-    return clip;
-  }
-  else 
-    return new AlignPlanar(clip);
+  return v1 < v2 ? v1 : v2;
 }
 
+template<typename T>
+T max(T v1, T v2)
+{
+  return v1 > v2 ? v1 : v2;
+}
+
+template<typename T>
+T clamp(T n, T min, T max)
+{
+    n = n > max ? max : n;
+    return n < min ? min : n;
+}
+
+#endif // AVSCORE_MINMAX_H

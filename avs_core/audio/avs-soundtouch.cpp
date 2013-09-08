@@ -36,8 +36,6 @@
 
 
 
-#include "stdafx.h"
-
 #include "avs-soundtouch.h"
 #include "convertaudio.h"
 #include <vector>
@@ -145,7 +143,7 @@ void __stdcall AVSsoundtouch::GetAudio(void* buf, __int64 start, __int64 count, 
   do {
     // Empty buffer if something is still left.
     if (dst_samples_filled) {
-      int copysamples = min((int)count-samples_filled, dst_samples_filled);
+      int copysamples = std::min((int)count-samples_filled, dst_samples_filled);
       // Copy finished samples
       memcpy((BYTE*)buf+vi.BytesFromAudioSamples(samples_filled), (BYTE*)dstbuffer, (size_t)vi.BytesFromAudioSamples(copysamples));
 
@@ -273,7 +271,7 @@ void __stdcall AVSStereoSoundTouch::GetAudio(void* buf, __int64 start, __int64 c
   do {
     // Empty buffer if something is still left.
     if (dst_samples_filled) {
-      int copysamples = min((int)count-samples_filled, dst_samples_filled);
+      int copysamples = std::min((int)count-samples_filled, dst_samples_filled);
       // Copy finished samples
       if (copysamples) { 
         memcpy((BYTE*)buf+vi.BytesFromAudioSamples(samples_filled), (BYTE*)dstbuffer, (size_t)vi.BytesFromAudioSamples(copysamples));

@@ -34,7 +34,6 @@
 
 // Overlay (c) 2003, 2004 by Klaus Post
 
-#include "stdafx.h"
 #include "overlayfunctions.h"
 
 void OL_DarkenImage::BlendImageMask(Image444* base, Image444* overlay, Image444* mask) {

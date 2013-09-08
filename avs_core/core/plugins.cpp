@@ -33,9 +33,11 @@
 // import and export plugins, or graphical user interfaces.
 
 
-#include "stdafx.h"
-
-#include "Error.h"    // which includes "internal.h"
+#include <cstdio>
+#include <malloc.h>
+#include "win.h"
+#include "minmax.h"
+#include "internal.h"
 
 const char* loadplugin_prefix = NULL;
 
@@ -302,7 +304,7 @@ public:
   const VideoInfo& __stdcall GetVideoInfo() { return vi; }
 
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env) {
-    n = max(min(n, vi.num_frames-1), 0);
+    n = clamp(n, 0, vi.num_frames-1);
     PVideoFrame result = env->NewVideoFrame(vi);
     VF_ReadData_Video vfrdv = { sizeof(VF_ReadData_Video), n, 0, result->GetWritePtr(), result->GetPitch() };
     CheckHresult(env, plugin_func->ReadData(h, VF_STREAM_VIDEO, &vfrdv));
@@ -811,7 +813,7 @@ static void FilterThrowExcept(const char *format, ...) {
 }
 
 static void FilterThrowExceptMemory() {
-  throw MyMemoryError();
+  throw AvisynthError("Out of memory");
 }
 
 // This is really disgusting...

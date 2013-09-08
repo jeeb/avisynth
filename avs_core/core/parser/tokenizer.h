@@ -62,8 +62,7 @@ public:
   inline bool IsNewline() const { return type == 'n'; }
   inline bool IsEOF() const { return type == 0; }
 
-  inline bool IsIdentifier(const char* id) const 
-    { return IsIdentifier() && !lstrcmpi(id, identifier); }
+  bool IsIdentifier(const char* id) const;
   inline bool IsOperator(int o) const 
     { return IsOperator() && o == op; }
 

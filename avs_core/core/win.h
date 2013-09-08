@@ -1,6 +1,3 @@
-// Avisynth v2.5.  Copyright 2002 Ben Rudiak-Gould et al.
-// http://www.avisynth.org
-
 // This program is free software; you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
 // the Free Software Foundation; either version 2 of the License, or
@@ -32,46 +29,27 @@
 // which is not derived from or based on Avisynth, such as 3rd-party filters,
 // import and export plugins, or graphical user interfaces.
 
-// Alignplanar
-// Copyright (c) Klaus Post 2001 - 2005
+#ifndef AVSCORE_WIN_H
+#define AVSCORE_WIN_H
 
-/******************************
- *******   AlignPlanar   ******
- *****************************/
+// Whenever you need windows headers, start by including this file, then the rest.
 
-#include "avisynth.h"
-#include "alignplanar.h"
+// WWUUT? We require XP now? Well, defining these constants to XP does not mean
+// we actually will need XP to run, only that we are allowed to use its APIs,
+// if we choose so. But let's stop pretending, who uses a windows older than XP?
+// Also, projects compiled under VS2012 might not run on older OSs anyway.
 
+#define NTDDI_VERSION 0x05010000
 
-AlignPlanar::AlignPlanar(PClip _clip) : GenericVideoFilter(_clip) {}
+// NTDDI_VERSION is not used in old Visual Studios, so we
+// define these macros ourselves too.
+#define _WIN32_WINNT 0x0501
+#define WINVER 0x0501
 
-PVideoFrame __stdcall AlignPlanar::GetFrame(int n, IScriptEnvironment* env) {
-  int plane = (env->PlanarChromaAlignment(IScriptEnvironment::PlanarChromaAlignmentTest)) ? PLANAR_U_ALIGNED : PLANAR_Y_ALIGNED;
+#define WIN32_LEAN_AND_MEAN
+#define STRICT
+#define NOMINMAX
 
-  PVideoFrame src = child->GetFrame(n, env);
+#include <windows.h>
 
-  if (!(src->GetRowSize(plane)&(FRAME_ALIGN-1)))
-    return src;
-
-  PVideoFrame dst = env->NewVideoFrame(vi);
-
-  if ((dst->GetRowSize(PLANAR_Y_ALIGNED)&(FRAME_ALIGN-1))) 
-    env->ThrowError("AlignPlanar: [internal error] Returned frame was not aligned!");
-
-  env->BitBlt(dst->GetWritePtr(), dst->GetPitch(), src->GetReadPtr(), src->GetPitch(), src->GetRowSize(), src->GetHeight());
-  env->BitBlt(dst->GetWritePtr(PLANAR_V), dst->GetPitch(PLANAR_V), src->GetReadPtr(PLANAR_V), src->GetPitch(PLANAR_V), src->GetRowSize(PLANAR_V), src->GetHeight(PLANAR_V));
-  env->BitBlt(dst->GetWritePtr(PLANAR_U), dst->GetPitch(PLANAR_U), src->GetReadPtr(PLANAR_U), src->GetPitch(PLANAR_U), src->GetRowSize(PLANAR_U), src->GetHeight(PLANAR_U));
-
-  return dst;
-}
-
-
-PClip AlignPlanar::Create(PClip clip) 
-{
-  if (!clip->GetVideoInfo().IsPlanar()) {  // If not planar, already ok.
-    return clip;
-  }
-  else 
-    return new AlignPlanar(clip);
-}
-
+#endif // AVSCORE_WIN_H

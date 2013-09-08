@@ -35,12 +35,12 @@
 // ConvertPlanar (c) 2005 by Klaus Post
 
 
-#include "stdafx.h"
-
 #include "convert_planar.h"
 #include "../filters/planeswap.h"
 #include "../filters/field.h"
-
+#include <malloc.h>
+#include "../core/win.h"
+#include "../core/minmax.h"
 
 #define USE_DYNAMIC_COMPILER true
 

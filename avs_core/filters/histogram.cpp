@@ -33,11 +33,13 @@
 // import and export plugins, or graphical user interfaces.
 
 
-#include "stdafx.h"
-
 #include "histogram.h"
 #include "../core/info.h"
 #include "../audio/convertaudio.h"
+#include "core/win.h"
+#include "core/minmax.h"
+#include <cstdio>
+#include <cmath>
 
 
 #define PI        3.141592653589793
@@ -208,7 +210,7 @@ PVideoFrame Histogram::DrawModeAudioLevels(int n, IScriptEnvironment* env) {
   const int count = (int)(vi.AudioSamplesFromFrames(1));
   signed short* samples = new signed short[count*channels];
 
-  aud_clip->GetAudio(samples, max(0,start), count, env);
+  aud_clip->GetAudio(samples, max(0ll,start), count, env);
 
   // Find maximum volume and rms.
   int*     channel_max = new int[channels];
@@ -359,7 +361,7 @@ PVideoFrame Histogram::DrawModeOverlay(int n, IScriptEnvironment* env) {
     _dstp+=p;
   }
 
-  aud_clip->GetAudio(samples, max(0,start), count, env);
+  aud_clip->GetAudio(samples, max(0ll,start), count, env);
 
   int c = (int)count;
   for (int i=1; i < c;i++) {
@@ -403,7 +405,7 @@ PVideoFrame Histogram::DrawModeStereo(int n, IScriptEnvironment* env) {
   memset(srcp, 16, imgSize);
   int p = src->GetPitch();
 
-  aud_clip->GetAudio(samples, max(0,start), count, env);
+  aud_clip->GetAudio(samples, max(0ll,start), count, env);
 
   int c = (int)count;
   for (int i=1; i < c;i++) {

@@ -33,8 +33,6 @@
 // import and export plugins, or graphical user interfaces.
 
 
-#include "stdafx.h"
-
 #include "../internal.h"
 #include "../convert/convert.h"
 #include "transform.h"
@@ -42,6 +40,7 @@
 
 #define PI 3.1415926535897932384626433832795
 #include <ctime>
+#include <cmath>
 
 /********************************************************************
 ********************************************************************/

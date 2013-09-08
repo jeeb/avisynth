@@ -33,12 +33,9 @@
 // import and export plugins, or graphical user interfaces.
 
 
-#include "stdafx.h"
-
 #include "field.h"
 #include "resample.h"
-
-
+#include "core/minmax.h"
 
 
 /********************************************************************
@@ -872,8 +869,8 @@ SelectRangeEvery::SelectRangeEvery(PClip _child, int _every, int _length, int _o
   child = c;
   vi = c->GetVideoInfo();
 
-  every = min(max(_every,1),vi.num_frames);
-  length = min(max(_length,1),every);
+  every = clamp(_every,1,vi.num_frames);
+  length = clamp(_length,1,every);
 
   const int n = vi.num_frames;
   vi.num_frames = (n/every)*length+(n%every<length?n%every:length);

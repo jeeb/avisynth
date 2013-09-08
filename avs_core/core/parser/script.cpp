@@ -33,11 +33,16 @@
 // import and export plugins, or graphical user interfaces.
 
 
-#include "stdafx.h"
-
 #include "script.h"
 #include <time.h>
- 
+#include <cstdio>
+#include <cstdlib>
+#include <cmath>
+#include <io.h>
+#include "../win.h"
+#include "../minmax.h"
+
+
 /********************************************************************
 ***** Declare index of new filters for Avisynth's filter engine *****
 ********************************************************************/
@@ -266,6 +271,7 @@ void ScriptFunction::Delete(void* self, IScriptEnvironment*)
 
 CWDChanger::CWDChanger(const char* new_cwd)
 {
+  old_working_directory = new TCHAR[MAX_PACKAGE_NAME];
   DWORD save_cwd_success = GetCurrentDirectory(MAX_PATH, old_working_directory);
   BOOL set_cwd_success = SetCurrentDirectory(new_cwd);
   restore = (save_cwd_success && set_cwd_success);
@@ -275,6 +281,8 @@ CWDChanger::~CWDChanger(void)
 {
   if (restore)
     SetCurrentDirectory(old_working_directory);
+
+  delete [] old_working_directory;
 }
 
 
@@ -904,7 +912,7 @@ AVSValue AvsMin(AVSValue args, void*, IScriptEnvironment* env )
   else {
     float V = args[0][0].AsFloat();
     for (i=1; i < n; i++)
-      V = min(V, args[0][i].AsFloat());
+      V = min(V, (float)args[0][i].AsFloat());
     return V;
   }
 }
@@ -933,7 +941,7 @@ AVSValue AvsMax(AVSValue args, void*, IScriptEnvironment* env )
   else {
     float V = args[0][0].AsFloat();
     for (i=1; i < n; i++)
-      V = max(V, args[0][i].AsFloat());
+      V = max(V, (float)args[0][i].AsFloat());
     return V;
   }
 }

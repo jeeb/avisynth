@@ -33,11 +33,8 @@
 // import and export plugins, or graphical user interfaces.
 
 
-#include "stdafx.h"
-
 #include "misc.h"
-
-
+#include "../core/minmax.h"
 
 
 

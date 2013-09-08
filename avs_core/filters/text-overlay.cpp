@@ -33,18 +33,22 @@
 // import and export plugins, or graphical user interfaces.
 
 
-#include "stdafx.h"
-
 #include "text-overlay.h"
-
 #include "../convert/convert.h"  // for RGB2YUV
-
-#include<string>
-#include<sstream>
+#include "../core/win.h"
+#include <string>
+#include <sstream>
+#include <cmath>
 
 using namespace std;
 
 
+static HFONT LoadFont(const char name[], int size, bool bold, bool italic, int width=0, int angle=0) 
+{
+  return CreateFont( size, width, angle, angle, bold ? FW_BOLD : FW_NORMAL,
+                     italic, FALSE, FALSE, DEFAULT_CHARSET, OUT_DEFAULT_PRECIS,
+                     CLIP_DEFAULT_PRECIS, DEFAULT_QUALITY, FF_DONTCARE | DEFAULT_PITCH, name );
+}
 
 /********************************************************************
 ***** Declare index of new filters for Avisynth's filter engine *****

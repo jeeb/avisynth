@@ -18,6 +18,9 @@
 #ifndef f_AVIREADHANDLER_H
 #define f_AVIREADHANDLER_H
 
+#include "core/win.h"
+#include <vfw.h>
+
 // These are meant as AVIFile replacements.  They're not quite to AVIFile
 // specs, but they'll do for now.
 

@@ -33,9 +33,14 @@
 // import and export plugins, or graphical user interfaces.
 
 
-#include "stdafx.h"
-
+#include <cmath>
 #include "cache.h"
+#include "win.h"
+#include "minmax.h"
+
+#ifdef _DEBUG
+#include <cstdio>
+#endif
 
 // Global statistics counters
 struct {
@@ -385,7 +390,7 @@ PVideoFrame __stdcall Cache::GetFrame(int n, IScriptEnvironment* env)
   if (cacheDepth == 0) InterlockedIncrement(&Clock);
   Tick = Clock;
 
-  n = min(vi.num_frames-1, max(0, n));  // Inserted to avoid requests beyond framerange.
+  n = clamp(n, 0, vi.num_frames-1);   // Inserted to avoid requests beyond framerange.
 
   __asm {emms} // Protection from rogue filter authors
 
@@ -810,7 +815,7 @@ void __stdcall Cache::GetAudio(void* buf, __int64 start, __int64 count, IScriptE
       child->GetAudio(buf, start, count, env);
 //      EnterCriticalSection(&cs_cache_A);
 
-      cache_count = min(count, maxsamplecount); // Remember maxsamplecount gets updated
+      cache_count = min(count, (long long)maxsamplecount); // Remember maxsamplecount gets updated
       cache_start = start+count-cache_count;
       BYTE *buff=(BYTE *)buf;
       buff += vi.BytesFromAudioSamples(cache_start - start);
@@ -825,7 +830,7 @@ void __stdcall Cache::GetAudio(void* buf, __int64 start, __int64 count, IScriptE
   if ((start < cache_start) || (start > cache_start+maxsamplecount)) { //first sample is before cache or beyond linear reach -> restart cache
     _RPT1(0, "CA:%x: Restart\n", this);
 
-    cache_count = min(count, maxsamplecount);
+    cache_count = min(count, (long long)maxsamplecount);
     cache_start = start;
     child->GetAudio(cache, cache_start, cache_count, env);
   }
@@ -927,7 +932,7 @@ int __stdcall Cache::SetCacheHints(int cachehints, int frame_range) {
           maxsamplecount = frame_range/samplesize;
           if (cache) {
             // Keep old cache contents
-            cache_count = min(cache_count, maxsamplecount);
+            cache_count = min(cache_count, (long long)maxsamplecount);
             memcpy(newcache, cache, (size_t)(vi.BytesFromAudioSamples(cache_count)));
             delete[] cache;
           }
@@ -972,7 +977,7 @@ int __stdcall Cache::SetCacheHints(int cachehints, int frame_range) {
       if (!vi.HasVideo())
         break;
 
-      int _cache_init = min(MAX_CACHED_VIDEO_FRAMES, frame_range);
+      int _cache_init = min((int)MAX_CACHED_VIDEO_FRAMES, frame_range);
 
       if (_cache_init > cache_init) // The max of all requests
         cache_init  = _cache_init;
@@ -999,7 +1004,7 @@ int __stdcall Cache::SetCacheHints(int cachehints, int frame_range) {
         break;
 
       if (frame_range > h_span)  // Use the largest size when we have multiple clients
-        h_span = min(MAX_CACHE_WINDOW, frame_range);
+        h_span = min((int)MAX_CACHE_WINDOW, frame_range);
 
       h_policy = CACHE_WINDOW;  // An explicit cache of radius "frame_range" around the current frame, n.
       break;

@@ -34,8 +34,8 @@
 
 // Overlay (c) 2003, 2004 by Klaus Post
 
-#include "stdafx.h"
 #include "overlayfunctions.h"
+#include "../../core/minmax.h"
 
 void OL_ExclusionImage::BlendImageMask(Image444* base, Image444* overlay, Image444* mask) {
   BYTE* baseY = base->GetPtr(PLANAR_Y);
@@ -77,8 +77,8 @@ void OL_ExclusionImage::BlendImageMask(Image444* base, Image444* overlay, Image4
           Y = 0;
         }    
         baseY[x] = (BYTE)Y;
-        baseU[x] = (BYTE)min(255,max(U,0));
-        baseV[x] = (BYTE)min(255,max(V,0));
+        baseU[x] = (BYTE)clamp(U, 0, 255);
+        baseV[x] = (BYTE)clamp(V, 0, 255);
       }
       baseY += base->pitch;
       baseU += base->pitch;
@@ -116,8 +116,8 @@ void OL_ExclusionImage::BlendImageMask(Image444* base, Image444* overlay, Image4
           Y = 0;
         }    
         baseY[x] = (BYTE)Y;
-        baseU[x] = (BYTE)min(255,max(U,0));
-        baseV[x] = (BYTE)min(255,max(V,0));
+        baseU[x] = (BYTE)clamp(U, 0, 255);
+        baseV[x] = (BYTE)clamp(V, 0, 255);
       }
       baseY += base->pitch;
       baseU += base->pitch;
@@ -164,8 +164,8 @@ void OL_ExclusionImage::BlendImage(Image444* base, Image444* overlay) {
           Y = 0;
         }
         baseY[x] = (BYTE)Y;
-        baseU[x] = (BYTE)min(255,max(U,0));
-        baseV[x] = (BYTE)min(255,max(V,0));
+        baseU[x] = (BYTE)clamp(U, 0, 255);
+        baseV[x] = (BYTE)clamp(V, 0, 255);
       } // for x
       baseY += base->pitch;
       baseU += base->pitch;
@@ -196,8 +196,8 @@ void OL_ExclusionImage::BlendImage(Image444* base, Image444* overlay) {
           Y = 0;
         }
         baseY[x] = (BYTE)Y;
-        baseU[x] = (BYTE)min(255,max(U,0));
-        baseV[x] = (BYTE)min(255,max(V,0));
+        baseU[x] = (BYTE)clamp(U, 0, 255);
+        baseV[x] = (BYTE)clamp(V, 0, 255);
       } // for x
       baseY += base->pitch;
       baseU += base->pitch;

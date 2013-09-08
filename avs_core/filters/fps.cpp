@@ -33,10 +33,9 @@
 // import and export plugins, or graphical user interfaces.
 
 
-#include "stdafx.h"
-
 #include "fps.h"
-
+#include "core/win.h"
+#include "core/minmax.h"
 
 
 

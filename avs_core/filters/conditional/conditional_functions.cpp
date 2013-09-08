@@ -33,9 +33,11 @@
 // which is not derived from or based on Avisynth, such as 3rd-party filters,
 // import and export plugins, or graphical user interfaces.
 
-#include "stdafx.h"
-
 #include "conditional_functions.h"
+#include <cmath>
+#include <cstdlib>
+#include "core/minmax.h"
+
 
 
 extern const AVSFunction Conditional_funtions_filters[] = {
@@ -292,7 +294,7 @@ AVSValue ComparePlane::CmpPlane(AVSValue clip, AVSValue clip2, void* user_data, 
     env->ThrowError("Plane Difference: This filter can only be used within run-time filters");
 
   int n = cn.AsInt();
-  n = min(max(n,0),vi.num_frames-1);
+  n = clamp(n,0,vi.num_frames-1);
 
   PVideoFrame src = child->GetFrame(n,env);
   PVideoFrame src2 = child2->GetFrame(n,env);
@@ -359,8 +361,8 @@ AVSValue ComparePlane::CmpPlaneSame(AVSValue clip, void* user_data, int offset, 
     env->ThrowError("Plane Difference: This filter can only be used within run-time filters");
 
   int n = cn.AsInt();
-  n = min(max(n,0),vi.num_frames);
-  int n2 = min(max(n+offset,0),vi.num_frames-1);
+  n = clamp(n,0,vi.num_frames);     // TODO: this should probably be num_frames-1
+  int n2 = clamp(n+offset,0,vi.num_frames-1);
 
   PVideoFrame src = child->GetFrame(n,env);
   PVideoFrame src2 = child->GetFrame(n2,env);
@@ -496,7 +498,7 @@ AVSValue MinMaxPlane::MinMax(AVSValue clip, void* user_data, float threshold, in
 
   int pixels = w*h;
   threshold /=100.0f;  // Thresh now 0-1
-  threshold = max(0.0f,min(threshold,1.0f));
+  threshold = clamp(threshold, 0.0f, 1.0f);
 
   unsigned int tpixels = (unsigned int)((float)pixels*threshold);
 

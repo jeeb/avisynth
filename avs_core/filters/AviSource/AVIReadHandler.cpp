@@ -15,15 +15,13 @@
 //	along with this program; if not, write to the Free Software
 //	Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
-#include "stdafx.h"
-
 #include <crtdbg.h>
 
 #include "AVIReadHandler.h"
 //#include "FastReadStream.h"
 //#include "ProgressDialog.h"
 #include "AVIIndex.h"
-#include "../../core/Error.h"
+#include "Error.h"
 #include "List.h"
 #include "Fixes.h"
 #include "File64.h"
@@ -31,6 +29,7 @@
 #include "clip_info.h"
 
 #include "VD_misc.h"
+#include <cmath>
 
 
 #pragma warning(disable: 4200)    // nonstandard extension used : zero-sized array in struct/union

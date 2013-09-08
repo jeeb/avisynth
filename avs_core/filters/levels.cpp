@@ -33,10 +33,11 @@
 // import and export plugins, or graphical user interfaces.
 
 
-#include "stdafx.h"
-
 #include "levels.h"
 #include "limiter.h"
+#include <cstdio>
+#include <cmath>
+#include "core/minmax.h"
 
 
 #define PI        3.141592653589793
@@ -150,29 +151,29 @@ Levels::Levels( PClip _child, int in_min, double gamma, int in_max, int out_min,
       else
         p = (bias + i - in_min) / divisor;
 
-      p = pow(min(max(p, 0.0), 1.0), gamma);
+      p = pow(clamp(p, 0.0, 1.0), gamma);
       p = p * (out_max - out_min) + out_min;
 
       if (coring)
-        map[i] = min(max(int(p*(219.0/255.0)+16.5),  16), 235);
+        map[i] = clamp(int(p*(219.0/255.0)+16.5), 16, 235);
       else
-        map[i] = min(max(int(p+0.5), 0), 255);
+        map[i] = clamp(int(p+0.5), 0, 255);
 
       int q = ((bias + i - 128*scale) * (out_max-out_min)) / divisor + 128.5;
 
       if (coring)
-        mapchroma[i] = min(max(q, 16), 240);
+        mapchroma[i] = clamp(q, 16, 240);
       else
-        mapchroma[i] = min(max(q, 0), 255);
+        mapchroma[i] = clamp(q, 0, 255);
     }
   }
   else if (vi.IsRGB()) {
     for (int i=0; i<256*scale; ++i) {
       double p = (bias + i - in_min) / divisor;
-      p = pow(min(max(p, 0.0), 1.0), gamma);
+      p = pow(clamp(p, 0.0, 1.0), gamma);
       p = p * (out_max - out_min) + out_min;
 //    map[i] = PixelClip(int(p+0.5));
-      map[i] = min(max(int(p+0.5), 0), 255);
+      map[i] = clamp(int(p+0.5), 0, 255);
     }
   }
 
@@ -343,10 +344,10 @@ RGBAdjust::RGBAdjust(PClip _child, double r,  double g,  double b,  double a,
     mapA = new BYTE[256*256];
 
     for (int i=0; i<256*256; ++i) {
-      mapR[i] = int(pow(min(max((rb*256 + i * r -127.5)/(255.0*256), 0.0), 1.0), rg) * 255.0 + 0.5);
-      mapG[i] = int(pow(min(max((gb*256 + i * g -127.5)/(255.0*256), 0.0), 1.0), gg) * 255.0 + 0.5);
-      mapB[i] = int(pow(min(max((bb*256 + i * b -127.5)/(255.0*256), 0.0), 1.0), bg) * 255.0 + 0.5);
-      mapA[i] = int(pow(min(max((ab*256 + i * a -127.5)/(255.0*256), 0.0), 1.0), ag) * 255.0 + 0.5);
+      mapR[i] = int(pow(clamp((rb*256 + i * r -127.5)/(255.0*256), 0.0, 1.0), rg) * 255.0 + 0.5);
+      mapG[i] = int(pow(clamp((gb*256 + i * g -127.5)/(255.0*256), 0.0, 1.0), gg) * 255.0 + 0.5);
+      mapB[i] = int(pow(clamp((bb*256 + i * b -127.5)/(255.0*256), 0.0, 1.0), bg) * 255.0 + 0.5);
+      mapA[i] = int(pow(clamp((ab*256 + i * a -127.5)/(255.0*256), 0.0, 1.0), ag) * 255.0 + 0.5);
     }
   }
   else {
@@ -356,10 +357,10 @@ RGBAdjust::RGBAdjust(PClip _child, double r,  double g,  double b,  double a,
     mapA = new BYTE[256];
 
     for (int i=0; i<256; ++i) {
-      mapR[i] = int(pow(min(max((rb + i * r)/255.0, 0.0), 1.0), rg) * 255.0 + 0.5);
-      mapG[i] = int(pow(min(max((gb + i * g)/255.0, 0.0), 1.0), gg) * 255.0 + 0.5);
-      mapB[i] = int(pow(min(max((bb + i * b)/255.0, 0.0), 1.0), bg) * 255.0 + 0.5);
-      mapA[i] = int(pow(min(max((ab + i * a)/255.0, 0.0), 1.0), ag) * 255.0 + 0.5);
+      mapR[i] = int(pow(clamp((rb + i * r)/255.0, 0.0, 1.0), rg) * 255.0 + 0.5);
+      mapG[i] = int(pow(clamp((gb + i * g)/255.0, 0.0, 1.0), gg) * 255.0 + 0.5);
+      mapB[i] = int(pow(clamp((bb + i * b)/255.0, 0.0, 1.0), bg) * 255.0 + 0.5);
+      mapA[i] = int(pow(clamp((ab + i * a)/255.0, 0.0, 1.0), ag) * 255.0 + 0.5);
     }
   }
 
@@ -571,7 +572,7 @@ bool ProcessPixel(double X, double Y, double startHue, double endHue,
 
 	// Interpolation range is +/-p for p>0
 	const double max = min(maxSat+p, 180.0);
-	const double min = max(minSat-p,   0.0);
+	const double min = ::max(minSat-p,   0.0);
 
 	// Outside of [min-p, max+p] no adjustment
 	// minSat-p <= (U^2 + V^2) <= maxSat+p
@@ -654,14 +655,14 @@ Tweak::Tweak( PClip _child, double _hue, double _sat, double _bright, double _co
         for (int i = 0; i < 256*256; i++) {
           /* brightness and contrast */
           int y = int(((i - 16*256)*_cont + _bright*256 - 127.5)/256 + 16.5);
-          map[i] = min(max(y, 16), 235);
+          map[i] = clamp(y, 16, 235);
         }
       }
       else {
         for (int i = 0; i < 256*256; i++) {
           /* brightness and contrast */
           int y = int((i*_cont + _bright*256 - 127.5)/256 + 0.5);
-          map[i] = min(max(y, 0), 255);
+          map[i] = clamp(y, 0, 255);
         }
       }
     }
@@ -672,14 +673,14 @@ Tweak::Tweak( PClip _child, double _hue, double _sat, double _bright, double _co
         for (int i = 0; i < 256; i++) {
           /* brightness and contrast */
           int y = int((i - 16)*_cont + _bright + 16.5);
-          map[i] = min(max(y, 16), 235);
+          map[i] = clamp(y, 16, 235);
         }
       }
       else {
         for (int i = 0; i < 256; i++) {
           /* brightness and contrast */
           int y = int(i*_cont + _bright + 0.5);
-          map[i] = min(max(y, 0), 255);
+          map[i] = clamp(y, 0, 255);
         }
       }
     }
@@ -706,11 +707,11 @@ Tweak::Tweak( PClip _child, double _hue, double _sat, double _bright, double _co
             if (allPixels || ProcessPixel(destv, destu, startHue, endHue, maxSat, minSat, p, iSat)) {
               int du = int ( (destu*COS + destv*SIN) * iSat + 0x100) >> 9;
               int dv = int ( (destv*COS - destu*SIN) * iSat + 0x100) >> 9;
-              du = min(max(du+128,minUV),maxUV);
-              dv = min(max(dv+128,minUV),maxUV);
+              du = clamp(du+128,minUV,maxUV);
+              dv = clamp(dv+128,minUV,maxUV);
               mapUV[(u<<12)|(v<<4)|d]  = (unsigned short)(du | (dv<<8));
             } else {
-              mapUV[(u<<12)|(v<<4)|d]  = (unsigned short)(min(max(u,minUV),maxUV) | ((min(max(v,minUV),maxUV))<<8));
+              mapUV[(u<<12)|(v<<4)|d]  = (unsigned short)(clamp(u,minUV,maxUV) | (clamp(v,minUV,maxUV)<<8));
             }
           }
         }
@@ -727,11 +728,11 @@ Tweak::Tweak( PClip _child, double _hue, double _sat, double _bright, double _co
           if (allPixels || ProcessPixel(destv, destu, startHue, endHue, maxSat, minSat, p, iSat)) {
             int du = int ( (destu*COS + destv*SIN) * iSat ) >> 9;
             int dv = int ( (destv*COS - destu*SIN) * iSat ) >> 9;
-            du = min(max(du+128,minUV),maxUV);
-            dv = min(max(dv+128,minUV),maxUV);
+            du = clamp(du+128,minUV,maxUV);
+            dv = clamp(dv+128,minUV,maxUV);
             mapUV[(u<<8)|v]  = (unsigned short)(du | (dv<<8));
           } else {
-            mapUV[(u<<8)|v]  = (unsigned short)(min(max(u,minUV),maxUV) | ((min(max(v,minUV),maxUV))<<8));
+            mapUV[(u<<8)|v]  = (unsigned short)(clamp(u,minUV,maxUV) | (clamp(v,minUV,maxUV)<<8));
           }
         }
       }

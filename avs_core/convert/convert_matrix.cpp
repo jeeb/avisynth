@@ -35,8 +35,6 @@
 // ConvertMatrix (c) 2005 by Klaus Post and Ian Brabham
 
 
-#include "stdafx.h"
-
 #include "convert_matrix.h"
 
 

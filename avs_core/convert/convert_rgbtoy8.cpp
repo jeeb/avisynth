@@ -35,8 +35,6 @@
 // ConvertRGBtoY8 (c) 2011 by Ian Brabham
 
 
-#include "stdafx.h"
-
 #include "convert_rgbtoy8.h"
 
 

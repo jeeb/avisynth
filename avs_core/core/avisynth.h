@@ -46,10 +46,6 @@ enum { AVISYNTH_INTERFACE_VERSION = 5 };
 /* Define all types necessary for interfacing with avisynth.dll
    Moved from internal.h */
 
-// Win32 API macros, notably the types BYTE, DWORD, ULONG, etc.
-#include <windef.h>
-
-
 // Raster types used by VirtualDub & Avisynth
 #define in64 (__int64)(unsigned short)
 typedef unsigned long   Pixel;    // this will break on 64-bit machines!
@@ -58,6 +54,7 @@ typedef unsigned char   Pixel8;
 typedef long            PixCoord;
 typedef long            PixDim;
 typedef long            PixOffset;
+typedef unsigned char   BYTE;
 
 
 /* Compiler-specific crap */

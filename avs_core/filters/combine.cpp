@@ -32,10 +32,10 @@
 // which is not derived from or based on Avisynth, such as 3rd-party filters,
 // import and export plugins, or graphical user interfaces.
 
-#include "stdafx.h"
-
 #include "combine.h"
-
+#include "../core/win.h"
+#include "../core/minmax.h"
+#include <cmath>
 
 
 
@@ -515,7 +515,7 @@ PVideoFrame __stdcall Animate::GetFrame(int n, IScriptEnvironment* env)
     }
     return cache[0]->GetFrame(n, env);
   }
-  int stage = min(max(n, first), last) - first;
+  int stage = clamp(n, first, last) - first;
   for (int i=0; i<cache_size; ++i)
     if (cache_stage[i] == stage)
       return cache[i]->GetFrame(n, env);

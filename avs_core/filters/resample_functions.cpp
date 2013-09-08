@@ -32,9 +32,10 @@
 // which is not derived from or based on Avisynth, such as 3rd-party filters,
 // import and export plugins, or graphical user interfaces.
 
-#include "stdafx.h"
-
 #include "resample_functions.h"
+#include <cmath>
+#include <malloc.h>
+#include "core/minmax.h"
 
 
 /*******************************************
@@ -89,7 +90,7 @@ double MitchellNetravaliFilter::f (double x) {
  *** Lanczos3 filter ***
  ***********************/
 LanczosFilter::LanczosFilter(int t = 3) {
-   taps = (double)(max( 1,min(100,t)));
+   taps = (double)clamp(t, 1, 100);
 }
 
 double LanczosFilter::sinc(double value) {
@@ -116,7 +117,7 @@ double LanczosFilter::f(double value) {
  *** Blackman filter ***
  ***********************/
 BlackmanFilter::BlackmanFilter(int t = 4) {
-   taps = (double)(max( 1,min(100,t)));
+   taps = (double)clamp(t, 1, 100);
    rtaps = 1.0/taps;
 }
 
@@ -199,7 +200,7 @@ double Spline64Filter::f(double value) {
                      value       < {30, 2.0, 1.73, 0.949}         */
 
 GaussianFilter::GaussianFilter(double p = 30.0) {
-  param = min(100.0,max(0.1,p));
+  param = clamp(p, 0.1, 100.0);
 }
 
 double GaussianFilter::f(double value) {
@@ -212,7 +213,7 @@ double GaussianFilter::f(double value) {
  *** Sinc filter ***
  ***********************/
 SincFilter::SincFilter(int t = 4) {
-   taps = (double)(max( 1,min(20,t)));
+   taps = (double)clamp(t, 1, 20);
 }
 
 double SincFilter::f(double value) {
@@ -279,7 +280,7 @@ int* ResamplingFunction::GetResamplingPatternRGB( int original_width, double sub
     double total = 0.0;
 
     // Ensure that we have a valid position
-    double ok_pos = max(0.0,min(original_width-1,pos));
+    double ok_pos = clamp(pos, 0.0, (double)(original_width-1));
 
     for (int j=0; j<fir_filter_size; ++j) {  // Accumulate all coefficients
       total += f((start_pos+j - ok_pos) * filter_step);
@@ -365,7 +366,7 @@ int* ResamplingFunction::GetResamplingPatternYUV( int original_width, double sub
     double total = 0.0;
 
     // Ensure that we have a valid position
-    double ok_pos = max(0.0,min(original_width-1, pos)); 
+    double ok_pos = clamp(pos, 0.0, (double)(original_width-1)); 
 
     for (int j=0; j<fir_filter_size; ++j) {  // Accumulate all coefficients
       total += f((start_pos + j - ok_pos) * filter_step);

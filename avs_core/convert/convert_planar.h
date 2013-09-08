@@ -41,6 +41,7 @@
 #include "convert_matrix.h"
 #include "convert_rgbtoy8.h"
 #include "../filters/resample.h"
+#include "../core/win.h"
 
 enum {Rec601=0, Rec709=1, PC_601=2, PC_709=3, AVERAGE=4 };
 

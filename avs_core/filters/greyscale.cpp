@@ -33,10 +33,9 @@
 // import and export plugins, or graphical user interfaces.
 
 
-#include "stdafx.h"
-
 #include "greyscale.h"
-
+#include "core/win.h"
+#include <cstdlib>
 
 
 /*************************************

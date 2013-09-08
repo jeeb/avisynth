@@ -51,6 +51,7 @@
  * (c) 2002 by sh0dan.
  ********/
 
+typedef unsigned char  BYTE;
 
 void mmx_weigh_planar(BYTE *p1, const BYTE *p2, int p1_pitch, int p2_pitch,int rowsize, int height, int weight, int invweight);
  

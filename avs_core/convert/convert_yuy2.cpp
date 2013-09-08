@@ -32,8 +32,6 @@
 // which is not derived from or based on Avisynth, such as 3rd-party filters,
 // import and export plugins, or graphical user interfaces.
 
-#include "stdafx.h"
-
 #include "convert_yuy2.h"
 
 //  const int cyb = int(0.114*219/255*32768+0.5);  // 0x0C88

@@ -34,8 +34,8 @@
 
 // Overlay (c) 2003, 2004 by Klaus Post
 
-#include "stdafx.h"
 #include "overlayfunctions.h"
+#include "core/minmax.h"
 
 void OL_SoftLightImage::BlendImageMask(Image444* base, Image444* overlay, Image444* mask) {
   BYTE* baseY = base->GetPtr(PLANAR_Y);
@@ -78,8 +78,8 @@ void OL_SoftLightImage::BlendImageMask(Image444* base, Image444* overlay, Image4
         }
     
         baseY[x] = (BYTE)Y;
-        baseU[x] = (BYTE)max(0,min(255,U));
-        baseV[x] = (BYTE)max(0,min(255,V));
+        baseU[x] = (BYTE)clamp(U, 0, 255);
+        baseV[x] = (BYTE)clamp(V, 0, 255);
       }
       baseY += base->pitch;
       baseU += base->pitch;
@@ -117,8 +117,8 @@ void OL_SoftLightImage::BlendImageMask(Image444* base, Image444* overlay, Image4
           Y = 0;
         }    
         baseY[x] = (BYTE)Y;
-        baseU[x] = (BYTE)max(0,min(255,U));
-        baseV[x] = (BYTE)max(0,min(255,V));
+        baseU[x] = (BYTE)clamp(U, 0, 255);
+        baseV[x] = (BYTE)clamp(V, 0, 255);
       }
       baseY += base->pitch;
       baseU += base->pitch;
@@ -165,8 +165,8 @@ void OL_SoftLightImage::BlendImage(Image444* base, Image444* overlay) {
           Y = 0;
         }
         baseY[x] = (BYTE)Y;
-        baseU[x] = (BYTE)max(0,min(255,U));
-        baseV[x] = (BYTE)max(0,min(255,V));
+        baseU[x] = (BYTE)clamp(U, 0, 255);
+        baseV[x] = (BYTE)clamp(V, 0, 255);
       } // for x
       baseY += base->pitch;
       baseU += base->pitch;
@@ -197,8 +197,8 @@ void OL_SoftLightImage::BlendImage(Image444* base, Image444* overlay) {
           Y = 0;
         }
         baseY[x] = (BYTE)Y;
-        baseU[x] = (BYTE)max(0,min(255,U));
-        baseV[x] = (BYTE)max(0,min(255,V));
+        baseU[x] = (BYTE)clamp(U, 0, 255);
+        baseV[x] = (BYTE)clamp(V, 0, 255);
       }
       baseY += base->pitch;
       baseU += base->pitch;
@@ -255,8 +255,8 @@ void OL_HardLightImage::BlendImageMask(Image444* base, Image444* overlay, Image4
         }
     
         baseY[x] = (BYTE)Y;
-        baseU[x] = (BYTE)max(0,min(255,U));
-        baseV[x] = (BYTE)max(0,min(255,V));
+        baseU[x] = (BYTE)clamp(U, 0, 255);
+        baseV[x] = (BYTE)clamp(V, 0, 255);
       }
       baseY += base->pitch;
       baseU += base->pitch;
@@ -294,8 +294,8 @@ void OL_HardLightImage::BlendImageMask(Image444* base, Image444* overlay, Image4
           Y = 0;
         }    
         baseY[x] = (BYTE)Y;
-        baseU[x] = (BYTE)max(0,min(255,U));
-        baseV[x] = (BYTE)max(0,min(255,V));
+        baseU[x] = (BYTE)clamp(U, 0, 255);
+        baseV[x] = (BYTE)clamp(V, 0, 255);
       }
       baseY += base->pitch;
       baseU += base->pitch;
@@ -342,8 +342,8 @@ void OL_HardLightImage::BlendImage(Image444* base, Image444* overlay) {
           Y = 0;
         }
         baseY[x] = (BYTE)Y;
-        baseU[x] = (BYTE)max(0,min(255,U));
-        baseV[x] = (BYTE)max(0,min(255,V));
+        baseU[x] = (BYTE)clamp(U, 0, 255);
+        baseV[x] = (BYTE)clamp(V, 0, 255);
       } // for x
       baseY += base->pitch;
       baseU += base->pitch;
@@ -374,8 +374,8 @@ void OL_HardLightImage::BlendImage(Image444* base, Image444* overlay) {
           Y = 0;
         }
         baseY[x] = (BYTE)Y;
-        baseU[x] = (BYTE)max(0,min(255,U));
-        baseV[x] = (BYTE)max(0,min(255,V));
+        baseU[x] = (BYTE)clamp(U, 0, 255);
+        baseV[x] = (BYTE)clamp(V, 0, 255);
       }
       baseY += base->pitch;
       baseU += base->pitch;

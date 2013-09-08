@@ -36,7 +36,7 @@
 #define __Focus_H__
 
 #include "../internal.h"
-
+#include "../core/win.h"
 
 
 

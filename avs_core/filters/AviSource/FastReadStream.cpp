@@ -18,12 +18,14 @@
 //	along with this program; if not, write to the Free Software
 //	Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
-#include "stdafx.h"
-
 #include <crtdbg.h>
-
-#include "../../core/Error.h"
 #include "FastReadStream.h"
+
+#include "Error.h"
+#include <io.h>
+#include <cstdio>
+#include <cerrno>
+
 
 #pragma warning(disable: 4244)    // conversion from __int64, possible loss of data
 

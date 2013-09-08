@@ -22,11 +22,11 @@ Copyright © 2003, Klaus Post
 *******************************************************/
 
 #include <math.h>
-#include "stdafx.h"
 #include "supereq.h"
 #include "paramlist.h"
 #include "convertaudio.h"
 #include <vector>
+#include "core/minmax.h"
 
 
 

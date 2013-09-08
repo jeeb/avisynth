@@ -36,6 +36,8 @@
 #define __Text_overlay_H__
 
 #include "../internal.h"
+#include "core/win.h"
+#include <cstdio>
 
 
 /********************************************************************
@@ -213,18 +215,6 @@ void ApplyMessage( PVideoFrame* frame, const VideoInfo& vi, const char* message,
 
 bool GetTextBoundingBox( const char* text, const char* fontname, int size, bool bold, 
                          bool italic, int align, int* width, int* height );
-
-
-
-
-/**** Inline helper functions ****/
-
-inline static HFONT LoadFont(const char name[], int size, bool bold, bool italic, int width=0, int angle=0) 
-{
-  return CreateFont( size, width, angle, angle, bold ? FW_BOLD : FW_NORMAL,
-                     italic, FALSE, FALSE, DEFAULT_CHARSET, OUT_DEFAULT_PRECIS,
-                     CLIP_DEFAULT_PRECIS, DEFAULT_QUALITY, FF_DONTCARE | DEFAULT_PITCH, name );
-}
 
 
 #endif  // __Text_overlay_H__

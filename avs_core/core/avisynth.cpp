@@ -32,17 +32,17 @@
 // which is not derived from or based on Avisynth, such as 3rd-party filters,
 // import and export plugins, or graphical user interfaces.
 
-#include "stdafx.h"
-
-#include <stdarg.h>
-
-#include <string>
-using std::string;
-
 #include "../internal.h"
 #include "./parser/script.h"
 #include "memcpy_amd.h"
 #include "cache.h"
+#include "minmax.h"
+
+#include "win.h"
+#include <objbase.h>
+
+#include <string>
+#include <cstdarg>
 
 #ifdef _MSC_VER
   #define strnicmp(a,b,c) _strnicmp(a,b,c)
@@ -757,7 +757,7 @@ public:
 class StringDump {
   enum { BLOCK_SIZE = 32768 };
   char* current_block;
-  int block_pos, block_size;
+  unsigned int block_pos, block_size;
 
 public:
   StringDump() : current_block(0), block_pos(BLOCK_SIZE), block_size(BLOCK_SIZE) {}
@@ -1231,14 +1231,14 @@ void ScriptEnvironment::PrescanPlugins()
 
 void ScriptEnvironment::ExportFilters()
 {
-  string builtin_names;
+  std::string builtin_names;
 
   for (int i = 0; i < sizeof(builtin_functions)/sizeof(builtin_functions[0]); ++i) {
     for (const AVSFunction* j = builtin_functions[i]; j->name; ++j) {
       builtin_names += j->name;
       builtin_names += " ";
 
-      string param_id = string("$Plugin!") + j->name + "!Param$";
+      std::string param_id = std::string("$Plugin!") + j->name + "!Param$";
       SetGlobalVar( SaveString(param_id.c_str(), param_id.length() + 1), AVSValue(j->param_types) );
     }
   }
@@ -1614,7 +1614,7 @@ LinkedVideoFrameBuffer* ScriptEnvironment::GetFrameBuffer2(int size) {
 
   // Before we allocate a new framebuffer, check our memory usage, and if we
   // are 12.5% or more above allowed usage discard some unreferenced frames.
-  if (memory_used >=  memory_max + max(size, (memory_max >> 3)) ) {
+  if (memory_used >=  memory_max + max((long long)size, (memory_max >> 3)) ) {
     ++g_Mem_stats.CleanUps;
     int freed = 0;
     int freed_count = 0;
@@ -1723,7 +1723,7 @@ VideoFrameBuffer* ScriptEnvironment::GetFrameBuffer(int size) {
     const __int64 save_max = memory_max;
 
     // Set memory_max to 12.5% below memory_used
-    memory_max = max(4*1024*1024, memory_used - max(size, (memory_used/9)));
+    memory_max = max(4*1024*1024ll, memory_used - max((long long)size, (memory_used/9)));
 
     // Retry the request
     result = GetFrameBuffer2(size);
@@ -1816,7 +1816,7 @@ AVSValue ScriptEnvironment::Invoke(const char* name, const AVSValue args, const 
   // combine unnamed args into arrays
   int src_index=0, dst_index=0;
   const char* p = f->param_types;
-  const int maxarg3 = max(args2_count, strlen(p)); // well it can't be any longer than this.
+  const int maxarg3 = max((size_t)args2_count, strlen(p)); // well it can't be any longer than this.
 
   AVSValue *args3 = new AVSValue[maxarg3];
 

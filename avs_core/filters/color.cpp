@@ -33,7 +33,10 @@
 // import and export plugins, or graphical user interfaces.
 
 
-#include "stdafx.h"
+#include <cstdio>
+#include <cmath>
+#include "../core/win.h"
+#include "../core/minmax.h"
 
 
 /* Color YUV originally by Kiraru2002(masani)
@@ -42,6 +45,25 @@
 */
 
 #include "color.h"
+
+#ifdef _DEBUG
+static int DebugMsg(LPSTR sz,...)
+{
+    char buf[256];
+    wvsprintf (buf, sz, (LPSTR)(&sz+1));
+    OutputDebugString(buf);
+    return FALSE;
+}
+
+typedef struct _COUNT {
+	int d;
+	int	over;
+	int	under;
+	int max;
+	int min;
+	int ave;
+} COUNT;
+#endif
 
 extern const AVSFunction Color_filters[] = {
   { "ColorYUV",

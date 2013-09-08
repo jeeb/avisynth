@@ -34,7 +34,6 @@
 
 // Overlay (c) 2003, 2004 by Klaus Post
 
-#include "stdafx.h"
 #include "overlayfunctions.h"
 
 void OL_AddImage::BlendImageMask(Image444* base, Image444* overlay, Image444* mask) {
@@ -63,8 +62,8 @@ void OL_AddImage::BlendImageMask(Image444* base, Image444* overlay, Image444* ma
           V = ((V*multiplier) + (128*(32-multiplier)))>>5;
           Y = 255;
         }
-        baseU[x] = (BYTE)min(255,max(U,0));
-        baseV[x] = (BYTE)min(255,max(V,0));
+        baseU[x] = (BYTE)clamp(U, 0, 255);
+        baseV[x] = (BYTE)clamp(V, 0, 255);
         baseY[x] = (BYTE)Y;
       }
       maskY += mask->pitch;
@@ -95,8 +94,8 @@ void OL_AddImage::BlendImageMask(Image444* base, Image444* overlay, Image444* ma
           V = ((V*multiplier) + (128*(32-multiplier)))>>5;
           Y = 255;
         }
-        baseU[x] = (BYTE)min(255,max(U,0));
-        baseV[x] = (BYTE)min(255,max(V,0));
+        baseU[x] = (BYTE)clamp(U, 0, 255);
+        baseV[x] = (BYTE)clamp(V, 0, 255);
         baseY[x] = (BYTE)Y;
       }
       baseY += base->pitch;
@@ -139,8 +138,8 @@ void OL_AddImage::BlendImage(Image444* base, Image444* overlay) {
           V = ((V*multiplier) + (128*(32-multiplier)))>>5;
           Y = 255;
         }
-        baseU[x] = (BYTE)min(255,max(U,0));
-        baseV[x] = (BYTE)min(255,max(V,0));
+        baseU[x] = (BYTE)clamp(U, 0, 255);
+        baseV[x] = (BYTE)clamp(V, 0, 255);
         baseY[x] = (BYTE)Y;
       }
       baseY += base->pitch;
@@ -164,8 +163,8 @@ void OL_AddImage::BlendImage(Image444* base, Image444* overlay) {
           V = ((V*multiplier) + (128*(32-multiplier)))>>5;
           Y = 255;
         }
-        baseU[x] = (BYTE)min(255,max(U,0));
-        baseV[x] = (BYTE)min(255,max(V,0));
+        baseU[x] = (BYTE)clamp(U, 0, 255);
+        baseV[x] = (BYTE)clamp(V, 0, 255);
         baseY[x] = (BYTE)Y;
       }
       baseY += base->pitch;

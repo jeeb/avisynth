@@ -32,10 +32,9 @@
 // which is not derived from or based on Avisynth, such as 3rd-party filters,
 // import and export plugins, or graphical user interfaces.
 
-#include "stdafx.h"
-
 #include "transform.h"
 #include "../convert/convert.h"
+#include "core/minmax.h"
 
 
 

@@ -38,8 +38,6 @@
 **
 */
 
-#include "stdafx.h"
-
 #include "turn.h"
 
 

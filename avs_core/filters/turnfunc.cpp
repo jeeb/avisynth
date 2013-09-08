@@ -32,8 +32,6 @@
 // which is not derived from or based on Avisynth, such as 3rd-party filters,
 // import and export plugins, or graphical user interfaces.
 
-#include "stdafx.h"
-
 /*
 ** Turn. version 0.1
 ** (c) 2003 - Ernst PechÚ

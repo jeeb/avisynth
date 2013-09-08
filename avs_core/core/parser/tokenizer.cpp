@@ -33,11 +33,11 @@
 // import and export plugins, or graphical user interfaces.
 
 
-#include "stdafx.h"
-
 #include "tokenizer.h"
+#include "../win.h"
 
-#include <Float.h>
+#include <cfloat>
+#include <climits>
 
 
 
@@ -61,6 +61,11 @@ Tokenizer::Tokenizer(Tokenizer* old)
   line = old->line;
   NextToken();
 }  
+
+bool Tokenizer::IsIdentifier(const char* id) const 
+{
+  return IsIdentifier() && !lstrcmpi(id, identifier);
+}
 
 
 void Tokenizer::NextToken() {

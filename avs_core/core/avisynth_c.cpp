@@ -7,10 +7,11 @@
 // (at your option) any later version.
 //
 
-#include "stdafx.h"
-
 #include "../internal.h"
 #include "avisynth_c.h"
+#include "win.h"
+#include <algorithm>
+#include <cstdarg>
 
 
 struct AVS_Clip 

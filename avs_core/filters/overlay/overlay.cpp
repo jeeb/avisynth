@@ -34,8 +34,8 @@
 
 // Overlay (c) 2003, 2004 by Klaus Post
 
-#include "stdafx.h"
 #include "overlay.h"
+#include "../../core/win.h"
 
 /********************************************************************
 ***** Declare index of new filters for Avisynth's filter engine *****

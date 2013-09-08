@@ -32,10 +32,12 @@
 // which is not derived from or based on Avisynth, such as 3rd-party filters,
 // import and export plugins, or graphical user interfaces.
 
-#include "stdafx.h"
-
 #include "edit.h"
 #include "../audio/convertaudio.h"
+#include <cmath>
+#include <climits>
+#include "../core/win.h"
+#include "../core/minmax.h"
 
 
 
@@ -90,7 +92,7 @@ Trim::Trim(double starttime, double endtime, PClip _child, int mode, IScriptEnvi
   if (!vi.HasAudio())
     env->ThrowError("AudioTrim: Cannot trim if there is no audio.");
 
-  audio_offset = min(max(__int64(starttime*vi.audio_samples_per_second + 0.5), 0), vi.num_audio_samples);
+  audio_offset = clamp(__int64(starttime*vi.audio_samples_per_second + 0.5), 0ll, vi.num_audio_samples);
 
   switch (mode) {
     case Default:
@@ -159,7 +161,7 @@ Trim::Trim(int _firstframe, int _lastframe, bool _padaudio, PClip _child, int mo
   if (!vi.HasVideo())
     env->ThrowError("Trim: Cannot trim if there is no video.");
 
-  firstframe = min(max(_firstframe, 0), vi.num_frames-1);
+  firstframe = clamp(_firstframe, 0, vi.num_frames-1);
 
   switch (mode) {
     case Default:
@@ -170,7 +172,7 @@ Trim::Trim(int _firstframe, int _lastframe, bool _padaudio, PClip _child, int mo
 	  else
 		lastframe = _lastframe;
 
-	  lastframe = min(max(lastframe, firstframe), vi.num_frames-1);
+	  lastframe = clamp(lastframe, firstframe, vi.num_frames-1);
 
 	  break;
 
@@ -866,8 +868,8 @@ AVSValue __cdecl Reverse::Create(AVSValue args, void*, IScriptEnvironment* env)
 Loop::Loop(PClip _child, int times, int _start, int _end, IScriptEnvironment* env)
  : GenericVideoFilter(_child), start(_start), end(_end)
 {
-  start = min(max(start,0),vi.num_frames-1);
-  end = min(max(end,start),vi.num_frames-1);
+  start = clamp(start,0,vi.num_frames-1);
+  end = clamp(end,start,vi.num_frames-1);
   frames = end-start+1;
   if (times<0) { // Loop nearly forever
     vi.num_frames = 10000000;

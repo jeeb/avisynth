@@ -19,7 +19,8 @@
 */
 
 #include "../../internal.h"
-#include <stdio.h>
+#include <cstdio>
+#include <cstdlib>
 
 
 

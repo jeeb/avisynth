@@ -33,11 +33,12 @@
 // which is not derived from or based on Avisynth, such as 3rd-party filters,
 // import and export plugins, or graphical user interfaces.
 
-#include "stdafx.h"
-
 #include "conditional.h"
 #include "../../core/parser/scriptparser.h"
 #include "conditional_reader.h"
+#include <cmath>
+#include "../../core/win.h"
+#include "../../core/minmax.h"
 
 extern const AVSFunction Conditional_filters[] = {
   {  "ConditionalSelect","csc+[show]b", ConditionalSelect::Create },

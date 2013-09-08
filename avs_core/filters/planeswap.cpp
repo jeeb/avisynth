@@ -39,8 +39,6 @@
 // iSSE code by Ian Brabham
 
 
-#include "stdafx.h"
-
 #include "planeswap.h"
 
 
