@@ -1,7 +1,9 @@
-The locations that the Soundouch sources were obtained from.
+The locations that the SoundTouch sources were obtained from.
 
 http://www.surina.net/soundtouch/soundtouch-1.3.1.zip
 http://www.surina.net/soundtouch/soundtouch-1.4.0.zip
+http://www.surina.net/soundtouch/soundtouch-1.7.1.tar.gz
 http://soundtouch.svn.sourceforge.net/viewvc/soundtouch/trunk.tar.gz?view=tar
 
 04 Jan 2010 IanB
+24 Aug 2013 pylorak

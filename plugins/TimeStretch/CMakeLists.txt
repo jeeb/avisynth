@@ -20,7 +20,6 @@ target_link_libraries(${ProjectName} "SoundTouch")
 # Include directories
 target_include_directories(${ProjectName} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR} ${AvsCore_SOURCE_DIR})
 
-
 if (MSVC_IDE)    
   # Copy output to a common folder for easy deployment
   add_custom_command(
