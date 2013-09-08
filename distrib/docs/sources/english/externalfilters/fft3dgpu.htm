@@ -1,0 +1,251 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html>
+	<head>
+		<title>FFT3D GPU filter</title>
+		<meta http-equiv="Content-Language" content="en-us">
+		<meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+		<link rel="stylesheet" type="text/css" href="../../avisynth.css">
+		<!--
+Automatically generated, don't change:
+$Id: fft3dgpu.htm,v 1.2 2006/06/11 17:25:07 fizick Exp $ 
+-->
+	</head>
+	<body>
+		<h1>FFT3DGPU</h1>
+		<h2>Abstract</h2>
+		<p><b>author:</b> Tonny Petersen aka tsp
+			<br>
+			<b>version:</b> 0.6.4<br>
+			<b>download:</b> <a href="http://www.avisynth.org/tsp/">http://www.avisynth.org/tsp/</a><br>
+			<b>category:</b> Misc Plugins<br>
+			<b>requirements:</b> YV12 Colorspace, Directx 9 graphics card<br>
+			<b>license:</b> GPL</p>
+		<h2>Introduction</h2>
+		<p>FFT3dGPU is a GPU version of Fizick's <a href="fft3dfilter.htm">FFT3DFilter</a>. 
+			The algorithm (Fast Fourier Transform, denoising) is the same for the most 
+			part. Currently the following is not implemented: support for interlaced video 
+			or YUY2 colorspace or noise pattern.
+		</p>
+		<p>In this version the next frame is processed while waiting for the GPU to end 
+			it's work. Meaning the filters before fft3dGPU are working concurrently with 
+			it.
+		</p>
+		<h3>Install:
+		</h3>
+		<p>To use this filter you need directx 9.0c or better and a graphics card 
+			supporting directx 9 in hardware. That is at least an ATI Radeon 95xx or Nvidia 
+			Geforce fx 5xxx. Geforce 6xxx or better is recommended. If you have downloaded 
+			the installer just run it at you're done, else copy fft3dgpu.hlsl and copy 
+			FFT3dGPU.dll into the same directory, also copy d3dx9_30.dll to the 
+			c:\windows\system32 directory.
+			<br>
+			Older versions also had fft3dgpu9b.dll (not available at the moment) for 
+			Directx 9.0b support (DON'T copy both dll into the autoload directory.) Directx 
+			9.0c might be faster for people using Nvidia Geforce 6xxx because it adds 
+			support for pixelshader 3.0. If you don't have the latest version of directx 
+			installed (april 2006 or later) you can get it <a href="http://www.microsoft.com/downloads/details.aspx?FamilyID=fb73d860-5af1-45e5-bac0-9bc7a5254203&amp;DisplayLang=en">
+				<cite>here</cite></a> or extract the file d3dx9_30.dll to the 
+			c:\windows\system32 directory. The installer will copy d3dx9_30.dll to the 
+			right location meaning that it shouldn't be neccesary to run the directx 
+			installer if you have Directx 9c installed.
+		</p>
+		<h3>Syntax</h3>
+		<p><code>FFT3DGPU</code>(<var>clip, float "sigma", float "beta", int "bw", int "bh", 
+				int "bt", float "sharpen", int "plane", int "mode", int "bordersize", int 
+				"precision", bool "NVPerf", float "degrid", float "scutoff", float "svr", float 
+				"smin", float "smax", float "kratio", int "ow", int "oh", int "wintype" </var>
+			)</p>
+		<h3>
+			Function parameters:</h3>
+		<p><var>clip</var>: the clip to filter. The clip must be YV12.</p>
+		<p><var>sigma</var> and <var>beta</var> has the same meaning as in fft3dfilter. 
+			Default=1.</p>
+		<p><var>bw,bh</var>: blockwide and block height. It should be a power of 2 ie valid 
+			values is 4,8,16,32,64,128,256,512 (note&nbsp;that bw should be greater 
+			than&nbsp;4 for best result). Default=32</p>
+		<p><var>bt</var>: mode. bt=-1 sharpen only, bt=0 kalman filtering, bt=1 is 2d 
+			filtering, bt=2 uses the current and previous frame, bt=3 uses the previous 
+			current and next frame, bt=4 uses the two previous frames, the current and next 
+			frame. default 1</p>
+		<p><var>sharpen</var>: positive values sharpens the image, negative values blurs 
+			the image. 0 disables sharpening. Default 0.</p>
+		<p><var>plane</var>: 0 filters luma, 1,2 and 3 filters Chroma (both U and V). 4 
+			filters both luma and chroma. Default 0.</p>
+		<p><var>mode</var>: 0 only overlaps 1:1. This is faster but produces artifacts with 
+			high sigma values.<br>
+			mode=1 block overlaps 2:1. This is slower but produces fewer artifacts.<br>
+			mode=2 again 1:1 overlap but with a additional border. This reduces border 
+			artifacts seen with mode=0. The speed is between mode 0 and 1.<br>
+			Kalman(bt=0) works well with mode=0. Default 1</p>
+		<p><var>bordersize</var>: only used with mode 2. Defines the size of the border. 
+			Default is 1.</p>
+		<p><var>precision</var>: 0: to use 16 bit floats(half precision),<br>
+			1: to use 32 bit float(single precision) for the fft and 16 bit float for the 
+			wienner/kalman and sharpening.<br>
+			2: allways use 32 bit floats.<br>
+			Using 16 bit float increases the performance but reduces precision. With a 
+			Geforce 7800GT precision=0 is ~1.5 times faster than than mode 2. Default=0.</p>
+		<p><var>NVPerf</var>: Enables support for NVPerfHUD 
+			(http://developer.nvidia.com/object/nvperfhud_home.html). Default false.
+		</p>
+		<p><var>degrid</var>: Enables degriding. Only works well with mode=1. Doesn't 
+			degrid the Kalman filter (but it does degrid the sharpening (if enabled) after 
+			kalman filter). default 1.0 for mode=1, 0.0 for mode=0 or 2</p>
+		<p><var>scutoff, svr, smin, smax</var>:Same meaning as fft3dfilter. Controls the 
+			sharpening. default scutoff=0.3, svr=1.0, smin=4.0, smax=20.0</p>
+		<p><var>kratio</var>: same as fft3dfilter. Control the threshold for reseting the 
+			Kalman filter. Default 2.0</p>
+		<p><var>ow,oh</var>: this only works with mode=1. This specifies how big the 
+			overlap between the blocks are. Overlap size must be less than or equal to half 
+			the blocksize. Ow must be even. Default: ow=bw/2 ,oh=bh/2</p>
+		<p><var>wintype</var>: Change the analysis and syntesis window function. Same as 
+			fft3dfilter<br>
+			<h3>FAQ:</h3>
+			<h4>
+				Q: What does it mean when I get a popup box Unexpected error encountered with 
+				Error Code: D3DERR_OUTOFVIDEOMEMORY.</h4>
+		<p>
+			A: It means that fft3dgpu needs more memory than there are availebol on the 
+			graphics card. So either you will have to upgrade or try lowering the 
+			resolution,bt,bh,bw,ow,oh or use usefloat16=true or mode 0 or 2</p>
+		<h4>
+			Q: What setting gives the same result as fft3dfilter?</h4>
+		<p>
+			A:fft3dGPU(mode=1,precision=2) is similair to fft3dfilter() but please note the 
+			different default values for bw,ow,bh,ow
+			<h4>
+				Q: Is there any differences between fft3dfilter and fft3dgpu?</h4>
+		<p>
+			A: Some of the features from fft3dfilter is still missing.
+			<h4>
+				Q: Why is fft3dGPU so slow compaired to fft3dfilter?</h4>
+		<p>
+			A: either you have a slow graphics card like a Geforce FX 5200 or you are not 
+			using it while doing cpu heavy encoding (like XviD/DivX)
+			<h4>
+				Q: How do I use NVPerfHUD?</h4>
+		<p>
+			A: set NVperf=true and used this commandline or make a shortcut to run it: 
+			"PATH TO NVPerfHUD\NVPerfHUD.exe" "PATH TO VIRTUALDUBMOD\virtualdubmod.exe" 
+			"PATH TO AVS\test.avs" and enabled "force NON PURE device"
+			<h4>
+				Q: I get this errormessage: "Only pixelshader 2.0 or greater supported"</h4>
+		<p>
+			A: It is because you need a graphics card that has hardware support for Directx 
+			9.
+			<h4>
+				The following cards will not work:</h4>
+			<pre>
+Nvidia:
+TNT
+TNT2
+Geforce 256
+GeForce2 Ultra, Ti, Pro,MX,Go and GTS
+Geforce3 Ti 200, Ti 500
+GeForce4 Ti, MX, Go
+
+Ati:
+Radeon 7xxx
+Radeon 8xxx
+Radeon 90xx
+Radeon 92xx
+
+Matrox:
+G2xx
+G4xx
+G5xx
+maybe Parhelia
+</pre>
+			<h4>The following should work:</h4>
+			<pre>
+Nvidia:
+Geforce FX 5xxx
+Geforce 6xxx
+Geforce 7xxx
+
+Ati:
+Radeon 9500
+Radeon 9550
+Radeon 9600
+Radeon 9700
+Radeon 9800
+Radeon Xxxx
+
+where x means any digit. 	  
+</pre>
+			<h3>Support:
+			</h3>
+		<p>
+			<a href="http://forum.doom9.org/showthread.php?t=89941"><cite>This thread</cite></a>
+			on the doom9 forum or my email address (tsp (at) person.dk).</p>
+		<h3>TODO:</h3>
+		<p>
+			Interlaced, YUY2, different sigma values and (maybe) noise pattern support. Fix 
+			all the stupid bugs. Add the directx 9.0b version back.
+		</p>
+		<h3>Changelog:</h3>
+		<ul>
+			<li>
+			0.1 first release. Buggy and used Brook
+			<li>
+			0.2 sigma should now work like fft3dfilter
+			<li>
+			0.3 Rewrote the code to use Directx 9.0 directly and support for 16 bit float 
+			increasing performance and stability.
+			<li>
+			0.31 Fixed bug causing aliased edges.
+			<li>
+			0.4 Added sharpen, mode 1,2, reduceCPU and multithreading
+			<li>
+			0.41 Fixed bug when calculating PSD.
+			<li>
+			0.42 Fixed memory leak when reloading
+			<li>
+			0.43 Fixed bug that caused coruptions on the Geforce FX cards and some more 
+			memory leaks. Added more comments to the sourcecode and small performance 
+			improvement in the shaders. Also added support for directx 9.0b
+			<li>
+			0.44 fft3dgpu can now reset a lost device and continue work. The direcx 9.0b 
+			version should work now.
+			<li>
+			0.45 fixed bug when filtering the chromaplane and mode=0 or 2 crashed the 
+			filter.
+			<li>
+			0.46 fixed lockups on hyperthread enabled machines(hopefull). Also fixed 
+			infinite loop when closing WMP 6.4.
+			<li>
+			0.46.1 fixed issue with nvperf=true causing fft3dgpu to lock up. Added a FAQ 
+			section to this file.
+			<li>
+			0.47 fixed bug with corrupted frames after reseting a lost device. Renamed the 
+			readme.txt to fft3dgpu.txt. Uses a newer version of DirectX 9.0c so please 
+			_read the install instructions_!!!
+			<li>
+			0.5 Added Kalman, sharpening, bt=4, degrid from fft3dfilter. Renamed ps.hlsl to 
+			fft3dgpu.hlsl. Rewrote some of the code. Added new bugs.
+			<li>
+			0.5a fixed bug with bt=2. Only file changed is fft3dgpu.hlsl
+			<li>
+			0.51 Fixed bug with parameters after NVPerf was shifted. 
+			iedegrid=scutoff,scutoff=svr. Improved download speed from GPU. Geforce fx 5xxx 
+			now works with Kalman filter.
+			<li>
+			0.6 Added wintypes, plane=4 and variable overlap size (ow,oh). Change 
+			useFloat16 to precision. Changed default value for mode to 1
+			<li>
+			0.6.1 variable overlap now works on the geforce fx 5xxx. Default value for mode 
+			is 1 now.
+			<li>
+			0.6.2 bugfix: Degrid works better and vertical banding is gone when using mode 
+			1. Right edge artifacts gone when using non mod 8 width and plane&gt;0.
+			<LI>
+			0.6.3 New fft code. Should improve performance when using larger blocksize and
+			precision=2 (by upto 70%). Fixed bug with HC 0.17 crashing. New html doc(thanks
+			Fizicks for creating this).</LI>
+			<LI>
+			0.6.4 new fft code should now work with ati cards.</LI>
+		</ul>
+		<p>Sourcecode released under GPL see copying.txt</p>
+		<p><kbd>$Date: 2006/06/11 17:25:07 $</kbd></p>
+	</body>
+</html>

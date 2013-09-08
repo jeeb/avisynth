@@ -1,0 +1,138 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+<html>
+<head>
+<!--
+Not Automatically generated, changed!:
+$Id: syntax_runtime_environment.htm,v 1.3 2008/12/07 15:46:17 wilbertd Exp $ 
+-->
+<meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+<title>Syntax - Runtime environment</title>
+<link rel="stylesheet" type="text/css" href="../avisynth.css">
+</head>
+<body>
+<h2><span class="mw-headline">AviSynth Runtime environment</span></h2>
+<h3>Contents</h3>
+<ul>
+  <li class="toclevel-1"><a href="#Definition"><span class="tocnumber">1</span>
+    <span class="toctext">Definition</span></a></li>
+  <li class="toclevel-1"><a href="#Runtime_filters"><span class="tocnumber">2</span>
+    <span class="toctext">Runtime filters</span></a></li>
+  <li class="toclevel-1"><a href="#Special_runtime_variables_and_functions"><span class="tocnumber">3</span>
+    <span class="toctext">Special runtime variables and functions</span></a></li>
+  <li class="toclevel-1"><a href="#How_to_script_inside_the_runtime_environment"><span class="tocnumber">4</span>
+    <span class="toctext">How to script inside the runtime environment</span></a></li>
+</ul>
+<a name="Definition"></a>
+<h3><span class="mw-headline">Definition</span></h3>
+<p>The runtime environment is an extension to the normal AviSynth script
+execution environment that is available to scripts executed by <a title href="#Runtime_filters">runtime
+filters</a>. Its basic characteristic is that the runtime filters' scripts are
+evaluated (compiled) <b>at every frame</b>. This allows for complex video
+processing that it would be difficult or impossible to perform in a normal
+AviSynth script.</p>
+<p>Let's now look at the above definition in more detail. The runtime
+environment is:</p>
+<ol>
+  <li>An environment, that is a set of available local and global variables and
+    filters / functions to be used by the script.</li>
+  <li>An extension to the normal AviSynth script execution environment; that is
+    there are additional variables and functions available to runtime scripts.</li>
+  <li>Available to scripts executed by runtime filters <b>only</b>, that is
+    scripts inside it are executed only during the AviSynth &quot;runtime&quot;
+    (the frame serving phase).</li>
+</ol>
+<p>The last is the biggest difference. Normal script code is parsed and
+evaluated (compiled) at the start of the script's <a href="script_ref_execution_model_sequence_events.htm"
+  title="The script execution model/Sequence of events">execution</a>
+(the parsing phase) in a linear fashion, from top to bottom; the result is the
+creation of a <a href="script_ref_execution_model_filter_graph.htm"
+  title="The script execution model/The filter graph">filter
+graph</a> that is used by AviSynth to serve frames to the host video
+application. Runtime script code is executed <i>after</i> the parsing phase,
+when frames are served. Moreover it is compiled on every frame requested and
+only for that specific frame, in an event-driven fashion.</p>
+<p><b>Note:</b> Audio is <i>not</i> handled by the runtime environment; it is
+passed through untouched. This also means that you cannot modify clip audio with
+runtime filters.</p>
+<a name="Runtime_filters"></a>
+<h3><span class="mw-headline">Runtime filters</span></h3>
+<p>The following <a href="corefilters.htm" title="Internal filters">filters</a>
+are the basic set of the so-called &quot;runtime filters&quot;:</p>
+<ul>
+  <li><a href="corefilters/conditionalfilter.htm" title="ConditionalFilter">ConditionalFilter</a>:
+    Selects, on every frame, from one of two (provided) filters based on the
+    evaluation of a conditional expression.</li>
+  <li><a href="corefilters/conditionalfilter.htm" title="ScriptClip">ScriptClip</a>:
+    Compiles arbitrary script code on every frame and returns a clip.</li>
+  <li><a href="corefilters/conditionalfilter.htm" title="FrameEvaluate">FrameEvaluate</a>:
+    Compiles arbitrary script code on every frame but the filter's output is
+    ignored.</li>
+  <li><a href="corefilters/conditionalreader.htm" title="ConditionalReader">ConditionalReader</a>:
+    Loads input from an external file to a selectable <a href="syntax_script_variables.htm"
+	  title="Script variables">variable</a>
+    on every frame.</li>
+</ul>
+<p>In addition, the <a href="corefilters/write.htm" title="WriteFile">WriteFile</a>
+ filter can also be considered a runtime filter, because it sets the special
+variables set by all runtime filters before evaluating the expressions passed to
+it, which can use the special <a href="syntax_internal_functions_runtime.htm" title="Internal functions/Runtime functions">runtime
+functions</a>.</p>
+<a name="Special_runtime_variables_and_functions"></a>
+<h3><span class="mw-headline">Special runtime variables and functions</span></h3>
+<p>All runtime filters set and make available to runtime scripts the following
+special variables.</p>
+<ul>
+  <li><span style="color: rgb(0, 0, 128); font-weight: bold;">last</span>: The
+    clip passed as argument to the filter</li>
+  <li><span style="color: rgb(0, 0, 128); font-weight: bold;">current_frame</span>:
+    The frame number (ranging from zero to input clip's <a href="syntax_clip_properties.htm"
+	  title="Clip properties">Framecount</a>
+    minus one) of the requested frame.</li>
+</ul>
+<p>All the above variables are defined at the <a href="script_ref_execution_model_lifetime_variables.htm"
+  title="The script execution model/Scope and lifetime of variables">top-level
+script local scope</a>. That is you read and write to them in a runtime script
+as if they where variables that you declare at the script level.</p>
+<p>Runtime scripts can also call a rich set of <a href="syntax_internal_functions_runtime.htm"
+  title="Internal functions/Runtime functions">special
+functions</a> that provide various pieces of information for the current frame
+of their input clip.</p>
+<a name="How_to_script_inside_the_runtime_environment"></a>
+<h3><span class="mw-headline">How to script inside the runtime environment</span></h3>
+<p>Using the runtime environment is simple: you use one of the <a title href="#Runtime_filters">runtime
+filters</a> and supply it with the needed arguments. Among them, two are the
+most important:</p>
+<ul>
+  <li>The input clip</li>
+  <li>The runtime script</li>
+</ul>
+<p>The latter is supplied as a string argument which contains the AviSynth script
+commands. Scripts can contain many statements (you can use a multiline string),
+local and global variables and function calls, as well as special
+<a href="syntax_internal_functions_runtime.htm" title="Internal functions/Runtime functions">runtime
+functions</a> and <a title href="#Special_runtime_variables_and_functions">variables</a>.
+In general all statements of the AviSynth <a href="syntax.htm" title="AviSynth Syntax">syntax</a>
+are permitted, but attention must be paid to avoid overly complex scripts
+because this has a penalty on speed that is paid at <b>every frame</b>. See the
+runtime section of <a href="script_ref.htm" title="Scripting reference">scripting
+reference</a>'s <a href="script_ref_execution_model_perf_cons.htm"
+  title="The script execution model/Performance considerations">performance
+considerations</a> for details.</p>
+<p>Let's see a few examples:</p>
+<pre>TODO...EXAMPLES</pre>
+<hr>
+Other points:
+<ul>
+  <li><a href="syntax_internal_functions_runtime.htm" title="Internal functions/Runtime functions">Runtime
+    functions</a> and variables, such as current_frame, AverageLuma(), etc., are
+    available only at the runtime script's scope. To use them in a function you
+    must pass them as arguments.</li>
+  <li>You can include an explicit <tt>return</tt> statement in your runtime
+    script to return a clip that is not contained in the special <tt>last</tt>
+    variable.</li>
+</ul>
+<hr>
+<p>Back to <a href="syntax.htm" title="AviSynth Syntax">AviSynth Syntax</a>.</p>
+<p><kbd>$Date: 2008/12/07 15:46:17 $</kbd></p>
+</body>
+</html>

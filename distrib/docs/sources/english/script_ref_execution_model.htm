@@ -1,0 +1,72 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+<html>
+<head>
+<!--
+Not Automatically generated, changed!:
+$Id: script_ref_execution_model.htm,v 1.1 2008/04/20 19:07:33 wilbertd Exp $ 
+-->
+<meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+<title>Scripting reference - The script execution model</title>
+<link rel="stylesheet" type="text/css" href="../avisynth.css">
+</head>
+<body>
+<h2>The script execution model</h2>
+<p>This section is a walkthrough to the internals of the AviSynth script engine.
+Its aim is to provide a better understanding of how AviSynth transforms script
+commands to actual video frames and help a user that has already grasped the
+basics of AviSynth scripting to start writing better and optimised scripts.</p>
+<p>The following subsections present the various parts that when combined
+together form what can be called the AviSynth's &quot;script execution
+model&quot;:</p>
+<ul>
+  <li><a href="script_ref_execution_model_sequence_events.htm" title="The script execution model/Sequence of events">Sequence
+    of events</a></li>
+</ul>
+<dl>
+  <dd>A detailed description of the sequence of events that occur when you
+    execute (ie load and render to your favorite encoder) an AviSynth script.</dd>
+</dl>
+<ul>
+  <li><a href="script_ref_execution_model_filter_graph.htm" title="The script execution model/The filter graph">The
+    (implicit) filter graph</a></li>
+</ul>
+<dl>
+  <dd>A glance at the basic internal data structure that holds the
+    representation of a parsed AviSynth script.</dd>
+</dl>
+<ul>
+  <li><a href="script_ref_execution_model_fetching_frames.htm" title="The script execution model/The fetching of frames">The
+    fetching of frames (from bottom to top)</a></li>
+</ul>
+<dl>
+  <dd>How the AviSynth engine requests frames from filters.</dd>
+</dl>
+<ul>
+  <li><a href="script_ref_execution_model_lifetime_variables.htm" title="The script execution model/Scope and lifetime of variables">Scope
+    and lifetime of variables</a></li>
+</ul>
+<dl>
+  <dd>The interplay of variables' scope and lifetime with the other features of
+    AviSynth <a href="http://avisynth.org/mediawiki/AviSynth_Syntax" title="AviSynth Syntax">syntax</a>.</dd>
+</dl>
+<ul>
+  <li><a href="script_ref_execution_model_eval_scripts.htm" title="The script execution model/Evaluation of runtime scripts">Evaluation
+    of runtime scripts</a></li>
+</ul>
+<dl>
+  <dd>The details of runtime scripts' evaluation.</dd>
+</dl>
+<ul>
+  <li><a href="script_ref_execution_model_perf_cons.htm" title="The script execution model/Performance considerations">Performance
+    considerations</a></li>
+</ul>
+<dl>
+  <dd>Various performance-related issues and advice on how to optimise your
+    AviSynth scripts and configuration.</dd>
+</dl>
+<hr>
+<p>Back to <a href="http://avisynth.org/mediawiki/Scripting_reference" title="Scripting reference">scripting
+reference</a>.</p>
+<p><kbd>$Date: 2008/04/20 19:07:33 $</kbd></p>
+</body>
+</html>

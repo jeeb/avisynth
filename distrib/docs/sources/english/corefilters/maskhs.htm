@@ -1,0 +1,61 @@
+<!doctype html public "-//w3c//dtd html 4.0 transitional//en">
+<html>
+<head>
+   <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+   <title>MaskHS Filter</title>
+   <link rel="stylesheet" type="text/css" href="../../avisynth.css">
+</head>
+<body >
+<h2>
+<a name="MaskHS"></a>MaskHS
+</h2>
+<p align="left"><code>MaskHS </code>(<var>clip, float &quot;startHue&quot;,
+float &quot;endHue&quot;, float &quot;maxSat&quot;, float &quot;minSat&quot;, bool &quot;coring&quot;</var>)<p align="left">Added in <em>v2.6</em>. This filter returns a mask (as Y8) of clip using a given hue and saturation range.<p align="left"><var>startHue</var>
+(default 0), <var>endHue</var> (default 360): (both from 0 to 360; given in degrees.). The hue and saturation will be adjusted for values in the range [startHue, endHue] when startHue&lt;endHue. Note that the hue is periodic, thus a hue of 360 degrees corresponds with a hue of zero degrees. If endHue&lt;startHue then the range [endHue,
+360] and [0, startHue] will be selected (thus anti-clockwise). If you need to select a range of [350, 370] for example, you need to specify startHue=370 and endHue=350. Thus when using the default values all pixels will be processed.<p align="left"><var>maxSat</var>
+(default 150), <var>minSat</var> (default 0): (both from 0 to 150 with minSat&lt;maxSat; given in percentages). The hue and saturation will be adjusted for values in the range [minSat, maxSat]. Practically the saturation of a pixel will be in the range [0,100] (thus 0-100%), since these correspond to valid RGB pixels (100% corresponds to R=255, G=B=0, which has a saturation of 119). An overshoot (up to 150%) is allowed for non-valid RGB pixels (150% corresponds to U=V=255, which has a saturation of sqrt(127^2+127^2) = 180). Thus when using the default values all pixels will be processed.<p align="left"><var>coring</var>
+= true/false (default false). When set to true, the luma (Y) is clipped to [16,235]; when set to false, the luma is left untouched.<p align="left">Suppose we want to create a mask of the skin of the girl. The proper way to do this is to use look at the vectorscope of
+<a href="histogram.htm">Histogram</a>:
+<div align="left">
+  <pre align="left">clip = ...
+Histogram(clip, mode=&quot;color2&quot;)</pre>
+</div>
+<p align="left">and estimate the hue range you want to select. As can be seen, the orange hue is between (about) 105 and 165 degrees.<p align="left">lower the hue range till you found the correct hue range which should be processed. Use the values in
+<code>MaskHS </code> and make the interval smaller till the correct one is selected. You can also use
+<a href="tweak.htm"> Tweak</a> for this (with sat=0). Using the example in Tweak, the following mask is obtained:
+<table border="1" width="100%">
+  <tr>
+    <td width="50%" align="center"><img border="0" src="../pictures/corefilters/tweak_original2.jpg" width="320" height="418"></td>
+    <td width="50%" align="center"><img border="0" src="../pictures/corefilters/maskhs.jpg" width="320" height="418"></td>
+  </tr>
+  <tr>
+    <td width="50%" align="center">original</td>
+    <td width="50%" align="center">MaskHS(startHue=105, endHue=138)</td>
+  </tr>
+</table>
+<p align="left">&nbsp;Looking at the blue screen example in <a href="overlay.htm" title="Overlay">Overlay</a>
+the following can be used
+<pre>testcard = ColorBars()
+
+# example subtitle file with blue background:
+subs = ImageSource(&quot;F:\TestClips\blue.jpg&quot;).ConvertToYV24
+
+# subs.Histogram(mode=&quot;color2&quot;).ConvertToRGB # blue in [345,359]
+mask_hs = subs.MaskHS(startHue=340, endHue=359).Levels(0, 1, 255, 255, 0)
+
+Overlay(testcard, subs, mask=mask_hs, mode=&quot;blend&quot;, opacity=1)</pre>
+<p><b>Changelog:</b></p>
+<table border="1" width="100%">
+  <tr>
+    <td width="8%"> v2.60</td>
+    <td width="92%"> Initial Release</td>
+  </tr>
+</table>
+<p align="left"><kbd>$Date: 2011/04/29 20:09:50 $</kbd></p>
+<form>
+  <p><input TYPE="Button" VALUE="Back"
+onClick="history.go(-1)"></p>
+</form>
+
+</body>
+</html>

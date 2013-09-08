@@ -1,0 +1,285 @@
+<!doctype html public "-//W3C//DTD HTML 4.0 Transitional//EN">
+<html>
+<head>
+<title>AssumeFPS / AssumeScaledFPS / ChangeFPS / ConvertFPS AviSynth Filters</title>
+<link rel="stylesheet" type="text/css" href="../../avisynth.css">
+</head>
+<body>
+<h2><a name="AssumeFPS"></a>AssumeFPS</h2>
+<p><code>AssumeFPS </code>(<var>clip, float fps, bool &quot;sync_audio&quot;</var>)<br>
+   <code>AssumeFPS </code>(<var>clip, int numerator [, int denominator], bool &quot;sync_audio&quot;</var>)<br>
+   <code>AssumeFPS </code>(<var>clip1, clip2, bool &quot;sync_audio&quot;</var>)<br>
+   <code>AssumeFPS </code>(<var>clip, string preset, bool &quot;sync_audio&quot;</var>)</p>
+<p>The <code>AssumeFPS</code> filter changes the frame rate without changing the frame 
+  count (causing the video to play faster or slower). It only sets the framerate-parameter<br>
+  If <var>sync_audio</var> is true, it also changes the audio sample rate by the same ratio,
+  the pitch of the resulting audio gets shifted.</p>
+<p>This is also a method to change only the sample rate of the audio alone.</p>
+<p> In <em>v2.55</em>, if <var>clip2</var> is present, the framerate of <var>clip1</var>
+will be
+adjusted to match the one of <var>clip2</var>. This is useful when you want to add two
+clips with slightly different framerate. </p>
+<p>In <em>v2.57</em>, the behaviour with respect to the framerate is a bit
+changed. The main issue is that users are allowed to specify the framerate as
+float, but the NTSC (FILM and Video) and PAL standards require ratios as
+framerate. Besides this AviSynth exports the framerate as a ratio, so when
+specifying a float, it will be converted to a ratio. The ratios of the standards
+are given by 24000/1001 for 23.976 (FILM) and 30000/1001 for 29.97 (Video). <b>When
+specifying these floats, they are exported by AviSynth as ratios, but not as the
+standard ratios.</b> One of the reasons for this is, that those floats are
+approximations (remember that 24000/1001 = 23.9760239760...), so how should
+AviSynth know how to choose the correct ratio? In order to overcome this issue,
+the user can use AssumeFPS(24000,1001) or simply
+AssumeFPS(&quot;ntsc_film&quot;). </p>
+<p>Another problem is that the converted floats were (in v2.56 and older)
+exported with 64 bit precision, resulting in very large numerators and
+denominators, making some players crash. To overcome this, a smart float-ratio
+is added internally, and the framerates are approximated accurately by ratios of
+small numbers. For example, AssumeFPS(23.976) is converted to
+AssumeFPS(2997,125) as can be checked with <a href="info.htm">Info</a>. </p>
+<p><b>Presets:</b> </p>
+<table border="1" width="66%">
+  <tr>
+    <td width="33%" align="center"><b>standard</b></td>
+    <td width="33%" align="center"><b>numerator</b></td>
+    <td width="34%" align="center"><b>denominator</b></td>
+  </tr>
+  <tr>
+    <td width="33%" align="center">"ntsc_film"</td>
+    <td width="33%" align="center">24000</td>
+    <td width="34%" align="center">1001</td>
+  </tr>
+  <tr>
+    <td width="33%" align="center">"ntsc_video"&nbsp;</td>
+    <td width="33%" align="center">30000</td>
+    <td width="34%" align="center">1001</td>
+  </tr>
+  <tr>
+    <td width="33%" align="center">"ntsc_double"</td>
+    <td width="33%" align="center">60000</td>
+    <td width="34%" align="center">1001</td>
+  </tr>
+  <tr>
+    <td width="33%" align="center">"ntsc_quad"</td>
+    <td width="33%" align="center">120000</td>
+    <td width="34%" align="center">1001</td>
+  </tr>
+  <tr>
+    <td width="33%" align="center">&quot;ntsc_round_film&quot;</td>
+    <td width="33%" align="center">2997</td>
+    <td width="34%" align="center">125</td>
+  </tr>
+  <tr>
+    <td width="33%" align="center">"ntsc_round_video"</td>
+    <td width="33%" align="center">2997</td>
+    <td width="34%" align="center">100</td>
+  </tr>
+  <tr>
+    <td width="33%" align="center">"ntsc_round_double"</td>
+    <td width="33%" align="center">2997</td>
+    <td width="34%" align="center">50</td>
+  </tr>
+  <tr>
+    <td width="33%" align="center">"ntsc_round_quad"</td>
+    <td width="33%" align="center">2997</td>
+    <td width="34%" align="center">25</td>
+  </tr>
+  <tr>
+    <td width="33%" align="center">"film"</td>
+    <td width="33%" align="center">24</td>
+    <td width="34%" align="center">1</td>
+  </tr>
+  <tr>
+    <td width="33%" align="center">"pal_film"</td>
+    <td width="33%" align="center">25</td>
+    <td width="34%" align="center">1</td>
+  </tr>
+  <tr>
+    <td width="33%" align="center">"pal_video"</td>
+    <td width="33%" align="center">25</td>
+    <td width="34%" align="center">1</td>
+  </tr>
+  <tr>
+    <td width="33%" align="center">"pal_double"</td>
+    <td width="33%" align="center">50</td>
+    <td width="34%" align="center">1</td>
+  </tr>
+  <tr>
+    <td width="33%" align="center">"pal_quad"</td>
+    <td width="33%" align="center">100</td>
+    <td width="34%" align="center">1</td>
+  </tr>
+</table>
+<p><b>Examples:</b></p>
+<p>Examples PAL +4% conversion:</p>
+<pre>AVISource(&quot;FILM_clip.avi&quot;)             # Get 24fps clip
+LanczosResize(768, 576)                # Resize to PAL square-pixel frame size.
+AssumeFPS(25, 1, true)                 # Convert frame rate to PAL, also adjust audio.
+SSRC(44100)                            # Restore audio sample rate to a standard rate.</pre>
+<p>The +4% speed up is conventionally used for displaying 24fps film on PAL
+television. The slight increase in pitch and tempo is readily accepted by
+viewers of PAL material.</p>
+<p>Slowing down of video (framerate of original video is 30 frames a second):</p>
+<pre>AviSource(&quot;video.avi&quot;).AssumeFPS(10, true)             # Slows the video down to a third of its speed</pre>
+<p>Speeding up of video (framerate of original video is 30 frames a second):</p>
+<pre>AviSource(&quot;video.avi&quot;).AssumeFPS(60, true)             # Double speed</pre>
+
+<h2><a name="AssumeScaledFPS"></a>AssumeScaledFPS</h2>
+<p><code>AssumeScaledFPS </code>(<var>clip, int "multiplier", int "divisor", bool &quot;sync_audio&quot;</var>)</p>
+<p>The <code>AssumeScaledFPS</code> filter scales the frame rate without changing the frame count.
+  The numerator is multiplied by the multiplier, the denominator is multiplied by the divisor,
+  the resulting rational FPS fraction is normalized, if either the resulting numerator or
+  denominator exceed 31 bits the result is rounded and scaled. This allows exact rational
+  scaling to be applied to the FPS property of a clip.</p>
+<p>If <var>sync_audio</var> is true, it also changes the audio sample rate by the same ratio,
+  the pitch of the resulting audio gets shifted.</p>
+<p> Available in <em>v2.56</em>. </p>
+
+<h2><a name="ChangeFPS"></a>ChangeFPS</h2>
+<p><code>ChangeFPS </code>(<var>clip, float fps, bool &quot;linear&quot;</var>)<br>
+   <code>ChangeFPS </code>(<var>clip, int numerator [, int denominator], bool &quot;linear&quot;</var>)<br>
+   <code>ChangeFPS </code>(<var>clip1, clip2, bool &quot;linear&quot;</var>)<br>
+   <code>ChangeFPS </code>(<var>clip, string preset, bool &quot;linear&quot;</var>)</p>
+<p><tt><code>ChangeFPS</code></tt> changes the frame rate by deleting or duplicating frames.</p> 
+<p>Up to <em>v2.05</em>, the video gets truncated or filled up to preserve playback speed and
+  play time (the number of frames was not changed).
+  In later versions, the behaviour has been changed and the number of frames is increased or
+  decreased like in <code>ConvertFPS</code>.</p>
+<p>In <em>v2.54</em>, an option <var>linear</var> = true/false is added to <code>ChangeFPS</code>.
+  This will make AviSynth request frames in a linear fashion, when skipping frames. Default is true.</p>
+<p> In <em>v2.56</em>, if <var>clip2</var> is present, the framerate of <var>clip1</var>
+will be
+  adjusted to match that of <var>clip2</var>.</p>
+<p> In <em>v2.57</em>, the behaviour with respect to the framerate is a bit
+changed. See AssumeFPS.</p>
+<p> <b>Examples PAL-&gt;NTSC conversion:</b></p>
+<pre>AVISource(&quot;PAL_clip.avi&quot;)              # Get clip
+Bob(height=480)                        # Separate fields and interpolate them to full height.
+BicubicResize(640,480)                 # Resize to NTSC square-pixel frame size.
+ChangeFPS(60000, 1001)                 # Convert field rate to NTSC, by duplicating fields.
+SeparateFields.SelectEvery(4,0,3)      # Undo Bob, even field first. Use SelectEvery(4,1,2) for odd field first.
+Weave                                  # Finish undoing Bob.</pre>
+<p>The effect is similar to 3-2 telecine pull down. Regular viewers of PAL material may notice
+  a motion stutter that viewers of NTSC material readily ignore as for telecined film.</p>
+
+<h2><a name="ConvertFPS"></a>ConvertFPS 
+</h2>
+<p><code>ConvertFPS </code>(<var>clip, float new_rate, int &quot;zone&quot;, int &quot;vbi&quot;</var>)<br>
+   <code>ConvertFPS </code>(<var>clip, int numerator [, int denominator], int &quot;zone&quot;, int &quot;vbi&quot;</var>)<br>
+   <code>ConvertFPS </code>(<var>clip1, clip2, int &quot;zone&quot;, int &quot;vbi&quot;</var>)<br>
+<code>ConvertFPS </code>(<var>clip, string preset, int &quot;zone&quot;, int &quot;vbi&quot;</var>)</p>
+<p> The filter attempts to convert the frame rate of <var>clip</var> to <var>new_rate</var> 
+  without dropping or inserting frames, providing a smooth conversion with results 
+  similar to those of standalone converter boxes. The output will have (almost) 
+  the same duration as <i>clip</i>, but the number of frames will change proportional 
+  to the ratio of target and source frame rates. </p>
+<p> In <em>v2.56</em>, if clip2 is present, the framerate of clip1 will be
+  adjusted to match that of clip2.</p>
+<p> In <em>v2.57</em>, the behaviour with respect to the framerate is a bit
+changed. See AssumeFPS.</p>
+<p> The filter has two operating modes. If the optional argument <var>zone</var> is 
+  not present, it will blend adjacent video frames, weighted by a blend factor 
+  proportional to the frames' relative timing ("Blend Mode"). If <var>zone</var> is 
+  present, it will switch from one video frame to the next ("Switch Mode") whenever 
+  a new source frame begins, that is, usually somewhere in the middle of a target 
+  frame. Switch Mode assumes that the output will be shown on a TV where each 
+  frame is scanned from top to bottom. The parameter <var>zone</var> specifies the 
+  height of the transition region in which the current frame will be blended into 
+  the next. </p>
+<p> Blend Mode will cause visible, although slight, blurring of motion. This is 
+  a typical artifact of frame rate conversion and can be seen on commercial video 
+  tapes and TV programs as well. When working with interlaced video, it is important 
+  to let the filter operate on individual fields, not on the interlaced frames. 
+  (See examples below.) </p>
+<p> Switch Mode is an attempt to avoid motion blurring, but comes at the expense 
+  of slight flicker and motion artifacts. Horizontal and vertical pans may show 
+  a slight wobble. Still frames from this conversion show "broken" or "bent" vertical 
+  lines in moving scenes. Scene transitions may occur in the middle of a frame. 
+  Nevertheless, the results do look less blurry than in "Blend Mode". </p>
+<p> Neither mode is perfect. Which one to choose depends on personal preference 
+  and on the footage to be converted. Switch Mode is probably only suitable if 
+  the output will be shown on a TV, not on a computer screen. </p>
+<p> Frame rate conversion is inherently difficult. This filter implements two 
+  common methods used by commercial Prosumer-level converter systems. The results 
+  are typically quite good. More sophisticated systems employ motion interpolation 
+  algorithms, which are difficult to get right, but, if done right, do yield superior 
+  results. </p>
+<p> Footage converted with this filter should not be converted again. Blurriness 
+  builds up quickly in subsequent generations. </p>
+<p> The audio data are not touched by this filter. Audio will remain synchronized, 
+  although the length of the audio data may slightly differ from that of the video 
+  data after the conversion. This is because the output can only contain an integer 
+  number of frames. This effect will be more pronounced for shorter clips. The 
+  difference in length should be ignored. </p>
+<p>Parameters:
+<table>
+  <tbody> 
+  <tr valign="top"> 
+    <td width="80"><i>new_rate</i></td>
+    <td>Target frame rate. Can be integer or floating point number. In Blend Mode, 
+      <i>new_rate</i> must be at least 2/3 (66.7%) of the source frame rate, or 
+      an error will occur. This is to prevent frame skipping. If you need to slow 
+      down the frame rate more than that, use Switch Mode. </td>
+  </tr>
+  <tr valign="top"> 
+    <td>zone</td>
+    <td>(Optional) If specified, puts the filter into Switch Mode. Integer number 
+      greater or equal to zero. If zero, the filter will perform a hard switch, 
+      that is, it will immediately display the next frame below the switch line. 
+      If greater than zero, specifies the height (in lines) of the transition 
+      zone, where one frame is gradually blended into the next. zone=80 yields 
+      good results for full-size video (480/576 active lines). The transition 
+      is done in the same way as in PeculiarBlend(). <i>zone</i> must be less 
+      or equal than the number of lines of the target frame that correspond to 
+      the duration of the source frame. This is typically 5/6 or 6/5 of the target 
+      frame height, that is, a few hundred lines. An error occurs if a larger 
+      value is chosen. </td>
+  </tr>
+  <tr valign="top"> 
+    <td><i>vbi</i></td>
+    <td>(Optional) In Switch Mode, specifies that the filter should apply a timing 
+      correction for the vertical blanking interval (VBI). Integer number greater 
+      than zero, indicating the height of the VBI of the target frames, in lines. 
+      Typically vbi=49 for PAL and vbi=45 for NTSC, but these values are not critical. 
+      Ignored in Blend Mode. </td>
+  </tr>
+  </tbody> 
+</table>
+<p> <b>Examples NTSC-&gt;PAL conversion:</b></p>
+<pre>AVISource(&quot;NTSC_clip.avi&quot;)             # Get clip
+Bob(height=576)                        # Separate fields and interpolate them to full height.
+BicubicResize(768,576)                 # Resize to PAL square-pixel frame size. (Use 720,576 for CCIR.)
+ConvertFPS(50)                         # Convert field rate to PAL, using Blend Mode.
+SeparateFields.SelectEvery(4,0,3)      # Undo Bob, even field first. Use SelectEvery(4,1,2) for odd field first.
+Weave                                  # Finish undoing Bob.</pre>
+<p> This example will also work with frame-based NTSC material, even with telecined 
+  film (movies). For film material, however, you will get better results by using 
+  an inverse-telecine filter and speeding up the frame rate from 23.976 to 25fps.</p>
+<p> Not all parameter values are checked for sanity. </p>
+<p> <b>Changes:</b> </p>
+<table border="1" width="50%">
+  <tr>
+    <td width="25%"> v2.57</td>
+    <td width="50%"> added preset option; changed framerate behaviour; YV12 and
+      RGB support for ConvertFPS, fixed blending ratio</td>
+  </tr>
+  <tr>
+    <td width="25%"> v2.56</td>
+    <td width="50%"> added clip2 option in ChangeFPS, added AssumeScaledFPS</td>
+  </tr>
+  <tr>
+    <td width="25%"> v2.55</td>
+    <td width="50%"> added clip2 option in AssumeFPS</td>
+  </tr>
+  <tr>
+    <td width="25%"> v2.54</td>
+    <td width="50%"> added linear=true/false to ChangeFPS</td>
+  </tr>
+</table>
+<p><kbd>$Date: 2010/02/27 14:45:27 $</kbd></p>
+<FORM>
+  <INPUT TYPE="Button" VALUE="Back"
+onClick="history.go(-1)">
+</form>
+</body>
+</html>

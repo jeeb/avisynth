@@ -1,0 +1,206 @@
+<!doctype html public "-//w3c//dtd html 4.0 transitional//en">
+<html>
+<head>
+   <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+   <title>TimeStretch Filter</title>
+   <link rel="stylesheet" type="text/css" href="../../avisynth.css">
+</head>
+<body >
+<h2>
+<a NAME="TimeStretch"></a>TimeStretch
+</h2>
+<p><code>TimeStretch </code>(<var>clip, float &quot;tempo&quot;, float &quot;rate&quot;,
+float &quot;pitch&quot;, int &quot;sequence&quot;, int &quot;seekwindow&quot;,
+int &quot;overlap&quot;, bool &quot;quickseek&quot;, int &quot;aa&quot;</var>)
+
+<p><code>TimeStretch</code> allows changing the sound <var>tempo</var>, <var>pitch</var>
+and playback <var>rate</var> parameters independently from each other, i.e.:</p>
+<ul>
+  <li>Sound <var>tempo</var> can be increased or decreased while maintaining the
+    original pitch.
+  <li>Sound <var>pitch</var> can be increased or decreased while maintaining the
+    original tempo.
+  <li>Change playback <var>rate</var> that affects both tempo and pitch at the
+    same time.
+  <li>Choose any combination of tempo/pitch/rate.</li>
+</ul>
+<p><b>Parameters:</b></p>
+<p>The speed parameters are percentages, and defaults to 100. If <var>tempo</var> is
+200 it will play twice as fast, if it is 50, it will play at half the speed.
+Adjusting <var>rate</var> is equivalent to using <a href="assumerate.htm">AssumeSampleRate</a>
+and <a href="resampleaudio.htm">ResampleAudio</a>.</p>
+
+
+<p>The time-stretch algorithm has a few
+parameters that can be tuned to optimize sound quality for
+certain applications. The current default parameters have been
+chosen by iterative if-then analysis (read: "trial and error")
+to obtain the best subjective sound quality in pop/rock music
+processing, but in applications processing different kind of
+sound the default parameter set may result in a sub-optimal
+result.</p>
+<p>The time-stretch algorithm default parameter values are</p>
+<blockquote>
+  <pre>Sequence     82
+SeekWindow   28
+Overlap      12</pre>
+</blockquote>
+<p>These parameters affect the time-stretch algorithm as follows:</p>
+<ul>
+  <li><var>Sequence</var>: This is the length of a single processing sequence
+  in milliseconds which determines how the original sound is chopped in the
+  time-stretch algorithm. Larger values mean fewer sequences are used in
+  processing. In principle a larger value sounds better when slowing down the
+  tempo, but worse when increasing the tempo and vice versa.<br>
+  </li>
+  <li><var>SeekWindow</var>: The seeking window length in milliseconds is for
+  the algorithm that searches for the best possible overlap location. This
+  determines from how wide a sample "window" the algorithm can use to find an
+  optimal mixing location when the sound sequences are to be linked back
+  together.<br>
+  <br>
+  The bigger this window setting is, the higher the possibility of finding a
+  better mixing position becomes, but at the same time large values may cause
+  a "drifting" sound artifact because neighboring sequences may be chosen at
+  more uneven intervals. If there's a disturbing artifact that sounds as if
+  a constant frequency was drifting around, try reducing this setting.<br>
+  </li>
+  <li><var>Overlap</var>: The overlap length in milliseconds. When the sound
+  sequences are mixed back together to form a continuous sound stream again,
+  this parameter defines how much of the ends of the consecutive sequences
+  will be overlapped.<br>
+  <br>
+  This shouldn't be that critical parameter. If you reduce the
+  <var>Sequence</var> setting by a large amount, you might wish to
+  try a smaller value on this.
+  </li>
+  <li><var>QuickSeek</var>: The time-stretch routine has a 'quick' mode
+  that substantially speeds up the algorithm but may degrade the
+  sound quality.
+  </li>
+  <li><var>aa</var>: Controls the number of tap the Anti-alias filter
+  uses for the rate changer. Set to 0 to disable the filter. The value
+  must be a multiple of 4.
+  </li>
+</ul>
+
+<p>The table below summarizes how the
+parameters can be adjusted for different applications:</p>
+<table border="1">
+  <tbody>
+    <tr>
+      <td valign="top"><b>Parameter name</b></td>
+      <td valign="top"><b>Default value
+magnitude</b></td>
+      <td valign="top"><b>Larger value
+affects...</b></td>
+      <td valign="top"><b>Smaller value
+affects...</b></td>
+      <td valign="top"><b>Music</b></td>
+      <td valign="top"><b>Speech</b></td>
+      <td valign="top"><b>Effect in CPU burden</b></td>
+    </tr>
+    <tr>
+      <td valign="top">
+      <pre>Sequence</pre>
+      </td>
+      <td valign="top">Default value is relatively
+large, chosen for slowing down music tempo</td>
+      <td valign="top">Larger value is usually
+better for slowing down tempo. Growing the value decelerates the
+"echoing" artifact when slowing down the tempo.</td>
+      <td valign="top">Smaller value might be better
+for speeding up tempo. Reducing the value accelerates the "echoing"
+artifact when slowing down the tempo </td>
+      <td valign="top">Default value usually good</td>
+      <td valign="top">A smaller value than default
+might be better</td>
+      <td valign="top">Increasing the parameter
+value reduces computation burden</td>
+    </tr>
+    <tr>
+      <td valign="top">
+      <pre>SeekWindow</pre>
+      </td>
+      <td valign="top">Default value is relatively
+large, chosen for slowing down music tempo</td>
+      <td valign="top">Larger value eases finding a
+good mixing position, but may cause a "drifting" artifact</td>
+      <td valign="top">Smaller reduce possibility to
+find a good mixing position, but reduce the "drifting" artifact.</td>
+      <td valign="top">Default value usually good,
+unless a "drifting" artifact is disturbing.</td>
+      <td valign="top">Default value usually good</td>
+      <td valign="top">Increasing the parameter
+value increases computation burden</td>
+    </tr>
+    <tr>
+      <td valign="top">
+      <pre>Overlap</pre>
+      </td>
+      <td valign="top">Default value is relatively
+large, chosen to suit with above parameters.</td>
+      <td valign="top">&nbsp;</td>
+      <td valign="top">If you reduce the "sequence
+ms" setting, you might wish to try a smaller value.</td>
+      <td valign="top">&nbsp;</td>
+      <td valign="top">&nbsp;</td>
+      <td valign="top">Increasing the parameter
+value increases computation burden</td>
+    </tr>
+  </tbody>
+</table>
+
+<p><b>Notes:</b>
+<ul>
+  <li>This is NOT a sample exact plugin. If you use it, slight inaccuracies
+    might occur. Since we are dealing with float values rounding errors might
+    occur, especially on large samples. In general however inaccuracies should
+    not exceed a few 10's of milliseconds for movielength samples.</li>
+  <br>
+  <li>Currently the SoundTouch library only supports 1 and 2 channels. When
+    used with more than 2 channels, each channel is processed individually in 1
+    channel mode. This will destroy the phase relationship between the
+    channels.  See this thread for details :-
+    <a href=http://forum.doom9.org/showthread.php?t=71632>TimeStretch in
+                         AVISynth 2.5.5 Alpha - Strange stereo effects ?</a></li>
+  <br>
+  <li>SoundTouch is used in float sample mode.</li>
+</ul>
+<p><b>Examples:</b></p>
+<pre>TimeStretch(pitch = 200) </pre>
+<p>This will raise the <var>pitch</var> one octave, while preserving the length
+of the original sample.</p>
+<pre>TimeStretch(pitch = 100.0*pow(2.0, 1.0/12.0)) </pre>
+<p>This will raise the <var>pitch</var> one semi-tone, while preserving the length
+of the original sample.</p>
+<pre>TimeStretch(tempo = 25.0/(24000.0/1001.0)*100.0)</pre>
+<p>This will change the <var>tempo</var> from Film speed to PAL speed without
+changing the pitch.</p>
+<p><b>Credits:</b></p>
+<p>This function uses:</p>
+<p>SoundTouch library Copyright (c) Olli Parviainen 2002-2006</p>
+<p><a href="http://www.iki.fi/oparviai/soundtouch">http://www.iki.fi/oparviai/soundtouch</a><br>
+<a href="http://www.surina.net/soundtouch">http://www.surina.net/soundtouch</a></p>
+<p><b>Changelog:</b></p>
+<table border="1">
+  <tbody>
+    <tr>
+      <td>v2.55</td>
+      <td>Initial Release</td>
+    </tr>
+    <tr>
+      <td>v2.57</td>
+      <td>Expose soundtouch parameters</td>
+    </tr>
+  </tbody>
+</table>
+
+<p><kbd>$Date: 2010/04/04 16:46:19 $</kbd></p>
+<form>
+  <p><input TYPE="Button" VALUE="Back"
+onClick="history.go(-1)"></p>
+</form>
+
+</body>
+</html>

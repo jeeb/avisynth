@@ -1,0 +1,114 @@
+<!doctype html public "-//W3C//DTD HTML 4.0 Transitional//EN">
+<html>
+<head>
+<title>Write Avisynth Filter</title>
+<link rel="stylesheet" type="text/css" href="../../avisynth.css">
+</head>
+<body >
+<h2>WriteFile / WriteFileIf / WriteFileStart / WriteFileEnd</h2>
+<p><code>WriteFile </code>(<var>clip, string filename, <i>string expression1 [, string
+expression2 [, ...]], bool &quot;append&quot;, bool &quot;flush&quot;</i></var>)<br>
+  <code>WriteFileIf </code>(<var>clip, string filename, <i>string expression1 [, string
+expression2 [, ...]], bool &quot;append&quot;, bool &quot;flush&quot;</i></var>)<br>
+  <code>WriteFileStart </code>(<var>clip, string filename, <i>string expression1
+[, string expression2 [, ...]], bool &quot;append&quot;</i></var>)<br>
+  <code>WriteFileEnd </code>(<var>clip, string filename, <i>string expression1
+[, string expression2 [, ...]], bool &quot;append&quot;</i></var>)</p>
+<p><code>WriteFile</code>  evaluates each <var>expressionN</var>, converts the result to a string and puts the concatenated results into a file, followed by a newline.</p>
+<p>The &quot;run-time&quot; variable <var>current_frame</var> is set so that you
+can use it in an &quot;expression&quot;<br>
+(this works similar as with ScriptClip, look there in the docu for more infos).<br>
+<var>current_frame</var> is set to -1 when the script is loaded and to -2 when
+the script is closed.</p>
+<p><code>WriteFile</code> <span class="diffchange">evaluates the ''expression''s
+and </span>generates output <span class="diffchange">for </span>each frame <span class="diffchange">rendered
+by the filter. </span><code>WriteFileIf</code> <span class="diffchange">is
+similar, but </span>generates output only if the first expression is true<span class="diffchange">.
+In both cases</span>, there is no output at script opening or closure. <span class="diffchange">Note
+that since output is produced only for ''rendered'' frames, there will be no
+output at all if the result of the filter is not used in deriving the final
+result of the script.</span></p>
+<p><code>WriteFileStart</code> and <code>WriteFileEnd</code> <span class="diffchange">generate
+</span>output only on script opening and closure <span class="diffchange">respectively</span>,
+there is no action on each frame<span class="diffchange">. In both cases, the
+''expression''s are evaluated exactly once, at the location of the filter in the
+script</span>.</p>
+<p>When <var>append</var>  = true, the result(s) will be appended to any existing file. The default for
+<var>append</var>  is always true, except for <code>WriteFileStart </code> (here it is false).</p>
+<p>When <var>flush</var>  = true, the file is closed and reopened after each operation so you can see the result immediately (this may be slower). The default for
+<var>flush</var>  (<code>WriteFile </code> and <code>WriteFileIf</code>) is true.
+For <code>WriteFileStart</code> and <code>WriteFileEnd</code>, the file is always closed immediately after writing.</p>
+<h4>Usage is best explained with some simple examples:</h4>
+
+      
+<pre>filename = &quot;c:\myprojects\output.txt&quot;
+# create a test video to get frames
+Version()
+
+# the expression here is only a variable, which is evaluated and put in the file
+# you will get a file with the framenumber in each line
+WriteFile(filename, &quot;current_frame&quot;)
+
+# this line is written when the script is opened
+WriteFileStart(filename, &quot;&quot;&quot; &quot;This is the header&quot; &quot;&quot;&quot;)
+
+# and this when the script is closed
+WriteFileEnd(filename, &quot;&quot;&quot; &quot;Now the script was closed&quot; &quot;&quot;&quot;)</pre>
+    
+<p>Look how you can use triple-quotes to type a string in a string!</p>
+<p>If the expression cannot be evaluated, the error message is written instead.<br>
+  In case this happens with the If-expression in <code>WriteFileIf</code>
+the result is assumed to be <code>true</code>.</p>
+<pre># will result in &quot;I don't know what &quot;this&quot; means&quot;
+WriteFile(filename, &quot;this is nonsense&quot;)</pre>
+    <hr>
+<h4><b>There are easier ways to write numbers in a file, BUT:</b></h4>
+<p>... with this example you can see how to use the &quot;runtime function&quot;
+AverageLuma:</p>
+      
+<pre># create a test video to get different frames
+Version.FadeIn(50).ConvertToYV12
+
+# this will print the frame number, a &quot;:&quot; and the average luma for that frame
+colon = &quot;: &quot;
+WriteFile(&quot;F:\text.log&quot;, &quot;current_frame&quot;, &quot;colon&quot;, &quot;AverageLuma&quot;)</pre>
+    <p>Or maybe you want the actual time printed too:</p>
+      
+<pre># create a test video to get different frames
+Version.FadeIn(50).ConvertToYV12
+
+# this will print the frame number, the current time and the average luma for that frame
+# the triple quotes are necessary to put quotes inside a string
+WriteFile(last, filename, &quot;current_frame&quot;, &quot;&quot;&quot; time(&quot; %H:%M:%S&quot;) &quot;&quot;&quot;, &quot;AverageLuma&quot;)</pre>
+    
+<hr>
+<h4>More examples:</h4>
+<p>In <code>WriteFileIf</code> the FIRST expression is expected to be boolean (true 
+  or false). Only if it is TRUE the other expressions are evaluated and the line is printed.
+(Remember: &amp;&amp; is AND, || is OR, == is EQUAL, != is NOT EQUAL) That way you can
+omit lines completely from your file.</p>
+      <pre># create a test video to get different frames
+Version.FadeIn(50).ConvertToYV12
+
+# this will print the frame number, but only of frames where AverageLuma is between 30 and 60
+WriteFileIf(last, filename, &quot;(AverageLuma&gt;30) &amp;&amp; (AverageLuma&lt;60)&quot;, &quot;current_frame&quot;, &quot;&quot;&quot; &quot;:&quot; &quot;&quot;&quot;, &quot;AverageLuma&quot;)</pre>
+<p><b>Changes:</b></p>
+<table border="1">
+  <tbody>
+    <tr>
+      <td>v2.60</td>
+      <td>Number of expressions changed from 16 to nearly unlimited.</td>
+    </tr>
+    <tr>
+      <td>v2.55</td>
+      <td>Initial release.</td>
+    </tr>
+  </tbody>
+</table>
+    <p><kbd>$Date: 2010/01/06 16:01:28 $</kbd></p>
+<FORM>
+<INPUT TYPE="Button" VALUE="Back"
+onClick="history.go(-1)">
+</form>
+</body>
+</html>

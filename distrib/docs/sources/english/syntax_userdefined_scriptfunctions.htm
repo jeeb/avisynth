@@ -1,0 +1,144 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+<html>
+<head>
+<!--
+Not Automatically generated, changed!:
+$Id: syntax_userdefined_scriptfunctions.htm,v 1.7 2013/03/19 18:10:27 wilbertd Exp $ 
+-->
+<meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+<title>Syntax - User defined script functions</title>
+<link rel="stylesheet" type="text/css" href="../avisynth.css">
+</head>
+<body>
+<h2><span class="mw-headline">AviSynth Syntax - User defined script functions</span></h2>
+<h3><span class="mw-headline">Definition and Structure</span></h3>
+<p>You can define and call your own functions in AviSynth scripts as shown
+below. The function can return any clip or variable type. An user defined script
+function is an independent block of script code that is executed each time a
+call to the function is made in the script. An example of a simple user defined
+script function (here a custom filter) immediately follows:</p>
+<pre>function MuteRange(clip c, int fstart, int fend)
+{
+    before = c.<a href="corefilters/trim.htm" title="Trim">Trim</a>(0, -fstart)
+    current = c.Trim(fstart, fend) 
+    after = c.Trim(fend + 1, 0)
+    audio = <a href="corefilters/dissolve.htm" title="Dissolve">Dissolve</a>(before, current.<a href="corefilters/blankclip.htm" title="BlankClip">BlankClip</a>, 3)
+    return <a href="corefilters/audiodub.htm" title="AudioDub">AudioDub</a>(c, audio)
+}</pre>
+<p>User defined script functions start with the keyword <tt>function</tt>
+followed by the function name. The name of a script function follows the same
+naming rules as <a href="syntax_script_variables.htm" title="Script variables">script
+variables</a>.</p>
+<p>Immediately after the name, the function's argument list follows. The list
+(which can be empty) consists of (expected argument's type - argument's name)
+pairs. Each argument's <a href="syntax_script_variables.htm" title="Script variables">type</a>
+may be any of those supported by the scripting language.</p>
+<pre>function MuteRange(clip c, int fstart, int fend)</pre>
+<p>Then comes the function body, ie the code that is executed each time the
+function is called. The arguments are accessed within the function body by their
+names. The function body is contained within an opening and closing brace pair <tt>{
+... }</tt>.</p>
+<pre>{
+    before = c.<a href="corefilters/trim.htm" title="Trim">Trim</a>(0, -fstart)
+    current = c.Trim(fstart, fend) 
+    after = c.Trim(fend + 1, 0)
+    audio = <a href="corefilters/dissolve.htm" title="Dissolve">Dissolve</a>(before, current.<a href="corefilters/blankclip.htm" title="BlankClip">BlankClip</a>, 3)
+    return <a href="corefilters/audiodub.htm" title="AudioDub">AudioDub</a>(c, audio)
+}</pre>
+<p>(For simplicity, this code assumes the function will only be called with
+fstart &gt; 0 and fend &lt; c.Framecount-1. A more complete version would also
+handle the special cases fstart=0 and fend=c.Framecount-1.)</p>
+<p>At the end of the function body a <tt>return</tt> statement which returns the
+final value calculated from the arguments and the function's body code is placed.</p>
+<pre>    return <a href="corefilters/audiodub.htm" title="AudioDub">AudioDub</a>(c, audio)</pre>
+<p>It should be noted that unlike other languages where multiple return
+statements are allowed inside the function body, in AviSynth functions contain a
+<i>single</i> return statement. This is because the language does not support
+branching (i.e. compound block statements).</p>
+<a name="Facts_about_user_defined_script_functions"></a>
+<h3><span class="mw-headline">Facts about user defined script functions</span></h3>
+<ul>
+  <li>Functions can take up to sixty arguments and the return value can be of
+    any type supported by the scripting language (clip, int, float, bool,
+    string).</li>
+</ul>
+<ul>
+  <li>Although not recommended practice, an argument type may be omitted, and
+    will default to <tt>val</tt>, the generic type.<br>
+  </li>
+  <li>If the function expects a video clip as its first argument, and that
+    argument is not supplied, then the clip in the special <tt>last</tt>
+    variable will be used.</li>
+</ul>
+<ul>
+  <li>Functions support <i>named arguments</i>. Simply enclose an argument's
+    name inside double quotes to make it a named argument. Note that after doing
+    so the following apply:
+    <ol>
+      <li>All subsequent arguments in the argument list must be made named also.</li>
+      <li><b>A named argument is an optional argument</b>, that is, it need not
+        be supplied by the caller.</li>
+      <li>When a function is called, any optional argument which has <i>not</i>
+        been provided is set to a value which has the void ('undefined') type.
+        This does not mean that its value is random garbage - simply that its
+        type is neither clip, int, float, bool or string and so it has <i>no</i>
+        usable value.</li>
+      <li>Normally, you should use the <a href="syntax_internal_functions_boolean.htm" title="Internal functions/Boolean functions">Defined</a>
+        function to test if an optional argument has an explicit value, or the <a href="syntax_internal_functions_control.htm" title="Internal functions/Control functions">Default</a>
+        function, which combines the Defined test with the delivery of a default
+        value if appropriate.</li>
+      <li>A void ('undefined') value can be passed on to another function as one
+        of its optional arguments. This is useful when you want to write a
+        wrapper function that calls another function, preserving the same
+        defaults.</li>
+    </ol>
+  </li>
+</ul>
+<ul>
+  <li>Functions always produce a new value and never modify an existing one.
+    What that means is that all arguments to a function are passed &quot;by
+    value&quot; and not &quot;by reference&quot;; in order to alter a variable's
+    value in AviSynth script language you must assign to it a new value.</li>
+</ul>
+<ul>
+  <li>Functions can call other functions, <i>including theirselves</i>. The
+    latter is known as recursion and is a very useful technique for creating
+    functions that can accomplish complex tasks.</li>
+</ul>
+<ul>
+  <li>Local function variables mask global ones with the same name inside the
+    function body. For example, if you define in a function a local variable <tt>myvar</tt>
+    by assigning to it a value, then you cannot read the global <tt>myvar</tt>
+    anymore inside this function.</li>
+</ul>
+<ul>
+  <li>The above is also true for arguments, since from the perspective of a
+    function arguments are initialized local variables.</li>
+</ul>
+<ul>
+  <li>Each function has its own local version of the special variable <i>last</i>.
+    On entry to a function, <i>last</i> is set to a void ('undefined') value.</li>
+</ul>
+<a name="Related_Links"></a>
+<h3><span class="mw-headline">Related Links</span></h3>
+<ul>
+  <li><a href="http://avisynth.org/mediawiki/Shared_functions" title="Shared functions">Shared
+    functions</a>. An ever growing collection of shared script functions created
+    by the members of the AviSynth community.</li>
+</ul>
+<dl>
+  <dd>{TEMP: http://www.avisynth.org/ShareFunctions}</dd>
+</dl>
+<ul>
+  <li><a href="http://avisynth.org/mediawiki/index.php?title=Shared_functions/Conditional&amp;action=edit" class="new" title="Shared functions/Conditional">Conditional
+    filters and script functions</a>. A collection of highly useful conditional
+    filters implemented as user defined script functions.</li>
+</ul>
+<dl>
+  <dd>{TEMP: http://www.avisynth.org/ExportingSingleImage,
+    http://www.avisynth.org/HowToApplyFilterToManySingleFrames :: Perhaps make
+    decent functions from the last two?}</dd>
+</dl>
+<p><kbd>$Date: 2013/03/19 18:10:27 $</kbd></p>
+</body>
+</html>

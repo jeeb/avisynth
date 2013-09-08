@@ -1,0 +1,568 @@
+<html>
+<head>
+<title>DGDecode</title>
+<link rel="stylesheet" type="text/css" href="../../avisynth.css">
+<!--
+Automatically generated, don't change:
+$Id: dgdecode.htm,v 1.4 2007/09/22 21:28:24 fizick Exp $ 
+-->
+</head>
+<body>
+<h1>DGDecode</h1>
+<h2>Abstract</h2>
+<b>authors:</b>  MarcFD, Nic, trbarry, Sh0dan, Graft and others
+<br><b>version:</b>   1.4.7<br>
+<b>category:</b> MPEG Decoder (source) Plugins
+<br><b>download:</b>   <a href="http://neuron2.net/dgmpgdec/dgmpgdec.html"> http://neuron2.net/dgmpgdec/dgmpgdec.html</a>
+<br><b>requirements:<br>
+license:</b>  GPL
+<hr>
+<h2>Table of contents</h2>
+<ul>
+  <li><a href="#description">Description</a></li>
+  <li><a href="#syntax">Filter Syntax</a>
+    <ul>
+      <li><a href="#mpeg2source">MPEG2Source()</a></li>
+      <li><a href="#LumaYV12">LumaYV12()</a></li>
+      <li><a href="#BlindPP">BlindPP()</a></li>
+      <li><a href="#DeBlock">Deblock()</a></li>
+    </ul>
+  </li>
+  <li><a href="#examples">Usage Examples</a>
+    <ul>
+      <li><a href="#loadplugin-ex">LoadPlugin() Example</a></li>
+      <li><a href="#mpeg2source-ex">MPEG2Source() Examples</a></li>
+      <li><a href="#LumaYV12-ex">LumaYV12() Examples</a></li>
+      <li><a href="#BlindPP-ex">BlindPP() Examples</a></li>
+      <li><a href="#Deblock-ex">Deblock() Examples</a></li>
+    </ul>
+  </li>
+  <li><a href="#app_A">Appendix A: BlindPP() Notes</a></li>
+  <li><a href="#app_B">Appendix B: iDCT Algorithm Notes</a></li>
+  <li><a href="#app_C">Appendix C: SIMD Instructions</a></li>
+  <li><a href="#history">Version History</a></li>
+  <li><a href="#credits">Credits</a></li>
+</ul>
+<h2><a name="description"></a>Description</h2>
+      DGDecode, part of the <a href="dgmpgdec_quickstart.htm">DGMPGDec</a> package, is an MPEG-1/2 decoder plug-in designed for AviSynth v2.5 or higher. It's able to decode any MPEG-1 or MPEG-2 stream readable by DGIndex. Additional features include: YV12, I420, and YUY2 colorspace output (and RGB24 via <a href="dgvfapi.htm">DGVfapi</a>), optimized iDCTs, post-process deblocking and deringing, luminosity filtering, and more!
+<p>DGDecode is based on MPEG2Dec3 v1.10, which itself is based on MPEG2Dec2 from the SourceForge project "save-oe".</p>
+<p>Important Note: This filter was renamed to DGDecode to avoid naming confusions and to clearly link it with neuron2's version of DVD2AVI called DGIndex. Neuron2 wants to take great pains to acknowledge the origins of DGDecode as described by MarcFD in the text below! Yes, neuron2 has continued the evolution and made some fixes, but he stands on the shoulders of the giants documented below in the Credits section.</p>
+<p>You can get the latest binaries and source code of DGMPGDec at http://neuron2.net/dgmpgdec/dgmpgdec.html</p>
+<p>This is free software distributed under the terms of the GNU GPL v2 license. You must agree to the terms of the license before using the plug-in or its source code. Please see the License section for details.</p>
+<h2><a name="syntax"></a>Filter Syntax</h2>
+<h3><a name="mpeg2source"></a>MPEG2Source()</h3>
+<p><code>MPEG2Source</code> (string <var>&quot;d2v&quot;</var>, int <var>&quot;idct&quot;</var>, int
+<var>&quot;cpu&quot;</var>, bool <var>&quot;iPP&quot;</var>, int <var>&quot;moderate_h&quot;</var>, int
+<var>&quot;moderate_v&quot;</var>, str <var>&quot;cpu2&quot;</var>, bool <var>&quot;upConv&quot;</var>, bool
+<var>&quot;iCC</var>&quot;, bool
+<var>&quot;i420&quot;</var>, int <var>&quot;info&quot;</var>, bool <var>&quot;showQ&quot;</var>, bool
+<var>&quot;fastMC&quot;</var>)</p>
+<p>Although DGDecode can now decode both MPEG-1 and MPEG-2, this function is still called MPEG2Source()
+for compatibility with existing scripts. You can use it for both MPEG-1 and MPEG-2 streams.</p>
+<p><var>d2v</var>: "[PATH\]project.d2v"</p>
+<p>DGIndex Project File.<br>
+      Required parameter!<br>
+      Note 1: PATH can be ignored if "project.d2v" is in the same directory as your AviSynth (*.avs) script.</p>
+<p><var>idct</var>: 0 to 7 (default: 0)</p>
+<p>iDCT Algorithm.<br>
+      For more infomation on iDCTs please see Appendix B.<br>
+      Please see Appendix C for supported CPUs.<br>
+      - 0: Use value specified by DGIndex (iDCTs 6 and 7 unavailable in DGIndex)<br>
+      - 1: 32-bit MMX<br>
+      - 2: 32-bit SSEMMX<br>
+      - 3: 64-bit SSE2MMX<br>
+      - 4: 32-bit Floating Point<br>
+      - 5: 64-bit IEEE-1180 Reference<br>
+      - 6: 32-bit SSEMMX (Skal)<br>
+      - 7: 32-bit Simple MMX (XviD)</p>
+<p><var>cpu</var>: 0 to 6 (default: 0)</p>
+<p>Post-Processing Quickset Options.<br>
+      (Y=luma, C=chroma, H=horizontal, V=vertical)<br>
+      - 0: DISABLE POST-PROCESSING<br>
+      - 1: DEBLOCK_Y_H<br>
+      - 2: DEBLOCK_Y_H, DEBLOCK_Y_V<br>
+      - 3: DEBLOCK_Y_H, DEBLOCK_Y_V, DEBLOCK_C_H<br>
+      - 4: DEBLOCK_Y_H, DEBLOCK_Y_V, DEBLOCK_C_H, DEBLOCK_C_V<br>
+      - 5: DEBLOCK_Y_H, DEBLOCK_Y_V, DEBLOCK_C_H, DEBLOCK_C_V, DERING_Y<br>
+      - 6: DEBLOCK_Y_H, DEBLOCK_Y_V, DEBLOCK_C_H, DEBLOCK_C_V, DERING_Y, DERING_C</p>
+<p><var>iPP</var>: true/false (default: auto)</p>
+<p>Field-Based Post-Processing.<br>
+      DGDecode automatically uses the PROGRESSIVE_FRAME flag to switch between field/frame based post-processing on a per-frame-basis.<br>
+      You should only specify the iPP parameter if you want to force DGDecode to use a particular post-processing mode.<br>
+      - true: force field-based (interlaced) post-processing<br>
+      - false: force frame-based (progressive) post-processing</p>
+<p><var>moderate_h</var>, <var>moderate_v</var>: 0 to 255 (default: moderate_h=20, moderate_v=40)</p>
+<p>Block Detection Sensitivity.<br>
+      (moderate_h=horizontal, moderate_v=vertical)<br>
+      Smaller values are stronger, use with care.</p>
+<p><var>cpu2</var>: (default: "")</p>
+<p>Post-Processing Custom Options.<br>
+      Specify a six character string of x's and o's according to list below. (case-insensitive)<br>
+      Each "x" enables the corresponding post-processing feature.<br>
+      Each "o" disables the corresponding post-processing feature.<br>
+      character 1: luma horizontal deblocking<br>
+      character 2: luma vertical deblocking<br>
+      character 3: chroma horizontal deblocking<br>
+      character 4: chroma vertical deblocking<br>
+      character 5: luma deringing<br>
+      character 6: chroma deringing</p>
+<p>For example, to enable chroma-only post-processing use:</p>
+<pre>MPEG2Source(&quot;project.d2v&quot;, cpu2=&quot;ooxxox&quot;)</pre>
+<p><var>upConv</var>: true/false (default: false)</p>
+<p>Upconvert to YUY2 (4:2:2) from YV12 (4:2:0) based on the PROGRESSIVE_FRAME flag.<br>
+      Ignored if the input is not YV12 (4:2:0)<br>
+      Use AviSynth conversion filters to force a constant upsampling mode.<br>
+      - true: Upconvert based on the PROGRESSIVE_FRAME flag<br>
+      - false: Do not upconvert</p>
+<p><var>iCC</var>: true/false  (default: auto)</p>
+<p>Upsampling Mode.<br>
+	DGDecode automatically uses the PROGRESSIVE_FRAME flag to switch between field/frame based
+	upsampling on a <u>per-frame-basis</u>.<br>
+	You should <u>only</u> specify the iCC 	parameter if you want to force DGDecode to use a particular
+	upsampling mode.<br>
+	- [unspecified]: follow the PROGRESSIVE_FRAME flag<br>
+	- true:  force field-based (interlaced) upsampling<br>
+	- false: force frame-based (progressive) upsampling</p>
+<p><var>i420</var>: true/false (default: false)</p>
+<p>Output I420 Colorspace.<br>
+      Possibly required by some legacy applications.<br>
+      Ignored if the input is not YV12 (4:2:0), or if upConv=true.<br>
+      - true: Output I420<br>
+      - false: Output YV12</p>
+<p><var>info</var>: 0 to 3 (default: 0)</p>
+<p>Debug Information.<br>
+      - 0: Do not generate debug information<br>
+      - 1: Overlay debug information on the video<br>
+      - 2: Output debug information via OutputDebugString()<br>
+      - 3: Output hints in the video (as defined in utilities.cpp/utilities.h)</p>
+<p><var>showQ</var>: true/false (default: false)</p>
+<p>Show Macroblock Quantizers.<br>
+      - true: Show quantizers<br>
+      - false: Do not show quantizers</p>
+<p><var>fastMC</var>: true/false (default: false)</p>
+<p>Vlad's Fast Motion Compensation.<br>
+      Very small speedup, but with degraded accuracy.<br>
+      For testing purposes, and may be removed in a future version.<br>
+      Requires SSE or 3DNow!, please see Appendix C for supported CPUs.</p>
+<h3><a name="LumaYV12"></a>LumaYV12()</h3>
+<p><code>LumaYV12</code> (clip, int <var>&quot;lumoff&quot;</var>, float <var>&quot;lumgain&quot;</var>)</p>
+<p>This function is unrelated to DGIndex's Luminance Filter.<br>
+The transformation is: Y = (y * lumgain) + lumoff</p>
+<p>LumaYV12() outputs a 0->255 YUV range, and not a CCIR-601 16->235 range. Use the Avisynth built-in filter ColorYUV() instead if you need to enforce a 16->235 range. The functionality of LumaYV12() can be achieved using ColorYUV(), which has more features, but LumaYV12() is optimized for speed in performing basic luma adjustment.</p>
+<p><var>lumoff</var>: -255 to 255 (default: 0)</p>
+<p>Luminosity Offset.<br>
+      Adjust the luma of all pixels by a fixed amount.</p>
+<p><var>lumgain</var>: 0.0 to 2.0 (default: 1.0)</p>
+<p>Luminosity Gain.<br>
+      Adjust the luma of all pixels by a proportional amount.</p>
+	<h3><a name="BlindPP"></a>BlindPP()</h3>
+<p><code>BlindPP</code> (clip, int <var>&quot;quant&quot;</var>, int <var>&quot;cpu&quot;</var>, bool
+<var>&quot;iPP&quot;</var>, int <var>&quot;moderate_h&quot;</var>, int <var>&quot;moderate_v&quot;</var>, string
+<var>&quot;cpu2&quot;</var>)</p>
+<p>Deblock and/or Dering any video source.<br>
+Requires YUY2 or YV12 input.<br>
+Please see Appendix A for usage notes.</p>
+<p><var>quant</var>: 0 to 31 (default: 2)</p>
+<p>Emulated Quantizer.<br>
+      Specifies strength of the deblocking process.</p>
+<p><var>cpu</var>: 0 to 6 (default: 6)</p>
+<p>Same function as in MPEG2Source(), but with different default value.</p>
+<p><var>iPP</var>: true/false (default: false)</p>
+<p>Same function as in MPEG2Source(), but with different default value.<br>
+      Automatic-mode is NOT available.</p>
+<p><var>moderate_h</var>, <var>moderate_v</var>, <var>cpu2</var>: (defaults: moderate_h=20, moderate_v=40, cpu2="")</p>
+<p>Same functions as in MPEG2Source(), but with different default values.</p>
+<h3><a name="DeBlock"></a>DeBlock()</h3>
+<p><code>Deblock</code> (clip, int <var>&quot;quant&quot;</var>, int <var>&quot;aOffset&quot;</var>, int
+<var>&quot;bOffset&quot;</var>, bool <var>&quot;mmx&quot;</var>, bool <var>&quot;isse&quot;</var>)</p>
+<p>Manao's H.264 Deblocking Filter. (v0.9.5)<br>
+Requires YV12 input.<br>
+Both (quant + aOffset) AND (quant + bOffset) must be >= 16 or the filter does nothing at all.</p>
+<p><var>quant</var>: 0 to 51 (default: 25)</p>
+<p>Emulated Quantizer.<br>
+      Specifies strength of the deblocking process.</p>
+<p><var>aOffset</var>: (default: 0)</p>
+<p>Modifier to the blocking detector threshold.<br>
+      Setting it higher means that more edges will be deblocked.</p>
+<p><var>bOffset</var>: (default: 0)</p>
+<p>Modifier for block detecting and for deblocking strength.<br>
+      There again, the higher, the stronger.</p>
+<p><var>mmx</var>: true/false (default: true)</p>
+<p>Automatically disables if not supported by CPU.<br>
+      - true: Enable MMX optimizations<br>
+      - false: Disable MMX optimizations</p>
+<p><var>isse</var>: true/false (default: true)</p>
+<p>Automatically disables if not supported by CPU.<br>
+      Please see Appendix C for supported CPUs.<br>
+      - true: Enable SSE optimizations<br>
+      - false: Disable SSE optimizations</p>
+<h2><a name="examples"></a>Usage Examples</h2>
+	<h3><a name="loadplugin-ex"></a>AviSynth LoadPlugin() Example</h3>
+<p> AviSynth's LoadPlugin() must be called before any DGDecode functions can be used.<br>
+To accomplish this, add the following line to the beginning of your AviSynth (*.avs) script:</p>
+<pre>LoadPlugin(&quot;[PATH\]DGDecode.dll&quot;)</pre>
+<p>Note: PATH can be ignored if DGDecode.dll is in the default AviSynth plug-in directory, otherwise PATH must be specified.</p>
+<h3><a name="mpeg2source-ex"></a>MPEG2Source() Examples</h3>
+<p>MPEG2Source() should be used only with MPEG-1 and MPEG-2 video sources.</p>
+<p>To do plain YV12 decoding:</p>
+<pre>MPEG2Source(&quot;[PATH\]project.d2v&quot;)</pre>
+<p>Note: PATH can be ignored if "project.d2v" is in the same directory as your AviSynth (*.avs) script.</p>
+<p>To do deblocking only:</p>
+<pre>MPEG2Source(&quot;project.d2v&quot;, cpu=4)</pre>
+<p>To do deblocking on an interlaced source with increased vertical sensitivity:</p>
+<pre>MPEG2Source(&quot;project.d2v&quot;, cpu=4, iPP=true, moderate_v=20)</pre>
+<p>To do deringing only:</p>
+<pre>MPEG2Source(&quot;project.d2v&quot;, cpu2=&quot;ooooxx&quot;)</pre>
+<p>To select the optimized 32-bit SSE2 iDCT and also output I420 colorspace:</p>
+<pre>MPEG2Source(&quot;project.d2v&quot;, idct=5, i420=true)</pre>
+<p>To convert to YUY2 based on the PROGRESSIVE_FRAME flag:</p>
+<pre>MPEG2Source(&quot;project.d2v&quot;, upConv=true)</pre>
+<p>To do display onscreen information about the video:</p>
+<pre>MPEG2Source(&quot;project.d2v&quot;, info=1)</pre>
+<h3><a name="LumaYV12-ex"></a>LumaYV12() Examples</h3>
+<p> The following LumaYV12() examples are completely subjective, of course.<br>
+Adjust them to your liking.</p>
+<p>To darken luminosity:</p>
+<pre>MPEG2Source(&quot;project.d2v&quot;)
+LumaYV12(lumoff=-10, lumgain=0.9)</pre>
+<p>To lighten luminosity:</p>
+<pre>MPEG2Source(&quot;project.d2v&quot;)
+LumaYV12(lumoff=10, lumgain=1.1)</pre>
+<h3><a name="BlindPP-ex"></a>BlindPP() Examples</h3>
+<p>BlindPP() should not be used when the video is opened using the<br>
+MPEG2Source() function, because its postprocessing options will work better. Typically BlindPP() is used when opening the video with AviSynth's AviSource() or DirectShowSource().</p>
+<p>To do default deblocking and deringing:</p>
+<pre>AVISource(&quot;my_video.avi&quot;)
+BlindPP()</pre>
+<p>To do deblocking only:</p>
+<pre>AVISource(&quot;my_video.avi&quot;)
+BlindPP(cpu=4)</pre>
+<p>To do deblocking on an interlaced source with increased horizontal sensitivity:</p>
+<pre>AVISource(&quot;my_video.avi&quot;)
+BlindPP(cpu=4, iPP=true, moderate_h=10)</pre>
+<p>To do stronger deblocking and deringing:</p>
+<pre>DirectShowSource(&quot;my_video.mpg&quot;)
+BlindPP(quant=12)</pre>
+<p>To do deringing only:</p>
+<pre>DirectShowSource(&quot;my_video.mpg&quot;)
+BlindPP(cpu2=&quot;ooooxx&quot;)</pre>
+<h3><a name="Deblock-ex"></a>Deblock() Examples</h3>
+<p>Deblock() should not be used with MPEG-2 video sources.<br>
+Typically this means opening the video with AviSynth's AviSource() or DirectShowSource().</p>
+<p>To do default deblocking:</p>
+<pre>AVISource(&quot;my_video.avi&quot;)
+Deblock()</pre>
+<p>To do strong deblocking with increased sensitivity:</p>
+<pre>DirectShowSource(&quot;my_video.mpg&quot;)
+Deblock(quant=32, aOffset=16, bOffset=24)</pre>
+<h2><a name="app_A"></a>APPENDIX A: BlindPP() Notes</h2>
+<p>
+      Blocks result from the 8x8-pixel DCT used by the MPEG encoder. So first, you must be sure that the blocks that you want to deblock are still aligned at 8-pixel boundaries. That means no cropping and no resizing before you apply BlindPP(). If your source is encoded interlaced, set
+<var>iPP</var>=true, if it's progressive then the default is already correct (<var>iPP</var>=false).</p>
+<p>The parameters are: <var>quant</var>, <var>cpu2</var>, <var>moderate_h</var>, and
+<var>moderate_v</var>.</p>
+<p><var>quant</var> specifies the overall strength at which the deblocking process is to perform.</p>
+<p>Set <var>cpu2</var> to "xxxxoo" for horizontal and vertical deblocking on luma and chroma, to "xooxoo" for horizontal luma and vertical chroma deblocking, etc. You get the idea.</p>
+<p><var>moderate_h</var> and <var>moderate_v</var> specify the horizontal and vertical sensitivities, that is, where to perform deblocking, and where not to. They control the sensitivity for recognizing that a block is present.</p>
+<p><var>quant</var>=2, <var>moderate_h</var>=35-45, <var>moderate_v</var>=45-55 will give you a very gentle softening on strong, clearly visible blocks only. It will retain very much detail and sharpness, but will also leave intact weaker blocks, and not totally kill stronger ones.</p>
+<p><var>quant</var>=16, <var>moderate_h</var>=15-20, <var>moderate_v</var>=20-30 will perform rather strong deblocking on almost anything that perhaps could be a block, but will also smooth away a lot of detail and sharpness.</p>
+<p>The rest is up to you, your taste, and your source material.</p>
+<p>One other example... Since the excellent denoiser PixieDust() may sometimes cause blocking by itself in moving areas, I sometimes do this:</p>
+<pre>PixieDust(2)
+BlindPP(quant=8, cpu2=&quot;xxxxoo&quot;, moderate_h=45, moderate_v=55)</pre>
+<p>This takes away a good amount of the most visible blocking, if and only if PixieDust() has produced some. On the remaining 99.8% where PixieDust() didn't block, this will do almost nothing, as desired.</p>
+<h2><a name="app_B"></a>APPENDIX B: iDCT Algorithm Notes</h2>
+<p>
+      The FlasKMPEG readme file contains an excellent technical description of iDCTs. It states:</p>
+<blockquote>
+<p><i>"The video information inside MPEG files is stored in the frequency domain rather than in the spatial domain (the images we see). That way, the information gets compacted and that compaction can be used to compress (reduce) the amount of information you have to send over the transmission channel. MPEG uses the DCT (Discrete Cosine Transform) to translate spatial information into frequency information. To bring back the spatial information from the MPEG stream you have to apply the iDCT, that is, the Inverse Discrete Cosine Transform, that undoes the DCT that was used during encoding."</i></p>
+<p><i>"Although MPEG is almost deterministic (given a MPEG stream the output should be identical in all decoders), the standard has a degree of freedom when choosing the iDCT to use. That way, the decoder can be more easily implemented depending on the hardware below it. What the standard requires from the decoder is that the iDCT meets IEEE-1180 specs, or in plain words, that the error from the iDCT doesn't go beyond that the ones pointed out in the IEEE-1180."</i></p>
+</blockquote>
+<p>Which iDCT you should use depends primarily on what CPU you have and to a lesser degree, on how accurate an iDCT you desire. Most people will not be able to tell the difference in quality between these algorithms but they can be easily observed by combining the AviSynth filters
+<a href="../corefilters/subtract.htm">Subtract</a>() and <a href="../corefilters/levels.htm">Levels</a>(). All of the available options are IEEE-1180 compliant, except for
+<b> SSE/MMX (Skal)</b>.</p>
+<p>Qualitywise: <b>IEEE-1180 Reference</b> > <b>64-bit Floating Point</b> > <b>Simple MMX (XviD)</b> > Remaining iDCTs.</p>
+<p>Speedwise: <b> SSE2/MMX</b> and <b> SSE/MMX (Skal)</b> are usually the fastest. The
+<b> IEEE-1180 Reference</b> is easily the slowest.</p>
+<h2><a name="app_C"></a>APPENDIX C: SIMD Instructions</h2>
+<p>      SIMD is an acronym for <i> Single Instruction</i>, <i> Multiple Data</i>. It is a term that refers to a set of operations for efficiently handling large quantities of data in parallel. This is especially productive for applications in which video or audio files are processed. What usually required a repeated succession of instructions can now be performed in one instruction.</p>
+<p>      There are seven different sets of SIMD instructions available to Intel and AMD processors, but not every CPU supports all of these advanced instruction sets. This is why many of DGDecode's functions provide options for specifying which set of optimizations to use. The table below lists the SIMD instructions supported by DGDecode, and the processors required utilize them.</p>
+<ul>
+  <ul>
+    <table border="1px" cellspacing="2px" cellpadding="10%">
+      <caption><i>Table 1: SIMD Instructions supported by DGDecode</i></caption>
+      <tr>
+        <th>&nbsp;
+        <th>MMX
+        <th>3DNow!
+        <th>SSE
+        <th>SSE2
+      <tr>
+        <th>Required Intel CPUs
+        <td>All Intel CPUs
+        <td>Unsupported by Intel CPUs
+        <td>Pentium 3, Pentium 4
+        <td>Pentium 4
+      <tr>
+        <th>Required AMD CPUs
+        <td>All AMD CPUs
+        <td>All AMD CPUs
+        <td>Athlon XP, Athlon 64
+        <td>Athlon 64
+    </table>
+  </ul>
+</ul>
+    <h2><a name="history"></a>Version History</h2>
+<b>Based on MPEG2Dec2 (save-oe CVS 28.09.2002), and recast as MPEG2Dec3 (MarcFD).</b>
+<ul>
+  <li><u>beta versions (1 to 6)</u>
+    <ul>
+      <li>Added Nic's Post Processing with Field-Based PP</li>
+      <li>Overrided iDCT / luma filtering choice</li>
+      <li>Fixed Luma filtering MMX code (3 bugs at least)</li>
+      <li>YV12-&gt;YUY2 Convertion optimised (+10 % speed)</li>
+      <li>a PP bug fixed. a bit slower now.</li>
+      <li>trbarry's SSE2 optimisation disabled.</li>
+      <li>Added showQ debugging trigger</li>
+      <li>Added vlad's new MC (3dnow/ssemmx) / re-writed ssemmx</li>
+      <li>Added working MMX memory transfer for seeking (+3% speed)</li>
+      <li>Added Interlaced Upsampling support<br>
+      </li>
+    </ul>
+  </li>
+  <li>
+      <u>v 0.9 (09.11.02)</u>
+    <ul>
+      <li>heavy code cleaning</li>
+      <li>redesigned the whole Avisynth interface</li>
+      <li>YV12 support</li>
+      <li>RGB24 support</li>
+      <li>other misc stuff<br>
+      </li>
+    </ul>
+  </li>
+  <li>
+      <u>v 0.91 (10.11.02)</u>
+    <ul>
+      <li>cleaned a bit more the source</li>
+      <li>added MPEG2Dec3.def default settings loading (like don's filters)</li>
+      <li>bff mode in SeparateFieldsYV12<br>
+      </li>
+    </ul>
+  </li>
+  <li>
+      <u>v 0.92 (17.11.02)</u>
+    <ul>
+      <li>code released</li>
+      <li>blindPP implemented<br>
+      </li>
+    </ul>
+  </li>
+  <li>
+      <u>v 0.93 (25.11.02)</u>
+    <ul>
+      <li>total YV12 code convertion...</li>
+      <li>...who fixed YV12 bugs</li>
+      <li>less memory is needed</li>
+      <li>fast MMX copy (faster seeking)<br>
+      </li>
+    </ul>
+  </li>
+  <li>
+      <u>v 0.94 (08.12.02)</u>
+    <ul>
+      <li>very little bugfix<br>
+      </li>
+    </ul>
+  </li>
+  <li>
+      <u>v 1.00 (19.01.03)</u>
+    <ul>
+      <li>final version</li>
+      <li>i squashed all bugs i were aware of<br>
+      </li>
+    </ul>
+  </li>
+  <li>
+      <u>v 1.01 (unknown) - trbarry</u>
+    <ul>
+      <li>Fixed HDTV bug (0x21 PID hardcoded)<br>
+      </li>
+    </ul>
+  </li>
+  <li>
+      <u>v 1.02 (12.05.03) - Nic</u>
+    <ul>
+      <li>aligned malloc done different<br>
+      </li>
+    </ul>
+  </li>
+  <li>
+      <u>v 1.03 (12.05.03) - Nic</u>
+    <ul>
+      <li>
+        Now supports both DVD2AVI 1.77.3 D2V Files and 1.76 ones<br>
+      </li>
+    </ul>
+  </li>
+  <li>
+      <u>v 1.04 (12.05.03) - Nic</u>
+    <ul>
+      <li>Removed another memory leak, slightly quicker<br>
+      </li>
+    </ul>
+  </li>
+  <li>
+      <u>v 1.05a (12.05.03) - trbarry</u>
+    <ul>
+      <li>
+        trbarry test version for optimisations<br>
+      </li>
+    </ul>
+  </li>
+  <li>
+      <u>v 1.06 (24.05.03)</u>
+    <ul>
+      <li>
+        Nic: Added 2 new iDCT's Skal's (fastest!, idct=6) &amp; SimpleiDCT (very
+        accurate, idct=7)</li>
+      <li>Nic: Support for external use of MPEG2Dec3.dll without AviSynth added
+        back in<br>
+        (See Source code for example.zip and GetPic example)</li>
+      <li>trbarry: Added new Add_Block optimisations as well as optimised Block
+        Decoding for SSE2 machines</li>
+      <li>sh0dan: Uses AviSynth's fast BitBlt for mem copys where possible</li>
+      <li>Nic: General optimisations :) Faster now on all machines tested.<br>
+      </li>
+    </ul>
+  </li>
+  <li>
+      <u>v 1.07 (6.06.03)</u>
+    <ul>
+      <li>
+        Nic &amp; Sh0dan: Bug Fixes, better stability on broken streams<br>
+      </li>
+    </ul>
+  </li>
+  <li>
+      <u>v 1.08 (8.06.03)</u>
+    <ul>
+      <li>
+        trbarry: Optimised Simple_iDCT, lots faster now :)</li>
+      <li>Nic: added CPUCheck elsewhere, forgot to fix Lumafilter last time (Thanx
+        ARDA!), robUx4 helped me make simple_idct into a fastcall<br>
+      </li>
+    </ul>
+  </li>
+  <li>
+      <u>v 1.09 (26.07.03)</u>
+    <ul>
+      <li>Nic: Now skal's Sparse iDCT is used instead for idct=6 (fastest!)</li>
+      <li>Nic: Added the Luminance_Filter from DVD2AVI 1.77.3, for when
+        Luminance_Filter is used in the .d2v<br>
+      </li>
+    </ul>
+  </li>
+</ul>
+<ul>
+  <li>
+      <u>v 1.10 (28.07.03)</u>
+  </li>
+    <ul>
+      <li>Nic: Damn! There was a problem with the Luminance filter and 1.77.3 D2V
+        files. Fixed!</li>
+    </ul>
+</ul>
+<p><b>Recast as DGDecode (neuron2)</b></p>
+<ul>
+  <li>v 1.0.13 (8.06.04)
+    <ul>
+      <li>DG: Fixed DGDecode to not truncate B frames prior to the first P frame.</li>
+      <li>DG: Fixed to not unconditionally reduce the frame count by two.</li>
+      <li>DG: Rewrote the decoding and random access code to work correctly with the D2V files generated by the fixed DGIndex.</li>
+      <li>DG: Fixed DGDecode so that it (hopefully) no longer crashes VirtualDub on exit when the last frame is incomplete.</li>
+      <li>DG: Fixed the iDCT selection to not be global in DGDecode.<br>
+      </li>
+    </ul>
+  </li>
+  <li>v 1.1.0 (21.01.05)
+    <ul>
+      <li>DG: Added workaround for crashes due to corrupted files.</li>
+      <li>DG: Added fix for files that change quantizer matrices on the fly.</li>
+      <li>tritical: Fixed the DC mode decision of post-process deblocking.</li>
+      <li>tritical: Added "info" option to mpeg2source() to display info on frames.</li>
+      <li>tritical: iPP now defaults to "auto". "auto" uses the PROGRESSIVE_FRAME flag to switches between field/frame based post-processing.</li>
+      <li>tritical: Added 4:2:2 input support.</li>
+      <li>tritical: Added "upConv" option to mpeg2source() to upsample to 4:2:2 from 4:2:0 based on the PROGRESSIVE_FRAME flag.</li>
+      <li>tritical: BlindPP now supports YUY2 colorspace.</li>
+      <li>tritical: Fixed BlindPP case syntax bug. (x vs X)</li>
+      <li>tritical: Fixed a small bug with showQ option.</li>
+      <li>tritical: Fixed small memory leak with FrameList/GOPList not being free'd.</li>
+      <li>tritical: Fixed a bug in the vertical chroma deblocking post-processing QP pointer being passed was incorrect for 4:2:0.</li>
+      <li>tritical: Faster MMX 4:2:2 to packed YUY2 and YUY2 to planar 4:2:2 conversions.</li>
+      <li>tritical: Fixed: "info" output would not work correctly if temporal_reference was not zero based at the beginning of GOPs.<br>
+      </li>
+    </ul>
+  </li>
+  <li>v 1.2.0 (17.02.05)
+    <ul>
+      <li>DG: Revised "info" parameter.</li>
+      <li>DG: Fixed bug in the deringing post-processing.</li>
+      <li>DG: Fixed crashing problem with BlindPP() for YUY2 input.<br>
+      </li>
+    </ul>
+  </li>
+  <li>v 1.2.1 (22.02.05)
+    <ul>
+      <li>DG: Fixed crashing bug in BlindPP().</li>
+      <li>DG: Fixed incorrect post-processing for YUY2.</li>
+      <li>DG: Changed DGDecode to deliver YV12 by default.</li>
+      <li>DG: Added i420 parameter to DGDecode.</li>
+      <li>Manao: Added Deblock() blind H.264 deblocking filter.<br>
+      </li>
+    </ul>
+  </li>
+  <li>v 1.3.0 (01.05.05)
+    <ul>
+      <li>DG: Added exception handling so that DGDecode doesn't crash on an incomplete picture.</li>
+      <li>DG: Changed VFAPI upsampling method ("_P" before extension of D2V filename forces progressive upsampling; otherwise interlaced is used).<br>
+      </li>
+    </ul>
+  </li>
+  <li>v 1.4.0 (15.06.05)
+    <ul>
+      <li>DG: Added standard call wrappers for dgdecode.dll access functions for use by VB, etc. E.g.: getRGBFrame_SC().</li>
+      <li>DG: Fixed slice error recovery bug that caused some (rare) picture decoding errors.</li>
+      <li>DG: Program streams with video stream IDs other than 0xE0 are now supported.</li>
+      <li>DG: Fixed decoding errors due to improper recovery from corruption of transport streams.</li>
+      <li>DG: Added support for MPEG1 files.</li>
+      <li>DG: Fixed a bug in transport parsing that could cause a mismatch between linear decoding and random frame access.</li>
+      <li>DG: Removed YV12toYUY2() and YV12toRGB24() as they duplicate native Avisynth filters.</li>
+      <li>ARDA: Replaced buggy LumaFilter() with reliable and optimized LumaYV12().</li>
+      <li>jackei: Fixed the Reference iDCT (type 4).</li>
+      <li>tritical: Fixed the pitch=width assumption, allowing proper operation under versions of Avisynth that modify the alignment rules.</li>
+      <li>tritical: DGVfapi now supports multiple instantiation and can also open AVS scripts as well as D2V files.</li>
+    </ul>
+  </li>
+</ul>
+<p>Latest changes list is in "Changes.txt" file.</p>
+    <h2><a name="credits"></a>Credits&nbsp;</h2>
+<p>       Mathias Born, author of MPEG2Dec<br>
+      Donald Graft ("neuron2"), frame loss fix, accurate indexing, PVA support, and more<br>
+      Peter Gubanov, author of the MMX/SSEMMX iDCT<br>
+      Chia-chen Kuo ("jackei"), author of DVD2AVI<br>
+      "MarcFD", YV12 support and more<br>
+      "Nic", post-processing and more<br>
+      Miha Peternel, author of the Floating Point and Reference iDCT<br>
+      Dmitry Rozhdestvensky, author of the SSE2 iDCT<br>
+      "sh0dan", code optimizations<br>
+      "Skal", for his SSEMMX iDCT<br>
+      "trbarry", transport parsing, and code optimizations<br>
+      "tritical", upsampling, info overlay, VFAPI enhancements, and lots of bug fixes<br>
+      "Manao", for his Deblock() filter<br>
+      "ARDA", for the LumaYV12() filter<br>
+      "Didée", for Appendix A: Notes on BlindPP() Usage<br>
+      "Cyberia", for Appendices B and C, and users manual modernization</p>
+<p><kbd>$Date: 2007/09/22 21:28:24 $</kbd></p>
+</body>
+</html>

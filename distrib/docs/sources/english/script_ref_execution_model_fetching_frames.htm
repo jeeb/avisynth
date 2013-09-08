@@ -1,0 +1,39 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+<html>
+<head>
+<!--
+Not Automatically generated, changed!:
+$Id: script_ref_execution_model_fetching_frames.htm,v 1.1 2008/04/20 19:07:33 wilbertd Exp $ 
+-->
+<meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+<title>Scripting reference - The script execution model - The fetching of frames</title>
+<link rel="stylesheet" type="text/css" href="../avisynth.css">
+</head>
+<body>
+<h2>The script execution model - The fetching of frames</h2>
+<p>Despite that the script writer writes the script from top to bottom, AviSynth
+requests frames from the filters included in the script in the reverse order (<b>from
+bottom to top</b>). This is a consequence of the fact that AviSynth fakes the
+existence of an AVI
+file to the host video application through its AVI handler code.</p>
+<p>The host video application does not know that AviSynth is behind the scenes;
+it just requests a finished and ready to render video frame, that is the final
+result of the script's processing from the AVI handler. The AVI handler in turn
+requests the frame from the root of the filter graph, ie from the final clip
+returned by the script.</p>
+<p>In order to create the frame the final clip requests video frame(s) from its
+input clip(s). This process continues until a source filter, such as <a href="corefilters/avisource.htm" title="AviSource">AviSource</a>,
+is reached which directly produces a video frame without requesting input from
+other filters. Therefore, the request process traverses the filter chain from
+bottom to top. That frame is then subsequently processed by all filters in the
+request chain (now from top to bottom, as in the script source code), resulting
+in the finished video frame that is served to the host video application.</p>
+<p>This backward searching implementation has been chosen for effectiveness
+reasons and it doesn't need to bother you except for one important case: when
+you use runtime filters (cf. next sections).</p>
+<hr>
+<p>Back to the <a href="script_ref_execution_model.htm" title="The script execution model">script
+execution model</a>.</p>
+<p><kbd>$Date: 2008/04/20 19:07:33 $</kbd></p>
+</body>
+</html>

@@ -1,0 +1,210 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+<html>
+<head>
+<!--
+Automatically generated, don't change:
+$Id: faq_different_types_content.htm,v 1.6 2008/07/02 18:57:42 fizick Exp $ 
+-->
+   <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+   <title> FAQ - Recognizing and processing different types of content </title>
+<style type=text/css></style>
+   <link rel="stylesheet" type="text/css" href="../avisynth.css">
+</head>
+<body>
+
+<h1>AviSynth FAQ - Recognizing and processing different types of content</h1>
+
+<h2>Contents</h2>
+<ol>
+  <li>
+<span class="mw-headline"><a href="#The_video_and_audio_in_my_final_encoding_is_out_of_sync,_what_should_I_do.3F">The video and audio in my final encoding is out of
+sync, what should I do?</a></span></li>
+  <li>
+<span class="mw-headline"><a href="#How_do_I_recognize_progressive.2C_interlaced.2C_telecined.2C_hybrid_and_blended_content.3F">How do I recognize progressive, interlaced,
+telecined, hybrid and blended content?</a></span></li>
+  <li>
+<span class="mw-headline"><a href="#How_do_I_process_interlaced_content.3F">How do I process interlaced content?</a></span></li>
+  <li>
+<span class="mw-headline"><a href="#How_do_I_process_telecined_content.3F">How do I process telecined content?</a></span></li>
+  <li>
+<span class="mw-headline"><a href="#How_do_I_process_hybrid_content.3F">How do I process hybrid content?</a></span></li>
+  <li>
+<span class="mw-headline"><a href="#What_is_variable_framerate_video.3F">What is variable framerate video?</a></span></li>
+  <li>
+<span class="mw-headline"><a href="#How_do_I_import_variable_framerate_video_into_AviSynth.3F">How do I import variable framerate video into
+AviSynth and how do I process it?</a></span></li>
+</ol>
+
+<a name="The_video_and_audio_in_my_final_encoding_is_out_of_sync,_what_should_I_do.3F"></a>
+<h3><span class="mw-headline">The video and audio in my final encoding is out of
+sync, what should I do?</span></h3>
+<p>Assuming that you processed your video and or audio with AviSynth, there can
+be several reasons why your final encoding is not in sync (synchronization). The
+most common ones are:</p>
+<p>1) Your source is already out of sync (thus before any AviSynth processing or
+any encoding). It's a pain to correct this, but that's not the scope of this
+FAQ.</p>
+<p>2) The audio has a constant delay, and you forgot to add the delay (either in
+AviSynth if you imported the audio in AviSynth or in an encoder if you imported
+the audio directly in your encoder). As an example, the demuxed audio stream
+from a VOB has often a delay. When demuxing this audio stream with DGIndex, the
+delay (actually how the delay should be corrected) is written into the name of
+the demuxed audio stream. You can use <a href="corefilters/delayaudio.htm">DelayAudio</a>
+to add the delay in AviSynth.</p>
+<pre>vid = MPEG2Source(&quot;D:\movie.d2v&quot;)
+aud = NicAC3Source(&quot;D:\movie T01 2_0ch 448Kbps DELAY -218ms.ac3&quot;)
+AudioDub(vid, aud)
+DelayAudio(-0.218)</pre>
+<p>3) The audio has a variable delay (with a zero delay at the beginning and a
+maximal delay at the end). This can be caused when you load a clip into AviSynth
+which has a variable framerate. Pretty much anything except video contained in
+an AVI or MPEG-2/VOB file can be variable framerate. If you used <a href="http://avisynth.org/mediawiki/DirectShowSource" title="DirectShowSource">DirectShowSource</a>
+the load your clip, you can use</p>
+<pre># a mkv-file is used here as an example:
+DirectShowSource(&quot;D:\movie.mkv&quot;, fps=xxx, convertfps=true) # fps = average framerate</pre>
+<p>to ensure sync. What happens is that frames are added or removed to ensure
+sync, thus converting it to a constant framerate video.</p>
+<p>If you are not using DirectShowSource or you don't want to add or remove
+frames, you need to create a timecodes file first and use it later on in your
+final encoding. Have a look at <a href="advancedtopics/hybrid_video.htm" title="VFR">this
+article</a> for more information on this subject.</p>
+
+<a name="How_do_I_recognize_progressive.2C_interlaced.2C_telecined.2C_hybrid_and_blended_content.3F"></a>
+<h3><span class="mw-headline">How do I recognize progressive, interlaced,
+telecined, hybrid and blended content?</span></h3>
+<p>It is important to know your content if you want to process it. The most
+important ones are: progressive, interlaced, telecined, hybrid and blended
+content, and they should be processed differently.</p>
+<ul>
+  <li>Progressive and interlaced content:<br>
+    Most filters assume that your content is progressive (which means that every
+    frame is taken at a different time-instant), unless the filter has an option
+    interlaced=true/false. When the option is present you can use
+    interlaced=true for interlaced content. For interlaced content, every field
+    (a frame consists of two fields) is taken at a different time-instant. This
+    is explained in the <a href="http://www.doom9.org/index.html?/capture/introduction.html" class="external text" title="http://www.doom9.org/index.html?/capture/introduction.html" rel="nofollow">Analog
+    Capture Guide</a> and the <a href="http://www.doom9.org/ivtc-tut.htm" class="external text" title="http://www.doom9.org/ivtc-tut.htm" rel="nofollow">Force
+    Film, IVTC, and Deinterlacing</a> tutorial.<br>
+  </li>
+  <li>Telecined content:<br>
+    Usually movies are shot at 24 fps (frames per second). When putting this on
+    a dvd, fields are added to get the required frame rate of 30 fps (well, it's
+    actually 29.97 fps, but that's not important here). When doing this, the
+    content is called &quot;telecined content&quot; (this holds for the
+    conversions 25 fps -&gt; 30 fps and 24 fps -&gt; 25 fps as well, provided
+    fields are added). More about this can be found in the <a href="http://www.doom9.org/ivtc-tut.htm" class="external text" title="http://www.doom9.org/ivtc-tut.htm" rel="nofollow">Force
+    Film, IVTC, and Deinterlacing</a> tutorial.<br>
+  </li>
+  <li>Hybrid content:<br>
+    Hybrid content is content with different base frame rates (for example 8,
+    12, and 16 fps at which anime is often drawn). Start Trek is a different
+    example consisting of telecined (at 30 fps) and interlaced content (at 30
+    fps).&nbsp; Have a look at <a href="advancedtopics/hybrid_video.htm" title="VFR">this
+    article</a> for more information on this subject.<br>
+  </li>
+  <li>Blended content:<br>
+    Blended content is content which consists of blended fields (in some fields
+    there is content from different time-instants visible). It's usually the
+    result of bad NTSC to PAL conversions (and vice-versa), or messed-up
+    deinterlacing. Some examples can be found <a href="http://www.doom9.org/index.html?/capture/postprocessing_avisynth.html" class="external text" title="http://www.doom9.org/index.html?/capture/postprocessing_avisynth.html" rel="nofollow">here</a>
+    or <a href="http://www.doom9.org/ivtc-tut.htm" class="external text" title="http://www.doom9.org/ivtc-tut.htm" rel="nofollow">here</a>.</li>
+</ul>
+
+<a name="How_do_I_process_interlaced_content.3F"></a>
+<h3><span class="mw-headline">How do I process interlaced content?</span></h3>
+<p>There are two ways to process your interlaced content (assuming that you use
+a filter which has no interlaced=true option). The first one is the
+most accurate, but also the slowest: bobbing, processing and reinterlacing. The
+second one is the fastest, but also less accurate one: processing the fields
+separately.</p>
+<p>1) bobbing:</p>
+
+<pre>AssumeTFF() # or AssumeBFF (set the video's field order correctly)
+TDeint(mode=1, type=3) # or any other smart Bob
+Filter(...)
+AssumeTFF() # or AssumeBFF (set the video's field order correctly)
+Separatefields()
+Selectevery(4,0,3)
+Weave()</pre>
+
+<p>2) processing the fields separately:</p>
+
+<pre>SeparateFields()
+even = SelectEven(last).Filter(...)
+odd = SelectOdd(last).Filter(...)
+Interleave(even, odd)
+Weave()</pre>
+
+<a name="How_do_I_process_telecined_content.3F"></a>
+<h3><span class="mw-headline">How do I process telecined content?</span></h3>
+<p>You need to inverse telecine (IVTC) before you do any processing. You can use
+the plugin Decomb for example, which can be downloaded <a href="http://neuron2.net/decomb/decombnew.html">here</a>.
+See the tutorials &quot;<a href="http://www.doom9.org/ivtc-tut.htm">Force Film, IVTC, and Deinterlacing - what is DVD2AVI trying to tell you and what can you do about it.</a>&quot;
+or &quot;<a href="http://www.doom9.org/index.html?/capture/postprocessing_avisynth.html">the
+analog capture guide</a>&quot; which explain how to do this.</p>
+
+<a name="How_do_I_process_hybrid_content.3F"></a>
+<h3><span class="mw-headline">How do I process hybrid content?</span></h3>
+<p>You only run into troubles when your clip as openend in AviSynth shows
+combing (being partly interlaced, telecined, etc ...). I'm not sure yet what to
+do in that case.</p>
+
+<a name="What_is_variable_framerate_video.3F"></a>
+<h3><span class="mw-headline">What is variable framerate video?</span></h3>
+<p>There are two kinds of video when considering framerate, constant framerate
+(cfr) video and variable framerate (vfr) video. For cfr video the frames have a
+constant duration, and for vfr video the frames have a non-constant duration.
+Many editing programs (including VirtualDub and AviSynth) assume that the video
+is cfr, partly because avi doesn't support vfr. Although the avi container
+doesn't support vfr, there are several containers (mkv, mp4 and wmv/asf for
+example) which do support vfr. More information can be found <a href="advancedtopics/hybrid_video.htm">here</a>.</p>
+
+<a name="How_do_I_import_variable_framerate_video_into_AviSynth.3F"></a>
+<h3><span class="mw-headline">How do I import variable framerate video into
+AviSynth and how do I process it?</span></h3>
+<p>There are two ways to import variable framerate video into AviSynth:</p>
+<ol>
+  <li>Open the video in AviSynth using for example DirectShowSource(...,
+    convertfps=false) or FFmpegSource. The problem is that in those cases no
+    frames are added or removed to convert it to constant framerate video to
+    ensure sync.<br>
+    Generate a timecode file using some external program or using the AviSynth
+    plugin you use for importing the video into AviSynth (if possible). Many
+    non-AVI files contain video with a variable framerate, and in that case you
+    need to make sure of the following two things:
+    <ol>
+      <li><i>Don't change the framerate and the number of frames in AviSynth.</i>
+        If you don't this (and you don't change the timecodes file manually)
+        your video and audio in your final encoding will be out of sync.</li>
+      <li><i>Use the timecodes file again when muxing your encoded video and
+        audio.</i> If you don't do this your video and audio in your final
+        encoding will be out of sync.</li>
+    </ol>
+  </li>
+  <li>Open the video in AviSynth using for example DirectShowSource(...,
+    convertfps=true). In this case frames are added or removed to convert it to
+    constant framerate video to ensure sync. You can process the video the way
+    you want. You can even create a new timecodes file and create a new variable
+    framerate video using it. More information can be found <a href="advancedtopics/hybrid_video.htm">here</a>.</li>
+</ol>
+<p>Regarding the first way. If you did change the framerate or the number of
+frames, you can use DeDup to recreate a new timecode file:</p>
+<pre>dedup_dedup(threshold=0.1, maxcopies=10, maxdrops=4, log=&quot;01.log&quot;, timesin=&quot;original.tmc&quot;, times=&quot;final.tmc&quot;)</pre>
+<p>The parameter &quot;timesin&quot; specifies the timecode file of the original
+video on which the output file will be based on (rather than just using the
+input stream's framerate). I never used it, so I'm not sure how good this is.
+Look <a href="http://forum.doom9.org/showthread.php?t=121593">here</a> for a
+discussion.</p>
+<p>|<a href="faq_sections.htm" title="AviSynth FAQ">
+Main Page</a> | <a href="faq_general_info.htm">General
+Info</a> | <a href="faq_loading_clips.htm" title="FAQ loading clips">Loading
+Clips</a> | <a href="faq_frameserving.htm" title="FAQ frameserving">Loading
+Scripts</a> | <a href="faq_common_errors.htm" title="FAQ common errors">Common
+Error Messages</a> | <b>Processing
+Different Content</b> | <a href="faq_yv12.htm" title="FAQ YV12">Dealing
+with YV12</a> | <a href="faq_using_virtualdub_plugins.htm" title="FAQ using virtualdub plugins">Processing
+with Virtualdub Plugins</a> |</p>
+<p><kbd>$Date: 2008/07/02 18:57:42 $</kbd>
+</p>
+</body>
+</html>

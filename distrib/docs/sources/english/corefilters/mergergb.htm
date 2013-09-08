@@ -1,0 +1,65 @@
+<!doctype html public "-//W3C//DTD HTML 4.0 Transitional//EN">
+<html>
+<head>
+<title>MergeARGB / MergeRGB Avisynth Filter</title>
+<link rel="stylesheet" type="text/css" href="../../avisynth.css">
+</head>
+<body>
+<h2>
+<a name="MergeRGB"></a>MergeARGB / MergeRGB 
+</h2>
+<P><code>MergeARGB </code>(<var>clipA, clipR, clipG, clipB</var>)<br>
+  <code>MergeRGB </code>(<var>clipR, clipG, clipB [, string "pixel_type"]</var>)
+<p>These filters makes it possible to merge the alpha and color channels from
+ the source videoclips into the output videoclip.
+
+<p><var>ClipA</var> is the clip that provided the alpha data to merge into the output
+ clip. For a YUV format input clip the data is taken from the Luma channel. For a RGB32
+ format input clip the data is taken from the Alpha channel. It may not be in RGB24 format.
+
+<p><var>ClipR, ClipG and ClipB</var> are the clips that provided the R, G and B
+ data respectively to merge into the output clip. For YUV format input clips the
+ data is taken from the Luma channel. For RGB format input clips the data is
+ taken from the respective source channel. i.e. R to R, G to G, B to B. The
+ unused chroma or color channels of the input clips are ignored.
+
+<p>All YUV luma pixel data is assumed to be pc-range, [0..255], there is no tv-range,
+ [16..235], scaling. Chroma data from YUV clips is ignored. Input clips may be a mixture
+ of all formats. YV12 is the most efficient format for transporting single channels thru
+ any required filter chains.
+
+<p><var>pixel_type</var> default RGB32, optionally RGB24, specifies the output pixel format.
+
+<p>Also see <a href="../syntax.htm#multiclip" target="_self">here</a> for the 
+  resulting clip properties.
+
+<p><b>Examples:</b>
+
+<pre># This will only blur the Green channel.
+mpeg2source(&quot;c:\apps\avisynth\main.d2v&quot;)
+ConvertToRGB24()
+MergeRGB(Last, Blur(0.5), Last)
+
+
+# This will swap the red and blue channels and
+# load the alpha from a second video sources.
+vid1 = avisource(&quot;c:\apps\avisynth\main.avi&quot;)
+vid2 = avisource(&quot;c:\apps\avisynth\alpha.avi&quot;)
+MergeARGB(vid2, vid1.ShowBlue(&quot;YV12&quot;), vid1, vid1.ShowRed(&quot;YV12&quot;))
+AudioDub(vid1)</pre>
+      
+<p><b>Changelog:</b></p>
+<table border="1" width="23%">
+  <tr>
+    <td width="5%">v2.56</td>
+    <td width="95%">added MergeARGB and MergeRGB</td>
+  </tr>
+</table>
+      
+<p><kbd>$Date: 2008/05/28 21:24:49 $</kbd></p>
+<FORM>
+<INPUT TYPE="Button" VALUE="Back"
+onClick="history.go(-1)">
+</form>
+</body>
+</html>

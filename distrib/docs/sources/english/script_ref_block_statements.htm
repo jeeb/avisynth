@@ -1,0 +1,770 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+<html>
+<head>
+<!--
+Not Automatically generated, changed!:
+$Id: script_ref_block_statements.htm,v 1.5 2011/04/29 20:11:14 wilbertd Exp $ 
+-->
+<meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+<title>Scripting reference - Block statements</title>
+<link rel="stylesheet" type="text/css" href="../avisynth.css">
+</head>
+<body>
+<h2>Block statements</h2>
+<ul>
+  <li class="toclevel-1"><a href="#Background"><span class="tocnumber">1</span>
+    <span class="toctext">Background</span></a>
+    <ul>
+      <li class="toclevel-2"><a href="#Features_enabling_construction_of_block_statements"><span class="tocnumber">1.1</span>
+        <span class="toctext">Features enabling construction of block statements</span></a></li>
+    </ul>
+  </li>
+  <li class="toclevel-1"><a href="#Implementation_Guide"><span class="tocnumber">2</span>
+    <span class="toctext">Implementation Guide</span></a>
+    <ul>
+      <li class="toclevel-2"><a href="#The_if..elif..else_block_statement"><span class="tocnumber">2.1</span>
+        <span class="toctext">The if..else block statement</span></a>
+        <ul>
+          <li class="toclevel-3"><a href="#Using_Eval.28.29_and_three-double-quotes_quoted_strings"><span class="tocnumber">2.1.1</span>
+            <span class="toctext">Using Eval() and three-double-quotes quoted
+            strings</span></a></li>
+          <li class="toclevel-3"><a href="#Using_functions_.28one_function_for_each_block.29"><span class="tocnumber">2.1.2</span>
+            <span class="toctext">Using separate scripts as blocks and the
+            Import() function</span></a></li>
+          <li class="toclevel-3"><a href="#Using_Eval.28.29_and_three-double-quotes_quoted_strings"><span class="tocnumber">2.1.3</span>
+            <span class="toctext">Using functions (one function for each block)</span></a></li>
+        </ul>
+      </li>
+      <li class="toclevel-2"><a href="#The_if..elif..else_block_statement2"><span class="tocnumber">2.2</span>
+        <span class="toctext">The if..elif..else block statement</span></a>
+        <ul>
+          <li class="toclevel-3"><a href="#Using_Eval.28.29_and_three-double-quotes_quoted_strings_2"><span class="tocnumber">2.2.1</span>
+            <span class="toctext">Using Eval() and three-double-quotes quoted
+            strings</span></a></li>
+          <li class="toclevel-3"><a href="#Using_separate_scripts_as_blocks_and_the_Import.28.29_function_2"><span class="tocnumber">2.2.2</span>
+            <span class="toctext">Using separate scripts as blocks and the
+            Import() function</span></a></li>
+          <li class="toclevel-3"><a href="#Using_functions_.28one_function_for_each_block.29_2"><span class="tocnumber">2.2.3</span>
+            <span class="toctext">Using functions (one function for each block)</span></a></li>
+        </ul>
+      </li>
+      <li class="toclevel-2"><a href="#The_for..next_block_statement"><span class="tocnumber">2.3</span>
+        <span class="toctext">The for..next block statement</span></a>
+        <ul>
+          <li class="toclevel-3"><a href="#For..Next_loop_with_access_to_variables_in_local_scope"><span class="tocnumber">2.3.1</span>
+            <span class="toctext">For..Next loop with access to variables in
+            local scope</span></a></li>
+          <li class="toclevel-3"><a href="#For..Next_loop_without_access_to_variables_in_local_scope"><span class="tocnumber">2.3.2</span>
+            <span class="toctext">For..Next loop without access to variables in
+            local scope</span></a></li>
+        </ul>
+      </li>
+      <li class="toclevel-2"><a href="#The_do..while_and_do..until_block_statements"><span class="tocnumber">2.4</span>
+        <span class="toctext">The do..while and do..until block statements</span></a></li>
+    </ul>
+  </li>
+  <li class="toclevel-1"><a href="#Deciding_which_implementation_to_use"><span class="tocnumber">3</span>
+    <span class="toctext">Deciding which implementation to use</span></a>
+    <ul>
+      <li class="toclevel-2"><a href="#The_if..else_and_if..elif..else_block_statements"><span class="tocnumber">3.1</span>
+        <span class="toctext">The if..else and if..elif..else block statements</span></a></li>
+      <li class="toclevel-2"><a href="#The_for..next_block_statement_2"><span class="tocnumber">3.2</span>
+        <span class="toctext">The for..next block statement</span></a></li>
+      <li class="toclevel-2"><a href="#The_do..while_and_do..until_block_statements_2"><span class="tocnumber">3.3</span>
+        <span class="toctext">The do..while and do..until block statements</span></a></li>
+    </ul>
+  </li>
+  <li class="toclevel-1"><a href="#References"><span class="tocnumber">4</span>
+    <span class="toctext">References</span></a></li>
+</ul>
+<a name="Background"></a>
+<h2><span class="mw-headline">Background</span></h2>
+<p>A first glance at Avisynth documentation leaves the impression that aside
+from function definitions, block statements are not possible in Avisynth script.
+However, there are specific features of the language allowing the construction
+of block statements that have remained unaltered to date and probably will
+remain so in the future since block statements are very useful in extending the
+capabilities of the script language.</p>
+<p>Indeed, in most programming and scripting languages, block statements are
+very useful tools for grouping together a set of operations that should be
+applied together under certain conditions. They are also useful in Avisynth
+scripts.</p>
+<p>Assume, for example, that after an initial processing of your input video
+file, you want to further process your input differently (for example, apply a
+different series of <a href="corefilters.htm" title="Internal filters">filters</a>
+or apply the same set of filters with different order) based on a certain
+condition calculated during the initial processing, which is coded at the value
+of Boolean variable <i>cond</i>.</p>
+<p>Instead of making an ugly series of successive conditional assignments using
+the conditional (ternary) <a href="syntax_operators.htm" title="Operators">operator</a>,
+<tt>?:</tt>, as in <b>Example 1</b> below (items in brackets are not needed if
+you use the implicit <i>last</i> variable to hold the result):</p>
+<p><b>Example 1</b></p>
+<pre>[result_1 = ]cond&nbsp;? filter1_1&nbsp;: filter2_1
+[result_2 = ]cond&nbsp;? filter1_2&nbsp;: filter2_2
+...
+[result_n = ]cond&nbsp;? filter1_n&nbsp;: filter2_n</pre>
+<p>It would be nice to be able to construct two blocks of filter operations and
+branch in a single step, as in the (ideal) <b>Example 2</b> below:</p>
+<p><b>Example 2</b></p>
+<pre>[result = ] cond&nbsp;? {
+    filter1_1
+    filter1_2
+    ...
+    filter1_n
+}&nbsp;: {
+    filter2_1
+    filter2_2
+    ...
+    filter2_n
+}</pre>
+<p>Something approaching this construction (and others) <b>is</b> possible; perhaps some constraints
+may apply, but you will nevertheless be capable of providing more powerful flow
+control to your scripts. The rest of this section will show you how to implement
+them using standard Avisynth constructs.</p>
+<p>(An alternative, and possibly more user-friendly, approach would be to use
+the external <a href="http://forum.doom9.org/showthread.php?t=147846" class="external text" title="http://forum.doom9.org/showthread.php?t=147846" rel="nofollow">GScript</a>
+plugin, which extends the Avisynth scripting language to provide multi-line
+conditionals (if-then-else blocks), 'while' loops and 'for' loops.)</p>
+<a name="Features_enabling_construction_of_block_statements"></a>
+<h3>
+<span class="mw-headline">Features enabling construction of block statements</span></h3>
+<p>The list below briefly presents the features making possible the creation of
+block statements in your script. Listed first are the more obvious ones,
+followed by those that are somewhat more esoteric and require a little digging
+inside the Avisynth documentation and experimenting with test cases to discover
+them.</p>
+<ul>
+  <li>globals (in particular, variables preceded by the &quot;global&quot;
+    keyword) allow the communication of information between code blocks
+    executing in different context.</li>
+</ul>
+<ul>
+  <li>The conditional operator (condition&nbsp;? expr_if_true&nbsp;:
+    expr_if_false) can contain an arbitrary number of nested expressions, if
+    grouped by parentheses.</li>
+</ul>
+<ul>
+  <li>Strings can contain double quote (&quot;) characters inside them if they
+    are surrounded by three-double-quotes (&quot;&quot;&quot;).
+    <dl>
+      <dd>Thus, the following strings are valid in Avisynth script (note that
+        the 2nd and 3rd ones could be lines in a script):</dd>
+    </dl>
+    <ul>
+      <li>&quot;&quot;&quot;this is a string with &quot; inside
+        it&quot;&quot;&quot;</li>
+      <li>&quot;&quot;&quot;var = &quot;a string value&quot; &quot;&quot;&quot;</li>
+      <li>&quot;&quot;&quot;var = &quot;a string value&quot; # this is a
+        comment&quot;&quot;&quot;</li>
+    </ul>
+  </li>
+</ul>
+<ul>
+  <li>There is a script function, <a href="syntax_internal_functions_control.htm"
+                         title="Internal functions/Control functions">Eval</a>(),
+    that allows the evaluation of strings containing arbitrary script
+    expressions.
+    <dl>
+      <dd>Thus, every expression that you can write in a script can be, if
+        stored in a string, passed to Eval.</dd>
+      <dd>Eval returns the result of the evaluated expression, ie <i>anything</i>
+        that can be constructed by such an expression (a clip, a number, a bool,
+        a string).</dd>
+      <dd>The evaluation of the string is done in the same context as the call
+        to Eval. Thus, if Eval is called at the script level, the expression is
+        assumed to reference script-level variables or / and globals (globals
+        are allowed everywhere). But if Eval is called inside a user-defined
+        function then the expression is assumed to reference variables local to
+        the function (ie arguments and any locally declared variable</dd>
+    </dl>
+  </li>
+</ul>
+<ul>
+  <li>There is a script function, <a href="corefilters/import.htm" title="Import">Import</a>(),
+    that allows the evaluation of arbitrary Avisynth scripts.
+    <dl>
+      <dd>Thus, any script written in Avisynth script language can be evaluated
+        by Import. Import returns the return value of the script.<br>
+    Despite the common misbelief that this can only be a clip, it can
+        actually be <i>any</i> type of variable (a clip, a number, a bool, a
+        string).<br>
+        Like Eval, the evaluation of the script is done in the same context as
+        the call to Import.<br>
+        Hence, as a side-effect of the script evaluation any functions and variables
+        declared inside the imported script are accessible from the
+        caller script, from the point of the Import call and afterwards.</dd>
+    </dl>
+  </li>
+</ul>
+<ul>
+  <li>Recursion (ie calling a function from inside that function) can be used
+    for traversing elements of a collection.
+    <dl>
+      <dd>Thus, for..next, do..while, do..until loops can be constructed by
+        using recursion.</dd>
+    </dl>
+  </li>
+</ul>
+<ul>
+  <li>Multiline strings, ie strings that contain newlines (the CR/LF pair)
+    inside them, are allowed by the script language.</li>
+</ul>
+<ul>
+  <li>Multiline strings are parsed by <a href="syntax_internal_functions_control.htm"
+                              title="Internal functions/Control functions">Eval</a>()
+    as if they were scripts.
+    <dl>
+      <dd>Thus, each line of a multiline string will be evaluated as if it was a
+        line in a script.</dd>
+      <dd>Also, return statements inside the string are allowed (the value of
+        their expression will be the return value of Eval(), as well as comments,
+        function calls and in general every feature of the script language.</dd>
+    </dl>
+  </li>
+</ul>
+<p>Consider the following <b>Example 3</b>, of a (useless) script that returns
+some black frames followed by some white frames:</p>
+<p><b>Example 3</b></p>
+<pre> c = <a href="corefilters/blankclip.htm">BlankClip</a>().Trim(0,23)
+ d = BlankClip(color=$ffffff).Trim(0,23)
+ b = true
+ dummy = b&nbsp;? <a href="syntax_internal_functions_control.htm"
+        title="Internal functions/Control functions">Eval</a>(&quot;&quot;&quot;
+	 k = c       # here comments are allowed!
+	 l = d
+	 return k    # this will be stored in dummy
+	 &quot;&quot;&quot;)&nbsp;: Eval(&quot;&quot;&quot;
+	 k = d
+	 l = c
+	 return k    # this will be stored in dummy
+	 &quot;&quot;&quot;)
+ # variables declared inside a multiline string
+ # are available to the script after calling Eval
+ return k + l</pre>
+<p>Variables <i>k</i>, <i>l</i> are not declared anywhere before the evaluation
+of the if..else block. However, since Eval evaluates the string at the
+script-level context, it is as if the statements inside the string were written
+at the script level. Therefore, after Eval() they are available to the script. A
+few other interesting things to note are the following:</p>
+<ul>
+  <li>The return statement at the end of the selected (by the value of <i>b</i>)
+    string for evaluation is the value that will be returned to the <i>dummy</i>
+    variable.</li>
+</ul>
+<ul>
+  <li>Contrary to the case of line continuation by backslashes, a multiline
+    string allows comments everywhere that they would be allowed in a script.</li>
+</ul>
+<a name="Implementation_Guide"></a>
+<h2>
+<span class="mw-headline">Implementation Guide</span></h2>
+<p>The features above can be used to construct block statements in various ways.
+The most common implementation cases are presented in this section, grouped by
+block statement type.</p>
+<a name="The_if..else_block_statement"></a>
+<h3>
+<span class="mw-headline">The if..else block statement</span></h3>
+<a name="Using_Eval.28.29_and_three-double-quotes_quoted_strings"></a>
+<h4>
+<span class="mw-headline">Using Eval() and three-double-quotes quoted strings</span></h4>
+<p>This is by far the more flexible implementation, since the flow of text
+approaches most the &quot;natural&quot; (ie the commonly used in other
+languages) way of branching code execution.</p>
+<p>Using the rather common case illustrated by <b>Example 1</b>, the solution
+would be (again items in square brackets are optional):</p>
+<p><b>Example 4</b></p>
+<pre>[result = ] cond&nbsp;? Eval(&quot;&quot;&quot;
+    filter1_1
+    filter1_2
+    ...
+    filter1_n
+  [ return {result of last filter} ]
+    &quot;&quot;&quot;)&nbsp;: Eval(&quot;&quot;&quot; 
+    filter2_1
+    filter2_2
+    ...
+    filter2_n
+  [ return {result of last filter} ]
+   &quot;&quot;&quot;)</pre>
+<p>In short, you write the code blocks as if Avisynth script would support block
+statements and then enclose the blocks in three-double-quotes to make them
+multiline strings, wrap a call to <a href="http://avisynth.org/mediawiki/Internal_functions/Control_functions"
+    title="Internal functions/Control functions">Eval</a>
+around each string and finally assemble Eval calls into a conditional operator
+statement.</p>
+<p>The return statements at the end of each block are needed only if you want to
+assign a useful value to the <i>result</i> variable. If you simply want to
+execute the statements without returning a result, then you can omit the <i>return</i>
+statement at the end of each block.</p>
+<p>One important thing to note is that the implicit setting of <i>last</i>
+continues to work as normal inside the Eval block. If the result of Eval is
+assigned to a variable, <i>last</i> will not be updated for the final expression
+in the block (with or without <i>return</i>), but it will be (where appropriate)
+for other statements in the block.</p>
+<p>If the block statement produces a result you intend to use, it is clearer to
+enter a <i>return {result}</i> line as the last line of each block, but the
+keyword <i>return</i> is not strictly necessary.</p>
+<p>The following real-case examples illustrate the above:</p>
+<p><b>Example 5</b>  In this example, all results are assigned to script
+variables, so <i>last</i> is unchanged.</p>
+<pre>c = <a href="corefilters/avisource.htm" title="AviSource">AviSource</a>(...)
+...
+cond = {expr}
+...
+cond&nbsp;? Eval(&quot;&quot;&quot;
+    text = &quot;single double quotes are allowed inside three-double-quotes&quot;
+    pos = <a href="syntax_internal_functions_string.htm">FindStr</a>(text, &quot;llo&quot;)   # comments also
+    d = c.<a href="corefilters/subtitle.htm" title="Subtitle">Subtitle</a>(<a href="syntax_internal_functions_string.htm">LeftStr</a>(text, pos - 1))
+&quot;&quot;&quot;)&nbsp;: Eval(&quot;&quot;&quot; 
+    text = &quot;thus by using three-double-quotes you can write expressions like you do in a script&quot;
+    pos = FindStr(text, &quot;tes&quot;)
+    d = c.SubTitle(<a href="syntax_script_variables.htm">MidStr</a>(text, pos + StrLen(&quot;tes&quot;)))
+&quot;&quot;&quot;)
+return d</pre>
+<p><b>Example 6</b> This example assigns a different clip to d depending on the
+<a href="http://avisynth.org/mediawiki/Clip_properties" title="Clip properties">Framecount</a>
+of a source clip.</p>
+<pre>a = <a href="corefilters/avisource.htm" title="AviSource">AviSource</a>(...)
+c = <a href="corefilters/blankclip.htm" title="BlankClip">BlankClip</a>().<a href="corefilters/subtitle.htm" title="Subtitle">Subtitle</a>(&quot;a test case for an if..else block statement&quot;)
+d = a.<a href="syntax_clip_properties.htm">Framecount</a> &gt;= c.Framecount&nbsp;? <a href="syntax_internal_functions_control.htm" title="Internal functions/Control functions">Eval</a>(&quot;&quot;&quot;
+    a = a.<a href="corefilters/resize.htm" title="BilinearResize">BilinearResize</a>(c.<a href="syntax_clip_properties.htm">Width</a>, c.<a href="syntax_clip_properties.htm">Height</a>)
+    c = c.<a href="corefilters/tweak.htm">Tweak</a>(hue=120)
+    return <a href="corefilters/overlay.htm" title="Overlay">Overlay</a>(a, c, opacity=0.5)
+&quot;&quot;&quot;)&nbsp;: Eval(&quot;&quot;&quot; 
+    c = c.BilinearResize(a.Width, a.Height)
+    a = a.Tweak(hue=120)
+    return Overlay(c, a, opacity=0.5)
+&quot;&quot;&quot;)
+return d</pre>
+<p><b>Example 7</b>  This example is a recode of Example 6 using implicit
+assignment to the <i>last</i> special variable. Since the result of the entire
+Eval() is not assigned to another variable, the implicit assignments to <i>last</i>
+on each line of the string (including the <i>last line</i> of the string) are
+preserved and thus the desired result is obtained.</p>
+<pre>c = BlankClip().SubTitle(&quot;a test case for an if..else block statement&quot;)
+AviSource(...)
+last.Framecount &gt;= c.Framecount&nbsp;? Eval(&quot;&quot;&quot;
+    BilinearResize(c.Width, c.Height)
+    c = c.Tweak(hue=120)
+    Overlay(last, c, opacity=0.5)
+&quot;&quot;&quot;)&nbsp;: Eval(&quot;&quot;&quot; 
+    c = c.BilinearResize(last.Width, last.Height)
+    Tweak(hue=120)
+    Overlay(c, last, opacity=0.5)
+&quot;&quot;&quot;)</pre>
+<p>The only disadvantage of the Eval approach is that coding errors inside the
+string blocks are masked by the
+<a href="http://avisynth.org/mediawiki/Internal_functions/Control_functions"
+   title="Internal functions/Control functions">Eval()</a>
+call, since the parser actually parses a <b>single line</b> of code:</p>
+<pre>[result = ] cond&nbsp;? Eval(&quot;&quot;&quot;block 1&quot;&quot;&quot;)&nbsp;: Eval(&quot;&quot;&quot;block 2&quot;&quot;&quot;)</pre>
+<p>Thus, any error(s) inside the blocks will be reported as a single error
+happening on the above line. You will not be pointed to the exact line of error
+as in normal script flow. Therefore, you will have to figure out where exactly
+the error occured, which can be a great debugging pain, especially if you write
+big blocks.</p>
+<a name="Using_separate_scripts_as_blocks_and_the_Import.28.29_function"></a>
+<h4>
+<span class="mw-headline">Using separate scripts as blocks and the Import()
+function</span></h4>
+<p>Using <b>Example 1</b> as above, the solution would be (again items in square
+brackets are optional):</p>
+<p><b>Example 8</b> Code of script file <i>block1.avs</i>:</p>
+<pre>filter1_1
+filter1_2
+...
+filter1_n</pre>
+<p>Code of script file <i>block2.avs</i>:</p>
+<pre>filter2_1
+filter2_2
+...
+filter2_n</pre>
+<p>Code of main script where the conditional branch is desired:</p>
+<pre>...
+[result = ]cond&nbsp;? Import(&quot;block1.avs&quot;)&nbsp;: Import(&quot;block2.avs&quot;)
+...</pre>
+<p>In short, you create separate scripts for each block and then conditionally
+import them at the main script.</p>
+<p>If you need to pass <a href="syntax_script_variables.htm" title="Script variables">variables</a>
+as &quot;parameters&quot; to the blocks, declare them in your main
+script and just reference them into the block scripts. The following example
+demonstrates this:</p>
+<p><b>Example 9</b> Code of script file <i>block1.avs</i>:</p>
+<pre>filter1_1(..., param1, ...)
+filter1_2(..., param2, ...)
+...
+filter1_n(..., param3, ...)</pre>
+<p>Code of script file <i>block2.avs</i>:</p>
+<pre>filter2_1(..., param1, ...)
+filter2_2(..., param2, ...)
+...
+filter2_n(..., param3, ...)</pre>
+<p>Code of main script where the conditional branch is desired:</p>
+<pre># variables must be defined *before* importing the block script
+param1 = ...
+param2 = ...
+param3 = ...
+...
+[result = ]cond&nbsp;? Import(&quot;block1.avs&quot;)&nbsp;: Import(&quot;block2.avs&quot;)
+...</pre>
+<p>Using <a href="corefilters/import.htm" title="Import">Import</a>()
+instead of <a href="syntax_internal_functions_control.htm" title="Internal functions/Control functions">Eval</a>()
+and three-double-quoted multiline strings has some disadvantages:</p>
+<ul>
+  <li>There is an administration overhead because instead of one file <i>2k + 1</i>
+    files have to be maintained (<i>k</i> = the number of conditional branches
+    in your script).</li>
+  <li>The code has less clarity, in the sense that it does not visually appears
+    as a block statement, neither the communication of parameters is apparent by
+    inspection of the main script.</li>
+</ul>
+<p>On the other hand:</p>
+<ul>
+  <li>Debugging is not an issue; every error will be reported with accurate line
+    information.</li>
+  <li>You can reuse scripts that you frequently use and build more complex ones
+    by simply importing ready-made components.</li>
+  <li>For large-scale operations where few parameters have to be communicated it
+    is usually a better approach.</li>
+</ul>
+<p>One useful general purpose application of this implementation is to
+prototype, test and debug a block conditional branch and then recode it (by
+adding the Eval() and three-double-quotes wrapper code and removing the
+<a href="syntax_script_variables.htm" title="Script variables">global</a>
+keyword before the parameter's declarations) so that a single script using
+multiline strings as blocks is created. This workaround compensates for the main
+disadvantage of the Eval() and three-double-quotes implementation.</p>
+<a name="Using_functions_.28one_function_for_each_block.29"></a>
+<h4>
+<span class="mw-headline">Using functions (one function for each block)</span></h4>
+<p>This is the most &quot;loyal&quot; to the Avisynth script's
+<a href="syntax_ref.htm" title="AviSynth Syntax">syntax</a>
+approach. Using <b>Example 1</b> as above, the solution would be (again items in
+square brackets are optional):</p>
+<p><b>Example 10</b></p>
+<pre>Function block_if_1()
+{
+    filter1_1
+    filter1_2
+    ...
+    filter1_n
+}
+
+Function block_else_1()
+{
+    filter2_1
+    filter2_2
+    ...
+    filter2_n
+}
+...
+[result = ]cond&nbsp;? block_if_1()&nbsp;: block_else_1()
+...</pre>
+<p>In short, you create separate functions for each block and then conditionally
+call them at the branch point.</p>
+<p>If you need to pass variables as &quot;parameters&quot; to the blocks, either
+declare them <i>global</i> in your main script and just reference them into the
+functions or - better - use argument lists at the functions. The following
+example demonstrates this:</p>
+<p><b>Example 11</b></p>
+<pre>Function block_if_1(arg1, arg2, arg3, ...)
+{
+    filter1_1(..., arg1, ...)
+    filter1_2(..., arg2, ...)
+    ...
+    filter1_n(..., arg3, ...)
+}
+
+Function block_else_1(arg1, arg2, arg3, ...)
+{
+    filter2_1(..., arg1, ...)
+    filter2_2(..., arg2, ...)
+    ...
+    filter2_n(..., arg3, ...)
+}
+...
+[result = ]cond \
+   &nbsp;? block_if_1(arg1, arg2, arg3, ...) \
+   &nbsp;: block_else_1(arg1, arg2, arg3, ...)
+...</pre>
+<p>Compared to the other two implementations this one has the following
+disadvantages:</p>
+<ul>
+  <li>There is an extra overhead due to the need for supplying function headers
+    and (typically) argument lists.</li>
+  <li>It tends to &quot;pollute&quot; the global namespace, thus having the
+    potential of strange errors due to name conflicts; use a clear naming
+    scheme, as the suggested above.</li>
+</ul>
+<p>On the other hand:</p>
+<ul>
+  <li>It is <b>portable</b>; it does not depend on any type of hack or specific
+    behavior to work. It is thus guaranteed to continue working in the long
+    term.</li>
+  <li>It does not raise any special debuging difficulties.</li>
+  <li>It has coding clarity.</li>
+</ul>
+<a name="The_if..elif..else_block_statement2"></a>
+<h3>
+<span class="mw-headline">The if..elif..else block statement</span></h3>
+<p>By nesting If..Else block expressions inside the conditional operator, you
+can create entire if..elseif...else conditional constructs of any level desired
+to accomodate more complex needs.</p>
+<p>A generic example for each if..else implementation presented above is
+following. Of course, any combination of the three above pure cases is possible.</p>
+<a name="Using_Eval.28.29_and_three-double-quotes_quoted_strings_2"></a>
+<h4>
+<span class="mw-headline">Using Eval() and three-double-quotes quoted strings</span></h4>
+<p>The solution would be (again items in square brackets are optional):</p>
+<p><b>Example 12</b></p>
+<pre>[result = \]
+    cond_1&nbsp;? Eval(&quot;&quot;&quot;
+        statement 1_1
+        ...
+        statement 1_n
+    &quot;&quot;&quot;)&nbsp;: [(] \ 
+    cond_2&nbsp;? Eval(&quot;&quot;&quot; # inner a?b:c enclosed in parentheses for clarity (optional)
+        statement 2_1
+        ...           # since backslash line continuation is used between Eval blocks
+        statement 2_n # place comments only inside the strings
+    &quot;&quot;&quot;)&nbsp;: [(] \ 
+    ...
+    cond_n&nbsp;? Eval(&quot;&quot;&quot;
+        statement n_1
+        ...
+        statement n_n
+    &quot;&quot;&quot;) \
+   &nbsp;: Eval(&quot;&quot;&quot;
+        statement n+1_1
+        ...
+        statement n+1_n
+    &quot;&quot;&quot;)[...))]  # 1 closing parenthesis for Eval() + n-1 to balance the opening ones (if used)</pre>
+<a name="Using_separate_scripts_as_blocks_and_the_Import.28.29_function_2"></a>
+<h4>
+<span class="mw-headline">Using separate scripts as blocks and the Import()
+function</span></h4>
+<p>The solution would be (again items in square brackets are optional):</p>
+<p><b>Example 13</b></p>
+<pre># here no comments are allowed; every line but the last must end with a \
+[result = \]
+    cond_1&nbsp;? \
+        Import(&quot;block1.avs&quot;)&nbsp;: [(] \
+    cond_2&nbsp;? \
+        Import(&quot;block2.avs&quot;)&nbsp;: [(] \
+    ...
+    cond_n&nbsp;? \
+        Import(&quot;blockn.avs&quot;) \
+   &nbsp;: \
+        Import(&quot;block-else.avs&quot;) \
+    )...))  # n-1 closing parentheses to balance the opening ones</pre>
+<a name="Using_functions_.28one_function_for_each_block.29_2"></a>
+<h4>
+<span class="mw-headline">Using functions (one function for each block)</span></h4>
+<p>The solution would be (again items in square brackets are optional):</p>
+<p><b>Example 14</b></p>
+<pre># here no comments are allowed; every line but the last must end with a \
+[result = \]
+    cond_1&nbsp;? \
+        function_block_1({arguments})&nbsp;: [(] \
+    cond_2&nbsp;? \
+        function_block_2({arguments})&nbsp;: [(] \
+    ...
+    cond_n&nbsp;? \
+        function_block_n({arguments}) \
+   &nbsp;: \
+        function_block_else({arguments}) \
+    [)...))]  # n-1 closing parentheses to balance the opening ones (if used)</pre>
+<a name="The_for..next_block_statement"></a>
+<h3>
+<span class="mw-headline">The for..next block statement</span></h3>
+<p>The problem here is to implement the <tt>for..next</tt> loop in a way that
+allows accessing variables in the local scope, so that changes made in local
+scope variables inside the loop can be accessible by the caller when it is
+finished. This is the way that the <tt>for..next</tt> loop works in most
+programming languages that provide it. In addition, a means for getting out of
+the loop before is finished (ie breaking out of the loop) should be available.</p>
+<p>There is of course the alternative to implement the <tt>for..next</tt> loop
+in a way that does not allow access to local variables. This is easier in
+AviSynth, since then it can be implemented by a function; but it is also less
+useful. However in many cases it would be appropriate to use suc a construct and
+thus it will be presented here.</p>
+<a name="For..Next_loop_with_access_to_variables_in_local_scope"></a>
+<h4>
+<span class="mw-headline">For..Next loop with access to variables in local scope</span></h4>
+<ol>
+  <li>Use a <tt>ForNext(start, end, step, blocktext)</tt> function to create a
+    multiline string (a script) that will unroll the loop in a series of
+    statements and then</li>
+  <li>use Eval() to execute the script in the current scope.</li>
+</ol>
+<p>The <tt>blocktext</tt> is a script text, typically a multiline string in
+triple double quotes, that contains the instructions to be executed in each
+loop, along with special variables (say ${i} for the loop counter) that are
+textually replaced by the <tt>ForNext</tt> function with the current value(s) in
+each loop. The <a href="http://avslib.sourceforge.net/functions/s/strreplace.html"
+    class="external text"
+    title="http://avslib.sourceforge.net/functions/s/strreplace.html"
+    rel="nofollow">StrReplace()</a>
+function is particularly suited for the replacement task.</p>
+<p>A little tweak is needed in order to implement the <tt>break</tt> statement;
+the unrolled string must be constructed in such a way that when the break flag
+is set the rest of the code is skipped.</p>
+<p>The following proof-of-concept example demonstrates the procedure:</p>
+<pre>a = <a href="corefilters/avisource.htm" title="AviSource">AviSource</a>(&quot;c:\some.avi&quot;)
+cnt = 12
+b = a.<a href="corefilters/trim.htm" title="Trim">Trim</a>(0,-4) 
+cond = false
+
+# here we would like to do the following
+# for (i = 0; i &lt; 6; i++) {
+#    b = b + a.Trim(i*cnt, -4)
+#    cond = b.<a href="syntax_clip_properties.htm">Framecount</a>() &gt; 20&nbsp;? true&nbsp;: false
+#    if (cond)
+#        break
+# }
+
+return b</pre>
+<p>In order to make this happen in AviSynth, our script with <tt>ForNext</tt>
+would look like that:</p>
+<pre>a = <a href="corefilters/avisource.htm" title="AviSource">AviSource</a>(&quot;c:\some.avi&quot;)
+cnt = 12
+b = a.<a href="corefilters/trim.htm" title="Trim">Trim</a>(0,-4) 
+cond = false
+block = ForNext(0, 5, 1, &quot;&quot;&quot;
+    b = b + a.Trim(${i}*cnt, -4)
+    cond = b.<a href="syntax_clip_properties.htm">Framecount</a>() &gt; 20&nbsp;? true&nbsp;: false
+    ${break(cond)}
+    &quot;&quot;&quot;)
+void = <a href="syntax_internal_functions_control.htm" title="Internal functions/Control functions">Eval</a>(block)
+return b</pre>
+<p>or more succinctly:</p>
+<pre>a = <a href="corefilters/avisource.htm" title="AviSource">AviSource</a>(&quot;c:\some.avi&quot;)
+cnt = 12
+b = a.<a href="corefilters/trim.htm" title="Trim">Trim</a>(0,-4) 
+void = Eval(ForNext(0, 5, 1, &quot;&quot;&quot;
+    b = b + a.Trim(${i}*cnt, -4)
+    cond = b.Framecount() &gt; 20&nbsp;? true&nbsp;: false
+    ${break(cond)}
+    &quot;&quot;&quot;))
+return b</pre>
+<p>and the output of ForNext with the above arguments should be something like
+this (the only problem is that string literals cannot be typed inside the block
+text):</p>
+<pre>&quot;&quot;&quot;
+__break = false
+dummy = __break&nbsp;? NOP&nbsp;: Eval(&quot;
+    b = b + a.Trim(0*cnt, -4)
+    cond = b.Framecount() &gt; 20&nbsp;? true&nbsp;: false
+    __break = cond&nbsp;? true&nbsp;: false
+&quot;)
+dummy = __break&nbsp;? NOP&nbsp;: Eval(&quot;
+    b = b + a.Trim(1*cnt, -4)
+    cond = b.Framecount() &gt; 20&nbsp;? true&nbsp;: false
+    __break = cond&nbsp;? true&nbsp;: false
+&quot;)
+dummy = __break&nbsp;? NOP&nbsp;: Eval(&quot;
+    b = b + a.Trim(2*cnt, -4)
+    cond = b.Framecount() &gt; 20&nbsp;? true&nbsp;: false
+    __break = cond&nbsp;? true&nbsp;: false
+&quot;)
+dummy = __break&nbsp;? NOP&nbsp;: Eval(&quot;
+    b = b + a.Trim(3*cnt, -4)
+    cond = b.Framecount() &gt; 20&nbsp;? true&nbsp;: false
+    __break = cond&nbsp;? true&nbsp;: false
+&quot;)
+dummy = __break&nbsp;? NOP&nbsp;: Eval(&quot;
+    b = b + a.Trim(4*cnt, -4)
+    cond = b.Framecount() &gt; 20&nbsp;? true&nbsp;: false
+    __break = cond&nbsp;? true&nbsp;: false
+&quot;)
+dummy = __break&nbsp;? NOP&nbsp;: Eval(&quot;
+    b = b + a.Trim(5*cnt, -4)
+    cond = b.Framecount() &gt; 20&nbsp;? true&nbsp;: false
+    __break = cond&nbsp;? true&nbsp;: false
+&quot;)
+&quot;&quot;&quot;</pre>
+<p>TO BE CONTINUED...</p>
+<a name="For..Next_loop_without_access_to_variables_in_local_scope"></a>
+<h4>
+<span class="mw-headline">For..Next loop without access to variables in local
+scope</span></h4>
+<p>If we don't care for accessing variables in the local scope, then the
+implementation is straightforward:</p>
+<ol>
+  <li>Create an <a href="script_ref_arrays.htm" title="Arrays">AVSLib
+    array</a> with the appropriate loop values.</li>
+  <li>Define needed globals (for example a bool flag to return immediately from
+    the block if true).</li>
+  <li>Pack the block's code inside a function.</li>
+  <li>Use an <a href="http://avslib.sourceforge.net/tutorials/operators.html"
+      class="external text"
+      title="http://avslib.sourceforge.net/tutorials/operators.html"
+      rel="nofollow">array operator</a> to execute the block for every loop value.</li>
+</ol>
+<p>TO BE CONTINUED...</p>
+<a name="The_do..while_and_do..until_block_statements"></a>
+<h3>
+<span class="mw-headline">The do..while and do..until block statements</span></h3>
+<p>TODO...</p>
+<a name="Deciding_which_implementation_to_use"></a>
+<h2>
+<span class="mw-headline">Deciding which implementation to use</span></h2>
+<p>To be frank, there is no clear-cut answer to this question; it depends on the
+purpose that the script will serve, your coding abilities and habits, whether
+there are ready-made components available and what type are they (scripts,
+function libraries, etc.) and similar factors.</p>
+<p>Thus, only some generic guidelines will be presented here, grouped on the
+type of block statement</p>
+<a name="The_if..else_and_if..elif..else_block_statements"></a>
+<h3>
+<span class="mw-headline">The if..else and if..elif..else block statements</span></h3>
+<ul>
+  <li>For short (up to say 10 lines) blocks, using Eval() and
+    three-double-quotes quoted strings is generally the best solution; it is
+    fast to code and presents a &quot;natural&quot; text flow to the reader
+    (thus it is easy to comprehend).</li>
+</ul>
+<ul>
+  <li>For long blocks, using any of the other two implementations is generally
+    better because it is easier to debug.</li>
+</ul>
+<ul>
+  <li>If the blocks pre-exist as independent scripts, using
+    <a href="corefilters/import.htm" title="Import">Import</a>()
+    is, obviously, preferred.</li>
+</ul>
+<ul>
+  <li>If building a function library, usually an implementation with functions
+    will be easier to maintain and debug. However using
+    <a href="http://avisynth.org/mediawiki/Internal_functions/Control_functions"
+       title="Internal functions/Control functions">Eval</a>()
+    for small blocks is still an option to consider, to minimise the risk of
+    namespace clashing with user's own functions.</li>
+</ul>
+<a name="The_for..next_block_statement_2"></a>
+<h3>
+<span class="mw-headline">The for..next block statement</span></h3>
+<p>TODO...</p>
+<a name="The_do..while_and_do..until_block_statements_2"></a>
+<h3>
+<span class="mw-headline">The do..while and do..until block statements</span></h3>
+<p>TODO...</p>
+<a name="References"></a>
+<h2>
+<span class="mw-headline">References</span></h2>
+<p>[1] <a href="http://www.avisynth.org/stickboy/ternary_eval.html" class="external free"
+          title="http://www.avisynth.org/stickboy/ternary_eval.html"
+          rel="nofollow">http://www.avisynth.org/stickboy/ternary_eval.html</a></p>
+<p>[2] <a href="http://forum.doom9.org/showthread.php?t=102929" class="external free"
+          title="http://forum.doom9.org/showthread.php?t=102929"
+          rel="nofollow">http://forum.doom9.org/showthread.php?t=102929</a></p>
+<p>[3] <a href="http://forum.doom9.org/showthread.php?p=732882#post732882" class="external free"
+          title="http://forum.doom9.org/showthread.php?p=732882#post732882"
+          rel="nofollow">http://forum.doom9.org/showthread.php?p=732882#post732882</a></p>
+<hr>
+<p>Back to <a href="script_ref.htm" title="Scripting reference">scripting
+reference</a>.</p>
+<p><kbd>$Date: 2011/04/29 20:11:14 $</kbd></p>
+</body>
+</html>

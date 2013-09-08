@@ -1,0 +1,47 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+<html>
+<head>
+<!--
+Not Automatically generated, changed!:
+$Id: syntax_colors.htm,v 1.2 2010/02/27 14:44:45 wilbertd Exp $ 
+-->
+<meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+<title>Syntax - Colors</title>
+<link rel="stylesheet" type="text/css" href="../avisynth.css">
+</head>
+<body>
+<h2><span class="mw-headline">AviSynth - Colors</span></h2>
+<p>In some filters (<a href="http://avisynth.org/mediawiki/BlankClip" title="BlankClip">BlankClip</a>,
+<a href="http://avisynth.org/mediawiki/Letterbox" title="Letterbox">Letterbox</a>,
+<a href="http://avisynth.org/mediawiki/AddBorders" title="AddBorders">AddBorders</a>
+and <a href="http://avisynth.org/mediawiki/Fade" title="Fade">FadeXXX</a>) a
+color argument can be specified. In all cases the color should be specified in <a href="http://avisynth.org/mediawiki/RGB" title="RGB">RGB</a>
+format even if the colorformat of the input clip is <a href="http://avisynth.org/mediawiki/YUV" title="YUV">YUV</a>.
+This can be done in hexadecimal or decimal notation.</p>
+<p>In <b>hexadecimal notation</b> the number is composed as follows: the first
+two digits denote the red channel, the next two the green channel and the last
+two the blue channel. The hexadecimal number must be preceded with a $.</p>
+<p>In <b>decimal notation</b> the number is as follows: the red channel value is
+multiplied by 65536, the green channel value is multiplied by 256 and the two
+resulting products are both added to the blue channel value.</p>
+<p>Let's consider an example. Brown is given by R=$A5 (165), G=$2A (42), B=$2A
+(42). Thus</p>
+<pre>BlankClip(color=$A52A2A)</pre>
+<p>gives a brown frame. Converting each channel to decimal (remember that A=10,
+B=11, C=12, D=14, E=14, F=15) gives</p>
+<pre>R = $A5 = 10*16^1 +  5*16^0 = 165
+G = $2A =  2*16^1 + 10*16^0 =  42
+B = $2A =  2*16^1 + 10*16^0 =  42
+
+165*65536 + 42*256 + 42 = 10824234</pre>
+<p>Thus creating a brown frame specifying the color in decimal notation gives</p>
+<pre>BlankClip(color=10824234)</pre>
+<p>Common color presets can be found in the file colors_rgb.avsi, which should
+be present in your plugin autoload folder (look into the file for list of
+presets). Thus BlankClip(color=color_brown) gives the same brown frames.</p>
+<p>Note that black RGB=$000000 will be converted to Y=16, U=V=128 if the
+colorformat of the input clip is YUV, since the default color conversion RGB
+[0,255] –&gt; YUV [16,235] is used.</p>
+<p><kbd>$Date: 2010/02/27 14:44:45 $</kbd></p>
+</body>
+</html>

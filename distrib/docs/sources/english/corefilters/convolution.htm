@@ -1,0 +1,136 @@
+<!doctype html public "-//W3C//DTD HTML 4.0 Transitional//EN">
+<html>
+<head>
+<title>GeneralConvolution Avisynth Filter</title>
+<link rel="stylesheet" type="text/css" href="../../avisynth.css">
+</head>
+<body>
+<h2><a name="Convolution"></a>GeneralConvolution</h2>
+<P><code>GeneralConvolution </code>(<var>clip, int &quot;bias&quot;, string &quot;matrix&quot;, float &quot;divisor&quot;, bool &quot;auto&quot;</var>)
+<p>This filter performs a matrix convolution on a RGB32 clip.
+</p>
+<h3>Paramaters
+</h3>
+<table border="1" width="75%">
+  <tr>
+    <td width="34%"><var>clip</var> </td>
+    <td width="66%">RGB32 clip</td>
+  </tr>
+  <tr>
+    <td width="34%"><var>bias</var> (default 0)</td>
+    <td width="66%">additive bias to adjust the total output intensity</td>
+  </tr>
+  <tr>
+    <td width="34%"><var>matrix</var> (default &quot;0 0 0 0 1 0 0 0 0&quot;) </td>
+    <td width="66%">can be a 3x3 or 5x5 matrix with 9 or 25 integer numbers between -256 and 256</td>
+  </tr>
+  <tr>
+    <td width="34%"> <var>divisor</var> (default 1.0)</td>
+    <td width="66%">divides the output of the convolution (calculated before
+      adding bias)</td>
+  </tr>
+  <tr>
+    <td width="34%"><var>auto</var> (default true)</td>
+    <td width="66%">Enables the auto scaling functionality. This divides the result by
+    the sum of the elements of the matrix. The value of <var>divisor</var> is applied
+    in addition to this auto scaling factor. If the sum of elements is zero,
+    auto is disabled</td>
+  </tr>
+</table>
+<p>The <var>divisor</var> is usually the sum of the elements of the matrix. But
+when the sum is zero, you must use <var>divisor</var> and the <var>bias</var>
+setting to correct the pixel values. The <var>bias</var> could be useful if the
+pixel values are negative due to the convolution. After adding a bias, the
+pixels are just clipped to zero (and 255 if they are larger than 255).
+</p>
+<p>Around the borders the edge pixels are simply repeated to service the matrix.
+</p>
+<h3>Examples
+</h3>
+<pre># Blur:
+
+GeneralConvolution(0, &quot;
+   10 10 10 10 10
+   10 10 10 10 10 
+   10 10 16 10 10 
+   10 10 10 10 10 
+   10 10 10 10 10 &quot;, 256, False)</pre>
+<pre># Horizontal (Sobel) edge detection:
+
+GeneralConvolution(128, &quot;
+    1  2  1 
+    0  0  0 
+   -1 -2 -1 &quot;, 8)</pre>
+      
+<pre># Vertical (Sobel) Edge Detection:
+
+GeneralConvolution(128, &quot;
+   1  0 -1 
+   2  0 -2 
+   1  0 -1 &quot;, 8)</pre>
+      
+<pre># Displacement (simply move the position
+# of the &quot;1&quot; for left, right, up, down)
+
+GeneralConvolution(0,&quot;
+   0 1 0 
+   0 0 0 
+   0 0 0 &quot;)</pre>
+      
+<pre># Displacement by half pixel up (auto scaling):
+
+GeneralConvolution(0,&quot;
+   0 1 0 
+   0 1 0 
+   0 0 0 &quot;)</pre>
+      
+<pre># Displacement by half pixel right (manual scaling):
+
+GeneralConvolution(0,&quot;
+   0   0   0 
+   0 128 128 
+   0   0   0 &quot;, 256, False)</pre>
+      
+<pre># Sharpness filter:
+
+GeneralConvolution(0,&quot;
+   0   -1   0 
+  -1    5  -1 
+   0   -1   0 &quot;, 1, True)
+
+In this case, the new pixel values y(m,n) are given by
+y(m,n) = (-1*x(m-1,n) - 1*x(m,n-1) + 5*x(m,n) - 1*x(m,n+1)
+         - 1*x(m+1,n))/(-1-1+5-1-1)/1.0 + 0</pre>
+      
+<pre># Slight blur filter with black level clipping and 25% brightening:
+
+GeneralConvolution(-16,&quot;
+   0   12   0 
+  12  256  12 
+   0   12   0 &quot;, 0.75 ,True)
+
+In this case, the new pixel values y(m,n) are given by
+y(m,n) = ( 12*x(m-1,n) + 12*x(m,n-1) + 256*x(m,n) + 12*x(m,n+1)
+         + 12*x(m+1,n) )/(12+12+256+12+12)/0.75 - 16</pre>
+      
+<p>Some other examples can be found <a href="http://www.gamedev.net/reference/programming/features/imageproc/page2.asp"><cite>here</cite></a>.</p>
+<h3>Changelog</h3>
+<table border="1">
+  <tbody>
+    <tr>
+      <td>v2</td>
+      <td>Initial Release</td>
+    </tr>
+    <tr>
+      <td>v2.55</td>
+      <td>added divisor, auto</td>
+    </tr>
+  </tbody>
+</table>
+<p><kbd>$Date: 2010/08/15 14:18:26 $</kbd></p>
+<FORM>
+<INPUT TYPE="Button" VALUE="Back"
+onClick="history.go(-1)">
+</form>
+</body>
+</html>

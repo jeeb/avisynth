@@ -1,0 +1,330 @@
+<!doctype html public "-//w3c//dtd html 4.0 transitional//en">
+<html>
+<head>
+   <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+   <title>DirectShowSource Avisynth Filter</title>
+   <link rel="stylesheet" type="text/css" href="../../avisynth.css">
+</head>
+<body >
+<h2>
+<a NAME="DirectShowSource"></a>DirectShowSource
+</h2>
+
+<p><code>DirectShowSource </code>(<var>string filename, float &quot;fps&quot;, bool "seek",
+bool &quot;audio&quot;, bool &quot;video&quot;, bool &quot;convertfps&quot;, bool
+&quot;seekzero&quot;, int &quot;timeout&quot;, string &quot;pixel_type&quot;, int
+&quot;framecount&quot;, string &quot;logfile&quot;, int &quot;logmask&quot;</var>)
+
+<p><code>DirectShowSource</code> reads the file <i><var>filename</var></i> 
+using DirectShow,
+the same multimedia playback system which Windows Media Player uses. It can
+read most formats which Media Player can play, including MPEG, MP3, and
+QuickTime, as well as AVI files that <tt>AVISource</tt> doesn't support
+(like DV type 1, or files using DirectShow-only codecs). Try reading AVI
+files with <tt>AVISource</tt> first, and if that doesn't work then try
+this filter instead.
+
+<p>There are some caveats:
+<ul>
+  <li>
+Some decoders (notably MS MPEG-4) will produce upside-down video. You'll
+have to use <code><a href="flip.htm">FlipVertical</a></code>.</li>
+
+  <li>
+DirectShow video decoders are not required to support frame-accurate seeking. In
+most cases seeking will work, but on some it might not.</li>
+
+  <li>
+DirectShow video decoders are not even required to tell you the frame rate
+of the incoming video. Most do, but the ASF decoder doesn't. You have to specify
+the frame rate using the fps parameter, like this: <code>DirectShowSource</code>
+("video.asf", fps=15).</li>
+
+  <li>
+This version automatically detects the Microsoft DV codec and sets it to
+decode at full (instead of half) resolution. I guess this isn't a caveat.
+:-)</li>
+
+  <li>
+Also this version attempts to disable any decoder based deinterlacing.</li>
+</ul>
+
+<p><var>fps</var>: This is sometimes needed to specify the framerate of the
+video. If the framerate or the number of frames is incorrect (this can happen
+with asf or mov clips), use this option to force the correct framerate.</p>
+
+<p><var>seek</var> = true (in <em>v2.53</em>): There is full seeking support
+(available on most file formats). If problems occur try enabling the
+<var>seekzero</var> option first, if seeking still cause problems completely
+disable seeking. With seeking disabled the audio stream returns silence and the
+video stream the last rendered frame when trying to seek backwards. Note the
+AviSynth cache may provide limited access to the previous few frames, beyond
+that the last frame rendered will be returned.</p>
+
+<p><var>audio</var> = true (in <em>v2.53</em>): There is audio support in
+DirectShowSource. DirectShowSource is able to open formats like
+WAV/DTS/AC3/MP3, provided you can play them in WMP for example (more exact:
+provided they are rendered correctly in graphedit). The channel ordering is the
+same as in the [<a href="http://www.cs.bath.ac.uk/~jpff/NOS-DREAM/researchdev/wave-ex/wave_ex.html">wave-format-extensible
+format</a>], because the input is always
+decompressed to WAV. For more information, see also GetChannel. AviSynth loads
+8, 16, 24 and 32 bit int PCM samples, and float PCM format, and any number of
+channels.</p>
+
+<p><var>video</var> = true (in <em>v2.52</em>): When setting it to false, it
+lets you open the audio only.</p>
+
+<p><var>convertfps</var> = false (in <em>v2.56</em>): When setting it to true,
+it turns variable framerate video (vfr) into constant framerate video (cfr) by
+duplicating or skipping frames. This is useful when you want to open vfr video
+(for example mkv, rmvb, mp4, asf or wmv with hybrid video) in AviSynth. It is
+most useful when the <var>fps</var> parameter is set to the least common
+multiple of the component vfr rates, e.g. 120 or 119.880.</p>
+
+<p><var>seekzero</var> = false (in <em>v2.56</em>): An option to restrict
+seeking only back to the beginning. It allows limited seeking with files like
+unindexed ASF. Seeking forwards is of course done the hard way (by reading all
+samples).</p>
+
+<p><var>timeout</var> = 60000 (in milliseconds; 60000 ms = 1 min) (in <em>v2.56</em>):
+To set time to wait when DirectShow refuses to render.  Positive values cause
+the return of blank frames for video and silence for audio streams. Negative
+values cause a runtime Avisynth exception to be thrown.</p>
+
+<p><var>pixel_type</var> (in <em>v2.56</em>): The mnemonic for the videomedia
+subtype negotiated for the IPin connection. It can be &quot;YV24&quot;,
+&quot;YV16&quot;, &quot;YV12&quot;, &quot;YUY2&quot;, &quot;AYUV&quot;,
+&quot;Y41P&quot;, &quot;Y411&quot;, &quot;ARGB&quot;, &quot;RGB32&quot;,
+&quot;RGB24&quot;, &quot;YUV&quot;, &quot;YUVex&quot;, &quot;RGB&quot;,
+&quot;AUTO&quot; or &quot;FULL&quot;. By default, upstream DirectShow filters
+are free to bid all of their supported media types in the order of their
+choice. A few DirectShow filters get this wrong. The <b>pixel_type</b> argument
+limits the acceptable video stream subformats for the IPin negotiation. Note
+the graph builder may add a format converter to satisfy your request, so make
+sure the codec in use can actually decode to your chosen format. The M$ format
+converter is just adequate.  The &quot;YUV&quot; and &quot;RGB&quot;
+pseudo-types restrict the negotiation to all official supported YUV or RGB
+formats respectively. The &quot;YUVex&quot; also includes YV24 and YV16
+non-standard pixel types. The &quot;AUTO&quot; pseudo-type permits the
+negotiation to use all relevant official formats, YUV plus RGB.  The
+&quot;FULL&quot; pseudo-type includes the YV24 and YV16 non-standard pixel
+types in addition to those supported by &quot;AUTO&quot;.  The full order of
+preference is YV24, YV16, YV12, YUY2, AYUV, Y41P, Y411, ARGB, RGB32, RGB24.
+Many DirectShow filters get this wrong, which is why it is not enabled by
+default. The option exists so you have enough control to encourage the maximum
+range of filters to serve your media.
+(See <a href="http://forum.doom9.org/showthread.php?t=143321" class="external text"
+ title="http://forum.doom9.org/showthread.php?t=143321" rel="nofollow">discussion</a>.)</p>
+
+<p>The two non-standard pixel types, YV24 and YV16 use the following GUID's respectivly :-<br>
+MEDIASUBTYPE_YV24 = {'42VY', 0x0000, 0x0010, 0x80, 0x00, 0x00, 0xaa, 0x00, 0x38, 0x9b, 0x71};<br>
+MEDIASUBTYPE_YV16 = {'61VY', 0x0000, 0x0010, 0x80, 0x00, 0x00, 0xaa, 0x00, 0x38, 0x9b, 0x71};
+
+<p><var>framecount</var> (in <em>v2.57</em>): This is sometimes needed to specify the
+framecount of the video. If the framerate or the number of frames is incorrect (this
+can happen with asf or mov clips), use this option to force the correct number of
+frames. If <var>fps</var> is also specified the length of the audio stream is also
+adjusted.</p>
+
+<p><var>logfile</var> (in <em>v2.57</em>): Use this option to specify the name of
+a debugging logfile.</p>
+
+<p><var>logmask</var> = 35 (in <em>v2.57</em>): When a logfile is specified, use this option
+to select which information is logged.
+<center><table border="1">
+<tr><th align=right>Value</th><th>Data</th></tr>
+<tr><td align=right>  1</td><td>Format Negotiation</td></tr>
+<tr><td align=right>  2</td><td>Receive samples</td></tr>
+<tr><td align=right>  4</td><td>GetFrame/GetAudio calls</td></tr>
+<tr><td align=right>  8</td><td>Directshow callbacks</td></tr>
+<tr><td align=right> 16</td><td>Requests to Directshow</td></tr>
+<tr><td align=right> 32</td><td>Errors</td></tr>
+<tr><td align=right> 64</td><td>COM object use count</td></tr>
+<tr><td align=right>128</td><td>New objects</td></tr>
+<tr><td align=right>256</td><td>Extra info</td></tr>
+<tr><td align=right>512</td><td>Wait events</td></tr>
+</table></center>
+Add the values together of the data you need logged. Specify -1 to log everything.
+The default, 35, logs Format Negotiation, Received samples and Errors. i.e 1+2+32
+<h3>Examples</h3>
+
+<p>Opens an avi with the first available RGB format (without audio):</p>
+<pre>DirectShowSource(&quot;F:\TestStreams\xvid.avi&quot;, 
+\       fps=25, audio=false, pixel_type=&quot;RGB&quot;)</pre>
+
+<p>Opens a DV clip with the MS DV decoder:</p>
+<pre>DirectShowSource(&quot;F:\DVCodecs\Analysis\Ced_dv.avi&quot;) # MS-DV</pre>
+
+<p>Opens a variable framerate mkv as 119.88 by adding frames (ensuring sync):</p>
+<pre>DirectShowSource(&quot;F:\Guides\Hybrid\vfr_startrek.mkv&quot;, 
+\       fps=119.88, convertfps=true)</pre>
+
+<p>Opens a realmedia *rmvb clip:</p>
+<pre>DirectShowSource(&quot;F:\test.rmvb&quot;, fps=24, convertfps=true)</pre>
+
+<p>Opens a GraphEdit file:</p>
+<pre>V=DirectShowSource(&quot;F:\vid_graph.grf&quot;, audio=False) # video only (audio renderer removed)
+A=DirectShowSource(&quot;F:\aud_graph.grf&quot;, video=False) # audio only (video renderer removed)
+AudioDub(V, A)</pre>
+
+<p>See below for some audio examples.</p>
+
+<h3>Troubleshooting video and audio problems</h3>
+<p>AviSynth will by default try to open only the media it can open without any
+problems. If one component cannot be opened it will simply not be added to the
+output. This will also mean that if there is a problem, you will not see the
+error. To get the error message to the missing component, use audio=false or
+video=false and disable the component that is actually working. This way
+AviSynth will print out the error message of the component that doesn't work.</p>
+
+<h4>RenderFile, the filter graph manager won't talk to me</h4>
+<p>This is a common error that occurs when DirectShow isn't able to deliver any
+format that is readable to AviSynth. Try creating a filter graph manually and
+see if you are able to construct a filter graph that delivers any output
+AviSynth can open. If not, you might need to download additional DirectShow
+filters that can deliver correct material.</p>
+
+<h4>The samplerate is wrong</h4>
+<p>Some filters might have problems reporting the right samplerate, and then
+correct this when the file is actually playing. Unfortunately there is no way
+for AviSynth to correct this once the file has been opened. Use
+<a href="assumerate.htm">AssumeSampleRate</a> and set the correct samplerate
+to fix this problem.</p>
+
+<h4>My sound is choppy</h4>
+<p>Unfortunately Directshow is not required to support sample exact seeking.
+Open the sound another way, or demux your video file and serve it to
+AviSynth another way. Otherwise you can specify &quot;seekzero = true&quot; or
+&quot;seek = false&quot; as parameters or use the
+<a href="ensuresync.htm">EnsureVBRMP3Sync</a> filter to enforce linear access
+to the Directshow audio stream.</p>
+
+<h4><span class="mw-headline">My sound is out of sync</span></h4>
+<p>This can happen especially with WMV, apparently due to variable frame rate
+video being returned. Determine what the fps should be and set it explicitly,
+and also &quot;ConvertFPS&quot; to force it to remain constant. And
+<a href="ensuresync.htm">EnsureVBRMP3Sync</a>  reduces problems with variable
+rate audio.</p>
+<pre>DirectShowSource(&quot;video.wmv&quot;, fps=25, ConvertFPS=True)
+EnsureVBRMP3Sync() </pre>
+
+<h4>My ASF renders start fast and finish slow</h4>
+<p>Microsoft in their infinite wisdom chose to implement ASF stream timing in
+the ASF demuxer. As a result it is not possible to strip ASF format files any
+faster than realtime. This is most apparent when you first start to process the
+streams, usually after opening the Avisynth script it takes you a while to
+configure your video editor, all this time the muxer is accumulating
+<i>credit</i> time. When you then start to process your stream it races away at
+maximum speed until you catch up to realtime at which point it slows down to
+the realtime rate of the source material. This feature makes it impossible to
+use Avisynth to reclock 24fps ASF material upto 25fps for direct PAL
+playback.</p>
+
+<h3>Common tasks</h3>
+<p>This section will describe various tasks that might not be 100% obvious. :)</p>
+
+<h4>Opening GRF files</h4>
+<p>GraphEdit GRF-files are automatically detected by a .grf filename extension
+and directly loaded by DirectShowSource. For AviSynth to be able to connect to
+it, you must leave a pin open in GraphEdit of a media types that AviSynth is
+able to connect to. AviSynth will not attempt to disconnect any filters, so it
+is important that the output type is correct. DirectShowSource only accepts
+YV24, YV16, YV12, YUY2, AYUV, Y41P, Y411, ARGB, RGB32 and RGB24 video formats
+and 32, 24, 16 and 8 bit PCM and IEEE FLOAT audio formats.</p>
+
+<p>A given GRF-file should only target one of an audio or video stream to avoid
+confusion when directshowsource attempts the connection to your open pin(s).
+From version 2.57 this single stream restriction is enforced.</p>
+
+<h4>Downmixing AC3 to stereo</h4>
+There are essentially two ways to do this. The first is to set the downmixing in
+the configuration of your AC3 decoder itself, and the second one is to use the
+external downmixer of &quot;Trombettworks&quot;:
+
+<p>1) Install AC3filter.&nbsp;</p>
+
+<p>a) Open <b>AC3Filter Config</b><br>
+On tab &quot;Main&quot; in section &quot;Output format&quot; select &quot;2/0 -
+stereo&quot;.<br>
+[Nothing else is needed.]</p>
+
+<p><i><b>-OR-</b></i></p>
+
+<p>b) Open the AC3 file in WMP6.4 and select the file
+properties. Set the output of AC3Filter on <b>2/0 - stereo</b>. If you want the
+best possible quality, select PCM Float as Sample format.</p>
+<img border="0" src="../pictures/corefilters/ac3downmix1a.jpg" width="425" height="435">
+<img border="0" src="../pictures/corefilters/ac3downmix1b.jpg" width="628" height="487">
+
+<p> Make the following script:
+<pre>v = Mpeg2Source(&quot;e:\movie.d2v&quot;)
+a = DirectShowSource(&quot;e:\Temp\Test2\test.ac3&quot;)
+AudioDub(v,a)</pre>
+Finally, open the script in vdub and convert the audio stream to MP3 (of
+course you can also demux the downmixed WAV stream if needed).
+
+<p>2)
+Register the directshow filter <a href="http://www.trombettworks.com/directshow.php">
+<cite>Channel Downmixer by Trombettworks</cite></a> (under start -> run):</p>
+
+<p>&nbsp;&nbsp;&nbsp; <i>regsvr32 ChannelDownmixer.ax</i>
+
+<p>Open the AC3 file in WMP6.4 and select the file properties. Set the output of
+AC3Filter on <b>3/2+SW 5.1 channels</b> (this downmixer can't handle PCM Float,
+thus PCM 16 bit is selected here). In the properties of the downmixer, the
+number of input and output channels should be detected automatically. Check
+whether this is indeed correct.
+<br><br>
+<img border="0" src="../pictures/corefilters/ac3downmix2a.jpg" width="425" height="435">&nbsp;
+<img border="0" src="../pictures/corefilters/ac3downmix2b.jpg" width="628" height="487">
+
+<p> <img border="0" src="../pictures/corefilters/ac3downmix2c.jpg" width="695" height="595">
+
+<p> Make the following script:
+<pre>v = Mpeg2Source(&quot;e:\movie.d2v&quot;)
+a = DirectShowSource(&quot;e:\Temp\Test2\test.ac3&quot;)
+AudioDub(v,a)</pre>
+Finally, open the script in vdub and convert the audio stream to MP3 (of
+course you can also demux the downmixed WAV stream if needed).
+
+<p>For some reason, I can't get this to work with DTS streams :(</p>
+<h3><span class="mw-headline">Windows7 users</span></h3>
+
+<p>Windows 7 forces its own DirectShow filters for decoding several audio and
+video formats. Changing their merits or physically removing those filters
+doesn't help. clsid made the tool &quot;<a href="http://forum.doom9.org/showthread.php?t=146910" class="external text" title="http://forum.doom9.org/showthread.php?t=146910" rel="nofollow">Win7DSFilterTweaker</a>&quot;
+to change the preferred filters. However new decoders need to be added each time
+so it's not the perfect solution.</p>
+
+<p><b>Changes</b></p>
+<table border="1" width="42%">
+  <tr>
+    <td rowspan=1 width="5%">v2.60</td>
+    <td width="50%">Added pixel_types "YV24", "YV16", "AYUV", "Y41P", "Y411".</td>
+  </tr>
+  <tr>
+    <td rowspan=2 width="5%">v2.57</td>
+    <td width="50%">framecount overrides the length of the streams.</td>
+  </tr>
+  <tr>
+    <td width="50%">logfile and logmask specify debug logging.</td>
+  </tr>
+  <tr>
+    <td rowspan=4 width="5%">v2.56</td>
+    <td width="50%">convertfps turns vfr into constant cfr by adding frames</td>
+  </tr>
+  <tr>
+    <td width="50%">seekzero restricts seeking to begining only</td>
+  </tr>
+  <tr>
+    <td width="50%">timeout controls response to recalcitrant graphs</td>
+  </tr>
+  <tr>
+    <td width="50%">pixel_type specifies/restricts output video pixel format</td>
+  </tr>
+</table>
+
+<p><kbd>$Date: 2013/01/25 02:45:53 $</kbd></p>
+<form><input TYPE="Button" VALUE="Back" onClick="history.go(-1)"></form>
+</body>
+</html>

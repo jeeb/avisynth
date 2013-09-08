@@ -1,0 +1,114 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+<html>
+<head>
+<!--
+Not Automatically generated, changed!:
+$Id: script_ref_arrays.htm,v 1.1 2008/04/20 19:07:33 wilbertd Exp $ 
+-->
+<meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+<title>Scripting reference - Arrays</title>
+<link rel="stylesheet" type="text/css" href="../avisynth.css">
+</head>
+<body>
+<h2>Arrays</h2>
+<p>As everybody using Avisynth knows, arrays are not supported natively by the
+scripting language.</p>
+<p>However, a library named [<a href="http://avslib.sourceforge.net/" class="external text" title="http://avslib.sourceforge.net/" rel="nofollow">AVSLib</a>]
+exists that provides a functional interface for creating and manipulating
+arrays. Coupled with Avisynth's OOP style for calling functions, one can treat
+arrays as objects with methods, which is a familiar and easy to understand and
+code scripting concept.</p>
+<p>Therefore, two preparatory steps are needed before being able to create and
+manipulate process arrays into your script:</p>
+<ul>
+  <li>[<a href="http://sourceforge.net/projects/avslib/" class="external text" title="http://sourceforge.net/projects/avslib/" rel="nofollow">Download</a>]
+    and install the most current version of AVSLib into your system.</li>
+  <li>Import the needed AVSLib files in your script as follows (see the
+    instructions inside the library's documentation to fill-in the gaps):</li>
+</ul>
+<dl>
+  <dd>
+    <ul>
+      <li>AVSLib 1.1.x versions: Enter <tt>LoadPackage(&quot;avslib&quot;,
+        &quot;array&quot;)</tt> to load the array implementation files, or <tt>LoadLibrary(&quot;avslib&quot;,
+        CONFIG_AVSLIB_FULL)</tt> to load entire AVSLib.</li>
+      <li>AVSLib 1.0.x versions: Enter an appropriate <a href="corefilters/import.htm" title="Import">Import</a>({path
+        to AVSLib header}) statement as the first line of your script.</li>
+    </ul>
+  </dd>
+</dl>
+<p>Now you are ready to create your first array! In order to provide an almost
+real case example let's assume the following (which are commonplace in many
+situations) about the script you want to create:</p>
+<ul>
+  <li>The script selects a distinct range of frames from each video clip.</li>
+  <li>Some of the input clips may have different size, fps, audio and/or
+    colorspace; thus they need to be converted.</li>
+  <li>Some of the filtering parameters are distinct for each clip.</li>
+</ul>
+<p>Having done that, let's proceed to the actual code:</p>
+<p>First, we create the array; ..1.., ..2.., etc. are actual filename strings.
+Clip loading is made by <a href="corefilters/avisource.htm" title="AviSource">AviSource</a>
+in the example but <a href="corefilters/directshowsource.htm" title="DirectShowSource">DirectShowSource</a>
+may also be specified.</p>
+<pre>inp = ArrayCreate( \
+    <a href="corefilters/avisource.htm" title="AviSource">AviSource</a>(..1..), \
+    AviSource(..2..), \
+    ... \
+    AviSource(..n..) )</pre>
+<p>Then we convert to same fps, audio, colorspace and size by using <a href="corefilters/fps.htm" title="AssumeFPS">AssumeFPS</a>,
+<a href="corefilters/convertaudio.htm" title="ConvertAudioTo16bit">ConvertAudioTo16bit</a>,
+<a href="corefilters/convert.htm" title="ConvertToYV12">ConvertToYV12</a>
+and <a href="corefilters/resize.htm" title="BilinearResize">BilinearResize</a>
+respectively (or any resizer that you find fit). We use OOP + chaining to make
+compact expressions.</p>
+<p>Note that since Avisynth does not provide a way for in-place variable
+modification we must reassign to an array variable after each array operation
+(usually the same).</p>
+<pre>inp = inp.ArrayOpFunc(&quot;AssumeFPS&quot;, &quot;24&quot;).ArrayOpFunc(&quot;ConvertAudioTo16bit&quot; \
+    ).ArrayOpFunc(&quot;ConvertToYV12&quot;).ArrayOpFunc(&quot;BilinearResize&quot;, &quot;640,480&quot;)</pre>
+<p>To perform trimming we will use arrays of other types also. Below <i>ts</i>
+stands for first frame to trim, <i>te</i> for last; each number corresponds to a
+clip in <i>inp</i> variable.</p>
+<pre>ts = ArrayCreate(12, 24, ..., 33) # n numbers in total
+te = ArrayCreate(8540, 7834, ..., 5712) # n numbers in total</pre>
+<p>We also need a counter to make things easier; we will use ArrayRange to
+create an array of 0,1,2,...</p>
+<pre>cnt = ArrayRange(0, inp.ArrayLen()-1)</pre>
+<p>In addition we must define a user function that will accept <i>inp</i>, <i>ts</i>,
+<i>te</i> and <i>cnt</i> and do the trimming.</p>
+<p>Since ArrayOpArrayFunc only accepts two arrays for per-element processing, it
+is easier to pass 'inp' and <i>cnt</i> as array elements and <i>ts</i>, <i>te</i>
+as entire arrays.</p>
+<pre>Function MyTrim(clip c, int count, string fs, string fe) {
+    return c.<a href="corefilters/trim.htm" title="Trim">Trim</a>(fs.ArrayGet(count), fe.ArrayGet(count))
+}</pre>
+<p>Now we are ready to do the trim (line below).</p>
+<pre>inp = ArrayOpArrayFunc(inp, cnt, &quot;MyTrim&quot;, StrQuote(ts)+&quot;,&quot;+StrQuote(te))</pre>
+<p>We will finish the processing with a final tweak on brightness with different
+settings on each clip and on hue with same settings for all clips.</p>
+<pre>bright = ArrayCreate(2.0, 1.5, ..., 3.1) # n numbers in total
+
+Function MyTweak(clip c, float br) { 
+    return c.<a href="corefilters/tweak.htm" title="Tweak">Tweak</a>(bright=br, hue=12.3)
+}
+
+inp = ArrayOpArrayFunc(inp, bright, &quot;MyTweak&quot;) </pre>
+<p>And now we are ready to combine the results and return them as script's
+output. We will use <a href="http://avisynth.org/mediawiki/Dissolve" title="Dissolve">Dissolve</a>
+for a smoother transition.</p>
+<pre>return inp.ArraySum(sum_func=&quot;Dissolve&quot;, sum_args=&quot;5&quot;)</pre>
+<p>This is it; the n input clips have been converted to a common video and audio
+format, trimmed and tweaked with individual settings and returned as a single
+video stream with only 11 lines of code (excluding comments).</p>
+<p>Other types of array processing are also possible (slicing ie operation on a
+subset of elements, joining, multiplexing, etc.) but these are topics to be
+discussed in other pages. Those that are interested can browse the <a href="http://avslib.sourceforge.net/" class="external text" title="http://avslib.sourceforge.net/" rel="nofollow">AVSLib
+documentation</a>. One can also take a closer look at the <a href="http://avslib.sourceforge.net/examples/index.html" class="external text" title="http://avslib.sourceforge.net/examples/index.html" rel="nofollow">examples
+section</a> of the AVSLib documentation.</p>
+<hr>
+<p>Back to <a href="script_ref.htm" title="Scripting reference">scripting
+reference</a>.</p>
+<p><kbd>$Date: 2008/04/20 19:07:33 $</kbd></p>
+</body>
+</html>

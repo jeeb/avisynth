@@ -1,0 +1,359 @@
+<html>
+<head>
+<title>MPEG2Dec3</title>
+<link rel="stylesheet" type="text/css" href="../../avisynth.css">
+<!--
+Automatically generated, don't change:
+$Id: mpeg2dec3.htm,v 1.3 2005/08/11 21:11:50 wilbertd Exp $ 
+-->
+</head>
+<body>
+<h1>MPEG2Dec3</h1>
+<h2>Abstract</h2>
+<b>authors:</b>  MarcFD, Nic, trbarry, Sh0dan and others
+<br><b>version:</b>  1.10.1<br>
+<b>category:</b> MPEG Decoder (source) Plugins
+<br><b>download:</b>  <a href="http://www.avisynth.org/warpenterprises/">http://www.avisynth.org/warpenterprises/</a>
+<br><b>requirements:</b> &nbsp;
+<hr>
+<h2>Description</h2>
+This filter is able to output in the RGB, YUY2 and YV12 colorformats.<br>
+It is a MPEG-2 decoder and it is able to decode any MPEG-2 streams readable by
+dvd2avi 1.76 / 1.77.3 / 1.83x (and others). It also supports hdtv streams,
+although you need <a href="http://www.trbarry.com/DVD2AVIT3.zip"><cite>dvd2avi 1.83.5</cite></a>
+for this. (This is a modified version of MPEG2Dec2 from save-oe (smart audio video encoder).)<br>
+Additional features are (for example): YV12, YUY2 and RGB32 output (although it is
+recommended to use AviSynth's color conversion routines), interlacing control,
+integrated PostProcessing, Luminance Filtering, etc.
+<h2>Examples Usage of MPEG2Dec3 package filters:</h2>
+	(all the avisynth script lines here are only exemples)<br>
+	First, add the following line in your .avs script :
+<pre>LoadPlugin (&quot;MPEG2Dec3.dll&quot;)</pre>
+	
+	<h3>Basic MPEG2Dec3 usage</h3>
+		To do plain YV12 decoding.
+<pre>MPEG2Source(&quot;dvd.d2v&quot;)</pre>
+<p>To use Post Processing : here, deblocking only.</p>
+<pre>MPEG2Source(&quot;dvd.d2v&quot;, cpu=4)</pre>
+<p>it's better to use Field Based Post Processing for interlaced sources.</p>
+<pre>MPEG2Source(&quot;dvd.d2v&quot;, cpu=4, iPP=true)</pre>
+<p>if you have a intel Pentium 4 cpu, you can force sse2 idct.</p>
+<pre>MPEG2Source(&quot;dvd.d2v&quot;, idct=5)</pre>
+<p>To use custom post processing setting : only deringing here.</p>
+<pre>MPEG2Source(&quot;dvd.d2v&quot;, cpu2=&quot;ooooxx&quot;)</pre>
+<h3>Colorspace convertions</h3>
+		To convert to YUY2.
+<pre>MPEG2Source(&quot;dvd.d2v&quot;)
+YV12toYUY2()</pre>
+<p>To convert to YUY2 a progressive source.</p>
+<pre>MPEG2Source(&quot;dvd.d2v&quot;)
+YV12toYUY2(interlaced=false)</pre>
+<p>To convert to RGB24.</p>
+<pre>MPEG2Source(&quot;dvd.d2v&quot;)
+YV12toRGB24()
+FlipVertical() #YV12-&gt;BGR24 convertion natively flips image</pre>
+<p>To convert to RGB24 a progressive source.</p>
+<pre>MPEG2Source(&quot;dvd.d2v&quot;)
+YV12toRGB24(interlaced=false)
+FlipVertical() #YV12-&gt;BGR24 convertion natively flips image</pre>
+	<h3>Usefull additionnal YV12 Filters</h3>
+		To Darken Luminosity.
+<pre>LumaFilter(-10, 0.9)</pre>
+<p>To Ligthen Luminosity.</p>
+<pre>LumaFilter(+10, 1.1)</pre>
+<p>Of course you can tweak the settings how you want.<br>
+		See the Syntax part for more information about it.</p>
+<h2>Syntax of MPEG2Dec3 package filters :</h2>
+	<h3>MPEG2Source</h3>
+<p><code>MPEG2Source</code> (<var>string "d2v", int "cpu" int "idct" bool "iPP", int "moderate_h", int "moderate_v", bool "showQ", bool "fastMC", string
+&quot;cpu2&quot;</var>)</p>
+<p><var>d2v</var> : <br>
+	Your DVD2AVI project file. (*.d2v)</p>
+<p><var>cpu</var> : 0 to 6.<br>
+DivX decoder like cpu level setting.
+	-	0 : No PP<br>
+	- 1 : DEBLOCK_Y_H<br>
+	- 2 : DEBLOCK_Y_H, DEBLOCK_Y_V<br>
+	- 3 : DEBLOCK_Y_H, DEBLOCK_Y_V, DEBLOCK_C_H<br>
+	- 4 : DEBLOCK_Y_H, DEBLOCK_Y_V, DEBLOCK_C_H, DEBLOCK_C_V<br>
+	- 5 : DEBLOCK_Y_H, DEBLOCK_Y_V, DEBLOCK_C_H, DEBLOCK_C_V, DERING_Y<br>
+	- 6 : DEBLOCK_Y_H, DEBLOCK_Y_V, DEBLOCK_C_H, DEBLOCK_C_V, DERING_Y, DERING_C<br>
+  (Y=luma C=chroma, H=horizontal V=vertical)<br>
+	default : 0</p>
+<p><var>idct</var> : 1 to 5.<br>
+iDCT : iDCT algo used.<br>
+	0 : Default value (in .d2v file)<br>
+	1 : 32 bit MMX<br>
+	2 : 32 bit SSEMMX<br>
+	3 : 64 bit FPU<br>
+	4 : 64 bit IEEE-1180 Reference<br>
+	5 : 32 bit SSE2 (for P4)<br>	
+	6 : Skal's SSEMMX iDCT (fastest)<br>	
+	7 : SimpleiDCT (Very accurate iDCT from XviD project)<br>	
+	default : 0</p>
+<p><var>iPP</var> :<br>
+To use Field-Based Post-Processing.<br>
+	it' better if you want to deinterlace<br>
+	- True : Field based<br>
+	- False : Image based (default)</p>
+<p><var>moderate_h</var>, <var>moderate_v</var> :<br>
+	Post Processing strength fine tunning.<br>
+	smaller values are stronger. use with care.<br>
+	default : moderate_h=20, moderate_v=40</p>
+<p><var>showQ</var> :<br>
+To see the quantizers used for each MB.<br>
+	a fun tool to play with ^^<br>
+	default : false</p>
+<p><var>fastMC</var> :<br>
+Vlad's Fast Motion Compensation code.<br>
+	very small speedup, and degraded accuracy<br>
+	it's here for testing purposes, and would probably be removed in next versions<br>
+	for ssemmx capable cpu only.<br>
+	default : false</p>
+<p><var>cpu2</var> :<br>
+Custom cpu settings<br>
+	you need to enter a 6 charachter string. each cross (x)<br>
+	would enable the corresponding Post Processing feature :</p>
+<pre>example :
+&quot;oxoxox&quot;
+123456
+would enable chroma only PP</pre>
+<p>1 : luma horizontal deblocking<br>
+	2 : luma vertical deblocking<br>
+	3 : chroma horizontal deblocking<br>
+	4 : chroma vertical deblocking<br>
+	5 : luma deringing<br>
+	6 : chroma deringing<br>
+	default : " " (disabled)</p>
+<h3>LumaFilter</h3>
+<code>LumaFilter</code> (<var>clip, integer "lumoff", float &quot;lumgain&quot;</var>)
+<p>the transfomation is : yy = (y*lumgain)+lumoff</p>
+<p><var>lumoff</var> : <br>
+	Luminosity offset.<br>
+	default = -2 (for iago ^^)</p>
+<p><var>lumgain</var> : <br>
+	Luminosity gain.<br>
+	default = 1</p>
+<h3>YV12toRGB24</h3>
+<code>YV12toRGB24</code> (<var>clip, bool "interlaced", bool &quot;TVscale&quot;</var>)
+<p>YV12->BGR24 convertion natively flips image<br>
+	Use <a href="../corefilters/flip.htm">FlipVertical</a> after</p>
+<p><var>interlaced</var> :<br>
+set this to true if your source is interlaced,<br>
+	to interlace chroma correctly.<br>
+	if you have a progressive stream, using false will<br>
+	give sharper and real colors<br>
+	default : true</p>
+<p><var>TVscale</var> :<br>
+The same setting as in DVD2AVI.<br>
+	it may be inversed. try with and without and keep your favorite<br>
+	default : false</p>
+<h3>YV12toYUY2</h3>
+<p><code>YV12toYUY2</code> (<var>clip, bool &quot;interlaced&quot;, bool
+&quot;tff&quot;</var>)</p>
+<p><var>interlaced</var> :<br>
+set this to true if your source is interlaced,<br>
+	to interlace chroma correctly.<br>
+	if you have a progressive stream, using false will<br>
+	give sharper and real colors<br>
+	default : true</p>
+<p><var>tff</var> :<br>
+Top Field First.<br>
+	set this to false if you have Bottom Field First.<br>
+	default : true</p>
+<h3>BlindPP</h3>
+<p><code>BlindPP</code> (<var>clip, int "quant", int "cpu", str "cpu2", bool "iPP", int "moderate_h", int
+&quot;moderate_v&quot;</var>)</p>
+<p>To Deblock and Dering on any kind of DCT-encoded source.<br>
+	Of course, less accurate than decoder intergrated PP, but still very efficient<br>
+	need YV12 input.</p>
+<p><var>quant</var> :<br>
+Emulated Quantizer<br>
+	use higher value to increase aggressivity<br>
+	using a value close to the source will allow very accurate postprocessing<br>
+	default : 2</p>
+<p><var>cpu</var>, <var>cpu2</var>, <var>iPP</var>, <var>moderate_h</var>, <var>moderate_v</var>
+:<br>
+same settings as MPEG2Source's PP.
+	defaults : cpu=6, cpu2=&quot;&quot;, iPP=false, moderate_h=20, moderate_v=40</p>
+    <h2>History</h2>
+      <b>based on MPEG2Dec2 (save-oe CVS 28.09.2002)</b>
+<ul>
+  <li><u>betas versions (1 to 6)</u>
+    <ul>
+      <li>Added Nic's Post Processing with Field-Based PP</li>
+      <li>Overrided iDCT / luma filtering choice</li>
+      <li>Fixed Luma filtering MMX code (3 bugs at least)</li>
+      <li>YV12-&gt;YUY2 Convertion optimised (+10 % speed)</li>
+      <li>a PP bug fixed. a bit slower now.</li>
+      <li>trbarry's SSE2 optimisation disabled.</li>
+      <li>Added showQ debugging trigger</li>
+      <li>Added vlad's new MC (3dnow/ssemmx) / re-writed ssemmx</li>
+      <li>Added working MMX memory transfer for seeking (+3% speed)</li>
+      <li>Added Interlaced Upsampling support<br>
+      </li>
+    </ul>
+  </li>
+  <li>
+      <u>v 0.9 (09.11.02)</u>
+    <ul>
+      <li>heavy code cleaning</li>
+      <li>redesigned the whole Avisynth interface</li>
+      <li>YV12 support</li>
+      <li>RGB24 support</li>
+      <li>other misc stuff<br>
+      </li>
+    </ul>
+  </li>
+  <li>
+      <u>v 0.91 (10.11.02)</u>
+    <ul>
+      <li>cleaned a bit more the source</li>
+      <li>added MPEG2Dec3.def default settings loading (like don's filters)</li>
+      <li>bff mode in SeparateFieldsYV12<br>
+      </li>
+    </ul>
+  </li>
+  <li>
+      <u>v 0.92 (17.11.02)</u>
+    <ul>
+      <li>code released</li>
+      <li>blindPP implemented<br>
+      </li>
+    </ul>
+  </li>
+  <li>
+      <u>v 0.93 (25.11.02)</u>
+    <ul>
+      <li>total YV12 code convertion...</li>
+      <li>...who fixed YV12 bugs</li>
+      <li>less memory is needed</li>
+      <li>fast MMX copy (faster seeking)<br>
+      </li>
+    </ul>
+  </li>
+  <li>
+      <u>v 0.94 (08.12.02)</u>
+    <ul>
+      <li>very little bugfix<br>
+      </li>
+    </ul>
+  </li>
+  <li>
+      <u>v 1.00 (19.01.03)</u>
+    <ul>
+      <li>final version</li>
+      <li>i squashed all bugs i were aware of<br>
+      </li>
+    </ul>
+  </li>
+  <li>
+      <u>v 1.01 (unknown) - trbarry</u>
+    <ul>
+      <li>Fixed HDTV bug (0x21 PID hardcoded)<br>
+      </li>
+    </ul>
+  </li>
+  <li>
+      <u>v 1.02 (12.05.03) - Nic</u>
+    <ul>
+      <li>aligned malloc done different<br>
+      </li>
+    </ul>
+  </li>
+  <li>
+      <u>v 1.03 (12.05.03) - Nic</u>
+    <ul>
+      <li>
+        Now supports both DVD2AVI 1.77.3 D2V Files and 1.76 ones<br>
+      </li>
+    </ul>
+  </li>
+  <li>
+      <u>v 1.04 (12.05.03) - Nic</u>
+    <ul>
+      <li>Removed another memory leak, slightly quicker<br>
+      </li>
+    </ul>
+  </li>
+  <li>
+      <u>v 1.05a (12.05.03) - trbarry</u>
+    <ul>
+      <li>
+        trbarry test version for optimisations<br>
+      </li>
+    </ul>
+  </li>
+  <li>
+      <u>v 1.06 (24.05.03)</u>
+    <ul>
+      <li>
+        Nic: Added 2 new iDCT's Skal's (fastest!, idct=6) &amp; SimpleiDCT (very
+        accurate, idct=7)</li>
+      <li>Nic: Support for external use of MPEG2Dec3.dll without AviSynth added
+        back in<br>
+        (See Source code for example.zip and GetPic example)</li>
+      <li>trbarry: Added new Add_Block optimisations as well as optimised Block
+        Decoding for SSE2 machines</li>
+      <li>sh0dan: Uses AviSynth's fast BitBlt for mem copys where possible</li>
+      <li>Nic: General optimisations :) Faster now on all machines tested.<br>
+      </li>
+    </ul>
+  </li>
+  <li>
+      <u>v 1.07 (6.06.03)</u>
+    <ul>
+      <li>
+        Nic &amp; Sh0dan: Bug Fixes, better stability on broken streams<br>
+      </li>
+    </ul>
+  </li>
+  <li>
+      <u>v 1.08 (8.06.03)</u>
+    <ul>
+      <li>
+        trbarry: Optimised Simple_iDCT, lots faster now :)</li>
+      <li>Nic: added CPUCheck elsewhere, forgot to fix Lumafilter last time (Thanx
+        ARDA!), robUx4 helped me make simple_idct into a fastcall<br>
+      </li>
+    </ul>
+  </li>
+  <li>
+      <u>v 1.09 (26.07.03)</u>
+    <ul>
+      <li>Nic: Now skal's Sparse iDCT is used instead for idct=6 (fastest!)</li>
+      <li>Nic: Added the Luminance_Filter from DVD2AVI 1.77.3, for when
+        Luminance_Filter is used in the .d2v<br>
+      </li>
+    </ul>
+  </li>
+</ul>
+<ul>
+  <li>
+      <u>v 1.10 (28.07.03)</u>
+  </li>
+    <ul>
+      <li>Nic: Damn! There was a problem with the Luminance filter and 1.77.3 D2V
+        files. Fixed!<br>
+      </li>
+    </ul>
+  <li>
+      <u>v 1.10.1 (23.05.05)</u>
+    <ul>
+      <li>Kassandro: removed assumption &quot;luma pitch = luma width&quot;.
+        Needed for AviSynth v2.57 and beyond.</li>
+    </ul>
+  </li>
+</ul>
+    <h2>Credits&nbsp;</h2>
+      Chia-chen Kuo, author of DVD2AVI<br>
+      Peter Gubanov, author of the MMX/SSEMMX iDCT<br>
+      Dmitry Rozhdestvensky, author of the SSE2 iDCT<br>
+      Miha Peternel, author of the Floating Point and Reference iDCT<br>
+      Mathias Born, author of MPEG2Dec
+<p>Special thanks to Nic, for the Post Processing who made MPEG2Dec3 possible</p>
+<p>1.01 and above: Nic, trbarry, sh0dan<br>
+      Thanks to Skal for the use of his iDCT (http://skal.planet-d.net)</p>
+<p><kbd>$Date: 2005/08/11 21:11:50 $</kbd></p>
+</body>
+</html>

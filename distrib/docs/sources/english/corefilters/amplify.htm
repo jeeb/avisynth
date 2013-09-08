@@ -1,0 +1,39 @@
+<!doctype html public "-//W3C//DTD HTML 4.0 Transitional//EN">
+<html>
+<head>
+<title>Amplify / AmplifydB Avisynth Filter</title>
+<link rel="stylesheet" type="text/css" href="../../avisynth.css">
+</head>
+<body>
+<h2>Amplify / AmpiflydB</h2>
+<p><code>Amplify </code>(<var>clip, float amount1 [, ...]</var>)<br>
+  <code>AmplifydB </code>(<var>clip, float amount1 [, ...]</var>)</p>
+<p><code>Amplify</code> multiplies the audio samples by <var>amount</var>. You can specify 
+  different factors for each channel.<br>
+  If there are more volumes than there are channels, they are ignored. If there 
+  are fewer volumes than channels, the last volume is applied to the rest of the 
+  channels.
+</p>
+<p> <code>AmplifydB</code> is the same except values are in decibels (dB).<br>
+  You can use negative dB values (or scale factor between 0 and 1) for reducing 
+  volume. Negative scale factors will shift the phase by 180 degrees (i.e. invert the samples). </p>
+<p>8bit and 24bit Audio samples are converted to float in the process, the other audio formats are kept.
+<pre># Amplifies left channel with 3 dB (adds 3 dB): 
+video = AviSource(&quot;c:\filename.avi&quot;) 
+stereo = WavSource(&quot;c:\audio.wav&quot;) 
+stereo_amp = AmplifydB(stereo, 3, 0) 
+return AudioDub(video, stereo_amp) </pre><br>
+      <pre># Amplifies front channels with 3 dB (adds 3 dB): 
+video = AviSource(&quot;c:\divx_6ch_wav.avi&quot;) 
+audio = WavSource(c:\divx_6ch_wav.avi) 
+multichannel_amp = AmplifydB(audio, 3, 3, 3) 
+return AudioDub(video, multichannel_amp) </pre>
+<p>How the multichannels are mapped can be found in the description of <a href="getchannel.htm">GetChannel</a>. 
+<p><kbd>$Date: 2009/09/12 15:10:22 $</kbd>
+
+<FORM>
+<INPUT TYPE="Button" VALUE="Back"
+onClick="history.go(-1)">
+</form>
+</body>
+</html>

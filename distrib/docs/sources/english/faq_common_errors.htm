@@ -1,0 +1,207 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+<html>
+<head>
+<!--
+Automatically generated, don't change:
+$Id: faq_common_errors.htm,v 1.8 2010/11/28 18:47:26 wilbertd Exp $ 
+-->
+   <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+   <title> FAQ - Some common error messages </title>
+<style type=text/css></style>
+   <link rel="stylesheet" type="text/css" href="../avisynth.css">
+</head>
+<body>
+
+<h1>AviSynth FAQ - Some common error messages</h1>
+
+<h2>Contents</h2>
+<ol>
+  <li>
+<a href="#unable_load_plugin">
+I got the message "LoadPlugin: unable to load "xxx" is not an AviSynth 1.0/AviSynth 2.0 plugin"?</a></li>
+  <li>
+<a href="#error_no_function">
+When frameserving I got the following message: "Script error, there is no function named "xxx (some filter)"" ?</a></li>
+  <li>
+<a href="#no_decoder">
+I installed AviSynth and get the following error message: "Couldn't locate decompressor for format 'YV12' (unknown)."?</a></li>
+  <li>
+<a href="#no_acm_codec">
+When encoding I got the following error "ACM failed to suggest a compatible PCM format"?</a></li>
+  <li>
+<a href="#error_framesize">
+When encoding I got the following error: &quot;framesize xxx not supported"?</a></li>
+  <li>
+<a href="#no_decoder2">
+When frameserving I got the following message: &quot;AVISource: couldn't locate a decompressor for fourcc
+    (...)&quot;?</a></li>
+  <li>
+<a href="#error_dss">
+When frameserving I got the following message: &quot;DirectShowSource: Could not open as video or audio<br>
+Video Returned: "DirectShowSource: the filter graph manager won't talk to me"&quot;?</a></li>
+  <li>
+<a href="#error_ascii">
+I am trying to load a script that has a path name with a mix of japanese characters (someone's name) and Ascii test. I
+    got an import error and the path that is displayed has some strange characters (not the japanese
+characters)?</a></li>
+  <li>
+<a href="#CAVIStreamSynth">
+When frameserving I got the following message: &quot;
+CAVIStreamSynth: System exception - Access Violation at 0x0, reading from 0x0&quot;?</a></li>
+  <li>
+<a href="#InvalidArguments">
+When frameserving I got a message similar to: &quot;Avisynth open failure: Script error: Invalid arguments to function &quot;xxx (some filter)&quot;
+(I:\Video.avs, line 5)&quot;</a></li>
+</ol>
+<a name="unable_load_plugin"></a>
+<h3>
+I got the message "LoadPlugin: unable to load &quot;xxx (some plugin)&quot; is not an AviSynth 1.0/AviSynth 2.0 plugin"?
+</h3>
+<p>
+You are using a plugin which is not compatiable with that version of AviSynth.
+As explained <a href="faq_general_info.htm#How_do_I_use_a_plugin_compiled_for_v2.0x_in_v2.5x.3F">here</a>,
+plugins compiled for AviSynth v2.5 are not compatible with AviSynth v1.0x/v2.0x
+and vice versa.
+</p>
+<a name="error_no_function"></a>
+<h3>
+When frameserving I got the following message: "Script error, there is no function named "xxx (some filter)"" ?
+</h3>
+<p>
+You probably installed/registered a version of AviSynth which doesn't contain
+that specific filter. Make sure that there are no other versions floating around
+on your hard disk (there's a possibility that a version will be registered while
+it is not in your system directory). Make sure that the latest stable
+version is registered,
+see also <a href="faq_general_info.htm#How_do_I_know_which_version_number_of_AviSynth_I_have.3F">here</a>.
+</p>
+<a name="no_decoder"></a>
+<h3>
+I installed AviSynth and got the following error message: "Couldn't locate decompressor for format 'YV12' (unknown)."?
+</h3>
+<p>
+Install a codec which supports YV12. DivX5 or one of the recent <a href="http://www.xvid.org/">XviD
+builds of Koepi</a> or <a href="http://forum.doom9.org/showthread.php?s=&amp;threadid=56972">Helix
+YUV codec</a> or some other (ffvfw, ffdshow). If that still doesn't work, modify
+your registry as explained in the next question.
+</p>
+<a name="no_acm_codec"></a>
+<h3>
+When encoding I got the following error "ACM failed to suggest a compatible PCM format"?
+</h3>
+<p>This error means that you are using AviSource to open your AVI file, but you
+don't have an ACM codec to decode the audio stream. The most common problem is
+that your audio is an AC3 or a MP3 stream, but you don't have the corresponding
+ACM codec installed. It can also happen that your audio is a
+&quot;crippled&quot; (that is, with an incorrect header) MP3 <a href="http://forums.virtualdub.org/index.php?act=ST&amp;f=4&amp;t=802&amp;hl=0055">[1]</a>
+<a href="http://forums.virtualdub.org/index.php?act=ST&amp;f=3&amp;t=10931&amp;hl=unknown%20tag%200055&amp;st=15">[2]</a>
+<a href="http://forum.doom9.org/showthread.php?t=94760">[3]</a>.</p>
+<p>There are several solutions for this problem:</p>
+<ul>
+  <li>Get the proper ACM codec. You can use <a href="http://www.headbands.com/gspot/">GSpot</a>
+    to find out which audio stream you are dealing with. The needed ACM codecs
+    can be found <a href="advancedtopics/importing_media.htm">here</a>.</li>
+  <li>Demux your audio with an application like <a href="http://www.alexander-noe.com/video/amg/">AVI-Mux
+    GUI</a> or <a href="http://www.virtualdub.org">VirtualDub</a>,
+    and import your audio with a specific plugin. See also <a href="faq_loading_clips.htm">here.</a></li>
+  <li>Use <a href="corefilters/directshowsource.htm" title="DirectShowSource">DirectShowSource</a>
+    to open the audio. Install <a href="http://ffdshow-tryout.sourceforge.net/">ffdshow</a>
+    and enable the specific audio format in the &quot;Audio Decoder
+    Properties&quot; tab. Create the following script:</li>
+</ul>
+<pre>Vid = AviSource(&quot;Blah.avi&quot;, audio=false)
+Aud = DirectShowSource(&quot;Blah.avi&quot;, video=false)
+AudioDub(Vid, Aud)</pre>
+<a name="error_framesize"></a>
+<h3>
+When encoding I got the following error: &quot;framesize xyz x 56 not supported"?
+</h3>
+<p>
+This usually is an indicator of a script error, where the input is actually the
+error message being displayed. Here, xyz is the length of the error message text
+and 56 is the height (xyz will vary depending on the error message whilst the
+height will always be 56 pixels). Your encoder is seeing the error message as an
+RGB32 input source and hence the error. Opening the script with WMP or
+VirtualDub should display the error message. Fix the error in the script and
+retry to encode.
+</p>
+<a name="no_decoder2"></a>
+<h3>
+When frameserving I got the following message: &quot;AVISource: couldn't locate a decompressor for fourcc
+(...)&quot;?
+</h3>
+<p>Usually, this error message shows up if you don't have the right VfW codec
+installed for decoding your video. Get <a href="http://www.headbands.com/gspot/">Gspot</a>
+to find out which codec you need. Get, for example, <a href="http://www.xvid.org/">XviD</a>
+for your MPEG-4 ASP clips and <a href="http://forum.doom9.org/showthread.php?t=94458">Cedocida
+codec</a> for your DV clips. If you have problems finding the right one, ask
+around on the video forums.</p>
+<p>But it can also show up if you call <a href="corefilters/avisource.htm" title="AviSource">AviSource</a>
+too many times. The dll for the decompression codec is loaded separately for
+every AviSource call. Eventually an OS-imposed limit is reached, the codec can't
+be loaded and you get that error message. More discussion can be found <a href="http://forum.doom9.org/showthread.php?t=131687">here</a>.
+A good solution is to use a number of scripts (keeping each below the
+problematic limit of avi calls) and encode them separately, and join them
+afterwards in some application.</p>
+<a name="error_dss"></a>
+<h3>
+When frameserving I got the following message: &quot;DirectShowSource: Could not open as video or audio<br>
+Video Returned: "DirectShowSource: the filter graph manager won't talk to me"&quot;?</h3>
+<p>This is a common error that occurs when DirectShow isn't able to deliver any
+format that is readable to AviSynth. Try creating a filter graph manually. See
+if you are able to construct a filter graph that delivers any output that
+AviSynth can open. If not, you might need to download additional DirectShow
+filters that can deliver correct material. If you can play the graph in <a href="http://avisynth.org/mediawiki/GraphEdit" title="GraphEdit">GraphEdit</a>,
+make sure to remove the video and audio renderers, before saving the graph and
+opening it in AviSynth. Some examples can be found <a href="advancedtopics/importing_media.htm#graphs" title="Importing media">here</a>.</p>
+<a name="error_ascii"></a>
+<h3>
+I am trying to load a script that has a path name with a mix of japanese characters (someone's name) and Ascii test. I
+got an import error and the path that is displayed has some strange characters (not the japanese
+characters)?
+</h3>
+<p>AviSynth has problems with non-ANSI chars on filenames. It only supports <a href="http://en.wikipedia.org/wiki/ASCII">8
+bit character ANSI text</a>. Some discussion about this: <a href="http://forum.doom9.org/showthread.php?t=110467">[4]</a>
+and <a href="http://forum.doom9.org/showthread.php?t=131419">[5]</a>.
+</p>
+<a name="CAVIStreamSynth"></a>
+<h3>
+When frameserving I got the following message: &quot;CAVIStreamSynth: System exception - Access Violation at 0x0, reading from 0x0&quot;?
+</h3>
+<p>Access Violation at 0x0, reading from 0x0
+is usually caused by running out of memory (memory leak ???). It can be caused
+by a plugin which is leaking memory, but apparently it can also be caused by
+other things (codecs, applications ???) [<a href="http://forum.doom9.org/showthread.php?t=123195">1</a>]
+[<a href="http://forum.doom9.org/showthread.php?t=128403">2</a>]. Add
+SetMemoryMax(...) at the beginning of the script. If that doesn't help, report
+the issue in the doom9 forums, and we will try to help finding the cause of it.</p>
+<a name="InvalidArguments"></a>
+<h3>When frameserving I got a message similar to: &quot;Avisynth open failure: Script error: Invalid arguments to function &quot;xxx (some filter)&quot;
+(I:\Video.avs, line 5)&quot;</h3>
+<p>It means you are passing incorrect arguments (that is of the correct type) to
+your script, filter or plugin. For example:</p>
+<pre># passing a float (2.0), while <a href="corefilters/loop.htm">Loop</a> expects an int:
+Loop(clip, 2.0)</pre>
+<pre># passing three clips to <a href="corefilters/overlay.htm">Overlay</a> instead of two:
+AviSource(&quot;anime_raw.avi&quot;)
+karaoke = AviSource(&quot;karaoke.avi&quot;)
+Trim(0,999) + Trim(1000,1030).Overlay(last, karaoke, mask=sign.ShowAlpha()) + Trim(1031,0)
+# last should be omitted as argument to Overlay</pre>
+<pre># implicit 'last' not defined
+v = AviSource(&quot;myvid.avi&quot;)
+Trim(100, 199)
+# need to use v.Trim(...) here</pre>
+<p>So make sure the passed arguments are of the correct type and read the
+corresponding documentation if necessary.</p>
+<p>|<a href="faq_sections.htm" title="AviSynth FAQ"> Main Page</a> | <a href="faq_general_info.htm">General
+Info</a> | <a href="faq_loading_clips.htm" title="FAQ loading clips">Loading Clips</a>
+| <a href="faq_frameserving.htm" title="FAQ frameserving">Loading Scripts</a> | <b>Common
+Error Messages</b> | <a href="faq_different_types_content.htm" title="FAQ different types content">Processing
+Different Content</a> | <a href="faq_yv12.htm" title="FAQ YV12">Dealing with
+YV12</a> | <a href="faq_using_virtualdub_plugins.htm" title="FAQ using virtualdub plugins">Processing
+with Virtualdub Plugins</a> |</p>
+<p>
+<kbd>$Date: 2010/11/28 18:47:26 $</kbd>
+</p>
+</body>
+</html>

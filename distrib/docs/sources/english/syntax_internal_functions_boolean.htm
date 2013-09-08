@@ -1,0 +1,113 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+<html>
+<head>
+<!--
+Not Automatically generated, changed!:
+$Id: syntax_internal_functions_boolean.htm,v 1.2 2008/12/07 15:46:17 wilbertd Exp $ 
+-->
+<meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+<title>Syntax - Boolean functions</title>
+<link rel="stylesheet" type="text/css" href="../avisynth.css">
+</head>
+<body>
+<h2><span class="mw-headline">AviSynth Syntax - Boolean functions</span></h2>
+<p>Boolean functions return true or false, if the condition that they test holds
+or not, respectively.</p>
+<ul>
+  <li><span style="color: rgb(0, 0, 128); font-weight: bold;">IsBool</span> <span>&nbsp;</span>
+    | <span>&nbsp;</span> <span>&nbsp;</span> | <span>&nbsp;</span> <span style="color: purple; font-weight: bold;">IsBool(var)</span></li>
+</ul>
+<dl>
+  <dd>Tests if <i>var</i> is of the bool type. <i>var</i> can be any expression
+    allowed by the <a href="syntax.htm" title="AviSynth Syntax">AviSynth
+    Syntax</a>.</dd>
+  <dd><i>Examples:</i></dd>
+</dl>
+<pre>b = false
+IsBool(b) = true
+IsBool(1 &lt; 2 &amp;&amp; 0 == 1) = true
+IsBool(123) = false</pre>
+<ul>
+  <li><span style="color: rgb(0, 0, 128); font-weight: bold;">IsClip</span> <span>&nbsp;</span>
+    | <span>&nbsp;</span> <span>&nbsp;</span> | <span>&nbsp;</span> <span style="color: purple; font-weight: bold;">IsClip(var)</span></li>
+</ul>
+<dl>
+  <dd>Tests if <i>var</i> is of the clip type. <i>var</i> can be any expression
+    allowed by the <a href="syntax.htm" title="AviSynth Syntax">AviSynth
+    Syntax</a>.</dd>
+  <dd><i>Examples:</i></dd>
+</dl>
+<pre>c = <a href="corefilters/avisource.htm" title="AviSource">AviSource</a>(...)
+IsClip(c) = true
+IsClip(&quot;c&quot;) = false</pre>
+<ul>
+  <li><span style="color: rgb(0, 0, 128); font-weight: bold;">IsFloat</span> <span>&nbsp;</span>
+    | <span>&nbsp;</span> <span>&nbsp;</span> | <span>&nbsp;</span> <span style="color: purple; font-weight: bold;">IsFloat(var)</span></li>
+</ul>
+<dl>
+  <dd>Tests if <i>var</i> is of the float type. <i>var</i> can be any expression
+    allowed by the <a href="syntax.htm" title="AviSynth Syntax">AviSynth
+    Syntax</a>.</dd>
+  <dd><i>Examples:</i></dd>
+</dl>
+<pre>f = <a href="syntax_internal_functions_numeric.htm" title="Internal functions/Numeric functions">Sqrt</a>(2)
+IsFloat(f) = true
+IsFloat(2) = true   # ints are considered to be floats by this function
+IsFloat(true) = false</pre>
+<ul>
+  <li><span style="color: rgb(0, 0, 128); font-weight: bold;">IsInt</span> <span>&nbsp;</span>
+    | <span>&nbsp;</span> <span>&nbsp;</span> | <span>&nbsp;</span> <span style="color: purple; font-weight: bold;">IsInt(var)</span></li>
+</ul>
+<dl>
+  <dd>Tests if <i>var</i> is of the int type. <i>var</i> can be any expression
+    allowed by the <a href="syntax.htm" title="AviSynth Syntax">AviSynth
+    Syntax</a>.</dd>
+  <dd><i>Examples:</i></dd>
+</dl>
+<pre>IsInt(2) = true
+IsInt(2.1) = false
+IsInt(true) = false</pre>
+<ul>
+  <li><span style="color: rgb(0, 0, 128); font-weight: bold;">IsString</span> <span>&nbsp;</span>
+    | <span>&nbsp;</span> <span>&nbsp;</span> | <span>&nbsp;</span> <span style="color: purple; font-weight: bold;">IsString(var)</span></li>
+</ul>
+<dl>
+  <dd>Tests if <i>var</i> is of the string type. <i>var</i> can be any
+    expression allowed by the <a href="syntax.htm" title="AviSynth Syntax">AviSynth
+    Syntax</a>.</dd>
+  <dd><i>Examples:</i></dd>
+</dl>
+<pre>IsString(&quot;test&quot;) = true
+IsString(2.3) = false
+IsString(<a href="syntax_internal_functions_string.htm">String</a>(2.3)) = true</pre>
+<ul>
+  <li><span style="color: rgb(0, 0, 128); font-weight: bold;">Exist</span> <span>&nbsp;</span>
+    | <span>&nbsp;</span> v2.07 <span>&nbsp;</span> | <span>&nbsp;</span> <span style="color: purple; font-weight: bold;">Exist(filename)</span></li>
+</ul>
+<dl>
+  <dd>Tests if the file specified by <i>filename</i> exists.</dd>
+  <dd><i>Examples:</i></dd>
+</dl>
+<pre>filename = ...
+clp = Exist(filename)&nbsp;? <a href="corefilters/avisource.htm" title="AviSource">AviSource</a>(filename)&nbsp;: <a href="syntax_internal_functions_control.htm">Assert</a>(false, &quot;file: &quot; + filename + &quot; does not exist&quot;)</pre>
+<ul>
+  <li><span style="color: rgb(0, 0, 128); font-weight: bold;">Defined</span> <span>&nbsp;</span>
+    | <span>&nbsp;</span> <span>&nbsp;</span> | <span>&nbsp;</span> <span style="color: purple; font-weight: bold;">Defined(var)</span></li>
+</ul>
+<dl>
+  <dd>Tests if <i>var</i> is defined. Can be used inside <a href="syntax_userdefined_scriptfunctions.htm">Script
+    functions</a>
+    to test if an optional argument has been given an explicit value.</dd>
+  <dd>More formally, the function returns false if its argument (normally a
+    function argument or variable) has the void ('undefined') type, otherwise it
+    returns true.</dd>
+  <dd><i>Examples:</i></dd>
+</dl>
+<pre>b_arg_supplied = Defined(arg)
+myvar = b_arg_supplied&nbsp;? ...&nbsp;: ...</pre>
+<hr>
+<p>Back to <a href="syntax_internal_functions.htm" title="Internal functions">Internal
+functions</a>.</p>
+<p><kbd>$Date: 2008/12/07 15:46:17 $</kbd></p>
+</body>
+</html>

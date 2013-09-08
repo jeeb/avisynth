@@ -1,0 +1,135 @@
+<!doctype html public "-//w3c//dtd html 4.0 transitional//en">
+<html>
+<head>
+   <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+   <title>Animate/ApplyRange Avisynth Filter</title>
+
+   <link rel="stylesheet" type="text/css" href="../../avisynth.css">
+</head>
+<body>
+<h2>
+<a NAME="Animate"></a>Animate
+/ ApplyRange
+</h2>
+<p><code>Animate </code>(<var>clip, int start_frame, int end_frame, string filtername,
+start_args, end_args</var>)<br>
+  <code>ApplyRange </code>(<var>clip, int start_frame, int end_frame, string
+filtername, args</var>)
+<p><code>Animate</code> is a meta-filter which evaluates its parameter <var>filter</var>
+with continuously varying arguments. At frame <var>start_frame</var> and
+earlier, the
+<var>filter</var>
+is evaluated with the arguments given by <var>start_args</var>. At frame <var>end_frame</var>
+and later, the <var>filter</var> is evaluated with the arguments given by <var>end_args</var>.
+In between, the arguments are linearly interpolated for a smooth transition.
+<p><code>ApplyRange</code> is a special case of <code>Animate</code>
+where <var>start_args</var>
+= <var>end_args</var>, and present in <em>v2.51</em>. It can be used when you want to
+apply a certain filter only on a certain range of frames of a clip - unlike
+Animate, frames outside the range <var>start_frame</var> to <var>end_frame</var>
+are passed through untouched. Another difference with <code>Animate</code> is
+that <var>args</var> can't contain a clip. Starting
+from <em>v2.53</em> it supports audio, and <var>start_frame</var> can be equal to
+<var>end_frame</var>
+(such that only one frame is processed).
+<p>In cases where a large number of ranges need similar processing using many
+<code>ApplyRange</code> calls may cause resource issues. An alternative can
+be to use <a href="conditionalreader.htm#ApplyRange">ConditionalReader</a> with
+<a href="conditionalfilter.htm">ConditionalFilter</a> to select between the
+unprocessed and processed version of a source.
+<p>The filter name must be enclosed in quotation marks (it's a string), and the two nested
+argument lists are not parenthesized. Strings and video clips can't be
+interpolated, and therefore must be identical in the two argument lists. An
+important warning though: If you use a clip as first argument, that same clip
+shouldn't be included in <var>start_args</var> and <var> end_args</var>. Thus
+for example
+<pre>v = Version()
+Animate(v,0,149,&quot;Crop&quot;, v,0,0,64,32, v,316,0,64,32)</pre>
+<p>results in an error, since the first frame is the same as the invalid syntax
+Crop(v, v, 0, 0, 64, 32).
+<p>This filter will not correctly handle a changing sound track, so I don't
+recommend its use with filters which modify the sound track. And for heaven's
+sake don't make the initial and final parameters yield a different output
+frame size.
+<p>The <var>filtername</var> argument can even be <code>Animate</code> if you want
+quadratic rather than linear interpolation.
+<p><b>Several examples:</b></p>
+<pre># Make a scrolling version of the &quot;Version&quot; video:
+ver = Version()
+Animate(0,149,&quot;Crop&quot;, ver,0,0,64,32, ver,316,0,64,32)
+
+# or what is the same:
+ver = Version()
+Animate(ver,0,149,&quot;Crop&quot;, 0,0,64,32, 316,0,64,32)
+
+# Fade to white
+AviSource(&quot;E:\pdwork\DO-Heaven.AVI&quot;)
+Animate(100,200,&quot;Levels&quot;, 0,1,255,0,255, 0,1,255,255,255)
+
+# Do a gradual zoom into the center of a 320x240 video, starting at
+# 1:1 magnification in frame 100 and ending with 4:1 magnification
+# in frame 200:
+clip = AviSource(&quot;E:\pdwork\DO-Heaven.avi&quot;)
+Animate(100,200,&quot;BicubicResize&quot;, clip,320,240,0,0,320,240, clip,320,240,120,90,80,60)
+# Animate(clip, 100,200,&quot;BicubicResize&quot;, 320,240,0,0,320,240, 320,240,120,90,80,60) # also works
+
+# Make the text &quot;Hello, World!&quot; zoom out from the center of a 320x240 video:
+BlankClip(width=320, height=240)
+Animate(0,48,&quot;Subtitle&quot;, &quot;Hello, World!&quot;,160,120,0,99999,&quot;Arial&quot;,0,
+  \  &quot;Hello, World!&quot;,25,130,0,99999,&quot;Arial&quot;,48)</pre>
+<p><b>Zooming clip c2 while overlaying it on c1:</b></p>
+<pre>Function myfunc(clip c1, clip c2, int x, int y, int w, int h)
+{
+  w = w - w%2
+  h = h - h%2
+  my_c2 = BicubicResize(c2,w,h)
+  Overlay(c1,my_c2,x,y)
+}
+
+c1 = AviSource(&quot;D:\Captures\jewel.avi&quot;) # c1 is larger than c2
+c2 = AviSource(&quot;D:\Captures\atomic.avi&quot;).BicubicResize(320,240)
+Animate(0,1000,&quot;myfunc&quot;,c1,c2,10,10,10,10,c1,c2,300,300,360,288)
+# or
+# Animate(c1,0,1000,&quot;myfunc&quot;, c2,10,10,10,10, c2,300,300,360,288)
+
+# but the following doesn't work, since three clips are passed to myfunc (c1, c1 and c2), while only two are allowed:
+# Animate(c1,0,1000,&quot;myfunc&quot;,c1,c2,10,10,10,10,c1,c2,300,300,360,288)</pre>
+<p><b>A small picture enlarges on a black clip until replace the main clip:</b></p>
+<pre>function res(clip clip, clip &quot;LClip&quot;, int &quot;width&quot;, int &quot;height&quot;, int &quot;centerX&quot;, int &quot;centerY&quot;) {
+LClip = BicubicResize(LClip, width, height)
+Overlay(clip, LClip, centerX-LClip.width/2, centerY-LClip.height/2)
+}
+
+function resize(clip clip, clip &quot;LClip&quot;, int &quot;start_frame&quot;, int &quot;start_width&quot;, int &quot;start_height&quot;,
+  \ int &quot;end_frame&quot;, int &quot;end_width&quot;, int &quot;end_height&quot;, int &quot;centerX&quot;, int &quot;centerY&quot;) {
+  return Animate(start_frame, end_frame, &quot;res&quot;, clip, LClip, start_width, start_height, centerX, centerY,
+    \ clip, LClip, end_width, end_height, centerX, centerY)
+}
+
+clip = AviSource(&quot;D:\captures\jewel.avi&quot;)
+clip = clip.BicubicResize(640,480)
+clip = clip.ConvertToRGB()
+black = BlankClip(clip)
+
+resize(black, clip, 0, 120, 120*clip.height/clip.width, 500, 640, 480, clip.width/2, clip.height/2)</pre>
+<p><b>Examples using ApplyRange:</b></p>
+<pre>ver = Version()
+return ver.ApplyRange(0,149,&quot;Crop&quot;, 158,0,64,32)
+# gives an error since cannot have different frame sizes within a clip</pre>
+<pre>Version()
+ApplyRange(100,149,&quot;Blur&quot;, 1.0)</pre>
+<pre>AviSource(&quot;E:\pdwork\DO-Heaven.avi&quot;).BicubicResize(320,240)
+ApplyRange(0,48,&quot;Subtitle&quot;, &quot;Hello, World!&quot;,25,130,0,99999,&quot;Arial&quot;,48)
+
+# or what is the same:
+clip = AviSource(&quot;E:\pdwork\DO-Heaven.avi&quot;).BicubicResize(320,240)
+ApplyRange(clip, 0,48,&quot;Subtitle&quot;, &quot;Hello, World!&quot;,25,130,0,99999,&quot;Arial&quot;,48)
+
+# but since the frame range can be provided to Subtitle itself, this is the same as: 
+AviSource(&quot;E:\pdwork\DO-Heaven.avi&quot;).BicubicResize(320,240)
+Subtitle(&quot;Hello, World!&quot;,25,130,0,48,&quot;Arial&quot;,48)</pre>
+<p><kbd>$Date: 2009/09/12 15:10:22 $</kbd></p>
+<form><input TYPE="Button" VALUE="Back"
+onClick="history.go(-1)"></form>
+</body>
+</html>

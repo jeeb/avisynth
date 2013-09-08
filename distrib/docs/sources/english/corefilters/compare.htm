@@ -1,0 +1,59 @@
+<!doctype html public "-//w3c//dtd html 4.0 transitional//en">
+<html>
+<head>
+   <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+   <title>Compare Avisynth Filter</title>
+   <link rel="stylesheet" type="text/css" href="../../avisynth.css">
+</head>
+<body >
+<h2>
+<a NAME="Compare"></a>Compare
+</h2>
+<p><code>Compare </code>(<var>clip_filtered, clip_original, string "channels",
+string "logfile", bool "show_graph"</var>)
+<p>This filter compares the original clip <var>clip_original</var> and its
+filtered version <var>clip_filtered</var>. The filtered version will be returned with the results of the comparison. Per frame the Mean Absolute Difference, Mean Difference and
+Peak signal-to-noise ratio (PSNR) is given, as well as the min (minimum), avg (average) and max (maximum) PSNR up to that frame (calculated frame-wise). Starting from <em>v2.53</em>, the 'Overall PSNR' (calculated over all pixels in all frames) is also shown on the output clip.</p>
+<p>The <var>channels</var> (default &quot;&quot;) string is a combination of
+R,G,B [,A] or Y,U,V, depending on the source clips. If it is empty, it means
+either &quot;YUV&quot;
+when the input clips are YCbCr or &quot;RGB&quot;
+when in the input clips are RGB.</p>
+<p>If <var>show_graph</var> (default false) is true then Marc's PSNR graph is
+also drawn on it.</p>
+<p>If a logfile is specified, the results will be written to a file by this name
+and not drawn on the clip. It is much faster if you need to compare a lot of
+frames.</p>
+<p><b>Examples:</b>
+<pre># Displays differences on screen
+Compare(clip1, clip2)
+# for creating a log file:
+Compare(clip1, clip2, &quot;&quot;, &quot;compare.log&quot;)
+# will only compare chroma channels of YUY2 clips.
+Compare(clip1, clip2, &quot;UV&quot;)</pre>
+
+<p>The <a href="http://en.wikipedia.org/wiki/PSNR">PSNR</a> is measured in decibels. It's defined as<br>
+<br>
+PSNR(I,K) = 20 * log_10 ( 255/sqrt(MSE(I,K)) )<br>
+<br>
+with<br>
+<br>
+MSE(I,K) = 1/M * sum_{j,k} | I(j,k) - K(j,k) |^2<br>
+<br>
+and (j,k) runs over all pixels in a frame, and M is the number of pixels in a frame.</p>
+
+<p><b>Changes:</b>
+<table border="1" width="39%">
+  <tbody>
+    <tr>
+      <td width="5%">v2.58</td>
+      <td width="95%">YV12 support.</td>
+    </tr>
+  </tbody>
+</table>
+
+<p><kbd>$Date: 2008/06/16 19:42:53 $</kbd></p>
+<form><input TYPE="Button" VALUE="Back"
+onClick="history.go(-1)"></form>
+</body>
+</html>

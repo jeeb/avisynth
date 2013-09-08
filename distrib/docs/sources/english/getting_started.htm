@@ -1,0 +1,127 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+<html>
+<head>
+<!--
+Not Automatically generated, changed!:
+$Id: getting_started.htm,v 1.1 2008/07/18 17:38:49 fizick Exp $ 
+-->
+<meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+<title>Getting started with AviSynth</title>
+<link rel="stylesheet" type="text/css" href="../avisynth.css">
+</head>
+<body>
+<h2><a NAME="Gettingstarted"></a>Getting started</h2>
+<p>Basically, AviSynth works like this: First, you create a simple text document 
+  with special commands, called a script. These commands make references to one 
+  or more videos and the filters you wish to run on them. Then, you run a video 
+  application, such as VirtualDub, and open the script file. This is when AviSynth 
+  takes action. It opens the videos you referenced in the script, runs the specified 
+  filters, and feeds the output to video application. The application, however, 
+  is not aware that AviSynth is working in the background. Instead, the application 
+  thinks that it is directly opening a filtered AVI file that resides on your 
+  hard drive. 
+<h4>Linear Editing:</h4> 
+<p>The simplest thing you can do with AviSynth is the sort of editing you can 
+  do in VirtualDub. The scripts for this are easy to write because you don't have 
+  to worry about variables and complicated expressions if you don't want. 
+<p>For testing create a file called test.avs and put the following single line 
+  of text in it:
+<pre>Version</pre>
+<p>Now open this file with e.g. Windows Media Player and you should see a ten-second 
+  video clip showing AviSynth's version number and a copyright notice. 
+<p><code>Version</code> is what's called a "source filter", meaning that it generates 
+  a clip instead of modifying one. The first command in an AviSynth script will 
+  always be a source filter. 
+<p>Now add a second line to the script file, so that it reads like this: <br>
+  &nbsp; 
+<pre>Version
+ReduceBy2&nbsp;</pre>
+<p>Reopen the file in Media Player. You should see the copyright notice again, 
+  but now half as large as before. <br>
+  <code><a href="corefilters/reduceby2.htm">ReduceBy2</a></code> is a
+  "transformation filter," meaning that it takes the previous 
+  clip and modifies it in some way. You can chain together lots of transformation 
+  filters, just as in VirtualDub. <br>
+  Let's add another one to make the video fade to black at the end. Add another 
+  line to the script file so that it reads: 
+<pre>Version
+ReduceBy2
+FadeOut(10)</pre>
+<p>Now reopen the file. The clip should be the same for the first 9 seconds, and 
+  then in the last second it should fade smoothly to black. <br>
+  The <a href="corefilters/fade.htm">FadeOut</a> filter takes a numerical
+  argument, which indicates the number of frames to fade. 
+<p>It takes a long time before the fade starts, so let's trim the beginning of 
+  the clip to reduce the wait, and fade out after that. <br>
+ Let's discard 
+  the first 120 of them, and keep the frames 120-150: <br>
+  &nbsp; 
+<pre>Version
+ReduceBy2
+# Chop off the first 119 frames, and keep the frames 120-150
+# (AviSynth starts numbering frames from 0)
+Trim(120,150)
+FadeOut(10)</pre>
+<p>In this example we used a comment for the first time. <br>
+  Comments start with the # character and continue to the end of the line, and 
+  are ignored completely by AviSynth. <br>
+  The <a href="corefilters/trim.htm">Trim</a> filter takes two arguments,
+  separated by a comma: the first and the last frame to keep from the clip. If
+  you put 0 for the last frame, it's the same as "end of clip," so if you only
+  want to remove the first 119 frames
+you should use Trim(120,0). 
+<p>Keeping track of frame numbers this way is a chore. It's much easier to open 
+  a partially-completed script in an application like VirtualDub which will
+  display the frame numbers for you. You can also use the
+  <a href="corefilters/showframes.htm"> ShowFrameNumber</a> filter, which prints
+  each frame's number onto the frame itself. 
+<p>In practice a much more useful source filter than <a href="corefilters/version.htm">Version</a>
+  is <a href="corefilters/avisource.htm">AVISource</a>, which reads in an AVI
+  file (or one of several other types of files) from disk.  If you have an AVI
+  file handy, you can try applying these same filters to your file: <br>
+  &nbsp; 
+<pre>AVISource(&quot;d:\capture.avi&quot;)&nbsp; # or whatever the actual pathname is
+ReduceBy2
+FadeOut(15)
+Trim(120,0)</pre>
+<p>Even a single-line script containing only the AVISource command can be useful 
+  for adding support for &gt;2GB AVI files to applications which only support &lt;2GB 
+  ones. <br>
+<hr>
+<h4>Non-Linear Editing:</h4> 
+<p>Now we're getting to the fun part. Make an AVS file with the following script 
+  in it: 
+<pre>StackVertical(Version, Version)</pre>
+<p>Now open it. Result: An output video with two identical lines of version information, 
+  one on top of the other. <br>
+  Instead of taking numbers or strings as arguments, <a href="corefilters/stack.htm">StackVertical</a>
+  takes video clips as arguments. In this script, the Version filter is being
+  called twice. Each time, it returns a copy of the version clip. These two
+  clips are then given to <a href="corefilters/stack.htm">StackVertical</a>,
+  which joins them together (without knowing where they came from). 
+<p>One of the most useful filters of this type is <a href="corefilters/splice.htm">UnalignedSplice</a>,
+  which joins video clips end-to-end. Here's a script which loads three AVI
+  files (such as might be produced by AVI_IO) and concatenates them together. 
+<pre>UnalignedSplice(AVISource(&quot;d:\capture.00.avi&quot;), \
+  AVISource(&quot;d:\capture.01.avi&quot;), \
+  AVISource(&quot;d:\capture.02.avi&quot;))</pre>
+<p>Both <a href="corefilters/stack.htm">StackVertical</a> and
+  <a href="corefilters/splice.htm">UnalignedSplice</a> can take as few as two
+  arguments or as many as sixty. <br>
+  You can use the <code>+</code> operator as a shorthand for
+  <a href="corefilters/splice.htm">UnalignedSplice</a>. 
+<p>For example, this script does the same thing as the previous example: 
+<pre>AVISource(&quot;d:\capture.00.avi&quot;) + \
+  AVISource(&quot;d:\capture.01.avi&quot;) + \
+  AVISource(&quot;d:\capture.02.avi&quot;)</pre>
+<p>Now let's suppose you're capturing with an application that also saves the 
+  video in multiple AVI segments, but puts the audio in a separate WAV file. <br>
+  Can we recombine everything? You bet: 
+<pre>AudioDub(AVISource(&quot;d:\capture.00.avi&quot;) + \
+  AVISource(&quot;d:\capture.01.avi&quot;) + \
+  AVISource(&quot;d:\capture.02.avi&quot;), \
+  WAVSource(&quot;d:\audio.wav&quot;))</pre>
+
+<p><kbd>$Date: 2008/07/18 17:38:49 $</kbd></p>
+</body>
+</html>

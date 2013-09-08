@@ -1,0 +1,38 @@
+<!doctype html public "-//W3C//DTD HTML 4.0 Transitional//EN">
+<html>
+<head>
+<title>AudioDub Avisynth Filter</title>
+<link rel="stylesheet" type="text/css" href="../../avisynth.css">
+</head>
+<body>
+<h2><a name="AudioDub"></a>AudioDub / AudioDubEx</h2>
+<p><code>AudioDub </code>(<var>video_clip, audio_clip</var>)<br>
+<code>AudioDubEx </code>(<var>video_clip, audio_clip</var>)</p>
+<p><code>AudioDub</code> takes the video stream from the first argument and the audio 
+  stream from the second argument and combines them into a single clip. If either 
+  track isn't available, it tries it the other way around, and if that doesn't 
+  work it returns an error.</p>
+
+
+      <pre># Load capture segments from patched AVICAP32 which puts
+# video in multiple AVI segments and audio in a WAV file
+video = AVISource(&quot;capture1.avi&quot;) + AVISource(&quot;capture2.avi&quot;)
+audio = WAVSource(&quot;capture.wav&quot;)
+AudioDub(video, audio)</pre>
+      
+    
+<p><code>AudioDubEx</code> takes the video stream from the first argument if
+present, the audio stream from the second argument if present and combines them
+into a single clip. Thus if you feed it with two video clips, and the second
+one has no audio, the resulting clip will have the video of the first clip and
+no audio. If you feed it with two audio clips, the resulting clip will have the
+audio of the second clip and no video.</p>
+      
+    
+<p><kbd>$Date: 2005/11/08 12:37:33 $</kbd></p>
+<FORM>
+<INPUT TYPE="Button" VALUE="Back"
+onClick="history.go(-1)">
+</form>
+</body>
+</html>

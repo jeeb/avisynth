@@ -1,0 +1,337 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+<html>
+<head>
+<!--
+Not Automatically generated, changed!:
+$Id: script_ref_execution_model_lifetime_variables.htm,v 1.2 2011/04/29 20:11:14 wilbertd Exp $ 
+-->
+<meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+<title>Scripting reference - The script execution model - Scope and lifetime of
+variables</title>
+<link rel="stylesheet" type="text/css" href="../avisynth.css">
+</head>
+<body>
+<h2>The script execution model - Scope and lifetime of variables</h2>
+<p><font color="#FF0000">There are essentially two scope types in the AviSynth
+script language:</font></p>
+<h2>Contents</h2>
+<ul>
+  <li class="toclevel-1"><span class="tocnumber"><a href="#Global_scope">1</a></span> <a href="#Global_scope"> <span class="toctext">Global
+    scope</span></a></li>
+  <li class="toclevel-1"><a href="#Local_scope"><span class="tocnumber">2</span>
+    <span class="toctext">Local scope</span></a></li>
+  <li class="toclevel-1"><a href="#Lifetime_of_variables"><span class="tocnumber">3</span>
+    <span class="toctext">Lifetime of variables</span></a></li>
+  <li class="toclevel-1"><a href="#A_variables_scope_and_lifetime_example"><span class="tocnumber">4</span>
+    <span class="toctext">A variables scope and lifetime example</span></a></li>
+  <li class="toclevel-1"><a href="#Code-injecting_language_facilities_and_scopes"><span class="tocnumber">5</span>
+    <span class="toctext">Code-injecting language facilities and scopes</span></a>
+    <ul>
+      <li class="toclevel-2"><a href="#Import_and_Eval"><span class="tocnumber">5.1</span>
+        <span class="toctext">Import and Eval</span></a></li>
+      <li class="toclevel-2"><a href="#Runtime_scripts"><span class="tocnumber">5.2</span>
+        <span class="toctext">Runtime scripts</span></a></li>
+      <li class="toclevel-2"><a href="#The_try...catch_block"><span class="tocnumber">5.3</span>
+        <span class="toctext">The try...catch block</span></a></li>
+    </ul>
+  </li>
+</ul>
+<a name="Global_scope"></a>
+<h3><span class="mw-headline">Global scope</span></h3>
+<p>Every <a href="syntax_script_variables.htm" title="Script variables">variable</a>
+placed in this scope can be freely accessed from any nested block of script code
+at any level of nesting. That is, you can access a global from the top-level
+script block, from inside a user <a href="syntax_userdefined_scriptfunctions.htm" title="Script functions">function</a>
+at any level of recursion, as well as from inside <a href="syntax_runtime_environment.htm" title="Runtime environment">runtime
+scripts</a>.</p>
+<p><b>Note:</b> One important precondition for the above rule to apply is that <i>you
+must not have a local variable with the same name as a global one</i>. If you
+define a local variable with the same name as a global one, then you can no
+longer get (read) the value of the global variable in that specific local scope.
+This is because AviSynth when given a variable's name it first searches in the
+current local scope; only if the search fails the global scope is searched. You
+can however set (write) the global's value, since in that case the use of the
+keyword <tt>global</tt> distinguishes between a global and a local variable.</p>
+<a name="Local_scope"></a>
+<h3><span class="mw-headline">Local scope</span></h3>
+<p>Variables placed in this scope can be accessed (read or written) <i>only</i>
+from script code within that scope. This allows the isolation of nested local
+scopes and makes the creation and usage of script functions possible.</p>
+<p>The most important local scope is the top-level script scope (the one that is
+created just before the executing script is parsed and evaluated). All
+non-global variables defined inside the script-level source code reside there.
+All the other local scopes are created due to function calls and are nested
+inside this one.</p>
+<p>Nested local scopes result from function or filter calls (plugin writers can
+create nested scopes through <tt>env-&gt;PushContext()</tt> and <tt>env-&gt;PopContext()</tt>)
+and can be created at an arbitrary depth. For example, a recursive user function
+such as the one below:</p>
+<pre>function strfill(string s, int count) {
+    return count &gt; 0&nbsp;? s + strfill(s, count - 1)&nbsp;: &quot;&quot;
+}</pre>
+<p>will result during its evaluation in the creation and subsequent destruction
+of eleven nested local scopes if called with a value ten for its <tt>count</tt>
+argument.</p>
+<a name="Lifetime_of_variables"></a>
+<h3><span class="mw-headline">Lifetime of variables</span></h3>
+<p>The lifetime of variables defined at the global and top-level script (local)
+scope spans from the time of the definition (that is the first statement that
+assigns a value to them) to the end of frame serving and the unload of <tt>avisynth.dll</tt>.</p>
+<p>The lifetime of variables defined at nested local scopes spans from the time
+of the definition in the nested local scope to the end of the nested local
+scope's lifetime. Since nested local scopes result from function / filter calls,
+the nested scope's lifetime is the lifetime of the function / filter call.</p>
+<a name="A_variables_scope_and_lifetime_example"></a>
+<h3><span class="mw-headline">A variables scope and lifetime example</span></h3>
+<p>To clarify the statements of the previous section, the following example
+demonstrates the scope and lifetime of variables in a moderately complex
+AviSynth script that also includes runtime scripts.</p>
+<p>What the script does is to divide a clip (after some processing tweaks) in 4
+equal-sized regions and evaluate the average luma of each region per frame. If
+this is outside a range defined by two thresholds, the corresponding region is
+turned to all black (if below) or white (if above) for that frame.</p>
+<pre>function Quartile(clip c, int quartile) {
+    <a href="syntax_internal_functions_control.htm" title="Internal functions/Control functions">Assert</a>(quartile &gt;= 0 &amp;&amp; quartile &lt;= 3, &quot;Invalid Quartile!&quot;)
+    hw = <a href="syntax_internal_functions_numeric.htm" title="Internal functions/Numeric functions">Int</a>(c.<a href="syntax_clip_properties.htm" title="Clip properties">Width</a>() / 2)
+    hh = Int(c.<a href="syntax_clip_properties.htm" title="Clip properties">Height</a>() / 2)
+    return <a href="syntax_internal_functions_control.htm" title="Internal functions/Control functions">Select</a>(quartile, \
+        <a href="corefilters/crop.htm" title="Crop">Crop</a>(c, 0, 0, hw, hh), Crop(c, hw, 0, hw, hh), \
+        Crop(c, 0, hh, hw, hh), Crop(c, hw, hh, hw, hh))
+}
+
+function bracket_luma(clip c, float th1, float th2) {
+    Assert(0 &lt;= th1 &amp;&amp; th1 &lt; th2 &amp;&amp; th2 &lt;= 255, &quot;Invalid thresholds!&quot;)
+    script =  &quot;th1 = &quot; + <a href="syntax_internal_functions_conversion.htm" title="Internal functions/Conversion functions">String</a>(th1) + Chr(13) + Chr(10) + \
+        &quot;th2 = &quot; + String(th2) + &quot;&quot;&quot;
+        avl = <a href="syntax_internal_functions_runtime.htm" title="Internal functions/Runtime functions">AverageLuma</a>()
+        return avl &lt;= th1&nbsp;? last.<a href="corefilters/blankclip.htm" title="BlankClip">BlankClip</a>()&nbsp;: (avl &gt;= th2&nbsp;? \
+            last.BlankClip(color=color_white)&nbsp;: last)
+        &quot;&quot;&quot;
+    return <a href="corefilters/conditionalfilter.htm" title="ScriptClip">ScriptClip</a>(c, script)
+}
+
+clp = <a href="corefilters/avisource.htm" title="AviSource">AviSource</a>(&quot;myclip.avi&quot;)
+clp = <a href="corefilters/tweak.htm" title="Tweak">Tweak</a>(clp, hue=20, sat=1.1)
+threshold1 = 12.0
+threshold2 = 78.0
+q0 = Quartile(clp, 0).bracket_luma(threshold1, threshold2)
+q1 = Quartile(clp, 1).bracket_luma(threshold1, threshold2)
+q2 = Quartile(clp, 2).bracket_luma(threshold1, threshold2)
+q3 = Quartile(clp, 3).bracket_luma(threshold1, threshold2)
+<a href="corefilters/stack.htm" title="StackVertical">StackVertical</a>(StackHorizontal(q0, q1), <a href="corefilters/stack.htm" title="StackHorizontal">StackHorizontal</a>(q2, q3))</pre>
+<p>The scope and lifetime of all variables in the example script is presented in
+the following timeline (the <tt>color_white</tt> global is from the autoloaded
+.avsi that ships with AviSynth):</p>
+<pre>+-- scope --+------- parsing phase ----------------------&gt;+----- frame serving phase -------&gt;+
+|           |                                                                                |
+| global    |color_white - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -&gt;|
++-----------+---------------------------------------------+----------------------------------|
+| local,    |clp - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -&gt;|
+| top-level | threshold1,threshold2- - - - - - - - - - - - - - - - - - - - - - - - - - - - -&gt;|
+|           |  q0,q1,q2,q3 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -&gt;|
+|           |                                             |avl,th1,th2 - - - - - - - - - - -&gt;|
++-----------+---------------------------------------------+----------------------------------|
+| local,    |   c,  - - - -&gt;|           |                |
+| Quartile  |   quartile, -&gt;|           | repeated       |
+| function  |    hw,hh- - -&gt;|           | three times,   |
++-----------+--------------------------&gt;| in immediate -&gt;|
+| local,    |   |            c, - - - -&gt;| succession     |
+| bracket_l.|   |            th1,th2, -&gt;|                |
+| function  |   |             script- -&gt;|                |
++-----------+---------------------------------------------+----------------------------------|</pre>
+<a name="Code-injecting_language_facilities_and_scopes"></a>
+<h3><span class="mw-headline">Code-injecting language facilities and scopes</span></h3>
+<p>There are certain language constructs (functions, filters and control
+structures) that allow the injection of code in the script, ie the execution of
+arbitrary sequences of AviSynth script language <a href="syntax_ref.htm" title="AviSynth Syntax">statements</a>.</p>
+<p>This is a <i>very</i> useful functionality that allows among other things
+dynamic code evaluation, the creation of <a href="script_ref_block_statements.htm" title="Block statements">block
+statements</a> and <a href="script_ref_arrays.htm" title="Arrays">arrays</a>,
+the organisation of AviSynth code in libraries, etc. However, there are some
+subtle issues regarding variables' scope and visibility that can lead to
+surprises if not fully understood.</p>
+<a name="Import_and_Eval"></a>
+<h4><span class="mw-headline">Import and Eval</span></h4>
+<p><a href="corefilters/import.htm" title="Import">Import</a>()
+and <a href="syntax_internal_functions_control.htm" title="Internal functions/Control functions">Eval</a>()
+evaluate the passed-in script source code in the context of the current local
+scope.</p>
+<p>This means that variables contained in the top-level scope of the imported
+script or in the code string passed to Eval() are created inside the current
+local scope and become available for read/write to the following script source
+code. For example:</p>
+<p><b>1. File &quot;a.avs&quot;</b></p>
+<pre>x = 12
+y = 24
+c = <a href="corefilters/blankclip.htm" title="BlankClip">BlankClip</a>(pixel_type=&quot;YV12&quot;, color=color_orange, width=240, height=180)</pre>
+<p><b>2. File &quot;b.avs&quot;</b></p>
+<pre><a href="corefilters/import.htm" title="Import">Import</a>(&quot;a.avs&quot;)
+<a href="corefilters/avisource.htm" title="AviSource">AviSource</a>(&quot;myvideo.avi&quot;)
+<a href="corefilters/levels.htm" title="Levels">Levels</a>(<b>x</b>, 1.0, 255, <b>y</b>, 242)
+<a href="corefilters/overlay.htm" title="Overlay">Overlay</a>(<b>c</b>, x=last.Width-320, y=last.Height-240, mode=&quot;chroma&quot;)</pre>
+<p>In addition, the imported script or the code string passed to Eval() can use
+previously defined in that scope local variables (as well as globals, of
+course). For example (the use of multiline triply quoted strings makes easier
+the writing of <a href="http://avisynth.org/mediawiki/Block_statements" title="Block statements">block
+statements</a>):</p>
+<pre>x = 5
+AviSource(&quot;aclip.avi&quot;)
+f = <a href="syntax_clip_properties.htm" title="Clip properties">Framecount</a>()
+f &lt; 100&nbsp;? <a href="syntax_internal_functions_control.htm" title="Internal functions/Control functions">Eval</a>(&quot;&quot;&quot;
+    <a href="corefilters/trim.htm" title="Trim">Trim</a>(x, f-2)
+    x = 0
+&quot;&quot;&quot;)&nbsp;: Eval(&quot;&quot;&quot;
+    Trim(x, 15*x + 30)
+    x = 1
+&quot;&quot;&quot;)
+x == 0&nbsp;? <a href="corefilters/invert.htm" title="Invert">Invert</a>()&nbsp;: <a href="corefilters/subtitle.htm" title="Subtitle">Subtitle</a>(String(last.Framecount))</pre>
+<p>Especially the later is something that you must always keep in mind -mostly
+for <a href="http://avisynth.org/mediawiki/Import" title="Import">Import</a>()
+since the code is not immediately visible; only the filename shows up in the
+script- because it has the potential to introduce bugs by unexpected overriding
+of a variable's value.</p>
+<p>Consider, the following example:</p>
+<p><b>1. File &quot;mylib.avsi&quot;</b></p>
+<pre>function preset(int num) { # 0 to 3
+    return <a href="syntax_internal_functions_control.htm" title="Internal functions/Control functions">Select</a>(num, AviSource(&quot;...&quot;), AviSource(&quot;...&quot;), AviSource(&quot;...&quot;), AviSource(&quot;...&quot;))
+}
+global def_preset = preset(0)</pre>
+<p><b>2. File &quot;myscript.avs&quot;</b></p>
+<pre>global def_preset = <a href="corefilters/avisource.htm" title="AviSource">AviSource</a>(&quot;myfav.avi&quot;)
+Import(&quot;mylib.avsi&quot;)
+<a href="corefilters/tweak.htm" title="Tweak">Tweak</a>(def_preset, hue=20) # oops, using clip from mylib.avsi instead of myscript.avs!
+...</pre>
+<p>The imported script changed a previously defined variable and the results
+will now be suprising (until of course the bug is discovered).</p>
+<p>However, this same feature has a number of interesting possibilities, for
+example:</p>
+<ul>
+  <li>You can define sub-scripts that communicate with the parent script through
+    a defined set of variables.</li>
+  <li>You can create libraries (AviSynth include files) that perform
+    initialisation code based on &quot;environment&quot; variables (the ones you
+    set in the parent script before importing) and / or return status
+    information (through a variable that they set at the global or top-script
+    level code)</li>
+  <li>You can implement <a href="script_ref_block_statements.htm" title="Block statements">block
+    statements</a>.</li>
+</ul>
+<p><b>Note:</b> To test for the existence of input/output variables in the above
+scenarios try to read their value in a <tt>try..catch</tt> block; else your
+script will die hard if for any reason they do not exist.</p>
+<a name="Runtime_scripts"></a>
+<h4><span class="mw-headline">Runtime scripts</span></h4>
+<p>Local variables inside runtime filters' scripts are <b>always</b> binded to
+the top-level script local scope; even if the filter calls were made inside a
+user function. This is because the parsing of runtime scripts is done <i>after</i>
+the parsing of the script, at the frame serving phase. At that point in script
+execution, nested local scopes have already vanished and only the global and the
+top-level script local scopes survive.</p>
+<p>The same is true for the <a href="syntax_runtime_environment.htm" title="Runtime environment">special
+variables</a> set by the runtime filters (such as for example <tt>current_frame</tt>);
+they are defined at the top-level script local scope.</p>
+<p>Some consequences of the above setup are the following:</p>
+<ul>
+  <li>You can use top-level script local variables inside the runtime scripts to
+    pass information, just as is customary to do with global ones.</li>
+  <li>You must be careful if you define local variables in your runtime scripts
+    to not clash with local variables in other runtime scripts in the filter
+    chain. This is also true for globals, but globals are typically used for
+    inter-filter communication; use of locals is not so common and thus may be
+    overlooked by script writers.</li>
+  <li>Overriding a variable (either local or global) does not have an efect at
+    the main script, because the evaluation of the main script is done at the
+    parsing phase, before the execution of any runtime script.</li>
+  <li>When examining the way that a variable will be modified by a chain of
+    runtime scripts, you must remember that the evaluation of scripts is done
+    from bottom to top, just like the fetching of frames.</li>
+</ul>
+<p>Consider the following example:</p>
+<pre><a href="corefilters/avisource.htm" title="AviSource">AviSource</a>(&quot;myclip.avi&quot;)
+x = 5
+fc = <a href="syntax_clip_properties.htm">Framecount</a>()
+fc &gt; 2x&nbsp;? <a href="corefilters/trim.htm" title="Trim">Trim</a>(x, fc - x)&nbsp;: Trim(0, fc - x)
+fc = Framecount()
+<a href="corefilters/conditionalfilter.htm" title="ScriptClip">ScriptClip</a>(&quot;&quot;&quot;<a href="corefilters/subtitle.htm" title="Subtitle">Subtitle</a>(&quot;and the value of x is&nbsp;: &quot; + <a href="syntax_internal_functions_conversion.htm">String</a>(x))&quot;&quot;&quot;)
+<a href="corefilters/conditionalfilter.htm" title="FrameEvaluate">FrameEvaluate</a>(&quot;x = (x % 3 == (fc - x - 1) % 3)&nbsp;? x + 2&nbsp;: x - 1&quot;)
+FrameEvaluate(&quot;x = current_frame&quot;)</pre>
+<p>The assignment <tt>x = 5</tt> at the main script is used to control trimming
+of the source clip. <tt>x</tt> is passed as argument in the <a href="corefilters/trim.htm" title="Trim">Trim</a>
+filter during the script's parsing phase. Thus the modifications by the runtime
+scripts that start at the frame serving phase has no effect on the values passed
+to Trim.</p>
+<p>By the time the first frame will be fetched, <tt>x</tt> will have been
+overrided by the <tt>x = current_frame</tt> assignment in the last <a href="corefilters/conditionalfilter.htm" title="FrameEvaluate">FrameEvaluate</a>
+filter's runtime script. Thus its value in the script has no effect (in this
+particular case) to the results of the runtime filters processing.</p>
+<p>Here, using <tt>x</tt> in all runtime filter scripts does not pose a naming
+clash problem. <tt>x</tt> is the variable used to communicate state information
+along the runtime filter chain. However, if we have needed a conditional
+assignment by frame number and we have accidentally used the following runtime
+script in place of the last FrameEvaluate line,</p>
+<pre>FrameEvaluate(&quot;&quot;&quot;
+    fc = 12
+    x = current_frame &lt; fc&nbsp;? current_frame&nbsp;: fc
+    &quot;&quot;&quot;)</pre>
+<p>then there would be a clash with the use of <tt>fc</tt> in the previous line
+(the clips framecount would have been overwritten with an unrelated value) and
+the logic of our processing would be in error.</p>
+<a name="The_try...catch_block"></a>
+<h4><span class="mw-headline">The try...catch block</span></h4>
+<p>This may seem surprising at first, but the <tt>try...catch</tt> block does
+inject code in the script (at the scope that contains it). If this code defines
+new variables, then those variables are available to the code in the section
+that follows the <tt>try...catch</tt> block. More specifically, there are two
+possibilities:</p>
+<ul>
+  <li><i>No error</i> occurs inside the <tt>try{...}</tt> section.</li>
+</ul>
+<dl>
+  <dd>
+    <ol>
+      <li>All statements of the code contained in the <tt>try{...}</tt> section
+        are evaluated and affect the script code that follows.</li>
+    </ol>
+  </dd>
+</dl>
+<ul>
+  <li>An error <i>does</i> occur inside the <tt>try{...}</tt> section.</li>
+</ul>
+<dl>
+  <dd>
+    <ol>
+      <li>Statements of the code contained in the <tt>try{...}</tt> section up
+        to the point of error are evaluated and affect the script code that
+        follows.</li>
+      <li>All statements of the code contained in the <tt>catch{...}</tt>
+        section are evaluated and affect the script code that follows.</li>
+      <li>The variable that is used the <tt>catch{...}</tt> section to store the
+        error message becomes available to the script code that follows.</li>
+    </ol>
+  </dd>
+</dl>
+<p>The following example code excerpt clarifies the above:</p>
+<pre>a = ... # it is assumed that the (missing) code may result in a being either 1 or 0
+try {
+    y = 3
+    x = 6 / a  # if a == 0 this will lead to an error
+    z = 12
+}
+catch (msg) {
+    NOP 
+}
+...code that follows...</pre>
+<p>Now, if <tt>a</tt> is <i>not</i> zero at the point the <tt>try...catch</tt>
+block is evaluated, then three new local variables in the current scope will be
+created (<tt>x</tt>, <tt>y</tt> and <tt>z</tt>) and be available for use by the
+code that follows.</p>
+<p>If however, <tt>a</tt> <i>is</i> zero, then from the three variables in the
+try section only <tt>y</tt> will be created; in addition, since the catch
+section will be evaluated, <tt>msg</tt> will be created. Thus the variables
+available for use by the code that follows will be <tt>x</tt> and <tt>msg</tt>.</p>
+<hr>
+<p>Back to the <a href="script_ref_execution_model.htm" title="The script execution model">script
+execution model</a>.</p>
+<p><kbd>$Date: 2011/04/29 20:11:14 $</kbd></p>
+</body>
+</html>

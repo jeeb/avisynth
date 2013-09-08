@@ -1,0 +1,58 @@
+<!doctype html public "-//W3C//DTD HTML 4.0 Transitional//EN">
+<html>
+<head>
+<title>Pulldown Avisynth Filter</title>
+<link rel="stylesheet" type="text/css" href="../../avisynth.css">
+</head>
+<body >
+<h2><a name="Pulldown"></a>Pulldown</h2>
+<p><code>Pulldown </code>(<var>clip, int a, int b</var>)</p>
+<h3><span class="mw-headline">a:b Pulldown</span></h3>
+<p>In general, <b>a:b pulldown</b> (also called <b>telecine</b>) means that the
+first frame is represented by &quot;a&quot; fields of video, the second frame is
+represented by &quot;b&quot; fields of video, which is repeated till the end of
+the clip. <b>inverse telecine</b>: means undoing the telecine.</p>
+<p><b>Example:</b></p>
+<p><b>2:3 or 3:2 pulldown</b>: 23.976 -&gt; 29.97 by adding duplicate fields in
+the following way: Thus the first frame is represented by two fields of video,
+the second frame by three fields of video, which is repeated to the end of the
+clip:</p>
+<pre>source: AtAb BtBb CtCb DtDb (four frames) 
+2:3 pulldown: AtAb BtBb BtCb CtDb DtDb (five frames) 
+3:2 pulldown: AtAb AtBb BtCb CtCb DtDb (five frames) 
+etc ...</pre>
+<a name="Pulldown_as_AviSynth_filter"></a>
+<h3><span class="mw-headline">Pulldown as AviSynth filter</span></h3>
+<p> <code>Pulldown</code>(a,b) (with a &lt; b) selects frames a, b, 5+a, 5+b,
+2*5+a, 2*5+b, ... So the filter simply selects two out of every five frames of
+the source video. The frame rate is reduced to two-fifths of its original value.
+Note that a a:b telecide can be undone by Pulldown(a,b) if a+b=5.</p>
+<p><b>Example:</b></p>
+<pre>DoubleWeave()
+Pulldown(0,3)</pre>
+<p>is the same as undoing a 2:3 (or 3:2) pulldown (ie 29.97 -&gt; 23.976).</p>
+<p>Suppose you have material on which 2:3 pulldown is applied, that is</p>
+<pre>AtAb BtBb CtCb DtDb =&gt; AtAb BtBb BtCb CtDb DtDb (five frames)</pre>
+<p>The reason you need to use <code><a href="doubleweave.htm">DoubleWeave</a></code>
+first is that many capture cards
+sometimes recombine fields in the &quot;wrong&quot; way. In terms of fields, the
+3:2 pulldown sequence is simply &quot;At Ab Bt Bb Bt Cb Ct Db Dt Db ...&quot;,
+where &quot;A&quot; through &quot;D&quot; represent the original film frames
+(before the broadcaster telecined it). But many capture cards the fields into
+frames with no respect for the pulldown pattern, and you get this:</p>
+<pre>AtAb BtAb BtBb BtBb BtCb CtCb CtDb DtDb DtDb</pre>
+<p> <code>Pulldown</code>(0,3) selects frames 0, 3, 5+0, 5+3, 10+0, 10+3, ...</p>
+<pre>AtAb BtAb BtBb BtBb BtCb CtCb CtDb DtDb DtDb
+ *              *         *              *</pre>
+<p>thus getting</p>
+<pre>AtAb BtBb CtCb DtDb</pre>
+<p>
+<code>Pulldown</code>(a,b) is implemented internally
+as <a href="selectevery.htm">SelectEvery</a>(5,a,b).<a href="parity.htm#assumeframefield">AssumeFrameBased</a>.</p>
+<p><kbd>$Date: 2010/01/06 16:01:28 $</kbd></p>
+<FORM>
+<INPUT TYPE="Button" VALUE="Back"
+onClick="history.go(-1)">
+</form>
+</body>
+</html>

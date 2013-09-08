@@ -1,0 +1,389 @@
+<!doctype html public "-//W3C//DTD HTML 4.0 Transitional//EN">
+<html>
+<head>
+<title>SoundOut AviSynth plugin</title>
+<link rel="stylesheet" type="text/css" href="../../avisynth.css">
+</head>
+<body>
+<h2><a name="SoundOut"></a>SoundOut</h2>
+
+<p>
+SoundOut is a GUI driven sound output module for AviSynth. 
+</p>
+
+<h3>Installation and Usage</h3>
+<p>
+Copy &quot;SoundOut.dll&quot; and &quot;libsndfile-1.dll&quot; to your AviSynth plugin directory, usually
+&quot;c:\program files\avisynth 2.5\plugins&quot;. <span class="diffchange">If
+you want to have &quot;SoundOut.dll&quot; at another location, you should move
+&quot;libsndfile-1.dll&quot; to your system32 folder, usually
+&quot;c:\windows\system32</span>&quot;.
+</p>
+
+<p>Add <tt>SoundOut()</tt> to your script, where you would like to export audio. If you have your video stored in a variable, use <tt>SoundOut(variable)</tt> to add SoundOut. A GUI should pop up, when you open your script. Here is a simple example of how to use it:</p>
+<pre>AviSource(&quot;myvideo.avi&quot;)
+SoundOut()</pre>
+<p>If you need some sample processing, to change samplerate or otherwise edit your video, you must do it before calling the SoundOut module. Like this:</p>
+<pre>AviSource(&quot;myvideo.avi&quot;)
+Amplifydb(3)
+SSRC(44100)
+SoundOut()</pre>
+
+<h3>Output Modules</h3>
+<h4>WAV/AIF/CAF</h4>
+<p>This will allow you to export uncompressed audio to the following formats:</p>
+
+<ul>
+<li>Microsoft WAV format
+<li>Apple/SGI AIFF format
+<li>Sun/NeXT AU format
+<li>RAW PCM data
+<li>Sonic Foundry's 64 bit RIFF/WAV  (WAVE64)
+<li>Apple Core Audio File format
+<li>Microsoft WAV format with Broadcast Wave Format chunk.
+</ul>
+
+<p><span class="diffchange">Note, that 8 bit samples are NOT supported </span>in
+the <span class="diffchange">Core Audio File and Sun/NeXT AU </span>format.</p>
+
+<h4>FLAC</h4>
+<p>This will allow you to export lossless compressed audio FLAC format.</p>
+<p>FLAC supports 8,16 or 24 bit audio. Any other format is internally converted to 24 bit.</p>
+
+<h4>APE</h4>
+<p>This will allow you to export lossless compressed audio to the Monkey Audio Codec (APE) format.</p>
+APE does not support input sample sizes that are larger than 2GB. Use only for smaller files.
+<p>APE supports 8, 16 or 24 bit audio. Any other format is internally converted to 24 bit.</p>
+
+<h4>MP2</h4>
+<p>This will allow you to compress your audio to MPEG 1 Layer 2 (MP2).</p>
+<p>TwoLame only supports 16 mono or stereo audio. If you attempt to compress more than two channels, an error will be shown. Any other format than 16 bit integer samples are internally converted to 16 bit.</p>
+
+<h4>MP3</h4>
+<p>This will allow you to compress your audio to MPEG 1 Layer 3 (MP3) using LAME v3.97 encoder.</p>
+<p>LAME Supports up to two channels of audio and the following samplerates: 48000, 44100, 32000, 24000, 22050, 16000, 12000, 11025 and
+8000 Hz.</p>
+
+
+<h4>AC3</h4>
+<p>This will allow you to compress your audio to A/52 (AC3). The encoding is done via libaften.</p>
+<p>Aften supports 1 to 6 channel audio. Supported samplerates are 48000, 44100 or 32000 samples per second.</p> Channel mapping is:
+<table class="nav" border="1"><tr><th>Number of channels</th><th>Channel order</th></tr>
+<tr><td>1</td><td>Center</td></tr>
+<tr><td>2</td><td>Left, Right</td></tr>
+<tr><td>3</td><td>Left, Center, Right</td></tr>
+<tr><td>4</td><td>Left, Right, Surround Left, Surround Right</td></tr>
+<tr><td>5</td><td>Left, Center, Right, Surround Left, Surround Right</td></tr>
+<tr><td>6</td><td>Left, Center, Right, Surround Left, Surround Right, LFE</td></tr>
+</table>
+
+<h4>OGG</h4>
+<p>This will allow you to compress your audio to an Vorbis encoded OGG file. It is possible to give an average bitrate, or do the encode as CBR.</p>
+
+<h4>WavPack</h4>
+<p>WavPack is a completely open audio compression format providing lossless,
+high-quality lossy compression mode. Compatible with virtually all PCM audio
+formats including 8, 16, 24, and 32-bit ints; 32-bit floats; mono, stereo, and
+multichannel; sampling rates from 6 to 192 kHz (and non-standard rates)</p>
+
+<h4>Commandline Output</h4>
+<p>This output module will allow you to output to any program that supports input from stdin. This gives you complete control of your encoding, if you have commandline tools for the job.</p>
+<p>You can select the format SoundOut should deliver to the application you use. There are three WAV formats and RAW PCM data. This is sent to stdin of the application. The program builds the command line from 4 parts, <i>the executable</i>, <i>command line options</i> before the output file, the <i>output file</i> that is selected, and <i>command line options</i> after the output file name.</p>
+<p>There are two ways of specifying the executable. Either give complete path to the executable, or simply enter
+the executable<span class="diffchange">'s filename</span>, and place it in a subdirectory called SoundOut in your plugin directory.</p>
+
+
+<h3>Exporting from script</h3>
+<p>It is possible to use SoundOut as an ordinary filter, running inside the script and giving parameters for each output mode. The parameters consists of two things: General Parameters, which can be used for all filters, and filter specific parameters, which gives parameters to the active output module.</p>
+<p>The <b>out</b> parameter determines whether the GUI will be shown, if it is properly set, the filter will begin exporting audio as soon as it is started.</p>
+<p>If the <b>out</b> parameter is <b>not</b> set, it is still possible to set additional parameters. The defaults will however be retrieved from the registry, but specific parameters override </p>
+<h4>General Parameters</h4>
+<table class="nav" border="1"><tr><th>Parameter name</th><th>Type</th><th>Values</th></tr>
+<tr><td>output</td><td>string</td><td>Select output module to use. Possible values are:<br>&quot;WAV&quot;, &quot;AC3&quot;, &quot;MP2&quot;, &quot;MP3&quot;, &quot;OGG&quot;, &quot;FLAC&quot;, &quot;MAC&quot;,
+    &quot;WV&quot; and &quot;CMD&quot;.<br> If none, or an invalid value is given, the ordinary GUI will be shown.</td></tr>
+<tr><td>filename</td><td>string</td><td>Full path to the output filename, including extension.<br>No extra quotes are required. <br>If no filename is given a file selector will pop up.</td></tr>
+<tr><td>showprogress</td><td>bool</td><td>Show the progress window? Default: true</td></tr>
+<tr><td>overwritefile</td><td>string</td><td>&quot;Yes&quot;: Always overwrite file.<br>&quot;No&quot;: Never Overwrite file<br>&quot;Ask&quot;: Ask if file should be overwritten.</td></tr>
+<tr><td>autoclose</td><td>bool</td><td>Should the progress window close automatically 5 seconds after encoding has finished?<br>This will also code the window, even though an error occurred<br>Default: false</td></tr>
+<tr><td>silentblock</td><td>bool</td><td>When processing, enabling this option will return silent samples instead of blocking the requesting application. If disabled, any application requesting audio will be blocking, while sound is being exported<br>Default: true</td></tr>
+  <tr>
+    <td>addvideo</td><td>bool</td><td>When enabled, this will add video to the current output, if none is present. The video is a black 32x32 pixels at 25fps, with the length of the audio. <br>Default: true</td>
+  </tr>
+<tr><td>wait</td><td>integer</td><td>How many seconds should the output window
+    be shown, if autoclose is on.<br>
+    Default: 5.</td></tr>
+</table>
+
+<h4>WAV/AIF/CAF Script Parameters:</h4>
+<table class="nav" border="1"><tr><th>Parameter name</th><th>Type</th><th>Values</th></tr>
+<tr><td>type</td><td>integer</td><td>Select WAVE format<br>0: Microsoft WAV (default),<br>1: WAV with WAVEFORMATEX,<br>2: Apple/SGI AIFF,<br>3: Sun/NeXT AU,<br>4: RAW PCM,<br>5: S.F. WAVE64,<br>6: Core Audio File,<br>7: Broadcast Wave.</td></tr>
+<tr><td>format</td><td>integer</td><td>Sets the sample format number of bits per
+    sample.<br>
+    0: 16bit per sample,<br>
+    1: 24bit per sample,<br>
+    2: 32bit per sample,<br>
+    3: 32bit float per sample,<br>
+    Default: Same as input.</td></tr>
+<tr><td>peakchunck</td><td>bool</td><td>Add Peak chunk to WAV file?<br>Default: false</td></tr>
+</table>
+
+<p>Audio will be written in the format delivered to the SoundOut plugin. All internal sound formats are supported.</p>
+
+<h4>FLAC Script Parameters:</h4>
+<table class="nav" border="1"><tr><th>Parameter name</th><th>Type</th><th>Values</th></tr>
+<tr><td>compressionlevel</td><td>integer</td><td>Sets the compression level. 1(fastest) to 8(slowest)<br>Default: 6</td></tr>
+</table>
+
+<h4>APE Script Parameters:</h4>
+<table class="nav" border="1"><tr><th>Parameter name</th><th>Type</th><th>Values</th></tr>
+<tr><td>compressionlevel</td><td>integer</td><td>Sets the compression level. 1(fastest) to 6(slowest)<br>Default: 3</td></tr>
+</table>
+
+<h4>MP2 Script Parameters:</h4>
+<table class="nav" border="1"><tr><th>Parameter name</th><th>Type</th><th>Values</th></tr>
+<tr><td>bitrate</td><td>integer</td><td>Sets Bitrate for CBR or maximum bitrate for VBR.<br>Default: 192</td></tr>
+<tr><td>stereomode</td><td>integer</td><td>-1: Automatic (default)<br>
+0: Separate Stereo<br>1: Separate Stereo<br>2: Joint Stereo<br>3: Dual Channel<br>4: Mono</td></tr>
+<tr><td>psymodel</td><td>integer</td><td>-1: Fast & Dumb <br>0: Low complexity <br>1: ISO PAM 1 <br>2: ISO PAM 2 <br>3:
+    PAM 1 Rewrite (default) <br>4: PAM 2 Rewrite</td></tr>
+<tr><td>vbrquality</td><td>float</td><td>Sets VBR Quality. Useful range is about -10 to 10. <br>Default is 0</td></tr>
+<tr><td>vbr</td><td>bool</td><td>Encode as VBR?<br>Default: false.</td></tr>
+<tr><td>quick</td><td>bool</td><td>Quick Encode?<br>Default: false.</td></tr>
+<tr><td>dab</td><td>bool</td><td>Add DAB Extensions?<br>Default: false.<br>According to TwoLame documentation this might not be reliable.</td></tr>
+<tr><td>crc</td><td>bool</td><td>Add CRC Error checks?<br>Default: false.</td></tr>
+<tr><td>original</td><td>bool</td><td>Set Original Flag?<br>Default: false.</td></tr>
+<tr><td>copyright</td><td>bool</td><td>Set Copyright flag?<br>Default: false.</td></tr>
+<tr><td>emphasis</td><td>integer</td><td>Set Emphasis flag.<br>0: No Emphasis (default)<br>1:
+    50/15 ms<br>3: CCIT J.17</td></tr>
+</table>
+
+<h4>MP3 Script Parameters:</h4>
+<table class="nav" border="1"><tr><th>Parameter name</th><th>Type</th><th>Values</th></tr>
+<tr><td>mode</td><td>integer</td><td>Sets Encoding mode:<br>0: VBR (default)<br>1: ABR<br>2: CBR</td></tr>
+<tr><td>vbrpreset</td><td>integer</td><td>Sets quality preset, when using VBR mode.<br>Standard = 1001 (default),
+    <br>extreme = 1002,<br>insane = 1003,<br>standard_fast = 1004,<br>extreme_fast = 1005,<br>medium = 1006,<br>medium_fast = 1007</td></tr>
+<tr><td>abrrate</td><td>integer</td><td>Sets Average bitrate for ABR encoding.<br>Default: 128</td></tr>
+<tr><td>cbrrate</td><td>integer</td><td>Sets Bitrate for CBR encoding.<br>Default: 128</td></tr>
+</table>
+
+
+<h4>AC3 Script Parameters:</h4>
+<table class="nav" border="1"><tr><th>Parameter name</th><th>Type</th><th>Values</th></tr>
+<tr><td>iscbr</td><td>bool</td><td>Encode at Constant Bitrate?<br>Default: true.</td></tr>
+<tr><td>cbrrate</td><td>integer</td><td>Sets Bitrate for CBR or maximum bitrate for VBR.<br>Default: 384</td></tr>
+<tr><td>vbrquality</td><td>integer</td><td>VBR Bitrate quality. Values between 1 and 1023 are accepted<br>Default: 220.</td></tr>
+<tr><td>drc</td><td>integer</td><td>Dynamic Range Compression<br>0: Film Light<br>1:
+    Film Standard<br>2: Music Light<br>3: Music Standard<br>4: Speech<br>5: None (default)</td></tr>
+<tr><td>acmod</td><td>integer</td><td>Set channel mapping<br>0 = 1+1 (Ch1,Ch2)<br>1 = 1/0 (C)<br>2 = 2/0 (L,R)<br>3 = 3/0 (L,R,C)<br>4 = 2/1 (L,R,S)<br>5 = 3/1 (L,R,C,S)<br>6 = 2/2 (L,R,SL,SR)<br>7 = 3/2 (L,R,C,SL,SR)</td></tr>
+<tr><td>dialognormalization</td><td>integer</td><td>Dialog normalization. Values from 0 to 31 are accepted<br>Default: 31.</td></tr>
+<tr><td>islfe</td><td>bool</td><td>Is there LFE channel present?<br>Default: false if less than 4 channels, true otherwise.</td></tr>
+<tr><td>bandwidthfilter</td><td>bool</td><td>Use the bandwidth low-pass filter?<br>Default: false.</td></tr>
+<tr><td>lfelowpass</td><td>bool</td><td>Use the LFE low-pass filter<br>Default: false.</td></tr>
+<tr><td>dchighpass</td><td>bool</td><td>Use the DC high-pass filter<br>Default: false.</td></tr>
+<tr><td>dolbysurround</td><td>bool</td><td>Is the material Dolby Surround encoded? (only applies to stereo sound, otherwise ignored)<br>Default: false.</td></tr>
+<tr><td>blockswitch</td><td>bool</td><td>Selectively use 256-point MDCT?<br>Default: false (Use only 512-point MDCT).</td></tr>
+<tr><td>accuratealloc</td><td>bool</td><td>Do more accurate encoding?<br>Default: true.</td></tr>
+</table>
+
+<h4>OGG Script Parameters:</h4>
+<table class="nav" border="1"><tr><th>Parameter name</th><th>Type</th><th>Values</th></tr>
+<tr><td>vbrbitrate</td><td>integer</td><td>Selects the average bitrate to encode at<br>Default: 128.</td></tr>
+<tr><td>cbr</td><td>bool</td><td>Encode as CBR?<br>Default: false.</td></tr>
+</table>
+
+<h4><span class="mw-headline">Wavpack Script Parameters:</span></h4>
+<table class="nav" border="1"><tr><th>Parameter name</th><th>Type</th><th>Values</th></tr>
+<tr><td>compressionlevel</td><td>integer</td><td>Sets the compression level.
+    0(Very Fast) to 5(Extremely Slow)<br>
+    Default: 2 (Normal)</td></tr>
+<tr><td>format</td><td>integer</td><td>Sets the sample format number of bits per
+    sample.<br>
+    0: 8bit per sample,<br>
+    1: 16bit per sample,<br>
+    2: 24bit per sample,<br>
+    3: 32bit per sample,<br>
+    4: 32bit float per sample,<br>
+    Default: Same as input.</td></tr>
+</table>
+
+<h4>Commandline Output Script Parameters:</h4>
+<table class="nav" border="1"><tr><th>Parameter name</th><th>Type</th><th>Values</th></tr>
+<tr><td>type</td><td>integer</td><td>Select WAVE format<br>0: Microsoft WAV (default),<br>1: WAV with WAVEFORMATEX,<br>2: RAW PCM,<br>3:  S.F. WAVE64.</td></tr>
+<tr><td>format</td><td>integer</td><td>Select Output Bits per sample<br>0: 16 Bit<br>1: 24 Bit<br>2: 32 Bit<br>3: 32 bit float<br>Default is same as input.</td></tr>
+<tr><td>executable</td><td>string</td><td>Executable to use<br>Default: &quot;aften.exe&quot; (without quotes).</td></tr>
+<tr><td>prefilename</td><td>string</td><td>Parameters that are placed before the output filename<br>Default: &quot;-b 384 -&quot; (without quotes).</td></tr>
+<tr><td>postfilename</td><td>string</td><td>Parameters that are placed after the output filename<br>Default: &quot;&quot; (without quotes).</td></tr>
+<tr><td>showoutput</td><td>bool</td><td>Show the output window?<br>Default: true.</td></tr>
+<tr><td>nofilename</td><td>bool</td><td>Encode without output filename, and don't use postfilename?<br>Default: false.</td></tr>
+</table>
+
+<h3>Examples</h3>
+<pre>SoundOut(output = &quot;mp3&quot;, filename=&quot;c:\outputFile.mp3&quot;, autoclose = true, showprogress=true, mode = 2, cbrrate = 192)</pre>
+Engages mp3 output module with CBR at 192kbit/sec.
+
+<h3>Implementation notes</h3>
+<p>SoundOut is Multithreaded, and uses one thread for requesting audio from the previous filters, and another thread for encoding. The threads are given a "below normal" priority. </p>
+
+<p>Only attempt to run two exports at the same time at your own risk. It is most likely slower and could potentially crash. You can safely export sound while you encode, if your encode does not read audio from AviSynth.</p>
+
+<h3>Changelist</h3>
+<table border="1" cellpadding="4" cellspacing="1">
+  <tbody>
+    <tr>
+      <td>v2.60</td>
+      <td>Initial Release; based on v1.1.1</td>
+    </tr>
+  </tbody>
+</table>
+<p>v1.1.1</p>
+<ul>
+  <li>Downgraded FLAC to v1.2.0, to avoid backwards incompatible 24 bit files.</li>
+  <li>Conversion tune-up.</li>
+  <li>OverWriteFile set to &quot;No&quot; was not respected.</li>
+  <li>Client sample requests shown in GUI.</li>
+</ul>
+<p>v1.1.0</p>
+<ul>
+  <li>Added WavPack output module.</li>
+  <li>Added Sample type selection to WAV Output.</li>
+  <li>Updated FLAC to v 1.2.1 - 24 bit/sample seems broken, so only 8 &amp; 16
+    bit are enabled.</li>
+  <li>Fixed bug in FLAC to enable files larger than 2GB.</li>
+  <li>FLAC now uses the same GUI as other filters.</li>
+  <li>Aften updated.</li>
+  <li>Re-enabled Aften multithreading.</li>
+  <li>Faster 3DNOW! float to 24 bit conversion.</li>
+</ul>
+<p>v1.0.3</p>
+<ul>
+  <li>Vorbis, AC3 and MP3 now checks if file can be created.</li>
+  <li>Fixed hang in aften on multiprocessor machines.</li>
+  <li>Added wait parameter, how many seconds should SoundOut wait on autoclose.</li>
+  <li>Avoid lockup if encoder cannot be initialized and set for direct output.</li>
+  <li>Fixed OverwriteFile was not always being respected.</li>
+</ul>
+<p>v1.0.2</p>
+<ul>
+  <li>Updated libaften to rev534.</li>
+  <li>Fixed overwriteFile not being recognized in script.</li>
+  <li>Fixed crash if mp2 file could not be opened for writing.</li>
+  <li>Exit blocked, even if filter is (almost) instantly destroyed, if script is
+    set for output.</li>
+  <li>AC3 is now reporting the actual samples encoded (including padding).</li>
+</ul>
+<p>
+v1.0.1<br>
+- Updated libaften to rev. 512.<br>
+- Added overwriteFile=&quot;yes&quot;/&quot;no&quot;/&quot;ask&quot;. Default is
+Ask.
+</p>
+
+<p>
+v1.0.0<br>
+- The application will not exit, as long as an encode window is open.<br>
+- Fixed &quot;nofilename&quot; not being recognized in script.<br>
+- LFE no longer overridden by registry, when using GUI.
+</p>
+
+<p>
+v0.9.9<br>
+- Added ReplayGain calculation to Analyze.<br>
+- Parent filters are now blocked, or silent samples are returned, if the filter
+is currently exporting sound.<br>
+- Video is automatically added, if none is present. (black 32x32 RGB32)<br>
+- Buttons for export are disabled when output window is open.<br>
+- Main window is now minimized when export module is selected.<br>
+- Fixed Analyze bug on 16 bit samples.<br>
+- Fixed WAVEFORMATEXTENSIBLE channel mapping in Commandline Output.<br>
+- AC3 output: LFE option disabled when not relevant.<br>
+- AC3 output: LFE option named properly.
+</p>
+
+<p>
+v0.9.8<br>
+- Added Analyze option to calculate average, maximum and RMS levels. Only
+available through GUI.<br>
+- WAVEFORMATEXTENSIBLE in commandline out attempts to set channel maps based on
+channel number.<br>
+- Fixed thread race issue on very fast encoders.<br>
+- Minor GUI tweaks.
+</p>
+
+<p>
+v0.9.7<br>
+- Added channelmapping to AC3 output.<br>
+- Added LFE channel indicator switch to AC3 output.<br>
+- GUI now spawned in a new thread, fixing GUI lockup in foobar2000 and similar.<br>
+- Fixed general thread race issue, where a fast encoder might lead to incomplete
+output.<br>
+- Fixed WAVE_FORMAT_EXTENSIBLE header without info in CmdLine Output.<br>
+- Fixed &quot;Format&quot; not working on Commandline output.<br>
+- Fixed Filename dialog not appearing.<br>
+- Forced final samplereading to be correct.<br>
+- Removed &quot;private&quot; option from MP2 GUI and script, as there is no way
+to set it via twolame.<br>
+- Removed DAB Extensions from MP2 GUI, as TwoLame reports it as not functioning.
+</p>
+
+<p>
+v0.9.6<br>
+- Added complete script customization.<br>
+- Added possibility to set output file from script.<br>
+- Added window autoclose option to script.<br>
+- Added option to script to disable progress window.<br>
+- GUI creates message handle thread.<br>
+- Settings are now saved to registry if output filter initializes successfully.<br>
+- Updated documentation.
+</p>
+
+<p>
+v0.9.5<br>
+- Added Broadcast WAVE out.<br>
+- Fixed OGG Vorbis support.<br>
+- Fixed Text fields not being correctly read.<br>
+- Fixed AC3 settings not being restored properly.<br>
+- Added: MP2 settings are now saved.
+</p>
+
+<p>
+v0.9.4<br>
+- Added OGG Vorbis support.<br>
+- Added: Parameters stored (on save) and read to registry.<br>
+- Added: &quot;No filename needed&quot; option in commandline output, to disable
+output filename prompt.<br>
+- Fixed collision between libaften and libvorbis.<br>
+- Updated libaften to rev 257.<br>
+- Enabled SSE optimizations in libaften.<br>
+- Hopefully fixed issue with commandline executable filename becoming garbled.
+</p>
+
+<p>
+v 0.9.3<br>
+- Added Commandline piping output.<br>
+- Added MP3 / LAME output.<br>
+- Fixed AC3 VBR Error sometimes wrongly being displayed.<br>
+- Fixed AC3 DRC Setting not being respected.<br>
+- Various GUI bugfixes.
+</p>
+
+<p>
+v 0.9.2<br>
+- Updated AC3 GUI.<br>
+- Fixed crash in WAV output.<br>
+- More stats during conversion.
+</p>
+
+<p>
+v 0.9.1<br>
+- Added AC3 Output.<br>
+- Added new parameter handling.<br>
+- Fixed last block not being encoded.
+</p>
+
+<p><kbd>$Date: 2011/04/29 20:09:50 $</kbd></p>
+<FORM>
+<INPUT TYPE="Button" VALUE="Back"
+onClick="history.go(-1)">
+</form>
+</body>
+</html>

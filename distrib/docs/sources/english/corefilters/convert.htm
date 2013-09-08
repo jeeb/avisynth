@@ -1,0 +1,265 @@
+<!doctype html public "-//w3c//dtd html 4.0 transitional//en">
+<html>
+<head>
+   <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+   <title> Avisynth Colorspace Conversion Filter</title>
+   <link rel="stylesheet" type="text/css" href="../../avisynth.css">
+</head>
+<body>
+<h2>
+<a NAME="ConvertTo"></a>ConvertBackToYUY2 / ConvertToRGB / ConvertToRGB24 /
+ConvertToRGB32<br>
+ConvertToY8 / ConvertToYUY2 / ConvertToYV12 / ConvertToYV16 / ConvertToYV24 /
+ConvertToYV411</h2>
+<p><code>ConvertToRGB </code>(<var>clip [, string &quot;matrix&quot;]
+  [, bool &quot;interlaced&quot;] [, string &quot;ChromaInPlacement&quot;]
+  [, string &quot;chromaresample&quot;]</var>)<br>
+
+<code>ConvertToRGB24 </code>(<var>clip [, string &quot;matrix&quot;]
+  [, bool &quot;interlaced&quot;] [, string &quot;ChromaInPlacement&quot;]
+  [, string &quot;chromaresample&quot;]</var>)<br>
+
+<code>ConvertToRGB32 </code>(<var>clip [, string &quot;matrix&quot;]
+  [, bool &quot;interlaced&quot;] [, string &quot;ChromaInPlacement&quot;]
+  [, string &quot;chromaresample&quot;]</var>)<br>
+
+<code>ConvertToYUY2 </code>(<var>clip [, bool &quot;interlaced&quot;] [, string &quot;matrix&quot;]
+  [, string &quot;ChromaInPlacement&quot;] [, string &quot;chromaresample&quot;]</var>)<code><br>
+
+<code>ConvertBackToYUY2 </code>(<var>clip [, string &quot;matrix&quot;]</var>)<br>
+
+<code>ConvertToY8 </code>(<var>clip [, string &quot;matrix&quot;]</var>)<br>
+
+ConvertToYV411 </code>(<var>clip [, bool &quot;interlaced&quot;] [, string &quot;matrix&quot;]
+  [, string &quot;ChromaInPlacement&quot;] [, string &quot;chromaresample&quot;]</var>)<br>
+
+<code>ConvertToYV12 </code>(<var>clip [, bool &quot;interlaced&quot;] [, string &quot;matrix&quot;]
+  [, string &quot;ChromaInPlacement&quot;] [, string &quot;chromaresample&quot;]
+  [, string &quot;ChromaOutPlacement&quot;]</var>)<br>
+
+<code>ConvertToYV16 </code>(<var>clip [, bool &quot;interlaced&quot;] [, string &quot;matrix&quot;]
+  [, string &quot;ChromaInPlacement&quot;] [, string &quot;chromaresample&quot;]</var>)<br>
+
+<code>ConvertToYV24 </code>(<var>clip [, bool &quot;interlaced&quot;] [, string &quot;matrix&quot;]
+  [, string &quot;ChromaInPlacement&quot;] [, string &quot;chromaresample&quot;]</var>)
+</p>
+<h3><span class="mw-headline">Colorformats</span></h3>
+<p>The following formats can be converted to and from.</p>
+<table border="1" width="67%">
+  <tbody>
+    <tr>
+      <td align="center" width="25%">colorformats</td>
+      <td align="center" width="25%">planar/interleaved</td>
+      <td align="center" width="34%">chroma resolution</td>
+    </tr>
+    <tr>
+      <td width="25%">RGB</td>
+      <td width="25%">interleaved</td>
+      <td width="34%">full chroma - 4:4:4</td>
+    </tr>
+    <tr>
+      <td width="25%">RGB24</td>
+      <td width="25%">interleaved</td>
+      <td width="34%">full chroma - 4:4:4</td>
+    </tr>
+    <tr>
+      <td width="25%">RGB32</td>
+      <td width="25%">interleaved</td>
+      <td width="34%">full chroma - 4:4:4</td>
+    </tr>
+    <tr>
+      <td width="25%">YUY2</td>
+      <td width="25%">planar</td>
+      <td width="34%">chroma shared between 2 pixels - 4:2:2</td>
+    </tr>
+    <tr>
+      <td width="25%">Y8</td>
+      <td width="25%">planar/interleaved</td>
+      <td width="34%">no chroma - 4:0:0</td>
+    </tr>
+    <tr>
+      <td width="25%">YV411</td>
+      <td width="25%">planar</td>
+      <td width="34%">chroma shared between 4 pixels - 4:1:1</td>
+    </tr>
+    <tr>
+      <td width="25%">YV12</td>
+      <td width="25%">planar</td>
+      <td width="34%">chroma shared between 2x2 pixels - 4:2:0</td>
+    </tr>
+    <tr>
+      <td width="25%">YV16</td>
+      <td width="25%">planar</td>
+      <td width="34%">chroma shared between 2 pixels - 4:2:2</td>
+    </tr>
+    <tr>
+      <td width="25%">YV24</td>
+      <td width="25%">planar</td>
+      <td width="34%">full chroma - 4:4:4</td>
+    </tr>
+  </tbody>
+</table>
+
+<h3>
+  Options</h3>
+
+<p>
+  <var>matrix</var>: Default Rec601. Controls the colour coefficients and scaling factors
+  used in RGB - YUV conversions.
+  <ul>
+  <li>&quot;Rec601&quot; : Uses Rec.601 coefficients, scaled to TV range [16,235].
+  <li>&quot;PC.601&quot; : Uses Rec.601 coefficients, keep full range [0,255].
+  <li>&quot;Rec709&quot; : Uses Rec.709 coefficients, scaled to TV range.
+  <li>&quot;PC.709&quot; : Uses Rec.709 coefficients, keep full range.
+  <li>&quot;AVERAGE&quot;&nbsp;: Uses averaged coefficients, keep full range
+    (added in <em>v2.60</em>). (So the luma becomes the average of the RGB
+    channels.)
+  </ul>
+<p>
+  <var>interlaced</var>: Default false. Use interlaced layout for YV12 chroma conversions.
+</p>
+<p><var>ChromaInPlacement</var> (added in <em>v2.60</em>): This determines the
+chroma placement when converting from YV12. It can be "MPEG2" (default), "MPEG1" and "DV".
+</p>
+<p><var>chromaresample</var><var></var> (added in <em>v2.60</em>): This
+determines which resizer is used in the conversion. It is used when the chroma
+resolution of the source and target is different. It can be all resamplers, default is "bicubic".
+</p>
+<p><var>ChromaOutPlacement</var> (added in <em>v2.60</em>): This determines the
+chroma placement when converting to YV12. It can be "MPEG2" (default), "MPEG1" and "DV".
+</p>
+<p>AviSynth prior to <em>v2.50</em> can deal internally with two color formats,
+RGB and YUY2. Starting from v2.50 AviSynth can also deal with a third color
+format, YV12. These filters convert between them. If the video is already
+in the specified format, it will be passed through unchanged. RGB is assumed
+throughout this doc to mean RGBA = RGB32. <code>ConvertToRGB</code> converts to RGB32
+unless your clip is RGB24. If you need 24-bit RGB for some reason, use <code>ConvertToRGB24</code>
+explicitly and <code>ConvertToRGB32</code> to do the reverse.
+<p>In <em>v2.60</em> the following additional formats are supported: Y8
+greyscale (it is both planar and interleaved since it contains no chroma;
+4:0:0), YV411 (planar; YUV 4:1:1), YV16 (a planar version of YUY2; 4:2:2) and
+YV24 (planar; YUV 4:4:4).
+<p>Syntax and operation of
+  <code>ConvertToRGB24</code> is identical to <code>ConvertToRGB</code>, except
+  that the output format is 24-bit; if the source is RGB32, the alpha channel
+  will be stripped.
+<p>Since v2.51/v2.52 an optional <var>interlaced</var> parameter is added (<var>interlaced</var><i>=</i>false
+is the default operation). When set to false it is assumed that <var>clip</var>
+is progressive, when set to true it is assumed that <var>clip</var> is interlaced.
+This option is added because for example (assuming clip is interlaced YV12):
+<pre>SeparateFields(clip)
+ConvertToYV12
+Weave</pre>
+is upsampled incorrectly. Instead it is better to use:
+<pre>ConvertToYV12(clip, interlaced=true)</pre>
+Note, the <var>interlaced</var>=true setting only does something if the
+conversion YV12 &lt;-&gt; YUY2/RGB is requested, otherwise it's simply ignored.
+More about it can be found here &quot;<a href="../advancedtopics/interlaced_fieldbased.htm">Color
+    conversions and interlaced / field-based video</a>&quot;.
+<p>When the target format is the same as the source format, the original clip
+will be returned. Except for the following situation: When both formats are
+YV12, the source clip will be processed when <var>ChromaInPlacement</var> and <var>ChromaOutPlacement</var> 
+differ. So this can be used to change the chroma placement in a YV12 clip.</p>
+<h3>Examples</h3>
+<p>Contrary to what one might expect, there is no unique way of converting YUV
+to RGB. In AviSynth the two most common ones are implemented: Rec.601 and
+Rec.709 (named after their official specifications). Although it will not be
+correct in all cases, the following shoud be correct in most cases:
+<p>The first one (Rec.601) should be used when your source is DivX/XviD or
+some analogue capture:<pre>ConvertToRGB(clip)</pre>
+<p>The second one (Rec.709) should be used when your source is DVD or
+   HDTV:<pre>ConvertToRGB(clip, matrix=&quot;rec709&quot;)</pre>
+<p>
+In <em>v2.56</em>, the reverse is also available, that is</p>
+<pre>ConvertToYUY2(clip, matrix=&quot;rec709&quot;) or ConvertToYV12(clip, matrix=&quot;rec709&quot;)</pre>
+<p>
+In <em>v2.56</em>, <var>matrix</var>=&quot;pc.601&quot; (and <var>matrix</var>=&quot;pc.709&quot;)
+enables you to do the RGB &lt;-&gt; YUV conversion while keeping the luma range,
+thus RGB [0,255] &lt;-&gt; YUV [0,255] (instead of the usual/default RGB [0,255]
+&lt;-&gt; YUV [16,235]).</p>
+<p>
+All VirtualDub filters (loaded with <code>LoadVirtualdubPlugin</code>, see
+<a href="../syntax.htm#Plugins">Plugins</a>)
+support only RGB32 input.</p>
+<p><b>RGB24, RGB32:</b> The colors are stored as values of red, green and
+blue. In RGB32 there is an extra alpha channel for opacity. The image dimensions
+can have any values.
+<p><b>YUY2:</b> The picture is stored as a luma value Y and two color values
+U, V. For two horizontal pixels there is only one chroma value and two
+luma values (two Y's, one U, one V). Therefore the width has to be a multiple
+of two.
+<p><b>YV8:</b>  Greyscale. Thus the same as YV24 without the chroma planes.
+<p><b>YV411:</b> Similar as YV12 but with only one chroma value for
+4 pixels (a 1x4 square). The horizontal image dimension has to be a multiple of
+four.
+<p><b>YV12:</b> The same as YUY2 but there is only one chroma value for
+4 pixels (a 2x2 square). Both image dimensions have to be a multiple of
+two, if the video is interlaced the height has to be a multiple of four
+because the 2x2 square is taken from a field, not from a frame.
+<p><b>YV16:</b> The same as YUY2 but planar instead of interleaved.
+<p><b>YV24:</b> The same as YV12/YV16, but with full chroma.
+<p>Some functions check for the dimension rules, some round the parameters,
+there still can be some where an picture distortion or an error occurs.
+<p>Working in YUY2 is faster than in RGB. YV12 is even faster and is the
+native MPEG format, so there are fewer colorspace conversions.
+<p>Conversion back and forth is not lossless, so use as few conversions
+as possible. If multiple conversions are necessary, use <code>ConvertBackToYUY2</code>
+to convert to YUY2, if your source already has already once been YUY2.
+This will reduce colorblurring, but there is still some precision lost.
+<p>In most cases, the <code>ConvertToRGB</code> filter should not be necessary.
+If Avisynth's output is in YUY2 format and an application expects RGB,
+the system will use the installed YUY2 codec to make the conversion. However,
+if there's no installed YUY2 codec, or if (as is the case with ATI's and
+some other YUY2 codec) the codec converts from YUY2 to RGB incorrectly,
+you can use AviSynth's built-in filter to convert instead.
+<h3><span class="mw-headline">Conversion paths</span></h3>
+<ul>
+  <li>The <i>ChromaInPlacement</i>, <i>chromaresample</i> and <i>ChromaOutPlacement
+    </i>options are only used
+    in the 'planar conversion part' of the conversion path, and they process the
+    chroma of the clip.</li>
+</ul>
+<p>In v2.60 the following conversion paths occur</p>
+<ul>
+  <li>YUV planar -&gt; RGB via YV24</li>
+  <li>YUV planar -&gt; YUY2 via YV16 (except for YV12 and parameters <i>ChromaInPlacement</i>/<i>chromaresample</i>
+    not explicitly set&quot;, in that case there is a direct conversion from
+    YV12 to YUY2)</li>
+  <li>RGB -&gt; YUV planar via YV24</li>
+  <li>YUY2 -&gt; YUV planar via YV16 (except for YV12 and parameters <i>ChromaInPlacement</i>/<i>chromaresample</i>
+    not explicitly set&quot;, in that case there is a direct conversion from
+    YUY2 to YV12)</li>
+</ul>
+<p>Suppose you have a YUY2 clip for example and you convert it to YV24. The YUY2
+will be converted to YV16 first without applying <i>ChromaInPlacement</i>, <i>chromaresample</i>
+and <i>ChromaOutPlacement</i>. Then YV16 will be converted to YV24 while
+applying <i>chromaresample</i>. <i>ChromaInPlacement</i> and <i>ChromaOutPlacement</i>
+won't be used since YV12 is not involved.</p>
+<a name="Sampling"></a>
+<h3><span class="mw-headline">Sampling</span></h3>
+<p><a href="../advancedtopics/sampling.htm" class="external text" title="http://avisynth.org/mediawiki/Sampling" rel="nofollow">This
+page</a> covers the sampling methods and color formats in more detail.</p>
+<a name="Color_conversions"></a>
+<h3><span class="mw-headline">Color conversions</span></h3>
+<p><a href="../advancedtopics/color_conversions.htm" class="external text" title="http://avisynth.org/mediawiki/Color_conversions" rel="nofollow">This
+page</a> covers the color conversions, &quot;YUV &lt;-&gt; RGB&quot;, in more
+detail.</p>
+<p><b>Changes:</b>
+<table border="1" width="46%">
+  <tbody>
+    <tr>
+      <td width="5%">v2.60</td>
+      <td width="95%">Added: ConvertToY8, ConvertToYV411, ConvertToYV16, ConvertToYV24,<br>
+        ChromaInPlacement, ChromaOutPlacement and chromaresample, matrix=&quot;AVERAGE&quot;</td>
+    </tr>
+    <tr>
+      <td width="5%">v2.50</td>
+      <td width="95%">ConvertToYV12</td>
+    </tr>
+  </tbody>
+</table>
+<p><kbd>$Date: 2011/12/04 15:28:44 $</kbd></p>
+<form><input TYPE="Button" VALUE="Back"
+onClick="history.go(-1)"></form>
+</body>
+</html>

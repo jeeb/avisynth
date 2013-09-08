@@ -1,0 +1,356 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+<html>
+<head>
+<!--
+Not Automatically generated, changed!:
+$Id: syntax_internal_functions_control.htm,v 1.8 2012/04/15 14:13:14 wilbertd Exp $ 
+-->
+<meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+<title>Syntax - Control functions</title>
+<link rel="stylesheet" type="text/css" href="../avisynth.css">
+</head>
+<body>
+<h2><span class="mw-headline">AviSynth Syntax - Control functions</span></h2>
+<p>They facilitate flow of control (loading of scripts, arguments checks, global
+settings adjustment, etc.).</p>
+<ul>
+  <li><span style="color: rgb(0, 0, 128); font-weight: bold;">Apply</span>
+    <span>&nbsp;</span> | <span>&nbsp;</span> <span>&nbsp;</span> | <span>&nbsp;</span>
+    <span style="color: purple; font-weight: bold;">Apply(string func_string
+      [, arg1 [, arg2 [, ... [, argn]]]] )</span></li>
+</ul>
+<dl>
+  <dd>Apply calls the function or filter <span style="color: purple; font-weight: bold;">func_string</span>
+    with arguments <span style="color: purple; font-weight: bold;">arg1</span>,
+    <span style="color: purple; font-weight: bold;">arg2</span>, ...,
+    <span style="color: purple; font-weight: bold;">argn</span> (as many as
+    supplied). Thus, it provides a way to call a function or filter <b>by name</b>
+    providing arguments in the usual way as in a typical function call.</dd>
+  <dd>Consequently, <tt>Apply(&quot;f&quot;, x)</tt> is equivalent to <tt>f(x)</tt>
+    which in turn is equivalent to <tt>Eval(&quot;f(&quot; + String(x) +
+    &quot;)&quot;)</tt>.</dd>
+  <dd><i>Examples:</i></dd>
+</dl>
+<pre># here the same call to <a href="corefilters/resize.htm" title="Resize">BicubicResize</a> as in the Eval() example is shown 
+Apply(&quot;BicubicResize&quot;, last, 352, 288)
+# Note that the clip argument must be supplied - 'last' is not implicitly assumed</pre>
+<ul>
+  <li><span style="color: rgb(0, 0, 128); font-weight: bold;">Eval</span>
+    <span>&nbsp;</span> | <span>&nbsp;</span> <span>&nbsp;</span> | <span>&nbsp;</span>
+    <span style="color: purple; font-weight: bold;">Eval(expression [, string
+    &quot;name&quot;])</span></li>
+</ul>
+<dl>
+  <dd>Eval evaluates an arbitrary <i>expression</i> as if it was placed inside
+    the script at the point of the call to Eval and returns the result of
+    evaluation (either to the
+    <a href="syntax_script_variables.htm" title="Script variables">variable</a>
+    that is explicitly assigned to or to the last special variable.</dd>
+  <dd>You can use Eval to construct and evaluate expressions dynamically inside
+    your scripts, based on variable input data. Below some specific examples are
+    shown but you get the general idea.<br>
+    Argument <i>name</i> is filename specified in the error message instead of
+    script name.</dd>
+  <dd><i>Examples:</i></dd>
+</dl>
+<pre># this calls <a href="corefilters/resize.htm" title="Resize">BicubicResize</a>(last, 352, 288)
+settings = &quot;352, 288&quot;
+Eval( &quot;BicubicResize(&quot; + settings + &quot;)&quot; )
+...
+# this will result in Defined(u) == false
+u = Eval(&quot;#&quot;)   
+...
+# this increments a global based on a variable's value
+dummy = Eval(&quot;global my_counter = my_counter + &quot; + <a href="syntax_internal_functions_conversion.htm">String</a>(increment)) </pre>
+<ul>
+  <li><span style="color: rgb(0, 0, 128); font-weight: bold;">Import</span>
+    <span>&nbsp;</span> | <span>&nbsp;</span> <span>&nbsp;</span> | <span>&nbsp;</span>
+    <span style="color: purple; font-weight: bold;">Import(filename)</span></li>
+</ul>
+<dl>
+  <dd>Import evaluates the contents of another AviSynth script and returns the
+    imported script's return value. Typically it is used to make available to
+    the calling script library functions and the return value is not used.
+    However this is simply a convention; it is not enforced by the
+    <a href="http://avisynth.org/mediawiki/AviSynth_Syntax" title="AviSynth Syntax">AviSynth Syntax</a>.
+    See also the dedicated
+    <a href="corefilters/import.htm" title="Import">Import</a>
+    page in
+    <a href="http://avisynth.org/mediawiki/Internal_filters" title="Internal filters">Internal filters</a>
+    for other possible uses.</dd>
+  <dd>Possible scenarios (an indicative list) where the return value could be of
+    use is for the library script to:
+    <ul>
+      <li>indicate whether it succesfully initialised itself (a bool return
+        value),</li>
+      <li>inform for the number of presets found on disk (an int return value);</li>
+    </ul>
+  </dd>
+  <dd>the value then could be tested by the calling script to decide what action
+    to take next.</dd>
+  <dd><i>Examples:</i></dd>
+</dl>
+<pre>Import(&quot;mylib.avsi&quot;)  # here we do not care about the value (mylib.avsi contains only functions)
+...
+okflag = <a href="corefilters/import.htm" title="Import">Import</a>(&quot;mysources.avsi&quot;)  # mysources loads predetermined filenames from a folder into globals
+source = okflag&nbsp;? global1 + global2 + global3&nbsp;: <a href="corefilters/blankclip.htm" title="BlankClip">BlankClip</a>()</pre>
+<ul>
+  <li><span style="color: rgb(0, 0, 128); font-weight: bold;">Select</span>
+    <span>&nbsp;</span> | <span>&nbsp;</span> <span>&nbsp;</span> | <span>&nbsp;</span>
+    <span style="color: purple; font-weight: bold;">Select(index,
+      item0 [, item1 [, ... [, itemn]]])</span></li>
+</ul>
+<dl>
+  <dd>Returns the item selected by the
+    <span style="color: purple; font-weight: bold;">index</span>
+    argument, which must be of int type (0 returns
+    <span style="color: purple; font-weight: bold;">item0</span>,
+    1 returns
+    <span style="color: purple; font-weight: bold;">item1</span>,
+    ..., etc). Items can be any
+    <a href="syntax_script_variables.htm" title="Script variables"> script variable</a>
+    or expression of any type and can even be mixed.</dd>
+  <dd><i>Examples:</i></dd>
+</dl>
+<pre># select a clip-brush from a set of presets
+idx = 2
+brush = Select(idx, \
+     <a href="corefilters/avisource.htm" title="AviSource">AviSource</a>(&quot;round.avi&quot;), \
+     rectangle, \
+     diagonal, \
+     diagonal.<a href="corefilters/flip.htm" title="FlipHorizontal">FlipHorizontal</a>)</pre>
+<ul>
+  <li><span style="color: rgb(0, 0, 128); font-weight: bold;">Default</span>
+    <span>&nbsp;</span> | <span>&nbsp;</span> <span>&nbsp;</span> | <span>&nbsp;</span>
+    <span style="color: purple; font-weight: bold;">Default(x, d)</span></li>
+</ul>
+<dl>
+  <dd>Returns <i>x</i> if Defined(x) is true, <i>d</i> otherwise. <i>x</i> must
+    either be a function's argument or an already declared script variable (ie a
+    variable which has been assigned a value) else an error will occur.</dd>
+  <dd><i>Examples:</i></dd>
+</dl>
+<pre>function myfunc(clip c, ..., int &quot;strength&quot;) {
+    ...
+    strength = Default(strength, 4) # if not supplied make it 4
+    ...
+}</pre>
+<ul>
+  <li><span style="color: rgb(0, 0, 128); font-weight: bold;">Assert</span>
+    <span>&nbsp;</span> | <span>&nbsp;</span> <span>&nbsp;</span> | <span>&nbsp;</span>
+    <span style="color: purple; font-weight: bold;">Assert(condition [, err_msg])</span></li>
+</ul>
+<dl>
+  <dd>Does nothing if <span style="color: purple; font-weight: bold;">condition</span>
+    is true; throws an error, immediately terminating script execution, if
+    <i>condition</i> is false. In the later case
+    <span style="color: purple; font-weight: bold;">err_msg</span>,
+    if supplied, is presented to the user; else the standard message
+    &quot;Assert: assertion failed&quot;. shows up.</dd>
+  <dd><i>Examples:</i></dd>
+</dl>
+<pre>function myfunc(clip c, ..., int &quot;strength&quot;) {
+    ...
+    strength = Default(strength, 4) # if not supplied make it 4
+    Assert(strength &gt; 0, &quot;'strength' must be positive&quot;)
+    ...
+}</pre>
+<ul>
+  <li><span style="color: rgb(0, 0, 128); font-weight: bold;">NOP</span>
+    <span>&nbsp;</span> | <span>&nbsp;</span> <span>&nbsp;</span> | <span>&nbsp;</span>
+    <span style="color: purple; font-weight: bold;">NOP()</span></li>
+</ul>
+<dl>
+  <dd>This is a no-operation function provided mainly for conditional execution
+    with non-return value items such as
+    <a href="corefilters/import.htm" title="Import">Import</a>,
+    when no &quot;else&quot; condition is desired. That is, use it whenever the
+    <a href="syntax.htm" title="AviSynth Syntax">AviSynth Syntax</a>
+    requires an operation (such as with the&nbsp;?: operator) but your script
+    does not need one.</dd>
+  <dd>Return value: 0 (int type).</dd>
+  <dd><i>Examples:</i></dd>
+</dl>
+<pre>preset = want_presets&nbsp;? <a href="corefilters/avisource.htm" title="AviSource">AviSource</a>(&quot;c:\presets\any.avi&quot;)&nbsp;: NOP
+... 
+loadlib&nbsp;? <a href="corefilters/import.htm" title="Import">Import</a>(&quot;my_useful_functions.avs&quot;)&nbsp;: NOP</pre>
+<ul>
+  <li><span style="color: rgb(0, 0, 128); font-weight: bold;">UnDefined</span> <span>&nbsp;</span>
+    | <span>&nbsp;</span> v2.60 <span>&nbsp;</span> | <span>&nbsp;</span> <span style="color: purple; font-weight: bold;">UnDefined()</span>
+    <dl>
+      <dd>Returns the undefined state.</dd>
+      <dd>It's the state for which Defined() returns false.</dd>
+      <dd><i>Examples:</i></dd>
+    </dl>
+    <pre>x = Undefined()
+Defined(x) # = true</pre>
+  </li>
+  <li><span style="color: rgb(0, 0, 128); font-weight: bold;">SetMemoryMax</span>
+    <span>&nbsp;</span> | <span>&nbsp;</span> v2 <span>&nbsp;</span> | <span>&nbsp;</span>
+    <span style="color: purple; font-weight: bold;">SetMemoryMax(amount)</span></li>
+</ul>
+<dl>
+  <dd>Sets the maximum memory (in MB) that AviSynth uses for its internal Video
+    Frame cache to the value of <i>amount</i>. From v2.5.8, setting to zero
+    just returns the current Memory Max value. In the 2.5 series the default
+    Memory Max value is 25% of the free physical memory, with a minimum of 16MB.</dd>
+  <dd>From rev 2.5.8 RC4, the default Memory Max is also limited to 512MB.</dd>
+</dl>
+<dl>
+  <dd>
+    <table border="1" cellpadding="4" cellspacing="2" width="50%">
+      <tbody>
+        <tr>
+          <td>Free</td>
+          <td>&lt;64</td>
+          <td>128</td>
+          <td>256</td>
+          <td>512</td>
+          <td>1024</td>
+          <td>2048</td>
+          <td>3072</td>
+        </tr>
+        <tr>
+          <td>Default Max v2.57 and older</td>
+          <td>16</td>
+          <td>32</td>
+          <td>64</td>
+          <td>128</td>
+          <td>256</td>
+          <td>512</td>
+          <td>768</td>
+        </tr>
+        <tr>
+          <td>Default Max since v2.58 RC4</td>
+          <td>16</td>
+          <td>32</td>
+          <td>64</td>
+          <td>128</td>
+          <td>256</td>
+          <td>512</td>
+          <td>512</td>
+        </tr>
+      </tbody>
+    </table>
+  </dd>
+</dl>
+<dl>
+  <dd>In some versions there is a default setting of 5MB, which is quite low. If
+    you encounter problems (e.g. low speed) try to set this values to at least
+    32MB. Too high values can result in crashes because of 2GB address space limit.
+</dd>
+  <dd>Return value: Actual MemoryMax value set.</dd>
+  <dd><i>Examples:</i></dd>
+</dl>
+<pre>SetMemoryMax(128)</pre>
+<ul>
+  <li><span style="color: rgb(0, 0, 128); font-weight: bold;">SetWorkingDir</span>
+    <span>&nbsp;</span> | <span>&nbsp;</span> v2 <span>&nbsp;</span> | <span>&nbsp;</span>
+    <span style="color: purple; font-weight: bold;">SetWorkingDir(path)</span></li>
+</ul>
+<dl>
+  <dd>Sets the default directory for AviSynth to the <i>path</i> argument.</dd>
+  <dd>This is primarily for easy loading of source clips,
+    <a href="corefilters/import.htm" title="Import">importing</a>
+    scripts, etc. It does not affect plugins' autoloading.</dd>
+  <dd>Return value is 0 if successful, -1 otherwise.</dd>
+  <dd><i>Examples:</i></dd>
+</dl>
+<pre>SetWorkingDir(&quot;c:\my_presets&quot;)
+<a href="corefilters/avisource.htm" title="AviSource">AviSource</a>(&quot;border_mask.avi&quot;)  # this loads c:\my_presets\border_mask.avi</pre>
+<ul>
+  <li><span style="color: rgb(0, 0, 128); font-weight: bold;">SetPlanarLegacyAlignment</span>
+    <span>&nbsp;</span> | <span>&nbsp;</span> v2.56 <span>&nbsp;</span> | <span>&nbsp;</span>
+    <span style="color: purple; font-weight: bold;">SetPlanarLegacyAlignment(mode)</span></li>
+</ul>
+<dl>
+  <dd>Set alignment mode for <a href="http://avisynth.org/mediawiki/Planar" title="Planar">planar</a>
+    frames. <i>mode</i> can either be true or false.</dd>
+  <dd>Some older <a href="externalplugins.htm" title="External plugins">plugins</a>
+    illegally assume the layout of video frames in memory. This special filter
+    forces the memory layout of planar frames to be compatible with prior
+    versions of AviSynth. The filter works on the GetFrame() call stack, so it
+    effects filters <b>before</b> it in the script.</dd>
+  <dd><i>Examples:</i></dd>
+</dl>
+<pre>Example&nbsp;: Using an older version of Mpeg2Source() (1.10 or older):
+
+LoadPlugin(&quot;...\Mpeg2Decode.dll&quot;)
+Mpeg2Source(&quot;test.d2v&quot;)         # A plugin that illegally assumes the layout of memory
+SetPlanarLegacyAlignment(true)  # Set legacy memory alignment for prior statements
+<a href="corefilters/convert.htm" title="Convert">ConvertToYUY2</a>()     # Statements through to the end of the script have
+...                             # advanced memory alignment.</pre>
+<ul>
+  <li><span style="color: rgb(0, 0, 128); font-weight: bold;">OPT_AllowFloatAudio</span>
+    <span>&nbsp;</span> | <span>&nbsp;</span> v2.57 <span>&nbsp;</span> | <span>&nbsp;</span>
+    <span style="color: purple; font-weight: bold;">global OPT_AllowFloatAudio =
+    True</span></li>
+</ul>
+<dl>
+  <dd>This option enables WAVE_FORMAT_IEEE_FLOAT audio output. The default is to
+    autoconvert Float audio to 16 bit.</dd>
+</dl>
+<ul>
+  <li><span style="color: rgb(0, 0, 128); font-weight: bold;">OPT_UseWaveExtensible</span>
+    <span>&nbsp;</span> | <span>&nbsp;</span> v2.58 <span>&nbsp;</span> | <span>&nbsp;</span>
+    <span style="color: purple; font-weight: bold;">global OPT_UseWaveExtensible
+    = True</span></li>
+</ul>
+<dl>
+  <dd>This option enables WAVE_FORMAT_EXTENSIBLE audio output.
+    The default is WAVE_FORMAT_EX.</dd>
+  <dd><b>Note:</b> The default DirectShow component for .AVS files,
+    &quot;AVI/WAV File Source&quot;, does not correctly implement
+    WAVE_FORMAT_EXTENSIBLE processing, so many application may not be able to
+    detect the audio track. There are third party DirectShow readers that do
+    work correctly. Intermediate work files written using the AVIFile interface
+    for later DirectShow processing will work correctly if they use the
+    DirectShow &quot;File Source (async)&quot; component or equivalent.</dd>
+</dl>
+<ul>
+  <li><span style="color: rgb(0, 0, 128); font-weight: bold;">OPT_VDubPlanarHack</span>
+    <span>&nbsp;</span> | <span>&nbsp;</span> v2.60 <span>&nbsp;</span> | <span>&nbsp;</span>
+    <span style="color: purple; font-weight: bold;">global OPT_VDubPlanarHack =
+    True</span></li>
+</ul>
+<dl>
+  <dd>This option enables flipped YV24 and YV16 chroma planes. This is an hack
+    for early versions of Virtualdub with YV24/YV16 support.</dd>
+</dl>
+<ul>
+  <li><span style="color: rgb(0, 0, 128); font-weight: bold;">OPT_dwChannelMask</span>
+    <span>&nbsp;</span> | <span>&nbsp;</span> v2.60 <span>&nbsp;</span> | <span>&nbsp;</span>
+    <span style="color: purple; font-weight: bold;">global OPT_dwChannelMask(int
+    v)</span></li>
+</ul>
+<dl>
+  <dd>This option enables you to set ChannelMask. It overrides
+    WAVEFORMATEXTENSIBLE.dwChannelMask which is set according to this table<br>
+    0x00004, // 1 -- -- Cf<br>
+    0x00003, // 2 Lf Rf<br>
+    0x00007, // 3 Lf Rf Cf<br>
+    0x00033, // 4 Lf Rf -- -- Lr Rr<br>
+    0x00037, // 5 Lf Rf Cf -- Lr Rr<br>
+    0x0003F, // 5.1 Lf Rf Cf Sw Lr Rr<br>
+    0x0013F, // 6.1 Lf Rf Cf Sw Lr Rr -- -- Cr<br>
+    0x0063F, // 7.1 Lf Rf Cf Sw Lr Rr -- -- -- Ls Rs
+  </dd>
+</dl>
+<ul>
+  <li><span style="color: rgb(0, 0, 128); font-weight: bold;">OPT_AVIPadScanlines</span>
+    <span>&nbsp;</span> | <span>&nbsp;</span> v2.60 <span>&nbsp;</span> | <span>&nbsp;</span>
+    <span style="color: purple; font-weight: bold;">global OPT_AVIPadScanlines =
+    True</span></li>
+</ul>
+<dl>
+  <dd>This option enables DWORD aligned planar padding. Default is packed
+    aligned planar padding. See <a href="http://avisynth.org/mediawiki/index.php?title=AVIFile_output_emulation" class="new" title="AVIFile output emulation (not yet written)">memory
+    alignment used in the AVIFile output emulation</a>.</dd>
+</dl>
+
+<hr>
+<p>Back to <a href="syntax_internal_functions.htm" title="Internal functions">Internal
+functions</a>.</p>
+<p><kbd>$Date: 2012/04/15 14:13:14 $</kbd></p>
+</body>
+</html>

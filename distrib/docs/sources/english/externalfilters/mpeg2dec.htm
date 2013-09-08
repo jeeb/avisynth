@@ -1,0 +1,122 @@
+<html>
+<head>
+<title>MPEG2Dec</title>
+<link rel="stylesheet" type="text/css" href="../../avisynth.css">
+<!--
+Automatically generated, don't change:
+$Id: mpeg2dec.htm,v 1.2 2004/08/13 21:57:25 wilbertd Exp $ 
+-->
+</head>
+<body>
+<h1>MPEG2Dec</h1>
+<h1>Abstract</h1>
+<b>authors:</b> Dividee and others
+<br><b>version:</b>  1.10<br>
+<b>category:</b> MPEG Decoder (source) Plugins
+<br><b>download:</b>  <a href="http://www.avisynth.org/warpenterprises/">http://www.avisynth.org/warpenterprises/</a>
+ (source can be found on <a href="http://users.win.be/dividee/avisynth.html">Dividee's
+homepage</a>)
+<br><b>requirements:</b> &nbsp;
+<hr>
+<h2>Description</h2>
+This filter is able to output in the RGB and YUY2 colorformats.<br>
+It is a MPEG-2 decoder and it is able to decode any MPEG-2 streams readable by
+dvd2avi 1.76 
+<h2>Filters</h2>
+<p>A list of all filters included in this special mpeg2dec.dll:</p>
+<h3>TemporalSmoother</h3>
+<p><code>TemporalSmoother</code> (<var>clip, int &quot;strength&quot;, int
+&quot;radius&quot</var>)
+<p>This is a port of the TemporalSmoother filter from <a href="http://www.virtualdub.org/index" target="_parent"><cite>VirtualDub</cite></a>.
+It works in RGB32 &amp; YUY2 pixel formats.<br>
+From VirtualDub help file:
+<blockquote>
+  <p>This filter is an adaptive noise reducer, working along the time axis; it is
+  most effective when the image is not moving much. Increase the filter strength
+  to increase noise reduction, and decrease it to reduce speckling and ghosting
+  artifacts. It is recommended that you combine this filter with a spatial
+  (area-based) noise reducer for greatest effect.
+All frames no more than radius away are examined. Minimum radius
+is 1, maximum is 7. Larger values are of course slower. Default is 3, which is
+the value used in VirtualDub. The default value for strength is 2.</p>
+</blockquote>
+<p>Note that unlike its VirtualDub counterpart, this filter has no lag. It
+ensures that the frames needed for its work are in its buffer. Therefore, random
+access in the clip is slow, especially with a large radius.
+<p>Example:
+<pre># The filter effects in RGB and YUV are not 100% equivalent, especially with a high strength.
+# Let's visualize the difference
+
+cYUY2 = ConvertToRGB(TemporalSmoother(ConvertToYUY2,10))
+cRGB = TemporalSmoother(10)
+Subtract(cYUY2, cRGB)</pre>
+<h3>SelectRangeEvery</h3>
+<p><code>SelectRangeEvery</code> (<var>clip, int every, int length, int &quot;offset&quot;</var>)
+<p>Select <var>length</var> frames every <var>every</var> frames, starting after
+<var>offset</var>.
+<p>SelectRangeEvery(every, length, offset)
+is the same as SelectRangeEvery(Trim(offset, 0), every, length)
+<h3>BlendFields</h3>
+<p><code>BlendFields</code> (<var>clip</var>)
+<p>Deinterlace a clip by blending the fields together. This is the blend mode of
+the internal vdub deinterlace filter ported to avisynth. It works in RGB and YUV
+modes. If avisynth reports a field-based clip, <a href="../corefilters/weave.htm"> Weave</a> is performed, so
+the output is always frame-based. If avisynth guessed wrong, use <a href="../corefilters/parity.htm"> AssumeFrameBased</a>
+beforehand.
+<h3>MotionMask</h3>
+<p><code>MotionMask</code> (<var>clip, int mode, int treshold,
+bool &quot;denoise&quot;, bool &quot;fast&quot;</var>)</p>
+<p>Creates a two color clip that identifies moving parts of the images. The
+algorithm comes from <a href="http://sauron.mordor.net/dgraft/" target="_parent"><cite>Donald
+Graft</cite></a>' Smart Deinterlacer filter for VirtualDub, version 2.5. <var>mode</var>
+is
+an integer that can take 3 values: 1 for frame-only differencing, 2 for
+field-only differencing and 3 for frame-and-field differencing. <var>treshol</var>
+(integer) is the sensivity of the filter. A lower <var>treshold</var> makes it more
+sensitive to motion and, as a side-effect, to noise. <var>denoise</var> (boolean,
+default=true) activates additional filtering to reduce false motion detection
+due to noise and allows you to use lower tresholds. <var>fast</var> (boolean,
+default=false) makes the filter runs faster by working two pixels at a time but
+is less precise.</p>
+<p>For a more thorough explanation of the parameters, please read the help file
+included with the <a href="http://sauron.mordor.net/dgraft/smart.html" target="_parent"><cite>Smart
+Deinterlacer for VirtualDub</cite></a>.</p>
+<p>Currently <code>MotionMask</code> only handles YUY2 data. Also note that the
+color mode of the VirtualDub filter is not supported (yet).</p>
+<h3>MaskedDeinterlace</h3>
+<p><code>MaskedDeinterlace</code> (<var>clip, clip mask,
+bool blend</var>)</p>
+<p><code>MaskedDeinterlace</code> is designed to work together with <code>MotionMask</code>.
+It selectively deinterlace the <var>clip</var> based on the <var>mask</var> values.
+<var>mask</var> is a clip returned by <code>MotionMask</code>. <var>blend</var>
+(boolean, default=false)
+indicates whether deinterlacing is performed by discarding half of the lines
+(one field) and interpolating them (when <var>blend</var> is false), or by blending
+together adjacent lines (when <var>blend</var> is true).</p>
+<p><var>mask</var> and <var>clip</var> should have the same width, height and pixel
+format</p>
+<h3>SmartDeinterlace</h3>
+<p><code>SmartDeinterlace</code> (<var>clip, clip mode,
+int treshold, int &quot;denoise&quot;, bool &quot;blend&quot;,
+bool &quot;</tt>fast&quot;</var><tt>)</tt></p>
+<p>This is just a shortcut for:</p>
+<blockquote>
+<p>MaskedDeinterlace (clip, MotionMask(clip, mode, treshold, denoise, fast), blend)</p>
+</blockquote>
+<p>It shows that these filters are really only a port of Donald Graft' Smart
+Deinterlacer.</p>
+<h3>MaskedMix</h3>
+<p><code>MaskedMix</code> (<var>clip1, clip2, clip mask</var>)</p>
+<p>Returns a clip where each pixel is selected either from <var>clip1</var> or <var>clip2</var>
+based on the <var>mask</var> value for the pixel. The three clips should have the
+same width, height and pixel format. It allows you to use other deinterlacing
+methods than the two provided with <code>MaskedDeinterlace</code>.</p>
+<p>As an example, the following script can be used to reproduce the &quot;Show
+motion areas only&quot; option of Smart Deinterlacer for VirtualDub:</p>
+<pre>mask = MotionMask(3, 10, true)
+deint = BlendFields
+tmp = Blackness.Levels(0,1,255,127,127)
+MaskedMix(tmp, deint, mask)</pre>
+<p><kbd>$Date: 2004/08/13 21:57:25 $</kbd></p>
+</body>
+</html>

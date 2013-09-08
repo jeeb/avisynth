@@ -1,0 +1,160 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+<html>
+<head>
+<!--
+Not Automatically generated, changed!:
+$Id: script_ref_user_functions.htm,v 1.2 2011/04/29 20:36:18 wilbertd Exp $ 
+-->
+<meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+<title>Scripting reference - User functions</title>
+<link rel="stylesheet" type="text/css" href="../avisynth.css">
+</head>
+<body>
+<h2>User functions</h2>
+<p>Having read the basics about <a href="syntax_userdefined_scriptfunctions.htm" title="User defined script functions">user-defined
+script functions</a>, we can now step forward to examine in detail each function
+building block and identify rules for effective code development.</p>
+<ul>
+  <li class="toclevel-1"><span class="tocnumber"><a href="#The_function_declaration">1</span> 
+    The function declaration (header)</a>
+    <ul>
+      <li class="toclevel-2"><a href="#The_function_name"><span class="tocnumber">1.1</span>
+        The function name</a></li>
+      <li class="toclevel-2"><a href="#The_argument_list"><span class="tocnumber">1.2</span>
+        The argument list</a>
+        <ul>
+          <li><a href="#Typed_and_variable_.28val.29_arguments">1.2.1 Typed and variable (<tt>val</tt>) arguments</a></li>
+          <li><a href="#Required_and_optional_arguments">1.2.2 Required and optional arguments</a></li>
+        </ul>
+      </li>
+    </ul>
+  </li>
+  <li class="toclevel-1"><a href="#The_function_body"><span class="tocnumber">2</span>
+    The function body</a>
+    <ul>
+      <li><a href="#Argument_validation_and_setup_of_local_variables">2.1 Argument validation and setup of local variables</a></li>
+      <li><a href="#Performance_of_intermediate_computations">2.2 Performance of intermediate computations</a></li>
+      <li><a href="#Return_of_final_computation_outcome_to_the_caller">2.3 Return of final computation outcome to the caller</a></li>
+    </ul>
+</li>
+  <li class="toclevel-1"><a href="#Recursion"><span class="tocnumber">3</span>
+  Designing and developing user functions</a>
+    <ul>
+      <li><a href="#Defining_goals">3.1 Defining goals</a></li>
+      <li><a href="#Manipulating_globals">3.2 Manipulating globals</a></li>
+      <li><a href="#Recursion">3.3 Recursion</a></li>
+    </ul>
+</li>
+  <li class="toclevel-1"><a href="#Tuning_performance"><span class="tocnumber">4</span>
+    <span class="toctext">Tuning performance</span></a></li>
+  <li class="toclevel-1"><a href="#Design_and_coding-style_considerations"><span class="tocnumber">5</span>
+    <span class="toctext">Design and coding-style considerations</span></a></li>
+  <li class="toclevel-1"><a href="#Organising_user_defined_functions"><span class="tocnumber">6</span>
+    <span class="toctext">Organising user defined functions</span></a></li>
+</ul>
+<a name="The_function_declaration"></a>
+<h2>The function declaration (header)</h2>
+<p>The function declaration consists of the keyword <tt>function</tt> followed
+by the function's name and a (possibly empty) list of parameters (arguments)
+enclosed in a pair of parentheses. Its purpose is to declare the function, that
+is both make its name visible to the running script and state the number and
+type of the arguments that it expects in subsequent invocations (function
+calls).</p>
+<p>Note that in AviSynth script language the declaration is also a definition;
+the function body (the code that is executed every time the function is called)
+must be supplied immediately after.</p>
+<a name="The_function_name"></a>
+<h3>The function name</h3>
+<p>To name your user function you can pick any name that appropriately describes
+the purpose of it. You should however avoid naming a function with an already
+widely used name; the AviSynth script language namespace is flat and thus any
+such name collision means you (and others) cannot use both functions together.
+Note also that function names (as everything in AviSynth script language) are
+case insensitive.</p>
+<a name="The_argument_list"></a>
+<h3>The argument list</h3>
+<p>Regarding the possible different kinds of arguments a function can declare,
+there are two orthogonal to each other categorical divisions:</p>
+<ol>
+  <li><b>Typed</b> vs <b>variable</b> arguments.</li>
+  <li><b>Required</b> vs <b>optional</b> arguments.</li>
+</ol>
+<a name="Typed_and_variable_.28val.29_arguments"></a>
+<h4>Typed and variable (<tt>val</tt>) arguments</h4>
+<p>Typed arguments have a fixed type, decided by the specific type prefix (clip,
+int, float, bool, string) used during function declaration. Whenever a script is
+calling a function, AviSynth checks the supplied values for all typed arguments
+to ensure that they are of the proper type; if a discrepancy is found an error
+condition is triggered. Therefore, typed arguments can always be assumed of
+being the correct type (but not 'value'!) inside the body of the function,
+simplifying coding.</p>
+<p>Variable arguments can accept <i>any</i> AviSynth type (clip, int, float,
+bool, string) when the function is called. You can declare a function argument
+as being variable with either of two ways:</p>
+<ul>
+  <li>specify <tt>val</tt> as the type of the argument, for example:</li>
+</ul>
+<pre>function myfunc(clip c, val effect) { ... }
+function myfunc2(clip c, <b>val &quot;action&quot;</b>) { ... }</pre>
+<ul>
+  <li>do <i>not</i> specify a type for the argument, for example:</li>
+</ul>
+<pre>function myfunc(clip c, effect) { ... }
+function myfunc2(clip c, <b>&quot;action&quot;</b>) { ... }</pre>
+<p>As a side effect, whenever you neglet to provide the type of an argument you
+will get a variable argument. Keep this in mind when you are debugging your
+scripts.</p>
+<p>Variable arguments can also be optional. To do so, you simply enclose the
+argument in double quotes, as for typed arguments.</p>
+<p>Variable arguments are useful in some situations because they provide
+flexibility and reduce the size of the argument list. However, they have the
+drawback that your function code has to check the type of each variable argument
+in order to ensure its validity for the intended operation (for typed arguments,
+the type check is performed by AviSynth).</p>
+<a name="Required_and_optional_arguments"></a>
+<h4>Required and optional arguments</h4>
+<p>Required arguments must always be supplied when you are calling the function</p>
+<p>Optional arguments need not be supplied; they default (if the function is
+coded correctly) to reasonable initial values.</p>
+<a name="The_function_body"></a>
+<h2>The function body</h2>
+<p>The function body contains the bulk of the code that makes up your function.
+Since they strongly depend on the tasks-on-hand, the contents of the function
+body are quite arbitrary. However, there are some frequently occuring coding
+patterns that together form a more or less &quot;standard&quot; recipe for
+constructing the function body. These are in the usual order of appearance the
+following:</p>
+<ul>
+  <li>Argument validation and setup of local variables.</li>
+  <li>Performance of intermediate computations.</li>
+  <li>Return of final computation outcome to the caller of the function.</li>
+</ul>
+<p>We will now look closer on each one in the paragraphs that follow.</p>
+<a name="Argument_validation_and_setup_of_local_variables"></a>
+<h3>Argument validation and setup of local variables</h3>
+<a name="Performance_of_intermediate_computations"></a>
+<h3>Performance of intermediate computations</h3>
+<a name="Return_of_final_computation_outcome_to_the_caller"></a>
+<h3>Return of final computation outcome to the caller</h3>
+<a name="Designing_and_developing_user_functions"></a>
+<h2>Designing and developing user functions</h2>
+<a name="Defining_goals"></a>
+<h3>Defining goals</h3>
+<a name="Manipulating_globals"></a>
+<h3>Manipulating globals</h3>
+<p>how to use effectively and safely</p>
+<a name="Recursion"></a>
+<h3>Recursion</h3>
+<p>the only tool to act upon collections</p>
+<a name="Tuning_performance"></a>
+<h3>Tuning performance</h3>
+<a name="Design_and_coding-style_considerations"></a>
+<h3>Design and coding-style considerations</h3>
+<a name="Organising_user_defined_functions"></a>
+<h3>Organising user defined functions</h3>
+<hr>
+<p>Back to <a href="script_ref.htm" title="Scripting reference">scripting
+reference</a>.</p>
+<p><kbd>$Date: 2011/04/29 20:36:18 $</kbd></p>
+</body>
+</html>

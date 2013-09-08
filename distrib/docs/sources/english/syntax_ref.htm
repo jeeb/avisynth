@@ -1,0 +1,161 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+<html>
+<head>
+<!--
+Not Automatically generated, changed!:
+$Id: syntax_ref.htm,v 1.4 2008/12/21 09:23:02 ianb1957 Exp $ 
+-->
+<meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+<title>AviSynth 2 - Basic Syntax</title>
+<link rel="stylesheet" type="text/css" href="../avisynth.css">
+</head>
+<body>
+<h2><span class="mw-headline">AviSynth Syntax</span></h2>
+<p>All basic AviSynth scripting statements have one of these forms:</p>
+<ol>
+  <li><i>variable_name</i> = <i>expression</i></li>
+  <li><i>expression</i></li>
+  <li><b>return</b> <i>expression</i></li>
+</ol>
+<p>(Two higher-level constructs also exist - the
+   <a href="syntax_userdefined_scriptfunctions.htm"
+      title="User defined script functions">function declaration</a>
+   and the
+   <a href="syntax_control_structures.htm"
+      title="Control structures">try..catch statement</a>.)</p>
+<p>In the first case, <i>expression</i>  is evaluated and the result is assigned
+to <i>variable_name</i>. In the second case, <i>expression</i>  is evaluated and
+the result, if a clip, is assigned to the
+special variable <b>last</b>. In the third case, <i>expression</i>
+ is evaluated and is used as the &quot;return value&quot; of the active script
+block--that is either a function or the entire script. In the latter
+case, the return value is typically the video clip that will be seen by
+the application which opens the AVS file. As a
+shorthand, a bare expression as the final statement in a script (or script
+block) is treated as if the keyword <b>return</b> was present.</p>
+<p>Most of the time the result of an expression will be a video clip; however an
+expression's result can be of any type supported by the scripting language
+(clip, int, float, bool, string) and this is how utility functions such as
+<a href="syntax_internal_functions.htm"
+   title="Internal functions">internal script functions</a> operate.</p>
+<p>An <i>expression</i> can have one of these forms:</p>
+<ol>
+  <li><i>numeric_constant</i>, <i>string_constant</i> or <i>boolean_constant</i></li>
+  <li><i>variable_name</i> or <i>clip_property</i></li>
+  <li><i>Function</i>(<i>args</i>)</li>
+  <li><i>expression</i>.<i>Function</i>(<i>args</i>)</li>
+  <li><i>expression1</i> <b>operator</b> <i>expression2</i></li>
+  <li><i>bool_expression</i>&nbsp;? <i>expression1</i>&nbsp;: <i>expression2</i></li>
+</ol>
+<p>In the first case, the value of the <i>expression</i> is the value of the
+constant. In the second case, the values correspond to
+<a href="syntax_clip_properties.htm" title="Clip properties">clip properties</a> or
+<a href="syntax_script_variables.htm" title="Script variables">script variables</a>
+(which must have been previously initialized). In the third case,
+the value is the return value of an AVS function (see below). The fourth case is
+an alternate syntax (called &quot;OOP notation&quot;) which is equivalent to
+<i>Function</i>(<i>expression</i>, <i>args</i>).</p>
+<p>The final two cases show that one can manipulate expressions using all of the
+usual arithmetic and logical <a href="syntax_operators.htm" title="Operators">operators</a>
+(from C) as you'd expect on ints, floats and bools, as well as execute
+code conditionally with the ternary operator. Strings can be compared
+with relational operators and concatenated with
+'+'. The following operators are also defined on video clips: <b>a + b</b> is
+equivalent to <a href="corefilters/splice.htm" title="Splice">UnalignedSplice</a>(<i>a</i>,
+<i>b</i>), and <b>a ++ b</b> is equivalent to
+<a href="corefilters/splice.htm" title="Splice">AlignedSplice</a>(<i>a</i>,
+<i>b</i>).</p>
+<p>The functions in AviSynth's scripting language are, by and large, video
+filters. Although a function can return any type it chooses (this is a useful
+feature for creating utility code to reuse in scripts; you can define your own
+<a href="syntax_userdefined_scriptfunctions.htm" title="User defined script functions">script
+functions</a>) functions which do <b>not</b> return a <b>clip</b> are always
+limited to intermediate processing of variables to pass as arguments to filters
+(functions that <i>do</i> return a clip). The script should always return a clip
+as its final value. After all, AviSynth is a video processing application.</p>
+<p>Functions can take up to sixty arguments (hope that's enough), and the return
+value can be of any type supported by the scripting language (clip, int, float,
+bool, string). Functions always produce a new value and never modify an existing
+one. What that means is that all arguments to a function are passed &quot;by
+value&quot; and not &quot;by reference&quot;; in order to alter a variable's
+value in AviSynth script language you must assign to it a new value.</p>
+<p>To see the syntax of the function call for each built-in filter, view the
+<a href="corefilters.htm" title="Internal filters">internal filters</a>.
+There are also built-in
+<a href="syntax_internal_functions.htm" title="Internal functions">internal functions</a>
+that perform common operations on non-clip variables.</p>
+<p><i>Args</i>  is a list of function arguments separated by commas. The list
+can be empty. Each argument must be an expression whose type (eg text string,
+integer, floating-point number, boolean value or video clip) matches the one
+expected by the function. If the function expects a video clip as its first
+argument, and that argument is not supplied, then the clip in the special
+variable <i>last</i> will be used.</p>
+<p>AviSynth functions can take named arguments. The named arguments can be
+specified in any order, and the filter will choose default values for any that
+you leave off. This makes certain filters much easier to use. For example, you
+can now write
+<b><a href="corefilters/subtitle.htm"
+      title="Subtitle">Subtitle</a>(&quot;Hello, World!&quot;, text_color=$00FF00, x=100, y=200)</b>
+   instead of
+   <b><a href="corefilters/subtitle.htm"
+   title="Subtitle">Subtitle</a>(&quot;Hello, World!&quot;, 100, 200, 0, 999999,
+                                            &quot;Arial&quot;, 24, $00FF00)</b>.
+   <a href="syntax_colors.htm" title="Colors">Colors</a>
+can be specified in hexadecimal as in the example above or in decimal. In both
+cases it should be specified as RGB value, even if the clip itself is YUV.</p>
+<p>If no arguments are being passed to the function,
+you can also make the function call without parentheses, e.g.
+<b>FilterName</b>. The primary reason for this is to retain compatibility with
+old scripts. However, it's sometimes convenient to leave off the parentheses
+when there's no possibility of confusion.</p>
+<p>Avisynth ignores anything from a # character to the end of that line. This
+can be used to add <b>comments</b> to a script.</p>
+<pre># comment</pre>
+<p>In v2.58 it is possible to add <b>block</b> and <b>nested block</b> comments
+in the following way:</p>
+<pre># block comment:
+/* 
+comment 1
+comment 2
+*/</pre>
+<pre># nested block comments:
+[* [* a meaningful example will follow later&nbsp;:) *] *]</pre>
+<p>Avisynth ignores anything from an __END__ keyword (with double underscores)
+to the end of the script file. This can be used to disable some last commands of
+script.</p>
+<pre><a href="corefilters/version.htm">Version</a>()
+__END__
+<a href="corefilters/reduceby2.htm">ReduceBy2</a>()
+Result is not reduced and we can write any text here</pre>
+<p>Avisynth <b>ignores case</b>: aViSouRCe is just as good as AVISource.</p>
+<p>Multiple Avisynth statements on a single line can only be achieved in the
+context of OOP notation or embedding filters as parameters of another function
+such as:</p>
+<pre><a href="corefilters/avisource.htm" title="AviSource">AviSource</a>(&quot;c:\video.avi&quot;).<a href="corefilters/trim.htm" title="Trim">Trim</a>(0, 499)
+-or-
+<a href="corefilters/audiodub.htm" title="AudioDub">AudioDub</a>(AviSource(&quot;c:\video.avi&quot;), <a href="corefilters/avisource.htm" title="AviSource">WavSource</a>(&quot;c:\audio.wav&quot;))</pre>
+<p>Avisynth statements can be split across multiple lines by placing a backslash
+(&quot;\&quot;) either as the last non-space character of the line being
+extended, or as the first non-space character on the next line.</p>
+<p>Line splitting examples (both valid and equal):</p>
+<pre>Subtitle(&quot;Hello, World!&quot;, 100, 200, 0, \
+  999999, &quot;Arial&quot;, 24, $00FF00)</pre>
+<p>-or-</p>
+<pre>Subtitle(&quot;Hello, World!&quot;, 100, 200, 0,
+  \ 999999, &quot;Arial&quot;, 24, $00FF00)</pre>
+<p>When splitting across multiple lines you may <i>place comments only at the
+end of the last line</i>. Mixing comments with backslashes at an intermediate
+line of the line-split will either produce an error message or result at hard to
+trace bugs.</p>
+<p>Example of a not-signaled bug by improper mixing of comments and line
+separation:</p>
+<pre><a href="corefilters/colorbars.htm" title="ColorBars">ColorBars</a>
+<a href="corefilters/showframes.htm" title="ShowFrameNumber">ShowFrameNumber</a>
+Trim(0,9) # select some frames  \
+  + Trim(20,29)</pre>
+<p>The above example does not return frames [0..9,20..29] as intended because
+the &quot;\&quot; is masked by the &quot;#&quot; character before it; thus the
+line continuation never happens.</p>
+<p><kbd>$Date: 2008/12/21 09:23:02 $</kbd></p>
+</body>
+</html>

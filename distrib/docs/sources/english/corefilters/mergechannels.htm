@@ -1,0 +1,38 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+<HTML>
+<HEAD>
+   <META HTTP-EQUIV="Content-Type" CONTENT="text/html; charset=iso-8859-1">
+   <TITLE>MergeChannels Avisynth Filter</TITLE>
+   <link rel="stylesheet" type="text/css" href="../../avisynth.css">
+</HEAD>
+<BODY >
+<h2>
+<A NAME="MergeChannels"></A>MergeChannels
+</h2>
+<P><code>MergeChannels </code>(<var>clip1 , clip2 [, clip3, ...]</var>)
+<P>Starting from v2.5 <code>MergeChannels</code> replaces <code><a href="monotostereo.htm">MonoToStereo</a></code>, and 
+  can be used to merge the audio channels of two or more clips.<br>
+  Don't confuse this with mixing of channels (<code><a href="mixaudio.htm">MixAudio</a></code> and <code><a href="converttomono.htm">ConvertToMono</a></code> do this) - the sound of each channel is left untouched, the channels are only put into the new clip.
+<br>
+  Before merging audio is converted to the sample type of <var>clip1</var>.
+<P>&nbsp;
+      
+<pre># Example, converts &quot;uncompressed wav&quot; audio to a 44.1 kHz stereo signal:          
+video = AviSource(&quot;c:\divx_wav.avi&quot;) 
+audio = WavSource(&quot;c:\divx_wav.avi&quot;) 
+l_ch = GetChannel(audio, 1) 
+r_ch = GetChannel(audio, 2) 
+stereo = MergeChannels(l_ch, r_ch).ResampleAudio(44100) 
+return AudioDub(video, stereo) 
+
+# This is similar to: 
+video = AviSource(&quot;c:\divx_wav.avi&quot;) 
+audio = WavSource(&quot;c:\divx_wav.avi&quot;) 
+stereo = GetChannel(audio, 1, 2).ResampleAudio(44100) 
+return AudioDub(video, stereo)</pre>
+      
+<p><kbd>$Date: 2004/03/09 21:28:07 $</kbd></p>
+<FORM><INPUT TYPE="Button" VALUE="Back"
+onClick="history.go(-1)"></FORM>
+</BODY>
+</HTML>

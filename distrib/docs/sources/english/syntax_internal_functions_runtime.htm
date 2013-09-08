@@ -1,0 +1,180 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+<html>
+<head>
+<!--
+Not Automatically generated, changed!:
+$Id: syntax_internal_functions_runtime.htm,v 1.1 2008/04/20 19:07:34 wilbertd Exp $ 
+-->
+<meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+<title>Syntax - Runtime functions</title>
+<link rel="stylesheet" type="text/css" href="../avisynth.css">
+</head>
+<body>
+<h2><span class="mw-headline">AviSynth Syntax - Runtime functions</span></h2>
+<p>These are the internal functions which are evaluated at every frame. They can
+be used inside the scripts passed to runtime filters (<a href="corefilters/conditionalfilter.htm" title="ConditionalFilter">ConditionalFilter</a>,
+<a href="corefilters/conditionalfilter.htm" title="ScriptClip">ScriptClip</a>, <a href="corefilters/conditionalfilter.htm" title="FrameEvaluate">FrameEvaluate</a>)
+to return information for a frame (usually the current one). When using these
+functions there is an implicit <b><tt>last</tt></b> clip (the one that is passed
+to the runtime filter). Thus, first parameter doesn't have to be specified; it
+is replaced by the <tt>last</tt> clip.</p>
+<ul>
+  <li><span style="color: rgb(0, 0, 128); font-weight: bold;">AverageLuma</span>
+    <span>&nbsp;</span> | <span>&nbsp;</span> v2.x <span>&nbsp;</span> | <span>&nbsp;</span>
+    <span style="color: purple; font-weight: bold;">AverageLuma(clip)</span></li>
+  <li><span style="color: rgb(0, 0, 128); font-weight: bold;">AverageChromaU</span>
+    <span>&nbsp;</span> | <span>&nbsp;</span> v2.x <span>&nbsp;</span> | <span>&nbsp;</span>
+    <span style="color: purple; font-weight: bold;">AverageChromaU(clip)</span></li>
+  <li><span style="color: rgb(0, 0, 128); font-weight: bold;">AverageChromaV</span>
+    <span>&nbsp;</span> | <span>&nbsp;</span> v2.x <span>&nbsp;</span> | <span>&nbsp;</span>
+    <span style="color: purple; font-weight: bold;">AverageChromaV(clip)</span></li>
+</ul>
+<dl>
+  <dd>This group of functions return a float value with the average pixel value
+    of a plane (Luma, U-chroma and V-chroma, respectively). They require that <tt>clip</tt>
+    is in <a href="http://avisynth.org/mediawiki/YV12" title="YV12">YV12</a> <a href="http://avisynth.org/mediawiki/Color_spaces" title="Color spaces">colorspace</a>
+    and <a href="http://avisynth.org/mediawiki/ISSE" title="ISSE">ISSE</a>.</dd>
+  <dd><i>Examples:</i></dd>
+</dl>
+<pre>threshold = 55
+luma = AverageLuma()
+luma &lt; threshold&nbsp;? <a href="corefilters/levels.htm" title="Levels">Levels</a>(0, 1.0 + 0.5*(threshold - luma)/threshold, 255, 10, 255)&nbsp;: last</pre>
+<ul>
+  <li><span style="color: rgb(0, 0, 128); font-weight: bold;">RGBDifference</span>
+    <span>&nbsp;</span> | <span>&nbsp;</span> v2.x <span>&nbsp;</span> | <span>&nbsp;</span>
+    <span style="color: purple; font-weight: bold;">RGBDifference(clip1, clip2)</span></li>
+  <li><span style="color: rgb(0, 0, 128); font-weight: bold;">LumaDifference</span>
+    <span>&nbsp;</span> | <span>&nbsp;</span> v2.x <span>&nbsp;</span> | <span>&nbsp;</span>
+    <span style="color: purple; font-weight: bold;">LumaDifference(clip1, clip2)</span></li>
+  <li><span style="color: rgb(0, 0, 128); font-weight: bold;">ChromaUDifference</span>
+    <span>&nbsp;</span> | <span>&nbsp;</span> v2.x <span>&nbsp;</span> | <span>&nbsp;</span>
+    <span style="color: purple; font-weight: bold;">ChromaUDifference(clip1,
+    clip2)</span></li>
+  <li><span style="color: rgb(0, 0, 128); font-weight: bold;">ChromaVDifference</span>
+    <span>&nbsp;</span> | <span>&nbsp;</span> v2.x <span>&nbsp;</span> | <span>&nbsp;</span>
+    <span style="color: purple; font-weight: bold;">ChromaVDifference(clip1,
+    clip2)</span></li>
+</ul>
+<dl>
+  <dd>This group of functions return a float value between 0 and 255 of the
+    absolute difference between two planes (that is two frames from two
+    different clips). Either the combined RGB difference or the Luma, U-chroma
+    or V-chroma differences, respectively. They require that <tt>clip</tt> is in
+    <a href="http://avisynth.org/mediawiki/YV12" title="YV12">YV12</a> <a href="http://avisynth.org/mediawiki/Color_spaces" title="Color spaces">colorspace</a>
+    and <a href="http://avisynth.org/mediawiki/ISSE" title="ISSE">ISSE</a>.</dd>
+  <dd><i>Examples:</i></dd>
+</dl>
+<pre>ovl = <a href="corefilters/overlay.htm" title="Overlay">Overlay</a>(last, mov_star, x=some_xvalue, y=some_yvalue, mask=mov_mask)
+ldif = LumaDifference(ovl) # implicit last for clip1
+udif = ChromaUDifference(<a href="corefilters/tweak.htm" title="Tweak">Tweak</a>(hue=24), ovl)
+...</pre>
+<p><br>
+The next two groups of functions should be quite handy for detecting scene
+change transitions:</p>
+<ul>
+  <li><span style="color: rgb(0, 0, 128); font-weight: bold;">RGBDifferenceFromPrevious</span>
+    <span>&nbsp;</span> | <span>&nbsp;</span> v2.x <span>&nbsp;</span> | <span>&nbsp;</span>
+    <span style="color: purple; font-weight: bold;">RGBDifferenceFromPrevious(clip)</span></li>
+  <li><span style="color: rgb(0, 0, 128); font-weight: bold;">YDifferenceFromPrevious</span>
+    <span>&nbsp;</span> | <span>&nbsp;</span> v2.x <span>&nbsp;</span> | <span>&nbsp;</span>
+    <span style="color: purple; font-weight: bold;">YDifferenceFromPrevious(clip)</span></li>
+  <li><span style="color: rgb(0, 0, 128); font-weight: bold;">UDifferenceFromPrevious</span>
+    <span>&nbsp;</span> | <span>&nbsp;</span> v2.x <span>&nbsp;</span> | <span>&nbsp;</span>
+    <span style="color: purple; font-weight: bold;">UDifferenceFromPrevious(clip)</span></li>
+  <li><span style="color: rgb(0, 0, 128); font-weight: bold;">VDifferenceFromPrevious</span>
+    <span>&nbsp;</span> | <span>&nbsp;</span> v2.x <span>&nbsp;</span> | <span>&nbsp;</span>
+    <span style="color: purple; font-weight: bold;">VDifferenceFromPrevious(clip)</span></li>
+</ul>
+<dl>
+  <dd>This group of functions return the absolute difference of pixel value
+    between the current and previous frame of <tt>clip</tt>. Either the combined
+    RGB difference or the Luma, U-chroma or V-chroma differences, respectively.</dd>
+  <dd><i>Examples:</i></dd>
+</dl>
+<pre>scene_change = YDifferenceFromPrevious() &gt; threshold&nbsp;? true&nbsp;: false
+scene_change&nbsp;? some_filter(...)&nbsp;: another_filter(...)</pre>
+<ul>
+  <li><span style="color: rgb(0, 0, 128); font-weight: bold;">RGBDifferenceToNext</span>
+    <span>&nbsp;</span> | <span>&nbsp;</span> v2.x <span>&nbsp;</span> | <span>&nbsp;</span>
+    <span style="color: purple; font-weight: bold;">RGBDifferenceToNext(clip)</span></li>
+  <li><span style="color: rgb(0, 0, 128); font-weight: bold;">YDifferenceToNext</span>
+    <span>&nbsp;</span> | <span>&nbsp;</span> v2.x <span>&nbsp;</span> | <span>&nbsp;</span>
+    <span style="color: purple; font-weight: bold;">YDifferenceToNext(clip)</span></li>
+  <li><span style="color: rgb(0, 0, 128); font-weight: bold;">UDifferenceToNext</span>
+    <span>&nbsp;</span> | <span>&nbsp;</span> v2.x <span>&nbsp;</span> | <span>&nbsp;</span>
+    <span style="color: purple; font-weight: bold;">UDifferenceToNext(clip)</span></li>
+  <li><span style="color: rgb(0, 0, 128); font-weight: bold;">VDifferenceToNext</span>
+    <span>&nbsp;</span> | <span>&nbsp;</span> v2.x <span>&nbsp;</span> | <span>&nbsp;</span>
+    <span style="color: purple; font-weight: bold;">VDifferenceToNext(clip)</span></li>
+</ul>
+<dl>
+  <dd>This group of functions return the absolute difference of pixel value
+    between the current and next frame of <tt>clip</tt>. Either the combined RGB
+    difference or the Luma, U-chroma or V-chroma differences, respectively.</dd>
+  <dd><i>Examples:</i></dd>
+</dl>
+<pre># both th1, th2 are positive thresholds; th1 is larger enough than th2
+scene_change = YDifferenceFromPrevious() &gt; th1 &amp;&amp; YDifferenceToNext() &lt; th2
+scene_change&nbsp;? some_filter(...)&nbsp;: another_filter(...)</pre>
+<ul>
+  <li><span style="color: rgb(0, 0, 128); font-weight: bold;">YPlaneMax</span> <span>&nbsp;</span>
+    | <span>&nbsp;</span> v2.x <span>&nbsp;</span> | <span>&nbsp;</span> <span style="color: purple; font-weight: bold;">YPlaneMax(clip,
+    float threshold)</span></li>
+  <li><span style="color: rgb(0, 0, 128); font-weight: bold;">UPlaneMax</span> <span>&nbsp;</span>
+    | <span>&nbsp;</span> v2.x <span>&nbsp;</span> | <span>&nbsp;</span> <span style="color: purple; font-weight: bold;">UPlaneMax(clip,
+    float threshold)</span></li>
+  <li><span style="color: rgb(0, 0, 128); font-weight: bold;">VPlaneMax</span> <span>&nbsp;</span>
+    | <span>&nbsp;</span> v2.x <span>&nbsp;</span> | <span>&nbsp;</span> <span style="color: purple; font-weight: bold;">VPlaneMax(clip,
+    float threshold)</span></li>
+  <li><span style="color: rgb(0, 0, 128); font-weight: bold;">YPlaneMin</span> <span>&nbsp;</span>
+    | <span>&nbsp;</span> v2.x <span>&nbsp;</span> | <span>&nbsp;</span> <span style="color: purple; font-weight: bold;">YPlaneMin(clip,
+    float threshold)</span></li>
+  <li><span style="color: rgb(0, 0, 128); font-weight: bold;">UPlaneMin</span> <span>&nbsp;</span>
+    | <span>&nbsp;</span> v2.x <span>&nbsp;</span> | <span>&nbsp;</span> <span style="color: purple; font-weight: bold;">UPlaneMin(clip,
+    float threshold)</span></li>
+  <li><span style="color: rgb(0, 0, 128); font-weight: bold;">VPlaneMin</span> <span>&nbsp;</span>
+    | <span>&nbsp;</span> v2.x <span>&nbsp;</span> | <span>&nbsp;</span> <span style="color: purple; font-weight: bold;">VPlaneMin(clip,
+    float threshold)</span></li>
+  <li><span style="color: rgb(0, 0, 128); font-weight: bold;">YPlaneMedian</span>
+    <span>&nbsp;</span> | <span>&nbsp;</span> v2.x <span>&nbsp;</span> | <span>&nbsp;</span>
+    <span style="color: purple; font-weight: bold;">YPlaneMedian(clip)</span></li>
+  <li><span style="color: rgb(0, 0, 128); font-weight: bold;">UPlaneMedian</span>
+    <span>&nbsp;</span> | <span>&nbsp;</span> v2.x <span>&nbsp;</span> | <span>&nbsp;</span>
+    <span style="color: purple; font-weight: bold;">UPlaneMedian(clip)</span></li>
+  <li><span style="color: rgb(0, 0, 128); font-weight: bold;">VPlaneMedian</span>
+    <span>&nbsp;</span> | <span>&nbsp;</span> v2.x <span>&nbsp;</span> | <span>&nbsp;</span>
+    <span style="color: purple; font-weight: bold;">VPlaneMedian(clip)</span></li>
+  <li><span style="color: rgb(0, 0, 128); font-weight: bold;">YPlaneMinMaxDifference</span>
+    <span>&nbsp;</span> | <span>&nbsp;</span> v2.x <span>&nbsp;</span> | <span>&nbsp;</span>
+    <span style="color: purple; font-weight: bold;">YPlaneMinMaxDifference(clip,
+    float threshold)</span></li>
+  <li><span style="color: rgb(0, 0, 128); font-weight: bold;">UPlaneMinMaxDifference</span>
+    <span>&nbsp;</span> | <span>&nbsp;</span> v2.x <span>&nbsp;</span> | <span>&nbsp;</span>
+    <span style="color: purple; font-weight: bold;">UPlaneMinMaxDifference(clip,
+    float threshold)</span></li>
+  <li><span style="color: rgb(0, 0, 128); font-weight: bold;">VPlaneMinMaxDifference</span>
+    <span>&nbsp;</span> | <span>&nbsp;</span> v2.x <span>&nbsp;</span> | <span>&nbsp;</span>
+    <span style="color: purple; font-weight: bold;">VPlaneMinMaxDifference(clip,
+    float threshold)</span></li>
+</ul>
+<dl>
+  <dd>This group of functions return statistics about the distribution of pixel
+    values on a plane (Luma, U-chroma and V-chroma, respectively). The
+    statistics are, in order of presentation: maximum, minimum, median and range
+    (maximum - minimum difference).</dd>
+  <dd><tt>threshold</tt> is a percentage, stating how many percent of the pixels
+    are allowed above or below minimum. The threshold is optional and defaults
+    to 0.</dd>
+  <dd><i>Examples:</i></dd>
+</dl>
+<pre># median and average are close only on even distributions; this can be a useful diagnostic
+have_intense_brights = YPlaneMedian() - AverageLuma() &lt; threshold
+...
+# a simple per-frame normalizer to [16..235], CCIR, range
+<a href="corefilters/levels.htm" title="Levels">Levels</a>(YPlaneMin(), 1.0, YPlaneMax(), 16, 235)</pre>
+<hr>
+<p>Back to <a href="syntax_internal_functions.htm" title="Internal functions">Internal
+functions</a>.</p>
+<p><kbd>$Date: 2008/04/20 19:07:34 $</kbd></p>
+</body>
+</html>

@@ -1,0 +1,296 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+<html>
+<head>
+<!--
+Not Automatically generated, changed!:
+$Id: syntax_clip_properties.htm,v 1.8 2013/01/06 13:38:34 ianb1957 Exp $ 
+-->
+<meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+<title>Syntax - Clip properties</title>
+<link rel="stylesheet" type="text/css" href="../avisynth.css">
+</head>
+<body>
+<h2><span class="mw-headline">AviSynth Clip properties</span></h2>
+<p>You can access clip properties in AVS scripts. For example, if the variable <i>clip</i>
+holds a video clip, then <i>clip.height</i> is its height in pixels, <i>clip.framecount</i>
+is its length in frames, and so on. Clip properties can be manipulated just like
+<a href="syntax_script_variables.htm" title="Script variables">script variables</a>
+(see the <a href="syntax_ref.htm" title="AviSynth Syntax">AviSynth
+Syntax</a> for more), except that they cannot be l-values in C-terminology.</p>
+<p>The full list of properties:</p>
+<ul>
+  <li><span style="color: rgb(0, 0, 128); font-weight: bold;">Width</span>
+    (clip)</li>
+</ul>
+<dl>
+  <dd>Returns the width of the clip in pixels (type: int).</dd>
+</dl>
+<ul>
+  <li><span style="color: rgb(0, 0, 128); font-weight: bold;">Height</span>
+    (clip)</li>
+</ul>
+<dl>
+  <dd>Returns the height of the clip in pixels (type: int).</dd>
+</dl>
+<ul>
+  <li><span style="color: rgb(0, 0, 128); font-weight: bold;">FrameCount</span>
+    (clip)</li>
+</ul>
+<dl>
+  <dd>Returns the number of frames of the clip (type: int).</dd>
+</dl>
+<ul>
+  <li><span style="color: rgb(0, 0, 128); font-weight: bold;">FrameRate</span>
+    (clip)</li>
+</ul>
+<dl>
+  <dd>Returns the number of frames per seconds of the clip (type: float). The
+    framerate is internally stored as a ratio though and more about it can be
+    read <a href="corefilters/fps.htm">here</a>.</dd>
+</dl>
+<ul>
+  <li><span style="color: rgb(0, 0, 128); font-weight: bold;">FrameRateNumerator</span>
+    (clip) (v2.55)</li>
+</ul>
+<blockquote>
+  <p>Returns the numerator of the number of frames per seconds of the clip
+  (type: int).</p>
+</blockquote>
+<ul>
+  <li><span style="color: rgb(0, 0, 128); font-weight: bold;">FrameRateDenominator</span>
+    (clip) (v2.55)</li>
+</ul>
+<blockquote>
+  <p>Returns the denominator of the number of frames per seconds of the clip
+  (type: int).</p>
+</blockquote>
+<ul>
+  <li><span style="color: rgb(0, 0, 128); font-weight: bold;">AudioRate</span>
+    (clip)</li>
+</ul>
+<dl>
+  <dd>Returns the sample rate of the audio of the clip (type: int).</dd>
+</dl>
+<ul>
+  <li><span style="color: rgb(0, 0, 128); font-weight: bold;">AudioLength</span>
+    (clip) (v2.51)</li>
+</ul>
+<dl>
+  <dd>Returns the number of samples of the audio of the clip (type: int). Be
+    aware of possible overflow on very long clips (2^31 samples limit).</dd>
+</dl>
+<ul>
+  <li><span style="color: rgb(0, 0, 128); font-weight: bold;">AudioLengthLo</span>
+    (clip [, int]) (v2.60)</li>
+</ul>
+<dl>
+  <dd>Returns the number of samples of the audio of the clip modulo int. int is
+    1,000,000,000 by default (type: int).</dd>
+</dl>
+<ul>
+  <li><span style="color: rgb(0, 0, 128); font-weight: bold;">AudioLengthHi</span>
+    (clip [, int]) (v2.60)</li>
+</ul>
+<dl>
+  <dd>Returns the number of samples of the audio of the clip divided by int
+    (truncated to nearest integer). int is 1,000,000,000 by default (type:
+    int).</dd>
+</dl>
+<ul>
+  <li><span style="color: rgb(0, 0, 128); font-weight: bold;">AudioLengthS</span>
+    (clip) (v2.60)</li>
+</ul>
+<dl>
+  <dd>Returns a string formated with the total number of samples of the
+    audio of the clip (type: string).</dd>
+</dl>
+<ul>
+  <li><span style="color: rgb(0, 0, 128); font-weight: bold;">AudioLengthF</span>
+    (clip) (v2.55)</li>
+</ul>
+<dl>
+  <dd>Returns the number of samples of the audio of the clip (type: float).</dd>
+</dl>
+<ul>
+  <li><span style="color: rgb(0, 0, 128); font-weight: bold;">AudioDuration</span>
+    (clip) (v2.60)</li>
+</ul>
+<dl>
+  <dd>Returns the duration in seconds of the audio of the clip (type: float).</dd>
+</dl>
+<ul>
+  <li><span style="color: rgb(0, 0, 128); font-weight: bold;">AudioChannels</span>
+    (clip)</li>
+</ul>
+<dl>
+  <dd>Returns the number of audio channels of the clip (type: int).</dd>
+</dl>
+<ul>
+  <li><span style="color: rgb(0, 0, 128); font-weight: bold;">AudioBits</span>
+    (clip)</li>
+</ul>
+<dl>
+  <dd>Returns the audio bit depth of the clip (type: int).</dd>
+</dl>
+<ul>
+  <li><span style="color: rgb(0, 0, 128); font-weight: bold;">IsAudioFloat</span>
+    (clip) (v2.55)</li>
+</ul>
+<dl>
+  <dd>Returns true if the audio format of the clip is float (type:
+    bool).</dd>
+</dl>
+<ul>
+  <li><span style="color: rgb(0, 0, 128); font-weight: bold;">IsAudioInt</span>
+    (clip) (v2.55)</li>
+</ul>
+<dl>
+  <dd>Returns true if the audio format of the clip is an integer type (type:
+    bool).</dd>
+</dl>
+<ul>
+  <li><span style="color: rgb(0, 0, 128); font-weight: bold;">IsRGB</span>
+    (clip)</li>
+</ul>
+<dl>
+  <dd>Returns true if the clip is <a href="http://avisynth.org/mediawiki/RGB" title="RGB">RGB</a>,
+    false otherwise (type: bool).</dd>
+</dl>
+<ul>
+  <li><span style="color: rgb(0, 0, 128); font-weight: bold;">IsRGB24</span>
+    (clip) (v2.07)</li>
+</ul>
+<dl>
+  <dd>Returns true if the clip is <a href="http://avisynth.org/mediawiki/RGB24" title="RGB24">RGB24</a>,
+    false otherwise (type: bool).</dd>
+</dl>
+<ul>
+  <li><span style="color: rgb(0, 0, 128); font-weight: bold;">IsRGB32</span>
+    (clip) (v2.07)</li>
+</ul>
+<dl>
+  <dd>Returns true if the clip is <a href="http://avisynth.org/mediawiki/RGB32" title="RGB32">RGB32</a>,
+    false otherwise (type: bool).</dd>
+</dl>
+<ul>
+  <li><span style="color: rgb(0, 0, 128); font-weight: bold;">IsYUV</span>
+    (clip) (v2.54)</li>
+</ul>
+<dl>
+  <dd>Returns true if the clip is <a href="http://avisynth.org/mediawiki/YUV" title="YUV">YUV</a>,
+    false otherwise (type: bool).</dd>
+</dl>
+<ul>
+  <li><span style="color: rgb(0, 0, 128); font-weight: bold;">IsY8</span>
+    (clip) (2.60)</li>
+</ul>
+<dl>
+  <dd>Returns true if the clip is <a href="http://avisynth.org/mediawiki/Y8" title="Y8">Y8</a>,
+    false otherwise (type: bool).</dd>
+</dl>
+<ul>
+  <li><span style="color: rgb(0, 0, 128); font-weight: bold;">IsYUY2</span>
+    (clip)</li>
+</ul>
+<dl>
+  <dd>Returns true if the clip is <a href="http://avisynth.org/mediawiki/YUY2" title="YUY2">YUY2</a>,
+    false otherwise (type: bool).</dd>
+</dl>
+<ul>
+  <li><span style="color: rgb(0, 0, 128); font-weight: bold;">IsYV12</span>
+    (clip) (v2.52)</li>
+</ul>
+<dl>
+  <dd>Returns true if the clip is <a href="http://avisynth.org/mediawiki/YV12" title="YV12">YV12</a>,
+    false otherwise (type: bool).</dd>
+</dl>
+<ul>
+  <li><span style="color: rgb(0, 0, 128); font-weight: bold;">IsYV16</span>
+    (clip) (v2.60)</li>
+</ul>
+<dl>
+  <dd>Returns true if the clip is <a href="http://avisynth.org/mediawiki/YV16" title="YV16">YV16</a>,
+    false otherwise (type: bool).</dd>
+</dl>
+<ul>
+  <li><span style="color: rgb(0, 0, 128); font-weight: bold;">IsYV24</span>
+    (clip) (v2.60)</li>
+</ul>
+<dl>
+  <dd>Returns true if the clip is <a href="http://avisynth.org/mediawiki/YV24" title="YV24">YV24</a>,
+    false otherwise (type: bool).</dd>
+</dl>
+<ul>
+  <li><span style="color: rgb(0, 0, 128); font-weight: bold;">IsYV411</span>
+    (clip) (v2.60)</li>
+</ul>
+<dl>
+  <dd>Returns true if the clip is <a href="http://avisynth.org/mediawiki/YV411" title="YV411">YV411</a>,
+    false otherwise (type: bool).</dd>
+</dl>
+<ul>
+  <li><span style="color: rgb(0, 0, 128); font-weight: bold;">PixelType</span>
+    (clip) (v2.60)</li>
+</ul>
+<dl>
+  <dd>Returns the name of the pixel format (type: string).</dd>
+</dl>
+<ul>
+  <li><span style="color: rgb(0, 0, 128); font-weight: bold;">IsFieldBased</span>
+    (clip)</li>
+</ul>
+<blockquote>
+  <p>Returns true if the clip is field-based (type: bool). What this means is
+  explained <a href="advancedtopics/interlaced_fieldbased.htm">here</a>.</p>
+</blockquote>
+<ul>
+  <li><span style="color: rgb(0, 0, 128); font-weight: bold;">IsFrameBased</span>
+    (clip)</li>
+</ul>
+<blockquote>
+  <p>Returns true if the clip is frame-based (type: bool). What this means is
+  explained <a href="advancedtopics/interlaced_fieldbased.htm">here</a>.</p>
+</blockquote>
+<ul>
+  <li><span style="color: rgb(0, 0, 128); font-weight: bold;">IsPlanar</span>
+    (clip) (v2.52)</li>
+</ul>
+<dl>
+  <dd>Returns true if the clip is <a href="http://avisynth.org/mediawiki/Planar" title="Planar">planar</a>,
+    false otherwise (type: bool).</dd>
+</dl>
+<ul>
+  <li><span style="color: rgb(0, 0, 128); font-weight: bold;">IsInterleaved</span>
+    (clip) (v2.52)</li>
+</ul>
+<dl>
+  <dd>Returns true if the clip color format is Interleaved, false otherwise
+    (type: bool).</dd>
+</dl>
+<ul>
+  <li><span style="color: rgb(0, 0, 128); font-weight: bold;">GetParity</span>
+    (clip, int n)</li>
+</ul>
+<dl>
+  <dd>Returns true if frame n (default 0) is top field of field-based clip, or
+    it is full frame with top field first of frame-based clip (type: bool).</dd>
+</dl>
+<ul>
+  <li><span style="color: rgb(0, 0, 128); font-weight: bold;">HasAudio</span>
+    (clip) (v2.56)</li>
+</ul>
+<dl>
+  <dd>Returns true if the clip has audio, false otherwise (type: bool).</dd>
+</dl>
+<ul>
+  <li><span style="color: rgb(0, 0, 128); font-weight: bold;">HasVideo</span>
+    (clip) (v2.56)</li>
+</ul>
+<dl>
+  <dd>Returns true if the clip has video, false otherwise (type: bool).</dd>
+</dl>
+<hr>
+<p>Back to <a href="syntax.htm" title="AviSynth Syntax">AviSynth Syntax</a>.</p>
+<p><kbd>$Date: 2013/01/06 13:38:34 $</kbd></p>
+</body>
+</html>

@@ -1,0 +1,75 @@
+<!doctype html public "-//w3c//dtd html 4.0 transitional//en">
+<html>
+<head>
+   <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+   <title>Tone Filter</title>
+   <link rel="stylesheet" type="text/css" href="../../avisynth.css">
+</head>
+<body >
+<h2>
+<a href="#Tone" name="Tone"></a>Tone</h2>
+<p><code>Tone </code>(<var>float &quot;length&quot;, float
+&quot;frequency&quot;, int &quot;samplerate&quot;, int &quot;channels&quot;,
+string &quot;type&quot;, float &quot;level&quot;</var>)
+<p>This will generate sound (a waveform) at a given <var>frequency</var>
+  for a given <var>length</var> of time in seconds. <var>Type</var> can be
+  &quot;Silence&quot;, &quot;Sine&quot; (default), &quot;Noise&quot;,
+  &quot;Square&quot;, &quot;Triangle&quot; or &quot;Sawtooth&quot;.
+  <var>level</var> is the amplitude of the waveform (which is maximal if
+  level=1.0).</p>
+<p>Defaults are Tone(10.0, 440, 48000, 2, &quot;sine&quot;, 1.0).</p>
+<table border="1" width="50%">
+  <tr>
+    <td width="100%" align="center"><img border="0" src="../pictures/corefilters/tone.jpg" width="480" height="360"></td>
+  </tr>
+  <tr>
+    <td width="100%" align="center">Tone(frequency=2, samplerate= 48000,
+      channels= 2, type= &quot;sine&quot;, level=0.4)</td>
+  </tr>
+</table>
+<p>In the figure above, a sinus is generated (on a grey clip with framerate 24
+fps). The period of the waveform (in frames) is the framerate divided by <var>frequency</var>
+(or fps/freq, which is 24/2=12 frames in our example). The part of the graph
+which is light-green represents all samples of the frame under consideration
+(which is frame 1 here). The number of samples in a particular frame is given by
+the <var>samplerate</var> divided by the framerate (which is 48000/24 = 2000
+samples in our example). (Note that the bars are made with <a href="histogram.htm">Histogram</a>
+and the graph with the <a href="../externalfilters/audiograph.htm">AudioGraph</a>
+plugin.)</p>
+
+<p>More generally, the waveform above is described by</p>
+
+<p>g(n,s) = level * sin(2*pi*(frequency*n/framerate + s*frequency/samplerate))</p>
+
+<p>with &quot;n&quot; the frame and &quot;s&quot; the sample under consideration
+(note that s runs from 0 to samplerate/framerate - 1).</p>
+
+<p>In the example above, this reduces to</p>
+
+<p>g(n,s) = 0.4 * sin(2*pi*(2*n/24 + s*2/48000))</p>
+
+<p>with &quot;n&quot; the frame and &quot;s&quot; the sample under consideration
+(note that s runs from 0 to 1999).</p>
+
+<p><b>Changes:</b></p>
+<table border="1">
+  <tbody>
+    <tr>
+      <td>v2.54</td>
+      <td>Initial release.</td>
+    </tr>
+    <tr>
+      <td>v2.56</td>
+      <td>Added level.</td>
+    </tr>
+  </tbody>
+</table>
+
+<p><kbd>$Date: 2007/07/13 00:53:01 $</kbd></p>
+<form>
+  <p><input TYPE="Button" VALUE="Back"
+onClick="history.go(-1)"></p>
+</form>
+
+</body>
+</html>

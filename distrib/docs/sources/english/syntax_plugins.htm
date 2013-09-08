@@ -1,0 +1,94 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+<html>
+<head>
+<!--
+Not Automatically generated, changed!:
+$Id: syntax_plugins.htm,v 1.1 2008/04/20 19:07:34 wilbertd Exp $ 
+-->
+<meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+<title>Syntax - Plugins</title>
+<link rel="stylesheet" type="text/css" href="../avisynth.css">
+</head>
+<body>
+<h2><span class="mw-headline">AviSynth Syntax - Plugins</span></h2>
+<p>With these functions you can add external functions to AviSynth. 
+<p><code>LoadPlugin</code> (<var>&quot;filename&quot; [, ...]</var>) 
+<p>Loads one or more external avisynth plugins (DLLs). <br>
+<hr>
+<p><code>LoadVirtualDubPlugin</code> (<var>&quot;filename&quot;,
+&quot;filtername&quot;, preroll</var>) 
+<p>This loads a plugin written for VirtualDub. "filename" is the name of the .vdf 
+  file. After calling this function, the filter will be known as "filtername" 
+  in avisynth. VirtualDub filters only supports RGB32. If the video happens to 
+  be in RGB24-format, then you must use <code>ConvertToRGB32</code> (<code>ConvertToRGB</code> 
+  won't suffice). 
+<p>Some filters output depends on previous frames; for those preroll should be 
+  set to at least the number of frames the filter needs to pre-process to fill 
+  its buffers and/or updates its internal variables. <br>
+<hr>
+<p><code>LoadVFAPIPlugin</code> (<var>&quot;filename&quot;,
+&quot;filtername&quot;</var>)
+<p>This allows you to use VFAPI plugins (TMPGEnc import plugins).<br>
+<hr>
+
+<p>
+<code>LoadCPlugin</code> (<var>&quot;filename&quot; [, ...]</var>)<br>
+<code>Load_Stdcall_Plugin</code> (<var>&quot;filename&quot; [, ...]</var>)</p>
+<p>Loads so called Avisynth C-plugins (DLLs). <br>
+Load_Stdcall_Plugin() is an alias for LoadCPlugin().&nbsp;
+<br>C-plugins are created on pure C language and use special "AviSynth C API" 
+(unlike ordinary Avisynt plugins which are created with MS C++). 
+C-plugins must be loaded with LoadCPlugin() or Load_Stdcall_Plugin().
+<p>
+Kevin provides a LoadCPlugin.dll that overloads the LoadCPlugin() verb to support plugins compiled using the C subroutine calling sequence, use Load_Stdcall_Plugin() to load stdcall calling sequence plugins when using Kevins version.
+Advice: keep these plugins outside your auto plugin loading directory to prevent
+crashes. <a href="http://forum.doom9.org/showthread.php?s=&amp;threadid=58840">[discussion]</a>
+<a href="http://kevin.atkinson.dhs.org/avisynth_c/">[AVISynth C API (by kevina20723)]</a></p>
+<hr>
+<h2><a NAME="autoloading"></a>Plugin autoload and name precedence <strong>v2</strong></h2>
+<p>It is possible to put all plugins and script files with user-defined functions 
+  or (global) variables in a directory from where all files with the extension 
+  .AVSI (<strong>v2.08, v2.5</strong>, the type was .AVS in <strong>v2.05-2.07</strong>)
+   and .DLL are loaded at startup, unloaded and then loaded dynamically as 
+  the script needs them. 
+<p>.AVSI scripts in this directory should only contain function definitions and global 
+  variables, no main processing section (else strange errors may occur), it also 
+  is not recommended to put other files in that directory. 
+<p>The directory is stored in the registry (the registry key has changed for <strong>v2.5</strong>). 
+  You can use double-clicking a .REG-file with the following lines to set the 
+  path (of course inserting your actual path): <br>
+  &nbsp; 
+<pre>REGEDIT4
+
+
+[HKEY_LOCAL_MACHINE\SOFTWARE\Avisynth]
+&quot;plugindir2_5&quot;=&quot;c:\\program files\\avisynth 2.5\\plugins&quot;</pre>
+<p>The order in which function names take precedence is as follows: 
+<pre>user-defined function (always have the highest priority)
+   plugin-function (have higher priority than built-in
+   functions, they will override a built-in function)
+      built-in function</pre>
+<p>Inside those groups the function loaded at last takes precedence, there is 
+  no error in a namespace conflict. </p>
+<h2><a NAME="autoloading_confl"></a>Plugin autoload and conflicting function
+names <strong>v2.55</strong> </h2>
+<p>Starting from v2.55 there is DLLName_function() support. The problem is that
+two plugins can have different functions which are named the same. To call the
+needed one, DLLName_function() support is added. It 
+auto-generates the additional names both for auto-loaded plugins and for plugins loaded with
+LoadPlugin. </p>
+<p><b>Some examples:</b> </p>
+<pre># using fielddeinterlace from decomb510.dll
+AviSource(&quot;D:\captures\jewel.avi&quot;)
+decomb510_fielddeinterlace(blend=false)</pre>
+<p>Suppose you have&nbsp; the plugins mpeg2dec.dll and mpeg2dec3.dll in your
+auto plugin dir, and you want to load a d2v file with mpeg2dec.dll (which
+outputs YUY2): </p>
+<pre># using mpeg2source from mpeg2dec.dll
+mpeg2dec_mpeg2source(&quot;F:\From_hell\from_hell.d2v&quot;)</pre>
+<p>or with mpeg2dec3.dll (which outputs YV12): </p>
+<pre># using mpeg2source from mpeg2dec3.dll
+mpeg2dec3_mpeg2source(&quot;F:\From_hell\from_hell.d2v&quot;)</pre>
+<p><kbd>$Date: 2008/04/20 19:07:34 $</kbd></p>
+</body>
+</html>

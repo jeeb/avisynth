@@ -1,0 +1,108 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+<html>
+<head>
+<!--
+Automatically generated, don't change:
+$Id: faq_using_virtualdub_plugins.htm,v 1.6 2009/09/12 20:57:20 wilbertd Exp $ 
+-->
+   <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+   <title> FAQ - Using VirtualDub plugins in AviSynth </title>
+<style type=text/css></style>
+   <link rel="stylesheet" type="text/css" href="../avisynth.css">
+</head>
+<body>
+
+<h1>AviSynth FAQ - Using VirtualDub plugins in AviSynth</h1>
+
+<h2>Contents</h2>
+<ol>
+  <li>
+<a href="#Where_can_I_download_the_latest_version_of_scripts_which_import_filters_from_VirtualDub.3F">
+            Where can I download the latest version of
+            scripts which import filters from VirtualDub?</a></li>
+  <li><a href="#Which_filters_can_be_imported.3F">Which filters can be imported?</a></li>
+  <li><a href="#Do_these_scripts_work_in_RGB-space_or_in_YUV-space.3F">Do these scripts work in RGB-space or in
+            YUV-space?</a></li>
+  <li><a href="#How_do_I_make_such_a_script.3F">How
+            do I make such a script?</a>
+  </li>
+</ol>
+<a name="Where_can_I_download_the_latest_version_of_scripts_which_import_filters_from_VirtualDub.3F"></a>
+<h3>Where can I download the latest version of scripts
+which import filters from VirtualDub?</h3>
+<p>The AviSynth scripts are on the <a href="http://avisynth.org/mediawiki/Shared_functions" title="Shared functions">Shared_functions</a>
+page, or you can download a package called vdub_filtersv15.zip from <a href="http://neuron2.net/hosted.html" title="http://neuron2.net/hosted.html">[1]</a>.</p>
+<a name="Which_filters_can_be_imported.3F"></a>
+<h3>Which filters can be imported?</h3>
+<p>Most filters. Read the corresponding documentation.</p>
+<a name="Do_these_scripts_work_in_RGB-space_or_in_YUV-space.3F"></a>
+<h3>Do these scripts work in RGB-space or in
+YUV-space?</h3>
+<p>You need to convert your clip to RGB32 before applying these scripts.</p>
+<a name="How_do_I_make_such_a_script.3F"></a>
+<h3>How do I make such a script?</h3>
+<p>Take a look at the following example script (this VirtualDub filter can be
+downloaded from <a href="http://neuron2.net/bob.html" class="external text" title="http://neuron2.net/bob.html" rel="nofollow">Donald's
+homepage</a>):</p>
+<p>Smart Bob by Donald Graft:</p>
+<pre>function VD_SmartBob(clip clip, bool show_motion, int threshold, bool motion_map_denoising)
+{
+  LoadVirtualdubPlugin(&quot;d:\bob.vdf&quot;, &quot;_VD_SmartBob&quot;, 1)
+  return clip.SeparateFields._VD_SmartBob(clip.GetParity?1:0,
+    \  default(show_motion,false)?1:0, default(threshold,10),
+    \  default(motion_map_denoising,true)?1:0)
+}</pre>
+<p>The VirtualDub plugin is imported with the command
+&quot;LoadVirtualdubPlugin&quot;. The first argument gives the path of the
+plugin, the second argument the name for the plugin that will be used in the
+script and the third argument is called the preroll.</p>
+<p>The preroll should be set to at least the number of frames the filter needs
+to pre-process to fill its buffers and/or updates its internal variables. This
+last argument is used in some filters like: SmartBob, SmartDeinterlace,
+TemporalCleaner and others. The reason is that due to filtering architecture of
+VirtualDub the future frames can't be accessed by a filter. Dividee reports:
+&quot;In the &quot;Add filter&quot; dialog of VirtualDub, some filters have a
+&quot;Lag:&quot; value in their description. I think this is the value that must
+be used as preroll. Unfortunately, this indication is not always present. In
+those cases you have to guess.&quot; Of course you can always ask the creator of
+the filter.</p>
+<p>The first step is to find out the sequence of the arguments in the last line
+where the clip is returned. Configure the script in VirtualDub and select
+&quot;Save processing Settings&quot; in the File Menu or press Ctrl+S. Open the
+created .vcf file with a text editor and you should see lines like this:</p>
+<pre>VirtualDub.video.filters.Add(&quot;smart bob (1.1 beta 2)&quot;);
+VirtualDub.video.filters.instance[0].Config(1, 0, 10, 1);</pre>
+<p>The order of the arguments is the one that has to be used in AviSynth. To
+find the role of the arguments, play with them in VirtualDub and examine the
+resulting lines.</p>
+<p>The second step is to test the filter and to compare it with the VirtualDub
+filter itself. For the programming itself you can learn a lot by looking at the
+script which are already contained in vdub_filters.avs.</p>
+<p>Example script which uses the function VD_SmartBob:</p>
+<pre>Import(&quot;d:\vdub_filters.avs&quot;)
+AviSource(&quot;d:\filename.avi&quot;)
+ConvertToRGB32()  # only when necessary (but doesn't hurt)
+VD_SmartBob(false, 10, true)
+ConvertBackToYUY2()  # only when necessary</pre>
+<p>The package vdub_filtersv15.zip is a bit outdated since many new VirtualDub
+filters are not in it. If that's the case for your VirtualDub filter and you
+don't want to create a function yourself (such as VD_SmartBob), could also use
+the following script:</p>
+<pre>LoadVirtualdubplugin(&quot;d:\bob.vdf&quot;, &quot;VD_SmartBob&quot;, 1)
+VD_SmartBob(1, 0, 10, 1) # parameters taken from the .vcf file</pre>
+<p>
+|<a href="faq_sections.htm" title="AviSynth FAQ">
+Main Page</a> | <a href="faq_general_info.htm">General
+Info</a> | <a href="faq_loading_clips.htm" title="FAQ loading clips">Loading
+Clips</a> | <a href="faq_frameserving.htm" title="FAQ frameserving">Loading
+Scripts</a> | <a href="faq_common_errors.htm" title="FAQ common errors">Common
+Error Messages</a> | <a href="faq_different_types_content.htm" title="FAQ different types content">Processing
+Different Content</a> | <a href="faq_yv12.htm" title="FAQ YV12">Dealing
+with YV12</a> | <b>Processing
+with Virtualdub Plugins</b> |
+</p>
+<p>
+<kbd>$Date: 2009/09/12 20:57:20 $</kbd>
+</p>
+</body>
+</html>

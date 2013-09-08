@@ -1,0 +1,233 @@
+<!doctype html public "-//W3C//DTD HTML 4.0 Transitional//EN">
+<html>
+<head>
+<title>Resize Avisynth Filter</title>
+<link rel="stylesheet" type="text/css" href="../../avisynth.css">
+</head>
+<body>
+<h2>BicubicResize / BilinearResize / BlackmanResize / GaussResize / LanczosResize /
+Lanczos4Resize / PointResize / SincResize / Spline16Resize / Spline36Resize / Spline64Resize</h2>
+<p><code>BicubicResize </code>(<var>clip, int target_width, int target_height, float 
+  &quot;b=1./3.&quot;, float &quot;c=1./3.&quot;, float &quot;src_left&quot;, float &quot;src_top&quot;, 
+  float &quot;src_width&quot;, float &quot;src_height&quot;</var>)<br>
+  <code>BilinearResize </code>(<var>clip, int target_width, int target_height, float 
+  &quot;src_left&quot;, float &quot;src_top&quot;, float &quot;src_width&quot;, 
+  float &quot;src_height&quot;</var>)<br>
+  <code>BlackmanResize </code>(<var>clip, int target_width, int target_height, float 
+  "src_left", float "src_top", float "src_width", float "src_height", int &quot;taps=4&quot;</var>)<br>
+  <code>GaussResize </code>(<var>clip, int target_width, int target_height, float 
+  "src_left", float "src_top", float "src_width", float "src_height", float &quot;p=30.0&quot;</var>)<br>
+  <code>LanczosResize </code>(<var>clip, int target_width, int target_height, float 
+  "src_left", float "src_top", float "src_width", float "src_height", int &quot;taps=3&quot;</var>)<br>
+  <code>Lanczos4Resize </code>(<var>clip, int target_width, int target_height, float 
+  "src_left", float "src_top", float "src_width", float "src_height"</var>)<br>
+   <code>PointResize </code>(<var>clip, int target_width, int target_height, float "src_left", 
+  float "src_top", float "src_width", float "src_height"</var>)<br>
+  <code>SincResize </code>(<var>clip, int target_width, int target_height, float 
+  "src_left", float "src_top", float "src_width", float "src_height", int &quot;taps=4&quot;</var>)<br>
+  <code>Spline16Resize </code>(<var>clip, int target_width, int target_height, float 
+  "src_left", float "src_top", float "src_width", float "src_height"</var>)<br>
+  <code>Spline36Resize </code>(<var>clip, int target_width, int target_height, float 
+  "src_left", float "src_top", float "src_width", float "src_height"</var>)<br>
+  <code>Spline64Resize </code>(<var>clip, int target_width, int target_height, float 
+  "src_left", float "src_top", float "src_width", float "src_height"</var>)
+</p>
+<h3>General information</h3>
+<p>From <em>v2.56</em> you can use offsets (as in <a href="crop.htm">Crop</a>) for all resizers:<br>
+i.e.<br>
+<code>GaussResize </code>(<var>clip, int target_width, int target_height, float 
+  "src_left", float "src_top", float -&quot;src_right&quot;, float
+-&quot;src_top&quot;</var>)</p>
+<p>For all resizers you can use an expanded syntax which crops before resizing. 
+  The same operations are performed as if you put a Crop before the Resize, there 
+  can be a slight speed difference.</p>
+
+<p>Note the edge semantics are slightly different, Crop gives a hard
+  absolute boundary, the Resizer filter lobes may extend into the
+  cropped region but not beyond the physical edge of the image.</p>
+
+<p>Use <a href="crop.htm">Crop</a> to remove any hard borders or VHS
+  head switching noise, using the Resizer cropping may propagate the
+  noise into the adjacent output pixels. Use the Resizer cropping to
+  maintain accurate edge rendering when excising a part of a complete
+  image.</p>
+
+      <pre>Crop(10,10,200,300).BilinearResize(100,150)
+
+# which is nearly the same as
+BilinearResize(100,150,10,10,200,300)</pre>
+    
+<p>Important: AviSynth has completely separate vertical and horizontal resizers. 
+  If the input is the same as the output on one axis, that resizer will be skipped.
+  Which one is called first, is determined by which one has the smallest downscale 
+  ratio. This is done to preserve maximum quality, so the second resizer has the 
+  best possible picture to work with. Data storing will have an impact on what
+modulos that ''should'' be used for sizes when resizing and cropping, see the <a href="crop.htm">Crop</a>
+page.</p>
+<h3>BilinearResize
+</h3>
+<p>The <code>BilinearResize</code> filter rescales the input video frames to an arbitrary 
+  new resolution. If you supply the optional <var>source</var> arguments, the result 
+  is the same as if you had applied <code><a href="crop.htm">Crop</a></code> with those
+  arguments to the clip before <code>BilinearResize</code>. </p>
+<p><code>BilinearResize</code> uses standard bilinear filtering and is almost identical 
+  to VirtualDub's "precise bilinear" resizing option. It's only "almost" because 
+  VirtualDub's filter seems to get the scaling factor slightly wrong, with the 
+  result that pixels at the top and right of the image get either clipped or duplicated. 
+  (This error is noticeable when expanding the frame size by a factor or two or 
+  more, but insignificant otherwise, so I wouldn't worry too much about it.) </p>
+      <pre>Examples:
+# Load a video file and resize it to 240x180 (from whatever it was before)
+AVISource(&quot;video.avi&quot;).BilinearResize(240,180)
+
+# Load a 720x480 (CCIR601) video and resize it to 352x240 (VCD),
+# preserving the correct aspect ratio
+AVISource(&quot;dv.avi&quot;).BilinearResize(352, 240, 8, 0, 704, 480)
+
+# or what is the same
+AviSource(&quot;dv.avi&quot;).BilinearResize(352, 240, 8, 0, -8, -0)
+
+# Extract the upper-right quadrant of a 320x240 video and zoom it
+# to fill the whole frame
+BilinearResize(320,240,160,0,160,120)</pre>
+    
+<h3>BicubicResize
+</h3>
+<p><tt><code>BicubicResize</code></tt> is similar to <tt><code>BilinearResize</code></tt>, except that instead 
+  of a linear filtering function it uses the Mitchell-Netravali two-part cubic. 
+  The parameters <i>b</i> and <i>c</i> can be used to adjust the properties of 
+  the cubic, they are sometimes referred to as `blurring' and `ringing,' respectively.</p>
+<p>With <i>b</i> = 0 and <i>c</i> = 0.75 the filter is exactly the same as VirtualDub's 
+  "precise bicubic," and the results are identical except for the VirtualDub scaling 
+  problem mentioned above. The default values are <i>b</i> = 1./3. and <i>c</i> =
+1./3., which 
+  were the values recommended by Mitchell and Netravali as yielding the most visually 
+  pleasing results in subjective tests of human beings. Larger values of <i>b</i> 
+  and <i>c</i> can produce interesting op-art effects -- for example, try <i>b</i> 
+  = 0 and <i>c</i> = -5. </p>
+<p>If you are magnifying your video, you will get much better-looking results 
+  with <tt><code>BicubicResize</code></tt> than with
+  <tt><code>BilinearResize</code></tt>. However, if you are shrinking it, you
+  are probably just as well off, or even better off, with
+  <tt><code>BilinearResize</code></tt>. Although VirtualDub's bicubic filter
+  does produce better-looking 
+  images than its bilinear filter, this is mainly because the bicubic filter sharpens 
+  the image, not because it samples it better. Sharp images are nice to look at--until 
+  you try to compress them, at which point they turn nasty on you very quickly. 
+  The <tt><code>BicubicResize</code></tt> default doesn't sharpen nearly as much as VirtualDub's 
+  bicubic, but it still sharpens more than the bilinear. If you plan to encode 
+  your video at a low bitrate, I wouldn't be at all surprised if <tt><code>BilinearResize</code></tt>
+yields a better overall final result.</p>
+<p>
+  For the most numerically accurate filter constrain b and c such that they satisfy :-
+<pre>  b + 2 * c = 1</pre>
+  This gives maximum value for c = 0.5 when b = 0. This is the Catmull-Rom 
+  spline. Which is a good suggestion for sharpness.
+<p>From c &gt; 0.6 the filter starts to &quot;ring&quot;. You won't get real sharpness, 
+  what you'll get is crispening like with a TV set sharpness control.
+  Negative values are not allowed for b, use b = 0 for values of c &gt; 0.5. </p>
+<h3>BlackmanResize</h3>
+
+<p><code>BlackmanResize</code> is a modification of <code>LanczosResize</code>
+  that has better control of ringing artifacts for high numbers of taps. See
+  <code>LanczosResize</code>  of an explanation for the taps argument (default:
+taps=4, 1&lt;=taps&lt;=100). (added in <em>v2.58</em>) </p>
+
+<h3>GaussResize</h3>
+<p><code>GaussResize</code> uses a gaussian resizer with adjustable sharpness parameter <var>p</var>
+(default 30). <var>p</var> has a range from about 1 to 100, with 1 being very blurry and 100 being very
+sharp.
+<code>GaussResize</code> uses 4 taps and has similar speed as <code>Lanczos4Resize</code>. (added in <em>v2.56</em>)</p>
+<h3>LanczosResize / Lanczos4Resize
+</h3>
+<p><tt><code>LanczosResize</code></tt> is an alternative to <tt><code>BicubicResize</code></tt>
+with high 
+  values of c about 0.6 ... 0.75 which produces quite strong sharpening.
+  It usually offers better quality (fewer artifacts) and a sharp image.</p>
+<p>Lanczos was created for AviSynth because it retained so much detail, more so
+even than BicubicResize(x,y,0,0.75). As you might know, the more detail a frame
+has, the more difficult it is to compress it. This means that Lanczos is NOT
+suited for low bitrate video, the various Bicubic flavours are much better for
+this. If however you have enough bitrate then using Lanczos will give you a
+better picture, but in general I do not recommend using it for 1 CD rips because
+the bitrate is usually too low (there are exceptions of course).</p>
+<p>The input parameter taps (default 3, 1&lt;=taps&lt;=100) is equal to the
+number of lobes (ignoring mirroring around the origin).</p>
+<p><code>Lanczos4Resize</code> (added in <em>v2.55</em>) is a short hand for
+LanczosResize(taps=4). It produces sharper images than LanczosResize with the
+default taps=3, especially useful when upsizing a clip.</p>
+<p><i>Warning: the input argument named taps should really be lobes. When
+discussing resizers, taps has a different meaning, as described below (the first
+paragraph concerns LanczosResize(taps=2)):</i></p>
+<p>&quot;For upsampling (making the image larger), the filter is sized such that
+the entire equation falls across 4 input samples, making it a 4-tap filter. It
+doesn't matter how big the output image is going to be - it's still just 4 taps.
+For downsampling (making the image smaller), the equation is sized so it will
+fall across 4 *destination* samples, which obviously are spaced at wider
+intervals than the source samples. So for downsampling by a factor of 2 (making
+the image half as big), the filter covers 2*4=8 input samples, and thus 8 taps.
+For 3x downsampling, you need 3*4=12 taps, and so forth.</p>
+<p>
+Thus the effective number of taps you get for downsampling is the downsampling
+ratio times the number of filter input taps (thus <b>T</b>x downsampling and
+Lanczos<b>k</b>Resize results in T*2*k taps), this is rounded up to the next
+even integer. For upsampling, it's always just 2*k taps.&quot; Source:
+[<a href="http://archive2.avsforum.com/avs-vb/showthread.php?s=&amp;postid=4760581#post4760581">avsforum
+post</a>].</p>
+<h3>PointResize</h3>
+<p><tt><code>PointResize</code></tt> is the simplest resizer possible. It uses a Point Sampler 
+  or Nearest Neighbour algorithm, which usually results in a very blocky image. 
+  So in general this filter should only be used, if you intend to have inferiour 
+  quality, or you need the clear pixel drawings.<br>
+  It is very useful for magnifying small areas of pixels for close examination. </p>
+<h3>Spline16Resize/Spline36Resize/Spline64Resize</h3>
+<p>Three Spline based resizers&nbsp; (added in <em>v2.56/v2.58</em>).</p>
+<p><tt><code>Spline16Resize</code></tt>, <tt><code>Spline36Resize</code></tt>
+and <tt><code>Spline64Resize</code></tt> are three Spline based resizers. They
+are the (cubic) spline based resizers from <a href="http://www.all-in-one.ee/~dersch/" class="external text" title="http://www.all-in-one.ee/~dersch/" rel="nofollow">Panorama
+tools</a> that fit a spline through the sample points and then derives the
+filter kernel from the resulting blending polynomials. See <a href="http://forum.doom9.org/showthread.php?t=147117" class="external text" title="http://forum.doom9.org/showthread.php?t=147117" rel="nofollow">this
+thread</a> for the details.</p>
+<p>The
+rationale for Spline is to be as sharp as possible with less ringing artefacts than
+<code>LanczosResize</code> produces. <code>Spline16Resize</code> uses
+sqrt(16)=4 sample points, <code>Spline36Resize</code> uses 6 sample points, etc
+... The more sample points that are used, the sharper your clip will be. A comparison
+between some resizers is given
+<a href="http://web.archive.org/web/20060827184031/http://www.path.unimelb.edu.au/~dersch/interpolator/interpolator.html"
+class="external text"
+title="http://web.archive.org/web/20060827184031/http://www.path.unimelb.edu.au/~dersch/interpolator/interpolator.html"
+rel="nofollow">here</a>.</p>
+<h3>SincResize</h3>
+<p> <code>SincResize</code>  is added in <em>v2.6</em> and it uses the truncated
+sinc function as resizer. See LanczosResize for an explanation of the taps
+argument (default: taps=4; 1&lt;=taps&lt;=20).</p>
+<p><b>Changelog:</b></p>
+<table border="1">
+  <tbody>
+    <tr>
+      <td>v2.55</td>
+      <td>added Lanczos4Resize</td>
+    </tr>
+    <tr>
+      <td>v2.56</td>
+	  <td>added Spline16Resize, Spline36Resize, GaussResize and taps parameter
+	      in LanczosResize; added offsets in Crop part of xxxResize</td>
+    </tr>
+    <tr>
+      <td>v2.58</td>
+      <td>added BlackmanResize, Spline64Resize</td>
+    </tr>
+    <tr>
+      <td>v2.6</td>
+      <td>added SincResize</td>
+    </tr>
+  </tbody>
+</table>
+<p><kbd>$Date: 2009/09/12 15:10:22 $</kbd></p>
+<FORM>
+  <INPUT TYPE="Button" VALUE="Back"
+onClick="history.go(-1)">
+</form>
+</body>
+</html>

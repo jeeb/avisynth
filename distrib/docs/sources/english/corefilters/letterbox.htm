@@ -1,0 +1,44 @@
+<!doctype html public "-//W3C//DTD HTML 4.0 Transitional//EN">
+<html>
+<head>
+<title>Letterbox Avisynth Filter</title>
+<link rel="stylesheet" type="text/css" href="../../avisynth.css">
+</head>
+<body >
+<h2><a name="Letterbox"></a>Letterbox</h2>
+<p><code>Letterbox </code>(<var>clip, int top, int bottom, [int left], [int right], int 
+  &quot;color&quot;</var>)</p>
+<p><code>Letterbox</code> simply blackens out the top <i>top</i> and the bottom <var>bottom</var>,
+and optionally <var>left</var> and <var>right</var> side of each frame. 
+This has a couple of uses: one, it can eliminate stray
+video noise from the existing black bands in an image that's already letterboxed;
+two, it can eliminate the garbage lines that often appear at the bottom of the
+frame in captures from VHS tape.
+</p>
+<p>The functionality of <code>Letterbox</code> can be duplicated with a combination
+of <code><a href="crop.htm">Crop</a></code> and <code><a href="addborders.htm">AddBorders</a></code>, but
+<code>Letterbox</code> is faster and
+easier.
+</p>
+<p>Generally, it's better to crop this stuff off using <code>Crop</code> 
+or <code><a href="crop.htm">CropBottom</a></code>
+than to hide it with <code>Letterbox</code>. However, in some cases, particularly
+if you're compressing to MPEG, it's better to use <code>Letterbox</code>
+because
+it lets you keep a standard frame size like 352x288 or 320x240. Some MPEG players
+get confused when the source video has a strange frame size.
+</p>
+<p>The color parameter is optional, default=0 &lt;black&gt;, and is specified as
+an RGB value regardless of whether the clip format is RGB or YUV based.
+See <a href="../syntax_colors.htm">here</a>
+for more information on specifying colors.
+</p>
+<p>
+Another use could also be to clear out overscan areas in VCD or SVCD encodings.
+<p><kbd>$Date: 2008/06/06 11:37:04 $</kbd></p>
+<FORM>
+<INPUT TYPE="Button" VALUE="Back"
+onClick="history.go(-1)">
+</form>
+</body>
+</html>

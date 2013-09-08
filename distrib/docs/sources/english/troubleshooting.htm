@@ -1,0 +1,195 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+<html>
+<head>
+<!--
+Automatically generated, don't change:
+$Id: troubleshooting.htm,v 1.9 2009/09/12 20:57:20 wilbertd Exp $ 
+-->
+   <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+   <title> Trouble shooting </title>
+<style type=text/css></style>
+   <link rel="stylesheet" type="text/css" href="../avisynth.css">
+</head>
+<body>
+
+<h2>Troubleshooting</h2>
+
+<h3>Contents</h3>
+<a href="#Installation_problems">1 Installation problems</a><br>
+<a href="#Other_problems">2 Other problems</a><br>
+<a href="#Simple">2.1 Write Simple</a><br>
+<a href="#check_parameters">2.2 Always check parameters</a><br>
+<a href="#Test_Virtualdub">2.3 Test scripts using Virtualdub</a><br>
+<a href="#step">2.4 Go through the script step by step</a><br>
+<a href="#plugin_directory">2.5 Check your autoloadin plugin directory for files</a><br>
+<a href="#image_sizes">2.6 Use conservative image sizes</a><br>
+<a href="#FAQ">2.7 Finally check the AviSynth Q&amp;A</a><br>
+<a href="#bugs">2.8 Reporting bugs / Asking for help</a>
+
+<h4><a name="Installation_problems"></a>Installation problems</h4>
+
+<p> 
+If you got problems getting AviSynth to work at all, try the following script:
+
+<pre><a href="corefilters/version.htm">Version</a>()</pre>
+
+<p> and open it in Windows Media Player 6.4 (it is a file "mplayer2.exe" located in "C:\Program Files\Windows Media Player", other versions of WMP will not work).
+If you see a video with a message with Avisynth version and Copyright, then it is installed properly.
+
+<p> If that doesn't work, you can try the following:
+<ul>
+  <li>Empty the plugin folder of AviSynth: autoloaded scripts (*.avsi)
+   or some filters can cause this (<a href="#plugin_directory">see here</a>).</li>
+  <li>Install codecs, in particular <a href="http://www.avisynth.org/mediawiki/wiki/huffyuv.htm"><cite>Huffyuv</cite></a>:
+   it can be that there is no decoder present which can decode your video.</li>
+  <li>If you use an encoding package (like DVD2SVCD, GKnot, DVX, ...)
+   make sure that you use the version of AviSynth that came with that package:
+    it might be that new versions of AviSynth are not compatible with the package.
+    Try to get support from the package developers.</li>
+  <li>Reinstall AviSynth: it might be that something went wrong with the installation.
+  If you tried playing with new beta version, reinstall a stable release.</li>
+  <li>If all of the above doesn't help drop a post in the 
+  <a href="http://forum.doom9.org/forumdisplay.php@s=&amp;forumid=33"> Doom9 Forums</a>.</li>
+</ul>
+
+<h4><a name="Other_problems"></a>Other problems</h4>
+
+<p> Creating scripts with AviSynth is not always easy, and sometimes AviSynth produces very strange results. This is a little guide to help you figure out the most common errors.
+
+<h4><a name="Simple"></a>Write Simple</h4>
+
+<p> If AviSynth produces strange results, try simplifying your script. Try splitting up your script into as many lines as possible. This will help you identify your problem. For example:
+
+<pre>video = AviSource(&quot;file23.avi&quot;).ConvertToYUY2().Trim(539,8534)
+return AudioDub(Blur(video,1.5).Reduceby2().Bilinearrresize(512,384),Wavsource(&quot;file23.wav&quot;).AmplifyDB(4.5)</pre>
+
+<p> is not as readable as
+
+<pre>AviSource(&quot;file23.avi&quot;)
+ConvertToYUY2()
+Trim(539, 8534)
+Blur(1.5)
+Reduceby2()
+Bilinearrresize(512, 384)
+AudioDub(Wavsource(&quot;file23.wav&quot;))
+AmplifyDB(4.5)</pre>
+<p>Furthermore it has the advantage, that you more easily:</p>
+<ul>
+  <li>Comment out a single command (line). This is good for testing the effect of a filter.</li>
+  <li>Get the proper position (line) of problem command, if there is a syntax error.</li>
+  <li>Put in a "return last" at some position in the script. This will output the video at
+    that place in the filterchain. So by varying the place of the &quot;return
+    last&quot; you can check up to which line the video is correct.</li>
+  <li>Get an overview of the "flow" of the script. (Is it a good thing that the <a href="corefilters/trim.htm"> Trim</a> command only affects the video in the clip above?)&nbsp;</li>
+</ul>
+
+<h4><a name="check_parameters"></a>Always check parameters</h4>
+
+<p> If you have a filter that gives you unexpected results, try using it with the simplest parameters. 
+Always check the internal filters either on AviSynth homepage or in the documentation that came along with your AviSynth.
+
+<p> Be sure you use the same type of parameters as the ones described in the documentation. The most common error in this case is related to the first parameter in all filters, "clip". Be sure you understand how "implicit last" works. If you do not have a "last clip", most filters will fail with an "Invalid parameter" error.
+
+<p> "Filter does not return a clip" is reported if the output of your last filter is put into a variable, and there isn't any "last clip". For instance:
+
+<pre>video = AviSource(&quot;file.avi&quot;)
+audio = WavSource(&quot;file.wav&quot;)
+combined = AudioDub(video, audio)</pre>
+
+<p> will fail. This can be solved by:
+
+<pre>video = AviSource(&quot;file.avi&quot;)
+audio = WavSource(&quot;file.wav&quot;)
+AudioDub(video, audio)</pre>
+
+<p> where 'last' now contains a clip, or:
+
+<pre>video = AviSource(&quot;file.avi&quot;)
+audio = WavSource(&quot;file.wav&quot;)
+combined = AudioDub(video, audio)
+return combined</pre>
+
+<p> where the variable is returned, or even:
+
+<pre>video = AviSource(&quot;file.avi&quot;)
+audio = WavSource(&quot;file.wav&quot;)
+return AudioDub(video, audio)</pre>
+
+<h4><a name="Test_Virtualdub"></a>Test scripts using Virtualdub</h4>
+
+<p> Always use <a href="http://www.avisynth.org/mediawiki/wiki/virtualdub.htm"> Virtualdub</a> or even better
+<a href="http://www.avisynth.org/mediawiki/wiki/virtualdubmod.htm"> VirtualDubMod</a> to test your scripts. 
+This is what all AviSynth functionality is tested against (by its developers). 
+AviSynth does of course work with other programs, but if you get errors in other applications 
+it's most likely not an AviSynth problem, but a limitation within the software you are using.
+
+<p> These limitations are mostly linked to:
+<ul>
+  <li>Color format problems. The application you are using does not support the color format you are using as script output.</li>
+  <li>Size problems. Some programs does not accept all sizes of images.</li>
+</ul>
+
+<h4><a name="step"></a>Go through the script step by step</h4>
+<p>As mentioned in "Write Simple" it is always a good thing to test every step of your script, if there are problems.</p>
+<p>You can comment out a filter (filters) by placing a '#' in front of the line (or before filter). 
+That way it (and all rest of the line) will be ignored by AviSynth.</p>
+<p>You can put in a "return last" or "return myvariable" any place in the script.</p>
+<p>At any place in the script you can add the <a href="corefilters/info.htm">Info</a>() filter 
+to get information about the image and sound at the current stage of the filtering.</p>
+
+<h4><a name="plugin_directory"></a>Check your autoloading plugin directory for a files</h4>
+<p>Plugins autoloading usually works fine, but you must NOT put here:
+<ul>
+<li> any plugins for incompatible AviSynth versions (e.g. old 2.0.x).</li>
+<li> special LoadPluginEx.DLL plugin (from WarpSharp package) used for loading of old 2.0 plugins.</li>
+<li> AviSynth C-plugins which use AviSynth C API instead of regular interface.</li>
+<li> too many AviSynth plugins (this 50 plugins auto prescan load limit is removed in v2.57 though).</li>
+<li> any other DLL files (usually it is safe, but is not recommended).</li>
+</ul>
+
+<p>You must also remember, that all AVSI files in your plugin-directory are automatically included in your script. 
+This is a feature, to allow you to include your own (or borrowed) functions, 
+without have to copy/paste them into every script.</p>
+<p><i>Notes. In old AviSynth versions (up to 2.0.7) all AVS files in your plugin-directory were automatically included in your script.
+This also means that if you copy any sample scripts into your plugin directory they will always be included, 
+and may generate errors (in old versions!).</i></p>
+<p>  
+In general, any AVSI (early AVS) file whose commands are not wrapped into functions will be problematic.</p>
+<p>  
+All other file formats besides AVSI and DLL files are ignored, so you can safely leave your documentation there.</p>
+<p>  
+How to empty plugin dir? Simply create some subfolder (e.g. "hide") and move all (or some) files there.</p>
+<p>  
+Remember some files (DirectShowSource.dll, TCPDeliver.dll plugins, ColorRGB.avsi) are part of AviSynth (since v2.56).</p>
+
+<h4><a name="image_sizes"></a>Use conservative image sizes</h4>
+<p>If you have problems with distorted images, try using conservative frame sizes. 
+That means, use sizes, where height and width are always divisible by 16. Using image sizes that are not divisible by 2 is in many cases problematic, and should always be avoided.</p>
+<p>If you do however find that there is a problem with certain sizes of images, please submit a bug-report. See below how to do that.</p>
+
+<h4><a name="FAQ"></a>Finally check the AviSynth Q&amp;A</h4>
+<p>If you still got problems (loading scripts in certain encoders, or colorspace errors) have a look at the AviSynth Q&amp;A, especially
+<a href="faq.htm#q2.4">Q2.4: Problems when Encoder X reads AVS-files ?</a> 
+Be also sure to check <a href="faq.htm#q1.4">Q1.4: What are the main bugs in these versions ?</a> in the FAQ.</p>
+
+<h4><a name="bugs"></a>Reporting bugs / Asking for help</h4>
+<p>We will need many informations to be able to help you. If you don't supply us with that, there is a good chance that we won't be able to help you or locate the error.</p>
+<p>Be sure to <b> always</b> include:</p>
+<ul>
+  <li>AviSynth version. (and date of beta, if not a SourceForge final release)</li>
+  <li>The simplest possible script for recreating the error.</li>
+  <li>The EXACT error message you get.</li>
+  <li>VirtualDub (Mod) version.</li>
+  <li>All file information from VirtualDub / File / File Information.</li>
+  <li>Used plugin versions.</li>
+  <li>Codecs and image sizes of input material.&nbsp;</li>
+</ul>
+<p>Bug reports should be submitted at the <a href="http://sourceforge.net/projects/avisynth2"> SourceForge Project page</a>. 
+Be sure to check if there is already a bug summitted similar to yours - there might just be. 
+Errors in external plugins shouldn't be reported here, but to the author of the filter.</p>
+<p>A very good place to get help is the <a href="http://forum.doom9.org/forumdisplay.php@s=&amp;forumid=33"> Doom9 Forums</a>. 
+Be sure to search the forum before asking questions. Many topics have been covered there! 
+- Then enter into the discussion.</p>
+<p><kbd>$Date: 2009/09/12 20:57:20 $</kbd>
+</body>
+</html>

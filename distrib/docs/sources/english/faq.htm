@@ -1,0 +1,2219 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+<html>
+<head>
+<!--
+Automatically generated, don't change:
+$Id: faq.htm,v 1.11 2008/07/09 19:35:37 fizick Exp $ 
+-->
+   <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+   <title> Frequently Asked Questions </title>
+<style type=text/css></style>
+   <link rel="stylesheet" type="text/css" href="../avisynth.css">
+</head>
+<body>
+
+<h2> Avisynth Frequently Asked Questions</h2>
+<b>Remark</b>: a more recent version can be found <a href="faq_sections.htm">here</a> and
+at <a href="http://www.avisynth.org"><cite>http://www.avisynth.org</cite></a>
+<p>The faq is divided into four sections: a general section, one related
+to frameserving, one related to filters and plugins, and one related to
+importing VirtualDub filters. Recently, the old stuff "related to AviSynth
+v2.06 and older versions" is removed. Thus, if you have problems, make
+sure that you install a more recent version of AviSynth.
+<p><b><font size=+1><a href="#s1">S1: About AviSynth</a></font></b></p>
+<p><b><font size=+1><a href="#s2">S2: AviSynth and frameserving</a></font></b></p>
+<p><b><font size=+1><a href="#s3">S3: Filters, plugins and colorspaces</a></font></b></p>
+<p><b><font size=+1><a href="#s4">S4: Importing filters from VirtualDub</a></font></b></p>
+<p><br></p>
+<p><b><font size=+1><a href="#s1">S1: About AviSynth:</a></font></b></p>
+<p><b><a href="#q1.1">Q1.1: What is AviSynth ?</a></b>
+<br><b><a href="#q1.2">Q1.2: Who is developing AviSynth ?</a></b>
+<br><b><a href="#q1.3">Q1.3: Where can I download the latest versions of
+AviSynth ?</a></b>
+<br><b><a href="#q1.4">Q1.4: What are the main bugs in these versions ?</a></b>
+<br><b><a href="#q1.5">Q1.5: Where can I find documentation about AviSynth
+?</a></b>
+<br><b><a href="#q1.6">Q1.6: How do I install/uninstall AviSynth ?</a></b>
+<br><b><a href="#q1.7">Q1.7: Is there any difference between v1.0x, v2.0x
+or v2.5x ?</a></b>
+<br><b><a href="#q1.8">Q1.8: Are plugins compiled for v2.5x compatible
+with v1.0x/v2.0x and vice versa ?</a></b>
+<br><b><a href="#q1.9">Q1.9: Which encoding programs support YV12 ?</a></b>
+<br><b><a href="#q1.10">Q1.10: How do I use v2.5x if the encoding programs
+can't handle YV12 (like Virtualdub, TMPGEnc or CCE SP) ?</a></b>
+<br><b><a href="#q1.11">Q1.11: How do I use with AviSynth v2.5 with Gordian
+Knot?</a></b>
+<br><b><a href="#q1.12">Q1.12: What are the main advantages of processing/encoding
+in YV12 ?</a></b>
+<br><b><a href="#q1.13">Q1.13: Is there a command line utility for encoding
+to DivX/XviD using AviSynth ?</a></b>
+<br><b><a href="#q1.14">Q1.14: Where can I find VCF2AVS ?</a></b>
+<br><b><a href="#q1.15">Q1.15: How do I use a plugin compiled for v2.0x
+in v2.5x ?</a></b>
+<br><b><a href="#q1.16">Q1.16: How do I switch between differents Avisynth
+versions without re-install ?</a></b>
+<br><b><a href="#q1.17">Q1.17: How do I make an AVS-file ?</a></b>
+<br><b><a href="#q1.18">Q1.18: Where do I save my AVS-file ?</a></b>
+<br><b><a href="#q1.19">Q1.19: How do I know which version number of AviSynth
+I have ?</a></b>
+<br><b><a href="#q1.20">Q1.20: Does AviSynth have a GUI (graphical user
+interface) ?</a></b>
+<br><b><a href="#q1.21">Q1.21: I got the message "LoadPlugin: unable to
+load "xxx" is not an AviSynth 1.0/AviSynth 2.5 plugin ?</a></b>
+<br><b><a href="#q1.22">Q1.22: How do I know which colorspace I'm using
+at a given place in my script ?</a></b>
+<br><b><a href="#q1.23">Q1.23: I installed AviSynth v2.5 and DivX5 (or
+one of the latest Xvid builds of Koepi), all I got is a black screen when
+opening my avs in Virtualdub/VirtualdubMod/CCE/TMPGEnc ?</a></b>
+<br><b><a href="#q1.24">Q1.24: My computer seems to crash at random during
+a second pass in any encoder ?</a></b>
+<br><b><a href="#q1.25">Q1.25: VirtualdubMod, WMP6.4, CCE and other programs
+crash every time on exit (when previewing an avs file) ?</a></b>
+<br><b><a href="#q1.26">Q1.26: Are there any lossless YV12 codecs, which
+I can use for capturing for example?</a></b>
+<p><b><font size=+1><a href="#s2">S2: AviSynth and frameserving:</a></font></b>
+<p><b><a href="#q2.1">Q2.1: What is frameserving and what is it good for
+?</a></b>
+<br><b><a href="#q2.2">Q2.2: How do I use AviSynth as a frameserver ?</a></b>
+<br><b><a href="#q2.3">Q2.3: How do I frameserve my AVS-file to encoder/application
+X ?</a></b>
+<br><b><a href="#q2.4">Q2.4: Problems when Encoder X reads AVS-files ?</a></b>
+<br><b><a href="#q2.5">Q2.5: How do I frameserve from Premiere/Ulead/Vegas
+to AviSynth ?</a></b>
+<br><b><a href="#q2.6">Q2.6: When frameserving I got the following message:
+"Script error, there is no function named "xxx (the name of some filter)""
+?</a></b>
+<br><b><a href="#q2.7">Q2.7: I get an unrecognized exception error trying
+to load an avs file with VirtualDub, using dvd2avi v1.77.3 ?</a></b>
+<br><b><a href="#q2.8">Q2.8: How do I load my clip into AviSynth (video)
+?</a></b>
+<br><b><a href="#q2.9">Q2.9: How do I load my clip into AviSynth (audio)
+?</a></b>
+<br><b><a href="#q2.10">Q2.10: Can I import an audio file other than a
+WAV-file?</a></b>
+<br><b><a href="#q2.11">Q2.11: How do I join video and audio ?</a></b>
+<br><b><a href="#q2.12">Q2.12:&nbsp; I get an unrecognized exception in
+the line where I use DirectShowSource?</a></b>
+<p><b><font size=+1><a href="#s3">S3: Filters, plugins and colorspaces:</a></font></b>
+<p><b><a href="#q3.1">Q3.1: What is RGB/YUV-colorspace ?</a></b>
+<br><b><a href="#q3.2">Q3.2: In which colorspaces do AviSynth and the internal
+filters work ?</a></b>
+<br><b><a href="#q3.3">Q3.3: How do I load a plugin in to AviSynth ?</a></b>
+<br><b><a href="#q3.4">Q3.4: Where can I download external filters for
+AviSynth v1.0x/v2.0x ?</a></b>
+<br><b><a href="#q3.5">Q3.5: Where can I download external filters for
+AviSynth v2.5x ?</a></b>
+<br><b><a href="#q3.6">Q3.6: Where can I download utilities for AviSynth
+?</a></b>
+<br><b><a href="#q3.7">Q3.7: How do I convert between the colorspaces ?</a></b>
+<br><b><a href="#q3.8">Q3.8: What/when do I care when filter X works in
+RGB- or YUV-space ?</a></b>
+<br><b><a href="#q3.9">Q3.9: How do I use and where can I get the "Subtitler"
+and "BMP Loader" plugins ?</a></b>
+<p><b><font size=+1><a href="#s4">S4: Importing filters from VirtualDub:</a></font></b>
+<p><b><a href="#q4.1">Q4.1: Where can I download the latest version of
+scripts which import filters from VirtualDub ?</a></b>
+<br><b><a href="#q4.2">Q4.2: Which filters are imported ?</a></b>
+<br><b><a href="#q4.3">Q4.3: Do these scripts work in RGB-space or in YUV-space
+?</a></b>
+<br><b><a href="#q4.4">Q4.4: How do I make such a script ?</a></b>
+<br>&nbsp;
+<p><a NAME="s1"></a><b><font size=+1>S1: About Avisynth:</font></b>
+<br>&nbsp;
+<p><a NAME="q1.1"></a><b>Q1.1: What is AviSynth ?</b>
+<p>A: AviSynth (AVI SYNTHesizer) is a frameserver. An excellent discription
+is given on <a href="http://neuron2.net/LVG/avisynth.html"> Lukes homepage</a>:
+<p>"AviSynth is a very useful utility created by Ben Rudiak-Gould. It provides
+many options for joining and filtering videos. What makes AviSynth unique
+is the fact that it is not a stand-alone program that produces output files.
+Instead, AviSynth acts as the "middle man" between your videos and video
+applications.
+<p>Basically, AviSynth works like this: First, you create a simple text
+document with special commands, called a script. These commands make references
+to one or more videos and the filters you wish to run on them. Then, you
+run a video application, such as VirtualDub, and open the script file.
+This is when AviSynth takes action.&nbsp; It opens the videos you referenced
+in the script, runs the specified filters, and feeds the output to video
+application. The application, however, is not aware that AviSynth is working
+in the background.&nbsp; Instead, the application thinks that it is directly
+opening a filtered AVI file that resides on your hard drive.
+<p>There are five main reasons why you would want to use AviSynth:
+<ol type="1">&nbsp;
+<li>
+Join Videos: AviSynth lets you join together any number of videos, including
+segmented AVIs. You can even selectively join certain portions of a video
+or dub soundtracks.</li>
+
+<br>&nbsp;
+<li>
+Filter Videos: Many video processing filters are built in to AviSynth.
+For example, filters for resizing, cropping, and sharpening your videos.</li>
+
+<br>&nbsp;
+<li>
+Break the 2 GB Barrier: AviSynth feeds a video to a program rather than
+letting the program directly open the video itself. Because of this, you
+can usually use AviSynth to open files larger than 2 GB in programs that
+don't natively support files of that size.</li>
+
+<br>&nbsp;
+<li>
+Open Unsupported Formats: AviSynth can open almost any type of video, including
+MPEGs and certain Quicktime MOVs. However, when AviSynth feeds video to
+a program, it looks just like a standard AVI to that program. This allows
+you to open certain video formats in programs that normally wouldn't support
+them.</li>
+
+<br>&nbsp;
+<li>
+Save Disk Space: AviSynth generates the video that it feeds to a program
+on the fly. Therefore, no temporary or intermediate videos are created.
+Because of this, you save disk space."</li>
+</ol>
+
+<br>&nbsp;
+<p><a NAME="q1.2"></a><b>Q1.2: Who is developing AviSynth ?</b>
+<p>A: AviSynth (up to v1.0b) is developed by Ben Rudiak-Gould, see <a href="http://math.berkeley.edu/~benrg/avisynth.html">http://math.berkeley.edu/~benrg/avisynth.html</a>.&nbsp;
+Ben stopped developing and Edwin van Eggelen continued, see <a href="http://www.videotools.net/uk/download.php">http://www.videotools.net/uk/download.php</a>.
+His latest release is version v1.0b6 which can be found on Edwins homepage
+given above.
+<p>Some versions appeared on the AviSynth forum, for example <a href="http://forum.doom9.org/showthread.php?s=&threadid=18243">v1.0b7a
+by Divine</a> and <a href="http://forum.doom9.org/showthread.php?s=&threadid=18243">v1.0b7d
+by Dividee</a>.
+<p>In the beginning of July 2002 there was a <a href="http://sourceforge.net/projects/avisynth2/">second revision (v2.0x)</a> of the sourceforge
+project.&nbsp; (In the <a href="http://sourceforge.net/projects/avisynth/">first
+sourceforge project</a> didn't happen much.)</p>
+<p>The most recent version is v2.5x series, 
+weekly builds v2.5.0-2.5.5 by leading developer Klaus Post were <a href="http://cultact-server.novi.dk/kpo/avisynth/avs_cvs.html">here</a>.
+The main developer of AviSynth v2.5.6-2.5.7 is Ian Brabham (IanB). Many other people contributed to AviSynth. 
+For partial list see (play) <a href="../../Examples/Authors.avs">Authors.avs</a> file. 
+Official <a href="http://sourceforge.net/project/memberlist.php?group_id=57023">memberlist</a> at sourceforge project:<br> 
+Alex_e_Basta aka alex_e_basta (doc writer), David Pierre aka bidoche (developer), 
+Frank Skare aka dolemite1 (developer), Vincent TORRI aka doursse (developer), 
+Alexander Balakhnin aka fizick (doc writer), Ian Brabham aka ianb1957 (developer, admin), 
+Jonathan Ernst aka jernst (doc writer), kostarum (translator), Cedric PAILLOT aka macpaille (doc writer),
+Donald Graft aka neuron2 (project manager), Richard Berg aka richardberg (project manager), 
+Klaus Post aka sh0dan (developer, admin), Andrew Dunstan aka squid_80 (developer), 
+Tonny S Petersen aka tsp42 (developer), Ernst Peche aka warpenterprises (doc writer), 
+Wilbert Dijkhof aka wilbertd (project manager, doc writer).<br>
+AviSynth is free open source program distributed under GNU General Public License as published by
+the Free Software Foundation.
+</p>
+<p><a NAME="q1.3"></a><b>Q1.3: Where can I download the latest versions
+of AviSynth ?</b>
+<p>A: See <a href="#q1.2">Q1.2</a>. It is also contained in the DVD2SVCD
+package and on the download page of Doom (these might be not be the newest
+versions of AviSynth).
+<br>Latest versions of AviSynth can now be downloaded at <a href="http://sourceforge.net/project/showfiles.php?group_id=57023">sourceforge page.</a>
+<p><a NAME="q1.4"></a><b>Q1.4: What are the main bugs in these versions
+?</b>
+<p>A: The latest versions:
+<p>v1.0b5: <a href="corefilters/dissolve.htm">Dissolve</a> doesn't work, BicubicResize
+doesn't work properly.
+<br>v1.0b6: ?
+<br>v1.0b7a/v1.0b7d: <a href="corefilters/dissolve.htm">Dissolve</a> doesn't
+work.
+<br>v2.01: ?
+<br>v2.02: <a href="corefilters/layer.htm">Layer</a> and <a href="corefilters/merge.htm">MergeChroma</a>
+don't work.
+<br>v2.05: <a href="corefilters/loop.htm">Loop</a> doesn't work when loading
+a clip without sound.
+<br>v2.07/v2.50: <a href="corefilters/segmentedsource.htm">SegmentedAviSource</a>
+doesn't load the avi's if the last empty segment isn't deleted.
+<p>v2.50 beta; <a href="http://www.avisynth.org/index.php?page=AviSynthTwoFiveZeroBugs">AviSynthTwoFiveZeroBugs</a>.
+<br>v2.51 beta; <a href="http://www.avisynth.org/index.php?page=AviSynthTwoFiveOneBugs">AviSynthTwoFiveOneBugs</a>.
+<br>v2.52; <a href="http://www.avisynth.org/index.php?page=AviSynthTwoFiveTwoBugs">AviSynthTwoFiveTwoBugs</a>.
+<p>other bugs can be found in the documentation on the project page, see
+<a href="#q1.5">Q1.5</a>.
+<br>&nbsp;
+<p><a NAME="q1.5"></a><b>Q1.5: Where can I find documentation about AviSynth
+?</b>
+<p>A: Documentation about the filters of AviSynth can be found on this
+site <a href="http://www.avisynth.org/">http://www.avisynth.org/</a>, and
+also on the <a href="corefilters.htm">filters</a> page. For a tutorial on
+avisynth scripting, have a look at <a href="syntax.htm">this page</a>.
+<b>You
+should read these documents before posting to the forum</b> (but it's OK
+to post if you have trouble understanding them).
+<br>&nbsp;
+<p><a NAME="q1.6"></a><b>Q1.6: How do I install/uninstall AviSynth ?</b>
+<p>A: In v2.05 or older versions: move avisynth.dll to your system/system32
+directory and run install.reg. Starting from v2.06 AviSynth comes with
+an auto installer. <b>Also make sure you have no other versions of AviSynth
+floating around on your harddisc, because there is a change that one of
+those versions will be registered. Remove them if necessary.</b> For uninstalling
+AviSynth go to "program", "AviSynth 2" and select "Uninstall AviSynth".
+<br>&nbsp;
+<p><a NAME="q1.7"></a><b>Q1.7: Is there any difference between v1.0x, v2.0x
+or v2.5x ?</b>
+<p>A: The versions v1.0x and v2.0x are compatible (the main difference
+is that v2.0x doesn't contain IPCSource, while it contains other filters
+which are not present in v1.0x).&nbsp; The main difference with v2.5x is
+that the internal structure of AviSynth has changed (YV12 and multichannel
+support) with the consequence that <b>external plugins compiled for v1.0x
+or v2.0x will not work for v2.5x and vice versa</b>.
+<br>&nbsp;
+<p><a NAME="q1.8"></a><b>Q1.8: Are plugins compiled for v2.5x compatible
+with v1.0x/v2.0x and vice versa ?</b>
+<p>A: As explained in <a href="#q1.7">Q1.7</a> that is not the case.&nbsp;
+However it is possible to use a v1.0x/v2.0x plugin in v2.5x, see <a href="#q1.15">Q1.15</a>.
+<br>&nbsp;
+<p><a NAME="q1.9"></a><b>Q1.9: Which encoding programs support YV12 ?</b>
+<p>A: There are several options for encoding to DivX/XviD:
+<ol>
+<li>
+There is a modified version (called VirtualdubMod) which has YV12 support:&nbsp;
+This modification (by pulco-citron, Suiryc and Belgador) has OGM and AVS-preview
+support.&nbsp; It can be downloaded from <a href="http://sourceforge.net/projects/virtualdubmod">here</a>.&nbsp;
+In order to use the YV12 support (without doing any color conversions)
+you have to load your AVI in VirtualdubMod and select "<b>fast recompress</b>".</li>
+
+<li>
+VirtualDub support YV12 starting from v1.5.6.&nbsp; In order to use the
+YV12 support (without doing any color conversions) you have to load your
+AVI in VirtualDub and select "<b>fast recompress</b>".</li>
+
+<li>
+For easy (and fast) YV12 support, you can also try out the new commandline
+compressor: AVS2AVI, see also <a href="#q1.21">Q1.21</a>.</li>
+</ol>
+
+<p><br><a NAME="q1.10"></a><b>Q1.10: How do I use v2.5x if the encoding
+programs can't handle YV12 (like Virtualdub, TMPGEnc or CCE SP) ?</b>
+<p>A: Using Virtualdub you have to add "<a href="corefilters/convert.htm">ConvertToYUY2</a>"
+to your script or you have to install a YV12 decompressor like DivX5 or
+one of the recent XviD builds of Koepi (<a href="http://roeder.goe.net/~koepi/xvid.shtml">XviD-04112002-1
+or newer</a>).&nbsp; Enabling "fast recompress" implies that there will
+be a YV12 --> YUY2 --> YV12 conversion.&nbsp; (DivX3/4 also supports YV12,
+except that PIV users could experience <a href="http://www.divx-digest.com/software/divxcodec4.html">crashes</a>
+when encoding to DivX4 in YV12.)
+<p>Using TMPGEnc you have to add the line <a href="corefilters/convert.htm">ConvertToRGB24</a>
+to your script, and for CCE SP you need to add the line <a href="corefilters/convert.htm">ConvertToYUY2</a>
+to your script, since Windows has no internal YV12 compressor.&nbsp; You
+can also install DivX5 one of the recent XviD builds of Koepi (<a href="http://roeder.goe.net/~koepi/xvid.shtml">XviD-04112002-1
+or newer</a>) which will decompress the YV12-AVI for you when loading the
+avi in TMPGEnc or CCE SP.
+<br>&nbsp;
+<p><a NAME="q1.11"></a><b>Q1.11: How do I use with AviSynth v2.5 with Gordian
+Knot?</b>
+<p>- If you are using GKnot 0.26 you have to rename mpeg2dec3.dll (the
+one for AviSynth v2.5) to mpeg2dec.dll, and virtualdubmod.exe to virtualdub.exe
+(keeping copies of the original exe and dll somewhere).
+<p>- If you are using GKnot 0.27 you can follow the same procedure as above,
+or you can enter mpeg2dec3.dll as an alternative mpeg2dec.dll in the options
+menu and rename virtualdubmod.exe to virtualdub.exe.
+<p>- But you can also try the new GKnot 0.28.
+<p>If you are using VirtualdubMod 1.4.13.1 older and experience problems,
+download the latest <a href="http://sourceforge.net/project/showfiles.php?group_id=65889&release_id=130443">prerelease</a>.
+<br>&nbsp;
+<p><a NAME="q1.12"></a><b>Q1.12: What are the main advantages and processing/encoding
+in YV12?</b>
+<p>A: There are two advantages:
+<ul>
+<li>
+<i>speed increase:</i></li>
+
+<br>It depends entirely on the external plugins whether they will have
+YV12 support or not.&nbsp; If they have then speed increases like 25-35
+percent are expected.&nbsp; Of course there will only be a large speed
+increase if both your source and target are in YV12, for example in DVD
+to DivX/Xvid conversions.
+<li>
+<i>no color conversions:</i></li>
+
+<br>The color information doesn't get interpolated (so often) and thus
+stays more realistic.&nbsp; Even if you have to do color conversions (because
+your are encoding with CCE SP or TMPGEnc) you have the advantage that putting
+off the YV12->YUY2 (or RGB24 for TMPGEnc) conversion until the end of the
+script allows you to first IVTC or Deinterlace to create progressive frames.&nbsp;
+But the YV12 to YUY2 conversion for progressive frames maintains more chroma
+detail than it does for interlaced or field based frames.</ul>
+
+<p><br><a NAME="q1.13"></a><b>Q1.13: Is there a command line utility for
+encoding to DivX/XviD using AviSynth ?</b>
+<p>A: As explained in <a href="#q1.9">Q1.9</a> there is a command line
+utility called <a href="http://forum.doom9.org/showthread.php?s=&threadid=36768">AVS2AVI</a>
+(and AVS2AVI GUI) for encoding to DivX/XviD using AviSynth.
+<br>&nbsp;
+<p><a NAME="q1.14"></a><b>Q1.14: Where can I find VCF2AVS ?</b>
+<p>A: VCF2AVS is a nice litte tool to convert vcf to avs files. You can
+edit your captures in vdub (basically cutting, cropping and resizing),
+then edit the resulting avs. Be carefull since there are two versions floating
+around:
+<ul>
+<li>
+VCF2AVS by Darksoul71 which can be found <a href="http://forum.doom9.org/showthread.php?s=&threadid=41927">here</a>.</li>
+</ul>
+
+<ul>
+<li>
+VCF2AVS by BB (more basic) which can be found <a href="http://forum.doom9.org/showthread.php?s=&threadid=30587">here</a>.</li>
+</ul>
+Try them both and look which one fullfills your needs :)
+<br>&nbsp;
+<p><a NAME="q1.15"></a><b>Q1.15: How do I use a plugin compiled for v2.0x
+in v2.5x ?</b>
+<p>A: In <a href="#JapanesePlugin">WarpSharp-package for AviSynth v2.5x</a>
+you will find a plugin called "LoadPluginEx.dll". <b>When using an older
+version of LoadPluginEx.dll, don't move this plugin to your plugin dir.&nbsp;
+But move it to a separate dir, otherwise VirtualdubMod and WMP6.4 will
+crash on exist.</b>&nbsp; This will enable you using v2.0x plugins in v2.5x.&nbsp;
+An example script (using the v2.0x plugin Dust by Steady):
+<p><i>LoadPlugin("C:\Program Files\avisynth2_temp\plugins\LoadPluginEx.dll")</i>
+<br><i>LoadPlugin("C:\Program Files\avisynth2_temp\plugins\dustv5.dll")</i>
+<p><i>AviSource("D:\clip.avi").ConvertToYUY2</i>
+<br><i>PixieDust(5)</i>
+<br>&nbsp;
+<p><a NAME="q1.16"></a><b>Q1.16: How do I switch between differents AviSynth
+versions without re-install ?</b>
+<p>A:
+<ul>
+<li>
+You can use AvisynthSwitcher available <a href="http://www.lalternative.org">here</a>.&nbsp;
+Versions 2.08 and 2.50 are provided, but you can easily add a new one under
+AvisynthSwitcher\versions\Avisynth 2.x.x.</li>
+
+<li>
+Some other ways are described <a href="http://forum.doom9.org/showthread.php?s=&threadid=45181">here</a>.</li>
+</ul>
+
+<p><br><a NAME="q1.17"></a><b>Q1.17: How do I make an AVS-file ?</b>
+<p>A: See <a href="#q1.19">Q1.19</a> (using the text editor you prefer).
+<br>&nbsp;
+<p><a NAME="q1.18"></a><b>Q1.18: Where do I save my AVS-file ?</b>
+<p>A: Anywhere on your harddrive.
+<br>&nbsp;
+<p><a NAME="q1.19"></a><b>Q1.19: How do I know which version number of
+AviSynth I have ?</b>
+<p>A: Open a text-editor, for example notepad. At the following line
+<p><a href="corefilters/version.htm">Version</a>
+<p>and save the file with the extension "avs".&nbsp; Save for example as
+version.avs (make sure that the extension is "avs" and not "txt").&nbsp;
+Open the file in an application which can read AVI-files, for example WMP
+6.4. The version number will be displayed.
+<br>&nbsp;
+<p><a NAME="q1.20"></a><b>Q1.20: Does AviSynth have a GUI (graphical user
+interface) ?</b>
+<p>A: Several nice tools are available:
+<ul>
+<li>
+VirtualdubMod, see also <a href="#q1.9">Q1.9</a>.&nbsp; Regarding to AviSynth
+the following utilities are added:</li>
+</ul>
+
+<ul>
+<ul>
+<li>
+'Open via AVISynth' command. This allows you to open any AviSynth compatible
+video file by automatically generating a suitable script by a selectable
+template.</li>
+</ul>
+</ul>
+
+<ul>
+<ul>
+<li>
+AVS Editor (Hotkey Ctrl+E): Just open your AVS and under tools select "script
+editor". Change something and press F5 to preview the video.</li>
+
+<br>&nbsp;</ul>
+
+<li>
+<a href="http://www.avisynth.org/index.php?page=AvisynthEditor">AvisynthEditor</a>,
+an advanced AviSynth script editor featuring syntax highlighting, auto-complete
+code and per versions plugin definitions files. Here is a <a href="http://www.lalternative.org/img/AvisynthEditor.gif">screenshot</a>.&nbsp;
+It can be found <a href="http://www.lalternative.org/">here</a>.&nbsp;
+Discussion can be found on <a href="http://forum.doom9.org/showthread.php?s=&threadid=49487">Doom9.org
+forum</a>.</li>
+
+<br>&nbsp;
+<li>
+<a href="http://www.yeomanfamily.demon.co.uk/avsgenie/avsgenie.htm">AVSGenie</a>:
+AVSGenie allows the user to select a filter from a drop down list or from
+a popup menu. An editable page of parameters will then be brought into
+view, with a guide to the filter and it's parameters. A video preview window
+opens, showing "source" and "target" views.&nbsp; The source window, in
+simple cases, shows output of the first line of the script, generally an
+opened video file. The target window shows the output of the whole script.
+In this way, effects of filters can easily be seen. The line which represents
+the source window can be changed.&nbsp; Discussion can be found <a href="http://forum.doom9.org/showthread.php?s=&threadid=54090">here</a>.</li>
+
+<br>&nbsp;
+<li>
+<a href="http://www.swiftavs.net">SwiftAVS (by Snollygoster)</a>: Another
+nice gui, formerly known as AviSynthesizer. [<a href="http://forum.doom9.org/showthread.php?s=&threadid=48326">discussion</a>]</li>
+</ul>
+
+<p><br><a NAME="q1.21"></a><b>Q1.21: I got the message "LoadPlugin: unable
+to load "xxx" is not an AviSynth 1.0/AviSynth 2.5 plugin" ?</b>
+<p>A: You are using a plugin which is not compatiable with that version
+of AviSynth.&nbsp; Have a look at <a href="#q1.8">Q1.8</a>.
+<br>&nbsp;
+<p><a NAME="q1.22"></a><b>Q1.22: How do I know which colorspace I'm using
+at a given place in my script ?</b>
+<p>A: To see which colorspace you are using at a given place in your script,
+add:
+<p><a href="corefilters/info.htm">Info</a>
+<p>... and AviSynth will give you much information about colorspace amongst
+other things!
+<br>&nbsp;
+<p><a NAME="q1.23"></a><b>Q1.23: I installed AviSynth v2.5 and DivX5 (or
+one of the latest Xvid builds of Koepi), all I got is a black screen when
+opening my avs in Virtualdub/!VirtualdubMod/CCE/TMPGEnc ?</b>
+<p>A: Ok, apperently your video is not decompressed by DivX5 (or XviD).&nbsp;
+Go to your windows-dir and rename a file called MSYUV.DLL, or add the following
+to your registry file:
+<p><i>REGEDIT4</i>
+<p><i>[HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Drivers32]</i>
+<br><i>"VIDC.YV12"="divx.dll"</i>
+<p>Replace "divx.dll" by "xvid.dll" for XviD.
+<br>&nbsp;
+<p><a NAME="q1.24"></a><b>Q1.24: My computer seems to crash at random during
+a second pass in any encoder ?</b>
+<p>A : AviSynth (especially v2.5x) is highly optimized. As a consequence
+it is possible that your computer seems to crash at random during a second
+pass. Try running the [<a href="http://www.mersenne.org/freesoft.htm">Prime95</a>]
+stress test for an hour, to check if your system is stable. If this test
+fails (or your computer locks up) make sure that your computer is not overclocked
+and lower your bus speed of your processor in steps of (say) five MHz till
+the crashes are gone.
+<br>&nbsp;
+<p><a NAME="q1.25"></a><b>Q1.25:VirtualdubMod, WMP6.4, CCE and other programs
+crash every time on exit (when previewing an avs file) ?</b>
+<p>A: This problem arises if you got an older version of LoadPluginEx.dll
+(or WarpSharp.dll) of the WarpSharp package in your plugin dir. The solution
+is to move it outside the plugin directory and load it manually. I hope
+that the maker of this plugin also noticed this ...
+<p><a NAME="q1.26"></a><b>Q1.26: Are there any lossless YV12 codecs, which
+I can use for capturing for example?</b>
+<p>A: There are several of them:
+<ol>
+<li>
+<a href="http://forum.doom9.org/showthread.php?s=&threadid=38389&pagenumber=5">VBLE
+codec (by MarcFD)</a>: an huffyuv based encoder</li>
+
+<li>
+<a href="http://forum.doom9.org/showthread.php?s=&threadid=50363">LocoCodec
+(by TheRealMoh)</a>:</li>
+
+<li>
+<a href="http://forum.doom9.org/showthread.php?s=&threadid=48504">MJPEG
+codec</a>: Leaves a small logo in the right upper side of the clip.</li>
+</ol>
+
+<p><br><a NAME="s2"></a><b><font size=+1>S2: AviSynth and frameserving:</font></b>
+<br>&nbsp;
+<p><a NAME="q2.1"></a><b>Q2.1: What is frameserving and what is it good
+for ?</b>
+<p>A: An excellent discription is found on <a href="http://neuron2.net/LVG/frameserving.html"> Lukes homepage</a>:
+<p>"Frameserving is a process by which you directly transfer video data
+from one program on your computer to another. No intermediate or temporary
+files are created. The program that opens the source file(s) and outputs
+the video data is called the frameserver. The program that receives the
+data could be any type of video application.
+<p>There are two main reasons that you would want to frameserve a video:
+<ol type="1">&nbsp;
+<li>
+Save Disk Space:</li>
+
+<br>Depending the on the frameserving application, you can usually edit/process
+your video as it is being frameserved. Because frameserving produces no
+intermediate files, you can use a frameserver to alter your videos without
+requiring any additional disk space. For example, if you wanted to join
+two video files, resize them, and feed them to another video application,
+frameserving would allow you to do this without creating a large intermediate
+file.
+<br>&nbsp;
+<li>
+Increased Compatibility:</li>
+
+<br>To the video application that's receiving the frameserved video, the
+input looks like a relatively small, uncompressed video file. However,
+the source file that the frameserver is transferring could actually be,
+for example, a highly compressed MPEG-1 video. If your video application
+doesn't support MPEG-1 files, it's not a problem because the application
+is just receiving standard uncompressed video from the frameserver. This
+feature of frameserving enables you to open certain types of files in an
+application that wouldn't normally support them.</ol>
+
+<p><br>Furthermore, because the video application is being fed the source
+video one frame at a time, it doesn't know anything about the file size
+of the source video. Therefore, if your application has 2 GB or 4 GB limit
+on input file size, it won't have any effect on your frameserved video.
+You could feed 100 GB of video via a frameserver to an application limited
+to 2 GB and it wouldn't cause a problem."
+<br>&nbsp;
+<p><a NAME="q2.2"></a><b>Q2.2: How do I use AviSynth as a frameserver ?</b>
+<p>A: Write a script using a text editor. Load your clip (see <a href="#q2.8">Q2.8</a>)
+in AviSynth, do the necessary filtering and load the AVS-file in encoder/application
+X (must be an encoder or application which can read AVI-files, see <a href="#q2.3">Q2.3</a>
+and <a href="#q2.4">Q2.4</a>).
+<br>&nbsp;
+<p><a NAME="q2.3"></a><b>Q2.3: How do I frameserve my AVS-file to encoder/application
+X ?</b>
+<p>A:
+<ul>
+<li>
+Frameserving to TMPGEnc, CCE SP, VirtualDub or WMP6.4:</li>
+
+<br>Just open your AVS-file in TMPGEnc, CCE SP, VirtualDub or WMP6.4 (or
+whatever encoder/application you use) and have a look at <a href="#q2.4">Q2.4</a>.</ul>
+
+<ul>
+<li>
+Frameserving to VFAPI:</li>
+
+<br>For VFAPI you need to install the <a href="http://www.vcdhelp.com/forum/userguides/87270.php">ReadAVS</a>
+plugin. Just copy ReadAVS.dll to the VFAPI reader directory and open the
+reg-file ReadAVS.reg in notepad and change the corresponding path. Save
+it, and doubleclick on it to merge it with your registry-file.</ul>
+
+<ul>
+<li>
+Frameserving to Premiere or Ulead:</li>
+
+<ul>
+<li>
+For frameserving to Premiere there exists an import plugin "IM-Avisynth.prm".
+The original version can be downloaded from <a href="http://math.berkeley.edu/~benrg/avisynth-premiere.html">Bens
+site</a>. A much improved version can be downloaded from the [<a href="http://sourceforge.net/projects/videoeditorskit/">Video Editors Kit sourceforge
+page</a>]. This works for Premiere 5.x,6.x and Pro at present. To install the import plugin move the IM-Avisynth.prm file
+into your Premiere "Plug-ins" directory.</li>
+
+<li>
+You can also download a program called [<a href="http://cultact-server.novi.dk/kpo/avisynth/avs_cvs.html">makeAVIS
+(included in the ffvfw codec package</a>] (this is an AVI Wrapper), [<a href="http://forum.doom9.org/showthread.php?s=&threadid=49964">discussion</a>].
+Note that this program is included in the installation of AviSynth v2.52.
+For Ulead you must use this program.</li>
+
+<br>&nbsp;</ul>
+
+<li>
+Frameserving to Windows Media 9 Encoder:</li>
+
+<br>Download Nic's Windows Media 9 Encoder and make sure you also installed
+the Windows Media 9 codec. Both can be found <a href="http://nic.dnsalias.com/WM9Enc.html">here</a>.</ul>
+<a NAME="q2.4"></a><b>Q2.4: Problems when Encoder X reads AVS-files ?</b>
+<p>A:
+<ol type="1">
+<li>
+<i>Why can't I open my AVS-file in TMPGEnc (this happens in old versions
+of TMPGEnc) ?</i></li>
+
+<ul>
+<li>
+Install VFAPI plugin for TMPGEnc</li>
+
+<li>
+Disable the direct show filters within TMPGEnc and turn off the VirtualDub
+proxy before frameserving.</li>
+</ul>
+
+<ul>
+<li>
+Add "<a href="corefilters/convert.htm">ConvertToRGB24</a>()" at the end of
+your AVS-file</li>
+
+<li>
+Install <a href="http://shelob.mordor.net/dgraft/www.math.berkeley.edu/benrg/index.html">Huffyuv</a>/<a href="http://www.avisynth.org/index.php?page=DivX">DivX5</a>
+codec so that it can do the decompression for you when loading an AVI in
+TMPGEnc.</li>
+
+<li>
+Install the <a href="http://www.dvdrhelp.com/forum/userguides/87270.php">ReadAVS</a>
+plugin for TMPGEnc</li>
+
+<br>&nbsp;</ul>
+
+<li>
+<i>CCE SP crashes when reading an AVS-file, what to do ?</i></li>
+
+<ul>
+<li>
+If you're using Win2k then run CCE in WinNT4-SP5 compatibility mode.</li>
+
+<li>
+If you're frameserving with AviSynth v1.0x/v2.0x put "<a href="corefilters/resampleaudio.htm">ResampleAudio</a>(44100)"
+in your script, even if you don't have any audio in your AVS-file.</li>
+
+<li>
+If you're frameserving with AviSynth v2.5x the ResampleAudio trick doesn't
+work anymore because it doesn't add a silent audio stream to your video
+clip.&nbsp; Instead make a script (called "addaudio.avsi") as described
+<a href="http://www.avisynth.org/index.php?page=AddAudio">here</a>,
+and put it in your plugin dir.</li>
+
+<br>&nbsp;</ul>
+
+<li>
+<i>Encoders/players (like CCE SP v2.62/v2.64) will not read AVS-files ?</i></li>
+
+<br>Many "new" programs do NOT use the Windows functions to read the AVI-files.
+If they do NOT use those standard Windows functions the AviSynth-script
+files will not work. Known programs that do NOT use those routines are
+CCE SP v2.62, Windows Media Encoder vx.x. Furthermore people report problems
+with Windows Media Player 7.
+<br>&nbsp;
+<ul>
+<li>
+Use CCE SP v2.50 and WMP6.4 (under "Program Files" and "Windows Media Player"
+you will find a file called "mplayer2.exe", this is WMP6.4). In case that
+you want to use Windows Media Encoder you can use the AVI Wrapper "makeAVIS"
+instead, see<a href="#q2.3"> Q2.3</a>. For Windows Media Encoder 9 have
+a look at <a href="#q2.3">Q2.3</a>.</li>
+
+<li>
+If you still want to use CCE SP v2.62 you can try the following: Frameserve
+to CCE SP v2.62 with VFAPI. Create an AVS script and then make a fake AVI
+with VFAPI (VFAPI accepts AVS-files, see <a href="#q2.3">Q2.3</a>, and
+can be downloaded from Dooms site).</li>
+
+<li>
+Cinemacraft says that their CCE SP v2.66 can accept AviSynth scripts.&nbsp;
+So if you have this version you sould be safe.<br>
+<br>
+</li>
+</ul>
+
+<li>
+<i>Wrong YUY2 Codec causes colorspace errors on AviSynth scripts feeding
+TMPGEnc?</i></li>
+
+<br>Some time ago I suddenly found that feeding TMPGEnc with an AviSynth
+script resulted in what looked like a colorspace conversion error; as if
+the video had been badly dithered down from 24 bit to 8 bit! (..)
+<p>If you have such problems add "<a href="corefilters/convert.htm">ConvertToRGB24</a>"
+as the last line of your script or have a look at the thread (and the suggested
+solutions) <a href="http://forum.doom9.org/showthread.php?s=&threadid=27932" target="_blank">colorspace
+conversion errors</a>.
+<br>&nbsp;</ol>
+<a NAME="q2.5"></a><b>Q2.5: How do I frameserve from Premiere/Ulead/Vegas
+to AviSynth ?</b>
+<p>A: You can try the AviSynth compatible frameserver (import) for [<a href="http://www.debugmode.com/pluginpac/frameserver.php">PluginPace
+frameserver (by Satish Kumar)</a>]: For frameserving from SonicFoundry
+Vegas (and earlier Vegas Video/VideoFactory? versions), Adobe Premiere
+or Ulead MediaStudio Pro to AviSynth. [<a href="http://forum.doom9.org/showthread.php?s=&threadid=51242">discussion</a>].
+<br>&nbsp;
+<p><a NAME="q2.6"></a><b>Q2.6: When frameserving I got the following message:
+"Script error, there is no function named "xxx (the name of some filter)""
+?</b>
+<p>A: You probably installed/registered a version of AviSynth which doesn't
+contain the filter.&nbsp; Make sure that there are no other versions floating
+around on your hard disc (there's a possibility that a version will be
+registered while it is not in your system directory).&nbsp; Check whether
+the correct version is registered, see also <a href="#q1.19">Q1.19</a>.
+<br>&nbsp;
+<p><a NAME="q2.7"></a><b>Q2.7: I get an unrecognized exception error trying
+to load an avs file with VirtualDub, using dvd2avi v1.77.3 ?</b>
+<p>A: .d2v created with dvd2avi v1.77.3 is NOT compatible with mpeg2dec.dll!
+Use v1.76 instead. If you still want to use v1.77.3, make sure that you
+have AviSynth v2.5 installed and mpeg2dec3.dll v1.07 (or a more recent
+version).
+<br>&nbsp;
+<p><a NAME="q2.8"></a><b>Q2.8: How do I load my clip into AviSynth (video)
+?</b>
+<p>A: Make a script containing the lines (replace the filename and the
+path of the filename):
+<br>&nbsp;
+<ol>
+<li>
+AVI-files (with uncompressed WAV, or CBR/VBR MP3-audio (starting from v2.04)):</li>
+
+<br><i>AviSource("d:\filename.avi")</i>
+<br>or disabling the audio:
+<br><i>AviSource("d:\filename.avi", false)</i>
+<br>&nbsp;
+<li>
+AVI-files that AVISource doesn't support (for example "DV type I AVI-files"):</li>
+
+<br><i>DirectShowSource("d:\filename.avi")</i>
+<br><i>DirectShowSource("d:\filename.mpg")</i>
+<br>&nbsp;
+<li>
+Have a look at the <a href="#MpegDecoders">Mpeg decoder plugins for AviSynth
+v1.0x/v2.0x</a> and the <a href="#MpegDecoders2">Mpeg decoder plugins for
+AviSynth v2.5x</a>:</li>
+
+<br>Using AviSynth v2.0x/AviSynth v2.5x and MPEGdecoder.dll:
+<br><i>LoadPlugin("d:\MPEGdecoder.dll")</i>
+<br><i>mpegsource("d:\filename.mpg")</i>
+<br>&nbsp;
+<li>
+MPEG2-files (extension m2p or m2v):</li>
+
+<br>Have a look at the <a href="#MpegDecoders">Mpeg decoder plugins for
+AviSynth v1.0x/v2.0x</a> and the <a href="#MpegDecoders2">Mpeg decoder
+plugins for AviSynth v2.5x</a>. Some examples:
+<br>&nbsp;
+<ul>
+<li>
+Using AviSynth v2.0x and mpeg2dec.dll:</li>
+
+<br>Make a DVD2AVI project file and save it (filename.d2v) and load this
+clip into AviSynth:
+<br><i>LoadPlugin("d:\mpeg2dec.dll")</i>
+<br><i>mpeg2source("d:\filename.d2v")</i></ul>
+
+<ul>
+<li>
+Using AviSynth v2.5x and MPEGdecoder.dll:</li>
+
+<br><i>LoadPlugin("d:\MPEGdecoder.dll")</i>
+<br><i>mpegsource("d:\filename.m2p")</i>
+<br>or (only the video stream)
+<br><i>LoadPlugin("d:\MPEGdecoder.dll")</i>
+<br><i>mpegsource("d:\filename.m2v", -2, "raw")</i></ul>
+
+<li>
+VOB-files:</li>
+
+<br>Have a look at the <a href="#MpegDecoders">Mpeg decoder plugins for
+AviSynth v1.0x/v2.0x</a> and the <a href="#MpegDecoders2">Mpeg decoder
+plugins for AviSynth v2.5x</a>. Some examples:
+<br>&nbsp;
+<ul>
+<li>
+Using AviSynth v2.0x and mpeg2dec.dll:</li>
+
+<br>Make a DVD2AVI project file and save it (filename.d2v) and load this
+clip into AviSynth:
+<br><i>LoadPlugin("d:\mpeg2dec.dll")</i>
+<br><i>mpeg2source("d:\filename.d2v")</i></ul>
+
+<ul>
+<li>
+Using AviSynth v2.5x and MPEGdecoder.dll:</li>
+
+<br><i>LoadPlugin("d:\MPEGdecoder.dll")</i>
+<br><i>mpegsource("d:\filename1.vob+d:\filename2.vob")</i></ul>
+
+<li>
+ATSC transport streams (extension *.trp or *.ts):</li>
+
+<br>&nbsp;
+<ul>
+<li>
+Using AviSynth v2.0x:</li>
+
+<br>Download mpeg2dec2 and a special version of <a href="http://www.trbarry.com/DVD2AVIT3.zip">dvd2avi</a>.&nbsp;
+Don't forget to specify the video and audio pid's in the DVD2AVI.ini file:
+<br><i>LoadPlugin("d:\mpeg2dec2.dll")</i>
+<br><i>mpeg2source("d:\filename.d2v")</i></ul>
+
+<ul>
+<li>
+Using AviSynth v2.0x/v2.5x:</li>
+
+<br>Download mpeg2dec3 or mpegdecoder and a special version of <a href="http://www.trbarry.com/DVD2AVIT3.zip">dvd2avi</a>:
+<br><i>LoadPlugin("d:\mpeg2dec3.dll")</i>
+<br><i>mpeg2source("d:\filename.d2v")</i>
+<br>or if you want to used mpegdecoder:
+<br><i>LoadPlugin("d:\mpegdecoder.dll")</i>
+<br><i>mpegsource("d:\filename.d2v")</i>
+<p>If both methods fail you can try <a href="http://www.avsforum.com/avs-vb/attachment.php?s=&postid=1408610">HDTV2MPEG2</a>
+(produces non dvd compliant mpeg2 files) to create a temporary mpeg2 file
+and import that in AviSynth with dvd2avi. For demuxing AAC audio: use [<a href="http://www.avsforum.com/avs-vb/showthread.php?s=&threadid=222055">TSDemux</a>].
+The Moonlight <a href="http://www.moonlight.co.il/download/?dl=xmuxer">Xmuxer</a>
+package has also a bunch of DirectShow filters that deal with muxing and
+demuxing MPEG-1/2 TS and PVA files.
+<br>&nbsp;
+<br>&nbsp;</ul>
+
+<li>
+PVA transport streams:</li>
+
+<br>You are out of luck here.&nbsp; AFAIK the only options are PVAStrumento
+and <a href="http://www.moonlight.co.il/download/?dl=xmuxer">Xmuxer</a>.
+<br>&nbsp;
+<li>
+d2v-files (DVD2AVI frameserver files):</li>
+
+<br><i>LoadPlugin("d:\mpeg2dec.dll")</i>
+<br><i>mpeg2source("d:\filename.d2v")</i>
+<br>&nbsp;
+<li>
+vdr-files (VirtualDubs frameserver files):</li>
+
+<br><i>AVISource("d:\filename.vdr")</i>
+<br>&nbsp;
+<li>
+ASF-files (the framerate has to be specified, right click on the file in
+windows explorer):</li>
+
+<br><i>DirectShowSource("d:\filename.asf", fps=15)</i>
+<br>&nbsp;
+<li>
+tpr-files (TMPGEnc project files)</li>
+
+<br>First note that the plugin GreedyHMA is proving to be a better IVTC
+solution (not to mention *MUCH* easier) than TMPGEnc. So if you want to
+use TMPGEnc for this get the GreedyHMA plugin (this plugin works in YUV-space).
+<p>If you still want to import a tpr-file into an AVS-file, there are two
+possibilities:
+<br>&nbsp;
+<ul>
+<li>
+The TMPGEnc plugin is contained in the VFAPI Plugin zip file (ends with
+-vfp.zip) which can be download from Dooms site. (This method doesn't always
+work, some encoders like CCE SP can't read them.)</li>
+
+<br><i>LoadVFAPIplugin("d:\TMPGenc.vfp","TMPGsource")</i>
+<br><i>TMPGsource("d:\filename.tpr")</i>
+<br><i>FlipVertical</i>
+<li>
+Import the tpr-file in VFAPI, create a fake avi and then load it into AviSynth
+(note that VFAPI works in RGB-space). See also <a href="http://forum.doom9.org/showthread.php?s=&threadid=10007" target="_blank">http://forum.doom9.org/showthread.php?s=&amp;threadid=10007</a>.</li>
+
+<br>&nbsp;</ul>
+
+<li>
+aup-files (AviUtl projects)</li>
+
+<br>I don't know if it is possible to load it directly into AviSynth. Import
+the aup-file in VFAPI, create a fake avi and then load it into AviSynth
+(note that VFAPI works in RGB). See also <a href="http://forum.doom9.org/showthread.php?s=&threadid=10007" target="_blank">http://forum.doom9.org/showthread.php?s=&amp;threadid=10007</a>.
+<br>&nbsp;
+<li>
+QuickTime-files (see <a href="http://forum.doom9.org/showthread.php?s=&threadid=23139" target="_blank">http://forum.doom9.org/showthread.php?s=&amp;threadid=23139</a>):</li>
+
+<br>Use DirectShowSource:
+<br><i>DirectShowSource("d:\filename.mov")</i>
+<br>or if that doesn't work download a plugin (can be found in Dooms download
+section):
+<br><i>LoadVFAPIPlugin("C:\QTReader\QTReader.vfp", "QTReader")</i>
+<br><i>QTReader("C:\quicktime.mov")</i>
+<br>&nbsp;
+<li>
+AVS-files:</li>
+
+<br>Just import it at the beginning of your script:
+<br><i>Import("d:\filename.avs")</i>
+<br>In v2.05 or more recent version you can use the autoplugin loading.&nbsp;
+Just move your AVS-file in the plugindir containing the other (external)
+plugins, and rename (since v.2.08, v2.5) the extension to 'avsi'.&nbsp; See also <a href="#q5.2">Q5.2</a>.</ol>
+
+<p><br><a NAME="q2.9"></a><b>Q2.9: How do I load my clip into AviSynth
+(audio) ?</b>
+<p>A: This can be done in several ways:
+<ol>
+<li>
+Using AviSource (with uncompressed WAV, CBR/VBR MP2-audio (starting from
+v2.04) or CBR/VBR MP3-audio (starting from v2.04)):</li>
+
+<br><i><a href="corefilters/avisource.htm">AviSource</a>("d:\filename.avi")</i>
+<p>Starting from v2.05 you can extract audio from a AVI-file in this way:
+<br><i><a href="corefilters/avisource.htm">WavSource</a>("d:\filename.avi")</i>
+<br>&nbsp;
+<li>
+Use the audio decoder plugin MPASource, see <a href="#q3.4">Q3.4</a> and
+<a href="#q3.5">Q3.5</a>
+for importing mp1/mp2/mp3 audio.</li>
+
+<br>&nbsp;
+<li>
+See <a href="corefilters/directshowsource.htm">DirectShowSource</a> for downmixing
+AC3 audio.</li>
+
+<br>&nbsp;
+<li>
+Put a WAV-header on your <a href="http://www.geocities.wilbertdijkhof/mpa2wav.zip">mp2</a>
+or mp3 (with Besweet) audio file and use WavSource to import the audio.&nbsp;
+You also need ACM codecs for <a href="http://www.geocities.wilbertdijkhof/qmpeg_mp2.zip">mp2</a>,
+and for mp3 (Radium codec, see doom's download section).&nbsp; Use WavSource
+to load the WAV:</li>
+
+<br><i><a href="corefilters/avisource.htm">WavSource</a>("d:\filename.wav")</i></ol>
+Up to v2.07 the audio must be mono or stereo.&nbsp; Starting from v2.5
+you can also import uncompressed multichannel audio.
+<br>&nbsp;
+<p><a NAME="q2.10"></a><b>Q2.10: Can I import an audio file other than
+a WAV-file?</b>
+<p>A: Yes:
+<ul>
+<li>
+Uncompressed audio files (that is uncompressed WAV-files) can be loaded
+in all versions up to v2.03.</li>
+
+<li>
+Starting from v2.04 compressed WAV-files can be loaded (currently only
+MP2/MP3-files with a WAV-header).</li>
+
+<li>
+Starting from v2.5 you can also load uncompressed multichannel audio.</li>
+
+<li>
+Using the MPASource and AC3filter plugins you can import mp1/mp2/mp3 and
+AC3 audio.</li>
+</ul>
+See also <a href="#q2.9">Q2.9</a>.
+<br>&nbsp;
+<p><a NAME="q2.11"></a><b>Q2.11: How do I join video and audio ?</b>
+<p>A: Make an avs-file containing the lines (change the filenames and paths):
+<p>video = <a href="corefilters/avisource.htm">AviSource</a>("d:\filename1.avi")
+<br>audio = <a href="corefilters/avisource.htm">WavSource</a>("d:\filename2.wav")
+<br><a href="corefilters/audiodub.htm">AudioDub</a>(video, audio)
+<br>&nbsp;
+<p><a NAME="q2.12"></a><b>Q2.12:&nbsp; I get an unrecognized exception
+in the line where I use DirectShowSource?</b>
+<p>A: Have you got VobSub installed? Have a look at this <a href="http://forum.doom9.org/showthread.php?s=&threadid=34350">thread</a>.
+Upgrade to VobSub v2.20 or higher. If someone has an explanation, please
+post it in the thread.
+<br>&nbsp;
+<p><a NAME="s3"></a><b><font size=+1>S3: Filters and colorspaces:</font></b>
+<br>&nbsp;
+<p><a NAME="q3.1"></a><b>Q3.1: What is RGB/YUV-colorspace ?</b>
+<p>A: These are two different ways to represent colors: YUV colorspace
+and RGB colorspace.&nbsp; In YUV colorspace there is one component that
+represent lightness (luma) and two other components that represent color
+(chroma).&nbsp; As long as the luma is conveyed with full detail, detail
+in the chroma components can be reduced by subsampling (filtering, or averaging)
+which can be done in several ways (thus there are multiple formats for
+storing a picture in YUV colorspace).&nbsp; In RGB colorspace there are
+three components, one for the amount of Red, one for the amount of Green
+and one for the amount of Blue.&nbsp; Also in the colorspace there are
+multiple formats for storing a picture which differ in the amount of samples
+are used for one of the three colors.
+<p>Information can be found here: <a href="http://www.fourcc.org/fccyuv.htm">YUV
+Formats</a>, <a href="http://www.fourcc.org/fccrgb.htm">RGB Formats</a>,
+<a href="http://msdn.microsoft.com/library/default.asp?url=/library/en-us/dnwmt/html/YUVFormats.asp">MSDN
+YUV Formats</a> and <a href="http://www.inforamp.net/~poynton/PDFs/Chroma_subsampling_notation.pdf">Chroma
+subsampling by Charles Poyton</a>.
+<p>As of AviSynth v1.0x/v2.0x, RGB24, RGB32, and YUY2 are supported.&nbsp;
+In AviSynth v2.5x there is also support for YV12.
+<br>&nbsp;
+<p><a NAME="q3.2"></a><b>Q3.2: In which colorspaces do AviSynth and the
+internal filters work ?</b>
+<p>A: AviSynth works in RGB and YUV using the RGB32, RGB24, YUY2 and YV12
+formats.&nbsp; Most of the internal filters work in any of these formats,
+too. Which color format a filter requires, can be found [<a href="quick_ref.htm">here</a>].
+<br>&nbsp;
+<p><a NAME="q3.3"></a><b>Q3.3: How do I load a plugin in to AviSynth ?</b>
+<p>A: Starting from v2.05 you can use its auto-plugin loading feature.
+The path of the plugin directory is set during install. But if you want
+to change it for some reason, change or add the following lines:
+<p><i>REGEDIT4</i>
+<p><i>[HKEY_LOCAL_MACHINE\SOFTWARE\Avisynth]</i>
+<br><i>"PluginDir"="c:\\program files\\avisynth 2.5\\plugins"</i>
+<p>Change the path above if necessary and make sure you created the plugin-dir
+as well. Save it as install_autoplugin.reg, and merge it to your registry
+file by right-clicking on it in your explorer. Finally move all your plugins/script-functions
+into the plugin directory. If you want to load plugins manually, use "LoadPlugin".
+An example script:
+<p><i>LoadPlugin("d:\mpeg2dec.dll")</i>
+<br><i>mpeg2source("d:\filename.d2v")</i>
+<br>&nbsp;
+<p><a NAME="q3.4"></a><b>Q3.4: Where can I download external filters for
+AviSynth v1.0x/v2.0x ?</b>
+<p>A: Most of them can be found in the AviSynth section at Doom9. But below
+you will find links to most of them. If you know of a plugin which is missing,
+please feel free to add it to the list using the "Edit this document" link
+to the left. Most of these plugins work in YUY2. If you can't find the
+plugin (the attachments are still disabled), you can download the plugins
+at [<a href="http://www.avisynth.org/warpenterprises/">WarpEnterprises</a>]
+homepage.
+<p><b>Deinterlacing &amp; Pulldown Removal:</b>
+<br><i>All PAL, NTSC, and SECAM video is interlaced, which means that only
+every other line is broadcast at each refresh interval.&nbsp; Deinterlacing
+filters let you take care of any problems caused by this. IVTC (inverse
+telecine, aka pulldown removal) filters undo the telecine process, which
+comes from differences between the timing of your video and its original
+source.</i>
+<ol>
+<li>
+<a href="http://neuron2.net/mine.html">Decomb Filter package (by Donald
+Graft)</a>: This package of plugin functions for AviSynth provides the
+means for removing combing artifacts from telecined progressive streams,
+interlaced streams, and mixtures thereof. Functions can be combined to
+implement inverse telecine for both NTSC and PAL streams. <i>[YUY2]</i></li>
+
+<br>&nbsp;
+<li>
+<a href="http://www.geocities.com/siwalters_uk/fnews.html">ViewFields/UnViewFields
+(by Simon Walters)</a>: ViewFields and UnViewFields are a complementary
+pair of filters to display and identify top and bottom fields from an interlaced
+source. <i>[YUY2]</i></li>
+
+<br>&nbsp;
+<li>
+<a href="http://www.trbarry.com/GreedyHMA.zip">GreedyHMA plugin (by Tom
+Barry)</a>: DScaler's Greedy/HM algorithm code to perform pulldown matching,
+filtering, and video deinterlacing. <i>[YUY2]</i></li>
+
+<br>&nbsp;
+<li>
+<a href="http://forum.doom9.org/showthread.php?s=&threadid=28778">Motion
+compensated deinterlace filter "TomsMoComp" (by Tom Barry)</a>: This filter
+uses motion compensation and adaptive processing to deinterlace video source
+(not for NTSC film). <i>[YUY2]</i></li>
+
+<br>&nbsp;
+<li>
+<a href="http://home.bip.net/gunnart/video/AVSPorts/SmoothDeinterlacer/">SmoothDeinterlacer
+(by Gunnar Thalin, ported to AviSynth by Xesdeeni)</a>: A port of the VirtualDub
+[Smooth Deinterlacer] filter.
+<i>[YUY2, RGB]</i></li>
+
+<br>&nbsp;
+<li>
+IVTC plugin v2.2 (by "Wizard_FL", Dooms download section): This plugin
+reverses the telecine process. <i>[YUY2]</i></li>
+
+<br>&nbsp;
+<li>
+<a href="http://members.tripod.co.jp/thejam79/IT_0051.zip">"IT" (by thejam79)</a>:
+Inverse telecine plugin. <a href="http://www.avisynth.org/index.php?page=IT.txt.en">Translation
+of README</a></li>
+
+<br>&nbsp;
+<li>
+<a href="http://www.geocities.co.jp/SiliconValley-Sunnyvale/3109/acomb05.zip">"AntiComb"
+(by ?)</a>: This filter remove combing (interlace artifacts). <a href="http://www.avisynth.org/index.php?page=AntiComb">Translation
+of README</a></li>
+
+<br>&nbsp;
+<li>
+See also Auto24FPS and AutoDeint in the <a href="#MiscellaneousPlugins">MiscPlugins</a>
+section below.</li>
+</ol>
+<b>Spatio-Temporal Smoothers:</b>
+<br><i>These filters use color similarities and differences both within
+and between frames to reduce noise and improve compressed size.&nbsp; They
+can greatly improve noisy video, but some care should be taken with them
+to avoid blurred movement and loss of detail.</i>
+<ol>
+<li>
+<a href="http://students.washington.edu/ldubb/computer/PeachSmoother.zip">PeachSmoother
+(by Lindsey Dubb)</a>: An adaptive smoother optimized for TV broadcasts:
+<a href="http://students.washington.edu/ldubb/computer/Read_Me_Peach_Smoother.htm">documentation</a>;
+<a href="http://forum.doom9.org/showthread.php?s=&threadid=36575">discussion</a>.
+The Peach works by looking for good pixels and gathering orange smoke from
+them. When it has gathered enough orange smoke, it sprinkles that onto
+the bad pixels, making them better. Works only on computers with SSE instructions
+(Athlons, Pentium 3 or 4, recent Celerons, or later). <i>[YUY2]</i></li>
+
+<br>&nbsp;
+<li>
+<a href="http://ziquash.chez.tiscali.fr/ Motion Adaptive Mixer">"MAM" (by
+Marc FD)</a>: This filter uses movement detection to adapt the denoising
+method used, in still areas it uses temporal filtering and in moving areas
+it uses spatial filtering with any spatial and temporal filter you want.&nbsp;
+It is no longer developed but it can temporarily be downloaded from this
+<a href="http://forum.doom9.org/showthread.php?s=&postid=193412">site</a>.
+<i>[YUY2]</i></li>
+
+<br>&nbsp;
+<li>
+<a href="http://www.jungleweb.net/~sansgrip/avisynth/">NoMoSmooth (by SansGrip)</a>:
+A motion adaptive spatio-temporal smoother: <a href="http://www.jungleweb.net/~sansgrip/avisynth/NoMoSmooth-readme.html">documentation</a>;
+<a href="http://forum.doom9.org/showthread.php?s=&threadid=37471">discussion</a>.
+<i>[YUY2]</i></li>
+
+<br>&nbsp;
+<li>
+<a href="http://forum.doom9.org/showthread.php?s=&threadid=42749">Dust
+(by Steady)</a>: A noise remover. <i>[YUY2, RGB]</i></li>
+
+<br>&nbsp;
+<li>
+<a href="http://www.trbarry.com/STMedianFilter.zip">SpatioTemporal Median
+Filter "STMedianFilter" (by Tom Barry)</a>: STMedianFilter is a (slightly
+motion compensated) spatial/temporal median filter. Bug: strange color
+changes (clip becomes purple) <i>[YUY2]</i></li>
+
+<br>&nbsp;
+<li>
+<a href="http://hellninjacommando.com/con3d/">Convolution3D (by Vlad59)</a>:
+Convolution3D is a spatio-temporal smoother, it applies a 3D convolution
+filter to all pixels of consecutive frames. <i>[YUY2]</i></li>
+</ol>
+<b>Spatial Smoothers:</b>
+<br><i>These use color similarities and differences within a frame to improve
+the picture and reduce compressed size. They can smooth out noise very
+well, but overly aggressive settings for them can cause a loss of detail.</i>
+<ol>
+<li>
+<a href="http://forum.doom9.org/showthread.php?s=&threadid=31679">Masked
+Smoother "msmooth" (by Donald Graft)</a>: The filter is effective at removing
+mosquito noise as well as effectively smoothing flat areas in (especially)
+anime. (currently in the repair shop) <i>[RGB]</i></li>
+
+<br>&nbsp;
+<li>
+<a href="http://cultact-server.novi.dk/kpo/avisynth/smooth_hiq_as.html">Smoother
+HiQ(uality) plugin (by Klaus Post)</a>: This filter performs (spatial)
+smoothing on video material to eliminate noise and MPEG artifacts. <i>[YUY2]</i></li>
+
+<br>&nbsp;
+<li>
+<a href="http://forum.doom9.org/showthread.php?s=&threadid=44308">msoften
+(by Marc FD)</a>: This Filter is a spatial denoiser like 2dcleaner.&nbsp;
+Some discussion can be found <a href="http://forum.doom9.org/showthread.php?s=&threadid=36148">here</a>.
+<i>[YUY2]</i></li>
+
+<br>&nbsp;
+<li>
+<a href="http://forum.doom9.org/showthread.php?s=&threadid=28318">General
+convolution plugin (by Richard Berg)</a>: A spatial smoother (<a href="http://forum.doom9.org/showthread.php?s=&threadid=25908">description</a>).
+This plugin will be a built-in function starting from AviSynth v2.01. <i>[YUY2,
+RGB]</i></li>
+
+<br>&nbsp;
+<li>
+<a href="http://forum.doom9.org/showthread.php?s=&threadid=31754">Wavelet
+Noise Reduction (by thejam)</a>: It can remove single-frequency noise in
+three different frequency bands, independently for X- and Y-direction and
+for the Y, Cr and Cb colorplane (<a href="http://forum.doom9.org/showthread.php?s=&threadid=31754&pagenumber=2">documentation</a>).
+Note that it only works for PC's with SSE instructructions. <i>[YUY2]</i></li>
+
+<br>&nbsp;
+<li>
+<a href="http://members.tripod.co.jp/kiraru2002/">2D Cleaner Noise Reduction
+filter "_2DClenYUY2"</a> <i>[YUY2]</i></li>
+
+<br>&nbsp;
+<li>
+Also see KenKunNR in the <a href="#MiscellaneousPlugins">Misc Plugins</a>
+section, below.</li>
+</ol>
+<b>Temporal Smoothers:</b>
+<br><i>These filters use color similarities and differences between frames
+to improve the picture and reduce compressed size.&nbsp; They can get rid
+of most noise in stationary areas without losing detail, but overly strong
+settings can cause moving areas to be blurred.</i>
+<ol>
+<li>
+<a href="http://forum.doom9.org/showthread.php?s=&threadid=22096">TemporalSoften2
+plugin (by Dividee)</a>: This plugin is better than the built-in TemporalSoften
+up to v2.02; it removes noise from a video clip by selectively blending
+pixels.&nbsp; It is built into v2.03 and all subsequent versions (it replaces
+the old function and it is called the same: TemporalSoften). <i>[YUY2]</i></li>
+
+<br>&nbsp;
+<li>
+<a href="http://users.win.be/dividee/avisynth.html">TemporalSmoother plugin
+(by Dividee)</a>: This filter is an adaptive noise reducer, working along
+the time axis. <i>[YUY2]</i></li>
+
+<br>&nbsp;
+<li>
+<a href="http://forum.doom9.org/showthread.php?s=&threadid=37620">TemporalCleaner
+(by Jim Casaburi; ported to AviSynth by Vlad59)</a>: A simple but very
+fast temporal denoiser, aimed to improve compressibility. <i>[YUY2]</i></li>
+
+<br>&nbsp;
+<li>
+<a href="http://students.washington.edu/ldubb/computer/GrapeSmoother.zip">Grape
+Smoother
+(by Lindsey Dubb)</a>: <a href="http://students.washington.edu/ldubb/computer/Read_Me_Grape_Smoother.htm">documentation</a>;
+<a href="http://forum.doom9.org/showthread.php?s=&threadid=37196">discussion</a>;&nbsp;
+When colors change just a little, the filter decides that it is probably
+noise, and only slightly changes the color from the previous frame. As
+the change in color increases, the filter becomes more and more convinced
+that the change is due to motion rather than noise, and the new color gets
+more and more weight. <i>[YUY2]</i></li>
+
+<br>&nbsp;
+<li>
+<a href="http://forum.doom9.org/showthread.php?s=&threadid=44308">Chroma
+Noise Reducer (by Marc FD)</a>: Reduces the noise on the chroma (UV) and
+preserves the luma (Y),
+<a href="http://forum.doom9.org/showthread.php?s=&threadid=29529">discussion</a>.
+<i>[YUY2]</i></li>
+
+<br>&nbsp;
+<li>
+<a href="http://members.tripod.co.jp/kiraru2002/">Dynamical Noise Reduction
+2 filter "DNR2"</a> <i>[YUY2, RGB]</i></li>
+
+<br>&nbsp;
+<li>
+Also see KenKunNRT in the <a href="#MiscellaneousPlugins">Misc Plugins</a>
+section, below.</li>
+</ol>
+<b>Sharpen/Soften Plugins:</b>
+<br><i>These are closely related to the Spatial Smoothers, above.&nbsp;
+They attempt to improve image quality by sharpening or softening edges.</i>
+<ol>
+<li>
+<a href="http://neuron2.net/mine.html">Smart sharpening filter "MSharpen"
+(by Donald Graft)</a>: This filter is very effective at sharpening important
+edges without amplifying noise. <i>[YUY2, RGB]</i></li>
+
+<br>&nbsp;
+<li>
+<a href="http://forum.doom9.org/showthread.php?s=&threadid=44308">Sharpen/Blur
+filter "Focus2" (by Marc FD)</a>: Sharpen2 and Blur2 are MMX optimisations
+of the built in Sharpen and Blur functions.&nbsp; Starting from v2.50 it
+will replace the Sharpen and Blur functions. <i>[YUY2, RGB]</i></li>
+
+<br>&nbsp;
+<li>
+<a href="http://www.trbarry.com/UnFilter.zip">Unfilter plugin (by Tom Barry)</a>:
+This filter softens/sharpens a clip: <a href="http://forum.doom9.org/showthread.php?s=&threadid=28197">discussion</a>.&nbsp;
+It implements horizontal and vertical filters designed to (slightly) reverse
+previous efforts at softening or edge enhancment that are common (but ugly)
+in DVD mastering. <i>[YUY2]</i></li>
+
+<br>&nbsp;
+<li>
+See also WarpSharp, Xsharpen, and Unsharp Mask in the <a href="#MiscellaneousPlugins">Misc
+Plugins</a> section, below.</li>
+</ol>
+<b>Resizers:</b>
+<ol>
+<li>
+<a href="http://nic.dnsalias.com/lanczos3.zip">Lanczos resize filter (Implemented
+by Nic)</a>: Starting from v2.06 AviSynth will have faster a built-in lanczos3
+resizer. <i>[YUY2, RGB]</i></li>
+
+<br>&nbsp;
+<li>
+<a href="http://www.trbarry.com/SimpleResize.zip">SimpleResize plugin (by
+Tom Barry)</a>: Very simple and fast two tap linear interpolation.&nbsp;
+It is unfiltered which means it will not soften much. <i>[YUY2]</i></li>
+</ol>
+<b>Subtitles:</b>
+<ol>
+<li>
+<a href="http://vobsub.edensrising.com/">VobSub plugin (by Gabest)</a>:
+A plugin for importing your subtitles. <i>[YUY2, RGB]</i></li>
+</ol>
+<a NAME="MpegDecoders"></a><b>MPEG Decoder (source) Plugins:</b>
+<ol>
+<li>
+<a href="http://users.win.be/dividee/avisynth.html">"MPEG2DEC" (by dividee):</a>
+Mpeg2dec is a plugin which enables AviSynth to import MPEG2 files.</li>
+
+<br>&nbsp;
+<li>
+<a href="http://www.trbarry.com/MPEG2DEC2.zip">"MPEG2DEC2" (by Tom Barry)</a>:
+A MPEG2DEC.DLL substitute.&nbsp; It is the same MPEG2DEC.DLL with SSE2
+optimization. Faster with Pentium IV CPU.</li>
+
+<br>&nbsp;
+<li>
+<a href="http://forum.doom9.org/showthread.php?s=&threadid=44308">"MPEG2DEC3"
+(by Marc FD)</a>: A MPEG2DEC.DLL modification with deblocking and deringing,
+<a href="http://forum.doom9.org/attachment.php?s=&postid=185758">discussion</a>.</li>
+
+<br>&nbsp;
+<li>
+<a href="http://nic.dnsalias.com/MPEGDecoder.zip">"MpegDecoder" (by Nic)</a>:
+A MPEG2DEC.DLL substitute.&nbsp; Can also read MPEG-2 Transport Streams
+(VOB) and works very quickly.</li>
+</ol>
+<b>MPA Decoder (source) Plugins:</b>
+<ol>
+<li>
+<a href="http://www.avisynth.org/warpenterprises">MPASource (by Warpenterprises)</a>:
+A mp1/mp2/mp3 audio decoder plugin, <a href="http://forum.doom9.org/showthread.php?s=&threadid=41435">discussion</a>.</li>
+</ol>
+<b>Broadcast Video Plugins:</b>
+<br><i>These are meant to take care of various problems which show up when
+over the air video is captured.&nbsp; Some help with luma/chroma separation,
+others reduce interference problems or compensate for overscan.</i>
+<ol>
+<li>
+<a href="http://forum.doom9.org/showthread.php?s=&threadid=33319">AntiBlink
+(by Kurosu)</a>: Tries to diminish shimmering (rainbow effects) in areas
+with sharp changes in luminance (for instance, letters). <i>[YUY2]</i></li>
+
+<br>&nbsp;
+<li>
+<a href="http://students.washington.edu/ldubb/computer/GuavaComb.zip">Guava
+Comb (by Lindsey Dubb)</a>: This is a comb filter, meant to get rid of
+rainbows, dot crawl, and shimmering in stationary parts of an image. <a href="http://students.washington.edu/ldubb/computer/Read_Me_Guava_Comb.htm">documentation</a>;
+<a href="http://forum.doom9.org/showthread.php?s=&threadid=37456">discussion</a><i>
+[YUY2]</i></li>
+
+<br>&nbsp;
+<li>
+<a href="http://forum.doom9.org/showthread.php?s=&threadid=35339">Ghostbuster
+(by SansGrip)</a>: This filter removes "ghosts" from a clip.&nbsp; A ghost
+in this context is a faint copy of the picture offset horizontally.&nbsp;
+It works by either subtracting or adding the image from itself at the specified
+offset.&nbsp; This filter is based on Krzysztof Wojdon's <a href="http://www.republika.pl/vander74/virtualdub/exorcist.zip">Exorcist</a>
+VirtualDub filter. <i>[YUY2]</i></li>
+
+<br>&nbsp;
+<li>
+<a href="http://www.geocities.com/siwalters_uk/bdrcntrl.html">BorderControl
+plugin (by Simon Walters)</a>: After capturing video you might want to
+crop your video to get rid of rubbish.&nbsp; BorderControl enables you
+to smear added borders instead of adding solid borders preventing artefacts
+between picture and border. <i>[YUY2]</i></li>
+
+<br>&nbsp;
+<li>
+<a href="http://www.videofringe.com/autocrop/">AutoCrop plugin (by CropsyX)</a>:
+Automatically crops black borders from a clip. <a href="http://forum.doom9.org/showthread.php?s=&threadid=37204">discussion</a><i>
+[YUY2]</i></li>
+</ol>
+<a NAME="MiscellaneousPlugins"></a><b>Misc Plugins:</b>
+<ol>
+<li>
+<a href="http://forum.doom9.org/showthread.php?s=&threadid=26855">ImageSequence
+plugin (by Bzzz2)</a>: A plugin that lets you open image sequences.</li>
+
+<br>&nbsp;
+<li>
+<a href="http://neuron2.net/mine.html">Robust duplicate frame detector
+"Dub" (by Donald Graft)</a>: This filter reduces the size of anime movies
+by "removing" duplicated frames. <i>[YUY2]</i></li>
+
+<br>&nbsp;
+<li>
+<a href="http://shelob.mordor.net/dgraft/mine.html">Tweak plugin (by Donald
+Graft)</a>: Adjusts hue, saturation, brightness, and contrast.&nbsp; This
+is a built in function starting with AviSynth v2.01. <i>[YUY2]</i></li>
+
+<br>&nbsp;
+<li>
+<a href="http://forum.doom9.org/showthread.php?s=&threadid=34076">WarpSharp,
+Xsharpen, UnsharpMask, KenKunNR, KenKunNRT, UVTimingH, UVTimingV, LoadAviUtlInputPlugin,
+LoadAviUtlFilterPlugin, ConvertYUY2ToAviUtlYC, ConvertAviUtlYCToYUY2, EraseGhost,
+SearchGhost, EraseGhostV, SearchGhostV, Auto24FPS, AutoDeint, FrameCache,
+AVIEncodeVideo, LoadPlugin (by ???)</a>: Ported VirtualDub filters and
+AviUtl filters. Last version can be found <a href="http://www.geocities.co.jp/SiliconValley-PaloAlto/2382/">here</a>.
+<i>[YUY2]</i></li>
+
+<br>&nbsp;
+<li>
+<a href="http://forum.doom9.org/showthread.php?s=&threadid=32125&pagenumber=4">AviSynth
+monitor "avsmon" (by johann.Langhofer)</a>: This plugin enables you to
+preview the video during the conversion and to determine the exact audio
+delay.<i> [YUY2, RGB ?]</i></li>
+
+<br>&nbsp;
+<li>
+<a href="http://cultact-server.novi.dk/kpo/avisynth/merge_as.html">MergeLuma/MergeChroma
+plugin (by Klaus Post)</a>: This plugin is a built in function starting
+with AviSynth v2.01. <i>[YUY2]</i></li>
+
+<br>&nbsp;
+<li>
+<a href="http://forum.doom9.org/showthread.php?s=&threadid=46506">Call
+(by Nic)</a>: A plugin which enables you to call and pass parameters to
+a external commandline program like Besweet.</li>
+
+<br>&nbsp;
+<li>
+<a href="http://www.jungleweb.net/~sansgrip/avisynth/">Blockbuster (by
+SansGrip)</a>: With this filter one can use several methods to reduce or
+eliminate DCT blocks: adding noise (Gaussian distributed), sharpening,
+or blurring.&nbsp; Some discussion can be found <a href="http://forum.doom9.org/showthread.php?s=&threadid=37135">here</a>.
+<i>[YUY2,
+RGB ?]</i></li>
+
+<br>&nbsp;
+<li>
+<a href="http://www.geocities.com/siwalters_uk/chromashift.html">ChromaShift
+(by Simon Walters)</a>: ChromaShift shifts the chrominance information
+to the right by two pixels to compensate for incorrect Y/UV registration.
+<i>[YUY2]</i></li>
+
+<br>&nbsp;
+<li>
+<a href="http://forum.doom9.org/showthread.php?s=&threadid=44853">TurnLeft
+and TurnRight (by Warpenterprises)</a>: Rotates your clip -90 or 90 degrees.&nbsp;
+This plugin will is a built in function starting with AviSynth v2.51.<i>
+[RGB]</i></li>
+
+<br>&nbsp;
+<li>
+<a href="http://forum.doom9.org/showthread.php?s=&threadid=47972&pagenumber=2">Chr.dll
+(by WarpEnterprises)</a>: Let's you add ASCII CHaRacters and starting time.</li>
+
+<br>&nbsp;
+<li>
+<a href="http://forum.doom9.org/showthread.php?s=&threadid=49557">Spray
+(by WarpEnterprises)</a>: It takes pixels from "nearby" and sprays them
+around, so you can spray pixel from outside the logo area randomly inside.
+<i>[RGB32]</i></li>
+
+<br>&nbsp;
+<li>
+<a href="http://forum.doom9.org/showthread.php?s=&postid=283982">Zoom "Pan/Zoom/Rotate"
+(by WarpEnterprises)</a>: A plugin for Pan/Zoom/Rotate your clip.
+<i>[RGB32]</i></li>
+
+<br>&nbsp;
+<li>
+<a href="http://inmatrix.hoyty.com/mirror/mjpegcorrect.zip">MJPEGcorrect
+plugin</a>: Luma (brightness) in MJPEG decoders is often decoded incorrectly
+to the YUV luma-range.&nbsp; This is a special purpose plugin written to
+fix this issue with MJPEG videos, <a href="http://www.inmatrix.com/articles/ivtcsynth1.shtml">description</a>.
+<i>[YUY2]</i></li>
+
+<br>&nbsp;
+<li>
+Many VirtualDub filters, see section <a href="#s4">S4: Importing filters
+from VirtualDub</a>.
+<i>[RGB32]</i></li>
+
+<br>&nbsp;</ol>
+<a NAME="q3.5"></a><b>Q3.5: Where can I download external filters for AviSynth
+v2.5x ?</b>
+<p>A: Most of them can be found in the AviSynth section at Doom9. But below
+you will find links to most of them. If you know of a plugin which is missing,
+please feel free to add it to the list using the "Edit this document" link
+to the left. Most of these plugins work in YUY2. If you can't find the
+plugin (the attachments are still disable), you can download the plugins
+at [<a href="http://www.avisynth.org/users/warpenterprises/">WarpEnterprises</a>]
+homepage.
+<p><b>Deinterlacing &amp; Pulldown Removal:</b>
+<br><i>All PAL, NTSC, and SECAM video is interlaced, which means that only
+every other line is broadcast at each refresh interval.&nbsp; Deinterlacing
+filters let you take care of any problems caused by this. IVTC (inverse
+telecine, aka pulldown removal) filters undo the telecine process, which
+comes from differences between the timing of your video and its original
+source.</i>
+<ol>
+<li>
+<a href="http://forum.doom9.org/showthread.php?s=&threadid=48401">rePal
+(by Bach)</a>: A usefull plugin for doing a 30->25 IVTC conversion. It
+must be used in conjunction with a (smart)bob. It can be used when your
+source is PAL telecined material. <i>[YV12, YUY2]</i></li>
+
+<br>&nbsp;
+<li>
+<a href="http://forum.doom9.org/showthread.php?s=&threadid=55019">Unblend
+(by Bach)</a>: A plugin based on Warpenterprise's deblend algorithm and
+Neuron2's decimate code. It's for messed up NTSC->PAL conversions.<i> [YV12]</i></li>
+
+<br>&nbsp;
+<li>
+<a href="http://neuron2.net/mine.html">Decomb Filter package (by Donald
+Graft)</a>: This package of plugin functions for AviSynth provides the
+means for removing combing artifacts from telecined progressive streams,
+interlaced streams, and mixtures thereof. Functions can be combined to
+implement inverse telecine for both NTSC and PAL streams. <a href="http://neuron2.net/ipw-web/bulletin/bb/viewtopic.php?t=56">discussion</a><i>[YV12,
+YUY2]</i></li>
+
+<br>&nbsp;
+<li>
+<a href="http://forum.doom9.org/showthread.php?s=&threadid=46161">Area
+based deinterlacer (by Donald Graft)</a>: Port of the Virtuldub filter.
+<i>[RGB32]</i></li>
+
+<br>&nbsp;
+<li>
+<a href="http://neuron2.net/mine.html">DGBob (by Donald Graft)</a>: This
+filter splits each field of the source into its own frame and then adaptively
+creates the missing lines either by interpolating the current field or
+by using the previous field's data. <a href="http://forum.doom9.org/showthread.php?s=&threadid=55598">discussion</a><i>
+[YV12, YUY2, RGB]</i></li>
+
+<br>&nbsp;
+<li>
+<a href="http://neuron2.net/mine.html">KernelDeint (by Donald Graft)</a>:
+This filter deinterlaces using a kernel approach. It gives greatly improved
+vertical resolution in deinterlaced areas compared to simple field discarding.
+[<a href="http://neuron2.net/ipw-web/bulletin/bb/viewtopic.php?t=57">discussion</a>].
+<i>[YV12,
+YUY2, RGB]</i></li>
+
+<br>&nbsp;
+<li>
+<a href="http://neuron2.net/mine.html">MultiDecimate (by Donald Graft)</a>:
+Removes N out of every M frames, taking the frames most similar to their
+predecessors. <a href="http://forum.doom9.org/showthread.php?s=&threadid=51901&perpage=20&pagenumber=2">discussion</a><i>
+[YUY2]</i></li>
+
+<br>&nbsp;
+<li>
+<a href="http://forum.doom9.org/showthread.php?s=&threadid=46161&pagenumber=2">Smoothdeinterlacer
+(recompiled by Donald Graft)</a>: A port of the VirtualDub Smooth Deinterlacer
+filter. <i>[YUY2, RGB32]</i></li>
+
+<br>&nbsp;
+<li>
+<a href="http://forum.doom9.org/showthread.php?s=&threadid=62142">Interpolation
+Bob (by kevina20723)</a>: This filter works identically to the AviSynth
+built-in Bob filter except that it uses linear interpolation instead of
+bicubic resizing (C-plugin). <i>[YV12, YUY2]</i></li>
+
+<br>&nbsp;
+<li>
+<a href="http://forum.doom9.org/showthread.php?s=&threadid=60031">SmartDecimate
+(by kevina20723)</a>: It should be very good at handling irregular telecines,
+and will also handle hybrid clips fairly well without any excessive jerkiness
+or blurring (C-plugin). [<a href="http://neuron2.net/ipw-web/bulletin/bb/viewtopic.php?t=61&start=50">discussion</a>].
+<i>[YV12,
+YUY2]</i></li>
+
+<br>&nbsp;
+<li>
+<a href="http://forum.doom9.org/showthread.php?s=&threadid=44854">TPRIVTC
+(by Kurosu)</a>: It uses the IVTC information from Tsunami MPEG Encoder
+Project Files.<i> [YV12, YUY2]</i></li>
+
+<br>&nbsp;
+<li>
+<a href="http://www.geocities.com/siwalters_uk/pfravs.html">Progressive
+Frame Restorer "PFR" (by Simon Walters)</a>: Recover original progressive
+film frames that have undergone the telecine to NTSC 30fps to PAL 25fps
+process whilst trying to maintain correct temporal field order. [<a href="http://forum.doom9.org/showthread.php?s=&threadid=49815">discussion</a>].
+<i>[YV12,
+YUY2]</i></li>
+
+<br>&nbsp;
+<li>
+<a href="http://forum.doom9.org/showthread.php?s=&threadid=44872">"IT"
+(by thejam79, recompiled by Donald Graft)</a>: Inverse telecine plugin.
+<a href="http://www.avisynth.org/index.php?page=IT.txt.en">Translation
+of README</a>.<i> [YUY2]</i></li>
+
+<br>&nbsp;
+<li>
+<a href="http://mywebpages.comcast.net/trbarry/downloads.htm">GreedyHMA
+(by Tom Barry)</a>: DScaler's Greedy/HM algorithm code to perform pulldown
+matching, filtering, and video deinterlacing. <a href="http://forum.doom9.org/showthread.php?s=&threadid=45995">discussion</a><i>[YUY2]</i></li>
+
+<br>&nbsp;
+<li>
+<a href="http://mywebpages.comcast.net/trbarry/downloads.htm">Motion compensated
+deinterlace filter "TomsMoComp" (by Tom Barry)</a>: This filter uses motion
+compensation and adaptive processing to deinterlace video source (not for
+NTSC film). <a href="http://forum.doom9.org/showthread.php?s=&threadid=37915">discussion</a><i>
+[YV12, YUY2]</i></li>
+
+<br>&nbsp;
+<li>
+<a href="http://mywebpages.comcast.net/trbarry/downloads.htm">UnComb IVTC
+(by Tom Barry)</a>: Filter for matching up even and odd fields of properly
+telecined NTSC or PAL film source video. <a href="http://forum.doom9.org/showthread.php?s=&threadid=52333">discussion</a><i>
+[YV12]</i></li>
+
+<br>&nbsp;
+<li>
+See also Auto24FPS and AutoDeint in the <a href="#MiscellaneousPlugins2">MiscPlugins</a>
+section below.</li>
+</ol>
+<b>Spatio-Temporal Smoothers:</b>
+<br><i>These filters use color similarities and differences both within
+and between frames to reduce noise and improve compressed size.&nbsp; They
+can greatly improve noisy video, but some care should be taken with them
+to avoid blurred movement and loss of detail.</i>
+<ol>
+<li>
+<a href="http://forum.doom9.org/showthread.php?s=&threadid=58674">PeachSmoother
+(by Lindsey Dubb)</a>: An adaptive smoother optimized for TV broadcasts:
+[<a href="http://students.washington.edu/ldubb/computer/Read_Me_Peach_Smoother.htm">documentation</a>],
+[<a href="http://forum.doom9.org/showthread.php?s=&threadid=36575">discussion</a>].
+The Peach works by looking for good pixels and gathering orange smoke from
+them. When it has gathered enough orange smoke, it sprinkles that onto
+the bad pixels, making them better. Works only on computers with SSE instructions
+(Athlons, Pentium 3 or 4, recent Celerons, or later). <i>[YUY2]</i></li>
+
+<br>&nbsp;
+<li>
+<a href="http://www.jungleweb.net/~sansgrip/avisynth/">FluxSmooth (by SansGrip)</a>:
+spatio-temporal smoother, <a href="http://forum.doom9.org/showthread.php?s=&threadid=38296">discussion</a><i>.
+[YV12]</i></li>
+
+<br>&nbsp;
+<li>
+<a href="http://forum.doom9.org/showthread.php?s=&threadid=63153">MipSmooth
+filter (by Sh0dan)</a>: It takes the source frame, and creates three new
+versions, each half the size of the previous. They are scaled back to original
+size. They are compared to the original, and if the difference is below
+the threshold, the information is used to form the final pixel. <i>[YV12]</i></li>
+
+<br>&nbsp;
+<li>
+<a href="http://www.trbarry.com/STMedianFilter.zip">SpatioTemporal Median
+Filter "STMedianFilter" (by Tom Barry)</a>: STMedianFilter is a (slightly
+motion compensated) spatial/temporal median filter.<i> [YV12, YUY2]</i></li>
+
+<br>&nbsp;
+<li>
+<a href="http://forum.doom9.org/showthread.php?s=&threadid=49806">Convolution3DYV12
+(by Vlad59)</a>: Convolution3D is a spatio-temporal smoother, it applies
+a 3D convolution filter to all pixels of consecutive frames. <a href="http://forum.doom9.org/showthread.php?s=&threadid=38281">discussion</a><i>
+[YV12]</i></li>
+</ol>
+<b>Spatial Smoothers:</b>
+<br><i>These use color similarities and differences within a frame to improve
+the picture and reduce compressed size. They can smooth out noise very
+well, but overly aggressive settings for them can cause a loss of detail.</i>
+<ol>
+<li>
+<a href="http://neuron2.net/mine.html">Masked Smoother "MSmooth" (by Donald
+Graft)</a>: This filter is effective at removing mosquito noise as well
+as effectively smoothing flat areas in anime. <a href="http://forum.doom9.org/showthread.php?s=&threadid=43976">discussion</a><i>
+[YV12, RGB32]</i></li>
+
+<br>&nbsp;
+<li>
+<a href="http://kurosu.inforezo.org/avs/Smooth/index.html">SmoothUV (by
+Kurosu)</a>: This filter can be used to reduce rainbows, as done by SmartSmoothIQ.
+[<a href="http://forum.doom9.org/showthread.php?s=&threadid=60631">discussion</a>].
+<i>[YV12]</i></li>
+
+<br>&nbsp;
+<li>
+<a href="http://forum.doom9.org/showthread.php?s=&threadid=56871">VagueDenoiser
+(by Lefungus)</a>: A simple denoiser that uses wavelets. <i>[YV12]</i></li>
+
+<br>&nbsp;
+<li>
+<a href="http://ziquash.chez.tiscali.fr/">Deen (by Marc FD)</a>: Several
+denoisers. [<a href="http://forum.doom9.org/showthread.php?s=&threadid=41643">discussion</a>]
+This filter can cause memory leaks, so use at your own risk. <i>[YV12]</i></li>
+
+<br>&nbsp;
+<li>
+<a href="http://ziquash.chez.tiscali.fr/">eDeen (by Marc FD)</a>: Spatial
+monster. This filter can cause memory leaks, so use at your own risk.<i>
+[YV12]</i></li>
+
+<br>&nbsp;
+<li>
+<a href="http://forum.doom9.org/showthread.php?s=&threadid=45277">SmoothHiQ
+(recompiled by Richard)</a>: <i>[YUY2]</i></li>
+
+<br>&nbsp;
+<li>
+<a href="http://members.tripod.co.jp/kiraru2002/">2D Cleaner Noise Reduction
+filter "_2DClenYUY2"</a> <i>[YUY2]</i></li>
+
+<br>&nbsp;
+<li>
+Also see KenKunNR in the <a href="#MiscellaneousPlugins2">Misc Plugins</a>
+section, below.</li>
+</ol>
+<b>Temporal Smoothers:</b>
+<br><i>These filters use color similarities and differences between frames
+to improve the picture and reduce compressed size.&nbsp; They can get rid
+of most noise in stationary areas without losing detail, but overly strong
+settings can cause moving areas to be blurred.</i>
+<ol>
+<li>
+<a href="http://forum.doom9.org/showthread.php?s=&threadid=37620&perpage=20&pagenumber=3">TemporalCleaner
+(by Jim Casaburi; ported to AviSynth by Vlad59)</a>: A simple but very
+fast temporal denoiser, aimed to improve compressibility. <i>[YV12]</i></li>
+
+<br>&nbsp;
+<li>
+<a href="http://forum.doom9.org/showthread.php?s=&threadid=58674">Grape
+Smoother (by Lindsey Dubb)</a>: [<a href="http://students.washington.edu/ldubb/computer/Read_Me_Grape_Smoother.htm">documentation</a>],
+[<a href="http://forum.doom9.org/showthread.php?s=&threadid=37196">discussion</a>].
+When colors change just a little, the filter decides that it is probably
+noise, and only slightly changes the color from the previous frame. As
+the change in color increases, the filter becomes more and more convinced
+that the change is due to motion rather than noise, and the new color gets
+more and more weight. <i>[YUY2]</i></li>
+
+<br>&nbsp;
+<li>
+<a href="http://ziquash.chez.tiscali.fr/">atc (by Marc FD)</a>: Temporal
+cleaner.<i> [YV12]</i></li>
+
+<br>&nbsp;
+<li>
+<a href="http://forum.doom9.org/showthread.php?s=&threadid=44500">Chroma
+Noise Reducer "Cnr2" (by Marc FD)</a>: Reduces the noise on the chroma
+(UV) and preserves the luma (Y), [<a href="http://forum.doom9.org/showthread.php?s=&threadid=29529&pagenumber=2">discussion</a>]
+<i>[YV12,
+YUY2]</i></li>
+
+<br>&nbsp;
+<li>
+<a href="http://members.tripod.co.jp/kiraru2002/">Dynamical Noise Reduction
+2 filter "DNR2"</a> <i>[YV12]</i></li>
+
+<br>&nbsp;
+<li>
+Also see KenKunNRT in the <a href="#MiscellaneousPlugins2">Misc Plugins</a>
+section, below.</li>
+</ol>
+<b>Sharpen/Soften Plugins:</b>
+<br><i>These are closely related to the Spatial Smoothers, above.&nbsp;
+They attempt to improve image quality by sharpening or softening edges.</i>
+<ol>
+<li>
+<a href="http://neuron2.net/mine.html">MSharpen (by Donald Graft)</a>:
+This plugin for Avisynth implements an unusual concept in spatial sharpening.
+Although designed specifically for anime, it also works quite well on normal
+video. The filter is very effective at sharpening important edges without
+amplifying noise. <a href="http://forum.doom9.org/showthread.php?s=&threadid=42839">discussion</a><i>[YV12,
+YUY2, RGB]</i></li>
+
+<br>&nbsp;
+<li>
+<a href="http://ziquash.chez.tiscali.fr/">asharp (by MarcFD)</a>: adaptive
+sharpening filter, [<a href="http://forum.doom9.org/showthread.php?s=&threadid=38436">discussion</a>]
+<i>[YV12]</i></li>
+
+<br>&nbsp;
+<li>
+<a href="http://mywebpages.comcast.net/trbarry/downloads.htm">Unfilter
+plugin (by Tom Barry)</a>: This filter softens/sharpens a clip.&nbsp; It
+implements horizontal and vertical filters designed to (slightly) reverse
+previous efforts at softening or edge enhancment that are common (but ugly)
+in DVD mastering. [<a href="http://forum.doom9.org/showthread.php?s=&threadid=28197&pagenumber=3">discussion</a>]<i>
+[YV12, YUY2]</i></li>
+
+<br>&nbsp;
+<li>
+See also WarpSharp, Xsharpen, and Unsharp Mask in the <a href="#MiscellaneousPlugins2">Misc
+Plugins</a> section, below.</li>
+</ol>
+<b>Resizers:</b>
+<ol>
+<li>
+<a href="http://ziquash.chez.tiscali.fr/">bicublinresize (by Marc FD)</a>:
+This is a set of resamplers: FastBilinear (similar to tbarry's simpleresize),
+FastBicubic (an unfiltered Bicubic resampler) and Bicublin (uses bicubic
+on Y plane and bilinear on UV planes). <a href="http://forum.doom9.org/showthread.php?s=&threadid=43207">discussion</a>.
+<i>[YV12]</i></li>
+
+<br>&nbsp;
+<li>
+<a href="http://forum.doom9.org/showthread.php?s=&postid=378363">ReduceBy2
+replacement for TMPGEnc (by scmccarthy)</a>: This filter is only useful
+as a replacement for ReduceBy for users who need to convert to the RGB
+color space anyway. It avoids the interpolation of the chroma planes needed
+to convert to RGB by resizing the luma plane instead. <i>[RGB]</i></li>
+
+<br>&nbsp;
+<li>
+<a href="http://mywebpages.comcast.net/trbarry/downloads.htm">SimpleResize
+(by Tom Barry)</a>: Very simple and fast two tap linear interpolation.&nbsp;
+It is unfiltered which means it will not soften much. <i>[YV12, YUY2]</i></li>
+
+<br>&nbsp;
+<li>
+<a href="http://mywebpages.comcast.net/trbarry/downloads.htm">YV12InterlacedReduceBy2
+(by Tom Barry)</a>: InterlacedReduceBy2 is a fast Reduce By 2 filter, usefull
+as a very fast downsize of an interlaced clip. [<a href="http://forum.doom9.org/showthread.php?s=&postid=271863">discussion</a>]<i>
+[YV12]</i></li>
+</ol>
+<b>Subtitles:</b>
+<ol>
+<li>
+<a href="http://www.sf.net/projects/guliverkli">VSFilter (by Gabest)</a>:
+For the subtitle fans! [<a href="http://forum.doom9.org/showthread.php?s=&threadid=41196">discussion</a>]</li>
+</ol>
+<a NAME="MpegDecoders2"></a><b>MPEG Decoder (source) Plugins:</b>
+<ol>
+<li>
+<a href="http://forum.doom9.org/showthread.php?s=&threadid=42301">MPEG2DEC
+(by dividee)</a> Mpeg2dec is a plugin which lets AviSynth import MPEG2
+files. (outputs to YUY2)</li>
+
+<br>&nbsp;
+<li>
+<a href="http://forum.doom9.org/showthread.php?s=&threadid=53164">MPEG2DEC3
+(by Marc FD and others)</a>: A MPEG2DEC.DLL modification with deblocking
+and deringing. Note that the colorspace information of dvd2avi is ignored
+when using mpeg2dec.</li>
+
+<br>&nbsp;
+<li>
+<a href="http://nic.dnsalias.com/MPEGDecoder.html">Mpegdecoder (by Nic)</a>:
+This DLL lets you load VOB/MPEG-2/MPEG-1 files to be loaded directly into
+AviSynth. <a href="http://forum.doom9.org/showthread.php?s=&postid=240354#post240354">discussion</a>.</li>
+</ol>
+<b>MPA Decoder (source) Plugins:</b>
+<ol>
+<li>
+<a href="http://forum.doom9.org/showthread.php?s=&threadid=53164&perpage=20&pagenumber=12">evilMPASource
+(by Nic)</a>: MPASource with MPEG1/2 input support.</li>
+
+<br>&nbsp;
+<li>
+<a href="http://members.aon.at/archi/warpenterprises">MPASource (by Warpenterprises)</a>:
+A mp1/mp2/mp3 audio decoder plugin, <a href="http://forum.doom9.org/showthread.php?s=&threadid=41435">discussion</a>.</li>
+</ol>
+<b>Plugins to compare video quality using specific video quality metrics:</b>
+<ol>
+<li>
+<a href="http://forum.doom9.org/showthread.php?s=&threadid=61128">SSIM
+(by Lefungus)</a>: Filter to compare video quality (similar as psnr, but
+using a different video quality metric). <i>[YV12]</i></li>
+
+<br>&nbsp;
+<li>
+<a href="http://forum.doom9.org/showthread.php?s=&threadid=61128">VqmCalc
+(by Lefungus)</a>: Filter to compare video quality (similar as psnr, but
+using a different video quality metric). <i>[YV12]</i></li>
+</ol>
+<b>Broadcast Video Plugins:</b>
+<br><i>These are meant to take care of various problems which show up when
+over the air video is captured.&nbsp; Some help with luma/chroma separation;
+Others reduce interference problems or compensate for overscan.</i>
+<ol>
+<li>
+<a href="http://forum.doom9.org/showthread.php?s=&threadid=48951">Super8Equal
+(by Belgabor)</a>: One problem of the transfer of Super8 films to digital
+media is the inhomogenous brightness produced by projectors. Usually the
+brighness drops in a circular fashion from the center to the rim. This
+filter was written to counteract this problem. <i>[YV12, YUY2, RGB]</i></li>
+
+<br>&nbsp;
+<li>
+<a href="http://www.videofringe.com/autocrop/">AutoCrop plugin (by CropsyX)</a>:
+Automatically crops black borders from a clip. <a href="http://forum.doom9.org/showthread.php?s=&threadid=37204&pagenumber=2">discussion</a>.
+<i>[YV12,
+YUY2]</i></li>
+
+<br>&nbsp;
+<li>
+<a href="http://forum.doom9.org/showthread.php?s=&threadid=52310">Declick
+(by Donald Graft)</a>: Removes light horizontal clicks. <i>[YUY2]</i></li>
+
+<br>&nbsp;
+<li>
+<a href="http://forum.doom9.org/showthread.php?s=&threadid=40293">Deflicker
+filter (by Donald Graft, port of the VirtualDub filter)</a>: This filter
+corrects video that has frame luminance variations over time, what we might
+generically call flickering. <i>[YUY2]</i></li>
+
+<br>&nbsp;
+<li>
+<a href="http://forum.doom9.org/showthread.php?s=&threadid=57914">Conditional
+Temporal Median Filter (by kevina20723)</a>: Removes temporal noise in
+the form of small dots and streaks (C-plugin). <i>[YV12]</i></li>
+
+<br>&nbsp;
+<li>
+<a href="http://forum.doom9.org/showthread.php?s=&threadid=56660">X-Logo
+(by Leuf)</a>: A filter to remove logos. (Note there's an internal conversion
+to RGB32 and back.) <i>[YV12, YUY2, RGB]</i></li>
+
+<br>&nbsp;
+<li>
+<a href="http://forum.doom9.org/showthread.php?s=&threadid=58674">Guava
+Comb (by Lindsey Dubb)</a>: This is a comb filter, meant to get rid of
+rainbows, dot crawl, and shimmering in stationary parts of an image. [<a href="http://students.washington.edu/ldubb/computer/Read_Me_Guava_Comb.htm">documentation</a>],
+[<a href="http://forum.doom9.org/showthread.php?s=&threadid=37456">discussion</a>].
+<i>[YUY2]</i></li>
+
+<br>&nbsp;
+<li>
+<a href="http://www.geocities.com/mrtibsvideo/fixvhsoversharp.html">FixVHSOversharp
+(by MrTibs)</a>: Repairs the light and dark halos that follow high contrast
+edges found in VHS sources. [<a href="http://www.kvcd.net/forum/viewtopic.php?t=3119">discussion</a>].
+<i>[YUY2]</i></li>
+
+<br>&nbsp;
+<li>
+<a href="http://forum.doom9.org/showthread.php?s=&threadid=45670">BorderControl
+(by Simon Walters)</a>: After capturing video you might want to crop your
+video to get rid of rubbish.&nbsp; BorderControl enables you to smear added
+borders instead of adding solid borders preventing artefacts between picture
+and border. <i>[YV12, YUY2]</i></li>
+
+<br>&nbsp;
+<li>
+<a href="http://mywebpages.comcast.net/trbarry/downloads.htm">FillMargins
+(by Tom Barry)</a>: A similar filter as BorderControl. [<a href="http://forum.doom9.org/showthread.php?s=&threadid=50132">discussion</a>]
+<i>[YV12]</i></li>
+
+<br>&nbsp;
+<li>
+<a href="http://www.trbarry.com/ReInterpolate411.zip">Reinterpolate411
+(by Tom Barry)</a>: It seems that even chroma pixels are just being duplicated
+in the MainConcept codec (NTSC). The new filter will help that by discarding
+the odd chroma pixels and recreating them as the average of the 2 adjacent
+even pixels. [<a href="http://forum.doom9.org/showthread.php?s=&threadid=58294&pagenumber=2">discussion</a>].
+<i>[YUY2]</i></li>
+</ol>
+<a NAME="MiscellaneousPlugins2"></a><b>Misc Plugins:</b>
+<ol>
+<li>
+<a href="http://forum.doom9.org/showthread.php?s=&threadid=26855&pagenumber=2">Imagesequence
+plugin (by Bzzz, modified by Warpenterprises and Sh0dan)</a>: Let's you
+import image sequences like .TIF, .TGA and .JPG files (images need to be
+24 or 32 bits per pixel). This plugin is built in starting from AviSynth
+v2.52, and it is called <a href="corefilters/imagesource.htm">ImageReader</a>.</li>
+
+<br>&nbsp;
+<li>
+<a href="http://neuron2.net/mine.html">Dup (by Donald Graft)</a>: This
+is intended for use in clips that have a significant number of duplicate
+content frames, but which differ due to noise. Typically anime has many
+such duplicates. By replacing noisy duplicates with exact duplicates, a
+bitrate reduction can be achieved. <a href="http://forum.doom9.org/showthread.php?s=&threadid=41850">discussion</a><i>
+[YV12, YUY2]</i></li>
+
+<br>&nbsp;
+<li>
+<a href="http://forum.doom9.org/showthread.php?s=&threadid=48842">Convert3d
+(by hanfrunz)</a>: Converts interlaced 3D Movies (one field left, other
+field right picture) to anaglyph (red/cyan) format using photoshops "screen"-blend
+method. <i>[YUY2, RGB]</i></li>
+
+<br>&nbsp;
+<li>
+<a href="http://forum.doom9.org/showthread.php?s=&threadid=32125&pagenumber=4">AviSynth
+monitor "avsmon" (by johann.Langhofer)</a>: This plugin enables you to
+preview the video during the conversion and to determine the exact audio
+delay.<i> [YV12, YUY2 ?, RGB ?]</i></li>
+
+<br>&nbsp;
+<li>
+<a href="http://kevin.atkinson.dhs.org/avisynth_c/">AVISynth C API (by
+kevina20723)</a>: C-plugins must be loaded with LoadCPlugin using AviSynth
+v2.52 or older versions, and can also be loaded with LoadPlugin starting
+from AviSynth v2.53. Advice: keep this plugin outside your auto plugin
+loading directory to prevent crashes. [<a href="http://forum.doom9.org/showthread.php?s=&threadid=58840">discussion</a>].</li>
+
+<br>&nbsp;
+<li>
+<a href="http://forum.doom9.org/showthread.php?s=&threadid=49892">MaskTools
+(by Kurosu)</a>: Some general mask tools. <i>[YV12]</i></li>
+
+<br>&nbsp;
+<li>
+<a href="http://forum.doom9.org/showthread.php?s=&threadid=46506">Call
+(by Nic)</a>: A plugin which enables you to call and pass parameters to
+an external commandline program like Besweet.</li>
+
+<br>&nbsp;
+<li>
+<a href="http://forum.doom9.org/showthread.php?s=&threadid=59412">AudioGraph
+(by Richard Ling, modified by Sh0dan)</a>: Displays the audio waveform
+on top of the video. <i>[YUY2, RGB]</i></li>
+
+<br>&nbsp;
+<li>
+<a href="http://forum.doom9.org/showthread.php?s=&threadid=44927">Blockbuster
+(by Sansgrip, recompiled by CruNcher)</a>: With this filter one can use
+several methods to reduce or eliminate DCT blocks: adding noise (Gaussian
+distributed), sharpening, or blurring. <i>[YUY2]</i></li>
+
+<br>&nbsp;
+<li>
+<a href="http://www.geocities.com/siwalters_uk/fnews.html">ReverseFieldDominance
+(by Sansgrip)</a>: Reverses the field dominance of PAL DV. <a href="http://forum.doom9.org/showthread.php?s=&threadid=46765&perpage=20&pagenumber=2">discussion</a>.
+<i>[YUY2,
+RGB]</i></li>
+
+<br>&nbsp;
+<li>
+<a href="http://www.geocities.com/siwalters_uk/chromashift.html">ChromaShift
+(by Simon Walters)</a>: ChromaShift shifts the chrominance information
+in any direction, to compensate for incorrect Y/UV registration. <i>[YUY2]</i></li>
+
+<br>&nbsp;
+<li>
+<a href="http://web.etel.ru/~shalcker/CompareYV12.zip">CompareYV12 (by
+Shalcker)</a>: YV12 version of the internal filter "Compare". [<a href="http://forum.doom9.org/showthread.php?s=&threadid=58187">discussion</a>].
+<i>[YV12]</i></li>
+
+<br>&nbsp;
+<li>
+<a href="http://forum.doom9.org/showthread.php?s=&threadid=60532">SelectByString
+(by stickboy)</a>: This filter can be used to create wrapper functions
+to specify presets to other filters (C-plugin). <i>[YV12, YUY2, RGB]</i></li>
+
+<br>&nbsp;
+<li>
+<a href="http://mywebpages.comcast.net/trbarry/downloads.htm">AddGrain
+(by Tom Barry)</a>: AddGrain generates film like grain or other effects
+(like rain) by adding random noise to a video clip. This noise may optionally
+be horizontally or vertically correlated to cause streaking. <i>[YV12]</i></li>
+
+<br>&nbsp;
+<li>
+<a href="http://mywebpages.comcast.net/trbarry/downloads.htm">BT709ToBT601
+(by Tom Barry)</a>: Converts HDTV (BT.709) to SDTV (BT.601) color space.
+[<a href="http://forum.doom9.org/showthread.php?s=&threadid=50588">discussion</a>]
+<i>[YV12]</i></li>
+
+<br>&nbsp;
+<li>
+<a href="http://mywebpages.comcast.net/trbarry/downloads.htm">DctFilter
+(by Tom Barry)</a>: Reduces high frequency noise components using Discrete
+Cosine Transform and its inverse.&nbsp; Results in a high compressibility
+gain, when it is used at the end of your script.&nbsp; Height/width must
+be a multiple of 16. <a href="http://forum.doom9.org/showthread.php?s=&postid=252451">discussion</a>.
+<i>[YV12,
+YUY2]</i></li>
+
+<br>&nbsp;
+<li>
+<a href="http://mywebpages.comcast.net/trbarry/downloads.htm">FrameDbl
+(by Tom Barry)</a>: A motion compensated frame doubler, made from STMedianFilter.
+[<a href="http://forum.doom9.org/showthread.php?s=&threadid=56036">discussion</a>]
+<i>[YV12]</i></li>
+
+<br>&nbsp;
+<li>
+<a href="http://mywebpages.comcast.net/trbarry/downloads.htm">Undot (by
+Tom Barry)</a>: UnDot is a simple median filter for removing dots, that
+is stray orphan pixels and mosquito noise.&nbsp; It basicly just clips
+each pixel value to stay within min and max of its eight surrounding neigbors.
+[<a href="http://forum.doom9.org/showthread.php?s=&postid=205442#post205442">discussion</a>].
+<i>[YV12,
+YUY2]</i></li>
+
+<br>&nbsp;
+<li>
+<a href="http://forum.doom9.org/showthread.php?s=&threadid=47972&pagenumber=2">Chr
+(by WarpEnterprises)</a>: Let's you add ASCII CHaRacters and starting time.
+This plugin will be a built-in function starting from v2.52.</li>
+
+<br>&nbsp;
+<li>
+<a href="http://forum.doom9.org/showthread.php?s=&threadid=61688">DVinfo
+(by WarpEnterprises)</a>: This filter grabs the timestamp and recording
+date info out of a DV-AVI. It should work with Type-1 and Type-2, standard
+AVI and openDML.</li>
+
+<br>&nbsp;
+<li>
+<a href="http://forum.doom9.org/showthread.php?s=&postid=283982">Zoom "Pan/Zoom/Rotate"
+(by WarpEnterprises)</a>: A plugin for Pan/Zoom/Rotate your clip.
+<i>[RGB32]</i></li>
+
+<br>&nbsp;
+<li>
+<a NAME="JapanesePlugin"></a><a href="http://www.geocities.co.jp/SiliconValley-PaloAlto/2382/">WarpSharp,
+Xsharpen, UnsharpMask, KenKunNR, KenKunNRT, UVTimingH, UVTimingV, LoadAviUtlInputPlugin,
+LoadAviUtlFilterPlugin, ConvertYUY2ToAviUtlYC, ConvertAviUtlYCToYUY2, EraseGhost,
+SearchGhost, EraseGhostV, SearchGhostV, Auto24FPS, AutoDeint, FrameCache,
+AVIEncodeVideo, LoadPluginEx (by our Japanese friend)</a>: Ported VirtualDub
+filters and AviUtl filters. Some documentation can be found [<a href="http://forum.doom9.org/showthread.php?s=&threadid=34076">here</a>].
+You need to copy the [<a href="http://www.geocities.com/wilbertdijkhof/71.cab">msvcp71.dll/msvcr71.dll</a>]
+(Microsoft C Runtime Library, v7) to your windows system directory. <i>[YV12,
+YUY2]</i></li>
+</ol>
+
+<p><br><a NAME="q3.6"></a><b>Q3.6: Where can I download utilities for AviSynth
+?</b>
+<p>A: Several utilities are available:
+<ul>
+<li>
+<a href="http://aquaplaning.20m.com/">AvsCompare (by TheWEF and aquaplaning)</a>:
+This is a little tool to compare video material and/or the effect of choosen
+AviSynth filters. [<a href="http://forum.doom9.org/showthread.php?s=&threadid=40675">discussion</a>]</li>
+
+<li>
+<a href="http://forum.doom9.org/showthread.php?s=&threadid=56090">AvsTimer
+(by kassandro)</a>: A small filter with virtually no overhead, which allows
+one to measure the performance of plugins or groups of plugins.</li>
+
+<li>
+<a href="http://sourceforge.net/projects/avsbatches">AVISynth BatchScripting</a>:
+A little Batch file for creating fastly "AVS AviSynth Script files". With
+available presets: 1:1-VGA to VCD, DVB/DVD-PAL to 1:1-VGA and DVB/DVD-PAL
+to VCD. (Batches runs under WinNT/2000/XP only)</li>
+</ul>
+
+<p><br><a NAME="q3.7"></a><b>Q3.7: How do I convert between the colorspaces
+?</b>
+<p>A: If you are using mpeg2dec3 (the appropriate one for AviSynth v2.5x)
+you can also use the conversions available in this dll (for example when
+you want to convert to RGB24).&nbsp; Using AviSynth itself:
+<p><i>converting to YV12:</i>
+<br><a href="corefilters/convert.htm">ConvertToYV12</a>
+<p><i>converting to YUY2:</i>
+<br><a href="corefilters/convert.htm">ConvertToYUY2</a>
+<p><i>converting to RGB:</i>
+<br><a href="corefilters/convert.htm">ConvertToRGB</a>
+<p>Note that converting between colorspaces isn't completely lossless,
+and doing several conversions back and forth may degrade your signal.&nbsp;
+The first conversion back and forth does not hurt your source, but if you
+use three or more, it may.&nbsp; Starting with version v2.03, there is
+a <a href="corefilters/convert.htm">ConvertBackToYUY2</a> which offers better
+symmetry if your RGB source was previously converted from YUY2.
+<br>&nbsp;
+<p><a NAME="q3.8"></a><b>Q3.8: What/when do I care when filter X works
+in RGB- or YUV-space ?</b>
+<p>A: The main reason why you should care is the improvement in speed you
+can obtain by not unnecessarily changing between colorspaces.&nbsp; If
+your source is YV12 (when encoding DVD's for example, or captures from
+digital sources) try to use only filters/plugins which work with YV12 input.&nbsp;
+On the other hand if your source is in RGB (for example from analog captures)
+try to use only filters/plugins which work in RGB-space.
+<p>Speed is also quite different between the different colorspaces, because
+each colorspace takes up different amounts of memory.&nbsp; The slowest
+colorspace is usually RGB24, because every pixel has an odd alignment in
+memory, avoid using this mode.&nbsp; The fastest mode is usually YV12 (followed
+by YUY2), because data takes less than half as much space as RGB32.&nbsp;
+So if you have to process your video a lot, try using ConvertToYV12 or
+<a href="corefilters/convert.htm">ConvertToYUY2</a>
+before you do your filtering.&nbsp; Note that <a href="corefilters/convert.htm">ConvertToRGB</a>
+converts to RGB32 if the source is YV12/YUY2 - use <a href="corefilters/convert.htm">ConvertToRGB32</a>
+to force a RGB24 to RGB32 conversion.
+<p>You should also consider your destination colorspace.&nbsp; If you plan
+on converting to DivX/XviD/Huffyuv in VirtualDub without applying filters
+in VirtualDub, "Fast Recompress" will deliver the YUY2-data (or YV12 data
+if you use VirtualdubMod) directly to the codec, saving you another colorspace
+conversion.&nbsp; On the other hand, if you plan using TMPGEnc or VirtualDub
+in "Full Processing" mode, you may consider delivering the source as RGB.
+<br>&nbsp;
+<p><a NAME="q3.9"></a><b>Q3.9: How do I use and where can I get the "Subtitler"
+and "BMP Loader" plugins ?</b>
+<p>A: These dll files are created by DVD2SVCD and only DVD2SVCD is using
+them. But you can also use them in AviSynth. Have a look in this [<a href="http://forum.doom9.org/showthread.php?s=&threadid=23296">thread</a>].
+<br>&nbsp;
+<p><a NAME="s4"></a><b><font size=+1>S4: Importing filters from VirtualDub:</font></b>
+<br>&nbsp;
+<p><a NAME="q4.1"></a><b>Q4.1: Where can I download the latest version
+of scripts which import filters from VirtualDub ?</b>
+<p>A: The AviSynth scripts are on the <a href="http://www.avisynth.org/index.php?page=ShareFunctions">ShareFunctions</a>
+page, or you can download a package called vdub_filtersv15.zip from <a href="http://forum.doom9.org/showthread.php?s=&threadid=23804">http://forum.doom9.org/showthread.php?s=&amp;threadid=23804</a>
+or <a href="http://neuron2.net/hosted.html">http://neuron2.net/hosted.html</a>
+<br>&nbsp;
+<p><a NAME="q4.2"></a><b>Q4.2: Which filters are imported ?</b>
+<p>A: Most filters.&nbsp; Read the corresponding documentation available
+in the zip-file.
+<br>&nbsp;
+<p><a NAME="q4.3"></a><b>Q4.3: Do these scripts work in RGB-space or in
+YUV-space ?</b>
+<p>A: Only in RGB-space (RGB32).
+<br>&nbsp;
+<p><a NAME="q4.4"></a><b>Q4.4: How do I make such a script ?</b>
+<p>A: Example script (this VirtualDub filter can be downloaded from <a href="http://shelob.mordor.net/dgraft/">Donald's
+homepage</a>):
+<p>Smart Bob by Donald Graft:
+<p>function VD_SmartBob(clip <i>clip</i>, bool "<i>show_motion</i>", int
+"<i>threshold</i>", bool "<i>motion_map_denoising</i>")
+<br>&nbsp; LoadVirtualdubPlugin("d:\bob.vdf", "_VD_SmartBob", 1)
+<br>&nbsp; return clip.<a href="corefilters/separatefields.htm">SeparateFields</a>._VD_SmartBob(clip.<a href="syntax.htm">GetParity</a>?1:0,
+<br>&nbsp;&nbsp;&nbsp; \&nbsp; default(show_motion, false)?1:0, default(threshold,
+10),
+<br>&nbsp;&nbsp;&nbsp; \&nbsp; default(motion_map_denoising, true)?1:0)
+<br>}
+<p>The VirtualDub plugin is imported with the command "LoadVirtualdubPlugin".&nbsp;
+The first argument gives the path of the plugin, the second argument the
+name for the plugin that will be used in the script and the third argument
+is called the preroll.
+<p>The preroll should be set to at least the number of frames the filter
+needs to pre-process to fill its buffers and/or updates its internal variables.&nbsp;
+This last argument is used in some filters like: SmartBob, SmartDeinterlace,
+TemporalCleaner and others.&nbsp; The reason is that due to filtering architecture
+of Virtual Dub the future frames can't be accessed by a filter.&nbsp; Dividee
+reports: "In the "Add filter" dialog of VirtualDub, some filters have a
+"Lag:" value in their description. I think this is the value that must
+be used as preroll.&nbsp; Unfortunately, this indication is not always
+present.&nbsp; In those cases you have to guess."&nbsp; Of course you can
+always ask the creator of the filter.
+<p>The first step is to find out the sequence of the arguments in the last
+line where the clip is returned.&nbsp; Configure the script in VirtualDub
+and select "Save processing Settings" in the File Menu or press Ctrl+S.&nbsp;
+Open the created .vcf file with a text editor and you should see lines
+like this:
+<p>VirtualDub.video.filters.Add("smart bob (1.1 beta 2)");
+<br>VirtualDub.video.filters.instance[0].Config(1, 0, 10, 1);
+<p>The order of the arguments is the one that has to be used in AviSynth.&nbsp;
+To find the role of the arguments, play with them in VirtualDub and examine
+the resulting lines.
+<p>The second step is to test the filter and to compare it with the VirtualDub
+filter itself.&nbsp; For the programming itself you can learn a lot by
+looking at the script which are already contained in vdub_filters.avs.
+<p>Example script which uses the function VD_SmartBob:
+<p>Import("d:\vdub_filters.avs") <br>
+  <a href="corefilters/avisource.htm">AviSource</a>("d:\filename.avi") <br>
+  <a href="corefilters/convert.htm">ConvertToRGB32</a>&nbsp; # only when necessary 
+  (but doesn't hurt) <br>
+  VD_SmartBob(1, 0, 10, 1) <br>
+  <a href="corefilters/convert.htm">ConvertBackToYUY2</a>&nbsp; # only when necessary 
+<p><kbd>$Date: 2008/07/09 19:35:37 $</kbd>
+</body>
+</html>

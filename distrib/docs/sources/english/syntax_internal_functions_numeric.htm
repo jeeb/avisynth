@@ -1,0 +1,623 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+<html>
+<head>
+<!--
+Not Automatically generated, changed!:
+$Id: syntax_internal_functions_numeric.htm,v 1.9 2013/01/06 13:38:34 ianb1957 Exp $ 
+-->
+<meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+<title>Syntax - Numeric functions</title>
+<link rel="stylesheet" type="text/css" href="../avisynth.css">
+</head>
+<body>
+<h2><span class="mw-headline">AviSynth Syntax - Numeric functions</span></h2>
+<p>Numeric functions provide common mathematical operations on numeric
+variables.</p>
+<ul>
+  <li><span style="color: rgb(0, 0, 128); font-weight: bold;">Max</span> <span>&nbsp;</span>
+    | <span>&nbsp;</span> v2.58 <span>&nbsp;</span> | <span>&nbsp;</span> <span style="color: purple; font-weight: bold;">Max(float,
+    float [, ...])</span></li>
+</ul>
+<dl>
+  <dd>Returns the maximum value of a set of numbers.<br>
+  If all the values are of type Int, the result is an Int.  If any of the
+  values are of type Float, the result is a Float.<br>
+  This may cause an unexpected result when an Int value greater than 16777216
+  is mixed with Float values.</dd>
+  <dd><i>Examples:</i></dd>
+</dl>
+<pre>Max (1, 2) = 2
+Max (5, 3.0, 2) = 5.0</pre>
+<ul>
+  <li><span style="color: rgb(0, 0, 128); font-weight: bold;">Min</span> <span>&nbsp;</span>
+    | <span>&nbsp;</span> v2.58 <span>&nbsp;</span> | <span>&nbsp;</span> <span style="color: purple; font-weight: bold;">Min(float,
+    float [, ...])</span></li>
+</ul>
+<dl>
+  <dd>Returns the minimum value of a set of numbers.</dd>
+  <dd><i>Examples:</i></dd>
+</dl>
+<pre>Max (1, 2) = 1
+Max (5, 3.0, 2) = 2.0</pre>
+<ul>
+  <li><span style="color: rgb(0, 0, 128); font-weight: bold;">MulDiv</span> <span>&nbsp;</span>
+    | <span>&nbsp;</span> v2.56 <span>&nbsp;</span> | <span>&nbsp;</span> <span style="color: purple; font-weight: bold;">MulDiv(int,
+    int, int)</span></li>
+</ul>
+<dl>
+  <dd>Multiplies two ints (m, n) and divides the product by a third (d) in a
+    single operation, with 64 bit intermediate result. The actual equation used
+    is <tt>(m * n + d / 2) / d </tt>.</dd>
+  <dd><i>Examples:</i></dd>
+</dl>
+<pre>MulDiv (1, 1, 2) = 1
+MulDiv (2, 3, 2) = 3</pre>
+<ul>
+  <li><span style="color: rgb(0, 0, 128); font-weight: bold;">Floor</span> <span>&nbsp;</span>
+    | <span>&nbsp;</span> <span>&nbsp;</span> | <span>&nbsp;</span> <span style="color: purple; font-weight: bold;">Floor(float)</span></li>
+</ul>
+<dl>
+  <dd>Converts from float to int (round down on any fractional amount).</dd>
+  <dd><i>Examples:</i></dd>
+</dl>
+<pre>Floor(1.2) = 1
+Floor(1.6) = 1
+Floor(-1.2) = -2
+Floor(-1.6) = -2</pre>
+<ul>
+  <li><span style="color: rgb(0, 0, 128); font-weight: bold;">Ceil</span> <span>&nbsp;</span>
+    | <span>&nbsp;</span> <span>&nbsp;</span> | <span>&nbsp;</span> <span style="color: purple; font-weight: bold;">Ceil(float)</span></li>
+</ul>
+<dl>
+  <dd>Converts from float to int (round up on any fractional amount).</dd>
+  <dd><i>Examples:</i></dd>
+</dl>
+<pre>Ceil(1.2) = 2.0
+Ceil(1.6) = 2.0
+Ceil(-1.2) = -1
+Ceil(-1.6) = -1</pre>
+<ul>
+  <li><span style="color: rgb(0, 0, 128); font-weight: bold;">Round</span> <span>&nbsp;</span>
+    | <span>&nbsp;</span> <span>&nbsp;</span> | <span>&nbsp;</span> <span style="color: purple; font-weight: bold;">Round(float)</span></li>
+</ul>
+<dl>
+  <dd>Converts from float to int (round off to nearest integer).</dd>
+  <dd><i>Examples:</i></dd>
+</dl>
+<pre>Round(1.2) = 1
+Round(1.6) = 2
+Round(-1.2) = -1
+Round(-1.6) = -2</pre>
+<ul>
+  <li><span style="color: rgb(0, 0, 128); font-weight: bold;">Sin</span> <span>&nbsp;</span>
+    | <span>&nbsp;</span> v2 <span>&nbsp;</span> | <span>&nbsp;</span> <span style="color: purple; font-weight: bold;">Sin(float)</span></li>
+</ul>
+<dl>
+  <dd>Returns the sine of the argument (assumes it is radians).</dd>
+  <dd><i>Examples:</i></dd>
+</dl>
+<pre>Sin(Pi()/4) = 0.707
+Sin(Pi()/2) = 1.0</pre>
+<ul>
+  <li><span style="color: rgb(0, 0, 128); font-weight: bold;">Cos</span> <span>&nbsp;</span>
+    | <span>&nbsp;</span> v2 <span>&nbsp;</span> | <span>&nbsp;</span> <span style="color: purple; font-weight: bold;">Cos(float)</span></li>
+</ul>
+<dl>
+  <dd>Returns the cosine of the argument (assumes it is radians).</dd>
+  <dd><i>Examples:</i></dd>
+</dl>
+<pre>Cos(Pi()/4) = 0.707
+Cos(Pi()/2) = 0.0</pre>
+<ul>
+  <li><span style="color: rgb(0, 0, 128); font-weight: bold;">Tan</span> <span>&nbsp;</span>
+    | <span>&nbsp;</span> v2.60 <span>&nbsp;</span> | <span>&nbsp;</span> <span style="color: purple; font-weight: bold;">Tan(float)</span></li>
+</ul>
+<dl>
+  <dd>Returns the tangent of the argument (assumes it is radians).</dd>
+  <dd><i>Examples:</i></dd>
+</dl>
+<pre>Tan(Pi()/4) = 1.0
+Tan(Pi()/2) = not defined</pre>
+<dl>
+  <dd>32 bit ieee floats do not have sufficient resolution to exactly represent<br>
+  &Pi;/2 so AviSynth returns a large positive number for the value slightly less<br>
+  than &Pi;/2 and a large negative value for the next possible value which is<br>
+  slightly greater than &Pi;/2.</dd>
+</dl>
+<ul>
+  <li><span style="color: rgb(0, 0, 128); font-weight: bold;">Asin</span> <span>&nbsp;</span>
+    | <span>&nbsp;</span> v2.60 <span>&nbsp;</span> | <span>&nbsp;</span> <span style="color: purple; font-weight: bold;">Asin(float)</span></li>
+</ul>
+<dl>
+  <dd>Returns the inverse of the sine of the argument (output is radians).</dd>
+  <dd><i>Examples:</i></dd>
+</dl>
+<pre>Asin(0.707) = 0.7852471634 (~ Pi/4)
+Asin(1.0) = 1.570796327 (~ Pi/2)</pre>
+<ul>
+  <li><span style="color: rgb(0, 0, 128); font-weight: bold;">Acos</span> <span>&nbsp;</span>
+    | <span>&nbsp;</span> v2.60 <span>&nbsp;</span> | <span>&nbsp;</span> <span style="color: purple; font-weight: bold;">Acos(float)</span></li>
+</ul>
+<dl>
+  <dd>Returns the inverse of the cosine of the argument (output is in radians).</dd>
+  <dd><i>Examples:</i></dd>
+</dl>
+<pre>Acos(0.707) = 0.7852471634 (~ Pi/4)
+Acos(0.0) = 1.570796327 (~ Pi/2)</pre>
+<ul>
+  <li><span style="color: rgb(0, 0, 128); font-weight: bold;">Atan</span> <span>&nbsp;</span>
+    | <span>&nbsp;</span> v2.60 <span>&nbsp;</span> | <span>&nbsp;</span> <span style="color: purple; font-weight: bold;">Atan(float)</span></li>
+</ul>
+<dl>
+  <dd>Returns the inverse of the tangent of the argument (output is in radians).</dd>
+  <dd><i>Examples:</i></dd>
+</dl>
+<pre>Atan(0.707) = 0.6154085176
+Atan(1.0) = 0.7853981634 (~ Pi/4)</pre>
+<ul>
+  <li><span style="color: rgb(0, 0, 128); font-weight: bold;">Atan2</span> <span>&nbsp;</span>
+    | <span>&nbsp;</span> v2.60 <span>&nbsp;</span> | <span>&nbsp;</span> <span style="color: purple; font-weight: bold;">Atan2(float,
+    float)</span></li>
+</ul>
+<dl>
+  <dd>Returns the angle between the positive x-axis of a plane and the point
+    given by the coordinates (x, y) on it (output is in radians). See <a href="http://en.wikipedia.org/wiki/Atan2" class="external text" title="http://en.wikipedia.org/wiki/Atan2" rel="nofollow">wikipedia</a>
+    for more information.</dd>
+  <dd>y is the first argument and x is the second argument.</dd>
+  <dd><i>Examples:</i></dd>
+</dl>
+<pre>Atan2(1.0, 0) = 1.570796327 (~ Pi/2)
+Atan2(1.0, 1.0) = 0.7852471634 (~ Pi/4)
+Atan2(-1.0, -1.0) = -2.356194490 (~ -3Pi/4)</pre>
+<ul>
+  <li><span style="color: rgb(0, 0, 128); font-weight: bold;">Sinh</span> <span>&nbsp;</span>
+    | <span>&nbsp;</span> v2.60 <span>&nbsp;</span> | <span>&nbsp;</span> <span style="color: purple; font-weight: bold;">Sinh(float)</span></li>
+</ul>
+<dl>
+  <dd>Returns the hyperbolic sine of the argument. See <a href="http://en.wikipedia.org/wiki/Hyperbolic_function" class="external text" title="http://en.wikipedia.org/wiki/Hyperbolic_function" rel="nofollow">wikipedia</a>
+    for more information.</dd>
+  <dd><i>Examples:</i></dd>
+</dl>
+<pre>Sinh(2.0) = 3.626860408</pre>
+<ul>
+  <li><span style="color: rgb(0, 0, 128); font-weight: bold;">Cosh</span> <span>&nbsp;</span>
+    | <span>&nbsp;</span> v2.60 <span>&nbsp;</span> | <span>&nbsp;</span> <span style="color: purple; font-weight: bold;">Cosh(float)</span></li>
+</ul>
+<dl>
+  <dd>Returns the hyperbolic cosine of the argument.</dd>
+  <dd><i>Examples:</i></dd>
+</dl>
+<pre>Cosh(2.0) = 3.762195691</pre>
+<ul>
+  <li><span style="color: rgb(0, 0, 128); font-weight: bold;">Tanh</span> <span>&nbsp;</span>
+    | <span>&nbsp;</span> v2.60 <span>&nbsp;</span> | <span>&nbsp;</span> <span style="color: purple; font-weight: bold;">Tanh(float)</span></li>
+</ul>
+<dl>
+  <dd>Returns the hyperbolic tangent of the argument.</dd>
+  <dd><i>Examples:</i></dd>
+</dl>
+<pre>Tanh(2.0) = 0.9640275801</pre>
+<ul>
+  <li><span style="color: rgb(0, 0, 128); font-weight: bold;">Fmod</span> <span>&nbsp;</span>
+    | <span>&nbsp;</span> v2.60 <span>&nbsp;</span> | <span>&nbsp;</span> <span style="color: purple; font-weight: bold;">Fmod(float,
+    float)</span></li>
+</ul>
+<dl>
+  <dd>Returns the modulo of the argument. Output is float.</dd>
+  <dd><i>Examples:</i></dd>
+</dl>
+<pre>Fmod(3.5, 0.5) = 0 (since 3.5 - 7*0.5 = 0)
+Fmod(3.5, 1.0) = 0.5 (since 3.5 - 3*1.0 = 0.5)</pre>
+<ul>
+  <li><span style="color: rgb(0, 0, 128); font-weight: bold;">Pi</span> <span>&nbsp;</span>
+    | <span>&nbsp;</span> v2 <span>&nbsp;</span> | <span>&nbsp;</span> <span style="color: purple; font-weight: bold;">Pi()</span></li>
+</ul>
+<dl>
+  <dd>Returns the value of the &quot;pi&quot; constant (the ratio of a circle's
+    circumference to its diameter).</dd>
+  <dd><i>Examples:</i></dd>
+</dl>
+<pre>d = Pi()    # d == 3.141593</pre>
+<ul>
+  <li><span style="color: rgb(0, 0, 128); font-weight: bold;">Tau</span> <span>&nbsp;</span>
+    | <span>&nbsp;</span> v2.60 <span>&nbsp;</span> | <span>&nbsp;</span> <span style="color: purple; font-weight: bold;">Tau()</span></li>
+</ul>
+<dl>
+  <dd>Returns the value of the &quot;tau&quot; constant (the ratio of a circle's
+    circumference to its radius). See <a href="http://en.wikipedia.org/wiki/Tau_(2%CF%80)"
+	class="external text" title="http://en.wikipedia.org/wiki/Tau_(2&Pi;)"
+	rel="nofollow">Tau_(2&Pi;)</a> for more information.</dd>
+  <dd><i>Examples:</i></dd>
+</dl>
+<pre>d = Tau()   # d == 6.283186</pre>
+<ul>
+  <li><span style="color: rgb(0, 0, 128); font-weight: bold;">Exp</span> <span>&nbsp;</span>
+    | <span>&nbsp;</span> v2 <span>&nbsp;</span> | <span>&nbsp;</span> <span style="color: purple; font-weight: bold;">Exp(float)</span></li>
+</ul>
+<dl>
+  <dd>Returns the natural (base-e) exponent of the argument.</dd>
+  <dd><i>Examples:</i></dd>
+</dl>
+<pre>Exp(1) = 2.718282
+Exp(0) = 1.0</pre>
+<ul>
+  <li><span style="color: rgb(0, 0, 128); font-weight: bold;">Log</span> <span>&nbsp;</span>
+    | <span>&nbsp;</span> v2 <span>&nbsp;</span> | <span>&nbsp;</span> <span style="color: purple; font-weight: bold;">Log(float)</span></li>
+</ul>
+<dl>
+  <dd>Returns the natural (base-e) logarithm of the argument.</dd>
+  <dd><i>Examples:</i></dd>
+</dl>
+<pre>Log(1) = 0.0
+Log(10) = 2.30259
+Log(Exp(1)) = 1.0</pre>
+<ul>
+  <li><span style="color: rgb(0, 0, 128); font-weight: bold;">Log10</span> <span>&nbsp;</span>
+    | <span>&nbsp;</span> v2.60 <span>&nbsp;</span> | <span>&nbsp;</span> <span style="color: purple; font-weight: bold;">Log10(float)</span></li>
+</ul>
+<dl>
+  <dd>Returns the common logarithm of the argument.</dd>
+  <dd><i>Examples:</i></dd>
+</dl>
+<pre>Log10(1.0) = 0
+Log10(10.0) = 1.0
+Log10(2.0) = 0.3010299957</pre>
+<ul>
+  <li><span style="color: rgb(0, 0, 128); font-weight: bold;">Pow</span> <span>&nbsp;</span>
+    | <span>&nbsp;</span> v2 <span>&nbsp;</span> | <span>&nbsp;</span> <span style="color: purple; font-weight: bold;">Pow(float
+    base, float power)</span></li>
+</ul>
+<dl>
+  <dd>Returns &quot;base&quot; raised to the power indicated by the second
+    argument.</dd>
+  <dd><i>Examples:</i></dd>
+</dl>
+<pre>Pow(2, 3) = 8
+Pow(3, 2) = 9
+Pow(3.45, 1.75) = 8.7334</pre>
+<ul>
+  <li><span style="color: rgb(0, 0, 128); font-weight: bold;">Sqrt</span> <span>&nbsp;</span>
+    | <span>&nbsp;</span> v2 <span>&nbsp;</span> | <span>&nbsp;</span> <span style="color: purple; font-weight: bold;">Sqrt(float)</span></li>
+</ul>
+<dl>
+  <dd>Returns the square root of the argument.</dd>
+  <dd><i>Examples:</i></dd>
+</dl>
+<pre>Sqrt(1) = 1.0
+Sqrt(2) = 1.4142</pre>
+<ul>
+  <li><span style="color: rgb(0, 0, 128); font-weight: bold;">Abs</span> <span>&nbsp;</span>
+    | <span>&nbsp;</span> v2.07 <span>&nbsp;</span> | <span>&nbsp;</span> <span style="color: purple; font-weight: bold;">Abs(float
+    or int)</span></li>
+</ul>
+<dl>
+  <dd>Returns the absolute value of its argument (returns float for float,
+    integer for integer).</dd>
+  <dd><i>Examples:</i></dd>
+</dl>
+<pre>Abs(-3.8) = 3.8
+Abs(-4) = 4</pre>
+<ul>
+  <li><span style="color: rgb(0, 0, 128); font-weight: bold;">Sign</span> <span>&nbsp;</span>
+    | <span>&nbsp;</span> v2.07 <span>&nbsp;</span> | <span>&nbsp;</span> <span style="color: purple; font-weight: bold;">Sign(float)</span></li>
+</ul>
+<dl>
+  <dd>Returns the sign of the value passed as argument (1, 0 or -1).</dd>
+  <dd><i>Examples:</i></dd>
+</dl>
+<pre>Sign(-3.5) = -1
+Sign(3.5) = 1
+Sign(0) = 0</pre>
+<ul>
+  <li><span style="color: rgb(0, 0, 128); font-weight: bold;">Int</span> <span>&nbsp;</span>
+    | <span>&nbsp;</span> v2.07 <span>&nbsp;</span> | <span>&nbsp;</span> <span style="color: purple; font-weight: bold;">Int(float)</span></li>
+</ul>
+<dl>
+  <dd>Converts from single-precision, <a href="http://en.wikipedia.org/wiki/Floating_point" class="external text" title="http://en.wikipedia.org/wiki/Floating_point" rel="nofollow">floating-point</a>
+    value to int (round towards zero).</dd>
+  <dd><i>Examples:</i></dd>
+</dl>
+<pre>Int(1.2) = 1
+Int(1.6) = 1
+Int(-1.2) = -1
+Int(-1.6) = -1</pre>
+<ul>
+  <li><span style="color: rgb(0, 0, 128); font-weight: bold;">Frac</span> <span>&nbsp;</span>
+    | <span>&nbsp;</span> v2.07 <span>&nbsp;</span> | <span>&nbsp;</span> <span style="color: purple; font-weight: bold;">Frac(float)</span></li>
+</ul>
+<dl>
+  <dd>Returns the fractional portion of the value provided.</dd>
+  <dd><i>Examples:</i></dd>
+</dl>
+<pre>Frac(3.7) = 0.7
+Frac(-1.8) = -0.8</pre>
+<ul>
+  <li><span style="color: rgb(0, 0, 128); font-weight: bold;">Float</span> <span>&nbsp;</span>
+    | <span>&nbsp;</span> v2.07 <span>&nbsp;</span> | <span>&nbsp;</span> <span style="color: purple; font-weight: bold;">Float(int)</span></li>
+</ul>
+<dl>
+  <dd>Converts int to single-precision, <a href="http://en.wikipedia.org/wiki/Floating_point" class="external text" title="http://en.wikipedia.org/wiki/Floating_point" rel="nofollow">floating-point</a>
+    value. Integer values that require more than 24-bits to be represented will
+    have their lower 8-bits truncated yielding unexpected values.</dd>
+  <dd><i>Examples:</i></dd>
+</dl>
+<pre>Float(4) = 4.0
+Float(4) / 3 = 1.333 (while 4 / 3 = 1 , due to integer division)</pre>
+<ul>
+  <li><span style="color: rgb(0, 0, 128); font-weight: bold;">Rand</span> <span>&nbsp;</span>
+    | <span>&nbsp;</span> v2.07 <span>&nbsp;</span> | <span>&nbsp;</span> <span style="color: purple; font-weight: bold;">Rand([int
+    max] [, bool scale] [, bool seed])</span></li>
+</ul>
+<dl>
+  <dd>Returns a random integer value. All parameters are optional.
+    <ul>
+      <li><i>max</i> sets the maximum value+1 (default 32768) and can be set
+        negative for negative results. It operates either in scaled or modulus
+        mode (default <i>scale</i>=true only if abs(max) &gt; 32768, false
+        otherwise).</li>
+      <li>Scaled mode (<i>scale</i>=true) scales the internal random number
+        generator value to the maximum value, while modulus mode (<i>scale</i>=false)
+        uses the remainder from an integer divide of the random generator value
+        by the maximum. I found modulus mode is best for smaller maximums.</li>
+      <li>Using <i>seed=true</i> seeds the random number generator with the
+        current time. <i>seed</i> defaults to false and probably isn't
+        necessary, although it's there just in case.</li>
+    </ul>
+  </dd>
+  <dd>Typically, this function would be used with the Select function for random
+    clips.</dd>
+  <dd><i>Examples:</i></dd>
+</dl>
+<pre>Select(Rand(5), clip1, clip2, clip3, clip4, clip5)</pre>
+<ul>
+  <li><span style="color: rgb(0, 0, 128); font-weight: bold;">Spline</span> <span>&nbsp;</span>
+    | <span>&nbsp;</span> v2.51 <span>&nbsp;</span> | <span>&nbsp;</span> <span style="color: purple; font-weight: bold;">Spline(float
+    X, x1, y1, x2, y2, .... [, bool cubic])</span></li>
+</ul>
+<dl>
+  <dd>Interpolates the Y value at point X using the control points x1/y1, ...
+    There have to be at least 2 x/y-pairs. The interpolation can be cubic (the
+    result is a spline) or linear (the result is a polygon). Default is cubic.</dd>
+  <dd><i>Examples:</i></dd>
+</dl>
+<pre>Spline(5, 0, 0, 10, 10, 20, 0, false) = 5
+Spline(5, 0, 0, 10, 10, 20, 0, true) = 7</pre>
+
+<ul>
+  <li><span style="color: rgb(0, 0, 128); font-weight: bold;">ContinuedNumerator</span>
+    <span>&nbsp;</span> | <span>&nbsp;</span> v2.60 <span>&nbsp;</span> | <span>&nbsp;</span>
+    <span style="color: purple; font-weight: bold;">ContinuedNumerator(float,
+    int limit)</span></li>
+  <li><span style="color: rgb(0, 0, 128); font-weight: bold;">ContinuedNumerator</span>
+    <span>&nbsp;</span> | <span>&nbsp;</span> v2.60 <span>&nbsp;</span> | <span>&nbsp;</span>
+    <span style="color: purple; font-weight: bold;">ContinuedNumerator(int, int,
+    int limit)</span></li>
+  <li><span style="color: rgb(0, 0, 128); font-weight: bold;">ContinuedDenominator</span>
+    <span>&nbsp;</span> | <span>&nbsp;</span> v2.60 <span>&nbsp;</span> | <span>&nbsp;</span>
+    <span style="color: purple; font-weight: bold;">ContinuedDenominator(float,
+    int limit)</span></li>
+  <li><span style="color: rgb(0, 0, 128); font-weight: bold;">ContinuedDenominator</span>
+    <span>&nbsp;</span> | <span>&nbsp;</span> v2.60 <span>&nbsp;</span> | <span>&nbsp;</span>
+    <span style="color: purple; font-weight: bold;">ContinuedDenominator(int,
+    int, int limit)</span></li>
+</ul>
+<dl>
+  <dd>The rational pair (ContinuedNumerator,ContinuedDenominator) returned has
+    the smallest possible denominator such that the absolute error is less than
+    1/limit. More information can be found on <a href="http://en.wikipedia.org/wiki/Continued_fraction" class="external text" title="http://en.wikipedia.org/wiki/Continued_fraction" rel="nofollow">wikipedia</a>.</dd>
+  <dd>If <i>limit</i> is not specified in the Float case the rational pair
+    returned is to the limit of the single precision floating point value. Thus
+    (float)((double)Num/(double)Den) == V.</dd>
+  <dd>In the Int pair case if <i>limit</i> is not specified then the normalised original
+    values will be returned, i.e. reduced by the GCD.</dd>
+  <dd><i>Examples:</i></dd>
+</dl>
+<pre>ContinuedNumerator(PI(), limit=5000]) = 355
+ContinuedDenominator(PI(), limit=5000) = 113
+
+ContinuedNumerator(PI(), limit=50]) = 22
+ContinuedDenominator(PI(), limit=50) = 7
+
+ContinuedNumerator(355, 113, limit=50]) = 22
+ContinuedDenominator(355, 113, limit=50) = 7 </pre>
+<ul>
+  <li><span style="color: rgb(0, 0, 128); font-weight: bold;">BitAnd</span> <span>&nbsp;</span>
+    | <span>&nbsp;</span> v2.60 <span>&nbsp;</span> | <span>&nbsp;</span> <span style="color: purple; font-weight: bold;">BitAnd(int,
+    int)</span></li>
+</ul>
+<dl>
+  <dd>The functions: BitAnd, BitNot, BitOr, BitXor, etc, are bitwise operators.
+    This means that their arguments (being integers) are converted to binary
+    numbers, the operation is performed on their bits, and the resulting binary
+    number is converted back again.</dd>
+  <dd>BitAnd returns the bitwise AND (sets bit to 1 if both bits are 1 and sets
+    bit to 0 otherwise).</dd>
+  <dd><i>Examples:</i></dd>
+</dl>
+<pre>BitAnd(5, 6) = 4 # since 5 = 101, 6 = 110, and 101&amp;110 = 100</pre>
+<ul>
+  <li><span style="color: rgb(0, 0, 128); font-weight: bold;">BitNot</span> <span>&nbsp;</span>
+    | <span>&nbsp;</span> v2.60 <span>&nbsp;</span> | <span>&nbsp;</span> <span style="color: purple; font-weight: bold;">BitNot(int)</span></li>
+</ul>
+<dl>
+  <dd>Returns the bit-inversion (sets bit to 1 if bit is 0 and vice-versa).</dd>
+  <dd><i>Examples:</i></dd>
+</dl>
+<pre>BitNOT(5) = -6 # since 5 = 101, and ~101 = 11111111111111111111111111111010</pre>
+<dl>
+  <dd>Note: 1111 1111 1111 1111 1111 1111 1111 1010 = (2^32-1)-2^0-2^2 = 2^32-(1+2^0+2^2) = (signed) -(1+2^0+2^2) = -6.</dd>
+</dl>
+<ul>
+  <li><span style="color: rgb(0, 0, 128); font-weight: bold;">BitOr</span> <span>&nbsp;</span>
+    | <span>&nbsp;</span> v2.60 <span>&nbsp;</span> | <span>&nbsp;</span> <span style="color: purple; font-weight: bold;">BitOr(int,
+    int)</span></li>
+</ul>
+<dl>
+  <dd>Returns the bitwise inclusive OR (sets bit to 1 if one of the bits (or
+    both) is 1 and sets bit to 0 otherwise).</dd>
+  <dd><i>Examples:</i></dd>
+</dl>
+<pre>BitOr(5, 6) = 7 # since 5 = 101, 6 = 110, and 101|110 = 111
+BitOr(4, 2) = 6 # since 4 = 100, 2 = 010, and 100|010 = 110</pre>
+<ul>
+  <li><span style="color: rgb(0, 0, 128); font-weight: bold;">BitXor</span> <span>&nbsp;</span>
+    | <span>&nbsp;</span> v2.60 <span>&nbsp;</span> | <span>&nbsp;</span> <span style="color: purple; font-weight: bold;">BitXor(int,
+    int)</span></li>
+</ul>
+<dl>
+  <dd>Returns the bitwise exclusive OR (sets bit to 1 if exactly one of the bits
+    is 1 and sets bit to 0 otherwise).</dd>
+  <dd><i>Examples:</i></dd>
+</dl>
+<pre>BitXor(5, 6) = 3 # since 5 = 101, 6 = 110, and 101^110 = 011
+BitXor(4, 2) = 6 # since 4 = 100, 2 = 010, and 100^010 = 110</pre>
+<ul>
+  <li><span style="color: rgb(0, 0, 128); font-weight: bold;">BitLShift</span> <span>&nbsp;</span>
+    | <span>&nbsp;</span> v2.60 <span>&nbsp;</span> | <span>&nbsp;</span> <span style="color: purple; font-weight: bold;">BitLShift(int,
+    int)</span></li>
+  <li><span style="color: rgb(0, 0, 128); font-weight: bold;">BitShl</span> <span>&nbsp;</span>
+    | <span>&nbsp;</span> v2.60 <span>&nbsp;</span> | <span>&nbsp;</span> <span style="color: purple; font-weight: bold;">BitShl(int,
+    int)</span></li>
+  <li><span style="color: rgb(0, 0, 128); font-weight: bold;">BitSal</span> <span>&nbsp;</span>
+    | <span>&nbsp;</span> v2.60 <span>&nbsp;</span> | <span>&nbsp;</span> <span style="color: purple; font-weight: bold;">BitSal(int,
+    int)</span></li>
+</ul>
+<dl>
+  <dd>Shift the bits of a number to the left.</dd>
+  <dd><i>Examples:</i></dd>
+</dl>
+<pre>Shifts the bits of the number 5 two bits to the left:
+BitLShift(5, 2) = 20 (since 101 &lt;&lt; 2 = 10100)</pre>
+<ul>
+  <li><span style="color: rgb(0, 0, 128); font-weight: bold;">BitRShiftL</span> <span>&nbsp;</span>
+    | <span>&nbsp;</span> v2.60 <span>&nbsp;</span> | <span>&nbsp;</span> <span style="color: purple; font-weight: bold;">BitRShiftL(int, int)</span></li>
+  <li><span style="color: rgb(0, 0, 128); font-weight: bold;">BitRShiftU</span> <span>&nbsp;</span>
+    | <span>&nbsp;</span> v2.60 <span>&nbsp;</span> | <span>&nbsp;</span> <span style="color: purple; font-weight: bold;">BitRShiftU(int, int)</span></li>
+  <li><span style="color: rgb(0, 0, 128); font-weight: bold;">BitShr</span> <span>&nbsp;</span>
+    | <span>&nbsp;</span> v2.60 <span>&nbsp;</span> | <span>&nbsp;</span> <span style="color: purple; font-weight: bold;">BitShr(int, int)</span></li>
+</ul>
+<dl>
+  <dd>Shift the bits of an unsigned integer to the right. (Logical, zero fill, Right Shift)</dd>
+  <dd><i>Examples:</i></dd>
+</dl>
+<pre>Shifts the bits of the number -42 one bit to the right, treating it as unsigned:
+BitRShiftL(-42, 1) = 2147483627 (since 11111111111111111111111111010110 &gt;&gt;&gt; 1 = 01111111111111111111111111101011)</pre>
+<dl>
+  <dd>Note: -42 = -(1+2^0+2^3+2^5) = (unsigned) 2^32-(1+2^0+2^3+2^5) = (2^32-1)-2^0-2^3-2^5 = 11111111111111111111111111010110.</dd>
+</dl>
+
+<ul>
+  <li><span style="color: rgb(0, 0, 128); font-weight: bold;">BitRShiftA</span> <span>&nbsp;</span>
+    | <span>&nbsp;</span> v2.60 <span>&nbsp;</span> | <span>&nbsp;</span> <span style="color: purple; font-weight: bold;">BitRShiftA(int, int)</span></li>
+  <li><span style="color: rgb(0, 0, 128); font-weight: bold;">BitRShiftS</span> <span>&nbsp;</span>
+    | <span>&nbsp;</span> v2.60 <span>&nbsp;</span> | <span>&nbsp;</span> <span style="color: purple; font-weight: bold;">BitRShiftS(int, int)</span></li>
+  <li><span style="color: rgb(0, 0, 128); font-weight: bold;">BitSar</span> <span>&nbsp;</span>
+    | <span>&nbsp;</span> v2.60 <span>&nbsp;</span> | <span>&nbsp;</span> <span style="color: purple; font-weight: bold;">BitSar(int, int)</span></li>
+</ul>
+<dl>
+  <dd>Shift the bits of an integer to the right. (Arithmetic, Sign bit fill, Right Shift)</dd>
+  <dd><i>Examples:</i></dd>
+</dl>
+<pre>Shifts the bits of the number -42 one bit to the right, treating it as signed:
+BitRShiftA(-42, 1) = -21 (since 11111111111111111111111111010110 &gt;&gt; 1 = 11111111111111111111111111101011)</pre>
+
+<ul>
+  <li><span style="color: rgb(0, 0, 128); font-weight: bold;">BitLRotate</span> <span>&nbsp;</span>
+    | <span>&nbsp;</span> v2.60 <span>&nbsp;</span> | <span>&nbsp;</span> <span style="color: purple; font-weight: bold;">BitLRotate(int, int)</span></li>
+  <li><span style="color: rgb(0, 0, 128); font-weight: bold;">BitRol</span> <span>&nbsp;</span>
+    | <span>&nbsp;</span> v2.60 <span>&nbsp;</span> | <span>&nbsp;</span> <span style="color: purple; font-weight: bold;">BitRol(int, int)</span></li>
+</ul>
+<dl>
+  <dd>Rotates the bits of an unsigned integer to the left.</dd>
+  <dd><i>Examples:</i></dd>
+</dl>
+<pre>Rotates the bits of the number -2147483642 one bit to the right:
+BitLRotate(-2147483642, 1) = 13 (since 10000000000000000000000000000110 ROL 1 = 00000000000000000000000000001101)</pre>
+
+<ul>
+  <li><span style="color: rgb(0, 0, 128); font-weight: bold;">BitRRotate</span> <span>&nbsp;</span>
+    | <span>&nbsp;</span> v2.60 <span>&nbsp;</span> | <span>&nbsp;</span> <span style="color: purple; font-weight: bold;">BitRRotate(int, int)</span></li>
+  <li><span style="color: rgb(0, 0, 128); font-weight: bold;">BitRor</span> <span>&nbsp;</span>
+    | <span>&nbsp;</span> v2.60 <span>&nbsp;</span> | <span>&nbsp;</span> <span style="color: purple; font-weight: bold;">BitRor(int, int)</span></li>
+</ul>
+<dl>
+  <dd>Rotate the bits of an integer to the right.</dd>
+  <dd><i>Examples:</i></dd>
+</dl>
+<pre>Rotates the bits of the number 13 one bit to the right:
+BitRRotate(13, 1) = -2147483642 (since 00000000000000000000000000001101 ROR 1 = 10000000000000000000000000000110)</pre>
+
+<ul>
+  <li><span style="color: rgb(0, 0, 128); font-weight: bold;">BitChange</span> <span>&nbsp;</span>
+    | <span>&nbsp;</span> v2.60 <span>&nbsp;</span> | <span>&nbsp;</span> <span style="color: purple; font-weight: bold;">BitChange(int, int)</span></li>
+  <li><span style="color: rgb(0, 0, 128); font-weight: bold;">BitChg</span> <span>&nbsp;</span>
+    | <span>&nbsp;</span> v2.60 <span>&nbsp;</span> | <span>&nbsp;</span> <span style="color: purple; font-weight: bold;">BitChg(int, int)</span></li>
+</ul>
+<dl>
+  <dd>Invert the state of the n'th bit of an integer. The 1 bit is bit 0. The sign bit is bit 31.</dd>
+  <dd><i>Examples:</i></dd>
+</dl>
+<pre>Change the state of the fourth bit:
+BitChange(3, 4) = 19
+BitChange(19, 4) = 3
+
+Change the state of the sign bit:
+BitChange(-1, 31) = 2147483647</pre>
+
+<ul>
+  <li><span style="color: rgb(0, 0, 128); font-weight: bold;">BitClear</span> <span>&nbsp;</span>
+    | <span>&nbsp;</span> v2.60 <span>&nbsp;</span> | <span>&nbsp;</span> <span style="color: purple; font-weight: bold;">BitClear(int, int)</span></li>
+  <li><span style="color: rgb(0, 0, 128); font-weight: bold;">BitClr</span> <span>&nbsp;</span>
+    | <span>&nbsp;</span> v2.60 <span>&nbsp;</span> | <span>&nbsp;</span> <span style="color: purple; font-weight: bold;">BitClr(int, int)</span></li>
+</ul>
+<dl>
+  <dd>Clear the state of the n'th bit of an integer.</dd>
+  <dd><i>Examples:</i></dd>
+</dl>
+<pre>Clear the state of the fourth bit:
+BitClear(3, 4) = 3
+BitClear(19, 4) = 3
+
+Clear the state of the sign bit:
+BitClear(-1, 31) = 2147483647</pre>
+
+<ul>
+  <li><span style="color: rgb(0, 0, 128); font-weight: bold;">BitSet</span> <span>&nbsp;</span>
+    | <span>&nbsp;</span> v2.60 <span>&nbsp;</span> | <span>&nbsp;</span> <span style="color: purple; font-weight: bold;">BitSet(int, int)</span></li>
+</ul>
+<dl>
+  <dd>Set the state of the n'th bit of an integer.</dd>
+  <dd><i>Examples:</i></dd>
+</dl>
+<pre>Set the state of the fourth bit:
+BitSet(3, 4) = 19
+BitSet(19, 4) = 19
+
+Set the state of the sign bit:
+BitSet(-1, 31) = -1
+BitSet(2147483647, 31) = -1</pre>
+
+<ul>
+  <li><span style="color: rgb(0, 0, 128); font-weight: bold;">BitTest</span> <span>&nbsp;</span>
+    | <span>&nbsp;</span> v2.60 <span>&nbsp;</span> | <span>&nbsp;</span> <span style="color: purple; font-weight: bold;">BitTest(int, int)</span></li>
+  <li><span style="color: rgb(0, 0, 128); font-weight: bold;">BitTst</span> <span>&nbsp;</span>
+    | <span>&nbsp;</span> v2.60 <span>&nbsp;</span> | <span>&nbsp;</span> <span style="color: purple; font-weight: bold;">BitTst(int, int)</span></li>
+</ul>
+<dl>
+  <dd>Test the state of the n'th bit of an integer. Result is a bool.</dd>
+  <dd><i>Examples:</i></dd>
+</dl>
+<pre>Check the state of the fourth bit:
+BitTest(3, 4) = False
+BitTest(19, 4) = True
+
+Check the state of the sign bit:
+BitTest(-1, 31) = True
+BitTest(2147483647, 31) = False</pre>
+
+<hr>
+<p>Back to <a href="syntax_internal_functions.htm" title="Internal functions">Internal
+functions</a>.</p>
+<p><kbd>$Date: 2013/01/06 13:38:34 $</kbd></p>
+</body>
+</html>

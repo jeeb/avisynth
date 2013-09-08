@@ -1,0 +1,267 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+<html>
+<head>
+<!--
+Automatically generated, don't change:
+$Id: faq_general_info.htm,v 1.7 2008/10/26 14:18:53 wilbertd Exp $ 
+-->
+   <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+   <title> FAQ - General information </title>
+<style type=text/css></style>
+   <link rel="stylesheet" type="text/css" href="../avisynth.css">
+</head>
+<body>
+
+<h1>AviSynth FAQ - General information</h1>
+
+<h2>Contents</h2>
+<ol>
+  <li><a href="#What_is_AviSynth.3F">What is AviSynth?</a></li>
+  <li><a href="#Who_is_developing_AviSynth.3F">Who is developing AviSynth?</a></li>
+  <li><a href="#Where_can_I_download_the_latest_versions_of_AviSynth.3F">Where can I download the latest versions of AviSynth?</a></li>
+  <li><a href="#What_are_the_main_bugs_in_these_versions.3F">What are the main bugs in these versions?</a></li>
+  <li><a href="#Where_can_I_find_documentation_about_AviSynth.3F">Where can I find documentation about AviSynth?</a></li>
+  <li><a href="#How_do_I_install/uninstall_AviSynth.3F">How do I install/uninstall AviSynth?</a></li>
+  <li><a href="#What_is_the_main_difference_between_v1.0x,_v2.0x,_v2.5x,_v2.6x_and_v3.x.3F">What is the main difference between v1.0x, v2.0x,
+v2.5x, v2.6x and v3.x?</a></li>
+  <li><a href="#How_do_I_know_which_version_number_of_AviSynth_I_have.3F">How do I know which version number of AviSynth I
+have?</a></li>
+  <li><a href="#How_do_I_make_an_AVS-file.3F">How do I make an AVS-file?</a></li>
+  <li><a href="#Where_do_I_save_my_AVS-file.3F">Where do I save my AVS-file?</a></li>
+  <li><a href="#Are_plugins_compiled_for_v2.5x/v2.6x_compatible_with_v1.0x/v2.0x_and_vice_versa.3F">Are plugins compiled for v2.5x/v2.6x compatible with v1.0x/v2.0x and vice versa?</a></li>
+  <li><a href="#How_do_I_use_a_plugin_compiled_for_v2.0x_in_v2.5x.3F">How do I use a plugin compiled for v2.0x in v2.5x?</a></li>
+  <li><a href="#How_do_I_switch_between_different_AviSynth_versions_without_re-install.3F">How do I switch between different AviSynth
+versions without re-install?</a></li>
+  <li><a href="#VirtualdubMod.2C_WMP6.4.2C_CCE_and_other_programs_crash_every_time_on_exit_.28when_previewing_an_avs_file.29.3F">VirtualdubMod, WMP6.4, CCE and other programs
+crash every time on exit (when previewing an avs file)?</a></li>
+  <li><a href="#My_computer_seems_to_crash_at_random_during_a_second_pass_in_any_encoder.3F">My computer seems to crash at random during a second pass in any encoder?</a></li>
+  <li><a href="#Is_there_a_command_line_utility_for_encoding_to_DivX.2FXviD_using_AviSynth.3F">Is there a command line utility for encoding to
+DivX/XviD using AviSynth?</a></li>
+  <li><a href="#Does_AviSynth_have_a_GUI_.28graphical_user_interface.29.3F">Does AviSynth have a GUI (graphical user
+interface)?</a></li>
+</ol>
+
+<a name="What_is_AviSynth.3F"></a>
+<h3>What is AviSynth?</h3>
+
+<p>AviSynth (AVI SYNTHesizer) is a frameserver. An excellent description is
+given on <a href="http://neuron2.net/LVG/avisynth.html" class="external text" title="http://neuron2.net/LVG/avisynth.html" rel="nofollow">Lukes
+homepage</a>:</p>
+<p>&quot;AviSynth is a very useful utility created by Ben Rudiak-Gould. It
+provides many options for joining and filtering videos. What makes AviSynth
+unique is the fact that it is not a stand-alone program that produces output
+files. Instead, AviSynth acts as the &quot;middle man&quot; between your videos
+and video applications.</p>
+<p>Basically, AviSynth works like this: First, you create a simple text document
+with special commands, called a script. These commands make references to one or
+more videos and the filters you wish to run on them. Then, you run a video
+application, such as Virtualdub, and open the script file. This is when AviSynth
+takes action. It opens the videos you referenced in the script, runs the
+specified filters, and feeds the output to video application. The application,
+however, is not aware that AviSynth is working in the background. Instead, the
+application thinks that it is directly opening a filtered AVI file that resides
+on your hard drive.</p>
+<p>There are five main reasons why you would want to use AviSynth:</p>
+<ol>
+  <li>Join Videos: AviSynth lets you join together any number of videos,
+    including segmented AVIs. You can even selectively join certain portions of
+    a video or dub soundtracks.</li>
+  <li>Filter Videos: Many video processing filters are built in to AviSynth. For
+    example, filters for resizing, cropping, and sharpening your videos.</li>
+  <li>Break the 2 GB Barrier: AviSynth feeds a video to a program rather than
+    letting the program directly open the video itself. Because of this, you can
+    usually use AviSynth to open files larger than 2 GB in programs that don't
+    natively support files of that size.</li>
+  <li>Open Unsupported Formats: AviSynth can open almost any type of video,
+    including MPEGs and certain Quicktime MOVs. However, when AviSynth feeds
+    video to a program, it looks just like a standard AVI to that program. This
+    allows you to open certain video formats in programs that normally wouldn't
+    support them.</li>
+  <li>Save Disk Space: AviSynth generates the video that it feeds to a program
+    on the fly. Therefore, no temporary or intermediate videos are created.
+    Because of this, you save disk space.&quot;</li>
+</ol>
+
+<a name="Who_is_developing_AviSynth.3F"></a>
+<h3>Who is developing AviSynth?</h3>
+<p>Originally AviSynth (up to v1.0b) was developed by Ben Rudiak-Gould. See <a href="http://neuron2.net/www.math.berkeley.edu/benrg/index.html" class="external text" title="http://neuron2.net/www.math.berkeley.edu/benrg/index.html" rel="nofollow">mirror
+of his homepage</a>. Currently it is developed by Sh0dan, IanB, d'Oursse
+(AviSynth v3), Bidoche (AviSynth v3) and <a href="http://sourceforge.net/project/memberlist.php?group_id=57023">others</a>.</p>
+
+<a name="Where_can_I_download_the_latest_versions_of_AviSynth.3F"></a>
+<h3>Where can I download the latest versions of AviSynth?</h3>
+<p>The most recent stable version is v2.57, which can be found <a href="http://sourceforge.net/project/showfiles.php?group_id=57023" class="external text" title="http://sourceforge.net/project/showfiles.php?group_id=57023" rel="nofollow">here</a>
+(just as more recent builds).</p>
+
+<a name="What_are_the_main_bugs_in_these_versions.3F"></a>
+<h3>What are the main bugs in these versions?</h3>
+<p>Current bugs can be found in the documentation on the <a href="http://sourceforge.net/tracker/?atid=482673&amp;group_id=57023" class="external text" title="http://sourceforge.net/tracker/?atid=482673&amp;group_id=57023" rel="nofollow">AviSynth
+project page</a>. Fixed bugs can be found in the <a href="changelist.htm" title="Changelist">Changelist</a>.</p>
+
+<a name="Where_can_I_find_documentation_about_AviSynth.3F"></a>
+<h3>Where can I find documentation about AviSynth?</h3>
+<p>Documentation about the filters of AviSynth can be found on this site <a href="http://avisynth.org/mediawiki/Main_Page" title="Main Page">Main
+Page</a>, and in particular here: <a href="corefilters.htm" title="Internal filters">Internal
+filters</a>. You should read these documents before posting to the forum, but
+it's OK to post if you have trouble understanding them.</p>
+
+<a name="How_do_I_install/uninstall_AviSynth.3F"></a>
+<h3>How do I install/uninstall AviSynth?</h3>
+<p>Starting from v2.06 AviSynth comes with an auto installer. Also make sure you
+have no other versions of AviSynth floating around on your harddisk, because
+there is a chance that one of those versions will be registered. Remove them if
+necessary. For uninstalling AviSynth go to &quot;program&quot;, &quot;AviSynth
+2.5&quot; and select &quot;Uninstall AviSynth&quot;.</p>
+<p>Installing AviSynth v2.05 or older versions: move avisynth.dll to your
+system/system32 directory and run install.reg. For uninstalling run
+uninstall.reg and delete avisynth.dll.</p>
+
+<a name="What_is_the_main_difference_between_v1.0x,_v2.0x,_v2.5x,_v2.6x_and_v3.x.3F"></a>
+<h3>What is the main difference between v1.0x, v2.0x,
+v2.5x, v2.6x and v3.x?</h3>
+<p>The versions v1.0x and v2.0x are compatible and outdated. The main difference
+with v2.5x is that the internal structure of AviSynth has changed (YV12 and
+multichannel support) with the consequence that external plugins compiled for
+v1.0x/v2.0x will not work for v2.5x/v2.6x and vice versa. In v2.6x other planar
+formats like YV24 and Y8 are added. v2.5x plugins will work in v2.6x but not
+vice-versa. All versions are incompatible with v3.x, which will also work under
+Linux/MacOSX (see <a href="http://avisynth.org/mediawiki/AviSynth_v3" title="AviSynth v3">AviSynth
+v3</a>) and rely on the GStreamer API.</p>
+
+<a name="How_do_I_know_which_version_number_of_AviSynth_I_have.3F"></a>
+<h3>How do I know which version number of AviSynth I have?</h3>
+<p>Open a text-editor, for example notepad. Add the following line</p>
+<pre>Version()</pre>
+<p>and save the file with the extension &quot;avs&quot;. Save for example as
+&quot;version.avs&quot; (make sure that the extension is &quot;avs&quot; and not
+&quot;txt&quot;). Open the file in an application which can read AVI-files, for
+example WMP 6.4 or Media Player Classic. The version number will be displayed.</p>
+
+<a name="How_do_I_make_an_AVS-file.3F"></a>
+<h3>How do I make an AVS-file?</h3>
+<p>Use your preferred text editor (e.g. Notepad). See also <a title href="#How_do_I_know_which_version_number_of_AviSynth_I_have.3F">this</a>.</p>
+<p>Although AviSynth doesn't need them, there are several GUIs (graphical user
+interface) which may help you writing your AVS files. You can read a description
+for each one of them <a href="#Does_AviSynth_have_a_GUI_.28graphical_user_interface.29.3F" title>here</a>.</p>
+<h3>Where do I save my AVS-file?</h3>
+<p>Anywhere on your hard-disk.</p>
+
+<a name="Are_plugins_compiled_for_v2.5x/v2.6x_compatible_with_v1.0x/v2.0x_and_vice_versa.3F"></a>
+<h3>Are plugins compiled for v2.5x/v2.6x compatible
+with v1.0x/v2.0x and vice versa?</h3>
+<p>As explained <a href="#What_is_the_main_difference_between_v1.0x,_v2.0x,_v2.5x,_v2.6x_and_v3.x.3F">here</a> that is not the case. However
+it is possible to use a v1.0x/v2.0x plugin in v2.5x/v2.6x, as explained <a title href="#How_do_I_use_a_plugin_compiled_for_v2.0x_in_v2.5x.3F">here</a>.</p>
+
+<a name="How_do_I_use_a_plugin_compiled_for_v2.0x_in_v2.5x.3F"></a>
+<h3>How do I use a plugin compiled for v2.0x in v2.5x?</h3>
+
+<p>In plugin collection <a href="externalfilters/warpsharp.htm">warpsharp_2003_1103.cab</a>
+you
+will find a plugin called &quot;LoadPluginEx.dll&quot;. (When using an older
+version of LoadPluginEx.dll, don't move this plugin to your plugin dir. But move
+it to a separate folder, otherwise VirtualdubMod and WMP6.4 will crash on exit.)
+This will enable you using v2.0x plugins in v2.5x. An example script (using the
+v2.0x plugin Dust by Steady):</p>
+<pre>LoadPlugin(&quot;C:\Program Files\avisynth2_temp\plugins\LoadPluginEx.dll&quot;)
+LoadPlugin(&quot;C:\Program Files\avisynth2_temp\plugins\dustv5.dll&quot;)
+
+AviSource(&quot;D:\clip.avi&quot;)
+ConvertToYUY2()
+PixieDust(5)</pre>
+<p>If you want to automate this process, have a look at <a href="http://avisynth.org/mediawiki/LoadOldPlugins" title="LoadOldPlugins">LoadOldPlugins</a>.</p>
+
+<a name="How_do_I_switch_between_different_AviSynth_versions_without_re-install.3F"></a>
+<h3>How do I switch between different AviSynth
+versions without re-install?</h3>
+<ul>
+  <li>You can use AvisynthSwitcher available <a href="http://www.lalternative.org" class="external text" title="http://www.lalternative.org" rel="nofollow">here</a>.
+    Versions v2.08 and v2.50 are provided, but you can easily add a new one
+    under AvisynthSwitcher\versions\Avisynth 2.x.x.</li>
+</ul>
+<ul>
+  <li>Some other ways are described <a href="http://forum.doom9.org/showthread.php?s=&amp;threadid=45181" class="external text" title="http://forum.doom9.org/showthread.php?s=&amp;threadid=45181" rel="nofollow">here</a>.</li>
+</ul>
+
+<a name="VirtualdubMod.2C_WMP6.4.2C_CCE_and_other_programs_crash_every_time_on_exit_.28when_previewing_an_avs_file.29.3F"></a>
+<h3>VirtualdubMod, WMP6.4, CCE and other programs
+crash every time on exit (when previewing an avs file)?</h3>
+<p>This problem can be caused by certain plugins in your (autoloading) plugin
+folder. The solution is to move the problematic plugins outside your plugin
+folder and load them manually.&nbsp;</p>
+
+<a name="My_computer_seems_to_crash_at_random_during_a_second_pass_in_any_encoder.3F"></a>
+<h3>My computer seems to crash at random during a
+second pass in any encoder?</h3>
+<p>AviSynth is highly optimized. As a consequence it is possible that your
+computer seems to crash at random during a second pass. Try running the <a href="http://www.mersenne.org/freesoft.htm" class="external text" title="http://www.mersenne.org/freesoft.htm" rel="nofollow">Prime95</a>
+stress test for an hour, to check if your system is stable. If this test fails
+(or your computer locks up) make sure that your computer is not overclocked and
+lower your bus speed of your processor in steps of (say) five MHz till the
+crashes are gone.</p>
+
+<a name="Is_there_a_command_line_utility_for_encoding_to_DivX.2FXviD_using_AviSynth.3F"></a>
+<h3>Is there a command line utility for encoding to
+DivX/XviD using AviSynth?</h3>
+
+<ul>
+  <li>There is a command line utility called <a href="http://www.avs2avi.org/" class="external text" title="http://www.avs2avi.org/" rel="nofollow">AVS2AVI</a>
+    (and AVS2AVI GUI) for encoding to DivX / XviD using AviSynth. [<a href="http://forum.doom9.org/showthread.php?t=71493" class="external text" title="http://forum.doom9.org/showthread.php?t=71493" rel="nofollow">discussion</a>]</li>
+  <li><a href="http://forum.doom9.org/showthread.php?t=98469" class="external text" title="http://forum.doom9.org/showthread.php?t=98469" rel="nofollow">xvid_encraw</a>
+    for encoding to XviD in M4V. Use <a href="http://kurtnoise.free.fr/index.php?dir=mp4tools/" class="external text" title="http://kurtnoise.free.fr/index.php?dir=mp4tools/" rel="nofollow">mp4box</a>
+    or <a href="http://forum.doom9.org/showthread.php?t=115459" class="external text" title="http://forum.doom9.org/showthread.php?t=115459" rel="nofollow">YAMB</a>
+    to mux it into MP4.</li>
+</ul>
+
+<a name="Does_AviSynth_have_a_GUI_.28graphical_user_interface.29.3F"></a>
+<h3>Does AviSynth have a GUI (graphical user
+interface)?</h3>
+<p>AviSynth doesn't have a full fledged gui, but several tools are available:</p>
+<ul>
+  <li><a href="http://avisynth.org/mediawiki/VirtualDubMod" title="VirtualDubMod">VirtualDubMod</a>:
+    The following AviSynth related utilities are present:
+    <ul>
+      <li>'Open via AVISynth' command: This allows you to open any AviSynth
+        compatible video file by automatically generating a suitable script by a
+        selectable template.</li>
+      <li>AVS Editor (Hotkey Ctrl+E): Just open your AVS and under tools select
+        &quot;script editor&quot;. Change something and press F5 to preview the
+        video.</li>
+    </ul>
+  </li>
+  <li>AvisynthEditor: This is an advanced AviSynth script editor featuring syntax
+    highlighting, auto-complete code and per version plugin definition files. <a href="http://www.lalternative.org/img/AvisynthEditor.gif" class="external text" title="http://www.lalternative.org/img/AvisynthEditor.gif" rel="nofollow">Here
+    is a screenshot</a>. It can be found <a href="http://www.lalternative.org" class="external text" title="http://www.lalternative.org" rel="nofollow">here</a>.
+    Discussion can be found on <a href="http://forum.doom9.org/showthread.php?s=&amp;threadid=49487" class="external text" title="http://forum.doom9.org/showthread.php?s=&amp;threadid=49487" rel="nofollow">Doom9.org
+    forum</a>.</li>
+  <li><a href="http://www.yeomanfamily.demon.co.uk/avsgenie/avsgenie.htm" class="external text" title="http://www.yeomanfamily.demon.co.uk/avsgenie/avsgenie.htm" rel="nofollow">AVSGenie</a>:
+    AVSGenie allows the user to select a filter from a drop down list or from a
+    popup menu. An editable page of parameters will then be brought into view,
+    with a guide to the filter and it's parameters. A video preview window
+    opens, showing &quot;source&quot; and &quot;target&quot; views. The source
+    window, in simple cases, shows output of the first line of the script,
+    generally an opened video file. The target window shows the output of the
+    whole script. In this way, effects of filters can easily be seen. The line
+    which represents the source window can be changed. Discussion can be found <a href="http://forum.doom9.org/showthread.php?s=&amp;threadid=54090" class="external text" title="http://forum.doom9.org/showthread.php?s=&amp;threadid=54090" rel="nofollow">here</a>.</li>
+  <li><a class="external text" title="http://www.swiftavs.net" rel="nofollow" href="http://sourceforge.net/project/showfiles.php?group_id=74272">SwiftAVS
+    (by Snollygoster)</a>: Another nice gui, formerly known as AviSynthesizer. [<a href="http://forum.doom9.org/showthread.php?s=&amp;threadid=48326" class="external text" title="http://forum.doom9.org/showthread.php?s=&amp;threadid=48326" rel="nofollow">discussion</a>]</li>
+  <li><a href="http://avisynth.org/qwerpoi/Download.html">AvsP</a>: It's a
+    tabbed script editor for Avisynth. It has many features common to
+    programming editors, such as syntax highlighting, autocompletion, call tips.
+    It also has an integrated video preview, which when coupled with tabs for
+    each script make video comparisons a snap. What really makes AvsP unique is
+    the ability to create graphical sliders and other elements for any filter's
+    arguments, essentially giving Avisynth a gui without losing any of its
+    powerful features. Discussion can be found <a href="http://forum.doom9.org/showthread.php?t=129385">here</a>.</li>
+</ul>
+<p>|<a href="faq_sections.htm" title="AviSynth FAQ"> Main Page</a> | <b>General
+Info</b> | <a href="faq_loading_clips.htm" title="FAQ loading clips">Loading Clips</a>
+| <a href="faq_frameserving.htm" title="FAQ frameserving">Loading Scripts</a> | <a href="faq_common_errors.htm" title="FAQ common errors">Common
+Error Messages</a> | <a href="faq_different_types_content.htm" title="FAQ different types content">Processing
+Different Content</a> | <a href="faq_yv12.htm" title="FAQ YV12">Dealing with
+YV12</a> | <a href="faq_using_virtualdub_plugins.htm" title="FAQ using virtualdub plugins">Processing
+with Virtualdub Plugins</a> |</p>
+<p>
+<kbd>$Date: 2008/10/26 14:18:53 $</kbd>
+</p>
+</body>
+</html>

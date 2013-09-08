@@ -1,0 +1,83 @@
+<!doctype html public "-//w3c//dtd html 4.0 transitional//en">
+<html>
+<head>
+   <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+   <title>Fade Avisynth Filter</title>
+   <link rel="stylesheet" type="text/css" href="../../avisynth.css">
+</head>
+<body >
+<h2><a NAME="FadeOut"></a>FadeIn / FadeIn0 / FadeIn2
+/ FadeIO0 / FadeIO / FadeIO2 / FadeOut / FadeOut0 / FadeOut2
+</h2>
+<p><code>FadeIn </code>(<var>clip clip, int num_frames, int "color", float "fps"</var>)<br>
+  <code>FadeIO </code>(<var>clip clip, int num_frames, int "color", float "fps"</var>)<br>
+  <code>FadeOut </code>(<var>clip clip, int num_frames, int "color", float "fps"</var>)
+<p><code>FadeIn0 </code>(<var>clip clip, int num_frames, int "color", float "fps"</var>)<br>
+  <code>FadeIO0 </code>(<var>clip clip, int num_frames, int "color", float "fps"</var>)<br>
+  <code>FadeOut0 </code>(<var>clip clip, int num_frames, int "color", float "fps"</var>)
+<p><code>FadeIn2 </code>(<var>clip clip, int num_frames, int "color", float "fps"</var>)<br>
+  <code>FadeIO2 </code>(<var>clip clip, int num_frames, int "color", float "fps"</var>)<br>
+  <code>FadeOut2 </code>(<var>clip clip, int num_frames, int "color", float "fps"</var>)
+<p>
+<code>FadeOut</code> cause the video stream to fade linearly to black or the
+specified RGB color at the end. Similarly <code>FadeIn</code> cause the video
+stream to fade linearly from black or the specified RGB color at the start.
+<tt><code>FadeIO</code></tt> is a combination of the respective
+<code>FadeIn</code> and <code>FadeOut</code> functions. The sound track (if
+present) also fades linearly to or from silence. The fading affects only the
+last <var>num_frames</var> frames of the video. The last frame of the video
+becomes almost-but-not-quite black (or the specified color). An additional
+perfectly black (or the specified color) frame is added at the end, thus
+increasing the total frame count by one.
+<p>
+<code>FadeIn0</code> / <code>FadeOut0</code> do not include the extra frame. It
+is useful when processing Audio only clips or chaining two or more fades to get
+a square law or a cube law fading effects.
+e.g Clip.FadeOut0(60).FadeOut0(60).FadeOut(60) gives a much sharper attack and
+gentler tailoff. The 50% point is at frame 12 of the fade, at frame 30 the fade
+is 12.5%, at frame 45, 1.6% the effectiveness is more pronounced with audio.
+<p>
+<code>FadeIn2</code> / <code>FadeOut2</code> works similarly, except that two
+black (or color) frames are added at the end instead of one. The main purpose
+of this is to work around a bug in Windows Media Player. All the WMP versions
+that I've tested fail to play the last frame of an MPEG file - instead, they
+stop on the next-to-last frame when playback ends. This leaves an unsightly
+almost-but-not-quite-black frame showing on the screen when the movie ends if
+you use <code>FadeOut</code>. <code>FadeOut2</code> avoids this problem.
+<p>
+The <var>color</var> parameter is optional, default=0 &lt;black>, and is specified
+as an RGB value regardless of whether the clip format is RGB or YUV based.
+See <a href="../syntax_colors.htm">here</a> for more information on specifying colors.
+<p>
+The <var>fps</var> parameter is optional, default=24.0, and provides a reference
+for <var>num_frames</var> in audio only clips. It is ignored if a video stream
+is present. Set fps=AudioRate() if sample exact audio positioning is required.
+<p>
+<code>FadeOut</code>(clip, n) is just a shorthand for <a href="dissolve.htm">
+<code>Dissolve</code></a>(clip, <a href="blankclip.htm"><code>Blackness</code></a>
+(clip, n+1, color=$000000), n) (or instead of n+1, n+2 for <code>FadeOut2</code>
+and n for <code>FadeOut0</code>).
+<p>
+<b>Changelog:</b>
+</p>
+<table border="1" width="61%">
+  <tr>
+    <td width="15%">Until <em>v2.06 </em></td>
+    <td width="85%">the <code>FadeIn</code> /<code> FadeIn2 </code>commands do not exist, but you can get
+the same effect by reversing the arguments to Dissolve: Dissolve(Blackness(clip,
+n+1, color=$000000), clip, n).</td>
+  </tr>
+  <tr>
+    <td width="15%"><em>v2.07 </em></td>
+    <td width="85%"><code>FadeIO</code> / <code>FadeIO2</code> commands are added and the <var>color</var> parameter is added to all fade functions.</td>
+  </tr>
+  <tr>
+    <td width="15%">&nbsp; <em>v2.56 </em></td>
+    <td width="85%"><code>FadeIn0</code> / <code>FadeIO0</code> / <code>FadeOut0</code> commands are added and the <var>fps</var> parameter is added to all fade functions.</td>
+  </tr>
+</table>
+<p><kbd>$Date: 2009/10/11 11:43:32 $</kbd></p>
+<form><input TYPE="Button" VALUE="Back"
+onClick="history.go(-1)"></form>
+</body>
+</html>

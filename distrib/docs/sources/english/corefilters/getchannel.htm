@@ -1,0 +1,220 @@
+<!doctype html public "-//w3c//dtd html 4.0 transitional//en">
+<html>
+<head>
+   <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+   <title>GetChannel Avisynth Filter</title>
+   <link rel="stylesheet" type="text/css" href="../../avisynth.css">
+</head>
+<body>
+<h2>
+<a NAME="GetChannel"></a>GetChannel
+</h2>
+<p><code>GetChannel </code>(<var>clip, int ch1 [, int ch2, ...]</var>)<br>
+  <code>GetChannels </code>(<var>clip, int ch1 [, int ch2, ...]</var>)
+<p>Prior to v2.5 <code>GetLeftChannel</code>
+returns the left and <code>GetRightChannel</code> the right channel
+from a stereo signal. <code><tt>GetChannel</tt></code> is present starting from v2.5 and
+it returns one or more channels of a multichannel signal. <code>GetChannels</code> is an alias to <code>GetChannel</code>.
+<p> The ordering of the channels is determined
+by the ordering of the input file, because AviSynth doesn't assume any
+ordering. In case of stereo 2.0 WAV and 5.1 WAV files the ordering should
+be as follows:
+<p><b>WAV 2 ch (stereo):</b>
+<table BORDER COLS=2 WIDTH="50%" >
+<tr>
+<td>1</td>
+
+<td>left channel</td>
+</tr>
+
+<tr>
+<td>2</td>
+
+<td>right channel</td>
+</tr>
+</table>
+
+<p><b>WAV 5.1 ch:</b>
+<table BORDER COLS=2 WIDTH="50%" >
+<tr>
+<td>1</td>
+
+<td>front left channel</td>
+</tr>
+
+<tr>
+<td>2</td>
+
+<td>front right channel</td>
+</tr>
+
+<tr>
+<td>3</td>
+
+<td>front center channel</td>
+</tr>
+
+<tr>
+<td>4</td>
+
+<td>LFE (Subwoofer)</td>
+</tr>
+
+<tr>
+<td>5</td>
+
+<td>rear left channel</td>
+</tr>
+
+<tr>
+<td>6</td>
+
+<td>rear right channel</td>
+</tr>
+</table>
+
+<p>&nbsp;</p>
+<pre># Removes right channel information, and return as mono clip with only left channel:
+video = AviSource(&quot;c:\filename.avi&quot;)
+stereo = WavSource(&quot;c:\afx-ab3_t4.wav&quot;)
+mono = GetLeftChannel(stereo)
+return AudioDub(video, mono)
+
+# Using v2.5 this becomes:
+video = AviSource(&quot;c:\filename.avi&quot;)
+stereo = WavSource(&quot;c:\afx-ab3_t4.wav&quot;)
+mono = GetChannel(stereo, 1)
+return AudioDub(video, mono)
+
+# You could also obtain the channels from the avi file itself:
+video = AviSource(&quot;c:\filename.avi&quot;)
+return GetChannel(video, 1)
+
+# Converts avi with &quot;uncompressed 5.1 wav&quot; audio to a stereo signal:
+video = AviSource(&quot;c:\divx_wav.avi&quot;)
+audio = WavSource(c:\divx_wav.avi)
+stereo = GetChannel(audio, 1, 2)
+return AudioDub(video, stereo)</pre>
+
+<h4>Remark1:</h4>
+<p>Every file format has a different internal channel ordering. The following table gives this
+internal ordering for some formats (useful for plugin writers), but it is a decoder task supply to
+AviSynth the expected channel order (like WAV), if you use decoders like NicAudio/BassAudio
+or ffdshow/AC3_filter you don't need to worry about this:</p>
+
+<table BORDER COLS=7 WIDTH="75%" >
+<tr>
+<td>reference:&nbsp;</td>
+
+<td>channel 1:</td>
+
+<td>channel 2:</td>
+
+<td>channel 3:</td>
+
+<td>channel 4:</td>
+
+<td>channel 5:</td>
+
+<td>channel 6:</td>
+</tr>
+
+<tr>
+<td><a href="http://www.cs.bath.ac.uk/~jpff/NOS-DREAM/researchdev/wave-ex/wave_ex.html">5.1
+WAV</a></td>
+
+<td>front left channel</td>
+
+<td>front right channel</td>
+
+<td>front center channel</td>
+
+<td>LFE</td>
+
+<td>rear left channel</td>
+
+<td>rear right channel</td>
+</tr>
+
+<tr>
+<td><a href="http://www.atsc.org/standards/a_52a.pdf">5.1 AC3</a></td>
+
+<td>front left channel</td>
+
+<td>front center channel</td>
+
+<td>front right channel</td>
+
+<td>rear left channel</td>
+
+<td>rear right channel</td>
+
+<td>LFE</td>
+</tr>
+
+<tr>
+<td><a href="http://webapp.etsi.org/action%5CPU/20020827/ts_102114v010101p.pdf">5.1
+DTS</a></td>
+
+<td>front center channel</td>
+
+<td>front left channel</td>
+
+<td>front right channel</td>
+
+<td>rear left channel</td>
+
+<td>rear right channel</td>
+
+<td>LFE</td>
+</tr>
+
+<tr>
+<td><a href="http://www.hydrogenaudio.org/index.php?showtopic=10986">5.1
+AAC</a></td>
+
+<td>front center channel</td>
+
+<td>front left channel</td>
+
+<td>front right channel</td>
+
+<td>rear left channel</td>
+
+<td>rear right channel</td>
+
+<td>LFE</td>
+</tr>
+
+<tr>
+<td><a href="http://preserve.harvard.edu/standards/Audio%20IFF%20Specification%201%203.pdf">5.1
+AIFF</a></td>
+
+<td>front left channel</td>
+
+<td>rear left channel</td>
+
+<td>front center channel</td>
+
+<td>front right channel</td>
+
+<td>rear right channel</td>
+
+<td>LFE</td>
+</tr>
+</table>
+
+<p>* 5.1 DTS: the LFE is on a separate stream (much like on multichannel
+MPEG2).
+<br>* AAC specifications are unavailable on the internet (a free version)?
+<h4>Remark2:
+</h4>
+<p>At the time of writing, Besweet still has the <a href="http://forum.doom9.org/showthread.php?s=&postid=305084">2GB
+barrier</a>. So make sure that the size of the 5.1 WAV is below 2GB, otherwise
+encode to six separate wavs or use HeadAC3he. But now there are encoders than
+also support WAV files greater than 4GB with the appropriate parameters.
+<p><kbd>$Date: 2010/11/28 18:47:07 $</kbd></p>
+<form><input TYPE="Button" VALUE="Back"
+onClick="history.go(-1)"></form>
+</body>
+</html>

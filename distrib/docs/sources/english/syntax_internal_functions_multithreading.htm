@@ -1,0 +1,68 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+<html>
+<head>
+<!--
+Not Automatically generated, changed!:
+$Id: syntax_internal_functions_multithreading.htm,v 1.3 2011/04/29 20:11:14 wilbertd Exp $ 
+-->
+<meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+<title>Syntax -&nbsp; Multithreading functions</title>
+<link rel="stylesheet" type="text/css" href="../avisynth.css">
+</head>
+<body>
+<h2><span class="mw-headline">AviSynth Syntax - Multithreading functions</span></h2>
+<ul>
+  <li><span style="color: rgb(0, 0, 128); font-weight: bold;">GetMTMode</span> <span>&nbsp;</span>
+    | <span>&nbsp;</span> v2.60 <span>&nbsp;</span> | <span>&nbsp;</span> <span style="color: purple; font-weight: bold;">GetMTMode(threads)</span></li>
+  <li><span style="color: rgb(0, 0, 128); font-weight: bold;">SetMTMode</span> <span>&nbsp;</span>
+    | <span>&nbsp;</span> v2.60 <span>&nbsp;</span> | <span>&nbsp;</span> <span style="color: purple; font-weight: bold;">SetMTMode(mode,
+    threads)</span></li>
+</ul>
+<p>These functions enable AviSynth to use more than one thread when processing
+filters. This is useful if you have more than one cpu/core or hyperthreading.
+This feature is still experimental.</p>
+<p><span style="color: purple; font-weight: bold;">GetMTMode</span>(bool
+threads):</p>
+<p>If <i>threads</i> is set to true GetMTMode returns the number of threads used
+else the current mode is returned (see below). Default value false.</p>
+<p><span style="color: purple; font-weight: bold;">SetMTMode</span>(int mode,
+int threads):</p>
+<p>Place this at the first line in the avs file to enable temporal (that is more
+than one frame is processed at the same time) multithreading. Use it later in
+the script to change the mode for the filters below it.</p>
+<p><i>mode</i>: There are 6 modes 1 to 6. Default value 2.</p>
+<ul>
+  <li>Mode 1 is the fastest but only works with a few filter.</li>
+  <li>Mode 2 should work with most filters but uses more memory.</li>
+  <li>Mode 3 should work with some of the filters that doesn't work with mode 2
+    but is slower.</li>
+  <li>Mode 4 is a combination of mode 2 and 3 and should work with even more
+    filter but is both slower and uses more memory</li>
+  <li>Mode 5 is slowest but should work with all filters that doesn't require
+    linear frameserving (that is the frames come in order (frame 0,1,2 ...
+    last).</li>
+  <li>Mode 6 is a modified mode 5 that might be slightly faster.</li>
+</ul>
+<p><i>threads</i>: Number of threads to use. Set to 0 to set it to the number of
+processors available. It is not possible to change the number of threads other
+than in the first SetMTMode. Default value 0.</p>
+<p><b>Example:</b></p>
+<pre>SetMTMode(2,0)                      # enables multithreading using thread = to 
+                                    # the number of available processors and mode 2
+<a href="syntax_plugins.htm">LoadPlugin</a>(&quot;...\LoadPluginEX.dll&quot;)  # needed to load avisynth 2.0 plugins
+LoadPlugin(&quot;...\DustV5.dll&quot;)        # Loads Pixiedust
+<a href="corefilters/import.htm" title="Import">Import</a>(&quot;limitedsharpen.avs&quot;) 
+src = <a href="corefilters/avisource.htm" title="AviSource">AviSource</a>(&quot;test.avi&quot;)
+SetMTMode(5)                        # change the mode to 5 for the lines below
+src = src.<a href="corefilters/convert.htm" title="ConvertToYUY2">ConvertToYUY2</a>.PixieDust() # Pixiedust needs mode 5 to function.
+SetMTMode(2)                        # change the mode back to 2
+src.LimitedSharpen()                # because LimitedSharpen works well with mode 2 
+# display mode and number of threads in use
+<a href="corefilters/subtitle.htm" title="Subtitle">Subtitle</a>(&quot;Number of threads used: &quot; + <a href="syntax_internal_functions_conversion.htm" title="Internal functions/Conversion functions">String</a>(GetMTMode(true))
+ \ + &quot; Current MT Mode: &quot; + String(GetMTMode()))</pre>
+<hr>
+<p>Back to <a href="syntax_internal_functions.htm" title="Internal functions">Internal
+functions</a>.</p>
+<p><kbd>$Date: 2011/04/29 20:11:14 $</kbd></p>
+</body>
+</html>

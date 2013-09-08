@@ -1,0 +1,42 @@
+<!doctype html public "-//W3C//DTD HTML 4.0 Transitional//EN">
+<html>
+<head>
+<title>Loop Avisynth Filter</title>
+<link rel="stylesheet" type="text/css" href="../../avisynth.css">
+</head>
+<body>
+<h2><a name="Loop"></a>Loop</h2>
+<P><code>Loop </code>(<var>clip, int &quot;times&quot;, int &quot;start&quot;, int &quot;end&quot;</var>)
+<p>Loops the segment from frame <var>start</var> to frame <var>end</var> a given number of <var>times</var>.
+<br>
+  <var>times</var> (default -1) is the number of times the loop is applied. <br>
+  <var>start</var> (default 0) the frame of the clip where the loop starts. <br>
+  <var>end</var> (default framecount(clip)) the frame of the clip where the loop ends. 
+<p>&nbsp;
+<pre># Loops frame 100 to 110 of the current clip 10 times
+Loop(10,100,110)
+
+
+Loop() # make the clip loop (almost) endlessly
+
+
+Loop(10) # make the clip loop ten times
+
+
+Loop(10,20,29) # repeat frames 20 to 29 ten times before going on
+
+
+# actual clip duration increased by 90 frames
+Loop(0,20,29) # delete frames 20 to 29
+
+
+# actual clip duration decreased by 10 frames
+Loop(-1,20,29) # frame 20 to 29 is repeated (almost) infinite times
+</pre>
+<p><kbd>$Date: 2004/03/07 22:44:06 $</kbd></p>
+<FORM>
+<INPUT TYPE="Button" VALUE="Back"
+onClick="history.go(-1)">
+</form>
+</body>
+</html>

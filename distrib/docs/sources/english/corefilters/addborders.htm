@@ -1,0 +1,41 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+<HTML>
+<HEAD>
+   <META HTTP-EQUIV="Content-Type" CONTENT="text/html; charset=iso-8859-1">
+   <TITLE>AddBorders Avisynth Filter</TITLE>
+   <link rel="stylesheet" type="text/css" href="../../avisynth.css">
+<!--
+Automatically generated, don't change:
+$Id: addborders.htm,v 1.8 2008/06/06 11:37:04 wilbertd Exp $
+-->
+</HEAD>
+<BODY>
+<h2>
+<A NAME="AddBorders"></A>AddBorders
+</h2>
+<P><code>AddBorders </code>(<var>clip, int left, int top, int right, int 
+  bottom, int &quot;color&quot;</var>) 
+<P><code>AddBorders</code> adds black borders around the image, with the specified 
+  widths (in pixels).
+<P>See <a href="convert.htm">colorspace conversion filters</a>
+for constraints when using the different color formats.
+<P>The <var>color</var> parameter is optional (added in v2.07), default=0 &lt;black>, 
+  and is specified as an RGB value regardless of whether the clip format is RGB 
+  or YUV based. Color presets can be found in the file colors_rgb.avsi, which
+should be present in your plugin folder. See <a href="../syntax_colors.htm">here</a>
+for more information on specifying colors. 
+<P>Be aware that many lossy compression algorithms don't deal well with
+solid-color borders, unless the border width happens to be a multiple of
+the block size (16 pixels for MPEG).
+<P>You can use this filter in combination with <code><a href="crop.htm">Crop</a></code> to shift an
+image around without changing the frame size. For example:
+<PRE># Shift a 352x240 image 2 pixels to the right
+Crop(0,0,350,240).AddBorders(2,0,0,0)</PRE>
+<PRE># Add letterbox borders that are Black making a 720x308 image 720x480
+# For YUV colorspace it will be correct (for CCIR-601) color (luma=16)
+AddBorders(0, 86, 0, 86, $000000)</PRE>
+<p><kbd>$Date: 2008/06/06 11:37:04 $</kbd></p>
+<FORM><INPUT TYPE="Button" VALUE="Back"
+onClick="history.go(-1)"></FORM>
+</BODY>
+</HTML>

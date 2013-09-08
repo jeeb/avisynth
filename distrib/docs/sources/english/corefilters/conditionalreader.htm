@@ -1,0 +1,215 @@
+<!doctype html public "-//w3c//dtd html 4.0 transitional//en">
+<html>
+<head>
+   <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+   <meta name="Author" content="Wilbert Dijkhof">
+   <title>ConditionalReader Avisynth Filter</title>
+   <link rel="stylesheet" type="text/css" href="../../avisynth.css">
+</head>
+<body>
+<h2>
+<a NAME="ConditionalFilter"></a>ConditionalReader
+</h2>
+<p><code>ConditionalReader </code>(<var>clip, string filename, string
+variablename, bool &quot;show&quot;</var>)
+<p><code>ConditionalReader</code> allows you to import information from a text
+file, with different values for each frame - or a range of frames.
+<h3>Parameters</h3>
+<table border="1" width="61%">
+  <tr>
+    <td width="9%"><b>Parameter</b></td>
+    <td width="76%"><b>Description</b></td>
+    <td width="15%"><b>Default</b></td>
+  </tr>
+  <tr>
+    <td width="9%">clip</td>
+    <td width="76%">The control clip. It is not touched, unless you specify
+      show=true.</td>
+    <td width="15%">Not optional</td>
+  </tr>
+  <tr>
+    <td width="9%">filename</td>
+    <td width="76%">The file with the variables you want to set.</td>
+    <td width="15%">Not optional</td>
+  </tr>
+  <tr>
+    <td width="9%">variablename</td>
+    <td width="76%">The name of the variable you want the information inserted
+      into.</td>
+    <td width="15%">Not optional</td>
+  </tr>
+  <tr>
+    <td width="9%">show</td>
+    <td width="76%">When set to true, the value given at this frame will be overlayed on the
+      image.</td>
+    <td width="15%">false</td>
+  </tr>
+</table>
+<h3>File format</h3>
+<p>The file is plain text. All separation is done by spaces, and newline
+indicates a new data set. It is not case sensitive!<br>
+<br>
+<b>TYPE (int|float|bool|string)</b>
+<p>You can only have one type of data in each file. Currently it is possible to have
+<i>float</i>, <i>int</i>, <i>bool</i> or (from v2.60) <i>string</i> values. You specify this by using the
+<b>TYPE</b> keyword. You should always start out by specifying the type of
+data, as nothing is saved until this keyword has been found.  It is not
+possible to change type once it has been set!
+<p><b>DEFAULT &lt;value></b>
+<p>This specifies the default value of all frames. You should do this right
+after specifying the type, as it overwrites all defined frames. You can omit
+this setting, you must be sure to specify a setting for all frames, as it will
+lead to unexpected results otherwise.
+<p><b>OFFSET &lt;value> (from v2.60)</b><br>
+When specified, this will offset all framenumbers by a constant offset. This is done for all framenumbers which are set after this keyword.
+<p><b>&lt;framenumber> &lt;value></b>
+<p>This will set the value only for frame &lt;framenumber>.
+<p><b>R &lt;startframe> &lt;endframe> &lt;value></b>
+<p>This will apply a value to a range of frames. You should note that both
+start-frame AND end-frame are included.
+<p><b>I &lt;startframe> &lt;endframe> &lt;startvalue> &lt;stopvalue></b>
+<p>This will interpolate between two values over a range of frames. This only
+works on int and float values. You should note that both start-frame AND end-frame
+are included.
+<h3>Types</h3>
+<p>As mentioned, the types can be either <i>float</i>, <i>int</i>, <i>bool</i>&nbsp;or
+(from v2.60) <i>string</i>.<br>
+<br>
+<i>Int</i> numbers is a number optionally preceeded with a sign.<br>
+<br>
+<i>Float</i> is a decimal number containing a decimal point, optionally
+preceded by a sign and optionally followed by the e or E character and a
+decimal number. Valid entries are -732.103 or 7.12e4.<br>
+<br>
+<i>Bool</i> can either be <i>true</i>, <i>T</i>, <i>yes</i>, <i>false</i>, <i>F</i> or <i>no</i>.
+<p><i>String</i> is a sequence of characters representing text.
+<h3>Examples</h3>
+<h4>Basic usage</h4>
+<p>File.txt:
+<pre>Type float
+Default 3.45567
+
+R 45 300 76.5654
+2 -671.454
+72 -671.454</pre>
+<p>The file above will return float values. It will by default return 3.45567.
+However frames 45 to 300 it will return 76.5654. And frame 2 and 72 will return
+-671.454.&nbsp;<br>
+As you might notice - later changes overrule settings done earlier in the file.
+This is illustrated by frame '72' - even though it is inside the range of
+45-300, the later value will be returned. On the other hand - if the range was
+specified AFTER '72 -671.454' - it would return 76.5654.<br>
+<br>
+A script to invoke this file could be:
+<pre>colorbars(512,512)
+trim(0,500)
+ScriptClip(&quot;subtitle(string(myvar))&quot;)
+ConditionalReader(&quot;file.txt&quot;, &quot;myvar&quot;, false)</pre>
+<p>This will put the values into the variable called "myvar", which is used by
+<a href="subtitle.htm">Subtitle</a>, invoked by
+<a href="conditionalfilter.htm#ScriptClip">ScriptClip</a>
+to display the conditional value.</p>
+<p><b>Note!</b> The ConditionalReader() line comes <b>after</b> any use of
+"myvar" in your script.</p>
+<h4>Adjusting Overlay</h4>
+<p><b>AviSynth script:</b>
+<pre>colorbars(512,256)
+a1 = trim(0,600)
+a2 = MessageClip(&quot;Text clip&quot;)
+overlay(a1,a2, y = 100, x = 110, mode=&quot;subtract&quot;, opacity=0, pc_range=true)
+ConditionalReader(&quot;opacity.txt&quot;, &quot;ol_opacity_offset&quot;, false)
+ConditionalReader(&quot;xoffset.txt&quot;, &quot;ol_x_offset&quot;, false)</pre>
+<p><b>xoffset.txt:</b>
+<pre>Type int
+Default -50
+
+I 25 50 -50 100
+R 50 250 100
+I 250 275 100 250</pre>
+<p><b>opacity.txt:</b>
+<pre>Type float
+Default 0.0
+
+I 25 50 0.0 1.0
+R 50 250 1.0
+I 250 275 1.0 0.0</pre>
+<p>Basically it defines keyframes for an x-offset and the opacity. Frame 25->50
+the opacity is scaled from 0.0 to 1.0, while the text is moving from left to
+right. The text is then kept steady from frame 50 to 250, whereafter it moves
+further to the right, while fading out.<br>
+It is easier to watch the clip above than completely describe what it does. 
+<h4><a NAME="Applyrange"></a>Complicated ApplyRange</h4>
+<p>As you may have noticed using a large number of <a href="animate.htm">ApplyRange()</a>
+calls in a script can lead to resource issue. Using <code>ConditionalReader</code> together with
+<a href="conditionalfilter.htm">ConditionalFilter</a> can lead to an efficient solution:</p>
+<p>File.txt:
+<pre>Type Bool
+Default False
+
+2 True
+R 45 60 True
+72 True
+R 200 220 True
+210 False
+315 True</pre>
+<p>The file above will return boolean values. It will by default return False.
+However frames 2, 45 to 60, 72, 200 to 220 and 315 except for 210 it will return True.
+As you might notice, later changes overrule settings done earlier in the file.
+This is illustrated by frame '210' - even though it is inside the range of
+200-220, the later value, False, will be returned.<br>
+<br>
+A script to make use of this file could be:
+<pre>colorbars(512,512)
+trim(0,500)
+A=Last
+FlipHorizontal() # Add a complex filter chain
+B=Last
+ConditionalFilter(A, B, &quot;MyVar&quot;, &quot;==&quot;, &quot;False&quot;, false)
+ConditionalReader(&quot;File.txt&quot;, &quot;MyVar&quot;, false)</pre>
+
+<p>This will put the values into the variable called "MyVar", which is used by
+<a href="conditionalfilter.htm">ConditionalFilter</a> to select between the
+unprocessed and flipped version of the source.</p>
+
+<p><b>Note!</b> The <code>ConditionalReader()</code> line comes <b>after</b> any use of
+"MyVar" in your script.</p>
+
+<h3><span class="mw-headline">Returning Strings</span></h3>
+<p><code>ConditionalReader</code>  cannot return strings prior to v2.60, but one
+solution is to create a list of variables with corresponding string assignments,
+and eval the indexed solution. For example:</p>
+<pre>import(&quot;strings.txt&quot;)
+ScriptClip(&quot;&quot;&quot;subtitle(Eval(&quot;n&quot;+string(mystringindex)))&quot;&quot;&quot;)
+ConditionalReader(&quot;range_string.txt&quot;, &quot;mystringindex&quot;)</pre>
+<p>range_string.txt</p>
+<pre>Type int
+Default 0
+
+R 10 1000 1
+R 1005 3000 2
+R 3200 3800 3</pre>
+<p>strings.txt</p>
+<pre>n0=&quot;&quot;
+n1=&quot;Intro&quot;
+n2=&quot;Main&quot;
+n3=&quot;Credits&quot;</pre>
+<p>Obviously strings.txt does not need to be a separate file, but this solution
+is sometimes appropriate in some multilingual applications, e.g.</p>
+<pre>language=&quot;spanish&quot; 
+import(language + &quot;_strings.txt&quot;)</pre>
+
+<p><b>Changelog:</b></p>
+<table border="1" cellpadding="4" cellspacing="1">
+  <tbody>
+    <tr>
+      <td>v2.60</td>
+      <td>Added OFFSET, Added Type=string.</td>
+    </tr>
+  </tbody>
+</table>
+
+<p><kbd>$Date: 2011/04/29 20:09:50 $</kbd></p>
+<form><input TYPE="Button" VALUE="Back"
+onClick="history.go(-1)"></form>
+</body>
+</html>

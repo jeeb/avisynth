@@ -1,0 +1,528 @@
+<!doctype html public "-//w3c//dtd html 4.0 transitional//en">
+<html>
+<head>
+   <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+   <meta name="Author" content="Wilbert Dijkhof">
+   <title>ConditionalFilter Avisynth Filter</title>
+   <link rel="stylesheet" type="text/css" href="../../avisynth.css">
+</head>
+<body>
+<h2>
+<a NAME="ConditionalFilter"></a>ConditionalFilter
+</h2>
+<p><code>ConditionalFilter </code>(<var>clip testclip, clip source1, clip source2,
+string expression1, string operator, string expression2, bool &quot;show&quot;</var>)
+<p><code>ConditionalFilter</code> returns <var>source1</var> when the condition
+formed by "expression1+operator+expression2" is met for current frame,
+otherwise it returns <var>source2</var>.  If any function in
+<var>expression1</var> or <var>expression2</var> is not explicitly applied to a
+clip, it will be applied on <var>testclip</var>. The audio is taken from
+<var>source1</var>.
+<p>An example. This will choose frames from vid_blur when the average luma value of
+a frame is less than 20. Otherwise frames from vid will be returned.
+
+<pre>vid = AviSource(&quot;file&quot;)
+vid_blur = vid.Blur(1.5)
+ConditionalFilter(vid, vid_blur, vid, &quot;AverageLuma()&quot;, &quot;lessthan&quot;, &quot;20&quot;)</pre>
+<p>Adding <var>show</var>=&quot;true&quot; will display the actual values on the screen.
+</p>
+<p>The strings <var>expression1</var> and <var>expression2</var> can be any numeric or boolean expressions, 
+and may include internal or user functions, as well as  some additional functions
+which are predefined (<a href="#RuntimeFunctions">the Runtime Functions</a>) 
+and the special runtime variable <var>current_frame</var> (the framenumber of the requested frame).
+<br>
+The string <var>operator</var> can be "equals", &quot;greaterthan&quot; or "lessthan".
+Or "=", "&gt;" or "&lt;" respectively.
+</p>
+<h2>
+<a NAME="ConditionalSelect"></a>ConditionalSelect
+</h2>
+<p><code>ConditionalSelect </code>(<var>clip testclip, string expression, clip source0,
+clip source1, clip source2, ... , bool &quot;show&quot;</var>)<p><code>ConditionalSelect</code>
+returns each one frame from several source clips based on an integer evaluator.
+If the expression evaluates to the integer j (starting at zero), the frame from
+the j-th source clip is returned.</p>
+<p>This will return a frame from vid_blur2 when the average luma value of a
+frame (of vid) is less than 15, will return a frame from vid_blur when the
+average luma value of a frame (of vid) is higher than 15 but smaller than 25.
+Otherwise a frame from vid will be returned.</p>
+<pre>vid = AviSource(&quot;file&quot;)
+vid_blur = vid.Blur(1.0)
+vid_blur2 = vid.Blur(1.5)
+ConditionalSelect(vid, &quot;luma_av = AverageLuma()&quot;+chr(13)+&quot;luma_av &lt; 25&nbsp;? (luma_av &lt; 15&nbsp;? 2&nbsp;: 1)&nbsp;: 0&quot;, vid, vid_blur, vid_blur2)</pre>
+Adding <var>show</var>=&quot;true&quot; will display the actual values on the screen.
+<p>If a frame is requested from a non-existing source clip (say the expression
+evaluates to -1 or 3 in the example above, where 3 source clips are supplied),
+the frame of the <var>testclip</var> will be returned.</p>
+<p>Audio from "testclip" is passed through untouched.</p>
+<h2><a NAME="ScriptClip"></a>ScriptClip
+</h2>
+<p><code>ScriptClip </code>(<var>clip, string filter, bool &quot;show&quot;, bool
+&quot;after_frame&quot;</var>)
+<p><code>ScriptClip</code> returns the clip returned by the <var>filter</var> evaluated
+on every frame. The string <var>filter</var> can be any expression returning a clip, 
+including internal or user clip functions, and may include line breaks 
+(allowing a sequence of statements to be evaluated). Also, also some functions 
+which are predefined (<a href="#RuntimeFunctions">the Runtime Functions</a>)
+and the special runtime variable <var>current_frame</var> 
+(the framenumber of the requested frame) can be used in the <var>filter</var> expression. Adding
+<var>show</var>=&quot;true&quot; will display the actual values on the screen.
+</p>
+Some examples: <br>
+<pre># This will print the difference from the previous frame onto the current one:
+clip = AviSource(&quot;c:\file.avi&quot;)
+ScriptClip(clip, &quot;Subtitle(String(YDifferenceFromPrevious))&quot;)
+
+# This will apply blur on each frame based on the difference from the previous.
+# This will also show how errors are reported on some frames :)
+clip = AviSource(&quot;c:\file.avi&quot;)
+ScriptClip(clip, &quot;Blur(YDifferenceFromPrevious/20.0)&quot;)
+
+# This will apply temporalsoften to very static scenes, and apply a _variable_ blur on moving scenes.
+# Blur is now capped properly. We also assign a variable - and this is why a line break is inserted:
+function fmin(float f1, float f2) {
+&nbsp; return (f1&lt;f2) ? f1 : f2
+}
+clip = AviSource(&quot;c:\file.avi&quot;)
+T = clip.TemporalSoften(2, 7, 7, 3, 2)
+ScriptClip(clip, &quot;diff = YDifferenceToNext()&quot;+chr(13)+&quot;diff&gt;2.5 ? Blur(fmin(diff/20, 1.5)) : T&quot;)
+
+# Shows the frame-number in a clip:
+ScriptClip(&quot;subtitle(string(current_frame))&quot;)
+
+# Shows 'frame = the frame-number' in a clip:
+ScriptClip(&quot;&quot;&quot;subtitle(&quot;frame = &quot; + string(current_frame))&quot;&quot;&quot;)</pre>
+
+<p>In v2.55 an <i><var>after_frame=true/false</var></i> option to is added. This
+determines if the script should be evaluated before (default operation) or after
+the frame has been fetched from the filters above.</p>
+
+<p>"Restrictions": the output of the script MUST be exactly like the clip
+delivered to <code>ScriptClip</code> (same colorspace, width and height). Your
+returned clip is allowed to have different length - but the length from
+"clip" is always used. Audio from "clip" is passed through untouched. For
+two very different sources (MPEG2DEC3 and AviSource) - you might run into
+colorspace mismatches. This is known quirk.
+
+<h2><a NAME="FrameEvaluate"></a>FrameEvaluate
+</h2>
+<p><code>FrameEvaluate </code>(<var>clip clip, script filter, bool "after_frame"</var>)
+<p>Similar to <code>ScriptClip</code>, except the output of the <var>filter</var> is ignored.
+This can be used for assigning variables, etc. Frames are passed directly
+through from the supplied clip.
+<br>
+  In v2.53 an <var>after_frame</var>=<code>true/false</code> option to is added. This
+determines if the script should be evaluated before (default operation)
+or after the frame has been fetched from the filters above.
+<h2><a name="ConditionalReader"></a>ConditionalReader</h2>
+<p>This filter allows you to import arbitrary information into a selectable
+variable.
+<p>See the dedicated <a href="conditionalreader.htm">ConditionalReader</a> page.</p>
+<h2><a NAME="RuntimeFunctions"></a>Runtime Functions
+</h2>
+<p>These are the internal functions which are evaluated every frame.
+<p>These will return the average pixel value of a plane (require YV12,
+ISSE):
+<br>
+  <code>AverageLuma </code>(<var>clip</var>)<br>
+  <code>AverageChromaU </code>(<var>clip</var>)<br>
+  <code>AverageChromaV </code>(<var>clip</var>)
+<p>These return a float value between 0 and 255 of the absolute difference
+between two planes (require YV12, ISSE):
+<br>
+  <code>RGBDifference </code>(<var>clip1, clip2</var>)<br>
+  <code>LumaDifference </code>(<var>clip1, clip2</var>)<br>
+  <code>ChromaUDifference </code>(<var>clip1, clip2</var>)<br>
+  <code>ChromaVDifference </code>(<var>clip1, clip2</var>)
+<p>When using these functions there is an "implicit last" clip (first parameter
+doesn't have to be specified), so the first parameter is replaced by the
+testclip.
+<p>These should be quite handy for detecting scene change transitions:
+<br>
+  <code>RGBDifferenceFromPrevious </code>(<var>clip</var>)<br>
+  <code>YDifferenceFromPrevious </code>(<var>clip</var>)<br>
+  <code>UDifferenceFromPrevious </code>(<var>clip</var>)<br>
+  <code>VDifferenceFromPrevious </code>(<var>clip</var>)<br>
+  <code>RGBDifferenceToNext </code>(<var>clip</var>)<br>
+  <code>YDifferenceToNext </code>(<var>clip</var>)<br>
+  <code>UDifferenceToNext </code>(<var>clip</var>)<br>
+  <code>VDifferenceToNext </code>(<var>clip</var>)<br>
+  &nbsp;
+<pre># This will replace the last frame before a scenechange
+# with the first frame after the scenechange:
+ConditionalFilter(last, last, last.trim(1,0), &quot;YDifferenceToNext()&quot;, &quot;&gt;&quot;, &quot;10&quot;, true)</pre>
+<h4>Other internal functions:</h4>
+<p><code>YPlaneMax </code>(<var>clip, float threshold</var>)<br>
+  <code>UPlaneMax </code>(<var>clip, float threshold</var>)<br>
+  <code>VPlaneMax </code>(<var>clip, float threshold</var>)<br>
+  <code>YPlaneMin </code>(<var>clip, float threshold</var>)<br>
+  <code>UPlaneMin </code>(<var>clip, float threshold</var>)<br>
+  <code>VPlaneMin </code>(<var>clip, float threshold</var>)<br>
+  <code>YPlaneMedian </code>(<var>clip</var>)<br>
+  <code>UPlaneMedian </code>(<var>clip</var>)<br>
+  <code>VPlaneMedian </code>(<var>clip</var>)<br>
+  <code>YPlaneMinMaxDifference </code>(<var>clip, float threshold</var>)<br>
+  <code>UPlaneMinMaxDifference </code>(<var>clip, float threshold</var>)<br>
+  <tt><code>VPlaneMinMaxDifference </code></tt>(<i><var>clip, float threshold</var></i>)
+<p><var>Threshold</var> is a percentage, on how many percent of the pixels
+are allowed above or below minimum. The threshold is optional and defaults
+to 0.
+<p>If you understand the stuff above, you can proceed with "advanced conditional
+filtering", which tells you a little bit more about conditional filtering.
+<h2>Advanced conditional filtering: part I</h2>
+<p>
+You will have to know a few things about the functionality of AviSynth
+to understand this section:
+<br>Scripts are parsed from top to bottom, but when a frame is requested
+the last filter is actually being invoked first, requesting frames upwards
+in the filter chain. For example:</p>
+<pre>AviSource(&quot;myfile.avi&quot;)
+ColorYUV(analyze=true)
+Histogram()</pre>
+When opening the script in Vdub the following happens
+<ul>
+<li>
+When Vdub requests a frame, AviSynth requests the frame from Histogram.</li>
+
+<li>
+Histogram requests a frame from ColorYUV,</li>
+
+<li>
+ColorYUV requests a frame from AviSource, which produces the frame, and
+delivers it to ColorYUV.</li>
+
+<li>
+ColorYUV processes the image and sends it on to Histogram, which returns
+it to Vdub.</li>
+</ul>
+<p>So the filter chain basically works backwards (the output is 'pulled' from
+below rather than 'pushed' from above), which gives each filter the possibility
+to request several frames from the source above. Conditional filters however,
+need to evaluate scripts before they request frames from the filter above,
+because they need to know which filter to call. Another important issue is that
+run-time scripts are evaluated in the same context as the main script. Hence
+only global defined variables in the conditional filter 'environment' can be
+used inside a function (and vice versa). Have a look at the following script:</p>
+<pre>v = AviSource(&quot;E:\Temp\Test3\atomic_kitten.avi&quot;).ConvertToYV12
+
+function g(clip c)
+{
+&nbsp; <b>global</b> <b>w</b> = c
+&nbsp; c2 = ScriptClip(c, &quot;subtitle(t)&quot;)
+&nbsp; c3 = FrameEvaluate(c2, &quot;t = String(text)&quot;)
+&nbsp; c4 = FrameEvaluate(c3, &quot;text = YDifferenceFromPrevious(<b>w</b>)&quot;)
+&nbsp; return c4
+}
+
+g(v)</pre>
+<p>This filter chain works like this:</p>
+<ul>
+  <li>When Vdub requests a frame, AviSynth requests a frame from the second
+    FrameEvaluate, the last filter in the chain generated by g().</li>
+  <li>The second FrameEvaluate evaluates YDifferenceFromPrevious(w), which leads
+    to the following actions:
+    <ul>
+      <li>YDifferenceFromPrevious requests a frame from ConvertToYV12;</li>
+      <li>ConvertToYV12 requests a frame from AviSource, which produces the
+        frame, and delivers it to ConvertToYV12;</li>
+      <li>ConvertToYV12 processes the image and returns it to
+        YDifferenceFromPrevious;</li>
+      <li>YDifferenceFromPrevious requests a second frame from ConvertToYV12,
+        which is obtained in a similar way to the first;</li>
+      <li>It then compares the two frames to calculate its result which it
+        delivers to FrameEvaluate.</li>
+    </ul>
+  </li>
+  <li>FrameEvaluate assigns this value to the variable text.</li>
+  <li>After this a frame is requested from the first FrameEvaluate.</li>
+  <li>The first FrameEvaluate, after evaluating String(text) and assigning this
+    value to the variable <i>t</i>, requests a frame from ScriptClip.</li>
+  <li>ScriptClip sets <i>last</i> to the result of ConvertToYV12(), evaluates
+    Subtitle(t) (creating a new, temporary, filter chain), and requests a frame
+    from it.
+    <ul>
+      <li>Subtitle requests a frame from ConvertToYV12;</li>
+      <li>ConvertToYV12 requests a frame from AviSource, which produces the
+        frame, and delivers it to ConvertToYV12;</li>
+      <li>ConvertToYV12 processes the image and returns it to Subtitle;</li>
+      <li>Subtitle adds the specified text to the frame and delivers the result
+        to ScriptClip.</li>
+    </ul>
+  </li>
+  <li>ScriptClip returns the subtitled frame to the first FrameEvaluate.</li>
+  <li>In turn this frame is returned to the second FrameEvaluate, and hence to
+    Avisynth which returns it to VDub.</li>
+</ul>
+<p>Notice how the addition of run-time filters and run-time functions makes the
+interactions between different parts of the filter chain more complex. This
+added complexity is managed internally by Avisynth, so you needn't worry about
+it. However, care is required when setting and using variables, as the order of
+events can be less obvious to the script writer (you!).</p>
+<p>As can be seen, <i>w</i> is defined as a global variable. This way we can use
+it later in the script in the conditional environment. If we want to use the
+variables <i>t</i> and <i>text</i> in a different function (inside or outside
+the conditional environment), they must also be defined as global variables.
+Thus for example:</p>
+<pre>v = AviSource(&quot;E:\Temp\Test3\atomic_kitten.avi&quot;).ConvertToYV12
+
+function g(clip c)
+{
+&nbsp; <b>global w</b> = c
+&nbsp; c2 = ScriptClip(c, &quot;subtitle(<b>t</b>)&quot;)
+&nbsp; c3 = FrameEvaluate(c2, &quot;me()&quot;)
+&nbsp; c4 = FrameEvaluate(c3, &quot;<b>global</b> <b>text</b> = YDifferenceFromPrevious(w)&quot;)
+&nbsp; return c4
+}
+
+function me()
+{
+&nbsp; <b>global</b> <b>t</b> = String(<b>text</b>)
+}
+
+g(v)</pre>
+This is just an illustration to demonstrate the various features. Much of the
+script above is redundant, and can be removed. The following two scripts give
+the same output
+<pre>v = AviSource(&quot;c:\clip.avi&quot;)
+# ScriptClip accepts multi-line scripts:
+Scriptclip(v,&quot;
+	text = YDifferenceFromPrevious()
+	t = string(text)
+	subtitle(t)
+&quot;)</pre>
+<pre>v = AviSource(&quot;c:\clip.avi&quot;)
+ScriptClip(v, &quot;Subtitle(String(YDifferenceFromPrevious))&quot;)</pre>
+In the following section some frame dependent info will be written to a
+text-file.
+<h2>
+Advanced conditional filtering: part II</h2>
+<p>In the following example, some frame dependent info will be written to a
+text-file. The first variable &quot;a&quot; indicates whether the frame is
+combed (for a certain threshold). Note that IsCombed is a filter from the Decomb
+plugin. The second variable &quot;b&quot; indicates whether there is
+&quot;much&quot; movement in the frame.</p>
+<pre>global sep=&quot;.&quot;
+global combedthreshold=25
+
+function IsMoving()
+{
+global b = (diff &lt; 1.0) ? false : true
+}
+
+function CombingInfo(clip c)
+{
+file = &quot;F:\interlace.log&quot;
+global clip = c
+c = WriteFile(c, file, &quot;a&quot;, &quot;sep&quot;, &quot;b&quot;)
+c = FrameEvaluate(c, &quot;global a = IsCombed(clip, combedthreshold)&quot;)
+c = FrameEvaluate(c, &quot;IsMoving&quot;)
+c = FrameEvaluate(c, &quot;global diff = 0.50*YDifferenceFromPrevious(clip) + 0.25*UDifferenceFromPrevious(clip) + 0.25*VDifferenceFromPrevious(clip)&quot;)
+return c
+}
+
+v = mpeg2source(&quot;F:\From_hell\from_hell.d2v&quot;).trim(100,124)
+CombingInfo(v)</pre>
+<p>We can tidy up the two functions, and remove global variables, by writing
+them as follows:</p>
+<pre>function IsMoving(float diff)
+{
+ return (diff &gt;= 1.0)
+}
+
+function CombingInfo(clip c)
+{
+ file = &quot;F:\interlace.log&quot;
+
+ c = WriteFile(c, file, &quot;a&quot;, &quot;sep&quot;, &quot;b&quot;)
+ c = FrameEvaluate(c,&quot;
+       diff = 0.50*YDifferenceFromPrevious() + 0.25*UDifferenceFromPrevious() + 0.25*VDifferenceFromPrevious()
+       b = IsMoving(diff)
+       a = IsCombed(combedthreshold)
+     &quot;)
+
+ return c
+}</pre>
+<p>
+In the following section an example of &quot;adaptive motion/resizing filter&quot; will be considered.</p>
+<h2>
+Advanced conditional filtering: part III</h2>
+
+<p>
+Some adaptive motion/resizing filters appeared on the forums. These filters
+discriminate between low, medium and high motion in a clip (on frame basis).
+By doing that, different filters can be used for different kind of motion
+in the clip. In general, one should use temporal smoothing in low motion
+scenes, spatial smoothing in high motion scenes and use spatio-temporal
+smoothing in medium motion scenes.
+<br>Below, a simplified version of QUANTIFIED MOTION FILTER v1.5 b1 (10/07/2003)
+by HomiE FR, is given:</p>
+<pre>---------------------------------------------------- 
+# QUANTIFIED MOTION FILTER v1.3 
+# LOADING AVISYNTH PLUGINS 
+LoadPlugin(&quot;C:\PROGRA~1\GORDIA~1\mpeg2dec3.dll&quot;) 
+LoadPlugin(&quot;C:\PROGRA~1\GORDIA~1\TemporalCleaner.dll&quot;) 
+LoadPlugin(&quot;C:\PROGRA~1\GORDIA~1\FluxSmooth.dll&quot;) 
+LoadPlugin(&quot;C:\PROGRA~1\GORDIA~1\UnFilter.dll&quot;)
+
+# LOADING QUANTIFIED MOTION FILTER SCRIPT
+
+Import(&quot;E:\temp\QMF\qmf.avs&quot;)
+
+# LOW MOTION FILTER FUNCTION
+# -&gt; SHARP RESIZING + TEMPORAL ONLY
+function Low_Motion_Filter(clip c)
+{
+&nbsp; c = TemporalCleaner(c, 5, 10)
+&nbsp; c = LanczosResize(c, 512, 272)
+&nbsp; return c
+}
+
+# MEDIUM MOTION FILTER FUNCTION
+# -&gt; NEUTRAL BICUBIC RESIZING + TEMPORAL &amp; SPATIAL
+function Medium_Motion_Filter(clip c)
+{
+&nbsp; c = FluxSmooth(c, 7, 7)
+&nbsp; c = BicubicResize(c, 512, 272, 0.00, 0.50)
+&nbsp; return c
+}
+
+# HIGH MOTION FILTER FUNCTION
+# -&gt; SOFT RESIZING + SPATIAL ONLY
+function High_Motion_Filter(clip c)
+{
+&nbsp; c = FluxSmooth(c, -1, 14)
+&nbsp; c = UnFilter(c, -30, -30)
+&nbsp; c = BilinearResize(c, 512, 272)
+&nbsp; return c
+}
+
+# OPENING VIDEO SOURCE
+AviSource(&quot;E:\temp\QMF\britney-I_love_rock_'n_roll.avi&quot;)
+ConvertToYV12(interlaced=true)
+Telecide(0)
+
+# APPLYING ADAPTATIVE RESIZING FILTER (USING QMF)
+QMF()
+----------------------------------------------------
+
+# QUANTIFIED MOTION FILTER (17/08/2003) by HomiE FR (homie.fr@wanadoo.fr)
+# MOTION ESTIMATION FUNCTION
+function ME()
+{
+&nbsp; # SETTING MOTION LEVEL ACCORDING TO AVERAGE DIFFERENCE [1]
+&nbsp; <b>global motion_level</b> = (<b>diff</b> &lt; threshold_lm) ? 0 : motion_level
+&nbsp; <b>global motion_level</b> = (<b>diff</b> &gt;= threshold_lm &amp;&amp; <b>diff</b> &lt;= threshold_hm) ? 1 : motion_level
+&nbsp; <b>global motion_level</b> = (<b>diff</b> &gt; threshold_hm) ? 2 : motion_level
+}
+
+# QUANTIFIED MOTION FILTER FUNCTION
+function QMF(clip c, float &quot;threshold_lm&quot;, float &quot;threshold_hm&quot;, bool &quot;debug&quot;)
+{
+&nbsp; # SETTING MOTION LEVELS THRESHOLDS [2]
+&nbsp; threshold_lm = default(threshold_lm, 4.0)
+&nbsp; threshold_hm = default(threshold_hm, 12.0)
+&nbsp; global threshold_lm = threshold_lm
+&nbsp; global threshold_hm = threshold_hm
+
+&nbsp; # ENABLING/DISABLING DEBUG INFORMATION [3]
+&nbsp; debug = default(debug, false)
+
+&nbsp; # INITIALIZING MOTION LEVEL
+&nbsp; global motion_level = 0
+
+&nbsp; # SETTING PRESENT CLIP [4]
+&nbsp; global clip = c
+
+&nbsp; # GETTING OUTPUT RESOLUTION [5]
+&nbsp; width = Width(Low_Motion_Filter(c))
+&nbsp; height = Height(Low_Motion_Filter(c))
+&nbsp; global c_resized = PointResize(c, width, height)
+
+&nbsp; # APPLYING MOTION FILTER ACCORDING TO MOTION LEVEL [6]
+&nbsp; c = ConditionalFilter(c, Low_Motion_Filter(c), c_resized, &quot;<b>motion_level</b>&quot;, &quot;=&quot;, &quot;0&quot;)&nbsp; # [6a]
+&nbsp; c = ConditionalFilter(c, Medium_Motion_Filter(c), c, &quot;<b>motion_level</b>&quot;, &quot;=&quot;, &quot;1&quot;)&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; # [6b]
+&nbsp; c = ConditionalFilter(c, High_Motion_Filter(c), c, &quot;<b>motion_level</b>&quot;, &quot;=&quot;, &quot;2&quot;)&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; # [6c]
+
+&nbsp; # PRINTING DEBUG INFORMATION [7]
+&nbsp; c = (debug == true) ? ScriptClip(c, &quot;Debug()&quot;) : c
+
+&nbsp; # GETTING MOTION LEVEL THROUGH MOTION ESTIMATION [8]
+&nbsp; c = FrameEvaluate(c, &quot;ME()&quot;)
+
+&nbsp; # GETTING DIFFERENCES BETWEEN PAST/PRESENT FRAMES [9]
+&nbsp; c = FrameEvaluate(c, &quot;<b>global diff</b> = 0.50*YDifferenceFromPrevious(clip) + 0.25*UDifferenceFromPrevious(clip) + 0.25*VDifferenceFromPrevious(clip)&quot;)
+&nbsp; return c
+}
+
+# DEBUG INFORMATION FUNCTION
+function Debug(clip c)
+{
+&nbsp; # PRINTING VERSION INFORMATION [10]
+&nbsp; c = Subtitle(c, &quot;Quantified Motion Filter&quot;, x=20, y=30, font=&quot;lucida console&quot;, size=18, text_color=$FFFFFF)
+&nbsp; c = Subtitle(c, &quot;by HomiE FR (homie.fr@wanadoo.fr)&quot;, x=20, y=45, font=&quot;lucida console&quot;, size=14, text_color=$FFFFFF)
+
+&nbsp; # PRINTING MOTION ESTIMATION INFORMATION [11]
+&nbsp; c = Subtitle(c, &quot;motion estimation&quot;, x=20, y=85, font=&quot;lucida console&quot;, size=18, text_color=$FFFFFF)
+&nbsp; c = Subtitle(c, &quot;diff = &quot;+string(<b>diff</b>), x=20,y=110, font=&quot;lucida console&quot;, size=16, text_color=$FFCCCC)
+
+&nbsp; # PRINTING QUANTIFIED MOTION FILTER INFORMATION [12]
+&nbsp; c = Subtitle(c, &quot;quantified motion filter&quot;, x=20, y=135, font=&quot;lucida console&quot;, size=18, text_color=$FFFFFF)
+&nbsp; c = (<b>motion_level</b> == 0) ? Subtitle(c, &quot;scene type = low motion&quot;, x=20, y=160, font=&quot;lucida console&quot;, size=16, text_color=$66FF66) : c
+&nbsp; c = (<b>motion_level</b> == 1) ? Subtitle(c, &quot;scene type = medium motion&quot;, x=20, y=160, font=&quot;lucida console&quot;, size=16, text_color=$66FF66) : c
+&nbsp; c = (<b>motion_level</b> == 2) ? Subtitle(c, &quot;scene type = high motion&quot;, x=20, y=160, font=&quot;lucida console&quot;, size=16, text_color=$66FF66) : c
+&nbsp; return c
+}
+----------------------------------------------------</pre>
+This filter chain works like this:
+<ul>
+<li>
+When Vdub requests a frame, AviSynth requests a frame from QMF.</li>
+
+<ul>
+<li>
+QMF request a frame from FrameEvaluate [9].</li>
+
+<li>
+After doing this the script [9] is evaluated, and the global variable <i>diff</i>
+is assigned after requesting a frame from AviSource. FrameEvaluate [9]
+requests a frame from FrameEvaluate [8].</li>
+
+<li>
+Once again the script [8] is evaluated:</li>
+
+<ul>
+<li>
+when evaluating me(), the global variable <i>motion_level</i> is assigned
+for that frame [1]</li>
+</ul>
+
+<li>
+If debug=true, a frame is requested from ScriptClip [7], and thus from
+Debug().</li>
+
+<li>
+After that (and also when debug was set to false) a frame is requested
+from the last ConditionalFilter [6c], which requests a frame from [6b],
+which in turn requests a frame from [6a].</li>
+
+<ul>
+<li>
+Note that in the end, a frame of High_Motion_filter, Medium_Motion_filter,
+or Low_Motion_filter is requested depending on the value of <i>motion_level</i>.</li>
+</ul>
+</ul>
+
+<li>
+QMF request a frame from Telecide, Telecide from ConvertToYV12 and finally
+ConvertToYV12 from AviSource.</li>
+
+<li>
+AviSource produces the frame and sends it to ConvertToYV12, etc.</li>
+</ul>
+<p>A few details were omitted, but this is how the script basically works.
+</p>
+<kbd>$Date: 2012/04/09 08:19:32 $</kbd>
+<form><input TYPE="Button" VALUE="Back"
+onClick="history.go(-1)"></form>
+</body>
+</html>

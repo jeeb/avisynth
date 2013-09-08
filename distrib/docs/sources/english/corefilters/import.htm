@@ -1,0 +1,35 @@
+<!doctype html public "-//W3C//DTD HTML 4.0 Transitional//EN">
+<html>
+<head>
+<title>Import Avisynth Filter</title>
+<link rel="stylesheet" type="text/css" href="../../avisynth.css">
+</head>
+<body >
+<h2>Import</h2>
+<p><code>Import </code>(<var>string filename [, ...]</var>)</p>
+<p><code>Import</code> evaluates the contents of other AviSynth scripts.</p>
+
+<p>Functions, variables and loaded plugins declared inside the imported script
+   are made available to the importing script. In addition, the return value
+   of the function is the last value of the last filename script (a clip or
+   whatever the filename script chooses to end with). The later can be
+   assigned to a variable of the importing script and manipulated (this is
+   most useful when the imported script ends with a clip).</p>
+
+<p>The current working directory (CWD) is saved and set to the directory
+containing the script file before compiling the script. The CWD is then restored
+to the saved directory.</p>
+
+<p>Some indicative uses of <code>Import</code> include:</p>
+
+<p>* Storing multiple script-functions, variables and global variables for
+     reuse by scripts (creation of script libraries).<br>
+   * Retrieving pre-built streams.<br>
+   * Retrieving dynamically configured pre-built streams (the core idea is:
+     the importing script declares some global variables which the imported
+     script uses to configure the stream that will return).</p>
+
+<p><kbd>$Date: 2009/09/12 15:10:22 $</kbd></p>
+<FORM><INPUT TYPE="Button" VALUE="Back" onClick="history.go(-1)"></FORM>
+</body>
+</html>

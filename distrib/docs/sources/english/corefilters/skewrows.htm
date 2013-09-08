@@ -1,0 +1,57 @@
+<!doctype html public "-//w3c//dtd html 4.0 transitional//en">
+<html>
+<head>
+   <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+   <title>SkewRows Avisynth Filter</title>
+   <link rel="stylesheet" type="text/css" href="../../avisynth.css">
+</head>
+<body>
+<h2>
+<a NAME="SkewRows"></a>SkewRows
+</h2>
+<p><code>SkewRows </code>(<var>int skew</var>)
+<p><code>SkewRows </code>  (added in <em>v2.60</em>) skews the rows of a clip by
+an amount of <i>skew</i>. The skewing is memory layout based, so RGB images are
+skewed from the bottom up, YUV images are skewed from the top down.</p>
+<p>It can be used to read those skewed error messages that some media player
+users are submitting.</p>
+<p>The effect of the algorithm is to paste all of the input rows together as one
+single very long row, then slice them up based on the new width (= input width +
+skew). Skew can also be negative in which case the last skew pixels of each line
+are added to the beginning of the next line and you get some extra lines at the
+end. The last line is padded with grey pixels when required.</p>
+<p>The geometry of the output is calculated as follows:</p>
+<ul>
+  <li>OutWidth = InWidth + skew // signed skew values acceptable</li>
+  <li>OutHeight = (InHeight*InWidth + OutWidth-1) / OutWidth // rounded up to
+    nearest integer</li>
+</ul>
+<p>All interleaved pixel formats are supported (including Y8), though <i>skew</i>
+should be even for YUY2.</p>
+<p><b>examples:</b></p>
+<table border="1" cellpadding="4" cellspacing="1">
+  <tbody>
+    <tr>
+      <td><img border="0" src="../pictures/corefilters/skewrows_before.png" width="639" height="121"></td>
+      <td><img border="0" src="../pictures/corefilters/skewrows_after.png" width="640" height="121"></td>
+    </tr>
+    <tr>
+      <td>Original</td>
+      <td>SkewRows(1)</td>
+    </tr>
+  </tbody>
+</table>
+<p><b>Changelog:</b></p>
+<table border="1">
+  <tbody>
+    <tr>
+      <td>v2.60</td>
+      <td>Initial release</td>
+    </tr>
+  </tbody>
+</table>
+<p><kbd>$Date: 2011/01/16 12:22:43 $</kbd></p>
+<form><input TYPE="Button" VALUE="Back"
+onClick="history.go(-1)"></form>
+</body>
+</html>
