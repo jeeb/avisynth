@@ -18,9 +18,10 @@ Copyright © 2003, Klaus Post
 *******************************************************/
 
 
-#include "../internal.h"
+#include <core/avisynth.h>
 #include <malloc.h>
-#include "3rd_party/PFC/mem_block.h"
+#include <cstring>
+#include "PFC/mem_block.h"
 
 typedef SFLOAT audio_sample;
 typedef audio_sample REAL_inout;

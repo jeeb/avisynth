@@ -24,14 +24,19 @@ Copyright © 2003, Klaus Post
 #ifndef _SUPEREQ_H_
 #define _SUPEREQ_H_
 
-#include "../internal.h"
+#include <core/avisynth.h>
 #include <malloc.h>
-#include "3rd_party/PFC/mem_block.h"
+#include <cstring>
+#include "PFC/mem_block.h"
 
 typedef SFLOAT audio_sample;
 typedef audio_sample REAL_inout;
 
 #include "math_shared.h"
+
+AVSValue __cdecl Create_SuperEq(AVSValue args, void*, IScriptEnvironment* env);
+AVSValue __cdecl Create_SuperEqCustom(AVSValue args, void*, IScriptEnvironment* env);
+
 
 class _declspec(novtable) supereq_base
 {

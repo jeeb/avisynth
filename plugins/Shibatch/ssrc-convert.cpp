@@ -33,17 +33,7 @@
 // import and export plugins, or graphical user interfaces.
 
 #include "ssrc-convert.h"
-#include "../core/win.h"
-
-
-/********************************************************************
-***** Declare index of new filters for Avisynth's filter engine *****
-********************************************************************/
-
-extern const AVSFunction SSRC_filters[] = {
-  { "SSRC", "ci[fast]b", SSRC::Create },
-  { 0 }
-};
+#include <core/win.h>
 
 
 /******************************************
@@ -52,7 +42,7 @@ extern const AVSFunction SSRC_filters[] = {
 
 
 SSRC::SSRC(PClip _child, int _target_rate, bool _fast, IScriptEnvironment* env)
-  : GenericVideoFilter(ConvertAudio::Create(_child,SAMPLE_FLOAT,SAMPLE_FLOAT)), target_rate(_target_rate), fast(_fast)
+  : GenericVideoFilter(_child), target_rate(_target_rate), fast(_fast)
 {
   srcbuffer = 0;  // If constructor should return
 
@@ -65,7 +55,7 @@ SSRC::SSRC(PClip _child, int _target_rate, bool _fast, IScriptEnvironment* env)
   source_rate = vi.audio_samples_per_second;
 
 	factor = double(target_rate) / vi.audio_samples_per_second;
-  vi.num_audio_samples = MulDiv(vi.num_audio_samples, target_rate, vi.audio_samples_per_second);
+  vi.num_audio_samples = MulDiv(vi.num_audio_samples, target_rate, vi.audio_samples_per_second);  // TODO: MulDiv is not adaquate to deal with the number of samples, input type too short
  
   res = SSRC_create(source_rate, target_rate, vi.AudioChannels(), 2,1, fast);
 
@@ -113,7 +103,7 @@ void __stdcall SSRC::GetAudio(void* buf, __int64 start, __int64 count, IScriptEn
     }
 
     if (!skip_restart)  { 
-      inputReadOffset = MulDiv(start, source_rate, target_rate) -  input_samples;  // Reset at new read position minus ONE second.
+      inputReadOffset = MulDiv(start, source_rate, target_rate) -  input_samples;  // Reset at new read position minus ONE second.   // TODO: MulDiv is not adaquate to deal with the number of samples, input type too short
       res = SSRC_create(source_rate, target_rate, vi.AudioChannels(), 2, 1, fast);
       _RPT2(0, "SSRC: Resetting position. Next_sample: %d. Start:%d.!\n", (int)next_sample, (int)start);
       next_sample = start - target_rate;
@@ -174,10 +164,15 @@ void __stdcall SSRC::GetAudio(void* buf, __int64 start, __int64 count, IScriptEn
 
 }
 
+AVSValue __cdecl Create_SSRC(AVSValue args, void*, IScriptEnvironment* env) {
 
+  PClip clip = args[0].AsClip();
 
-AVSValue __cdecl SSRC::Create(AVSValue args, void*, IScriptEnvironment* env) 
-{
+  if (!clip->GetVideoInfo().HasAudio())
+    env->ThrowError("Input clip does not have audio.");
+
+  if (!(clip->GetVideoInfo().SampleType()&SAMPLE_FLOAT))
+    env->ThrowError("Input audio sample format to SSRC must be float.");
+
   return new SSRC(args[0].AsClip(), args[1].AsInt(), args[2].AsBool(true), env);
 }
-

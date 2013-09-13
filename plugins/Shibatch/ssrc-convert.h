@@ -37,10 +37,11 @@
 
 typedef float REAL;
 
-#include "../internal.h"
-#include "convertaudio.h"
+#include <core/avisynth.h>
 #include "ssrc.h"
 
+
+AVSValue __cdecl Create_SSRC(AVSValue args, void*, IScriptEnvironment* env);
 
 
 class SSRC : public GenericVideoFilter 

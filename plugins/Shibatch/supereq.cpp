@@ -24,9 +24,9 @@ Copyright © 2003, Klaus Post
 #include <math.h>
 #include "supereq.h"
 #include "paramlist.h"
-#include "convertaudio.h"
 #include <vector>
-#include "core/minmax.h"
+#include <core/minmax.h>
+#include <core/avisynth.h>
 
 
 
@@ -66,12 +66,8 @@ private:
   __int64 inputReadOffset;
 
 public:
-static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env);
-static AVSValue __cdecl Create_Custom(AVSValue args, void*, IScriptEnvironment* env);
-
-
 AVSsupereq(PClip _child, const char* filename, IScriptEnvironment* env)
-: GenericVideoFilter(ConvertAudio::Create(_child, SAMPLE_FLOAT, SAMPLE_FLOAT))
+: GenericVideoFilter(_child)
 {
   const unsigned last_nch   = (unsigned)vi.AudioChannels();
   const unsigned last_srate = (unsigned)vi.audio_samples_per_second;
@@ -111,7 +107,7 @@ AVSsupereq(PClip _child, const char* filename, IScriptEnvironment* env)
 }
 
 AVSsupereq(PClip _child, float* values, IScriptEnvironment* env)
-: GenericVideoFilter(ConvertAudio::Create(_child, SAMPLE_FLOAT, SAMPLE_FLOAT))
+: GenericVideoFilter(_child)
 {
   const unsigned last_nch   = (unsigned)vi.AudioChannels();
   const unsigned last_srate = (unsigned)vi.audio_samples_per_second;
@@ -139,6 +135,7 @@ AVSsupereq(PClip _child, float* values, IScriptEnvironment* env)
   inputReadOffset = 0;  // Next input sample
   dst_samples_filled = 0;
 }
+private:
 
 void __stdcall AVSsupereq::GetAudio(void* buf, __int64 start, __int64 count, IScriptEnvironment* env)
 {
@@ -237,11 +234,11 @@ void __stdcall AVSsupereq::GetAudio(void* buf, __int64 start, __int64 count, ISc
 
 };
 
-AVSValue __cdecl AVSsupereq::Create(AVSValue args, void*, IScriptEnvironment* env) {
+AVSValue __cdecl Create_SuperEq(AVSValue args, void*, IScriptEnvironment* env) {
   return new AVSsupereq(args[0].AsClip(), args[1].AsString(), env);
 }
 
-AVSValue __cdecl AVSsupereq::Create_Custom(AVSValue args, void*, IScriptEnvironment* env) {
+AVSValue __cdecl Create_SuperEqCustom(AVSValue args, void*, IScriptEnvironment* env) {
   float eq[N_BANDS];
   AVSValue args_c = args[1];
   const int num_args = args_c.ArraySize();
@@ -250,11 +247,3 @@ AVSValue __cdecl AVSsupereq::Create_Custom(AVSValue args, void*, IScriptEnvironm
   }
   return new AVSsupereq(args[0].AsClip(), eq, env);
 }
-
-extern const AVSFunction SuperEq_filters[] = {
-  { "SuperEQ", "cs", AVSsupereq::Create },
-  { "SuperEQ", "cf+", AVSsupereq::Create_Custom },
-  { 0 }
-};
-
-
