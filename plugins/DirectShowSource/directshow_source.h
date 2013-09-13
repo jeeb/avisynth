@@ -33,10 +33,9 @@
 // import and export plugins, or graphical user interfaces.
  
 
-#define WIN32_LEAN_AND_MEAN
-#include <windows.h>
+#include <core/avisynth.h>
+#include <core/win.h>
 
-#include "avisynth.h"
 #include <streams.h>
 #include <stdio.h>
 

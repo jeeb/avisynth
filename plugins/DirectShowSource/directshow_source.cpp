@@ -34,6 +34,7 @@
 
 
 #include "directshow_source.h"
+#include <core/minmax.h>
 
 #define DSS_VERSION "2.6.0"
 
@@ -1487,9 +1488,9 @@ HRESULT __stdcall GetSampleEnumMediaTypes::Next(ULONG cMediaTypes, AM_MEDIA_TYPE
     return E_POINTER;
   }
   dssRPT2(dssCMD, "GetSampleEnumMediaTypes::Next(%u) pos=%u\n", cMediaTypes, pos);
-  unsigned copy = min(cMediaTypes, count-pos);
+  unsigned long copy = min(cMediaTypes, (unsigned long)(count-pos));
   if (pcFetched) *pcFetched = copy;
-  while (copy-->0) {
+  while (copy-- > 0) {
     *ppMediaTypes++ = CreateMediaType(parent->GetMediaType(pos++)) ;
   }
   return (pos >= count) ? S_FALSE : S_OK;
@@ -1862,7 +1863,7 @@ DirectShowSource::DirectShowSource(const char* filename, int _avg_time_per_frame
       get_sample.WaitForStart(timeout);
     }
     else {
-      DWORD timeout = max(5000, min(300000, WaitTimeout));   // 5 seconds to 5 minutes
+      DWORD timeout = clamp(WaitTimeout, 5000ul, 300000ul);   // 5 seconds to 5 minutes
       if (get_sample.WaitForStart(timeout))
         // If returning grey frames, trap on init!
         env->ThrowError("DirectShowSource : Timeout waiting for graph to start.");
