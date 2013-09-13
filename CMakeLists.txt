@@ -16,6 +16,9 @@ endif()
 
 IF( MSVC_IDE )  # Check for Visual Studio
 
+  file(MAKE_DIRECTORY "${CMAKE_BINARY_DIR}/Output/plugins")
+  file(MAKE_DIRECTORY "${CMAKE_BINARY_DIR}/Output/system")
+
   IF( NOT MSVC_VERSION VERSION_LESS 1700 )  # Check for v11 (VS 2012)
     # We want our project to also run on Windows XP
     set(CMAKE_GENERATOR_TOOLSET "v110_xp" CACHE STRING "The compiler toolset to use for Visual Studio." FORCE)
@@ -35,3 +38,4 @@ IF( MSVC_IDE )  # Check for Visual Studio
 ENDIF()
 
 add_subdirectory("avs_core")
+add_subdirectory("plugins")

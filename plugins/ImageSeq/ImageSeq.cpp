@@ -34,26 +34,65 @@
 
 
 
-#include "stdafx.h"
-
+#include <core/avisynth.h>
 #include "ImageSeq.h"
+using namespace std;
 
 #define TEXT_COLOR 0xf0f080
 
+AVSValue __cdecl Create_ImageWriter(AVSValue args, void* user_data, IScriptEnvironment* env)
+{
+  return new ImageWriter(args[0].AsClip(),
+                         env->SaveString(args[1].AsString("c:\\")),
+                         args[2].AsInt(0),
+                         args[3].AsInt(0),
+                         env->SaveString(args[4].AsString("ebmp")),
+                         args[5].AsBool(false), env);
+}
 
-/********************************************************************
-***** Declare index of new filters for Avisynth's filter engine *****
-********************************************************************/
+AVSValue __cdecl Create_ImageReader(AVSValue args, void*, IScriptEnvironment* env)
+{
+  const char * path = args[0].AsString("c:\\%06d.ebmp");
 
-extern const AVSFunction Image_filters[] = {
-  { "ImageWriter", "c[file]s[start]i[end]i[type]s[info]b", ImageWriter::Create },
-    // clip, base filename, start, end, image format/extension, info
-  { "ImageReader", "[file]s[start]i[end]i[fps]f[use_devil]b[info]b[pixel_type]s", ImageReader::Create },
-    // base filename (sprintf-style), start, end, frames per second, default reader to use, info, pixel_type
-  { "ImageSource", "[file]s[start]i[end]i[fps]f[use_devil]b[info]b[pixel_type]s", ImageReader::Create },
-  { "ImageSourceAnim", "[file]s[fps]f[info]b[pixel_type]s", ImageReader::CreateAnimated },
-  { 0 }
-};
+  ImageReader *IR = new ImageReader(path, args[1].AsInt(0), args[2].AsInt(1000), (float)args[3].AsFloat(24.0f),
+                                    args[4].AsBool(false), args[5].AsBool(false), args[6].AsString("rgb24"),
+                                    /*animation*/ false, env);
+  // If we are returning a stream of 2 or more copies of the same image
+  // then use FreezeFrame and the Cache to minimise any reloading.
+  if (IR->framecopies > 1) {
+    AVSValue cache = env->Invoke("Cache", AVSValue(IR));
+    AVSValue ff_args[4] = { cache, 0, IR->framecopies-1, 0 };
+    return env->Invoke("FreezeFrame", AVSValue(ff_args, 4)).AsClip();
+  }
+
+  return IR;
+}
+
+AVSValue __cdecl Create_Animated(AVSValue args, void*, IScriptEnvironment* env)
+{
+  if (!args[0].IsString())
+    env->ThrowError("ImageSourceAnim: You must specify a filename.");
+
+  return new ImageReader(args[0].AsString(), 0, 0, (float)args[1].AsFloat(24.0f), /*use_DevIL*/ true,
+                         args[2].AsBool(false), args[3].AsString("rgb32"), /*animation*/ true, env);
+}
+
+const AVS_Linkage * AVS_linkage = 0;
+extern "C" __declspec(dllexport) const char* __stdcall AvisynthPluginInit3(IScriptEnvironment* env, const AVS_Linkage* const vectors)
+{
+	AVS_linkage = vectors;
+  
+  // clip, base filename, start, end, image format/extension, info
+  env->AddFunction("ImageWriter", "c[file]s[start]i[end]i[type]s[info]b", Create_ImageWriter, 0);
+
+  // base filename (sprintf-style), start, end, frames per second, default reader to use, info, pixel_type
+  env->AddFunction("ImageReader", "[file]s[start]i[end]i[fps]f[use_devil]b[info]b[pixel_type]s", Create_ImageReader, 0);
+  env->AddFunction("ImageSource", "[file]s[start]i[end]i[fps]f[use_devil]b[info]b[pixel_type]s", Create_ImageReader, 0);
+
+  env->AddFunction("ImageSourceAnim", "[file]s[fps]f[info]b[pixel_type]s", Create_Animated, 0);
+
+  return "`ImageSeq' Methods for loading and writing still images.";
+}
 
 // Since devIL isn't threadsafe, we need to ensure that only one thread at the time requests frames
 CRITICAL_SECTION FramesCriticalSection;
@@ -191,8 +230,8 @@ PVideoFrame ImageWriter::GetFrame(int n, IScriptEnvironment* env)
     if (info) {
       ostringstream ss;
       ss << "ImageWriter: frame " << n << " not in range";
-      env->MakeWritable(frame);
-      env->ApplyMessage(frame, vi, ss.str().c_str(), vi.width/4, TEXT_COLOR, 0, 0);
+      env->MakeWritable(&frame);
+      env->ApplyMessage(&frame, vi, ss.str().c_str(), vi.width/4, TEXT_COLOR, 0, 0);
     }
     return frame;
   }
@@ -210,8 +249,8 @@ PVideoFrame ImageWriter::GetFrame(int n, IScriptEnvironment* env)
     {
       ostringstream ss;
       ss << "ImageWriter: could not create file '" << filename << "'";
-      env->MakeWritable(frame);
-      env->ApplyMessage(frame, vi, ss.str().c_str(), vi.width/4, TEXT_COLOR, 0, 0);
+      env->MakeWritable(&frame);
+      env->ApplyMessage(&frame, vi, ss.str().c_str(), vi.width/4, TEXT_COLOR, 0, 0);
       return frame;
     }
 
@@ -294,8 +333,8 @@ PVideoFrame ImageWriter::GetFrame(int n, IScriptEnvironment* env)
       ss << "ImageWriter: error '" << getErrStr(err) << "' in DevIL library\n"
 	        "writing file \"" << filename << "\"\n"
             "DevIL version " << DevIL_Version << ".";
-      env->MakeWritable(frame);
-      env->ApplyMessage(frame, vi, ss.str().c_str(), vi.width/4, TEXT_COLOR, 0, 0);
+      env->MakeWritable(&frame);
+      env->ApplyMessage(&frame, vi, ss.str().c_str(), vi.width/4, TEXT_COLOR, 0, 0);
       return frame;
     }
   }
@@ -304,8 +343,8 @@ PVideoFrame ImageWriter::GetFrame(int n, IScriptEnvironment* env)
     // overlay on video output: progress indicator
     ostringstream text;
     text << "Frame " << n << " written to: " << filename;
-    env->MakeWritable(frame);
-    env->ApplyMessage(frame, vi, text.str().c_str(), vi.width/4, TEXT_COLOR, 0, 0);
+    env->MakeWritable(&frame);
+    env->ApplyMessage(&frame, vi, text.str().c_str(), vi.width/4, TEXT_COLOR, 0, 0);
   }
 
   return frame;
@@ -326,19 +365,6 @@ void ImageWriter::fileWrite(ostream & file, const BYTE * srcPtr, const int pitch
 }
 
 
-AVSValue __cdecl ImageWriter::Create(AVSValue args, void*, IScriptEnvironment* env)
-{
-  return new ImageWriter(args[0].AsClip(),
-                         env->SaveString(args[1].AsString("c:\\")),
-                         args[2].AsInt(0),
-                         args[3].AsInt(0),
-                         env->SaveString(args[4].AsString("ebmp")),
-                         args[5].AsBool(false), env);
-}
-
-
-
-
 /*****************************
  *******   Image Reader ******
  ****************************/
@@ -350,18 +376,11 @@ ImageReader::ImageReader(const char * _base_name, const int _start, const int _e
   if (DevIL_Version == 0) // Init the DevIL.dll version
     DevIL_Version = ilGetInteger(IL_VERSION_NUM);
 
-  // Generate full name
-  if (IsAbsolutePath(_base_name))
-  {
-    base_name[0] = '\0';
-    strncat(base_name, _base_name, sizeof base_name);
-  }
-  else
-  {
-    char cwd[MAX_PATH + 1];
-    GetWorkingDir(cwd, sizeof cwd);
-    _snprintf(base_name, sizeof base_name, "%s%s", cwd, _base_name);
-  }
+  // Make sure we have an absolute path.
+  DWORD len = GetFullPathName(_base_name, 0, base_name, NULL);
+  if (len > sizeof(base_name))
+    env->ThrowError("Path to %s too long.", _base_name);
+  (void)GetFullPathName(_base_name, len, base_name, NULL);
   _snprintf(filename, (sizeof filename)-1, base_name, start);
 
   memset(&vi, 0, sizeof(vi));
@@ -605,7 +624,7 @@ PVideoFrame ImageReader::GetFrame(int n, IScriptEnvironment* env)
         ss << "ImageReader: error '" << getErrStr(err) << "' in DevIL library\n"
 		      "opening file \"" << filename << "\"\n"
               "DevIL version " << DevIL_Version << ".";
-        env->ApplyMessage(frame, vi, ss.str().c_str(), vi.width/4, TEXT_COLOR, 0, 0);
+        env->ApplyMessage(&frame, vi, ss.str().c_str(), vi.width/4, TEXT_COLOR, 0, 0);
       }
       return frame;
     }
@@ -626,7 +645,7 @@ PVideoFrame ImageReader::GetFrame(int n, IScriptEnvironment* env)
           ss << "ImageSourceAnim: error '" << getErrStr(err) << "' in DevIL library\n"
                 "processing image " << n << " from file \"" << filename << "\"\n"
                 "DevIL version " << DevIL_Version << ".";
-          env->ApplyMessage(frame, vi, ss.str().c_str(), vi.width/4, TEXT_COLOR, 0, 0);
+          env->ApplyMessage(&frame, vi, ss.str().c_str(), vi.width/4, TEXT_COLOR, 0, 0);
         }
         return frame;
       }
@@ -641,7 +660,7 @@ PVideoFrame ImageReader::GetFrame(int n, IScriptEnvironment* env)
         LeaveCriticalSection(&FramesCriticalSection);
 
         memset(WritePtr, 0, pitch * height);
-        env->ApplyMessage(frame, vi, "ImageReader: images must have identical heights", vi.width/4, TEXT_COLOR, 0, 0);
+        env->ApplyMessage(&frame, vi, "ImageReader: images must have identical heights", vi.width/4, TEXT_COLOR, 0, 0);
         return frame;
       }
 
@@ -653,7 +672,7 @@ PVideoFrame ImageReader::GetFrame(int n, IScriptEnvironment* env)
         LeaveCriticalSection(&FramesCriticalSection);
 
         memset(WritePtr, 0, pitch * height);
-        env->ApplyMessage(frame, vi, "ImageReader: images must have identical widths", vi.width/4, TEXT_COLOR, 0, 0);
+        env->ApplyMessage(&frame, vi, "ImageReader: images must have identical widths", vi.width/4, TEXT_COLOR, 0, 0);
         return frame;
       }
     }
@@ -714,7 +733,7 @@ PVideoFrame ImageReader::GetFrame(int n, IScriptEnvironment* env)
       ss << "ImageReader: error '" << getErrStr(err) << "' in DevIL library\n"
             "reading file \"" << filename << "\"\n"
             "DevIL version " << DevIL_Version << ".";
-      env->ApplyMessage(frame, vi, ss.str().c_str(), vi.width/4, TEXT_COLOR, 0, 0);
+      env->ApplyMessage(&frame, vi, ss.str().c_str(), vi.width/4, TEXT_COLOR, 0, 0);
       return frame;
     }
   }
@@ -762,7 +781,7 @@ PVideoFrame ImageReader::GetFrame(int n, IScriptEnvironment* env)
     text << "Frame " << n << ".\n"
             "Read from \"" << filename << "\"\n"
             "DevIL version " << DevIL_Version << ".";
-    env->ApplyMessage(frame, vi, text.str().c_str(), vi.width/4, TEXT_COLOR, 0, 0);
+    env->ApplyMessage(&frame, vi, text.str().c_str(), vi.width/4, TEXT_COLOR, 0, 0);
   }
 
   return frame;
@@ -793,7 +812,7 @@ void ImageReader::BlankFrame(PVideoFrame & frame)
 
     const int UVpitch = frame->GetPitch(PLANAR_U);
     if (UVpitch) {
-      const int UVsize = UVPitch * frame->GetHeight(PLANAR_U);
+      const int UVsize = UVpitch * frame->GetHeight(PLANAR_U);
 
       memset(frame->GetWritePtr(PLANAR_U), 128, UVsize);
       memset(frame->GetWritePtr(PLANAR_V), 128, UVsize);
@@ -805,7 +824,7 @@ void ImageReader::BlankFrame(PVideoFrame & frame)
 void ImageReader::BlankApplyMessage(PVideoFrame & frame, const char * text, IScriptEnvironment * env)
 {
   BlankFrame(frame);
-  env->ApplyMessage(frame, vi, text, vi.width/4, TEXT_COLOR, 0, 0);
+  env->ApplyMessage(&frame, vi, text, vi.width/4, TEXT_COLOR, 0, 0);
 }
 
 
@@ -870,34 +889,6 @@ bool ImageReader::checkProperties(ifstream & file, PVideoFrame & frame, IScriptE
   }
 
   return true;
-}
-
-AVSValue __cdecl ImageReader::Create(AVSValue args, void*, IScriptEnvironment* env)
-{
-  const char * path = args[0].AsString("c:\\%06d.ebmp");
-
-  ImageReader *IR = new ImageReader(path, args[1].AsInt(0), args[2].AsInt(1000), args[3].AsFloat(24.0f),
-                                    args[4].AsBool(false), args[5].AsBool(false), args[6].AsString("rgb24"),
-                                    /*animation*/ false, env);
-  // If we are returning a stream of 2 or more copies of the same image
-  // then use FreezeFrame and the Cache to minimise any reloading.
-  if (IR->framecopies > 1) {
-    AVSValue cache = env->Invoke("Cache", AVSValue(IR));
-    AVSValue ff_args[4] = { cache, 0, IR->framecopies-1, 0 };
-    return env->Invoke("FreezeFrame", AVSValue(ff_args, 4)).AsClip();
-  }
-
-  return IR;
-
-}
-
-AVSValue __cdecl ImageReader::CreateAnimated(AVSValue args, void*, IScriptEnvironment* env)
-{
-  if (!args[0].IsString())
-    env->ThrowError("ImageSourceAnim: You must specify a filename.");
-
-  return new ImageReader(args[0].AsString(), 0, 0, args[1].AsFloat(24.0f), /*use_DevIL*/ true,
-                         args[2].AsBool(false), args[3].AsString("rgb32"), /*animation*/ true, env);
 }
 
 const char *const getErrStr(ILenum err)

@@ -35,17 +35,12 @@
 #ifndef __Image_Sequence_H__
 #define __Image_Sequence_H__
 
-#include "string.h"
-#include<iostream>
-#include<iomanip>
-#include<sstream>
-#include<fstream>
+#include <sstream>
+#include <fstream>
 #include <cassert>
-using namespace std;
 
-#include "../internal.h"
-
-#include "../../distrib/include/il/il.h"
+#include "il.h"
+#include "core/win.h"
 
 
 class ImageWriter : public GenericVideoFilter 
@@ -58,10 +53,8 @@ public:
   ~ImageWriter();
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
 
-  static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env);
-
 private:
-  void fileWrite(ostream & file, const BYTE * srcPtr, const int pitch, const int row_size, const int height);
+  void fileWrite(std::ostream & file, const BYTE * srcPtr, const int pitch, const int row_size, const int height);
 
   bool info;
   
@@ -93,15 +86,13 @@ public:
   bool __stdcall GetParity(int n) { return false; }
   int __stdcall SetCacheHints(int cachehints,int frame_range) { return 0; };
   
-  
-  static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env);
-  static AVSValue __cdecl CreateAnimated(AVSValue args, void*, IScriptEnvironment* env);
-
+  int  framecopies;
+ 
 private:
-  void fileRead(istream & file, BYTE * dstPtr, const int pitch, const int row_size, const int height);
+  void fileRead(std::istream & file, BYTE * dstPtr, const int pitch, const int row_size, const int height);
   void ImageReader::BlankFrame(PVideoFrame & frame);
   void ImageReader::BlankApplyMessage(PVideoFrame & frame, const char * text, IScriptEnvironment * env);
-  bool checkProperties(ifstream & file, PVideoFrame & frame, IScriptEnvironment * env);
+  bool checkProperties(std::ifstream & file, PVideoFrame & frame, IScriptEnvironment * env);
 
   char base_name[MAX_PATH + 1];
   const int start;
@@ -113,7 +104,6 @@ private:
 
   char filename[MAX_PATH + 1];
   bool should_flip;
-  int  framecopies;
       
   BITMAPFILEHEADER fileHeader;
   BITMAPINFOHEADER infoHeader;
