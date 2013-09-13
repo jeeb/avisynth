@@ -1302,7 +1302,7 @@ PVideoFrame ScriptEnvironment::NewPlanarVideoFrame(int row_size, int height, int
     }
   }
 #endif
-  const int offset = (-int(vfb->GetWritePtr())) & (FRAME_ALIGN-1);  // align first line offset
+  const int offset = (-int(vfb->GetWritePtr())) & (align-1);  // align first line offset
 
   if (U_first) {
     Uoffset = offset + pitch * height;
@@ -1338,7 +1338,7 @@ PVideoFrame ScriptEnvironment::NewVideoFrame(int row_size, int height, int align
     }
   }
 #endif
-  const int offset = (-int(vfb->GetWritePtr())) & (FRAME_ALIGN-1);  // align first line offset  (alignment is free here!)
+  const int offset = (-int(vfb->GetWritePtr())) & (align-1);  // align first line offset  (alignment is free here!)
   return new VideoFrame(vfb, offset, pitch, row_size, height);
 }
 
