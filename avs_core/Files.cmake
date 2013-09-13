@@ -14,6 +14,7 @@ FILE(GLOB AvsCore_Sources RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}"
   "core/*.cpp"
   "core/*.h"
   "core/avisynth.def"
+  "core/avisynth.rc"
 
   "core/parser/*.c"
   "core/parser/*.cpp"
