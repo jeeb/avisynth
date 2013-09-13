@@ -34,17 +34,12 @@
 
 // AviSynth -> SoundTouch interface (c) 2004, Klaus Post.
 
-
-
-#include "avs-soundtouch.h"
-#include "convertaudio.h"
 #include <vector>
-
+#include <core/avisynth.h>
+#include "SoundTouch/SoundTouch.h"
 
 #define BUFFERSIZE 8192
-
 using namespace soundtouch;
-
 
 class AVSsoundtouch : public GenericVideoFilter 
 {
@@ -68,7 +63,7 @@ static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env);
 
 
 AVSsoundtouch(PClip _child, float _tempo, float _rate, float _pitch, const AVSValue* args, IScriptEnvironment* env)
-: GenericVideoFilter(ConvertAudio::Create(_child, SAMPLE_FLOAT, SAMPLE_FLOAT)), 
+: GenericVideoFilter(_child), 
   tempo(_tempo/100.0f), rate(_rate/100.0f), pitch(_pitch/100.0f)
 {
 	try {	// HIDE DAMN SEH COMPILER BUG!!!
@@ -228,7 +223,7 @@ private:
 
 public:
 AVSStereoSoundTouch(PClip _child, float _tempo, float _rate, float _pitch, const AVSValue* args, IScriptEnvironment* env)
-: GenericVideoFilter(ConvertAudio::Create(_child, SAMPLE_FLOAT, SAMPLE_FLOAT)), 
+: GenericVideoFilter(_child), 
   tempo(_tempo/100.0f), rate(_rate/100.0f), pitch(_pitch/100.0f)
 {
 //  last_nch = vi.AudioChannels();
@@ -317,8 +312,18 @@ void __stdcall AVSStereoSoundTouch::GetAudio(void* buf, __int64 start, __int64 c
 
 };
 
-AVSValue __cdecl AVSsoundtouch::Create(AVSValue args, void*, IScriptEnvironment* env) {
-	try {	// HIDE DAMN SEH COMPILER BUG!!!
+AVSValue __cdecl Create_SoundTouch(AVSValue args, void*, IScriptEnvironment* env) {
+
+  try {	// HIDE DAMN SEH COMPILER BUG!!!
+
+  PClip clip = args[0].AsClip();
+
+  if (!clip->GetVideoInfo().HasAudio())
+    env->ThrowError("Input clip does not have audio.");
+
+  if (!(clip->GetVideoInfo().SampleType()&SAMPLE_FLOAT))
+    env->ThrowError("Input audio sample format to TimeStretch must be float.");
+
   if (args[0].AsClip()->GetVideoInfo().AudioChannels() == 2) {
     return new AVSStereoSoundTouch(args[0].AsClip(), 
       (float)args[1].AsFloat(100.0), 
@@ -338,8 +343,12 @@ AVSValue __cdecl AVSsoundtouch::Create(AVSValue args, void*, IScriptEnvironment*
 	catch (...) { throw; }
 }
 
+const AVS_Linkage * AVS_linkage = 0;
+extern "C" __declspec(dllexport) const char* __stdcall AvisynthPluginInit3(IScriptEnvironment* env, const AVS_Linkage* const vectors) {
+	AVS_linkage = vectors;
 
-extern const AVSFunction Soundtouch_filters[] = {
-  { "TimeStretch", "c[tempo]f[rate]f[pitch]f[sequence]i[seekwindow]i[overlap]i[quickseek]b[aa]i", AVSsoundtouch::Create },
-  { 0 }
-};
+  // clip, base filename, start, end, image format/extension, info
+  env->AddFunction("TimeStretch", "c[tempo]f[rate]f[pitch]f[sequence]i[seekwindow]i[overlap]i[quickseek]b[aa]i", Create_SoundTouch, 0);
+
+  return "`TimeStretch' Changes tempo, pitch, and/or playback rate of audio.";
+}

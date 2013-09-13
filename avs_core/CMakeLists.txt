@@ -24,8 +24,7 @@ target_link_libraries("AvsCore" "Winmm.lib" "Vfw32.lib" "Msacm32.lib" "Gdi32.lib
 # Add source dependencies
 add_subdirectory("3rd_party/pfc")
 add_subdirectory("3rd_party/SoftWire")
-add_subdirectory("3rd_party/SoundTouch")
-target_link_libraries("AvsCore" "SoundTouch" "PFC" "SoftWire")
+target_link_libraries("AvsCore" "PFC" "SoftWire")
 
 if (MSVC_IDE)    
   # Copy output to a common folder for easy deployment
