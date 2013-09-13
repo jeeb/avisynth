@@ -1263,33 +1263,42 @@ void ScriptEnvironment::ExportFilters()
   SetGlobalVar("$InternalFunctions$", AVSValue( SaveString(builtin_names.c_str(), builtin_names.length() + 1) ));
 }
 
+template<typename T>
+static T AlignNumber(T n, T align)
+{
+  assert(align && !(align & (align - 1)));  // check that 'align' is a power of two
+  return (n + align-1) & (~(align-1));
+}
+template<typename T>
+static T AlignPointer(T n, size_t align)
+{
+  assert(align && !(align & (align - 1)));  // check that 'align' is a power of two
+  return (T)(((uintptr_t)n + align-1) & (~(uintptr_t)(align-1)));
+}
 
-PVideoFrame ScriptEnvironment::NewPlanarVideoFrame(int row_size, int height, int row_sizeUV, int heightUV, int _align, bool U_first) {
-  int align, pitchUV, Uoffset, Voffset;
-
-  // If align is negative, it will be forced, if not it may be made bigger
-  if (_align < 0)
-    align = -_align;
-  else
-    align = max(_align, FRAME_ALIGN);
-
-  const int pitch = (row_size+align-1) / align * align;
-
-  if (_align < 0) {
-    // Forced alignment - pack Y as specified, pack UV subsample of that
-    pitchUV = MulDiv(pitch, row_sizeUV, row_size);  // Don't align UV planes seperately.
+PVideoFrame ScriptEnvironment::NewPlanarVideoFrame(int row_size, int height, int row_sizeUV, int heightUV, int align, bool U_first)
+{
+#ifdef _DEBUG
+  if (align < 0){
+    _RPT0(_CRT_WARN, "Warning: A negative value for the 'align' parameter is deprecated and will be treated as positive.");
   }
-  else if (!PlanarChromaAlignmentState && (row_size == row_sizeUV*2) && (height == heightUV*2)) { // Meet old 2.5 series API expectations for YV12
+#endif
+
+  align = max(align, FRAME_ALIGN);
+
+  int pitchUV;
+  const int pitchY = AlignNumber(row_size, align);
+  if (!PlanarChromaAlignmentState && (row_size == row_sizeUV*2) && (height == heightUV*2)) { // Meet old 2.5 series API expectations for YV12
     // Legacy alignment - pack Y as specified, pack UV half that
-    pitchUV = (pitch+1)>>1;  // UV plane, width = 1/2 byte per pixel - don't align UV planes seperately.
+    pitchUV = (pitchY+1)>>1;  // UV plane, width = 1/2 byte per pixel - don't align UV planes seperately.
   }
   else {
     // Align planes seperately
-    pitchUV = (row_sizeUV+align-1) / align * align;
+    pitchUV = AlignNumber(row_sizeUV, align);
   }
 
-  const int size = pitch * height + 2 * pitchUV * heightUV;
-  VideoFrameBuffer* vfb = GetFrameBuffer(size + (align < FRAME_ALIGN ? FRAME_ALIGN*4 : align*4));
+  const int size = pitchY * height + 2 * pitchUV * heightUV;
+  VideoFrameBuffer* vfb = GetFrameBuffer(size + align-1);
   if (!vfb)
     ThrowError("NewPlanarVideoFrame: Returned 0 image pointer!");
 #ifdef _DEBUG
@@ -1302,30 +1311,33 @@ PVideoFrame ScriptEnvironment::NewPlanarVideoFrame(int row_size, int height, int
     }
   }
 #endif
-  const int offset = (-int(vfb->GetWritePtr())) & (align-1);  // align first line offset
 
+  int  offsetU, offsetV;
+  const int offsetY = AlignPointer(vfb->GetWritePtr(), align) - vfb->GetWritePtr(); // first line offset for proper alignment
   if (U_first) {
-    Uoffset = offset + pitch * height;
-    Voffset = offset + pitch * height + pitchUV * heightUV;
+    offsetU = offsetY + pitchY * height;
+    offsetV = offsetY + pitchY * height + pitchUV * heightUV;
   } else {
-    Voffset = offset + pitch * height;
-    Uoffset = offset + pitch * height + pitchUV * heightUV;
+    offsetV = offsetY + pitchY * height;
+    offsetU = offsetY + pitchY * height + pitchUV * heightUV;
   }
-  return new VideoFrame(vfb, offset, pitch, row_size, height, Uoffset, Voffset, pitchUV, row_sizeUV, heightUV);
+  return new VideoFrame(vfb, offsetY, pitchY, row_size, height, offsetU, offsetV, pitchUV, row_sizeUV, heightUV);
 }
 
 
-PVideoFrame ScriptEnvironment::NewVideoFrame(int row_size, int height, int align) {
-  // If align is negative, it will be forced, if not it may be made bigger
-  if (align < 0)
-    align = -align;
-  else
-    align = max(align, FRAME_ALIGN);
+PVideoFrame ScriptEnvironment::NewVideoFrame(int row_size, int height, int align)
+{
+#ifdef _DEBUG
+  if (align < 0){
+    _RPT0(_CRT_WARN, "Warning: A negative value for the 'align' parameter is deprecated and will be treated as positive.");
+  }
+#endif
 
-  const int pitch = (row_size+align-1) / align * align;
+  align = max(align, FRAME_ALIGN);
+
+  const int pitch = AlignNumber(row_size, align);
   const int size = pitch * height;
-  const int _align = (align < FRAME_ALIGN) ? FRAME_ALIGN : align;
-  VideoFrameBuffer* vfb = GetFrameBuffer(size+(_align*4));
+  VideoFrameBuffer* vfb = GetFrameBuffer(size + align-1);
   if (!vfb)
     ThrowError("NewVideoFrame: Returned 0 frame buffer pointer!");
 #ifdef _DEBUG
@@ -1338,7 +1350,7 @@ PVideoFrame ScriptEnvironment::NewVideoFrame(int row_size, int height, int align
     }
   }
 #endif
-  const int offset = (-int(vfb->GetWritePtr())) & (align-1);  // align first line offset  (alignment is free here!)
+  const int offset = AlignPointer(vfb->GetWritePtr(), align) - vfb->GetWritePtr(); // first line offset for proper alignment
   return new VideoFrame(vfb, offset, pitch, row_size, height);
 }
 
