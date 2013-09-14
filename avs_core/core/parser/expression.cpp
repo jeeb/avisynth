@@ -49,29 +49,11 @@ AVSValue ExpSequence::Evaluate(IScriptEnvironment* env)
     return b->Evaluate(env);
 }
 
-/* Damn! This is trickey, exp->Evaluate returns an AVSValue object, so the
- * stupid compiler builds a local one on the stack, calls the constructor,
- * calls Evaluate passing a pointer to the local AVSValue object. Upon return
- * it then copies the local AVSValue to the passed in alias and calls the
- * destructor. Of course there has to be an implicit try/catch around the
- * whole lot just in case so the destructor is guaranteed to be called.
- *
- * All proper C++, yes but it would be just as valid to directly pass the
- * av alias to Evaluate in it's returned object argument, and I wouldn't
- * need all the trickey calls within calls to do this simple job.
- */
-void ExpExceptionTranslator::ChainEval(AVSValue &av, IScriptEnvironment* env) 
-{
-  av = exp->Evaluate(env);
-}
-
 AVSValue ExpExceptionTranslator::Evaluate(IScriptEnvironment* env) 
 {
   try {
     SehGuard seh_guard;
-    AVSValue av;
-    ChainEval(av, env);
-    return av;
+    return exp->Evaluate(env);
   }
   catch (const IScriptEnvironment::NotFound&) {
     throw;
