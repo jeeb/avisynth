@@ -37,6 +37,7 @@
 #include "./parser/script.h"
 #include "cache.h"
 #include "minmax.h"
+#include "strings.h"
 #include <avs/cpuid.h>
 #include "bitblt.h"
 
@@ -569,14 +570,14 @@ public:
         pstrict = strict&1;
         // first, look in loaded plugins
         for (LocalFunction* p = local_functions; p; p = p->prev)
-          if (!lstrcmpi(p->name, search_name) &&
+          if (streqi(p->name, search_name) &&
               TypeMatch(p->param_types, args, num_args, strict&1, env) &&
               ArgNameMatch(p->param_types, args_names_count, arg_names))
             return p;
         // now looks in prescanned plugins
         for (Plugin* pp = plugins; pp; pp = pp->prev)
           for (LocalFunction* p = pp->plugin_functions; p; p = p->prev)
-            if (!lstrcmpi(p->name, search_name) &&
+            if (streqi(p->name, search_name) &&
                 TypeMatch(p->param_types, args, num_args, strict&1, env) &&
                 ArgNameMatch(p->param_types, args_names_count, arg_names)) {
               _RPT2(0, "Loading plugin %s (lookup for function %s)\n", pp->name, p->name);
@@ -592,7 +593,7 @@ public:
         // finally, look for a built-in function
         for (int i = 0; i < sizeof(builtin_functions)/sizeof(builtin_functions[0]); ++i)
           for (const AVSFunction* j = builtin_functions[i]; j->name; ++j)
-            if (!lstrcmpi(j->name, search_name) &&
+            if (streqi(j->name, search_name) &&
                 TypeMatch(j->param_types, args, num_args, strict&1, env) &&
                 ArgNameMatch(j->param_types, args_names_count, arg_names))
               return j;
@@ -606,17 +607,17 @@ public:
 
   bool Exists(const char* search_name) {
     for (LocalFunction* p = local_functions; p; p = p->prev)
-      if (!lstrcmpi(p->name, search_name))
+      if (streqi(p->name, search_name))
         return true;
     if (!reloading) {
       for (Plugin* pp = plugins; pp; pp = pp->prev)
         for (LocalFunction* p = pp->plugin_functions; p; p = p->prev)
-          if (!lstrcmpi(p->name, search_name))
+          if (streqi(p->name, search_name))
             return true;
     }
     for (int i = 0; i < sizeof(builtin_functions)/sizeof(builtin_functions[0]); ++i)
       for (const AVSFunction* j = builtin_functions[i]; j->name; ++j)
-        if (!lstrcmpi(j->name, search_name))
+        if (streqi(j->name, search_name))
           return true;
     return false;
   }

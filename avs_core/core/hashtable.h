@@ -41,6 +41,7 @@
 // for newbies to compile the core. Therefore, here is my own implementation.
 
 #include <cstring>
+#include "strings.h"
 #include <cassert>
 
 template<typename V>
@@ -65,14 +66,12 @@ private:
 
   #ifndef UNICODE
 
-  static char tolower(char c)
-  {
-    // Works for letters of the english alphabet in ASCII
-    return ((c >=65) && (c <=90)) ? c + 32 : c;
-  }
-
   static unsigned int hash(const char* s)
   {
+	  // NOTE the connection between the hash() and equals() functions!
+	  // In order for the hash table to work correctly, if two strings compare
+	  // equal, they MUST have the same hash.
+
     size_t hash = 0;
     while (*s)
       hash = hash * 101  +  tolower(*s++);
@@ -80,30 +79,7 @@ private:
     return hash;
   }
 
-  static bool equals(const char* s1, const char* s2)
-  {
-	  // NOTE the connection between the hash() and equals() functions!
-	  // In order for the hash table to work correctly, if two strings compare
-	  // equal, they MUST have the same hash.
-
-    // Why we dont use Windows's lstrcmpi? It is much slower and non-portable.
-
-	  while(1)
-	  {
-		  if ((*s1 == 0) && (*s2 == 0))
-			  return true;
-
-      if (tolower(*s1) != tolower(*s2))
-        return false;
-
-      ++s1;
-      ++s2;
-	  }
-
-    assert(0);
-    return false;
-  }
-  #elif
+  #else
   The above functions are supposed to be case-insensitive, but the given 
   implementations only work for ASCII characters < 128.
   The functions need to be adapted for a unicode build.
@@ -128,7 +104,7 @@ public:
     bucket_ptr b = buckets[i];
     while(b != NULL)
     {
-      if (equals(b->key, key))
+      if (streqi(b->key, key))
         return &(b->value);
 
       b = b->next;
@@ -159,7 +135,7 @@ public:
       bucket_ptr bprev = NULL;
       while(b != NULL)
       {
-        if (equals(b->key, key))
+        if (streqi(b->key, key))
         { // An item with the same key has been found, update it
           b->value = val;
           return false;
