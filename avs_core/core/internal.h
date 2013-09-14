@@ -74,19 +74,22 @@ PClip new_SeparateFields(PClip _child, IScriptEnvironment* env);
 PClip new_AssumeFrameBased(PClip _child);
 
 
+/* Used to clip/clamp a byte to the 0-255 range.
+   Uses a look-up table internally for performance.
+*/
 class _PixelClip {
   enum { buffer=320 };
-  BYTE clip[256+buffer*2];
+  BYTE lut[256+buffer*2];
 public:
   _PixelClip() {  
-    memset(clip, 0, buffer);
-    for (int i=0; i<256; ++i) clip[i+buffer] = (BYTE)i;
-    memset(clip+buffer+256, 255, buffer);
+    memset(lut, 0, buffer);
+    for (int i=0; i<256; ++i) lut[i+buffer] = (BYTE)i;
+    memset(lut+buffer+256, 255, buffer);
   }
-  BYTE operator()(int i) { return clip[i+buffer]; }
+  BYTE operator()(int i) const { return lut[i+buffer]; }
 };
 
-extern _PixelClip PixelClip;
+extern const _PixelClip PixelClip;
 
 
 template<class ListNode>

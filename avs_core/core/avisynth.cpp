@@ -102,7 +102,7 @@ const char RegAvisynthKey[] = "Software\\Avisynth";
 const char RegPluginDir[] = "PluginDir2_5";
 
 
-_PixelClip PixelClip;
+const _PixelClip PixelClip;
 
 
 extern const char* loadplugin_prefix;  // in plugin.cpp
