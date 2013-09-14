@@ -665,7 +665,8 @@ PVideoFrame Histogram::DrawModeColor(int n, IScriptEnvironment* env) {
   if (vi.IsPlanar()) {
     env->BitBlt(dst->GetWritePtr(PLANAR_U), dst->GetPitch(PLANAR_U), src->GetReadPtr(PLANAR_U), src->GetPitch(PLANAR_U), src->GetRowSize(PLANAR_U), src->GetHeight(PLANAR_U));
     env->BitBlt(dst->GetWritePtr(PLANAR_V), dst->GetPitch(PLANAR_V), src->GetReadPtr(PLANAR_V), src->GetPitch(PLANAR_V), src->GetRowSize(PLANAR_V), src->GetHeight(PLANAR_V));
-    int histUV[256*256] = {0};
+    int *histUV = new int[256*256];
+    memset(histUV, 0, sizeof(int)*256*256);
 
     const BYTE* pU = src->GetReadPtr(PLANAR_U);
     const BYTE* pV = src->GetReadPtr(PLANAR_V);
@@ -743,6 +744,7 @@ PVideoFrame Histogram::DrawModeColor(int n, IScriptEnvironment* env) {
       pdstb += dst->GetPitch(PLANAR_V);
     }}
 
+    delete [] histUV;
   }
   return dst;
 }
