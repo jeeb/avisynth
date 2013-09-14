@@ -870,9 +870,6 @@ private:
   LinkedVideoFrameBuffer* GetFrameBuffer2(int size);
   VideoFrameBuffer* GetFrameBuffer(int size);
 
-  // helper for Invoke
-  int Flatten(const AVSValue& src, AVSValue* dst, int index, int max, const char* const* arg_names=0);
-
   IScriptEnvironment2* This() { return this; }
   const char* GetPluginDirectory();
   bool LoadPluginsMatching(const char* pattern);
@@ -1789,55 +1786,51 @@ VideoFrameBuffer* ScriptEnvironment::GetFrameBuffer(int size) {
   return result;
 }
 
-
-int ScriptEnvironment::Flatten(const AVSValue& src, AVSValue* dst, int index, int max, const char* const* arg_names) {
+/* A helper for Invoke.
+   Copy a nested array of 'src' into a flat array 'dst'.
+   Returns the number of elements that have been written to 'dst'.
+   If 'dst' is NULL, will still return the number of elements 
+   that would have been written to 'dst', but will not actually write to 'dst'.
+*/
+static int Flatten(const AVSValue& src, AVSValue* dst, int index, const char* const* arg_names = NULL) {
   if (src.IsArray()) {
     const int array_size = src.ArraySize();
     for (int i=0; i<array_size; ++i) {
       if (!arg_names || arg_names[i] == 0)
-        index = Flatten(src[i], dst, index, max);
+        index = Flatten(src[i], dst, index);
     }
   } else {
-    if (index < max) {
-      dst[index++] = src;
-    } else {
-      ThrowError("Too many arguments passed to function (max. is %d)", max);
-    }
+    if (dst != NULL)
+      dst[index] = src;
+    ++index;
   }
   return index;
 }
 
-
 AVSValue ScriptEnvironment::Invoke(const char* name, const AVSValue args, const char* const* arg_names) {
 
-  int args2_count;
   bool strict = false;
   const AVSFunction *f;
   AVSValue retval;
 
   const int args_names_count = (arg_names && args.IsArray()) ? args.ArraySize() : 0;
 
-  AVSValue *args1 = new AVSValue[ScriptParser::max_args]; // Save stack space - put on heap!!!
+  // get how many args we will need to store
+  int args2_count = Flatten(args, NULL, 0, arg_names);
+  if (args2_count > ScriptParser::max_args)
+    ThrowError("Too many arguments passed to function (max. is %d)", ScriptParser::max_args);
 
-  try {
-    // flatten unnamed args
-    args2_count = Flatten(args, args1, 0, ScriptParser::max_args, arg_names);
-
-    // find matching function
-    f = function_table.Lookup(name, args1, args2_count, strict, args_names_count, arg_names);
-    if (!f)
-      throw NotFound();
-  }
-  catch (...) {
-    delete[] args1;
-    throw;
-  }
-
-  // collapse the 1024 element array
+  // flatten unnamed args
   AVSValue *args2 = new AVSValue[args2_count];
-  for (int i=0; i< args2_count; i++)
-    args2[i] = args1[i];
-  delete[] args1;
+  Flatten(args, args2, 0, arg_names);
+
+  // find matching function
+  f = function_table.Lookup(name, args2, args2_count, strict, args_names_count, arg_names);
+  if (!f)
+  {
+    delete[] args2;
+    throw NotFound();
+  }
 
   // combine unnamed args into arrays
   int src_index=0, dst_index=0;
