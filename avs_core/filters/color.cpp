@@ -35,6 +35,7 @@
 
 #include <cstdio>
 #include <cmath>
+#include <cfloat>
 #include <avs/win.h>
 #include <avs/minmax.h>
 #include "../core/internal.h"
@@ -476,20 +477,20 @@ void Color::MakeGammaLUT(void)
 }
 
 #define READ_CONDITIONAL(x,y) \
-try {\
-  AVSValue cv = env->GetVar("coloryuv_" x);\
-  if (cv.IsFloat()) {\
-    const double t = cv.AsFloat();\
+{\
+  const double t = env2->GetVar("coloryuv_" x, DBL_MIN);\
+  if (t != DBL_MIN) {\
     if (y != t) {\
       changed = true;\
       y = t;\
     }\
   }\
-} catch (IScriptEnvironment::NotFound) {}
+}
 
 bool Color::ReadConditionals(IScriptEnvironment* env) {
 	bool changed = false;
 
+  IScriptEnvironment2 *env2 = static_cast<IScriptEnvironment2*>(env);
   READ_CONDITIONAL("gain_y", y_gain);
   READ_CONDITIONAL("gain_u", u_gain);
   READ_CONDITIONAL("gain_v", v_gain);

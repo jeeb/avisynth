@@ -267,6 +267,7 @@ public:
     return _dynamic_parent;
   }
 
+  // This method will not modify the *val argument if it returns false.
   bool Get(const char* name, AVSValue *val) {
     AVSValue *v = variables.get(name);
     if (v != NULL)
@@ -820,6 +821,7 @@ public:
   bool __stdcall FunctionExists(const char* name);
   AVSValue __stdcall Invoke(const char* name, const AVSValue args, const char* const* arg_names=0);
   AVSValue __stdcall GetVar(const char* name);
+  bool  __stdcall GetVar(const char* name, AVSValue *val);
   bool __stdcall GetVar(const char* name, bool def);
   int  __stdcall GetVar(const char* name, int def);
   double  __stdcall GetVar(const char* name, double def);
@@ -1060,6 +1062,15 @@ AVSValue ScriptEnvironment::GetVar(const char* name) {
       return val;
     else
       throw IScriptEnvironment::NotFound();
+  }
+}
+
+bool ScriptEnvironment::GetVar(const char* name, AVSValue *ret) {
+  if (closing) return false;  // We easily risk  being inside the critical section below, while deleting variables.
+  
+  {
+    CriticalGuard lock(cs_var_table);
+    return var_table->Get(name, ret);
   }
 }
 

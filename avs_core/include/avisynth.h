@@ -1013,6 +1013,12 @@ class IScriptEnvironment2 : public IScriptEnvironment{
 public:
   virtual __stdcall ~IScriptEnvironment2() {}
 
+  // Returns TRUE and the requested variable. If the method fails, returns FALSE and does not touch 'val'.
+  virtual bool  __stdcall GetVar(const char* name, AVSValue *val) = 0;
+
+  // Return the value of the requested variable.
+  // If the variable was not found or had the wrong type,
+  // return the supplied default value.
   virtual bool __stdcall GetVar(const char* name, bool def) = 0;
   virtual int  __stdcall GetVar(const char* name, int def) = 0;
   virtual double  __stdcall GetVar(const char* name, double def) = 0;
