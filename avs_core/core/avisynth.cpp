@@ -939,13 +939,14 @@ ScriptEnvironment::ScriptEnvironment()
 
     InitializeCriticalSectionAndSpinCount(&cs_var_table, 4000);
 
-    MEMORYSTATUS memstatus;
-    GlobalMemoryStatus(&memstatus);
+    MEMORYSTATUSEX memstatus;
+    memstatus.dwLength = sizeof(memstatus);
+    GlobalMemoryStatusEx(&memstatus);
     // Minimum 16MB
     // else physical memory/4
     // Maximum 0.5GB
-    if (memstatus.dwAvailPhys    > 64*1024*1024)
-      memory_max = (__int64)memstatus.dwAvailPhys >> 2;
+    if (memstatus.ullAvailPhys > 64*1024*1024)
+      memory_max = (__int64)memstatus.ullAvailPhys >> 2;
     else
       memory_max = 16*1024*1024;
 
@@ -1024,18 +1025,17 @@ ScriptEnvironment::~ScriptEnvironment() {
 
 int ScriptEnvironment::SetMemoryMax(int mem) {
   if (mem > 0) {
-    MEMORYSTATUS memstatus;
-    __int64 mem_limit;
 
-    GlobalMemoryStatus(&memstatus); // Correct call for a 32Bit process. -Ex gives numbers we cannot use!
+    MEMORYSTATUSEX memstatus;
+    memstatus.dwLength = sizeof(memstatus);
+    GlobalMemoryStatusEx(&memstatus);
 
     memory_max = mem * 1048576i64;                          // mem as megabytes
     if (memory_max < memory_used) memory_max = memory_used; // can't be less than we already have
 
-    if (memstatus.dwAvailVirtual < memstatus.dwAvailPhys) // Check for big memory in Vista64
-      mem_limit = (__int64)memstatus.dwAvailVirtual;
-    else
-      mem_limit = (__int64)memstatus.dwAvailPhys;
+    // We don't want to use more than the virtual address space. But also don't want to
+    // start paging to disk. So take the smaller of the two.
+    __int64 mem_limit = min(memstatus.ullAvailVirtual, memstatus.ullAvailPhys);
 
     mem_limit += memory_used - 5242880i64;
     if (memory_max > mem_limit) memory_max = mem_limit;     // can't be more than 5Mb less than total
