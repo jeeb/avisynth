@@ -303,11 +303,11 @@ class FunctionTable {
   Plugin* plugins;
   bool prescanning, reloading;
 
-  IScriptEnvironment* const env;
+  IScriptEnvironment2* const env;
 
 public:
 
-  FunctionTable(IScriptEnvironment* _env) : env(_env), prescanning(false), reloading(false) {
+  FunctionTable(IScriptEnvironment2* _env) : env(_env), prescanning(false), reloading(false) {
     local_functions = 0;
     plugins = 0;
   }
@@ -494,8 +494,8 @@ public:
     if (prescanning) {
       AVSValue fnplugin;
       char *fnpluginnew=0;
-      try {
-        fnplugin = env->GetVar("$PluginFunctions$");
+      if (env->GetVar("$PluginFunctions$", &fnplugin))
+      {
         int string_len = strlen(fnplugin.AsString())+1;   // +1 because we extend the list by adding a space before the new functions
 
         if (!duse)
@@ -517,7 +517,7 @@ public:
         env->SetGlobalVar("$PluginFunctions$", AVSValue(env->SaveString(fnpluginnew, string_len)));
         delete[] fnpluginnew;
 
-      } catch (...) {
+      } else {
         int string_len = 0;
         if (!duse && alt_name)
         {
@@ -873,7 +873,7 @@ private:
   // helper for Invoke
   int Flatten(const AVSValue& src, AVSValue* dst, int index, int max, const char* const* arg_names=0);
 
-  IScriptEnvironment* This() { return this; }
+  IScriptEnvironment2* This() { return this; }
   const char* GetPluginDirectory();
   bool LoadPluginsMatching(const char* pattern);
   void PrescanPlugins();
