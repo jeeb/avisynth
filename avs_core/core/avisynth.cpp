@@ -515,13 +515,13 @@ public:
       char *fnpluginnew=0;
       try {
         fnplugin = env->GetVar("$PluginFunctions$");
-        int string_len = strlen(fnplugin.AsString())+1;
+        int string_len = strlen(fnplugin.AsString())+1;   // +1 because we extend the list by adding a space before the new functions
 
         if (!duse)
-          string_len += strlen(name)+1;
+          string_len += strlen(name)+1; // +1 to account for terminating zero when reserving space
 
         if (alt_name)
-          string_len += strlen(alt_name)+1;
+          string_len += strlen(alt_name)+1; // +1 to account for separating space between name and altname
 
         fnpluginnew = new char[string_len];
         strcpy(fnpluginnew, fnplugin.AsString());
@@ -1174,37 +1174,28 @@ char* GetRegString(HKEY rootKey, const char path[], const char entry[]) {
 
 const char* ScriptEnvironment::GetPluginDirectory()
 {
-  char* plugin_dir;
-  try {
-    plugin_dir = (char*)GetVar("$PluginDir$").AsString();
-  }
-  catch (IScriptEnvironment::NotFound) {
+  const char* plugin_dir = GetVar("$PluginDir$", (char*)NULL);
+
+  if (plugin_dir == NULL){
     // Allow per user override of plugin directory - henktiggelaar, Jan 2011
-    plugin_dir = GetRegString(RegUserKey, RegAvisynthKey, RegPluginDir);
+    char *plugin_reg_dir = GetRegString(RegUserKey, RegAvisynthKey, RegPluginDir);
+    if (!plugin_reg_dir)
+      plugin_reg_dir = GetRegString(RegRootKey, RegAvisynthKey, RegPluginDir);
 
-    if (!plugin_dir)
-      plugin_dir = GetRegString(RegRootKey, RegAvisynthKey, RegPluginDir);
-
-    if (!plugin_dir)
+    if (!plugin_reg_dir)
       return 0;
 
     // remove trailing backslashes
-    int l = strlen(plugin_dir);
-    while (plugin_dir[l-1] == '\\')
+    int l = strlen(plugin_reg_dir);
+    while (plugin_reg_dir[l-1] == '\\')
       l--;
-    plugin_dir[l]=0;
-    SetGlobalVar("$PluginDir$", AVSValue(SaveString(plugin_dir)));  // Tritical May 2005
-    delete[] plugin_dir;
-    try {
-      plugin_dir = (char*)GetVar("$PluginDir$").AsString();
-    }
-    catch (...)
-    {
-      return 0;
-    }
-  }
-  catch (...) {
-    return 0;
+    plugin_reg_dir[l]=0;
+    SetGlobalVar("$PluginDir$", AVSValue(SaveString(plugin_reg_dir)));  // Tritical May 2005
+    delete[] plugin_reg_dir;
+
+    plugin_dir = GetVar("$PluginDir$").AsString();
+    if (plugin_dir == NULL)
+      return NULL;
   }
   return plugin_dir;
 }
@@ -2014,12 +2005,7 @@ void __stdcall ScriptEnvironment::DeleteScriptEnvironment() {
 
 
 IScriptEnvironment* __stdcall CreateScriptEnvironment(int version) {
-  if (loadplugin_prefix) free((void*)loadplugin_prefix);
-  loadplugin_prefix = NULL;
-  if (version <= AVISYNTH_INTERFACE_VERSION)
-    return new ScriptEnvironment;
-  else
-    return NULL;
+  return CreateScriptEnvironment2(version);
 }
 
 IScriptEnvironment2* __stdcall CreateScriptEnvironment2(int version) {

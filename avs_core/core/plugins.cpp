@@ -62,33 +62,32 @@ void FreeLibraries(void* loaded_plugins, IScriptEnvironment* env) {
 }
 
 static bool MyLoadLibrary(const char* filename, HMODULE* hmod, bool quiet, IScriptEnvironment* env) {
-  HMODULE* loaded_plugins;
-  try {
-    loaded_plugins = (HMODULE*)env->GetVar("$Plugins$").AsString();
-  }  // Tritical May 2005
-  catch (IScriptEnvironment::NotFound) {
+
+  IScriptEnvironment2* env2 = static_cast<IScriptEnvironment2*>(env);
+
+  HMODULE* loaded_plugins = (HMODULE*)env2->GetVar("$Plugins$", (char*)NULL);
+  if (loaded_plugins == NULL){
     HMODULE plugins[max_plugins]; // buffer to clone on stack
 
     memset(plugins, 0, max_plugins*sizeof(HMODULE));
     // Cheat and copy into SaveString buffer
-    env->SetGlobalVar("$Plugins$", env->SaveString((const char*)plugins, max_plugins*sizeof(HMODULE)));
-    try {
-        loaded_plugins = (HMODULE*)env->GetVar("$Plugins$").AsString();
-    }
-    catch(IScriptEnvironment::NotFound) {
+    env2->SetGlobalVar("$Plugins$", env2->SaveString((const char*)plugins, max_plugins*sizeof(HMODULE)));
+
+    loaded_plugins = (HMODULE*)env2->GetVar("$Plugins$", (char*)NULL);
+    if (loaded_plugins == NULL){
       if (!quiet)
-        env->ThrowError("LoadPlugin: unable to get plugin list $Plugins$, loading \"%s\"", filename);
+        env2->ThrowError("LoadPlugin: unable to get plugin list $Plugins$, loading \"%s\"", filename);
       return false;
     }
     // Register FreeLibraries(loaded_plugins) to be run at script close
-    env->AtExit(FreeLibraries, loaded_plugins);
+    env2->AtExit(FreeLibraries, loaded_plugins);
   }
   *hmod = LoadLibrary(filename);
   if (!*hmod)
     if (quiet)
       return false;
     else
-      env->ThrowError("LoadPlugin: unable to load \"%s\", error=0x%x", filename, GetLastError());
+      env2->ThrowError("LoadPlugin: unable to load \"%s\", error=0x%x", filename, GetLastError());
   // see if we've loaded this already, and add it to the list if not
   for (int j=0; j<max_plugins; ++j) {
     if (loaded_plugins[j] == *hmod) {
@@ -111,7 +110,7 @@ static bool MyLoadLibrary(const char* filename, HMODULE* hmod, bool quiet, IScri
   }
   FreeLibrary(*hmod);  // Tritical Jan 2006
   if (!quiet)
-    env->ThrowError("LoadPlugin: too many plugins loaded already (max. %d)", max_plugins);
+    env2->ThrowError("LoadPlugin: too many plugins loaded already (max. %d)", max_plugins);
   return false;
 }
 
