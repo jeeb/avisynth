@@ -37,12 +37,12 @@
 #include "internal.h"
 #include <cstdio>
 #include <malloc.h>
+#include <cassert>
 #include <avs/win.h>
 #include <avs/minmax.h>
 #include <avs/cpuid.h>
 #include "bitblt.h"
 
-const char* loadplugin_prefix = NULL;
 
 /********************************************************************
 * Native plugin support
@@ -61,6 +61,7 @@ void FreeLibraries(void* loaded_plugins, IScriptEnvironment* env) {
   memset(loaded_plugins, 0, max_plugins*sizeof(HMODULE));
 }
 
+const char* loadplugin_prefix = NULL;
 static bool MyLoadLibrary(const char* filename, HMODULE* hmod, bool quiet, IScriptEnvironment* env) {
 
   IScriptEnvironment2* env2 = static_cast<IScriptEnvironment2*>(env);
@@ -102,7 +103,7 @@ static bool MyLoadLibrary(const char* filename, HMODULE* hmod, bool quiet, IScri
       int pos2 = len-strcspn(t_string, "\\");
       free(t_string);  // Tritical May 2005
       strncat(result, filename+pos2, pos-pos2-1);
-      if (loadplugin_prefix) free((void*)loadplugin_prefix);  // Tritical May 2005
+      assert(!loadplugin_prefix);
       loadplugin_prefix = _strdup(result);
       loaded_plugins[j] = *hmod;
       return true;
@@ -158,8 +159,12 @@ AVSValue LoadPlugin(AVSValue args, void* user_data, IScriptEnvironment* env) {
       }
     }
   }
-  if (loadplugin_prefix) free((void*)loadplugin_prefix);  // Tritical May 2005
-  loadplugin_prefix = 0;
+
+  if (loadplugin_prefix) {
+    free((void*)loadplugin_prefix);
+    loadplugin_prefix = NULL;
+  }
+
   return result ? AVSValue(env->SaveString(result)) : AVSValue();
 }
 

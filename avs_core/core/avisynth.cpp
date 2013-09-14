@@ -101,16 +101,12 @@ const HKEY RegRootKey = HKEY_LOCAL_MACHINE;
 const char RegAvisynthKey[] = "Software\\Avisynth";
 const char RegPluginDir[] = "PluginDir2_5";
 
-
 const _PixelClip PixelClip;
-
-
-extern const char* loadplugin_prefix;  // in plugin.cpp
 
 // in plugins.cpp
 AVSValue LoadPlugin(AVSValue args, void* user_data, IScriptEnvironment* env);
 void FreeLibraries(void* loaded_plugins, IScriptEnvironment* env);
-
+extern const char* loadplugin_prefix;
 
 
 class LinkedVideoFrame {
@@ -2006,8 +2002,6 @@ IScriptEnvironment* __stdcall CreateScriptEnvironment(int version) {
 }
 
 IScriptEnvironment2* __stdcall CreateScriptEnvironment2(int version) {
-  if (loadplugin_prefix) free((void*)loadplugin_prefix);
-  loadplugin_prefix = NULL;
   if (version <= AVISYNTH_INTERFACE_VERSION)
     return new ScriptEnvironment;
   else
