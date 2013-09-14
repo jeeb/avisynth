@@ -330,12 +330,14 @@ AVSValue ExpNot::Evaluate(IScriptEnvironment* env)
 AVSValue ExpVariableReference::Evaluate(IScriptEnvironment* env) 
 {
   AVSValue result;
-  try {
-    // first look for a genuine variable
-    // Don't add a cache to this one, it's a Var
-    return env->GetVar(name);
+  IScriptEnvironment2 *env2 = static_cast<IScriptEnvironment2*>(env);
+
+  // first look for a genuine variable
+  // Don't add a cache to this one, it's a Var
+  if (env2->GetVar(name, &result)) {
+    return result;
   }
-  catch (IScriptEnvironment::NotFound) {
+  else {
     // Swap order to match ::Call below -- Gavino Jan 2010
     try {
       // next look for an argless function
