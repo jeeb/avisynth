@@ -46,7 +46,7 @@ class DynamicAssembledCode {
   void (__cdecl *entry)(void);        
    
 public:
-  DynamicAssembledCode() {ret = 0;};
+  DynamicAssembledCode();
   DynamicAssembledCode(Assembler &x86, IScriptEnvironment* env, const char * err_msg = "");
 
 // No Args

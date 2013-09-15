@@ -519,7 +519,7 @@ PVideoFrame __stdcall RGBAdjust::GetFrame(int n, IScriptEnvironment* env)
 			"     Loose Minimum:      ( %3d    / %3d    / %3d    )\n"
 			"     Loose Maximum:      ( %3d    / %3d    / %3d    )\n"
 			,
-			n,
+			(unsigned int)n,
 			Favg_r,Favg_g,Favg_b,
 			Fst_r,Fst_g,Fst_b,
 			min_r,min_g,min_b,

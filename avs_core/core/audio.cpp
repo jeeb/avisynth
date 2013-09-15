@@ -1016,13 +1016,11 @@ MixAudio::MixAudio(PClip _child, PClip _clip, double _track1_factor, double _tra
 
 
 void __stdcall MixAudio::GetAudio(void* buf, __int64 start, __int64 count, IScriptEnvironment* env) {
-  if (tempbuffer_size) {
-    if (tempbuffer_size < count) {
+  if (tempbuffer_size < count)
+  {
+    if (tempbuffer_size)
       delete[] tempbuffer;
-      tempbuffer = new signed char[(unsigned)(count * vi.BytesPerAudioSample())];
-      tempbuffer_size = (int)count;
-    }
-  } else {
+
     tempbuffer = new signed char[(unsigned)(count * vi.BytesPerAudioSample())];
     tempbuffer_size = (int)count;
   }
@@ -1081,7 +1079,7 @@ saturate3:
     }
   } else if (vi.SampleType()&SAMPLE_FLOAT) {
     SFLOAT* samples = (SFLOAT*)buf;
-    SFLOAT* clip_samples = (SFLOAT*)tempbuffer;
+    const SFLOAT* clip_samples = (SFLOAT*)tempbuffer;
     for (unsigned i = 0; i < unsigned(count)*channels; ++i) {
         samples[i] = (samples[i] * t1factor) + (clip_samples[i] * t2factor);
     }

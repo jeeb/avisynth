@@ -137,7 +137,7 @@ AVSsupereq(PClip _child, float* values, IScriptEnvironment* env)
 }
 private:
 
-void __stdcall AVSsupereq::GetAudio(void* buf, __int64 start, __int64 count, IScriptEnvironment* env)
+void __stdcall GetAudio(void* buf, __int64 start, __int64 count, IScriptEnvironment* env)
 {
   const unsigned last_nch   = (unsigned)vi.AudioChannels();
   const unsigned last_srate = (unsigned)vi.audio_samples_per_second;

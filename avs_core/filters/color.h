@@ -59,7 +59,7 @@ class Color : public GenericVideoFilter
 	unsigned char LUT_Y[256],LUT_U[256],LUT_V[256];
 	int           y_thresh1, y_thresh2, u_thresh1, u_thresh2, v_thresh1, v_thresh2;
 public:
-	Color::Color(PClip _child, double _gain_y, double _off_y, double _gamma_y, double _cont_y,
+	Color(PClip _child, double _gain_y, double _off_y, double _gamma_y, double _cont_y,
 							double _gain_u, double _off_u, double _gamma_u, double _cont_u,
 							double _gain_v, double _off_v, double _gamma_v, double _cont_v,
 							const char *_levels, const char *_opt, const char *_matrix, bool _colorbars,

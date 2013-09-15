@@ -246,7 +246,7 @@ PVideoFrame __stdcall Color::GetFrame(int frame, IScriptEnvironment* env)
       "Loose Minimum:      (   %3d   /   %3d   /   %3d    )\n"
       "Loose Maximum:      (   %3d   /   %3d   /   %3d    )\n"
       ,
-      frame,
+      (unsigned int)frame,
       Favg_y,Favg_u,Favg_v,
       min_y,min_u,min_v,
       max_y,max_u,max_v,

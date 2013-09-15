@@ -360,14 +360,10 @@ AVSValue __cdecl SwapYToUV::CreateYToYUV(AVSValue args, void* user_data, IScript
 SwapYToUV::SwapYToUV(PClip _child, PClip _clip, PClip _clipY, IScriptEnvironment* env)
   : GenericVideoFilter(_child), clip(_clip), clipY(_clipY) {
 
-  VideoInfo vi2=clip->GetVideoInfo();
-  VideoInfo vi3;
-  if (clipY)
-    vi3=clipY->GetVideoInfo();
-
   if (!vi.IsYUV())
     env->ThrowError("YToUV: Only YUV data accepted");
 
+  VideoInfo vi2=clip->GetVideoInfo();
   if (vi.height!=vi2.height)
     env->ThrowError("YToUV: Clips do not have the same height (U & V mismatch) !");
   if (vi.width!=vi2.width)
@@ -376,6 +372,7 @@ SwapYToUV::SwapYToUV(PClip _child, PClip _clip, PClip _clipY, IScriptEnvironment
     env->ThrowError("YToUV: YUY2 Clips must have same colorspace (U & V mismatch) !");
 
   if (clipY) {
+    VideoInfo vi3=clipY->GetVideoInfo();
     if (vi.IsYUY2() != vi3.IsYUY2()) 
       env->ThrowError("YToUV: YUY2 Clips must have same colorspace (UV & Y mismatch) !");
 

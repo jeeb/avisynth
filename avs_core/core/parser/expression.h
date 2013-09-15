@@ -67,8 +67,8 @@ public:
   PExpression() { Init(0); }
   PExpression(Expression* p) { Init(p); }
   PExpression(const PExpression& p) { Init(p.e); }
-  void operator=(Expression* p) { Set(p); }
-  void operator=(const PExpression& p) { Set(p.e); }
+  PExpression& operator=(Expression* p) { Set(p); return *this; }
+  PExpression& operator=(const PExpression& p) { Set(p.e); return *this; }
   int operator!() const { return !e; }
   operator void*() const { return e; }
   Expression* operator->() const { return e; }

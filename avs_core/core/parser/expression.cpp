@@ -73,13 +73,13 @@ AVSValue ExpExceptionTranslator::Evaluate(IScriptEnvironment* env)
     ChainEval(av, env);
     return av;
   }
-  catch (IScriptEnvironment::NotFound) {
+  catch (const IScriptEnvironment::NotFound&) {
     throw;
   }
-  catch (AvisynthError) {
+  catch (const AvisynthError&) {
     throw;
   }
-  catch (SehException &seh) {
+  catch (const SehException &seh) {
     if (seh.m_msg)
       env->ThrowError(seh.m_msg);
 	  else
@@ -99,7 +99,7 @@ AVSValue ExpTryCatch::Evaluate(IScriptEnvironment* env)
   try {
     return ExpExceptionTranslator::Evaluate(env);
   }
-  catch (AvisynthError ae) {
+  catch (const AvisynthError &ae) {
     env->SetVar(id, ae.msg);
     return catch_block->Evaluate(env);
   }
@@ -111,7 +111,7 @@ AVSValue ExpLine::Evaluate(IScriptEnvironment* env)
   try {
     return ExpExceptionTranslator::Evaluate(env);
   }
-  catch (AvisynthError ae) {
+  catch (const AvisynthError &ae) {
     env->ThrowError("%s\n(%s, line %d)", ae.msg, filename, line);
   }
   return 0;

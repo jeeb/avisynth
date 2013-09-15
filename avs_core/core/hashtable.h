@@ -50,6 +50,10 @@ class hashtable
 
 private:
 
+  // Prevent copying
+  hashtable(const hashtable&); // no implementation
+  hashtable& operator=(const hashtable&); // no implementation 
+    
   struct bucket;
   typedef bucket* bucket_ptr;
 

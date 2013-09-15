@@ -179,7 +179,7 @@ AVS_VideoFrame * AVSC_CC avs_get_frame(AVS_Clip * p, int n)
 		AVS_VideoFrame * f;
 		new((PVideoFrame *)&f) PVideoFrame(f0);
 		return f;
-	} catch (AvisynthError err) {
+	} catch (const AvisynthError &err) {
 		p->error = err.msg;
 		return 0;
 	} 
@@ -191,7 +191,7 @@ int AVSC_CC avs_get_parity(AVS_Clip * p, int n) // return field parity if field_
 	try {
 		p->error = 0;
 		return p->clip->GetParity(n);
-	} catch (AvisynthError err) {
+	} catch (const AvisynthError &err) {
 		p->error = err.msg;
 		return -1;
 	} 
@@ -204,7 +204,7 @@ int AVSC_CC avs_get_audio(AVS_Clip * p, void * buf, INT64 start, INT64 count) //
 		p->error = 0;
 		p->clip->GetAudio(buf, start, count, p->env);
 		return 0;
-	} catch (AvisynthError err) {
+	} catch (const AvisynthError &err) {
 		p->error = err.msg;
 		return -1;
 	} 
@@ -216,7 +216,7 @@ int AVSC_CC avs_set_cache_hints(AVS_Clip * p, int cachehints, int frame_range)  
 	try {
 		p->error = 0;
 		return p->clip->SetCacheHints(cachehints, frame_range);
-	} catch (AvisynthError err) {
+	} catch (const AvisynthError &err) {
 		p->error = err.msg;
 		return -1;
 	}
@@ -389,7 +389,7 @@ AVS_Value AVSC_CC avs_invoke(AVS_ScriptEnvironment * p, const char * name, AVS_V
 		new ((AVSValue *)&v) AVSValue(v0);
 	} catch (IScriptEnvironment::NotFound) {
     p->error = "Function Not Found";
-	} catch (AvisynthError err) {
+	} catch (const AvisynthError &err) {
 		p->error = err.msg;
 	}
   if (p->error)
@@ -407,7 +407,7 @@ AVS_Value AVSC_CC avs_get_var(AVS_ScriptEnvironment * p, const char* name)
 		new ((AVSValue *)&v) AVSValue(v0);
 	}
 	catch (IScriptEnvironment::NotFound) {}
-	catch (AvisynthError err) {
+	catch (const AvisynthError &err) {
 		p->error = err.msg;
 		v = avs_new_value_error(p->error);
 	}
@@ -420,7 +420,7 @@ int AVSC_CC avs_set_var(AVS_ScriptEnvironment * p, const char* name, AVS_Value v
 	p->error = 0;
 	try {
 		return p->env->SetVar(p->env->SaveString(name), *(const AVSValue *)(&val));
-	} catch (AvisynthError err) {
+	} catch (const AvisynthError &err) {
 		p->error = err.msg;
 		return -1;
 	}
@@ -432,7 +432,7 @@ int AVSC_CC avs_set_global_var(AVS_ScriptEnvironment * p, const char* name, AVS_
 	p->error = 0;
 	try {
 		return p->env->SetGlobalVar(p->env->SaveString(name), *(const AVSValue *)(&val));
-	} catch (AvisynthError err) {
+	} catch (const AvisynthError &err) {
 		p->error = err.msg;
 		return -1;
 	}
@@ -447,7 +447,7 @@ AVS_VideoFrame * AVSC_CC avs_new_video_frame_a(AVS_ScriptEnvironment * p, const 
 		AVS_VideoFrame * f;
 		new((PVideoFrame *)&f) PVideoFrame(f0);
 		return f;
-	} catch (AvisynthError err) {
+	} catch (const AvisynthError &err) {
 		p->error = err.msg;
 	}
 	return 0;
@@ -459,7 +459,7 @@ int AVSC_CC avs_make_writable(AVS_ScriptEnvironment * p, AVS_VideoFrame * * pvf)
 	p->error = 0;
 	try {
 		return p->env->MakeWritable((PVideoFrame *)(pvf));
-	} catch (AvisynthError err) {
+	} catch (const AvisynthError &err) {
 		p->error = err.msg;
 	}
 	return -1;
@@ -471,7 +471,7 @@ void AVSC_CC avs_bit_blt(AVS_ScriptEnvironment * p, BYTE * dstp, int dst_pitch, 
 	p->error = 0;
 	try {
 		p->env->BitBlt(dstp, dst_pitch, srcp, src_pitch, row_size, height);
-	} catch (AvisynthError err) {
+	} catch (const AvisynthError &err) {
 		p->error = err.msg;
 	}
 }
@@ -510,7 +510,7 @@ int AVSC_CC avs_check_version(AVS_ScriptEnvironment * p, int version)
 	try {
 		p->env->CheckVersion(version);
 		return 0;
-	} catch (AvisynthError err) {
+	} catch (const AvisynthError &err) {
 		p->error = err.msg;
 		return -1;
 	}
@@ -526,7 +526,7 @@ AVS_VideoFrame * AVSC_CC avs_subframe(AVS_ScriptEnvironment * p, AVS_VideoFrame 
 		AVS_VideoFrame * f;
 		new((PVideoFrame *)&f) PVideoFrame(f0);
 		return f;
-	} catch (AvisynthError err) {
+	} catch (const AvisynthError &err) {
 		p->error = err.msg;
 		return 0;
 	}
@@ -544,7 +544,7 @@ AVS_VideoFrame * AVSC_CC avs_subframe_planar(AVS_ScriptEnvironment * p, AVS_Vide
 		AVS_VideoFrame * f;
 		new((PVideoFrame *)&f) PVideoFrame(f0);
 		return f;
-	} catch (AvisynthError err) {
+	} catch (const AvisynthError &err) {
 		p->error = err.msg;
 		return 0;
 	}
@@ -556,7 +556,7 @@ int AVSC_CC avs_set_memory_max(AVS_ScriptEnvironment * p, int mem)
 	p->error = 0;
 	try {
 		return p->env->SetMemoryMax(mem);
-	} catch (AvisynthError err) {
+	} catch (const AvisynthError &err) {
 		p->error = err.msg;
 		return -1;
 	}
@@ -568,7 +568,7 @@ int AVSC_CC avs_set_working_dir(AVS_ScriptEnvironment * p, const char * newdir)
 	p->error = 0;
 	try {
 		return p->env->SetWorkingDir(newdir);
-	} catch (AvisynthError err) {
+	} catch (const AvisynthError &err) {
 		p->error = err.msg;
 		return -1;
 	}
@@ -584,7 +584,7 @@ AVS_ScriptEnvironment * AVSC_CC avs_create_script_environment(int version)
 	AVS_ScriptEnvironment * e = new AVS_ScriptEnvironment;
 	try {
 		e->env = CreateScriptEnvironment(version);
-	} catch (AvisynthError err) {
+	} catch (const AvisynthError &err) {
 		e->error = err.msg;
 		e->env = 0;
 	}

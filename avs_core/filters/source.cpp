@@ -878,7 +878,7 @@ AVSValue __cdecl Create_SegmentedSource(AVSValue args, void* use_directshow, ISc
             clip =  (IClip*)(new AVISource(filename, bAudio, pixel_type, fourCC, 0, env));
           }
           result = !result ? clip : new_Splice(result, clip, false, env);
-        } catch (AvisynthError e) {
+        } catch (const AvisynthError &e) {
           error_msg=e.msg;
         }
       }

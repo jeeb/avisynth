@@ -674,8 +674,7 @@ SeekExit:
       }
       if (m_pPos == NULL)  {
         // We have not created the CPosPassThru object yet. Do so now.
-        HRESULT hr = S_OK;
-        hr = CreatePosPassThru(NULL , FALSE, static_cast<IPin*>(this), &m_pPos);
+        HRESULT hr = CreatePosPassThru(NULL , FALSE, static_cast<IPin*>(this), &m_pPos);
 
         if (FAILED(hr))  {
           *ppv = 0;
@@ -2474,7 +2473,7 @@ AVSValue __cdecl Create_DirectShowSource(AVSValue args, void*, IScriptEnvironmen
     try {
       DS_audio = new DirectShowSource(filename, _avg_time_per_frame, seekmode, true , false,
                                       args[5].AsBool(false), _media, _timeout, _frames, log, env);
-    } catch (AvisynthError e) {
+    } catch (const AvisynthError &e) {
       a_e_msg = e.msg;
       audio_success = false;
     }
@@ -2482,7 +2481,7 @@ AVSValue __cdecl Create_DirectShowSource(AVSValue args, void*, IScriptEnvironmen
     try {
       DS_video = new DirectShowSource(filename, _avg_time_per_frame, seekmode, false, true,
                                       args[5].AsBool(false), _media, _timeout, _frames, log, env);
-    } catch (AvisynthError e) {
+    } catch (const AvisynthError &e) {
       if (!lstrcmpi(e.msg, "DirectShowSource: I can't determine the frame rate\n"
                            "of the video, you must use the \"fps\" parameter.") ) { // Note must match message above
             env->ThrowError(e.msg);

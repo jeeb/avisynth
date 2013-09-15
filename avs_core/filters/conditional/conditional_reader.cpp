@@ -689,7 +689,7 @@ bool Write::DoEval( IScriptEnvironment* env) {
 				result = env->Invoke("Eval",expr);
 				result = env->Invoke("string",result);	//convert all results to a string
 				arglist[i].string = result.AsString(EMPTY);
-			} catch (AvisynthError error) {
+			} catch (const AvisynthError &error) {
 				arglist[i].string = env->SaveString(error.msg);
 			}
 		}

@@ -343,9 +343,9 @@ class DirectShowSource : public IClip {
   void CheckHresult(IScriptEnvironment* env, HRESULT hr, const char* msg, const char* msg2 = "");
   HRESULT LoadGraphFile(IGraphBuilder *pGraph, const WCHAR* wszName);
   void cleanUp();
-  void DirectShowSource::SetMicrosoftDVtoFullResolution(IGraphBuilder* gb);
-  void DirectShowSource::DisableDeinterlacing(IFilterGraph *pGraph);
-  void DirectShowSource::SetWMAudioDecoderDMOtoHiResOutput(IFilterGraph *pGraph);
+  void SetMicrosoftDVtoFullResolution(IGraphBuilder* gb);
+  void DisableDeinterlacing(IFilterGraph *pGraph);
+  void SetWMAudioDecoderDMOtoHiResOutput(IFilterGraph *pGraph);
 
 public:
 

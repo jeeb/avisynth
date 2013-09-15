@@ -98,7 +98,7 @@ AVSsoundtouch(PClip _child, float _tempo, float _rate, float _pitch, const AVSVa
 	catch (...) { throw; }
 }
 
-static void AVSsoundtouch::setSettings(SoundTouch* sampler, const AVSValue* args, IScriptEnvironment* env)
+static void setSettings(SoundTouch* sampler, const AVSValue* args, IScriptEnvironment* env)
 {
 
   if (args[0].Defined()) sampler->setSetting(SETTING_SEQUENCE_MS,   args[0].AsInt());
@@ -120,7 +120,7 @@ static void AVSsoundtouch::setSettings(SoundTouch* sampler, const AVSValue* args
   
 }
 
-void __stdcall AVSsoundtouch::GetAudio(void* buf, __int64 start, __int64 count, IScriptEnvironment* env)
+void __stdcall GetAudio(void* buf, __int64 start, __int64 count, IScriptEnvironment* env)
 {
 
   if (start != next_sample) {  // Reset on seek
@@ -250,7 +250,7 @@ AVSStereoSoundTouch(PClip _child, float _tempo, float _rate, float _pitch, const
 
 }
 
-void __stdcall AVSStereoSoundTouch::GetAudio(void* buf, __int64 start, __int64 count, IScriptEnvironment* env)
+void __stdcall GetAudio(void* buf, __int64 start, __int64 count, IScriptEnvironment* env)
 {
 
   if (start != next_sample) {  // Reset on seek

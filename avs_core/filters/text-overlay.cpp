@@ -1696,7 +1696,7 @@ PVideoFrame __stdcall Compare::GetFrame(int n, IScriptEnvironment* env)
   }
 
   if (log)
-    fprintf(log,"%6u  %8.4f  %+9.4f  %3d    %3d    %8.4f\n", n, MAD, MD, pos_D, neg_D, PSNR);
+    fprintf(log,"%6u  %8.4f  %+9.4f  %3d    %3d    %8.4f\n", (unsigned int)n, MAD, MD, pos_D, neg_D, PSNR);
   else {
     env->MakeWritable(&f1);
     BYTE* dstp = f1->GetWritePtr();

@@ -247,7 +247,7 @@ private:
   CAVIFileSynth *parent;
   BOOL fAudio;
 
-  char *sName;
+  const char *sName;
 
   //////////// internal
 
@@ -265,11 +265,7 @@ BOOL APIENTRY DllMain(HANDLE hModule, ULONG ulReason, LPVOID lpReserved) {
   return TRUE;
 }
 
-// From the Microsoft AVIFile docs.  Dense code...
-
-extern "C" STDAPI DllGetClassObject(const CLSID& rclsid, const IID& riid, void **ppv);
-
-STDAPI DllGetClassObject(const CLSID& rclsid, const IID& riid, void **ppv) {
+STDAPI  DllGetClassObject(IN REFCLSID rclsid, IN REFIID riid, OUT LPVOID FAR* ppv){
 
   if (rclsid != CLSID_CAVIFileSynth) {
     _RPT0(0,"DllGetClassObject() CLASS_E_CLASSNOTAVAILABLE\n");
@@ -630,7 +626,7 @@ bool CAVIFileSynth::DelayInit2() {
         env = CreateScriptEnvironment2();
         if (!env) return false;
       }
-      catch (AvisynthError error) {
+      catch (const AvisynthError &error) {
         error_msg = error.msg;
         return false;
       }
@@ -679,15 +675,15 @@ bool CAVIFileSynth::DelayInit2() {
         AVIPadScanlines = env->GetVar(VARNAME_AVIPadScanlines, false);
 
       }
-      catch (AvisynthError error) {
+      catch (const AvisynthError &error) {
         error_msg = error.msg;
-        AVSValue args[2] = { error.msg, 0xff3333 };
-        static const char* const arg_names[2] = { 0, "text_color" };
         try {
+          AVSValue args[2] = { error.msg, 0xff3333 };
+          static const char* const arg_names[2] = { 0, "text_color" };
           filter_graph = env->Invoke("MessageClip", AVSValue(args, 2), arg_names).AsClip();
           vi = &filter_graph->GetVideoInfo();
         }
-        catch (AvisynthError) {
+        catch (const AvisynthError&) {
           filter_graph = 0;
         }
       }

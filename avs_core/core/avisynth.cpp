@@ -967,7 +967,7 @@ ScriptEnvironment::ScriptEnvironment()
     PrescanPlugins();
     ExportFilters();
   }
-  catch (AvisynthError err) {
+  catch (const AvisynthError &err) {
     if(SUCCEEDED(hrfromcoinit)) {
       hrfromcoinit=E_FAIL;
       CoUninitialize();

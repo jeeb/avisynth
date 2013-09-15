@@ -134,7 +134,7 @@ FilteredResizeH::FilteredResizeH( PClip _child, double subrange_left, double sub
         assemblerUV_aligned = GenerateResizer(PLANAR_U, true,  env);
       }
     }
-    catch (SoftWire::Error err) {
+    catch (const SoftWire::Error &err) {
        env->ThrowError("Resize: SoftWire exception : %s", err.getString());
     }
   }
@@ -1231,7 +1231,7 @@ FilteredResizeV::FilteredResizeV( PClip _child, double subrange_top, double subr
       assemblerUV_aligned = GenerateResizer(PLANAR_U, true, env);
     }
   }
-  catch (SoftWire::Error err) {
+  catch (const SoftWire::Error &err) {
      env->ThrowError("Resize: SoftWire exception : %s", err.getString());
   }
 }

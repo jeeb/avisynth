@@ -71,14 +71,21 @@ static void ReportException(EXCEPTION_POINTERS* ei, BYTE* ret) {
 
 }
 
+DynamicAssembledCode::DynamicAssembledCode() :
+  ret(NULL), entry(NULL)
+{
+  ret = 0;
+}
 
-DynamicAssembledCode::DynamicAssembledCode(Assembler &x86, IScriptEnvironment* env, const char * err_msg) {
+DynamicAssembledCode::DynamicAssembledCode(Assembler &x86, IScriptEnvironment* env, const char * err_msg) :
+  ret(NULL), entry(NULL)
+{
   entry = 0;
   const char* soft_err = "";
 
   try {
     entry = (void(*)())x86.callable();
-  } catch (Error _err) { soft_err = _err.getString(); }
+  } catch (const Error &_err) { soft_err = _err.getString(); }
 
   if(!entry)
   {
@@ -89,10 +96,9 @@ DynamicAssembledCode::DynamicAssembledCode(Assembler &x86, IScriptEnvironment* e
   ret = (BYTE*)x86.acquire();
 
 #ifdef _DEBUG
-  int bytes=0;
+//  int bytes=0;
 //  while (ret[bytes]!=0xCC) { bytes++; };
-//  _RPT1(0,"Dynamic code compiled into %i bytes.\n",bytes);
-  
+//  _RPT1(0,"Dynamic code compiled into %i bytes.\n",bytes); 
 #endif
 }
 

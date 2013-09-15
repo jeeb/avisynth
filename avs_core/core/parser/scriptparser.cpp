@@ -60,7 +60,7 @@ PExpression ScriptParser::Parse(void)
     }
 #endif
   }
-  catch (AvisynthError ae) {
+  catch (const AvisynthError &ae) {
     env->ThrowError("%s\n(%s, line %d, column %d)", ae.msg, filename, tokenizer.GetLine(), tokenizer.GetColumn(code));
   }
   return 0; // To make VC++ happy.  Why isn't the __declspec(noreturn) on ThrowError good enough?

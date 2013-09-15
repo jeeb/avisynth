@@ -61,14 +61,14 @@ public:
 
   Histogram(PClip _child, Mode _mode, AVSValue _option, IScriptEnvironment* env);
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
-  PVideoFrame Histogram::DrawModeClassic    (int n, IScriptEnvironment* env);
-  PVideoFrame Histogram::DrawModeLevels     (int n, IScriptEnvironment* env);
-  PVideoFrame Histogram::DrawModeColor      (int n, IScriptEnvironment* env);
-  PVideoFrame Histogram::DrawModeColor2     (int n, IScriptEnvironment* env);
-  PVideoFrame Histogram::DrawModeLuma       (int n, IScriptEnvironment* env);
-  PVideoFrame Histogram::DrawModeStereo     (int n, IScriptEnvironment* env);
-  PVideoFrame Histogram::DrawModeOverlay    (int n, IScriptEnvironment* env);
-  PVideoFrame Histogram::DrawModeAudioLevels(int n, IScriptEnvironment* env);
+  PVideoFrame DrawModeClassic    (int n, IScriptEnvironment* env);
+  PVideoFrame DrawModeLevels     (int n, IScriptEnvironment* env);
+  PVideoFrame DrawModeColor      (int n, IScriptEnvironment* env);
+  PVideoFrame DrawModeColor2     (int n, IScriptEnvironment* env);
+  PVideoFrame DrawModeLuma       (int n, IScriptEnvironment* env);
+  PVideoFrame DrawModeStereo     (int n, IScriptEnvironment* env);
+  PVideoFrame DrawModeOverlay    (int n, IScriptEnvironment* env);
+  PVideoFrame DrawModeAudioLevels(int n, IScriptEnvironment* env);
 
   static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env);
 private:

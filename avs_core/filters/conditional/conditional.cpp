@@ -122,7 +122,7 @@ PVideoFrame __stdcall ConditionalSelect::GetFrame(int n, IScriptEnvironment* env
     if (!result.IsInt())
       env->ThrowError("Conditional Select: Expression must return an integer!");
   }
-  catch (AvisynthError error) {    
+  catch (const AvisynthError &error) {    
     env->SetVar("last", prev_last);                   // Restore implicit last
     env->SetVar("current_frame", prev_current_frame); // Restore current_frame
 
@@ -269,7 +269,7 @@ PVideoFrame __stdcall ConditionalFilter::GetFrame(int n, IScriptEnvironment* env
     ScriptParser parser2(env, eval2.AsString(), "[Conditional Filter, Expression 2]");
     exp = parser2.Parse();
     e2_result = exp->Evaluate(env);
-  } catch (AvisynthError error) {    
+  } catch (const AvisynthError &error) {    
     const char* error_msg = error.msg;  
 
     PVideoFrame dst = source1->GetFrame(n,env);
@@ -325,7 +325,7 @@ PVideoFrame __stdcall ConditionalFilter::GetFrame(int n, IScriptEnvironment* env
     } else {
       env->ThrowError("ConditionalFilter: First expression did not return an integer, bool or float!");
     }
-  } catch (AvisynthError error) {    
+  } catch (const AvisynthError &error) {    
     const char* error_msg = error.msg;  
 
     PVideoFrame dst = source1->GetFrame(n,env);
@@ -445,7 +445,7 @@ PVideoFrame __stdcall ScriptClip::GetFrame(int n, IScriptEnvironment* env) {
     ScriptParser parser(env, script.AsString(), "[ScriptClip]");
     PExpression exp = parser.Parse();
     result = exp->Evaluate(env);
-  } catch (AvisynthError error) {    
+  } catch (const AvisynthError &error) {    
     const char* error_msg = error.msg;  
 
     PVideoFrame dst = child->GetFrame(n,env);

@@ -104,9 +104,10 @@ PVideoFrame __stdcall ConvertToRGB::GetFrame(int n, IScriptEnvironment* env)
   const int src_pitch = src->GetPitch();
   const BYTE* srcp = src->GetReadPtr();
 
+  /*
   int src_rowsize = __min(src_pitch, (src->GetRowSize()+7) & -8);
   // assumption: is_yuy2
-  /*if (use_mmx && ((src_rowsize & 7) == 0) && (src_rowsize >= 16)) { This block is commented out (disabling .asm sources) until CMake gets proper ASM support for VC++
+  if (use_mmx && ((src_rowsize & 7) == 0) && (src_rowsize >= 16)) { This block is commented out (disabling .asm sources) until CMake gets proper ASM support for VC++
     VideoInfo vi2 = vi;
     vi2.width=src_rowsize / 2;
     PVideoFrame dst = env->NewVideoFrame(vi2,-2); // force pitch == rowsize

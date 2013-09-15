@@ -1040,7 +1040,7 @@ TemporalSoften::TemporalSoften( PClip _child, unsigned radius, unsigned luma_thr
     planes[c++]=luma_thresh|(chroma_thresh<<8);
   } else if (vi.IsRGB()) {  // For RGB We use Luma.
     planes[c++]=0;
-    planes[c++]=luma_thresh|luma_thresh;
+    planes[c++]=luma_thresh;
   }
   planes[c]=0;
   accum_line=(int*)_aligned_malloc(((vi.width*vi.BytesFromPixels(1)+FRAME_ALIGN-1)/8)*16,64);

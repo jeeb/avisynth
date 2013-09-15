@@ -90,8 +90,8 @@ public:
  
 private:
   void fileRead(std::istream & file, BYTE * dstPtr, const int pitch, const int row_size, const int height);
-  void ImageReader::BlankFrame(PVideoFrame & frame);
-  void ImageReader::BlankApplyMessage(PVideoFrame & frame, const char * text, IScriptEnvironment * env);
+  void BlankFrame(PVideoFrame & frame);
+  void BlankApplyMessage(PVideoFrame & frame, const char * text, IScriptEnvironment * env);
   bool checkProperties(std::ifstream & file, PVideoFrame & frame, IScriptEnvironment * env);
 
   char base_name[MAX_PATH + 1];
