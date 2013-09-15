@@ -167,8 +167,11 @@ void __stdcall GetAudio(void* buf, __int64 start, __int64 count, IScriptEnvironm
     if (dst_samples_filled) {
       int copysamples = min((int)count-samples_filled, dst_samples_filled);
       // Copy finished samples
-      env->BitBlt((BYTE*)buf+samples_filled*last_nch*sizeof(SFLOAT),0,
-        (BYTE*)dstbuffer,0,copysamples*last_nch*sizeof(SFLOAT),1);
+      int pitch = copysamples*last_nch*sizeof(SFLOAT);
+      env->BitBlt((BYTE*)buf+samples_filled*last_nch*sizeof(SFLOAT), pitch,
+        (BYTE*)dstbuffer, pitch,
+        pitch, 1
+      );
       dst_samples_filled -= copysamples;
 
       if (dst_samples_filled) { // Move non-used samples

@@ -33,6 +33,7 @@
 #include "memcpy_amd.h"
 #include <avs/cpuid.h>
 #include <cstring>
+#include <cassert>
 
 // Assembler bitblit by Steady
 static void asm_BitBlt_ISSE(BYTE* dstp, int dst_pitch, const BYTE* srcp, int src_pitch, int row_size, int height) {
@@ -252,22 +253,34 @@ memoptA_done8:
 
 
 void BitBlt(BYTE* dstp, int dst_pitch, const BYTE* srcp, int src_pitch, int row_size, int height) {
-  if ( (!height)|| (!row_size)) return;
-  if (GetCPUFlags() & CPUF_INTEGER_SSE) {
-    if (height == 1 || (src_pitch == dst_pitch && dst_pitch == row_size)) {
-      memcpy_amd(dstp, srcp, row_size*height);
-    } else {
-      asm_BitBlt_ISSE(dstp,dst_pitch,srcp,src_pitch,row_size,height);
-    }
-    return;
+
+  // "row_size" is the number of data bytes in a row.
+  // "pitch" is the distance in bytes between two rows.
+  // Therefore, by definition, "pitch" is at least as great as "row_size".
+  assert(dst_pitch >= row_size);
+  assert(src_pitch >= row_size);
+
+  if ( (!height) || (!row_size) ) return;
+
+  if ( ((src_pitch == dst_pitch) && (dst_pitch == row_size)) || (height == 1) )
+  {  // we can copy the whole buffer in one go
+
+    if (GetCPUFlags() & CPUF_INTEGER_SSE)
+      memcpy_amd(dstp, srcp, src_pitch*height);  // SSE
+    else
+      memcpy(dstp, srcp, src_pitch*height);      // fallback
   }
-  if (height == 1 || (dst_pitch == src_pitch && src_pitch == row_size)) {
-    memcpy(dstp, srcp, row_size*height);
-  } else {
-    for (int y=height; y>0; --y) {
-      memcpy(dstp, srcp, row_size);
-      dstp += dst_pitch;
-      srcp += src_pitch;
+  else
+  {  // we must convert between the different pitch values
+
+    if (GetCPUFlags() & CPUF_INTEGER_SSE)
+      asm_BitBlt_ISSE(dstp,dst_pitch,srcp,src_pitch,row_size,height);
+    else {
+      for (int y=height; y>0; --y) {
+        memcpy(dstp, srcp, row_size);
+        dstp += dst_pitch;
+        srcp += src_pitch;
+      }
     }
   }
 }

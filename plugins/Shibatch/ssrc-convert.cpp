@@ -154,7 +154,7 @@ void __stdcall SSRC::GetAudio(void* buf, __int64 start, __int64 count, IScriptEn
 
     } else {  // Now we have enough data
 
-      env->BitBlt((BYTE*)buf, 0, (BYTE*)ssrc_samples, 0, ssrc_samples_tbr , 1);
+      env->BitBlt((BYTE*)buf, ssrc_samples_tbr, (BYTE*)ssrc_samples, ssrc_samples_tbr, ssrc_samples_tbr , 1);
       res->Read(count);
       buffer_full = true;
     }
