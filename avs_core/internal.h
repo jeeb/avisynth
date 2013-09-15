@@ -73,14 +73,6 @@ PClip new_Splice(PClip _child1, PClip _child2, bool realign_sound, IScriptEnviro
 PClip new_SeparateFields(PClip _child, IScriptEnvironment* env);
 PClip new_AssumeFrameBased(PClip _child);
 
-void BitBlt(BYTE* dstp, int dst_pitch, const BYTE* srcp, 
-            int src_pitch, int row_size, int height);
-
-void asm_BitBlt_ISSE(BYTE* dstp, int dst_pitch, const BYTE* srcp, int src_pitch, int row_size, int height);
-void asm_BitBlt_MMX(BYTE* dstp, int dst_pitch, const BYTE* srcp, int src_pitch, int row_size, int height);
-
-long GetCPUFlags();
-
 
 class _PixelClip {
   enum { buffer=320 };

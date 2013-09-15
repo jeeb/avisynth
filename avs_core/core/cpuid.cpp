@@ -19,14 +19,14 @@
 //	Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
 #include <excpt.h>
-
-static long g_lCPUExtensionsAvailable;
+#include "cpuid.h"
 
 #define CPUF_SUPPORTS_SSE                       (0x00000010L)
 #define CPUF_SUPPORTS_SSE2                      (0x00000020L)
 
 // This is ridiculous.
 
+static long g_lCPUExtensionsAvailable;
 static long CPUCheckForSSESupport() {
 	__try {
 //		__asm andps xmm0,xmm0
@@ -43,7 +43,7 @@ static long CPUCheckForSSESupport() {
 	return g_lCPUExtensionsAvailable;
 }
 
-long __declspec(naked) CPUCheckForExtensions() {
+static long __declspec(naked) CPUCheckForExtensions() {
 	__asm {
 		push	ebp
 		push	edi
@@ -159,4 +159,9 @@ nocheck:
 		pop		ebp
 		ret
 	}
+}
+
+long GetCPUFlags() {
+  static long lCPUExtensionsAvailable = CPUCheckForExtensions();
+  return lCPUExtensionsAvailable;
 }

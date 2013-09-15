@@ -42,4 +42,11 @@ MEMCPY_AMD.CPP
 // "Streaming Store"), and also uses the software prefetchnta instructions,
 // be sure you're running on Athlon/Duron or other recent CPU before calling!
 
+#ifndef AVSCORE_MEMCPY_AMD
+#define AVSCORE_MEMCPY_AMD
+
+#include <stddef.h>
+
 void memcpy_amd(void *dest, const void *src, size_t n);
+
+#endif // AVSCORE_MEMCPY_AMD

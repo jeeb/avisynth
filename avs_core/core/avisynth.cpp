@@ -34,7 +34,6 @@
 
 #include "../internal.h"
 #include "./parser/script.h"
-#include "memcpy_amd.h"
 #include "cache.h"
 #include "minmax.h"
 
@@ -880,7 +879,6 @@ private:
 
   LinkedVideoFrameBuffer* GetFrameBuffer2(int size);
   VideoFrameBuffer* GetFrameBuffer(int size);
-  long CPU_id;
 
   // helper for Invoke
   int Flatten(const AVSValue& src, AVSValue* dst, int index, int max, const char* const* arg_names=0);
@@ -908,7 +906,6 @@ private:
 
 volatile long ScriptEnvironment::refcount=0;
 CRITICAL_SECTION ScriptEnvironment::cs_relink_video_frame_buffer;
-extern long CPUCheckForExtensions();  // in cpuaccel.cpp
 
 ScriptEnvironment::ScriptEnvironment()
   : at_exit(),
@@ -930,8 +927,6 @@ ScriptEnvironment::ScriptEnvironment()
     }
     // Remember our threadId.
     coinitThreadId=GetCurrentThreadId();
-
-    CPU_id = CPUCheckForExtensions();
 
     if(InterlockedCompareExchange(&refcount, 1, 0) == 0)//tsp June 2005 Initialize Recycle bin
     {
@@ -1060,13 +1055,7 @@ void ScriptEnvironment::CheckVersion(int version) {
     ThrowError("Plugin was designed for a later version of Avisynth (%d)", version);
 }
 
-
-long GetCPUFlags() {
-  static long lCPUExtensionsAvailable = CPUCheckForExtensions();
-  return lCPUExtensionsAvailable;
-}
-
-long ScriptEnvironment::GetCPUFlags() { return CPU_id; }
+long ScriptEnvironment::GetCPUFlags() { return ::GetCPUFlags(); }
 
 void ScriptEnvironment::AddFunction(const char* name, const char* params, ApplyFunc apply, void* user_data) {
   function_table.AddFunction(ScriptEnvironment::SaveString(name), ScriptEnvironment::SaveString(params), apply, user_data);
@@ -1897,249 +1886,6 @@ success:;
 bool ScriptEnvironment::FunctionExists(const char* name) {
   return function_table.Exists(name);
 }
-
-void BitBlt(BYTE* dstp, int dst_pitch, const BYTE* srcp, int src_pitch, int row_size, int height) {
-  if ( (!height)|| (!row_size)) return;
-  if (GetCPUFlags() & CPUF_INTEGER_SSE) {
-    if (height == 1 || (src_pitch == dst_pitch && dst_pitch == row_size)) {
-      memcpy_amd(dstp, srcp, row_size*height);
-    } else {
-      asm_BitBlt_ISSE(dstp,dst_pitch,srcp,src_pitch,row_size,height);
-    }
-    return;
-  }
-  if (height == 1 || (dst_pitch == src_pitch && src_pitch == row_size)) {
-    memcpy(dstp, srcp, row_size*height);
-  } else {
-    for (int y=height; y>0; --y) {
-      memcpy(dstp, srcp, row_size);
-      dstp += dst_pitch;
-      srcp += src_pitch;
-    }
-  }
-}
-
-  /*****************************
-  * Assembler bitblit by Steady
-   *****************************/
-
-
-void asm_BitBlt_ISSE(BYTE* dstp, int dst_pitch, const BYTE* srcp, int src_pitch, int row_size, int height) {
-
-  // Warning! : If you modify this routine, check the generated assembler to make sure
-  //            the stupid compiler is saving the ebx register in the entry prologue.
-  //            And don't just add an extra push/pop ebx pair around the code, try to
-  //            convince the compiler to do the right thing, it's not hard, usually a
-  //            slight shuffle or a well placed "__asm mov ebx,ebx" does the trick.
-
-  if(row_size==0 || height==0) return; //abort on goofs
-  //move backwards for easier looping and to disable hardware prefetch
-  const BYTE* srcStart=srcp+src_pitch*(height-1);
-  BYTE* dstStart=dstp+dst_pitch*(height-1);
-
-  if(row_size < 64) {
-    _asm {
-      mov   esi,srcStart  //move rows from bottom up
-      mov   edi,dstStart
-      mov   edx,row_size
-      dec   edx
-      mov   ebx,height
-      align 16
-memoptS_rowloop:
-      mov   ecx,edx
-//      rep movsb
-memoptS_byteloop:
-      mov   AL,[esi+ecx]
-      mov   [edi+ecx],AL
-      sub   ecx,1
-      jnc   memoptS_byteloop
-      sub   esi,src_pitch
-      sub   edi,dst_pitch
-      dec   ebx
-      jne   memoptS_rowloop
-    };
-    return;
-  }//end small version
-
-  else if( (int(dstp) | row_size | src_pitch | dst_pitch) & 7) {//not QW aligned
-    //unaligned version makes no assumptions on alignment
-
-    _asm {
-//****** initialize
-      mov   esi,srcStart  //bottom row
-      mov   AL,[esi]
-      mov   edi,dstStart
-      mov   edx,row_size
-      mov   ebx,height
-
-//********** loop starts here ***********
-
-      align 16
-memoptU_rowloop:
-      mov   ecx,edx     //row_size
-      dec   ecx         //offset to last byte in row
-      add   ecx,esi     //ecx= ptr last byte in row
-      and   ecx,~63     //align to first byte in cache line
-memoptU_prefetchloop:
-      mov   AX,[ecx]    //tried AL,AX,EAX, AX a tiny bit faster
-      sub   ecx,64
-      cmp   ecx,esi
-      jae   memoptU_prefetchloop
-
-//************ write *************
-
-      movq    mm6,[esi]     //move the first unaligned bytes
-      movntq  [edi],mm6
-//************************
-      mov   eax,edi
-      neg   eax
-      mov   ecx,eax
-      and   eax,63      //eax=bytes from [edi] to start of next 64 byte cache line
-      and   ecx,7       //ecx=bytes from [edi] to next QW
-      align 16
-memoptU_prewrite8loop:        //write out odd QW's so 64 bit write is cache line aligned
-      cmp   ecx,eax           //start of cache line ?
-      jz    memoptU_pre8done  //if not, write single QW
-      movq    mm7,[esi+ecx]
-      movntq  [edi+ecx],mm7
-      add   ecx,8
-      jmp   memoptU_prewrite8loop
-
-      align 16
-memoptU_write64loop:
-      movntq  [edi+ecx-64],mm0
-      movntq  [edi+ecx-56],mm1
-      movntq  [edi+ecx-48],mm2
-      movntq  [edi+ecx-40],mm3
-      movntq  [edi+ecx-32],mm4
-      movntq  [edi+ecx-24],mm5
-      movntq  [edi+ecx-16],mm6
-      movntq  [edi+ecx- 8],mm7
-memoptU_pre8done:
-      add   ecx,64
-      cmp   ecx,edx         //while(offset <= row_size) do {...
-      ja    memoptU_done64
-      movq    mm0,[esi+ecx-64]
-      movq    mm1,[esi+ecx-56]
-      movq    mm2,[esi+ecx-48]
-      movq    mm3,[esi+ecx-40]
-      movq    mm4,[esi+ecx-32]
-      movq    mm5,[esi+ecx-24]
-      movq    mm6,[esi+ecx-16]
-      movq    mm7,[esi+ecx- 8]
-      jmp   memoptU_write64loop
-memoptU_done64:
-
-      sub     ecx,64    //went to far
-      align 16
-memoptU_write8loop:
-      add     ecx,8           //next QW
-      cmp     ecx,edx         //any QW's left in row ?
-      ja      memoptU_done8
-      movq    mm0,[esi+ecx-8]
-      movntq  [edi+ecx-8],mm0
-      jmp   memoptU_write8loop
-memoptU_done8:
-
-      movq    mm1,[esi+edx-8] //write the last unaligned bytes
-      movntq  [edi+edx-8],mm1
-      sub   esi,src_pitch
-      sub   edi,dst_pitch
-      dec   ebx               //row counter (=height at start)
-      jne   memoptU_rowloop
-
-      sfence
-      emms
-    };
-    return;
-  }//end unaligned version
-
-  else {//QW aligned version (fastest)
-  //else dstp and row_size QW aligned - hope for the best from srcp
-  //QW aligned version should generally be true when copying full rows
-    _asm {
-      mov   esi,srcStart  //start of bottom row
-      mov   edi,dstStart
-      mov   ebx,height
-      mov   edx,row_size
-      align 16
-memoptA_rowloop:
-      mov   ecx,edx //row_size
-      dec   ecx     //offset to last byte in row
-
-//********forward routine
-      add   ecx,esi
-      and   ecx,~63   //align prefetch to first byte in cache line(~3-4% faster)
-      align 16
-memoptA_prefetchloop:
-      mov   AX,[ecx]
-      sub   ecx,64
-      cmp   ecx,esi
-      jae   memoptA_prefetchloop
-
-      mov   eax,edi
-      xor   ecx,ecx
-      neg   eax
-      and   eax,63            //eax=bytes from edi to start of cache line
-      align 16
-memoptA_prewrite8loop:        //write out odd QW's so 64bit write is cache line aligned
-      cmp   ecx,eax           //start of cache line ?
-      jz    memoptA_pre8done  //if not, write single QW
-      movq    mm7,[esi+ecx]
-      movntq  [edi+ecx],mm7
-      add   ecx,8
-      jmp   memoptA_prewrite8loop
-
-      align 16
-memoptA_write64loop:
-      movntq  [edi+ecx-64],mm0
-      movntq  [edi+ecx-56],mm1
-      movntq  [edi+ecx-48],mm2
-      movntq  [edi+ecx-40],mm3
-      movntq  [edi+ecx-32],mm4
-      movntq  [edi+ecx-24],mm5
-      movntq  [edi+ecx-16],mm6
-      movntq  [edi+ecx- 8],mm7
-memoptA_pre8done:
-      add   ecx,64
-      cmp   ecx,edx
-      ja    memoptA_done64    //less than 64 bytes left
-      movq    mm0,[esi+ecx-64]
-      movq    mm1,[esi+ecx-56]
-      movq    mm2,[esi+ecx-48]
-      movq    mm3,[esi+ecx-40]
-      movq    mm4,[esi+ecx-32]
-      movq    mm5,[esi+ecx-24]
-      movq    mm6,[esi+ecx-16]
-      movq    mm7,[esi+ecx- 8]
-      jmp   memoptA_write64loop
-
-memoptA_done64:
-      sub   ecx,64
-
-      align 16
-memoptA_write8loop:           //less than 8 QW's left
-      add   ecx,8
-      cmp   ecx,edx
-      ja    memoptA_done8     //no QW's left
-      movq    mm7,[esi+ecx-8]
-      movntq  [edi+ecx-8],mm7
-      jmp   memoptA_write8loop
-
-memoptA_done8:
-      sub   esi,src_pitch
-      sub   edi,dst_pitch
-      dec   ebx               //row counter (height)
-      jne   memoptA_rowloop
-
-      sfence
-      emms
-    };
-    return;
-  }//end aligned version
-}//end BitBlt_memopt()
-
-
 
 void ScriptEnvironment::BitBlt(BYTE* dstp, int dst_pitch, const BYTE* srcp, int src_pitch, int row_size, int height) {
   if (height<0)

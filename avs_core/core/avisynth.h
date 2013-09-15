@@ -921,25 +921,9 @@ private:
 };
 #endif
 
-// For GetCPUFlags.  These are backwards-compatible with those in VirtualDub.
-enum {
-                    /* oldest CPU to support extension */
-  CPUF_FORCE        =  0x01,   //  N/A
-  CPUF_FPU          =  0x02,   //  386/486DX
-  CPUF_MMX          =  0x04,   //  P55C, K6, PII
-  CPUF_INTEGER_SSE  =  0x08,   //  PIII, Athlon
-  CPUF_SSE          =  0x10,   //  PIII, Athlon XP/MP
-  CPUF_SSE2         =  0x20,   //  PIV, K8
-  CPUF_3DNOW        =  0x40,   //  K6-2
-  CPUF_3DNOW_EXT    =  0x80,   //  Athlon
-  CPUF_X86_64       =  0xA0,   //  Hammer (note: equiv. to 3DNow + SSE2, which
-                               //          only Hammer will have anyway)
-  CPUF_SSE3         = 0x100,   //  PIV+, K8 Venice
-  CPUF_SSSE3        = 0x200,   //  Core 2
-  CPUF_SSE4         = 0x400,   //  Penryn, Wolfdale, Yorkfield
-  CPUF_SSE4_1       = 0x400,
-  CPUF_SSE4_2       = 0x800,   //  Nehalem
-};
+#include "cpuid.h"
+#include "bitblt.h"
+
 #if 0
 #define MAX_INT 0x7fffffff
 #define MIN_INT -0x7fffffff  // ::FIXME:: research why this is not 0x80000000
