@@ -85,8 +85,13 @@ typedef unsigned char   BYTE;
 // so I now set the Avisynth struct alignment explicitly here.
 #pragma pack(push,8)
 
-#define FRAME_ALIGN 16
-// Default frame alignment is 16 bytes, to help P4, when using SSE2
+// NOTE TO PLUGIN AUTHORS:
+// Because FRAME_ALIGN can be substantially higher than the alignment 
+// a plugin actually needs, plugins should not use FRAME_ALIGN to check for
+// alignment. They should always request the exact alignment value they need.
+// This is to make sure that plugins work over the widest range of AviSynth
+// builds possible.
+#define FRAME_ALIGN 32
 
 // The VideoInfo struct holds global information about a clip (i.e.
 // information that does not depend on the frame number).  The GetVideoInfo
