@@ -3,13 +3,7 @@
 CMAKE_MINIMUM_REQUIRED( VERSION 2.8.11 )
 
 # Find all the input files
-FILE(GLOB_RECURSE AvsCore_Sources RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}"
-  "${CMAKE_CURRENT_SOURCE_DIR}/*.asm"
-  "${CMAKE_CURRENT_SOURCE_DIR}/*.c"
-  "${CMAKE_CURRENT_SOURCE_DIR}/*.cpp"
-  "${CMAKE_CURRENT_SOURCE_DIR}/*.h"
-  "${CMAKE_CURRENT_SOURCE_DIR}/*.def"
-)
+Include("Files.cmake")
 
 IF( MSVC_IDE )  # Check for Visual Studio
   # Enable MASM-style assembler support

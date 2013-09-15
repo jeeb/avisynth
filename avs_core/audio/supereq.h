@@ -25,7 +25,7 @@ Copyright © 2003, Klaus Post
 #define _SUPEREQ_H_
 
 #include "../internal.h"
-#include "../../distrib/include/pfc/pfc.h"
+#include "3rd_party/PFC/pfc.h"
 
 typedef SFLOAT audio_sample;
 typedef audio_sample REAL_inout;

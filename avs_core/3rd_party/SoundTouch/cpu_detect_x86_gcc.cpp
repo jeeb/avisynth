@@ -1,3 +1,5 @@
+#ifdef __GNUC__
+
 ////////////////////////////////////////////////////////////////////////////////
 ///
 /// gcc version of the x86 CPU detect routine.
@@ -136,3 +138,5 @@ uint detectCPUextensions(void)
     return res & ~_dwDisabledISA;
 #endif
 }
+
+#endif
