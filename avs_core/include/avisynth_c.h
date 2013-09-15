@@ -33,33 +33,7 @@
 #ifndef __AVISYNTH_C__
 #define __AVISYNTH_C__
 
-#ifdef __cplusplus
-#  define EXTERN_C extern "C"
-#else
-#  define EXTERN_C
-#endif
-
-#define AVSC_USE_STDCALL 1
-
-#ifndef AVSC_USE_STDCALL
-#  define AVSC_CC __cdecl
-#else
-#  define AVSC_CC __stdcall
-#endif
-
-#define AVSC_INLINE static __inline
-
-#ifdef BUILDING_AVSCORE
-#  define AVSC_EXPORT EXTERN_C
-#  define AVSC_API(ret, name) EXTERN_C __declspec(dllexport) ret AVSC_CC name
-#else
-#  define AVSC_EXPORT EXTERN_C __declspec(dllexport)
-#  ifndef AVSC_NO_DECLSPEC
-#    define AVSC_API(ret, name) EXTERN_C __declspec(dllimport) ret AVSC_CC name
-#  else
-#    define AVSC_API(ret, name) typedef ret (AVSC_CC *name##_func)
-#  endif
-#endif
+#include <avs/capi.h>
 
 typedef unsigned char BYTE;
 #ifdef __GNUC__

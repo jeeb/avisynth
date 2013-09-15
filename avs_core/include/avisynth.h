@@ -996,9 +996,42 @@ public:
 }; // end class IScriptEnvironment
 
 
+/* -----------------------------------------------------------------------------
+   Note to plugin authors: The interface in IScriptEnvironment2 is 
+      preliminary / under construction / only for testing / non-final etc.!
+      As long as you see this note here, IScriptEnvironment2 might still change, 
+      in which case your plugin WILL break. This also means that you are welcome
+      to test it and give your feedback about any ideas, improvements, or issues
+      you might have.
+   ----------------------------------------------------------------------------- */
+class IScriptEnvironment2 : public IScriptEnvironment{
+public:
+  virtual __stdcall ~IScriptEnvironment2() {}
+
+  virtual bool __stdcall GetVar(const char* name, bool def) = 0;
+  virtual int  __stdcall GetVar(const char* name, int def) = 0;
+  virtual double  __stdcall GetVar(const char* name, double def) = 0;
+  virtual const char*  __stdcall GetVar(const char* name, const char* def) = 0;
+
+}; // end class IScriptEnvironment2
+
+
 // avisynth.dll exports this; it's a way to use it as a library, without
 // writing an AVS script or without going through AVIFile.
 IScriptEnvironment* __stdcall CreateScriptEnvironment(int version = AVISYNTH_INTERFACE_VERSION);
+
+
+// These are some global variables you can set in your script to change AviSynth's behavior.
+#define VARNAME_AllowFloatAudio   "OPT_AllowFloatAudio"   // Allow WAVE_FORMAT_IEEE_FLOAT audio output
+#define VARNAME_VDubPlanarHack    "OPT_VDubPlanarHack"    // Hack YV16 and YV24 chroma plane order for old VDub's
+#define VARNAME_AVIPadScanlines   "OPT_AVIPadScanlines"   // Have scanlines mod4 padded in all pixel formats
+#define VARNAME_UseWaveExtensible "OPT_UseWaveExtensible" // Use WAVEFORMATEXTENSIBLE when describing audio to Windows
+#define VARNAME_dwChannelMask     "OPT_dwChannelMask"     // Integer audio channel mask. See description of WAVEFORMATEXTENSIBLE for more info.
+
+
+// C exports
+#include <avs/capi.h>
+AVSC_API(IScriptEnvironment2*, CreateScriptEnvironment2)(int version = AVISYNTH_INTERFACE_VERSION);
 
 
 #pragma pack(pop)

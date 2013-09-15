@@ -33,6 +33,7 @@
 // import and export plugins, or graphical user interfaces.
 
 
+#include <avisynth.h>
 #include "internal.h"
 #include <avs/win.h>
 #include <avs/minmax.h>
@@ -133,7 +134,7 @@ private:
   long m_refs;
 
   char* szScriptName;
-  IScriptEnvironment* env;
+  IScriptEnvironment2* env;
   PClip filter_graph;
   const VideoInfo* vi;
   const char* error_msg;
@@ -556,12 +557,12 @@ STDMETHODIMP CAVIFileSynth::DeleteStream(DWORD fccType, LONG lParam) {
 CAVIFileSynth::CAVIFileSynth(const CLSID& rclsid) {
   _RPT1(0,"%p->CAVIFileSynth::CAVIFileSynth()\n", this);
 
-  m_refs = 0; AddRef();
+  m_refs = 0;
+  AddRef();
 
-  szScriptName = 0;
-  env = 0;
-
-  error_msg = 0;
+  szScriptName = NULL;
+  env = NULL;
+  error_msg = NULL;
 
   VDubPlanarHack = false;
   AVIPadScanlines = false;
@@ -579,7 +580,7 @@ CAVIFileSynth::~CAVIFileSynth() {
   filter_graph = 0;
 
   if (env) env->DeleteScriptEnvironment();
-  env = 0;
+  env = NULL;
 
   DeleteCriticalSection(&cs_filter_graph);
 }
@@ -593,9 +594,9 @@ STDMETHODIMP CAVIFileSynth::Open(LPCSTR szFile, UINT mode, LPCOLESTR lpszFileNam
     return E_FAIL;
 
   if (env) env->DeleteScriptEnvironment();   // just in case
-  env = 0;
+  env = NULL;
   filter_graph = 0;
-  vi = 0;
+  vi = NULL;
 
   szScriptName = new char[lstrlen(szFile)+1];
   if (!szScriptName)
@@ -626,7 +627,7 @@ bool CAVIFileSynth::DelayInit2() {
 #endif
       try {
         // create a script environment and load the script into it
-        env = CreateScriptEnvironment();
+        env = CreateScriptEnvironment2();
         if (!env) return false;
       }
       catch (AvisynthError error) {
@@ -639,13 +640,7 @@ bool CAVIFileSynth::DelayInit2() {
         if (return_val.IsClip()) {
 
           // Allow WAVE_FORMAT_IEEE_FLOAT audio output
-          bool AllowFloatAudio = false;
-
-          try {
-            AVSValue v = env->GetVar("OPT_AllowFloatAudio");
-            AllowFloatAudio = v.IsBool() ? v.AsBool() : false;
-          }
-          catch (IScriptEnvironment::NotFound) { }
+          bool AllowFloatAudio = env->GetVar(VARNAME_AllowFloatAudio, false);
 
           filter_graph = return_val.AsClip();
 
@@ -678,18 +673,10 @@ bool CAVIFileSynth::DelayInit2() {
         vi = &filter_graph->GetVideoInfo();
 
         // Hack YV16 and YV24 chroma plane order for old VDub's
-        try {
-          AVSValue v = env->GetVar("OPT_VDubPlanarHack");
-          VDubPlanarHack = v.IsBool() ? v.AsBool() : false;
-        }
-        catch (IScriptEnvironment::NotFound) { }
+        VDubPlanarHack = env->GetVar(VARNAME_VDubPlanarHack, false);
 
         // Option to have scanlines mod4 padded in all pixel formats
-        try {
-          AVSValue v = env->GetVar("OPT_AVIPadScanlines");
-          AVIPadScanlines = v.IsBool() ? v.AsBool() : false;
-        }
-        catch (IScriptEnvironment::NotFound) { }
+        AVIPadScanlines = env->GetVar(VARNAME_AVIPadScanlines, false);
 
       }
       catch (AvisynthError error) {
@@ -1206,12 +1193,7 @@ STDMETHODIMP CAVIStreamSynth::ReadFormat(LONG lPos, LPVOID lpFormat, LONG *lpcbF
 
   if (!lpcbFormat) return E_POINTER;
 
-  bool UseWaveExtensible = false;
-  try {
-    AVSValue v = parent->env->GetVar("OPT_UseWaveExtensible");
-    UseWaveExtensible = v.IsBool() ? v.AsBool() : false;
-  }
-  catch (IScriptEnvironment::NotFound) { }
+  bool UseWaveExtensible = parent->env->GetVar(VARNAME_UseWaveExtensible, false);
 
   if (!lpFormat) {
     *lpcbFormat = fAudio ? ( UseWaveExtensible ? sizeof(WAVEFORMATEXTENSIBLE)
@@ -1258,11 +1240,9 @@ STDMETHODIMP CAVIStreamSynth::ReadFormat(LONG lPos, LPVOID lpFormat, LONG *lpcbF
       : (unsigned)vi->AudioChannels() <=18 ? DWORD(-1) >> (32-vi->AudioChannels())
         : SPEAKER_ALL;
 
-      try {
-        AVSValue v = parent->env->GetVar("OPT_dwChannelMask");
-        if (v.IsInt()) wfxt.dwChannelMask = (unsigned)(v.AsInt());
-      }
-      catch (IScriptEnvironment::NotFound) { }
+      unsigned int userChannelMask = (unsigned)(parent->env->GetVar(VARNAME_dwChannelMask, 0));
+      if (userChannelMask != 0)
+        wfxt.dwChannelMask = userChannelMask;
 
       wfxt.SubFormat = vi->IsSampleType(SAMPLE_FLOAT) ? KSDATAFORMAT_SUBTYPE_IEEE_FLOAT : KSDATAFORMAT_SUBTYPE_PCM;
       *lpcbFormat = min((size_t)*lpcbFormat, sizeof(wfxt));

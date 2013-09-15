@@ -32,6 +32,7 @@
 // which is not derived from or based on Avisynth, such as 3rd-party filters,
 // import and export plugins, or graphical user interfaces.
 
+#include <avisynth.h>
 #include "../core/internal.h"
 #include "./parser/script.h"
 #include "cache.h"
@@ -280,14 +281,17 @@ public:
     return _dynamic_parent;
   }
 
-  const AVSValue& Get(const char* name) {
-    for (Variable* v = &variables; v; v = v->next)
-      if (!lstrcmpi(name, v->name))
-        return v->val;
+  bool Get(const char* name, AVSValue *val) {
+    for (Variable* v = &variables; v; v = v->next) {
+      if (!lstrcmpi(name, v->name)) {
+        *val = v->val;
+        return true;
+      }
+    }
     if (lexical_parent)
-      return lexical_parent->Get(name);
+      return lexical_parent->Get(name, val);
     else
-      throw IScriptEnvironment::NotFound();
+      return false;
   }
 
   bool Set(const char* name, const AVSValue& val) {
@@ -823,7 +827,7 @@ public:
 };
 
 
-class ScriptEnvironment : public IScriptEnvironment {
+class ScriptEnvironment : public IScriptEnvironment2 {
 public:
   ScriptEnvironment();
   void __stdcall CheckVersion(int version);
@@ -836,6 +840,10 @@ public:
   bool __stdcall FunctionExists(const char* name);
   AVSValue __stdcall Invoke(const char* name, const AVSValue args, const char* const* arg_names=0);
   AVSValue __stdcall GetVar(const char* name);
+  bool __stdcall GetVar(const char* name, bool def);
+  int  __stdcall GetVar(const char* name, int def);
+  double  __stdcall GetVar(const char* name, double def);
+  const char*  __stdcall GetVar(const char* name, const char* def);
   bool __stdcall SetVar(const char* name, const AVSValue& val);
   bool __stdcall SetGlobalVar(const char* name, const AVSValue& val);
   void __stdcall PushContext(int level=0);
@@ -1061,12 +1069,69 @@ void ScriptEnvironment::AddFunction(const char* name, const char* params, ApplyF
   function_table.AddFunction(ScriptEnvironment::SaveString(name), ScriptEnvironment::SaveString(params), apply, user_data);
 }
 
+// Throws if unsuccessfull
 AVSValue ScriptEnvironment::GetVar(const char* name) {
   if (closing) return AVSValue();  // We easily risk  being inside the critical section below, while deleting variables.
   
   {
     CriticalGuard lock(cs_var_table);
-    return var_table->Get(name);
+    AVSValue val;
+    if (var_table->Get(name, &val))
+      return val;
+    else
+      throw IScriptEnvironment::NotFound();
+  }
+}
+
+bool ScriptEnvironment::GetVar(const char* name, bool def) {
+  if (closing) return def;  // We easily risk  being inside the critical section below, while deleting variables.
+  
+  {
+    CriticalGuard lock(cs_var_table);
+    AVSValue val;
+    if (var_table->Get(name, &val))
+      return val.AsBool(def);
+    else
+      return def;
+  }
+}
+
+int ScriptEnvironment::GetVar(const char* name, int def) {
+  if (closing) return def;  // We easily risk  being inside the critical section below, while deleting variables.
+  
+  {
+    CriticalGuard lock(cs_var_table);
+    AVSValue val;
+    if (var_table->Get(name, &val))
+      return val.AsInt(def);
+    else
+      return def;
+  }
+}
+
+double ScriptEnvironment::GetVar(const char* name, double def) {
+  if (closing) return def;  // We easily risk  being inside the critical section below, while deleting variables.
+  
+  {
+    CriticalGuard lock(cs_var_table);
+    AVSValue val;
+    if (var_table->Get(name, &val))
+      return val.AsDblDef(def);
+    else
+      return def;
+  }
+}
+
+const char* ScriptEnvironment::GetVar(const char* name, const char* def) {
+  if (closing) return def;  // We easily risk  being inside the critical section below, while deleting variables.
+  
+  {
+    CriticalGuard lock(cs_var_table);
+    AVSValue val;
+    if (var_table->Get(name, &val))
+      return val.AsString(def);
+    else
+      return def;
   }
 }
 
@@ -1950,9 +2015,18 @@ void __stdcall ScriptEnvironment::DeleteScriptEnvironment() {
 
 IScriptEnvironment* __stdcall CreateScriptEnvironment(int version) {
   if (loadplugin_prefix) free((void*)loadplugin_prefix);
-  loadplugin_prefix = 0;
+  loadplugin_prefix = NULL;
   if (version <= AVISYNTH_INTERFACE_VERSION)
     return new ScriptEnvironment;
   else
-    return 0;
+    return NULL;
+}
+
+IScriptEnvironment2* __stdcall CreateScriptEnvironment2(int version) {
+  if (loadplugin_prefix) free((void*)loadplugin_prefix);
+  loadplugin_prefix = NULL;
+  if (version <= AVISYNTH_INTERFACE_VERSION)
+    return new ScriptEnvironment;
+  else
+    return NULL;
 }
