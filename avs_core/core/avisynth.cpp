@@ -874,7 +874,7 @@ private:
   VarTable* var_table;
 
   LinkedVideoFrameBuffer video_frame_buffers, lost_video_frame_buffers, *unpromotedvfbs;
-  __int64 memory_max, memory_used;
+  unsigned __int64 memory_max, memory_used;
 
   LinkedVideoFrameBuffer* NewFrameBuffer(int size);
 
@@ -904,6 +904,36 @@ private:
 
 volatile long ScriptEnvironment::refcount=0;
 CRITICAL_SECTION ScriptEnvironment::cs_relink_video_frame_buffer;
+
+static unsigned __int64 ConstrainMemoryRequest(unsigned __int64 requested)
+{
+  // Get system memory information
+  MEMORYSTATUSEX memstatus;
+  memstatus.dwLength = sizeof(memstatus);
+  GlobalMemoryStatusEx(&memstatus);
+
+  // mem_limit is the largest amount of memory that makes sense to use.
+  // We don't want to use more than the virtual address space,
+  // and we also don't want to start paging to disk.
+  unsigned __int64 mem_limit = min(memstatus.ullTotalVirtual, memstatus.ullTotalPhys);
+
+  unsigned __int64 mem_sysreserve = 0;
+  if (memstatus.ullTotalPhys > memstatus.ullTotalVirtual)
+  {
+    // We are probably running on a 32bit OS system where the virtual space is capped to 
+    // much less than what the system can use, so it is enough to reserve only a small amount.
+    mem_sysreserve = 128*1024*1024ull;  
+  }
+  else
+  {
+    // We could probably use up all the RAM in our single application, 
+    // so reserve more to leave some RAM for other apps and the OS too.
+    mem_sysreserve = 1024*1024*1024ull;
+  }
+
+  // Cap memory_max to at most mem_sysreserve less than total, but at least to 64MB.
+  return clamp(requested, 64*1024*1024ull, mem_limit - mem_sysreserve);
+}
 
 ScriptEnvironment::ScriptEnvironment()
   : at_exit(),
@@ -942,18 +972,10 @@ ScriptEnvironment::ScriptEnvironment()
     MEMORYSTATUSEX memstatus;
     memstatus.dwLength = sizeof(memstatus);
     GlobalMemoryStatusEx(&memstatus);
-    // Minimum 16MB
-    // else physical memory/4
-    // Maximum 0.5GB
-    if (memstatus.ullAvailPhys > 64*1024*1024)
-      memory_max = (__int64)memstatus.ullAvailPhys >> 2;
-    else
-      memory_max = 16*1024*1024;
+    memory_max = ConstrainMemoryRequest(memstatus.ullTotalPhys / 4);
+    memory_max = min(memory_max, 1024*1024*1024ull);  // at start, cap memory usage to 1GB
+    memory_used = 0ull;
 
-    if (memory_max <= 0 || memory_max > 512*1024*1024) // More than 0.5GB
-      memory_max = 512*1024*1024;
-
-    memory_used = 0i64;
     global_var_table = new VarTable(0, 0);
     var_table = new VarTable(0, global_var_table);
     global_var_table->Set("true", true);
@@ -1024,24 +1046,11 @@ ScriptEnvironment::~ScriptEnvironment() {
 }
 
 int ScriptEnvironment::SetMemoryMax(int mem) {
-  if (mem > 0) {
 
-    MEMORYSTATUSEX memstatus;
-    memstatus.dwLength = sizeof(memstatus);
-    GlobalMemoryStatusEx(&memstatus);
+  if (mem > 0)
+    memory_max = ConstrainMemoryRequest(mem * 1048576ull);
 
-    memory_max = mem * 1048576i64;                          // mem as megabytes
-    if (memory_max < memory_used) memory_max = memory_used; // can't be less than we already have
-
-    // We don't want to use more than the virtual address space. But also don't want to
-    // start paging to disk. So take the smaller of the two.
-    __int64 mem_limit = min(memstatus.ullAvailVirtual, memstatus.ullAvailPhys);
-
-    mem_limit += memory_used - 5242880i64;
-    if (memory_max > mem_limit) memory_max = mem_limit;     // can't be more than 5Mb less than total
-    if (memory_max < 4194304i64) memory_max = 4194304i64;   // can't be less than 4Mb -- Tritical Jan 2006
-  }
-  return (int)(memory_max/1048576i64);
+  return (int)(memory_max/1048576ull);
 }
 
 int ScriptEnvironment::SetWorkingDir(const char * newdir) {
@@ -1638,7 +1647,7 @@ LinkedVideoFrameBuffer* ScriptEnvironment::GetFrameBuffer2(int size) {
 
   // Before we allocate a new framebuffer, check our memory usage, and if we
   // are 12.5% or more above allowed usage discard some unreferenced frames.
-  if (memory_used >=  memory_max + max((__int64)size, (memory_max >> 3)) ) {
+  if (memory_used >=  memory_max + max((unsigned __int64)size, (memory_max >> 3)) ) {
     ++g_Mem_stats.CleanUps;
     int freed = 0;
     int freed_count = 0;
@@ -1744,10 +1753,10 @@ VideoFrameBuffer* ScriptEnvironment::GetFrameBuffer(int size) {
     // Put that VFB on the lost souls chain
     if (result) Relink(lost_video_frame_buffers.prev, result, &lost_video_frame_buffers);
 
-    const __int64 save_max = memory_max;
+    const unsigned __int64 save_max = memory_max;
 
     // Set memory_max to 12.5% below memory_used
-    memory_max = max(4*1024*1024ll, memory_used - max((__int64)size, (memory_used/9)));
+    memory_max = max(4*1024*1024ull, memory_used - max((unsigned __int64)size, (memory_used/9)));
 
     // Retry the request
     result = GetFrameBuffer2(size);
