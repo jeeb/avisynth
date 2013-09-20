@@ -359,7 +359,7 @@ AVSValue ComparePlane::CmpPlaneSame(AVSValue clip, void* user_data, int offset, 
     env->ThrowError("Plane Difference: This filter can only be used within run-time filters");
 
   int n = cn.AsInt();
-  n = min(max(n,0),vi.num_frames);
+  n = min(max(n,0),vi.num_frames-1);
   int n2 = min(max(n+offset,0),vi.num_frames-1);
 
   PVideoFrame src = child->GetFrame(n,env);
