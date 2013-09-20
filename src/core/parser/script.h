@@ -43,7 +43,8 @@
 /********************************************************************
 ********************************************************************/
 
-
+// Provision for UTF-8 max 4 bytes per code point
+#define AVS_MAX_PATH MAX_PATH*4
 
 
 class ScriptFunction 
@@ -86,7 +87,7 @@ public:
   virtual ~CWDChanger(void);  
 
 private:
-  TCHAR old_working_directory[MAX_PATH];
+  TCHAR old_working_directory[AVS_MAX_PATH];
   bool restore;
 };
 
@@ -113,6 +114,7 @@ private:
 AVSValue Assert(AVSValue args, void*, IScriptEnvironment* env);
 AVSValue AssertEval(AVSValue args, void*, IScriptEnvironment* env);
 AVSValue Eval(AVSValue args, void*, IScriptEnvironment* env);
+AVSValue EvalOop(AVSValue args, void*, IScriptEnvironment* env);
 AVSValue Apply(AVSValue args, void*, IScriptEnvironment* env) ;
 
 AVSValue Import(AVSValue args, void*, IScriptEnvironment* env);
