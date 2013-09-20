@@ -271,7 +271,13 @@ void MatrixGenerator3x3::GenerateUnPacker(int width, IScriptEnvironment* env) {
     if (ssse3) {
       x86.pshufb(xmm0,xmm7);                    // 00000000Q3q3P3p3Q2q2P2p2Q1q1P1p1
       x86.pshufb(xmm1,xmm7);                    // 00000000S3s3R3r3S2s2R2r2S1s1R1r1
+
+      x86.movdqa(xmm4,xmm0);
+
+      x86.punpckldq(xmm0,xmm1);                 // S2s2R2r2Q2q2P2p2S1s1R1r1Q1q1P1p1
+      x86.punpckhdq(xmm4,xmm1);                 // XXxxXXxxXXxxXXxxS3s3R3r3Q3q3P3p3
     } else {
+#if 0
       x86.punpcklqdq(xmm2,xmm0);                // XXP3P2P1xxp3p2p1................
       x86.punpcklqdq(xmm3,xmm1);                // XXR3R2R1xxr3r2r1................
 
@@ -283,13 +289,28 @@ void MatrixGenerator3x3::GenerateUnPacker(int width, IScriptEnvironment* env) {
 
       x86.punpckhbw(xmm0,xmm2);                 // XXxxXXxxQ3q3P3p3Q2q2P2p2Q1q1P1p1
       x86.punpckhbw(xmm1,xmm3);                 // XXxxXXxxS3s3R3r3S2s2R2r2S1s1R1r1
+
+      x86.movdqa(xmm4,xmm0);
+
+      x86.punpckldq(xmm0,xmm1);                 // S2s2R2r2Q2q2P2p2S1s1R1r1Q1q1P1p1
+      x86.punpckhdq(xmm4,xmm1);                 // XXxxXXxxXXxxXXxxS3s3R3r3Q3q3P3p3
+#else
+      x86.movdqa(xmm4,xmm0);                    // XXQ3Q2Q1xxq3q2q1XXP3P2P1xxp3p2p1
+      
+      x86.punpcklbw(xmm0,xmm1);                 // XXXXR3P3R2P2R1P1xxxxr3p3r2p2r1p1
+      x86.punpckhbw(xmm4,xmm1);                 // XXXXS3Q3S2Q2S1Q1xxxxs3q3s2q2s1q1
+                                                
+      x86.movdqa(xmm1,xmm0);                    // XXXXR3P3R2P2R1P1xxxxr3p3r2p2r1p1
+      
+      x86.punpcklbw(xmm0,xmm4);                 // xxxxxxxxs3r3q3p3s2r2q2p2s1r1q1p1
+      x86.punpckhbw(xmm1,xmm4);                 // XXXXXXXXS3R3Q3P3S2R2Q2P2S1R1Q1P1
+                                                
+      x86.movdqa(xmm4,xmm0);                    // xxxxxxxxs3r3q3p3s2r2q2p2s1r1q1p1
+      
+      x86.punpcklbw(xmm0,xmm1);                 // S2s2R2r2Q2q2P2p2S1s1R1r1Q1q1P1p1
+      x86.punpckhbw(xmm4,xmm1);                 // XXxxXXxxXXxxXXxxS3s3R3r3Q3q3P3p3
+#endif
     }
-
-    x86.movdqa(xmm4,xmm0);
-
-    x86.punpckldq(xmm0,xmm1);                   // S2s2R2r2Q2q2P2p2S1s1R1r1Q1q1P1p1
-    x86.punpckhdq(xmm4,xmm1);                   // XXxxXXxxXXxxXXxxS3s3R3r3Q3q3P3p3
-
     x86.movq(qword_ptr[eax+edi],xmm0);          // Store: S1s1R1r1Q1q1P1p1
     x86.punpckhqdq(xmm0,xmm0);                  // S2s2R2r2Q2q2P2p2S2s2R2r2Q2q2P2p2
     x86.movq(qword_ptr[ecx+edi],xmm4);          // Store: S3s3R3r3Q3q3P3p3
@@ -310,7 +331,7 @@ void MatrixGenerator3x3::GenerateUnPacker(int width, IScriptEnvironment* env) {
     x86.movq(mm1,qword_ptr[esi+edi*4+8]);  // XXQ3Q2Q1xxq3q2q1
     x86.movq(mm2,qword_ptr[esi+edi*4+16]); // XXR3R2R1xxr3r2r1
     x86.movq(mm3,qword_ptr[esi+edi*4+24]); // XXS3S2S1xxs3s2s1
-
+#if 0
     x86.punpckldq(mm4,mm0);                // xxp3p2p1........
     x86.punpckldq(mm5,mm1);                // xxq3q2q1........
     x86.punpckldq(mm6,mm2);                // xxr3r2r1........
@@ -340,7 +361,36 @@ void MatrixGenerator3x3::GenerateUnPacker(int width, IScriptEnvironment* env) {
     x86.dec(edx);
 
     x86.movq(qword_ptr[ecx+edi-8],mm0);    // S3s3R3r3Q3q3P3p3
+#else
+    x86.movq(mm4,mm0);                     // XXP3P2P1xxp3p2p1
+    x86.movq(mm5,mm2);                     // XXR3R2R1xxr3r2r1
 
+    x86.punpcklbw(mm0,mm1);                // xxxxq3p3q2p2q1p1
+    x86.punpckhbw(mm4,mm1);                // XXXXQ3P3Q2P2Q1P1
+    x86.punpcklbw(mm2,mm3);                // xxxxs3r3s2r2s1r1
+    x86.punpckhbw(mm5,mm3);                // XXXXS3R3S2R2S1R1
+
+    x86.movq(mm1,mm0);                     // xxxxq3p3q2p2q1p1
+    x86.movq(mm3,mm2);                     // xxxxs3r3s2r2s1r1
+
+    x86.punpcklbw(mm0,mm4);                // Q2q2P2p2Q1q1P1p1
+    x86.punpckhbw(mm1,mm4);                // XXxxXXxxQ3q3P3p3
+    x86.punpcklbw(mm2,mm5);                // S2s2R2r2S1s1R1r1
+    x86.punpckhbw(mm3,mm5);                // XXxxXXxxS3q3R3r3
+
+    x86.movq(mm4,mm0);                     // Q2q2P2p2Q1q1P1p1
+
+    x86.punpckldq(mm0,mm2);                // S1s1R1r1Q1q1P1p1
+    x86.punpckhdq(mm4,mm2);                // S2s2R2r2Q2q2P2p2
+    x86.punpckldq(mm1,mm3);                // S3s3R3r3Q3q3P3p3
+
+    x86.movq(qword_ptr[eax+edi],mm0);      // S1s1R1r1Q1q1P1p1
+    x86.movq(qword_ptr[ebx+edi],mm4);      // S2s2R2r2Q2q2P2p2
+    x86.add(edi,8);
+    x86.dec(edx);
+
+    x86.movq(qword_ptr[ecx+edi-8],mm1);    // S3s3R3r3Q3q3P3p3
+#endif
     x86.jnz("loopback");
     x86.emms();
   }
