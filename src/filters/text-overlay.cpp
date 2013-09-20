@@ -1096,6 +1096,7 @@ void Subtitle::InitAntialiaser(IScriptEnvironment* env)
 	  length -= result + 2;
 	} while (pdest != NULL && length > 0);
 	free(_text);
+	_text = 0;
   }
   if (!GdiFlush()) goto GDIError;
   return;
