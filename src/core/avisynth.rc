@@ -75,7 +75,7 @@ BEGIN
             VALUE "FileDescription", "Avisynth video processing scripting language\0"
             VALUE "FileVersion", "2, 6, 0, 4\0"
             VALUE "InternalName", "AviSynth 2.6.0\0"
-            VALUE "LegalCopyright", "© 2000-2011 Ben Rudiak-Gould and others\0"
+            VALUE "LegalCopyright", "© 2000-2013 Ben Rudiak-Gould and others\0"
 //          VALUE "LegalTrademarks", "\0"
             VALUE "OriginalFilename", "avisynth.dll\0"
 //          VALUE "PrivateBuild", "\0"
