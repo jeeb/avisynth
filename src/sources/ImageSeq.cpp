@@ -191,8 +191,8 @@ PVideoFrame ImageWriter::GetFrame(int n, IScriptEnvironment* env)
     if (info) {
       ostringstream ss;
       ss << "ImageWriter: frame " << n << " not in range";
-      env->MakeWritable(frame);
-      env->ApplyMessage(frame, vi, ss.str().c_str(), vi.width/4, TEXT_COLOR, 0, 0);
+      env->MakeWritable(&frame);
+      env->ApplyMessage(&frame, vi, ss.str().c_str(), vi.width/4, TEXT_COLOR, 0, 0);
     }
     return frame;
   }
@@ -210,8 +210,8 @@ PVideoFrame ImageWriter::GetFrame(int n, IScriptEnvironment* env)
     {
       ostringstream ss;
       ss << "ImageWriter: could not create file '" << filename << "'";
-      env->MakeWritable(frame);
-      env->ApplyMessage(frame, vi, ss.str().c_str(), vi.width/4, TEXT_COLOR, 0, 0);
+      env->MakeWritable(&frame);
+      env->ApplyMessage(&frame, vi, ss.str().c_str(), vi.width/4, TEXT_COLOR, 0, 0);
       return frame;
     }
 
@@ -294,8 +294,8 @@ PVideoFrame ImageWriter::GetFrame(int n, IScriptEnvironment* env)
       ss << "ImageWriter: error '" << getErrStr(err) << "' in DevIL library\n"
 	        "writing file \"" << filename << "\"\n"
             "DevIL version " << DevIL_Version << ".";
-      env->MakeWritable(frame);
-      env->ApplyMessage(frame, vi, ss.str().c_str(), vi.width/4, TEXT_COLOR, 0, 0);
+      env->MakeWritable(&frame);
+      env->ApplyMessage(&frame, vi, ss.str().c_str(), vi.width/4, TEXT_COLOR, 0, 0);
       return frame;
     }
   }
@@ -304,8 +304,8 @@ PVideoFrame ImageWriter::GetFrame(int n, IScriptEnvironment* env)
     // overlay on video output: progress indicator
     ostringstream text;
     text << "Frame " << n << " written to: " << filename;
-    env->MakeWritable(frame);
-    env->ApplyMessage(frame, vi, text.str().c_str(), vi.width/4, TEXT_COLOR, 0, 0);
+    env->MakeWritable(&frame);
+    env->ApplyMessage(&frame, vi, text.str().c_str(), vi.width/4, TEXT_COLOR, 0, 0);
   }
 
   return frame;
@@ -605,7 +605,7 @@ PVideoFrame ImageReader::GetFrame(int n, IScriptEnvironment* env)
         ss << "ImageReader: error '" << getErrStr(err) << "' in DevIL library\n"
 		      "opening file \"" << filename << "\"\n"
               "DevIL version " << DevIL_Version << ".";
-        env->ApplyMessage(frame, vi, ss.str().c_str(), vi.width/4, TEXT_COLOR, 0, 0);
+        env->ApplyMessage(&frame, vi, ss.str().c_str(), vi.width/4, TEXT_COLOR, 0, 0);
       }
       return frame;
     }
@@ -626,7 +626,7 @@ PVideoFrame ImageReader::GetFrame(int n, IScriptEnvironment* env)
           ss << "ImageSourceAnim: error '" << getErrStr(err) << "' in DevIL library\n"
                 "processing image " << n << " from file \"" << filename << "\"\n"
                 "DevIL version " << DevIL_Version << ".";
-          env->ApplyMessage(frame, vi, ss.str().c_str(), vi.width/4, TEXT_COLOR, 0, 0);
+          env->ApplyMessage(&frame, vi, ss.str().c_str(), vi.width/4, TEXT_COLOR, 0, 0);
         }
         return frame;
       }
@@ -641,7 +641,7 @@ PVideoFrame ImageReader::GetFrame(int n, IScriptEnvironment* env)
         LeaveCriticalSection(&FramesCriticalSection);
 
         memset(WritePtr, 0, pitch * height);
-        env->ApplyMessage(frame, vi, "ImageReader: images must have identical heights", vi.width/4, TEXT_COLOR, 0, 0);
+        env->ApplyMessage(&frame, vi, "ImageReader: images must have identical heights", vi.width/4, TEXT_COLOR, 0, 0);
         return frame;
       }
 
@@ -653,7 +653,7 @@ PVideoFrame ImageReader::GetFrame(int n, IScriptEnvironment* env)
         LeaveCriticalSection(&FramesCriticalSection);
 
         memset(WritePtr, 0, pitch * height);
-        env->ApplyMessage(frame, vi, "ImageReader: images must have identical widths", vi.width/4, TEXT_COLOR, 0, 0);
+        env->ApplyMessage(&frame, vi, "ImageReader: images must have identical widths", vi.width/4, TEXT_COLOR, 0, 0);
         return frame;
       }
     }
@@ -714,7 +714,7 @@ PVideoFrame ImageReader::GetFrame(int n, IScriptEnvironment* env)
       ss << "ImageReader: error '" << getErrStr(err) << "' in DevIL library\n"
             "reading file \"" << filename << "\"\n"
             "DevIL version " << DevIL_Version << ".";
-      env->ApplyMessage(frame, vi, ss.str().c_str(), vi.width/4, TEXT_COLOR, 0, 0);
+      env->ApplyMessage(&frame, vi, ss.str().c_str(), vi.width/4, TEXT_COLOR, 0, 0);
       return frame;
     }
   }
@@ -762,7 +762,7 @@ PVideoFrame ImageReader::GetFrame(int n, IScriptEnvironment* env)
     text << "Frame " << n << ".\n"
             "Read from \"" << filename << "\"\n"
             "DevIL version " << DevIL_Version << ".";
-    env->ApplyMessage(frame, vi, text.str().c_str(), vi.width/4, TEXT_COLOR, 0, 0);
+    env->ApplyMessage(&frame, vi, text.str().c_str(), vi.width/4, TEXT_COLOR, 0, 0);
   }
 
   return frame;
@@ -793,7 +793,7 @@ void ImageReader::BlankFrame(PVideoFrame & frame)
 
     const int UVpitch = frame->GetPitch(PLANAR_U);
     if (UVpitch) {
-      const int UVsize = UVPitch * frame->GetHeight(PLANAR_U);
+      const int UVsize = UVpitch * frame->GetHeight(PLANAR_U);
 
       memset(frame->GetWritePtr(PLANAR_U), 128, UVsize);
       memset(frame->GetWritePtr(PLANAR_V), 128, UVsize);
@@ -805,7 +805,7 @@ void ImageReader::BlankFrame(PVideoFrame & frame)
 void ImageReader::BlankApplyMessage(PVideoFrame & frame, const char * text, IScriptEnvironment * env)
 {
   BlankFrame(frame);
-  env->ApplyMessage(frame, vi, text, vi.width/4, TEXT_COLOR, 0, 0);
+  env->ApplyMessage(&frame, vi, text, vi.width/4, TEXT_COLOR, 0, 0);
 }
 
 
