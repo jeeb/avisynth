@@ -84,30 +84,32 @@ Cache::Cache(PClip _child, IScriptEnvironment* env)
   h_policy = vi.HasVideo() ? CACHE_GENERIC : CACHE_NOTHING;  // Since hints are not used per default, this is to describe the lowest default cache mode.
   h_audiopolicy = vi.HasAudio() ? CACHE_AUDIO_NONE : CACHE_AUDIO_NOTHING;  // Don't cache audio per default, auto mode.
 
-  cache_limit = CACHE_SCALE_FACTOR / 2;  // Start half way towards 1 buffer
-  cache_init  = 0;
-  fault_rate = 0;
-  miss_count = 0x80000000; // Hugh negative
-
 //h_total_frames = 0; // Hint cache not init'ed
   h_span = 0;
   protectcount = 0;
 
+  samplesize = vi.BytesPerAudioSample();
+
   maxsamplecount = 0;
+  cache_start = 0;
+  cache_count = 0;
   ac_expected_next = 0;
   ac_too_small_count = 0;
   ac_currentscore = 20;
 
-  maxframe = -1;
   minframe = vi.num_frames;
+  maxframe = -1;
 
-  samplesize = vi.BytesPerAudioSample();
-
-  // Join all the rest of the caches
-  env->ManageCache(MC_RegisterCache, this);
+  cache_init  = 0;
+  cache_limit = CACHE_SCALE_FACTOR / 2;  // Start half way towards 1 buffer
+  fault_rate = 0;
+  miss_count = 0x80000000; // Hugh negative
 
   childcost = 0; // Unsupported by child
   childaccesscost = 0; // Unsupported by child
+
+  // Join all the rest of the caches
+  env->ManageCache(MC_RegisterCache, this);
 
   // For 2.6 filters ask about desired parent cache parameters
   if (child->GetVersion() < 5) {
@@ -286,6 +288,9 @@ void Cache::ReturnVideoFrameBuffer(CachedVideoFrame *i, IScriptEnvironment* env)
     // if vfb is not current (i.e ours) leave it alone
     if (i->vfb->GetSequenceNumber() != i->sequence_number) return;
 
+    // we are not active leave it alone
+    if (miss_count < 0) return;
+
     // return vfb to vfb pool for immediate reuse
     env->ManageCache(MC_ReturnVideoFrameBuffer, i->vfb);
 }
@@ -434,9 +439,6 @@ PVideoFrame __stdcall Cache::GetFrame(int n, IScriptEnvironment* env)
           return retval;
         }
 */
-        // We have a hit make sure cache_limit is at least this wide
-        if (cache_limit < (c<<CACHE_SCALE_SHIFT)) cache_limit = c<<CACHE_SCALE_SHIFT;
-
         if (LockVFB(i, env)) {  // LockVFB will only lock the frame if the sequence number hasn't change
           // And it hasn't been screwed, Excellent!
           InterlockedIncrement(&g_Cache_stats.vfb_found);
@@ -488,14 +490,21 @@ PVideoFrame __stdcall Cache::GetFrame(int n, IScriptEnvironment* env)
       }
     } // for (CachedVideoFrame* i =
 
-    if (!found) { // Cache miss - accumulate towards extra buffers
+    if (!found) { // Cache miss
       InterlockedIncrement(&g_Cache_stats.vfb_notfound);
-      int span = 1 + imaxframe-iminframe - (cache_limit>>CACHE_SCALE_SHIFT);
-      if (span > CACHE_SCALE_FACTOR)
-        InterlockedExchangeAdd(&cache_limit, CACHE_SCALE_FACTOR); // Add upto one whole buffer at a time
-      else if (span >  0)
-        InterlockedExchangeAdd(&cache_limit, span); // Add span 16ths towards another buffer
 
+      // Make sure cache_limit is at least this wide
+      const int range = (max(n-minframe, maxframe-n) * 2 + 1) << CACHE_SCALE_SHIFT;
+      if (cache_limit < range)
+        cache_limit = range;
+      else {
+        // Accumulate towards extra buffers
+        const int span = 1 + imaxframe-iminframe - (cache_limit>>CACHE_SCALE_SHIFT);
+        if (span > CACHE_SCALE_FACTOR)
+          InterlockedExchangeAdd(&cache_limit, CACHE_SCALE_FACTOR); // Add upto one whole buffer at a time
+        else if (span >  0)
+          InterlockedExchangeAdd(&cache_limit, span); // Add span 16ths towards another buffer
+      }
       maxframe = imaxframe; // update the limits from what is currently cached
       minframe = iminframe;
     }
@@ -557,10 +566,11 @@ PVideoFrame __stdcall Cache::GetFrame(int n, IScriptEnvironment* env)
   // a 2nd filter is hiting the cache outside the radius
   // of protection then we do promote protected frames.
 
-  if ((cache_limit>>CACHE_SCALE_SHIFT) > h_span)
-    env->ManageCache(MC_PromoteVideoFrameBuffer, result->vfb);
-  else
-    env->ManageCache(MC_ManageVideoFrameBuffer, result->vfb);
+  if (miss_count >= 0) {
+    env->ManageCache(( (cache_limit>>CACHE_SCALE_SHIFT) > h_span )
+            ? MC_PromoteVideoFrameBuffer
+            : MC_ManageVideoFrameBuffer, result->vfb);
+  }
 
   // If this is a CACHE_WINDOW frame protect it
   if (h_span) {
@@ -610,18 +620,20 @@ Cache::CachedVideoFrame* Cache::GetACachedVideoFrame(const PVideoFrame& frame, I
 
   // scan forwards for the last protected CachedVideoFrame
   for (i = video_frames.next; i != &video_frames; i = i->next) {
-    if (i->vfb == frame->vfb) return i; // Don't fill cache with 100's copies of a Blankclip vfb
+//    if (i->vfb == frame->vfb) return i; // Don't fill cache with 100's copies of a Blankclip vfb
     count += 1;
     if ((count > h_span) && (count >= (cache_limit>>CACHE_SCALE_SHIFT))) break;
   }
 
-  // scan backwards for a used CachedVideoFrame
-  for (j = video_frames.prev; j != i; j = j->prev) {
-    count += 1;
-//    if (j->status == CACHE_ST_BEING_GENERATED) continue;
-    if (j->vfb == frame->vfb) return j; // Don't fill cache with 100's copies of a Blankclip vfb
-    if (j->sequence_number != j->vfb->GetSequenceNumber()) return j;
-    ReturnVideoFrameBuffer(j, env); // Return out of range vfb to vfb pool for early reuse
+  if (i != &video_frames) {
+    // scan backwards for a used CachedVideoFrame
+    for (j = video_frames.prev; j != i; j = j->prev) {
+      count += 1;
+  //    if (j->status == CACHE_ST_BEING_GENERATED) continue;
+      if (j->vfb == frame->vfb) return j; // Don't fill cache with 100's copies of a Blankclip vfb
+      if (j->sequence_number != j->vfb->GetSequenceNumber()) return j;
+      ReturnVideoFrameBuffer(j, env); // Return out of range vfb to vfb pool for early reuse
+    }
   }
 
   if (count >= MAX_CACHED_VIDEO_FRAMES) return video_frames.prev; // to many entries just steal the oldest CachedVideoFrame
