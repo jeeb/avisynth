@@ -507,7 +507,11 @@ ChangeFPS::ChangeFPS(PClip _child, unsigned new_numerator, unsigned new_denomina
     env->ThrowError("ChangeFPS: Ratio must be less than 10 for linear access. Set LINEAR=False.");
 
   vi.SetFPS(new_numerator, new_denominator);
-  vi.num_frames = int((vi.num_frames * b + (a >> 1)) / a);
+  const __int64 num_frames = (vi.num_frames * b + (a >> 1)) / a;
+  if (num_frames > 0x7FFFFFFF)  // MAXINT
+    env->ThrowError("ChangeFPS: Maximum number of frames exceeded.");
+
+  vi.num_frames = int(num_frames);
   lastframe = -1;
 }
 
@@ -610,7 +614,11 @@ ConvertFPS::ConvertFPS( PClip _child, unsigned new_numerator, unsigned new_denom
                     "Increase or use 'zone='", dec/30000, (dec/3)%10000);
   }
   vi.SetFPS(new_numerator, new_denominator);
-  vi.num_frames = int((vi.num_frames * fb + (fa>>1)) / fa);
+  const __int64 num_frames = (vi.num_frames * fb + (fa>>1)) / fa;
+  if (num_frames > 0x7FFFFFFF)  // MAXINT
+    env->ThrowError("ConvertFPS: Maximum number of frames exceeded.");
+
+  vi.num_frames = int(num_frames);
 }
 
 

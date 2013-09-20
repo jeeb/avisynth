@@ -93,6 +93,10 @@ SeparateColumns::SeparateColumns(PClip _child, int _interval, IScriptEnvironment
   vi.MulDivFPS(_interval, 1);
   vi.num_frames *= _interval;
 
+  if (vi.num_frames < 0)
+    env->ThrowError("SeparateColumns: Maximum number of frames exceeded.");
+
+
   if (vi.IsYUY2() && vi.width & 1)
     env->ThrowError("SeparateColumns: YUY2 output width must be even.");
   if (vi.IsYV12() && vi.width & 1)
@@ -413,6 +417,9 @@ SeparateRows::SeparateRows(PClip _child, int _interval, IScriptEnvironment* env)
   vi.MulDivFPS(_interval, 1);
   vi.num_frames *= _interval;
 
+  if (vi.num_frames < 0)
+    env->ThrowError("SeparateRows: Maximum number of frames exceeded.");
+
   if (vi.IsYV12() && vi.height & 1)
     env->ThrowError("SeparateRows: YV12 output height must be even.");
 }
@@ -546,6 +553,10 @@ SeparateFields::SeparateFields(PClip _child, IScriptEnvironment* env)
   vi.height >>= 1;
   vi.MulDivFPS(2, 1);
   vi.num_frames *= 2;
+
+  if (vi.num_frames < 0)
+    env->ThrowError("SeparateFields: Maximum number of frames exceeded.");
+
   vi.SetFieldBased(true);
 }
 
@@ -601,6 +612,9 @@ Interleave::Interleave(int _num_children, const PClip* _child_array, IScriptEnvi
     
     vi.num_frames = max(vi.num_frames, (vi2.num_frames - 1) * num_children + i + 1);
   }
+  if (vi.num_frames < 0)
+    env->ThrowError("Interleave: Maximum number of frames exceeded.");
+
 }
 
 AVSValue __cdecl Interleave::Create(AVSValue args, void*, IScriptEnvironment* env) 
@@ -714,6 +728,9 @@ DoubleWeaveFrames::DoubleWeaveFrames(PClip _child)
   : GenericVideoFilter(_child) 
 {
   vi.num_frames *= 2;
+  if (vi.num_frames < 0)
+    vi.num_frames = 0x7FFFFFFF; // MAXINT
+
   vi.MulDivFPS(2, 1);
 }
 
