@@ -192,7 +192,7 @@ PVideoFrame __stdcall Levels::GetFrame(int n, IScriptEnvironment* env)
   PVideoFrame frame = child->GetFrame(n, env);
   env->MakeWritable(&frame);
   BYTE* p = frame->GetWritePtr();
-  int pitch = frame->GetPitch();
+  const int pitch = frame->GetPitch();
   if (dither) {
     if (vi.IsYUY2()) {
       const int UVwidth = vi.width/2;
@@ -217,7 +217,7 @@ PVideoFrame __stdcall Levels::GetFrame(int n, IScriptEnvironment* env)
         }
         p += pitch;
       }}
-      pitch = frame->GetPitch(PLANAR_U);
+      const int UVpitch = frame->GetPitch(PLANAR_U);
       const int w=frame->GetRowSize(PLANAR_U);
       const int h=frame->GetHeight(PLANAR_U);
       p = frame->GetWritePtr(PLANAR_U);
@@ -229,8 +229,8 @@ PVideoFrame __stdcall Levels::GetFrame(int n, IScriptEnvironment* env)
           p[x] = mapchroma[ p[x]<<8 | _dither ];
           q[x] = mapchroma[ q[x]<<8 | _dither ];
         }
-        p += pitch;
-        q += pitch;
+        p += UVpitch;
+        q += UVpitch;
       }}
     } else if (vi.IsRGB32()) {
       for (int y=0; y<vi.height; ++y) {
@@ -261,7 +261,7 @@ PVideoFrame __stdcall Levels::GetFrame(int n, IScriptEnvironment* env)
     if (vi.IsYUY2()) {
       for (int y=0; y<vi.height; ++y) {
         for (int x=0; x<vi.width; ++x) {
-          p[x*2] = map[p[x*2]];
+          p[x*2+0] = map      [p[x*2+0]];
           p[x*2+1] = mapchroma[p[x*2+1]];
         }
         p += pitch;
@@ -274,7 +274,7 @@ PVideoFrame __stdcall Levels::GetFrame(int n, IScriptEnvironment* env)
         }
         p += pitch;
       }}
-      pitch = frame->GetPitch(PLANAR_U);
+      const int UVpitch = frame->GetPitch(PLANAR_U);
       p = frame->GetWritePtr(PLANAR_U);
       const int w=frame->GetRowSize(PLANAR_U);
       const int h=frame->GetHeight(PLANAR_U);
@@ -282,14 +282,14 @@ PVideoFrame __stdcall Levels::GetFrame(int n, IScriptEnvironment* env)
         for (int x=0; x<w; ++x) {
           p[x] = mapchroma[p[x]];
         }
-        p += pitch;
+        p += UVpitch;
       }}
       p = frame->GetWritePtr(PLANAR_V);
       {for (int y=0; y<h; ++y) {
         for (int x=0; x<w; ++x) {
           p[x] = mapchroma[p[x]];
         }
-        p += pitch;
+        p += UVpitch;
       }}
     } else if (vi.IsRGB()) {
       const int row_size = frame->GetRowSize();
