@@ -160,13 +160,13 @@ void RGBtoY8Generator::genRGB32toY8(int width, int height, int offset_y, signed 
         x86.paddd(      mm4, mm7);                      // [hiDWmm4+32768+loDWmm4|junk] -- 2
         x86.paddd(      mm3, mm6);                      // [hiDWmm3+32768+loDWmm3|junk] -- 3
         if (i==0 && awidth > 4) {
-          x86.movq(     mm6, qword_ptr[esi+ecx*4]);     // Get pixels 1 & 0
+          x86.movq(     mm6, qword_ptr[esi+ecx*4+16]);     // Get pixels 1 & 0
           x86.psrad(    mm4, 15);                       // -> 8 bit result              -- 2
           x86.psrad(    mm3, 15);                       // -> 8 bit result              -- 3
           x86.add(      ecx, 4);                        // loop counter
           x86.punpckhwd(mm4, mm3);                      // [....|....|..33|..22]
           x86.punpckldq(mm5, mm4);                      // [..33|..22|..11|..00]
-          x86.movq(     mm4, qword_ptr[esi+ecx*4-8]);   // Get pixels 3 & 2
+          x86.movq(     mm4, qword_ptr[esi+ecx*4+8]);   // Get pixels 3 & 2
         } else {
           x86.psrad(    mm4, 15);                       // -> 8 bit result              -- 2
           x86.psrad(    mm3, 15);                       // -> 8 bit result              -- 3
