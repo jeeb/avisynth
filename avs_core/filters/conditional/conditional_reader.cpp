@@ -59,14 +59,12 @@ readline(FILE *f)
 		/* Do we have to update buffer ? */
 		if(pos >= buffer_size - 1) {
 			buffer_size += BUF_SZ;
-			char *tmpBuffer = (char*)realloc(buffer, buffer_size);
-			if (tmpBuffer == NULL)
-      {
-        free(buffer);
+			char *tmpbuffer = (char*)realloc(buffer, buffer_size);
+			if (tmpbuffer == NULL) {
+				free(buffer);
 				return(NULL);
-      }
-      else
-        buffer = tmpBuffer;
+		    }
+			buffer = tmpbuffer;
 		}
 
 		buffer[pos] = (char)c;

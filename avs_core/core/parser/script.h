@@ -36,16 +36,17 @@
 #define __Script_H__
 
 #include <avisynth.h>
+#include <avs/win.h>
 #include "expression.h"
 #include "scriptparser.h"
-#include <tchar.h>
 #include <tchar.h>
 
 
 /********************************************************************
 ********************************************************************/
 
-
+// Provision for UTF-8 max 4 bytes per code point
+#define AVS_MAX_PATH MAX_PATH*4
 
 
 class ScriptFunction 
@@ -88,7 +89,7 @@ public:
   virtual ~CWDChanger(void);  
 
 private:
-  TCHAR *old_working_directory;
+  TCHAR old_working_directory[AVS_MAX_PATH];
   bool restore;
 };
 
@@ -115,6 +116,7 @@ private:
 AVSValue Assert(AVSValue args, void*, IScriptEnvironment* env);
 AVSValue AssertEval(AVSValue args, void*, IScriptEnvironment* env);
 AVSValue Eval(AVSValue args, void*, IScriptEnvironment* env);
+AVSValue EvalOop(AVSValue args, void*, IScriptEnvironment* env);
 AVSValue Apply(AVSValue args, void*, IScriptEnvironment* env) ;
 
 AVSValue Import(AVSValue args, void*, IScriptEnvironment* env);

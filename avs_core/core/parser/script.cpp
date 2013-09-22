@@ -179,6 +179,7 @@ extern const AVSFunction Script_functions[] = {
   { "Default", "..", Default },
 
   { "Eval", "s[name]s", Eval },
+  { "Eval", "cs[name]s", EvalOop },
   { "Apply", "s.*", Apply },
   { "Import", "s+", Import },
 
@@ -272,8 +273,7 @@ void ScriptFunction::Delete(void* self, IScriptEnvironment*)
 
 CWDChanger::CWDChanger(const char* new_cwd)
 {
-  old_working_directory = new TCHAR[MAX_PACKAGE_NAME];
-  DWORD save_cwd_success = GetCurrentDirectory(MAX_PATH, old_working_directory);
+  DWORD save_cwd_success = GetCurrentDirectory(AVS_MAX_PATH, old_working_directory);
   BOOL set_cwd_success = SetCurrentDirectory(new_cwd);
   restore = (save_cwd_success && set_cwd_success);
 }
@@ -282,8 +282,6 @@ CWDChanger::~CWDChanger(void)
 {
   if (restore)
     SetCurrentDirectory(old_working_directory);
-
-  delete [] old_working_directory;
 }
 
 
@@ -332,6 +330,22 @@ inline AVSValue GetVar(IScriptEnvironment* env, const char* name) {
   return AVSValue();
 }
 
+AVSValue EvalOop(AVSValue args, void*, IScriptEnvironment* env) 
+{
+  AVSValue prev_last = GetVar(env, "last");  // Store previous last
+  env->SetVar("last", args[0]);              // Set implicit last
+
+  AVSValue result;
+  try {
+    result = Eval(AVSValue(&args[1], 2), 0, env);
+  }
+  catch(...) {
+    env->SetVar("last", prev_last);          // Restore implicit last
+	throw;
+  }
+  env->SetVar("last", prev_last);            // Restore implicit last
+  return result;
+}
 
 AVSValue Import(AVSValue args, void*, IScriptEnvironment* env) 
 {
@@ -345,16 +359,16 @@ AVSValue Import(AVSValue args, void*, IScriptEnvironment* env)
   for (int i=0; i<args.ArraySize(); ++i) {
     const char* script_name = args[i].AsString();
 
-    TCHAR full_path[MAX_PATH];
+    TCHAR full_path[AVS_MAX_PATH];
     TCHAR* file_part;
     if (strchr(script_name, '\\') || strchr(script_name, '/')) {
-      DWORD len = GetFullPathName(script_name, MAX_PATH, full_path, &file_part);
-      if (len == 0 || len > MAX_PATH)
-        env->ThrowError("Import: unable to open \"%s\" (path invalid?)", script_name);
+      DWORD len = GetFullPathName(script_name, AVS_MAX_PATH, full_path, &file_part);
+      if (len == 0 || len > AVS_MAX_PATH)
+        env->ThrowError("Import: unable to open \"%s\" (path invalid?), error=0x%x", script_name, GetLastError());
     } else {
-      DWORD len = SearchPath(NULL, script_name, NULL, MAX_PATH, full_path, &file_part);
-      if (len == 0 || len > MAX_PATH)
-        env->ThrowError("Import: unable to locate \"%s\" (try specifying a path)", script_name);
+      DWORD len = SearchPath(NULL, script_name, NULL, AVS_MAX_PATH, full_path, &file_part);
+      if (len == 0 || len > AVS_MAX_PATH)
+        env->ThrowError("Import: unable to locate \"%s\" (try specifying a path), error=0x%x", script_name, GetLastError());
     }
 
     HANDLE h = ::CreateFile(full_path, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, 0, NULL);

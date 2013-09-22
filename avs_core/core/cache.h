@@ -107,6 +107,7 @@ private:
         next=prev=this; 
         vfb=0; 
         frame_number=-1; 
+        faults=0;
         vfb_locked=0;
         vfb_protected=0;
 //        status=0;

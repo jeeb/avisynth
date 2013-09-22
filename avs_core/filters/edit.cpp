@@ -438,6 +438,10 @@ Splice::Splice(PClip _child1, PClip _child2, bool realign_sound, bool _passCache
     audio_switchover_point = vi.num_audio_samples;
 
   vi.num_frames += vi2.num_frames;
+
+  if (vi.num_frames < 0)
+    env->ThrowError("Splice: Maximum number of frames exceeded.");
+
   vi.num_audio_samples = audio_switchover_point + vi2.num_audio_samples;
 }
 
@@ -591,6 +595,10 @@ Dissolve::Dissolve(PClip _child1, PClip _child2, int _overlap, double fps, IScri
   if (audio_fade_start < 0) audio_fade_start= 0;
 
   vi.num_frames = video_fade_start + vi2.num_frames;
+
+  if (vi.num_frames < 0)
+    env->ThrowError("Dissolve: Maximum number of frames exceeded.");
+
   vi.num_audio_samples = audio_fade_start + vi2.num_audio_samples;
 }
 
@@ -891,6 +899,10 @@ Loop::Loop(PClip _child, int times, int _start, int _end, IScriptEnvironment* en
   }
   else {
     vi.num_frames += (times-1) * frames;
+
+    if (vi.num_frames < 0)
+      env->ThrowError("Loop: Maximum number of frames exceeded.");
+
     end = start + times * frames - 1;
 	if (vi.HasAudio()) {
 	  if (vi.HasVideo()) {
