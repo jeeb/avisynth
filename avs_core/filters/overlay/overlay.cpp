@@ -208,8 +208,7 @@ PVideoFrame __stdcall Overlay::GetFrame(int n, IScriptEnvironment *env) {
     // This will be used to avoid two unneeded blits if input and output are yv24
     // Note however, that this will break, if for some reason AviSynth in the future
     // will choose unsuitable alignment on YV24 planes.
-    if (img)
-      delete img;
+    delete img;
     img = new Image444(frame->GetWritePtr(PLANAR_Y), frame->GetWritePtr(PLANAR_U), frame->GetWritePtr(PLANAR_V),
                        frame->GetRowSize(PLANAR_Y), frame->GetHeight(PLANAR_Y), frame->GetPitch(PLANAR_Y));
   } else {

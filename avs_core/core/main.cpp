@@ -689,9 +689,8 @@ bool CAVIFileSynth::DelayInit2() {
         }
       }
 
-      if (szScriptName)
-        delete[] szScriptName;
-      szScriptName = 0;
+      delete[] szScriptName;
+      szScriptName = NULL;
       _clear87();
       __asm {emms};
       _control87( fp_state, 0xffffffff );

@@ -965,8 +965,7 @@ int __stdcall Cache::SetCacheHints(int cachehints, int frame_range) {
     case CACHE_AUDIO_NONE:
     case CACHE_AUDIO_NOTHING:
   //    EnterCriticalSection(&cs_cache_A);
-      if (cache)
-        delete[] cache;
+      delete[] cache;
 
       cache = 0;
       cache_start = 0;

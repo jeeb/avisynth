@@ -183,8 +183,8 @@ Levels::Levels( PClip _child, int in_min, double gamma, int in_max, int out_min,
 
 
 Levels::~Levels() {
-    if (map)       delete[] map;
-    if (mapchroma) delete[] mapchroma;
+    delete[] map;
+    delete[] mapchroma;
 }
 
 
@@ -375,10 +375,10 @@ RGBAdjust::RGBAdjust(PClip _child, double r,  double g,  double b,  double a,
 
 
 RGBAdjust::~RGBAdjust() {
-    if (mapR) delete[] mapR;
-    if (mapG) delete[] mapG;
-    if (mapB) delete[] mapB;
-    if (mapA) delete[] mapA;
+    delete[] mapR;
+    delete[] mapG;
+    delete[] mapB;
+    delete[] mapA;
 }
 
 
@@ -744,8 +744,8 @@ Tweak::Tweak( PClip _child, double _hue, double _sat, double _bright, double _co
 
 
 Tweak::~Tweak() {
-  if (map) delete[] map;
-  if (mapUV) delete[] mapUV;
+  delete[] map;
+  delete[] mapUV;
 }
 
 

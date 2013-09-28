@@ -141,7 +141,7 @@ Antialiaser::Antialiaser(int width, int height, const char fontname[], int size,
 
 Antialiaser::~Antialiaser() {
   FreeDC();
-  if (alpha_calcs) delete[] alpha_calcs;
+  delete[] alpha_calcs;
 }
 
 
@@ -720,8 +720,9 @@ PVideoFrame ShowFrameNumber::GetFrame(int n, IScriptEnvironment* env) {
     TextOut(hdc, child->GetParity(n) ? 32 : vi.width*8+8, y2, text, strlen(text));
   } else {
     SetTextAlign(hdc, TA_BASELINE | (child->GetParity(n) ? TA_LEFT : TA_RIGHT));
+    size_t text_len = strlen(text);
     for (int y2=size; y2<vi.height*8; y2 += size)
-	  TextOut(hdc, child->GetParity(n) ? 32 : vi.width*8+8, y2, text, strlen(text));
+	    TextOut(hdc, child->GetParity(n) ? 32 : vi.width*8+8, y2, text, text_len);
   }
   GdiFlush();
 
@@ -1107,7 +1108,7 @@ void Subtitle::InitAntialiaser(IScriptEnvironment* env)
 GDIError:
   delete antialiaser;
   antialiaser = 0;
-  if (_text) free(_text);
+  free(_text);
 
   env->ThrowError("Subtitle: GDI or Insufficient Memory Error");
 }
@@ -1463,7 +1464,7 @@ Compare::~Compare()
     fprintf(log,"           Overall PSNR: %9.4f\n", PSNR_overall);
     fclose(log);
   }
-  if (psnrs) delete[] psnrs;
+  delete[] psnrs;
 }
 
 

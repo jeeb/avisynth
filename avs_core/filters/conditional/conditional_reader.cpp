@@ -317,7 +317,7 @@ ConditionalReader::ConditionalReader(PClip _child, const char* filename, const c
     }// end while still some file left to read.
   }
   catch (...) {
-    if (line) free(line);
+    free(line);
     fclose(f);
     CleanUp();
     throw;

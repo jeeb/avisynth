@@ -288,8 +288,7 @@ CWDChanger::~CWDChanger(void)
   if (restore)
     SetCurrentDirectory(old_working_directory);
 
-  if (old_working_directory)
-    delete [] old_working_directory;
+  delete [] old_working_directory;
 }
 
 

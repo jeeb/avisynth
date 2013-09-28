@@ -52,7 +52,7 @@ class SSRC : public GenericVideoFilter
 public:
   SSRC(PClip _child, int _target_rate, bool _fast, IScriptEnvironment* env);
   ~SSRC() {
-     if (srcbuffer) delete[] srcbuffer;
+     delete[] srcbuffer;
     }
   void __stdcall GetAudio(void* buf, __int64 start, __int64 count, IScriptEnvironment* env);
   static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env);

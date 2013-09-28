@@ -304,8 +304,8 @@ class ResampleAudio : public GenericVideoFilter
 public:
   ResampleAudio(PClip _child, int _target_rate_n, int _target_rate_d, IScriptEnvironment* env);
   virtual ~ResampleAudio()
-    { if  (srcbuffer) delete[]  srcbuffer;
-      if (fsrcbuffer) delete[] fsrcbuffer; }
+    { delete[]  srcbuffer;
+      delete[] fsrcbuffer; }
   void __stdcall GetAudio(void* buf, __int64 start, __int64 count, IScriptEnvironment* env);
 
   static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env);

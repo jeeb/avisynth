@@ -1498,7 +1498,7 @@ char* ScriptEnvironment::VSprintf(const char* fmt, void* val) {
   int size = 0, count = -1;
   while (count == -1)
   {
-    if (buf) delete[] buf;
+    delete[] buf;
     size += 4096;
     buf = new(std::nothrow) char[size];
     if (!buf) return 0;
