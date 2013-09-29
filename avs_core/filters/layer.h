@@ -71,8 +71,6 @@ private:
   const PClip child1, child2;
   VideoInfo vi;
   int mask_frames;
-  bool YUYmask;
-
 };
 
 
@@ -185,11 +183,11 @@ public:
 
 private:
   const PClip child1, child2;
-  const int levelB, T;
-  const bool chroma;
-  int map1[256], map2[256], ydest, xdest, ysrc, xsrc, ofsX, ofsY, ycount, xcount, overlay_frames;
-  const  char* Op;
   VideoInfo vi;
+  const  char* Op;
+  const int levelB, T;
+  int ydest, xdest, ysrc, xsrc, ofsX, ofsY, ycount, xcount, overlay_frames;
+  const bool chroma;
 
 };
 

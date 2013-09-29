@@ -73,7 +73,6 @@ ConvertToRGB::ConvertToRGB( PClip _child, bool rgb24, const char* matrix,
   : GenericVideoFilter(_child)
 {
   theMatrix = Rec601;
-  is_yv12=false;
   if (matrix) {
     if (!lstrcmpi(matrix, "rec709"))
       theMatrix = Rec709;

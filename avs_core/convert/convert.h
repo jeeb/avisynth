@@ -132,8 +132,8 @@ public:
   static AVSValue __cdecl Create24(AVSValue args, void*, IScriptEnvironment* env);
 
 private:
-  bool use_mmx, is_yv12;
-  int yv12_width, theMatrix;
+  bool use_mmx;
+  int theMatrix;
   enum {Rec601=0, Rec709=1, PC_601=3, PC_709=7 };	// Note! convert_a.asm assumes these values
 };
 
