@@ -403,11 +403,6 @@ public:
   bool __stdcall FunctionExists(const char* name);
   AVSValue __stdcall Invoke(const char* name, const AVSValue args, const char* const* arg_names=0);
   AVSValue __stdcall GetVar(const char* name);
-  bool  __stdcall GetVar(const char* name, AVSValue *val);
-  bool __stdcall GetVar(const char* name, bool def);
-  int  __stdcall GetVar(const char* name, int def);
-  double  __stdcall GetVar(const char* name, double def);
-  const char*  __stdcall GetVar(const char* name, const char* def);
   bool __stdcall SetVar(const char* name, const AVSValue& val);
   bool __stdcall SetGlobalVar(const char* name, const AVSValue& val);
   void __stdcall PushContext(int level=0);
@@ -429,11 +424,18 @@ public:
   void __stdcall DeleteScriptEnvironment();
   void _stdcall ApplyMessage(PVideoFrame* frame, const VideoInfo& vi, const char* message, int size, int textcolor, int halocolor, int bgcolor);
   const AVS_Linkage* const __stdcall GetAVSLinkage();
-  bool __stdcall LoadPlugin(const char* filePath);
-  void __stdcall AddAutoloadDir(const char* dirPath);
-  int __stdcall IncrImportDepth();
-  int __stdcall DecrImportDepth();
-  bool __stdcall Invoke(AVSValue *result, const char* name, const AVSValue args, const char* const* arg_names=0);
+
+  /* IScriptEnvironment2 */
+  virtual bool  __stdcall GetVar(const char* name, AVSValue *val);
+  virtual bool __stdcall GetVar(const char* name, bool def);
+  virtual int  __stdcall GetVar(const char* name, int def);
+  virtual double  __stdcall GetVar(const char* name, double def);
+  virtual const char*  __stdcall GetVar(const char* name, const char* def);
+  virtual bool __stdcall LoadPlugin(const char* filePath);
+  virtual void __stdcall AddAutoloadDir(const char* dirPath);
+  virtual int __stdcall IncrImportDepth();
+  virtual int __stdcall DecrImportDepth();
+  virtual bool __stdcall Invoke(AVSValue *result, const char* name, const AVSValue args, const char* const* arg_names=0);
 
 private:
   // Tritical May 2005
