@@ -1,4 +1,4 @@
-// Avisynth v2.5.  Copyright 2002 Ben Rudiak-Gould et al.
+// Avisynth v2.5. 
 // http://www.avisynth.org
 
 // This program is free software; you can redistribute it and/or modify
@@ -32,344 +32,10 @@
 // which is not derived from or based on Avisynth, such as 3rd-party filters,
 // import and export plugins, or graphical user interfaces.
 
-
 #include <avisynth.h>
-#include "internal.h"
-#include <cstdio>
-#include <malloc.h>
-#include <cassert>
 #include <avs/win.h>
 #include <avs/minmax.h>
-#include <avs/cpuid.h>
-#include "bitblt.h"
-
-
-/********************************************************************
-* Native plugin support
-********************************************************************/
-
-enum { max_plugins=50 };
-
-void FreeLibraries(void* loaded_plugins, IScriptEnvironment* env) {
-  for (int i=0; i<max_plugins; ++i) {
-    HMODULE plugin = ((HMODULE*)loaded_plugins)[i];
-    if (plugin)
-      FreeLibrary(plugin);
-    else
-      break;
-  }
-  memset(loaded_plugins, 0, max_plugins*sizeof(HMODULE));
-}
-
-const char* loadplugin_prefix = NULL;
-static bool MyLoadLibrary(const char* filename, HMODULE* hmod, bool quiet, IScriptEnvironment* env) {
-
-  IScriptEnvironment2* env2 = static_cast<IScriptEnvironment2*>(env);
-
-  HMODULE* loaded_plugins = (HMODULE*)env2->GetVar("$Plugins$", (char*)NULL);
-  if (loaded_plugins == NULL){
-    HMODULE plugins[max_plugins]; // buffer to clone on stack
-
-    memset(plugins, 0, max_plugins*sizeof(HMODULE));
-    // Cheat and copy into SaveString buffer
-    env2->SetGlobalVar("$Plugins$", env2->SaveString((const char*)plugins, max_plugins*sizeof(HMODULE)));
-
-    loaded_plugins = (HMODULE*)env2->GetVar("$Plugins$", (char*)NULL);
-    if (loaded_plugins == NULL){
-      if (!quiet)
-        env2->ThrowError("LoadPlugin: unable to get plugin list $Plugins$, loading \"%s\"", filename);
-      return false;
-    }
-    // Register FreeLibraries(loaded_plugins) to be run at script close
-    env2->AtExit(FreeLibraries, loaded_plugins);
-  }
-  *hmod = LoadLibrary(filename);
-  if (!*hmod)
-    if (quiet)
-      return false;
-    else
-      env2->ThrowError("LoadPlugin: unable to load \"%s\", error=0x%x", filename, GetLastError());
-  // see if we've loaded this already, and add it to the list if not
-  for (int j=0; j<max_plugins; ++j) {
-    if (loaded_plugins[j] == *hmod) {
-      FreeLibrary(*hmod);
-      return false;
-    }
-    if (loaded_plugins[j] == 0) {
-      char result[512] = "\0";
-      char* t_string = _strrev(_strdup(filename));
-      int len = strlen(filename);
-      int pos = len-strcspn(t_string, ".");
-      int pos2 = len-strcspn(t_string, "\\");
-      free(t_string);  // Tritical May 2005
-      strncat(result, filename+pos2, pos-pos2-1);
-      assert(!loadplugin_prefix);
-      loadplugin_prefix = _strdup(result);
-      loaded_plugins[j] = *hmod;
-      return true;
-    }
-  }
-  FreeLibrary(*hmod);  // Tritical Jan 2006
-  if (!quiet)
-    env2->ThrowError("LoadPlugin: too many plugins loaded already (max. %d)", max_plugins);
-  return false;
-}
-
-
-AVSValue LoadPlugin(AVSValue args, void* user_data, IScriptEnvironment* env) {
-  extern const AVS_Linkage* const AVS_linkage; // In interface.cpp
-  bool quiet = (user_data != 0);
-  args = args[0];
-  const char* result=0;
-  for (int i=0; i<args.ArraySize(); ++i) {
-    HMODULE plugin;
-    const char* plugin_name = args[i].AsString();
-    if (MyLoadLibrary(plugin_name, &plugin, quiet, env)) {
-      typedef const char* (__stdcall *AvisynthPluginInit3Func)(IScriptEnvironment* env, const AVS_Linkage* const vectors);
-      AvisynthPluginInit3Func AvisynthPluginInit3 = (AvisynthPluginInit3Func)GetProcAddress(plugin, "AvisynthPluginInit3");
-      if (!AvisynthPluginInit3) {
-        AvisynthPluginInit3 = (AvisynthPluginInit3Func)GetProcAddress(plugin, "_AvisynthPluginInit3@8");
-        if (!AvisynthPluginInit3) {  // Try for 2.5 version
-          typedef const char* (__stdcall *AvisynthPluginInit2Func)(IScriptEnvironment* env);
-          AvisynthPluginInit2Func AvisynthPluginInit2 = (AvisynthPluginInit2Func)GetProcAddress(plugin, "AvisynthPluginInit2");
-          if (!AvisynthPluginInit2) {
-            AvisynthPluginInit2 = (AvisynthPluginInit2Func)GetProcAddress(plugin, "_AvisynthPluginInit2@4");
-            if (!AvisynthPluginInit2) {  // Older version
-              FreeLibrary(plugin);
-              if (quiet) {
-                // remove the last handle from the list
-                HMODULE* loaded_plugins = (HMODULE*)env->GetVar("$Plugins$").AsString();
-                int j=0;
-                while (loaded_plugins[j+1]) j++;
-                loaded_plugins[j] = 0;
-              } else {
-                env->ThrowError("Plugin %s is not an AviSynth 2.6 or 2.5 plugin.",plugin_name);
-              }
-            } else {
-              result = AvisynthPluginInit2(env);
-            }
-          } else {
-            result = AvisynthPluginInit2(env);
-          }
-        } else {
-          result = AvisynthPluginInit3(env, AVS_linkage);
-        }
-      } else {
-        result = AvisynthPluginInit3(env, AVS_linkage);
-      }
-    }
-  }
-
-  if (loadplugin_prefix) {
-    free((void*)loadplugin_prefix);
-    loadplugin_prefix = NULL;
-  }
-
-  return result ? AVSValue(env->SaveString(result)) : AVSValue();
-}
-
-
-
-/********************************************************************
-* VFAPI plugin support
-********************************************************************/
-
-#define VF_STREAM_VIDEO   0x00000001
-#define VF_STREAM_AUDIO   0x00000002
-#define VF_OK       0x00000000
-#define VF_ERROR      0x80004005
-
-struct VF_PluginInfo {
-  DWORD dwSize;
-  DWORD dwAPIVersion;
-  DWORD dwVersion;
-  DWORD dwSupportStreamType;
-  char  cPluginInfo[256];
-  char  cFileType[256];
-};
-
-typedef DWORD VF_FileHandle;
-
-struct VF_FileInfo {
-  DWORD dwSize;
-  DWORD dwHasStreams;
-};
-
-struct VF_StreamInfo_Video {
-  DWORD dwSize;
-  DWORD dwLengthL;
-  DWORD dwLengthH;
-  DWORD dwRate;
-  DWORD dwScale;
-  DWORD dwWidth;
-  DWORD dwHeight;
-  DWORD dwBitCount;
-};
-
-struct VF_StreamInfo_Audio {
-  DWORD dwSize;
-  DWORD dwLengthL;
-  DWORD dwLengthH;
-  DWORD dwRate;
-  DWORD dwScale;
-  DWORD dwChannels;
-  DWORD dwBitsPerSample;
-  DWORD dwBlockAlign;
-};
-
-struct VF_ReadData_Video {
-  DWORD dwSize;
-  DWORD dwFrameNumberL;
-  DWORD dwFrameNumberH;
-  void  *lpData;
-  int  lPitch;
-};
-
-struct VF_ReadData_Audio {
-  DWORD dwSize;
-  DWORD dwSamplePosL;
-  DWORD dwSamplePosH;
-  DWORD dwSampleCount;
-  DWORD dwReadedSampleCount;
-  DWORD dwBufSize;
-  void  *lpBuf;
-};
-
-struct VF_PluginFunc {
-  DWORD dwSize;
-  HRESULT (_stdcall *OpenFile)( const char *lpFileName, VF_FileHandle* lpFileHandle );
-  HRESULT (_stdcall *CloseFile)( VF_FileHandle hFileHandle );
-  HRESULT (_stdcall *GetFileInfo)( VF_FileHandle hFileHandle, VF_FileInfo* lpFileInfo );
-  HRESULT (_stdcall *GetStreamInfo)( VF_FileHandle hFileHandle,DWORD dwStream,void *lpStreamInfo );
-  HRESULT (_stdcall *ReadData)( VF_FileHandle hFileHandle,DWORD dwStream,void *lpData ); 
-};
-
-typedef HRESULT (__stdcall *VF_GetPluginInfo)(VF_PluginInfo* lpPluginInfo);
-typedef HRESULT (__stdcall *VF_GetPluginFunc)(VF_PluginFunc* lpPluginFunc);
-
-void CheckHresult(IScriptEnvironment* env, HRESULT hr) {
-  if (FAILED(hr)) {
-    env->ThrowError("VFAPI plugin returned an error (0x%X)", hr);
-  }
-}
-
-void DeleteVFPluginFunc(void* vfpf, IScriptEnvironment*) {
-  delete (VF_PluginFunc*)vfpf;
-}
-
-class VFAPIPluginProxy : public IClip {
-  VideoInfo vi;
-  const VF_PluginFunc* const plugin_func;
-  VF_FileHandle h;
-public:
-  VFAPIPluginProxy(const char* filename, const VF_PluginFunc* _plugin_func, IScriptEnvironment* env)
-    : plugin_func(_plugin_func)
-  {
-    CheckHresult(env, plugin_func->OpenFile(filename, &h));
-    VF_FileInfo file_info = { sizeof(VF_FileInfo) };
-    CheckHresult(env, plugin_func->GetFileInfo(h, &file_info));
-
-    memset(&vi, 0, sizeof(VideoInfo));
-    if (file_info.dwHasStreams & VF_STREAM_VIDEO) {
-      VF_StreamInfo_Video stream_info = { sizeof(VF_StreamInfo_Video) };
-      CheckHresult(env, plugin_func->GetStreamInfo(h, VF_STREAM_VIDEO, &stream_info));
-      if (stream_info.dwBitCount == 24) {
-        vi.pixel_type = VideoInfo::CS_BGR24;
-      } else if (stream_info.dwBitCount == 32) {
-        vi.pixel_type = VideoInfo::CS_BGR32;
-      } else {
-        env->ThrowError("VFAPIPluginProxy: plugin returned invalid bit depth (%d)", stream_info.dwBitCount);
-      }
-      vi.width = stream_info.dwWidth;
-      vi.height = stream_info.dwHeight;
-      vi.num_frames = stream_info.dwLengthL;
-      vi.SetFPS(stream_info.dwRate, stream_info.dwScale);
-    }
-    if (file_info.dwHasStreams & VF_STREAM_AUDIO) {
-      VF_StreamInfo_Audio stream_info = { sizeof(VF_StreamInfo_Audio) };
-      CheckHresult(env, plugin_func->GetStreamInfo(h, VF_STREAM_AUDIO, &stream_info));
-      vi.audio_samples_per_second = stream_info.dwRate / stream_info.dwScale;
-      vi.num_audio_samples = stream_info.dwLengthL;
-      vi.nchannels = stream_info.dwChannels;
-
-      if (stream_info.dwBitsPerSample == 8)
-        vi.sample_type = SAMPLE_INT8;
-      else if (stream_info.dwBitsPerSample == 16)
-        vi.sample_type = SAMPLE_INT16;
-      else if (stream_info.dwBitsPerSample == 24)
-        vi.sample_type = SAMPLE_INT24;
-      else if (stream_info.dwBitsPerSample == 32)
-        vi.sample_type = SAMPLE_INT32;
-      else
-        env->ThrowError("VFAPIPluginProxy: plugin returned invalid audio sample depth (%d)", stream_info.dwBitsPerSample);
-    }
-
-    if (!vi.HasVideo() && !vi.HasAudio())
-      env->ThrowError("VFAPIPluginProxy: no video or audio stream");
-  }
-
-  const VideoInfo& __stdcall GetVideoInfo() { return vi; }
-
-  PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env) {
-    n = clamp(n, 0, vi.num_frames-1);
-    PVideoFrame result = env->NewVideoFrame(vi);
-    VF_ReadData_Video vfrdv = { sizeof(VF_ReadData_Video), n, 0, result->GetWritePtr(), result->GetPitch() };
-    CheckHresult(env, plugin_func->ReadData(h, VF_STREAM_VIDEO, &vfrdv));
-    return result;
-  }
-
-  void __stdcall GetAudio(void* buf, __int64 start, __int64 count, IScriptEnvironment* env) {
-    if (start < 0) {
-      int bytes = (int)vi.BytesFromAudioSamples(-start);
-      memset(buf, 0, bytes);
-      buf = (char*)buf + bytes;
-      count += start;
-      start = 0;
-    }
-    VF_ReadData_Audio vfrda = { sizeof(VF_ReadData_Audio), (int)start, 0, (int)count, 0, (int)vi.BytesFromAudioSamples(count), buf };
-    CheckHresult(env, plugin_func->ReadData(h, VF_STREAM_AUDIO, &vfrda));
-    if (int(vfrda.dwReadedSampleCount) < count) {
-      memset((char*)buf + vi.BytesFromAudioSamples(vfrda.dwReadedSampleCount),
-        0, (size_t)vi.BytesFromAudioSamples(count - vfrda.dwReadedSampleCount));
-    }
-  }
-
-  bool __stdcall GetParity(int n) { return false; }
-  int __stdcall SetCacheHints(int cachehints,int frame_range) { return 0; };
-
-  static AVSValue __cdecl Create(AVSValue args, void* user_data, IScriptEnvironment* env) {
-    args = args[0];
-    PClip result = new VFAPIPluginProxy(args[0].AsString(), (VF_PluginFunc*)user_data, env);
-    for (int i=1; i<args.ArraySize(); ++i)
-      result = new_Splice(result, new VFAPIPluginProxy(args[i].AsString(), (VF_PluginFunc*)user_data, env), false, env);
-    return result;
-  }
-};
-
-
-AVSValue LoadVFAPIPlugin(AVSValue args, void*, IScriptEnvironment* env) {
-  HMODULE plugin;
-  const char* plugin_name = args[0].AsString();
-  if (MyLoadLibrary(plugin_name, &plugin, false, env)) {
-    VF_GetPluginInfo vfGetPluginInfo = (VF_GetPluginInfo)GetProcAddress(plugin, "vfGetPluginInfo");
-    VF_GetPluginFunc vfGetPluginFunc = (VF_GetPluginFunc)GetProcAddress(plugin, "vfGetPluginFunc");
-    if (!vfGetPluginInfo || !vfGetPluginFunc)
-      env->ThrowError("LoadPlugin: \"%s\" is not a VFAPI plugin", plugin_name);
-    VF_PluginInfo plugin_info = { sizeof(VF_PluginInfo) };
-    CheckHresult(env, vfGetPluginInfo(&plugin_info));
-
-    VF_PluginFunc* plugin_func = new VF_PluginFunc;
-    env->AtExit(DeleteVFPluginFunc, plugin_func);
-    plugin_func->dwSize = sizeof(VF_PluginFunc);
-    CheckHresult(env, vfGetPluginFunc(plugin_func));
-
-    env->AddFunction(args[1].AsString(), "s+", VFAPIPluginProxy::Create, plugin_func);
-
-    return plugin_info.cPluginInfo ? AVSValue(plugin_info.cPluginInfo) : AVSValue();
-  } else {
-    return AVSValue();
-  }
-}
+#include <cstdio>
 
 /********************************************************************
 * VirtualDub plugin support
@@ -392,6 +58,7 @@ AVSValue LoadVFAPIPlugin(AVSValue args, void*, IScriptEnvironment* env) {
 //  along with this program; if not, write to the Free Software
 //  Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
+int GetCPUFlags();
 
 
 class CScriptValue;
@@ -808,7 +475,7 @@ public:
 
 //////////////////// from Filters.cpp ////////////////////
 
-extern char exception_conversion_buffer[2048];    // in AVIReadHandler.cpp
+char exception_conversion_buffer[2048];
 
 static void FilterThrowExcept(const char *format, ...) {
   va_list val;
@@ -820,7 +487,7 @@ static void FilterThrowExcept(const char *format, ...) {
 }
 
 static void FilterThrowExceptMemory() {
-  throw AvisynthError("Out of memory");
+  throw AvisynthError("VDubFilter: Out of memory.");
 }
 
 // This is really disgusting...
@@ -967,12 +634,12 @@ public:
 
   PVideoFrame FilterFrame(int n, IScriptEnvironment* env, bool in_preroll) {
     if (last) {
-      BitBlt(last->GetWritePtr(), last->GetPitch(), src->GetReadPtr(), src->GetPitch(),
+      env->BitBlt(last->GetWritePtr(), last->GetPitch(), src->GetReadPtr(), src->GetPitch(),
         last->GetRowSize(), last->GetHeight());
     }
     {
       PVideoFrame _src = child->GetFrame(n, env);
-      BitBlt(src->GetWritePtr(), src->GetPitch(), _src->GetReadPtr(), _src->GetPitch(),
+      env->BitBlt(src->GetWritePtr(), src->GetPitch(), _src->GetReadPtr(), _src->GetPitch(),
         src->GetRowSize(), src->GetHeight());
     }
 
@@ -985,7 +652,7 @@ public:
       return 0;
     } else {
       PVideoFrame _dst = env->NewVideoFrame(vi);
-      BitBlt(_dst->GetWritePtr(), _dst->GetPitch(), (dst?dst:src)->GetReadPtr(),
+      env->BitBlt(_dst->GetWritePtr(), _dst->GetPitch(), (dst?dst:src)->GetReadPtr(),
         _dst->GetPitch(), _dst->GetRowSize(), _dst->GetHeight());
       return _dst;
     }
@@ -1156,10 +823,12 @@ AVSValue LoadVirtualdubPlugin(AVSValue args, void*, IScriptEnvironment* env) {
   return AVSValue();
 }
 
+const AVS_Linkage * AVS_linkage = 0;
+extern "C" __declspec(dllexport) const char* __stdcall AvisynthPluginInit3(IScriptEnvironment* env, const AVS_Linkage* const vectors) {
+	AVS_linkage = vectors;
 
-extern const AVSFunction Plugin_functions[] = {
-  { "LoadPlugin", "s+", LoadPlugin, (void*)false },
-  { "LoadVirtualdubPlugin", "ss[preroll]i", LoadVirtualdubPlugin },
-  { "LoadVFAPIPlugin", "ss", LoadVFAPIPlugin },
-  { 0 }
-};
+  // clip, base filename, start, end, image format/extension, info
+  env->AddFunction("LoadVirtualdubPlugin", "ss[preroll]i", LoadVirtualdubPlugin, 0);
+
+  return "`LoadVirtualdubPlugin' Allows to load and use filters written for VirtualDub.";
+}

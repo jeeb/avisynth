@@ -22,14 +22,6 @@ struct AVS_Clip
 	AVS_Clip() : env(0), error(0) {}
 };
 
-struct AVS_ScriptEnvironment
-{
-	IScriptEnvironment * env;
-	const char * error;
-	AVS_ScriptEnvironment(IScriptEnvironment * e = 0) 
-		: env(e), error(0) {}
-};
-
 class C_VideoFilter : public IClip {
 public: // but don't use
 	AVS_Clip child;
@@ -295,7 +287,10 @@ AVSValue __cdecl create_c_video_filter(AVSValue args, void * user_data,
 									                     IScriptEnvironment * e0)
 {
 	C_VideoFilter_UserData * d = (C_VideoFilter_UserData *)user_data;
-	AVS_ScriptEnvironment env(e0);
+	AVS_ScriptEnvironment env;
+	env.env = e0;
+	env.error = NULL;
+
 //	OutputDebugString("OK");
 	AVS_Value res = (d->func)(&env, *(AVS_Value *)&args, d->user_data);
 	if (res.type == 'e') {
@@ -487,6 +482,7 @@ void __cdecl shutdown_func_bridge(void* user_data, IScriptEnvironment* env)
   ShutdownFuncData * d = (ShutdownFuncData *)user_data;
   AVS_ScriptEnvironment e;
   e.env = env;
+  e.error = NULL;
   d->func(d->user_data, &e);
 }
 
@@ -584,6 +580,7 @@ AVS_ScriptEnvironment * AVSC_CC avs_create_script_environment(int version)
 	AVS_ScriptEnvironment * e = new AVS_ScriptEnvironment;
 	try {
 		e->env = CreateScriptEnvironment(version);
+		e->error = NULL;
 	} catch (const AvisynthError &err) {
 		e->error = err.msg;
 		e->env = 0;
@@ -610,88 +607,3 @@ void AVSC_CC avs_delete_script_environment(AVS_ScriptEnvironment * e)
 		delete e;
 	}
 }
-
-
-/////////////////////////////////////////////////////////////////////
-//
-// 
-//
-
-typedef const char * (AVSC_CC *AvisynthCPluginInitFunc)(AVS_ScriptEnvironment* env);
-
-AVSValue __cdecl load_c_plugin(AVSValue args, void * user_data, 
-					           IScriptEnvironment * env)
-{
-	const char * filename = args[0].AsString();
-	HMODULE plugin = LoadLibrary(filename);
-	if (!plugin)
-		env->ThrowError("Unable to load C Plugin: \"%s\", error=0x%x", filename, GetLastError());
-    AvisynthCPluginInitFunc func = 0;
-#ifndef AVSC_USE_STDCALL
-    func = (AvisynthCPluginInitFunc)GetProcAddress(plugin, "avisynth_c_plugin_init");
-#else // AVSC_USE_STDCALL
-    func = (AvisynthCPluginInitFunc)GetProcAddress(plugin, "avisynth_c_plugin_init@4");
-    if (!func)
-      func = (AvisynthCPluginInitFunc)GetProcAddress(plugin, "avisynth_c_plugin_init");
-#endif // AVSC_USE_STDCALL
-	if (!func)
-		env->ThrowError("Not An Avisynth 2 C Plugin: %s", filename);
-	AVS_ScriptEnvironment e;
-	e.env = env;
-	AVS_ScriptEnvironment *pe;
-	pe = &e;
-	const char *s = NULL;
-	int callok = 1; // (stdcall)
-	__asm // Tritical - Jan 2006
-	{
-		push eax
-		push edx
-
-		push 0x12345678		// Stash a known value
-
-		mov eax, pe			// Env pointer
-		push eax			// Arg1
-		call func			// avisynth_c_plugin_init
-
-		lea edx, s			// return value is in eax
-		mov DWORD PTR[edx], eax
-
-		pop eax				// Get top of stack
-		cmp eax, 0x12345678	// Was it our known value?
-		je end				// Yes! Stack was cleaned up, was a stdcall
-
-		lea edx, callok
-		mov BYTE PTR[edx], 0 // Set callok to 0 (_cdecl)
-
-		pop eax				// Get 2nd top of stack
-		cmp eax, 0x12345678	// Was this our known value?
-		je end				// Yes! Stack is now correctly cleaned up, was a _cdecl
-
-		mov BYTE PTR[edx], 2 // Set callok to 2 (bad stack)
-end:
-		pop edx
-		pop eax
-	}
-	if (callok == 2)
-		env->ThrowError("Avisynth 2 C Plugin '%s' has corrupted the stack.", filename);
-#ifndef AVSC_USE_STDCALL
-	if (callok != 0)
-		env->ThrowError("Avisynth 2 C Plugin '%s' has wrong calling convention! Must be _cdecl.", filename);
-#else // AVSC_USE_STDCALL
-	if (callok != 1)
-		env->ThrowError("Avisynth 2 C Plugin '%s' has wrong calling convention! Must be stdcall.", filename);
-#endif // AVSC_USE_STDCALL
-	if (s == 0)
-		env->ThrowError("Avisynth 2 C Plugin '%s' returned a NULL pointer.", filename);
-
-	return AVSValue(s);
-}
-
-
-#include "internal.h"
-extern const AVSFunction CPlugin_filters[] = {
-    {"LoadCPlugin", "s", load_c_plugin },
-    {"Load_Stdcall_Plugin", "s", load_c_plugin },
-    { 0 }
-};
-

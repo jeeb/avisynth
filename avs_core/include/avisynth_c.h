@@ -117,6 +117,12 @@ enum {
 
 #define AVS_FRAME_ALIGN 16 
 
+struct AVS_ScriptEnvironment
+{
+	IScriptEnvironment * env;
+	const char * error;
+};
+
 typedef struct AVS_Clip AVS_Clip;
 typedef struct AVS_ScriptEnvironment AVS_ScriptEnvironment;
 

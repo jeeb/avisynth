@@ -40,6 +40,7 @@
 #include "strings.h"
 #include <avs/cpuid.h>
 #include "bitblt.h"
+#include "PluginManager.h"
 
 #include <avs/win.h>
 #include <objbase.h>
@@ -68,7 +69,7 @@ extern const AVSFunction Audio_filters[], Combine_filters[], Convert_filters[],
                    Transform_filters[], Merge_filters[], Color_filters[],
                    Debug_filters[], Turn_filters[],
                    Conditional_filters[], Conditional_funtions_filters[],
-                   CPlugin_filters[], Cache_filters[], Greyscale_filters[],
+                   Cache_filters[], Greyscale_filters[],
                    Swap_filters[], Overlay_filters[];
 
 
@@ -82,8 +83,8 @@ const AVSFunction* builtin_functions[] = {
                    Transform_filters, Merge_filters, Color_filters,
                    Debug_filters, Turn_filters,
                    Conditional_filters, Conditional_funtions_filters,
-                   Plugin_functions, CPlugin_filters, Cache_filters,
-                   Overlay_filters, Greyscale_filters, Swap_filters };
+                   Plugin_functions, Cache_filters,
+                   Overlay_filters, Greyscale_filters, Swap_filters};
 
 // Global statistics counters
 struct {
@@ -97,17 +98,11 @@ struct {
   char tag[36];
 } g_Mem_stats = {0, 0, 0, 0, 0, 0, 0, "CleanUps, Losses, Plan[A1,A2,B,C,D]"};
 
-const HKEY RegUserKey = HKEY_CURRENT_USER;
-const HKEY RegRootKey = HKEY_LOCAL_MACHINE;
 const char RegAvisynthKey[] = "Software\\Avisynth";
-const char RegPluginDir[] = "PluginDir2_5";
+const char RegAvsPluginDir[] = "PluginDir2_5";
+const char RegPluginDir[] = "PluginDirNG";
 
 const _PixelClip PixelClip;
-
-// in plugins.cpp
-AVSValue LoadPlugin(AVSValue args, void* user_data, IScriptEnvironment* env);
-void FreeLibraries(void* loaded_plugins, IScriptEnvironment* env);
-extern const char* loadplugin_prefix;
 
 template<typename T>
 static T AlignNumber(T n, T align)
@@ -298,454 +293,6 @@ public:
   }
 };
 
-
-class FunctionTable {
-  struct LocalFunction : AVSFunction {
-    LocalFunction* prev;
-  };
-
-  struct Plugin {
-    const char* name;
-    LocalFunction* plugin_functions;
-    Plugin* prev;
-  };
-
-  LocalFunction* local_functions;
-  Plugin* plugins;
-  bool prescanning, reloading;
-
-  IScriptEnvironment2* const env;
-
-public:
-
-  FunctionTable(IScriptEnvironment2* _env) : env(_env), prescanning(false), reloading(false) {
-    local_functions = 0;
-    plugins = 0;
-  }
-
-  ~FunctionTable() {
-    while (local_functions) {
-      LocalFunction* prev = local_functions->prev;
-      delete local_functions;
-      local_functions = prev;
-    }
-    while (plugins) {
-      RemovePlugin(plugins);
-    }
-  }
-
-  void StartPrescanning() { prescanning = true; }
-  void StopPrescanning() { prescanning = false; }
-
-  void PrescanPluginStart(const char* name)
-  {
-    if (!prescanning)
-      env->ThrowError("FunctionTable: Not in prescanning state");
-    _RPT1(0, "Prescanning plugin: %s\n", name);
-    Plugin* p = new Plugin;
-    p->name = name;
-    p->plugin_functions = 0;
-    p->prev = plugins;
-    plugins = p;
-  }
-
-  void RemovePlugin(Plugin* p)
-  {
-    LocalFunction* cur = p->plugin_functions;
-    while (cur) {
-      LocalFunction* prev = cur->prev;
-      delete cur;
-      cur = prev;
-    }
-    if (p == plugins) {
-      plugins = plugins->prev;
-    } else {
-      Plugin* pp = plugins;
-      while (pp->prev != p) pp = pp->prev;
-      pp->prev = p->prev;
-    }
-    delete p;
-  }
-
-  static bool IsParameterTypeSpecifier(char c) {
-    switch (c) {
-      case 'b': case 'i': case 'f': case 's': case 'c': case '.':
-        return true;
-      default:
-        return false;
-    }
-  }
-
-  static bool IsParameterTypeModifier(char c) {
-    switch (c) {
-      case '+': case '*':
-        return true;
-      default:
-        return false;
-    }
-  }
-
-  static bool IsValidParameterString(const char* p) {
-    int state = 0;
-    char c;
-    while ((c = *p++) != '\0' && state != -1) {
-      switch (state) {
-        case 0:
-          if (IsParameterTypeSpecifier(c)) {
-            state = 1;
-          }
-          else if (c == '[') {
-            state = 2;
-          }
-          else {
-            state = -1;
-          }
-          break;
-
-        case 1:
-          if (IsParameterTypeSpecifier(c)) {
-            // do nothing; stay in the current state
-          }
-          else if (c == '[') {
-            state = 2;
-          }
-          else if (IsParameterTypeModifier(c)) {
-            state = 0;
-          }
-          else {
-            state = -1;
-          }
-          break;
-
-        case 2:
-          if (c == ']') {
-            state = 3;
-          }
-          else {
-            // do nothing; stay in the current state
-          }
-          break;
-
-        case 3:
-          if (IsParameterTypeSpecifier(c)) {
-            state = 1;
-          }
-          else {
-            state = -1;
-          }
-          break;
-      }
-    }
-
-    // states 0, 1 are the only ending states we accept
-    return state == 0 || state == 1;
-  }
-
-  // Update $Plugin! -- Tritical Jan 2006
-  void AddFunction(const char* name, const char* params, IScriptEnvironment::ApplyFunc apply, void* user_data) {
-    if (prescanning && !plugins)
-      env->ThrowError("FunctionTable in prescanning state but no plugin has been set");
-
-    if (!IsValidParameterString(params))
-      env->ThrowError("%s has an invalid parameter string (bug in filter)", name);
-
-    bool duse = false;
-
-// Option for Tritcal - Nonstandard, manifestly changes behaviour
-#ifdef OPT_TRITICAL_NOOVERLOAD
-
-// Do not allow LoadPlugin or LoadCPlugin to be overloaded
-// to access the new function the alternate name must be used
-    if      (lstrcmpi(name, "LoadPlugin")  == 0) duse = true;
-    else if (lstrcmpi(name, "LoadCPlugin") == 0) duse = true;
-#endif
-    const char* alt_name = 0;
-    LocalFunction *f = NULL;
-    if (!duse) {
-      f = new LocalFunction;
-      f->name = name;
-      f->param_types = params;
-      if (!prescanning) {
-        f->apply = apply;
-        f->user_data = user_data;
-        f->prev = local_functions;
-        local_functions = f;
-      } else {
-        _RPT1(0, "  Function %s (prescan)\n", name);
-        f->prev = plugins->plugin_functions;
-        plugins->plugin_functions = f;
-      }
-    }
-
-    LocalFunction *f2 = NULL;
-    if (loadplugin_prefix) {
-      _RPT1(0, "  Plugin name %s\n", loadplugin_prefix);
-      char result[512];
-      strcpy(result, loadplugin_prefix);
-      strcat(result, "_");
-      strcat(result, name);
-      f2 = new LocalFunction;
-      f2->name = env->SaveString(result);     // needs to copy here since the plugin will be unloaded
-      f2->param_types = params;     // needs to copy here since the plugin will be unloaded
-      alt_name = f2->name;
-      if (prescanning) {
-        f2->prev = plugins->plugin_functions;
-        plugins->plugin_functions = f2;
-      } else {
-        f2->apply = apply;
-        f2->user_data = user_data;
-        f2->prev = local_functions;
-        local_functions = f2;
-      }
-    }
-// *******************************************************************
-// *** Make Plugin Functions readable for external apps            ***
-// *** Tobias Minich, Mar 2003                                     ***
-// BEGIN *************************************************************
-    if (prescanning) {
-      AVSValue fnplugin;
-      char *fnpluginnew=0;
-      if (env->GetVar("$PluginFunctions$", &fnplugin))
-      {
-        int string_len = strlen(fnplugin.AsString())+1;   // +1 because we extend the list by adding a space before the new functions
-
-        if (!duse)
-          string_len += strlen(name)+1; // +1 to account for terminating zero when reserving space
-
-        if (alt_name)
-          string_len += strlen(alt_name)+1; // +1 to account for separating space between name and altname
-
-        fnpluginnew = new char[string_len];
-        strcpy(fnpluginnew, fnplugin.AsString());
-        if (!duse) {
-          strcat(fnpluginnew, " ");
-          strcat(fnpluginnew, name);
-        }
-        if (alt_name) {
-          strcat(fnpluginnew, " ");
-          strcat(fnpluginnew, alt_name);
-        }
-        env->SetGlobalVar("$PluginFunctions$", AVSValue(env->SaveString(fnpluginnew, string_len)));
-        delete[] fnpluginnew;
-
-      } else {
-        int string_len = 0;
-        if (!duse && alt_name)
-        {
-          string_len = strlen(name)+strlen(alt_name)+2;
-          fnpluginnew = new char[string_len];
-          strcpy(fnpluginnew, name);
-          strcat(fnpluginnew, " ");
-          strcat(fnpluginnew, alt_name);
-        }
-        else if (!duse)
-        {
-          string_len = strlen(name)+1;
-          fnpluginnew = new char[string_len];
-          strcpy(fnpluginnew, name);
-        }
-        else if (alt_name)
-        {
-          string_len = strlen(alt_name)+1;
-          fnpluginnew = new char[string_len];
-          strcpy(fnpluginnew, alt_name);
-        }
-        if (fnpluginnew) {
-          env->SetGlobalVar("$PluginFunctions$", AVSValue(env->SaveString(fnpluginnew, string_len)));
-          delete[] fnpluginnew;
-        }
-      }
-      char temp[1024] = "$Plugin!";
-      if (f) {
-        strcat(temp, name);
-        strcat(temp, "!Param$");
-        env->SetGlobalVar(env->SaveString(temp, 8+strlen(name)+7+1), AVSValue(f->param_types)); // Fizick
-      }
-      if (f2 && alt_name) {
-        strcpy(temp, "$Plugin!");
-        strcat(temp, alt_name);
-        strcat(temp, "!Param$");
-        env->SetGlobalVar(env->SaveString(temp, 8+strlen(alt_name)+7+1), AVSValue(f2->param_types));
-      }
-    }
-// END ***************************************************************
-
-  }
-
-  const AVSFunction* Lookup(const char* search_name, const AVSValue* args, int num_args,
-                      bool &pstrict, int args_names_count, const char* const* arg_names) {
-    int oanc;
-    do {
-      for (int strict = 1; strict >= 0; --strict) {
-        pstrict = strict&1;
-        // first, look in loaded plugins
-        for (LocalFunction* p = local_functions; p; p = p->prev)
-          if (streqi(p->name, search_name) &&
-              TypeMatch(p->param_types, args, num_args, strict&1, env) &&
-              ArgNameMatch(p->param_types, args_names_count, arg_names))
-            return p;
-        // now looks in prescanned plugins
-        for (Plugin* pp = plugins; pp; pp = pp->prev)
-          for (LocalFunction* p = pp->plugin_functions; p; p = p->prev)
-            if (streqi(p->name, search_name) &&
-                TypeMatch(p->param_types, args, num_args, strict&1, env) &&
-                ArgNameMatch(p->param_types, args_names_count, arg_names)) {
-              _RPT2(0, "Loading plugin %s (lookup for function %s)\n", pp->name, p->name);
-              // sets reloading in case the plugin is performing env->FunctionExists() calls
-              reloading = true;
-              LoadPlugin(AVSValue(&AVSValue(&AVSValue(pp->name), 1), 1), (void*)false, env);
-              reloading = false;
-              // just in case the function disappeared from the plugin, avoid infinte recursion
-              RemovePlugin(pp);
-              // restart the search
-              return Lookup(search_name, args, num_args, pstrict, args_names_count, arg_names);
-            }
-        // finally, look for a built-in function
-        for (int i = 0; i < sizeof(builtin_functions)/sizeof(builtin_functions[0]); ++i)
-          for (const AVSFunction* j = builtin_functions[i]; j->name; ++j)
-            if (streqi(j->name, search_name) &&
-                TypeMatch(j->param_types, args, num_args, strict&1, env) &&
-                ArgNameMatch(j->param_types, args_names_count, arg_names))
-              return j;
-      }
-      // Try again without arg name matching
-      oanc = args_names_count;
-      args_names_count = 0;
-    } while (oanc);
-    return 0;
-  }
-
-  bool Exists(const char* search_name) {
-    for (LocalFunction* p = local_functions; p; p = p->prev)
-      if (streqi(p->name, search_name))
-        return true;
-    if (!reloading) {
-      for (Plugin* pp = plugins; pp; pp = pp->prev)
-        for (LocalFunction* p = pp->plugin_functions; p; p = p->prev)
-          if (streqi(p->name, search_name))
-            return true;
-    }
-    for (int i = 0; i < sizeof(builtin_functions)/sizeof(builtin_functions[0]); ++i)
-      for (const AVSFunction* j = builtin_functions[i]; j->name; ++j)
-        if (streqi(j->name, search_name))
-          return true;
-    return false;
-  }
-
-  static bool SingleTypeMatch(char type, const AVSValue& arg, bool strict) {
-    switch (type) {
-      case '.': return true;
-      case 'b': return arg.IsBool();
-      case 'i': return arg.IsInt();
-      case 'f': return arg.IsFloat() && (!strict || !arg.IsInt());
-      case 's': return arg.IsString();
-      case 'c': return arg.IsClip();
-      default:  return false;
-    }
-  }
-
-  bool TypeMatch(const char* param_types, const AVSValue* args, int num_args, bool strict, IScriptEnvironment* env) {
-
-    bool optional = false;
-
-    int i = 0;
-    while (i < num_args) {
-
-      if (*param_types == '\0') {
-        // more args than params
-        return false;
-      }
-
-      if (*param_types == '[') {
-        // named arg: skip over the name
-        param_types = strchr(param_types+1, ']');
-        if (param_types == NULL) {
-          env->ThrowError("TypeMatch: unterminated parameter name (bug in filter)");
-        }
-
-        ++param_types;
-        optional = true;
-
-        if (*param_types == '\0') {
-          env->ThrowError("TypeMatch: no type specified for optional parameter (bug in filter)");
-        }
-      }
-
-      if (param_types[1] == '*') {
-        // skip over initial test of type for '*' (since zero matches is ok)
-        ++param_types;
-      }
-
-      switch (*param_types) {
-        case 'b': case 'i': case 'f': case 's': case 'c':
-          if (   (!optional || args[i].Defined())
-              && !SingleTypeMatch(*param_types, args[i], strict))
-            return false;
-          // fall through
-        case '.':
-          ++param_types;
-          ++i;
-          break;
-        case '+': case '*':
-          if (!SingleTypeMatch(param_types[-1], args[i], strict)) {
-            // we're done with the + or *
-            ++param_types;
-          }
-          else {
-            ++i;
-          }
-          break;
-        default:
-          env->ThrowError("TypeMatch: invalid character in parameter list (bug in filter)");
-      }
-    }
-
-    // We're out of args.  We have a match if one of the following is true:
-    // (a) we're out of params.
-    // (b) remaining params are named i.e. optional.
-    // (c) we're at a '+' or '*' and any remaining params are optional.
-
-    if (*param_types == '+'  || *param_types == '*')
-      param_types += 1;
-
-    if (*param_types == '\0' || *param_types == '[')
-      return true;
-
-    while (param_types[1] == '*') {
-      param_types += 2;
-      if (*param_types == '\0' || *param_types == '[')
-        return true;
-    }
-
-    return false;
-  }
-
-  bool ArgNameMatch(const char* param_types, int args_names_count, const char* const* arg_names) {
-
-    for (int i=0; i<args_names_count; ++i) {
-      if (arg_names[i]) {
-        bool found = false;
-        int len = strlen(arg_names[i]);
-        for (const char* p = param_types; *p; ++p) {
-          if (*p == '[') {
-            p += 1;
-            const char* q = strchr(p, ']');
-            if (!q) return false;
-            if (len == q-p && !strnicmp(arg_names[i], p, q-p)) {
-              found = true;
-              break;
-            }
-            p = q+1;
-          }
-        }
-        if (!found) return false;
-      }
-    }
-    return true;
-  }
-};
-
-
 // This doles out storage space for strings.  No space is ever freed
 // until the class instance is destroyed (which happens when a script
 // file is closed).
@@ -818,6 +365,30 @@ public:
   }
 };
 
+static bool GetRegString(HKEY rootKey, const char path[], const char entry[], std::string *result) {
+    HKEY AvisynthKey;
+
+    if (RegOpenKeyEx(rootKey, path, 0, KEY_READ, &AvisynthKey))
+      return false;
+
+    DWORD size;
+    if (ERROR_SUCCESS != RegQueryValueEx(AvisynthKey, entry, 0, 0, 0, &size)) {
+      RegCloseKey(AvisynthKey); // Dave Brueck - Dec 2005
+      return false;
+    }
+
+    char* retStr = new char[size];
+    if ((retStr == NULL) || (ERROR_SUCCESS != RegQueryValueEx(AvisynthKey, entry, 0, 0, (LPBYTE)retStr, &size))) {
+      delete[] retStr;
+      RegCloseKey(AvisynthKey); // Dave Brueck - Dec 2005
+      return false;
+    }
+    RegCloseKey(AvisynthKey); // Dave Brueck - Dec 2005
+
+    *result = std::string(retStr);
+    delete[] retStr;
+    return true;
+}
 
 class ScriptEnvironment : public IScriptEnvironment2 {
 public:
@@ -858,6 +429,10 @@ public:
   void __stdcall DeleteScriptEnvironment();
   void _stdcall ApplyMessage(PVideoFrame* frame, const VideoInfo& vi, const char* message, int size, int textcolor, int halocolor, int bgcolor);
   const AVS_Linkage* const __stdcall GetAVSLinkage();
+  bool __stdcall LoadPlugin(const char* filePath);
+  void __stdcall AddAutoloadDir(const char* dirPath);
+  int __stdcall IncrImportDepth();
+  int __stdcall DecrImportDepth();
 
 private:
   // Tritical May 2005
@@ -868,12 +443,16 @@ private:
 
   AtExiter at_exit;
 
-  FunctionTable function_table;
+  PluginManager *plugin_manager;
 
   VarTable* global_var_table;
   VarTable* var_table;
 
+  int ImportDepth;
+
   LinkedVideoFrameBuffer video_frame_buffers, lost_video_frame_buffers, *unpromotedvfbs;
+  const AVSFunction* Lookup(const char* search_name, const AVSValue* args, int num_args,
+                      bool &pstrict, int args_names_count, const char* const* arg_names);
   unsigned __int64 memory_max, memory_used;
 
   LinkedVideoFrameBuffer* NewFrameBuffer(int size);
@@ -882,10 +461,6 @@ private:
   VideoFrameBuffer* GetFrameBuffer(int size);
 
   IScriptEnvironment2* This() { return this; }
-  const char* GetPluginDirectory();
-  bool LoadPluginsMatching(const char* pattern);
-  void PrescanPlugins();
-  void ExportFilters();
   bool PlanarChromaAlignmentState;
 
   Cache* CacheHead;
@@ -937,11 +512,13 @@ static unsigned __int64 ConstrainMemoryRequest(unsigned __int64 requested)
 
 ScriptEnvironment::ScriptEnvironment()
   : at_exit(),
-    function_table(This()),
+    plugin_manager(NULL),
     CacheHead(0), hrfromcoinit(E_FAIL), coinitThreadId(0),
     unpromotedvfbs(&video_frame_buffers),
     closing(false),
-    PlanarChromaAlignmentState(true){ // Change to "true" for 2.5.7
+    PlanarChromaAlignmentState(true),   // Change to "true" for 2.5.7
+    ImportDepth(0)
+{
 
   try {
     // Make sure COM is initialised
@@ -987,8 +564,17 @@ ScriptEnvironment::ScriptEnvironment()
     global_var_table->Set("$ScriptFile$", AVSValue());
     global_var_table->Set("$ScriptDir$",  AVSValue());
 
-    PrescanPlugins();
-    ExportFilters();
+    plugin_manager = new PluginManager(this);
+
+    std::string plugin_dir;
+    if (GetRegString(HKEY_CURRENT_USER, RegAvisynthKey, RegPluginDir, &plugin_dir))
+      this->AddAutoloadDir(plugin_dir.c_str());
+    if (GetRegString(HKEY_CURRENT_USER, RegAvisynthKey, RegAvsPluginDir, &plugin_dir))
+      this->AddAutoloadDir(plugin_dir.c_str());
+    if (GetRegString(HKEY_LOCAL_MACHINE, RegAvisynthKey, RegPluginDir, &plugin_dir))
+      this->AddAutoloadDir(plugin_dir.c_str());
+    if (GetRegString(HKEY_LOCAL_MACHINE, RegAvisynthKey, RegAvsPluginDir, &plugin_dir))
+      this->AddAutoloadDir(plugin_dir.c_str());
   }
   catch (const AvisynthError &err) {
     if(SUCCEEDED(hrfromcoinit)) {
@@ -1004,6 +590,10 @@ ScriptEnvironment::ScriptEnvironment()
 ScriptEnvironment::~ScriptEnvironment() {
 
   closing = true;
+
+  // Before we start to pull the world apart
+  // give every one their last wish.
+  at_exit.Execute(this);
 
   while (var_table)
     PopContext();
@@ -1025,6 +615,8 @@ ScriptEnvironment::~ScriptEnvironment() {
     i = prev;
   }
 
+  delete plugin_manager;
+
   if(!InterlockedDecrement(&refcount)){
     delete g_Bin;//tsp June 2005 Cleans up the heap
     g_Bin=NULL;
@@ -1033,10 +625,6 @@ ScriptEnvironment::~ScriptEnvironment() {
 
   DeleteCriticalSection(&cs_var_table);
 
-  // Before we start to pull the world apart
-  // give every one their last wish.
-  at_exit.Execute(this);
-
   // If we init'd COM and this is the right thread then release it
   // If it's the wrong threadId then tuff, nothing we can do.
   if(SUCCEEDED(hrfromcoinit) && (coinitThreadId == GetCurrentThreadId())) {
@@ -1044,6 +632,54 @@ ScriptEnvironment::~ScriptEnvironment() {
     CoUninitialize();
   }
 }
+
+int __stdcall ScriptEnvironment::IncrImportDepth()
+{
+  ImportDepth++;
+  return ImportDepth;
+}
+int __stdcall ScriptEnvironment::DecrImportDepth()
+{
+  ImportDepth--;
+  return ImportDepth;
+}
+
+bool __stdcall ScriptEnvironment::LoadPlugin(const char* filePath)
+{
+  return plugin_manager->LoadPlugin(PluginFile(filePath), true);
+}
+
+void __stdcall ScriptEnvironment::AddAutoloadDir(const char* dirPath)
+{
+  std::string dir(dirPath);
+
+  // get folder of our executable
+  TCHAR ExeFilePath[AVS_MAX_PATH];
+  memset(ExeFilePath, 0, sizeof(ExeFilePath[0])*AVS_MAX_PATH);  // WinXP does not terminate the result of GetModuleFileName with a zero, so me must zero our buffer
+  GetModuleFileName(NULL, ExeFilePath, AVS_MAX_PATH);
+  std::string ExeFileDir(ExeFilePath);
+  replace(ExeFileDir, '\\', '/');
+  ExeFileDir = ExeFileDir.erase(ExeFileDir.rfind('/'), std::string::npos);
+
+  // variable expansion
+  replace_beginning(dir, "SCRIPTDIR", GetVar("$ScriptDir$", ""));
+  replace_beginning(dir, "MAINSCRIPTDIR", GetVar("$MainScriptDir$", ""));
+  replace_beginning(dir, "PROGRAMDIR", ExeFileDir);
+
+  // replace backslashes with forward slashes
+  replace(dir, '\\', '/');
+
+  // append terminating slash if needed
+  if (dir[dir.size()-1] != '/')
+    dir = concat(dir, "/");
+
+  // remove double slashes
+  while(replace(dir, "//", "/"));
+
+  // add directory
+  plugin_manager->AddAutoloadDir(dir);
+}
+
 
 int ScriptEnvironment::SetMemoryMax(int mem) {
 
@@ -1065,7 +701,7 @@ void ScriptEnvironment::CheckVersion(int version) {
 int ScriptEnvironment::GetCPUFlags() { return ::GetCPUFlags(); }
 
 void ScriptEnvironment::AddFunction(const char* name, const char* params, ApplyFunc apply, void* user_data) {
-  function_table.AddFunction(ScriptEnvironment::SaveString(name), ScriptEnvironment::SaveString(params), apply, user_data);
+  plugin_manager->AddFunction(name, params, apply, user_data);
 }
 
 // Throws if unsuccessfull
@@ -1155,140 +791,6 @@ bool ScriptEnvironment::SetGlobalVar(const char* name, const AVSValue& val) {
 
   CriticalGuard lock(cs_var_table);
   return global_var_table->Set(name, val);
-}
-
-char* GetRegString(HKEY rootKey, const char path[], const char entry[]) {
-    HKEY AvisynthKey;
-
-    if (RegOpenKeyEx(rootKey, path, 0, KEY_READ, &AvisynthKey))
-      return 0;
-
-    DWORD size;
-    if (RegQueryValueEx(AvisynthKey, entry, 0, 0, 0, &size)) {
-      RegCloseKey(AvisynthKey); // Dave Brueck - Dec 2005
-      return 0;
-    }
-
-    char* retStr = new char[size];
-    if (!retStr || RegQueryValueEx(AvisynthKey, entry, 0, 0, (LPBYTE)retStr, &size)) {
-      delete[] retStr;
-      RegCloseKey(AvisynthKey); // Dave Brueck - Dec 2005
-      return 0;
-    }
-    RegCloseKey(AvisynthKey); // Dave Brueck - Dec 2005
-
-    return retStr;
-}
-
-const char* ScriptEnvironment::GetPluginDirectory()
-{
-  const char* plugin_dir = GetVar("$PluginDir$", (char*)NULL);
-
-  if (plugin_dir == NULL){
-    // Allow per user override of plugin directory - henktiggelaar, Jan 2011
-    char *plugin_reg_dir = GetRegString(RegUserKey, RegAvisynthKey, RegPluginDir);
-    if (!plugin_reg_dir)
-      plugin_reg_dir = GetRegString(RegRootKey, RegAvisynthKey, RegPluginDir);
-
-    if (!plugin_reg_dir)
-      return 0;
-
-    // remove trailing backslashes
-    int l = strlen(plugin_reg_dir);
-    while (plugin_reg_dir[l-1] == '\\')
-      l--;
-    plugin_reg_dir[l]=0;
-    SetGlobalVar("$PluginDir$", AVSValue(SaveString(plugin_reg_dir)));  // Tritical May 2005
-    delete[] plugin_reg_dir;
-
-    plugin_dir = GetVar("$PluginDir$").AsString();
-    if (plugin_dir == NULL)
-      return NULL;
-  }
-  return plugin_dir;
-}
-
-bool ScriptEnvironment::LoadPluginsMatching(const char* pattern)
-{
-  WIN32_FIND_DATA FileData;
-  char file[MAX_PATH];
-  char* dummy;
-//  const char* plugin_dir = GetPluginDirectory();
-
-//  strcpy(file, plugin_dir);
-//  strcat(file, "\\");
-//  strcat(file, pattern);
-  int count = 0;
-  HANDLE hFind = FindFirstFile(pattern, &FileData);
-  BOOL bContinue = (hFind != INVALID_HANDLE_VALUE);
-  while (bContinue) {
-    // we have to use full pathnames here
-    ++count;
-    if (count > 20) {
-      HMODULE* loaded_plugins = (HMODULE*)GetVar("$Plugins$").AsString();
-      FreeLibraries(loaded_plugins, this);
-      count = 0;
-    }
-    GetFullPathName(FileData.cFileName, MAX_PATH, file, &dummy);
-    const char *_file = ScriptEnvironment::SaveString(file);
-    function_table.PrescanPluginStart(_file);
-    LoadPlugin(AVSValue(&AVSValue(&AVSValue(_file), 1), 1), (void*)true, this);
-    bContinue = FindNextFile(hFind, &FileData);
-    if (!bContinue) {
-      FindClose(hFind);
-      return true;
-    }
-  }
-  return false;
-}
-
-void ScriptEnvironment::PrescanPlugins()
-{
-  const char* plugin_dir = GetPluginDirectory();
-  if (plugin_dir)
-  {
-    WIN32_FIND_DATA FileData;
-    HANDLE hFind = FindFirstFile(plugin_dir, &FileData);
-    if (hFind != INVALID_HANDLE_VALUE) {
-      FindClose(hFind);
-      CWDChanger cwdchange(plugin_dir);
-      function_table.StartPrescanning();
-      if (LoadPluginsMatching("*.dll") | LoadPluginsMatching("*.vdf")) {  // not || because of shortcut boolean eval.
-        // Unloads all plugins
-        HMODULE* loaded_plugins = (HMODULE*)GetVar("$Plugins$").AsString();
-        FreeLibraries(loaded_plugins, this);
-      }
-      function_table.StopPrescanning();
-
-      char file[MAX_PATH];
-      strcpy(file, plugin_dir);
-      strcat(file, "\\*.avsi");
-      hFind = FindFirstFile(file, &FileData);
-      BOOL bContinue = (hFind != INVALID_HANDLE_VALUE);
-      while (bContinue) {
-        Import(AVSValue(&AVSValue(&AVSValue(FileData.cFileName), 1), 1), 0, this);
-        bContinue = FindNextFile(hFind, &FileData);
-        if (!bContinue) FindClose(hFind);
-      }
-    }
-  }
-}
-
-void ScriptEnvironment::ExportFilters()
-{
-  std::string builtin_names;
-
-  for (int i = 0; i < sizeof(builtin_functions)/sizeof(builtin_functions[0]); ++i) {
-    for (const AVSFunction* j = builtin_functions[i]; j->name; ++j) {
-      builtin_names += j->name;
-      builtin_names += " ";
-
-      std::string param_id = std::string("$Plugin!") + j->name + "!Param$";
-      SetGlobalVar( SaveString(param_id.c_str(), param_id.length() + 1), AVSValue(j->param_types) );
-    }
-  }
-
-  SetGlobalVar("$InternalFunctions$", AVSValue( SaveString(builtin_names.c_str(), builtin_names.length() + 1) ));
 }
 
 PVideoFrame ScriptEnvironment::NewPlanarVideoFrame(int row_size, int height, int row_sizeUV, int heightUV, int align, bool U_first)
@@ -1814,6 +1316,46 @@ static int Flatten(const AVSValue& src, AVSValue* dst, int index, const char* co
   return index;
 }
 
+const AVSFunction* ScriptEnvironment::Lookup(const char* search_name, const AVSValue* args, int num_args,
+                    bool &pstrict, int args_names_count, const char* const* arg_names)
+{
+  const AVSFunction *result = NULL;
+
+  int oanc;
+  do {
+    for (int strict = 1; strict >= 0; --strict) {
+      pstrict = strict&1;
+
+      // first, look in loaded plugins
+      result = plugin_manager->Lookup(search_name, args, num_args, pstrict, args_names_count, arg_names);
+      if (result)
+        return result;
+
+      // then, look for a built-in function
+      for (int i = 0; i < sizeof(builtin_functions)/sizeof(builtin_functions[0]); ++i)
+        for (const AVSFunction* j = builtin_functions[i]; j->name; ++j)
+          if (streqi(j->name, search_name) &&
+              AVSFunction::TypeMatch(j->param_types, args, num_args, pstrict, this) &&
+              AVSFunction::ArgNameMatch(j->param_types, args_names_count, arg_names))
+            return j;
+    }
+    // Try again without arg name matching
+    oanc = args_names_count;
+    args_names_count = 0;
+  } while (oanc);
+
+  // If we got here it means the function has not been found.
+  // If we haven't done so yet, load the plugins in the autoload folders
+  // and try again.
+  if (!plugin_manager->HasAutoloadExecuted())
+  {
+    plugin_manager->AutoloadPlugins();
+    return Lookup(search_name, args, num_args, pstrict, args_names_count, arg_names);
+  }
+
+  return NULL;
+}
+
 AVSValue ScriptEnvironment::Invoke(const char* name, const AVSValue args, const char* const* arg_names) {
 
   bool strict = false;
@@ -1832,7 +1374,7 @@ AVSValue ScriptEnvironment::Invoke(const char* name, const AVSValue args, const 
   Flatten(args, args2, 0, arg_names);
 
   // find matching function
-  f = function_table.Lookup(name, args2, args2_count, strict, args_names_count, arg_names);
+  f = this->Lookup(name, args2, args2_count, strict, args_names_count, arg_names);
   if (!f)
   {
     delete[] args2;
@@ -1854,7 +1396,7 @@ AVSValue ScriptEnvironment::Invoke(const char* name, const AVSValue args, const 
         p++;
       } else if (p[1] == '*' || p[1] == '+') {
         int start = src_index;
-        while (src_index < args2_count && FunctionTable::SingleTypeMatch(*p, args2[src_index], strict))
+        while (src_index < args2_count && AVSFunction::SingleTypeMatch(*p, args2[src_index], strict))
           src_index++;
         args3[dst_index++] = AVSValue(&args2[start], src_index - start); // can't delete args2 early because of this
         p += 2;
@@ -1888,7 +1430,7 @@ AVSValue ScriptEnvironment::Invoke(const char* name, const AVSValue args, const 
                 ThrowError("Script error: the named argument \"%s\" was passed more than once to %s", arg_names[i], name);
               } else if (args[i].IsArray()) {
                 ThrowError("Script error: can't pass an array as a named argument");
-              } else if (args[i].Defined() && !FunctionTable::SingleTypeMatch(q[1], args[i], false)) {
+              } else if (args[i].Defined() && !AVSFunction::SingleTypeMatch(q[1], args[i], false)) {
                 ThrowError("Script error: the named argument \"%s\" to %s had the wrong type", arg_names[i], name);
               } else {
                 args3[named_arg_index] = args[i];
@@ -1920,8 +1462,17 @@ success:;
 }
 
 
-bool ScriptEnvironment::FunctionExists(const char* name) {
-  return function_table.Exists(name);
+bool ScriptEnvironment::FunctionExists(const char* name)
+{
+  if (plugin_manager->FunctionExists(name))
+    return true;
+
+  for (int i = 0; i < sizeof(builtin_functions)/sizeof(builtin_functions[0]); ++i)
+    for (const AVSFunction* j = builtin_functions[i]; j->name; ++j)
+      if (!lstrcmpi(j->name, name))
+        return true;
+
+  return false;
 }
 
 void ScriptEnvironment::BitBlt(BYTE* dstp, int dst_pitch, const BYTE* srcp, int src_pitch, int row_size, int height) {

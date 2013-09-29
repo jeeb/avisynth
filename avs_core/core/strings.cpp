@@ -31,6 +31,9 @@
 
 #include "strings.h"
 #include <cassert>
+#include <string>
+#include <sstream>
+#include <algorithm>
 
 static inline char tolower(char c)
 {
@@ -58,4 +61,52 @@ bool streqi(const char* s1, const char* s2)
 
   assert(0);
   return false;
+}
+
+std::string concat(const std::string &s1, const std::string &s2)
+{
+  std::stringstream ss;
+  ss << s1 << s2;
+  std::string s = ss.str();
+  return s;
+}
+
+bool replace(std::string &haystack, const std::string &needle, const std::string &newStr)
+{
+  bool replaced = false;
+  for(size_t pos = 0; ; pos += newStr.length())
+  {
+    // Locate the substring to replace
+    pos = haystack.find(needle, pos);
+    if(pos == std::string::npos) break;
+    // Replace by erasing and inserting
+    haystack.erase(pos, needle.length());
+    haystack.insert(pos, newStr);
+    replaced = true;
+  }
+
+  return replaced;
+}
+
+bool replace_beginning(std::string &haystack, const std::string &needle, const std::string &newStr)
+{
+  bool replaced = false;
+
+  // Locate the substring to replace
+  size_t pos = haystack.find(needle);
+  if(pos == std::string::npos) return false;
+  if(pos != 0) return false;
+
+  // Replace by erasing and inserting
+  haystack.erase( pos, needle.length() );
+  haystack.insert( pos, newStr );
+
+  return true;
+}
+
+bool replace(std::string &haystack, char needle, char newChar)
+{
+  std::string haystack_bck = haystack;
+  std::replace(haystack.begin(),haystack.end(), needle, newChar);
+  return haystack.compare(haystack_bck) != 0;
 }

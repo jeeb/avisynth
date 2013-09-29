@@ -60,6 +60,10 @@ struct AVSFunction {
   const char* param_types;
   AVSValue (__cdecl *apply)(AVSValue args, void* user_data, IScriptEnvironment* env);
   void* user_data;
+
+  static bool ArgNameMatch(const char* param_types, int args_names_count, const char* const* arg_names);
+  static bool TypeMatch(const char* param_types, const AVSValue* args, int num_args, bool strict, IScriptEnvironment* env);
+  static bool SingleTypeMatch(char type, const AVSValue& arg, bool strict);
 };
 
 
@@ -102,6 +106,19 @@ static __inline void Relink(ListNode* newprev, ListNode* me, ListNode* newnext) 
   me->prev->next = me->next->prev = me;
 }
 
+class CWDChanger 
+/**
+  * Class to change the current working directory
+ **/
+{  
+public:
+  CWDChanger(const char* new_cwd);  
+  virtual ~CWDChanger(void);  
+
+private:
+  char *old_working_directory;
+  bool restore;
+};
 
 
 /*** Inline helper methods ***/

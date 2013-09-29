@@ -217,6 +217,7 @@ extern const AVSFunction Script_functions[] = {
   { "ScriptDir",  "", ScriptDir  },
  
   { "PixelType",  "c", PixelType  },
+  { "AddAutoloadDir",  "s", AddAutoloadDir  },
  
   { 0 }
 };
@@ -271,9 +272,12 @@ void ScriptFunction::Delete(void* self, IScriptEnvironment*)
  *******   Helper Functions   ******
  **********************************/
 
-CWDChanger::CWDChanger(const char* new_cwd)
+CWDChanger::CWDChanger(const char* new_cwd) :
+  old_working_directory(NULL)
 {
-  DWORD save_cwd_success = GetCurrentDirectory(AVS_MAX_PATH, old_working_directory);
+  DWORD cwdLen = GetCurrentDirectory(0, NULL);
+  old_working_directory = new char[cwdLen];
+  DWORD save_cwd_success = GetCurrentDirectory(cwdLen, old_working_directory);
   BOOL set_cwd_success = SetCurrentDirectory(new_cwd);
   restore = (save_cwd_success && set_cwd_success);
 }
@@ -282,6 +286,9 @@ CWDChanger::~CWDChanger(void)
 {
   if (restore)
     SetCurrentDirectory(old_working_directory);
+
+  if (old_working_directory)
+    delete [] old_working_directory;
 }
 
 
@@ -352,6 +359,9 @@ AVSValue Import(AVSValue args, void*, IScriptEnvironment* env)
   args = args[0];
   AVSValue result;
 
+  IScriptEnvironment2 *env2 = static_cast<IScriptEnvironment2*>(env);
+  const bool MainScript = (env2->IncrImportDepth() == 1);
+
   AVSValue lastScriptName = GetVar(env, "$ScriptName$");
   AVSValue lastScriptFile = GetVar(env, "$ScriptFile$");
   AVSValue lastScriptDir  = GetVar(env, "$ScriptDir$");
@@ -375,13 +385,20 @@ AVSValue Import(AVSValue args, void*, IScriptEnvironment* env)
     if (h == INVALID_HANDLE_VALUE)
       env->ThrowError("Import: couldn't open \"%s\"", full_path);
 
-    env->SetGlobalVar("$ScriptName$", env->SaveString(script_name));
+    size_t dir_part_len = file_part - full_path;
+
+    env->SetGlobalVar("$ScriptName$", env->SaveString(full_path));
     env->SetGlobalVar("$ScriptFile$", env->SaveString(file_part));
+    env->SetGlobalVar("$ScriptDir$", env->SaveString(full_path, dir_part_len));
+    if (MainScript)
+    {
+      env->SetGlobalVar("$MainScriptName$", env->SaveString(full_path));
+      env->SetGlobalVar("$MainScriptFile$", env->SaveString(file_part));
+      env->SetGlobalVar("$MainScriptDir$", env->SaveString(full_path, dir_part_len));
+    }
 
     *file_part = 0;
     CWDChanger change_cwd(full_path);
-
-    env->SetGlobalVar("$ScriptDir$", env->SaveString(full_path));
 
     DWORD size = GetFileSize(h, NULL);
     DynamicCharBuffer buf(size+1);
@@ -411,6 +428,7 @@ AVSValue Import(AVSValue args, void*, IScriptEnvironment* env)
   env->SetGlobalVar("$ScriptName$", lastScriptName);
   env->SetGlobalVar("$ScriptFile$", lastScriptFile);
   env->SetGlobalVar("$ScriptDir$",  lastScriptDir);
+  env2->DecrImportDepth();
 
   return result;
 }
@@ -960,3 +978,11 @@ AVSValue AvsMax(AVSValue args, void*, IScriptEnvironment* env )
     return V;
   }
 }
+
+AVSValue AddAutoloadDir (AVSValue args, void*, IScriptEnvironment* env)
+{
+  IScriptEnvironment2 *env2 = static_cast<IScriptEnvironment2*>(env);
+  env2->AddAutoloadDir(args[0].AsString());
+  return AVSValue();
+}
+

@@ -79,20 +79,6 @@ private:
 
 /****  Helper Classes  ****/
 
-class CWDChanger 
-/**
-  * Class to change the current working directory
- **/
-{  
-public:
-  CWDChanger(const char* new_cwd);  
-  virtual ~CWDChanger(void);  
-
-private:
-  TCHAR old_working_directory[AVS_MAX_PATH];
-  bool restore;
-};
-
 
 class DynamicCharBuffer 
 /**
@@ -273,5 +259,7 @@ AVSValue AvsMax(AVSValue args, void*, IScriptEnvironment* env);
 AVSValue ScriptName(AVSValue args, void*, IScriptEnvironment* env);
 AVSValue ScriptFile(AVSValue args, void*, IScriptEnvironment* env);
 AVSValue ScriptDir (AVSValue args, void*, IScriptEnvironment* env);
+
+AVSValue AddAutoloadDir (AVSValue args, void*, IScriptEnvironment* env);
 
 #endif  // __Script_H__

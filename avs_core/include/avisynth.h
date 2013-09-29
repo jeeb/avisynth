@@ -1024,6 +1024,16 @@ public:
   virtual double  __stdcall GetVar(const char* name, double def) = 0;
   virtual const char*  __stdcall GetVar(const char* name, const char* def) = 0;
 
+  // Plugin functions
+  virtual bool __stdcall LoadPlugin(const char* filePath) = 0;
+  virtual void __stdcall AddAutoloadDir(const char* dirPath) = 0;
+
+  // The following group of functions are ONLY to be called
+  // by the avisynth server dll.
+  virtual int __stdcall IncrImportDepth() = 0;
+  virtual int __stdcall DecrImportDepth() = 0;
+
+
 }; // end class IScriptEnvironment2
 
 

@@ -32,6 +32,12 @@
 #ifndef AVSCORE_STRINGS_H
 #define AVSCORE_STRINGS_H
 
+#include <string>
+
 bool streqi(const char* s1, const char* s2);
+std::string concat(const std::string &s1, const std::string &s2);
+bool replace_beginning(std::string &_haystack, const std::string &needle, const std::string &newStr);
+bool replace(std::string &haystack, const std::string &needle, const std::string &newStr);
+bool replace(std::string &haystack, char needle, char newChar);
 
 #endif // AVSCORE_STRINGS_H
