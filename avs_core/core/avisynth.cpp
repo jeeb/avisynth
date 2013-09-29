@@ -433,6 +433,7 @@ public:
   void __stdcall AddAutoloadDir(const char* dirPath);
   int __stdcall IncrImportDepth();
   int __stdcall DecrImportDepth();
+  bool __stdcall Invoke(AVSValue *result, const char* name, const AVSValue args, const char* const* arg_names=0);
 
 private:
   // Tritical May 2005
@@ -1356,8 +1357,19 @@ const AVSFunction* ScriptEnvironment::Lookup(const char* search_name, const AVSV
   return NULL;
 }
 
-AVSValue ScriptEnvironment::Invoke(const char* name, const AVSValue args, const char* const* arg_names) {
+AVSValue ScriptEnvironment::Invoke(const char* name, const AVSValue args, const char* const* arg_names)
+{
+  AVSValue result;
+  if (!Invoke(&result, name, args, arg_names))
+  {
+    throw NotFound();
+  }
 
+  return result;
+}
+
+bool __stdcall ScriptEnvironment::Invoke(AVSValue *result, const char* name, const AVSValue args, const char* const* arg_names)
+{
   bool strict = false;
   const AVSFunction *f;
   AVSValue retval;
@@ -1378,7 +1390,7 @@ AVSValue ScriptEnvironment::Invoke(const char* name, const AVSValue args, const 
   if (!f)
   {
     delete[] args2;
-    throw NotFound();
+    return false;
   }
 
   // combine unnamed args into arrays
@@ -1458,7 +1470,8 @@ success:;
   delete[] args3;
   delete[] args2;
 
-  return retval;
+  *result = retval;
+  return true;
 }
 
 

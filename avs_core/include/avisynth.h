@@ -1033,6 +1033,11 @@ public:
   virtual int __stdcall IncrImportDepth() = 0;
   virtual int __stdcall DecrImportDepth() = 0;
 
+  // This line is so that Invoke can overload the other Invoke from IScriptEnvironment.
+  using IScriptEnvironment::Invoke;
+  // This version of Invoke will return false instead of throwing NotFound().
+  virtual bool __stdcall Invoke(AVSValue *result, const char* name, const AVSValue args, const char* const* arg_names=0) = 0;
+
 
 }; // end class IScriptEnvironment2
 

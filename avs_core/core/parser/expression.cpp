@@ -37,6 +37,7 @@
 #include "../exception.h"
 #include "../internal.h"
 #include <avs/win.h>
+#include <cassert>
 
 
 
@@ -321,17 +322,14 @@ AVSValue ExpVariableReference::Evaluate(IScriptEnvironment* env)
   }
   else {
     // Swap order to match ::Call below -- Gavino Jan 2010
-    try {
-      // next look for an argless function
-      result = env->Invoke(name, AVSValue(0,0));
-    }
-    catch (IScriptEnvironment::NotFound) {
-      try {
-        // finally look for a single-arg function taking implicit "last"
-        result = env->Invoke(name, env->GetVar("last"));
-      }
-      catch (IScriptEnvironment::NotFound) {
-        env->ThrowError("I don't know what \"%s\" means", name);
+
+    // next look for an argless function
+    if (!env2->Invoke(&result, name, AVSValue(0,0)))
+    {
+      // finally look for a single-arg function taking implicit "last"
+      if (!env2->Invoke(&result, name, env->GetVar("last")))
+      {
+        env->ThrowError("I don't know what '%s' means.", name);
         return 0;
       }
     }
@@ -376,6 +374,8 @@ ExpFunctionCall::ExpFunctionCall( const char* _name, PExpression* _arg_exprs,
 AVSValue ExpFunctionCall::Call(IScriptEnvironment* env) 
 {
   AVSValue result;
+  IScriptEnvironment2 *env2 = static_cast<IScriptEnvironment2*>(env);
+
   AVSValue *args = new AVSValue[arg_expr_count+1];
   try {
     for (int a=0; a<arg_expr_count; ++a)
@@ -386,37 +386,37 @@ AVSValue ExpFunctionCall::Call(IScriptEnvironment* env)
     delete[] args;
     throw;
   }
-  // first try without implicit "last"
-  try {
-    result = env->Invoke(name, AVSValue(args+1, arg_expr_count), arg_expr_names+1);
-    delete[] args;
-    return result;
-  }
-  catch (IScriptEnvironment::NotFound) {
+
+  try 
+  {
+    // first try without implicit "last"
+    if (env2->Invoke(&result, name, AVSValue(args+1, arg_expr_count), arg_expr_names+1))
+    {
+      delete[] args;
+      return result;
+    }
+
     // if that fails, try with implicit "last" (except when OOP notation was used)
-    if (!oop_notation) {
-      try {
-        args[0] = env->GetVar("last");
-        result = env->Invoke(name, AVSValue(args, arg_expr_count+1), arg_expr_names);
+    if (!oop_notation) 
+    {
+      if (env2->GetVar("last", &(args[0])) && env2->Invoke(&result, name, AVSValue(args, arg_expr_count+1), arg_expr_names))
+      {
         delete[] args;
         return result;
       }
-      catch (IScriptEnvironment::NotFound) { /* see below */ }
-      catch (...)
-      {
-        delete[] args;
-        throw;
-      }
     }
+
+    env->ThrowError(env->FunctionExists(name) ?
+      "Script error: Invalid arguments to function '%s'." :
+      "Script error: There is no function named '%s'.", name);
   }
   catch (...)
   {
     delete[] args;
     throw;
   }
-  delete[] args;
-  env->ThrowError(env->FunctionExists(name) ? "Script error: Invalid arguments to function \"%s\""
-    : "Script error: there is no function named \"%s\"", name);
+
+  assert(0);  // we should never get here
   return 0;
 }
 
