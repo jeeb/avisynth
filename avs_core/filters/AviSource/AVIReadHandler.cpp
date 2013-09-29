@@ -16,6 +16,7 @@
 //	Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
 #include <crtdbg.h>
+#include <new>
 
 #include "AVIReadHandler.h"
 //#include "FastReadStream.h"
@@ -391,7 +392,7 @@ IAVIReadHandler *CreateAVIReadHandler(const char *pszFile) {
 ///////////////////////////////////////////////////////////////////////////
 
 AVIReadCache::AVIReadCache(int nlines, int nstream, AVIReadHandler *root, AVIStreamNode *psnData) {
-	buffer = new __int64[nlines][2];
+	buffer = new(std::nothrow) __int64[nlines][2];
 	if (!buffer) throw MyMemoryError();
 
 	this->psnData	= psnData;
@@ -1330,7 +1331,7 @@ void AVIReadHandler::_construct(const char *pszFile) {
 
 		// Create first link
 
-		if (!(pDesc = new AVIFileDesc))
+		if (!(pDesc = new(std::nothrow) AVIFileDesc))
 			throw MyMemoryError();
 
 		pDesc->hFile			= hFile;
@@ -1431,7 +1432,7 @@ bool AVIReadHandler::AppendFile(const char *pszFile) {
 		if (pasn_old_next || pasn_new_next)
 			throw MyError("Cannot append segment: The segment has a different number of streams.");
 
-		if (!(pDesc = new AVIFileDesc))
+		if (!(pDesc = new(std::nothrow) AVIFileDesc))
 			throw MyMemoryError();
 
 		pDesc->hFile			= hFile;
@@ -1622,7 +1623,7 @@ void AVIReadHandler::_parseFile(List2<AVIStreamNode>& streamlist) {
 
 		case 'mges':			// VirtualDub segment hint block
 			delete pSegmentHint;
-			if (!(pSegmentHint = new char[dwLength]))
+			if (!(pSegmentHint = new(std::nothrow) char[dwLength]))
 				throw MyMemoryError();
 
 			_readFile2(pSegmentHint, dwLength);
@@ -1850,7 +1851,7 @@ bool AVIReadHandler::_parseStreamHeader(List2<AVIStreamNode>& streamlist, DWORD 
 	DWORD dwLength;
 	bool hyperindexed = false;
 	
-	if (!(pasn = new AVIStreamNode()))
+	if (!(pasn = new(std::nothrow) AVIStreamNode()))
 		throw MyMemoryError();
 
 	try {
@@ -1885,7 +1886,7 @@ bool AVIReadHandler::_parseStreamHeader(List2<AVIStreamNode>& streamlist, DWORD 
 				break;
 
 			case ckidSTREAMFORMAT:
-				if (!(pasn->pFormat = new char[pasn->lFormatLen = dwLength]))
+				if (!(pasn->pFormat = new(std::nothrow) char[pasn->lFormatLen = dwLength]))
 					throw MyMemoryError();
 
 				_readFile2(pasn->pFormat, dwLength);
@@ -2227,7 +2228,7 @@ bool AVIReadHandler::getSegmentHint(const char **ppszPath) {
 
 void AVIReadHandler::EnableStreaming(int stream) {
 	if (!fStreamsActive) {
-		if (!(streamBuffer = new char[STREAM_SIZE]))
+		if (!(streamBuffer = new(std::nothrow) char[STREAM_SIZE]))
 			throw MyMemoryError();
 
 		i64StreamPosition = -1;

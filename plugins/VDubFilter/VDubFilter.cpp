@@ -36,6 +36,7 @@
 #include <avs/win.h>
 #include <avs/minmax.h>
 #include <cstdio>
+#include <new>
 
 /********************************************************************
 * VirtualDub plugin support
@@ -731,7 +732,7 @@ void __cdecl FreeFilterDefinition(void* user_data, IScriptEnvironment* env) {
 
 
 FilterDefinition *FilterAdd(FilterModule *fm, FilterDefinition *pfd, int fd_len) {
-  FilterDefinition *fd = new FilterDefinition;
+  FilterDefinition *fd = new(std::nothrow) FilterDefinition;
 
   if (fd) {
     memcpy(fd, pfd, min(size_t(fd_len), sizeof(FilterDefinition)));

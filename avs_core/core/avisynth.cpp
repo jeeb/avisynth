@@ -204,7 +204,7 @@ VideoFrameBuffer::VideoFrameBuffer() : refcount(1), data(0), data_size(0), seque
 #ifdef _DEBUG  // Add 16 guard bytes front and back -- cache can check them after every GetFrame() call
 VideoFrameBuffer::VideoFrameBuffer(int size) :
   refcount(1),
-  data((new BYTE[size+32])+16),
+  data((new(std::nothrow) BYTE[size+32])+16),
   data_size(data ? size : 0),
   sequence_number(0) {
   InterlockedIncrement(&sequence_number);
@@ -231,7 +231,7 @@ VideoFrameBuffer::~VideoFrameBuffer() {
 #else
 
 VideoFrameBuffer::VideoFrameBuffer(int size)
- : refcount(1), data(new BYTE[size]), data_size(data ? size : 0), sequence_number(0) { InterlockedIncrement(&sequence_number); }
+ : refcount(1), data(new(std::nothrow) BYTE[size]), data_size(data ? size : 0), sequence_number(0) { InterlockedIncrement(&sequence_number); }
 
 VideoFrameBuffer::~VideoFrameBuffer() {
 //  _ASSERTE(refcount == 0);
@@ -377,7 +377,7 @@ static bool GetRegString(HKEY rootKey, const char path[], const char entry[], st
       return false;
     }
 
-    char* retStr = new char[size];
+    char* retStr = new(std::nothrow) char[size];
     if ((retStr == NULL) || (ERROR_SUCCESS != RegQueryValueEx(AvisynthKey, entry, 0, 0, (LPBYTE)retStr, &size))) {
       delete[] retStr;
       RegCloseKey(AvisynthKey); // Dave Brueck - Dec 2005
@@ -1500,7 +1500,7 @@ char* ScriptEnvironment::VSprintf(const char* fmt, void* val) {
   {
     if (buf) delete[] buf;
     size += 4096;
-    buf = new char[size];
+    buf = new(std::nothrow) char[size];
     if (!buf) return 0;
     count = _vsnprintf(buf, size, fmt, (va_list)val);
   }

@@ -34,6 +34,7 @@
 
 
 #include <cmath>
+#include <new>
 #include "cache.h"
 #include "internal.h"
 #include <avs/win.h>
@@ -940,7 +941,7 @@ int __stdcall Cache::SetCacheHints(int cachehints, int frame_range) {
 
   //    EnterCriticalSection(&cs_cache_A);
       if (frame_range/samplesize > maxsamplecount) { // Only make bigger
-        char *newcache = new char[frame_range];
+        char *newcache = new(std::nothrow) char[frame_range];
         if (newcache) {
           maxsamplecount = frame_range/samplesize;
           if (cache) {

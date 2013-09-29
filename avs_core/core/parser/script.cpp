@@ -41,6 +41,7 @@
 #include <io.h>
 #include <avs/win.h>
 #include <avs/minmax.h>
+#include <new>
 #include "../internal.h"
 
 
@@ -557,7 +558,7 @@ AVSValue LeftStr(AVSValue args, void*, IScriptEnvironment* env)
    const int count = args[1].AsInt();
    if (count < 0)
       env->ThrowError("LeftStr: Negative character count not allowed");
-   char *result = new char[count+1];
+   char *result = new(std::nothrow) char[count+1];
    if (!result) env->ThrowError("LeftStr: malloc failure!");
    *result = 0;
    strncat(result, args[0].AsString(), count);
@@ -577,7 +578,7 @@ AVSValue MidStr(AVSValue args, void*, IScriptEnvironment* env)
       env->ThrowError("MidStr: Illegal character count");
   offset = args[1].AsInt() - 1;
   if (maxlen <= offset) { offset = 0; len = 0;}
-  char *result = new char[len+1];
+  char *result = new(std::nothrow) char[len+1];
   if (!result) env->ThrowError("MidStr: malloc failure!");
   *result = 0;
   strncat(result, args[0].AsString()+offset, len);
@@ -593,7 +594,7 @@ AVSValue RightStr(AVSValue args, void*, IScriptEnvironment* env)
       env->ThrowError("RightStr: Negative character count not allowed");
    offset = strlen(args[0].AsString()) - args[1].AsInt();
    if (offset < 0) offset = 0;
-   char *result = new char[args[1].AsInt()+1];
+   char *result = new(std::nothrow) char[args[1].AsInt()+1];
    if (!result) env->ThrowError("RightStr: malloc failure!");
    *result = 0;
    strncat(result, args[0].AsString()+offset, args[1].AsInt());
@@ -740,7 +741,7 @@ AVSValue FillStr(AVSValue args, void* ,IScriptEnvironment* env )
     const int len = lstrlen(str);
     const int total = count * len;
 
-    char *buff = new char[total];
+    char *buff = new(std::nothrow) char[total];
     if (!buff)
       env->ThrowError("FillStr: malloc failure!");
 

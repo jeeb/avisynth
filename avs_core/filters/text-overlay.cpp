@@ -132,8 +132,7 @@ Antialiaser::Antialiaser(int width, int height, const char fontname[], int size,
 	  SetTextColor(hdcAntialias, 0xffffff);
 	  SetBkColor(hdcAntialias, 0);
 
-	  alpha_calcs = new unsigned short[width*height*4];
-
+	  alpha_calcs = new(std::nothrow) unsigned short[width*height*4];
 	  if (!alpha_calcs) FreeDC();
 	}
   }
@@ -1443,7 +1442,7 @@ Compare::Compare(PClip _child1, PClip _child2, const char* channels, const char 
     } else
       env->ThrowError("Compare: unable to create file %s", fname);
   } else {
-    psnrs = new int[vi.num_frames];
+	  psnrs = new(std::nothrow) int[vi.num_frames];
     if (psnrs)
       for (int i = 0; i < vi.num_frames; i++)
         psnrs[i] = 0;

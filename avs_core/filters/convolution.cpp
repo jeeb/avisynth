@@ -151,10 +151,10 @@ void GeneralConvolution::setMatrix(const char * _matrix, IScriptEnvironment* env
 void GeneralConvolution::initBuffers(IScriptEnvironment* env)
 {
   int buffSize = vi.width * vi.height;
-  pbyA = new BYTE[buffSize];
-  pbyR = new BYTE[buffSize];
-  pbyG = new BYTE[buffSize];
-  pbyB = new BYTE[buffSize];
+  pbyA = new(std::nothrow) BYTE[buffSize];
+  pbyR = new(std::nothrow) BYTE[buffSize];
+  pbyG = new(std::nothrow) BYTE[buffSize];
+  pbyB = new(std::nothrow) BYTE[buffSize];
 
   if(pbyA && pbyR && pbyG && pbyB == false)
     env->ThrowError("GeneralConvolution: out of memory");

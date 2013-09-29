@@ -20,6 +20,7 @@
 #include <crtdbg.h>
 #include <cassert>
 #include <limits>
+#include <new>
 
 //#include "gui.h"
 //#include "crash.h"
@@ -1256,7 +1257,7 @@ AudioStreamResampler::AudioStreamResampler(AudioStream *src, long new_rate, bool
 
 			filter_width = ((samp_frac + 0x7ffff)>>19)<<1;
 
-			if (!(filter_bank = new long[filter_width * 256])) {
+			if (!(filter_bank = new(std::nothrow) long[filter_width * 256])) {
 				free(cbuffer);
 				throw MyMemoryError();
 			}

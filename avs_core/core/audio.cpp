@@ -40,6 +40,7 @@
 #include "audio.h"
 #include "../convert/convert_audio.h"
 #include <cstdio>
+#include <new>
 
 #define BIGBUFFSIZE (2048*1024) // Use a 2Mb buffer for EnsureVBRMP3Sync seeking & Normalize scanning
 
@@ -227,7 +228,7 @@ void __stdcall EnsureVBRMP3Sync::GetAudio(void* buf, __int64 start, __int64 coun
       offset = last_end; // Skip forward only if the skipped to position is in front of last position.
 
 	if ((count < start-offset) && (vi.BytesFromAudioSamples(count) < BIGBUFFSIZE)) {
-	  samples = new char[BIGBUFFSIZE];
+	  samples = new(std::nothrow) char[BIGBUFFSIZE];
 	  if (samples) {
 	    bigbuff=true;
 	    bcount = vi.AudioSamplesFromBytes(BIGBUFFSIZE);
@@ -797,7 +798,7 @@ void __stdcall Normalize::GetAudio(void* buf, __int64 start, __int64 count, IScr
       bool bigbuff=false;
 
 	  if (vi.BytesFromAudioSamples(count) < BIGBUFFSIZE) {
-	    samples = new short[BIGBUFFSIZE/sizeof(short)];
+	    samples = new(std::nothrow) short[BIGBUFFSIZE/sizeof(short)];
 	    if (samples) {
 	      bigbuff=true;
 	      bcount = vi.AudioSamplesFromBytes(BIGBUFFSIZE);
@@ -872,7 +873,7 @@ void __stdcall Normalize::GetAudio(void* buf, __int64 start, __int64 count, IScr
       bool bigbuff=false;
 
 	  if (vi.BytesFromAudioSamples(count) < BIGBUFFSIZE) {
-	    samples = new SFLOAT[BIGBUFFSIZE/sizeof(SFLOAT)];
+	    samples = new(std::nothrow) SFLOAT[BIGBUFFSIZE/sizeof(SFLOAT)];
 	    if (samples) {
 	      bigbuff=true;
 	      bcount = vi.AudioSamplesFromBytes(BIGBUFFSIZE);

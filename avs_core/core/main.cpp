@@ -41,6 +41,7 @@
 #include "exception.h"
 #include <vfw.h>
 #include <cstdio>
+#include <new>
 
 
 #define FP_STATE 0x9001f
@@ -370,7 +371,7 @@ HRESULT CAVIFileSynth::Create(const CLSID& rclsid, const IID& riid, void **ppv) 
 
   //	_RPT0(0,"CAVIFileSynth::Create()\n");
 
-  CAVIFileSynth* pAVIFileSynth = new CAVIFileSynth(rclsid);
+  CAVIFileSynth* pAVIFileSynth = new(std::nothrow) CAVIFileSynth(rclsid);
 
   if (!pAVIFileSynth) return E_OUTOFMEMORY;
 
@@ -594,7 +595,7 @@ STDMETHODIMP CAVIFileSynth::Open(LPCSTR szFile, UINT mode, LPCOLESTR lpszFileNam
   filter_graph = 0;
   vi = NULL;
 
-  szScriptName = new char[lstrlen(szFile)+1];
+  szScriptName = new(std::nothrow) char[lstrlen(szFile)+1];
   if (!szScriptName)
     return AVIERR_MEMORY;
   lstrcpy(szScriptName, szFile);
@@ -813,7 +814,7 @@ STDMETHODIMP CAVIFileSynth::GetStream(PAVISTREAM *ppStream, DWORD fccType, LONG 
     if (!vi->HasVideo())
       return AVIERR_NODATA;
 
-    if ((casr = new CAVIStreamSynth(this, false)) == 0)
+    if ((casr = new(std::nothrow) CAVIStreamSynth(this, false)) == 0)
       return AVIERR_MEMORY;
 
     *ppStream = (IAVIStream *)casr;
@@ -822,7 +823,7 @@ STDMETHODIMP CAVIFileSynth::GetStream(PAVISTREAM *ppStream, DWORD fccType, LONG 
     if (!vi->HasAudio())
       return AVIERR_NODATA;
 
-    if ((casr = new CAVIStreamSynth(this, true)) == 0)
+    if ((casr = new(std::nothrow) CAVIStreamSynth(this, true)) == 0)
       return AVIERR_MEMORY;
 
     *ppStream = (IAVIStream *)casr;

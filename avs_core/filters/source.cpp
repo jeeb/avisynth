@@ -41,6 +41,7 @@
 #define PI 3.1415926535897932384626433832795
 #include <ctime>
 #include <cmath>
+#include <new>
 
 /********************************************************************
 ********************************************************************/
@@ -741,8 +742,7 @@ public:
 	  nsamples = vi.audio_samples_per_second/x; // 1200
 	  const unsigned ncycles  = Hz/x; // 11
 
-	  audio = new SFLOAT[nsamples];
-
+	  audio = new(std::nothrow) SFLOAT[nsamples];
 	  if (!audio)
 		env->ThrowError("ColorBars: insufficient memory");
 
