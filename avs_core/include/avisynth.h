@@ -40,21 +40,12 @@ Please NOTE! This version of avisynth.h DOES NOT have any special exemption!
 #ifndef __AVISYNTH_H__
 #define __AVISYNTH_H__
 
+#include <avs/config.h>
+#include <avs/capi.h>
+#include <avs/types.h>
+
+
 enum { AVISYNTH_INTERFACE_VERSION = 5 };
-
-
-/* Define all types necessary for interfacing with avisynth.dll
-   Moved from internal.h */
-
-// Raster types used by VirtualDub & Avisynth
-#define in64 (__int64)(unsigned short)
-typedef unsigned int    Pixel;    // this will break on 64-bit machines!
-typedef unsigned int    Pixel32;
-typedef unsigned char   Pixel8;
-typedef int             PixCoord;
-typedef int             PixDim;
-typedef int             PixOffset;
-typedef unsigned char   BYTE;
 
 
 /* Compiler-specific crap */
@@ -85,20 +76,9 @@ typedef unsigned char   BYTE;
 // so I now set the Avisynth struct alignment explicitly here.
 #pragma pack(push,8)
 
-// NOTE TO PLUGIN AUTHORS:
-// Because FRAME_ALIGN can be substantially higher than the alignment 
-// a plugin actually needs, plugins should not use FRAME_ALIGN to check for
-// alignment. They should always request the exact alignment value they need.
-// This is to make sure that plugins work over the widest range of AviSynth
-// builds possible.
-#define FRAME_ALIGN 32
-
 // The VideoInfo struct holds global information about a clip (i.e.
 // information that does not depend on the frame number).  The GetVideoInfo
 // method in IClip returns this struct.
-
-// Audio Sample information
-typedef float SFLOAT;
 
 enum {SAMPLE_INT8  = 1<<0,
       SAMPLE_INT16 = 1<<1,

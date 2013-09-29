@@ -38,6 +38,12 @@
 #include <cstdio>
 #include <new>
 
+typedef unsigned int    Pixel;    // this will break on 64-bit machines!
+typedef unsigned char   Pixel8;
+typedef int             PixCoord;
+typedef int             PixDim;
+typedef int             PixOffset;
+
 /********************************************************************
 * VirtualDub plugin support
 ********************************************************************/

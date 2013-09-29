@@ -33,14 +33,9 @@
 #ifndef __AVISYNTH_C__
 #define __AVISYNTH_C__
 
+#include <avs/config.h>
 #include <avs/capi.h>
-
-typedef unsigned char BYTE;
-#ifdef __GNUC__
-typedef long long int INT64;
-#else
-typedef __int64 INT64;
-#endif
+#include <avs/types.h>
 
 
 /////////////////////////////////////////////////////////////////////
@@ -114,8 +109,6 @@ enum {
   AVS_CACHE_AUDIO_NONE=4,
   AVS_CACHE_AUDIO_AUTO=5
   };
-
-#define AVS_FRAME_ALIGN 16 
 
 struct AVS_ScriptEnvironment
 {
@@ -331,13 +324,13 @@ AVSC_INLINE int avs_get_row_size_p(const AVS_VideoFrame * p, int plane) {
                 else            return 0;
     case AVS_PLANAR_U_ALIGNED: case AVS_PLANAR_V_ALIGNED: 
                 if (p->pitchUV) { 
-                        int r = (p->row_sizeUV+AVS_FRAME_ALIGN-1)&(~(AVS_FRAME_ALIGN-1)); // Aligned rowsize
+                        int r = (p->row_sizeUV+FRAME_ALIGN-1)&(~(FRAME_ALIGN-1)); // Aligned rowsize
                         if (r < p->pitchUV) 
                                 return r; 
                         return p->row_sizeUV;
                 } else return 0;
     case AVS_PLANAR_Y_ALIGNED:
-                r = (p->row_size+AVS_FRAME_ALIGN-1)&(~(AVS_FRAME_ALIGN-1)); // Aligned rowsize
+                r = (p->row_size+FRAME_ALIGN-1)&(~(FRAME_ALIGN-1)); // Aligned rowsize
                 if (r <= p->pitch) 
                         return r; 
                 return p->row_size;
@@ -622,12 +615,12 @@ AVSC_API(AVS_VideoFrame *, avs_new_video_frame_a)(AVS_ScriptEnvironment *,
 AVSC_INLINE 
 AVS_VideoFrame * avs_new_video_frame(AVS_ScriptEnvironment * env, 
                                      const AVS_VideoInfo * vi)
-  {return avs_new_video_frame_a(env,vi,AVS_FRAME_ALIGN);}
+  {return avs_new_video_frame_a(env,vi,FRAME_ALIGN);}
 
 AVSC_INLINE 
 AVS_VideoFrame * avs_new_frame(AVS_ScriptEnvironment * env, 
                                const AVS_VideoInfo * vi)
-  {return avs_new_video_frame_a(env,vi,AVS_FRAME_ALIGN);}
+  {return avs_new_video_frame_a(env,vi,FRAME_ALIGN);}
 #endif
 
 

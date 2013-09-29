@@ -30,33 +30,22 @@
 // on Avisynth C Interface, such as 3rd-party filters, import and
 // export plugins, or graphical user interfaces.
 
-#ifndef AVS_CAPI_H
-#define AVS_CAPI_H
+#ifndef AVS_TYPES_H
+#define AVS_TYPES_H
 
-#ifdef __cplusplus
-#  define EXTERN_C extern "C"
+// Define all types necessary for interfacing with avisynth.dll
+
+// Raster types used by VirtualDub & Avisynth
+typedef unsigned int    Pixel32;
+typedef unsigned char   BYTE;
+
+// Audio Sample information
+typedef float SFLOAT;
+
+#ifdef __GNUC__
+typedef long long int INT64;
 #else
-#  define EXTERN_C
+typedef __int64 INT64;
 #endif
 
-#ifndef AVSC_USE_STDCALL
-#  define AVSC_CC __cdecl
-#else
-#  define AVSC_CC __stdcall
-#endif
-
-#define AVSC_INLINE static __inline
-
-#ifdef BUILDING_AVSCORE
-#  define AVSC_EXPORT EXTERN_C
-#  define AVSC_API(ret, name) EXTERN_C __declspec(dllexport) ret AVSC_CC name
-#else
-#  define AVSC_EXPORT EXTERN_C __declspec(dllexport)
-#  ifndef AVSC_NO_DECLSPEC
-#    define AVSC_API(ret, name) EXTERN_C __declspec(dllimport) ret AVSC_CC name
-#  else
-#    define AVSC_API(ret, name) typedef ret (AVSC_CC *name##_func)
-#  endif
-#endif
-
-#endif //AVS_CAPI_H
+#endif //AVS_TYPES_H

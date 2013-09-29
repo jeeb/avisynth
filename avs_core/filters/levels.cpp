@@ -39,6 +39,8 @@
 #include <cmath>
 #include "../core/minmax.h"
 
+//Wow, this macro really sucks -> TODO: should be turned into a macro function
+#define in64 (__int64)(unsigned short)
 
 #define PI        3.141592653589793
 
