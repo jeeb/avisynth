@@ -248,7 +248,7 @@ GetSample::GetSample(bool _load_audio, bool _load_video, unsigned _media, LOG* _
       delete my_media_types[i];
 
     if (Allocator) {
-      dssRPT1(dssNEW, "Releasing Allocator 0x%08x.\n", Allocator);
+      dssRPT1(dssNEW, "Releasing Allocator %p.\n", Allocator);
       Allocator->Release();
       Allocator = 0;
     }
@@ -923,7 +923,7 @@ SeekExit:
     AddRef();
     pInfo->dir = PINDIR_INPUT;
     lstrcpynW(pInfo->achName, L"GetSample", MAX_PIN_NAME);
-    dssRPT1(dssCMD, "GetSample::QueryPinInfo() 0x%08x\n", this);
+    dssRPT1(dssCMD, "GetSample::QueryPinInfo() %p\n", this);
     return S_OK;
   }
 
@@ -1656,7 +1656,7 @@ void DirectShowSource::SetMicrosoftDVtoFullResolution(IGraphBuilder* gb) {
   while (S_OK == ef->Next(1, &bf, &fetched)) {
     IIPDVDec* pDVDec;
     if (SUCCEEDED(bf->QueryInterface(&pDVDec))) {
-      dssRPT1(dssINFO, "DVtoFullResolution() pDVDec=0x%08X\n", pDVDec);
+      dssRPT1(dssINFO, "DVtoFullResolution() pDVDec=%p\n", pDVDec);
       pDVDec->put_IPDisplay(DVRESOLUTION_FULL); // DVDECODERRESOLUTION_720x480);   // yes, this includes 720x576
       pDVDec->Release();
     }
@@ -1772,7 +1772,7 @@ void DirectShowSource::SetWMAudioDecoderDMOtoHiResOutput(IFilterGraph *pGraph)
           }
         }
         else {
-          dssRPT2(dssINFO, "WMAudioDecoderDMOtoHiRes() pFilter=0x%08X code=%X\n", pFilter, hr);
+          dssRPT2(dssINFO, "WMAudioDecoderDMOtoHiRes() pFilter=%p code=%X\n", pFilter, hr);
         }
       }
       // The FILTER_INFO structure holds a pointer to the Filter Graph

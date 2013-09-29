@@ -803,7 +803,7 @@ void __stdcall Cache::GetAudio(void* buf, __int64 start, __int64 count, IScriptE
 
 #ifdef _DEBUG
   char dbgbuf[255];
-  sprintf(dbgbuf, "CA:%x:Get st:%.6d co:%.6d .cst:%.6d cco:%.6d, cs:%d\n", this,
+  sprintf(dbgbuf, "CA:%p:Get st:%.6d co:%.6d .cst:%.6d cco:%.6d, cs:%d\n", this,
                     int(start), int(count), int(cache_start), int(cache_count), int(ac_currentscore));
   _RPT0(0, dbgbuf);
 #endif
