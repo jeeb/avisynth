@@ -1027,33 +1027,8 @@ public:
 };
 
 
-
 AVSValue __cdecl Create_Version(AVSValue args, void*, IScriptEnvironment* env) {
   return Create_MessageClip(_AVS_COPYRIGHT, -1, -1, VideoInfo::CS_BGR24, false, 0xECF2BF, 0, 0x404040, env);
-}
-
-
-AVSValue __cdecl Create_DirectShowSource(AVSValue args, void*, IScriptEnvironment* env) {
-
-  env->ThrowError("DirectShowSource: DirectShowSource.dll cannot be found.");
-
-  return AVSValue();
-}
-
-
-AVSValue __cdecl Create_TCPServer(AVSValue args, void*, IScriptEnvironment* env) {
-
-  env->ThrowError("TCPServer: TCPDeliver.dll cannot be found.");
-
-  return AVSValue();
-}
-
-
-AVSValue __cdecl Create_TCPClient(AVSValue args, void*, IScriptEnvironment* env) {
-
-  env->ThrowError("TCPSource: TCPDeliver.dll  cannot be found.");
-
-  return AVSValue();
 }
 
 
@@ -1078,10 +1053,6 @@ extern const AVSFunction Source_filters[] = {
   { "Tone", "[length]f[frequency]f[samplerate]i[channels]i[type]s[level]f", Tone::Create },
 
   { "Version", "", Create_Version },
-
-  { "DirectShowSource", "s+[fps]f[seek]b[audio]b[video]b[convertfps]b[seekzero]b[timeout]i[pixel_type]s[framecount]i[logfile]s[logmask]i", Create_DirectShowSource },
-  { "TCPServer", "c[port]i", Create_TCPServer },
-  { "TCPSource", "s[port]i[compression]s", Create_TCPClient },
 
   { 0,0,0 }
 };
