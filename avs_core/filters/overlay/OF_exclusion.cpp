@@ -35,7 +35,7 @@
 // Overlay (c) 2003, 2004 by Klaus Post
 
 #include "overlayfunctions.h"
-#include "../../core/minmax.h"
+#include <avs/minmax.h>
 
 void OL_ExclusionImage::BlendImageMask(Image444* base, Image444* overlay, Image444* mask) {
   BYTE* baseY = base->GetPtr(PLANAR_Y);

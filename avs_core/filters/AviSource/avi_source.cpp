@@ -40,7 +40,7 @@
 #include "VD_Audio.h"
 #include "AVIReadHandler.h"
 #include "avi_source.h"
-#include "../../core/minmax.h"
+#include <avs/minmax.h>
 
 
 LRESULT AVISource::DecompressBegin(LPBITMAPINFOHEADER lpbiSrc, LPBITMAPINFOHEADER lpbiDst) {

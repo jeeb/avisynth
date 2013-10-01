@@ -36,7 +36,7 @@
 #include <cmath>
 #include <cstdlib>
 #include <malloc.h>
-#include "../core/minmax.h"
+#include <avs/minmax.h>
 #include "../core/internal.h"
 
  

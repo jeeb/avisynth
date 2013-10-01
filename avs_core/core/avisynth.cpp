@@ -36,7 +36,7 @@
 #include "../core/internal.h"
 #include "./parser/script.h"
 #include "cache.h"
-#include "minmax.h"
+#include <avs/minmax.h>
 #include "strings.h"
 #include <avs/cpuid.h>
 #include "bitblt.h"

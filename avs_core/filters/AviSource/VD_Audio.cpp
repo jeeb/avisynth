@@ -26,7 +26,7 @@
 //#include "crash.h"
 
 #include "Error.h"
-#include "../../core/minmax.h"
+#include <avs/minmax.h>
 #include "AudioSource.h"
 
 #include "VD_Audio.h"

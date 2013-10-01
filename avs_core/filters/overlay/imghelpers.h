@@ -38,7 +38,7 @@
 #define __Overlay_helpers_h
 
 #include <malloc.h>
-#include "../../core/minmax.h"
+#include <avs/minmax.h>
 
 class Image444 {
 private:

@@ -37,7 +37,7 @@
 #include "limiter.h"
 #include <cstdio>
 #include <cmath>
-#include "../core/minmax.h"
+#include <avs/minmax.h>
 
 //Wow, this macro really sucks -> TODO: should be turned into a macro function
 #define in64 (__int64)(unsigned short)

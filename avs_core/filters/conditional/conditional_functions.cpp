@@ -36,7 +36,7 @@
 #include "conditional_functions.h"
 #include <cmath>
 #include <cstdlib>
-#include "../../core/minmax.h"
+#include <avs/minmax.h>
 #include "../../core/internal.h"
 
 

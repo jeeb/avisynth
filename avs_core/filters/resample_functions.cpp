@@ -35,7 +35,7 @@
 #include "resample_functions.h"
 #include <cmath>
 #include <malloc.h>
-#include "../core/minmax.h"
+#include <avs/minmax.h>
 
 
 /*******************************************

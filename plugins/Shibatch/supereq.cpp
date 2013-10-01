@@ -25,7 +25,7 @@ Copyright © 2003, Klaus Post
 #include "supereq.h"
 #include "paramlist.h"
 #include <vector>
-#include <core/minmax.h>
+#include <avs/minmax.h>
 #include <avisynth.h>
 
 

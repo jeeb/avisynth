@@ -34,7 +34,7 @@
 
 #include "transform.h"
 #include "../convert/convert.h"
-#include "../core/minmax.h"
+#include <avs/minmax.h>
 #include "../core/bitblt.h"
 
 

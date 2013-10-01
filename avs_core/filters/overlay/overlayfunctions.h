@@ -38,7 +38,7 @@
 #define __Overlay_funcs_h
 
 #include <avisynth.h>
-#include "../../core/minmax.h"
+#include <avs/minmax.h>
 #include "imghelpers.h"
 #include "blend_asm.h"
 
