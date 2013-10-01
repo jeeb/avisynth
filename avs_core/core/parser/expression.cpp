@@ -327,7 +327,8 @@ AVSValue ExpVariableReference::Evaluate(IScriptEnvironment* env)
     if (!env2->Invoke(&result, name, AVSValue(0,0)))
     {
       // finally look for a single-arg function taking implicit "last"
-      if (!env2->Invoke(&result, name, env->GetVar("last")))
+      AVSValue last;
+      if (!env2->GetVar("last", &last) || !env2->Invoke(&result, name, last))
       {
         env->ThrowError("I don't know what '%s' means.", name);
         return 0;

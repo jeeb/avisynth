@@ -1005,8 +1005,9 @@ public:
   virtual const char*  __stdcall GetVar(const char* name, const char* def) = 0;
 
   // Plugin functions
-  virtual bool __stdcall LoadPlugin(const char* filePath) = 0;
-  virtual void __stdcall AddAutoloadDir(const char* dirPath) = 0;
+  virtual bool __stdcall LoadPlugin(const char* filePath, bool throwOnError) = 0;
+  virtual void __stdcall AddAutoloadDir(const char* dirPath, bool toFront) = 0;
+  virtual void __stdcall ClearAutoloadDirs() = 0;
 
   // The following group of functions are ONLY to be called
   // by the avisynth server dll.

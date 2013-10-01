@@ -4,11 +4,13 @@
 #include "strings.h"
 #include <cassert>
 
-
 typedef const char* (__stdcall *AvisynthPluginInit3Func)(IScriptEnvironment* env, const AVS_Linkage* const vectors);
 typedef const char* (__stdcall *AvisynthPluginInit2Func)(IScriptEnvironment* env);
 typedef const char * (AVSC_CC *AvisynthCPluginInitFunc)(AVS_ScriptEnvironment* env);
 
+const char RegAvisynthKey[] = "Software\\Avisynth";
+const char RegPluginDirClassic[] = "PluginDir2_5";
+const char RegPluginDirPlus[] = "PluginDir+";
 
 /*
 ---------------------------------------------------------------------------------
@@ -17,6 +19,31 @@ typedef const char * (AVSC_CC *AvisynthCPluginInitFunc)(AVS_ScriptEnvironment* e
 ---------------------------------------------------------------------------------
 ---------------------------------------------------------------------------------
 */
+
+static bool GetRegString(HKEY rootKey, const char path[], const char entry[], std::string *result) {
+    HKEY AvisynthKey;
+
+    if (RegOpenKeyEx(rootKey, path, 0, KEY_READ, &AvisynthKey))
+      return false;
+
+    DWORD size;
+    if (ERROR_SUCCESS != RegQueryValueEx(AvisynthKey, entry, 0, 0, 0, &size)) {
+      RegCloseKey(AvisynthKey); // Dave Brueck - Dec 2005
+      return false;
+    }
+
+    char* retStr = new(std::nothrow) char[size];
+    if ((retStr == NULL) || (ERROR_SUCCESS != RegQueryValueEx(AvisynthKey, entry, 0, 0, (LPBYTE)retStr, &size))) {
+      delete[] retStr;
+      RegCloseKey(AvisynthKey); // Dave Brueck - Dec 2005
+      return false;
+    }
+    RegCloseKey(AvisynthKey); // Dave Brueck - Dec 2005
+
+    *result = std::string(retStr);
+    delete[] retStr;
+    return true;
+}
 
 static std::string GetFullPathNameWrap(const std::string &f)
 {
@@ -241,19 +268,34 @@ PluginFile::PluginFile(const std::string &filePath) :
   FilePath(GetFullPathNameWrap(filePath)), BaseName(), Library(NULL)
 {
   // Turn all '\' into '/'
-  replace(FilePath, '\\', '/');
+  replace(FilePath, "\\", "/");
 
   // Find position of dot in extension
   size_t dot_pos = FilePath.rfind('.');
-  assert(dot_pos != std::string::npos);
 
   // Find position of last directory slash
   size_t slash_pos = FilePath.rfind('/');
-  assert(slash_pos != std::string::npos);
 
   // Extract basename
-  assert(dot_pos > slash_pos);
-  BaseName = FilePath.substr(slash_pos+1, dot_pos - slash_pos - 1);
+  if ((dot_pos != std::string::npos) && (slash_pos != std::string::npos))
+  {// we have both a slash and a dot
+    if (dot_pos > slash_pos)
+      BaseName = FilePath.substr(slash_pos+1, dot_pos - slash_pos - 1);
+    else
+      BaseName = FilePath.substr(slash_pos+1, std::string::npos);
+  }
+  else if ((dot_pos == std::string::npos) && (slash_pos != std::string::npos))
+  {// we have a slash but no dot
+    // Extract basename
+    BaseName = FilePath.substr(slash_pos+1, std::string::npos);
+  }
+  else
+  {// everything else
+    // Because we have used GetFullPathName, FilePath should contain an absolute path,
+    // meaning that this case should be unreachable, but the devil never sleeps.
+    assert(0);
+    BaseName = FilePath;
+  }
 }
 
 /*
@@ -269,13 +311,58 @@ PluginManager::PluginManager(IScriptEnvironment2* env) :
 {
 }
 
-bool PluginManager::AddAutoloadDir(const std::string &dir)
+void PluginManager::ClearAutoloadDirs()
 {
   if (AutoloadExecuted)
-    Env->ThrowError("Cannot add new autoload directory after the autoload procedure has already executed.");
+    Env->ThrowError("Cannot modify directory list after the autoload procedure has already executed.");
 
-  AutoloadDirs.push_back(GetFullPathNameWrap(dir));
-  return true;
+  AutoloadDirs.clear();
+}
+
+void PluginManager::AddAutoloadDir(const std::string &dirPath, bool toFront)
+{
+  if (AutoloadExecuted)
+    Env->ThrowError("Cannot modify directory list after the autoload procedure has already executed.");
+
+  std::string dir(dirPath);
+
+  // get folder of our executable
+  TCHAR ExeFilePath[AVS_MAX_PATH];
+  memset(ExeFilePath, 0, sizeof(ExeFilePath[0])*AVS_MAX_PATH);  // WinXP does not terminate the result of GetModuleFileName with a zero, so me must zero our buffer
+  GetModuleFileName(NULL, ExeFilePath, AVS_MAX_PATH);
+  std::string ExeFileDir(ExeFilePath);
+  replace(ExeFileDir, '\\', '/');
+  ExeFileDir = ExeFileDir.erase(ExeFileDir.rfind('/'), std::string::npos);
+
+  // variable expansion
+  replace_beginning(dir, "SCRIPTDIR", Env->GetVar("$ScriptDir$", ""));
+  replace_beginning(dir, "MAINSCRIPTDIR", Env->GetVar("$MainScriptDir$", ""));
+  replace_beginning(dir, "PROGRAMDIR", ExeFileDir);
+
+  std::string plugin_dir;
+  if (GetRegString(HKEY_CURRENT_USER, RegAvisynthKey, RegPluginDirPlus, &plugin_dir))
+    replace_beginning(dir, "USER_PLUS_PLUGINS", plugin_dir);
+  if (GetRegString(HKEY_LOCAL_MACHINE, RegAvisynthKey, RegPluginDirPlus, &plugin_dir))
+    replace_beginning(dir, "MACHINE_PLUS_PLUGINS", plugin_dir);
+  if (GetRegString(HKEY_CURRENT_USER, RegAvisynthKey, RegPluginDirClassic, &plugin_dir))
+    replace_beginning(dir, "USER_CLASSIC_PLUGINS", plugin_dir);
+  if (GetRegString(HKEY_LOCAL_MACHINE, RegAvisynthKey, RegPluginDirClassic, &plugin_dir))
+    replace_beginning(dir, "MACHINE_CLASSIC_PLUGINS", plugin_dir);
+
+  // replace backslashes with forward slashes
+  replace(dir, "\\", "/");
+
+  // append terminating slash if needed
+  if (dir[dir.size()-1] != '/')
+    dir = concat(dir, "/");
+
+  // remove double slashes
+  while(replace(dir, "//", "/"));
+
+  if (toFront)
+    AutoloadDirs.insert(AutoloadDirs.begin(), GetFullPathNameWrap(dir));
+  else
+    AutoloadDirs.push_back(GetFullPathNameWrap(dir));
 }
 
 void PluginManager::AutoloadPlugins()
@@ -286,9 +373,9 @@ void PluginManager::AutoloadPlugins()
   const char *scriptFilter = "*.avsi";
 
   // Load binary plugins
-  for (size_t i = AutoloadDirs.size(); i-- > 0; )   // reverse iteration using unsigned index
+  for (std::vector<std::string>::const_iterator dir_it = AutoloadDirs.begin(); dir_it != AutoloadDirs.end(); ++dir_it )
   {
-    const std::string &dir = AutoloadDirs[i];
+    const std::string &dir = *dir_it;
     CWDChanger cwdchange(dir.c_str());
 
     // Append file search filter to directory path
@@ -318,16 +405,16 @@ void PluginManager::AutoloadPlugins()
         }
 
         // Try to load plugin
-        LoadPlugin(p, true);
+        LoadPlugin(p, false);
       }
     } // for bContinue
     FindClose(hFind);
   }
 
   // Load script imports
-  for (size_t i = AutoloadDirs.size(); i-- > 0; )   // reverse iteration using unsigned index
+  for (std::vector<std::string>::const_iterator dir_it = AutoloadDirs.begin(); dir_it != AutoloadDirs.end(); ++dir_it )
   {
-    const std::string &dir = AutoloadDirs[i];
+    const std::string &dir = *dir_it;
     CWDChanger cwdchange(dir.c_str());
 
     // Append file search filter to directory path
@@ -377,7 +464,7 @@ PluginManager::~PluginManager()
   PluginInLoad = NULL;
 }
 
-bool PluginManager::LoadPlugin(PluginFile &plugin, bool quiet)
+bool PluginManager::LoadPlugin(PluginFile &plugin, bool throwOnError)
 {
   for (size_t i = 0; i < LoadedPlugins.size(); ++i)
   {
@@ -393,7 +480,7 @@ bool PluginManager::LoadPlugin(PluginFile &plugin, bool quiet)
   plugin.Library = LoadLibrary(plugin.FilePath.c_str());
   if (plugin.Library == NULL)
   {
-    if (!quiet)
+    if (throwOnError)
       Env->ThrowError("Cannot load file '%s'.", plugin.FilePath.c_str());
     else
       return false;
@@ -410,7 +497,7 @@ bool PluginManager::LoadPlugin(PluginFile &plugin, bool quiet)
         FreeLibrary(plugin.Library);
         plugin.Library = NULL;
 
-        if (!quiet)
+        if (throwOnError)
           Env->ThrowError("'%s' cannot be used as a plugin for AviSynth.", plugin.FilePath.c_str());
         else
           return false;
@@ -602,7 +689,7 @@ AVSValue LoadPlugin(AVSValue args, void* user_data, IScriptEnvironment* env)
   bool success = true;
   for (int i = 0; i < args.ArraySize(); ++i)
   {
-    success &= env2->LoadPlugin(args[i].AsString());
+    success &= env2->LoadPlugin(args[0][i].AsString(), true);
   }
 
   return AVSValue(success);
@@ -610,7 +697,7 @@ AVSValue LoadPlugin(AVSValue args, void* user_data, IScriptEnvironment* env)
 
 extern const AVSFunction Plugin_functions[] = {
   {"LoadPlugin", "s+", LoadPlugin},
-  {"LoadCPlugin", "s", LoadPlugin },          // for compatiblity with older scripts
-  {"Load_Stdcall_Plugin", "s", LoadPlugin },  // for compatiblity with older scripts
+  {"LoadCPlugin", "s+", LoadPlugin },          // for compatibility with older scripts
+  {"Load_Stdcall_Plugin", "s+", LoadPlugin },  // for compatibility with older scripts
   { 0 }
 };

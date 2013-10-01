@@ -46,8 +46,9 @@ public:
   PluginManager(IScriptEnvironment2* env);
   ~PluginManager();
 
-  bool AddAutoloadDir(const std::string &dir);
-  bool LoadPlugin(PluginFile &plugin, bool quiet);
+  void ClearAutoloadDirs();
+  void AddAutoloadDir(const std::string &dir, bool toFront);
+  bool LoadPlugin(PluginFile &plugin, bool throwOnError);
 
   bool HasAutoloadExecuted() const { return AutoloadExecuted; }
 

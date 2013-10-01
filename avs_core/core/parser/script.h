@@ -45,10 +45,6 @@
 /********************************************************************
 ********************************************************************/
 
-// Provision for UTF-8 max 4 bytes per code point
-#define AVS_MAX_PATH MAX_PATH*4
-
-
 class ScriptFunction 
 /**
   * Executes a script
@@ -261,5 +257,6 @@ AVSValue ScriptFile(AVSValue args, void*, IScriptEnvironment* env);
 AVSValue ScriptDir (AVSValue args, void*, IScriptEnvironment* env);
 
 AVSValue AddAutoloadDir (AVSValue args, void*, IScriptEnvironment* env);
+AVSValue ClearAutoloadDirs (AVSValue args, void*, IScriptEnvironment* env);
 
 #endif  // __Script_H__

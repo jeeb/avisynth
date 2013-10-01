@@ -218,7 +218,9 @@ extern const AVSFunction Script_functions[] = {
   { "ScriptDir",  "", ScriptDir  },
  
   { "PixelType",  "c", PixelType  },
-  { "AddAutoloadDir",  "s", AddAutoloadDir  },
+
+  { "AddAutoloadDir",  "s[toFront]b", AddAutoloadDir  },
+  { "ClearAutoloadDirs",  "", ClearAutoloadDirs  },
  
   { 0 }
 };
@@ -982,7 +984,14 @@ AVSValue AvsMax(AVSValue args, void*, IScriptEnvironment* env )
 AVSValue AddAutoloadDir (AVSValue args, void*, IScriptEnvironment* env)
 {
   IScriptEnvironment2 *env2 = static_cast<IScriptEnvironment2*>(env);
-  env2->AddAutoloadDir(args[0].AsString());
+  env2->AddAutoloadDir(args[0].AsString(), args[1].AsBool(true));
+  return AVSValue();
+}
+
+AVSValue ClearAutoloadDirs (AVSValue args, void*, IScriptEnvironment* env)
+{
+  IScriptEnvironment2 *env2 = static_cast<IScriptEnvironment2*>(env);
+  env2->ClearAutoloadDirs();
   return AVSValue();
 }
 

@@ -98,10 +98,6 @@ struct {
   char tag[36];
 } g_Mem_stats = {0, 0, 0, 0, 0, 0, 0, "CleanUps, Losses, Plan[A1,A2,B,C,D]"};
 
-const char RegAvisynthKey[] = "Software\\Avisynth";
-const char RegAvsPluginDir[] = "PluginDir2_5";
-const char RegPluginDir[] = "PluginDirNG";
-
 const _PixelClip PixelClip;
 
 template<typename T>
@@ -365,31 +361,6 @@ public:
   }
 };
 
-static bool GetRegString(HKEY rootKey, const char path[], const char entry[], std::string *result) {
-    HKEY AvisynthKey;
-
-    if (RegOpenKeyEx(rootKey, path, 0, KEY_READ, &AvisynthKey))
-      return false;
-
-    DWORD size;
-    if (ERROR_SUCCESS != RegQueryValueEx(AvisynthKey, entry, 0, 0, 0, &size)) {
-      RegCloseKey(AvisynthKey); // Dave Brueck - Dec 2005
-      return false;
-    }
-
-    char* retStr = new(std::nothrow) char[size];
-    if ((retStr == NULL) || (ERROR_SUCCESS != RegQueryValueEx(AvisynthKey, entry, 0, 0, (LPBYTE)retStr, &size))) {
-      delete[] retStr;
-      RegCloseKey(AvisynthKey); // Dave Brueck - Dec 2005
-      return false;
-    }
-    RegCloseKey(AvisynthKey); // Dave Brueck - Dec 2005
-
-    *result = std::string(retStr);
-    delete[] retStr;
-    return true;
-}
-
 class ScriptEnvironment : public IScriptEnvironment2 {
 public:
   ScriptEnvironment();
@@ -431,8 +402,9 @@ public:
   virtual int  __stdcall GetVar(const char* name, int def);
   virtual double  __stdcall GetVar(const char* name, double def);
   virtual const char*  __stdcall GetVar(const char* name, const char* def);
-  virtual bool __stdcall LoadPlugin(const char* filePath);
-  virtual void __stdcall AddAutoloadDir(const char* dirPath);
+  virtual bool __stdcall LoadPlugin(const char* filePath, bool throwOnError);
+  virtual void __stdcall AddAutoloadDir(const char* dirPath, bool toFront);
+  virtual void __stdcall ClearAutoloadDirs();
   virtual int __stdcall IncrImportDepth();
   virtual int __stdcall DecrImportDepth();
   virtual bool __stdcall Invoke(AVSValue *result, const char* name, const AVSValue args, const char* const* arg_names=0);
@@ -568,16 +540,10 @@ ScriptEnvironment::ScriptEnvironment()
     global_var_table->Set("$ScriptDir$",  AVSValue());
 
     plugin_manager = new PluginManager(this);
-
-    std::string plugin_dir;
-    if (GetRegString(HKEY_CURRENT_USER, RegAvisynthKey, RegPluginDir, &plugin_dir))
-      this->AddAutoloadDir(plugin_dir.c_str());
-    if (GetRegString(HKEY_CURRENT_USER, RegAvisynthKey, RegAvsPluginDir, &plugin_dir))
-      this->AddAutoloadDir(plugin_dir.c_str());
-    if (GetRegString(HKEY_LOCAL_MACHINE, RegAvisynthKey, RegPluginDir, &plugin_dir))
-      this->AddAutoloadDir(plugin_dir.c_str());
-    if (GetRegString(HKEY_LOCAL_MACHINE, RegAvisynthKey, RegAvsPluginDir, &plugin_dir))
-      this->AddAutoloadDir(plugin_dir.c_str());
+    plugin_manager->AddAutoloadDir("USER_PLUS_PLUGINS", false);
+    plugin_manager->AddAutoloadDir("MACHINE_PLUS_PLUGINS", false);
+    plugin_manager->AddAutoloadDir("USER_CLASSIC_PLUGINS", false);
+    plugin_manager->AddAutoloadDir("MACHINE_CLASSIC_PLUGINS", false);
   }
   catch (const AvisynthError &err) {
     if(SUCCEEDED(hrfromcoinit)) {
@@ -647,42 +613,21 @@ int __stdcall ScriptEnvironment::DecrImportDepth()
   return ImportDepth;
 }
 
-bool __stdcall ScriptEnvironment::LoadPlugin(const char* filePath)
+bool __stdcall ScriptEnvironment::LoadPlugin(const char* filePath, bool throwOnError)
 {
-  return plugin_manager->LoadPlugin(PluginFile(filePath), true);
+  return plugin_manager->LoadPlugin(PluginFile(filePath), throwOnError);
 }
 
-void __stdcall ScriptEnvironment::AddAutoloadDir(const char* dirPath)
+void __stdcall ScriptEnvironment::AddAutoloadDir(const char* dirPath, bool toFront)
 {
-  std::string dir(dirPath);
-
-  // get folder of our executable
-  TCHAR ExeFilePath[AVS_MAX_PATH];
-  memset(ExeFilePath, 0, sizeof(ExeFilePath[0])*AVS_MAX_PATH);  // WinXP does not terminate the result of GetModuleFileName with a zero, so me must zero our buffer
-  GetModuleFileName(NULL, ExeFilePath, AVS_MAX_PATH);
-  std::string ExeFileDir(ExeFilePath);
-  replace(ExeFileDir, '\\', '/');
-  ExeFileDir = ExeFileDir.erase(ExeFileDir.rfind('/'), std::string::npos);
-
-  // variable expansion
-  replace_beginning(dir, "SCRIPTDIR", GetVar("$ScriptDir$", ""));
-  replace_beginning(dir, "MAINSCRIPTDIR", GetVar("$MainScriptDir$", ""));
-  replace_beginning(dir, "PROGRAMDIR", ExeFileDir);
-
-  // replace backslashes with forward slashes
-  replace(dir, '\\', '/');
-
-  // append terminating slash if needed
-  if (dir[dir.size()-1] != '/')
-    dir = concat(dir, "/");
-
-  // remove double slashes
-  while(replace(dir, "//", "/"));
-
-  // add directory
-  plugin_manager->AddAutoloadDir(dir);
+  plugin_manager->AddAutoloadDir(dirPath, toFront);
 }
 
+
+void __stdcall ScriptEnvironment::ClearAutoloadDirs()
+{
+  plugin_manager->ClearAutoloadDirs();
+}
 
 int ScriptEnvironment::SetMemoryMax(int mem) {
 

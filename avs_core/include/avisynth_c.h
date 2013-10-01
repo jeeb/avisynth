@@ -110,11 +110,13 @@ enum {
   AVS_CACHE_AUDIO_AUTO=5
   };
 
+#ifdef BUILDING_AVSCORE
 struct AVS_ScriptEnvironment
 {
 	IScriptEnvironment * env;
 	const char * error;
 };
+#endif
 
 typedef struct AVS_Clip AVS_Clip;
 typedef struct AVS_ScriptEnvironment AVS_ScriptEnvironment;
