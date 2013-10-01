@@ -90,10 +90,9 @@ extern const AVSFunction Text_filters[] = {
  *******   Anti-alias    ******
  *****************************/
 
-Antialiaser::Antialiaser(int width, int height, const char fontname[], int size,
-   int _textcolor, int _halocolor, int font_width, int font_angle, bool _interlaced)
- : w(width), h(height), textcolor(_textcolor), halocolor(_halocolor), alpha_calcs(0),
-   dirty(true), interlaced(_interlaced)
+Antialiaser::Antialiaser(int width, int height, const char fontname[], int size, int _textcolor, int _halocolor, int font_width, int font_angle, bool _interlaced) :
+  w(width), h(height), textcolor(_textcolor), halocolor(_halocolor), alpha_calcs(0),
+  dirty(true), interlaced(_interlaced)
 {
   struct {
     BITMAPINFOHEADER bih;

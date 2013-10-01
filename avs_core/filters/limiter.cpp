@@ -37,13 +37,15 @@
 #include <avs/win.h>
 
 
-Limiter::Limiter(PClip _child, int _min_luma, int _max_luma, int _min_chroma, int _max_chroma, int _show, IScriptEnvironment* env)
-    : GenericVideoFilter(_child),
+Limiter::Limiter(PClip _child, int _min_luma, int _max_luma, int _min_chroma, int _max_chroma, int _show, IScriptEnvironment* env) :
+  GenericVideoFilter(_child),
+  c_plane(NULL),
   min_luma(_min_luma),
   max_luma(_max_luma),
   min_chroma(_min_chroma),
   max_chroma(_max_chroma),
-  show(enum SHOW(_show)) {
+  show(enum SHOW(_show))
+{
   if (!vi.IsYUV())
       env->ThrowError("Limiter: Source must be YUV");
 

@@ -141,9 +141,10 @@ AVSValue __cdecl AssumeRate::Create(AVSValue args, void*, IScriptEnvironment*) {
  *******   Supports int16 & float    ******
  *****************************************/
 
-ConvertToMono::ConvertToMono(PClip _clip)
-    : GenericVideoFilter(ConvertAudio::Create(_clip,
-                     SAMPLE_INT16 | SAMPLE_FLOAT, SAMPLE_FLOAT)) {
+ConvertToMono::ConvertToMono(PClip _clip) :
+  GenericVideoFilter(ConvertAudio::Create(_clip, SAMPLE_INT16 | SAMPLE_FLOAT, SAMPLE_FLOAT)),
+  tempbuffer(NULL)
+{
   channels = vi.AudioChannels();
   vi.nchannels = 1;
   tempbuffer_size = 0;
@@ -280,9 +281,9 @@ AVSValue __cdecl EnsureVBRMP3Sync::Create(AVSValue args, void*, IScriptEnvironme
  *******   the channels in the 'N' clip ****
  *******************************************/
 
-MergeChannels::MergeChannels(PClip _clip, int _num_children, PClip* _child_array, IScriptEnvironment* env)
-    : GenericVideoFilter(_clip), num_children(_num_children), child_array(_child_array) {
-
+MergeChannels::MergeChannels(PClip _clip, int _num_children, PClip* _child_array, IScriptEnvironment* env) :
+  GenericVideoFilter(_clip), num_children(_num_children), child_array(_child_array), tempbuffer(NULL)
+{
   clip_channels = new int[num_children];
   clip_offset = new signed char * [num_children];
   clip_channels[0] = vi.AudioChannels();
@@ -438,8 +439,8 @@ AVSValue __cdecl MergeChannels::Create(AVSValue args, void*, IScriptEnvironment*
 
 
 
-GetChannel::GetChannel(PClip _clip, int* _channel, int _numchannels)
-    : GenericVideoFilter(_clip), channel(_channel), numchannels(_numchannels)
+GetChannel::GetChannel(PClip _clip, int* _channel, int _numchannels) :
+  GenericVideoFilter(_clip), channel(_channel), numchannels(_numchannels), tempbuffer(NULL)
 {
   cbps = vi.BytesPerChannelSample();
   src_bps = vi.BytesPerAudioSample();
@@ -781,10 +782,13 @@ AVSValue __cdecl Amplify::Create_dB(AVSValue args, void*, IScriptEnvironment* en
  ***** Supports int16,float******
  ******************************/
 
-Normalize::Normalize(PClip _child, float _max_factor, bool _showvalues)
-    : GenericVideoFilter(ConvertAudio::Create(_child, SAMPLE_INT16 | SAMPLE_FLOAT, SAMPLE_FLOAT)),
-    max_factor(_max_factor), showvalues(_showvalues) {
-  max_volume = -1.0f;
+Normalize::Normalize(PClip _child, float _max_factor, bool _showvalues) :
+  GenericVideoFilter(ConvertAudio::Create(_child, SAMPLE_INT16 | SAMPLE_FLOAT, SAMPLE_FLOAT)),
+  max_factor(_max_factor),
+  showvalues(_showvalues),
+  frameno(0),
+  max_volume(-1.0f)
+{
 }
 
 
@@ -996,13 +1000,14 @@ AVSValue __cdecl Normalize::Create(AVSValue args, void*, IScriptEnvironment* env
  ***** Mix audio  tracks ******
  ******************************/
 
-MixAudio::MixAudio(PClip _child, PClip _clip, double _track1_factor, double _track2_factor, IScriptEnvironment* env)
-    : GenericVideoFilter(ConvertAudio::Create(_child, SAMPLE_INT16 | SAMPLE_FLOAT, SAMPLE_FLOAT)),
-    track1_factor(int(_track1_factor*131072.0 + 0.5)),
-    track2_factor(int(_track2_factor*131072.0 + 0.5)),
-    t1factor(float(_track1_factor)),
-    t2factor(float(_track2_factor)) {
-
+MixAudio::MixAudio(PClip _child, PClip _clip, double _track1_factor, double _track2_factor, IScriptEnvironment* env) :
+  GenericVideoFilter(ConvertAudio::Create(_child, SAMPLE_INT16 | SAMPLE_FLOAT, SAMPLE_FLOAT)),
+  track1_factor(int(_track1_factor*131072.0 + 0.5)),
+  track2_factor(int(_track2_factor*131072.0 + 0.5)),
+  t1factor(float(_track1_factor)),
+  t2factor(float(_track2_factor)),
+  tempbuffer(NULL)
+{
   clip = ConvertAudio::Create(_clip, vi.SampleType(), vi.SampleType());  // Clip 2 should now be same type as clip 1.
   const VideoInfo vi2 = clip->GetVideoInfo();
 
@@ -1210,7 +1215,6 @@ void __stdcall ResampleAudio::GetAudio(void* buf, __int64 start, __int64 count, 
   if (vi.IsSampleType(SAMPLE_INT16)) {
 
 	if (!srcbuffer || source_bytes > srcbuffer_size) {
-	  if (srcbuffer)
 		delete[] srcbuffer;
 	  srcbuffer = new short[source_bytes >> 1];
 	  srcbuffer_size = source_bytes;
@@ -1354,7 +1358,6 @@ nofix:
   else { // SAMPLE_FLOAT
 
 	if (!fsrcbuffer || source_bytes > srcbuffer_size) {
-	  if (fsrcbuffer)
 		delete[] fsrcbuffer;
 	  fsrcbuffer = new SFLOAT[source_bytes >> 2];
 	  srcbuffer_size = source_bytes;

@@ -70,13 +70,13 @@ private:
   __inline int Saturate_int24(float n);
   __inline int Saturate_int32(float n);
 
-  char src_format;
-  char dst_format;
+  SFLOAT *floatbuffer;
+  char *tempbuffer;
   int src_bps;
   int tempbuffer_size;
-  char *tempbuffer;
   int floatbuffer_size;
-  SFLOAT *floatbuffer;
+  char src_format;
+  char dst_format;
 };
 
 #endif //__Convert_Audio_H__

@@ -148,11 +148,9 @@ private:
   int* clip_channels;
   signed char** clip_offset;
   signed char *tempbuffer;
-  int tempbuffer_size;
-
-  const int num_children;
   PClip* child_array;
-
+  const int num_children;
+  int tempbuffer_size;
 };
 
 
@@ -179,8 +177,8 @@ public:
 
 private:
   char *tempbuffer;
-  int tempbuffer_size;
   int* channel;
+  int tempbuffer_size;
   int numchannels;
   int cbps;
   int src_bps;
@@ -288,11 +286,11 @@ public:
 
 
 private:
+  PClip clip;
+  signed char *tempbuffer;
   const int track1_factor, track2_factor;
   const float t1factor, t2factor;
   int tempbuffer_size;
-  signed char *tempbuffer;
-  PClip clip;
 };
 
 

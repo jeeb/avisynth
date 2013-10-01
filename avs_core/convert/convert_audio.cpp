@@ -65,7 +65,7 @@ int __stdcall ConvertAudio::SetCacheHints(int cachehints,int frame_range)
 
 // Optme: Could be made onepass, but that would make it immensely complex
 ConvertAudio::ConvertAudio(PClip _clip, int _sample_type) 
-  : GenericVideoFilter(_clip)
+  : GenericVideoFilter(_clip), tempbuffer(NULL), floatbuffer(NULL)
 {
   dst_format=_sample_type;
   src_format=vi.SampleType();

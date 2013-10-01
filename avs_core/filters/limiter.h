@@ -54,24 +54,23 @@ public:
   DynamicAssembledCode create_emulator(int row_size, int height, IScriptEnvironment* env);
   ~Limiter();
 private:
-  bool luma_emulator;
-  bool chroma_emulator;
+  DynamicAssembledCode assemblerY;
+  DynamicAssembledCode assemblerUV;
+
+  //Variables needed by the emulator
+  BYTE* c_plane;
+  int emu_cmin;
+  int emu_cmax;
+  int modulo;
+
   int max_luma;
   int min_luma;
   int max_chroma;
   int min_chroma;
   const enum SHOW {show_none, show_luma, show_luma_grey, show_chroma, show_chroma_grey} show;
-
-  DynamicAssembledCode assemblerY;
-  DynamicAssembledCode assemblerUV;
-
-  //Variables needed by the emulator:
-  BYTE* c_plane;
-  int emu_cmin;
-  int emu_cmax;
-  int modulo;
+  bool luma_emulator;
+  bool chroma_emulator;
 };
-
 
 #endif  // __Limiter_H__
 

@@ -34,7 +34,6 @@
 
 
 #include "scriptparser.h"
-#include <avs/win.h>
 
 
 /********************************

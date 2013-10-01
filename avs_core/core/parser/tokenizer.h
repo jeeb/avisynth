@@ -90,10 +90,10 @@ private:
   union 
   {
     const char* identifier;
+    const char* string;
     int op;   // '+', '++', '.', ',', '(', ')', 0=eoln
     int integer;
     float floating_pt;
-    const char* string;
   };
 };
 

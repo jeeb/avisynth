@@ -132,10 +132,8 @@ const char *const getErrStr(ILenum err)
     return "Invalid conversion";
   if (err == IL_BAD_DIMENSIONS)
     return "Bad dimensions";
-  if (err == IL_FILE_READ_ERROR)
-    return "File read error";
-  if (err == IL_FILE_WRITE_ERROR)
-    return "File write error";
+  if ((err == IL_FILE_READ_ERROR) || (err == IL_FILE_WRITE_ERROR))
+    return "File read/write error";
   if (err == IL_LIB_GIF_ERROR)
     return "LibGif error";
   if (err == IL_LIB_JPEG_ERROR)

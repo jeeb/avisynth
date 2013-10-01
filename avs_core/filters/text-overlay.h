@@ -66,16 +66,16 @@ private:
   void ApplyRGB24(BYTE* buf, int pitch);
   void ApplyRGB32(BYTE* buf, int pitch);  
 
-  const int w, h;
+  void* lpAntialiasBits;
+  unsigned short* alpha_calcs;
   HDC hdcAntialias;
   HBITMAP hbmAntialias;
-  void* lpAntialiasBits;
   HFONT hfontDefault;
   HBITMAP hbmDefault;
-  unsigned short* alpha_calcs;
-  bool dirty, interlaced;
+  const int w, h;
   const int textcolor, halocolor;
   int xl, yt, xr, yb; // sub-rectangle containing live text
+  bool dirty, interlaced;
 
   void GetAlphaRect();
 };

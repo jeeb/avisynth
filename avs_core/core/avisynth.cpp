@@ -274,7 +274,7 @@ public:
   }
 
   // This method will not modify the *val argument if it returns false.
-  bool Get(const char* name, AVSValue *val) {
+  bool Get(const char* name, AVSValue *val) const {
     AVSValue *v = variables.get(name);
     if (v != NULL)
     {

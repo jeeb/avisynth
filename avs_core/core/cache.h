@@ -101,16 +101,15 @@ private:
     long faults;  // the number of times this frame was requested and found to be stale(modified)
     long vfb_locked;
     long vfb_protected;
-//    int status;
 
-    CachedVideoFrame() { 
-        next=prev=this; 
-        vfb=0; 
-        frame_number=-1; 
-        faults=0;
-        vfb_locked=0;
-        vfb_protected=0;
-//        status=0;
+    CachedVideoFrame() :
+      prev(this), next(this),
+      vfb(NULL),
+      frame_number(-1),
+      faults(0),
+      vfb_locked(0),
+      vfb_protected(0)
+    { 
     }
   };
   CachedVideoFrame video_frames;
