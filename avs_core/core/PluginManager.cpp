@@ -405,7 +405,8 @@ void PluginManager::AutoloadPlugins()
         }
 
         // Try to load plugin
-        LoadPlugin(p, false);
+        AVSValue dummy;
+        LoadPlugin(p, false, &dummy);
       }
     } // for bContinue
     FindClose(hFind);
@@ -464,7 +465,7 @@ PluginManager::~PluginManager()
   PluginInLoad = NULL;
 }
 
-bool PluginManager::LoadPlugin(PluginFile &plugin, bool throwOnError)
+bool PluginManager::LoadPlugin(PluginFile &plugin, bool throwOnError, AVSValue *result)
 {
   for (size_t i = 0; i < LoadedPlugins.size(); ++i)
   {
@@ -487,12 +488,11 @@ bool PluginManager::LoadPlugin(PluginFile &plugin, bool throwOnError)
   }
 
   // Try to load various plugin interfaces
-  AVSValue result;
-  if (!TryAsAvs26(plugin, &result))
+  if (!TryAsAvs26(plugin, result))
   {
-    if (!TryAsAvs25(plugin, &result))
+    if (!TryAsAvs25(plugin, result))
     {
-      if (!TryAsAvsC(plugin, &result))
+      if (!TryAsAvsC(plugin, result))
       {
         FreeLibrary(plugin.Library);
         plugin.Library = NULL;
@@ -688,7 +688,8 @@ AVSValue LoadPlugin(AVSValue args, void* user_data, IScriptEnvironment* env)
   bool success = true;
   for (int i = 0; i < args.ArraySize(); ++i)
   {
-    success &= env2->LoadPlugin(args[0][i].AsString(), true);
+    AVSValue dummy;
+    success &= env2->LoadPlugin(args[0][i].AsString(), true, &dummy);
   }
 
   return AVSValue(success);

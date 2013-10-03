@@ -402,7 +402,7 @@ public:
   virtual int  __stdcall GetVar(const char* name, int def);
   virtual double  __stdcall GetVar(const char* name, double def);
   virtual const char*  __stdcall GetVar(const char* name, const char* def);
-  virtual bool __stdcall LoadPlugin(const char* filePath, bool throwOnError);
+  virtual bool __stdcall LoadPlugin(const char* filePath, bool throwOnError, AVSValue *result);
   virtual void __stdcall AddAutoloadDir(const char* dirPath, bool toFront);
   virtual void __stdcall ClearAutoloadDirs();
   virtual int __stdcall IncrImportDepth();
@@ -613,9 +613,9 @@ int __stdcall ScriptEnvironment::DecrImportDepth()
   return ImportDepth;
 }
 
-bool __stdcall ScriptEnvironment::LoadPlugin(const char* filePath, bool throwOnError)
+bool __stdcall ScriptEnvironment::LoadPlugin(const char* filePath, bool throwOnError, AVSValue *result)
 {
-  return plugin_manager->LoadPlugin(PluginFile(filePath), throwOnError);
+  return plugin_manager->LoadPlugin(PluginFile(filePath), throwOnError, result);
 }
 
 void __stdcall ScriptEnvironment::AddAutoloadDir(const char* dirPath, bool toFront)

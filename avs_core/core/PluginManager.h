@@ -48,7 +48,7 @@ public:
 
   void ClearAutoloadDirs();
   void AddAutoloadDir(const std::string &dir, bool toFront);
-  bool LoadPlugin(PluginFile &plugin, bool throwOnError);
+  bool LoadPlugin(PluginFile &plugin, bool throwOnError, AVSValue *result);
 
   bool HasAutoloadExecuted() const { return AutoloadExecuted; }
 
