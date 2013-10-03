@@ -268,7 +268,7 @@ PluginFile::PluginFile(const std::string &filePath) :
   FilePath(GetFullPathNameWrap(filePath)), BaseName(), Library(NULL)
 {
   // Turn all '\' into '/'
-  replace(FilePath, "\\", "/");
+  replace(FilePath, '\\', '/');
 
   // Find position of dot in extension
   size_t dot_pos = FilePath.rfind('.');
@@ -350,7 +350,7 @@ void PluginManager::AddAutoloadDir(const std::string &dirPath, bool toFront)
     replace_beginning(dir, "MACHINE_CLASSIC_PLUGINS", plugin_dir);
 
   // replace backslashes with forward slashes
-  replace(dir, "\\", "/");
+  replace(dir, '\\', '/');
 
   // append terminating slash if needed
   if (dir[dir.size()-1] != '/')
@@ -663,8 +663,8 @@ bool PluginManager::TryAsAvsC(PluginFile &plugin, AVSValue *result)
       case 2:
         Env->ThrowError("Avisynth 2 C Plugin '%s' has corrupted the stack.", plugin.BaseName.c_str());
       }
-	    if (s == 0)
-		    Env->ThrowError("Avisynth 2 C Plugin '%s' returned a NULL pointer.", plugin.BaseName.c_str());
+//	    if (s == 0)
+	//	    Env->ThrowError("Avisynth 2 C Plugin '%s' returned a NULL pointer.", plugin.BaseName.c_str());
 
       *result = AVSValue(s);
     }
