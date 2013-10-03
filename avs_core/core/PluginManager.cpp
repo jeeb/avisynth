@@ -354,7 +354,7 @@ void PluginManager::AddAutoloadDir(const std::string &dirPath, bool toFront)
 
   // append terminating slash if needed
   if (dir[dir.size()-1] != '/')
-    dir = concat(dir, "/");
+    dir.append("/");
 
   // remove double slashes
   while(replace(dir, "//", "/"));
@@ -551,9 +551,8 @@ void PluginManager::AddFunction(const char* name, const char* params, IScriptEnv
   if (PluginInLoad != NULL)
   {
     AVSFunction newFuncWithBase;
-    std::string result(cname);
-    result = concat("_", result);
-    result = concat(PluginInLoad->BaseName, result);
+    std::string result(PluginInLoad->BaseName);
+    result.append("_").append(name);
     newFuncWithBase.name = result.c_str();
     newFuncWithBase.param_types = cparams;
     newFuncWithBase.apply = apply;

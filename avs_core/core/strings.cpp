@@ -32,7 +32,6 @@
 #include "strings.h"
 #include <cassert>
 #include <string>
-#include <sstream>
 #include <algorithm>
 
 static inline char tolower(char c)
@@ -65,10 +64,8 @@ bool streqi(const char* s1, const char* s2)
 
 std::string concat(const std::string &s1, const std::string &s2)
 {
-  std::stringstream ss;
-  ss << s1 << s2;
-  std::string s = ss.str();
-  return s;
+  std::string ret(s1);
+  return ret.append(s2);
 }
 
 bool replace(std::string &haystack, const std::string &needle, const std::string &newStr)
