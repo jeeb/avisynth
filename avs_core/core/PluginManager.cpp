@@ -490,9 +490,9 @@ bool PluginManager::LoadPlugin(PluginFile &plugin, bool throwOnError, AVSValue *
   // Try to load various plugin interfaces
   if (!TryAsAvs26(plugin, result))
   {
-    if (!TryAsAvs25(plugin, result))
+    if (!TryAsAvsC(plugin, result))
     {
-      if (!TryAsAvsC(plugin, result))
+      if (!TryAsAvs25(plugin, result))
       {
         FreeLibrary(plugin.Library);
         plugin.Library = NULL;
