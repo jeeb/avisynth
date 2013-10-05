@@ -1357,7 +1357,13 @@ bool __stdcall ScriptEnvironment::Invoke(AVSValue *result, const char* name, con
         int start = src_index;
         while (src_index < args2_count && AVSFunction::SingleTypeMatch(*p, args2[src_index], strict))
           src_index++;
-        args3[dst_index++] = AVSValue(&args2[start], src_index - start); // can't delete args2 early because of this
+        int size = src_index - start;
+        assert((args2_count >= size) && (size >= 0));
+
+        // Even if the AVSValue below is an array of zero size, we can't skip adding it to args3,
+        // because filters like BlankClip might still be expecting it.
+        args3[dst_index++] = AVSValue(size > 0 ? &args2[start] : NULL, size); // can't delete args2 early because of this
+
         p += 2;
       } else {
         if (src_index < args2_count)
