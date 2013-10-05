@@ -900,7 +900,6 @@ out_row_loop_ex:
 
 AVSValue __cdecl Create_Sharpen(AVSValue args, void*, IScriptEnvironment* env) 
 {
-	try {	// HIDE DAMN SEH COMPILER BUG!!!
   const double amountH = args[1].AsFloat(), amountV = args[2].AsDblDef(amountH);
   const bool mmx = args[3].AsBool(true) && (env->GetCPUFlags() & CPUF_MMX);
 
@@ -923,13 +922,10 @@ AVSValue __cdecl Create_Sharpen(AVSValue args, void*, IScriptEnvironment* env)
       return new AdjustFocusH(amountH, new AdjustFocusV(amountV, args[0].AsClip(), mmx), mmx);
     }
   }
-	}
-	catch (...) { throw; }
 }
 
 AVSValue __cdecl Create_Blur(AVSValue args, void*, IScriptEnvironment* env) 
 {
-	try {	// HIDE DAMN SEH COMPILER BUG!!!
   const double amountH = args[1].AsFloat(), amountV = args[2].AsDblDef(amountH);
   const bool mmx = args[3].AsBool(true) && (env->GetCPUFlags() & CPUF_MMX);
 
@@ -952,8 +948,6 @@ AVSValue __cdecl Create_Blur(AVSValue args, void*, IScriptEnvironment* env)
       return new AdjustFocusH(-amountH, new AdjustFocusV(-amountV, args[0].AsClip(), mmx), mmx);
     }
   }
-	}
-	catch (...) { throw; }
 }
 
 

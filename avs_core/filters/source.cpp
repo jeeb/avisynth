@@ -1011,12 +1011,10 @@ public:
     }
   }
 
-  static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env) {
-	try {	// HIDE DAMN SEH COMPILER BUG!!!
-	    return new Tone(args[0].AsFloat(10.0f), args[1].AsFloat(440.0f), args[2].AsInt(48000),
-		                args[3].AsInt(2), args[4].AsString("Sine"), (float)args[5].AsFloat(1.0f), env);
-	}
-	catch (...) { throw; }
+  static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env)
+  {
+	  return new Tone(args[0].AsFloat(10.0f), args[1].AsFloat(440.0f), args[2].AsInt(48000),
+		              args[3].AsInt(2), args[4].AsString("Sine"), (float)args[5].AsFloat(1.0f), env);
   }
 
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env) { return NULL; }

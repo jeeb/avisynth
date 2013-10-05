@@ -857,7 +857,6 @@ static AVSValue __cdecl Create_SwapFields(AVSValue args, void*, IScriptEnvironme
 
 static AVSValue __cdecl Create_Bob(AVSValue args, void*, IScriptEnvironment* env)
 {
-	try {	// HIDE DAMN SEH COMPILER BUG!!!
   PClip clip = args[0].AsClip();
   if (!clip->GetVideoInfo().IsFieldBased()) 
     clip = new SeparateFields(clip, env);
@@ -872,8 +871,6 @@ static AVSValue __cdecl Create_Bob(AVSValue args, void*, IScriptEnvironment* env
                                            new_height, &filter, env),
                        new FilteredResizeV(clip, +0.25, vi.height, 
                                            new_height, &filter, env));  
-	}
-	catch (...) { throw; }
 }
 
 

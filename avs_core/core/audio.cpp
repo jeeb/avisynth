@@ -758,7 +758,6 @@ AVSValue __cdecl Amplify::Create(AVSValue args, void*, IScriptEnvironment* env) 
 
 
 AVSValue __cdecl Amplify::Create_dB(AVSValue args, void*, IScriptEnvironment* env) {
-	try {	// HIDE DAMN SEH COMPILER BUG!!!
   if (!args[0].AsClip()->GetVideoInfo().AudioChannels())
     return args[0];
   AVSValue args_c = args[1];
@@ -772,8 +771,6 @@ AVSValue __cdecl Amplify::Create_dB(AVSValue args, void*, IScriptEnvironment* en
     i_child_array[i] = int(scalef * 131072.0 + 0.5);
   }
   return new Amplify(args[0].AsClip(), child_array, i_child_array);
-	}
-	catch (...) { throw; }
 }
 
 
@@ -1095,12 +1092,9 @@ saturate3:
 
 
 AVSValue __cdecl MixAudio::Create(AVSValue args, void*, IScriptEnvironment* env) {
-	try {	// HIDE DAMN SEH COMPILER BUG!!!
   double track1_factor = args[2].AsDblDef(0.5);
   double track2_factor = args[3].AsDblDef(1.0 - track1_factor);
   return new MixAudio(args[0].AsClip(), args[1].AsClip(), track1_factor, track2_factor, env);
-	}
-	catch (...) { throw; }
 }
 
 
@@ -1114,8 +1108,8 @@ static SFLOAT fAmasktab[Amask+1];
 
 ResampleAudio::ResampleAudio(PClip _child, int _target_rate_n, int _target_rate_d, IScriptEnvironment* env)
     : GenericVideoFilter(ConvertAudio::Create(_child, SAMPLE_INT16 | SAMPLE_FLOAT, SAMPLE_FLOAT)),
-      factor(_target_rate_n / (double(_target_rate_d) * vi.audio_samples_per_second)) {
-	try {	// HIDE DAMN SEH COMPILER BUG!!!
+      factor(_target_rate_n / (double(_target_rate_d) * vi.audio_samples_per_second))
+{
   srcbuffer  = 0;
   fsrcbuffer = 0;
 
@@ -1192,9 +1186,6 @@ ResampleAudio::ResampleAudio(PClip _child, int _target_rate_n, int _target_rate_
 
   double dh = min(double(Npc), factor * Npc);  /* Filter sampling period */
   dhb = int(dh * (1 << Na) + 0.5);
-
-	}
-	catch (...) { throw; }
 }
 
 

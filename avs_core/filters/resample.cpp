@@ -75,8 +75,6 @@ FilteredResizeH::FilteredResizeH( PClip _child, double subrange_left, double sub
                                   int target_width, ResamplingFunction* func, IScriptEnvironment* env )
   : GenericVideoFilter(_child), tempY(0), tempUV(0),pattern_luma(0),pattern_chroma(0)
 {
-	try {	// HIDE DAMN SEH COMPILER BUG!!!
-
   original_width = vi.width;
 
   if (target_width<=0)
@@ -138,7 +136,6 @@ FilteredResizeH::FilteredResizeH( PClip _child, double subrange_left, double sub
        env->ThrowError("Resize: SoftWire exception : %s", err.getString());
     }
   }
-	}	catch (...) { throw; }
 }
 
 /***********************************
@@ -1895,7 +1892,6 @@ PClip FilteredResize::CreateResizeV(PClip clip, double subrange_top, double subr
 PClip FilteredResize::CreateResize(PClip clip, int target_width, int target_height, const AVSValue* args,
                    ResamplingFunction* f, IScriptEnvironment* env)
 {
-	try {	// HIDE DAMN SEH COMPILER BUG!!!
   const VideoInfo& vi = clip->GetVideoInfo();
   const double subrange_left = args[0].AsFloat(0), subrange_top = args[1].AsFloat(0);
 
@@ -1919,8 +1915,6 @@ PClip FilteredResize::CreateResize(PClip clip, int target_width, int target_heig
       result = CreateResizeV(result, subrange_top, subrange_height, target_height, f, env);
   }
   return result;
-	}
-	catch (...) { throw; }
 }
 
 AVSValue __cdecl FilteredResize::Create_PointResize(AVSValue args, void*, IScriptEnvironment* env)
@@ -1945,29 +1939,20 @@ AVSValue __cdecl FilteredResize::Create_BicubicResize(AVSValue args, void*, IScr
 
 AVSValue __cdecl FilteredResize::Create_LanczosResize(AVSValue args, void*, IScriptEnvironment* env)
 {
-	try {	// HIDE DAMN SEH COMPILER BUG!!!
   return CreateResize( args[0].AsClip(), args[1].AsInt(), args[2].AsInt(), &args[3],
                        &LanczosFilter(args[7].AsInt(3)), env );
-	}
-	catch (...) { throw; }
 }
 
 AVSValue __cdecl FilteredResize::Create_Lanczos4Resize(AVSValue args, void*, IScriptEnvironment* env)
 {
-	try {	// HIDE DAMN SEH COMPILER BUG!!!
   return CreateResize( args[0].AsClip(), args[1].AsInt(), args[2].AsInt(), &args[3],
                        &LanczosFilter(4), env );
-	}
-	catch (...) { throw; }
 }
 
 AVSValue __cdecl FilteredResize::Create_BlackmanResize(AVSValue args, void*, IScriptEnvironment* env)
 {
-	try {	// HIDE DAMN SEH COMPILER BUG!!!
   return CreateResize( args[0].AsClip(), args[1].AsInt(), args[2].AsInt(), &args[3],
                        &BlackmanFilter(args[7].AsInt(4)), env );
-	}
-	catch (...) { throw; }
 }
 
 AVSValue __cdecl FilteredResize::Create_Spline16Resize(AVSValue args, void*, IScriptEnvironment* env)
@@ -1990,19 +1975,13 @@ AVSValue __cdecl FilteredResize::Create_Spline64Resize(AVSValue args, void*, ISc
 
 AVSValue __cdecl FilteredResize::Create_GaussianResize(AVSValue args, void*, IScriptEnvironment* env)
 {
-	try {	// HIDE DAMN SEH COMPILER BUG!!!
   return CreateResize( args[0].AsClip(), args[1].AsInt(), args[2].AsInt(), &args[3],
                        &GaussianFilter(args[7].AsFloat(30.0f)), env );
-	}
-	catch (...) { throw; }
 }
 
 AVSValue __cdecl FilteredResize::Create_SincResize(AVSValue args, void*, IScriptEnvironment* env)
 {
-	try {	// HIDE DAMN SEH COMPILER BUG!!!
   return CreateResize( args[0].AsClip(), args[1].AsInt(), args[2].AsInt(), &args[3],
                        &SincFilter(args[7].AsInt(4)), env );
-	}
-	catch (...) { throw; }
 }
 

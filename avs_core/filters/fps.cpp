@@ -454,25 +454,19 @@ AVSValue __cdecl AssumeFPS::Create(AVSValue args, void*, IScriptEnvironment* env
 
 AVSValue __cdecl AssumeFPS::CreateFloat(AVSValue args, void*, IScriptEnvironment* env)
 {
-	unsigned num, den;
+	unsigned int num, den;
 
-	try {	// HIDE DAMN SEH COMPILER BUG!!!
-	  FloatToFPS("AssumeFPS", (float)args[1].AsFloat(), num, den, env);
-	  return new AssumeFPS(args[0].AsClip(), num, den, args[2].AsBool(false), env);
-	}
-	catch (...) { throw; }
+	FloatToFPS("AssumeFPS", (float)args[1].AsFloat(), num, den, env);
+	return new AssumeFPS(args[0].AsClip(), num, den, args[2].AsBool(false), env);
 }
 
 // Tritical Jan 2006
 AVSValue __cdecl AssumeFPS::CreatePreset(AVSValue args, void*, IScriptEnvironment* env)
 {
-	unsigned num, den;
+	unsigned int num, den;
 
-	try {	// HIDE DAMN SEH COMPILER BUG!!!
-	  PresetToFPS("AssumeFPS", args[1].AsString(), num, den, env);
-	  return new AssumeFPS(args[0].AsClip(), num, den, args[2].AsBool(false), env);
-	}
-	catch (...) { throw; }
+	PresetToFPS("AssumeFPS", args[1].AsString(), num, den, env);
+	return new AssumeFPS(args[0].AsClip(), num, den, args[2].AsBool(false), env);
 }
 
 AVSValue __cdecl AssumeFPS::CreateFromClip(AVSValue args, void*, IScriptEnvironment* env)
@@ -549,25 +543,19 @@ AVSValue __cdecl ChangeFPS::Create(AVSValue args, void*, IScriptEnvironment* env
 
 AVSValue __cdecl ChangeFPS::CreateFloat(AVSValue args, void*, IScriptEnvironment* env)
 {
-	unsigned num, den;
+	unsigned int num, den;
 
-	try {	// HIDE DAMN SEH COMPILER BUG!!!
-	  FloatToFPS("ChangeFPS", (float)args[1].AsFloat(), num, den, env);
-	  return new ChangeFPS(args[0].AsClip(), num, den, args[2].AsBool(true), env);
-	}
-	catch (...) { throw; }
+	FloatToFPS("ChangeFPS", (float)args[1].AsFloat(), num, den, env);
+	return new ChangeFPS(args[0].AsClip(), num, den, args[2].AsBool(true), env);
 }
 
 // Tritical Jan 2006
 AVSValue __cdecl ChangeFPS::CreatePreset(AVSValue args, void*, IScriptEnvironment* env)
 {
-	unsigned num, den;
+	unsigned int num, den;
 
-	try {	// HIDE DAMN SEH COMPILER BUG!!!
-	  PresetToFPS("ChangeFPS", args[1].AsString(), num, den, env);
-	  return new ChangeFPS(args[0].AsClip(), num, den, args[2].AsBool(true), env);
-	}
-	catch (...) { throw; }
+	PresetToFPS("ChangeFPS", args[1].AsString(), num, den, env);
+	return new ChangeFPS(args[0].AsClip(), num, den, args[2].AsBool(true), env);
 }
 
 AVSValue __cdecl ChangeFPS::CreateFromClip(AVSValue args, void*, IScriptEnvironment* env)
@@ -767,25 +755,19 @@ AVSValue __cdecl ConvertFPS::Create(AVSValue args, void*, IScriptEnvironment* en
 
 AVSValue __cdecl ConvertFPS::CreateFloat(AVSValue args, void*, IScriptEnvironment* env)
 {
-	unsigned num, den;
+	unsigned int num, den;
 
-	try {	// HIDE DAMN SEH COMPILER BUG!!!
-	  FloatToFPS("ConvertFPS", (float)args[1].AsFloat(), num, den, env);
-	  return new ConvertFPS( args[0].AsClip(), num, den, args[2].AsInt(-1), args[3].AsInt(0), env );
-	}
-	catch (...) { throw; }
+	FloatToFPS("ConvertFPS", (float)args[1].AsFloat(), num, den, env);
+	return new ConvertFPS( args[0].AsClip(), num, den, args[2].AsInt(-1), args[3].AsInt(0), env );
 }
 
 // Tritical Jan 2006
 AVSValue __cdecl ConvertFPS::CreatePreset(AVSValue args, void*, IScriptEnvironment* env)
 {
-	unsigned num, den;
+	unsigned int num, den;
 
-	try {	// HIDE DAMN SEH COMPILER BUG!!!
-	  PresetToFPS("ConvertFPS", args[1].AsString(), num, den, env);
-	  return new ConvertFPS(args[0].AsClip(), num, den, args[2].AsInt(-1), args[3].AsInt(0), env);
-	}
-	catch (...) { throw; }
+	PresetToFPS("ConvertFPS", args[1].AsString(), num, den, env);
+	return new ConvertFPS(args[0].AsClip(), num, den, args[2].AsInt(-1), args[3].AsInt(0), env);
 }
 
 AVSValue __cdecl ConvertFPS::CreateFromClip(AVSValue args, void*, IScriptEnvironment* env)
