@@ -47,21 +47,16 @@ ScriptParser::ScriptParser(IScriptEnvironment* _env, const char* _code, const ch
 PExpression ScriptParser::Parse(void) 
 {
   try {
-    try {
-      return ParseBlock(false);
-    }
-    catch (AvisynthError) {
-      throw;
-    }
-#ifndef _DEBUG
-    catch (...) {
-      env->ThrowError("Parse: Unrecognized exception!");
-    }
-#endif
+    return ParseBlock(false);
   }
   catch (const AvisynthError &ae) {
     env->ThrowError("%s\n(%s, line %d, column %d)", ae.msg, filename, tokenizer.GetLine(), tokenizer.GetColumn(code));
   }
+#ifndef _DEBUG
+  catch (...) {
+    env->ThrowError("Parse: Unrecognized exception!");
+  }
+#endif
   return 0; // To make VC++ happy.  Why isn't the __declspec(noreturn) on ThrowError good enough?
 }
 
