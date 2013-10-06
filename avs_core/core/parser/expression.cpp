@@ -103,12 +103,19 @@ AVSValue ExpLine::Evaluate(IScriptEnvironment* env)
 AVSValue ExpBlockConditional::Evaluate(IScriptEnvironment* env) 
 {
   AVSValue result;
+
+  IScriptEnvironment2 *env2 = static_cast<IScriptEnvironment2*>(env);
+  env2->GetVar("last", &result);
+
   AVSValue cond = If->Evaluate(env);
   if (!cond.IsBool())
     env->ThrowError("if: condition must be boolean (true/false)");
   if (cond.AsBool())
-    result = Then->Evaluate(env);
-  else if (Else)
+  {
+    if (Then) // note: "Then" can also be NULL if its block is empty
+      result = Then->Evaluate(env);
+  }
+  else if (Else) // note: "Else" can also be NULL if its block is empty
     result = Else->Evaluate(env);
   
   return result;
@@ -121,10 +128,14 @@ AVSValue ExpWhileLoop::Evaluate(IScriptEnvironment* env)
     cond = condition->Evaluate(env);
     if (!cond.IsBool())
       env->ThrowError("while: condition must be boolean (true/false)");
-    if (cond.AsBool()) {
-      const AVSValue bresult = body->Evaluate(env);
-      if (bresult.IsClip())
-        env->SetVar("last", bresult);
+    if (cond.AsBool())
+    {
+      if (body)
+      {
+        const AVSValue bresult = body->Evaluate(env);
+        if (bresult.IsClip())
+          env->SetVar("last", bresult);
+      }
     }
   }
   while (cond.AsBool());

@@ -47,7 +47,7 @@ ScriptParser::ScriptParser(IScriptEnvironment* _env, const char* _code, const ch
 PExpression ScriptParser::Parse(void) 
 {
   try {
-    return ParseBlock(false);
+    return ParseBlock(false, NULL);
   }
   catch (const AvisynthError &ae) {
     env->ThrowError("%s\n(%s, line %d, column %d)", ae.msg, filename, tokenizer.GetLine(), tokenizer.GetColumn(code));
@@ -148,14 +148,14 @@ void ScriptParser::ParseFunctionDefinition(void)
   }
 
   param_types[param_chars] = 0;
-  PExpression body = ParseBlock(true);
+  PExpression body = ParseBlock(true, NULL);
   ScriptFunction* sf = new ScriptFunction(body, param_floats, param_names, param_count);
   env->AtExit(ScriptFunction::Delete, sf);
   env->AddFunction(name, env->SaveString(param_types), ScriptFunction::Execute, sf);
 }
 
 
-PExpression ScriptParser::ParseBlock(bool braced) 
+PExpression ScriptParser::ParseBlock(bool braced, bool *empty) 
 {
   if (braced) {
     // allow newlines (and hence comments) before '{' -- Gavino 7 Dec 2009
@@ -215,7 +215,16 @@ PExpression ScriptParser::ParseBlock(bool braced)
       result = result ? PExpression(new ExpSequence(trees[i], result)) : trees[i];
   }
 
-  return result ? result : PExpression(new ExpConstant(AVSValue()));
+  if (result)
+  {
+    if (empty) *empty = false;
+    return result;
+  }
+  else
+  {
+    if (empty) *empty = true;
+    return PExpression(new ExpConstant(AVSValue()));
+  }
 }
 
 
@@ -236,7 +245,7 @@ PExpression ScriptParser::ParseStatement(bool* stop)
   // exception handling
   else if (tokenizer.IsIdentifier("try")) {
     tokenizer.NextToken();
-    PExpression try_block = ParseBlock(true);
+    PExpression try_block = ParseBlock(true, NULL);
     while (tokenizer.IsNewline())
       tokenizer.NextToken();
     if (!tokenizer.IsIdentifier("catch"))
@@ -248,7 +257,7 @@ PExpression ScriptParser::ParseStatement(bool* stop)
     const char* id = tokenizer.AsIdentifier();
     tokenizer.NextToken();
     Expect(')');
-    return new ExpTryCatch(try_block, id, ParseBlock(true));
+    return new ExpTryCatch(try_block, id, ParseBlock(true, NULL));
   }
   // 'if', 'while', 'for':
   else if (tokenizer.IsIdentifier("if")) {
@@ -273,17 +282,33 @@ PExpression ScriptParser::ParseStatement(bool* stop)
 
 PExpression ScriptParser::ParseIf(void) 
 {  
+  bool blockEmpty;
+
   PExpression If, Then, Else = 0;
   tokenizer.NextToken();
   Expect('(');
   If = ParseConditional();
   Expect(')');
-  Then = ParseBlock(true);
+
+  Then = ParseBlock(true, &blockEmpty);
+  if (blockEmpty)
+    Then = NULL;
+
   while (tokenizer.IsNewline())
     tokenizer.NextToken();
   if (tokenizer.IsIdentifier("else")) {
     tokenizer.NextToken();
-    Else = (tokenizer.IsIdentifier("if") ? ParseIf() : ParseBlock(true));
+
+    if (tokenizer.IsIdentifier("if"))
+    {
+      Else = ParseIf();
+    }
+    else
+    {
+      Else = ParseBlock(true, &blockEmpty);
+      if (blockEmpty)
+        Else = NULL;
+    }
   }
   return new ExpBlockConditional(If, Then, Else);
 }
@@ -294,7 +319,13 @@ PExpression ScriptParser::ParseWhile(void)
   Expect('(');
   const PExpression cond = ParseConditional();
   Expect(')');
-  return new ExpWhileLoop(cond, ParseBlock(true));
+
+  bool blockEmpty;
+  PExpression body = ParseBlock(true, &blockEmpty);
+  if (blockEmpty)
+    body = NULL;
+
+  return new ExpWhileLoop(cond, body);
 }
 
 PExpression ScriptParser::ParseFor(void) 
@@ -316,7 +347,7 @@ PExpression ScriptParser::ParseFor(void)
   }
   Expect(')');
 
-  return new ExpForLoop(id, init, limit, step, ParseBlock(true));
+  return new ExpForLoop(id, init, limit, step, ParseBlock(true, NULL));
 }
 
 PExpression ScriptParser::ParseAssignment(void) 

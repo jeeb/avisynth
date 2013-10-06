@@ -68,7 +68,7 @@ private:
 
   void ParseFunctionDefinition(void);
   
-  PExpression ParseBlock(bool braced);
+  PExpression ParseBlock(bool braced, bool *empty);
   PExpression ParseStatement(bool* stop);
   PExpression ParseAssignment(void);
   PExpression ParseConditional(void);
