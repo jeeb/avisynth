@@ -151,6 +151,44 @@ private:
 };
 
 
+class ExpBlockConditional : public Expression 
+{
+public:
+  ExpBlockConditional(const PExpression& _If, const PExpression& _Then, const PExpression& _Else)
+   : If(_If), Then(_Then), Else(_Else) {}
+  virtual AVSValue Evaluate(IScriptEnvironment* env);
+  
+private:
+  const PExpression If, Then, Else;
+};
+
+
+class ExpWhileLoop : public Expression 
+{
+public:
+  ExpWhileLoop(const PExpression& _condition, const PExpression& _body)
+   : condition(_condition), body(_body) {}
+  virtual AVSValue Evaluate(IScriptEnvironment* env);
+  
+private:
+  const PExpression condition, body;
+};
+
+
+class ExpForLoop : public Expression 
+{
+public:
+  ExpForLoop(const char* const _id, const PExpression& _init, const PExpression& _limit,
+             const PExpression& _step, const PExpression& _body)
+   : id(_id), init(_init), limit(_limit), step(_step), body(_body) {}
+  virtual AVSValue Evaluate(IScriptEnvironment* env);
+  
+private:
+  const char* const id;
+  const PExpression init, limit, step, body;
+};
+
+
 class ExpConditional : public Expression 
 {
 public:

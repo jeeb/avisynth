@@ -83,6 +83,10 @@ private:
   PExpression ParseFunction(PExpression context);
   PExpression ParseAtom(void);
 
+  PExpression ParseIf(void);
+  PExpression ParseWhile(void);
+  PExpression ParseFor(void);
+
   // helper for ParseComparison
   int GetTokenAsComparisonOperator();
 };

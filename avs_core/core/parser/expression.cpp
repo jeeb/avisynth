@@ -100,6 +100,70 @@ AVSValue ExpLine::Evaluate(IScriptEnvironment* env)
   return 0;
 }
 
+AVSValue ExpBlockConditional::Evaluate(IScriptEnvironment* env) 
+{
+  AVSValue result;
+  AVSValue cond = If->Evaluate(env);
+  if (!cond.IsBool())
+    env->ThrowError("if: condition must be boolean (true/false)");
+  if (cond.AsBool())
+    result = Then->Evaluate(env);
+  else if (Else)
+    result = Else->Evaluate(env);
+  
+  return result;
+}
+
+AVSValue ExpWhileLoop::Evaluate(IScriptEnvironment* env) 
+{
+  AVSValue cond;
+  do {
+    cond = condition->Evaluate(env);
+    if (!cond.IsBool())
+      env->ThrowError("while: condition must be boolean (true/false)");
+    if (cond.AsBool()) {
+      const AVSValue bresult = body->Evaluate(env);
+      if (bresult.IsClip())
+        env->SetVar("last", bresult);
+    }
+  }
+  while (cond.AsBool());
+  
+  return AVSValue(); // overall construct has void result
+}
+
+AVSValue ExpForLoop::Evaluate(IScriptEnvironment* env) 
+{
+  const AVSValue initVal = init->Evaluate(env), limitVal = limit->Evaluate(env),
+                 stepVal = (step ? step->Evaluate(env) : 1);
+
+  if (!initVal.IsInt())
+    env->ThrowError("for: initial value must be int");
+  if (!limitVal.IsInt())
+    env->ThrowError("for: final value must be int");
+  if (!stepVal.IsInt())
+    env->ThrowError("for: step value must be int");
+  if (stepVal.AsInt() == 0)
+    env->ThrowError("for: step value must be non-zero");
+
+  const int iLimit = limitVal.AsInt(), iStep = stepVal.AsInt();
+  int i = initVal.AsInt();
+  AVSValue result;
+
+  env->SetVar(id, initVal);
+  while (iStep > 0 ? i <= iLimit : i >= iLimit) {
+    if (result.IsClip())
+      env->SetVar("last", result);
+    result = body->Evaluate(env);
+    AVSValue idVal = env->GetVar(id); // may have been updated in body
+    if (!idVal.IsInt())
+      env->ThrowError("for: loop variable '%s' has been assigned a non-int value", id);
+    i = idVal.AsInt() + iStep;
+    env->SetVar(id, i);
+  }  
+  return result;  // overall result is that of final body evaluation (if any)
+}
+
 
 AVSValue ExpConditional::Evaluate(IScriptEnvironment* env) 
 {

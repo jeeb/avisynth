@@ -250,6 +250,16 @@ PExpression ScriptParser::ParseStatement(bool* stop)
     Expect(')');
     return new ExpTryCatch(try_block, id, ParseBlock(true));
   }
+  // 'if', 'while', 'for':
+  else if (tokenizer.IsIdentifier("if")) {
+    return ParseIf();
+  }
+  else if (tokenizer.IsIdentifier("while")) {
+    return ParseWhile();
+  }
+  else if (tokenizer.IsIdentifier("for")) {
+    return ParseFor();
+  }
   // return statement
   else if (tokenizer.IsIdentifier("return")) {
     *stop = true;
@@ -261,6 +271,53 @@ PExpression ScriptParser::ParseStatement(bool* stop)
   }
 }
 
+PExpression ScriptParser::ParseIf(void) 
+{  
+  PExpression If, Then, Else = 0;
+  tokenizer.NextToken();
+  Expect('(');
+  If = ParseConditional();
+  Expect(')');
+  Then = ParseBlock(true);
+  while (tokenizer.IsNewline())
+    tokenizer.NextToken();
+  if (tokenizer.IsIdentifier("else")) {
+    tokenizer.NextToken();
+    Else = (tokenizer.IsIdentifier("if") ? ParseIf() : ParseBlock(true));
+  }
+  return new ExpBlockConditional(If, Then, Else);
+}
+
+PExpression ScriptParser::ParseWhile(void) 
+{  
+  tokenizer.NextToken();
+  Expect('(');
+  const PExpression cond = ParseConditional();
+  Expect(')');
+  return new ExpWhileLoop(cond, ParseBlock(true));
+}
+
+PExpression ScriptParser::ParseFor(void) 
+{  
+  tokenizer.NextToken();
+  Expect('(');
+  if (!tokenizer.IsIdentifier())
+    env->ThrowError("Script error: expected a variable name");
+  const char* id = tokenizer.AsIdentifier();
+  tokenizer.NextToken();
+  Expect('=');
+  const PExpression init = ParseConditional();
+  Expect(',');
+  const PExpression limit = ParseConditional();
+  PExpression step = 0;
+  if (tokenizer.IsOperator(',')) {
+    tokenizer.NextToken();
+    step = ParseConditional();
+  }
+  Expect(')');
+
+  return new ExpForLoop(id, init, limit, step, ParseBlock(true));
+}
 
 PExpression ScriptParser::ParseAssignment(void) 
 {
