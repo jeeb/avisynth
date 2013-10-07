@@ -117,6 +117,9 @@ AVSValue ExpBlockConditional::Evaluate(IScriptEnvironment* env)
   else if (Else) // note: "Else" can also be NULL if its block is empty
     result = Else->Evaluate(env);
 
+  if (result.IsClip())
+    env->SetVar("last", result);
+
   return result;
 }
 
@@ -149,8 +152,9 @@ AVSValue ExpWhileLoop::Evaluate(IScriptEnvironment* env)
 
 AVSValue ExpForLoop::Evaluate(IScriptEnvironment* env) 
 {
-  const AVSValue initVal = init->Evaluate(env), limitVal = limit->Evaluate(env),
-                 stepVal = (step ? step->Evaluate(env) : 1);
+  const AVSValue initVal = init->Evaluate(env),
+                 limitVal = limit->Evaluate(env),
+                 stepVal = step->Evaluate(env);
 
   if (!initVal.IsInt())
     env->ThrowError("for: initial value must be int");
@@ -163,13 +167,28 @@ AVSValue ExpForLoop::Evaluate(IScriptEnvironment* env)
 
   const int iLimit = limitVal.AsInt(), iStep = stepVal.AsInt();
   int i = initVal.AsInt();
+
+  if ( ((iStep == 0) && (iLimit != i))
+    || ((iLimit < i) && (iStep > 0))
+    || ((iLimit > i) && (iStep < 0)) )
+  {
+    env->ThrowError("for: infinite loop");
+  }
+
   AVSValue result;
+  IScriptEnvironment2 *env2 = static_cast<IScriptEnvironment2*>(env);
+  env2->GetVar("last", &result);
 
   env->SetVar(id, initVal);
-  while (iStep > 0 ? i <= iLimit : i >= iLimit) {
-    if (result.IsClip())
-      env->SetVar("last", result);
-    result = body->Evaluate(env);
+  while (iStep > 0 ? i <= iLimit : i >= iLimit)
+  {
+    if (body)
+    {
+      result = body->Evaluate(env);
+      if (result.IsClip())
+        env->SetVar("last", result);
+    }
+
     AVSValue idVal = env->GetVar(id); // may have been updated in body
     if (!idVal.IsInt())
       env->ThrowError("for: loop variable '%s' has been assigned a non-int value", id);

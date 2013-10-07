@@ -340,14 +340,22 @@ PExpression ScriptParser::ParseFor(void)
   const PExpression init = ParseConditional();
   Expect(',');
   const PExpression limit = ParseConditional();
-  PExpression step = 0;
+  PExpression step = NULL;
   if (tokenizer.IsOperator(',')) {
     tokenizer.NextToken();
     step = ParseConditional();
+  } else {
+    step = PExpression(new ExpConstant(AVSValue(1)));
   }
+
   Expect(')');
 
-  return new ExpForLoop(id, init, limit, step, ParseBlock(true, NULL));
+  bool blockEmpty;
+  PExpression body = ParseBlock(true, &blockEmpty);
+  if (blockEmpty)
+    body = NULL;
+
+  return new ExpForLoop(id, init, limit, step, body);
 }
 
 PExpression ScriptParser::ParseAssignment(void) 
