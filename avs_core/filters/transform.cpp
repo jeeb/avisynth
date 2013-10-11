@@ -307,7 +307,7 @@ PVideoFrame Crop::GetFrame(int n, IScriptEnvironment* env)
 
 AVSValue __cdecl Crop::Create(AVSValue args, void*, IScriptEnvironment* env) 
 {
-  return new Crop( args[1].AsInt(), args[2].AsInt(), args[3].AsInt(), args[4].AsInt(), args[5].AsBool(false) ? 1 : 0, 
+  return new Crop( args[1].AsInt(), args[2].AsInt(), args[3].AsInt(), args[4].AsInt(), args[5].AsBool(true) ? 1 : 0, 
                    args[0].AsClip(), env );
 }
 
