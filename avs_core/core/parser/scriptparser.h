@@ -63,6 +63,7 @@ private:
   Tokenizer tokenizer;
   const char* const code;
   const char* const filename;
+  int loopDepth;    // how many loops are we in during parsing
 
   void Expect(int op, const char* msg);
 

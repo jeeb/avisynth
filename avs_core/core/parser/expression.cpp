@@ -40,8 +40,9 @@
 #include <cassert>
 
 
-
-/**** Objects ****/
+class BreakStmtException
+{
+};
 
 AVSValue ExpSequence::Evaluate(IScriptEnvironment* env) 
 {
@@ -60,6 +61,9 @@ AVSValue ExpExceptionTranslator::Evaluate(IScriptEnvironment* env)
     throw;
   }
   catch (const AvisynthError&) {
+    throw;
+  }
+  catch (const BreakStmtException&) {
     throw;
   }
   catch (const SehException &seh) {
@@ -140,9 +144,16 @@ AVSValue ExpWhileLoop::Evaluate(IScriptEnvironment* env)
 
     if (body)
     {
-      result = body->Evaluate(env);
-      if (result.IsClip())
-        env->SetVar("last", result);
+      try
+      {
+        result = body->Evaluate(env);
+        if (result.IsClip())
+          env->SetVar("last", result);
+      }
+      catch(const BreakStmtException&)
+      {
+        break;
+      }
     }
   }
   while (true);
@@ -184,9 +195,16 @@ AVSValue ExpForLoop::Evaluate(IScriptEnvironment* env)
   {
     if (body)
     {
-      result = body->Evaluate(env);
-      if (result.IsClip())
-        env->SetVar("last", result);
+      try
+      {
+        result = body->Evaluate(env);
+        if (result.IsClip())
+          env->SetVar("last", result);
+      }
+      catch(const BreakStmtException&)
+      {
+        break;
+      }
     }
 
     AVSValue idVal = env->GetVar(id); // may have been updated in body
@@ -198,6 +216,10 @@ AVSValue ExpForLoop::Evaluate(IScriptEnvironment* env)
   return result;  // overall result is that of final body evaluation (if any)
 }
 
+AVSValue ExpBreak::Evaluate(IScriptEnvironment* env) 
+{
+  throw BreakStmtException();
+}
 
 AVSValue ExpConditional::Evaluate(IScriptEnvironment* env) 
 {

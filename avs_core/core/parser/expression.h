@@ -188,6 +188,12 @@ private:
   const PExpression init, limit, step, body;
 };
 
+class ExpBreak : public Expression 
+{
+public:
+  ExpBreak() {}
+  virtual AVSValue Evaluate(IScriptEnvironment* env);
+};
 
 class ExpConditional : public Expression 
 {

@@ -42,7 +42,7 @@
  
 
 ScriptParser::ScriptParser(IScriptEnvironment* _env, const char* _code, const char* _filename)
-   : env(_env), tokenizer(_code, _env), code(_code), filename(_filename) {}
+   : env(_env), tokenizer(_code, _env), code(_code), filename(_filename), loopDepth(0) {}
 
 PExpression ScriptParser::Parse(void) 
 {
@@ -275,6 +275,13 @@ PExpression ScriptParser::ParseStatement(bool* stop)
     tokenizer.NextToken();
     return ParseConditional();
   }
+  // break statement
+  else if (tokenizer.IsIdentifier("break")) {
+    if (loopDepth <= 0)
+      throw AvisynthError("'Break' statement outside of loop.");
+    tokenizer.NextToken();
+    return new ExpBreak();
+  }
   else {
     return ParseAssignment();
   }
@@ -320,10 +327,12 @@ PExpression ScriptParser::ParseWhile(void)
   const PExpression cond = ParseConditional();
   Expect(')');
 
+  ++loopDepth;
   bool blockEmpty;
   PExpression body = ParseBlock(true, &blockEmpty);
   if (blockEmpty)
     body = NULL;
+  --loopDepth;
 
   return new ExpWhileLoop(cond, body);
 }
@@ -350,10 +359,12 @@ PExpression ScriptParser::ParseFor(void)
 
   Expect(')');
 
+  ++loopDepth;
   bool blockEmpty;
   PExpression body = ParseBlock(true, &blockEmpty);
   if (blockEmpty)
     body = NULL;
+  --loopDepth;
 
   return new ExpForLoop(id, init, limit, step, body);
 }
