@@ -483,70 +483,44 @@ AVSValue BitLShift(AVSValue args, void*, IScriptEnvironment* env) { return args[
 AVSValue BitRShiftL(AVSValue args, void*, IScriptEnvironment* env) { return int(unsigned(args[0].AsInt()) >> unsigned(args[1].AsInt())); }
 AVSValue BitRShiftA(AVSValue args, void*, IScriptEnvironment* env) { return args[0].AsInt() >> args[1].AsInt(); }
 
-
-int __declspec(naked) __stdcall a_rol(int arg1, int arg2) { // asm rol r/m32, CL
-    __asm {
-        mov  eax, [esp+4]
-        mov  ecx, [esp+8]
-        rol  eax, cl
-        ret  8
-    }
+static int a_rol(int value, int shift) {
+  if ((shift &= sizeof(value)*8 - 1) == 0)
+      return value;
+  return (value << shift) | (value >> (sizeof(value)*8 - shift));
 }
 
-int __declspec(naked) __stdcall a_ror(int arg1, int arg2) { // asm ror r/m32, CL
-    __asm {
-        mov  eax, [esp+4]
-        mov  ecx, [esp+8]
-        ror  eax, cl
-        ret  8
-    }
+static int a_ror(int value, int shift) {
+  if ((shift &= sizeof(value)*8 - 1) == 0)
+      return value;
+  return (value >> shift) | (value << (sizeof(value)*8 - shift));
 }
 
-int __declspec(naked) __stdcall a_btc(int arg1, int arg2) { // asm btc r/m32, r32
-    __asm {
-        mov  eax, [esp+4]
-        mov  ecx, [esp+8]
-        btc  eax, ecx
-        ret  8
-    }
+static int a_btc(int value, int bit) {
+  value ^= 1 << bit;
+  return value;
 }
 
-int __declspec(naked) __stdcall a_btr(int arg1, int arg2) { // asm btr r/m32, r32
-    __asm {
-        mov  eax, [esp+4]
-        mov  ecx, [esp+8]
-        btr  eax, ecx
-        ret  8
-    }
+static int a_btr(int value, int bit) {
+  value &= ~(1 << bit);
+  return value;
 }
 
-int __declspec(naked) __stdcall a_bts(int arg1, int arg2) { // asm bts r/m32, r32
-    __asm {
-        mov  eax, [esp+4]
-        mov  ecx, [esp+8]
-        bts  eax, ecx
-        ret  8
-    }
+static int a_bts(int value, int bit) {
+  value |= (1 << bit);
+  return value;
 }
 
-bool __declspec(naked) __stdcall a_bt (int arg1, int arg2) { // asm bt  r/m32, r32 -> CF, adc r/m32, 0
-    __asm {
-        mov  edx, [esp+4]
-        mov  ecx, [esp+8]
-        xor  eax, eax
-        bt   edx, ecx
-        adc  eax, 0
-        ret  8
-    }
+static bool a_bt (int value, int bit) {
+  return (value & (1 << bit)) ? true : false;
 }
 
-AVSValue BitRotateL(AVSValue args, void*, IScriptEnvironment* env) { return a_rol(args[0].AsInt(), args[1].AsInt()); } // asm rol r/m32, CL
-AVSValue BitRotateR(AVSValue args, void*, IScriptEnvironment* env) { return a_ror(args[0].AsInt(), args[1].AsInt()); } // asm ror r/m32, CL
+AVSValue BitRotateL(AVSValue args, void*, IScriptEnvironment* env) { return a_rol(args[0].AsInt(), args[1].AsInt()); }
+AVSValue BitRotateR(AVSValue args, void*, IScriptEnvironment* env) { return a_ror(args[0].AsInt(), args[1].AsInt()); }
 
-AVSValue BitChg(AVSValue args, void*, IScriptEnvironment* env) { return a_btc(args[0].AsInt(), args[1].AsInt()); } // asm btc r/m32, r32
-AVSValue BitClr(AVSValue args, void*, IScriptEnvironment* env) { return a_btr(args[0].AsInt(), args[1].AsInt()); } // asm btr r/m32, r32
-AVSValue BitSet(AVSValue args, void*, IScriptEnvironment* env) { return a_bts(args[0].AsInt(), args[1].AsInt()); } // asm bts r/m32, r32
-AVSValue BitTst(AVSValue args, void*, IScriptEnvironment* env) { return a_bt (args[0].AsInt(), args[1].AsInt()); } // asm bt  r/m32, r32 -> CF, adc r/m32, 0
+AVSValue BitChg(AVSValue args, void*, IScriptEnvironment* env) { return a_btc(args[0].AsInt(), args[1].AsInt()); }
+AVSValue BitClr(AVSValue args, void*, IScriptEnvironment* env) { return a_btr(args[0].AsInt(), args[1].AsInt()); }
+AVSValue BitSet(AVSValue args, void*, IScriptEnvironment* env) { return a_bts(args[0].AsInt(), args[1].AsInt()); }
+AVSValue BitTst(AVSValue args, void*, IScriptEnvironment* env) { return a_bt (args[0].AsInt(), args[1].AsInt()); }
 
 AVSValue UCase(AVSValue args, void*, IScriptEnvironment* env) { return _strupr(env->SaveString(args[0].AsString())); }
 AVSValue LCase(AVSValue args, void*, IScriptEnvironment* env) { return _strlwr(env->SaveString(args[0].AsString())); }

@@ -57,7 +57,7 @@
 #endif
 
 #ifndef YieldProcessor // low power spin idle
-  #define YieldProcessor() __asm { rep nop }
+  #define YieldProcessor() __nop(void)
 #endif
 
 extern const AVSFunction Audio_filters[], Combine_filters[], Convert_filters[],
