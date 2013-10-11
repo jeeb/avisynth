@@ -41,6 +41,7 @@ private:
   bool TryAsAvs26(PluginFile &plugin, AVSValue *result);
   bool TryAsAvs25(PluginFile &plugin, AVSValue *result);
   bool TryAsAvsC(PluginFile &plugin, AVSValue *result);
+  void UpdateFunctionExports(const AVSFunction &func);
 
 public:
   PluginManager(IScriptEnvironment2* env);

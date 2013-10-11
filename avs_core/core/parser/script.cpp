@@ -221,6 +221,7 @@ extern const AVSFunction Script_functions[] = {
 
   { "AddAutoloadDir",  "s[toFront]b", AddAutoloadDir  },
   { "ClearAutoloadDirs",  "", ClearAutoloadDirs  },
+  { "AutoloadPlugins",  "", AutoloadPlugins  },
  
   { 0 }
 };
@@ -966,6 +967,13 @@ AVSValue ClearAutoloadDirs (AVSValue args, void*, IScriptEnvironment* env)
 {
   IScriptEnvironment2 *env2 = static_cast<IScriptEnvironment2*>(env);
   env2->ClearAutoloadDirs();
+  return AVSValue();
+}
+
+AVSValue AutoloadPlugins (AVSValue args, void*, IScriptEnvironment* env)
+{
+  IScriptEnvironment2 *env2 = static_cast<IScriptEnvironment2*>(env);
+  env2->AutoloadPlugins();
   return AVSValue();
 }
 

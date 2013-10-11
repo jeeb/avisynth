@@ -309,6 +309,7 @@ PluginFile::PluginFile(const std::string &filePath) :
 PluginManager::PluginManager(IScriptEnvironment2* env) :
   Env(env), PluginInLoad(NULL), AutoloadExecuted(false)
 {
+  env->SetGlobalVar("$PluginFunctions$", AVSValue(""));
 }
 
 void PluginManager::ClearAutoloadDirs()
@@ -367,6 +368,9 @@ void PluginManager::AddAutoloadDir(const std::string &dirPath, bool toFront)
 
 void PluginManager::AutoloadPlugins()
 {
+  if (AutoloadExecuted)
+    return;
+
   AutoloadExecuted = true;
 
   const char *binaryFilter = "*.dll";
@@ -465,6 +469,24 @@ PluginManager::~PluginManager()
   PluginInLoad = NULL;
 }
 
+void PluginManager::UpdateFunctionExports(const AVSFunction &func)
+{
+  // Update $PluginFunctions$
+  const char *oldFnList = Env->GetVar("$PluginFunctions$", "");
+  std::string FnList(oldFnList);
+  FnList.push_back(' ');
+  FnList.append(func.name);
+  Env->SetGlobalVar("$PluginFunctions$", AVSValue( Env->SaveString(FnList.c_str(), FnList.length() + 1) ));
+
+  // Update $Plugin!...!Param$
+  std::string param_id;
+  param_id.reserve(128);
+  param_id.append("$Plugin!");
+  param_id.append(func.name);
+  param_id.append("!Param$");
+  Env->SetGlobalVar( Env->SaveString(param_id.c_str(), param_id.length() + 1), AVSValue(func.param_types) );
+}
+
 bool PluginManager::LoadPlugin(PluginFile &plugin, bool throwOnError, AVSValue *result)
 {
   for (size_t i = 0; i < LoadedPlugins.size(); ++i)
@@ -547,6 +569,7 @@ void PluginManager::AddFunction(const char* name, const char* params, IScriptEnv
   newFunc.apply = apply;
   newFunc.user_data = user_data;
   PluginFunctions.insert(FunctionMap::value_type(newFunc.name, newFunc));
+  UpdateFunctionExports(newFunc);
 
   if (PluginInLoad != NULL)
   {
@@ -558,6 +581,7 @@ void PluginManager::AddFunction(const char* name, const char* params, IScriptEnv
     newFuncWithBase.apply = apply;
     newFuncWithBase.user_data = user_data;
     PluginFunctions.insert(FunctionMap::value_type(newFuncWithBase.name, newFuncWithBase));
+    UpdateFunctionExports(newFuncWithBase);
   }
 }
 

@@ -405,6 +405,7 @@ public:
   virtual bool __stdcall LoadPlugin(const char* filePath, bool throwOnError, AVSValue *result);
   virtual void __stdcall AddAutoloadDir(const char* dirPath, bool toFront);
   virtual void __stdcall ClearAutoloadDirs();
+  virtual void __stdcall AutoloadPlugins();
   virtual int __stdcall IncrImportDepth();
   virtual int __stdcall DecrImportDepth();
   virtual bool __stdcall Invoke(AVSValue *result, const char* name, const AVSValue args, const char* const* arg_names=0);
@@ -430,8 +431,9 @@ private:
                       bool &pstrict, int args_names_count, const char* const* arg_names);
   unsigned __int64 memory_max, memory_used;
 
-  LinkedVideoFrameBuffer* NewFrameBuffer(int size);
+  void ExportBuiltinFilters();
 
+  LinkedVideoFrameBuffer* NewFrameBuffer(int size);
   LinkedVideoFrameBuffer* GetFrameBuffer2(int size);
   VideoFrameBuffer* GetFrameBuffer(int size);
 
@@ -544,6 +546,8 @@ ScriptEnvironment::ScriptEnvironment()
     plugin_manager->AddAutoloadDir("MACHINE_PLUS_PLUGINS", false);
     plugin_manager->AddAutoloadDir("USER_CLASSIC_PLUGINS", false);
     plugin_manager->AddAutoloadDir("MACHINE_CLASSIC_PLUGINS", false);
+
+    ExportBuiltinFilters();
   }
   catch (const AvisynthError &err) {
     if(SUCCEEDED(hrfromcoinit)) {
@@ -602,6 +606,39 @@ ScriptEnvironment::~ScriptEnvironment() {
   }
 }
 
+/* This function adds information about builtin functions into global variables.
+ * External utilities (like AvsPmod) can parse these variables and use them 
+ * to learn about supported functions and their syntax.
+ */
+void ScriptEnvironment::ExportBuiltinFilters()
+{
+    std::string FunctionList;
+    FunctionList.reserve(512);
+    const size_t NumFunctionArrays = sizeof(builtin_functions)/sizeof(builtin_functions[0]);
+    for (size_t i = 0; i < NumFunctionArrays; ++i)
+    {
+      for (const AVSFunction* f = builtin_functions[i]; f->name; ++f)
+      {
+        // This builds the $InternalFunctions$ variable, which is a list of space-delimited
+        // function names. Utilities can learn the names of the builtin function from this.
+        FunctionList.append(f->name);
+        FunctionList.push_back(' ');
+
+        // For each supported function, a global variable is added with <param_var_name> as the name,
+        // and the list of parameters to that function as the value.
+        std::string param_var_name;
+        param_var_name.reserve(128);
+        param_var_name.append("$Plugin!");
+        param_var_name.append(f->name);
+        param_var_name.append("!Param$");
+        SetGlobalVar( SaveString(param_var_name.c_str(), param_var_name.length() + 1), AVSValue(f->param_types) );
+      }
+    }
+
+    // Save $InternalFunctions$
+    SetGlobalVar("$InternalFunctions$", AVSValue( SaveString(FunctionList.c_str(), FunctionList.length() + 1) ));
+}
+
 int __stdcall ScriptEnvironment::IncrImportDepth()
 {
   ImportDepth++;
@@ -623,10 +660,14 @@ void __stdcall ScriptEnvironment::AddAutoloadDir(const char* dirPath, bool toFro
   plugin_manager->AddAutoloadDir(dirPath, toFront);
 }
 
-
 void __stdcall ScriptEnvironment::ClearAutoloadDirs()
 {
   plugin_manager->ClearAutoloadDirs();
+}
+
+void __stdcall ScriptEnvironment::AutoloadPlugins()
+{
+  plugin_manager->AutoloadPlugins();
 }
 
 int ScriptEnvironment::SetMemoryMax(int mem) {

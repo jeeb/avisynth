@@ -258,5 +258,6 @@ AVSValue ScriptDir (AVSValue args, void*, IScriptEnvironment* env);
 
 AVSValue AddAutoloadDir (AVSValue args, void*, IScriptEnvironment* env);
 AVSValue ClearAutoloadDirs (AVSValue args, void*, IScriptEnvironment* env);
+AVSValue AutoloadPlugins (AVSValue args, void*, IScriptEnvironment* env);
 
 #endif  // __Script_H__
