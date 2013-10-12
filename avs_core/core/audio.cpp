@@ -44,6 +44,38 @@
 
 #define BIGBUFFSIZE (2048*1024) // Use a 2Mb buffer for EnsureVBRMP3Sync seeking & Normalize scanning
 
+#ifndef INT16_MAX
+#define INT16_MAX 32767
+#endif
+#ifndef INT16_MIN
+#define INT16_MIN  (-32768)
+#endif
+#ifndef INT32_MAX
+#define INT32_MAX 2147483647
+#endif
+#ifndef INT32_MIN
+#define INT32_MIN  (-2147483647 - 1)
+#endif
+#ifndef INT64_MAX
+#define INT64_MAX 9223372036854775807LL
+#endif
+#ifndef INT64_MIN
+#define INT64_MIN  (-9223372036854775807LL - 1)
+#endif
+
+static __int64 signed_saturated_add64(__int64 x, __int64 y) {
+  // determine the lower or upper bound of the result
+  __int64 ret =  (x < 0) ? INT64_MIN : INT64_MAX;
+  // this is always well defined:
+  // if x < 0 this adds a positive value to INT64_MIN
+  // if x > 0 this subtracts a positive value from INT64_MAX
+  __int64 comp = ret - x;
+  // the codition is equivalent to
+  // ((x < 0) && (y > comp)) || ((x >=0) && (y <= comp))
+  if ((x < 0) == (y > comp)) ret = x + y;
+  return ret;
+}
+
 /********************************************************************
 ***** Declare index of new filters for Avisynth's filter engine *****
 ********************************************************************/
@@ -682,7 +714,10 @@ saturate0:
   short* samples = (short*)buf;
   for (int i = 0; i < countXchannels; i+=channels) {
     for (int j = 0; j < channels; j++) {
-      samples[i + j] = Saturate(Int32x32To64(samples[i + j], i_v[j]) + 65536);
+      samples[i + j] = (short)clamp(
+        signed_saturated_add64(Int32x32To64(samples[i + j], i_v[j]), 65536),
+        (__int64)INT16_MIN,
+        (__int64)INT16_MAX);
     }
   }
 #endif // X86_32
@@ -730,10 +765,14 @@ saturate1:
           jl	 iloop1
     }
 #else
-  const int* samples = (int*)buf;
+  int* samples = (int*)buf;
   for (int i = 0; i < countXchannels; i+=channels) {
     for (int j = 0;j < channels;j++) {
-      samples[i + j] = Saturate_int32(Int32x32To64(samples[i + j], i_v[j]) + 32768);
+      // TODO: This is very slow. Right now, it should just work, we'll optimize later.
+      samples[i + j] = (int)clamp(
+        signed_saturated_add64(Int32x32To64(samples[i + j], i_v[j]), 65536),
+        (__int64)INT32_MIN,
+        (__int64)INT32_MAX);
     }
   }
 #endif // X86_32
@@ -970,7 +1009,11 @@ saturate2:
 #else
     short* samples = (short*)buf;
     for (int i = 0; i < chanXcount; ++i) {
-      samples[i] = Saturate(Int32x32To64(samples[i], factor) + 32768);
+      // TODO: This is very slow. Right now, it should just work, we'll optimize later.
+      samples[i] = (short)clamp(
+        signed_saturated_add64(Int32x32To64(samples[i], factor), 65536),
+        (__int64)INT16_MIN,
+        (__int64)INT16_MAX);
     }
 #endif // X86_32
   } else if (vi.SampleType() == SAMPLE_FLOAT) {
@@ -1096,7 +1139,11 @@ saturate3:
     short* samples = (short*)buf;
     short* clip_samples = (short*)tempbuffer;
     for (unsigned i = 0; i < unsigned(count)*channels; ++i) {
-        samples[i] = Saturate64(Int32x32To64(samples[i], track1_factor) + Int32x32To64(clip_samples[i], track2_factor) + 32768);
+      // TODO: This is very slow. Right now, it should just work, we'll optimize later.
+      samples[i] = (short)clamp(
+        signed_saturated_add64(signed_saturated_add64(Int32x32To64(samples[i], track1_factor), Int32x32To64(clip_samples[i], track2_factor)), 65536),
+        (__int64)INT16_MIN,
+        (__int64)INT16_MAX);
     }
 #endif
   } else if (vi.SampleType()&SAMPLE_FLOAT) {

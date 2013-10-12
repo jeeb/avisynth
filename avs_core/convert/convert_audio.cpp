@@ -284,28 +284,43 @@ void __stdcall ConvertAudio::GetAudio(void* buf, __int64 start, __int64 count, I
 
   // Special fast cases
   if (src_format == SAMPLE_INT24 && dst_format == SAMPLE_INT16) {
-    if ((env->GetCPUFlags() & CPUF_MMX)) {
+#ifdef X86_32
+    if ((env->GetCPUFlags() & CPUF_MMX))
+    {
       convert24To16_MMX(tempbuffer, buf, (int)count*channels);
-    } else {
+    }
+    else
+#endif
+    {
       convert24To16(tempbuffer, buf, (int)count*channels);
-	}
-	return;
+	  }
+	  return;
   }
   if (src_format == SAMPLE_INT8 && dst_format == SAMPLE_INT16) {
-    if ((env->GetCPUFlags() & CPUF_MMX)) {
+#ifdef X86_32
+    if ((env->GetCPUFlags() & CPUF_MMX))
+    {
       convert8To16_MMX(tempbuffer, buf, (int)count*channels);
-    } else {
+    }
+    else
+#endif
+    {
       convert8To16(tempbuffer, buf, (int)count*channels);
-	}
-	return;
+    }
+	  return;
   }
   if (src_format == SAMPLE_INT16 && dst_format == SAMPLE_INT8) {
-    if ((env->GetCPUFlags() & CPUF_MMX)) {
+#ifdef X86_32
+    if ((env->GetCPUFlags() & CPUF_MMX))
+    {
       convert16To8_MMX(tempbuffer, buf, (int)count*channels);
-    } else {
+    }
+    else
+#endif
+    {
       convert16To8(tempbuffer, buf, (int)count*channels);
-	}
-	return;
+    }
+	  return;
   }
 
   float* tmp_fb;

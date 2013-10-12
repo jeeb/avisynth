@@ -1490,7 +1490,8 @@ struct FrustratedACMOpenData {
 };
 
 
-BOOL CALLBACK ACMStreamOpenCallback(HACMDRIVERID hadid, DWORD dwInstance, DWORD fdwSupport) {
+BOOL CALLBACK ACMStreamOpenCallback(HACMDRIVERID hadid, DWORD_PTR dwInstance, DWORD fdwSupport)
+{
 	FrustratedACMOpenData *pfad = (FrustratedACMOpenData *)dwInstance;
 
 	// Ignore drivers that don't do format conversion.

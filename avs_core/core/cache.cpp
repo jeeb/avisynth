@@ -331,7 +331,7 @@ purge_old_frame:
 
   // Truncate the tail of the chain
   video_frames.prev = i;
-  j = (CachedVideoFrame*)InterlockedExchangePointer(&i->next, &video_frames);
+  j = (CachedVideoFrame*)InterlockedExchangePointer((PVOID*)(&i->next), &video_frames);
 
   // Delete the excess CachedVideoFrames
   while (j != &video_frames) {
