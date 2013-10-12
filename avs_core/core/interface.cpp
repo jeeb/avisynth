@@ -606,9 +606,10 @@ void AVSValue::Assign(const AVSValue* src, bool init) {
     src->clip->AddRef();
   if (!init && IsClip() && clip)
     clip->Release();
-  // make sure this copies the whole struct!
-  ((__int32*)this)[0] = ((__int32*)src)[0];
-  ((__int32*)this)[1] = ((__int32*)src)[1];
+
+  this->type = src->type;
+  this->array_size = src->array_size;
+  this->clip = src->clip; // "clip" is the largest member of the union, making sure we copy everything
 }
 
 // end class AVSValue

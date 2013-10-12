@@ -140,7 +140,7 @@ public:
 
 static RecycleBin *g_Bin=0;
 
-void* VideoFrame::operator new(unsigned) {
+void* VideoFrame::operator new(size_t) {
   // CriticalSection
   for (LinkedVideoFrame* i = g_Bin->g_VideoFrame_recycle_bin; i; i = i->next)
     if (InterlockedCompareExchange(&i->vf.refcount, 1, 0) == 0)
@@ -295,7 +295,7 @@ public:
 class StringDump {
   enum { BLOCK_SIZE = 32768 };
   char* current_block;
-  unsigned int block_pos, block_size;
+  size_t block_pos, block_size;
 
 public:
   StringDump() : current_block(0), block_pos(BLOCK_SIZE), block_size(BLOCK_SIZE) {}
