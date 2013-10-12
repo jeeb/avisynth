@@ -69,6 +69,9 @@ MEMCPY_AMD.CPP
 
 // Inline assembly syntax for use with Visual C++
 
+#include <avs/config.h>
+
+#ifdef X86_32
 void memcpy_amd(void *dest, const void *src, size_t n)
 {
   // Warning! : If you modify this routine, check the generated assembler to make sure
@@ -280,4 +283,4 @@ $memcpy_final:
 
     }
 }
-
+#endif

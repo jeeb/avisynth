@@ -39,6 +39,7 @@
 #include <string>
 #include <sstream>
 #include <cmath>
+#include <avs/config.h>
 
 using namespace std;
 
@@ -372,8 +373,9 @@ void Antialiaser::ApplyRGB32(BYTE* buf, int pitch) {
 }
 
 
-void Antialiaser::GetAlphaRect() {
-
+#ifdef X86_32
+void Antialiaser::GetAlphaRect()
+{
   dirty = false;
 
   static BYTE bitcnt[256],    // bit count
@@ -666,11 +668,7 @@ do24:
   xl=w-xl;
   xr=w-xr;
 }
-
-
-
-
-
+#endif
 
 
 
@@ -1477,6 +1475,7 @@ AVSValue __cdecl Compare::Create(AVSValue args, void*, IScriptEnvironment *env)
             env);
 }
 
+#ifdef X86_32
 void Compare::Compare_ISSE(DWORD mask, int incr,
                            const BYTE * f1ptr, int pitch1, 
                            const BYTE * f2ptr, int pitch2,
@@ -1570,6 +1569,7 @@ comp_loopx:
     SAD_sum += SAD;
     SD_sum  += SD;
 }
+#endif
 
 
 PVideoFrame __stdcall Compare::GetFrame(int n, IScriptEnvironment* env)

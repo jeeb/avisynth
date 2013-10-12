@@ -443,6 +443,7 @@ void weigh_plane(BYTE *p1, const BYTE *p2, int p1_pitch, int p2_pitch,int rowsiz
 }
 
 
+#ifdef X86_32
 /****************************
 ******   MMX routines   *****
 ****************************/
@@ -523,10 +524,9 @@ exitloop:
   } // end for y
   __asm {emms};
 }
+#endif
 
-
-
-
+#ifdef X86_32
 void mmx_weigh_luma(unsigned int *src,unsigned int *luma, int pitch,
                     int luma_pitch,int width, int height, int weight, int invweight)
 {
@@ -607,14 +607,13 @@ exitloop:
 	} // end for y
   __asm {emms};
 }
+#endif
 
 
-
-
+#ifdef X86_32
 void mmx_weigh_chroma( unsigned int *src,unsigned int *chroma, int pitch,
                      int chroma_pitch,int width, int height, int weight, int invweight )
 {
-
   int row_size = width * 2;
   int lwidth_bytes = row_size & -8;	// bytes handled by the main loop
 
@@ -693,6 +692,8 @@ exitloop:
 	} // end for y
   __asm {emms};
 }
+#endif
+
 
 /*******************
  * Blends two planes.
@@ -706,9 +707,9 @@ exitloop:
  * Returns the blended plane in p1;
  * (c) 2002, 2004 by sh0dan, IanB.
  ********/
-
-void mmx_weigh_plane(BYTE *p1, const BYTE *p2, int p1_pitch, int p2_pitch,int rowsize, int height, int weight, int invweight) {
-
+#ifdef X86_32
+void mmx_weigh_plane(BYTE *p1, const BYTE *p2, int p1_pitch, int p2_pitch,int rowsize, int height, int weight, int invweight)
+{
 // mm0 mm1 mm2 mm3 mm4 mm5 mm6 mm7
   __asm {
       push ebx // bloody compiler forgets to save ebx!!
@@ -773,6 +774,8 @@ outy:
       pop ebx
   } // end asm
 }
+#endif
+
 
 // (a + b    ) >> 1 = (a & b) + ((a ^ b) >> 1)
 // (a + b + 1) >> 1 = (a | b) - ((a ^ b) >> 1)
@@ -785,8 +788,10 @@ outy:
  * (c) 2005 by IanB.
  ********/
 
-void isse_avg_plane(BYTE *p1, const BYTE *p2, int p1_pitch, int p2_pitch,int rowsize, int height) {
+#ifdef X86_32
 
+void isse_avg_plane(BYTE *p1, const BYTE *p2, int p1_pitch, int p2_pitch,int rowsize, int height)
+{
 // mm0 mm1
   __asm {
       push ebx // bloody compiler forgets to save ebx!!
@@ -844,3 +849,4 @@ outy:
       pop ebx
   } // end asm
 }
+#endif

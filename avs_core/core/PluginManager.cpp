@@ -640,6 +640,7 @@ bool PluginManager::TryAsAvsC(PluginFile &plugin, AVSValue *result)
 	    AVS_ScriptEnvironment *pe;
 	    pe = &e;
 	    const char *s = NULL;
+#ifdef X86_32
 	    int callok = 1; // (stdcall)
 	    __asm // Tritical - Jan 2006
 	    {
@@ -686,6 +687,9 @@ bool PluginManager::TryAsAvsC(PluginFile &plugin, AVSValue *result)
       case 2:
         Env->ThrowError("Avisynth 2 C Plugin '%s' has corrupted the stack.", plugin.BaseName.c_str());
       }
+#else
+      s = AvisynthCPluginInit(pe);
+#endif
 //	    if (s == 0)
 	//	    Env->ThrowError("Avisynth 2 C Plugin '%s' returned a NULL pointer.", plugin.BaseName.c_str());
 

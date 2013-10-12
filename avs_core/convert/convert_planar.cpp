@@ -180,7 +180,7 @@ PVideoFrame __stdcall ConvertToY8::GetFrame(int n, IScriptEnvironment* env) {
   return dst;
 }
 
-
+#ifdef X86_32
 void ConvertToY8::convYUV422toY8(const unsigned char *src, unsigned char *py,
        int pitch1, int pitch2y, int width, int height)
 {
@@ -213,7 +213,7 @@ void ConvertToY8::convYUV422toY8(const unsigned char *src, unsigned char *py,
 		emms
 	}
 }
-
+#endif
 
 AVSValue __cdecl ConvertToY8::Create(AVSValue args, void*, IScriptEnvironment* env) {
   PClip clip = args[0].AsClip();
@@ -730,6 +730,7 @@ PVideoFrame __stdcall ConvertYUY2ToYV16::GetFrame(int n, IScriptEnvironment* env
   return dst;
 }
 
+#ifdef X86_32
 void ConvertYUY2ToYV16::convYUV422to422(const unsigned char *src,
                                         unsigned char *py, unsigned char *pu, unsigned char *pv,
                                         int pitch1, int pitch2y, int pitch2uv, int width, int height)
@@ -781,6 +782,7 @@ void ConvertYUY2ToYV16::convYUV422to422(const unsigned char *src,
         pop ebx
 	}
 }
+#endif
 
 
 AVSValue __cdecl ConvertYUY2ToYV16::Create(AVSValue args, void*, IScriptEnvironment* env) {
@@ -836,6 +838,7 @@ PVideoFrame __stdcall ConvertYV16ToYUY2::GetFrame(int n, IScriptEnvironment* env
   return dst;
 }
 
+#ifdef X86_32
 void ConvertYV16ToYUY2::conv422toYUV422(const unsigned char *py, const unsigned char *pu, const unsigned char *pv,
                                         unsigned char *dst,
                                         int pitch1Y, int pitch1UV, int pitch2, int width, int height)
@@ -875,6 +878,7 @@ xloop:
         pop ebx
 	}
 }
+#endif
 
 AVSValue __cdecl ConvertYV16ToYUY2::Create(AVSValue args, void*, IScriptEnvironment* env) {
   PClip clip = args[0].AsClip();

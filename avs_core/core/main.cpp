@@ -42,6 +42,7 @@
 #include <vfw.h>
 #include <cstdio>
 #include <new>
+#include <intrin.h>
 
 
 #define FP_STATE 0x9001f
@@ -692,7 +693,7 @@ bool CAVIFileSynth::DelayInit2() {
       delete[] szScriptName;
       szScriptName = NULL;
       _clear87();
-      __asm {emms};
+      _mm_empty();
       _control87( fp_state, 0xffffffff );
       return true;
 #ifndef _DEBUG
@@ -700,14 +701,14 @@ bool CAVIFileSynth::DelayInit2() {
     catch (...) {
       _RPT0(1,"DelayInit() caught general exception!\n");
       _clear87();
-      __asm {emms};
+      _mm_empty();
       _control87( fp_state, 0xffffffff );
       return false;
     }
 #endif
   } else {
     _clear87();
-    __asm {emms};
+    _mm_empty();
     _control87( fp_state, 0xffffffff );
     return (env && filter_graph && vi);
   }
@@ -1079,11 +1080,14 @@ void CAVIStreamSynth::ReadFrame(void* lpBuffer, int n) {
 
 STDMETHODIMP CAVIStreamSynth::Read(LONG lStart, LONG lSamples, LPVOID lpBuffer, LONG cbBuffer, LONG *plBytes, LONG *plSamples) {
 
+#ifdef  X86_32
+  // TODO: Does this need 64-bit porting?
   __asm { // Force compiler to protect these registers!
     mov ebx,ebx;
     mov esi,esi;
     mov edi,edi;
   }
+#endif
 
   parent->Lock();
 
@@ -1173,13 +1177,13 @@ HRESULT CAVIStreamSynth::Read2(LONG lStart, LONG lSamples, LPVOID lpBuffer, LONG
   }
   catch (...) {
     _clear87();
-    __asm {emms};
+    _mm_empty();
     _control87( fp_state, 0xffffffff );
     return E_FAIL;
   }
 #endif
   _clear87();
-  __asm {emms};
+  _mm_empty();
   _control87( fp_state, 0xffffffff );
   return S_OK;
 }

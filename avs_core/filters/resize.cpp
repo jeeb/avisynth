@@ -147,6 +147,7 @@ PVideoFrame VerticalReduceBy2::GetFrame(int n, IScriptEnvironment* env) {
 #define R_SRC_PITCH ecx
 #define R_DST_PITCH esi
 
+#ifdef X86_32
 void VerticalReduceBy2::mmx_process(const BYTE* srcp, int src_pitch, int row_size, BYTE* dstp, int dst_pitch, int height) {
   height--;
   static const __int64 add_2=0x0002000200020002;
@@ -212,6 +213,7 @@ loopback_last:
     }
   }
 }
+#endif
 
 #undef R_SRC
 #undef R_DST
@@ -390,7 +392,9 @@ PVideoFrame HorizontalReduceBy2::GetFrame(int n, IScriptEnvironment* env)
 #define R_TEMP1 eax
 #define R_TEMP2 ecx
 
-void HorizontalReduceBy2::isse_process_yuy2(PVideoFrame src,BYTE* dstp, int dst_pitch) {
+#ifdef X86_32
+void HorizontalReduceBy2::isse_process_yuy2(PVideoFrame src,BYTE* dstp, int dst_pitch)
+{
   
   const BYTE* srcp = src->GetReadPtr();
   const int src_pitch = src->GetPitch();
@@ -519,6 +523,7 @@ loopback:
     }
   }
 }
+#endif
 
 #undef R_SRC
 #undef R_DST

@@ -34,6 +34,9 @@
 
 // Overlay (c) 2003, 2004 by Klaus Post
 
+#include <avs/config.h>
+
+#ifdef X86_32
 
 #include "blend_asm.h"
 
@@ -362,3 +365,6 @@ outy:
 	  pop ebx
   } // end asm
 }
+
+
+#endif //X86_32

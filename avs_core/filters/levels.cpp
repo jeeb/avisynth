@@ -38,6 +38,7 @@
 #include <cstdio>
 #include <cmath>
 #include <avs/minmax.h>
+#include <avs/config.h>
 
 //Wow, this macro really sucks -> TODO: should be turned into a macro function
 #define in64 (__int64)(unsigned short)
@@ -879,6 +880,7 @@ AVSValue __cdecl Tweak::Create(AVSValue args, void* user_data, IScriptEnvironmen
 
 
 
+#ifdef X86_32
 // Integer SSE optimization by "Dividee".
 void __declspec(naked) asm_tweak_ISSE_YUY2( BYTE *srcp, int w, int h, int modulo, __int64 hue,
                                        __int64 satcont, __int64 bright )
@@ -935,7 +937,7 @@ x_loop:
 		ret
 	};
 }
-
+#endif
 
 /**********************
 ******   MaskHS   *****

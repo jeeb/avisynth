@@ -61,9 +61,11 @@ __declspec(align(8)) static const __int64 add_64   = 0x0002000200020002;
 __declspec(align(8)) static const __int64 add_ones = 0x0101010101010101;
 
 
+#ifdef X86_32
 void isse_yv12_i_to_yuy2(const BYTE* srcY, const BYTE* srcU, const BYTE* srcV, int src_rowsize, int src_pitch, int src_pitch_uv, 
                     BYTE* dst, int dst_pitch,
-                    int height) {
+                    int height) 
+{
   const BYTE** srcp= new const BYTE*[3];
   int src_pitch_uv2 = src_pitch_uv*2;
   int src_pitch_uv4 = src_pitch_uv*4;
@@ -323,7 +325,7 @@ yloop_test:
   }
    delete[] srcp;
 }
-
+#endif
 
 /*************************************
  * Progessive YV12 -> YUY2 conversion
@@ -333,10 +335,12 @@ yloop_test:
  * Requires mod 8 pitch.
  *************************************/
 
+#ifdef X86_32
 
 void isse_yv12_to_yuy2(const BYTE* srcY, const BYTE* srcU, const BYTE* srcV, int src_rowsize, int src_pitch, int src_pitch_uv, 
                     BYTE* dst, int dst_pitch,
-                    int height) {
+                    int height)
+{
   const BYTE** srcp= new const BYTE*[3];
   int src_pitch_uv2 = src_pitch_uv*2;
 //  int src_pitch_uv4 = src_pitch_uv*4;
@@ -563,7 +567,7 @@ yloop_test:
   }
    delete[] srcp;
 }
-
+#endif
 
 /*************************************
  * Interlaced YV12 -> YUY2 conversion
@@ -574,11 +578,13 @@ yloop_test:
  * MMX version.
  *************************************/
 
+#ifdef X86_32
 
 void mmx_yv12_i_to_yuy2(const BYTE* srcY, const BYTE* srcU, const BYTE* srcV,
                     int src_rowsize, int src_pitch, int src_pitch_uv, 
                     BYTE* dst, int dst_pitch,
-                    int height) {
+                    int height)
+{
   const BYTE** srcp= new const BYTE*[3];
   int src_pitch_uv2 = src_pitch_uv*2;
   int src_pitch_uv4 = src_pitch_uv*4;
@@ -852,6 +858,8 @@ yloop_test:
   }
    delete[] srcp;
 }
+#endif
+
 
 /*************************************
  * Progressive YV12 -> YUY2 conversion
@@ -862,11 +870,13 @@ yloop_test:
  * MMX version.
  *************************************/
 
+#ifdef X86_32
 
 void mmx_yv12_to_yuy2(const BYTE* srcY, const BYTE* srcU, const BYTE* srcV,
                     int src_rowsize, int src_pitch, int src_pitch_uv, 
                     BYTE* dst, int dst_pitch,
-                    int height) {
+                    int height) 
+{
   const BYTE** srcp= new const BYTE*[3];
   int src_pitch_uv2 = src_pitch_uv*2;
   int skipnext = 0;
@@ -1106,6 +1116,7 @@ yloop_test:
   }
    delete[] srcp;
 }
+#endif
 
 
 /********************************
@@ -1117,10 +1128,12 @@ yloop_test:
  * Requires mod8 pitch for output, and mod16 pitch for input.
  ********************************/
 
+#ifdef X86_32
+
 void isse_yuy2_to_yv12(const BYTE* src, int src_rowsize, int src_pitch, 
                     BYTE* dstY, BYTE* dstU, BYTE* dstV, int dst_pitchY, int dst_pitchUV,
-                    int height) {
-
+                    int height)
+{
   const BYTE** dstp= new const BYTE*[4];
   dstp[0]=dstY;
   dstp[1]=dstY+dst_pitchY;
@@ -1217,7 +1230,7 @@ yloop_test:
   }
    delete[] dstp;
 }
-
+#endif
 
 
 /********************************
@@ -1229,11 +1242,12 @@ yloop_test:
  * Requires mod8 pitch for output, and mod16 pitch for input.
  ********************************/
 
+#ifdef X86_32
 
 void isse_yuy2_i_to_yv12(const BYTE* src, int src_rowsize, int src_pitch, 
                     BYTE* dstY, BYTE* dstU, BYTE* dstV, int dst_pitchY, int dst_pitchUV,
-                    int height) {
-
+                    int height) 
+{
   const BYTE** dstp= new const BYTE*[4];
   dstp[0]=dstY;
   dstp[1]=dstY+(dst_pitchY*2);
@@ -1407,7 +1421,7 @@ yloop_test:
   }
    delete[] dstp;
 }
-
+#endif
 
 
 /********************************
@@ -1420,10 +1434,12 @@ yloop_test:
  * MMX Version (much slower than ISSE!) (used as fallback for ISSE version)
  ********************************/
 
+#ifdef X86_32
+
 void mmx_yuy2_to_yv12(const BYTE* src, int src_rowsize, int src_pitch, 
                     BYTE* dstY, BYTE* dstU, BYTE* dstV, int dst_pitchY, int dst_pitchUV,
-                    int height) {
-
+                    int height)
+{
   const BYTE** dstp= new const BYTE*[4];
   dstp[0]=dstY;
   dstp[1]=dstY+dst_pitchY;
@@ -1529,7 +1545,7 @@ yloop_test:
   }
    delete[] dstp;
 }
-
+#endif
 
 
 /********************************
@@ -1542,11 +1558,12 @@ yloop_test:
  * MMX version (used as fallback for ISSE version)
  ********************************/
 
+#ifdef X86_32
 
 void mmx_yuy2_i_to_yv12(const BYTE* src, int src_rowsize, int src_pitch, 
                     BYTE* dstY, BYTE* dstU, BYTE* dstV, int dst_pitchY, int dst_pitchUV,
-                    int height) {
-
+                    int height) 
+{
   const BYTE** dstp= new const BYTE*[4];
   dstp[0]=dstY;
   dstp[1]=dstY+(dst_pitchY*2);
@@ -1743,3 +1760,4 @@ yloop_test:
   }
    delete[] dstp;
 }
+#endif

@@ -34,6 +34,7 @@
 
 #include "resample.h"
 #include <malloc.h>
+#include <avs/config.h>
 
 
 
@@ -643,7 +644,7 @@ DynamicAssembledCode FilteredResizeH::GenerateResizer(int gen_plane, bool source
 }
 
 
-
+#ifdef X86_32
 PVideoFrame __stdcall FilteredResizeH::GetFrame(int n, IScriptEnvironment* env)
 {
   PVideoFrame src = child->GetFrame(n, env);
@@ -1163,7 +1164,7 @@ out_i_aloopUV:
   }
   return dst;
 }
-
+#endif
 
 FilteredResizeH::~FilteredResizeH(void)
 {

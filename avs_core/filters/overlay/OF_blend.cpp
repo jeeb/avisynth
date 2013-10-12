@@ -53,12 +53,16 @@ void OL_BlendImage::BlendImageMask(Image444* base, Image444* overlay, Image444* 
   int h = base->h();
 
   if (opacity == 256) {
-  if (!(w&7)) {
+
+#ifdef X86_32
+  if (!(w&7)) 
+  {
     MMerge_MMX(baseY, ovY, maskY, base->pitch, overlay->pitch, mask->pitch, w, h);
     MMerge_MMX(baseU, ovU, maskU, base->pitch, overlay->pitch, mask->pitch, w, h);
     MMerge_MMX(baseV, ovV, maskV, base->pitch, overlay->pitch, mask->pitch, w, h);
     return;
   }
+#endif
     for (int y = 0; y < h; y++) {
       for (int x = 0; x < w; x++) {
         baseY[x] = (BYTE)(((baseY[x]*(256-maskY[x])) + (ovY[x]*maskY[x]+128))>>8);
@@ -119,7 +123,9 @@ void OL_BlendImage::BlendImage(Image444* base, Image444* overlay) {
     env->BitBlt(baseU, base->pitch, ovU, overlay->pitch, w, h);
     env->BitBlt(baseV, base->pitch, ovV, overlay->pitch, w, h);
   } else {
-    if (!(w&3) && (env->GetCPUFlags() & CPUF_MMX)) {
+#ifdef X86_32
+    if (!(w&3) && (env->GetCPUFlags() & CPUF_MMX))
+    {
       int weight = (opacity*32767+128)>>8;
       int invweight = 32767-weight;
 
@@ -127,7 +133,10 @@ void OL_BlendImage::BlendImage(Image444* base, Image444* overlay) {
       mmx_weigh_planar(baseU, ovU, base->pitch, overlay->pitch, w, h, weight, invweight);
       mmx_weigh_planar(baseV, ovV, base->pitch, overlay->pitch, w, h, weight, invweight);
 
-    } else {
+    }
+    else
+#endif
+    {
       for (int y = 0; y < h; y++) {
         for (int x = 0; x < w; x++) {
           baseY[x] = (BYTE)(((inv_opacity*baseY[x]) + (opacity*ovY[x]+128))>>8);

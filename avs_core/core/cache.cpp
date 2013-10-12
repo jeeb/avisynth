@@ -40,6 +40,10 @@
 #include <avs/win.h>
 #include <avs/minmax.h>
 
+#ifdef X86_32
+#include <mmintrin.h>
+#endif
+
 #ifdef _DEBUG
 #include <cstdio>
 #endif
@@ -399,10 +403,17 @@ PVideoFrame __stdcall Cache::GetFrame(int n, IScriptEnvironment* env)
 
   n = clamp(n, 0, vi.num_frames-1);   // Inserted to avoid requests beyond framerange.
 
-  __asm {emms} // Protection from rogue filter authors
+#ifdef X86_32
+  // TODO: We should consider removing this and fixing the filters instead
+  _mm_empty(); // Protection from rogue filter authors
+#endif
 
   if (h_policy == CACHE_NOTHING) { // don't want a cache. Typically filters that only ever seek forward.
-    __asm mov ebx,ebx  // Hack! prevent compiler from trusting ebx contents across call
+#ifdef X86_32
+    // TODO: We should consider removing this and fixing the filters instead.
+    // Filters should save-restore EBX if they make use of it.
+    __asm mov ebx,ebx  // Prevent compiler from trusting ebx contents across call
+#endif
     return childGetFrame(n, env);
   }
 
@@ -538,7 +549,11 @@ PVideoFrame __stdcall Cache::GetFrame(int n, IScriptEnvironment* env)
   _RPT4(0, "Cache:%x: generating frame %d, cache from %d to %d\n", this, n, minframe, maxframe);
 
   // not cached; make the filter generate it.
-  __asm mov ebx,ebx  // Hack! prevent compiler from trusting ebx contents across call
+#ifdef X86_32
+    // TODO: We should consider removing this and fixing the filters instead.
+    // Filters should save-restore EBX if they make use of it.
+    __asm mov ebx,ebx  // Prevent compiler from trusting ebx contents across call
+#endif
   PVideoFrame result = childGetFrame(n, env);
 
   if (!cvf) cvf=GetACachedVideoFrame(result, env);

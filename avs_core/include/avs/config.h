@@ -44,5 +44,12 @@
 // builds possible.
 #define FRAME_ALIGN 32
 
+#ifdef _M_AMD64
+  #define X86_64
+#elif  _M_IX86
+  #define X86_32
+#else
+  #error Unsupported CPU architecture.
+#endif
 
 #endif //AVS_CONFIG_H

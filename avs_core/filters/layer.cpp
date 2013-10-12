@@ -89,7 +89,7 @@ Mask::Mask(PClip _child1, PClip _child2, IScriptEnvironment* env)
   mask_frames = vi2.num_frames;
 }
 
-
+#ifdef X86_32
 PVideoFrame __stdcall Mask::GetFrame(int n, IScriptEnvironment* env)
 {
   PVideoFrame src1 = child1->GetFrame(n, env);
@@ -166,6 +166,7 @@ mask_mmxloop:
 		}
  return src1;
 }
+#endif
 
 AVSValue __cdecl Mask::Create(AVSValue args, void*, IScriptEnvironment* env)
 {
@@ -201,19 +202,9 @@ PVideoFrame __stdcall ColorKeyMask::GetFrame(int n, IScriptEnvironment *env)
   const int pitch = frame->GetPitch();
   const int rowsize = frame->GetRowSize();
 
-  if (!(env->GetCPUFlags() & CPUF_MMX) || vi.width==1) {
-    const int R = (color >> 16) & 0xff;
-    const int G = (color >> 8) & 0xff;
-    const int B = color & 0xff;
-
-    for (int y=0; y<vi.height; y++) {
-      for (int x=0; x<rowsize; x+=4) {
-        if (IsClose(pf[x],B,tolB) && IsClose(pf[x+1],G,tolG) && IsClose(pf[x+2],R,tolR))
-          pf[x+3]=0;
-      }
-      pf += pitch;
-    }
-  } else { // MMX
+#ifdef X86_32
+  if ((env->GetCPUFlags() & CPUF_MMX) && (vi.width!=1))
+  { // MMX
     const int height = vi.height;
     const int col8 = color;
     const int tol8 = 0xff000000 | (tolR << 16) | (tolG << 8) | tolB;
@@ -268,6 +259,21 @@ not_odd:
       emms
     }
   }
+  else
+#endif
+  {
+    const int R = (color >> 16) & 0xff;
+    const int G = (color >> 8) & 0xff;
+    const int B = color & 0xff;
+
+    for (int y=0; y<vi.height; y++) {
+      for (int x=0; x<rowsize; x+=4) {
+        if (IsClose(pf[x],B,tolB) && IsClose(pf[x+1],G,tolG) && IsClose(pf[x+2],R,tolR))
+          pf[x+3]=0;
+      }
+      pf += pitch;
+    }
+  } 
 
   return frame;
 }
@@ -423,6 +429,7 @@ PVideoFrame Invert::GetFrame(int n, IScriptEnvironment* env)
   return f;
 }
 
+#ifdef X86_32
 /**********************
  * MMX invert function.
  *
@@ -436,7 +443,8 @@ void Invert::ConvertFrame
           int pitch,
           int rowsize,    //must be mod 4
           int height,
-          int mask) {
+          int mask) 
+{
 __asm {
     movd mm7,[mask]
 
@@ -497,7 +505,7 @@ outw:
     emms
   };
 }
-
+#endif
 
 AVSValue Invert::Create(AVSValue args, void*, IScriptEnvironment* env)
 {
@@ -974,6 +982,7 @@ Layer::Layer( PClip _child1, PClip _child2, const char _op[], int _lev, int _x, 
   overlay_frames = vi2.num_frames;
 }
 
+#ifdef X86_32
 PVideoFrame __stdcall Layer::GetFrame(int n, IScriptEnvironment* env)
 {
   PVideoFrame src1 = child1->GetFrame(n, env);
@@ -2226,7 +2235,7 @@ PVideoFrame __stdcall Layer::GetFrame(int n, IScriptEnvironment* env)
 	}
 	return src1;
 }
-
+#endif
 
 
 AVSValue __cdecl Layer::Create(AVSValue args, void*, IScriptEnvironment* env)

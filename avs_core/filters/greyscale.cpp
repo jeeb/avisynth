@@ -103,8 +103,9 @@ PVideoFrame Greyscale::GetFrame(int n, IScriptEnvironment* env)
     }}
   }
 
-  else if (vi.IsYUY2() && (env->GetCPUFlags() & CPUF_MMX)) {
-
+#ifdef X86_32
+  else if (vi.IsYUY2() && (env->GetCPUFlags() & CPUF_MMX)) 
+  {
 	  myx = __min(pitch>>1, (myx+3) & -4);	// Try for mod 8
 	  __asm {
 		pcmpeqw		mm7,mm7
@@ -211,32 +212,37 @@ xlend3:
 		emms
 	  }
   }
-  else if (vi.IsYUY2()) {
-	for (int y=0; y<myy; ++y) {
-	  for (int x=0; x<myx; x++)
-		srcp[x*2+1] = 128;
-	  srcp += pitch;
-	}
+#endif
+  else if (vi.IsYUY2()) 
+  {
+	  for (int y=0; y<myy; ++y)
+    {
+	    for (int x=0; x<myx; x++)
+		  srcp[x*2+1] = 128;
+	    srcp += pitch;
+	  }
   }
-  else if (vi.IsRGB32() && (env->GetCPUFlags() & CPUF_MMX)) {
-	const int cyav = int(0.33333*32768+0.5);
+#ifdef X86_32
+  else if (vi.IsRGB32() && (env->GetCPUFlags() & CPUF_MMX))
+  {
+	  const int cyav = int(0.33333*32768+0.5);
 
-	const int cyb = int(0.114*32768+0.5);
-	const int cyg = int(0.587*32768+0.5);
-	const int cyr = int(0.299*32768+0.5);
+	  const int cyb = int(0.114*32768+0.5);
+	  const int cyg = int(0.587*32768+0.5);
+	  const int cyr = int(0.299*32768+0.5);
 
-	const int cyb709 = int(0.0722*32768+0.5);
-	const int cyg709 = int(0.7152*32768+0.5);
-	const int cyr709 = int(0.2126*32768+0.5);
+	  const int cyb709 = int(0.0722*32768+0.5);
+	  const int cyg709 = int(0.7152*32768+0.5);
+	  const int cyr709 = int(0.2126*32768+0.5);
 
-	__int64 rgb2lum;
+	  __int64 rgb2lum;
 
-	if (theMatrix == Rec709)
-	  rgb2lum = ((__int64)cyr709 << 32) | (cyg709 << 16) | cyb709;
-	else if (theMatrix == Average)
-	  rgb2lum = ((__int64)cyav << 32) | (cyav << 16) | cyav;
-	else
-	  rgb2lum = ((__int64)cyr << 32) | (cyg << 16) | cyb;
+	  if (theMatrix == Rec709)
+	    rgb2lum = ((__int64)cyr709 << 32) | (cyg709 << 16) | cyb709;
+	  else if (theMatrix == Average)
+	    rgb2lum = ((__int64)cyav << 32) | (cyav << 16) | cyav;
+	  else
+	    rgb2lum = ((__int64)cyr << 32) | (cyg << 16) | cyb;
 
     __asm {
 		mov			edi,srcp
@@ -311,7 +317,9 @@ rgb2lum_even:
 		emms
     }
   }
-  else if (vi.IsRGB()) {  // RGB C
+#endif
+  else if (vi.IsRGB())
+  {  // RGB C
     BYTE* p_count = srcp;
     const int rgb_inc = vi.IsRGB32() ? 4 : 3;
 	if (theMatrix == Rec709) {

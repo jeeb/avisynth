@@ -356,42 +356,48 @@ void __stdcall MergeChannels::GetAudio(void* buf, __int64 start, __int64 count, 
         break;
       }
 	case 8: { // stereo float/32 bit
-		if (env->GetCPUFlags() & CPUF_MMX) {
-          __asm {
-		    mov eax,[src_buf]
-		     mov edi,[samples]
-		    mov ecx,dword ptr[count]
-		     add edi,[dst_offset]
-			test ecx,ecx
-		     mov edx,[bps]    ; bytes per strip
-			jz done
-			 shr ecx,1        ; CF=count&1, count>>=1
-			 jnc label        ; count was even
+#ifdef X86_32
+		if (env->GetCPUFlags() & CPUF_MMX) 
+    {
+      __asm 
+      {
+        mov eax,[src_buf]
+        mov edi,[samples]
+        mov ecx,dword ptr[count]
+        add edi,[dst_offset]
+        test ecx,ecx
+        mov edx,[bps]    ; bytes per strip
+        jz done
+        shr ecx,1        ; CF=count&1, count>>=1
+        jnc label        ; count was even
 
-		    movq mm1,[eax]    ; do 1 odd quad
-		     add eax,8
-		    movq [edi],mm1
-		     add edi,edx
-			test ecx,ecx
-			jz done
-			 align 16
-label:
-		    movq mm0,[eax]    ; do pairs of quads
-		     movq mm1,[eax+8]
-		    add eax,16
-		     movq [edi],mm0
-		    movq [edi+edx],mm1
-		     lea edi,[edi+edx*2]
-			loop label
-done:
-		    emms
-          }
-        }
-		else {
-          for (int l = 0, k=dst_offset; l < count; l++, k+=bps) {
-            *(__int64*)(samples+k) = ((__int64*)src_buf)[l];
-          }
-        }
+        movq mm1,[eax]    ; do 1 odd quad
+        add eax,8
+        movq [edi],mm1
+        add edi,edx
+        test ecx,ecx
+        jz done
+        align 16
+      label:
+        movq mm0,[eax]    ; do pairs of quads
+        movq mm1,[eax+8]
+        add eax,16
+        movq [edi],mm0
+        movq [edi+edx],mm1
+        lea edi,[edi+edx*2]
+        loop label
+      done:
+        emms
+      }
+    }
+		else 
+#endif // X86_32
+    {
+      for (int l = 0, k=dst_offset; l < count; l++, k+=bps) 
+      {
+        *(__int64*)(samples+k) = ((__int64*)src_buf)[l];
+      }
+    }
         break;
       }
 	default: { // everything else, 1 byte at a time
@@ -634,13 +640,7 @@ void __stdcall Amplify::GetAudio(void* buf, __int64 start, __int64 count, IScrip
   int countXchannels = (int)count*channels; 
 
   if (vi.SampleType() == SAMPLE_INT16) {
-// Talk about crap assembler code, who taught this compiler how to do 64bits!
-//  short* samples = (short*)buf;
-//  for (int i = 0; i < countXchannels; i+=channels) {
-//    for (int j = 0; j < channels; j++) {
-//      samples[i + j] = Saturate(Int32x32To64(samples[i + j], i_v[j]) + 65536);
-//    }
-//  }
+#ifdef X86_32
     const short* endsample = (short*)buf + countXchannels;
     const int* iv = i_v;
 
@@ -678,16 +678,20 @@ saturate0:
           cmp	 edi, [endsample]
           jl	 iloop0
     }
+#else
+  short* samples = (short*)buf;
+  for (int i = 0; i < countXchannels; i+=channels) {
+    for (int j = 0; j < channels; j++) {
+      samples[i + j] = Saturate(Int32x32To64(samples[i + j], i_v[j]) + 65536);
+    }
+  }
+#endif // X86_32
+
     return ;
   }
 
   if (vi.SampleType() == SAMPLE_INT32) {
-//  const int* samples = (int*)buf;
-//  for (int i = 0; i < countXchannels; i+=channels) {
-//    for (int j = 0;j < channels;j++) {
-//      samples[i + j] = Saturate_int32(Int32x32To64(samples[i + j], i_v[j]) + 32768);
-//    }
-//  }
+#ifdef X86_32
     const int* endsample = (int*)buf + countXchannels;
     const int* iv = i_v;
 
@@ -725,6 +729,15 @@ saturate1:
           cmp	 edi, [endsample]
           jl	 iloop1
     }
+#else
+  const int* samples = (int*)buf;
+  for (int i = 0; i < countXchannels; i+=channels) {
+    for (int j = 0;j < channels;j++) {
+      samples[i + j] = Saturate_int32(Int32x32To64(samples[i + j], i_v[j]) + 32768);
+    }
+  }
+#endif // X86_32
+
     return ;
   }
   if (vi.SampleType() == SAMPLE_FLOAT) {
@@ -923,10 +936,7 @@ void __stdcall Normalize::GetAudio(void* buf, __int64 start, __int64 count, IScr
     const int factor = (int)(max_factor * 131072.0f + 0.5f);
     child->GetAudio(buf, start, count, env);
 
-//  short* samples = (short*)buf;
-//  for (int i = 0; i < chanXcount; ++i) {
-//    samples[i] = Saturate(Int32x32To64(samples[i], factor) + 32768);
-//  }
+#ifdef X86_32
     const short* endsample = (short*)buf + chanXcount;
 
     __asm {
@@ -957,6 +967,12 @@ saturate2:
           cmp	 edi, [endsample]
           jl	 iloop2
     }
+#else
+    short* samples = (short*)buf;
+    for (int i = 0; i < chanXcount; ++i) {
+      samples[i] = Saturate(Int32x32To64(samples[i], factor) + 32768);
+    }
+#endif // X86_32
   } else if (vi.SampleType() == SAMPLE_FLOAT) {
     SFLOAT* samples = (SFLOAT*)buf;
     child->GetAudio(buf, start, count, env);
@@ -1033,15 +1049,11 @@ void __stdcall MixAudio::GetAudio(void* buf, __int64 start, __int64 count, IScri
   unsigned channels = vi.AudioChannels();
 
   if (vi.SampleType()&SAMPLE_INT16) {
-//  short* samples = (short*)buf;
-//  short* clip_samples = (short*)tempbuffer;
-//  for (unsigned i = 0; i < unsigned(count)*channels; ++i) {
-//      samples[i] = Saturate64(Int32x32To64(samples[i], track1_factor) + Int32x32To64(clip_samples[i], track2_factor) + 32768);
-//  }
+#ifdef X86_32
     const short* tbuffer = (short*)tempbuffer;
     const short* endsample = (short*)buf + unsigned(count)*channels;
-	const int t1_factor = track1_factor;
-	const int t2_factor = track2_factor;
+	  const int t1_factor = track1_factor;
+	  const int t2_factor = track2_factor;
 
     __asm {
 		  push   ebx
@@ -1080,6 +1092,13 @@ saturate3:
           jl	 iloop3
 		  pop    ebx
     }
+#else
+    short* samples = (short*)buf;
+    short* clip_samples = (short*)tempbuffer;
+    for (unsigned i = 0; i < unsigned(count)*channels; ++i) {
+        samples[i] = Saturate64(Int32x32To64(samples[i], track1_factor) + Int32x32To64(clip_samples[i], track2_factor) + 32768);
+    }
+#endif
   } else if (vi.SampleType()&SAMPLE_FLOAT) {
     SFLOAT* samples = (SFLOAT*)buf;
     const SFLOAT* clip_samples = (SFLOAT*)tempbuffer;
@@ -1233,7 +1252,9 @@ void __stdcall ResampleAudio::GetAudio(void* buf, __int64 start, __int64 count, 
 
 	short* dst_end = &dst[count * ch];
 
-	if (env->GetCPUFlags() & CPUF_MMX) {
+#ifdef X86_32
+	if (env->GetCPUFlags() & CPUF_MMX) 
+  {
 	  static const int r_Na     = 1 << (Na-1);
 	  static const int r_Nhxn   = 1 << (Nhxn-1);
 	  static const int r_NLpScl = 1 << (NLpScl-1);
@@ -1317,7 +1338,9 @@ nofix:
 	  } // while (dst
 	  __asm emms;
 	}
-	else {
+	else
+#endif // X86_32
+  {
 	  while (dst < dst_end) {
 		for (int q = 0; q < ch; q++) {
 		  short* Xp = &srcbuffer[(pos >> Np) * ch];
@@ -1398,6 +1421,7 @@ AVSValue __cdecl ResampleAudio::Create(AVSValue args, void*, IScriptEnvironment*
 }
 
 
+#ifdef X86_32
 // FilterUD MMX SAMPLE_INT16 Version -- approx 3.25 times faster than original (2.4x than new)
 /*
  * MMx registers transfered across calls
@@ -1459,6 +1483,7 @@ donone:
   }
 }
 #pragma warning( pop )
+#endif // X86_32
 
 
 // FilterUD SAMPLE_INT16 Version

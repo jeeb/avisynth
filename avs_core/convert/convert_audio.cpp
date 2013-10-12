@@ -97,6 +97,7 @@ void convert24To16(char* inbuf, void* outbuf, int count) {
       out[i] = in[i*3+1] | (in[i*3+2] << 8); 
 }
 
+#ifdef X86_32
 void convert24To16_MMX(char* inbuf, void* outbuf, int count) {
     unsigned char*  in  = (unsigned char*)inbuf;
     unsigned short* out = (unsigned short*)outbuf;
@@ -143,6 +144,7 @@ c24_start:
     for (int i=c_loop;i<count;i++)
       out[i] = in[i*3+1] | (in[i*3+2] << 8); 
 }
+#endif
 
 /*******************************************/
 
@@ -154,6 +156,7 @@ void convert16To8(char* inbuf, void* outbuf, int count) {
       out[i] = (in[i] >> 8) + 128;
 }
 
+#ifdef X86_32
 void convert16To8_MMX(char* inbuf, void* outbuf, int count) {
     signed short*  in  = (signed short*)inbuf;
     unsigned char* out = (unsigned char*)outbuf;
@@ -198,6 +201,7 @@ c16_loop:
     for (int i=c_loop;i<count;i++)
       out[i] = (in[i] >> 8) + 128;
 }
+#endif
 
 /*******************************************/
 
@@ -216,6 +220,7 @@ void convert8To16(char* inbuf, void* outbuf, int count) {
       out[i] = ((in[i]-128) << 8) | in[i];
 }
 
+#ifdef X86_32
 void convert8To16_MMX(char* inbuf, void* outbuf, int count) {
     unsigned char* in  = (unsigned char*)inbuf;
     signed short*  out = (signed short*)outbuf;
@@ -261,6 +266,7 @@ c8_loop:
     for (int i=c_loop;i<count;i++)
       out[i] = ((in[i]-128) << 8) | in[i];
 }
+#endif
 
 /*******************************************/
 
@@ -451,6 +457,7 @@ void ConvertAudio::convertToFloat(char* inbuf, float* outbuf, char sample_type, 
   }
 }
 
+#ifdef X86_32
 void ConvertAudio::convertToFloat_SSE(char* inbuf, float* outbuf, char sample_type, int count) {
   int i;
   switch (sample_type) {
@@ -559,8 +566,9 @@ c32_loop:
     }
   }
 }
+#endif
 
-
+#ifdef X86_32
 void ConvertAudio::convertToFloat_SSE2(char* inbuf, float* outbuf, char sample_type, int count) {
   int i;
   switch (sample_type) {
@@ -787,8 +795,9 @@ c24_loop:
     }
   }
 }
+#endif
 
-
+#ifdef X86_32
 void ConvertAudio::convertToFloat_3DN(char* inbuf, float* outbuf, char sample_type, int count) {
   int i;
   switch (sample_type) {
@@ -932,11 +941,14 @@ c24_loop:
     }
   }
 }
+#endif
+
+
 
 //==================
 // convertFromFloat
 //==================
-
+#ifdef X86_32
 void ConvertAudio::convertFromFloat_3DN(float* inbuf,void* outbuf, char sample_type, int count) {
   int i;
   switch (sample_type) {
@@ -1088,6 +1100,7 @@ c24f_loop:
     }
   }
 }
+#endif
 
 void ConvertAudio::convertFromFloat(float* inbuf,void* outbuf, char sample_type, int count) {
   int i;
@@ -1134,6 +1147,7 @@ void ConvertAudio::convertFromFloat(float* inbuf,void* outbuf, char sample_type,
   }
 }
 
+#ifdef X86_32
 void ConvertAudio::convertFromFloat_SSE(float* inbuf,void* outbuf, char sample_type, int count) {
   int i;
 
@@ -1250,7 +1264,9 @@ cf32_loop:
     }
   }
 }
+#endif
 
+#ifdef X86_32
 void ConvertAudio::convertFromFloat_SSE2(float* inbuf,void* outbuf, char sample_type, int count) {
   int i;
 
@@ -1504,6 +1520,7 @@ cf24_loop:
     }
   }
 }
+#endif
 
 __inline int ConvertAudio::Saturate_int8(float n) {
     if (n <= -128.0f) return -128;

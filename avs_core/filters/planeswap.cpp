@@ -138,8 +138,10 @@ PVideoFrame __stdcall SwapUV::GetFrame(int n, IScriptEnvironment* env) {
 }
 
 
+#ifdef X86_32
 void SwapUV::isse_inplace_yuy2_swap(const BYTE* srcp, BYTE* dstp, int rowsize16, int rowsize8,
-                                    int rowsize4, int height, int srcpitch, int dstpitch) {
+                                    int rowsize4, int height, int srcpitch, int dstpitch)
+{
         __asm {
             pcmpeqb   mm7,mm7			; 0xffffffffffffffff
             psrlw     mm7,8 			; 0x00ff00ff00ff00ff
@@ -216,6 +218,7 @@ done:
           emms
         }
 }
+#endif
 
 AVSValue __cdecl SwapUVToY::CreateUToY(AVSValue args, void* user_data, IScriptEnvironment* env) {
   return new SwapUVToY(args[0].AsClip(), UToY, env);

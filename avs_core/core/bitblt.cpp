@@ -30,10 +30,13 @@
 // import and export plugins, or graphical user interfaces.
 
 #include "bitblt.h"
+#include <avs/config.h>
 #include "memcpy_amd.h"
 #include <avs/cpuid.h>
 #include <cstring>
 #include <cassert>
+
+#ifdef X86_32
 
 // Assembler bitblit by Steady
 static void asm_BitBlt_ISSE(BYTE* dstp, int dst_pitch, const BYTE* srcp, int src_pitch, int row_size, int height) {
@@ -251,6 +254,7 @@ memoptA_done8:
   }//end aligned version
 }//end BitBlt_memopt()
 
+#endif //X86_32
 
 void BitBlt(BYTE* dstp, int dst_pitch, const BYTE* srcp, int src_pitch, int row_size, int height) {
 
@@ -265,17 +269,22 @@ void BitBlt(BYTE* dstp, int dst_pitch, const BYTE* srcp, int src_pitch, int row_
   if ( ((src_pitch == dst_pitch) && (dst_pitch == row_size)) || (height == 1) )
   {  // we can copy the whole buffer in one go
 
+#ifdef X86_32
     if (GetCPUFlags() & CPUF_INTEGER_SSE)
       memcpy_amd(dstp, srcp, src_pitch*height);  // SSE
     else
+#endif
       memcpy(dstp, srcp, src_pitch*height);      // fallback
   }
   else
   {  // we must convert between the different pitch values
 
+#ifdef X86_32
     if (GetCPUFlags() & CPUF_INTEGER_SSE)
       asm_BitBlt_ISSE(dstp,dst_pitch,srcp,src_pitch,row_size,height);
-    else {
+    else
+#endif
+    {
       for (int y=height; y>0; --y) {
         memcpy(dstp, srcp, row_size);
         dstp += dst_pitch;

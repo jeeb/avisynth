@@ -143,11 +143,14 @@ void AFV_C(uc* l, uc* p, const int height, const int pitch, const int row_size, 
 	}
 }
 
+
+#ifdef X86_32
 // ------------------------------
 // Blur/Sharpen Vertical MMX Code
 // ------------------------------
 
-void AFV_MMX(const uc* l, const uc* p, const int height, const int pitch, const int row_size, const int amount) {
+void AFV_MMX(const uc* l, const uc* p, const int height, const int pitch, const int row_size, const int amount) 
+{
 	// round masks
 	__declspec(align(8)) const static __int64 r7 = 0x0040004000400040;
 
@@ -265,7 +268,7 @@ lrow_loop:
 	}
 	__asm emms
 }
-
+#endif
 
 AdjustFocusH::AdjustFocusH(double _amount, PClip _child, bool _mmx)
 : GenericVideoFilter(_child), amount(int(32768*pow(2.0, _amount)+0.5)), mmx(_mmx) {}
@@ -353,11 +356,13 @@ void AFH_RGB32_C(uc* p, int height, const int pitch, const int width, const int 
 	}
 }
 
+#ifdef X86_32
 // --------------------------------------
 // Blur/Sharpen Horizontal RGB32 MMX Code
 // --------------------------------------
 
-void AFH_RGB32_MMX(const uc* p, const int height, const int pitch, const int width, const int amount) {
+void AFH_RGB32_MMX(const uc* p, const int height, const int pitch, const int width, const int amount) 
+{
 	// round masks
 	__declspec(align(8)) const __int64 r7 = 0x0040004000400040;
 	// weights
@@ -467,6 +472,7 @@ next_loop:
 	}
 	__asm emms
 }
+#endif
 
 // -------------------------------------
 // Blur/Sharpen Horizontal YUY2 C++ Code
@@ -503,11 +509,13 @@ void AFH_YUY2_C(uc* p, int height, const int pitch, const int width, const int a
 }
 
 
+#ifdef X86_32
 // -------------------------------------
 // Blur/Sharpen Horizontal YUY2 MMX Code
 // -------------------------------------
 
-void AFH_YUY2_MMX(const uc* p, const int height, const int pitch, const int width, const int amount) {
+void AFH_YUY2_MMX(const uc* p, const int height, const int pitch, const int width, const int amount) 
+{
 	// round masks
 	__declspec(align(8)) const __int64 r7 = 0x0040004000400040;
 	// YY and UV masks
@@ -705,6 +713,7 @@ next_loop:
 	}
 	__asm emms
 }
+#endif
 
 // --------------------------------------
 // Blur/Sharpen Horizontal RGB24 C++ Code
@@ -757,6 +766,7 @@ void AFH_YV12_C(uc* p, int height, const int pitch, const int row_size, const in
 	}
 }
 
+#ifdef X86_32
 // -------------------------------------
 // Blur/Sharpen Horizontal YV12 MMX Code
 // -------------------------------------
@@ -787,7 +797,10 @@ __asm	 psraw		mmA,7		/* /= 128              */\
 __asm	psraw		mmAA,7		/* /= 128              */\
 __asm	 add		ecx,8		/* p += 8              */\
 __asm	packuswb	mmA,mmAA	/* Packed new 8 pixels */
+#endif
 
+
+#ifdef X86_32
 // 
 // Planer MMX blur/sharpen - process 8 pixels at a time
 //   FillBorder::Create(_child)) ensures the right edge is repeated to mod 8 width
@@ -890,8 +903,7 @@ out_row_loop_ex:
 	}
 	__asm emms
 }
-
-
+#endif
 
 
 /************************************************
@@ -1195,8 +1207,9 @@ static const __int64 full     = 0xffffffffffffffffi64;
 
 static const __int64 add64    = (__int64)(16384) | ((__int64)(16384)<<32);
 
-
-void TemporalSoften::mmx_accumulate_line(const BYTE* c_plane, const BYTE** planeP, int planes, int rowsize, __int64* t) {
+#ifdef X86_32
+void TemporalSoften::mmx_accumulate_line(const BYTE* c_plane, const BYTE** planeP, int planes, int rowsize, __int64* t)
+{
   const __int64 t2 = *t;
   int* _accum_line=accum_line;
   int* _div_line=div_line;
@@ -1272,9 +1285,11 @@ outloop:
 	pop ebx
   }
 }
+#endif
 
-
-void TemporalSoften::isse_accumulate_line(const BYTE* c_plane, const BYTE** planeP, int planes, int rowsize, __int64* t) {
+#ifdef X86_32
+void TemporalSoften::isse_accumulate_line(const BYTE* c_plane, const BYTE** planeP, int planes, int rowsize, __int64* t)
+{
   const __int64 t2 = *t;
   int* _accum_line=accum_line;
   int* _div_line=div_line;
@@ -1349,9 +1364,11 @@ outloop:
 	pop ebx
   }
 }
+#endif
 
-
-void TemporalSoften::isse_accumulate_line_mode2(const BYTE* c_plane, const BYTE** planeP, int planes, int rowsize, __int64* t, int div) {
+#ifdef X86_32
+void TemporalSoften::isse_accumulate_line_mode2(const BYTE* c_plane, const BYTE** planeP, int planes, int rowsize, __int64* t, int div) 
+{
   const __int64 t2 = *t;
   __int64 div64 = (__int64)(div) | ((__int64)(div)<<16) | ((__int64)(div)<<32) | ((__int64)(div)<<48);
   div>>=1;
@@ -1455,8 +1472,11 @@ outloop:
 	pop ebx
   }
 }
+#endif
 
-void TemporalSoften::mmx_accumulate_line_mode2(const BYTE* c_plane, const BYTE** planeP, int planes, int rowsize, __int64* t, int div) {
+#ifdef X86_32
+void TemporalSoften::mmx_accumulate_line_mode2(const BYTE* c_plane, const BYTE** planeP, int planes, int rowsize, __int64* t, int div)
+{
   const __int64 t2 = *t;
 
   __int64 div64 = (__int64)(div) | ((__int64)(div)<<16) | ((__int64)(div)<<32) | ((__int64)(div)<<48);
@@ -1565,9 +1585,11 @@ outloop:
 	pop ebx
   }
 }
+#endif
 
-
-int TemporalSoften::isse_scenechange(const BYTE* c_plane, const BYTE* tplane, int height, int width, int c_pitch, int t_pitch) {
+#ifdef X86_32
+int TemporalSoften::isse_scenechange(const BYTE* c_plane, const BYTE* tplane, int height, int width, int c_pitch, int t_pitch)
+{
   int wp=(width/32)*32;
   int hp=height;
   int returnvalue=0xbadbad00;
@@ -1623,7 +1645,7 @@ endframe:
   }
   return returnvalue;
 }
-
+#endif
 
 AVSValue __cdecl TemporalSoften::Create(AVSValue args, void*, IScriptEnvironment* env) 
 {

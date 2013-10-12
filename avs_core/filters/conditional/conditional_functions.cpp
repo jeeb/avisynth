@@ -38,7 +38,7 @@
 #include <cstdlib>
 #include <avs/minmax.h>
 #include "../../core/internal.h"
-
+#include <avs/config.h>
 
 
 extern const AVSFunction Conditional_funtions_filters[] = {
@@ -168,6 +168,7 @@ unsigned int AveragePlane::C_average_plane(const BYTE* c_plane, int height, int 
   return accum;
 }
 
+#ifdef X86_32
 unsigned int AveragePlane::isse_average_plane(const BYTE* c_plane, int height, int width, int c_pitch) {
   int hp=height;
   unsigned int returnvalue=0xbadbad00;
@@ -208,7 +209,7 @@ endframe:
   }
   return returnvalue;
 }
-
+#endif
 
 
 
@@ -580,6 +581,8 @@ unsigned int ComparePlane::C_scenechange_rgb_16(const BYTE* c_plane, const BYTE*
 
 }
 
+
+#ifdef X86_32
 /*********************
  * YV12 Scenechange detection.
  *
@@ -594,7 +597,6 @@ unsigned int ComparePlane::C_scenechange_rgb_16(const BYTE* c_plane, const BYTE*
  * This version is optimized for mod16 widths. Others widths are allowed,
  *  but the remaining pixels are simply skipped.
  *********************/
-
 
 unsigned int ComparePlane::isse_scenechange_16(const BYTE* c_plane, const BYTE* tplane, int height, int width, int c_pitch, int t_pitch) {
   int wp=width;
@@ -640,9 +642,12 @@ endframe:
   }
   return returnvalue;
 }
+#endif
 
 
 
+
+#ifdef X86_32
 /*********************
  * RGB32 Scenechange detection.
  *
@@ -657,7 +662,6 @@ endframe:
  * This version is optimized for mod16 widths. Others widths are allowed,
  *  but the remaining pixels are simply skipped.
  *********************/
-
 
 unsigned int ComparePlane::isse_scenechange_rgb_16(const BYTE* c_plane, const BYTE* tplane, int height, int width, int c_pitch, int t_pitch) {
    __declspec(align(8)) static const __int64 Mask1 =  0x00ffffff00ffffff;
@@ -708,4 +712,4 @@ endframe:
   }
   return returnvalue;
 }
-
+#endif

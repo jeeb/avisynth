@@ -113,10 +113,13 @@ void OL_DarkenImage::BlendImage(Image444* base, Image444* overlay) {
   int w = base->w();
   int h = base->h();
   if (opacity == 256) {
-    if (!(w&7) && (env->GetCPUFlags() & CPUF_MMX)) {
+#ifdef X86_32
+    if (!(w&7) && (env->GetCPUFlags() & CPUF_MMX))
+    {
       mmx_darken_planar(baseY, baseU, baseV, ovY, ovU, ovV, base->pitch, overlay->pitch, w, h);
       return;
     }
+#endif
     for (int y = 0; y < h; y++) {
       for (int x = 0; x < w; x++) {
         if (ovY[x] < baseY[x] )  { 

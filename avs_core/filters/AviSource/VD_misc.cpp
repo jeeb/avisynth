@@ -21,26 +21,15 @@
 
 extern long CPUCheckForExtensions();  // in cpuaccel.cpp
 
-long __declspec(naked) MulDivTrunc(long a, long b, long c) {
-	__asm {
-		mov eax,[esp+4]
-		imul dword ptr [esp+8]
-		idiv dword ptr [esp+12]
-		ret
-	}
+typedef signed long long sint64;
+typedef unsigned long long uint64;
+
+long MulDivTrunc(long a, long b, long c) {
+	return (long)(((sint64)a * b) / c);
 }
 
-unsigned __declspec(naked) __stdcall MulDivUnsigned(unsigned a, unsigned b, unsigned c) {
-	__asm {
-		mov		eax,[esp+4]
-		mov		ecx,[esp+12]
-		mul		dword ptr [esp+8]
-		shr		ecx,1
-		add		eax,ecx
-		adc		edx,0
-		div		dword ptr [esp+12]
-		ret		12
-	}
+unsigned __stdcall MulDivUnsigned(unsigned a, unsigned b, unsigned c) {
+	return (unsigned)(((uint64)a * b + 0x80000000) / c);
 }
 
 int NearestLongValue(long v, const long *array, int array_size) {
@@ -95,7 +84,7 @@ FOURCC toupperFOURCC(FOURCC fcc) {
 	}
 
 	void ClearMMXState() {
-		if (GetCPUFlags() & 0x04)     // MMX supported
+		if (GetCPUFlags() & CPUF_MMX)     // MMX supported
 			__asm emms
 		else {
 			__asm {
