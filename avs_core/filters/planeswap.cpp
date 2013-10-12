@@ -105,7 +105,9 @@ PVideoFrame __stdcall SwapUV::GetFrame(int n, IScriptEnvironment* env) {
       const BYTE* srcp = src->GetReadPtr();
       PVideoFrame dst = env->NewVideoFrame(vi);
       
-      if ((env->GetCPUFlags() & CPUF_INTEGER_SSE)) { // need pshufw
+#ifdef X86_32
+      if ((env->GetCPUFlags() & CPUF_INTEGER_SSE))   // need pshufw
+      {
         BYTE* dstp = dst->GetWritePtr();
         int srcpitch = src->GetPitch();
         int dstpitch = dst->GetPitch();
@@ -115,7 +117,9 @@ PVideoFrame __stdcall SwapUV::GetFrame(int n, IScriptEnvironment* env) {
         int rowsize16 = rowsize4 & -16;
         isse_inplace_yuy2_swap(srcp, dstp, rowsize16, rowsize8, rowsize4, height, srcpitch, dstpitch);
       }
-      else {
+      else
+#endif
+      {
         short* dstp = (short*)dst->GetWritePtr();
         const int srcpitch = src->GetPitch();
         const int dstpitch = dst->GetPitch()>>1;

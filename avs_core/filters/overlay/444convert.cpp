@@ -88,10 +88,12 @@ loopx:
 	pop     ebx
   }
 }
+#endif // X86_32
 
-void Convert444FromYV12::ConvertImage(PVideoFrame src, Image444* dst, IScriptEnvironment* env) {
-  env->BitBlt(dst->GetPtr(PLANAR_Y), dst->pitch,
-    src->GetReadPtr(PLANAR_Y),src->GetPitch(PLANAR_Y), src->GetRowSize(PLANAR_Y), src->GetHeight());
+void Convert444FromYV12::ConvertImage(PVideoFrame src, Image444* dst, IScriptEnvironment* env)
+{
+#ifdef X86_32
+  env->BitBlt(dst->GetPtr(PLANAR_Y), dst->pitch, src->GetReadPtr(PLANAR_Y),src->GetPitch(PLANAR_Y), src->GetRowSize(PLANAR_Y), src->GetHeight());
 
   const BYTE* srcU = src->GetReadPtr(PLANAR_U);
   const BYTE* srcV = src->GetReadPtr(PLANAR_V);
@@ -108,14 +110,16 @@ void Convert444FromYV12::ConvertImage(PVideoFrame src, Image444* dst, IScriptEnv
 
   ConvertYV12ChromaTo444(dstU, srcU, dstUVpitch, srcUVpitch, w, h);
   ConvertYV12ChromaTo444(dstV, srcV, dstUVpitch, srcUVpitch, w, h);
-
+#else
+  //TODO
+  env->ThrowError("Convert444FromYV12::ConvertImage is not yet ported to 64-bit.");
+#endif
 }
 
 void Convert444FromYV12::ConvertImageLumaOnly(PVideoFrame src, Image444* dst, IScriptEnvironment* env) {
   env->BitBlt(dst->GetPtr(PLANAR_Y), dst->pitch,
     src->GetReadPtr(PLANAR_Y),src->GetPitch(PLANAR_Y), src->GetRowSize(PLANAR_Y), src->GetHeight());
 }
-#endif // X86_32
 
 
 void Convert444FromYV24::ConvertImage(PVideoFrame src, Image444* dst, IScriptEnvironment* env) {
@@ -381,8 +385,11 @@ loopx:
 	pop       ebx
   }
 }
+#endif X86_32
 
-PVideoFrame Convert444ToYV12::ConvertImage(Image444* src, PVideoFrame dst, IScriptEnvironment* env) {
+PVideoFrame Convert444ToYV12::ConvertImage(Image444* src, PVideoFrame dst, IScriptEnvironment* env)
+{
+#ifdef X86_32
   env->MakeWritable(&dst);
 
   env->BitBlt(dst->GetWritePtr(PLANAR_Y), dst->GetPitch(PLANAR_Y),
@@ -424,9 +431,13 @@ PVideoFrame Convert444ToYV12::ConvertImage(Image444* src, PVideoFrame dst, IScri
       dstV+=dstUVpitch;
     }
   }
+#else
+  //TODO
+  env->ThrowError("Convert444ToYV12::ConvertImage is not yet ported to 64-bit.");
+#endif
+
   return dst;
 }
-#endif X86_32
 
 
 /*****   YUV 4:4:4 -> YUY2   *******/

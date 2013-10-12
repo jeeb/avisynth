@@ -373,7 +373,6 @@ void Antialiaser::ApplyRGB32(BYTE* buf, int pitch) {
 }
 
 
-#ifdef X86_32
 void Antialiaser::GetAlphaRect()
 {
   dirty = false;
@@ -444,8 +443,11 @@ void Antialiaser::GetAlphaRect()
         tmp |= src[srcpitch*(8+i)+1];
       }
 */
-      DWORD tmp = interlaced;
-      __asm {           // test if the whole area isn't just plain black
+      DWORD tmp = 1;
+#ifdef X86_32
+      tmp = interlaced;
+      __asm
+      {           // test if the whole area isn't just plain black
         mov edx, srcpitch
         mov esi, src
         mov ecx, edx
@@ -516,6 +518,7 @@ do24:
         and eax, 0x00ffffff
         mov tmp, eax
       }
+#endif
 
       if (tmp != 0) {     // quick exit in a common case
 		if (wt >= xl) xl=wt;
@@ -668,9 +671,6 @@ do24:
   xl=w-xl;
   xr=w-xr;
 }
-#endif
-
-
 
 
 
@@ -1598,9 +1598,17 @@ PVideoFrame __stdcall Compare::GetFrame(int n, IScriptEnvironment* env)
 
     bytecount = rowsize * height * masked_bytes / 4;
 
-    if (((rowsize & 7) && !vi.IsRGB24()) ||       // rowsize must be a multiple or 8 for RGB32 and YUY2
-       ((rowsize % 6) && vi.IsRGB24()) ||          // or 6 for RGB24
-       !(env->GetCPUFlags() & CPUF_INTEGER_SSE)) { // to use the ISSE routine
+#ifdef X86_32
+    if ((!(rowsize & 7) ||  vi.IsRGB24()) &&      // rowsize must be a multiple of 8 for RGB32 and YUY2
+        (!(rowsize % 6) || !vi.IsRGB24()) &&      // or 6 for RGB24
+        (env->GetCPUFlags() & CPUF_INTEGER_SSE))  // to use the ISSE routine
+    {
+      Compare_ISSE(mask, incr, f1ptr, pitch1, f2ptr, pitch2, rowsize, height,
+                   SAD, SD, pos_D, neg_D, SSD);
+    }
+    else
+#endif
+    {
       for (int y = 0; y < height; y++) {
         row_SSD = 0;
         for (int x = 0; x < rowsize; x += incr) {
@@ -1620,9 +1628,6 @@ PVideoFrame __stdcall Compare::GetFrame(int n, IScriptEnvironment* env)
         f1ptr += pitch1;
         f2ptr += pitch2;
       }
-    } else {        // ISSE version; rowsize multiple of 8 for RGB32 and YUY2; 6 for RGB24
-      Compare_ISSE(mask, incr, f1ptr, pitch1, f2ptr, pitch2, rowsize, height,
-                   SAD, SD, pos_D, neg_D, SSD);
     }
   }
   else { // Planar
@@ -1642,7 +1647,15 @@ PVideoFrame __stdcall Compare::GetFrame(int n, IScriptEnvironment* env)
 
         bytecount += rowsize * height;
 
-        if ((rowsize & 7) || !(env->GetCPUFlags() & CPUF_INTEGER_SSE)) { 
+#ifdef X86_32
+        if (!(rowsize & 7) && (env->GetCPUFlags() & CPUF_INTEGER_SSE)) 
+        {
+         Compare_ISSE(mask, incr, f1ptr, pitch1, f2ptr, pitch2, rowsize, height,
+                      SAD, SD, pos_D, neg_D, SSD);
+        }
+        else
+#endif
+        {
           // rowsize must be a multiple 8 to use the ISSE routine
           for (int y = 0; y < height; y++) {
             row_SSD = 0;
@@ -1660,10 +1673,6 @@ PVideoFrame __stdcall Compare::GetFrame(int n, IScriptEnvironment* env)
             f1ptr += pitch1;
             f2ptr += pitch2;
           }
-        }
-        else {
-         Compare_ISSE(mask, incr, f1ptr, pitch1, f2ptr, pitch2, rowsize, height,
-                      SAD, SD, pos_D, neg_D, SSD);
         }
       }
     }
@@ -1859,7 +1868,8 @@ void ApplyMessage( PVideoFrame* frame, const VideoInfo& vi, const char* message,
   }
   Antialiaser antialiaser(vi.width, vi.height, "Arial", size, textcolor, halocolor);
   HDC hdcAntialias = antialiaser.GetDC();
-  if  (hdcAntialias) {
+  if  (hdcAntialias)
+  {
 	RECT r = { 4*8, 4*8, vi.width*8, vi.height*8 };
 	DrawText(hdcAntialias, message, lstrlen(message), &r, DT_NOPREFIX|DT_CENTER);
 	GdiFlush();

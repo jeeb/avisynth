@@ -621,7 +621,9 @@ PVideoFrame Dissolve::GetFrame(int n, IScriptEnvironment* env)
 
   const int multiplier = n - video_fade_end + overlap;
 
-  if ((env->GetCPUFlags() & CPUF_MMX) && (!(a->GetRowSize(PLANAR_Y_ALIGNED)&7)) ) {  // MMX and Video is mod 8
+#ifdef X86_32
+  if ((env->GetCPUFlags() & CPUF_MMX) && (!(a->GetRowSize(PLANAR_Y_ALIGNED)&7)) )  // MMX and Video is mod 8
+  {
     int weight = (multiplier * 32767) / (overlap+1);
     int invweight = 32767-weight;
     env->MakeWritable(&a);
@@ -632,6 +634,7 @@ PVideoFrame Dissolve::GetFrame(int n, IScriptEnvironment* env)
     }
     return a;  
   }
+#endif
 
   
   PVideoFrame c;

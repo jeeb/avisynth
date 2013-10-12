@@ -276,24 +276,46 @@ PVideoFrame __stdcall ConvertToYV12::GetFrame(int n, IScriptEnvironment* env) {
   PVideoFrame dst = env->NewVideoFrame(vi);
 
   if (interlaced) {
-    if ((env->GetCPUFlags() & CPUF_INTEGER_SSE)) {
+#ifdef X86_32
+    if ((env->GetCPUFlags() & CPUF_INTEGER_SSE))
+    {
       isse_yuy2_i_to_yv12(src->GetReadPtr(), src->GetRowSize(), src->GetPitch(),
                           dst->GetWritePtr(PLANAR_Y), dst->GetWritePtr(PLANAR_U), dst->GetWritePtr(PLANAR_V),
                           dst->GetPitch(PLANAR_Y), dst->GetPitch(PLANAR_U), src->GetHeight());
-    } else {
+    }
+    else if ((env->GetCPUFlags() & CPUF_MMX))
+    {
       mmx_yuy2_i_to_yv12(src->GetReadPtr(), src->GetRowSize(), src->GetPitch(),
                           dst->GetWritePtr(PLANAR_Y), dst->GetWritePtr(PLANAR_U), dst->GetWritePtr(PLANAR_V),
                           dst->GetPitch(PLANAR_Y), dst->GetPitch(PLANAR_U), src->GetHeight());
     }
-  } else {
-    if ((env->GetCPUFlags() & CPUF_INTEGER_SSE)) {
+    else
+#endif
+    {
+      // TODO
+      env->ThrowError("ConvertToYV12::GetFrame is not yet ported to 64-bit.");
+    }
+  } 
+  else
+  {
+#ifdef X86_32
+    if ((env->GetCPUFlags() & CPUF_INTEGER_SSE))
+    {
       isse_yuy2_to_yv12(src->GetReadPtr(), src->GetRowSize(), src->GetPitch(),
                         dst->GetWritePtr(PLANAR_Y), dst->GetWritePtr(PLANAR_U), dst->GetWritePtr(PLANAR_V),
                         dst->GetPitch(PLANAR_Y), dst->GetPitch(PLANAR_U), src->GetHeight());
-    } else {
+    }
+    else if ((env->GetCPUFlags() & CPUF_MMX))
+    {
       mmx_yuy2_to_yv12(src->GetReadPtr(), src->GetRowSize(), src->GetPitch(),
                        dst->GetWritePtr(PLANAR_Y), dst->GetWritePtr(PLANAR_U), dst->GetWritePtr(PLANAR_V),
                        dst->GetPitch(PLANAR_Y), dst->GetPitch(PLANAR_U), src->GetHeight());
+    }
+    else
+#endif
+    {
+      // TODO
+      env->ThrowError("ConvertToYV12::GetFrame is not yet ported to 64-bit.");
     }
   }
 

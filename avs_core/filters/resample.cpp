@@ -644,11 +644,11 @@ DynamicAssembledCode FilteredResizeH::GenerateResizer(int gen_plane, bool source
 }
 
 
-#ifdef X86_32
 PVideoFrame __stdcall FilteredResizeH::GetFrame(int n, IScriptEnvironment* env)
 {
   PVideoFrame src = child->GetFrame(n, env);
   PVideoFrame dst = env->NewVideoFrame(vi);
+#ifdef X86_32
   const BYTE* srcp = src->GetReadPtr();
   BYTE* dstp = dst->GetWritePtr();
   int src_pitch = src->GetPitch();
@@ -1162,9 +1162,12 @@ out_i_aloopUV:
 	  pop         ebx
     }
   }
+#else
+  //TODO
+  env->ThrowError("FilteredResizeH::GetFrame is not yet ported to 64-bit.");
+#endif
   return dst;
 }
-#endif
 
 FilteredResizeH::~FilteredResizeH(void)
 {

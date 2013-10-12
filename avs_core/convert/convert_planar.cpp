@@ -134,10 +134,12 @@ PVideoFrame __stdcall ConvertToY8::GetFrame(int n, IScriptEnvironment* env) {
     BYTE* dstY = dst->GetWritePtr(PLANAR_Y);
     const int dstPitch = dst->GetPitch(PLANAR_Y);
 
+#ifdef X86_32
     if (!(awidth & 7)) {
       this->convYUV422toY8(srcP, dstY, srcPitch, dstPitch, awidth, vi.height);
       return dst;
     }
+#endif
 
     const int w = dst->GetRowSize(PLANAR_Y);
     const int h = dst->GetHeight(PLANAR_Y);
@@ -707,11 +709,13 @@ PVideoFrame __stdcall ConvertYUY2ToYV16::GetFrame(int n, IScriptEnvironment* env
   BYTE* dstU = dst->GetWritePtr(PLANAR_U);
   BYTE* dstV = dst->GetWritePtr(PLANAR_V);
 
+#ifdef X86_32
   if (!(awidth&7)) {  // Use MMX
     this->convYUV422to422(srcP, dstY, dstU, dstV, src->GetPitch(), dst->GetPitch(PLANAR_Y),
                           dst->GetPitch(PLANAR_U),  awidth, vi.height);
     return dst;
   }
+#endif
 
   const int w = vi.width/2;
 
@@ -816,10 +820,12 @@ PVideoFrame __stdcall ConvertYV16ToYUY2::GetFrame(int n, IScriptEnvironment* env
 
   BYTE* dstp = dst->GetWritePtr();
 
+#ifdef X86_32
   if (!(awidth&7)) {  // Use MMX
     this->conv422toYUV422(srcY, srcU, srcV, dstp, src->GetPitch(PLANAR_Y), src->GetPitch(PLANAR_U),
       dst->GetPitch(), awidth, vi.height);
   }
+#endif
 
   const int w = vi.width/2;
 

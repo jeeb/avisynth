@@ -749,7 +749,9 @@ PVideoFrame __stdcall Tweak::GetFrame(int n, IScriptEnvironment* env)
 	int row_size = src->GetRowSize();
 
 	if (vi.IsYUY2()) {
-		if (sse && !coring && !dither && (env->GetCPUFlags() & CPUF_INTEGER_SSE)) {
+#ifdef X86_32
+		if (sse && !coring && !dither && (env->GetCPUFlags() & CPUF_INTEGER_SSE))
+    {
 			const __int64 hue64 = (in64 Cos<<48) + (in64 (-Sin)<<32) + (in64 Sin<<16) + in64 Cos;
 			const __int64 satcont64 = (in64 Sat<<48) + (in64 Cont<<32) + (in64 Sat<<16) + in64 Cont;
 			const __int64 bright64 = (in64 Bright<<32) + in64 Bright;
@@ -757,6 +759,7 @@ PVideoFrame __stdcall Tweak::GetFrame(int n, IScriptEnvironment* env)
 			asm_tweak_ISSE_YUY2(srcp, row_size>>2, height, src_pitch-row_size, hue64, satcont64, bright64);
 			return src;
 		}
+#endif
 
 		if (dither) {
 			const int UVwidth = vi.width/2;

@@ -122,7 +122,9 @@ AVSValue __cdecl AveragePlane::Create_v(AVSValue args, void* user_data, IScriptE
   return AvgPlane(args[0],user_data, PLANAR_V, env);
 }
 
-AVSValue AveragePlane::AvgPlane(AVSValue clip, void* user_data, int plane, IScriptEnvironment* env) {
+AVSValue AveragePlane::AvgPlane(AVSValue clip, void* user_data, int plane, IScriptEnvironment* env)
+{
+#ifdef X86_32
   if (!clip.IsClip())
     env->ThrowError("Average Plane: No clip supplied!");
   if (!(env->GetCPUFlags() & CPUF_INTEGER_SSE))
@@ -154,6 +156,11 @@ AVSValue AveragePlane::AvgPlane(AVSValue clip, void* user_data, int plane, IScri
   float f = (float)((double)b / (h * w));
 
   return (AVSValue)f;
+#else
+  //TODO
+  env->ThrowError("AveragePlane::AvgPlane is not yet ported to 64-bit.");
+  return (AVSValue)0.0f;
+#endif
 }
 
 // Average plane
@@ -266,7 +273,10 @@ AVSValue __cdecl ComparePlane::Create_next_rgb(AVSValue args, void* user_data, I
 }
 
 
-AVSValue ComparePlane::CmpPlane(AVSValue clip, AVSValue clip2, void* user_data, int plane, IScriptEnvironment* env) {
+AVSValue ComparePlane::CmpPlane(AVSValue clip, AVSValue clip2, void* user_data, int plane, IScriptEnvironment* env)
+{
+#ifdef X86_32
+
   if (!clip.IsClip())
     env->ThrowError("Plane Difference: No clip supplied!");
   if (!clip2.IsClip())
@@ -338,10 +348,17 @@ AVSValue ComparePlane::CmpPlane(AVSValue clip, AVSValue clip2, void* user_data, 
     f = (float)((double)b / (h * w));
 
   return (AVSValue)f;
+#else
+  //TODO
+  env->ThrowError("ComparePlane::CmpPlane is not yet ported to 64-bit.");
+  return (AVSValue)0.0f;
+#endif
 }
 
 
-AVSValue ComparePlane::CmpPlaneSame(AVSValue clip, void* user_data, int offset, int plane, IScriptEnvironment* env) {
+AVSValue ComparePlane::CmpPlaneSame(AVSValue clip, void* user_data, int offset, int plane, IScriptEnvironment* env)
+{
+#ifdef X86_32
   if (!clip.IsClip())
     env->ThrowError("Plane Difference: No clip supplied!");
 
@@ -401,6 +418,11 @@ AVSValue ComparePlane::CmpPlaneSame(AVSValue clip, void* user_data, int offset, 
     f = (float)((double)b / (h * w));
 
   return (AVSValue)f;
+#else
+  //TODO
+  env->ThrowError("ComparePlane::CmpPlaneSame is not yet ported to 64-bit.");
+  return (AVSValue)0.0f;
+#endif
 }
 
 

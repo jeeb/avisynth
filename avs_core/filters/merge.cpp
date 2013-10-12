@@ -117,8 +117,16 @@ PVideoFrame __stdcall MergeChroma::GetFrame(int n, IScriptEnvironment* env)
       const int isrc_pitch = (src->GetPitch())>>2;  // int pitch (one pitch=two pixels)
       const int ichroma_pitch = (chroma->GetPitch())>>2;  // Ints
 
-      ((TEST(4, 8) (env->GetCPUFlags() & CPUF_MMX)) ? mmx_weigh_chroma : weigh_chroma)
-        (srcp,chromap,isrc_pitch,ichroma_pitch,w,h,(int)(weight*32768.0f),32768-(int)(weight*32768.0f));
+#ifdef X86_32
+      if (TEST(4, 8) (env->GetCPUFlags() & CPUF_MMX))
+      {
+        mmx_weigh_chroma(srcp,chromap,isrc_pitch,ichroma_pitch,w,h,(int)(weight*32768.0f),32768-(int)(weight*32768.0f));
+      }
+      else
+#endif
+      {
+        weigh_chroma(srcp,chromap,isrc_pitch,ichroma_pitch,w,h,(int)(weight*32768.0f),32768-(int)(weight*32768.0f));
+      }
     } else {  // Planar
       env->MakeWritable(&src);
       src->GetWritePtr(PLANAR_Y); //Must be requested
@@ -128,14 +136,20 @@ PVideoFrame __stdcall MergeChroma::GetFrame(int n, IScriptEnvironment* env)
       BYTE* srcpV = (BYTE*)src->GetWritePtr(PLANAR_V);
       BYTE* chromapV = (BYTE*)chroma->GetReadPtr(PLANAR_V);
 
-      if ((env->GetCPUFlags() & CPUF_INTEGER_SSE) && (weight>0.4961f) && (weight<0.5039f)) {
+#ifdef X86_32
+      if ((env->GetCPUFlags() & CPUF_INTEGER_SSE) && (weight>0.4961f) && (weight<0.5039f))
+      {
         isse_avg_plane(srcpU,chromapU,src->GetPitch(PLANAR_U),chroma->GetPitch(PLANAR_U),src->GetRowSize(PLANAR_U_ALIGNED),src->GetHeight(PLANAR_U));
         isse_avg_plane(srcpV,chromapV,src->GetPitch(PLANAR_U),chroma->GetPitch(PLANAR_U),src->GetRowSize(PLANAR_V_ALIGNED),src->GetHeight(PLANAR_U));
-      } else if (TEST(4, 8) (env->GetCPUFlags() & CPUF_MMX)) {
+      }
+      else if (TEST(4, 8) (env->GetCPUFlags() & CPUF_MMX))
+      {
         mmx_weigh_plane(srcpU,chromapU,src->GetPitch(PLANAR_U),chroma->GetPitch(PLANAR_U),src->GetRowSize(PLANAR_U_ALIGNED),src->GetHeight(PLANAR_U),(int)(weight*32767.0f),32767-(int)(weight*32767.0f));
         mmx_weigh_plane(srcpV,chromapV,src->GetPitch(PLANAR_U),chroma->GetPitch(PLANAR_U),src->GetRowSize(PLANAR_V_ALIGNED),src->GetHeight(PLANAR_U),(int)(weight*32767.0f),32767-(int)(weight*32767.0f));
       }
-      else {
+      else
+#endif
+      {
         weigh_plane(srcpU,chromapU,src->GetPitch(PLANAR_U),chroma->GetPitch(PLANAR_U),src->GetRowSize(PLANAR_U_ALIGNED),src->GetHeight(PLANAR_U),(int)(weight*65535.0f),65535-(int)(weight*65535.0f));
         weigh_plane(srcpV,chromapV,src->GetPitch(PLANAR_U),chroma->GetPitch(PLANAR_U),src->GetRowSize(PLANAR_V_ALIGNED),src->GetHeight(PLANAR_U),(int)(weight*65535.0f),65535-(int)(weight*65535.0f));
       }
@@ -149,7 +163,17 @@ PVideoFrame __stdcall MergeChroma::GetFrame(int n, IScriptEnvironment* env)
       const int isrc_pitch = (src->GetPitch())>>2;  // int pitch (one pitch=two pixels)
       const int ichroma_pitch = (chroma->GetPitch())>>2;  // Ints
 
-      ((TEST(4, 8) (env->GetCPUFlags() & CPUF_MMX)) ? mmx_merge_luma : merge_luma)(chromap,srcp,ichroma_pitch,isrc_pitch,w,h);  // Just swap luma/chroma
+#ifdef X86_32
+      if (TEST(4, 8) (env->GetCPUFlags() & CPUF_MMX))
+      {
+        mmx_merge_luma(chromap,srcp,ichroma_pitch,isrc_pitch,w,h);  // Just swap luma/chroma
+      }
+      else
+#endif
+      {
+        merge_luma(chromap,srcp,ichroma_pitch,isrc_pitch,w,h);  // Just swap luma/chroma
+      }
+
       return chroma;
     } else {
       if (TEST(1, 2) src->IsWritable()) {
@@ -224,10 +248,31 @@ PVideoFrame __stdcall MergeLuma::GetFrame(int n, IScriptEnvironment* env)
     const int w = src->GetRowSize()>>1; // width in pixels
 
     if (weight<0.9961f)
-      ((TEST(4, 8) (env->GetCPUFlags() & CPUF_MMX)) ? mmx_weigh_luma : weigh_luma)
-               (srcp,lumap,isrc_pitch,iluma_pitch,w,h,(int)(weight*32768.0f),32768-(int)(weight*32768.0f));
+    {
+#ifdef X86_32
+      if ((TEST(4, 8) (env->GetCPUFlags() & CPUF_MMX)))
+      {
+        mmx_weigh_luma(srcp,lumap,isrc_pitch,iluma_pitch,w,h,(int)(weight*32768.0f),32768-(int)(weight*32768.0f));
+      }
+      else
+#endif
+      {
+        weigh_luma(srcp,lumap,isrc_pitch,iluma_pitch,w,h,(int)(weight*32768.0f),32768-(int)(weight*32768.0f));
+      }
+    }
     else
-      ((TEST(4, 8) (env->GetCPUFlags() & CPUF_MMX)) ? mmx_merge_luma : merge_luma)(srcp,lumap,isrc_pitch,iluma_pitch,w,h);
+    {
+#ifdef X86_32
+      if ((TEST(4, 8) (env->GetCPUFlags() & CPUF_MMX)))
+      {
+        mmx_merge_luma(srcp,lumap,isrc_pitch,iluma_pitch,w,h);
+      }
+      else
+#endif
+      {
+        merge_luma(srcp,lumap,isrc_pitch,iluma_pitch,w,h);
+      }
+    }
     return src;
   }  // Planar
   if (weight>0.9961f) {
@@ -255,13 +300,18 @@ PVideoFrame __stdcall MergeLuma::GetFrame(int n, IScriptEnvironment* env)
     BYTE* srcpY = (BYTE*)src->GetWritePtr(PLANAR_Y);
     BYTE* lumapY = (BYTE*)luma->GetReadPtr(PLANAR_Y);
 
-    if ((TEST(4, 8) (env->GetCPUFlags() & CPUF_INTEGER_SSE)) && (weight>0.4961f) && (weight<0.5039f)) {
+#ifdef X86_32
+    if ((TEST(4, 8) (env->GetCPUFlags() & CPUF_INTEGER_SSE)) && (weight>0.4961f) && (weight<0.5039f))
+    {
       isse_avg_plane(srcpY,lumapY,src->GetPitch(PLANAR_Y),luma->GetPitch(PLANAR_Y),src->GetRowSize(PLANAR_Y_ALIGNED),src->GetHeight(PLANAR_Y));
     }
-    else if (TEST(4, 8) (env->GetCPUFlags() & CPUF_MMX)) {
+    else if (TEST(4, 8) (env->GetCPUFlags() & CPUF_MMX))
+    {
       mmx_weigh_plane(srcpY,lumapY,src->GetPitch(PLANAR_Y),luma->GetPitch(PLANAR_Y),src->GetRowSize(PLANAR_Y_ALIGNED),src->GetHeight(PLANAR_Y),(int)(weight*32767.0f),32767-(int)(weight*32767.0f));
     }
-    else {
+    else
+#endif
+    {
       weigh_plane(srcpY,lumapY,src->GetPitch(PLANAR_Y),luma->GetPitch(PLANAR_Y),src->GetRowSize(PLANAR_Y_ALIGNED),src->GetHeight(PLANAR_Y),(int)(weight*65535.0f),65535-(int)(weight*65535.0f));
     }
   }
@@ -317,17 +367,22 @@ PVideoFrame __stdcall MergeAll::GetFrame(int n, IScriptEnvironment* env)
   int src_rowsize8 = (src_rowsize + 7) & -8;
   if (src_rowsize8 > src_pitch) src_rowsize8 = src_pitch;
 
-  if (TEST(16, 32) (env->GetCPUFlags() & CPUF_INTEGER_SSE) && ((src_rowsize4 & 3)==0) && (weight>0.4961f) && (weight<0.5039f)) {
+#ifdef X86_32
+  if (TEST(16, 32) (env->GetCPUFlags() & CPUF_INTEGER_SSE) && ((src_rowsize4 & 3)==0) && (weight>0.4961f) && (weight<0.5039f))
+  {
     isse_avg_plane(srcp, srcp2, src_pitch, src2->GetPitch(), src_rowsize4, src->GetHeight());
   }
-  else if (TEST(4, 8) (env->GetCPUFlags() & CPUF_MMX) && ((src_rowsize8 & 7)==0)) {
-	const int iweight = (int)(weight*32767.0f);
-	const int invweight = 32767-iweight;
+  else if (TEST(4, 8) (env->GetCPUFlags() & CPUF_MMX) && ((src_rowsize8 & 7)==0))
+  {
+	  const int iweight = (int)(weight*32767.0f);
+	  const int invweight = 32767-iweight;
     mmx_weigh_plane(srcp, srcp2, src_pitch, src2->GetPitch(), src_rowsize8, src->GetHeight(), iweight, invweight);
   }
-  else {
-	const int iweight = (int)(weight*65535.0f);
-	const int invweight = 65535-iweight;
+  else
+#endif
+  {
+	  const int iweight = (int)(weight*65535.0f);
+	  const int invweight = 65535-iweight;
     weigh_plane(srcp, srcp2, src_pitch, src2->GetPitch(), src_rowsize, src->GetHeight(), iweight, invweight);
   }
 
@@ -344,19 +399,24 @@ PVideoFrame __stdcall MergeAll::GetFrame(int n, IScriptEnvironment* env)
     src_rowsize8 = (src_rowsize + 7) & -8;
     if (src_rowsize8 > src_pitch) src_rowsize8 = src_pitch;
  
-    if ((TEST(4, 8) (env->GetCPUFlags() & CPUF_INTEGER_SSE) && ((src_rowsize4 & 3)==0)) && (weight>0.4961f) && (weight<0.5039f)) {
+#ifdef X86_32
+    if ((TEST(4, 8) (env->GetCPUFlags() & CPUF_INTEGER_SSE) && ((src_rowsize4 & 3)==0)) && (weight>0.4961f) && (weight<0.5039f))
+    {
       isse_avg_plane(srcpV, srcp2V, src_pitch, src2->GetPitch(PLANAR_U), src_rowsize4, src->GetHeight(PLANAR_U));
       isse_avg_plane(srcpU, srcp2U, src_pitch, src2->GetPitch(PLANAR_V), src_rowsize4, src->GetHeight(PLANAR_V));
     }
-    else if (TEST(4, 8) (env->GetCPUFlags() & CPUF_MMX) && ((src_rowsize8 & 7)==0)) {
+    else if (TEST(4, 8) (env->GetCPUFlags() & CPUF_MMX) && ((src_rowsize8 & 7)==0))
+    {
       const int iweight = (int)(weight*32767.0f);
       const int invweight = 32767-iweight;
       mmx_weigh_plane(srcpV, srcp2V, src_pitch, src2->GetPitch(PLANAR_U), src_rowsize8, src->GetHeight(PLANAR_U), iweight, invweight);
       mmx_weigh_plane(srcpU, srcp2U, src_pitch, src2->GetPitch(PLANAR_V), src_rowsize8, src->GetHeight(PLANAR_V), iweight, invweight);
     }
-    else {
-	  const int iweight = (int)(weight*65535.0f);
-	  const int invweight = 65535-iweight;
+    else
+#endif
+    {
+	    const int iweight = (int)(weight*65535.0f);
+	    const int invweight = 65535-iweight;
       weigh_plane(srcpV, srcp2V, src_pitch, src2->GetPitch(PLANAR_U), src_rowsize, src->GetHeight(PLANAR_U), iweight, invweight);
       weigh_plane(srcpU, srcp2U, src_pitch, src2->GetPitch(PLANAR_V), src_rowsize, src->GetHeight(PLANAR_V), iweight, invweight);
     }

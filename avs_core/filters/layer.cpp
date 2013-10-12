@@ -89,12 +89,12 @@ Mask::Mask(PClip _child1, PClip _child2, IScriptEnvironment* env)
   mask_frames = vi2.num_frames;
 }
 
-#ifdef X86_32
 PVideoFrame __stdcall Mask::GetFrame(int n, IScriptEnvironment* env)
 {
   PVideoFrame src1 = child1->GetFrame(n, env);
   PVideoFrame src2 = child2->GetFrame(min(n,mask_frames-1), env);
 
+#ifdef X86_32
   env->MakeWritable(&src1);
 
 	BYTE* src1p = src1->GetWritePtr();
@@ -164,9 +164,12 @@ mask_mmxloop:
 		jnz		mask_mmxloop
 		emms
 		}
+#else
+  //TODO
+  env->ThrowError("Mask::GetFrame is not yet ported to 64-bit.");
+#endif
  return src1;
 }
-#endif
 
 AVSValue __cdecl Mask::Create(AVSValue args, void*, IScriptEnvironment* env)
 {
@@ -349,6 +352,8 @@ Invert::Invert(PClip _child, const char * _channels, IScriptEnvironment* env)
 PVideoFrame Invert::GetFrame(int n, IScriptEnvironment* env)
 {
   PVideoFrame f = child->GetFrame(n, env);
+
+#ifdef X86_32
   env->MakeWritable(&f);
 
   BYTE* pf = f->GetWritePtr();
@@ -425,6 +430,10 @@ PVideoFrame Invert::GetFrame(int n, IScriptEnvironment* env)
       pf += pitch;
     }
   }
+#else
+  //TODO
+  env->ThrowError("Convert444ToYV12::ConvertImage is not yet ported to 64-bit.");
+#endif
 
   return f;
 }
@@ -982,11 +991,11 @@ Layer::Layer( PClip _child1, PClip _child2, const char _op[], int _lev, int _x, 
   overlay_frames = vi2.num_frames;
 }
 
-#ifdef X86_32
 PVideoFrame __stdcall Layer::GetFrame(int n, IScriptEnvironment* env)
 {
   PVideoFrame src1 = child1->GetFrame(n, env);
 
+#ifdef X86_32
   if (xcount<=0 || ycount<=0) return src1;
 
 	PVideoFrame src2 = child2->GetFrame(min(n,overlay_frames-1), env);
@@ -2233,9 +2242,12 @@ PVideoFrame __stdcall Layer::GetFrame(int n, IScriptEnvironment* env)
 			}
 		}
 	}
+#else
+  //TODO
+  env->ThrowError("Layer::GetFrame is not yet ported to 64-bit.");
+#endif
 	return src1;
 }
-#endif
 
 
 AVSValue __cdecl Layer::Create(AVSValue args, void*, IScriptEnvironment* env)

@@ -91,7 +91,9 @@ PVideoFrame VerticalReduceBy2::GetFrame(int n, IScriptEnvironment* env) {
   BYTE* dstp = dst->GetWritePtr();
   const BYTE* srcp = src->GetReadPtr();
 
-  if (vi.IsPlanar()) {
+  if (vi.IsPlanar()) 
+  {
+#ifdef X86_32
     mmx_process(srcp, src_pitch, a_row_size, dstp, dst_pitch, dst->GetHeight(PLANAR_Y));
 
     if (src->GetRowSize(PLANAR_V)) {
@@ -109,10 +111,14 @@ PVideoFrame VerticalReduceBy2::GetFrame(int n, IScriptEnvironment* env) {
       srcp = src->GetReadPtr(PLANAR_U);
       mmx_process(srcp, src_pitch, a_row_size, dstp, dst_pitch, dst->GetHeight(PLANAR_U));
     }
+#else
+  //TODO
+  env->ThrowError("VerticalReduceBy2::GetFrame is not yet ported to 64-bit.");
+#endif
     return dst;
-
   }
 
+#ifdef X86_32
   if ((env->GetCPUFlags() & CPUF_MMX)) {
     // aligned row width divideable within pitch (one dword per loop)
     if (a_row_size<=src_pitch && a_row_size<=dst_pitch) {
@@ -120,6 +126,7 @@ PVideoFrame VerticalReduceBy2::GetFrame(int n, IScriptEnvironment* env) {
       return dst;
     }
   } 
+#endif
     
   for (int y=0; y<vi.height; ++y) {
     const BYTE* line0 = src->GetReadPtr() + (y*2)*src_pitch;
@@ -304,10 +311,15 @@ PVideoFrame HorizontalReduceBy2::GetFrame(int n, IScriptEnvironment* env)
       srcp += src_gap+2;
     }}
   } else if (vi.IsYUY2()  && (!(vi.width&3))) {
-    if (env->GetCPUFlags() & CPUF_INTEGER_SSE) {
+
+#ifdef X86_32
+    if (env->GetCPUFlags() & CPUF_INTEGER_SSE) 
+    {
 			isse_process_yuy2(src,dstp,dst_pitch);
 			return dst;
 		}
+#endif
+
     const BYTE* srcp = src->GetReadPtr();
     for (int y = vi.height; y>0; --y) {
       for (int x = (vi.width>>1)-1; x; --x) {

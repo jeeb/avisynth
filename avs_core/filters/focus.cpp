@@ -101,9 +101,14 @@ PVideoFrame __stdcall AdjustFocusV::GetFrame(int n, IScriptEnvironment* env)
 			// All normal cases will have pitch aligned 16, we
 			// need 8. If someone works hard enough to override
 			// this we can't process the short fall. Use C Code.
-			if (mmx && (pitch >= ((row_size+7) & -8))) {
+#ifdef X86_32
+			if (mmx && (pitch >= ((row_size+7) & -8)))
+      {
 				AFV_MMX(linea, buf, height, pitch, row_size, amount);
-			} else {
+			}
+      else
+#endif
+      {
 				AFV_C(linea, buf, height, pitch, row_size, amount);
 			}
 		}
@@ -114,9 +119,14 @@ PVideoFrame __stdcall AdjustFocusV::GetFrame(int n, IScriptEnvironment* env)
 		int row_size = vi.RowSize();
 		int height   = vi.height;
 		memcpy(linea, buf, row_size); // First row - map centre as upper
-		if (mmx && (pitch >= ((row_size+7) & -8))) {
+#ifdef X86_32
+		if (mmx && (pitch >= ((row_size+7) & -8)))
+    {
 			AFV_MMX(linea, buf, height, pitch, row_size, amount);
-		} else {
+		}
+    else
+#endif
+    {
 			AFV_C(linea, buf, height, pitch, row_size, amount);
 		}
 	}
@@ -292,9 +302,14 @@ PVideoFrame __stdcall AdjustFocusH::GetFrame(int n, IScriptEnvironment* env)
 			uc* q = frame->GetWritePtr(plane);
 			const int pitch = frame->GetPitch(plane);
 			int height = frame->GetHeight(plane);
-			if (mmx && (pitch >= ((row_size+7) & -8))) {
+#ifdef X86_32
+			if (mmx && (pitch >= ((row_size+7) & -8)))
+      {
 				AFH_YV12_MMX(q,height,pitch,row_size,amount);
-			} else {
+			}
+      else
+#endif
+      {
 				AFH_YV12_C(q,height,pitch,row_size,amount);
 			} 
 		}
@@ -302,16 +317,26 @@ PVideoFrame __stdcall AdjustFocusH::GetFrame(int n, IScriptEnvironment* env)
 		uc* q = frame->GetWritePtr();
 		const int pitch = frame->GetPitch();
 		if (vi.IsYUY2()) {
-			if (mmx) {
+#ifdef X86_32
+			if (mmx)
+      {
 				AFH_YUY2_MMX(q,vi.height,pitch,vi.width,amount);
-			} else {
+			}
+      else
+#endif
+      {
 				AFH_YUY2_C(q,vi.height,pitch,vi.width,amount);
 			}
 		} 
 		else if (vi.IsRGB32()) {
-			if (mmx) {
+#ifdef X86_32
+			if (mmx)
+      {
 				AFH_RGB32_MMX(q,vi.height,pitch,vi.width,amount);
-			} else {
+			}
+      else
+#endif
+      {
 				AFH_RGB32_C(q,vi.height,pitch,vi.width,amount);
 			}
 		} 
@@ -1074,8 +1099,10 @@ TemporalSoften::~TemporalSoften(void)
 
 PVideoFrame TemporalSoften::GetFrame(int n, IScriptEnvironment* env) 
 {
+  int radius = (kernel-1) / 2;
+
+#ifdef X32_86
   __int64 i64_thresholds = 0x1000010000100001i64;
-  int radius = (kernel-1) / 2 ;
   int c=0;
   
   // Just skip if silly settings
@@ -1196,6 +1223,10 @@ PVideoFrame TemporalSoften::GetFrame(int n, IScriptEnvironment* env)
     }
     c+=2;
   } while (planes[c]);
+#else
+  //TODO
+  env->ThrowError("TemporalSoften::GetFrame is not yet ported to 64-bit.");
+#endif
 
   return frames[radius];
 }

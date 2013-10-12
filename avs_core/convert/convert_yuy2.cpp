@@ -130,24 +130,44 @@ PVideoFrame __stdcall ConvertToYUY2::GetFrame(int n, IScriptEnvironment* env)
     PVideoFrame dst = env->NewVideoFrame(vi,32);  // We need a bit more pitch here.
     BYTE* yuv = dst->GetWritePtr();
     if (interlaced) {
-      if ((env->GetCPUFlags() & CPUF_INTEGER_SSE)) {
+#ifdef X86_32
+      if (env->GetCPUFlags() & CPUF_INTEGER_SSE)
+      {
         isse_yv12_i_to_yuy2(src->GetReadPtr(PLANAR_Y), src->GetReadPtr(PLANAR_U), src->GetReadPtr(PLANAR_V),
                       src->GetRowSize(PLANAR_Y_ALIGNED), src->GetPitch(PLANAR_Y), src->GetPitch(PLANAR_U),
                       yuv, dst->GetPitch() ,src->GetHeight());
-      } else {
+      }
+      else if (env->GetCPUFlags() & CPUF_MMX)
+      {
         mmx_yv12_i_to_yuy2(src->GetReadPtr(PLANAR_Y), src->GetReadPtr(PLANAR_U), src->GetReadPtr(PLANAR_V),
                       src->GetRowSize(PLANAR_Y_ALIGNED), src->GetPitch(PLANAR_Y), src->GetPitch(PLANAR_U),
                       yuv, dst->GetPitch() ,src->GetHeight());
       }
+      else
+#endif
+      {
+        // TODO
+        env->ThrowError("ConvertToYUY2::GetFrame is not yet ported to 64-bit.");
+      }
     } else {
-      if ((env->GetCPUFlags() & CPUF_INTEGER_SSE)) {
+#ifdef X86_32
+      if (env->GetCPUFlags() & CPUF_INTEGER_SSE)
+      {
         isse_yv12_to_yuy2(src->GetReadPtr(PLANAR_Y), src->GetReadPtr(PLANAR_U), src->GetReadPtr(PLANAR_V),
                       src->GetRowSize(PLANAR_Y_ALIGNED), src->GetPitch(PLANAR_Y), src->GetPitch(PLANAR_U),
                       yuv, dst->GetPitch() ,src->GetHeight());
-      } else {
+      }
+      else if (env->GetCPUFlags() & CPUF_MMX)
+      {
         mmx_yv12_to_yuy2(src->GetReadPtr(PLANAR_Y), src->GetReadPtr(PLANAR_U), src->GetReadPtr(PLANAR_V),
                       src->GetRowSize(PLANAR_Y_ALIGNED), src->GetPitch(PLANAR_Y), src->GetPitch(PLANAR_U),
                       yuv, dst->GetPitch() ,src->GetHeight());
+      }
+      else
+#endif
+      {
+        // TODO
+        env->ThrowError("ConvertToYUY2::GetFrame is not yet ported to 64-bit.");
       }
     }
     return dst;
