@@ -617,9 +617,12 @@ bool CAVIFileSynth::DelayInit() {
 
 bool CAVIFileSynth::DelayInit2() {
   // _RPT1(0,"Original: 0x%.4x\n", _control87( 0, 0 ) );
+#ifdef X86_32
   int fp_state = _control87( 0, 0 );
   _control87( FP_STATE, 0xffffffff );
-  if (szScriptName) {
+#endif
+  if (szScriptName)
+  {
 #ifndef _DEBUG
     try {
 #endif
@@ -695,8 +698,8 @@ bool CAVIFileSynth::DelayInit2() {
       _clear87();
 #ifdef X86_32
       _mm_empty();
-#endif
       _control87( fp_state, 0xffffffff );
+#endif
       return true;
 #ifndef _DEBUG
     }
@@ -705,8 +708,8 @@ bool CAVIFileSynth::DelayInit2() {
       _clear87();
 #ifdef X86_32
       _mm_empty();
-#endif
       _control87( fp_state, 0xffffffff );
+#endif
       return false;
     }
 #endif
@@ -714,8 +717,8 @@ bool CAVIFileSynth::DelayInit2() {
     _clear87();
 #ifdef X86_32
     _mm_empty();
-#endif
     _control87( fp_state, 0xffffffff );
+#endif
     return (env && filter_graph && vi);
   }
 }
@@ -1108,9 +1111,10 @@ HRESULT CAVIStreamSynth::Read2(LONG lStart, LONG lSamples, LPVOID lpBuffer, LONG
 
   //  _RPT3(0,"%p->CAVIStreamSynth::Read(%ld samples at %ld)\n", this, lSamples, lStart);
   //  _RPT2(0,"\tbuffer: %ld bytes at %p\n", cbBuffer, lpBuffer);
+#ifdef X86_32
   int fp_state = _control87( 0, 0 );
   _control87( FP_STATE, 0xffffffff );
-  unsigned code[4] = {0, 0, 0, 0};
+#endif
 
   const VideoInfo* const vi = parent->vi;
 
@@ -1185,16 +1189,16 @@ HRESULT CAVIStreamSynth::Read2(LONG lStart, LONG lSamples, LPVOID lpBuffer, LONG
     _clear87();
 #ifdef X86_32
     _mm_empty();
-#endif
     _control87( fp_state, 0xffffffff );
+#endif
     return E_FAIL;
   }
 #endif
   _clear87();
 #ifdef X86_32
   _mm_empty();
-#endif
   _control87( fp_state, 0xffffffff );
+#endif
   return S_OK;
 }
 
