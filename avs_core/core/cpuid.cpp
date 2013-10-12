@@ -20,145 +20,50 @@
 
 #include <excpt.h>
 #include <avs/cpuid.h>
+#include <intrin.h>
 
-#define CPUF_SUPPORTS_SSE                       (0x00000010L)
-#define CPUF_SUPPORTS_SSE2                      (0x00000020L)
+#define IS_BIT_SET(bitfield, bit) ((bitfield) & (1<<(bit)) ? true : false)
 
-// This is ridiculous.
+static int CPUCheckForExtensions()
+{
+  int result = 0;
+  int cpuinfo[4];
 
-static int g_lCPUExtensionsAvailable;
-static int CPUCheckForSSESupport() {
-	__try {
-//		__asm andps xmm0,xmm0
+  __cpuid(cpuinfo, 1);
+  if (IS_BIT_SET(cpuinfo[3], 0))
+    result |= CPUF_FPU;
+  if (IS_BIT_SET(cpuinfo[3], 23))
+    result |= CPUF_MMX;
+  if (IS_BIT_SET(cpuinfo[3], 25))
+    result |= CPUF_SSE | CPUF_INTEGER_SSE;
+  if (IS_BIT_SET(cpuinfo[3], 26))
+    result |= CPUF_SSE2;
+  if (IS_BIT_SET(cpuinfo[2], 0))
+    result |= CPUF_SSE3;
+  if (IS_BIT_SET(cpuinfo[2], 9))
+    result |= CPUF_SSSE3;
+  if (IS_BIT_SET(cpuinfo[2], 19))
+    result |= CPUF_SSE4_1;
+  if (IS_BIT_SET(cpuinfo[2], 20))
+    result |= CPUF_SSE4_2;
 
-		__asm _emit 0x0f
-		__asm _emit 0x54
-		__asm _emit 0xc0
+  // 3DNow!, 3DNow!, and ISSE
+  __cpuid(cpuinfo, 0x80000000);   
+  if (cpuinfo[0] >= 0x80000001) 
+  {
+    __cpuid(cpuinfo, 0x80000001);   
+   
+    if (IS_BIT_SET(cpuinfo[3], 31))
+      result |= CPUF_3DNOW;   
+   
+    if (IS_BIT_SET(cpuinfo[3], 30))
+      result |= CPUF_3DNOW_EXT;   
+   
+    if (IS_BIT_SET(cpuinfo[3], 22))
+      result |= CPUF_INTEGER_SSE;   
+  }
 
-	} __except(EXCEPTION_EXECUTE_HANDLER) {
-		if (GetExceptionCode() == 0xC000001Du) // illegal instruction
-			g_lCPUExtensionsAvailable &= ~(CPUF_SUPPORTS_SSE|CPUF_SUPPORTS_SSE2);
-	}
-
-	return g_lCPUExtensionsAvailable;
-}
-
-static int __declspec(naked) CPUCheckForExtensions() {
-	__asm {
-		push	ebp
-		push	edi
-		push	esi
-		push	ebx
-
-		xor		ebp,ebp			//cpu flags - if we don't have CPUID, we probably
-								//won't want to try FPU optimizations.
-
-		//check for CPUID.
-
-		pushfd					//flags -> EAX
-		pop		eax
-		or		eax,00200000h	//set the ID bit
-		push	eax				//EAX -> flags
-		popfd
-		pushfd					//flags -> EAX
-		pop		eax
-		and		eax,00200000h	//ID bit set?
-		jz		done			//nope...
-
-		//CPUID exists, check for features register.
-
-		mov		ebp,00000003h
-		xor		eax,eax
-		cpuid
-		or		eax,eax
-		jz		done			//no features register?!?
-
-		//features register exists, look for MMX, SSE, SSE2.
-
-		mov		eax,1
-		cpuid
-		mov		ebx,edx
-		and		ebx,00800000h	//MMX is bit 23
-		shr		ebx,21
-		or		ebp,ebx			//set bit 2 if MMX exists
-
-		mov		ebx,edx
-		and		ebx,02000000h	//SSE is bit 25
-		shr		ebx,25
-		neg		ebx
-		and		ebx,00000018h	//set bits 3 and 4 if SSE exists
-		or		ebp,ebx
-
-		mov		ebx,edx
-		and		ebx,04000000h	//SSE2 is bit 26
-		shr		ebx,21
-		or		ebp,ebx			//set bit 5
-
-		//look for SSE3, SSSE3, SSE4.1 , SSE4.2
-
-		mov		ebx,ecx
-		and		ebx,00000001h	//SSE3 is bit 0
-		shl		ebx,8
-		or		ebp,ebx			//set bit 8
-
-		mov		ebx,ecx
-		and		ebx,00000200h	//SSSE3 is bit 9
-//		sh?		ebx,0
-		or		ebp,ebx			//set bit 9
-
-		mov		ebx,ecx
-		and		ebx,00080000h	//SSE4.1 is bit 19
-		shr		ebx,9
-		or		ebp,ebx			//set bit 10
-
-		mov		ebx,ecx
-		and		ebx,00100000h	//SSE4.2 is bit 20
-		shr		ebx,9
-		or		ebp,ebx			//set bit 11
-
-		//check for vendor feature register (K6/Athlon).
-
-		mov		eax,80000000h
-		cpuid
-		mov		ecx,80000001h
-		cmp		eax,ecx
-		jb		done
-
-		//vendor feature register exists, look for 3DNow! and Athlon extensions
-
-		mov		eax,ecx
-		cpuid
-
-		mov		eax,edx
-		and		edx,80000000h	//3DNow! is bit 31
-		shr		edx,25
-		or		ebp,edx			//set bit 6
-
-		mov		edx,eax
-		and		eax,40000000h	//3DNow!2 is bit 30
-		shr		eax,23
-		or		ebp,eax			//set bit 7
-
-		and		edx,00400000h	//AMD MMX extensions (integer SSE) is bit 22
-		shr		edx,19
-		or		ebp,edx			//set bit 3
-
-done:
-		mov		eax,ebp
-		mov		g_lCPUExtensionsAvailable, ebp
-
-		//Full SSE and SSE-2 require OS support for the xmm* registers.
-
-		test	eax,00000030h
-		jz		nocheck
-		call	CPUCheckForSSESupport
-nocheck:
-		pop		ebx
-		pop		esi
-		pop		edi
-		pop		ebp
-		ret
-	}
+  return result;
 }
 
 int GetCPUFlags() {
