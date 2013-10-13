@@ -38,13 +38,18 @@
 #include <avisynth.h>
 #include "resample_functions.h"
 #include "transform.h"
+
+#ifdef X86_32
 #include "../core/softwire_helpers.h"
+#endif
 
 
 
-
-
-class FilteredResizeH : public GenericVideoFilter, public  CodeGenerator
+#ifdef X86_32
+class FilteredResizeH : public GenericVideoFilter, public CodeGenerator
+#else
+class FilteredResizeH : public GenericVideoFilter
+#endif
 /**
   * Class to resize in the horizontal direction using a specified sampling filter
   * Helper for resample functions
@@ -55,12 +60,15 @@ public:
                    ResamplingFunction* func, IScriptEnvironment* env );
   virtual ~FilteredResizeH(void);
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
-  DynamicAssembledCode GenerateResizer(int gen_plane, bool source_aligned, IScriptEnvironment* env);
 private:
+
+#ifdef X86_32
   DynamicAssembledCode assemblerY;
   DynamicAssembledCode assemblerUV;
   DynamicAssembledCode assemblerY_aligned;
   DynamicAssembledCode assemblerUV_aligned;
+  DynamicAssembledCode GenerateResizer(int gen_plane, bool source_aligned, IScriptEnvironment* env);
+#endif
   
   int* /*const*/ pattern_luma;
   int* /*const*/ pattern_chroma;
@@ -77,8 +85,11 @@ private:
 };
 
  
-
-class FilteredResizeV : public GenericVideoFilter, public  CodeGenerator 
+#ifdef X86_32
+class FilteredResizeV : public GenericVideoFilter, public CodeGenerator
+#else
+class FilteredResizeV : public GenericVideoFilter
+#endif
 /**
   * Class to resize in the vertical direction using a specified sampling filter
   * Helper for resample functions
@@ -90,14 +101,15 @@ public:
   virtual ~FilteredResizeV(void);
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
 
-
 private:
-  DynamicAssembledCode GenerateResizer(int gen_plane, bool aligned, IScriptEnvironment* env);
 
+#ifdef X86_32
+  DynamicAssembledCode GenerateResizer(int gen_plane, bool aligned, IScriptEnvironment* env);
   DynamicAssembledCode assemblerY;
   DynamicAssembledCode assemblerUV;
   DynamicAssembledCode assemblerY_aligned;
   DynamicAssembledCode assemblerUV_aligned;
+#endif
 
   int* /*const*/ resampling_pattern;
   int* /*const*/ resampling_patternUV;

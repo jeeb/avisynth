@@ -36,6 +36,8 @@
 #define __Softwire_Helpers_H__
 
 #include "internal.h"
+#ifdef X86_32
+
 #include "../softwire/CodeGenerator.hpp"
 
 using namespace SoftWire; 
@@ -59,5 +61,7 @@ public:
 
   bool operator!() const { return !ret; }
 };
+
+#endif  // X86_32
 
 #endif //__Softwire_Helpers_H__

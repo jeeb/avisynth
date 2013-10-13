@@ -35,6 +35,7 @@
 #include "resample.h"
 #include <malloc.h>
 #include <avs/config.h>
+#include "../core/internal.h"
 
 
 
@@ -124,7 +125,10 @@ FilteredResizeH::FilteredResizeH( PClip _child, double subrange_left, double sub
 
   vi.width = target_width;
 
-  if (vi.IsPlanar()) {
+
+  if (vi.IsPlanar())
+  {
+#ifdef X86_32
     try {
       assemblerY         = GenerateResizer(PLANAR_Y, false, env);
       assemblerY_aligned = GenerateResizer(PLANAR_Y, true,  env);
@@ -136,9 +140,14 @@ FilteredResizeH::FilteredResizeH( PClip _child, double subrange_left, double sub
     catch (const SoftWire::Error &err) {
        env->ThrowError("Resize: SoftWire exception : %s", err.getString());
     }
+#else
+  //TODO
+  env->ThrowError("FilteredResizeH is not yet ported to 64-bit.");
+#endif
   }
 }
 
+#ifdef X86_32
 /***********************************
  * Dynamically Assembled Resampler
  *
@@ -159,7 +168,6 @@ FilteredResizeH::FilteredResizeH( PClip _child, double subrange_left, double sub
  *
  * :TODO: SSE2 version of main code
  **********************************/
-
 
 
 DynamicAssembledCode FilteredResizeH::GenerateResizer(int gen_plane, bool source_aligned, IScriptEnvironment* env) {
@@ -642,6 +650,7 @@ DynamicAssembledCode FilteredResizeH::GenerateResizer(int gen_plane, bool source
 
   return DynamicAssembledCode(x86, env, "ResizeH: ISSE code could not be compiled.");
 }
+#endif
 
 
 PVideoFrame __stdcall FilteredResizeH::GetFrame(int n, IScriptEnvironment* env)
@@ -1178,10 +1187,12 @@ FilteredResizeH::~FilteredResizeH(void)
     if (tempUV) _aligned_free(tempUV);
     if (tempY) _aligned_free(tempY);
   }
+#ifdef X86_32
   assemblerY.Free();
   assemblerUV.Free();
   assemblerY_aligned.Free();
   assemblerUV_aligned.Free();
+#endif
 }
 
 
@@ -1224,6 +1235,7 @@ FilteredResizeV::FilteredResizeV( PClip _child, double subrange_top, double subr
 
   vi.height = target_height;
 
+#ifdef X86_32
   try {
     assemblerY         = GenerateResizer(PLANAR_Y, false, env);
     assemblerY_aligned = GenerateResizer(PLANAR_Y, true, env);
@@ -1235,6 +1247,10 @@ FilteredResizeV::FilteredResizeV( PClip _child, double subrange_top, double subr
   catch (const SoftWire::Error &err) {
      env->ThrowError("Resize: SoftWire exception : %s", err.getString());
   }
+#else
+  //TODO
+  env->ThrowError("FilteredResizeV is not yet ported to 64-bit.");
+#endif
 }
 
 
@@ -1246,11 +1262,13 @@ FilteredResizeV::FilteredResizeV( PClip _child, double subrange_top, double subr
  * We could guard the function, to avoid re-entrance.
  ******************************/
 
-
 PVideoFrame __stdcall FilteredResizeV::GetFrame(int n, IScriptEnvironment* env)
 {
   PVideoFrame src = child->GetFrame(n, env);
   PVideoFrame dst = env->NewVideoFrame(vi);
+
+#ifdef X86_32
+
   src_pitch = src->GetPitch();
   dst_pitch = dst->GetPitch();
   srcp = src->GetReadPtr();
@@ -1318,6 +1336,11 @@ PVideoFrame __stdcall FilteredResizeV::GetFrame(int n, IScriptEnvironment* env)
         break;
     }
   } // end while
+#else
+  //TODO
+  env->ThrowError("FilteredResizeV::GetFrame is not yet ported to 64-bit.");
+#endif
+
   return dst;
 }
 
@@ -1328,14 +1351,17 @@ FilteredResizeV::~FilteredResizeV(void)
   if (resampling_patternUV) { _aligned_free(resampling_patternUV); resampling_patternUV = 0; }
   if (yOfs) { delete[] yOfs; yOfs = 0; }
   if (yOfsUV) { delete[] yOfsUV; yOfsUV = 0; }
+#ifdef X86_32
   assemblerY.Free();
   assemblerUV.Free();
   assemblerY_aligned.Free();
   assemblerUV_aligned.Free();
+#endif
 }
 
 
 
+#ifdef X86_32
 /***********************************
  * Dynamically Assembled Resampler
  *
@@ -1356,7 +1382,6 @@ FilteredResizeV::~FilteredResizeV(void)
  * align parameter indicates if source plane and pitch is 16 byte aligned for sse2+.
  * dest should always be 16 byte aligned.
  **********************************/
-
 
 
 DynamicAssembledCode FilteredResizeV::GenerateResizer(int gen_plane, bool aligned, IScriptEnvironment* env) {
@@ -1845,7 +1870,7 @@ x86.label("xloop");
 
   return DynamicAssembledCode(x86, env, "ResizeV: Dynamic code could not be compiled.");
 }
-
+#endif
 
 
 

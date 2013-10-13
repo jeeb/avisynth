@@ -38,6 +38,9 @@
 #define __Convert_RGBtoY8_H__
 
 #include <avisynth.h>
+
+#ifdef X86_32
+
 #include "../core/softwire_helpers.h"
 
 
@@ -53,5 +56,6 @@ protected:
   DynamicAssembledCode assembly;
 };
 
+#endif  // X86_32
 
-#endif
+#endif  // __Convert_RGBtoY8_H__

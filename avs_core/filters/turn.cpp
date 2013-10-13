@@ -39,6 +39,7 @@
 */
 
 #include "turn.h"
+#include "../core/internal.h"
 
 
 extern const AVSFunction Turn_filters[] = {
@@ -50,10 +51,8 @@ extern const AVSFunction Turn_filters[] = {
 
 
 
-
-
-
-PVideoFrame __stdcall Turn::GetFrame(int n, IScriptEnvironment* env) {
+PVideoFrame __stdcall Turn::GetFrame(int n, IScriptEnvironment* env)
+{
 
 	PVideoFrame src = child->GetFrame(n, env);
 

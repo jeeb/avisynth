@@ -37,8 +37,7 @@
 
 #include "convert_rgbtoy8.h"
 
-
-#define USE_DYNAMIC_COMPILER true
+#ifdef X86_32
 
 
 RGBtoY8Generator::RGBtoY8Generator() { }
@@ -381,3 +380,5 @@ void RGBtoY8Generator::genRGB24toY8(int width, int height, int offset_y, signed 
 
   assembly = DynamicAssembledCode(x86, env, "ConvertToY8::RGB24 Dynamic MMX code could not be compiled.");
 }
+
+#endif

@@ -154,7 +154,9 @@ PVideoFrame __stdcall Limiter::GetFrame(int n, IScriptEnvironment* env) {
 		}
 
     /** Run emulator if CPU supports it**/
-    if (env->GetCPUFlags() & CPUF_INTEGER_SSE) {
+#ifdef X86_32
+    if (env->GetCPUFlags() & CPUF_INTEGER_SSE)
+    {
       c_plane = srcp;
       if (!luma_emulator) {
         assemblerY = create_emulator(row_size, height, env);
@@ -165,7 +167,10 @@ PVideoFrame __stdcall Limiter::GetFrame(int n, IScriptEnvironment* env) {
       modulo = pitch-row_size;
       assemblerY.Call();
       return frame;
-    } else {  // If not ISSE
+    }
+    else
+#endif
+    {  // If not ISSE
       for(int y = 0; y < height; y++) {
         for(int x = 0; x < row_size; x++) {
           if(srcp[x] < min_luma )
@@ -386,8 +391,11 @@ PVideoFrame __stdcall Limiter::GetFrame(int n, IScriptEnvironment* env) {
 			return frame;
 		}
   }
-  if (vi.IsPlanar()) {
-    if (env->GetCPUFlags() & CPUF_INTEGER_SSE) {
+  if (vi.IsPlanar())
+  {
+#ifdef X86_32
+    if (env->GetCPUFlags() & CPUF_INTEGER_SSE)
+    {
       /** Run emulator if CPU supports it**/
       row_size= frame->GetRowSize(PLANAR_Y_ALIGNED);
       if (!luma_emulator) {
@@ -424,6 +432,7 @@ PVideoFrame __stdcall Limiter::GetFrame(int n, IScriptEnvironment* env) {
 
       return frame;
     }
+#endif
 
     {for(int y = 0; y < height; y++) {
       for(int x = 0; x < row_size; x++) {
@@ -461,16 +470,20 @@ PVideoFrame __stdcall Limiter::GetFrame(int n, IScriptEnvironment* env) {
   return frame;
 }
 
-Limiter::~Limiter() {
+Limiter::~Limiter()
+{
+#ifdef X86_32
   if (luma_emulator) assemblerY.Free();
   if (chroma_emulator) assemblerUV.Free();
+#endif
 }
 
+#ifdef X86_32
 /***
  * Dynamicly assembled code - runs at approx 14000 fps at 480x480 on a 1.8Ghz Athlon. 5-6x faster than C code
  ***/
-
-DynamicAssembledCode Limiter::create_emulator(int row_size, int height, IScriptEnvironment* env) {
+DynamicAssembledCode Limiter::create_emulator(int row_size, int height, IScriptEnvironment* env)
+{
 
   int mod32_w = row_size/32;
   int remain_4 = (row_size-(mod32_w*32))/4;
@@ -576,6 +589,7 @@ DynamicAssembledCode Limiter::create_emulator(int row_size, int height, IScriptE
   return DynamicAssembledCode(x86, env, "Limiter: ISSE code could not be compiled.");
 }
 
+#endif
 
 AVSValue __cdecl Limiter::Create(AVSValue args, void* user_data, IScriptEnvironment* env)
 {

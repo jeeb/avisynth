@@ -36,26 +36,35 @@
 #define __Limiter_H__
 
 #include <avisynth.h>
+
+#ifdef X86_32
 #include "../core/softwire_helpers.h"
+using namespace SoftWire; 
+#endif
 
 
 /********************************************************************
 ********************************************************************/
 
 
-using namespace SoftWire; 
-
-class Limiter : public GenericVideoFilter, public  CodeGenerator
+#ifdef X86_32
+class Limiter : public GenericVideoFilter, public CodeGenerator
+#else
+class Limiter : public GenericVideoFilter
+#endif
 {
 public:
     Limiter(PClip _child, int _min_luma, int _max_luma, int _min_chroma, int _max_chroma, int _show, IScriptEnvironment* env);
     PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
   static AVSValue __cdecl Create(AVSValue args, void* user_data, IScriptEnvironment* env);
-  DynamicAssembledCode create_emulator(int row_size, int height, IScriptEnvironment* env);
   ~Limiter();
 private:
+
+#ifdef X86_32
   DynamicAssembledCode assemblerY;
   DynamicAssembledCode assemblerUV;
+  DynamicAssembledCode create_emulator(int row_size, int height, IScriptEnvironment* env);
+#endif
 
   //Variables needed by the emulator
   BYTE* c_plane;

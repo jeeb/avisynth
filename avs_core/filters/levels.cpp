@@ -38,7 +38,7 @@
 #include <cstdio>
 #include <cmath>
 #include <avs/minmax.h>
-#include <avs/config.h>
+#include "../core/internal.h"
 
 //Wow, this macro really sucks -> TODO: should be turned into a macro function
 #define in64 (__int64)(unsigned short)

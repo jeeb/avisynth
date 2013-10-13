@@ -36,18 +36,19 @@
 
 
 #include "convert_matrix.h"
+#ifdef X86_32
 
-
-#define USE_DYNAMIC_COMPILER true
 
 
 
 MatrixGenerator3x3::MatrixGenerator3x3() { }
 
 MatrixGenerator3x3::~MatrixGenerator3x3() {
+#ifdef X86_32
   assembly.Free();
   unpacker.Free();
   packer.Free();
+#endif
 }
 
 /***************************
@@ -58,7 +59,9 @@ MatrixGenerator3x3::~MatrixGenerator3x3() {
  * MMX, SSE2 code by IanB
  ***************************/
 
-void MatrixGenerator3x3::GeneratePacker(int width, IScriptEnvironment* env) {
+void MatrixGenerator3x3::GeneratePacker(int width, IScriptEnvironment* env)
+{
+#ifdef X86_32
 
   __declspec(align(8)) static const __int64 rounder_ones = 0x0101010101010101;
 
@@ -215,6 +218,10 @@ void MatrixGenerator3x3::GeneratePacker(int width, IScriptEnvironment* env) {
   x86.pop(eax);
   x86.ret();
   packer = DynamicAssembledCode(x86, env, "ConvertMatrix: Dynamic MMX code could not be compiled.");
+#else
+  //TODO
+  env->ThrowError("MatrixGenerator3x3::GeneratePacker is not yet ported to 64-bit.");
+#endif
 }
 
 
@@ -229,7 +236,11 @@ void MatrixGenerator3x3::GeneratePacker(int width, IScriptEnvironment* env) {
  ***************************/
 
 
-void MatrixGenerator3x3::GenerateUnPacker(int width, IScriptEnvironment* env) {
+void MatrixGenerator3x3::GenerateUnPacker(int width, IScriptEnvironment* env) 
+{
+
+#ifdef X86_32
+
   __declspec(align(16)) static const __int64 Shuf[] =  {0x0d0905010c080400,0xffffffff0e0a0602}; // x x x x 14 10 6 2 13 9 5 1 12 8 4 0
 
   Assembler x86;   // This is the class that assembles the code.
@@ -401,6 +412,10 @@ void MatrixGenerator3x3::GenerateUnPacker(int width, IScriptEnvironment* env) {
   x86.pop(eax);
   x86.ret();
   unpacker = DynamicAssembledCode(x86, env, "ConvertMatrix: Dynamic MMX code could not be compiled.");
+#else
+  //TODO
+  env->ThrowError("MatrixGenerator3x3::GenerateUnPacker is not yet ported to 64-bit.");
+#endif
 }
 
 
@@ -426,7 +441,9 @@ void MatrixGenerator3x3::GenerateUnPacker(int width, IScriptEnvironment* env) {
 void MatrixGenerator3x3::GenerateAssembly(int width, int frac_bits, bool rgb_out,
                                           const __int64 *pre_add, const __int64 *post_add,
                                           const int src_pixel_step, const int dest_pixel_step,
-                                          const signed short* matrix, IScriptEnvironment* env) {
+                                          const signed short* matrix, IScriptEnvironment* env)
+{
+#ifdef X86_32
 
   Assembler x86;   // This is the class that assembles the code.
 
@@ -784,4 +801,10 @@ void MatrixGenerator3x3::GenerateAssembly(int width, int frac_bits, bool rgb_out
   x86.ret();
 
   assembly = DynamicAssembledCode(x86, env, "ConvertMatrix: Dynamic MMX code could not be compiled.");
+#else
+  //TODO
+  env->ThrowError("MatrixGenerator3x3::GenerateAssembly is not yet ported to 64-bit.");
+#endif
 }
+
+#endif  // X86_32

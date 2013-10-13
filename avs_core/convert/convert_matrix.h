@@ -37,7 +37,9 @@
 #ifndef __Convert_MATRIX_H__
 #define __Convert_MATRIX_H__
 
+
 #include <avisynth.h>
+#ifdef X86_32
 #include "../core/softwire_helpers.h"
 
 
@@ -53,11 +55,13 @@ protected:
                         const signed short* matrix, IScriptEnvironment* env);
   void GeneratePacker(int width, IScriptEnvironment* env);
   void GenerateUnPacker(int width, IScriptEnvironment* env);
+
   DynamicAssembledCode assembly;
   DynamicAssembledCode unpacker;
   DynamicAssembledCode packer;
 };
 
 
+#endif  // X86_32
 
-#endif
+#endif  // __Convert_MATRIX_H__

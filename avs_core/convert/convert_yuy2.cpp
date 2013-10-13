@@ -33,6 +33,7 @@
 // import and export plugins, or graphical user interfaces.
 
 #include "convert_yuy2.h"
+#include "../core/internal.h"
 
 //  const int cyb = int(0.114*219/255*32768+0.5);  // 0x0C88
 //  const int cyg = int(0.587*219/255*32768+0.5);  // 0x4087
@@ -109,17 +110,25 @@ ConvertToYUY2::ConvertToYUY2(PClip _child, bool _dupl, bool _interlaced, const c
       env->ThrowError("ConvertToYUY2: invalid \"matrix\" parameter (must be matrix=\"Rec601\", \"Rec709\", \"PC.601\" or \"PC.709\")");
   }
 
-  if ((env->GetCPUFlags() & CPUF_MMX) && vi.IsRGB()) {  // Generate MMX
+#ifdef X86_32
+  if ((env->GetCPUFlags() & CPUF_MMX) && vi.IsRGB())    // Generate MMX
+  {
     this->GenerateAssembly(vi.IsRGB24(), _dupl, (theMatrix < 2), vi.width,
                            &cybgr_64[theMatrix], &y1y2_fpix[theMatrix],
                            &fraction[theMatrix], env);
   }
+#else
+  //TODO
+  env->ThrowError("ConvertToYUY2 is not yet ported to 64-bit.");
+#endif
 
   vi.pixel_type = VideoInfo::CS_YUY2;
 }
 
 ConvertToYUY2::~ConvertToYUY2() {
+#ifdef X86_32
   assembly.Free();
+#endif
 }
 
 PVideoFrame __stdcall ConvertToYUY2::GetFrame(int n, IScriptEnvironment* env)
@@ -176,10 +185,13 @@ PVideoFrame __stdcall ConvertToYUY2::GetFrame(int n, IScriptEnvironment* env)
   PVideoFrame dst = env->NewVideoFrame(vi);
   BYTE* yuv = dst->GetWritePtr();
 
-  if (env->GetCPUFlags() & CPUF_MMX) {
+#ifdef X86_32
+  if (env->GetCPUFlags() & CPUF_MMX)
+  {
     mmx_ConvertRGBtoYUY2(src->GetReadPtr(), yuv, src->GetPitch(), dst->GetPitch(), vi.height);
     return dst;
   }
+#endif
 
 // non MMX machines.
 
@@ -335,6 +347,8 @@ ConvertBackToYUY2::ConvertBackToYUY2(PClip _child, const char *matrix, IScriptEn
 
 void ConvertBackToYUY2::GenerateYV24toYUY2(int awidth, int height, IScriptEnvironment* env)
 {
+#ifdef X86_32
+
   bool sse2 = !!(env->GetCPUFlags() & CPUF_SSE2);
 
   enum {             // Argument offsets
@@ -429,6 +443,10 @@ x86.label("xloop");
   x86.ret();
 
   assembly = DynamicAssembledCode(x86, env, "ConvertBackToYUY2: Dynamic MMX code could not be compiled.");
+#else
+  //TODO
+  env->ThrowError("ConvertBackToYUY2::GenerateYV24toYUY2 is not yet ported to 64-bit.");
+#endif
 }
 
 
@@ -436,7 +454,8 @@ PVideoFrame __stdcall ConvertBackToYUY2::GetFrame(int n, IScriptEnvironment* env
 {
   PVideoFrame src = child->GetFrame(n, env);
 
-  if ((src_cs&VideoInfo::CS_YV24)==VideoInfo::CS_YV24) {
+  if ((src_cs&VideoInfo::CS_YV24)==VideoInfo::CS_YV24) 
+  {
     PVideoFrame dst = env->NewVideoFrame(vi, 16); // YUY2 8 pixel aligned
     BYTE* dstp = dst->GetWritePtr();
     const int dpitch  = dst->GetPitch();
@@ -450,10 +469,13 @@ PVideoFrame __stdcall ConvertBackToYUY2::GetFrame(int n, IScriptEnvironment* env
 
     const int awidth = (vi.width+7) & -8;
 
-    if ((pitchY >= awidth) && (env->GetCPUFlags() & CPUF_MMX)) {  // Use MMX
+#ifdef X86_32
+    if ((pitchY >= awidth) && (env->GetCPUFlags() & CPUF_MMX))
+    {  // Use MMX
       assembly.Call(srcY, srcU, srcV, dstp, pitchY, pitchUV, dpitch);
       return dst;
     }
+#endif
 
     for (int y=0; y<vi.height; y++) {
       for (int x2=0; x2<vi.width; x2+=2) {
@@ -473,10 +495,13 @@ PVideoFrame __stdcall ConvertBackToYUY2::GetFrame(int n, IScriptEnvironment* env
   PVideoFrame dst = env->NewVideoFrame(vi);
   BYTE* yuv = dst->GetWritePtr();
 
-  if (env->GetCPUFlags() & CPUF_MMX) {
+#ifdef X86_32
+  if (env->GetCPUFlags() & CPUF_MMX)
+  {
       mmx_ConvertRGBtoYUY2(src->GetReadPtr(),yuv ,src->GetPitch(), dst->GetPitch(), vi.height);
       return dst;
   }
+#endif
 
   const BYTE* rgb = src->GetReadPtr() + (vi.height-1) * src->GetPitch(); // Last line
 
@@ -636,7 +661,9 @@ AVSValue __cdecl ConvertBackToYUY2::Create(AVSValue args, void*, IScriptEnvironm
    *****************************/
 
 
-void ConvertToYUY2::mmx_ConvertRGBtoYUY2(const BYTE *src,BYTE *dst,int src_pitch, int dst_pitch, int h) {
+#ifdef X86_32
+void ConvertToYUY2::mmx_ConvertRGBtoYUY2(const BYTE *src,BYTE *dst,int src_pitch, int dst_pitch, int h)
+{
 
   src += src_pitch*(h-1);       // ;Move source to bottom line (read top->bottom)
 
@@ -646,9 +673,10 @@ void ConvertToYUY2::mmx_ConvertRGBtoYUY2(const BYTE *src,BYTE *dst,int src_pitch
     dst += dst_pitch;
   } // end for y
 }
+#endif
 
 /* Code for 1-2-1 & 0-1-0 kernels */
-
+#ifdef X86_32
 void ConvertToYUY2::GenerateAssembly(bool rgb24, bool dupl, bool sub, int w,
                                      const __int64* ptr_cybgr, const __int64* ptr_y1y2_fpix,
                                      const int* ptr_fraction, IScriptEnvironment* env)  {
@@ -1074,3 +1102,4 @@ void ConvertToYUY2::GenerateAssembly(bool rgb24, bool dupl, bool sub, int w,
 
   assembly = DynamicAssembledCode(x86, env, "ConvertToYUY2: Dynamic MMX code could not be compiled.");
 }
+#endif

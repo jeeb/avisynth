@@ -33,6 +33,8 @@
 // import and export plugins, or graphical user interfaces.
 
 #include <avisynth.h>
+#ifdef X86_32
+
 #include <avs/win.h>
 #include "softwire_helpers.h"
 #include <cstdio>
@@ -201,3 +203,5 @@ public:
   }
 };
 #endif
+
+#endif // X86_32

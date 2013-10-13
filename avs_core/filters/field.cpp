@@ -37,6 +37,7 @@
 #include "resample.h"
 #include <avs/minmax.h>
 #include "../core/bitblt.h"
+#include "../core/internal.h"
 
 
 /********************************************************************

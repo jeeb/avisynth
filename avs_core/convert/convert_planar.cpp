@@ -41,8 +41,7 @@
 #include <malloc.h>
 #include <avs/win.h>
 #include <avs/minmax.h>
-
-#define USE_DYNAMIC_COMPILER true
+#include "../core/internal.h"
 
 
 ConvertToY8::ConvertToY8(PClip src, int in_matrix, IScriptEnvironment* env) : GenericVideoFilter(src), matrix(0) {
@@ -98,10 +97,15 @@ ConvertToY8::ConvertToY8(PClip src, int in_matrix, IScriptEnvironment* env) : Ge
     }
     *m = 0;  // Alpha
  
+#ifdef X86_32
     if (pixel_step == 4)
       genRGB32toY8(vi.width, vi.height, offset_y, matrix, env);
     else if (pixel_step == 3)
       genRGB24toY8(vi.width, vi.height, offset_y, matrix, env);
+#else
+  //TODO
+  env->ThrowError("ConvertToY8 is not yet ported to 64-bit.");
+#endif
 
     return;
   }
@@ -160,10 +164,12 @@ PVideoFrame __stdcall ConvertToY8::GetFrame(int n, IScriptEnvironment* env) {
     BYTE* dstY = dst->GetWritePtr(PLANAR_Y);
     const int dstPitch = dst->GetPitch(PLANAR_Y);
 
+#ifdef X86_32
     if (pixel_step == 3 || pixel_step == 4) {
       assembly.Call(srcp, dstY, -srcPitch, dstPitch);
       return dst;
     }
+#endif
 
     const int srcMod = srcPitch + (vi.width * pixel_step);
     const int m0 = matrix[0];
@@ -237,8 +243,8 @@ __declspec(align(16)) static const __int64 Post_Add16[2] = { 0x008000800010, 0x0
 
 
 ConvertRGBToYV24::ConvertRGBToYV24(PClip src, int in_matrix, IScriptEnvironment* env)
-  : GenericVideoFilter(src), matrix(0), unpckbuf(0)  {
-
+  : GenericVideoFilter(src), matrix(0), unpckbuf(0)
+{
   if (!vi.IsRGB())
     env->ThrowError("ConvertRGBToYV24: Only RGB data input accepted");
 
@@ -282,12 +288,14 @@ ConvertRGBToYV24::ConvertRGBToYV24(PClip src, int in_matrix, IScriptEnvironment*
     env->ThrowError("ConvertRGBToYV24: Unknown matrix.");
   }
 
-  // Thread unsafe!
+#ifdef X86_32
+  // TODO: This is not thread safe
   unpckbuf = (BYTE*)_aligned_malloc(vi.width * 4 + 32, 64);
   const __int64 *post_add = offset_y == 16 ? &Post_Add16[0] : &Post_Add00[0];
   this->GenerateAssembly(vi.width, shift, false, 0, post_add, pixel_step, 4, matrix, env);
 
   this->GenerateUnPacker(vi.width, env);
+#endif
 }
 
 ConvertRGBToYV24::~ConvertRGBToYV24() {
@@ -352,7 +360,8 @@ void ConvertRGBToYV24::BuildMatrix(double Kr, double Kb, int Sy, int Suv, int Oy
   offset_y = Oy;
 }
 
-PVideoFrame __stdcall ConvertRGBToYV24::GetFrame(int n, IScriptEnvironment* env) {
+PVideoFrame __stdcall ConvertRGBToYV24::GetFrame(int n, IScriptEnvironment* env)
+{
   PVideoFrame src = child->GetFrame(n, env);
   PVideoFrame dst = env->NewVideoFrame(vi);
 
@@ -369,47 +378,48 @@ PVideoFrame __stdcall ConvertRGBToYV24::GetFrame(int n, IScriptEnvironment* env)
 
   const int awidth = dst->GetRowSize(PLANAR_Y_ALIGNED);
 
-  if (USE_DYNAMIC_COMPILER) {
-    srcp += (vi.height-1)*Spitch;
+#ifdef X86_32
+  // TODO: 64bit version
+  srcp += (vi.height-1)*Spitch;
 //  BYTE* unpckbuf = (BYTE*)_aligned_malloc(vi.width * 4 + 32, 64);
 
-    if (awidth & 7) {  // Should never happend, as all planar formats should have mod16 pitch
-      int* iunpckbuf = (int*)unpckbuf;
-      for (int y = 0; y < vi.height; y++) {
+  if (awidth & 7) {  // Should never happend, as all planar formats should have mod16 pitch
+    int* iunpckbuf = (int*)unpckbuf;
+    for (int y = 0; y < vi.height; y++) {
 
-        assembly.Call(srcp, unpckbuf);
+      assembly.Call(srcp, unpckbuf);
 
-        for (int x = 0; x < vi.width; x++) {
-          const int p = iunpckbuf[x];
-          dstY[x] = p&0xff;
-          dstU[x] = (p>>8)&0xff;
-          dstV[x] = (p>>16)&0xff;
-        }
-
-        srcp -= Spitch;
-
-        dstY += Ypitch;
-        dstU += UVpitch;
-        dstV += UVpitch;
+      for (int x = 0; x < vi.width; x++) {
+        const int p = iunpckbuf[x];
+        dstY[x] = p&0xff;
+        dstU[x] = (p>>8)&0xff;
+        dstV[x] = (p>>16)&0xff;
       }
+
+      srcp -= Spitch;
+
+      dstY += Ypitch;
+      dstU += UVpitch;
+      dstV += UVpitch;
     }
-    else {
-      for (int y = 0; y < vi.height; y++) {
-
-        assembly.Call(srcp, unpckbuf);
-
-        this->unpacker.Call(unpckbuf, dstY, dstU, dstV);
-
-        srcp -= Spitch;
-
-        dstY += Ypitch;
-        dstU += UVpitch;
-        dstV += UVpitch;
-      }
-    }
-//  _aligned_free(unpckbuf);
-    return dst;
   }
+  else {
+    for (int y = 0; y < vi.height; y++) {
+
+      assembly.Call(srcp, unpckbuf);
+
+      this->unpacker.Call(unpckbuf, dstY, dstU, dstV);
+
+      srcp -= Spitch;
+
+      dstY += Ypitch;
+      dstU += UVpitch;
+      dstV += UVpitch;
+    }
+  }
+//  _aligned_free(unpckbuf);
+  return dst;
+#endif
 
   //Slow C-code.
 
@@ -457,7 +467,8 @@ __declspec(align(16)) static const __int64 Pre_Add16[2]  = { 0xff80ff80fff0, 0xf
 
 
 ConvertYV24ToRGB::ConvertYV24ToRGB(PClip src, int in_matrix, int _pixel_step, IScriptEnvironment* env)
- : GenericVideoFilter(src), pixel_step(_pixel_step), matrix(0), packbuf(0) {
+ : GenericVideoFilter(src), pixel_step(_pixel_step), matrix(0), packbuf(0)
+{
 
   if (!vi.IsYV24())
     env->ThrowError("ConvertYV24ToRGB: Only YV24 data input accepted");
@@ -500,12 +511,14 @@ ConvertYV24ToRGB::ConvertYV24ToRGB(PClip src, int in_matrix, int _pixel_step, IS
     matrix = 0;
     env->ThrowError("ConvertYV24ToRGB: Unknown matrix.");
   }
-  // Thread unsafe!
+#ifdef X86_32
+  // TODO: This is not thread safe!
   packbuf = (BYTE*)_aligned_malloc(vi.width * 4 + 60, 64);
   const __int64 *pre_add = offset_y == -16 ? &Pre_Add16[0] : &Pre_Add00[0];
   this->GenerateAssembly(vi.width, shift, true, pre_add, 0, 4, pixel_step, matrix, env);
 
   this->GeneratePacker(vi.width, env);
+#endif
 }
 
 ConvertYV24ToRGB::~ConvertYV24ToRGB() {
@@ -570,9 +583,11 @@ void ConvertYV24ToRGB::BuildMatrix(double Kr, double Kb, int Sy, int Suv, int Oy
   offset_y = -Oy;
 }
 
-PVideoFrame __stdcall ConvertYV24ToRGB::GetFrame(int n, IScriptEnvironment* env) {
+PVideoFrame __stdcall ConvertYV24ToRGB::GetFrame(int n, IScriptEnvironment* env) 
+{
   PVideoFrame src = child->GetFrame(n, env);
   PVideoFrame dst = env->NewVideoFrame(vi, 8);
+
 
   const BYTE* srcY = src->GetReadPtr(PLANAR_Y);
   const BYTE* srcU = src->GetReadPtr(PLANAR_U);
@@ -587,42 +602,43 @@ PVideoFrame __stdcall ConvertYV24ToRGB::GetFrame(int n, IScriptEnvironment* env)
 
   const int Dpitch = dst->GetPitch();
 
-  if (USE_DYNAMIC_COMPILER) {
-    dstp += (vi.height-1)*Dpitch;
+#ifdef X86_32
+  // TODO: 64-bit version
+  dstp += (vi.height-1)*Dpitch;
 //  BYTE* packbuf = (BYTE*)_aligned_malloc(vi.width * 4 + 60, 64);
 
-    if (awidth & 15) { // This should be very safe to assume to never happend
-      int* ipackbuf = (int*)packbuf;
+  if (awidth & 15) { // This should be very safe to assume to never happend
+    int* ipackbuf = (int*)packbuf;
 
-      for (int y = 0; y < vi.height; y++) {
-        for (int x = 0; x < vi.width; x++) {
-          ipackbuf[x] = srcY[x] | (srcU[x] << 8 ) | (srcV[x] << 16) | (1 << 24);
-        }
-
-        assembly.Call(packbuf, dstp);
-
-        srcY += Ypitch;
-        srcU += UVpitch;
-        srcV += UVpitch;
-        dstp -= Dpitch;
+    for (int y = 0; y < vi.height; y++) {
+      for (int x = 0; x < vi.width; x++) {
+        ipackbuf[x] = srcY[x] | (srcU[x] << 8 ) | (srcV[x] << 16) | (1 << 24);
       }
+
+      assembly.Call(packbuf, dstp);
+
+      srcY += Ypitch;
+      srcU += UVpitch;
+      srcV += UVpitch;
+      dstp -= Dpitch;
     }
-    else {
-      for (int y = 0; y < vi.height; y++) {
-
-        this->packer.Call(srcY, srcU, srcV, packbuf);
-
-        assembly.Call(packbuf, dstp);
-
-        srcY += Ypitch;
-        srcU += UVpitch;
-        srcV += UVpitch;
-        dstp -= Dpitch;
-      }
-    }
-//  _aligned_free(packbuf);
-    return dst;
   }
+  else {
+    for (int y = 0; y < vi.height; y++) {
+
+      this->packer.Call(srcY, srcU, srcV, packbuf);
+
+      assembly.Call(packbuf, dstp);
+
+      srcY += Ypitch;
+      srcU += UVpitch;
+      srcV += UVpitch;
+      dstp -= Dpitch;
+    }
+  }
+//  _aligned_free(packbuf);
+  return dst;
+#endif
 
   //Slow C-code.
 
