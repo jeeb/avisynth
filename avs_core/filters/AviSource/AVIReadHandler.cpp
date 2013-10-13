@@ -55,7 +55,7 @@ AvisynthError MyWin32Error(const char *format, DWORD err, ...) {
     0, err, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), szError, sizeof szError, NULL);
 
   if (szError[0]) {
-    long l = strlen(szError);
+    size_t l = strlen(szError);
     if (l>1 && szError[l-2] == '\r')
       szError[l-2] = 0;
     else if (szError[l-1] == '\n')

@@ -755,7 +755,7 @@ bool Cache::UnProtectVFB(CachedVideoFrame *i)
 
 /*********** A U D I O   C A C H E ************/
 
-void Cache::FillZeros(void* buf, int start_offset, int count) {
+void Cache::FillZeros(void* buf, size_t start_offset, size_t count) {
 
     const int bps = vi.BytesPerAudioSample();
     unsigned char* byte_buf = (unsigned char*)buf;
@@ -775,7 +775,7 @@ void __stdcall Cache::GetAudio(void* buf, __int64 start, __int64 count, IScriptE
   if (start < 0) {  // Partial initial skip
     FillZeros(buf, 0, (int)-start);  // Fill all samples before 0 with silence.
     count += start;  // Subtract start bytes from count.
-    buf = ((BYTE*)buf) - (int)(start*vi.BytesPerAudioSample());
+    buf = ((BYTE*)buf) - (size_t)(start*vi.BytesPerAudioSample());
     start = 0;
   }
 
@@ -902,7 +902,7 @@ int __stdcall Cache::SetCacheHints(int cachehints, int frame_range) {
   _RPT3(0, "Cache:%x: Setting cache hints (hints:%d, range:%d )\n", this, cachehints, frame_range);
 
   switch (cachehints) {
-    // Detect if we are a cache, respond with our this pointer
+    // Detect if we are a cache, respond with our "this" pointer
     case GetMyThis:
       return (int)(void *)this;
 

@@ -58,9 +58,9 @@ public:
   void AddFunction(const char* name, const char* params, IScriptEnvironment::ApplyFunc apply, void* user_data);
   const AVSFunction* Lookup(const char* search_name,
     const AVSValue* args,
-    int num_args,
+    size_t num_args,
     bool strict,
-    int args_names_count,
+    size_t args_names_count,
     const char* const* arg_names) const;
 };
 

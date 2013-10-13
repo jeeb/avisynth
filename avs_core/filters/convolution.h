@@ -66,8 +66,8 @@ protected:
 
 private:      
     double divisor;
+    size_t nSize;
     int nBias;
-    unsigned int nSize;
     bool autoscale;
 
     // some buffers

@@ -1259,7 +1259,7 @@ STDMETHODIMP CAVIStreamSynth::ReadFormat(LONG lPos, LPVOID lpFormat, LONG *lpcbF
         wfxt.dwChannelMask = userChannelMask;
 
       wfxt.SubFormat = vi->IsSampleType(SAMPLE_FLOAT) ? KSDATAFORMAT_SUBTYPE_IEEE_FLOAT : KSDATAFORMAT_SUBTYPE_PCM;
-      *lpcbFormat = min((size_t)*lpcbFormat, sizeof(wfxt));
+      *lpcbFormat = min(*lpcbFormat, (LONG)sizeof(wfxt));
       memcpy(lpFormat, &wfxt, size_t(*lpcbFormat));
     }
     else {
@@ -1271,7 +1271,7 @@ STDMETHODIMP CAVIStreamSynth::ReadFormat(LONG lPos, LPVOID lpFormat, LONG *lpcbF
       wfx.wBitsPerSample = vi->BytesPerChannelSample() * 8;
       wfx.nBlockAlign = vi->BytesPerAudioSample();
       wfx.nAvgBytesPerSec = wfx.nSamplesPerSec * wfx.nBlockAlign;
-      *lpcbFormat = min((size_t)*lpcbFormat, sizeof(wfx));
+      *lpcbFormat = min(*lpcbFormat, (LONG)sizeof(wfx));
       memcpy(lpFormat, &wfx, size_t(*lpcbFormat));
     }
   } else {
@@ -1302,7 +1302,7 @@ STDMETHODIMP CAVIStreamSynth::ReadFormat(LONG lPos, LPVOID lpFormat, LONG *lpcbF
     }
 
     bi.biSizeImage = parent->ImageSize();
-    *lpcbFormat = min((size_t)*lpcbFormat, sizeof(bi));
+    *lpcbFormat = min(*lpcbFormat, (LONG)sizeof(bi));
     memcpy(lpFormat, &bi, size_t(*lpcbFormat));
   }
   return S_OK;

@@ -61,8 +61,8 @@ struct AVSFunction {
   AVSValue (__cdecl *apply)(AVSValue args, void* user_data, IScriptEnvironment* env);
   void* user_data;
 
-  static bool ArgNameMatch(const char* param_types, int args_names_count, const char* const* arg_names);
-  static bool TypeMatch(const char* param_types, const AVSValue* args, int num_args, bool strict, IScriptEnvironment* env);
+  static bool ArgNameMatch(const char* param_types, size_t args_names_count, const char* const* arg_names);
+  static bool TypeMatch(const char* param_types, const AVSValue* args, size_t num_args, bool strict, IScriptEnvironment* env);
   static bool SingleTypeMatch(char type, const AVSValue& arg, bool strict);
 };
 

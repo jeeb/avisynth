@@ -1083,7 +1083,7 @@ void __stdcall MixAudio::GetAudio(void* buf, __int64 start, __int64 count, IScri
     if (tempbuffer_size)
       delete[] tempbuffer;
 
-    tempbuffer = new signed char[(unsigned)(count * vi.BytesPerAudioSample())];
+    tempbuffer = new signed char[(size_t)(count * vi.BytesPerAudioSample())];
     tempbuffer_size = (int)count;
   }
 

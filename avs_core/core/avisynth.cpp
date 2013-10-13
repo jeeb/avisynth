@@ -427,8 +427,8 @@ private:
   int ImportDepth;
 
   LinkedVideoFrameBuffer video_frame_buffers, lost_video_frame_buffers, *unpromotedvfbs;
-  const AVSFunction* Lookup(const char* search_name, const AVSValue* args, int num_args,
-                      bool &pstrict, int args_names_count, const char* const* arg_names);
+  const AVSFunction* Lookup(const char* search_name, const AVSValue* args, size_t num_args,
+                      bool &pstrict, size_t args_names_count, const char* const* arg_names);
   unsigned __int64 memory_max, memory_used;
 
   void ExportBuiltinFilters();
@@ -1290,7 +1290,7 @@ VideoFrameBuffer* ScriptEnvironment::GetFrameBuffer(int size) {
    If 'dst' is NULL, will still return the number of elements 
    that would have been written to 'dst', but will not actually write to 'dst'.
 */
-static int Flatten(const AVSValue& src, AVSValue* dst, int index, const char* const* arg_names = NULL) {
+static size_t Flatten(const AVSValue& src, AVSValue* dst, size_t index, const char* const* arg_names = NULL) {
   if (src.IsArray()) {
     const int array_size = src.ArraySize();
     for (int i=0; i<array_size; ++i) {
@@ -1305,12 +1305,12 @@ static int Flatten(const AVSValue& src, AVSValue* dst, int index, const char* co
   return index;
 }
 
-const AVSFunction* ScriptEnvironment::Lookup(const char* search_name, const AVSValue* args, int num_args,
-                    bool &pstrict, int args_names_count, const char* const* arg_names)
+const AVSFunction* ScriptEnvironment::Lookup(const char* search_name, const AVSValue* args, size_t num_args,
+                    bool &pstrict, size_t args_names_count, const char* const* arg_names)
 {
   const AVSFunction *result = NULL;
 
-  int oanc;
+  size_t oanc;
   do {
     for (int strict = 1; strict >= 0; --strict) {
       pstrict = strict&1;
@@ -1365,7 +1365,7 @@ bool __stdcall ScriptEnvironment::Invoke(AVSValue *result, const char* name, con
   const int args_names_count = (arg_names && args.IsArray()) ? args.ArraySize() : 0;
 
   // get how many args we will need to store
-  int args2_count = Flatten(args, NULL, 0, arg_names);
+  size_t args2_count = Flatten(args, NULL, 0, arg_names);
   if (args2_count > ScriptParser::max_args)
     ThrowError("Too many arguments passed to function (max. is %d)", ScriptParser::max_args);
 
@@ -1382,9 +1382,9 @@ bool __stdcall ScriptEnvironment::Invoke(AVSValue *result, const char* name, con
   }
 
   // combine unnamed args into arrays
-  int src_index=0, dst_index=0;
+  size_t src_index=0, dst_index=0;
   const char* p = f->param_types;
-  const int maxarg3 = max((size_t)args2_count, strlen(p)); // well it can't be any longer than this.
+  const size_t maxarg3 = max(args2_count, strlen(p)); // well it can't be any longer than this.
 
   AVSValue *args3 = new AVSValue[maxarg3];
 
@@ -1394,12 +1394,12 @@ bool __stdcall ScriptEnvironment::Invoke(AVSValue *result, const char* name, con
         p = strchr(p+1, ']');
         if (!p) break;
         p++;
-      } else if (p[1] == '*' || p[1] == '+') {
-        int start = src_index;
-        while (src_index < args2_count && AVSFunction::SingleTypeMatch(*p, args2[src_index], strict))
+      } else if ((p[1] == '*') || (p[1] == '+')) {
+        size_t start = src_index;
+        while ((src_index < args2_count) && (AVSFunction::SingleTypeMatch(*p, args2[src_index], strict)))
           src_index++;
-        int size = src_index - start;
-        assert((args2_count >= size) && (size >= 0));
+        size_t size = src_index - start;
+        assert(args2_count >= size);
 
         // Even if the AVSValue below is an array of zero size, we can't skip adding it to args3,
         // because filters like BlankClip might still be expecting it.
@@ -1417,12 +1417,12 @@ bool __stdcall ScriptEnvironment::Invoke(AVSValue *result, const char* name, con
     if (src_index < args2_count)
       ThrowError("Too many arguments to function %s", name);
 
-    const int args3_count = dst_index;
+    const int args3_count = (int)dst_index;
 
     // copy named args
     for (int i=0; i<args_names_count; ++i) {
       if (arg_names[i]) {
-        int named_arg_index = 0;
+        size_t named_arg_index = 0;
         for (const char* p = f->param_types; *p; ++p) {
           if (*p == '*' || *p == '+') {
             continue;   // without incrementing named_arg_index
@@ -1430,7 +1430,7 @@ bool __stdcall ScriptEnvironment::Invoke(AVSValue *result, const char* name, con
             p += 1;
             const char* q = strchr(p, ']');
             if (!q) break;
-            if (strlen(arg_names[i]) == unsigned(q-p) && !strnicmp(arg_names[i], p, q-p)) {
+            if (strlen(arg_names[i]) == size_t(q-p) && !strnicmp(arg_names[i], p, q-p)) {
               // we have a match
               if (args3[named_arg_index].Defined()) {
                 ThrowError("Script error: the named argument \"%s\" was passed more than once to %s", arg_names[i], name);

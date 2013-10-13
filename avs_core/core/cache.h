@@ -75,7 +75,7 @@ private:
 
   struct CachedVideoFrame;
   void RegisterVideoFrame(CachedVideoFrame *i, const PVideoFrame& frame);
-  void FillZeros(void* buf, int start_offset, int count);
+  void FillZeros(void* buf, size_t start_offset, size_t count);
   void ResetCache(IScriptEnvironment* env);
   void ReturnVideoFrameBuffer(CachedVideoFrame *i, IScriptEnvironment* env);
   CachedVideoFrame* GetACachedVideoFrame(const PVideoFrame& frame, IScriptEnvironment* env);

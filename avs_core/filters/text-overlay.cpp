@@ -709,15 +709,15 @@ PVideoFrame ShowFrameNumber::GetFrame(int n, IScriptEnvironment* env) {
   text[15] = 0;
   if (x!=DefXY || y!=DefXY) {
     SetTextAlign(hdc, TA_BASELINE|TA_LEFT);
-    TextOut(hdc, x+16, y+16, text, strlen(text));
+    TextOut(hdc, x+16, y+16, text, (int)strlen(text));
   } else if (scroll) {
     int n1 = vi.IsFieldBased() ? (n/2) : n;
     int y2 = size + size*(n1%(vi.height*8/size));
     SetTextAlign(hdc, TA_BASELINE | (child->GetParity(n) ? TA_LEFT : TA_RIGHT));
-    TextOut(hdc, child->GetParity(n) ? 32 : vi.width*8+8, y2, text, strlen(text));
+    TextOut(hdc, child->GetParity(n) ? 32 : vi.width*8+8, y2, text, (int)strlen(text));
   } else {
     SetTextAlign(hdc, TA_BASELINE | (child->GetParity(n) ? TA_LEFT : TA_RIGHT));
-    size_t text_len = strlen(text);
+    int text_len = (int)strlen(text);
     for (int y2=size; y2<vi.height*8; y2 += size)
 	    TextOut(hdc, child->GetParity(n) ? 32 : vi.width*8+8, y2, text, text_len);
   }
@@ -895,7 +895,7 @@ PVideoFrame __stdcall ShowSMPTE::GetFrame(int n, IScriptEnvironment* env)
   text[15] = 0;
 
   SetTextAlign(hdc, TA_BASELINE|TA_CENTER);
-  TextOut(hdc, x+16, y+16, text, strlen(text));
+  TextOut(hdc, x+16, y+16, text, (int)strlen(text));
   GdiFlush();
 
   antialiaser.Apply(vi, &frame, frame->GetPitch());
@@ -1071,7 +1071,7 @@ void Subtitle::InitAntialiaser(IScriptEnvironment* env)
   if (y==-7) real_y = (vi.height>>1)*8;
 
   if (!multiline) {
-	if (!TextOut(hdcAntialias, real_x+16, real_y+16, text, strlen(text))) goto GDIError;
+	if (!TextOut(hdcAntialias, real_x+16, real_y+16, text, (int)strlen(text))) goto GDIError;
   }
   else {
 	// multiline patch -- tateu
@@ -1080,7 +1080,7 @@ void Subtitle::InitAntialiaser(IScriptEnvironment* env)
 	char search[] = "\\n";
 	psrc = _text = _strdup(text); // don't mangle the string constant -- Gavino
 	if (!_text) goto GDIError;
-	int length = strlen(psrc);
+	int length = (int)strlen(psrc);
 
 	do {
 	  pdest = strstr(psrc, search);
@@ -1387,8 +1387,8 @@ Compare::Compare(PClip _child1, PClip _child2, const char* channels, const char 
 
   planar_plane = 0;
   mask = 0;
-  const unsigned length = strlen(channels);
-  for (unsigned i = 0; i < length; i++) {
+  const size_t length = strlen(channels);
+  for (size_t i = 0; i < length; i++) {
     if (vi.IsRGB()) {
       switch (channels[i]) {
       case 'b':
@@ -1834,7 +1834,7 @@ bool GetTextBoundingBox( const char* text, const char* fontname, int size, bool 
   for (;;) {
     const char* nl = strchr(text, '\n');
     if (nl-text) {
-      success &= !!DrawText(hdc, text, nl ? nl-text : lstrlen(text), &r, DT_CALCRECT | DT_NOPREFIX);
+      success &= !!DrawText(hdc, text, nl ? nl-text : (int)lstrlen(text), &r, DT_CALCRECT | DT_NOPREFIX);
       *width = max(*width, int(r.right+8));
     }
     *height += r.bottom;

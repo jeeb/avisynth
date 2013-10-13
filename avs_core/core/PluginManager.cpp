@@ -156,11 +156,11 @@ bool AVSFunction::SingleTypeMatch(char type, const AVSValue& arg, bool strict) {
   }
 }
 
-bool AVSFunction::TypeMatch(const char* param_types, const AVSValue* args, int num_args, bool strict, IScriptEnvironment* env) {
+bool AVSFunction::TypeMatch(const char* param_types, const AVSValue* args, size_t num_args, bool strict, IScriptEnvironment* env) {
 
   bool optional = false;
 
-  int i = 0;
+  size_t i = 0;
   while (i < num_args) {
 
     if (*param_types == '\0') {
@@ -232,12 +232,12 @@ bool AVSFunction::TypeMatch(const char* param_types, const AVSValue* args, int n
   return false;
 }
 
-bool AVSFunction::ArgNameMatch(const char* param_types, int args_names_count, const char* const* arg_names) {
+bool AVSFunction::ArgNameMatch(const char* param_types, size_t args_names_count, const char* const* arg_names) {
 
-  for (int i=0; i<args_names_count; ++i) {
+  for (size_t i=0; i<args_names_count; ++i) {
     if (arg_names[i]) {
       bool found = false;
-      int len = strlen(arg_names[i]);
+      size_t len = strlen(arg_names[i]);
       for (const char* p = param_types; *p; ++p) {
         if (*p == '[') {
           p += 1;
@@ -531,8 +531,8 @@ bool PluginManager::LoadPlugin(PluginFile &plugin, bool throwOnError, AVSValue *
   return true;
 }
 
-const AVSFunction* PluginManager::Lookup(const char* search_name, const AVSValue* args, int num_args,
-                    bool strict, int args_names_count, const char* const* arg_names) const
+const AVSFunction* PluginManager::Lookup(const char* search_name, const AVSValue* args, size_t num_args,
+                    bool strict, size_t args_names_count, const char* const* arg_names) const
 {
     std::pair<FunctionMap::const_iterator, FunctionMap::const_iterator> ret = PluginFunctions.equal_range(search_name);
 

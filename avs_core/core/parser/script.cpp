@@ -545,14 +545,13 @@ AVSValue LeftStr(AVSValue args, void*, IScriptEnvironment* env)
 
 AVSValue MidStr(AVSValue args, void*, IScriptEnvironment* env)
 {
-  int len, offset;
-  const int maxlen = strlen(args[0].AsString());
+  const int maxlen = (int)strlen(args[0].AsString());
   if (args[1].AsInt() < 1)
       env->ThrowError("MidStr: Illegal character location");
-  len = args[2].AsInt(maxlen);
+  int len = args[2].AsInt(maxlen);
   if (len < 0)
       env->ThrowError("MidStr: Illegal character count");
-  offset = args[1].AsInt() - 1;
+  int offset = args[1].AsInt() - 1;
   if (maxlen <= offset) { offset = 0; len = 0;}
   char *result = new(std::nothrow) char[len+1];
   if (!result) env->ThrowError("MidStr: malloc failure!");
@@ -565,10 +564,10 @@ AVSValue MidStr(AVSValue args, void*, IScriptEnvironment* env)
 
 AVSValue RightStr(AVSValue args, void*, IScriptEnvironment* env)
  {
-   int offset;
    if (args[1].AsInt() < 0)
       env->ThrowError("RightStr: Negative character count not allowed");
-   offset = strlen(args[0].AsString()) - args[1].AsInt();
+
+   int offset = (int)strlen(args[0].AsString()) - args[1].AsInt();
    if (offset < 0) offset = 0;
    char *result = new(std::nothrow) char[args[1].AsInt()+1];
    if (!result) env->ThrowError("RightStr: malloc failure!");
@@ -590,11 +589,9 @@ AVSValue StrCmpi(AVSValue args, void*, IScriptEnvironment* env)
 }
 
 AVSValue FindStr(AVSValue args, void*, IScriptEnvironment* env)
-{ const char *pdest;
-  int result;
-
-  pdest = strstr( args[0].AsString(),args[1].AsString() );
-  result = pdest - args[0].AsString() +1;
+{
+  const char *pdest = strstr( args[0].AsString(),args[1].AsString() );
+  int result = pdest - args[0].AsString() + 1;
   if (pdest == NULL) result = 0;
   return result; 
 }

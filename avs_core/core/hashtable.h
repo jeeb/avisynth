@@ -70,7 +70,7 @@ private:
 
   #ifndef UNICODE
 
-  static unsigned int hash(const char* s)
+  static size_t hash(const char* s)
   {
 	  // NOTE the connection between the hash() and equals() functions!
 	  // In order for the hash table to work correctly, if two strings compare
