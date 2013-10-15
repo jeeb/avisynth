@@ -37,6 +37,7 @@
 #include "./parser/script.h"
 #include "cache.h"
 #include <avs/minmax.h>
+#include <avs/alignment.h>
 #include "strings.h"
 #include <avs/cpuid.h>
 #include "bitblt.h"
@@ -99,19 +100,6 @@ struct {
 } g_Mem_stats = {0, 0, 0, 0, 0, 0, 0, "CleanUps, Losses, Plan[A1,A2,B,C,D]"};
 
 const _PixelClip PixelClip;
-
-template<typename T>
-static T AlignNumber(T n, T align)
-{
-  assert(align && !(align & (align - 1)));  // check that 'align' is a power of two
-  return (n + align-1) & (~(align-1));
-}
-template<typename T>
-static T AlignPointer(T n, size_t align)
-{
-  assert(align && !(align & (align - 1)));  // check that 'align' is a power of two
-  return (T)(((uintptr_t)n + align-1) & (~(uintptr_t)(align-1)));
-}
 
 
 class LinkedVideoFrame {
