@@ -1009,17 +1009,19 @@ public:
   virtual void __stdcall AddAutoloadDir(const char* dirPath, bool toFront) = 0;
   virtual void __stdcall ClearAutoloadDirs() = 0;
   virtual void __stdcall AutoloadPlugins() = 0;
+  virtual void __stdcall AddFunction(const char* name, const char* params, ApplyFunc apply, void* user_data, const char *exportVar) = 0;
 
   // The following group of functions are ONLY to be called
   // by the avisynth server dll.
   virtual int __stdcall IncrImportDepth() = 0;
   virtual int __stdcall DecrImportDepth() = 0;
 
-  // This line is so that Invoke can overload the other Invoke from IScriptEnvironment.
-  using IScriptEnvironment::Invoke;
   // This version of Invoke will return false instead of throwing NotFound().
   virtual bool __stdcall Invoke(AVSValue *result, const char* name, const AVSValue args, const char* const* arg_names=0) = 0;
 
+  // These lines are needed so that we can overload the older functions from IScriptEnvironment.
+  using IScriptEnvironment::Invoke;
+  using IScriptEnvironment::AddFunction;
 
 }; // end class IScriptEnvironment2
 

@@ -394,6 +394,7 @@ public:
   virtual void __stdcall AddAutoloadDir(const char* dirPath, bool toFront);
   virtual void __stdcall ClearAutoloadDirs();
   virtual void __stdcall AutoloadPlugins();
+  virtual void __stdcall AddFunction(const char* name, const char* params, ApplyFunc apply, void* user_data, const char *exportVar);
   virtual int __stdcall IncrImportDepth();
   virtual int __stdcall DecrImportDepth();
   virtual bool __stdcall Invoke(AVSValue *result, const char* name, const AVSValue args, const char* const* arg_names=0);
@@ -678,7 +679,11 @@ void ScriptEnvironment::CheckVersion(int version) {
 int ScriptEnvironment::GetCPUFlags() { return ::GetCPUFlags(); }
 
 void ScriptEnvironment::AddFunction(const char* name, const char* params, ApplyFunc apply, void* user_data) {
-  plugin_manager->AddFunction(name, params, apply, user_data);
+  this->AddFunction(name, params, apply, user_data, NULL);
+}
+
+void ScriptEnvironment::AddFunction(const char* name, const char* params, ApplyFunc apply, void* user_data, const char *exportVar) {
+  plugin_manager->AddFunction(name, params, apply, user_data, exportVar);
 }
 
 // Throws if unsuccessfull

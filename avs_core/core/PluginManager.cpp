@@ -469,15 +469,18 @@ PluginManager::~PluginManager()
   PluginInLoad = NULL;
 }
 
-void PluginManager::UpdateFunctionExports(const AVSFunction &func)
+void PluginManager::UpdateFunctionExports(const AVSFunction &func, const char *exportVar)
 {
+  if (exportVar == NULL)
+    exportVar = "$PluginFunctions$";
+
   // Update $PluginFunctions$
-  const char *oldFnList = Env->GetVar("$PluginFunctions$", "");
+  const char *oldFnList = Env->GetVar(exportVar, "");
   std::string FnList(oldFnList);
   if (FnList.size() > 0)    // if the list is not empty...
     FnList.push_back(' ');  // ...add a delimiting whitespace 
   FnList.append(func.name);
-  Env->SetGlobalVar("$PluginFunctions$", AVSValue( Env->SaveString(FnList.c_str(), FnList.length() + 1) ));
+  Env->SetGlobalVar(exportVar, AVSValue( Env->SaveString(FnList.c_str(), FnList.length() + 1) ));
 
   // Update $Plugin!...!Param$
   std::string param_id;
@@ -556,7 +559,7 @@ bool PluginManager::FunctionExists(const char* name) const
     return (PluginFunctions.find(name) != PluginFunctions.end());
 }
 
-void PluginManager::AddFunction(const char* name, const char* params, IScriptEnvironment::ApplyFunc apply, void* user_data)
+void PluginManager::AddFunction(const char* name, const char* params, IScriptEnvironment::ApplyFunc apply, void* user_data, const char *exportVar)
 {
   if (!IsValidParameterString(params))
     Env->ThrowError("%s has an invalid parameter string (bug in filter)", name);
@@ -570,7 +573,7 @@ void PluginManager::AddFunction(const char* name, const char* params, IScriptEnv
   newFunc.apply = apply;
   newFunc.user_data = user_data;
   PluginFunctions.insert(FunctionMap::value_type(newFunc.name, newFunc));
-  UpdateFunctionExports(newFunc);
+  UpdateFunctionExports(newFunc, exportVar);
 
   if (PluginInLoad != NULL)
   {
@@ -582,7 +585,7 @@ void PluginManager::AddFunction(const char* name, const char* params, IScriptEnv
     newFuncWithBase.apply = apply;
     newFuncWithBase.user_data = user_data;
     PluginFunctions.insert(FunctionMap::value_type(newFuncWithBase.name, newFuncWithBase));
-    UpdateFunctionExports(newFuncWithBase);
+    UpdateFunctionExports(newFuncWithBase, exportVar);
   }
 }
 

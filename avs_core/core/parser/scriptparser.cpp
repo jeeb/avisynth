@@ -42,7 +42,7 @@
  
 
 ScriptParser::ScriptParser(IScriptEnvironment* _env, const char* _code, const char* _filename)
-   : env(_env), tokenizer(_code, _env), code(_code), filename(_filename), loopDepth(0) {}
+   : env(static_cast<IScriptEnvironment2*>(_env)), tokenizer(_code, _env), code(_code), filename(_filename), loopDepth(0) {}
 
 PExpression ScriptParser::Parse(void) 
 {
@@ -151,7 +151,7 @@ void ScriptParser::ParseFunctionDefinition(void)
   PExpression body = ParseBlock(true, NULL);
   ScriptFunction* sf = new ScriptFunction(body, param_floats, param_names, param_count);
   env->AtExit(ScriptFunction::Delete, sf);
-  env->AddFunction(name, env->SaveString(param_types), ScriptFunction::Execute, sf);
+  env->AddFunction(name, env->SaveString(param_types), ScriptFunction::Execute, sf, "$UserFunctions$");
 }
 
 

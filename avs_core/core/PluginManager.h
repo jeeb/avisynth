@@ -41,7 +41,7 @@ private:
   bool TryAsAvs26(PluginFile &plugin, AVSValue *result);
   bool TryAsAvs25(PluginFile &plugin, AVSValue *result);
   bool TryAsAvsC(PluginFile &plugin, AVSValue *result);
-  void UpdateFunctionExports(const AVSFunction &func);
+  void UpdateFunctionExports(const AVSFunction &func, const char *exportVar);
 
 public:
   PluginManager(IScriptEnvironment2* env);
@@ -55,7 +55,7 @@ public:
 
   bool FunctionExists(const char* name) const;
   void AutoloadPlugins();
-  void AddFunction(const char* name, const char* params, IScriptEnvironment::ApplyFunc apply, void* user_data);
+  void AddFunction(const char* name, const char* params, IScriptEnvironment::ApplyFunc apply, void* user_data, const char *exportVar);
   const AVSFunction* Lookup(const char* search_name,
     const AVSValue* args,
     size_t num_args,

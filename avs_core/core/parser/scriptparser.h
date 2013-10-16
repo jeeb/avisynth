@@ -59,7 +59,7 @@ public:
   enum {max_args=1024};
 
 private:
-  IScriptEnvironment* const env;
+  IScriptEnvironment2* const env;
   Tokenizer tokenizer;
   const char* const code;
   const char* const filename;
