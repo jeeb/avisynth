@@ -1101,7 +1101,7 @@ PVideoFrame TemporalSoften::GetFrame(int n, IScriptEnvironment* env)
 {
   int radius = (kernel-1) / 2;
 
-#ifdef X32_86
+#ifdef X86_32
   __int64 i64_thresholds = 0x1000010000100001i64;
   int c=0;
   
