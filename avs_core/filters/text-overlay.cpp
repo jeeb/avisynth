@@ -40,8 +40,8 @@
 #include <sstream>
 #include <cmath>
 #include <avs/config.h>
+#include <avs/minmax.h>
 
-using namespace std;
 
 
 static HFONT LoadFont(const char name[], int size, bool bold, bool italic, int width=0, int angle=0) 
@@ -1181,10 +1181,10 @@ const char* const t_STFF="Top Field (Separated)      ";
 const char* const t_SBFF="Bottom Field (Separated)   ";
 
 
-string GetCpuMsg(IScriptEnvironment * env)
+std::string GetCpuMsg(IScriptEnvironment * env)
 {
   int flags = env->GetCPUFlags();
-  stringstream ss;  
+  std::stringstream ss;
 
   if (flags & CPUF_FPU)
     ss << "x87  ";

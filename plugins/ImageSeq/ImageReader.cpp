@@ -36,6 +36,7 @@
 
 #include <avisynth.h>
 #include "ImageSeq.h"
+#include <algorithm>
 
 #define TEXT_COLOR 0xf0f080
 
