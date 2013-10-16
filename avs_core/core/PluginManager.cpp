@@ -474,7 +474,8 @@ void PluginManager::UpdateFunctionExports(const AVSFunction &func)
   // Update $PluginFunctions$
   const char *oldFnList = Env->GetVar("$PluginFunctions$", "");
   std::string FnList(oldFnList);
-  FnList.push_back(' ');
+  if (FnList.size() > 0)    // if the list is not empty...
+    FnList.push_back(' ');  // ...add a delimiting whitespace 
   FnList.append(func.name);
   Env->SetGlobalVar("$PluginFunctions$", AVSValue( Env->SaveString(FnList.c_str(), FnList.length() + 1) ));
 
