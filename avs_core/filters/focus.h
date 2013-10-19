@@ -112,25 +112,18 @@ public:
 private:
 // YV12:
     int* planes;
-    int* divtab;
     const BYTE** planeP;
     const BYTE** planeP2;
     int* planePitch;
     int* planePitch2;
-    int* accum_line;
-    int* div_line;
     bool* planeDisabled;
     int scenechange;
     PVideoFrame *frames;
 
-  void mmx_accumulate_line_mode2(const BYTE* c_plane, const BYTE** planeP, int planes, int rowsize, __int64* t, int div);
-  int isse_scenechange(const BYTE* c_plane, const BYTE* tplane, int height, int width, int c_pitch, int t_pitch);
 // YUY2:
   const unsigned luma_threshold, chroma_threshold;
   const int kernel;
 
-  static const short scaletab[];
-  __int64* scaletab_MMX;
 
   enum { MAX_RADIUS=7 };
 
