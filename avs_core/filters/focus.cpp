@@ -1380,7 +1380,6 @@ PVideoFrame TemporalSoften::GetFrame(int n, IScriptEnvironment* env)
 {
   int radius = (kernel-1) / 2;
 
-#ifdef X86_32
   int threshold = 0;
   int c=0;
   
@@ -1487,10 +1486,6 @@ PVideoFrame TemporalSoften::GetFrame(int n, IScriptEnvironment* env)
     }
     c+=2;
   } while (planes[c]);
-#else
-  //TODO
-  env->ThrowError("TemporalSoften::GetFrame is not yet ported to 64-bit.");
-#endif
 
   return frames[radius];
 }
