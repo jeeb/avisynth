@@ -75,8 +75,8 @@ void MMerge_SSE(unsigned char *dstp, const unsigned char *srcp,
       auto tmp1_l =  _mm_mullo_epi16(_mm_sub_epi16(unpacked_src_l, unpacked_dst_l), unpacked_mask_l); // (src-dst)*mask
       auto tmp1_h =  _mm_mullo_epi16(_mm_sub_epi16(unpacked_src_h, unpacked_dst_h), unpacked_mask_h);
 
-      auto tmp2_l = _mm_xor_si128(_mm_slli_epi16(unpacked_dst_l, 8), v128); // dst<<8 + 128 == dst<<8 ^ 128
-      auto tmp2_h = _mm_xor_si128(_mm_slli_epi16(unpacked_dst_h, 8), v128);
+      auto tmp2_l = _mm_or_si128(_mm_slli_epi16(unpacked_dst_l, 8), v128); // dst<<8 + 128 == dst<<8 | 128
+      auto tmp2_h = _mm_or_si128(_mm_slli_epi16(unpacked_dst_h, 8), v128);
 
       auto result_l = _mm_srli_epi16(_mm_add_epi16(tmp1_l, tmp2_l), 8); 
       auto result_h = _mm_srli_epi16(_mm_add_epi16(tmp1_h, tmp2_h), 8); 
