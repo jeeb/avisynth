@@ -36,9 +36,118 @@
 
 #include <avs/config.h>
 
-#ifdef X86_32
-
 #include "blend_asm.h"
+#include "overlayfunctions.h"
+#include <emmintrin.h>
+
+void MMerge_SSE(unsigned char *dstp, const unsigned char *srcp,
+        const unsigned char *maskp, const int dst_pitch, const int src_pitch,
+        const int mask_pitch, const int row_size, const int height) {
+
+  auto v128 = _mm_set1_epi16(0x0080);
+  auto zero = _mm_setzero_si128();
+
+  int wMod16 = (row_size/16) * 16;
+
+  for (int y = 0; y < height; y++) {
+    for (int x = 0; x < wMod16; x+=16) {
+      //dstp[x] = (BYTE)(((dstp[x]*(256-maskp[x])) + (srcp[x]*maskp[x]+128))>>8);
+      // simplify to (dst<<8 + (src-dst)*mask + 128) >> 8 (as per original MMX code)
+
+      auto dst_l = _mm_loadl_epi64(reinterpret_cast<const __m128i*>(dstp+x));
+      auto dst_h = _mm_loadl_epi64(reinterpret_cast<const __m128i*>(dstp+x+8));
+
+      auto src_l = _mm_loadl_epi64(reinterpret_cast<const __m128i*>(srcp+x));
+      auto src_h = _mm_loadl_epi64(reinterpret_cast<const __m128i*>(srcp+x+8));
+
+      auto mask_l = _mm_loadl_epi64(reinterpret_cast<const __m128i*>(maskp+x));
+      auto mask_h = _mm_loadl_epi64(reinterpret_cast<const __m128i*>(maskp+x+8));
+
+      auto unpacked_dst_l = _mm_unpacklo_epi8(dst_l, zero);
+      auto unpacked_dst_h = _mm_unpacklo_epi8(dst_h, zero);
+
+      auto unpacked_src_l = _mm_unpacklo_epi8(src_l, zero);
+      auto unpacked_src_h = _mm_unpacklo_epi8(src_h, zero);
+
+      auto unpacked_mask_l = _mm_unpacklo_epi8(mask_l, zero);
+      auto unpacked_mask_h = _mm_unpacklo_epi8(mask_h, zero);
+
+      auto tmp1_l =  _mm_mullo_epi16(_mm_sub_epi16(unpacked_src_l, unpacked_dst_l), unpacked_mask_l); // (src-dst)*mask
+      auto tmp1_h =  _mm_mullo_epi16(_mm_sub_epi16(unpacked_src_h, unpacked_dst_h), unpacked_mask_h);
+
+      auto tmp2_l = _mm_xor_si128(_mm_slli_epi16(unpacked_dst_l, 8), v128); // dst<<8 + 128 == dst<<8 ^ 128
+      auto tmp2_h = _mm_xor_si128(_mm_slli_epi16(unpacked_dst_h, 8), v128);
+
+      auto result_l = _mm_srli_epi16(_mm_add_epi16(tmp1_l, tmp2_l), 8); 
+      auto result_h = _mm_srli_epi16(_mm_add_epi16(tmp1_h, tmp2_h), 8); 
+
+      auto result = _mm_packus_epi16(result_l, result_h);
+
+      _mm_storeu_si128(reinterpret_cast<__m128i*>(dstp+x), result);
+    }
+    
+    for (int x = wMod16; x < row_size; x++) {
+      //dstp[x] = (BYTE)(((dstp[x]*(256-maskp[x])) + (srcp[x]*maskp[x]+128))>>8);
+      dstp[x] = (BYTE)(((dstp[x]<<8) + (srcp[x]-dstp[x])*maskp[x] + 128) >> 8);
+    }
+
+    dstp  += dst_pitch;
+    srcp  += src_pitch;
+    maskp += mask_pitch;
+  }
+}
+#include <Windows.h>
+#include <stdio.h>
+void sse_weigh_planar(BYTE *dstp, const BYTE *srcp, int dst_pitch, int src_pitch,int row_size, int height, int weight) {
+  auto v128 = _mm_set1_epi16(0x0080);
+  auto v_mask = _mm_set1_epi16(static_cast<short>(weight));
+  auto zero = _mm_setzero_si128();
+
+  int wMod16 = (row_size/16) * 16;
+  
+  for (int y = 0; y < height; y++) {
+    for (int x = 0; x < wMod16; x+=16) {
+      //dstp[x] = (BYTE)(((dstp[x]*(256-maskp[x])) + (srcp[x]*maskp[x]+128))>>8);
+      // (dst*(256-mask) + src*mask + 128) / 256
+      // simplify to (dst<<8 + (src-dst)*mask + 128) >> 8 (as per original MMX code)
+
+      auto dst_l = _mm_loadl_epi64(reinterpret_cast<const __m128i*>(dstp+x));
+      auto dst_h = _mm_loadl_epi64(reinterpret_cast<const __m128i*>(dstp+x+8));
+
+      auto src_l = _mm_loadl_epi64(reinterpret_cast<const __m128i*>(srcp+x));
+      auto src_h = _mm_loadl_epi64(reinterpret_cast<const __m128i*>(srcp+x+8));
+
+      auto unpacked_dst_l = _mm_unpacklo_epi8(dst_l, zero);
+      auto unpacked_dst_h = _mm_unpacklo_epi8(dst_h, zero);
+
+      auto unpacked_src_l = _mm_unpacklo_epi8(src_l, zero);
+      auto unpacked_src_h = _mm_unpacklo_epi8(src_h, zero);
+
+      auto tmp1_l =  _mm_mullo_epi16(_mm_sub_epi16(unpacked_src_l, unpacked_dst_l), v_mask); // (src-dst)*mask
+      auto tmp1_h =  _mm_mullo_epi16(_mm_sub_epi16(unpacked_src_h, unpacked_dst_h), v_mask);
+
+      auto tmp2_l = _mm_or_si128(_mm_slli_epi16(unpacked_dst_l, 8), v128); // dst<<8 + 128 == dst<<8 | 128
+      auto tmp2_h = _mm_or_si128(_mm_slli_epi16(unpacked_dst_h, 8), v128);
+
+      auto result_l = _mm_srli_epi16(_mm_add_epi16(tmp1_l, tmp2_l), 8); 
+      auto result_h = _mm_srli_epi16(_mm_add_epi16(tmp1_h, tmp2_h), 8); 
+
+      auto result = _mm_packus_epi16(result_l, result_h);
+
+      _mm_storeu_si128(reinterpret_cast<__m128i*>(dstp+x), result);
+    }
+    
+    for (int x = wMod16; x < row_size; x++) {
+      //dstp[x] = (BYTE)(((dstp[x]*(256-maskp[x])) + (srcp[x]*maskp[x]+128))>>8);
+      dstp[x] = (BYTE)(((dstp[x]<<8) + (srcp[x]-dstp[x])*weight + 128) >> 8);
+    }
+
+    dstp  += dst_pitch;
+    srcp  += src_pitch;
+  }
+}
+
+#ifdef X86_32
 
 
 /*******************

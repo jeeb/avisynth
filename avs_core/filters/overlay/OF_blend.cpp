@@ -54,8 +54,15 @@ void OL_BlendImage::BlendImageMask(Image444* base, Image444* overlay, Image444* 
 
   if (opacity == 256) {
 
+  if (env->GetCPUFlags() & CPUF_SSE2) {
+    MMerge_SSE(baseY, ovY, maskY, base->pitch, overlay->pitch, mask->pitch, w, h);
+    MMerge_SSE(baseU, ovU, maskU, base->pitch, overlay->pitch, mask->pitch, w, h);
+    MMerge_SSE(baseV, ovV, maskV, base->pitch, overlay->pitch, mask->pitch, w, h);
+    return;
+  }
+
 #ifdef X86_32
-  if (!(w&7)) 
+  if (!(w&7) && (env->GetCPUFlags() & CPUF_MMX)) 
   {
     MMerge_MMX(baseY, ovY, maskY, base->pitch, overlay->pitch, mask->pitch, w, h);
     MMerge_MMX(baseU, ovU, maskU, base->pitch, overlay->pitch, mask->pitch, w, h);
@@ -123,6 +130,12 @@ void OL_BlendImage::BlendImage(Image444* base, Image444* overlay) {
     env->BitBlt(baseU, base->pitch, ovU, overlay->pitch, w, h);
     env->BitBlt(baseV, base->pitch, ovV, overlay->pitch, w, h);
   } else {
+    if (env->GetCPUFlags() & CPUF_SSE2) {
+
+      sse_weigh_planar(baseY, ovY, base->pitch, overlay->pitch, w, h, opacity);
+      sse_weigh_planar(baseU, ovU, base->pitch, overlay->pitch, w, h, opacity);
+      sse_weigh_planar(baseV, ovV, base->pitch, overlay->pitch, w, h, opacity);
+    } else
 #ifdef X86_32
     if (!(w&3) && (env->GetCPUFlags() & CPUF_MMX))
     {

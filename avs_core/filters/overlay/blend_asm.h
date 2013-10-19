@@ -54,8 +54,13 @@
 typedef unsigned char  BYTE;
 
 void mmx_weigh_planar(BYTE *p1, const BYTE *p2, int p1_pitch, int p2_pitch,int rowsize, int height, int weight, int invweight);
+void sse_weigh_planar(BYTE *p1, const BYTE *p2, int p1_pitch, int p2_pitch,int rowsize, int height, int weight);
  
 void MMerge_MMX(unsigned char *dstp, const unsigned char *srcp,
+				const unsigned char *maskp, const int dst_pitch, const int src_pitch,
+				const int mask_pitch, const int row_size, const int height);
+
+void MMerge_SSE(unsigned char *dstp, const unsigned char *srcp,
 				const unsigned char *maskp, const int dst_pitch, const int src_pitch,
 				const int mask_pitch, const int row_size, const int height);
 
