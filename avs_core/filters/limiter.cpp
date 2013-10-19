@@ -43,27 +43,15 @@
 inline void limit_plane_sse2(BYTE *ptr, int min_value, int max_value, int pitch, int width, int height) {
   __m128i min_vector = _mm_set1_epi16(min_value);
   __m128i max_vector = _mm_set1_epi16(max_value);
-  int mod16_width = width / 16 * 16;
+  BYTE* end_point = ptr + pitch * height;
 
-  for(int y = 0; y < height; y++) {
-    for(int x = 0; x < mod16_width; x+=16) {
-      __m128i src = _mm_load_si128(reinterpret_cast<const __m128i*>(ptr+x));
-      src = _mm_max_epu8(src, min_vector);
-      src = _mm_min_epu8(src, max_vector);
-      _mm_store_si128(reinterpret_cast<__m128i*>(ptr+x), src);
-    }
-
-    if (mod16_width != width) {
-      int x = width - 16;
-      __m128i src = _mm_loadu_si128(reinterpret_cast<const __m128i*>(ptr+x)); //this one is unaligned
-      src = _mm_max_epu8(src, min_vector);
-      src = _mm_min_epu8(src, max_vector);
-      _mm_storeu_si128(reinterpret_cast<__m128i*>(ptr+x), src);
-    }
-
-    ptr += pitch;
+  while(ptr < end_point) {
+    __m128i src = _mm_load_si128(reinterpret_cast<const __m128i*>(ptr));
+    src = _mm_max_epu8(src, min_vector);
+    src = _mm_min_epu8(src, max_vector);
+    _mm_store_si128(reinterpret_cast<__m128i*>(ptr), src);
+    ptr += 16;
   }
-  _mm_empty();
 }
 
 #ifdef X86_32
