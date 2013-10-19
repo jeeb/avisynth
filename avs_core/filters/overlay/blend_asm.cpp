@@ -96,8 +96,7 @@ void MMerge_SSE(unsigned char *dstp, const unsigned char *srcp,
     maskp += mask_pitch;
   }
 }
-#include <Windows.h>
-#include <stdio.h>
+
 void sse_weigh_planar(BYTE *dstp, const BYTE *srcp, int dst_pitch, int src_pitch,int row_size, int height, int weight) {
   auto v128 = _mm_set1_epi16(0x0080);
   auto v_mask = _mm_set1_epi16(static_cast<short>(weight));
