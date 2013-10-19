@@ -86,8 +86,8 @@ PVideoFrame __stdcall AdjustFocusV::GetFrame(int n, IScriptEnvironment* env)
 	PVideoFrame frame = child->GetFrame(n, env);
 	env->MakeWritable(&frame);
 	if (!line)
-		line = new uc[frame->GetRowSize()+32];
-	uc* linea = (uc*)(((int)line+15) & -16); // Align 16
+		line = new BYTE[frame->GetRowSize()+32];
+	BYTE* linea = (BYTE*)(((int)line+15) & -16); // Align 16
 
 	if (vi.IsPlanar()) {
 		for(int cplane=0;cplane<3;cplane++) {
@@ -95,7 +95,7 @@ PVideoFrame __stdcall AdjustFocusV::GetFrame(int n, IScriptEnvironment* env)
 			if (cplane==0)  plane = PLANAR_Y;
 			if (cplane==1)  plane = PLANAR_U;
 			if (cplane==2)  plane = PLANAR_V;
-			uc* buf      = frame->GetWritePtr(plane);
+			BYTE* buf      = frame->GetWritePtr(plane);
 			int pitch    = frame->GetPitch(plane);
 			int row_size = frame->GetRowSize(plane);
 			int height   = frame->GetHeight(plane);
@@ -116,7 +116,7 @@ PVideoFrame __stdcall AdjustFocusV::GetFrame(int n, IScriptEnvironment* env)
 		}
 
 	} else {
-		uc* buf      = frame->GetWritePtr();
+		BYTE* buf      = frame->GetWritePtr();
 		int pitch    = frame->GetPitch();
 		int row_size = vi.RowSize();
 		int height   = vi.height;
@@ -139,12 +139,12 @@ PVideoFrame __stdcall AdjustFocusV::GetFrame(int n, IScriptEnvironment* env)
 // Blur/Sharpen Vertical C++ Code
 // ------------------------------
 
-void AFV_C(uc* l, uc* p, const int height, const int pitch, const int row_size, const int amount) {
+void AFV_C(BYTE* l, BYTE* p, const int height, const int pitch, const int row_size, const int amount) {
 	const int center_weight = amount*2;
 	const int outer_weight = 32768-amount;
 	for (int y = height-1; y>0; --y) {
 		for (int x = 0; x < row_size; ++x) {
-			uc a = ScaledPixelClip(p[x] * center_weight + (l[x] + p[x+pitch]) * outer_weight);
+			BYTE a = ScaledPixelClip(p[x] * center_weight + (l[x] + p[x+pitch]) * outer_weight);
 			l[x] = p[x];
 			p[x] = a;
 		}
@@ -161,7 +161,7 @@ void AFV_C(uc* l, uc* p, const int height, const int pitch, const int row_size, 
 // Blur/Sharpen Vertical MMX Code
 // ------------------------------
 
-void AFV_MMX(const uc* l, const uc* p, const int height, const int pitch, const int row_size, const int amount) 
+void AFV_MMX(const BYTE* l, const BYTE* p, const int height, const int pitch, const int row_size, const int amount) 
 {
 	// round masks
 	__declspec(align(8)) const static __int64 r7 = 0x0040004000400040;
@@ -301,7 +301,7 @@ PVideoFrame __stdcall AdjustFocusH::GetFrame(int n, IScriptEnvironment* env)
 			if (cplane==1) plane = PLANAR_U;
 			if (cplane==2) plane = PLANAR_V;
 			const int row_size = frame->GetRowSize(plane);
-			uc* q = frame->GetWritePtr(plane);
+			BYTE* q = frame->GetWritePtr(plane);
 			const int pitch = frame->GetPitch(plane);
 			int height = frame->GetHeight(plane);
 #ifdef X86_32
@@ -316,7 +316,7 @@ PVideoFrame __stdcall AdjustFocusH::GetFrame(int n, IScriptEnvironment* env)
 			} 
 		}
 	} else {
-		uc* q = frame->GetWritePtr();
+		BYTE* q = frame->GetWritePtr();
 		const int pitch = frame->GetPitch();
 		if (vi.IsYUY2()) {
 #ifdef X86_32
@@ -354,25 +354,25 @@ PVideoFrame __stdcall AdjustFocusH::GetFrame(int n, IScriptEnvironment* env)
 // Blur/Sharpen Horizontal RGB32 C++ Code
 // --------------------------------------
 
-void AFH_RGB32_C(uc* p, int height, const int pitch, const int width, const int amount) {
+void AFH_RGB32_C(BYTE* p, int height, const int pitch, const int width, const int amount) {
 	const int center_weight = amount*2;
 	const int outer_weight = 32768-amount;
 	for (int y = height; y>0; --y) 
 	{
-		uc bb = p[0];
-		uc gg = p[1];
-		uc rr = p[2];
-		uc aa = p[3];
+		BYTE bb = p[0];
+		BYTE gg = p[1];
+		BYTE rr = p[2];
+		BYTE aa = p[3];
 		int x;
 		for (x = 0; x < width-1; ++x) 
 		{
-			uc b = ScaledPixelClip(p[x*4+0] * center_weight + (bb + p[x*4+4]) * outer_weight);
+			BYTE b = ScaledPixelClip(p[x*4+0] * center_weight + (bb + p[x*4+4]) * outer_weight);
 			bb = p[x*4+0]; p[x*4+0] = b;
-			uc g = ScaledPixelClip(p[x*4+1] * center_weight + (gg + p[x*4+5]) * outer_weight);
+			BYTE g = ScaledPixelClip(p[x*4+1] * center_weight + (gg + p[x*4+5]) * outer_weight);
 			gg = p[x*4+1]; p[x*4+1] = g;
-			uc r = ScaledPixelClip(p[x*4+2] * center_weight + (rr + p[x*4+6]) * outer_weight);
+			BYTE r = ScaledPixelClip(p[x*4+2] * center_weight + (rr + p[x*4+6]) * outer_weight);
 			rr = p[x*4+2]; p[x*4+2] = r;
-			uc a = ScaledPixelClip(p[x*4+3] * center_weight + (aa + p[x*4+7]) * outer_weight);
+			BYTE a = ScaledPixelClip(p[x*4+3] * center_weight + (aa + p[x*4+7]) * outer_weight);
 			aa = p[x*4+3]; p[x*4+3] = a;
 		}
 		p[x*4+0] = ScaledPixelClip(p[x*4+0] * center_weight + (bb + p[x*4+0]) * outer_weight);
@@ -388,7 +388,7 @@ void AFH_RGB32_C(uc* p, int height, const int pitch, const int width, const int 
 // Blur/Sharpen Horizontal RGB32 MMX Code
 // --------------------------------------
 
-void AFH_RGB32_MMX(const uc* p, const int height, const int pitch, const int width, const int amount) 
+void AFH_RGB32_MMX(const BYTE* p, const int height, const int pitch, const int width, const int amount) 
 {
 	// round masks
 	__declspec(align(8)) const __int64 r7 = 0x0040004000400040;
@@ -505,26 +505,26 @@ next_loop:
 // Blur/Sharpen Horizontal YUY2 C++ Code
 // -------------------------------------
 
-void AFH_YUY2_C(uc* p, int height, const int pitch, const int width, const int amount) {
+void AFH_YUY2_C(BYTE* p, int height, const int pitch, const int width, const int amount) {
 	const int center_weight = amount*2;
 	const int outer_weight = 32768-amount;
 	for (int y = height; y>0; --y) 
 	{
-		uc yy = p[0];
-		uc uv = p[1];
-		uc vu = p[3];
+		BYTE yy = p[0];
+		BYTE uv = p[1];
+		BYTE vu = p[3];
 		int x;
 		for (x = 0; x < width-2; ++x) 
 		{
-			uc y = ScaledPixelClip(p[x*2+0] * center_weight + (yy + p[x*2+2]) * outer_weight);
+			BYTE y = ScaledPixelClip(p[x*2+0] * center_weight + (yy + p[x*2+2]) * outer_weight);
 			yy   = p[x*2+0];
 			p[x*2+0] = y;
-			uc w = ScaledPixelClip(p[x*2+1] * center_weight + (uv + p[x*2+5]) * outer_weight);
+			BYTE w = ScaledPixelClip(p[x*2+1] * center_weight + (uv + p[x*2+5]) * outer_weight);
 			uv   = vu;
 			vu   = p[x*2+1];
 			p[x*2+1] = w;
 		}
-		uc y     = ScaledPixelClip(p[x*2+0] * center_weight + (yy + p[x*2+2]) * outer_weight);
+		BYTE y     = ScaledPixelClip(p[x*2+0] * center_weight + (yy + p[x*2+2]) * outer_weight);
 		yy       = p[x*2+0];
 		p[x*2+0] = y;
 		p[x*2+1] = ScaledPixelClip(p[x*2+1] * center_weight + (uv + p[x*2+1]) * outer_weight);
@@ -541,7 +541,7 @@ void AFH_YUY2_C(uc* p, int height, const int pitch, const int width, const int a
 // Blur/Sharpen Horizontal YUY2 MMX Code
 // -------------------------------------
 
-void AFH_YUY2_MMX(const uc* p, const int height, const int pitch, const int width, const int amount) 
+void AFH_YUY2_MMX(const BYTE* p, const int height, const int pitch, const int width, const int amount) 
 {
 	// round masks
 	__declspec(align(8)) const __int64 r7 = 0x0040004000400040;
@@ -746,23 +746,23 @@ next_loop:
 // Blur/Sharpen Horizontal RGB24 C++ Code
 // --------------------------------------
 
-void AFH_RGB24_C(uc* p, int height, const int pitch, const int width, const int amount) {
+void AFH_RGB24_C(BYTE* p, int height, const int pitch, const int width, const int amount) {
   const int center_weight = amount*2;
   const int outer_weight = 32768-amount;
   for (int y = height; y>0; --y) 
     {
 
-      uc bb = p[0];
-      uc gg = p[1];
-      uc rr = p[2];
+      BYTE bb = p[0];
+      BYTE gg = p[1];
+      BYTE rr = p[2];
       int x;
 	  for (x = 0; x < width-1; ++x) 
       {
-        uc b = ScaledPixelClip(p[x*3+0] * center_weight + (bb + p[x*3+3]) * outer_weight);
+        BYTE b = ScaledPixelClip(p[x*3+0] * center_weight + (bb + p[x*3+3]) * outer_weight);
         bb = p[x*3+0]; p[x*3+0] = b;
-        uc g = ScaledPixelClip(p[x*3+1] * center_weight + (gg + p[x*3+4]) * outer_weight);
+        BYTE g = ScaledPixelClip(p[x*3+1] * center_weight + (gg + p[x*3+4]) * outer_weight);
         gg = p[x*3+1]; p[x*3+1] = g;
-        uc r = ScaledPixelClip(p[x*3+2] * center_weight + (rr + p[x*3+5]) * outer_weight);
+        BYTE r = ScaledPixelClip(p[x*3+2] * center_weight + (rr + p[x*3+5]) * outer_weight);
         rr = p[x*3+2]; p[x*3+2] = r;
       }
       p[x*3+0] = ScaledPixelClip(p[x*3+0] * center_weight + (bb + p[x*3+0]) * outer_weight);
@@ -776,11 +776,11 @@ void AFH_RGB24_C(uc* p, int height, const int pitch, const int width, const int 
 // Blur/Sharpen Horizontal YV12 C++ Code
 // -------------------------------------
 
-void AFH_YV12_C(uc* p, int height, const int pitch, const int row_size, const int amount) 
+void AFH_YV12_C(BYTE* p, int height, const int pitch, const int row_size, const int amount) 
 {
 	const int center_weight = amount*2;
 	const int outer_weight = 32768-amount;
-	uc pp,l;
+	BYTE pp,l;
 	for (int y = height; y>0; --y) {
 		l = p[0];
 		int x;
@@ -834,7 +834,7 @@ __asm	packuswb	mmA,mmAA	/* Packed new 8 pixels */
 //   frame->GetRowSize(plane|PLANAR_ALIGNED) ensured rowsize is also mod 8
 // For pitch less than 8 C code is used (unlikely, I couldn't force a case)
 // 
-void AFH_YV12_MMX(uc* p, int height, const int pitch, const int row_size, const int amount) 
+void AFH_YV12_MMX(BYTE* p, int height, const int pitch, const int row_size, const int amount) 
 {
 	// weights
 	__declspec(align(8)) __int64 cw;
@@ -996,23 +996,6 @@ AVSValue __cdecl Create_Blur(AVSValue args, void*, IScriptEnvironment* env)
  ****  TemporalSoften  *****
  **************************/
 
- /**
- *  YV12 / YUY2 code (c) by Klaus Post // sh0dan 2002 - 2003
- *
- * - All frames are loaded (we rely on the cache for this, which is why it has to be rewritten)
- * - Pointer array is given to the mmx function for planes.
- * - One line of each planes is one after one compared to the current frame. 
- * - Accumulated values are stored in an arrays. (as shorts)
- * - The divisor is stored in a separate array (as bytes)
- * - The divisor is looked up.
- * - Result is stored.
- * Mode 2:
- * - Works by storing the pixels of the original plane, 
- *     when pixels of the tested frames are larger than threshold.
- **/
-
-
-
 TemporalSoften::TemporalSoften( PClip _child, unsigned radius, unsigned luma_thresh, 
                                 unsigned chroma_thresh, int _scenechange, IScriptEnvironment* env )
   : GenericVideoFilter  (_child),
@@ -1066,7 +1049,6 @@ TemporalSoften::TemporalSoften( PClip _child, unsigned radius, unsigned luma_thr
   planes[c]=0;
   frames = new PVideoFrame[kernel];
 }
-
 
 
 TemporalSoften::~TemporalSoften(void) 

@@ -38,8 +38,6 @@
 #include <avisynth.h>
 
 
-#define uc unsigned char
-
 class AdjustFocusV : public GenericVideoFilter 
 /**
   * Class to adjust focus in the vertical direction, helper for sharpen/blue
@@ -53,13 +51,13 @@ public:
 private:
   const bool mmx;
   const int amount;
-  uc* line;
+  BYTE* line;
 
 };
 
 /* Helpers for AdjustFocusV */
-void AFV_C(uc* l, uc* p, const int height, const int pitch, const int row_size, const int amount);
-void AFV_MMX(const uc* l, const uc* p, const int height, const int pitch, const int row_size, const int amount);
+void AFV_C(BYTE* l, BYTE* p, const int height, const int pitch, const int row_size, const int amount);
+void AFV_MMX(const BYTE* l, const BYTE* p, const int height, const int pitch, const int row_size, const int amount);
 
 
 class AdjustFocusH : public GenericVideoFilter 
@@ -78,14 +76,14 @@ private:
 };
 
 /* Helpers for AdjustFocusH */
-void AFH_YUY2_C(uc* p, int height, const int pitch, const int width, const int amount);
-void AFH_YUY2_MMX(const uc* p, const int height, const int pitch, const int width, const int amount);
-void AFH_RGB32_C(uc* p, int height, const int pitch, const int width, const int amount);
-void AFH_RGB32_MMX(const uc* p, const int height, const int pitch, const int width, const int amount);
-void AFH_YV12_C(uc* p, int height, const int pitch, const int row_size, const int amount);
-void AFH_YV12_MMX(uc* p, int height, const int pitch, const int row_size, const int amount);
+void AFH_YUY2_C(BYTE* p, int height, const int pitch, const int width, const int amount);
+void AFH_YUY2_MMX(const BYTE* p, const int height, const int pitch, const int width, const int amount);
+void AFH_RGB32_C(BYTE* p, int height, const int pitch, const int width, const int amount);
+void AFH_RGB32_MMX(const BYTE* p, const int height, const int pitch, const int width, const int amount);
+void AFH_YV12_C(BYTE* p, int height, const int pitch, const int row_size, const int amount);
+void AFH_YV12_MMX(BYTE* p, int height, const int pitch, const int row_size, const int amount);
 
-void AFH_RGB24_C(uc* p, int height, const int pitch, const int width, const int amount);
+void AFH_RGB24_C(BYTE* p, int height, const int pitch, const int width, const int amount);
 // no mmx version. to be honest, who would intensively use this ?
 
 /*** Sharpen/Blur Factory methods ***/
