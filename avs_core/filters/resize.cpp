@@ -223,11 +223,11 @@ void vertical_reduce_core(BYTE* dstp, const BYTE* srcp, int dst_pitch, int src_p
   if (!srcp) {
     return;
   }
-  if ((env->GetCPUFlags() & CPUF_SSE2) && IsPtrAligned(srcp, 16)) {
+  if ((env->GetCPUFlags() & CPUF_SSE2) && IsPtrAligned(srcp, 16) && width >= 16) {
     vertical_reduce_sse2(dstp, srcp, dst_pitch, src_pitch, width, height);
   } else
 #ifdef X86_32
-    if (env->GetCPUFlags() & CPUF_MMX) {
+    if ((env->GetCPUFlags() & CPUF_MMX) && width >= 8) {
       vertical_reduce_mmx(dstp, srcp, dst_pitch, src_pitch, width, height);
     } else
 #endif
