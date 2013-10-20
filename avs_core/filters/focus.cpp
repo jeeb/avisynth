@@ -69,12 +69,12 @@ extern const AVSFunction Focus_filters[] = {
  ***  Impl. full 8bit MMX proc. IanB ***
  ***************************************/
 
-AdjustFocusV::AdjustFocusV(double _amount, PClip _child, bool _mmx)
-: GenericVideoFilter(_child), amount(int(32768*pow(2.0, _amount)+0.5)), line(NULL), mmx(_mmx) {}
+AdjustFocusV::AdjustFocusV(double _amount, PClip _child)
+: GenericVideoFilter(_child), amount(int(32768*pow(2.0, _amount)+0.5)), line(NULL) {}
 
 AdjustFocusV::~AdjustFocusV(void) 
 { 
-  if (line) delete[] line; 
+  _aligned_free(line);
 }
 
 // --------------------------------
@@ -83,53 +83,50 @@ AdjustFocusV::~AdjustFocusV(void)
 
 PVideoFrame __stdcall AdjustFocusV::GetFrame(int n, IScriptEnvironment* env) 
 {
+  
 	PVideoFrame frame = child->GetFrame(n, env);
 	env->MakeWritable(&frame);
 	if (!line)
-		line = new BYTE[frame->GetRowSize()+32];
-	BYTE* linea = (BYTE*)(((int)line+15) & -16); // Align 16
+    line = reinterpret_cast<BYTE*>(_aligned_malloc(frame->GetRowSize(), 16));
 
 	if (vi.IsPlanar()) {
+    const int planes[3] = { PLANAR_Y, PLANAR_U, PLANAR_V };
 		for(int cplane=0;cplane<3;cplane++) {
-			int plane=0;
-			if (cplane==0)  plane = PLANAR_Y;
-			if (cplane==1)  plane = PLANAR_U;
-			if (cplane==2)  plane = PLANAR_V;
-			BYTE* buf      = frame->GetWritePtr(plane);
+			int plane = planes[cplane];
+			BYTE* buf    = frame->GetWritePtr(plane);
 			int pitch    = frame->GetPitch(plane);
 			int row_size = frame->GetRowSize(plane);
 			int height   = frame->GetHeight(plane);
-			memcpy(linea, buf, row_size); // First row - map centre as upper
+			memcpy(line, buf, row_size); // First row - map centre as upper
 			// All normal cases will have pitch aligned 16, we
 			// need 8. If someone works hard enough to override
 			// this we can't process the short fall. Use C Code.
 #ifdef X86_32
-			if (mmx && (pitch >= ((row_size+7) & -8)))
+			if ((env->GetCPUFlags() & CPUF_MMX) && (pitch >= (((row_size+7) / 8) * 8)))
       {
-				AFV_MMX(linea, buf, height, pitch, row_size, amount);
+				AFV_MMX(line, buf, height, pitch, row_size, amount);
 			}
       else
 #endif
       {
-				AFV_C(linea, buf, height, pitch, row_size, amount);
+				AFV_C(line, buf, height, pitch, row_size, amount);
 			}
 		}
-
 	} else {
-		BYTE* buf      = frame->GetWritePtr();
+		BYTE* buf    = frame->GetWritePtr();
 		int pitch    = frame->GetPitch();
 		int row_size = vi.RowSize();
 		int height   = vi.height;
-		memcpy(linea, buf, row_size); // First row - map centre as upper
+		memcpy(line, buf, row_size); // First row - map centre as upper
 #ifdef X86_32
-		if (mmx && (pitch >= ((row_size+7) & -8)))
+		if ((env->GetCPUFlags() & CPUF_MMX) && (pitch >= (((row_size+7) / 8) * 8)))
     {
-			AFV_MMX(linea, buf, height, pitch, row_size, amount);
+			AFV_MMX(line, buf, height, pitch, row_size, amount);
 		}
     else
 #endif
     {
-			AFV_C(linea, buf, height, pitch, row_size, amount);
+			AFV_C(line, buf, height, pitch, row_size, amount);
 		}
 	}
 	return frame;
@@ -282,8 +279,8 @@ lrow_loop:
 }
 #endif
 
-AdjustFocusH::AdjustFocusH(double _amount, PClip _child, bool _mmx)
-: GenericVideoFilter(_child), amount(int(32768*pow(2.0, _amount)+0.5)), mmx(_mmx) {}
+AdjustFocusH::AdjustFocusH(double _amount, PClip _child)
+: GenericVideoFilter(_child), amount(int(32768*pow(2.0, _amount)+0.5)) {}
 
 // ----------------------------------
 // Blur/Sharpen Horizontal GetFrame()
@@ -295,20 +292,18 @@ PVideoFrame __stdcall AdjustFocusH::GetFrame(int n, IScriptEnvironment* env)
 	env->MakeWritable(&frame); // Damn! This screws FillBorder
 
 	if (vi.IsPlanar()) {
+    const int planes[3] = { PLANAR_Y, PLANAR_U, PLANAR_V };
 		for(int cplane=0;cplane<3;cplane++) {
-			int plane=0;
-			if (cplane==0) plane = PLANAR_Y;
-			if (cplane==1) plane = PLANAR_U;
-			if (cplane==2) plane = PLANAR_V;
+      int plane = planes[cplane];
 			const int row_size = frame->GetRowSize(plane);
 			BYTE* q = frame->GetWritePtr(plane);
 			const int pitch = frame->GetPitch(plane);
 			int height = frame->GetHeight(plane);
 #ifdef X86_32
-			if (mmx && (pitch >= ((row_size+7) & -8)))
+      if ((env->GetCPUFlags() & CPUF_MMX) && (pitch >= (((row_size+7) / 8) * 8)))
       {
-				AFH_YV12_MMX(q,height,pitch,row_size,amount);
-			}
+        AFH_YV12_MMX(q,height,pitch,row_size,amount);
+      }
       else
 #endif
       {
@@ -320,7 +315,7 @@ PVideoFrame __stdcall AdjustFocusH::GetFrame(int n, IScriptEnvironment* env)
 		const int pitch = frame->GetPitch();
 		if (vi.IsYUY2()) {
 #ifdef X86_32
-			if (mmx)
+			if (env->GetCPUFlags() & CPUF_MMX)
       {
 				AFH_YUY2_MMX(q,vi.height,pitch,vi.width,amount);
 			}
@@ -332,7 +327,7 @@ PVideoFrame __stdcall AdjustFocusH::GetFrame(int n, IScriptEnvironment* env)
 		} 
 		else if (vi.IsRGB32()) {
 #ifdef X86_32
-			if (mmx)
+			if (env->GetCPUFlags() & CPUF_MMX)
       {
 				AFH_RGB32_MMX(q,vi.height,pitch,vi.width,amount);
 			}
@@ -940,7 +935,6 @@ out_row_loop_ex:
 AVSValue __cdecl Create_Sharpen(AVSValue args, void*, IScriptEnvironment* env) 
 {
   const double amountH = args[1].AsFloat(), amountV = args[2].AsDblDef(amountH);
-  const bool mmx = args[3].AsBool(true) && (env->GetCPUFlags() & CPUF_MMX);
 
   if (amountH < -1.5849625 || amountH > 1.0 || amountV < -1.5849625 || amountV > 1.0) // log2(3)
     env->ThrowError("Sharpen: arguments must be in the range -1.58 to 1.0");
@@ -950,15 +944,15 @@ AVSValue __cdecl Create_Sharpen(AVSValue args, void*, IScriptEnvironment* env)
       return args[0].AsClip();
     }
     else {
-      return new AdjustFocusV(amountV, args[0].AsClip(), mmx);
+      return new AdjustFocusV(amountV, args[0].AsClip());
     }
   }
   else {
     if (fabs(amountV) < 0.00002201361136) {
-      return new AdjustFocusH(amountH, args[0].AsClip(), mmx);
+      return new AdjustFocusH(amountH, args[0].AsClip());
     }
     else {
-      return new AdjustFocusH(amountH, new AdjustFocusV(amountV, args[0].AsClip(), mmx), mmx);
+      return new AdjustFocusH(amountH, new AdjustFocusV(amountV, args[0].AsClip()));
     }
   }
 }
@@ -976,15 +970,15 @@ AVSValue __cdecl Create_Blur(AVSValue args, void*, IScriptEnvironment* env)
       return args[0].AsClip();
     }
     else {
-      return new AdjustFocusV(-amountV, args[0].AsClip(), mmx);
+      return new AdjustFocusV(-amountV, args[0].AsClip());
     }
   }
   else {
     if (fabs(amountV) < 0.00002201361136) {
-      return new AdjustFocusH(-amountH, args[0].AsClip(), mmx);
+      return new AdjustFocusH(-amountH, args[0].AsClip());
     }
     else {
-      return new AdjustFocusH(-amountH, new AdjustFocusV(-amountV, args[0].AsClip(), mmx), mmx);
+      return new AdjustFocusH(-amountH, new AdjustFocusV(-amountV, args[0].AsClip()));
     }
   }
 }
