@@ -40,7 +40,7 @@
 #include <avisynth.h>
 #include "444convert.h"
 #include "overlayfunctions.h"
-#include "blend_asm.h"
+#include "blend_common.h"
 
 
 class Overlay : public GenericVideoFilter

@@ -40,7 +40,7 @@
 #include <avisynth.h>
 #include <avs/minmax.h>
 #include "imghelpers.h"
-#include "blend_asm.h"
+#include "blend_common.h"
 
 class OverlayFunction {
 public:

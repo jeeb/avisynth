@@ -36,7 +36,7 @@
 
 #include <avs/config.h>
 
-#include "blend_asm.h"
+#include "blend_common.h"
 #include "overlayfunctions.h"
 #include <emmintrin.h>
 
