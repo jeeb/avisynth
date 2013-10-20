@@ -68,4 +68,9 @@ void mmx_darken_planar(BYTE *p1, BYTE *p1U, BYTE *p1V, const BYTE *p2, const BYT
 
 void mmx_lighten_planar(BYTE *p1, BYTE *p1U, BYTE *p1V, const BYTE *p2, const BYTE *p2U, const BYTE *p2V, int p1_pitch, int p2_pitch,int rowsize, int height);
 
+void sse_darken_planar(BYTE *p1, BYTE *p1U, BYTE *p1V, const BYTE *p2, const BYTE *p2U, const BYTE *p2V, int p1_pitch, int p2_pitch,int rowsize, int height);
+
+void sse_lighten_planar(BYTE *p1, BYTE *p1U, BYTE *p1V, const BYTE *p2, const BYTE *p2U, const BYTE *p2V, int p1_pitch, int p2_pitch,int rowsize, int height);
+
+
 #endif // __blend_asm_h

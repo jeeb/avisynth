@@ -146,6 +146,138 @@ void sse_weigh_planar(BYTE *dstp, const BYTE *srcp, int dst_pitch, int src_pitch
   }
 }
 
+void sse_darken_planar(BYTE *p1, BYTE *p1U, BYTE *p1V, const BYTE *p2, const BYTE *p2U, const BYTE *p2V, int p1_pitch, int p2_pitch,int row_size, int height) {
+  int wMod16 = (row_size/16) * 16;
+  __m128i zero = _mm_setzero_si128();
+  __m128i all1 = _mm_set1_epi8(0xFF);
+  
+  for (int y = 0; y < height; y++) {
+    for (int x = 0; x < wMod16; x+=16) {
+      // Replace pixel that has overlay (p2) darker than clip (p1)
+      // darker == p2.y < p1.y
+
+      __m128i p1_y = _mm_loadu_si128(reinterpret_cast<const __m128i*>(p1+x));
+      __m128i p2_y = _mm_loadu_si128(reinterpret_cast<const __m128i*>(p2+x));
+
+      // (p2 <= p1) (because mmx version do it like this)
+      __m128i diff = _mm_subs_epu8(p2_y, p1_y);
+      __m128i cmp_result = _mm_cmpeq_epi8(diff, zero);
+      
+      __m128i p1y_base = _mm_andnot_si128(cmp_result, p1_y);
+      __m128i p2y_base = _mm_and_si128   (cmp_result, p2_y);
+
+      __m128i result_y = _mm_or_si128(p1y_base, p2y_base);
+
+      _mm_storeu_si128(reinterpret_cast<__m128i*>(p1+x), result_y);
+
+      // Process U plane
+      __m128i p1_u = _mm_loadu_si128(reinterpret_cast<const __m128i*>(p1U+x));
+      __m128i p2_u = _mm_loadu_si128(reinterpret_cast<const __m128i*>(p2U+x));
+      
+      __m128i p1u_base = _mm_andnot_si128(cmp_result, p1_u);
+      __m128i p2u_base = _mm_and_si128   (cmp_result, p2_u);
+
+      __m128i result_u = _mm_or_si128(p1u_base, p2u_base);
+
+      _mm_storeu_si128(reinterpret_cast<__m128i*>(p1U+x), result_u);
+
+      // Process V plane
+      __m128i p1_v = _mm_loadu_si128(reinterpret_cast<const __m128i*>(p1V+x));
+      __m128i p2_v = _mm_loadu_si128(reinterpret_cast<const __m128i*>(p2V+x));
+      
+      __m128i p1v_base = _mm_andnot_si128(cmp_result, p1_v);
+      __m128i p2v_base = _mm_and_si128   (cmp_result, p2_v);
+
+      __m128i result_v = _mm_or_si128(p1v_base, p2v_base);
+
+      _mm_storeu_si128(reinterpret_cast<__m128i*>(p1V+x), result_v);
+    }
+    
+    for (int x = wMod16; x < row_size; x++) {
+      if (p2[x] <= p1[x])  { 
+          p1[x]  = p2[x];
+          p1U[x] = p2U[x];
+          p1V[x] = p2V[x];
+        }
+    }
+
+    p1 += p1_pitch;
+    p2 += p2_pitch;
+
+    p1U += p1_pitch;
+    p2U += p2_pitch;
+
+    p1V += p1_pitch;
+    p2V += p2_pitch;
+  }
+}
+
+void sse_lighten_planar(BYTE *p1, BYTE *p1U, BYTE *p1V, const BYTE *p2, const BYTE *p2U, const BYTE *p2V, int p1_pitch, int p2_pitch,int row_size, int height) {
+  int wMod16 = (row_size/16) * 16;
+  __m128i zero = _mm_setzero_si128();
+  __m128i all1 = _mm_set1_epi8(0xFF);
+  
+  for (int y = 0; y < height; y++) {
+    for (int x = 0; x < wMod16; x+=16) {
+      // Replace pixel that has overlay (p2) lighter than clip (p1)
+      // lighter == p2.y > p1.y
+
+      __m128i p1_y = _mm_loadu_si128(reinterpret_cast<const __m128i*>(p1+x));
+      __m128i p2_y = _mm_loadu_si128(reinterpret_cast<const __m128i*>(p2+x));
+
+      // (p2 >= p1) (because mmx version do it like this)
+      __m128i diff = _mm_subs_epu8(p1_y, p2_y);
+      __m128i cmp_result = _mm_cmpeq_epi8(diff, zero);
+      
+      __m128i p1y_base = _mm_andnot_si128(cmp_result, p1_y);
+      __m128i p2y_base = _mm_and_si128   (cmp_result, p2_y);
+
+      __m128i result_y = _mm_or_si128(p1y_base, p2y_base);
+
+      _mm_storeu_si128(reinterpret_cast<__m128i*>(p1+x), result_y);
+
+      // Process U plane
+      __m128i p1_u = _mm_loadu_si128(reinterpret_cast<const __m128i*>(p1U+x));
+      __m128i p2_u = _mm_loadu_si128(reinterpret_cast<const __m128i*>(p2U+x));
+      
+      __m128i p1u_base = _mm_andnot_si128(cmp_result, p1_u);
+      __m128i p2u_base = _mm_and_si128   (cmp_result, p2_u);
+
+      __m128i result_u = _mm_or_si128(p1u_base, p2u_base);
+
+      _mm_storeu_si128(reinterpret_cast<__m128i*>(p1U+x), result_u);
+
+      // Process V plane
+      __m128i p1_v = _mm_loadu_si128(reinterpret_cast<const __m128i*>(p1V+x));
+      __m128i p2_v = _mm_loadu_si128(reinterpret_cast<const __m128i*>(p2V+x));
+      
+      __m128i p1v_base = _mm_andnot_si128(cmp_result, p1_v);
+      __m128i p2v_base = _mm_and_si128   (cmp_result, p2_v);
+
+      __m128i result_v = _mm_or_si128(p1v_base, p2v_base);
+
+      _mm_storeu_si128(reinterpret_cast<__m128i*>(p1V+x), result_v);
+    }
+    
+    for (int x = wMod16; x < row_size; x++) {
+      if (p2[x] >= p1[x])  { 
+          p1[x]  = p2[x];
+          p1U[x] = p2U[x];
+          p1V[x] = p2V[x];
+        }
+    }
+
+    p1 += p1_pitch;
+    p2 += p2_pitch;
+
+    p1U += p1_pitch;
+    p2U += p2_pitch;
+
+    p1V += p1_pitch;
+    p2V += p2_pitch;
+  }
+}
+
 #ifdef X86_32
 
 

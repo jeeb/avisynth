@@ -113,6 +113,10 @@ void OL_DarkenImage::BlendImage(Image444* base, Image444* overlay) {
   int w = base->w();
   int h = base->h();
   if (opacity == 256) {
+    if (env->GetCPUFlags() && CPUF_SSE2) {
+      sse_darken_planar(baseY, baseU, baseV, ovY, ovU, ovV, base->pitch, overlay->pitch, w, h);
+      return;
+    } else
 #ifdef X86_32
     if (!(w&7) && (env->GetCPUFlags() & CPUF_MMX))
     {
