@@ -70,214 +70,216 @@ extern const AVSFunction Focus_filters[] = {
  ***************************************/
 
 AdjustFocusV::AdjustFocusV(double _amount, PClip _child)
-: GenericVideoFilter(_child), amount(int(32768*pow(2.0, _amount)+0.5)), line(NULL) {}
+: GenericVideoFilter(_child), amount(int(32768*pow(2.0, _amount)+0.5)), line_buf(NULL) {}
 
 AdjustFocusV::~AdjustFocusV(void) 
 { 
-  _aligned_free(line);
+  _aligned_free(line_buf);
+}
+
+void af_vertical_c(BYTE* line_buf, BYTE* dstp, const int height, const int pitch, const int width, const int amount) {
+  const int center_weight = amount*2;
+  const int outer_weight = 32768-amount;
+  for (int y = height-1; y>0; --y) {
+    for (int x = 0; x < width; ++x) {
+      BYTE a = ScaledPixelClip(dstp[x] * center_weight + (line_buf[x] + dstp[x+pitch]) * outer_weight);
+      line_buf[x] = dstp[x];
+      dstp[x] = a;
+    }
+    dstp += pitch;
+  }
+  for (int x = 0; x < width; ++x) { // Last row - map centre as lower
+    dstp[x] = ScaledPixelClip(dstp[x] * center_weight + (line_buf[x] + dstp[x]) * outer_weight);
+  }
+}
+
+static __forceinline __m128i af_vertical_blend_sse2(__m128i &upper, __m128i &center, __m128i &lower, __m128i &center_weight, __m128i &outer_weight, __m128i &round_mask) {
+  __m128i outer_tmp = _mm_add_epi16(upper, lower);
+  __m128i center_tmp = _mm_mullo_epi16(center, center_weight);
+
+  outer_tmp = _mm_mullo_epi16(outer_tmp, outer_weight);
+
+  __m128i result = _mm_adds_epi16(center_tmp, outer_tmp);
+  result = _mm_adds_epi16(result, center_tmp);
+  result = _mm_adds_epi16(result, round_mask);
+  return _mm_srai_epi16(result, 7);
+}
+
+void af_vertical_sse2(BYTE* line_buf, BYTE* dstp, int height, int pitch, int width, int amount) {
+  short t = (amount + 256) >> 9;
+  __m128i center_weight = _mm_set1_epi16(t);
+  __m128i outer_weight = _mm_set1_epi16(64 - t);
+  __m128i round_mask = _mm_set1_epi16(0x40);
+  __m128i zero = _mm_setzero_si128();
+
+  for (int y = 0; y < height-1; ++y) {
+    for (int x = 0; x < width; x+= 16) {
+      __m128i upper = _mm_load_si128(reinterpret_cast<const __m128i*>(line_buf+x));
+      __m128i center = _mm_load_si128(reinterpret_cast<const __m128i*>(dstp+x));
+      __m128i lower = _mm_load_si128(reinterpret_cast<const __m128i*>(dstp+pitch+x));
+      _mm_store_si128(reinterpret_cast<__m128i*>(line_buf+x), center);
+
+      __m128i upper_lo = _mm_unpacklo_epi8(upper, zero);
+      __m128i upper_hi = _mm_unpackhi_epi8(upper, zero);
+      __m128i center_lo = _mm_unpacklo_epi8(center, zero);
+      __m128i center_hi = _mm_unpackhi_epi8(center, zero);
+      __m128i lower_lo = _mm_unpacklo_epi8(lower, zero);
+      __m128i lower_hi = _mm_unpackhi_epi8(lower, zero);
+
+      __m128i result_lo = af_vertical_blend_sse2(upper_lo, center_lo, lower_lo, center_weight, outer_weight, round_mask);
+      __m128i result_hi = af_vertical_blend_sse2(upper_hi, center_hi, lower_hi, center_weight, outer_weight, round_mask);
+
+      __m128i result = _mm_packus_epi16(result_lo, result_hi);
+
+      _mm_store_si128(reinterpret_cast<__m128i*>(dstp+x), result);
+    }
+    dstp += pitch;
+  }
+
+  //last line
+  for (int x = 0; x < width; x+= 16) {
+    __m128i upper = _mm_load_si128(reinterpret_cast<const __m128i*>(line_buf+x));
+    __m128i center = _mm_load_si128(reinterpret_cast<const __m128i*>(dstp+x));
+
+    __m128i upper_lo = _mm_unpacklo_epi8(upper, zero);
+    __m128i upper_hi = _mm_unpackhi_epi8(upper, zero);
+    __m128i center_lo = _mm_unpacklo_epi8(center, zero);
+    __m128i center_hi = _mm_unpackhi_epi8(center, zero);
+
+    __m128i result_lo = af_vertical_blend_sse2(upper_lo, center_lo, center_lo, center_weight, outer_weight, round_mask);
+    __m128i result_hi = af_vertical_blend_sse2(upper_hi, center_hi, center_hi, center_weight, outer_weight, round_mask);
+
+    __m128i result = _mm_packus_epi16(result_lo, result_hi);
+
+      _mm_store_si128(reinterpret_cast<__m128i*>(dstp+x), result);
+  }
+}
+
+
+#ifdef X86_32
+
+static __forceinline __m64 af_vertical_blend_mmx(__m64 &upper, __m64 &center, __m64 &lower, __m64 &center_weight, __m64 &outer_weight, __m64 &round_mask) {
+  __m64 outer_tmp = _mm_add_pi16(upper, lower);
+  __m64 center_tmp = _mm_mullo_pi16(center, center_weight);
+
+  outer_tmp = _mm_mullo_pi16(outer_tmp, outer_weight);
+
+  __m64 result = _mm_adds_pi16(center_tmp, outer_tmp);
+  result = _mm_adds_pi16(result, center_tmp);
+  result = _mm_adds_pi16(result, round_mask);
+  return _mm_srai_pi16(result, 7);
+}
+
+void af_vertical_mmx(BYTE* line_buf, BYTE* dstp, int height, int pitch, int width, int amount) {
+  short t = (amount + 256) >> 9;
+  __m64 center_weight = _mm_set1_pi16(t);
+  __m64 outer_weight = _mm_set1_pi16(64 - t);
+  __m64 round_mask = _mm_set1_pi16(0x40);
+  __m64 zero = _mm_setzero_si64();
+
+  for (int y = 0; y < height-1; ++y) {
+    for (int x = 0; x < width; x+= 8) {
+      __m64 upper = *reinterpret_cast<const __m64*>(line_buf+x);
+      __m64 center = *reinterpret_cast<const __m64*>(dstp+x);
+      __m64 lower = *reinterpret_cast<const __m64*>(dstp+pitch+x);
+      *reinterpret_cast<__m64*>(line_buf+x) = center;
+
+      __m64 upper_lo = _mm_unpacklo_pi8(upper, zero);
+      __m64 upper_hi = _mm_unpackhi_pi8(upper, zero);
+      __m64 center_lo = _mm_unpacklo_pi8(center, zero);
+      __m64 center_hi = _mm_unpackhi_pi8(center, zero);
+      __m64 lower_lo = _mm_unpacklo_pi8(lower, zero);
+      __m64 lower_hi = _mm_unpackhi_pi8(lower, zero);
+
+      __m64 result_lo = af_vertical_blend_mmx(upper_lo, center_lo, lower_lo, center_weight, outer_weight, round_mask);
+      __m64 result_hi = af_vertical_blend_mmx(upper_hi, center_hi, lower_hi, center_weight, outer_weight, round_mask);
+
+      __m64 result = _mm_packs_pu16(result_lo, result_hi);
+
+      *reinterpret_cast<__m64*>(dstp+x) = result;
+    }
+    dstp += pitch;
+  }
+
+  //last line
+  for (int x = 0; x < width; x+= 8) {
+    __m64 upper = *reinterpret_cast<const __m64*>(line_buf+x);
+    __m64 center = *reinterpret_cast<const __m64*>(dstp+x);
+
+    __m64 upper_lo = _mm_unpacklo_pi8(upper, zero);
+    __m64 upper_hi = _mm_unpackhi_pi8(upper, zero);
+    __m64 center_lo = _mm_unpacklo_pi8(center, zero);
+    __m64 center_hi = _mm_unpackhi_pi8(center, zero);
+
+    __m64 result_lo = af_vertical_blend_mmx(upper_lo, center_lo, center_lo, center_weight, outer_weight, round_mask);
+    __m64 result_hi = af_vertical_blend_mmx(upper_hi, center_hi, center_hi, center_weight, outer_weight, round_mask);
+
+    __m64 result = _mm_packs_pu16(result_lo, result_hi);
+
+    *reinterpret_cast<__m64*>(dstp+x) = result;
+  }
+  _mm_empty();
+}
+
+#endif
+
+static void af_vertical_process(BYTE* line_buf, BYTE* dstp, size_t height, size_t pitch, size_t width, size_t amount, IScriptEnvironment* env) {
+  if ((env->GetCPUFlags() & CPUF_SSE2) && IsPtrAligned(dstp, 16) && width >= 16) {
+    //pitch of aligned frames is always >= 16 so we'll just process some garbage if width is not mod16
+    af_vertical_sse2(line_buf, dstp, height, pitch, width, amount);
+  } else
+#ifdef X86_32
+  if ((env->GetCPUFlags() & CPUF_MMX) && width >= 8)
+  {
+    size_t mod8_width = width / 8 * 8;
+    af_vertical_mmx(line_buf, dstp, height, pitch, mod8_width, amount);
+    if (mod8_width != width) {
+      //yes, this is bad for caching. MMX shouldn't be used these days anyway
+      af_vertical_c(line_buf, dstp + mod8_width, height, pitch, width - mod8_width, amount);
+    }
+  } else
+#endif
+  {
+    af_vertical_c(line_buf, dstp, height, pitch, width, amount);
+  }
 }
 
 // --------------------------------
-// Blur/Sharpen Vertical GetFrame()
+// Vertical Blur/Sharpen
 // --------------------------------
 
 PVideoFrame __stdcall AdjustFocusV::GetFrame(int n, IScriptEnvironment* env) 
 {
-  
-	PVideoFrame frame = child->GetFrame(n, env);
-	env->MakeWritable(&frame);
-	if (!line)
-    line = reinterpret_cast<BYTE*>(_aligned_malloc(frame->GetRowSize(), 16));
+	PVideoFrame src = child->GetFrame(n, env);
+
+	env->MakeWritable(&src);
+	if (!line_buf)
+    line_buf = reinterpret_cast<BYTE*>(_aligned_malloc(src->GetRowSize(), 16));
 
 	if (vi.IsPlanar()) {
     const int planes[3] = { PLANAR_Y, PLANAR_U, PLANAR_V };
 		for(int cplane=0;cplane<3;cplane++) {
 			int plane = planes[cplane];
-			BYTE* buf    = frame->GetWritePtr(plane);
-			int pitch    = frame->GetPitch(plane);
-			int row_size = frame->GetRowSize(plane);
-			int height   = frame->GetHeight(plane);
-			memcpy(line, buf, row_size); // First row - map centre as upper
-			// All normal cases will have pitch aligned 16, we
-			// need 8. If someone works hard enough to override
-			// this we can't process the short fall. Use C Code.
-#ifdef X86_32
-			if ((env->GetCPUFlags() & CPUF_MMX) && (pitch >= (((row_size+7) / 8) * 8)))
-      {
-				AFV_MMX(line, buf, height, pitch, row_size, amount);
-			}
-      else
-#endif
-      {
-				AFV_C(line, buf, height, pitch, row_size, amount);
-			}
+			BYTE* dstp = src->GetWritePtr(plane);
+			int pitch = src->GetPitch(plane);
+			int width = src->GetRowSize(plane);
+			int height = src->GetHeight(plane);
+			memcpy(line_buf, dstp, width); // First row - map centre as upper
+
+      af_vertical_process(line_buf, dstp, height, pitch, width, amount, env);
 		}
 	} else {
-		BYTE* buf    = frame->GetWritePtr();
-		int pitch    = frame->GetPitch();
-		int row_size = vi.RowSize();
-		int height   = vi.height;
-		memcpy(line, buf, row_size); // First row - map centre as upper
-#ifdef X86_32
-		if ((env->GetCPUFlags() & CPUF_MMX) && (pitch >= (((row_size+7) / 8) * 8)))
-    {
-			AFV_MMX(line, buf, height, pitch, row_size, amount);
-		}
-    else
-#endif
-    {
-			AFV_C(line, buf, height, pitch, row_size, amount);
-		}
+		BYTE* dstp = src->GetWritePtr();
+		int pitch = src->GetPitch();
+		int width = vi.RowSize();
+		int height = vi.height;
+		memcpy(line_buf, dstp, width); // First row - map centre as upper
+
+    af_vertical_process(line_buf, dstp, height, pitch, width, amount, env);
 	}
-	return frame;
+	return src;
 }
 
-// ------------------------------
-// Blur/Sharpen Vertical C++ Code
-// ------------------------------
-
-void AFV_C(BYTE* l, BYTE* p, const int height, const int pitch, const int row_size, const int amount) {
-	const int center_weight = amount*2;
-	const int outer_weight = 32768-amount;
-	for (int y = height-1; y>0; --y) {
-		for (int x = 0; x < row_size; ++x) {
-			BYTE a = ScaledPixelClip(p[x] * center_weight + (l[x] + p[x+pitch]) * outer_weight);
-			l[x] = p[x];
-			p[x] = a;
-		}
-		p += pitch;
-	}
-	for (int x = 0; x < row_size; ++x) { // Last row - map centre as lower
-		p[x] = ScaledPixelClip(p[x] * center_weight + (l[x] + p[x]) * outer_weight);
-	}
-}
-
-
-#ifdef X86_32
-// ------------------------------
-// Blur/Sharpen Vertical MMX Code
-// ------------------------------
-
-void AFV_MMX(const BYTE* l, const BYTE* p, const int height, const int pitch, const int row_size, const int amount) 
-{
-	// round masks
-	__declspec(align(8)) const static __int64 r7 = 0x0040004000400040;
-
-	__asm { 
-		sub		esp,8				; temp space on stack
-		// signed word center weight ((amount+0x100)>>9) x4
-		mov		eax,amount
-		add		eax,100h
-		sar		eax,9               ; [21..128]
-		mov		[esp],ax
-		mov		[esp+2],ax
-		mov		[esp+4],ax
-		mov		[esp+6],ax
-		movq	mm7,[esp]
-		// signed word outer weight 64-((amount+0x100)>>9) x4
-		mov		ax,40h
-		sub		ax,[esp]            ; [43..-64]
-		mov		[esp],ax
-		mov		[esp+2],ax
-		mov		[esp+4],ax
-		mov		[esp+6],ax
-		movq	mm6,[esp]
-
-		add		esp,8
-		pxor	mm0,mm0
-	}
-	
-	int nloops = __min(pitch, (row_size+7) & -8) >> 3;
-
-	for (int y = height-1; y>0; --y) {
-
-	__asm {
-		mov			edx,p			; frame buffer
-		mov			ecx,pitch
-		mov			eax,edx
-		add			eax,ecx
-		mov			p,eax			; p += pitch;
-		mov			eax,l			; line buffer
-		mov			edi,nloops
-
-		align		16
-row_loop:
-		movq		mm4,[eax]		; 8 Upper pixels (buffered)
-		 movq		mm5,[edx+ecx]	; 8 Lower pixels
-		movq		mm1,mm4			; Duplicate uppers
-		 movq		mm3,mm5			; Duplicate lowers
-		punpcklbw	mm4,mm0			; unpack 4 low bytes uppers
-		 movq		mm2,[edx]		; 8 Centre pixels
-		punpcklbw	mm5,mm0			; unpack 4 low bytes lowers
-		 movq		[eax],mm2		; Save centres as next uppers
-		paddw		mm5,mm4			; Uppers + Lowers				-- low
-		 movq		mm4,mm2			; Duplicate centres
-		pmullw		mm5,mm6			; *= outer weight				-- low [-32130, 21930]
-		 punpcklbw	mm4,mm0			; unpack 4 low bytes centres
-		punpckhbw	mm1,mm0			; unpack 4 high bytes uppers
-		 punpckhbw	mm3,mm0			; unpack 4 high bytes lowers
-		pmullw		mm4,mm7			; *= centre weight				-- low [32640, 5355]
-		 paddw		mm1,mm3			; Uppers + Lowers				-- high
-		punpckhbw	mm2,mm0			; unpack 4 high bytes centres
-		 pmullw		mm1,mm6			; *= outer weight				-- high
-		pmullw		mm2,mm7			; *= centre weight				-- high
-		 paddsw		mm5,mm4			; Weighted outers+=0.5*centres	-- low
-		paddsw		mm1,mm2			; Weighted outers+=0.5*centres	-- high
-		 paddsw		mm5,mm4			; +=0.5*centres					-- low
-		paddsw		mm1,mm2			; +=0.5*centres					-- high
- 		 paddsw		mm5,r7			; += 0.5						-- low
-		paddsw		mm1,r7			; += 0.5						-- high
-		 psraw		mm5,7			; /= 128						-- low
-		add			eax,8			; upper += 8
-		 psraw		mm1,7			; /= 128						-- high
-		add			edx,8			; centre += 8
-		 packuswb	mm5,mm1			; pack 4 lows with 4 highs
-		dec			edi				; count--
-		 movq		[edx-8],mm5		; Update 8 pixels
-		jnle		row_loop		; 
-		}
-
-	} // for (int y = height
-
-	__asm { // Last row - map centre as lower
-		mov			edx,p			; frame buffer
-		mov			eax,l			; line buffer
-		mov			edi,nloops
-
-		align		16
-lrow_loop:
-		movq		mm5,[eax]		; 8 Upper pixels (buffered)
-		 movq		mm4,[edx]		; 8 Centre pixels as lowers
-		movq		mm1,mm5			; Duplicate uppers
-		 movq		mm3,mm4			; Duplicate lowers (centres)
-		punpcklbw	mm5,mm0			; unpack 4 low bytes uppers
-		 punpcklbw	mm4,mm0			; unpack 4 low bytes lowers (centres)
-		punpckhbw	mm3,mm0			; unpack 4 high bytes lowers (centres)
-		 paddw		mm5,mm4			; Uppers + lowers (centres)		-- low
-		punpckhbw	mm1,mm0			; unpack 4 high bytes uppers
-		 pmullw		mm5,mm6			; *= outer weight				-- low
-		paddw		mm1,mm3			; Uppers + lowers (centres)		-- high
-		 pmullw		mm4,mm7			; *= centre weight				-- low
-		pmullw		mm1,mm6			; *= outer weight				-- high
-		 pmullw		mm3,mm7			; *= centre weight				-- high
-		paddsw		mm5,mm4			; Weighted outers+=0.5*centres	-- low
-		 paddsw		mm1,mm3			; Weighted outers+=0.5*centres	-- high
-		paddsw		mm5,mm4			; +=0.5*centres					-- low
-		 paddsw		mm1,mm3			; +=0.5*centres					-- high
-		paddsw		mm5,r7			; += 0.5						-- low
-		 paddsw		mm1,r7			; += 0.5						-- high
-		psraw		mm5,7			; /= 128						-- low
-		 add		eax,8			; upper += 8
-		psraw		mm1,7			; /= 128						-- high
-		 add		edx,8			; centre += 8
-		packuswb	mm5,mm1			; pack 4 lows with 4 highs
-		 dec		edi				; count--
-		movq		[edx-8],mm5		; Update 8 pixels
-		 jnle		lrow_loop		; 
-	}
-	__asm emms
-}
-#endif
 
 AdjustFocusH::AdjustFocusH(double _amount, PClip _child)
 : GenericVideoFilter(_child), amount(int(32768*pow(2.0, _amount)+0.5)) {}

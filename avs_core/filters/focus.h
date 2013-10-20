@@ -50,13 +50,9 @@ public:
 
 private:
   const int amount;
-  BYTE* line;
+  BYTE* line_buf;
 
 };
-
-/* Helpers for AdjustFocusV */
-void AFV_C(BYTE* l, BYTE* p, const int height, const int pitch, const int row_size, const int amount);
-void AFV_MMX(const BYTE* l, const BYTE* p, const int height, const int pitch, const int row_size, const int amount);
 
 
 class AdjustFocusH : public GenericVideoFilter 
