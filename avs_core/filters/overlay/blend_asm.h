@@ -37,6 +37,7 @@
 #ifndef __blend_asm_h
 #define __blend_asm_h
 
+#include "../include/avs/types.h"
 
 /*******************
  * Blends two planes.
@@ -51,17 +52,15 @@
  * (c) 2002 by sh0dan.
  ********/
 
-typedef unsigned char  BYTE;
-
 void mmx_weigh_planar(BYTE *p1, const BYTE *p2, int p1_pitch, int p2_pitch,int rowsize, int height, int weight, int invweight);
 void sse_weigh_planar(BYTE *p1, const BYTE *p2, int p1_pitch, int p2_pitch,int rowsize, int height, int weight);
  
-void MMerge_MMX(unsigned char *dstp, const unsigned char *srcp,
-				const unsigned char *maskp, const int dst_pitch, const int src_pitch,
+void MMerge_MMX(BYTE *dstp, const BYTE *srcp,
+				const BYTE *maskp, const int dst_pitch, const int src_pitch,
 				const int mask_pitch, const int row_size, const int height);
 
-void MMerge_SSE(unsigned char *dstp, const unsigned char *srcp,
-				const unsigned char *maskp, const int dst_pitch, const int src_pitch,
+void MMerge_SSE(BYTE *dstp, const BYTE *srcp,
+				const BYTE *maskp, const int dst_pitch, const int src_pitch,
 				const int mask_pitch, const int row_size, const int height);
 
 void mmx_darken_planar(BYTE *p1, BYTE *p1U, BYTE *p1V, const BYTE *p2, const BYTE *p2U, const BYTE *p2V, int p1_pitch, int p2_pitch,int rowsize, int height);

@@ -40,8 +40,8 @@
 #include "overlayfunctions.h"
 #include <emmintrin.h>
 
-void MMerge_SSE(unsigned char *dstp, const unsigned char *srcp,
-        const unsigned char *maskp, const int dst_pitch, const int src_pitch,
+void MMerge_SSE(BYTE *dstp, const BYTE *srcp,
+        const BYTE *maskp, const int dst_pitch, const int src_pitch,
         const int mask_pitch, const int row_size, const int height) {
 
   __m128i v128 = _mm_set1_epi16(0x0080);
@@ -356,8 +356,8 @@ outy:
 // From MaskedMerge - Weighed merge of video planes depending on masks
 // MaskedMerge (C) 2003 Kurosu (kurosu@inforezo.org)
 
-void MMerge_MMX(unsigned char *dstp, const unsigned char *srcp,
-        const unsigned char *maskp, const int dst_pitch, const int src_pitch,
+void MMerge_MMX(BYTE *dstp, const BYTE *srcp,
+        const BYTE *maskp, const int dst_pitch, const int src_pitch,
         const int mask_pitch, const int row_size, const int height)
 {
   static const __int64 Addi = 0x0080008000800080i64;
