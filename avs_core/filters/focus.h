@@ -69,23 +69,8 @@ private:
 
 };
 
-/* Helpers for AdjustFocusH */
-void AFH_YUY2_C(BYTE* p, int height, const int pitch, const int width, const int amount);
-void AFH_YUY2_MMX(const BYTE* p, const int height, const int pitch, const int width, const int amount);
-void AFH_RGB32_C(BYTE* p, int height, const int pitch, const int width, const int amount);
-void AFH_RGB32_MMX(const BYTE* p, const int height, const int pitch, const int width, const int amount);
-void AFH_YV12_C(BYTE* p, int height, const int pitch, const int row_size, const int amount);
-void AFH_YV12_MMX(BYTE* p, int height, const int pitch, const int row_size, const int amount);
-
-void AFH_RGB24_C(BYTE* p, int height, const int pitch, const int width, const int amount);
-// no mmx version. to be honest, who would intensively use this ?
-
-/*** Sharpen/Blur Factory methods ***/
-
 AVSValue __cdecl Create_Sharpen(AVSValue args, void*, IScriptEnvironment* env);
 AVSValue __cdecl Create_Blur(AVSValue args, void*, IScriptEnvironment* env);
-
-
 
 
 /*** Soften classes ***/
