@@ -93,7 +93,6 @@ __m128i OV_FORCEINLINE overlay_blend_opaque_sse2_core(const __m128i& p1, const _
   return _mm_or_si128(r1, r2);
 }
 
-// this is not being used right now, need dynamic dispatching
 __m128i OV_FORCEINLINE overlay_blend_opaque_sse41_core(const __m128i& p1, const __m128i& p2, const __m128i& mask) {
   return _mm_blendv_epi8(p1, p2, mask);
 }
@@ -421,6 +420,375 @@ void overlay_blend_sse2_plane_masked_opacity(BYTE *p1, const BYTE *p2, const BYT
   // Leftover value
   overlay_blend_c_plane_masked_opacity(original_p1+wMod16, original_p2+wMod16, original_mask+wMod16, p1_pitch, p2_pitch, mask_pitch, width-wMod16, height, opacity);
 }
+
+/////////////////////////////////////////////
+// Mode: Darken
+/////////////////////////////////////////////
+
+void overlay_darken_c(BYTE *p1Y, BYTE *p1U, BYTE *p1V, const BYTE *p2Y, const BYTE *p2U, const BYTE *p2V, int p1_pitch, int p2_pitch, int width, int height) {
+  for (int y = 0; y < height; y++) {
+    for (int x = 0; x < width; x++) {
+      int mask = p2Y[x] <= p1Y[x];
+      p1Y[x] = overlay_blend_opaque_c_core(p1Y[x], p2Y[x], mask);
+      p1U[x] = overlay_blend_opaque_c_core(p1U[x], p2U[x], mask);
+      p1V[x] = overlay_blend_opaque_c_core(p1V[x], p2V[x], mask);
+    }
+
+    p1Y += p1_pitch;
+    p1U += p1_pitch;
+    p1V += p1_pitch;
+
+    p2Y += p2_pitch;
+    p2U += p2_pitch;
+    p2V += p2_pitch;
+  }
+}
+
+void overlay_darken_mmx(BYTE *p1Y, BYTE *p1U, BYTE *p1V, const BYTE *p2Y, const BYTE *p2U, const BYTE *p2V, int p1_pitch, int p2_pitch, int width, int height) {
+  __m64 zero = _mm_setzero_si64();
+
+  int wMod8 = (width/8) * 8;
+  
+  for (int y = 0; y < height; y++) {
+    for (int x = 0; x < wMod8; x+=8) {
+      // Load Y Plane
+      __m64 p1_y = *(reinterpret_cast<const __m64*>(p1Y+x));
+      __m64 p2_y = *(reinterpret_cast<const __m64*>(p2Y+x));
+
+      // Compare
+      // (p2 <= p1) (because old mmx version does it like this)
+      __m64 diff = _mm_subs_pu8(p2_y, p1_y);
+      __m64 cmp_result = _mm_cmpeq_pi8(diff, zero);
+
+      // Process U Plane
+      __m64 result_y = overlay_blend_opaque_mmx_core(p1_y, p2_y, cmp_result);
+      *reinterpret_cast<__m64*>(p1Y+x) = result_y;
+
+      // Process U plane
+      __m64 p1_u = *(reinterpret_cast<const __m64*>(p1U+x));
+      __m64 p2_u = *(reinterpret_cast<const __m64*>(p2U+x));
+      
+      __m64 result_u = overlay_blend_opaque_mmx_core(p1_u, p2_u, cmp_result);
+      *reinterpret_cast<__m64*>(p1U+x) = result_u;
+
+      // Process V plane
+      __m64 p1_v = *(reinterpret_cast<const __m64*>(p1V+x));
+      __m64 p2_v = *(reinterpret_cast<const __m64*>(p2V+x));
+      
+      __m64 result_v = overlay_blend_opaque_mmx_core(p1_v, p2_v, cmp_result);
+      *reinterpret_cast<__m64*>(p1V+x) = result_v;
+    }
+
+    // Leftover value
+    for (int x = wMod8; x < width; x++) {
+      int mask = p2Y[x] <= p1Y[x];
+      p1Y[x] = overlay_blend_opaque_c_core(p1Y[x], p2Y[x], mask);
+      p1U[x] = overlay_blend_opaque_c_core(p1U[x], p2U[x], mask);
+      p1V[x] = overlay_blend_opaque_c_core(p1V[x], p2V[x], mask);
+    }
+
+    p1Y += p1_pitch;
+    p1U += p1_pitch;
+    p1V += p1_pitch;
+
+    p2Y += p2_pitch;
+    p2U += p2_pitch;
+    p2V += p2_pitch;
+  }
+
+  _mm_empty();
+}
+#ifdef X86_32
+void overlay_darken_sse2(BYTE *p1Y, BYTE *p1U, BYTE *p1V, const BYTE *p2Y, const BYTE *p2U, const BYTE *p2V, int p1_pitch, int p2_pitch, int width, int height) {
+  __m128i zero = _mm_setzero_si128();
+
+  int wMod16 = (width/16) * 16;
+  
+  for (int y = 0; y < height; y++) {
+    for (int x = 0; x < wMod16; x+=16) {
+      // Load Y Plane
+      __m128i p1_y = _mm_loadu_si128(reinterpret_cast<const __m128i*>(p1Y+x));
+      __m128i p2_y = _mm_loadu_si128(reinterpret_cast<const __m128i*>(p2Y+x));
+
+      // Compare
+      // (p2 <= p1) (because old mmx version does it like this)
+      __m128i diff = _mm_subs_epu8(p2_y, p1_y);
+      __m128i cmp_result = _mm_cmpeq_epi8(diff, zero);
+
+      // Process U Plane
+      __m128i result_y = overlay_blend_opaque_sse2_core(p1_y, p2_y, cmp_result);
+      _mm_storeu_si128(reinterpret_cast<__m128i*>(p1Y+x), result_y);
+
+      // Process U plane
+      __m128i p1_u = _mm_loadu_si128(reinterpret_cast<const __m128i*>(p1U+x));
+      __m128i p2_u = _mm_loadu_si128(reinterpret_cast<const __m128i*>(p2U+x));
+      
+      __m128i result_u = overlay_blend_opaque_sse2_core(p1_u, p2_u, cmp_result);
+      _mm_storeu_si128(reinterpret_cast<__m128i*>(p1U+x), result_u);
+
+      // Process V plane
+      __m128i p1_v = _mm_loadu_si128(reinterpret_cast<const __m128i*>(p1V+x));
+      __m128i p2_v = _mm_loadu_si128(reinterpret_cast<const __m128i*>(p2V+x));
+      
+      __m128i result_v = overlay_blend_opaque_sse2_core(p1_v, p2_v, cmp_result);
+      _mm_storeu_si128(reinterpret_cast<__m128i*>(p1V+x), result_v);
+    }
+
+    // Leftover value
+    for (int x = wMod16; x < width; x++) {
+      int mask = p2Y[x] <= p1Y[x];
+      p1Y[x] = overlay_blend_opaque_c_core(p1Y[x], p2Y[x], mask);
+      p1U[x] = overlay_blend_opaque_c_core(p1U[x], p2U[x], mask);
+      p1V[x] = overlay_blend_opaque_c_core(p1V[x], p2V[x], mask);
+    }
+
+    p1Y += p1_pitch;
+    p1U += p1_pitch;
+    p1V += p1_pitch;
+
+    p2Y += p2_pitch;
+    p2U += p2_pitch;
+    p2V += p2_pitch;
+  }
+}
+#endif
+void overlay_darken_sse41(BYTE *p1Y, BYTE *p1U, BYTE *p1V, const BYTE *p2Y, const BYTE *p2U, const BYTE *p2V, int p1_pitch, int p2_pitch, int width, int height) {
+  __m128i zero = _mm_setzero_si128();
+
+  int wMod16 = (width/16) * 16;
+  
+  for (int y = 0; y < height; y++) {
+    for (int x = 0; x < wMod16; x+=16) {
+      // Load Y Plane
+      __m128i p1_y = _mm_loadu_si128(reinterpret_cast<const __m128i*>(p1Y+x));
+      __m128i p2_y = _mm_loadu_si128(reinterpret_cast<const __m128i*>(p2Y+x));
+
+      // Compare
+      // (p2 <= p1) (because old mmx version does it like this)
+      __m128i diff = _mm_subs_epu8(p2_y, p1_y);
+      __m128i cmp_result = _mm_cmpeq_epi8(diff, zero);
+
+      // Process U Plane
+      __m128i result_y = overlay_blend_opaque_sse41_core(p1_y, p2_y, cmp_result);
+      _mm_storeu_si128(reinterpret_cast<__m128i*>(p1Y+x), result_y);
+
+      // Process U plane
+      __m128i p1_u = _mm_loadu_si128(reinterpret_cast<const __m128i*>(p1U+x));
+      __m128i p2_u = _mm_loadu_si128(reinterpret_cast<const __m128i*>(p2U+x));
+      
+      __m128i result_u = overlay_blend_opaque_sse41_core(p1_u, p2_u, cmp_result);
+      _mm_storeu_si128(reinterpret_cast<__m128i*>(p1U+x), result_u);
+
+      // Process V plane
+      __m128i p1_v = _mm_loadu_si128(reinterpret_cast<const __m128i*>(p1V+x));
+      __m128i p2_v = _mm_loadu_si128(reinterpret_cast<const __m128i*>(p2V+x));
+      
+      __m128i result_v = overlay_blend_opaque_sse41_core(p1_v, p2_v, cmp_result);
+      _mm_storeu_si128(reinterpret_cast<__m128i*>(p1V+x), result_v);
+    }
+
+    // Leftover value
+    for (int x = wMod16; x < width; x++) {
+      int mask = p2Y[x] <= p1Y[x];
+      p1Y[x] = overlay_blend_opaque_c_core(p1Y[x], p2Y[x], mask);
+      p1U[x] = overlay_blend_opaque_c_core(p1U[x], p2U[x], mask);
+      p1V[x] = overlay_blend_opaque_c_core(p1V[x], p2V[x], mask);
+    }
+
+    p1Y += p1_pitch;
+    p1U += p1_pitch;
+    p1V += p1_pitch;
+
+    p2Y += p2_pitch;
+    p2U += p2_pitch;
+    p2V += p2_pitch;
+  }
+}
+
+/////////////////////////////////////////////
+// Mode: Lighten (mostly copy-pasta from darken)
+/////////////////////////////////////////////
+
+void overlay_lighten_c(BYTE *p1Y, BYTE *p1U, BYTE *p1V, const BYTE *p2Y, const BYTE *p2U, const BYTE *p2V, int p1_pitch, int p2_pitch, int width, int height) {
+  for (int y = 0; y < height; y++) {
+    for (int x = 0; x < width; x++) {
+      int mask = p2Y[x] >= p1Y[x];
+      p1Y[x] = overlay_blend_opaque_c_core(p1Y[x], p2Y[x], mask);
+      p1U[x] = overlay_blend_opaque_c_core(p1U[x], p2U[x], mask);
+      p1V[x] = overlay_blend_opaque_c_core(p1V[x], p2V[x], mask);
+    }
+
+    p1Y += p1_pitch;
+    p1U += p1_pitch;
+    p1V += p1_pitch;
+
+    p2Y += p2_pitch;
+    p2U += p2_pitch;
+    p2V += p2_pitch;
+  }
+}
+#ifdef X86_32
+void overlay_lighten_mmx(BYTE *p1Y, BYTE *p1U, BYTE *p1V, const BYTE *p2Y, const BYTE *p2U, const BYTE *p2V, int p1_pitch, int p2_pitch, int width, int height) {
+  __m64 zero = _mm_setzero_si64();
+
+  int wMod8 = (width/8) * 8;
+  
+  for (int y = 0; y < height; y++) {
+    for (int x = 0; x < wMod8; x+=8) {
+      // Load Y Plane
+      __m64 p1_y = *(reinterpret_cast<const __m64*>(p1Y+x));
+      __m64 p2_y = *(reinterpret_cast<const __m64*>(p2Y+x));
+
+      // Compare
+      // (p2 >= p1) (because old mmx version does it like this)
+      __m64 diff = _mm_subs_pu8(p1_y, p2_y);
+      __m64 cmp_result = _mm_cmpeq_pi8(diff, zero);
+
+      // Process U Plane
+      __m64 result_y = overlay_blend_opaque_mmx_core(p1_y, p2_y, cmp_result);
+      *reinterpret_cast<__m64*>(p1Y+x) = result_y;
+
+      // Process U plane
+      __m64 p1_u = *(reinterpret_cast<const __m64*>(p1U+x));
+      __m64 p2_u = *(reinterpret_cast<const __m64*>(p2U+x));
+      
+      __m64 result_u = overlay_blend_opaque_mmx_core(p1_u, p2_u, cmp_result);
+      *reinterpret_cast<__m64*>(p1U+x) = result_u;
+
+      // Process V plane
+      __m64 p1_v = *(reinterpret_cast<const __m64*>(p1V+x));
+      __m64 p2_v = *(reinterpret_cast<const __m64*>(p2V+x));
+      
+      __m64 result_v = overlay_blend_opaque_mmx_core(p1_v, p2_v, cmp_result);
+      *reinterpret_cast<__m64*>(p1V+x) = result_v;
+    }
+
+    // Leftover value
+    for (int x = wMod8; x < width; x++) {
+      int mask = p2Y[x] >= p1Y[x];
+      p1Y[x] = overlay_blend_opaque_c_core(p1Y[x], p2Y[x], mask);
+      p1U[x] = overlay_blend_opaque_c_core(p1U[x], p2U[x], mask);
+      p1V[x] = overlay_blend_opaque_c_core(p1V[x], p2V[x], mask);
+    }
+
+    p1Y += p1_pitch;
+    p1U += p1_pitch;
+    p1V += p1_pitch;
+
+    p2Y += p2_pitch;
+    p2U += p2_pitch;
+    p2V += p2_pitch;
+  }
+
+  _mm_empty();
+}
+#endif
+void overlay_lighten_sse2(BYTE *p1Y, BYTE *p1U, BYTE *p1V, const BYTE *p2Y, const BYTE *p2U, const BYTE *p2V, int p1_pitch, int p2_pitch, int width, int height) {
+  __m128i zero = _mm_setzero_si128();
+
+  int wMod16 = (width/16) * 16;
+  
+  for (int y = 0; y < height; y++) {
+    for (int x = 0; x < wMod16; x+=16) {
+      // Load Y Plane
+      __m128i p1_y = _mm_loadu_si128(reinterpret_cast<const __m128i*>(p1Y+x));
+      __m128i p2_y = _mm_loadu_si128(reinterpret_cast<const __m128i*>(p2Y+x));
+
+      // Compare
+      // (p2 >= p1) (because old mmx version does it like this)
+      __m128i diff = _mm_subs_epu8(p1_y, p2_y);
+      __m128i cmp_result = _mm_cmpeq_epi8(diff, zero);
+
+      // Process U Plane
+      __m128i result_y = overlay_blend_opaque_sse2_core(p1_y, p2_y, cmp_result);
+      _mm_storeu_si128(reinterpret_cast<__m128i*>(p1Y+x), result_y);
+
+      // Process U plane
+      __m128i p1_u = _mm_loadu_si128(reinterpret_cast<const __m128i*>(p1U+x));
+      __m128i p2_u = _mm_loadu_si128(reinterpret_cast<const __m128i*>(p2U+x));
+      
+      __m128i result_u = overlay_blend_opaque_sse2_core(p1_u, p2_u, cmp_result);
+      _mm_storeu_si128(reinterpret_cast<__m128i*>(p1U+x), result_u);
+
+      // Process V plane
+      __m128i p1_v = _mm_loadu_si128(reinterpret_cast<const __m128i*>(p1V+x));
+      __m128i p2_v = _mm_loadu_si128(reinterpret_cast<const __m128i*>(p2V+x));
+      
+      __m128i result_v = overlay_blend_opaque_sse2_core(p1_v, p2_v, cmp_result);
+      _mm_storeu_si128(reinterpret_cast<__m128i*>(p1V+x), result_v);
+    }
+
+    // Leftover value
+    for (int x = wMod16; x < width; x++) {
+      int mask = p2Y[x] >= p1Y[x];
+      p1Y[x] = overlay_blend_opaque_c_core(p1Y[x], p2Y[x], mask);
+      p1U[x] = overlay_blend_opaque_c_core(p1U[x], p2U[x], mask);
+      p1V[x] = overlay_blend_opaque_c_core(p1V[x], p2V[x], mask);
+    }
+
+    p1Y += p1_pitch;
+    p1U += p1_pitch;
+    p1V += p1_pitch;
+
+    p2Y += p2_pitch;
+    p2U += p2_pitch;
+    p2V += p2_pitch;
+  }
+}
+
+void overlay_lighten_sse41(BYTE *p1Y, BYTE *p1U, BYTE *p1V, const BYTE *p2Y, const BYTE *p2U, const BYTE *p2V, int p1_pitch, int p2_pitch, int width, int height) {
+  __m128i zero = _mm_setzero_si128();
+
+  int wMod16 = (width/16) * 16;
+  
+  for (int y = 0; y < height; y++) {
+    for (int x = 0; x < wMod16; x+=16) {
+      // Load Y Plane
+      __m128i p1_y = _mm_loadu_si128(reinterpret_cast<const __m128i*>(p1Y+x));
+      __m128i p2_y = _mm_loadu_si128(reinterpret_cast<const __m128i*>(p2Y+x));
+
+      // Compare
+      // (p2 >= p1) (because old mmx version does it like this)
+      __m128i diff = _mm_subs_epu8(p1_y, p2_y);
+      __m128i cmp_result = _mm_cmpeq_epi8(diff, zero);
+
+      // Process U Plane
+      __m128i result_y = overlay_blend_opaque_sse41_core(p1_y, p2_y, cmp_result);
+      _mm_storeu_si128(reinterpret_cast<__m128i*>(p1Y+x), result_y);
+
+      // Process U plane
+      __m128i p1_u = _mm_loadu_si128(reinterpret_cast<const __m128i*>(p1U+x));
+      __m128i p2_u = _mm_loadu_si128(reinterpret_cast<const __m128i*>(p2U+x));
+      
+      __m128i result_u = overlay_blend_opaque_sse41_core(p1_u, p2_u, cmp_result);
+      _mm_storeu_si128(reinterpret_cast<__m128i*>(p1U+x), result_u);
+
+      // Process V plane
+      __m128i p1_v = _mm_loadu_si128(reinterpret_cast<const __m128i*>(p1V+x));
+      __m128i p2_v = _mm_loadu_si128(reinterpret_cast<const __m128i*>(p2V+x));
+      
+      __m128i result_v = overlay_blend_opaque_sse41_core(p1_v, p2_v, cmp_result);
+      _mm_storeu_si128(reinterpret_cast<__m128i*>(p1V+x), result_v);
+    }
+
+    // Leftover value
+    for (int x = wMod16; x >= width; x++) {
+      int mask = p2Y[x] >= p1Y[x];
+      p1Y[x] = overlay_blend_opaque_c_core(p1Y[x], p2Y[x], mask);
+      p1U[x] = overlay_blend_opaque_c_core(p1U[x], p2U[x], mask);
+      p1V[x] = overlay_blend_opaque_c_core(p1V[x], p2V[x], mask);
+    }
+
+    p1Y += p1_pitch;
+    p1U += p1_pitch;
+    p1V += p1_pitch;
+
+    p2Y += p2_pitch;
+    p2U += p2_pitch;
+    p2V += p2_pitch;
+  }
+}
+
 
 /////////////////////////////////////////////////////////////////////////////////////////////
 void MMerge_SSE(BYTE *dstp, const BYTE *srcp,
