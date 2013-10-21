@@ -102,6 +102,10 @@ void overlay_blend_c_plane_masked(BYTE *p1, const BYTE *p2, const BYTE *mask,
 void overlay_blend_mmx_plane_masked(BYTE *p1, const BYTE *p2, const BYTE *mask,
                                     const int p1_pitch, const int p2_pitch, const int mask_pitch,
                                     const int width, const int height) {
+        BYTE* original_p1 = p1;
+  const BYTE* original_p2 = p2;
+  const BYTE* original_mask = mask;
+
   __m64 v128 = _mm_set1_pi16(0x0080);
   __m64 zero = _mm_setzero_si64();
 
@@ -136,12 +140,16 @@ void overlay_blend_mmx_plane_masked(BYTE *p1, const BYTE *p2, const BYTE *mask,
   }
 
   // Leftover value
-  overlay_blend_c_plane_masked(p1+wMod8, p2+wMod8, mask+wMod8, p1_pitch, p2_pitch, mask_pitch, width-wMod8, height);
+  overlay_blend_c_plane_masked(original_p1+wMod8, original_p2+wMod8, original_mask+wMod8, p1_pitch, p2_pitch, mask_pitch, width-wMod8, height);
 }
 
 void overlay_blend_sse2_plane_masked(BYTE *p1, const BYTE *p2, const BYTE *mask,
                                      const int p1_pitch, const int p2_pitch, const int mask_pitch,
                                      const int width, const int height) {
+        BYTE* original_p1 = p1;
+  const BYTE* original_p2 = p2;
+  const BYTE* original_mask = mask;
+
   __m128i v128 = _mm_set1_epi16(0x0080);
   __m128i zero = _mm_setzero_si128();
 
@@ -181,7 +189,7 @@ void overlay_blend_sse2_plane_masked(BYTE *p1, const BYTE *p2, const BYTE *mask,
   }
 
   // Leftover value
-  overlay_blend_c_plane_masked(p1+wMod16, p2+wMod16, mask+wMod16, p1_pitch, p2_pitch, mask_pitch, width-wMod16, height);
+  overlay_blend_c_plane_masked(original_p1+wMod16, original_p2+wMod16, original_mask+wMod16, p1_pitch, p2_pitch, mask_pitch, width-wMod16, height);
 }
 
 
