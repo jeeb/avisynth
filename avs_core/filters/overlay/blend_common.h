@@ -34,8 +34,8 @@
 
 // Overlay (c) 2003, 2004 by Klaus Post
 
-#ifndef __blend_asm_h
-#define __blend_asm_h
+#ifndef __blend_common_h
+#define __blend_common_h
 
 #include "../include/avs/types.h"
 
@@ -97,37 +97,4 @@ void overlay_lighten_mmx(BYTE *p1Y, BYTE *p1U, BYTE *p1V, const BYTE *p2Y, const
 void overlay_lighten_sse2(BYTE *p1Y, BYTE *p1U, BYTE *p1V, const BYTE *p2Y, const BYTE *p2U, const BYTE *p2V, int p1_pitch, int p2_pitch, int width, int height);
 void overlay_lighten_sse41(BYTE *p1Y, BYTE *p1U, BYTE *p1V, const BYTE *p2Y, const BYTE *p2U, const BYTE *p2V, int p1_pitch, int p2_pitch, int width, int height);
 
-/*******************
- * Blends two planes.
- * A weight between the two planes are given.
- * Has rather ok pairing, 
- * and has very little memory usage.
- * Processes four pixels per loop, so rowsize must be mod 4.
- * Thanks to ARDA for squeezing out a bit more performance.
- * 
- * Weights must be multipled by 32767
- * Returns the blended plane in p1;
- * (c) 2002 by sh0dan.
- ********/
-
-void mmx_weigh_planar(BYTE *p1, const BYTE *p2, int p1_pitch, int p2_pitch,int rowsize, int height, int weight, int invweight);
-void sse_weigh_planar(BYTE *p1, const BYTE *p2, int p1_pitch, int p2_pitch,int rowsize, int height, int weight);
- 
-void MMerge_MMX(BYTE *dstp, const BYTE *srcp,
-				const BYTE *maskp, const int dst_pitch, const int src_pitch,
-				const int mask_pitch, const int row_size, const int height);
-
-void MMerge_SSE(BYTE *dstp, const BYTE *srcp,
-				const BYTE *maskp, const int dst_pitch, const int src_pitch,
-				const int mask_pitch, const int row_size, const int height);
-
-void mmx_darken_planar(BYTE *p1, BYTE *p1U, BYTE *p1V, const BYTE *p2, const BYTE *p2U, const BYTE *p2V, int p1_pitch, int p2_pitch,int rowsize, int height);
-
-void mmx_lighten_planar(BYTE *p1, BYTE *p1U, BYTE *p1V, const BYTE *p2, const BYTE *p2U, const BYTE *p2V, int p1_pitch, int p2_pitch,int rowsize, int height);
-
-void sse_darken_planar(BYTE *p1, BYTE *p1U, BYTE *p1V, const BYTE *p2, const BYTE *p2U, const BYTE *p2V, int p1_pitch, int p2_pitch,int rowsize, int height);
-
-void sse_lighten_planar(BYTE *p1, BYTE *p1U, BYTE *p1V, const BYTE *p2, const BYTE *p2U, const BYTE *p2V, int p1_pitch, int p2_pitch,int rowsize, int height);
-
-
-#endif // __blend_asm_h
+#endif // __blend_common_h
