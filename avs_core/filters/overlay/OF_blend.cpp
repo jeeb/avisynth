@@ -115,41 +115,23 @@ void OL_BlendImage::BlendImage(Image444* base, Image444* overlay) {
     env->BitBlt(baseV, base->pitch, ovV, overlay->pitch, w, h);
   } else {
     if (env->GetCPUFlags() & CPUF_SSE2) {
-
-      sse_weigh_planar(baseY, ovY, base->pitch, overlay->pitch, w, h, opacity);
-      sse_weigh_planar(baseU, ovU, base->pitch, overlay->pitch, w, h, opacity);
-      sse_weigh_planar(baseV, ovV, base->pitch, overlay->pitch, w, h, opacity);
+      overlay_blend_sse2_plane_opacity(baseY, ovY, base->pitch, overlay->pitch, w, h, opacity);
+      overlay_blend_sse2_plane_opacity(baseU, ovU, base->pitch, overlay->pitch, w, h, opacity);
+      overlay_blend_sse2_plane_opacity(baseV, ovV, base->pitch, overlay->pitch, w, h, opacity);
     } else
 #ifdef X86_32
-    if (!(w&3) && (env->GetCPUFlags() & CPUF_MMX))
-    {
-      int weight = (opacity*32767+128)>>8;
-      int invweight = 32767-weight;
-
-      mmx_weigh_planar(baseY, ovY, base->pitch, overlay->pitch, w, h, weight, invweight);
-      mmx_weigh_planar(baseU, ovU, base->pitch, overlay->pitch, w, h, weight, invweight);
-      mmx_weigh_planar(baseV, ovV, base->pitch, overlay->pitch, w, h, weight, invweight);
-
-    }
-    else
+    if (env->GetCPUFlags() & CPUF_MMX) {
+      overlay_blend_mmx_plane_opacity(baseY, ovY, base->pitch, overlay->pitch, w, h, opacity);
+      overlay_blend_mmx_plane_opacity(baseU, ovU, base->pitch, overlay->pitch, w, h, opacity);
+      overlay_blend_mmx_plane_opacity(baseV, ovV, base->pitch, overlay->pitch, w, h, opacity);
+    } else
 #endif
     {
-      for (int y = 0; y < h; y++) {
-        for (int x = 0; x < w; x++) {
-          baseY[x] = (BYTE)(((inv_opacity*baseY[x]) + (opacity*ovY[x]+128))>>8);
-          baseU[x] = (BYTE)(((inv_opacity*baseU[x]) + (opacity*ovU[x]+128))>>8);
-          baseV[x] = (BYTE)(((inv_opacity*baseV[x]) + (opacity*ovV[x]+128))>>8);
-        }
-        baseY += base->pitch;
-        baseU += base->pitch;
-        baseV += base->pitch;
-
-        ovY += overlay->pitch;
-        ovU += overlay->pitch;
-        ovV += overlay->pitch;
-      } // for x
-    } // for y
-  }// if !mmx
+      overlay_blend_c_plane_opacity(baseY, ovY, base->pitch, overlay->pitch, w, h, opacity);
+      overlay_blend_c_plane_opacity(baseU, ovU, base->pitch, overlay->pitch, w, h, opacity);
+      overlay_blend_c_plane_opacity(baseV, ovV, base->pitch, overlay->pitch, w, h, opacity);
+    }
+  }
 }
 
 

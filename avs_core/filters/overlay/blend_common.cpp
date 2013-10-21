@@ -192,8 +192,102 @@ void overlay_blend_sse2_plane_masked(BYTE *p1, const BYTE *p2, const BYTE *mask,
   overlay_blend_c_plane_masked(original_p1+wMod16, original_p2+wMod16, original_mask+wMod16, p1_pitch, p2_pitch, mask_pitch, width-wMod16, height);
 }
 
+void overlay_blend_c_plane_opacity(BYTE *p1, const BYTE *p2,
+                                   const int p1_pitch, const int p2_pitch,
+                                   const int width, const int height, const int opacity) {
+  for (int y = 0; y < height; y++) {
+    for (int x = 0; x < width; x++) {
+      BYTE result = overlay_blend_c_core(p1[x], p2[x], opacity);
+      p1[x] = result;
+    }
 
+    p1   += p1_pitch;
+    p2   += p2_pitch;
+  }
+}
 
+void overlay_blend_mmx_plane_opacity(BYTE *p1, const BYTE *p2,
+                                     const int p1_pitch, const int p2_pitch,
+                                     const int width, const int height, const int opacity) {
+        BYTE* original_p1 = p1;
+  const BYTE* original_p2 = p2;
+
+  __m64 v128 = _mm_set1_pi16(0x0080);
+  __m64 zero = _mm_setzero_si64();
+  __m64 mask = _mm_set1_pi16(static_cast<short>(opacity));
+
+  int wMod8 = (width/8) * 8;
+
+  for (int y = 0; y < height; y++) {
+    for (int x = 0; x < wMod8; x += 8) {
+      __m64 p1_l = *(reinterpret_cast<const __m64*>(p1+x));
+      __m64 p2_l = *(reinterpret_cast<const __m64*>(p2+x));
+
+      __m64 unpacked_p1_l = _mm_unpacklo_pi8(p1_l, zero);
+      __m64 unpacked_p1_h = _mm_unpackhi_pi8(p1_l, zero);
+
+      __m64 unpacked_p2_l = _mm_unpacklo_pi8(p2_l, zero);
+      __m64 unpacked_p2_h = _mm_unpackhi_pi8(p2_l, zero);
+
+      __m64 result_l = overlay_blend_mmx_core(unpacked_p1_l, unpacked_p2_l, mask, v128);
+      __m64 result_h = overlay_blend_mmx_core(unpacked_p1_h, unpacked_p2_h, mask, v128);
+
+      __m64 result = _m_packuswb(result_l, result_h);
+
+      *reinterpret_cast<__m64*>(p1+x) = result;
+    }
+
+    p1   += p1_pitch;
+    p2   += p2_pitch;
+  }
+
+  // Leftover value
+  overlay_blend_c_plane_opacity(original_p1+wMod8, original_p2+wMod8, p1_pitch, p2_pitch, width-wMod8, height, opacity);
+}
+
+void overlay_blend_sse2_plane_opacity(BYTE *p1, const BYTE *p2,
+                                      const int p1_pitch, const int p2_pitch,
+                                      const int width, const int height, const int opacity) {
+        BYTE* original_p1 = p1;
+  const BYTE* original_p2 = p2;
+
+  __m128i v128 = _mm_set1_epi16(0x0080);
+  __m128i zero = _mm_setzero_si128();
+  __m128i mask = _mm_set1_epi16(static_cast<short>(opacity));
+
+  int wMod16 = (width/16) * 16;
+
+  for (int y = 0; y < height; y++) {
+    for (int x = 0; x < wMod16; x += 16) {
+      __m128i p1_l = _mm_loadl_epi64(reinterpret_cast<const __m128i*>(p1+x));
+      __m128i p1_h = _mm_loadl_epi64(reinterpret_cast<const __m128i*>(p1+x+8));
+
+      __m128i p2_l = _mm_loadl_epi64(reinterpret_cast<const __m128i*>(p2+x));
+      __m128i p2_h = _mm_loadl_epi64(reinterpret_cast<const __m128i*>(p2+x+8));
+
+      __m128i unpacked_p1_l = _mm_unpacklo_epi8(p1_l, zero);
+      __m128i unpacked_p1_h = _mm_unpacklo_epi8(p1_h, zero);
+
+      __m128i unpacked_p2_l = _mm_unpacklo_epi8(p2_l, zero);
+      __m128i unpacked_p2_h = _mm_unpacklo_epi8(p2_h, zero);
+
+      __m128i result_l = overlay_blend_sse2_core(unpacked_p1_l, unpacked_p2_l, mask, v128);
+      __m128i result_h = overlay_blend_sse2_core(unpacked_p1_h, unpacked_p2_h, mask, v128);
+
+      __m128i result = _mm_packus_epi16(result_l, result_h);
+
+      _mm_storeu_si128(reinterpret_cast<__m128i*>(p1+x), result);
+    }
+
+    p1   += p1_pitch;
+    p2   += p2_pitch;
+  }
+
+  // Leftover value
+  overlay_blend_c_plane_opacity(original_p1+wMod16, original_p2+wMod16, p1_pitch, p2_pitch, width-wMod16, height, opacity);
+}
+
+/////////////////////////////////////////////////////////////////////////////////////////////
 void MMerge_SSE(BYTE *dstp, const BYTE *srcp,
         const BYTE *maskp, const int dst_pitch, const int src_pitch,
         const int mask_pitch, const int row_size, const int height) {
