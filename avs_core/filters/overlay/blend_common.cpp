@@ -135,8 +135,6 @@ void overlay_blend_mmx_plane_masked(BYTE *p1, const BYTE *p2, const BYTE *mask,
     mask += mask_pitch;
   }
 
-  _mm_empty();
-
   // Leftover value
   overlay_blend_c_plane_masked(p1+wMod8, p2+wMod8, mask+wMod8, p1_pitch, p2_pitch, mask_pitch, width-wMod8, height);
 }

@@ -64,6 +64,7 @@ void OL_BlendImage::BlendImageMask(Image444* base, Image444* overlay, Image444* 
       overlay_blend_mmx_plane_masked(baseY, ovY, maskY, base->pitch, overlay->pitch, mask->pitch, w, h);
       overlay_blend_mmx_plane_masked(baseU, ovU, maskU, base->pitch, overlay->pitch, mask->pitch, w, h);
       overlay_blend_mmx_plane_masked(baseV, ovV, maskV, base->pitch, overlay->pitch, mask->pitch, w, h);
+      _mm_empty();
     } else
 #endif
     {
