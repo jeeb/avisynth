@@ -41,7 +41,7 @@
 
 // Masked blend
 // for blend mode
-BYTE OV_FORCEINLINE overlay_blend_c_core(const BYTE& p1, const BYTE& p2, const int& mask) {
+BYTE OV_FORCEINLINE overlay_blend_c_core(const BYTE p1, const BYTE p2, const int& mask) {
   return (BYTE)((((p1<<8) | 128) + (p2-p1)*mask) >> 8);
 }
 
@@ -77,7 +77,7 @@ __m128i OV_FORCEINLINE overlay_merge_mask_sse2(const __m128i& p1, const __m128i&
 
 // Blend Opaque
 // Used in lighten and darken mode
-BYTE OV_FORCEINLINE overlay_blend_opaque_c_core(const BYTE& p1, const BYTE& p2, const BYTE& mask) {
+BYTE OV_FORCEINLINE overlay_blend_opaque_c_core(const BYTE p1, const BYTE p2, const BYTE mask) {
   return (mask) ? p2 : p1;
 }
 

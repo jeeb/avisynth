@@ -120,6 +120,7 @@ void OL_BlendImage::BlendImage(Image444* base, Image444* overlay) {
       overlay_blend_mmx_plane_opacity(baseY, ovY, base->pitch, overlay->pitch, w, h, opacity);
       overlay_blend_mmx_plane_opacity(baseU, ovU, base->pitch, overlay->pitch, w, h, opacity);
       overlay_blend_mmx_plane_opacity(baseV, ovV, base->pitch, overlay->pitch, w, h, opacity);
+      _mm_empty();
     } else
 #endif
     {
