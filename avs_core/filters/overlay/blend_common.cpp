@@ -41,7 +41,7 @@
 
 // Masked blend
 // for blend mode
-BYTE OV_FORCEINLINE overlay_blend_c_core(const BYTE& p1, const BYTE& p2, const BYTE& mask) {
+BYTE OV_FORCEINLINE overlay_blend_c_core(const BYTE& p1, const BYTE& p2, const int& mask) {
   return (BYTE)((((p1<<8) | 128) + (p2-p1)*mask) >> 8);
 }
 
@@ -89,7 +89,7 @@ void overlay_blend_c_plane_masked(BYTE *p1, const BYTE *p2, const BYTE *mask,
                                   const int width, const int height) {
   for (int y = 0; y < height; y++) {
     for (int x = 0; x < width; x++) {
-      BYTE result = overlay_blend_c_core(p1[x], p2[x], mask[x]);
+      BYTE result = overlay_blend_c_core(p1[x], p2[x], static_cast<int>(mask[x]));
       p1[x] = result;
     }
 
