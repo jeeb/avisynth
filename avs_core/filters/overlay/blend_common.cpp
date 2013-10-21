@@ -77,23 +77,23 @@ static __m128i OV_FORCEINLINE overlay_merge_mask_sse2(const __m128i& p1, const _
 
 // Blend Opaque
 // Used in lighten and darken mode
-static BYTE OV_FORCEINLINE overlay_blend_opaque_c_core(const BYTE p1, const BYTE p2, const BYTE mask) {
+BYTE OV_FORCEINLINE overlay_blend_opaque_c_core(const BYTE p1, const BYTE p2, const BYTE mask) {
   return (mask) ? p2 : p1;
 }
 #ifdef X86_32
-static __m64 OV_FORCEINLINE overlay_blend_opaque_mmx_core(const __m64& p1, const __m64& p2, const __m64& mask) {
+__m64 OV_FORCEINLINE overlay_blend_opaque_mmx_core(const __m64& p1, const __m64& p2, const __m64& mask) {
   __m64 r1 = _mm_andnot_si64(mask, p1);
   __m64 r2 = _mm_and_si64   (mask, p2);
   return _mm_or_si64(r1, r2);
 }
 #endif
-static __m128i OV_FORCEINLINE overlay_blend_opaque_sse2_core(const __m128i& p1, const __m128i& p2, const __m128i& mask) {
+__m128i OV_FORCEINLINE overlay_blend_opaque_sse2_core(const __m128i& p1, const __m128i& p2, const __m128i& mask) {
   __m128i r1 = _mm_andnot_si128(mask, p1);
   __m128i r2 = _mm_and_si128   (mask, p2);
   return _mm_or_si128(r1, r2);
 }
 
-static __m128i OV_FORCEINLINE overlay_blend_opaque_sse41_core(const __m128i& p1, const __m128i& p2, const __m128i& mask) {
+__m128i OV_FORCEINLINE overlay_blend_opaque_sse41_core(const __m128i& p1, const __m128i& p2, const __m128i& mask) {
   return _mm_blendv_epi8(p1, p2, mask);
 }
 
