@@ -41,17 +41,17 @@
 
 // Masked blend
 // for blend mode
-BYTE OV_FORCEINLINE overlay_blend_c_core(const BYTE p1, const BYTE p2, const int& mask) {
+static BYTE OV_FORCEINLINE overlay_blend_c_core(const BYTE p1, const BYTE p2, const int mask) {
   return (BYTE)((((p1<<8) | 128) + (p2-p1)*mask) >> 8);
 }
 
-__m64 OV_FORCEINLINE overlay_blend_mmx_core(const __m64& p1, const __m64& p2, const __m64& mask, const __m64& v128) {
+static __m64 OV_FORCEINLINE overlay_blend_mmx_core(const __m64& p1, const __m64& p2, const __m64& mask, const __m64& v128) {
   __m64 tmp1 = _mm_mullo_pi16(_mm_sub_pi16(p2, p1), mask); // (p2-p1)*mask
   __m64 tmp2 = _mm_or_si64(_mm_slli_pi16(p1, 8), v128);    // p1<<8 + 128 == p1<<8 | 128
   return _mm_srli_pi16(_mm_add_pi16(tmp1, tmp2), 8);
 }
 
-__m128i OV_FORCEINLINE overlay_blend_sse2_core(const __m128i& p1, const __m128i& p2, const __m128i& mask, const __m128i& v128) {
+static __m128i OV_FORCEINLINE overlay_blend_sse2_core(const __m128i& p1, const __m128i& p2, const __m128i& mask, const __m128i& v128) {
   __m128i tmp1 = _mm_mullo_epi16(_mm_sub_epi16(p2, p1), mask); // (p2-p1)*mask
   __m128i tmp2 = _mm_or_si128(_mm_slli_epi16(p1, 8), v128);    // p1<<8 + 128 == p1<<8 | 128
   return _mm_srli_epi16(_mm_add_epi16(tmp1, tmp2), 8);
@@ -59,17 +59,17 @@ __m128i OV_FORCEINLINE overlay_blend_sse2_core(const __m128i& p1, const __m128i&
 
 // Merge mask
 // Use to combine opacity mask and clip mask
-BYTE OV_FORCEINLINE overley_merge_mask_c(const BYTE p1, const int p2) {
+static BYTE OV_FORCEINLINE overley_merge_mask_c(const BYTE p1, const int p2) {
   return (p1*p2) >> 8;
 }
 
-__m64 OV_FORCEINLINE overlay_merge_mask_mmx(const __m64& p1, const __m64& p2) {
+static __m64 OV_FORCEINLINE overlay_merge_mask_mmx(const __m64& p1, const __m64& p2) {
   __m64 t1 = _mm_mullo_pi16(p1, p2);
   __m64 t2 = _mm_srli_pi16(t1, 8);
   return t2;
 }
 
-__m128i OV_FORCEINLINE overlay_merge_mask_sse2(const __m128i& p1, const __m128i& p2) {
+static __m128i OV_FORCEINLINE overlay_merge_mask_sse2(const __m128i& p1, const __m128i& p2) {
   __m128i t1 = _mm_mullo_epi16(p1, p2);
   __m128i t2 = _mm_srli_epi16(t1, 8);
   return t2;
@@ -77,7 +77,7 @@ __m128i OV_FORCEINLINE overlay_merge_mask_sse2(const __m128i& p1, const __m128i&
 
 // Blend Opaque
 // Used in lighten and darken mode
-BYTE OV_FORCEINLINE overlay_blend_opaque_c_core(const BYTE p1, const BYTE p2, const BYTE mask) {
+static BYTE OV_FORCEINLINE overlay_blend_opaque_c_core(const BYTE p1, const BYTE p2, const BYTE mask) {
   return (mask) ? p2 : p1;
 }
 
@@ -87,13 +87,13 @@ __m64 OV_FORCEINLINE overlay_blend_opaque_mmx_core(const __m64& p1, const __m64&
   return _mm_or_si64(r1, r2);
 }
 
-__m128i OV_FORCEINLINE overlay_blend_opaque_sse2_core(const __m128i& p1, const __m128i& p2, const __m128i& mask) {
+static __m128i OV_FORCEINLINE overlay_blend_opaque_sse2_core(const __m128i& p1, const __m128i& p2, const __m128i& mask) {
   __m128i r1 = _mm_andnot_si128(mask, p1);
   __m128i r2 = _mm_and_si128   (mask, p2);
   return _mm_or_si128(r1, r2);
 }
 
-__m128i OV_FORCEINLINE overlay_blend_opaque_sse41_core(const __m128i& p1, const __m128i& p2, const __m128i& mask) {
+static __m128i OV_FORCEINLINE overlay_blend_opaque_sse41_core(const __m128i& p1, const __m128i& p2, const __m128i& mask) {
   return _mm_blendv_epi8(p1, p2, mask);
 }
 

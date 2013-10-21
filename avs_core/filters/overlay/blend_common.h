@@ -44,20 +44,6 @@
 
 #define OV_FORCEINLINE __forceinline
 
-// Common function
-   BYTE OV_FORCEINLINE overlay_blend_c_core(const BYTE p1, const BYTE p2, const BYTE mask);
-  __m64 OV_FORCEINLINE overlay_blend_mmx_core(const __m64& p1, const __m64& p2, const __m64& mask, const __m64& v128);
-__m128i OV_FORCEINLINE overlay_blend_sse2_core(const __m128i& p1, const __m128i& p2, const __m128i& mask, const __m128i& v128);
-
-   BYTE OV_FORCEINLINE overley_merge_mask_c(const BYTE p1, const int p2);
-  __m64 OV_FORCEINLINE overlay_merge_mask_mmx(const __m64& p1, const __m64& p2);
-__m128i OV_FORCEINLINE overlay_merge_mask_sse2(const __m128i& p1, const __m128i& p2);
-
-   BYTE OV_FORCEINLINE overlay_blend_opaque_c_core(const BYTE p1, const BYTE p2, const BYTE mask);
-  __m64 OV_FORCEINLINE overlay_blend_opaque_mmx_core(const __m64& p1, const __m64& p2, const __m64& mask);
-__m128i OV_FORCEINLINE overlay_blend_opaque_sse2_core(const __m128i& p1, const __m128i& p2, const __m128i& mask);
-__m128i OV_FORCEINLINE overlay_blend_opaque_sse41_core(const __m128i& p1, const __m128i& p2, const __m128i& mask);
-
 // Mode: Overlay
 void overlay_blend_c_plane_masked(BYTE *p1, const BYTE *p2, const BYTE *mask,
                                   const int p1_pitch, const int p2_pitch, const int mask_pitch,
