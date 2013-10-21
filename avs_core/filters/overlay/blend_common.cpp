@@ -792,7 +792,7 @@ void overlay_lighten_sse41(BYTE *p1Y, BYTE *p1U, BYTE *p1V, const BYTE *p2Y, con
     }
 
     // Leftover value
-    for (int x = wMod16; x >= width; x++) {
+    for (int x = wMod16; x < width; x++) {
       int mask = p2Y[x] >= p1Y[x];
       p1Y[x] = overlay_blend_opaque_c_core(p1Y[x], p2Y[x], mask);
       p1U[x] = overlay_blend_opaque_c_core(p1U[x], p2U[x], mask);
