@@ -498,7 +498,6 @@ void overlay_darken_mmx(BYTE *p1Y, BYTE *p1U, BYTE *p1V, const BYTE *p2Y, const 
 
   _mm_empty();
 }
-#ifdef X86_32
 void overlay_darken_sse2(BYTE *p1Y, BYTE *p1U, BYTE *p1V, const BYTE *p2Y, const BYTE *p2U, const BYTE *p2V, int p1_pitch, int p2_pitch, int width, int height) {
   __m128i zero = _mm_setzero_si128();
 
@@ -551,7 +550,7 @@ void overlay_darken_sse2(BYTE *p1Y, BYTE *p1U, BYTE *p1V, const BYTE *p2Y, const
     p2V += p2_pitch;
   }
 }
-#endif
+
 void overlay_darken_sse41(BYTE *p1Y, BYTE *p1U, BYTE *p1V, const BYTE *p2Y, const BYTE *p2U, const BYTE *p2V, int p1_pitch, int p2_pitch, int width, int height) {
   __m128i zero = _mm_setzero_si128();
 
