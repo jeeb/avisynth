@@ -48,9 +48,11 @@
 void overlay_blend_c_plane_masked(BYTE *p1, const BYTE *p2, const BYTE *mask,
                                   const int p1_pitch, const int p2_pitch, const int mask_pitch,
                                   const int width, const int height);
+#ifdef X86_32
 void overlay_blend_mmx_plane_masked(BYTE *p1, const BYTE *p2, const BYTE *mask,
                                     const int p1_pitch, const int p2_pitch, const int mask_pitch,
                                     const int width, const int height);
+#endif
 void overlay_blend_sse2_plane_masked(BYTE *p1, const BYTE *p2, const BYTE *mask,
                                      const int p1_pitch, const int p2_pitch, const int mask_pitch,
                                      const int width, const int height);
@@ -58,9 +60,11 @@ void overlay_blend_sse2_plane_masked(BYTE *p1, const BYTE *p2, const BYTE *mask,
 void overlay_blend_c_plane_opacity(BYTE *p1, const BYTE *p2,
                                    const int p1_pitch, const int p2_pitch,
                                    const int width, const int height, const int opacity);
+#ifdef X86_32
 void overlay_blend_mmx_plane_opacity(BYTE *p1, const BYTE *p2,
                                      const int p1_pitch, const int p2_pitch,
                                      const int width, const int height, const int opacity);
+#endif
 void overlay_blend_sse2_plane_opacity(BYTE *p1, const BYTE *p2,
                                       const int p1_pitch, const int p2_pitch,
                                       const int width, const int height, const int opacity);
@@ -68,9 +72,11 @@ void overlay_blend_sse2_plane_opacity(BYTE *p1, const BYTE *p2,
 void overlay_blend_c_plane_masked_opacity(BYTE *p1, const BYTE *p2, const BYTE *mask,
                                   const int p1_pitch, const int p2_pitch, const int mask_pitch,
                                   const int width, const int height, const int opacity);
+#ifdef X86_32
 void overlay_blend_mmx_plane_masked_opacity(BYTE *p1, const BYTE *p2, const BYTE *mask,
                                     const int p1_pitch, const int p2_pitch, const int mask_pitch,
                                     const int width, const int height, const int opacity);
+#endif
 void overlay_blend_sse2_plane_masked_opacity(BYTE *p1, const BYTE *p2, const BYTE *mask,
                                      const int p1_pitch, const int p2_pitch, const int mask_pitch,
                                      const int width, const int height, const int opacity);
