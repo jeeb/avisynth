@@ -39,6 +39,28 @@
 
 #include "../include/avs/types.h"
 
+#include <emmintrin.h>
+#include <smmintrin.h>
+
+#define OV_FORCEINLINE __forceinline
+
+// Common function
+   BYTE OV_FORCEINLINE overlay_blend_c_core(const BYTE& p1, const BYTE& p2, const BYTE& mask);
+  __m64 OV_FORCEINLINE overlay_blend_mmx_core(const __m64& p1, const __m64& p2, const __m64& mask, const __m64& v128);
+__m128i OV_FORCEINLINE overlay_blend_sse2_core(const __m128i& p1, const __m128i& p2, const __m128i& mask, const __m128i& v128);
+
+// Mode: Overlay
+void overlay_blend_c_plane_masked(BYTE *p1, const BYTE *p2, const BYTE *mask,
+                                  const int p1_pitch, const int p2_pitch, const int mask_pitch,
+                                  const int width, const int height);
+void overlay_blend_mmx_plane_masked(BYTE *p1, const BYTE *p2, const BYTE *mask,
+                                    const int p1_pitch, const int p2_pitch, const int mask_pitch,
+                                    const int width, const int height);
+void overlay_blend_sse2_plane_masked(BYTE *p1, const BYTE *p2, const BYTE *mask,
+                                     const int p1_pitch, const int p2_pitch, const int mask_pitch,
+                                     const int width, const int height);
+
+
 /*******************
  * Blends two planes.
  * A weight between the two planes are given.

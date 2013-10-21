@@ -38,7 +38,155 @@
 
 #include "blend_common.h"
 #include "overlayfunctions.h"
-#include <emmintrin.h>
+
+// Masked blend
+// for blend mode
+BYTE OV_FORCEINLINE overlay_blend_c_core(const BYTE& p1, const BYTE& p2, const BYTE& mask) {
+  return (BYTE)((((p1<<8) | 128) + (p2-p1)*mask) >> 8);
+}
+
+__m64 OV_FORCEINLINE overlay_blend_mmx_core(const __m64& p1, const __m64& p2, const __m64& mask, const __m64& v128) {
+  __m64 tmp1 = _mm_mullo_pi16(_mm_sub_pi16(p2, p1), mask); // (p2-p1)*mask
+  __m64 tmp2 = _mm_or_si64(_mm_slli_pi16(p1, 8), v128);    // p1<<8 + 128 == p1<<8 | 128
+  return _mm_srli_pi16(_mm_add_pi16(tmp1, tmp2), 8);
+}
+
+__m128i OV_FORCEINLINE overlay_blend_sse2_core(const __m128i& p1, const __m128i& p2, const __m128i& mask, const __m128i& v128) {
+  __m128i tmp1 = _mm_mullo_epi16(_mm_sub_epi16(p2, p1), mask); // (p2-p1)*mask
+  __m128i tmp2 = _mm_or_si128(_mm_slli_epi16(p1, 8), v128);    // p1<<8 + 128 == p1<<8 | 128
+  return _mm_srli_epi16(_mm_add_epi16(tmp1, tmp2), 8);
+}
+
+// Blend Opaque
+// Used in lighten and darken mode
+BYTE OV_FORCEINLINE overlay_blend_opaque_c_core(const BYTE& p1, const BYTE& p2, const BYTE& mask) {
+  return (mask) ? p2 : p1;
+}
+
+__m64 OV_FORCEINLINE overlay_blend_opaque_mmx_core(const __m64& p1, const __m64& p2, const __m64& mask) {
+  __m64 r1 = _mm_andnot_si64(mask, p1);
+  __m64 r2 = _mm_and_si64   (mask, p2);
+  return _mm_or_si64(r1, r2);
+}
+
+__m128i OV_FORCEINLINE overlay_blend_opaque_sse2_core(const __m128i& p1, const __m128i& p2, const __m128i& mask) {
+  __m128i r1 = _mm_andnot_si128(mask, p1);
+  __m128i r2 = _mm_and_si128   (mask, p2);
+  return _mm_or_si128(r1, r2);
+}
+
+// this is not being used right now, need dynamic dispatching
+__m128i OV_FORCEINLINE overlay_blend_opaque_sse41_core(const __m128i& p1, const __m128i& p2, const __m128i& mask) {
+  return _mm_blendv_epi8(p1, p2, mask);
+}
+
+/////////////////////////////////////////////
+// Mode: Overlay
+/////////////////////////////////////////////
+
+void overlay_blend_c_plane_masked(BYTE *p1, const BYTE *p2, const BYTE *mask,
+                                  const int p1_pitch, const int p2_pitch, const int mask_pitch,
+                                  const int width, const int height) {
+  for (int y = 0; y < height; y++) {
+    for (int x = 0; x < width; x++) {
+      BYTE result = overlay_blend_c_core(p1[x], p2[x], mask[x]);
+      p1[x] = result;
+    }
+
+    p1   += p1_pitch;
+    p2   += p2_pitch;
+    mask += mask_pitch;
+  }
+}
+
+void overlay_blend_mmx_plane_masked(BYTE *p1, const BYTE *p2, const BYTE *mask,
+                                    const int p1_pitch, const int p2_pitch, const int mask_pitch,
+                                    const int width, const int height) {
+  __m64 v128 = _mm_set1_pi16(0x0080);
+  __m64 zero = _mm_setzero_si64();
+
+  int wMod8 = (width/8) * 8;
+
+  for (int y = 0; y < height; y++) {
+    for (int x = 0; x < wMod8; x += 8) {
+      __m64 p1_l = *(reinterpret_cast<const __m64*>(p1+x));
+      __m64 p2_l = *(reinterpret_cast<const __m64*>(p2+x));
+      __m64 mask_l = *(reinterpret_cast<const __m64*>(mask+x));
+
+      __m64 unpacked_p1_l = _mm_unpacklo_pi8(p1_l, zero);
+      __m64 unpacked_p1_h = _mm_unpackhi_pi8(p1_l, zero);
+
+      __m64 unpacked_p2_l = _mm_unpacklo_pi8(p2_l, zero);
+      __m64 unpacked_p2_h = _mm_unpackhi_pi8(p2_l, zero);
+
+      __m64 unpacked_mask_l = _mm_unpacklo_pi8(mask_l, zero);
+      __m64 unpacked_mask_h = _mm_unpackhi_pi8(mask_l, zero);
+
+      __m64 result_l = overlay_blend_mmx_core(unpacked_p1_l, unpacked_p2_l, unpacked_mask_l, v128);
+      __m64 result_h = overlay_blend_mmx_core(unpacked_p1_h, unpacked_p2_h, unpacked_mask_h, v128);
+
+      __m64 result = _m_packuswb(result_l, result_h);
+
+      *reinterpret_cast<__m64*>(p1+x) = result;
+    }
+
+    p1   += p1_pitch;
+    p2   += p2_pitch;
+    mask += mask_pitch;
+  }
+
+  _mm_empty();
+
+  // Leftover value
+  overlay_blend_c_plane_masked(p1+wMod8, p2+wMod8, mask+wMod8, p1_pitch, p2_pitch, mask_pitch, width-wMod8, height);
+}
+
+void overlay_blend_sse2_plane_masked(BYTE *p1, const BYTE *p2, const BYTE *mask,
+                                     const int p1_pitch, const int p2_pitch, const int mask_pitch,
+                                     const int width, const int height) {
+  __m128i v128 = _mm_set1_epi16(0x0080);
+  __m128i zero = _mm_setzero_si128();
+
+  int wMod16 = (width/16) * 16;
+
+  for (int y = 0; y < height; y++) {
+    for (int x = 0; x < wMod16; x += 16) {
+      __m128i p1_l = _mm_loadl_epi64(reinterpret_cast<const __m128i*>(p1+x));
+      __m128i p1_h = _mm_loadl_epi64(reinterpret_cast<const __m128i*>(p1+x+8));
+
+      __m128i p2_l = _mm_loadl_epi64(reinterpret_cast<const __m128i*>(p2+x));
+      __m128i p2_h = _mm_loadl_epi64(reinterpret_cast<const __m128i*>(p2+x+8));
+
+      __m128i mask_l = _mm_loadl_epi64(reinterpret_cast<const __m128i*>(mask+x));
+      __m128i mask_h = _mm_loadl_epi64(reinterpret_cast<const __m128i*>(mask+x+8));
+
+      __m128i unpacked_p1_l = _mm_unpacklo_epi8(p1_l, zero);
+      __m128i unpacked_p1_h = _mm_unpacklo_epi8(p1_h, zero);
+
+      __m128i unpacked_p2_l = _mm_unpacklo_epi8(p2_l, zero);
+      __m128i unpacked_p2_h = _mm_unpacklo_epi8(p2_h, zero);
+
+      __m128i unpacked_mask_l = _mm_unpacklo_epi8(mask_l, zero);
+      __m128i unpacked_mask_h = _mm_unpacklo_epi8(mask_h, zero);
+
+      __m128i result_l = overlay_blend_sse2_core(unpacked_p1_l, unpacked_p2_l, unpacked_mask_l, v128);
+      __m128i result_h = overlay_blend_sse2_core(unpacked_p1_h, unpacked_p2_h, unpacked_mask_h, v128);
+
+      __m128i result = _mm_packus_epi16(result_l, result_h);
+
+      _mm_storeu_si128(reinterpret_cast<__m128i*>(p1+x), result);
+    }
+
+    p1   += p1_pitch;
+    p2   += p2_pitch;
+    mask += mask_pitch;
+  }
+
+  // Leftover value
+  overlay_blend_c_plane_masked(p1+wMod16, p2+wMod16, mask+wMod16, p1_pitch, p2_pitch, mask_pitch, width-wMod16, height);
+}
+
+
 
 void MMerge_SSE(BYTE *dstp, const BYTE *srcp,
         const BYTE *maskp, const int dst_pitch, const int src_pitch,

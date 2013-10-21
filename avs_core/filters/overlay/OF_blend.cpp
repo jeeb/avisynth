@@ -54,40 +54,23 @@ void OL_BlendImage::BlendImageMask(Image444* base, Image444* overlay, Image444* 
 
   if (opacity == 256) {
 
-  if (env->GetCPUFlags() & CPUF_SSE2) {
-    MMerge_SSE(baseY, ovY, maskY, base->pitch, overlay->pitch, mask->pitch, w, h);
-    MMerge_SSE(baseU, ovU, maskU, base->pitch, overlay->pitch, mask->pitch, w, h);
-    MMerge_SSE(baseV, ovV, maskV, base->pitch, overlay->pitch, mask->pitch, w, h);
-    return;
-  }
-
+    if (env->GetCPUFlags() & CPUF_SSE2 && true) {
+      overlay_blend_sse2_plane_masked(baseY, ovY, maskY, base->pitch, overlay->pitch, mask->pitch, w, h);
+      overlay_blend_sse2_plane_masked(baseU, ovU, maskU, base->pitch, overlay->pitch, mask->pitch, w, h);
+      overlay_blend_sse2_plane_masked(baseV, ovV, maskV, base->pitch, overlay->pitch, mask->pitch, w, h);
+    } else
 #ifdef X86_32
-  if (!(w&7) && (env->GetCPUFlags() & CPUF_MMX)) 
-  {
-    MMerge_MMX(baseY, ovY, maskY, base->pitch, overlay->pitch, mask->pitch, w, h);
-    MMerge_MMX(baseU, ovU, maskU, base->pitch, overlay->pitch, mask->pitch, w, h);
-    MMerge_MMX(baseV, ovV, maskV, base->pitch, overlay->pitch, mask->pitch, w, h);
-    return;
-  }
+    if (env->GetCPUFlags() & CPUF_MMX) {
+      overlay_blend_mmx_plane_masked(baseY, ovY, maskY, base->pitch, overlay->pitch, mask->pitch, w, h);
+      overlay_blend_mmx_plane_masked(baseU, ovU, maskU, base->pitch, overlay->pitch, mask->pitch, w, h);
+      overlay_blend_mmx_plane_masked(baseV, ovV, maskV, base->pitch, overlay->pitch, mask->pitch, w, h);
+    } else
 #endif
-    for (int y = 0; y < h; y++) {
-      for (int x = 0; x < w; x++) {
-        baseY[x] = (BYTE)(((baseY[x]*(256-maskY[x])) + (ovY[x]*maskY[x]+128))>>8);
-        baseU[x] = (BYTE)(((baseU[x]*(256-maskU[x])) + (ovU[x]*maskU[x]+128))>>8);
-        baseV[x] = (BYTE)(((baseV[x]*(256-maskV[x])) + (ovV[x]*maskV[x]+128))>>8);
-      } // for x
-      baseY += base->pitch;
-      baseU += base->pitch;
-      baseV += base->pitch;
-
-      ovY += overlay->pitch;
-      ovU += overlay->pitch;
-      ovV += overlay->pitch;
-
-      maskY += mask->pitch;
-      maskU += mask->pitch;
-      maskV += mask->pitch;
-    } // for y
+    {
+      overlay_blend_c_plane_masked(baseY, ovY, maskY, base->pitch, overlay->pitch, mask->pitch, w, h);
+      overlay_blend_c_plane_masked(baseU, ovU, maskU, base->pitch, overlay->pitch, mask->pitch, w, h);
+      overlay_blend_c_plane_masked(baseV, ovV, maskV, base->pitch, overlay->pitch, mask->pitch, w, h);
+    }
   } else {
     for (int y = 0; y < h; y++) {
       for (int x = 0; x < w; x++) {
