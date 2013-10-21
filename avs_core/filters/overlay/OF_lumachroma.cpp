@@ -61,7 +61,7 @@ void OL_BlendLumaImage::BlendImageMask(Image444* base, Image444* overlay, Image4
       overlay_blend_c_plane_masked(baseY, ovY, maskY, base->pitch, overlay->pitch, mask->pitch, w, h);
     }
   } else {
-    if (env->GetCPUFlags() & CPUF_SSE2 && true) {
+    if (env->GetCPUFlags() & CPUF_SSE2) {
       overlay_blend_sse2_plane_masked_opacity(baseY, ovY, maskY, base->pitch, overlay->pitch, mask->pitch, w, h, opacity);
     } else
 #ifdef X86_32
@@ -135,7 +135,7 @@ void OL_BlendChromaImage::BlendImageMask(Image444* base, Image444* overlay, Imag
       overlay_blend_c_plane_masked(baseV, ovV, maskV, base->pitch, overlay->pitch, mask->pitch, w, h);
     }
   } else {
-    if (env->GetCPUFlags() & CPUF_SSE2 && true) {
+    if (env->GetCPUFlags() & CPUF_SSE2) {
       overlay_blend_sse2_plane_masked_opacity(baseU, ovU, maskU, base->pitch, overlay->pitch, mask->pitch, w, h, opacity);
       overlay_blend_sse2_plane_masked_opacity(baseV, ovV, maskV, base->pitch, overlay->pitch, mask->pitch, w, h, opacity);
     } else
