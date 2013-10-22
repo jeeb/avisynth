@@ -306,32 +306,32 @@ AdjustFocusH::AdjustFocusH(double _amount, PClip _child)
 // Blur/Sharpen Horizontal RGB32 C++ Code
 // --------------------------------------
 
-void af_horizontal_rgb32_c(BYTE* p, int height, int pitch, int width, int amount) {
-  const int center_weight = amount*2;
-  const int outer_weight = 32768-amount;
+void af_horizontal_rgb32_c(BYTE* dstp, size_t height, size_t pitch, size_t width, size_t amount) {
+  int center_weight = amount*2;
+  int outer_weight = 32768-amount;
   for (int y = height; y>0; --y) 
   {
-    BYTE bb = p[0];
-    BYTE gg = p[1];
-    BYTE rr = p[2];
-    BYTE aa = p[3];
-    int x;
+    BYTE bb = dstp[0];
+    BYTE gg = dstp[1];
+    BYTE rr = dstp[2];
+    BYTE aa = dstp[3];
+    size_t x;
     for (x = 0; x < width-1; ++x) 
     {
-      BYTE b = ScaledPixelClip(p[x*4+0] * center_weight + (bb + p[x*4+4]) * outer_weight);
-      bb = p[x*4+0]; p[x*4+0] = b;
-      BYTE g = ScaledPixelClip(p[x*4+1] * center_weight + (gg + p[x*4+5]) * outer_weight);
-      gg = p[x*4+1]; p[x*4+1] = g;
-      BYTE r = ScaledPixelClip(p[x*4+2] * center_weight + (rr + p[x*4+6]) * outer_weight);
-      rr = p[x*4+2]; p[x*4+2] = r;
-      BYTE a = ScaledPixelClip(p[x*4+3] * center_weight + (aa + p[x*4+7]) * outer_weight);
-      aa = p[x*4+3]; p[x*4+3] = a;
+      BYTE b = ScaledPixelClip(dstp[x*4+0] * center_weight + (bb + dstp[x*4+4]) * outer_weight);
+      bb = dstp[x*4+0]; dstp[x*4+0] = b;
+      BYTE g = ScaledPixelClip(dstp[x*4+1] * center_weight + (gg + dstp[x*4+5]) * outer_weight);
+      gg = dstp[x*4+1]; dstp[x*4+1] = g;
+      BYTE r = ScaledPixelClip(dstp[x*4+2] * center_weight + (rr + dstp[x*4+6]) * outer_weight);
+      rr = dstp[x*4+2]; dstp[x*4+2] = r;
+      BYTE a = ScaledPixelClip(dstp[x*4+3] * center_weight + (aa + dstp[x*4+7]) * outer_weight);
+      aa = dstp[x*4+3]; dstp[x*4+3] = a;
     }
-    p[x*4+0] = ScaledPixelClip(p[x*4+0] * center_weight + (bb + p[x*4+0]) * outer_weight);
-    p[x*4+1] = ScaledPixelClip(p[x*4+1] * center_weight + (gg + p[x*4+1]) * outer_weight);
-    p[x*4+2] = ScaledPixelClip(p[x*4+2] * center_weight + (rr + p[x*4+2]) * outer_weight);
-    p[x*4+3] = ScaledPixelClip(p[x*4+3] * center_weight + (aa + p[x*4+3]) * outer_weight);
-    p += pitch;
+    dstp[x*4+0] = ScaledPixelClip(dstp[x*4+0] * center_weight + (bb + dstp[x*4+0]) * outer_weight);
+    dstp[x*4+1] = ScaledPixelClip(dstp[x*4+1] * center_weight + (gg + dstp[x*4+1]) * outer_weight);
+    dstp[x*4+2] = ScaledPixelClip(dstp[x*4+2] * center_weight + (rr + dstp[x*4+2]) * outer_weight);
+    dstp[x*4+3] = ScaledPixelClip(dstp[x*4+3] * center_weight + (aa + dstp[x*4+3]) * outer_weight);
+    dstp += pitch;
   }
 }
 
@@ -728,19 +728,24 @@ void af_horizontal_rgb24_c(BYTE* p, int height, int pitch, int width, int amount
 // Blur/Sharpen Horizontal YV12 C++ Code
 // -------------------------------------
 
-void af_horizontal_yv12_c(BYTE* dstp, int height, const int pitch, const int row_size, const int amount) 
+static __forceinline void af_horizontal_yv12_process_line_c(BYTE left, BYTE *dstp, size_t width, int center_weight, int outer_weight) {
+  size_t x;
+  for (x = 0; x < width-1; ++x) {
+    BYTE temp = ScaledPixelClip(dstp[x] * center_weight + (left + dstp[x+1]) * outer_weight);
+    left = dstp[x]; 
+    dstp[x] = temp;
+  }
+  dstp[x] = ScaledPixelClip(dstp[x] * center_weight + (left + dstp[x]) * outer_weight);
+}
+
+void af_horizontal_yv12_c(BYTE* dstp, size_t height, size_t pitch, size_t row_size, size_t amount) 
 {
-  const int center_weight = amount*2;
-  const int outer_weight = 32768-amount;
-  BYTE pp,l;
+  int center_weight = amount*2;
+  int outer_weight = 32768-amount;
+  BYTE temp,left;
   for (int y = height; y>0; --y) {
-    l = dstp[0];
-    int x;
-    for (x = 1; x < row_size-1; ++x) {
-      pp = ScaledPixelClip(dstp[x] * center_weight + (l + dstp[x+1]) * outer_weight);
-      l=dstp[x]; dstp[x]=pp;
-    }
-    dstp[x] = ScaledPixelClip(dstp[x] * center_weight + (l + dstp[x]) * outer_weight);
+    left = dstp[0];
+    af_horizontal_yv12_process_line_c(left, dstp, row_size, center_weight, outer_weight);
     dstp += pitch;
   }
 }
@@ -757,7 +762,9 @@ static void af_horizontal_yv12_sse2(BYTE* dstp, size_t height, size_t pitch, siz
   __m128i round_mask = _mm_set1_epi16(0x40);
   __m128i zero = _mm_setzero_si128();
   __m128i left_mask = _mm_set_epi32(0, 0, 0, 0xFF);
+#pragma warning(disable: 4309)
   __m128i right_mask = _mm_set_epi8(0xFF, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+#pragma warning(default: 4309)
 
   __m128i left;
 
@@ -793,13 +800,8 @@ static void af_horizontal_yv12_sse2(BYTE* dstp, size_t height, size_t pitch, siz
       _mm_store_si128(reinterpret_cast<__m128i*>(dstp+mod16_width-16), result);
     } else { //some stuff left
       BYTE l = _mm_cvtsi128_si32(left) & 0xFF;
-      size_t x;
-      for (x = mod16_width; x < width-1; ++x) {
-        BYTE temp = ScaledPixelClip(dstp[x] * center_weight_c + (l + dstp[x+1]) * outer_weight_c);
-        l = dstp[x]; 
-        dstp[x] = temp;
-      }
-      dstp[x] = ScaledPixelClip(dstp[x] * center_weight_c + (l + dstp[x]) * outer_weight_c);
+      af_horizontal_yv12_process_line_c(l, dstp+mod16_width, width-mod16_width, center_weight_c, outer_weight_c);
+      
     }
 
     dstp += pitch;
@@ -820,8 +822,10 @@ static void af_horizontal_yv12_mmx(BYTE* dstp, size_t height, size_t pitch, size
   __m64 outer_weight = _mm_set1_pi16(64 - t);
   __m64 round_mask = _mm_set1_pi16(0x40);
   __m64 zero = _mm_setzero_si64();
+#pragma warning(disable: 4309)
   __m64 left_mask = _mm_set_pi8(0, 0, 0, 0, 0, 0, 0, 0xFF);
   __m64 right_mask = _mm_set_pi8(0xFF, 0, 0, 0, 0, 0, 0, 0);
+#pragma warning(default: 4309)
 
   __m64 left;
   
@@ -856,13 +860,7 @@ static void af_horizontal_yv12_mmx(BYTE* dstp, size_t height, size_t pitch, size
       *reinterpret_cast<__m64*>(dstp+mod8_width-8) = result;
     } else { //some stuff left
       BYTE l = _mm_cvtsi64_si32(left) & 0xFF;
-      size_t x;
-      for (x = mod8_width; x < width-1; ++x) {
-        BYTE temp = ScaledPixelClip(dstp[x] * center_weight_c + (l + dstp[x+1]) * outer_weight_c);
-        l = dstp[x]; 
-        dstp[x] = temp;
-      }
-      dstp[x] = ScaledPixelClip(dstp[x] * center_weight_c + (l + dstp[x]) * outer_weight_c);
+      af_horizontal_yv12_process_line_c(l, dstp+mod8_width, width-mod8_width, center_weight_c, outer_weight_c);
     }
 
     dstp += pitch;
