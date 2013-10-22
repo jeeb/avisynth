@@ -306,158 +306,114 @@ AdjustFocusH::AdjustFocusH(double _amount, PClip _child)
 // Blur/Sharpen Horizontal RGB32 C++ Code
 // --------------------------------------
 
-void af_horizontal_rgb32_c(BYTE* dstp, size_t height, size_t pitch, size_t width, size_t amount) {
+static __forceinline void af_horizontal_rgb32_process_line_c(BYTE b_left, BYTE g_left, BYTE r_left, BYTE a_left, BYTE *dstp, size_t width, int center_weight, int outer_weight) {
+  size_t x;
+  for (x = 0; x < width-1; ++x) 
+  {
+    BYTE b = ScaledPixelClip(dstp[x*4+0] * center_weight + (b_left + dstp[x*4+4]) * outer_weight);
+    b_left = dstp[x*4+0]; 
+    dstp[x*4+0] = b;
+    BYTE g = ScaledPixelClip(dstp[x*4+1] * center_weight + (g_left + dstp[x*4+5]) * outer_weight);
+    g_left = dstp[x*4+1]; 
+    dstp[x*4+1] = g;
+    BYTE r = ScaledPixelClip(dstp[x*4+2] * center_weight + (r_left + dstp[x*4+6]) * outer_weight);
+    r_left = dstp[x*4+2]; 
+    dstp[x*4+2] = r;
+    BYTE a = ScaledPixelClip(dstp[x*4+3] * center_weight + (a_left + dstp[x*4+7]) * outer_weight);
+    a_left = dstp[x*4+3]; 
+    dstp[x*4+3] = a;
+  }
+  dstp[x*4+0] = ScaledPixelClip(dstp[x*4+0] * center_weight + (b_left + dstp[x*4+0]) * outer_weight);
+  dstp[x*4+1] = ScaledPixelClip(dstp[x*4+1] * center_weight + (g_left + dstp[x*4+1]) * outer_weight);
+  dstp[x*4+2] = ScaledPixelClip(dstp[x*4+2] * center_weight + (r_left + dstp[x*4+2]) * outer_weight);
+  dstp[x*4+3] = ScaledPixelClip(dstp[x*4+3] * center_weight + (a_left + dstp[x*4+3]) * outer_weight);
+}
+
+static void af_horizontal_rgb32_c(BYTE* dstp, size_t height, size_t pitch, size_t width, size_t amount) {
   int center_weight = amount*2;
   int outer_weight = 32768-amount;
   for (int y = height; y>0; --y) 
   {
-    BYTE bb = dstp[0];
-    BYTE gg = dstp[1];
-    BYTE rr = dstp[2];
-    BYTE aa = dstp[3];
-    size_t x;
-    for (x = 0; x < width-1; ++x) 
-    {
-      BYTE b = ScaledPixelClip(dstp[x*4+0] * center_weight + (bb + dstp[x*4+4]) * outer_weight);
-      bb = dstp[x*4+0]; dstp[x*4+0] = b;
-      BYTE g = ScaledPixelClip(dstp[x*4+1] * center_weight + (gg + dstp[x*4+5]) * outer_weight);
-      gg = dstp[x*4+1]; dstp[x*4+1] = g;
-      BYTE r = ScaledPixelClip(dstp[x*4+2] * center_weight + (rr + dstp[x*4+6]) * outer_weight);
-      rr = dstp[x*4+2]; dstp[x*4+2] = r;
-      BYTE a = ScaledPixelClip(dstp[x*4+3] * center_weight + (aa + dstp[x*4+7]) * outer_weight);
-      aa = dstp[x*4+3]; dstp[x*4+3] = a;
-    }
-    dstp[x*4+0] = ScaledPixelClip(dstp[x*4+0] * center_weight + (bb + dstp[x*4+0]) * outer_weight);
-    dstp[x*4+1] = ScaledPixelClip(dstp[x*4+1] * center_weight + (gg + dstp[x*4+1]) * outer_weight);
-    dstp[x*4+2] = ScaledPixelClip(dstp[x*4+2] * center_weight + (rr + dstp[x*4+2]) * outer_weight);
-    dstp[x*4+3] = ScaledPixelClip(dstp[x*4+3] * center_weight + (aa + dstp[x*4+3]) * outer_weight);
+    BYTE b_left = dstp[0];
+    BYTE g_left = dstp[1];
+    BYTE r_left = dstp[2];
+    BYTE a_left = dstp[3];
+    af_horizontal_rgb32_process_line_c(b_left, g_left, r_left, a_left, dstp, width, center_weight, outer_weight);
     dstp += pitch;
   }
 }
 
 #ifdef X86_32
-// --------------------------------------
-// Blur/Sharpen Horizontal RGB32 MMX Code
-// --------------------------------------
 
-void af_horizontal_rgb32_mmx(const BYTE* p, int height, int pitch, int width, int amount) 
-{
-  // round masks
-  __declspec(align(8)) const __int64 r7 = 0x0040004000400040;
-  // weights
-  __declspec(align(8)) __int64 cw;
-  __declspec(align(8)) __int64 ow;
-  __asm { 
-    // signed word center weight ((amount+0x100)>>9) x4
-    mov		eax,amount
-      add		eax,100h
-      sar		eax,9
-      lea		edx,cw
-      mov		[edx],ax
-      mov		[edx+2],ax
-      mov		[edx+4],ax
-      mov		[edx+6],ax
-      // signed word outer weight 64-((amount+0x100)>>9) x4
-      mov		ax,40h
-      sub		ax,[edx]
-    lea		edx,ow
-      mov		[edx],ax
-      mov		[edx+2],ax
-      mov		[edx+4],ax
-      mov		[edx+6],ax
-  }
-  for (int y=0;y<height;y++) {
-    __asm {
-      mov			ecx,p
-        mov			edi,width
+static void af_horizontal_rgb32_mmx(BYTE* dstp, size_t height, size_t pitch, size_t width, size_t amount) {
+  size_t mod8_bytes = (width / 2) * 8; //4 bytes/pixel so width in bytes is always at least mod4
+  size_t loop_limit = mod8_bytes == (width*4) ? mod8_bytes - 8 : mod8_bytes;
+  int center_weight_c = amount*2;
+  int outer_weight_c = 32768-amount;
 
-        movq		mm1,[ecx]		; trash + left pixel
-        pxor		mm0,mm0			; zeros
-        movq		mm2,mm1			; centre + right pixel
-        psllq		mm1,32			; left + zero
+  short t = (amount + 256) >> 9;
+  __m64 center_weight = _mm_set1_pi16(t);
+  __m64 outer_weight = _mm_set1_pi16(64 - t);
+  __m64 round_mask = _mm_set1_pi16(0x40);
+  __m64 zero = _mm_setzero_si64();
 
-        align		16
-row_loop:
-      dec			edi
-        jle			odd_end
 
-        movq		mm7,mm2			; duplicate right pixel
-        punpckhbw	mm1,mm0			; unpack left pixel
-        punpckhbw	mm7,mm0			; unpack right pixel
-        movq		mm4,mm2			; duplicate centre pixel
-        paddsw		mm7,mm1			; right + left
-        punpcklbw	mm4,mm0			; unpack centre pixel
-        pmullw		mm7,ow			; *= outer weight
-        pmullw		mm4,cw			; *= centre weight
-        movq		mm1,mm2			; left + centre pixel
-        paddsw		mm7,mm4			; Weighted centres + outers
-        dec			edi
-        paddsw		mm7,mm4			; Weighted centres + outers
-        paddsw		mm7,r7			; += 0.5
-        psraw		mm7,7			; /= 32768
-        jle			even_end
+  for (size_t y = 0; y < height; ++y) {
+    __m64 center_src = *reinterpret_cast<const __m64*>(dstp); //left==center and right pixels
+    __m64 left_src = _mm_slli_si64(center_src, 32); //left pixel and zeros
 
-        movq		mm6,mm1			; duplicate left pixel
-        movq		mm2,[ecx+8]		; right + trash pixel
-        punpcklbw	mm6,mm0			; unpack left pixel
-        movq		mm5,mm2			; duplicate right pixel
-        movq		mm4,mm1			; duplicate centre pixel
-        punpcklbw	mm5,mm0			; unpack right pixel
-        punpckhbw	mm4,mm0			; unpack centre pixel
-        paddsw		mm6,mm5			; left + right
-        pmullw		mm4,cw			; *= centre weight
-        pmullw		mm6,ow			; *= outer weight
-        paddsw		mm6,mm4			; Weighted centres + outers
-        paddsw		mm6,mm4			; Weighted centres + outers
-        paddsw		mm6,r7			; += 0.5
-        psraw		mm6,7			; /= 32768
-        add			ecx,8
-        packuswb	mm7,mm6			; pack low with high
-        movq		[ecx-8],mm7		; Update 2 centre pixels
-        jmp			row_loop
+    for (int x = 0; x < loop_limit; x+=8) {
+      __m64 left_unpacked = _mm_unpackhi_pi8(left_src, zero);
+      __m64 center_unpacked = _mm_unpacklo_pi8(center_src, zero);
+      __m64 right_unpacked = _mm_unpackhi_pi8(center_src, zero);
 
-        align		16
-odd_end:
-      punpckhbw	mm1,mm0			; unpack left pixel
-        punpcklbw	mm2,mm0			; unpack centre pixel
-        paddsw		mm1,mm2			; left + centre
-        pmullw		mm2,cw			; *= centre weight
-        pmullw		mm1,ow			; *= outer weight
-        paddsw		mm1,mm2			; Weighted centres + outers
-        paddsw		mm1,mm2			; Weighted centres + outers
-        paddsw		mm1,r7			; += 0.5
-        psraw		mm1,7			; /= 32768
-        packuswb	mm1,mm1			; pack low with high
-        movd		[ecx],mm1		; Update 1 centre pixels
-        jmp			next_loop
+      __m64 pixel1 = af_blend_mmx(left_unpacked, center_unpacked, right_unpacked, center_weight, outer_weight, round_mask);
+      
+      left_src = center_src;
 
-        align		16
-even_end:
-      punpckhbw	mm2,mm0			; unpack centre pixel
-        punpcklbw	mm1,mm0			; unpack left pixel
-        paddsw		mm1,mm2			; left + centre
-        pmullw		mm2,cw			; *= centre weight
-        pmullw		mm1,ow			; *= outer weight
-        paddsw		mm1,mm2			; Weighted centres + outers
-        paddsw		mm1,mm2			; Weighted centres + outers
-        paddsw		mm1,r7			; += 0.5
-        psraw		mm1,7			; /= 32768
-        packuswb	mm7,mm1			; pack low with high
-        movq		[ecx],mm7		; Update 2 centre pixels
+      center_src = *reinterpret_cast<const __m64*>(dstp+x+8);
+      __m64 right2_unpacked = _mm_unpacklo_pi8(center_src, zero);
 
-next_loop:
+      __m64 pixel2 = af_blend_mmx(center_unpacked, right_unpacked, right2_unpacked, center_weight, outer_weight, round_mask);
+
+      *reinterpret_cast< __m64*>(dstp+x) = _mm_packs_pu16(pixel1, pixel2);
     }
-    p += pitch;
+
+    if (mod8_bytes == (width * 4)) {
+      //it is actually mod8, last two pixels near the border
+      __m64 left_unpacked = _mm_unpackhi_pi8(left_src, zero);
+      __m64 center_unpacked = _mm_unpacklo_pi8(center_src, zero);
+      __m64 right_unpacked = _mm_unpackhi_pi8(center_src, zero);
+
+      __m64 pixel1 = af_blend_mmx(left_unpacked, center_unpacked, right_unpacked, center_weight, outer_weight, round_mask);
+      __m64 pixel2 = af_blend_mmx(center_unpacked, right_unpacked, right_unpacked, center_weight, outer_weight, round_mask);
+
+      *reinterpret_cast< __m64*>(dstp+mod8_bytes-8) = _mm_packs_pu16(pixel1, pixel2);
+    } else {
+      //mod4 - one pixel left after the main loop
+      __m64 left_unpacked = _mm_unpackhi_pi8(left_src, zero);
+      __m64 center_unpacked = _mm_unpacklo_pi8(center_src, zero);
+
+      __m64 pixel = af_blend_mmx(left_unpacked, center_unpacked, center_unpacked, center_weight, outer_weight, round_mask);
+
+      pixel = _mm_packs_pu16(pixel, zero);
+
+      *reinterpret_cast<int*>(dstp+mod8_bytes) = _mm_cvtsi64_si32(pixel);
+    }
+
+    dstp += pitch;
   }
-  __asm emms
+  _mm_empty();
 }
+
+
 #endif
 
 // -------------------------------------
 // Blur/Sharpen Horizontal YUY2 C++ Code
 // -------------------------------------
 
-void af_horizontal_yuy2_c(BYTE* p, int height, int pitch, int width, int amount) {
+static void af_horizontal_yuy2_c(BYTE* p, int height, int pitch, int width, int amount) {
   const int center_weight = amount*2;
   const int outer_weight = 32768-amount;
   for (int y = height; y>0; --y) 
@@ -698,7 +654,7 @@ next_loop:
 // Blur/Sharpen Horizontal RGB24 C++ Code
 // --------------------------------------
 
-void af_horizontal_rgb24_c(BYTE* p, int height, int pitch, int width, int amount) {
+static void af_horizontal_rgb24_c(BYTE* p, int height, int pitch, int width, int amount) {
   const int center_weight = amount*2;
   const int outer_weight = 32768-amount;
   for (int y = height; y>0; --y) 
@@ -738,11 +694,11 @@ static __forceinline void af_horizontal_yv12_process_line_c(BYTE left, BYTE *dst
   dstp[x] = ScaledPixelClip(dstp[x] * center_weight + (left + dstp[x]) * outer_weight);
 }
 
-void af_horizontal_yv12_c(BYTE* dstp, size_t height, size_t pitch, size_t row_size, size_t amount) 
+static void af_horizontal_yv12_c(BYTE* dstp, size_t height, size_t pitch, size_t row_size, size_t amount) 
 {
   int center_weight = amount*2;
   int outer_weight = 32768-amount;
-  BYTE temp,left;
+  BYTE left;
   for (int y = height; y>0; --y) {
     left = dstp[0];
     af_horizontal_yv12_process_line_c(left, dstp, row_size, center_weight, outer_weight);
