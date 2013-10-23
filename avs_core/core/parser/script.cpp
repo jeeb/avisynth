@@ -740,7 +740,6 @@ AVSValue AVSTime(AVSValue args, void*, IScriptEnvironment* env )
 
 AVSValue Spline(AVSValue args, void*, IScriptEnvironment* env )
 {
-    float *xa, *ya, *y2a;
 	int n;
 	float x,y;
 	int i;
@@ -758,9 +757,10 @@ AVSValue Spline(AVSValue args, void*, IScriptEnvironment* env )
 
 	n=n/2;
 
-    xa  = new float[n+1];
-    ya  = new float[n+1];
-    y2a = new float[n+1];
+  float *buf = new float[(n+1)*3];
+  float *xa  = &(buf[(n+1) * 0]);
+  float *ya  = &(buf[(n+1) * 1]);
+  float *y2a = &(buf[(n+1) * 2]);
 
 	for (i=1; i<=n; i++) {
 		xa[i] = (float)coordinates[(i-1)*2].AsFloat(0);
@@ -774,9 +774,7 @@ AVSValue Spline(AVSValue args, void*, IScriptEnvironment* env )
 	spline(xa, ya, n, y2a);
 	splint(xa, ya, y2a, n, x, y, cubic);
 
-    delete[] xa;
-    delete[] ya;
-    delete[] y2a;
+  delete[] buf;
 
 	return y;
 }
