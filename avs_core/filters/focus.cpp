@@ -486,210 +486,221 @@ static void af_horizontal_yuy2_c(BYTE* p, int height, int pitch, int width, int 
 }
 
 
+static __forceinline __m128i af_blend_yuy2_sse2(__m128i &left, __m128i &center, __m128i &right, __m128i &luma_mask, __m128i &chroma_mask, 
+                                             __m128i &center_weight, __m128i &outer_weight, __m128i &round_mask) {
+  __m128i left_luma = _mm_and_si128(left, luma_mask); //0 Y1 0 Y0 0 Y-1 0 Y-2
+  __m128i center_luma = _mm_and_si128(center, luma_mask); //0 Y3 0 Y2 0 Y1 0 Y0
+  __m128i right_luma = _mm_and_si128(right, luma_mask); //0 Y5 0 Y4 0 Y3 0 Y2
+
+  left_luma = _mm_or_si128(
+    _mm_srli_si128(left_luma, 2), // 0 0 0 Y1 0 Y0 0 Y-1
+    _mm_slli_si128(right_luma, 6) // 0 Y2 0 0 0 0 0 0
+    );
+
+  right_luma = _mm_or_si128(
+    _mm_srli_si128(center_luma, 2),//0 0 0 Y3 0 Y2 0 Y1
+    _mm_slli_si128(right_luma, 2)//0 Y4 0 Y3 0 Y2 0 0
+    );
+
+  __m128i result_luma = af_blend_sse2(left_luma, center_luma, right_luma, center_weight, outer_weight, round_mask); 
+
+  __m128i left_chroma = _mm_and_si128(left, chroma_mask); //V 0 Y 0 V 0 U 0
+  __m128i center_chroma = _mm_and_si128(center, chroma_mask); //V 0 Y 0 V 0 U 0
+  __m128i right_chroma = _mm_and_si128(right, chroma_mask); //V 0 Y 0 V 0 U 0
+
+  left_chroma = _mm_srli_si128(left_chroma, 1); //0 V 0 U 0 V 0 U
+  center_chroma = _mm_srli_si128(center_chroma, 1); //0 V 0 U 0 V 0 U
+  right_chroma = _mm_srli_si128(right_chroma, 1); //0 V 0 U 0 V 0 U
+
+  __m128i result_chroma = af_blend_sse2(left_chroma, center_chroma, right_chroma, center_weight, outer_weight, round_mask);
+  result_chroma = _mm_slli_si128(result_chroma, 1);
+
+  return _mm_or_si128(result_luma, result_chroma);
+}
+
+
+static void af_horizontal_yuy2_sse2(BYTE* dstp, const BYTE* srcp, size_t dst_pitch, size_t src_pitch, size_t height, size_t width, size_t amount) {
+  size_t width_bytes = width * 2;
+  size_t loop_limit = width_bytes - 16;
+
+  short t = (amount + 256) >> 9;
+  __m128i center_weight = _mm_set1_epi16(t);
+  __m128i outer_weight = _mm_set1_epi16(64 - t);
+  __m128i round_mask = _mm_set1_epi16(0x40);
+#pragma warning(disable: 4309)
+  __m128i left_mask = _mm_set_epi32(0, 0, 0, 0xFFFFFFFF);
+  __m128i right_mask = _mm_set_epi32(0xFFFFFFFF, 0, 0, 0);
+  __m128i left_mask_small = _mm_set_epi16(0, 0, 0, 0, 0, 0, 0x00FF, 0);
+  __m128i right_mask_small = _mm_set_epi16(0, 0x00FF, 0, 0, 0, 0, 0, 0);
+  __m128i luma_mask = _mm_set1_epi16(0xFF);
+  __m128i chroma_mask = _mm_set1_epi16(0xFF00);
+#pragma warning(default: 4309)
+
+  __m128i center, right, left, result;
+
+  for (size_t y = 0; y < height; ++y) {
+    center = _mm_load_si128(reinterpret_cast<const __m128i*>(srcp));//V1 Y3 U1 Y2 V0 Y1 U0 Y0
+    right = _mm_loadu_si128(reinterpret_cast<const __m128i*>(srcp + 4));//V2 Y5 U2 Y4 V1 Y3 U1 Y2
+
+    //todo: now this is dumb
+    left = _mm_or_si128(
+      _mm_and_si128(center, left_mask), 
+      _mm_slli_si128(center, 4)
+      );//V0 Y1 U0 Y0 V0 Y1 U0 Y0
+    left = _mm_or_si128(
+      _mm_andnot_si128(left_mask_small, left),
+      _mm_and_si128(_mm_slli_si128(center, 2), left_mask_small)
+      );//V0 Y1 U0 Y0 V0 Y0 U0 Y0
+
+    result = af_blend_yuy2_sse2(left, center, right, luma_mask, chroma_mask, center_weight, outer_weight, round_mask);
+
+    _mm_store_si128(reinterpret_cast< __m128i*>(dstp), result);
+
+    for (size_t x = 16; x < loop_limit; x+=16) {
+      left = _mm_loadu_si128(reinterpret_cast<const __m128i*>(srcp + x - 4));//V0 Y1 U0 Y0 V-1 Y-1 U-1 Y-2
+      center = _mm_load_si128(reinterpret_cast<const __m128i*>(srcp + x)); //V1 Y3 U1 Y2 V0 Y1 U0 Y0
+      right = _mm_loadu_si128(reinterpret_cast<const __m128i*>(srcp + x + 4));//V2 Y5 U2 Y4 V1 Y3 U1 Y2
+
+      __m128i result = af_blend_yuy2_sse2(left, center, right, luma_mask, chroma_mask, center_weight, outer_weight, round_mask);
+
+      _mm_store_si128(reinterpret_cast< __m128i*>(dstp+x), result);
+    }
+
+    left = _mm_loadu_si128(reinterpret_cast<const __m128i*>(srcp + loop_limit - 4));
+    center = _mm_loadu_si128(reinterpret_cast<const __m128i*>(srcp + loop_limit));  //V1 Y3 U1 Y2 V0 Y1 U0 Y0
+
+    //todo: now this is dumb2
+    right = _mm_or_si128(
+      _mm_and_si128(center, right_mask), 
+      _mm_srli_si128(center, 4)
+      );//V1 Y3 U1 Y2 V1 Y3 U1 Y2
+
+    right = _mm_or_si128(
+      _mm_andnot_si128(right_mask_small, right),
+      _mm_and_si128(_mm_srli_si128(center, 2), right_mask_small)
+      );//V1 Y3 U1 Y3 V1 Y3 U1 Y2
+
+    result = af_blend_yuy2_sse2(left, center, right, luma_mask, chroma_mask, center_weight, outer_weight, round_mask);
+
+    _mm_storeu_si128(reinterpret_cast< __m128i*>(dstp + loop_limit), result);
+
+    dstp += dst_pitch;
+    srcp += src_pitch;
+  }
+}
+
+
+
+
 #ifdef X86_32
 // -------------------------------------
 // Blur/Sharpen Horizontal YUY2 MMX Code
 // -------------------------------------
+// 
+static __forceinline __m64 af_blend_yuy2_mmx(__m64 &left, __m64 &center, __m64 &right, __m64 &luma_mask, __m64 &chroma_mask, 
+                           __m64 &center_weight, __m64 &outer_weight, __m64 &round_mask) {
+  __m64 left_luma = _mm_and_si64(left, luma_mask); //0 Y1 0 Y0 0 Y-1 0 Y-2
+  __m64 center_luma = _mm_and_si64(center, luma_mask); //0 Y3 0 Y2 0 Y1 0 Y0
+  __m64 right_luma = _mm_and_si64(right, luma_mask); //0 Y5 0 Y4 0 Y3 0 Y2
 
-static void af_horizontal_yuy2_mmx(const BYTE* p, int height, int pitch, int width, int amount) 
-{
-  // round masks
-  __declspec(align(8)) const __int64 r7 = 0x0040004000400040;
-  // YY and UV masks
-  __declspec(align(8)) const __int64 ym = 0x00FF00FF00FF00FF;
-  __declspec(align(8)) const __int64 cm = 0xFF00FF00FF00FF00;
+  left_luma = _mm_or_si64(
+    _mm_srli_si64(left_luma, 16), // 0 0 0 Y1 0 Y0 0 Y-1
+    _mm_slli_si64(right_luma, 48) // 0 Y2 0 0 0 0 0 0
+    );
 
-  __declspec(align(8)) const __int64 rightmask = 0x00FF000000000000;
-  // weights
-  __declspec(align(8)) __int64 cw;
-  __declspec(align(8)) __int64 ow;
+  right_luma = _mm_or_si64(
+    _mm_srli_si64(center_luma, 16),//0 0 0 Y3 0 Y2 0 Y1
+    _mm_slli_si64(right_luma, 16)//0 Y4 0 Y3 0 Y2 0 0
+    );
 
-  __asm { 
-    // signed word center weight ((amount+0x100)>>9) x4
-    mov		eax,amount
-      add		eax,100h
-      sar		eax,9
-      lea		edx,cw
-      mov		[edx],ax
-      mov		[edx+2],ax
-      mov		[edx+4],ax
-      mov		[edx+6],ax
-      // signed word outer weight 64-((amount+0x100)>>9) x4
-      mov		ax,40h
-      sub		ax,[edx]
-    lea		edx,ow
-      mov		[edx],ax
-      mov		[edx+2],ax
-      mov		[edx+4],ax
-      mov		[edx+6],ax
-  }
+  __m64 result_luma = af_blend_mmx(left_luma, center_luma, right_luma, center_weight, outer_weight, round_mask); 
 
-  for (int y=0;y<height;y++) {
-    __asm {
-      mov			ecx,p
-        movq		mm1,ym			; 0x00FF00FF00FF00FF
-        movq		mm2,[ecx]		; [2v 3y 2u 2y 0v 1y 0u 0y]	-- Centre
-        movq		mm3,cm			; 0xFF00FF00FF00FF00
-        pand		mm1,mm2			; [00 3y 00 2y 00 1y 00 0y]
-      pand		mm3,mm2			; [2v 00 2u 00 0v 00 0u 00]
-      psllq		mm1,48			; [00 0y 00 00 00 00 00 00]
-      psllq		mm3,32			; [0v 00 0u 00 00 00 00 00]
-      mov			edi,width
-        por		mm1,mm3			; [0v 0y 0u 00 00 00 00 00]	-- Left
-        sub			edi,2
+  __m64 left_chroma = _mm_and_si64(left, chroma_mask); //V 0 Y 0 V 0 U 0
+  __m64 center_chroma = _mm_and_si64(center, chroma_mask); //V 0 Y 0 V 0 U 0
+  __m64 right_chroma = _mm_and_si64(right, chroma_mask); //V 0 Y 0 V 0 U 0
 
-        align		16
-row_loop:
-      jle			odd_end
-        sub			edi,2
-        jle			even_end
+  left_chroma = _mm_srli_si64(left_chroma, 8); //0 V 0 U 0 V 0 U
+  center_chroma = _mm_srli_si64(center_chroma, 8); //0 V 0 U 0 V 0 U
+  right_chroma = _mm_srli_si64(right_chroma, 8); //0 V 0 U 0 V 0 U
 
-        movq		mm0,mm1			;   [-2v -1y -2u -2y -4v -3y -4u -4y]
-      movq		mm3,[ecx+8]		; [6v 7y 6u 6y 4v 5y 4u 4y]	-- Right
-        movq		mm5,ym			; 0x00FF00FF00FF00FF
-        movq		mm6,mm3			;   [6v 7y 6u 6y 4v 5y 4u 4y]
-      pand		mm0,mm5			;   [00-1y 00-2y 00-3y 00-4y]
-      pand		mm6,mm5			;   [007y 006y 005y 004y]
-      psrlq		mm0,48			;   [0000  0000  0000  00-1y]
-      pand		mm5,mm2			; [003y 002y 001y 000y]		-- Centre
-        psllq		mm6,48			;   [004y 0000 0000 0000]
-      movq		mm7,mm5			;   [003y 002y 001y 000y]
-      movq		mm4,mm5			;   [003y 002y 001y 000y]
-      psllq		mm7,16			;   [002y 001y 000y 0000]
-      psrlq		mm5,16			;   [0000 003y 002y 001y]
-      por		mm0,mm7			; [002y 001y 000y 00-1y]	-- Left
-        por			mm6,mm5			; [004y 003y 002y 001y]		-- Right
-        pmullw		mm4,cw			; *= center weight
-        paddsw		mm0,mm6			; left += right 
-        movq		mm6,cm			; 0xFF00FF00FF00FF00
-        pmullw		mm0,ow			; *= outer weight
-        pand		mm1,mm6			;   [-2v00 -2u00 -4v00 -4u00]
-      movq		mm5,mm2			;   [2v 3y 2u 2y 0v 1y 0u 0y]
-      paddsw		mm0,mm4			; Weighted centres + outers
-        psrlq		mm1,40			;   [0000 0000 00-2v 00-2u]
-      pand		mm5,mm6			;   [2v00 2u00 0v00 0u00]
-      paddsw		mm0,mm4			; Weighted centres + outers
-        psrlq		mm5,8			; [002v 002u 000v 000u]		-- Centre
-        pand		mm6,mm3			;   [6v00 6u00 4v00 4u00]
-      movq		mm7,mm5			;   [002v 002u 000v 000u]
-      movq		mm4,mm5			;   [002v 002u 000v 000u]
-      psllq		mm6,24			;   [004v 004u 0000 0000]
-      psllq		mm7,32			;   [000v 000u 0000 0000]
-      psrlq		mm4,32			;   [0000 0000 002v 002u]
-      por			mm7,mm1			; [000v 000u 00-2v 00-2u]	-- Left
-        por		mm6,mm4			; [004v 004u 002v 002u]		-- Right
-        paddsw		mm7,mm6			; left += right
-        pmullw		mm5,cw			; *= center weight
-        pmullw		mm7,ow			; *= outer weight
-        add			ecx,8			; 
-      paddsw		mm7,mm5			; Weighted centres + outers
-        paddsw		mm0,r7			; += 0.5
-        paddsw		mm7,mm5			; Weighted centres + outers
-        psraw		mm0,7			; /= 32768
-        paddsw		mm7,r7			; += 0.5
-        packuswb	mm0,mm0			; [3y 2y 1y 0y 3y 2y 1y 0y] -- Unsign Saturated
-        psraw		mm7,7			; /= 32768
-        movq		mm1,mm2			; 
-      packuswb	mm7,mm7			; [2v 2u 0v 0u 2v 2u 0v 0u] -- Unsign Saturated
-        movq		mm2,mm3			; 
-      punpcklbw	mm0,mm7			; [2v 3y 2u 2y 0v 1y 0v 0y]
-      sub			edi,2
-        movq		[ecx-8],mm0		; Update 4 centre pixels
-        jmp			row_loop		; 
+  __m64 result_chroma = af_blend_mmx(left_chroma, center_chroma, right_chroma, center_weight, outer_weight, round_mask);
+  result_chroma = _mm_slli_si64(result_chroma, 8);
 
-      align		16
-odd_end:
-      movq		mm5,ym			; 0x00FF00FF00FF00FF
-        movq		mm0,mm1			;   [-2v -1y -2u -2y -4v -3y -4u -4y]
-      ;stall
-        pand		mm0,mm5			;   [00-1y 00-2y 00-3y 00-4y]
-      pand		mm5,mm2			; [00xx 00xx 001y 000y]		-- Centre
-        psrlq		mm0,48			;   [0000  0000  0000  00-1y]
-      movq		mm7,mm5			;   [00xx 00xx 001y 000y]
-      movq		mm6,mm5			;   [00xx 00xx 001y 000y]
-      psllq		mm7,16			;   [00xx 001y 000y 0000]
-      psrlq		mm6,16			;   [0000 00xx 00xx 001y]
-      por			mm0,mm7			; [00xx 001y 000y 00-1y]	-- Left
-        punpcklwd	mm6,mm6			; [00xx 00xx 001y 001y]		-- Right
-        pmullw		mm5,cw			; *= center weight YY
-        paddsw		mm0,mm6			; left += right  YY
-        movq		mm3,cm			; 0xFF00FF00FF00FF00
-        pmullw		mm0,ow			; *= outer weight YY
-        pand		mm1,mm3			;   [-2v00 -2u00 -4v00 -4u00]
-      pand		mm3,mm2			;   [xx00 xx00 0v00 0u00]
-      psrlq		mm1,40			; [0000 0000 00-2v 00-2u]	-- Left
-        psrlq		mm3,8			; [0000 0000 000v 000u]		-- Centre
-        paddsw		mm1,mm3			; left += centre UV
-        pmullw		mm3,cw			; *= center weight UV
-        pmullw		mm1,ow			; *= outer weight UV
-        paddsw		mm0,mm5			; Weighted centres + outers YY
-        paddsw		mm1,mm3			; Weighted centres + outers UV
-        paddsw		mm0,mm5			; Weighted centres + outers YY
-        paddsw		mm1,mm3			; Weighted centres + outers UV
-        paddsw		mm0,r7			; += 0.5 YY
-        paddsw		mm1,r7			; += 0.5 UV
-        psraw		mm0,7			; /= 32768 YY
-        psraw		mm1,7			; /= 32768 UV
-        packuswb	mm0,mm0			; [xx xx 1y 0y xx xx 1y 0y] -- Unsign Saturated
-        packuswb	mm1,mm1			; [xx xx 0v 0u xx xx 0v 0u] -- Unsign Saturated
-        punpcklbw	mm0,mm1			; [xx xx xx xx 0v 1y 0v 0y]
-      movd		[ecx],mm0		; Update 2 centre pixels
-        jmp			next_loop
-
-        align		16
-even_end:
-
-      movq		mm5,ym			; 0x00FF00FF00FF00FF
-        movq		mm0,mm1			;   [-2v -1y -2u -2y -4v -3y -4u -4y]
-      movq		mm6,rightmask	; 0x00FF000000000000
-        pand		mm0,mm5			;   [00-1y 00-2y 00-3y 00-4y]
-      pand		mm6,mm2			;   [003y 0000 0000 0000]
-      pand		mm5,mm2			; [003y 002y 001y 000y]		-- Centre
-        psrlq		mm0,48			;   [0000  0000  0000  00-1y]
-      movq		mm7,mm5			;   [003y 002y 001y 000y]
-      movq		mm4,mm5			;   [003y 002y 001y 000y]
-      psllq		mm7,16			;   [002y 001y 000y 0000]
-      psrlq		mm4,16			;   [0000 003y 002y 001y]
-      por			mm0,mm7			; [002y 001y 000y 00-1y]	-- Left
-        por		mm6,mm4			; [003y 003y 002y 001y]		-- Right
-        movq		mm3,cm			; 0xFF00FF00FF00FF00
-        paddsw		mm0,mm6			; left += right 
-        pmullw		mm5,cw			; *= center weight
-        pmullw		mm0,ow			; *= outer weight
-        pand		mm1,mm3			;   [-2v00 -2u00 -4v00 -4u00]
-      pand		mm3,mm2			;   [2v00 2u00 0v00 0u00]
-      psrlq		mm1,40			;   [0000 0000 00-2v 00-2u]
-      movq		mm4,mm3			;   [2v00 2u00 0v00 0u00]
-      movq		mm7,mm3			;   [2v00 2u00 0v00 0u00]
-      psrlq		mm4,40			;   [0000 0000 002v 002u]
-      psllq		mm7,24			;   [000v 000u 0000 0000]
-      movq		mm6,mm4			;   [0000 0000 002v 002u]
-      por		mm1,mm7			; [000v 000u 00-2v 00-2u]	-- Left
-        psllq		mm6,32			;   [002v 002u 0000 0000]
-      por			mm6,mm4			; [002v 002u 002v 002u]		-- Right
-        psrlq		mm3,8			; [002v 002u 000v 000u]		-- Centre
-        paddsw		mm1,mm6			; left += right
-        pmullw		mm3,cw			; *= center weight
-        pmullw		mm1,ow			; *= outer weight
-        paddsw		mm0,mm5			; Weighted centres + outers
-        paddsw		mm1,mm3			; Weighted centres + outers
-        paddsw		mm0,mm5			; Weighted centres + outers
-        paddsw		mm1,mm3			; Weighted centres + outers
-        paddsw		mm0,r7			; += 0.5
-        paddsw		mm1,r7			; += 0.5
-        psraw		mm0,7			; /= 32768
-        psraw		mm1,7			; /= 32768
-        packuswb	mm0,mm0			; [3y 2y 1y 0y 3y 2y 1y 0y] -- Unsign Saturated
-        packuswb	mm1,mm1			; [2v 2u 0v 0u 2v 2u 0v 0u] -- Unsign Saturated
-        punpcklbw	mm0,mm1			; [2v 3y 2u 2y 0v 1y 0v 0y]
-      movq		[ecx],mm0		; Update 4 centre pixels
-
-next_loop:
-    }
-    p += pitch;
-  }
-  __asm emms
+  return _mm_or_si64(result_luma, result_chroma);
 }
+
+
+static void af_horizontal_yuy2_mmx(BYTE* dstp, const BYTE* srcp, size_t dst_pitch, size_t src_pitch, size_t height, size_t width, size_t amount) {
+  size_t width_bytes = width * 2;
+  size_t loop_limit = width_bytes - 8;
+
+  short t = (amount + 256) >> 9;
+  __m64 center_weight = _mm_set1_pi16(t);
+  __m64 outer_weight = _mm_set1_pi16(64 - t);
+  __m64 round_mask = _mm_set1_pi16(0x40);
+#pragma warning(disable: 4309)
+  __m64 left_mask = _mm_set_pi32(0, 0xFFFFFFFF);
+  __m64 right_mask = _mm_set_pi32(0xFFFFFFFF, 0);
+  __m64 left_mask_small = _mm_set_pi16(0, 0, 0x00FF, 0);
+  __m64 right_mask_small = _mm_set_pi16(0, 0x00FF, 0, 0);
+  __m64 luma_mask = _mm_set1_pi16(0xFF);
+  __m64 chroma_mask = _mm_set1_pi16(0xFF00);
+#pragma warning(default: 4309)
+
+  __m64 center, right, left, result;
+
+  for (size_t y = 0; y < height; ++y) {
+    center = *reinterpret_cast<const __m64*>(srcp);//V1 Y3 U1 Y2 V0 Y1 U0 Y0
+    right = *reinterpret_cast<const __m64*>(srcp + 4);//V2 Y5 U2 Y4 V1 Y3 U1 Y2
+
+    //todo: now this is dumb
+    left = _mm_or_si64(
+      _mm_and_si64(center, left_mask), 
+      _mm_slli_si64(center, 32)
+      );//V0 Y1 U0 Y0 V0 Y1 U0 Y0
+    left = _mm_or_si64(
+      _mm_andnot_si64(left_mask_small, left),
+      _mm_and_si64(_mm_slli_si64(center, 16), left_mask_small)
+      );//V0 Y1 U0 Y0 V0 Y0 U0 Y0
+
+    result = af_blend_yuy2_mmx(left, center, right, luma_mask, chroma_mask, center_weight, outer_weight, round_mask);
+
+    *reinterpret_cast< __m64*>(dstp) = result;
+
+    for (size_t x = 8; x < loop_limit; x+=8) {
+      left = *reinterpret_cast<const __m64*>(srcp + x - 4);//V0 Y1 U0 Y0 V-1 Y-1 U-1 Y-2
+      center = *reinterpret_cast<const __m64*>(srcp + x); //V1 Y3 U1 Y2 V0 Y1 U0 Y0
+      right = *reinterpret_cast<const __m64*>(srcp + x + 4);//V2 Y5 U2 Y4 V1 Y3 U1 Y2
+
+      __m64 result = af_blend_yuy2_mmx(left, center, right, luma_mask, chroma_mask, center_weight, outer_weight, round_mask);
+
+      *reinterpret_cast< __m64*>(dstp+x) = result;
+    }
+
+    left = *reinterpret_cast<const __m64*>(srcp + loop_limit - 4);
+    center = *reinterpret_cast<const __m64*>(srcp + loop_limit);  //V1 Y3 U1 Y2 V0 Y1 U0 Y0
+
+    //todo: now this is dumb2
+    right = _mm_or_si64(
+      _mm_and_si64(center, right_mask), 
+      _mm_srli_si64(center, 32)
+      );//V1 Y3 U1 Y2 V1 Y3 U1 Y2
+    right = _mm_or_si64(
+      _mm_andnot_si64(right_mask_small, right),
+      _mm_and_si64(_mm_srli_si64(center, 16), right_mask_small)
+      );//V1 Y3 U1 Y3 V1 Y3 U1 Y2
+
+    result = af_blend_yuy2_mmx(left, center, right, luma_mask, chroma_mask, center_weight, outer_weight, round_mask);
+
+    *reinterpret_cast< __m64*>(dstp + loop_limit) = result;
+
+    dstp += dst_pitch;
+    srcp += src_pitch;
+  }
+  _mm_empty();
+}
+
+
 #endif
 
 // --------------------------------------
@@ -912,17 +923,18 @@ PVideoFrame __stdcall AdjustFocusH::GetFrame(int n, IScriptEnvironment* env)
     }
   } else {
     if (vi.IsYUY2()) {
-      copy_frame(src, dst, env); //yuy2 is still in-place
       BYTE* q = dst->GetWritePtr();
       const int pitch = dst->GetPitch();
+      if ((env->GetCPUFlags() & CPUF_SSE2) && IsPtrAligned(src->GetReadPtr(), 16)) {
+        af_horizontal_yuy2_sse2(dst->GetWritePtr(), src->GetReadPtr(), dst->GetPitch(), src->GetPitch(), vi.height, vi.width, amount);
+      } else
 #ifdef X86_32
-      if (env->GetCPUFlags() & CPUF_MMX)
-      {
-        af_horizontal_yuy2_mmx(q,vi.height,pitch,vi.width,amount);
-      }
-      else
+      if (env->GetCPUFlags() & CPUF_MMX) {
+        af_horizontal_yuy2_mmx(dst->GetWritePtr(), src->GetReadPtr(), dst->GetPitch(), src->GetPitch(), vi.height, vi.width, amount);
+      } else
 #endif
       {
+        copy_frame(src, dst, env); //in-place
         af_horizontal_yuy2_c(q,vi.height,pitch,vi.width,amount);
       }
     } 
@@ -935,15 +947,13 @@ PVideoFrame __stdcall AdjustFocusH::GetFrame(int n, IScriptEnvironment* env)
       if (env->GetCPUFlags() & CPUF_MMX)
       { //so as this one
         af_horizontal_rgb32_mmx(dst->GetWritePtr(), src->GetReadPtr(), dst->GetPitch(), src->GetPitch(), vi.height, vi.width, amount);
-      }
-      else
+      } else
 #endif
       {
         copy_frame(src, dst, env);
         af_horizontal_rgb32_c(dst->GetWritePtr(), vi.height, dst->GetPitch(), vi.width, amount);
       }
-    } 
-    else { //rgb24
+    } else { //rgb24
       copy_frame(src, dst, env);
       af_horizontal_rgb24_c(dst->GetWritePtr(), vi.height, dst->GetPitch(), vi.width, amount);
     }
