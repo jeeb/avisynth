@@ -42,6 +42,7 @@
 #include <avs/cpuid.h>
 #include "bitblt.h"
 #include "PluginManager.h"
+#include <boost/scoped_array.hpp>
 
 #include <avs/win.h>
 #include <objbase.h>
@@ -1363,99 +1364,87 @@ bool __stdcall ScriptEnvironment::Invoke(AVSValue *result, const char* name, con
     ThrowError("Too many arguments passed to function (max. is %d)", ScriptParser::max_args);
 
   // flatten unnamed args
-  AVSValue *args2 = new AVSValue[args2_count];
-  Flatten(args, args2, 0, arg_names);
+  boost::scoped_array<AVSValue> args2(new AVSValue[args2_count]);
+  Flatten(args, args2.get(), 0, arg_names);
 
   // find matching function
-  f = this->Lookup(name, args2, args2_count, strict, args_names_count, arg_names);
+  f = this->Lookup(name, args2.get(), args2_count, strict, args_names_count, arg_names);
   if (!f)
-  {
-    delete[] args2;
     return false;
-  }
 
   // combine unnamed args into arrays
   size_t src_index=0, dst_index=0;
   const char* p = f->param_types;
   const size_t maxarg3 = max(args2_count, strlen(p)); // well it can't be any longer than this.
 
-  AVSValue *args3 = new AVSValue[maxarg3];
+  boost::scoped_array<AVSValue> args3(new AVSValue[maxarg3]);
 
-  try {
-    while (*p) {
-      if (*p == '[') {
-        p = strchr(p+1, ']');
-        if (!p) break;
-        p++;
-      } else if ((p[1] == '*') || (p[1] == '+')) {
-        size_t start = src_index;
-        while ((src_index < args2_count) && (AVSFunction::SingleTypeMatch(*p, args2[src_index], strict)))
-          src_index++;
-        size_t size = src_index - start;
-        assert(args2_count >= size);
-
-        // Even if the AVSValue below is an array of zero size, we can't skip adding it to args3,
-        // because filters like BlankClip might still be expecting it.
-        args3[dst_index++] = AVSValue(size > 0 ? &args2[start] : NULL, size); // can't delete args2 early because of this
-
-        p += 2;
-      } else {
-        if (src_index < args2_count)
-          args3[dst_index] = args2[src_index];
+  while (*p) {
+    if (*p == '[') {
+      p = strchr(p+1, ']');
+      if (!p) break;
+      p++;
+    } else if ((p[1] == '*') || (p[1] == '+')) {
+      size_t start = src_index;
+      while ((src_index < args2_count) && (AVSFunction::SingleTypeMatch(*p, args2[src_index], strict)))
         src_index++;
-        dst_index++;
-        p++;
-      }
+      size_t size = src_index - start;
+      assert(args2_count >= size);
+
+      // Even if the AVSValue below is an array of zero size, we can't skip adding it to args3,
+      // because filters like BlankClip might still be expecting it.
+      args3[dst_index++] = AVSValue(size > 0 ? &args2[start] : NULL, size); // can't delete args2 early because of this
+
+      p += 2;
+    } else {
+      if (src_index < args2_count)
+        args3[dst_index] = args2[src_index];
+      src_index++;
+      dst_index++;
+      p++;
     }
-    if (src_index < args2_count)
-      ThrowError("Too many arguments to function %s", name);
+  }
+  if (src_index < args2_count)
+    ThrowError("Too many arguments to function %s", name);
 
-    const int args3_count = (int)dst_index;
+  const int args3_count = (int)dst_index;
 
-    // copy named args
-    for (int i=0; i<args_names_count; ++i) {
-      if (arg_names[i]) {
-        size_t named_arg_index = 0;
-        for (const char* p = f->param_types; *p; ++p) {
-          if (*p == '*' || *p == '+') {
-            continue;   // without incrementing named_arg_index
-          } else if (*p == '[') {
-            p += 1;
-            const char* q = strchr(p, ']');
-            if (!q) break;
-            if (strlen(arg_names[i]) == size_t(q-p) && !strnicmp(arg_names[i], p, q-p)) {
-              // we have a match
-              if (args3[named_arg_index].Defined()) {
-                ThrowError("Script error: the named argument \"%s\" was passed more than once to %s", arg_names[i], name);
-              } else if (args[i].IsArray()) {
-                ThrowError("Script error: can't pass an array as a named argument");
-              } else if (args[i].Defined() && !AVSFunction::SingleTypeMatch(q[1], args[i], false)) {
-                ThrowError("Script error: the named argument \"%s\" to %s had the wrong type", arg_names[i], name);
-              } else {
-                args3[named_arg_index] = args[i];
-                goto success;
-              }
+  // copy named args
+  for (int i=0; i<args_names_count; ++i) {
+    if (arg_names[i]) {
+      size_t named_arg_index = 0;
+      for (const char* p = f->param_types; *p; ++p) {
+        if (*p == '*' || *p == '+') {
+          continue;   // without incrementing named_arg_index
+        } else if (*p == '[') {
+          p += 1;
+          const char* q = strchr(p, ']');
+          if (!q) break;
+          if (strlen(arg_names[i]) == size_t(q-p) && !strnicmp(arg_names[i], p, q-p)) {
+            // we have a match
+            if (args3[named_arg_index].Defined()) {
+              ThrowError("Script error: the named argument \"%s\" was passed more than once to %s", arg_names[i], name);
+            } else if (args[i].IsArray()) {
+              ThrowError("Script error: can't pass an array as a named argument");
+            } else if (args[i].Defined() && !AVSFunction::SingleTypeMatch(q[1], args[i], false)) {
+              ThrowError("Script error: the named argument \"%s\" to %s had the wrong type", arg_names[i], name);
             } else {
-              p = q+1;
+              args3[named_arg_index] = args[i];
+              goto success;
             }
+          } else {
+            p = q+1;
           }
-          named_arg_index++;
         }
-        // failure
-        ThrowError("Script error: %s does not have a named argument \"%s\"", name, arg_names[i]);
-success:;
+        named_arg_index++;
       }
+      // failure
+      ThrowError("Script error: %s does not have a named argument \"%s\"", name, arg_names[i]);
+success:;
     }
-    // ... and we're finally ready to make the call
-    retval = f->apply(AVSValue(args3, args3_count), f->user_data, this);
   }
-  catch (...) {
-    delete[] args3;
-    delete[] args2;
-    throw;
-  }
-  delete[] args3;
-  delete[] args2;
+  // ... and we're finally ready to make the call
+  retval = f->apply(AVSValue(args3.get(), args3_count), f->user_data, this);
 
   *result = retval;
   return true;

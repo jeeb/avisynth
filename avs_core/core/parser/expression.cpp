@@ -38,6 +38,7 @@
 #include "../internal.h"
 #include <avs/win.h>
 #include <cassert>
+#include <boost/scoped_array.hpp>
 
 
 class BreakStmtException
@@ -497,45 +498,24 @@ AVSValue ExpFunctionCall::Call(IScriptEnvironment* env)
   AVSValue result;
   IScriptEnvironment2 *env2 = static_cast<IScriptEnvironment2*>(env);
 
-  AVSValue *args = new AVSValue[arg_expr_count+1];
-  try {
-    for (int a=0; a<arg_expr_count; ++a)
-      args[a+1] = arg_exprs[a]->Evaluate(env);
-  }
-  catch (...)
-  {
-    delete[] args;
-    throw;
-  }
+  boost::scoped_array<AVSValue> args(new AVSValue[arg_expr_count+1]);
+  for (int a=0; a<arg_expr_count; ++a)
+    args[a+1] = arg_exprs[a]->Evaluate(env);
 
-  try 
+  // first try without implicit "last"
+  if (env2->Invoke(&result, name, AVSValue(args.get()+1, arg_expr_count), arg_expr_names+1))
+    return result;
+
+  // if that fails, try with implicit "last" (except when OOP notation was used)
+  if (!oop_notation) 
   {
-    // first try without implicit "last"
-    if (env2->Invoke(&result, name, AVSValue(args+1, arg_expr_count), arg_expr_names+1))
-    {
-      delete[] args;
+    if (env2->GetVar("last", &(args[0])) && env2->Invoke(&result, name, AVSValue(args.get(), arg_expr_count+1), arg_expr_names))
       return result;
-    }
-
-    // if that fails, try with implicit "last" (except when OOP notation was used)
-    if (!oop_notation) 
-    {
-      if (env2->GetVar("last", &(args[0])) && env2->Invoke(&result, name, AVSValue(args, arg_expr_count+1), arg_expr_names))
-      {
-        delete[] args;
-        return result;
-      }
-    }
-
-    env->ThrowError(env->FunctionExists(name) ?
-      "Script error: Invalid arguments to function '%s'." :
-      "Script error: There is no function named '%s'.", name);
   }
-  catch (...)
-  {
-    delete[] args;
-    throw;
-  }
+
+  env->ThrowError(env->FunctionExists(name) ?
+    "Script error: Invalid arguments to function '%s'." :
+    "Script error: There is no function named '%s'.", name);
 
   assert(0);  // we should never get here
   return 0;
