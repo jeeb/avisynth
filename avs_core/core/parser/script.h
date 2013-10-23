@@ -70,29 +70,6 @@ private:
 
 
 
-
-
-
-/****  Helper Classes  ****/
-
-
-class DynamicCharBuffer 
-/**
-  * Simple dynamic character buffer
- **/
-{
-public:
-  DynamicCharBuffer(int size) : p(new char[size]) {}
-  operator char*() const { return p; }
-  ~DynamicCharBuffer() { delete[] p; }
-
-private:
-  char* const p;
-};
-
-
-
-
 /****    Helper functions   ****/
 
 AVSValue Assert(AVSValue args, void*, IScriptEnvironment* env);
