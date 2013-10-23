@@ -343,11 +343,64 @@ static void af_horizontal_rgb32_c(BYTE* dstp, size_t height, size_t pitch, size_
   }
 }
 
+
+//implementation is not in-place. Unaligned reads will be slow on older intels but who cares
+static void af_horizontal_rgb32_sse2(BYTE* dstp, const BYTE* srcp, size_t dst_pitch, size_t src_pitch, size_t height, size_t width, size_t amount) {
+  size_t width_bytes = width * 4;
+  size_t loop_limit = width_bytes - 16;
+  int center_weight_c = amount*2;
+  int outer_weight_c = 32768-amount;
+
+  short t = (amount + 256) >> 9;
+  __m128i center_weight = _mm_set1_epi16(t);
+  __m128i outer_weight = _mm_set1_epi16(64 - t);
+  __m128i round_mask = _mm_set1_epi16(0x40);
+  __m128i zero = _mm_setzero_si128();
+//#pragma warning(disable: 4309)
+  __m128i left_mask = _mm_set_epi32(0, 0, 0, 0xFFFFFFFF);
+  __m128i right_mask = _mm_set_epi32(0xFFFFFFFF, 0, 0, 0);
+//#pragma warning(default: 4309)
+
+  __m128i center, right, left, result;
+
+  for (size_t y = 0; y < height; ++y) {
+    center = _mm_load_si128(reinterpret_cast<const __m128i*>(srcp));
+    right = _mm_loadu_si128(reinterpret_cast<const __m128i*>(srcp + 4));
+    left = _mm_or_si128(_mm_and_si128(center, left_mask), _mm_slli_si128(center, 4));
+
+    result = af_unpack_blend_sse2(left, center, right, center_weight, outer_weight, round_mask, zero);
+
+    _mm_store_si128(reinterpret_cast< __m128i*>(dstp), result);
+
+    for (size_t x = 16; x < loop_limit; x+=16) {
+      left = _mm_loadu_si128(reinterpret_cast<const __m128i*>(srcp + x - 4));
+      center = _mm_load_si128(reinterpret_cast<const __m128i*>(srcp + x));
+      right = _mm_loadu_si128(reinterpret_cast<const __m128i*>(srcp + x + 4));
+
+      result = af_unpack_blend_sse2(left, center, right, center_weight, outer_weight, round_mask, zero);
+
+      _mm_store_si128(reinterpret_cast< __m128i*>(dstp+x), result);
+    }
+
+    left = _mm_loadu_si128(reinterpret_cast<const __m128i*>(srcp + loop_limit - 4));
+    center = _mm_loadu_si128(reinterpret_cast<const __m128i*>(srcp + loop_limit));
+    right = _mm_or_si128(_mm_and_si128(center, right_mask), _mm_srli_si128(center, 4));
+
+    result = af_unpack_blend_sse2(left, center, right, center_weight, outer_weight, round_mask, zero);
+
+    _mm_storeu_si128(reinterpret_cast< __m128i*>(dstp + loop_limit), result);
+
+
+    dstp += dst_pitch;
+    srcp += src_pitch;
+  }
+}
+
 #ifdef X86_32
 
-static void af_horizontal_rgb32_mmx(BYTE* dstp, size_t height, size_t pitch, size_t width, size_t amount) {
-  size_t mod8_bytes = (width / 2) * 8; //4 bytes/pixel so width in bytes is always at least mod4
-  size_t loop_limit = mod8_bytes == (width*4) ? mod8_bytes - 8 : mod8_bytes;
+static void af_horizontal_rgb32_mmx(BYTE* dstp, const BYTE* srcp, size_t dst_pitch, size_t src_pitch, size_t height, size_t width, size_t amount) {
+  size_t width_bytes = width * 4;
+  size_t loop_limit = width_bytes - 8;
   int center_weight_c = amount*2;
   int outer_weight_c = 32768-amount;
 
@@ -356,56 +409,45 @@ static void af_horizontal_rgb32_mmx(BYTE* dstp, size_t height, size_t pitch, siz
   __m64 outer_weight = _mm_set1_pi16(64 - t);
   __m64 round_mask = _mm_set1_pi16(0x40);
   __m64 zero = _mm_setzero_si64();
+  //#pragma warning(disable: 4309)
+  __m64 left_mask = _mm_set_pi32(0, 0xFFFFFFFF);
+  __m64 right_mask = _mm_set_pi32(0xFFFFFFFF, 0);
+  //#pragma warning(default: 4309)
 
+  __m64 center, right, left, result;
 
   for (size_t y = 0; y < height; ++y) {
-    __m64 center_src = *reinterpret_cast<const __m64*>(dstp); //left==center and right pixels
-    __m64 left_src = _mm_slli_si64(center_src, 32); //left pixel and zeros
+    center = *reinterpret_cast<const __m64*>(srcp);
+    right = *reinterpret_cast<const __m64*>(srcp + 4);
+    left = _mm_or_si64(_mm_and_si64(center, left_mask), _mm_slli_si64(center, 32));
 
-    for (int x = 0; x < loop_limit; x+=8) {
-      __m64 left_unpacked = _mm_unpackhi_pi8(left_src, zero);
-      __m64 center_unpacked = _mm_unpacklo_pi8(center_src, zero);
-      __m64 right_unpacked = _mm_unpackhi_pi8(center_src, zero);
+    result = af_unpack_blend_mmx(left, center, right, center_weight, outer_weight, round_mask, zero);
 
-      __m64 pixel1 = af_blend_mmx(left_unpacked, center_unpacked, right_unpacked, center_weight, outer_weight, round_mask);
-      
-      left_src = center_src;
+    *reinterpret_cast< __m64*>(dstp) = result;
 
-      center_src = *reinterpret_cast<const __m64*>(dstp+x+8);
-      __m64 right2_unpacked = _mm_unpacklo_pi8(center_src, zero);
+    for (size_t x = 8; x < loop_limit; x+=8) {
+      left = *reinterpret_cast<const __m64*>(srcp + x - 4);
+      center = *reinterpret_cast<const __m64*>(srcp + x);
+      right = *reinterpret_cast<const __m64*>(srcp + x + 4);
 
-      __m64 pixel2 = af_blend_mmx(center_unpacked, right_unpacked, right2_unpacked, center_weight, outer_weight, round_mask);
+      result = af_unpack_blend_mmx(left, center, right, center_weight, outer_weight, round_mask, zero);
 
-      *reinterpret_cast< __m64*>(dstp+x) = _mm_packs_pu16(pixel1, pixel2);
+      *reinterpret_cast< __m64*>(dstp+x) = result;
     }
 
-    if (mod8_bytes == (width * 4)) {
-      //it is actually mod8, last two pixels near the border
-      __m64 left_unpacked = _mm_unpackhi_pi8(left_src, zero);
-      __m64 center_unpacked = _mm_unpacklo_pi8(center_src, zero);
-      __m64 right_unpacked = _mm_unpackhi_pi8(center_src, zero);
+    left = *reinterpret_cast<const __m64*>(srcp + loop_limit - 4);
+    center = *reinterpret_cast<const __m64*>(srcp + loop_limit);
+    right = _mm_or_si64(_mm_and_si64(center, right_mask), _mm_srli_si64(center, 32));
 
-      __m64 pixel1 = af_blend_mmx(left_unpacked, center_unpacked, right_unpacked, center_weight, outer_weight, round_mask);
-      __m64 pixel2 = af_blend_mmx(center_unpacked, right_unpacked, right_unpacked, center_weight, outer_weight, round_mask);
+    result = af_unpack_blend_mmx(left, center, right, center_weight, outer_weight, round_mask, zero);
 
-      *reinterpret_cast< __m64*>(dstp+mod8_bytes-8) = _mm_packs_pu16(pixel1, pixel2);
-    } else {
-      //mod4 - one pixel left after the main loop
-      __m64 left_unpacked = _mm_unpackhi_pi8(left_src, zero);
-      __m64 center_unpacked = _mm_unpacklo_pi8(center_src, zero);
+    *reinterpret_cast< __m64*>(dstp + loop_limit) = result;
 
-      __m64 pixel = af_blend_mmx(left_unpacked, center_unpacked, center_unpacked, center_weight, outer_weight, round_mask);
-
-      pixel = _mm_packs_pu16(pixel, zero);
-
-      *reinterpret_cast<int*>(dstp+mod8_bytes) = _mm_cvtsi64_si32(pixel);
-    }
-
-    dstp += pitch;
+    dstp += dst_pitch;
+    srcp += src_pitch;
   }
   _mm_empty();
 }
-
 
 #endif
 
@@ -449,7 +491,7 @@ static void af_horizontal_yuy2_c(BYTE* p, int height, int pitch, int width, int 
 // Blur/Sharpen Horizontal YUY2 MMX Code
 // -------------------------------------
 
-void af_horizontal_yuy2_mmx(const BYTE* p, int height, int pitch, int width, int amount) 
+static void af_horizontal_yuy2_mmx(const BYTE* p, int height, int pitch, int width, int amount) 
 {
   // round masks
   __declspec(align(8)) const __int64 r7 = 0x0040004000400040;
@@ -828,6 +870,15 @@ static void af_horizontal_yv12_mmx(BYTE* dstp, size_t height, size_t pitch, size
 #endif
 
 
+static void copy_frame(const PVideoFrame &src, PVideoFrame &dst, IScriptEnvironment *env) {
+  env->BitBlt(dst->GetWritePtr(), dst->GetPitch(), src->GetReadPtr(), src->GetPitch(), src->GetRowSize(), src->GetHeight());
+  // Blit More planes (pitch, rowsize and height should be 0, if none is present)
+  env->BitBlt(dst->GetWritePtr(PLANAR_V), dst->GetPitch(PLANAR_V), src->GetReadPtr(PLANAR_V),
+    src->GetPitch(PLANAR_V), src->GetRowSize(PLANAR_V), src->GetHeight(PLANAR_V));
+  env->BitBlt(dst->GetWritePtr(PLANAR_U), dst->GetPitch(PLANAR_U), src->GetReadPtr(PLANAR_U),
+    src->GetPitch(PLANAR_U), src->GetRowSize(PLANAR_U), src->GetHeight(PLANAR_U));
+}
+
 
 // ----------------------------------
 // Blur/Sharpen Horizontal GetFrame()
@@ -835,62 +886,70 @@ static void af_horizontal_yv12_mmx(BYTE* dstp, size_t height, size_t pitch, size
 
 PVideoFrame __stdcall AdjustFocusH::GetFrame(int n, IScriptEnvironment* env) 
 {
-	PVideoFrame frame = child->GetFrame(n, env);
-	env->MakeWritable(&frame); 
+  PVideoFrame src = child->GetFrame(n, env);
+  PVideoFrame dst = env->NewVideoFrame(vi);
 
-	if (vi.IsPlanar()) {
+  if (vi.IsPlanar()) {
     const int planes[3] = { PLANAR_Y, PLANAR_U, PLANAR_V };
-		for(int cplane=0;cplane<3;cplane++) {
+    copy_frame(src, dst, env); //planar processing is always in-place
+    for(int cplane=0;cplane<3;cplane++) {
       int plane = planes[cplane];
-			int width = frame->GetRowSize(plane);
-			BYTE* q = frame->GetWritePtr(plane);
-			int pitch = frame->GetPitch(plane);
-			int height = frame->GetHeight(plane);
+      int width = dst->GetRowSize(plane);
+      BYTE* q = dst->GetWritePtr(plane);
+      int pitch = dst->GetPitch(plane);
+      int height = dst->GetHeight(plane);
       if ((env->GetCPUFlags() & CPUF_SSE2) && IsPtrAligned(q, 16)) {
         af_horizontal_yv12_sse2(q, height, pitch, width, amount);
       } else
 #ifdef X86_32
-      if (env->GetCPUFlags() & CPUF_MMX) {
-        af_horizontal_yv12_mmx(q,height,pitch,width,amount);
+        if (env->GetCPUFlags() & CPUF_MMX) {
+          af_horizontal_yv12_mmx(q,height,pitch,width,amount);
+        } else
+#endif
+        {
+          af_horizontal_yv12_c(q,height,pitch,width,amount);
+        } 
+    }
+  } else {
+    if (vi.IsYUY2()) {
+      copy_frame(src, dst, env); //yuy2 is still in-place
+      BYTE* q = dst->GetWritePtr();
+      const int pitch = dst->GetPitch();
+#ifdef X86_32
+      if (env->GetCPUFlags() & CPUF_MMX)
+      {
+        af_horizontal_yuy2_mmx(q,vi.height,pitch,vi.width,amount);
+      }
+      else
+#endif
+      {
+        af_horizontal_yuy2_c(q,vi.height,pitch,vi.width,amount);
+      }
+    } 
+    else if (vi.IsRGB32()) {
+      if ((env->GetCPUFlags() & CPUF_SSE2) && IsPtrAligned(src->GetReadPtr(), 16)) {
+        //this one is NOT in-place
+        af_horizontal_rgb32_sse2(dst->GetWritePtr(), src->GetReadPtr(), dst->GetPitch(), src->GetPitch(), vi.height, vi.width, amount);
       } else
-#endif
-      {
-				af_horizontal_yv12_c(q,height,pitch,width,amount);
-			} 
-		}
-	} else {
-		BYTE* q = frame->GetWritePtr();
-		const int pitch = frame->GetPitch();
-		if (vi.IsYUY2()) {
 #ifdef X86_32
-			if (env->GetCPUFlags() & CPUF_MMX)
-      {
-				af_horizontal_yuy2_mmx(q,vi.height,pitch,vi.width,amount);
-			}
+      if (env->GetCPUFlags() & CPUF_MMX)
+      { //so as this one
+        af_horizontal_rgb32_mmx(dst->GetWritePtr(), src->GetReadPtr(), dst->GetPitch(), src->GetPitch(), vi.height, vi.width, amount);
+      }
       else
 #endif
       {
-				af_horizontal_yuy2_c(q,vi.height,pitch,vi.width,amount);
-			}
-		} 
-		else if (vi.IsRGB32()) {
-#ifdef X86_32
-			if (env->GetCPUFlags() & CPUF_MMX)
-      {
-				af_horizontal_rgb32_mmx(q,vi.height,pitch,vi.width,amount);
-			}
-      else
-#endif
-      {
-				af_horizontal_rgb32_c(q,vi.height,pitch,vi.width,amount);
-			}
-		} 
-		else { //rgb24
-			af_horizontal_rgb24_c(q,vi.height,pitch,vi.width,amount);
-		}
-	}
+        copy_frame(src, dst, env);
+        af_horizontal_rgb32_c(dst->GetWritePtr(), vi.height, dst->GetPitch(), vi.width, amount);
+      }
+    } 
+    else { //rgb24
+      copy_frame(src, dst, env);
+      af_horizontal_rgb24_c(dst->GetWritePtr(), vi.height, dst->GetPitch(), vi.width, amount);
+    }
+  }
 
-	return frame;
+  return dst;
 }
 
 
