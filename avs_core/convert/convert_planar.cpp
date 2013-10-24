@@ -100,9 +100,7 @@ ConvertToY8::ConvertToY8(PClip src, int in_matrix, IScriptEnvironment* env) : Ge
     *m = 0;  // Alpha
  
 #ifdef X86_32
-    if (pixel_step == 4)
-      genRGB32toY8(vi.width, vi.height, offset_y, matrix, env);
-    else if (pixel_step == 3)
+    if (pixel_step == 3)
       genRGB24toY8(vi.width, vi.height, offset_y, matrix, env);
 #else
   //TODO
@@ -122,6 +120,7 @@ ConvertToY8::~ConvertToY8() {
 }
 
 
+//This is faster than mmx only sometimes. But will work on x64
 static void convert_yuy2_to_y8_sse2(const BYTE *srcp, BYTE *dstp, size_t src_pitch, size_t dst_pitch, size_t width, size_t height)
 {
   size_t mod16_width = (width / 16) * 16;
@@ -147,7 +146,6 @@ static void convert_yuy2_to_y8_sse2(const BYTE *srcp, BYTE *dstp, size_t src_pit
     dstp += dst_pitch;
     srcp += src_pitch;
   }
-  _mm_empty();
 }
 
 #ifdef X86_32
@@ -179,6 +177,87 @@ static void convert_yuy2_to_y8_mmx(const BYTE *srcp, BYTE *dstp, size_t src_pitc
   _mm_empty();
 }
 #endif
+
+#ifdef X86_32
+
+#pragma warning(disable: 4799)
+static __forceinline int convert_rgb32_to_y8_mmx_core(__m64 &src01, __m64 &src23, __m64& zero, __m64 &matrix, __m64 &round_mask, __m64 &offset) {
+  //int Y = offset_y + ((m0 * srcp[0] + m1 * srcp[1] + m2 * srcp[2] + 16384) >> 15);
+
+  __m64 pixel_0 = _mm_unpacklo_pi8(src01, zero); //a0 r0 g0 b0
+  __m64 pixel_1 = _mm_unpackhi_pi8(src01, zero); //a1 r1 g1 b1
+  __m64 pixel_2 = _mm_unpacklo_pi8(src23, zero); //a2 r2 g2 b2
+  __m64 pixel_3 = _mm_unpackhi_pi8(src23, zero); //a3 r3 g3 b3
+
+  pixel_0 = _mm_madd_pi16(pixel_0, matrix); //a0*0 + r0*cyr | g0*cyg + b0*cyb
+  pixel_1 = _mm_madd_pi16(pixel_1, matrix); //a1*0 + r1*cyr | g1*cyg + b1*cyb
+  pixel_2 = _mm_madd_pi16(pixel_2, matrix); //a2*0 + r2*cyr | g2*cyg + b2*cyb
+  pixel_3 = _mm_madd_pi16(pixel_3, matrix); //a3*0 + r3*cyr | g3*cyg + b3*cyb
+
+  __m64 pixel_01_r = _mm_unpackhi_pi32(pixel_0, pixel_1); // r1*cyr | r0*cyr
+  __m64 pixel_23_r = _mm_unpackhi_pi32(pixel_2, pixel_3); // r3*cyr | r2*cyr
+
+  __m64 pixel_01 = _mm_unpacklo_pi32(pixel_0, pixel_1); //g1*cyg + b1*cyb | g0*cyg + b0*cyb
+  __m64 pixel_23 = _mm_unpacklo_pi32(pixel_2, pixel_3); //g3*cyg + b3*cyb | g2*cyg + b2*cyb
+
+  pixel_01 = _mm_add_pi32(pixel_01, pixel_01_r); // r1*cyr + g1*cyg + b1*cyb | r0*cyr + g0*cyg + b0*cyb
+  pixel_23 = _mm_add_pi32(pixel_23, pixel_23_r); // r3*cyr + g3*cyg + b3*cyb | r2*cyr + g2*cyg + b2*cyb
+
+  pixel_01 = _mm_add_pi32(pixel_01, round_mask); //r1*cyr + g1*cyg + b1*cyb + 16384 | r0*cyr + g0*cyg + b0*cyb + 16384
+  pixel_23 = _mm_add_pi32(pixel_23, round_mask); //r3*cyr + g3*cyg + b3*cyb + 16384 | r2*cyr + g2*cyg + b2*cyb + 16384
+
+  pixel_01 = _mm_srai_pi32(pixel_01, 15); //0 | p1 | 0 | p0
+  pixel_23 = _mm_srai_pi32(pixel_23, 15); //0 | p3 | 0 | p2
+
+  __m64 result = _mm_packs_pi32(pixel_01, pixel_23); //p3 | p2 | p1 | p0
+
+  result = _mm_packs_pu16(result, zero); //0 0 0 0 p3 p2 p1 p0
+  result = _mm_adds_pu8(result, offset);
+
+  return _mm_cvtsi64_si32(result);
+}
+#pragma warning(default: 4799)
+
+static void convert_rgb32_to_y8_mmx(const BYTE *srcp, BYTE *dstp, size_t src_pitch, size_t dst_pitch, size_t width, size_t height, BYTE offset_y, short cyr, short cyg, short cyb ) {
+  __m64 matrix = _mm_set_pi16(0, cyr, cyg, cyb);
+  __m64 zero = _mm_setzero_si64();
+  __m64 offset = _mm_set1_pi8(offset_y);
+  __m64 round_mask = _mm_set1_pi32(16384);
+
+  size_t loop_limit;
+  bool not_mod4 = false;
+  //todo: simplify
+  if (width % 4 == 0) {
+    loop_limit = width;
+  } else if (dst_pitch % 4 == 0) {
+    loop_limit = dst_pitch; //we'll just write some garbage
+  } else {
+    loop_limit = width / 4 * 4;
+    not_mod4 = true;
+  }
+
+  for (size_t y = 0; y < height; ++y) {
+    for (size_t x = 0; x < loop_limit; x+=4) {
+      __m64 src01 = *reinterpret_cast<const __m64*>(srcp+x*4); //pixels 0 and 1
+      __m64 src23 = *reinterpret_cast<const __m64*>(srcp+x*4+8);//pixels 2 and 3
+
+      *reinterpret_cast<int*>(dstp+x) = convert_rgb32_to_y8_mmx_core(src01, src23, zero, matrix, round_mask, offset);
+    }
+
+    if (not_mod4) {
+      __m64 src01 = *reinterpret_cast<const __m64*>(srcp+width*4-16);
+      __m64 src23 = *reinterpret_cast<const __m64*>(srcp+width*4-8);
+
+      *reinterpret_cast<int*>(dstp+width-4) = convert_rgb32_to_y8_mmx_core(src01, src23, zero, matrix, round_mask, offset);
+    }
+
+    srcp -= src_pitch;
+    dstp += dst_pitch;
+  }
+  _mm_empty();
+}
+
+#endif // X86_32
 
 
 PVideoFrame __stdcall ConvertToY8::GetFrame(int n, IScriptEnvironment* env) {
@@ -223,31 +302,36 @@ PVideoFrame __stdcall ConvertToY8::GetFrame(int n, IScriptEnvironment* env) {
   }
 
   if (rgb_input) {
-    const int srcPitch = src->GetPitch();
-    const BYTE* srcp = src->GetReadPtr() + srcPitch * (vi.height-1);  // We start at last line
+    const int src_pitch = src->GetPitch();
+    const BYTE* srcp = src->GetReadPtr() + src_pitch * (vi.height-1);  // We start at last line
 
-    BYTE* dstY = dst->GetWritePtr(PLANAR_Y);
-    const int dstPitch = dst->GetPitch(PLANAR_Y);
+    BYTE* dstp = dst->GetWritePtr(PLANAR_Y);
+    const int dst_pitch = dst->GetPitch(PLANAR_Y);
 
-#ifdef X86_32
-    if (pixel_step == 3 || pixel_step == 4) {
-      assembly.Call(srcp, dstY, -srcPitch, dstPitch);
-      return dst;
-    }
-#endif
-
-    const int srcMod = srcPitch + (vi.width * pixel_step);
     const int m0 = matrix[0];
     const int m1 = matrix[1];
     const int m2 = matrix[2];
+
+
+#ifdef X86_32
+    if (pixel_step == 4) {
+      convert_rgb32_to_y8_mmx(srcp, dstp, src_pitch, dst_pitch, vi.width, vi.height, offset_y, m2, m1, m0);
+      return dst;
+    } else if (pixel_step == 3) {
+      assembly.Call(srcp, dstp, -src_pitch, dst_pitch);
+      return dst;
+    } 
+#endif
+
+    const int srcMod = src_pitch + (vi.width * pixel_step);
     for (int y=0; y<vi.height; y++) {
       for (int x=0; x<vi.width; x++) {
         const int Y = offset_y + ((m0 * srcp[0] + m1 * srcp[1] + m2 * srcp[2] + 16384) >> 15);
-        dstY[x] = PixelClip(Y);  // All the safety we can wish for.
+        dstp[x] = PixelClip(Y);  // All the safety we can wish for.
         srcp += pixel_step;
       }
       srcp -= srcMod;
-      dstY += dstPitch;
+      dstp += dst_pitch;
     }
   }
   return dst;
