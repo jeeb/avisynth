@@ -85,7 +85,6 @@ public:
   static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env);  
   ~ConvertToY8();
 private:
-  void convYUV422toY8(const unsigned char *src, unsigned char *py, int pitch1, int pitch2y, int width, int height);
   bool blit_luma_only;
   bool yuy2_input;
   bool rgb_input;

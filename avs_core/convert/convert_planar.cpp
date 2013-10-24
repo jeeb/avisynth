@@ -42,6 +42,8 @@
 #include <avs/win.h>
 #include <avs/minmax.h>
 #include "../core/internal.h"
+#include <emmintrin.h>
+#include <avs/alignment.h>
 
 
 ConvertToY8::ConvertToY8(PClip src, int in_matrix, IScriptEnvironment* env) : GenericVideoFilter(src), matrix(0) {
@@ -119,6 +121,66 @@ ConvertToY8::~ConvertToY8() {
   matrix = 0;
 }
 
+
+static void convert_yuy2_to_y8_sse2(const BYTE *srcp, BYTE *dstp, size_t src_pitch, size_t dst_pitch, size_t width, size_t height)
+{
+  size_t mod16_width = (width / 16) * 16;
+  __m128i luma_mask = _mm_set1_epi16(0xFF);
+
+  for(size_t y = 0; y < height; ++y) {
+    for (size_t x = 0; x < mod16_width; x+=16) {
+      __m128i src1 = _mm_load_si128(reinterpret_cast<const __m128i*>(srcp+x*2));
+      __m128i src2 = _mm_load_si128(reinterpret_cast<const __m128i*>(srcp+x*2+16));
+      src1 = _mm_and_si128(src1, luma_mask);
+      src2 = _mm_and_si128(src2, luma_mask);
+      _mm_store_si128(reinterpret_cast<__m128i*>(dstp+x), _mm_packus_epi16(src1, src2));
+    }
+
+    if (width != mod16_width) {
+      __m128i src1 = _mm_loadu_si128(reinterpret_cast<const __m128i*>(srcp+width*2-32));
+      __m128i src2 = _mm_loadu_si128(reinterpret_cast<const __m128i*>(srcp+width*2-16));
+      src1 = _mm_and_si128(src1, luma_mask);
+      src2 = _mm_and_si128(src2, luma_mask);
+      _mm_storeu_si128(reinterpret_cast<__m128i*>(dstp+width-16), _mm_packus_epi16(src1, src2));
+    }
+
+    dstp += dst_pitch;
+    srcp += src_pitch;
+  }
+  _mm_empty();
+}
+
+#ifdef X86_32
+static void convert_yuy2_to_y8_mmx(const BYTE *srcp, BYTE *dstp, size_t src_pitch, size_t dst_pitch, size_t width, size_t height)
+{
+  size_t mod8_width = (width / 8) * 8;
+  __m64 luma_mask = _mm_set1_pi16(0xFF);
+
+  for(size_t y = 0; y < height; ++y) {
+    for (size_t x = 0; x < mod8_width; x+=8) {
+      __m64 src1 = *reinterpret_cast<const __m64*>(srcp+x*2);
+      __m64 src2 = *reinterpret_cast<const __m64*>(srcp+x*2+8);
+      src1 = _mm_and_si64(src1, luma_mask);
+      src2 = _mm_and_si64(src2, luma_mask);
+      *reinterpret_cast<__m64*>(dstp+x) = _mm_packs_pu16(src1, src2);
+    }
+
+    if (width != mod8_width) {
+        __m64 src1 = *reinterpret_cast<const __m64*>(srcp+width*2-16);
+      __m64 src2 = *reinterpret_cast<const __m64*>(srcp+width*2-8);
+      src1 = _mm_and_si64(src1, luma_mask);
+      src2 = _mm_and_si64(src2, luma_mask);
+      *reinterpret_cast<__m64*>(dstp+width-8) = _mm_packs_pu16(src1, src2);
+    }
+
+    dstp += dst_pitch;
+    srcp += src_pitch;
+  }
+  _mm_empty();
+}
+#endif
+
+
 PVideoFrame __stdcall ConvertToY8::GetFrame(int n, IScriptEnvironment* env) {
   PVideoFrame src = child->GetFrame(n, env);
 
@@ -133,28 +195,31 @@ PVideoFrame __stdcall ConvertToY8::GetFrame(int n, IScriptEnvironment* env) {
 
     const BYTE* srcP = src->GetReadPtr();
     const int srcPitch = src->GetPitch();
-    const int awidth = min(srcPitch>>1, (vi.width+7) & -8);
+    int width = dst->GetRowSize(PLANAR_Y);
+    int height = dst->GetHeight(PLANAR_Y);
 
     BYTE* dstY = dst->GetWritePtr(PLANAR_Y);
     const int dstPitch = dst->GetPitch(PLANAR_Y);
+    
 
+    if ((env->GetCPUFlags() & CPUF_SSE2) && IsPtrAligned(srcP, 16)) {
+      convert_yuy2_to_y8_sse2(srcP, dstY, srcPitch, dstPitch, width, height);
+    } else
 #ifdef X86_32
-    if (!(awidth & 7)) {
-      this->convYUV422toY8(srcP, dstY, srcPitch, dstPitch, awidth, vi.height);
-      return dst;
-    }
-#endif
-
-    const int w = dst->GetRowSize(PLANAR_Y);
-    const int h = dst->GetHeight(PLANAR_Y);
-
-    for (int y=0; y<h; y++) {
-      for (int x=0; x<w; x++) {
-        dstY[x] = srcP[x*2];
+    if (env->GetCPUFlags() & CPUF_MMX) {
+      convert_yuy2_to_y8_mmx(srcP, dstY, srcPitch, dstPitch, width, height);
+    } else
+#endif 
+    {
+      for (int y=0; y<height; y++) {
+        for (int x=0; x<width; x++) {
+          dstY[x] = srcP[x*2];
+        }
+        srcP+=srcPitch;
+        dstY+=dstPitch;
       }
-      srcP+=srcPitch;
-      dstY+=dstPitch;
     }
+    return dst;
   }
 
   if (rgb_input) {
@@ -187,41 +252,6 @@ PVideoFrame __stdcall ConvertToY8::GetFrame(int n, IScriptEnvironment* env) {
   }
   return dst;
 }
-
-#ifdef X86_32
-void ConvertToY8::convYUV422toY8(const unsigned char *src, unsigned char *py,
-       int pitch1, int pitch2y, int width, int height)
-{
-	__asm
-	{
-		mov edi,[src]
-		mov edx,[py]
-		pcmpeqw mm5,mm5
-		mov ecx,width
-		psrlw mm5,8            ; 0x00FF00FF00FF00FFi64
-        shr ecx,1
-		align 16
-	yloop:
-		xor eax,eax
-		align 16
-	xloop:
-		movq mm0,[edi+eax*4]   ; VYUYVYUY - 1
-		movq mm1,[edi+eax*4+8] ; VYUYVYUY - 2
-		pand mm0,mm5           ; 0Y0Y0Y0Y - 1
-		pand mm1,mm5           ; 0Y0Y0Y0Y - 2
-		add eax,4
-		packuswb mm0,mm1       ; YYYYYYYY
-		cmp eax,ecx
-		movq [edx+eax*2-8],mm0 ; store y
-		jl xloop
-		add edi,pitch1
-		add edx,pitch2y
-		dec height
-		jnz yloop
-		emms
-	}
-}
-#endif
 
 AVSValue __cdecl ConvertToY8::Create(AVSValue args, void*, IScriptEnvironment* env) {
   PClip clip = args[0].AsClip();
