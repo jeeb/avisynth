@@ -65,10 +65,6 @@ extern const AVSFunction Resample_filters[] = {
   { 0 }
 };
 
-
-
-
-
 /****************************************
  ***** Filtered Resize - Horizontal *****
  ***************************************/
@@ -97,7 +93,7 @@ FilteredResizeH::FilteredResizeH( PClip _child, double subrange_left, double sub
     }
 
     tempY = (BYTE*) _aligned_malloc(original_width*2+4+32, 64);   // aligned for cache line
-
+#if 0
     if (vi.IsYUY2()) {
       pattern_chroma = func->GetResamplingPatternYUV(
                                           vi.width       >> 1,
@@ -117,8 +113,14 @@ FilteredResizeH::FilteredResizeH( PClip _child, double subrange_left, double sub
                                           target_width   >> shift,
                                           true, tempY, env );
     }
-
     pattern_luma = func->GetResamplingPatternYUV(vi.width, subrange_left, subrange_width, target_width, true, tempY, env);
+#endif
+    if (!vi.IsY8()) {
+      const int shift = vi.GetPlaneWidthSubsampling(PLANAR_U);
+      const int div   = 1 << shift;
+      pattern_chroma = func->GetResamplingPatternRGB(vi.width >> shift, subrange_left /  div, subrange_width /  div, target_width >> shift, env);
+    }
+    pattern_luma = func->GetResamplingPatternRGB(vi.width, subrange_left, subrange_width, target_width, env);
   }
   else
     pattern_luma = func->GetResamplingPatternRGB(vi.width, subrange_left, subrange_width, target_width, env);
@@ -375,7 +377,7 @@ DynamicAssembledCode FilteredResizeH::GenerateResizer(int gen_plane, bool source
 
     if (mod64_r > 0) x86.add(          esi, mod64_r*16);
     if (mod64_r > 0) x86.add(          edi, mod64_r*32);
-  } else {
+  } else { // if (sse2)
     for (int i=0;i<mod16_w;i++) {
       if ((!(i%prefetchevery)) && ((prefetchevery+i)*16 < vi_src_width) && isse && unroll_fetch) {
          //Prefetch only once per cache line
@@ -652,11 +654,158 @@ DynamicAssembledCode FilteredResizeH::GenerateResizer(int gen_plane, bool source
 }
 #endif
 
+void resize_h_c_plannar(BYTE* dst, const BYTE* src, int dst_pitch, int src_pitch, int* program, int width, int target_height) {
+  int filter_size = *program;
+  int* current = program+1;
+  
+  for (int x = 0; x < width; x++) {
+    int begin = *current;
+    current++;
+    for (int y = 0; y < target_height; y++) {
+      int result = 0;
+      for (int i = 0; i < filter_size; i++) {
+        result += (src+y*src_pitch)[(begin+i)] * current[i];
+      }
+      result = ((result+8192)/16384);
+      result = result > 255 ? 255 : result < 0 ? 0 : result;
+      (dst+y*dst_pitch)[x] = (BYTE)result;
+    }
+    current += filter_size;
+  }
+}
+
+void resize_h_c_yuy2(BYTE* dst, const BYTE* src, int dst_pitch, int src_pitch, int* program, int* programUV, int width, int target_height) {
+  int filter_size = *program;
+  int* current = program+1;
+
+  int filter_sizeUV = *programUV;
+  int* currentUV = programUV+1;
+  
+  for (int x = 0; x < width; x++) {
+    int begin = *current;
+    current++;
+
+    int beginUV = *currentUV;
+    currentUV++;
+
+    int chroma = x%2 ? 3 : 1;
+
+    for (int y = 0; y < target_height; y++) {
+      // Y resizing
+      int result = 0;
+      for (int i = 0; i < filter_size; i++) {
+        result += (src+y*src_pitch)[(begin+i)*2] * current[i];
+      }
+      result = ((result+8192)/16384);
+      result = result > 255 ? 255 : result < 0 ? 0 : result;
+      (dst+y*dst_pitch)[x*2] = (BYTE)result;
+
+      // UV resizing
+      result = 0;
+      for (int i = 0; i < filter_sizeUV; i++) {
+        result += (src+y*src_pitch)[(beginUV+i)*4+chroma] * currentUV[i];
+      }
+      result = ((result+8192)/16384);
+      result = result > 255 ? 255 : result < 0 ? 0 : result;
+      (dst+y*dst_pitch)[x*2+1] = (BYTE)result;
+    }
+
+    current += filter_size;
+
+    if (x%2) // == 1
+      currentUV += filter_sizeUV;
+    else
+      currentUV--;
+  }
+}
+
+void resize_h_c_rgb24(BYTE* dst, const BYTE* src, int dst_pitch, int src_pitch, int* program, int width, int target_height) {
+  int filter_size = *program;
+  int* current = program+1;
+  
+  for (int x = 0; x < width; x++) {
+    int begin = *current;
+    current++;
+    for (int k = 0; k < 3; k++) {
+      for (int y = 0; y < target_height; y++) {
+        int result = 0;
+        for (int i = 0; i < filter_size; i++) {
+          result += (src+y*src_pitch)[(begin+i)*3+k] * current[i];
+        }
+        result = ((result+8192)/16384);
+        result = result > 255 ? 255 : result < 0 ? 0 : result;
+        (dst+y*dst_pitch)[x*3+k] = (BYTE)result;
+      }
+    }
+    current += filter_size;
+  }
+}
+
+void resize_h_c_rgb32(BYTE* dst, const BYTE* src, int dst_pitch, int src_pitch, int* program, int width, int target_height) {
+  int filter_size = *program;
+  int* current = program+1;
+  
+  for (int x = 0; x < width; x++) {
+    int begin = *current;
+    current++;
+    for (int k = 0; k < 4; k++) {
+      for (int y = 0; y < target_height; y++) {
+        int result = 0;
+        for (int i = 0; i < filter_size; i++) {
+          result += (src+y*src_pitch)[(begin+i)*4+k] * current[i];
+        }
+        result = ((result+8192)/16384);
+        result = result > 255 ? 255 : result < 0 ? 0 : result;
+      }
+    }
+    current += filter_size;
+  }
+}
 
 PVideoFrame __stdcall FilteredResizeH::GetFrame(int n, IScriptEnvironment* env)
 {
   PVideoFrame src = child->GetFrame(n, env);
   PVideoFrame dst = env->NewVideoFrame(vi);
+#if 1
+  const BYTE* srcp = src->GetReadPtr();
+  BYTE* dstp = dst->GetWritePtr();
+  int src_pitch = src->GetPitch();
+  int dst_pitch = dst->GetPitch();
+
+  if (vi.IsPlanar()) {
+    // Plane Y resizing
+    resize_h_c_plannar(dstp, srcp, dst_pitch, src_pitch, pattern_luma, vi.width, vi.height);
+    if (!vi.IsY8()) {
+      int width = vi.width >> vi.GetPlaneWidthSubsampling(PLANAR_U);
+      int height = vi.height >> vi.GetPlaneHeightSubsampling(PLANAR_U);
+
+      // Plane U resizing
+      src_pitch = src->GetPitch(PLANAR_U);
+      dst_pitch = dst->GetPitch(PLANAR_U);
+      srcp = src->GetReadPtr(PLANAR_U);
+      dstp = dst->GetWritePtr(PLANAR_U);
+      resize_h_c_plannar(dstp, srcp, dst_pitch, src_pitch, pattern_chroma, width, height);
+
+      // Plane V resizing
+      src_pitch = src->GetPitch(PLANAR_V);
+      dst_pitch = dst->GetPitch(PLANAR_V);
+      srcp = src->GetReadPtr(PLANAR_V);
+      dstp = dst->GetWritePtr(PLANAR_V);
+      resize_h_c_plannar(dstp, srcp, dst_pitch, src_pitch, pattern_chroma, width, height);
+    }
+  } else if (vi.IsYUY2()) {
+    resize_h_c_yuy2(dstp, srcp, dst_pitch, src_pitch, pattern_luma, pattern_chroma, vi.width, vi.height);
+  } else if (vi.IsRGB24()) {
+    resize_h_c_rgb24(dstp, srcp, dst_pitch, src_pitch, pattern_luma, vi.width, vi.height);
+  } else if (vi.IsRGB32()) {
+    resize_h_c_rgb32(dstp, srcp, dst_pitch, src_pitch, pattern_luma, vi.width, vi.height);
+  } else {
+    env->ThrowError("Resize: Unsupport pixel type.");
+  }
+
+#endif
+
+#if 0
 #ifdef X86_32
   const BYTE* srcp = src->GetReadPtr();
   BYTE* dstp = dst->GetWritePtr();
@@ -1175,6 +1324,7 @@ out_i_aloopUV:
   //TODO
   env->ThrowError("FilteredResizeH::GetFrame is not yet ported to 64-bit.");
 #endif
+#endif
   return dst;
 }
 
@@ -1253,6 +1403,29 @@ FilteredResizeV::FilteredResizeV( PClip _child, double subrange_top, double subr
 #endif
 }
 
+void resize_v_c_planar(BYTE* dst, const BYTE* src, int dst_pitch, int src_pitch, int* program, int width, int target_height) {
+  int filter_size = *program;
+  int* current = program+1;
+
+  for (int y = 0; y < target_height; y++) {
+    int begin = *current;
+    current++;
+
+    const BYTE* src_ptr = src + (src_pitch*begin);
+    for (int x = 0; x < width; x++) {
+      int result = 0;
+      for (int i = 0; i < filter_size; i++) {
+        result += (src_ptr+(i*src_pitch))[x] * current[i];
+      }
+      result = ((result+8192)/16384);
+      result = result > 255 ? 255 : result < 0 ? 0 : result;
+      dst[x] = (BYTE)result;
+    }
+    dst += dst_pitch;
+    current += filter_size;
+  }
+}
+
 
 /*******************************
  * Note on multithreading (Klaus Post, 2007):
@@ -1266,7 +1439,41 @@ PVideoFrame __stdcall FilteredResizeV::GetFrame(int n, IScriptEnvironment* env)
 {
   PVideoFrame src = child->GetFrame(n, env);
   PVideoFrame dst = env->NewVideoFrame(vi);
+#if 1
+  src_pitch = src->GetPitch();
+  dst_pitch = dst->GetPitch();
+  srcp = src->GetReadPtr();
+  dstp = dst->GetWritePtr();
 
+  if (vi.IsPlanar()) {
+    // Plane Y resizing
+    resize_v_c_planar(dstp, srcp, dst_pitch, src_pitch, resampling_pattern, vi.BytesFromPixels(vi.width), vi.height);
+    if (!vi.IsY8()) {
+      int width = vi.width >> vi.GetPlaneWidthSubsampling(PLANAR_U);
+      int height = vi.height >> vi.GetPlaneHeightSubsampling(PLANAR_U);
+
+      // Plane U resizing
+      src_pitch = src->GetPitch(PLANAR_U);
+      dst_pitch = dst->GetPitch(PLANAR_U);
+      srcp = src->GetReadPtr(PLANAR_U);
+      dstp = dst->GetWritePtr(PLANAR_U);
+      resize_v_c_planar(dstp, srcp, dst_pitch, src_pitch, resampling_patternUV, width, height);
+
+      // Plane V resizing
+      src_pitch = src->GetPitch(PLANAR_V);
+      dst_pitch = dst->GetPitch(PLANAR_V);
+      srcp = src->GetReadPtr(PLANAR_V);
+      dstp = dst->GetWritePtr(PLANAR_V);
+      resize_v_c_planar(dstp, srcp, dst_pitch, src_pitch, resampling_patternUV, width, height);
+    }
+  } else {
+    // Resize V is identical whether it's plannar or not.
+    resize_v_c_planar(dstp, srcp, dst_pitch, src_pitch, resampling_pattern, vi.BytesFromPixels(vi.width), vi.height);
+  }
+
+#endif
+
+#if 0
 #ifdef X86_32
 
   src_pitch = src->GetPitch();
@@ -1340,7 +1547,7 @@ PVideoFrame __stdcall FilteredResizeV::GetFrame(int n, IScriptEnvironment* env)
   //TODO
   env->ThrowError("FilteredResizeV::GetFrame is not yet ported to 64-bit.");
 #endif
-
+#endif // if 0
   return dst;
 }
 
@@ -1427,7 +1634,8 @@ DynamicAssembledCode FilteredResizeV::GenerateResizer(int gen_plane, bool aligne
   x86.push(           edi);
   x86.push(           ebp);
 
-  if (fir_filter_size == 1) {                 // Fast PointResize
+  if (fir_filter_size == 1) {
+    // Fast PointResize
 // eax ebx ecx edx esi edi ebp
 // mm0 mm1 mm2 mm3 mm4 mm5 mm6 mm7
 // xmm0 XMM1 xmm2 XMM3 xmm4 XMM5 xmm6 XMM7
@@ -1505,7 +1713,7 @@ x86.label("xloop");
       if (plrem>16) x86.movdqa(   xmmword_ptr[eax+16], xmm2);
       if (plrem>32) x86.movdqa(   xmmword_ptr[eax+32], xmm4);
       if (plrem>48) x86.movdqa(   xmmword_ptr[eax+48], xmm6);
-    }
+    } // if (sse2)
     else { // MMX
       int ploops = xloops / 8;
       int plrem  = xloops % 8;
@@ -1561,7 +1769,7 @@ x86.label("xloop");
     }
     x86.dec(        edi);                       // y -= 1
     x86.jnz(        "yloop");
-  }
+  } // if (fast pointresize)
   else if (ssse3 && fir_filter_size <= 8) { // We will get too many rounding errors. Probably only lanczos etc
                                             // if taps parameter is large and very high downscale ratios. 
     x86.mov(          edx, (int)cur);
@@ -1634,7 +1842,7 @@ x86.label("xloop");
     x86.dec(          edi);
     x86.mov(          dword_ptr[(int)&dstp], eax);
     x86.jnz(          "yloop");
-  }
+  } // if (rounding error)
   else if (sse2) {
   // eax ebx ecx edx esi edi ebp
   // xmm0 xmm1 xmm2 xmm3 xmm4 xmm5 xmm6 xmm7
@@ -1751,7 +1959,7 @@ x86.label("xloop");
     x86.dec(          edi);                       // y -= 1
     x86.mov(          dword_ptr[(int)&dstp], eax);
     x86.jnz(          "yloop");
-  }
+  } // if sse2
   else {
   // eax ebx ecx edx esi edi ebp
   // mm0 mm1 mm2 mm3 mm4 mm5 mm6 mm7

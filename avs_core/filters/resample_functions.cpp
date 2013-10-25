@@ -228,7 +228,6 @@ double SincFilter::f(double value) {
 }
 
 
-
 /******************************
  **** Resampling Patterns  ****
  *****************************/
@@ -239,6 +238,14 @@ int* ResamplingFunction::GetResamplingPatternRGB( int original_width, double sub
   * This function returns a resampling "program" which is interpreted by the 
   * FilteredResize filters.  It handles edge conditions so FilteredResize    
   * doesn't have to.  
+
+  Program structure:
+    1st byte: filter_size
+    then following groups of (filter_size+1) bytes for target_width times:
+      - 1st byte: starting position (rgb), pointer (yuv)
+      - 2nd - (filter_size+1)th: coefficient
+
+      the YUV coefficient group is more weird because luma is interleaved
  **/
 {
   double scale = double(target_width) / subrange_width;
@@ -249,7 +256,7 @@ int* ResamplingFunction::GetResamplingPatternRGB( int original_width, double sub
 
   int* cur = result;
   *cur++ = fir_filter_size;
-
+  
   double pos_step = subrange_width / target_width;
   // the following translates such that the image center remains fixed
   double pos;
@@ -282,7 +289,7 @@ int* ResamplingFunction::GetResamplingPatternRGB( int original_width, double sub
     // Ensure that we have a valid position
     double ok_pos = clamp(pos, 0.0, (double)(original_width-1));
 
-    for (int j=0; j<fir_filter_size; ++j) {  // Accumulate all coefficients
+    for (int j=0; j<fir_filter_size; ++j) {  // Accumulate all coefficients for weighting
       total += f((start_pos+j - ok_pos) * filter_step);
     }
 
@@ -298,7 +305,7 @@ int* ResamplingFunction::GetResamplingPatternRGB( int original_width, double sub
 
     for (int k=0; k<fir_filter_size; ++k) {
       double total3 = total2 + f((start_pos+k - ok_pos) * filter_step) / total;
-      *cur++ = int(total3*FPScale+0.5) - int(total2*FPScale+0.5);
+      *cur++ = int(total3*FPScale+0.5) - int(total2*FPScale+0.5); // to make it round across pixels
       total2 = total3;
     }
 
