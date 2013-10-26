@@ -43,9 +43,6 @@ public:
   static AVSValue __cdecl Create_u(AVSValue args, void* user_data, IScriptEnvironment* env);
   static AVSValue __cdecl Create_v(AVSValue args, void* user_data, IScriptEnvironment* env);
   static AVSValue AvgPlane(AVSValue clip, void* user_data, int plane, IScriptEnvironment* env);
-  static unsigned int isse_average_plane(const BYTE* c_plane, int height, int width, int c_pitch);
-  static unsigned int C_average_plane(const BYTE* c_plane, int height, int width, int c_pitch);
-
 };
 
 class ComparePlane {

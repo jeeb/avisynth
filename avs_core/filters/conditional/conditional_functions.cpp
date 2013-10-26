@@ -39,6 +39,7 @@
 #include <avs/minmax.h>
 #include "../../core/internal.h"
 #include <avs/config.h>
+#include <emmintrin.h>
 
 
 extern const AVSFunction Conditional_funtions_filters[] = {
@@ -122,9 +123,76 @@ AVSValue __cdecl AveragePlane::Create_v(AVSValue args, void* user_data, IScriptE
   return AvgPlane(args[0],user_data, PLANAR_V, env);
 }
 
+// Average plane
+static size_t get_sum_of_pixels_c(const BYTE* srcp, int height, int width, int pitch) {
+  unsigned int accum = 0;
+  for (int y = 0; y < height; y++) {
+    for (int x = 0; x < width; x++) {
+      accum += srcp[x];
+    }
+    srcp += pitch;
+  }
+  return accum;
+}
+
+static size_t get_sum_of_pixels_sse2(const BYTE* srcp, int height, int width, int pitch) {
+  size_t mod16_width = width / 16 * 16;
+  int result = 0;
+  __m128i sum = _mm_setzero_si128();
+  __m128i zero = _mm_setzero_si128();
+
+  for (size_t y = 0; y < height; ++y) {
+    for (size_t x = 0; x < mod16_width; x+=16) {
+      __m128i src = _mm_load_si128(reinterpret_cast<const __m128i*>(srcp + x));
+      __m128i sad = _mm_sad_epu8(src, zero);
+      sum = _mm_add_epi32(sum, sad);
+    }
+
+    if (mod16_width != width) {
+      for (size_t x = mod16_width; x < width; ++x) {
+        result += srcp[x];
+      }
+    }
+    srcp += pitch;
+  }
+  __m128i upper = _mm_castps_si128(_mm_movehl_ps(_mm_setzero_ps(), _mm_castsi128_ps(sum)));
+  sum = _mm_add_epi32(sum, upper);
+  result += _mm_cvtsi128_si32(sum);
+  return result;
+}
+
+#ifdef X86_32
+static size_t get_sum_of_pixels_isse(const BYTE* srcp, int height, int width, int pitch) {
+  size_t mod8_width = width / 8 * 8;
+  int result = 0;
+  __m64 sum = _mm_setzero_si64();
+  __m64 zero = _mm_setzero_si64();
+
+  for (size_t y = 0; y < height; ++y) {
+    for (size_t x = 0; x < mod8_width; x+=8) {
+      __m64 src = *reinterpret_cast<const __m64*>(srcp + x);
+      __m64 sad = _mm_sad_pu8(src, zero);
+      sum = _mm_add_pi32(sum, sad);
+    }
+
+    if (mod8_width != width) {
+      for (size_t x = mod8_width; x < width; ++x) {
+        result += srcp[x];
+      }
+    }
+
+    srcp += pitch;
+  }
+  result += _mm_cvtsi64_si32(sum);
+  _mm_empty();
+  return result;
+}
+#endif
+
+
+
 AVSValue AveragePlane::AvgPlane(AVSValue clip, void* user_data, int plane, IScriptEnvironment* env)
 {
-#ifdef X86_32
   if (!clip.IsClip())
     env->ThrowError("Average Plane: No clip supplied!");
   if (!(env->GetCPUFlags() & CPUF_INTEGER_SSE))
@@ -145,79 +213,28 @@ AVSValue AveragePlane::AvgPlane(AVSValue clip, void* user_data, int plane, IScri
   PVideoFrame src = child->GetFrame(n,env);
 
   const BYTE* srcp = src->GetReadPtr(plane);
-  int h = src->GetHeight(plane);
-  int w = src->GetRowSize(plane);
+  int height = src->GetHeight(plane);
+  int width = src->GetRowSize(plane);
   int pitch = src->GetPitch(plane);
 
-  unsigned int b = 0;
-  if (w & -16) b = isse_average_plane(srcp,           h, (w & -16), pitch);
-  if (w &  15) b +=   C_average_plane(srcp+(w & -16), h, (w &  15), pitch);
+  unsigned int sum = 0;
+  
+  if (env->GetCPUFlags() & CPUF_SSE2) {
+    sum = get_sum_of_pixels_sse2(srcp, height, width, pitch);
+  } else 
+#ifdef X86_32
+  if (env->GetCPUFlags() & CPUF_INTEGER_SSE) {
+    sum = get_sum_of_pixels_isse(srcp, height, width, pitch);
+  } else 
+#endif
+  {
+    sum = get_sum_of_pixels_c(srcp, height, width, pitch);
+  }
 
-  float f = (float)((double)b / (h * w));
+  float f = (float)((double)sum / (height * width));
 
   return (AVSValue)f;
-#else
-  //TODO
-  env->ThrowError("AveragePlane::AvgPlane is not yet ported to 64-bit.");
-  return (AVSValue)0.0f;
-#endif
 }
-
-// Average plane
-unsigned int AveragePlane::C_average_plane(const BYTE* c_plane, int height, int width, int c_pitch) {
-  unsigned int accum = 0;
-  for (int y = 0; y < height; y++) {
-    for (int x = 0; x < width; x++) {
-      accum += c_plane[x];
-    }
-    c_plane += c_pitch;
-  }
-  return accum;
-}
-
-#ifdef X86_32
-unsigned int AveragePlane::isse_average_plane(const BYTE* c_plane, int height, int width, int c_pitch) {
-  int hp=height;
-  unsigned int returnvalue=0xbadbad00;
-  __asm {
-    xor ecx,ecx     // Height
-    mov edx, c_pitch    //copy pitch
-    pxor mm5,mm5  // Cleared
-    pxor mm6,mm6   // We maintain two sums, for better pairablility
-    pxor mm7,mm7
-    mov esi, c_plane
-    jmp yloopover
-    align 16
-yloop:
-    inc ecx
-    add esi,edx  // add pitch
-yloopover:
-    cmp ecx,[hp]
-    jge endframe
-    xor eax,eax     // Width
-    align 16
-xloop:
-    cmp eax,[width]
-    jge yloop
-
-    movq mm0,[esi+eax]
-    movq mm2,[esi+eax+8]
-    psadbw mm0,mm5    // Sum of absolute difference (= sum of all pixels)
-     psadbw mm2,mm5
-    paddd mm6,mm0     // Add...
-     paddd mm7,mm2
-
-    add eax,16
-    jmp xloop
-endframe:
-    paddd mm7,mm6
-    movd returnvalue,mm7
-    emms
-  }
-  return returnvalue;
-}
-#endif
-
 
 
 AVSValue __cdecl ComparePlane::Create_y(AVSValue args, void* user_data, IScriptEnvironment* env) {
