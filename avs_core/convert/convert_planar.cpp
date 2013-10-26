@@ -169,6 +169,144 @@ static void convert_yuy2_to_y8_mmx(const BYTE *srcp, BYTE *dstp, size_t src_pitc
 }
 #endif
 
+
+#pragma warning(disable: 4799)
+static __forceinline __m128i convert_rgb_to_y8_sse2_core(__m128i &pixel01, __m128i &pixel23, __m128i &pixel45, __m128i &pixel67, __m128i& zero, __m128i &matrix, __m128i &round_mask, __m128i &offset) {
+  //int Y = offset_y + ((m0 * srcp[0] + m1 * srcp[1] + m2 * srcp[2] + 16384) >> 15);
+  // in general the algorithm is identical to MMX version, the only different part is getting r and g+b in appropriate registers. We use shuffling instead of unpacking here.
+  pixel01 = _mm_madd_epi16(pixel01, matrix); //a1*0 + r1*cyr | g1*cyg + b1*cyb | a0*0 + r0*cyr | g0*cyg + b0*cyb
+  pixel23 = _mm_madd_epi16(pixel23, matrix); //a3*0 + r1*cyr | g3*cyg + b3*cyb | a2*0 + r2*cyr | g2*cyg + b2*cyb
+  pixel45 = _mm_madd_epi16(pixel45, matrix); //a5*0 + r1*cyr | g5*cyg + b5*cyb | a4*0 + r4*cyr | g4*cyg + b4*cyb
+  pixel67 = _mm_madd_epi16(pixel67, matrix); //a7*0 + r1*cyr | g7*cyg + b7*cyb | a6*0 + r6*cyr | g6*cyg + b6*cyb
+
+  __m128i pixel_0123_r = _mm_castps_si128(_mm_shuffle_ps(_mm_castsi128_ps(pixel01), _mm_castsi128_ps(pixel23), _MM_SHUFFLE(3, 1, 3, 1))); // r3*cyr | r2*cyr | r1*cyr | r0*cyr
+  __m128i pixel_4567_r = _mm_castps_si128(_mm_shuffle_ps(_mm_castsi128_ps(pixel45), _mm_castsi128_ps(pixel67), _MM_SHUFFLE(3, 1, 3, 1))); // r7*cyr | r6*cyr | r5*cyr | r4*cyr
+
+  __m128i pixel_0123 = _mm_castps_si128(_mm_shuffle_ps(_mm_castsi128_ps(pixel01), _mm_castsi128_ps(pixel23), _MM_SHUFFLE(2, 0, 2, 0)));
+  __m128i pixel_4567 = _mm_castps_si128(_mm_shuffle_ps(_mm_castsi128_ps(pixel45), _mm_castsi128_ps(pixel67), _MM_SHUFFLE(2, 0, 2, 0)));
+
+  pixel_0123 = _mm_add_epi32(pixel_0123, pixel_0123_r); 
+  pixel_4567 = _mm_add_epi32(pixel_4567, pixel_4567_r); 
+
+  pixel_0123 = _mm_add_epi32(pixel_0123, round_mask);
+  pixel_4567 = _mm_add_epi32(pixel_4567, round_mask);
+
+  pixel_0123 = _mm_srai_epi32(pixel_0123, 15); 
+  pixel_4567 = _mm_srai_epi32(pixel_4567, 15); 
+
+  __m128i result = _mm_packs_epi32(pixel_0123, pixel_4567);
+
+  result = _mm_packus_epi16(result, zero); 
+  result = _mm_adds_epu8(result, offset);
+
+  return result;
+}
+#pragma warning(default: 4799)
+
+static void convert_rgb32_to_y8_sse2(const BYTE *srcp, BYTE *dstp, size_t src_pitch, size_t dst_pitch, size_t width, size_t height, BYTE offset_y, short cyr, short cyg, short cyb ) {
+  __m128i matrix = _mm_set_epi16(0, cyr, cyg, cyb, 0, cyr, cyg, cyb);
+  __m128i zero = _mm_setzero_si128();
+  __m128i offset = _mm_set1_epi8(offset_y);
+  __m128i round_mask = _mm_set1_epi32(16384);
+
+  size_t loop_limit;
+  bool not_mod8 = false;
+  //todo: simplify
+  if (width % 8 == 0) {
+    loop_limit = width;
+  } else if (dst_pitch % 8 == 0) {
+    loop_limit = dst_pitch; //we'll just write some garbage
+  } else {
+    loop_limit = width / 8 * 8;
+    not_mod8 = true;
+  }
+
+  for (size_t y = 0; y < height; ++y) {
+    for (size_t x = 0; x < loop_limit; x+=8) {
+      __m128i src0123 = _mm_load_si128(reinterpret_cast<const __m128i*>(srcp+x*4)); //pixels 0, 1, 2 and 3
+      __m128i src4567 = _mm_load_si128(reinterpret_cast<const __m128i*>(srcp+x*4+16));//pixels 4, 5, 6 and 7
+
+      __m128i pixel01 = _mm_unpacklo_epi8(src0123, zero); 
+      __m128i pixel23 = _mm_unpackhi_epi8(src0123, zero); 
+      __m128i pixel45 = _mm_unpacklo_epi8(src4567, zero); 
+      __m128i pixel67 = _mm_unpackhi_epi8(src4567, zero); 
+
+      _mm_storel_epi64(reinterpret_cast<__m128i*>(dstp+x), convert_rgb_to_y8_sse2_core(pixel01, pixel23, pixel45, pixel67, zero, matrix, round_mask, offset));
+    }
+
+    if (not_mod8) {
+      __m128i src0123 = _mm_loadu_si128(reinterpret_cast<const __m128i*>(srcp+width*4-32)); //pixels 0, 1, 2 and 3
+      __m128i src4567 = _mm_loadu_si128(reinterpret_cast<const __m128i*>(srcp+width*4-16));//pixels 4, 5, 6 and 7
+
+      __m128i pixel01 = _mm_unpacklo_epi8(src0123, zero); 
+      __m128i pixel23 = _mm_unpackhi_epi8(src0123, zero); 
+      __m128i pixel45 = _mm_unpacklo_epi8(src4567, zero); 
+      __m128i pixel67 = _mm_unpackhi_epi8(src4567, zero); 
+
+      _mm_storel_epi64(reinterpret_cast<__m128i*>(dstp+width-8), convert_rgb_to_y8_sse2_core(pixel01, pixel23, pixel45, pixel67, zero, matrix, round_mask, offset));
+    }
+
+    srcp -= src_pitch;
+    dstp += dst_pitch;
+  }
+}
+
+
+static void convert_rgb24_to_y8_sse2(const BYTE *srcp, BYTE *dstp, size_t src_pitch, size_t dst_pitch, size_t width, size_t height, BYTE offset_y, short cyr, short cyg, short cyb ) {
+  __m128i matrix = _mm_set_epi16(0, cyr, cyg, cyb, 0, cyr, cyg, cyb);
+  __m128i zero = _mm_setzero_si128();
+  __m128i offset = _mm_set1_epi8(offset_y);
+  __m128i round_mask = _mm_set1_epi32(16384);
+
+  size_t loop_limit;
+  bool not_mod8 = false;
+  //todo: simplify
+  if (width % 8 == 0) {
+    loop_limit = width;
+  } else if (dst_pitch % 8 == 0) {
+    loop_limit = dst_pitch; //we'll just write some garbage
+  } else {
+    loop_limit = width / 8 * 8;
+    not_mod8 = true;
+  }
+
+  for (size_t y = 0; y < height; ++y) {
+    for (size_t x = 0; x < loop_limit; x+=8) {
+      __m128i pixel01 = _mm_loadl_epi64(reinterpret_cast<const __m128i*>(srcp+x*3)); //pixels 0 and 1
+      __m128i pixel23 = _mm_loadl_epi64(reinterpret_cast<const __m128i*>(srcp+x*3+6)); //pixels 2 and 3
+      __m128i pixel45 = _mm_loadl_epi64(reinterpret_cast<const __m128i*>(srcp+x*3+12)); //pixels 4 and 5
+      __m128i pixel67 = _mm_loadl_epi64(reinterpret_cast<const __m128i*>(srcp+x*3+18)); //pixels 6 and 7
+
+      
+      //0 0 0 0 0 0 0 0 | x x r1 g1 b1 r0 g0 b0  -> 0 x 0 x 0 r1 0 g1 | 0 b1 0 r0 0 g0 0 b0 -> 0 r1 0 g1 0 b1 0 r0 | 0 b1 0 r0 0 g0 0 b0 -> 0 r1 0 r1 0 g1 0 b1 | 0 b1 0 r0 0 g0 0 b0
+      pixel01 = _mm_shufflehi_epi16(_mm_shuffle_epi32(_mm_unpacklo_epi8(pixel01, zero), _MM_SHUFFLE(2, 1, 1, 0)), _MM_SHUFFLE(0, 3, 2, 1));
+      pixel23 = _mm_shufflehi_epi16(_mm_shuffle_epi32(_mm_unpacklo_epi8(pixel23, zero), _MM_SHUFFLE(2, 1, 1, 0)), _MM_SHUFFLE(0, 3, 2, 1));
+      pixel45 = _mm_shufflehi_epi16(_mm_shuffle_epi32(_mm_unpacklo_epi8(pixel45, zero), _MM_SHUFFLE(2, 1, 1, 0)), _MM_SHUFFLE(0, 3, 2, 1));
+      pixel67 = _mm_shufflehi_epi16(_mm_shuffle_epi32(_mm_unpacklo_epi8(pixel67, zero), _MM_SHUFFLE(2, 1, 1, 0)), _MM_SHUFFLE(0, 3, 2, 1));
+
+      _mm_storel_epi64(reinterpret_cast<__m128i*>(dstp+x), convert_rgb_to_y8_sse2_core(pixel01, pixel23, pixel45, pixel67, zero, matrix, round_mask, offset));
+    }
+
+    if (not_mod8) {
+      __m128i pixel01 = _mm_loadl_epi64(reinterpret_cast<const __m128i*>(srcp+width*3-24)); //pixels 0 and 1
+      __m128i pixel23 = _mm_loadl_epi64(reinterpret_cast<const __m128i*>(srcp+width*3-18)); //pixels 2 and 3
+      __m128i pixel45 = _mm_loadl_epi64(reinterpret_cast<const __m128i*>(srcp+width*3-12)); //pixels 4 and 5
+      __m128i pixel67 = _mm_loadl_epi64(reinterpret_cast<const __m128i*>(srcp+width*3-6)); //pixels 6 and 7
+
+      pixel01 = _mm_shufflehi_epi16(_mm_shuffle_epi32(_mm_unpacklo_epi8(pixel01, zero), _MM_SHUFFLE(2, 1, 1, 0)), _MM_SHUFFLE(0, 3, 2, 1));
+      pixel23 = _mm_shufflehi_epi16(_mm_shuffle_epi32(_mm_unpacklo_epi8(pixel23, zero), _MM_SHUFFLE(2, 1, 1, 0)), _MM_SHUFFLE(0, 3, 2, 1));
+      pixel45 = _mm_shufflehi_epi16(_mm_shuffle_epi32(_mm_unpacklo_epi8(pixel45, zero), _MM_SHUFFLE(2, 1, 1, 0)), _MM_SHUFFLE(0, 3, 2, 1));
+      pixel67 = _mm_shufflehi_epi16(_mm_shuffle_epi32(_mm_unpacklo_epi8(pixel67, zero), _MM_SHUFFLE(2, 1, 1, 0)), _MM_SHUFFLE(0, 3, 2, 1));
+
+      _mm_storel_epi64(reinterpret_cast<__m128i*>(dstp+width-8), convert_rgb_to_y8_sse2_core(pixel01, pixel23, pixel45, pixel67, zero, matrix, round_mask, offset));
+    }
+
+    srcp -= src_pitch;
+    dstp += dst_pitch;
+  }
+}
+
+
 #ifdef X86_32
 
 #pragma warning(disable: 4799)
@@ -259,7 +397,6 @@ static void convert_rgb24_to_y8_mmx(const BYTE *srcp, BYTE *dstp, size_t src_pit
   __m64 zero = _mm_setzero_si64();
   __m64 offset = _mm_set1_pi8(offset_y);
   __m64 round_mask = _mm_set1_pi32(16384);
-  __m64 left_half_mask = _mm_set_pi32(0xFFFFFFFF, 0);
 
   size_t loop_limit;
   bool not_mod4 = false;
@@ -363,6 +500,15 @@ PVideoFrame __stdcall ConvertToY8::GetFrame(int n, IScriptEnvironment* env) {
     const int m1 = matrix[1];
     const int m2 = matrix[2];
 
+    if ((env->GetCPUFlags() & CPUF_SSE2) && IsPtrAligned(srcp, 16)) {
+      if (pixel_step == 4) {
+        convert_rgb32_to_y8_sse2(srcp, dstp, src_pitch, dst_pitch, vi.width, vi.height, offset_y, m2, m1, m0);
+        return dst;
+      } else if (pixel_step == 3) {
+        convert_rgb24_to_y8_sse2(srcp, dstp, src_pitch, dst_pitch, vi.width, vi.height, offset_y, m2, m1, m0);
+        return dst;
+      }
+    }
 
 #ifdef X86_32
     if (env->GetCPUFlags() & CPUF_MMX) {
