@@ -40,6 +40,7 @@
 #include "../../core/internal.h"
 #include <avs/config.h>
 #include <emmintrin.h>
+#include "avs/alignment.h"
 
 
 extern const AVSFunction Conditional_funtions_filters[] = {
@@ -124,10 +125,10 @@ AVSValue __cdecl AveragePlane::Create_v(AVSValue args, void* user_data, IScriptE
 }
 
 // Average plane
-static size_t get_sum_of_pixels_c(const BYTE* srcp, int height, int width, int pitch) {
+static size_t get_sum_of_pixels_c(const BYTE* srcp, size_t height, size_t width, size_t pitch) {
   unsigned int accum = 0;
-  for (int y = 0; y < height; y++) {
-    for (int x = 0; x < width; x++) {
+  for (size_t y = 0; y < height; y++) {
+    for (size_t x = 0; x < width; x++) {
       accum += srcp[x];
     }
     srcp += pitch;
@@ -135,7 +136,7 @@ static size_t get_sum_of_pixels_c(const BYTE* srcp, int height, int width, int p
   return accum;
 }
 
-static size_t get_sum_of_pixels_sse2(const BYTE* srcp, int height, int width, int pitch) {
+static size_t get_sum_of_pixels_sse2(const BYTE* srcp, size_t height, size_t width, size_t pitch) {
   size_t mod16_width = width / 16 * 16;
   int result = 0;
   __m128i sum = _mm_setzero_si128();
@@ -162,7 +163,7 @@ static size_t get_sum_of_pixels_sse2(const BYTE* srcp, int height, int width, in
 }
 
 #ifdef X86_32
-static size_t get_sum_of_pixels_isse(const BYTE* srcp, int height, int width, int pitch) {
+static size_t get_sum_of_pixels_isse(const BYTE* srcp, size_t height, size_t width, size_t pitch) {
   size_t mod8_width = width / 8 * 8;
   int result = 0;
   __m64 sum = _mm_setzero_si64();
@@ -219,11 +220,11 @@ AVSValue AveragePlane::AvgPlane(AVSValue clip, void* user_data, int plane, IScri
 
   unsigned int sum = 0;
   
-  if (env->GetCPUFlags() & CPUF_SSE2) {
+  if ((env->GetCPUFlags() & CPUF_SSE2) && IsPtrAligned(srcp, 16) && width >= 16) {
     sum = get_sum_of_pixels_sse2(srcp, height, width, pitch);
   } else 
 #ifdef X86_32
-  if (env->GetCPUFlags() & CPUF_INTEGER_SSE) {
+  if ((env->GetCPUFlags() & CPUF_INTEGER_SSE) && width >= 8) {
     sum = get_sum_of_pixels_isse(srcp, height, width, pitch);
   } else 
 #endif
@@ -290,15 +291,162 @@ AVSValue __cdecl ComparePlane::Create_next_rgb(AVSValue args, void* user_data, I
 }
 
 
-AVSValue ComparePlane::CmpPlane(AVSValue clip, AVSValue clip2, void* user_data, int plane, IScriptEnvironment* env)
-{
+
+static size_t get_sad_c(const BYTE* c_plane, const BYTE* tplane, size_t height, size_t width, size_t c_pitch, size_t t_pitch) {
+  size_t accum = 0;
+  for (size_t y = 0; y < height; y++) {
+    for (size_t x = 0; x < width; x++) {
+      accum += abs(tplane[x] - c_plane[x]);
+    }
+    c_plane += c_pitch;
+    tplane += t_pitch;
+  }
+  return accum;
+
+}
+
+static size_t get_sad_rgb_c(const BYTE* c_plane, const BYTE* tplane, size_t height, size_t width, size_t c_pitch, size_t t_pitch) {
+  size_t accum = 0;
+  for (size_t y = 0; y < height; y++) {
+    for (size_t x = 0; x < width; x+=4) {
+      accum += abs(tplane[x] - c_plane[x]);
+      accum += abs(tplane[x+1] - c_plane[x+1]);
+      accum += abs(tplane[x+2] - c_plane[x+2]);
+    }
+    c_plane += c_pitch;
+    tplane += t_pitch;
+  }
+  return accum;
+
+}
+
+static size_t get_sad_sse2(const BYTE* src_ptr, const BYTE* other_ptr, size_t height, size_t width, size_t src_pitch, size_t other_pitch) {
+  size_t mod16_width = width / 16 * 16;
+  size_t result = 0;
+  __m128i sum = _mm_setzero_si128();
+  for (size_t y = 0; y < height; ++y) {
+    for (size_t x = 0; x < mod16_width; x+=16) {
+      __m128i src = _mm_load_si128(reinterpret_cast<const __m128i*>(src_ptr + x));
+      __m128i other = _mm_load_si128(reinterpret_cast<const __m128i*>(other_ptr + x));
+      __m128i sad = _mm_sad_epu8(src, other);
+      sum = _mm_add_epi32(sum, sad);
+    }
+
+    if (mod16_width != width) {
+      for (size_t x = mod16_width; x < width; ++x) {
+        result += std::abs(src_ptr[x] - other_ptr[x]);
+      }
+    }
+
+    src_ptr += src_pitch;
+    other_ptr += other_pitch;
+  }
+  __m128i upper = _mm_castps_si128(_mm_movehl_ps(_mm_setzero_ps(), _mm_castsi128_ps(sum)));
+  sum = _mm_add_epi32(sum, upper);
+  result += _mm_cvtsi128_si32(sum);
+  return result;
+}
+
+static size_t get_sad_rgb_sse2(const BYTE* src_ptr, const BYTE* other_ptr, size_t height, size_t width, size_t src_pitch, size_t other_pitch) {
+  size_t mod16_width = width / 16 * 16;
+  size_t result = 0;
+  __m128i sum = _mm_setzero_si128();
+  __m128i rgb_mask = _mm_set1_epi32(0x00FFFFFF);
+
+  for (size_t y = 0; y < height; ++y) {
+    for (size_t x = 0; x < mod16_width; x+=16) {
+      __m128i src = _mm_load_si128(reinterpret_cast<const __m128i*>(src_ptr + x));
+      __m128i other = _mm_load_si128(reinterpret_cast<const __m128i*>(other_ptr + x));
+      src = _mm_and_si128(src, rgb_mask);
+      other = _mm_and_si128(other, rgb_mask);
+      __m128i sad = _mm_sad_epu8(src, other);
+      sum = _mm_add_epi32(sum, sad);
+    }
+
+    if (mod16_width != width) {
+      for (size_t x = mod16_width; x < width; ++x) {
+        result += std::abs(src_ptr[x] - other_ptr[x]);
+      }
+    }
+
+    src_ptr += src_pitch;
+    other_ptr += other_pitch;
+  }
+  __m128i upper = _mm_castps_si128(_mm_movehl_ps(_mm_setzero_ps(), _mm_castsi128_ps(sum)));
+  sum = _mm_add_epi32(sum, upper);
+  result += _mm_cvtsi128_si32(sum);
+  return result;
+}
+
 #ifdef X86_32
 
+static size_t get_sad_isse(const BYTE* src_ptr, const BYTE* other_ptr, size_t height, size_t width, size_t src_pitch, size_t other_pitch) {
+  size_t mod8_width = width / 8 * 8;
+  size_t result = 0;
+  __m64 sum = _mm_setzero_si64();
+
+  for (size_t y = 0; y < height; ++y) {
+    for (size_t x = 0; x < mod8_width; x+=8) {
+      __m64 src = *reinterpret_cast<const __m64*>(src_ptr + x);
+      __m64 other = *reinterpret_cast<const __m64*>(other_ptr + x);
+      __m64 sad = _mm_sad_pu8(src, other);
+      sum = _mm_add_pi32(sum, sad);
+    }
+
+    if (mod8_width != width) {
+      for (size_t x = mod8_width; x < width; ++x) {
+        result += abs(src_ptr[x] - other_ptr[x]);
+      }
+    }
+
+    src_ptr += src_pitch;
+    other_ptr += other_pitch;
+  }
+  result += _mm_cvtsi64_si32(sum);
+  _mm_empty();
+  return result;
+}
+
+static size_t get_sad_rgb_isse(const BYTE* src_ptr, const BYTE* other_ptr, size_t height, size_t width, size_t src_pitch, size_t other_pitch) {
+  size_t mod8_width = width / 8 * 8;
+  size_t result = 0;
+  __m64 rgb_mask = _mm_set1_pi32(0x00FFFFFF);
+  __m64 sum = _mm_setzero_si64();
+
+  for (size_t y = 0; y < height; ++y) {
+    for (size_t x = 0; x < mod8_width; x+=8) {
+      __m64 src = *reinterpret_cast<const __m64*>(src_ptr + x);
+      __m64 other = *reinterpret_cast<const __m64*>(other_ptr + x);
+      src = _mm_and_si64(src, rgb_mask);
+      other = _mm_and_si64(other, rgb_mask);
+      __m64 sad = _mm_sad_pu8(src, other);
+      sum = _mm_add_pi32(sum, sad);
+    }
+
+    if (mod8_width != width) {
+      for (size_t x = mod8_width; x < width; ++x) {
+        result += abs(src_ptr[x] - other_ptr[x]);
+      }
+    }
+
+    src_ptr += src_pitch;
+    other_ptr += other_pitch;
+  }
+  result += _mm_cvtsi64_si32(sum);
+  _mm_empty();
+  return result;
+}
+
+#endif
+
+
+
+AVSValue ComparePlane::CmpPlane(AVSValue clip, AVSValue clip2, void* user_data, int plane, IScriptEnvironment* env)
+{
   if (!clip.IsClip())
     env->ThrowError("Plane Difference: No clip supplied!");
   if (!clip2.IsClip())
     env->ThrowError("Plane Difference: Second parameter is not a clip!");
-  bool ISSE = !!(env->GetCPUFlags() & CPUF_INTEGER_SSE);
 
   PClip child = clip.AsClip();
   VideoInfo vi = child->GetVideoInfo();
@@ -330,52 +478,56 @@ AVSValue ComparePlane::CmpPlane(AVSValue clip, AVSValue clip2, void* user_data, 
 
   const BYTE* srcp = src->GetReadPtr(plane);
   const BYTE* srcp2 = src2->GetReadPtr(plane);
-  const int h = src->GetHeight(plane);
-  const int w = src->GetRowSize(plane);
+  const int height = src->GetHeight(plane);
+  const int width = src->GetRowSize(plane);
   const int pitch = src->GetPitch(plane);
-  const int h2 = src2->GetHeight(plane);
-  const int w2 = src2->GetRowSize(plane);
+  const int height2 = src2->GetHeight(plane);
+  const int width2 = src2->GetRowSize(plane);
   const int pitch2 = src2->GetPitch(plane);
 
-  if (h != h2 || w != w2)
+  if (height != height2 || width != width2)
     env->ThrowError("Plane Difference: Images are not the same size!");
 
-  unsigned int b = 0;
+  size_t sad = 0;
   if (vi.IsRGB32()) {
-    if (ISSE) {
-      if (w & -16) b = isse_scenechange_rgb_16(srcp,           srcp2,           h, (w & -16), pitch, pitch2);
-      if (w &  15) b +=   C_scenechange_rgb_16(srcp+(w & -16), srcp2+(w & -16), h, (w &  15), pitch, pitch2);
-    }
-    else
-      b = C_scenechange_rgb_16(srcp, srcp2, h, w, pitch, pitch2);
+    if ((env->GetCPUFlags() & CPUF_SSE2) && IsPtrAligned(srcp, 16) && IsPtrAligned(srcp2, 16) && width >= 16) {
+      sad = get_sad_rgb_sse2(srcp, srcp2, height, width, pitch, pitch2);
+    } else
+#ifdef X86_32
+      if ((env->GetCPUFlags() & CPUF_INTEGER_SSE) && width >= 8) {
+        sad = get_sad_rgb_isse(srcp, srcp2, height, width, pitch, pitch2);
+      } else 
+#endif
+      {
+        sad = get_sad_rgb_c(srcp, srcp2, height, width, pitch, pitch2);
+      }
   } else {
-    if (ISSE) {
-      if (w & -16) b = isse_scenechange_16(srcp,           srcp2,           h, (w & -16), pitch, pitch2);
-      if (w &  15) b +=   C_scenechange_16(srcp+(w & -16), srcp2+(w & -16), h, (w &  15), pitch, pitch2);
-    }
-    else
-      b = C_scenechange_16(srcp, srcp2, h, w, pitch, pitch2);
+    if ((env->GetCPUFlags() & CPUF_SSE2) && IsPtrAligned(srcp, 16) && IsPtrAligned(srcp2, 16) && width >= 16) {
+      sad = get_sad_sse2(srcp, srcp2, height, width, pitch, pitch2);
+    } else
+#ifdef X86_32
+      if ((env->GetCPUFlags() & CPUF_INTEGER_SSE) && width >= 8) {
+        sad = get_sad_isse(srcp, srcp2, height, width, pitch, pitch2);
+      } else 
+#endif
+      {
+        sad = get_sad_c(srcp, srcp2, height, width, pitch, pitch2);
+      }
   }
 
   float f;
 
   if (vi.IsRGB32())
-    f = (float)((double)(b * 4) / (h * w * 3));
+    f = (float)((double)(sad * 4) / (height * width * 3));
   else
-    f = (float)((double)b / (h * w));
+    f = (float)((double)sad / (height * width));
 
   return (AVSValue)f;
-#else
-  //TODO
-  env->ThrowError("ComparePlane::CmpPlane is not yet ported to 64-bit.");
-  return (AVSValue)0.0f;
-#endif
 }
 
 
 AVSValue ComparePlane::CmpPlaneSame(AVSValue clip, void* user_data, int offset, int plane, IScriptEnvironment* env)
 {
-#ifdef X86_32
   if (!clip.IsClip())
     env->ThrowError("Plane Difference: No clip supplied!");
 
@@ -405,41 +557,46 @@ AVSValue ComparePlane::CmpPlaneSame(AVSValue clip, void* user_data, int offset, 
 
   const BYTE* srcp = src->GetReadPtr(plane);
   const BYTE* srcp2 = src2->GetReadPtr(plane);
-  int h = src->GetHeight(plane);
-  int w = src->GetRowSize(plane);
+  int height = src->GetHeight(plane);
+  int width = src->GetRowSize(plane);
   int pitch = src->GetPitch(plane);
   int pitch2 = src2->GetPitch(plane);
 
-  unsigned int b = 0;
+  size_t sad = 0;
   if (vi.IsRGB32()) {
-    if (ISSE) {
-      if (w & -16) b = isse_scenechange_rgb_16(srcp,           srcp2,           h, (w & -16), pitch, pitch2);
-      if (w &  15) b +=   C_scenechange_rgb_16(srcp+(w & -16), srcp2+(w & -16), h, (w &  15), pitch, pitch2);
-    }
-    else
-     b = C_scenechange_rgb_16(srcp, srcp2, h, w, pitch, pitch2);
+    if ((env->GetCPUFlags() & CPUF_SSE2) && IsPtrAligned(srcp, 16) && IsPtrAligned(srcp2, 16) && width >= 16) {
+      sad = get_sad_rgb_sse2(srcp, srcp2, height, width, pitch, pitch2);
+    } else
+#ifdef X86_32
+      if ((env->GetCPUFlags() & CPUF_INTEGER_SSE) && width >= 8) {
+        sad = get_sad_rgb_isse(srcp, srcp2, height, width, pitch, pitch2);
+      } else 
+#endif
+      {
+        sad = get_sad_rgb_c(srcp, srcp2, height, width, pitch, pitch2);
+      }
   } else {
-    if (ISSE) {
-      if (w & -16) b = isse_scenechange_16(srcp,           srcp2,           h, (w & -16), pitch, pitch2);
-      if (w &  15) b +=   C_scenechange_16(srcp+(w & -16), srcp2+(w & -16), h, (w &  15), pitch, pitch2);
-    }
-    else
-      b = C_scenechange_16(srcp, srcp2, h, w, pitch, pitch2);
+    if ((env->GetCPUFlags() & CPUF_SSE2) && IsPtrAligned(srcp, 16) && IsPtrAligned(srcp2, 16) && width >= 16) {
+      sad = get_sad_sse2(srcp, srcp2, height, width, pitch, pitch2);
+    } else
+#ifdef X86_32
+      if ((env->GetCPUFlags() & CPUF_INTEGER_SSE) && width >= 8) {
+        sad = get_sad_isse(srcp, srcp2, height, width, pitch, pitch2);
+      } else 
+#endif
+      {
+        sad = get_sad_c(srcp, srcp2, height, width, pitch, pitch2);
+      }
   }
 
   float f;
 
   if (vi.IsRGB32())
-    f = (float)((double)(b * 4) / (h * w * 3));
+    f = (float)((double)(sad * 4) / (height * width * 3));
   else
-    f = (float)((double)b / (h * w));
+    f = (float)((double)sad / (height * width));
 
   return (AVSValue)f;
-#else
-  //TODO
-  env->ThrowError("ComparePlane::CmpPlaneSame is not yet ported to 64-bit.");
-  return (AVSValue)0.0f;
-#endif
 }
 
 
@@ -591,164 +748,3 @@ AVSValue MinMaxPlane::MinMax(AVSValue clip, void* user_data, float threshold, in
   }
   return AVSValue(-1);
 }
-
-unsigned int ComparePlane::C_scenechange_16(const BYTE* c_plane, const BYTE* tplane, int height, int width, int c_pitch, int t_pitch) {
-  unsigned int accum = 0;
-  for (int y = 0; y < height; y++) {
-    for (int x = 0; x < width; x++) {
-      accum += abs(tplane[x] - c_plane[x]);
-    }
-    c_plane += c_pitch;
-    tplane += t_pitch;
-  }
-  return accum;
-
-}
-
-unsigned int ComparePlane::C_scenechange_rgb_16(const BYTE* c_plane, const BYTE* tplane, int height, int width, int c_pitch, int t_pitch) {
-  unsigned int accum = 0;
-  for (int y = 0; y < height; y++) {
-    for (int x = 0; x < width; x+=4) {
-      accum += abs(tplane[x] - c_plane[x]);
-      accum += abs(tplane[x+1] - c_plane[x+1]);
-      accum += abs(tplane[x+2] - c_plane[x+2]);
-    }
-    c_plane += c_pitch;
-    tplane += t_pitch;
-  }
-  return accum;
-
-}
-
-
-#ifdef X86_32
-/*********************
- * YV12 Scenechange detection.
- *
- * (c) 2003, Klaus Post
- *
- * ISSE, MOD 16 version.
- *
- * Returns an int of the accumulated absolute difference
- * between two planes.
- *
- * The absolute difference between two planes are returned as an int.
- * This version is optimized for mod16 widths. Others widths are allowed,
- *  but the remaining pixels are simply skipped.
- *********************/
-
-unsigned int ComparePlane::isse_scenechange_16(const BYTE* c_plane, const BYTE* tplane, int height, int width, int c_pitch, int t_pitch) {
-  int wp=width;
-  int hp=height;
-  unsigned int returnvalue=0xbadbad00;
-  __asm {
-    xor ecx,ecx    // Height
-    pxor mm5,mm5   // Maximum difference
-    pxor mm6,mm6   // We maintain two sums, for better pairablility
-    pxor mm7,mm7
-    mov esi, c_plane
-    mov edi, tplane
-    jmp yloopover
-    align 16
-yloop:
-    inc ecx
-    add edi, t_pitch     // add pitch to both planes
-    add esi, c_pitch
-yloopover:
-    cmp ecx,[hp]
-    jge endframe
-    xor eax,eax     // Width
-    align 16
-xloop:
-    cmp eax,[wp]
-    jge yloop
-
-    movq mm0,[esi+eax]
-     movq mm2,[esi+eax+8]
-    movq mm1,[edi+eax]
-     movq mm3,[edi+eax+8]
-    psadbw mm0,mm1    // Sum of absolute difference
-     psadbw mm2,mm3
-    paddd mm6,mm0     // Add...
-     paddd mm7,mm2
-
-    add eax,16
-    jmp xloop
-endframe:
-    paddd mm7,mm6
-    movd returnvalue,mm7
-    emms
-  }
-  return returnvalue;
-}
-#endif
-
-
-
-
-#ifdef X86_32
-/*********************
- * RGB32 Scenechange detection.
- *
- * (c) 2003, Klaus Post
- *
- * ISSE, MOD 16 version.
- *
- * Returns an int of the accumulated absolute difference
- * between two planes.
- *
- * The absolute difference between two planes are returned as an int.
- * This version is optimized for mod16 widths. Others widths are allowed,
- *  but the remaining pixels are simply skipped.
- *********************/
-
-unsigned int ComparePlane::isse_scenechange_rgb_16(const BYTE* c_plane, const BYTE* tplane, int height, int width, int c_pitch, int t_pitch) {
-   __declspec(align(8)) static const __int64 Mask1 =  0x00ffffff00ffffff;
-  int wp=width;
-  int hp=height;
-  unsigned int returnvalue=0xbadbad00;
-  __asm {
-    xor ecx,ecx     // Height
-    movq mm5,[Mask1]  // Mask for RGB32
-    pxor mm6,mm6   // We maintain two sums, for better pairablility
-    pxor mm7,mm7
-    mov esi, c_plane
-    mov edi, tplane
-    jmp yloopover
-    align 16
-yloop:
-    inc ecx
-    add edi, t_pitch     // add pitch to both planes
-    add esi, c_pitch
-yloopover:
-    cmp ecx,[hp]
-    jge endframe
-    xor eax,eax     // Width
-    align 16
-xloop:
-    cmp eax,[wp]
-    jge yloop
-
-    movq mm0,[esi+eax]
-     movq mm2,[esi+eax+8]
-    pand mm0,mm5
-     pand mm2,mm5
-    movq mm1,[edi+eax]
-     movq mm3,[edi+eax+8]
-    pand mm1,mm5
-     pand mm3,mm5
-    psadbw mm0,mm1    // Sum of absolute difference
-     psadbw mm2,mm3
-    paddd mm6,mm0     // Add...
-     paddd mm7,mm2
-
-    add eax,16
-    jmp xloop
-endframe:
-    paddd mm7,mm6
-    movd returnvalue,mm7
-    emms
-  }
-  return returnvalue;
-}
-#endif
