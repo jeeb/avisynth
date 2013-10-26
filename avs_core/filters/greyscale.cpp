@@ -37,6 +37,9 @@
 #include <avs/win.h>
 #include <cstdlib>
 #include "../core/internal.h"
+#include <emmintrin.h>
+#include "avs/alignment.h"
+#include "avs/minmax.h"
 
 
 /*************************************
@@ -67,6 +70,52 @@ Greyscale::Greyscale(PClip _child, const char* matrix, IScriptEnvironment* env)
   }
 }
 
+//this is not really faster than MMX but a lot cleaner
+static void greyscale_yuy2_sse2(BYTE *srcp, size_t /*width*/, size_t height, size_t pitch) {
+  __m128i luma_mask = _mm_set1_epi16(0x00FF);
+  __m128i chroma_value = _mm_set1_epi16(0x8000);
+  BYTE* end_point = srcp + pitch * height;
+
+  while(srcp < end_point) {
+    __m128i src = _mm_load_si128(reinterpret_cast<const __m128i*>(srcp));
+    src = _mm_and_si128(src, luma_mask);
+    src = _mm_or_si128(src, chroma_value);
+    _mm_store_si128(reinterpret_cast<__m128i*>(srcp), src);
+
+    srcp += 16;
+  }
+}
+
+#ifdef X86_32
+static void greyscale_yuy2_mmx(BYTE *srcp, size_t width, size_t height, size_t pitch) {
+  bool not_mod8 = false;
+  size_t loop_limit = min((pitch / 8) * 8, ((width*4 + 7) / 8) * 8);
+
+
+  __m64 luma_mask = _mm_set1_pi16(0x00FF);
+  __m64 chroma_value = _mm_set1_pi16(0x8000);
+
+  for (size_t y = 0; y < height; ++y) {
+    for (size_t x = 0; x < loop_limit; x+=8) {
+     __m64 src = *reinterpret_cast<const __m64*>(srcp+x);
+     src = _mm_and_si64(src, luma_mask);
+     src = _mm_or_si64(src, chroma_value);
+     *reinterpret_cast<__m64*>(srcp+x) = src;
+    }
+
+    if (loop_limit < width) {
+      __m64 src = *reinterpret_cast<const __m64*>(srcp+width-8);
+      src = _mm_and_si64(src, luma_mask);
+      src = _mm_or_si64(src, chroma_value);
+      *reinterpret_cast<__m64*>(srcp+width-8) = src;
+    }
+
+    srcp += pitch;
+  }
+ _mm_empty();
+}
+#endif
+
 
 PVideoFrame Greyscale::GetFrame(int n, IScriptEnvironment* env)
 {
@@ -77,151 +126,51 @@ PVideoFrame Greyscale::GetFrame(int n, IScriptEnvironment* env)
   env->MakeWritable(&frame);
   BYTE* srcp = frame->GetWritePtr();
   int pitch = frame->GetPitch();
-  int myy = vi.height;
-  int myx = vi.width;
+  int height = vi.height;
+  int width = vi.width;
 
   if (vi.IsPlanar()) {
     pitch = frame->GetPitch(PLANAR_U)/4;
     int *srcpUV = (int*)frame->GetWritePtr(PLANAR_U);
-    myx = frame->GetRowSize(PLANAR_U_ALIGNED)/4;
-    myy = frame->GetHeight(PLANAR_U);
-    {for (int y=0; y<myy; y++) {
-      for (int x=0; x<myx; x++) {
+    width = frame->GetRowSize(PLANAR_U_ALIGNED)/4;
+    height = frame->GetHeight(PLANAR_U);
+    for (int y=0; y<height; y++) {
+      for (int x=0; x<width; x++) {
         srcpUV[x] = 0x80808080;  // mod 8
       }
       srcpUV += pitch;
-    }}
+    }
     pitch = frame->GetPitch(PLANAR_V)/4;
     srcpUV = (int*)frame->GetWritePtr(PLANAR_V);
-    myx = frame->GetRowSize(PLANAR_V_ALIGNED)/4;
-    myy = frame->GetHeight(PLANAR_V);
-    {for (int y=0; y<myy; ++y) {
-      for (int x=0; x<myx; x++) {
+    width = frame->GetRowSize(PLANAR_V_ALIGNED)/4;
+    height = frame->GetHeight(PLANAR_V);
+    for (int y=0; y<height; ++y) {
+      for (int x=0; x<width; x++) {
         srcpUV[x] = 0x80808080;  // mod 8
       }
       srcpUV += pitch;
-    }}
+    }
   }
 
+  else if (vi.IsYUY2()) {
+    if ((env->GetCPUFlags() & CPUF_SSE2) && width > 4 && IsPtrAligned(srcp, 16)) {
+      greyscale_yuy2_sse2(srcp, width, height, pitch);
+    } else
 #ifdef X86_32
-  else if (vi.IsYUY2() && (env->GetCPUFlags() & CPUF_MMX)) 
-  {
-	  myx = __min(pitch>>1, (myx+3) & -4);	// Try for mod 8
-	  __asm {
-		pcmpeqw		mm7,mm7
-		pcmpeqw		mm6,mm6
-		psrlw		mm7,8					; 0x00ff00ff00ff00ff
-		psllw		mm6,15					; 0x8000800080008000
-		mov			esi,srcp				; data pointer
-		mov			eax,pitch				; pitch
-		mov			edx,myy					; height
-		mov			edi,myx					; aligned width
-		sub			eax,edi
-		sub			eax,edi					; modulo = pitch - rowsize
-		shr			edi,1					; number of dwords
-
-		align		16
-yloop:
-		mov			ecx,edi					; number of dwords
-
-		test		esi,0x7					; qword aligned?
-		jz			xloop1					; yes
-
-		movd		mm5,[esi]				; process 1 dword
-		pand		mm5,mm7					; keep luma
-		 add		esi,4					; srcp++
-		por			mm5,mm6					; set chroma = 128
-		 dec		ecx						; count--
-		movd		[esi-4],mm5				; update 2 pixels
-
-		align		16
-xloop1:
-		cmp			ecx,16					; Try to do 16 pixels per loop
-		jl			xlend1
-
-		movq		mm0,[esi+0]				; process 1 qword
-		movq		mm1,[esi+8]
-		pand		mm0,mm7					; keep luma
-		pand		mm1,mm7
-		por			mm0,mm6					; set chroma = 128
-		por			mm1,mm6
-		movq		[esi+0],mm0				; update 2 pixels
-		movq		[esi+8],mm1
-
-		movq		mm2,[esi+16]
-		movq		mm3,[esi+24]
-		pand		mm2,mm7
-		pand		mm3,mm7
-		por			mm2,mm6
-		por			mm3,mm6
-		movq		[esi+16],mm2
-		movq		[esi+24],mm3
-
-		movq		mm0,[esi+32]
-		movq		mm1,[esi+40]
-		pand		mm0,mm7
-		pand		mm1,mm7
-		por			mm0,mm6
-		por			mm1,mm6
-		movq		[esi+32],mm0
-		movq		[esi+40],mm1
-
-		movq		mm2,[esi+48]
-		movq		mm3,[esi+56]
-		pand		mm2,mm7
-		pand		mm3,mm7
-		por			mm2,mm6
-		por			mm3,mm6
-		movq		[esi+48],mm2
-		movq		[esi+56],mm3
-
-		sub			ecx,16					; count-=16
-		add			esi,64					; srcp+=16
-
-		jmp			xloop1
-xlend1:
-		cmp			ecx,2
-		jl			xlend2
-
-		align		16
-xloop3:
-		movq		mm0,[esi]				; process 1 qword
-		 sub		ecx,2					; count-=2
-		pand		mm0,mm7					; keep luma
-		 add		esi,8					; srcp+=2
-		por			mm0,mm6					; set chroma = 128
-		 cmp		ecx,2					; any qwords left
-		movq		[esi-8],mm0				; update 4 pixels
-		 jge		xloop3					; more qwords ?
-
-		align		16
-xlend2:
-		cmp			ecx,1					; 1 dword left
-		jl			xlend3					; no
-
-		movd		mm0,[esi]				; process 1 dword
-		pand		mm0,mm7					; keep luma
-		por			mm0,mm6					; set chroma = 128
-		movd		[esi-4],mm0				; update 2 pixels
-		add			esi,4					; srcp++
-
-xlend3:
-		add			esi,eax
-		dec			edx
-		jnle		yloop
-		emms
-	  }
-  }
+    if ((env->GetCPUFlags() & CPUF_MMX) && width > 2) {
+      greyscale_yuy2_mmx(srcp, width, height, pitch);
+    } else
 #endif
-  else if (vi.IsYUY2()) 
-  {
-	  for (int y=0; y<myy; ++y)
     {
-	    for (int x=0; x<myx; x++)
-		  srcp[x*2+1] = 128;
-	    srcp += pitch;
-	  }
+      for (int y=0; y<height; ++y)
+      {
+        for (int x=0; x<width; x++)
+          srcp[x*2+1] = 128;
+        srcp += pitch;
+      }
+    }
   }
+
 #ifdef X86_32
   else if (vi.IsRGB32() && (env->GetCPUFlags() & CPUF_MMX))
   {
@@ -255,8 +204,8 @@ xlend3:
 		pslld		mm3,24				; 0xff000000ff000000
 
 		xor			ecx,ecx
-		mov			eax,myy
-		mov			edx,myx
+		mov			eax,height
+		mov			edx,width
 
 		align		16
 rgb2lum_mmxloop:
@@ -284,7 +233,7 @@ rgb2lum_mmxloop:
 		 psrld		mm6,8				; [00|hg|hg|hg|00|lg|lg|lg]
 		add			ecx,2				; loop counter
 		 por		mm6,mm4				; [ha|hg|hg|hg|la|lg|lg|lg]
-		cmp			ecx,edx				; loop >= myx
+		cmp			ecx,edx				; loop >= width
 		 movq		[edi+ecx*4-8],mm6	; update 2 pixels
 		jnge		rgb2lum_mmxloop
 
@@ -309,7 +258,7 @@ rgb2lum_mmxloop:
 
 rgb2lum_even:
 		add			edi,pitch
-		mov			edx,myx
+		mov			edx,width
 		xor			ecx,ecx
 		dec			eax
 		jnle		rgb2lum_mmxloop
