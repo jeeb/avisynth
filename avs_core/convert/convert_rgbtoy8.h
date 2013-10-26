@@ -50,8 +50,6 @@ public:
   RGBtoY8Generator();
   ~RGBtoY8Generator();
 protected:
-  void genRGB24toY8(int width, int height, int offset_y, signed short* matrix, IScriptEnvironment* env);
-
   DynamicAssembledCode assembly;
 };
 
