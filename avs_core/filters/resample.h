@@ -38,12 +38,14 @@
 #include <avisynth.h>
 #include "resample_functions.h"
 #include "transform.h"
+#include "../include/avs/alignment.h"
 
 #ifdef X86_32
 #include "../core/softwire_helpers.h"
 #endif
 
-
+#include <emmintrin.h>
+#include <immintrin.h>
 
 #ifdef X86_32
 class FilteredResizeH : public GenericVideoFilter, public CodeGenerator

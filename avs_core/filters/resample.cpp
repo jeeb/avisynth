@@ -37,7 +37,23 @@
 #include <avs/config.h>
 #include "../core/internal.h"
 
+typedef __m128i (SSELoader)(const __m128i*);
 
+__forceinline __m128i simd_load_aligned(const __m128i* adr) {
+  return _mm_load_si128(adr);
+}
+
+__forceinline __m128i simd_load_unaligned(const __m128i* adr) {
+  return _mm_loadu_si128(adr);
+}
+
+__forceinline __m128i simd_load_unaligned_sse3(const __m128i* adr) {
+  return _mm_lddqu_si128(adr);
+}
+
+__forceinline __m128i simd_load_streaming(const __m128i* adr) {
+  return _mm_stream_load_si128(const_cast<__m128i*>(adr));
+}
 
 /********************************************************************
 ***** Declare index of new filters for Avisynth's filter engine *****
@@ -1403,6 +1419,48 @@ FilteredResizeV::FilteredResizeV( PClip _child, double subrange_top, double subr
 #endif
 }
 
+void resize_v_c_planar_pointresize(BYTE* dst, const BYTE* src, int dst_pitch, int src_pitch, int* program, int width, int target_height) {
+  int filter_size = *program;
+  int* current = program+1;
+
+  for (int y = 0; y < target_height; y++) {
+    int begin = *current;
+    current += 2;
+
+    const BYTE* src_ptr = src + (src_pitch*begin);
+    for (int x = 0; x < width; x++) {
+      dst[x] = src_ptr[x];
+    }
+    dst += dst_pitch;
+  }
+}
+
+template<SSELoader load>
+void resize_v_sse2_planar_pointresize(BYTE* dst, const BYTE* src, int dst_pitch, int src_pitch, int* program, int width, int target_height) {
+  int filter_size = *program;
+  int* current = program+1;
+
+  int wMod16 = (width / 16) * 16;
+
+  for (int y = 0; y < target_height; y++) {
+    int begin = *current;
+    current += 2;
+
+    const BYTE* src_ptr = src + (src_pitch*begin);
+    for (int x = 0; x < wMod16; x+=16) {
+      __m128i current = load(reinterpret_cast<const __m128i*>(src_ptr+x));
+      _mm_store_si128(reinterpret_cast<__m128i*>(dst+x), current); // dst should always be aligned
+    }
+
+    // Leftover
+    for (int i = wMod16; i < width; i++) {
+      dst[i] = src_ptr[i];
+    }
+
+    dst += dst_pitch;
+  }
+}
+
 void resize_v_c_planar(BYTE* dst, const BYTE* src, int dst_pitch, int src_pitch, int* program, int width, int target_height) {
   int filter_size = *program;
   int* current = program+1;
@@ -1426,6 +1484,247 @@ void resize_v_c_planar(BYTE* dst, const BYTE* src, int dst_pitch, int src_pitch,
   }
 }
 
+template<SSELoader load>
+void resize_v_sse2_planar(BYTE* dst, const BYTE* src, int dst_pitch, int src_pitch, int* program, int width, int target_height, int* pitch_table) {
+  int filter_size = *program;
+  int* current = program+1;
+  
+  int wMod16 = (width / 16) * 16;
+  int sizeMod2 = (filter_size/2) * 2;
+
+  __m128i zero = _mm_setzero_si128();
+
+  for (int y = 0; y < target_height; y++) {
+    int begin = *current;
+    current++;
+
+    for (int x = 0; x < wMod16; x+=16) {
+      __m128i result_1 = _mm_set1_epi32(8192); // Init. with rounder (16384/2 = 8192)
+      __m128i result_2 = _mm_set1_epi32(8192);
+      __m128i result_3 = _mm_set1_epi32(8192);
+      __m128i result_4 = _mm_set1_epi32(8192);
+      
+      for (int i = 0; i < sizeMod2; i += 2) {
+        __m128i src_p1 = load(reinterpret_cast<const __m128i*>(src+pitch_table[begin+i]+x));   // p|o|n|m|l|k|j|i|h|g|f|e|d|c|b|a
+        __m128i src_p2 = load(reinterpret_cast<const __m128i*>(src+pitch_table[begin+i+1]+x)); // P|O|N|M|L|K|J|I|H|G|F|E|D|C|B|A
+         
+        __m128i src_l = _mm_unpacklo_epi8(src_p1, src_p2);                                      // Hh|Gg|Ff|Ee|Dd|Cc|Bb|Aa
+        __m128i src_h = _mm_unpackhi_epi8(src_p1, src_p2);                                      // Pp|Oo|Nn|Mm|Ll|Kk|Jj|Ii
+
+        __m128i src_1 = _mm_unpacklo_epi8(src_l, zero);                                       // .D|.d|.C|.c|.B|.b|.A|.a
+        __m128i src_2 = _mm_unpackhi_epi8(src_l, zero);                                       // .H|.h|.G|.g|.F|.f|.E|.e
+        __m128i src_3 = _mm_unpacklo_epi8(src_h, zero);                                       // etc.
+        __m128i src_4 = _mm_unpackhi_epi8(src_h, zero);                                       // etc.
+
+        //__m128i coeff_l = _mm_set1_epi16(static_cast<short>(current[i]));
+        //__m128i coeff_h = _mm_set1_epi16(static_cast<short>(current[i+1]));
+        //__m128i coeff   = _mm_unpackhi_epi16(coeff_l, coeff_h);                               // CO|co|CO|co|CO|co|CO|co
+        __m128i coeff = _mm_loadl_epi64 (reinterpret_cast<const __m128i*>(current+i));
+        coeff = _mm_packs_epi32(coeff, coeff);
+        coeff = _mm_shuffle_epi32(coeff, 0);
+        
+        __m128i dst_1 = _mm_madd_epi16(src_1, coeff);                                         // CO*D+co*d | CO*C+co*c | CO*B+co*b | CO*A+co*a
+        __m128i dst_2 = _mm_madd_epi16(src_2, coeff);                                         // etc.
+        __m128i dst_3 = _mm_madd_epi16(src_3, coeff);
+        __m128i dst_4 = _mm_madd_epi16(src_4, coeff);
+
+        result_1 = _mm_add_epi32(result_1, dst_1);
+        result_2 = _mm_add_epi32(result_2, dst_2);
+        result_3 = _mm_add_epi32(result_3, dst_3);
+        result_4 = _mm_add_epi32(result_4, dst_4);
+      }
+      
+      if (sizeMod2 < filter_size) { // do last odd row
+        __m128i src_p = load(reinterpret_cast<const __m128i*>(src+pitch_table[begin+sizeMod2]+x));
+
+        __m128i src_l = _mm_unpacklo_epi8(src_p, zero);
+        __m128i src_h = _mm_unpackhi_epi8(src_p, zero);
+
+        __m128i coeff = _mm_set1_epi16(static_cast<short>(current[sizeMod2]));
+
+        __m128i dst_ll = _mm_mullo_epi16(src_l, coeff);   // Multiply by coefficient
+        __m128i dst_lh = _mm_mulhi_epi16(src_l, coeff);
+        __m128i dst_hl = _mm_mullo_epi16(src_h, coeff);
+        __m128i dst_hh = _mm_mulhi_epi16(src_h, coeff);
+
+        __m128i dst_1 = _mm_unpacklo_epi16(dst_ll, dst_lh); // Unpack to 32-bit integer
+        __m128i dst_2 = _mm_unpackhi_epi16(dst_ll, dst_lh);
+        __m128i dst_3 = _mm_unpacklo_epi16(dst_hl, dst_hh);
+        __m128i dst_4 = _mm_unpackhi_epi16(dst_hl, dst_hh);
+
+        result_1 = _mm_add_epi32(result_1, dst_1);
+        result_2 = _mm_add_epi32(result_2, dst_2);
+        result_3 = _mm_add_epi32(result_3, dst_3);
+        result_4 = _mm_add_epi32(result_4, dst_4);
+      }
+      
+      // Divide by 16348 (FPRound)
+      result_1  = _mm_srai_epi32(result_1, 14);
+      result_2  = _mm_srai_epi32(result_2, 14);
+      result_3  = _mm_srai_epi32(result_3, 14);
+      result_4  = _mm_srai_epi32(result_4, 14);
+
+      // Pack and store
+      __m128i result_l = _mm_packs_epi32(result_1, result_2);
+      __m128i result_h = _mm_packs_epi32(result_3, result_4);
+      __m128i result   = _mm_packus_epi16(result_l, result_h);
+
+      _mm_store_si128(reinterpret_cast<__m128i*>(dst+x), result);
+    }
+
+    // Leftover
+    for (int x = wMod16; x < width; x++) {
+      int result = 0;
+      for (int i = 0; i < filter_size; i++) {
+        result += (src+((begin+i)*src_pitch))[x] * current[i];
+      }
+      result = ((result+8192)/16384);
+      result = result > 255 ? 255 : result < 0 ? 0 : result;
+      dst[x] = (BYTE)result;
+    }
+
+    dst += dst_pitch;
+    current += filter_size;
+  }
+}
+
+template<SSELoader load>
+void resize_v_ssse3_planar(BYTE* dst, const BYTE* src, int dst_pitch, int src_pitch, int* program, int width, int target_height, int* pitch_table) {
+  int filter_size = *program;
+  int* current = program+1;
+  
+  int wMod16 = (width / 16) * 16;
+
+  __m128i zero = _mm_setzero_si128();
+
+  for (int y = 0; y < target_height; y++) {
+    int begin = *current;
+    current++;
+
+    for (int x = 0; x < wMod16; x+=16) {
+      __m128i result_l = _mm_set1_epi16(32); // Init. with rounder ((1 << 6)/2 = 32)
+      __m128i result_h = _mm_set1_epi16(32);
+
+      for (int i = 0; i < filter_size; i++) {
+        __m128i src_p = load(reinterpret_cast<const __m128i*>(src+pitch_table[begin+i]+x));
+
+        __m128i src_l = _mm_unpacklo_epi8(src_p, zero);
+        __m128i src_h = _mm_unpackhi_epi8(src_p, zero);
+
+        __m128i coeff = _mm_set1_epi16(static_cast<short>(current[i]));
+
+        src_l = _mm_slli_epi16(src_l, 7);
+        src_h = _mm_slli_epi16(src_h, 7);
+
+        __m128i dst_l = _mm_mulhrs_epi16(src_l, coeff);   // Multiply by coefficient (SSSE3)
+        __m128i dst_h = _mm_mulhrs_epi16(src_h, coeff);
+
+        result_l = _mm_add_epi16(result_l, dst_l);
+        result_h = _mm_add_epi16(result_h, dst_h);
+      }
+
+      // Divide by 64
+      result_l  = _mm_srai_epi16(result_l, 6);
+      result_h  = _mm_srai_epi16(result_h, 6);
+
+      // Pack and store
+      __m128i result   = _mm_packus_epi16(result_l, result_h);
+
+      _mm_store_si128(reinterpret_cast<__m128i*>(dst+x), result);
+    }
+
+    // Leftover
+    for (int x = wMod16; x < width; x++) {
+      int result = 0;
+      for (int i = 0; i < filter_size; i++) {
+        result += (src+((begin+i)*src_pitch))[x] * current[i];
+      }
+      result = ((result+8192)/16384);
+      result = result > 255 ? 255 : result < 0 ? 0 : result;
+      dst[x] = (BYTE)result;
+    }
+
+    dst += dst_pitch;
+    current += filter_size;
+  }
+}
+
+__forceinline int* resize_v_create_pitch_table(int pitch, int height) {
+  int* table = (int*) malloc(height*sizeof(int));
+  table[0] = 0;
+  for (int i = 1; i < height; i++) {
+    table[i] = table[i-1]+pitch;
+  }
+  return table;
+}
+
+void __forceinline resize_v_dispatch(int CPU, int source_height, BYTE* dstp, const BYTE* srcp, int dst_pitch, int src_pitch, int* resampling_pattern, int width, int height) {
+  // Dynamic dispatcher
+  if (*resampling_pattern == 1) {
+    // Fast pointresize
+    if (IsPtrAligned(srcp, 16) && IsPtrAligned(src_pitch, 16)) {
+      // Aligned
+      if (CPU & CPUF_SSE4_1) {
+        // SSE4.1 movntdqa
+        resize_v_sse2_planar_pointresize<simd_load_streaming>(dstp, srcp, dst_pitch, src_pitch, resampling_pattern, width, height);
+      } else if (CPU & CPUF_SSE2) {
+        // SSE2 aligned
+        resize_v_sse2_planar_pointresize<simd_load_aligned>(dstp, srcp, dst_pitch, src_pitch, resampling_pattern, width, height);
+      } else {
+        // C version
+        resize_v_c_planar_pointresize(dstp, srcp, dst_pitch, src_pitch, resampling_pattern, width, height);
+      }
+    } else {
+      // Not aligned
+      if (CPU & CPUF_SSE3) {
+        // SSE2 lddqu
+        resize_v_sse2_planar_pointresize<simd_load_unaligned_sse3>(dstp, srcp, dst_pitch, src_pitch, resampling_pattern, width, height);
+      } else if (CPU & CPUF_SSE2) {
+        // SSE2 unaligned
+        resize_v_sse2_planar_pointresize<simd_load_unaligned>(dstp, srcp, dst_pitch, src_pitch, resampling_pattern, width, height);
+      } else {
+        // C version
+        resize_v_c_planar_pointresize(dstp, srcp, dst_pitch, src_pitch, resampling_pattern, width, height);
+      }
+    }
+  } else {
+    // Other resizers
+    if (CPU & CPUF_SSSE3) {
+      int* pitch_table = resize_v_create_pitch_table(src_pitch, source_height);
+
+      if (IsPtrAligned(srcp, 16) && IsPtrAligned(src_pitch, 16)) {
+        // SSSE3 aligned
+        resize_v_ssse3_planar<simd_load_aligned>(dstp, srcp, dst_pitch, src_pitch, resampling_pattern, width, height, pitch_table);
+      } else if (CPU & CPUF_SSE3) {
+        // SSE3 lddqu
+        resize_v_ssse3_planar<simd_load_unaligned_sse3>(dstp, srcp, dst_pitch, src_pitch, resampling_pattern, width, height, pitch_table);
+      } else {
+        // SSSE3 unaligned
+        resize_v_ssse3_planar<simd_load_unaligned_sse3>(dstp, srcp, dst_pitch, src_pitch, resampling_pattern, width, height, pitch_table);
+      }
+      
+      free(pitch_table);
+    } else if (CPU & CPUF_SSE2) {
+      int* pitch_table = resize_v_create_pitch_table(src_pitch, source_height);
+      
+      if (IsPtrAligned(srcp, 16) && IsPtrAligned(src_pitch, 16)) {
+        // SSE2 aligned
+        resize_v_sse2_planar<simd_load_aligned>(dstp, srcp, dst_pitch, src_pitch, resampling_pattern, width, height, pitch_table);
+      } else if (CPU & CPUF_SSE3) {
+        // SSE2 lddqu
+        resize_v_sse2_planar<simd_load_unaligned_sse3>(dstp, srcp, dst_pitch, src_pitch, resampling_pattern, width, height, pitch_table);
+      } else {
+        // SSE2 unaligned
+        resize_v_sse2_planar<simd_load_unaligned_sse3>(dstp, srcp, dst_pitch, src_pitch, resampling_pattern, width, height, pitch_table);
+      }
+
+      free(pitch_table);
+    } else {
+      // C version
+      resize_v_c_planar(dstp, srcp, dst_pitch, src_pitch, resampling_pattern, width, height);
+    }
+  }
+}
 
 /*******************************
  * Note on multithreading (Klaus Post, 2007):
@@ -1445,30 +1744,27 @@ PVideoFrame __stdcall FilteredResizeV::GetFrame(int n, IScriptEnvironment* env)
   srcp = src->GetReadPtr();
   dstp = dst->GetWritePtr();
 
-  if (vi.IsPlanar()) {
-    // Plane Y resizing
-    resize_v_c_planar(dstp, srcp, dst_pitch, src_pitch, resampling_pattern, vi.BytesFromPixels(vi.width), vi.height);
-    if (!vi.IsY8()) {
-      int width = vi.width >> vi.GetPlaneWidthSubsampling(PLANAR_U);
-      int height = vi.height >> vi.GetPlaneHeightSubsampling(PLANAR_U);
+  resize_v_dispatch(env->GetCPUFlags(), src->GetHeight(), dstp, srcp, dst_pitch, src_pitch, resampling_pattern, vi.BytesFromPixels(vi.width), vi.height);
+    
+  if (!vi.IsY8() && vi.IsPlanar()) {
+    int width = vi.width >> vi.GetPlaneWidthSubsampling(PLANAR_U);
+    int height = vi.height >> vi.GetPlaneHeightSubsampling(PLANAR_U);
 
-      // Plane U resizing
-      src_pitch = src->GetPitch(PLANAR_U);
-      dst_pitch = dst->GetPitch(PLANAR_U);
-      srcp = src->GetReadPtr(PLANAR_U);
-      dstp = dst->GetWritePtr(PLANAR_U);
-      resize_v_c_planar(dstp, srcp, dst_pitch, src_pitch, resampling_patternUV, width, height);
+    // Plane U resizing
+    src_pitch = src->GetPitch(PLANAR_U);
+    dst_pitch = dst->GetPitch(PLANAR_U);
+    srcp = src->GetReadPtr(PLANAR_U);
+    dstp = dst->GetWritePtr(PLANAR_U);
+      
+    resize_v_dispatch(env->GetCPUFlags(), src->GetHeight(PLANAR_U), dstp, srcp, dst_pitch, src_pitch, resampling_patternUV, width, height);
 
-      // Plane V resizing
-      src_pitch = src->GetPitch(PLANAR_V);
-      dst_pitch = dst->GetPitch(PLANAR_V);
-      srcp = src->GetReadPtr(PLANAR_V);
-      dstp = dst->GetWritePtr(PLANAR_V);
-      resize_v_c_planar(dstp, srcp, dst_pitch, src_pitch, resampling_patternUV, width, height);
-    }
-  } else {
-    // Resize V is identical whether it's plannar or not.
-    resize_v_c_planar(dstp, srcp, dst_pitch, src_pitch, resampling_pattern, vi.BytesFromPixels(vi.width), vi.height);
+    // Plane V resizing
+    src_pitch = src->GetPitch(PLANAR_V);
+    dst_pitch = dst->GetPitch(PLANAR_V);
+    srcp = src->GetReadPtr(PLANAR_V);
+    dstp = dst->GetWritePtr(PLANAR_V);
+
+    resize_v_dispatch(env->GetCPUFlags(), src->GetHeight(PLANAR_V), dstp, srcp, dst_pitch, src_pitch, resampling_patternUV, width, height);
   }
 
 #endif
