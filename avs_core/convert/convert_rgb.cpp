@@ -48,147 +48,122 @@ RGB24to32::RGB24to32(PClip src)
   vi.pixel_type = VideoInfo::CS_BGR32;
 }
 
+//todo: think how to port to sse2 without tons of shuffles or (un)packs
+static void convert_rgb24_to_rgb32_ssse3(const BYTE *srcp, BYTE *dstp, size_t src_pitch, size_t dst_pitch, size_t width, size_t height) {
+  size_t mod8_width = (width / 8) * 8;
+  __m128i pixels0123_mask = _mm_set_epi8(11, 11, 10, 9, 8, 8, 7, 6, 5, 5, 4, 3, 2, 2, 1, 0);
+  __m128i pixels4567_mask = _mm_set_epi8(7, 7, 6, 5, 4, 4, 3, 2, 1, 1, 0, 15, 14, 14, 13, 12);
+  __m128i alpha = _mm_set1_epi32(0xFF000000);
+
+  for (size_t y = 0; y < height; ++y) {
+    for (size_t x = 0; x < width; x+= 8) {
+      __m128i src012345 = _mm_loadu_si128(reinterpret_cast<const __m128i*>(srcp+x*3)); //r5b4 g4r4 b3g3 r3b2 g2r2 b1g1 r1b0 g0r0
+      __m128i src567 = _mm_loadl_epi64(reinterpret_cast<const __m128i*>(srcp+x*3+16)); //0000 0000 0000 0000 b7g7 r7b6 g6r6 b5g5
+
+      //pshufb being the most useful instruction for rgb24<->32 conversions
+      __m128i dst0123 = _mm_shuffle_epi8(src012345, pixels0123_mask); //xxb3 g3r3 xxb2 g2r2 xxb1 g1r1 xxb0 g0r0
+      __m128i tmp4567 = _mm_castps_si128(_mm_shuffle_ps(
+        _mm_castsi128_ps(src567),
+        _mm_castsi128_ps(src012345),
+        _MM_SHUFFLE(3, 2, 1, 0)
+        )); //r5b4 g4r4 b3g3 r3b2 b7g7 r7b6 g6r6 b5g5
+
+      __m128i dst4567 = _mm_shuffle_epi8(tmp4567, pixels4567_mask); //xxb7 g7r7 xxb6 g6r6 xxb5 g5r5 xxb4 g4r4
+
+      dst0123 = _mm_or_si128(dst0123, alpha);
+      dst4567 = _mm_or_si128(dst4567, alpha);
+
+      _mm_store_si128(reinterpret_cast<__m128i*>(dstp+x*4), dst0123); //a3b3 g3r3 a2b2 g2r2 a1b1 g1r1 a0b0 g0r0
+      _mm_store_si128(reinterpret_cast<__m128i*>(dstp+x*4+16), dst4567); //a7b7 g7r7 a6b6 g6r6 a5b5 g5r5 a4b4 g4r4
+    }
+
+    for (size_t x = mod8_width; x < width; ++x) {
+      dstp[x*4+0] = srcp[x*3+0];
+      dstp[x*4+1] = srcp[x*3+1];
+      dstp[x*4+2] = srcp[x*3+2];
+      dstp[x*4+3] = 255;
+    }
+
+    srcp += src_pitch;
+    dstp += dst_pitch;
+  }
+}
+
+#ifdef X86_32
+
+static void convert_rgb24_to_rgb32_mmx(const BYTE *srcp, BYTE *dstp, size_t src_pitch, size_t dst_pitch, size_t width, size_t height) {
+  size_t mod4_width = (width / 4) * 4;
+  __m64 alpha = _mm_set1_pi32(0xFF000000);
+
+  for (size_t y = 0; y < height; ++y) {
+    for (size_t x = 0; x < width; x+= 4) {
+      __m64 src0 = _mm_cvtsi32_si64(*reinterpret_cast<const int*>(srcp+x*3+0)); //0000 0000 r1g0 b0r0
+      __m64 src1 = _mm_cvtsi32_si64(*reinterpret_cast<const int*>(srcp+x*3+3)); //0000 0000 r2g1 b1r1
+      __m64 src2 = _mm_cvtsi32_si64(*reinterpret_cast<const int*>(srcp+x*3+6)); //0000 0000 r3g2 b2r2
+      __m64 src3 = _mm_cvtsi32_si64(*reinterpret_cast<const int*>(srcp+x*3+9)); //0000 0000 r4g3 b3r3
+
+      __m64 dst01 = _mm_or_si64(src0, _mm_slli_si64(src1, 32)); //r2g1 b1r1 r1g0 b0r0
+      __m64 dst23 = _mm_or_si64(src2, _mm_slli_si64(src3, 32)); //r4g3 b3r3 r3g2 b2r2
+
+      dst01 = _mm_or_si64(dst01, alpha);
+      dst23 = _mm_or_si64(dst23, alpha);
+
+      *reinterpret_cast<__m64*>(dstp+x*4) = dst01;
+      *reinterpret_cast<__m64*>(dstp+x*4+8) = dst23;
+    }
+
+    for (size_t x = mod4_width; x < width; ++x) {
+      dstp[x*4+0] = srcp[x*3+0];
+      dstp[x*4+1] = srcp[x*3+1];
+      dstp[x*4+2] = srcp[x*3+2];
+      dstp[x*4+3] = 255;
+    }
+
+    srcp += src_pitch;
+    dstp += dst_pitch;
+  }
+
+  _mm_empty();
+}
+
+#endif // X86_32
+
+static void convert_rgb24_to_rgb32_c(const BYTE *srcp, BYTE *dstp, size_t src_pitch, size_t dst_pitch, size_t width, size_t height) {
+  for (size_t y = height; y > 0; --y) {
+    for (size_t x = 0; x < width; ++x) {
+      dstp[x*4+0] = srcp[x*3+0];
+      dstp[x*4+1] = srcp[x*3+1];
+      dstp[x*4+2] = srcp[x*3+2];
+      dstp[x*4+3] = 255;
+    }
+    srcp += src_pitch;
+    dstp += dst_pitch;
+  }
+}
+
 
 PVideoFrame __stdcall RGB24to32::GetFrame(int n, IScriptEnvironment* env)
 {
   PVideoFrame src = child->GetFrame(n, env);
   PVideoFrame dst = env->NewVideoFrame(vi);
-  const BYTE *p = src->GetReadPtr();
-  BYTE *q = dst->GetWritePtr();
+  const BYTE *srcp = src->GetReadPtr();
+  BYTE *dstp = dst->GetWritePtr();
   const int src_pitch = src->GetPitch();
   const int dst_pitch = dst->GetPitch();
 
+  if ((env->GetCPUFlags() & CPUF_SSSE3) && IsPtrAligned(srcp, 16)) {
+    convert_rgb24_to_rgb32_ssse3(srcp, dstp, src_pitch, dst_pitch, vi.width, vi.height);
+  } else
 #ifdef X86_32
-  if (env->GetCPUFlags() & CPUF_MMX) 
-  {
-	  int h=vi.height;
-	  int x_loops=vi.width; // 4 dwords/loop   read 12 bytes, write 16 bytes
-	  const int x_left=vi.width%4;
-	  x_loops-=x_left;
-	  x_loops*=4;
-	  __declspec(align(8)) static const __int64 oxffooooooffoooooo=0xff000000ff000000;
-
-	  __asm {
-	  push		ebx					; daft compiler assumes this is preserved!!!
-      mov			esi,p
-      mov			edi,q
-      mov			eax,255				; Alpha channel for unaligned stosb
-      mov			edx,[x_left]		; Count of unaligned pixels
-      movq		mm7,[oxffooooooffoooooo]
-      align 16
-  yloop:
-      mov			ebx,0				; src offset
-      mov			ecx,0				; dst offset
-  xloop:
-      movq		mm0,[ebx+esi]		; 0000 0000 b1r0 g0b0	get b1 & a0
-       movd		mm1,[ebx+esi+4]		; 0000 0000 g2b2 r1g1	get b2 & t1
-	  movq		mm2,mm0				; 0000 0000 b1r0 g0b0	copy b1
-	   punpcklwd	mm1,mm1				; g2b2 g2b2 r1g1 r1g1	b2 in top, t1 in bottom
-	  psrld		mm2,24				; 0000 0000 0000 00b1	b1 in right spot
-	   pslld		mm1,8				; b2g2 b200 g1r1 g100	t1 in right spot
-      movd		mm3,[ebx+esi+8]		; 0000 0000 r3g3 b3r2	get a3 & t2
-	   por		mm2,mm1				; b2g2 b200 g1r1 g1b1	build a1 in low mm2
-	  pslld		mm1,8				; g2b2 0000 r1g1 b100	clean up b2
-	   psllq		mm3,24				; 00r3 g3b3 r200 0000	a3 in right spot
-	  psrlq		mm1,40				; 0000 0000 00g2 b200	b2 in right spot
-	   punpckldq	mm0,mm2				; g1r1 g1b1 b1r0 g0b0	build a1, a0 in mm0
-	  por			mm1,mm3				; 00r3 g3b3 r2g2 b200	build a2
-	   por		mm0,mm7				; a1r1 g1b1 a0r0 g0b0	add alpha to a1, a0
-	  psllq		mm1,24				; b3r2 g2b2 0000 0000	a2 in right spot
-       movq		[ecx+edi],mm0		; a1r1 g1b1 a0r0 g0b0	store a1, a0
-	  punpckhdq	mm1,mm3				; 00r3 g3b3 b3r2 g2b2	build a3, a2 in mm1
-       add		ecx,16				; bump dst index
-	  por			mm1,mm7				; a3r3 g3b3 a2r2 g2b2	add alpha to a3, a2
-       add		ebx,12				; bump src index
-      movq		[ecx+edi-8],mm1		; a3r3 g3b3 a2r2 g2b2	store a3, a2
-
-      cmp			ecx,[x_loops]
-      jl			xloop
-
-      cmp			edx,0				; Check unaligned move count
-      je			no_copy				; None, do next row
-      cmp			edx,2
-      je			copy_2				; Convert 2 pixels
-      cmp			edx,1
-      je			copy_1				; Convert 1 pixel
-  //copy 3
-      add			esi,ebx				; else Convert 3 pixels
-      add			edi,ecx
-      movsb 							; b
-      movsb							; g
-      movsb							; r
-      stosb							; a
-
-      movsb 							; b
-      movsb							; g
-      movsb							; r
-      stosb							; a
-
-      movsb 							; b
-      movsb							; g
-      movsb							; r
-      stosb							; a
-      sub			esi,ebx
-      sub			edi,ecx
-      sub			esi,9
-      sub			edi,12
-      jmp			no_copy
-      align 16
-  copy_2:
-      add			esi,ebx
-      add			edi,ecx
-      movsb 							; b
-      movsb							; g
-      movsb							; r
-      stosb							; a
-
-      movsb 							; b
-      movsb							; g
-      movsb							; r
-      stosb							; a
-      sub			esi,ebx
-      sub			edi,ecx
-      sub			esi,6
-      sub			edi,8
-      jmp			no_copy
-      align 16
-  copy_1:
-      add			esi,ebx
-      add			edi,ecx
-      movsb 							; b
-      movsb							; g
-      movsb							; r
-      stosb							; a
-      sub			esi,ebx
-      sub			edi,ecx
-      sub			esi,3
-      sub			edi,4
-      align 16
-  no_copy:
-      add			esi,[src_pitch]
-      add			edi,[dst_pitch]
-
-      dec			[h]
-      jnz			yloop
-      emms
-	  pop			ebx
-	  }
-  }
-  else
-#else
-  {
-	  for (int y = vi.height; y > 0; --y) {
-	    for (int x = 0; x < vi.width; ++x) {
-		  q[x*4+0] = p[x*3+0];
-		  q[x*4+1] = p[x*3+1];
-		  q[x*4+2] = p[x*3+2];
-		  q[x*4+3] = 255;
-	    }
-	    p += src_pitch;
-	    q += dst_pitch;
-	  }
-  }
+    if (env->GetCPUFlags() & CPUF_MMX)
+    {
+      convert_rgb24_to_rgb32_mmx(srcp, dstp, src_pitch, dst_pitch, vi.width, vi.height);
+    }
+    else 
 #endif
+    {
+      convert_rgb24_to_rgb32_c(srcp, dstp, src_pitch, dst_pitch, vi.width, vi.height);
+    }
   return dst;
 }
 
