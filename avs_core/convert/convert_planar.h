@@ -120,10 +120,6 @@ public:
   ConvertYUY2ToYV16(PClip src, IScriptEnvironment* env);
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
   static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env);
-private:
-  void convYUV422to422(const unsigned char *src, unsigned char *py, unsigned char *pu, unsigned char *pv,
-       int pitch1, int pitch2y, int pitch2uv, int width, int height);
-
 };
 
 #ifdef X86_32

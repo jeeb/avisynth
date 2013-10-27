@@ -1027,6 +1027,119 @@ ConvertYUY2ToYV16::ConvertYUY2ToYV16(PClip src, IScriptEnvironment* env) : Gener
 
 }
 
+void convert_yuy2_to_yv16_sse2(const BYTE *srcp, BYTE *dstp_y, BYTE *dstp_u, BYTE *dstp_v, size_t src_pitch, size_t dst_pitch_y, size_t dst_pitch_u, size_t dst_pitch_v, size_t width, size_t height)
+{
+  __m128i low_byte_mask = _mm_set1_epi16(0x00FF);
+  size_t half_width = width / 2;
+  size_t mod8 = half_width / 8 * 8;
+
+  for (size_t y=0; y<height; y++) { 
+    for (size_t x=0; x<mod8; x+=8) {
+      __m128i p0 = _mm_load_si128(reinterpret_cast<const __m128i*>(srcp + x*4));
+      __m128i p1 = _mm_load_si128(reinterpret_cast<const __m128i*>(srcp + x*4 + 16));
+
+      __m128i p0_luma = _mm_and_si128(p0, low_byte_mask);
+      __m128i p1_luma = _mm_and_si128(p1, low_byte_mask); 
+      __m128i luma = _mm_packus_epi16(p0_luma, p1_luma);
+      _mm_store_si128(reinterpret_cast<__m128i*>(dstp_y + x*2), luma);
+
+      __m128i p0_chroma = _mm_and_si128(_mm_srli_epi16(p0, 8), low_byte_mask); //00 V3 00 U3 00 V2 00 U2 00 V1 00 U1 00 V0 00 U0
+      __m128i p1_chroma = _mm_and_si128(_mm_srli_epi16(p1, 8), low_byte_mask); //00 V7 00 U7 00 V6 00 U6 00 V5 00 U5 00 V4 00 U4
+
+      __m128i tmp_chroma = _mm_packus_epi16(p0_chroma, p1_chroma); //V U V U V U V U V U
+
+      __m128i chroma_u16 = _mm_and_si128(tmp_chroma, low_byte_mask);
+      __m128i chroma_v16 = _mm_srli_epi16(tmp_chroma, 8);
+
+      __m128i chroma_u = _mm_packus_epi16(chroma_u16, chroma_u16);
+      __m128i chroma_v = _mm_packus_epi16(chroma_v16, chroma_v16);
+
+      _mm_storel_epi64(reinterpret_cast<__m128i*>(dstp_u + x), chroma_u);
+      _mm_storel_epi64(reinterpret_cast<__m128i*>(dstp_v + x), chroma_v);
+    }
+
+    for (size_t x=mod8; x<half_width; x++) {
+      dstp_y[x*2]   = srcp[x*4+0];
+      dstp_y[x*2+1] = srcp[x*4+2];
+      dstp_u[x]     = srcp[x*4+1];
+      dstp_v[x]     = srcp[x*4+3];
+    }
+
+    srcp += src_pitch;
+    dstp_y += dst_pitch_y;
+    dstp_u += dst_pitch_u;
+    dstp_v += dst_pitch_v;
+  }
+}
+
+
+#ifdef X86_32
+
+void convert_yuy2_to_yv16_mmx(const BYTE *srcp, BYTE *dstp_y, BYTE *dstp_u, BYTE *dstp_v, size_t src_pitch, size_t dst_pitch_y, size_t dst_pitch_u, size_t dst_pitch_v, size_t width, size_t height)
+{
+  __m64 low_byte_mask = _mm_set1_pi16(0x00FF);
+  size_t half_width = width / 2;
+  size_t mod4 = half_width / 4 * 4;
+
+  for (size_t y=0; y<height; y++) { 
+    for (size_t x=0; x<mod4; x+=4) {
+      __m64 p0 = *reinterpret_cast<const __m64*>(srcp + x*4);
+      __m64 p1 = *reinterpret_cast<const __m64*>(srcp + x*4 + 8);
+
+      __m64 p0_luma = _mm_and_si64(p0, low_byte_mask);
+      __m64 p0_chroma = _mm_and_si64(_mm_srli_pi16(p0, 8), low_byte_mask); //0 V 0 U 0 V 0 U
+      __m64 p1_luma = _mm_and_si64(p1, low_byte_mask); 
+      __m64 p1_chroma = _mm_and_si64(_mm_srli_pi16(p1, 8), low_byte_mask);
+
+      __m64 luma = _mm_packs_pu16(p0_luma, p1_luma);
+      *reinterpret_cast<__m64*>(dstp_y + x*2) = luma;
+
+      __m64 tmp_chroma = _mm_packs_pu16(p0_chroma, p1_chroma); //V U V U V U V U V U
+
+      __m64 chroma_u16 = _mm_and_si64(tmp_chroma, low_byte_mask);
+      __m64 chroma_v16 = _mm_srli_pi16(tmp_chroma, 8);
+
+      __m64 chroma_u = _mm_packs_pu16(chroma_u16, chroma_u16);
+      __m64 chroma_v = _mm_packs_pu16(chroma_v16, chroma_v16);
+
+      
+      *reinterpret_cast<int*>(dstp_u + x) = _mm_cvtsi64_si32(chroma_u);
+      *reinterpret_cast<int*>(dstp_v + x) = _mm_cvtsi64_si32(chroma_v);
+    }
+
+    for (size_t x=mod4; x<half_width; x++) {
+      dstp_y[x*2]   = srcp[x*4+0];
+      dstp_y[x*2+1] = srcp[x*4+2];
+      dstp_u[x]     = srcp[x*4+1];
+      dstp_v[x]     = srcp[x*4+3];
+    }
+
+    srcp += src_pitch;
+    dstp_y += dst_pitch_y;
+    dstp_u += dst_pitch_u;
+    dstp_v += dst_pitch_v;
+  }
+  _mm_empty();
+}
+
+#endif
+
+void convert_yuy2_to_yv16_c(const BYTE *srcp, BYTE *dstp_y, BYTE *dstp_u, BYTE *dstp_v, size_t src_pitch, size_t dst_pitch_y, size_t dst_pitch_u, size_t dst_pitch_v, size_t width, size_t height)
+{
+  for (size_t y=0; y<height; y++) { 
+    for (size_t x=0; x<width/2; x++) {
+      dstp_y[x*2]   = srcp[x*4+0];
+      dstp_y[x*2+1] = srcp[x*4+2];
+      dstp_u[x]     = srcp[x*4+1];
+      dstp_v[x]     = srcp[x*4+3];
+    }
+    srcp += src_pitch;
+    dstp_y += dst_pitch_y;
+    dstp_u += dst_pitch_u;
+    dstp_v += dst_pitch_v;
+  }
+}
+
 PVideoFrame __stdcall ConvertYUY2ToYV16::GetFrame(int n, IScriptEnvironment* env) {
   PVideoFrame src = child->GetFrame(n, env);
   PVideoFrame dst = env->NewVideoFrame(vi);
@@ -1038,84 +1151,22 @@ PVideoFrame __stdcall ConvertYUY2ToYV16::GetFrame(int n, IScriptEnvironment* env
   BYTE* dstU = dst->GetWritePtr(PLANAR_U);
   BYTE* dstV = dst->GetWritePtr(PLANAR_V);
 
+  if ((env->GetCPUFlags() & CPUF_SSE2) && IsPtrAligned(srcP, 16)) {
+    convert_yuy2_to_yv16_sse2(srcP, dstY, dstU, dstV, src->GetPitch(), dst->GetPitch(PLANAR_Y), dst->GetPitch(PLANAR_U), dst->GetPitch(PLANAR_V),  vi.width, vi.height);
+  } else
 #ifdef X86_32
-  if (!(awidth&7)) {  // Use MMX
-    this->convYUV422to422(srcP, dstY, dstU, dstV, src->GetPitch(), dst->GetPitch(PLANAR_Y),
-                          dst->GetPitch(PLANAR_U),  awidth, vi.height);
-    return dst;
-  }
+  if (env->GetCPUFlags() & CPUF_MMX) { 
+    convert_yuy2_to_yv16_mmx(srcP, dstY, dstU, dstV, src->GetPitch(), dst->GetPitch(PLANAR_Y), dst->GetPitch(PLANAR_U), dst->GetPitch(PLANAR_V),  vi.width, vi.height);
+  } else
 #endif
-
-  const int w = vi.width/2;
-
-  for (int y=0; y<vi.height; y++) { // ASM will probably not be faster here.
-    for (int x=0; x<w; x++) {
-      dstY[x*2]   = srcP[x*4+0];
-      dstY[x*2+1] = srcP[x*4+2];
-      dstU[x]     = srcP[x*4+1];
-      dstV[x]     = srcP[x*4+3];
-    }
-    srcP += src->GetPitch();
-    dstY += dst->GetPitch(PLANAR_Y);
-    dstU += dst->GetPitch(PLANAR_U);
-    dstV += dst->GetPitch(PLANAR_V);
+  {
+    convert_yuy2_to_yv16_c(srcP, dstY, dstU, dstV, src->GetPitch(), dst->GetPitch(PLANAR_Y), dst->GetPitch(PLANAR_U), dst->GetPitch(PLANAR_V),  vi.width, vi.height);
   }
+  
   return dst;
 }
 
-#ifdef X86_32
-void ConvertYUY2ToYV16::convYUV422to422(const unsigned char *src,
-                                        unsigned char *py, unsigned char *pu, unsigned char *pv,
-                                        int pitch1, int pitch2y, int pitch2uv, int width, int height)
-{
-	__asm
-	{
-        push ebx
-		mov edi,[src]
-		mov ebx,[py]
-		mov edx,[pu]
-		mov esi,[pv]
-		pcmpeqw mm5,mm5
-		mov ecx,width
-		psrlw mm5,8            ; 0x00FF00FF00FF00FFi64
-        shr ecx,1
-		align 16
-	yloop:
-		xor eax,eax
-		align 16
-	xloop:
-		movq mm0,[edi+eax*4]   ; VYUYVYUY - 1
-		movq mm1,[edi+eax*4+8] ; VYUYVYUY - 2
-		movq mm2,mm0           ; VYUYVYUY - 1
-		movq mm3,mm1           ; VYUYVYUY - 2
-		pand mm0,mm5           ; 0Y0Y0Y0Y - 1
-		psrlw mm2,8 	       ; 0V0U0V0U - 1
-		pand mm1,mm5           ; 0Y0Y0Y0Y - 2
-		psrlw mm3,8            ; 0V0U0V0U - 2
-		packuswb mm0,mm1       ; YYYYYYYY
-		packuswb mm2,mm3       ; VUVUVUVU
-		movq [ebx+eax*2],mm0   ; store y
-		movq mm4,mm2           ; VUVUVUVU
-		pand mm2,mm5           ; 0U0U0U0U
-		psrlw mm4,8            ; 0V0V0V0V
-		add eax,4
-		packuswb mm2,mm2       ; xxxxUUUU
-		cmp eax,ecx
-		packuswb mm4,mm4       ; xxxxVVVV
-		movd [edx+eax-4],mm2   ; store u
-		movd [esi+eax-4],mm4   ; store v
-		jl xloop
-		add edi,pitch1
-		add ebx,pitch2y
-		add edx,pitch2uv
-		add esi,pitch2uv
-		dec height
-		jnz yloop
-		emms
-        pop ebx
-	}
-}
-#endif
+
 
 
 AVSValue __cdecl ConvertYUY2ToYV16::Create(AVSValue args, void*, IScriptEnvironment* env) {
