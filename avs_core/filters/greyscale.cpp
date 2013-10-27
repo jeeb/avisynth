@@ -218,27 +218,8 @@ PVideoFrame Greyscale::GetFrame(int n, IScriptEnvironment* env)
   int width = vi.width;
 
   if (vi.IsPlanar()) {
-    pitch = frame->GetPitch(PLANAR_U)/4;
-    int *srcpUV = (int*)frame->GetWritePtr(PLANAR_U);
-    width = frame->GetRowSize(PLANAR_U_ALIGNED)/4;
-    height = frame->GetHeight(PLANAR_U);
-    for (int y=0; y<height; y++) {
-      for (int x=0; x<width; x++) {
-        srcpUV[x] = 0x80808080;  // mod 8
-      }
-      srcpUV += pitch;
-    }
-    pitch = frame->GetPitch(PLANAR_V)/4;
-    srcpUV = (int*)frame->GetWritePtr(PLANAR_V);
-    width = frame->GetRowSize(PLANAR_V_ALIGNED)/4;
-    height = frame->GetHeight(PLANAR_V);
-    for (int y=0; y<height; ++y) {
-      for (int x=0; x<width; x++) {
-        srcpUV[x] = 0x80808080;  // mod 8
-      }
-      srcpUV += pitch;
-    }
-
+    memset(frame->GetWritePtr(PLANAR_U), 0x80808080, frame->GetHeight(PLANAR_U) * frame->GetPitch(PLANAR_U));
+    memset(frame->GetWritePtr(PLANAR_V), 0x80808080, frame->GetHeight(PLANAR_V) * frame->GetPitch(PLANAR_V));
     return frame;
   }
 
