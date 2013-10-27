@@ -148,10 +148,6 @@ public:
   ConvertYV16ToYUY2(PClip src, IScriptEnvironment* env);
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
   static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env);
-private:
-  void conv422toYUV422(const unsigned char *py, const unsigned char *pu,
-					   const unsigned char *pv, unsigned char *dst,
-					   int pitch1Y, int pitch1UV, int pitch2, int width, int height);
 };
 
 class ConvertToPlanarGeneric : public GenericVideoFilter

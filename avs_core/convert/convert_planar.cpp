@@ -1167,8 +1167,6 @@ PVideoFrame __stdcall ConvertYUY2ToYV16::GetFrame(int n, IScriptEnvironment* env
 }
 
 
-
-
 AVSValue __cdecl ConvertYUY2ToYV16::Create(AVSValue args, void*, IScriptEnvironment* env) {
   PClip clip = args[0].AsClip();
   if (clip->GetVideoInfo().IsYV16())
@@ -1186,7 +1184,91 @@ ConvertYV16ToYUY2::ConvertYV16ToYUY2(PClip src, IScriptEnvironment* env) : Gener
     env->ThrowError("ConvertYV16ToYUY2: Only YV16 is allowed as input");
 
   vi.pixel_type = VideoInfo::CS_YUY2;
+}
 
+void convert_yv16_to_yuy2_sse2(const BYTE *srcp_y, const BYTE *srcp_u, const BYTE *srcp_v, BYTE *dstp, size_t src_pitch_y, size_t src_pitch_uv, size_t dst_pitch, size_t width, size_t height)
+{
+  size_t half_width = width / 2;
+  size_t mod8 = half_width / 8 * 8;
+
+  for (size_t y=0; y<height; y++) { 
+    for (size_t x=0; x<mod8; x+=8) {
+      
+      __m128i y = _mm_load_si128(reinterpret_cast<const __m128i*>(srcp_y + x*2));
+      __m128i u = _mm_loadl_epi64(reinterpret_cast<const __m128i*>(srcp_u + x));
+      __m128i v = _mm_loadl_epi64(reinterpret_cast<const __m128i*>(srcp_v + x));
+
+      __m128i uv = _mm_unpacklo_epi8(u, v);
+      __m128i yuv_lo = _mm_unpacklo_epi8(y, uv);
+      __m128i yuv_hi = _mm_unpackhi_epi8(y, uv);
+
+      _mm_store_si128(reinterpret_cast<__m128i*>(dstp + x*4), yuv_lo);
+      _mm_store_si128(reinterpret_cast<__m128i*>(dstp + x*4 + 16), yuv_hi);
+    }
+
+    for (size_t x=mod8; x<half_width; x++) {
+      dstp[x*4+0] = srcp_y[x*2];
+      dstp[x*4+1] = srcp_u[x];
+      dstp[x*4+2] = srcp_y[x*2+1];
+      dstp[x*4+3] = srcp_v[x];
+    }
+
+    srcp_y += src_pitch_y;
+    srcp_u += src_pitch_uv;
+    srcp_v += src_pitch_uv;
+    dstp += dst_pitch;
+  }
+}
+
+#ifdef X86_32
+void convert_yv16_to_yuy2_mmx(const BYTE *srcp_y, const BYTE *srcp_u, const BYTE *srcp_v, BYTE *dstp, size_t src_pitch_y, size_t src_pitch_uv, size_t dst_pitch, size_t width, size_t height)
+{
+  size_t half_width = width / 2;
+  size_t mod4 = half_width / 4 * 4;
+
+  for (size_t y=0; y<height; y++) { 
+    for (size_t x=0; x<mod4; x+=4) {
+      __m64 y = *reinterpret_cast<const __m64*>(srcp_y + x*2);
+      __m64 u = *reinterpret_cast<const __m64*>(srcp_u + x);
+      __m64 v = *reinterpret_cast<const __m64*>(srcp_v + x);
+
+      __m64 uv = _mm_unpacklo_pi8(u, v);
+      __m64 yuv_lo = _mm_unpacklo_pi8(y, uv);
+      __m64 yuv_hi = _mm_unpackhi_pi8(y, uv);
+
+      *reinterpret_cast<__m64*>(dstp + x*4) = yuv_lo;
+      *reinterpret_cast<__m64*>(dstp + x*4+8) = yuv_hi;
+    }
+
+    for (size_t x=mod4; x<half_width; x++) {
+      dstp[x*4+0] = srcp_y[x*2];
+      dstp[x*4+1] = srcp_u[x];
+      dstp[x*4+2] = srcp_y[x*2+1];
+      dstp[x*4+3] = srcp_v[x];
+    }
+
+    srcp_y += src_pitch_y;
+    srcp_u += src_pitch_uv;
+    srcp_v += src_pitch_uv;
+    dstp += dst_pitch;
+  }
+  _mm_empty();
+}
+#endif
+
+void convert_yv16_to_yuy2_c(const BYTE *srcp_y, const BYTE *srcp_u, const BYTE *srcp_v, BYTE *dstp, size_t src_pitch_y, size_t src_pitch_uv, size_t dst_pitch, size_t width, size_t height) {
+  for (size_t y=0; y < height; y++) {
+    for (size_t x=0; x < width / 2; x++) {
+      dstp[x*4+0] = srcp_y[x*2];
+      dstp[x*4+1] = srcp_u[x];
+      dstp[x*4+2] = srcp_y[x*2+1];
+      dstp[x*4+3] = srcp_v[x];
+    }
+    srcp_y += src_pitch_y;
+    srcp_u += src_pitch_uv;
+    srcp_v += src_pitch_uv;
+    dstp += dst_pitch;
+  }
 }
 
 PVideoFrame __stdcall ConvertYV16ToYUY2::GetFrame(int n, IScriptEnvironment* env) {
@@ -1200,71 +1282,22 @@ PVideoFrame __stdcall ConvertYV16ToYUY2::GetFrame(int n, IScriptEnvironment* env
 
   BYTE* dstp = dst->GetWritePtr();
 
+  if ((env->GetCPUFlags() & CPUF_SSE2) && IsPtrAligned(srcY, 16)) {
+    //U and V don't have to be aligned since we user movq to read from those
+    convert_yv16_to_yuy2_sse2(srcY, srcU, srcV, dstp, src->GetPitch(PLANAR_Y), src->GetPitch(PLANAR_U), dst->GetPitch(), awidth, vi.height);
+  } else
 #ifdef X86_32
-  if (!(awidth&7)) {  // Use MMX
-    this->conv422toYUV422(srcY, srcU, srcV, dstp, src->GetPitch(PLANAR_Y), src->GetPitch(PLANAR_U),
-      dst->GetPitch(), awidth, vi.height);
-  }
+  if (env->GetCPUFlags() & CPUF_MMX) { 
+    convert_yv16_to_yuy2_mmx(srcY, srcU, srcV, dstp, src->GetPitch(PLANAR_Y), src->GetPitch(PLANAR_U), dst->GetPitch(), awidth, vi.height);
+  } else
 #endif
-
-  const int w = vi.width/2;
-
-  for (int y=0; y<vi.height; y++) { // ASM will probably not be faster here.
-    for (int x=0; x<w; x++) {
-      dstp[x*4+0] = srcY[x*2];
-      dstp[x*4+1] = srcU[x];
-      dstp[x*4+2] = srcY[x*2+1];
-      dstp[x*4+3] = srcV[x];
-    }
-    srcY += src->GetPitch(PLANAR_Y);
-    srcU += src->GetPitch(PLANAR_U);
-    srcV += src->GetPitch(PLANAR_V);
-    dstp += dst->GetPitch();
+  {
+    convert_yv16_to_yuy2_c(srcY, srcU, srcV, dstp, src->GetPitch(PLANAR_Y), src->GetPitch(PLANAR_U), dst->GetPitch(), awidth, vi.height);
   }
+  
   return dst;
 }
 
-#ifdef X86_32
-void ConvertYV16ToYUY2::conv422toYUV422(const unsigned char *py, const unsigned char *pu, const unsigned char *pv,
-                                        unsigned char *dst,
-                                        int pitch1Y, int pitch1UV, int pitch2, int width, int height)
-{
-	__asm
-	{
-        push ebx
-		mov ebx,[py]
-		mov edx,[pu]
-		mov esi,[pv]
-		mov ecx,width
-		mov edi,[dst]
-        shr ecx,1
-yloop:
-		xor eax,eax
-		align 16
-xloop:
-		movd mm1,[edx+eax]     ;0000UUUU
-		movd mm2,[esi+eax]     ;0000VVVV
-		movq mm0,[ebx+eax*2]   ;YYYYYYYY
-		punpcklbw mm1,mm2      ;VUVUVUVU
-		movq mm3,mm0           ;YYYYYYYY
-		punpcklbw mm0,mm1      ;VYUYVYUY
-		add eax,4
-		punpckhbw mm3,mm1      ;VYUYVYUY
-		movq [edi+eax*4-16],mm0 ;store
-		cmp eax,ecx
-		movq [edi+eax*4-8],mm3   ;store
-		jl xloop
-		add ebx,pitch1Y
-		add edx,pitch1UV
-		add esi,pitch1UV
-		add edi,pitch2
-		dec height
-		jnz yloop
-		emms
-        pop ebx
-	}
-}
-#endif
 
 AVSValue __cdecl ConvertYV16ToYUY2::Create(AVSValue args, void*, IScriptEnvironment* env) {
   PClip clip = args[0].AsClip();
