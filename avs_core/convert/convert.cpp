@@ -279,13 +279,13 @@ PVideoFrame __stdcall ConvertToYV12::GetFrame(int n, IScriptEnvironment* env) {
 #ifdef X86_32
     if ((env->GetCPUFlags() & CPUF_INTEGER_SSE))
     {
-      isse_yuy2_i_to_yv12(src->GetReadPtr(), src->GetRowSize(), src->GetPitch(),
+      convert_yuy2_to_yv12_interlaced_isse(src->GetReadPtr(), src->GetRowSize(), src->GetPitch(),
                           dst->GetWritePtr(PLANAR_Y), dst->GetWritePtr(PLANAR_U), dst->GetWritePtr(PLANAR_V),
                           dst->GetPitch(PLANAR_Y), dst->GetPitch(PLANAR_U), src->GetHeight());
     }
     else if ((env->GetCPUFlags() & CPUF_MMX))
     {
-      mmx_yuy2_i_to_yv12(src->GetReadPtr(), src->GetRowSize(), src->GetPitch(),
+      convert_yuy2_to_yv12_interlaced_mmx(src->GetReadPtr(), src->GetRowSize(), src->GetPitch(),
                           dst->GetWritePtr(PLANAR_Y), dst->GetWritePtr(PLANAR_U), dst->GetWritePtr(PLANAR_V),
                           dst->GetPitch(PLANAR_Y), dst->GetPitch(PLANAR_U), src->GetHeight());
     }
@@ -301,13 +301,13 @@ PVideoFrame __stdcall ConvertToYV12::GetFrame(int n, IScriptEnvironment* env) {
 #ifdef X86_32
     if ((env->GetCPUFlags() & CPUF_INTEGER_SSE))
     {
-      isse_yuy2_to_yv12(src->GetReadPtr(), src->GetRowSize(), src->GetPitch(),
+      convert_yuy2_to_yv12_progressive_isse(src->GetReadPtr(), src->GetRowSize(), src->GetPitch(),
                         dst->GetWritePtr(PLANAR_Y), dst->GetWritePtr(PLANAR_U), dst->GetWritePtr(PLANAR_V),
                         dst->GetPitch(PLANAR_Y), dst->GetPitch(PLANAR_U), src->GetHeight());
     }
     else if ((env->GetCPUFlags() & CPUF_MMX))
     {
-      mmx_yuy2_to_yv12(src->GetReadPtr(), src->GetRowSize(), src->GetPitch(),
+      convert_yuy2_to_yv12_progressive_mmx(src->GetReadPtr(), src->GetRowSize(), src->GetPitch(),
                        dst->GetWritePtr(PLANAR_Y), dst->GetWritePtr(PLANAR_U), dst->GetWritePtr(PLANAR_V),
                        dst->GetPitch(PLANAR_Y), dst->GetPitch(PLANAR_U), src->GetHeight());
     }
