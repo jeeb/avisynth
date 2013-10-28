@@ -54,9 +54,17 @@ void convert_yv12_to_yuy2_progressive_mmx(const BYTE* srcY, const BYTE* srcU, co
                     BYTE* dst, int dst_pitch, int height);
 
 
+void convert_yuy2_to_yv12_progressive_c(const BYTE* src, int src_rowsize, int src_pitch, 
+                                           BYTE* dstY, BYTE* dstU, BYTE* dstV, int dst_pitch, int dst_pitchUV,
+                                           int height);
+
 void convert_yuy2_to_yv12_progressive_isse(const BYTE* src, int src_rowsize, int src_pitch, 
                     BYTE* dstY, BYTE* dstU, BYTE* dstV, int dst_pitch, int dst_pitchUV,
                     int height);
+
+void convert_yuy2_to_yv12_interlaced_c(const BYTE* src, int src_rowsize, int src_pitch, 
+                                        BYTE* dstY, BYTE* dstU, BYTE* dstV, int dst_pitch, int dst_pitchUV,
+                                        int height);
 
 void convert_yuy2_to_yv12_interlaced_isse(const BYTE* src, int src_rowsize, int src_pitch, 
                     BYTE* dstY, BYTE* dstU, BYTE* dstV, int dst_pitch, int dst_pitchUV,

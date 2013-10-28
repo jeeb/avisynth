@@ -1249,6 +1249,58 @@ yloop_test:
 #endif
 
 
+void convert_yuy2_to_yv12_progressive_c(const BYTE* src, int src_width, int src_pitch, BYTE* dstY, BYTE* dstU, BYTE* dstV, int dst_pitchY, int dst_pitchUV, int height) {
+  //src_width is twice the luma width of yv12 frame
+  const BYTE* srcp = src;
+  for (int y = 0; y < height; ++y) {
+    for (int x = 0; x < src_width / 2 ; ++x) {
+      dstY[x] = srcp[x*2];
+    }
+    dstY += dst_pitchY;
+    srcp += src_pitch;
+  }
+
+
+  for (int y = 0; y < height / 2; ++y) {
+    for (int x = 0; x < src_width / 4; ++x) {
+      dstU[x] = (src[x*4+1] + src[x*4+1+src_pitch] + 1) / 2;
+      dstV[x] = (src[x*4+3] + src[x*4+3+src_pitch] + 1) / 2;
+    }
+    dstU += dst_pitchUV;
+    dstV += dst_pitchUV;
+    src += src_pitch * 2;
+  }
+}
+
+void convert_yuy2_to_yv12_interlaced_c(const BYTE* src, int src_width, int src_pitch, BYTE* dstY, BYTE* dstU, BYTE* dstV, int dst_pitchY, int dst_pitchUV, int height) {
+  const BYTE* srcp = src;
+  for (int y = 0; y < height; ++y) {
+    for (int x = 0; x < src_width / 2 ; ++x) {
+      dstY[x] = srcp[x*2];
+    }
+    dstY += dst_pitchY;
+    srcp += src_pitch;
+  }
+
+  for (int y = 0; y < height / 2; y+=2) {
+    for (int x = 0; x < src_width / 4; ++x) {
+      dstU[x] = ((src[x*4+1] + src[x*4+1+src_pitch*2] + 1) / 2 + src[x*4+1]) / 2;
+      dstV[x] = ((src[x*4+3] + src[x*4+3+src_pitch*2] + 1) / 2 + src[x*4+3]) / 2;
+    }
+    dstU += dst_pitchUV;
+    dstV += dst_pitchUV;
+    src += src_pitch;
+
+    for (int x = 0; x < src_width / 4; ++x) {
+      dstU[x] = ((src[x*4+1] + src[x*4+1+src_pitch*2] + 1) / 2 + src[x*4+1+src_pitch*2]) / 2;
+      dstV[x] = ((src[x*4+3] + src[x*4+3+src_pitch*2] + 1) / 2 + src[x*4+3+src_pitch*2]) / 2;
+    }
+    dstU += dst_pitchUV;
+    dstV += dst_pitchUV;
+    src += src_pitch*3;
+  }
+}
+
 /********************************
  * Progressive YUY2 to YV12
  * 
