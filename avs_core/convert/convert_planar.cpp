@@ -1027,7 +1027,7 @@ ConvertYUY2ToYV16::ConvertYUY2ToYV16(PClip src, IScriptEnvironment* env) : Gener
 
 }
 
-void convert_yuy2_to_yv16_sse2(const BYTE *srcp, BYTE *dstp_y, BYTE *dstp_u, BYTE *dstp_v, size_t src_pitch, size_t dst_pitch_y, size_t dst_pitch_u, size_t dst_pitch_v, size_t width, size_t height)
+void convert_yuy2_to_yv16_sse2(const BYTE *srcp, BYTE *dstp_y, BYTE *dstp_u, BYTE *dstp_v, size_t src_pitch, size_t dst_pitch_y, size_t dst_pitch_uv, size_t width, size_t height)
 {
   __m128i low_byte_mask = _mm_set1_epi16(0x00FF);
   size_t half_width = width / 2;
@@ -1067,15 +1067,15 @@ void convert_yuy2_to_yv16_sse2(const BYTE *srcp, BYTE *dstp_y, BYTE *dstp_u, BYT
 
     srcp += src_pitch;
     dstp_y += dst_pitch_y;
-    dstp_u += dst_pitch_u;
-    dstp_v += dst_pitch_v;
+    dstp_u += dst_pitch_uv;
+    dstp_v += dst_pitch_uv;
   }
 }
 
 
 #ifdef X86_32
 
-void convert_yuy2_to_yv16_mmx(const BYTE *srcp, BYTE *dstp_y, BYTE *dstp_u, BYTE *dstp_v, size_t src_pitch, size_t dst_pitch_y, size_t dst_pitch_u, size_t dst_pitch_v, size_t width, size_t height)
+void convert_yuy2_to_yv16_mmx(const BYTE *srcp, BYTE *dstp_y, BYTE *dstp_u, BYTE *dstp_v, size_t src_pitch, size_t dst_pitch_y, size_t dst_pitch_uv, size_t width, size_t height)
 {
   __m64 low_byte_mask = _mm_set1_pi16(0x00FF);
   size_t half_width = width / 2;
@@ -1116,15 +1116,15 @@ void convert_yuy2_to_yv16_mmx(const BYTE *srcp, BYTE *dstp_y, BYTE *dstp_u, BYTE
 
     srcp += src_pitch;
     dstp_y += dst_pitch_y;
-    dstp_u += dst_pitch_u;
-    dstp_v += dst_pitch_v;
+    dstp_u += dst_pitch_uv;
+    dstp_v += dst_pitch_uv;
   }
   _mm_empty();
 }
 
 #endif
 
-void convert_yuy2_to_yv16_c(const BYTE *srcp, BYTE *dstp_y, BYTE *dstp_u, BYTE *dstp_v, size_t src_pitch, size_t dst_pitch_y, size_t dst_pitch_u, size_t dst_pitch_v, size_t width, size_t height)
+void convert_yuy2_to_yv16_c(const BYTE *srcp, BYTE *dstp_y, BYTE *dstp_u, BYTE *dstp_v, size_t src_pitch, size_t dst_pitch_y, size_t dst_pitch_uv, size_t width, size_t height)
 {
   for (size_t y=0; y<height; y++) { 
     for (size_t x=0; x<width/2; x++) {
@@ -1135,8 +1135,8 @@ void convert_yuy2_to_yv16_c(const BYTE *srcp, BYTE *dstp_y, BYTE *dstp_u, BYTE *
     }
     srcp += src_pitch;
     dstp_y += dst_pitch_y;
-    dstp_u += dst_pitch_u;
-    dstp_v += dst_pitch_v;
+    dstp_u += dst_pitch_uv;
+    dstp_v += dst_pitch_uv;
   }
 }
 
@@ -1152,15 +1152,15 @@ PVideoFrame __stdcall ConvertYUY2ToYV16::GetFrame(int n, IScriptEnvironment* env
   BYTE* dstV = dst->GetWritePtr(PLANAR_V);
 
   if ((env->GetCPUFlags() & CPUF_SSE2) && IsPtrAligned(srcP, 16)) {
-    convert_yuy2_to_yv16_sse2(srcP, dstY, dstU, dstV, src->GetPitch(), dst->GetPitch(PLANAR_Y), dst->GetPitch(PLANAR_U), dst->GetPitch(PLANAR_V),  vi.width, vi.height);
+    convert_yuy2_to_yv16_sse2(srcP, dstY, dstU, dstV, src->GetPitch(), dst->GetPitch(PLANAR_Y), dst->GetPitch(PLANAR_U), vi.width, vi.height);
   } else
 #ifdef X86_32
   if (env->GetCPUFlags() & CPUF_MMX) { 
-    convert_yuy2_to_yv16_mmx(srcP, dstY, dstU, dstV, src->GetPitch(), dst->GetPitch(PLANAR_Y), dst->GetPitch(PLANAR_U), dst->GetPitch(PLANAR_V),  vi.width, vi.height);
+    convert_yuy2_to_yv16_mmx(srcP, dstY, dstU, dstV, src->GetPitch(), dst->GetPitch(PLANAR_Y), dst->GetPitch(PLANAR_U), vi.width, vi.height);
   } else
 #endif
   {
-    convert_yuy2_to_yv16_c(srcP, dstY, dstU, dstV, src->GetPitch(), dst->GetPitch(PLANAR_Y), dst->GetPitch(PLANAR_U), dst->GetPitch(PLANAR_V),  vi.width, vi.height);
+    convert_yuy2_to_yv16_c(srcP, dstY, dstU, dstV, src->GetPitch(), dst->GetPitch(PLANAR_Y), dst->GetPitch(PLANAR_U), vi.width, vi.height);
   }
   
   return dst;
