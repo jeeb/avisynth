@@ -136,7 +136,7 @@ PVideoFrame __stdcall ConvertToYUY2::GetFrame(int n, IScriptEnvironment* env)
   PVideoFrame src = child->GetFrame(n, env);
 
   if (((src_cs&VideoInfo::CS_YV12)==VideoInfo::CS_YV12)||((src_cs&VideoInfo::CS_I420)==VideoInfo::CS_I420)) {
-    PVideoFrame dst = env->NewVideoFrame(vi,32);  // We need a bit more pitch here.
+    PVideoFrame dst = env->NewVideoFrame(vi,32); 
     BYTE* yuv = dst->GetWritePtr();
     if (interlaced) {
 #ifdef X86_32

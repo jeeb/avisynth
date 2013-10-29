@@ -33,6 +33,7 @@
 // import and export plugins, or graphical user interfaces.
 
 #include "convert_yv12.h"
+#include <emmintrin.h>
 
 /**************************************************************************
  * WARNING! : These routines are typical of when the compiler forgets to save
@@ -752,306 +753,151 @@ void convert_yuy2_to_yv12_interlaced_c(const BYTE* src, int src_width, int src_p
   }
 }
 
-/********************************
- * Progressive YUY2 to YV12
- * 
- * (c) Copyright 2003, Klaus Post
- *
- * Converts 8x2 (8 pixels, two lines) in parallel.
- * Requires mod8 pitch for output, and mod16 pitch for input.
- ********************************/
-
 #ifdef X86_32
 
-void convert_yuy2_to_yv12_progressive_isse(const BYTE* src, int src_rowsize, int src_pitch, 
-                    BYTE* dstY, BYTE* dstU, BYTE* dstV, int dst_pitchY, int dst_pitchUV,
-                    int height)
+void convert_yuy2_to_yv12_progressive_isse(const BYTE* src, int src_width, int src_pitch, BYTE* dstY, BYTE* dstU, BYTE* dstV, int dst_pitchY, int dst_pitchUV, int height)
 {
-  const BYTE** dstp= new const BYTE*[4];
-  dstp[0]=dstY;
-  dstp[1]=dstY+dst_pitchY;
-  dstp[2]=dstU;
-  dstp[3]=dstV;
-  int src_pitch2 = src_pitch*2;
-  int dst_pitch2 = dst_pitchY*2;
+  __m64 luma_mask = _mm_set1_pi16(0x00FF);
+  for (int y = 0; y < height/2; ++y) { 
+    for (int x = 0; x < (src_width+3) / 4; x+=4) {
+      __m64 src_lo_line0 = *reinterpret_cast<const __m64*>(src+x*4); //VYUY VYUY
+      __m64 src_lo_line1 = *reinterpret_cast<const __m64*>(src+x*4+src_pitch);
 
-  int y=0;
-  int x=0;
-  src_rowsize = (src_rowsize+3)/4;
-  __asm {
-  push ebx    // stupid compiler forgets to save ebx!!
-    movq mm7,[mask2]
-    movq mm4,[mask1]
-    mov edx,0
-    mov esi, src
-    mov edi, dstp
-    jmp yloop_test
-    align 16
-yloop:
-      mov edx,0               // x counter   
-      mov eax, [src_pitch]
-      jmp xloop_test
-      align 16
-xloop:      
-      movq mm0,[esi]        // YUY2 upper line  (4 pixels luma, 2 chroma)
-       movq mm1,[esi+eax]   // YUY2 lower line  
-      movq mm6,mm0
-       movq mm2, [esi+8]    // Load second pair
-      movq mm3, [esi+eax+8]
-       movq mm5,mm2
-      pavgb mm6,mm1         // Average (chroma)
-       pavgb mm5,mm3        // Average Chroma (second pair)
-      pand mm0,mm4          // Mask luma
-  	    psrlq mm5, 8
-      pand mm1,mm4          // Mask luma
- 	     psrlq mm6, 8
-      pand mm2,mm4          // Mask luma
-       pand mm3,mm4         
-      pand mm5,mm4           // Mask chroma
-       pand mm6,mm4          // Mask chroma
-   		packuswb mm0, mm2     // Pack luma (upper)
-   		 packuswb mm6, mm5    // Pack chroma
-   		packuswb mm1, mm3     // Pack luma (lower)     
-       movq mm5, mm6        // Chroma copy
-      pand mm5, mm7         // Mask V
-       pand mm6, mm4        // Mask U
-      psrlq mm5,8            // shift down V
-   		 packuswb mm5, mm7     // Pack U 
-   		packuswb mm6, mm7     // Pack V 
-       mov ebx, [edi]
-      mov ecx, [edi+4]
-      movq [ebx+edx*2],mm0
-       movq [ecx+edx*2],mm1
+      __m64 src_hi_line0 = *reinterpret_cast<const __m64*>(src+x*4+8);
+      __m64 src_hi_line1 = *reinterpret_cast<const __m64*>(src+x*4+src_pitch+8);
 
-      mov ecx, [edi+8]
-      mov ebx, [edi+12]
-       movd [ecx+edx], mm6  // Store U
-      movd [ebx+edx], mm5   // Store V
-      add esi, 16
-      add edx, 4
-xloop_test:
-    cmp edx,[src_rowsize]
-    jl xloop
-    mov esi, src
-    mov edx,[edi]
-    mov ebx,[edi+4]
-    mov ecx,[edi+8]
-    mov eax,[edi+12]
-    
-    add edx, [dst_pitch2]
-    add ebx, [dst_pitch2]
-    add ecx, [dst_pitchUV]
-    add eax, [dst_pitchUV]
-    add esi, [src_pitch2]
+      __m64 src_lo_line0_luma = _mm_and_si64(src_lo_line0, luma_mask);
+      __m64 src_lo_line1_luma = _mm_and_si64(src_lo_line1, luma_mask);
+      __m64 src_hi_line0_luma = _mm_and_si64(src_hi_line0, luma_mask);
+      __m64 src_hi_line1_luma = _mm_and_si64(src_hi_line1, luma_mask);
 
-    mov [edi],edx
-    mov [edi+4],ebx
-    mov [edi+8],ecx
-    mov [edi+12],eax
-    mov edx, [y]
-    mov [src],esi
-    
-    add edx, 2
+      __m64 src_luma_line0 = _mm_packs_pu16(src_lo_line0_luma, src_hi_line0_luma);
+      __m64 src_luma_line1 = _mm_packs_pu16(src_lo_line1_luma, src_hi_line1_luma);
 
-yloop_test:
-    cmp edx,[height]
-    mov [y],edx
-    jl yloop
-    sfence
-    emms
-    pop ebx
+      *reinterpret_cast<__m64*>(dstY + x*2) = src_luma_line0;
+      *reinterpret_cast<__m64*>(dstY + x*2 + dst_pitchY) = src_luma_line1;
+
+      __m64 avg_chroma_lo = _mm_avg_pu8(src_lo_line0, src_lo_line1);
+      __m64 avg_chroma_hi = _mm_avg_pu8(src_hi_line0, src_hi_line1);
+
+      __m64 chroma_lo = _mm_srli_si64(avg_chroma_lo, 8);
+      __m64 chroma_hi = _mm_srli_si64(avg_chroma_hi, 8);
+
+      chroma_lo = _mm_and_si64(luma_mask, chroma_lo); //0V0U 0V0U
+      chroma_hi = _mm_and_si64(luma_mask, chroma_hi); //0V0U 0V0U
+
+      __m64 chroma = _mm_packs_pu16(chroma_lo, chroma_hi); //VUVU VUVU
+
+      __m64 chroma_u = _mm_and_si64(luma_mask, chroma); //0U0U 0U0U
+      __m64 chroma_v = _mm_andnot_si64(luma_mask, chroma); //V0V0 V0V0
+      chroma_v = _mm_srli_si64(chroma_v, 8); //0V0V 0V0V
+      
+      chroma_u = _mm_packs_pu16(chroma_u, luma_mask);
+      chroma_v = _mm_packs_pu16(chroma_v, luma_mask);
+
+      *reinterpret_cast<int*>(dstU+x) = _mm_cvtsi64_si32(chroma_u);
+      *reinterpret_cast<int*>(dstV+x) = _mm_cvtsi64_si32(chroma_v);
+    }
+
+    src += src_pitch*2;
+    dstY += dst_pitchY * 2;
+    dstU += dst_pitchUV;
+    dstV += dst_pitchUV;
   }
-   delete[] dstp;
+  _mm_empty();
 }
-#endif
 
+//75% of the first argument and 25% of the second one. 
+static __forceinline __m64 convert_yuy2_to_yv12_merge_chroma_isse(const __m64 &line75p, const __m64 &line25p, const __m64 &one, const __m64 &luma_mask) {
+  __m64 avg_chroma_lo = _mm_avg_pu8(line75p, line25p);
+  avg_chroma_lo = _mm_subs_pu8(avg_chroma_lo, one);
+  avg_chroma_lo = _mm_avg_pu8(avg_chroma_lo, line75p);
+  __m64 chroma_lo = _mm_srli_si64(avg_chroma_lo, 8);
+  return _mm_and_si64(luma_mask, chroma_lo); //0V0U 0V0U
+}
 
-/********************************
- * Interlaced YUY2 to YV12
- * 
- * (c) Copyright 2003, Klaus Post
- *
- * Converts 8x2 (8 pixels, two lines) in parallel.
- * Requires mod8 pitch for output, and mod16 pitch for input.
- ********************************/
+void convert_yuy2_to_yv12_interlaced_isse(const BYTE* src, int src_width, int src_pitch, BYTE* dstY, BYTE* dstU, BYTE* dstV, int dst_pitchY, int dst_pitchUV, int height) {
+  __m64 one = _mm_set1_pi8(1);
+  __m64 luma_mask = _mm_set1_pi16(0x00FF);
 
-#ifdef X86_32
+  for (int y = 0; y < height / 2; y+=2) {
+    for (int x = 0; x < src_width / 4; x+=4) {
+      __m64 src_lo_line0 = *reinterpret_cast<const __m64*>(src+x*4); //VYUY VYUY
+      __m64 src_lo_line1 = *reinterpret_cast<const __m64*>(src+x*4+src_pitch*2);
 
-void convert_yuy2_to_yv12_interlaced_isse(const BYTE* src, int src_rowsize, int src_pitch, 
-                    BYTE* dstY, BYTE* dstU, BYTE* dstV, int dst_pitchY, int dst_pitchUV,
-                    int height) 
-{
-  const BYTE** dstp= new const BYTE*[4];
-  dstp[0]=dstY;
-  dstp[1]=dstY+(dst_pitchY*2);
-  dstp[2]=dstU;
-  dstp[3]=dstV;
-  int src_pitch2 = src_pitch*2;
-  int dst_pitch2 = dst_pitchY*2;
-  int src_pitch4 = src_pitch*4;
-  int dst_pitch3 = dst_pitchY*3;
+      __m64 src_hi_line0 = *reinterpret_cast<const __m64*>(src+x*4+8);
+      __m64 src_hi_line1 = *reinterpret_cast<const __m64*>(src+x*4+src_pitch*2+8);
 
-  int y=0;
-  int x=0;
-  src_rowsize = (src_rowsize+3)/4;
-  __asm {
-  push ebx    // stupid compiler forgets to save ebx!!
-    movq mm7,[mask2]
-    movq mm4,[mask1]
-    mov edx,0
-    mov esi, src
-    mov edi, dstp
-    jmp yloop_test
-    align 16
-yloop:
-      mov edx,0               // x counter   
-      mov eax, [src_pitch2]
-      jmp xloop_test
-      align 16
-xloop:      
-      movq mm0,[esi]        // YUY2 upper line  (4 pixels luma, 2 chroma)
-       movq mm1,[esi+eax]   // YUY2 lower line  
-      movq mm6,mm0
-       movq mm2, [esi+8]    // Load second pair
-      movq mm3, [esi+eax+8]
-       movq mm5,mm2
+      __m64 chroma_lo = convert_yuy2_to_yv12_merge_chroma_isse(src_lo_line0, src_lo_line1, one, luma_mask);
+      __m64 chroma_hi = convert_yuy2_to_yv12_merge_chroma_isse(src_hi_line0, src_hi_line1, one, luma_mask);
 
-      pavgb mm6,mm1         // Average (chroma)
-       pavgb mm5,mm3        // Average Chroma (second pair)
-      psubusb mm5, [add_ones]         // Better rounding (thanks trbarry!)
-       psubusb mm6, [add_ones]
-      pavgb mm6,mm0         // Average (chroma) (upper = 75% lower = 25%)
-       pavgb mm5,mm2        // Average Chroma (second pair) (upper = 75% lower = 25%)
+      __m64 chroma = _mm_packs_pu16(chroma_lo, chroma_hi); //VUVU VUVU
 
-      pand mm0,mm4          // Mask luma
-  	    psrlq mm5, 8
-      pand mm1,mm4          // Mask luma
- 	     psrlq mm6, 8
-      pand mm2,mm4          // Mask luma
-       pand mm3,mm4         
-      pand mm5,mm4           // Mask chroma
-       pand mm6,mm4          // Mask chroma
-   		packuswb mm0, mm2     // Pack luma (upper)
-   		 packuswb mm6, mm5    // Pack chroma
-   		packuswb mm1, mm3     // Pack luma (lower)     
-       movq mm5, mm6        // Chroma copy
-      pand mm5, mm7         // Mask V
-       pand mm6, mm4        // Mask U
-      psrlq mm5,8            // shift down V
-   		 packuswb mm5, mm7     // Pack U 
-   		packuswb mm6, mm7     // Pack V 
-       mov ebx, [edi]
-      mov ecx, [edi+4]
-      movq [ebx+edx*2],mm0
-       movq [ecx+edx*2],mm1
+      __m64 chroma_u = _mm_and_si64(luma_mask, chroma); //0U0U 0U0U
+      __m64 chroma_v = _mm_andnot_si64(luma_mask, chroma); //V0V0 V0V0
+      chroma_v = _mm_srli_si64(chroma_v, 8); //0V0V 0V0V
 
-      mov ecx, [edi+8]
-      mov ebx, [edi+12]
-       movd [ecx+edx], mm6  // Store U
-      movd [ebx+edx], mm5   // Store V
-      add esi, 16
-      add edx, 4
-xloop_test:
-    cmp edx,[src_rowsize]
-    jl xloop
+      chroma_u = _mm_packs_pu16(chroma_u, luma_mask);
+      chroma_v = _mm_packs_pu16(chroma_v, luma_mask);
 
-    mov esi, src
-    mov edx,[edi]
-    mov ebx,[edi+4]
-    mov ecx,[edi+8]
-    mov eax,[edi+12]
-    
-    add edx, [dst_pitchY]
-    add ebx, [dst_pitchY]
-    add ecx, [dst_pitchUV]
-    add eax, [dst_pitchUV]
-    add esi, [src_pitch]
+      *reinterpret_cast<int*>(dstU+x) = _mm_cvtsi64_si32(chroma_u);
+      *reinterpret_cast<int*>(dstV+x) = _mm_cvtsi64_si32(chroma_v);
 
-    mov [edi],edx
-    mov [edi+4],ebx
-    mov [edi+8],ecx
-    mov [edi+12],eax
+      __m64 src_lo_line0_luma = _mm_and_si64(src_lo_line0, luma_mask);
+      __m64 src_lo_line1_luma = _mm_and_si64(src_lo_line1, luma_mask);
+      __m64 src_hi_line0_luma = _mm_and_si64(src_hi_line0, luma_mask);
+      __m64 src_hi_line1_luma = _mm_and_si64(src_hi_line1, luma_mask);
 
-    mov edx, 0
-    mov eax, [src_pitch2]
+      __m64 src_luma_line0 = _mm_packs_pu16(src_lo_line0_luma, src_hi_line0_luma);
+      __m64 src_luma_line1 = _mm_packs_pu16(src_lo_line1_luma, src_hi_line1_luma);
 
-    jmp xloop2_test
-xloop2:   // Second field
-      movq mm0,[esi]        // YUY2 upper line  (4 pixels luma, 2 chroma)
-       movq mm1,[esi+eax]   // YUY2 lower line  
-      movq mm6,mm0
-       movq mm2, [esi+8]    // Load second pair
-      movq mm3, [esi+eax+8]
-       movq mm5,mm2
+      *reinterpret_cast<__m64*>(dstY + x*2) = src_luma_line0;
+      *reinterpret_cast<__m64*>(dstY + x*2 + dst_pitchY*2) = src_luma_line1;
+    }
+    dstU += dst_pitchUV;
+    dstV += dst_pitchUV;
+    dstY += dst_pitchY;
+    src += src_pitch;
 
-      pavgb mm6,mm1         // Average (chroma)
-       pavgb mm5,mm3        // Average Chroma (second pair)
-      psubusb mm5, [add_ones]         // Better rounding (thanks trbarry!)
-       psubusb mm6, [add_ones]
-      pavgb mm6,mm1         // Average (chroma) (upper = 25% lower = 75%)
-       pavgb mm5,mm3        // Average Chroma (second pair) (upper = 25% lower = 75%)
+    for (int x = 0; x < src_width / 4; x+=4) {
+      __m64 src_lo_line0 = *reinterpret_cast<const __m64*>(src+x*4); //VYUY VYUY
+      __m64 src_lo_line1 = *reinterpret_cast<const __m64*>(src+x*4+src_pitch*2);
 
-      pand mm0,mm4          // Mask luma
-  	    psrlq mm5, 8
-      pand mm1,mm4          // Mask luma
- 	     psrlq mm6, 8
-      pand mm2,mm4          // Mask luma
-       pand mm3,mm4         
-      pand mm5,mm4           // Mask chroma
-       pand mm6,mm4          // Mask chroma
-   		packuswb mm0, mm2     // Pack luma (upper)
-   		 packuswb mm6, mm5    // Pack chroma
-   		packuswb mm1, mm3     // Pack luma (lower)     
-       movq mm5, mm6        // Chroma copy
-      pand mm5, mm7         // Mask V
-       pand mm6, mm4        // Mask U
-      psrlq mm5,8            // shift down V
-   		 packuswb mm5, mm7     // Pack U 
-   		packuswb mm6, mm7     // Pack V 
-       mov ebx, [edi]
-      mov ecx, [edi+4]
-      movq [ebx+edx*2],mm0
-       movq [ecx+edx*2],mm1
+      __m64 src_hi_line0 = *reinterpret_cast<const __m64*>(src+x*4+8);
+      __m64 src_hi_line1 = *reinterpret_cast<const __m64*>(src+x*4+src_pitch*2+8);
 
-      mov ecx, [edi+8]
-      mov ebx, [edi+12]
-       movd [ecx+edx], mm6  // Store U
-      movd [ebx+edx], mm5   // Store V
-      add esi, 16
-      add edx, 4
-xloop2_test:
-    cmp edx,[src_rowsize]
-    jl xloop2
+      __m64 chroma_lo = convert_yuy2_to_yv12_merge_chroma_isse(src_lo_line1, src_lo_line0, one, luma_mask);
+      __m64 chroma_hi = convert_yuy2_to_yv12_merge_chroma_isse(src_hi_line1, src_hi_line0, one, luma_mask);
 
-    mov esi, src
-    mov edx,[edi]
-    mov ebx,[edi+4]
-    mov ecx,[edi+8]
-    mov eax,[edi+12]
-    
-    add edx, [dst_pitch3]
-    add ebx, [dst_pitch3]
-    add ecx, [dst_pitchUV]
-    add eax, [dst_pitchUV]
-    add esi, [src_pitch4]
+      __m64 chroma = _mm_packs_pu16(chroma_lo, chroma_hi); //VUVU VUVU
 
-    mov [edi],edx
-    mov [edi+4],ebx
-    mov [edi+8],ecx
-    mov [edi+12],eax
-    mov edx, [y]
-    mov [src],esi
-    
-    add edx, 4
+      __m64 chroma_u = _mm_and_si64(luma_mask, chroma); //0U0U 0U0U
+      __m64 chroma_v = _mm_andnot_si64(luma_mask, chroma); //V0V0 V0V0
+      chroma_v = _mm_srli_si64(chroma_v, 8); //0V0V 0V0V
 
-yloop_test:
-    cmp edx,[height]
-    mov [y],edx
-    jl yloop
-    sfence
-    emms
-    pop ebx
+      chroma_u = _mm_packs_pu16(chroma_u, luma_mask);
+      chroma_v = _mm_packs_pu16(chroma_v, luma_mask);
+
+      *reinterpret_cast<int*>(dstU+x) = _mm_cvtsi64_si32(chroma_u);
+      *reinterpret_cast<int*>(dstV+x) = _mm_cvtsi64_si32(chroma_v);
+
+      __m64 src_lo_line0_luma = _mm_and_si64(src_lo_line0, luma_mask);
+      __m64 src_lo_line1_luma = _mm_and_si64(src_lo_line1, luma_mask);
+      __m64 src_hi_line0_luma = _mm_and_si64(src_hi_line0, luma_mask);
+      __m64 src_hi_line1_luma = _mm_and_si64(src_hi_line1, luma_mask);
+
+      __m64 src_luma_line0 = _mm_packs_pu16(src_lo_line0_luma, src_hi_line0_luma);
+      __m64 src_luma_line1 = _mm_packs_pu16(src_lo_line1_luma, src_hi_line1_luma);
+
+      *reinterpret_cast<__m64*>(dstY + x*2) = src_luma_line0;
+      *reinterpret_cast<__m64*>(dstY + x*2 + dst_pitchY*2) = src_luma_line1;
+    }
+    dstU += dst_pitchUV;
+    dstV += dst_pitchUV;
+    dstY += dst_pitchY*3;
+    src += src_pitch*3;
   }
-   delete[] dstp;
+  _mm_empty();
 }
+
 #endif
