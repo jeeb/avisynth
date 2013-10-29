@@ -283,12 +283,6 @@ PVideoFrame __stdcall ConvertToYV12::GetFrame(int n, IScriptEnvironment* env) {
         dst->GetWritePtr(PLANAR_Y), dst->GetWritePtr(PLANAR_U), dst->GetWritePtr(PLANAR_V),
         dst->GetPitch(PLANAR_Y), dst->GetPitch(PLANAR_U), src->GetHeight());
     }
-    else if ((env->GetCPUFlags() & CPUF_MMX))
-    {
-      convert_yuy2_to_yv12_interlaced_mmx(src->GetReadPtr(), src->GetRowSize(), src->GetPitch(),
-        dst->GetWritePtr(PLANAR_Y), dst->GetWritePtr(PLANAR_U), dst->GetWritePtr(PLANAR_V),
-        dst->GetPitch(PLANAR_Y), dst->GetPitch(PLANAR_U), src->GetHeight());
-    }
     else
 #endif
     {
@@ -305,12 +299,6 @@ PVideoFrame __stdcall ConvertToYV12::GetFrame(int n, IScriptEnvironment* env) {
       convert_yuy2_to_yv12_progressive_isse(src->GetReadPtr(), src->GetRowSize(), src->GetPitch(),
                         dst->GetWritePtr(PLANAR_Y), dst->GetWritePtr(PLANAR_U), dst->GetWritePtr(PLANAR_V),
                         dst->GetPitch(PLANAR_Y), dst->GetPitch(PLANAR_U), src->GetHeight());
-    }
-    else if ((env->GetCPUFlags() & CPUF_MMX))
-    {
-      convert_yuy2_to_yv12_progressive_mmx(src->GetReadPtr(), src->GetRowSize(), src->GetPitch(),
-                       dst->GetWritePtr(PLANAR_Y), dst->GetWritePtr(PLANAR_U), dst->GetWritePtr(PLANAR_V),
-                       dst->GetPitch(PLANAR_Y), dst->GetPitch(PLANAR_U), src->GetHeight());
     }
     else
 #endif
