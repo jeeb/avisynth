@@ -184,24 +184,9 @@ static __forceinline __m64 convert_yv12_to_yuy2_merge_chroma_isse(const __m64 &l
 // second and third - 4 chroma bytes in low dwords
 // last two params are OUT 
 static __forceinline void convert_yv12_pixels_to_yuy2_isse(const __m64 &y, const __m64 &u, const __m64 &v,  const __m64 &zero, __m64 &out_low, __m64 &out_high) {
-  __m64 unpack_u = _mm_unpacklo_pi8(u, zero); //0 U 0 U 0 U 0 U
-  __m64 unpack_v = _mm_unpacklo_pi8(v, zero); //0 U 0 U 0 U 0 U
-
-  __m64 u_lo = _mm_unpacklo_pi8(zero, unpack_u); //0 0 U 0 0 0 U 0
-  __m64 v_lo = _mm_unpacklo_pi8(unpack_v, zero); //0 0 0 V 0 0 0 V
-  v_lo = _mm_slli_si64(v_lo, 24);
-  __m64 u_hi = _mm_unpackhi_pi8(zero, unpack_u); //0 0 U 0 0 0 U 0
-  __m64 v_hi = _mm_unpackhi_pi8(unpack_v, zero); //0 0 0 V 0 0 0 V
-  v_hi = _mm_slli_si64(v_hi, 24);
-
-  __m64 y_lo = _mm_unpacklo_pi8(y, zero); //0 Y 0 Y 0 Y 0 Y
-  __m64 y_hi = _mm_unpackhi_pi8(y, zero); //0 Y 0 Y 0 Y 0 Y
-
-  out_low = _mm_or_si64(y_lo, u_lo);
-  out_low = _mm_or_si64(out_low, v_lo);
-
-  out_high = _mm_or_si64(y_hi, u_hi);
-  out_high = _mm_or_si64(out_high, v_hi);
+  __m64 chroma = _mm_unpacklo_pi8(u, v);
+  out_low = _mm_unpacklo_pi8(y, chroma);
+  out_high = _mm_unpackhi_pi8(y, chroma);
 }
 
 static inline void copy_yv12_line_to_yuy2_isse(const BYTE* srcY, const BYTE* srcU, const BYTE* srcV, BYTE* dstp, int width) {
@@ -394,24 +379,9 @@ static __forceinline __m128i convert_yv12_to_yuy2_merge_chroma_sse2(const __m128
 // second and third - 8 chroma bytes in low dwords
 // last two params are OUT 
 static __forceinline void convert_yv12_pixels_to_yuy2_sse2(const __m128i &y, const __m128i &u, const __m128i &v,  const __m128i &zero, __m128i &out_low, __m128i &out_high) {
-  __m128i unpack_u = _mm_unpacklo_epi8(u, zero); //0 U 0 U 0 U 0 U
-  __m128i unpack_v = _mm_unpacklo_epi8(v, zero); //0 U 0 U 0 U 0 U
-
-  __m128i u_lo = _mm_unpacklo_epi8(zero, unpack_u); //0 0 U 0 0 0 U 0
-  __m128i v_lo = _mm_unpacklo_epi8(unpack_v, zero); //0 0 0 V 0 0 0 V
-  v_lo = _mm_slli_si128(v_lo, 3);
-  __m128i u_hi = _mm_unpackhi_epi8(zero, unpack_u); //0 0 U 0 0 0 U 0
-  __m128i v_hi = _mm_unpackhi_epi8(unpack_v, zero); //0 0 0 V 0 0 0 V
-  v_hi = _mm_slli_si128(v_hi, 3);
-
-  __m128i y_lo = _mm_unpacklo_epi8(y, zero); //0 Y 0 Y 0 Y 0 Y
-  __m128i y_hi = _mm_unpackhi_epi8(y, zero); //0 Y 0 Y 0 Y 0 Y
-
-  out_low = _mm_or_si128(y_lo, u_lo);
-  out_low = _mm_or_si128(out_low, v_lo);
-
-  out_high = _mm_or_si128(y_hi, u_hi);
-  out_high = _mm_or_si128(out_high, v_hi);
+  __m128i chroma = _mm_unpacklo_epi8(u, v); //...V3 U3 V2 U2 V1 U1 V0 U0
+  out_low = _mm_unpacklo_epi8(y, chroma);
+  out_high = _mm_unpackhi_epi8(y, chroma);
 }
 
 static inline void copy_yv12_line_to_yuy2_sse2(const BYTE* srcY, const BYTE* srcU, const BYTE* srcV, BYTE* dstp, int width) {
