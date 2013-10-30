@@ -35,6 +35,7 @@
 #include "convert_yuy2.h"
 #include "../core/internal.h"
 #include "avs/alignment.h"
+#include <emmintrin.h>
 
 //  const int cyb = int(0.114*219/255*32768+0.5);  // 0x0C88
 //  const int cyg = int(0.587*219/255*32768+0.5);  // 0x4087
@@ -337,117 +338,108 @@ ConvertBackToYUY2::ConvertBackToYUY2(PClip _child, const char *matrix, IScriptEn
 {
   if (!_child->GetVideoInfo().IsRGB() && !_child->GetVideoInfo().IsYV24())
     env->ThrowError("ConvertBackToYUY2: Use ConvertToYUY2 to convert non-RGB material to YUY2.");
+}
 
-  if (_child->GetVideoInfo().IsYV24()) { // vi.IsYUY2
-    const int awidth = (vi.width+7) & -8;
+static void convert_yv24_back_to_yuy2_sse2(const BYTE* srcY, const BYTE* srcU, const BYTE* srcV, BYTE* dstp, int pitchY, int pitchUV, int dpitch, int height, int width) {
+  int mod16_width = width / 16 * 16;
+  __m128i ff = _mm_set1_epi16(0x00ff);
 
-    GenerateYV24toYUY2(awidth, vi.height, env);
+  for (int y=0; y < height; y++) {
+    for (int x=0; x < mod16_width; x+=16) {
+      __m128i y = _mm_load_si128(reinterpret_cast<const __m128i*>(srcY+x));
+      __m128i u = _mm_load_si128(reinterpret_cast<const __m128i*>(srcU+x));
+      __m128i v = _mm_load_si128(reinterpret_cast<const __m128i*>(srcV+x));
+      u = _mm_and_si128(u, ff);
+      v = _mm_slli_epi16(v, 8);
+      __m128i uv = _mm_or_si128(u, v); //VUVUVUVUVU
+
+      __m128i yuv_lo = _mm_unpacklo_epi8(y, uv);
+      __m128i yuv_hi = _mm_unpackhi_epi8(y, uv);
+
+      _mm_store_si128(reinterpret_cast<__m128i*>(dstp+x*2), yuv_lo);
+      _mm_store_si128(reinterpret_cast<__m128i*>(dstp+x*2+16), yuv_hi);
+    }
+
+    if (mod16_width != width) {
+      __m128i y = _mm_loadu_si128(reinterpret_cast<const __m128i*>(srcY+width-16));
+      __m128i u = _mm_loadu_si128(reinterpret_cast<const __m128i*>(srcU+width-16));
+      __m128i v = _mm_loadu_si128(reinterpret_cast<const __m128i*>(srcV+width-16));
+      u = _mm_and_si128(u, ff);
+      v = _mm_slli_epi16(v, 8);
+      __m128i uv = _mm_or_si128(u, v); //VUVUVUVUVU
+
+      __m128i yuv_lo = _mm_unpacklo_epi8(y, uv);
+      __m128i yuv_hi = _mm_unpackhi_epi8(y, uv);
+
+      _mm_storeu_si128(reinterpret_cast<__m128i*>(dstp+width*2-32), yuv_lo);
+      _mm_storeu_si128(reinterpret_cast<__m128i*>(dstp+width*2-16), yuv_hi);
+    }
+    srcY += pitchY;
+    srcU += pitchUV;
+    srcV += pitchUV;
+    dstp += dpitch;
   }
 }
 
-
-void ConvertBackToYUY2::GenerateYV24toYUY2(int awidth, int height, IScriptEnvironment* env)
-{
 #ifdef X86_32
 
-  bool sse2 = !!(env->GetCPUFlags() & CPUF_SSE2);
+static void convert_yv24_back_to_yuy2_mmx(const BYTE* srcY, const BYTE* srcU, const BYTE* srcV, BYTE* dstp, int pitchY, int pitchUV, int dpitch, int height, int width) {
+  int mod8_width = width / 8 * 8;
+  __m64 ff = _mm_set1_pi16(0x00ff);
 
-  enum {             // Argument offsets
-    py      = 0,
-    pu      = 4,
-    pv      = 8,
-    dst     = 12,
-    pitch1Y = 16,
-    pitch1UV= 20,
-    pitch2  = 24,
-  };
+  for (int y=0; y < height; y++) {
+    for (int x=0; x < mod8_width; x+=8) {
+      __m64 y = *reinterpret_cast<const __m64*>(srcY+x);
+      __m64 u = *reinterpret_cast<const __m64*>(srcU+x);
+      __m64 v = *reinterpret_cast<const __m64*>(srcV+x);
+      u = _mm_and_si64(u, ff);
+      v = _mm_slli_pi16(v, 8);
+      __m64 uv = _mm_or_si64(u, v); //VUVUVUVUVU
 
-  Assembler x86;   // This is the class that assembles the code.
+      __m64 yuv_lo = _mm_unpacklo_pi8(y, uv);
+      __m64 yuv_hi = _mm_unpackhi_pi8(y, uv);
 
-  // Store registers and get arg pointers
-  x86.push(        ebp);
-  x86.mov(         ebp, dword_ptr[esp+4+4]);           // Pointer to args list
+      *reinterpret_cast<__m64*>(dstp+x*2) = yuv_lo;
+      *reinterpret_cast<__m64*>(dstp+x*2+8) = yuv_hi;
+    }
 
-  x86.push(        eax);
-  x86.push(        ebx);
-  x86.push(        ecx);
-  x86.push(        edx);
-  x86.push(        edi);
-  x86.push(        esi);
+    if (mod8_width != width) {
+      __m64 y = *reinterpret_cast<const __m64*>(srcY+width-8);
+      __m64 u = *reinterpret_cast<const __m64*>(srcU+width-8);
+      __m64 v = *reinterpret_cast<const __m64*>(srcV+width-8);
+      u = _mm_and_si64(u, ff);
+      v = _mm_slli_pi16(v, 8);
+      __m64 uv = _mm_or_si64(u, v); //VUVUVUVUVU
 
-  x86.mov(         ecx, dword_ptr[ebp+py]);
-  x86.mov(         edx, dword_ptr[ebp+pu]);
-  x86.mov(         esi, dword_ptr[ebp+pv]);
-  x86.mov(         edi, dword_ptr[ebp+dst]);
-  if (sse2) {
-    x86.pcmpeqw(   xmm7, xmm7);                        // ffffffffffffffff
-    x86.mov(       ebx, height);
-    x86.psrlw(     xmm7, 8);                           // 00ff00ff00ff00ff
+      __m64 yuv_lo = _mm_unpacklo_pi8(y, uv);
+      __m64 yuv_hi = _mm_unpackhi_pi8(y, uv);
+
+      *reinterpret_cast<__m64*>(dstp+width*2-16) = yuv_lo;
+      *reinterpret_cast<__m64*>(dstp+width*2-8) = yuv_hi;
+    }
+    srcY += pitchY;
+    srcU += pitchUV;
+    srcV += pitchUV;
+    dstp += dpitch;
   }
-  else {
-    x86.pcmpeqw(   mm7, mm7);                          // ffffffffffffffff
-    x86.mov(       ebx, height);
-    x86.psrlw(     mm7, 8);                            // 00ff00ff00ff00ff
+  _mm_empty();
+}
+
+#endif // X86_32
+
+static void convert_yv24_back_to_yuy2_c(const BYTE* srcY, const BYTE* srcU, const BYTE* srcV, BYTE* dstp, int pitchY, int pitchUV, int dpitch, int height, int width) {
+  for (int y=0; y < height; ++y) {
+    for (int x=0; x < width; x+=2) {
+      dstp[x*2+0] = srcY[x];
+      dstp[x*2+1] = srcU[x];
+      dstp[x*2+2] = srcY[x+1];
+      dstp[x*2+3] = srcV[x];
+    }
+    srcY += pitchY;
+    srcU += pitchUV;
+    srcV += pitchUV;
+    dstp += dpitch;
   }
-  x86.align(    16);
-
-x86.label("yloop");
-  x86.xor(         eax, eax);
-  x86.align(    16);
-
-x86.label("xloop");
-  if (sse2) {
-    x86.movq(      xmm1, qword_ptr[edx+eax]);          // 00000000|uUuUuUuU
-    x86.movq(      xmm2, qword_ptr[esi+eax]);          // 00000000|vVvVvVvV
-    x86.pand(      xmm1, xmm7);                        // 00000000|.U.U.U.U
-    x86.psllw(     xmm2, 8);                           // 00000000|V.V.V.V.
-    x86.movq(      xmm0, qword_ptr[ecx+eax]);          // 00000000|YYYYYYYY
-    x86.por(       xmm1, xmm2);                        // 00000000|VUVUVUVU
-    x86.add(       eax, 8);
-    x86.punpcklbw( xmm0, xmm1);                        // VYUYVYUYVYUYVYUY
-    x86.cmp(       eax, awidth);
-    x86.movdqa(    xmmword_ptr[edi+eax*2-16], xmm0);   // store
-  }
-  else {
-    x86.movq(      mm1, qword_ptr[edx+eax]);           // uUuUuUuU
-    x86.movq(      mm2, qword_ptr[esi+eax]);           // vVvVvVvV
-    x86.pand(      mm1, mm7);                          // .U.U.U.U
-    x86.psllw(     mm2, 8);                            // V.V.V.V.
-    x86.movq(      mm0, qword_ptr[ecx+eax]);           // YYYYYYYY
-    x86.por(       mm1, mm2);                          // VUVUVUVU
-    x86.movq(      mm3, mm0);
-    x86.punpcklbw( mm0, mm1);                          // VYUYVYUY
-    x86.add(       eax, 8);
-    x86.punpckhbw( mm3, mm1);                          // VYUYVYUY
-    x86.movq(      qword_ptr[edi+eax*2-16], mm0);      // store
-    x86.cmp(       eax, awidth);
-    x86.movq(      qword_ptr[edi+eax*2-8],  mm3);      // store
-  }
-  x86.jl("xloop");
-
-  x86.add(         ecx, dword_ptr[ebp+pitch1Y]);
-  x86.add(         edx, dword_ptr[ebp+pitch1UV]);
-  x86.add(         esi, dword_ptr[ebp+pitch1UV]);
-  x86.add(         edi, dword_ptr[ebp+pitch2]);
-  x86.dec(         ebx);
-  x86.jnz("yloop");
-  if (!sse2)
-    x86.emms(      );
-
-  x86.pop(         esi);
-  x86.pop(         edi);
-  x86.pop(         edx);
-  x86.pop(         ecx);
-  x86.pop(         ebx);
-  x86.pop(         eax);
-  x86.pop(         ebp);
-  x86.ret();
-
-  assembly = DynamicAssembledCode(x86, env, "ConvertBackToYUY2: Dynamic MMX code could not be compiled.");
-#else
-  //TODO
-  env->ThrowError("ConvertBackToYUY2::GenerateYV24toYUY2 is not yet ported to 64-bit.");
-#endif
 }
 
 
@@ -457,7 +449,7 @@ PVideoFrame __stdcall ConvertBackToYUY2::GetFrame(int n, IScriptEnvironment* env
 
   if ((src_cs&VideoInfo::CS_YV24)==VideoInfo::CS_YV24) 
   {
-    PVideoFrame dst = env->NewVideoFrame(vi, 16); // YUY2 8 pixel aligned
+    PVideoFrame dst = env->NewVideoFrame(vi);
     BYTE* dstp = dst->GetWritePtr();
     const int dpitch  = dst->GetPitch();
 
@@ -468,27 +460,20 @@ PVideoFrame __stdcall ConvertBackToYUY2::GetFrame(int n, IScriptEnvironment* env
     const int pitchY  = src->GetPitch(PLANAR_Y);
     const int pitchUV = src->GetPitch(PLANAR_U);
 
-    const int awidth = (vi.width+7) & -8;
-
-#ifdef X86_32
-    if ((pitchY >= awidth) && (env->GetCPUFlags() & CPUF_MMX))
+    if ((env->GetCPUFlags() & CPUF_SSE2) && IsPtrAligned(srcY, 16) && IsPtrAligned(srcU, 16) && IsPtrAligned(srcV, 16))
     {  // Use MMX
-      assembly.Call(srcY, srcU, srcV, dstp, pitchY, pitchUV, dpitch);
-      return dst;
-    }
+      convert_yv24_back_to_yuy2_sse2(srcY, srcU, srcV, dstp, pitchY, pitchUV, dpitch, vi.height, vi.width);
+    } 
+    else 
+#ifdef X86_32
+    if (env->GetCPUFlags() & CPUF_MMX)
+    {  // Use MMX
+      convert_yv24_back_to_yuy2_mmx(srcY, srcU, srcV, dstp, pitchY, pitchUV, dpitch, vi.height, vi.width);
+    } 
+    else 
 #endif
-
-    for (int y=0; y<vi.height; y++) {
-      for (int x2=0; x2<vi.width; x2+=2) {
-        dstp[x2*2+0] = srcY[x2];
-        dstp[x2*2+1] = srcU[x2];
-        dstp[x2*2+2] = srcY[x2+1];
-        dstp[x2*2+3] = srcV[x2];
-      }
-      srcY += pitchY;
-      srcU += pitchUV;
-      srcV += pitchUV;
-      dstp += dpitch;
+    {
+      convert_yv24_back_to_yuy2_c(srcY, srcU, srcV, dstp, pitchY, pitchUV, dpitch, vi.height, vi.width);
     }
     return dst;
   }

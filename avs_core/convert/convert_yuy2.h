@@ -91,10 +91,6 @@ public:
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
 
   static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env);
-
-protected:
-  void GenerateYV24toYUY2(int awidth, int height, IScriptEnvironment* env);
-
 };
 
 #endif // __Convert_YUY2_H__
