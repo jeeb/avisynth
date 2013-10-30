@@ -148,16 +148,17 @@ PVideoFrame __stdcall ConvertToYUY2::GetFrame(int n, IScriptEnvironment* env)
     int dst_pitch = dst->GetPitch();
     int src_heigh = dst->GetHeight();
 
+    //todo: maybe check for source width being mod16/8?
     if (interlaced) {
       if ((env->GetCPUFlags() & CPUF_SSE2) && IsPtrAligned(srcp_y, 16))
       {
-        convert_yv12_to_yuy2_interlaced_sse2(srcp_y, srcp_u, srcp_v, src->GetRowSize(PLANAR_Y_ALIGNED), src_pitch_y, src_pitch_uv, dstp, dst_pitch ,src_heigh);
+        convert_yv12_to_yuy2_interlaced_sse2(srcp_y, srcp_u, srcp_v, src->GetRowSize(PLANAR_Y), src_pitch_y, src_pitch_uv, dstp, dst_pitch ,src_heigh);
       }
       else
 #ifdef X86_32
       if (env->GetCPUFlags() & CPUF_INTEGER_SSE)
       {
-        convert_yv12_to_yuy2_interlaced_isse(srcp_y, srcp_u, srcp_v, src->GetRowSize(PLANAR_Y_ALIGNED), src_pitch_y, src_pitch_uv, dstp, dst_pitch ,src_heigh);
+        convert_yv12_to_yuy2_interlaced_isse(srcp_y, srcp_u, srcp_v, src->GetRowSize(PLANAR_Y), src_pitch_y, src_pitch_uv, dstp, dst_pitch ,src_heigh);
       }
       else
 #endif
@@ -167,13 +168,13 @@ PVideoFrame __stdcall ConvertToYUY2::GetFrame(int n, IScriptEnvironment* env)
     } else {
       if ((env->GetCPUFlags() & CPUF_SSE2) && IsPtrAligned(srcp_y, 16))
       {
-        convert_yv12_to_yuy2_progressive_sse2(srcp_y, srcp_u, srcp_v, src->GetRowSize(PLANAR_Y_ALIGNED), src_pitch_y, src_pitch_uv, dstp, dst_pitch ,src_heigh);
+        convert_yv12_to_yuy2_progressive_sse2(srcp_y, srcp_u, srcp_v, src->GetRowSize(PLANAR_Y), src_pitch_y, src_pitch_uv, dstp, dst_pitch ,src_heigh);
       }
       else
 #ifdef X86_32
         if (env->GetCPUFlags() & CPUF_INTEGER_SSE)
         {
-          convert_yv12_to_yuy2_progressive_isse(srcp_y, srcp_u, srcp_v, src->GetRowSize(PLANAR_Y_ALIGNED), src_pitch_y, src_pitch_uv, dstp, dst_pitch ,src_heigh);
+          convert_yv12_to_yuy2_progressive_isse(srcp_y, srcp_u, srcp_v, src->GetRowSize(PLANAR_Y), src_pitch_y, src_pitch_uv, dstp, dst_pitch ,src_heigh);
         }
         else
 #endif
@@ -670,7 +671,7 @@ void ConvertToYUY2::GenerateAssembly(bool rgb24, bool dupl, bool sub, int w,
   bool sse  = !!(env->GetCPUFlags() & CPUF_SSE);
   bool sse2 = !!(env->GetCPUFlags() & CPUF_SSE2);
   bool fast128 = !!(env->GetCPUFlags() & (CPUF_SSE3|CPUF_SSSE3|CPUF_SSE4_1|CPUF_SSE4_2));
-
+  //dupl is true for BackToYUY2 and false for ConvertToYUY2
   if (!fast128 && !dupl)
     sse2 = false; // 1-2-1 SSE2 code is slower than MMX on P4 etc.
 
