@@ -34,6 +34,7 @@
 
 #include "convert_yuy2.h"
 #include "../core/internal.h"
+#include "avs/alignment.h"
 
 //  const int cyb = int(0.114*219/255*32768+0.5);  // 0x0C88
 //  const int cyg = int(0.587*219/255*32768+0.5);  // 0x4087
@@ -137,35 +138,47 @@ PVideoFrame __stdcall ConvertToYUY2::GetFrame(int n, IScriptEnvironment* env)
 
   if (((src_cs&VideoInfo::CS_YV12)==VideoInfo::CS_YV12)||((src_cs&VideoInfo::CS_I420)==VideoInfo::CS_I420)) {
     PVideoFrame dst = env->NewVideoFrame(vi,32); 
-    BYTE* yuv = dst->GetWritePtr();
+    BYTE* dstp = dst->GetWritePtr();
+    const BYTE* srcp_y = src->GetReadPtr(PLANAR_Y);
+    const BYTE* srcp_u = src->GetReadPtr(PLANAR_U);
+    const BYTE* srcp_v = src->GetReadPtr(PLANAR_V);
+    int src_pitch_y = src->GetPitch(PLANAR_Y);
+    int src_pitch_uv = src->GetPitch(PLANAR_U);
+    int dst_pitch = dst->GetPitch();
+    int src_heigh = dst->GetHeight();
+
     if (interlaced) {
+      if ((env->GetCPUFlags() & CPUF_SSE2) && IsPtrAligned(srcp_y, 16))
+      {
+        convert_yv12_to_yuy2_interlaced_sse2(srcp_y, srcp_u, srcp_v, src->GetRowSize(PLANAR_Y_ALIGNED), src_pitch_y, src_pitch_uv, dstp, dst_pitch ,src_heigh);
+      }
+      else
 #ifdef X86_32
       if (env->GetCPUFlags() & CPUF_INTEGER_SSE)
       {
-        convert_yv12_to_yuy2_interlaced_isse(src->GetReadPtr(PLANAR_Y), src->GetReadPtr(PLANAR_U), src->GetReadPtr(PLANAR_V),
-          src->GetRowSize(PLANAR_Y_ALIGNED), src->GetPitch(PLANAR_Y), src->GetPitch(PLANAR_U),
-          yuv, dst->GetPitch() ,src->GetHeight());
+        convert_yv12_to_yuy2_interlaced_isse(srcp_y, srcp_u, srcp_v, src->GetRowSize(PLANAR_Y_ALIGNED), src_pitch_y, src_pitch_uv, dstp, dst_pitch ,src_heigh);
       }
       else
 #endif
       {
-        convert_yv12_to_yuy2_interlaced_c(src->GetReadPtr(PLANAR_Y), src->GetReadPtr(PLANAR_U), src->GetReadPtr(PLANAR_V),
-          src->GetRowSize(PLANAR_Y), src->GetPitch(PLANAR_Y), src->GetPitch(PLANAR_U), yuv, dst->GetPitch() ,src->GetHeight());
+        convert_yv12_to_yuy2_interlaced_c(srcp_y, srcp_u, srcp_v, src->GetRowSize(PLANAR_Y), src_pitch_y, src_pitch_uv, dstp, dst_pitch ,src_heigh);
       }
     } else {
-#ifdef X86_32
-      if (env->GetCPUFlags() & CPUF_INTEGER_SSE)
+      if ((env->GetCPUFlags() & CPUF_SSE2) && IsPtrAligned(srcp_y, 16))
       {
-        convert_yv12_to_yuy2_progressive_isse(src->GetReadPtr(PLANAR_Y), src->GetReadPtr(PLANAR_U), src->GetReadPtr(PLANAR_V),
-          src->GetRowSize(PLANAR_Y_ALIGNED), src->GetPitch(PLANAR_Y), src->GetPitch(PLANAR_U),
-          yuv, dst->GetPitch() ,src->GetHeight());
+        convert_yv12_to_yuy2_progressive_sse2(srcp_y, srcp_u, srcp_v, src->GetRowSize(PLANAR_Y_ALIGNED), src_pitch_y, src_pitch_uv, dstp, dst_pitch ,src_heigh);
       }
       else
+#ifdef X86_32
+        if (env->GetCPUFlags() & CPUF_INTEGER_SSE)
+        {
+          convert_yv12_to_yuy2_progressive_isse(srcp_y, srcp_u, srcp_v, src->GetRowSize(PLANAR_Y_ALIGNED), src_pitch_y, src_pitch_uv, dstp, dst_pitch ,src_heigh);
+        }
+        else
 #endif
-      {
-        convert_yv12_to_yuy2_progressive_c(src->GetReadPtr(PLANAR_Y), src->GetReadPtr(PLANAR_U), src->GetReadPtr(PLANAR_V),
-          src->GetRowSize(PLANAR_Y), src->GetPitch(PLANAR_Y), src->GetPitch(PLANAR_U), yuv, dst->GetPitch() ,src->GetHeight());
-      }
+        {
+          convert_yv12_to_yuy2_progressive_c(srcp_y, srcp_u, srcp_v, src->GetRowSize(PLANAR_Y), src_pitch_y, src_pitch_uv, dstp, dst_pitch ,src_heigh);
+        }
     }
     return dst;
   }

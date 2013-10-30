@@ -38,6 +38,7 @@
 #include "convert_yv12.h"
 #include "convert_yuy2.h"
 #include "convert_planar.h"
+#include "avs/alignment.h"
 #include <cstdlib>
 
 
@@ -276,6 +277,13 @@ PVideoFrame __stdcall ConvertToYV12::GetFrame(int n, IScriptEnvironment* env) {
   PVideoFrame dst = env->NewVideoFrame(vi);
 
   if (interlaced) {
+    if ((env->GetCPUFlags() & CPUF_SSE2) && IsPtrAligned(src->GetReadPtr(), 16)) 
+    {
+      convert_yuy2_to_yv12_interlaced_sse2(src->GetReadPtr(), src->GetRowSize(), src->GetPitch(),
+        dst->GetWritePtr(PLANAR_Y), dst->GetWritePtr(PLANAR_U), dst->GetWritePtr(PLANAR_V),
+        dst->GetPitch(PLANAR_Y), dst->GetPitch(PLANAR_U), src->GetHeight());
+    }
+    else
 #ifdef X86_32
     if ((env->GetCPUFlags() & CPUF_INTEGER_SSE))
     {
@@ -293,6 +301,13 @@ PVideoFrame __stdcall ConvertToYV12::GetFrame(int n, IScriptEnvironment* env) {
   } 
   else
   {
+    if ((env->GetCPUFlags() & CPUF_SSE2) && IsPtrAligned(src->GetReadPtr(), 16)) 
+    {
+      convert_yuy2_to_yv12_progressive_sse2(src->GetReadPtr(), src->GetRowSize(), src->GetPitch(),
+        dst->GetWritePtr(PLANAR_Y), dst->GetWritePtr(PLANAR_U), dst->GetWritePtr(PLANAR_V),
+        dst->GetPitch(PLANAR_Y), dst->GetPitch(PLANAR_U), src->GetHeight());
+    }
+    else
 #ifdef X86_32
     if ((env->GetCPUFlags() & CPUF_INTEGER_SSE))
     {
