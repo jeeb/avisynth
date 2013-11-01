@@ -53,7 +53,7 @@ class MergeChroma : public GenericVideoFilter
  **/
 {
 public:
-  MergeChroma(PClip _child, PClip _clip, float _weight, int _test, IScriptEnvironment* env);  
+  MergeChroma(PClip _child, PClip _clip, float _weight, IScriptEnvironment* env);  
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
 
   static AVSValue __cdecl Create(AVSValue args, void* user_data, IScriptEnvironment* env);
@@ -61,7 +61,6 @@ public:
 private:
   PClip clip;
   float weight;
-  int test;
 };
 
 
@@ -71,7 +70,7 @@ class MergeLuma : public GenericVideoFilter
  **/
 {
 public:
-  MergeLuma(PClip _child, PClip _clip, float _weight, int _test, IScriptEnvironment* env);  
+  MergeLuma(PClip _child, PClip _clip, float _weight, IScriptEnvironment* env);  
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
 
   static AVSValue __cdecl Create(AVSValue args, void* user_data, IScriptEnvironment* env);
@@ -79,7 +78,6 @@ public:
 private:
   PClip clip;
   float weight;
-  int test;
 };
 
 
@@ -89,7 +87,7 @@ class MergeAll : public GenericVideoFilter
  **/
 {
 public:
-  MergeAll(PClip _child, PClip _clip, float _weight, int _test, IScriptEnvironment* env);  
+  MergeAll(PClip _child, PClip _clip, float _weight, IScriptEnvironment* env);  
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
 
   static AVSValue __cdecl Create(AVSValue args, void* user_data, IScriptEnvironment* env);
@@ -97,7 +95,6 @@ public:
 private:
   PClip clip;
   float weight;
-  int test;
 };
 
 
