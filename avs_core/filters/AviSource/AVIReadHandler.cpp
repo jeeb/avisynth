@@ -1622,7 +1622,7 @@ void AVIReadHandler::_parseFile(List2<AVIStreamNode>& streamlist) {
 			break;
 
 		case 'mges':			// VirtualDub segment hint block
-			delete pSegmentHint;
+			delete [] pSegmentHint;
 			if (!(pSegmentHint = new(std::nothrow) char[dwLength]))
 				throw MyMemoryError();
 
@@ -2147,7 +2147,7 @@ void AVIReadHandler::_destruct() {
 			delete pDesc;
 		}
 
-	delete pSegmentHint;
+	delete [] pSegmentHint;
 }
 
 ///////////////////////////////////////////////////////////////////////////
