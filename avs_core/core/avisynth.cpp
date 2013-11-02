@@ -239,45 +239,6 @@ public:
   LinkedVideoFrameBuffer() : returned(true), signature(ident) { next=prev=this; }
 };
 
-#include "hashtable.h"
-class VarTable {
-
-  VarTable* const dynamic_parent;
-  VarTable* const lexical_parent;
-  hashtable<AVSValue> variables;
-
-public:
-  VarTable(VarTable* _dynamic_parent, VarTable* _lexical_parent) :
-    dynamic_parent(_dynamic_parent), lexical_parent(_lexical_parent),
-    variables(1873)    // a prime number
-  {}
-
-  VarTable* Pop() {
-    VarTable* _dynamic_parent = this->dynamic_parent;
-    delete this;
-    return _dynamic_parent;
-  }
-
-  // This method will not modify the *val argument if it returns false.
-  bool Get(const char* name, AVSValue *val) const {
-    AVSValue *v = variables.get(name);
-    if (v != NULL)
-    {
-      *val = *v;
-      return true;
-    }
-
-    if (lexical_parent)
-      return lexical_parent->Get(name, val);
-    else
-      return false;
-  }
-
-  bool Set(const char* name, const AVSValue& val) {
-    return variables.add(name, val);
-  }
-};
-
 // This doles out storage space for strings.  No space is ever freed
 // until the class instance is destroyed (which happens when a script
 // file is closed).
@@ -350,6 +311,7 @@ public:
   }
 };
 
+#include "vartable.h"
 class ScriptEnvironment : public IScriptEnvironment2 {
 public:
   ScriptEnvironment();
