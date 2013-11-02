@@ -266,7 +266,10 @@ void BitBlt(BYTE* dstp, int dst_pitch, const BYTE* srcp, int src_pitch, int row_
 
   if ( (!height) || (!row_size) ) return;
 
-  if ( ((src_pitch == dst_pitch) && (dst_pitch == row_size)) || (height == 1) )
+  bool block_copy =  (row_size > 2*FRAME_ALIGN)           // The heuristic below does not work well for small row sizes.
+                  && (src_pitch-row_size < FRAME_ALIGN);  // This is a heuristic to detect if we are copying continuous rows.
+
+  if ( (src_pitch == dst_pitch) && block_copy )
   {  // we can copy the whole buffer in one go
 
 #ifdef X86_32
