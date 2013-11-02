@@ -18,28 +18,10 @@
 //	along with this program; if not, write to the Free Software
 //	Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
+#include <avs/cpuid.h>
 #include <intrin.h>
 
 #define IS_BIT_SET(bitfield, bit) ((bitfield) & (1<<(bit)) ? true : false)
-
-// For GetCPUFlags.  These are backwards-compatible with those in VirtualDub.
-enum {
-                    /* oldest CPU to support extension */
-  CPUF_FORCE        =  0x01,   //  N/A
-  CPUF_FPU          =  0x02,   //  386/486DX
-  CPUF_MMX          =  0x04,   //  P55C, K6, PII
-  CPUF_INTEGER_SSE  =  0x08,   //  PIII, Athlon
-  CPUF_SSE          =  0x10,   //  PIII, Athlon XP/MP
-  CPUF_SSE2         =  0x20,   //  PIV, K8
-  CPUF_3DNOW        =  0x40,   //  K6-2
-  CPUF_3DNOW_EXT    =  0x80,   //  Athlon
-  CPUF_X86_64       =  0xA0,   //  Hammer (note: equiv. to 3DNow + SSE2, which
-                               //          only Hammer will have anyway)
-  CPUF_SSE3         = 0x100,   //  PIV+, K8 Venice
-  CPUF_SSSE3        = 0x200,   //  Core 2
-  CPUF_SSE4_1       = 0x400,   //  Penryn, Wolfdale, Yorkfield
-  CPUF_AVX          = 0x800,   //  Sandy Bridge, Bulldozer
-};
 
 static int CPUCheckForExtensions()
 {
@@ -61,6 +43,8 @@ static int CPUCheckForExtensions()
     result |= CPUF_SSSE3;
   if (IS_BIT_SET(cpuinfo[2], 19))
     result |= CPUF_SSE4_1;
+  if (IS_BIT_SET(cpuinfo[2], 20))
+    result |= CPUF_SSE4_2;
 
   // 3DNow!, 3DNow!, and ISSE
   __cpuid(cpuinfo, 0x80000000);   
