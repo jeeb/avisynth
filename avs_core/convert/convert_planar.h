@@ -73,11 +73,7 @@ static int getPlacement( const AVSValue& _placement, IScriptEnvironment* env);
 static ResamplingFunction* getResampler( const char* resampler, IScriptEnvironment* env);
 
 
-#ifdef X86_32
-class ConvertToY8 : public GenericVideoFilter, public RGBtoY8Generator
-#else
 class ConvertToY8 : public GenericVideoFilter
-#endif
 {
 public:
   ConvertToY8(PClip src, int matrix, IScriptEnvironment* env);
