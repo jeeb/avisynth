@@ -102,23 +102,19 @@ private:
 
 /**** MMX Routines ****/
 
-void mmx_merge_luma( unsigned int *src, unsigned int *luma, int pitch, 
-                     int luma_pitch, int width, int height );
+
                     
-void mmx_weigh_luma( unsigned int *src, unsigned int *luma, int pitch, 
-                     int luma_pitch, int width, int height, int weight, int invweight );
+void weighted_merge_luma_yuy2_sse2(BYTE* src, const BYTE* luma, int pitch, int luma_pitch, int width, int height, int weight, int invweight);
+void weighted_merge_luma_yuy2_mmx(BYTE* src, const BYTE* luma, int pitch, int luma_pitch, int width, int height, int weight, int invweight);
+void weighted_merge_luma_yuy2_c(BYTE* src, const BYTE* luma, int pitch, int luma_pitch, int width, int height, int weight, int invweight);
 
-void mmx_weigh_chroma( unsigned int *src,unsigned int *chroma, int pitch, 
-                       int chroma_pitch, int width, int height, int weight, int invweight );
+void weighted_merge_chroma_yuy2_sse2(BYTE* src, const BYTE* chroma, int pitch, int chroma_pitch, int width, int height, int weight, int invweight);
+void weighted_merge_chroma_yuy2_mmx(BYTE* src, const BYTE* chroma, int pitch, int chroma_pitch, int width, int height, int weight, int invweight);
+void weighted_merge_chroma_yuy2_c(BYTE* src, const BYTE* chroma, int pitch, int chroma_pitch, int width, int height, int weight, int invweight);
 
-void merge_luma( unsigned int *src, unsigned int *luma, int pitch, 
-                     int luma_pitch, int width, int height );
-                    
-void weigh_luma( unsigned int *src, unsigned int *luma, int pitch,
-                 int luma_pitch, int width, int height, int weight, int invweight);
-
-void weigh_chroma( unsigned int *src, unsigned int *chroma, int pitch,
-                   int chroma_pitch, int width, int height, int weight, int invweight);
+void replace_luma_yuy2_sse2(BYTE *src, const BYTE *luma, int pitch, int luma_pitch, int width, int height);
+void replace_luma_yuy2_mmx(BYTE *src, const BYTE *luma, int pitch, int luma_pitch, int width, int height);
+void replace_luma_yuy2_c(BYTE* src, const BYTE *luma, int pitch, int luma_pitch, int width, int height);
 
 void weighted_merge_planar_sse2(BYTE *p1,const BYTE *p2, int p1_pitch, int p2_pitch,int rowsize, int height, int weight, int invweight);
 void weighted_merge_planar_mmx(BYTE *p1,const BYTE *p2, int p1_pitch, int p2_pitch,int rowsize, int height, int weight, int invweight);
