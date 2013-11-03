@@ -444,6 +444,88 @@ static void convert_yv24_back_to_yuy2_c(const BYTE* srcY, const BYTE* srcU, cons
 }
 
 
+static void convert_rgb_back_to_yuy2_c(BYTE* yuv, const BYTE* rgb, int rgb_offset, int yuv_offset, int height, int width, int rgb_inc, int matrix) {
+  /* Existing 0-1-0 Kernel version */
+  int cyb, cyg, cyr, ku, kv;
+
+  if (matrix == PC_601 || matrix == PC_709) {
+    if (matrix == PC_601) {
+      cyb = int(0.114 * 65536 + 0.5);
+      cyg = int(0.587 * 65536 + 0.5);
+      cyr = int(0.299 * 65536 + 0.5);
+
+      ku  = int(127.0 / (255.0 * (1.0 - 0.114)) * 65536 + 0.5);
+      kv  = int(127.0 / (255.0 * (1.0 - 0.299)) * 65536 + 0.5);
+    } else {
+      cyb = int(0.0722 * 65536 + 0.5);
+      cyg = int(0.7152 * 65536 + 0.5);
+      cyr = int(0.2126 * 65536 + 0.5);
+
+      ku  = int(127.0 / (255.0 * (1.0 - 0.0722)) * 65536 + 0.5);
+      kv  = int(127.0 / (255.0 * (1.0 - 0.2126)) * 65536 + 0.5);
+    }
+    for (int y = height; y>0; --y)
+    {
+      for (int x = 0; x < width; x += 2)
+      {
+        const BYTE* const rgb_next = rgb + rgb_inc;
+        // y1 and y2 can't overflow
+        const int y1 = (cyb*rgb[0] + cyg*rgb[1] + cyr*rgb[2] + 0x8000) >> 16;
+        yuv[0] = y1;
+        const int y2 = (cyb*rgb_next[0] + cyg*rgb_next[1] + cyr*rgb_next[2] + 0x8000) >> 16;
+        yuv[2] = y2;
+        const int scaled_y = y1;
+        const int b_y = rgb[0] - scaled_y;
+        yuv[1] = ScaledPixelClip(b_y * ku + 0x800000);  // u
+        const int r_y = rgb[2] - scaled_y;
+        yuv[3] = ScaledPixelClip(r_y * kv + 0x800000);  // v
+        rgb = rgb_next + rgb_inc;
+        yuv += 4;
+      }
+      rgb += rgb_offset;
+      yuv += yuv_offset;
+    }
+  } else {
+    if (matrix == Rec709) {
+      cyb = int(0.0722 * 219 / 255 * 65536 + 0.5);
+      cyg = int(0.7152 * 219 / 255 * 65536 + 0.5);
+      cyr = int(0.2126 * 219 / 255 * 65536 + 0.5);
+
+      ku  = int(112.0 / (255.0 * (1.0 - 0.0722)) * 32768 + 0.5);
+      kv  = int(112.0 / (255.0 * (1.0 - 0.2126)) * 32768 + 0.5);
+    } else {
+      cyb = int(0.114 * 219 / 255 * 65536 + 0.5);
+      cyg = int(0.587 * 219 / 255 * 65536 + 0.5);
+      cyr = int(0.299 * 219 / 255 * 65536 + 0.5);
+
+      ku  = int(1 / 2.018 * 32768 + 0.5);
+      kv  = int(1 / 1.596 * 32768 + 0.5);
+    }
+
+    for (int y = height; y>0; --y)
+    {
+      for (int x = 0; x < width; x += 2)
+      {
+        const BYTE* const rgb_next = rgb + rgb_inc;
+        // y1 and y2 can't overflow
+        const int y1 = (cyb*rgb[0] + cyg*rgb[1] + cyr*rgb[2] + 0x108000) >> 16;
+        yuv[0] = y1;
+        const int y2 = (cyb*rgb_next[0] + cyg*rgb_next[1] + cyr*rgb_next[2] + 0x108000) >> 16;
+        yuv[2] = y2;
+        const int scaled_y = (y1 - 16) * int(255.0 / 219.0 * 65536 + 0.5);
+        const int b_y = ((rgb[0]) << 16) - scaled_y;
+        yuv[1] = ScaledPixelClip((b_y >> 15) * ku + 0x800000);  // u
+        const int r_y = ((rgb[2]) << 16) - scaled_y;
+        yuv[3] = ScaledPixelClip((r_y >> 15) * kv + 0x800000);  // v
+        rgb = rgb_next + rgb_inc;
+        yuv += 4;
+      }
+      rgb += rgb_offset;
+      yuv += yuv_offset;
+    }
+  }
+}
+
 PVideoFrame __stdcall ConvertBackToYUY2::GetFrame(int n, IScriptEnvironment* env)
 {
   PVideoFrame src = child->GetFrame(n, env);
@@ -485,131 +567,18 @@ PVideoFrame __stdcall ConvertBackToYUY2::GetFrame(int n, IScriptEnvironment* env
 #ifdef X86_32
   if (env->GetCPUFlags() & CPUF_MMX)
   {
-      mmx_ConvertRGBtoYUY2(src->GetReadPtr(),yuv ,src->GetPitch(), dst->GetPitch(), vi.height);
-      return dst;
+    mmx_ConvertRGBtoYUY2(src->GetReadPtr(),yuv ,src->GetPitch(), dst->GetPitch(), vi.height);
   }
+  else
 #endif
+  {
+    const BYTE* rgb = src->GetReadPtr() + (vi.height-1) * src->GetPitch(); // Last line
 
-  const BYTE* rgb = src->GetReadPtr() + (vi.height-1) * src->GetPitch(); // Last line
+    const int yuv_offset = dst->GetPitch() - dst->GetRowSize();
+    const int rgb_offset = -src->GetPitch() - src->GetRowSize(); // moving upwards
+    const int rgb_inc = (src_cs&VideoInfo::CS_BGR32)==VideoInfo::CS_BGR32 ? 4 : 3;
 
-  const int yuv_offset = dst->GetPitch() - dst->GetRowSize();
-  const int rgb_offset = -src->GetPitch() - src->GetRowSize(); // moving upwards
-  const int rgb_inc = (src_cs&VideoInfo::CS_BGR32)==VideoInfo::CS_BGR32 ? 4 : 3;
-
-/* Existing 0-1-0 Kernel version */
-  if (theMatrix == PC_601) {
-    const int cyb = int(0.114*65536+0.5);
-    const int cyg = int(0.587*65536+0.5);
-    const int cyr = int(0.299*65536+0.5);
-
-    const int ku  = int(127./(255.*(1.0-0.114))*65536+0.5);
-    const int kv  = int(127./(255.*(1.0-0.299))*65536+0.5);
-
-    for (int y=vi.height; y>0; --y)
-    {
-      for (int x = 0; x < vi.width; x += 2)
-      {
-        const BYTE* const rgb_next = rgb + rgb_inc;
-        // y1 and y2 can't overflow
-        const int y1 = (cyb*rgb[0] + cyg*rgb[1] + cyr*rgb[2] + 0x8000) >> 16;
-        yuv[0] = y1;
-        const int y2 = (cyb*rgb_next[0] + cyg*rgb_next[1] + cyr*rgb_next[2] + 0x8000) >> 16;
-        yuv[2] = y2;
-        const int scaled_y = y1;
-        const int b_y = rgb[0] - scaled_y;
-        yuv[1] = ScaledPixelClip(b_y * ku + 0x800000);  // u
-        const int r_y = rgb[2] - scaled_y;
-        yuv[3] = ScaledPixelClip(r_y * kv + 0x800000);  // v
-        rgb = rgb_next + rgb_inc;
-        yuv += 4;
-      }
-      rgb += rgb_offset;
-      yuv += yuv_offset;
-    }
-  } else if (theMatrix == PC_709) {
-    const int cyb = int(0.0722*65536+0.5);
-    const int cyg = int(0.7152*65536+0.5);
-    const int cyr = int(0.2126*65536+0.5);
-
-    const int ku  = int(127./(255.*(1.0-0.0722))*65536+0.5);
-    const int kv  = int(127./(255.*(1.0-0.2126))*65536+0.5);
-
-    for (int y=vi.height; y>0; --y)
-    {
-      for (int x = 0; x < vi.width; x += 2)
-      {
-        const BYTE* const rgb_next = rgb + rgb_inc;
-        // y1 and y2 can't overflow
-        const int y1 = (cyb*rgb[0] + cyg*rgb[1] + cyr*rgb[2] + 0x8000) >> 16;
-        yuv[0] = y1;
-        const int y2 = (cyb*rgb_next[0] + cyg*rgb_next[1] + cyr*rgb_next[2] + 0x8000) >> 16;
-        yuv[2] = y2;
-        const int scaled_y = y1;
-        const int b_y = rgb[0] - scaled_y;
-        yuv[1] = ScaledPixelClip(b_y * ku + 0x800000);  // u
-        const int r_y = rgb[2] - scaled_y;
-        yuv[3] = ScaledPixelClip(r_y * kv + 0x800000);  // v
-        rgb = rgb_next + rgb_inc;
-        yuv += 4;
-      }
-      rgb += rgb_offset;
-      yuv += yuv_offset;
-    }
-  } else if (theMatrix == Rec709) {
-    const int cyb = int(0.0722*219/255*65536+0.5);
-    const int cyg = int(0.7152*219/255*65536+0.5);
-    const int cyr = int(0.2126*219/255*65536+0.5);
-
-    const int ku  = int(112./(255.*(1.0-0.0722))*32768+0.5);
-    const int kv  = int(112./(255.*(1.0-0.2126))*32768+0.5);
-
-    for (int y=vi.height; y>0; --y)
-    {
-      for (int x = 0; x < vi.width; x += 2)
-      {
-        const BYTE* const rgb_next = rgb + rgb_inc;
-        // y1 and y2 can't overflow
-        const int y1 = (cyb*rgb[0] + cyg*rgb[1] + cyr*rgb[2] + 0x108000) >> 16;
-        yuv[0] = y1;
-        const int y2 = (cyb*rgb_next[0] + cyg*rgb_next[1] + cyr*rgb_next[2] + 0x108000) >> 16;
-        yuv[2] = y2;
-        const int scaled_y = (y1 - 16) * int(255.0/219.0*65536+0.5);
-        const int b_y = ((rgb[0]) << 16) - scaled_y;
-        yuv[1] = ScaledPixelClip((b_y >> 15) * ku + 0x800000);  // u
-        const int r_y = ((rgb[2]) << 16) - scaled_y;
-        yuv[3] = ScaledPixelClip((r_y >> 15) * kv + 0x800000);  // v
-        rgb = rgb_next + rgb_inc;
-        yuv += 4;
-      }
-      rgb += rgb_offset;
-      yuv += yuv_offset;
-    }
-  } else if (theMatrix == Rec601) {
-    const int cyb = int(0.114*219/255*65536+0.5);
-    const int cyg = int(0.587*219/255*65536+0.5);
-    const int cyr = int(0.299*219/255*65536+0.5);
-
-    for (int y=vi.height; y>0; --y)
-    {
-      for (int x = 0; x < vi.width; x += 2)
-      {
-        const BYTE* const rgb_next = rgb + rgb_inc;
-        // y1 and y2 can't overflow
-        const int y1 = (cyb*rgb[0] + cyg*rgb[1] + cyr*rgb[2] + 0x108000) >> 16;
-        yuv[0] = y1;
-        const int y2 = (cyb*rgb_next[0] + cyg*rgb_next[1] + cyr*rgb_next[2] + 0x108000) >> 16;
-        yuv[2] = y2;
-        const int scaled_y = (y1 - 16) * int(255.0/219.0*65536+0.5);
-        const int b_y = ((rgb[0]) << 16) - scaled_y;
-        yuv[1] = ScaledPixelClip((b_y >> 15) * int(1/2.018*32768+0.5) + 0x800000);  // u
-        const int r_y = ((rgb[2]) << 16) - scaled_y;
-        yuv[3] = ScaledPixelClip((r_y >> 15) * int(1/1.596*32768+0.5) + 0x800000);  // v
-        rgb = rgb_next + rgb_inc;
-        yuv += 4;
-      }
-      rgb += rgb_offset;
-      yuv += yuv_offset;
-    }
+    convert_rgb_back_to_yuy2_c(yuv, rgb, rgb_offset, yuv_offset, vi.height, vi.width, rgb_inc, theMatrix);
   }
 
   return dst;
