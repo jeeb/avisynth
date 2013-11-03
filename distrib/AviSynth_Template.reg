@@ -34,8 +34,11 @@ Windows Registry Editor Version 5.00
 
 [HKEY_LOCAL_MACHINE\SOFTWARE\Avisynth]
 @="%INSTALLDIR%"
-"plugindir2_5"="%INSTALLDIR%\plugins"
+"PluginDir+"="%INSTALLDIR%\plugins+"
+"PluginDir2_5"="%INSTALLDIR%\plugins"
 
-
-
+[HKEY_CURRENT_USER\Software\AviSynth]
+@="%INSTALLDIR%"
+"PluginDir+"="%INSTALLDIR%\plugins+"
+"PluginDir2_5"="%INSTALLDIR%\plugins"
 
