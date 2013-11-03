@@ -94,11 +94,7 @@ private:
 };
 
 
-#ifdef X86_32
-class ConvertRGBToYV24 : public GenericVideoFilter, public MatrixGenerator3x3
-#else
 class ConvertRGBToYV24 : public GenericVideoFilter
-#endif
 {
 public:
   ConvertRGBToYV24(PClip src, int matrix, IScriptEnvironment* env);
@@ -108,9 +104,7 @@ public:
 private:
   void BuildMatrix(double Kr, double Kb, int Sy, int Suv, int Oy, int shift);
   signed short* matrix;
-  BYTE* unpckbuf;
   int offset_y;
-  int mul_out;
   int pixel_step;
 };
 
