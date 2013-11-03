@@ -39,6 +39,7 @@
 #include <climits>
 #include <avs/win.h>
 #include <avs/minmax.h>
+#include "avs/alignment.h"
 
 
 
@@ -608,6 +609,16 @@ bool Dissolve::GetParity(int n)
   return (n < video_fade_start) ? child->GetParity(n) : child2->GetParity(n - video_fade_start);
 }
 
+static void dispatch_merge(BYTE* dstp, const BYTE* srcp, int dst_pitch, int src_pitch, int dst_width, int dst_height, int weight, int invweight, IScriptEnvironment *env) {
+  if (env->GetCPUFlags() & CPUF_SSE2) {
+    weighted_merge_planar_sse2(dstp, srcp, dst_pitch, src_pitch, dst_width, dst_height, weight, invweight);
+  } 
+#ifdef X86_32
+  else {
+    weighted_merge_planar_mmx(dstp, srcp, dst_pitch, src_pitch, dst_width, dst_height, weight, invweight);
+  }
+#endif
+}
 
 PVideoFrame Dissolve::GetFrame(int n, IScriptEnvironment* env) 
 {
@@ -621,32 +632,33 @@ PVideoFrame Dissolve::GetFrame(int n, IScriptEnvironment* env)
 
   const int multiplier = n - video_fade_end + overlap;
 
-#ifdef X86_32
-  if ((env->GetCPUFlags() & CPUF_MMX) && (!(a->GetRowSize(PLANAR_Y_ALIGNED)&7)) )  // MMX and Video is mod 8
+  if (env->GetCPUFlags() & (CPUF_SSE2 | CPUF_MMX))
   {
     int weight = (multiplier * 32767) / (overlap+1);
     int invweight = 32767-weight;
     env->MakeWritable(&a);
-    weighted_merge_planar_mmx(a->GetWritePtr(), b->GetReadPtr(), a->GetPitch(), b->GetPitch(), a->GetRowSize(PLANAR_Y_ALIGNED), a->GetHeight(), weight, invweight);
+    dispatch_merge(a->GetWritePtr(), b->GetReadPtr(), a->GetPitch(), b->GetPitch(), a->GetRowSize(PLANAR_Y), a->GetHeight(), weight, invweight, env);
     if (vi.IsPlanar()) {
-      weighted_merge_planar_mmx(a->GetWritePtr(PLANAR_U), b->GetReadPtr(PLANAR_U), a->GetPitch(PLANAR_U), b->GetPitch(PLANAR_U), a->GetRowSize(PLANAR_U_ALIGNED), a->GetHeight(PLANAR_U), weight, invweight);
-      weighted_merge_planar_mmx(a->GetWritePtr(PLANAR_V), b->GetReadPtr(PLANAR_V), a->GetPitch(PLANAR_V), b->GetPitch(PLANAR_V), a->GetRowSize(PLANAR_V_ALIGNED), a->GetHeight(PLANAR_V), weight, invweight);    
+      dispatch_merge(a->GetWritePtr(PLANAR_U), b->GetReadPtr(PLANAR_U), a->GetPitch(PLANAR_U), b->GetPitch(PLANAR_U), a->GetRowSize(PLANAR_U), a->GetHeight(PLANAR_U), weight, invweight, env);
+      dispatch_merge(a->GetWritePtr(PLANAR_V), b->GetReadPtr(PLANAR_V), a->GetPitch(PLANAR_V), b->GetPitch(PLANAR_V), a->GetRowSize(PLANAR_V), a->GetHeight(PLANAR_V), weight, invweight, env);    
     }
     return a;  
   }
-#endif
 
   
   PVideoFrame c;
   if (!a->IsWritable())
     c = env->NewVideoFrame(vi);
   if (vi.IsPlanar()) {
+    int planes[3] = {PLANAR_Y, PLANAR_U, PLANAR_V};
     for (int i=0;i<3;i++) {
-      int p = (i==0) ? PLANAR_Y : PLANAR_U;      
-      p = (i==1) ? PLANAR_V : p;      
-      const BYTE *src1 = a->GetReadPtr(p), *src2 = b->GetReadPtr(p);
+      int p = planes[i];
+      const BYTE *src1 = a->GetReadPtr(p);
+      const BYTE *src2 = b->GetReadPtr(p);
       BYTE* dst = (c?c:a)->GetWritePtr(p);
-      int src1_pitch = a->GetPitch(p), src2_pitch = b->GetPitch(p), dst_pitch = (c?c:a)->GetPitch(p);
+      int src1_pitch = a->GetPitch(p);
+      int src2_pitch = b->GetPitch(p);
+      int dst_pitch = (c?c:a)->GetPitch(p);
       const int row_size = a->GetRowSize(p), height = a->GetHeight(p);
 
       for (int y=height; y>0; --y) {
@@ -660,8 +672,11 @@ PVideoFrame Dissolve::GetFrame(int n, IScriptEnvironment* env)
   } else {
     const BYTE *src1 = a->GetReadPtr(), *src2 = b->GetReadPtr();
     BYTE* dst = (c?c:a)->GetWritePtr();
-    int src1_pitch = a->GetPitch(), src2_pitch = b->GetPitch(), dst_pitch = (c?c:a)->GetPitch();
-    const int row_size = a->GetRowSize(), height = a->GetHeight();
+    int src1_pitch = a->GetPitch();
+    int src2_pitch = b->GetPitch();
+    int dst_pitch = (c?c:a)->GetPitch();
+    int row_size = a->GetRowSize();
+    int height = a->GetHeight();
 
     for (int y=height; y>0; --y) {
       for (int x=0; x<row_size; ++x)
