@@ -341,84 +341,6 @@ loopx:
   }
 }
 
-// MMX_Convert444ChromaToYV12:
-// by Ian Brabham Copyright 2007.
-//
-// src_rowsize must be mod 16 (dst_rowsize mod 8)
-// Operates on 16x2 input pixels per loop for best possible pairability.
-
-
-void MMX_Convert444ChromaToYV12(unsigned char *dstp, const unsigned char *srcp,
-        const int dst_pitch, const int src_pitch,
-        const int src_rowsize, const int src_height)
-{
-  static const __int64 sevenfB = 0x7f7f7f7f7f7f7f7f;
-  int src_pitch2 = src_pitch * 2;
-  __asm {
-	push     ebx
-    mov      eax, [dstp]
-    mov      ebx, [srcp]
-    mov      ecx, ebx
-    add      ecx, [src_pitch]  // ecx  = 1 line src offset
-
-    mov      edx, [src_rowsize]
-    xor      edi, edi
-    mov      esi, [src_height]
-    pcmpeqb  mm7, mm7
-    psrlw    mm7, 8          // 00ff 00ff 00ff 00ff
-    movq     mm6, [sevenfB]
-    align    16
-
-// (a + b + 1) >> 1 = (a | b) - ((a ^ b) >> 1)
-
-loopx:
-    movq     mm4, [ebx+edi*2]    // u4U4 u3U3 u2U2 u1U1
-    movq     mm5, [ebx+edi*2+8]  // u8U8 u7U7 U6U6 u5U5
-    movq     mm1, [ecx+edi*2]    // u4U4 u3U3 u2U2 u1U1  (Next line)
-    movq     mm3, [ecx+edi*2+8]  // u8U8 u7U7 u6U6 u5U5  (Next line)
-    movq     mm0, mm4
-    movq     mm2, mm5
-    pxor     mm4, mm1            // Average with next line
-    pxor     mm5, mm3            // Average with next line
-    psrlq    mm4, 1              // Fuck Intel! Where is psrlb
-    por      mm0, mm1
-    psrlq    mm5, 1              // Fuck Intel! Where is psrlb
-    por      mm2, mm3
-    pand     mm4, mm6
-    pand     mm5, mm6
-    psubb    mm0, mm4
-    psubb    mm2, mm5
-    movq     mm1, mm0
-    psrlw    mm0, 8              // 00u4 00u3 00u2 00u1
-    movq     mm3, mm2
-    psrlw    mm2, 8              // 00u8 00u7 00u6 00u5
-    pand     mm1, mm7            // 00U4 00U3 00U2 00U1
-    pand     mm3, mm7            // 00U8 00U7 00U6 00U5
-    paddw    mm0, mm1            // xU4. xU3. xU2. xU1.
-    paddw    mm2, mm3            // xU8. xU7. xU6. xU5.
-    psrlw    mm0, 1              // 00U4 00U3 00U2 00U1
-    psrlw    mm2, 1              // 00U8 00U7 00U6 00U5
-
-    add      edi,8
-    packuswb mm0,mm2             // U8U7 U6U5 U4U3 U2U1
-
-    cmp      edi,edx
-    movq     [eax+edi-8],mm0
-
-    jl       loopx
-
-    mov      edi,0
-    add      eax,[dst_pitch]
-    add      ecx,[src_pitch2]
-    add      ebx,[src_pitch2]
-    dec      esi
-
-    jnz      loopx
-
-    emms
-	pop       ebx
-  }
-}
 #endif X86_32
 
 PVideoFrame Convert444ToYV12::ConvertImage(Image444* src, PVideoFrame dst, IScriptEnvironment* env)
@@ -446,11 +368,6 @@ PVideoFrame Convert444ToYV12::ConvertImage(Image444* src, PVideoFrame dst, IScri
 
 	ISSE_Convert444ChromaToYV12(dstU, srcU, dstUVpitch, srcUVpitch, w, h);
 	ISSE_Convert444ChromaToYV12(dstV, srcV, dstUVpitch, srcUVpitch, w, h);
-
-  } else if (GetCPUFlags() & CPUF_MMX) {
-
-	MMX_Convert444ChromaToYV12(dstU, srcU, dstUVpitch, srcUVpitch, w, h);
-	MMX_Convert444ChromaToYV12(dstV, srcV, dstUVpitch, srcUVpitch, w, h);
 
   } else {
     for (int y=0; y<h; y++) {
