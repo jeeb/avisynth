@@ -88,12 +88,131 @@ Mask::Mask(PClip _child1, PClip _child2, IScriptEnvironment* env)
   mask_frames = vi2.num_frames;
 }
 
+static __forceinline __m128i mask_core_sse2(__m128i &src, __m128i &alpha, __m128i &not_alpha_mask, __m128i &zero, __m128i &matrix, __m128i &round_mask) {
+  __m128i not_alpha = _mm_and_si128(src, not_alpha_mask);
+
+  __m128i pixel0 = _mm_unpacklo_epi8(alpha, zero); 
+  __m128i pixel1 = _mm_unpackhi_epi8(alpha, zero);
+
+  pixel0 = _mm_madd_epi16(pixel0, matrix); 
+  pixel1 = _mm_madd_epi16(pixel1, matrix); 
+
+  __m128i tmp = _mm_castps_si128(_mm_shuffle_ps(_mm_castsi128_ps(pixel0), _mm_castsi128_ps(pixel1), _MM_SHUFFLE(3, 1, 3, 1)));
+  __m128i tmp2 = _mm_castps_si128(_mm_shuffle_ps(_mm_castsi128_ps(pixel0), _mm_castsi128_ps(pixel1), _MM_SHUFFLE(2, 0, 2, 0)));
+
+  tmp = _mm_add_epi32(tmp, tmp2);
+  tmp = _mm_add_epi32(tmp, round_mask); 
+  tmp = _mm_srli_epi32(tmp, 15); 
+  __m128i result_alpha = _mm_slli_epi32(tmp, 24);
+
+  return _mm_or_si128(result_alpha, not_alpha);
+}
+
+static void mask_sse2(BYTE *srcp, const BYTE *alphap, int src_pitch, int alpha_pitch, size_t width, size_t height, int cyb, int cyg, int cyr) {
+  __m128i matrix = _mm_set_epi16(0, cyr, cyg, cyb, 0, cyr, cyg, cyb);
+  __m128i zero = _mm_setzero_si128();
+  __m128i round_mask = _mm_set1_epi32(16384);
+  __m128i not_alpha_mask = _mm_set1_epi32(0x00FFFFFF);
+
+  size_t width_bytes = width * 4;
+  size_t width_mod16 = width_bytes / 16 * 16;
+
+  for (size_t y = 0; y < height; ++y) {
+    for (size_t x = 0; x < width_mod16; x+=16) {
+      __m128i src    = _mm_load_si128(reinterpret_cast<const __m128i*>(srcp+x)); 
+      __m128i alpha  = _mm_load_si128(reinterpret_cast<const __m128i*>(alphap+x)); 
+      __m128i result = mask_core_sse2(src, alpha, not_alpha_mask, zero, matrix, round_mask);
+
+      _mm_store_si128(reinterpret_cast<__m128i*>(srcp+x), result);
+    }
+
+    if (width_mod16 < width_bytes) {
+      __m128i src    = _mm_loadu_si128(reinterpret_cast<const __m128i*>(srcp+width_bytes-16)); 
+      __m128i alpha  = _mm_loadu_si128(reinterpret_cast<const __m128i*>(alphap+width_bytes-16));
+      __m128i result = mask_core_sse2(src, alpha, not_alpha_mask, zero, matrix, round_mask);
+
+      _mm_storeu_si128(reinterpret_cast<__m128i*>(srcp+width_bytes-16), result);
+    }
+
+    srcp += src_pitch;
+    alphap += alpha_pitch;
+  }
+  _mm_empty();
+}
+
+#ifdef X86_32
+
+static __forceinline __m64 mask_core_mmx(__m64 &src, __m64 &alpha, __m64 &not_alpha_mask, __m64 &zero, __m64 &matrix, __m64 &round_mask) {
+  __m64 not_alpha = _mm_and_si64(src, not_alpha_mask);
+
+  __m64 pixel0 = _mm_unpacklo_pi8(alpha, zero); 
+  __m64 pixel1 = _mm_unpackhi_pi8(alpha, zero);
+
+  pixel0 = _mm_madd_pi16(pixel0, matrix); //a0*0 + r0*cyr | g0*cyg + b0*cyb
+  pixel1 = _mm_madd_pi16(pixel1, matrix); //a1*0 + r1*cyr | g1*cyg + b1*cyb
+
+  __m64 tmp = _mm_unpackhi_pi32(pixel0, pixel1); // r1*cyr | r0*cyr
+  __m64 tmp2 = _mm_unpacklo_pi32(pixel0, pixel1); // g1*cyg + b1*cyb | g0*cyg + b0*cyb
+
+  tmp = _mm_add_pi32(tmp, tmp2); // r1*cyr + g1*cyg + b1*cyb | r0*cyr + g0*cyg + b0*cyb
+  tmp = _mm_add_pi32(tmp, round_mask); // r1*cyr + g1*cyg + b1*cyb + 16384 | r0*cyr + g0*cyg + b0*cyb + 16384
+  tmp = _mm_srli_pi32(tmp, 15); // 0 0 0 p2 | 0 0 0 p1
+  __m64 result_alpha = _mm_slli_pi32(tmp, 24);
+
+  return _mm_or_si64(result_alpha, not_alpha);
+}
+
+static void mask_mmx(BYTE *srcp, const BYTE *alphap, int src_pitch, int alpha_pitch, size_t width, size_t height, int cyb, int cyg, int cyr) {
+  __m64 matrix = _mm_set_pi16(0, cyr, cyg, cyb);
+  __m64 zero = _mm_setzero_si64();
+  __m64 round_mask = _mm_set1_pi32(16384);
+  __m64 not_alpha_mask = _mm_set1_pi32(0x00FFFFFF);
+
+  size_t width_bytes = width * 4;
+  size_t width_mod8 = width_bytes / 8 * 8;
+
+  for (size_t y = 0; y < height; ++y) {
+    for (size_t x = 0; x < width_mod8; x+=8) {
+      __m64 src    = *reinterpret_cast<const __m64*>(srcp+x); //pixels 0 and 1
+      __m64 alpha  = *reinterpret_cast<const __m64*>(alphap+x); 
+      __m64 result = mask_core_mmx(src, alpha, not_alpha_mask, zero, matrix, round_mask);
+
+      *reinterpret_cast<__m64*>(srcp+x) = result;
+    }
+
+    if (width_mod8 < width_bytes) {
+      __m64 src    = _mm_cvtsi32_si64(*reinterpret_cast<const int*>(srcp+width_bytes-4)); 
+      __m64 alpha  = _mm_cvtsi32_si64(*reinterpret_cast<const int*>(alphap+width_bytes-4)); 
+
+      __m64 result = mask_core_mmx(src, alpha, not_alpha_mask, zero, matrix, round_mask);
+
+      *reinterpret_cast<int*>(srcp+width_bytes-4) = _mm_cvtsi64_si32(result);
+    }
+
+    srcp += src_pitch;
+    alphap += alpha_pitch;
+  }
+  _mm_empty();
+}
+
+#endif
+
+static void mask_c(BYTE *srcp, const BYTE *alphap, int src_pitch, int alpha_pitch, size_t width, size_t height, int cyb, int cyg, int cyr) {
+  for (size_t y = 0; y < height; ++y) {
+    for (size_t x = 0; x < width; ++x) {
+      srcp[x*4+3] = (cyb*alphap[x*4+0] + cyg*alphap[x*4+1] + cyr*alphap[x*4+2] + 16384) >> 15;
+    }
+    srcp += src_pitch;
+    alphap += alpha_pitch;
+  }
+}
+
 PVideoFrame __stdcall Mask::GetFrame(int n, IScriptEnvironment* env)
 {
   PVideoFrame src1 = child1->GetFrame(n, env);
   PVideoFrame src2 = child2->GetFrame(min(n,mask_frames-1), env);
 
-#ifdef X86_32
+
   env->MakeWritable(&src1);
 
 	BYTE* src1p = src1->GetWritePtr();
@@ -102,74 +221,26 @@ PVideoFrame __stdcall Mask::GetFrame(int n, IScriptEnvironment* env)
 	const int src1_pitch = src1->GetPitch();
 	const int src2_pitch = src2->GetPitch();
 
-	const int myx = vi.width;
-	const int myy = vi.height;
-
 	const int cyb = int(0.114*32768+0.5);
 	const int cyg = int(0.587*32768+0.5);
 	const int cyr = int(0.299*32768+0.5);
 
-	__declspec(align(8)) static const __int64 rgb2lum = ((__int64)cyr << 32) | (cyg << 16) | cyb;
-
-	static const int alpha_mask=0x00ffffff;
-	static const int color_mask=0xff000000;
-	static const int rounder   =16384;
-
-/*
-  for (int y=0; y<vi.height; ++y) {
-	  for (int x=0; x<vi.width; ++x)
-		  src1p[x*4+3] = (cyb*src2p[x*4+0] + cyg*src2p[x*4+1] +
-                    cyr*src2p[x*4+2] + 16384) >> 15;
-
-    src1p += src1_pitch;
-    src2p += src2_pitch;
+  if ((env->GetCPUFlags() & CPUF_SSE2) && IsPtrAligned(src1p, 16) && IsPtrAligned(src2p, 16)) 
+  {
+    mask_sse2(src1p, src2p, src1_pitch, src2_pitch, vi.width, vi.height, cyb, cyg, cyr);
   }
-*/
-
-  __asm {
-    mov			edi, src1p
-      mov			esi, src2p
-      mov			eax, myy
-      movq		mm1, rgb2lum
-      movd		mm2, alpha_mask
-      movd		mm3, color_mask
-      movd		mm7, rounder
-      punpckldq	mm2, mm2
-      punpckldq	mm3, mm3
-      punpckldq	mm7, mm7
-      xor			ecx, ecx
-      pxor		mm0, mm0
-      mov			edx, myx
-      align		16
-mask_mmxloop:
-    movd		mm6, [esi + ecx*4]	 //pipeline in next mask pixel RGB
-      movd		mm4, [edi + ecx*4]	//get color RGBA
-    punpcklbw	mm6, mm0			//mm6= 00aa|00rr|00gg|00bb [src2]
-      pmaddwd		mm6, mm1			//partial monochrome result
-      punpckldq	mm5, mm6			//ready to add
-      paddd		mm6, mm7			//rounding
-      paddd		mm6, mm5			//32 bit result in high top dword
-      psrlq		mm6, 15+8			//8 bit result
-      pand		mm4, mm2			//strip out old alpha
-      pand		mm6, mm3			//clear any possible junk
-      inc		ecx					//point to next - aka loop counter
-      por			mm6, mm4			//merge new alpha and original color
-      cmp		ecx, edx
-      movd		[edi+ecx*4-4],mm6	//store'em where they belong (at ecx-1)
-      jnz		mask_mmxloop
-
-      add		edi, src1_pitch
-      add		esi, src2_pitch
-      xor		ecx, ecx
-      dec		eax
-      jnz		mask_mmxloop
-      emms
+  else
+#ifdef X86_32
+  if (env->GetCPUFlags() & CPUF_MMX) 
+  {
+    mask_mmx(src1p, src2p, src1_pitch, src2_pitch, vi.width, vi.height, cyb, cyg, cyr);
   }
-  
-#else
-  //TODO
-  env->ThrowError("Mask::GetFrame is not yet ported to 64-bit.");
+  else 
 #endif
+  {
+    mask_c(src1p, src2p, src1_pitch, src2_pitch, vi.width, vi.height, cyb, cyg, cyr);
+  }
+
  return src1;
 }
 
@@ -335,7 +406,7 @@ Invert::Invert(PClip _child, const char * _channels, IScriptEnvironment* env)
 
 }
 
-void invert_frame_sse2(BYTE* frame, int pitch, int width, int height, int mask) {
+static void invert_frame_sse2(BYTE* frame, int pitch, int width, int height, int mask) {
   __m128i maskv = _mm_set1_epi32(mask);
 
   BYTE* endp = frame + pitch * height;
@@ -350,8 +421,8 @@ void invert_frame_sse2(BYTE* frame, int pitch, int width, int height, int mask) 
 
 #ifdef X86_32
 
-//mod4 width is required
-void invert_frame_mmx(BYTE* frame, int pitch, int width, int height, int mask) 
+//mod4 width (in bytes) is required
+static void invert_frame_mmx(BYTE* frame, int pitch, int width, int height, int mask) 
 {
   __m64 maskv = _mm_set1_pi32(mask);
   int mod8_width = width / 8 * 8;
@@ -374,7 +445,7 @@ void invert_frame_mmx(BYTE* frame, int pitch, int width, int height, int mask)
   _mm_empty();
 }
 
-void invert_plane_mmx(BYTE* frame, int pitch, int width, int height) 
+static void invert_plane_mmx(BYTE* frame, int pitch, int width, int height) 
 {
 #pragma warning(disable: 4309)
   __m64 maskv = _mm_set1_pi8(0xFF);
@@ -399,7 +470,7 @@ void invert_plane_mmx(BYTE* frame, int pitch, int width, int height)
 #endif
 
 //mod4 width is required
-void invert_frame_c(BYTE* frame, int pitch, int width, int height, int mask) {
+static void invert_frame_c(BYTE* frame, int pitch, int width, int height, int mask) {
   for (int y = 0; y < height; ++y) {
     int* intptr = reinterpret_cast<int*>(frame);
 
@@ -410,7 +481,7 @@ void invert_frame_c(BYTE* frame, int pitch, int width, int height, int mask) {
   }
 }
 
-void invert_plane_c(BYTE* frame, int pitch, int width, int height) {
+static void invert_plane_c(BYTE* frame, int pitch, int width, int height) {
   int mod4_width = width / 4 * 4;
   for (int y = 0; y < height; ++y) {
     int* intptr = reinterpret_cast<int*>(frame);
