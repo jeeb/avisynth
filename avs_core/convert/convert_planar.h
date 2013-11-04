@@ -112,11 +112,7 @@ public:
   static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env);
 };
 
-#ifdef X86_32
-class ConvertYV24ToRGB : public GenericVideoFilter, public MatrixGenerator3x3
-#else
 class ConvertYV24ToRGB : public GenericVideoFilter
-#endif
 {
 public:
   ConvertYV24ToRGB(PClip src, int matrix, int pixel_step, IScriptEnvironment* env);
@@ -127,7 +123,6 @@ public:
 private:
   void BuildMatrix(double Kr, double Kb, int Sy, int Suv, int Oy, int shift);
   signed short* matrix;
-  BYTE* packbuf;
   int offset_y;
   int pixel_step;
 };

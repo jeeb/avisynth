@@ -42,7 +42,7 @@
 #include <avs/win.h>
 #include <avs/minmax.h>
 #include "../core/internal.h"
-#include <emmintrin.h>
+#include <tmmintrin.h>
 #include <avs/alignment.h>
 
 
@@ -657,14 +657,13 @@ void ConvertRGBToYV24::BuildMatrix(double Kr, double Kb, int Sy, int Suv, int Oy
 }
 
 static void convert_rgb32_to_yv24_sse2(BYTE* dstY, BYTE* dstU, BYTE* dstV, const BYTE*srcp, size_t dst_pitch_y, size_t UVpitch, size_t src_pitch, size_t width, size_t height, int offset_y, const signed short* matrix) {
-  const signed short* m = (signed short*)matrix;
   srcp += src_pitch * (height-1);
 
   size_t mod8_width = width / 8 * 8;
 
-  __m128i matrix_y = _mm_set_epi16(0, m[2], m[1], m[0], 0, m[2], m[1], m[0]);
-  __m128i matrix_u = _mm_set_epi16(0, m[6], m[5], m[4], 0, m[6], m[5], m[4]);
-  __m128i matrix_v = _mm_set_epi16(0, m[10], m[9], m[8], 0, m[10], m[9], m[8]);
+  __m128i matrix_y = _mm_set_epi16(0, matrix[2], matrix[1], matrix[0], 0, matrix[2], matrix[1], matrix[0]);
+  __m128i matrix_u = _mm_set_epi16(0, matrix[6], matrix[5], matrix[4], 0, matrix[6], matrix[5], matrix[4]);
+  __m128i matrix_v = _mm_set_epi16(0, matrix[10], matrix[9], matrix[8], 0, matrix[10], matrix[9], matrix[8]);
 
   __m128i zero = _mm_setzero_si128();
   __m128i offset = _mm_set1_epi16(offset_y);
@@ -716,14 +715,13 @@ static void convert_rgb32_to_yv24_sse2(BYTE* dstY, BYTE* dstU, BYTE* dstV, const
 }
 
 static void convert_rgb24_to_yv24_sse2(BYTE* dstY, BYTE* dstU, BYTE* dstV, const BYTE*srcp, size_t dst_pitch_y, size_t UVpitch, size_t src_pitch, size_t width, size_t height, int offset_y, const signed short* matrix) {
-  const signed short* m = (signed short*)matrix;
   srcp += src_pitch * (height-1);
 
   size_t mod8_width = width / 8 * 8;
 
-  __m128i matrix_y = _mm_set_epi16(0, m[2], m[1], m[0], 0, m[2], m[1], m[0]);
-  __m128i matrix_u = _mm_set_epi16(0, m[6], m[5], m[4], 0, m[6], m[5], m[4]);
-  __m128i matrix_v = _mm_set_epi16(0, m[10], m[9], m[8], 0, m[10], m[9], m[8]);
+  __m128i matrix_y = _mm_set_epi16(0, matrix[2], matrix[1], matrix[0], 0, matrix[2], matrix[1], matrix[0]);
+  __m128i matrix_u = _mm_set_epi16(0, matrix[6], matrix[5], matrix[4], 0, matrix[6], matrix[5], matrix[4]);
+  __m128i matrix_v = _mm_set_epi16(0, matrix[10], matrix[9], matrix[8], 0, matrix[10], matrix[9], matrix[8]);
 
   __m128i zero = _mm_setzero_si128();
   __m128i offset = _mm_set1_epi16(offset_y);
@@ -782,14 +780,13 @@ static void convert_rgb24_to_yv24_sse2(BYTE* dstY, BYTE* dstU, BYTE* dstV, const
 #ifdef X86_32
 
 static void convert_rgb32_to_yv24_mmx(BYTE* dstY, BYTE* dstU, BYTE* dstV, const BYTE*srcp, size_t dst_pitch_y, size_t UVpitch, size_t src_pitch, size_t width, size_t height, int offset_y, const signed short* matrix) {
-  signed short* m = (signed short*)matrix;
   srcp += src_pitch * (height-1);
 
   size_t mod4_width = width / 4 * 4;
 
-  __m64 matrix_y = _mm_set_pi16(0, m[2], m[1], m[0]);
-  __m64 matrix_u = _mm_set_pi16(0, m[6], m[5], m[4]);
-  __m64 matrix_v = _mm_set_pi16(0, m[10], m[9], m[8]);
+  __m64 matrix_y = _mm_set_pi16(0, matrix[2], matrix[1], matrix[0]);
+  __m64 matrix_u = _mm_set_pi16(0, matrix[6], matrix[5], matrix[4]);
+  __m64 matrix_v = _mm_set_pi16(0, matrix[10], matrix[9], matrix[8]);
 
   __m64 zero = _mm_setzero_si64();
   __m64 offset = _mm_set1_pi16(offset_y);
@@ -834,14 +831,13 @@ static void convert_rgb32_to_yv24_mmx(BYTE* dstY, BYTE* dstU, BYTE* dstV, const 
 }
 
 static void convert_rgb24_to_yv24_mmx(BYTE* dstY, BYTE* dstU, BYTE* dstV, const BYTE*srcp, size_t dst_pitch_y, size_t UVpitch, size_t src_pitch, size_t width, size_t height, int offset_y, const signed short* matrix) {
-  signed short* m = (signed short*)matrix;
   srcp += src_pitch * (height-1);
 
   size_t mod4_width = width / 4 * 4;
 
-  __m64 matrix_y = _mm_set_pi16(0, m[2], m[1], m[0]);
-  __m64 matrix_u = _mm_set_pi16(0, m[6], m[5], m[4]);
-  __m64 matrix_v = _mm_set_pi16(0, m[10], m[9], m[8]);
+  __m64 matrix_y = _mm_set_pi16(0, matrix[2], matrix[1], matrix[0]);
+  __m64 matrix_u = _mm_set_pi16(0, matrix[6], matrix[5], matrix[4]);
+  __m64 matrix_v = _mm_set_pi16(0, matrix[10], matrix[9], matrix[8]);
 
   __m64 zero = _mm_setzero_si64();
   __m64 offset = _mm_set1_pi16(offset_y);
@@ -980,7 +976,7 @@ __declspec(align(16)) static const __int64 Pre_Add16[2]  = { 0xff80ff80fff0, 0xf
 
 
 ConvertYV24ToRGB::ConvertYV24ToRGB(PClip src, int in_matrix, int _pixel_step, IScriptEnvironment* env)
- : GenericVideoFilter(src), pixel_step(_pixel_step), matrix(0), packbuf(0)
+ : GenericVideoFilter(src), pixel_step(_pixel_step), matrix(NULL)
 {
 
   if (!vi.IsYV24())
@@ -1021,27 +1017,14 @@ ConvertYV24ToRGB::ConvertYV24ToRGB(PClip src, int in_matrix, int _pixel_step, IS
   }
   else {
     _aligned_free(matrix);
-    matrix = 0;
+    matrix = NULL;
     env->ThrowError("ConvertYV24ToRGB: Unknown matrix.");
   }
-#ifdef X86_32
-  // TODO: This is not thread safe!
-  packbuf = (BYTE*)_aligned_malloc(vi.width * 4 + 60, 64);
-  const __int64 *pre_add = offset_y == -16 ? &Pre_Add16[0] : &Pre_Add00[0];
-  this->GenerateAssembly(vi.width, shift, true, pre_add, 0, 4, pixel_step, matrix, env);
-
-  this->GeneratePacker(vi.width, env);
-#endif
 }
 
 ConvertYV24ToRGB::~ConvertYV24ToRGB() {
-  if (packbuf)
-    _aligned_free(packbuf);
-  packbuf = 0;
-
-  if (matrix)
-    _aligned_free(matrix);
-  matrix = 0;
+  _aligned_free(matrix);
+  matrix = NULL;
 
 }
 
@@ -1096,6 +1079,277 @@ void ConvertYV24ToRGB::BuildMatrix(double Kr, double Kb, int Sy, int Suv, int Oy
   offset_y = -Oy;
 }
 
+static __forceinline __m128i convert_yuv_to_rgb_sse2_core(const __m128i &px01, const __m128i &px23, const __m128i &px45, const __m128i &px67, const __m128i& zero, const __m128i &matrix, const __m128i &round_mask) {
+  //int b = (((int)m[0] * Y + (int)m[1] * U + (int)m[ 2] * V + 4096)>>13);
+  
+  //px01 - xx xx 00 V1 00 U1 00 Y1 xx xx 00 V0 00 U0 00 Y0
+
+  __m128i low_lo  = _mm_madd_epi16(px01, matrix); //xx*0 + v1*m2 | u1*m1 + y1*m0 | xx*0 + v0*m2 | u0*m1 + y0*m0
+  __m128i low_hi  = _mm_madd_epi16(px23, matrix); //xx*0 + v3*m2 | u3*m1 + y3*m0 | xx*0 + v2*m2 | u2*m1 + y2*m0
+  __m128i high_lo = _mm_madd_epi16(px45, matrix); 
+  __m128i high_hi = _mm_madd_epi16(px67, matrix); 
+
+  __m128i low_v  = _mm_castps_si128(_mm_shuffle_ps(_mm_castsi128_ps(low_lo), _mm_castsi128_ps(low_hi), _MM_SHUFFLE(3, 1, 3, 1))); // v3*m2 | v2*m2 | v1*m2 | v0*m2
+  __m128i high_v = _mm_castps_si128(_mm_shuffle_ps(_mm_castsi128_ps(high_lo), _mm_castsi128_ps(high_hi), _MM_SHUFFLE(3, 1, 3, 1))); 
+
+  __m128i low_yu  = _mm_castps_si128(_mm_shuffle_ps(_mm_castsi128_ps(low_lo), _mm_castsi128_ps(low_hi), _MM_SHUFFLE(2, 0, 2, 0))); // u3*m1 + y3*m0 | u2*m1 + y2*m0 | u1*m1 + y1*m0 | u0*m1 + y0*m0
+  __m128i high_yu = _mm_castps_si128(_mm_shuffle_ps(_mm_castsi128_ps(high_lo), _mm_castsi128_ps(high_hi), _MM_SHUFFLE(2, 0, 2, 0)));
+
+  __m128i t_lo = _mm_add_epi32(low_v, low_yu); // v3*m2 + u3*m1 + y3*m0...
+  __m128i t_hi = _mm_add_epi32(high_v, high_yu); 
+
+  t_lo = _mm_add_epi32(t_lo, round_mask); // v3*m2 + u3*m1 + y3*m0 + 4096...
+  t_hi = _mm_add_epi32(t_hi, round_mask);
+
+  t_lo = _mm_srai_epi32(t_lo, 13); // (v3*m2 + u3*m1 + y3*m0 + 4096) >> 13...
+  t_hi = _mm_srai_epi32(t_hi, 13); 
+
+  __m128i result = _mm_packs_epi32(t_lo, t_hi); 
+  result = _mm_packus_epi16(result, zero); //00 00 00 00 00 00 00 00 b7 b6 b5 b4 b3 b2 b1 b0
+  return result;
+}
+
+//todo: consider rewriting
+template<int rgb_pixel_step, int instruction_set>
+static void convert_yv24_to_rgb_ssex(BYTE* dstp, const BYTE* srcY, const BYTE* srcU, const BYTE*srcV, size_t dst_pitch, size_t src_pitch_y, size_t src_pitch_uv, size_t width, size_t height, int offset_y, const signed short* matrix) {
+  dstp += dst_pitch * (height-1);  // We start at last line
+
+  size_t mod8_width = width / 8 * 8;
+
+  __m128i matrix_b = _mm_set_epi16(0, matrix[2], matrix[1], matrix[0], 0, matrix[2], matrix[1], matrix[0]);
+  __m128i matrix_g = _mm_set_epi16(0, matrix[6], matrix[5], matrix[4], 0, matrix[6], matrix[5], matrix[4]);
+  __m128i matrix_r = _mm_set_epi16(0, matrix[10], matrix[9], matrix[8], 0, matrix[10], matrix[9], matrix[8]);
+
+  __m128i zero = _mm_setzero_si128();
+  __m128i round_mask = _mm_set1_epi32(4096);
+#pragma warning(disable: 4309)
+  __m128i ff = _mm_set1_epi8(0xFF);
+#pragma warning(default: 4309)
+  __m128i offset = _mm_set_epi16(0, -128, -128, offset_y, 0, -128, -128, offset_y);
+  __m128i pixels0123_mask = _mm_set_epi8(0, 0, 0, 0, 14, 13, 12, 10, 9, 8, 6, 5, 4, 2, 1, 0);
+  __m128i pixels4567_mask = _mm_set_epi8(4, 2, 1, 0, 0, 0, 0, 0, 14, 13, 12, 10, 9, 8, 6, 5);
+  __m128i ssse3_merge_mask = _mm_set_epi32(0xFFFFFFFF, 0, 0, 0);
+  BYTE temp[32];
+
+  for (size_t y = 0; y < height; ++y) {
+    for (size_t x = 0; x < mod8_width; x+=8) {
+      __m128i src_y = _mm_loadl_epi64(reinterpret_cast<const __m128i*>(srcY+x)); //0 0 0 0 0 0 0 0 Y7 Y6 Y5 Y4 Y3 Y2 Y1 Y0
+      __m128i src_u = _mm_loadl_epi64(reinterpret_cast<const __m128i*>(srcU+x)); //0 0 0 0 0 0 0 0 U7 U6 U5 U4 U3 U2 U1 U0
+      __m128i src_v = _mm_loadl_epi64(reinterpret_cast<const __m128i*>(srcV+x)); //0 0 0 0 0 0 0 0 V7 V6 V5 V4 V3 V2 V1 V0
+      
+      __m128i t1 = _mm_unpacklo_epi8(src_y, src_u); //U7 Y7 U6 Y6 U5 Y5 U4 Y4 U3 Y3 U2 Y2 U1 Y1 U0 Y0
+      __m128i t2 = _mm_unpacklo_epi8(src_v, zero);  //00 V7 00 V6 00 V5 00 V4 00 V3 00 V2 00 V1 00 V0
+
+      __m128i low  = _mm_unpacklo_epi16(t1, t2); //xx V3 U3 Y3 xx V2 U2 Y2 xx V1 U1 Y1 xx V0 U0 Y0
+      __m128i high = _mm_unpackhi_epi16(t1, t2); //xx V7 U7 Y7 xx V6 U6 Y6 xx V5 U5 Y5 xx V4 U4 Y4
+
+      __m128i px01 = _mm_unpacklo_epi8(low, zero);  //xx xx 00 V1 00 U1 00 Y1 xx xx 00 V0 00 U0 00 Y0
+      __m128i px23 = _mm_unpackhi_epi8(low, zero);  //xx xx 00 V3 00 U3 00 Y3 xx xx 00 V2 00 U2 00 Y2
+      __m128i px45 = _mm_unpacklo_epi8(high, zero); //xx xx 00 V5 00 U5 00 Y5 xx xx 00 V4 00 U4 00 Y4
+      __m128i px67 = _mm_unpackhi_epi8(high, zero); //xx xx 00 V7 00 U7 00 Y7 xx xx 00 V6 00 U6 00 Y6
+      
+      px01 = _mm_add_epi16(px01, offset); 
+      px23 = _mm_add_epi16(px23, offset); 
+      px45 = _mm_add_epi16(px45, offset);
+      px67 = _mm_add_epi16(px67, offset);
+      
+      __m128i result_b = convert_yuv_to_rgb_sse2_core(px01, px23, px45, px67, zero, matrix_b, round_mask); //00 00 00 00 00 00 00 00 b7 b6 b5 b4 b3 b2 b1 b0
+      __m128i result_g = convert_yuv_to_rgb_sse2_core(px01, px23, px45, px67, zero, matrix_g, round_mask); //00 00 00 00 00 00 00 00 g7 g6 g5 g4 g3 g2 g1 g0
+      __m128i result_r = convert_yuv_to_rgb_sse2_core(px01, px23, px45, px67, zero, matrix_r, round_mask); //00 00 00 00 00 00 00 00 r7 r6 r5 r4 r3 r2 r1 r0
+
+      __m128i result_bg = _mm_unpacklo_epi8(result_b, result_g); //g7 b7 g6 b6 g5 b5 g4 b4 g3 b3 g2 b2 g1 b1 g0 b0
+      __m128i result_ra = _mm_unpacklo_epi8(result_r, ff);       //a7 r7 a6 r6 a5 r5 a4 r4 a3 r3 a2 r2 a1 r1 a0 r0
+
+      __m128i result_lo = _mm_unpacklo_epi16(result_bg, result_ra);
+      __m128i result_hi = _mm_unpackhi_epi16(result_bg, result_ra);
+
+      if (rgb_pixel_step == 4) {
+        //rgb32
+        _mm_store_si128(reinterpret_cast<__m128i*>(dstp+x*4),    result_lo);
+        _mm_store_si128(reinterpret_cast<__m128i*>(dstp+x*4+16), result_hi);
+      } else {
+        //rgb24
+        if (instruction_set == CPUF_SSSE3) {
+          //"fast" SSSE3 version
+          __m128i px0123 = _mm_shuffle_epi8(result_lo, pixels0123_mask); //xxxx xxxx b3g3 r3b2 g2r2 b1g1 r1b0 g0r0
+          __m128i dst567 = _mm_shuffle_epi8(result_hi, pixels4567_mask); //r5b4 g4r4 xxxx xxxx b7g7 r7b6 g6r6 b5g5
+
+          __m128i dst012345 = _mm_or_si128(
+            _mm_andnot_si128(ssse3_merge_mask, px0123),
+            _mm_and_si128(ssse3_merge_mask, dst567)
+            ); //r5b4 g4r4 b3g3 r3b2 g2r2 b1g1 r1b0 g0r0
+
+          _mm_storeu_si128(reinterpret_cast<__m128i*>(dstp+x*3), dst012345);
+          _mm_storel_epi64(reinterpret_cast<__m128i*>(dstp+x*3+16), dst567);
+
+        } else {
+          //slow SSE2 version
+          _mm_store_si128(reinterpret_cast<__m128i*>(temp),    result_lo);
+          _mm_store_si128(reinterpret_cast<__m128i*>(temp+16), result_hi);
+
+          for (int i = 0; i < 8; ++i) {
+            *reinterpret_cast<int*>(dstp + (x+i)*3) = *reinterpret_cast<int*>(temp+i*4);
+          }
+          //last pixel
+          dstp[(x+7)*3+0] = temp[7*4+0];
+          dstp[(x+7)*3+1] = temp[7*4+1];
+          dstp[(x+7)*3+2] = temp[7*4+2];
+        }
+      }
+    }
+
+    for (size_t x = mod8_width; x < width; ++x) {
+      int Y = srcY[x] + offset_y;
+      int U = srcU[x] - 128;
+      int V = srcV[x] - 128;
+      int b = (((int)matrix[0] * Y + (int)matrix[1] * U + (int)matrix[ 2] * V + 4096)>>13);
+      int g = (((int)matrix[4] * Y + (int)matrix[5] * U + (int)matrix[ 6] * V + 4096)>>13);
+      int r = (((int)matrix[8] * Y + (int)matrix[9] * U + (int)matrix[10] * V + 4096)>>13);
+      dstp[x*rgb_pixel_step+0] = PixelClip(b);  
+      dstp[x*rgb_pixel_step+1] = PixelClip(g);  
+      dstp[x*rgb_pixel_step+2] = PixelClip(r);
+      if (rgb_pixel_step == 4) {
+        dstp[x*4+3] = 255; 
+      }
+    }
+
+    dstp -= dst_pitch;
+    srcY += src_pitch_y;
+    srcU += src_pitch_uv;
+    srcV += src_pitch_uv;
+  }
+}
+
+
+#ifdef X86_32
+
+static __forceinline __m64 convert_yuv_to_rgb_mmx_core(const __m64 &px0, const __m64 &px1, const __m64 &px2, const __m64 &px3, const __m64& zero, const __m64 &matrix, const __m64 &round_mask) {
+  //int b = (((int)m[0] * Y + (int)m[1] * U + (int)m[ 2] * V + 4096)>>13);
+
+  //px01 - xx xx 00 V0 00 U0 00 Y0
+
+  __m64 low_lo  = _mm_madd_pi16(px0, matrix); //xx*0 + v1*m2 | u1*m1 + y1*m0 | xx*0 + v0*m2 | u0*m1 + y0*m0
+  __m64 low_hi  = _mm_madd_pi16(px1, matrix); //xx*0 + v3*m2 | u3*m1 + y3*m0 | xx*0 + v2*m2 | u2*m1 + y2*m0
+  __m64 high_lo = _mm_madd_pi16(px2, matrix); 
+  __m64 high_hi = _mm_madd_pi16(px3, matrix); 
+
+  __m64 low_v = _mm_unpackhi_pi32(low_lo, low_hi); // v1*m2 | v0*m2
+  __m64 high_v = _mm_unpackhi_pi32(high_lo, high_hi);
+
+  __m64 low_yu = _mm_unpacklo_pi32(low_lo, low_hi); // u1*m1 + y1*m0 | u0*m1 + y0*m0
+  __m64 high_yu = _mm_unpacklo_pi32(high_lo, high_hi); 
+
+  __m64 t_lo = _mm_add_pi32(low_v, low_yu); // v3*m2 + u3*m1 + y3*m0...
+  __m64 t_hi = _mm_add_pi32(high_v, high_yu); 
+
+  t_lo = _mm_add_pi32(t_lo, round_mask); // v3*m2 + u3*m1 + y3*m0 + 4096...
+  t_hi = _mm_add_pi32(t_hi, round_mask);
+
+  t_lo = _mm_srai_pi32(t_lo, 13); // (v3*m2 + u3*m1 + y3*m0 + 4096) >> 13...
+  t_hi = _mm_srai_pi32(t_hi, 13); 
+
+  __m64 result = _mm_packs_pi32(t_lo, t_hi); 
+  result = _mm_packs_pu16(result, zero); //00 00 00 00 b3 b2 b1 b0
+  return result;
+}
+
+template<int rgb_pixel_step>
+static void convert_yv24_to_rgb_mmx(BYTE* dstp, const BYTE* srcY, const BYTE* srcU, const BYTE*srcV, size_t dst_pitch, size_t src_pitch_y, size_t src_pitch_uv, size_t width, size_t height, int offset_y, const signed short* matrix) {
+  dstp += dst_pitch * (height-1);  // We start at last line
+
+  size_t mod4_width = width / 4 * 4;
+
+  __m64 matrix_b = _mm_set_pi16(0, matrix[2], matrix[1], matrix[0]);
+  __m64 matrix_g = _mm_set_pi16(0, matrix[6], matrix[5], matrix[4]);
+  __m64 matrix_r = _mm_set_pi16(0, matrix[10], matrix[9], matrix[8]);
+
+  __m64 zero = _mm_setzero_si64();
+  __m64 round_mask = _mm_set1_pi32(4096);
+#pragma warning(disable: 4309)
+  __m64 ff = _mm_set1_pi8(0xFF);
+#pragma warning(default: 4309)
+  __m64 offset = _mm_set_pi16(0, -128, -128, offset_y);
+  __m64 low_pixel_mask = _mm_set_pi32(0, 0x00FFFFFF);
+  __m64 high_pixel_mask = _mm_set_pi32(0x00FFFFFF, 0);
+
+  for (size_t y = 0; y < height; ++y) {
+    for (size_t x = 0; x < mod4_width; x+=4) {
+      __m64 src_y = _mm_cvtsi32_si64(*reinterpret_cast<const int*>(srcY+x)); //0 0 0 0 Y3 Y2 Y1 Y0
+      __m64 src_u = _mm_cvtsi32_si64(*reinterpret_cast<const int*>(srcU+x)); //0 0 0 0 U3 U2 U1 U0
+      __m64 src_v = _mm_cvtsi32_si64(*reinterpret_cast<const int*>(srcV+x)); //0 0 0 0 V3 V2 V1 V0
+
+      __m64 t1 = _mm_unpacklo_pi8(src_y, src_u); //U3 Y3 U2 Y2 U1 Y1 U0 Y0
+      __m64 t2 = _mm_unpacklo_pi8(src_v, zero);  //00 V3 00 V2 00 V1 00 V0
+
+      __m64 low  = _mm_unpacklo_pi16(t1, t2); //xx V1 U1 Y1 xx V0 U0 Y0
+      __m64 high = _mm_unpackhi_pi16(t1, t2); //xx V3 U3 Y3 xx V2 U2 Y2
+
+      __m64 px0 = _mm_unpacklo_pi8(low, zero);  //xx xx 00 V0 00 U0 00 Y0
+      __m64 px1 = _mm_unpackhi_pi8(low, zero);  //xx xx 00 V1 00 U1 00 Y1
+      __m64 px2 = _mm_unpacklo_pi8(high, zero); //xx xx 00 V2 00 U2 00 Y2
+      __m64 px3 = _mm_unpackhi_pi8(high, zero); //xx xx 00 V3 00 U3 00 Y3
+
+      px0 = _mm_add_pi16(px0, offset); 
+      px1 = _mm_add_pi16(px1, offset); 
+      px2 = _mm_add_pi16(px2, offset);
+      px3 = _mm_add_pi16(px3, offset);
+
+      __m64 result_b = convert_yuv_to_rgb_mmx_core(px0, px1, px2, px3, zero, matrix_b, round_mask); //00 00 00 00 b3 b2 b1 b0
+      __m64 result_g = convert_yuv_to_rgb_mmx_core(px0, px1, px2, px3, zero, matrix_g, round_mask); //00 00 00 00 g3 g2 g1 g0
+      __m64 result_r = convert_yuv_to_rgb_mmx_core(px0, px1, px2, px3, zero, matrix_r, round_mask); //00 00 00 00 r3 r2 r1 r0
+
+      __m64 result_bg = _mm_unpacklo_pi8(result_b, result_g); //g3 b3 g2 b2 g1 b1 g0 b0
+      __m64 result_ra = _mm_unpacklo_pi8(result_r, ff);       //a3 r3 a2 r2 a1 r1 a0 r0
+
+      __m64 result_lo = _mm_unpacklo_pi16(result_bg, result_ra);
+      __m64 result_hi = _mm_unpackhi_pi16(result_bg, result_ra);
+
+      if (rgb_pixel_step == 4) {
+        //rgb32
+        *reinterpret_cast<__m64*>(dstp+x*4) = result_lo;
+        *reinterpret_cast<__m64*>(dstp+x*4+8) = result_hi;
+      } else {
+        __m64 p0 = _mm_and_si64(result_lo, low_pixel_mask); //0000 0000 00r0 g0b0
+        __m64 p1 = _mm_and_si64(result_lo, high_pixel_mask); //00r1 g1b1 0000 0000
+        __m64 p2 = _mm_and_si64(result_hi, low_pixel_mask); //0000 0000 00r2 g2b2
+        __m64 p3 = _mm_and_si64(result_hi, high_pixel_mask); //00r3 g3b3 0000 0000
+
+        __m64 dst01 = _mm_or_si64(p0, _mm_srli_si64(p1, 8)); //0000 r1g1 b1r0 g0b0
+        p3 = _mm_srli_si64(p3, 24); //0000 0000 r3g3 b300
+
+        __m64 dst012 = _mm_or_si64(dst01, _mm_slli_si64(p2, 48));  //g2b2 r1g1 b1r0 g0b0
+        __m64 dst23 = _mm_or_si64(p3, _mm_srli_si64(p2, 16)); //0000 0000 r3g3 b3r2
+
+        *reinterpret_cast<__m64*>(dstp+x*3) = dst012;
+        *reinterpret_cast<int*>(dstp+x*3+8) = _mm_cvtsi64_si32(dst23);
+      }
+    }
+
+    for (size_t x = mod4_width; x < width; ++x) {
+      int Y = srcY[x] + offset_y;
+      int U = srcU[x] - 128;
+      int V = srcV[x] - 128;
+      int b = (((int)matrix[0] * Y + (int)matrix[1] * U + (int)matrix[ 2] * V + 4096)>>13);
+      int g = (((int)matrix[4] * Y + (int)matrix[5] * U + (int)matrix[ 6] * V + 4096)>>13);
+      int r = (((int)matrix[8] * Y + (int)matrix[9] * U + (int)matrix[10] * V + 4096)>>13);
+      dstp[x*rgb_pixel_step+0] = PixelClip(b);  
+      dstp[x*rgb_pixel_step+1] = PixelClip(g);  
+      dstp[x*rgb_pixel_step+2] = PixelClip(r);
+      if (rgb_pixel_step == 4) {
+        dstp[x*4+3] = 255; 
+      }
+    }
+
+    dstp -= dst_pitch;
+    srcY += src_pitch_y;
+    srcU += src_pitch_uv;
+    srcV += src_pitch_uv;
+  }
+  _mm_empty();
+}
+
+#endif
+
 PVideoFrame __stdcall ConvertYV24ToRGB::GetFrame(int n, IScriptEnvironment* env) 
 {
   PVideoFrame src = child->GetFrame(n, env);
@@ -1110,53 +1364,45 @@ PVideoFrame __stdcall ConvertYV24ToRGB::GetFrame(int n, IScriptEnvironment* env)
 
   int awidth = src->GetRowSize(PLANAR_Y_ALIGNED);
 
-  const int Ypitch = src->GetPitch(PLANAR_Y);
-  const int UVpitch = src->GetPitch(PLANAR_U);
+  const int src_pitch_y = src->GetPitch(PLANAR_Y);
+  const int src_pitch_uv = src->GetPitch(PLANAR_U);
 
-  const int Dpitch = dst->GetPitch();
+  const int dst_pitch = dst->GetPitch();
+
+  if (pixel_step != 4 && pixel_step != 3) {
+    env->ThrowError("Invalid pixel step. This is a bug.");
+  }
+
+  if (env->GetCPUFlags() & CPUF_SSE2) {
+    //we load using movq so no need to check for alignment
+    if (pixel_step == 4) {
+      convert_yv24_to_rgb_ssex<4, CPUF_SSE2>(dstp, srcY, srcU, srcV, dst_pitch, src_pitch_y, src_pitch_uv, vi.width, vi.height, offset_y, matrix);
+    } else {
+      if (env->GetCPUFlags() & CPUF_SSSE3) {
+        convert_yv24_to_rgb_ssex<3, CPUF_SSSE3>(dstp, srcY, srcU, srcV, dst_pitch, src_pitch_y, src_pitch_uv, vi.width, vi.height, offset_y, matrix);
+      } else {
+        convert_yv24_to_rgb_ssex<3, CPUF_SSE2>(dstp, srcY, srcU, srcV, dst_pitch, src_pitch_y, src_pitch_uv, vi.width, vi.height, offset_y, matrix);
+      }
+    }
+    return dst;
+  }
+
 
 #ifdef X86_32
-  // TODO: 64-bit version
-  dstp += (vi.height-1)*Dpitch;
-//  BYTE* packbuf = (BYTE*)_aligned_malloc(vi.width * 4 + 60, 64);
-
-  if (awidth & 15) { // This should be very safe to assume to never happend
-    int* ipackbuf = (int*)packbuf;
-
-    for (int y = 0; y < vi.height; y++) {
-      for (int x = 0; x < vi.width; x++) {
-        ipackbuf[x] = srcY[x] | (srcU[x] << 8 ) | (srcV[x] << 16) | (1 << 24);
-      }
-
-      assembly.Call(packbuf, dstp);
-
-      srcY += Ypitch;
-      srcU += UVpitch;
-      srcV += UVpitch;
-      dstp -= Dpitch;
+  if (env->GetCPUFlags() & CPUF_MMX) {
+    if (pixel_step == 4) {
+      convert_yv24_to_rgb_mmx<4>(dstp, srcY, srcU, srcV, dst_pitch, src_pitch_y, src_pitch_uv, vi.width, vi.height, offset_y, matrix);
+    } else {
+      convert_yv24_to_rgb_mmx<3>(dstp, srcY, srcU, srcV, dst_pitch, src_pitch_y, src_pitch_uv, vi.width, vi.height, offset_y, matrix);
     }
+    return dst;
   }
-  else {
-    for (int y = 0; y < vi.height; y++) {
-
-      this->packer.Call(srcY, srcU, srcV, packbuf);
-
-      assembly.Call(packbuf, dstp);
-
-      srcY += Ypitch;
-      srcU += UVpitch;
-      srcV += UVpitch;
-      dstp -= Dpitch;
-    }
-  }
-//  _aligned_free(packbuf);
-  return dst;
 #endif
 
   //Slow C-code.
 
   signed short* m = (signed short*)matrix;
-  dstp += Dpitch * (vi.height-1);  // We start at last line
+  dstp += dst_pitch * (vi.height-1);  // We start at last line
   if (pixel_step == 4) {
     for (int y = 0; y < vi.height; y++) {
       for (int x = 0; x < vi.width; x++) {
@@ -1171,13 +1417,13 @@ PVideoFrame __stdcall ConvertYV24ToRGB::GetFrame(int n, IScriptEnvironment* env)
         dstp[x*4+2] = PixelClip(r);
         dstp[x*4+3] = 255; // alpha
       }
-      dstp -= Dpitch;
-      srcY += Ypitch;
-      srcU += UVpitch;
-      srcV += UVpitch;
+      dstp -= dst_pitch;
+      srcY += src_pitch_y;
+      srcU += src_pitch_uv;
+      srcV += src_pitch_uv;
     }
   } else {
-    const int Dstep = Dpitch + (vi.width * pixel_step);
+    const int Dstep = dst_pitch + (vi.width * pixel_step);
     for (int y = 0; y < vi.height; y++) {
       for (int x = 0; x < vi.width; x++) {
         int Y = srcY[x] + offset_y;
@@ -1192,9 +1438,9 @@ PVideoFrame __stdcall ConvertYV24ToRGB::GetFrame(int n, IScriptEnvironment* env)
         dstp += pixel_step;
       }
       dstp -= Dstep;
-      srcY += Ypitch;
-      srcU += UVpitch;
-      srcV += UVpitch;
+      srcY += src_pitch_y;
+      srcU += src_pitch_uv;
+      srcV += src_pitch_uv;
     }
   }
   return dst;
