@@ -260,29 +260,32 @@ PVideoFrame Convert444ToY8::ConvertImage(Image444* src, PVideoFrame dst, IScript
   return dst;
 }
 
-static __forceinline __m128i convert_yv24_chroma_block_to_yv12_sse2(const __m128i &src_line0_p0, const __m128i &src_line1_p0, const __m128i &src_line0_p1, const __m128i &src_line1_p1, const __m128i &bias, const __m128i &mask) {
+static __forceinline __m128i convert_yv24_chroma_block_to_yv12_sse2(const __m128i &src_line0_p0, const __m128i &src_line1_p0, const __m128i &src_line0_p1, const __m128i &src_line1_p1, const __m128i &ffff, const __m128i &mask) {
   __m128i avg1 = _mm_avg_epu8(src_line0_p0, src_line1_p0);
   __m128i avg2 = _mm_avg_epu8(src_line0_p1, src_line1_p1);
 
-  __m128i avg1_biased = _mm_subs_epu8(avg1, bias);
-  __m128i avg2_biased = _mm_subs_epu8(avg2, bias);
+  __m128i avg1x = _mm_xor_si128(avg1, ffff);
+  __m128i avg2x = _mm_xor_si128(avg2, ffff);
 
-  __m128i avg1_sh = _mm_srli_epi16(avg1, 8);
-  __m128i avg2_sh = _mm_srli_epi16(avg2, 8);
+  __m128i avg1_sh = _mm_srli_epi16(avg1x, 8);
+  __m128i avg2_sh = _mm_srli_epi16(avg2x, 8);
 
-  avg1 = _mm_avg_epu8(avg1_biased, avg1_sh);
-  avg2 = _mm_avg_epu8(avg2_biased, avg2_sh);
+  avg1 = _mm_avg_epu8(avg1x, avg1_sh);
+  avg2 = _mm_avg_epu8(avg2x, avg2_sh);
 
   avg1 = _mm_and_si128(avg1, mask);
   avg2 = _mm_and_si128(avg2, mask);
 
-  return _mm_packus_epi16(avg1, avg2);
+  __m128i packed = _mm_packus_epi16(avg1, avg2);
+  return _mm_xor_si128(packed, ffff);
 }
 
 static void convert_yv24_chroma_to_yv12_sse2(BYTE *dstp, const BYTE *srcp, int dst_pitch, int src_pitch, int dst_width, const int dst_height) {
   int mod16_width = dst_width / 16 * 16;
 
-  __m128i bias = _mm_set1_epi8(1);
+#pragma warning(disable:4309)
+  __m128i ffff = _mm_set1_epi8(0xFF);
+#pragma warning(default:4309)
   __m128i mask = _mm_set1_epi16(0x00FF);
 
   for (int y = 0; y < dst_height; ++y) {
@@ -292,7 +295,7 @@ static void convert_yv24_chroma_to_yv12_sse2(BYTE *dstp, const BYTE *srcp, int d
       __m128i src_line1_p0 = _mm_load_si128(reinterpret_cast<const __m128i*>(srcp+x*2+src_pitch));
       __m128i src_line1_p1 = _mm_load_si128(reinterpret_cast<const __m128i*>(srcp+x*2+src_pitch+16));
 
-      __m128i avg = convert_yv24_chroma_block_to_yv12_sse2(src_line0_p0, src_line1_p0, src_line0_p1, src_line1_p1, bias, mask);
+      __m128i avg = convert_yv24_chroma_block_to_yv12_sse2(src_line0_p0, src_line1_p0, src_line0_p1, src_line1_p1, ffff, mask);
 
       _mm_store_si128(reinterpret_cast<__m128i*>(dstp+x), avg);
     }
@@ -303,7 +306,7 @@ static void convert_yv24_chroma_to_yv12_sse2(BYTE *dstp, const BYTE *srcp, int d
       __m128i src_line1_p0 = _mm_loadu_si128(reinterpret_cast<const __m128i*>(srcp+dst_width*2+src_pitch-32));
       __m128i src_line1_p1 = _mm_loadu_si128(reinterpret_cast<const __m128i*>(srcp+dst_width*2+src_pitch-16));
 
-      __m128i avg = convert_yv24_chroma_block_to_yv12_sse2(src_line0_p0, src_line1_p0, src_line0_p1, src_line1_p1, bias, mask);
+      __m128i avg = convert_yv24_chroma_block_to_yv12_sse2(src_line0_p0, src_line1_p0, src_line0_p1, src_line1_p1, ffff, mask);
 
       _mm_store_si128(reinterpret_cast<__m128i*>(dstp+dst_width-16), avg);
     }
@@ -315,29 +318,32 @@ static void convert_yv24_chroma_to_yv12_sse2(BYTE *dstp, const BYTE *srcp, int d
 
 #ifdef X86_32
 
-static __forceinline __m64 convert_yv24_chroma_block_to_yv12_isse(const __m64 &src_line0_p0, const __m64 &src_line1_p0, const __m64 &src_line0_p1, const __m64 &src_line1_p1, const __m64 &bias, const __m64 &mask) {
+static __forceinline __m64 convert_yv24_chroma_block_to_yv12_isse(const __m64 &src_line0_p0, const __m64 &src_line1_p0, const __m64 &src_line0_p1, const __m64 &src_line1_p1, const __m64 &ffff, const __m64 &mask) {
   __m64 avg1 = _mm_avg_pu8(src_line0_p0, src_line1_p0);
   __m64 avg2 = _mm_avg_pu8(src_line0_p1, src_line1_p1);
 
-  __m64 avg1_biased = _mm_subs_pu8(avg1, bias);
-  __m64 avg2_biased = _mm_subs_pu8(avg2, bias);
+  __m64 avg1x = _mm_xor_si64(avg1, ffff);
+  __m64 avg2x = _mm_xor_si64(avg2, ffff);
 
-  __m64 avg1_sh = _mm_srli_pi16(avg1, 8);
-  __m64 avg2_sh = _mm_srli_pi16(avg2, 8);
+  __m64 avg1_sh = _mm_srli_pi16(avg1x, 8);
+  __m64 avg2_sh = _mm_srli_pi16(avg2x, 8);
 
-  avg1 = _mm_avg_pu8(avg1_biased, avg1_sh);
-  avg2 = _mm_avg_pu8(avg2_biased, avg2_sh);
+  avg1 = _mm_avg_pu8(avg1x, avg1_sh);
+  avg2 = _mm_avg_pu8(avg2x, avg2_sh);
 
   avg1 = _mm_and_si64(avg1, mask);
   avg2 = _mm_and_si64(avg2, mask);
 
-  return _mm_packs_pu16(avg1, avg2);
+  __m64 packed = _mm_packs_pu16(avg1, avg2);
+  return _mm_xor_si64(packed, ffff);
 }
 
 static void convert_yv24_chroma_to_yv12_isse(BYTE *dstp, const BYTE *srcp, int dst_pitch, int src_pitch, int dst_width, const int dst_height) {
   int mod8_width = dst_width / 8 * 8;
 
-  __m64 bias = _mm_set1_pi8(1);
+#pragma warning(disable:4309)
+  __m64 ffff = _mm_set1_pi8(0xFF);
+#pragma warning(default:4309)
   __m64 mask = _mm_set1_pi16(0x00FF);
 
   for (int y = 0; y < dst_height; ++y) {
@@ -347,7 +353,7 @@ static void convert_yv24_chroma_to_yv12_isse(BYTE *dstp, const BYTE *srcp, int d
       __m64 src_line1_p0 = *reinterpret_cast<const __m64*>(srcp+x*2+src_pitch);
       __m64 src_line1_p1 = *reinterpret_cast<const __m64*>(srcp+x*2+src_pitch+8);
 
-      __m64 avg = convert_yv24_chroma_block_to_yv12_isse(src_line0_p0, src_line1_p0, src_line0_p1, src_line1_p1, bias, mask);
+      __m64 avg = convert_yv24_chroma_block_to_yv12_isse(src_line0_p0, src_line1_p0, src_line0_p1, src_line1_p1, ffff, mask);
 
       *reinterpret_cast<__m64*>(dstp+x) = avg;
     }
@@ -358,7 +364,7 @@ static void convert_yv24_chroma_to_yv12_isse(BYTE *dstp, const BYTE *srcp, int d
       __m64 src_line1_p0 = *reinterpret_cast<const __m64*>(srcp+dst_width*2+src_pitch-16);
       __m64 src_line1_p1 = *reinterpret_cast<const __m64*>(srcp+dst_width*2+src_pitch-8);
 
-      __m64 avg = convert_yv24_chroma_block_to_yv12_isse(src_line0_p0, src_line1_p0, src_line0_p1, src_line1_p1, bias, mask);
+      __m64 avg = convert_yv24_chroma_block_to_yv12_isse(src_line0_p0, src_line1_p0, src_line0_p1, src_line1_p1, ffff, mask);
 
       *reinterpret_cast<__m64*>(dstp+dst_width-8) = avg;
     }
