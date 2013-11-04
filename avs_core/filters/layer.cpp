@@ -262,6 +262,89 @@ ColorKeyMask::ColorKeyMask(PClip _child, int _color, int _tolB, int _tolG, int _
     env->ThrowError("ColorKeyMask: requires RGB32 input");
 }
 
+static void colorkeymask_sse2(BYTE* pf, int pitch, int color, int height, int width, int tolB, int tolG, int tolR) {
+  unsigned int t = 0xFF000000 | (tolR << 16) | (tolG << 8) | tolB;
+  __m128i tolerance = _mm_set1_epi32(t);
+  __m128i colorv = _mm_set1_epi32(color);
+  __m128i zero = _mm_setzero_si128();
+
+  BYTE* endp = pf + pitch * height;
+
+  while (pf < endp)
+  {
+    __m128i src = _mm_load_si128(reinterpret_cast<const __m128i*>(pf));
+    __m128i gt = _mm_subs_epu8(colorv, src); 
+    __m128i lt = _mm_subs_epu8(src, colorv); 
+    __m128i absdiff = _mm_or_si128(gt, lt); //abs(color - src)
+
+    __m128i not_passed = _mm_subs_epu8(absdiff, tolerance);
+    __m128i passed = _mm_cmpeq_epi32(not_passed, zero);
+    passed = _mm_slli_epi32(passed, 24);
+    __m128i result = _mm_andnot_si128(passed, src);
+
+    _mm_store_si128(reinterpret_cast<__m128i*>(pf), result);
+
+    pf += 16;
+  }
+}
+
+#ifdef X86_32
+
+static __forceinline __m64 colorkeymask_core_mmx(const __m64 &src, const __m64 &colorv, const __m64 &tolerance, const __m64 &zero) {
+  __m64 gt = _mm_subs_pu8(colorv, src); 
+  __m64 lt = _mm_subs_pu8(src, colorv); 
+  __m64 absdiff = _mm_or_si64(gt, lt); //abs(color - src)
+
+  __m64 not_passed = _mm_subs_pu8(absdiff, tolerance);
+  __m64 passed = _mm_cmpeq_pi32(not_passed, zero);
+  passed = _mm_slli_pi32(passed, 24);
+  return _mm_andnot_si64(passed, src);
+}
+
+static void colorkeymask_mmx(BYTE* pf, int pitch, int color, int height, int width, int tolB, int tolG, int tolR) {
+#pragma warning(disable: 4309)
+  __m64 tolerance = _mm_set_pi8(0xFF, tolR, tolG, tolB, 0xFF, tolR, tolG, tolB);
+#pragma warning(default: 4309)
+  __m64 colorv = _mm_set1_pi32(color);
+  __m64 zero = _mm_setzero_si64();
+
+  int mod8_width = width / 8 * 8;
+
+  for (int y = 0; y < height; ++y) {
+    for (int x = 0; x < mod8_width; x += 8) {
+      __m64 src = *reinterpret_cast<const __m64*>(pf + x);
+      __m64 result = colorkeymask_core_mmx(src, colorv, tolerance, zero);
+      *reinterpret_cast<__m64*>(pf + x) = result;
+    }
+
+    if (mod8_width != width) {
+      __m64 src = _mm_cvtsi32_si64(*reinterpret_cast<const int*>(pf + width - 4));
+      __m64 result = colorkeymask_core_mmx(src, colorv, tolerance, zero);
+      *reinterpret_cast<int*>(pf + width - 4) = _mm_cvtsi64_si32(result);
+    }
+
+    pf += pitch;
+  }
+
+  _mm_empty();
+}
+
+#endif
+
+static void colorkeymask_c(BYTE* pf, int pitch, int color, int height, int rowsize, int tolB, int tolG, int tolR) {
+  const int R = (color >> 16) & 0xff;
+  const int G = (color >> 8) & 0xff;
+  const int B = color & 0xff;
+
+  for (int y = 0; y< height; y++) {
+    for (int x = 0; x < rowsize; x+=4) {
+      if (IsClose(pf[x],B,tolB) && IsClose(pf[x+1],G,tolG) && IsClose(pf[x+2],R,tolR))
+        pf[x+3]=0;
+    }
+    pf += pitch;
+  }
+}
+
 PVideoFrame __stdcall ColorKeyMask::GetFrame(int n, IScriptEnvironment *env)
 {
   PVideoFrame frame = child->GetFrame(n, env);
@@ -271,77 +354,20 @@ PVideoFrame __stdcall ColorKeyMask::GetFrame(int n, IScriptEnvironment *env)
   const int pitch = frame->GetPitch();
   const int rowsize = frame->GetRowSize();
 
+  if ((env->GetCPUFlags() & CPUF_SSE2) && IsPtrAligned(pf, 16))
+  {
+    colorkeymask_sse2(pf, pitch, color, vi.height, rowsize, tolB, tolG, tolR);
+  }
+  else
 #ifdef X86_32
-  if ((env->GetCPUFlags() & CPUF_MMX) && (vi.width!=1))
-  { // MMX
-    const int height = vi.height;
-    const int col8 = color;
-    const int tol8 = 0xff000000 | (tolR << 16) | (tolG << 8) | tolB;
-    const int xloopcount = -(rowsize & -8);
-    pf -= xloopcount;
-    __asm {
-      mov       esi, pf
-      mov       edx, height
-      pxor      mm0, mm0
-      movd      mm1, col8
-      movd      mm2, tol8
-      punpckldq mm1, mm1
-      punpckldq mm2, mm2
-
-yloop:
-      mov       ecx, xloopcount
-xloop:
-      movq      mm3, [esi+ecx]
-      movq      mm4, mm1
-      movq      mm5, mm3
-      psubusb   mm4, mm3
-      psubusb   mm5, mm1
-      por       mm4, mm5
-      psubusb   mm4, mm2
-      add       ecx, 8
-      pcmpeqd   mm4, mm0
-      pslld     mm4, 24
-      pandn     mm4, mm3
-      movq      [esi+ecx-8], mm4
-      jnz       xloop
-
-      mov       ecx, rowsize
-      and       ecx, 7
-      jz        not_odd
-      ; process last pixel
-      movd      mm3, [esi]
-      movq      mm4, mm1
-      movq      mm5, mm3
-      psubusb   mm4, mm3
-      psubusb   mm5, mm1
-      por       mm4, mm5
-      psubusb   mm4, mm2
-      pcmpeqd   mm4, mm0
-      pslld     mm4, 24
-      pandn     mm4, mm3
-      movd      [esi], mm4
-
-not_odd:
-      add       esi, pitch
-      dec       edx
-      jnz       yloop
-      emms
-    }
+  if (env->GetCPUFlags() & CPUF_MMX)
+  {
+    colorkeymask_mmx(pf, pitch, color, vi.height, rowsize, tolB, tolG, tolR);
   }
   else
 #endif
   {
-    const int R = (color >> 16) & 0xff;
-    const int G = (color >> 8) & 0xff;
-    const int B = color & 0xff;
-
-    for (int y=0; y<vi.height; y++) {
-      for (int x=0; x<rowsize; x+=4) {
-        if (IsClose(pf[x],B,tolB) && IsClose(pf[x+1],G,tolG) && IsClose(pf[x+2],R,tolR))
-          pf[x+3]=0;
-      }
-      pf += pitch;
-    }
+    colorkeymask_c(pf, pitch, color, vi.height, rowsize, tolB, tolG, tolR);
   } 
 
   return frame;
