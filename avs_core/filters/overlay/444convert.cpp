@@ -38,61 +38,83 @@
 #include "../../core/internal.h"
 #include <avs/cpuid.h>
 #include <cstring>
+#include <emmintrin.h>
+#include "avs/alignment.h"
+
+
+//this isn't really faster than mmx
+void convert_yv12_chroma_to_yv24_sse2(BYTE *dstp, const BYTE *srcp, int dst_pitch, int src_pitch, int src_width, int src_height) {
+  int mod8_width = src_width / 8 * 8;
+  for (int y = 0; y < src_height; ++y) {
+    for (int x = 0; x < mod8_width; x+=8) {
+      __m128i src = _mm_loadl_epi64(reinterpret_cast<const __m128i*>(srcp+x)); //0 0 0 0 0 0 0 0 U8 U7 U6 U5 U4 U3 U2 U1 U0
+      src = _mm_unpacklo_epi8(src, src); //U8 U8 U7 U7 U6 U6 U5 U5 U4 U4 U3 U3 U2 U2 U1 U1 U0 U0
+
+      _mm_store_si128(reinterpret_cast<__m128i*>(dstp+x*2), src);
+      _mm_store_si128(reinterpret_cast<__m128i*>(dstp+x*2 + dst_pitch), src);
+    }
+
+    if (mod8_width != src_width) {
+      __m128i src = _mm_loadl_epi64(reinterpret_cast<const __m128i*>(srcp+src_width - 8)); //0 0 0 0 0 0 0 0 U8 U7 U6 U5 U4 U3 U2 U1 U0
+      src = _mm_unpacklo_epi8(src, src); //U8 U8 U7 U7 U6 U6 U5 U5 U4 U4 U3 U3 U2 U2 U1 U1 U0 U0
+
+      _mm_storeu_si128(reinterpret_cast<__m128i*>(dstp + (src_width * 2) - 16), src);
+      _mm_storeu_si128(reinterpret_cast<__m128i*>(dstp + (src_width * 2) - 16 + dst_pitch), src);
+    }
+
+    dstp += dst_pitch*2;
+    srcp += src_pitch;
+  }
+}
 
 
 #ifdef X86_32
 /***** YV12 -> YUV 4:4:4   ******/
 
-void ConvertYV12ChromaTo444(unsigned char *dstp, const unsigned char *srcp,
-        const int dst_pitch, const int src_pitch,
-        const int src_rowsize, const int src_height)
-{
-  int dst_pitch2 = dst_pitch * 2;
-  __asm {
-	push    ebx
-    mov     eax,[dstp]
-    mov     ebx,[srcp]
-    mov     ecx, eax
-    add     ecx, [dst_pitch]  // ecx  = 1 line dst offset
+void convert_yv12_chroma_to_yv24_mmx(BYTE *dstp, const BYTE *srcp, int dst_pitch, int src_pitch, int src_width, int src_height) {
+  int mod4_width = src_width / 4 * 4;
+  for (int y = 0; y < src_height; ++y) {
+    for (int x = 0; x < mod4_width; x+=4) {
+      __m64 src = _mm_cvtsi32_si64(*reinterpret_cast<const int*>(srcp+x)); //0 0 0 0 U3 U2 U1 U0
+      src = _mm_unpacklo_pi8(src, src); //U3 U3 U2 U2 U1 U1 U0 U0
 
-    mov     edx,[src_rowsize]
-    xor     edi,edi
-    mov     esi,[src_height]
-    align 16
-loopx:
-    movd    mm0, [ebx+edi]    // U4U3 U2U1
-    movd    mm1, [ebx+edi+4]  // U8U7 U6U5
+      *reinterpret_cast<__m64*>(dstp+x*2) = src;
+      *reinterpret_cast<__m64*>(dstp+x*2 + dst_pitch) = src;
+    }
 
-    punpcklbw mm0, mm0        // U4U4 U3U3 U2U2 U1U1
-    punpcklbw mm1, mm1        // U8U8 U7U7 U6U6 U5U5
+    if (mod4_width != src_width) {
+      __m64 src = _mm_cvtsi32_si64(*reinterpret_cast<const int*>(srcp-4)); //0 0 0 0 U3 U2 U1 U0
+      src = _mm_unpacklo_pi8(src, src); //U3 U3 U2 U2 U1 U1 U0 U0
 
-    movq    [eax+edi*2], mm0
-    movq    [eax+edi*2+8], mm1
+      *reinterpret_cast<__m64*>(dstp + (src_width * 2) - 8) = src;
+      *reinterpret_cast<__m64*>(dstp + (src_width * 2) - 8 + dst_pitch) = src;
+    }
 
-    movq    [ecx+edi*2], mm0
-    movq    [ecx+edi*2+8], mm1
+    dstp += dst_pitch*2;
+    srcp += src_pitch;
+  }
+  _mm_empty();
+}
 
-    add     edi,8
-    cmp     edi,edx
-    jl      loopx
+#endif // X86_32
 
-    mov     edi,0
-    add     eax,[dst_pitch2]
-    add     ecx,[dst_pitch2]
-    add     ebx,[src_pitch]
-    dec     esi
 
-    jnz     loopx
-
-    emms
-	pop     ebx
+void convert_yv12_chroma_to_yv24_c(BYTE *dstp, const BYTE *srcp, int dst_pitch, int src_pitch, int src_width, int src_height) {
+  for (int y = 0; y < src_height; ++y) {
+    for (int x = 0; x < src_width; ++x) {
+      dstp[x*2]             = srcp[x];
+      dstp[x*2+1]           = srcp[x];
+      dstp[x*2+dst_pitch]   = srcp[x];
+      dstp[x*2+dst_pitch+1] = srcp[x];
+    }
+    dstp += dst_pitch*2;
+    srcp += src_pitch;
   }
 }
-#endif // X86_32
 
 void Convert444FromYV12::ConvertImage(PVideoFrame src, Image444* dst, IScriptEnvironment* env)
 {
-#ifdef X86_32
+
   env->BitBlt(dst->GetPtr(PLANAR_Y), dst->pitch, src->GetReadPtr(PLANAR_Y),src->GetPitch(PLANAR_Y), src->GetRowSize(PLANAR_Y), src->GetHeight());
 
   const BYTE* srcU = src->GetReadPtr(PLANAR_U);
@@ -105,15 +127,27 @@ void Convert444FromYV12::ConvertImage(PVideoFrame src, Image444* dst, IScriptEnv
 
   int dstUVpitch = dst->pitch;
 
-  int w = ((src->GetRowSize(PLANAR_U)+7)/8)*8;
-  int h = src->GetHeight(PLANAR_U);
-
-  ConvertYV12ChromaTo444(dstU, srcU, dstUVpitch, srcUVpitch, w, h);
-  ConvertYV12ChromaTo444(dstV, srcV, dstUVpitch, srcUVpitch, w, h);
-#else
-  //TODO
-  env->ThrowError("Convert444FromYV12::ConvertImage is not yet ported to 64-bit.");
+  int width = src->GetRowSize(PLANAR_U);
+  int height = src->GetHeight(PLANAR_U);
+  
+  if ((env->GetCPUFlags() & CPUF_SSE2) && IsPtrAligned(dstU, 16) && IsPtrAligned(dstV, 16))  
+  {
+    convert_yv12_chroma_to_yv24_sse2(dstU, srcU, dstUVpitch, srcUVpitch, width, height);
+    convert_yv12_chroma_to_yv24_sse2(dstV, srcV, dstUVpitch, srcUVpitch, width, height);
+  }
+  else
+#ifdef X86_32
+  if (env->GetCPUFlags() & CPUF_MMX) 
+  {
+    convert_yv12_chroma_to_yv24_mmx(dstU, srcU, dstUVpitch, srcUVpitch, width, height);
+    convert_yv12_chroma_to_yv24_mmx(dstV, srcV, dstUVpitch, srcUVpitch, width, height);
+  } 
+  else 
 #endif
+  {
+    convert_yv12_chroma_to_yv24_c(dstU, srcU, dstUVpitch, srcUVpitch, width, height);
+    convert_yv12_chroma_to_yv24_c(dstV, srcV, dstUVpitch, srcUVpitch, width, height);
+  }
 }
 
 void Convert444FromYV12::ConvertImageLumaOnly(PVideoFrame src, Image444* dst, IScriptEnvironment* env) {
