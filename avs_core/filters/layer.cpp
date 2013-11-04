@@ -41,6 +41,8 @@
 #include <avs/win.h>
 #include <avs/minmax.h>
 #include "../core/internal.h"
+#include <emmintrin.h>
+#include "avs/alignment.h"
 
 
 
@@ -66,9 +68,6 @@ extern const AVSFunction Layer_filters[] = {
   { "Subtract", "cc", Subtract::Create },
   { 0,0,0 }
 };
-
-
-
 
 
 /******************************
@@ -115,6 +114,7 @@ PVideoFrame __stdcall Mask::GetFrame(int n, IScriptEnvironment* env)
 	static const int alpha_mask=0x00ffffff;
 	static const int color_mask=0xff000000;
 	static const int rounder   =16384;
+
 /*
   for (int y=0; y<vi.height; ++y) {
 	  for (int x=0; x<vi.width; ++x)
@@ -125,45 +125,47 @@ PVideoFrame __stdcall Mask::GetFrame(int n, IScriptEnvironment* env)
     src2p += src2_pitch;
   }
 */
-		__asm {
-		mov			edi, src1p
-		mov			esi, src2p
-		mov			eax, myy
-		movq		mm1, rgb2lum
-		movd		mm2, alpha_mask
-		movd		mm3, color_mask
-		movd		mm7, rounder
-		punpckldq	mm2, mm2
-		punpckldq	mm3, mm3
-		punpckldq	mm7, mm7
-		xor			ecx, ecx
-		pxor		mm0, mm0
-		mov			edx, myx
-		align		16
-mask_mmxloop:
-			movd		mm6, [esi + ecx*4]	; pipeline in next mask pixel RGB
-			 movd		mm4, [edi + ecx*4]	;get color RGBA
-			punpcklbw	mm6, mm0			;mm6= 00aa|00rr|00gg|00bb [src2]
-			pmaddwd		mm6, mm1			;partial monochrome result
-			punpckldq	mm5, mm6			;ready to add
-			 paddd		mm6, mm7			;rounding
-			paddd		mm6, mm5			;32 bit result in high top dword
-			psrlq		mm6, 15+8			;8 bit result
-			 pand		mm4, mm2			;strip out old alpha
-			pand		mm6, mm3			;clear any possible junk
-			 inc		ecx					;point to next - aka loop counter
-			por			mm6, mm4			;merge new alpha and original color
-			 cmp		ecx, edx
-			movd		[edi+ecx*4-4],mm6	;store'em where they belong (at ecx-1)
-			 jnz		mask_mmxloop
 
-		add		edi, src1_pitch
-		add		esi, src2_pitch
-		xor		ecx, ecx
-		dec		eax
-		jnz		mask_mmxloop
-		emms
-		}
+  __asm {
+    mov			edi, src1p
+      mov			esi, src2p
+      mov			eax, myy
+      movq		mm1, rgb2lum
+      movd		mm2, alpha_mask
+      movd		mm3, color_mask
+      movd		mm7, rounder
+      punpckldq	mm2, mm2
+      punpckldq	mm3, mm3
+      punpckldq	mm7, mm7
+      xor			ecx, ecx
+      pxor		mm0, mm0
+      mov			edx, myx
+      align		16
+mask_mmxloop:
+    movd		mm6, [esi + ecx*4]	 //pipeline in next mask pixel RGB
+      movd		mm4, [edi + ecx*4]	//get color RGBA
+    punpcklbw	mm6, mm0			//mm6= 00aa|00rr|00gg|00bb [src2]
+      pmaddwd		mm6, mm1			//partial monochrome result
+      punpckldq	mm5, mm6			//ready to add
+      paddd		mm6, mm7			//rounding
+      paddd		mm6, mm5			//32 bit result in high top dword
+      psrlq		mm6, 15+8			//8 bit result
+      pand		mm4, mm2			//strip out old alpha
+      pand		mm6, mm3			//clear any possible junk
+      inc		ecx					//point to next - aka loop counter
+      por			mm6, mm4			//merge new alpha and original color
+      cmp		ecx, edx
+      movd		[edi+ecx*4-4],mm6	//store'em where they belong (at ecx-1)
+      jnz		mask_mmxloop
+
+      add		edi, src1_pitch
+      add		esi, src2_pitch
+      xor		ecx, ecx
+      dec		eax
+      jnz		mask_mmxloop
+      emms
+  }
+  
 #else
   //TODO
   env->ThrowError("Mask::GetFrame is not yet ported to 64-bit.");
@@ -175,13 +177,6 @@ AVSValue __cdecl Mask::Create(AVSValue args, void*, IScriptEnvironment* env)
 {
   return new Mask(args[0].AsClip(), args[1].AsClip(), env);
 }
-
-
-
-
-
-
-
 
 
 /**************************************
@@ -290,12 +285,6 @@ AVSValue __cdecl ColorKeyMask::Create(AVSValue args, void*, IScriptEnvironment* 
 }
 
 
-
-
-
-
-
-
 /********************************
  ******  ResetMask filter  ******
  ********************************/
@@ -335,8 +324,6 @@ AVSValue ResetMask::Create(AVSValue args, void*, IScriptEnvironment* env)
 }
 
 
-
-
 /********************************
  ******  Invert filter  ******
  ********************************/
@@ -348,12 +335,135 @@ Invert::Invert(PClip _child, const char * _channels, IScriptEnvironment* env)
 
 }
 
+void invert_frame_sse2(BYTE* frame, int pitch, int width, int height, int mask) {
+  __m128i maskv = _mm_set1_epi32(mask);
+
+  BYTE* endp = frame + pitch * height;
+
+  while (frame < endp) {
+    __m128i src = _mm_load_si128(reinterpret_cast<const __m128i*>(frame));
+    __m128i inv = _mm_xor_si128(src, maskv);
+    _mm_store_si128(reinterpret_cast<__m128i*>(frame), inv);
+    frame += 16;
+  }
+}
+
+#ifdef X86_32
+
+//mod4 width is required
+void invert_frame_mmx(BYTE* frame, int pitch, int width, int height, int mask) 
+{
+  __m64 maskv = _mm_set1_pi32(mask);
+  int mod8_width = width / 8 * 8;
+
+  for (int y = 0; y < height; ++y) {
+    for (int x = 0; x < mod8_width; x+=8) {
+      __m64 src = *reinterpret_cast<const __m64*>(frame+x);
+      __m64 inv = _mm_xor_si64(src, maskv);
+      *reinterpret_cast<__m64*>(frame+x) = inv;
+    }
+    
+    if (mod8_width != width) {
+      //last four pixels
+      __m64 src = _mm_cvtsi32_si64(*reinterpret_cast<const int*>(frame+width-4));
+      __m64 inv = _mm_xor_si64(src, maskv);
+      *reinterpret_cast<int*>(frame+width-4) = _mm_cvtsi64_si32(inv);
+    }
+    frame += pitch;
+  }
+  _mm_empty();
+}
+
+void invert_plane_mmx(BYTE* frame, int pitch, int width, int height) 
+{
+#pragma warning(disable: 4309)
+  __m64 maskv = _mm_set1_pi8(0xFF);
+#pragma warning(default: 4309)
+  int mod8_width = width / 8 * 8;
+
+  for (int y = 0; y < height; ++y) {
+    for (int x = 0; x < mod8_width; x+=8) {
+      __m64 src = *reinterpret_cast<const __m64*>(frame+x);
+      __m64 inv = _mm_xor_si64(src, maskv);
+      *reinterpret_cast<__m64*>(frame+x) = inv;
+    }
+
+    for (int x = mod8_width; x < width; ++x) {
+      frame[x] = frame[x] ^ 255;
+    }
+    frame += pitch;
+  }
+  _mm_empty();
+}
+
+#endif
+
+//mod4 width is required
+void invert_frame_c(BYTE* frame, int pitch, int width, int height, int mask) {
+  for (int y = 0; y < height; ++y) {
+    int* intptr = reinterpret_cast<int*>(frame);
+
+    for (int x = 0; x < width / 4; ++x) {
+      intptr[x] = intptr[x] ^ mask;
+    }
+    frame += pitch;
+  }
+}
+
+void invert_plane_c(BYTE* frame, int pitch, int width, int height) {
+  int mod4_width = width / 4 * 4;
+  for (int y = 0; y < height; ++y) {
+    int* intptr = reinterpret_cast<int*>(frame);
+
+    for (int x = 0; x < mod4_width / 4; ++x) {
+      intptr[x] = intptr[x] ^ 0xFFFFFFFF;
+    }
+
+    for (int x = mod4_width; x < width; ++x) {
+      frame[x] = frame[x] ^ 255;
+    }
+    frame += pitch;
+  }
+}
+
+static void invert_frame(BYTE* frame, int pitch, int rowsize, int height, int mask, IScriptEnvironment *env) {
+  if ((env->GetCPUFlags() & CPUF_SSE2) && IsPtrAligned(frame, 16)) 
+  {
+    invert_frame_sse2(frame, pitch, rowsize, height, mask);
+  }
+#ifdef X86_32
+  else if (env->GetCPUFlags() & CPUF_MMX)
+  {
+    invert_frame_mmx(frame, pitch, rowsize, height, mask);
+  }
+#endif
+  else 
+  {
+    invert_frame_c(frame, pitch, rowsize, height, mask);
+  }
+}
+
+static void invert_plane(BYTE* frame, int pitch, int rowsize, int height, IScriptEnvironment *env) {
+  if ((env->GetCPUFlags() & CPUF_SSE2) && IsPtrAligned(frame, 16)) 
+  {
+    invert_frame_sse2(frame, pitch, rowsize, height, 0xffffffff);
+  }
+#ifdef X86_32
+  else if (env->GetCPUFlags() & CPUF_MMX)
+  {
+    invert_plane_mmx(frame, pitch, rowsize, height);
+  }
+#endif
+  else 
+  {
+    invert_plane_c(frame, pitch, rowsize, height);
+  }
+}
 
 PVideoFrame Invert::GetFrame(int n, IScriptEnvironment* env)
 {
   PVideoFrame f = child->GetFrame(n, env);
 
-#ifdef X86_32
   env->MakeWritable(&f);
 
   BYTE* pf = f->GetWritePtr();
@@ -396,7 +506,7 @@ PVideoFrame Invert::GetFrame(int n, IScriptEnvironment* env)
     mask |= doU ? 0x0000ff00 : 0;
     mask |= doV ? 0xFF000000 : 0;
 
-    ConvertFrame(pf, pitch, rowsize, height, mask);
+    invert_frame(pf, pitch, rowsize, height, mask, env);
   }
 
   if (vi.IsRGB32()) {
@@ -404,16 +514,16 @@ PVideoFrame Invert::GetFrame(int n, IScriptEnvironment* env)
     mask |= doG ? 0xff00 : 0;
     mask |= doR ? 0xff0000 : 0;
     mask |= doA ? 0xff000000 : 0;
-    ConvertFrame(pf, pitch, rowsize, height, mask);
+    invert_frame(pf, pitch, rowsize, height, mask, env);
   }
 
   if (vi.IsPlanar()) {
     if (doY)
-      ConvertFrame(pf, pitch, f->GetRowSize(PLANAR_Y_ALIGNED), height, 0xffffffff);
+      invert_plane(pf, pitch, f->GetRowSize(PLANAR_Y_ALIGNED), height, env);
     if (doU)
-      ConvertFrame(f->GetWritePtr(PLANAR_U), f->GetPitch(PLANAR_U), f->GetRowSize(PLANAR_U_ALIGNED), f->GetHeight(PLANAR_U), 0xffffffff);
+      invert_plane(f->GetWritePtr(PLANAR_U), f->GetPitch(PLANAR_U), f->GetRowSize(PLANAR_U_ALIGNED), f->GetHeight(PLANAR_U), env);
     if (doV)
-      ConvertFrame(f->GetWritePtr(PLANAR_V), f->GetPitch(PLANAR_V), f->GetRowSize(PLANAR_V_ALIGNED), f->GetHeight(PLANAR_V), 0xffffffff);
+      invert_plane(f->GetWritePtr(PLANAR_V), f->GetPitch(PLANAR_V), f->GetRowSize(PLANAR_V_ALIGNED), f->GetHeight(PLANAR_V), env);
   }
 
   if (vi.IsRGB24()) {
@@ -430,98 +540,15 @@ PVideoFrame Invert::GetFrame(int n, IScriptEnvironment* env)
       pf += pitch;
     }
   }
-#else
-  //TODO
-  env->ThrowError("Convert444ToYV12::ConvertImage is not yet ported to 64-bit.");
-#endif
 
   return f;
 }
 
-#ifdef X86_32
-/**********************
- * MMX invert function.
- *
- * Originally written by Klaus Post.
- *
- * Rewritten and optimized by ARDA.
- **********************/
-
-void Invert::ConvertFrame
-         (BYTE* frame,
-          int pitch,
-          int rowsize,    //must be mod 4
-          int height,
-          int mask) 
-{
-__asm {
-    movd mm7,[mask]
-
-    mov eax,[pitch]
-    mov edi,[height]
-    mov esi,[frame]
-    sub eax,[rowsize]      //modulo
-
-    punpckldq mm7,mm7
-align 16
-yloopback:
-    mov ecx,[rowsize]
-    mov edx,ecx
-    sar ecx,5
-    and edx,31
-    test ecx,ecx
-    jz  resttest
-align 16
-testloop:
-//    prefetchnta [esi+256]
-
-    movq mm0,[esi]
-    movq mm1,[esi+8]
-    movq mm2,[esi+16]
-    movq mm3,[esi+24]
-
-    pxor mm0, mm7
-    pxor mm1, mm7
-    pxor mm2, mm7
-    pxor mm3, mm7
-
-    movq [esi], mm0
-    movq [esi+8], mm1
-    movq [esi+16], mm2
-    movq [esi+24], mm3
-
-    add esi,32
-    dec ecx
-    jne testloop
-
-resttest:
-    test edx,edx
-    jz outw
-
-align 16
-restloop:
-    movd mm0,[esi]
-    pxor mm0, mm7
-    movd [esi],mm0
-    add esi,4
-    sub edx,4
-    jg  restloop
-align 16
-outw:
-    add esi,eax
-    dec edi//sub height,1
-    jne yloopback
-    emms
-  };
-}
-#endif
 
 AVSValue Invert::Create(AVSValue args, void*, IScriptEnvironment* env)
 {
   return new Invert(args[0].AsClip(), args[0].AsClip()->GetVideoInfo().IsRGB() ? args[1].AsString("RGBA") : args[1].AsString("YUV"), env);
 }
-
-
 
 
 /**********************************
@@ -802,9 +829,6 @@ AVSValue ShowChannel::Create(AVSValue args, void* channel, IScriptEnvironment* e
 }
 
 
-
-
-
 /**********************************
  ******  MergeRGB filter  ******
  **********************************/
@@ -940,9 +964,6 @@ AVSValue MergeRGB::Create(AVSValue args, void* mode, IScriptEnvironment* env)
   else      // RGB[type]
     return new MergeRGB(args[0].AsClip(), args[2].AsClip(), args[1].AsClip(), args[0].AsClip(), 0, args[3].AsString("RGB32"), env);
 }
-
-
-
 
 
 /*******************************
@@ -2258,11 +2279,6 @@ AVSValue __cdecl Layer::Create(AVSValue args, void*, IScriptEnvironment* env)
 
 
 
-
-
-
-
-
 /**********************************
  *******   Subtract Filter   ******
  *********************************/
@@ -2290,13 +2306,6 @@ Subtract::Subtract(PClip _child1, PClip _child2, IScriptEnvironment* env)
     for (int i=0; i<=512; i++) Diff[i] = max(0,min(255,i-129));
   }
 }
-
-/*	// abs(a - b)
-	movq	mm2, mm0
-	psubusb	mm0, mm1
-	psubusb	mm1, mm2
-	por		mm0, mm1
-*/
 
 PVideoFrame __stdcall Subtract::GetFrame(int n, IScriptEnvironment* env)
 {
