@@ -29,7 +29,6 @@
 
 #include "clip_info.h"
 
-#include "VD_misc.h"
 #include <cmath>
 
 
@@ -71,7 +70,13 @@ AvisynthError MyWin32Error(const char *format, DWORD err, ...) {
   return AvisynthError(exception_conversion_buffer);
 }
 
-
+// Copied over from VD_misc.cpp, as the only function being used from there
+static bool isValidFOURCC(FOURCC fcc) {
+	return isprint((unsigned char)(fcc>>24))
+		&& isprint((unsigned char)(fcc>>16))
+		&& isprint((unsigned char)(fcc>> 8))
+		&& isprint((unsigned char)(fcc    ));
+}
 
 //#define STREAMING_DEBUG
 
