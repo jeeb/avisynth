@@ -430,237 +430,166 @@ void Antialiaser::GetAlphaRect()
     do {
       int i;
 
-/*      BYTE tmp = 0;
-      for (i=0; i<8; i++) {
-        tmp |= src[srcpitch*i];
-        tmp |= src[srcpitch*i-1];
-        tmp |= src[srcpitch*i+1];
-        tmp |= src[srcpitch*(-8+i)];
-        tmp |= src[srcpitch*(-8+i)-1];
-        tmp |= src[srcpitch*(-8+i)+1];
-        tmp |= src[srcpitch*(8+i)];
-        tmp |= src[srcpitch*(8+i)-1];
-        tmp |= src[srcpitch*(8+i)+1];
+#pragma warning(disable: 4068)
+      DWORD tmp = 0;
+
+      if (interlaced) {
+#pragma unroll
+        for (int i = -8; i < 16; ++i) {
+          tmp |= *reinterpret_cast<int*>(src + srcpitch*i - 1);
+        }
+      } else {
+#pragma unroll
+        for (int i = -12; i < 20; ++i) {
+          tmp |= *reinterpret_cast<int*>(src + srcpitch*i - 1);
+        }
       }
-*/
-      DWORD tmp = 1;
-#ifdef X86_32
-      tmp = interlaced;
-      __asm
-      {           // test if the whole area isn't just plain black
-        mov edx, srcpitch
-        mov esi, src
-        mov ecx, edx
-        dec esi
-        shl ecx, 3
-        sub esi, ecx  ; src - 8*pitch - 1
-        cmp tmp,-1
-        jnz do32
 
-        lea edi,[esi+edx*2]
-        xor eax,eax
-        xor ecx,ecx
-        jmp do24
-do32:
-        sar ecx, 1
-        sub esi, ecx  ; src - 12*pitch - 1
-        lea edi,[esi+edx*2]
+      tmp &= 0x00FFFFFF;
+#pragma warning(default: 4068)
 
-        mov eax, [esi]  ; repeat 32 times
-        mov ecx, [esi+edx]
-        lea esi,[esi+edx*4]
-        or eax, [edi]
-        or ecx, [edi+edx]
-        lea edi,[edi+edx*4]
-        or eax, [esi]
-        or ecx, [esi+edx]
-        lea esi,[esi+edx*4]
-        or eax, [edi]
-        or ecx, [edi+edx]
-        lea edi,[edi+edx*4]
-do24:
-        or eax, [esi]  ; repeat 24 times
-        or ecx, [esi+edx]
-        lea esi,[esi+edx*4]
-        or eax, [edi]
-        or ecx, [edi+edx]
-        lea edi,[edi+edx*4]
-        or eax, [esi]
-        or ecx, [esi+edx]
-        lea esi,[esi+edx*4]
-        or eax, [edi]
-        or ecx, [edi+edx]
-        lea edi,[edi+edx*4]
-        or eax, [esi]
-        or ecx, [esi+edx]
-        lea esi,[esi+edx*4]
-        or eax, [edi]
-        or ecx, [edi+edx]
-        lea edi,[edi+edx*4]
-        or eax, [esi]
-        or ecx, [esi+edx]
-        lea esi,[esi+edx*4]
-        or eax, [edi]
-        or ecx, [edi+edx]
-        lea edi,[edi+edx*4]
-        or eax, [esi]
-        or ecx, [esi+edx]
-        lea esi,[esi+edx*4]
-        or eax, [edi]
-        or ecx, [edi+edx]
-        lea edi,[edi+edx*4]
-        or eax, [esi]
-        or ecx, [esi+edx]
-        or eax, [edi]
-        or ecx, [edi+edx]
-
-        or eax, ecx
-        and eax, 0x00ffffff
-        mov tmp, eax
-      }
-#endif
 
       if (tmp != 0) {     // quick exit in a common case
-		if (wt >= xl) xl=wt;
-		if (wt <= xr) xr=wt;
-		if (y  >= yt) yt=y;
-		if (y  <= yb) yb=y;
+        if (wt >= xl) xl=wt;
+        if (wt <= xr) xr=wt;
+        if (y  >= yt) yt=y;
+        if (y  <= yb) yb=y;
 
         int alpha1, alpha2;
 
         alpha1 = alpha2 = 0;
 
-		if (interlaced) {
-		  BYTE topmask=0, cenmask=0, botmask=0;
-		  BYTE hmasks[16], mask;
-		  
-		  for(i=-4; i<12; i++) {// For interlaced include extra half cells above and below
-			mask = src[srcpitch*i];
-			// How many lit pixels in the centre cell?
-			alpha1 += bitcnt[mask];
-			// turn on all halo bits if cell has any lit pixels
-			mask = - !! mask;
-			// Check left and right neighbours, extend the halo
-			// mask 8 pixels in from the nearest lit pixels.
-			mask |= bitexr[src[srcpitch*i-1]];
-			mask |= bitexl[src[srcpitch*i+1]];
-			hmasks[i+4] = mask;
-		  }
+        if (interlaced) {
+          BYTE topmask=0, cenmask=0, botmask=0;
+          BYTE hmasks[16], mask;
 
-		  // Extend halo vertically to 8x8 blocks
-		  for(i=-4; i<4;  i++) topmask |= hmasks[i+4];
-		  for(i=0;  i<8;  i++) cenmask |= hmasks[i+4];
-		  for(i=4;  i<12; i++) botmask |= hmasks[i+4];
-		  // Check the 3x1.5 cells above
-		  for(mask = topmask, i=-4; i<4; i++) {
-			mask |= bitexr[ src[srcpitch*(i+8)-1] ];
-			mask |=    - !! src[srcpitch*(i+8)  ];
-			mask |= bitexl[ src[srcpitch*(i+8)+1] ];
-			hmasks[i+4] |= mask;
-		  }
-		  for(mask = cenmask, i=0; i<8; i++) {
-			mask |= bitexr[ src[srcpitch*(i+8)-1] ];
-			mask |=    - !! src[srcpitch*(i+8)  ];
-			mask |= bitexl[ src[srcpitch*(i+8)+1] ];
-			hmasks[i+4] |= mask;
-		  }
-		  for(mask = botmask, i=4; i<12; i++) {
-			mask |= bitexr[ src[srcpitch*(i+8)-1] ];
-			mask |=    - !! src[srcpitch*(i+8)  ];
-			mask |= bitexl[ src[srcpitch*(i+8)+1] ];
-			hmasks[i+4] |= mask;
-		  }
-		  // Check the 3x1.5 cells below
-		  for(mask = botmask, i=11; i>=4; i--) {
-			mask |= bitexr[ src[srcpitch*(i-8)-1] ];
-			mask |=    - !! src[srcpitch*(i-8)  ];
-			mask |= bitexl[ src[srcpitch*(i-8)+1] ];
-			hmasks[i+4] |= mask;
-		  }
-		  for(mask = cenmask,i=7; i>=0; i--) {
-			mask |= bitexr[ src[srcpitch*(i-8)-1] ];
-			mask |=    - !! src[srcpitch*(i-8)  ];
-			mask |= bitexl[ src[srcpitch*(i-8)+1] ];
-			hmasks[i+4] |= mask;
-		  }
-		  for(mask = topmask, i=3; i>=-4; i--) {
-			mask |= bitexr[ src[srcpitch*(i-8)-1] ];
-			mask |=    - !! src[srcpitch*(i-8)  ];
-			mask |= bitexl[ src[srcpitch*(i-8)+1] ];
-			hmasks[i+4] |= mask;
-		  }
-		  // count the halo pixels
-		  for(i=0; i<16; i++)
-			alpha2 += bitcnt[hmasks[i]];
-		}
-		else {
-		  // How many lit pixels in the centre cell?
-		  for(i=0; i<8; i++)
-			alpha1 += bitcnt[src[srcpitch*i]];
-		  alpha1 *=2;
+          for(i=-4; i<12; i++) {// For interlaced include extra half cells above and below
+            mask = src[srcpitch*i];
+            // How many lit pixels in the centre cell?
+            alpha1 += bitcnt[mask];
+            // turn on all halo bits if cell has any lit pixels
+            mask = - !! mask;
+            // Check left and right neighbours, extend the halo
+            // mask 8 pixels in from the nearest lit pixels.
+            mask |= bitexr[src[srcpitch*i-1]];
+            mask |= bitexl[src[srcpitch*i+1]];
+            hmasks[i+4] = mask;
+          }
 
-		  if (alpha1) {
-			// If we have any lit pixels we fully occupy the cell.
-			alpha2 = 128;
-		  }
-		  else {
-			// No lit pixels here so build the halo mask from the neighbours
-			BYTE cenmask = 0;
+          // Extend halo vertically to 8x8 blocks
+          for(i=-4; i<4;  i++) topmask |= hmasks[i+4];
+          for(i=0;  i<8;  i++) cenmask |= hmasks[i+4];
+          for(i=4;  i<12; i++) botmask |= hmasks[i+4];
+          // Check the 3x1.5 cells above
+          for(mask = topmask, i=-4; i<4; i++) {
+            mask |= bitexr[ src[srcpitch*(i+8)-1] ];
+            mask |=    - !! src[srcpitch*(i+8)  ];
+            mask |= bitexl[ src[srcpitch*(i+8)+1] ];
+            hmasks[i+4] |= mask;
+          }
+          for(mask = cenmask, i=0; i<8; i++) {
+            mask |= bitexr[ src[srcpitch*(i+8)-1] ];
+            mask |=    - !! src[srcpitch*(i+8)  ];
+            mask |= bitexl[ src[srcpitch*(i+8)+1] ];
+            hmasks[i+4] |= mask;
+          }
+          for(mask = botmask, i=4; i<12; i++) {
+            mask |= bitexr[ src[srcpitch*(i+8)-1] ];
+            mask |=    - !! src[srcpitch*(i+8)  ];
+            mask |= bitexl[ src[srcpitch*(i+8)+1] ];
+            hmasks[i+4] |= mask;
+          }
+          // Check the 3x1.5 cells below
+          for(mask = botmask, i=11; i>=4; i--) {
+            mask |= bitexr[ src[srcpitch*(i-8)-1] ];
+            mask |=    - !! src[srcpitch*(i-8)  ];
+            mask |= bitexl[ src[srcpitch*(i-8)+1] ];
+            hmasks[i+4] |= mask;
+          }
+          for(mask = cenmask,i=7; i>=0; i--) {
+            mask |= bitexr[ src[srcpitch*(i-8)-1] ];
+            mask |=    - !! src[srcpitch*(i-8)  ];
+            mask |= bitexl[ src[srcpitch*(i-8)+1] ];
+            hmasks[i+4] |= mask;
+          }
+          for(mask = topmask, i=3; i>=-4; i--) {
+            mask |= bitexr[ src[srcpitch*(i-8)-1] ];
+            mask |=    - !! src[srcpitch*(i-8)  ];
+            mask |= bitexl[ src[srcpitch*(i-8)+1] ];
+            hmasks[i+4] |= mask;
+          }
+          // count the halo pixels
+          for(i=0; i<16; i++)
+            alpha2 += bitcnt[hmasks[i]];
+        }
+        else {
+          // How many lit pixels in the centre cell?
+          for(i=0; i<8; i++)
+            alpha1 += bitcnt[src[srcpitch*i]];
+          alpha1 *=2;
 
-			// Check left and right neighbours, extend the halo
-			// mask 8 pixels in from the nearest lit pixels.
-			for(i=0; i<8; i++) {
-			  cenmask |= bitexr[src[srcpitch*i-1]];
-			  cenmask |= bitexl[src[srcpitch*i+1]];
-			}
+          if (alpha1) {
+            // If we have any lit pixels we fully occupy the cell.
+            alpha2 = 128;
+          }
+          else {
+            // No lit pixels here so build the halo mask from the neighbours
+            BYTE cenmask = 0;
 
-			if (cenmask == 0xFF) {
-			  // If we have hard adjacent lit pixels we fully occupy this cell.
-			  alpha2 = 128;
-			}
-			else {
-			  BYTE hmasks[8], mask;
+            // Check left and right neighbours, extend the halo
+            // mask 8 pixels in from the nearest lit pixels.
+            for(i=0; i<8; i++) {
+              cenmask |= bitexr[src[srcpitch*i-1]];
+              cenmask |= bitexl[src[srcpitch*i+1]];
+            }
 
-			  mask = cenmask;
-			  for(i=0; i<8; i++) {
-				// Check the 3 cells above
-				mask |= bitexr[ src[srcpitch*(i+8)-1] ];
-				mask |=    - !! src[srcpitch*(i+8)  ];
-				mask |= bitexl[ src[srcpitch*(i+8)+1] ];
-				hmasks[i] = mask;
-			  }
+            if (cenmask == 0xFF) {
+              // If we have hard adjacent lit pixels we fully occupy this cell.
+              alpha2 = 128;
+            }
+            else {
+              BYTE hmasks[8], mask;
 
-			  mask = cenmask;
-			  for(i=7; i>=0; i--) {
-				// Check the 3 cells below
-				mask |= bitexr[ src[srcpitch*(i-8)-1] ];
-				mask |=    - !! src[srcpitch*(i-8)  ];
-				mask |= bitexl[ src[srcpitch*(i-8)+1] ];
+              mask = cenmask;
+              for(i=0; i<8; i++) {
+                // Check the 3 cells above
+                mask |= bitexr[ src[srcpitch*(i+8)-1] ];
+                mask |=    - !! src[srcpitch*(i+8)  ];
+                mask |= bitexl[ src[srcpitch*(i+8)+1] ];
+                hmasks[i] = mask;
+              }
 
-				alpha2 += bitcnt[hmasks[i] | mask];
-			  }
-			  alpha2 *=2;
-			}
-		  }
-		}
-		alpha2  = gamma[alpha2];
-		alpha1  = gamma[alpha1];
+              mask = cenmask;
+              for(i=7; i>=0; i--) {
+                // Check the 3 cells below
+                mask |= bitexr[ src[srcpitch*(i-8)-1] ];
+                mask |=    - !! src[srcpitch*(i-8)  ];
+                mask |= bitexl[ src[srcpitch*(i-8)+1] ];
 
-		alpha2 -= alpha1;        
-		alpha2 *= Ahalo;
-		alpha1 *= Atext;
+                alpha2 += bitcnt[hmasks[i] | mask];
+              }
+              alpha2 *=2;
+            }
+          }
+        }
+        alpha2  = gamma[alpha2];
+        alpha1  = gamma[alpha1];
+
+        alpha2 -= alpha1;        
+        alpha2 *= Ahalo;
+        alpha1 *= Atext;
         // Pre calulate table for quick use  --  Pc = (Pc * dest[0] + dest[c]) >> 8;
 
-		dest[0] = (64*516*255 - alpha1 -          alpha2)>>15;
-		dest[1] = (    BVtext * alpha1 + BVhalo * alpha2)>>15;
-		dest[2] = (    GUtext * alpha1 + GUhalo * alpha2)>>15;
-		dest[3] = (    RYtext * alpha1 + RYhalo * alpha2)>>15;
+        dest[0] = (64*516*255 - alpha1 -          alpha2)>>15;
+        dest[1] = (    BVtext * alpha1 + BVhalo * alpha2)>>15;
+        dest[2] = (    GUtext * alpha1 + GUhalo * alpha2)>>15;
+        dest[3] = (    RYtext * alpha1 + RYhalo * alpha2)>>15;
       }
-	  else {
-		dest[0] = 256;
-		dest[1] = 0;
-		dest[2] = 0;
-		dest[3] = 0;
+      else {
+        dest[0] = 256;
+        dest[1] = 0;
+        dest[2] = 0;
+        dest[3] = 0;
       }
 
       dest += 4;
