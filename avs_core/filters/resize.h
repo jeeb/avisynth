@@ -67,7 +67,6 @@ class HorizontalReduceBy2 : public GenericVideoFilter
 public:
   HorizontalReduceBy2(PClip _child, IScriptEnvironment* env);
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
-	void isse_process_yuy2(PVideoFrame src,BYTE* dstp, int dst_pitch);
   static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env) {
     return new HorizontalReduceBy2(args[0].AsClip(), env);
   }
