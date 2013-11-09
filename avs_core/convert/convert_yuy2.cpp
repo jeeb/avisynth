@@ -208,6 +208,103 @@ static void convert_rgb_to_yuy2_c(const bool pcrange, const int cyb, const int c
   }
 }
 
+#ifdef X86_32
+
+#pragma warning(disable: 4799 4700)
+
+template<int rgb_bytes>
+static void convert_rgb_line_to_yuy2_mmx(const BYTE *srcp, BYTE *dstp, int width, int matrix) {
+  __m64 luma_round_mask;
+  if (matrix == Rec601 || matrix == Rec709) {
+    luma_round_mask = _mm_set1_pi32(0x84000);
+  } else {
+    luma_round_mask = _mm_set1_pi32(0x4000);
+  }
+
+  __m64 luma_coefs = _mm_set_pi16(0, cyr_values[matrix], cyg_values[matrix], cyb_values[matrix] );
+  __m64 chroma_coefs = _mm_set_pi16(kv_values[matrix], kv_values_luma[matrix], ku_values[matrix], ku_values_luma[matrix]);
+  __m64 chroma_round_mask = _mm_set1_pi32(0x808000);
+
+  __m64 upper_dword_mask = _mm_set1_pi32(0xFFFF0000);
+  __m64 zero = _mm_setzero_si64();
+  __m64 tv_scale = _mm_set1_pi32((matrix == Rec601 || matrix == Rec709) ? 64 : 0);
+  __m64 dont_care;
+
+  __m64 src = *reinterpret_cast<const __m64*>(srcp);
+  src = _mm_unpacklo_pi8(src, zero); //00xx 00r0 00g0 00b0
+  __m64 t1 = _mm_madd_pi16(src, luma_coefs); //xx*0 + r0*cyr | g0*cyg + b0*cyb
+  __m64 t1_r = _mm_unpackhi_pi32(t1, dont_care); //xx | r0*cyr
+
+  t1 = _mm_add_pi32(t1, luma_round_mask); //xx | g0*cyg + b0*cyb + round
+  t1 = _mm_add_pi32(t1, t1_r); //xx | r0*cyr + g0*cyg + b0*cyb + round
+
+  __m64 y0 = _mm_srli_pi32(t1, 15); //xx | 0 0 0 0 y0
+  __m64 rb_prev = src;
+
+  for (int x = 0; x < width; x+=2) {
+    __m64 src = *reinterpret_cast<const __m64*>(srcp+x*rgb_bytes); //xxr1 g1b1 xxr0 g0b0
+
+    __m64 rgb_p1 = _mm_unpacklo_pi8(src, zero); //00xx 00r0 00g0 00b0
+    if (rgb_bytes == 3) {
+      src = _mm_slli_si64(src, 8);
+    }
+    __m64 rgb_p2 = _mm_unpackhi_pi8(src, zero); //00xx 00r1 00g1 00b1
+
+    __m64 rb  = _mm_add_pi16(rgb_p1, rgb_p1); 
+    __m64 rb_part2 = _mm_add_pi16(rgb_p2, rb_prev);
+    rb_prev = rgb_p2;
+    rb = _mm_add_pi16(rb, rb_part2); 
+    rb = _mm_slli_pi32(rb, 16); //00 r0+r1*2+r2 00 00 || 00 b0 + b1*2 + b2  00 00
+
+    __m64 t1 = _mm_madd_pi16(rgb_p1, luma_coefs); //xx*0 + r0*cyr | g0*cyg + b0*cyb
+    __m64 t2 = _mm_madd_pi16(rgb_p2, luma_coefs); //xx*0 + r1*cyr | g1*cyg + b1*cyb
+
+    __m64 r_temp = _mm_unpackhi_pi32(t1, t2); //r1*cyr | r0*cyr
+    __m64 gb_temp = _mm_unpacklo_pi32(t1, t2); //g1*cyg + b1*cyb | g0*cyg + b0*cyb
+
+    __m64 luma = _mm_add_pi32(r_temp, gb_temp); //r1*cyr + g1*cyg + b1*cyb | r0*cyr + g0*cyg + b0*cyb
+    luma = _mm_add_pi32(luma, luma_round_mask); //r1*cyr + g1*cyg + b1*cyb + round | r0*cyr + g0*cyg + b0*cyb + round
+    luma = _mm_srli_pi32(luma, 15); //00 00 00 y1 00 00 00 y0  //correspond to y1 and y2 in C code
+
+    __m64 y2 = _mm_unpackhi_pi32(luma, dont_care); //00 00 00 00 y2 00 00 00 y2
+
+    __m64 scaled_y = _mm_add_pi16(y2, luma); //xx | 00 00 y2+y1
+    scaled_y = _mm_add_pi16(scaled_y, y0); //00 00 y2 + y1 + y0 | 00 00 y2 + y1 + y0
+    y0 = y2;
+    scaled_y = _mm_add_pi16(scaled_y, luma);  //00 00 y2 + y1*2 + y0 | 00 00 y2 + y1*2 + y0
+    scaled_y = _mm_unpacklo_pi32(scaled_y, scaled_y);
+    scaled_y = _mm_sub_pi16(scaled_y, tv_scale);
+
+    __m64 rby = _mm_or_si64(rb, scaled_y); //00 rr 00 yy 00 bb 00 yy
+
+    __m64 uv = _mm_madd_pi16(rby, chroma_coefs);
+    uv = _mm_srai_pi32(uv, 1);
+
+    uv = _mm_add_pi32(uv, chroma_round_mask);
+    uv = _mm_and_si64(uv, upper_dword_mask);
+    __m64 yuv = _mm_or_si64(uv, luma);
+
+    yuv = _mm_packs_pu16(yuv, yuv);
+
+    *reinterpret_cast<int*>(dstp+x*2) = _mm_cvtsi64_si32(yuv);
+  }
+}
+#pragma warning(default: 4799 4700)
+
+template<int rgb_bytes>
+static void convert_rgb_to_yuy2_mmx(const BYTE *src, BYTE *dst, int src_pitch, int dst_pitch, int width, int height, int matrix) {
+  src += src_pitch*(height-1);       // ;Move source to bottom line (read top->bottom)
+
+  for (int y=0; y < height; ++y) {
+    convert_rgb_line_to_yuy2_mmx<rgb_bytes>(src, dst, width, matrix);
+    src -= src_pitch;           // ;Move upwards
+    dst += dst_pitch;
+  } // end for y
+  _mm_empty();
+}
+
+#endif
+
 PVideoFrame __stdcall ConvertToYUY2::GetFrame(int n, IScriptEnvironment* env)
 {
   PVideoFrame src = child->GetFrame(n, env);
@@ -266,7 +363,11 @@ PVideoFrame __stdcall ConvertToYUY2::GetFrame(int n, IScriptEnvironment* env)
 #ifdef X86_32
   if (env->GetCPUFlags() & CPUF_MMX)
   {
-    mmx_ConvertRGBtoYUY2(src->GetReadPtr(), yuv, src->GetPitch(), dst->GetPitch(), vi.height);
+    if ((src_cs & VideoInfo::CS_BGR32) == VideoInfo::CS_BGR32) {
+      convert_rgb_to_yuy2_mmx<4>(src->GetReadPtr(), dst->GetWritePtr(), src->GetPitch(), dst->GetPitch(), vi.width, vi.height, theMatrix);
+    } else {
+      convert_rgb_to_yuy2_mmx<3>(src->GetReadPtr(), dst->GetWritePtr(), src->GetPitch(), dst->GetPitch(), vi.width, vi.height, theMatrix);
+    }
     return dst;
   }
 #endif
@@ -350,8 +451,6 @@ AVSValue __cdecl ConvertToYUY2::Create(AVSValue args, void*, IScriptEnvironment*
   const bool i=args[1].AsBool(false);
   return new ConvertToYUY2(clip, false, i, args[2].AsString(0), env);
 }
-
-
 
 
 
@@ -884,7 +983,7 @@ void ConvertToYUY2::GenerateAssembly(bool rgb24, bool dupl, bool sub, int w,
   bool sse2 = !!(env->GetCPUFlags() & CPUF_SSE2);
   bool fast128 = !!(env->GetCPUFlags() & (CPUF_SSE3|CPUF_SSSE3|CPUF_SSE4_1|CPUF_SSE4_2));
   //dupl is true for BackToYUY2 and false for ConvertToYUY2
-  if (!fast128 && !dupl)
+ // if (!fast128 && !dupl)
     sse2 = false; // 1-2-1 SSE2 code is slower than MMX on P4 etc.
 
   int lwidth_bytes = w;
