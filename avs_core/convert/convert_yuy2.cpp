@@ -160,6 +160,54 @@ ConvertToYUY2::~ConvertToYUY2() {
 #endif
 }
 
+// 1-2-1 Kernel version
+
+static void convert_rgb_to_yuy2_c(const bool pcrange, const int cyb, const int cyg, const int cyr,
+                                  const int ku, const int kv, const BYTE* rgb,
+                                  BYTE* yuv, const int yuv_offset,
+                                  const int rgb_offset, const int rgb_inc,
+                                  int width, int height) {
+
+  const int bias = pcrange ? 0x8000 : 0x108000; //  0.5 * 65536 : 16.5 * 65536
+
+  for (int y= height; y>0; --y)
+  {
+    // Use left most pixel for edge condition
+    int y0                 = (cyb*rgb[0] + cyg*rgb[1] + cyr*rgb[2] + bias) >> 16;
+    const BYTE* rgb_prev   = rgb;
+    for (int x = 0; x < width; x += 2)
+    {
+      const BYTE* const rgb_next = rgb + rgb_inc;
+      // y1 and y2 can't overflow
+      const int y1         = (cyb*rgb[0] + cyg*rgb[1] + cyr*rgb[2] + bias) >> 16;
+      yuv[0]               = y1;
+      const int y2         = (cyb*rgb_next[0] + cyg*rgb_next[1] + cyr*rgb_next[2] + bias) >> 16;
+      yuv[2]               = y2;
+      if (pcrange) { // This is okay, the compiler optimises out the unused path when pcrange is a constant
+        const int scaled_y = y0+y1*2+y2;
+        const int b_y      = (rgb_prev[0]+rgb[0]*2+rgb_next[0]) - scaled_y;
+        yuv[1]             = PixelClip((b_y * ku + (128<<18) + (1<<17)) >> 18);  // u
+        const int r_y      = (rgb_prev[2]+rgb[2]*2+rgb_next[2]) - scaled_y;
+        yuv[3]             = PixelClip((r_y * kv + (128<<18) + (1<<17)) >> 18);  // v
+      }
+      else {
+        const int scaled_y = (y0+y1*2+y2 - 64) * int(255.0/219.0*65536+0.5);
+        const int b_y      = ((rgb_prev[0]+rgb[0]*2+rgb_next[0]) << 16) - scaled_y;
+        yuv[1]             = PixelClip(((b_y >> 12) * ku + (128<<22) + (1<<21)) >> 22);  // u
+        const int r_y      = ((rgb_prev[2]+rgb[2]*2+rgb_next[2]) << 16) - scaled_y;
+        yuv[3]             = PixelClip(((r_y >> 12) * kv + (128<<22) + (1<<21)) >> 22);  // v
+      }
+      y0       = y2;
+
+      rgb_prev = rgb_next;
+      rgb      = rgb_next + rgb_inc;
+      yuv     += 4;
+    }
+    rgb += rgb_offset;
+    yuv += yuv_offset;
+  }
+}
+
 PVideoFrame __stdcall ConvertToYUY2::GetFrame(int n, IScriptEnvironment* env)
 {
   PVideoFrame src = child->GetFrame(n, env);
@@ -239,7 +287,7 @@ PVideoFrame __stdcall ConvertToYUY2::GetFrame(int n, IScriptEnvironment* env)
     const int ku  = int(127./(255.*(1.0-0.114))*65536+0.5);
     const int kv  = int(127./(255.*(1.0-0.299))*65536+0.5);
 
-    inline_rgbtoyuy2(true, cyb, cyg, cyr, ku, kv, rgb, yuv, yuv_offset, rgb_offset, rgb_inc);
+    convert_rgb_to_yuy2_c(true, cyb, cyg, cyr, ku, kv, rgb, yuv, yuv_offset, rgb_offset, rgb_inc, vi.width, vi.height);
 
   } else if (theMatrix == PC_709) {
     const int cyb = int(0.0722*65536+0.5);
@@ -249,7 +297,7 @@ PVideoFrame __stdcall ConvertToYUY2::GetFrame(int n, IScriptEnvironment* env)
     const int ku  = int(127./(255.*(1.0-0.0722))*65536+0.5);
     const int kv  = int(127./(255.*(1.0-0.2126))*65536+0.5);
 
-    inline_rgbtoyuy2(true, cyb, cyg, cyr, ku, kv, rgb, yuv, yuv_offset, rgb_offset, rgb_inc);
+    convert_rgb_to_yuy2_c(true, cyb, cyg, cyr, ku, kv, rgb, yuv, yuv_offset, rgb_offset, rgb_inc, vi.width, vi.height);
 
   } else if (theMatrix == Rec709) {
     const int cyb = int(0.0722*219/255*65536+0.5);
@@ -259,7 +307,7 @@ PVideoFrame __stdcall ConvertToYUY2::GetFrame(int n, IScriptEnvironment* env)
     const int ku  = int(112./(255.*(1.0-0.0722))*65536+0.5);
     const int kv  = int(112./(255.*(1.0-0.2126))*65536+0.5);
 
-    inline_rgbtoyuy2(false, cyb, cyg, cyr, ku, kv, rgb, yuv, yuv_offset, rgb_offset, rgb_inc);
+    convert_rgb_to_yuy2_c(false, cyb, cyg, cyr, ku, kv, rgb, yuv, yuv_offset, rgb_offset, rgb_inc, vi.width, vi.height);
 
   } else if (theMatrix == Rec601) {
     const int cyb = int(0.114*219/255*65536+0.5);
@@ -269,58 +317,11 @@ PVideoFrame __stdcall ConvertToYUY2::GetFrame(int n, IScriptEnvironment* env)
     const int ku  = int(112./(255.*(1.0-0.114))*65536+0.5);
     const int kv  = int(112./(255.*(1.0-0.299))*65536+0.5);
 
-    inline_rgbtoyuy2(false, cyb, cyg, cyr, ku, kv, rgb, yuv, yuv_offset, rgb_offset, rgb_inc);
+    convert_rgb_to_yuy2_c(false, cyb, cyg, cyr, ku, kv, rgb, yuv, yuv_offset, rgb_offset, rgb_inc, vi.width, vi.height);
 
   }
 
   return dst;
-}
-
-// 1-2-1 Kernel version
-
-inline void ConvertToYUY2::inline_rgbtoyuy2(const bool pcrange, const int cyb, const int cyg, const int cyr,
-                                            const int ku, const int kv, const BYTE* rgb,
-                                            BYTE* yuv, const int yuv_offset,
-                                            const int rgb_offset, const int rgb_inc) {
-
-  const int bias = pcrange ? 0x8000 : 0x108000; //  0.5 * 65536 : 16.5 * 65536
-
-  for (int y=vi.height; y>0; --y)
-  {
-    // Use left most pixel for edge condition
-    int y0                 = (cyb*rgb[0] + cyg*rgb[1] + cyr*rgb[2] + bias) >> 16;
-    const BYTE* rgb_prev   = rgb;
-    for (int x = 0; x < vi.width; x += 2)
-    {
-      const BYTE* const rgb_next = rgb + rgb_inc;
-      // y1 and y2 can't overflow
-      const int y1         = (cyb*rgb[0] + cyg*rgb[1] + cyr*rgb[2] + bias) >> 16;
-      yuv[0]               = y1;
-      const int y2         = (cyb*rgb_next[0] + cyg*rgb_next[1] + cyr*rgb_next[2] + bias) >> 16;
-      yuv[2]               = y2;
-      if (pcrange) { // This is okay, the compiler optimises out the unused path when pcrange is a constant
-        const int scaled_y = y0+y1*2+y2;
-        const int b_y      = (rgb_prev[0]+rgb[0]*2+rgb_next[0]) - scaled_y;
-        yuv[1]             = PixelClip((b_y * ku + (128<<18) + (1<<17)) >> 18);  // u
-        const int r_y      = (rgb_prev[2]+rgb[2]*2+rgb_next[2]) - scaled_y;
-        yuv[3]             = PixelClip((r_y * kv + (128<<18) + (1<<17)) >> 18);  // v
-      }
-      else {
-        const int scaled_y = (y0+y1*2+y2 - 64) * int(255.0/219.0*65536+0.5);
-        const int b_y      = ((rgb_prev[0]+rgb[0]*2+rgb_next[0]) << 16) - scaled_y;
-        yuv[1]             = PixelClip(((b_y >> 12) * ku + (128<<22) + (1<<21)) >> 22);  // u
-        const int r_y      = ((rgb_prev[2]+rgb[2]*2+rgb_next[2]) << 16) - scaled_y;
-        yuv[3]             = PixelClip(((r_y >> 12) * kv + (128<<22) + (1<<21)) >> 22);  // v
-      }
-      y0       = y2;
-
-      rgb_prev = rgb_next;
-      rgb      = rgb_next + rgb_inc;
-      yuv     += 4;
-    }
-    rgb += rgb_offset;
-    yuv += yuv_offset;
-  }
 }
 
 
@@ -883,7 +884,7 @@ void ConvertToYUY2::GenerateAssembly(bool rgb24, bool dupl, bool sub, int w,
   bool sse2 = !!(env->GetCPUFlags() & CPUF_SSE2);
   bool fast128 = !!(env->GetCPUFlags() & (CPUF_SSE3|CPUF_SSSE3|CPUF_SSE4_1|CPUF_SSE4_2));
   //dupl is true for BackToYUY2 and false for ConvertToYUY2
- // if (!fast128 && !dupl)
+  if (!fast128 && !dupl)
     sse2 = false; // 1-2-1 SSE2 code is slower than MMX on P4 etc.
 
   int lwidth_bytes = w;

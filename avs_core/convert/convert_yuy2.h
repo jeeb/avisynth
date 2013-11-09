@@ -68,9 +68,6 @@ protected:
                         const __int64* ptr_y1y2_fpix, const int* ptr_fraction, IScriptEnvironment* env); 
   void mmx_ConvertRGBtoYUY2(const BYTE *src,BYTE *dst,int src_pitch, int dst_pitch, int h);
 
-  void inline_rgbtoyuy2(const bool rec, const int cyb, const int cyg, const int cyr, const int ku, const int kv,
-                        const BYTE* rgb, BYTE* yuv, const int yuv_offset, const int rgb_offset, const int rgb_inc);
-
 #ifdef X86_32
   DynamicAssembledCode assembly;
 #endif
