@@ -552,6 +552,118 @@ static void convert_rgb_back_to_yuy2_c(BYTE* yuv, const BYTE* rgb, int rgb_offse
   }
 }
 
+
+template<int matrix, int rgb_bytes, bool aligned>
+static __forceinline __m128i convert_rgb_block_back_to_yuy2_sse2(const BYTE* srcp, const __m128i &luma_coefs, const __m128i &chroma_coefs, const __m128i &upper_dword_mask, 
+                                                                 const __m128i &chroma_round_mask, __m128i &luma_round_mask, const __m128i &tv_scale, const __m128i &zero) {
+  __m128i rgb_p1, rgb_p2;
+  if (rgb_bytes == 4) {
+    //RGB32
+    __m128i src;
+    if (aligned) {
+      src = _mm_load_si128(reinterpret_cast<const __m128i*>(srcp)); //xxr3 g3b3 xxr2 g2b2 | xxr1 g1b1 xxr0 g0b0
+    } else {
+      src = _mm_loadu_si128(reinterpret_cast<const __m128i*>(srcp)); //xxr3 g3b3 xxr2 g2b2 | xxr1 g1b1 xxr0 g0b0
+    }
+
+    rgb_p1 = _mm_unpacklo_epi8(src, zero); //00xx 00r1 00g1 00b1 | 00xx 00r0 00g0 00b0
+    rgb_p2 = _mm_unpackhi_epi8(src, zero); //00xx 00r3 00g3 00b3 | 00xx 00r2 00g2 00b2
+  } else {
+    //RGB24
+    __m128i pixel01 = _mm_loadl_epi64(reinterpret_cast<const __m128i*>(srcp)); //pixels 0 and 1
+    __m128i pixel23 = _mm_loadl_epi64(reinterpret_cast<const __m128i*>(srcp+6)); //pixels 2 and 3
+
+    //0 0 0 0 0 0 0 0 | x x r1 g1 b1 r0 g0 b0  -> 0 x 0 x 0 r1 0 g1 | 0 b1 0 r0 0 g0 0 b0 -> 0 r1 0 g1 0 b1 0 r0 | 0 b1 0 r0 0 g0 0 b0 -> 0 r1 0 r1 0 g1 0 b1 | 0 b1 0 r0 0 g0 0 b0
+    rgb_p1 = _mm_shufflehi_epi16(_mm_shuffle_epi32(_mm_unpacklo_epi8(pixel01, zero), _MM_SHUFFLE(2, 1, 1, 0)), _MM_SHUFFLE(0, 3, 2, 1));
+    rgb_p2 = _mm_shufflehi_epi16(_mm_shuffle_epi32(_mm_unpacklo_epi8(pixel23, zero), _MM_SHUFFLE(2, 1, 1, 0)), _MM_SHUFFLE(0, 3, 2, 1));
+  }
+
+  __m128i t1 = _mm_madd_epi16(rgb_p1, luma_coefs); //xx*0 + r1*cyr | g1*cyg + b1*cyb | xx*0 + r0*cyr | g0*cyg + b0*cyb
+  __m128i t2 = _mm_madd_epi16(rgb_p2, luma_coefs); //xx*0 + r3*cyr | g3*cyg + b3*cyb | xx*0 + r2*cyr | g2*cyg + b2*cyb
+
+  __m128i r_temp = _mm_castps_si128(_mm_shuffle_ps(_mm_castsi128_ps(t1), _mm_castsi128_ps(t2), _MM_SHUFFLE(3, 1, 3, 1))); // r3*cyr | r2*cyr | r1*cyr | r0*cyr
+  __m128i gb_temp = _mm_castps_si128(_mm_shuffle_ps(_mm_castsi128_ps(t1), _mm_castsi128_ps(t2), _MM_SHUFFLE(2, 0, 2, 0))); // g3*cyg + b3*cyb | g2*cyg + b2*cyb | g1*cyg + b1*cyb | g0*cyg + b0*cyb
+
+  __m128i luma = _mm_add_epi32(r_temp, gb_temp); //r3*cyr + g3*cyg + b3*cyb | r2*cyr + g2*cyg + b2*cyb | r1*cyr + g1*cyg + b1*cyb | r0*cyr + g0*cyg + b0*cyb
+  luma = _mm_add_epi32(luma, luma_round_mask); //r3*cyr + g3*cyg + b3*cyb + round | r2*cyr + g2*cyg + b2*cyb + round | r1*cyr + g1*cyg + b1*cyb + round | r0*cyr + g0*cyg + b0*cyb + round
+  luma = _mm_srli_epi32(luma, 15); //00 00 00 y3 00 00 00 y2 00 00 00 y1 00 00 00 y0
+
+  __m128i rb_p1 = _mm_slli_epi32(rgb_p1, 16); //00r1 0000 00b1 0000 | 00r0 0000 00b0 0000
+  __m128i rb_p2 = _mm_slli_epi32(rgb_p2, 16); //00r3 0000 00b3 0000 | 00r2 0000 00b2 0000
+  __m128i rb_p = _mm_unpacklo_epi64(rb_p1, rb_p2);  //00r2 0000 00b2 0000 | 00r0 0000 00b0 0000
+
+  __m128i y_scaled;
+  if (matrix == Rec601 || matrix == Rec709) {
+    y_scaled = _mm_sub_epi16(luma, tv_scale);
+  } else {
+    y_scaled = luma;
+  }
+
+  __m128i y0 = _mm_shuffle_epi32(y_scaled, _MM_SHUFFLE(2, 2, 0, 0)); //00 00 00 y2 00 00 00 y2 | 00 00 00 y0 00 00 00 y0
+
+  __m128i rby = _mm_or_si128(rb_p, y0); //00 rr 00 y2 00 b2 00 y2 | 00 r0 00 y0 00 b0 00 y0
+
+  rby = _mm_adds_epu16(rby, rby); //2*r2 | 2*y2 | 2*b2 | 2*y2 | 2*r0 | 2*y0 | 2*b0 | 2*y0
+
+  __m128i uv = _mm_madd_epi16(rby, chroma_coefs);
+
+  uv = _mm_add_epi32(uv, chroma_round_mask);
+  uv = _mm_and_si128(uv, upper_dword_mask);
+  __m128i yuv = _mm_or_si128(uv, luma); ///00 v1 00 y3 00 u1 00 y2 | 00 v0 00 y1 00 u0 00 y0
+
+  return _mm_packus_epi16(yuv, yuv);
+}
+
+//////////////////////////////////////////////////////////////////////////
+//Optimization note: matrix is a template argument only to avoid subtraction for PC matrices. Compilers tend to generate ~10% faster code in this case. 
+//MMX version is not optimized this way because who'll be using MMX anyway?
+//////////////////////////////////////////////////////////////////////////
+template<int matrix, int rgb_bytes>
+static void convert_rgb_line_back_to_yuy2_sse2(const BYTE *srcp, BYTE *dstp, int width) {
+  int mod4_width = width / 4 * 4;
+
+  __m128i luma_round_mask;
+  if (matrix == Rec601 || matrix == Rec709) {
+    luma_round_mask = _mm_set1_epi32(0x84000);
+  } else {
+    luma_round_mask = _mm_set1_epi32(0x4000);
+  }
+
+  __m128i luma_coefs = _mm_set_epi16(0, cyr_values[matrix], cyg_values[matrix], cyb_values[matrix], 0, cyr_values[matrix], cyg_values[matrix], cyb_values[matrix]);
+  __m128i chroma_coefs = _mm_set_epi16(kv_values[matrix], kv_values_luma[matrix], ku_values[matrix], ku_values_luma[matrix], kv_values[matrix], kv_values_luma[matrix], ku_values[matrix], ku_values_luma[matrix]);
+  __m128i chroma_round_mask = _mm_set1_epi32(0x808000);
+
+  __m128i upper_dword_mask = _mm_set1_epi32(0xFFFF0000);
+  __m128i zero = _mm_setzero_si128();
+  __m128i tv_scale = _mm_set1_epi32(16);
+
+  for (int x = 0; x < mod4_width; x+=4) {
+    __m128i yuv = convert_rgb_block_back_to_yuy2_sse2<matrix, rgb_bytes, true>(srcp + x * rgb_bytes, luma_coefs, chroma_coefs, upper_dword_mask, chroma_round_mask, luma_round_mask, tv_scale, zero);
+
+    _mm_storel_epi64(reinterpret_cast<__m128i*>(dstp+x*2), yuv);
+  }
+
+  if (width != mod4_width) {
+    const BYTE* ptr = srcp + (width-4) * rgb_bytes;
+
+    __m128i yuv = convert_rgb_block_back_to_yuy2_sse2<matrix, rgb_bytes, false>(ptr, luma_coefs, chroma_coefs, upper_dword_mask, chroma_round_mask, luma_round_mask, tv_scale, zero);
+
+    _mm_storel_epi64(reinterpret_cast<__m128i*>(dstp+width*2 - 8), yuv);
+  }
+}
+
+template<int matrix, int rgb_bytes>
+static void convert_rgb_back_to_yuy2_sse2(const BYTE *src, BYTE *dst, int src_pitch, int dst_pitch, int width, int height) {
+  src += src_pitch*(height-1);       // ;Move source to bottom line (read top->bottom)
+
+  for (int y=0; y < height; ++y) {
+    convert_rgb_line_back_to_yuy2_sse2<matrix, rgb_bytes>(src, dst, width);
+    src -= src_pitch;           // ;Move upwards
+    dst += dst_pitch;
+  } // end for y
+}
+
+
 #ifdef X86_32
 #pragma warning(disable: 4799)
 template<int rgb_bytes>
@@ -663,6 +775,33 @@ PVideoFrame __stdcall ConvertBackToYUY2::GetFrame(int n, IScriptEnvironment* env
 
   PVideoFrame dst = env->NewVideoFrame(vi);
   BYTE* yuv = dst->GetWritePtr();
+
+
+  if ((env->GetCPUFlags() & CPUF_SSE2) && IsPtrAligned(src->GetReadPtr(), 16)) 
+  {
+    if ((src_cs & VideoInfo::CS_BGR32) == VideoInfo::CS_BGR32) {
+      if (theMatrix == Rec601) {
+        convert_rgb_back_to_yuy2_sse2<Rec601, 4>(src->GetReadPtr(), dst->GetWritePtr(), src->GetPitch(), dst->GetPitch(), vi.width, vi.height);
+      } else if (theMatrix == Rec709) {
+        convert_rgb_back_to_yuy2_sse2<Rec709, 4>(src->GetReadPtr(), dst->GetWritePtr(), src->GetPitch(), dst->GetPitch(), vi.width, vi.height);
+      } else if (theMatrix == PC_601) {
+        convert_rgb_back_to_yuy2_sse2<PC_601, 4>(src->GetReadPtr(), dst->GetWritePtr(), src->GetPitch(), dst->GetPitch(), vi.width, vi.height);
+      } else {
+        convert_rgb_back_to_yuy2_sse2<PC_709, 4>(src->GetReadPtr(), dst->GetWritePtr(), src->GetPitch(), dst->GetPitch(), vi.width, vi.height);
+      }
+    } else {
+      if (theMatrix == Rec601) {
+        convert_rgb_back_to_yuy2_sse2<Rec601, 3>(src->GetReadPtr(), dst->GetWritePtr(), src->GetPitch(), dst->GetPitch(), vi.width, vi.height);
+      } else if (theMatrix == Rec709) {
+        convert_rgb_back_to_yuy2_sse2<Rec709, 3>(src->GetReadPtr(), dst->GetWritePtr(), src->GetPitch(), dst->GetPitch(), vi.width, vi.height);
+      } else if (theMatrix == PC_601) {
+        convert_rgb_back_to_yuy2_sse2<PC_601, 3>(src->GetReadPtr(), dst->GetWritePtr(), src->GetPitch(), dst->GetPitch(), vi.width, vi.height);
+      } else {
+        convert_rgb_back_to_yuy2_sse2<PC_709, 3>(src->GetReadPtr(), dst->GetWritePtr(), src->GetPitch(), dst->GetPitch(), vi.width, vi.height);
+      }
+    }
+    return dst;
+  }
 
 #ifdef X86_32
   if (env->GetCPUFlags() & CPUF_MMX)
