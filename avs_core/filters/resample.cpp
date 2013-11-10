@@ -1504,92 +1504,36 @@ FilteredResizeH::~FilteredResizeH(void)
 #endif
 }
 
-
-
 /***************************************
- ***** Filtered Resize - Vertical ******
+ ***** Vertical Resizer Assembly *******
  ***************************************/
 
-FilteredResizeV::FilteredResizeV( PClip _child, double subrange_top, double subrange_height,
-                                  int target_height, ResamplingFunction* func, IScriptEnvironment* env )
-  : GenericVideoFilter(_child), resampling_pattern(0), resampling_patternUV(0),
-    yOfs(0), yOfsUV(0), pitch_gY(-1), pitch_gUV(-1)
-{
-  if (target_height<=0)
-    env->ThrowError("Resize: Height must be greater than 0.");
-
-  if (vi.IsPlanar() && !vi.IsY8()) {
-    const int mask = (1 << vi.GetPlaneHeightSubsampling(PLANAR_U)) - 1;
-
-    if (target_height & mask)
-      env->ThrowError("Resize: Planar destination height must be a multiple of %d.", mask+1);
-  }
-
-  if (vi.IsRGB())
-    subrange_top = vi.height - subrange_top - subrange_height;
-
-  resampling_pattern = func->GetResamplingPatternRGB(vi.height, subrange_top, subrange_height, target_height, env);
-
-  if (vi.IsPlanar() && !vi.IsY8()) {
-    const int shift = vi.GetPlaneHeightSubsampling(PLANAR_U);
-    const int div   = 1 << shift;
-
-    resampling_patternUV = func->GetResamplingPatternRGB(
-                                          vi.height      >> shift,
-                                          subrange_top    / div,
-                                          subrange_height / div,
-                                          target_height  >> shift,
-                                          env);
-  }
-
-  vi.height = target_height;
-
-#ifdef X86_32
-  try {
-    assemblerY         = GenerateResizer(PLANAR_Y, false, env);
-    assemblerY_aligned = GenerateResizer(PLANAR_Y, true, env);
-    if (vi.IsPlanar() && !vi.IsY8()) {
-      assemblerUV         = GenerateResizer(PLANAR_U, false, env);
-      assemblerUV_aligned = GenerateResizer(PLANAR_U, true, env);
-    }
-  }
-  catch (const SoftWire::Error &err) {
-     env->ThrowError("Resize: SoftWire exception : %s", err.getString());
-  }
-#else
-  //TODO
-  env->ThrowError("FilteredResizeV is not yet ported to 64-bit.");
-#endif
-}
-
-void resize_v_c_planar_pointresize(BYTE* dst, const BYTE* src, int dst_pitch, int src_pitch, int* program, int width, int target_height) {
-  int filter_size = *program;
-  int* current = program+1;
+static void resize_v_c_planar_pointresize(BYTE* dst, const BYTE* src, int dst_pitch, int src_pitch, ResamplingProgram* program, int width, int target_height, const int* pitch_table) {
+  int filter_size = program->filter_size;
 
   for (int y = 0; y < target_height; y++) {
-    int begin = *current;
-    current += 2;
+    int offset = program->pixel_offset[y];
+    const BYTE* src_ptr = src + pitch_table[offset];
 
-    const BYTE* src_ptr = src + (src_pitch*begin);
     for (int x = 0; x < width; x++) {
       dst[x] = src_ptr[x];
     }
+
     dst += dst_pitch;
   }
 }
 
 template<SSELoader load>
-void resize_v_sse2_planar_pointresize(BYTE* dst, const BYTE* src, int dst_pitch, int src_pitch, int* program, int width, int target_height) {
-  int filter_size = *program;
-  int* current = program+1;
+static void resize_v_sse2_planar_pointresize(BYTE* dst, const BYTE* src, int dst_pitch, int src_pitch, ResamplingProgram* program, int width, int target_height, const int* pitch_table) {
+  int filter_size = program->filter_size;
 
   int wMod16 = (width / 16) * 16;
 
   for (int y = 0; y < target_height; y++) {
-    int begin = *current;
-    current += 2;
+    int offset = program->pixel_offset[y];
+    const BYTE* src_ptr = src + pitch_table[offset];
 
-    const BYTE* src_ptr = src + (src_pitch*begin);
+    // Copy 16-pixel/loop
     for (int x = 0; x < wMod16; x+=16) {
       __m128i current_pixel = load(reinterpret_cast<const __m128i*>(src_ptr+x));
       _mm_store_si128(reinterpret_cast<__m128i*>(dst+x), current_pixel); // dst should always be aligned
@@ -1604,33 +1548,33 @@ void resize_v_sse2_planar_pointresize(BYTE* dst, const BYTE* src, int dst_pitch,
   }
 }
 
-void resize_v_c_planar(BYTE* dst, const BYTE* src, int dst_pitch, int src_pitch, int* program, int width, int target_height) {
-  int filter_size = *program;
-  int* current = program+1;
+static void resize_v_c_planar(BYTE* dst, const BYTE* src, int dst_pitch, int src_pitch, ResamplingProgram* program, int width, int target_height, const int* pitch_table) {
+  int filter_size = program->filter_size;
+  short* current_coeff = program->pixel_coefficient;
 
   for (int y = 0; y < target_height; y++) {
-    int begin = *current;
-    current++;
+    int offset = program->pixel_offset[y];
+    const BYTE* src_ptr = src + pitch_table[offset];
 
-    const BYTE* src_ptr = src + (src_pitch*begin);
     for (int x = 0; x < width; x++) {
       int result = 0;
       for (int i = 0; i < filter_size; i++) {
-        result += (src_ptr+(i*src_pitch))[x] * current[i];
+        result += (src_ptr+pitch_table[i])[x] * current_coeff[i];
       }
       result = ((result+8192)/16384);
       result = result > 255 ? 255 : result < 0 ? 0 : result;
-      dst[x] = (BYTE)result;
+      dst[x] = (BYTE) result;
     }
+
     dst += dst_pitch;
-    current += filter_size;
+    current_coeff += filter_size;
   }
 }
 
 template<SSELoader load>
-void resize_v_sse2_planar(BYTE* dst, const BYTE* src, int dst_pitch, int src_pitch, int* program, int width, int target_height, int* pitch_table) {
-  int filter_size = *program;
-  int* current = program+1;
+static void resize_v_sse2_planar(BYTE* dst, const BYTE* src, int dst_pitch, int src_pitch, ResamplingProgram* program, int width, int target_height, const int* pitch_table) {
+  int filter_size = program->filter_size;
+  short* current_coeff = program->pixel_coefficient;
   
   int wMod16 = (width / 16) * 16;
   int sizeMod2 = (filter_size/2) * 2;
@@ -1638,33 +1582,29 @@ void resize_v_sse2_planar(BYTE* dst, const BYTE* src, int dst_pitch, int src_pit
   __m128i zero = _mm_setzero_si128();
 
   for (int y = 0; y < target_height; y++) {
-    int begin = *current;
-    current++;
+    int offset = program->pixel_offset[y];
+    const BYTE* src_ptr = src + pitch_table[offset];
 
-    for (int x = 0; x < wMod16; x+=16) {
+    for (int x = 0; x < wMod16; x += 16) {
       __m128i result_1 = _mm_set1_epi32(8192); // Init. with rounder (16384/2 = 8192)
-      __m128i result_2 = _mm_set1_epi32(8192);
-      __m128i result_3 = _mm_set1_epi32(8192);
-      __m128i result_4 = _mm_set1_epi32(8192);
+      __m128i result_2 = result_1;
+      __m128i result_3 = result_1;
+      __m128i result_4 = result_1;
       
       for (int i = 0; i < sizeMod2; i += 2) {
-        __m128i src_p1 = load(reinterpret_cast<const __m128i*>(src+pitch_table[begin+i]+x));   // p|o|n|m|l|k|j|i|h|g|f|e|d|c|b|a
-        __m128i src_p2 = load(reinterpret_cast<const __m128i*>(src+pitch_table[begin+i+1]+x)); // P|O|N|M|L|K|J|I|H|G|F|E|D|C|B|A
+        __m128i src_p1 = load(reinterpret_cast<const __m128i*>(src_ptr+pitch_table[i]+x));   // p|o|n|m|l|k|j|i|h|g|f|e|d|c|b|a
+        __m128i src_p2 = load(reinterpret_cast<const __m128i*>(src_ptr+pitch_table[i+1]+x)); // P|O|N|M|L|K|J|I|H|G|F|E|D|C|B|A
          
-        __m128i src_l = _mm_unpacklo_epi8(src_p1, src_p2);                                      // Hh|Gg|Ff|Ee|Dd|Cc|Bb|Aa
-        __m128i src_h = _mm_unpackhi_epi8(src_p1, src_p2);                                      // Pp|Oo|Nn|Mm|Ll|Kk|Jj|Ii
+        __m128i src_l = _mm_unpacklo_epi8(src_p1, src_p2);                                   // Hh|Gg|Ff|Ee|Dd|Cc|Bb|Aa
+        __m128i src_h = _mm_unpackhi_epi8(src_p1, src_p2);                                   // Pp|Oo|Nn|Mm|Ll|Kk|Jj|Ii
 
-        __m128i src_1 = _mm_unpacklo_epi8(src_l, zero);                                       // .D|.d|.C|.c|.B|.b|.A|.a
-        __m128i src_2 = _mm_unpackhi_epi8(src_l, zero);                                       // .H|.h|.G|.g|.F|.f|.E|.e
-        __m128i src_3 = _mm_unpacklo_epi8(src_h, zero);                                       // etc.
-        __m128i src_4 = _mm_unpackhi_epi8(src_h, zero);                                       // etc.
+        __m128i src_1 = _mm_unpacklo_epi8(src_l, zero);                                      // .D|.d|.C|.c|.B|.b|.A|.a
+        __m128i src_2 = _mm_unpackhi_epi8(src_l, zero);                                      // .H|.h|.G|.g|.F|.f|.E|.e
+        __m128i src_3 = _mm_unpacklo_epi8(src_h, zero);                                      // etc.
+        __m128i src_4 = _mm_unpackhi_epi8(src_h, zero);                                      // etc.
 
-        //__m128i coeff_l = _mm_set1_epi16(static_cast<short>(current[i]));
-        //__m128i coeff_h = _mm_set1_epi16(static_cast<short>(current[i+1]));
-        //__m128i coeff   = _mm_unpackhi_epi16(coeff_l, coeff_h);                               // CO|co|CO|co|CO|co|CO|co
-        __m128i coeff = _mm_loadl_epi64 (reinterpret_cast<const __m128i*>(current+i));
-        coeff = _mm_packs_epi32(coeff, coeff);
-        coeff = _mm_shuffle_epi32(coeff, 0);
+        __m128i coeff = _mm_cvtsi32_si128(*reinterpret_cast<const int*>(current_coeff+i));   // XX|XX|XX|XX|XX|XX|CO|co
+        coeff = _mm_shuffle_epi32(coeff, 0);                                                 // CO|co|CO|co|CO|co|CO|co
         
         __m128i dst_1 = _mm_madd_epi16(src_1, coeff);                                         // CO*D+co*d | CO*C+co*c | CO*B+co*b | CO*A+co*a
         __m128i dst_2 = _mm_madd_epi16(src_2, coeff);                                         // etc.
@@ -1678,12 +1618,12 @@ void resize_v_sse2_planar(BYTE* dst, const BYTE* src, int dst_pitch, int src_pit
       }
       
       if (sizeMod2 < filter_size) { // do last odd row
-        __m128i src_p = load(reinterpret_cast<const __m128i*>(src+pitch_table[begin+sizeMod2]+x));
+        __m128i src_p = load(reinterpret_cast<const __m128i*>(src_ptr+pitch_table[sizeMod2]+x));
 
         __m128i src_l = _mm_unpacklo_epi8(src_p, zero);
         __m128i src_h = _mm_unpackhi_epi8(src_p, zero);
 
-        __m128i coeff = _mm_set1_epi16(static_cast<short>(current[sizeMod2]));
+        __m128i coeff = _mm_set1_epi16(current_coeff[sizeMod2]);
 
         __m128i dst_ll = _mm_mullo_epi16(src_l, coeff);   // Multiply by coefficient
         __m128i dst_lh = _mm_mulhi_epi16(src_l, coeff);
@@ -1719,45 +1659,45 @@ void resize_v_sse2_planar(BYTE* dst, const BYTE* src, int dst_pitch, int src_pit
     for (int x = wMod16; x < width; x++) {
       int result = 0;
       for (int i = 0; i < filter_size; i++) {
-        result += (src+((begin+i)*src_pitch))[x] * current[i];
+        result += (src_ptr+pitch_table[i])[x] * current_coeff[i];
       }
       result = ((result+8192)/16384);
       result = result > 255 ? 255 : result < 0 ? 0 : result;
-      dst[x] = (BYTE)result;
+      dst[x] = (BYTE) result;
     }
 
     dst += dst_pitch;
-    current += filter_size;
+    current_coeff += filter_size;
   }
 }
 
 template<SSELoader load>
-void resize_v_ssse3_planar(BYTE* dst, const BYTE* src, int dst_pitch, int src_pitch, int* program, int width, int target_height, int* pitch_table) {
-  int filter_size = *program;
-  int* current = program+1;
+static void resize_v_ssse3_planar(BYTE* dst, const BYTE* src, int dst_pitch, int src_pitch, ResamplingProgram* program, int width, int target_height, const int* pitch_table) {
+  int filter_size = program->filter_size;
+  short* current_coeff = program->pixel_coefficient;
   
   int wMod16 = (width / 16) * 16;
 
   __m128i zero = _mm_setzero_si128();
 
   for (int y = 0; y < target_height; y++) {
-    int begin = *current;
-    current++;
+    int offset = program->pixel_offset[y];
+    const BYTE* src_ptr = src + pitch_table[offset];
 
     for (int x = 0; x < wMod16; x+=16) {
       __m128i result_l = _mm_set1_epi16(32); // Init. with rounder ((1 << 6)/2 = 32)
-      __m128i result_h = _mm_set1_epi16(32);
+      __m128i result_h = result_l;
 
       for (int i = 0; i < filter_size; i++) {
-        __m128i src_p = load(reinterpret_cast<const __m128i*>(src+pitch_table[begin+i]+x));
+        __m128i src_p = load(reinterpret_cast<const __m128i*>(src_ptr+pitch_table[i]+x));
 
         __m128i src_l = _mm_unpacklo_epi8(src_p, zero);
         __m128i src_h = _mm_unpackhi_epi8(src_p, zero);
 
-        __m128i coeff = _mm_set1_epi16(static_cast<short>(current[i]));
-
         src_l = _mm_slli_epi16(src_l, 7);
-        src_h = _mm_slli_epi16(src_h, 7); // TODO can't we unpack(zero, src_p) and shift by 7 below? (no it must be signed)
+        src_h = _mm_slli_epi16(src_h, 7);
+
+        __m128i coeff = _mm_set1_epi16(static_cast<short>(current_coeff[i]));
 
         __m128i dst_l = _mm_mulhrs_epi16(src_l, coeff);   // Multiply by coefficient (SSSE3)
         __m128i dst_h = _mm_mulhrs_epi16(src_h, coeff);
@@ -1780,114 +1720,107 @@ void resize_v_ssse3_planar(BYTE* dst, const BYTE* src, int dst_pitch, int src_pi
     for (int x = wMod16; x < width; x++) {
       int result = 0;
       for (int i = 0; i < filter_size; i++) {
-        result += (src+((begin+i)*src_pitch))[x] * current[i];
+        result += (src_ptr+pitch_table[i])[x] * current_coeff[i];
       }
       result = ((result+8192)/16384);
       result = result > 255 ? 255 : result < 0 ? 0 : result;
-      dst[x] = (BYTE)result;
+      dst[x] = (BYTE) result;
     }
 
     dst += dst_pitch;
-    current += filter_size;
+    current_coeff += filter_size;
   }
 }
 
-__forceinline int* resize_v_create_pitch_table(int pitch, int height) {
-  int* table = (int*) malloc(height*sizeof(int));
+__forceinline static void resize_v_create_pitch_table(int* table, int pitch, int height) {
   table[0] = 0;
   for (int i = 1; i < height; i++) {
     table[i] = table[i-1]+pitch;
   }
-  return table;
 }
 
-void __forceinline resize_v_dispatch(int CPU, int source_height, BYTE* dstp, const BYTE* srcp, int dst_pitch, int src_pitch, int* resampling_pattern, int width, int height) {
-  // Dynamic dispatcher
-  if (*resampling_pattern == 1) {
-    // Fast pointresize
-    if (IsPtrAligned(srcp, 16) && IsPtrAligned(src_pitch, 16)) {
-      // Aligned
-      if (CPU & CPUF_SSE4_1) {
-        // SSE4.1 movntdqa
-        resize_v_sse2_planar_pointresize<simd_load_streaming>(dstp, srcp, dst_pitch, src_pitch, resampling_pattern, width, height);
-      } else if (CPU & CPUF_SSE2) {
-        // SSE2 aligned
-        resize_v_sse2_planar_pointresize<simd_load_aligned>(dstp, srcp, dst_pitch, src_pitch, resampling_pattern, width, height);
-      } else {
-        // C version
-        resize_v_c_planar_pointresize(dstp, srcp, dst_pitch, src_pitch, resampling_pattern, width, height);
-      }
-    } else {
-      // Not aligned
-      if (CPU & CPUF_SSE3) {
-        // SSE2 lddqu
-        resize_v_sse2_planar_pointresize<simd_load_unaligned_sse3>(dstp, srcp, dst_pitch, src_pitch, resampling_pattern, width, height);
-      } else if (CPU & CPUF_SSE2) {
-        // SSE2 unaligned
-        resize_v_sse2_planar_pointresize<simd_load_unaligned>(dstp, srcp, dst_pitch, src_pitch, resampling_pattern, width, height);
-      } else {
-        // C version
-        resize_v_c_planar_pointresize(dstp, srcp, dst_pitch, src_pitch, resampling_pattern, width, height);
-      }
-    }
-  } else {
-    // Other resizers
-    if (CPU & CPUF_SSSE3) {
-      int* pitch_table = resize_v_create_pitch_table(src_pitch, source_height);
+/***************************************
+ ***** Filtered Resize - Vertical ******
+ ***************************************/
 
-      if (IsPtrAligned(srcp, 16) && IsPtrAligned(src_pitch, 16)) {
-        // SSSE3 aligned
-        resize_v_ssse3_planar<simd_load_aligned>(dstp, srcp, dst_pitch, src_pitch, resampling_pattern, width, height, pitch_table);
-      } else if (CPU & CPUF_SSE3) {
-        // SSE3 lddqu
-        resize_v_ssse3_planar<simd_load_unaligned_sse3>(dstp, srcp, dst_pitch, src_pitch, resampling_pattern, width, height, pitch_table);
-      } else {
-        // SSSE3 unaligned
-        resize_v_ssse3_planar<simd_load_unaligned_sse3>(dstp, srcp, dst_pitch, src_pitch, resampling_pattern, width, height, pitch_table);
-      }
-      
-      free(pitch_table);
-    } else if (CPU & CPUF_SSE2) {
-      int* pitch_table = resize_v_create_pitch_table(src_pitch, source_height);
-      
-      if (IsPtrAligned(srcp, 16) && IsPtrAligned(src_pitch, 16)) {
-        // SSE2 aligned
-        resize_v_sse2_planar<simd_load_aligned>(dstp, srcp, dst_pitch, src_pitch, resampling_pattern, width, height, pitch_table);
-      } else if (CPU & CPUF_SSE3) {
-        // SSE2 lddqu
-        resize_v_sse2_planar<simd_load_unaligned_sse3>(dstp, srcp, dst_pitch, src_pitch, resampling_pattern, width, height, pitch_table);
-      } else {
-        // SSE2 unaligned
-        resize_v_sse2_planar<simd_load_unaligned_sse3>(dstp, srcp, dst_pitch, src_pitch, resampling_pattern, width, height, pitch_table);
-      }
+FilteredResizeV::FilteredResizeV( PClip _child, double subrange_top, double subrange_height,
+                                  int target_height, ResamplingFunction* func, IScriptEnvironment* env )
+  : GenericVideoFilter(_child),
+    resampling_program_luma(0), resampling_program_chroma(0),
+    src_pitch_table_luma(0), src_pitch_table_chromaU(0), src_pitch_table_chromaV(0),
+    src_pitch_luma(-1), src_pitch_chromaU(-1), src_pitch_chromaV(-1)
+{
+  if (target_height <= 0)
+    env->ThrowError("Resize: Height must be greater than 0.");
 
-      free(pitch_table);
-    } else {
-      // C version
-      resize_v_c_planar(dstp, srcp, dst_pitch, src_pitch, resampling_pattern, width, height);
-    }
+  if (vi.IsPlanar() && !vi.IsY8()) {
+    const int mask = (1 << vi.GetPlaneHeightSubsampling(PLANAR_U)) - 1;
+
+    if (target_height & mask)
+      env->ThrowError("Resize: Planar destination height must be a multiple of %d.", mask+1);
   }
-}
 
-/*******************************
- * Note on multithreading (Klaus Post, 2007):
- * GetFrame is currently not re-entrant due to dynamic code variables.
- * I have not been able to find a good solution for this
- * (pushing a struct pointer to dynamic data on to the stack is not a solution IMO).
- * We could guard the function, to avoid re-entrance.
- ******************************/
+  if (vi.IsRGB())
+    subrange_top = vi.height - subrange_top - subrange_height; // why?
+
+  // Create resampling program and pitch table
+  resampling_program_luma  = func->GetResamplingProgram(vi.height, subrange_top, subrange_height, target_height, env);
+  src_pitch_table_luma     = new int[vi.height];
+  resampler_luma_aligned   = GetResampler(env->GetCPUFlags(), true , resampling_program_luma);
+  resampler_luma_unaligned = GetResampler(env->GetCPUFlags(), false, resampling_program_luma);
+
+  if (vi.IsPlanar() && !vi.IsY8()) {
+    const int shift = vi.GetPlaneHeightSubsampling(PLANAR_U);
+    const int div   = 1 << shift;
+
+    resampling_program_chroma = func->GetResamplingProgram(
+                                  vi.height      >> shift,
+                                  subrange_top    / div,
+                                  subrange_height / div,
+                                  target_height  >> shift,
+                                  env);
+    src_pitch_table_chromaU    = new int[vi.height >> shift];
+    src_pitch_table_chromaV    = new int[vi.height >> shift];
+    resampler_chroma_aligned   = GetResampler(env->GetCPUFlags(), true , resampling_program_chroma);
+    resampler_chroma_unaligned = GetResampler(env->GetCPUFlags(), false, resampling_program_chroma);
+  }
+
+  // Create resampler
+
+  // Change target video info size
+  vi.height = target_height;
+}
 
 PVideoFrame __stdcall FilteredResizeV::GetFrame(int n, IScriptEnvironment* env)
 {
   PVideoFrame src = child->GetFrame(n, env);
   PVideoFrame dst = env->NewVideoFrame(vi);
-#if 1
-  src_pitch = src->GetPitch();
-  dst_pitch = dst->GetPitch();
-  srcp = src->GetReadPtr();
-  dstp = dst->GetWritePtr();
+  int src_pitch = src->GetPitch();
+  int dst_pitch = dst->GetPitch();
+  const BYTE* srcp = src->GetReadPtr();
+        BYTE* dstp = dst->GetWritePtr();
 
-  resize_v_dispatch(env->GetCPUFlags(), src->GetHeight(), dstp, srcp, dst_pitch, src_pitch, resampling_pattern, vi.BytesFromPixels(vi.width), vi.height);
+  // Create pitch table
+  if (src_pitch_luma != src->GetPitch()) {
+    src_pitch_luma = src->GetPitch();
+    resize_v_create_pitch_table(src_pitch_table_luma, src_pitch_luma, src->GetHeight());
+  }
+
+  if ((!vi.IsY8() && vi.IsPlanar()) && src_pitch_chromaU != src->GetPitch(PLANAR_U)) {
+    src_pitch_chromaU = src->GetPitch(PLANAR_U);
+    resize_v_create_pitch_table(src_pitch_table_chromaU, src_pitch_chromaU, src->GetHeight(PLANAR_U));
+  }
+
+  if ((!vi.IsY8() && vi.IsPlanar()) && src_pitch_chromaV != src->GetPitch(PLANAR_V)) {
+    src_pitch_chromaV = src->GetPitch(PLANAR_V);
+    resize_v_create_pitch_table(src_pitch_table_chromaV, src_pitch_chromaV, src->GetHeight(PLANAR_V));
+  }
+
+  // Do resizing
+  if (IsPtrAligned(srcp, 16) && IsPtrAligned(src_pitch, 16))
+    resampler_luma_aligned(dstp, srcp, dst_pitch, src_pitch, resampling_program_luma, vi.BytesFromPixels(vi.width), vi.height, src_pitch_table_luma);
+  else
+    resampler_luma_unaligned(dstp, srcp, dst_pitch, src_pitch, resampling_program_luma, vi.BytesFromPixels(vi.width), vi.height, src_pitch_table_luma);
     
   if (!vi.IsY8() && vi.IsPlanar()) {
     int width = vi.width >> vi.GetPlaneWidthSubsampling(PLANAR_U);
@@ -1899,628 +1832,79 @@ PVideoFrame __stdcall FilteredResizeV::GetFrame(int n, IScriptEnvironment* env)
     srcp = src->GetReadPtr(PLANAR_U);
     dstp = dst->GetWritePtr(PLANAR_U);
       
-    resize_v_dispatch(env->GetCPUFlags(), src->GetHeight(PLANAR_U), dstp, srcp, dst_pitch, src_pitch, resampling_patternUV, width, height);
+    if (IsPtrAligned(srcp, 16) && IsPtrAligned(src_pitch, 16))
+      resampler_chroma_aligned(dstp, srcp, dst_pitch, src_pitch, resampling_program_chroma, width, height, src_pitch_table_chromaU);
+    else
+      resampler_chroma_unaligned(dstp, srcp, dst_pitch, src_pitch, resampling_program_chroma, width, height, src_pitch_table_chromaU);
 
     // Plane V resizing
     src_pitch = src->GetPitch(PLANAR_V);
     dst_pitch = dst->GetPitch(PLANAR_V);
     srcp = src->GetReadPtr(PLANAR_V);
     dstp = dst->GetWritePtr(PLANAR_V);
-
-    resize_v_dispatch(env->GetCPUFlags(), src->GetHeight(PLANAR_V), dstp, srcp, dst_pitch, src_pitch, resampling_patternUV, width, height);
+  
+    if (IsPtrAligned(srcp, 16) && IsPtrAligned(src_pitch, 16))
+      resampler_chroma_aligned(dstp, srcp, dst_pitch, src_pitch, resampling_program_chroma, width, height, src_pitch_table_chromaV);
+    else
+      resampler_chroma_unaligned(dstp, srcp, dst_pitch, src_pitch, resampling_program_chroma, width, height, src_pitch_table_chromaV);
   }
 
-#endif
-
-#if 0
-#ifdef X86_32
-
-  src_pitch = src->GetPitch();
-  dst_pitch = dst->GetPitch();
-  srcp = src->GetReadPtr();
-  dstp = dst->GetWritePtr();
-  y = vi.height;
-  int plane = vi.IsPlanar() && (!vi.IsY8()) ? 4:1;
-
-  if (pitch_gUV != src->GetPitch(PLANAR_U)) {  // Pitch is not the same as last frame
-    int shUV = src->GetHeight(PLANAR_U);
-    pitch_gUV = src->GetPitch(PLANAR_U);
-
-    if (!yOfsUV)
-      yOfsUV = new int[shUV];
-
-    for (int i = 0; i < shUV; i++)
-      yOfsUV[i] = pitch_gUV * i;
-  }
-
-  if (pitch_gY != src->GetPitch(PLANAR_Y))  { // Pitch is not the same as last frame
-    int sh = src->GetHeight();
-    pitch_gY = src->GetPitch(PLANAR_Y);
-
-    if (!yOfs)
-      yOfs = new int[sh];
-
-    for (int i = 0; i < sh; i++)
-      yOfs[i] = pitch_gY * i;
-  }
-
-  yOfs2 = this->yOfs;
-
-  while (plane-->0){
-    switch (plane) {
-      case 2:  // take V plane
-        src_pitch = src->GetPitch(PLANAR_V);
-        dst_pitch = dst->GetPitch(PLANAR_V);
-        dstp = dst->GetWritePtr(PLANAR_V);
-        srcp = src->GetReadPtr(PLANAR_V);
-        y = dst->GetHeight(PLANAR_V);
-        yOfs2 = this->yOfsUV;
-        if (((int)srcp & 15) || (src_pitch & 15) || !assemblerUV_aligned)
-          assemblerUV.Call();
-        else
-          assemblerUV_aligned.Call();
-        break;
-      case 1: // U Plane
-        dstp = dst->GetWritePtr(PLANAR_U);
-        srcp = src->GetReadPtr(PLANAR_U);
-        y = dst->GetHeight(PLANAR_U);
-        src_pitch = src->GetPitch(PLANAR_U);
-        dst_pitch = dst->GetPitch(PLANAR_U);
-        yOfs2 = this->yOfsUV;
-        plane--; // skip case 0
-        if (((int)srcp & 15) || (src_pitch & 15) || !assemblerUV_aligned)
-          assemblerUV.Call();
-        else
-          assemblerUV_aligned.Call();
-        break;
-      case 3: // Y plane for planar
-      case 0: // Default for interleaved
-        if (((int)srcp & 15) || (src_pitch & 15) || !assemblerY_aligned)
-          assemblerY.Call();
-        else
-          assemblerY_aligned.Call();
-        break;
-    }
-  } // end while
-#else
-  //TODO
-  env->ThrowError("FilteredResizeV::GetFrame is not yet ported to 64-bit.");
-#endif
-#endif // if 0
   return dst;
 }
 
+// IsPtrAligned(srcp, 16) && IsPtrAligned(src_pitch, 16)
+ResamplerV FilteredResizeV::GetResampler(int CPU, bool aligned, ResamplingProgram* program) {
+  if (program->filter_size == 1) {
+    // Fast pointresize
+    if (aligned) {
+      if (CPU & CPUF_SSE4_1) { // SSE4.1 movntdqa
+        return resize_v_sse2_planar_pointresize<simd_load_streaming>;
+      } else if (CPU & CPUF_SSE2) { // SSE2 aligned
+        return resize_v_sse2_planar_pointresize<simd_load_aligned>;
+      } else { // C version
+        return resize_v_c_planar_pointresize;
+      }
+    } else { // Not aligned
+      if (CPU & CPUF_SSE3) { // SSE3 lddqu
+        return resize_v_sse2_planar_pointresize<simd_load_unaligned_sse3>;
+      } else if (CPU & CPUF_SSE2) { // SSE2 unaligned
+        return resize_v_sse2_planar_pointresize<simd_load_unaligned>;
+      } else { // C version
+        return resize_v_c_planar_pointresize;
+      }
+    }
+  } else {
+    // Other resizers
+    if (CPU & CPUF_SSSE3 && false) { // FIXME: this hack since current SSSE3 is slightly slower
+      if (aligned) { // SSSE3 aligned
+        return resize_v_ssse3_planar<simd_load_aligned>;
+      } else if (CPU & CPUF_SSE3) { // SSE3 lddqu
+        return resize_v_ssse3_planar<simd_load_unaligned_sse3>;
+      } else { // SSSE3 unaligned
+        return resize_v_ssse3_planar<simd_load_unaligned_sse3>;
+      }
+    } else if (CPU & CPUF_SSE2) {
+      if (aligned) { // SSE2 aligned
+        return resize_v_sse2_planar<simd_load_aligned>;
+      } else if (CPU & CPUF_SSE3) { // SSE2 lddqu
+        return resize_v_sse2_planar<simd_load_unaligned_sse3>;
+      } else { // SSE2 unaligned
+        return resize_v_sse2_planar<simd_load_unaligned_sse3>;
+      }
+    } else { // C version
+      return resize_v_c_planar; //(dstp, srcp, dst_pitch, src_pitch, resampling_pattern, width, height);
+    }
+  }
+}
 
 FilteredResizeV::~FilteredResizeV(void)
 {
-  if (resampling_pattern) { _aligned_free(resampling_pattern); resampling_pattern = 0; }
-  if (resampling_patternUV) { _aligned_free(resampling_patternUV); resampling_patternUV = 0; }
-  if (yOfs) { delete[] yOfs; yOfs = 0; }
-  if (yOfsUV) { delete[] yOfsUV; yOfsUV = 0; }
-#ifdef X86_32
-  assemblerY.Free();
-  assemblerUV.Free();
-  assemblerY_aligned.Free();
-  assemblerUV_aligned.Free();
-#endif
+  if (resampling_program_luma)   { delete resampling_program_luma; }
+  if (resampling_program_chroma) { delete resampling_program_chroma; }
+  if (src_pitch_table_luma)    { delete[] src_pitch_table_luma; }
+  if (src_pitch_table_chromaU) { delete[] src_pitch_table_chromaU; }
+  if (src_pitch_table_chromaV) { delete[] src_pitch_table_chromaV; }
 }
-
-
-
-#ifdef X86_32
-/***********************************
- * Dynamically Assembled Resampler
- *
- * (c) 2007, Klaus Post
- * (c) 2009, Ian Brabham
- *
- * Dynamic version of the Vertical resizer
- *
- * The Algorithm is the same, except this
- *  one is able to process 16 pixels in parallel in SSE2+, 8 pixels in MMX.
- * The inner loop filter is unrolled based on the
- *  exact filter size.
- * SSSE3 version is approximately twice as fast as original MMX, 
- * SSE2 version is approximately 60% faster than new MMX, 
- * New mmx version is approximately 55% faster than original MMX, 
- * SSSE3 PSNR is more than 67dB to MMX version using 4 taps. i.e <1 bit
- * SSE2 is bit identical with MMX.
- * align parameter indicates if source plane and pitch is 16 byte aligned for sse2+.
- * dest should always be 16 byte aligned.
- **********************************/
-
-
-DynamicAssembledCode FilteredResizeV::GenerateResizer(int gen_plane, bool aligned, IScriptEnvironment* env) {
-  __declspec(align(8)) static const __int64 FPround           = 0x0000200000002000; // 16384/2
-  __declspec(align(8)) static const __int64 FProundSSSE3      = 0x0020002000200020; // 128/2
-  __declspec(align(8)) static const __int64 UnpackByteShuffle = 0x0100010001000100; 
-
-  Assembler x86;   // This is the class that assembles the code.
-  bool ssse3 = !!(env->GetCPUFlags() & CPUF_SSSE3);  // We have one version for SSSE3 and one for plain MMX.
-  bool sse3  = !!(env->GetCPUFlags() & CPUF_SSE3);   // We have specialized load routine for SSE3.
-  bool sse2  = !!(env->GetCPUFlags() & CPUF_SSE2);
-  bool isse  = !!(env->GetCPUFlags() & CPUF_INTEGER_SSE);
-
-  if (aligned && !sse2) // No fast aligned version without SSE2+
-    return DynamicAssembledCode();
-
-  int xloops = 0;
-  int y = vi.height;
-
-  int* array = (gen_plane == PLANAR_U || gen_plane == PLANAR_V) ? resampling_patternUV : resampling_pattern ;
-  int fir_filter_size = array[0];
-  int* cur = &array[1];
-
-  if (vi.IsPlanar()) {
-    xloops = vi.width >> vi.GetPlaneWidthSubsampling(gen_plane);
-    y = y >> (vi.GetPlaneHeightSubsampling(gen_plane));
-  } else {
-    xloops = vi.BytesFromPixels(vi.width);
-  }
-
-  if (sse2)
-    xloops = ((xloops+15) / 16) * 16;
-  else
-    xloops = (xloops+7) / 8;
-
-
-  // Store registers
-  x86.push(           eax);
-  x86.push(           ebx);
-  x86.push(           ecx);
-  x86.push(           edx);
-  x86.push(           esi);
-  x86.push(           edi);
-  x86.push(           ebp);
-
-  if (fir_filter_size == 1) {
-    // Fast PointResize
-// eax ebx ecx edx esi edi ebp
-// mm0 mm1 mm2 mm3 mm4 mm5 mm6 mm7
-// xmm0 XMM1 xmm2 XMM3 xmm4 XMM5 xmm6 XMM7
-    x86.mov(          edx, (int)cur);              // edx = &array[1] -> start_pos
-    x86.mov(          ebx, dword_ptr[(int)&dst_pitch]);
-    x86.mov(          ebp, dword_ptr[(int)&dstp]);
-    x86.mov(          edi, y);                     // edi = vi.height
-
-    x86.align(16);
-x86.label("yloop");
-    x86.mov(          esi, dword_ptr[(int)&yOfs2]);// int pitch_table[height] = {0, src_pitch, src_pitch*2, ...}
-    x86.mov(          eax, dword_ptr[edx]);        // eax = *cur = start_pos
-    x86.lea(          edx, dword_ptr[edx+(fir_filter_size*4)+4]); // cur += fir_filter_size+1
-    x86.mov(          esi, dword_ptr[esi+eax*4]);  // esi = yOfs[*cur] = start_pos * src_pitch
-    x86.mov(          eax, ebp);                   // eax = dstp
-    x86.add(          esi, dword_ptr[(int)&srcp]); // esi = srcp + yOfs[*cur] = srcp + start_pos * src_pitch
-    x86.add(          ebp, ebx);                   // dstp += dst_pitch
-                 
-    if (sse2) {
-      int ploops = xloops / 64;
-      int plrem  = xloops % 64;
-      if (!plrem && ploops) {
-        ploops -=  1;
-        plrem  += 64;
-      }
-      if (ploops>1) {
-        x86.mov(      ecx, ploops);
-        x86.align(16);
-x86.label("xloop");
-      }
-      if (ploops) {
-        if (aligned) {
-          x86.movdqa( xmm0, xmmword_ptr[esi+ 0]);  // xmm0 = *(srcp2= srcp + x) = p|o|n|m|l|k|j|i|h|g|f|e|d|c|b|a
-          x86.movdqa( xmm2, xmmword_ptr[esi+16]);
-          x86.movdqa( xmm4, xmmword_ptr[esi+32]);
-          x86.movdqa( xmm6, xmmword_ptr[esi+48]);
-        } else if (sse3) {
-          x86.lddqu(  xmm0, xmmword_ptr[esi+ 0]); // SSE3
-          x86.lddqu(  xmm2, xmmword_ptr[esi+16]);
-          x86.lddqu(  xmm4, xmmword_ptr[esi+32]);
-          x86.lddqu(  xmm6, xmmword_ptr[esi+48]);
-        } else {
-          x86.movdqu( xmm0, xmmword_ptr[esi+ 0]);
-          x86.movdqu( xmm2, xmmword_ptr[esi+16]);
-          x86.movdqu( xmm4, xmmword_ptr[esi+32]);
-          x86.movdqu( xmm6, xmmword_ptr[esi+48]);
-        }
-        x86.add(      esi, 64);
-
-        x86.movdqa(   xmmword_ptr[eax+ 0], xmm0);   // dstp[x] = p|o|n|m|l|k|j|i|h|g|f|e|d|c|b|a
-        x86.movdqa(   xmmword_ptr[eax+16], xmm2);
-        x86.movdqa(   xmmword_ptr[eax+32], xmm4);
-        x86.movdqa(   xmmword_ptr[eax+48], xmm6);
-        x86.add(      eax, 64);
-      }
-      if (ploops>1)
-        x86.loop(     "xloop");
-      if (aligned) {
-        if (plrem> 0) x86.movdqa( xmm0, xmmword_ptr[esi+ 0]);
-        if (plrem>16) x86.movdqa( xmm2, xmmword_ptr[esi+16]);
-        if (plrem>32) x86.movdqa( xmm4, xmmword_ptr[esi+32]);
-        if (plrem>48) x86.movdqa( xmm6, xmmword_ptr[esi+48]);
-      } else if (sse3) {
-        if (plrem> 0) x86.lddqu(  xmm0, xmmword_ptr[esi+ 0]);
-        if (plrem>16) x86.lddqu(  xmm2, xmmword_ptr[esi+16]);
-        if (plrem>32) x86.lddqu(  xmm4, xmmword_ptr[esi+32]);
-        if (plrem>48) x86.lddqu(  xmm6, xmmword_ptr[esi+48]);
-      } else {
-        if (plrem> 0) x86.movdqu( xmm0, xmmword_ptr[esi+ 0]);
-        if (plrem>16) x86.movdqu( xmm2, xmmword_ptr[esi+16]);
-        if (plrem>32) x86.movdqu( xmm4, xmmword_ptr[esi+32]);
-        if (plrem>48) x86.movdqu( xmm6, xmmword_ptr[esi+48]);
-      }
-      if (plrem> 0) x86.movdqa(   xmmword_ptr[eax+ 0], xmm0);
-      if (plrem>16) x86.movdqa(   xmmword_ptr[eax+16], xmm2);
-      if (plrem>32) x86.movdqa(   xmmword_ptr[eax+32], xmm4);
-      if (plrem>48) x86.movdqa(   xmmword_ptr[eax+48], xmm6);
-    } // if (sse2)
-    else { // MMX
-      int ploops = xloops / 8;
-      int plrem  = xloops % 8;
-      if (!plrem && ploops) {
-        ploops -= 1;
-        plrem  += 8;
-      }
-      if (ploops>1) {
-        x86.mov(      ecx, ploops);
-        x86.align(16);
-x86.label("xloop");
-      }
-      if (ploops) {
-        x86.movq(     mm0, qword_ptr[esi+ 0]);  // mm0 = *(srcp2= srcp + x) = h|g|f|e|d|c|b|a
-        x86.movq(     mm1, qword_ptr[esi+ 8]);
-        x86.movq(     mm2, qword_ptr[esi+16]);
-        x86.movq(     mm3, qword_ptr[esi+24]);
-        x86.movq(     mm4, qword_ptr[esi+32]);
-        x86.movq(     mm5, qword_ptr[esi+40]);
-        x86.movq(     mm6, qword_ptr[esi+48]);
-        x86.movq(     mm7, qword_ptr[esi+56]);
-        x86.add(      esi, 64);
-
-        x86.movq(     qword_ptr[eax+ 0], mm0); // dstp[x] = h|g|f|e|d|c|b|a
-        x86.movq(     qword_ptr[eax+ 8], mm1);
-        x86.movq(     qword_ptr[eax+16], mm2);
-        x86.movq(     qword_ptr[eax+24], mm3);
-        x86.movq(     qword_ptr[eax+32], mm4);
-        x86.movq(     qword_ptr[eax+40], mm5);
-        x86.movq(     qword_ptr[eax+48], mm6);
-        x86.movq(     qword_ptr[eax+56], mm7);
-        x86.add(      eax, 64);
-      }
-      if (ploops>1)
-        x86.loop(     "xloop");
-      if (plrem>0) x86.movq( mm0, qword_ptr[esi+ 0]);
-      if (plrem>1) x86.movq( mm1, qword_ptr[esi+ 8]);
-      if (plrem>2) x86.movq( mm2, qword_ptr[esi+16]);
-      if (plrem>3) x86.movq( mm3, qword_ptr[esi+24]);
-      if (plrem>4) x86.movq( mm4, qword_ptr[esi+32]);
-      if (plrem>5) x86.movq( mm5, qword_ptr[esi+40]);
-      if (plrem>6) x86.movq( mm6, qword_ptr[esi+48]);
-      if (plrem>7) x86.movq( mm7, qword_ptr[esi+56]);
-
-      if (plrem>0) x86.movq( qword_ptr[eax+ 0], mm0);
-      if (plrem>1) x86.movq( qword_ptr[eax+ 8], mm1);
-      if (plrem>2) x86.movq( qword_ptr[eax+16], mm2);
-      if (plrem>3) x86.movq( qword_ptr[eax+24], mm3);
-      if (plrem>4) x86.movq( qword_ptr[eax+32], mm4);
-      if (plrem>5) x86.movq( qword_ptr[eax+40], mm5);
-      if (plrem>6) x86.movq( qword_ptr[eax+48], mm6);
-      if (plrem>7) x86.movq( qword_ptr[eax+56], mm7);
-    }
-    x86.dec(        edi);                       // y -= 1
-    x86.jnz(        "yloop");
-  } // if (fast pointresize)
-  else if (ssse3 && fir_filter_size <= 8) { // We will get too many rounding errors. Probably only lanczos etc
-                                            // if taps parameter is large and very high downscale ratios. 
-    x86.mov(          edx, (int)cur);
-    x86.mov(          ebp, dword_ptr[(int)&src_pitch]);
-    x86.mov(          ebx, dword_ptr[(int)&dst_pitch]);
-    x86.mov(          edi, y);
-    x86.movq(         xmm6, qword_ptr[(int)&FProundSSSE3]);        // Rounder for final division. Not touched!
-    x86.movq(         xmm0, qword_ptr[(int)&UnpackByteShuffle]);   // Rounder for final division. Not touched!
-    x86.pxor(         xmm5, xmm5);                                 // zeroes
-    x86.punpcklqdq(   xmm6, xmm6);
-    x86.punpcklqdq(   xmm0, xmm0);
-                      
-    x86.align(16);    
-x86.label("yloop");  
-    x86.mov(          esi, dword_ptr[(int)&yOfs2]);
-    x86.mov(          eax, dword_ptr[edx]);               // eax = *cur
-    x86.add(          edx, 4);                            // cur++
-    x86.mov(          esi, dword_ptr[esi+eax*4]);
-    x86.xor(          ecx, ecx);                          // ecx = x = 0
-    x86.add(          esi, dword_ptr[(int)&srcp]);        // esi = srcp + yOfs[*cur]
-    x86.movdqa(       xmm1, xmm6);                        // Init with rounder
-    x86.movdqa(       xmm7, xmm6);
-                      
-    x86.align(16);    
-x86.label("xloop");  
-    x86.lea(          eax, dword_ptr[esi+ecx]);           // eax = srcp2 = srcp + x
-    if (aligned) {    
-      x86.movdqa(     xmm4, xmmword_ptr[eax]);            // xmm4 = p|o|n|m|l|k|j|i|h|g|f|e|d|c|b|a
-    } else if (sse3) {
-      x86.lddqu(      xmm4, xmmword_ptr[eax]); // SSE3
-    } else {          
-      x86.movdqu(     xmm4, xmmword_ptr[eax]);
-    }
-
-    for (int i = 0; i< fir_filter_size; i++) {
-      x86.movd(       xmm3, dword_ptr[edx+i*4]);          // mm3 = cur[b] = 0|co
-      x86.movdqa(     xmm2, xmm4);
-      x86.punpckhbw(  xmm4, xmm5);                        // mm4 = *srcp2 = 0p|0o|0n|0m|0l|0k|0j|0i
-      x86.punpcklbw(  xmm2, xmm5);                        // mm2 = *srcp2 = 0h|0g|0f|0e|0d|0c|0b|0a
-      x86.pshufb(     xmm3, xmm0);                        // Unpack coefficient to all words
-      x86.psllw(      xmm2, 7);                           // Extend to signed word
-      x86.psllw(      xmm4, 7);                           // Extend to signed word
-      x86.add(        eax, ebp);                          // srcp2 += src_pitch
-      x86.pmulhrsw(   xmm2, xmm3); // SSSE3               // Multiply [h|g|f|e|d|c|b|a] 14bit(coeff) x 16bit(signed) ->
-      x86.pmulhrsw(   xmm3, xmm4); // SSSE3               // Multiply [p|o|n|m|l|k|j|i] 16bit signed and rounded result.
-      if (i<fir_filter_size-1) {                          // Load early for next loop
-        if (aligned)
-          x86.movdqa( xmm4, xmmword_ptr[eax]);            // xmm4 = p|o|n|m|l|k|j|i|h|g|f|e|d|c|b|a
-        else if (sse3)
-          x86.lddqu(  xmm4, xmmword_ptr[eax]); // SSE3
-        else
-          x86.movdqu( xmm4, xmmword_ptr[eax]);
-      }
-      x86.paddsw(     xmm1, xmm2);                        // Accumulate: h|g|f|e|d|c|b|a (signed words)
-      x86.paddsw(     xmm7, xmm3);                        // Accumulate: p|o|n|m|l|k|j|i
-    }
-    x86.psraw(        xmm1, 6);                           // Compensate fraction
-    x86.psraw(        xmm7, 6);                           // Compensate fraction
-    x86.mov(          eax, dword_ptr[(int)&dstp]);
-    x86.packuswb(     xmm1, xmm7);                        // mm1 = p|o|n|m|l|k|j|i|h|g|f|e|d|c|b|a
-    x86.add(          ecx, 16);
-    x86.movdqa(       xmm7, xmm6);
-    x86.movdqa(       xmmword_ptr[eax+ecx-16], xmm1);     // Dest should always be aligned.
-    x86.cmp(          ecx, xloops);
-    x86.movdqa(       xmm1, xmm6);                        // Init with rounder
-    x86.jl(           "xloop");
-
-    x86.add(          eax, ebx);
-    x86.lea(          edx, dword_ptr[edx+(fir_filter_size*4)]); //cur += fir_filter_size
-    x86.dec(          edi);
-    x86.mov(          dword_ptr[(int)&dstp], eax);
-    x86.jnz(          "yloop");
-  } // if (rounding error)
-  else if (sse2) {
-  // eax ebx ecx edx esi edi ebp
-  // xmm0 xmm1 xmm2 xmm3 xmm4 xmm5 xmm6 xmm7
-    x86.mov(     edx, (int)cur);                  // edx = &array[1] -> start_pos
-    x86.mov(     ebp, dword_ptr[(int)&src_pitch]);
-    x86.mov(     ebx, dword_ptr[(int)&dst_pitch]);
-    x86.mov(     edi, y);                         // edi = vi.height
-
-    x86.align(16);
-x86.label("yloop");
-    x86.mov(     esi, dword_ptr[(int)&yOfs2]);    // int pitch_table[height] = {0, src_pitch, src_pitch*2, ...}
-    x86.mov(     eax, dword_ptr[edx]);            // eax = *cur = start_pos
-    x86.mov(     esi, dword_ptr[esi+eax*4]);      // esi = yOfs[*cur] = start_pos * src_pitch
-    x86.add(     edx, 4);                         // cur++  (*cur = coeff[0])
-    x86.add(     esi, dword_ptr[(int)&srcp]);     // esi = srcp + yOfs[*cur] = srcp + start_pos * src_pitch
-    x86.xor(     ecx, ecx);                       // ecx = x = 0
-
-    x86.align(16);
-x86.label("xloop");
-    x86.lea(          eax,  dword_ptr[esi+ecx]);  // eax = srcp2 = srcp + x
-    x86.movd(         xmm7, dword_ptr[(int)&FPround]);// Rounder for final division.
-    if (aligned)
-      x86.movdqa(     xmm0, xmmword_ptr[eax]);    // xmm0 = *srcp2 = p|o|n|m|l|k|j|i|h|g|f|e|d|c|b|a
-    else if (sse3)
-      x86.lddqu(      xmm0, xmmword_ptr[eax]); // SSE3
-    else
-      x86.movdqu(     xmm0, xmmword_ptr[eax]);
-    x86.pshufd(       xmm7, xmm7, 0x00);          // totalPONM
-    x86.movdqa(       xmm6, xmm7);                // totalLKJI
-    x86.movdqa(       xmm5, xmm7);                // totalHGFE
-    x86.movdqa(       xmm4, xmm7);                // totalDCBA
-    int i=0;
-    for ( ; i < fir_filter_size/2; i++) { // Doing row pairs
-      if (aligned)
-        x86.movdqa(     xmm2, xmmword_ptr[eax+ebp]);// xmm2 = *(srcp2+src_pitch) = P|O|N|M|L|K|J|I|H|G|F|E|D|C|B|A
-      else if (sse3)
-        x86.lddqu(      xmm2, xmmword_ptr[eax+ebp]); // SSE3
-      else
-        x86.movdqu(     xmm2, xmmword_ptr[eax+ebp]);
-
-      x86.movq(       xmm3, qword_ptr[edx+i*8]);  // xmm3 = cur[b] = 00|00|--coeff[i+1]|--coeff[i]
-      x86.lea(        eax,  dword_ptr[eax+ebp*2]);// srcp2 += src_pitch*2
-      x86.movdqa(     xmm1, xmm0);                // xmm1                      = p|o|n|m|l|k|j|i|h|g|f|e|d|c|b|a
-      x86.packssdw(   xmm3, xmm3);                // xmm3 = 00|00|00|00|CO|co|CO|co
-
-      x86.punpcklbw(  xmm0, xmm2);                // xmm0 = Hh|Gg|Ff|Ee|Dd|Cc|Bb|Aa
-      x86.punpckhbw(  xmm1, xmm2);                // xmm1 = Pp|Oo|Nn|Mm|Ll|Kk|Jj|Ii
-      x86.pshufd(     xmm3, xmm3, 0x00);          // xmm3 = CO|co|CO|co|CO|co|CO|co
-
-      x86.punpckhbw(  xmm2, xmm0);                // xmm2 = HP|hO|GN|gM|FL|fK|EJ|eI
-      x86.punpcklbw(  xmm0, xmm0);                // xmm0 = DD|dd|CC|cc|BB|bb|AA|aa
-      x86.psrlw(      xmm2, 8);                   // xmm2 = 0H|0h|0G|0g|0F|0f|0E|0e
-      x86.psrlw(      xmm0, 8);                   // xmm0 = 0D|0d|0C|0c|0B|0b|0A|0a
-
-      x86.pmaddwd(    xmm2, xmm3);                // xmm2 =  H*CO+h*co|G*CO+g*co|F*CO+f*co|E*CO+e*co
-      x86.pmaddwd(    xmm0, xmm3);                // xmm0 =  D*CO+d*co|C*CO+c*co|B*CO+b*co|A*CO+a*co
-      x86.paddd(      xmm5, xmm2);                // accumulateHGFE
-      x86.paddd(      xmm4, xmm0);                // accumulateDCBA
-
-      x86.pxor(       xmm0, xmm0);
-      x86.movdqa(     xmm2, xmm1);                // xmm2 = Pp|Oo|Nn|Mm|Ll|Kk|Jj|Ii
-      x86.punpcklbw(  xmm1, xmm0);                // xmm1 = 0L|0l|0K|0k|0J|0j|0I|0i
-      x86.punpckhbw(  xmm2, xmm0);                // xmm2 = 0P|0p|0O|0o|0N|0n|0M|0m
-
-      if (i*2 < fir_filter_size-2) {              // Load early for next loop
-        if (aligned)
-          x86.movdqa( xmm0, xmmword_ptr[eax]);    // xmm0 = *srcp2 = p|o|n|m|l|k|j|i|h|g|f|e|d|c|b|a
-        else if (sse3)
-          x86.lddqu(  xmm0, xmmword_ptr[eax]); // SSE3
-        else
-          x86.movdqu( xmm0, xmmword_ptr[eax]);
-      }
-      x86.pmaddwd(    xmm1, xmm3);                // xmm1 =  L*CO+l*co|K*CO+k*co|J*CO+j*co|I*CO+i*co
-      x86.pmaddwd(    xmm2, xmm3);                // xmm4 =  P*CO+p*co|O*CO+o*co|N*CO+n*co|M*CO+m*co
-      x86.paddd(      xmm6, xmm1);                // accumulateLKJI
-      x86.paddd(      xmm7, xmm2);                // accumulatePONM
-    }
-    if (i*2 < fir_filter_size) { // Do last odd row
-      x86.movd(       xmm3, dword_ptr[edx+i*8]);  // xmm3 = cur[b] = 00|00|00|--coeff[i]
-      x86.pxor(       xmm2, xmm2);
-      x86.punpckhbw(  xmm1, xmm0);                // xmm1 = p.|o.|n.|m.|l.|k.|j.|i.
-      x86.pshufd(     xmm3, xmm3, 0x00);          // xmm3 = --co|--co|--co|--co
-      x86.punpcklbw(  xmm0, xmm2);                // xmm0 = 0h|0g|0f|0e|0d|0c|0b|0a 
-      x86.pslld(      xmm3, 16);                  // xmm3 = co|00|co|00|co|00|co|00
-      x86.psrlw(      xmm1, 8);                   // xmm1 = 0p|0o|0n|0m|0l|0k|0j|0i
-      x86.punpckhwd(  xmm2, xmm0);                // xmm2 = 0h|..|0g|..|0f|..|0e|..
-      x86.punpcklwd(  xmm0, xmm0);                // xmm0 = 0d|0d|0c|0c|0b|0b|0a|0a
-      x86.pmaddwd(    xmm2, xmm3);                // xmm2 =  h*co|g*co|f*co|e*co
-      x86.pmaddwd(    xmm0, xmm3);                // xmm0 =  d*co|c*co|b*co|a*co
-      x86.paddd(      xmm5, xmm2);                // accumulateHGFE
-      x86.paddd(      xmm4, xmm0);                // accumulateDCBA
-      x86.punpckhwd(  xmm2, xmm1);                // xmm2 = 0p|..|0o|..|0n|..|0m|..
-      x86.punpcklwd(  xmm1, xmm1);                // xmm1 = 0l|0l|0k|0k|0j|0j|0i|0i
-      x86.pmaddwd(    xmm2, xmm3);                // xmm4 =  p*co|o*co|n*co|m*co
-      x86.pmaddwd(    xmm1, xmm3);                // xmm1 =  l*co|k*co|j*co|i*co
-      x86.paddd(      xmm7, xmm2);                // accumulatePONM
-      x86.paddd(      xmm6, xmm1);                // accumulateLKJI
-    }
-    x86.psrad(        xmm4, 14);                  // 14 bits -> 16bit fraction [--FF....|--FF....]
-    x86.psrad(        xmm5, 14);                  // compensate the fact that FPScale = 16384
-    x86.psrad(        xmm6, 14);
-    x86.psrad(        xmm7, 14);
-    x86.packssdw(     xmm4, xmm5);                // xmm4 = 0h|0g|0f|0e|0d|0c|0b|0a
-    x86.mov(          eax, dword_ptr[(int)&dstp]);
-    x86.packssdw(     xmm6, xmm7);                // xmm6 = 0p|0o|0n|0m|0l|0k|0j|0i
-    x86.add(          ecx, 16);                   // x += 16
-    x86.packuswb(     xmm4, xmm6);                // xmm4 = p|o|n|m|l|k|j|i|h|g|f|e|d|c|b|a
-    x86.cmp(          ecx, xloops);
-    x86.movdqa(       xmmword_ptr[eax+ecx-16], xmm4); // dstp[x] = p|o|n|m|l|k|j|i|h|g|f|e|d|c|b|a
-    x86.jnz(          "xloop");
-                     
-    x86.lea(          edx, dword_ptr[edx+(fir_filter_size*4)]); // cur += fir_filter_size
-    x86.add(          eax, ebx);                  // dstp += dst_pitch
-    x86.dec(          edi);                       // y -= 1
-    x86.mov(          dword_ptr[(int)&dstp], eax);
-    x86.jnz(          "yloop");
-  } // if sse2
-  else {
-  // eax ebx ecx edx esi edi ebp
-  // mm0 mm1 mm2 mm3 mm4 mm5 mm6 mm7
-    x86.mov(        edx, (int)cur);              // edx = &array[1] -> start_pos
-    x86.mov(        ebp, dword_ptr[(int)&src_pitch]);
-    x86.mov(        ebx, dword_ptr[(int)&dst_pitch]);
-    x86.mov(        edi, y);                     // edi = vi.height
-
-    x86.align(16);
-x86.label("yloop");
-    x86.mov(        esi, dword_ptr[(int)&yOfs2]);// int pitch_table[height] = {0, src_pitch, src_pitch*2, ...}
-    x86.mov(        eax, dword_ptr[edx]);        // eax = *cur = start_pos
-    x86.mov(        esi, dword_ptr[esi+eax*4]);  // esi = yOfs[*cur] = start_pos * src_pitch
-    x86.add(        edx, 4);                     // cur++  (*cur = coeff[0])
-    x86.add(        esi, dword_ptr[(int)&srcp]); // esi = srcp + yOfs[*cur] = srcp + start_pos * src_pitch
-    x86.xor(        ecx, ecx);                   // ecx = x = 0
-
-    x86.align(16);
-x86.label("xloop");
-    x86.lea(        eax, qword_ptr[esi+ecx*8]);  // eax = srcp2 = srcp + x
-    x86.movq(       mm7, qword_ptr[(int)&FPround]);// totalHG = Rounder for final division.
-    x86.movq(       mm0, qword_ptr[eax]);        // mm0 = *srcp2             = h|g|f|e|d|c|b|a
-    x86.movq(       mm6, mm7);                   // totalFE
-    x86.movq(       mm5, mm7);                   // totalDC
-    x86.movq(       mm4, mm7);                   // totalBA
-    int i=0;
-    for ( ; i < fir_filter_size/2; i++) { // Doing row pairs
-      x86.movq(       mm2, qword_ptr[eax+ebp]);  // mm2 = *(srcp2+src_pitch) = H|G|F|E|D|C|B|A
-      x86.movq(       mm3, qword_ptr[edx+i*8]);  // mm3 = cur[b] = --coeff[i+1]|--coeff[i]
-      x86.lea(        eax, qword_ptr[eax+ebp*2]);// srcp2 += src_pitch*2
-      x86.movq(       mm1, mm0);                 // mm1                      = h|g|f|e|d|c|b|a
-      x86.packssdw(   mm3, mm3);                 // mm3 = CO|co|CO|co
-
-      x86.punpcklbw(  mm0, mm2);                 // mm0 = Dd|Cc|Bb|Aa
-      x86.punpckhbw(  mm1, mm2);                 // mm1 = Hh|Gg|Ff|Ee
-
-      x86.punpckhbw(  mm2, mm0);                 // mm2 = DH|dG|CF|cE
-      x86.punpcklbw(  mm0, mm0);                 // mm0 = BB|bb|AA|aa
-      x86.psrlw(      mm2, 8);                   // mm2 = 0D|0d|0C|0c
-      x86.psrlw(      mm0, 8);                   // mm0 = 0B|0b|0A|0a
-
-      x86.pmaddwd(    mm2, mm3);                 // mm2 = D*CO+d*co|C*CO+c*co
-      x86.pmaddwd(    mm0, mm3);                 // mm0 = B*CO+b*co|A*CO+a*co
-      x86.paddd(      mm5, mm2);                 // accumulateDC
-      x86.paddd(      mm4, mm0);                 // accumulateBA
-
-      x86.pxor(       mm0, mm0);
-      x86.movq(       mm2, mm1);                 // mm2 = Hh|Gg|Ff|Ee
-      x86.punpcklbw(  mm1, mm0);                 // mm1 = 0F|0f|0E|0e
-      x86.punpckhbw(  mm2, mm0);                 // mm2 = 0H|0h|0G|0g
-
-      if (i*2 < fir_filter_size-2)               // Load early for next loop
-        x86.movq(     mm0, qword_ptr[eax]);      // mm0 = *srcp2             = h|g|f|e|d|c|b|a
-
-      x86.pmaddwd(    mm1, mm3);                 // mm1 = F*CO+f*co|E*CO+e*co
-      x86.pmaddwd(    mm2, mm3);                 // mm2 = H*CO+h*co|G*CO+g*co
-      x86.paddd(      mm6, mm1);                 // accumulateFE
-      x86.paddd(      mm7, mm2);                 // accumulateHG
-    }
-    if (i*2 < fir_filter_size) { // Do last odd row
-      x86.movd(       mm3, dword_ptr[edx+i*8]);  // mm3 = cur[b] = 0|--coeff[i]
-      x86.pxor(       mm2, mm2);
-      x86.punpckhbw(  mm1, mm0);                 // mm1 = h.|g.|f.|e.
-      if (isse) {
-        x86.punpcklbw(mm0, mm2);                 // mm0 = 0d|0c|0b|0a
-        x86.pshufw(   mm3, mm3, 0x33);           // mm3 = co|00|co|00
-      } else {
-        x86.punpckldq(mm3, mm3);                 // mm3 = --co|--co
-        x86.punpcklbw(mm0, mm2);                 // mm0 = 0d|0c|0b|0a
-        x86.pslld(    mm3, 16);                  // mm3 = co|00|co|00
-      }
-      x86.psrlw(      mm1, 8);                   // mm1 = 0h|0g|0f|0e
-      x86.punpckhwd(  mm2, mm0);                 // mm2 = 0d|..|0c|..
-      x86.punpcklwd(  mm0, mm0);                 // mm0 = 0b|0b|0a|0a
-      x86.pmaddwd(    mm2, mm3);                 // mm2 =  d*co|c*co
-      x86.pmaddwd(    mm0, mm3);                 // mm0 =  b*co|a*co
-      x86.paddd(      mm5, mm2);                 // accumulateDC
-      x86.paddd(      mm4, mm0);                 // accumulateBA
-      x86.punpckhwd(  mm2, mm1);                 // mm2 = 0h|..|0g|..
-      x86.punpcklwd(  mm1, mm1);                 // mm1 = 0f|0f|0e|0e
-      x86.pmaddwd(    mm2, mm3);                 // mm2 =  h*co|g*co
-      x86.pmaddwd(    mm1, mm3);                 // mm1 =  f*co|e*co
-      x86.paddd(      mm7, mm2);                 // accumulateHG
-      x86.paddd(      mm6, mm1);                 // accumulateFE
-    }
-    x86.psrad(      mm4, 14);                    // 14 bits -> 16bit fraction [--FF....|--FF....]
-    x86.psrad(      mm5, 14);                    // compensate the fact that FPScale = 16384
-    x86.psrad(      mm6, 14);
-    x86.psrad(      mm7, 14);
-    x86.packssdw(   mm4, mm5);                   // mm4 = 0d|0c|0b|0a
-    x86.mov(        eax, dword_ptr[(int)&dstp]);
-    x86.packssdw(   mm6, mm7);                   // mm6 = 0h|0g|0f|0e
-    x86.inc(        ecx);                        // x += 1
-    x86.packuswb(   mm4, mm6);                   // mm4 = h|g|f|e|d|c|b|a
-    x86.cmp(        ecx, xloops);
-    x86.movq(       qword_ptr[eax+ecx*8-8], mm4); // dstp[x] = h|g|f|e|d|c|b|a
-    x86.jnz(        "xloop");
-
-    x86.lea(        edx, dword_ptr[edx+(fir_filter_size*4)]);        // cur += fir_filter_size
-    x86.add(        eax, ebx);                   // dstp += dst_pitch
-    x86.dec(        edi);                        // y -= 1
-    x86.mov(        dword_ptr[(int)&dstp], eax);
-    x86.jnz(        "yloop");
-  }
-  // No more mmx for now
-  x86.emms();
-  // Restore registers
-  x86.pop(          ebp);
-  x86.pop(          edi);
-  x86.pop(          esi);
-  x86.pop(          edx);
-  x86.pop(          ecx);
-  x86.pop(          ebx);
-  x86.pop(          eax);
-  x86.ret();
-
-  return DynamicAssembledCode(x86, env, "ResizeV: Dynamic code could not be compiled.");
-}
-#endif
-
-
-
 
 
 /**********************************************

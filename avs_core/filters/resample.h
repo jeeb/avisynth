@@ -44,8 +44,11 @@
 #include "../core/softwire_helpers.h"
 #endif
 
-#include <emmintrin.h>
-#include <immintrin.h>
+// Intrinsics for SSE4.1, SSSE3, SSE3, SSE2, ISSE and MMX
+#include <smmintrin.h>
+
+// Resizer function pointer
+typedef void (*ResamplerV)(BYTE* dst, const BYTE* src, int dst_pitch, int src_pitch, ResamplingProgram* program, int width, int target_height, const int* pitch_table);
 
 #ifdef X86_32
 class FilteredResizeH : public GenericVideoFilter, public CodeGenerator
@@ -91,46 +94,32 @@ private:
 };
 
  
-#ifdef X86_32
-class FilteredResizeV : public GenericVideoFilter, public CodeGenerator
-#else
-class FilteredResizeV : public GenericVideoFilter
-#endif
 /**
   * Class to resize in the vertical direction using a specified sampling filter
   * Helper for resample functions
  **/
-{
+class FilteredResizeV : public GenericVideoFilter {
 public:
-  FilteredResizeV( PClip _child, double subrange_top, double subrange_height, int target_height,
-                   ResamplingFunction* func, IScriptEnvironment* env );
+  FilteredResizeV( PClip _child, double subrange_top, double subrange_height, int target_height, ResamplingFunction* func, IScriptEnvironment* env );
   virtual ~FilteredResizeV(void);
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
 
+  ResamplerV GetResampler(int CPU, bool aligned, ResamplingProgram* program);
+
 private:
+  ResamplingProgram *resampling_program_luma;
+  ResamplingProgram *resampling_program_chroma;
+  int *src_pitch_table_luma;
+  int *src_pitch_table_chromaU;
+  int *src_pitch_table_chromaV;
+  int src_pitch_luma;
+  int src_pitch_chromaU;
+  int src_pitch_chromaV;
 
-#ifdef X86_32
-  DynamicAssembledCode GenerateResizer(int gen_plane, bool aligned, IScriptEnvironment* env);
-  DynamicAssembledCode assemblerY;
-  DynamicAssembledCode assemblerUV;
-  DynamicAssembledCode assemblerY_aligned;
-  DynamicAssembledCode assemblerUV_aligned;
-#endif
-
-  int* /*const*/ resampling_pattern;
-  int* /*const*/ resampling_patternUV;
-  int *yOfs;
-  int *yOfsUV;
-  int pitch_gY;
-  int pitch_gUV;
-
-  // Used for Dynamic code:
-  int src_pitch;
-  int dst_pitch;
-  const BYTE* srcp;
-  BYTE* dstp;
-  int y;
-  int *yOfs2;
+  ResamplerV resampler_luma_aligned;
+  ResamplerV resampler_luma_unaligned;
+  ResamplerV resampler_chroma_aligned;
+  ResamplerV resampler_chroma_unaligned;
 };
 
 

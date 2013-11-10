@@ -425,3 +425,70 @@ int* ResamplingFunction::GetResamplingPatternYUV( int original_width, double sub
 
   return result;
 }
+
+ResamplingProgram* ResamplingFunction::GetResamplingProgram(int source_size, double crop_start, double crop_size, int target_size, IScriptEnvironment* env) {
+  double filter_scale = double(target_size) / crop_size;
+  double filter_step = min(filter_scale, 1.0);
+  double filter_support = support() / filter_step;
+  int fir_filter_size = int(ceil(filter_support*2));
+
+  ResamplingProgram* program = new ResamplingProgram(fir_filter_size, source_size, target_size, crop_start, crop_size);
+  
+
+  // this variable translates such that the image center remains fixed
+  double pos;
+  double pos_step = crop_size / target_size;
+
+  if (source_size <= filter_support) {
+    env->ThrowError("Resize: Source image too small for this resize method. Width=%d, Support=%d", source_size, int(ceil(filter_support)));
+  }
+
+  if (fir_filter_size == 1) // PointResize
+    pos = crop_start;
+  else
+    pos = crop_start + ((crop_size - target_size) / (target_size*2)); // TODO this look wrong, gotta check
+
+  for (int i = 0; i < target_size; ++i) {
+    // Clamp start and end position such that it does not exceed frame size
+    int end_pos = int(pos + filter_support);
+
+    if (end_pos > source_size-1)
+      end_pos = source_size-1;
+
+    int start_pos = end_pos - fir_filter_size + 1;
+
+    if (start_pos < 0)
+      start_pos = 0;
+
+    program->pixel_offset[i] = start_pos;
+
+    // the following code ensures that the coefficients add to exactly FPScale
+    double total = 0.0;
+
+    // Ensure that we have a valid position
+    double ok_pos = clamp(pos, 0.0, (double)(source_size-1));
+
+    // Accumulate all coefficients for weighting
+    for (int j = 0; j < fir_filter_size; ++j) {
+      total += f((start_pos+j - ok_pos) * filter_step);
+    }
+
+    if (total == 0.0) {
+      // Shouldn't happend for valid positions.
+      total = 1.0;
+    }
+
+    double value = 0.0;
+
+    // Now we generate real coefficient
+    for (int k = 0; k < fir_filter_size; ++k) {
+      double new_value = value + f((start_pos+k - ok_pos) * filter_step) / total;
+      program->pixel_coefficient[i*fir_filter_size+k] = short(int(new_value*FPScale+0.5) - int(value*FPScale+0.5)); // to make it round across pixels
+      value = new_value;
+    }
+
+    pos += pos_step;
+  }
+
+  return program;
+}
