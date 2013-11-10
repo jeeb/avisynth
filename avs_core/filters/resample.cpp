@@ -55,6 +55,12 @@ __forceinline __m128i simd_load_streaming(const __m128i* adr) {
   return _mm_stream_load_si128(const_cast<__m128i*>(adr));
 }
 
+__forceinline __m128i simd_load_movq(const __m128i* adr) {
+  __m128i hi = _mm_loadl_epi64(adr+8);
+  __m128i lo = _mm_loadl_epi64(adr);
+  return _mm_or_si128(_mm_srli_si128(hi, 8), lo);
+}
+
 /********************************************************************
 ***** Declare index of new filters for Avisynth's filter engine *****
 ********************************************************************/
@@ -85,6 +91,56 @@ extern const AVSFunction Resample_filters[] = {
  ***** Filtered Resize - Horizontal *****
  ***************************************/
 
+// interleave 4 pixels together
+void make_sse2_program(int* out, const int* in, int size) {
+  int copy_size = *in+1;
+  int sizeMod4 = (size/4)*4;
+
+  *out++ = *in++; // copy filter size
+
+  for (int i = 0; i < sizeMod4; i+=4) {
+    for (int j = 0; j < copy_size; j++) {
+      *out++ = *(in+copy_size*0+j);
+      *out++ = *(in+copy_size*1+j);
+      *out++ = *(in+copy_size*2+j);
+      *out++ = *(in+copy_size*3+j);
+    }
+    in += copy_size*4;
+  }
+
+  // Leftover
+  switch (sizeMod4 - size) {
+  case 3:
+    for (int j = 0; j < copy_size; j++) {
+      *out++ = *(in+copy_size*0+j);
+      *out++ = *(in+copy_size*1+j);
+      *out++ = *(in+copy_size*2+j);
+      *out++ = 0;
+    }
+    break;
+  case 2:
+    for (int j = 0; j < copy_size; j++) {
+      *out++ = *(in+copy_size*0+j);
+      *out++ = *(in+copy_size*1+j);
+      *out++ = 0;
+      *out++ = 0;
+    }
+    break;
+  case 1:
+    for (int j = 0; j < copy_size; j++) {
+      *out++ = *(in+copy_size*0+j);
+      *out++ = 0;
+      *out++ = 0;
+      *out++ = 0;
+    }
+    break;
+  }
+
+  //FILE* fp = fopen("debug-coeff.txt", "w");
+  //for (int i = 0; i < size; i++) {
+  //  for (int j = 0; j < 
+}
+
 FilteredResizeH::FilteredResizeH( PClip _child, double subrange_left, double subrange_width,
                                   int target_width, ResamplingFunction* func, IScriptEnvironment* env )
   : GenericVideoFilter(_child), tempY(0), tempUV(0),pattern_luma(0),pattern_chroma(0)
@@ -107,7 +163,6 @@ FilteredResizeH::FilteredResizeH( PClip _child, double subrange_left, double sub
       if (target_width & mask)
         env->ThrowError("Resize: Planar destination width must be a multiple of %d.", mask+1);
     }
-
     tempY = (BYTE*) _aligned_malloc(original_width*2+4+32, 64);   // aligned for cache line
 #if 0
     if (vi.IsYUY2()) {
@@ -140,6 +195,13 @@ FilteredResizeH::FilteredResizeH( PClip _child, double subrange_left, double sub
   }
   else
     pattern_luma = func->GetResamplingPatternRGB(vi.width, subrange_left, subrange_width, target_width, env);
+
+  // Temporary stuff for planar resizing
+  unpacked_tmp = (short*) _aligned_malloc(original_width*2+4+32, 64);
+
+  // Preprocess SSE2 coefficient
+  processed_pattern_luma = (int*) malloc(sizeof(int)*(target_width+4)*(*pattern_luma + 1) + sizeof(int));
+  make_sse2_program(processed_pattern_luma, pattern_luma, target_width);
 
   vi.width = target_width;
 
@@ -735,47 +797,127 @@ void resize_h_c_yuy2(BYTE* dst, const BYTE* src, int dst_pitch, int src_pitch, i
   }
 }
 
-void resize_h_c_rgb24(BYTE* dst, const BYTE* src, int dst_pitch, int src_pitch, int* program, int width, int target_height) {
+template <int size>
+void resize_h_c_rgb(BYTE* dst, const BYTE* src, int dst_pitch, int src_pitch, int* program, int width, int target_height) {
   int filter_size = *program;
   int* current = program+1;
   
   for (int x = 0; x < width; x++) {
     int begin = *current;
     current++;
-    for (int k = 0; k < 3; k++) {
+    for (int k = 0; k < size; k++) {
       for (int y = 0; y < target_height; y++) {
         int result = 0;
         for (int i = 0; i < filter_size; i++) {
-          result += (src+y*src_pitch)[(begin+i)*3+k] * current[i];
+          result += (src+y*src_pitch)[(begin+i)*size+k] * current[i];
         }
         result = ((result+8192)/16384);
         result = result > 255 ? 255 : result < 0 ? 0 : result;
-        (dst+y*dst_pitch)[x*3+k] = (BYTE)result;
+        (dst+y*dst_pitch)[x*size+k] = (BYTE)result;
       }
     }
     current += filter_size;
   }
 }
 
-void resize_h_c_rgb32(BYTE* dst, const BYTE* src, int dst_pitch, int src_pitch, int* program, int width, int target_height) {
+void resize_h_sse2_planar(BYTE* dst, const BYTE* src, int dst_pitch, int src_pitch, int* program, int width, int target_height) {
   int filter_size = *program;
   int* current = program+1;
   
-  for (int x = 0; x < width; x++) {
-    int begin = *current;
-    current++;
-    for (int k = 0; k < 4; k++) {
-      for (int y = 0; y < target_height; y++) {
-        int result = 0;
-        for (int i = 0; i < filter_size; i++) {
-          result += (src+y*src_pitch)[(begin+i)*4+k] * current[i];
-        }
-        result = ((result+8192)/16384);
-        result = result > 255 ? 255 : result < 0 ? 0 : result;
+  int sizeMod2 = (filter_size/2)*2;
+  //sizeMod2 = 0;
+
+  __m128i zero = _mm_setzero_si128();
+
+  for (int y = 0; y < target_height; y++) {
+    // reset program pointer
+    current = program+1;
+    
+    for (int x = 0; x < width; x+=4) {
+      __m128i result = _mm_set1_epi32(8192);
+      
+      int* begin = current;
+      current += 4;
+
+      for (int i = 0; i < sizeMod2; i+=2) {
+        // Load
+        __m128i pixel1 = _mm_cvtsi32_si128(*reinterpret_cast<const int*>(src+*(begin+k)+i));   // 00 00 00 00 00 00 XX Aa
+        __m128i pixel2 = _mm_cvtsi32_si128(*reinterpret_cast<const int*>(src+*(begin+k)+i));   // 00 00 00 00 00 00 XX Bb
+        __m128i pixel3 = _mm_cvtsi32_si128(*reinterpret_cast<const int*>(src+*(begin+k)+i));   // 00 00 00 00 00 00 XX Cc
+        __m128i pixel4 = _mm_cvtsi32_si128(*reinterpret_cast<const int*>(src+*(begin+k)+i));   // 00 00 00 00 00 00 XX Dd
+
+        // Interleave
+        __m128i t1   = _mm_unpacklo_epi16(pixel1, pixel2);                               // 00 00 00 00 XX XX Bb Aa
+        __m128i t2   = _mm_unpacklo_epi16(pixel3, pixel4);                               // 00 00 00 00 XX XX Dd Cc
+        __m128i data = _mm_unpacklo_epi32(t1, t2);                                       // XX XX XX XX Dd Cc Bb Aa
+
+        // Unpack
+        data = _mm_unpacklo_epi8(data, zero);                                            // 0D 0d 0C 0c 0B 0b 0A 0a
+
+        // Load coefficient
+        __m128i coeff1 = _mm_loadu_si128(reinterpret_cast<const __m128i*>(current));     // S0 c4 S0 c3 S0 c2 S0 c1 (epi32)
+        __m128i coeff2 = _mm_loadu_si128(reinterpret_cast<const __m128i*>(current+4));   // S0 C4 S0 C3 S0 C2 S0 C1 (epi32)
+                coeff1 = _mm_packs_epi32(coeff1, zero);                                  // 00 00 00 00 c4 c3 c2 c1
+                coeff2 = _mm_packs_epi32(coeff2, zero);                                  // 00 00 00 00 C4 C3 C2 C1
+        __m128i coeff  = _mm_unpacklo_epi16(coeff1, coeff2);                             // C4 c4 C3 c3 C2 c2 C1 c1
+
+        // Multiply
+        __m128i res = _mm_madd_epi16(data, coeff);
+
+        // Add result
+        result = _mm_add_epi32(result, res);
+
+        // Move to next coefficient
+        current += 8;
       }
+      
+      // Leftover
+      if (sizeMod2 != filter_size) {
+      //for (int i = sizeMod2; i < filter_size; i++) {
+        __m128i pixel[4];
+
+        // Load
+        for (int k = 0; k < 4; k++) {
+          pixel[k] = _mm_cvtsi32_si128(*reinterpret_cast<const int*>(src+*(begin+k)+sizeMod2));   // 00 00 00 00 00 00 XX Xa
+        }
+
+        // Interleave
+        __m128i t1   = _mm_unpacklo_epi8(pixel[0], pixel[1]);                            // 00 00 00 00 XX XX XX ba
+        __m128i t2   = _mm_unpacklo_epi8(pixel[2], pixel[3]);                            // 00 00 00 00 XX XX XX dc
+        __m128i data = _mm_unpacklo_epi16(t1, t2);                                       // XX XX XX XX XX XX dc ba
+
+        // Unpack
+        data = _mm_unpacklo_epi8(data, zero);                                            // 00 00 00 00 0d 0c 0b 0a
+        data = _mm_unpacklo_epi16(data, zero);                                           // 00 0d 00 0c 00 0b 00 0a
+
+        // Load coefficient
+        __m128i coeff1 = _mm_loadu_si128(reinterpret_cast<const __m128i*>(current));     // S0 c4 S0 c3 S0 c2 S0 c1 (epi32)
+        __m128i coeff  = _mm_and_si128(coeff1, _mm_set1_epi32(0x0000FFFF));              // 00 c4 00 c3 00 c2 00 c1
+
+        // Multiply
+        __m128i res = _mm_madd_epi16(data, coeff);
+
+        // Add result
+        result = _mm_add_epi32(result, res);
+
+        // Move to next coefficient (in this case start of another quadpixel)
+        current += 4;
+      }
+
+      // Pack and store result
+      result = _mm_srai_epi32(result, 14); // Devided by FPRound (16384)
+      result = _mm_packs_epi32(result, zero);
+      result = _mm_packus_epi16(result, zero);
+
+      *(reinterpret_cast<int*>(dst+x)) = _mm_cvtsi128_si32(result);
     }
-    current += filter_size;
+
+    src += src_pitch;
+    dst += dst_pitch;
   }
+}
+
+__forceinline void resize_h_dispatcher() {
 }
 
 PVideoFrame __stdcall FilteredResizeH::GetFrame(int n, IScriptEnvironment* env)
@@ -790,7 +932,8 @@ PVideoFrame __stdcall FilteredResizeH::GetFrame(int n, IScriptEnvironment* env)
 
   if (vi.IsPlanar()) {
     // Plane Y resizing
-    resize_h_c_plannar(dstp, srcp, dst_pitch, src_pitch, pattern_luma, vi.width, vi.height);
+    //resize_h_c_plannar(dstp, srcp, dst_pitch, src_pitch, pattern_luma, vi.width, vi.height);
+    resize_h_sse2_planar(dstp, srcp, dst_pitch, src_pitch, processed_pattern_luma, vi.width, vi.height);
     if (!vi.IsY8()) {
       int width = vi.width >> vi.GetPlaneWidthSubsampling(PLANAR_U);
       int height = vi.height >> vi.GetPlaneHeightSubsampling(PLANAR_U);
@@ -812,9 +955,9 @@ PVideoFrame __stdcall FilteredResizeH::GetFrame(int n, IScriptEnvironment* env)
   } else if (vi.IsYUY2()) {
     resize_h_c_yuy2(dstp, srcp, dst_pitch, src_pitch, pattern_luma, pattern_chroma, vi.width, vi.height);
   } else if (vi.IsRGB24()) {
-    resize_h_c_rgb24(dstp, srcp, dst_pitch, src_pitch, pattern_luma, vi.width, vi.height);
+    resize_h_c_rgb<3>(dstp, srcp, dst_pitch, src_pitch, pattern_luma, vi.width, vi.height);
   } else if (vi.IsRGB32()) {
-    resize_h_c_rgb32(dstp, srcp, dst_pitch, src_pitch, pattern_luma, vi.width, vi.height);
+    resize_h_c_rgb<4>(dstp, srcp, dst_pitch, src_pitch, pattern_luma, vi.width, vi.height);
   } else {
     env->ThrowError("Resize: Unsupport pixel type.");
   }
@@ -1448,8 +1591,8 @@ void resize_v_sse2_planar_pointresize(BYTE* dst, const BYTE* src, int dst_pitch,
 
     const BYTE* src_ptr = src + (src_pitch*begin);
     for (int x = 0; x < wMod16; x+=16) {
-      __m128i current = load(reinterpret_cast<const __m128i*>(src_ptr+x));
-      _mm_store_si128(reinterpret_cast<__m128i*>(dst+x), current); // dst should always be aligned
+      __m128i current_pixel = load(reinterpret_cast<const __m128i*>(src_ptr+x));
+      _mm_store_si128(reinterpret_cast<__m128i*>(dst+x), current_pixel); // dst should always be aligned
     }
 
     // Leftover
@@ -1614,7 +1757,7 @@ void resize_v_ssse3_planar(BYTE* dst, const BYTE* src, int dst_pitch, int src_pi
         __m128i coeff = _mm_set1_epi16(static_cast<short>(current[i]));
 
         src_l = _mm_slli_epi16(src_l, 7);
-        src_h = _mm_slli_epi16(src_h, 7);
+        src_h = _mm_slli_epi16(src_h, 7); // TODO can't we unpack(zero, src_p) and shift by 7 below? (no it must be signed)
 
         __m128i dst_l = _mm_mulhrs_epi16(src_l, coeff);   // Multiply by coefficient (SSSE3)
         __m128i dst_h = _mm_mulhrs_epi16(src_h, coeff);

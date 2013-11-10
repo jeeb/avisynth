@@ -76,6 +76,10 @@ private:
   int* /*const*/ pattern_chroma;
   int original_width;
 
+  // Added in avs+
+  short* unpacked_tmp;
+  int*   processed_pattern_luma;
+
   BYTE *tempY, *tempUV;
 // These must be properly set when running the filter:
   BYTE *gen_srcp;
