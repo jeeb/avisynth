@@ -40,6 +40,7 @@
 #include "convert_planar.h"
 #include "avs/alignment.h"
 #include <cstdlib>
+#include <emmintrin.h>
 
 
 
@@ -61,8 +62,34 @@ extern const AVSFunction Convert_filters[] = {       // matrix can be "rec601", 
   { 0 }
 };
 
+const int crv_rec601 = int(1.596*65536+0.5);
+const int cgv_rec601 = int(0.813*65536+0.5);
+const int cgu_rec601 = int(0.391*65536+0.5);
+const int cbu_rec601 = int(2.018*65536+0.5);
 
+const int crv_rec709 = int(1.793*65536+0.5); 
+const int cgv_rec709 = int(0.533*65536+0.5);
+const int cgu_rec709 = int(0.213*65536+0.5);
+const int cbu_rec709 = int(2.112*65536+0.5);
 
+const int crv_pc601 = int(1.407*65536+0.5);
+const int cgv_pc601 = int(0.717*65536+0.5);
+const int cgu_pc601 = int(0.345*65536+0.5); 
+const int cbu_pc601 = int(1.779*65536+0.5);
+
+const int crv_pc709 = int(1.581*65536+0.5);
+const int cgv_pc709 = int(0.470*65536+0.5);
+const int cgu_pc709 = int(0.188*65536+0.5);
+const int cbu_pc709 = int(1.863*65536+0.5);
+
+const int cy_rec = int((255.0/219.0)*65536+0.5);
+const int cy_pc = 65536;
+
+const int crv_values[4] = { crv_rec601, crv_rec709, crv_pc601, crv_pc709 };
+const int cgv_values[4] = { cgv_rec601, cgv_rec709, cgv_pc601, cgv_pc709 };
+const int cgu_values[4] = { cgu_rec601, cgu_rec709, cgu_pc601, cgu_pc709 };
+const int cbu_values[4] = { cbu_rec601, cbu_rec709, cbu_pc601, cbu_pc709 };
+const int cy_values[4]  = { cy_rec,     cy_rec,     cy_pc,     cy_pc};
 
 
 /****************************************
@@ -90,11 +117,56 @@ ConvertToRGB::ConvertToRGB( PClip _child, bool rgb24, const char* matrix,
     else
       env->ThrowError("ConvertToRGB: invalid \"matrix\" parameter (must be matrix=\"Rec601\", \"Rec709\", \"PC.601\" or \"PC.709\")");
   }
-  use_mmx = (env->GetCPUFlags() & CPUF_MMX) != 0;
-
-  if ((theMatrix != Rec601) && ((vi.width & 3) != 0) || !use_mmx)
-    env->ThrowError("ConvertToRGB: Rec.709 and PC Levels support require MMX and horizontal width a multiple of 4");
   vi.pixel_type = rgb24 ? VideoInfo::CS_BGR24 : VideoInfo::CS_BGR32;
+}
+
+template<int rgb_size>
+static void convert_yuy2_to_rgb_c(const BYTE *srcp, BYTE* dstp, int src_pitch, int dst_pitch, int height, int width, int crv, int cgv, int cgu, int cbu, int cy, int tv_scale) {
+  srcp += height * src_pitch;
+  for (int y = height; y > 0; --y) {
+    srcp -= src_pitch;
+    int x;
+    for (x = 0; x < width-2; x+=2) {
+      int scaled_y0 = (srcp[x*2+0] - tv_scale) * cy;
+      int u0 = srcp[x*2+1];
+      int v0 = srcp[x*2+3];
+      int scaled_y1 = (srcp[x*2+2] - tv_scale) * cy;
+      int u1 = srcp[x*2+5];
+      int v1 = srcp[x*2+7];
+
+      dstp[x*rgb_size + 0] = ScaledPixelClip(scaled_y0 + (u0-128) * cbu);                 // blue
+      dstp[x*rgb_size + 1] = ScaledPixelClip(scaled_y0 - (u0-128) * cgu - (v0-128) * cgv); // green
+      dstp[x*rgb_size + 2] = ScaledPixelClip(scaled_y0                  + (v0-128) * crv); // red
+
+      dstp[(x+1)*rgb_size + 0] = ScaledPixelClip(scaled_y1 + (u0+u1-256) * (cbu / 2));                     // blue
+      dstp[(x+1)*rgb_size + 1] = ScaledPixelClip(scaled_y1 - (u0+u1-256) * (cgu / 2) - (v0+v1-256) * (cgv/2)); // green
+      dstp[(x+1)*rgb_size + 2] = ScaledPixelClip(scaled_y1                     + (v0+v1-256) * (crv/2)); // red
+
+      if (rgb_size == 4) {
+        dstp[x*4+3] = 255;
+        dstp[x*4+7] = 255;
+      }
+    }
+
+    int scaled_y0 = (srcp[x*2+0] - tv_scale) * cy;
+    int scaled_y1 = (srcp[x*2+2] - tv_scale) * cy;
+    int u = srcp[x*2+1];
+    int v = srcp[x*2+3];
+
+    dstp[x*rgb_size + 0]     = ScaledPixelClip(scaled_y0 + (u-128) * cbu);                 // blue
+    dstp[x*rgb_size + 1]     = ScaledPixelClip(scaled_y0 - (u-128) * cgu - (v-128) * cgv); // green
+    dstp[x*rgb_size + 2]     = ScaledPixelClip(scaled_y0                 + (v-128) * crv); // red
+
+    dstp[(x+1)*rgb_size + 0] = ScaledPixelClip(scaled_y1 + (u-128) * cbu);                 // blue
+    dstp[(x+1)*rgb_size + 1] = ScaledPixelClip(scaled_y1 - (u-128) * cgu - (v-128) * cgv); // green
+    dstp[(x+1)*rgb_size + 2] = ScaledPixelClip(scaled_y1                 + (v-128) * crv); // red
+
+    if (rgb_size == 4) {
+      dstp[x*4+3] = 255;
+      dstp[x*4+7] = 255;
+    }
+    dstp += dst_pitch;
+  }
 }
 
 
@@ -104,70 +176,22 @@ PVideoFrame __stdcall ConvertToRGB::GetFrame(int n, IScriptEnvironment* env)
   const int src_pitch = src->GetPitch();
   const BYTE* srcp = src->GetReadPtr();
 
-  /* This block is commented out (disabling .asm sources) until CMake gets proper ASM support for VC++
-  int src_rowsize = __min(src_pitch, (src->GetRowSize()+7) & -8);
-  // assumption: is_yuy2
-  if (use_mmx && ((src_rowsize & 7) == 0) && (src_rowsize >= 16)) {
-    VideoInfo vi2 = vi;
-    vi2.width=src_rowsize / 2;
-    PVideoFrame dst = env->NewVideoFrame(vi2,-2); // force pitch == rowsize
-    BYTE* dstp = dst->GetWritePtr();
+  PVideoFrame dst = env->NewVideoFrame(vi);
+  const int dst_pitch = dst->GetPitch();
+  BYTE* dstp = dst->GetWritePtr();
+  int tv_scale = theMatrix == Rec601 || theMatrix == Rec709 ? 16 : 0;
 
-    (vi.IsRGB24() ? mmx_YUY2toRGB24 : mmx_YUY2toRGB32)(srcp, dstp,
-      srcp + vi.height * src_pitch, src_pitch, src_rowsize, theMatrix);
 
-    if (vi.width & 3) {  // Did we extend off the right edge of picture?
-      const int dst_pitch = dst->GetPitch();
-      const int x2 = (vi.width-2) * 2;
-      const int xE = (vi.width-1) * (vi2.BitsPerPixel()>>3);
-      srcp += vi.height * src_pitch;
-      for (int y=vi.height; y>0; --y) {
-        srcp -= src_pitch;
-        YUV2RGB(srcp[x2+2], srcp[x2+1], srcp[x2+3], &dstp[xE]);
-        dstp += dst_pitch;
-      }
-    }
-    return env->Subframe(dst,0, dst->GetPitch(), vi2.BytesFromPixels(vi.width), vi.height);
-  }
-  else {*/
-    PVideoFrame dst = env->NewVideoFrame(vi);
-    const int dst_pitch = dst->GetPitch();
-    BYTE* dstp = dst->GetWritePtr();
-
+  {
     if (vi.IsRGB32()) {
-      srcp += vi.height * src_pitch;
-      for (int y=vi.height; y>0; --y) {
-        srcp -= src_pitch;
-        int x;
-        for (x=0; x<vi.width-2; x+=2) {
-          YUV2RGB(srcp[x*2+0], srcp[x*2+1], srcp[x*2+3], &dstp[x*4]);
-          YUV2RGB2(srcp[x*2+2], srcp[x*2+1], srcp[x*2+5], srcp[x*2+3], srcp[x*2+7], &dstp[x*4+4]);
-          dstp[x*4+3] = 255;
-          dstp[x*4+7] = 255;
-        }
-        YUV2RGB(srcp[x*2+0], srcp[x*2+1], srcp[x*2+3], &dstp[x*4]);
-        YUV2RGB(srcp[x*2+2], srcp[x*2+1], srcp[x*2+3], &dstp[x*4+4]);
-        dstp[x*4+3] = 255;
-        dstp[x*4+7] = 255;
-        dstp += dst_pitch;
-      }
+      convert_yuy2_to_rgb_c<4>(srcp, dstp, src_pitch, dst_pitch, vi.height, vi.width, 
+        crv_values[theMatrix], cgv_values[theMatrix], cgu_values[theMatrix], cbu_values[theMatrix], cy_values[theMatrix], tv_scale);
+    } else {
+      convert_yuy2_to_rgb_c<3>(srcp, dstp, src_pitch, dst_pitch, vi.height, vi.width,
+        crv_values[theMatrix], cgv_values[theMatrix], cgu_values[theMatrix], cbu_values[theMatrix], cy_values[theMatrix], tv_scale);
     }
-    else if (vi.IsRGB24()) {
-      srcp += vi.height * src_pitch;
-      for (int y=vi.height; y>0; --y) {
-        srcp -= src_pitch;
-        int x;
-        for (x=0; x<vi.width-2; x+=2) {
-          YUV2RGB(srcp[x*2+0], srcp[x*2+1], srcp[x*2+3], &dstp[x*3]);
-          YUV2RGB2(srcp[x*2+2], srcp[x*2+1], srcp[x*2+5], srcp[x*2+3], srcp[x*2+7], &dstp[x*3+3]);
-        }
-        YUV2RGB(srcp[x*2+0], srcp[x*2+1], srcp[x*2+3], &dstp[x*3]);
-        YUV2RGB(srcp[x*2+2], srcp[x*2+1], srcp[x*2+3], &dstp[x*3+3]);
-        dstp += dst_pitch;
-      }
-    }
-    return dst;
-  //}
+  }
+  return dst;
 }
 
 
