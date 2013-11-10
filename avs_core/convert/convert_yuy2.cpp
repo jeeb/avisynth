@@ -208,6 +208,122 @@ static void convert_rgb_to_yuy2_c(const bool pcrange, const int cyb, const int c
   }
 }
 
+
+/*
+ Optimization note: you can template matrix parameter like in ConvertBackToYUY2 to get ~5% better performance
+*/
+template<int rgb_bytes>
+static void convert_rgb_line_to_yuy2_sse2(const BYTE *srcp, BYTE *dstp, int width, int matrix) {
+  __m128i luma_round_mask;
+  if (matrix == Rec601 || matrix == Rec709) {
+    luma_round_mask = _mm_set1_epi32(0x84000);
+  } else {
+    luma_round_mask = _mm_set1_epi32(0x4000);
+  }
+
+  __m128i luma_coefs = _mm_set_epi16(0, cyr_values[matrix], cyg_values[matrix], cyb_values[matrix], 0, cyr_values[matrix], cyg_values[matrix], cyb_values[matrix]);
+  __m128i chroma_coefs = _mm_set_epi16(kv_values[matrix], kv_values_luma[matrix], ku_values[matrix], ku_values_luma[matrix], kv_values[matrix], kv_values_luma[matrix], ku_values[matrix], ku_values_luma[matrix]);
+  __m128i chroma_round_mask = _mm_set1_epi32(0x808000);
+
+  __m128i upper_dword_mask = _mm_set1_epi32(0xFFFF0000);
+  __m128i zero = _mm_setzero_si128();
+  __m128i tv_scale = _mm_set1_epi32((matrix == Rec601 || matrix == Rec709) ? 64 : 0);
+
+  //main processing
+  __m128i src = _mm_cvtsi32_si128(*reinterpret_cast<const int*>(srcp));
+  src = _mm_unpacklo_epi8(src, zero); //xx | 00xx 00r0 00g0 00b0
+  __m128i t1 = _mm_madd_epi16(src, luma_coefs); //xx | xx | xx*0 + r0*cyr | g0*cyg + b0*cyb
+
+  __m128i t1_r = _mm_shuffle_epi32(t1, _MM_SHUFFLE(3, 3, 1, 1)); //xx | xx | xx | r0*cyr
+
+  t1 = _mm_add_epi32(t1, luma_round_mask); //xx | xx | xx | g0*cyg + b0*cyb + round
+  t1 = _mm_add_epi32(t1, t1_r); //xx | xx | xx | r0*cyr + g0*cyg + b0*cyb + round
+
+  __m128i y0 = _mm_srli_epi32(t1, 15); //xx | xx | xx | 0 0 0 0 y0
+  y0 = _mm_shuffle_epi32(y0, _MM_SHUFFLE(0, 0, 0, 0)); //0 0 0 0 y0 | 0 0 0 0 y0 | 0 0 0 0 y0 | 0 0 0 0 y0
+  __m128i rb_prev = _mm_shuffle_epi32(src, _MM_SHUFFLE(1, 0, 1, 0)); //00xx 00r0 00g0 00b0 | xx
+
+  for (int x = 0; x < width; x+=4) {
+
+    __m128i rgb_p1, rgb_p2;
+    if (rgb_bytes == 4) {
+      //RGB32
+      __m128i src = _mm_load_si128(reinterpret_cast<const __m128i*>(srcp+x*4)); //xxr3 g3b3 xxr2 g2b2 | xxr1 g1b1 xxr0 g0b0
+
+      rgb_p1 = _mm_unpacklo_epi8(src, zero); //00xx 00r2 00g2 00b2 | 00xx 00r1 00g1 00b1
+      rgb_p2 = _mm_unpackhi_epi8(src, zero); //00xx 00r4 00g4 00b4 | 00xx 00r3 00g3 00b3
+    } else {
+      //RGB24
+      __m128i pixel01 = _mm_loadl_epi64(reinterpret_cast<const __m128i*>(srcp+x*3)); //pixels 0 and 1
+      __m128i pixel23 = _mm_loadl_epi64(reinterpret_cast<const __m128i*>(srcp+x*3+6)); //pixels 2 and 3
+
+      //0 0 0 0 0 0 0 0 | x x r1 g1 b1 r0 g0 b0  -> 0 x 0 x 0 r1 0 g1 | 0 b1 0 r0 0 g0 0 b0 -> 0 r1 0 g1 0 b1 0 r0 | 0 b1 0 r0 0 g0 0 b0 -> 0 r1 0 r1 0 g1 0 b1 | 0 b1 0 r0 0 g0 0 b0
+      rgb_p1 = _mm_shufflehi_epi16(_mm_shuffle_epi32(_mm_unpacklo_epi8(pixel01, zero), _MM_SHUFFLE(2, 1, 1, 0)), _MM_SHUFFLE(0, 3, 2, 1));
+      rgb_p2 = _mm_shufflehi_epi16(_mm_shuffle_epi32(_mm_unpacklo_epi8(pixel23, zero), _MM_SHUFFLE(2, 1, 1, 0)), _MM_SHUFFLE(0, 3, 2, 1));
+    }
+
+    __m128i rb13 = _mm_unpacklo_epi64(rgb_p1, rgb_p2); //00xx 00r3 00g3 00b3 | 00xx 00r1 00g1 00b1
+    __m128i rb24 = _mm_unpackhi_epi64(rgb_p1, rgb_p2); //00xx 00r4 00g4 00b4 | 00xx 00r2 00g2 00b2
+    __m128i rb02 = _mm_unpackhi_epi64(rb_prev, rgb_p1); //00xx 00r2 00g2 00b2 | 00xx 00r0 00g0 00b0
+    rb_prev = rgb_p2;
+    __m128i rb = _mm_add_epi16(rb13, rb13); //xxxx r3*2 | xxxx b3*2 | 00xx r1*2 | xxxx b1*2
+    rb = _mm_add_epi16(rb, rb24); //xxxx r3*2 + r4 | xxxx b3*2 + b4 | 00xx r1*2 + r2 | xxxx b1*2 + b2
+    rb = _mm_add_epi16(rb, rb02); //xxxx r2 + r3*2 + r4 | xxxx b2 + b3*2 + b4 | 00xx r0 + r1*2 + r2 | xxxx b0 + b1*2 + b2
+
+    rb = _mm_slli_epi32(rb, 16); //r2+r3*2+r4 0000 | b2 + b3*2 + b4 0000 | r0+r1*2+r2 0000 | b0 + b1*2 + b2 0000
+
+    __m128i t1 = _mm_madd_epi16(rgb_p1, luma_coefs); //xx*0 + r2*cyr | g2*cyg + b2*cyb | xx*0 + r1*cyr | g1*cyg + b1*cyb
+    __m128i t2 = _mm_madd_epi16(rgb_p2, luma_coefs); //xx*0 + r4*cyr | g4*cyg + b4*cyb | xx*0 + r3*cyr | g3*cyg + b3*cyb
+
+    __m128i r_temp = _mm_castps_si128(_mm_shuffle_ps(_mm_castsi128_ps(t1), _mm_castsi128_ps(t2), _MM_SHUFFLE(3, 1, 3, 1))); // r4*cyr | r3*cyr | r2*cyr | r1*cyr
+    __m128i gb_temp = _mm_castps_si128(_mm_shuffle_ps(_mm_castsi128_ps(t1), _mm_castsi128_ps(t2), _MM_SHUFFLE(2, 0, 2, 0))); // g4*cyg + b4*cyb | g3*cyg + b3*cyb | g2*cyg + b2*cyb | g1*cyg + b1*cyb
+
+    __m128i luma = _mm_add_epi32(r_temp, gb_temp); //r4*cyr + g4*cyg + b4*cyb | r3*cyr + g3*cyg + b3*cyb | r2*cyr + g2*cyg + b2*cyb | r1*cyr + g1*cyg + b1*cyb
+    luma = _mm_add_epi32(luma, luma_round_mask); //r4*cyr + g4*cyg + b4*cyb + round | r3*cyr + g3*cyg + b3*cyb + round | r2*cyr + g2*cyg + b2*cyb + round | r1*cyr + g1*cyg + b1*cyb + round
+    luma = _mm_srli_epi32(luma, 15); //0000 00y4 | 0000 00y3 | 0000 00y2 | 0000 00y1   
+
+
+    __m128i y13 = _mm_shuffle_epi32(luma, _MM_SHUFFLE(2, 2, 0, 0)); //0000 00y3 | 0000 00y3 | 0000 00y1 | 0000 00y1  
+    __m128i y02 = _mm_castps_si128(_mm_shuffle_ps(
+      _mm_castsi128_ps(y0),
+      _mm_castsi128_ps(luma),
+      _MM_SHUFFLE(1, 1, 3, 3)
+      )); //0000 00y2 | 0000 00y2 | 0000 00y0 | 0000 00y0
+    __m128i y24 = _mm_shuffle_epi32(luma, _MM_SHUFFLE(3, 3, 1, 1)); //0000 00y4 | 0000 00y4 | 0000 00y2 | 0000 00y2
+    y0 = luma;
+    __m128i scaled_y = _mm_add_epi16(y13, y13);
+    scaled_y = _mm_add_epi16(scaled_y, y02);
+    scaled_y = _mm_add_epi16(scaled_y, y24);//0000 y2+y3*2+y4 | 0000 y2+y3*2+y4 | 0000 y0+y1*2+y2 | 0000 y0+y1*2+y2
+
+    scaled_y = _mm_sub_epi16(scaled_y, tv_scale);
+
+    __m128i rby = _mm_or_si128(rb, scaled_y); //00 rr 00 yy 00 bb 00 yy
+
+    __m128i uv = _mm_madd_epi16(rby, chroma_coefs);
+    uv = _mm_srai_epi32(uv, 1);
+
+    uv = _mm_add_epi32(uv, chroma_round_mask);
+    uv = _mm_and_si128(uv, upper_dword_mask);
+    __m128i yuv = _mm_or_si128(uv, luma);
+
+    yuv = _mm_packus_epi16(yuv, yuv);
+
+   _mm_storel_epi64(reinterpret_cast<__m128i*>(dstp+x*2), yuv);
+  }
+}
+
+template<int rgb_bytes>
+static void convert_rgb_to_yuy2_sse2(const BYTE *src, BYTE *dst, int src_pitch, int dst_pitch, int width, int height, int matrix) {
+  src += src_pitch*(height-1);       // ;Move source to bottom line (read top->bottom)
+
+  for (int y=0; y < height; ++y) {
+    convert_rgb_line_to_yuy2_sse2<rgb_bytes>(src, dst, width, matrix);
+    src -= src_pitch;           // ;Move upwards
+    dst += dst_pitch;
+  } // end for y
+  _mm_empty();
+}
+
 #ifdef X86_32
 
 #pragma warning(disable: 4799 4700)
@@ -359,6 +475,16 @@ PVideoFrame __stdcall ConvertToYUY2::GetFrame(int n, IScriptEnvironment* env)
 
   PVideoFrame dst = env->NewVideoFrame(vi);
   BYTE* yuv = dst->GetWritePtr();
+
+  if ((env->GetCPUFlags() & CPUF_SSE2) && IsPtrAligned(src->GetReadPtr(), 16))
+  {
+    if ((src_cs & VideoInfo::CS_BGR32) == VideoInfo::CS_BGR32) {
+      convert_rgb_to_yuy2_sse2<4>(src->GetReadPtr(), dst->GetWritePtr(), src->GetPitch(), dst->GetPitch(), vi.width, vi.height, theMatrix);
+    } else {
+      convert_rgb_to_yuy2_sse2<3>(src->GetReadPtr(), dst->GetWritePtr(), src->GetPitch(), dst->GetPitch(), vi.width, vi.height, theMatrix);
+    }
+    return dst;
+  }
 
 #ifdef X86_32
   if (env->GetCPUFlags() & CPUF_MMX)
@@ -715,8 +841,9 @@ static __forceinline __m128i convert_rgb_block_back_to_yuy2_sse2(const BYTE* src
 }
 
 //////////////////////////////////////////////////////////////////////////
-//Optimization note: matrix is a template argument only to avoid subtraction for PC matrices. Compilers tend to generate ~10% faster code in this case. 
-//MMX version is not optimized this way because who'll be using MMX anyway?
+// Optimization note: matrix is a template argument only to avoid subtraction for PC matrices. Compilers tend to generate ~10% faster code in this case. 
+// MMX version is not optimized this way because who'll be using MMX anyway?
+// todo: check if mod4 width is actually needed. we might be safe without it
 //////////////////////////////////////////////////////////////////////////
 template<int matrix, int rgb_bytes>
 static void convert_rgb_line_back_to_yuy2_sse2(const BYTE *srcp, BYTE *dstp, int width) {
