@@ -841,10 +841,10 @@ void resize_h_sse2_planar(BYTE* dst, const BYTE* src, int dst_pitch, int src_pit
 
       for (int i = 0; i < sizeMod2; i+=2) {
         // Load
-        __m128i pixel1 = _mm_cvtsi32_si128(*reinterpret_cast<const int*>(src+*(begin+k)+i));   // 00 00 00 00 00 00 XX Aa
-        __m128i pixel2 = _mm_cvtsi32_si128(*reinterpret_cast<const int*>(src+*(begin+k)+i));   // 00 00 00 00 00 00 XX Bb
-        __m128i pixel3 = _mm_cvtsi32_si128(*reinterpret_cast<const int*>(src+*(begin+k)+i));   // 00 00 00 00 00 00 XX Cc
-        __m128i pixel4 = _mm_cvtsi32_si128(*reinterpret_cast<const int*>(src+*(begin+k)+i));   // 00 00 00 00 00 00 XX Dd
+        __m128i pixel1 = _mm_cvtsi32_si128(*reinterpret_cast<const int*>(src+*(begin+0)+i));   // 00 00 00 00 00 00 XX Aa
+        __m128i pixel2 = _mm_cvtsi32_si128(*reinterpret_cast<const int*>(src+*(begin+1)+i));   // 00 00 00 00 00 00 XX Bb
+        __m128i pixel3 = _mm_cvtsi32_si128(*reinterpret_cast<const int*>(src+*(begin+2)+i));   // 00 00 00 00 00 00 XX Cc
+        __m128i pixel4 = _mm_cvtsi32_si128(*reinterpret_cast<const int*>(src+*(begin+3)+i));   // 00 00 00 00 00 00 XX Dd
 
         // Interleave
         __m128i t1   = _mm_unpacklo_epi16(pixel1, pixel2);                               // 00 00 00 00 XX XX Bb Aa
