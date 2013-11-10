@@ -39,7 +39,6 @@
 
 #include <avs/win.h>
 #include <avisynth.h>
-#include "convert_rgbtoy8.h"
 #include "../filters/resample.h"
 
 enum {Rec601=0, Rec709=1, PC_601=2, PC_709=3, AVERAGE=4 };
