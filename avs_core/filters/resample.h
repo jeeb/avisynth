@@ -48,7 +48,7 @@
 #include <smmintrin.h>
 
 // Resizer function pointer
-typedef void (*ResamplerV)(BYTE* dst, const BYTE* src, int dst_pitch, int src_pitch, ResamplingProgram* program, int width, int target_height, const int* pitch_table);
+typedef void (*ResamplerV)(BYTE* dst, const BYTE* src, int dst_pitch, int src_pitch, ResamplingProgram* program, int width, int target_height, const int* pitch_table, const void* storage);
 
 #ifdef X86_32
 class FilteredResizeH : public GenericVideoFilter, public CodeGenerator
@@ -104,7 +104,7 @@ public:
   virtual ~FilteredResizeV(void);
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
 
-  ResamplerV GetResampler(int CPU, bool aligned, ResamplingProgram* program);
+  ResamplerV GetResampler(int CPU, bool aligned, void** storage, ResamplingProgram* program);
 
 private:
   ResamplingProgram *resampling_program_luma;
@@ -115,6 +115,11 @@ private:
   int src_pitch_luma;
   int src_pitch_chromaU;
   int src_pitch_chromaV;
+
+  void* filter_storage_luma_aligned;
+  void* filter_storage_luma_unaligned;
+  void* filter_storage_chroma_aligned;
+  void* filter_storage_chroma_unaligned;
 
   ResamplerV resampler_luma_aligned;
   ResamplerV resampler_luma_unaligned;

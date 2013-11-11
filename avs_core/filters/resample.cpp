@@ -55,12 +55,6 @@ __forceinline __m128i simd_load_streaming(const __m128i* adr) {
   return _mm_stream_load_si128(const_cast<__m128i*>(adr));
 }
 
-__forceinline __m128i simd_load_movq(const __m128i* adr) {
-  __m128i hi = _mm_loadl_epi64(adr+8);
-  __m128i lo = _mm_loadl_epi64(adr);
-  return _mm_or_si128(_mm_srli_si128(hi, 8), lo);
-}
-
 /********************************************************************
 ***** Declare index of new filters for Avisynth's filter engine *****
 ********************************************************************/
@@ -1508,7 +1502,7 @@ FilteredResizeH::~FilteredResizeH(void)
  ***** Vertical Resizer Assembly *******
  ***************************************/
 
-static void resize_v_c_planar_pointresize(BYTE* dst, const BYTE* src, int dst_pitch, int src_pitch, ResamplingProgram* program, int width, int target_height, const int* pitch_table) {
+static void resize_v_c_planar_pointresize(BYTE* dst, const BYTE* src, int dst_pitch, int src_pitch, ResamplingProgram* program, int width, int target_height, const int* pitch_table, const void* storage) {
   int filter_size = program->filter_size;
 
   for (int y = 0; y < target_height; y++) {
@@ -1524,7 +1518,7 @@ static void resize_v_c_planar_pointresize(BYTE* dst, const BYTE* src, int dst_pi
 }
 
 template<SSELoader load>
-static void resize_v_sse2_planar_pointresize(BYTE* dst, const BYTE* src, int dst_pitch, int src_pitch, ResamplingProgram* program, int width, int target_height, const int* pitch_table) {
+static void resize_v_sse2_planar_pointresize(BYTE* dst, const BYTE* src, int dst_pitch, int src_pitch, ResamplingProgram* program, int width, int target_height, const int* pitch_table, const void* storage) {
   int filter_size = program->filter_size;
 
   int wMod16 = (width / 16) * 16;
@@ -1548,7 +1542,7 @@ static void resize_v_sse2_planar_pointresize(BYTE* dst, const BYTE* src, int dst
   }
 }
 
-static void resize_v_c_planar(BYTE* dst, const BYTE* src, int dst_pitch, int src_pitch, ResamplingProgram* program, int width, int target_height, const int* pitch_table) {
+static void resize_v_c_planar(BYTE* dst, const BYTE* src, int dst_pitch, int src_pitch, ResamplingProgram* program, int width, int target_height, const int* pitch_table, const void* storage) {
   int filter_size = program->filter_size;
   short* current_coeff = program->pixel_coefficient;
 
@@ -1572,7 +1566,7 @@ static void resize_v_c_planar(BYTE* dst, const BYTE* src, int dst_pitch, int src
 }
 
 template<SSELoader load>
-static void resize_v_sse2_planar(BYTE* dst, const BYTE* src, int dst_pitch, int src_pitch, ResamplingProgram* program, int width, int target_height, const int* pitch_table) {
+static void resize_v_sse2_planar(BYTE* dst, const BYTE* src, int dst_pitch, int src_pitch, ResamplingProgram* program, int width, int target_height, const int* pitch_table, const void* storage) {
   int filter_size = program->filter_size;
   short* current_coeff = program->pixel_coefficient;
   
@@ -1672,13 +1666,16 @@ static void resize_v_sse2_planar(BYTE* dst, const BYTE* src, int dst_pitch, int 
 }
 
 template<SSELoader load>
-static void resize_v_ssse3_planar(BYTE* dst, const BYTE* src, int dst_pitch, int src_pitch, ResamplingProgram* program, int width, int target_height, const int* pitch_table) {
+static void resize_v_ssse3_planar(BYTE* dst, const BYTE* src, int dst_pitch, int src_pitch, ResamplingProgram* program, int width, int target_height, const int* pitch_table, const void* storage) {
   int filter_size = program->filter_size;
   short* current_coeff = program->pixel_coefficient;
   
   int wMod16 = (width / 16) * 16;
 
   __m128i zero = _mm_setzero_si128();
+  __m128i coeff_unpacker = _mm_set_epi8(1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0);
+
+  __m128i* coeff_storage = (__m128i*) storage;
 
   for (int y = 0; y < target_height; y++) {
     int offset = program->pixel_offset[y];
@@ -1688,8 +1685,10 @@ static void resize_v_ssse3_planar(BYTE* dst, const BYTE* src, int dst_pitch, int
       __m128i result_l = _mm_set1_epi16(32); // Init. with rounder ((1 << 6)/2 = 32)
       __m128i result_h = result_l;
 
+      const BYTE* src2_ptr = src_ptr+x;
+
       for (int i = 0; i < filter_size; i++) {
-        __m128i src_p = load(reinterpret_cast<const __m128i*>(src_ptr+pitch_table[i]+x));
+        __m128i src_p = load(reinterpret_cast<const __m128i*>(src2_ptr));
 
         __m128i src_l = _mm_unpacklo_epi8(src_p, zero);
         __m128i src_h = _mm_unpackhi_epi8(src_p, zero);
@@ -1697,13 +1696,17 @@ static void resize_v_ssse3_planar(BYTE* dst, const BYTE* src, int dst_pitch, int
         src_l = _mm_slli_epi16(src_l, 7);
         src_h = _mm_slli_epi16(src_h, 7);
 
-        __m128i coeff = _mm_set1_epi16(static_cast<short>(current_coeff[i]));
+        __m128i coeff = _mm_cvtsi32_si128(*reinterpret_cast<const int*>(current_coeff+i));
+                coeff = _mm_shuffle_epi8(coeff, coeff_unpacker);
+        //__m128i coeff = coeff_storage[i];
 
         __m128i dst_l = _mm_mulhrs_epi16(src_l, coeff);   // Multiply by coefficient (SSSE3)
         __m128i dst_h = _mm_mulhrs_epi16(src_h, coeff);
 
         result_l = _mm_add_epi16(result_l, dst_l);
         result_h = _mm_add_epi16(result_h, dst_h);
+
+        src2_ptr += src_pitch;
       }
 
       // Divide by 64
@@ -1729,7 +1732,31 @@ static void resize_v_ssse3_planar(BYTE* dst, const BYTE* src, int dst_pitch, int
 
     dst += dst_pitch;
     current_coeff += filter_size;
+    coeff_storage += filter_size;
   }
+}
+
+static void* resize_v_ssse3_unpack_cocfficient(ResamplingProgram* program) {
+  int filter_size = program->filter_size;
+  short* current_coeff = program->pixel_coefficient;
+
+  __m128i zero = _mm_setzero_si128();
+  __m128i coeff_unpacker = _mm_set_epi8(1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0);
+
+  __m128i* storage = (__m128i*) _aligned_malloc(program->target_size * filter_size * 16, 64);
+
+  for (int y = 0; y < program->target_size; y++) {
+    for (int i = 0; i < filter_size; i++) {
+      __m128i coeff = _mm_cvtsi32_si128(*reinterpret_cast<const int*>(current_coeff+i));
+              coeff = _mm_shuffle_epi8(coeff, coeff_unpacker);
+
+      storage[y*filter_size+i] = coeff;
+    }
+
+    current_coeff += filter_size;
+  }
+
+  return (void*) storage;
 }
 
 __forceinline static void resize_v_create_pitch_table(int* table, int pitch, int height) {
@@ -1748,7 +1775,9 @@ FilteredResizeV::FilteredResizeV( PClip _child, double subrange_top, double subr
   : GenericVideoFilter(_child),
     resampling_program_luma(0), resampling_program_chroma(0),
     src_pitch_table_luma(0), src_pitch_table_chromaU(0), src_pitch_table_chromaV(0),
-    src_pitch_luma(-1), src_pitch_chromaU(-1), src_pitch_chromaV(-1)
+    src_pitch_luma(-1), src_pitch_chromaU(-1), src_pitch_chromaV(-1),
+    filter_storage_luma_aligned(0), filter_storage_luma_unaligned(0),
+    filter_storage_chroma_aligned(0), filter_storage_chroma_unaligned(0)
 {
   if (target_height <= 0)
     env->ThrowError("Resize: Height must be greater than 0.");
@@ -1766,8 +1795,8 @@ FilteredResizeV::FilteredResizeV( PClip _child, double subrange_top, double subr
   // Create resampling program and pitch table
   resampling_program_luma  = func->GetResamplingProgram(vi.height, subrange_top, subrange_height, target_height, env);
   src_pitch_table_luma     = new int[vi.height];
-  resampler_luma_aligned   = GetResampler(env->GetCPUFlags(), true , resampling_program_luma);
-  resampler_luma_unaligned = GetResampler(env->GetCPUFlags(), false, resampling_program_luma);
+  resampler_luma_aligned   = GetResampler(env->GetCPUFlags(), true , &filter_storage_luma_aligned,   resampling_program_luma);
+  resampler_luma_unaligned = GetResampler(env->GetCPUFlags(), false, &filter_storage_luma_unaligned, resampling_program_luma);
 
   if (vi.IsPlanar() && !vi.IsY8()) {
     const int shift = vi.GetPlaneHeightSubsampling(PLANAR_U);
@@ -1781,11 +1810,9 @@ FilteredResizeV::FilteredResizeV( PClip _child, double subrange_top, double subr
                                   env);
     src_pitch_table_chromaU    = new int[vi.height >> shift];
     src_pitch_table_chromaV    = new int[vi.height >> shift];
-    resampler_chroma_aligned   = GetResampler(env->GetCPUFlags(), true , resampling_program_chroma);
-    resampler_chroma_unaligned = GetResampler(env->GetCPUFlags(), false, resampling_program_chroma);
+    resampler_chroma_aligned   = GetResampler(env->GetCPUFlags(), true , &filter_storage_chroma_aligned,   resampling_program_chroma);
+    resampler_chroma_unaligned = GetResampler(env->GetCPUFlags(), false, &filter_storage_chroma_unaligned, resampling_program_chroma);
   }
-
-  // Create resampler
 
   // Change target video info size
   vi.height = target_height;
@@ -1818,9 +1845,9 @@ PVideoFrame __stdcall FilteredResizeV::GetFrame(int n, IScriptEnvironment* env)
 
   // Do resizing
   if (IsPtrAligned(srcp, 16) && IsPtrAligned(src_pitch, 16))
-    resampler_luma_aligned(dstp, srcp, dst_pitch, src_pitch, resampling_program_luma, vi.BytesFromPixels(vi.width), vi.height, src_pitch_table_luma);
+    resampler_luma_aligned(dstp, srcp, dst_pitch, src_pitch, resampling_program_luma, vi.BytesFromPixels(vi.width), vi.height, src_pitch_table_luma, filter_storage_luma_aligned);
   else
-    resampler_luma_unaligned(dstp, srcp, dst_pitch, src_pitch, resampling_program_luma, vi.BytesFromPixels(vi.width), vi.height, src_pitch_table_luma);
+    resampler_luma_unaligned(dstp, srcp, dst_pitch, src_pitch, resampling_program_luma, vi.BytesFromPixels(vi.width), vi.height, src_pitch_table_luma, filter_storage_luma_unaligned);
     
   if (!vi.IsY8() && vi.IsPlanar()) {
     int width = vi.width >> vi.GetPlaneWidthSubsampling(PLANAR_U);
@@ -1833,9 +1860,9 @@ PVideoFrame __stdcall FilteredResizeV::GetFrame(int n, IScriptEnvironment* env)
     dstp = dst->GetWritePtr(PLANAR_U);
       
     if (IsPtrAligned(srcp, 16) && IsPtrAligned(src_pitch, 16))
-      resampler_chroma_aligned(dstp, srcp, dst_pitch, src_pitch, resampling_program_chroma, width, height, src_pitch_table_chromaU);
+      resampler_chroma_aligned(dstp, srcp, dst_pitch, src_pitch, resampling_program_chroma, width, height, src_pitch_table_chromaU, filter_storage_chroma_unaligned);
     else
-      resampler_chroma_unaligned(dstp, srcp, dst_pitch, src_pitch, resampling_program_chroma, width, height, src_pitch_table_chromaU);
+      resampler_chroma_unaligned(dstp, srcp, dst_pitch, src_pitch, resampling_program_chroma, width, height, src_pitch_table_chromaU, filter_storage_chroma_unaligned);
 
     // Plane V resizing
     src_pitch = src->GetPitch(PLANAR_V);
@@ -1844,16 +1871,16 @@ PVideoFrame __stdcall FilteredResizeV::GetFrame(int n, IScriptEnvironment* env)
     dstp = dst->GetWritePtr(PLANAR_V);
   
     if (IsPtrAligned(srcp, 16) && IsPtrAligned(src_pitch, 16))
-      resampler_chroma_aligned(dstp, srcp, dst_pitch, src_pitch, resampling_program_chroma, width, height, src_pitch_table_chromaV);
+      resampler_chroma_aligned(dstp, srcp, dst_pitch, src_pitch, resampling_program_chroma, width, height, src_pitch_table_chromaV, filter_storage_chroma_unaligned);
     else
-      resampler_chroma_unaligned(dstp, srcp, dst_pitch, src_pitch, resampling_program_chroma, width, height, src_pitch_table_chromaV);
+      resampler_chroma_unaligned(dstp, srcp, dst_pitch, src_pitch, resampling_program_chroma, width, height, src_pitch_table_chromaV, filter_storage_chroma_unaligned);
   }
 
   return dst;
 }
 
 // IsPtrAligned(srcp, 16) && IsPtrAligned(src_pitch, 16)
-ResamplerV FilteredResizeV::GetResampler(int CPU, bool aligned, ResamplingProgram* program) {
+ResamplerV FilteredResizeV::GetResampler(int CPU, bool aligned, void** storage, ResamplingProgram* program) {
   if (program->filter_size == 1) {
     // Fast pointresize
     if (aligned) {
@@ -1875,8 +1902,13 @@ ResamplerV FilteredResizeV::GetResampler(int CPU, bool aligned, ResamplingProgra
     }
   } else {
     // Other resizers
-    if (CPU & CPUF_SSSE3 && false) { // FIXME: this hack since current SSSE3 is slightly slower
-      if (aligned) { // SSSE3 aligned
+    if (CPU & CPUF_SSSE3) {
+      // Create SSSE3 persistant data
+      //*storage = resize_v_ssse3_unpack_cocfficient(program);
+
+      if (aligned && CPU & CPUF_SSE4_1) {
+        return resize_v_ssse3_planar<simd_load_streaming>;
+      } else if (aligned) { // SSSE3 aligned
         return resize_v_ssse3_planar<simd_load_aligned>;
       } else if (CPU & CPUF_SSE3) { // SSE3 lddqu
         return resize_v_ssse3_planar<simd_load_unaligned_sse3>;
@@ -1884,7 +1916,9 @@ ResamplerV FilteredResizeV::GetResampler(int CPU, bool aligned, ResamplingProgra
         return resize_v_ssse3_planar<simd_load_unaligned_sse3>;
       }
     } else if (CPU & CPUF_SSE2) {
-      if (aligned) { // SSE2 aligned
+      if (aligned && CPU & CPUF_SSE4_1) { // SSE4.1 movntdqu constantly provide ~2% performance increase in my testing
+        return resize_v_sse2_planar<simd_load_streaming>;
+      } else if (aligned) { // SSE2 aligned
         return resize_v_sse2_planar<simd_load_aligned>;
       } else if (CPU & CPUF_SSE3) { // SSE2 lddqu
         return resize_v_sse2_planar<simd_load_unaligned_sse3>;
@@ -1892,7 +1926,7 @@ ResamplerV FilteredResizeV::GetResampler(int CPU, bool aligned, ResamplingProgra
         return resize_v_sse2_planar<simd_load_unaligned_sse3>;
       }
     } else { // C version
-      return resize_v_c_planar; //(dstp, srcp, dst_pitch, src_pitch, resampling_pattern, width, height);
+      return resize_v_c_planar;
     }
   }
 }
@@ -1904,6 +1938,11 @@ FilteredResizeV::~FilteredResizeV(void)
   if (src_pitch_table_luma)    { delete[] src_pitch_table_luma; }
   if (src_pitch_table_chromaU) { delete[] src_pitch_table_chromaU; }
   if (src_pitch_table_chromaV) { delete[] src_pitch_table_chromaV; }
+
+  if (filter_storage_luma_aligned) { _aligned_free(filter_storage_luma_aligned); }
+  if (filter_storage_luma_unaligned) { _aligned_free(filter_storage_luma_unaligned); }
+  if (filter_storage_chroma_aligned) { _aligned_free(filter_storage_chroma_aligned); }
+  if (filter_storage_chroma_unaligned) { _aligned_free(filter_storage_chroma_unaligned); }
 }
 
 
