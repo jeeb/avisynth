@@ -137,7 +137,6 @@ static void mask_sse2(BYTE *srcp, const BYTE *alphap, int src_pitch, int alpha_p
     srcp += src_pitch;
     alphap += alpha_pitch;
   }
-  _mm_empty();
 }
 
 #ifdef X86_32
@@ -1121,6 +1120,7 @@ const int cyg = int(0.587*32768+0.5);
 const int cyr = int(0.299*32768+0.5);
 __declspec(align(8)) static const __int64 rgb2lum = ((__int64)cyr << 32) | (cyg << 16) | cyb;
 
+#ifdef X86_32
 
 static void layer_yuy2_mul_chroma_mmx(BYTE* src1p, const BYTE* src2p, int src1_pitch, int src2_pitch, int width, int height, int level) {
   __asm {
@@ -2277,6 +2277,7 @@ darken32xloop:
   }
 }
 
+#endif
 
 PVideoFrame __stdcall Layer::GetFrame(int n, IScriptEnvironment* env)
 {

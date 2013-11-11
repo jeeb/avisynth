@@ -276,7 +276,6 @@ static void convert_rgb_to_yuy2_sse2(const BYTE *src, BYTE *dst, int src_pitch, 
     src -= src_pitch;           // ;Move upwards
     dst += dst_pitch;
   } // end for y
-  _mm_empty();
 }
 
 #ifdef X86_32
