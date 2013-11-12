@@ -1572,6 +1572,7 @@ static void resize_v_sse2_planar(BYTE* dst, const BYTE* src, int dst_pitch, int 
   
   int wMod16 = (width / 16) * 16;
   int sizeMod2 = (filter_size/2) * 2;
+  bool notMod2 = sizeMod2 < filter_size;
 
   __m128i zero = _mm_setzero_si128();
 
@@ -1611,7 +1612,7 @@ static void resize_v_sse2_planar(BYTE* dst, const BYTE* src, int dst_pitch, int 
         result_4 = _mm_add_epi32(result_4, dst_4);
       }
       
-      if (sizeMod2 < filter_size) { // do last odd row
+      if (notMod2) { // do last odd row
         __m128i src_p = load(reinterpret_cast<const __m128i*>(src_ptr+pitch_table[sizeMod2]+x));
 
         __m128i src_l = _mm_unpacklo_epi8(src_p, zero);
@@ -1675,8 +1676,6 @@ static void resize_v_ssse3_planar(BYTE* dst, const BYTE* src, int dst_pitch, int
   __m128i zero = _mm_setzero_si128();
   __m128i coeff_unpacker = _mm_set_epi8(1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0);
 
-  __m128i* coeff_storage = (__m128i*) storage;
-
   for (int y = 0; y < target_height; y++) {
     int offset = program->pixel_offset[y];
     const BYTE* src_ptr = src + pitch_table[offset];
@@ -1698,7 +1697,6 @@ static void resize_v_ssse3_planar(BYTE* dst, const BYTE* src, int dst_pitch, int
 
         __m128i coeff = _mm_cvtsi32_si128(*reinterpret_cast<const int*>(current_coeff+i));
                 coeff = _mm_shuffle_epi8(coeff, coeff_unpacker);
-        //__m128i coeff = coeff_storage[i];
 
         __m128i dst_l = _mm_mulhrs_epi16(src_l, coeff);   // Multiply by coefficient (SSSE3)
         __m128i dst_h = _mm_mulhrs_epi16(src_h, coeff);
@@ -1732,7 +1730,6 @@ static void resize_v_ssse3_planar(BYTE* dst, const BYTE* src, int dst_pitch, int
 
     dst += dst_pitch;
     current_coeff += filter_size;
-    coeff_storage += filter_size;
   }
 }
 
@@ -1818,8 +1815,7 @@ FilteredResizeV::FilteredResizeV( PClip _child, double subrange_top, double subr
   vi.height = target_height;
 }
 
-PVideoFrame __stdcall FilteredResizeV::GetFrame(int n, IScriptEnvironment* env)
-{
+PVideoFrame __stdcall FilteredResizeV::GetFrame(int n, IScriptEnvironment* env) {
   PVideoFrame src = child->GetFrame(n, env);
   PVideoFrame dst = env->NewVideoFrame(vi);
   int src_pitch = src->GetPitch();
@@ -1844,7 +1840,7 @@ PVideoFrame __stdcall FilteredResizeV::GetFrame(int n, IScriptEnvironment* env)
   }
 
   // Do resizing
-  if (IsPtrAligned(srcp, 16) && IsPtrAligned(src_pitch, 16))
+  if (IsPtrAligned(srcp, 16) && (src_pitch & 15) == 0)
     resampler_luma_aligned(dstp, srcp, dst_pitch, src_pitch, resampling_program_luma, vi.BytesFromPixels(vi.width), vi.height, src_pitch_table_luma, filter_storage_luma_aligned);
   else
     resampler_luma_unaligned(dstp, srcp, dst_pitch, src_pitch, resampling_program_luma, vi.BytesFromPixels(vi.width), vi.height, src_pitch_table_luma, filter_storage_luma_unaligned);
@@ -1859,7 +1855,7 @@ PVideoFrame __stdcall FilteredResizeV::GetFrame(int n, IScriptEnvironment* env)
     srcp = src->GetReadPtr(PLANAR_U);
     dstp = dst->GetWritePtr(PLANAR_U);
       
-    if (IsPtrAligned(srcp, 16) && IsPtrAligned(src_pitch, 16))
+    if (IsPtrAligned(srcp, 16) && (src_pitch & 15) == 0)
       resampler_chroma_aligned(dstp, srcp, dst_pitch, src_pitch, resampling_program_chroma, width, height, src_pitch_table_chromaU, filter_storage_chroma_unaligned);
     else
       resampler_chroma_unaligned(dstp, srcp, dst_pitch, src_pitch, resampling_program_chroma, width, height, src_pitch_table_chromaU, filter_storage_chroma_unaligned);
@@ -1870,7 +1866,7 @@ PVideoFrame __stdcall FilteredResizeV::GetFrame(int n, IScriptEnvironment* env)
     srcp = src->GetReadPtr(PLANAR_V);
     dstp = dst->GetWritePtr(PLANAR_V);
   
-    if (IsPtrAligned(srcp, 16) && IsPtrAligned(src_pitch, 16))
+    if (IsPtrAligned(srcp, 16) && (src_pitch & 15) == 0)
       resampler_chroma_aligned(dstp, srcp, dst_pitch, src_pitch, resampling_program_chroma, width, height, src_pitch_table_chromaV, filter_storage_chroma_unaligned);
     else
       resampler_chroma_unaligned(dstp, srcp, dst_pitch, src_pitch, resampling_program_chroma, width, height, src_pitch_table_chromaV, filter_storage_chroma_unaligned);
@@ -1879,7 +1875,6 @@ PVideoFrame __stdcall FilteredResizeV::GetFrame(int n, IScriptEnvironment* env)
   return dst;
 }
 
-// IsPtrAligned(srcp, 16) && IsPtrAligned(src_pitch, 16)
 ResamplerV FilteredResizeV::GetResampler(int CPU, bool aligned, void** storage, ResamplingProgram* program) {
   if (program->filter_size == 1) {
     // Fast pointresize
@@ -1903,9 +1898,6 @@ ResamplerV FilteredResizeV::GetResampler(int CPU, bool aligned, void** storage, 
   } else {
     // Other resizers
     if (CPU & CPUF_SSSE3) {
-      // Create SSSE3 persistant data
-      //*storage = resize_v_ssse3_unpack_cocfficient(program);
-
       if (aligned && CPU & CPUF_SSE4_1) {
         return resize_v_ssse3_planar<simd_load_streaming>;
       } else if (aligned) { // SSSE3 aligned
@@ -1913,7 +1905,7 @@ ResamplerV FilteredResizeV::GetResampler(int CPU, bool aligned, void** storage, 
       } else if (CPU & CPUF_SSE3) { // SSE3 lddqu
         return resize_v_ssse3_planar<simd_load_unaligned_sse3>;
       } else { // SSSE3 unaligned
-        return resize_v_ssse3_planar<simd_load_unaligned_sse3>;
+        return resize_v_ssse3_planar<simd_load_unaligned>;
       }
     } else if (CPU & CPUF_SSE2) {
       if (aligned && CPU & CPUF_SSE4_1) { // SSE4.1 movntdqu constantly provide ~2% performance increase in my testing
@@ -1923,7 +1915,7 @@ ResamplerV FilteredResizeV::GetResampler(int CPU, bool aligned, void** storage, 
       } else if (CPU & CPUF_SSE3) { // SSE2 lddqu
         return resize_v_sse2_planar<simd_load_unaligned_sse3>;
       } else { // SSE2 unaligned
-        return resize_v_sse2_planar<simd_load_unaligned_sse3>;
+        return resize_v_sse2_planar<simd_load_unaligned>;
       }
     } else { // C version
       return resize_v_c_planar;
