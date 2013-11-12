@@ -41,10 +41,9 @@
 
 #include <avisynth.h>
 
+typedef void (*TurnFuncPtr) (const BYTE *srcp, BYTE *dstp, int width, int height, int src_pitch, int dst_pitch);
 
 class Turn : public GenericVideoFilter {
-
-  typedef void (*TurnFuncPtr) (const BYTE *srcp, BYTE *dstp, int width, int height, int src_pitch, int dst_pitch);
 
   TurnFuncPtr TurnFunc;
 
