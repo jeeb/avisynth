@@ -59,6 +59,30 @@ enum TurnDirection
   DIRECTION_180 = 2
 };
 
+static __forceinline void left_transpose_4_doublewords_sse2(__m128i &src1, __m128i &src2, __m128i& src3, __m128i &src4) {
+  __m128i b0a0b1a1 = _mm_unpacklo_epi32(src2, src1);
+  __m128i b2a2b3a3 = _mm_unpackhi_epi32(src2, src1);
+  __m128i d0c0d1c1 = _mm_unpacklo_epi32(src4, src3);
+  __m128i d2c2d3c3 = _mm_unpackhi_epi32(src4, src3);
+
+  src1 = _mm_unpacklo_epi64(d0c0d1c1, b0a0b1a1); //d0c0b0a0
+  src2 = _mm_unpackhi_epi64(d0c0d1c1, b0a0b1a1); //d1c1b1a1
+  src3 = _mm_unpacklo_epi64(d2c2d3c3, b2a2b3a3); //d2c2b2a2
+  src4 = _mm_unpackhi_epi64(d2c2d3c3, b2a2b3a3); //d3c3b3a3
+}
+
+static __forceinline void right_transpose_4_doublewords_sse2(__m128i &src1, __m128i &src2, __m128i& src3, __m128i &src4) {
+  __m128i a0b0a1b1 = _mm_unpacklo_epi32(src1, src2);
+  __m128i a2b2a3b3 = _mm_unpackhi_epi32(src1, src2);
+  __m128i c0d0c1d1 = _mm_unpacklo_epi32(src3, src4);
+  __m128i c2d2c3d3 = _mm_unpackhi_epi32(src3, src4);
+
+  src1 = _mm_unpacklo_epi64(a0b0a1b1, c0d0c1d1); //a0b0c0d0
+  src2 = _mm_unpackhi_epi64(a0b0a1b1, c0d0c1d1); //a1b1c1d1
+  src3 = _mm_unpacklo_epi64(a2b2a3b3, c2d2c3d3); //a2b2c2d2
+  src4 = _mm_unpackhi_epi64(a2b2a3b3, c2d2c3d3); //a3b3c3d3
+}
+
 static void turn_left_rgb24(const BYTE *srcp, BYTE *dstp, int width, int height, int src_pitch, int dst_pitch) {
   int dstp_offset;
   for (int y = 0; y<height; y++) {
@@ -101,7 +125,7 @@ static void turn_180_rgb24(const BYTE *srcp, BYTE *dstp, int width, int height, 
   }
 }
 
-static void turn_left_rgb32(const BYTE *srcp, BYTE *dstp, int width, int height, int src_pitch, int dst_pitch)
+static void turn_left_rgb32_c(const BYTE *srcp, BYTE *dstp, int width, int height, int src_pitch, int dst_pitch)
 {
   const unsigned int *l_srcp = reinterpret_cast<const unsigned int *>(srcp);
   unsigned int *l_dstp = reinterpret_cast<unsigned int *>(dstp);
@@ -120,7 +144,58 @@ static void turn_left_rgb32(const BYTE *srcp, BYTE *dstp, int width, int height,
   }
 }
 
-static void turn_right_rgb32(const BYTE *srcp, BYTE *dstp, int width, int height, int src_pitch, int dst_pitch)
+static void turn_left_rgb32_sse2(const BYTE *srcp, BYTE *dstp, int src_width_bytes, int src_height, int src_pitch, int dst_pitch)
+{
+  const BYTE* srcp2 = srcp;
+
+  int src_width_mod16 = (src_width_bytes / 16) * 16;
+  int src_height_mod4 = (src_height / 4) * 4;
+
+  for(int y=0; y<src_height_mod4; y+=4)
+  {
+    int offset = (src_height*4)-16-(y*4);
+    for (int x=0; x<src_width_mod16; x+=16)
+    {
+      __m128i src1 = _mm_loadu_si128(reinterpret_cast<const __m128i*>(srcp+x+src_pitch*0));
+      __m128i src2 = _mm_loadu_si128(reinterpret_cast<const __m128i*>(srcp+x+src_pitch*1));
+      __m128i src3 = _mm_loadu_si128(reinterpret_cast<const __m128i*>(srcp+x+src_pitch*2));
+      __m128i src4 = _mm_loadu_si128(reinterpret_cast<const __m128i*>(srcp+x+src_pitch*3));
+
+      left_transpose_4_doublewords_sse2(src1, src2, src3, src4);
+
+      _mm_storeu_si128(reinterpret_cast<__m128i*>(dstp+offset+dst_pitch*0), src1);
+      _mm_storeu_si128(reinterpret_cast<__m128i*>(dstp+offset+dst_pitch*1), src2);
+      _mm_storeu_si128(reinterpret_cast<__m128i*>(dstp+offset+dst_pitch*2), src3);
+      _mm_storeu_si128(reinterpret_cast<__m128i*>(dstp+offset+dst_pitch*3), src4);
+
+      offset += dst_pitch*4;
+    }
+
+    if (src_width_mod16 != src_width_bytes) {
+      offset = src_height*4 - 16 - (y*4) + ((src_width_bytes/4)-4)*dst_pitch;
+
+      __m128i src1 = _mm_loadu_si128(reinterpret_cast<const __m128i*>(srcp+src_width_bytes-16+src_pitch*0));
+      __m128i src2 = _mm_loadu_si128(reinterpret_cast<const __m128i*>(srcp+src_width_bytes-16+src_pitch*1));
+      __m128i src3 = _mm_loadu_si128(reinterpret_cast<const __m128i*>(srcp+src_width_bytes-16+src_pitch*2));
+      __m128i src4 = _mm_loadu_si128(reinterpret_cast<const __m128i*>(srcp+src_width_bytes-16+src_pitch*3));
+
+      left_transpose_4_doublewords_sse2(src1, src2, src3, src4);
+
+      _mm_storeu_si128(reinterpret_cast<__m128i*>(dstp + offset + dst_pitch * 0), src1);
+      _mm_storeu_si128(reinterpret_cast<__m128i*>(dstp + offset + dst_pitch * 1), src2);
+      _mm_storeu_si128(reinterpret_cast<__m128i*>(dstp + offset + dst_pitch * 2), src3);
+      _mm_storeu_si128(reinterpret_cast<__m128i*>(dstp + offset + dst_pitch * 3), src4);
+    }
+
+    srcp += src_pitch * 4;
+  }
+
+  if (src_height_mod4 != src_height) {
+    turn_left_rgb32_c(srcp2 + src_height_mod4 * src_pitch, dstp, src_width_bytes, src_height - src_height_mod4, src_pitch, dst_pitch);
+  }
+}
+
+static void turn_right_rgb32_c(const BYTE *srcp, BYTE *dstp, int width, int height, int src_pitch, int dst_pitch)
 {
   const unsigned int *l_srcp = reinterpret_cast<const unsigned int *>(srcp);
   unsigned int *l_dstp = reinterpret_cast<unsigned int *>(dstp);
@@ -140,7 +215,56 @@ static void turn_right_rgb32(const BYTE *srcp, BYTE *dstp, int width, int height
   }
 }
 
-static void turn_180_rgb32(const BYTE *srcp, BYTE *dstp, int width, int height, int src_pitch, int dst_pitch)
+static void turn_right_rgb32_sse2(const BYTE *srcp, BYTE *dstp, int src_width_bytes, int src_height, int src_pitch, int dst_pitch)
+{
+  const BYTE* srcp2 = srcp;
+
+  int src_width_mod16 = (src_width_bytes / 16) * 16;
+  int src_height_mod4 = (src_height / 4) * 4;
+
+  for(int y=0; y<src_height_mod4; y+=4)
+  {
+    int offset = (src_width_bytes / 4 - 4) * dst_pitch + (y*4);
+    for (int x=0; x<src_width_mod16; x+=16)
+    {
+      __m128i src1 = _mm_loadu_si128(reinterpret_cast<const __m128i*>(srcp+x+src_pitch*0));
+      __m128i src2 = _mm_loadu_si128(reinterpret_cast<const __m128i*>(srcp+x+src_pitch*1));
+      __m128i src3 = _mm_loadu_si128(reinterpret_cast<const __m128i*>(srcp+x+src_pitch*2));
+      __m128i src4 = _mm_loadu_si128(reinterpret_cast<const __m128i*>(srcp+x+src_pitch*3));
+
+      right_transpose_4_doublewords_sse2(src1, src2, src3, src4);
+
+      _mm_storeu_si128(reinterpret_cast<__m128i*>(dstp+offset+dst_pitch*0), src4);
+      _mm_storeu_si128(reinterpret_cast<__m128i*>(dstp+offset+dst_pitch*1), src3);
+      _mm_storeu_si128(reinterpret_cast<__m128i*>(dstp+offset+dst_pitch*2), src2);
+      _mm_storeu_si128(reinterpret_cast<__m128i*>(dstp+offset+dst_pitch*3), src1);
+
+      offset -= dst_pitch*4;
+    }
+
+    if (src_width_mod16 != src_width_bytes) {
+      __m128i src1 = _mm_loadu_si128(reinterpret_cast<const __m128i*>(srcp+src_width_bytes-16+src_pitch*0));
+      __m128i src2 = _mm_loadu_si128(reinterpret_cast<const __m128i*>(srcp+src_width_bytes-16+src_pitch*1));
+      __m128i src3 = _mm_loadu_si128(reinterpret_cast<const __m128i*>(srcp+src_width_bytes-16+src_pitch*2));
+      __m128i src4 = _mm_loadu_si128(reinterpret_cast<const __m128i*>(srcp+src_width_bytes-16+src_pitch*3));
+
+      right_transpose_4_doublewords_sse2(src1, src2, src3, src4);
+
+      _mm_storeu_si128(reinterpret_cast<__m128i*>(dstp + y*4 + dst_pitch * 0), src4);
+      _mm_storeu_si128(reinterpret_cast<__m128i*>(dstp + y*4 + dst_pitch * 1), src3);
+      _mm_storeu_si128(reinterpret_cast<__m128i*>(dstp + y*4 + dst_pitch * 2), src2);
+      _mm_storeu_si128(reinterpret_cast<__m128i*>(dstp + y*4 + dst_pitch * 3), src1);
+    }
+
+    srcp += src_pitch * 4;
+  }
+
+  if (src_height_mod4 != src_height) {
+    turn_right_rgb32_c(srcp2 + src_height_mod4 * src_pitch, dstp + src_height_mod4*4, src_width_bytes, src_height - src_height_mod4, src_pitch, dst_pitch);
+  }
+}
+
+static void turn_180_rgb32_c(const BYTE *srcp, BYTE *dstp, int width, int height, int src_pitch, int dst_pitch)
 {
   const unsigned int *l_srcp = reinterpret_cast<const unsigned int *>(srcp);
   unsigned int *l_dstp = reinterpret_cast<unsigned int *>(dstp);
@@ -155,6 +279,35 @@ static void turn_180_rgb32(const BYTE *srcp, BYTE *dstp, int width, int height, 
     }
     l_dstp -= l_dst_pitch;
     l_srcp += l_src_pitch;
+  }
+}
+
+static void turn_180_rgb32_sse2(const BYTE *srcp, BYTE *dstp, int src_width, int src_height, int src_pitch, int dst_pitch)
+{
+  BYTE* dstp2 = dstp;
+  const BYTE* srcp2 = srcp;
+  int src_width_mod16 = (src_width / 16) * 16;
+
+  __m128i zero = _mm_setzero_si128();
+
+  dstp += dst_pitch * (src_height-1) + src_width - 16;
+  for(int y = 0; y < src_height; ++y)
+  {
+    for (int x = 0; x < src_width_mod16; x+=16)
+    {
+      __m128i src = _mm_loadu_si128(reinterpret_cast<const __m128i*>(srcp+x));
+      src = _mm_shuffle_epi32(src, _MM_SHUFFLE(0, 1, 2, 3));
+      _mm_storeu_si128(reinterpret_cast<__m128i*>(dstp-x), src);
+    }
+
+    if (src_width_mod16 != src_width) {
+      __m128i src = _mm_loadu_si128(reinterpret_cast<const __m128i*>(srcp + src_width-16));
+      src = _mm_shuffle_epi32(src, _MM_SHUFFLE(0, 1, 2, 3));
+      _mm_storeu_si128(reinterpret_cast<__m128i*>(dstp-src_width+16), src);
+    }
+
+    srcp += src_pitch;
+    dstp -= dst_pitch;
   }
 }
 
@@ -233,7 +386,7 @@ __forceinline __m128i mm_movehl_si128(const __m128i &a, const __m128i &b) {
   return _mm_castps_si128(_mm_movehl_ps(_mm_castsi128_ps(a), _mm_castsi128_ps(b)));
 }
 
-__forceinline void transpose_sse2(__m128i &src1, __m128i &src2, __m128i& src3, __m128i &src4, 
+__forceinline void transpose_8_bytes_sse2(__m128i &src1, __m128i &src2, __m128i& src3, __m128i &src4, 
                               __m128i &src5, __m128i& src6, __m128i &src7, __m128i &src8, const __m128i &zero) {
 
   __m128i a07b07 = _mm_unpacklo_epi8(src1, src2); 
@@ -290,7 +443,7 @@ void turn_right_plane_xsse(const BYTE* pSrc, BYTE* pDst, int srcWidth, int srcHe
       __m128i src7 = _mm_loadl_epi64(reinterpret_cast<const __m128i*>(pSrc+x+srcPitch*6));
       __m128i src8 = _mm_loadl_epi64(reinterpret_cast<const __m128i*>(pSrc+x+srcPitch*7));
 
-      transpose_sse2(src1, src2, src3, src4, src5, src6, src7, src8, zero);
+      transpose_8_bytes_sse2(src1, src2, src3, src4, src5, src6, src7, src8, zero);
 
       if (instruction_set == CPUF_SSE2) {
         src1 = _mm_unpacklo_epi8(src1, zero);
@@ -396,7 +549,7 @@ void turn_left_plane_sse2(const BYTE* pSrc, BYTE* pDst, int srcWidth, int srcHei
       __m128i src7 = _mm_loadl_epi64(reinterpret_cast<const __m128i*>(pSrc-x+srcPitch*6));
       __m128i src8 = _mm_loadl_epi64(reinterpret_cast<const __m128i*>(pSrc-x+srcPitch*7));
 
-      transpose_sse2(src1, src2, src3, src4, src5, src6, src7, src8, zero);
+      transpose_8_bytes_sse2(src1, src2, src3, src4, src5, src6, src7, src8, zero);
 
       _mm_storel_epi64(reinterpret_cast<__m128i*>(pDst+offset+dstPitch*0), src8);
       _mm_storel_epi64(reinterpret_cast<__m128i*>(pDst+offset+dstPitch*1), src7);
@@ -548,8 +701,13 @@ Turn::Turn(PClip _child, int _direction, IScriptEnvironment* env) : GenericVideo
   if (vi.IsRGB())
   {
     if (vi.BitsPerPixel() == 32) { 
-      TurnFuncPtr functions[3] = {turn_left_rgb32, turn_right_rgb32, turn_180_rgb32};
-      TurnFunc = functions[direction]; 
+      if (env->GetCPUFlags() & CPUF_SSE2) {
+        TurnFuncPtr functions[3] = {turn_left_rgb32_sse2, turn_right_rgb32_sse2, turn_180_rgb32_sse2};
+        TurnFunc = functions[direction]; 
+      } else {
+        TurnFuncPtr functions[3] = {turn_left_rgb32_c, turn_right_rgb32_c, turn_180_rgb32_c};
+        TurnFunc = functions[direction]; 
+      }
     }
     else if (vi.BitsPerPixel() == 24) {
       TurnFuncPtr functions[3] = {turn_left_rgb24, turn_right_rgb24, turn_180_rgb24};
@@ -635,8 +793,7 @@ PVideoFrame __stdcall Turn::GetFrame(int n, IScriptEnvironment* env)
   } 
   else 
   {
-		TurnFunc(src->GetReadPtr(),dst->GetWritePtr(),src->GetRowSize(),
-				 src->GetHeight(),src->GetPitch(),dst->GetPitch());
+		TurnFunc(src->GetReadPtr(),dst->GetWritePtr(),src->GetRowSize(), src->GetHeight(),src->GetPitch(),dst->GetPitch());
   }
   return dst;
 }
