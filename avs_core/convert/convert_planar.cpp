@@ -1473,11 +1473,14 @@ ConvertYUY2ToYV16::ConvertYUY2ToYV16(PClip src, IScriptEnvironment* env) : Gener
 
 }
 
-void convert_yuy2_to_yv16_sse2(const BYTE *srcp, BYTE *dstp_y, BYTE *dstp_u, BYTE *dstp_v, size_t src_pitch, size_t dst_pitch_y, size_t dst_pitch_uv, size_t width, size_t height)
+template<int instruction_set>
+void convert_yuy2_to_yv16_xsse(const BYTE *srcp, BYTE *dstp_y, BYTE *dstp_u, BYTE *dstp_v, size_t src_pitch, size_t dst_pitch_y, size_t dst_pitch_uv, size_t width, size_t height)
 {
   __m128i low_byte_mask = _mm_set1_epi16(0x00FF);
   size_t half_width = width / 2;
   size_t mod8 = half_width / 8 * 8;
+  __m128i u_mask = _mm_set_epi8(0, 0, 0, 0, 0, 0, 0, 0, 14, 12, 10, 8, 6, 4, 2, 0);
+  __m128i v_mask = _mm_set_epi8(0, 0, 0, 0, 0, 0, 0, 0, 15, 13, 11, 9, 7, 5, 3, 1);
 
   for (size_t y=0; y<height; y++) { 
     for (size_t x=0; x<mod8; x+=8) {
@@ -1489,16 +1492,23 @@ void convert_yuy2_to_yv16_sse2(const BYTE *srcp, BYTE *dstp_y, BYTE *dstp_u, BYT
       __m128i luma = _mm_packus_epi16(p0_luma, p1_luma);
       _mm_store_si128(reinterpret_cast<__m128i*>(dstp_y + x*2), luma);
 
-      __m128i p0_chroma = _mm_and_si128(_mm_srli_epi16(p0, 8), low_byte_mask); //00 V3 00 U3 00 V2 00 U2 00 V1 00 U1 00 V0 00 U0
-      __m128i p1_chroma = _mm_and_si128(_mm_srli_epi16(p1, 8), low_byte_mask); //00 V7 00 U7 00 V6 00 U6 00 V5 00 U5 00 V4 00 U4
+      __m128i p0_chroma = _mm_srli_epi16(p0, 8); //00 V3 00 U3 00 V2 00 U2 00 V1 00 U1 00 V0 00 U0
+      __m128i p1_chroma = _mm_srli_epi16(p1, 8); //00 V7 00 U7 00 V6 00 U6 00 V5 00 U5 00 V4 00 U4
 
       __m128i tmp_chroma = _mm_packus_epi16(p0_chroma, p1_chroma); //V U V U V U V U V U
 
-      __m128i chroma_u16 = _mm_and_si128(tmp_chroma, low_byte_mask);
-      __m128i chroma_v16 = _mm_srli_epi16(tmp_chroma, 8);
+      __m128i chroma_u, chroma_v;
 
-      __m128i chroma_u = _mm_packus_epi16(chroma_u16, chroma_u16);
-      __m128i chroma_v = _mm_packus_epi16(chroma_v16, chroma_v16);
+      if (instruction_set == CPUF_SSE2) {
+        __m128i chroma_u16 = _mm_and_si128(tmp_chroma, low_byte_mask);
+        __m128i chroma_v16 = _mm_srli_epi16(tmp_chroma, 8);
+
+        chroma_u = _mm_packus_epi16(chroma_u16, chroma_u16);
+        chroma_v = _mm_packus_epi16(chroma_v16, chroma_v16);
+      } else {
+        chroma_u = _mm_shuffle_epi8(tmp_chroma, u_mask);
+        chroma_v = _mm_shuffle_epi8(tmp_chroma, v_mask);
+      }
 
       _mm_storel_epi64(reinterpret_cast<__m128i*>(dstp_u + x), chroma_u);
       _mm_storel_epi64(reinterpret_cast<__m128i*>(dstp_v + x), chroma_v);
@@ -1533,9 +1543,9 @@ void convert_yuy2_to_yv16_mmx(const BYTE *srcp, BYTE *dstp_y, BYTE *dstp_u, BYTE
       __m64 p1 = *reinterpret_cast<const __m64*>(srcp + x*4 + 8);
 
       __m64 p0_luma = _mm_and_si64(p0, low_byte_mask);
-      __m64 p0_chroma = _mm_and_si64(_mm_srli_pi16(p0, 8), low_byte_mask); //0 V 0 U 0 V 0 U
+      __m64 p0_chroma = _mm_srli_pi16(p0, 8); //0 V 0 U 0 V 0 U
       __m64 p1_luma = _mm_and_si64(p1, low_byte_mask); 
-      __m64 p1_chroma = _mm_and_si64(_mm_srli_pi16(p1, 8), low_byte_mask);
+      __m64 p1_chroma = _mm_srli_pi16(p1, 8);
 
       __m64 luma = _mm_packs_pu16(p0_luma, p1_luma);
       *reinterpret_cast<__m64*>(dstp_y + x*2) = luma;
@@ -1597,9 +1607,12 @@ PVideoFrame __stdcall ConvertYUY2ToYV16::GetFrame(int n, IScriptEnvironment* env
   BYTE* dstU = dst->GetWritePtr(PLANAR_U);
   BYTE* dstV = dst->GetWritePtr(PLANAR_V);
 
-  if ((env->GetCPUFlags() & CPUF_SSE2) && IsPtrAligned(srcP, 16)) {
-    convert_yuy2_to_yv16_sse2(srcP, dstY, dstU, dstV, src->GetPitch(), dst->GetPitch(PLANAR_Y), dst->GetPitch(PLANAR_U), vi.width, vi.height);
-  } else
+  if ((env->GetCPUFlags() & CPUF_SSSE3) && IsPtrAligned(srcP, 16)) {
+    convert_yuy2_to_yv16_xsse<CPUF_SSSE3>(srcP, dstY, dstU, dstV, src->GetPitch(), dst->GetPitch(PLANAR_Y), dst->GetPitch(PLANAR_U), vi.width, vi.height);
+  } else if ((env->GetCPUFlags() & CPUF_SSE2) && IsPtrAligned(srcP, 16)) {
+    convert_yuy2_to_yv16_xsse<CPUF_SSE2>(srcP, dstY, dstU, dstV, src->GetPitch(), dst->GetPitch(PLANAR_Y), dst->GetPitch(PLANAR_U), vi.width, vi.height);
+  } 
+  else
 #ifdef X86_32
   if (env->GetCPUFlags() & CPUF_MMX) { 
     convert_yuy2_to_yv16_mmx(srcP, dstY, dstU, dstV, src->GetPitch(), dst->GetPitch(PLANAR_Y), dst->GetPitch(PLANAR_U), vi.width, vi.height);
