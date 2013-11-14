@@ -386,7 +386,7 @@ __forceinline __m128i mm_movehl_si128(const __m128i &a, const __m128i &b) {
   return _mm_castps_si128(_mm_movehl_ps(_mm_castsi128_ps(a), _mm_castsi128_ps(b)));
 }
 
-__forceinline void transpose_8_bytes_sse2(__m128i &src1, __m128i &src2, __m128i& src3, __m128i &src4, 
+__forceinline void left_transpose_8_bytes_sse2(__m128i &src1, __m128i &src2, __m128i& src3, __m128i &src4, 
                               __m128i &src5, __m128i& src6, __m128i &src7, __m128i &src8, const __m128i &zero) {
 
   __m128i a07b07 = _mm_unpacklo_epi8(src1, src2); 
@@ -414,18 +414,37 @@ __forceinline void transpose_8_bytes_sse2(__m128i &src1, __m128i &src2, __m128i&
   src8 = mm_movehl_si128(zero, a67b67c67d67e67f67g67h67);
 }
 
-__forceinline __m128i rotate_epi16(__m128i src) {
-  __m128i result = _mm_shuffle_epi32(src, _MM_SHUFFLE(1, 0, 3, 2));
-  result = _mm_shufflelo_epi16(result, _MM_SHUFFLE(0, 1, 2, 3));
-  return _mm_shufflehi_epi16(result, _MM_SHUFFLE(0, 1, 2, 3));
+__forceinline void right_transpose_8_bytes_sse2(__m128i &src1, __m128i &src2, __m128i& src3, __m128i &src4,                                                __m128i &src5, __m128i& src6, __m128i &src7, __m128i &src8, const __m128i &zero) {
+
+  __m128i b07a07 = _mm_unpacklo_epi8(src2, src1); 
+  __m128i d07c07 = _mm_unpacklo_epi8(src4, src3); 
+  __m128i f07e07 = _mm_unpacklo_epi8(src6, src5); 
+  __m128i h07g07 = _mm_unpacklo_epi8(src8, src7);  
+
+  __m128i d03c03b03a03 = _mm_unpacklo_epi16(d07c07, b07a07);
+  __m128i h03g03f03e03 = _mm_unpacklo_epi16(h07g07, f07e07);
+  __m128i d47c47b47a47 = _mm_unpackhi_epi16(d07c07, b07a07);
+  __m128i h47g47f47e47 = _mm_unpackhi_epi16(h07g07, f07e07);
+
+    __m128i h01g01f01e01d01c01b01a01 = _mm_unpacklo_epi32(h03g03f03e03, d03c03b03a03); 
+    __m128i h23g23f23e23d23c23b23a23 = _mm_unpackhi_epi32(h03g03f03e03, d03c03b03a03); 
+    __m128i h45g45f45e45d45c45b45a45 = _mm_unpacklo_epi32(h47g47f47e47, d47c47b47a47); 
+    __m128i h67g67f67e67d67c67b67a67 = _mm_unpackhi_epi32(h47g47f47e47, d47c47b47a47); 
+
+    src1 = h01g01f01e01d01c01b01a01;
+    src2 = mm_movehl_si128(zero, h01g01f01e01d01c01b01a01);
+    src3 = h23g23f23e23d23c23b23a23;
+    src4 = mm_movehl_si128(zero, h23g23f23e23d23c23b23a23);
+    src5 = h45g45f45e45d45c45b45a45;
+    src6 = mm_movehl_si128(zero, h45g45f45e45d45c45b45a45);
+    src7 = h67g67f67e67d67c67b67a67;
+    src8 = mm_movehl_si128(zero, h67g67f67e67d67c67b67a67);
 }
 
-template<int instruction_set>
-void turn_right_plane_xsse(const BYTE* pSrc, BYTE* pDst, int srcWidth, int srcHeight, int srcPitch, int dstPitch) {
+void turn_right_plane_sse2(const BYTE* pSrc, BYTE* pDst, int srcWidth, int srcHeight, int srcPitch, int dstPitch) {
   const BYTE* pSrc2 = pSrc;
 
   __m128i zero = _mm_setzero_si128();
-  __m128i pshufbMask = _mm_set_epi8(0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 2, 3, 4, 5, 6, 7);
 
   int srcWidthMod8 = (srcWidth / 8) * 8;
   int srcHeightMod8 = (srcHeight / 8) * 8;
@@ -443,45 +462,7 @@ void turn_right_plane_xsse(const BYTE* pSrc, BYTE* pDst, int srcWidth, int srcHe
       __m128i src7 = _mm_loadl_epi64(reinterpret_cast<const __m128i*>(pSrc+x+srcPitch*6));
       __m128i src8 = _mm_loadl_epi64(reinterpret_cast<const __m128i*>(pSrc+x+srcPitch*7));
 
-      transpose_8_bytes_sse2(src1, src2, src3, src4, src5, src6, src7, src8, zero);
-
-      if (instruction_set == CPUF_SSE2) {
-        src1 = _mm_unpacklo_epi8(src1, zero);
-        src2 = _mm_unpacklo_epi8(src2, zero);
-        src3 = _mm_unpacklo_epi8(src3, zero);
-        src4 = _mm_unpacklo_epi8(src4, zero);
-        src5 = _mm_unpacklo_epi8(src5, zero);
-        src6 = _mm_unpacklo_epi8(src6, zero);
-        src7 = _mm_unpacklo_epi8(src7, zero);
-        src8 = _mm_unpacklo_epi8(src8, zero);
-
-        src1 = rotate_epi16(src1);
-        src2 = rotate_epi16(src2);
-        src3 = rotate_epi16(src3);
-        src4 = rotate_epi16(src4);
-        src5 = rotate_epi16(src5);
-        src6 = rotate_epi16(src6);
-        src7 = rotate_epi16(src7);
-        src8 = rotate_epi16(src8);
-
-        src1 = _mm_packus_epi16(src1, zero);
-        src2 = _mm_packus_epi16(src2, zero);
-        src3 = _mm_packus_epi16(src3, zero);
-        src4 = _mm_packus_epi16(src4, zero);
-        src5 = _mm_packus_epi16(src5, zero);
-        src6 = _mm_packus_epi16(src6, zero);
-        src7 = _mm_packus_epi16(src7, zero);
-        src8 = _mm_packus_epi16(src8, zero);
-      } else {
-        src1 = _mm_shuffle_epi8(src1, pshufbMask); 
-        src2 = _mm_shuffle_epi8(src2, pshufbMask); 
-        src3 = _mm_shuffle_epi8(src3, pshufbMask); 
-        src4 = _mm_shuffle_epi8(src4, pshufbMask); 
-        src5 = _mm_shuffle_epi8(src5, pshufbMask); 
-        src6 = _mm_shuffle_epi8(src6, pshufbMask); 
-        src7 = _mm_shuffle_epi8(src7, pshufbMask); 
-        src8 = _mm_shuffle_epi8(src8, pshufbMask);
-      }
+      right_transpose_8_bytes_sse2(src1, src2, src3, src4, src5, src6, src7, src8, zero);
 
       _mm_storel_epi64(reinterpret_cast<__m128i*>(pDst+offset+dstPitch*0), src1);
       _mm_storel_epi64(reinterpret_cast<__m128i*>(pDst+offset+dstPitch*1), src2);
@@ -549,7 +530,7 @@ void turn_left_plane_sse2(const BYTE* pSrc, BYTE* pDst, int srcWidth, int srcHei
       __m128i src7 = _mm_loadl_epi64(reinterpret_cast<const __m128i*>(pSrc-x+srcPitch*6));
       __m128i src8 = _mm_loadl_epi64(reinterpret_cast<const __m128i*>(pSrc-x+srcPitch*7));
 
-      transpose_8_bytes_sse2(src1, src2, src3, src4, src5, src6, src7, src8, zero);
+      left_transpose_8_bytes_sse2(src1, src2, src3, src4, src5, src6, src7, src8, zero);
 
       _mm_storel_epi64(reinterpret_cast<__m128i*>(pDst+offset+dstPitch*0), src8);
       _mm_storel_epi64(reinterpret_cast<__m128i*>(pDst+offset+dstPitch*1), src7);
@@ -645,8 +626,6 @@ void turn_180_plane_xsse(const BYTE* pSrc, BYTE* pDst, int srcWidth, int srcHeig
   }
 }
 
-TurnFuncPtr turn_right_plane_sse2 = &turn_right_plane_xsse<CPUF_SSE2>;
-TurnFuncPtr turn_right_plane_ssse3 = &turn_right_plane_xsse<CPUF_SSSE3>;
 TurnFuncPtr turn_180_plane_sse2 = &turn_180_plane_xsse<CPUF_SSE2>;
 TurnFuncPtr turn_180_plane_ssse3 = &turn_180_plane_xsse<CPUF_SSSE3>;
 
@@ -726,7 +705,7 @@ Turn::Turn(PClip _child, int _direction, IScriptEnvironment* env) : GenericVideo
   else if (vi.IsPlanar())
   {
     if (env->GetCPUFlags() & CPUF_SSSE3) {
-      TurnFuncPtr functions[3] = {turn_left_plane_sse2, turn_right_plane_ssse3, turn_180_plane_ssse3};
+      TurnFuncPtr functions[3] = {turn_left_plane_sse2, turn_right_plane_sse2, turn_180_plane_ssse3};
       TurnFunc = functions[direction]; 
     } else if (env->GetCPUFlags() & CPUF_SSE2) {
       TurnFuncPtr functions[3] = {turn_left_plane_sse2, turn_right_plane_sse2, turn_180_plane_sse2};
