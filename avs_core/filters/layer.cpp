@@ -1122,6 +1122,19 @@ __declspec(align(8)) static const __int64 rgb2lum = ((__int64)cyr << 32) | (cyg 
 
 #ifdef X86_32
 
+/* YUY2 */
+
+static void layer_yuy2_mul_chroma_c(BYTE* dstp, const BYTE* ovrp, int dst_pitch, int overlay_pitch, int width, int height, int level) { 
+  for (int y = 0; y < height; ++y) {
+    for (int x = 0; x < width; ++x) {
+      dstp[x*2]   = dstp[x*2]  + (((((ovrp[x*2] * dstp[x*2]) >> 8) - dstp[x*2]) * level) >> 8);
+      dstp[x*2+1] = dstp[x*2+1]  + (((ovrp[x*2+1] - dstp[x*2+1]) * level) >> 8);
+    }
+    dstp += dst_pitch;
+    ovrp += overlay_pitch;
+  }
+}
+
 static void layer_yuy2_mul_chroma_mmx(BYTE* src1p, const BYTE* src2p, int src1_pitch, int src2_pitch, int width, int height, int level) {
   __asm {
     mov			edi, src1p
@@ -1189,6 +1202,17 @@ mulyuy32xloop:
       dec		height
       jnz		mulyuy32loop
       emms
+  }
+}
+
+static void layer_yuy2_mul_c(BYTE* dstp, const BYTE* ovrp, int dst_pitch, int overlay_pitch, int width, int height, int level) { 
+  for (int y = 0; y < height; ++y) {
+    for (int x = 0; x < width; ++x) {
+      dstp[x*2]   = dstp[x*2]  + (((((ovrp[x*2] * dstp[x*2]) >> 8) - dstp[x*2]) * level) >> 8);
+      dstp[x*2+1] = dstp[x*2+1]  + (((128 - dstp[x*2+1]) * (level/2)) >> 8);
+    }
+    dstp += dst_pitch;
+    ovrp += overlay_pitch;
   }
 }
 
@@ -1264,6 +1288,18 @@ muly032xloop:
   }
 }
 
+
+static void layer_yuy2_add_chroma_c(BYTE* dstp, const BYTE* ovrp, int dst_pitch, int overlay_pitch, int width, int height, int level) { 
+  for (int y = 0; y < height; ++y) {
+    for (int x = 0; x < width; ++x) {
+      dstp[x*2]   = dstp[x*2]  + (((ovrp[x*2] - dstp[x*2]) * level) >> 8);
+      dstp[x*2+1] = dstp[x*2+1]  + (((ovrp[x*2-1] - dstp[x*2+1]) * level) >> 8);
+    }
+    dstp += dst_pitch;
+    ovrp += overlay_pitch;
+  }
+}
+
 static void layer_yuy2_add_chroma_mmx(BYTE* src1p, const BYTE* src2p, int src1_pitch, int src2_pitch, int width, int height, int level) {
   __asm {
     mov			edi, src1p
@@ -1331,6 +1367,17 @@ addyuy32xloop:
   }
 }
 
+static void layer_yuy2_add_c(BYTE* dstp, const BYTE* ovrp, int dst_pitch, int overlay_pitch, int width, int height, int level) { 
+  for (int y = 0; y < height; ++y) {
+    for (int x = 0; x < width; ++x) {
+      dstp[x*2]   = dstp[x*2]  + (((ovrp[x*2] - dstp[x*2]) * level) >> 8);
+      dstp[x*2+1] = dstp[x*2+1]  + (((128 - dstp[x*2+1]) * level) >> 8);
+    }
+    dstp += dst_pitch;
+    ovrp += overlay_pitch;
+  }
+}
+
 static void layer_yuy2_add_mmx(BYTE* src1p, const BYTE* src2p, int src1_pitch, int src2_pitch, int width, int height, int level) { 
   __asm {
     mov			edi, src1p
@@ -1393,6 +1440,17 @@ addy032xloop:
       dec		height
       jnz		addy032loop
       emms
+  }
+}
+
+
+static void layer_yuy2_fast_chroma_c(BYTE* dstp, const BYTE* ovrp, int dst_pitch, int overlay_pitch, int width, int height, int level) { 
+  for (int y = 0; y < height; ++y) {
+    for (int x = 0; x < width*2; ++x) {
+      dstp[x] = (dstp[x] + ovrp[x] + 1) / 2;
+    }
+    dstp += dst_pitch;
+    ovrp += overlay_pitch;
   }
 }
 
@@ -1464,6 +1522,18 @@ fastyuy32xloop:
   }
 }
 
+
+static void layer_yuy2_subtract_chroma_c(BYTE* dstp, const BYTE* ovrp, int dst_pitch, int overlay_pitch, int width, int height, int level) { 
+  for (int y = 0; y < height; ++y) {
+    for (int x = 0; x < width; ++x) {
+      dstp[x*2]   = dstp[x*2]  + (((255 - ovrp[x*2] - dstp[x*2]) * level) >> 8);
+      dstp[x*2+1] = dstp[x*2+1]  + (((255 - ovrp[x*2-1] - dstp[x*2+1]) * level) >> 8);
+    }
+    dstp += dst_pitch;
+    ovrp += overlay_pitch;
+  }
+}
+
 static void layer_yuy2_subtract_chroma_mmx(BYTE* src1p, const BYTE* src2p, int src1_pitch, int src2_pitch, int width, int height, int level) {
   __asm {
     mov			edi, src1p
@@ -1532,6 +1602,17 @@ subyuy32xloop:
   }
 }
 
+static void layer_yuy2_subtract_c(BYTE* dstp, const BYTE* ovrp, int dst_pitch, int overlay_pitch, int width, int height, int level) { 
+  for (int y = 0; y < height; ++y) {
+    for (int x = 0; x < width; ++x) {
+      dstp[x*2]   = dstp[x*2]  + (((255 - ovrp[x*2] - dstp[x*2]) * level) >> 8);
+      dstp[x*2+1] = dstp[x*2+1]  + (((128 - dstp[x*2+1]) * level) >> 8);
+    }
+    dstp += dst_pitch;
+    ovrp += overlay_pitch;
+  }
+}
+
 static void layer_yuy2_subtract_mmx(BYTE* src1p, const BYTE* src2p, int src1_pitch, int src2_pitch, int width, int height, int level) { 
   __asm {
     mov			edi, src1p
@@ -1558,7 +1639,7 @@ suby032xloop:
       pand		mm7,mm2					;mask for luma
       pand		mm4,mm3					;mask for chroma
       pcmpeqb	mm5, mm5					;mm5 will be sacrificed
-      psubb		mm5, mm6					;mm5 = 255-mm6
+      psubusb		mm5, mm6					;mm5 = 255-mm6
       movq		mm6,mm5					;temp mm6=mm5
       pand		mm6,mm2					;mask for luma
 
@@ -1597,6 +1678,20 @@ suby032xloop:
       dec		height
       jnz		suby032loop
       emms
+  }
+}
+
+
+static void layer_yuy2_lighten_chroma_c(BYTE* dstp, const BYTE* ovrp, int dst_pitch, int overlay_pitch, int width, int height, int level, int thresh) { 
+  for (int y = 0; y < height; ++y) {
+    for (int x = 0; x < width; ++x) {
+      int alpha_mask = (thresh + ovrp[x*2]) > dstp[x*2] ? level : 0;
+
+      dstp[x*2]   = dstp[x*2]  + (((ovrp[x*2] - dstp[x*2]) * alpha_mask) >> 8);
+      dstp[x*2+1] = dstp[x*2+1]  + (((ovrp[x*2-1] - dstp[x*2+1]) * alpha_mask) >> 8);
+    }
+    dstp += dst_pitch;
+    ovrp += overlay_pitch;
   }
 }
 
@@ -1673,6 +1768,20 @@ lightenyuy32xloop:
   }
 }
 
+
+static void layer_yuy2_darken_chroma_c(BYTE* dstp, const BYTE* ovrp, int dst_pitch, int overlay_pitch, int width, int height, int level, int thresh) { 
+  for (int y = 0; y < height; ++y) {
+    for (int x = 0; x < width; ++x) {
+      int alpha_mask = (thresh + dstp[x*2]) > ovrp[x*2] ? level : 0;
+
+      dstp[x*2]   = dstp[x*2]  + (((ovrp[x*2] - dstp[x*2]) * alpha_mask) >> 8);
+      dstp[x*2+1] = dstp[x*2+1]  + (((ovrp[x*2-1] - dstp[x*2+1]) * alpha_mask) >> 8);
+    }
+    dstp += dst_pitch;
+    ovrp += overlay_pitch;
+  }
+}
+
 static void layer_yuy2_darken_chroma_mmx(BYTE* src1p, const BYTE* src2p, int src1_pitch, int src2_pitch, int width, int height, int level, int thresh) {
   __asm {
     mov			edi, src1p
@@ -1745,6 +1854,9 @@ darkenyuy32xloop:
       emms
   }
 }
+
+
+/* RGB32 */
 
 static void layer_rgb32_mul_chroma_mmx(BYTE* src1p, const BYTE* src2p, int src1_pitch, int src2_pitch, int width, int height, int level) {
   __asm {
@@ -2309,40 +2421,106 @@ PVideoFrame __stdcall Layer::GetFrame(int n, IScriptEnvironment* env)
 
 		if (!lstrcmpi(Op, "Mul"))
 		{
-			if (chroma) {
-				layer_yuy2_mul_chroma_mmx(src1p, src2p, src1_pitch, src2_pitch, width, height, mylevel);
-			} else {
-        layer_yuy2_mul_mmx(src1p, src2p, src1_pitch, src2_pitch, width, height, mylevel);
-			}
+      if (chroma) {
+        if (env->GetCPUFlags() & CPUF_MMX) 
+        {
+          layer_yuy2_mul_chroma_mmx(src1p, src2p, src1_pitch, src2_pitch, width, height, mylevel);
+        } 
+        else
+        {
+          layer_yuy2_mul_chroma_c(src1p, src2p, src1_pitch, src2_pitch, xcount, height, mylevel);
+        }
+      } 
+      else 
+      {
+        if (env->GetCPUFlags() & CPUF_MMX) 
+        {
+          layer_yuy2_mul_mmx(src1p, src2p, src1_pitch, src2_pitch, width, height, mylevel);
+        } 
+        else 
+        {
+          layer_yuy2_mul_c(src1p, src2p, src1_pitch, src2_pitch, xcount, height, mylevel);
+        }
+      }
 		}
 		if (!lstrcmpi(Op, "Add"))
 		{
       if (chroma) {
-        layer_yuy2_add_chroma_mmx(src1p, src2p, src1_pitch, src2_pitch, width, height, mylevel);
-      } else {
-        layer_yuy2_add_mmx(src1p, src2p, src1_pitch, src2_pitch, width, height, mylevel);
+        if (env->GetCPUFlags() & CPUF_MMX) 
+        {
+          layer_yuy2_add_chroma_mmx(src1p, src2p, src1_pitch, src2_pitch, width, height, mylevel);
+        } 
+        else
+        {
+          layer_yuy2_add_chroma_c(src1p, src2p, src1_pitch, src2_pitch, xcount, height, mylevel);
+        }
+      } 
+      else 
+      {
+        if (env->GetCPUFlags() & CPUF_MMX) 
+        {
+          layer_yuy2_add_mmx(src1p, src2p, src1_pitch, src2_pitch, width, height, mylevel);
+        } 
+        else 
+        {
+          layer_yuy2_add_c(src1p, src2p, src1_pitch, src2_pitch, xcount, height, mylevel);
+        }
       }
 		}
 		if (!lstrcmpi(Op, "Fast"))
 		{
-			if (chroma) {
-				layer_yuy2_fast_chroma_mmx(src1p, src2p, src1_pitch, src2_pitch, width, height, mylevel);
-			} else {
+			if (chroma) 
+      {
+        if (env->GetCPUFlags() & CPUF_MMX) 
+        {
+          layer_yuy2_fast_chroma_mmx(src1p, src2p, src1_pitch, src2_pitch, width, height, mylevel);
+        } 
+        else
+        {
+          layer_yuy2_fast_chroma_c(src1p, src2p, src1_pitch, src2_pitch, xcount, height, mylevel);
+        }
+			} 
+      else 
+      {
         env->ThrowError("Layer: this mode not allowed in FAST; use ADD instead");
 			}
     }
     if (!lstrcmpi(Op, "Subtract"))
     {
       if (chroma) {
-        layer_yuy2_subtract_chroma_mmx(src1p, src2p, src1_pitch, src2_pitch, width, height, mylevel);
-      } else {
-        layer_yuy2_subtract_mmx(src1p, src2p, src1_pitch, src2_pitch, width, height, mylevel);
+        if (env->GetCPUFlags() & CPUF_MMX) 
+        {
+          layer_yuy2_subtract_chroma_mmx(src1p, src2p, src1_pitch, src2_pitch, width, height, mylevel);
+        } 
+        else
+        {
+          layer_yuy2_subtract_chroma_c(src1p, src2p, src1_pitch, src2_pitch, xcount, height, mylevel);
+        }
+      } 
+      else 
+      {
+        if (env->GetCPUFlags() & CPUF_MMX) 
+        {
+          layer_yuy2_subtract_mmx(src1p, src2p, src1_pitch, src2_pitch, width, height, mylevel);
+        } 
+        else 
+        {
+          layer_yuy2_subtract_c(src1p, src2p, src1_pitch, src2_pitch, xcount, height, mylevel);
+        }
       }
     }
     if (!lstrcmpi(Op, "Lighten"))
     {
+
       if (chroma) {
-        layer_yuy2_lighten_chroma_mmx(src1p, src2p, src1_pitch, src2_pitch, width, height, mylevel, thresh);
+        if (env->GetCPUFlags() & CPUF_MMX) 
+        {
+          layer_yuy2_lighten_chroma_mmx(src1p, src2p, src1_pitch, src2_pitch, width, height, mylevel, thresh);
+        } 
+        else
+        {
+          layer_yuy2_lighten_chroma_c(src1p, src2p, src1_pitch, src2_pitch, xcount, height, mylevel, thresh);
+        }
       } else {
         env->ThrowError("Layer: monochrome lighten illegal op");
       }
@@ -2350,7 +2528,14 @@ PVideoFrame __stdcall Layer::GetFrame(int n, IScriptEnvironment* env)
     if (!lstrcmpi(Op, "Darken"))
     {
       if (chroma) {
-        layer_yuy2_darken_chroma_mmx(src1p, src2p, src1_pitch, src2_pitch, width, height, mylevel, thresh);
+        if (env->GetCPUFlags() & CPUF_MMX) 
+        {
+          layer_yuy2_darken_chroma_mmx(src1p, src2p, src1_pitch, src2_pitch, width, height, mylevel, thresh);
+        } 
+        else
+        {
+          layer_yuy2_darken_chroma_c(src1p, src2p, src1_pitch, src2_pitch, xcount, height, mylevel, thresh);
+        }
       } else {
         env->ThrowError("Layer: monochrome darken illegal op");
       }
