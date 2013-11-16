@@ -1639,12 +1639,94 @@ static void layer_yuy2_lighten_darken_c(BYTE* dstp, const BYTE* ovrp, int dst_pi
 
 /* RGB32 */
 
-static __forceinline __m64 calculate_luma(const __m64 &src, const __m64 &rgb_coeffs, const __m64 &zero) {
+//src format: xx xx xx xx | xx xx xx xx | a1 xx xx xx | a0 xx xx xx
+//level_vector and one should be vectors of 32bit packed integers
+static __forceinline __m128i calculate_monochrome_alpha_sse2(const __m128i &src, const __m128i &level_vector, const __m128i &one) {
+  __m128i alpha = _mm_srli_epi32(src, 24);
+  alpha = _mm_mullo_epi16(alpha, level_vector);
+  alpha = _mm_add_epi32(alpha, one);
+  alpha = _mm_srli_epi32(alpha, 8);
+  alpha = _mm_shufflelo_epi16(alpha, _MM_SHUFFLE(2, 2, 0, 0));
+  return _mm_shuffle_epi32(alpha, _MM_SHUFFLE(1, 1, 0, 0));
+}
+
+static __forceinline __m128i calculate_luma_sse2(const __m128i &src, const __m128i &rgb_coeffs, const __m128i &zero) {
+  __m128i temp = _mm_madd_epi16(src, rgb_coeffs); 
+  __m128i low = _mm_shuffle_epi32(temp, _MM_SHUFFLE(3, 3, 1, 1));
+  temp = _mm_add_epi32(low, temp);
+  temp = _mm_srli_epi32(temp, 15);
+  __m128i result = _mm_shufflelo_epi16(temp, _MM_SHUFFLE(0, 0, 0, 0));
+  return _mm_shufflehi_epi16(result, _MM_SHUFFLE(0, 0, 0, 0));
+}
+
+static __forceinline __m64 calculate_luma_isse(const __m64 &src, const __m64 &rgb_coeffs, const __m64 &zero) {
   __m64 temp = _mm_madd_pi16(src, rgb_coeffs);
   __m64 low = _mm_unpackhi_pi32(temp, zero);
   temp = _mm_add_pi32(low, temp);
   temp = _mm_srli_pi32(temp, 15);
-  return _mm_shuffle_pi16(temp, _MM_SHUFFLE(0,0,0,0));
+  return _mm_shuffle_pi16(temp, _MM_SHUFFLE(0, 0, 0, 0));
+}
+
+template<bool use_chroma>
+static void layer_rgb32_mul_sse2(BYTE* dstp, const BYTE* ovrp, int dst_pitch, int overlay_pitch, int width, int height, int level) { 
+  int mod2_width = width / 2 * 2;
+
+  __m128i zero = _mm_setzero_si128();
+  __m128i level_vector = _mm_set1_epi32(level);
+  __m128i one = _mm_set1_epi32(1);
+  __m128i rgb_coeffs = _mm_set_epi16(0, cyr, cyg, cyb, 0, cyr, cyg, cyb);
+
+  for (int y = 0; y < height; ++y) {
+    for (int x = 0; x < mod2_width; x+=2) {
+      __m128i src = _mm_loadl_epi64(reinterpret_cast<const __m128i*>(dstp+x*4));
+      __m128i ovr = _mm_loadl_epi64(reinterpret_cast<const __m128i*>(ovrp+x*4));
+
+      __m128i alpha = calculate_monochrome_alpha_sse2(src, level_vector, one);
+
+      src = _mm_unpacklo_epi8(src, zero);
+      ovr = _mm_unpacklo_epi8(ovr, zero);
+
+      __m128i luma;
+      if (use_chroma) {
+        luma = ovr;
+      } else {
+        luma = calculate_luma_sse2(ovr, rgb_coeffs, zero);
+      }
+
+      __m128i dst = _mm_mullo_epi16(luma, src);
+      dst = _mm_srli_epi16(dst, 8);
+      dst = _mm_subs_epi16(dst, src);
+      dst = _mm_mullo_epi16(dst, alpha);
+      dst = _mm_srli_epi16(dst, 8);
+      dst = _mm_add_epi8(src, dst);
+
+      dst = _mm_packus_epi16(dst, zero);
+
+      _mm_storel_epi64(reinterpret_cast<__m128i*>(dstp+x*4), dst);
+    }
+
+    if (width != mod2_width) {
+      int x = mod2_width;
+      int alpha = (ovrp[x*4+3] * level + 1) >> 8;
+
+      if (use_chroma) {
+        dstp[x*4]   = dstp[x*4]   + (((((ovrp[x*4]   * dstp[x*4]) >> 8)   - dstp[x*4]  ) * alpha) >> 8);
+        dstp[x*4+1] = dstp[x*4+1] + (((((ovrp[x*4+1] * dstp[x*4+1]) >> 8) - dstp[x*4+1]) * alpha) >> 8);
+        dstp[x*4+2] = dstp[x*4+2] + (((((ovrp[x*4+2] * dstp[x*4+2]) >> 8) - dstp[x*4+2]) * alpha) >> 8);
+        dstp[x*4+3] = dstp[x*4+3] + (((((ovrp[x*4+3] * dstp[x*4+3]) >> 8) - dstp[x*4+3]) * alpha) >> 8);
+      } else {
+        int luma = (cyb * ovrp[x*4] + cyg * ovrp[x*4+1] + cyr * ovrp[x*4+2]) >> 15;
+
+        dstp[x*4]   = dstp[x*4]   + (((((luma * dstp[x*4]) >> 8)   - dstp[x*4]  ) * alpha) >> 8);
+        dstp[x*4+1] = dstp[x*4+1] + (((((luma * dstp[x*4+1]) >> 8) - dstp[x*4+1]) * alpha) >> 8);
+        dstp[x*4+2] = dstp[x*4+2] + (((((luma * dstp[x*4+2]) >> 8) - dstp[x*4+2]) * alpha) >> 8);
+        dstp[x*4+3] = dstp[x*4+3] + (((((luma * dstp[x*4+3]) >> 8) - dstp[x*4+3]) * alpha) >> 8);
+      }
+    }
+
+    dstp += dst_pitch;
+    ovrp += overlay_pitch;
+  }
 }
 
 template<bool use_chroma>
@@ -1667,7 +1749,7 @@ static void layer_rgb32_mul_isse(BYTE* dstp, const BYTE* ovrp, int dst_pitch, in
       if (use_chroma) {
         luma = ovr;
       } else {
-        luma = calculate_luma(ovr, rgb_coeffs, zero);
+        luma = calculate_luma_isse(ovr, rgb_coeffs, zero);
       }
 
       __m64 dst = _mm_mullo_pi16(luma, src);
@@ -1720,6 +1802,66 @@ static void layer_rgb32_mul_c(BYTE* dstp, const BYTE* ovrp, int dst_pitch, int o
 
 
 template<bool use_chroma>
+static void layer_rgb32_add_sse2(BYTE* dstp, const BYTE* ovrp, int dst_pitch, int overlay_pitch, int width, int height, int level) { 
+  int mod2_width = width / 2 * 2;
+
+  __m128i zero = _mm_setzero_si128();
+  __m128i level_vector = _mm_set1_epi32(level);
+  __m128i one = _mm_set1_epi32(1);
+  __m128i rgb_coeffs = _mm_set_epi16(0, cyr, cyg, cyb, 0, cyr, cyg, cyb);
+
+  for (int y = 0; y < height; ++y) {
+    for (int x = 0; x < mod2_width; x+=2) {
+      __m128i src = _mm_loadl_epi64(reinterpret_cast<const __m128i*>(dstp+x*4));
+      __m128i ovr = _mm_loadl_epi64(reinterpret_cast<const __m128i*>(ovrp+x*4));
+
+      __m128i alpha = calculate_monochrome_alpha_sse2(src, level_vector, one);
+
+      src = _mm_unpacklo_epi8(src, zero);
+      ovr = _mm_unpacklo_epi8(ovr, zero);
+
+      __m128i luma;
+      if (use_chroma) {
+        luma = ovr;
+      } else {
+        luma = calculate_luma_sse2(ovr, rgb_coeffs, zero);
+      }
+
+      __m128i dst = _mm_subs_epi16(luma, src);
+      dst = _mm_mullo_epi16(dst, alpha);
+      dst = _mm_srli_epi16(dst, 8);
+      dst = _mm_add_epi8(src, dst);
+
+      dst = _mm_packus_epi16(dst, zero);
+
+      _mm_storel_epi64(reinterpret_cast<__m128i*>(dstp+x*4), dst);
+    }
+
+    if (width != mod2_width) {
+      int x = mod2_width;
+      int alpha = (ovrp[x*4+3] * level + 1) >> 8;
+
+      if (use_chroma) {
+        dstp[x*4]   = dstp[x*4]   + (((ovrp[x*4]   - dstp[x*4])   * alpha) >> 8);
+        dstp[x*4+1] = dstp[x*4+1] + (((ovrp[x*4+1] - dstp[x*4+1]) * alpha) >> 8);
+        dstp[x*4+2] = dstp[x*4+2] + (((ovrp[x*4+2] - dstp[x*4+2]) * alpha) >> 8);
+        dstp[x*4+3] = dstp[x*4+3] + (((ovrp[x*4+3] - dstp[x*4+3]) * alpha) >> 8);
+      } else {
+        int luma = (cyb * ovrp[x*4] + cyg * ovrp[x*4+1] + cyr * ovrp[x*4+2]) >> 15;
+
+        dstp[x*4]   = dstp[x*4]   + (((luma - dstp[x*4])   * alpha) >> 8);
+        dstp[x*4+1] = dstp[x*4+1] + (((luma - dstp[x*4+1]) * alpha) >> 8);
+        dstp[x*4+2] = dstp[x*4+2] + (((luma - dstp[x*4+2]) * alpha) >> 8);
+        dstp[x*4+3] = dstp[x*4+3] + (((luma - dstp[x*4+3]) * alpha) >> 8);
+      }
+    }
+
+    dstp += dst_pitch;
+    ovrp += overlay_pitch;
+  }
+}
+
+template<bool use_chroma>
 static void layer_rgb32_add_isse(BYTE* dstp, const BYTE* ovrp, int dst_pitch, int overlay_pitch, int width, int height, int level) { 
   __m64 zero = _mm_setzero_si64();
   __m64 rgb_coeffs = _mm_set_pi16(0, cyr, cyg, cyb);
@@ -1739,7 +1881,7 @@ static void layer_rgb32_add_isse(BYTE* dstp, const BYTE* ovrp, int dst_pitch, in
       if (use_chroma) {
         luma = ovr;
       } else {
-        luma = calculate_luma(ovr, rgb_coeffs, zero);
+        luma = calculate_luma_isse(ovr, rgb_coeffs, zero);
       }
 
       __m64 dst = _mm_subs_pi16(luma, src);
@@ -1789,6 +1931,10 @@ static void layer_rgb32_add_c(BYTE* dstp, const BYTE* ovrp, int dst_pitch, int o
 }
 
 
+static void layer_rgb32_fast_sse2(BYTE* dstp, const BYTE* ovrp, int dst_pitch, int overlay_pitch, int width, int height, int level) {
+  layer_yuy2_fast_sse2(dstp, ovrp, dst_pitch, overlay_pitch, width*2, height, level);
+}
+
 static void layer_rgb32_fast_isse(BYTE* dstp, const BYTE* ovrp, int dst_pitch, int overlay_pitch, int width, int height, int level) {
   layer_yuy2_fast_isse(dstp, ovrp, dst_pitch, overlay_pitch, width*2, height, level);
 }
@@ -1797,6 +1943,67 @@ static void layer_rgb32_fast_c(BYTE* dstp, const BYTE* ovrp, int dst_pitch, int 
   layer_yuy2_fast_c(dstp, ovrp, dst_pitch, overlay_pitch, width*2, height, level);
 }
 
+
+template<bool use_chroma>
+static void layer_rgb32_subtract_sse2(BYTE* dstp, const BYTE* ovrp, int dst_pitch, int overlay_pitch, int width, int height, int level) { 
+  int mod2_width = width / 2 * 2;
+
+  __m128i zero = _mm_setzero_si128();
+  __m128i level_vector = _mm_set1_epi32(level);
+  __m128i one = _mm_set1_epi32(1);
+  __m128i rgb_coeffs = _mm_set_epi16(0, cyr, cyg, cyb, 0, cyr, cyg, cyb);
+  __m128i ff = _mm_set1_epi16(0x00FF);
+
+  for (int y = 0; y < height; ++y) {
+    for (int x = 0; x < mod2_width; x+=2) {
+      __m128i src = _mm_loadl_epi64(reinterpret_cast<const __m128i*>(dstp+x*4));
+      __m128i ovr = _mm_loadl_epi64(reinterpret_cast<const __m128i*>(ovrp+x*4));
+
+      __m128i alpha = calculate_monochrome_alpha_sse2(src, level_vector, one);
+
+      src = _mm_unpacklo_epi8(src, zero);
+      ovr = _mm_unpacklo_epi8(ovr, zero);
+
+      __m128i luma;
+      if (use_chroma) {
+        luma = _mm_subs_epi16(ff, ovr);
+      } else {
+        luma = calculate_luma_sse2(_mm_andnot_si128(ovr, ff), rgb_coeffs, zero);
+      }
+
+      __m128i dst = _mm_subs_epi16(luma, src);
+      dst = _mm_mullo_epi16(dst, alpha);
+      dst = _mm_srli_epi16(dst, 8);
+      dst = _mm_add_epi8(src, dst);
+
+      dst = _mm_packus_epi16(dst, zero);
+
+      _mm_storel_epi64(reinterpret_cast<__m128i*>(dstp+x*4), dst);
+    }
+
+    if (width != mod2_width) {
+      int x = mod2_width;
+      int alpha = (ovrp[x*4+3] * level + 1) >> 8;
+
+      if (use_chroma) {
+        dstp[x*4]   = dstp[x*4]   + (((255 - ovrp[x*4]   - dstp[x*4])   * alpha) >> 8);
+        dstp[x*4+1] = dstp[x*4+1] + (((255 - ovrp[x*4+1] - dstp[x*4+1]) * alpha) >> 8);
+        dstp[x*4+2] = dstp[x*4+2] + (((255 - ovrp[x*4+2] - dstp[x*4+2]) * alpha) >> 8);
+        dstp[x*4+3] = dstp[x*4+3] + (((255 - ovrp[x*4+3] - dstp[x*4+3]) * alpha) >> 8);
+      } else {
+        int luma = (cyb * (255 - ovrp[x*4]) + cyg * (255 - ovrp[x*4+1]) + cyr * (255 - ovrp[x*4+2])) >> 15;
+
+        dstp[x*4]   = dstp[x*4]   + (((luma - dstp[x*4])   * alpha) >> 8);
+        dstp[x*4+1] = dstp[x*4+1] + (((luma - dstp[x*4+1]) * alpha) >> 8);
+        dstp[x*4+2] = dstp[x*4+2] + (((luma - dstp[x*4+2]) * alpha) >> 8);
+        dstp[x*4+3] = dstp[x*4+3] + (((luma - dstp[x*4+3]) * alpha) >> 8);
+      }
+    }
+
+    dstp += dst_pitch;
+    ovrp += overlay_pitch;
+  }
+}
 
 template<bool use_chroma>
 static void layer_rgb32_subtract_isse(BYTE* dstp, const BYTE* ovrp, int dst_pitch, int overlay_pitch, int width, int height, int level) { 
@@ -1819,7 +2026,7 @@ static void layer_rgb32_subtract_isse(BYTE* dstp, const BYTE* ovrp, int dst_pitc
       if (use_chroma) {
         luma = _mm_subs_pi16(ff, ovr);
       } else {
-        luma = calculate_luma(_mm_andnot_si64(ovr, ff), rgb_coeffs, zero);
+        luma = calculate_luma_isse(_mm_andnot_si64(ovr, ff), rgb_coeffs, zero);
       }
 
       __m64 dst = _mm_subs_pi16(luma, src);
@@ -1870,6 +2077,72 @@ static void layer_rgb32_subtract_c(BYTE* dstp, const BYTE* ovrp, int dst_pitch, 
 
 
 template<int mode>
+static void layer_rgb32_lighten_darken_sse2(BYTE* dstp, const BYTE* ovrp, int dst_pitch, int overlay_pitch, int width, int height, int level, int thresh) { 
+  int mod2_width = width / 2 * 2;
+
+  __m128i zero = _mm_setzero_si128();
+  __m128i level_vector = _mm_set1_epi32(level);
+  __m128i one = _mm_set1_epi32(1);
+  __m128i rgb_coeffs = _mm_set_epi16(0, cyr, cyg, cyb, 0, cyr, cyg, cyb);
+  __m128i threshold = _mm_set1_epi16(thresh);
+
+  for (int y = 0; y < height; ++y) {
+    for (int x = 0; x < mod2_width; x+=2) {
+      __m128i src = _mm_loadl_epi64(reinterpret_cast<const __m128i*>(dstp+x*4));
+      __m128i ovr = _mm_loadl_epi64(reinterpret_cast<const __m128i*>(ovrp+x*4));
+
+      __m128i alpha = calculate_monochrome_alpha_sse2(src, level_vector, one);
+
+      src = _mm_unpacklo_epi8(src, zero);
+      ovr = _mm_unpacklo_epi8(ovr, zero);
+
+      __m128i luma_ovr = calculate_luma_sse2(ovr, rgb_coeffs, zero);
+      __m128i luma_src = calculate_luma_sse2(src, rgb_coeffs, zero);
+
+      __m128i tmp = _mm_add_epi16(threshold, luma_src);
+      __m128i mask;
+      if (mode == LIGHTEN) {
+        mask = _mm_cmpgt_epi16(luma_ovr, tmp);
+      } else {
+        mask = _mm_cmpgt_epi16(tmp, luma_ovr);
+      }
+
+      alpha = _mm_and_si128(alpha, mask);
+
+      __m128i dst = _mm_subs_epi16(ovr, src);
+      dst = _mm_mullo_epi16(dst, alpha);
+      dst = _mm_srli_epi16(dst, 8);
+      dst = _mm_add_epi8(src, dst);
+
+      dst = _mm_packus_epi16(dst, zero);
+
+      _mm_storel_epi64(reinterpret_cast<__m128i*>(dstp+x*4), dst);
+    }
+
+    if (width != mod2_width) {
+      int x = mod2_width;
+      int alpha = (ovrp[x*4+3] * level + 1) >> 8;
+      int luma_ovr = (cyb * ovrp[x*4] + cyg * ovrp[x*4+1] + cyr * ovrp[x*4+2]) >> 15;
+      int luma_src = (cyb * dstp[x*4] + cyg * dstp[x*4+1] + cyr * dstp[x*4+2]) >> 15;
+
+      if (mode == LIGHTEN) {
+        alpha = luma_ovr > thresh + luma_src ? alpha : 0;
+      } else {
+        alpha = luma_ovr < thresh + luma_src ? alpha : 0;
+      }
+
+      dstp[x*4]   = dstp[x*4]   + (((ovrp[x*4]   - dstp[x*4])   * alpha) >> 8);
+      dstp[x*4+1] = dstp[x*4+1] + (((ovrp[x*4+1] - dstp[x*4+1]) * alpha) >> 8);
+      dstp[x*4+2] = dstp[x*4+2] + (((ovrp[x*4+2] - dstp[x*4+2]) * alpha) >> 8);
+      dstp[x*4+3] = dstp[x*4+3] + (((ovrp[x*4+3] - dstp[x*4+3]) * alpha) >> 8);
+    }
+
+    dstp += dst_pitch;
+    ovrp += overlay_pitch;
+  }
+}
+
+template<int mode>
 static void layer_rgb32_lighten_darken_isse(BYTE* dstp, const BYTE* ovrp, int dst_pitch, int overlay_pitch, int width, int height, int level, int thresh) { 
   __m64 zero = _mm_setzero_si64();
   __m64 rgb_coeffs = _mm_set_pi16(0, cyr, cyg, cyb);
@@ -1886,8 +2159,8 @@ static void layer_rgb32_lighten_darken_isse(BYTE* dstp, const BYTE* ovrp, int ds
       src = _mm_unpacklo_pi8(src, zero);
       ovr = _mm_unpacklo_pi8(ovr, zero);
 
-      __m64 luma_ovr = calculate_luma(ovr, rgb_coeffs, zero);
-      __m64 luma_src = calculate_luma(src, rgb_coeffs, zero);
+      __m64 luma_ovr = calculate_luma_isse(ovr, rgb_coeffs, zero);
+      __m64 luma_src = calculate_luma_isse(src, rgb_coeffs, zero);
 
       __m64 tmp = _mm_add_pi16(threshold, luma_src);
       __m64 mask;
@@ -2142,7 +2415,11 @@ PVideoFrame __stdcall Layer::GetFrame(int n, IScriptEnvironment* env)
     {
       if (chroma) 
       {
-        if (env->GetCPUFlags() & CPUF_INTEGER_SSE) 
+        if ((env->GetCPUFlags() & CPUF_SSE2) && IsPtrAligned(src1p, 16) && IsPtrAligned(src2p, 16))
+        {
+          layer_rgb32_mul_sse2<true>(src1p, src2p, src1_pitch, src2_pitch, width, height, mylevel);
+        } 
+        else if (env->GetCPUFlags() & CPUF_INTEGER_SSE) 
         {
           layer_rgb32_mul_isse<true>(src1p, src2p, src1_pitch, src2_pitch, width, height, mylevel);
         } 
@@ -2153,7 +2430,11 @@ PVideoFrame __stdcall Layer::GetFrame(int n, IScriptEnvironment* env)
       } 
       else 
       {
-        if (env->GetCPUFlags() & CPUF_INTEGER_SSE) 
+        if ((env->GetCPUFlags() & CPUF_SSE2) && IsPtrAligned(src1p, 16) && IsPtrAligned(src2p, 16))
+        {
+          layer_rgb32_mul_sse2<false>(src1p, src2p, src1_pitch, src2_pitch, width, height, mylevel);
+        } 
+        else if (env->GetCPUFlags() & CPUF_INTEGER_SSE) 
         {
           layer_rgb32_mul_isse<false>(src1p, src2p, src1_pitch, src2_pitch, width, height, mylevel);
         }
@@ -2167,7 +2448,11 @@ PVideoFrame __stdcall Layer::GetFrame(int n, IScriptEnvironment* env)
     {
       if (chroma) 
       {
-        if (env->GetCPUFlags() & CPUF_INTEGER_SSE) 
+        if ((env->GetCPUFlags() & CPUF_SSE2) && IsPtrAligned(src1p, 16) && IsPtrAligned(src2p, 16))
+        {
+          layer_rgb32_add_sse2<true>(src1p, src2p, src1_pitch, src2_pitch, width, height, mylevel);
+        } 
+        else if (env->GetCPUFlags() & CPUF_INTEGER_SSE) 
         {
           layer_rgb32_add_isse<true>(src1p, src2p, src1_pitch, src2_pitch, width, height, mylevel);
         } 
@@ -2178,7 +2463,11 @@ PVideoFrame __stdcall Layer::GetFrame(int n, IScriptEnvironment* env)
       } 
       else 
       {
-        if (env->GetCPUFlags() & CPUF_INTEGER_SSE) 
+        if ((env->GetCPUFlags() & CPUF_SSE2) && IsPtrAligned(src1p, 16) && IsPtrAligned(src2p, 16))
+        {
+          layer_rgb32_add_sse2<false>(src1p, src2p, src1_pitch, src2_pitch, width, height, mylevel);
+        } 
+        else if (env->GetCPUFlags() & CPUF_INTEGER_SSE) 
         {
           layer_rgb32_add_isse<false>(src1p, src2p, src1_pitch, src2_pitch, width, height, mylevel);
         }
@@ -2192,7 +2481,11 @@ PVideoFrame __stdcall Layer::GetFrame(int n, IScriptEnvironment* env)
     {
       if (chroma) 
       {
-        if (env->GetCPUFlags() & CPUF_INTEGER_SSE) 
+        if ((env->GetCPUFlags() & CPUF_SSE2) && IsPtrAligned(src1p, 16) && IsPtrAligned(src2p, 16))
+        {
+          layer_rgb32_lighten_darken_sse2<LIGHTEN>(src1p, src2p, src1_pitch, src2_pitch, width, height, mylevel, thresh);
+        } 
+        else if (env->GetCPUFlags() & CPUF_INTEGER_SSE) 
         {
           layer_rgb32_lighten_darken_isse<LIGHTEN>(src1p, src2p, src1_pitch, src2_pitch, width, height, mylevel, thresh);
         } 
@@ -2210,7 +2503,11 @@ PVideoFrame __stdcall Layer::GetFrame(int n, IScriptEnvironment* env)
     {
       if (chroma) 
       {
-        if (env->GetCPUFlags() & CPUF_INTEGER_SSE) 
+        if ((env->GetCPUFlags() & CPUF_SSE2) && IsPtrAligned(src1p, 16) && IsPtrAligned(src2p, 16))
+        {
+          layer_rgb32_lighten_darken_sse2<DARKEN>(src1p, src2p, src1_pitch, src2_pitch, width, height, mylevel, thresh);
+        } 
+        else if (env->GetCPUFlags() & CPUF_INTEGER_SSE) 
         {
           layer_rgb32_lighten_darken_isse<DARKEN>(src1p, src2p, src1_pitch, src2_pitch, width, height, mylevel, thresh);
         } 
@@ -2228,7 +2525,11 @@ PVideoFrame __stdcall Layer::GetFrame(int n, IScriptEnvironment* env)
     {
       if (chroma) 
       {
-        if (env->GetCPUFlags() & CPUF_INTEGER_SSE) 
+        if ((env->GetCPUFlags() & CPUF_SSE2) && IsPtrAligned(src1p, 16) && IsPtrAligned(src2p, 16))
+        {
+          layer_rgb32_fast_sse2(src1p, src2p, src1_pitch, src2_pitch, width, height, mylevel);
+        } 
+        else if (env->GetCPUFlags() & CPUF_INTEGER_SSE) 
         {
           layer_rgb32_fast_isse(src1p, src2p, src1_pitch, src2_pitch, width, height, mylevel);
         } 
@@ -2246,7 +2547,11 @@ PVideoFrame __stdcall Layer::GetFrame(int n, IScriptEnvironment* env)
     {
       if (chroma) 
       {
-        if (env->GetCPUFlags() & CPUF_INTEGER_SSE) 
+        if ((env->GetCPUFlags() & CPUF_SSE2) && IsPtrAligned(src1p, 16) && IsPtrAligned(src2p, 16))
+        {
+          layer_rgb32_subtract_sse2<true>(src1p, src2p, src1_pitch, src2_pitch, width, height, mylevel);
+        } 
+        else if (env->GetCPUFlags() & CPUF_INTEGER_SSE) 
         {
           layer_rgb32_subtract_isse<true>(src1p, src2p, src1_pitch, src2_pitch, width, height, mylevel);
         } 
@@ -2257,7 +2562,11 @@ PVideoFrame __stdcall Layer::GetFrame(int n, IScriptEnvironment* env)
       } 
       else 
       {
-        if (env->GetCPUFlags() & CPUF_INTEGER_SSE) 
+        if ((env->GetCPUFlags() & CPUF_SSE2) && IsPtrAligned(src1p, 16) && IsPtrAligned(src2p, 16))
+        {
+          layer_rgb32_subtract_sse2<false>(src1p, src2p, src1_pitch, src2_pitch, width, height, mylevel);
+        } 
+        else if (env->GetCPUFlags() & CPUF_INTEGER_SSE) 
         {
           layer_rgb32_subtract_isse<false>(src1p, src2p, src1_pitch, src2_pitch, width, height, mylevel);
         }
