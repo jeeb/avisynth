@@ -1639,6 +1639,54 @@ static void layer_yuy2_lighten_darken_c(BYTE* dstp, const BYTE* ovrp, int dst_pi
 
 /* RGB32 */
 
+static __forceinline __m64 calculate_luma(const __m64 &src, const __m64 &rgb_coeffs, const __m64 &zero) {
+  __m64 temp = _mm_madd_pi16(src, rgb_coeffs);
+  __m64 low = _mm_unpackhi_pi32(temp, zero);
+  temp = _mm_add_pi32(low, temp);
+  temp = _mm_srli_pi32(temp, 15);
+  return _mm_shuffle_pi16(temp, _MM_SHUFFLE(0,0,0,0));
+}
+
+template<bool use_chroma>
+static void layer_rgb32_mul_isse(BYTE* dstp, const BYTE* ovrp, int dst_pitch, int overlay_pitch, int width, int height, int level) { 
+  __m64 zero = _mm_setzero_si64();
+  __m64 rgb_coeffs = _mm_set_pi16(0, cyr, cyg, cyb);
+
+  for (int y = 0; y < height; ++y) {
+    for (int x = 0; x < width ; ++x) {
+      __m64 src = _mm_cvtsi32_si64(*reinterpret_cast<const int*>(dstp+x*4));
+      __m64 ovr = _mm_cvtsi32_si64(*reinterpret_cast<const int*>(ovrp+x*4));
+
+      __m64 alpha = _mm_cvtsi32_si64((ovrp[x*4+3] * level + 1) >> 8);
+      alpha = _mm_shuffle_pi16(alpha, _MM_SHUFFLE(0,0,0,0));
+
+      src = _mm_unpacklo_pi8(src, zero);
+      ovr = _mm_unpacklo_pi8(ovr, zero);
+
+      __m64 luma;
+      if (use_chroma) {
+        luma = ovr;
+      } else {
+        luma = calculate_luma(ovr, rgb_coeffs, zero);
+      }
+
+      __m64 dst = _mm_mullo_pi16(luma, src);
+      dst = _mm_srli_pi16(dst, 8);
+      dst = _mm_subs_pi16(dst, src);
+      dst = _mm_mullo_pi16(dst, alpha);
+      dst = _mm_srli_pi16(dst, 8);
+      dst = _mm_add_pi8(src, dst);
+
+      dst = _mm_packs_pu16(dst, zero);
+
+      *reinterpret_cast<int*>(dstp+x*4) = _mm_cvtsi64_si32(dst);
+    }
+    dstp += dst_pitch;
+    ovrp += overlay_pitch;
+  }
+  _mm_empty();
+}
+
 static void layer_rgb32_mul_chroma_c(BYTE* dstp, const BYTE* ovrp, int dst_pitch, int overlay_pitch, int width, int height, int level) { 
   for (int y = 0; y < height; ++y) {
     for (int x = 0; x < width ; ++x) {
@@ -1651,57 +1699,6 @@ static void layer_rgb32_mul_chroma_c(BYTE* dstp, const BYTE* ovrp, int dst_pitch
     }
     dstp += dst_pitch;
     ovrp += overlay_pitch;
-  }
-}
-
-static void layer_rgb32_mul_chroma_mmx(BYTE* src1p, const BYTE* src2p, int src1_pitch, int src2_pitch, int width, int height, int level) {
-  __asm {
-    mov     edi, src1p
-      mov     esi, src2p
-      movd    mm1, level      ;alpha
-      pcmpeqd   mm4, mm4
-      pxor    mm0, mm0
-      psrlq   mm4, 63         ; 00000000|00000001
-
-mul32loop:
-    mov         edx, width
-      xor         ecx, ecx
-
-      align 16
-mul32xloop:
-    movd    mm6, [esi + ecx*4]    ;src2
-      movd   mm7, [edi + ecx*4]    ;src1/dest
-      movq    mm2, mm6
-      punpcklbw  mm6, mm0        ;mm6= 00aa|00rr|00gg|00bb [src2]
-    //----- extract alpha into four channels
-    psrld   mm2, 24         ;mm2= 0000|0000|0000|00aa
-      punpcklbw  mm7, mm0        ;mm7= 00aa|00rr|00gg|00bb [src1]
-    pmullw    mm2, mm1        ;mm2= pixel alpha * script alpha
-      //----- begin the fun stuff
-      pmullw   mm6, mm7        ;src2*=src1
-      paddd   mm2, mm4        ;mm2+=1
-      psrlw    mm6, 8          ;scale multiply result
-      psrld   mm2, 8          ;mm2= 00000000|000000aa*
-      psubsw   mm6, mm7        ;subtract src1
-      punpcklwd mm2, mm2        ;mm2= 0000|0000|00aa*|00aa*
-      punpckldq mm2, mm2        ;mm2= 00aa*|00aa*|00aa*|00aa*
-      //----- alpha mask now in all four channels of mm2
-      pmullw    mm6, mm2    ;mm6=scaled difference*alpha
-      psrlw   mm6, 8          ;scale result
-      mov    eax, ecx
-      paddb   mm6, mm7        ;add src1
-      //----- end the fun stuff...
-      inc    ecx
-      packuswb  mm6, mm0
-      cmp    ecx, edx
-      movd        [edi + eax*4], mm6
-      jnz    mul32xloop
-
-      add     edi, src1_pitch
-      add     esi, src2_pitch
-      dec     height
-      jnz     mul32loop
-      emms
   }
 }
 
@@ -1721,66 +1718,44 @@ static void layer_rgb32_mul_c(BYTE* dstp, const BYTE* ovrp, int dst_pitch, int o
   }
 }
 
-static void layer_rgb32_mul_mmx(BYTE* src1p, const BYTE* src2p, int src1_pitch, int src2_pitch, int width, int height, int level) { 
-  __asm {
-    mov     edi, src1p
-      mov     esi, src2p
-      movd    mm1, level
-      pcmpeqd   mm4, mm4
-      pxor    mm0, mm0
-      psrlq   mm4, 63       ; 00000000|00000001
 
-mul32yloop:
-    mov         edx, width
-      xor         ecx, ecx
+template<bool use_chroma>
+static void layer_rgb32_add_isse(BYTE* dstp, const BYTE* ovrp, int dst_pitch, int overlay_pitch, int width, int height, int level) { 
+  __m64 zero = _mm_setzero_si64();
+  __m64 rgb_coeffs = _mm_set_pi16(0, cyr, cyg, cyb);
 
-      align 16
-mul32yxloop:
-    movd    mm6, [esi + ecx*4]  ;src2
-      movd   mm7, [edi + ecx*4]  ;src1/dest
-      movq    mm2, mm6
-      movq   mm3, rgb2lum
-      //----- extract alpha into four channels
-      psrld   mm2, 24       ;mm2= 0000|0000|0000|00aa
-      punpcklbw  mm6, mm0      ;mm6= 00aa|00rr|00gg|00bb [src2]
-    pmullw    mm2, mm1      ;mm2= pixel alpha * script alpha
-      //----- start rgb -> monochrome
-      pmaddwd   mm6, mm3      ;partial monochrome result
-      paddd    mm2, mm4      ;mm2+=1
-      punpckldq mm3, mm6      ;ready to add
-      psrld    mm2, 8        ;mm2= 0000|0000|0000|00aa*
-      paddd   mm6, mm3      ;32 bit result
-      punpcklwd  mm2, mm2      ;mm2= 0000|0000|00aa*|00aa*
-      psrlq   mm6, 47       ;8 bit result
-      punpckldq  mm2, mm2      ;mm2= 00aa*|00aa*|00aa*|00aa*
-      //----- alpha mask now in all four channels of mm3
-      punpcklwd mm6, mm6      ;propagate words
-      punpcklbw  mm7, mm0      ;mm7= 00aa|00rr|00gg|00bb [src1]
-    punpckldq mm6, mm6
-      //----- end rgb -> monochrome
-      pmullw    mm6, mm7
-      psrlw   mm6, 8        ;scale multiply result
-      //----- begin the fun stuff
-      psubsw    mm6, mm7
-      pmullw    mm6, mm2      ;mm6=scaled difference*alpha
-      psrlw   mm6, 8        ;scale result
-      mov    eax, ecx
-      paddb   mm6, mm7      ;add src1
-      inc    ecx
-      //----- end the fun stuff...
-      packuswb  mm6, mm0
-      cmp    ecx, edx
-      movd        [edi + eax*4], mm6
-      jnz    mul32yxloop
+  for (int y = 0; y < height; ++y) {
+    for (int x = 0; x < width ; ++x) {
+      __m64 src = _mm_cvtsi32_si64(*reinterpret_cast<const int*>(dstp+x*4));
+      __m64 ovr = _mm_cvtsi32_si64(*reinterpret_cast<const int*>(ovrp+x*4));
 
-      add     edi, src1_pitch
-      add     esi, src2_pitch
-      dec     height
-      jnz     mul32yloop
-      emms
+      __m64 alpha = _mm_cvtsi32_si64((ovrp[x*4+3] * level + 1) >> 8);
+      alpha = _mm_shuffle_pi16(alpha, _MM_SHUFFLE(0,0,0,0));
+
+      src = _mm_unpacklo_pi8(src, zero);
+      ovr = _mm_unpacklo_pi8(ovr, zero);
+
+      __m64 luma;
+      if (use_chroma) {
+        luma = ovr;
+      } else {
+        luma = calculate_luma(ovr, rgb_coeffs, zero);
+      }
+
+      __m64 dst = _mm_subs_pi16(luma, src);
+      dst = _mm_mullo_pi16(dst, alpha);
+      dst = _mm_srli_pi16(dst, 8);
+      dst = _mm_add_pi8(src, dst);
+      
+      dst = _mm_packs_pu16(dst, zero);
+
+      *reinterpret_cast<int*>(dstp+x*4) = _mm_cvtsi64_si32(dst);
+    }
+    dstp += dst_pitch;
+    ovrp += overlay_pitch;
   }
+  _mm_empty();
 }
-
 
 static void layer_rgb32_add_chroma_c(BYTE* dstp, const BYTE* ovrp, int dst_pitch, int overlay_pitch, int width, int height, int level) { 
   for (int y = 0; y < height; ++y) {
@@ -1794,55 +1769,6 @@ static void layer_rgb32_add_chroma_c(BYTE* dstp, const BYTE* ovrp, int dst_pitch
     }
     dstp += dst_pitch;
     ovrp += overlay_pitch;
-  }
-}
-
-static void layer_rgb32_add_chroma_mmx(BYTE* src1p, const BYTE* src2p, int src1_pitch, int src2_pitch, int width, int height, int level) {
-  __asm {
-    mov     edi, src1p
-      mov     esi, src2p
-      movd    mm1, level    ;alpha
-      pcmpeqd   mm4, mm4
-      pxor    mm0, mm0
-      psrlq   mm4, 63       ; 00000000|00000001
-
-add32loop:
-    mov     edx, width
-      xor     ecx, ecx
-
-      align 16
-add32xloop:
-    movd    mm6, [esi + ecx*4]  ;src2
-      movd   mm7, [edi + ecx*4]  ;src1/dest
-      movq    mm2, mm6
-      punpcklbw  mm6, mm0      ;mm6= 00aa|00rr|00gg|00bb [src2]
-    //----- extract alpha into four channels
-    psrld   mm2, 24       ;mm2= 0000|0000|0000|00aa
-      punpcklbw  mm7, mm0      ;mm7= 00aa|00rr|00gg|00bb [src1]
-    pmullw    mm2, mm1      ;mm2= pixel alpha * script alpha
-      //----- begin the fun stuff
-      psubsw   mm6, mm7
-      paddd   mm2, mm4      ;mm2+=1
-      psrld   mm2, 8        ;mm2= 0000|0000|0000|00aa*
-      punpcklwd mm2, mm2      ;mm2= 0000|0000|00aa*|00aa*
-      punpckldq mm2, mm2      ;mm2= 00aa*|00aa*|00aa*|00aa*
-      //----- alpha mask now in all four channels of mm2
-      pmullw    mm6, mm2      ;mm6=scaled difference*alpha
-      psrlw   mm6, 8        ;scale result
-      mov    eax, ecx
-      paddb   mm6, mm7      ;add src1
-      //----- end the fun stuff...
-      inc    ecx
-      packuswb  mm6, mm0
-      cmp    ecx, edx
-      movd    [edi + eax*4], mm6
-      jnz    add32xloop
-
-      add     edi, src1_pitch
-      add     esi, src2_pitch
-      dec     height
-      jnz     add32loop
-      emms
   }
 }
 
@@ -1862,142 +1788,54 @@ static void layer_rgb32_add_c(BYTE* dstp, const BYTE* ovrp, int dst_pitch, int o
   }
 }
 
-static void layer_rgb32_add_mmx(BYTE* src1p, const BYTE* src2p, int src1_pitch, int src2_pitch, int width, int height, int level) { 
-  __asm {
-    mov     edi, src1p
-      mov     esi, src2p
-      movd    mm1, level
-      pcmpeqd   mm4, mm4
-      pxor    mm0, mm0
-      psrlq   mm4, 63       ; 00000000|00000001
 
-add32yloop:
-    mov     edx, width
-      xor     ecx, ecx
+static void layer_rgb32_fast_isse(BYTE* dstp, const BYTE* ovrp, int dst_pitch, int overlay_pitch, int width, int height, int level) {
+  layer_yuy2_fast_isse(dstp, ovrp, dst_pitch, overlay_pitch, width*2, height, level);
+}
 
-      align 16
-add32yxloop:
-    movd    mm6, [esi + ecx*4]  ;src2
-      movd   mm7, [edi + ecx*4]  ;src1/dest
-      movq    mm2, mm6
-      movq   mm3, rgb2lum
-      //----- extract alpha into four channels
-      psrld   mm2, 24       ;mm2= 0000|0000|0000|00aa
-      punpcklbw  mm6, mm0      ;mm6= 00aa|00rr|00gg|00bb [src2]
-    pmullw    mm2, mm1      ;mm2= pixel alpha * script alpha
-      //----- start rgb -> monochrome
-      pmaddwd  mm6, mm3      ;partial monochrome result
-      paddd   mm2, mm4      ;mm2+=1
-      punpckldq  mm3, mm6      ;ready to add
-      psrld   mm2, 8        ;mm2= 0000|0000|0000|00aa*
-      paddd    mm6, mm3      ;32 bit result
-      punpcklwd mm2, mm2      ;mm2= 0000|0000|00aa*|00aa*
-      psrlq    mm6, 47       ;8 bit result
-      punpckldq mm2, mm2      ;mm2= 00aa*|00aa*|00aa*|00aa*
-      punpcklwd  mm6, mm6      ;propagate words
-      punpcklbw mm7, mm0      ;mm7= 00aa|00rr|00gg|00bb [src1]
-    punpckldq  mm6, mm6
-      //----- end rgb -> monochrome
-      psubsw    mm6, mm7
-      pmullw    mm6, mm2      ;mm6=scaled difference*255
-      psrlw   mm6, 8        ;scale result
-      mov    eax, ecx
-      paddb   mm6, mm7      ;add src1
-      //----- end the fun stuff...
-      inc    ecx
-      packuswb  mm6, mm0
-      cmp    ecx, edx
-      movd    [edi + eax*4], mm6
-      jnz     add32yxloop
-
-      add     edi, src1_pitch
-      add     esi, src2_pitch
-      dec     height
-      jnz     add32yloop
-      emms
-  }
+static void layer_rgb32_fast_c(BYTE* dstp, const BYTE* ovrp, int dst_pitch, int overlay_pitch, int width, int height, int level) { 
+  layer_yuy2_fast_c(dstp, ovrp, dst_pitch, overlay_pitch, width*2, height, level);
 }
 
 
-static void layer_rgb32_fast_chroma_c(BYTE* dstp, const BYTE* ovrp, int dst_pitch, int overlay_pitch, int width, int height, int level) { 
+template<bool use_chroma>
+static void layer_rgb32_subtract_isse(BYTE* dstp, const BYTE* ovrp, int dst_pitch, int overlay_pitch, int width, int height, int level) { 
+  __m64 zero = _mm_setzero_si64();
+  __m64 rgb_coeffs = _mm_set_pi16(0, cyr, cyg, cyb);
+  __m64 ff = _mm_set1_pi16(0x00FF);
+
   for (int y = 0; y < height; ++y) {
-    for (int x = 0; x < width*4; ++x) {
-      dstp[x] = (dstp[x] + ovrp[x] + 1) / 2;
+    for (int x = 0; x < width ; ++x) {
+      __m64 src = _mm_cvtsi32_si64(*reinterpret_cast<const int*>(dstp+x*4));
+      __m64 ovr = _mm_cvtsi32_si64(*reinterpret_cast<const int*>(ovrp+x*4));
+
+      __m64 alpha = _mm_cvtsi32_si64((ovrp[x*4+3] * level + 1) >> 8);
+      alpha = _mm_shuffle_pi16(alpha, _MM_SHUFFLE(0,0,0,0));
+
+      src = _mm_unpacklo_pi8(src, zero);
+      ovr = _mm_unpacklo_pi8(ovr, zero);
+
+      __m64 luma;
+      if (use_chroma) {
+        luma = _mm_subs_pi16(ff, ovr);
+      } else {
+        luma = calculate_luma(_mm_andnot_si64(ovr, ff), rgb_coeffs, zero);
+      }
+
+      __m64 dst = _mm_subs_pi16(luma, src);
+      dst = _mm_mullo_pi16(dst, alpha);
+      dst = _mm_srli_pi16(dst, 8);
+      dst = _mm_add_pi8(src, dst);
+
+      dst = _mm_packs_pu16(dst, zero);
+
+      *reinterpret_cast<int*>(dstp+x*4) = _mm_cvtsi64_si32(dst);
     }
     dstp += dst_pitch;
     ovrp += overlay_pitch;
   }
+  _mm_empty();
 }
-
-static void layer_rgb32_fast_chroma_mmx(BYTE* src1p, const BYTE* src2p, int src1_pitch, int src2_pitch, int width, int height, int level) {
-  __asm {
-    mov     edi, src1p
-      mov     esi, src2p
-      movq      mm0, ox7f7f7f7f7f7f7f7f ;get shift mask
-      movq      mm1, ox0101010101010101 ;lsb mask
-
-
-fastrgb32loop:
-    mov         edx, width
-      xor         ecx, ecx
-      shr     edx,1
-
-      align 16
-fastrgb32xloop:
-    //---- fetch src1/dest
-
-    movq    mm7, [edi + ecx*8] ;src1/dest;
-    movq    mm6, [esi + ecx*8] ;src2
-#if 1     // ------------------------------------------------
-      movq    mm5, mm7
-      pxor    mm7, mm6
-# if 1      // ------------------------------------------------
-      // Use (a + b + 1) >> 1 = (a | b) - ((a ^ b) >> 1)
-      por     mm6, mm5
-      psrlq   mm7, 1    // Fuck Intel! Where is psrlb
-      inc         ecx
-      pand    mm7, mm0
-      psubb   mm6, mm7
-# else      // ------------------------------------------------
-      // Use (a + b) >> 1 = (a & b) + ((a ^ b) >> 1)
-      pand    mm6, mm5
-      psrlq   mm7, 1    // Fuck Intel! Where is psrlb
-      inc         ecx
-      pand    mm7, mm0
-      paddb   mm6, mm7
-# endif     // ------------------------------------------------
-      cmp         ecx, edx
-      movq        [edi + ecx*8 - 8],mm6
-#else     // ------------------------------------------------
-      // Use (a >> 1) + (b >> 1) + (a & 1)
-      movq    mm3, mm1
-      pand    mm3, mm7
-      psrlq   mm6,1
-      psrlq   mm7,1
-      pand    mm6,mm0
-      pand    mm7,mm0
-
-      //----- begin the fun stuff
-
-      paddb   mm6, mm7      ;fast src1
-      paddb   mm6, mm3      ;fast lsb
-      //----- end the fun stuff...
-
-      movq        [edi + ecx*8],mm6
-
-      inc         ecx
-      cmp         ecx, edx
-#endif      // ------------------------------------------------
-      jnz         fastrgb32xloop
-
-      add     edi, src1_pitch
-      add     esi, src2_pitch
-      dec   height
-      jnz   fastrgb32loop
-      emms
-  }
-}
-
 
 static void layer_rgb32_subtract_chroma_c(BYTE* dstp, const BYTE* ovrp, int dst_pitch, int overlay_pitch, int width, int height, int level) { 
   for (int y = 0; y < height; ++y) {
@@ -2011,57 +1849,6 @@ static void layer_rgb32_subtract_chroma_c(BYTE* dstp, const BYTE* ovrp, int dst_
     }
     dstp += dst_pitch;
     ovrp += overlay_pitch;
-  }
-}
-
-static void layer_rgb32_subtract_chroma_mmx(BYTE* src1p, const BYTE* src2p, int src1_pitch, int src2_pitch, int width, int height, int level) {
-  __asm {
-    mov     edi, src1p
-      mov     esi, src2p
-      movd    mm1, level
-      pxor    mm0, mm0
-      pcmpeqd   mm3, mm3
-      pcmpeqb   mm4, mm4
-      psrlq   mm3, 63       ;00000000|00000001
-      punpcklbw mm4, mm0      ;0x00ff00ff00ff00ff
-
-sub32loop:
-    mov     edx, width
-      xor     ecx, ecx
-
-      align 16
-sub32xloop:
-    movd    mm6, [esi + ecx*4]  ;src2
-      movd   mm7, [edi + ecx*4]  ;src1/dest
-      movq    mm2, mm6
-      punpcklbw  mm6, mm0      ;mm6= 00aa|00rr|00gg|00bb [src2]
-    //----- extract alpha into four channels
-    psrld   mm2, 24       ;mm2= 0000|0000|0000|00aa
-      pandn    mm6, mm4      ;mm6 =~mm6
-      pmullw    mm2, mm1      ;mm2= pixel alpha * script alpha
-      punpcklbw  mm7, mm0      ;mm7= 00aa|00rr|00gg|00bb [src1]
-    paddd   mm2, mm3      ;mm2+=1
-      psrld   mm2, 8        ;mm2= 0000|0000|0000|00aa*
-      punpcklwd mm2, mm2      ;mm2= 0000|0000|00aa*|00aa*
-      punpckldq mm2, mm2      ;mm2=00aa*|00aa*|00aa*|00aa*
-      //----- begin the fun stuff
-      psubsw    mm6, mm7
-      pmullw    mm6, mm2      ;mm6=scaled difference*255
-      psrlw   mm6, 8        ;scale result
-      mov    eax, ecx
-      paddb   mm6, mm7      ;add src1
-      //----- end the fun stuff...
-      inc    ecx
-      packuswb  mm6, mm0
-      cmp    ecx, edx
-      movd    [edi + eax*4], mm6
-      jnz    sub32xloop
-
-      add     edi, src1_pitch
-      add     esi, src2_pitch
-      dec     height
-      jnz     sub32loop
-      emms
   }
 }
 
@@ -2081,76 +1868,65 @@ static void layer_rgb32_subtract_c(BYTE* dstp, const BYTE* ovrp, int dst_pitch, 
   }
 }
 
-static void layer_rgb32_subtract_mmx(BYTE* src1p, const BYTE* src2p, int src1_pitch, int src2_pitch, int width, int height, int level) { 
-  __asm {
-    mov     edi, src1p
-      mov     esi, src2p
-      mov     eax, src2p
-      movd    mm1, level
-      pxor    mm0, mm0
-      pcmpeqd   mm5, mm5
-      pcmpeqb   mm4, mm4
-      psrlq   mm5, 63       ;00000000|00000001
-      punpcklbw mm4, mm0      ;0x00ff00ff00ff00ff
 
-sub32yloop:
-    mov     edx, width
-      xor     ecx, ecx
+template<int mode>
+static void layer_rgb32_lighten_darken_isse(BYTE* dstp, const BYTE* ovrp, int dst_pitch, int overlay_pitch, int width, int height, int level, int thresh) { 
+  __m64 zero = _mm_setzero_si64();
+  __m64 rgb_coeffs = _mm_set_pi16(0, cyr, cyg, cyb);
+  __m64 threshold = _mm_set1_pi16(thresh);
 
-      align 16
-sub32yxloop:
-    movd    mm6, [esi + ecx*4]  ;src2
-      movd   mm7, [edi + ecx*4]  ;src1/dest
-      movq    mm2, mm6
-      movq   mm3, rgb2lum
-      //----- extract alpha into four channels
-      psrlq   mm2, 24     ;mm2= 0000|0000|0000|00aa
-      punpcklbw  mm6, mm0    ;mm6= 00aa|00rr|00gg|00bb [src2]
-    pmullw    mm2, mm1    ;mm2= pixel alpha * script alpha
-      pandn    mm6, mm4    ;mm6 =~mm6
-      paddd   mm2, mm5    ;mm2+=1
-      //----- start rgb -> monochrome
-      pmaddwd  mm6, mm3    ;partial monochrome result
-      psrld   mm2, 8      ;mm2= 0000|0000|0000|00aa*
-      punpckldq  mm3, mm6    ;ready to add
-      punpcklwd mm2, mm2    ;mm2= 0000|0000|00aa*|00aa*
-      paddd    mm6, mm3    ;32 bit result
-      punpckldq mm2, mm2    ;mm2=00aa*|00aa*|00aa*|00aa*
-      psrlq    mm6, 47     ;8 bit result
-      punpcklbw mm7, mm0    ;mm7= 00aa|00rr|00gg|00bb [src1]
-    punpcklwd  mm6, mm6    ;propagate words
-      punpckldq  mm6, mm6
-      //----- end rgb -> monochrome
-      psubsw    mm6, mm7
-      pmullw    mm6, mm2    ;mm6=scaled difference*255
-      psrlw   mm6, 8      ;scale result
-      mov    eax, ecx
-      paddb   mm6, mm7    ;add src1
-      //----- end the fun stuff...
-      inc    ecx
-      packuswb  mm6, mm0
-      cmp    ecx, edx
-      movd    [edi + eax*4],mm6
-      jnz    sub32yxloop
+  for (int y = 0; y < height; ++y) {
+    for (int x = 0; x < width ; ++x) {
+      __m64 src = _mm_cvtsi32_si64(*reinterpret_cast<const int*>(dstp+x*4));
+      __m64 ovr = _mm_cvtsi32_si64(*reinterpret_cast<const int*>(ovrp+x*4));
 
-      add     edi, src1_pitch
-      add     esi, src2_pitch
-      dec     height
-      jnz     sub32yloop
+      __m64 alpha = _mm_cvtsi32_si64((ovrp[x*4+3] * level + 1) >> 8);
+      alpha = _mm_shuffle_pi16(alpha, _MM_SHUFFLE(0,0,0,0));
 
-      emms
+      src = _mm_unpacklo_pi8(src, zero);
+      ovr = _mm_unpacklo_pi8(ovr, zero);
+
+      __m64 luma_ovr = calculate_luma(ovr, rgb_coeffs, zero);
+      __m64 luma_src = calculate_luma(src, rgb_coeffs, zero);
+
+      __m64 tmp = _mm_add_pi16(threshold, luma_src);
+      __m64 mask;
+      if (mode == LIGHTEN) {
+        mask = _mm_cmpgt_pi16(luma_ovr, tmp);
+      } else {
+        mask = _mm_cmpgt_pi16(tmp, luma_ovr);
+      }
+
+      alpha = _mm_and_si64(alpha, mask);
+
+      __m64 dst = _mm_subs_pi16(ovr, src);
+      dst = _mm_mullo_pi16(dst, alpha);
+      dst = _mm_srli_pi16(dst, 8);
+      dst = _mm_add_pi8(src, dst);
+
+      dst = _mm_packs_pu16(dst, zero);
+
+      *reinterpret_cast<int*>(dstp+x*4) = _mm_cvtsi64_si32(dst);
+    }
+    dstp += dst_pitch;
+    ovrp += overlay_pitch;
   }
+  _mm_empty();
 }
 
-
-static void layer_rgb32_lighten_chroma_c(BYTE* dstp, const BYTE* ovrp, int dst_pitch, int overlay_pitch, int width, int height, int level, int thresh) { 
+template<int mode>
+static void layer_rgb32_lighten_darken_c(BYTE* dstp, const BYTE* ovrp, int dst_pitch, int overlay_pitch, int width, int height, int level, int thresh) { 
   for (int y = 0; y < height; ++y) {
     for (int x = 0; x < width ; ++x) {
       int alpha = (ovrp[x*4+3] * level + 1) >> 8;
       int luma_ovr = (cyb * ovrp[x*4] + cyg * ovrp[x*4+1] + cyr * ovrp[x*4+2]) >> 15;
       int luma_src = (cyb * dstp[x*4] + cyg * dstp[x*4+1] + cyr * dstp[x*4+2]) >> 15;
 
-      alpha = luma_ovr > thresh + luma_src ? alpha : 0;
+      if (mode == LIGHTEN) {
+        alpha = luma_ovr > thresh + luma_src ? alpha : 0;
+      } else {
+        alpha = luma_ovr < thresh + luma_src ? alpha : 0;
+      }
 
       dstp[x*4]   = dstp[x*4]   + (((ovrp[x*4]   - dstp[x*4])   * alpha) >> 8);
       dstp[x*4+1] = dstp[x*4+1] + (((ovrp[x*4+1] - dstp[x*4+1]) * alpha) >> 8);
@@ -2159,160 +1935,6 @@ static void layer_rgb32_lighten_chroma_c(BYTE* dstp, const BYTE* ovrp, int dst_p
     }
     dstp += dst_pitch;
     ovrp += overlay_pitch;
-  }
-}
-
-static void layer_rgb32_lighten_chroma_mmx(BYTE* src1p, const BYTE* src2p, int src1_pitch, int src2_pitch, int width, int height, int level, int thresh) {
-  __asm {
-    mov     edi, src1p
-      mov     esi, src2p
-      movd    mm1, level    ;alpha
-      pxor    mm0, mm0
-
-lighten32loop:
-    mov     edx, width
-      xor     ecx, ecx
-
-      align 16
-lighten32xloop:
-    movd    mm4, [esi + ecx*4]  ;src2
-      movd   mm7, [edi + ecx*4]  ;src1/dest    ;what a mess...
-      movq    mm2, mm4
-      punpcklbw  mm4, mm0      ;mm4= 00aa|00rr|00gg|00bb [src2]
-    movq    mm3, rgb2lum
-      movq   mm6, mm4      ;make a copy of this for conversion
-      //----- start rgb -> monochrome - interleaved pixels: twice the fun!
-      pmaddwd   mm4, mm3      ;partial monochrome result src2
-      movq   mm5, mm3      ;avoid refetching rgb2lum from mem
-      punpckldq mm3, mm4      ;ready to add partial products
-      punpcklbw  mm7, mm0      ;mm7= 00aa|00rr|00gg|00bb [src1]
-    paddd   mm4, mm3      ;32 bit monochrome result src
-      //----- extract alpha into four channels
-      psrld    mm2, 24       ;mm2= 0000|0000|0000|00aa
-      movq    mm3, mm7      ;now get src1
-      pmullw   mm2, mm1      ;mm2= pixel alpha * script alpha
-      pmaddwd   mm3, mm5      ;partial monochrome result src1
-      paddd    mm2, ox00000001   ;mm2+=1
-      punpckldq mm5, mm3      ;ready to add partial products src2
-      psrld    mm2, 8        ;mm2= 0000|0000|0000|00aa*
-      paddd   mm3, mm5      ;32 bit result src2
-      movd    mm5, thresh     ;get threshold
-      psrlq   mm3, 47       ;8 bit result src1
-      psrlq    mm4, 47       ;8 bit result src2
-      //----- end rgb -> monochrome
-      //----- now monochrome src2 in mm4, monochrome src1 in mm3 can be used for pixel compare
-      paddw   mm3, mm5      ;add threshold to src1
-      punpcklwd  mm2, mm2      ;mm2= 0000|0000|00aa*|00aa*
-      pcmpgtd   mm4, mm3      ;and see if src1 still greater
-      punpckldq  mm2, mm2      ;mm2= 00aa*|00aa*|00aa*|00aa*
-      punpckldq mm4, mm4      ;extend compare result to entire quadword
-      //----- alpha mask now in all four channels of mm2
-      pand    mm2, mm4
-      //----- begin the fun stuff
-      psubsw    mm6, mm7
-      pmullw    mm6, mm2      ;mm6=scaled difference*255
-      psrlw   mm6, 8        ;now scale result from multiplier
-      mov    eax, ecx      ;remember where we are
-      paddb   mm6, mm7      ;and add src1
-      //----- end the fun stuff...
-      inc    ecx         ;point to where we are going
-      packuswb  mm6, mm0
-      cmp    ecx, edx      ;and see if we are done
-      movd    [edi + eax*4], mm6
-      jnz    lighten32xloop
-
-      add     edi, src1_pitch
-      add     esi, src2_pitch
-      dec     height
-      jnz     lighten32loop
-      emms
-  }
-}
-
-
-static void layer_rgb32_darken_chroma_c(BYTE* dstp, const BYTE* ovrp, int dst_pitch, int overlay_pitch, int width, int height, int level, int thresh) { 
-  for (int y = 0; y < height; ++y) {
-    for (int x = 0; x < width ; ++x) {
-      int alpha = (ovrp[x*4+3] * level + 1) >> 8;
-      int luma_ovr = (cyb * ovrp[x*4] + cyg * ovrp[x*4+1] + cyr * ovrp[x*4+2]) >> 15;
-      int luma_src = (cyb * dstp[x*4] + cyg * dstp[x*4+1] + cyr * dstp[x*4+2]) >> 15;
-
-      alpha = luma_ovr < thresh + luma_src ? alpha : 0;
-
-      dstp[x*4]   = dstp[x*4]   + (((ovrp[x*4]   - dstp[x*4])   * alpha) >> 8);
-      dstp[x*4+1] = dstp[x*4+1] + (((ovrp[x*4+1] - dstp[x*4+1]) * alpha) >> 8);
-      dstp[x*4+2] = dstp[x*4+2] + (((ovrp[x*4+2] - dstp[x*4+2]) * alpha) >> 8);
-      dstp[x*4+3] = dstp[x*4+3] + (((ovrp[x*4+3] - dstp[x*4+3]) * alpha) >> 8);
-    }
-    dstp += dst_pitch;
-    ovrp += overlay_pitch;
-  }
-}
-
-static void layer_rgb32_darken_chroma_mmx(BYTE* src1p, const BYTE* src2p, int src1_pitch, int src2_pitch, int width, int height, int level, int thresh) {
-  __asm {
-    mov     edi, src1p
-      mov     esi, src2p
-      movd    mm1, level    ;alpha
-      pxor    mm0, mm0
-
-darken32loop:
-    mov     edx, width
-      xor     ecx, ecx
-
-      align 16
-darken32xloop:
-    movd    mm4, [esi + ecx*4]  ;src2
-      movd   mm7, [edi + ecx*4]  ;src1/dest    ;what a mess...
-      movq    mm2, mm4
-      punpcklbw  mm4, mm0      ;mm4= 00aa|00rr|00gg|00bb [src2]
-    movq    mm3, rgb2lum
-      movq   mm6, mm4      ;make a copy of this for conversion
-      //----- start rgb -> monochrome - interleaved pixels: twice the fun!
-      pmaddwd   mm4, mm3      ;partial monochrome result src2
-      movq   mm5, mm3      ;avoid refetching rgb2lum from mem
-      punpckldq mm3, mm4      ;ready to add partial products
-      punpcklbw  mm7, mm0      ;mm7= 00aa|00rr|00gg|00bb [src1]
-    paddd   mm4, mm3      ;32 bit monochrome result src
-      //----- extract alpha into four channels
-      psrld    mm2, 24       ;mm2= 0000|0000|0000|00aa
-      movq    mm3, mm7      ;now get src1
-      pmullw   mm2, mm1      ;mm2= pixel alpha * script alpha
-      pmaddwd   mm3, mm5      ;partial monochrome result src1
-      paddd    mm2, ox00000001   ;mm2+=1
-      punpckldq mm5, mm3      ;ready to add partial products src2
-      psrld    mm2, 8        ;mm2= 0000|0000|0000|00aa*
-      paddd   mm3, mm5      ;32 bit result src2
-      movd    mm5, thresh     ;get threshold
-      psrlq    mm4, 47       ;8 bit result src2
-      psrlq   mm3, 47       ;8 bit result src1
-      //----- end rgb -> monochrome
-      //----- now monochrome src2 in mm4, monochrome src1 in mm3 can be used for pixel compare
-      paddw    mm4, mm5      ;add threshold to src2
-      punpcklwd mm2, mm2      ;mm2= 0000|0000|00aa*|00aa*
-      pcmpgtd  mm3, mm4      ;and see if src1 less
-      punpckldq mm2, mm2      ;mm2= 00aa*|00aa*|00aa*|00aa*
-      punpckldq  mm3, mm3      ;extend compare result to entire quadword
-      //----- alpha mask now in all four channels of mm2
-      pand   mm2, mm3
-      //----- begin the fun stuff
-      psubsw    mm6, mm7
-      pmullw    mm6, mm2      ;mm6=scaled difference*255
-      psrlw   mm6, 8        ;now scale result from multiplier
-      mov    eax, ecx      ;remember where we are
-      paddb   mm6, mm7      ;and add src1
-      //----- end the fun stuff...
-      inc    ecx         ;point to where we are going
-      packuswb  mm6, mm0
-      cmp    ecx, edx      ;and see if we are done
-      movd    [edi + eax*4], mm6
-      jnz    darken32xloop
-
-      add     edi, src1_pitch
-      add     esi, src2_pitch
-      dec     height
-      jnz     darken32loop
-      emms
   }
 }
 
@@ -2520,9 +2142,9 @@ PVideoFrame __stdcall Layer::GetFrame(int n, IScriptEnvironment* env)
     {
       if (chroma) 
       {
-        if (env->GetCPUFlags() & CPUF_MMX) 
+        if (env->GetCPUFlags() & CPUF_INTEGER_SSE) 
         {
-          layer_rgb32_mul_chroma_mmx(src1p, src2p, src1_pitch, src2_pitch, width, height, mylevel);
+          layer_rgb32_mul_isse<true>(src1p, src2p, src1_pitch, src2_pitch, width, height, mylevel);
         } 
         else 
         {
@@ -2531,9 +2153,9 @@ PVideoFrame __stdcall Layer::GetFrame(int n, IScriptEnvironment* env)
       } 
       else 
       {
-        if (env->GetCPUFlags() & CPUF_MMX) 
+        if (env->GetCPUFlags() & CPUF_INTEGER_SSE) 
         {
-          layer_rgb32_mul_mmx(src1p, src2p, src1_pitch, src2_pitch, width, height, mylevel);
+          layer_rgb32_mul_isse<false>(src1p, src2p, src1_pitch, src2_pitch, width, height, mylevel);
         }
         else 
         {
@@ -2545,9 +2167,9 @@ PVideoFrame __stdcall Layer::GetFrame(int n, IScriptEnvironment* env)
     {
       if (chroma) 
       {
-        if (env->GetCPUFlags() & CPUF_MMX) 
+        if (env->GetCPUFlags() & CPUF_INTEGER_SSE) 
         {
-          layer_rgb32_add_chroma_mmx(src1p, src2p, src1_pitch, src2_pitch, width, height, mylevel);
+          layer_rgb32_add_isse<true>(src1p, src2p, src1_pitch, src2_pitch, width, height, mylevel);
         } 
         else 
         {
@@ -2556,9 +2178,9 @@ PVideoFrame __stdcall Layer::GetFrame(int n, IScriptEnvironment* env)
       } 
       else 
       {
-        if (env->GetCPUFlags() & CPUF_MMX) 
+        if (env->GetCPUFlags() & CPUF_INTEGER_SSE) 
         {
-          layer_rgb32_add_mmx(src1p, src2p, src1_pitch, src2_pitch, width, height, mylevel);
+          layer_rgb32_add_isse<false>(src1p, src2p, src1_pitch, src2_pitch, width, height, mylevel);
         }
         else 
         {
@@ -2570,13 +2192,13 @@ PVideoFrame __stdcall Layer::GetFrame(int n, IScriptEnvironment* env)
     {
       if (chroma) 
       {
-        if (env->GetCPUFlags() & CPUF_MMX) 
+        if (env->GetCPUFlags() & CPUF_INTEGER_SSE) 
         {
-          layer_rgb32_lighten_chroma_mmx(src1p, src2p, src1_pitch, src2_pitch, width, height, mylevel, thresh);
+          layer_rgb32_lighten_darken_isse<LIGHTEN>(src1p, src2p, src1_pitch, src2_pitch, width, height, mylevel, thresh);
         } 
         else 
         {
-          layer_rgb32_lighten_chroma_c(src1p, src2p, src1_pitch, src2_pitch, width, height, mylevel, thresh);
+          layer_rgb32_lighten_darken_c<LIGHTEN>(src1p, src2p, src1_pitch, src2_pitch, width, height, mylevel, thresh);
         }
       } 
       else 
@@ -2588,13 +2210,13 @@ PVideoFrame __stdcall Layer::GetFrame(int n, IScriptEnvironment* env)
     {
       if (chroma) 
       {
-        if (env->GetCPUFlags() & CPUF_MMX) 
+        if (env->GetCPUFlags() & CPUF_INTEGER_SSE) 
         {
-          layer_rgb32_darken_chroma_mmx(src1p, src2p, src1_pitch, src2_pitch, width, height, mylevel, thresh);
+          layer_rgb32_lighten_darken_isse<DARKEN>(src1p, src2p, src1_pitch, src2_pitch, width, height, mylevel, thresh);
         } 
         else 
         {
-          layer_rgb32_darken_chroma_c(src1p, src2p, src1_pitch, src2_pitch, width, height, mylevel, thresh);
+          layer_rgb32_lighten_darken_c<DARKEN>(src1p, src2p, src1_pitch, src2_pitch, width, height, mylevel, thresh);
         }
       } 
       else 
@@ -2606,13 +2228,13 @@ PVideoFrame __stdcall Layer::GetFrame(int n, IScriptEnvironment* env)
     {
       if (chroma) 
       {
-        if (env->GetCPUFlags() & CPUF_MMX) 
+        if (env->GetCPUFlags() & CPUF_INTEGER_SSE) 
         {
-          layer_rgb32_fast_chroma_mmx(src1p, src2p, src1_pitch, src2_pitch, width, height, mylevel);
+          layer_rgb32_fast_isse(src1p, src2p, src1_pitch, src2_pitch, width, height, mylevel);
         } 
         else 
         {
-          layer_rgb32_fast_chroma_c(src1p, src2p, src1_pitch, src2_pitch, width, height, mylevel);
+          layer_rgb32_fast_c(src1p, src2p, src1_pitch, src2_pitch, width, height, mylevel);
         }
       } 
       else 
@@ -2624,9 +2246,9 @@ PVideoFrame __stdcall Layer::GetFrame(int n, IScriptEnvironment* env)
     {
       if (chroma) 
       {
-        if (env->GetCPUFlags() & CPUF_MMX) 
+        if (env->GetCPUFlags() & CPUF_INTEGER_SSE) 
         {
-          layer_rgb32_subtract_chroma_mmx(src1p, src2p, src1_pitch, src2_pitch, width, height, mylevel);
+          layer_rgb32_subtract_isse<true>(src1p, src2p, src1_pitch, src2_pitch, width, height, mylevel);
         } 
         else 
         {
@@ -2635,9 +2257,9 @@ PVideoFrame __stdcall Layer::GetFrame(int n, IScriptEnvironment* env)
       } 
       else 
       {
-        if (env->GetCPUFlags() & CPUF_MMX) 
+        if (env->GetCPUFlags() & CPUF_INTEGER_SSE) 
         {
-          layer_rgb32_subtract_mmx(src1p, src2p, src1_pitch, src2_pitch, width, height, mylevel);
+          layer_rgb32_subtract_isse<false>(src1p, src2p, src1_pitch, src2_pitch, width, height, mylevel);
         }
         else 
         {
