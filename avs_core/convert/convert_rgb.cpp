@@ -131,10 +131,7 @@ static void convert_rgb24_to_rgb32_mmx(const BYTE *srcp, BYTE *dstp, size_t src_
 static void convert_rgb24_to_rgb32_c(const BYTE *srcp, BYTE *dstp, size_t src_pitch, size_t dst_pitch, size_t width, size_t height) {
   for (size_t y = height; y > 0; --y) {
     for (size_t x = 0; x < width; ++x) {
-      dstp[x*4+0] = srcp[x*3+0];
-      dstp[x*4+1] = srcp[x*3+1];
-      dstp[x*4+2] = srcp[x*3+2];
-      dstp[x*4+3] = 255;
+      *reinterpret_cast<int*>(dstp + x*4) = *reinterpret_cast<const int*>(srcp+x*3) | 0xFF000000;
     }
     srcp += src_pitch;
     dstp += dst_pitch;
@@ -153,7 +150,8 @@ PVideoFrame __stdcall RGB24to32::GetFrame(int n, IScriptEnvironment* env)
 
   if ((env->GetCPUFlags() & CPUF_SSSE3) && IsPtrAligned(srcp, 16)) {
     convert_rgb24_to_rgb32_ssse3(srcp, dstp, src_pitch, dst_pitch, vi.width, vi.height);
-  } else
+  } 
+  else
 #ifdef X86_32
     if (env->GetCPUFlags() & CPUF_MMX)
     {
@@ -257,11 +255,15 @@ static void convert_rgb32_to_rgb24_mmx(const BYTE *srcp, BYTE *dstp, size_t src_
 
 static void convert_rgb32_to_rgb24_c(const BYTE *srcp, BYTE *dstp, size_t src_pitch, size_t dst_pitch, size_t width, size_t height) {
   for (size_t y = height; y > 0; --y) {
-    for (size_t x = 0; x < width; ++x) {
-      dstp[x*3+0] = srcp[x*4+0];
-      dstp[x*3+1] = srcp[x*4+1];
-      dstp[x*3+2] = srcp[x*4+2];
+    size_t x;
+    for (x = 0; x < width-1; ++x) {
+      *reinterpret_cast<int*>(dstp+x*3) = *reinterpret_cast<const int*>(srcp+x*4);
     }
+    //last pixel
+    dstp[x*3+0] = srcp[x*4+0];
+    dstp[x*3+1] = srcp[x*4+1];
+    dstp[x*3+2] = srcp[x*4+2];
+
     srcp += src_pitch;
     dstp += dst_pitch;
   }
@@ -278,7 +280,8 @@ PVideoFrame __stdcall RGB32to24::GetFrame(int n, IScriptEnvironment* env)
 
   if ((env->GetCPUFlags() & CPUF_SSSE3) && IsPtrAligned(srcp, 16)) {
     convert_rgb32_to_rgb24_ssse3(srcp, dstp, src_pitch, dst_pitch, vi.width, vi.height);
-  } else
+  } 
+  else
 #ifdef X86_32
   if (env->GetCPUFlags() & CPUF_MMX)
   {
