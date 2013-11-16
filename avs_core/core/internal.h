@@ -53,13 +53,18 @@ enum {MC_IncVFBRefcount         =0xFFFF0005};
 
 #include <avisynth.h>
 #include <cstring>
-
+#include "parser/script.h" // TODO we only need ScriptFunction from here
 
 struct AVSFunction {
   const char* name;
   const char* param_types;
   AVSValue (__cdecl *apply)(AVSValue args, void* user_data, IScriptEnvironment* env);
   void* user_data;
+
+  bool IsScriptFunction() const
+  {
+    return apply == &(ScriptFunction::Execute);
+  }
 
   static bool ArgNameMatch(const char* param_types, size_t args_names_count, const char* const* arg_names);
   static bool TypeMatch(const char* param_types, const AVSValue* args, size_t num_args, bool strict, IScriptEnvironment* env);

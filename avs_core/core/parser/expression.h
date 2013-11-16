@@ -388,7 +388,6 @@ public:
                    const char** _arg_expr_names, int _arg_expr_count, bool _oop_notation );  
   ~ExpFunctionCall(void);
   
-  AVSValue Call(IScriptEnvironment* env);
   virtual AVSValue Evaluate(IScriptEnvironment* env);
   
 private:

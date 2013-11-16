@@ -170,7 +170,7 @@ int DynamicAssembledCode::Call(const void* arg1, ...) const {
 }
   
 void DynamicAssembledCode::Free() {
-  if (ret) free(ret);
+  if (ret) delete [] ret;
 }
 
 

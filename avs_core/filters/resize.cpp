@@ -311,7 +311,7 @@ PVideoFrame HorizontalReduceBy2::GetFrame(int n, IScriptEnvironment* env)
       srcp += src_gap+2;
     }}
   } else if (vi.IsYUY2()  && (!(vi.width&3))) {
-
+    /*
 #ifdef X86_32
     if (env->GetCPUFlags() & CPUF_INTEGER_SSE) 
     {
@@ -319,7 +319,7 @@ PVideoFrame HorizontalReduceBy2::GetFrame(int n, IScriptEnvironment* env)
 			return dst;
 		}
 #endif
-
+    */
     const BYTE* srcp = src->GetReadPtr();
     for (int y = vi.height; y>0; --y) {
       for (int x = (vi.width>>1)-1; x; --x) {

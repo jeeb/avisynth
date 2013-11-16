@@ -533,8 +533,11 @@ public:
 class VideoFrame {
   volatile long refcount;
   VideoFrameBuffer* const vfb;
-  const int offset, pitch, row_size, height, offsetU, offsetV, pitchUV;  // U&V offsets are from top of picture.
-  const int row_sizeUV, heightUV;
+
+  // Due to technical reasons these members are not const, but should be treated as such.
+  // That means do not modify them once the class has been constructed.
+  int offset, pitch, row_size, height, offsetU, offsetV, pitchUV;  // U&V offsets are from top of picture.
+  int row_sizeUV, heightUV;
 
   friend class PVideoFrame;
   void AddRef();
@@ -572,7 +575,7 @@ public:
 #endif
 }; // end class VideoFrame
 
-enum {
+enum CachePolicyHint {
   // Old 2.5 poorly defined cache hints.
   // Reserve values used by 2.5 API
   // Do not use in new filters
@@ -981,6 +984,41 @@ public:
 }; // end class IScriptEnvironment
 
 
+enum MTMODES
+{
+  MT_INVALID,
+  MT_NICE_PLUGIN = 1,
+  MT_MULTI_INSTANCE = 2,
+  MT_SERIALIZED = 3
+};
+
+class IJobCompletion
+{
+public:
+
+  virtual __stdcall ~IJobCompletion() {}
+  virtual void __stdcall Wait() = 0;
+  virtual AVSValue __stdcall Get(size_t i) = 0;
+  virtual size_t __stdcall Size() const = 0;
+  virtual size_t __stdcall Capacity() const = 0;
+  virtual bool __stdcall Finished() const = 0;
+  virtual void __stdcall Reset() = 0;
+  virtual void __stdcall Destroy() = 0;
+};
+
+class IScriptEnvironment2;
+class Prefetcher;
+typedef AVSValue (*ThreadWorkerFuncPtr)(IScriptEnvironment2* env, void* data);
+
+enum AvsEnvProperty
+{
+  AEP_INVALID = 0,
+  AEP_PHYSICAL_CPUS = 1,
+  AEP_THREADPOOL_THREADS = 2,
+  AEP_FILTERCHAIN_THREADS = 3,
+  AEP_THREAD_ID = 4
+};
+
 /* -----------------------------------------------------------------------------
    Note to plugin authors: The interface in IScriptEnvironment2 is 
       preliminary / under construction / only for testing / non-final etc.!
@@ -993,16 +1031,19 @@ class IScriptEnvironment2 : public IScriptEnvironment{
 public:
   virtual __stdcall ~IScriptEnvironment2() {}
 
+  // Generic system to ask for various properties
+  virtual size_t  __stdcall GetProperty(AvsEnvProperty prop) = 0;
+
   // Returns TRUE and the requested variable. If the method fails, returns FALSE and does not touch 'val'.
-  virtual bool  __stdcall GetVar(const char* name, AVSValue *val) = 0;
+  virtual bool  __stdcall GetVar(const char* name, AVSValue *val) const = 0;
 
   // Return the value of the requested variable.
   // If the variable was not found or had the wrong type,
   // return the supplied default value.
-  virtual bool __stdcall GetVar(const char* name, bool def) = 0;
-  virtual int  __stdcall GetVar(const char* name, int def) = 0;
-  virtual double  __stdcall GetVar(const char* name, double def) = 0;
-  virtual const char*  __stdcall GetVar(const char* name, const char* def) = 0;
+  virtual bool __stdcall GetVar(const char* name, bool def) const = 0;
+  virtual int  __stdcall GetVar(const char* name, int def) const = 0;
+  virtual double  __stdcall GetVar(const char* name, double def) const = 0;
+  virtual const char*  __stdcall GetVar(const char* name, const char* def) const = 0;
 
   // Plugin functions
   virtual bool __stdcall LoadPlugin(const char* filePath, bool throwOnError, AVSValue *result) = 0;
@@ -1011,17 +1052,26 @@ public:
   virtual void __stdcall AutoloadPlugins() = 0;
   virtual void __stdcall AddFunction(const char* name, const char* params, ApplyFunc apply, void* user_data, const char *exportVar) = 0;
 
-  // The following group of functions are ONLY to be called
-  // by the avisynth server dll.
-  virtual int __stdcall IncrImportDepth() = 0;
-  virtual int __stdcall DecrImportDepth() = 0;
+  // Threading
+  virtual void __stdcall SetFilterMTMode(const char* filter, MTMODES mode, bool force) = 0; // If filter is "", sets the default MT mode
+  virtual MTMODES __stdcall GetFilterMTMode(const char* filter) const = 0;                  // If filter is "", gets the default MT mode
+  virtual IJobCompletion* __stdcall NewCompletion(size_t capacity) = 0;
+  virtual void __stdcall ParallelJob(ThreadWorkerFuncPtr jobFunc, void* jobData, IJobCompletion* completion) = 0;
 
   // This version of Invoke will return false instead of throwing NotFound().
   virtual bool __stdcall Invoke(AVSValue *result, const char* name, const AVSValue args, const char* const* arg_names=0) = 0;
 
+  // Private-to-server functions, i.e. these are here for a technical
+  // reason and neither host applications nor plugins should use
+  // these interfaces. Strictly for Avisynth only.
+  virtual int __stdcall IncrImportDepth() = 0;
+  virtual int __stdcall DecrImportDepth() = 0;
+  virtual void __stdcall SetPrefetcher(Prefetcher *p) = 0;
+
   // These lines are needed so that we can overload the older functions from IScriptEnvironment.
   using IScriptEnvironment::Invoke;
   using IScriptEnvironment::AddFunction;
+  using IScriptEnvironment::GetVar;
 
 }; // end class IScriptEnvironment2
 

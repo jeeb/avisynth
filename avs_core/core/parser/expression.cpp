@@ -456,10 +456,7 @@ AVSValue ExpVariableReference::Evaluate(IScriptEnvironment* env)
       }
     }
   }
-  // Add cache to Bracketless call of argless function
-  if (result.IsClip()) { // Tritical Jan 2006
-    return env->Invoke("Cache", result);
-  }
+
   return result;
 }
 
@@ -492,8 +489,13 @@ ExpFunctionCall::ExpFunctionCall( const char* _name, PExpression* _arg_exprs,
   }
 }
 
+ExpFunctionCall::~ExpFunctionCall(void)
+{
+  delete[] arg_exprs;
+  delete[] arg_expr_names;
+}
 
-AVSValue ExpFunctionCall::Call(IScriptEnvironment* env) 
+AVSValue ExpFunctionCall::Evaluate(IScriptEnvironment* env)
 {
   AVSValue result;
   IScriptEnvironment2 *env2 = static_cast<IScriptEnvironment2*>(env);
@@ -515,27 +517,8 @@ AVSValue ExpFunctionCall::Call(IScriptEnvironment* env)
 
   env->ThrowError(env->FunctionExists(name) ?
     "Script error: Invalid arguments to function '%s'." :
-    "Script error: There is no function named '%s'.", name);
+  "Script error: There is no function named '%s'.", name);
 
   assert(0);  // we should never get here
   return 0;
-}
-
-
-ExpFunctionCall::~ExpFunctionCall(void)
-{
-  delete[] arg_exprs;
-  delete[] arg_expr_names;
-}
-
-
-AVSValue ExpFunctionCall::Evaluate(IScriptEnvironment* env)
-{
-  AVSValue result = Call(env);
-
-  if (result.IsClip()) {
-    return env->Invoke("Cache", result);
-  }
-
-  return result;
 }

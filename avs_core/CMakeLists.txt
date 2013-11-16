@@ -23,8 +23,14 @@ target_link_libraries("AvsCore" "Winmm.lib" "Vfw32.lib" "Msacm32.lib" "Gdi32.lib
 
 # Add Boost
 set(BOOST_INCLUDEDIR ${CMAKE_CURRENT_SOURCE_DIR}/boost/include)
-FIND_PACKAGE(Boost 1.54)
-include_directories(${Boost_INCLUDE_DIR})
+set(BOOST_LIBRARYDIR ${CMAKE_CURRENT_SOURCE_DIR}/boost/lib)
+set(Boost_DETAILED_FAILURE_MSG   ON)
+set(Boost_USE_STATIC_LIBS        ON)
+set(Boost_USE_MULTITHREADED      ON)
+set(Boost_USE_STATIC_RUNTIME     OFF)
+FIND_PACKAGE( Boost 1.54 COMPONENTS Thread System Date_Time Chrono atomic REQUIRED)
+include_directories( ${Boost_INCLUDE_DIR} )
+target_link_libraries( "AvsCore" ${Boost_LIBRARIES} )
 
 # Add source dependencies
 if( CMAKE_SIZEOF_VOID_P EQUAL 4 ) # 32-bit

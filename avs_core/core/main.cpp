@@ -43,6 +43,8 @@
 #include <cstdio>
 #include <new>
 #include <intrin.h>
+#include "Prefetcher.h" // TODO
+//#include <vld.h> //TODO
 
 
 #define FP_STATE 0x9001f
