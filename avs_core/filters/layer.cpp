@@ -1108,24 +1108,16 @@ Layer::Layer( PClip _child1, PClip _child2, const char _op[], int _lev, int _x, 
   overlay_frames = vi2.num_frames;
 }
 
-__declspec(align(8)) static const __int64 oxooffooffooffooff=0x00ff00ff00ff00ff;  // Luma mask
-__declspec(align(8)) static const __int64 oxffooffooffooffoo=0xff00ff00ff00ff00;  // Chroma mask
-__declspec(align(8)) static const __int64 oxoo80oo80oo80oo80=0x0080008000800080;  // Null Chroma
-__declspec(align(8)) static const __int64 ox7f7f7f7f7f7f7f7f=0x7f7f7f7f7f7f7f7f;  // FAST shift mask
-__declspec(align(8)) static const __int64 ox0101010101010101=0x0101010101010101;  // FAST lsb mask
-__declspec(align(8)) static const __int64 ox00000001        =0x0000000000000001;  // QWORD(1)
 
 const int cyb = int(0.114*32768+0.5);
 const int cyg = int(0.587*32768+0.5);
 const int cyr = int(0.299*32768+0.5);
-__declspec(align(8)) static const __int64 rgb2lum = ((__int64)cyr << 32) | (cyg << 16) | cyb;
 
 enum
 {
   LIGHTEN = 0,
   DARKEN = 1
 };
-
 
 /* YUY2 */
 
@@ -2452,7 +2444,7 @@ PVideoFrame __stdcall Layer::GetFrame(int n, IScriptEnvironment* env)
     {
       if (chroma) 
       {
-        if ((env->GetCPUFlags() & CPUF_SSE2) && IsPtrAligned(src1p, 16) && IsPtrAligned(src2p, 16))
+        if (env->GetCPUFlags() & CPUF_SSE2)
         {
           layer_rgb32_mul_sse2<true>(src1p, src2p, src1_pitch, src2_pitch, width, height, mylevel);
         } 
@@ -2469,7 +2461,7 @@ PVideoFrame __stdcall Layer::GetFrame(int n, IScriptEnvironment* env)
       } 
       else 
       {
-        if ((env->GetCPUFlags() & CPUF_SSE2) && IsPtrAligned(src1p, 16) && IsPtrAligned(src2p, 16))
+        if (env->GetCPUFlags() & CPUF_SSE2)
         {
           layer_rgb32_mul_sse2<false>(src1p, src2p, src1_pitch, src2_pitch, width, height, mylevel);
         } 
@@ -2489,7 +2481,7 @@ PVideoFrame __stdcall Layer::GetFrame(int n, IScriptEnvironment* env)
     {
       if (chroma) 
       {
-        if ((env->GetCPUFlags() & CPUF_SSE2) && IsPtrAligned(src1p, 16) && IsPtrAligned(src2p, 16))
+        if (env->GetCPUFlags() & CPUF_SSE2)
         {
           layer_rgb32_add_sse2<true>(src1p, src2p, src1_pitch, src2_pitch, width, height, mylevel);
         } 
@@ -2506,7 +2498,7 @@ PVideoFrame __stdcall Layer::GetFrame(int n, IScriptEnvironment* env)
       } 
       else 
       {
-        if ((env->GetCPUFlags() & CPUF_SSE2) && IsPtrAligned(src1p, 16) && IsPtrAligned(src2p, 16))
+        if (env->GetCPUFlags() & CPUF_SSE2)
         {
           layer_rgb32_add_sse2<false>(src1p, src2p, src1_pitch, src2_pitch, width, height, mylevel);
         } 
@@ -2526,7 +2518,7 @@ PVideoFrame __stdcall Layer::GetFrame(int n, IScriptEnvironment* env)
     {
       if (chroma) 
       {
-        if ((env->GetCPUFlags() & CPUF_SSE2) && IsPtrAligned(src1p, 16) && IsPtrAligned(src2p, 16))
+        if (env->GetCPUFlags() & CPUF_SSE2)
         {
           layer_rgb32_lighten_darken_sse2<LIGHTEN>(src1p, src2p, src1_pitch, src2_pitch, width, height, mylevel, thresh);
         } 
@@ -2550,7 +2542,7 @@ PVideoFrame __stdcall Layer::GetFrame(int n, IScriptEnvironment* env)
     {
       if (chroma) 
       {
-        if ((env->GetCPUFlags() & CPUF_SSE2) && IsPtrAligned(src1p, 16) && IsPtrAligned(src2p, 16))
+        if (env->GetCPUFlags() & CPUF_SSE2)
         {
           layer_rgb32_lighten_darken_sse2<DARKEN>(src1p, src2p, src1_pitch, src2_pitch, width, height, mylevel, thresh);
         } 
@@ -2598,7 +2590,7 @@ PVideoFrame __stdcall Layer::GetFrame(int n, IScriptEnvironment* env)
     {
       if (chroma) 
       {
-        if ((env->GetCPUFlags() & CPUF_SSE2) && IsPtrAligned(src1p, 16) && IsPtrAligned(src2p, 16))
+        if (env->GetCPUFlags() & CPUF_SSE2)
         {
           layer_rgb32_subtract_sse2<true>(src1p, src2p, src1_pitch, src2_pitch, width, height, mylevel);
         } 
@@ -2615,7 +2607,7 @@ PVideoFrame __stdcall Layer::GetFrame(int n, IScriptEnvironment* env)
       } 
       else 
       {
-        if ((env->GetCPUFlags() & CPUF_SSE2) && IsPtrAligned(src1p, 16) && IsPtrAligned(src2p, 16))
+        if (env->GetCPUFlags() & CPUF_SSE2)
         {
           layer_rgb32_subtract_sse2<false>(src1p, src2p, src1_pitch, src2_pitch, width, height, mylevel);
         } 
