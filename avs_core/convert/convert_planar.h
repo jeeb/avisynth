@@ -37,39 +37,7 @@
 #ifndef __Convert_PLANAR_H__
 #define __Convert_PLANAR_H__
 
-#include <avs/win.h>
 #include <avisynth.h>
-#include "../filters/resample.h"
-
-enum {Rec601=0, Rec709=1, PC_601=2, PC_709=3, AVERAGE=4 };
-
-static int getMatrix( const char* matrix, IScriptEnvironment* env) {
-  if (matrix) {
-    if (!lstrcmpi(matrix, "rec601"))
-      return Rec601;
-    if (!lstrcmpi(matrix, "rec709"))
-      return Rec709;
-    if (!lstrcmpi(matrix, "PC.601"))
-      return PC_601;
-    if (!lstrcmpi(matrix, "PC.709"))
-      return PC_709;
-    if (!lstrcmpi(matrix, "PC601"))
-      return PC_601;
-    if (!lstrcmpi(matrix, "PC709"))
-      return PC_709;
-    if (!lstrcmpi(matrix, "AVERAGE"))
-      return AVERAGE;
-    env->ThrowError("Convert: Unknown colormatrix");
-  }
-  return Rec601; // Default colorspace conversion for AviSynth
-}
-
-enum   {PLACEMENT_MPEG2, PLACEMENT_MPEG1, PLACEMENT_DV } ;
-
-static int getPlacement( const AVSValue& _placement, IScriptEnvironment* env);
-
-static ResamplingFunction* getResampler( const char* resampler, IScriptEnvironment* env);
-
 
 class ConvertToY8 : public GenericVideoFilter
 {

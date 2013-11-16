@@ -36,17 +36,9 @@
 #define __Convert_H__
 
 #include "../core/internal.h"
-#include "../filters/field.h"
-#include "../filters/transform.h"
 
-
-/********************************************************************
-********************************************************************/
-
-
-
-
-
+enum {Rec601=0, Rec709=1, PC_601=2, PC_709=3, AVERAGE=4 };
+int getMatrix( const char* matrix, IScriptEnvironment* env);
 
 /*****************************************************
  *******   Colorspace Single-Byte Conversions   ******
@@ -68,18 +60,6 @@ inline int RGB2YUV(int rgb)
   int v = ScaledPixelClip((r_y >> 10) * int(1/1.596*1024+0.5) + 0x800000);
   return ((y*256+u)*256+v) | (rgb & 0xff000000);
 }
-
-
-// in convert_a.asm
-extern "C" 
-{
-  extern void __cdecl mmx_YUY2toRGB24(const BYTE* src, BYTE* dst, const BYTE* src_end, int src_pitch, int row_size, int matrix);
-  extern void __cdecl mmx_YUY2toRGB32(const BYTE* src, BYTE* dst, const BYTE* src_end, int src_pitch, int row_size, int matrix);
-}
-
-
-
-
 
 
 /********************************************************
@@ -120,10 +100,6 @@ public:
 private:
   bool interlaced;
 };
-
-
-
-
 
 
 #endif  // __Convert_H__

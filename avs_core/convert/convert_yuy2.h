@@ -40,7 +40,6 @@
 #include "convert_yv12.h"
 #include "convert_planar.h" // 2.60
 
-
 class ConvertToYUY2 : public GenericVideoFilter
 /**
   * Class for conversions to YUY2

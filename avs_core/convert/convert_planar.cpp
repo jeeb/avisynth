@@ -35,15 +35,20 @@
 // ConvertPlanar (c) 2005 by Klaus Post
 
 
+#include "convert.h"
 #include "convert_planar.h"
+#include "../filters/resample.h"
 #include "../filters/planeswap.h"
 #include "../filters/field.h"
-#include <malloc.h>
 #include <avs/win.h>
 #include <avs/minmax.h>
-#include "../core/internal.h"
-#include <tmmintrin.h>
 #include <avs/alignment.h>
+#include <tmmintrin.h>
+
+enum   {PLACEMENT_MPEG2, PLACEMENT_MPEG1, PLACEMENT_DV } ;
+
+static int getPlacement( const AVSValue& _placement, IScriptEnvironment* env);
+static ResamplingFunction* getResampler( const char* resampler, IScriptEnvironment* env);
 
 
 ConvertToY8::ConvertToY8(PClip src, int in_matrix, IScriptEnvironment* env) : GenericVideoFilter(src), matrix(NULL) {
@@ -170,7 +175,6 @@ static void convert_yuy2_to_y8_mmx(const BYTE *srcp, BYTE *dstp, size_t src_pitc
 #endif
 
 
-#pragma warning(disable: 4799)
 static __forceinline __m128i convert_rgb_to_y8_sse2_core(const __m128i &pixel01, const __m128i &pixel23, const __m128i &pixel45, const __m128i &pixel67, __m128i& zero, __m128i &matrix, __m128i &round_mask, __m128i &offset) {
   //int Y = offset_y + ((m0 * srcp[0] + m1 * srcp[1] + m2 * srcp[2] + 16384) >> 15);
   // in general the algorithm is identical to MMX version, the only different part is getting r and g+b in appropriate registers. We use shuffling instead of unpacking here.
@@ -201,7 +205,6 @@ static __forceinline __m128i convert_rgb_to_y8_sse2_core(const __m128i &pixel01,
 
   return result;
 }
-#pragma warning(default: 4799)
 
 static void convert_rgb32_to_y8_sse2(const BYTE *srcp, BYTE *dstp, size_t src_pitch, size_t dst_pitch, size_t width, size_t height, BYTE offset_y, short cyr, short cyg, short cyb ) {
   __m128i matrix = _mm_set_epi16(0, cyr, cyg, cyb, 0, cyr, cyg, cyb);

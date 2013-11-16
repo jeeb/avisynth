@@ -36,8 +36,7 @@
 
 // WWUUT? We require XP now? Well, defining these constants to XP does not mean
 // we actually will need XP to run, only that we are allowed to use its APIs,
-// if we choose so. But let's stop pretending, who uses a windows older than XP?
-// Also, projects compiled under VS2012 might not run on older OSs anyway.
+// if we choose so. But let's stop pretending, who uses a Windows older than XP?
 
 #define NTDDI_VERSION 0x05010000
 

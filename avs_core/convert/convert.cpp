@@ -34,12 +34,12 @@
 
 
 #include "convert.h"
+#include "convert_planar.h"
 #include "convert_rgb.h"
 #include "convert_yv12.h"
 #include "convert_yuy2.h"
-#include "convert_planar.h"
-#include "avs/alignment.h"
-#include <cstdlib>
+#include <avs/alignment.h>
+#include <avs/win.h>
 #include <emmintrin.h>
 
 
@@ -62,34 +62,56 @@ extern const AVSFunction Convert_filters[] = {       // matrix can be "rec601", 
   { 0 }
 };
 
-const int crv_rec601 = int(1.596*65536+0.5);
-const int cgv_rec601 = int(0.813*65536+0.5);
-const int cgu_rec601 = int(0.391*65536+0.5);
-const int cbu_rec601 = int(2.018*65536+0.5);
+static const int crv_rec601 = int(1.596*65536+0.5);
+static const int cgv_rec601 = int(0.813*65536+0.5);
+static const int cgu_rec601 = int(0.391*65536+0.5);
+static const int cbu_rec601 = int(2.018*65536+0.5);
 
-const int crv_rec709 = int(1.793*65536+0.5); 
-const int cgv_rec709 = int(0.533*65536+0.5);
-const int cgu_rec709 = int(0.213*65536+0.5);
-const int cbu_rec709 = int(2.112*65536+0.5);
+static const int crv_rec709 = int(1.793*65536+0.5); 
+static const int cgv_rec709 = int(0.533*65536+0.5);
+static const int cgu_rec709 = int(0.213*65536+0.5);
+static const int cbu_rec709 = int(2.112*65536+0.5);
 
-const int crv_pc601 = int(1.407*65536+0.5);
-const int cgv_pc601 = int(0.717*65536+0.5);
-const int cgu_pc601 = int(0.345*65536+0.5); 
-const int cbu_pc601 = int(1.779*65536+0.5);
+static const int crv_pc601 = int(1.407*65536+0.5);
+static const int cgv_pc601 = int(0.717*65536+0.5);
+static const int cgu_pc601 = int(0.345*65536+0.5); 
+static const int cbu_pc601 = int(1.779*65536+0.5);
 
-const int crv_pc709 = int(1.581*65536+0.5);
-const int cgv_pc709 = int(0.470*65536+0.5);
-const int cgu_pc709 = int(0.188*65536+0.5);
-const int cbu_pc709 = int(1.863*65536+0.5);
+static const int crv_pc709 = int(1.581*65536+0.5);
+static const int cgv_pc709 = int(0.470*65536+0.5);
+static const int cgu_pc709 = int(0.188*65536+0.5);
+static const int cbu_pc709 = int(1.863*65536+0.5);
 
-const int cy_rec = int((255.0/219.0)*65536+0.5);
-const int cy_pc = 65536;
+static const int cy_rec = int((255.0/219.0)*65536+0.5);
+static const int cy_pc = 65536;
 
-const int crv_values[4] = { crv_rec601, crv_rec709, crv_pc601, crv_pc709 };
-const int cgv_values[4] = { cgv_rec601, cgv_rec709, cgv_pc601, cgv_pc709 };
-const int cgu_values[4] = { cgu_rec601, cgu_rec709, cgu_pc601, cgu_pc709 };
-const int cbu_values[4] = { cbu_rec601, cbu_rec709, cbu_pc601, cbu_pc709 };
-const int cy_values[4]  = { cy_rec,     cy_rec,     cy_pc,     cy_pc};
+static const int crv_values[4] = { crv_rec601, crv_rec709, crv_pc601, crv_pc709 };
+static const int cgv_values[4] = { cgv_rec601, cgv_rec709, cgv_pc601, cgv_pc709 };
+static const int cgu_values[4] = { cgu_rec601, cgu_rec709, cgu_pc601, cgu_pc709 };
+static const int cbu_values[4] = { cbu_rec601, cbu_rec709, cbu_pc601, cbu_pc709 };
+static const int cy_values[4]  = { cy_rec,     cy_rec,     cy_pc,     cy_pc};
+
+
+int getMatrix( const char* matrix, IScriptEnvironment* env) {
+  if (matrix) {
+    if (!lstrcmpi(matrix, "rec601"))
+      return Rec601;
+    if (!lstrcmpi(matrix, "rec709"))
+      return Rec709;
+    if (!lstrcmpi(matrix, "PC.601"))
+      return PC_601;
+    if (!lstrcmpi(matrix, "PC.709"))
+      return PC_709;
+    if (!lstrcmpi(matrix, "PC601"))
+      return PC_601;
+    if (!lstrcmpi(matrix, "PC709"))
+      return PC_709;
+    if (!lstrcmpi(matrix, "AVERAGE"))
+      return AVERAGE;
+    env->ThrowError("Convert: Unknown colormatrix");
+  }
+  return Rec601; // Default colorspace conversion for AviSynth
+}
 
 
 /****************************************

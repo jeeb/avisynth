@@ -33,46 +33,48 @@
 // import and export plugins, or graphical user interfaces.
 
 #include "convert_yuy2.h"
-#include "../core/internal.h"
-#include "avs/alignment.h"
+#include "convert.h"
+#include <avs/alignment.h>
+#include <avs/win.h>
 #include <emmintrin.h>
 
+
 //these are to be used only in asm routines
-const int cyb_rec601 = int(0.114 * 219 / 255 * 65536 + 0.5);
-const int cyg_rec601 = int(0.587 * 219 / 255 * 65536 + 0.5);
-const int cyr_rec601 = int(0.299 * 219 / 255 * 65536 + 0.5);
+static const int cyb_rec601 = int(0.114 * 219 / 255 * 65536 + 0.5);
+static const int cyg_rec601 = int(0.587 * 219 / 255 * 65536 + 0.5);
+static const int cyr_rec601 = int(0.299 * 219 / 255 * 65536 + 0.5);
 
-const int ku_rec601  = int(112.0 / (255.0 * (1.0 - 0.114)) * 65536 + 0.5);
-const int kv_rec601  = int(112.0 / (255.0 * (1.0 - 0.299)) * 65536 + 0.5);
+static const int ku_rec601  = int(112.0 / (255.0 * (1.0 - 0.114)) * 65536 + 0.5);
+static const int kv_rec601  = int(112.0 / (255.0 * (1.0 - 0.299)) * 65536 + 0.5);
 
-const int cyb_rec709 = int(0.0722 * 219 / 255 * 65536 + 0.5);
-const int cyg_rec709 = int(0.7152 * 219 / 255 * 65536 + 0.5);
-const int cyr_rec709 = int(0.2126 * 219 / 255 * 65536 + 0.5);
+static const int cyb_rec709 = int(0.0722 * 219 / 255 * 65536 + 0.5);
+static const int cyg_rec709 = int(0.7152 * 219 / 255 * 65536 + 0.5);
+static const int cyr_rec709 = int(0.2126 * 219 / 255 * 65536 + 0.5);
 
-const int ku_rec709  = int(112.0 / (255.0 * (1.0 - 0.0722)) * 65536 + 0.5);
-const int kv_rec709  = int(112.0 / (255.0 * (1.0 - 0.2126)) * 65536 + 0.5);
+static const int ku_rec709  = int(112.0 / (255.0 * (1.0 - 0.0722)) * 65536 + 0.5);
+static const int kv_rec709  = int(112.0 / (255.0 * (1.0 - 0.2126)) * 65536 + 0.5);
 
 
-const int cyb_pc601 = int(0.114 * 65536 + 0.5);
-const int cyg_pc601 = int(0.587 * 65536 + 0.5);
-const int cyr_pc601 = int(0.299 * 65536 + 0.5);
+static const int cyb_pc601 = int(0.114 * 65536 + 0.5);
+static const int cyg_pc601 = int(0.587 * 65536 + 0.5);
+static const int cyr_pc601 = int(0.299 * 65536 + 0.5);
 
-const int ku_pc601  = int(127.0 / (255.0 * (1.0 - 0.114)) * 65536 + 0.5);
-const int kv_pc601  = int(127.0 / (255.0 * (1.0 - 0.299)) * 65536 + 0.5);
+static const int ku_pc601  = int(127.0 / (255.0 * (1.0 - 0.114)) * 65536 + 0.5);
+static const int kv_pc601  = int(127.0 / (255.0 * (1.0 - 0.299)) * 65536 + 0.5);
 
-const int cyb_pc709 = int(0.0722 * 65536 + 0.5);
-const int cyg_pc709 = int(0.7152 * 65536 + 0.5);
-const int cyr_pc709 = int(0.2126 * 65536 + 0.5);
+static const int cyb_pc709 = int(0.0722 * 65536 + 0.5);
+static const int cyg_pc709 = int(0.7152 * 65536 + 0.5);
+static const int cyr_pc709 = int(0.2126 * 65536 + 0.5);
 
-const int ku_pc709  = int(127.0 / (255.0 * (1.0 - 0.0722)) * 65536 + 0.5);
-const int kv_pc709  = int(127.0 / (255.0 * (1.0 - 0.2126)) * 65536 + 0.5);
+static const int ku_pc709  = int(127.0 / (255.0 * (1.0 - 0.0722)) * 65536 + 0.5);
+static const int kv_pc709  = int(127.0 / (255.0 * (1.0 - 0.2126)) * 65536 + 0.5);
 
 
 static const int cyb_values[4] = {cyb_rec601 / 2, cyb_rec709 / 2, cyb_pc601 / 2, cyb_pc709 / 2};
 static const int cyg_values[4] = {cyg_rec601 / 2, cyg_rec709 / 2, cyg_pc601 / 2, cyg_pc709 / 2};
 static const int cyr_values[4] = {cyr_rec601 / 2, cyr_rec709 / 2, cyr_pc601 / 2, cyr_pc709 / 2};
 
-const double luma_rec_scale = 255.0/219.0 * 65536+0.5;
+static const double luma_rec_scale = 255.0/219.0 * 65536+0.5;
 
 static const int ku_values[4]       = {ku_rec601 / 2, ku_rec709 / 2, ku_pc601 / 2, ku_pc709 / 2};
 static const int ku_values_luma[4]  = {-int((ku_rec601/2) * luma_rec_scale) / 65536, -int((ku_rec709/2) * luma_rec_scale) / 65536, -ku_pc601 / 2, -ku_pc709 / 2};
