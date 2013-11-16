@@ -715,7 +715,7 @@ saturate0:
   for (int i = 0; i < countXchannels; i+=channels) {
     for (int j = 0; j < channels; j++) {
       samples[i + j] = (short)clamp(
-        signed_saturated_add64(Int32x32To64(samples[i + j], i_v[j]), 65536),
+        signed_saturated_add64(Int32x32To64(samples[i + j], i_v[j]), 65536) >> 17,
         (__int64)INT16_MIN,
         (__int64)INT16_MAX);
     }
@@ -768,9 +768,8 @@ saturate1:
   int* samples = (int*)buf;
   for (int i = 0; i < countXchannels; i+=channels) {
     for (int j = 0;j < channels;j++) {
-      // TODO: This is very slow. Right now, it should just work, we'll optimize later.
       samples[i + j] = (int)clamp(
-        signed_saturated_add64(Int32x32To64(samples[i + j], i_v[j]), 65536),
+        signed_saturated_add64(Int32x32To64(samples[i + j], i_v[j]), 65536) >> 17,
         (__int64)INT32_MIN,
         (__int64)INT32_MAX);
     }
@@ -1011,7 +1010,7 @@ saturate2:
     for (int i = 0; i < chanXcount; ++i) {
       // TODO: This is very slow. Right now, it should just work, we'll optimize later.
       samples[i] = (short)clamp(
-        signed_saturated_add64(Int32x32To64(samples[i], factor), 65536),
+        signed_saturated_add64(Int32x32To64(samples[i], factor), 65536) >> 17,
         (__int64)INT16_MIN,
         (__int64)INT16_MAX);
     }
@@ -1139,9 +1138,8 @@ saturate3:
     short* samples = (short*)buf;
     short* clip_samples = (short*)tempbuffer;
     for (unsigned i = 0; i < unsigned(count)*channels; ++i) {
-      // TODO: This is very slow. Right now, it should just work, we'll optimize later.
       samples[i] = (short)clamp(
-        signed_saturated_add64(signed_saturated_add64(Int32x32To64(samples[i], track1_factor), Int32x32To64(clip_samples[i], track2_factor)), 65536),
+        signed_saturated_add64(signed_saturated_add64(Int32x32To64(samples[i], track1_factor), Int32x32To64(clip_samples[i], track2_factor)), 65536) >> 17,
         (__int64)INT16_MIN,
         (__int64)INT16_MAX);
     }
