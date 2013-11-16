@@ -737,44 +737,6 @@ Tweak::~Tweak() {
   delete[] mapUV;
 }
 
-#ifdef X86_32
-
-//this is only about 10% faster than C and output is not identical. Maybe remove?
-static void tweak_yuy2_isse(BYTE *srcp, int width, int height, int pitch, int cos, int sin, int sat, int cont, int bright_int)
-{
-  __m64 hue = _mm_set_pi16(cos, -sin, sin, cos);
-  __m64 satcont = _mm_set_pi16(sat, cont, sat, cont);
-  __m64 bright = _mm_set1_pi32(bright_int);
-  __m64 norm = _mm_set1_pi32(0x00800010);
-  bright = _mm_add_pi16(norm, bright);
-  __m64 zero = _mm_setzero_si64();
-
-  for (int y = 0; y < height; ++y) {
-    for (int x = 0; x < width / 4; ++x) {
-      __m64 src = _mm_cvtsi32_si64(*reinterpret_cast<const int*>(srcp+x*4));
-      src = _mm_unpacklo_pi8(src, zero);
-      src = _mm_sub_pi16(src, norm);
-      
-      __m64 chroma = _mm_shuffle_pi16(src, _MM_SHUFFLE(3, 1, 3, 1));
-      chroma = _mm_madd_pi16(chroma, hue);
-      chroma = _mm_srai_pi32(chroma, 12);
-
-      __m64 t1 = _mm_unpacklo_pi16(src, chroma);
-      __m64 t2 = _mm_unpackhi_pi16(src, chroma);
-      __m64 dst = _mm_unpacklo_pi32(t1, t2);
-      dst = _mm_slli_pi16(dst, 7);
-      dst = _mm_mulhi_pi16(dst, satcont);
-      dst = _mm_add_pi16(dst, bright);
-      dst = _mm_packs_pu16(dst, zero);
-      *reinterpret_cast<int*>(srcp+x*4) = _mm_cvtsi64_si32(dst);
-    }
-    srcp += pitch;
-  }
-  _mm_empty();
-}
-
-#endif
-
 
 PVideoFrame __stdcall Tweak::GetFrame(int n, IScriptEnvironment* env)
 {
@@ -788,13 +750,6 @@ PVideoFrame __stdcall Tweak::GetFrame(int n, IScriptEnvironment* env)
 	int row_size = src->GetRowSize();
 
 	if (vi.IsYUY2()) {
-#ifdef X86_32
-		if (sse && !coring && !dither && (env->GetCPUFlags() & CPUF_INTEGER_SSE))
-    {
-			tweak_yuy2_isse(srcp, row_size, height, src_pitch, Cos, Sin, Sat, Cont, Bright);
-			return src;
-		}
-#endif
 
 		if (dither) {
 			const int UVwidth = vi.width/2;
