@@ -38,28 +38,21 @@
 #include <avisynth.h>
 
 
-#define uc unsigned char
-
 class AdjustFocusV : public GenericVideoFilter 
 /**
   * Class to adjust focus in the vertical direction, helper for sharpen/blue
  **/
 {
 public:
-  AdjustFocusV(double _amount, PClip _child, bool _mmx);
+  AdjustFocusV(double _amount, PClip _child);
   virtual ~AdjustFocusV(void);
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
 
 private:
-  const bool mmx;
   const int amount;
-  uc* line;
+  BYTE* line_buf;
 
 };
-
-/* Helpers for AdjustFocusV */
-void AFV_C(uc* l, uc* p, const int height, const int pitch, const int row_size, const int amount);
-void AFV_MMX(const uc* l, const uc* p, const int height, const int pitch, const int row_size, const int amount);
 
 
 class AdjustFocusH : public GenericVideoFilter 
@@ -68,32 +61,16 @@ class AdjustFocusH : public GenericVideoFilter
  **/
 {
 public:
-  AdjustFocusH(double _amount, PClip _child, bool _mmx);
+  AdjustFocusH(double _amount, PClip _child);
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
 
 private:
-  const bool mmx;
   const int amount;
 
 };
 
-/* Helpers for AdjustFocusH */
-void AFH_YUY2_C(uc* p, int height, const int pitch, const int width, const int amount);
-void AFH_YUY2_MMX(const uc* p, const int height, const int pitch, const int width, const int amount);
-void AFH_RGB32_C(uc* p, int height, const int pitch, const int width, const int amount);
-void AFH_RGB32_MMX(const uc* p, const int height, const int pitch, const int width, const int amount);
-void AFH_YV12_C(uc* p, int height, const int pitch, const int row_size, const int amount);
-void AFH_YV12_MMX(uc* p, int height, const int pitch, const int row_size, const int amount);
-
-void AFH_RGB24_C(uc* p, int height, const int pitch, const int width, const int amount);
-// no mmx version. to be honest, who would intensively use this ?
-
-/*** Sharpen/Blur Factory methods ***/
-
 AVSValue __cdecl Create_Sharpen(AVSValue args, void*, IScriptEnvironment* env);
 AVSValue __cdecl Create_Blur(AVSValue args, void*, IScriptEnvironment* env);
-
-
 
 
 /*** Soften classes ***/
@@ -104,7 +81,7 @@ class TemporalSoften : public GenericVideoFilter
  **/
 {
 public:
-  TemporalSoften( PClip _child, unsigned radius, unsigned luma_thresh, unsigned chroma_thresh,int _scenechange, int _mode ,IScriptEnvironment* env );
+  TemporalSoften( PClip _child, unsigned radius, unsigned luma_thresh, unsigned chroma_thresh,int _scenechange, IScriptEnvironment* env );
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
   virtual ~TemporalSoften(void);
   static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env);
@@ -112,29 +89,18 @@ public:
 private:
 // YV12:
     int* planes;
-    int* divtab;
     const BYTE** planeP;
     const BYTE** planeP2;
     int* planePitch;
     int* planePitch2;
-    int* accum_line;
-    int* div_line;
     bool* planeDisabled;
     int scenechange;
-    int mode;
     PVideoFrame *frames;
 
-  void mmx_accumulate_line(const BYTE* c_plane, const BYTE** planeP, int planes, int rowsize, __int64* t);
-  void isse_accumulate_line(const BYTE* c_plane, const BYTE** planeP, int planes, int rowsize, __int64* t);
-  void isse_accumulate_line_mode2(const BYTE* c_plane, const BYTE** planeP, int planes, int rowsize, __int64* t, int div);
-  void mmx_accumulate_line_mode2(const BYTE* c_plane, const BYTE** planeP, int planes, int rowsize, __int64* t, int div);
-  int isse_scenechange(const BYTE* c_plane, const BYTE* tplane, int height, int width, int c_pitch, int t_pitch);
 // YUY2:
   const unsigned luma_threshold, chroma_threshold;
   const int kernel;
 
-  static const short scaletab[];
-  __int64* scaletab_MMX;
 
   enum { MAX_RADIUS=7 };
 

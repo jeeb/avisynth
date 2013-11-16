@@ -38,61 +38,83 @@
 #include "../../core/internal.h"
 #include <avs/cpuid.h>
 #include <cstring>
+#include <emmintrin.h>
+#include "avs/alignment.h"
+
+
+//this isn't really faster than mmx
+static void convert_yv12_chroma_to_yv24_sse2(BYTE *dstp, const BYTE *srcp, int dst_pitch, int src_pitch, int src_width, int src_height) {
+  int mod8_width = src_width / 8 * 8;
+  for (int y = 0; y < src_height; ++y) {
+    for (int x = 0; x < mod8_width; x+=8) {
+      __m128i src = _mm_loadl_epi64(reinterpret_cast<const __m128i*>(srcp+x)); //0 0 0 0 0 0 0 0 U8 U7 U6 U5 U4 U3 U2 U1 U0
+      src = _mm_unpacklo_epi8(src, src); //U8 U8 U7 U7 U6 U6 U5 U5 U4 U4 U3 U3 U2 U2 U1 U1 U0 U0
+
+      _mm_store_si128(reinterpret_cast<__m128i*>(dstp+x*2), src);
+      _mm_store_si128(reinterpret_cast<__m128i*>(dstp+x*2 + dst_pitch), src);
+    }
+
+    if (mod8_width != src_width) {
+      __m128i src = _mm_loadl_epi64(reinterpret_cast<const __m128i*>(srcp+src_width - 8)); //0 0 0 0 0 0 0 0 U8 U7 U6 U5 U4 U3 U2 U1 U0
+      src = _mm_unpacklo_epi8(src, src); //U8 U8 U7 U7 U6 U6 U5 U5 U4 U4 U3 U3 U2 U2 U1 U1 U0 U0
+
+      _mm_storeu_si128(reinterpret_cast<__m128i*>(dstp + (src_width * 2) - 16), src);
+      _mm_storeu_si128(reinterpret_cast<__m128i*>(dstp + (src_width * 2) - 16 + dst_pitch), src);
+    }
+
+    dstp += dst_pitch*2;
+    srcp += src_pitch;
+  }
+}
 
 
 #ifdef X86_32
 /***** YV12 -> YUV 4:4:4   ******/
 
-void ConvertYV12ChromaTo444(unsigned char *dstp, const unsigned char *srcp,
-        const int dst_pitch, const int src_pitch,
-        const int src_rowsize, const int src_height)
-{
-  int dst_pitch2 = dst_pitch * 2;
-  __asm {
-	push    ebx
-    mov     eax,[dstp]
-    mov     ebx,[srcp]
-    mov     ecx, eax
-    add     ecx, [dst_pitch]  // ecx  = 1 line dst offset
+static void convert_yv12_chroma_to_yv24_mmx(BYTE *dstp, const BYTE *srcp, int dst_pitch, int src_pitch, int src_width, int src_height) {
+  int mod4_width = src_width / 4 * 4;
+  for (int y = 0; y < src_height; ++y) {
+    for (int x = 0; x < mod4_width; x+=4) {
+      __m64 src = _mm_cvtsi32_si64(*reinterpret_cast<const int*>(srcp+x)); //0 0 0 0 U3 U2 U1 U0
+      src = _mm_unpacklo_pi8(src, src); //U3 U3 U2 U2 U1 U1 U0 U0
 
-    mov     edx,[src_rowsize]
-    xor     edi,edi
-    mov     esi,[src_height]
-    align 16
-loopx:
-    movd    mm0, [ebx+edi]    // U4U3 U2U1
-    movd    mm1, [ebx+edi+4]  // U8U7 U6U5
+      *reinterpret_cast<__m64*>(dstp+x*2) = src;
+      *reinterpret_cast<__m64*>(dstp+x*2 + dst_pitch) = src;
+    }
 
-    punpcklbw mm0, mm0        // U4U4 U3U3 U2U2 U1U1
-    punpcklbw mm1, mm1        // U8U8 U7U7 U6U6 U5U5
+    if (mod4_width != src_width) {
+      __m64 src = _mm_cvtsi32_si64(*reinterpret_cast<const int*>(srcp-4)); //0 0 0 0 U3 U2 U1 U0
+      src = _mm_unpacklo_pi8(src, src); //U3 U3 U2 U2 U1 U1 U0 U0
 
-    movq    [eax+edi*2], mm0
-    movq    [eax+edi*2+8], mm1
+      *reinterpret_cast<__m64*>(dstp + (src_width * 2) - 8) = src;
+      *reinterpret_cast<__m64*>(dstp + (src_width * 2) - 8 + dst_pitch) = src;
+    }
 
-    movq    [ecx+edi*2], mm0
-    movq    [ecx+edi*2+8], mm1
+    dstp += dst_pitch*2;
+    srcp += src_pitch;
+  }
+  _mm_empty();
+}
 
-    add     edi,8
-    cmp     edi,edx
-    jl      loopx
+#endif // X86_32
 
-    mov     edi,0
-    add     eax,[dst_pitch2]
-    add     ecx,[dst_pitch2]
-    add     ebx,[src_pitch]
-    dec     esi
 
-    jnz     loopx
-
-    emms
-	pop     ebx
+static void convert_yv12_chroma_to_yv24_c(BYTE *dstp, const BYTE *srcp, int dst_pitch, int src_pitch, int src_width, int src_height) {
+  for (int y = 0; y < src_height; ++y) {
+    for (int x = 0; x < src_width; ++x) {
+      dstp[x*2]             = srcp[x];
+      dstp[x*2+1]           = srcp[x];
+      dstp[x*2+dst_pitch]   = srcp[x];
+      dstp[x*2+dst_pitch+1] = srcp[x];
+    }
+    dstp += dst_pitch*2;
+    srcp += src_pitch;
   }
 }
-#endif // X86_32
 
 void Convert444FromYV12::ConvertImage(PVideoFrame src, Image444* dst, IScriptEnvironment* env)
 {
-#ifdef X86_32
+
   env->BitBlt(dst->GetPtr(PLANAR_Y), dst->pitch, src->GetReadPtr(PLANAR_Y),src->GetPitch(PLANAR_Y), src->GetRowSize(PLANAR_Y), src->GetHeight());
 
   const BYTE* srcU = src->GetReadPtr(PLANAR_U);
@@ -105,15 +127,27 @@ void Convert444FromYV12::ConvertImage(PVideoFrame src, Image444* dst, IScriptEnv
 
   int dstUVpitch = dst->pitch;
 
-  int w = ((src->GetRowSize(PLANAR_U)+7)/8)*8;
-  int h = src->GetHeight(PLANAR_U);
-
-  ConvertYV12ChromaTo444(dstU, srcU, dstUVpitch, srcUVpitch, w, h);
-  ConvertYV12ChromaTo444(dstV, srcV, dstUVpitch, srcUVpitch, w, h);
-#else
-  //TODO
-  env->ThrowError("Convert444FromYV12::ConvertImage is not yet ported to 64-bit.");
+  int width = src->GetRowSize(PLANAR_U);
+  int height = src->GetHeight(PLANAR_U);
+  
+  if ((env->GetCPUFlags() & CPUF_SSE2) && IsPtrAligned(dstU, 16) && IsPtrAligned(dstV, 16))  
+  {
+    convert_yv12_chroma_to_yv24_sse2(dstU, srcU, dstUVpitch, srcUVpitch, width, height);
+    convert_yv12_chroma_to_yv24_sse2(dstV, srcV, dstUVpitch, srcUVpitch, width, height);
+  }
+  else
+#ifdef X86_32
+  if (env->GetCPUFlags() & CPUF_MMX) 
+  {
+    convert_yv12_chroma_to_yv24_mmx(dstU, srcU, dstUVpitch, srcUVpitch, width, height);
+    convert_yv12_chroma_to_yv24_mmx(dstV, srcV, dstUVpitch, srcUVpitch, width, height);
+  } 
+  else 
 #endif
+  {
+    convert_yv12_chroma_to_yv24_c(dstU, srcU, dstUVpitch, srcUVpitch, width, height);
+    convert_yv12_chroma_to_yv24_c(dstV, srcV, dstUVpitch, srcUVpitch, width, height);
+  }
 }
 
 void Convert444FromYV12::ConvertImageLumaOnly(PVideoFrame src, Image444* dst, IScriptEnvironment* env) {
@@ -226,170 +260,135 @@ PVideoFrame Convert444ToY8::ConvertImage(Image444* src, PVideoFrame dst, IScript
   return dst;
 }
 
+static __forceinline __m128i convert_yv24_chroma_block_to_yv12_sse2(const __m128i &src_line0_p0, const __m128i &src_line1_p0, const __m128i &src_line0_p1, const __m128i &src_line1_p1, const __m128i &ffff, const __m128i &mask) {
+  __m128i avg1 = _mm_avg_epu8(src_line0_p0, src_line1_p0);
+  __m128i avg2 = _mm_avg_epu8(src_line0_p1, src_line1_p1);
+
+  __m128i avg1x = _mm_xor_si128(avg1, ffff);
+  __m128i avg2x = _mm_xor_si128(avg2, ffff);
+
+  __m128i avg1_sh = _mm_srli_epi16(avg1x, 8);
+  __m128i avg2_sh = _mm_srli_epi16(avg2x, 8);
+
+  avg1 = _mm_avg_epu8(avg1x, avg1_sh);
+  avg2 = _mm_avg_epu8(avg2x, avg2_sh);
+
+  avg1 = _mm_and_si128(avg1, mask);
+  avg2 = _mm_and_si128(avg2, mask);
+
+  __m128i packed = _mm_packus_epi16(avg1, avg2);
+  return _mm_xor_si128(packed, ffff);
+}
+
+static void convert_yv24_chroma_to_yv12_sse2(BYTE *dstp, const BYTE *srcp, int dst_pitch, int src_pitch, int dst_width, const int dst_height) {
+  int mod16_width = dst_width / 16 * 16;
+
+#pragma warning(disable:4309)
+  __m128i ffff = _mm_set1_epi8(0xFF);
+#pragma warning(default:4309)
+  __m128i mask = _mm_set1_epi16(0x00FF);
+
+  for (int y = 0; y < dst_height; ++y) {
+    for (int x = 0; x < mod16_width; x+=16) {
+      __m128i src_line0_p0 = _mm_load_si128(reinterpret_cast<const __m128i*>(srcp+x*2));
+      __m128i src_line0_p1 = _mm_load_si128(reinterpret_cast<const __m128i*>(srcp+x*2+16));
+      __m128i src_line1_p0 = _mm_load_si128(reinterpret_cast<const __m128i*>(srcp+x*2+src_pitch));
+      __m128i src_line1_p1 = _mm_load_si128(reinterpret_cast<const __m128i*>(srcp+x*2+src_pitch+16));
+
+      __m128i avg = convert_yv24_chroma_block_to_yv12_sse2(src_line0_p0, src_line1_p0, src_line0_p1, src_line1_p1, ffff, mask);
+
+      _mm_store_si128(reinterpret_cast<__m128i*>(dstp+x), avg);
+    }
+
+    if (mod16_width != dst_width) {
+      __m128i src_line0_p0 = _mm_loadu_si128(reinterpret_cast<const __m128i*>(srcp+dst_width*2-32));
+      __m128i src_line0_p1 = _mm_loadu_si128(reinterpret_cast<const __m128i*>(srcp+dst_width*2-16));
+      __m128i src_line1_p0 = _mm_loadu_si128(reinterpret_cast<const __m128i*>(srcp+dst_width*2+src_pitch-32));
+      __m128i src_line1_p1 = _mm_loadu_si128(reinterpret_cast<const __m128i*>(srcp+dst_width*2+src_pitch-16));
+
+      __m128i avg = convert_yv24_chroma_block_to_yv12_sse2(src_line0_p0, src_line1_p0, src_line0_p1, src_line1_p1, ffff, mask);
+
+      _mm_store_si128(reinterpret_cast<__m128i*>(dstp+dst_width-16), avg);
+    }
+
+    dstp += dst_pitch;
+    srcp += src_pitch*2;
+  }
+}
 
 #ifdef X86_32
 
-/******  YUV 4:4:4 -> YV12  *****/
+static __forceinline __m64 convert_yv24_chroma_block_to_yv12_isse(const __m64 &src_line0_p0, const __m64 &src_line1_p0, const __m64 &src_line0_p1, const __m64 &src_line1_p1, const __m64 &ffff, const __m64 &mask) {
+  __m64 avg1 = _mm_avg_pu8(src_line0_p0, src_line1_p0);
+  __m64 avg2 = _mm_avg_pu8(src_line0_p1, src_line1_p1);
 
-// ISSE_Convert444ChromaToYV12:
-// by Klaus Post, Copyright 2004.
-// and Ian Brabham Copyright 2007.
-//
-// src_rowsize must be mod 16 (dst_rowsize mod 8)
-// Operates on 16x2 input pixels per loop for best possible pairability.
+  __m64 avg1x = _mm_xor_si64(avg1, ffff);
+  __m64 avg2x = _mm_xor_si64(avg2, ffff);
 
-// Note! (((a+b+1) >> 1) + ((c+d+1) >> 1) + 1) >> 1 = (a+b+c+d+3) >> 2
+  __m64 avg1_sh = _mm_srli_pi16(avg1x, 8);
+  __m64 avg2_sh = _mm_srli_pi16(avg2x, 8);
 
-/*
-      should be (a+b+c+d+2) >> 2
-      average_round_down(average_round_up(a, b), average_round_up(c, d))
-    = average_round_down(pavgb(a, b), pavgb(c, d))
-    = ~pavgb(~pavgb(a, b), ~pavgb(c, d))
-*/
+  avg1 = _mm_avg_pu8(avg1x, avg1_sh);
+  avg2 = _mm_avg_pu8(avg2x, avg2_sh);
 
-void ISSE_Convert444ChromaToYV12(unsigned char *dstp, const unsigned char *srcp,
-        const int dst_pitch, const int src_pitch,
-        const int src_rowsize, const int src_height)
-{
-  int src_pitch2 = src_pitch * 2;
-  __asm {
-	push     ebx
-    mov      eax,[dstp]
-    mov      ebx,[srcp]
-    mov      ecx, ebx
-    add      ecx, [src_pitch]  // ecx  = 1 line src offset
+  avg1 = _mm_and_si64(avg1, mask);
+  avg2 = _mm_and_si64(avg2, mask);
 
-    mov      edx,[src_rowsize]
-    xor      edi,edi
-    mov      esi,[src_height]
-    pcmpeqb  mm6,mm6         // ffff ffff ffff ffff
-    pcmpeqb  mm7,mm7
-    psrlw    mm7, 8          // 00ff 00ff 00ff 00ff
-    align    16
-loopx:
-    movq     mm0, [ebx+edi*2]    // u4U4 u3U3 u2U2 u1U1
-    movq     mm2, [ebx+edi*2+8]  // u8U8 u7U7 U6U6 u5U5
-
-    pavgb    mm0, [ecx+edi*2]    // u4U4 u3U3 u2U2 u1U1  (Next line)
-    pavgb    mm2, [ecx+edi*2+8]  // u8U8 u7U7 u6U6 u5U5  (Next line)
-
-    pxor     mm0,mm6         // ~u4~U4 ~u3~U3 ~u2~U2 ~u1~U1
-    pxor     mm2,mm6         // ~u8~U8 ~u7~U7 ~u6~U6 ~u5~U5
-
-    movq     mm1,mm0
-    psrlw    mm0, 8          // ~(00u4 00u3 00u2 00u1)
-    movq     mm3,mm2
-    psrlw    mm2, 8          // ~(00u8 00u7 00u6 00u5)
-    pavgb    mm0,mm1         // ~(xxU4 xxU3 xxU2 xxU1)
-    pavgb    mm2,mm3         // ~(xxU8 xxU7 xxU6 xxU5)
-    pand     mm0,mm7         // ~(00U4 00U3 00U2 00U1)
-    pand     mm2,mm7         // ~(00U8 00U7 00U6 00U5)
-
-    add      edi,8
-    packuswb mm0,mm2         // ~U8~U7~U6~U5~U4~U3~U2~U1
-
-    cmp      edi,edx
-    pxor     mm0,mm6         // U8U7U6U5U4U3U2U1
-    movq     [eax+edi-8],mm0
-
-    jl       loopx
-
-    mov      edi,0
-    add      eax,[dst_pitch]
-    add      ecx,[src_pitch2]
-    add      ebx,[src_pitch2]
-    dec      esi
-
-    jnz      loopx
-
-    emms
-	pop      ebx
-  }
+  __m64 packed = _mm_packs_pu16(avg1, avg2);
+  return _mm_xor_si64(packed, ffff);
 }
 
-// MMX_Convert444ChromaToYV12:
-// by Ian Brabham Copyright 2007.
-//
-// src_rowsize must be mod 16 (dst_rowsize mod 8)
-// Operates on 16x2 input pixels per loop for best possible pairability.
+static void convert_yv24_chroma_to_yv12_isse(BYTE *dstp, const BYTE *srcp, int dst_pitch, int src_pitch, int dst_width, const int dst_height) {
+  int mod8_width = dst_width / 8 * 8;
 
+#pragma warning(disable:4309)
+  __m64 ffff = _mm_set1_pi8(0xFF);
+#pragma warning(default:4309)
+  __m64 mask = _mm_set1_pi16(0x00FF);
 
-void MMX_Convert444ChromaToYV12(unsigned char *dstp, const unsigned char *srcp,
-        const int dst_pitch, const int src_pitch,
-        const int src_rowsize, const int src_height)
-{
-  static const __int64 sevenfB = 0x7f7f7f7f7f7f7f7f;
-  int src_pitch2 = src_pitch * 2;
-  __asm {
-	push     ebx
-    mov      eax, [dstp]
-    mov      ebx, [srcp]
-    mov      ecx, ebx
-    add      ecx, [src_pitch]  // ecx  = 1 line src offset
+  for (int y = 0; y < dst_height; ++y) {
+    for (int x = 0; x < mod8_width; x+=8) {
+      __m64 src_line0_p0 = *reinterpret_cast<const __m64*>(srcp+x*2);
+      __m64 src_line0_p1 = *reinterpret_cast<const __m64*>(srcp+x*2+8);
+      __m64 src_line1_p0 = *reinterpret_cast<const __m64*>(srcp+x*2+src_pitch);
+      __m64 src_line1_p1 = *reinterpret_cast<const __m64*>(srcp+x*2+src_pitch+8);
 
-    mov      edx, [src_rowsize]
-    xor      edi, edi
-    mov      esi, [src_height]
-    pcmpeqb  mm7, mm7
-    psrlw    mm7, 8          // 00ff 00ff 00ff 00ff
-    movq     mm6, [sevenfB]
-    align    16
+      __m64 avg = convert_yv24_chroma_block_to_yv12_isse(src_line0_p0, src_line1_p0, src_line0_p1, src_line1_p1, ffff, mask);
 
-// (a + b + 1) >> 1 = (a | b) - ((a ^ b) >> 1)
+      *reinterpret_cast<__m64*>(dstp+x) = avg;
+    }
 
-loopx:
-    movq     mm4, [ebx+edi*2]    // u4U4 u3U3 u2U2 u1U1
-    movq     mm5, [ebx+edi*2+8]  // u8U8 u7U7 U6U6 u5U5
-    movq     mm1, [ecx+edi*2]    // u4U4 u3U3 u2U2 u1U1  (Next line)
-    movq     mm3, [ecx+edi*2+8]  // u8U8 u7U7 u6U6 u5U5  (Next line)
-    movq     mm0, mm4
-    movq     mm2, mm5
-    pxor     mm4, mm1            // Average with next line
-    pxor     mm5, mm3            // Average with next line
-    psrlq    mm4, 1              // Fuck Intel! Where is psrlb
-    por      mm0, mm1
-    psrlq    mm5, 1              // Fuck Intel! Where is psrlb
-    por      mm2, mm3
-    pand     mm4, mm6
-    pand     mm5, mm6
-    psubb    mm0, mm4
-    psubb    mm2, mm5
-    movq     mm1, mm0
-    psrlw    mm0, 8              // 00u4 00u3 00u2 00u1
-    movq     mm3, mm2
-    psrlw    mm2, 8              // 00u8 00u7 00u6 00u5
-    pand     mm1, mm7            // 00U4 00U3 00U2 00U1
-    pand     mm3, mm7            // 00U8 00U7 00U6 00U5
-    paddw    mm0, mm1            // xU4. xU3. xU2. xU1.
-    paddw    mm2, mm3            // xU8. xU7. xU6. xU5.
-    psrlw    mm0, 1              // 00U4 00U3 00U2 00U1
-    psrlw    mm2, 1              // 00U8 00U7 00U6 00U5
+    if (mod8_width != dst_width) {
+      __m64 src_line0_p0 = *reinterpret_cast<const __m64*>(srcp+dst_width*2-16);
+      __m64 src_line0_p1 = *reinterpret_cast<const __m64*>(srcp+dst_width*2-8);
+      __m64 src_line1_p0 = *reinterpret_cast<const __m64*>(srcp+dst_width*2+src_pitch-16);
+      __m64 src_line1_p1 = *reinterpret_cast<const __m64*>(srcp+dst_width*2+src_pitch-8);
 
-    add      edi,8
-    packuswb mm0,mm2             // U8U7 U6U5 U4U3 U2U1
+      __m64 avg = convert_yv24_chroma_block_to_yv12_isse(src_line0_p0, src_line1_p0, src_line0_p1, src_line1_p1, ffff, mask);
 
-    cmp      edi,edx
-    movq     [eax+edi-8],mm0
+      *reinterpret_cast<__m64*>(dstp+dst_width-8) = avg;
+    }
 
-    jl       loopx
-
-    mov      edi,0
-    add      eax,[dst_pitch]
-    add      ecx,[src_pitch2]
-    add      ebx,[src_pitch2]
-    dec      esi
-
-    jnz      loopx
-
-    emms
-	pop       ebx
+    dstp += dst_pitch;
+    srcp += src_pitch*2;
   }
+  _mm_empty();
 }
+
 #endif X86_32
+
+static void convert_yv24_chroma_to_yv12_c(BYTE *dstp, const BYTE *srcp, int dst_pitch, int src_pitch, int dst_width, const int dst_hegiht) {
+  for (int y=0; y < dst_hegiht; y++) {
+    for (int x=0; x < dst_width; x++) {
+      dstp[x] = (srcp[x*2] + srcp[x*2+1] + srcp[x*2+src_pitch] + srcp[x*2+src_pitch+1] + 2)>>2;
+    }
+    srcp+=src_pitch*2;
+    dstp+=dst_pitch;
+  }
+}
 
 PVideoFrame Convert444ToYV12::ConvertImage(Image444* src, PVideoFrame dst, IScriptEnvironment* env)
 {
-#ifdef X86_32
   env->MakeWritable(&dst);
 
   env->BitBlt(dst->GetWritePtr(PLANAR_Y), dst->GetPitch(PLANAR_Y),
@@ -405,37 +404,27 @@ PVideoFrame Convert444ToYV12::ConvertImage(Image444* src, PVideoFrame dst, IScri
 
   int dstUVpitch = dst->GetPitch(PLANAR_U);
 
-  int w = ((dst->GetRowSize(PLANAR_U)+7)/8)*8;
+  int w = dst->GetRowSize(PLANAR_U);
   int h = dst->GetHeight(PLANAR_U);
 
-  if (GetCPUFlags() & CPUF_INTEGER_SSE) {
-
-	ISSE_Convert444ChromaToYV12(dstU, srcU, dstUVpitch, srcUVpitch, w, h);
-	ISSE_Convert444ChromaToYV12(dstV, srcV, dstUVpitch, srcUVpitch, w, h);
-
-  } else if (GetCPUFlags() & CPUF_MMX) {
-
-	MMX_Convert444ChromaToYV12(dstU, srcU, dstUVpitch, srcUVpitch, w, h);
-	MMX_Convert444ChromaToYV12(dstV, srcV, dstUVpitch, srcUVpitch, w, h);
-
-  } else {
-    for (int y=0; y<h; y++) {
-      for (int x=0; x<w; x++) {
-        int x2 = x<<1;
-        dstU[x] = (srcU[x2] + srcU[x2+1] + srcU[x2+srcUVpitch] + srcU[x2+srcUVpitch+1] + 2)>>2;
-        dstV[x] = (srcV[x2] + srcV[x2+1] + srcV[x2+srcUVpitch] + srcV[x2+srcUVpitch+1] + 2)>>2;
-      }
-      srcU+=srcUVpitch*2;
-      srcV+=srcUVpitch*2;
-      dstU+=dstUVpitch;
-      dstV+=dstUVpitch;
-    }
+  if ((GetCPUFlags() & CPUF_SSE2) && IsPtrAligned(srcU, 16) && IsPtrAligned(srcV, 16) && IsPtrAligned(dstU, 16) && IsPtrAligned(dstV, 16)) 
+  {
+    convert_yv24_chroma_to_yv12_sse2(dstU, srcU, dstUVpitch, srcUVpitch, w, h);
+    convert_yv24_chroma_to_yv12_sse2(dstV, srcV, dstUVpitch, srcUVpitch, w, h);
   }
-#else
-  //TODO
-  env->ThrowError("Convert444ToYV12::ConvertImage is not yet ported to 64-bit.");
+  else
+#ifdef X86_32
+  if (GetCPUFlags() & CPUF_INTEGER_SSE) 
+  {
+    convert_yv24_chroma_to_yv12_isse(dstU, srcU, dstUVpitch, srcUVpitch, w, h);
+    convert_yv24_chroma_to_yv12_isse(dstV, srcV, dstUVpitch, srcUVpitch, w, h);
+  } 
+  else
 #endif
-
+  {
+    convert_yv24_chroma_to_yv12_c(dstU, srcU, dstUVpitch, srcUVpitch, w, h);
+    convert_yv24_chroma_to_yv12_c(dstV, srcV, dstUVpitch, srcUVpitch, w, h);
+  }
   return dst;
 }
 

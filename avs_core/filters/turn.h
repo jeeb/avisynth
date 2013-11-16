@@ -40,86 +40,21 @@
 
 
 #include <avisynth.h>
-#include "turnfunc.h"
-#include "resample.h"
-#include "planeswap.h"
 
+typedef void (*TurnFuncPtr) (const BYTE *srcp, BYTE *dstp, int width, int height, int src_pitch, int dst_pitch);
 
 class Turn : public GenericVideoFilter {
-	
-void (*TurnFunc) (const unsigned char *srcp, unsigned char *dstp, const int rowsize,
-					const int height, const int src_pitch, const int dst_pitch,
-					const int direction);
-void (*TurnPlanFunc) (const unsigned char *srcp_y, unsigned char *dstp_y,
-				  const unsigned char *srcp_u, unsigned char *dstp_u,
-				  const unsigned char *srcp_v, unsigned char *dstp_v,
-				  const int rowsize, const int height,
-				  const int rowsizeUV, const int heightUV,
-				  const int src_pitch_y, const int dst_pitch_y,
-				  const int src_pitch_u, const int dst_pitch_uv,
-				  const int src_pitch_v, const int direction);
 
-	int			direction;
-	PClip		Usource;
-	PClip		Vsource;
+  TurnFuncPtr TurnFunc;
+
+  int			direction;
+  PClip		Usource;
+  PClip		Vsource;
 
 public:
-    Turn(PClip _child, int _direction, IScriptEnvironment* env)
-	 : GenericVideoFilter(_child), Usource(0), Vsource(0) {
-		if (_direction) {
-			const int src_height = vi.height;
-			vi.height = vi.width;
-			vi.width = src_height;
-		}
-		direction = _direction;
-		
-		if (vi.IsRGB())
-		{
-			if (vi.BitsPerPixel() == 32) TurnFunc = TurnRGB32;
-			else if (vi.BitsPerPixel() == 24) TurnFunc = TurnRGB24;
-			else env->ThrowError("Turn: Unsupported RGB bit depth");
-		}
-		else if (vi.IsYUY2())
-		{
-			if (vi.width%2) env->ThrowError("Turn: YUY2 data must have MOD2 height");
-			TurnFunc = TurnYUY2;
-		}
-		else if (vi.IsPlanar())
-		{
-			TurnPlanFunc = TurnPlanar;
-			// rectangular formats?
-			if (direction && !vi.IsY8() && (vi.GetPlaneWidthSubsampling(PLANAR_U) != vi.GetPlaneHeightSubsampling(PLANAR_U)))
-			{
-				if (vi.width % (1<<vi.GetPlaneWidthSubsampling(PLANAR_U))) // YV16 & YV411
-					env->ThrowError("Turn: Planar data must have MOD %d height",
-									1<<vi.GetPlaneWidthSubsampling(PLANAR_U));
+  Turn(PClip _child, int _direction, IScriptEnvironment* env);
 
-				if (vi.height % (1<<vi.GetPlaneHeightSubsampling(PLANAR_U))) // No current formats
-					env->ThrowError("Turn: Planar data must have MOD %d width",
-									1<<vi.GetPlaneHeightSubsampling(PLANAR_U));
-
-				MitchellNetravaliFilter filter(1./3., 1./3.);
-				AVSValue subs[4] = { 0.0, 0.0, 0.0, 0.0 }; 
-
-				Usource = new SwapUVToY(child, SwapUVToY::UToY8, env);  
-				Vsource = new SwapUVToY(child, SwapUVToY::VToY8, env);
-
-				const VideoInfo vi_u = Usource->GetVideoInfo();
-
-				const int uv_height = (vi_u.height << vi.GetPlaneHeightSubsampling(PLANAR_U)) >> vi.GetPlaneWidthSubsampling(PLANAR_U);
-				const int uv_width  = (vi_u.width  << vi.GetPlaneWidthSubsampling(PLANAR_U))  >> vi.GetPlaneHeightSubsampling(PLANAR_U);
-
-				Usource = FilteredResize::CreateResize(Usource, uv_width, uv_height, subs, &filter, env);
-				Vsource = FilteredResize::CreateResize(Vsource, uv_width, uv_height, subs, &filter, env);
-			}
-		}
-		else
-		{
-			env->ThrowError("Turn: Image format not supported!");
-		}
-	};
-
-	PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
+  PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
   static AVSValue __cdecl Create_TurnLeft(AVSValue args, void* user_data, IScriptEnvironment* env);
   static AVSValue __cdecl Create_TurnRight(AVSValue args, void* user_data, IScriptEnvironment* env);
   static AVSValue __cdecl Create_Turn180(AVSValue args, void* user_data, IScriptEnvironment* env);

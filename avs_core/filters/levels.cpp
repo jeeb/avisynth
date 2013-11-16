@@ -39,6 +39,7 @@
 #include <cmath>
 #include <avs/minmax.h>
 #include "../core/internal.h"
+#include <xmmintrin.h>
 
 //Wow, this macro really sucks -> TODO: should be turned into a macro function
 #define in64 (__int64)(unsigned short)
@@ -736,6 +737,44 @@ Tweak::~Tweak() {
   delete[] mapUV;
 }
 
+#ifdef X86_32
+
+//this is only about 10% faster than C and output is not identical. Maybe remove?
+static void tweak_yuy2_isse(BYTE *srcp, int width, int height, int pitch, int cos, int sin, int sat, int cont, int bright_int)
+{
+  __m64 hue = _mm_set_pi16(cos, -sin, sin, cos);
+  __m64 satcont = _mm_set_pi16(sat, cont, sat, cont);
+  __m64 bright = _mm_set1_pi32(bright_int);
+  __m64 norm = _mm_set1_pi32(0x00800010);
+  bright = _mm_add_pi16(norm, bright);
+  __m64 zero = _mm_setzero_si64();
+
+  for (int y = 0; y < height; ++y) {
+    for (int x = 0; x < width / 4; ++x) {
+      __m64 src = _mm_cvtsi32_si64(*reinterpret_cast<const int*>(srcp+x*4));
+      src = _mm_unpacklo_pi8(src, zero);
+      src = _mm_sub_pi16(src, norm);
+      
+      __m64 chroma = _mm_shuffle_pi16(src, _MM_SHUFFLE(3, 1, 3, 1));
+      chroma = _mm_madd_pi16(chroma, hue);
+      chroma = _mm_srai_pi32(chroma, 12);
+
+      __m64 t1 = _mm_unpacklo_pi16(src, chroma);
+      __m64 t2 = _mm_unpackhi_pi16(src, chroma);
+      __m64 dst = _mm_unpacklo_pi32(t1, t2);
+      dst = _mm_slli_pi16(dst, 7);
+      dst = _mm_mulhi_pi16(dst, satcont);
+      dst = _mm_add_pi16(dst, bright);
+      dst = _mm_packs_pu16(dst, zero);
+      *reinterpret_cast<int*>(srcp+x*4) = _mm_cvtsi64_si32(dst);
+    }
+    srcp += pitch;
+  }
+  _mm_empty();
+}
+
+#endif
+
 
 PVideoFrame __stdcall Tweak::GetFrame(int n, IScriptEnvironment* env)
 {
@@ -752,11 +791,7 @@ PVideoFrame __stdcall Tweak::GetFrame(int n, IScriptEnvironment* env)
 #ifdef X86_32
 		if (sse && !coring && !dither && (env->GetCPUFlags() & CPUF_INTEGER_SSE))
     {
-			const __int64 hue64 = (in64 Cos<<48) + (in64 (-Sin)<<32) + (in64 Sin<<16) + in64 Cos;
-			const __int64 satcont64 = (in64 Sat<<48) + (in64 Cont<<32) + (in64 Sat<<16) + in64 Cont;
-			const __int64 bright64 = (in64 Bright<<32) + in64 Bright;
-
-			asm_tweak_ISSE_YUY2(srcp, row_size>>2, height, src_pitch-row_size, hue64, satcont64, bright64);
+			tweak_yuy2_isse(srcp, row_size, height, src_pitch, Cos, Sin, Sat, Cont, Bright);
 			return src;
 		}
 #endif
@@ -880,67 +915,6 @@ AVSValue __cdecl Tweak::Create(AVSValue args, void* user_data, IScriptEnvironmen
 					args[12].AsBool(false),    // dither
 					env);
 }
-
-
-
-#ifdef X86_32
-// Integer SSE optimization by "Dividee".
-void __declspec(naked) asm_tweak_ISSE_YUY2( BYTE *srcp, int w, int h, int modulo, __int64 hue,
-                                       __int64 satcont, __int64 bright )
-{
-	static const __int64 norm = 0x0080001000800010i64;
-
-	__asm {
-		push		ebp
-		push		edi
-		push		esi
-		push		ebx
-
-		pxor		mm0, mm0
-		movq		mm1, norm				// 128 16 128 16
-		movq		mm2, [esp+16+20]		// Cos -Sin Sin Cos (fix12)
-		movq		mm3, [esp+16+28]		// Sat Cont Sat Cont (fix9)
-		movq		mm4, mm1
-		paddw		mm4, [esp+16+36]		// 128 16+Bright 128 16+Bright
-
-		mov			esi, [esp+16+4]			// srcp
-		mov			edx, [esp+16+12]		// height
-y_loop:
-		mov			ecx, [esp+16+8]			// width
-x_loop:
-		movd		mm7, [esi]   			// 0000VYUY
-		punpcklbw	mm7, mm0
-		psubw		mm7, mm1				//  V Y U Y
-		pshufw		mm6, mm7, 0xDD			//  V U V U
-		pmaddwd		mm6, mm2				// V*Cos-U*Sin V*Sin+U*Cos (fix12)
-		psrad		mm6, 12					// ? V' ? U'
-		movq		mm5, mm7
-		punpcklwd	mm7, mm6				// ? ? U' Y
-		punpckhwd	mm5, mm6				// ? ? V' Y
-		punpckldq	mm7, mm5				// V' Y U' Y
-		psllw		mm7, 7					// (fix7)
-		pmulhw		mm7, mm3	            // V'*Sat Y*Cont U'*Sat Y*Cont
-		paddw		mm7, mm4				// V" Y" U" Y"
-		packuswb	mm7, mm0				// 0000V"Y"U"Y"
-		movd		[esi], mm7
-
-		add			esi, 4
-		dec			ecx
-		jnz			x_loop
-
-		add			esi, [esp+16+16]		// skip to next scanline
-		dec			edx
-		jnz			y_loop
-
-		pop			ebx
-		pop			esi
-		pop			edi
-		pop			ebp
-		emms
-		ret
-	};
-}
-#endif
 
 /**********************
 ******   MaskHS   *****

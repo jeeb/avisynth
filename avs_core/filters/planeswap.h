@@ -56,8 +56,6 @@ public:
   SwapUV(PClip _child, IScriptEnvironment* env);  
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
   static AVSValue __cdecl CreateSwapUV(AVSValue args, void* user_data, IScriptEnvironment* env);
-private:
-  void isse_inplace_yuy2_swap(const BYTE* srcp, BYTE* dstp, int rowsize16, int rowsize8, int rowsize4, int height, int srcpitch, int dstpitch);
 
 };
 

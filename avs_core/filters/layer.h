@@ -117,7 +117,6 @@ public:
 
   static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env);
 private:
-  void ConvertFrame(BYTE* frame, int pitch, int rowsize, int height, int mask);
   const char * channels;
 };
 

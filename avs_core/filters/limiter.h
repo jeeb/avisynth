@@ -37,48 +37,19 @@
 
 #include <avisynth.h>
 
-#ifdef X86_32
-#include "../core/softwire_helpers.h"
-using namespace SoftWire; 
-#endif
-
-
-/********************************************************************
-********************************************************************/
-
-
-#ifdef X86_32
-class Limiter : public GenericVideoFilter, public CodeGenerator
-#else
 class Limiter : public GenericVideoFilter
-#endif
 {
 public:
     Limiter(PClip _child, int _min_luma, int _max_luma, int _min_chroma, int _max_chroma, int _show, IScriptEnvironment* env);
     PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
-  static AVSValue __cdecl Create(AVSValue args, void* user_data, IScriptEnvironment* env);
-  ~Limiter();
+    static AVSValue __cdecl Create(AVSValue args, void* user_data, IScriptEnvironment* env);
 private:
-
-#ifdef X86_32
-  DynamicAssembledCode assemblerY;
-  DynamicAssembledCode assemblerUV;
-  DynamicAssembledCode create_emulator(int row_size, int height, IScriptEnvironment* env);
-#endif
-
-  //Variables needed by the emulator
-  BYTE* c_plane;
-  int emu_cmin;
-  int emu_cmax;
-  int modulo;
 
   int max_luma;
   int min_luma;
   int max_chroma;
   int min_chroma;
   const enum SHOW {show_none, show_luma, show_luma_grey, show_chroma, show_chroma_grey} show;
-  bool luma_emulator;
-  bool chroma_emulator;
 };
 
 #endif  // __Limiter_H__

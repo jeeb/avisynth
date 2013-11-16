@@ -36,26 +36,18 @@
 #define __Convert_YUY2_H__
 
 #include <avisynth.h>
-#ifdef X86_32
-#include "../core/softwire_helpers.h"
-#endif
 
 #include "convert_yv12.h"
 #include "convert_planar.h" // 2.60
 
 
-#ifdef X86_32
-class ConvertToYUY2 : public GenericVideoFilter, public RGBtoY8Generator
-#else
 class ConvertToYUY2 : public GenericVideoFilter
-#endif
 /**
   * Class for conversions to YUY2
  **/
 {
 public:
   ConvertToYUY2(PClip _child, bool _dupl, bool _interlaced, const char *matrix, IScriptEnvironment* env);
-  ~ConvertToYUY2();
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
 
   static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env);
@@ -64,17 +56,6 @@ private:
   const bool interlaced;
 
 protected:
-  void GenerateAssembly(bool rgb24, bool dupl, bool sub, int w, const __int64* ptr_cybgr,
-                        const __int64* ptr_y1y2_fpix, const int* ptr_fraction, IScriptEnvironment* env); 
-  void mmx_ConvertRGBtoYUY2(const BYTE *src,BYTE *dst,int src_pitch, int dst_pitch, int h);
-
-  void inline_rgbtoyuy2(const bool rec, const int cyb, const int cyg, const int cyr, const int ku, const int kv,
-                        const BYTE* rgb, BYTE* yuv, const int yuv_offset, const int rgb_offset, const int rgb_inc);
-
-#ifdef X86_32
-  DynamicAssembledCode assembly;
-#endif
-
   const int src_cs;  // Source colorspace
   int theMatrix;
   enum {Rec601=0, Rec709=1, PC_601=2, PC_709=3 };	// Note! convert_yuy2.cpp assumes these values
@@ -91,10 +72,6 @@ public:
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
 
   static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env);
-
-protected:
-  void GenerateYV24toYUY2(int awidth, int height, IScriptEnvironment* env);
-
 };
 
 #endif // __Convert_YUY2_H__

@@ -107,12 +107,6 @@ private:
     unsigned short *mapUV;
 };
 
-/**** ASM Routines ****/
-
-void asm_tweak_ISSE_YUY2( BYTE *srcp, int w, int h, int modulo, __int64 hue, __int64 satcont, 
-                     __int64 bright );
-
-
 
 class MaskHS : public GenericVideoFilter
 {
