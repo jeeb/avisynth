@@ -1192,22 +1192,16 @@ static void layer_yuy2_mul_mmx(BYTE* dstp, const BYTE* ovrp, int dst_pitch, int 
   _mm_empty();
 }
 
-static void layer_yuy2_mul_chroma_c(BYTE* dstp, const BYTE* ovrp, int dst_pitch, int overlay_pitch, int width, int height, int level) { 
-  for (int y = 0; y < height; ++y) {
-    for (int x = 0; x < width; ++x) {
-      dstp[x*2]   = dstp[x*2]  + (((((ovrp[x*2] * dstp[x*2]) >> 8) - dstp[x*2]) * level) >> 8);
-      dstp[x*2+1] = dstp[x*2+1]  + (((ovrp[x*2+1] - dstp[x*2+1]) * level) >> 8);
-    }
-    dstp += dst_pitch;
-    ovrp += overlay_pitch;
-  }
-}
-
+template<bool use_chroma>
 static void layer_yuy2_mul_c(BYTE* dstp, const BYTE* ovrp, int dst_pitch, int overlay_pitch, int width, int height, int level) { 
   for (int y = 0; y < height; ++y) {
     for (int x = 0; x < width; ++x) {
       dstp[x*2]   = dstp[x*2]  + (((((ovrp[x*2] * dstp[x*2]) >> 8) - dstp[x*2]) * level) >> 8);
-      dstp[x*2+1] = dstp[x*2+1]  + (((128 - dstp[x*2+1]) * (level/2)) >> 8);
+      if (use_chroma) {
+        dstp[x*2+1] = dstp[x*2+1]  + (((ovrp[x*2+1] - dstp[x*2+1]) * level) >> 8);
+      } else {
+        dstp[x*2+1] = dstp[x*2+1]  + (((128 - dstp[x*2+1]) * (level/2)) >> 8);
+      }
     }
     dstp += dst_pitch;
     ovrp += overlay_pitch;
@@ -1249,22 +1243,16 @@ static void layer_yuy2_add_mmx(BYTE* dstp, const BYTE* ovrp, int dst_pitch, int 
   _mm_empty();
 }
 
-static void layer_yuy2_add_chroma_c(BYTE* dstp, const BYTE* ovrp, int dst_pitch, int overlay_pitch, int width, int height, int level) { 
-  for (int y = 0; y < height; ++y) {
-    for (int x = 0; x < width; ++x) {
-      dstp[x*2]   = dstp[x*2]  + (((ovrp[x*2] - dstp[x*2]) * level) >> 8);
-      dstp[x*2+1] = dstp[x*2+1]  + (((ovrp[x*2-1] - dstp[x*2+1]) * level) >> 8);
-    }
-    dstp += dst_pitch;
-    ovrp += overlay_pitch;
-  }
-}
-
+template<bool use_chroma>
 static void layer_yuy2_add_c(BYTE* dstp, const BYTE* ovrp, int dst_pitch, int overlay_pitch, int width, int height, int level) { 
   for (int y = 0; y < height; ++y) {
     for (int x = 0; x < width; ++x) {
       dstp[x*2]   = dstp[x*2]  + (((ovrp[x*2] - dstp[x*2]) * level) >> 8);
-      dstp[x*2+1] = dstp[x*2+1]  + (((128 - dstp[x*2+1]) * level) >> 8);
+      if (use_chroma) {
+        dstp[x*2+1] = dstp[x*2+1]  + (((ovrp[x*2-1] - dstp[x*2+1]) * level) >> 8);
+      } else {
+        dstp[x*2+1] = dstp[x*2+1]  + (((128 - dstp[x*2+1]) * level) >> 8);
+      }
     }
     dstp += dst_pitch;
     ovrp += overlay_pitch;
@@ -1272,7 +1260,7 @@ static void layer_yuy2_add_c(BYTE* dstp, const BYTE* ovrp, int dst_pitch, int ov
 }
 
 
-static void layer_yuy2_fast_chroma_isse(BYTE* dstp, const BYTE* ovrp, int dst_pitch, int overlay_pitch, int width, int height, int level) {
+static void layer_yuy2_fast_isse(BYTE* dstp, const BYTE* ovrp, int dst_pitch, int overlay_pitch, int width, int height, int level) {
   int width_bytes = width * 2;
   int width_mod8 = width_bytes / 4 * 4;
 
@@ -1297,7 +1285,7 @@ static void layer_yuy2_fast_chroma_isse(BYTE* dstp, const BYTE* ovrp, int dst_pi
   _mm_empty();
 }
 
-static void layer_yuy2_fast_chroma_c(BYTE* dstp, const BYTE* ovrp, int dst_pitch, int overlay_pitch, int width, int height, int level) { 
+static void layer_yuy2_fast_c(BYTE* dstp, const BYTE* ovrp, int dst_pitch, int overlay_pitch, int width, int height, int level) { 
   for (int y = 0; y < height; ++y) {
     for (int x = 0; x < width*2; ++x) {
       dstp[x] = (dstp[x] + ovrp[x] + 1) / 2;
@@ -1344,22 +1332,16 @@ static void layer_yuy2_subtract_mmx(BYTE* dstp, const BYTE* ovrp, int dst_pitch,
   _mm_empty();
 }
 
-static void layer_yuy2_subtract_chroma_c(BYTE* dstp, const BYTE* ovrp, int dst_pitch, int overlay_pitch, int width, int height, int level) { 
-  for (int y = 0; y < height; ++y) {
-    for (int x = 0; x < width; ++x) {
-      dstp[x*2]   = dstp[x*2]  + (((255 - ovrp[x*2] - dstp[x*2]) * level) >> 8);
-      dstp[x*2+1] = dstp[x*2+1]  + (((255 - ovrp[x*2-1] - dstp[x*2+1]) * level) >> 8);
-    }
-    dstp += dst_pitch;
-    ovrp += overlay_pitch;
-  }
-}
-
+template<bool use_chroma>
 static void layer_yuy2_subtract_c(BYTE* dstp, const BYTE* ovrp, int dst_pitch, int overlay_pitch, int width, int height, int level) { 
   for (int y = 0; y < height; ++y) {
     for (int x = 0; x < width; ++x) {
       dstp[x*2]   = dstp[x*2]  + (((255 - ovrp[x*2] - dstp[x*2]) * level) >> 8);
-      dstp[x*2+1] = dstp[x*2+1]  + (((128 - dstp[x*2+1]) * level) >> 8);
+      if (use_chroma) {
+        dstp[x*2+1] = dstp[x*2+1]  + (((255 - ovrp[x*2-1] - dstp[x*2+1]) * level) >> 8);
+      } else {
+        dstp[x*2+1] = dstp[x*2+1]  + (((128 - dstp[x*2+1]) * level) >> 8);
+      }
     }
     dstp += dst_pitch;
     ovrp += overlay_pitch;
@@ -1408,23 +1390,16 @@ static void layer_yuy2_lighten_darken_isse(BYTE* dstp, const BYTE* ovrp, int dst
   _mm_empty();
 }
 
-static void layer_yuy2_lighten_chroma_c(BYTE* dstp, const BYTE* ovrp, int dst_pitch, int overlay_pitch, int width, int height, int level, int thresh) { 
+template<int mode>
+static void layer_yuy2_lighten_darken_c(BYTE* dstp, const BYTE* ovrp, int dst_pitch, int overlay_pitch, int width, int height, int level, int thresh) { 
   for (int y = 0; y < height; ++y) {
     for (int x = 0; x < width; ++x) {
-      int alpha_mask = (thresh + ovrp[x*2]) > dstp[x*2] ? level : 0;
-
-      dstp[x*2]   = dstp[x*2]  + (((ovrp[x*2] - dstp[x*2]) * alpha_mask) >> 8);
-      dstp[x*2+1] = dstp[x*2+1]  + (((ovrp[x*2+1] - dstp[x*2+1]) * alpha_mask) >> 8);
-    }
-    dstp += dst_pitch;
-    ovrp += overlay_pitch;
-  }
-}
-
-static void layer_yuy2_darken_chroma_c(BYTE* dstp, const BYTE* ovrp, int dst_pitch, int overlay_pitch, int width, int height, int level, int thresh) { 
-  for (int y = 0; y < height; ++y) {
-    for (int x = 0; x < width; ++x) {
-      int alpha_mask = (thresh + dstp[x*2]) > ovrp[x*2] ? level : 0;
+      int alpha_mask;
+      if (mode == LIGHTEN) {
+        alpha_mask = (thresh + ovrp[x*2]) > dstp[x*2] ? level : 0;
+      } else {
+        alpha_mask = (thresh + dstp[x*2]) > ovrp[x*2] ? level : 0;
+      }
 
       dstp[x*2]   = dstp[x*2]  + (((ovrp[x*2] - dstp[x*2]) * alpha_mask) >> 8);
       dstp[x*2+1] = dstp[x*2+1]  + (((ovrp[x*2+1] - dstp[x*2+1]) * alpha_mask) >> 8);
@@ -2153,7 +2128,7 @@ PVideoFrame __stdcall Layer::GetFrame(int n, IScriptEnvironment* env)
         } 
         else
         {
-          layer_yuy2_mul_chroma_c(src1p, src2p, src1_pitch, src2_pitch, xcount, height, mylevel);
+          layer_yuy2_mul_c<true>(src1p, src2p, src1_pitch, src2_pitch, xcount, height, mylevel);
         }
       } 
       else 
@@ -2164,7 +2139,7 @@ PVideoFrame __stdcall Layer::GetFrame(int n, IScriptEnvironment* env)
         } 
         else 
         {
-          layer_yuy2_mul_c(src1p, src2p, src1_pitch, src2_pitch, xcount, height, mylevel);
+          layer_yuy2_mul_c<false>(src1p, src2p, src1_pitch, src2_pitch, xcount, height, mylevel);
         }
       }
     }
@@ -2178,7 +2153,7 @@ PVideoFrame __stdcall Layer::GetFrame(int n, IScriptEnvironment* env)
         } 
         else
         {
-          layer_yuy2_add_chroma_c(src1p, src2p, src1_pitch, src2_pitch, xcount, height, mylevel);
+          layer_yuy2_add_c<true>(src1p, src2p, src1_pitch, src2_pitch, xcount, height, mylevel);
         }
       } 
       else 
@@ -2189,7 +2164,7 @@ PVideoFrame __stdcall Layer::GetFrame(int n, IScriptEnvironment* env)
         } 
         else 
         {
-          layer_yuy2_add_c(src1p, src2p, src1_pitch, src2_pitch, xcount, height, mylevel);
+          layer_yuy2_add_c<false>(src1p, src2p, src1_pitch, src2_pitch, xcount, height, mylevel);
         }
       }
     }
@@ -2199,11 +2174,11 @@ PVideoFrame __stdcall Layer::GetFrame(int n, IScriptEnvironment* env)
       {
         if (env->GetCPUFlags() & CPUF_INTEGER_SSE) 
         {
-          layer_yuy2_fast_chroma_isse(src1p, src2p, src1_pitch, src2_pitch, xcount, height, mylevel);
+          layer_yuy2_fast_isse(src1p, src2p, src1_pitch, src2_pitch, xcount, height, mylevel);
         } 
         else
         {
-          layer_yuy2_fast_chroma_c(src1p, src2p, src1_pitch, src2_pitch, xcount, height, mylevel);
+          layer_yuy2_fast_c(src1p, src2p, src1_pitch, src2_pitch, xcount, height, mylevel);
         }
       } 
       else 
@@ -2220,7 +2195,7 @@ PVideoFrame __stdcall Layer::GetFrame(int n, IScriptEnvironment* env)
         } 
         else
         {
-          layer_yuy2_subtract_chroma_c(src1p, src2p, src1_pitch, src2_pitch, xcount, height, mylevel);
+          layer_yuy2_subtract_c<true>(src1p, src2p, src1_pitch, src2_pitch, xcount, height, mylevel);
         }
       } 
       else 
@@ -2231,7 +2206,7 @@ PVideoFrame __stdcall Layer::GetFrame(int n, IScriptEnvironment* env)
         } 
         else 
         {
-          layer_yuy2_subtract_c(src1p, src2p, src1_pitch, src2_pitch, xcount, height, mylevel);
+          layer_yuy2_subtract_c<false>(src1p, src2p, src1_pitch, src2_pitch, xcount, height, mylevel);
         }
       }
     }
@@ -2245,7 +2220,7 @@ PVideoFrame __stdcall Layer::GetFrame(int n, IScriptEnvironment* env)
         } 
         else
         {
-          layer_yuy2_lighten_chroma_c(src1p, src2p, src1_pitch, src2_pitch, xcount, height, mylevel, thresh);
+          layer_yuy2_lighten_darken_c<LIGHTEN>(src1p, src2p, src1_pitch, src2_pitch, xcount, height, mylevel, thresh);
         }
       } else 
       {
@@ -2262,7 +2237,7 @@ PVideoFrame __stdcall Layer::GetFrame(int n, IScriptEnvironment* env)
         } 
         else
         {
-          layer_yuy2_darken_chroma_c(src1p, src2p, src1_pitch, src2_pitch, xcount, height, mylevel, thresh);
+          layer_yuy2_lighten_darken_c<DARKEN>(src1p, src2p, src1_pitch, src2_pitch, xcount, height, mylevel, thresh);
         }
       } else 
       {
