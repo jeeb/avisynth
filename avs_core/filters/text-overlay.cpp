@@ -41,6 +41,7 @@
 #include <cmath>
 #include <avs/config.h>
 #include <avs/minmax.h>
+#include <emmintrin.h>
 
 
 
@@ -1404,6 +1405,97 @@ AVSValue __cdecl Compare::Create(AVSValue args, void*, IScriptEnvironment *env)
             env);
 }
 
+static void compare_sse2(DWORD mask, int increment,
+                         const BYTE * f1ptr, int pitch1, 
+                         const BYTE * f2ptr, int pitch2,
+                         int width, int height,
+                         int &SAD_sum, int &SD_sum, int &pos_D,  int &neg_D, double &SSD_sum)
+{ 
+  // rowsize multiple of 16 for YUV Planar, RGB32 and YUY2; 12 for RGB24
+  // increment must be 3 for RGB24 and 4 for others
+
+  __int64 issd = 0;
+  __m128i sad_vector = _mm_setzero_si128(); //sum of absolute differences
+  __m128i sd_vector = _mm_setzero_si128(); // sum of differences
+  __m128i positive_diff = _mm_setzero_si128();
+  __m128i negative_diff = _mm_setzero_si128();
+  __m128i zero = _mm_setzero_si128();
+
+  __m128i mask64 = _mm_set_epi32(0, 0, 0, mask);
+  if (increment == 3) {
+    mask64 = _mm_or_si128(mask64, _mm_slli_si128(mask64, 3));
+    mask64 = _mm_or_si128(mask64, _mm_slli_si128(mask64, 6));
+  } else {
+    mask64 = _mm_or_si128(mask64, _mm_slli_si128(mask64, 4));
+    mask64 = _mm_or_si128(mask64, _mm_slli_si128(mask64, 8));
+  }
+  
+
+
+  for (int y = 0; y < height; ++y) {
+    __m128i row_ssd = _mm_setzero_si128();  // sum of squared differences (row_SSD)
+
+    for (int x = 0; x < width; x+=increment*4) {
+      __m128i src1 = _mm_loadu_si128(reinterpret_cast<const __m128i*>(f1ptr+x));
+      __m128i src2 = _mm_loadu_si128(reinterpret_cast<const __m128i*>(f2ptr+x));
+
+      src1 = _mm_and_si128(src1, mask64);
+      src2 = _mm_and_si128(src2, mask64);
+
+      __m128i diff_1_minus_2 = _mm_subs_epu8(src1, src2);
+      __m128i diff_2_minus_1 = _mm_subs_epu8(src2, src1);
+
+      positive_diff = _mm_max_epu8(positive_diff, diff_1_minus_2);
+      negative_diff = _mm_max_epu8(negative_diff, diff_2_minus_1);
+
+      __m128i absdiff1 = _mm_sad_epu8(diff_1_minus_2, zero);
+      __m128i absdiff2 = _mm_sad_epu8(diff_2_minus_1, zero);
+
+      sad_vector = _mm_add_epi32(sad_vector, absdiff1);
+      sad_vector = _mm_add_epi32(sad_vector, absdiff2);
+
+      sd_vector = _mm_add_epi32(sd_vector, absdiff1);
+      sd_vector = _mm_sub_epi32(sd_vector, absdiff2);
+
+      __m128i ssd = _mm_or_si128(diff_1_minus_2, diff_2_minus_1);
+      __m128i ssd_lo = _mm_unpacklo_epi8(ssd, zero);
+      __m128i ssd_hi = _mm_unpackhi_epi8(ssd, zero);
+      ssd_lo   = _mm_madd_epi16(ssd_lo, ssd_lo);
+      ssd_hi   = _mm_madd_epi16(ssd_hi, ssd_hi);
+      row_ssd = _mm_add_epi32(row_ssd, ssd_lo);
+      row_ssd = _mm_add_epi32(row_ssd, ssd_hi);
+    }
+
+    f1ptr += pitch1;
+    f2ptr += pitch2;
+
+    __m128i tmp = _mm_srli_si128(row_ssd, 8);
+    row_ssd = _mm_add_epi32(row_ssd, tmp);
+    tmp = _mm_srli_si128(row_ssd, 4);
+    row_ssd = _mm_add_epi32(row_ssd, tmp);
+
+    issd += _mm_cvtsi128_si32(row_ssd);
+  }
+
+  SAD_sum += _mm_cvtsi128_si32(sad_vector);
+  SAD_sum += _mm_cvtsi128_si32(_mm_srli_si128(sad_vector, 8));
+  SD_sum  += _mm_cvtsi128_si32(sd_vector);
+  SD_sum += _mm_cvtsi128_si32(_mm_srli_si128(sd_vector, 8));
+
+  BYTE posdiff_tmp[16];
+  BYTE negdiff_tmp[16];
+  _mm_store_si128(reinterpret_cast<__m128i*>(posdiff_tmp), positive_diff);
+  _mm_store_si128(reinterpret_cast<__m128i*>(negdiff_tmp), negative_diff);
+
+  SSD_sum += (double)issd;
+  for (int i = 0; i < increment*4; ++i) {
+    pos_D = max(pos_D, (int)(posdiff_tmp[i]));
+    neg_D = max(neg_D, (int)(negdiff_tmp[i]));
+  }
+
+  neg_D = -neg_D;
+}
+
 #ifdef X86_32
 
 static void compare_isse(DWORD mask, int increment,
@@ -1516,6 +1608,12 @@ PVideoFrame __stdcall Compare::GetFrame(int n, IScriptEnvironment* env)
 
     bytecount = rowsize * height * masked_bytes / 4;
 
+    if (((vi.IsRGB32() && (rowsize % 16 == 0)) || (vi.IsRGB24() && (rowsize % 12 == 0)) || (vi.IsYUY2() && (rowsize % 16 == 0))) &&
+      (env->GetCPUFlags() & CPUF_SSE2))
+    {
+      compare_sse2(mask, incr, f1ptr, pitch1, f2ptr, pitch2, rowsize, height, SAD, SD, pos_D, neg_D, SSD);
+    }
+    else
 #ifdef X86_32
     if (((vi.IsRGB32() && (rowsize % 8 == 0)) || (vi.IsRGB24() && (rowsize % 6 == 0)) || (vi.IsYUY2() && (rowsize % 8 == 0))) &&
       (env->GetCPUFlags() & CPUF_INTEGER_SSE))
@@ -1563,6 +1661,11 @@ PVideoFrame __stdcall Compare::GetFrame(int n, IScriptEnvironment* env)
 
         bytecount += rowsize * height;
 
+        if ((rowsize % 16 == 0) && (env->GetCPUFlags() & CPUF_SSE2)) 
+        {
+          compare_sse2(mask, incr, f1ptr, pitch1, f2ptr, pitch2, rowsize, height, SAD, SD, pos_D, neg_D, SSD);
+        }
+        else
 #ifdef X86_32
         if ((rowsize % 8 == 0) && (env->GetCPUFlags() & CPUF_INTEGER_SSE)) 
         {
