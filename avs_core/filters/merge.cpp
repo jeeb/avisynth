@@ -354,10 +354,10 @@ static void average_plane_sse2(BYTE *p1, const BYTE *p2, int p1_pitch, int p2_pi
 
   for(int y = 0; y < height; y++) {
     for(int x = 0; x < mod16_width; x+=16) {
-      auto src1  = _mm_load_si128(reinterpret_cast<const __m128i*>(p1+x));
-      auto src2  = _mm_load_si128(reinterpret_cast<const __m128i*>(p2+x));
+      __m128i src1  = _mm_load_si128(reinterpret_cast<const __m128i*>(p1+x));
+      __m128i src2  = _mm_load_si128(reinterpret_cast<const __m128i*>(p2+x));
 
-      auto dst  = _mm_avg_epu8(src1, src2);
+      __m128i dst  = _mm_avg_epu8(src1, src2);
 
       _mm_store_si128(reinterpret_cast<__m128i*>(p1+x), dst);
     }
