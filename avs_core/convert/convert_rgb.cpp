@@ -50,13 +50,13 @@ RGB24to32::RGB24to32(PClip src)
 
 //todo: think how to port to sse2 without tons of shuffles or (un)packs
 static void convert_rgb24_to_rgb32_ssse3(const BYTE *srcp, BYTE *dstp, size_t src_pitch, size_t dst_pitch, size_t width, size_t height) {
-  size_t mod8_width = (width / 8) * 8;
+  size_t mod8_width = width & (~size_t(7));
   __m128i pixels0123_mask = _mm_set_epi8(11, 11, 10, 9, 8, 8, 7, 6, 5, 5, 4, 3, 2, 2, 1, 0);
   __m128i pixels4567_mask = _mm_set_epi8(7, 7, 6, 5, 4, 4, 3, 2, 1, 1, 0, 15, 14, 14, 13, 12);
   __m128i alpha = _mm_set1_epi32(0xFF000000);
 
   for (size_t y = 0; y < height; ++y) {
-    for (size_t x = 0; x < width; x+= 8) {
+    for (size_t x = 0; x < mod8_width; x+= 8) {
       __m128i src012345 = _mm_loadu_si128(reinterpret_cast<const __m128i*>(srcp+x*3)); //r5b4 g4r4 b3g3 r3b2 g2r2 b1g1 r1b0 g0r0
       __m128i src567 = _mm_loadl_epi64(reinterpret_cast<const __m128i*>(srcp+x*3+16)); //0000 0000 0000 0000 b7g7 r7b6 g6r6 b5g5
 
@@ -92,11 +92,11 @@ static void convert_rgb24_to_rgb32_ssse3(const BYTE *srcp, BYTE *dstp, size_t sr
 #ifdef X86_32
 
 static void convert_rgb24_to_rgb32_mmx(const BYTE *srcp, BYTE *dstp, size_t src_pitch, size_t dst_pitch, size_t width, size_t height) {
-  size_t mod4_width = (width / 4) * 4;
+  size_t mod4_width = width & (~size_t(3));
   __m64 alpha = _mm_set1_pi32(0xFF000000);
 
   for (size_t y = 0; y < height; ++y) {
-    for (size_t x = 0; x < width; x+= 4) {
+    for (size_t x = 0; x < mod4_width; x+= 4) {
       __m64 src0 = _mm_cvtsi32_si64(*reinterpret_cast<const int*>(srcp+x*3+0)); //0000 0000 r1g0 b0r0
       __m64 src1 = _mm_cvtsi32_si64(*reinterpret_cast<const int*>(srcp+x*3+3)); //0000 0000 r2g1 b1r1
       __m64 src2 = _mm_cvtsi32_si64(*reinterpret_cast<const int*>(srcp+x*3+6)); //0000 0000 r3g2 b2r2
@@ -176,13 +176,13 @@ RGB32to24::RGB32to24(PClip src)
 
 //todo: think how to port to sse2 without tons of shuffles or (un)packs
 static void convert_rgb32_to_rgb24_ssse3(const BYTE *srcp, BYTE *dstp, size_t src_pitch, size_t dst_pitch, size_t width, size_t height) {
-  size_t mod8_width = (width / 8) * 8;
+  size_t mod8_width = width & (~size_t(7));
   __m128i pixels0123_mask = _mm_set_epi8(0, 0, 0, 0, 14, 13, 12, 10, 9, 8, 6, 5, 4, 2, 1, 0);
   __m128i pixels4567_mask = _mm_set_epi8(4, 2, 1, 0, 0, 0, 0, 0, 14, 13, 12, 10, 9, 8, 6, 5);
   __m128i merge_mask = _mm_set_epi32(0xFFFFFFFF, 0, 0, 0);
 
   for (size_t y = 0; y < height; ++y) {
-    for (size_t x = 0; x < width; x+= 8) {
+    for (size_t x = 0; x < mod8_width; x+= 8) {
       __m128i src0123 = _mm_load_si128(reinterpret_cast<const __m128i*>(srcp+x*4)); //a3b3 g3r3 a2b2 g2r2 a1b1 g1r1 a0b0 g0r0
       __m128i src4567 = _mm_load_si128(reinterpret_cast<const __m128i*>(srcp+x*4+16)); //a7b7 g7r7 a6b6 g6r6 a5b5 g5r5 a4b4 g4r4
 
@@ -214,12 +214,12 @@ static void convert_rgb32_to_rgb24_ssse3(const BYTE *srcp, BYTE *dstp, size_t sr
 #ifdef X86_32
 
 static void convert_rgb32_to_rgb24_mmx(const BYTE *srcp, BYTE *dstp, size_t src_pitch, size_t dst_pitch, size_t width, size_t height) {
-  size_t mod4_width = (width / 4) * 4;
+  size_t mod4_width = width & (~size_t(3));
   __m64 low_pixel_mask = _mm_set_pi32(0, 0x00FFFFFF);
   __m64 high_pixel_mask = _mm_set_pi32(0x00FFFFFF, 0);
 
   for (size_t y = 0; y < height; ++y) {
-    for (size_t x = 0; x < width; x+= 4) {
+    for (size_t x = 0; x < mod4_width; x+= 4) {
       __m64 src01 = *reinterpret_cast<const __m64*>(srcp+x*4); //a1r1 g1b1 a0r0 g0b0
       __m64 src23 = *reinterpret_cast<const __m64*>(srcp+x*4+8); //a3r3 g3b3 a2r2 g2b2
 
