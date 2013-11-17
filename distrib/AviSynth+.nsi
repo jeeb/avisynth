@@ -256,6 +256,18 @@ Section "!$(Frameserving_Text)" Frameserving
   ClearErrors
  
   ; -------------------------------------------------------
+  ; Install prerequisites
+  ; -------------------------------------------------------
+  InitPluginsDir
+  SetOutPath "$pluginsdir\AvsPlus\Install"
+  ${File} "Prerequisites\vcredist_x86.exe"
+  ExecWait '"$pluginsdir\AvsPlus\Install\vcredist_x86.exe" /q /norestart'
+  ${If_X64}
+    ${File} "Prerequisites\vcredist_x64.exe"
+    ExecWait '"$pluginsdir\AvsPlus\Install\vcredist_x64.exe" /q /norestart'
+  ${End_X64}
+
+  ; -------------------------------------------------------
   ; Install system files
   ; -------------------------------------------------------
   SetOutPath $SYSDIR
