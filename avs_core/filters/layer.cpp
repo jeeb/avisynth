@@ -40,9 +40,9 @@
 #include "layer.h"
 #include <avs/win.h>
 #include <avs/minmax.h>
+#include <avs/alignment.h>
 #include "../core/internal.h"
 #include <emmintrin.h>
-#include "avs/alignment.h"
 
 
 

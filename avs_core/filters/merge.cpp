@@ -44,9 +44,491 @@
 #include <emmintrin.h>
 #include "avs/alignment.h"
 
-__declspec(align(8)) static const __int64 I1=0x00ff00ff00ff00ff;  // Luma mask
-__declspec(align(8)) static const __int64 I2=0xff00ff00ff00ff00;  // Chroma mask
-__declspec(align(8)) static const __int64 rounder = 0x0000400000004000;  // (0.5)<<15 in each dword
+
+/* -----------------------------------
+ *     weighted_merge_chroma_yuy2
+ * -----------------------------------
+ */
+static void weighted_merge_chroma_yuy2_sse2(BYTE *src, const BYTE *chroma, int pitch, int chroma_pitch,int width, int height, int weight, int invweight )
+{
+  __m128i round_mask = _mm_set1_epi32(0x4000);
+  __m128i mask = _mm_set_epi16(weight, invweight, weight, invweight, weight, invweight, weight, invweight);
+  __m128i luma_mask = _mm_set1_epi16(0x00FF);
+
+  int wMod16 = (width/16) * 16;
+
+  for (int y = 0; y < height; y++) {
+    for (int x = 0; x < wMod16; x += 16) {
+      __m128i px1 = _mm_load_si128(reinterpret_cast<const __m128i*>(src+x)); 
+      __m128i px2 = _mm_load_si128(reinterpret_cast<const __m128i*>(chroma+x)); 
+
+      __m128i src_lo = _mm_unpacklo_epi16(px1, px2); 
+      __m128i src_hi = _mm_unpackhi_epi16(px1, px2); 
+
+      src_lo = _mm_srli_epi16(src_lo, 8);
+      src_hi = _mm_srli_epi16(src_hi, 8);
+
+      src_lo = _mm_madd_epi16(src_lo, mask);
+      src_hi = _mm_madd_epi16(src_hi, mask);
+
+      src_lo = _mm_add_epi32(src_lo, round_mask);
+      src_hi = _mm_add_epi32(src_hi, round_mask);
+
+      src_lo = _mm_srli_epi32(src_lo, 15);
+      src_hi = _mm_srli_epi32(src_hi, 15);
+
+      __m128i result_chroma = _mm_packs_epi32(src_lo, src_hi);
+      result_chroma = _mm_slli_epi16(result_chroma, 8);
+
+      __m128i result_luma = _mm_and_si128(px1, luma_mask);
+      __m128i result = _mm_or_si128(result_chroma, result_luma);
+
+      _mm_store_si128(reinterpret_cast<__m128i*>(src+x), result);
+    }
+
+    for (int x = wMod16; x < width; x+=2) {
+      src[x+1] = (chroma[x+1] * weight + src[x+1] * invweight + 16384) >> 15;
+    }
+
+    src += pitch;
+    chroma += chroma_pitch;
+  }
+}
+
+#ifdef X86_32
+static void weighted_merge_chroma_yuy2_mmx(BYTE *src, const BYTE *chroma, int pitch, int chroma_pitch,int width, int height, int weight, int invweight )
+{
+  __m64 round_mask = _mm_set1_pi32(0x4000);
+  __m64 mask = _mm_set_pi16(weight, invweight, weight, invweight);
+  __m64 luma_mask = _mm_set1_pi16(0x00FF);
+
+  int wMod8 = (width/8) * 8;
+
+  for (int y = 0; y < height; y++) {
+    for (int x = 0; x < wMod8; x += 8) {
+      __m64 px1 = *reinterpret_cast<const __m64*>(src+x); //V1 Y3 U1 Y2 V0 Y1 U0 Y0
+      __m64 px2 = *reinterpret_cast<const __m64*>(chroma+x); //v1 y3 u1 y2 v0 y1 u0 y0
+
+      __m64 src_lo = _mm_unpacklo_pi16(px1, px2); //v0 y1 V0 Y1 u0 y0 U0 Y0
+      __m64 src_hi = _mm_unpackhi_pi16(px1, px2); 
+
+      src_lo = _mm_srli_pi16(src_lo, 8); //00 v0 00 V0 00 u0 00 U0
+      src_hi = _mm_srli_pi16(src_hi, 8); 
+
+      src_lo = _mm_madd_pi16(src_lo, mask);
+      src_hi = _mm_madd_pi16(src_hi, mask);
+
+      src_lo = _mm_add_pi32(src_lo, round_mask);
+      src_hi = _mm_add_pi32(src_hi, round_mask);
+
+      src_lo = _mm_srli_pi32(src_lo, 15);
+      src_hi = _mm_srli_pi32(src_hi, 15);
+
+      __m64 result_chroma = _mm_packs_pi32(src_lo, src_hi);
+      result_chroma = _mm_slli_pi16(result_chroma, 8);
+
+      __m64 result_luma = _mm_and_si64(px1, luma_mask);
+      __m64 result = _mm_or_si64(result_chroma, result_luma);
+
+      *reinterpret_cast<__m64*>(src+x) = result;
+    }
+
+    for (int x = wMod8; x < width; x+=2) {
+      src[x+1] = (chroma[x+1] * weight + src[x+1] * invweight + 16384) >> 15;
+    }
+
+    src += pitch;
+    chroma += chroma_pitch;
+  }
+  _mm_empty();
+}
+#endif
+
+static void weighted_merge_chroma_yuy2_c(BYTE *src, const BYTE *chroma, int pitch, int chroma_pitch,int width, int height, int weight, int invweight) {
+  for (int y = 0; y < height; ++y) {
+    for (int x = 0; x < width; x+=2) {
+      src[x+1] = (chroma[x+1] * weight + src[x+1] * invweight + 16384) >> 15;
+    }
+    src+=pitch;
+    chroma+=chroma_pitch;
+  }
+}
+
+
+/* -----------------------------------
+ *      weighted_merge_luma_yuy2
+ * -----------------------------------
+ */
+static void weighted_merge_luma_yuy2_sse2(BYTE *src, const BYTE *luma, int pitch, int luma_pitch,int width, int height, int weight, int invweight)
+{
+  __m128i round_mask = _mm_set1_epi32(0x4000);
+  __m128i mask = _mm_set_epi16(weight, invweight, weight, invweight, weight, invweight, weight, invweight);
+  __m128i luma_mask = _mm_set1_epi16(0x00FF);
+#pragma warning(disable: 4309)
+  __m128i chroma_mask = _mm_set1_epi16(0xFF00);
+#pragma warning(default: 4309)
+
+  int wMod16 = (width/16) * 16;
+
+  for (int y = 0; y < height; y++) {
+    for (int x = 0; x < wMod16; x += 16) {
+      __m128i px1 = _mm_load_si128(reinterpret_cast<const __m128i*>(src+x)); //V1 Y3 U1 Y2 V0 Y1 U0 Y0
+      __m128i px2 = _mm_load_si128(reinterpret_cast<const __m128i*>(luma+x)); //v1 y3 u1 y2 v0 y1 u0 y0
+
+      __m128i src_lo = _mm_unpacklo_epi16(px1, px2); //v0 y1 V0 Y1 u0 y0 U0 Y0
+      __m128i src_hi = _mm_unpackhi_epi16(px1, px2); 
+
+      src_lo = _mm_and_si128(src_lo, luma_mask); //00 v0 00 V0 00 u0 00 U0
+      src_hi = _mm_and_si128(src_hi, luma_mask); 
+
+      src_lo = _mm_madd_epi16(src_lo, mask);
+      src_hi = _mm_madd_epi16(src_hi, mask);
+
+      src_lo = _mm_add_epi32(src_lo, round_mask);
+      src_hi = _mm_add_epi32(src_hi, round_mask);
+
+      src_lo = _mm_srli_epi32(src_lo, 15);
+      src_hi = _mm_srli_epi32(src_hi, 15);
+
+      __m128i result_luma = _mm_packs_epi32(src_lo, src_hi);
+
+      __m128i result_chroma = _mm_and_si128(px1, chroma_mask);
+      __m128i result = _mm_or_si128(result_chroma, result_luma);
+
+      _mm_store_si128(reinterpret_cast<__m128i*>(src+x), result);
+    }
+
+    for (int x = wMod16; x < width; x+=2) {
+      src[x] = (luma[x] * weight + src[x] * invweight + 16384) >> 15;
+    }
+
+    src += pitch;
+    luma += luma_pitch;
+  }
+}
+
+#ifdef X86_32
+static void weighted_merge_luma_yuy2_mmx(BYTE *src, const BYTE *luma, int pitch, int luma_pitch,int width, int height, int weight, int invweight)
+{
+  __m64 round_mask = _mm_set1_pi32(0x4000);
+  __m64 mask = _mm_set_pi16(weight, invweight, weight, invweight);
+  __m64 luma_mask = _mm_set1_pi16(0x00FF);
+#pragma warning(disable: 4309)
+  __m64 chroma_mask = _mm_set1_pi16(0xFF00);
+#pragma warning(default: 4309)
+
+  int wMod8 = (width/8) * 8;
+
+  for (int y = 0; y < height; y++) {
+    for (int x = 0; x < wMod8; x += 8) {
+      __m64 px1 = *reinterpret_cast<const __m64*>(src+x); //V1 Y3 U1 Y2 V0 Y1 U0 Y0
+      __m64 px2 = *reinterpret_cast<const __m64*>(luma+x); //v1 y3 u1 y2 v0 y1 u0 y0
+
+      __m64 src_lo = _mm_unpacklo_pi16(px1, px2); //v0 y1 V0 Y1 u0 y0 U0 Y0
+      __m64 src_hi = _mm_unpackhi_pi16(px1, px2); 
+
+      src_lo = _mm_and_si64(src_lo, luma_mask); //00 v0 00 V0 00 u0 00 U0
+      src_hi = _mm_and_si64(src_hi, luma_mask); 
+
+      src_lo = _mm_madd_pi16(src_lo, mask);
+      src_hi = _mm_madd_pi16(src_hi, mask);
+
+      src_lo = _mm_add_pi32(src_lo, round_mask);
+      src_hi = _mm_add_pi32(src_hi, round_mask);
+
+      src_lo = _mm_srli_pi32(src_lo, 15);
+      src_hi = _mm_srli_pi32(src_hi, 15);
+
+      __m64 result_luma = _mm_packs_pi32(src_lo, src_hi);
+
+      __m64 result_chroma = _mm_and_si64(px1, chroma_mask);
+      __m64 result = _mm_or_si64(result_chroma, result_luma);
+
+      *reinterpret_cast<__m64*>(src+x) = result;
+    }
+
+    for (int x = wMod8; x < width; x+=2) {
+      src[x] = (luma[x] * weight + src[x] * invweight + 16384) >> 15;
+    }
+
+    src += pitch;
+    luma += luma_pitch;
+  }
+  _mm_empty();
+}
+#endif
+
+static void weighted_merge_luma_yuy2_c(BYTE *src, const BYTE *luma, int pitch, int luma_pitch,int width, int height, int weight, int invweight) {
+  for (int y = 0; y < height; ++y) {
+    for (int x = 0; x < width; x+=2) {
+      src[x] = (luma[x] * weight + src[x] * invweight + 16384) >> 15;
+    }
+    src+=pitch;
+    luma+=luma_pitch;
+  }
+}
+
+
+/* -----------------------------------
+ *          replace_luma_yuy2
+ * -----------------------------------
+ */
+static void replace_luma_yuy2_sse2(BYTE *src, const BYTE *luma, int pitch, int luma_pitch,int width, int height)
+{
+  int mod16_width = width / 16 * 16;
+  __m128i luma_mask = _mm_set1_epi16(0x00FF);
+#pragma warning(disable: 4309)
+  __m128i chroma_mask = _mm_set1_epi16(0xFF00);
+#pragma warning(default: 4309)
+
+  for(int y = 0; y < height; y++) {
+    for(int x = 0; x < mod16_width; x+=16) {
+      __m128i s = _mm_load_si128(reinterpret_cast<const __m128i*>(src+x));
+      __m128i l = _mm_load_si128(reinterpret_cast<const __m128i*>(luma+x));
+
+      __m128i s_chroma = _mm_and_si128(s, chroma_mask);
+      __m128i l_luma = _mm_and_si128(l, luma_mask);
+
+      __m128i result = _mm_or_si128(s_chroma, l_luma);
+
+      _mm_store_si128(reinterpret_cast<__m128i*>(src+x), result);
+    }
+
+    for (int x = mod16_width; x < width; x+=2) {
+      src[x] = luma[x];
+    }
+    src += pitch;
+    luma += luma_pitch;
+  }
+}
+
+#ifdef X86_32
+static void replace_luma_yuy2_mmx(BYTE *src, const BYTE *luma, int pitch, int luma_pitch,int width, int height)
+{
+  int mod8_width = width / 8 * 8;
+  __m64 luma_mask = _mm_set1_pi16(0x00FF);
+#pragma warning(disable: 4309)
+  __m64 chroma_mask = _mm_set1_pi16(0xFF00);
+#pragma warning(default: 4309)
+
+  for(int y = 0; y < height; y++) {
+    for(int x = 0; x < mod8_width; x+=8) {
+      __m64 s = *reinterpret_cast<const __m64*>(src+x);
+      __m64 l = *reinterpret_cast<const __m64*>(luma+x);
+
+      __m64 s_chroma = _mm_and_si64(s, chroma_mask);
+      __m64 l_luma = _mm_and_si64(l, luma_mask);
+
+      __m64 result = _mm_or_si64(s_chroma, l_luma);
+
+      *reinterpret_cast<__m64*>(src+x) = result;
+    }
+
+    for (int x = mod8_width; x < width; x+=2) {
+      src[x] = luma[x];
+    }
+    src += pitch;
+    luma += luma_pitch;
+  }
+  _mm_empty();
+}
+#endif
+
+static void replace_luma_yuy2_c(BYTE *src, const BYTE *luma, int pitch, int luma_pitch,int width, int height ) {
+  for (int y = 0; y < height; ++y) {
+    for (int x = 0; x < width; x+=2) {
+      src[x] = luma[x];
+    }
+    src+=pitch;
+    luma+=luma_pitch;
+  }
+}
+
+
+/* -----------------------------------
+ *            average_plane
+ * -----------------------------------
+ */
+static void average_plane_sse2(BYTE *p1, const BYTE *p2, int p1_pitch, int p2_pitch, int width, int height) {
+  int mod16_width = width / 16 * 16;
+
+  for(int y = 0; y < height; y++) {
+    for(int x = 0; x < mod16_width; x+=16) {
+      auto src1  = _mm_load_si128(reinterpret_cast<const __m128i*>(p1+x));
+      auto src2  = _mm_load_si128(reinterpret_cast<const __m128i*>(p2+x));
+
+      auto dst  = _mm_avg_epu8(src1, src2);
+
+      _mm_store_si128(reinterpret_cast<__m128i*>(p1+x), dst);
+    }
+
+    if (mod16_width != width) {
+      for (int x = mod16_width; x < width; ++x) {
+        p1[x] = (int(p1[x]) + p2[x] + 1) >> 1;
+      }
+    }
+    p1 += p1_pitch;
+    p2 += p2_pitch;
+  }
+}
+
+#ifdef X86_32
+static void average_plane_isse(BYTE *p1, const BYTE *p2, int p1_pitch, int p2_pitch, int width, int height) {
+  int mod8_width = width / 8 * 8;
+
+  for(int y = 0; y < height; y++) {
+    for(int x = 0; x < mod8_width; x+=8) {
+      __m64 src1 = *reinterpret_cast<const __m64*>(p1+x);
+      __m64 src2 = *reinterpret_cast<const __m64*>(p2+x);
+      __m64 dst = _mm_avg_pu8(src1, src2);
+      *reinterpret_cast<__m64*>(p1+x) = dst;
+    }
+
+    if (mod8_width != width) {
+      for (int x = mod8_width; x < width; ++x) {
+        p1[x] = (int(p1[x]) + p2[x] + 1) >> 1;
+      }
+    }
+    p1 += p1_pitch;
+    p2 += p2_pitch;
+  }
+  _mm_empty();
+}
+#endif
+
+static void average_plane_c(BYTE *p1, const BYTE *p2, int p1_pitch, int p2_pitch, int width, int height) {
+  for (int y = 0; y < height; ++y) {
+    for (int x = 0; x < width; ++x) {
+      p1[x] = (int(p1[x]) + p2[x] + 1) >> 1;
+    }
+    p1 += p1_pitch;
+    p2 += p2_pitch;
+  }
+}
+
+
+/* -----------------------------------
+ *       weighted_merge_planar
+ * -----------------------------------
+ */
+void weighted_merge_planar_sse2(BYTE *p1, const BYTE *p2, int p1_pitch, int p2_pitch, int width, int height, int weight, int invweight) {
+  __m128i round_mask = _mm_set1_epi32(0x4000);
+  __m128i zero = _mm_setzero_si128();
+  __m128i mask = _mm_set_epi16(weight, invweight, weight, invweight, weight, invweight, weight, invweight);
+
+  int wMod16 = (width/16) * 16;
+
+  for (int y = 0; y < height; y++) {
+    for (int x = 0; x < wMod16; x += 16) {
+      __m128i px1 = _mm_load_si128(reinterpret_cast<const __m128i*>(p1+x)); //y7y6 y5y4 y3y2 y1y0
+      __m128i px2 = _mm_load_si128(reinterpret_cast<const __m128i*>(p2+x)); //Y7Y6 Y5Y4 Y3Y2 Y1Y0
+
+      __m128i p0123 = _mm_unpacklo_epi8(px1, px2); //Y3y3 Y2y2 Y1y1 Y0y0
+      __m128i p4567 = _mm_unpackhi_epi8(px1, px2); //Y7y7 Y6y6 Y5y5 Y4y4
+
+      __m128i p01 = _mm_unpacklo_epi8(p0123, zero); //00Y1 00y1 00Y0 00y0
+      __m128i p23 = _mm_unpackhi_epi8(p0123, zero); //00Y3 00y3 00Y2 00y2
+      __m128i p45 = _mm_unpacklo_epi8(p4567, zero); //00Y5 00y5 00Y4 00y4
+      __m128i p67 = _mm_unpackhi_epi8(p4567, zero); //00Y7 00y7 00Y6 00y6
+
+      p01 = _mm_madd_epi16(p01, mask);
+      p23 = _mm_madd_epi16(p23, mask);
+      p45 = _mm_madd_epi16(p45, mask);
+      p67 = _mm_madd_epi16(p67, mask);
+
+      p01 = _mm_add_epi32(p01, round_mask);
+      p23 = _mm_add_epi32(p23, round_mask);
+      p45 = _mm_add_epi32(p45, round_mask);
+      p67 = _mm_add_epi32(p67, round_mask);
+
+      p01 = _mm_srli_epi32(p01, 15);
+      p23 = _mm_srli_epi32(p23, 15);
+      p45 = _mm_srli_epi32(p45, 15);
+      p67 = _mm_srli_epi32(p67, 15);
+
+      p0123 = _mm_packs_epi32(p01, p23);
+      p4567 = _mm_packs_epi32(p45, p67);
+
+      __m128i result = _mm_packus_epi16(p0123, p4567);
+
+      _mm_store_si128(reinterpret_cast<__m128i*>(p1+x), result);
+    }
+
+    for (int x = wMod16; x < width; x++) {
+      p1[x] = (p1[x]*invweight + p2[x]*weight + 32768) >> 16;
+    }
+
+    p1 += p1_pitch;
+    p2 += p2_pitch;
+  }
+}
+
+#ifdef X86_32
+void weighted_merge_planar_mmx(BYTE *p1, const BYTE *p2, int p1_pitch, int p2_pitch, int width, int height, int weight, int invweight) {
+  __m64 round_mask = _mm_set1_pi32(0x4000);
+  __m64 zero = _mm_setzero_si64();
+  __m64 mask = _mm_set_pi16(weight, invweight, weight, invweight);
+
+  int wMod8 = (width/8) * 8;
+
+  for (int y = 0; y < height; y++) {
+    for (int x = 0; x < wMod8; x += 8) {
+      __m64 px1 = *(reinterpret_cast<const __m64*>(p1+x)); //y7y6 y5y4 y3y2 y1y0
+      __m64 px2 = *(reinterpret_cast<const __m64*>(p2+x)); //Y7Y6 Y5Y4 Y3Y2 Y1Y0
+
+      __m64 p0123 = _mm_unpacklo_pi8(px1, px2); //Y3y3 Y2y2 Y1y1 Y0y0
+      __m64 p4567 = _mm_unpackhi_pi8(px1, px2); //Y7y7 Y6y6 Y5y5 Y4y4
+
+      __m64 p01 = _mm_unpacklo_pi8(p0123, zero); //00Y1 00y1 00Y0 00y0
+      __m64 p23 = _mm_unpackhi_pi8(p0123, zero); //00Y3 00y3 00Y2 00y2
+      __m64 p45 = _mm_unpacklo_pi8(p4567, zero); //00Y5 00y5 00Y4 00y4
+      __m64 p67 = _mm_unpackhi_pi8(p4567, zero); //00Y7 00y7 00Y6 00y6
+
+      p01 = _mm_madd_pi16(p01, mask);
+      p23 = _mm_madd_pi16(p23, mask);
+      p45 = _mm_madd_pi16(p45, mask);
+      p67 = _mm_madd_pi16(p67, mask);
+
+      p01 = _mm_add_pi32(p01, round_mask);
+      p23 = _mm_add_pi32(p23, round_mask);
+      p45 = _mm_add_pi32(p45, round_mask);
+      p67 = _mm_add_pi32(p67, round_mask);
+
+      p01 = _mm_srli_pi32(p01, 15);
+      p23 = _mm_srli_pi32(p23, 15);
+      p45 = _mm_srli_pi32(p45, 15);
+      p67 = _mm_srli_pi32(p67, 15);
+
+      p0123 = _mm_packs_pi32(p01, p23);
+      p4567 = _mm_packs_pi32(p45, p67);
+
+      __m64 result = _mm_packs_pu16(p0123, p4567);
+
+      *reinterpret_cast<__m64*>(p1+x) = result;
+    }
+
+    for (int x = wMod8; x < width; x++) {
+      p1[x] = (p1[x]*invweight + p2[x]*weight + 32768) >> 16;
+    }
+
+    p1 += p1_pitch;
+    p2 += p2_pitch;
+  }
+  _mm_empty();
+}
+#endif
+
+void weighted_merge_planar_c(BYTE *p1, const BYTE *p2, int p1_pitch, int p2_pitch,int rowsize, int height, int weight, int invweight) {
+
+  for (int y=0;y<height;y++) {
+    for (int x=0;x<rowsize;x++) {
+      p1[x] = (p1[x]*invweight + p2[x]*weight + 32768) >> 16;
+    }
+    p2+=p2_pitch;
+    p1+=p1_pitch;
+  }
+}
+
 
 /********************************************************************
 ***** Declare index of new filters for Avisynth's filter engine *****
@@ -413,485 +895,4 @@ PVideoFrame __stdcall MergeAll::GetFrame(int n, IScriptEnvironment* env)
 AVSValue __cdecl MergeAll::Create(AVSValue args, void* user_data, IScriptEnvironment* env)
 {
   return new MergeAll(args[0].AsClip(), args[1].AsClip(), (float)args[2].AsFloat(0.5f), env);
-}
-
-
-/* weighted_merge_luma_yuy2 */
-
-void weighted_merge_luma_yuy2_c(BYTE *src, const BYTE *luma, int pitch, int luma_pitch,int width, int height, int weight, int invweight) {
-  for (int y = 0; y < height; ++y) {
-    for (int x = 0; x < width; x+=2) {
-      src[x] = (luma[x] * weight + src[x] * invweight + 16384) >> 15;
-    }
-    src+=pitch;
-    luma+=luma_pitch;
-  }
-}
-
-#ifdef X86_32
-
-void weighted_merge_luma_yuy2_mmx(BYTE *src, const BYTE *luma, int pitch, int luma_pitch,int width, int height, int weight, int invweight)
-{
-  __m64 round_mask = _mm_set1_pi32(0x4000);
-  __m64 mask = _mm_set_pi16(weight, invweight, weight, invweight);
-  __m64 luma_mask = _mm_set1_pi16(0x00FF);
-#pragma warning(disable: 4309)
-  __m64 chroma_mask = _mm_set1_pi16(0xFF00);
-#pragma warning(default: 4309)
-
-  int wMod8 = (width/8) * 8;
-
-  for (int y = 0; y < height; y++) {
-    for (int x = 0; x < wMod8; x += 8) {
-      __m64 px1 = *reinterpret_cast<const __m64*>(src+x); //V1 Y3 U1 Y2 V0 Y1 U0 Y0
-      __m64 px2 = *reinterpret_cast<const __m64*>(luma+x); //v1 y3 u1 y2 v0 y1 u0 y0
-
-      __m64 src_lo = _mm_unpacklo_pi16(px1, px2); //v0 y1 V0 Y1 u0 y0 U0 Y0
-      __m64 src_hi = _mm_unpackhi_pi16(px1, px2); 
-
-      src_lo = _mm_and_si64(src_lo, luma_mask); //00 v0 00 V0 00 u0 00 U0
-      src_hi = _mm_and_si64(src_hi, luma_mask); 
-
-      src_lo = _mm_madd_pi16(src_lo, mask);
-      src_hi = _mm_madd_pi16(src_hi, mask);
-
-      src_lo = _mm_add_pi32(src_lo, round_mask);
-      src_hi = _mm_add_pi32(src_hi, round_mask);
-
-      src_lo = _mm_srli_pi32(src_lo, 15);
-      src_hi = _mm_srli_pi32(src_hi, 15);
-
-      __m64 result_luma = _mm_packs_pi32(src_lo, src_hi);
-
-      __m64 result_chroma = _mm_and_si64(px1, chroma_mask);
-      __m64 result = _mm_or_si64(result_chroma, result_luma);
-
-      *reinterpret_cast<__m64*>(src+x) = result;
-    }
-
-    for (int x = wMod8; x < width; x+=2) {
-      src[x] = (luma[x] * weight + src[x] * invweight + 16384) >> 15;
-    }
-
-    src += pitch;
-    luma += luma_pitch;
-  }
-  _mm_empty();
-}
-
-#endif
-
-void weighted_merge_luma_yuy2_sse2(BYTE *src, const BYTE *luma, int pitch, int luma_pitch,int width, int height, int weight, int invweight)
-{
-  __m128i round_mask = _mm_set1_epi32(0x4000);
-  __m128i mask = _mm_set_epi16(weight, invweight, weight, invweight, weight, invweight, weight, invweight);
-  __m128i luma_mask = _mm_set1_epi16(0x00FF);
-#pragma warning(disable: 4309)
-  __m128i chroma_mask = _mm_set1_epi16(0xFF00);
-#pragma warning(default: 4309)
-
-  int wMod16 = (width/16) * 16;
-
-  for (int y = 0; y < height; y++) {
-    for (int x = 0; x < wMod16; x += 16) {
-      __m128i px1 = _mm_load_si128(reinterpret_cast<const __m128i*>(src+x)); //V1 Y3 U1 Y2 V0 Y1 U0 Y0
-      __m128i px2 = _mm_load_si128(reinterpret_cast<const __m128i*>(luma+x)); //v1 y3 u1 y2 v0 y1 u0 y0
-
-      __m128i src_lo = _mm_unpacklo_epi16(px1, px2); //v0 y1 V0 Y1 u0 y0 U0 Y0
-      __m128i src_hi = _mm_unpackhi_epi16(px1, px2); 
-
-      src_lo = _mm_and_si128(src_lo, luma_mask); //00 v0 00 V0 00 u0 00 U0
-      src_hi = _mm_and_si128(src_hi, luma_mask); 
-
-      src_lo = _mm_madd_epi16(src_lo, mask);
-      src_hi = _mm_madd_epi16(src_hi, mask);
-
-      src_lo = _mm_add_epi32(src_lo, round_mask);
-      src_hi = _mm_add_epi32(src_hi, round_mask);
-
-      src_lo = _mm_srli_epi32(src_lo, 15);
-      src_hi = _mm_srli_epi32(src_hi, 15);
-
-      __m128i result_luma = _mm_packs_epi32(src_lo, src_hi);
-
-      __m128i result_chroma = _mm_and_si128(px1, chroma_mask);
-      __m128i result = _mm_or_si128(result_chroma, result_luma);
-
-      _mm_store_si128(reinterpret_cast<__m128i*>(src+x), result);
-    }
-
-    for (int x = wMod16; x < width; x+=2) {
-      src[x] = (luma[x] * weight + src[x] * invweight + 16384) >> 15;
-    }
-
-    src += pitch;
-    luma += luma_pitch;
-  }
-}
-
-/* weighted_merge_chroma_yuy2 */
-
-void weighted_merge_chroma_yuy2_c(BYTE *src, const BYTE *chroma, int pitch, int chroma_pitch,int width, int height, int weight, int invweight) {
-  for (int y = 0; y < height; ++y) {
-    for (int x = 0; x < width; x+=2) {
-      src[x+1] = (chroma[x+1] * weight + src[x+1] * invweight + 16384) >> 15;
-    }
-    src+=pitch;
-    chroma+=chroma_pitch;
-  }
-}
-
-#ifdef X86_32
-
-void weighted_merge_chroma_yuy2_mmx(BYTE *src, const BYTE *chroma, int pitch, int chroma_pitch,int width, int height, int weight, int invweight )
-{
-  __m64 round_mask = _mm_set1_pi32(0x4000);
-  __m64 mask = _mm_set_pi16(weight, invweight, weight, invweight);
-  __m64 luma_mask = _mm_set1_pi16(0x00FF);
-
-  int wMod8 = (width/8) * 8;
-
-  for (int y = 0; y < height; y++) {
-    for (int x = 0; x < wMod8; x += 8) {
-      __m64 px1 = *reinterpret_cast<const __m64*>(src+x); //V1 Y3 U1 Y2 V0 Y1 U0 Y0
-      __m64 px2 = *reinterpret_cast<const __m64*>(chroma+x); //v1 y3 u1 y2 v0 y1 u0 y0
-
-      __m64 src_lo = _mm_unpacklo_pi16(px1, px2); //v0 y1 V0 Y1 u0 y0 U0 Y0
-      __m64 src_hi = _mm_unpackhi_pi16(px1, px2); 
-
-      src_lo = _mm_srli_pi16(src_lo, 8); //00 v0 00 V0 00 u0 00 U0
-      src_hi = _mm_srli_pi16(src_hi, 8); 
-
-      src_lo = _mm_madd_pi16(src_lo, mask);
-      src_hi = _mm_madd_pi16(src_hi, mask);
-
-      src_lo = _mm_add_pi32(src_lo, round_mask);
-      src_hi = _mm_add_pi32(src_hi, round_mask);
-
-      src_lo = _mm_srli_pi32(src_lo, 15);
-      src_hi = _mm_srli_pi32(src_hi, 15);
-
-      __m64 result_chroma = _mm_packs_pi32(src_lo, src_hi);
-      result_chroma = _mm_slli_pi16(result_chroma, 8);
-
-      __m64 result_luma = _mm_and_si64(px1, luma_mask);
-      __m64 result = _mm_or_si64(result_chroma, result_luma);
-
-      *reinterpret_cast<__m64*>(src+x) = result;
-    }
-
-    for (int x = wMod8; x < width; x+=2) {
-      src[x+1] = (chroma[x+1] * weight + src[x+1] * invweight + 16384) >> 15;
-    }
-
-    src += pitch;
-    chroma += chroma_pitch;
-  }
-  _mm_empty();
-}
-
-#endif
-
-void weighted_merge_chroma_yuy2_sse2(BYTE *src, const BYTE *chroma, int pitch, int chroma_pitch,int width, int height, int weight, int invweight )
-{
-  __m128i round_mask = _mm_set1_epi32(0x4000);
-  __m128i mask = _mm_set_epi16(weight, invweight, weight, invweight, weight, invweight, weight, invweight);
-  __m128i luma_mask = _mm_set1_epi16(0x00FF);
-
-  int wMod16 = (width/16) * 16;
-
-  for (int y = 0; y < height; y++) {
-    for (int x = 0; x < wMod16; x += 16) {
-      __m128i px1 = _mm_load_si128(reinterpret_cast<const __m128i*>(src+x)); 
-      __m128i px2 = _mm_load_si128(reinterpret_cast<const __m128i*>(chroma+x)); 
-
-      __m128i src_lo = _mm_unpacklo_epi16(px1, px2); 
-      __m128i src_hi = _mm_unpackhi_epi16(px1, px2); 
-
-      src_lo = _mm_srli_epi16(src_lo, 8);
-      src_hi = _mm_srli_epi16(src_hi, 8);
-
-      src_lo = _mm_madd_epi16(src_lo, mask);
-      src_hi = _mm_madd_epi16(src_hi, mask);
-
-      src_lo = _mm_add_epi32(src_lo, round_mask);
-      src_hi = _mm_add_epi32(src_hi, round_mask);
-
-      src_lo = _mm_srli_epi32(src_lo, 15);
-      src_hi = _mm_srli_epi32(src_hi, 15);
-
-      __m128i result_chroma = _mm_packs_epi32(src_lo, src_hi);
-      result_chroma = _mm_slli_epi16(result_chroma, 8);
-
-      __m128i result_luma = _mm_and_si128(px1, luma_mask);
-      __m128i result = _mm_or_si128(result_chroma, result_luma);
-
-      _mm_store_si128(reinterpret_cast<__m128i*>(src+x), result);
-    }
-
-    for (int x = wMod16; x < width; x+=2) {
-      src[x+1] = (chroma[x+1] * weight + src[x+1] * invweight + 16384) >> 15;
-    }
-
-    src += pitch;
-    chroma += chroma_pitch;
-  }
-}
-
-/* replace_luma_yuy2 */
-
-void replace_luma_yuy2_c(BYTE *src, const BYTE *luma, int pitch, int luma_pitch,int width, int height ) {
-  for (int y = 0; y < height; ++y) {
-    for (int x = 0; x < width; x+=2) {
-      src[x] = luma[x];
-    }
-    src+=pitch;
-    luma+=luma_pitch;
-  }
-}
-
-#ifdef X86_32
-
-void replace_luma_yuy2_mmx(BYTE *src, const BYTE *luma, int pitch, int luma_pitch,int width, int height)
-{
-  int mod8_width = width / 8 * 8;
-  __m64 luma_mask = _mm_set1_pi16(0x00FF);
-#pragma warning(disable: 4309)
-  __m64 chroma_mask = _mm_set1_pi16(0xFF00);
-#pragma warning(default: 4309)
-
-  for(int y = 0; y < height; y++) {
-    for(int x = 0; x < mod8_width; x+=8) {
-      __m64 s = *reinterpret_cast<const __m64*>(src+x);
-      __m64 l = *reinterpret_cast<const __m64*>(luma+x);
-
-      __m64 s_chroma = _mm_and_si64(s, chroma_mask);
-      __m64 l_luma = _mm_and_si64(l, luma_mask);
-
-      __m64 result = _mm_or_si64(s_chroma, l_luma);
-
-      *reinterpret_cast<__m64*>(src+x) = result;
-    }
-
-    for (int x = mod8_width; x < width; x+=2) {
-      src[x] = luma[x];
-    }
-    src += pitch;
-    luma += luma_pitch;
-  }
-  _mm_empty();
-}
-
-#endif
-
-void replace_luma_yuy2_sse2(BYTE *src, const BYTE *luma, int pitch, int luma_pitch,int width, int height)
-{
-  int mod16_width = width / 16 * 16;
-  __m128i luma_mask = _mm_set1_epi16(0x00FF);
-#pragma warning(disable: 4309)
-  __m128i chroma_mask = _mm_set1_epi16(0xFF00);
-#pragma warning(default: 4309)
-
-  for(int y = 0; y < height; y++) {
-    for(int x = 0; x < mod16_width; x+=16) {
-      __m128i s = _mm_load_si128(reinterpret_cast<const __m128i*>(src+x));
-      __m128i l = _mm_load_si128(reinterpret_cast<const __m128i*>(luma+x));
-
-      __m128i s_chroma = _mm_and_si128(s, chroma_mask);
-      __m128i l_luma = _mm_and_si128(l, luma_mask);
-
-      __m128i result = _mm_or_si128(s_chroma, l_luma);
-
-      _mm_store_si128(reinterpret_cast<__m128i*>(src+x), result);
-    }
-
-    for (int x = mod16_width; x < width; x+=2) {
-      src[x] = luma[x];
-    }
-    src += pitch;
-    luma += luma_pitch;
-  }
-}
-
-/* weighted_merge_planar */
-
-void weighted_merge_planar_c(BYTE *p1, const BYTE *p2, int p1_pitch, int p2_pitch,int rowsize, int height, int weight, int invweight) {
-
-  for (int y=0;y<height;y++) {
-    for (int x=0;x<rowsize;x++) {
-      p1[x] = (p1[x]*invweight + p2[x]*weight + 32768) >> 16;
-    }
-    p2+=p2_pitch;
-    p1+=p1_pitch;
-  }
-}
-
-#ifdef X86_32
-
-void weighted_merge_planar_mmx(BYTE *p1, const BYTE *p2, int p1_pitch, int p2_pitch, int width, int height, int weight, int invweight) {
-  __m64 round_mask = _mm_set1_pi32(0x4000);
-  __m64 zero = _mm_setzero_si64();
-  __m64 mask = _mm_set_pi16(weight, invweight, weight, invweight);
-
-  int wMod8 = (width/8) * 8;
-
-  for (int y = 0; y < height; y++) {
-    for (int x = 0; x < wMod8; x += 8) {
-      __m64 px1 = *(reinterpret_cast<const __m64*>(p1+x)); //y7y6 y5y4 y3y2 y1y0
-      __m64 px2 = *(reinterpret_cast<const __m64*>(p2+x)); //Y7Y6 Y5Y4 Y3Y2 Y1Y0
-
-     __m64 p0123 = _mm_unpacklo_pi8(px1, px2); //Y3y3 Y2y2 Y1y1 Y0y0
-     __m64 p4567 = _mm_unpackhi_pi8(px1, px2); //Y7y7 Y6y6 Y5y5 Y4y4
-
-     __m64 p01 = _mm_unpacklo_pi8(p0123, zero); //00Y1 00y1 00Y0 00y0
-     __m64 p23 = _mm_unpackhi_pi8(p0123, zero); //00Y3 00y3 00Y2 00y2
-     __m64 p45 = _mm_unpacklo_pi8(p4567, zero); //00Y5 00y5 00Y4 00y4
-     __m64 p67 = _mm_unpackhi_pi8(p4567, zero); //00Y7 00y7 00Y6 00y6
-
-     p01 = _mm_madd_pi16(p01, mask);
-     p23 = _mm_madd_pi16(p23, mask);
-     p45 = _mm_madd_pi16(p45, mask);
-     p67 = _mm_madd_pi16(p67, mask);
-
-     p01 = _mm_add_pi32(p01, round_mask);
-     p23 = _mm_add_pi32(p23, round_mask);
-     p45 = _mm_add_pi32(p45, round_mask);
-     p67 = _mm_add_pi32(p67, round_mask);
-
-     p01 = _mm_srli_pi32(p01, 15);
-     p23 = _mm_srli_pi32(p23, 15);
-     p45 = _mm_srli_pi32(p45, 15);
-     p67 = _mm_srli_pi32(p67, 15);
-
-     p0123 = _mm_packs_pi32(p01, p23);
-     p4567 = _mm_packs_pi32(p45, p67);
-
-     __m64 result = _mm_packs_pu16(p0123, p4567);
-
-     *reinterpret_cast<__m64*>(p1+x) = result;
-    }
-    
-    for (int x = wMod8; x < width; x++) {
-      p1[x] = (p1[x]*invweight + p2[x]*weight + 32768) >> 16;
-    }
-
-    p1 += p1_pitch;
-    p2 += p2_pitch;
-  }
-  _mm_empty();
-}
-
-#endif
-
-void weighted_merge_planar_sse2(BYTE *p1, const BYTE *p2, int p1_pitch, int p2_pitch, int width, int height, int weight, int invweight) {
-  __m128i round_mask = _mm_set1_epi32(0x4000);
-  __m128i zero = _mm_setzero_si128();
-  __m128i mask = _mm_set_epi16(weight, invweight, weight, invweight, weight, invweight, weight, invweight);
-
-  int wMod16 = (width/16) * 16;
-
-  for (int y = 0; y < height; y++) {
-    for (int x = 0; x < wMod16; x += 16) {
-      __m128i px1 = _mm_load_si128(reinterpret_cast<const __m128i*>(p1+x)); //y7y6 y5y4 y3y2 y1y0
-      __m128i px2 = _mm_load_si128(reinterpret_cast<const __m128i*>(p2+x)); //Y7Y6 Y5Y4 Y3Y2 Y1Y0
-
-      __m128i p0123 = _mm_unpacklo_epi8(px1, px2); //Y3y3 Y2y2 Y1y1 Y0y0
-      __m128i p4567 = _mm_unpackhi_epi8(px1, px2); //Y7y7 Y6y6 Y5y5 Y4y4
-
-      __m128i p01 = _mm_unpacklo_epi8(p0123, zero); //00Y1 00y1 00Y0 00y0
-      __m128i p23 = _mm_unpackhi_epi8(p0123, zero); //00Y3 00y3 00Y2 00y2
-      __m128i p45 = _mm_unpacklo_epi8(p4567, zero); //00Y5 00y5 00Y4 00y4
-      __m128i p67 = _mm_unpackhi_epi8(p4567, zero); //00Y7 00y7 00Y6 00y6
-
-      p01 = _mm_madd_epi16(p01, mask);
-      p23 = _mm_madd_epi16(p23, mask);
-      p45 = _mm_madd_epi16(p45, mask);
-      p67 = _mm_madd_epi16(p67, mask);
-
-      p01 = _mm_add_epi32(p01, round_mask);
-      p23 = _mm_add_epi32(p23, round_mask);
-      p45 = _mm_add_epi32(p45, round_mask);
-      p67 = _mm_add_epi32(p67, round_mask);
-
-      p01 = _mm_srli_epi32(p01, 15);
-      p23 = _mm_srli_epi32(p23, 15);
-      p45 = _mm_srli_epi32(p45, 15);
-      p67 = _mm_srli_epi32(p67, 15);
-
-      p0123 = _mm_packs_epi32(p01, p23);
-      p4567 = _mm_packs_epi32(p45, p67);
-
-      __m128i result = _mm_packus_epi16(p0123, p4567);
-
-      _mm_store_si128(reinterpret_cast<__m128i*>(p1+x), result);
-    }
-
-    for (int x = wMod16; x < width; x++) {
-      p1[x] = (p1[x]*invweight + p2[x]*weight + 32768) >> 16;
-    }
-
-    p1 += p1_pitch;
-    p2 += p2_pitch;
-  }
-}
-
-/* average_plane */
-
-void average_plane_c(BYTE *p1, const BYTE *p2, int p1_pitch, int p2_pitch, int width, int height) {
-  for (int y = 0; y < height; ++y) {
-    for (int x = 0; x < width; ++x) {
-      p1[x] = (int(p1[x]) + p2[x] + 1) >> 1;
-    }
-    p1 += p1_pitch;
-    p2 += p2_pitch;
-  }
-}
-
-#ifdef X86_32
-
-void average_plane_isse(BYTE *p1, const BYTE *p2, int p1_pitch, int p2_pitch, int width, int height) {
-  int mod8_width = width / 8 * 8;
-
-  for(int y = 0; y < height; y++) {
-    for(int x = 0; x < mod8_width; x+=8) {
-      __m64 src1 = *reinterpret_cast<const __m64*>(p1+x);
-      __m64 src2 = *reinterpret_cast<const __m64*>(p2+x);
-      __m64 dst = _mm_avg_pu8(src1, src2);
-      *reinterpret_cast<__m64*>(p1+x) = dst;
-    }
-
-    if (mod8_width != width) {
-      for (int x = mod8_width; x < width; ++x) {
-        p1[x] = (int(p1[x]) + p2[x] + 1) >> 1;
-      }
-    }
-    p1 += p1_pitch;
-    p2 += p2_pitch;
-  }
-  _mm_empty();
-}
-
-#endif
-
-void average_plane_sse2(BYTE *p1, const BYTE *p2, int p1_pitch, int p2_pitch, int width, int height) {
-  int mod16_width = width / 16 * 16;
-
-  for(int y = 0; y < height; y++) {
-    for(int x = 0; x < mod16_width; x+=16) {
-      auto src1  = _mm_load_si128(reinterpret_cast<const __m128i*>(p1+x));
-      auto src2  = _mm_load_si128(reinterpret_cast<const __m128i*>(p2+x));
-
-      auto dst  = _mm_avg_epu8(src1, src2);
-
-      _mm_store_si128(reinterpret_cast<__m128i*>(p1+x), dst);
-    }
-
-    if (mod16_width != width) {
-      for (int x = mod16_width; x < width; ++x) {
-        p1[x] = (int(p1[x]) + p2[x] + 1) >> 1;
-      }
-    }
-    p1 += p1_pitch;
-    p2 += p2_pitch;
-  }
 }

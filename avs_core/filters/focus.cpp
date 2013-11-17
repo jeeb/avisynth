@@ -34,12 +34,10 @@
 
 #include "focus.h"
 #include <cmath>
-#include <cstdlib>
-#include <malloc.h>
+#include <avs/alignment.h>
 #include <avs/minmax.h>
 #include "../core/internal.h"
 #include <emmintrin.h>
-#include <avs/alignment.h>
 
  
 /********************************************************************

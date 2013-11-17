@@ -34,12 +34,11 @@
 
 
 #include "greyscale.h"
-#include <avs/win.h>
-#include <cstdlib>
 #include "../core/internal.h"
 #include <emmintrin.h>
-#include "avs/alignment.h"
-#include "avs/minmax.h"
+#include <avs/alignment.h>
+#include <avs/minmax.h>
+#include <avs/win.h>
 
 
 /*************************************

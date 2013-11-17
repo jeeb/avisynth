@@ -84,7 +84,7 @@ __forceinline __m128i ssse3_yuy2_swap_register(__m128i src, __m128i) {
 }
 
 template<SseYuy2Swap swap>
-void ssex_yuy2_swap(const BYTE* srcp, BYTE* dstp, int src_pitch, int dst_pitch, int width, int height)
+static void ssex_yuy2_swap(const BYTE* srcp, BYTE* dstp, int src_pitch, int dst_pitch, int width, int height)
 {
   int mod16width = width / 16 * 16;
 
@@ -112,7 +112,7 @@ void ssex_yuy2_swap(const BYTE* srcp, BYTE* dstp, int src_pitch, int dst_pitch, 
 
 #ifdef X86_32
 
-__forceinline __m64 isse_yuy2_swap_register(__m64 src, __m64 zero) {
+static __forceinline __m64 isse_yuy2_swap_register(__m64 src, __m64 zero) {
   __m64 src_unpck_lo = _mm_unpacklo_pi8(src, zero); //0V0Y0U0Y
   __m64 src_unpck_hi = _mm_unpackhi_pi8(src, zero); 
 
@@ -122,7 +122,7 @@ __forceinline __m64 isse_yuy2_swap_register(__m64 src, __m64 zero) {
   return _mm_packs_pu16(src_unpck_lo, src_unpck_hi);
 }
 
-void isse_yuy2_swap(const BYTE* srcp, BYTE* dstp, int src_pitch, int dst_pitch, int width, int height)
+static void isse_yuy2_swap(const BYTE* srcp, BYTE* dstp, int src_pitch, int dst_pitch, int width, int height)
 {
   int mod8width = width / 8 * 8;
 

@@ -382,11 +382,11 @@ static void turn_180_yuy2(const BYTE *srcp, BYTE *dstp, int width, int height, i
 }
 
 
-__forceinline __m128i mm_movehl_si128(const __m128i &a, const __m128i &b) {
+static __forceinline __m128i mm_movehl_si128(const __m128i &a, const __m128i &b) {
   return _mm_castps_si128(_mm_movehl_ps(_mm_castsi128_ps(a), _mm_castsi128_ps(b)));
 }
 
-__forceinline void left_transpose_8_bytes_sse2(__m128i &src1, __m128i &src2, __m128i& src3, __m128i &src4, 
+static __forceinline void left_transpose_8_bytes_sse2(__m128i &src1, __m128i &src2, __m128i& src3, __m128i &src4, 
                               __m128i &src5, __m128i& src6, __m128i &src7, __m128i &src8, const __m128i &zero) {
 
   __m128i a07b07 = _mm_unpacklo_epi8(src1, src2); 
@@ -414,7 +414,7 @@ __forceinline void left_transpose_8_bytes_sse2(__m128i &src1, __m128i &src2, __m
   src8 = mm_movehl_si128(zero, a67b67c67d67e67f67g67h67);
 }
 
-__forceinline void right_transpose_8_bytes_sse2(__m128i &src1, __m128i &src2, __m128i& src3, __m128i &src4,                                                __m128i &src5, __m128i& src6, __m128i &src7, __m128i &src8, const __m128i &zero) {
+static __forceinline void right_transpose_8_bytes_sse2(__m128i &src1, __m128i &src2, __m128i& src3, __m128i &src4,                                                __m128i &src5, __m128i& src6, __m128i &src7, __m128i &src8, const __m128i &zero) {
 
   __m128i b07a07 = _mm_unpacklo_epi8(src2, src1); 
   __m128i d07c07 = _mm_unpacklo_epi8(src4, src3); 
@@ -441,7 +441,7 @@ __forceinline void right_transpose_8_bytes_sse2(__m128i &src1, __m128i &src2, __
     src8 = mm_movehl_si128(zero, h67g67f67e67d67c67b67a67);
 }
 
-void turn_right_plane_sse2(const BYTE* pSrc, BYTE* pDst, int srcWidth, int srcHeight, int srcPitch, int dstPitch) {
+static void turn_right_plane_sse2(const BYTE* pSrc, BYTE* pDst, int srcWidth, int srcHeight, int srcPitch, int dstPitch) {
   const BYTE* pSrc2 = pSrc;
 
   __m128i zero = _mm_setzero_si128();
@@ -507,7 +507,7 @@ void turn_right_plane_sse2(const BYTE* pSrc, BYTE* pDst, int srcWidth, int srcHe
   }
 }
 
-void turn_left_plane_sse2(const BYTE* pSrc, BYTE* pDst, int srcWidth, int srcHeight, int srcPitch, int dstPitch) {
+static void turn_left_plane_sse2(const BYTE* pSrc, BYTE* pDst, int srcWidth, int srcHeight, int srcPitch, int dstPitch) {
   const BYTE* pSrc2 = pSrc;
   int srcWidthMod8 = (srcWidth / 8) * 8;
   int srcHeightMod8 = (srcHeight / 8) * 8;
@@ -580,7 +580,7 @@ void turn_left_plane_sse2(const BYTE* pSrc, BYTE* pDst, int srcWidth, int srcHei
 }
 
 template<int instruction_set>
-void turn_180_plane_xsse(const BYTE* pSrc, BYTE* pDst, int srcWidth, int srcHeight, int srcPitch, int dstPitch) {
+static void turn_180_plane_xsse(const BYTE* pSrc, BYTE* pDst, int srcWidth, int srcHeight, int srcPitch, int dstPitch) {
   BYTE* pDst2 = pDst;
   const BYTE* pSrc2 = pSrc;
   int srcWidthMod16 = (srcWidth / 16) * 16;

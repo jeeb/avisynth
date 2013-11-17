@@ -101,9 +101,7 @@ private:
   const unsigned luma_threshold, chroma_threshold;
   const int kernel;
 
-
   enum { MAX_RADIUS=7 };
-
 };
 
 
@@ -123,7 +121,6 @@ private:
   const int diameter;
 
 };
-
 
 
 #endif  // __Focus_H__

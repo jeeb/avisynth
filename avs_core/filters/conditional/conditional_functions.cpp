@@ -34,13 +34,11 @@
 // import and export plugins, or graphical user interfaces.
 
 #include "conditional_functions.h"
-#include <cmath>
-#include <cstdlib>
-#include <avs/minmax.h>
 #include "../../core/internal.h"
 #include <avs/config.h>
+#include <avs/minmax.h>
+#include <avs/alignment.h>
 #include <emmintrin.h>
-#include "avs/alignment.h"
 
 
 extern const AVSFunction Conditional_funtions_filters[] = {

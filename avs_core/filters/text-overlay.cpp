@@ -36,9 +36,7 @@
 #include "text-overlay.h"
 #include "../convert/convert.h"  // for RGB2YUV
 #include <avs/win.h>
-#include <string>
 #include <sstream>
-#include <cmath>
 #include <avs/config.h>
 #include <avs/minmax.h>
 #include <emmintrin.h>

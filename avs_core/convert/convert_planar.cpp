@@ -973,10 +973,6 @@ AVSValue __cdecl ConvertRGBToYV24::Create(AVSValue args, void*, IScriptEnvironme
  * (c) Klaus Post, 2005
  ******************************************************/
 
-// XMM_WORD ready
-__declspec(align(16)) static const __int64 Pre_Add00[2]  = { 0xff80ff800000, 0xff80ff800000 };
-__declspec(align(16)) static const __int64 Pre_Add16[2]  = { 0xff80ff80fff0, 0xff80ff80fff0 };
-
 
 ConvertYV24ToRGB::ConvertYV24ToRGB(PClip src, int in_matrix, int _pixel_step, IScriptEnvironment* env)
  : GenericVideoFilter(src), pixel_step(_pixel_step), matrix(NULL)

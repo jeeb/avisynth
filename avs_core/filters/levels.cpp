@@ -541,7 +541,7 @@ AVSValue __cdecl RGBAdjust::Create(AVSValue args, void*, IScriptEnvironment* env
 
 
 /* helper function for Tweak and MaskHS filters */
-bool ProcessPixel(double X, double Y, double startHue, double endHue,
+static bool ProcessPixel(double X, double Y, double startHue, double endHue,
                   double maxSat, double minSat, double p, int &iSat)
 {
 	// a hue analog

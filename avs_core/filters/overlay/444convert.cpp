@@ -36,10 +36,8 @@
 
 #include "444convert.h"
 #include "../../core/internal.h"
-#include <avs/cpuid.h>
-#include <cstring>
 #include <emmintrin.h>
-#include "avs/alignment.h"
+#include <avs/alignment.h>
 
 
 //this isn't really faster than mmx
