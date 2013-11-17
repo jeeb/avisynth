@@ -33,14 +33,14 @@
 
 VIProductVersion "${VERSION}.${ISSUE}"
 
-VIAddVersionKey "ProductName"      "Avisynth 2.6"
+VIAddVersionKey "ProductName"      "AviSynth+ 2.6"
 VIAddVersionKey "Comments"         "Homepage: http://www.avisynth.org"
 VIAddVersionKey "CompanyName"      "The Public"
 VIAddVersionKey "LegalCopyright"   "© 2000-2013 Ben Rudiak-Gould and others"
-VIAddVersionKey "FileDescription"  "Avisynth installer"
+VIAddVersionKey "FileDescription"  "AviSynth+ installer"
 VIAddVersionKey "FileVersion"      "${VERSION}.${ISSUE}"
 VIAddVersionKey "ProductVersion"   "${VERSION}"
-VIAddVersionKey "OriginalFilename" "AviSynth_${DATE}.exe"
+VIAddVersionKey "OriginalFilename" "AviSynth+_${DATE}.exe"
 
 ;VIAddVersionKey "InternalName"     ""
 ;VIAddVersionKey "LegalTrademarks"  ""
@@ -61,7 +61,7 @@ SetCompressor /solid lzma
 !define MUI_ABORTWARNING
 ;!define MUI_WELCOMEFINISHPAGE_BITMAP "${NSISDIR}\Welcome.bmp"
 !define MUI_COMPONENTSPAGE_SMALLDESC
-!define MUI_UI_COMPONENTSPAGE_SMALLDESC "AVS_UI.exe"
+;!define MUI_UI_COMPONENTSPAGE_SMALLDESC "AVS_UI.exe"
 !define MUI_FINISHPAGE_LINK $(FINISHPAGE_TEXT)
 !define MUI_FINISHPAGE_LINK_LOCATION "http://www.avisynth.org/"
 !define MUI_INSTFILESPAGE_COLORS "C5DEFB 000000"
@@ -130,7 +130,7 @@ SetCompressor /solid lzma
 ;----------------------------------
 
 !insertmacro AVS_LANGUAGE "English"      ; 1033
-                                        
+
 !insertmacro AVS_LANGUAGE "Czech"        ; 1029
 !insertmacro AVS_LANGUAGE "German"       ; 1031
 !insertmacro AVS_LANGUAGE "Greek"        ; 1253
@@ -201,17 +201,17 @@ SetCompressor /solid lzma
 ;----------------------------------
 
 
-NAME "AviSynth"
-BRANDINGTEXT "AviSynth ${VERSION} -- [${DATE}]"
-OutFile "AviSynth_${DATE}.exe"
+NAME "AviSynth+"
+BRANDINGTEXT "AviSynth+ ${VERSION} -- [${DATE}]"
+OutFile "AviSynth+_${DATE}.exe"
 SetOverwrite ON
-Caption "AviSynth ${VERSION}"
+Caption "AviSynth+ ${VERSION}"
 ShowInstDetails show
 CRCCheck ON
 
 ComponentText $(COMPONENT_TEXT)
 
-InstallDir "$PROGRAMFILES\AviSynth 2.5"
+InstallDir "$PROGRAMFILES\AviSynth+"
 InstallDirRegKey HKLM SOFTWARE\AviSynth ""
 
 InstType $(AVS_Standard)
@@ -230,12 +230,8 @@ Section $(SystemInstall_Text) SystemInstall
 
   ClearErrors
   SetOutPath $SYSDIR
-  ${File} "..\src\release\AviSynth.dll"
-  ${File} "bin\devil.dll"
-
-IfFileExists "$SYSDIR\msvcp60.dll" msvc60_exists
-  ${File} "bin\msvcp60.dll"
-msvc60_exists:
+  ${File} "..\avs_core\AviSynth.dll"
+  ${File} "..\Output\system\DevIL.dll"
 
 IfErrors 0 dll_ok
   MessageBox MB_OK $(InUseMsg_Text)
@@ -249,17 +245,28 @@ dll_ok:
   SetOutPath "$INSTDIR\License Translations"
   ${File} "gpl-*.txt"
 
-  ReadRegStr $0 HKLM "SOFTWARE\AviSynth" "plugindir2_5"
+  ReadRegStr $0 HKLM "SOFTWARE\AviSynth" "PluginDir2_5"
+  ReadRegStr $1 HKLM "SOFTWARE\AviSynth" "PluginDir+"
 StrCmp "$0" "" 0 Plugin_exists
   CreateDirectory "$INSTDIR\plugins"
   StrCpy $0 "$INSTDIR\plugins"
+  CreateDirectory "$INSTDIR\plugins+"
+  StrCpy $1 "$INSTDIR\plugins+"
 
 Plugin_exists:
   ClearErrors
   SetOutPath $0
-  ${File} "..\src\plugins\DirectShowSource\Release\DirectShowSource.dll"
-  ${File} "..\src\plugins\TCPDeliver\Release\TCPDeliver.dll"
-  ${File} "color_presets\colors_rgb.avsi"
+
+  ${File} "..\plugins\DirectShowSource\DirectShowSource.dll"
+  ${File} "..\plugins\ImageSeq\ImageSeq.dll"
+  ${File} "..\plugins\Shibatch\Shibatch.dll"
+  ${File} "..\plugins\TimeStretch\TimeStretch.dll"
+  ${File} "..\plugins\VDubFilter\VDubFilter.dll"
+; Comment out TCPDeliver.dll if/until such time that AviSynth+ provides it too
+;  ${File} "..\plugins\TCPDeliver\TCPDeliver.dll"
+; Comment out VFAPIFilter.dll until it can be built with AviSynth+
+;  ${File} "..\plugins\VFAPIFilter\VFAPIFilter.dll"
+  ${File} "ColorPresets\colors_rgb.avsi"
 
 IfErrors 0 plug_ok
   MessageBox MB_OK $(PlugDir_Text)
@@ -268,9 +275,10 @@ IfErrors 0 plug_ok
 plug_ok:
   ClearErrors
   WriteRegStr HKLM "SOFTWARE\AviSynth" "" "$INSTDIR"
-  WriteRegStr HKLM "SOFTWARE\AviSynth" "plugindir2_5" "$0"
+  WriteRegStr HKLM "SOFTWARE\AviSynth" "PluginDir2_5" "$0"
+  WriteRegStr HKLM "SOFTWARE\AviSynth" "PluginDir+" "$1"
 
-  WriteRegStr HKLM "SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\AviSynth" "DisplayName" "AviSynth 2.6"
+  WriteRegStr HKLM "SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\AviSynth" "DisplayName" "AviSynth+ 2.6"
   WriteRegStr HKLM "SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\AviSynth" "UninstallString" '"$INSTDIR\Uninstall.exe"'
   WriteRegStr HKLM "SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\AviSynth" "Publisher" "GPL Public release."
   WriteRegStr HKLM "SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\AviSynth" "DisplayIcon" "$SYSDIR\AviSynth.dll,0"
@@ -280,20 +288,20 @@ plug_ok:
 ; Other Add/Remove Software registry keys
 
 ; "Comments"		(string) - A comment describing the installer package
-; "EstimatedSize"	(DWORD)  - The size of the installed files (in KB) 
+; "EstimatedSize"	(DWORD)  - The size of the installed files (in KB)
 ; "HelpLink"		(string) - Link to the support website
 ; "HelpTelephone"	(string) - Telephone number for support
 ; "InstallLocation"	(string) - Installation directory ($INSTDIR)
 ; "InstallSource"	(string) - Location where the application was installed from
 ; "ModifyPath"		(string) - Path and filename of the application modify program
 ; "NoModify"		(DWORD)  - 1 if uninstaller has no option to modify the installed application
-; "NoRepair"		(DWORD)  - 1 if the uninstaller has no option to repair the installation 
+; "NoRepair"		(DWORD)  - 1 if the uninstaller has no option to repair the installation
 ; "ProductID"		(string) - Product ID of the application
 ; "RegCompany"		(string) - Registered company of the application
 ; "RegOwner"		(string) - Registered owner of the application
 ; "URLUpdateInfo"	(string) - Link to the website for application updates
 ; "VersionMajor"	(DWORD)  - Major version number of the application
-; "VersionMinor"	(DWORD)  - Minor version number of the application 
+; "VersionMinor"	(DWORD)  - Minor version number of the application
 
 
   WriteRegStr HKLM "SOFTWARE\Classes\.avs" "" "avsfile"
@@ -328,15 +336,15 @@ IfErrors 0 creg_ok
 creg_ok:
 ; These bits are for everybody
   SetShellVarContext All
-  CreateDirectory  "$SMPROGRAMS\AviSynth 2.5"
+  CreateDirectory  "$SMPROGRAMS\AviSynth+"
 
-  CreateShortCut "$SMPROGRAMS\AviSynth 2.5\$(Start_License).lnk" "$INSTDIR\${AVS_DefaultLicenceFile}"
+  CreateShortCut "$SMPROGRAMS\AviSynth+\$(Start_License).lnk" "$INSTDIR\${AVS_DefaultLicenceFile}"
   StrCmp $(AVS_GPL_Lang_File) ${AVS_DefaultLicenceFile} +2
-    CreateShortCut "$SMPROGRAMS\AviSynth 2.5\$(Start_License_Lang).lnk" "$INSTDIR\License Translations\$(AVS_GPL_Lang_File)"
+    CreateShortCut "$SMPROGRAMS\AviSynth+\$(Start_License_Lang).lnk" "$INSTDIR\License Translations\$(AVS_GPL_Lang_File)"
 
-  CreateShortCut "$SMPROGRAMS\AviSynth 2.5\$(Start_Plugin).lnk" "$INSTDIR\Plugins"
-  WriteINIStr    "$SMPROGRAMS\AviSynth 2.5\$(Start_Online).url" "InternetShortcut" "URL" "http://www.avisynth.org"
-  WriteINIStr    "$SMPROGRAMS\AviSynth 2.5\$(Start_Download).url" "InternetShortcut" "URL" "http://www.avisynth.org/warpenterprises/"
+  CreateShortCut "$SMPROGRAMS\AviSynth+\$(Start_Plugin).lnk" "$INSTDIR\Plugins"
+  WriteINIStr    "$SMPROGRAMS\AviSynth+\$(Start_Online).url" "InternetShortcut" "URL" "http://www.avisynth.org"
+  WriteINIStr    "$SMPROGRAMS\AviSynth+\$(Start_Download).url" "InternetShortcut" "URL" "http://www.avisynth.org/warpenterprises/"
 
   SetOutPath $INSTDIR\Examples
 !echo " -- Supressed"
@@ -344,15 +352,15 @@ creg_ok:
 !verbose 2
   ${File} "Examples\*.*"
 !verbose pop
-  CreateShortCut "$SMPROGRAMS\AviSynth 2.5\$(Start_Example).lnk" "$INSTDIR\Examples"
+  CreateShortCut "$SMPROGRAMS\AviSynth+\$(Start_Example).lnk" "$INSTDIR\Examples"
 
   Delete $INSTDIR\Uninstall.exe
   WriteUninstaller $INSTDIR\Uninstall.exe
 
 ; These bits are for the administrator only
   SetShellVarContext Current
-  CreateDirectory  "$SMPROGRAMS\AviSynth 2.5"
-  CreateShortCut "$SMPROGRAMS\AviSynth 2.5\$(Start_Uninstall).lnk" "$INSTDIR\Uninstall.exe"
+  CreateDirectory  "$SMPROGRAMS\AviSynth+"
+  CreateShortCut "$SMPROGRAMS\AviSynth+\$(Start_Uninstall).lnk" "$INSTDIR\Uninstall.exe"
 
 SectionEnd
 
@@ -363,9 +371,8 @@ Section /o  $(StandAlone_Text) StandAlone
 
   ClearErrors
   SetOutPath $INSTDIR
-  ${File} "..\src\release\AviSynth.dll"
-  ${File} "bin\devil.dll"
-  ${File} "bin\msvcp60.dll"
+  ${File} "..\avs_core\AviSynth.dll"
+  ${File} "..\Output\system\DevIL.dll"
 
   ${File} "Avisynth_Template.reg"
 
@@ -376,9 +383,16 @@ Section /o  $(StandAlone_Text) StandAlone
   ${File} "gpl-*.txt"
 
   SetOutPath "$INSTDIR\Plugins"
-  ${File} "..\src\plugins\DirectShowSource\Release\DirectShowSource.dll"
-  ${File} "..\src\plugins\TCPDeliver\Release\TCPDeliver.dll"
-  ${File} "color_presets\colors_rgb.avsi"
+  ${File} "..\plugins\DirectShowSource\DirectShowSource.dll"
+  ${File} "..\plugins\ImageSeq\ImageSeq.dll"
+  ${File} "..\plugins\Shibatch\Shibatch.dll"
+  ${File} "..\plugins\TimeStretch\TimeStretch.dll"
+  ${File} "..\plugins\VDubFilter\VDubFilter.dll"
+; Comment out TCPDeliver.dll if/until such time that AviSynth+ provides it too
+;  ${File} "..\plugins\TCPDeliver\TCPDeliver.dll"
+; Comment out VFAPIFilter.dll until it can be built with AviSynth+
+;  ${File} "..\plugins\VFAPIFilter\VFAPIFilter.dll"
+  ${File} "ColorPresets\colors_rgb.avsi"
 
 SectionEnd
 
@@ -390,25 +404,25 @@ Subsection  $(Documentation_Text) Documentation
 Section /o  $(English_Text) English
   SectionIn 1 3 4
 
-  SetOutPath $INSTDIR\Docs
-  ${DocFile} "..\..\Docs\*.css"
-  SetOutPath $INSTDIR\Docs\English
+  SetOutPath $INSTDIR\docs
+  ${DocFile} "docs\*.css"
+  SetOutPath $INSTDIR\docs\English
 !echo " -- Supressed"
 !verbose push
 !verbose 2
-  ${DocFile} "..\..\Docs\english\*.htm"
-  SetOutPath $INSTDIR\Docs\English\advancedtopics
-  ${DocFile} "..\..\Docs\english\advancedtopics\*.htm"
-  SetOutPath $INSTDIR\Docs\English\corefilters
-  ${DocFile} "..\..\Docs\english\corefilters\*.htm"
-  SetOutPath $INSTDIR\Docs\English\externalfilters
-  ${DocFile} "..\..\Docs\english\externalfilters\*.htm"
-  SetOutPath $INSTDIR\Docs\English\pictures\advancedtopics
-  ${DocFile} "..\..\Docs\english\pictures\advancedtopics\*.*"
-  SetOutPath $INSTDIR\Docs\English\pictures\corefilters
-  ${DocFile} "..\..\Docs\english\pictures\corefilters\*.*"
-  SetOutPath $INSTDIR\Docs\English\pictures\externalfilters
-  ${DocFile} "..\..\Docs\english\pictures\externalfilters\*.*"
+  ${DocFile} "docs\english\*.htm"
+  SetOutPath $INSTDIR\docs\English\advancedtopics
+  ${DocFile} "docs\english\advancedtopics\*.htm"
+  SetOutPath $INSTDIR\docs\English\corefilters
+  ${DocFile} "docs\english\corefilters\*.htm"
+  SetOutPath $INSTDIR\docs\English\externalfilters
+  ${DocFile} "docs\english\externalfilters\*.htm"
+  SetOutPath $INSTDIR\docs\English\pictures\advancedtopics
+  ${DocFile} "docs\english\pictures\advancedtopics\*.*"
+  SetOutPath $INSTDIR\docs\English\pictures\corefilters
+  ${DocFile} "docs\english\pictures\corefilters\*.*"
+  SetOutPath $INSTDIR\docs\English\pictures\externalfilters
+  ${DocFile} "docs\english\pictures\externalfilters\*.*"
 !verbose pop
 
   SetOutPath $INSTDIR\Examples
@@ -416,98 +430,98 @@ Section /o  $(English_Text) English
 
   SetShellVarContext All
   StrCmp $AdminInstall "No" +2
-  CreateShortCut "$SMPROGRAMS\AviSynth 2.5\$(Start_Doc_English).lnk" "$INSTDIR\Docs\English\index.htm"
+  CreateShortCut "$SMPROGRAMS\AviSynth+\$(Start_Doc_English).lnk" "$INSTDIR\docs\English\index.htm"
 
 SectionEnd
 
 Section /o  $(Czech_Text) Czech
   SectionIn 4
-  SetOutPath $INSTDIR\Docs
-  ${DocFile} "..\..\Docs\*.css"
-  SetOutPath $INSTDIR\Docs\Czech
+  SetOutPath $INSTDIR\docs
+  ${DocFile} "docs\*.css"
+  SetOutPath $INSTDIR\docs\Czech
 !echo " -- Supressed"
 !verbose push
 !verbose 2
-  ${DocFile} "..\..\Docs\czech\*.htm"
-  ${DocFile} "..\..\Docs\czech\gpl-cs.txt"
-  SetOutPath $INSTDIR\Docs\Czech\advancedtopics
-  ${DocFile} "..\..\Docs\czech\advancedtopics\*.htm"
-  SetOutPath $INSTDIR\Docs\Czech\corefilters
-  ${DocFile} "..\..\Docs\czech\corefilters\*.htm"
-  SetOutPath $INSTDIR\Docs\Czech\externalfilters
-  ${DocFile} "..\..\Docs\czech\externalfilters\*.htm"
-  SetOutPath $INSTDIR\Docs\Czech\pictures\advancedtopics
-  ${DocFile} "..\..\Docs\czech\pictures\advancedtopics\*.*"
-  SetOutPath $INSTDIR\Docs\Czech\pictures\corefilters
-  ${DocFile} "..\..\Docs\czech\pictures\corefilters\*.*"
+  ${DocFile} "docs\czech\*.htm"
+  ${DocFile} "docs\czech\gpl-cs.txt"
+  SetOutPath $INSTDIR\docs\Czech\advancedtopics
+  ${DocFile} "docs\czech\advancedtopics\*.htm"
+  SetOutPath $INSTDIR\docs\Czech\corefilters
+  ${DocFile} "docs\czech\corefilters\*.htm"
+  SetOutPath $INSTDIR\docs\Czech\externalfilters
+  ${DocFile} "docs\czech\externalfilters\*.htm"
+  SetOutPath $INSTDIR\docs\Czech\pictures\advancedtopics
+  ${DocFile} "docs\czech\pictures\advancedtopics\*.*"
+  SetOutPath $INSTDIR\docs\Czech\pictures\corefilters
+  ${DocFile} "docs\czech\pictures\corefilters\*.*"
 !verbose pop
 
   SetShellVarContext All
   StrCmp $AdminInstall "No" +2
-  CreateShortCut "$SMPROGRAMS\AviSynth 2.5\$(Start_Doc_Czech).lnk" "$INSTDIR\Docs\Czech\index.htm"
+  CreateShortCut "$SMPROGRAMS\AviSynth+\$(Start_Doc_Czech).lnk" "$INSTDIR\docs\Czech\index.htm"
 
 SectionEnd
 
 Section /o  $(German_Text) German
   SectionIn 4
-  SetOutPath $INSTDIR\Docs
-  ${DocFile} "..\..\Docs\*.css"
-  SetOutPath $INSTDIR\Docs\German
+  SetOutPath $INSTDIR\docs
+  ${DocFile} "docs\*.css"
+  SetOutPath $INSTDIR\docs\German
 !echo " -- Supressed"
 !verbose push
 !verbose 2
-  ${DocFile} "..\..\Docs\german\*.htm"
-  SetOutPath $INSTDIR\Docs\German\corefilters
-  ${DocFile} "..\..\Docs\german\corefilters\*.htm"
-  SetOutPath $INSTDIR\Docs\German\externalfilters
-  ${DocFile} "..\..\Docs\german\externalfilters\*.htm"
+  ${DocFile} "docs\german\*.htm"
+  SetOutPath $INSTDIR\docs\German\corefilters
+  ${DocFile} "docs\german\corefilters\*.htm"
+  SetOutPath $INSTDIR\docs\German\externalfilters
+  ${DocFile} "docs\german\externalfilters\*.htm"
 !verbose pop
 
   SetShellVarContext All
   StrCmp $AdminInstall "No" +2
-  CreateShortCut "$SMPROGRAMS\AviSynth 2.5\$(Start_Doc_German).lnk" "$INSTDIR\Docs\German\index.htm"
+  CreateShortCut "$SMPROGRAMS\AviSynth+\$(Start_Doc_German).lnk" "$INSTDIR\docs\German\index.htm"
 
 SectionEnd
 
 Section /o  $(French_Text) French
   SectionIn 4
-  SetOutPath $INSTDIR\Docs
-  ${DocFile} "..\..\Docs\*.css"
-  SetOutPath $INSTDIR\Docs\French
+  SetOutPath $INSTDIR\docs
+  ${DocFile} "docs\*.css"
+  SetOutPath $INSTDIR\docs\French
 !echo " -- Supressed"
 !verbose push
 !verbose 2
-  ${DocFile} "..\..\Docs\french\*.htm"
-  SetOutPath $INSTDIR\Docs\French\corefilters
-  ${DocFile} "..\..\Docs\french\corefilters\*.htm"
+  ${DocFile} "docs\french\*.htm"
+  SetOutPath $INSTDIR\docs\French\corefilters
+  ${DocFile} "docs\french\corefilters\*.htm"
 !verbose pop
 
   SetShellVarContext All
   StrCmp $AdminInstall "No" +2
-  CreateShortCut "$SMPROGRAMS\AviSynth 2.5\$(Start_Doc_French).lnk" "$INSTDIR\Docs\French\index.htm"
+  CreateShortCut "$SMPROGRAMS\AviSynth+\$(Start_Doc_French).lnk" "$INSTDIR\docs\French\index.htm"
 
 SectionEnd
 
 Section /o  $(Italian_Text) Italian
   SectionIn 4
-  SetOutPath $INSTDIR\Docs
-  ${DocFile} "..\..\Docs\*.css"
-  SetOutPath $INSTDIR\Docs\Italian
+  SetOutPath $INSTDIR\docs
+  ${DocFile} "docs\*.css"
+  SetOutPath $INSTDIR\docs\Italian
 !echo " -- Supressed"
 !verbose push
 !verbose 2
-  ${DocFile} "..\..\Docs\italian\*.htm"
-  SetOutPath $INSTDIR\Docs\Italian\corefilters
-  ${DocFile} "..\..\Docs\italian\corefilters\*.htm"
-  SetOutPath $INSTDIR\Docs\Italian\externalfilters
-  ${DocFile} "..\..\Docs\italian\externalfilters\*.htm"
-  SetOutPath $INSTDIR\Docs\Italian\pictures\corefilters
-  ${DocFile} "..\..\Docs\italian\pictures\corefilters\*.*"
+  ${DocFile} "docs\italian\*.htm"
+  SetOutPath $INSTDIR\docs\Italian\corefilters
+  ${DocFile} "docs\italian\corefilters\*.htm"
+  SetOutPath $INSTDIR\docs\Italian\externalfilters
+  ${DocFile} "docs\italian\externalfilters\*.htm"
+  SetOutPath $INSTDIR\docs\Italian\pictures\corefilters
+  ${DocFile} "docs\italian\pictures\corefilters\*.*"
 !verbose pop
 
   SetShellVarContext All
   StrCmp $AdminInstall "No" +2
-  CreateShortCut "$SMPROGRAMS\AviSynth 2.5\$(Start_Doc_Italian).lnk" "$INSTDIR\Docs\Italian\index.htm"
+  CreateShortCut "$SMPROGRAMS\AviSynth+\$(Start_Doc_Italian).lnk" "$INSTDIR\docs\Italian\index.htm"
 
 SectionEnd
 
@@ -515,121 +529,121 @@ Section /o  $(Japanese_Text) Japanese
   SectionIn 4
 
   SetOverwrite ON
-  
-  SetOutPath $INSTDIR\Docs
-  ${DocFile} "..\..\Docs\*.css"
 
-  SetOutPath $INSTDIR\Docs\Japanese
+  SetOutPath $INSTDIR\docs
+  ${DocFile} "docs\*.css"
+
+  SetOutPath $INSTDIR\docs\Japanese
 !echo " -- Supressed"
 !verbose push
 !verbose 2
-  ${DocFile} "..\..\Docs\english\*.htm"
-  ${DocFile} "..\..\Docs\japanese\*.htm"  ; Overwrite with the translated versions
-  ${DocFile} "..\..\Docs\japanese\ja.css"
-  ${DocFile} "..\..\Docs\japanese\filelist.txt"
-  ${DocFile} "..\..\Docs\japanese\readme_en.txt"
-  ${DocFile} "..\..\Docs\japanese\readme_ja.txt"
+  ${DocFile} "docs\english\*.htm"
+  ${DocFile} "docs\japanese\*.htm"  ; Overwrite with the translated versions
+  ${DocFile} "docs\japanese\ja.css"
+  ${DocFile} "docs\japanese\filelist.txt"
+  ${DocFile} "docs\japanese\readme_en.txt"
+  ${DocFile} "docs\japanese\readme_ja.txt"
 
-  SetOutPath $INSTDIR\Docs\Japanese\advancedtopics
-  ${DocFile} "..\..\Docs\english\advancedtopics\*.htm"
+  SetOutPath $INSTDIR\docs\Japanese\advancedtopics
+  ${DocFile} "docs\english\advancedtopics\*.htm"
 
-  SetOutPath $INSTDIR\Docs\Japanese\corefilters
-  ${DocFile} "..\..\Docs\japanese\corefilters\*.htm"
+  SetOutPath $INSTDIR\docs\Japanese\corefilters
+  ${DocFile} "docs\japanese\corefilters\*.htm"
 
-  SetOutPath $INSTDIR\Docs\Japanese\externalfilters
-  ${DocFile} "..\..\Docs\english\externalfilters\*.htm"
+  SetOutPath $INSTDIR\docs\Japanese\externalfilters
+  ${DocFile} "docs\english\externalfilters\*.htm"
 
-  SetOutPath $INSTDIR\Docs\Japanese\pictures\advancedtopics
-  ${DocFile} "..\..\Docs\english\pictures\advancedtopics\*.*"
+  SetOutPath $INSTDIR\docs\Japanese\pictures\advancedtopics
+  ${DocFile} "docs\english\pictures\advancedtopics\*.*"
 
-  SetOutPath $INSTDIR\Docs\Japanese\pictures\corefilters
-  ${DocFile} "..\..\Docs\english\pictures\corefilters\*.*"
+  SetOutPath $INSTDIR\docs\Japanese\pictures\corefilters
+  ${DocFile} "docs\english\pictures\corefilters\*.*"
 
-  SetOutPath $INSTDIR\Docs\Japanese\pictures\externalfilters
-  ${DocFile} "..\..\Docs\english\pictures\externalfilters\*.*"
+  SetOutPath $INSTDIR\docs\Japanese\pictures\externalfilters
+  ${DocFile} "docs\english\pictures\externalfilters\*.*"
 !verbose pop
 
   SetShellVarContext All
   StrCmp $AdminInstall "No" +2
-  CreateShortCut "$SMPROGRAMS\AviSynth 2.5\$(Start_Doc_Japanese).lnk" "$INSTDIR\Docs\Japanese\index.htm"
+  CreateShortCut "$SMPROGRAMS\AviSynth+\$(Start_Doc_Japanese).lnk" "$INSTDIR\docs\Japanese\index.htm"
 
 SectionEnd
 
 Section /o  $(Polish_Text) Polish
   SectionIn 4
-  SetOutPath $INSTDIR\Docs\Polish
-  ${DocFile} "..\..\Docs\polish\*.*"
-  SetOutPath $INSTDIR\Docs\Polish\corefilters
+  SetOutPath $INSTDIR\docs\Polish
+  ${DocFile} "docs\polish\*.*"
+  SetOutPath $INSTDIR\docs\Polish\corefilters
 !echo " -- Supressed"
 !verbose push
 !verbose 2
-  ${DocFile} "..\..\Docs\polish\corefilters\*.*"
-  SetOutPath $INSTDIR\Docs\Polish\externalfilters
-  ${DocFile} "..\..\Docs\polish\externalfilters\*.*"
+  ${DocFile} "docs\polish\corefilters\*.*"
+  SetOutPath $INSTDIR\docs\Polish\externalfilters
+  ${DocFile} "docs\polish\externalfilters\*.*"
 !verbose pop
 
   SetShellVarContext All
   StrCmp $AdminInstall "No" +2
-  CreateShortCut "$SMPROGRAMS\AviSynth 2.5\$(Start_Doc_Polish).lnk" "$INSTDIR\Docs\Polish\index.htm"
+  CreateShortCut "$SMPROGRAMS\AviSynth+\$(Start_Doc_Polish).lnk" "$INSTDIR\docs\Polish\index.htm"
 
 SectionEnd
 
 Section /o  $(Portugese_Text) Portuguese
   SectionIn 4
-  SetOutPath $INSTDIR\Docs
-  ${DocFile} "..\..\Docs\*.css"
-  SetOutPath $INSTDIR\Docs\Portuguese
+  SetOutPath $INSTDIR\docs
+  ${DocFile} "docs\*.css"
+  SetOutPath $INSTDIR\docs\Portuguese
 !echo " -- Supressed"
 !verbose push
 !verbose 2
-  ${DocFile} "..\..\Docs\portugese\*.htm"
-  SetOutPath $INSTDIR\Docs\Portuguese\advancedtopics
-  ${DocFile} "..\..\Docs\portugese\advancedtopics\*.htm"
-  SetOutPath $INSTDIR\Docs\Portuguese\corefilters
-  ${DocFile} "..\..\Docs\portugese\corefilters\*.htm"
-  SetOutPath $INSTDIR\Docs\Portuguese\externalfilters
-  ${DocFile} "..\..\Docs\portugese\externalfilters\*.htm"
-  SetOutPath $INSTDIR\Docs\Portuguese\pictures\advancedtopics
-  ${DocFile} "..\..\Docs\portugese\pictures\advancedtopics\*.*"
-  SetOutPath $INSTDIR\Docs\Portuguese\pictures\corefilters
-  ${DocFile} "..\..\Docs\portugese\pictures\corefilters\*.*"
-  SetOutPath $INSTDIR\Docs\Portuguese\pictures\externalfilters
-  ${DocFile} "..\..\Docs\portugese\pictures\externalfilters\*.*"
+  ${DocFile} "docs\portugese\*.htm"
+  SetOutPath $INSTDIR\docs\Portuguese\advancedtopics
+  ${DocFile} "docs\portugese\advancedtopics\*.htm"
+  SetOutPath $INSTDIR\docs\Portuguese\corefilters
+  ${DocFile} "docs\portugese\corefilters\*.htm"
+  SetOutPath $INSTDIR\docs\Portuguese\externalfilters
+  ${DocFile} "docs\portugese\externalfilters\*.htm"
+  SetOutPath $INSTDIR\docs\Portuguese\pictures\advancedtopics
+  ${DocFile} "docs\portugese\pictures\advancedtopics\*.*"
+  SetOutPath $INSTDIR\docs\Portuguese\pictures\corefilters
+  ${DocFile} "docs\portugese\pictures\corefilters\*.*"
+  SetOutPath $INSTDIR\docs\Portuguese\pictures\externalfilters
+  ${DocFile} "docs\portugese\pictures\externalfilters\*.*"
 !verbose pop
 
   SetShellVarContext All
   StrCmp $AdminInstall "No" +2
-  CreateShortCut "$SMPROGRAMS\AviSynth 2.5\$(Start_Doc_Portuguese).lnk" "$INSTDIR\Docs\Portuguese\index.htm"
+  CreateShortCut "$SMPROGRAMS\AviSynth+\$(Start_Doc_Portuguese).lnk" "$INSTDIR\docs\Portuguese\index.htm"
 
 SectionEnd
 
 Section /o  $(Russian_Text) Russian
   SectionIn 4
-  SetOutPath $INSTDIR\Docs
-  ${DocFile} "..\..\Docs\*.css"
-  SetOutPath $INSTDIR\Docs\Russian
+  SetOutPath $INSTDIR\docs
+  ${DocFile} "docs\*.css"
+  SetOutPath $INSTDIR\docs\Russian
 !echo " -- Supressed"
 !verbose push
 !verbose 2
-  ${DocFile} "..\..\Docs\russian\*.htm"
-  ${DocFile} "..\..\Docs\russian\gpl-rus.txt"
-  SetOutPath $INSTDIR\Docs\Russian\advancedtopics
-  ${DocFile} "..\..\Docs\russian\advancedtopics\*.htm"
-  SetOutPath $INSTDIR\Docs\Russian\corefilters
-  ${DocFile} "..\..\Docs\russian\corefilters\*.htm"
-  SetOutPath $INSTDIR\Docs\Russian\externalfilters
-  ${DocFile} "..\..\Docs\russian\externalfilters\*.htm"
-  SetOutPath $INSTDIR\Docs\Russian\pictures\advancedtopics
-  ${DocFile} "..\..\Docs\russian\pictures\advancedtopics\*.*"
-  SetOutPath $INSTDIR\Docs\Russian\pictures\corefilters
-  ${DocFile} "..\..\Docs\russian\pictures\corefilters\*.*"
-  SetOutPath $INSTDIR\Docs\Russian\pictures\externalfilters
-  ${DocFile} "..\..\Docs\russian\pictures\externalfilters\*.*"
+  ${DocFile} "docs\russian\*.htm"
+  ${DocFile} "docs\russian\gpl-rus.txt"
+  SetOutPath $INSTDIR\docs\Russian\advancedtopics
+  ${DocFile} "docs\russian\advancedtopics\*.htm"
+  SetOutPath $INSTDIR\docs\Russian\corefilters
+  ${DocFile} "docs\russian\corefilters\*.htm"
+  SetOutPath $INSTDIR\docs\Russian\externalfilters
+  ${DocFile} "docs\russian\externalfilters\*.htm"
+  SetOutPath $INSTDIR\docs\Russian\pictures\advancedtopics
+  ${DocFile} "docs\russian\pictures\advancedtopics\*.*"
+  SetOutPath $INSTDIR\docs\Russian\pictures\corefilters
+  ${DocFile} "docs\russian\pictures\corefilters\*.*"
+  SetOutPath $INSTDIR\docs\Russian\pictures\externalfilters
+  ${DocFile} "docs\russian\pictures\externalfilters\*.*"
 !verbose pop
 
   SetShellVarContext All
   StrCmp $AdminInstall "No" +2
-  CreateShortCut "$SMPROGRAMS\AviSynth 2.5\$(Start_Doc_Russian).lnk" "$INSTDIR\Docs\Russian\index.htm"
+  CreateShortCut "$SMPROGRAMS\AviSynth+\$(Start_Doc_Russian).lnk" "$INSTDIR\docs\Russian\index.htm"
 
 SectionEnd
 
@@ -677,33 +691,46 @@ Section /o  $(ExtraFiles3_Text) ExtraFiles3
 !echo " -- Supressed"
 !verbose push
 !verbose 2
-  ${DocFile} "..\filtersdk\*.*"
+  ${DocFile} "FilterSDK\*.*"
   SetOutPath $INSTDIR\FilterSDK\Pictures
-  ${DocFile} "..\filtersdk\pictures\*.*"
+  ${DocFile} "FilterSDK\pictures\*.*"
 !verbose pop
   SetOutPath $INSTDIR\FilterSDK\include
-  ${File} "..\src\core\avisynth.h"
-  ${File} "..\src\core\avisynth_c.h"
+  ${File} "..\avs_core\include\avisynth.h"
+  ${File} "..\avs_core\include\avisynth_c.h"
+  SetOutPath $INSTDIR\FilterSDK\include\avs
+  ${File} "..\avs_core\include\avs\*.h"
   SetShellVarContext All
   StrCmp $AdminInstall "No" +2
-  CreateShortCut "$SMPROGRAMS\AviSynth 2.5\$(Start_FilterSDK).lnk" "$INSTDIR\FilterSDK\FilterSDK.htm"
+  CreateShortCut "$SMPROGRAMS\AviSynth+\$(Start_FilterSDK).lnk" "$INSTDIR\FilterSDK\FilterSDK.htm"
 
 SectionEnd
 
 Section /o  $(ExtraFiles1_Text) ExtraFiles1
   SectionIn 4
   SetOutPath $INSTDIR\Extras
-  ${File} "..\src\release\AviSynth.lib"
-  ${File} "..\src\release\AviSynth.exp"
+  ${File} "..\avs_core\AviSynth.lib"
+  ${File} "..\avs_core\AviSynth.exp"
 SectionEnd
 
-Section /o  $(ExtraFiles2_Text) ExtraFiles2
-  SectionIn 4
-  SetOutPath $INSTDIR\Extras
-  ${File} "..\src\Release\AviSynth.map"
-  ${File} "..\src\plugins\TCPDeliver\Release\TCPDeliver.map"
-  ${File} "..\src\plugins\DirectShowSource\Release\DirectShowSource.map"
-SectionEnd
+; .map files get generated by /MAP option, according to MS docs, but AviSynth+ doesn't use the /MAP option,
+; so just comment out this whole section in case /MAP does get added later.
+
+;Section /o  $(ExtraFiles2_Text) ExtraFiles2
+;  SectionIn 4
+;  SetOutPath $INSTDIR\Extras
+;  ${File} "..\avs_core\AviSynth.map"
+; Comment out TCPDeliver.map if/until such time that AviSynth+ provides it too
+;  ${File} "..\plugins\TCPDeliver\TCPDeliver.map"
+;  ${File} "..\plugins\DirectShowSource\DirectShowSource.map"
+;  ${File} "..\plugins\ImageSeq\ImageSeq.map"
+;  ${File} "..\plugins\Shibatch\Shibatch.map"
+;  ${File} "..\plugins\TimeStretch\TimeStretch.map"
+;  ${File} "..\plugins\VDubFilter\VDubFilter.map"
+; Comment out VFAPIFilter.dll until it can be built with AviSynth+
+;  ${File} "..\plugins\VFAPIFilter\VFAPIFilter.map"
+;
+;SectionEnd
 
 SubSectionEnd
 
@@ -775,7 +802,7 @@ FunctionEnd
   !insertmacro MUI_DESCRIPTION_TEXT ${Associate3}         $(Associate3_Bubble)
   !insertmacro MUI_DESCRIPTION_TEXT ${SelectExtraFiles}   $(SelectExtraFiles_Bubble)
   !insertmacro MUI_DESCRIPTION_TEXT ${ExtraFiles1}        $(ExtraFiles1_Bubble)
-  !insertmacro MUI_DESCRIPTION_TEXT ${ExtraFiles2}        $(ExtraFiles2_Bubble)
+  ;!insertmacro MUI_DESCRIPTION_TEXT ${ExtraFiles2}        $(ExtraFiles2_Bubble)
   !insertmacro MUI_DESCRIPTION_TEXT ${ExtraFiles3}        $(ExtraFiles3_Bubble)
 
   !insertmacro MUI_FUNCTION_DESCRIPTION_END
@@ -793,7 +820,7 @@ Section "Uninstall"
 Retry:
   ClearErrors
   Delete "$SYSDIR\AviSynth.dll"
-  Delete "$SYSDIR\devil.dll"
+  Delete "$SYSDIR\DevIL.dll"
 
   IfErrors 0 Ignore
   MessageBox MB_ABORTRETRYIGNORE|MB_DEFBUTTON2|MB_ICONEXCLAMATION \
@@ -812,12 +839,12 @@ Ignore:
   DeleteRegKey HKCR "avifile\Extensions\AVS"
 
   SetShellVarContext All
-  Delete "$SMPROGRAMS\AviSynth 2.5\*.*"
-  RMDir  "$SMPROGRAMS\AviSynth 2.5"
+  Delete "$SMPROGRAMS\AviSynth+\*.*"
+  RMDir  "$SMPROGRAMS\AviSynth+"
 
   SetShellVarContext Current
-  Delete "$SMPROGRAMS\AviSynth 2.5\*.*"
-  RMDir  "$SMPROGRAMS\AviSynth 2.5"
+  Delete "$SMPROGRAMS\AviSynth+\*.*"
+  RMDir  "$SMPROGRAMS\AviSynth+"
 !echo " -- Supressed"
 !verbose push
 !verbose 2
@@ -831,128 +858,143 @@ Ignore:
   RMDir  "$INSTDIR\Examples"
 
   Delete "$INSTDIR\plugins\DirectShowSource.dll"
-  Delete "$INSTDIR\plugins\TCPDeliver.dll"
+  Delete "$INSTDIR\plugins\ImageSeq.dll"
+  Delete "$INSTDIR\plugins\Shibatch.dll"
+  Delete "$INSTDIR\plugins\TimeStretch.dll"
+  Delete "$INSTDIR\plugins\VDubFilter.dll"
+; Comment out TCPDeliver.dll if/until such time that AviSynth+ provides it too
+;  Delete "$INSTDIR\plugins\TCPDeliver.dll"
+; Comment out VFAPIFilter.dll until it can be built with AviSynth+
+;  Delete "$INSTDIR\plugins\VFAPIFilter.dll"
   Delete "$INSTDIR\plugins\colors_rgb.avsi"
 
-  Delete "$INSTDIR\Docs\English\advancedtopics\*.*"
-  RMDir  "$INSTDIR\Docs\English\advancedtopics"
-  Delete "$INSTDIR\Docs\English\corefilters\*.*"
-  RMDir  "$INSTDIR\Docs\English\corefilters"
-  Delete "$INSTDIR\Docs\English\externalfilters\*.*"
-  RMDir  "$INSTDIR\Docs\English\externalfilters"
-  Delete "$INSTDIR\Docs\English\pictures\advancedtopics\*.*"
-  RMDir  "$INSTDIR\Docs\English\pictures\advancedtopics"
-  Delete "$INSTDIR\Docs\English\pictures\corefilters\*.*"
-  RMDir  "$INSTDIR\Docs\English\pictures\corefilters"
-  Delete "$INSTDIR\Docs\English\pictures\externalfilters\*.*"
-  RMDir  "$INSTDIR\Docs\English\pictures\externalfilters"
-  RMDir  "$INSTDIR\Docs\English\pictures"
-  Delete "$INSTDIR\Docs\English\*.*"
-  RMDir  "$INSTDIR\Docs\English"
+  Delete "$INSTDIR\docs\English\advancedtopics\*.*"
+  RMDir  "$INSTDIR\docs\English\advancedtopics"
+  Delete "$INSTDIR\docs\English\corefilters\*.*"
+  RMDir  "$INSTDIR\docs\English\corefilters"
+  Delete "$INSTDIR\docs\English\externalfilters\*.*"
+  RMDir  "$INSTDIR\docs\English\externalfilters"
+  Delete "$INSTDIR\docs\English\pictures\advancedtopics\*.*"
+  RMDir  "$INSTDIR\docs\English\pictures\advancedtopics"
+  Delete "$INSTDIR\docs\English\pictures\corefilters\*.*"
+  RMDir  "$INSTDIR\docs\English\pictures\corefilters"
+  Delete "$INSTDIR\docs\English\pictures\externalfilters\*.*"
+  RMDir  "$INSTDIR\docs\English\pictures\externalfilters"
+  RMDir  "$INSTDIR\docs\English\pictures"
+  Delete "$INSTDIR\docs\English\*.*"
+  RMDir  "$INSTDIR\docs\English"
 
-  Delete "$INSTDIR\Docs\Czech\advancedtopics\*.*"
-  RMDir  "$INSTDIR\Docs\Czech\advancedtopics"
-  Delete "$INSTDIR\Docs\Czech\corefilters\*.*"
-  RMDir  "$INSTDIR\Docs\Czech\corefilters"
-  Delete "$INSTDIR\Docs\Czech\externalfilters\*.*"
-  RMDir  "$INSTDIR\Docs\Czech\externalfilters"
-  Delete "$INSTDIR\Docs\Czech\pictures\advancedtopics\*.*"
-  RMDir  "$INSTDIR\Docs\Czech\pictures\advancedtopics"
-  Delete "$INSTDIR\Docs\Czech\pictures\corefilters\*.*"
-  RMDir  "$INSTDIR\Docs\Czech\pictures\corefilters"
-  RMDir  "$INSTDIR\Docs\Czech\pictures"
-  Delete "$INSTDIR\Docs\Czech\*.*"
-  RMDir  "$INSTDIR\Docs\Czech"
+  Delete "$INSTDIR\docs\Czech\advancedtopics\*.*"
+  RMDir  "$INSTDIR\docs\Czech\advancedtopics"
+  Delete "$INSTDIR\docs\Czech\corefilters\*.*"
+  RMDir  "$INSTDIR\docs\Czech\corefilters"
+  Delete "$INSTDIR\docs\Czech\externalfilters\*.*"
+  RMDir  "$INSTDIR\docs\Czech\externalfilters"
+  Delete "$INSTDIR\docs\Czech\pictures\advancedtopics\*.*"
+  RMDir  "$INSTDIR\docs\Czech\pictures\advancedtopics"
+  Delete "$INSTDIR\docs\Czech\pictures\corefilters\*.*"
+  RMDir  "$INSTDIR\docs\Czech\pictures\corefilters"
+  RMDir  "$INSTDIR\docs\Czech\pictures"
+  Delete "$INSTDIR\docs\Czech\*.*"
+  RMDir  "$INSTDIR\docs\Czech"
 
-  Delete "$INSTDIR\Docs\German\corefilters\*.*"
-  RMDir  "$INSTDIR\Docs\German\corefilters"
-  Delete "$INSTDIR\Docs\German\externalfilters\*.*"
-  RMDir  "$INSTDIR\Docs\German\externalfilters"
-  Delete "$INSTDIR\Docs\German\*.*"
-  RMDir  "$INSTDIR\Docs\German"
+  Delete "$INSTDIR\docs\German\corefilters\*.*"
+  RMDir  "$INSTDIR\docs\German\corefilters"
+  Delete "$INSTDIR\docs\German\externalfilters\*.*"
+  RMDir  "$INSTDIR\docs\German\externalfilters"
+  Delete "$INSTDIR\docs\German\*.*"
+  RMDir  "$INSTDIR\docs\German"
 
-  Delete "$INSTDIR\Docs\French\corefilters\*.*"
-  RMDir  "$INSTDIR\Docs\French\corefilters"
-  Delete "$INSTDIR\Docs\French\*.*"
-  RMDir  "$INSTDIR\Docs\French"
+  Delete "$INSTDIR\docs\French\corefilters\*.*"
+  RMDir  "$INSTDIR\docs\French\corefilters"
+  Delete "$INSTDIR\docs\French\*.*"
+  RMDir  "$INSTDIR\docs\French"
 
-  Delete "$INSTDIR\Docs\Italian\corefilters\*.*"
-  RMDir  "$INSTDIR\Docs\Italian\corefilters"
-  Delete "$INSTDIR\Docs\Italian\externalfilters\*.*"
-  RMDir  "$INSTDIR\Docs\Italian\externalfilters"
-  Delete "$INSTDIR\Docs\Italian\pictures\corefilters\*.*"
-  RMDir  "$INSTDIR\Docs\Italian\pictures\corefilters"
-  RMDir  "$INSTDIR\Docs\Italian\pictures"
-  Delete "$INSTDIR\Docs\Italian\*.*"
-  RMDir  "$INSTDIR\Docs\Italian"
+  Delete "$INSTDIR\docs\Italian\corefilters\*.*"
+  RMDir  "$INSTDIR\docs\Italian\corefilters"
+  Delete "$INSTDIR\docs\Italian\externalfilters\*.*"
+  RMDir  "$INSTDIR\docs\Italian\externalfilters"
+  Delete "$INSTDIR\docs\Italian\pictures\corefilters\*.*"
+  RMDir  "$INSTDIR\docs\Italian\pictures\corefilters"
+  RMDir  "$INSTDIR\docs\Italian\pictures"
+  Delete "$INSTDIR\docs\Italian\*.*"
+  RMDir  "$INSTDIR\docs\Italian"
 
-  Delete "$INSTDIR\Docs\Japanese\advancedtopics\*.*"
-  RMDir  "$INSTDIR\Docs\Japanese\advancedtopics"
-  Delete "$INSTDIR\Docs\Japanese\corefilters\*.*"
-  RMDir  "$INSTDIR\Docs\Japanese\corefilters"
-  Delete "$INSTDIR\Docs\Japanese\externalfilters\*.*"
-  RMDir  "$INSTDIR\Docs\Japanese\externalfilters"
-  Delete "$INSTDIR\Docs\Japanese\pictures\advancedtopics\*.*"
-  RMDir  "$INSTDIR\Docs\Japanese\pictures\advancedtopics"
-  Delete "$INSTDIR\Docs\Japanese\pictures\corefilters\*.*"
-  RMDir  "$INSTDIR\Docs\Japanese\pictures\corefilters"
-  Delete "$INSTDIR\Docs\Japanese\pictures\externalfilters\*.*"
-  RMDir  "$INSTDIR\Docs\Japanese\pictures\externalfilters"
-  RMDir  "$INSTDIR\Docs\Japanese\pictures"
-  Delete "$INSTDIR\Docs\Japanese\*.*"
-  RMDir  "$INSTDIR\Docs\Japanese"
+  Delete "$INSTDIR\docs\Japanese\advancedtopics\*.*"
+  RMDir  "$INSTDIR\docs\Japanese\advancedtopics"
+  Delete "$INSTDIR\docs\Japanese\corefilters\*.*"
+  RMDir  "$INSTDIR\docs\Japanese\corefilters"
+  Delete "$INSTDIR\docs\Japanese\externalfilters\*.*"
+  RMDir  "$INSTDIR\docs\Japanese\externalfilters"
+  Delete "$INSTDIR\docs\Japanese\pictures\advancedtopics\*.*"
+  RMDir  "$INSTDIR\docs\Japanese\pictures\advancedtopics"
+  Delete "$INSTDIR\docs\Japanese\pictures\corefilters\*.*"
+  RMDir  "$INSTDIR\docs\Japanese\pictures\corefilters"
+  Delete "$INSTDIR\docs\Japanese\pictures\externalfilters\*.*"
+  RMDir  "$INSTDIR\docs\Japanese\pictures\externalfilters"
+  RMDir  "$INSTDIR\docs\Japanese\pictures"
+  Delete "$INSTDIR\docs\Japanese\*.*"
+  RMDir  "$INSTDIR\docs\Japanese"
 
-  Delete "$INSTDIR\Docs\Polish\corefilters\*.*"
-  RMDir  "$INSTDIR\Docs\Polish\corefilters"
-  Delete "$INSTDIR\Docs\Polish\externalfilters\*.*"
-  RMDir  "$INSTDIR\Docs\Polish\externalfilters"
-  Delete "$INSTDIR\Docs\Polish\*.*"
-  RMDir  "$INSTDIR\Docs\Polish"
+  Delete "$INSTDIR\docs\Polish\corefilters\*.*"
+  RMDir  "$INSTDIR\docs\Polish\corefilters"
+  Delete "$INSTDIR\docs\Polish\externalfilters\*.*"
+  RMDir  "$INSTDIR\docs\Polish\externalfilters"
+  Delete "$INSTDIR\docs\Polish\*.*"
+  RMDir  "$INSTDIR\docs\Polish"
 
-  Delete "$INSTDIR\Docs\Portuguese\advancedtopics\*.*"
-  RMDir  "$INSTDIR\Docs\Portuguese\advancedtopics"
-  Delete "$INSTDIR\Docs\Portuguese\corefilters\*.*"
-  RMDir  "$INSTDIR\Docs\Portuguese\corefilters"
-  Delete "$INSTDIR\Docs\Portuguese\externalfilters\*.*"
-  RMDir  "$INSTDIR\Docs\Portuguese\externalfilters"
-  Delete "$INSTDIR\Docs\Portuguese\pictures\advancedtopics\*.*"
-  RMDir  "$INSTDIR\Docs\Portuguese\pictures\advancedtopics"
-  Delete "$INSTDIR\Docs\Portuguese\pictures\corefilters\*.*"
-  RMDir  "$INSTDIR\Docs\Portuguese\pictures\corefilters"
-  Delete "$INSTDIR\Docs\Portuguese\pictures\externalfilters\*.*"
-  RMDir  "$INSTDIR\Docs\Portuguese\pictures\externalfilters"
-  RMDir  "$INSTDIR\Docs\Portuguese\pictures"
-  Delete "$INSTDIR\Docs\Portuguese\*.*"
-  RMDir  "$INSTDIR\Docs\Portuguese"
+  Delete "$INSTDIR\docs\Portuguese\advancedtopics\*.*"
+  RMDir  "$INSTDIR\docs\Portuguese\advancedtopics"
+  Delete "$INSTDIR\docs\Portuguese\corefilters\*.*"
+  RMDir  "$INSTDIR\docs\Portuguese\corefilters"
+  Delete "$INSTDIR\docs\Portuguese\externalfilters\*.*"
+  RMDir  "$INSTDIR\docs\Portuguese\externalfilters"
+  Delete "$INSTDIR\docs\Portuguese\pictures\advancedtopics\*.*"
+  RMDir  "$INSTDIR\docs\Portuguese\pictures\advancedtopics"
+  Delete "$INSTDIR\docs\Portuguese\pictures\corefilters\*.*"
+  RMDir  "$INSTDIR\docs\Portuguese\pictures\corefilters"
+  Delete "$INSTDIR\docs\Portuguese\pictures\externalfilters\*.*"
+  RMDir  "$INSTDIR\docs\Portuguese\pictures\externalfilters"
+  RMDir  "$INSTDIR\docs\Portuguese\pictures"
+  Delete "$INSTDIR\docs\Portuguese\*.*"
+  RMDir  "$INSTDIR\docs\Portuguese"
 
-  Delete "$INSTDIR\Docs\Russian\advancedtopics\*.*"
-  RMDir  "$INSTDIR\Docs\Russian\advancedtopics"
-  Delete "$INSTDIR\Docs\Russian\corefilters\*.*"
-  RMDir  "$INSTDIR\Docs\Russian\corefilters"
-  Delete "$INSTDIR\Docs\Russian\externalfilters\*.*"
-  RMDir  "$INSTDIR\Docs\Russian\externalfilters"
-  Delete "$INSTDIR\Docs\Russian\pictures\advancedtopics\*.*"
-  RMDir  "$INSTDIR\Docs\Russian\pictures\advancedtopics"
-  Delete "$INSTDIR\Docs\Russian\pictures\corefilters\*.*"
-  RMDir  "$INSTDIR\Docs\Russian\pictures\corefilters"
-  Delete "$INSTDIR\Docs\Russian\pictures\externalfilters\*.*"
-  RMDir  "$INSTDIR\Docs\Russian\pictures\externalfilters"
-  RMDir  "$INSTDIR\Docs\Russian\pictures"
-  Delete "$INSTDIR\Docs\Russian\*.*"
-  RMDir  "$INSTDIR\Docs\Russian"
+  Delete "$INSTDIR\docs\Russian\advancedtopics\*.*"
+  RMDir  "$INSTDIR\docs\Russian\advancedtopics"
+  Delete "$INSTDIR\docs\Russian\corefilters\*.*"
+  RMDir  "$INSTDIR\docs\Russian\corefilters"
+  Delete "$INSTDIR\docs\Russian\externalfilters\*.*"
+  RMDir  "$INSTDIR\docs\Russian\externalfilters"
+  Delete "$INSTDIR\docs\Russian\pictures\advancedtopics\*.*"
+  RMDir  "$INSTDIR\docs\Russian\pictures\advancedtopics"
+  Delete "$INSTDIR\docs\Russian\pictures\corefilters\*.*"
+  RMDir  "$INSTDIR\docs\Russian\pictures\corefilters"
+  Delete "$INSTDIR\docs\Russian\pictures\externalfilters\*.*"
+  RMDir  "$INSTDIR\docs\Russian\pictures\externalfilters"
+  RMDir  "$INSTDIR\docs\Russian\pictures"
+  Delete "$INSTDIR\docs\Russian\*.*"
+  RMDir  "$INSTDIR\docs\Russian"
 
-  Delete "$INSTDIR\Docs\*.css"
-  RMDir  "$INSTDIR\Docs"
+  Delete "$INSTDIR\docs\*.*"
+  RMDir  "$INSTDIR\docs"
 
   Delete "$INSTDIR\Extras\Avisynth.exp"
   Delete "$INSTDIR\Extras\Avisynth.lib"
   Delete "$INSTDIR\Extras\Avisynth.map"
   Delete "$INSTDIR\Extras\DirectShowSource.map"
-  Delete "$INSTDIR\Extras\TCPDeliver.map"
+; Comment out TCPDeliver.map if/until such time that AviSynth+ provides it too
+;  Delete "$INSTDIR\Extras\TCPDeliver.map"
+  Delete "$INSTDIR\Extras\ImageSeq.map"
+  Delete "$INSTDIR\Extras\Shibatch.map"
+  Delete "$INSTDIR\Extras\TimeStretch.map"
+  Delete "$INSTDIR\Extras\VDubFilter.map"
+; Comment out VFAPIFilter.dll until it can be built with AviSynth+
+;  Delete "$INSTDIR\Extras\VFAPIFilter.map"
   RMDir  "$INSTDIR\Extras"
 
-  Delete "$INSTDIR\FilterSDK\include\avisynth.h"
-  Delete "$INSTDIR\FilterSDK\include\avisynth_c.h"
+  Delete "$INSTDIR\FilterSDK\include\avs\*.*"
+  RMDir  "$INSTDIR\FilterSDK\include\avs"
+  Delete "$INSTDIR\FilterSDK\include\*.*"
   RMDir  "$INSTDIR\FilterSDK\include"
   Delete "$INSTDIR\FilterSDK\Pictures\*.*"
   RMDir  "$INSTDIR\FilterSDK\Pictures"
