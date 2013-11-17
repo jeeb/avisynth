@@ -1,7 +1,11 @@
+!include "x64.nsh"
+!include "LogicLib.nsh"
 !packhdr tempfile.exe "upx --best --q tempfile.exe"
 
-; Set this path to your CMake's build directory 
-!DEFINE BUILD_DIR "..\..\build-vs2012"
+; Set these paths to your CMake's build directory 
+!DEFINE BUILD32_DIR "..\..\build-vs2012-x86"
+!DEFINE BUILD64_DIR "..\..\build-vs2012-x64"
+
 
 !DEFINE ISSUE 5
 !DEFINE VERSION 2.6.0
@@ -9,6 +13,23 @@
 !DEFINE /date DATE "%y%m%d"
 
 !DEFINE AVS_DefaultLicenceFile "gpl.txt"
+
+;----------------------------------
+
+; Macro to ease conditionally accessing the file system and 
+; registry on 64-bit systems
+!macro If_X64
+${If} ${RunningX64}
+  ${DisableX64FSRedirection}
+  SetRegView 64
+!macroend
+!macro End_X64
+  SetRegView 32
+  ${EnableX64FSRedirection}
+${EndIf}
+!macroend
+!define If_X64 "!insertmacro If_X64"
+!define End_X64 "!insertmacro End_X64"
 
 ;----------------------------------
 
@@ -223,24 +244,37 @@ InstType $(AVS_Standalone)
 InstType $(AVS_Full)
 
 Var AdminInstall
-
-Subsection "!$(Frameserving_Text)" Frameserving
-
-Section $(SystemInstall_Text) SystemInstall
+Var PlugDir25_x86
+Var PlugDirPlus_x86
+Var PlugDir25_x64
+Var PlugDirPlus_x64
+Section "!$(Frameserving_Text)" Frameserving
   SectionIn 1 2 4 RO
 
   StrCpy $AdminInstall "Yes"
 
   ClearErrors
+ 
+  ; -------------------------------------------------------
+  ; Install system files
+  ; -------------------------------------------------------
   SetOutPath $SYSDIR
-  ${File} "${BUILD_DIR}\Output\AviSynth.dll"
-  ${File} "${BUILD_DIR}\Output\system\DevIL.dll"
+  ${File} "${BUILD32_DIR}\Output\AviSynth.dll"
+  ${File} "${BUILD32_DIR}\Output\system\DevIL.dll"
+  ${If_X64}
+    ${File} "${BUILD64_DIR}\Output\AviSynth.dll"
+    ${File} "${BUILD64_DIR}\Output\system\DevIL.dll"
+  ${End_X64}
    
 IfErrors 0 dll_ok
   MessageBox MB_OK $(InUseMsg_Text)
   Abort
 
 dll_ok:
+
+  ; -------------------------------------------------------
+  ; Install licence
+  ; -------------------------------------------------------
   SetOutPath $INSTDIR
   ${File} ${AVS_DefaultLicenceFile}
   ${File} "lgpl_for_used_libs.txt"
@@ -248,29 +282,56 @@ dll_ok:
   SetOutPath "$INSTDIR\License Translations"
   ${File} "gpl-*.txt"
 
-  ReadRegStr $0 HKLM "SOFTWARE\AviSynth" "PluginDir2_5"
-  ReadRegStr $1 HKLM "SOFTWARE\AviSynth" "PluginDir+"
-StrCmp "$0" "" 0 Plugin_exists
-  CreateDirectory "$INSTDIR\plugins"
-  StrCpy $0 "$INSTDIR\plugins"
-  CreateDirectory "$INSTDIR\plugins+"
-  StrCpy $1 "$INSTDIR\plugins+"
-
-Plugin_exists:
+  ; -------------------------------------------------------
+  ; Create plugin directories
+  ; -------------------------------------------------------
+  ReadRegStr $PlugDir25_x86 HKLM "SOFTWARE\AviSynth" "PluginDir2_5"
+  ReadRegStr $PlugDirPlus_x86 HKLM "SOFTWARE\AviSynth" "PluginDir+"
+  ${If_X64}
+    ReadRegStr $PlugDir25_x64 HKLM "SOFTWARE\AviSynth" "PluginDir2_5"
+    ReadRegStr $PlugDirPlus_x64 HKLM "SOFTWARE\AviSynth" "PluginDir+"
+  ${End_X64}
+  
+  ${If} $PlugDir25_x86 == ""
+    CreateDirectory "$INSTDIR\plugins"
+    StrCpy $PlugDir25_x86 "$INSTDIR\plugins"
+  ${EndIf}
+  ${If} $PlugDirPlus_x86 == ""
+    CreateDirectory "$INSTDIR\plugins+"
+    StrCpy $PlugDirPlus_x86 "$INSTDIR\plugins+"
+  ${EndIf}
+  ${If} $PlugDir25_x64 == ""
+    StrCpy $PlugDir25_x64 "$INSTDIR\plugins64"
+    CreateDirectory "$PlugDir25_x64"
+  ${EndIf}
+  ${If} $PlugDirPlus_x64 == ""
+    StrCpy $PlugDirPlus_x64 "$INSTDIR\plugins64+"
+    CreateDirectory "$PlugDirPlus_x64"
+  ${EndIf}
   ClearErrors
-  SetOutPath $0
-
-  ${File} "${BUILD_DIR}\Output\plugins\DirectShowSource.dll"
-  ${File} "${BUILD_DIR}\Output\plugins\ImageSeq.dll"
-  ${File} "${BUILD_DIR}\Output\plugins\Shibatch.dll"
-  ${File} "${BUILD_DIR}\Output\plugins\TimeStretch.dll"
-  ${File} "${BUILD_DIR}\Output\plugins\VDubFilter.dll"
-; Comment out TCPDeliver.dll if/until such time that AviSynth+ provides it too
-;  ${File} "..\plugins\TCPDeliver\TCPDeliver.dll"
-; Comment out VFAPIFilter.dll until it can be built with AviSynth+
-;  ${File} "..\plugins\VFAPIFilter\VFAPIFilter.dll"
+  
+  ; -------------------------------------------------------
+  ; Install plugins
+  ; -------------------------------------------------------
+  SetOutPath $PlugDir25_x86
+  ${File} "${BUILD32_DIR}\Output\plugins\DirectShowSource.dll"
+  ${File} "${BUILD32_DIR}\Output\plugins\ImageSeq.dll"
+  ${File} "${BUILD32_DIR}\Output\plugins\Shibatch.dll"
+  ${File} "${BUILD32_DIR}\Output\plugins\TimeStretch.dll"
+  ${File} "${BUILD32_DIR}\Output\plugins\VDubFilter.dll"
+; ${File} "${BUILD32_DIR}\Output\plugins\TCPDeliver.dll"
+; ${File} "${BUILD32_DIR}\Output\plugins\VFAPIFilter.dll"
   ${File} "ColorPresets\colors_rgb.avsi"
-
+  SetOutPath $PlugDir25_x64
+  ${File} "${BUILD64_DIR}\Output\plugins\DirectShowSource.dll"
+  ${File} "${BUILD64_DIR}\Output\plugins\ImageSeq.dll"
+  ${File} "${BUILD64_DIR}\Output\plugins\Shibatch.dll"
+  ${File} "${BUILD64_DIR}\Output\plugins\TimeStretch.dll"
+  ${File} "${BUILD64_DIR}\Output\plugins\VDubFilter.dll"
+; ${File} "${BUILD64_DIR}\Output\plugins\TCPDeliver.dll"
+; ${File} "${BUILD64_DIR}\Output\plugins\VFAPIFilter.dll"
+  ${File} "ColorPresets\colors_rgb.avsi"
+  
 IfErrors 0 plug_ok
   MessageBox MB_OK $(PlugDir_Text)
   Abort
@@ -278,9 +339,16 @@ IfErrors 0 plug_ok
 plug_ok:
   ClearErrors
   WriteRegStr HKLM "SOFTWARE\AviSynth" "" "$INSTDIR"
-  WriteRegStr HKLM "SOFTWARE\AviSynth" "PluginDir2_5" "$0"
-  WriteRegStr HKLM "SOFTWARE\AviSynth" "PluginDir+" "$1"
+  WriteRegStr HKLM "SOFTWARE\AviSynth" "PluginDir2_5" "$PlugDir25_x86"
+  WriteRegStr HKLM "SOFTWARE\AviSynth" "PluginDir+" "$PlugDirPlus_x86"
+  ${If_X64}
+    WriteRegStr HKLM "SOFTWARE\AviSynth" "PluginDir2_5" "$PlugDir25_x64"
+    WriteRegStr HKLM "SOFTWARE\AviSynth" "PluginDir+" "$PlugDirPlus_x64"
+  ${End_X64}
 
+  ; -------------------------------------------------------
+  ; Write uninstall information
+  ; -------------------------------------------------------
   WriteRegStr HKLM "SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\AviSynth" "DisplayName" "AviSynth+ 2.6"
   WriteRegStr HKLM "SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\AviSynth" "UninstallString" '"$INSTDIR\Uninstall.exe"'
 ;  WriteRegStr HKLM "SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\AviSynth" "Publisher" "GPL Public release."
@@ -315,6 +383,10 @@ IfErrors 0 mreg_ok
 
 mreg_ok:
   ClearErrors
+
+  ; -------------------------------------------------------
+  ; Register frameserver
+  ; -------------------------------------------------------
   WriteRegStr HKCR "CLSID\{E6D6B700-124D-11D4-86F3-DB80AFD98778}" "" "AviSynth"
   WriteRegStr HKCR "CLSID\{E6D6B700-124D-11D4-86F3-DB80AFD98778}\InProcServer32" "" "AviSynth.dll"
   WriteRegStr HKCR "CLSID\{E6D6B700-124D-11D4-86F3-DB80AFD98778}\InProcServer32" "ThreadingModel" "Apartment"
@@ -337,7 +409,9 @@ IfErrors 0 creg_ok
   Abort
 
 creg_ok:
-; These bits are for everybody
+  ; -------------------------------------------------------
+  ; Create Start Menu shortcuts
+  ; -------------------------------------------------------
   SetShellVarContext All
   CreateDirectory  "$SMPROGRAMS\AviSynth+"
 
@@ -366,41 +440,6 @@ creg_ok:
   CreateShortCut "$SMPROGRAMS\AviSynth+\$(Start_Uninstall).lnk" "$INSTDIR\Uninstall.exe"
 
 SectionEnd
-
-Section /o  $(StandAlone_Text) StandAlone
-  SectionIn 3 RO
-
-  StrCpy $AdminInstall "No"
-
-  ClearErrors
-  SetOutPath $INSTDIR
-  ${File} "${BUILD_DIR}\Output\AviSynth.dll"
-  ${File} "${BUILD_DIR}\Output\system\DevIL.dll"
-
-  ${File} "Avisynth_Template.reg"
-
-  ${File} ${AVS_DefaultLicenceFile}
-  ${File} "lgpl_for_used_libs.txt"
-
-  SetOutPath "$INSTDIR\License Translations"
-  ${File} "gpl-*.txt"
-
-  SetOutPath "$INSTDIR\Plugins"
-  ${File} "${BUILD_DIR}\Output\plugins\DirectShowSource.dll"
-  ${File} "${BUILD_DIR}\Output\plugins\ImageSeq.dll"
-  ${File} "${BUILD_DIR}\Output\plugins\Shibatch.dll"
-  ${File} "${BUILD_DIR}\Output\plugins\TimeStretch.dll"
-  ${File} "${BUILD_DIR}\Output\plugins\VDubFilter.dll"
-; Comment out TCPDeliver.dll if/until such time that AviSynth+ provides it too
-;  ${File} "..\plugins\TCPDeliver\TCPDeliver.dll"
-; Comment out VFAPIFilter.dll until it can be built with AviSynth+
-;  ${File} "..\plugins\VFAPIFilter\VFAPIFilter.dll"
-  ${File} "ColorPresets\colors_rgb.avsi"
-
-SectionEnd
-
-Subsectionend
-
 
 Subsection  $(Documentation_Text) Documentation
 
@@ -788,8 +827,7 @@ FunctionEnd
   !insertmacro MUI_FUNCTION_DESCRIPTION_BEGIN
 
   !insertmacro MUI_DESCRIPTION_TEXT ${Frameserving}       $(Frameserving_Bubble)
-  !insertmacro MUI_DESCRIPTION_TEXT ${SystemInstall}      $(SystemInstall_Bubble)
-  !insertmacro MUI_DESCRIPTION_TEXT ${StandAlone}         $(StandAlone_Bubble)
+;  !insertmacro MUI_DESCRIPTION_TEXT ${SystemInstall}      $(SystemInstall_Bubble)
   !insertmacro MUI_DESCRIPTION_TEXT ${Documentation}      $(Documentation_Bubble)
   !insertmacro MUI_DESCRIPTION_TEXT ${English}            $(English_Bubble)
   !insertmacro MUI_DESCRIPTION_TEXT ${Czech}              $(Czech_Bubble)
@@ -825,6 +863,10 @@ Retry:
   ClearErrors
   Delete "$SYSDIR\AviSynth.dll"
   Delete "$SYSDIR\DevIL.dll"
+  ${If_X64}
+    Delete "$SYSDIR\AviSynth.dll"
+    Delete "$SYSDIR\DevIL.dll"
+  ${End_X64}
 
   IfErrors 0 Ignore
   MessageBox MB_ABORTRETRYIGNORE|MB_DEFBUTTON2|MB_ICONEXCLAMATION \
@@ -866,11 +908,17 @@ Ignore:
   Delete "$INSTDIR\plugins\Shibatch.dll"
   Delete "$INSTDIR\plugins\TimeStretch.dll"
   Delete "$INSTDIR\plugins\VDubFilter.dll"
-; Comment out TCPDeliver.dll if/until such time that AviSynth+ provides it too
-;  Delete "$INSTDIR\plugins\TCPDeliver.dll"
-; Comment out VFAPIFilter.dll until it can be built with AviSynth+
-;  Delete "$INSTDIR\plugins\VFAPIFilter.dll"
+; Delete "$INSTDIR\plugins\TCPDeliver.dll"
+; Delete "$INSTDIR\plugins\VFAPIFilter.dll"
   Delete "$INSTDIR\plugins\colors_rgb.avsi"
+  Delete "$INSTDIR\plugins64\DirectShowSource.dll"
+  Delete "$INSTDIR\plugins64\ImageSeq.dll"
+  Delete "$INSTDIR\plugins64\Shibatch.dll"
+  Delete "$INSTDIR\plugins64\TimeStretch.dll"
+  Delete "$INSTDIR\plugins64\VDubFilter.dll"
+; Delete "$INSTDIR\plugins64\TCPDeliver.dll"
+; Delete "$INSTDIR\plugins64\VFAPIFilter.dll"
+  Delete "$INSTDIR\plugins64\colors_rgb.avsi"
 
   Delete "$INSTDIR\docs\English\advancedtopics\*.*"
   RMDir  "$INSTDIR\docs\English\advancedtopics"
@@ -982,18 +1030,16 @@ Ignore:
   Delete "$INSTDIR\docs\*.*"
   RMDir  "$INSTDIR\docs"
 
-  Delete "$INSTDIR\Extras\Avisynth.exp"
-  Delete "$INSTDIR\Extras\Avisynth.lib"
-  Delete "$INSTDIR\Extras\Avisynth.map"
-  Delete "$INSTDIR\Extras\DirectShowSource.map"
-; Comment out TCPDeliver.map if/until such time that AviSynth+ provides it too
-;  Delete "$INSTDIR\Extras\TCPDeliver.map"
-  Delete "$INSTDIR\Extras\ImageSeq.map"
-  Delete "$INSTDIR\Extras\Shibatch.map"
-  Delete "$INSTDIR\Extras\TimeStretch.map"
-  Delete "$INSTDIR\Extras\VDubFilter.map"
-; Comment out VFAPIFilter.dll until it can be built with AviSynth+
-;  Delete "$INSTDIR\Extras\VFAPIFilter.map"
+  ;Delete "$INSTDIR\Extras\Avisynth.exp"
+  ;Delete "$INSTDIR\Extras\Avisynth.lib"
+  ;Delete "$INSTDIR\Extras\Avisynth.map"
+  ;Delete "$INSTDIR\Extras\DirectShowSource.map"
+  ;Delete "$INSTDIR\Extras\TCPDeliver.map"
+  ;Delete "$INSTDIR\Extras\ImageSeq.map"
+  ;Delete "$INSTDIR\Extras\Shibatch.map"
+  ;Delete "$INSTDIR\Extras\TimeStretch.map"
+  ;Delete "$INSTDIR\Extras\VDubFilter.map"
+  ;Delete "$INSTDIR\Extras\VFAPIFilter.map"
   RMDir  "$INSTDIR\Extras"
 
   Delete "$INSTDIR\FilterSDK\include\avs\*.*"
@@ -1012,6 +1058,9 @@ Ignore:
 IfFileExists $INSTDIR 0 Removed
     MessageBox MB_YESNO|MB_ICONQUESTION|MB_DEFBUTTON2 $(RemoveReg_Text) IDNO Removed
     DeleteRegKey HKLM "Software\AviSynth"
+    ${If_X64}
+      DeleteRegKey HKLM "Software\AviSynth"
+    ${End_X64}
 Removed:
 
 SectionEnd
