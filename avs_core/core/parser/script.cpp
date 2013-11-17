@@ -38,12 +38,12 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cmath>
+#include <vector>
 #include <io.h>
 #include <avs/win.h>
 #include <avs/minmax.h>
 #include <new>
 #include "../internal.h"
-#include <boost/scoped_array.hpp>
 
 
 /********************************************************************
@@ -405,15 +405,15 @@ AVSValue Import(AVSValue args, void*, IScriptEnvironment* env)
     CWDChanger change_cwd(full_path);
 
     DWORD size = GetFileSize(h, NULL);
-    boost::scoped_array<char> buf(new char[size+1]);
-    BOOL status = ReadFile(h, buf.get(), size, &size, NULL);
+    std::vector<char> buf(size+1, 0);
+    BOOL status = ReadFile(h, buf.data(), size, &size, NULL);
     CloseHandle(h);
     if (!status)
       env->ThrowError("Import: unable to read \"%s\"", script_name);
 
     // Give Unicode smartarses a hint they need to use ANSI encoding
     if (size >= 2) {
-      unsigned char* q = reinterpret_cast<unsigned char*>(buf.get());
+      unsigned char* q = reinterpret_cast<unsigned char*>(buf.data());
 
       if ((q[0]==0xFF && q[1]==0xFE) || (q[0]==0xFE && q[1]==0xFF))
           env->ThrowError("Import: Unicode source files are not supported, "
@@ -425,7 +425,7 @@ AVSValue Import(AVSValue args, void*, IScriptEnvironment* env)
     }
 
     buf[size] = 0;
-    AVSValue eval_args[] = { buf.get(), script_name };
+    AVSValue eval_args[] = { buf.data(), script_name };
     result = env->Invoke("Eval", AVSValue(eval_args, 2));
   }
 

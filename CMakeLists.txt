@@ -29,7 +29,7 @@ IF( MSVC_IDE )  # Check for Visual Studio
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /EHa")
 
   # Prevent VC++ from complaining about not using MS-specific functions
-  add_definitions("/D _CRT_SECURE_NO_WARNINGS")
+  add_definitions("/D _CRT_SECURE_NO_WARNINGS /D _SECURE_SCL=0 /D _ITERATOR_DEBUG_LEVEL=0")
   
   # Set additional optimization flags
   set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} /Oy /Ot /GS-")

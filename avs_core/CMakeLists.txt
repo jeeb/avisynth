@@ -21,11 +21,6 @@ target_compile_definitions("AvsCore" PRIVATE BUILDING_AVSCORE)
 # Windows DLL dependencies 
 target_link_libraries("AvsCore" "Winmm.lib" "Vfw32.lib" "Msacm32.lib" "Gdi32.lib" "User32.lib" "Advapi32.lib" "Ole32.lib")
 
-# Add Boost
-set(BOOST_INCLUDEDIR ${CMAKE_CURRENT_SOURCE_DIR}/boost/include)
-FIND_PACKAGE(Boost 1.54)
-include_directories(${Boost_INCLUDE_DIR})
-
 # Add source dependencies
 if( CMAKE_SIZEOF_VOID_P EQUAL 4 ) # 32-bit
   add_subdirectory("softwire")

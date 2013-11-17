@@ -35,7 +35,7 @@
 
 #include "strings.h"
 #include <avisynth.h>
-#include <boost/unordered_map.hpp>
+#include <unordered_map>
 
 struct iequal_to_ascii
 {
@@ -67,7 +67,7 @@ private:
   VarTable* const dynamic_parent;
   VarTable* const lexical_parent;
 
-  typedef boost::unordered_map<const char*, AVSValue, ihash_ascii, iequal_to_ascii> ValueMap;
+  typedef std::unordered_map<const char*, AVSValue, ihash_ascii, iequal_to_ascii> ValueMap;
   ValueMap variables;
 
 public:

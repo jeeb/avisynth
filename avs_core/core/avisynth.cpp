@@ -42,7 +42,7 @@
 #include <avs/cpuid.h>
 #include "bitblt.h"
 #include "PluginManager.h"
-#include <boost/scoped_array.hpp>
+#include <vector>
 
 #include <avs/win.h>
 #include <objbase.h>
@@ -1326,11 +1326,11 @@ bool __stdcall ScriptEnvironment::Invoke(AVSValue *result, const char* name, con
     ThrowError("Too many arguments passed to function (max. is %d)", ScriptParser::max_args);
 
   // flatten unnamed args
-  boost::scoped_array<AVSValue> args2(new AVSValue[args2_count]);
-  Flatten(args, args2.get(), 0, arg_names);
+  std::vector<AVSValue> args2(args2_count, AVSValue());
+  Flatten(args, args2.data(), 0, arg_names);
 
   // find matching function
-  f = this->Lookup(name, args2.get(), args2_count, strict, args_names_count, arg_names);
+  f = this->Lookup(name, args2.data(), args2_count, strict, args_names_count, arg_names);
   if (!f)
     return false;
 
@@ -1339,7 +1339,7 @@ bool __stdcall ScriptEnvironment::Invoke(AVSValue *result, const char* name, con
   const char* p = f->param_types;
   const size_t maxarg3 = max(args2_count, strlen(p)); // well it can't be any longer than this.
 
-  boost::scoped_array<AVSValue> args3(new AVSValue[maxarg3]);
+  std::vector<AVSValue> args3(maxarg3, AVSValue());
 
   while (*p) {
     if (*p == '[') {
@@ -1355,7 +1355,7 @@ bool __stdcall ScriptEnvironment::Invoke(AVSValue *result, const char* name, con
 
       // Even if the AVSValue below is an array of zero size, we can't skip adding it to args3,
       // because filters like BlankClip might still be expecting it.
-      args3[dst_index++] = AVSValue(size > 0 ? &args2[start] : NULL, size); // can't delete args2 early because of this
+      args3[dst_index++] = AVSValue(size > 0 ? args2.data()+start : NULL, size); // can't delete args2 early because of this
 
       p += 2;
     } else {
@@ -1406,7 +1406,7 @@ success:;
     }
   }
   // ... and we're finally ready to make the call
-  retval = f->apply(AVSValue(args3.get(), args3_count), f->user_data, this);
+  retval = f->apply(AVSValue(args3.data(), args3_count), f->user_data, this);
 
   *result = retval;
   return true;
