@@ -37,60 +37,52 @@
 
 #include <avisynth.h>
 #include "resample_functions.h"
-#include "transform.h"
-#include "../include/avs/alignment.h"
-
-#ifdef X86_32
-#include "../core/softwire_helpers.h"
-#endif
-
-// Intrinsics for SSE4.1, SSSE3, SSE3, SSE2, ISSE and MMX
-#include <smmintrin.h>
 
 // Resizer function pointer
 typedef void (*ResamplerV)(BYTE* dst, const BYTE* src, int dst_pitch, int src_pitch, ResamplingProgram* program, int width, int target_height, const int* pitch_table, const void* storage);
 
-#ifdef X86_32
-class FilteredResizeH : public GenericVideoFilter, public CodeGenerator
-#else
-class FilteredResizeH : public GenericVideoFilter
-#endif
+// Turn function pointer -- copied from turn.h
+typedef void (*TurnFuncPtr) (const BYTE *srcp, BYTE *dstp, int width, int height, int src_pitch, int dst_pitch);
+
 /**
   * Class to resize in the horizontal direction using a specified sampling filter
   * Helper for resample functions
  **/
-{
+class FilteredResizeH : public GenericVideoFilter {
 public:
   FilteredResizeH( PClip _child, double subrange_left, double subrange_width, int target_width, 
                    ResamplingFunction* func, IScriptEnvironment* env );
   virtual ~FilteredResizeH(void);
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
 private:
+  // Resampling
+  ResamplingProgram *resampling_program_luma;
+  ResamplingProgram *resampling_program_chroma;
+  int *src_pitch_table_luma;
+  int *src_pitch_table_chromaU;
+  int *src_pitch_table_chromaV;
+  int src_pitch_luma;
+  int src_pitch_chromaU;
+  int src_pitch_chromaV;
 
-#ifdef X86_32
-  DynamicAssembledCode assemblerY;
-  DynamicAssembledCode assemblerUV;
-  DynamicAssembledCode assemblerY_aligned;
-  DynamicAssembledCode assemblerUV_aligned;
-  DynamicAssembledCode GenerateResizer(int gen_plane, bool source_aligned, IScriptEnvironment* env);
-#endif
-  
-  int* /*const*/ pattern_luma;
-  int* /*const*/ pattern_chroma;
-  int original_width;
+  // Note: these pointer are currently not used; they are used to pass data into run-time resampler.
+  // They are kept because this may be needed later (like when we implemented actual horizontal resizer.)
+  void* filter_storage_luma;
+  void* filter_storage_chroma;
 
-  // Added in avs+
-  short* unpacked_tmp;
-  int*   processed_pattern_luma;
+  BYTE *temp_y_1, *temp_y_2,
+       *temp_u_1, *temp_u_2,
+       *temp_v_1, *temp_v_2;
+  int   temp_y_1_pitch, temp_y_2_pitch,
+        temp_u_1_pitch, temp_u_2_pitch,
+        temp_v_1_pitch, temp_v_2_pitch;
 
-  BYTE *tempY, *tempUV;
-// These must be properly set when running the filter:
-  BYTE *gen_srcp;
-  BYTE *gen_dstp;
-  int gen_src_pitch, gen_dst_pitch;
-// These are used by the filter:
-  int gen_h, gen_x;
-  BYTE* gen_temp_destp;
+  int src_width, src_height, dst_width,  dst_height;
+
+  ResamplerV resampler_luma;
+  ResamplerV resampler_chroma;
+
+  TurnFuncPtr turn_left, turn_right;
 };
 
  
@@ -104,7 +96,7 @@ public:
   virtual ~FilteredResizeV(void);
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
 
-  ResamplerV GetResampler(int CPU, bool aligned, void** storage, ResamplingProgram* program);
+  static ResamplerV FilteredResizeV::GetResampler(int CPU, bool aligned, void*& storage, ResamplingProgram* program);
 
 private:
   ResamplingProgram *resampling_program_luma;
@@ -116,6 +108,8 @@ private:
   int src_pitch_chromaU;
   int src_pitch_chromaV;
 
+  // Note: these pointer are currently not used; they are used to pass data into run-time resampler.
+  // They are kept because this may be needed later (like when we implemented actual horizontal resizer.)
   void* filter_storage_luma_aligned;
   void* filter_storage_luma_unaligned;
   void* filter_storage_chroma_aligned;
