@@ -35,6 +35,7 @@
 // Overlay (c) 2003, 2004 by Klaus Post
 
 #include "overlayfunctions.h"
+#include <emmintrin.h>
 
 
 void OL_BlendLumaImage::BlendImageMask(Image444* base, Image444* overlay, Image444* mask) {
@@ -48,29 +49,32 @@ void OL_BlendLumaImage::BlendImageMask(Image444* base, Image444* overlay, Image4
   int h = base->h();
 
   if (opacity == 256) {
-    for (int y = 0; y < h; y++) {
-      for (int x = 0; x < w; x++) {
-        baseY[x] = (BYTE)(((baseY[x]*(256-maskY[x])) + (ovY[x]*maskY[x]+128))>>8);
-      } // for x
-      baseY += base->pitch;
-
-      ovY += overlay->pitch;
-
-      maskY += mask->pitch;
-    } // for y
+    if (env->GetCPUFlags() & CPUF_SSE2) {
+      overlay_blend_sse2_plane_masked(baseY, ovY, maskY, base->pitch, overlay->pitch, mask->pitch, w, h);
+    } else
+#ifdef X86_32
+    if (env->GetCPUFlags() & CPUF_MMX) {
+      overlay_blend_mmx_plane_masked(baseY, ovY, maskY, base->pitch, overlay->pitch, mask->pitch, w, h);
+      _mm_empty();
+    } else
+#endif
+    {
+      overlay_blend_c_plane_masked(baseY, ovY, maskY, base->pitch, overlay->pitch, mask->pitch, w, h);
+    }
   } else {
-    for (int y = 0; y < h; y++) {
-      for (int x = 0; x < w; x++) {
-        int mY = (opacity*maskY[x])>>8;
-        baseY[x] = (BYTE)((((256-mY)*baseY[x]) + (mY*ovY[x])+128)>>8);
-      }
-      baseY += base->pitch;
-
-      ovY += overlay->pitch;
-
-      maskY += mask->pitch;
-    } // for x
-  } // for y
+    if (env->GetCPUFlags() & CPUF_SSE2) {
+      overlay_blend_sse2_plane_masked_opacity(baseY, ovY, maskY, base->pitch, overlay->pitch, mask->pitch, w, h, opacity);
+    } else
+#ifdef X86_32
+    if (env->GetCPUFlags() & CPUF_MMX) {
+      overlay_blend_mmx_plane_masked_opacity(baseY, ovY, maskY, base->pitch, overlay->pitch, mask->pitch, w, h, opacity);
+      _mm_empty();
+    } else
+#endif
+    {
+      overlay_blend_c_plane_masked_opacity(baseY, ovY, maskY, base->pitch, overlay->pitch, mask->pitch, w, h, opacity);
+    }
+  }
 }
 
 
@@ -85,28 +89,19 @@ void OL_BlendLumaImage::BlendImage(Image444* base, Image444* overlay) {
   if (opacity == 256) {
     env->BitBlt(baseY, base->pitch, ovY, overlay->pitch, w, h);
   } else {
+    if (env->GetCPUFlags() & CPUF_SSE2) {
+      overlay_blend_sse2_plane_opacity(baseY, ovY, base->pitch, overlay->pitch, w, h, opacity);
+    } else
 #ifdef X86_32
-    if (!(w&3) && (env->GetCPUFlags() & CPUF_MMX))
-    {
-      int weight = (opacity*32767+128)>>8;
-      int invweight = 32767-weight;
-
-      mmx_weigh_planar(baseY, ovY, base->pitch, overlay->pitch, w, h, weight, invweight);
-
-    }
-    else
+    if (env->GetCPUFlags() & CPUF_MMX) {
+      overlay_blend_mmx_plane_opacity(baseY, ovY, base->pitch, overlay->pitch, w, h, opacity);
+      _mm_empty();
+    } else
 #endif
     {
-      for (int y = 0; y < h; y++) {
-        for (int x = 0; x < w; x++) {
-          baseY[x] = (BYTE)(((inv_opacity*baseY[x]) + (opacity*ovY[x]+128))>>8);
-        }
-        baseY += base->pitch;
-
-        ovY += overlay->pitch;
-      } // for x
-    } // for y
-  }// if !mmx
+      overlay_blend_c_plane_opacity(baseY, ovY, base->pitch, overlay->pitch, w, h, opacity);
+    }
+  }
 }
 
 
@@ -125,38 +120,38 @@ void OL_BlendChromaImage::BlendImageMask(Image444* base, Image444* overlay, Imag
   int h = base->h();
 
   if (opacity == 256) {
-    for (int y = 0; y < h; y++) {
-      for (int x = 0; x < w; x++) {
-        baseU[x] = (BYTE)(((baseU[x]*(256-maskU[x])) + (ovU[x]*maskU[x]+128))>>8);
-        baseV[x] = (BYTE)(((baseV[x]*(256-maskV[x])) + (ovV[x]*maskV[x]+128))>>8);
-      } // for x
-      baseU += base->pitch;
-      baseV += base->pitch;
-
-      ovU += overlay->pitch;
-      ovV += overlay->pitch;
-
-      maskU += mask->pitch;
-      maskV += mask->pitch;
-    } // for y
+    if (env->GetCPUFlags() & CPUF_SSE2) {
+      overlay_blend_sse2_plane_masked(baseU, ovU, maskU, base->pitch, overlay->pitch, mask->pitch, w, h);
+      overlay_blend_sse2_plane_masked(baseV, ovV, maskV, base->pitch, overlay->pitch, mask->pitch, w, h);
+    } else
+#ifdef X86_32
+    if (env->GetCPUFlags() & CPUF_MMX) {
+      overlay_blend_mmx_plane_masked(baseU, ovU, maskU, base->pitch, overlay->pitch, mask->pitch, w, h);
+      overlay_blend_mmx_plane_masked(baseV, ovV, maskV, base->pitch, overlay->pitch, mask->pitch, w, h);
+      _mm_empty();
+    } else
+#endif
+    {
+      overlay_blend_c_plane_masked(baseU, ovU, maskU, base->pitch, overlay->pitch, mask->pitch, w, h);
+      overlay_blend_c_plane_masked(baseV, ovV, maskV, base->pitch, overlay->pitch, mask->pitch, w, h);
+    }
   } else {
-    for (int y = 0; y < h; y++) {
-      for (int x = 0; x < w; x++) {
-        int mU = (opacity*maskU[x])>>8;
-        int mV = (opacity*maskV[x])>>8;
-        baseU[x] = (BYTE)((((256-mU)*baseU[x]) + (mU*ovU[x])+128)>>8);
-        baseV[x] = (BYTE)((((256-mV)*baseV[x]) + (mV*ovV[x])+128)>>8);
-      }
-      baseU += base->pitch;
-      baseV += base->pitch;
-
-      ovU += overlay->pitch;
-      ovV += overlay->pitch;
-
-      maskU += mask->pitch;
-      maskV += mask->pitch;
-    } // for x
-  } // for y
+    if (env->GetCPUFlags() & CPUF_SSE2) {
+      overlay_blend_sse2_plane_masked_opacity(baseU, ovU, maskU, base->pitch, overlay->pitch, mask->pitch, w, h, opacity);
+      overlay_blend_sse2_plane_masked_opacity(baseV, ovV, maskV, base->pitch, overlay->pitch, mask->pitch, w, h, opacity);
+    } else
+#ifdef X86_32
+    if (env->GetCPUFlags() & CPUF_MMX) {
+      overlay_blend_mmx_plane_masked_opacity(baseU, ovU, maskU, base->pitch, overlay->pitch, mask->pitch, w, h, opacity);
+      overlay_blend_mmx_plane_masked_opacity(baseV, ovV, maskV, base->pitch, overlay->pitch, mask->pitch, w, h, opacity);
+      _mm_empty();
+    } else
+#endif
+    {
+      overlay_blend_c_plane_masked_opacity(baseU, ovU, maskU, base->pitch, overlay->pitch, mask->pitch, w, h, opacity);
+      overlay_blend_c_plane_masked_opacity(baseV, ovV, maskV, base->pitch, overlay->pitch, mask->pitch, w, h, opacity);
+    }
+  }
 }
 
 void OL_BlendChromaImage::BlendImage(Image444* base, Image444* overlay) {
@@ -173,32 +168,21 @@ void OL_BlendChromaImage::BlendImage(Image444* base, Image444* overlay) {
     env->BitBlt(baseU, base->pitch, ovU, overlay->pitch, w, h);
     env->BitBlt(baseV, base->pitch, ovV, overlay->pitch, w, h);
   } else {
-
+    if (env->GetCPUFlags() & CPUF_SSE2) {
+      overlay_blend_sse2_plane_opacity(baseU, ovU, base->pitch, overlay->pitch, w, h, opacity);
+      overlay_blend_sse2_plane_opacity(baseV, ovV, base->pitch, overlay->pitch, w, h, opacity);
+    } else
 #ifdef X86_32
-    if (!(w&3) && (env->GetCPUFlags() & CPUF_MMX)) 
-    {
-      int weight = (opacity*32767+128)>>8;
-      int invweight = 32767-weight;
-
-      mmx_weigh_planar(baseU, ovU, base->pitch, overlay->pitch, w, h, weight, invweight);
-      mmx_weigh_planar(baseV, ovV, base->pitch, overlay->pitch, w, h, weight, invweight);
-
-    }
-    else
+    if (env->GetCPUFlags() & CPUF_MMX) {
+      overlay_blend_mmx_plane_opacity(baseU, ovU, base->pitch, overlay->pitch, w, h, opacity);
+      overlay_blend_mmx_plane_opacity(baseV, ovV, base->pitch, overlay->pitch, w, h, opacity);
+      _mm_empty();
+    } else
 #endif
     {
-      for (int y = 0; y < h; y++) {
-        for (int x = 0; x < w; x++) {
-          baseU[x] = (BYTE)(((inv_opacity*baseU[x]) + (opacity*ovU[x]+128))>>8);
-          baseV[x] = (BYTE)(((inv_opacity*baseV[x]) + (opacity*ovV[x]+128))>>8);
-        }
-        baseU += base->pitch;
-        baseV += base->pitch;
-
-        ovU += overlay->pitch;
-        ovV += overlay->pitch;
-      } // for x
-    } // for y
-  }// if !mmx
+      overlay_blend_c_plane_opacity(baseU, ovU, base->pitch, overlay->pitch, w, h, opacity);
+      overlay_blend_c_plane_opacity(baseV, ovV, base->pitch, overlay->pitch, w, h, opacity);
+    }
+  }
 }
 
