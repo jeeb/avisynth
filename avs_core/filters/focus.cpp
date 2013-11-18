@@ -1152,6 +1152,9 @@ static __forceinline __m128i ts_multiply_repack_sse2(__m128i &src, __m128i &div,
 
 
 static void accumulate_line_sse2(BYTE* c_plane, const BYTE** planeP, int planes, size_t width, int threshold, int div) {
+  __m128i halfdiv_vector = _mm_set1_epi32(16384);
+  __m128i div_vector = _mm_set1_epi16(div);
+
   for (size_t x = 0; x < width; x+=16) {
     __m128i current = _mm_load_si128(reinterpret_cast<const __m128i*>(c_plane+x));
     __m128i zero = _mm_setzero_si128();
@@ -1181,27 +1184,16 @@ static void accumulate_line_sse2(BYTE* c_plane, const BYTE** planeP, int planes,
       high = _mm_adds_epu16(high, add_high);
     }
 
-    __m128i halfdiv_vector = _mm_set1_epi32(16384);
-    __m128i div_vector = _mm_set1_epi16(div);
-
     __m128i low_low   = ts_multiply_repack_sse2(_mm_unpacklo_epi16(low, zero), div_vector, halfdiv_vector, zero);
     __m128i low_high  = ts_multiply_repack_sse2(_mm_unpackhi_epi16(low, zero), div_vector, halfdiv_vector, zero);
     __m128i high_low  = ts_multiply_repack_sse2(_mm_unpacklo_epi16(high, zero), div_vector, halfdiv_vector, zero);
     __m128i high_high = ts_multiply_repack_sse2(_mm_unpackhi_epi16(high, zero), div_vector, halfdiv_vector, zero);
 
-    __m128i mask = _mm_set_epi32(0, 0, 0, 0xFFFF);
-    low_low = _mm_and_si128(low_low, mask);
-    low_high = _mm_and_si128(low_high, mask);
-    high_low = _mm_and_si128(high_low, mask);
+    low = _mm_unpacklo_epi32(low_low, low_high);
+    high = _mm_unpacklo_epi32(high_low, high_high);
 
-    low_high = _mm_slli_si128(low_high, 16);
-    high_low = _mm_slli_si128(high_low, 32);
-    high_high = _mm_slli_si128(high_high, 48);
-
-    __m128i acc = _mm_or_si128(low_low, low_high);
-    acc = _mm_or_si128(acc, high_low);
-    acc = _mm_or_si128(acc, high_high);
-
+    __m128i acc = _mm_unpacklo_epi64(low, high);
+    
     _mm_store_si128(reinterpret_cast<__m128i*>(c_plane+x), acc);
   }
 }
@@ -1218,6 +1210,9 @@ static __forceinline __m64 ts_multiply_repack_mmx(__m64 &src, __m64 &div, __m64 
 
 //thresh and div must always be 16-bit integers. Thresh is 2 packed bytes and div is a single 16-bit number
 static void accumulate_line_mmx(BYTE* c_plane, const BYTE** planeP, int planes, size_t width, int threshold, int div) {
+  __m64 halfdiv_vector = _mm_set1_pi32(16384);
+  __m64 div_vector = _mm_set1_pi16(div);
+
   for (size_t x = 0; x < width; x+=8) {
     __m64 current = *reinterpret_cast<const __m64*>(c_plane+x);
     __m64 zero = _mm_setzero_si64();
@@ -1246,27 +1241,16 @@ static void accumulate_line_mmx(BYTE* c_plane, const BYTE** planeP, int planes, 
       low = _mm_adds_pu16(low, add_low);
       high = _mm_adds_pu16(high, add_high);
     }
-
-    __m64 halfdiv_vector = _mm_set1_pi32(16384);
-    __m64 div_vector = _mm_set1_pi16(div);
     
     __m64 low_low   = ts_multiply_repack_mmx(_mm_unpacklo_pi16(low, zero), div_vector, halfdiv_vector, zero);
     __m64 low_high  = ts_multiply_repack_mmx(_mm_unpackhi_pi16(low, zero), div_vector, halfdiv_vector, zero);
     __m64 high_low  = ts_multiply_repack_mmx(_mm_unpacklo_pi16(high, zero), div_vector, halfdiv_vector, zero);
     __m64 high_high = ts_multiply_repack_mmx(_mm_unpackhi_pi16(high, zero), div_vector, halfdiv_vector, zero);
 
-    __m64 mask = _mm_set_pi32(0, 0xFFFF);
-    low_low = _mm_and_si64(low_low, mask);
-    low_high = _mm_and_si64(low_high, mask);
-    high_low = _mm_and_si64(high_low, mask);
+    low = _mm_unpacklo_pi16(low_low, low_high);
+    high = _mm_unpacklo_pi16(high_low, high_high);
 
-    low_high = _mm_slli_si64(low_high, 16);
-    high_low = _mm_slli_si64(high_low, 32);
-    high_high = _mm_slli_si64(high_high, 48);
-
-    __m64 acc = _mm_or_si64(low_low, low_high);
-    acc = _mm_or_si64(acc, high_low);
-    acc = _mm_or_si64(acc, high_high);
+   __m64 acc = _mm_unpacklo_pi32(low, high);
 
     *reinterpret_cast<__m64*>(c_plane+x) = acc;
   }
@@ -1477,7 +1461,7 @@ PVideoFrame TemporalSoften::GetFrame(int n, IScriptEnvironment* env)
       bool aligned16 = IsPtrAligned(c_plane, 16);
       if ((env->GetCPUFlags() & CPUF_SSE2) && aligned16) {
         for (int i = 0; i < d; ++i) {
-          aligned16 = aligned16 && IsPtrAligned(planes[i], 16);
+          aligned16 = aligned16 && IsPtrAligned(planeP[i], 16);
         }
       }
 
