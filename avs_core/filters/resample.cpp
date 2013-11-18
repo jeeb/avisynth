@@ -82,7 +82,7 @@ __forceinline __m128i simd_load_streaming(const __m128i* adr)
  ***** Vertical Resizer Assembly *******
  ***************************************/
 
-static void resize_v_c_planar_pointresize(BYTE* dst, const BYTE* src, int dst_pitch, int src_pitch, ResamplingProgram* program, int width, int target_height, const int* pitch_table, const void* storage)
+static void resize_v_planar_pointresize(BYTE* dst, const BYTE* src, int dst_pitch, int src_pitch, ResamplingProgram* program, int width, int target_height, const int* pitch_table, const void* storage)
 {
   int filter_size = program->filter_size;
 
@@ -90,64 +90,7 @@ static void resize_v_c_planar_pointresize(BYTE* dst, const BYTE* src, int dst_pi
     int offset = program->pixel_offset[y];
     const BYTE* src_ptr = src + pitch_table[offset];
 
-    for (int x = 0; x < width; x++) {
-      dst[x] = src_ptr[x];
-    }
-
-    dst += dst_pitch;
-  }
-}
-
-#ifdef X86_32
-static void resize_v_mmx_planar_pointresize(BYTE* dst, const BYTE* src, int dst_pitch, int src_pitch, ResamplingProgram* program, int width, int target_height, const int* pitch_table, const void* storage)
-{
-  int filter_size = program->filter_size;
-
-  int wMod8 = (width / 8) * 8;
-
-  for (int y = 0; y < target_height; y++) {
-    int offset = program->pixel_offset[y];
-    const BYTE* src_ptr = src + pitch_table[offset];
-
-    // Copy 8-pixel/loop
-    for (int x = 0; x < wMod8; x+=8) {
-      __m64 current_pixel = *(reinterpret_cast<const __m64*>(src_ptr+x));
-      *reinterpret_cast<__m64*>(dst+x) = current_pixel;
-    }
-
-    // Leftover
-    for (int i = wMod8; i < width; i++) {
-      dst[i] = src_ptr[i];
-    }
-
-    dst += dst_pitch;
-  }
-
-  _mm_empty();
-}
-#endif
-
-template<SSELoader load>
-static void resize_v_sse2_planar_pointresize(BYTE* dst, const BYTE* src, int dst_pitch, int src_pitch, ResamplingProgram* program, int width, int target_height, const int* pitch_table, const void* storage)
-{
-  int filter_size = program->filter_size;
-
-  int wMod16 = (width / 16) * 16;
-
-  for (int y = 0; y < target_height; y++) {
-    int offset = program->pixel_offset[y];
-    const BYTE* src_ptr = src + pitch_table[offset];
-
-    // Copy 16-pixel/loop
-    for (int x = 0; x < wMod16; x+=16) {
-      __m128i current_pixel = load(reinterpret_cast<const __m128i*>(src_ptr+x));
-      _mm_store_si128(reinterpret_cast<__m128i*>(dst+x), current_pixel); // dst should always be aligned
-    }
-
-    // Leftover
-    for (int i = wMod16; i < width; i++) {
-      dst[i] = src_ptr[i];
-    }
+    memcpy(dst, src_ptr, width);
 
     dst += dst_pitch;
   }
@@ -1184,31 +1127,7 @@ ResamplerV FilteredResizeV::GetResampler(int CPU, bool aligned, void*& storage, 
 {
   if (program->filter_size == 1) {
     // Fast pointresize
-    if (aligned) {
-      if (CPU & CPUF_SSE4_1) { // SSE4.1 movntdqa
-        return resize_v_sse2_planar_pointresize<simd_load_streaming>;
-      } else if (CPU & CPUF_SSE2) { // SSE2 aligned
-        return resize_v_sse2_planar_pointresize<simd_load_aligned>;
-#ifdef X86_32
-      } else if (CPU & CPUF_MMX) {
-        return resize_v_mmx_planar_pointresize;
-#endif
-      } else { // C version
-        return resize_v_c_planar_pointresize;
-      }
-    } else { // Not aligned
-      if (CPU & CPUF_SSE3) { // SSE3 lddqu
-        return resize_v_sse2_planar_pointresize<simd_load_unaligned_sse3>;
-      } else if (CPU & CPUF_SSE2) { // SSE2 unaligned
-        return resize_v_sse2_planar_pointresize<simd_load_unaligned>;
-#ifdef X86_32
-      } else if (CPU & CPUF_MMX) {
-        return resize_v_mmx_planar_pointresize;
-#endif
-      } else { // C version
-        return resize_v_c_planar_pointresize;
-      }
-    }
+    return resize_v_planar_pointresize;
   } else {
     // Other resizers
     if (CPU & CPUF_SSSE3) {
