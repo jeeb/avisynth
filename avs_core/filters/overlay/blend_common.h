@@ -39,11 +39,6 @@
 
 #include "../include/avs/types.h"
 
-#include <emmintrin.h>
-#include <smmintrin.h>
-
-#define OV_FORCEINLINE __forceinline
-
 // Mode: Overlay
 void overlay_blend_c_plane_masked(BYTE *p1, const BYTE *p2, const BYTE *mask,
                                   const int p1_pitch, const int p2_pitch, const int mask_pitch,
