@@ -35,6 +35,7 @@
 // Overlay (c) 2003, 2004 by Klaus Post
 
 #include "overlayfunctions.h"
+#include <emmintrin.h>
 
 void OL_BlendImage::BlendImageMask(Image444* base, Image444* overlay, Image444* mask) {
   BYTE* baseY = base->GetPtr(PLANAR_Y);
