@@ -40,6 +40,7 @@
 
 // Original value: 65536
 // 2 bits sacrificed because of 16 bit signed MMX multiplication
+// NOTE: Don't change this value. It's hard-coded in SIMD code.
 const int FPScale = 16384; // fixed point scaler
 
 // 09-14-2002 - Vlad59 - Lanczos3Resize - Constant added
@@ -89,19 +90,6 @@ class ResamplingFunction
 public:
   virtual double f(double x) = 0;
   virtual double support() = 0;
-  virtual int* GetResamplingPatternRGB(int original_width,
-                                       double subrange_start,
-                                       double subrange_width,
-                                       int target_width,
-                                       IScriptEnvironment* env);
-
-  virtual int* GetResamplingPatternYUV(int original_width,
-                                       double subrange_start,
-                                       double subrange_width,
-                                       int target_width,
-                                       bool luma,
-                                       BYTE *temp,
-                                       IScriptEnvironment* env);
 
   virtual ResamplingProgram* GetResamplingProgram(int source_size, double crop_start, double crop_size, int target_size, IScriptEnvironment* env);
 };

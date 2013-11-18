@@ -48,7 +48,8 @@ typedef void (*TurnFuncPtr) (const BYTE *srcp, BYTE *dstp, int width, int height
   * Class to resize in the horizontal direction using a specified sampling filter
   * Helper for resample functions
  **/
-class FilteredResizeH : public GenericVideoFilter {
+class FilteredResizeH : public GenericVideoFilter
+{
 public:
   FilteredResizeH( PClip _child, double subrange_left, double subrange_width, int target_width, 
                    ResamplingFunction* func, IScriptEnvironment* env );
@@ -90,7 +91,8 @@ private:
   * Class to resize in the vertical direction using a specified sampling filter
   * Helper for resample functions
  **/
-class FilteredResizeV : public GenericVideoFilter {
+class FilteredResizeV : public GenericVideoFilter
+{
 public:
   FilteredResizeV( PClip _child, double subrange_top, double subrange_height, int target_height, ResamplingFunction* func, IScriptEnvironment* env );
   virtual ~FilteredResizeV(void);

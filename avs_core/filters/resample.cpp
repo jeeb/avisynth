@@ -58,19 +58,23 @@ __forceinline static void allocate_frame_buffer(BYTE*& ptr, int& pitch, int w, i
 
 typedef __m128i (SSELoader)(const __m128i*);
 
-__forceinline __m128i simd_load_aligned(const __m128i* adr) {
+__forceinline __m128i simd_load_aligned(const __m128i* adr)
+{
   return _mm_load_si128(adr);
 }
 
-__forceinline __m128i simd_load_unaligned(const __m128i* adr) {
+__forceinline __m128i simd_load_unaligned(const __m128i* adr)
+{
   return _mm_loadu_si128(adr);
 }
 
-__forceinline __m128i simd_load_unaligned_sse3(const __m128i* adr) {
+__forceinline __m128i simd_load_unaligned_sse3(const __m128i* adr)
+{
   return _mm_lddqu_si128(adr);
 }
 
-__forceinline __m128i simd_load_streaming(const __m128i* adr) {
+__forceinline __m128i simd_load_streaming(const __m128i* adr)
+{
   return _mm_stream_load_si128(const_cast<__m128i*>(adr));
 }
 
@@ -78,7 +82,8 @@ __forceinline __m128i simd_load_streaming(const __m128i* adr) {
  ***** Vertical Resizer Assembly *******
  ***************************************/
 
-static void resize_v_c_planar_pointresize(BYTE* dst, const BYTE* src, int dst_pitch, int src_pitch, ResamplingProgram* program, int width, int target_height, const int* pitch_table, const void* storage) {
+static void resize_v_c_planar_pointresize(BYTE* dst, const BYTE* src, int dst_pitch, int src_pitch, ResamplingProgram* program, int width, int target_height, const int* pitch_table, const void* storage)
+{
   int filter_size = program->filter_size;
 
   for (int y = 0; y < target_height; y++) {
@@ -94,7 +99,8 @@ static void resize_v_c_planar_pointresize(BYTE* dst, const BYTE* src, int dst_pi
 }
 
 template<SSELoader load>
-static void resize_v_sse2_planar_pointresize(BYTE* dst, const BYTE* src, int dst_pitch, int src_pitch, ResamplingProgram* program, int width, int target_height, const int* pitch_table, const void* storage) {
+static void resize_v_sse2_planar_pointresize(BYTE* dst, const BYTE* src, int dst_pitch, int src_pitch, ResamplingProgram* program, int width, int target_height, const int* pitch_table, const void* storage)
+{
   int filter_size = program->filter_size;
 
   int wMod16 = (width / 16) * 16;
@@ -118,7 +124,8 @@ static void resize_v_sse2_planar_pointresize(BYTE* dst, const BYTE* src, int dst
   }
 }
 
-static void resize_v_c_planar(BYTE* dst, const BYTE* src, int dst_pitch, int src_pitch, ResamplingProgram* program, int width, int target_height, const int* pitch_table, const void* storage) {
+static void resize_v_c_planar(BYTE* dst, const BYTE* src, int dst_pitch, int src_pitch, ResamplingProgram* program, int width, int target_height, const int* pitch_table, const void* storage)
+{
   int filter_size = program->filter_size;
   short* current_coeff = program->pixel_coefficient;
 
@@ -142,7 +149,8 @@ static void resize_v_c_planar(BYTE* dst, const BYTE* src, int dst_pitch, int src
 }
 
 template<SSELoader load>
-static void resize_v_sse2_planar(BYTE* dst, const BYTE* src, int dst_pitch, int src_pitch, ResamplingProgram* program, int width, int target_height, const int* pitch_table, const void* storage) {
+static void resize_v_sse2_planar(BYTE* dst, const BYTE* src, int dst_pitch, int src_pitch, ResamplingProgram* program, int width, int target_height, const int* pitch_table, const void* storage)
+{
   int filter_size = program->filter_size;
   short* current_coeff = program->pixel_coefficient;
   
@@ -243,7 +251,8 @@ static void resize_v_sse2_planar(BYTE* dst, const BYTE* src, int dst_pitch, int 
 }
 
 template<SSELoader load>
-static void resize_v_ssse3_planar(BYTE* dst, const BYTE* src, int dst_pitch, int src_pitch, ResamplingProgram* program, int width, int target_height, const int* pitch_table, const void* storage) {
+static void resize_v_ssse3_planar(BYTE* dst, const BYTE* src, int dst_pitch, int src_pitch, ResamplingProgram* program, int width, int target_height, const int* pitch_table, const void* storage)
+{
   int filter_size = program->filter_size;
   short* current_coeff = program->pixel_coefficient;
   
@@ -309,29 +318,6 @@ static void resize_v_ssse3_planar(BYTE* dst, const BYTE* src, int dst_pitch, int
   }
 }
 
-static void* resize_v_ssse3_unpack_cocfficient(ResamplingProgram* program) {
-  int filter_size = program->filter_size;
-  short* current_coeff = program->pixel_coefficient;
-
-  __m128i zero = _mm_setzero_si128();
-  __m128i coeff_unpacker = _mm_set_epi8(1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0);
-
-  __m128i* storage = (__m128i*) _aligned_malloc(program->target_size * filter_size * 16, 64);
-
-  for (int y = 0; y < program->target_size; y++) {
-    for (int i = 0; i < filter_size; i++) {
-      __m128i coeff = _mm_cvtsi32_si128(*reinterpret_cast<const int*>(current_coeff+i));
-              coeff = _mm_shuffle_epi8(coeff, coeff_unpacker);
-
-      storage[y*filter_size+i] = coeff;
-    }
-
-    current_coeff += filter_size;
-  }
-
-  return (void*) storage;
-}
-
 __forceinline static void resize_v_create_pitch_table(int* table, int pitch, int height) {
   table[0] = 0;
   for (int i = 1; i < height; i++) {
@@ -346,7 +332,8 @@ __forceinline static void resize_v_create_pitch_table(int* table, int pitch, int
  ****************************************/
 /* Copied from turn.cpp */
 
-static __forceinline void left_transpose_4_doublewords_sse2(__m128i &src1, __m128i &src2, __m128i& src3, __m128i &src4) {
+static __forceinline void left_transpose_4_doublewords_sse2(__m128i &src1, __m128i &src2, __m128i& src3, __m128i &src4)
+{
   __m128i b0a0b1a1 = _mm_unpacklo_epi32(src2, src1);
   __m128i b2a2b3a3 = _mm_unpackhi_epi32(src2, src1);
   __m128i d0c0d1c1 = _mm_unpacklo_epi32(src4, src3);
@@ -358,7 +345,8 @@ static __forceinline void left_transpose_4_doublewords_sse2(__m128i &src1, __m12
   src4 = _mm_unpackhi_epi64(d2c2d3c3, b2a2b3a3); //d3c3b3a3
 }
 
-static __forceinline void right_transpose_4_doublewords_sse2(__m128i &src1, __m128i &src2, __m128i& src3, __m128i &src4) {
+static __forceinline void right_transpose_4_doublewords_sse2(__m128i &src1, __m128i &src2, __m128i& src3, __m128i &src4)
+{
   __m128i a0b0a1b1 = _mm_unpacklo_epi32(src1, src2);
   __m128i a2b2a3b3 = _mm_unpackhi_epi32(src1, src2);
   __m128i c0d0c1d1 = _mm_unpacklo_epi32(src3, src4);
@@ -384,7 +372,8 @@ static void turn_left_rgb24(const BYTE *srcp, BYTE *dstp, int width, int height,
   }
 }
 
-static void turn_right_rgb24(const BYTE *srcp, BYTE *dstp, int width, int height, int src_pitch, int dst_pitch) {
+static void turn_right_rgb24(const BYTE *srcp, BYTE *dstp, int width, int height, int src_pitch, int dst_pitch)
+{
   int dstp_offset;
   int dstp_base = (width/3-1) * dst_pitch;
   for (int y=0; y<height; y++) {
@@ -538,13 +527,14 @@ static void turn_right_rgb32_sse2(const BYTE *srcp, BYTE *dstp, int src_width_by
   }
 }
 
-static __forceinline __m128i mm_movehl_si128(const __m128i &a, const __m128i &b) {
+static __forceinline __m128i mm_movehl_si128(const __m128i &a, const __m128i &b)
+{
   return _mm_castps_si128(_mm_movehl_ps(_mm_castsi128_ps(a), _mm_castsi128_ps(b)));
 }
 
 static __forceinline void left_transpose_8_bytes_sse2(__m128i &src1, __m128i &src2, __m128i& src3, __m128i &src4, 
-                                                      __m128i &src5, __m128i& src6, __m128i &src7, __m128i &src8, const __m128i &zero) {
-
+                                                      __m128i &src5, __m128i& src6, __m128i &src7, __m128i &src8, const __m128i &zero)
+{
                                                         __m128i a07b07 = _mm_unpacklo_epi8(src1, src2); 
                                                         __m128i c07d07 = _mm_unpacklo_epi8(src3, src4); 
                                                         __m128i e07f07 = _mm_unpacklo_epi8(src5, src6); 
@@ -570,8 +560,9 @@ static __forceinline void left_transpose_8_bytes_sse2(__m128i &src1, __m128i &sr
                                                         src8 = mm_movehl_si128(zero, a67b67c67d67e67f67g67h67);
 }
 
-static __forceinline void right_transpose_8_bytes_sse2(__m128i &src1, __m128i &src2, __m128i& src3, __m128i &src4,                                                __m128i &src5, __m128i& src6, __m128i &src7, __m128i &src8, const __m128i &zero) {
-
+static __forceinline void right_transpose_8_bytes_sse2(__m128i &src1, __m128i &src2, __m128i& src3, __m128i &src4,
+                                                       __m128i &src5, __m128i& src6, __m128i &src7, __m128i &src8, const __m128i &zero)
+{
   __m128i b07a07 = _mm_unpacklo_epi8(src2, src1); 
   __m128i d07c07 = _mm_unpacklo_epi8(src4, src3); 
   __m128i f07e07 = _mm_unpacklo_epi8(src6, src5); 
@@ -597,7 +588,8 @@ static __forceinline void right_transpose_8_bytes_sse2(__m128i &src1, __m128i &s
   src8 = mm_movehl_si128(zero, h67g67f67e67d67c67b67a67);
 }
 
-static void turn_right_plane_sse2(const BYTE* pSrc, BYTE* pDst, int srcWidth, int srcHeight, int srcPitch, int dstPitch) {
+static void turn_right_plane_sse2(const BYTE* pSrc, BYTE* pDst, int srcWidth, int srcHeight, int srcPitch, int dstPitch)
+{
   const BYTE* pSrc2 = pSrc;
 
   __m128i zero = _mm_setzero_si128();
@@ -663,7 +655,8 @@ static void turn_right_plane_sse2(const BYTE* pSrc, BYTE* pDst, int srcWidth, in
   }
 }
 
-static void turn_left_plane_sse2(const BYTE* pSrc, BYTE* pDst, int srcWidth, int srcHeight, int srcPitch, int dstPitch) {
+static void turn_left_plane_sse2(const BYTE* pSrc, BYTE* pDst, int srcWidth, int srcHeight, int srcPitch, int dstPitch)
+{
   const BYTE* pSrc2 = pSrc;
   int srcWidthMod8 = (srcWidth / 8) * 8;
   int srcHeightMod8 = (srcHeight / 8) * 8;
@@ -735,7 +728,8 @@ static void turn_left_plane_sse2(const BYTE* pSrc, BYTE* pDst, int srcWidth, int
   }
 }
 
-static void turn_right_plane_c(const BYTE *srcp, BYTE *dstp, int width, int height, int src_pitch, int dst_pitch) {
+static void turn_right_plane_c(const BYTE *srcp, BYTE *dstp, int width, int height, int src_pitch, int dst_pitch)
+{
   for(int y=0; y<height; y++)
   {
     int offset = height-1-y;
@@ -748,7 +742,8 @@ static void turn_right_plane_c(const BYTE *srcp, BYTE *dstp, int width, int heig
   }
 }
 
-static void turn_left_plane_c(const BYTE *srcp, BYTE *dstp, int width, int height, int src_pitch, int dst_pitch) {
+static void turn_left_plane_c(const BYTE *srcp, BYTE *dstp, int width, int height, int src_pitch, int dst_pitch)
+{
   srcp += width-1;
   for(int y=0; y<height; y++)
   {
@@ -759,243 +754,6 @@ static void turn_left_plane_c(const BYTE *srcp, BYTE *dstp, int width, int heigh
       offset += dst_pitch;
     }
     srcp += src_pitch;
-  }
-}
-
-/**************************************************
- ***** Horizontal Resizer (unused) Assemblies *****
- *************************************************/
-/** Kept for now in case we need it again **/
-
-// interleave 4 pixels together
-void make_sse2_program(int* out, const int* in, int size) {
-  int copy_size = *in+1;
-  int sizeMod4 = (size/4)*4;
-
-  *out++ = *in++; // copy filter size
-
-  for (int i = 0; i < sizeMod4; i+=4) {
-    for (int j = 0; j < copy_size; j++) {
-      *out++ = *(in+copy_size*0+j);
-      *out++ = *(in+copy_size*1+j);
-      *out++ = *(in+copy_size*2+j);
-      *out++ = *(in+copy_size*3+j);
-    }
-    in += copy_size*4;
-  }
-
-  // Leftover
-  switch (sizeMod4 - size) {
-  case 3:
-    for (int j = 0; j < copy_size; j++) {
-      *out++ = *(in+copy_size*0+j);
-      *out++ = *(in+copy_size*1+j);
-      *out++ = *(in+copy_size*2+j);
-      *out++ = 0;
-    }
-    break;
-  case 2:
-    for (int j = 0; j < copy_size; j++) {
-      *out++ = *(in+copy_size*0+j);
-      *out++ = *(in+copy_size*1+j);
-      *out++ = 0;
-      *out++ = 0;
-    }
-    break;
-  case 1:
-    for (int j = 0; j < copy_size; j++) {
-      *out++ = *(in+copy_size*0+j);
-      *out++ = 0;
-      *out++ = 0;
-      *out++ = 0;
-    }
-    break;
-  }
-}
-
-
-void resize_h_c_plannar(BYTE* dst, const BYTE* src, int dst_pitch, int src_pitch, int* program, int width, int target_height) {
-  int filter_size = *program;
-  int* current = program+1;
-
-  for (int x = 0; x < width; x++) {
-    int begin = *current;
-    current++;
-    for (int y = 0; y < target_height; y++) {
-      int result = 0;
-      for (int i = 0; i < filter_size; i++) {
-        result += (src+y*src_pitch)[(begin+i)] * current[i];
-      }
-      result = ((result+8192)/16384);
-      result = result > 255 ? 255 : result < 0 ? 0 : result;
-      (dst+y*dst_pitch)[x] = (BYTE)result;
-    }
-    current += filter_size;
-  }
-}
-
-void resize_h_c_yuy2(BYTE* dst, const BYTE* src, int dst_pitch, int src_pitch, int* program, int* programUV, int width, int target_height) {
-  int filter_size = *program;
-  int* current = program+1;
-
-  int filter_sizeUV = *programUV;
-  int* currentUV = programUV+1;
-
-  for (int x = 0; x < width; x++) {
-    int begin = *current;
-    current++;
-
-    int beginUV = *currentUV;
-    currentUV++;
-
-    int chroma = x%2 ? 3 : 1;
-
-    for (int y = 0; y < target_height; y++) {
-      // Y resizing
-      int result = 0;
-      for (int i = 0; i < filter_size; i++) {
-        result += (src+y*src_pitch)[(begin+i)*2] * current[i];
-      }
-      result = ((result+8192)/16384);
-      result = result > 255 ? 255 : result < 0 ? 0 : result;
-      (dst+y*dst_pitch)[x*2] = (BYTE)result;
-
-      // UV resizing
-      result = 0;
-      for (int i = 0; i < filter_sizeUV; i++) {
-        result += (src+y*src_pitch)[(beginUV+i)*4+chroma] * currentUV[i];
-      }
-      result = ((result+8192)/16384);
-      result = result > 255 ? 255 : result < 0 ? 0 : result;
-      (dst+y*dst_pitch)[x*2+1] = (BYTE)result;
-    }
-
-    current += filter_size;
-
-    if (x%2) // == 1
-      currentUV += filter_sizeUV;
-    else
-      currentUV--;
-  }
-}
-
-template <int size>
-void resize_h_c_rgb(BYTE* dst, const BYTE* src, int dst_pitch, int src_pitch, int* program, int width, int target_height) {
-  int filter_size = *program;
-  int* current = program+1;
-
-  for (int x = 0; x < width; x++) {
-    int begin = *current;
-    current++;
-    for (int k = 0; k < size; k++) {
-      for (int y = 0; y < target_height; y++) {
-        int result = 0;
-        for (int i = 0; i < filter_size; i++) {
-          result += (src+y*src_pitch)[(begin+i)*size+k] * current[i];
-        }
-        result = ((result+8192)/16384);
-        result = result > 255 ? 255 : result < 0 ? 0 : result;
-        (dst+y*dst_pitch)[x*size+k] = (BYTE)result;
-      }
-    }
-    current += filter_size;
-  }
-}
-
-void resize_h_sse2_planar(BYTE* dst, const BYTE* src, int dst_pitch, int src_pitch, int* program, int width, int target_height) {
-  int filter_size = *program;
-  int* current = program+1;
-
-  int sizeMod2 = (filter_size/2)*2;
-  //sizeMod2 = 0;
-
-  __m128i zero = _mm_setzero_si128();
-
-  for (int y = 0; y < target_height; y++) {
-    // reset program pointer
-    current = program+1;
-
-    for (int x = 0; x < width; x+=4) {
-      __m128i result = _mm_set1_epi32(8192);
-
-      int* begin = current;
-      current += 4;
-
-      for (int i = 0; i < sizeMod2; i+=2) {
-        // Load
-        __m128i pixel1 = _mm_cvtsi32_si128(*reinterpret_cast<const int*>(src+*(begin+0)+i));   // 00 00 00 00 00 00 XX Aa
-        __m128i pixel2 = _mm_cvtsi32_si128(*reinterpret_cast<const int*>(src+*(begin+1)+i));   // 00 00 00 00 00 00 XX Bb
-        __m128i pixel3 = _mm_cvtsi32_si128(*reinterpret_cast<const int*>(src+*(begin+2)+i));   // 00 00 00 00 00 00 XX Cc
-        __m128i pixel4 = _mm_cvtsi32_si128(*reinterpret_cast<const int*>(src+*(begin+3)+i));   // 00 00 00 00 00 00 XX Dd
-
-        // Interleave
-        __m128i t1   = _mm_unpacklo_epi16(pixel1, pixel2);                               // 00 00 00 00 XX XX Bb Aa
-        __m128i t2   = _mm_unpacklo_epi16(pixel3, pixel4);                               // 00 00 00 00 XX XX Dd Cc
-        __m128i data = _mm_unpacklo_epi32(t1, t2);                                       // XX XX XX XX Dd Cc Bb Aa
-
-        // Unpack
-        data = _mm_unpacklo_epi8(data, zero);                                            // 0D 0d 0C 0c 0B 0b 0A 0a
-
-        // Load coefficient
-        __m128i coeff1 = _mm_loadu_si128(reinterpret_cast<const __m128i*>(current));     // S0 c4 S0 c3 S0 c2 S0 c1 (epi32)
-        __m128i coeff2 = _mm_loadu_si128(reinterpret_cast<const __m128i*>(current+4));   // S0 C4 S0 C3 S0 C2 S0 C1 (epi32)
-        coeff1 = _mm_packs_epi32(coeff1, zero);                                  // 00 00 00 00 c4 c3 c2 c1
-        coeff2 = _mm_packs_epi32(coeff2, zero);                                  // 00 00 00 00 C4 C3 C2 C1
-        __m128i coeff  = _mm_unpacklo_epi16(coeff1, coeff2);                             // C4 c4 C3 c3 C2 c2 C1 c1
-
-        // Multiply
-        __m128i res = _mm_madd_epi16(data, coeff);
-
-        // Add result
-        result = _mm_add_epi32(result, res);
-
-        // Move to next coefficient
-        current += 8;
-      }
-
-      // Leftover
-      if (sizeMod2 != filter_size) {
-        //for (int i = sizeMod2; i < filter_size; i++) {
-        __m128i pixel[4];
-
-        // Load
-        for (int k = 0; k < 4; k++) {
-          pixel[k] = _mm_cvtsi32_si128(*reinterpret_cast<const int*>(src+*(begin+k)+sizeMod2));   // 00 00 00 00 00 00 XX Xa
-        }
-
-        // Interleave
-        __m128i t1   = _mm_unpacklo_epi8(pixel[0], pixel[1]);                            // 00 00 00 00 XX XX XX ba
-        __m128i t2   = _mm_unpacklo_epi8(pixel[2], pixel[3]);                            // 00 00 00 00 XX XX XX dc
-        __m128i data = _mm_unpacklo_epi16(t1, t2);                                       // XX XX XX XX XX XX dc ba
-
-        // Unpack
-        data = _mm_unpacklo_epi8(data, zero);                                            // 00 00 00 00 0d 0c 0b 0a
-        data = _mm_unpacklo_epi16(data, zero);                                           // 00 0d 00 0c 00 0b 00 0a
-
-        // Load coefficient
-        __m128i coeff1 = _mm_loadu_si128(reinterpret_cast<const __m128i*>(current));     // S0 c4 S0 c3 S0 c2 S0 c1 (epi32)
-        __m128i coeff  = _mm_and_si128(coeff1, _mm_set1_epi32(0x0000FFFF));              // 00 c4 00 c3 00 c2 00 c1
-
-        // Multiply
-        __m128i res = _mm_madd_epi16(data, coeff);
-
-        // Add result
-        result = _mm_add_epi32(result, res);
-
-        // Move to next coefficient (in this case start of another quadpixel)
-        current += 4;
-      }
-
-      // Pack and store result
-      result = _mm_srai_epi32(result, 14); // Devided by FPRound (16384)
-      result = _mm_packs_epi32(result, zero);
-      result = _mm_packus_epi16(result, zero);
-
-      *(reinterpret_cast<int*>(dst+x)) = _mm_cvtsi128_si32(result);
-    }
-
-    src += src_pitch;
-    dst += dst_pitch;
   }
 }
 
@@ -1040,8 +798,9 @@ FilteredResizeH::FilteredResizeH( PClip _child, double subrange_left, double sub
   dst_width  = target_width;
   dst_height = vi.height;
 
-  if (target_width <= 0)
+  if (target_width <= 0) {
     env->ThrowError("Resize: Width must be greater than 0.");
+  }
 
   if (vi.IsPlanar() && !vi.IsY8()) {
     const int mask = (1 << vi.GetPlaneWidthSubsampling(PLANAR_U)) - 1;
@@ -1226,7 +985,8 @@ FilteredResizeV::FilteredResizeV( PClip _child, double subrange_top, double subr
   vi.height = target_height;
 }
 
-PVideoFrame __stdcall FilteredResizeV::GetFrame(int n, IScriptEnvironment* env) {
+PVideoFrame __stdcall FilteredResizeV::GetFrame(int n, IScriptEnvironment* env)
+{
   PVideoFrame src = child->GetFrame(n, env);
   PVideoFrame dst = env->NewVideoFrame(vi);
   int src_pitch = src->GetPitch();
@@ -1286,7 +1046,8 @@ PVideoFrame __stdcall FilteredResizeV::GetFrame(int n, IScriptEnvironment* env) 
   return dst;
 }
 
-ResamplerV FilteredResizeV::GetResampler(int CPU, bool aligned, void*& storage, ResamplingProgram* program) {
+ResamplerV FilteredResizeV::GetResampler(int CPU, bool aligned, void*& storage, ResamplingProgram* program)
+{
   if (program->filter_size == 1) {
     // Fast pointresize
     if (aligned) {
