@@ -37,7 +37,7 @@
 #ifndef __blend_common_h
 #define __blend_common_h
 
-#include "../include/avs/types.h"
+#include <avs/types.h>
 
 // Mode: Overlay
 void overlay_blend_c_plane_masked(BYTE *p1, const BYTE *p2, const BYTE *mask,

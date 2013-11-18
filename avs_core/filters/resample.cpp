@@ -38,7 +38,7 @@
 #include "../core/internal.h"
 
 #include "transform.h"
-#include "../include/avs/alignment.h"
+#include <avs/alignment.h>
 #include "../convert/convert_planar.h"
 #include "../convert/convert_yuy2.h"
 
