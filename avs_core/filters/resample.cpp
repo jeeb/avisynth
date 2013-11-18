@@ -98,6 +98,35 @@ static void resize_v_c_planar_pointresize(BYTE* dst, const BYTE* src, int dst_pi
   }
 }
 
+#ifdef X86_32
+static void resize_v_mmx_planar_pointresize(BYTE* dst, const BYTE* src, int dst_pitch, int src_pitch, ResamplingProgram* program, int width, int target_height, const int* pitch_table, const void* storage)
+{
+  int filter_size = program->filter_size;
+
+  int wMod8 = (width / 8) * 8;
+
+  for (int y = 0; y < target_height; y++) {
+    int offset = program->pixel_offset[y];
+    const BYTE* src_ptr = src + pitch_table[offset];
+
+    // Copy 8-pixel/loop
+    for (int x = 0; x < wMod8; x+=8) {
+      __m64 current_pixel = *(reinterpret_cast<const __m64*>(src_ptr+x));
+      *reinterpret_cast<__m64*>(dst+x) = current_pixel;
+    }
+
+    // Leftover
+    for (int i = wMod8; i < width; i++) {
+      dst[i] = src_ptr[i];
+    }
+
+    dst += dst_pitch;
+  }
+
+  _mm_empty();
+}
+#endif
+
 template<SSELoader load>
 static void resize_v_sse2_planar_pointresize(BYTE* dst, const BYTE* src, int dst_pitch, int src_pitch, ResamplingProgram* program, int width, int target_height, const int* pitch_table, const void* storage)
 {
@@ -147,6 +176,111 @@ static void resize_v_c_planar(BYTE* dst, const BYTE* src, int dst_pitch, int src
     current_coeff += filter_size;
   }
 }
+
+#ifdef X86_32
+static void resize_v_mmx_planar(BYTE* dst, const BYTE* src, int dst_pitch, int src_pitch, ResamplingProgram* program, int width, int target_height, const int* pitch_table, const void* storage)
+{
+  int filter_size = program->filter_size;
+  short* current_coeff = program->pixel_coefficient;
+
+  int wMod8 = (width / 8) * 8;
+  int sizeMod2 = (filter_size/2) * 2;
+  bool notMod2 = sizeMod2 < filter_size;
+
+  __m64 zero = _mm_setzero_si64();
+
+  for (int y = 0; y < target_height; y++) {
+    int offset = program->pixel_offset[y];
+    const BYTE* src_ptr = src + pitch_table[offset];
+
+    for (int x = 0; x < wMod8; x += 8) {
+      __m64 result_1 = _mm_set1_pi32(8192); // Init. with rounder (16384/2 = 8192)
+      __m64 result_2 = result_1;
+      __m64 result_3 = result_1;
+      __m64 result_4 = result_1;
+
+      for (int i = 0; i < sizeMod2; i += 2) {
+        __m64 src_p1 = *(reinterpret_cast<const __m64*>(src_ptr+pitch_table[i]+x));   // For detailed explanation please see SSE2 version.
+        __m64 src_p2 = *(reinterpret_cast<const __m64*>(src_ptr+pitch_table[i+1]+x));
+
+        __m64 src_l = _mm_unpacklo_pi8(src_p1, src_p2);                                   
+        __m64 src_h = _mm_unpackhi_pi8(src_p1, src_p2);                                   
+
+        __m64 src_1 = _mm_unpacklo_pi8(src_l, zero);                                      
+        __m64 src_2 = _mm_unpackhi_pi8(src_l, zero);                                      
+        __m64 src_3 = _mm_unpacklo_pi8(src_h, zero);                                      
+        __m64 src_4 = _mm_unpackhi_pi8(src_h, zero);                                      
+
+        __m64 coeff = _mm_cvtsi32_si64(*reinterpret_cast<const int*>(current_coeff+i));   
+        coeff = _mm_unpacklo_pi32(coeff, coeff);                                               
+
+        __m64 dst_1 = _mm_madd_pi16(src_1, coeff);                                        
+        __m64 dst_2 = _mm_madd_pi16(src_2, coeff);                                        
+        __m64 dst_3 = _mm_madd_pi16(src_3, coeff);
+        __m64 dst_4 = _mm_madd_pi16(src_4, coeff);
+
+        result_1 = _mm_add_pi32(result_1, dst_1);
+        result_2 = _mm_add_pi32(result_2, dst_2);
+        result_3 = _mm_add_pi32(result_3, dst_3);
+        result_4 = _mm_add_pi32(result_4, dst_4);
+      }
+
+      if (notMod2) { // do last odd row
+        __m64 src_p = *(reinterpret_cast<const __m64*>(src_ptr+pitch_table[sizeMod2]+x));
+
+        __m64 src_l = _mm_unpacklo_pi8(src_p, zero);
+        __m64 src_h = _mm_unpackhi_pi8(src_p, zero);
+
+        __m64 coeff = _mm_set1_pi16(current_coeff[sizeMod2]);
+
+        __m64 dst_ll = _mm_mullo_pi16(src_l, coeff);   // Multiply by coefficient
+        __m64 dst_lh = _mm_mulhi_pi16(src_l, coeff);
+        __m64 dst_hl = _mm_mullo_pi16(src_h, coeff);
+        __m64 dst_hh = _mm_mulhi_pi16(src_h, coeff);
+
+        __m64 dst_1 = _mm_unpacklo_pi16(dst_ll, dst_lh); // Unpack to 32-bit integer
+        __m64 dst_2 = _mm_unpackhi_pi16(dst_ll, dst_lh);
+        __m64 dst_3 = _mm_unpacklo_pi16(dst_hl, dst_hh);
+        __m64 dst_4 = _mm_unpackhi_pi16(dst_hl, dst_hh);
+
+        result_1 = _mm_add_pi32(result_1, dst_1);
+        result_2 = _mm_add_pi32(result_2, dst_2);
+        result_3 = _mm_add_pi32(result_3, dst_3);
+        result_4 = _mm_add_pi32(result_4, dst_4);
+      }
+
+      // Divide by 16348 (FPRound)
+      result_1  = _mm_srai_pi32(result_1, 14);
+      result_2  = _mm_srai_pi32(result_2, 14);
+      result_3  = _mm_srai_pi32(result_3, 14);
+      result_4  = _mm_srai_pi32(result_4, 14);
+
+      // Pack and store
+      __m64 result_l = _mm_packs_pi32(result_1, result_2);
+      __m64 result_h = _mm_packs_pi32(result_3, result_4);
+      __m64 result   = _mm_packs_pu16(result_l, result_h);
+
+      *(reinterpret_cast<__m64*>(dst+x)) = result;
+    }
+
+    // Leftover
+    for (int x = wMod8; x < width; x++) {
+      int result = 0;
+      for (int i = 0; i < filter_size; i++) {
+        result += (src_ptr+pitch_table[i])[x] * current_coeff[i];
+      }
+      result = ((result+8192)/16384);
+      result = result > 255 ? 255 : result < 0 ? 0 : result;
+      dst[x] = (BYTE) result;
+    }
+
+    dst += dst_pitch;
+    current_coeff += filter_size;
+  }
+
+  _mm_empty();
+}
+#endif
 
 template<SSELoader load>
 static void resize_v_sse2_planar(BYTE* dst, const BYTE* src, int dst_pitch, int src_pitch, ResamplingProgram* program, int width, int target_height, const int* pitch_table, const void* storage)
@@ -1055,6 +1189,10 @@ ResamplerV FilteredResizeV::GetResampler(int CPU, bool aligned, void*& storage, 
         return resize_v_sse2_planar_pointresize<simd_load_streaming>;
       } else if (CPU & CPUF_SSE2) { // SSE2 aligned
         return resize_v_sse2_planar_pointresize<simd_load_aligned>;
+#ifdef X86_32
+      } else if (CPU & CPUF_MMX) {
+        return resize_v_mmx_planar_pointresize;
+#endif
       } else { // C version
         return resize_v_c_planar_pointresize;
       }
@@ -1063,6 +1201,10 @@ ResamplerV FilteredResizeV::GetResampler(int CPU, bool aligned, void*& storage, 
         return resize_v_sse2_planar_pointresize<simd_load_unaligned_sse3>;
       } else if (CPU & CPUF_SSE2) { // SSE2 unaligned
         return resize_v_sse2_planar_pointresize<simd_load_unaligned>;
+#ifdef X86_32
+      } else if (CPU & CPUF_MMX) {
+        return resize_v_mmx_planar_pointresize;
+#endif
       } else { // C version
         return resize_v_c_planar_pointresize;
       }
@@ -1089,6 +1231,10 @@ ResamplerV FilteredResizeV::GetResampler(int CPU, bool aligned, void*& storage, 
       } else { // SSE2 unaligned
         return resize_v_sse2_planar<simd_load_unaligned>;
       }
+#ifdef X86_32
+    } else if (CPU & CPUF_MMX) {
+      return resize_v_mmx_planar;
+#endif
     } else { // C version
       return resize_v_c_planar;
     }
