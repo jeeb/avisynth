@@ -88,12 +88,12 @@ public:
 
 private:
 // YV12:
-    int* planes;
-    const BYTE** planeP;
-    const BYTE** planeP2;
-    int* planePitch;
-    int* planePitch2;
-    bool* planeDisabled;
+    int planes[8];
+    const BYTE* planeP[16];
+    const BYTE* planeP2[16];
+    int planePitch[16];
+    int planePitch2[16];
+    bool planeDisabled[16];
     int scenechange;
     PVideoFrame *frames;
 

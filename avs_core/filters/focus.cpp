@@ -484,7 +484,7 @@ static void af_horizontal_yuy2_c(BYTE* p, int height, int pitch, int width, int 
 }
 
 
-static __forceinline __m128i af_blend_yuy2_sse2(__m128i &left, __m128i &center, __m128i &right, __m128i &luma_mask, __m128i &chroma_mask, 
+static __forceinline __m128i af_blend_yuy2_sse2(__m128i &left, __m128i &center, __m128i &right, __m128i &luma_mask, 
                                              __m128i &center_weight, __m128i &outer_weight, __m128i &round_mask) {
   __m128i left_luma = _mm_and_si128(left, luma_mask); //0 Y1 0 Y0 0 Y-1 0 Y-2
   __m128i center_luma = _mm_and_si128(center, luma_mask); //0 Y3 0 Y2 0 Y1 0 Y0
@@ -502,13 +502,9 @@ static __forceinline __m128i af_blend_yuy2_sse2(__m128i &left, __m128i &center, 
 
   __m128i result_luma = af_blend_sse2(left_luma, center_luma, right_luma, center_weight, outer_weight, round_mask); 
 
-  __m128i left_chroma = _mm_and_si128(left, chroma_mask); //V 0 Y 0 V 0 U 0
-  __m128i center_chroma = _mm_and_si128(center, chroma_mask); //V 0 Y 0 V 0 U 0
-  __m128i right_chroma = _mm_and_si128(right, chroma_mask); //V 0 Y 0 V 0 U 0
-
-  left_chroma = _mm_srli_si128(left_chroma, 1); //0 V 0 U 0 V 0 U
-  center_chroma = _mm_srli_si128(center_chroma, 1); //0 V 0 U 0 V 0 U
-  right_chroma = _mm_srli_si128(right_chroma, 1); //0 V 0 U 0 V 0 U
+  __m128i left_chroma = _mm_srli_epi16(left, 8); //0 V 0 U 0 V 0 U
+  __m128i center_chroma = _mm_srli_epi16(center, 8); //0 V 0 U 0 V 0 U
+  __m128i right_chroma = _mm_srli_epi16(right, 8); //0 V 0 U 0 V 0 U
 
   __m128i result_chroma = af_blend_sse2(left_chroma, center_chroma, right_chroma, center_weight, outer_weight, round_mask);
   result_chroma = _mm_slli_si128(result_chroma, 1);
@@ -531,7 +527,6 @@ static void af_horizontal_yuy2_sse2(BYTE* dstp, const BYTE* srcp, size_t dst_pit
   __m128i left_mask_small = _mm_set_epi16(0, 0, 0, 0, 0, 0, 0x00FF, 0);
   __m128i right_mask_small = _mm_set_epi16(0, 0x00FF, 0, 0, 0, 0, 0, 0);
   __m128i luma_mask = _mm_set1_epi16(0xFF);
-  __m128i chroma_mask = _mm_set1_epi16(0xFF00);
 #pragma warning(default: 4309)
 
   __m128i center, right, left, result;
@@ -550,7 +545,7 @@ static void af_horizontal_yuy2_sse2(BYTE* dstp, const BYTE* srcp, size_t dst_pit
       _mm_and_si128(_mm_slli_si128(center, 2), left_mask_small)
       );//V0 Y1 U0 Y0 V0 Y0 U0 Y0
 
-    result = af_blend_yuy2_sse2(left, center, right, luma_mask, chroma_mask, center_weight, outer_weight, round_mask);
+    result = af_blend_yuy2_sse2(left, center, right, luma_mask, center_weight, outer_weight, round_mask);
 
     _mm_store_si128(reinterpret_cast< __m128i*>(dstp), result);
 
@@ -559,7 +554,7 @@ static void af_horizontal_yuy2_sse2(BYTE* dstp, const BYTE* srcp, size_t dst_pit
       center = _mm_load_si128(reinterpret_cast<const __m128i*>(srcp + x)); //V1 Y3 U1 Y2 V0 Y1 U0 Y0
       right = _mm_loadu_si128(reinterpret_cast<const __m128i*>(srcp + x + 4));//V2 Y5 U2 Y4 V1 Y3 U1 Y2
 
-      __m128i result = af_blend_yuy2_sse2(left, center, right, luma_mask, chroma_mask, center_weight, outer_weight, round_mask);
+      __m128i result = af_blend_yuy2_sse2(left, center, right, luma_mask, center_weight, outer_weight, round_mask);
 
       _mm_store_si128(reinterpret_cast< __m128i*>(dstp+x), result);
     }
@@ -578,7 +573,7 @@ static void af_horizontal_yuy2_sse2(BYTE* dstp, const BYTE* srcp, size_t dst_pit
       _mm_and_si128(_mm_srli_si128(center, 2), right_mask_small)
       );//V1 Y3 U1 Y3 V1 Y3 U1 Y2
 
-    result = af_blend_yuy2_sse2(left, center, right, luma_mask, chroma_mask, center_weight, outer_weight, round_mask);
+    result = af_blend_yuy2_sse2(left, center, right, luma_mask, center_weight, outer_weight, round_mask);
 
     _mm_storeu_si128(reinterpret_cast< __m128i*>(dstp + loop_limit), result);
 
@@ -595,7 +590,7 @@ static void af_horizontal_yuy2_sse2(BYTE* dstp, const BYTE* srcp, size_t dst_pit
 // Blur/Sharpen Horizontal YUY2 MMX Code
 // -------------------------------------
 // 
-static __forceinline __m64 af_blend_yuy2_mmx(__m64 &left, __m64 &center, __m64 &right, __m64 &luma_mask, __m64 &chroma_mask, 
+static __forceinline __m64 af_blend_yuy2_mmx(__m64 &left, __m64 &center, __m64 &right, __m64 &luma_mask, 
                            __m64 &center_weight, __m64 &outer_weight, __m64 &round_mask) {
   __m64 left_luma = _mm_and_si64(left, luma_mask); //0 Y1 0 Y0 0 Y-1 0 Y-2
   __m64 center_luma = _mm_and_si64(center, luma_mask); //0 Y3 0 Y2 0 Y1 0 Y0
@@ -613,13 +608,9 @@ static __forceinline __m64 af_blend_yuy2_mmx(__m64 &left, __m64 &center, __m64 &
 
   __m64 result_luma = af_blend_mmx(left_luma, center_luma, right_luma, center_weight, outer_weight, round_mask); 
 
-  __m64 left_chroma = _mm_and_si64(left, chroma_mask); //V 0 Y 0 V 0 U 0
-  __m64 center_chroma = _mm_and_si64(center, chroma_mask); //V 0 Y 0 V 0 U 0
-  __m64 right_chroma = _mm_and_si64(right, chroma_mask); //V 0 Y 0 V 0 U 0
-
-  left_chroma = _mm_srli_si64(left_chroma, 8); //0 V 0 U 0 V 0 U
-  center_chroma = _mm_srli_si64(center_chroma, 8); //0 V 0 U 0 V 0 U
-  right_chroma = _mm_srli_si64(right_chroma, 8); //0 V 0 U 0 V 0 U
+  __m64 left_chroma = _mm_srli_pi16(left, 8); //0 V 0 U 0 V 0 U
+  __m64 center_chroma = _mm_srli_pi16(center, 8); //0 V 0 U 0 V 0 U
+  __m64 right_chroma = _mm_srli_pi16(right, 8); //0 V 0 U 0 V 0 U
 
   __m64 result_chroma = af_blend_mmx(left_chroma, center_chroma, right_chroma, center_weight, outer_weight, round_mask);
   result_chroma = _mm_slli_si64(result_chroma, 8);
@@ -642,7 +633,6 @@ static void af_horizontal_yuy2_mmx(BYTE* dstp, const BYTE* srcp, size_t dst_pitc
   __m64 left_mask_small = _mm_set_pi16(0, 0, 0x00FF, 0);
   __m64 right_mask_small = _mm_set_pi16(0, 0x00FF, 0, 0);
   __m64 luma_mask = _mm_set1_pi16(0xFF);
-  __m64 chroma_mask = _mm_set1_pi16(0xFF00);
 #pragma warning(default: 4309)
 
   __m64 center, right, left, result;
@@ -661,7 +651,7 @@ static void af_horizontal_yuy2_mmx(BYTE* dstp, const BYTE* srcp, size_t dst_pitc
       _mm_and_si64(_mm_slli_si64(center, 16), left_mask_small)
       );//V0 Y1 U0 Y0 V0 Y0 U0 Y0
 
-    result = af_blend_yuy2_mmx(left, center, right, luma_mask, chroma_mask, center_weight, outer_weight, round_mask);
+    result = af_blend_yuy2_mmx(left, center, right, luma_mask, center_weight, outer_weight, round_mask);
 
     *reinterpret_cast< __m64*>(dstp) = result;
 
@@ -670,7 +660,7 @@ static void af_horizontal_yuy2_mmx(BYTE* dstp, const BYTE* srcp, size_t dst_pitc
       center = *reinterpret_cast<const __m64*>(srcp + x); //V1 Y3 U1 Y2 V0 Y1 U0 Y0
       right = *reinterpret_cast<const __m64*>(srcp + x + 4);//V2 Y5 U2 Y4 V1 Y3 U1 Y2
 
-      __m64 result = af_blend_yuy2_mmx(left, center, right, luma_mask, chroma_mask, center_weight, outer_weight, round_mask);
+      __m64 result = af_blend_yuy2_mmx(left, center, right, luma_mask, center_weight, outer_weight, round_mask);
 
       *reinterpret_cast< __m64*>(dstp+x) = result;
     }
@@ -688,7 +678,7 @@ static void af_horizontal_yuy2_mmx(BYTE* dstp, const BYTE* srcp, size_t dst_pitc
       _mm_and_si64(_mm_srli_si64(center, 16), right_mask_small)
       );//V1 Y3 U1 Y3 V1 Y3 U1 Y2
 
-    result = af_blend_yuy2_mmx(left, center, right, luma_mask, chroma_mask, center_weight, outer_weight, round_mask);
+    result = af_blend_yuy2_mmx(left, center, right, luma_mask, center_weight, outer_weight, round_mask);
 
     *reinterpret_cast< __m64*>(dstp + loop_limit) = result;
 
@@ -1054,13 +1044,6 @@ TemporalSoften::TemporalSoften( PClip _child, unsigned radius, unsigned luma_thr
   }
 
   scenechange *= ((vi.width/32)*32)*vi.height*vi.BytesFromPixels(1);
-  
-  planes = new int[8];
-  planeP = new const BYTE*[16];
-  planeP2 = new const BYTE*[16];
-  planePitch = new int[16];
-  planePitch2 = new int[16];
-  planeDisabled = new bool[16];
 
   int c = 0;
   if (vi.IsPlanar()) {
@@ -1077,16 +1060,9 @@ TemporalSoften::TemporalSoften( PClip _child, unsigned radius, unsigned luma_thr
   frames = new PVideoFrame[kernel];
 }
 
-
 TemporalSoften::~TemporalSoften(void) 
 {
-    delete[] planes;
-    delete[] planeP;
-    delete[] planeP2;
-    delete[] planePitch;
-    delete[] planePitch2;
-    delete[] planeDisabled;
-    delete[] frames;
+  delete[] frames;
 }
 
 //offset is the initial value of x. Used when C routine processes only parts of frames after SSE/MMX paths do their job.
@@ -1152,22 +1128,23 @@ static __forceinline __m128i ts_multiply_repack_sse2(__m128i &src, __m128i &div,
 
 
 static void accumulate_line_sse2(BYTE* c_plane, const BYTE** planeP, int planes, size_t width, int threshold, int div) {
+  __m128i halfdiv_vector = _mm_set1_epi32(16384);
+  __m128i div_vector = _mm_set1_epi16(div);
+
   for (size_t x = 0; x < width; x+=16) {
     __m128i current = _mm_load_si128(reinterpret_cast<const __m128i*>(c_plane+x));
     __m128i zero = _mm_setzero_si128();
     __m128i low = _mm_unpacklo_epi8(current, zero);
     __m128i high = _mm_unpackhi_epi8(current, zero);
     __m128i thresh = _mm_set1_epi16(threshold);
-    __m128i sum = current;
 
     for(int plane = planes-1; plane >= 0; --plane) {
       __m128i p = _mm_load_si128(reinterpret_cast<const __m128i*>(planeP[plane]+x));
 
-      __m128i adiff_h = _mm_subs_epu8(p, current);
-      __m128i adiff_l = _mm_subs_epu8(current, p);
-      __m128i adiff = _mm_or_si128(adiff_h, adiff_l); //abs(p-c)
+      __m128i p_greater_t = _mm_subs_epu8(p, thresh);
+      __m128i c_greater_t = _mm_subs_epu8(current, thresh);
+      __m128i over_thresh = _mm_or_si128(p_greater_t, c_greater_t); //abs(p-c) - t == (satsub(p,c) | satsub(c,p)) - t =kinda= satsub(p,t) | satsub(c,t)
 
-      __m128i over_thresh = _mm_subs_epu8(adiff, thresh);
       __m128i leq_thresh = _mm_cmpeq_epi8(over_thresh, zero); //abs diff lower or equal to threshold
 
       __m128i andop = _mm_and_si128(leq_thresh, p);
@@ -1181,27 +1158,16 @@ static void accumulate_line_sse2(BYTE* c_plane, const BYTE** planeP, int planes,
       high = _mm_adds_epu16(high, add_high);
     }
 
-    __m128i halfdiv_vector = _mm_set1_epi32(16384);
-    __m128i div_vector = _mm_set1_epi16(div);
-
     __m128i low_low   = ts_multiply_repack_sse2(_mm_unpacklo_epi16(low, zero), div_vector, halfdiv_vector, zero);
     __m128i low_high  = ts_multiply_repack_sse2(_mm_unpackhi_epi16(low, zero), div_vector, halfdiv_vector, zero);
     __m128i high_low  = ts_multiply_repack_sse2(_mm_unpacklo_epi16(high, zero), div_vector, halfdiv_vector, zero);
     __m128i high_high = ts_multiply_repack_sse2(_mm_unpackhi_epi16(high, zero), div_vector, halfdiv_vector, zero);
 
-    __m128i mask = _mm_set_epi32(0, 0, 0, 0xFFFF);
-    low_low = _mm_and_si128(low_low, mask);
-    low_high = _mm_and_si128(low_high, mask);
-    high_low = _mm_and_si128(high_low, mask);
+    low = _mm_unpacklo_epi32(low_low, low_high);
+    high = _mm_unpacklo_epi32(high_low, high_high);
 
-    low_high = _mm_slli_si128(low_high, 16);
-    high_low = _mm_slli_si128(high_low, 32);
-    high_high = _mm_slli_si128(high_high, 48);
-
-    __m128i acc = _mm_or_si128(low_low, low_high);
-    acc = _mm_or_si128(acc, high_low);
-    acc = _mm_or_si128(acc, high_high);
-
+    __m128i acc = _mm_unpacklo_epi64(low, high);
+    
     _mm_store_si128(reinterpret_cast<__m128i*>(c_plane+x), acc);
   }
 }
@@ -1218,22 +1184,23 @@ static __forceinline __m64 ts_multiply_repack_mmx(__m64 &src, __m64 &div, __m64 
 
 //thresh and div must always be 16-bit integers. Thresh is 2 packed bytes and div is a single 16-bit number
 static void accumulate_line_mmx(BYTE* c_plane, const BYTE** planeP, int planes, size_t width, int threshold, int div) {
+  __m64 halfdiv_vector = _mm_set1_pi32(16384);
+  __m64 div_vector = _mm_set1_pi16(div);
+
   for (size_t x = 0; x < width; x+=8) {
     __m64 current = *reinterpret_cast<const __m64*>(c_plane+x);
     __m64 zero = _mm_setzero_si64();
     __m64 low = _mm_unpacklo_pi8(current, zero);
     __m64 high = _mm_unpackhi_pi8(current, zero);
     __m64 thresh = _mm_set1_pi16(threshold);
-    __m64 sum = current;
 
     for(int plane = planes-1; plane >= 0; --plane) {
       __m64 p = *reinterpret_cast<const __m64*>(planeP[plane]+x);
 
-      __m64 adiff_h = _mm_subs_pu8(p, current);
-      __m64 adiff_l = _mm_subs_pu8(current, p);
-      __m64 adiff = _mm_or_si64(adiff_h, adiff_l); //abs(p-c)
+      __m64 p_greater_t = _mm_subs_pu8(p, thresh);
+      __m64 c_greater_t = _mm_subs_pu8(current, thresh);
+      __m64 over_thresh = _mm_or_si64(p_greater_t, c_greater_t); //abs(p-c) - t == (satsub(p,c) | satsub(c,p)) - t =kinda= satsub(p,t) | satsub(c,t)
 
-      __m64 over_thresh = _mm_subs_pu8(adiff, thresh);
       __m64 leq_thresh = _mm_cmpeq_pi8(over_thresh, zero); //abs diff lower or equal to threshold
 
       __m64 andop = _mm_and_si64(leq_thresh, p);
@@ -1246,27 +1213,16 @@ static void accumulate_line_mmx(BYTE* c_plane, const BYTE** planeP, int planes, 
       low = _mm_adds_pu16(low, add_low);
       high = _mm_adds_pu16(high, add_high);
     }
-
-    __m64 halfdiv_vector = _mm_set1_pi32(16384);
-    __m64 div_vector = _mm_set1_pi16(div);
     
     __m64 low_low   = ts_multiply_repack_mmx(_mm_unpacklo_pi16(low, zero), div_vector, halfdiv_vector, zero);
     __m64 low_high  = ts_multiply_repack_mmx(_mm_unpackhi_pi16(low, zero), div_vector, halfdiv_vector, zero);
     __m64 high_low  = ts_multiply_repack_mmx(_mm_unpacklo_pi16(high, zero), div_vector, halfdiv_vector, zero);
     __m64 high_high = ts_multiply_repack_mmx(_mm_unpackhi_pi16(high, zero), div_vector, halfdiv_vector, zero);
 
-    __m64 mask = _mm_set_pi32(0, 0xFFFF);
-    low_low = _mm_and_si64(low_low, mask);
-    low_high = _mm_and_si64(low_high, mask);
-    high_low = _mm_and_si64(high_low, mask);
+    low = _mm_unpacklo_pi16(low_low, low_high);
+    high = _mm_unpacklo_pi16(high_low, high_high);
 
-    low_high = _mm_slli_si64(low_high, 16);
-    high_low = _mm_slli_si64(high_low, 32);
-    high_high = _mm_slli_si64(high_high, 48);
-
-    __m64 acc = _mm_or_si64(low_low, low_high);
-    acc = _mm_or_si64(acc, high_low);
-    acc = _mm_or_si64(acc, high_high);
+   __m64 acc = _mm_unpacklo_pi32(low, high);
 
     *reinterpret_cast<__m64*>(c_plane+x) = acc;
   }
@@ -1388,9 +1344,7 @@ static int calculate_sad(const BYTE* cur_ptr, const BYTE* other_ptr, int cur_pit
 PVideoFrame TemporalSoften::GetFrame(int n, IScriptEnvironment* env) 
 {
   int radius = (kernel-1) / 2;
-
-  int threshold = 0;
-  int c=0;
+  int c = 0;
   
   // Just skip if silly settings
 
@@ -1398,30 +1352,30 @@ PVideoFrame TemporalSoften::GetFrame(int n, IScriptEnvironment* env)
     return child->GetFrame(n,env);
     
 
-  {for (int p=0; p<16; p++) {
+  for (int p=0; p<16; p++) {
     planeDisabled[p]=false;
-  }}
+  }
   
-  {for (int p=n-radius; p<=n+radius; p++) {
+  for (int p=n-radius; p<=n+radius; p++) {
     frames[p+radius-n] = child->GetFrame(clamp(p, 0, vi.num_frames-1), env);
-  }}
+  }
 
   env->MakeWritable(&frames[radius]);
 
   do {
     int c_thresh = planes[c+1];  // Threshold for current plane.
     int d=0;
-    {for (int i = 0; i<radius; i++) { // Fetch all planes sequencially
+    for (int i = 0; i<radius; i++) { // Fetch all planes sequencially
       planePitch[d] = frames[i]->GetPitch(planes[c]);
       planeP[d++] = frames[i]->GetReadPtr(planes[c]);
-    }}
+    }
 
     BYTE* c_plane= frames[radius]->GetWritePtr(planes[c]);
 
-    {for (int i = 1; i<=radius; i++) { // Fetch all planes sequencially
+    for (int i = 1; i<=radius; i++) { // Fetch all planes sequencially
       planePitch[d] = frames[radius+i]->GetPitch(planes[c]);
       planeP[d++] = frames[radius+i]->GetReadPtr(planes[c]);
-    }}
+    }
     
     int rowsize=frames[radius]->GetRowSize(planes[c]|PLANAR_ALIGNED);
     int h = frames[radius]->GetHeight(planes[c]);
@@ -1477,7 +1431,7 @@ PVideoFrame TemporalSoften::GetFrame(int n, IScriptEnvironment* env)
       bool aligned16 = IsPtrAligned(c_plane, 16);
       if ((env->GetCPUFlags() & CPUF_SSE2) && aligned16) {
         for (int i = 0; i < d; ++i) {
-          aligned16 = aligned16 && IsPtrAligned(planes[i], 16);
+          aligned16 = aligned16 && IsPtrAligned(planeP[i], 16);
         }
       }
 

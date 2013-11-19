@@ -147,11 +147,10 @@ static size_t get_sum_of_pixels_sse2(const BYTE* srcp, size_t height, size_t wid
       sum = _mm_add_epi32(sum, sad);
     }
 
-    if (mod16_width != width) {
-      for (size_t x = mod16_width; x < width; ++x) {
-        result += srcp[x];
-      }
+    for (size_t x = mod16_width; x < width; ++x) {
+      result += srcp[x];
     }
+
     srcp += pitch;
   }
   __m128i upper = _mm_castps_si128(_mm_movehl_ps(_mm_setzero_ps(), _mm_castsi128_ps(sum)));
@@ -174,10 +173,8 @@ static size_t get_sum_of_pixels_isse(const BYTE* srcp, size_t height, size_t wid
       sum = _mm_add_pi32(sum, sad);
     }
 
-    if (mod8_width != width) {
-      for (size_t x = mod8_width; x < width; ++x) {
-        result += srcp[x];
-      }
+    for (size_t x = mod8_width; x < width; ++x) {
+      result += srcp[x];
     }
 
     srcp += pitch;
@@ -330,10 +327,8 @@ static size_t get_sad_sse2(const BYTE* src_ptr, const BYTE* other_ptr, size_t he
       sum = _mm_add_epi32(sum, sad);
     }
 
-    if (mod16_width != width) {
-      for (size_t x = mod16_width; x < width; ++x) {
-        result += std::abs(src_ptr[x] - other_ptr[x]);
-      }
+    for (size_t x = mod16_width; x < width; ++x) {
+      result += std::abs(src_ptr[x] - other_ptr[x]);
     }
 
     src_ptr += src_pitch;
@@ -361,10 +356,8 @@ static size_t get_sad_rgb_sse2(const BYTE* src_ptr, const BYTE* other_ptr, size_
       sum = _mm_add_epi32(sum, sad);
     }
 
-    if (mod16_width != width) {
-      for (size_t x = mod16_width; x < width; ++x) {
-        result += std::abs(src_ptr[x] - other_ptr[x]);
-      }
+    for (size_t x = mod16_width; x < width; ++x) {
+      result += std::abs(src_ptr[x] - other_ptr[x]);
     }
 
     src_ptr += src_pitch;
@@ -391,10 +384,8 @@ static size_t get_sad_isse(const BYTE* src_ptr, const BYTE* other_ptr, size_t he
       sum = _mm_add_pi32(sum, sad);
     }
 
-    if (mod8_width != width) {
-      for (size_t x = mod8_width; x < width; ++x) {
-        result += abs(src_ptr[x] - other_ptr[x]);
-      }
+    for (size_t x = mod8_width; x < width; ++x) {
+      result += abs(src_ptr[x] - other_ptr[x]);
     }
 
     src_ptr += src_pitch;
@@ -421,10 +412,8 @@ static size_t get_sad_rgb_isse(const BYTE* src_ptr, const BYTE* other_ptr, size_
       sum = _mm_add_pi32(sum, sad);
     }
 
-    if (mod8_width != width) {
-      for (size_t x = mod8_width; x < width; ++x) {
-        result += abs(src_ptr[x] - other_ptr[x]);
-      }
+    for (size_t x = mod8_width; x < width; ++x) {
+      result += abs(src_ptr[x] - other_ptr[x]);
     }
 
     src_ptr += src_pitch;
