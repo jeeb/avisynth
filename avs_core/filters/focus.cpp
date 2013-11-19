@@ -1044,13 +1044,6 @@ TemporalSoften::TemporalSoften( PClip _child, unsigned radius, unsigned luma_thr
   }
 
   scenechange *= ((vi.width/32)*32)*vi.height*vi.BytesFromPixels(1);
-  
-  planes = new int[8];
-  planeP = new const BYTE*[16];
-  planeP2 = new const BYTE*[16];
-  planePitch = new int[16];
-  planePitch2 = new int[16];
-  planeDisabled = new bool[16];
 
   int c = 0;
   if (vi.IsPlanar()) {
@@ -1067,16 +1060,9 @@ TemporalSoften::TemporalSoften( PClip _child, unsigned radius, unsigned luma_thr
   frames = new PVideoFrame[kernel];
 }
 
-
 TemporalSoften::~TemporalSoften(void) 
 {
-    delete[] planes;
-    delete[] planeP;
-    delete[] planeP2;
-    delete[] planePitch;
-    delete[] planePitch2;
-    delete[] planeDisabled;
-    delete[] frames;
+  delete[] frames;
 }
 
 //offset is the initial value of x. Used when C routine processes only parts of frames after SSE/MMX paths do their job.
@@ -1358,9 +1344,7 @@ static int calculate_sad(const BYTE* cur_ptr, const BYTE* other_ptr, int cur_pit
 PVideoFrame TemporalSoften::GetFrame(int n, IScriptEnvironment* env) 
 {
   int radius = (kernel-1) / 2;
-
-  int threshold = 0;
-  int c=0;
+  int c = 0;
   
   // Just skip if silly settings
 
@@ -1368,30 +1352,30 @@ PVideoFrame TemporalSoften::GetFrame(int n, IScriptEnvironment* env)
     return child->GetFrame(n,env);
     
 
-  {for (int p=0; p<16; p++) {
+  for (int p=0; p<16; p++) {
     planeDisabled[p]=false;
-  }}
+  }
   
-  {for (int p=n-radius; p<=n+radius; p++) {
+  for (int p=n-radius; p<=n+radius; p++) {
     frames[p+radius-n] = child->GetFrame(clamp(p, 0, vi.num_frames-1), env);
-  }}
+  }
 
   env->MakeWritable(&frames[radius]);
 
   do {
     int c_thresh = planes[c+1];  // Threshold for current plane.
     int d=0;
-    {for (int i = 0; i<radius; i++) { // Fetch all planes sequencially
+    for (int i = 0; i<radius; i++) { // Fetch all planes sequencially
       planePitch[d] = frames[i]->GetPitch(planes[c]);
       planeP[d++] = frames[i]->GetReadPtr(planes[c]);
-    }}
+    }
 
     BYTE* c_plane= frames[radius]->GetWritePtr(planes[c]);
 
-    {for (int i = 1; i<=radius; i++) { // Fetch all planes sequencially
+    for (int i = 1; i<=radius; i++) { // Fetch all planes sequencially
       planePitch[d] = frames[radius+i]->GetPitch(planes[c]);
       planeP[d++] = frames[radius+i]->GetReadPtr(planes[c]);
-    }}
+    }
     
     int rowsize=frames[radius]->GetRowSize(planes[c]|PLANAR_ALIGNED);
     int h = frames[radius]->GetHeight(planes[c]);
