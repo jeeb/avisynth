@@ -55,6 +55,19 @@ private:
   int offset_y;
 };
 
+struct ConversionMatrix {
+  short y_r;
+  short y_g;
+  short y_b;
+  short u_r;
+  short u_g;
+  short u_b;
+  short v_r;
+  short v_g;
+  short v_b;
+
+  int offset_y;
+};
 
 class ConvertRGBToYV24 : public GenericVideoFilter
 {
@@ -62,11 +75,9 @@ public:
   ConvertRGBToYV24(PClip src, int matrix, IScriptEnvironment* env);
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
   static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env);
-  ~ConvertRGBToYV24();
 private:
   void BuildMatrix(double Kr, double Kb, int Sy, int Suv, int Oy, int shift);
-  signed short* matrix;
-  int offset_y;
+  ConversionMatrix matrix;
   int pixel_step;
 };
 
@@ -85,11 +96,9 @@ public:
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
   static AVSValue __cdecl Create24(AVSValue args, void*, IScriptEnvironment* env);
   static AVSValue __cdecl Create32(AVSValue args, void*, IScriptEnvironment* env);
-  ~ConvertYV24ToRGB();
 private:
   void BuildMatrix(double Kr, double Kb, int Sy, int Suv, int Oy, int shift);
-  signed short* matrix;
-  int offset_y;
+  ConversionMatrix matrix;
   int pixel_step;
 };
 
