@@ -32,12 +32,8 @@
 // which is not derived from or based on Avisynth, such as 3rd-party filters,
 // import and export plugins, or graphical user interfaces.
 
-/*
-** Turn. version 0.1
-** (c) 2003 - Ernst PechÚ
-**
-*/
-
+#ifndef _AVS_TURN_H
+#define _AVS_TURN_H
 
 #include <avisynth.h>
 
@@ -61,5 +57,16 @@ public:
 
 };
 
+// Other filters (e.g. resampler) might also use these functions
+void turn_left_plane_c(const BYTE *srcp, BYTE *dstp, int width, int height, int src_pitch, int dst_pitch);
+void turn_left_plane_sse2(const BYTE* pSrc, BYTE* pDst, int srcWidth, int srcHeight, int srcPitch, int dstPitch);
+void turn_left_rgb24(const BYTE *srcp, BYTE *dstp, int width, int height, int src_pitch, int dst_pitch);
+void turn_left_rgb32_c(const BYTE *srcp, BYTE *dstp, int width, int height, int src_pitch, int dst_pitch);
+void turn_left_rgb32_sse2(const BYTE *srcp, BYTE *dstp, int src_width_bytes, int src_height, int src_pitch, int dst_pitch);
+void turn_right_plane_c(const BYTE *srcp, BYTE *dstp, int width, int height, int src_pitch, int dst_pitch);
+void turn_right_plane_sse2(const BYTE* pSrc, BYTE* pDst, int srcWidth, int srcHeight, int srcPitch, int dstPitch);
+void turn_right_rgb24(const BYTE *srcp, BYTE *dstp, int width, int height, int src_pitch, int dst_pitch);
+void turn_right_rgb32_c(const BYTE *srcp, BYTE *dstp, int width, int height, int src_pitch, int dst_pitch);
+void turn_right_rgb32_sse2(const BYTE *srcp, BYTE *dstp, int src_width_bytes, int src_height, int src_pitch, int dst_pitch);
 
-
+#endif  // _AVS_TURN_H

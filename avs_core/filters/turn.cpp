@@ -83,7 +83,7 @@ static __forceinline void right_transpose_4_doublewords_sse2(__m128i &src1, __m1
   src4 = _mm_unpackhi_epi64(a2b2a3b3, c2d2c3d3); //a3b3c3d3
 }
 
-static void turn_left_rgb24(const BYTE *srcp, BYTE *dstp, int width, int height, int src_pitch, int dst_pitch) {
+void turn_left_rgb24(const BYTE *srcp, BYTE *dstp, int width, int height, int src_pitch, int dst_pitch) {
   int dstp_offset;
   for (int y = 0; y<height; y++) {
     dstp_offset = (height-1-y)*3;
@@ -97,7 +97,7 @@ static void turn_left_rgb24(const BYTE *srcp, BYTE *dstp, int width, int height,
   }
 }
 
-static void turn_right_rgb24(const BYTE *srcp, BYTE *dstp, int width, int height, int src_pitch, int dst_pitch) {
+void turn_right_rgb24(const BYTE *srcp, BYTE *dstp, int width, int height, int src_pitch, int dst_pitch) {
   int dstp_offset;
   int dstp_base = (width/3-1) * dst_pitch;
   for (int y=0; y<height; y++) {
@@ -125,7 +125,7 @@ static void turn_180_rgb24(const BYTE *srcp, BYTE *dstp, int width, int height, 
   }
 }
 
-static void turn_left_rgb32_c(const BYTE *srcp, BYTE *dstp, int width, int height, int src_pitch, int dst_pitch)
+void turn_left_rgb32_c(const BYTE *srcp, BYTE *dstp, int width, int height, int src_pitch, int dst_pitch)
 {
   const unsigned int *l_srcp = reinterpret_cast<const unsigned int *>(srcp);
   unsigned int *l_dstp = reinterpret_cast<unsigned int *>(dstp);
@@ -144,7 +144,7 @@ static void turn_left_rgb32_c(const BYTE *srcp, BYTE *dstp, int width, int heigh
   }
 }
 
-static void turn_left_rgb32_sse2(const BYTE *srcp, BYTE *dstp, int src_width_bytes, int src_height, int src_pitch, int dst_pitch)
+void turn_left_rgb32_sse2(const BYTE *srcp, BYTE *dstp, int src_width_bytes, int src_height, int src_pitch, int dst_pitch)
 {
   const BYTE* srcp2 = srcp;
 
@@ -195,7 +195,7 @@ static void turn_left_rgb32_sse2(const BYTE *srcp, BYTE *dstp, int src_width_byt
   }
 }
 
-static void turn_right_rgb32_c(const BYTE *srcp, BYTE *dstp, int width, int height, int src_pitch, int dst_pitch)
+void turn_right_rgb32_c(const BYTE *srcp, BYTE *dstp, int width, int height, int src_pitch, int dst_pitch)
 {
   const unsigned int *l_srcp = reinterpret_cast<const unsigned int *>(srcp);
   unsigned int *l_dstp = reinterpret_cast<unsigned int *>(dstp);
@@ -215,7 +215,7 @@ static void turn_right_rgb32_c(const BYTE *srcp, BYTE *dstp, int width, int heig
   }
 }
 
-static void turn_right_rgb32_sse2(const BYTE *srcp, BYTE *dstp, int src_width_bytes, int src_height, int src_pitch, int dst_pitch)
+void turn_right_rgb32_sse2(const BYTE *srcp, BYTE *dstp, int src_width_bytes, int src_height, int src_pitch, int dst_pitch)
 {
   const BYTE* srcp2 = srcp;
 
@@ -441,7 +441,7 @@ static __forceinline void right_transpose_8_bytes_sse2(__m128i &src1, __m128i &s
     src8 = mm_movehl_si128(zero, h67g67f67e67d67c67b67a67);
 }
 
-static void turn_right_plane_sse2(const BYTE* pSrc, BYTE* pDst, int srcWidth, int srcHeight, int srcPitch, int dstPitch) {
+void turn_right_plane_sse2(const BYTE* pSrc, BYTE* pDst, int srcWidth, int srcHeight, int srcPitch, int dstPitch) {
   const BYTE* pSrc2 = pSrc;
 
   __m128i zero = _mm_setzero_si128();
@@ -507,7 +507,7 @@ static void turn_right_plane_sse2(const BYTE* pSrc, BYTE* pDst, int srcWidth, in
   }
 }
 
-static void turn_left_plane_sse2(const BYTE* pSrc, BYTE* pDst, int srcWidth, int srcHeight, int srcPitch, int dstPitch) {
+void turn_left_plane_sse2(const BYTE* pSrc, BYTE* pDst, int srcWidth, int srcHeight, int srcPitch, int dstPitch) {
   const BYTE* pSrc2 = pSrc;
   int srcWidthMod8 = (srcWidth / 8) * 8;
   int srcHeightMod8 = (srcHeight / 8) * 8;
@@ -629,7 +629,7 @@ static void turn_180_plane_xsse(const BYTE* pSrc, BYTE* pDst, int srcWidth, int 
 TurnFuncPtr turn_180_plane_sse2 = &turn_180_plane_xsse<CPUF_SSE2>;
 TurnFuncPtr turn_180_plane_ssse3 = &turn_180_plane_xsse<CPUF_SSSE3>;
 
-static void turn_right_plane_c(const BYTE *srcp, BYTE *dstp, int width, int height, int src_pitch, int dst_pitch) {
+void turn_right_plane_c(const BYTE *srcp, BYTE *dstp, int width, int height, int src_pitch, int dst_pitch) {
   for(int y=0; y<height; y++)
   {
     int offset = height-1-y;
@@ -642,7 +642,7 @@ static void turn_right_plane_c(const BYTE *srcp, BYTE *dstp, int width, int heig
   }
 }
 
-static void turn_left_plane_c(const BYTE *srcp, BYTE *dstp, int width, int height, int src_pitch, int dst_pitch) {
+void turn_left_plane_c(const BYTE *srcp, BYTE *dstp, int width, int height, int src_pitch, int dst_pitch) {
   srcp += width-1;
   for(int y=0; y<height; y++)
   {
