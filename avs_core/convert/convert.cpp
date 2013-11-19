@@ -146,13 +146,12 @@ template<int rgb_size>
 static __forceinline __m128i convert_yuy2_to_rgb_sse2_core(const __m128i& src_luma_scaled, const __m128i& src_chroma, const __m128i &alpha,
                                                            const __m128i& v128, const __m128i& zero, const __m128i& rounder, const __m128i &ff,
                                                            const __m128i& ymul, const __m128i& bmul, const __m128i& gmul, const __m128i& rmul) {
-  __m128i chroma_scaled = _mm_sub_epi16(src_chroma, v128); //V1-128 | U1-128 | V0-128 | U0-128
+  __m128i chroma_scaled = _mm_sub_epi16(src_chroma, v128);  //V2-128 | U2-128 | V1-128 | U1-128 | V1-128 | U1-128 | V0-128 | U0-128
 
   __m128i luma_scaled = _mm_madd_epi16(src_luma_scaled, ymul); // (y1-16)*cy | (y0-16)*cy
   luma_scaled = _mm_add_epi32(luma_scaled, rounder); // (y1-16)*cy + 8192 | (y0-16)*cy + 8192
 
-  __m128i chroma_scaled2 = _mm_shufflelo_epi16(chroma_scaled, _MM_SHUFFLE(1, 0, 1, 0)); // V0-128 | U0-128 | V0-128 | U0-128
-  chroma_scaled2 = _mm_shufflehi_epi16(chroma_scaled2, _MM_SHUFFLE(1, 0, 1, 0)); // V0-128 | U0-128 | V0-128 | U0-128
+  __m128i chroma_scaled2 = _mm_shuffle_epi32(chroma_scaled, _MM_SHUFFLE(2, 2, 0, 0)); //V1-128 | U1-128 | V1-128 | U1-128 | V0-128 | U0-128 | V0-128 | U0-128
 
   chroma_scaled = _mm_add_epi16(chroma_scaled, chroma_scaled2); // V0+V1-256 | U0+U1-256 | (V0-128)*2 | (U0-128)*2
 

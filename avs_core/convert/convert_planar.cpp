@@ -550,13 +550,7 @@ AVSValue __cdecl ConvertToY8::Create(AVSValue args, void*, IScriptEnvironment* e
 /*****************************************************
  * ConvertRGBToYV24
  *
- * (c) Klaus Post, 2005
  ******************************************************/
-
-// XMM_WORD ready
-__declspec(align(16)) static const __int64 Post_Add00[2] = { 0x008000800000, 0x008000800000 };
-__declspec(align(16)) static const __int64 Post_Add16[2] = { 0x008000800010, 0x008000800010 };
-
 
 ConvertRGBToYV24::ConvertRGBToYV24(PClip src, int in_matrix, IScriptEnvironment* env)
   : GenericVideoFilter(src), matrix(NULL)
