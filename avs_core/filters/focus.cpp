@@ -1151,16 +1151,14 @@ static void accumulate_line_sse2(BYTE* c_plane, const BYTE** planeP, int planes,
     __m128i low = _mm_unpacklo_epi8(current, zero);
     __m128i high = _mm_unpackhi_epi8(current, zero);
     __m128i thresh = _mm_set1_epi16(threshold);
-    __m128i sum = current;
 
     for(int plane = planes-1; plane >= 0; --plane) {
       __m128i p = _mm_load_si128(reinterpret_cast<const __m128i*>(planeP[plane]+x));
 
-      __m128i adiff_h = _mm_subs_epu8(p, current);
-      __m128i adiff_l = _mm_subs_epu8(current, p);
-      __m128i adiff = _mm_or_si128(adiff_h, adiff_l); //abs(p-c)
+      __m128i p_greater_t = _mm_subs_epu8(p, thresh);
+      __m128i c_greater_t = _mm_subs_epu8(current, thresh);
+      __m128i over_thresh = _mm_or_si128(p_greater_t, c_greater_t); //abs(p-c) - t == (satsub(p,c) | satsub(c,p)) - t =kinda= satsub(p,t) | satsub(c,t)
 
-      __m128i over_thresh = _mm_subs_epu8(adiff, thresh);
       __m128i leq_thresh = _mm_cmpeq_epi8(over_thresh, zero); //abs diff lower or equal to threshold
 
       __m128i andop = _mm_and_si128(leq_thresh, p);
@@ -1209,16 +1207,14 @@ static void accumulate_line_mmx(BYTE* c_plane, const BYTE** planeP, int planes, 
     __m64 low = _mm_unpacklo_pi8(current, zero);
     __m64 high = _mm_unpackhi_pi8(current, zero);
     __m64 thresh = _mm_set1_pi16(threshold);
-    __m64 sum = current;
 
     for(int plane = planes-1; plane >= 0; --plane) {
       __m64 p = *reinterpret_cast<const __m64*>(planeP[plane]+x);
 
-      __m64 adiff_h = _mm_subs_pu8(p, current);
-      __m64 adiff_l = _mm_subs_pu8(current, p);
-      __m64 adiff = _mm_or_si64(adiff_h, adiff_l); //abs(p-c)
+      __m64 p_greater_t = _mm_subs_pu8(p, thresh);
+      __m64 c_greater_t = _mm_subs_pu8(current, thresh);
+      __m64 over_thresh = _mm_or_si64(p_greater_t, c_greater_t); //abs(p-c) - t == (satsub(p,c) | satsub(c,p)) - t =kinda= satsub(p,t) | satsub(c,t)
 
-      __m64 over_thresh = _mm_subs_pu8(adiff, thresh);
       __m64 leq_thresh = _mm_cmpeq_pi8(over_thresh, zero); //abs diff lower or equal to threshold
 
       __m64 andop = _mm_and_si64(leq_thresh, p);
