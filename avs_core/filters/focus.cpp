@@ -484,7 +484,7 @@ static void af_horizontal_yuy2_c(BYTE* p, int height, int pitch, int width, int 
 }
 
 
-static __forceinline __m128i af_blend_yuy2_sse2(__m128i &left, __m128i &center, __m128i &right, __m128i &luma_mask, __m128i &chroma_mask, 
+static __forceinline __m128i af_blend_yuy2_sse2(__m128i &left, __m128i &center, __m128i &right, __m128i &luma_mask, 
                                              __m128i &center_weight, __m128i &outer_weight, __m128i &round_mask) {
   __m128i left_luma = _mm_and_si128(left, luma_mask); //0 Y1 0 Y0 0 Y-1 0 Y-2
   __m128i center_luma = _mm_and_si128(center, luma_mask); //0 Y3 0 Y2 0 Y1 0 Y0
@@ -502,13 +502,9 @@ static __forceinline __m128i af_blend_yuy2_sse2(__m128i &left, __m128i &center, 
 
   __m128i result_luma = af_blend_sse2(left_luma, center_luma, right_luma, center_weight, outer_weight, round_mask); 
 
-  __m128i left_chroma = _mm_and_si128(left, chroma_mask); //V 0 Y 0 V 0 U 0
-  __m128i center_chroma = _mm_and_si128(center, chroma_mask); //V 0 Y 0 V 0 U 0
-  __m128i right_chroma = _mm_and_si128(right, chroma_mask); //V 0 Y 0 V 0 U 0
-
-  left_chroma = _mm_srli_si128(left_chroma, 1); //0 V 0 U 0 V 0 U
-  center_chroma = _mm_srli_si128(center_chroma, 1); //0 V 0 U 0 V 0 U
-  right_chroma = _mm_srli_si128(right_chroma, 1); //0 V 0 U 0 V 0 U
+  __m128i left_chroma = _mm_srli_epi16(left, 8); //0 V 0 U 0 V 0 U
+  __m128i center_chroma = _mm_srli_epi16(center, 8); //0 V 0 U 0 V 0 U
+  __m128i right_chroma = _mm_srli_epi16(right, 8); //0 V 0 U 0 V 0 U
 
   __m128i result_chroma = af_blend_sse2(left_chroma, center_chroma, right_chroma, center_weight, outer_weight, round_mask);
   result_chroma = _mm_slli_si128(result_chroma, 1);
@@ -531,7 +527,6 @@ static void af_horizontal_yuy2_sse2(BYTE* dstp, const BYTE* srcp, size_t dst_pit
   __m128i left_mask_small = _mm_set_epi16(0, 0, 0, 0, 0, 0, 0x00FF, 0);
   __m128i right_mask_small = _mm_set_epi16(0, 0x00FF, 0, 0, 0, 0, 0, 0);
   __m128i luma_mask = _mm_set1_epi16(0xFF);
-  __m128i chroma_mask = _mm_set1_epi16(0xFF00);
 #pragma warning(default: 4309)
 
   __m128i center, right, left, result;
@@ -550,7 +545,7 @@ static void af_horizontal_yuy2_sse2(BYTE* dstp, const BYTE* srcp, size_t dst_pit
       _mm_and_si128(_mm_slli_si128(center, 2), left_mask_small)
       );//V0 Y1 U0 Y0 V0 Y0 U0 Y0
 
-    result = af_blend_yuy2_sse2(left, center, right, luma_mask, chroma_mask, center_weight, outer_weight, round_mask);
+    result = af_blend_yuy2_sse2(left, center, right, luma_mask, center_weight, outer_weight, round_mask);
 
     _mm_store_si128(reinterpret_cast< __m128i*>(dstp), result);
 
@@ -559,7 +554,7 @@ static void af_horizontal_yuy2_sse2(BYTE* dstp, const BYTE* srcp, size_t dst_pit
       center = _mm_load_si128(reinterpret_cast<const __m128i*>(srcp + x)); //V1 Y3 U1 Y2 V0 Y1 U0 Y0
       right = _mm_loadu_si128(reinterpret_cast<const __m128i*>(srcp + x + 4));//V2 Y5 U2 Y4 V1 Y3 U1 Y2
 
-      __m128i result = af_blend_yuy2_sse2(left, center, right, luma_mask, chroma_mask, center_weight, outer_weight, round_mask);
+      __m128i result = af_blend_yuy2_sse2(left, center, right, luma_mask, center_weight, outer_weight, round_mask);
 
       _mm_store_si128(reinterpret_cast< __m128i*>(dstp+x), result);
     }
@@ -578,7 +573,7 @@ static void af_horizontal_yuy2_sse2(BYTE* dstp, const BYTE* srcp, size_t dst_pit
       _mm_and_si128(_mm_srli_si128(center, 2), right_mask_small)
       );//V1 Y3 U1 Y3 V1 Y3 U1 Y2
 
-    result = af_blend_yuy2_sse2(left, center, right, luma_mask, chroma_mask, center_weight, outer_weight, round_mask);
+    result = af_blend_yuy2_sse2(left, center, right, luma_mask, center_weight, outer_weight, round_mask);
 
     _mm_storeu_si128(reinterpret_cast< __m128i*>(dstp + loop_limit), result);
 
@@ -595,7 +590,7 @@ static void af_horizontal_yuy2_sse2(BYTE* dstp, const BYTE* srcp, size_t dst_pit
 // Blur/Sharpen Horizontal YUY2 MMX Code
 // -------------------------------------
 // 
-static __forceinline __m64 af_blend_yuy2_mmx(__m64 &left, __m64 &center, __m64 &right, __m64 &luma_mask, __m64 &chroma_mask, 
+static __forceinline __m64 af_blend_yuy2_mmx(__m64 &left, __m64 &center, __m64 &right, __m64 &luma_mask, 
                            __m64 &center_weight, __m64 &outer_weight, __m64 &round_mask) {
   __m64 left_luma = _mm_and_si64(left, luma_mask); //0 Y1 0 Y0 0 Y-1 0 Y-2
   __m64 center_luma = _mm_and_si64(center, luma_mask); //0 Y3 0 Y2 0 Y1 0 Y0
@@ -613,13 +608,9 @@ static __forceinline __m64 af_blend_yuy2_mmx(__m64 &left, __m64 &center, __m64 &
 
   __m64 result_luma = af_blend_mmx(left_luma, center_luma, right_luma, center_weight, outer_weight, round_mask); 
 
-  __m64 left_chroma = _mm_and_si64(left, chroma_mask); //V 0 Y 0 V 0 U 0
-  __m64 center_chroma = _mm_and_si64(center, chroma_mask); //V 0 Y 0 V 0 U 0
-  __m64 right_chroma = _mm_and_si64(right, chroma_mask); //V 0 Y 0 V 0 U 0
-
-  left_chroma = _mm_srli_si64(left_chroma, 8); //0 V 0 U 0 V 0 U
-  center_chroma = _mm_srli_si64(center_chroma, 8); //0 V 0 U 0 V 0 U
-  right_chroma = _mm_srli_si64(right_chroma, 8); //0 V 0 U 0 V 0 U
+  __m64 left_chroma = _mm_srli_pi16(left, 8); //0 V 0 U 0 V 0 U
+  __m64 center_chroma = _mm_srli_pi16(center, 8); //0 V 0 U 0 V 0 U
+  __m64 right_chroma = _mm_srli_pi16(right, 8); //0 V 0 U 0 V 0 U
 
   __m64 result_chroma = af_blend_mmx(left_chroma, center_chroma, right_chroma, center_weight, outer_weight, round_mask);
   result_chroma = _mm_slli_si64(result_chroma, 8);
@@ -642,7 +633,6 @@ static void af_horizontal_yuy2_mmx(BYTE* dstp, const BYTE* srcp, size_t dst_pitc
   __m64 left_mask_small = _mm_set_pi16(0, 0, 0x00FF, 0);
   __m64 right_mask_small = _mm_set_pi16(0, 0x00FF, 0, 0);
   __m64 luma_mask = _mm_set1_pi16(0xFF);
-  __m64 chroma_mask = _mm_set1_pi16(0xFF00);
 #pragma warning(default: 4309)
 
   __m64 center, right, left, result;
@@ -661,7 +651,7 @@ static void af_horizontal_yuy2_mmx(BYTE* dstp, const BYTE* srcp, size_t dst_pitc
       _mm_and_si64(_mm_slli_si64(center, 16), left_mask_small)
       );//V0 Y1 U0 Y0 V0 Y0 U0 Y0
 
-    result = af_blend_yuy2_mmx(left, center, right, luma_mask, chroma_mask, center_weight, outer_weight, round_mask);
+    result = af_blend_yuy2_mmx(left, center, right, luma_mask, center_weight, outer_weight, round_mask);
 
     *reinterpret_cast< __m64*>(dstp) = result;
 
@@ -670,7 +660,7 @@ static void af_horizontal_yuy2_mmx(BYTE* dstp, const BYTE* srcp, size_t dst_pitc
       center = *reinterpret_cast<const __m64*>(srcp + x); //V1 Y3 U1 Y2 V0 Y1 U0 Y0
       right = *reinterpret_cast<const __m64*>(srcp + x + 4);//V2 Y5 U2 Y4 V1 Y3 U1 Y2
 
-      __m64 result = af_blend_yuy2_mmx(left, center, right, luma_mask, chroma_mask, center_weight, outer_weight, round_mask);
+      __m64 result = af_blend_yuy2_mmx(left, center, right, luma_mask, center_weight, outer_weight, round_mask);
 
       *reinterpret_cast< __m64*>(dstp+x) = result;
     }
@@ -688,7 +678,7 @@ static void af_horizontal_yuy2_mmx(BYTE* dstp, const BYTE* srcp, size_t dst_pitc
       _mm_and_si64(_mm_srli_si64(center, 16), right_mask_small)
       );//V1 Y3 U1 Y3 V1 Y3 U1 Y2
 
-    result = af_blend_yuy2_mmx(left, center, right, luma_mask, chroma_mask, center_weight, outer_weight, round_mask);
+    result = af_blend_yuy2_mmx(left, center, right, luma_mask, center_weight, outer_weight, round_mask);
 
     *reinterpret_cast< __m64*>(dstp + loop_limit) = result;
 
