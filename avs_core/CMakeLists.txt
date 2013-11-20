@@ -21,12 +21,6 @@ target_compile_definitions("AvsCore" PRIVATE BUILDING_AVSCORE)
 # Windows DLL dependencies 
 target_link_libraries("AvsCore" "Winmm.lib" "Vfw32.lib" "Msacm32.lib" "Gdi32.lib" "User32.lib" "Advapi32.lib" "Ole32.lib")
 
-# Add source dependencies
-if( CMAKE_SIZEOF_VOID_P EQUAL 4 ) # 32-bit
-  add_subdirectory("softwire")
-  target_link_libraries("AvsCore" "SoftWire")
-endif()
-
 if (MSVC_IDE)    
   # Copy output to a common folder for easy deployment
   add_custom_command(
