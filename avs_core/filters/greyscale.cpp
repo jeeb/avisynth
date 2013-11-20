@@ -34,9 +34,11 @@
 
 
 #include "greyscale.h"
-#include <avs/win.h>
-#include <cstdlib>
 #include "../core/internal.h"
+#include <emmintrin.h>
+#include <avs/alignment.h>
+#include <avs/minmax.h>
+#include <avs/win.h>
 
 
 /*************************************
@@ -67,6 +69,140 @@ Greyscale::Greyscale(PClip _child, const char* matrix, IScriptEnvironment* env)
   }
 }
 
+//this is not really faster than MMX but a lot cleaner
+static void greyscale_yuy2_sse2(BYTE *srcp, size_t /*width*/, size_t height, size_t pitch) {
+  __m128i luma_mask = _mm_set1_epi16(0x00FF);
+#pragma warning(disable: 4309)
+  __m128i chroma_value = _mm_set1_epi16(0x8000);
+#pragma warning(default: 4309)
+  BYTE* end_point = srcp + pitch * height;
+
+  while(srcp < end_point) {
+    __m128i src = _mm_load_si128(reinterpret_cast<const __m128i*>(srcp));
+    src = _mm_and_si128(src, luma_mask);
+    src = _mm_or_si128(src, chroma_value);
+    _mm_store_si128(reinterpret_cast<__m128i*>(srcp), src);
+
+    srcp += 16;
+  }
+}
+
+static void greyscale_rgb32_sse2(BYTE *srcp, size_t /*width*/, size_t height, size_t pitch, int cyb, int cyg, int cyr) {
+  __m128i matrix = _mm_set_epi16(0, cyr, cyg, cyb, 0, cyr, cyg, cyb);
+  __m128i zero = _mm_setzero_si128();
+  __m128i round_mask = _mm_set1_epi32(16384);
+  __m128i alpha_mask = _mm_set1_epi32(0xFF000000);
+
+  BYTE* end_point = srcp + pitch * height;
+
+  while(srcp < end_point) { 
+    __m128i src = _mm_load_si128(reinterpret_cast<const __m128i*>(srcp));
+    __m128i alpha = _mm_and_si128(src, alpha_mask);
+    __m128i pixel01 = _mm_unpacklo_epi8(src, zero);
+    __m128i pixel23 = _mm_unpackhi_epi8(src, zero);
+
+    pixel01 = _mm_madd_epi16(pixel01, matrix);
+    pixel23 = _mm_madd_epi16(pixel23, matrix);
+
+    __m128i tmp = _mm_castps_si128(_mm_shuffle_ps(_mm_castsi128_ps(pixel01), _mm_castsi128_ps(pixel23), _MM_SHUFFLE(3, 1, 3, 1))); // r3*cyr | r2*cyr | r1*cyr | r0*cyr
+    __m128i tmp2 = _mm_castps_si128(_mm_shuffle_ps(_mm_castsi128_ps(pixel01), _mm_castsi128_ps(pixel23), _MM_SHUFFLE(2, 0, 2, 0)));
+
+    tmp = _mm_add_epi32(tmp, tmp2); 
+    tmp = _mm_add_epi32(tmp, round_mask); 
+    tmp = _mm_srli_epi32(tmp, 15); // 0 0 0 p3 | 0 0 0 p2 | 0 0 0 p1 | 0 0 0 p0
+
+    //todo: pshufb?
+    __m128i result = _mm_or_si128(tmp, _mm_slli_si128(tmp, 1)); 
+    result = _mm_or_si128(result, _mm_slli_si128(tmp, 2));
+    result = _mm_or_si128(alpha, result);
+
+    _mm_store_si128(reinterpret_cast<__m128i*>(srcp), result);
+
+    srcp += 16;
+  }
+}
+
+
+#ifdef X86_32
+static void greyscale_yuy2_mmx(BYTE *srcp, size_t width, size_t height, size_t pitch) {
+  bool not_mod8 = false;
+  size_t loop_limit = min((pitch / 8) * 8, ((width*4 + 7) / 8) * 8);
+
+  __m64 luma_mask = _mm_set1_pi16(0x00FF);
+#pragma warning(disable: 4309)
+  __m64 chroma_value = _mm_set1_pi16(0x8000);
+#pragma warning(default: 4309)
+
+  for (size_t y = 0; y < height; ++y) {
+    for (size_t x = 0; x < loop_limit; x+=8) {
+     __m64 src = *reinterpret_cast<const __m64*>(srcp+x);
+     src = _mm_and_si64(src, luma_mask);
+     src = _mm_or_si64(src, chroma_value);
+     *reinterpret_cast<__m64*>(srcp+x) = src;
+    }
+
+    if (loop_limit < width) {
+      __m64 src = *reinterpret_cast<const __m64*>(srcp+width-8);
+      src = _mm_and_si64(src, luma_mask);
+      src = _mm_or_si64(src, chroma_value);
+      *reinterpret_cast<__m64*>(srcp+width-8) = src;
+    }
+
+    srcp += pitch;
+  }
+ _mm_empty();
+}
+
+static __forceinline __m64 greyscale_rgb32_core_mmx(__m64 &src, __m64 &alpha_mask, __m64 &zero, __m64 &matrix, __m64 &round_mask) {
+  __m64 alpha = _mm_and_si64(src, alpha_mask);
+  __m64 pixel0 = _mm_unpacklo_pi8(src, zero); 
+  __m64 pixel1 = _mm_unpackhi_pi8(src, zero);
+
+  pixel0 = _mm_madd_pi16(pixel0, matrix); //a0*0 + r0*cyr | g0*cyg + b0*cyb
+  pixel1 = _mm_madd_pi16(pixel1, matrix); //a1*0 + r1*cyr | g1*cyg + b1*cyb
+
+  __m64 tmp = _mm_unpackhi_pi32(pixel0, pixel1); // r1*cyr | r0*cyr
+  __m64 tmp2 = _mm_unpacklo_pi32(pixel0, pixel1); // g1*cyg + b1*cyb | g0*cyg + b0*cyb
+
+  tmp = _mm_add_pi32(tmp, tmp2); // r1*cyr + g1*cyg + b1*cyb | r0*cyr + g0*cyg + b0*cyb
+  tmp = _mm_add_pi32(tmp, round_mask); // r1*cyr + g1*cyg + b1*cyb + 32768 | r0*cyr + g0*cyg + b0*cyb + 32768
+  tmp = _mm_srli_pi32(tmp, 15); // 0 0 0 p2 | 0 0 0 p1
+
+  __m64 shifted = _mm_slli_si64(tmp, 8);
+  tmp = _mm_or_si64(tmp, shifted); // 0 0 p2 p2 | 0 0 p1 p1
+  tmp = _mm_or_si64(tmp, _mm_slli_si64(shifted, 8)); // 0 p2 p2 p2 | 0 p1 p1 p1
+  return _mm_or_si64(tmp, alpha);
+}
+
+static void greyscale_rgb32_mmx(BYTE *srcp, size_t width, size_t height, size_t pitch, int cyb, int cyg, int cyr) {
+  __m64 matrix = _mm_set_pi16(0, cyr, cyg, cyb);
+  __m64 zero = _mm_setzero_si64();
+  __m64 round_mask = _mm_set1_pi32(16384);
+  __m64 alpha_mask = _mm_set1_pi32(0xFF000000);
+
+  size_t loop_limit = min((pitch / 8) * 8, ((width*4 + 7) / 8) * 8);
+
+  for (size_t y = 0; y < height; ++y) {
+    for (size_t x = 0; x < loop_limit; x+=8) {
+      __m64 src = *reinterpret_cast<const __m64*>(srcp+x); //pixels 0 and 1
+      __m64 result = greyscale_rgb32_core_mmx(src, alpha_mask, zero, matrix, round_mask);
+
+      *reinterpret_cast<__m64*>(srcp+x) = result;
+    }
+
+    if (loop_limit < width) {
+      __m64 src = *reinterpret_cast<const __m64*>(srcp+width-8); //pixels 0 and 1
+      __m64 result = greyscale_rgb32_core_mmx(src, alpha_mask, zero, matrix, round_mask);
+
+      *reinterpret_cast<__m64*>(srcp+width-8) = result;
+    }
+
+    srcp += pitch;
+  }
+  _mm_empty();
+}
+#endif
+
 
 PVideoFrame Greyscale::GetFrame(int n, IScriptEnvironment* env)
 {
@@ -77,294 +213,117 @@ PVideoFrame Greyscale::GetFrame(int n, IScriptEnvironment* env)
   env->MakeWritable(&frame);
   BYTE* srcp = frame->GetWritePtr();
   int pitch = frame->GetPitch();
-  int myy = vi.height;
-  int myx = vi.width;
+  int height = vi.height;
+  int width = vi.width;
 
   if (vi.IsPlanar()) {
-    pitch = frame->GetPitch(PLANAR_U)/4;
-    int *srcpUV = (int*)frame->GetWritePtr(PLANAR_U);
-    myx = frame->GetRowSize(PLANAR_U_ALIGNED)/4;
-    myy = frame->GetHeight(PLANAR_U);
-    {for (int y=0; y<myy; y++) {
-      for (int x=0; x<myx; x++) {
-        srcpUV[x] = 0x80808080;  // mod 8
-      }
-      srcpUV += pitch;
-    }}
-    pitch = frame->GetPitch(PLANAR_V)/4;
-    srcpUV = (int*)frame->GetWritePtr(PLANAR_V);
-    myx = frame->GetRowSize(PLANAR_V_ALIGNED)/4;
-    myy = frame->GetHeight(PLANAR_V);
-    {for (int y=0; y<myy; ++y) {
-      for (int x=0; x<myx; x++) {
-        srcpUV[x] = 0x80808080;  // mod 8
-      }
-      srcpUV += pitch;
-    }}
+    memset(frame->GetWritePtr(PLANAR_U), 0x80808080, frame->GetHeight(PLANAR_U) * frame->GetPitch(PLANAR_U));
+    memset(frame->GetWritePtr(PLANAR_V), 0x80808080, frame->GetHeight(PLANAR_V) * frame->GetPitch(PLANAR_V));
+    return frame;
   }
 
+  if (vi.IsYUY2()) {
+    if ((env->GetCPUFlags() & CPUF_SSE2) && width > 4 && IsPtrAligned(srcp, 16)) {
+      greyscale_yuy2_sse2(srcp, width, height, pitch);
+    } else
 #ifdef X86_32
-  else if (vi.IsYUY2() && (env->GetCPUFlags() & CPUF_MMX)) 
-  {
-	  myx = __min(pitch>>1, (myx+3) & -4);	// Try for mod 8
-	  __asm {
-		pcmpeqw		mm7,mm7
-		pcmpeqw		mm6,mm6
-		psrlw		mm7,8					; 0x00ff00ff00ff00ff
-		psllw		mm6,15					; 0x8000800080008000
-		mov			esi,srcp				; data pointer
-		mov			eax,pitch				; pitch
-		mov			edx,myy					; height
-		mov			edi,myx					; aligned width
-		sub			eax,edi
-		sub			eax,edi					; modulo = pitch - rowsize
-		shr			edi,1					; number of dwords
-
-		align		16
-yloop:
-		mov			ecx,edi					; number of dwords
-
-		test		esi,0x7					; qword aligned?
-		jz			xloop1					; yes
-
-		movd		mm5,[esi]				; process 1 dword
-		pand		mm5,mm7					; keep luma
-		 add		esi,4					; srcp++
-		por			mm5,mm6					; set chroma = 128
-		 dec		ecx						; count--
-		movd		[esi-4],mm5				; update 2 pixels
-
-		align		16
-xloop1:
-		cmp			ecx,16					; Try to do 16 pixels per loop
-		jl			xlend1
-
-		movq		mm0,[esi+0]				; process 1 qword
-		movq		mm1,[esi+8]
-		pand		mm0,mm7					; keep luma
-		pand		mm1,mm7
-		por			mm0,mm6					; set chroma = 128
-		por			mm1,mm6
-		movq		[esi+0],mm0				; update 2 pixels
-		movq		[esi+8],mm1
-
-		movq		mm2,[esi+16]
-		movq		mm3,[esi+24]
-		pand		mm2,mm7
-		pand		mm3,mm7
-		por			mm2,mm6
-		por			mm3,mm6
-		movq		[esi+16],mm2
-		movq		[esi+24],mm3
-
-		movq		mm0,[esi+32]
-		movq		mm1,[esi+40]
-		pand		mm0,mm7
-		pand		mm1,mm7
-		por			mm0,mm6
-		por			mm1,mm6
-		movq		[esi+32],mm0
-		movq		[esi+40],mm1
-
-		movq		mm2,[esi+48]
-		movq		mm3,[esi+56]
-		pand		mm2,mm7
-		pand		mm3,mm7
-		por			mm2,mm6
-		por			mm3,mm6
-		movq		[esi+48],mm2
-		movq		[esi+56],mm3
-
-		sub			ecx,16					; count-=16
-		add			esi,64					; srcp+=16
-
-		jmp			xloop1
-xlend1:
-		cmp			ecx,2
-		jl			xlend2
-
-		align		16
-xloop3:
-		movq		mm0,[esi]				; process 1 qword
-		 sub		ecx,2					; count-=2
-		pand		mm0,mm7					; keep luma
-		 add		esi,8					; srcp+=2
-		por			mm0,mm6					; set chroma = 128
-		 cmp		ecx,2					; any qwords left
-		movq		[esi-8],mm0				; update 4 pixels
-		 jge		xloop3					; more qwords ?
-
-		align		16
-xlend2:
-		cmp			ecx,1					; 1 dword left
-		jl			xlend3					; no
-
-		movd		mm0,[esi]				; process 1 dword
-		pand		mm0,mm7					; keep luma
-		por			mm0,mm6					; set chroma = 128
-		movd		[esi-4],mm0				; update 2 pixels
-		add			esi,4					; srcp++
-
-xlend3:
-		add			esi,eax
-		dec			edx
-		jnle		yloop
-		emms
-	  }
-  }
+    if ((env->GetCPUFlags() & CPUF_MMX) && width > 2) {
+      greyscale_yuy2_mmx(srcp, width, height, pitch);
+    } else
 #endif
-  else if (vi.IsYUY2()) 
-  {
-	  for (int y=0; y<myy; ++y)
     {
-	    for (int x=0; x<myx; x++)
-		  srcp[x*2+1] = 128;
-	    srcp += pitch;
-	  }
-  }
-#ifdef X86_32
-  else if (vi.IsRGB32() && (env->GetCPUFlags() & CPUF_MMX))
-  {
-	  const int cyav = int(0.33333*32768+0.5);
-
-	  const int cyb = int(0.114*32768+0.5);
-	  const int cyg = int(0.587*32768+0.5);
-	  const int cyr = int(0.299*32768+0.5);
-
-	  const int cyb709 = int(0.0722*32768+0.5);
-	  const int cyg709 = int(0.7152*32768+0.5);
-	  const int cyr709 = int(0.2126*32768+0.5);
-
-	  __int64 rgb2lum;
-
-	  if (theMatrix == Rec709)
-	    rgb2lum = ((__int64)cyr709 << 32) | (cyg709 << 16) | cyb709;
-	  else if (theMatrix == Average)
-	    rgb2lum = ((__int64)cyav << 32) | (cyav << 16) | cyav;
-	  else
-	    rgb2lum = ((__int64)cyr << 32) | (cyg << 16) | cyb;
-
-    __asm {
-		mov			edi,srcp
-		pcmpeqd		mm1,mm1
-		pxor		mm0,mm0
-		psrlq		mm1,63				; 0x0000000000000001
-		pcmpeqd		mm3,mm3
-		psllq		mm1,46				; 0x0000400000000000
-		movq		mm2,rgb2lum
-		pslld		mm3,24				; 0xff000000ff000000
-
-		xor			ecx,ecx
-		mov			eax,myy
-		mov			edx,myx
-
-		align		16
-rgb2lum_mmxloop:
-		movq		mm6,[edi+ecx*4]		; Get 2 pixels
-		 movq		mm4,mm3				; duplicate alpha mask
-		movq		mm5,mm6				; duplicate pixels
-		 pand		mm4,mm6				; extract alpha channel [ha00000la000000]
-		punpcklbw	mm6,mm0				; [00ha|00rr|00gg|00bb]		-- low
-		 punpckhbw	mm5,mm0	 			;                      		-- high
-		pmaddwd		mm6,mm2				; [0*a+cyr*r|cyg*g+cyb*b]		-- low
-		 pmaddwd	mm5,mm2				;                         		-- high
-		punpckldq	mm7,mm6				; [loDWmm6|junk]				-- low
-		 paddd		mm6,mm1				; +=0.5
-		paddd		mm5,mm1				; +=0.5
-		 paddd		mm6,mm7				; [hiDWmm6+32768+loDWmm6|junk]	-- low
-		punpckldq	mm7,mm5				; [loDWmm5|junk]				-- high
-		psrlq		mm6,47				; -> 8 bit result				-- low
-		 paddd		mm5,mm7				; [hiDWmm5+32768+loDWmm5|junk]	-- high
-		punpcklwd	mm6,mm6				; [0000|0000|grey|grey]		-- low
-		 psrlq		mm5,47				; -> 8 bit result				-- high
-		punpckldq	mm6,mm6				; [grey|grey|grey|grey]		-- low
-		 punpcklwd	mm5,mm5				; [0000|0000|grey|grey]		-- high
-		 punpckldq	mm5,mm5				; [grey|grey|grey|grey]		-- high
-		 packuswb	mm6,mm5				; [hg|hg|hg|hg|lg|lg|lg|lg]
-		 psrld		mm6,8				; [00|hg|hg|hg|00|lg|lg|lg]
-		add			ecx,2				; loop counter
-		 por		mm6,mm4				; [ha|hg|hg|hg|la|lg|lg|lg]
-		cmp			ecx,edx				; loop >= myx
-		 movq		[edi+ecx*4-8],mm6	; update 2 pixels
-		jnge		rgb2lum_mmxloop
-
-		test		edx,1				; Non-mod 2 width
-		jz			rgb2lum_even
-
-		movd		mm6,[edi+ecx*4]		; Get 1 pixels
-		movq		mm4,mm3				; duplicate alpha mask
-		pand		mm4,mm6				; extract alpha channel [xx00000la000000]
-		punpcklbw	mm6,mm0				; [00ha|00rr|00gg|00bb]
-		pmaddwd		mm6,mm2				; [0*a+cyr*r|cyg*g+cyb*b]
-		punpckldq	mm7,mm6				; [loDWmm6|junk]
-		paddd		mm6,mm1				; +=0.5
-		paddd		mm6,mm7				; [hiDWmm6+32768+loDWmm6|junk]
-		psrlq		mm6,47				; -> 8 bit result
-		punpcklwd	mm6,mm6				; [0000|0000|grey|grey]
-		punpckldq	mm6,mm6				; [grey|grey|grey|grey]
-		packuswb	mm6,mm0				; [xx|xx|xx|xx|lg|lg|lg|lg]
-		psrld		mm6,8				; [00|xx|xx|xx|00|lg|lg|lg]
-		por			mm6,mm4				; [xx|xx|xx|xx|la|lg|lg|lg]
-		movd		[edi+ecx*4],mm6	; update 1 pixels
-
-rgb2lum_even:
-		add			edi,pitch
-		mov			edx,myx
-		xor			ecx,ecx
-		dec			eax
-		jnle		rgb2lum_mmxloop
-
-		emms
+      for (int y=0; y<height; ++y)
+      {
+        for (int x=0; x<width; x++)
+          srcp[x*2+1] = 128;
+        srcp += pitch;
+      }
     }
-  }
+
+    return frame;
+  } 
+
+  if (vi.IsRGB32()) {
+    const int cyav = int(0.33333*32768+0.5);
+
+    const int cyb = int(0.114*32768+0.5);
+    const int cyg = int(0.587*32768+0.5);
+    const int cyr = int(0.299*32768+0.5);
+
+    const int cyb709 = int(0.0722*32768+0.5);
+    const int cyg709 = int(0.7152*32768+0.5);
+    const int cyr709 = int(0.2126*32768+0.5);
+
+    if ((env->GetCPUFlags() & CPUF_SSE2) && IsPtrAligned(srcp, 16)) {
+      if (theMatrix == Rec709)
+        greyscale_rgb32_sse2(srcp, width, height, pitch, cyb709, cyg709, cyr709);
+      else if (theMatrix == Average)
+        greyscale_rgb32_sse2(srcp, width, height, pitch, cyav, cyav, cyav);
+      else
+        greyscale_rgb32_sse2(srcp, width, height, pitch, cyb, cyg, cyr);
+      return frame;
+    } 
+#ifdef X86_32
+    else if (env->GetCPUFlags() & CPUF_MMX) {
+      if (theMatrix == Rec709)
+        greyscale_rgb32_mmx(srcp, width, height, pitch, cyb709, cyg709, cyr709);
+      else if (theMatrix == Average)
+        greyscale_rgb32_mmx(srcp, width, height, pitch, cyav, cyav, cyav);
+      else
+        greyscale_rgb32_mmx(srcp, width, height, pitch, cyb, cyg, cyr);
+      return frame;
+    }
 #endif
-  else if (vi.IsRGB())
-  {  // RGB C
+  }
+
+  if (vi.IsRGB())
+  {  // RGB C.
     BYTE* p_count = srcp;
+
     const int rgb_inc = vi.IsRGB32() ? 4 : 3;
-	if (theMatrix == Rec709) {
-//	  const int cyb709 = int(0.0722*65536+0.5); //  4732
-//	  const int cyg709 = int(0.7152*65536+0.5); // 46871
-//	  const int cyr709 = int(0.2126*65536+0.5); // 13933
+    if (theMatrix == Rec709) {
+      //	  const int cyb709 = int(0.0722*65536+0.5); //  4732
+      //	  const int cyg709 = int(0.7152*65536+0.5); // 46871
+      //	  const int cyr709 = int(0.2126*65536+0.5); // 13933
 
-	  for (int y=0; y<vi.height; ++y) {
-		for (int x=0; x<vi.width; x++) {
-		  int greyscale=((srcp[0]*4732)+(srcp[1]*46871)+(srcp[2]*13933)+32768)>>16; // This is the correct brigtness calculations (standardized in Rec. 709)
-		  srcp[0]=srcp[1]=srcp[2]=greyscale;
-		  srcp += rgb_inc;
-		}
-		p_count+=pitch;
-		srcp=p_count;
-	  }
-	}
-	else if (theMatrix == Average) {
-//	  const int cyav = int(0.333333*65536+0.5); //  21845
+      for (int y=0; y<vi.height; ++y) {
+        for (int x=0; x<vi.width; x++) {
+          int greyscale=((srcp[0]*4732)+(srcp[1]*46871)+(srcp[2]*13933)+32768)>>16; // This is the correct brigtness calculations (standardized in Rec. 709)
+          srcp[0]=srcp[1]=srcp[2]=greyscale;
+          srcp += rgb_inc;
+        }
+        p_count+=pitch;
+        srcp=p_count;
+      }
+    }
+    else if (theMatrix == Average) {
+      //	  const int cyav = int(0.333333*65536+0.5); //  21845
 
-	  for (int y=0; y<vi.height; ++y) {
-		for (int x=0; x<vi.width; x++) {
-		  int greyscale=((srcp[0]+srcp[1]+srcp[2])*21845+32768)>>16; // This is the average of R, G & B
-		  srcp[0]=srcp[1]=srcp[2]=greyscale;
-		  srcp += rgb_inc;
-		}
-		p_count+=pitch;
-		srcp=p_count;
-	  }
-	}
-	else {
-//	  const int cyb = int(0.114*65536+0.5); //  7471
-//	  const int cyg = int(0.587*65536+0.5); // 38470
-//	  const int cyr = int(0.299*65536+0.5); // 19595
+      for (int y=0; y<vi.height; ++y) {
+        for (int x=0; x<vi.width; x++) {
+          int greyscale=((srcp[0]+srcp[1]+srcp[2])*21845+32768)>>16; // This is the average of R, G & B
+          srcp[0]=srcp[1]=srcp[2]=greyscale;
+          srcp += rgb_inc;
+        }
+        p_count+=pitch;
+        srcp=p_count;
+      }
+    }
+    else {
+      //	  const int cyb = int(0.114*65536+0.5); //  7471
+      //	  const int cyg = int(0.587*65536+0.5); // 38470
+      //	  const int cyr = int(0.299*65536+0.5); // 19595
 
-	  for (int y=0; y<vi.height; ++y) {
-		for (int x=0; x<vi.width; x++) {
-		  int greyscale=((srcp[0]*7471)+(srcp[1]*38470)+(srcp[2]*19595)+32768)>>16; // This produces similar results as YUY2 (luma calculation)
-		  srcp[0]=srcp[1]=srcp[2]=greyscale;
-		  srcp += rgb_inc;
-		}
-		p_count+=pitch;
-		srcp=p_count;
-	  }
-	}
+      for (int y=0; y<vi.height; ++y) {
+        for (int x=0; x<vi.width; x++) {
+          int greyscale=((srcp[0]*7471)+(srcp[1]*38470)+(srcp[2]*19595)+32768)>>16; // This produces similar results as YUY2 (luma calculation)
+          srcp[0]=srcp[1]=srcp[2]=greyscale;
+          srcp += rgb_inc;
+        }
+        p_count+=pitch;
+        srcp=p_count;
+      }
+    }
   }
   return frame;
 }

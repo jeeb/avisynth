@@ -37,8 +37,8 @@
 #define __Internal_H__
 
 #define AVS_VERSION 2.60
-#define AVS_VERSTR "AviSynth 2.60, build:"__DATE__" ["__TIME__"]"
-#define AVS_COPYRIGHT "\n\xA9 2000-2013 Ben Rudiak-Gould, et al.\nhttp://www.avisynth.org"
+#define AVS_VERSTR "AviSynth+ 2.60, build:"__DATE__" ["__TIME__"]"
+#define AVS_COPYRIGHT "\n\xA9 2000-2013 Ben Rudiak-Gould, et al.\nhttp://www.avisynth.org\n\xA9 2013 AviSynth+ project"
 
 extern const char _AVS_VERSTR[], _AVS_COPYRIGHT[];
 

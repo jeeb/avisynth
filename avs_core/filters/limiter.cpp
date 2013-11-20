@@ -34,12 +34,60 @@
 
 
 #include "limiter.h"
+#include <emmintrin.h>
+#include <avs/alignment.h>
 #include <avs/win.h>
+
+
+//min and max values are 16-bit integers either max_plane|max_plane for planar or max_luma|max_chroma for yuy2
+inline void limit_plane_sse2(BYTE *ptr, int min_value, int max_value, int pitch, int width, int height) {
+  __m128i min_vector = _mm_set1_epi16(min_value);
+  __m128i max_vector = _mm_set1_epi16(max_value);
+  BYTE* end_point = ptr + pitch * height;
+
+  while(ptr < end_point) {
+    __m128i src = _mm_load_si128(reinterpret_cast<const __m128i*>(ptr));
+    src = _mm_max_epu8(src, min_vector);
+    src = _mm_min_epu8(src, max_vector);
+    _mm_store_si128(reinterpret_cast<__m128i*>(ptr), src);
+    ptr += 16;
+  }
+}
+
+#ifdef X86_32
+
+//min and max values are 16-bit integers either max_plane|max_plane for planar or max_luma|max_chroma for yuy2
+inline void limit_plane_isse(BYTE *ptr, int min_value, int max_value, int pitch, int width, int height) {
+  __m64 min_vector = _mm_set1_pi16(min_value);
+  __m64 max_vector = _mm_set1_pi16(max_value);
+  int mod8_width = width / 8 * 8;
+
+  for(int y = 0; y < height; y++) {
+    for(int x = 0; x < mod8_width; x+=8) {
+      __m64 src = *reinterpret_cast<__m64*>(ptr+x);
+      src = _mm_max_pu8(src, min_vector);
+      src = _mm_min_pu8(src, max_vector);
+      *reinterpret_cast<__m64*>(ptr+x) = src;
+    }
+
+    if (mod8_width != width) {
+      int x = width - 8;
+      __m64 src = *reinterpret_cast<__m64*>(ptr+x);
+      src = _mm_max_pu8(src, min_vector);
+      src = _mm_min_pu8(src, max_vector);
+      *reinterpret_cast<__m64*>(ptr+x) = src;
+    }
+
+    ptr += pitch;
+  }
+  _mm_empty();
+}
+
+#endif
 
 
 Limiter::Limiter(PClip _child, int _min_luma, int _max_luma, int _min_chroma, int _max_chroma, int _show, IScriptEnvironment* env) :
   GenericVideoFilter(_child),
-  c_plane(NULL),
   min_luma(_min_luma),
   max_luma(_max_luma),
   min_chroma(_min_chroma),
@@ -60,9 +108,6 @@ Limiter::Limiter(PClip _child, int _min_luma, int _max_luma, int _min_chroma, in
       env->ThrowError("Limiter: Invalid minimum chroma");
   if ((max_chroma<0)||(max_chroma>255))
       env->ThrowError("Limiter: Invalid maximum chroma");
-
-  luma_emulator=false;
-  chroma_emulator=false;
 
 }
 
@@ -153,41 +198,37 @@ PVideoFrame __stdcall Limiter::GetFrame(int n, IScriptEnvironment* env) {
 			return frame;
 		}
 
+    if ((env->GetCPUFlags() & CPUF_SSE2) && IsPtrAligned(srcp, 16)) {
+      limit_plane_sse2(srcp, min_luma | (min_chroma << 8), max_luma | (max_chroma << 8), pitch, row_size, height);
+      return frame;
+    }
+
     /** Run emulator if CPU supports it**/
 #ifdef X86_32
     if (env->GetCPUFlags() & CPUF_INTEGER_SSE)
     {
-      c_plane = srcp;
-      if (!luma_emulator) {
-        assemblerY = create_emulator(row_size, height, env);
-        luma_emulator=true;
-      }
-      emu_cmin =  min_luma|(min_chroma<<8);
-      emu_cmax =  max_luma|(max_chroma<<8);
-      modulo = pitch-row_size;
-      assemblerY.Call();
+      //limit_plane_mmx(srcp, min_luma, max_luma, pitch, row_size, height);
+      limit_plane_isse(srcp, min_luma | (min_chroma << 8), max_luma | (max_chroma << 8), pitch, row_size, height);
       return frame;
     }
-    else
 #endif
-    {  // If not ISSE
-      for(int y = 0; y < height; y++) {
-        for(int x = 0; x < row_size; x++) {
-          if(srcp[x] < min_luma )
-            srcp[x++] = min_luma;
-          else if(srcp[x] > max_luma)
-            srcp[x++] = max_luma;
-          else
-            x++;
-          if(srcp[x] < min_chroma)
-            srcp[x] = min_chroma;
-          else if(srcp[x] > max_chroma)
-            srcp[x] = max_chroma;
-        }
-        srcp += pitch;
+    // If not ISSE
+    for(int y = 0; y < height; y++) {
+      for(int x = 0; x < row_size; x++) {
+        if(srcp[x] < min_luma )
+          srcp[x++] = min_luma;
+        else if(srcp[x] > max_luma)
+          srcp[x++] = max_luma;
+        else
+          x++;
+        if(srcp[x] < min_chroma)
+          srcp[x] = min_chroma;
+        else if(srcp[x] > max_chroma)
+          srcp[x] = max_chroma;
       }
-      return frame;
+      srcp += pitch;
     }
+    return frame;
   } else if(vi.IsYV12()) {
 
 		if (show == show_luma) {    // Mark clamped pixels red/yellow/green over a colour image
@@ -393,48 +434,34 @@ PVideoFrame __stdcall Limiter::GetFrame(int n, IScriptEnvironment* env) {
   }
   if (vi.IsPlanar())
   {
+    //todo: separate to functions and use sse2 for aligned planes even if some are unaligned
+    if ((env->GetCPUFlags() & CPUF_SSE2) && IsPtrAligned(srcp, 16) && 
+      IsPtrAligned(frame->GetWritePtr(PLANAR_U), 16) && IsPtrAligned(frame->GetWritePtr(PLANAR_V), 16)) {
+        limit_plane_sse2(srcp, min_luma | (min_luma << 8), max_luma | (max_luma << 8), pitch, row_size, height);
+
+        limit_plane_sse2(frame->GetWritePtr(PLANAR_U), min_chroma | (min_chroma << 8), max_chroma | (max_chroma << 8), 
+          frame->GetPitch(PLANAR_U), frame->GetRowSize(PLANAR_U), frame->GetHeight(PLANAR_U));
+
+        limit_plane_sse2(frame->GetWritePtr(PLANAR_V), min_chroma | (min_chroma << 8), max_chroma | (max_chroma << 8), 
+          frame->GetPitch(PLANAR_V), frame->GetRowSize(PLANAR_V), frame->GetHeight(PLANAR_V));
+
+        return frame;
+    }
+
 #ifdef X86_32
     if (env->GetCPUFlags() & CPUF_INTEGER_SSE)
     {
-      /** Run emulator if CPU supports it**/
-      row_size= frame->GetRowSize(PLANAR_Y_ALIGNED);
-      if (!luma_emulator) {
-        assemblerY = create_emulator(row_size, height, env);
-        luma_emulator=true;
-      }
-      emu_cmin = min_luma|(min_luma<<8);
-      emu_cmax = max_luma|(max_luma<<8);
-      modulo = pitch-row_size;
-
-      c_plane = (BYTE*)srcp;
-      assemblerY.Call();
-
-      // Prepare for chroma
-      row_size = frame->GetRowSize(PLANAR_U_ALIGNED);
-      pitch = frame->GetPitch(PLANAR_U);
-      if (!pitch)
-        return frame;
-
-      if (!chroma_emulator) {
-        height = frame->GetHeight(PLANAR_U);
-        assemblerUV = create_emulator(row_size, height, env);
-        chroma_emulator=true;
-      }
-      emu_cmin = min_chroma|(min_chroma<<8);
-      emu_cmax = max_chroma|(max_chroma<<8);
-      modulo = pitch-row_size;
-
-      c_plane = frame->GetWritePtr(PLANAR_U);
-      assemblerUV.Call();
-
-      c_plane = frame->GetWritePtr(PLANAR_V);
-      assemblerUV.Call();
+      limit_plane_isse(srcp, min_luma | (min_luma << 8), max_luma | (max_luma << 8), pitch, row_size, height);
+      limit_plane_isse(frame->GetWritePtr(PLANAR_U), min_chroma | (min_chroma << 8), max_chroma | (max_chroma << 8), 
+        frame->GetPitch(PLANAR_U), frame->GetRowSize(PLANAR_U), frame->GetHeight(PLANAR_U));
+      limit_plane_isse(frame->GetWritePtr(PLANAR_V), min_chroma | (min_chroma << 8), max_chroma | (max_chroma << 8), 
+        frame->GetPitch(PLANAR_V), frame->GetRowSize(PLANAR_V), frame->GetHeight(PLANAR_V));
 
       return frame;
     }
 #endif
 
-    {for(int y = 0; y < height; y++) {
+    for(int y = 0; y < height; y++) {
       for(int x = 0; x < row_size; x++) {
         if(srcp[x] < min_luma )
           srcp[x] = min_luma;
@@ -442,7 +469,8 @@ PVideoFrame __stdcall Limiter::GetFrame(int n, IScriptEnvironment* env) {
           srcp[x] = max_luma;
       }
       srcp += pitch;
-    }}
+    }
+
     // Prepare for chroma
     srcp = frame->GetWritePtr(PLANAR_U);
     unsigned char* srcpV = frame->GetWritePtr(PLANAR_V);
@@ -452,7 +480,7 @@ PVideoFrame __stdcall Limiter::GetFrame(int n, IScriptEnvironment* env) {
     if (!pitch)
       return frame;
 
-    {for(int y = 0; y < height; y++) {
+    for(int y = 0; y < height; y++) {
       for(int x = 0; x < row_size; x++) {
         if(srcp[x] < min_chroma)
           srcp[x] = min_chroma;
@@ -465,131 +493,10 @@ PVideoFrame __stdcall Limiter::GetFrame(int n, IScriptEnvironment* env) {
       }
       srcp += pitch;
       srcpV += pitch;
-    }}
+    }
   }
   return frame;
 }
-
-Limiter::~Limiter()
-{
-#ifdef X86_32
-  if (luma_emulator) assemblerY.Free();
-  if (chroma_emulator) assemblerUV.Free();
-#endif
-}
-
-#ifdef X86_32
-/***
- * Dynamicly assembled code - runs at approx 14000 fps at 480x480 on a 1.8Ghz Athlon. 5-6x faster than C code
- ***/
-DynamicAssembledCode Limiter::create_emulator(int row_size, int height, IScriptEnvironment* env)
-{
-
-  int mod32_w = row_size/32;
-  int remain_4 = (row_size-(mod32_w*32))/4;
-
-  int prefetchevery = 1;  // 32 byte cache line
-
-  if ((env->GetCPUFlags() & CPUF_3DNOW_EXT)||((env->GetCPUFlags() & CPUF_SSE2))) {
-    // We have either an Athlon or a P4
-    prefetchevery = 2;  // 64 byte cacheline
-  }
-
-  bool use_movntq = true;  // We cannot enable write combining as we are only writing 32 bytes between reads. Softwire also crashes here!!!
-  bool hard_prefetch = false;   // Do we prefetch ALL data before any processing takes place?
-
-  if (env->GetCPUFlags() & CPUF_3DNOW_EXT) {
-    hard_prefetch = true;   // We have AMD - so we enable hard prefetching.
-  }
-
-
-  Assembler x86;   // This is the class that assembles the code.
-
-  if (env->GetCPUFlags() & CPUF_INTEGER_SSE) {
-    x86.push(eax);
-    x86.push(ebx);
-    x86.push(ecx);
-    x86.push(edx);
-    x86.push(esi);
-    x86.push(edi);
-
-
-    x86.mov(eax, height);
-    x86.mov(ebx, dword_ptr [&c_plane]);  // Pointer to the current plane
-    x86.mov(ecx, dword_ptr [&modulo]);   // Modulo
-    x86.movd(mm7,dword_ptr [&emu_cmax]);
-    x86.movd(mm6, dword_ptr [&emu_cmin]);
-    x86.pshufw(mm7,mm7,0);  // Move thresholds into all 8 bytes
-    x86.pshufw(mm6,mm6,0);
-
-    x86.align(16);
-    x86.label("yloop");
-    if (hard_prefetch) {
-      for (int i=0;i<=mod32_w;i+=2) {
-        x86.mov(edx, dword_ptr [ebx + (i*32)]);
-      }
-    }
-    {for (int i=0;i<mod32_w;i++) {
-      // This loop processes 32 bytes at the time.
-      // All remaining pixels are handled by the next loop.
-      if ((!(i%prefetchevery)) && (!hard_prefetch)) {
-         //Prefetch only once per cache line
-       x86.prefetchnta(dword_ptr [ebx+256]);
-      }
-      x86.movq(mm0, qword_ptr[ebx]);
-      x86.movq(mm1, qword_ptr[ebx+8]);
-      x86.movq(mm2, qword_ptr[ebx+16]);
-      x86.movq(mm3, qword_ptr[ebx+24]);
-      x86.pminub(mm0,mm7);
-      x86.pminub(mm1,mm7);
-      x86.pminub(mm2,mm7);
-      x86.pminub(mm3,mm7);
-      x86.pmaxub(mm0,mm6);
-      x86.pmaxub(mm1,mm6);
-      x86.pmaxub(mm2,mm6);
-      x86.pmaxub(mm3,mm6);
-      if (!use_movntq) {
-        x86.movq(qword_ptr[ebx],mm0);
-        x86.movq(qword_ptr[ebx+8],mm1);
-        x86.movq(qword_ptr[ebx+16],mm2);
-        x86.movq(qword_ptr[ebx+24],mm3);
-      } else {
-        x86.movntq(qword_ptr [ebx],mm0);
-        x86.movntq(qword_ptr [ebx+8],mm1);
-        x86.movntq(qword_ptr [ebx+16],mm2);
-        x86.movntq(qword_ptr [ebx+24],mm3);
-      }
-      x86.add(ebx,32);
-    }}
-    {for (int i=0;i<remain_4;i++) {
-      // Here we process any pixels not being within mod32.
-      x86.movd(mm0,dword_ptr [ebx]);
-      x86.pminub(mm0,mm7);
-      x86.pmaxub(mm0,mm6);
-      x86.movd(dword_ptr [ebx],mm0);
-      x86.add(ebx,4);
-    }}
-    x86.add(ebx,ecx);
-    x86.dec(eax);
-    x86.jnz("yloop");
-    if (use_movntq) {
-      x86.sfence();  // Flush write combiner.
-    }
-    x86.emms();
-
-    x86.pop(edi);
-    x86.pop(esi);
-    x86.pop(edx);
-    x86.pop(ecx);
-    x86.pop(ebx);
-    x86.pop(eax);
-
-    x86.ret();
-  }
-  return DynamicAssembledCode(x86, env, "Limiter: ISSE code could not be compiled.");
-}
-
-#endif
 
 AVSValue __cdecl Limiter::Create(AVSValue args, void* user_data, IScriptEnvironment* env)
 {

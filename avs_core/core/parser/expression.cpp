@@ -38,7 +38,7 @@
 #include "../internal.h"
 #include <avs/win.h>
 #include <cassert>
-#include <boost/scoped_array.hpp>
+#include <vector>
 
 
 class BreakStmtException
@@ -500,19 +500,25 @@ AVSValue ExpFunctionCall::Evaluate(IScriptEnvironment* env)
   AVSValue result;
   IScriptEnvironment2 *env2 = static_cast<IScriptEnvironment2*>(env);
 
-  boost::scoped_array<AVSValue> args(new AVSValue[arg_expr_count+1]);
+  std::vector<AVSValue> args(arg_expr_count+1, AVSValue());
   for (int a=0; a<arg_expr_count; ++a)
     args[a+1] = arg_exprs[a]->Evaluate(env);
 
   // first try without implicit "last"
-  if (env2->Invoke(&result, name, AVSValue(args.get()+1, arg_expr_count), arg_expr_names+1))
-    return result;
+  try
+  { // Invoke can always throw by calling a constructor of a filter that throws
+    if (env2->Invoke(&result, name, AVSValue(args.data()+1, arg_expr_count), arg_expr_names+1))
+      return result;
+  } catch(...){}
 
   // if that fails, try with implicit "last" (except when OOP notation was used)
   if (!oop_notation) 
   {
-    if (env2->GetVar("last", &(args[0])) && env2->Invoke(&result, name, AVSValue(args.get(), arg_expr_count+1), arg_expr_names))
-      return result;
+    try
+    {
+      if (env2->GetVar("last", args.data()) && env2->Invoke(&result, name, AVSValue(args.data(), arg_expr_count+1), arg_expr_names))
+        return result;
+    } catch(...){}
   }
 
   env->ThrowError(env->FunctionExists(name) ?

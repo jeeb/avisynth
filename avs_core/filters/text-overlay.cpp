@@ -36,11 +36,10 @@
 #include "text-overlay.h"
 #include "../convert/convert.h"  // for RGB2YUV
 #include <avs/win.h>
-#include <string>
 #include <sstream>
-#include <cmath>
 #include <avs/config.h>
 #include <avs/minmax.h>
+#include <emmintrin.h>
 
 
 
@@ -430,237 +429,166 @@ void Antialiaser::GetAlphaRect()
     do {
       int i;
 
-/*      BYTE tmp = 0;
-      for (i=0; i<8; i++) {
-        tmp |= src[srcpitch*i];
-        tmp |= src[srcpitch*i-1];
-        tmp |= src[srcpitch*i+1];
-        tmp |= src[srcpitch*(-8+i)];
-        tmp |= src[srcpitch*(-8+i)-1];
-        tmp |= src[srcpitch*(-8+i)+1];
-        tmp |= src[srcpitch*(8+i)];
-        tmp |= src[srcpitch*(8+i)-1];
-        tmp |= src[srcpitch*(8+i)+1];
+#pragma warning(disable: 4068)
+      DWORD tmp = 0;
+
+      if (interlaced) {
+#pragma unroll
+        for (int i = -8; i < 16; ++i) {
+          tmp |= *reinterpret_cast<int*>(src + srcpitch*i - 1);
+        }
+      } else {
+#pragma unroll
+        for (int i = -12; i < 20; ++i) {
+          tmp |= *reinterpret_cast<int*>(src + srcpitch*i - 1);
+        }
       }
-*/
-      DWORD tmp = 1;
-#ifdef X86_32
-      tmp = interlaced;
-      __asm
-      {           // test if the whole area isn't just plain black
-        mov edx, srcpitch
-        mov esi, src
-        mov ecx, edx
-        dec esi
-        shl ecx, 3
-        sub esi, ecx  ; src - 8*pitch - 1
-        cmp tmp,-1
-        jnz do32
 
-        lea edi,[esi+edx*2]
-        xor eax,eax
-        xor ecx,ecx
-        jmp do24
-do32:
-        sar ecx, 1
-        sub esi, ecx  ; src - 12*pitch - 1
-        lea edi,[esi+edx*2]
+      tmp &= 0x00FFFFFF;
+#pragma warning(default: 4068)
 
-        mov eax, [esi]  ; repeat 32 times
-        mov ecx, [esi+edx]
-        lea esi,[esi+edx*4]
-        or eax, [edi]
-        or ecx, [edi+edx]
-        lea edi,[edi+edx*4]
-        or eax, [esi]
-        or ecx, [esi+edx]
-        lea esi,[esi+edx*4]
-        or eax, [edi]
-        or ecx, [edi+edx]
-        lea edi,[edi+edx*4]
-do24:
-        or eax, [esi]  ; repeat 24 times
-        or ecx, [esi+edx]
-        lea esi,[esi+edx*4]
-        or eax, [edi]
-        or ecx, [edi+edx]
-        lea edi,[edi+edx*4]
-        or eax, [esi]
-        or ecx, [esi+edx]
-        lea esi,[esi+edx*4]
-        or eax, [edi]
-        or ecx, [edi+edx]
-        lea edi,[edi+edx*4]
-        or eax, [esi]
-        or ecx, [esi+edx]
-        lea esi,[esi+edx*4]
-        or eax, [edi]
-        or ecx, [edi+edx]
-        lea edi,[edi+edx*4]
-        or eax, [esi]
-        or ecx, [esi+edx]
-        lea esi,[esi+edx*4]
-        or eax, [edi]
-        or ecx, [edi+edx]
-        lea edi,[edi+edx*4]
-        or eax, [esi]
-        or ecx, [esi+edx]
-        lea esi,[esi+edx*4]
-        or eax, [edi]
-        or ecx, [edi+edx]
-        lea edi,[edi+edx*4]
-        or eax, [esi]
-        or ecx, [esi+edx]
-        or eax, [edi]
-        or ecx, [edi+edx]
-
-        or eax, ecx
-        and eax, 0x00ffffff
-        mov tmp, eax
-      }
-#endif
 
       if (tmp != 0) {     // quick exit in a common case
-		if (wt >= xl) xl=wt;
-		if (wt <= xr) xr=wt;
-		if (y  >= yt) yt=y;
-		if (y  <= yb) yb=y;
+        if (wt >= xl) xl=wt;
+        if (wt <= xr) xr=wt;
+        if (y  >= yt) yt=y;
+        if (y  <= yb) yb=y;
 
         int alpha1, alpha2;
 
         alpha1 = alpha2 = 0;
 
-		if (interlaced) {
-		  BYTE topmask=0, cenmask=0, botmask=0;
-		  BYTE hmasks[16], mask;
-		  
-		  for(i=-4; i<12; i++) {// For interlaced include extra half cells above and below
-			mask = src[srcpitch*i];
-			// How many lit pixels in the centre cell?
-			alpha1 += bitcnt[mask];
-			// turn on all halo bits if cell has any lit pixels
-			mask = - !! mask;
-			// Check left and right neighbours, extend the halo
-			// mask 8 pixels in from the nearest lit pixels.
-			mask |= bitexr[src[srcpitch*i-1]];
-			mask |= bitexl[src[srcpitch*i+1]];
-			hmasks[i+4] = mask;
-		  }
+        if (interlaced) {
+          BYTE topmask=0, cenmask=0, botmask=0;
+          BYTE hmasks[16], mask;
 
-		  // Extend halo vertically to 8x8 blocks
-		  for(i=-4; i<4;  i++) topmask |= hmasks[i+4];
-		  for(i=0;  i<8;  i++) cenmask |= hmasks[i+4];
-		  for(i=4;  i<12; i++) botmask |= hmasks[i+4];
-		  // Check the 3x1.5 cells above
-		  for(mask = topmask, i=-4; i<4; i++) {
-			mask |= bitexr[ src[srcpitch*(i+8)-1] ];
-			mask |=    - !! src[srcpitch*(i+8)  ];
-			mask |= bitexl[ src[srcpitch*(i+8)+1] ];
-			hmasks[i+4] |= mask;
-		  }
-		  for(mask = cenmask, i=0; i<8; i++) {
-			mask |= bitexr[ src[srcpitch*(i+8)-1] ];
-			mask |=    - !! src[srcpitch*(i+8)  ];
-			mask |= bitexl[ src[srcpitch*(i+8)+1] ];
-			hmasks[i+4] |= mask;
-		  }
-		  for(mask = botmask, i=4; i<12; i++) {
-			mask |= bitexr[ src[srcpitch*(i+8)-1] ];
-			mask |=    - !! src[srcpitch*(i+8)  ];
-			mask |= bitexl[ src[srcpitch*(i+8)+1] ];
-			hmasks[i+4] |= mask;
-		  }
-		  // Check the 3x1.5 cells below
-		  for(mask = botmask, i=11; i>=4; i--) {
-			mask |= bitexr[ src[srcpitch*(i-8)-1] ];
-			mask |=    - !! src[srcpitch*(i-8)  ];
-			mask |= bitexl[ src[srcpitch*(i-8)+1] ];
-			hmasks[i+4] |= mask;
-		  }
-		  for(mask = cenmask,i=7; i>=0; i--) {
-			mask |= bitexr[ src[srcpitch*(i-8)-1] ];
-			mask |=    - !! src[srcpitch*(i-8)  ];
-			mask |= bitexl[ src[srcpitch*(i-8)+1] ];
-			hmasks[i+4] |= mask;
-		  }
-		  for(mask = topmask, i=3; i>=-4; i--) {
-			mask |= bitexr[ src[srcpitch*(i-8)-1] ];
-			mask |=    - !! src[srcpitch*(i-8)  ];
-			mask |= bitexl[ src[srcpitch*(i-8)+1] ];
-			hmasks[i+4] |= mask;
-		  }
-		  // count the halo pixels
-		  for(i=0; i<16; i++)
-			alpha2 += bitcnt[hmasks[i]];
-		}
-		else {
-		  // How many lit pixels in the centre cell?
-		  for(i=0; i<8; i++)
-			alpha1 += bitcnt[src[srcpitch*i]];
-		  alpha1 *=2;
+          for(i=-4; i<12; i++) {// For interlaced include extra half cells above and below
+            mask = src[srcpitch*i];
+            // How many lit pixels in the centre cell?
+            alpha1 += bitcnt[mask];
+            // turn on all halo bits if cell has any lit pixels
+            mask = - !! mask;
+            // Check left and right neighbours, extend the halo
+            // mask 8 pixels in from the nearest lit pixels.
+            mask |= bitexr[src[srcpitch*i-1]];
+            mask |= bitexl[src[srcpitch*i+1]];
+            hmasks[i+4] = mask;
+          }
 
-		  if (alpha1) {
-			// If we have any lit pixels we fully occupy the cell.
-			alpha2 = 128;
-		  }
-		  else {
-			// No lit pixels here so build the halo mask from the neighbours
-			BYTE cenmask = 0;
+          // Extend halo vertically to 8x8 blocks
+          for(i=-4; i<4;  i++) topmask |= hmasks[i+4];
+          for(i=0;  i<8;  i++) cenmask |= hmasks[i+4];
+          for(i=4;  i<12; i++) botmask |= hmasks[i+4];
+          // Check the 3x1.5 cells above
+          for(mask = topmask, i=-4; i<4; i++) {
+            mask |= bitexr[ src[srcpitch*(i+8)-1] ];
+            mask |=    - !! src[srcpitch*(i+8)  ];
+            mask |= bitexl[ src[srcpitch*(i+8)+1] ];
+            hmasks[i+4] |= mask;
+          }
+          for(mask = cenmask, i=0; i<8; i++) {
+            mask |= bitexr[ src[srcpitch*(i+8)-1] ];
+            mask |=    - !! src[srcpitch*(i+8)  ];
+            mask |= bitexl[ src[srcpitch*(i+8)+1] ];
+            hmasks[i+4] |= mask;
+          }
+          for(mask = botmask, i=4; i<12; i++) {
+            mask |= bitexr[ src[srcpitch*(i+8)-1] ];
+            mask |=    - !! src[srcpitch*(i+8)  ];
+            mask |= bitexl[ src[srcpitch*(i+8)+1] ];
+            hmasks[i+4] |= mask;
+          }
+          // Check the 3x1.5 cells below
+          for(mask = botmask, i=11; i>=4; i--) {
+            mask |= bitexr[ src[srcpitch*(i-8)-1] ];
+            mask |=    - !! src[srcpitch*(i-8)  ];
+            mask |= bitexl[ src[srcpitch*(i-8)+1] ];
+            hmasks[i+4] |= mask;
+          }
+          for(mask = cenmask,i=7; i>=0; i--) {
+            mask |= bitexr[ src[srcpitch*(i-8)-1] ];
+            mask |=    - !! src[srcpitch*(i-8)  ];
+            mask |= bitexl[ src[srcpitch*(i-8)+1] ];
+            hmasks[i+4] |= mask;
+          }
+          for(mask = topmask, i=3; i>=-4; i--) {
+            mask |= bitexr[ src[srcpitch*(i-8)-1] ];
+            mask |=    - !! src[srcpitch*(i-8)  ];
+            mask |= bitexl[ src[srcpitch*(i-8)+1] ];
+            hmasks[i+4] |= mask;
+          }
+          // count the halo pixels
+          for(i=0; i<16; i++)
+            alpha2 += bitcnt[hmasks[i]];
+        }
+        else {
+          // How many lit pixels in the centre cell?
+          for(i=0; i<8; i++)
+            alpha1 += bitcnt[src[srcpitch*i]];
+          alpha1 *=2;
 
-			// Check left and right neighbours, extend the halo
-			// mask 8 pixels in from the nearest lit pixels.
-			for(i=0; i<8; i++) {
-			  cenmask |= bitexr[src[srcpitch*i-1]];
-			  cenmask |= bitexl[src[srcpitch*i+1]];
-			}
+          if (alpha1) {
+            // If we have any lit pixels we fully occupy the cell.
+            alpha2 = 128;
+          }
+          else {
+            // No lit pixels here so build the halo mask from the neighbours
+            BYTE cenmask = 0;
 
-			if (cenmask == 0xFF) {
-			  // If we have hard adjacent lit pixels we fully occupy this cell.
-			  alpha2 = 128;
-			}
-			else {
-			  BYTE hmasks[8], mask;
+            // Check left and right neighbours, extend the halo
+            // mask 8 pixels in from the nearest lit pixels.
+            for(i=0; i<8; i++) {
+              cenmask |= bitexr[src[srcpitch*i-1]];
+              cenmask |= bitexl[src[srcpitch*i+1]];
+            }
 
-			  mask = cenmask;
-			  for(i=0; i<8; i++) {
-				// Check the 3 cells above
-				mask |= bitexr[ src[srcpitch*(i+8)-1] ];
-				mask |=    - !! src[srcpitch*(i+8)  ];
-				mask |= bitexl[ src[srcpitch*(i+8)+1] ];
-				hmasks[i] = mask;
-			  }
+            if (cenmask == 0xFF) {
+              // If we have hard adjacent lit pixels we fully occupy this cell.
+              alpha2 = 128;
+            }
+            else {
+              BYTE hmasks[8], mask;
 
-			  mask = cenmask;
-			  for(i=7; i>=0; i--) {
-				// Check the 3 cells below
-				mask |= bitexr[ src[srcpitch*(i-8)-1] ];
-				mask |=    - !! src[srcpitch*(i-8)  ];
-				mask |= bitexl[ src[srcpitch*(i-8)+1] ];
+              mask = cenmask;
+              for(i=0; i<8; i++) {
+                // Check the 3 cells above
+                mask |= bitexr[ src[srcpitch*(i+8)-1] ];
+                mask |=    - !! src[srcpitch*(i+8)  ];
+                mask |= bitexl[ src[srcpitch*(i+8)+1] ];
+                hmasks[i] = mask;
+              }
 
-				alpha2 += bitcnt[hmasks[i] | mask];
-			  }
-			  alpha2 *=2;
-			}
-		  }
-		}
-		alpha2  = gamma[alpha2];
-		alpha1  = gamma[alpha1];
+              mask = cenmask;
+              for(i=7; i>=0; i--) {
+                // Check the 3 cells below
+                mask |= bitexr[ src[srcpitch*(i-8)-1] ];
+                mask |=    - !! src[srcpitch*(i-8)  ];
+                mask |= bitexl[ src[srcpitch*(i-8)+1] ];
 
-		alpha2 -= alpha1;        
-		alpha2 *= Ahalo;
-		alpha1 *= Atext;
+                alpha2 += bitcnt[hmasks[i] | mask];
+              }
+              alpha2 *=2;
+            }
+          }
+        }
+        alpha2  = gamma[alpha2];
+        alpha1  = gamma[alpha1];
+
+        alpha2 -= alpha1;        
+        alpha2 *= Ahalo;
+        alpha1 *= Atext;
         // Pre calulate table for quick use  --  Pc = (Pc * dest[0] + dest[c]) >> 8;
 
-		dest[0] = (64*516*255 - alpha1 -          alpha2)>>15;
-		dest[1] = (    BVtext * alpha1 + BVhalo * alpha2)>>15;
-		dest[2] = (    GUtext * alpha1 + GUhalo * alpha2)>>15;
-		dest[3] = (    RYtext * alpha1 + RYhalo * alpha2)>>15;
+        dest[0] = (64*516*255 - alpha1 -          alpha2)>>15;
+        dest[1] = (    BVtext * alpha1 + BVhalo * alpha2)>>15;
+        dest[2] = (    GUtext * alpha1 + GUhalo * alpha2)>>15;
+        dest[3] = (    RYtext * alpha1 + RYhalo * alpha2)>>15;
       }
-	  else {
-		dest[0] = 256;
-		dest[1] = 0;
-		dest[2] = 0;
-		dest[3] = 0;
+      else {
+        dest[0] = 256;
+        dest[1] = 0;
+        dest[2] = 0;
+        dest[3] = 0;
       }
 
       dest += 4;
@@ -1475,100 +1403,180 @@ AVSValue __cdecl Compare::Create(AVSValue args, void*, IScriptEnvironment *env)
             env);
 }
 
-#ifdef X86_32
-void Compare::Compare_ISSE(DWORD mask, int incr,
-                           const BYTE * f1ptr, int pitch1, 
-                           const BYTE * f2ptr, int pitch2,
-                           int rowsize, int height,
-                           int &SAD_sum, int &SD_sum, int &pos_D,  int &neg_D, double &SSD_sum)
+static void compare_sse2(DWORD mask, int increment,
+                         const BYTE * f1ptr, int pitch1, 
+                         const BYTE * f2ptr, int pitch2,
+                         int width, int height,
+                         int &SAD_sum, int &SD_sum, int &pos_D,  int &neg_D, double &SSD_sum)
 { 
-    // rowsize multiple of 8 for YUV Planar, RGB32 and YUY2; 6 for RGB24
-    // incr must be 3 for RGB24 and 4 for others
-    // SAD_sum, SD_sum, SSD_sum are incremented (must be properly initialized)
-    int SAD = 0, SD = 0;
-    const int incr2 = incr * 2;
+  // rowsize multiple of 16 for YUV Planar, RGB32 and YUY2; 12 for RGB24
+  // increment must be 3 for RGB24 and 4 for others
 
-    __declspec(align(8)) __int64 iSSD;
-    __declspec(align(8)) __int64 mask64 = (__int64)mask << ((incr == 3) ? 24: 32) | mask;
-    __declspec(align(8)) unsigned __int64 pos_D8 = 0, neg_D8 = 0;
+  __int64 issd = 0;
+  __m128i sad_vector = _mm_setzero_si128(); //sum of absolute differences
+  __m128i sd_vector = _mm_setzero_si128(); // sum of differences
+  __m128i positive_diff = _mm_setzero_si128();
+  __m128i negative_diff = _mm_setzero_si128();
+  __m128i zero = _mm_setzero_si128();
 
-    __asm {
-      mov     esi, f1ptr
-      mov     edi, f2ptr
-      add     esi, rowsize
-      add     edi, rowsize
-      xor     eax, eax      ; sum of squared differences low
-      xor     edx, edx      ; sum of squared differences high
-      pxor    mm7, mm7      ; sum of absolute differences
-      pxor    mm6, mm6      ; zero
-      pxor    mm5, mm5      ; sum of differences
-comp_loopy:
-      mov     ecx, rowsize
-      neg     ecx
-      pxor    mm4, mm4      ; sum of squared differences (row_SSD)
-comp_loopx:
-      movq    mm0, [esi+ecx]
-      movq    mm1, [edi+ecx]
-      pand    mm0, mask64
-      pand    mm1, mask64
-      movq    mm2, mm0
-      psubusb   mm0, mm1
-      psubusb   mm1, mm2
+  __m128i mask64 = _mm_set_epi32(0, 0, 0, mask);
+  if (increment == 3) {
+    mask64 = _mm_or_si128(mask64, _mm_slli_si128(mask64, 3));
+    mask64 = _mm_or_si128(mask64, _mm_slli_si128(mask64, 6));
+  } else {
+    mask64 = _mm_or_si128(mask64, _mm_slli_si128(mask64, 4));
+    mask64 = _mm_or_si128(mask64, _mm_slli_si128(mask64, 8));
+  }
+  
 
-      ; maximum positive and negative differences
-      movq    mm3, pos_D8
-      movq    mm2, neg_D8
-      pmaxub    mm3, mm0
-      pmaxub    mm2, mm1
-      movq    pos_D8, mm3
-      movq    neg_D8, mm2
 
-       movq   mm2, mm0      ; SSD calculations are indented
-      psadbw    mm0, mm6
-       por    mm2, mm1
-      psadbw    mm1, mm6
-       movq   mm3, mm2
-       punpcklbw  mm2, mm6
-       punpckhbw  mm3, mm6
-       pmaddwd  mm2, mm2
-      paddd   mm7, mm0
-      paddd   mm5, mm0
-       pmaddwd  mm3, mm3
-      paddd   mm7, mm1
-       paddd    mm4, mm2
-      psubd   mm5, mm1
-      add     ecx, incr2
-       paddd    mm4, mm3      ; keep two counts at once
-      jne     comp_loopx
+  for (int y = 0; y < height; ++y) {
+    __m128i row_ssd = _mm_setzero_si128();  // sum of squared differences (row_SSD)
 
-      add     esi, pitch1
-      add     edi, pitch2
-      movq    mm3, mm4
-      punpckhdq mm4, mm6
-      paddd   mm3, mm4
-      movd    ecx, mm3
-      add     eax, ecx
-      adc     edx, 0
-      dec     height
-      jne     comp_loopy
+    for (int x = 0; x < width; x+=increment*4) {
+      __m128i src1 = _mm_loadu_si128(reinterpret_cast<const __m128i*>(f1ptr+x));
+      __m128i src2 = _mm_loadu_si128(reinterpret_cast<const __m128i*>(f2ptr+x));
 
-      movd    SAD, mm7
-      movd    SD, mm5
-      mov     DWORD PTR [iSSD], eax
-      mov     DWORD PTR [iSSD+4], edx
-      emms
+      src1 = _mm_and_si128(src1, mask64);
+      src2 = _mm_and_si128(src2, mask64);
+
+      __m128i diff_1_minus_2 = _mm_subs_epu8(src1, src2);
+      __m128i diff_2_minus_1 = _mm_subs_epu8(src2, src1);
+
+      positive_diff = _mm_max_epu8(positive_diff, diff_1_minus_2);
+      negative_diff = _mm_max_epu8(negative_diff, diff_2_minus_1);
+
+      __m128i absdiff1 = _mm_sad_epu8(diff_1_minus_2, zero);
+      __m128i absdiff2 = _mm_sad_epu8(diff_2_minus_1, zero);
+
+      sad_vector = _mm_add_epi32(sad_vector, absdiff1);
+      sad_vector = _mm_add_epi32(sad_vector, absdiff2);
+
+      sd_vector = _mm_add_epi32(sd_vector, absdiff1);
+      sd_vector = _mm_sub_epi32(sd_vector, absdiff2);
+
+      __m128i ssd = _mm_or_si128(diff_1_minus_2, diff_2_minus_1);
+      __m128i ssd_lo = _mm_unpacklo_epi8(ssd, zero);
+      __m128i ssd_hi = _mm_unpackhi_epi8(ssd, zero);
+      ssd_lo   = _mm_madd_epi16(ssd_lo, ssd_lo);
+      ssd_hi   = _mm_madd_epi16(ssd_hi, ssd_hi);
+      row_ssd = _mm_add_epi32(row_ssd, ssd_lo);
+      row_ssd = _mm_add_epi32(row_ssd, ssd_hi);
     }
-    SSD_sum += (double)iSSD;
-    for (int i=0; i<incr2; i++) {
-      pos_D = max(pos_D, (int)(pos_D8 & 0xff));
-      neg_D = max(neg_D, (int)(neg_D8 & 0xff));
-      pos_D8 >>= 8;
-      neg_D8 >>= 8;
-    }
-    neg_D = -neg_D;
-    SAD_sum += SAD;
-    SD_sum  += SD;
+
+    f1ptr += pitch1;
+    f2ptr += pitch2;
+
+    __m128i tmp = _mm_srli_si128(row_ssd, 8);
+    row_ssd = _mm_add_epi32(row_ssd, tmp);
+    tmp = _mm_srli_si128(row_ssd, 4);
+    row_ssd = _mm_add_epi32(row_ssd, tmp);
+
+    issd += _mm_cvtsi128_si32(row_ssd);
+  }
+
+  SAD_sum += _mm_cvtsi128_si32(sad_vector);
+  SAD_sum += _mm_cvtsi128_si32(_mm_srli_si128(sad_vector, 8));
+  SD_sum  += _mm_cvtsi128_si32(sd_vector);
+  SD_sum += _mm_cvtsi128_si32(_mm_srli_si128(sd_vector, 8));
+
+  BYTE posdiff_tmp[16];
+  BYTE negdiff_tmp[16];
+  _mm_store_si128(reinterpret_cast<__m128i*>(posdiff_tmp), positive_diff);
+  _mm_store_si128(reinterpret_cast<__m128i*>(negdiff_tmp), negative_diff);
+
+  SSD_sum += (double)issd;
+  for (int i = 0; i < increment*4; ++i) {
+    pos_D = max(pos_D, (int)(posdiff_tmp[i]));
+    neg_D = max(neg_D, (int)(negdiff_tmp[i]));
+  }
+
+  neg_D = -neg_D;
 }
+
+#ifdef X86_32
+
+static void compare_isse(DWORD mask, int increment,
+                         const BYTE * f1ptr, int pitch1, 
+                         const BYTE * f2ptr, int pitch2,
+                         int width, int height,
+                         int &SAD_sum, int &SD_sum, int &pos_D,  int &neg_D, double &SSD_sum)
+{ 
+  // rowsize multiple of 8 for YUV Planar, RGB32 and YUY2; 6 for RGB24
+  // increment must be 3 for RGB24 and 4 for others
+
+  __int64 issd = 0;
+  __m64 sad_vector = _mm_setzero_si64(); //sum of absolute differences
+  __m64 sd_vector = _mm_setzero_si64(); // sum of differences
+  __m64 positive_diff = _mm_setzero_si64();
+  __m64 negative_diff = _mm_setzero_si64();
+  __m64 zero = _mm_setzero_si64();
+
+  __m64 mask64 = _mm_set_pi32(0, mask);
+  mask64 = _mm_or_si64(mask64, _mm_slli_si64(mask64, increment*8));
+
+
+  for (int y = 0; y < height; ++y) {
+    __m64 row_ssd = _mm_setzero_si64();  // sum of squared differences (row_SSD)
+
+    for (int x = 0; x < width; x+=increment*2) {
+      __m64 src1 = *reinterpret_cast<const __m64*>(f1ptr+x);
+      __m64 src2 = *reinterpret_cast<const __m64*>(f2ptr+x);
+
+      src1 = _mm_and_si64(src1, mask64);
+      src2 = _mm_and_si64(src2, mask64);
+
+      __m64 diff_1_minus_2 = _mm_subs_pu8(src1, src2);
+      __m64 diff_2_minus_1 = _mm_subs_pu8(src2, src1);
+
+      positive_diff = _mm_max_pu8(positive_diff, diff_1_minus_2);
+      negative_diff = _mm_max_pu8(negative_diff, diff_2_minus_1);
+
+      __m64 absdiff1 = _mm_sad_pu8(diff_1_minus_2, zero);
+      __m64 absdiff2 = _mm_sad_pu8(diff_2_minus_1, zero);
+
+      sad_vector = _mm_add_pi32(sad_vector, absdiff1);
+      sad_vector = _mm_add_pi32(sad_vector, absdiff2);
+
+      sd_vector = _mm_add_pi32(sd_vector, absdiff1);
+      sd_vector = _mm_sub_pi32(sd_vector, absdiff2);
+
+      __m64 ssd = _mm_or_si64(diff_1_minus_2, diff_2_minus_1);
+      __m64 ssd_lo = _mm_unpacklo_pi8(ssd, zero);
+      __m64 ssd_hi = _mm_unpackhi_pi8(ssd, zero);
+      ssd_lo   = _mm_madd_pi16(ssd_lo, ssd_lo);
+      ssd_hi   = _mm_madd_pi16(ssd_hi, ssd_hi);
+      row_ssd = _mm_add_pi32(row_ssd, ssd_lo);
+      row_ssd = _mm_add_pi32(row_ssd, ssd_hi);
+    }
+
+    f1ptr += pitch1;
+    f2ptr += pitch2;
+
+    __m64 tmp = _mm_unpackhi_pi32(row_ssd, zero);
+    row_ssd = _mm_add_pi32(row_ssd, tmp);
+
+    issd += _mm_cvtsi64_si32(row_ssd);
+  }
+
+  SAD_sum += _mm_cvtsi64_si32(sad_vector);
+  SD_sum  += _mm_cvtsi64_si32(sd_vector);
+
+  BYTE posdiff_tmp[8];
+  BYTE negdiff_tmp[8];
+  *reinterpret_cast<__m64*>(posdiff_tmp) = positive_diff;
+  *reinterpret_cast<__m64*>(negdiff_tmp) = negative_diff;
+  _mm_empty();
+
+  SSD_sum += (double)issd;
+  for (int i = 0; i < increment*2; ++i) {
+    pos_D = max(pos_D, (int)(posdiff_tmp[i]));
+    neg_D = max(neg_D, (int)(negdiff_tmp[i]));
+  }
+
+  neg_D = -neg_D;
+}
+
 #endif
 
 
@@ -1598,13 +1606,17 @@ PVideoFrame __stdcall Compare::GetFrame(int n, IScriptEnvironment* env)
 
     bytecount = rowsize * height * masked_bytes / 4;
 
-#ifdef X86_32
-    if ((!(rowsize & 7) ||  vi.IsRGB24()) &&      // rowsize must be a multiple of 8 for RGB32 and YUY2
-        (!(rowsize % 6) || !vi.IsRGB24()) &&      // or 6 for RGB24
-        (env->GetCPUFlags() & CPUF_INTEGER_SSE))  // to use the ISSE routine
+    if (((vi.IsRGB32() && (rowsize % 16 == 0)) || (vi.IsRGB24() && (rowsize % 12 == 0)) || (vi.IsYUY2() && (rowsize % 16 == 0))) &&
+      (env->GetCPUFlags() & CPUF_SSE2))
     {
-      Compare_ISSE(mask, incr, f1ptr, pitch1, f2ptr, pitch2, rowsize, height,
-                   SAD, SD, pos_D, neg_D, SSD);
+      compare_sse2(mask, incr, f1ptr, pitch1, f2ptr, pitch2, rowsize, height, SAD, SD, pos_D, neg_D, SSD);
+    }
+    else
+#ifdef X86_32
+    if (((vi.IsRGB32() && (rowsize % 8 == 0)) || (vi.IsRGB24() && (rowsize % 6 == 0)) || (vi.IsYUY2() && (rowsize % 8 == 0))) &&
+      (env->GetCPUFlags() & CPUF_INTEGER_SSE))
+    {
+      compare_isse(mask, incr, f1ptr, pitch1, f2ptr, pitch2, rowsize, height, SAD, SD, pos_D, neg_D, SSD);
     }
     else
 #endif
@@ -1647,11 +1659,15 @@ PVideoFrame __stdcall Compare::GetFrame(int n, IScriptEnvironment* env)
 
         bytecount += rowsize * height;
 
-#ifdef X86_32
-        if (!(rowsize & 7) && (env->GetCPUFlags() & CPUF_INTEGER_SSE)) 
+        if ((rowsize % 16 == 0) && (env->GetCPUFlags() & CPUF_SSE2)) 
         {
-         Compare_ISSE(mask, incr, f1ptr, pitch1, f2ptr, pitch2, rowsize, height,
-                      SAD, SD, pos_D, neg_D, SSD);
+          compare_sse2(mask, incr, f1ptr, pitch1, f2ptr, pitch2, rowsize, height, SAD, SD, pos_D, neg_D, SSD);
+        }
+        else
+#ifdef X86_32
+        if ((rowsize % 8 == 0) && (env->GetCPUFlags() & CPUF_INTEGER_SSE)) 
+        {
+         compare_isse(mask, incr, f1ptr, pitch1, f2ptr, pitch2, rowsize, height, SAD, SD, pos_D, neg_D, SSD);
         }
         else
 #endif

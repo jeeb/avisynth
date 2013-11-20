@@ -113,29 +113,18 @@ void OL_LightenImage::BlendImage(Image444* base, Image444* overlay) {
   int w = base->w();
   int h = base->h();
   if (opacity == 256) {
+    if (env->GetCPUFlags() & CPUF_SSE4_1) {
+      overlay_lighten_sse41(baseY, baseU, baseV, ovY, ovU, ovV, base->pitch, overlay->pitch, w, h);
+    } else if (env->GetCPUFlags() & CPUF_SSE2) {
+      overlay_lighten_sse2(baseY, baseU, baseV, ovY, ovU, ovV, base->pitch, overlay->pitch, w, h);
+    } else
 #ifdef X86_32
-    if (!(w&7) && (env->GetCPUFlags() & CPUF_MMX))
-    {
-      mmx_lighten_planar(baseY, baseU, baseV, ovY, ovU, ovV, base->pitch, overlay->pitch, w, h);
-      return;
-    }
+    if (env->GetCPUFlags() & CPUF_MMX) {
+      overlay_lighten_mmx(baseY, baseU, baseV, ovY, ovU, ovV, base->pitch, overlay->pitch, w, h);
+    } else
 #endif
-    for (int y = 0; y < h; y++) {
-      for (int x = 0; x < w; x++) {
-        if (ovY[x] > baseY[x] )  {  // Lighten 
-          baseY[x] = ovY[x];
-          baseU[x] = ovU[x];
-          baseV[x] = ovV[x];
-        }
-      }
-      baseY += base->pitch;
-      baseU += base->pitch;
-      baseV += base->pitch;
-
-      ovY += overlay->pitch;
-      ovU += overlay->pitch;
-      ovV += overlay->pitch;
-
+    {
+      overlay_lighten_c(baseY, baseU, baseV, ovY, ovU, ovV, base->pitch, overlay->pitch, w, h);
     }
   } else {
     for (int y = 0; y < h; y++) {

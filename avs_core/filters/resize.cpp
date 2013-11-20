@@ -35,7 +35,8 @@
 
 #include "resize.h"
 #include "../core/internal.h"
-
+#include <emmintrin.h>
+#include <avs/alignment.h>
 
 
 
@@ -50,8 +51,188 @@ extern const AVSFunction Resize_filters[] = {
   { 0 }
 };
 
+//todo: think of a way to do this with pavgb
+static __forceinline __m128i vertical_reduce_sse2_blend(__m128i &src, __m128i &src_next, __m128i &src_next2, __m128i &zero, __m128i &two) {
+  __m128i src_unpck_lo = _mm_unpacklo_epi8(src, zero);
+  __m128i src_unpck_hi = _mm_unpackhi_epi8(src, zero);
 
+  __m128i src_next_unpck_lo = _mm_unpacklo_epi8(src_next, zero);
+  __m128i src_next_unpck_hi = _mm_unpackhi_epi8(src_next, zero);
 
+  __m128i src_next2_unpck_lo = _mm_unpacklo_epi8(src_next2, zero);
+  __m128i src_next2_unpck_hi = _mm_unpackhi_epi8(src_next2, zero);
+
+  __m128i acc_lo = _mm_adds_epu16(src_next_unpck_lo, src_next_unpck_lo);
+  acc_lo = _mm_adds_epu16(acc_lo, src_unpck_lo);
+  acc_lo = _mm_adds_epu16(acc_lo, src_next2_unpck_lo);
+
+  __m128i acc_hi = _mm_adds_epu16(src_next_unpck_hi, src_next_unpck_hi);
+  acc_hi = _mm_adds_epu16(acc_hi, src_unpck_hi);
+  acc_hi = _mm_adds_epu16(acc_hi, src_next2_unpck_hi);
+
+  acc_lo = _mm_adds_epu16(acc_lo, two);
+  acc_hi = _mm_adds_epu16(acc_hi, two);
+
+  acc_lo = _mm_srai_epi16(acc_lo, 2);
+  acc_hi = _mm_srai_epi16(acc_hi, 2);
+
+  return _mm_packus_epi16(acc_lo, acc_hi);
+}
+
+static void vertical_reduce_sse2(BYTE* dstp, const BYTE* srcp, int dst_pitch, int src_pitch, size_t width, size_t height) {
+  const BYTE* srcp_next = srcp + src_pitch;
+  const BYTE* srcp_next2 = srcp + src_pitch*2;
+  __m128i zero = _mm_setzero_si128();
+  __m128i two = _mm_set1_epi16(2);
+
+  for (size_t y = 0; y < height-1; ++y) {
+    for (size_t x = 0; x < width; x+=16) {
+      __m128i src = _mm_load_si128(reinterpret_cast<const __m128i*>(srcp+x));
+      __m128i src_next = _mm_load_si128(reinterpret_cast<const __m128i*>(srcp_next+x));
+      __m128i src_next2 = _mm_load_si128(reinterpret_cast<const __m128i*>(srcp_next2+x));
+     
+      __m128i avg = vertical_reduce_sse2_blend(src, src_next, src_next2, zero, two);
+
+      _mm_store_si128(reinterpret_cast<__m128i*>(dstp+x), avg);
+    }
+    
+    dstp += dst_pitch;
+    srcp += src_pitch*2;
+    srcp_next += src_pitch*2;
+    srcp_next2 += src_pitch*2;
+  }
+  //last line
+  for (size_t x = 0; x < width; x+=16) {
+    __m128i src = _mm_load_si128(reinterpret_cast<const __m128i*>(srcp+x));
+    __m128i src_next = _mm_load_si128(reinterpret_cast<const __m128i*>(srcp_next+x));
+
+    __m128i avg = vertical_reduce_sse2_blend(src, src_next, src_next, zero, two);
+
+    _mm_store_si128(reinterpret_cast<__m128i*>(dstp+x), avg);
+  }
+}
+
+#ifdef X86_32
+
+//todo: think of a way to do this with pavgb
+static __forceinline __m64 vertical_reduce_mmx_blend(__m64 &src, __m64 &src_next, __m64 &src_next2, __m64 &zero, __m64 &two) {
+  __m64 src_unpck_lo = _mm_unpacklo_pi8(src, zero);
+  __m64 src_unpck_hi = _mm_unpackhi_pi8(src, zero);
+
+  __m64 src_next_unpck_lo = _mm_unpacklo_pi8(src_next, zero);
+  __m64 src_next_unpck_hi = _mm_unpackhi_pi8(src_next, zero);
+
+  __m64 src_next2_unpck_lo = _mm_unpacklo_pi8(src_next2, zero);
+  __m64 src_next2_unpck_hi = _mm_unpackhi_pi8(src_next2, zero);
+
+  __m64 acc_lo = _mm_adds_pu16(src_next_unpck_lo, src_next_unpck_lo);
+  acc_lo = _mm_adds_pu16(acc_lo, src_unpck_lo);
+  acc_lo = _mm_adds_pu16(acc_lo, src_next2_unpck_lo);
+
+  __m64 acc_hi = _mm_adds_pu16(src_next_unpck_hi, src_next_unpck_hi);
+  acc_hi = _mm_adds_pu16(acc_hi, src_unpck_hi);
+  acc_hi = _mm_adds_pu16(acc_hi, src_next2_unpck_hi);
+
+  acc_lo = _mm_adds_pu16(acc_lo, two);
+  acc_hi = _mm_adds_pu16(acc_hi, two);
+
+  acc_lo = _mm_srai_pi16(acc_lo, 2);
+  acc_hi = _mm_srai_pi16(acc_hi, 2);
+
+  return _mm_packs_pu16(acc_lo, acc_hi);
+}
+
+static void vertical_reduce_mmx(BYTE* dstp, const BYTE* srcp, int dst_pitch, int src_pitch, size_t width, size_t height) {
+  const BYTE* srcp_next = srcp + src_pitch;
+  const BYTE* srcp_next2 = srcp + src_pitch*2;
+  __m64 zero = _mm_setzero_si64();
+  __m64 two = _mm_set1_pi16(2);
+
+  size_t mod8_width = width / 8 * 8;
+
+  for (size_t y = 0; y < height-1; ++y) {
+    for (size_t x = 0; x < mod8_width; x+=8) {
+      __m64 src = *reinterpret_cast<const __m64*>(srcp+x);
+      __m64 src_next = *reinterpret_cast<const __m64*>(srcp_next+x);
+      __m64 src_next2 = *reinterpret_cast<const __m64*>(srcp_next2+x);
+
+      __m64 avg = vertical_reduce_mmx_blend(src, src_next, src_next2, zero, two);
+
+      *reinterpret_cast<__m64*>(dstp+x) = avg;
+    }
+
+    if (mod8_width != width) {
+      size_t x = width - 8;
+      __m64 src = *reinterpret_cast<const __m64*>(srcp+x);
+      __m64 src_next = *reinterpret_cast<const __m64*>(srcp_next+x);
+      __m64 src_next2 = *reinterpret_cast<const __m64*>(srcp_next2+x);
+
+      __m64 avg = vertical_reduce_mmx_blend(src, src_next, src_next2, zero, two);
+
+      *reinterpret_cast<__m64*>(dstp+x) = avg;
+    }
+
+    dstp += dst_pitch;
+    srcp += src_pitch*2;
+    srcp_next += src_pitch*2;
+    srcp_next2 += src_pitch*2;
+  }
+  //last line
+  for (size_t x = 0; x < mod8_width; x+=8) {
+    __m64 src = *reinterpret_cast<const __m64*>(srcp+x);
+    __m64 src_next = *reinterpret_cast<const __m64*>(srcp_next+x);
+
+    __m64 avg = vertical_reduce_mmx_blend(src, src_next, src_next, zero, two);
+
+    *reinterpret_cast<__m64*>(dstp+x)= avg;
+  }
+
+  if (mod8_width != width) {
+    size_t x = width - 8;
+    __m64 src = *reinterpret_cast<const __m64*>(srcp+x);
+    __m64 src_next = *reinterpret_cast<const __m64*>(srcp_next+x);
+
+    __m64 avg = vertical_reduce_mmx_blend(src, src_next, src_next, zero, two);
+
+    *reinterpret_cast<__m64*>(dstp+x)= avg;
+  }
+
+  _mm_empty();
+}
+#endif
+
+static void vertical_reduce_c(BYTE* dstp, const BYTE* srcp, int dst_pitch, int src_pitch, size_t width, size_t height) {
+  const BYTE* srcp_next = srcp + src_pitch;
+  const BYTE* srcp_next2 = srcp + src_pitch*2;
+
+  for (size_t y = 0; y < height-1; ++y) {
+    for (size_t x = 0; x < width; ++x) {
+      dstp[x] = (srcp[x] + 2*srcp_next[x] + srcp_next2[x] + 2) >> 2;
+    }
+    dstp += dst_pitch;
+    srcp += src_pitch*2;
+    srcp_next += src_pitch*2;
+    srcp_next2 += src_pitch*2;
+  }
+  for(size_t x = 0; x < width; ++x) {
+    dstp[x] = (srcp[x] + 3*srcp_next[x] + 2) >> 2;
+  }
+}
+
+void vertical_reduce_core(BYTE* dstp, const BYTE* srcp, int dst_pitch, int src_pitch, int width, int height, IScriptEnvironment* env) {
+  if (!srcp) {
+    return;
+  }
+  if ((env->GetCPUFlags() & CPUF_SSE2) && IsPtrAligned(srcp, 16) && width >= 16) {
+    vertical_reduce_sse2(dstp, srcp, dst_pitch, src_pitch, width, height);
+  } else
+#ifdef X86_32
+    if ((env->GetCPUFlags() & CPUF_MMX) && width >= 8) {
+      vertical_reduce_mmx(dstp, srcp, dst_pitch, src_pitch, width, height);
+    } else
+#endif
+    vertical_reduce_c(dstp, srcp, dst_pitch, src_pitch, width, height);
+}
 
 
 /*************************************
@@ -91,146 +272,17 @@ PVideoFrame VerticalReduceBy2::GetFrame(int n, IScriptEnvironment* env) {
   BYTE* dstp = dst->GetWritePtr();
   const BYTE* srcp = src->GetReadPtr();
 
-  if (vi.IsPlanar()) 
-  {
-#ifdef X86_32
-    mmx_process(srcp, src_pitch, a_row_size, dstp, dst_pitch, dst->GetHeight(PLANAR_Y));
-
-    if (src->GetRowSize(PLANAR_V)) {
-      src_pitch = src->GetPitch(PLANAR_V);
-      dst_pitch = dst->GetPitch(PLANAR_V);
-      a_row_size = (src->GetRowSize(PLANAR_V)+3) & ~3;
-      dstp = dst->GetWritePtr(PLANAR_V);
-      srcp = src->GetReadPtr(PLANAR_V);
-      mmx_process(srcp, src_pitch, a_row_size, dstp, dst_pitch, dst->GetHeight(PLANAR_V));
-
-      src_pitch = src->GetPitch(PLANAR_U);
-      dst_pitch = dst->GetPitch(PLANAR_U);
-      a_row_size = (src->GetRowSize(PLANAR_U)+3) & ~3;
-      dstp = dst->GetWritePtr(PLANAR_U);
-      srcp = src->GetReadPtr(PLANAR_U);
-      mmx_process(srcp, src_pitch, a_row_size, dstp, dst_pitch, dst->GetHeight(PLANAR_U));
-    }
-#else
-  //TODO
-  env->ThrowError("VerticalReduceBy2::GetFrame is not yet ported to 64-bit.");
-#endif
-    return dst;
+  if (vi.IsPlanar()) {
+    vertical_reduce_core(dstp, srcp, dst_pitch, src_pitch, row_size, dst->GetHeight(PLANAR_Y), env);
+    vertical_reduce_core(dst->GetWritePtr(PLANAR_U), src->GetReadPtr(PLANAR_U), dst->GetPitch(PLANAR_U), 
+      src->GetPitch(PLANAR_U), dst->GetRowSize(PLANAR_U), dst->GetHeight(PLANAR_U), env);
+    vertical_reduce_core(dst->GetWritePtr(PLANAR_V), src->GetReadPtr(PLANAR_V), dst->GetPitch(PLANAR_V), 
+      src->GetPitch(PLANAR_V), dst->GetRowSize(PLANAR_V), dst->GetHeight(PLANAR_V), env);
+  } else {
+    vertical_reduce_core(dstp, srcp, dst_pitch, src_pitch, row_size, vi.height, env);
   }
-
-#ifdef X86_32
-  if ((env->GetCPUFlags() & CPUF_MMX)) {
-    // aligned row width divideable within pitch (one dword per loop)
-    if (a_row_size<=src_pitch && a_row_size<=dst_pitch) {
-      mmx_process(srcp, src_pitch, a_row_size, dstp, dst_pitch, vi.height);
-      return dst;
-    }
-  } 
-#endif
-    
-  for (int y=0; y<vi.height; ++y) {
-    const BYTE* line0 = src->GetReadPtr() + (y*2)*src_pitch;
-    const BYTE* line1 = line0 + src_pitch;
-    const BYTE* line2 = (y*2 < original_height-2) ? (line1 + src_pitch) : line0;
-    for (int x=0; x<row_size; ++x)
-      dstp[x] = (line0[x] + 2*line1[x] + line2[x] + 2) >> 2;
-    dstp += dst_pitch;
-  }
-
   return dst;
 }
-
-/*************************************
- ******* Vertical 2:1 Reduction ******
- ******* MMX Optimized          ******
- ******* by Klaus Post          ******
- ************************************/
-
-
-#define R_SRC edx
-#define R_DST edi
-#define R_XOFFSET eax
-#define R_YLEFT ebx
-#define R_SRC_PITCH ecx
-#define R_DST_PITCH esi
-
-#ifdef X86_32
-void VerticalReduceBy2::mmx_process(const BYTE* srcp, int src_pitch, int row_size, BYTE* dstp, int dst_pitch, int height) {
-  height--;
-  static const __int64 add_2=0x0002000200020002;
-
-  if ((row_size&3)==0) {  // row width divideable with 4 (one dword per loop)
-    __asm {
-        push ebx  // avoid compiler bug
-        movq mm7,[add_2];
-        add [srcp],-4
-        mov R_XOFFSET,0
-        mov R_SRC,srcp
-        mov R_DST,dstp
-        mov R_SRC_PITCH,[src_pitch]
-        mov R_DST_PITCH,[dst_pitch]
-        mov R_YLEFT,[height]
-loopback:
-        pxor mm1,mm1
-        punpckhbw mm0,[R_SRC]  // line0
-        punpckhbw mm1,[R_SRC+R_SRC_PITCH]  // line1
-        punpckhbw mm2,[R_SRC+R_SRC_PITCH*2]  // line2
-        psrlw mm0,8
-        psrlw mm1,7
-        paddw mm0,mm7
-        psrlw mm2,8
-        paddw mm0,mm1
-        paddw mm0,mm2
-        psrlw mm0,2
-        packuswb mm0,mm1
-        movd [R_DST+R_XOFFSET],mm0
-        add R_SRC,4
-        add R_XOFFSET,4
-        cmp  R_XOFFSET,[row_size]
-        jl loopback						; Jump back
-        add srcp, R_SRC_PITCH
-        mov R_XOFFSET,0
-        add srcp, R_SRC_PITCH
-        add R_DST,R_DST_PITCH
-        mov R_SRC,srcp
-        dec R_YLEFT
-        jnz loopback
-        
-        // last line 
-loopback_last:
-        pxor mm1,mm1
-        punpckhbw mm0,[R_SRC]  // line0
-        punpckhbw mm1,[R_SRC+R_SRC_PITCH]  // line1
-        psrlw mm0,8
-        movq mm2,mm1  // dupe line 1
-        psrlw mm1,7
-        paddw mm0,mm7
-        psrlw mm2,8
-        paddw mm0,mm1
-        paddw mm0,mm2
-        psrlw mm0,2
-        packuswb mm0,mm1
-        movd [R_DST+R_XOFFSET],mm0
-        add R_XOFFSET,4
-        add R_SRC,4
-        cmp  R_XOFFSET,[row_size]
-        jl loopback_last						; Jump back
-        emms
-        pop ebx
-    }
-  }
-}
-#endif
-
-#undef R_SRC
-#undef R_DST
-#undef R_XOFFSET
-#undef R_YLEFT
-#undef R_SRC_PITCH
-#undef R_DST_PITCH
-
-
-
 
 
 /************************************
@@ -311,15 +363,7 @@ PVideoFrame HorizontalReduceBy2::GetFrame(int n, IScriptEnvironment* env)
       srcp += src_gap+2;
     }}
   } else if (vi.IsYUY2()  && (!(vi.width&3))) {
-    /*
-#ifdef X86_32
-    if (env->GetCPUFlags() & CPUF_INTEGER_SSE) 
-    {
-			isse_process_yuy2(src,dstp,dst_pitch);
-			return dst;
-		}
-#endif
-    */
+
     const BYTE* srcp = src->GetReadPtr();
     for (int y = vi.height; y>0; --y) {
       for (int x = (vi.width>>1)-1; x; --x) {
@@ -385,167 +429,6 @@ PVideoFrame HorizontalReduceBy2::GetFrame(int n, IScriptEnvironment* env)
   }
   return dst;
 }
-
-/*
-0102 0304 0506 0708
-*/
-
-
-/************************************
- **** Horizontal 2:1 Reduction ******
- **** YUY2 Integer SSE Optimized ****
- **** by Klaus Post              ****
- ***********************************/
-
-
-#define R_SRC esi
-#define R_DST edi
-#define R_XOFFSET edx
-#define R_TEMP1 eax
-#define R_TEMP2 ecx
-
-#ifdef X86_32
-void HorizontalReduceBy2::isse_process_yuy2(PVideoFrame src,BYTE* dstp, int dst_pitch)
-{
-  
-  const BYTE* srcp = src->GetReadPtr();
-  const int src_pitch = src->GetPitch();
-  int row_size = ((src->GetRowSize())>>1)-4;
-	
-  const int height = vi.height;
-  int yleft = height;
-
-  __declspec(align(8)) static const __int64 add_2=0x0002000200020002;
-  __declspec(align(8)) static const __int64 zero_mask=0x000000000000ffff;
-  __declspec(align(8)) static const __int64 three_mask=0x0000ffff00000000;
-  __declspec(align(8)) static const __int64 inv_0_mask=0xffffffffffff0000;
-  __declspec(align(8)) static const __int64 inv_3_mask=0xffff0000ffffffff;
-
-/**
- * The matrix is flipped, so the mmx registers are equivalent to
- *  the downward column, and pixels are then added sideways in parallel.
- * The last two pixels are handled seperately (as in the C-code), 
- *  with native code - but it's only the last pixel.
- **/
-  if ((row_size&3)==0) {  // row width divideable with 8 (one qword per loop)
-    __asm {
-      movq mm6,[zero_mask];
-      movq mm7,[inv_0_mask];
-
-      mov R_XOFFSET,0
-				add [srcp],-4
-				prefetchnta [srcp]
-				prefetchnta [srcp+64]
-        mov R_SRC,srcp
-        mov R_DST,dstp
-loop_nextline:
-				mov R_TEMP2,[row_size]
-loopback:
-				prefetchnta [R_SRC+64]
-        punpckhbw mm0,[R_SRC]  // pixel 1
-        punpckhbw mm1,[R_SRC+4]  // pixel 2
-        punpckhbw mm2,[R_SRC+8]  // pixel 3
-				psrlw mm0,8				;mm0=00VV 00Y2 00UU 00Y1
-				psrlw mm1,8				;mm1=00VV 00Y2 00UU 00Y1
-				psrlw mm2,8				;mm2=00VV 00Y2 00UU 00Y1
-				movq mm3,mm0								; word 3 [4] word 0 in mm1 (ok)
-				movq mm4,mm1								; word 0 [2] must be exchanged with word 2 in mm0
-				pand mm3,[inv_3_mask]
-				pshufw mm5,mm2,11000100b		; word 0 [4] must be exhanged (word0 in mm1) (ok)
-				pand mm4,mm7
-				pshufw mm1,mm1,0
-				pand mm5,mm7
-				movq mm2,mm1
-        pand mm1,mm6
-				pshufw mm0,mm0,10101010b
-        pand mm2,[three_mask]
-        pand mm0,mm6
-				por mm4,mm0
-				por mm3,mm2
-				psllw mm4,1
-				por mm5,mm1
-				paddw mm3,mm4
-				paddw mm5,[add_2]
-				paddw mm3,mm5
-        psrlw mm3,2
-        packuswb mm3,mm1
-        movd [R_DST+R_XOFFSET],mm3
-
-				add R_SRC,8
-        add R_XOFFSET,4
-        cmp  R_XOFFSET,R_TEMP2
-        jl loopback						; Jump back
-				// Last two pixels
-				// Could be optimized greatly, but it only runs once per line
-
-			mov R_TEMP1,[R_SRC]
-			mov R_TEMP2,[R_SRC+2]
-			and R_TEMP1,255
-			and R_TEMP2,255
-			add R_TEMP1,R_TEMP2
-			add R_TEMP1,R_TEMP2
-			mov R_TEMP2,[R_SRC+4]
-			add R_TEMP1,2
-			and R_TEMP2,255
-			add R_TEMP1,R_TEMP2
-			shr R_TEMP1,2
-			mov [R_DST+R_XOFFSET],R_TEMP1
-
-			mov R_TEMP1,[R_SRC+1]
-			mov R_TEMP2,[R_SRC+5]
-			and R_TEMP1,255
-			and R_TEMP2,255
-			add R_TEMP1,1
-			add R_TEMP1,R_TEMP2
-			shr R_TEMP1,1
-			shl R_TEMP1,8
-			or [R_DST+R_XOFFSET],R_TEMP1
-
-			mov R_TEMP1,[R_SRC+4]
-			mov R_TEMP2,[R_SRC+6]
-			and R_TEMP1,255
-			and R_TEMP2,255
-			add R_TEMP1,1
-			add R_TEMP1,R_TEMP2
-			shr R_TEMP1,1
-			shl R_TEMP1,16
-			or [R_DST+R_XOFFSET],R_TEMP1
-
-			mov R_TEMP1,[R_SRC+3]
-			mov R_TEMP2,[R_SRC+7]
-			and R_TEMP1,255
-			and R_TEMP2,255
-			add R_TEMP1,1
-			add R_TEMP1,R_TEMP2
-			shr R_TEMP1,1
-			shl R_TEMP1,24
-			or [R_DST+R_XOFFSET],R_TEMP1
-
-				mov R_TEMP2,[src_pitch]
-        add srcp, R_TEMP2
-        mov R_XOFFSET,0
-        add R_DST,[dst_pitch]
-        mov R_SRC,srcp
-
-        mov R_TEMP1, yleft
-        dec R_TEMP1
-        mov yleft, R_TEMP1
-        jnz loop_nextline        
-        emms
-    }
-  }
-}
-#endif
-
-#undef R_SRC
-#undef R_DST
-#undef R_XOFFSET
-#undef R_YLEFT
-#undef R_SRC_PITCH
-#undef R_DST_PITCH
-
-
-
 
 /**************************************
  *****  ReduceBy2 Factory Method  *****

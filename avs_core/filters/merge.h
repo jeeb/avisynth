@@ -53,7 +53,7 @@ class MergeChroma : public GenericVideoFilter
  **/
 {
 public:
-  MergeChroma(PClip _child, PClip _clip, float _weight, int _test, IScriptEnvironment* env);  
+  MergeChroma(PClip _child, PClip _clip, float _weight, IScriptEnvironment* env);  
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
 
   static AVSValue __cdecl Create(AVSValue args, void* user_data, IScriptEnvironment* env);
@@ -61,7 +61,6 @@ public:
 private:
   PClip clip;
   float weight;
-  int test;
 };
 
 
@@ -71,7 +70,7 @@ class MergeLuma : public GenericVideoFilter
  **/
 {
 public:
-  MergeLuma(PClip _child, PClip _clip, float _weight, int _test, IScriptEnvironment* env);  
+  MergeLuma(PClip _child, PClip _clip, float _weight, IScriptEnvironment* env);  
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
 
   static AVSValue __cdecl Create(AVSValue args, void* user_data, IScriptEnvironment* env);
@@ -79,7 +78,6 @@ public:
 private:
   PClip clip;
   float weight;
-  int test;
 };
 
 
@@ -89,7 +87,7 @@ class MergeAll : public GenericVideoFilter
  **/
 {
 public:
-  MergeAll(PClip _child, PClip _clip, float _weight, int _test, IScriptEnvironment* env);  
+  MergeAll(PClip _child, PClip _clip, float _weight, IScriptEnvironment* env);  
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
 
   static AVSValue __cdecl Create(AVSValue args, void* user_data, IScriptEnvironment* env);
@@ -97,36 +95,10 @@ public:
 private:
   PClip clip;
   float weight;
-  int test;
 };
 
-
-
-
-/**** MMX Routines ****/
-
-void mmx_merge_luma( unsigned int *src, unsigned int *luma, int pitch, 
-                     int luma_pitch, int width, int height );
-                    
-void mmx_weigh_luma( unsigned int *src, unsigned int *luma, int pitch, 
-                     int luma_pitch, int width, int height, int weight, int invweight );
-
-void mmx_weigh_chroma( unsigned int *src,unsigned int *chroma, int pitch, 
-                       int chroma_pitch, int width, int height, int weight, int invweight );
-
-void merge_luma( unsigned int *src, unsigned int *luma, int pitch, 
-                     int luma_pitch, int width, int height );
-                    
-void weigh_luma( unsigned int *src, unsigned int *luma, int pitch,
-                 int luma_pitch, int width, int height, int weight, int invweight);
-
-void weigh_chroma( unsigned int *src, unsigned int *chroma, int pitch,
-                   int chroma_pitch, int width, int height, int weight, int invweight);
-
-void mmx_weigh_plane(BYTE *p1,const BYTE *p2, int p1_pitch, int p2_pitch,int rowsize, int height, int weight, int invweight);
-
-void weigh_plane(BYTE *p1,const BYTE *p2, int p1_pitch, int p2_pitch,int rowsize, int height, int weight, int invweight);
-
-void isse_avg_plane(BYTE *p1,const BYTE *p2, int p1_pitch, int p2_pitch,int rowsize, int height);
+void weighted_merge_planar_sse2(BYTE *p1,const BYTE *p2, int p1_pitch, int p2_pitch,int rowsize, int height, int weight, int invweight);
+void weighted_merge_planar_mmx(BYTE *p1,const BYTE *p2, int p1_pitch, int p2_pitch,int rowsize, int height, int weight, int invweight);
+void weighted_merge_planar_c(BYTE *p1,const BYTE *p2, int p1_pitch, int p2_pitch,int rowsize, int height, int weight, int invweight);
 
 #endif  // __Merge_H__

@@ -41,6 +41,8 @@
 
 #include "planeswap.h"
 #include "../core/internal.h"
+#include <tmmintrin.h>
+#include <avs/alignment.h>
 
 
 /********************************************************************
@@ -62,6 +64,92 @@ extern const AVSFunction Swap_filters[] = {
 /**************************************
  *  Swap - swaps UV on planar maps
  **************************************/
+
+typedef __m128i (SseYuy2Swap)(__m128i, __m128i);
+
+__forceinline __m128i sse2_yuy2_swap_register(__m128i src, __m128i zero) {
+  __m128i src_unpck_lo = _mm_unpacklo_epi8(src, zero); //0V0Y0U0Y x2
+  __m128i src_unpck_hi = _mm_unpackhi_epi8(src, zero); 
+
+  src_unpck_lo = _mm_shufflelo_epi16(src_unpck_lo, _MM_SHUFFLE(1, 2, 3, 0)); 
+  src_unpck_lo = _mm_shufflehi_epi16(src_unpck_lo, _MM_SHUFFLE(1, 2, 3, 0));
+  src_unpck_hi = _mm_shufflelo_epi16(src_unpck_hi, _MM_SHUFFLE(1, 2, 3, 0)); 
+  src_unpck_hi = _mm_shufflehi_epi16(src_unpck_hi, _MM_SHUFFLE(1, 2, 3, 0));
+
+  return _mm_packus_epi16(src_unpck_lo, src_unpck_hi);
+}
+
+__forceinline __m128i ssse3_yuy2_swap_register(__m128i src, __m128i) {
+  return _mm_shuffle_epi8(src, _mm_set_epi8(13, 14, 15, 12, 9, 10, 11, 8, 5, 6, 7, 4, 1, 2, 3, 0));
+}
+
+template<SseYuy2Swap swap>
+static void ssex_yuy2_swap(const BYTE* srcp, BYTE* dstp, int src_pitch, int dst_pitch, int width, int height)
+{
+  int mod16width = width / 16 * 16;
+
+  __m128i zero = _mm_setzero_si128();
+
+  for (int y = 0; y < height; ++y ) {
+    for (int x = 0; x < mod16width; x+= 16) {
+      __m128i src = _mm_load_si128(reinterpret_cast<const __m128i*>(srcp+x)); 
+      __m128i dst = swap(src, zero);
+      _mm_store_si128(reinterpret_cast<__m128i*>(dstp+x), dst);
+    }
+    
+    if (mod16width != width) {
+      int x = width-16;
+      __m128i src = _mm_loadu_si128(reinterpret_cast<const __m128i*>(srcp+x)); 
+      __m128i dst = swap(src, zero);
+      _mm_storeu_si128(reinterpret_cast<__m128i*>(dstp+x), dst);
+    }
+
+    dstp += dst_pitch;
+    srcp += src_pitch;
+  }
+}
+
+
+#ifdef X86_32
+
+static __forceinline __m64 isse_yuy2_swap_register(__m64 src, __m64 zero) {
+  __m64 src_unpck_lo = _mm_unpacklo_pi8(src, zero); //0V0Y0U0Y
+  __m64 src_unpck_hi = _mm_unpackhi_pi8(src, zero); 
+
+  src_unpck_lo = _mm_shuffle_pi16(src_unpck_lo, _MM_SHUFFLE(1, 2, 3, 0)); 
+  src_unpck_hi = _mm_shuffle_pi16(src_unpck_hi, _MM_SHUFFLE(1, 2, 3, 0)); 
+
+  return _mm_packs_pu16(src_unpck_lo, src_unpck_hi);
+}
+
+static void isse_yuy2_swap(const BYTE* srcp, BYTE* dstp, int src_pitch, int dst_pitch, int width, int height)
+{
+  int mod8width = width / 8 * 8;
+
+  __m64 zero = _mm_setzero_si64();
+
+  for (int y = 0; y < height; ++y ) {
+    for (int x = 0; x < mod8width; x+= 8) {
+      __m64 src = *reinterpret_cast<const __m64*>(srcp+x); 
+      __m64 dst = isse_yuy2_swap_register(src, zero);
+      *reinterpret_cast<__m64*>(dstp+x) = dst;
+    }
+
+    if (mod8width != width) {
+      int x = width-8;
+      __m64 src = *reinterpret_cast<const __m64*>(srcp+x); 
+      __m64 dst = isse_yuy2_swap_register(src, zero);
+      *reinterpret_cast<__m64*>(dstp+x) = dst;
+    }
+
+    dstp += dst_pitch;
+    srcp += src_pitch;
+  }
+  _mm_empty();
+}
+#endif
+
+
 
 AVSValue __cdecl SwapUV::CreateSwapUV(AVSValue args, void* user_data, IScriptEnvironment* env) {
   PClip p = args[0].AsClip();
@@ -105,17 +193,15 @@ PVideoFrame __stdcall SwapUV::GetFrame(int n, IScriptEnvironment* env) {
       const BYTE* srcp = src->GetReadPtr();
       PVideoFrame dst = env->NewVideoFrame(vi);
       
+      if ((env->GetCPUFlags() & CPUF_SSSE3) && IsPtrAligned(srcp, 16) && dst->GetRowSize() >= 16) {
+        ssex_yuy2_swap<ssse3_yuy2_swap_register>(srcp, dst->GetWritePtr(), src->GetPitch(), dst->GetPitch(), dst->GetRowSize(), src->GetHeight());
+      } else if ((env->GetCPUFlags() & CPUF_SSE2) && IsPtrAligned(srcp, 16) && dst->GetRowSize() >= 16) {
+        ssex_yuy2_swap<sse2_yuy2_swap_register>(srcp, dst->GetWritePtr(), src->GetPitch(), dst->GetPitch(), dst->GetRowSize(), src->GetHeight());
+      } else
 #ifdef X86_32
-      if ((env->GetCPUFlags() & CPUF_INTEGER_SSE))   // need pshufw
+      if ((env->GetCPUFlags() & CPUF_INTEGER_SSE) && dst->GetRowSize() >= 8)   // need pshufw
       {
-        BYTE* dstp = dst->GetWritePtr();
-        int srcpitch = src->GetPitch();
-        int dstpitch = dst->GetPitch();
-        int height = vi.height;
-        int rowsize4 = dst->GetRowSize();
-        int rowsize8 = rowsize4 & -8;
-        int rowsize16 = rowsize4 & -16;
-        isse_inplace_yuy2_swap(srcp, dstp, rowsize16, rowsize8, rowsize4, height, srcpitch, dstpitch);
+        isse_yuy2_swap(srcp, dst->GetWritePtr(), src->GetPitch(), dst->GetPitch(), dst->GetRowSize(), src->GetHeight());
       }
       else
 #endif
@@ -141,88 +227,6 @@ PVideoFrame __stdcall SwapUV::GetFrame(int n, IScriptEnvironment* env) {
   return src;
 }
 
-
-#ifdef X86_32
-void SwapUV::isse_inplace_yuy2_swap(const BYTE* srcp, BYTE* dstp, int rowsize16, int rowsize8,
-                                    int rowsize4, int height, int srcpitch, int dstpitch)
-{
-        __asm {
-            pcmpeqb   mm7,mm7			; 0xffffffffffffffff
-            psrlw     mm7,8 			; 0x00ff00ff00ff00ff
-            
-            mov       ecx,[height]
-            xor       eax,eax
-            test      ecx,ecx
-            mov       edx,[rowsize16]
-            jz        done
-            
-            mov       esi,[srcp]
-            mov       edi,[dstp]
-            align     16
-yloop:
-            cmp       eax,edx
-            jge       twoleft
-            
-            align     16				; Process 8 pixels(16 bytes) per loop
-xloop:
-            movq      mm0,[esi+eax]		; VYUY HI VYUY LO
-            movq      mm1,[esi+eax+8]	; vyuy hi vyuy lo
-            movq      mm2,mm0
-            punpckhbw mm0,mm1			; vVyY uUyY hi HI
-            movq      mm3,mm7
-            punpcklbw mm2,mm1			; vVyY uUyY lo LO
-            movq      mm1,mm7
-            pshufw    mm0,mm0,01101100b	; uUyY vVyY hi HI
-            add       eax,16
-            pshufw    mm2,mm2,01101100b	; uUyY vVyY lo LO
-            pand      mm1,mm0			; 0U0Y 0V0Y HI
-            psrlw     mm0,8				; 0u0y 0v0y hi
-            pand      mm3,mm2			; 0U0Y 0V0Y LO
-            psrlw     mm2,8				; 0u0y 0v0y lo
-            packuswb  mm3,mm1			; UYVY HI UYVY LO
-            cmp       eax,edx
-            packuswb  mm2,mm0			; uyvy hi uyvy lo
-            movq      [edi+eax-16],mm3
-            movq      [edi+eax-8],mm2
-            jl        xloop
-            align     16
-twoleft:
-            cmp       eax,[rowsize8]
-            jge       oneleft
-            
-            movq      mm0,[esi+eax]		; VYUY HI VYUY LO
-            pxor      mm1,mm1
-            movq      mm2,mm0
-            punpckhbw mm0,mm1			; _V_Y _U_Y HI
-            punpcklbw mm2,mm1			; _V_Y _U_Y LO
-            pshufw    mm0,mm0,01101100b	; _U_Y _V_Y HI
-            pshufw    mm2,mm2,01101100b	; _U_Y _V_Y LO
-            add       eax,8
-            packuswb  mm2,mm0			; UYVY HI UYVY LO
-            movq      [edi+eax-8],mm2
-            align     16
-oneleft:
-            cmp       eax,[rowsize4]
-            jge       noneleft
-            
-            movd      mm0,[esi+eax]		; ____ HI VYUY LO
-            pxor      mm1,mm1
-            punpcklbw mm0,mm1			; _V_Y _U_Y LO
-            pshufw    mm0,mm0,01101100b	; _U_Y _V_Y LO
-            packuswb  mm0,mm1			; ____ HI UYVY LO
-            movd      [edi+eax],mm0
-            align     16
-noneleft:
-            add       esi,[srcpitch]
-            add       edi,[dstpitch]
-            xor       eax,eax
-            dec       ecx
-            jnz       yloop
-done:
-          emms
-        }
-}
-#endif
 
 AVSValue __cdecl SwapUVToY::CreateUToY(AVSValue args, void* user_data, IScriptEnvironment* env) {
   return new SwapUVToY(args[0].AsClip(), UToY, env);

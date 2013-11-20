@@ -37,47 +37,9 @@
 #ifndef __Convert_PLANAR_H__
 #define __Convert_PLANAR_H__
 
-#include <avs/win.h>
 #include <avisynth.h>
-#include "convert_matrix.h"
-#include "convert_rgbtoy8.h"
-#include "../filters/resample.h"
 
-enum {Rec601=0, Rec709=1, PC_601=2, PC_709=3, AVERAGE=4 };
-
-static int getMatrix( const char* matrix, IScriptEnvironment* env) {
-  if (matrix) {
-    if (!lstrcmpi(matrix, "rec601"))
-      return Rec601;
-    if (!lstrcmpi(matrix, "rec709"))
-      return Rec709;
-    if (!lstrcmpi(matrix, "PC.601"))
-      return PC_601;
-    if (!lstrcmpi(matrix, "PC.709"))
-      return PC_709;
-    if (!lstrcmpi(matrix, "PC601"))
-      return PC_601;
-    if (!lstrcmpi(matrix, "PC709"))
-      return PC_709;
-    if (!lstrcmpi(matrix, "AVERAGE"))
-      return AVERAGE;
-    env->ThrowError("Convert: Unknown colormatrix");
-  }
-  return Rec601; // Default colorspace conversion for AviSynth
-}
-
-enum   {PLACEMENT_MPEG2, PLACEMENT_MPEG1, PLACEMENT_DV } ;
-
-static int getPlacement( const AVSValue& _placement, IScriptEnvironment* env);
-
-static ResamplingFunction* getResampler( const char* resampler, IScriptEnvironment* env);
-
-
-#ifdef X86_32
-class ConvertToY8 : public GenericVideoFilter, public RGBtoY8Generator
-#else
 class ConvertToY8 : public GenericVideoFilter
-#endif
 {
 public:
   ConvertToY8(PClip src, int matrix, IScriptEnvironment* env);
@@ -85,7 +47,6 @@ public:
   static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env);  
   ~ConvertToY8();
 private:
-  void convYUV422toY8(const unsigned char *src, unsigned char *py, int pitch1, int pitch2y, int width, int height);
   bool blit_luma_only;
   bool yuy2_input;
   bool rgb_input;
@@ -94,24 +55,29 @@ private:
   int offset_y;
 };
 
+struct ConversionMatrix {
+  short y_r;
+  short y_g;
+  short y_b;
+  short u_r;
+  short u_g;
+  short u_b;
+  short v_r;
+  short v_g;
+  short v_b;
 
-#ifdef X86_32
-class ConvertRGBToYV24 : public GenericVideoFilter, public MatrixGenerator3x3
-#else
+  int offset_y;
+};
+
 class ConvertRGBToYV24 : public GenericVideoFilter
-#endif
 {
 public:
   ConvertRGBToYV24(PClip src, int matrix, IScriptEnvironment* env);
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
   static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env);
-  ~ConvertRGBToYV24();
 private:
   void BuildMatrix(double Kr, double Kb, int Sy, int Suv, int Oy, int shift);
-  signed short* matrix;
-  BYTE* unpckbuf;
-  int offset_y;
-  int mul_out;
+  ConversionMatrix matrix;
   int pixel_step;
 };
 
@@ -121,29 +87,18 @@ public:
   ConvertYUY2ToYV16(PClip src, IScriptEnvironment* env);
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
   static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env);
-private:
-  void convYUV422to422(const unsigned char *src, unsigned char *py, unsigned char *pu, unsigned char *pv,
-       int pitch1, int pitch2y, int pitch2uv, int width, int height);
-
 };
 
-#ifdef X86_32
-class ConvertYV24ToRGB : public GenericVideoFilter, public MatrixGenerator3x3
-#else
 class ConvertYV24ToRGB : public GenericVideoFilter
-#endif
 {
 public:
   ConvertYV24ToRGB(PClip src, int matrix, int pixel_step, IScriptEnvironment* env);
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
   static AVSValue __cdecl Create24(AVSValue args, void*, IScriptEnvironment* env);
   static AVSValue __cdecl Create32(AVSValue args, void*, IScriptEnvironment* env);
-  ~ConvertYV24ToRGB();
 private:
   void BuildMatrix(double Kr, double Kb, int Sy, int Suv, int Oy, int shift);
-  signed short* matrix;
-  BYTE* packbuf;
-  int offset_y;
+  ConversionMatrix matrix;
   int pixel_step;
 };
 
@@ -153,10 +108,6 @@ public:
   ConvertYV16ToYUY2(PClip src, IScriptEnvironment* env);
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
   static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env);
-private:
-  void conv422toYUV422(const unsigned char *py, const unsigned char *pu,
-					   const unsigned char *pv, unsigned char *dst,
-					   int pitch1Y, int pitch1UV, int pitch2, int width, int height);
 };
 
 class ConvertToPlanarGeneric : public GenericVideoFilter

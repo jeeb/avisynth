@@ -48,8 +48,6 @@ class VerticalReduceBy2 : public GenericVideoFilter
 {  
 public:
   VerticalReduceBy2(PClip _child, IScriptEnvironment* env);
-  void mmx_process(PVideoFrame src,BYTE* dstp, int dst_pitch, int plane);
-  void mmx_process(const BYTE* srcp, int src_pitch, int row_size, BYTE* dstp, int dst_pitch, int height) ;
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
   static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env)  { 
     return new VerticalReduceBy2(args[0].AsClip(),env); 
@@ -69,7 +67,6 @@ class HorizontalReduceBy2 : public GenericVideoFilter
 public:
   HorizontalReduceBy2(PClip _child, IScriptEnvironment* env);
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
-	void isse_process_yuy2(PVideoFrame src,BYTE* dstp, int dst_pitch);
   static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env) {
     return new HorizontalReduceBy2(args[0].AsClip(), env);
   }

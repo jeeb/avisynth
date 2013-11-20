@@ -36,14 +36,43 @@
 #define __Resample_Functions_H__
 
 #include <avisynth.h>
+#include <malloc.h>
 
 // Original value: 65536
 // 2 bits sacrificed because of 16 bit signed MMX multiplication
+// NOTE: Don't change this value. It's hard-coded in SIMD code.
 const int FPScale = 16384; // fixed point scaler
 
 // 09-14-2002 - Vlad59 - Lanczos3Resize - Constant added
 #define M_PI 3.14159265358979323846
 
+struct ResamplingProgram {
+  int source_size, target_size;
+  double crop_start, crop_size;
+  int filter_size;
+
+  // Array of Integer indicate starting point of sampling
+  int* pixel_offset;
+
+  // Array of array of coefficient for each pixel
+  // {{pixel[0]_coeff}, {pixel[1]_coeff}, ...}
+  short* pixel_coefficient;
+
+  ResamplingProgram(int filter_size, int source_size, int target_size, double crop_start, double crop_size)
+    : filter_size(filter_size), source_size(source_size), target_size(target_size), crop_start(crop_start), crop_size(crop_size),
+      pixel_offset(0), pixel_coefficient(0)
+  {
+    pixel_offset = (int*) _aligned_malloc(sizeof(int) * target_size, 64); // 64-byte alignment
+    pixel_coefficient = (short*) _aligned_malloc(sizeof(short) * target_size * filter_size, 64);
+  };
+
+  ~ResamplingProgram() {
+    _aligned_free(pixel_offset);
+    _aligned_free(pixel_coefficient);
+  };
+};
+
+typedef struct ResamplingProgram ResamplingProgram;
 
 
 /*******************************************
@@ -61,19 +90,8 @@ class ResamplingFunction
 public:
   virtual double f(double x) = 0;
   virtual double support() = 0;
-  virtual int* GetResamplingPatternRGB(int original_width,
-                                       double subrange_start,
-                                       double subrange_width,
-                                       int target_width,
-                                       IScriptEnvironment* env);
 
-  virtual int* GetResamplingPatternYUV(int original_width,
-                                       double subrange_start,
-                                       double subrange_width,
-                                       int target_width,
-                                       bool luma,
-                                       BYTE *temp,
-                                       IScriptEnvironment* env);
+  virtual ResamplingProgram* GetResamplingProgram(int source_size, double crop_start, double crop_size, int target_size, IScriptEnvironment* env);
 };
 
 class PointFilter : public ResamplingFunction 

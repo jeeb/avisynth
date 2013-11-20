@@ -43,9 +43,6 @@ public:
   static AVSValue __cdecl Create_u(AVSValue args, void* user_data, IScriptEnvironment* env);
   static AVSValue __cdecl Create_v(AVSValue args, void* user_data, IScriptEnvironment* env);
   static AVSValue AvgPlane(AVSValue clip, void* user_data, int plane, IScriptEnvironment* env);
-  static unsigned int isse_average_plane(const BYTE* c_plane, int height, int width, int c_pitch);
-  static unsigned int C_average_plane(const BYTE* c_plane, int height, int width, int c_pitch);
-
 };
 
 class ComparePlane {
@@ -66,12 +63,6 @@ public:
   static AVSValue Create_next_u(AVSValue args, void* user_data, IScriptEnvironment* env);
   static AVSValue Create_next_v(AVSValue args, void* user_data, IScriptEnvironment* env);
   static AVSValue Create_next_rgb(AVSValue args, void* user_data, IScriptEnvironment* env);
-
-  static unsigned int isse_scenechange_16(const BYTE* c_plane, const BYTE* tplane, int height, int width, int c_pitch, int t_pitch);
-  static unsigned int C_scenechange_16(const BYTE* c_plane, const BYTE* tplane, int height, int width, int c_pitch, int t_pitch);
-  static unsigned int isse_scenechange_rgb_16(const BYTE* c_plane, const BYTE* tplane, int height, int width, int c_pitch, int t_pitch);
-  static unsigned int C_scenechange_rgb_16(const BYTE* c_plane, const BYTE* tplane, int height, int width, int c_pitch, int t_pitch);
-
 };
 
 
