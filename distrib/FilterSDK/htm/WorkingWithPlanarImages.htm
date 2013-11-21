@@ -1,0 +1,114 @@
+<!DOCTYPE html
+          PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
+          "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html   xmlns   = "http://www.w3.org/1999/xhtml">
+<head>
+<link rel="STYLESHEET" href="filtersdk.css" type="text/css" />
+<title>WorkingWithPlanarImages - AviSynth</title>
+</head>
+<BODY>
+
+<div id="body">
+
+<h1><a href="http://www.avisynth.org/WorkingWithPlanarImages" style="text-decoration:none">
+    WorkingWithPlanarImages</a>
+	<p>
+	</h1>
+
+<p>Additional functions have been put in to support planar images. They are the following:</p>
+
+
+<p>VideoFrame:</p>
+<code>
+<p><tt>int GetPitch(int plane)</tt></p>
+
+<p><tt>int GetRowSize(int plane)</tt></p>
+
+<p><tt>int GetHeight(int plane)</tt></p>
+
+<p><tt>VideoFrame* Subframe(int rel_offset, int new_pitch, int new_row_size, int new_height, int !rel_offsetU, int !rel_offsetV, int !pitchUV)</tt></p>
+
+<p><tt>const BYTE* GetReadPtr(int plane)</tt></p>
+
+<p><tt>BYTE* GetWritePtr(int plane)</tt></p>
+</code>
+
+<p>Where plane can be:</p>
+
+<code>
+<dl><dd><tt>   PLANAR_Y</tt>
+</dd>
+<dd><tt>   PLANAR_U</tt>
+</dd>
+<dd><tt>   PLANAR_V</tt>
+</dd>
+</dl>
+</code>
+<p>PLANAR_Y is equivalent to calling the old functions.</p>
+
+
+<p>It can be determined whether or not you are dealing with a planar images by using vi.IsPlanar().
+This will return true, if image is planar. Using vi.RowSize()from VideoInfo
+only provides you with correct numbers for the first plane.
+Use RowSize(int plane) from VideoFrame to obtain the proper results.
+The same goes for vi.BytesFromPixels(), which also only returns correct results for the first plane.</p>
+
+
+<p>What can be safely assumed for planar images is:</p>
+
+
+<dl><dd>    * Pitch U  = Pitch V.
+</dd>
+<dd>    * RowSize U = RowSize V
+</dd>
+<dd>    * Height U = Height V
+</dd>
+</dl>
+
+<p>You should consider the planes as seperate memory regions,
+and you shouldn't begin guessing where "U would be relative to Y", since it might as well change.</p>
+
+<p>The general guideline should (as always) be: Use the functions -
+never directly access the members of VideoInfo or VideoFrameBuffer or VideoFrame structs directly,
+unless you are creating an input source. Always use the supplied funtions!
+This is the only way for us to be able to maintain compatibility with future releases.
+All processing filters should be able to use the methods exclusively.</p>
+
+
+<p>GetRowSize() is special, since it can return mod16 widths for Luma and mod8 aligned widths for chroma planes.
+When you request the rowsize, you can add the parameter
+"PLANAR_Y_ALIGNED" or "PLANAR_U_ALIGNED"/"PLANAR_V_ALIGNED".
+This will give you the width of the image, rounded up to nearest mod16
+(or if already mod16, just rowsize as usual).</p>
+
+
+<p>This means that you can request an image larger than the actual image,
+without risking to write or read into the next line.
+You can safely do whatever you like with this data, since AviSynth completely ignores it.
+This will enable you to operate on 8 bytes (1 quadword) at the time for all planes.</p>
+
+
+<p>Some (producing) filters may want to set a forced pitch.
+Per default, when you request a videoframe with a specific modX pitch it might be overruled by AviSynth.
+(You do this by using env->NewVideoFrame(VideoInfo, [alignment]))
+In this (very rare case), you can use a negative alignment. This will make the alignment forced.</p>
+
+<p>If you force an alignment you MUST also apply the AlignPlanar(!PClip) filter after your own,
+otherwise your filter will not produce valid output. See source.cpp for examples. </p>
+
+
+<h4>See:</h4><p>The example of an AviSynyh <a href="TwoFiveInvert.htm">TwoFiveInvert</a> filter.</p>
+
+<p>Something about the specific <a href="ColorSpaces.htm">ColorSpaces</a>.</p>
+
+<p>More about <a href="DataStorageInAviSynth.htm">DataStorageInAviSynth</a>.</p>
+
+<p>A  general introduction to <a href="WorkingWithImages.htm">WorkingWithImages</a>.</p>
+
+
+<h3>Back to <a href="AviSynthTwoFiveSDK.htm">AviSynthTwoFiveSDK</a></h3></div>
+<p><kbd>$Date: 2006/11/08 20:40:17 $<br>
+Original version of this document at <a href="http://www.avisynth.org/WorkingWithPlanarImages">http://www.avisynth.org/WorkingWithPlanarImages</a>
+</kbd></p>
+</BODY>
+</html>
