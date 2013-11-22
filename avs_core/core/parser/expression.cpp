@@ -507,7 +507,7 @@ AVSValue ExpFunctionCall::Call(IScriptEnvironment* env)
   { // Invoke can always throw by calling a constructor of a filter that throws
     if (env2->Invoke(&result, name, AVSValue(args.data()+1, arg_expr_count), arg_expr_names+1))
       return result;
-  } catch(...){}
+  } catch(const IScriptEnvironment::NotFound&){}
 
   // if that fails, try with implicit "last" (except when OOP notation was used)
   if (!oop_notation) 
@@ -516,7 +516,7 @@ AVSValue ExpFunctionCall::Call(IScriptEnvironment* env)
     {
       if (env2->GetVar("last", args.data()) && env2->Invoke(&result, name, AVSValue(args.data(), arg_expr_count+1), arg_expr_names))
         return result;
-    } catch(...){}
+    } catch(const IScriptEnvironment::NotFound&){}
   }
 
   env->ThrowError(env->FunctionExists(name) ?
