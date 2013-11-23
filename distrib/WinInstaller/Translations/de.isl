@@ -344,6 +344,8 @@ AutoStartProgramGroupDescription=Beginn des Setups:
 AutoStartProgram=Starte automatisch%1
 AddonHostProgramNotFound=%1 konnte im ausgwählten Ordner nicht gefunden werden.%n%nMöchten Sie dennoch fortfahren?
 
+; *** AviSynth+ custom messages
+
 FullInstallation=Vollständige Installation
 CompactInstallation=Empfohlene Installation
 CustomInstallation=Benutzerdefinierte Installation
@@ -364,22 +366,24 @@ CmpSdk=Filter-SDK
 CmpMig=Upgrade von früherer AviSynth-Version
 CmpMigUninstall=Deinstallieren und Plugins zu %1 migrieren
 CmpMigBackup=AviSynth für spätere Wiederherstellung sichern
+CmpCustomizePluginPaths=Plugin-Pfade anpassen
 
 FileTypeDescAvs=%1-Skript
 FileTypeDescAvsi=%1-Skript (autoload)
 
-InstallStatusRuntime = Installiere %1 (%2)...
-UninstallStatusLegacyRestore = Stelle frühere AviSynth-Version wieder her...
+InstallStatusRuntime = Installiere %1 (%2)...%nDies kann bis zu 5 Minuten beanspruchen...
+UninstallStatusLegacyRestore = Stelle frühere AviSynth-Installation wieder her...
+BackupRestoreFailed=Während der Wiederherstellung Ihrer früheren AviSynth-Installation ist ein Fehler aufgetreten:%n%1
 
-MigPageCaption=Upgrade Options
-MigPageDescription=How should %1 handle your existing AviSynth installation?
-MigPageSubCaption=Setup has detected that AviSynth is already installed in:%n%n%2%n%nAvisynth and %1 cannot be run alongside each other. However, setup can preserve your legacy AviSynth installation in case you want to downgrade later.
-MigPageOptionBackup=Keep the existing AviSynth program directory and backup its system components overwritten by %1.%n%1 will still load your existing plugins and restore your previous AviSynth installation upon uninstall.
-MigPageOptionUninstall=Uninstall AviSynth now and migrate compatible plugins to the %1 plugin directory.
-MigPageUninstallFailed=AviSynth Uninstall failed: %n%1
+MigPageCaption=Upgrade-Optionen
+MigPageDescription=Wie soll %1 mit ihrer bestehenden AviSynth-Installation vorgehen?
+MigPageSubCaption=Das Setup hat eine bestehende AviSynth-Installation in folgendem Ordner gefunden:%n%n%2%n%nAus technischen Gründen können Avisynth und %1 aber nicht gleichzeitig installiert sein. Für den Fall, dass sie ihre frühere AviSynth-Installation später wiederhestellen möchten, kann das Setup diese jetzt sichern.
+MigPageOptionBackup=Von %1 überschriebene Avisynth-Systemkomponenten zur Wiederherstellung bei der %1-Deinstallation sichern. Plugins werden sowohl aus den bestehenden, von AviSynth angelegten Plugin-Ordnern, als auch aus %1's eigenen Ordnern automatisch geladen.
+MigPageOptionUninstall=AviSynth vor der Installation von %1 deinstallieren und bestehende Plugins zu %1 migrieren.
+MigPageUninstallFailed=Deinstallation von AviSynth ist fehlgeschlagen: %n%1
  
-PlugPageCaption=%1 Plugin Folders
-PlugPageDescription=Where should %1 autoload plugins from?
-PlugPageSubCaption=%1 will install bundled plugins to the its own autoload directory, but also autoload from the legacy plugin directory.
-PlugPagePlugDirPlus=%2 %1-bit plugin directory:
-PlugPagePlugDirLegacy=AviSynth %1-bit plugin directory:
+PlugPageCaption=%1 Plugin-Ordner
+PlugPageDescription=Aus welchen Ordnern soll %1 Plugins automatisch laden?
+PlugPageSubCaption=Setup installiert die mitgelieferten Plugins in die %1-Plugin-Ordner. Plugins aus den Ordnern für AviSynth 2.5/2.6-Plugins werden ebenfalls automatisch geladen.
+PlugPagePlugDirPlus=%2 %1-bit Plugin-Pfad:
+PlugPagePlugDirLegacy=AviSynth %1-bit Plugin-Pfad:

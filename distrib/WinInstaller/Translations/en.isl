@@ -339,12 +339,14 @@ FullInstallation=Full installation
 CompactInstallation=Recommended installation
 CustomInstallation=Custom installation
 
+; *** AviSynth+ custom messages
+
 CmpMain=%1 Base
 CmpDocs=Documentation
 CmpDocsEn=English
 CmpDocsCs=Czech
-CmpDocsDe=German
 CmpDocsFr=French
+CmpDocsDe=German
 CmpDocsIt=Italian
 CmpDocsJa=Japanese
 CmpDocsPl=Polish
@@ -352,7 +354,7 @@ CmpDocsPt=Portuguese
 CmpDocsRu=Russian
 CmpDocsExamples=Scripting Examples
 CmpSdk=Filter SDK
-CmpMig=Legacy AviSynth migration
+CmpMig=Legacy AviSynth Upgrade
 CmpMigUninstall=Uninstall and move plugins to %1
 CmpMigBackup=Backup legacy AviSynth
 CmpCustomizePluginPaths=Customize Plugin Paths
@@ -360,8 +362,9 @@ CmpCustomizePluginPaths=Customize Plugin Paths
 FileTypeDescAvs=%1 Script
 FileTypeDescAvsi=%1 Autoload Script
 
-InstallStatusRuntime = Installing %1 (%2)...
+InstallStatusRuntime = Installing %1 (%2).%nThis may take up to 5 minutes... 
 UninstallStatusLegacyRestore = Restoring legacy AviSynth...
+BackupRestoreFailed=An error occured while trying to restore your previous AviSynth installation:%n%1
 
 MigPageCaption=Upgrade Options
 MigPageDescription=How should %1 handle your existing AviSynth installation?
@@ -376,4 +379,3 @@ PlugPageSubCaption=%1 will install bundled plugins to the its own autoload direc
 PlugPagePlugDirPlus=%2 %1-bit plugin directory:
 PlugPagePlugDirLegacy=AviSynth %1-bit plugin directory:
 
-BackupRestoreFailed=An error occured while trying to restore your previous AviSynth installation:%n%1

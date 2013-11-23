@@ -3,11 +3,12 @@
 #define AppId "{AC78780F-BACA-4805-8D4F-AE1B52B7E7D3}"
 #define AvsGitURL "https://github.com/pylorak/avisynth"
 #define AvsWebURL "http://pylorak.github.io/avisynth/"
+#define AvsVersionFriendly "1.0"
 
-#define BuildDir32 "..\..\build-vs2012-x86"
-#define BuildDir64 "..\..\build-vs2012-x64"
+#define BuildDir32 "..\..\..\build-vs2012-x86"
+#define BuildDir64 "..\..\..\build-vs2012-x64"
 #define BuildType "git" 
-#define VcVersion "Microsoft Visual C++ Redistributable 2012 Update 4 "
+#define VcVersion "Microsoft Visual C++ Redistributable 2012 Update 4"
 
 #define AvsVersion GetFileVersion(AddBackslash(BuildDir32) + "Output\AviSynth.dll")
 #define BuildDate GetFileDateTimeString(AddBackslash(BuildDir32) + "Output\AviSynth.dll", 'yyyy/mm/dd', '-',);
@@ -25,8 +26,8 @@ AppVersion={#AvsVersion}
   AppVerName={#AvsName} {#AvsVersion} (g{#GitRev})
   OutputBaseFilename={#AvsName}-{#AvsVersion}-g{#GitRev}
 #else
-  AppVerName={#AvsName} {#AvsVersion}
-  OutputBaseFilename={#AvsName}-{#AvsVersion}
+  AppVerName={#AvsName} {#AvsVersionFriendly}
+  OutputBaseFilename={#AvsName}-{#AvsVersionFriendly}
 #endif
 AppPublisher={#AvsPublisher}
 AppPublisherURL={#AvsWebURL}
@@ -80,7 +81,7 @@ Name: "docs\pt"; Description: "{cm:CmpDocsPt}"; Types: full compact custom; Lang
 Name: "docs\ru"; Description: "{cm:CmpDocsRu}"; Types: full compact custom; Languages: ru
 
 Name: "examples"; Description: "{cm:CmpDocsExamples}"; Types: full compact custom
-Name: "sdk"; Description: "{cm:CmpSdk}"; Types: full custom
+Name: "sdk"; Description: "{cm:CmpSdk,{#AvsName}}"; Types: full custom
 
 Name: "avsmig"; Description: "{cm:CmpMig}"; Types: full compact custom; Flags: fixed; Check: IsLegacyAvsInstalled('32')
 Name: "avsmig\uninst"; Description: "{cm:CmpMigUninstall,{#AvsName}}"; Flags: fixed exclusive
