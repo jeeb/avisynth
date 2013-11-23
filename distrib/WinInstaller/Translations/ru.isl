@@ -326,7 +326,7 @@ AddonHostProgramNotFound=%1 не найден в указанной вами папке.%n%nВы всё равно хо
 ; *** AviSynth+ custom messages
 
 FullInstallation=Полная установка
-;CompactInstallation=Recommended installation
+;CompactInstallation=Рекомендованный набор компонентов
 CustomInstallation=Выборочная установка
 
 CmpMain=%1 база 
@@ -340,29 +340,29 @@ CmpDocsJa=Японская
 CmpDocsPl=Польская
 CmpDocsPt=Португальская
 CmpDocsRu=Русская
-;CmpDocsExamples=Scripting Examples
+CmpDocsExamples=Примеры скриптов
 CmpSdk=FilterSDK (pour le developpement de plugins %1)
-;CmpMig=Legacy AviSynth Upgrade
-;CmpMigUninstall=Uninstall and move plugins to %1
-;CmpMigBackup=Backup legacy AviSynth
-;CmpCustomizePluginPaths=Customize Plugin Paths
+CmpMig=Обновление имеющейся установки AviSynth
+CmpMigUninstall=Деинсталлировать, а плагины переместить в %1
+CmpMigBackup=Сделать бэкап имеющейся установки AviSynth
+CmpCustomizePluginPaths=Настроить расположение плагинов
 
 ;FileTypeDescAvs=%1 Script
 ;FileTypeDescAvsi=%1 Autoload Script
 
-;InstallStatusRuntime = Installing %1 (%2).%nThis may take up to 5 minutes... 
-;UninstallStatusLegacyRestore = Restoring legacy AviSynth...
-;BackupRestoreFailed=An error occured while trying to restore your previous AviSynth installation:%n%1
+InstallStatusRuntime=Устанавливаем %1 (%2).%nЭто может занять до 5 минут…
+UninstallStatusLegacyRestore=Восстанавливаем предшествующую установку AviSynth…
+BackupRestoreFailed=Возникла ошибка во время восстановления предшествующей установки AviSynth:%n%1
 
-;MigPageCaption=Upgrade Options
-;MigPageDescription=How should %1 handle your existing AviSynth installation?
-;MigPageSubCaption=Setup has detected that AviSynth is already installed in:%n%n%2%n%nAvisynth and %1 cannot be run alongside each other. However, setup can preserve your legacy AviSynth installation in case you want to downgrade later.
+MigPageCaption=Опции обновления
+MigPageDescription=Как следует %1 обойтись с Вашей имеющейся установкой AviSynth?
+MigPageSubCaption=Установщик обнаружил, что в%n%n%2%n%nуже установлен AviSynth.%nAvisynth и %1 не могут располагаться в одном месте на диске. Однако, установщик может сохранить имеющуюся у Вас установку AviSynth с тем, чтобы у Вас была возможность вернуть её обратно.
 ;MigPageOptionBackup=Keep the existing AviSynth program directory and backup its system components overwritten by %1.%n%1 will still load your existing plugins and restore your previous AviSynth installation upon uninstall.
 ;MigPageOptionUninstall=Uninstall AviSynth now and migrate compatible plugins to the %1 plugin directory.
-;MigPageUninstallFailed=AviSynth Uninstall failed: %n%1
+MigPageUninstallFailed=Удаление AviSynth не завершено: %n%1
  
-;PlugPageCaption=%1 Plugin Folders
-;PlugPageDescription=Where should %1 autoload plugins from?
+PlugPageCaption=Папки с плагинами %1
+PlugPageDescription=Откуда %1 должен проводить автозагрузку плагинов?
 ;PlugPageSubCaption=%1 will install bundled plugins to the its own autoload directory, but also autoload from the legacy plugin directory.
-;PlugPagePlugDirPlus=%2 %1-bit plugin directory:
-;PlugPagePlugDirLegacy=AviSynth %1-bit plugin directory:
+PlugPagePlugDirPlus=Папка с %1-битными плагинами %2:
+PlugPagePlugDirLegacy=Папка с %1-битными плагинами AviSynth:
