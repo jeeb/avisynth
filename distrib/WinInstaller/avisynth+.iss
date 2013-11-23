@@ -65,7 +65,7 @@ Name: "ru"; MessagesFile: "Translations\ru.isl"; LicenseFile: ..\gpl-ru.txt
 [Components]
 Name: "main"; Description: "{cm:CmpMain,{#AvsName}}"; Types: full compact custom; Flags: fixed
 Name: "main\avs32"; Description: "{#AvsName} (x86)"; Types: full compact custom
-Name: "main\avs64"; Description: "{#AvsName} (x64)"; Types: full compact custom; Check: IsX64
+Name: "main\avs64"; Description: "{#AvsName} (x64)"; Types: full compact custom; Check: IsWin64
 
 Name: "docs"; Description: "{cm:CmpDocs}";
 Name: "docs\enall"; Description: "{cm:CmpDocsEn}"; Types: full; Languages: not en
@@ -139,15 +139,15 @@ Root: HKLM32; Subkey: "Software\Classes\CLSID\{{E6D6B700-124D-11D4-86F3-DB80AFD9
 Root: HKLM32; Subkey: "Software\Classes\CLSID\{{E6D6B700-124D-11D4-86F3-DB80AFD98778}\InProcServer32"; ValueName: ""; ValueType: string; ValueData: "AviSynth.dll"; Components: main\avs32
 Root: HKLM32; Subkey: "Software\Classes\CLSID\{{E6D6B700-124D-11D4-86F3-DB80AFD98778}\InProcServer32"; ValueName: "ThreadingModel"; ValueType: string; ValueData: "Apartment"; Components: main\avs32
 
-Root: HKLM64; Subkey: "Software\Classes\CLSID\{{E6D6B700-124D-11D4-86F3-DB80AFD98778}"; Flags: uninsdeletekey; Check:IsX64; Components: main\avs64
-Root: HKLM64; Subkey: "Software\Classes\CLSID\{{E6D6B700-124D-11D4-86F3-DB80AFD98778}"; ValueName: ""; ValueType: string; ValueData: "{#AvsName}"; Check:IsX64; Components: main\avs64
-Root: HKLM64; Subkey: "Software\Classes\CLSID\{{E6D6B700-124D-11D4-86F3-DB80AFD98778}\InProcServer32"; ValueName: ""; ValueType: string; ValueData: "AviSynth.dll"; Check:IsX64; Components: main\avs64
-Root: HKLM64; Subkey: "Software\Classes\CLSID\{{E6D6B700-124D-11D4-86F3-DB80AFD98778}\InProcServer32"; ValueName: "ThreadingModel"; ValueType: string; ValueData: "Apartment"; Check:IsX64; Components: main\avs64
+Root: HKLM64; Subkey: "Software\Classes\CLSID\{{E6D6B700-124D-11D4-86F3-DB80AFD98778}"; Flags: uninsdeletekey; Check:IsWin64; Components: main\avs64
+Root: HKLM64; Subkey: "Software\Classes\CLSID\{{E6D6B700-124D-11D4-86F3-DB80AFD98778}"; ValueName: ""; ValueType: string; ValueData: "{#AvsName}"; Check:IsWin64; Components: main\avs64
+Root: HKLM64; Subkey: "Software\Classes\CLSID\{{E6D6B700-124D-11D4-86F3-DB80AFD98778}\InProcServer32"; ValueName: ""; ValueType: string; ValueData: "AviSynth.dll"; Check:IsWin64; Components: main\avs64
+Root: HKLM64; Subkey: "Software\Classes\CLSID\{{E6D6B700-124D-11D4-86F3-DB80AFD98778}\InProcServer32"; ValueName: "ThreadingModel"; ValueType: string; ValueData: "Apartment"; Check:IsWin64; Components: main\avs64
 
 Root: HKLM32; Subkey: "Software\Classes\Media Type\Extensions\.avs"; Flags: uninsdeletekey; Components: main\avs32
 Root: HKLM32; Subkey: "Software\Classes\Media Type\Extensions\.avs"; ValueName: "Source Filter"; ValueType: string; ValueData: "{{D3588AB0-0781-11CE-B03A-0020AF0BA770}"; Components: main\avs32
-Root: HKLM64; Subkey: "Software\Classes\Media Type\Extensions\.avs"; Flags: uninsdeletekey; Check:IsX64; Components: main\avs64
-Root: HKLM64; Subkey: "Software\Classes\Media Type\Extensions\.avs"; ValueName: "Source Filter"; ValueType: string; ValueData: "{{D3588AB0-0781-11CE-B03A-0020AF0BA770}"; Check:IsX64; Components: main\avs64
+Root: HKLM64; Subkey: "Software\Classes\Media Type\Extensions\.avs"; Flags: uninsdeletekey; Check:IsWin64; Components: main\avs64
+Root: HKLM64; Subkey: "Software\Classes\Media Type\Extensions\.avs"; ValueName: "Source Filter"; ValueType: string; ValueData: "{{D3588AB0-0781-11CE-B03A-0020AF0BA770}"; Check:IsWin64; Components: main\avs64
 
 Root: HKLM; Subkey: "Software\Classes\.avs"; ValueName: ""; ValueType: string; ValueData: "avsfile"; Flags: uninsdeletekey; Components: main
 Root: HKLM; Subkey: "Software\Classes\.avsi"; ValueName: ""; ValueType: string; ValueData: "avs_auto_file"; Flags: uninsdeletekey; Components: main
@@ -159,15 +159,15 @@ Root: HKLM; Subkey: "Software\Classes\avs_auto_file\DefaultIcon"; ValueName: "";
 Root: HKLM; Subkey: "Software\Classes\avs_auto_file\DefaultIcon"; ValueName: ""; ValueType: string; ValueData: "{win}\system32\AviSynth.dll,0"; Components: main\avs64 and not main\avs32
 
 Root: HKLM32; Subkey: "Software\Classes\AVIFile\Extensions\AVS"; ValueName: ""; ValueType: string; ValueData: "{{E6D6B700-124D-11D4-86F3-DB80AFD98778}"; Components: main\avs32; Flags: uninsdeletekey
-Root: HKLM64; Subkey: "Software\Classes\AVIFile\Extensions\AVS"; ValueName: ""; ValueType: string; ValueData: "{{E6D6B700-124D-11D4-86F3-DB80AFD98778}"; Components: main\avs64; Flags: uninsdeletekey; Check:IsX64
+Root: HKLM64; Subkey: "Software\Classes\AVIFile\Extensions\AVS"; ValueName: ""; ValueType: string; ValueData: "{{E6D6B700-124D-11D4-86F3-DB80AFD98778}"; Components: main\avs64; Flags: uninsdeletekey; Check:IsWin64
 
 Root: HKLM32; Subkey: "Software\AviSynth"; ValueName:""; ValueType: string; ValueData: "{app}"; Components: main\avs32; Flags: uninsdeletevalue uninsdeletekeyifempty
 Root: HKLM32; Subkey: "Software\AviSynth"; ValueName:"plugindir2_5"; ValueType: string; ValueData: "{code:GetAvsDirsPlus|Plug32}"; Components: main\avs32; Flags: uninsdeletevalue
 Root: HKLM32; Subkey: "Software\AviSynth"; ValueName:"plugindir+"; ValueType: string; ValueData: "{code:GetAvsDirsPlus|PlugPlus32}"; Components: main\avs32; Flags: uninsdeletevalue
 
-Root: HKLM64; Subkey: "Software\AviSynth"; ValueName:""; ValueType: string; ValueData: "{app}"; Components: main\avs64; Flags: uninsdeletevalue uninsdeletekeyifempty; Check:IsX64
-Root: HKLM64; Subkey: "Software\AviSynth"; ValueName:"plugindir2_5"; ValueType: string; ValueData: "{code:GetAvsDirsPlus|Plug64}"; Components: main\avs64; Check:IsX64; Flags: uninsdeletevalue
-Root: HKLM64; Subkey: "Software\AviSynth"; ValueName:"plugindir+"; ValueType: string; ValueData: "{code:GetAvsDirsPlus|PlugPlus64}"; Components: main\avs64; Check:IsX64; Flags: uninsdeletevalue
+Root: HKLM64; Subkey: "Software\AviSynth"; ValueName:""; ValueType: string; ValueData: "{app}"; Components: main\avs64; Flags: uninsdeletevalue uninsdeletekeyifempty; Check:IsWin64
+Root: HKLM64; Subkey: "Software\AviSynth"; ValueName:"plugindir2_5"; ValueType: string; ValueData: "{code:GetAvsDirsPlus|Plug64}"; Components: main\avs64; Check:IsWin64; Flags: uninsdeletevalue
+Root: HKLM64; Subkey: "Software\AviSynth"; ValueName:"plugindir+"; ValueType: string; ValueData: "{code:GetAvsDirsPlus|PlugPlus64}"; Components: main\avs64; Check:IsWin64; Flags: uninsdeletevalue
 
 ;Delete Legacy AVS Install Entry
 Root: HKLM32; Subkey: "Software\Microsoft\Windows\CurrentVersion\Uninstall\AviSynth"; Flags: deletekey; Components: avsmig\backup
@@ -237,11 +237,6 @@ const
   AVSUNINST_YES = 6;
   AVSUNINST_OK = 2;
 
-function IsX64: Boolean;
-begin
-  Result := ProcessorArchitecture = paX64;
-end;
-
 // Directory handling                                                              
 procedure SetAvsDirsDefault;
 begin
@@ -260,9 +255,10 @@ begin
     RegQueryStringValue(HKLM32, 'Software\AviSynth', 'PluginDir2_5', AvsDirsReg.Plug32);
     RegQueryStringValue(HKLM32, 'Software\AviSynth', 'PluginDir+', AvsDirsReg.PlugPlus32);
     AvsDirsReg.IsSet := True; 
-    if IsX64 then
+    if IsWin64 then begin
       RegQueryStringValue(HKLM64, 'Software\AviSynth', 'PluginDir2_5', AvsDirsReg.Plug64);
       RegQueryStringValue(HKLM64, 'Software\AviSynth', 'PluginDir+', AvsDirsReg.PlugPlus64);
+    end;
   end;
 end;
 
@@ -393,7 +389,7 @@ function IsLegacyAvsInstalled(Param: String): Boolean;
 begin
   case Param of
     '32': Result := DirExists(AvsDirsReg.Prog) and not IsAvsPlusInstalled;
-    '64': Result := IsX64 and DirExists(AvsDirsReg.Plug64) and not IsAvsPlusInstalled;
+    '64': Result := IsWin64 and DirExists(AvsDirsReg.Plug64) and not IsAvsPlusInstalled;
   end;
 end;
 
@@ -522,7 +518,7 @@ begin
     RenameFile(AvsDirLegacyUninst + '\PlusBackup\sys32\AviSynth.dll', ExpandConstant('{sys}\AviSynth.dll'))
     RenameFile(AvsDirLegacyUninst + '\PlusBackup\sys32\DevIL.dll', ExpandConstant('{sys}\DevIL.dll'));
     RenameFile(AvsDirLegacyUninst + '\PlusBackup\StartMenu', ExpandConstant('{commonprograms}\AviSynth 2.5'));
-    if IsX64 then begin
+    if IsWin64 then begin
       EnableFsRedirection(False);
       RenameFile(AvsDirLegacyUninst + '\PlusBackup\sys64\AviSynth.dll', ExpandConstant('{sys}\AviSynth.dll')); 
       RenameFile(AvsDirLegacyUninst + '\PlusBackup\sys64\DevIL.dll', ExpandConstant('{sys}\DevIL.dll'));
@@ -592,7 +588,7 @@ end;
 
 function GetRegSoft(Param: String): String;
 begin
-  if IsX64 then begin
+  if IsWin64 then begin
     case Param of
       'HKLM32': Result := 'HKEY_LOCAL_MACHINE\Software\Wow6432Node';
       'HKLM64': Result := 'HKEY_LOCAL_MACHINE\Software';
