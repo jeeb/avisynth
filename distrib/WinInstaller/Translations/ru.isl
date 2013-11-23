@@ -324,6 +324,7 @@ AutoStartProgram=Автоматически запускать %1
 AddonHostProgramNotFound=%1 не найден в указанной вами папке.%n%nВы всё равно хотите продолжить?
 
 ; *** AviSynth+ custom messages
+; translated by Leonid Sinev
 
 FullInstallation=Полная установка
 ;CompactInstallation=Рекомендованный набор компонентов
