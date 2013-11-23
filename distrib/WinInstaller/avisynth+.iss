@@ -462,19 +462,23 @@ begin
   end else if CurPageID = wpSelectComponents then begin
   UpdatePluginDirPage('read');
     if IsComponentSelected('main\avs64') then begin                                                       
-      SetInputs(2,true);
+      if IsComponentSelected('avsmig\backup') and IsLegacyAvsInstalled('64') then
+        SetInputs(2,false)
+      else SetInputs(2,true);
       SetInputs(3,true);
     end else begin
       SetInputs(2,false);
       SetInputs(3,false);
     end;
     if IsComponentSelected('main\avs32') then begin
-      SetInputs(0,true);
+      if IsComponentSelected('avsmig\backup') and DirExists(AvsDirsReg.Plug32) then
+        SetInputs(0,false)
+      else SetInputs(0,true);
       SetInputs(1,true);
     end else begin
       SetInputs(0,false);
       SetInputs(1,false);
-    end;     
+    end;
     Result := True
 
   end else if CurPageID = PluginPage.ID then begin
