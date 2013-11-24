@@ -39,8 +39,10 @@ DefaultDirName={pf}\{#AvsName}
 DefaultGroupName={#AvsName}
 DisableProgramGroupPage=yes
 OutputDir={#BuildDir32}\..
-SetupIconFile=..\AviSynth.ico
-UninstallDisplayIcon=..\Un_AviSynth.ico
+SetupIconFile=InstIcon.ico
+UninstallDisplayIcon=InstIcon.ico
+WizardImageFile=WizardImageBig.bmp
+WizardSmallImageFile=WizardImageSmall.bmp
 
 Compression=lzma2/ultra
 SolidCompression=yes
