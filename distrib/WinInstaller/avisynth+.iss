@@ -39,10 +39,11 @@ DefaultDirName={pf}\{#AvsName}
 DefaultGroupName={#AvsName}
 DisableProgramGroupPage=yes
 OutputDir={#BuildDir32}\..
-SetupIconFile=InstIcon.ico
-UninstallDisplayIcon=InstIcon.ico
+SetupIconFile=..\Icons\Ico\InstIcon.ico
+UninstallDisplayIcon=..\Icons\Ico\InstIcon.ico
 WizardImageFile=WizardImageBig.bmp
 WizardSmallImageFile=WizardImageSmall.bmp
+ChangesAssociations=yes
 
 Compression=lzma2/ultra
 SolidCompression=yes
@@ -112,16 +113,16 @@ Source: "{commonprograms}\AviSynth 2.5\*"; DestDir:{code:GetAvsDirsLegacy|Prog}\
 Source: "..\gpl*.txt"; DestDir: "{app}\License"; Components: main; Flags: ignoreversion
 Source: "..\lgpl_for_used_libs.txt"; DestDir: "{app}\License"; Components: main; Flags: ignoreversion
 
-Source: "{#BuildDir32}\Output\AviSynth.dll"; DestDir:{sys}; Components: main\avs32; Flags: 32bit
-Source: "{#BuildDir32}\Output\System\DevIL.dll"; DestDir:{sys}; Components: main\avs32; Flags: 32bit
-Source: "{#BuildDir32}\Output\Plugins\*.dll"; DestDir:{code:GetAvsDirsPlus|PlugPlus32}; Components: main\avs32
-Source: "..\ColorPresets\*"; DestDir:{code:GetAvsDirsPlus|PlugPlus32}; Components: main\avs32;
+Source: "{#BuildDir32}\Output\AviSynth.dll"; DestDir:{sys}; Components: main\avs32; Flags: 32bit ignoreversion
+Source: "{#BuildDir32}\Output\System\DevIL.dll"; DestDir:{sys}; Components: main\avs32; Flags: 32bit ignoreversion
+Source: "{#BuildDir32}\Output\Plugins\*.dll"; DestDir:{code:GetAvsDirsPlus|PlugPlus32}; Components: main\avs32; Flags: ignoreversion
+Source: "..\ColorPresets\*"; DestDir:{code:GetAvsDirsPlus|PlugPlus32}; Components: main\avs32; Flags: ignoreversion
 Source: "..\Prerequisites\vcredist_x86.exe"; DestDir: {app}; Components: main\avs32; Flags: deleteafterinstall
 
-Source: "{#BuildDir64}\Output\AviSynth.dll"; DestDir:{sys}; Components: main\avs64; Flags: 64bit
-Source: "{#BuildDir64}\Output\System\DevIL.dll"; DestDir:{sys}; Components: main\avs64; Flags: 64bit
-Source: "{#BuildDir64}\Output\Plugins\*.dll"; DestDir:{code:GetAvsDirsPlus|PlugPlus64}; Components: main\avs64
-Source: "..\ColorPresets\*"; DestDir:{code:GetAvsDirsPlus|PlugPlus64}; Components: main\avs64
+Source: "{#BuildDir64}\Output\AviSynth.dll"; DestDir:{sys}; Components: main\avs64; Flags: 64bit ignoreversion
+Source: "{#BuildDir64}\Output\System\DevIL.dll"; DestDir:{sys}; Components: main\avs64; Flags: 64bit ignoreversion
+Source: "{#BuildDir64}\Output\Plugins\*.dll"; DestDir:{code:GetAvsDirsPlus|PlugPlus64}; Components: main\avs64; Flags: ignoreversion
+Source: "..\ColorPresets\*"; DestDir:{code:GetAvsDirsPlus|PlugPlus64}; Components: main\avs64; Flags: ignoreversion
 Source: "..\Prerequisites\vcredist_x64.exe"; DestDir: {app}; Components: main\avs64; Flags: deleteafterinstall
 
 Source: "..\docs\*.css"; DestDir: "{app}\docs"; Components: docs; Flags: ignoreversion
@@ -160,8 +161,8 @@ Root: HKLM; Subkey: "Software\Classes\avsfile"; ValueName: ""; ValueType: string
 Root: HKLM; Subkey: "Software\Classes\avsfile\DefaultIcon"; ValueName: ""; ValueType: string; ValueData: "{sys}\AviSynth.dll,0"; Components: main\avs32
 Root: HKLM; Subkey: "Software\Classes\avsfile\DefaultIcon"; ValueName: ""; ValueType: string; ValueData: "{win}\system32\AviSynth.dll,0"; Components: main\avs64 and not main\avs32 
 Root: HKLM; Subkey: "Software\Classes\avs_auto_file"; ValueName: ""; ValueType: string; ValueData: "{cm:FileTypeDescAvsi,{#AvsName}}"; Components: main; Flags: uninsdeletekey
-Root: HKLM; Subkey: "Software\Classes\avs_auto_file\DefaultIcon"; ValueName: ""; ValueType: string; ValueData: "{sys}\AviSynth.dll,0"; Components: main\avs32
-Root: HKLM; Subkey: "Software\Classes\avs_auto_file\DefaultIcon"; ValueName: ""; ValueType: string; ValueData: "{win}\system32\AviSynth.dll,0"; Components: main\avs64 and not main\avs32
+Root: HKLM; Subkey: "Software\Classes\avs_auto_file\DefaultIcon"; ValueName: ""; ValueType: string; ValueData: "{sys}\AviSynth.dll,1"; Components: main\avs32
+Root: HKLM; Subkey: "Software\Classes\avs_auto_file\DefaultIcon"; ValueName: ""; ValueType: string; ValueData: "{win}\system32\AviSynth.dll,1"; Components: main\avs64 and not main\avs32
 
 Root: HKLM32; Subkey: "Software\Classes\AVIFile\Extensions\AVS"; ValueName: ""; ValueType: string; ValueData: "{{E6D6B700-124D-11D4-86F3-DB80AFD98778}"; Components: main\avs32; Flags: uninsdeletekey
 Root: HKLM64; Subkey: "Software\Classes\AVIFile\Extensions\AVS"; ValueName: ""; ValueType: string; ValueData: "{{E6D6B700-124D-11D4-86F3-DB80AFD98778}"; Components: main\avs64; Flags: uninsdeletekey; Check:IsWin64

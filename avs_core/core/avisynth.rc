@@ -18,7 +18,8 @@
 #define VER_DEBUG                   VS_FF_DEBUG
 #endif
 
-#define IDI_ICON                    0
+#define AVS_ICON                    0
+#define AVSI_ICON                   1
 
 
 VS_VERSION_INFO VERSIONINFO
@@ -64,4 +65,5 @@ END
 
 
 LANGUAGE LANG_NEUTRAL, SUBLANG_SYS_DEFAULT
-IDI_ICON                ICON    DISCARDABLE     "..\\..\\distrib\\AviSynth.ico"
+AVS_ICON   ICON  "..\\..\\distrib\\Icons\\Ico\\AvsDocWindows.ico"
+AVSI_ICON  ICON  "..\\..\\distrib\\Icons\\Ico\\AvsiDocWindows.ico"
