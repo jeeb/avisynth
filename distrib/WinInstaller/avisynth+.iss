@@ -370,6 +370,15 @@ begin
   end;
 end;
 
+function IsSamePath(Path1, Path2: String): Boolean;
+var 
+  Path1Sanitized, Path2Sanitized: String;
+begin
+  Path1Sanitized := Lowercase(RemoveBackslashUnlessRoot(Trim(Path1)));
+  Path2Sanitized := Lowercase(RemoveBackslashUnlessRoot(Trim(Path2)));
+Result := Path1Sanitized = Path2Sanitized
+end;
+
 procedure Explode(var Dest: TArrayOfString; Text: String; Separator: String);
 var
 	i: Integer;
@@ -667,8 +676,8 @@ end;
 function IsValidPluginMigration(Param: String): Boolean;
 begin
   case Param of
-    '32': Result := IsLegacyAvsInstalled('32') and DirExists(AvsDirsReg.Plug32) and (AvsDirsReg.Plug32 <> AvsDirsPlus.Plug32);
-    '64': Result := IsLegacyAvsInstalled('64') and (AvsDirsReg.Plug64 <> AvsDirsPlus.Plug64);
+    '32': Result := IsLegacyAvsInstalled('32') and DirExists(AvsDirsReg.Plug32) and not IsSamePath(AvsDirsReg.Plug32,AvsDirsPlus.Plug32);
+    '64': Result := IsLegacyAvsInstalled('64') and not IsSamePath(AvsDirsReg.Plug64,AvsDirsPlus.Plug64);
   end;
 end;
 
