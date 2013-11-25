@@ -517,7 +517,7 @@ begin
     Result := True
 
   end else if CurPageID = PluginPage.ID then begin
-    UpdatePluginDirPage('read');
+    UpdatePluginDirPage('write');
     Result := True;
   end else
     Result := True;
