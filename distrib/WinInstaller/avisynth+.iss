@@ -47,6 +47,7 @@ WizardSmallImageFile=WizardImageSmall.bmp
 Compression=lzma2/ultra
 SolidCompression=yes
 SetupLogging=yes
+MinVersion=5.1sp3
 
 [Types]
 Name: "compact"; Description: "{cm:CompactInstallation}"
