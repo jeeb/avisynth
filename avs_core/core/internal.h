@@ -113,10 +113,21 @@ class CWDChanger
 {  
 public:
   CWDChanger(const char* new_cwd);  
-  virtual ~CWDChanger(void);  
+  ~CWDChanger(void);  
 
 private:
   char *old_working_directory;
+  bool restore;
+};
+
+class DllDirChanger 
+{  
+public:
+  DllDirChanger(const char* new_cwd);  
+  ~DllDirChanger(void);  
+
+private:
+  char *old_directory;
   bool restore;
 };
 

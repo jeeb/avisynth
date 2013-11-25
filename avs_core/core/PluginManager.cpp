@@ -502,10 +502,10 @@ bool PluginManager::LoadPlugin(PluginFile &plugin, bool throwOnError, AVSValue *
     }
   }
 
-  // Extract containing directory, and cwd to it
+  // Search for dependent DLLs in the plugin's directory too
   size_t slash_pos = plugin.FilePath.rfind('/');
   std::string plugin_dir = plugin.FilePath.substr(0, slash_pos);;
-  CWDChanger cwdchange(plugin_dir.c_str());
+  DllDirChanger dllchange(plugin_dir.c_str());
 
   // Load the dll into memory
   plugin.Library = LoadLibrary(plugin.FilePath.c_str());
