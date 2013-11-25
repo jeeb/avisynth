@@ -501,7 +501,7 @@ begin
         CloseAvsUninstDialog(AVSUNINST_OK)
       end else begin
         MigrationState := miFailedUninst;
-        MsgBox(FmtMessage(CustomMessage('MigPageUninstallFailed'),[SysErrorMessage(ResultCode)]), mbError, MB_OK);
+         SuppressibleMsgBox(FmtMessage(CustomMessage('MigPageUninstallFailed'),[SysErrorMessage(ResultCode)]), mbError, MB_OK, -1);
       end;
     end;
   end;
@@ -535,7 +535,7 @@ begin
       DelTree(AvsDirLegacyUninst + '\PlusBackup', True, True, True);
       RegDeleteValue(HKLM32, 'Software\AviSynth', 'LegacyDir');
     end else
-      MsgBox(FmtMessage(CustomMessage('BackupRestoreFailed'),[SysErrorMessage(ResultCode)]), mbError, MB_OK); 
+       SuppressibleMsgBox(FmtMessage(CustomMessage('BackupRestoreFailed'),[SysErrorMessage(ResultCode)]), mbError, MB_OK,-1); 
   end;  
 end;
 
