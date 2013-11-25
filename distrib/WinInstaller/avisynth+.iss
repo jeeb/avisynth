@@ -46,6 +46,7 @@ WizardSmallImageFile=WizardImageSmall.bmp
 
 Compression=lzma2/ultra
 SolidCompression=yes
+SetupLogging=yes
 
 [Types]
 Name: "compact"; Description: "{cm:CompactInstallation}"
@@ -177,6 +178,8 @@ Root: HKLM32; Subkey: "Software\Microsoft\Windows\CurrentVersion\Uninstall\AviSy
 ;Add entry for legacy AviSynth Program Folder
 Root: HKLM32; Subkey: "Software\AviSynth"; ValueName: "LegacyDir"; ValueType: string; ValueData: "{code:GetAvsDirsLegacy|Prog}"; Components: avsmig\backup;
 
+[UninstallDelete]
+Type: files; Name: "{app}\Setup Log*.txt"
 
 [Run]
 Filename: "{app}\vcredist_x86.exe"; Parameters: "/q /norestart"; Components: main\avs32 ;Description: "{#VcVersion} (x86)"; StatusMsg: "{cm:InstallStatusRuntime,{#VcVersion},x86}"
@@ -239,6 +242,7 @@ var
 const
   AVSUNINST_YES = 6;
   AVSUNINST_OK = 2;
+  LogIndent = '--- ';
 
 // Directory handling                                                              
 procedure SetAvsDirsDefault;
@@ -320,6 +324,14 @@ end;
 
 // Helper functions
 
+function BoolToStr(Param: Boolean): String;
+begin
+  if Param then
+    Result := 'Yes'
+  else
+    Result := 'No';
+end;
+
 procedure CloseAvsUninstDialog(BtnId: WORD);
 var
   Wnd: HWND;
@@ -393,6 +405,27 @@ begin
   case Param of
     '32': Result := DirExists(AvsDirsReg.Prog) and not IsAvsPlusInstalled;
     '64': Result := IsWin64 and DirExists(AvsDirsReg.Plug64) and not IsAvsPlusInstalled;
+  end;
+end;
+
+procedure LogVal(Prefix, Val: String);
+begin
+  Log(Prefix + ': ' + Val);
+end;
+
+procedure LogValInd(Prefix, Val: String);
+begin
+  Log(LogIndent + Prefix + ': ' + Val);
+end;
+
+procedure LogAvsDirectories(AvsDir: TAvsDirs);
+begin
+  with AvsDir do begin 
+    LogValInd('Program',Prog);
+    LogValInd('Plugins',Plug32);
+    LogValInd('Plugins+',PlugPlus32);
+    LogValInd('Plugins64',Plug64);
+    LogValInd('Plugins64+',PlugPlus64);
   end;
 end;
 
@@ -493,9 +526,21 @@ end;
 procedure CurStepChanged(CurStep: TSetupStep);
 var
   ResultCode: Integer;
+  LogFilePath: String;
+
 begin
   if CurStep = ssInstall then begin
-    if MigrationState = miPickedUninst then begin 
+    LogVal('Installing components', WizardSelectedComponents(false));
+    LogVal('Legacy x86 AviSynth installed', BoolToStr(IsLegacyAvsInstalled('32')));
+    LogVal('Legacy x64 AviSynth installed', BoolToStr(IsLegacyAvsInstalled('64')));
+    LogVal('AviSynth+ installed', BoolToStr(IsAvsPlusInstalled));
+    Log('RegDirectories:');
+    LogAvsDirectories(AvsDirsReg);
+    Log('AvsPlusDirectories:');
+    LogAvsDirectories(AvsDirsPlus);
+
+    if MigrationState = miPickedUninst then begin
+      Log('Uninstalling legacy AviSynth');
       if Exec(AvsDirsReg.Prog+'\Uninstall.exe', '/S', '', SW_SHOW, ewWaitUntilIdle, ResultCode) then begin
         CloseAvsUninstDialog(AVSUNINST_YES)
         CloseAvsUninstDialog(AVSUNINST_OK)
@@ -504,6 +549,9 @@ begin
          SuppressibleMsgBox(FmtMessage(CustomMessage('MigPageUninstallFailed'),[SysErrorMessage(ResultCode)]), mbError, MB_OK, -1);
       end;
     end;
+    end else if CurStep = ssDone then begin
+    LogFilePath := ExpandConstant('{log}');
+    FileCopy(LogFilePath, WizardDirValue + '\' + ExtractFileName(LogFilePath) , false); 
   end;
 end;
 
@@ -624,6 +672,7 @@ begin
     '32': DelTree(AvsDirsReg.Plug32, True, True, False);
     '64': DelTree(AvsDirsReg.Plug64, True, True, False);
   end;
+  LogVal('Wiping legacy AviSynth Plugin Directory',Param);
   RemoveDir(AvsDirsReg.Prog);
 end;
 
