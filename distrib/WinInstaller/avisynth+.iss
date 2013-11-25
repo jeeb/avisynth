@@ -2,7 +2,7 @@
 #define AvsPublisher "The Public"
 #define AppId "{AC78780F-BACA-4805-8D4F-AE1B52B7E7D3}"
 #define AvsGitURL "https://github.com/pylorak/avisynth"
-#define AvsWebURL "http://pylorak.github.io/avisynth/"
+#define AvsWebURL "http://www.avs-plus.net"
 #define AvsVersionFriendly "1.0"
 
 #define BuildDir32 "..\..\..\build-vs2012-x86"
@@ -31,7 +31,7 @@ AppVersion={#AvsVersion}
 #endif
 AppPublisher={#AvsPublisher}
 AppPublisherURL={#AvsWebURL}
-AppSupportURL={#AvsWebURL}
+AppSupportURL={#AvsWebURL}/get_started.html
 AppUpdatesURL={#AvsGitURL}/releases
 AppReadmeFile={#AvsGitURL}/blob/master/README.rst
 VersionInfoVersion={#AvsVersion}
