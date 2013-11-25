@@ -380,7 +380,6 @@ void PluginManager::AutoloadPlugins()
   for (std::vector<std::string>::const_iterator dir_it = AutoloadDirs.begin(); dir_it != AutoloadDirs.end(); ++dir_it )
   {
     const std::string &dir = *dir_it;
-    CWDChanger cwdchange(dir.c_str());
 
     // Append file search filter to directory path
     std::string filePattern = concat(dir, binaryFilter);
@@ -502,6 +501,11 @@ bool PluginManager::LoadPlugin(PluginFile &plugin, bool throwOnError, AVSValue *
       return true;
     }
   }
+
+  // Extract containing directory, and cwd to it
+  size_t slash_pos = plugin.FilePath.rfind('/');
+  std::string plugin_dir = plugin.FilePath.substr(0, slash_pos);;
+  CWDChanger cwdchange(plugin_dir.c_str());
 
   // Load the dll into memory
   plugin.Library = LoadLibrary(plugin.FilePath.c_str());
