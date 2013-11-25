@@ -103,8 +103,8 @@ Source: "{code:GetAvsDirsLegacy|Plug64}\*"; DestDir:{code:GetAvsDirsPlus|Plug64}
 
 Source: "{sys}\AviSynth.dll"; DestDir:{code:GetAvsDirsLegacy|Prog}\PlusBackup\sys32; Components: avsmig\backup; ExternalSize: 0; Flags: external onlyifdoesntexist skipifsourcedoesntexist uninsneveruninstall   
 Source: "{sys}\DevIL.dll"; DestDir:{code:GetAvsDirsLegacy|Prog}\PlusBackup\sys32; Components: avsmig\backup; ExternalSize: 0; Flags: external onlyifdoesntexist skipifsourcedoesntexist uninsneveruninstall   
-Source: "{sys}\AviSynth.dll"; DestDir:{code:GetAvsDirsLegacy|Prog}\PlusBackup\sys64; Components: avsmig\backup; ExternalSize: 0; Flags: 64bit external onlyifdoesntexist skipifsourcedoesntexist uninsneveruninstall   
-Source: "{sys}\DevIL.dll"; DestDir:{code:GetAvsDirsLegacy|Prog}\PlusBackup\sys64; Components: avsmig\backup; ExternalSize: 0; Flags: 64bit external onlyifdoesntexist skipifsourcedoesntexist uninsneveruninstall  
+Source: "{sys}\AviSynth.dll"; DestDir:{code:GetAvsDirsLegacy|Prog}\PlusBackup\sys64; Components: avsmig\backup; ExternalSize: 0; Flags: 64bit external onlyifdoesntexist skipifsourcedoesntexist uninsneveruninstall; Check: IsWin64
+Source: "{sys}\DevIL.dll"; DestDir:{code:GetAvsDirsLegacy|Prog}\PlusBackup\sys64; Components: avsmig\backup; ExternalSize: 0; Flags: 64bit external onlyifdoesntexist skipifsourcedoesntexist uninsneveruninstall; Check: IsWin64  
 Source: "{commonprograms}\AviSynth 2.5\*"; DestDir:{code:GetAvsDirsLegacy|Prog}\PlusBackup\StartMenu; Components: avsmig\backup; ExternalSize: 0; AfterInstall: WipeLegacyStartMenu; Flags: external onlyifdoesntexist skipifsourcedoesntexist uninsneveruninstall  
 
 Source: "..\gpl*.txt"; DestDir: "{app}\License"; Components: main; Flags: ignoreversion
