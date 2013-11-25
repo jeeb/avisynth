@@ -575,15 +575,21 @@ begin
     RenameFile(AvsDirLegacyUninst + '\PlusBackup\StartMenu', ExpandConstant('{commonprograms}\AviSynth 2.5'));
     if IsWin64 then begin
       EnableFsRedirection(False);
+      { Since the installer runs in x86 mode we need redirection to be disabled here for 2 reasons:
+          1. To make [sys] expand to the System32, not SysWoW64.
+          2. To run the correct x64 regedit.exe on x64 systems to import our backup regfile.
+             Using the x86 regedit.exe would cause HKLM\Software\AviSynth to be redirected to HKLM\Software\WoW6432Node\AviSynth,
+             which would potentially cause the x86 plugins folder value to be overwritten by its x64 counterpart.
+      }
       RenameFile(AvsDirLegacyUninst + '\PlusBackup\sys64\AviSynth.dll', ExpandConstant('{sys}\AviSynth.dll')); 
       RenameFile(AvsDirLegacyUninst + '\PlusBackup\sys64\DevIL.dll', ExpandConstant('{sys}\DevIL.dll'));
-      EnableFsRedirection(True);
     end;
-    if Exec('regedit.exe', '/s "'+ AvsDirLegacyUninst +'\PlusBackup\PlusBackup.reg"', '', SW_SHOW, ewWaitUntilTerminated, ResultCode) then begin
+    if Exec(ExpandConstant('{win}\regedit.exe'), '/s "'+ AvsDirLegacyUninst +'\PlusBackup\PlusBackup.reg"', '', SW_SHOW, ewWaitUntilTerminated, ResultCode) then begin
       DelTree(AvsDirLegacyUninst + '\PlusBackup', True, True, True);
       RegDeleteValue(HKLM32, 'Software\AviSynth', 'LegacyDir');
     end else
-       SuppressibleMsgBox(FmtMessage(CustomMessage('BackupRestoreFailed'),[SysErrorMessage(ResultCode)]), mbError, MB_OK,-1); 
+       SuppressibleMsgBox(FmtMessage(CustomMessage('BackupRestoreFailed'),[SysErrorMessage(ResultCode)]), mbError, MB_OK,-1);
+    EnableFsRedirection(True);
   end;  
 end;
 
