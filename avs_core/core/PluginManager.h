@@ -11,14 +11,14 @@ class IScriptEnvironment2;
 
 struct PluginFile
 {
-  std::string FilePath; // Fully qualified, canonocal file path
+  std::string FilePath; // Fully qualified, canonical file path
   std::string BaseName; // Only file name, without extension
   HMODULE Library;      // LoadLibrary handle
 
   PluginFile(const std::string &filePath);
 };
 
-struct stdstricomparer
+struct StdStriComparer
 {
   bool operator() (const std::string& lhs, const std::string& rhs) const
   {
@@ -26,7 +26,8 @@ struct stdstricomparer
   }
 };
 
-typedef std::multimap<std::string,AVSFunction,stdstricomparer> FunctionMap;
+typedef std::vector<AVSFunction> FunctionList;
+typedef std::map<std::string,FunctionList,StdStriComparer> FunctionMap;
 class PluginManager
 {
 private:

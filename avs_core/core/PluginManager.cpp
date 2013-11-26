@@ -542,11 +542,15 @@ bool PluginManager::LoadPlugin(PluginFile &plugin, bool throwOnError, AVSValue *
 const AVSFunction* PluginManager::Lookup(const char* search_name, const AVSValue* args, size_t num_args,
                     bool strict, size_t args_names_count, const char* const* arg_names) const
 {
-    std::pair<FunctionMap::const_iterator, FunctionMap::const_iterator> ret = PluginFunctions.equal_range(search_name);
+    FunctionMap::const_iterator list_it = PluginFunctions.find(search_name);
+    if (list_it == PluginFunctions.end())
+      return NULL;
 
-    for (FunctionMap::const_iterator it = ret.first; it != ret.second; ++it)
+    for ( FunctionList::const_reverse_iterator func_it = list_it->second.rbegin();
+          func_it != list_it->second.rend();
+          ++func_it)
     {
-      const AVSFunction *func = &(it->second);
+      const AVSFunction *func = &(*func_it);
       if (AVSFunction::TypeMatch(func->param_types, args, num_args, strict, Env) &&
           AVSFunction::ArgNameMatch(func->param_types, args_names_count, arg_names)
          )
@@ -571,24 +575,27 @@ void PluginManager::AddFunction(const char* name, const char* params, IScriptEnv
   const char *cname = Env->SaveString(name);
   const char *cparams = Env->SaveString(params);
 
+  FunctionList& list = PluginFunctions[name];
   AVSFunction newFunc;
   newFunc.name = cname;
   newFunc.param_types = cparams;
   newFunc.apply = apply;
   newFunc.user_data = user_data;
-  PluginFunctions.insert(FunctionMap::value_type(newFunc.name, newFunc));
+  list.push_back(newFunc);
   UpdateFunctionExports(newFunc, exportVar);
 
   if (PluginInLoad != NULL)
   {
     AVSFunction newFuncWithBase;
-    std::string result(PluginInLoad->BaseName);
-    result.append("_").append(name);
-    newFuncWithBase.name = result.c_str();
+    std::string nameWithBase(PluginInLoad->BaseName);
+    nameWithBase.append("_").append(name);
+    FunctionList& baseList = PluginFunctions[nameWithBase];
+
+    newFuncWithBase.name = nameWithBase.c_str();
     newFuncWithBase.param_types = cparams;
     newFuncWithBase.apply = apply;
     newFuncWithBase.user_data = user_data;
-    PluginFunctions.insert(FunctionMap::value_type(newFuncWithBase.name, newFuncWithBase));
+    baseList.push_back(newFuncWithBase);
     UpdateFunctionExports(newFuncWithBase, exportVar);
   }
 }
