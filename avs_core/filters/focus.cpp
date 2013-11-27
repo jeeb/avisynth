@@ -1329,7 +1329,7 @@ static int calculate_sad_c(const BYTE* cur_ptr, const BYTE* other_ptr, int cur_p
 }
 
 static int calculate_sad(const BYTE* cur_ptr, const BYTE* other_ptr, int cur_pitch, int other_pitch, size_t width, size_t height, IScriptEnvironment* env) {
-  if ((env->GetCPUFlags() & CPUF_SSE2) && IsPtrAligned(cur_pitch, 16) && IsPtrAligned(other_ptr, 16) && width >= 16) {
+  if ((env->GetCPUFlags() & CPUF_SSE2) && IsPtrAligned(cur_ptr, 16) && IsPtrAligned(other_ptr, 16) && width >= 16) {
     return calculate_sad_sse2(cur_ptr, other_ptr, cur_pitch, other_pitch, width, height);
   }
 #ifdef X86_32
