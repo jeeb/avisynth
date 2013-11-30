@@ -455,7 +455,7 @@ void weighted_merge_planar_sse2(BYTE *p1, const BYTE *p2, int p1_pitch, int p2_p
     }
 
     for (int x = wMod16; x < width; x++) {
-      p1[x] = (p1[x]*invweight + p2[x]*weight + 32768) >> 16;
+      p1[x] = (p1[x]*invweight + p2[x]*weight + 16384) >> 15;
     }
 
     p1 += p1_pitch;
@@ -508,7 +508,7 @@ void weighted_merge_planar_mmx(BYTE *p1, const BYTE *p2, int p1_pitch, int p2_pi
     }
 
     for (int x = wMod8; x < width; x++) {
-      p1[x] = (p1[x]*invweight + p2[x]*weight + 32768) >> 16;
+      p1[x] = (p1[x]*invweight + p2[x]*weight + 16384) >> 15;
     }
 
     p1 += p1_pitch;
@@ -881,11 +881,10 @@ PVideoFrame __stdcall MergeAll::GetFrame(int n, IScriptEnvironment* env)
     BYTE* srcp2U = (BYTE*)src2->GetReadPtr(PLANAR_U);
     BYTE* srcp2V = (BYTE*)src2->GetReadPtr(PLANAR_V);
  
-    int src_pitch = src->GetPitch(PLANAR_U);
     int src_rowsize = src->GetRowSize(PLANAR_U);
 
-    merge_plane(srcpU, srcp2U, src_pitch, src2->GetPitch(PLANAR_U), src_rowsize, src->GetHeight(PLANAR_U), weight, env);
-    merge_plane(srcpV, srcp2V, src_pitch, src2->GetPitch(PLANAR_V), src_rowsize, src->GetHeight(PLANAR_V), weight, env);
+    merge_plane(srcpU, srcp2U, src->GetPitch(PLANAR_U), src2->GetPitch(PLANAR_U), src_rowsize, src->GetHeight(PLANAR_U), weight, env);
+    merge_plane(srcpV, srcp2V, src->GetPitch(PLANAR_V), src2->GetPitch(PLANAR_V), src_rowsize, src->GetHeight(PLANAR_V), weight, env);
   }
 
   return src;

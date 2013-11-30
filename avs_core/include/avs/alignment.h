@@ -54,7 +54,7 @@
 #include <cstdlib>
 
 template<typename T>
-static bool IsPtrAligned(T ptr, size_t align)
+static bool IsPtrAligned(T* ptr, size_t align)
 {
   assert(IS_POWER2(align));
   return (bool)IS_PTR_ALIGNED(ptr, align);
@@ -68,10 +68,10 @@ static T AlignNumber(T n, T align)
 }
 
 template<typename T>
-static T AlignPointer(T ptr, size_t align)
+static T* AlignPointer(T* ptr, size_t align)
 {
   assert(IS_POWER2(align));
-  return (T)ALIGN_POINTER(ptr, align);
+  return (T*)ALIGN_POINTER(ptr, align);
 }
 
 extern "C"

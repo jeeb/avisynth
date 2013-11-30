@@ -840,6 +840,10 @@ int __stdcall ScriptEnvironment::DecrImportDepth()
 
 bool __stdcall ScriptEnvironment::LoadPlugin(const char* filePath, bool throwOnError, AVSValue *result)
 {
+  // Autoload needed to ensure that manual LoadPlugin() calls always override autoloaded plugins.
+  // For that, autoloading must happen before any LoadPlugin(), so we force an 
+  // autoload operation before any LoadPlugin().
+  this->AutoloadPlugins();
   return plugin_manager->LoadPlugin(PluginFile(filePath), throwOnError, result);
 }
 

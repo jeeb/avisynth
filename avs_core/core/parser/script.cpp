@@ -311,7 +311,23 @@ CWDChanger::~CWDChanger(void)
   delete [] old_working_directory;
 }
 
+DllDirChanger::DllDirChanger(const char* new_dir) :
+  old_directory(NULL)
+{
+  DWORD len = GetDllDirectory (0, NULL);
+  old_directory = new char[len];
+  DWORD save_success = GetDllDirectory (len, old_directory);
+  BOOL set_success = SetDllDirectory(new_dir);
+  restore = (save_success && set_success);
+}
 
+DllDirChanger::~DllDirChanger(void)
+{
+  if (restore)
+    SetDllDirectory(old_directory);
+
+  delete [] old_directory;
+}
 
 AVSValue Assert(AVSValue args, void*, IScriptEnvironment* env) 
 {

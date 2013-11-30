@@ -34,16 +34,9 @@
 
 // Whenever you need windows headers, start by including this file, then the rest.
 
-// WWUUT? We require XP now? Well, defining these constants to XP does not mean
-// we actually will need XP to run, only that we are allowed to use its APIs,
-// if we choose so. But let's stop pretending, who uses a Windows older than XP?
-
-#define NTDDI_VERSION 0x05010000
-
-// NTDDI_VERSION is not used in old Visual Studios, so we
-// define these macros ourselves too.
-#define _WIN32_WINNT 0x0501
-#define WINVER 0x0501
+// WWUUT? We require XP now?
+#define _WIN32_WINNT 0x0502
+#define WINVER 0x0502
 
 #define WIN32_LEAN_AND_MEAN
 #define STRICT
