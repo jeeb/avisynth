@@ -34,7 +34,10 @@ AVSValue Prefetcher::ThreadWorker(IScriptEnvironment2* env, void* data)
   {
     --(prefetcher->running_workers);
     prefetcher->VideoCache->rollback(&cache_handle);
-    throw;
+
+    boost::lock_guard<boost::mutex> lock(prefetcher->worker_exception_mutex);
+    prefetcher->worker_exception = boost::current_exception();
+    prefetcher->worker_exception_present = true;
   }
 
   return AVSValue();
@@ -49,28 +52,15 @@ Prefetcher::Prefetcher(const PClip& _child, size_t _nThreads, IScriptEnvironment
   PatternLength(0),
   Pattern(1),
   LastRequestedFrame(0),
-  running_workers(0),
-  completions(_nThreads*4),
-  front(0)
+  running_workers(0)
 {
   env->SetPrefetcher(this);
-  for (size_t i = 0; i < completions.size(); ++i)
-  {
-    completions[i] = env->NewCompletion(1);
-  }
-
   VideoCache = boost::make_shared<LruCache<size_t, PVideoFrame> >(_nThreads*6); // TODO
 }
 
 Prefetcher::~Prefetcher()
 {
   while(running_workers > 0);
-  for (size_t i = 0; i < completions.size(); ++i)
-  {
-    IJobCompletion *c = completions[i];
-    c->Wait();
-    c->Destroy();
-  }
 }
 
 size_t Prefetcher::NumPrefetchThreads() const
@@ -108,6 +98,14 @@ PVideoFrame __stdcall Prefetcher::GetFrame(int n, IScriptEnvironment* env)
     PatternLength = 0;
   }
 
+  {
+    boost::lock_guard<boost::mutex> lock(worker_exception_mutex);
+    if (worker_exception_present)
+    {
+      boost::rethrow_exception(worker_exception);
+    }
+  }
+
   // Get requested frame
   PVideoFrame frame = NULL;
   LruCache<size_t, PVideoFrame>::handle cache_handle;
@@ -121,6 +119,7 @@ PVideoFrame __stdcall Prefetcher::GetFrame(int n, IScriptEnvironment* env)
     catch(...)
     {
       VideoCache->rollback(&cache_handle);
+      throw;
     }
   }
 
@@ -134,21 +133,12 @@ PVideoFrame __stdcall Prefetcher::GetFrame(int n, IScriptEnvironment* env)
     PVideoFrame prefetchedFrame = NULL;
     if (!VideoCache->get_insert(n, &prefetchedFrame, &cache_handle))
     {
-      // Wait for a previous frame to possibly catch an exception
-      //completions[front]->Wait();
-      //completions[front]->Reset();
-
       PrefetcherJobParams *p = new PrefetcherJobParams(); // TODO avoid heap, possibly fold into Completion object
       p->frame = n;
       p->prefetcher = this;
       p->cache_handle = cache_handle;
       env2->ParallelJob(ThreadWorker, p, NULL);
       ++running_workers;
-
-      // Rotate completion objects
-      ++front;
-      if (front == completions.size())
-        front = 0;
 
       ++i;
     }

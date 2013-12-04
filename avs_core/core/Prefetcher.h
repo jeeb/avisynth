@@ -30,8 +30,9 @@ private:
   int LastRequestedFrame;
 
   boost::atomic<size_t> running_workers;  
-  std::vector<IJobCompletion*> completions;
-  size_t front;
+  boost::mutex worker_exception_mutex;
+  boost::exception_ptr worker_exception;
+  bool worker_exception_present;
 
   static AVSValue ThreadWorker(IScriptEnvironment2* env, void* data);
 
