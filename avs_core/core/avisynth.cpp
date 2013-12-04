@@ -488,6 +488,7 @@ ScriptEnvironment::ScriptEnvironment()
     global_var_table->Set("false", false);
     global_var_table->Set("yes", true);
     global_var_table->Set("no", false);
+    global_var_table->Set("last", AVSValue());
 
     global_var_table->Set("$ScriptName$", AVSValue());
     global_var_table->Set("$ScriptFile$", AVSValue());
