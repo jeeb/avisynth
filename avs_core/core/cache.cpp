@@ -36,10 +36,13 @@
 #include "internal.h"
 #include <boost/make_shared.hpp>
 #include <cassert>
+#include <limits>
 
 #ifdef X86_32
 #include <mmintrin.h>
 #endif
+
+
 
 extern const AVSFunction Cache_filters[] = {
   { "Cache", "c", Cache::Create },
@@ -57,10 +60,14 @@ Cache::Cache(const PClip& _child) :
   child(_child),
   vi(_child->GetVideoInfo()),
   VideoCache(NULL),
+  StatsLastCheck(std::numeric_limits<size_t>::min()),
+  StatsLastResult(std::numeric_limits<float>::max()),
+  CacheCanEnlarge(0),
+  StatsLastCheckCooldown(0),
   VideoPolicy(CACHE_GENERIC),
   AudioPolicy(CACHE_AUDIO)
 {
-  VideoCache = boost::make_shared<LruCache<size_t, PVideoFrame> >(10); // TODO
+  VideoCache = boost::make_shared<LruCache<size_t, PVideoFrame> >(0); // TODO
 }
 
 Cache::~Cache()
@@ -69,10 +76,24 @@ Cache::~Cache()
 
 PVideoFrame __stdcall Cache::GetFrame(int n, IScriptEnvironment* env)
 {
+  if (VideoPolicy == CACHE_NOTHING)
+  {
+    return child->GetFrame(n, env);
+  }
+
   PVideoFrame frame = NULL;
   LruCache<size_t, PVideoFrame>::handle cache_handle;
+
   if (!VideoCache->get_insert(n, &frame, &cache_handle))
   {
+    VideoCacheStats.AddMiss();
+    float miss_avg = VideoCacheStats.WindowedMissAvg();
+    if (miss_avg < StatsLastResult)
+    {
+      StatsLastResult = miss_avg;
+      ++(VideoCache->max_size);
+    }
+
     try
     {
       frame = child->GetFrame(n, env);
@@ -86,7 +107,11 @@ PVideoFrame __stdcall Cache::GetFrame(int n, IScriptEnvironment* env)
       VideoCache->rollback(&cache_handle);
       throw;
     }
-  } // if
+  }
+  else
+  {
+    VideoCacheStats.AddHit();
+  }
 
   return frame;
 }
@@ -193,6 +218,7 @@ int __stdcall Cache::SetCacheHints(int cachehints, int frame_range)
 
     case CACHE_GENERIC:
     case CACHE_FORCE_GENERIC:
+      VideoPolicy = CACHE_GENERIC;
       break;
 
     case CACHE_NOTHING:
@@ -200,16 +226,21 @@ int __stdcall Cache::SetCacheHints(int cachehints, int frame_range)
       break;
 
     case CACHE_WINDOW:
+      VideoPolicy = CACHE_WINDOW;
+      VideoCacheWindowRange = frame_range;
+      VideoCache->max_size = frame_range*2+1;
       break;
 
-
     case CACHE_GET_POLICY: // Get the current policy.
+      return VideoPolicy;
       break;
 
     case CACHE_GET_WINDOW: // Get the current window h_span.
+      return VideoCacheWindowRange;
       break;
 
     case CACHE_GET_RANGE: // Get the current generic frame range.
+      return VideoCacheWindowRange;
       break;
 
 

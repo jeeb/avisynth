@@ -40,7 +40,6 @@ private:
   typedef typename list_type::iterator  list_iterator;
   typedef boost::unordered_map<K, list_iterator> map_type;
 
-  size_type max_size;
   list_type list;
   map_type map;
   boost::mutex mutex;
@@ -48,6 +47,8 @@ private:
 public:
 
   typedef std::pair<list_iterator, boost::shared_ptr<LruCache<K, V> > > handle;
+
+  size_type max_size;
 
   LruCache(size_type max_size) :
     max_size(max_size)
