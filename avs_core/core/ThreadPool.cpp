@@ -71,6 +71,10 @@ static void ThreadFunc(size_t thread_id, MessageQueue *msgQueue)
           {
             data.Promise->set_exception(boost::copy_exception(e));
           }
+          catch(...)
+          {
+            data.Promise->set_value(AVSValue("An unknown exception was thrown in the thread pool."));
+          }
         }
         else
         {
@@ -86,7 +90,7 @@ static void ThreadFunc(size_t thread_id, MessageQueue *msgQueue)
         assert(0);
         break;
       }
-    } // swicth
+    } // switch
   } //while
 }
 
