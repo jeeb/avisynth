@@ -1411,8 +1411,12 @@ success:;
     }
   }
   // ... and we're finally ready to make the call
-  retval = f->apply(AVSValue(args3.data(), args3_count), f->user_data, this);
-
+  try {
+    retval = f->apply(AVSValue(args3.data(), args3_count), f->user_data, this);
+  }
+  catch (ReturnExprException &e) {
+    retval = e.value;
+  }
   *result = retval;
   return true;
 }

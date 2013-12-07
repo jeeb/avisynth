@@ -67,6 +67,9 @@ AVSValue ExpExceptionTranslator::Evaluate(IScriptEnvironment* env)
   catch (const BreakStmtException&) {
     throw;
   }
+  catch (const ReturnExprException&) {
+    throw;
+  }
   catch (const SehException &seh) {
     if (seh.m_msg)
       env->ThrowError(seh.m_msg);
@@ -230,7 +233,12 @@ AVSValue ExpConditional::Evaluate(IScriptEnvironment* env)
   return (cond.AsBool() ? Then : Else)->Evaluate(env);
 }
 
-
+AVSValue ExpReturn::Evaluate(IScriptEnvironment* env)
+{
+	ReturnExprException ret;
+	ret.value = value->Evaluate(env);
+	throw ret;
+}
 
 
 

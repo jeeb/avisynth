@@ -273,7 +273,7 @@ PExpression ScriptParser::ParseStatement(bool* stop)
   else if (tokenizer.IsIdentifier("return")) {
     *stop = true;
     tokenizer.NextToken();
-    return ParseConditional();
+    return new ExpReturn(ParseConditional());
   }
   // break statement
   else if (tokenizer.IsIdentifier("break")) {
