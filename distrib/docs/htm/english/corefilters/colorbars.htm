@@ -1,0 +1,65 @@
+<!doctype html public "-//w3c//dtd html 4.0 transitional//en">
+<html>
+<head>
+   <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+   <title>ColorBars Avisynth Filter</title>
+   <link rel="stylesheet" type="text/css" href="../../avisynth.css">
+</head>
+<body>
+<h2>
+<a NAME="ColorBars"></a>ColorBars / ColorBarsHD
+</h2>
+<p><code>ColorBars </code>(<var>int &quot;width&quot;, int &quot;height&quot;, string
+&quot;pixel_type&quot;</var>)
+<p>The <code>ColorBars</code>  filter produces a video clip containing SMPTE
+color bars (Rec. ITU-R BT.801-1) scaled to any image size. By default, a clip is
+produced of 640x480, RGB32 [16,235], 29.97 fps, 1 hour long, alpha channel
+opaque.<br>
+The <code>ColorBarsHD</code> filter (added in <em>v2.60</em>) produces a video
+clip containing SMPTE color bars (Rec. ITU-R BT.709 / <a href="http://www.arib.or.jp/english/html/overview/img/arib_std-b28v1.0_e.pdf" class="external text" title="http://www.arib.or.jp/english/html/overview/img/arib_std-b28v1.0_e.pdf" rel="nofollow">arib
+std b28 v1.0</a>) scaled to any image size. By default, a clip is produced of
+1288x720, YV24, 29.97 fps, 1 hour long.</p>
+<p>For both filters, a test tone is also generated. Test tone is a 440Hz sine at
+48KHz, 16 bit, stereo. The tone pulses in the RIGHT speaker, being turned on and
+off once every second.</p>
+<p>For ColorBars the following pixel types are supported: &quot;YUY2&quot; (<em>v2.56</em>),
+&quot;YV12&quot; (<em>v2.56</em>), &quot;YV24&quot; (<em>v2.60</em>), or
+(default) &quot;RGB32&quot;. For ColorsBarsHD only &quot;YV24&quot; is
+supported.</p>
+<p>Note, that for example</p>
+<pre>ColorBars(pixel_type=&quot;YUY2&quot;)</pre>
+<p>is almost equivalent with (the -I and +Q patterns have Y increased to the minimum legal value for RGB)</p>
+<pre>ColorBars(pixel_type=&quot;RGB32&quot;)
+ConvertToYUY2(matrix=&quot;PC.601&quot;)  # doesn't scale the luma range</pre>
+<p>When directly generating YUV format data the color transitions are arranged
+to occur on a chroma aligned boundary.</p>
+<p>The lower part of ColorBars is called the pluge. From left to right it
+consists of: -I, white, +Q, black, -4/0/+4 IRE levels and black. The -4/0/4 IRE
+levels can be used to set the brightness correctly. The -4 IRE and 0 IRE should
+have the same brightness, and the +4 IRE should be a little brighter than -4/0
+IRE. The -I/+Q levels are not really interesting, since they are not used
+anymore for NTSC (analog TV), but they were used to set the chrominance
+correctly. More information about the colorbars and the pluge can be found <a href="http://avisynth.org/mediawiki/ColorBars_theory" title="ColorBars theory">here</a>.</p>
+<p><b>Changes:</b></p>
+<table border="1">
+  <tbody>
+    <tr>
+      <td>v2.56</td>
+      <td>Added pixel_type=&quot;YUY2&quot;/&quot;YV12&quot;.</td>
+    </tr>
+    <tr>
+      <td>v2.60</td>
+      <td>
+        <ul>
+          <li>Added pixel_type=&quot;YV24&quot; to ColorBars.</li>
+          <li>Initial release of ColorBarsHD.</li>
+        </ul>
+      </td>
+    </tr>
+  </tbody>
+</table>
+<p><kbd>$Date: 2011/04/17 03:58:18 $</kbd></p>
+<form><input TYPE="Button" VALUE="Back"
+onClick="history.go(-1)"></form>
+</body>
+</html>

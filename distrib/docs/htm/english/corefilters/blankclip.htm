@@ -1,0 +1,97 @@
+<!doctype html public "-//w3c//dtd html 4.0 transitional//en">
+<html>
+<head>
+   <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+   <title>BlankClip / Blackness Avisynth Filter</title>
+   <link rel="stylesheet" type="text/css" href="../../avisynth.css">
+</head>
+<body>
+<h2>
+<a NAME="BlankClip"></a>BlankClip
+/ Blackness
+</h2>
+<p><code>BlankClip </code>(<var>clip clip, int "length", int "width", int "height", string "pixel_type",<br>
+  &nbsp;&nbsp;&nbsp;float "fps", int "fps_denominator", int "audio_rate", int "channels",<br>
+  &nbsp;&nbsp;&nbsp;string "sample_type", int "color", int "color_yuv"</var>)
+<br>
+<p><code>BlankClip </code>(<var>clip clip, int "length", int "width", int "height", string "pixel_type",<br>
+  &nbsp;&nbsp;&nbsp;float "fps", int "fps_denominator", int "audio_rate", bool "stereo",<br>
+  &nbsp;&nbsp;&nbsp;bool "sixteen_bit", int "color", int "color_yuv"</var>)
+<br>
+<p><code>Blackness </code>()
+<p>The <code>BlankClip</code> filter produces a solid color, silent video clip
+of the specified <var>length</var> (in frames). The clip passed as an argument
+is used as a template for frame rate, image size, and so on, but you can
+specify all clip properties without having to provide a template. <var>color</var>
+should be given as hexadecimal RGB values. Without any argument, <code>BlankClip</code>
+will produce a pitch-black 10 seconds clip (RGB32), 640x480, 24 fps, 16
+bit 44100 Hz mono.
+<p><var>clip</var>: if present, the resulting clip will have the clip-properties
+of the template, except for the properties you define explicitly.
+<p>
+  <var>length</var>: length of the resulting clip (in frames).
+<p>
+  <var>width, height</var>: width and height of the resulting clip.
+<p>
+  <var>pixel_type</var>: pixel type of the resulting clip, it can be "RGB24",
+"RGB32", "YUY2" or "YV12".
+<p>
+  <var>fps</var>: the framerate of the resulting clip.
+<p>
+  <var>fps_denominator</var>: you can use this option if "fps" is not accurate
+enough. For example: fps = 30000, fps_denominator = 1001 (ratio = 29.97)
+or fps = 24000, fps_denominator = 1001 (ratio = 23.976). It is 1 by default.
+<p>
+  <var>audio_rate</var>: samplerate of the silent audio of the clip.
+<p>
+  <var>channels</var>: specifies the number of
+  audio channels of silent audio added to the blank clip ( added in <em>v2.58</em>).
+<p>
+  <var>stereo</var>: (boolean) when set to true the silent audio is in stereo,
+  when set to false a silent mono track is added. Deprecated! Use should the <var>channels</var> parameter instead.
+<p>
+  <var>sample_type</var>: specifies the audio sample
+  type of the resulting clip. It can be "8bit", "16bit", "24bit", "32bit" or "float"
+  ( added in <em>v2.58</em>).
+<p>
+  <var>sixteen_bit</var>: (boolean) true give 16 bit, false gives ieee float.
+  Deprecated! Use the <var>sample_type</var> parameter instead.
+<p><var>color</var>: specifies the color of the clip, black (= $000000) by default. See ColorPresets for preset colors.
+See <a href="../syntax_colors.htm" target="main">here</a>
+for more information on specifying colors.<br>
+<br>
+<var>color_yuv</var>: is added in <em>v2.55</em>, and it lets you specify the color of the clip using YUV values. It requires setting
+<var> pixel_type</var> to "YUY2" or &quot;YV12&quot;, otherwise it doesn't do
+anything.
+<p><code>Blackness</code> is an alias for <code>BlankClip</code>, provided for
+backward compatibility.
+<p><b>Examples:</b>
+<pre># produces a black clip (3000 frames, width 720, height 576, framerate 25), with a silent audio track (16 bit 44.1 kHz stereo):
+BlankClip(length=3000, width=720, height=576, fps=25, color=$000000)
+
+# produces a black clip (3000 frames) with the remaining clip properties of the avi:
+video = <a href="avisource.htm">AviSource</a>(&quot;E:\pdwork\DO-Heaven.AVI&quot;)
+BlankClip(video, length=3000, color=$000000)
+
+# adds a silent audio stream (with a samplerate of 48 kHz) to a video clip:
+video = AviSource(&quot;E:\pdwork\DO-Heaven.AVI&quot;)
+audio = BlankClip(video, audio_rate=48000)
+AudioDub(video, audio)</pre>
+<p><b>Changes:</b></p>
+<table border="1">
+  <tbody>
+    <tr>
+      <td>v2.55</td>
+      <td>added color_yuv</td>
+    </tr>
+    <tr>
+      <td>v2.58</td>
+      <td>added channels and sample_type</td>
+    </tr>
+  </tbody>
+</table>
+<p><kbd>$Date: 2011/04/29 20:09:50 $</kbd></p>
+<form><input TYPE="Button" VALUE="Back"
+onClick="history.go(-1)"></form>
+</body>
+</html>

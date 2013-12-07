@@ -1,0 +1,87 @@
+<!doctype html public "-//W3C//DTD HTML 4.0 Transitional//EN">
+<html>
+<head>
+<title>SeparateFields Avisynth Filter</title>
+<link rel="stylesheet" type="text/css" href="../../avisynth.css">
+</head>
+<body>
+<h2>SeparateFields / SeparateColumns / SeparateRows</h2>
+<p><code>SeparateFields </code>(<var>clip</var>)</p>
+<p>
+NTSC and PAL video signals are sequences of fields, but all capture cards that
+I'm aware of capture two fields at a time and interlace (or "weave") them into
+frames. So frame 0 in the capture file contains fields 0 and 1; frame 1 contains
+fields 2 and 3; and so on. <code>SeparateFields</code> takes a frame-based clip
+and splits each frame into its component fields, producing a new half height
+clip with twice the frame rate and twice the frame count. This is useful if you
+would like to use <code><a href="trim.htm">Trim</a></code> and similar filters
+with single-field accuracy.</p>
+<p>
+<code>SeparateFields</code> uses the field-dominance information in the source
+clip to decide which of each pair of fields to place first in the output. If
+it gets it wrong, use <code><a href="parity.htm#complementparity">ComplementParity</a></code>,
+<code><a href="parity.htm#assumefieldfirst">AssumeTFF</a></code> or
+<code><a href="parity.htm#assumefieldfirst">AssumeBFF</a></code> before <code>SeparateFields</code>.</p>
+<p>
+From version 2.5.6 this filter raises an exception if the clip is already field-based.
+You may want to use <code><a href="parity.htm#assumeframefield">AssumeFrameBased</a></code>
+to force separate a second time. Prior versions did a no-op for materials that was
+already field-based.</p>
+<p>
+See also: <a href="weave.htm">Weave</a>.</p>
+<p><code>SeparateColumns </code>(<var>clip, &quot;interval&quot;</var>)<br>
+<code>SeparateRows </code>(<var>clip, &quot;interval&quot;</var>)</p>
+<p><code>SeparateColumns </code> separates the columns of each frame into
+<var>interval</var> frames. The number of frames of the new clip is
+<var>interval</var> times the number of frames of the old clip. The width of
+the frame must be a multiple of <var>interval</var>, otherwise an error is
+thrown. SeparateColumns is a relatively slow filter due to the sparse pixel
+picking required by the algorithm. In some applications it may be faster to use
+<a href="turn.htm">TurnLeft/Right</a> with SeparateRows.</p>
+<p><code>SeparateRows </code> separates the rows of each frame into
+<var>interval</var> frames. The number of frames of the new clip is
+<var>interval</var> times the number of frames of the old clip. The height of
+the frame must be a multiple of <var>interval</var>, otherwise an error is
+thrown. SeparateRows like SeparateFields is very fast as it uses zero cost
+subframing to perform it's magic.</p>
+<p><code>SeparateRows</code>(2) is the same as <code>SeparateFields</code>()
+except the output is frame-based instead of field-based.</p>
+<p><b>Examples:</b></p>
+<pre># returns the original clip:
+AviSource(&quot;c:\file.avi&quot;)
+SeparateColumns(1)
+
+# returns a clip where the columns are separated:
+# frame 0 consists of the columns 0,3,6,... of the original frame 0
+# frame 1 consists of the columns 1,4,7,... of the original frame 0
+# frame 2 consists of the columns 2,5,8,... of the original frame 0
+# frame 3 consists of the columns 0,3,6,... of the original frame 1
+# etc ...
+AviSource(&quot;c:\file.avi&quot;)
+SeparateColumns(3)
+
+# returns a clip where the rows are separated:
+# frame 0 consists of the rows 0,2,4,... of the original frame 0
+# frame 1 consists of the rows 1,3,5,... of the original frame 0
+# frame 2 consists of the rows 0,2,4,... of the original frame 1
+# frame 3 consists of the rows 1,3,5,... of the original frame 1
+# etc ...
+AviSource(&quot;c:\file.avi&quot;)
+SeparateRows(2)</pre>
+<p><b>Changes:</b></p>
+<table border="1">
+  <tbody>
+    <tr>
+      <td>v2.60</td>
+      <td>Added SeparateColumns and SeparateRows.</td>
+    </tr>
+  </tbody>
+</table>
+<p>
+<kbd>$Date: 2012/04/15 14:59:41 $</kbd></p>
+<FORM>
+<INPUT TYPE="Button" VALUE="Back"
+onClick="history.go(-1)">
+</form>
+</body>
+</html>

@@ -1,0 +1,93 @@
+<!doctype html public "-//W3C//DTD HTML 4.0 Transitional//EN">
+<html>
+<head>
+<title>Amplify / AmplifydB Avisynth Filter</title>
+<link rel="stylesheet" type="text/css" href="../avisynth.css">
+</head>
+<body>
+<h2>Filters with multiple input clips</h2>
+  There are some functions which combine two or more clips in different ways.
+  How the video content is calculated is described for each function, but here
+  is a summary which properties the result clip will have.
+  <p>The input clips must always have the same color format and - with the
+  exception of <a href="corefilters/layer.htm" title="Layer">Layer</a>
+  and <a href="corefilters/Overlay.htm" title="Overlay">Overlay</a>
+  - the same dimensions.</p>
+  <table style="height: 100px;" border="1" cellpadding="4">
+    <tbody>
+      <tr>
+        <th width="20%">filter</th>
+        <th width="20%">framerate</th>
+        <th width="20%">framecount</th>
+        <th width="20%">audio content</th>
+        <th width="20%">audio sampling rate</th>
+      </tr>
+      <tr>
+        <td><a href="corefilters/splice.htm" title="AlignedSplice">AlignedSplice</a>,
+          <a href="corefilters/splice.htm" title="UnalignedSplice">UnalignedSplice</a></td>
+        <td>first clip</td>
+        <td>sum of all clips</td>
+        <td>see filter description</td>
+        <td>first clip</td>
+      </tr>
+      <tr>
+        <td><a href="corefilters/dissolve.htm" title="Dissolve">Dissolve</a></td>
+        <td>first clip</td>
+        <td>sum of all clips minus the overlap</td>
+        <td>see filter description</td>
+        <td>first clip</td>
+      </tr>
+      <tr>
+        <td><a href="corefilters/merge.htm" title="Merge">Merge</a>, <a href="corefilters/merge.htm" title="MergeLuma">MergeLuma</a>,
+          <a href="corefilters/merge.htm" title="MergeChroma">MergeChroma</a>, <a href="corefilters/mergergb.htm" title="MergeARGB">Merge(A)RGB</a></td>
+        <td>first clip</td>
+        <td>first clip (the last frame of the shorter clip is repeated until the
+          end of the clip)</td>
+        <td>first clip</td>
+        <td>first clip</td>
+      </tr>
+      <tr>
+        <td><a href="corefilters/layer.htm" title="Layer">Layer</a></td>
+        <td>first clip</td>
+        <td>first clip (the last frame of the shorter clip is repeated until the
+          end of the clip)</td>
+        <td>first clip</td>
+        <td>first clip</td>
+      </tr>
+      <tr>
+        <td><a href="corefilters/subtract.htm" title="Subtract">Subtract</a></td>
+        <td>first clip</td>
+        <td>longer clip (the last frame of the shorter clip is repeated until
+          the end of the clip)</td>
+        <td>first clip</td>
+        <td>first clip</td>
+      </tr>
+      <tr>
+        <td><a href="corefilters/stack.htm" title="StackHorizontal">StackHorizontal</a>,
+          <a href="corefilters/stack.htm" title="StackVertical">StackVertical</a></td>
+        <td>first clip</td>
+        <td>longer clip (the last frame of the shorter clip is repeated until
+          the end of the clip)</td>
+        <td>first clip</td>
+        <td>first clip</td>
+      </tr>
+      <tr>
+        <td><a href="corefilters/Interleave.htm" title="Interleave">Interleave</a></td>
+        <td>(fps of first clip) x (number of clips)</td>
+        <td>N x frame-count of longer clip (the last frame of the shorter clip
+          is repeated until the end of the clip)</td>
+        <td>first clip</td>
+        <td>first clip</td>
+      </tr>
+    </tbody>
+  </table>
+  <p>As you can see the functions are not completely symmetric but take some
+  attributes from the FIRST clip.</p>
+<p><kbd>$Date: 2008/07/19 15:17:14 $</kbd>
+
+<FORM>
+<INPUT TYPE="Button" VALUE="Back"
+onClick="history.go(-1)">
+</form>
+</body>
+</html>

@@ -1,0 +1,173 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+<HTML>
+<HEAD>
+   <META HTTP-EQUIV="Content-Type" CONTENT="text/html; charset=iso-8859-1">
+   <TITLE>Histogram Avisynth Filter</TITLE>
+   <link rel="stylesheet" type="text/css" href="../../avisynth.css">
+</HEAD>
+<BODY>
+<h2>
+<A NAME="Greyscale"></A>Histogram
+</h2>
+<p><code>Histogram </code>(<var>clip, string ''mode''[, float ''factor'']</var>)</p>
+<p>Adds a luminance histogram to the right side of the clip.</p>
+<p>Starting from AviSynth <em>v2.50</em> this filter will also show valid and
+ invalid colors in YUV mode. Invalid values (below 16 and above 235) will be
+ colored brown/yellow-ish.</p>
+<p>Starting in <em>v2.53</em> an optional <var>mode</var> parameter has been
+ added to show additional information of a clip. <var>mode</var> can be
+ "Classic" (default old mode), "Levels", "Color", &quot;Luma&quot; (<em>v2.54</em>),
+&quot;Stereo&quot; (<em>v2.54</em>), &quot;StereoOverlay&quot; (<em>v2.54</em>),
+&quot;Color2&quot;&nbsp; (<em>v2.58</em>), &quot;AudioLevels&quot; (<em>v2.58</em>)
+and
+&quot;Stereo&quot; (<em>v2.60</em>). Since <em>v2.60</em> an optional factor
+parameter is added which can be used for the mode &quot;levels&quot;.</p>
+<h3>Classic mode</h3>
+<p><img border="0" src="../pictures/corefilters/histogram_classic.jpg" width="608" height="288"></p>
+<p>This will add a per-line luminance graph (which is actually called a
+ Waveform Monitor) on the right side of the video. the left side of the graph
+ represents luma = 0 and the right side represents luma = 255. The non-valid
+ CCIR-601 ranges are shown in a brown/yellow-ish color, and a greenish line
+ represents Y = 128.</p>
+<p>Available in YUV mode.</p>
+<h3>Levels mode</h3>
+<p><img border="0" src="../pictures/corefilters/histogram_modelevels.jpg" width="256" height="256"></p>
+<p>This mode will display three level-graphs on the right side of the video
+ frame (which are called Histograms). This will show the distribution of the Y,
+ U and V components in the current frame.</p>
+<p>The top graph displays the luma (Y) distribution of the frame, where the
+ left side represents Y = 0 and the right side represents Y = 255. The valid
+ CCIR601 range has been indicated by a slightly different color and Y = 128 has
+ been marked with a dotted line. The vertical axis shows the number of pixels
+ for a given luma (Y) value. The middle graph displays the U component, and the
+ bottom graph displays the V component.</p>
+<p>The <var>factor</var> option (100.0 by default) specifies the way how the
+graphs are displayed. It is specified as percentage of the total population
+(that is number of luma or chroma pixels in a frame). For example,
+HistoGram(&quot;Levels&quot;, 1.5625) will achieve a 1/64th cap.</p>
+<p>Available in all planar mode except Y8.</p>
+<h3>Color mode</h3>
+<p><img border="0" src="../pictures/corefilters/histogram_modecolor.jpg" width="256" height="256"></p>
+<p>This mode will display the chroma values (U/V color placement) in a two
+ dimensional graph (which is called a vectorscope) on the right side of the
+ video frame. It can be used to read of the hue and saturation of a clip. At the
+ same time it is a histogram.  The whiter a pixel in the vectorscope, the more
+ pixels of the input clip correspond to that pixel (that is the more pixels have
+ this chroma value).</p>
+<p>The U component is displayed on the horizontal (X) axis, with the leftmost
+ side being U = 0 and the rightmost side being U = 255. The V component is
+ displayed on the vertical (Y) axis, with the top representing V = 0 and the
+ bottom representing V = 255.</p>
+<p>The position of a white pixel in the graph corresponds to the chroma value
+ of a pixel of the input clip. So the graph can be used to read of the hue
+ (color flavor) and the saturation (the dominance of the hue in the color). As
+ the hue of a color changes, it moves around the square. At the center of the
+ square, the saturation is zero, which means that the corresponding pixel has no
+ color. If you increase the amount of a specific color, while leaving the other
+ colors unchanged, the saturation increases, and you move towards the edge of
+ the square.</p>
+<p>Available in all planar mode except Y8.</p>
+<h3>Color2 mode</h3>
+<p><img border="0" src="../pictures/corefilters/histogram_modecolor2.jpg" width="616" height="288"></p>
+<p>This mode will display the pixels in a two dimensional graph (which is
+ called a vectorscope) on the right side of the video frame.  It can be used to
+ read of the hue and saturation of a clip.</p>
+<p>The U component is displayed on the horizontal (X) axis, with the leftmost
+ side being U = 0 and the rightmost side being U = 255. The V component is
+ displayed on the vertical (Y) axis, with the top representing V = 0 and the
+ bottom representing V = 255.  The grey square denotes the valid CCIR601 range.</p>
+<p>The position of a pixel in the graph corresponds to the chroma value of a
+ pixel of the input clip. So the graph can be used to read of the hue (color
+ flavor) and the saturation (the dominance of the hue in the color). As the hue
+ of a color changes, it moves around the circle. At the center of the circle,
+ the saturation is zero, which means that the corresponding pixel has no color.
+ If you increase the amount of a specific color, while leaving the other colors
+ unchanged, the saturation increases, and you move towards the edge of the
+ circle. A color wheel is plotted and divided into six hues (red, yellow, green,
+ cyan, blue and magenta) to help you reading of the hue values. Also every 15
+ degrees a white dot is plotted.</p>
+<p>At U=255, V=128 the hue is zero (which corresponds to blue) and the
+ saturation is maximal, that is, sqrt( (U-128)^2 + (V-128)^2 ) = 127. When
+ turning clock-wise, say 90 degrees, the chroma is given by U=128, V=255 (which
+ corresponds to red).  Keeping the hue constant and decreasing the saturation,
+ means that we move from the circle to the center of the vectorscope. Thus te
+ color flavor remains the same (namely red), only it changes slowly to
+ greyscale.&nbsp; Etc ...</p>
+<p>Available in all planar mode except Y8.</p>
+<h3>Luma mode</h3>
+<p><img border="0" src="../pictures/corefilters/histogram_modeluma.jpg" width="416" height="256"></p>
+<p>This mode will amplify luminance, and display very small luminance
+ variations. This is good for detecting blocking and noise, and can be helpful
+ at adjusting filter parameters. In this mode a 1 pixel luminance difference
+ will show as a 16 pixel luminance pixel, thus seriously enhancing small flaws.</p>
+<p>Available in planar and YUY2 modes.</p>
+<h3>Stereo, StereoY8 and StereoOverlay mode</h3>
+<p><img border="0" src="../pictures/corefilters/histogram_modestereo.gif" width="512" height="512"></p>
+<p>This mode shows a classic stereo graph, from the audio in the clip. Some may
+know these from recording studios. This can be used to see the left-right and
+phase distribution of the input signal. StereoOverlay will overlay the graph on
+top of the original. Each frame will contain only information from the current
+frame to the beginning of the next frame. The signal is linearly upsampled 8x,
+to provide clearer visuals. Stereo and StereoY8 won't overlay the graph on the
+video, but will just return the graph (in YV12 respectively Y8 format).</p>
+<p>This mode requires a stereo signal input and StereoOverlay requires YV12 video.</p>
+<h3>AudioLevels mode</h3>
+<p><img border="0" src="../pictures/corefilters/histogram_audiolevels.jpg" width="352" height="288"></p>
+<p>This mode shows the audiolevels for each channel in decibels (multichannel
+  is supported). More accurately it determines:</p>
+<ul>
+  <li>the root mean square value of the samples belonging to each frame and
+	converts this value to decibels using the following formula:<br>
+    <br>
+    RMS = 20 * log_10( sqrt( sum_j( sample(j)^2 ) / j ) / 32768 )&nbsp; # for each channel<br>
+  </li>
+  <li>the maximum volume of the samples belonging to each frame and converts
+	this value to decibels using the following formula:<br>
+    <br>
+    max = 20 * log_10( max_j( sample(j) ) / 32768 )&nbsp; # for each channel<br>
+    <br>
+	The bars corresponding to the root mean square value are green, and to the
+	maximum are blue. The filter is available in planar mode and the audio is
+	converted to 16 bit. Note that for 16 bit audio, the maximal volume could be<br>
+    <br>
+    20 * log_10(32768/32768) = 0 dB (since 2^16/2 = 32768)<br>
+    <br>
+    and the minimal volume<br>
+    <br>
+    20 * log_10(1/32768) = - 90.31 dB</li>
+</ul>
+<p><b>Changes:</b>
+ </p>
+<table border="1">
+  <tbody>
+    <tr>
+      <td>v2.53 </td>
+      <td>Added different modes.</td>
+    </tr>
+    <tr>
+      <td>v2.55 </td>
+      <td>Added dots to mode = &quot;stereo&quot; to show bias/offsets.</td>
+    </tr>
+    <tr>
+      <td>v2.56 </td>
+      <td>Added invalid colors in YUY2 mode.</td>
+    </tr>
+    <tr>
+      <td>v2.58 </td>
+      <td>Color2 and AudioLevels modes added.</td>
+    </tr>
+    <tr>
+      <td>v2.58 </td>
+      <td>Added planar support.</td>
+    </tr>
+    <tr>
+      <td>v2.60 </td>
+      <td>Added StereoY8 mode. Added factor option.</td>
+    </tr>
+  </tbody>
+</table>
+<p><kbd>$Date: 2011/04/29 20:09:50 $</kbd></p>
+<FORM><INPUT TYPE="Button" VALUE="Back"
+onClick="history.go(-1)"></FORM>
+</BODY>
+</HTML>

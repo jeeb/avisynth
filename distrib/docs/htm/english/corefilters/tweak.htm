@@ -1,0 +1,151 @@
+<!doctype html public "-//w3c//dtd html 4.0 transitional//en">
+<html>
+<head>
+   <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+   <title>Tweak Avisynth Filter</title>
+   <link rel="stylesheet" type="text/css" href="../../avisynth.css">
+</head>
+<body >
+<h2>
+<a NAME="Tweak"></a>Tweak
+</h2>
+<p><code>Tweak </code>(<var>clip, float &quot;hue&quot;, float &quot;sat&quot;,
+  float &quot;bright&quot;, float &quot;cont&quot;, bool &quot;coring&quot;,
+  bool &quot;sse&quot;, float &quot;startHue&quot;, float &quot;endHue&quot;,
+float &quot;maxSat&quot;, float &quot;minSat&quot;, float &quot;interp&quot;,
+bool &quot;dither&quot;</var>)
+<p>This function provides the means to adjust the hue, saturation, brightness,
+and contrast of a video clip. In <em>v2.58</em>, both the saturation and hue can be
+adjusted for saturations in the range [<var>minSat</var>, <var>maxSat</var>]
+and hues in the range [<var>startHue</var>, <var>endHue</var>]. <var>interp</var>
+interpolates the adjusted saturation to prevent banding.
+<p><var>Hue</var>: (-180.0 to +180.0, default 0.0) is used to adjust the color
+hue of the image. Positive values shift the image towards red. Negative
+values shift it towards green.
+<p><var>Sat</var>: (0.0 to 10.0, default 1.0) is used to adjust the color saturation
+of the image. Values above 1.0 increase the saturation. Values below 1.0
+reduce the saturation. Use sat=0 to convert to grayscale.
+<p><var>Bright</var>: (-255.0 to 255.0, default 0.0) is used to change the
+brightness of the image. Positive values increase the brightness. Negative
+values decrease the brightness.
+<p><var>Cont</var>: (0.0 to 10.0, default 1.0) is used to change the contrast
+of the image. Values above 1.0 increase the contrast. Values below 1.0
+decrease the contrast.
+<p> <i><var>coring</var> = </i>true/false
+ (optional; true by default, which reflects the behaviour in older versions) is added.
+When setting to true is means that the luma (Y) is clipped to [16,235] and the chroma (U, V) is clipped to [16,240],
+and when setting to false it means that the luma and chroma are unconstrained. [Added in <em>v2.53</em>.]
+<p> <var>sse</var> = true/false (default false) is only available for YUY2 with
+coring=false and only using the standard <i>hue</i>, <i>sat</i>, <i>bright</i>
+and <i>cont</i> options. It re-enables the SSE code if required. [reAdded in <em>v2.60</em>.]
+<p> <var>startHue</var> (default 0), <var>endHue</var> (default 360): (both from
+0 to 360; given in degrees.). The hue and saturation will be adjusted for values in the range [<var>startHue</var>,
+<var>endHue</var>] when startHue&lt;endHue. Note that the hue is periodic, thus
+a hue of 360 degrees corresponds with a hue of zero degrees. If
+endHue&lt;startHue then the range [<var>endHue</var>, 360] and [0, <var>startHue</var>]
+will be selected (thus anti-clockwise). If you need to select a range of [350,
+370] for example, you need to specify startHue=350 and endHue=10 (370-360). Thus when using the default values
+all pixels will be processed.
+<p><var>maxSat</var> (default 150), <var>minSat</var>
+(default 0): (both from 0 to 150 with minSat&lt;maxSat; given in percentages).
+The hue and saturation will be adjusted for values in the range [<var>minSat</var>,
+<var>maxSat</var>]. Practically the saturation of
+a pixel will be in the range [0,100] (thus 0-100%), since these correspond to
+valid RGB pixels (100% corresponds to R=255, G=B=0, which has a saturation of
+119). An overshoot (up to 150%) is allowed for non-valid RGB pixels (150%
+corresponds to U=V=255, which has a saturation of sqrt(127^2+127^2) = 180). Thus
+when using the default values all pixels will be processed.
+<p><var>interp</var>:
+(0 to 32, default 16; given in units of chroma, rather than a percentage) is
+used to interpolate the saturation adjustment at the edges of the chosen range.
+The adjustment is interpolated between 1.0 and <var>sat</var> in the range [<i>minS</i>-<var>interp</var>,
+<i>minS</i>] and between <var>sat</var> and 1.0 in [<i>maxS</i>, <i>maxS</i>+<var>interp</var>],
+where <i>minS</i> and <i>maxS</i> are the equivalents of <var>minSat</var> and <var>maxSat</var>
+in chroma units (100% = 119 units). There is no interpolation for <var>interp</var>=0,
+which can be useful when a clip consists of uniform colors and you want a hard
+cutoff. The interpolation is linear.
+<p><i><var>dither</var></i> = true/false (false by default): When set to true, <a href="http://avisynth.org/mediawiki/Ordered_dithering" title="Ordered dithering">ordered
+dithering</a> is applied when doing the adjustment.<h3>Usage and examples: adjusting contrast
+and brightness</h3>
+<table border="1" width="100%">
+  <tr>
+    <td width="100%" align="center"><img border="0" src="../pictures/corefilters/tweak_original.jpg" width="480" height="360"></td>
+  </tr>
+  <tr>
+    <td width="100%" align="center">original</td>
+  </tr>
+</table>
+<p>There are two problems with this picture. It is too dark, and the contrast is
+too small (the details of the tree are not visible for example). First, we will
+increase the brightness to make the picture less dark (left picture below).
+Second, we will increase the contrast to make details in the dark areas more
+visible (right picture below). Make sure that the bright parts don't get to0
+bright though.
+<table border="1" width="100%">
+  <tr>
+    <td width="50%" align="center"><img border="0" src="../pictures/corefilters/tweak_bright20.jpg" width="480" height="360"></td>
+    <td width="50%" align="center"><img border="0" src="../pictures/corefilters/tweak_bright20_cont12.jpg" width="480" height="360"></td>
+  </tr>
+  <tr>
+    <td width="50%" align="center">bright=20</td>
+    <td width="50%" align="center">bright=20, cont=1.2</td>
+  </tr>
+</table>
+<h3>Usage and examples: adjusting saturation</h3>
+<table border="1" width="75%">
+  <tr>
+    <td width="50%" align="center"><img border="0" src="../pictures/corefilters/tweak_original2.jpg" width="320" height="418"></td>
+    <td width="50%" align="center"><img border="0" src="../pictures/corefilters/tweak_sat075.jpg" width="320" height="418"></td>
+  </tr>
+  <tr>
+    <td width="50%" align="center">original</td>
+    <td width="50%" align="center">sat=0.75</td>
+  </tr>
+</table>
+<p>Suppose we want to lower the saturation of the skin of the girl, and the
+background should be left intact. The proper way to do this is to set sat=0, and
+lower the hue range till you found the correct hue range which should be
+processed. This can be done by using a Vectorscope, but also manually. (If it is
+needed the saturation range can also be specified if the dark and white parts
+of that hue should not be processed.) The result is below.</p>
+<table border="1" width="75%">
+  <tr>
+    <td width="50%" align="center"><img border="0" src="../pictures/corefilters/tweak_hue105-138.jpg" width="320" height="418"></td>
+    <td width="50%" align="center"><img border="0" src="../pictures/corefilters/tweak_hue105-138_sat075.jpg" width="320" height="418"></td>
+  </tr>
+  <tr>
+    <td width="50%" align="center">sat=0, startHue=105, endHue=138</td>
+    <td width="50%" align="center">sat=0.75, startHue=105, endHue=138</td>
+  </tr>
+</table>
+<p>Instead, we can also try to &quot;select&quot; the skin of the girl by
+narrowing the saturation range only. The result is below. In this case the
+result is pretty much identical.</p>
+<table border="1" width="75%">
+  <tr>
+    <td width="50%" align="center"><img border="0" src="../pictures/corefilters/tweak_sat70-50.jpg" width="320" height="418"></td>
+    <td width="50%" align="center"><img border="0" src="../pictures/corefilters/tweak_sat70-50_sat075.jpg" width="320" height="418"></td>
+  </tr>
+  <tr>
+    <td width="50%" align="center">sat=0, maxSat=75, minSat=55</td>
+    <td width="50%" align="center">sat=0.75, maxSat=75, minSat=55</td>
+  </tr>
+</table>
+<p><b>Changelog:</b></p>
+<table border="1">
+  <tbody>
+    <tr>
+      <td>v2.60</td>
+      <td>added sse=true/false to enable sse code</td>
+    </tr>
+    <tr>
+      <td>v2.58</td>
+      <td>added startHue, endHue, maxSat, minSat and interp</td>
+    </tr>
+  </tbody>
+</table>
+<p><kbd>$Date: 2011/12/04 15:28:44 $</kbd></p>
+<form><input TYPE="Button" VALUE="Back"
+onClick="history.go(-1)"></form>
+</body>
+</html>

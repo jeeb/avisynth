@@ -1,0 +1,132 @@
+<!doctype html public "-//W3C//DTD HTML 4.0 Transitional//EN">
+<html>
+<head>
+<title>Layer Avisynth Filter</title>
+<link rel="stylesheet" type="text/css" href="../../avisynth.css">
+</head>
+<body >
+<h2><a name="Layer"></a>Layer <em>[yuy2][rgb32]</em></h2>
+<p><code>Layer </code>(<var>base_clip, overlay_clip, string &quot;op&quot;, int &quot;level&quot;,
+  int &quot;x&quot;, int &quot;y&quot;, int &quot;threshold&quot;, bool &quot;use_chroma&quot;</var>)</p>
+<p>This filter can overlay two clips of different sizes (but with the same color
+  format) using different operation modes.<br>
+  For pixel-wise transparency information the 4th color channel of RGB32 (A- or
+  alpha-channel) is used as a mask.</p>
+<p><var>Base_clip</var>: the underlying clip which determines the size and all other
+  video and audio properties of the result.<br>
+  <var>Overlay_clip</var>: the clip which is merged onto clip. This clip can contain an alpha layer.<br>
+  <var>op</var>: the performed merge operation, which can be: &quot;add&quot;, &quot;subtract&quot;,
+  &quot;lighten&quot;, &quot;darken&quot;, &quot;fast&quot;, &quot;mul&quot;<br>
+  <var>level</var>: 0-257, the strength of the performed operation. 0: the
+base_clip is returned unchanged, 257 (256 for YUY2): the maximal strength is
+used<br>
+  <var>x, y</var>: offset position of the overlay_clip<br>
+  <var>threshold</var>: only implemented for &quot;lighten&quot; and &quot;darken&quot;<br>
+  <var>use_chroma</var>: use chroma of the overlay_clip, default=true. When false
+  only luma is used.</p>
+<p>There are some differences in the behaviour and the allowed parameter depending
+  on the color format and the operation, here are the details:</p>
+<ul>
+  <li>There is no mask (alpha-channel) in YUY2, so the alpha-channel is assumed
+  to be fully opaque everywhere.<br>
+  </li>
+  <li>in RGB32 the alpha-channel of the <var>overlay_clip</var> is multiplied with
+  <var>level</var>, so the resulting alpha = (alpha_mask * level + 1) / 256. This means
+  for full strength of operation alpha has to be 255 and <var>level</var> has to be
+    257.</li>
+</ul>
+<p>These operators behave equally for RGB32 or YUY2:</p>
+      <pre>&quot;fast&quot;: <i>use_chroma</i> must be TRUE, <i>level</i> and <i>threshold</i> is not used.
+        The result is simply the average of <i>base_clip</i> and <i>overlay_clip</i>.
+
+&quot;add&quot;:  <i>threshold</i> is not used. The difference between base_clip and
+        overlay_clip is multiplied with alpha and added to the base_clip.
+          alpha=0 -&gt; only base_clip visible,
+          alpha=128 -&gt; base and overlay equally blended,
+          alpha=255 -&gt; only overlay visible.
+	Formula used :-
+	  RGB32 :: base += ((overlay-base)*(alpha*level+1)&gt;&gt;8)&gt;&gt;8
+	  YUY2  :: base += ((overlay-base)*level)&gt;&gt;8
+
+&quot;subtract&quot;: the same as add, but the overlay_clip is inverted before.</pre>
+
+<p>These operators seem to work correctly only in YUY2:</p>
+
+      <pre>&quot;mul&quot;: <i>threshold</i> is not used. The base_clip is colored
+       as overlay_clip, so <i>use_chroma</i> should be TRUE.
+       alpha=0 -&gt; only base_clip visible, alpha=255 -&gt; approx.
+       the same Luminance as Base but with the colors of Overlay
+
+&quot;lighten&quot;: <i>use_chroma</i> must be TRUE. Performs the same operation
+           as &quot;add&quot;, but only when the result is BRIGHTER than the
+	   base the new values are used. With a higher <i>threshold</i>
+	   the operation is more likely, so with <i>threshold</i>=255
+	   it's the same as &quot;add&quot;, with threshold=0 the base_clip
+	   is more likely passed unchanged, depending on the
+	   difference between base_clip and overlay_clip.
+
+&quot;darken&quot;: the same as &quot;lighten&quot;, but it is performed only
+          when the result is DARKER than the base.</pre>
+
+<p>
+Also see <a href="../syntax.htm#multiclip" target="_self">here</a> for the resulting
+clip properties.</p>
+<h4><span class="mw-headline">Examples</span></h4>
+<p>This can be used to combine two captures of different broadcasts for reducing
+noise. A discussion of this idea can be found <a href="http://forum.doom9.org/showthread.php?s=&amp;threadid=28438" class="external text" title="http://forum.doom9.org/showthread.php?s=&amp;threadid=28438" rel="nofollow">here</a>.
+A sample script (of course you have to ensure that the frames of the two clips
+match exactly -- use <a href="deleteframe.htm" title="DeleteFrame">DeleteFrame</a>
+if necessary):</p>
+<pre>clip1 = AviSource(&quot;F:\shakira-underneath_your_clothes.avi&quot;).ConvertToYUY2
+clip2 = AviSource(&quot;F:\shakira-underneath_your_clothes2.avi&quot;).ConvertToYUY2
+return Layer(clip1, clip2, &quot;fast&quot;)</pre>
+<h2><a name="Mask"></a>Mask
+  <em>[rgb32]</em></h2>
+<p><code>Mask </code>(<var>clip, mask_clip</var>)</p>
+<p>Applies a defined alpha-mask to <var>clip</var>, for use with <code>Layer</code>, by
+  converting <var>mask_clip</var> to greyscale and using that for the mask (the alpha-channel)
+  of RGB32. In this channel &quot;black&quot; means completely transparent and white
+  means completely opaque.&nbsp;
+</p>
+<p>For those of you who familiar with Photoshop masks, the concept is the same.
+In fact you can create a black and white photo in Photoshop, load it in your
+script and use it as a mask.</p>
+<p>Here is an example; ss.jpg is derived from a snapshot from a video clip,
+which served as a guideline to create the mask just using Paint. We use
+Imagesource to load the image in the script and Mask to apply it.</p>
+<pre>bg = AviSource(&quot;01gray.avi&quot;).ConvertToRGB32()		# here is the background clip
+mk = Imagesource(&quot;ss.jpg&quot;).ConvertToRGB32()		# load the image
+top = AviSource(&quot;k3.avi&quot;).ConvertToRGB32().Mask(mk)	# load the top layer clip and apply the mask to it
+Layer(bg, top)						# layer the background and the top layer clip with the mask</pre>
+<h2><a name="ResetMask"></a>ResetMask <em>[rgb32]</em></h2>
+<p><code>ResetMask </code>(<var>clip</var>)</p>
+<p>Applies an &quot;all-opaque&quot; (that is white) alpha-mask to
+  <i>clip</i>, for use with <tt>Layer</tt>.</p>
+<p>The alpha-channel of a RGB32-clip is not always well-defined (depending on
+the source), this filter is the faster way to apply an all white mask:
+</p>
+<pre>clip = ResetMask(clip)</pre>
+<h2><a name="ColorKeyMask"></a>ColorKeyMask
+  <em>[rgb32]</em></h2>
+<p><code>ColorKeyMask </code>(<var>clip, int color[, int tolB, int tolG, int tolR]</var>)</p>
+<p>Clears pixels in the alpha-channel by comparing the <var>color</var> (default black).
+  Each pixel with a color differing less than (<var>tolB, tolR, tolG</var>)
+  (default 10) is set to transparent (that is black), otherwise it is left
+  unchanged i.e. It is NOT set to opaque (that it is not set to white, that's
+  why you might need ResetMask before applying this filter), this allows a
+  aggregate mask to be constructed with multiple calls. When <var>tolR</var>
+  or <var>tolG</var> are not set, they use the value from <var>tolB</var>
+  (which reflects the old behaviour). Normally you start with a ResetMask,
+  then chain a few calls to ColorKeyMask to cause transparent holes where each
+  color of interest occurs.  <b>See <a href="overlay.htm">Overlay</a> for
+  examples.</b></p>
+<p>For AviSynth versions older than v2.58, there were no separate tolerance
+  levels for blue, green and red. There was only one tolerance level called
+  <var>tolerance</var> and was used for blue, green and red simultaneously.</p>
+<p><kbd>$Date: 2012/03/18 15:25:39 $</kbd></p>
+<FORM>
+  <INPUT TYPE="Button" VALUE="Back"
+onClick="history.go(-1)">
+</form>
+</body>
+</html>

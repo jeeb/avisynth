@@ -1,0 +1,257 @@
+<!doctype html public "-//W3C//DTD HTML 4.0 Transitional//EN">
+<html>
+<head>
+<title>Subtitle Avisynth Filter</title>
+<link rel="stylesheet" type="text/css" href="../../avisynth.css">
+</head>
+<body>
+<h2>Subtitle</h2>
+<p><code>Subtitle </code>(<var>clip, string text,
+  float&nbsp;&quot;x&quot;,
+  float&nbsp;&quot;y&quot;,
+  int&nbsp;&quot;first_frame&quot;,
+  int&nbsp;&quot;last_frame&quot;,
+  string&nbsp;&quot;font&quot;,
+  float&nbsp;&quot;size&quot;,
+  int&nbsp;&quot;text_color&quot;,
+  int&nbsp;&quot;halo_color&quot;,
+  int&nbsp;&quot;align&quot;,
+  int&nbsp;&quot;spc&quot;,
+  int&nbsp;&quot;lsp&quot;,
+  float&nbsp;&quot;font_width&quot;,
+  float&nbsp;&quot;font_angle&quot;,
+  bool&nbsp;&quot;interlaced&quot;</var>)</p>
+
+<p><code>Subtitle </code> (<var>clip, string text</var>)</p>
+
+<p>The <code>Subtitle</code> filter adds anti-aliased text to a range of
+  frames. All parameters after text are
+  optional and can be omitted or specified out of order using the
+  <i>name</i>=<i>value</i> syntax.</p>
+
+<h4>Parameters</h4>
+
+<p><var>text</var>   is the text which will be overlayed on the clip starting
+  from frame <var>first_frame</var> and ending with frame <var>last_frame</var>.</p>
+
+<p>(<var>x</var>,<var>y</var>) is the position of the text. The parameters
+  <var>x</var> and <var>y</var> can be set to -1 to automatically calculate
+  and use the horizontal or vertical center coordinate. Other
+negative values of ''x'' and ''y'' can be used to give subtitles partially off
+the screen. <b>Caution:</b> If your script uses Subtitle with <a href="animate.htm">Animate</a>
+and negative ''x'' or ''y'' values, ''x'' or
+''y'' might momentarily become -1, causing a glitch in the video. Starting from <em>v2.60</em>
+they can be float.</p>
+
+<p><var>font</var> is the font of the text (all installed fonts on the current
+  machine are available, they are located in your 'windows\fonts' folder).</p>
+
+<p><var>size</var> is the height of the text in pixels, and is rounded to
+the nearest 0.125 pixel.</p>
+
+<p>The <var>text_color</var> and <var>halo_color</var> should be given as
+  hexadecimal $aarrggbb values, similar to HTML--except that they start
+  with $ instead of # and the 4th octet specifies the alpha transparency.
+  $00rrggbb is completely opaque, $FF000000 is fully transparent. You
+  can disable the halo by selecting this color. See <a href="../syntax_colors.htm">here</a>
+for more information on specifying colors.</p>
+
+<p>The <var>align</var> parameter allows you to set where the text is placed
+  relative to the (x,y) location and is based on the numeric keypad as
+  follows:</p>
+
+<table border="1" width="85%">
+  <tr>
+    <td width="15%">&lt;left> 7 &lt;top></td>
+    <td width="15%"> 	&lt;center> 8 &lt;top></td>
+    <td width="15%"> 	&lt;right> 9 &lt;top></td>
+    <td width="25%"> 	top of text aligned to y-location for align=7,8,9</td>
+  </tr>
+  <tr>
+    <td width="15%">&lt;left> 4 &lt;baseline></td>
+    <td width="15%"> 	&lt;center> 5 &lt;baseline></td>
+    <td width="15%"> 	&lt;right> 6 &lt;baseline></td>
+    <td width="25%"> 	baseline of text aligned to y-location for align=4,5,6</td>
+  </tr>
+  <tr>
+    <td width="15%">&lt;left> 1 &lt;bottom></td>
+    <td width="15%"> 	&lt;center> 2 &lt;bottom></td>
+    <td width="15%"> 	&lt;right> 3 &lt;bottom></td>
+    <td width="25%"> 	bottom of text aligned to y-location for align=1,2,3</td>
+  </tr>
+  <tr>
+    <td width="15%">start at x for align=1,4,7</td>
+    <td width="15%">	center on x for align=2,5,8</td>
+    <td width="15%">	end at x for align=3,6,9</td>
+    <td width="25%">&nbsp;</td>
+  </tr>
+</table>
+
+<p>Note: There is no vertical center alignment setting.</p>
+
+<p>The <var>spc</var> parameter allows you to modify the character spacing
+  (0=unchanged). The value can be positive or negative to widen or narrow the
+  text. Per the Visual C++ documentation of the function
+  SetTextCharacterExtra(), that performs this task, this value is in logical
+  units and rounded to the nearest 0.125 pixel. This is helpful for trying to
+  match typical fonts on the PC to fonts used in film and television credits
+  which are usually wider for the same height or to just fit or fill in a space
+  with a fixed per-character adjustment.</p>
+
+<p>Multi-line text using &quot;\n&quot; is added in <em>v2.57</em> and it is
+  used if the <var>lsp</var> (line spacing) parameter is set. It sets the
+  additional line space between two lines in 0.125 pixel units.</p>
+
+<p>The <var>font_width</var> parameter allows you to modify, in 0.125 units, the
+  aspect ratio of character glyphs per the Visual C++ documentation of the
+  function CreateFont(). It is related to the <var>size</var> parameter by the
+  default GDI aspect ratio and the natural aspect ratio of the chosen font.</p>
+
+<p>The <var>font_angle</var> parameter allows you to modify the baseline angle
+  of text in 0.1 degree increments anti-clockwise.</p>
+
+<p>The <var>interlaced</var> parameter when enabled reduces flicker from sharp
+  fine vertical transitions on interlaced displays. It does this by increasing
+  the window for the anti-aliaser to include 0.5 of the pixel weight from the
+  lines above and below, it effectivly applies a mild vertical blur.</p>
+
+<p>The short form (with all default parameters) form is useful when you don't
+  really care what the subtitle looks like as long as you can see it--for
+  example, when you're using <a href="stack.htm"> StackVertical</a> and its ilk
+  to display several versions of a frame at once, and you want to label them to
+  remember which is which.</p>
+
+<p>This filter is used internally by AviSynth for the <a href="version.htm">Version</a>
+  command and for reporting error messages, and the subtitling apparatus is
+  also used by <a href="showframes.htm">ShowFrameNumber</a> and friends.</p>
+
+<p><b>Default Values</b>
+<table border="1" width="60%">
+  <tr>
+    <td width="10%"><var>clip</var></td>
+    <td width="50%">            last&nbsp;</td>
+  </tr>
+  <tr>
+    <td width="10%"><var>text</var></td>
+    <td width="50%">            no default, must be specified&nbsp;</td>
+  </tr>
+  <tr>
+    <td width="10%"><var>x</var></td>
+    <td width="50%">            8 if align=1,4,7 or none; -1 if align=2,5,8; or width-8 if align=3,6,9&nbsp;</td>
+  </tr>
+  <tr>
+    <td width="10%"><var>y</var></td>
+    <td width="50%">            height-1 if align=1,2,3; size if align=4,5,6 or none;
+      or 0 if align=7,8,9</td>
+  </tr>
+  <tr>
+    <td width="10%"><var>first_frame</var></td>
+    <td width="50%">            0</td>
+  </tr>
+  <tr>
+    <td width="10%"><var>last_frame</var></td>
+    <td width="50%">            framecount(clip)-1</td>
+  </tr>
+  <tr>
+    <td width="10%"><var>font</var></td>
+    <td width="50%">            "Arial"</td>
+  </tr>
+  <tr>
+    <td width="10%"><var>size</var></td>
+    <td width="50%">            18.0</td>
+  </tr>
+  <tr>
+    <td width="10%"><var>text_color</var></td>
+    <td width="50%">            $00FFFF00 &lt;full opaque yellow></td>
+  </tr>
+  <tr>
+    <td width="10%"><var>halo_color</var></td>
+    <td width="50%">            0 &lt;full opaque black></td>
+  </tr>
+  <tr>
+    <td width="10%"><var>align</var></td>
+    <td width="50%">            Normally 4 &lt;left and baseline>; if x=-1, then 5 &lt;horizontal center and baseline></td>
+  </tr>
+  <tr>
+    <td width="10%"><var>spc</var></td>
+    <td width="50%">            0 &lt;font spacing unchanged></td>
+  </tr>
+  <tr>
+    <td width="10%"><var>lsp</var></td>
+    <td width="50%">            &lt;multiline is not enabled></td>
+  </tr>
+  <tr>
+    <td width="10%"><var>font_width</var></td>
+    <td width="50%">            0 &lt;system default></td>
+  </tr>
+  <tr>
+    <td width="10%"><var>font_angle</var></td>
+    <td width="50%">            0.0 degrees</td>
+  </tr>
+  <tr>
+    <td width="10%"><var>interlaced</var></td>
+    <td width="50%">            false</td>
+  </tr>
+</table>
+
+<p><b>Examples</b>
+<pre># Some text in the center of the clip:
+AviSource(&quot;D:\clip.avi&quot;)
+Subtitle(&quot;Hello world!&quot;, align=5)</pre>
+
+<pre># Some text in the upper right corner of the
+# clip with specified font, size and color red:
+AviSource(&quot;D:\clip.avi&quot;)
+Subtitle(&quot;Hello world!&quot;, font=&quot;georgia&quot;, size=24, \
+         text_color=$ff0000, align=9)</pre>
+
+<pre># Prints text on multiple lines
+# without any text halo border.
+BlankClip()
+Subtitle( \
+  &quot;Some text on line 1\\nMore text on line 1\n&quot; + \
+  &quot;Some text on line 2&quot;, \
+         lsp=10, halo_color=$ff000000)
+
+# It results in:
+Some text on line 1\nMore text on line 1
+Some text on line 2</pre>
+
+<pre><font># Use String() to display values of functions.
+AviSource(&quot;D:\clip.avi&quot;)
+Subtitle(&quot;Width=&quot; + String(Width()))</font></pre>
+
+<p><b>Version Specific Information</b>
+<table border="1" width="50%">
+  <tr>
+    <td width="10%">v2.60</td>
+    <td width="50%">position (x,y) can be float (previously int) (with 0.125
+      pixel granularity).</td>
+  </tr>
+  <tr>
+    <td width="10%">v2.58</td>
+    <td width="50%">Added font_width, font_angle, interlaced and alpha color blending.</td>
+  </tr>
+  <tr>
+    <td width="10%">v2.57</td>
+    <td width="50%">Added multi-line text and line spacing parameter.</td>
+  </tr>
+  <tr>
+    <td width="10%">v2.07</td>
+    <td width="50%">Added align and spc parameters.<br>
+        Setting y=-1 calculates vertical center (alignment unaffected)&nbsp;<br>
+        Default x and y values dependent on alignment (previously x=8, y=size)&nbsp;</td>
+  </tr>
+  <tr>
+    <td width="10%">v1.00</td>
+    <td width="50%">Setting x=-1 uses horizontal center and center alignment (undocumented prior to v2.07)</td>
+  </tr>
+</table>
+
+<p><kbd>$Date: 2011/12/04 15:28:44 $</kbd>
+<FORM>
+<INPUT TYPE="Button" VALUE="Back"
+onClick="history.go(-1)">
+</form>
+</body>
+</html>

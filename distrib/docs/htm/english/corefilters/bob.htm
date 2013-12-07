@@ -1,0 +1,199 @@
+<!doctype html public "-//w3c//dtd html 4.0 transitional//en">
+<html>
+<head>
+   <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+   <title>Bob Avisynth Filter</title>
+   <link rel="stylesheet" type="text/css" href="../../avisynth.css">
+</head>
+<body >
+<h2>
+<a NAME="Bob"></a>Bob
+</h2>
+<p><code>Bob </code>(<var>clip, float "b", float "c", float "height"</var>)
+<p><code>Bob</code> takes a clip and bob-deinterlaces it. This means that it
+enlarges each field into its own frame by interpolating between the lines.
+The top fields are nudged up a little bit compared with the bottom fields,
+so the picture will not actually appear to bob up and down. However, it
+will appear to "shimmer" in stationary scenes because the interpolation
+doesn't really reconstruct the other field very accurately.
+<p>This filter uses <a href="resize.htm"><code>BicubicResize</code></a> to
+do its dirty work. You can tweak the values of <var>b</var> and <var>c</var>. You can also take the opportunity to change the
+vertical resolution with the <var>height</var> parameter.
+<p>A bob filter doesn't really move the physical position of a field. It
+just puts it back where it started. If you just <tt><a href="separatefields.htm"><code>SeparateFields</code></a></tt>()
+then you have 2 half height frames: line 0 becomes line 0 of frame 0
+and line 1 becomes line 0 of frame 1. Thus line 0 and 1 are now in the
+same place! Bob now basically resizes each frame by a factor of two but
+in the first frame uses the original lines for the even lines and in the
+second frame uses the original lines for the odd lines, exactly as is supposed
+to be. If you just did a resize vertically by a factor of 2 on each frame
+after doing a <a href="separatefields.htm"><code>SeparateFields</code></a>(), then it wouldn't work right because
+the physical position of a field moves.
+<p>Schematic:
+<br>Suppose the lines 0o, 1o, 2o, 3o, ... are original lines and 0i, 1i,
+2i, 3i, ... are the interpolated lines.
+<p>start with
+<table BORDER COLS=2 WIDTH="40%" >
+<tr>
+<td>line number</td>
+
+<td>frame 0</td>
+</tr>
+
+<tr>
+<td>0)</td>
+
+<td>0o</td>
+</tr>
+
+<tr>
+<td>1)</td>
+
+<td>1o</td>
+</tr>
+
+<tr>
+<td>2)</td>
+
+<td>2o</td>
+</tr>
+
+<tr>
+<td>3)</td>
+
+<td>3o</td>
+</tr>
+</table>
+
+<p>separate fields
+<table BORDER COLS=3 WIDTH="40%" >
+<tr>
+<td>line number</td>
+
+<td>frame 0</td>
+
+<td>frame 1</td>
+</tr>
+
+<tr>
+<td>0)</td>
+
+<td>0o</td>
+
+<td>1o</td>
+</tr>
+
+<tr>
+<td>1)</td>
+
+<td>2o</td>
+
+<td>3o</td>
+</tr>
+</table>
+
+<p>double size
+<table BORDER COLS=3 WIDTH="40%" >
+<tr>
+<td>line number</td>
+
+<td>frame 0</td>
+
+<td>frame 1</td>
+</tr>
+
+<tr>
+<td>0)</td>
+
+<td>0o</td>
+
+<td>1o</td>
+</tr>
+
+<tr>
+<td>1)</td>
+
+<td>1i</td>
+
+<td>2i</td>
+</tr>
+
+<tr>
+<td>2)</td>
+
+<td>2o</td>
+
+<td>3o</td>
+</tr>
+
+<tr>
+<td>3)</td>
+
+<td>3i</td>
+
+<td>4i</td>
+</tr>
+</table>
+
+<p>but this is wrong, because the physical position of the field changed.
+<p>Bob does it right
+<table BORDER COLS=3 WIDTH="40%" >
+<tr>
+<td>line number</td>
+
+<td>frame 0</td>
+
+<td>frame 1</td>
+</tr>
+
+<tr>
+<td>0)</td>
+
+<td>0o</td>
+
+<td>0i</td>
+</tr>
+
+<tr>
+<td>1)</td>
+
+<td>1i</td>
+
+<td>1o</td>
+</tr>
+
+<tr>
+<td>2)</td>
+
+<td>2o</td>
+
+<td>2i</td>
+</tr>
+
+<tr>
+<td>3)</td>
+
+<td>3i</td>
+
+<td>3o</td>
+</tr>
+</table>
+
+<h4>To strictly preserve the original fields and just fill in the missing lines.</h4>
+<pre>bob(0.0, 1.0)</pre>
+
+<p>Bob(0.0, 1.0) preserves the original fields for RGB and YUY2 and preserves
+the Luma but not the Chroma for YV12.
+
+<p>The filter coefficients with b=0.0 and c=1.0 give you 0 at x=1.0/2.0 and 1 at x=0.
+Which with the +/-0.25 shift occurring on the original field locations, you
+get a very crisp cubic filter with -1/8 5/8 5/8 -1/8 coefficients on the
+x=0.5/1.5 taps for the other field.
+
+<p>However, since the shift on the chroma planes is only 0.125 for YV12 the taps
+don't end up on exactly the same distances. More <a href="http://forum.doom9.org/showthread.php?p=826073#post826073">discussion</a>.
+<p><kbd>$Date: 2007/03/10 22:35:42 $</kbd></p>
+<form><input TYPE="Button" VALUE="Back"
+onClick="history.go(-1)"></form>
+</body>
+</html>

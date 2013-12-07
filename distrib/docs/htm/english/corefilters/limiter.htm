@@ -1,0 +1,117 @@
+<!doctype html public "-//w3c//dtd html 4.0 transitional//en">
+<html>
+<head>
+   <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+   <title>Limiter Avisynth Filter</title>
+   <link rel="stylesheet" type="text/css" href="../../avisynth.css">
+</head>
+<body>
+<h2>
+<a NAME="Limiter"></a>Limiter
+</h2>
+<p><code>Limiter </code>(<var>clip, int &quot;min_luma&quot;, int
+&quot;max_luma&quot;, int &quot;min_chroma&quot;,
+int &quot;max_chroma&quot;, string &quot;show&quot;</var>)
+<p>This filter is present in <em>v2.5</em>. The standard known as CCIR-601 defines
+the range of pixel values considered legal for presenting on a TV. These
+ranges are 16-235 for the luma component and 16-240 for the chroma component.
+<p>Pixels outside this range are known to cause problems with some TV sets,
+and thus it is best to remove them before encoding if that is your intended
+display device. By default this filter clips (or "clamps") pixels under
+16 to 16 and over 235 (or 240) to 235 (or 240).
+<p>Prior to <em>v2.53</em> the (incorrect) default value was 236. Use
+Limiter(16, 235, 16, 240) for CCIR-601 compliant digital video.
+<p>In&nbsp; <em>v2.56</em>, an option <var>show</var> is added. If set, it colors the
+pixels outside the specified [min_luma,max_luma] or [min_chroma,max_chroma]
+range.<p><var>show</var> can be "luma" (shows out of bounds luma in red/green),
+"luma_grey" (shows out of bounds luma and makes the remaining pixels greyscale),
+"chroma" (shows out of bounds chroma in yellow), "chroma_grey" (shows out of bounds
+chroma and makes the remaining pixels greyscale). The coloring is done as follows:
+<p>YUY2 (chroma shared between two horizontal pixels p1 and p2: Y1UY2V): j,k=1,2<br>
+YV24 (no chroma shared): j,k=1<br>
+YV12 (chroma shared between 2x2 pixels Y11UY12V; Y21UY22V): j,k=11,12,21,22</p>
+<table border="1" width="60%">
+  <tr>
+    <th width="33%">&nbsp;</th>
+    <th width="33%">luma</th>
+    <th width="33%">luma_grey</th>
+  </tr>
+  <tr>
+    <td width="33%">Yj &lt; min_luma</td>
+    <td width="33%">red (pj)</td>
+    <td width="33%">red (pj)</td>
+  </tr>
+  <tr>
+    <td width="33%">Yj &gt; max_luma</td>
+    <td width="33%">green (pj)</td>
+    <td width="33%">green (pj)</td>
+  </tr>
+  <tr>
+    <td width="33%">Yj &lt; min_luma and Yk &gt; max_luma</td>
+    <td width="33%">yellow (all)</td>
+    <td width="33%">puke (pj), olive (pk)</td>
+  </tr>
+  <tr>
+    <th width="33%">&nbsp;</th>
+    <th width="33%">chroma</th>
+    <th width="33%">chroma_grey</th>
+  </tr>
+  <tr>
+    <td width="33%">U &lt; min_chroma</td>
+    <td width="33%">yellow</td>
+    <td width="33%">yellow</td>
+  </tr>
+  <tr>
+    <td width="33%">U &gt; max_chroma</td>
+    <td width="33%">yellow</td>
+    <td width="33%">blue</td>
+  </tr>
+  <tr>
+    <td width="33%">V &lt; min_chroma</td>
+    <td width="33%">yellow</td>
+    <td width="33%">cyan</td>
+  </tr>
+  <tr>
+    <td width="33%">V &gt; max_chroma</td>
+    <td width="33%">yellow</td>
+    <td width="33%">red</td>
+  </tr>
+  <tr>
+    <td width="33%">U &lt; min_chroma and V &lt; min_chroma</td>
+    <td width="33%">yellow</td>
+    <td width="33%">green</td>
+  </tr>
+  <tr>
+    <td width="33%">U &gt; max_chroma and V &lt; min_chroma</td>
+    <td width="33%">yellow</td>
+    <td width="33%">teal</td>
+  </tr>
+  <tr>
+    <td width="33%">U &lt; min_chroma and V &gt; max_chroma</td>
+    <td width="33%">yellow</td>
+    <td width="33%">orange</td>
+  </tr>
+  <tr>
+    <td width="33%">U &gt; max_chroma and V &gt; max_chroma</td>
+    <td width="33%">yellow</td>
+    <td width="33%">magenta</td>
+  </tr>
+</table>
+<p><b>Changelog:</b></p>
+<table border="1">
+  <tbody>
+    <tr>
+      <td>v2.60</td>
+      <td>Added show for YV24.</td>
+    </tr>
+    <tr>
+      <td>v2.56</td>
+      <td>added show to show out of bounds luma/chroma</td>
+    </tr>
+  </tbody>
+</table>
+<p><kbd>$Date: 2012/04/09 08:19:32 $</kbd></p>
+<form><input TYPE="Button" VALUE="Back"
+onClick="history.go(-1)"></form>
+</body>
+</html>

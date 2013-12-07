@@ -1,0 +1,33 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+<HTML>
+<HEAD>
+   <META HTTP-EQUIV="Content-Type" CONTENT="text/html; charset=iso-8859-1">
+   <TITLE>MixAudio Avisynth Filter</TITLE>
+   <link rel="stylesheet" type="text/css" href="../../avisynth.css">
+</HEAD>
+<BODY >
+<h2>
+<A NAME="MixAudio"></A>MixAudio
+</h2>
+<P><code>MixAudio </code>(<var>clip1, clip2, float &quot;clip1_factor&quot;, float &quot;clip2_factor</var>&quot;)
+<P>Mixes audio from two clips. A volume for the two clips can be given,
+but is optional.
+<P>Volume is given as a factor, where 0.0 is no audio from the desired
+channel, and 1.0 is 100% from the desired channel. Default is 0.5/0.5 -
+if only one factor is given, the other channel will be 1.0-(factor). If
+factor1 + factor2 is more than 1.0, you risk clipping your signal.
+<P>The sample rate of the two clips needs to be the same (use <a href="resampleaudio.htm" title="ResampleAudio">ResampleAudio</a>
+if necessary). Your clips need also to have the same number of channels
+(stereo/mono) - use <a href="converttomono.htm" title="ConvertToMono">ConvertToMono</a>
+or <a href="monotostereo.htm" title="MonoToStereo">MonoToStereo</a> / <a href="mergechannels.htm" title="MergeChannels">MergeChannels</a>
+if necessary.
+<P><b>Example:</b>
+<PRE># Mixes two sources, with one source slightly lower than the other.
+Soundtrack = WavSource(&quot;c:\soundtrack.wav&quot;)
+Speak = WavSource(&quot;c:\speak.wav&quot;)
+return MixAudio(Soundtrack, Speak, 0.75, 0.25)&nbsp;&nbsp;&nbsp; # The Expert may notice that the last 0.25 is actually redundant here.</PRE>
+<p><kbd>$Date: 2010/02/27 14:45:27 $</kbd></p>
+<FORM><INPUT TYPE="Button" VALUE="Back"
+onClick="history.go(-1)"></FORM>
+</BODY>
+</HTML>
