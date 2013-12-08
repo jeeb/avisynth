@@ -67,7 +67,7 @@ Cache::Cache(const PClip& _child) :
   VideoPolicy(CACHE_GENERIC),
   AudioPolicy(CACHE_AUDIO)
 {
-  VideoCache = boost::make_shared<LruCache<size_t, PVideoFrame> >(0); // TODO
+  VideoCache = boost::make_shared<LruCache<size_t, PVideoFrame> >(5); // TODO
 }
 
 Cache::~Cache()
@@ -86,14 +86,6 @@ PVideoFrame __stdcall Cache::GetFrame(int n, IScriptEnvironment* env)
 
   if (!VideoCache->get_insert(n, &frame, &cache_handle))
   {
-    VideoCacheStats.AddMiss();
-    float miss_avg = VideoCacheStats.WindowedMissAvg();
-    if (miss_avg < StatsLastResult)
-    {
-      StatsLastResult = miss_avg;
-      ++(VideoCache->max_size);
-    }
-
     try
     {
       frame = child->GetFrame(n, env);
@@ -107,10 +99,6 @@ PVideoFrame __stdcall Cache::GetFrame(int n, IScriptEnvironment* env)
       VideoCache->rollback(&cache_handle);
       throw;
     }
-  }
-  else
-  {
-    VideoCacheStats.AddHit();
   }
 
   return frame;
@@ -228,7 +216,7 @@ int __stdcall Cache::SetCacheHints(int cachehints, int frame_range)
     case CACHE_WINDOW:
       VideoPolicy = CACHE_WINDOW;
       VideoCacheWindowRange = frame_range;
-      VideoCache->max_size = frame_range*2+1;
+//      VideoCache->max_size = frame_range*2+1;	TODO
       break;
 
     case CACHE_GET_POLICY: // Get the current policy.

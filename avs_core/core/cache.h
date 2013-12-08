@@ -38,7 +38,7 @@
 #include <avisynth.h>
 #include <boost/circular_buffer.hpp>
 #include "LruCache.h"
-
+/*
 class CacheStats
 {
 private:
@@ -93,7 +93,7 @@ public:
       return 1.0f;
     }
   }
-};
+};*/
 
 class Cache : public IClip
 {
@@ -109,7 +109,7 @@ private:
   int   StatsLastCheckCooldown;
   float StatsLastResult;
   int  CacheCanEnlarge;
-  CacheStats VideoCacheStats;
+//  CacheStats VideoCacheStats;
 
   // Audio cache
   CachePolicyHint AudioPolicy;

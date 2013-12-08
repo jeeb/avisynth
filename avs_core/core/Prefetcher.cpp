@@ -52,7 +52,8 @@ Prefetcher::Prefetcher(const PClip& _child, size_t _nThreads, IScriptEnvironment
   PatternLength(0),
   Pattern(1),
   LastRequestedFrame(0),
-  running_workers(0)
+  running_workers(0),
+  worker_exception_present(false)
 {
   env->SetPrefetcher(this);
   VideoCache = boost::make_shared<LruCache<size_t, PVideoFrame> >(_nThreads*6); // TODO

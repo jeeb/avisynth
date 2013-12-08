@@ -1023,7 +1023,7 @@ VideoFrame* ScriptEnvironment::GetNewFrame(size_t vfb_size)
    */
   for (
     FrameRegistryType::iterator it = FrameRegistry.begin();
-    it != FrameRegistry.end() && (it->second->vfb->data_size < vfb_size);
+    it != FrameRegistry.end() && (size_t(it->second->vfb->data_size) < vfb_size);
     ++it)
   {
     VideoFrame *frame = it->second;
@@ -1452,6 +1452,7 @@ success:;
     *result = f->apply(funcArgs, f->user_data, this);
   else
     *result = Cache::Create(MTGuard::Create(f, funcArgs, this), f->user_data, this);
+//    *result = Cache::Create(f->apply(funcArgs, f->user_data, this), NULL, this);
 
   return true;
 }
