@@ -677,6 +677,7 @@ ScriptEnvironment::ScriptEnvironment()
     global_var_table->Set("false", false);
     global_var_table->Set("yes", true);
     global_var_table->Set("no", false);
+    global_var_table->Set("last", AVSValue());
 
     global_var_table->Set("$ScriptName$", AVSValue());
     global_var_table->Set("$ScriptFile$", AVSValue());
@@ -1447,12 +1448,19 @@ success:;
   }
  
   // ... and we're finally ready to make the call
-  AVSValue funcArgs(args3.data(), args3_count);
-  if (f->IsScriptFunction())
-    *result = f->apply(funcArgs, f->user_data, this);
-  else
-    *result = Cache::Create(MTGuard::Create(f, funcArgs, this), f->user_data, this);
-//    *result = Cache::Create(f->apply(funcArgs, f->user_data, this), NULL, this);
+  try
+  {
+    AVSValue funcArgs(args3.data(), args3_count);
+    if (f->IsScriptFunction())
+      *result = f->apply(funcArgs, f->user_data, this);
+    else
+      *result = Cache::Create(MTGuard::Create(f, funcArgs, this), f->user_data, this);
+  //    *result = Cache::Create(f->apply(funcArgs, f->user_data, this), NULL, this);
+  }
+  catch (const ReturnExprException &e) 
+  {
+    *result = e.value;
+  }
 
   return true;
 }

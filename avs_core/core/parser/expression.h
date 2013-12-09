@@ -42,8 +42,10 @@
 ********************************************************************/
 
 
-
-
+struct ReturnExprException
+{
+	AVSValue value;
+};
 
 /**** Base Classes ****/
 
@@ -206,7 +208,15 @@ private:
   const PExpression If, Then, Else;
 };
 
+class ExpReturn : public Expression
+{
+public:
+	ExpReturn(PExpression value) : value(value) {}
+	virtual AVSValue Evaluate(IScriptEnvironment* env);
 
+private:
+	const PExpression value;
+};
 
 
 
