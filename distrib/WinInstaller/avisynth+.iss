@@ -287,7 +287,7 @@ begin
       else PlugPlus32 := AvsDirsPlus.Prog + AvsDirsDefault.PlugPlus32;
 
       if DirExists(AvsDirsReg.Plug64) then 
-        Plug64 := AvsDirsReg.Plug32
+        Plug64 := AvsDirsReg.Plug64
       else Plug64 := AvsDirsPlus.Prog + AvsDirsDefault.Plug64;
 
       if DirExists(AvsDirsReg.PlugPlus64) then 
@@ -470,6 +470,17 @@ end;
 
 procedure InitializeWizard;
 begin
+  WizardForm.Bevel.Visible := False;
+  WizardForm.Bevel1.Visible := False;
+  WizardForm.MainPanel.Color := $a35460;
+  WizardForm.MainPanel.Font.Color := $fcfcfc;
+  WizardForm.PageNameLabel.Font.Color := $fcfcfc;
+  //WizardForm.InnerPage.Color := $ffffff;
+  WizardForm.WelcomePage.Color := $fcfcfc;
+  WizardForm.LicenseMemo.BorderStyle := bsNone;
+  WizardForm.ReadyMemo.ScrollBars:= ssVertical;
+ 
+  
 
   MigrationPage := CreateInputOptionPage(wpSelectDir, CustomMessage('MigPageCaption'), FmtMessage(CustomMessage('MigPageDescription'),['{#AvsName}']),
                    FmtMessage(CustomMessage('MigPageSubCaption'),['{#AvsName}',AvsDirsReg.Prog]), True, False)
