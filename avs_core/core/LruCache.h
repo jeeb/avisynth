@@ -21,8 +21,13 @@ struct LruGhostEntry
   K key;
   size_t ghosted;
 
-  LruGhostEntry(K key) :
-    key(key), ghosted(0)
+  LruGhostEntry() :
+    key(0), ghosted(0)
+  {
+  }
+
+  LruGhostEntry(K key, size_t ghosted) :
+    key(key), ghosted(ghosted)
   {
   }
 };
@@ -45,73 +50,140 @@ struct LruEntry
 
 
 
-
-
-
-
 template<typename K, typename V>
 class SimpleLruCache
 {
 private:
-  typedef size_t  size_type;
-  typedef std::pair<K, V> entry_type;
-  typedef std::list<entry_type, boost::fast_pool_allocator<entry_type> >  list_type;
-  typedef typename list_type::iterator  list_iterator;
-  typedef boost::unordered_map<K, list_iterator, boost::hash<K>, std::equal_to<K>, boost::fast_pool_allocator<std::pair<K const, list_iterator> > > map_type;
+  struct Entry
+  {
+    Entry* next;
+    Entry* prev;
+    K key;
+    V value;
+    unsigned int ref;
 
-  list_type list;
-  map_type map;
+    Entry() :
+      next(NULL),
+      prev(NULL)
+    {}
+
+    void Relink(Entry* node)
+    {
+      assert(node != NULL);
+
+      // Make pointer backups
+      Entry* p = this->prev;
+      Entry* n = this->next;
+
+      // Place this node to its new position, after node
+      this->next = node->next;
+      node->next->prev = this;
+      this->prev = node;
+      node->next = this;
+
+      // Tie together earlier neighbors
+      p->next = n;
+      n->prev = p;
+    }
+  };
+
+  size_t capacity;
+  size_t size;
+  Entry* head;
+  Entry* tail;
+  boost::object_pool<Entry> EntryPool;
 
 public:
-
-  size_type max_size;
-
-  SimpleLruCache(size_type max_size) :
-    max_size(max_size)
+  SimpleLruCache(size_t capacity) :
+    capacity(capacity),
+    size(0),
+    head(NULL),
+    tail(NULL)
   {
-    const float MAX_LOAD_FACOR = 0.8f;
-    map.max_load_factor(MAX_LOAD_FACOR);
-    map.reserve((map_type::size_type)(max_size/MAX_LOAD_FACOR)+1);
   }
 
-  size_type size() const
+  size_t get_size() const
   {
-    return list.size();
+    return size;
+  }
+  size_t get_capacity() const
+  {
+    return capacity;
   }
 
-  V* lookup(K key)
+  V* lookup(const K& key, bool *found)
   {
-    map_type::iterator it = map.find(key);
-    if (it != map.end())
+    // If the cache is empty, treat it specially
+    if (size == 0)
     {
-      // move element to front of lru list
-      list.splice(list.begin(), list, it->second);
+      head = EntryPool.construct();
+      tail = head;
+      *found = false;
+      return &(head->value);
+    }
 
-      return &(it->second->second);
+    // Try to find existing item
+    Entry* search_hand = head;
+    for (size_t i = 0; i < size; ++i)
+    {
+      if (search_hand->key == key)
+      {
+        // Item found, put it to the front of the list.
+        search_hand->Relink(head);
+
+        *found = true;
+        return &(search_hand->value);
+      }
+
+      search_hand = search_hand->next;
+    }
+    
+    // Nothing found
+
+    Entry* newItem;
+    if (size < capacity)
+    {
+      // Create new item from scratch
+      newItem = EntryPool.construct();
     }
     else
     {
-      // add new element
-      list_iterator li = list.insert(list.begin(), std::make_pair(key, V(key)));
-      map.insert(map_type::value_type(key, li));
-      
-      // trim cache
-      // we only delete elements from the back
-      while(list.size() > max_size)
+      // Recycle item from end of list
+      // TODO: special case if size = 1
+      newItem = tail;
+      tail = tail->prev;
+      tail->next = NULL;
+    }
+
+    // Add new item to front of list
+    Entry* oldHead = head;
+    head = newItem;
+    head->next = oldHead;
+    oldHead->prev = head;
+
+    *found = false;
+    return &(head->value);
+  }
+
+  void set_capacity(size_t new_cap)
+  {
+    if (new_cap > capacity)
+    {
+      capacity = new_cap;
+    }
+    else
+    {
+      while(capacity > new_cap)
       {
-        const entry_type& e = list.back();
-        map.erase(e.second.key);
-        list.pop_back();
+        Entry* oldTail = tail;
+        tail = tail->prev;
+        tail->next = NULL;
+        EntryPool.destroy(oldTail);
+        --capacity;
       }
-      
-      return &(li->second);
-    } // if
+    }
   }
 };
-
-
-
-
 
 
 template<typename K, typename V>
@@ -205,11 +277,17 @@ public:
       *hndl = handle(list.insert(list.begin(), entry_pool.construct(key)), this->shared_from_this());
       map.insert(map_type::value_type(key, hndl->first));
 
-      LruGhostEntry<K>* g = ghosts.lookup(key);
+      bool gfound;
+      LruGhostEntry<K>* g = ghosts.lookup(key, &gfound);
+      if (!gfound)
+      {
+        *g = LruGhostEntry<K>(key, 0);
+      }
+
       if (g->ghosted > 0)
       {
         max_size += 1;
-        ghosts.max_size += 2;
+        ghosts.set_capacity(ghosts.get_capacity() + 2);
       }
       list.front()->ghosted = g->ghosted;
       
@@ -220,8 +298,11 @@ public:
         entry_ptr e = list.back();
         if (e->locks == 0)
         {
-          LruGhostEntry<K>* g = ghosts.lookup(key);
-          g->ghosted = e->ghosted + 1;
+          LruGhostEntry<K>* g = ghosts.lookup(e->key, &gfound);
+          if (gfound)
+            g->ghosted = e->ghosted + 1;
+          else
+            *g = LruGhostEntry<K>(e->key, e->ghosted + 1);
 
           map.erase(e->key);
           list.pop_back();
