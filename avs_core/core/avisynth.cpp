@@ -1321,7 +1321,6 @@ bool __stdcall ScriptEnvironment::Invoke(AVSValue *result, const char* name, con
 {
   bool strict = false;
   const AVSFunction *f;
-  AVSValue retval;
 
   const int args_names_count = (arg_names && args.IsArray()) ? args.ArraySize() : 0;
 
@@ -1410,14 +1409,9 @@ bool __stdcall ScriptEnvironment::Invoke(AVSValue *result, const char* name, con
 success:;
     }
   }
+
   // ... and we're finally ready to make the call
-  try {
-    retval = f->apply(AVSValue(args3.data(), args3_count), f->user_data, this);
-  }
-  catch (ReturnExprException &e) {
-    retval = e.value;
-  }
-  *result = retval;
+  *result = f->apply(AVSValue(args3.data(), args3_count), f->user_data, this);
   return true;
 }
 

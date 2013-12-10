@@ -45,6 +45,20 @@ class BreakStmtException
 {
 };
 
+AVSValue ExpRootBlock::Evaluate(IScriptEnvironment* env) 
+{
+  AVSValue retval;
+
+  try {
+    retval = exp->Evaluate(env);
+  }
+  catch (const ReturnExprException &e) {
+    retval = e.value;
+  }
+
+  return retval;
+}
+
 AVSValue ExpSequence::Evaluate(IScriptEnvironment* env) 
 {
     AVSValue last = a->Evaluate(env);

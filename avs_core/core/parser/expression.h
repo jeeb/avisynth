@@ -91,6 +91,16 @@ private:
 
 /**** Object classes ****/
 
+class ExpRootBlock : public Expression 
+{
+public:
+  ExpRootBlock(const PExpression& e) : exp(e) {}
+  virtual AVSValue Evaluate(IScriptEnvironment* env);
+
+private:
+  const PExpression exp;
+};
+
 class ExpConstant : public Expression 
 {
 public:
