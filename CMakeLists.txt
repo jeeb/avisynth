@@ -39,3 +39,38 @@ ENDIF()
 
 add_subdirectory("avs_core")
 add_subdirectory("plugins")
+
+# Dynamically generate the version info so that the sequential revision in Version() doesn't literally say 'rXXX'
+# Based on an example given on the CMake mailing list: http://www.cmake.org/pipermail/cmake/2010-July/038015.html
+
+FIND_PACKAGE(Git)
+
+# Protect against the (somewhat typical) case of git being installed to Program Files
+set(GIT "${GIT_EXECUTABLE}")
+
+FILE(WRITE ${CMAKE_BINARY_DIR}/main.c
+    "\#include \"avs_core/core/version.h\"\nint main(void){return 0;}\n"
+)
+
+FILE(WRITE ${CMAKE_BINARY_DIR}/version.h.in
+    "\#define AVS_SEQREV \"@AVS_SEQREV@\"\n"
+)
+
+FILE(WRITE ${CMAKE_BINARY_DIR}/version.cmake
+    "EXECUTE_PROCESS(
+         COMMAND \"@GIT@\" rev-list --count HEAD
+         OUTPUT_VARIABLE AVS_SEQREV
+         OUTPUT_STRIP_TRAILING_WHITESPACE
+     )
+     CONFIGURE_FILE(\${SRC} \${DST} @ONLY)
+")
+
+INCLUDE_DIRECTORIES(${CMAKE_BINARY_DIR})
+ADD_EXECUTABLE(main main.c)
+ADD_CUSTOM_TARGET(
+    version
+    ${CMAKE_COMMAND} -D SRC=${CMAKE_BINARY_DIR}/version.h.in
+                     -D DST=${CMAKE_BINARY_DIR}/avs_core/core/version.h
+                     -P ${CMAKE_BINARY_DIR}/version.cmake
+)
+ADD_DEPENDENCIES(main version)
