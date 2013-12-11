@@ -113,15 +113,15 @@ Source: "{commonprograms}\AviSynth 2.5\*"; DestDir:{code:GetAvsDirsLegacy|Prog}\
 Source: "..\gpl*.txt"; DestDir: "{app}\License"; Components: main; Flags: ignoreversion
 Source: "..\lgpl_for_used_libs.txt"; DestDir: "{app}\License"; Components: main; Flags: ignoreversion
 
-Source: "{#BuildDir32}\Output\AviSynth.dll"; DestDir:{sys}; Components: main\avs32; Flags: 32bit ignoreversion
-Source: "{#BuildDir32}\Output\System\DevIL.dll"; DestDir:{sys}; Components: main\avs32; Flags: 32bit ignoreversion
-Source: "{#BuildDir32}\Output\Plugins\*.dll"; DestDir:{code:GetAvsDirsPlus|PlugPlus32}; Components: main\avs32; Flags: ignoreversion
-Source: "..\ColorPresets\*"; DestDir:{code:GetAvsDirsPlus|PlugPlus32}; Components: main\avs32; Flags: ignoreversion
+Source: "{#BuildDir32}\Output\AviSynth.dll"; DestDir:{sys}; Components: main\avs32; Flags: 32bit ignoreversion 
+Source: "{#BuildDir32}\Output\System\DevIL.dll"; DestDir:{sys}; Components: main\avs32; Flags: 32bit ignoreversion 
+Source: "{#BuildDir32}\Output\Plugins\*.dll"; DestDir:{code:GetAvsDirsPlus|PlugPlus32}; Components: main\avs32; Flags: ignoreversion 
+Source: "..\ColorPresets\*"; DestDir:{code:GetAvsDirsPlus|PlugPlus32}; Components: main\avs32; Flags: ignoreversion 
 Source: "..\Prerequisites\vcredist_x86.exe"; DestDir: {app}; Components: main\avs32; Flags: deleteafterinstall
 
-Source: "{#BuildDir64}\Output\AviSynth.dll"; DestDir:{sys}; Components: main\avs64; Flags: 64bit ignoreversion
-Source: "{#BuildDir64}\Output\System\DevIL.dll"; DestDir:{sys}; Components: main\avs64; Flags: 64bit ignoreversion
-Source: "{#BuildDir64}\Output\Plugins\*.dll"; DestDir:{code:GetAvsDirsPlus|PlugPlus64}; Components: main\avs64; Flags: ignoreversion
+Source: "{#BuildDir64}\Output\AviSynth.dll"; DestDir:{sys}; Components: main\avs64; Flags: 64bit ignoreversion 
+Source: "{#BuildDir64}\Output\System\DevIL.dll"; DestDir:{sys}; Components: main\avs64; Flags: 64bit ignoreversion 
+Source: "{#BuildDir64}\Output\Plugins\*.dll"; DestDir:{code:GetAvsDirsPlus|PlugPlus64}; Components: main\avs64; Flags: ignoreversion 
 Source: "..\ColorPresets\*"; DestDir:{code:GetAvsDirsPlus|PlugPlus64}; Components: main\avs64; Flags: ignoreversion
 Source: "..\Prerequisites\vcredist_x64.exe"; DestDir: {app}; Components: main\avs64; Flags: deleteafterinstall
 
@@ -288,7 +288,7 @@ begin
       else PlugPlus32 := AvsDirsPlus.Prog + AvsDirsDefault.PlugPlus32;
 
       if DirExists(AvsDirsReg.Plug64) then 
-        Plug64 := AvsDirsReg.Plug32
+        Plug64 := AvsDirsReg.Plug64
       else Plug64 := AvsDirsPlus.Prog + AvsDirsDefault.Plug64;
 
       if DirExists(AvsDirsReg.PlugPlus64) then 
@@ -471,6 +471,16 @@ end;
 
 procedure InitializeWizard;
 begin
+  WizardForm.Bevel.Visible := False;
+  WizardForm.Bevel1.Visible := False;
+  WizardForm.MainPanel.Color := $a35460;
+  WizardForm.MainPanel.Font.Color := $fcfcfc;
+  WizardForm.PageNameLabel.Font.Color := $fcfcfc;
+  //WizardForm.InnerPage.Color := $ffffff;
+  WizardForm.WelcomePage.Color := $fcfcfc;
+  WizardForm.ReadyMemo.ScrollBars:= ssVertical;
+ 
+  
 
   MigrationPage := CreateInputOptionPage(wpSelectDir, CustomMessage('MigPageCaption'), FmtMessage(CustomMessage('MigPageDescription'),['{#AvsName}']),
                    FmtMessage(CustomMessage('MigPageSubCaption'),['{#AvsName}',AvsDirsReg.Prog]), True, False)
