@@ -47,12 +47,6 @@
 // Intrinsics for SSE4.1, SSSE3, SSE3, SSE2, ISSE and MMX
 #include <smmintrin.h>
 
-__forceinline static void allocate_frame_buffer(BYTE*& ptr, int& pitch, int w, int h)
-{
-  pitch = AlignNumber(w, 64); // alignment and pitch etc.
-  ptr = (BYTE*) _aligned_malloc(pitch*h, 64);
-}
-
 /***************************************
  ********* Templated SSE Loader ********
  ***************************************/
@@ -461,9 +455,12 @@ FilteredResizeH::FilteredResizeH( PClip _child, double subrange_left, double sub
   src_pitch_table_luma     = new int[vi.width];
   resampler_luma   = FilteredResizeV::GetResampler(env->GetCPUFlags(), true, filter_storage_luma, resampling_program_luma);
 
-  // Allocate temporary byte buffer
-  allocate_frame_buffer(temp_1, temp_1_pitch, vi.BytesFromPixels(src_height), src_width); // transposed
-  allocate_frame_buffer(temp_2, temp_2_pitch, vi.BytesFromPixels(dst_height), dst_width); // transposed
+  // Allocate temporary byte buffer (frame is transposed)
+  temp_1_pitch = AlignNumber(vi.BytesFromPixels(src_height), 64);
+  temp_1 = (BYTE*) _aligned_malloc(temp_1_pitch * src_width, 64);
+  temp_2_pitch = AlignNumber(vi.BytesFromPixels(dst_height), 64);
+  temp_2 = (BYTE*) _aligned_malloc(temp_2_pitch * dst_width, 64);
+
   resize_v_create_pitch_table(src_pitch_table_luma, temp_1_pitch, src_width);
 
   if (vi.IsPlanar() && !vi.IsY8()) {
