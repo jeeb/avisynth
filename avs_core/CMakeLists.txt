@@ -29,3 +29,17 @@ if (MSVC_IDE)
     COMMAND xcopy /Y \"$(TargetPath)\" \"${CMAKE_BINARY_DIR}/Output\"
   )
 endif()
+
+# Dynamically generate the sequential version info from Git
+# Based on the example here: http://www.cmake.org/pipermail/cmake/2010-July/038015.html
+FIND_PACKAGE(Git)
+INCLUDE_DIRECTORIES(${CMAKE_CURRENT_BINARY_DIR})
+ADD_CUSTOM_TARGET(
+    VersionGen
+    ${CMAKE_COMMAND} -D SRC=${CMAKE_CURRENT_SOURCE_DIR}/core/version.h.in
+                     -D DST=${CMAKE_CURRENT_BINARY_DIR}/version.h
+                     -D GIT=${GIT_EXECUTABLE}
+                     -D REPO=${CMAKE_SOURCE_DIR}
+                     -P ${CMAKE_CURRENT_SOURCE_DIR}/Version.cmake
+)
+ADD_DEPENDENCIES("AvsCore" VersionGen)
