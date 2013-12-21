@@ -197,13 +197,6 @@ AVSValue ExpForLoop::Evaluate(IScriptEnvironment* env)
   const int iLimit = limitVal.AsInt(), iStep = stepVal.AsInt();
   int i = initVal.AsInt();
 
-  if ( ((iStep == 0) && (iLimit != i))
-    || ((iLimit < i) && (iStep > 0))
-    || ((iLimit > i) && (iStep < 0)) )
-  {
-    env->ThrowError("for: infinite loop");
-  }
-
   AVSValue result;
   IScriptEnvironment2 *env2 = static_cast<IScriptEnvironment2*>(env);
   env2->GetVar("last", &result);
