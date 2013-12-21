@@ -307,7 +307,7 @@ PluginFile::PluginFile(const std::string &filePath) :
 */
 
 PluginManager::PluginManager(IScriptEnvironment2* env) :
-  Env(env), PluginInLoad(NULL), AutoloadExecuted(false)
+  Env(env), PluginInLoad(NULL), AutoloadExecuted(false), Autoloading(false)
 {
   env->SetGlobalVar("$PluginFunctions$", AVSValue(""));
 }
@@ -372,6 +372,7 @@ void PluginManager::AutoloadPlugins()
     return;
 
   AutoloadExecuted = true;
+  Autoloading = true;
 
   const char *binaryFilter = "*.dll";
   const char *scriptFilter = "*.avsi";
@@ -454,6 +455,8 @@ void PluginManager::AutoloadPlugins()
     } // for bContinue
     FindClose(hFind);
   }
+
+  Autoloading = false;
 }
 
 PluginManager::~PluginManager()
@@ -539,11 +542,11 @@ bool PluginManager::LoadPlugin(PluginFile &plugin, bool throwOnError, AVSValue *
   return true;
 }
 
-const AVSFunction* PluginManager::Lookup(const char* search_name, const AVSValue* args, size_t num_args,
+const AVSFunction* PluginManager::Lookup(const FunctionMap& map, const char* search_name, const AVSValue* args, size_t num_args,
                     bool strict, size_t args_names_count, const char* const* arg_names) const
 {
-    FunctionMap::const_iterator list_it = PluginFunctions.find(search_name);
-    if (list_it == PluginFunctions.end())
+    FunctionMap::const_iterator list_it = map.find(search_name);
+    if (list_it == map.end())
       return NULL;
 
     for ( FunctionList::const_reverse_iterator func_it = list_it->second.rbegin();
@@ -562,9 +565,22 @@ const AVSFunction* PluginManager::Lookup(const char* search_name, const AVSValue
     return NULL;
 }
 
+const AVSFunction* PluginManager::Lookup(const char* search_name, const AVSValue* args, size_t num_args,
+                    bool strict, size_t args_names_count, const char* const* arg_names) const
+{
+  /* Lookup in non-autoloaded functions first, so that they take priority */
+  const AVSFunction* func = Lookup(ExternalFunctions, search_name, args, num_args, strict, args_names_count, arg_names);
+  if (func != NULL)
+    return func;
+
+  /* If not found, look amongst the autoloaded */
+  return Lookup(AutoloadedFunctions, search_name, args, num_args, strict, args_names_count, arg_names);
+}
+
 bool PluginManager::FunctionExists(const char* name) const
 {
-    return (PluginFunctions.find(name) != PluginFunctions.end());
+    bool autoloaded = (AutoloadedFunctions.find(name) != AutoloadedFunctions.end());
+    return autoloaded || (ExternalFunctions.find(name) != ExternalFunctions.end());
 }
 
 void PluginManager::AddFunction(const char* name, const char* params, IScriptEnvironment::ApplyFunc apply, void* user_data, const char *exportVar)
@@ -575,7 +591,9 @@ void PluginManager::AddFunction(const char* name, const char* params, IScriptEnv
   const char *cname = Env->SaveString(name);
   const char *cparams = Env->SaveString(params);
 
-  FunctionList& list = PluginFunctions[name];
+  FunctionMap& functions = Autoloading ? AutoloadedFunctions : ExternalFunctions;
+
+  FunctionList& list = functions[name];
   AVSFunction newFunc;
   newFunc.name = cname;
   newFunc.param_types = cparams;
@@ -589,7 +607,7 @@ void PluginManager::AddFunction(const char* name, const char* params, IScriptEnv
     AVSFunction newFuncWithBase;
     std::string nameWithBase(PluginInLoad->BaseName);
     nameWithBase.append("_").append(name);
-    FunctionList& baseList = PluginFunctions[nameWithBase];
+    FunctionList& baseList = functions[nameWithBase];
 
     newFuncWithBase.name = nameWithBase.c_str();
     newFuncWithBase.param_types = cparams;

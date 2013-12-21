@@ -36,13 +36,24 @@ private:
   std::vector<std::string> AutoloadDirs;
   std::vector<PluginFile> LoadedPlugins;
   std::vector<PluginFile> LoadedImports;
-  FunctionMap PluginFunctions;
+  FunctionMap ExternalFunctions;
+  FunctionMap AutoloadedFunctions;
   bool AutoloadExecuted;
+  bool Autoloading;
 
   bool TryAsAvs26(PluginFile &plugin, AVSValue *result);
   bool TryAsAvs25(PluginFile &plugin, AVSValue *result);
   bool TryAsAvsC(PluginFile &plugin, AVSValue *result);
   void UpdateFunctionExports(const AVSFunction &func, const char *exportVar);
+  
+  const AVSFunction* Lookup(const FunctionMap& map,
+    const char* search_name,
+    const AVSValue* args,
+    size_t num_args,
+    bool strict,
+    size_t args_names_count,
+    const char* const* arg_names) const;
+
 
 public:
   PluginManager(IScriptEnvironment2* env);
