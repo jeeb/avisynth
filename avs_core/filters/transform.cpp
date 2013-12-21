@@ -259,7 +259,7 @@ Crop::Crop(int _left, int _top, int _width, int _height, int _align, PClip _chil
   vi.height = _height;
 
   if (align) {
-    align = (env->GetCPUFlags() & CPUF_SSE2) ? 15 : 7;
+    align = FRAME_ALIGN-1;
   }
 
 }
