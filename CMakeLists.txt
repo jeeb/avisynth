@@ -4,7 +4,7 @@ CMAKE_MINIMUM_REQUIRED( VERSION 2.8.11 )
 
 project("AvsMod")
 
-#Avoid uselessly linking to unused libraries
+# Avoid uselessly linking to unused libraries
 set(CMAKE_STANDARD_LIBRARIES "" CACHE STRING "" FORCE)
 set(CMAKE_C_STANDARD_LIBRARIES "" CACHE STRING "" FORCE)
 set(CMAKE_CXX_STANDARD_LIBRARIES "" CACHE STRING "" FORCE)
