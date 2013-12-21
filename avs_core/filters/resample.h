@@ -60,23 +60,15 @@ private:
   ResamplingProgram *resampling_program_luma;
   ResamplingProgram *resampling_program_chroma;
   int *src_pitch_table_luma;
-  int *src_pitch_table_chromaU;
-  int *src_pitch_table_chromaV;
   int src_pitch_luma;
-  int src_pitch_chromaU;
-  int src_pitch_chromaV;
 
   // Note: these pointer are currently not used; they are used to pass data into run-time resampler.
   // They are kept because this may be needed later (like when we implemented actual horizontal resizer.)
   void* filter_storage_luma;
   void* filter_storage_chroma;
 
-  BYTE *temp_y_1, *temp_y_2,
-       *temp_u_1, *temp_u_2,
-       *temp_v_1, *temp_v_2;
-  int   temp_y_1_pitch, temp_y_2_pitch,
-        temp_u_1_pitch, temp_u_2_pitch,
-        temp_v_1_pitch, temp_v_2_pitch;
+  BYTE *temp_1, *temp_2;
+  int   temp_1_pitch, temp_2_pitch;
 
   int src_width, src_height, dst_width,  dst_height;
 
