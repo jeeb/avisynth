@@ -306,7 +306,7 @@ static void convert_yv24_chroma_to_yv12_sse2(BYTE *dstp, const BYTE *srcp, int d
 
       __m128i avg = convert_yv24_chroma_block_to_yv12_sse2(src_line0_p0, src_line1_p0, src_line0_p1, src_line1_p1, ffff, mask);
 
-      _mm_store_si128(reinterpret_cast<__m128i*>(dstp+dst_width-16), avg);
+      _mm_storeu_si128(reinterpret_cast<__m128i*>(dstp+dst_width-16), avg);
     }
 
     dstp += dst_pitch;
