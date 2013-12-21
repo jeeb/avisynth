@@ -7,6 +7,7 @@
 #include <boost/atomic.hpp>
 #include <boost/thread.hpp>
 #include <list>
+#include <functional>
 
 enum LruEntryState
 {
@@ -42,7 +43,7 @@ struct LruEntry
   boost::condition_variable ready_cond;
   enum LruEntryState state;
 
-  LruEntry(K key) :
+  LruEntry(K key = K()) :
     key(key), locks(1), ghosted(0), state(LRU_ENTRY_EMPTY)
   {
   }
@@ -53,7 +54,7 @@ struct LruEntry
 template<typename K, typename V>
 class SimpleLruCache
 {
-private:
+public:
   struct Entry
   {
     Entry* next;
@@ -75,30 +76,60 @@ private:
       Entry* p = this->prev;
       Entry* n = this->next;
 
-      // Place this node to its new position, after node
+      // Place this node to its new position, after "node" parameter
       this->next = node->next;
-      node->next->prev = this;
+      if (node->next) { node->next->prev = this; }
       this->prev = node;
       node->next = this;
 
       // Tie together earlier neighbors
-      p->next = n;
-      n->prev = p;
+      if (p) { p->next = n; }
+      if (n) { n->prev = p; }
+    }
+
+    void Remove()
+    {
+      if (prev) prev->next = next;
+      if (next) next->prev = prev;
+      prev = NULL;
+      next = NULL;
     }
   };
 
+  typedef V value_type;
+  typedef K key_type;
+
+  typedef std::function<bool(SimpleLruCache*, const Entry&, void*)> EvictEventType;
+
+private:
   size_t capacity;
   size_t size;
   Entry* head;
   Entry* tail;
   boost::object_pool<Entry> EntryPool;
 
+  void* EventUserData;
+  const EvictEventType EvictEvent;
+
+  void remove(Entry* evictItem)
+  {
+    if (evictItem == tail)
+      tail = tail->prev;
+
+    if (evictItem == head)
+      head = head->next;
+
+    evictItem->Remove();
+  }
+
 public:
-  SimpleLruCache(size_t capacity) :
+  SimpleLruCache(size_t capacity, const EvictEventType& evict, void* evData) :
     capacity(capacity),
     size(0),
     head(NULL),
-    tail(NULL)
+    tail(NULL),
+    EventUserData(evData),
+    EvictEvent(evict)
   {
   }
 
@@ -111,6 +142,22 @@ public:
     return capacity;
   }
 
+  void remove(const K& key)
+  {
+    // Try to find existing item
+    Entry* search_hand = head;
+    for (size_t i = 0; i < size; ++i)
+    {
+      if (search_hand->key == key)
+      {
+        remove(search_hand);
+        break;
+      }
+
+      search_hand = search_hand->next;
+    }
+  }
+
   V* lookup(const K& key, bool *found)
   {
     // If the cache is empty, treat it specially
@@ -119,6 +166,7 @@ public:
       head = EntryPool.construct();
       tail = head;
       *found = false;
+      ++size;
       return &(head->value);
     }
 
@@ -145,21 +193,60 @@ public:
     {
       // Create new item from scratch
       newItem = EntryPool.construct();
+      ++size;
     }
     else
     {
       // Recycle item from end of list
-      // TODO: special case if size = 1
-      newItem = tail;
-      tail = tail->prev;
-      tail->next = NULL;
+
+      Entry* evictItem = NULL;
+      if (EvictEvent == NULL)
+      {
+        evictItem = tail;
+        newItem = evictItem;
+      }
+      else
+      {
+        Entry* search_hand = tail;
+        for (size_t i = 0; i < size; ++i)
+        {
+          if (EvictEvent(this, *search_hand, EventUserData))
+          {
+            evictItem = search_hand;
+            newItem = search_hand;
+            break;
+          }
+          search_hand = search_hand->prev;
+        }
+        if (evictItem == NULL)
+        {
+          // Create new item from scratch
+          newItem = EntryPool.construct();
+          ++size;
+        }
+        else
+        {
+          remove(evictItem);
+        }
+      }
     }
 
+    // Fill in data members
+    newItem->key = key;
+    newItem->ref = 1;
+
     // Add new item to front of list
+    assert(newItem != NULL);
     Entry* oldHead = head;
     head = newItem;
     head->next = oldHead;
-    oldHead->prev = head;
+    if (oldHead) { oldHead->prev = head; }
+
+    if (tail == NULL)
+    {
+      assert(size == 1);
+      tail = head;
+    }
 
     *found = false;
     return &(head->value);
@@ -167,20 +254,23 @@ public:
 
   void set_capacity(size_t new_cap)
   {
-    if (new_cap > capacity)
+    capacity = new_cap;
+    Entry* search_hand = tail;
+    for (size_t i = 0; i < size; ++i)
     {
-      capacity = new_cap;
-    }
-    else
-    {
-      while(capacity > new_cap)
+      Entry* p = search_hand->prev;
+
+      if ((EvictEvent == NULL) || EvictEvent(this, *search_hand, EventUserData))
       {
-        Entry* oldTail = tail;
-        tail = tail->prev;
-        tail->next = NULL;
-        EntryPool.destroy(oldTail);
-        --capacity;
+        remove(search_hand);
+        EntryPool.destroy(search_hand);
+        --size;
       }
+
+      if (size <= capacity)
+        break;
+
+      search_hand = p;
     }
   }
 };
@@ -190,129 +280,107 @@ template<typename K, typename V>
 class LruCache : public boost::enable_shared_from_this<LruCache<K, V> >
 {
 private:
-  typedef size_t  size_type;
   typedef LruEntry<K, V> entry_type;
+  typedef SimpleLruCache<K, LruEntry<K, V> > CacheType;
+  typedef SimpleLruCache<K, LruGhostEntry<K> > GhostCacheType;
+
+  typedef size_t  size_type;
   typedef entry_type* entry_ptr;
   typedef std::list<entry_ptr, boost::fast_pool_allocator<entry_ptr> >  list_type;
-  typedef typename list_type::iterator  list_iterator;
-  typedef boost::unordered_map<K, list_iterator, boost::hash<K>, std::equal_to<K>, boost::fast_pool_allocator<std::pair<K const, list_iterator> > > map_type;
 
-  boost::object_pool<entry_type> entry_pool;
-  list_type list;
-  map_type map;
+  CacheType MainCache;
+  GhostCacheType Ghosts;
+
   boost::mutex mutex;
+  size_type Capacity;
+  size_type Size;
 
-  size_type max_size;
-  SimpleLruCache<K, LruGhostEntry<K> > ghosts;
+  static bool MainEvictEvent(CacheType* cache, typename const CacheType::Entry& entry, void* userData)
+  {
+    if (entry.value.locks > 0)
+      return false;
+
+    LruCache* me = reinterpret_cast<LruCache*>(userData);
+
+    bool ghost_found;
+    GhostCacheType::value_type* g = me->Ghosts.lookup(entry.key, &ghost_found);
+    if (!ghost_found)
+    {
+      *g = LruGhostEntry<K>(entry.key, 0);
+    }
+    g->ghosted++;
+
+    return true;
+  }
 
 public:
 
-  typedef std::pair<list_iterator, boost::shared_ptr<LruCache<K, V> > > handle;
+  typedef std::pair<entry_ptr, boost::shared_ptr<LruCache<K, V> > > handle;
 
-  LruCache(size_type max_size) :
-    max_size(max_size),
-    ghosts(max_size*2)
+  LruCache(size_type capacity) :
+    Capacity(capacity),
+    MainCache(capacity, &MainEvictEvent, reinterpret_cast<void*>(this)),
+    Ghosts(capacity*2, GhostCacheType::EvictEventType(), reinterpret_cast<void*>(this))
   {
-    const float MAX_LOAD_FACOR = 0.8f;
-    map.max_load_factor(MAX_LOAD_FACOR);
-    map.reserve((map_type::size_type)(max_size/MAX_LOAD_FACOR)+1);
   }
-
-/*
-  ~LruCache()
-  {
-    for (list_iterator it = list.begin();
-      it != list.end();
-      ++it)
-    {
-      delete *it;
-    }
-  }
-*/
 
   size_type size() const
   {
     return list.size();
   }
 
-  bool get_insert(K key, V *ret_value, handle *hndl)
+  bool get_insert(const K& key, V *ret_value, handle *hndl)
   {
     boost::unique_lock<boost::mutex> global_lock(mutex);
 
-    map_type::iterator it = map.find(key);
-    if (it != map.end())
+    bool found;
+    entry_ptr entry = MainCache.lookup(key, &found);
+    *hndl = handle(entry, this->shared_from_this());
+
+    if (found)
     {
-      *hndl = handle(it->second, this->shared_from_this());
-      entry_ptr e = *(it->second);
-
-      // move element to front of lru list
-      list.splice(list.begin(), list, it->second);
-
       // wait until data becomes available
-      ++(e->locks);
-      while(e->state == LRU_ENTRY_EMPTY)
+      ++(entry->locks);
+      while(entry->state == LRU_ENTRY_EMPTY)
       {
-        e->ready_cond.wait(global_lock);
+        entry->ready_cond.wait(global_lock);
 
-        switch (e->state)
+        switch (entry->state)
         {
         case LRU_ENTRY_EMPTY:           // do nothing, spurious wakeup
           break;
         case LRU_ENTRY_AVAILABLE:       // finally, data available
           break;
         case LRU_ENTRY_ROLLED_BACK:     // whoever we were waiting for decided to step back. we take over his place.
-          e->state = LRU_ENTRY_EMPTY;
+          entry->state = LRU_ENTRY_EMPTY;
           return false;
         default:
           assert(0);
         }
       }
-      *ret_value = e->value;
-      --(e->locks);
+      *ret_value = entry->value;
+      --(entry->locks);
       return true;
     }
     else
     {
-      // add new element
-      *hndl = handle(list.insert(list.begin(), entry_pool.construct(key)), this->shared_from_this());
-      map.insert(map_type::value_type(key, hndl->first));
-
-      bool gfound;
-      LruGhostEntry<K>* g = ghosts.lookup(key, &gfound);
-      if (!gfound)
+      bool ghost_found;
+      GhostCacheType::value_type* g = Ghosts.lookup(key, &ghost_found);
+      if (!ghost_found)
       {
         *g = LruGhostEntry<K>(key, 0);
       }
-
-      if (g->ghosted > 0)
+      else if (g->ghosted > 0)
       {
-        max_size += 1;
-        ghosts.set_capacity(ghosts.get_capacity() + 2);
+        Capacity += 1;
+        Ghosts.set_capacity(Ghosts.get_capacity() + 2);
       }
-      list.front()->ghosted = g->ghosted;
-      
-      // trim cache
-      // we only delete elements from the back, and only those which have no referrers
-      while(list.size() > max_size)
+      else
       {
-        entry_ptr e = list.back();
-        if (e->locks == 0)
-        {
-          LruGhostEntry<K>* g = ghosts.lookup(e->key, &gfound);
-          if (gfound)
-            g->ghosted = e->ghosted + 1;
-          else
-            *g = LruGhostEntry<K>(e->key, e->ghosted + 1);
-
-          map.erase(e->key);
-          list.pop_back();
-          entry_pool.destroy(e);
-        }
-        else
-        {
-          break;
-        }
+        // This cannot happen
+        assert(0);
       }
+      entry->ghosted = g->ghosted;
       
       return false;
     } // if
@@ -323,7 +391,7 @@ public:
     boost::unique_lock<boost::mutex> global_lock(mutex);
 
     // insert data
-    entry_ptr e = *(hndl->first);
+    entry_ptr e = hndl->first;
     e->value = value;
     e->state = LRU_ENTRY_AVAILABLE;
     --(e->locks);
@@ -339,13 +407,10 @@ public:
   {
     boost::unique_lock<boost::mutex> global_lock(mutex);
     
-    entry_ptr e = *(hndl->first);
+    entry_ptr e = hndl->first;
     if (e->locks == 1)
     {
-      // we are the only one needing this data, so delete it
-      map.erase(e->key);
-      list.erase(hndl->first);
-      entry_pool.destroy(e);
+      MainCache.remove(e->key);
     }
     else
     {

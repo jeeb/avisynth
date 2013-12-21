@@ -67,7 +67,7 @@ Cache::Cache(const PClip& _child) :
   VideoPolicy(CACHE_GENERIC),
   AudioPolicy(CACHE_AUDIO)
 {
-  VideoCache = boost::make_shared<LruCache<size_t, PVideoFrame> >(5); // TODO
+  VideoCache = boost::make_shared<LruCache<size_t, PVideoFrame> >(1); // TODO
 }
 
 Cache::~Cache()
