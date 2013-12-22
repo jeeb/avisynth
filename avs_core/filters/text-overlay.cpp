@@ -429,6 +429,7 @@ void Antialiaser::GetAlphaRect()
     do {
       int i;
 
+#pragma warning(push)
 #pragma warning(disable: 4068)
       DWORD tmp = 0;
 
@@ -445,7 +446,7 @@ void Antialiaser::GetAlphaRect()
       }
 
       tmp &= 0x00FFFFFF;
-#pragma warning(default: 4068)
+#pragma warning(pop)
 
 
       if (tmp != 0) {     // quick exit in a common case
@@ -834,12 +835,13 @@ PVideoFrame __stdcall ShowSMPTE::GetFrame(int n, IScriptEnvironment* env)
 AVSValue __cdecl ShowSMPTE::CreateSMTPE(AVSValue args, void*, IScriptEnvironment* env)
 {
   PClip clip = args[0].AsClip();
-  double def_rate = (double)args[0].AsClip()->GetVideoInfo().fps_numerator / args[0].AsClip()->GetVideoInfo().fps_denominator;
+  const VideoInfo& arg0vi = args[0].AsClip()->GetVideoInfo();
+  double def_rate = (double)arg0vi.fps_numerator / arg0vi.fps_denominator;
   double dfrate = args[1].AsDblDef(def_rate);
   const char* offset = args[2].AsString(0);
   const int offset_f = args[3].AsInt(0);
-  const int xreal = args[0].AsClip()->GetVideoInfo().width/2;
-  const int yreal = args[0].AsClip()->GetVideoInfo().height-8;
+  const int xreal = arg0vi.width/2;
+  const int yreal = arg0vi.height-8;
   const int x = int(args[4].AsDblDef(xreal)*8+0.5);
   const int y = int(args[5].AsDblDef(yreal)*8+0.5);
   const char* font = args[6].AsString("Arial");

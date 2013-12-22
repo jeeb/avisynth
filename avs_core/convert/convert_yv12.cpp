@@ -172,6 +172,7 @@ void convert_yv12_to_yuy2_interlaced_c(const BYTE* srcY, const BYTE* srcU, const
 
 #ifdef X86_32
 
+#pragma warning(push)
 #pragma warning(disable: 4799)
 //75% of the first argument and 25% of the second one. 
 static __forceinline __m64 convert_yv12_to_yuy2_merge_chroma_isse(const __m64 &line75p, const __m64 &line25p, const __m64 &one) {
@@ -203,7 +204,7 @@ static inline void copy_yv12_line_to_yuy2_isse(const BYTE* srcY, const BYTE* src
     *reinterpret_cast<__m64*>(dstp + x*4 + 8) = dst_hi;
   }
 }
-#pragma warning(default: 4799)
+#pragma warning(pop)
 
 void convert_yv12_to_yuy2_interlaced_isse(const BYTE* srcY, const BYTE* srcU, const BYTE* srcV, int src_width, int src_pitch_y, int src_pitch_uv, BYTE *dstp, int dst_pitch, int height) 
 {

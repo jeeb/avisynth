@@ -282,6 +282,7 @@ static void convert_rgb_to_yuy2_sse2(const BYTE *src, BYTE *dst, int src_pitch, 
 
 #ifdef X86_32
 
+#pragma warning(push)
 #pragma warning(disable: 4799 4700)
 
 template<int rgb_bytes>
@@ -361,7 +362,7 @@ static void convert_rgb_line_to_yuy2_mmx(const BYTE *srcp, BYTE *dstp, int width
     *reinterpret_cast<int*>(dstp+x*2) = _mm_cvtsi64_si32(yuv);
   }
 }
-#pragma warning(default: 4799 4700)
+#pragma warning(pop)
 
 template<int rgb_bytes>
 static void convert_rgb_to_yuy2_mmx(const BYTE *src, BYTE *dst, int src_pitch, int dst_pitch, int width, int height, int matrix) {
