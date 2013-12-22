@@ -119,14 +119,14 @@ BOOL AudioSourceAVI::init() {
 	pAVIStream = pAVIFile->GetStream(streamtypeAUDIO, 0);
 	if (!pAVIStream) return FALSE;
 
-	if (pAVIStream->Info(&streamInfo, sizeof streamInfo))
+	if (FAILED(pAVIStream->Info(&streamInfo, sizeof streamInfo)))
 		return FALSE;
 
 	pAVIStream->FormatSize(0, &format_len);
 
 	if (!allocFormat(format_len)) return FALSE;
 
-	if (pAVIStream->ReadFormat(0, getFormat(), &format_len))
+	if (FAILED(pAVIStream->ReadFormat(0, getFormat(), &format_len)))
 		return FALSE;
 
 	lSampleFirst = pAVIStream->Start();

@@ -164,9 +164,10 @@ static void weighted_merge_luma_yuy2_sse2(BYTE *src, const BYTE *luma, int pitch
   __m128i round_mask = _mm_set1_epi32(0x4000);
   __m128i mask = _mm_set_epi16(weight, invweight, weight, invweight, weight, invweight, weight, invweight);
   __m128i luma_mask = _mm_set1_epi16(0x00FF);
+#pragma warning(push)
 #pragma warning(disable: 4309)
   __m128i chroma_mask = _mm_set1_epi16(0xFF00);
-#pragma warning(default: 4309)
+#pragma warning(pop)
 
   int wMod16 = (width/16) * 16;
 
@@ -213,9 +214,10 @@ static void weighted_merge_luma_yuy2_mmx(BYTE *src, const BYTE *luma, int pitch,
   __m64 round_mask = _mm_set1_pi32(0x4000);
   __m64 mask = _mm_set_pi16(weight, invweight, weight, invweight);
   __m64 luma_mask = _mm_set1_pi16(0x00FF);
+#pragma warning(push)
 #pragma warning(disable: 4309)
   __m64 chroma_mask = _mm_set1_pi16(0xFF00);
-#pragma warning(default: 4309)
+#pragma warning(pop)
 
   int wMod8 = (width/8) * 8;
 
@@ -277,9 +279,10 @@ static void replace_luma_yuy2_sse2(BYTE *src, const BYTE *luma, int pitch, int l
 {
   int mod16_width = width / 16 * 16;
   __m128i luma_mask = _mm_set1_epi16(0x00FF);
+#pragma warning(push)
 #pragma warning(disable: 4309)
   __m128i chroma_mask = _mm_set1_epi16(0xFF00);
-#pragma warning(default: 4309)
+#pragma warning(pop)
 
   for(int y = 0; y < height; y++) {
     for(int x = 0; x < mod16_width; x+=16) {
@@ -307,9 +310,10 @@ static void replace_luma_yuy2_mmx(BYTE *src, const BYTE *luma, int pitch, int lu
 {
   int mod8_width = width / 8 * 8;
   __m64 luma_mask = _mm_set1_pi16(0x00FF);
+#pragma warning(push)
 #pragma warning(disable: 4309)
   __m64 chroma_mask = _mm_set1_pi16(0xFF00);
-#pragma warning(default: 4309)
+#pragma warning(pop)
 
   for(int y = 0; y < height; y++) {
     for(int x = 0; x < mod8_width; x+=8) {

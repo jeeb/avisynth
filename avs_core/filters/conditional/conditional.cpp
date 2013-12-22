@@ -62,7 +62,7 @@ inline AVSValue GetVar(IScriptEnvironment* env, const char* name) {
   try {
     return env->GetVar(name);
   }
-  catch (IScriptEnvironment::NotFound) {}
+  catch (const IScriptEnvironment::NotFound&) {}
 
   return AVSValue();
 }

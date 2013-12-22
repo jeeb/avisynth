@@ -103,7 +103,7 @@ BrowseDialogLabel=Select a folder in the list below, then click OK.
 NewFolderName=New Folder
 
 ; *** "Welcome" wizard page
-WelcomeLabel1=Welcome to the [name] Setup Wizard
+WelcomeLabel1=Welcome to the [name] Setup
 WelcomeLabel2=This will install [name/ver] on your computer.%n%nIt is recommended that you close all other applications before continuing.
 
 ; *** "Password" wizard page
@@ -116,7 +116,7 @@ IncorrectPassword=The password you entered is not correct. Please try again.
 ; *** "License Agreement" wizard page
 WizardLicense=License Agreement
 LicenseLabel=Please read the following important information before continuing.
-LicenseLabel3=Please read the following License Agreement. You must accept the terms of this agreement before continuing with the installation.
+LicenseLabel3=You must accept the terms of this agreement before continuing with the installation.
 LicenseAccepted=I &accept the agreement
 LicenseNotAccepted=I &do not accept the agreement
 

@@ -521,13 +521,14 @@ static void af_horizontal_yuy2_sse2(BYTE* dstp, const BYTE* srcp, size_t dst_pit
   __m128i center_weight = _mm_set1_epi16(t);
   __m128i outer_weight = _mm_set1_epi16(64 - t);
   __m128i round_mask = _mm_set1_epi16(0x40);
+#pragma warning(push)
 #pragma warning(disable: 4309)
   __m128i left_mask = _mm_set_epi32(0, 0, 0, 0xFFFFFFFF);
   __m128i right_mask = _mm_set_epi32(0xFFFFFFFF, 0, 0, 0);
   __m128i left_mask_small = _mm_set_epi16(0, 0, 0, 0, 0, 0, 0x00FF, 0);
   __m128i right_mask_small = _mm_set_epi16(0, 0x00FF, 0, 0, 0, 0, 0, 0);
   __m128i luma_mask = _mm_set1_epi16(0xFF);
-#pragma warning(default: 4309)
+#pragma warning(pop)
 
   __m128i center, right, left, result;
 
@@ -627,13 +628,14 @@ static void af_horizontal_yuy2_mmx(BYTE* dstp, const BYTE* srcp, size_t dst_pitc
   __m64 center_weight = _mm_set1_pi16(t);
   __m64 outer_weight = _mm_set1_pi16(64 - t);
   __m64 round_mask = _mm_set1_pi16(0x40);
+#pragma warning(push)
 #pragma warning(disable: 4309)
   __m64 left_mask = _mm_set_pi32(0, 0xFFFFFFFF);
   __m64 right_mask = _mm_set_pi32(0xFFFFFFFF, 0);
   __m64 left_mask_small = _mm_set_pi16(0, 0, 0x00FF, 0);
   __m64 right_mask_small = _mm_set_pi16(0, 0x00FF, 0, 0);
   __m64 luma_mask = _mm_set1_pi16(0xFF);
-#pragma warning(default: 4309)
+#pragma warning(pop)
 
   __m64 center, right, left, result;
 
@@ -759,9 +761,10 @@ static void af_horizontal_yv12_sse2(BYTE* dstp, size_t height, size_t pitch, siz
   __m128i round_mask = _mm_set1_epi16(0x40);
   __m128i zero = _mm_setzero_si128();
   __m128i left_mask = _mm_set_epi32(0, 0, 0, 0xFF);
+#pragma warning(push)
 #pragma warning(disable: 4309)
   __m128i right_mask = _mm_set_epi8(0xFF, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
-#pragma warning(default: 4309)
+#pragma warning(pop)
 
   __m128i left;
 
@@ -819,10 +822,11 @@ static void af_horizontal_yv12_mmx(BYTE* dstp, size_t height, size_t pitch, size
   __m64 outer_weight = _mm_set1_pi16(64 - t);
   __m64 round_mask = _mm_set1_pi16(0x40);
   __m64 zero = _mm_setzero_si64();
+#pragma warning(push)
 #pragma warning(disable: 4309)
   __m64 left_mask = _mm_set_pi8(0, 0, 0, 0, 0, 0, 0, 0xFF);
   __m64 right_mask = _mm_set_pi8(0xFF, 0, 0, 0, 0, 0, 0, 0);
-#pragma warning(default: 4309)
+#pragma warning(pop)
 
   __m64 left;
   

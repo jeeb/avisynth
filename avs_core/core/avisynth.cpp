@@ -1448,20 +1448,13 @@ success:;
   }
  
   // ... and we're finally ready to make the call
-  try
-  {
-    AVSValue funcArgs(args3.data(), args3_count);
-    if (f->IsScriptFunction())
-      *result = f->apply(funcArgs, f->user_data, this);
-    else
-      *result = Cache::Create(MTGuard::Create(f, funcArgs, this), f->user_data, this);
+  AVSValue funcArgs(args3.data(), args3_count);
+  if (f->IsScriptFunction())
+    *result = f->apply(funcArgs, f->user_data, this);
+  else
+    *result = Cache::Create(MTGuard::Create(f, funcArgs, this), f->user_data, this);
   //    *result = Cache::Create(f->apply(funcArgs, f->user_data, this), NULL, this);
-  }
-  catch (const ReturnExprException &e) 
-  {
-    *result = e.value;
-  }
-
+  
   return true;
 }
 

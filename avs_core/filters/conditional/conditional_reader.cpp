@@ -159,7 +159,7 @@ inline AVSValue GetVar(IScriptEnvironment* env, const char* name) {
   try {
     return env->GetVar(name);
   }
-  catch (IScriptEnvironment::NotFound) {}
+  catch (const IScriptEnvironment::NotFound&) {}
 
   return AVSValue();
 }
@@ -679,7 +679,7 @@ bool Write::DoEval( IScriptEnvironment* env) {
 					keep_this_line = false;
 					break;
 				}
-			} catch (AvisynthError) {
+			} catch (const AvisynthError&) {
 //				env->ThrowError("Write: Can't eval linecheck expression!"); // results in KEEPING the line
 			}
 		} else {

@@ -281,9 +281,10 @@ static __forceinline __m128i convert_yv24_chroma_block_to_yv12_sse2(const __m128
 static void convert_yv24_chroma_to_yv12_sse2(BYTE *dstp, const BYTE *srcp, int dst_pitch, int src_pitch, int dst_width, const int dst_height) {
   int mod16_width = dst_width / 16 * 16;
 
+#pragma warning(push)
 #pragma warning(disable:4309)
   __m128i ffff = _mm_set1_epi8(0xFF);
-#pragma warning(default:4309)
+#pragma warning(pop)
   __m128i mask = _mm_set1_epi16(0x00FF);
 
   for (int y = 0; y < dst_height; ++y) {
@@ -306,7 +307,7 @@ static void convert_yv24_chroma_to_yv12_sse2(BYTE *dstp, const BYTE *srcp, int d
 
       __m128i avg = convert_yv24_chroma_block_to_yv12_sse2(src_line0_p0, src_line1_p0, src_line0_p1, src_line1_p1, ffff, mask);
 
-      _mm_store_si128(reinterpret_cast<__m128i*>(dstp+dst_width-16), avg);
+      _mm_storeu_si128(reinterpret_cast<__m128i*>(dstp+dst_width-16), avg);
     }
 
     dstp += dst_pitch;
@@ -339,9 +340,10 @@ static __forceinline __m64 convert_yv24_chroma_block_to_yv12_isse(const __m64 &s
 static void convert_yv24_chroma_to_yv12_isse(BYTE *dstp, const BYTE *srcp, int dst_pitch, int src_pitch, int dst_width, const int dst_height) {
   int mod8_width = dst_width / 8 * 8;
 
+#pragma warning(push)
 #pragma warning(disable:4309)
   __m64 ffff = _mm_set1_pi8(0xFF);
-#pragma warning(default:4309)
+#pragma warning(pop)
   __m64 mask = _mm_set1_pi16(0x00FF);
 
   for (int y = 0; y < dst_height; ++y) {

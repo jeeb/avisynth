@@ -47,7 +47,7 @@ ScriptParser::ScriptParser(IScriptEnvironment* _env, const char* _code, const ch
 PExpression ScriptParser::Parse(void) 
 {
   try {
-    return ParseBlock(false, NULL);
+    return new ExpRootBlock(ParseBlock(false, NULL));
   }
   catch (const AvisynthError &ae) {
     env->ThrowError("%s\n(%s, line %d, column %d)", ae.msg, filename, tokenizer.GetLine(), tokenizer.GetColumn(code));
@@ -148,7 +148,7 @@ void ScriptParser::ParseFunctionDefinition(void)
   }
 
   param_types[param_chars] = 0;
-  PExpression body = ParseBlock(true, NULL);
+  PExpression body = new ExpRootBlock(ParseBlock(true, NULL));
   ScriptFunction* sf = new ScriptFunction(body, param_floats, param_names, param_count);
   env->AtExit(ScriptFunction::Delete, sf);
   env->AddFunction(name, env->SaveString(param_types), ScriptFunction::Execute, sf, "$UserFunctions$");

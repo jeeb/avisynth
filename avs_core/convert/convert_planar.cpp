@@ -312,6 +312,7 @@ static void convert_rgb24_to_y8_sse2(const BYTE *srcp, BYTE *dstp, size_t src_pi
 
 #ifdef X86_32
 
+#pragma warning(push)
 #pragma warning(disable: 4799)
 static __forceinline int convert_rgb_to_y8_mmx_core(const __m64 &pixel0, const __m64 &pixel1, const __m64 &pixel2, const __m64 &pixel3, __m64& zero, __m64 &matrix, __m64 &round_mask, __m64 &offset) {
   //int Y = offset_y + ((m0 * srcp[0] + m1 * srcp[1] + m2 * srcp[2] + 16384) >> 15);
@@ -343,7 +344,7 @@ static __forceinline int convert_rgb_to_y8_mmx_core(const __m64 &pixel0, const _
 
   return _mm_cvtsi64_si32(result);
 }
-#pragma warning(default: 4799)
+#pragma warning(pop)
 
 static void convert_rgb32_to_y8_mmx(const BYTE *srcp, BYTE *dstp, size_t src_pitch, size_t dst_pitch, size_t width, size_t height, BYTE offset_y, short cyr, short cyg, short cyb ) {
   __m64 matrix = _mm_set_pi16(0, cyr, cyg, cyb);
@@ -1079,9 +1080,10 @@ static void convert_yv24_to_rgb_ssex(BYTE* dstp, const BYTE* srcY, const BYTE* s
 
   __m128i zero = _mm_setzero_si128();
   __m128i round_mask = _mm_set1_epi32(4096);
+#pragma warning(push)
 #pragma warning(disable: 4309)
   __m128i ff = _mm_set1_epi8(0xFF);
-#pragma warning(default: 4309)
+#pragma warning(pop)
   __m128i offset = _mm_set_epi16(0, -128, -128, matrix.offset_y, 0, -128, -128, matrix.offset_y);
   __m128i pixels0123_mask = _mm_set_epi8(0, 0, 0, 0, 14, 13, 12, 10, 9, 8, 6, 5, 4, 2, 1, 0);
   __m128i pixels4567_mask = _mm_set_epi8(4, 2, 1, 0, 0, 0, 0, 0, 14, 13, 12, 10, 9, 8, 6, 5);
@@ -1222,9 +1224,10 @@ static void convert_yv24_to_rgb_mmx(BYTE* dstp, const BYTE* srcY, const BYTE* sr
 
   __m64 zero = _mm_setzero_si64();
   __m64 round_mask = _mm_set1_pi32(4096);
+#pragma warning(push)
 #pragma warning(disable: 4309)
   __m64 ff = _mm_set1_pi8(0xFF);
-#pragma warning(default: 4309)
+#pragma warning(pop)
   __m64 offset = _mm_set_pi16(0, -128, -128, matrix.offset_y);
   __m64 low_pixel_mask = _mm_set_pi32(0, 0x00FFFFFF);
   __m64 high_pixel_mask = _mm_set_pi32(0x00FFFFFF, 0);

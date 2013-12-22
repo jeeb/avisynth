@@ -122,14 +122,14 @@ PVideoFrame __stdcall StackVertical::GetFrame(int n, IScriptEnvironment* env)
 
     if (vi.IsPlanar()) {
       // Copy Planar
-      const int dst_pitchUV = dst->GetPitch(PLANAR_V);
+      const int dst_pitchUV = dst->GetPitch(PLANAR_U);
       const int row_sizeUV = dst->GetRowSize(PLANAR_U);
 
       BYTE* dstpV = dst->GetWritePtr(PLANAR_V);
       for (int i=0; i<num_args; i++) {
         const BYTE* srcpV = src[i]->GetReadPtr(PLANAR_V);
-        const int src_pitchV = src[i]->GetPitch(PLANAR_U);
-        const int src_heightV = src[i]->GetHeight(PLANAR_U);
+        const int src_pitchV = src[i]->GetPitch(PLANAR_V);
+        const int src_heightV = src[i]->GetHeight(PLANAR_V);
 
         BitBlt(dstpV, dst_pitchUV, srcpV, src_pitchV, row_sizeUV, src_heightV);
         dstpV += dst_pitchUV * src_heightV;

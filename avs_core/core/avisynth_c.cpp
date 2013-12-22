@@ -382,7 +382,7 @@ AVS_Value AVSC_CC avs_invoke(AVS_ScriptEnvironment * p, const char * name, AVS_V
 	try {
 		AVSValue v0 = p->env->Invoke(name, *(AVSValue *)&args, arg_names);
 		new ((AVSValue *)&v) AVSValue(v0);
-	} catch (IScriptEnvironment::NotFound) {
+	} catch (const IScriptEnvironment::NotFound&) {
     p->error = "Function Not Found";
 	} catch (const AvisynthError &err) {
 		p->error = err.msg;
@@ -401,7 +401,7 @@ AVS_Value AVSC_CC avs_get_var(AVS_ScriptEnvironment * p, const char* name)
 		AVSValue v0 = p->env->GetVar(name);
 		new ((AVSValue *)&v) AVSValue(v0);
 	}
-	catch (IScriptEnvironment::NotFound) {}
+	catch (const IScriptEnvironment::NotFound&) {}
 	catch (const AvisynthError &err) {
 		p->error = err.msg;
 		v = avs_new_value_error(p->error);

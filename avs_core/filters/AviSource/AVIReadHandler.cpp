@@ -2173,7 +2173,7 @@ IAVIReadStream *AVIReadHandler::GetStream(DWORD fccType, LONG lParam) {
 
 		hr = AVIFileGetStream(paf, &pas, fccType, lParam);
 
-		if (hr)
+		if (FAILED(hr))
 			return NULL;
 
 		return new AVIReadTunnelStream(this, pas, pAvisynthClipInfo);

@@ -46,6 +46,17 @@ static int CPUCheckForExtensions()
   if (IS_BIT_SET(cpuinfo[2], 20))
     result |= CPUF_SSE4_2;
 
+  // AVX
+#if (_MSC_FULL_VER >= 160040219)    // We require VC++2010 SP1 at least
+  bool xgetbv_supported = IS_BIT_SET(cpuinfo[2], 27);
+  bool avx_supported = IS_BIT_SET(cpuinfo[2], 28);
+  if (xgetbv_supported && avx_supported)
+  {
+    if ((_xgetbv(_XCR_XFEATURE_ENABLED_MASK) & 0x6ull) == 0x6ull)
+      result |= CPUF_AVX;   
+  }
+#endif
+
   // 3DNow!, 3DNow!, and ISSE
   __cpuid(cpuinfo, 0x80000000);   
   if (cpuinfo[0] >= 0x80000001) 
@@ -61,17 +72,6 @@ static int CPUCheckForExtensions()
     if (IS_BIT_SET(cpuinfo[3], 22))
       result |= CPUF_INTEGER_SSE;   
   }
-
-  // AVX
-#if (_MSC_FULL_VER >= 160040219)    // We require VC++2010 SP1 at least
-  bool xgetbv_supported = IS_BIT_SET(cpuinfo[2], 27);
-  bool avx_supported = IS_BIT_SET(cpuinfo[2], 28);
-  if (xgetbv_supported && avx_supported)
-  {
-    if ((_xgetbv(_XCR_XFEATURE_ENABLED_MASK) & 0x6ull) == 0x6ull)
-      result |= CPUF_AVX;   
-  }
-#endif
 
   return result;
 }

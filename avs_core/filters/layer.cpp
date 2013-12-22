@@ -301,9 +301,10 @@ static __forceinline __m64 colorkeymask_core_mmx(const __m64 &src, const __m64 &
 }
 
 static void colorkeymask_mmx(BYTE* pf, int pitch, int color, int height, int width, int tolB, int tolG, int tolR) {
+#pragma warning(push)
 #pragma warning(disable: 4309)
   __m64 tolerance = _mm_set_pi8(0xFF, tolR, tolG, tolB, 0xFF, tolR, tolG, tolB);
-#pragma warning(default: 4309)
+#pragma warning(pop)
   __m64 colorv = _mm_set1_pi32(color);
   __m64 zero = _mm_setzero_si64();
 
@@ -472,9 +473,10 @@ static void invert_frame_mmx(BYTE* frame, int pitch, int width, int height, int 
 
 static void invert_plane_mmx(BYTE* frame, int pitch, int width, int height) 
 {
+#pragma warning(push)
 #pragma warning(disable: 4309)
   __m64 maskv = _mm_set1_pi8(0xFF);
-#pragma warning(default: 4309)
+#pragma warning(pop)
   int mod8_width = width / 8 * 8;
 
   for (int y = 0; y < height; ++y) {

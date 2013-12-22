@@ -45,6 +45,20 @@ class BreakStmtException
 {
 };
 
+AVSValue ExpRootBlock::Evaluate(IScriptEnvironment* env) 
+{
+  AVSValue retval;
+
+  try {
+    retval = exp->Evaluate(env);
+  }
+  catch (const ReturnExprException &e) {
+    retval = e.value;
+  }
+
+  return retval;
+}
+
 AVSValue ExpSequence::Evaluate(IScriptEnvironment* env) 
 {
     AVSValue last = a->Evaluate(env);
@@ -182,13 +196,6 @@ AVSValue ExpForLoop::Evaluate(IScriptEnvironment* env)
 
   const int iLimit = limitVal.AsInt(), iStep = stepVal.AsInt();
   int i = initVal.AsInt();
-
-  if ( ((iStep == 0) && (iLimit != i))
-    || ((iLimit < i) && (iStep > 0))
-    || ((iLimit > i) && (iStep < 0)) )
-  {
-    env->ThrowError("for: infinite loop");
-  }
 
   AVSValue result;
   IScriptEnvironment2 *env2 = static_cast<IScriptEnvironment2*>(env);
