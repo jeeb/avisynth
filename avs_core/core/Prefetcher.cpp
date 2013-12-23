@@ -27,7 +27,7 @@ AVSValue Prefetcher::ThreadWorker(IScriptEnvironment2* env, void* data)
   try
   {
     PVideoFrame frame = prefetcher->child->GetFrame(n, env);
-    prefetcher->VideoCache->commit_value(&cache_handle, frame);
+    prefetcher->VideoCache->commit_value(&cache_handle, &frame);
     --(prefetcher->running_workers);
   }
   catch(...)
@@ -108,13 +108,14 @@ PVideoFrame __stdcall Prefetcher::GetFrame(int n, IScriptEnvironment* env)
   }
 
   // Get requested frame
-  PVideoFrame frame = NULL;
+  bool found;
   LruCache<size_t, PVideoFrame>::handle cache_handle;
-  if (!VideoCache->get_insert(n, &frame, &cache_handle))
+  PVideoFrame* frame = VideoCache->lookup(n, &found, &cache_handle);
+  if (!found)
   {
     try
     {
-      frame = child->GetFrame(n, env);
+      *frame = child->GetFrame(n, env);
       VideoCache->commit_value(&cache_handle, frame);
     }
     catch(...)
@@ -131,8 +132,8 @@ PVideoFrame __stdcall Prefetcher::GetFrame(int n, IScriptEnvironment* env)
     if (n >= vi.num_frames)
       break;
 
-    PVideoFrame prefetchedFrame = NULL;
-    if (!VideoCache->get_insert(n, &prefetchedFrame, &cache_handle))
+    PVideoFrame* prefetchedFrame = VideoCache->lookup(n, &found, &cache_handle);
+    if (!found)
     {
       PrefetcherJobParams *p = new PrefetcherJobParams(); // TODO avoid heap, possibly fold into Completion object
       p->frame = n;
@@ -145,7 +146,7 @@ PVideoFrame __stdcall Prefetcher::GetFrame(int n, IScriptEnvironment* env)
     }
   }
 
-  return frame;
+  return *frame;
 }
 
 bool __stdcall Prefetcher::GetParity(int n)

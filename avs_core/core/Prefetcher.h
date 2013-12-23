@@ -2,6 +2,8 @@
 #define _AVS_FILT_PREFETCHER_H
 
 #include <avisynth.h>
+#include <boost/thread.hpp>
+#include <boost/atomic.hpp>
 #include "cache.h"  // TODO we only need LruCache from here
 
 

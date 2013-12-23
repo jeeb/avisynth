@@ -38,62 +38,6 @@
 #include <avisynth.h>
 #include <boost/circular_buffer.hpp>
 #include "LruCache.h"
-/*
-class CacheStats
-{
-private:
-  size_t TotalRequests_;
-  size_t TotalMisses_;
-  size_t MissAvgWindowSum_;
-  boost::circular_buffer<int> MissAvgWindow_;
-
-public:
-  CacheStats() : 
-    TotalRequests_(0),
-    TotalMisses_(0),
-    MissAvgWindowSum_(0),
-    MissAvgWindow_(32, 0)
-  {}
-
-  void AddMiss()
-  {
-    ++TotalRequests_;
-    ++TotalMisses_;
-
-    if (MissAvgWindow_.full())
-    {
-      MissAvgWindowSum_ -= MissAvgWindow_.back();
-      MissAvgWindow_.pop_back();
-    }
-    MissAvgWindowSum_ += 1;
-    MissAvgWindow_.push_front(1);
-  }
-
-  void AddHit()
-  {
-    ++TotalRequests_;
-
-    if (MissAvgWindow_.full())
-    {
-      MissAvgWindowSum_ -= MissAvgWindow_.back();
-      MissAvgWindow_.pop_back();
-    }
-    MissAvgWindowSum_ += 0;
-    MissAvgWindow_.push_front(0);
-  }
-
-  float WindowedMissAvg() const
-  {
-    if (MissAvgWindow_.full())
-    {
-      return float(MissAvgWindowSum_) / MissAvgWindow_.size();
-    }
-    else
-    {
-      return 1.0f;
-    }
-  }
-};*/
 
 class Cache : public IClip
 {
@@ -104,12 +48,11 @@ private:
   // Video cache
   CachePolicyHint VideoPolicy;
   int VideoCacheWindowRange;
-  boost::shared_ptr<LruCache<size_t, PVideoFrame> > VideoCache;
+  std::shared_ptr<LruCache<size_t, PVideoFrame> > VideoCache;
   int   StatsLastCheck;
   int   StatsLastCheckCooldown;
   float StatsLastResult;
   int  CacheCanEnlarge;
-//  CacheStats VideoCacheStats;
 
   // Audio cache
   CachePolicyHint AudioPolicy;

@@ -131,7 +131,8 @@ void ThreadPool::QueueJob(ThreadWorkerFuncPtr clb, void* params, IScriptEnvironm
 
 size_t ThreadPool::NumThreads() const
 {
-  return _pimpl->Threads.size();
+// TODO  return _pimpl->Threads.size();
+  return 1;
 }
 
 ThreadPool::~ThreadPool()

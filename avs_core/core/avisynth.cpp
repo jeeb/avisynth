@@ -691,7 +691,7 @@ ScriptEnvironment::ScriptEnvironment()
 
     //size_t nCpuCores = 2;
     size_t nCpuCores = GetProperty(AEP_PHYSICAL_CPUS);
-    thread_pool = new ThreadPool( nCpuCores > 1 ? nCpuCores+1 : 1);
+   // TODO thread_pool = new ThreadPool( nCpuCores > 1 ? nCpuCores+1 : 1);
 
     ExportBuiltinFilters();
   }
@@ -1452,8 +1452,8 @@ success:;
   if (f->IsScriptFunction())
     *result = f->apply(funcArgs, f->user_data, this);
   else
-    *result = Cache::Create(MTGuard::Create(f, funcArgs, this), f->user_data, this);
-  //    *result = Cache::Create(f->apply(funcArgs, f->user_data, this), NULL, this);
+      *result = Cache::Create(f->apply(funcArgs, f->user_data, this), NULL, this);
+//    *result = Cache::Create(MTGuard::Create(f, funcArgs, this), f->user_data, this);  TODO
   
   return true;
 }

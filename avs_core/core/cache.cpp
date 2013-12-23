@@ -34,7 +34,6 @@
 
 #include "cache.h"
 #include "internal.h"
-#include <boost/make_shared.hpp>
 #include <cassert>
 #include <limits>
 
@@ -67,7 +66,7 @@ Cache::Cache(const PClip& _child) :
   VideoPolicy(CACHE_GENERIC),
   AudioPolicy(CACHE_AUDIO)
 {
-  VideoCache = boost::make_shared<LruCache<size_t, PVideoFrame> >(1); // TODO
+  VideoCache = std::make_shared<LruCache<size_t, PVideoFrame> >(0);
 }
 
 Cache::~Cache()
@@ -76,37 +75,40 @@ Cache::~Cache()
 
 PVideoFrame __stdcall Cache::GetFrame(int n, IScriptEnvironment* env)
 {
-  if (VideoPolicy == CACHE_NOTHING)
+  bool found;
+  LruCache<size_t, PVideoFrame>::handle cache_handle;
+  PVideoFrame* frame = VideoCache->lookup(n, &found, &cache_handle);
+
+  if (frame != NULL)
+  {
+    if (!found)
+    {
+      try
+      {
+        *frame = child->GetFrame(n, env);
+  #ifdef X86_32
+        _mm_empty();
+  #endif
+        VideoCache->commit_value(&cache_handle, frame);
+      }
+      catch(...)
+      {
+        VideoCache->rollback(&cache_handle);
+        throw;
+      }
+    }
+
+    return *frame;
+  }
+  else
   {
     return child->GetFrame(n, env);
   }
-
-  PVideoFrame frame = NULL;
-  LruCache<size_t, PVideoFrame>::handle cache_handle;
-
-  if (!VideoCache->get_insert(n, &frame, &cache_handle))
-  {
-    try
-    {
-      frame = child->GetFrame(n, env);
-#ifdef X86_32
-      _mm_empty();
-#endif
-      VideoCache->commit_value(&cache_handle, frame);
-    }
-    catch(...)
-    {
-      VideoCache->rollback(&cache_handle);
-      throw;
-    }
-  }
-
-  return frame;
 }
 
 void __stdcall Cache::GetAudio(void* buf, __int64 start, __int64 count, IScriptEnvironment* env)
 {
-  // TODO
+  // TODO: implement audio cache
   child->GetAudio(buf, start, count, env);
 }
 
