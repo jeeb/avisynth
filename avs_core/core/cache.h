@@ -46,13 +46,7 @@ private:
   VideoInfo vi;
 
   // Video cache
-  CachePolicyHint VideoPolicy;
-  int VideoCacheWindowRange;
   std::shared_ptr<LruCache<size_t, PVideoFrame> > VideoCache;
-  int   StatsLastCheck;
-  int   StatsLastCheckCooldown;
-  float StatsLastResult;
-  int  CacheCanEnlarge;
 
   // Audio cache
   CachePolicyHint AudioPolicy;

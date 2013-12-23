@@ -35,7 +35,6 @@
 #include "cache.h"
 #include "internal.h"
 #include <cassert>
-#include <limits>
 
 #ifdef X86_32
 #include <mmintrin.h>
@@ -59,11 +58,6 @@ Cache::Cache(const PClip& _child) :
   child(_child),
   vi(_child->GetVideoInfo()),
   VideoCache(NULL),
-  StatsLastCheck(std::numeric_limits<size_t>::min()),
-  StatsLastResult(std::numeric_limits<float>::max()),
-  CacheCanEnlarge(0),
-  StatsLastCheckCooldown(0),
-  VideoPolicy(CACHE_GENERIC),
   AudioPolicy(CACHE_AUDIO)
 {
   VideoCache = std::make_shared<LruCache<size_t, PVideoFrame> >(0);
@@ -128,9 +122,21 @@ int __stdcall Cache::SetCacheHints(int cachehints, int frame_range)
 
   switch(cachehints)
   {
+    /*********************************************
+        MISC
+    *********************************************/
+
     // By returning IS_CACHE_ANS to IS_CACHE_REQ, we tell the caller we are a cache
     case IS_CACHE_REQ:
       return IS_CACHE_ANS;
+
+    case CACHE_GET_POLICY: // Get the current policy.
+      return CACHE_GENERIC;
+      break;
+
+    /*********************************************
+        AVS 2.5 TRANSLATION
+    *********************************************/
 
     // Ignore 2.5 CACHE_NOTHING requests
     case CACHE_25_NOTHING:
@@ -162,6 +168,27 @@ int __stdcall Cache::SetCacheHints(int cachehints, int frame_range)
     case CACHE_25_AUDIO_AUTO:
       SetCacheHints(CACHE_AUDIO_AUTO, frame_range);
       break;
+
+    /*********************************************
+        VIDEO
+    *********************************************/
+
+    case CACHE_GET_WINDOW: // Get the current window h_span.
+    case CACHE_GET_RANGE: // Get the current generic frame range.
+      return 2;
+      break;
+
+    case CACHE_GENERIC:
+    case CACHE_FORCE_GENERIC:
+    case CACHE_NOTHING:
+    case CACHE_WINDOW:
+    case CACHE_PREFETCH_FRAME:          // Queue request to prefetch frame N.
+    case CACHE_PREFETCH_GO:             // Action video prefetches.
+      break;
+
+    /*********************************************
+        AUDIO
+    *********************************************/
 
     case CACHE_AUDIO:
     case CACHE_AUDIO_AUTO:
@@ -206,36 +233,6 @@ int __stdcall Cache::SetCacheHints(int cachehints, int frame_range)
     case CACHE_GET_AUDIO_SIZE: // Get the current audio cache size.
       return SampleSize * MaxSampleCount;
 
-    case CACHE_GENERIC:
-    case CACHE_FORCE_GENERIC:
-      VideoPolicy = CACHE_GENERIC;
-      break;
-
-    case CACHE_NOTHING:
-      VideoPolicy = CACHE_NOTHING;  // filter requested no caching.
-      break;
-
-    case CACHE_WINDOW:
-      VideoPolicy = CACHE_WINDOW;
-      VideoCacheWindowRange = frame_range;
-//      VideoCache->max_size = frame_range*2+1;	TODO
-      break;
-
-    case CACHE_GET_POLICY: // Get the current policy.
-      return VideoPolicy;
-      break;
-
-    case CACHE_GET_WINDOW: // Get the current window h_span.
-      return VideoCacheWindowRange;
-      break;
-
-    case CACHE_GET_RANGE: // Get the current generic frame range.
-      return VideoCacheWindowRange;
-      break;
-
-
-    case CACHE_PREFETCH_FRAME:          // Queue request to prefetch frame N.
-    case CACHE_PREFETCH_GO:             // Action video prefetches.
     case CACHE_PREFETCH_AUDIO_BEGIN:    // Begin queue request to prefetch audio (take critical section).
     case CACHE_PREFETCH_AUDIO_STARTLO:  // Set low 32 bits of start.
     case CACHE_PREFETCH_AUDIO_STARTHI:  // Set high 32 bits of start.
