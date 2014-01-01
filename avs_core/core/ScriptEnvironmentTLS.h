@@ -129,6 +129,15 @@ public:
    * ---------------------------------------------------------------------------------
    */
 
+  void* __stdcall Allocate(size_t nBytes, size_t align)
+  {
+    return core->Allocate(nBytes, align);
+  }
+
+  void __stdcall Free(void* ptr)
+  {
+    core->Free(ptr);
+  }
 
   void __stdcall CheckVersion(int version)
   {

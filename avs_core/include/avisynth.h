@@ -637,6 +637,19 @@ enum CachePolicyHint {
     CACHE_ACCESS_SEQ0=262, // Filter prefers sequential access (low cost)
     CACHE_ACCESS_SEQ1=263, // Filter needs sequential access (high cost)
 
+  CACHE_AVSPLUS_CONSTANTS = 500,    // Smaller values are reserved for classic Avisynth
+
+  CACHE_DONT_CACHE_ME,              // Filters that don't need caching (eg. trim, cache etc.) should return 1 to this request
+  CACHE_SET_MIN_CAPACITY,
+  CACHE_SET_MAX_CAPACITY,
+  CACHE_GET_MIN_CAPACITY,
+  CACHE_GET_MAX_CAPACITY,
+  CACHE_GET_SIZE,
+  CACHE_GET_REQUESTED_CAP,
+  CACHE_GET_CAPACITY,
+
+  CACHE_USER_CONSTANTS = 1000       // Smaller values are reserved for the core
+
 };
 
 // Base class for all filters.
@@ -1067,6 +1080,10 @@ public:
   virtual int __stdcall IncrImportDepth() = 0;
   virtual int __stdcall DecrImportDepth() = 0;
   virtual void __stdcall SetPrefetcher(Prefetcher *p) = 0;
+
+  // Support functions
+  virtual void* __stdcall Allocate(size_t nBytes, size_t align) = 0;
+  virtual void __stdcall Free(void* ptr) = 0;
 
   // These lines are needed so that we can overload the older functions from IScriptEnvironment.
   using IScriptEnvironment::Invoke;

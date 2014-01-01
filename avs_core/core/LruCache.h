@@ -73,7 +73,7 @@ private:
   CacheType MainCache;
   GhostCacheType Ghosts;
   boost::object_pool<entry_type> EntryPool;
-  std::mutex mutex;
+  mutable std::mutex mutex;
 
   static bool MainEvictEvent(CacheType* cache, typename const CacheType::Entry& entry, void* userData)
   {
@@ -112,6 +112,30 @@ public:
   size_type size() const
   {
     return MainCache.size();
+  }
+
+  size_t requested_capacity() const
+  {
+    return MainCache.requested_capacity();
+  }
+
+  size_t capacity() const
+  {
+    return MainCache.capacity();
+  }
+
+  void limits(size_t* min, size_t* max) const
+  {
+    std::unique_lock<std::mutex> global_lock(mutex);
+
+    MainCache.limits(min, max);
+  }
+
+  void set_limits(size_t min, size_t max)
+  {
+    std::unique_lock<std::mutex> global_lock(mutex);
+
+    MainCache.set_limits(min, max);
   }
 
   V* lookup(const K& key, bool *found, handle *hndl)

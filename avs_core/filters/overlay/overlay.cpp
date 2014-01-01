@@ -35,6 +35,7 @@
 // Overlay (c) 2003, 2004 by Klaus Post
 
 #include <avs/win.h>
+#include <stdlib.h>
 #include "overlay.h"
 #include "../core/internal.h"
 
@@ -131,7 +132,7 @@ GenericVideoFilter(_child) {
       }
     }
 
-    maskImg = new Image444(maskVi.width, maskVi.height);
+    maskImg = new Image444(maskVi.width, maskVi.height, env);
 
     if (greymask) {
       maskImg->free_chroma();
@@ -163,9 +164,9 @@ GenericVideoFilter(_child) {
   if (vi.IsYV24() && inputCS == vi.pixel_type)  // Fast path
     img = NULL;
   else
-    img = new Image444(vi.width, vi.height);
+    img = new Image444(vi.width, vi.height, env);
 
-  overlayImg = new Image444(overlayVi.width, overlayVi.height);
+  overlayImg = new Image444(overlayVi.width, overlayVi.height, env);
 
   func = SelectFunction(args[ARG_MODE].AsString("Blend"), env);
 
@@ -210,7 +211,7 @@ PVideoFrame __stdcall Overlay::GetFrame(int n, IScriptEnvironment *env) {
     // will choose unsuitable alignment on YV24 planes.
     delete img;
     img = new Image444(frame->GetWritePtr(PLANAR_Y), frame->GetWritePtr(PLANAR_U), frame->GetWritePtr(PLANAR_V),
-                       frame->GetRowSize(PLANAR_Y), frame->GetHeight(PLANAR_Y), frame->GetPitch(PLANAR_Y));
+                       frame->GetRowSize(PLANAR_Y), frame->GetHeight(PLANAR_Y), frame->GetPitch(PLANAR_Y), env);
   } else {
     inputConv->ConvertImage(frame, img, env);
   }

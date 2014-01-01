@@ -54,27 +54,34 @@ enum
   IS_CACHE_ANS = 0x6546,
 };
 
-Cache::Cache(const PClip& _child) :
+Cache::Cache(const PClip& _child, IScriptEnvironment* env) :
+  Env(env),
   child(_child),
   vi(_child->GetVideoInfo()),
-  VideoCache(NULL),
+  VideoCache(std::make_shared<LruCache<size_t, PVideoFrame> >(0)),
   AudioPolicy(CACHE_AUDIO)
 {
-  VideoCache = std::make_shared<LruCache<size_t, PVideoFrame> >(0);
+  env->ManageCache(MC_RegisterCache, reinterpret_cast<void*>(this));
 }
 
 Cache::~Cache()
 {
+  Env->ManageCache(MC_UnRegisterCache, reinterpret_cast<void*>(this));
 }
 
 PVideoFrame __stdcall Cache::GetFrame(int n, IScriptEnvironment* env)
 {
+  env->ManageCache(MC_NodCache, reinterpret_cast<void*>(this));
+
   bool found;
   LruCache<size_t, PVideoFrame>::handle cache_handle;
   PVideoFrame* frame = VideoCache->lookup(n, &found, &cache_handle);
 
   if (frame != NULL)
   {
+    if (VideoCache->requested_capacity() > VideoCache->capacity())
+      env->ManageCache(MC_ExpandCache, reinterpret_cast<void*>(this));
+    
     if (!found)
     {
       try
@@ -132,7 +139,9 @@ int __stdcall Cache::SetCacheHints(int cachehints, int frame_range)
 
     case CACHE_GET_POLICY: // Get the current policy.
       return CACHE_GENERIC;
-      break;
+
+    case CACHE_DONT_CACHE_ME:
+      return 1;
 
     /*********************************************
         AVS 2.5 TRANSLATION
@@ -172,6 +181,47 @@ int __stdcall Cache::SetCacheHints(int cachehints, int frame_range)
     /*********************************************
         VIDEO
     *********************************************/
+
+    case CACHE_SET_MIN_CAPACITY:
+    { // This is not atomic, but rankly, we don't care
+      size_t min, max;
+      VideoCache->limits(&min, &max);
+      min = frame_range;
+      VideoCache->set_limits(min, max);
+      break;
+    }
+
+    case CACHE_SET_MAX_CAPACITY:
+    { // This is not atomic, but rankly, we don't care
+      size_t min, max;
+      VideoCache->limits(&min, &max);
+      max = frame_range;
+      VideoCache->set_limits(min, max);
+      break;
+    }
+
+    case CACHE_GET_MIN_CAPACITY:
+    {
+      size_t min, max;
+      VideoCache->limits(&min, &max);
+      return min;
+    }
+
+    case CACHE_GET_MAX_CAPACITY:
+    {
+      size_t min, max;
+      VideoCache->limits(&min, &max);
+      return max;
+    }
+
+    case CACHE_GET_SIZE:
+      return VideoCache->size();
+      
+    case CACHE_GET_REQUESTED_CAP:
+      return VideoCache->requested_capacity();
+
+    case CACHE_GET_CAPACITY:
+      return VideoCache->capacity();
 
     case CACHE_GET_WINDOW: // Get the current window h_span.
     case CACHE_GET_RANGE: // Get the current generic frame range.
@@ -250,7 +300,7 @@ int __stdcall Cache::SetCacheHints(int cachehints, int frame_range)
 
 AVSValue __cdecl Cache::Create(AVSValue args, void*, IScriptEnvironment* env)
 {
-  PClip p=0;
+  PClip p = 0;
   if (args.IsClip())
   {
     p = args.AsClip();
@@ -260,12 +310,18 @@ AVSValue __cdecl Cache::Create(AVSValue args, void*, IScriptEnvironment* env)
     p = args[0].AsClip();
   }
 
-  if (p)
+  if (p)  // If the child is a clip
   {
-    if (Cache::IsCache(p))
-      return p;
+    if ( (p->GetVersion() >= 5)
+      && (p->SetCacheHints(CACHE_DONT_CACHE_ME, 0) != 0) )
+    {
+      // Don't create cache instance if the child doesn't want to be cached
+      return args;
+    }
     else
-      return new Cache(p);
+    {
+      return new Cache(p, env);
+    }
   }
   else
   {

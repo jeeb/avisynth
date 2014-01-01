@@ -34,7 +34,6 @@
 
 #include "resample_functions.h"
 #include <cmath>
-#include <malloc.h>
 #include <avs/minmax.h>
 
 
@@ -232,14 +231,14 @@ double SincFilter::f(double value) {
  **** Resampling Patterns  ****
  *****************************/
 
-ResamplingProgram* ResamplingFunction::GetResamplingProgram(int source_size, double crop_start, double crop_size, int target_size, IScriptEnvironment* env)
+ResamplingProgram* ResamplingFunction::GetResamplingProgram(int source_size, double crop_start, double crop_size, int target_size, IScriptEnvironment2* env)
 {
   double filter_scale = double(target_size) / crop_size;
   double filter_step = min(filter_scale, 1.0);
   double filter_support = support() / filter_step;
   int fir_filter_size = int(ceil(filter_support*2));
 
-  ResamplingProgram* program = new ResamplingProgram(fir_filter_size, source_size, target_size, crop_start, crop_size);
+  ResamplingProgram* program = new ResamplingProgram(fir_filter_size, source_size, target_size, crop_start, crop_size, env);
 
   // this variable translates such that the image center remains fixed
   double pos;

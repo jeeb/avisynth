@@ -3,6 +3,8 @@
 
 #include <list>
 #include <functional>
+#include <limits>
+#include <avs/minmax.h>
 
 template<typename K, typename V>
 class SimpleLruCache
@@ -25,7 +27,10 @@ public:
   typedef std::function<bool(SimpleLruCache*, const Entry&, void*)> EvictEventType;
 
 private:
-  size_t Capacity;
+  size_t MinCapacity;
+  size_t MaxCapacity;
+  size_t RequestedCapacity;
+  size_t RealCapacity;
   std::list<Entry> Cache;
   std::list<Entry> Pool;
 
@@ -34,7 +39,10 @@ private:
 
 public:
   SimpleLruCache(size_t capacity, const EvictEventType& evict, void* evData) :
-    Capacity(capacity),
+    MinCapacity(0),
+    MaxCapacity(std::numeric_limits<size_t>::max()),
+    RequestedCapacity(capacity),
+    RealCapacity(capacity),
     EventUserData(evData),
     EvictEvent(evict)
   {
@@ -45,9 +53,27 @@ public:
     return Cache.size();
   }
 
+  size_t requested_capacity() const
+  {
+    return RequestedCapacity;
+  }
+
   size_t capacity() const
   {
-    return Capacity;
+    return RealCapacity;
+  }
+
+  void limits(size_t* min, size_t* max) const
+  {
+    *min = MinCapacity;
+    *max = MaxCapacity;
+  }
+
+  void set_limits(size_t min, size_t max)
+  {
+    MinCapacity = min;
+    MaxCapacity = max;
+    resize(RequestedCapacity);
   }
 
   V* lookup(const K& key, bool *found)
@@ -77,7 +103,7 @@ public:
     // Evict an old element if the cache is full
     trim();
 
-    if (Capacity != 0)
+    if (RealCapacity != 0)
     {
       // See if we can take one from our pool
       if (!Pool.empty())
@@ -115,35 +141,44 @@ public:
 
   void trim()
   {
-    std::list<Entry>::reverse_iterator it = Cache.rbegin();
-    while( (Cache.size() > Capacity) && (it != Cache.rend()))
-    {
-      std::list<Entry>::reverse_iterator next = it;
-      ++next;
+    if (Cache.size() < 2)
+      return;
 
-      std::list<Entry>::iterator fwd_it = next.base();
-      assert(&(*it) == &(*fwd_it));
+    std::list<Entry>::iterator it = --Cache.end();
+    while(Cache.size() > RealCapacity)
+    {
+      std::list<Entry>::iterator prev;
+      bool end = &(*it) == &Cache.front();
+      if (!end)
+      {
+        prev = it;
+        --prev;
+      }
 
       if (EvictEvent != NULL)
       {
         if (EvictEvent(this, *it, EventUserData))
         {
-          Pool.splice(Pool.begin(), Cache, fwd_it);
+          Pool.splice(Pool.begin(), Cache, it);
         }
       }
       else
       {
         // TODO: Do we want the consumer to always define EvictItem?
-        Pool.splice(Pool.begin(), Cache, fwd_it);
+        Pool.splice(Pool.begin(), Cache, it);
       }
 
-      it = next;
+      if (end)
+        break;
+      else
+        it = prev;
     }
   }
 
   void resize(size_t new_cap)
   {
-    Capacity = new_cap;
+    RequestedCapacity = new_cap;
+    RealCapacity = clamp(RequestedCapacity, MinCapacity, MaxCapacity);
     trim();
   }
 };

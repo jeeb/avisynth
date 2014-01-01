@@ -42,6 +42,7 @@
 class Cache : public IClip
 {
 private:
+  IScriptEnvironment* Env;
   PClip child; 
   VideoInfo vi;
 
@@ -55,13 +56,14 @@ private:
   size_t MaxSampleCount;
 
 public:
-  Cache(const PClip& child);
+  Cache(const PClip& child, IScriptEnvironment* env);
   ~Cache();
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
   void __stdcall GetAudio(void* buf, __int64 start, __int64 count, IScriptEnvironment* env);
   const VideoInfo& __stdcall GetVideoInfo();
   bool __stdcall GetParity(int n);
   int __stdcall SetCacheHints(int cachehints,int frame_range);
+  std::mutex& mutex();
 
   static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env);
   static bool __stdcall IsCache(const PClip& c);

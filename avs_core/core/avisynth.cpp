@@ -35,13 +35,14 @@
 #include <avisynth.h>
 #include "../core/internal.h"
 #include "./parser/script.h"
-#include "cache.h"
 #include <avs/minmax.h>
 #include <avs/alignment.h>
 #include "strings.h"
 #include <avs/cpuid.h>
+#include <unordered_set>
 #include "bitblt.h"
 #include "PluginManager.h"
+#include "MappedList.h"
 #include <vector>
 
 #include <avs/win.h>
@@ -542,27 +543,10 @@ public:
   virtual IJobCompletion* __stdcall NewCompletion(size_t capacity);
   virtual size_t  __stdcall GetProperty(AvsEnvProperty prop);
   virtual void __stdcall SetPrefetcher(Prefetcher *p);
+  virtual void* __stdcall Allocate(size_t nBytes, size_t align);
+  virtual void __stdcall Free(void* ptr);
 
 private:
-  /*
-  TODO remove if unneeded
-  class FrameSizeCompareLB 
-  {
-  public:
-    bool operator()(const VideoFrame* x, const VideoFrame* y)
-    {
-      return x->vfb->data_size <= y->vfb->data_size;
-    }
-  };
-  class FrameSizeCompareUB
-  {
-  public:
-    bool operator()(const VideoFrame* x, const VideoFrame* y)
-    {
-      return x->vfb->data_size > y->vfb->data_size;
-    }
-  };
-  */
 
   // Tritical May 2005
   // Note order here!!
@@ -582,6 +566,7 @@ private:
 
   const AVSFunction* Lookup(const char* search_name, const AVSValue* args, size_t num_args,
                       bool &pstrict, size_t args_names_count, const char* const* arg_names);
+  void EnsureMemoryLimit();
   unsigned __int64 memory_max, memory_used;
 
   void ExportBuiltinFilters();
@@ -595,10 +580,13 @@ private:
   bool closing;                 // Used to avoid deadlock, if vartable is being accessed while shutting down (Popcontext)
 
   typedef std::multimap<size_t, VideoFrame*> FrameRegistryType;
+  typedef mapped_list<Cache*> CacheRegistryType;
   FrameRegistryType FrameRegistry;
+  CacheRegistryType CacheRegistry;
+  Cache* FrontCache;
   VideoFrame* GetNewFrame(size_t vfb_size);
   VideoFrame* AllocateFrame(size_t vfb_size);
-  boost::mutex memory_mutex;
+  std::mutex memory_mutex;
 
   MTMapState MTMap;
   Prefetcher *prefetcher;
@@ -648,9 +636,9 @@ ScriptEnvironment::ScriptEnvironment()
     PlanarChromaAlignmentState(true),   // Change to "true" for 2.5.7
     ImportDepth(0),
     thread_pool(NULL),
-    prefetcher(NULL)
+    prefetcher(NULL),
+    FrontCache(NULL)
 {
-
   try {
     // Make sure COM is initialised
     hrfromcoinit = CoInitialize(NULL);
@@ -772,6 +760,36 @@ MTMODES __stdcall ScriptEnvironment::GetFilterMTMode(const char* filter) const
   return MTMap.GetMode(filter);
 }
 
+void* __stdcall ScriptEnvironment::Allocate(size_t nBytes, size_t align)
+{
+  if (!IS_POWER2(align))
+    throw AvisynthError("Allocate error, 'align' must be a power of two.");
+  
+  size_t offset = 2*sizeof(void*) + align - 1;
+  nBytes += offset;
+  
+  void *orig = malloc(nBytes + offset);
+  if (orig == NULL)
+   return NULL;
+   
+  void **aligned = (void**)(((uintptr_t)orig + (uintptr_t)offset) & (~(uintptr_t)(align-1)));
+  aligned[-2] = orig;
+  aligned[-1] = (void*)nBytes;
+  memory_used += nBytes;
+
+  return aligned;
+}
+
+void __stdcall ScriptEnvironment::Free(void* ptr)
+{
+  // Mirroring free()'s semantic requires us to accept NULLs
+  if (ptr == NULL)
+    return;
+    
+  memory_used -= (size_t)(((void**)ptr)[-1]);
+  free(((void**)ptr)[-2]);
+}
+
 /* This function adds information about builtin functions into global variables.
  * External utilities (like AvsPmod) can parse these variables and use them 
  * to learn about supported functions and their syntax.
@@ -865,7 +883,7 @@ void __stdcall ScriptEnvironment::AutoloadPlugins()
 
 int ScriptEnvironment::SetMemoryMax(int mem) {
 
-  if (mem > 0)
+  if (mem > 0)  /* If mem is zero, we should just return current setting */
     memory_max = ConstrainMemoryRequest(mem * 1048576ull);
 
   return (int)(memory_max/1048576ull);
@@ -977,6 +995,8 @@ VideoFrame* ScriptEnvironment::AllocateFrame(size_t vfb_size)
   }
 
   memory_used+=vfb_size;
+  EnsureMemoryLimit();
+
   FrameRegistry.insert(FrameRegistryType::value_type(vfb_size, newFrame));
 
   return newFrame;
@@ -984,8 +1004,7 @@ VideoFrame* ScriptEnvironment::AllocateFrame(size_t vfb_size)
 
 VideoFrame* ScriptEnvironment::GetNewFrame(size_t vfb_size)
 {
-  boost::unique_lock<boost::mutex> lock(memory_mutex);
-
+  std::unique_lock<std::mutex> env_lock(memory_mutex);
 
   /* -----------------------------------------------------------
    *   Try to return an unused but already allocated instance
@@ -1023,9 +1042,9 @@ VideoFrame* ScriptEnvironment::GetNewFrame(size_t vfb_size)
    * -----------------------------------------------------------
    */
   for (
-    FrameRegistryType::iterator it = FrameRegistry.begin();
-    it != FrameRegistry.end() && (size_t(it->second->vfb->data_size) < vfb_size);
-    ++it)
+      FrameRegistryType::iterator it = FrameRegistry.begin();
+      it != FrameRegistry.end() && (size_t(it->second->vfb->data_size) < vfb_size);
+      )
   {
     VideoFrame *frame = it->second;
     assert((size_t)frame->vfb->GetDataSize() < vfb_size);
@@ -1033,9 +1052,17 @@ VideoFrame* ScriptEnvironment::GetNewFrame(size_t vfb_size)
     if (frame->refcount == 0)
     {
       if (frame->vfb->refcount == 0)
+      {
+        memory_used -= frame->vfb->GetDataSize();
         delete frame->vfb;
+      }
 
       delete frame;
+      FrameRegistry.erase(it++);
+    }
+    else
+    {
+      ++it;
     }
   }
 
@@ -1057,6 +1084,62 @@ VideoFrame* ScriptEnvironment::GetNewFrame(size_t vfb_size)
   return NULL;
 }
 
+void ScriptEnvironment::EnsureMemoryLimit()
+{
+
+  /* -----------------------------------------------------------
+   *             Ensure SetMemoryMax limit is kept
+   * -----------------------------------------------------------
+   */
+
+  for (
+        CacheRegistryType::iterator cit = CacheRegistry.begin();
+        (memory_used > memory_max) && (cit != CacheRegistry.end());
+        ++cit
+      )
+  {
+    // Oh darn. We'd need more memory than we are allowed to use.
+    // Let's reduce the amount of caching.
+    
+    // We try to shrink least recently used caches first.
+
+    Cache* cache = *cit;
+    int cache_size = cache->SetCacheHints(CACHE_GET_SIZE, 0);
+    if (cache_size != 0)
+    {
+      cache->SetCacheHints(CACHE_SET_MAX_CAPACITY, cache_size-1);
+
+      /* -----------------------------------------------------------
+       * Try to free up memory that we've just released from a cache
+       * -----------------------------------------------------------
+       */
+      for (
+          FrameRegistryType::iterator fit = FrameRegistry.begin();
+          fit != FrameRegistry.end();
+          )
+      {
+        VideoFrame *frame = fit->second;
+
+        if (frame->refcount == 0)
+        {
+          if (frame->vfb->refcount == 0)
+          {
+            memory_used -= frame->vfb->GetDataSize();
+            delete frame->vfb;
+          }
+
+          delete frame;
+          FrameRegistry.erase(fit++);
+        }
+        else
+        {
+          ++fit;
+        }
+      } // for fit
+    } // if
+  } // for cit
+}
+
 PVideoFrame ScriptEnvironment::NewPlanarVideoFrame(int row_size, int height, int row_sizeUV, int heightUV, int align, bool U_first)
 {
   if (align < 0){
@@ -1075,7 +1158,7 @@ PVideoFrame ScriptEnvironment::NewPlanarVideoFrame(int row_size, int height, int
     pitchUV = (pitchY+1)>>1;  // UV plane, width = 1/2 byte per pixel - don't align UV planes seperately.
   }
   else {
-    // Align planes seperately
+    // Align planes separately
     pitchUV = AlignNumber(row_sizeUV, align);
   }
 
@@ -1255,8 +1338,78 @@ void* ScriptEnvironment::ManageCache(int key, void* data) {
 // ScriptEnvironment class without extending the IScriptEnvironment
 // definition.
 
-  // This function is not used any more, but cannot be removed
-  // because it is part of the public interface.
+  switch((MANAGE_CACHE_KEYS)key)
+  {
+  // Called by Cache instances upon creation
+  case MC_RegisterCache:
+  {
+    Cache* cache = reinterpret_cast<Cache*>(data);
+    if (FrontCache != NULL)
+      CacheRegistry.push_back(FrontCache);     
+    FrontCache = cache;
+    break;
+  }
+  // Called by Cache instances upon destruction
+  case MC_UnRegisterCache:
+  {
+    Cache* cache = reinterpret_cast<Cache*>(data);
+    if (FrontCache == cache)
+      FrontCache = NULL;
+    else
+      CacheRegistry.remove(cache);
+    break;
+  }
+  // Called by Cache instances when they want to expand their limit
+  case MC_ExpandCache:
+  {
+    std::unique_lock<std::mutex> env_lock(memory_mutex);
+
+    // Given that we are within our memory limits,
+    // try to expand the limit of those caches that
+    // need it.
+    // We try to expand most recently used caches first.
+
+    Cache* cache     = reinterpret_cast<Cache*>(data);
+    int cache_cap    = cache->SetCacheHints(CACHE_GET_CAPACITY, 0);
+    int cache_reqcap = cache->SetCacheHints(CACHE_GET_REQUESTED_CAP, 0);
+    if (cache_reqcap <= cache_cap)
+      return 0;
+
+    if ((memory_used > memory_max) || (memory_max - memory_used < memory_max*0.1f))
+    {
+      // If we don't have enough free reserves, take away a cache slot from
+      // a cache instance that hasn't been used since long.
+      for (
+            CacheRegistryType::iterator cit = CacheRegistry.begin();
+            cit != CacheRegistry.end();
+            ++cit
+          )
+      {
+        Cache* old_cache = *cit;
+        int osize = cache->SetCacheHints(CACHE_GET_SIZE, 0);
+        if (osize != 0)
+        {
+          old_cache->SetCacheHints(CACHE_SET_MAX_CAPACITY, osize-1);
+          break;
+        }
+      } // for cit
+    }
+      
+    cache->SetCacheHints(CACHE_SET_MAX_CAPACITY, cache_cap+1);
+
+    break;
+  }
+  // Called by Cache instances when they are accessed
+  case MC_NodCache:
+  {
+    Cache* cache = reinterpret_cast<Cache*>(data);
+    std::unique_lock<std::mutex> env_lock(memory_mutex);
+    if (cache == FrontCache)
+      return 0;
+    CacheRegistry.move_to_back(cache);
+    break;
+  } // case
+  } // switch
   return 0;
 }
 

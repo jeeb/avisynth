@@ -51,14 +51,13 @@
 
 extern const char _AVS_VERSTR[], _AVS_COPYRIGHT[];
 
-// env->ManageCache() Non user keys definition
-// Define user accessible keys in avisynth.h
-//
-enum {MC_ReturnVideoFrameBuffer =0xFFFF0001};
-enum {MC_ManageVideoFrameBuffer =0xFFFF0002};
-enum {MC_PromoteVideoFrameBuffer=0xFFFF0003};
-enum {MC_RegisterCache          =0xFFFF0004};
-enum {MC_IncVFBRefcount         =0xFFFF0005};
+enum MANAGE_CACHE_KEYS
+{
+  MC_RegisterCache     = 0xFFFF0004,
+  MC_UnRegisterCache   = 0xFFFF0006,
+  MC_NodCache          = 0xFFFF0007,
+  MC_ExpandCache       = 0xFFFF0008
+};
 
 #include <avisynth.h>
 #include <cstring>
@@ -144,6 +143,18 @@ private:
   char *old_directory;
   bool restore;
 };
+
+
+class NonCachedGenericVideoFilter : public GenericVideoFilter 
+/**
+  * Class to select a range of frames from a longer clip
+ **/
+{
+public:
+  NonCachedGenericVideoFilter(PClip _child);
+  int __stdcall SetCacheHints(int cachehints, int frame_range);
+};
+
 
 
 /*** Inline helper methods ***/

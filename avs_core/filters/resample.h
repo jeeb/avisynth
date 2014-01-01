@@ -56,6 +56,8 @@ public:
   virtual ~FilteredResizeH(void);
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
 private:
+  IScriptEnvironment2* Env;
+
   // Resampling
   ResamplingProgram *resampling_program_luma;
   ResamplingProgram *resampling_program_chroma;
@@ -93,6 +95,8 @@ public:
   static ResamplerV FilteredResizeV::GetResampler(int CPU, bool aligned, void*& storage, ResamplingProgram* program);
 
 private:
+  IScriptEnvironment2* Env;
+
   ResamplingProgram *resampling_program_luma;
   ResamplingProgram *resampling_program_chroma;
   int *src_pitch_table_luma;
