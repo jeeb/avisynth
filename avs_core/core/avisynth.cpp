@@ -52,6 +52,7 @@
 #include <cstdarg>
 #include <cassert>
 #include "MTGuard.h"
+#include "cache.h"
 
 #ifdef _MSC_VER
   #define strnicmp(a,b,c) _strnicmp(a,b,c)
@@ -1403,9 +1404,10 @@ void* ScriptEnvironment::ManageCache(int key, void* data) {
   case MC_NodCache:
   {
     Cache* cache = reinterpret_cast<Cache*>(data);
-    std::unique_lock<std::mutex> env_lock(memory_mutex);
     if (cache == FrontCache)
       return 0;
+
+    std::unique_lock<std::mutex> env_lock(memory_mutex);
     CacheRegistry.move_to_back(cache);
     break;
   } // case

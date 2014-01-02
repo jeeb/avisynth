@@ -4,7 +4,7 @@
 #include <avisynth.h>
 #include <boost/thread.hpp>
 #include <boost/atomic.hpp>
-#include "cache.h"  // TODO we only need LruCache from here
+#include "LruCache.h"
 
 
 class Prefetcher : public IClip

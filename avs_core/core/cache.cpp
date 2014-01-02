@@ -125,8 +125,6 @@ bool __stdcall Cache::GetParity(int n)
 
 int __stdcall Cache::SetCacheHints(int cachehints, int frame_range)
 {
-  // TODO
-
   switch(cachehints)
   {
     /*********************************************
@@ -237,7 +235,7 @@ int __stdcall Cache::SetCacheHints(int cachehints, int frame_range)
       break;
 
     /*********************************************
-        AUDIO
+        TODO AUDIO
     *********************************************/
 
     case CACHE_AUDIO:
@@ -316,7 +314,7 @@ AVSValue __cdecl Cache::Create(AVSValue args, void*, IScriptEnvironment* env)
       && (p->SetCacheHints(CACHE_DONT_CACHE_ME, 0) != 0) )
     {
       // Don't create cache instance if the child doesn't want to be cached
-      return args;
+      return p; /* This is op, not args! */
     }
     else
     {
