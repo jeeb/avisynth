@@ -400,7 +400,7 @@ void PresetToFPS(const char *name, const char *p, unsigned &num, unsigned &den, 
  ******************************************/
 
 AssumeScaledFPS::AssumeScaledFPS(PClip _child, int multiplier, int divisor, bool sync_audio, IScriptEnvironment* env)
- : GenericVideoFilter(_child)
+ : NonCachedGenericVideoFilter(_child)
 {
   if (divisor <= 0)
     env->ThrowError("AssumeScaledFPS: Divisor must be positive.");
@@ -430,7 +430,7 @@ AVSValue __cdecl AssumeScaledFPS::Create(AVSValue args, void*, IScriptEnvironmen
  ************************************/
 
 AssumeFPS::AssumeFPS(PClip _child, unsigned numerator, unsigned denominator, bool sync_audio, IScriptEnvironment* env)
- : GenericVideoFilter(_child)
+ : NonCachedGenericVideoFilter(_child)
 {
   if (denominator == 0)
     env->ThrowError("AssumeFPS: Denominator cannot be 0 (zero).");

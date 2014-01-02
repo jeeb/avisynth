@@ -36,6 +36,7 @@
 #define __Field_H__
 
 #include <avisynth.h>
+#include "../core/internal.h"
 
 
 /**********************************************************************
@@ -87,13 +88,13 @@ public:
 };
 
 
-class AssumeParity : public GenericVideoFilter
+class AssumeParity : public NonCachedGenericVideoFilter
 /**
   * Class to assume field precedence, AssumeTFF() & AssumeBFF()
  **/
 {
 public:
-  AssumeParity(PClip _child, bool _parity) : GenericVideoFilter(_child), parity(_parity) { 
+  AssumeParity(PClip _child, bool _parity) : NonCachedGenericVideoFilter(_child), parity(_parity) { 
     if (parity) {
 	  vi.Clear(VideoInfo::IT_BFF);
 	  vi.Set(VideoInfo::IT_TFF);
@@ -112,13 +113,13 @@ private:
 	bool parity;
 };
 
-class AssumeFieldBased : public GenericVideoFilter 
+class AssumeFieldBased : public NonCachedGenericVideoFilter 
 /**
   * Class to assume field-based video
  **/
 {
 public:
-  AssumeFieldBased(PClip _child) : GenericVideoFilter(_child) 
+  AssumeFieldBased(PClip _child) : NonCachedGenericVideoFilter(_child) 
   { vi.SetFieldBased(true); vi.Clear(VideoInfo::IT_BFF); vi.Clear(VideoInfo::IT_TFF); }
   inline bool __stdcall GetParity(int n) 
     { return n&1; }
@@ -128,13 +129,13 @@ public:
 };
 
 
-class AssumeFrameBased : public GenericVideoFilter 
+class AssumeFrameBased : public NonCachedGenericVideoFilter 
 /**
   * Class to assume frame-based video
  **/
 {
 public:
-  AssumeFrameBased(PClip _child) : GenericVideoFilter(_child) 
+  AssumeFrameBased(PClip _child) : NonCachedGenericVideoFilter(_child) 
   { vi.SetFieldBased(false); vi.Clear(VideoInfo::IT_BFF); vi.Clear(VideoInfo::IT_TFF); }
   inline bool __stdcall GetParity(int n) 
     { return false; }
@@ -284,7 +285,7 @@ public:
     { delete[] child_array; }
   static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env);
 
-  int __stdcall SetCacheHints(int cachehints,int frame_range) { return 0; };
+  int __stdcall SetCacheHints(int cachehints,int frame_range);
 
 private:
   const int num_children;

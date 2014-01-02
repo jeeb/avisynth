@@ -426,7 +426,7 @@ SeparateRows::SeparateRows(PClip _child, int _interval, IScriptEnvironment* env)
 
 PVideoFrame SeparateRows::GetFrame(int n, IScriptEnvironment* env) 
 {
-  const int m = vi.IsRGB() ? interval-1 - n%interval : n%interval; // RGB upsidedown
+  const int m = vi.IsRGB() ? interval-1 - n%interval : n%interval; // RGB upside-down
   const int f = n/interval;
 
   PVideoFrame frame = child->GetFrame(f, env);
@@ -614,6 +614,17 @@ Interleave::Interleave(int _num_children, const PClip* _child_array, IScriptEnvi
   if (vi.num_frames < 0)
     env->ThrowError("Interleave: Maximum number of frames exceeded.");
 
+}
+
+int __stdcall Interleave::SetCacheHints(int cachehints,int frame_range)
+{
+  switch(cachehints)
+  {
+  case CACHE_DONT_CACHE_ME:
+    return 1;
+  default:
+    return 0;
+  }
 }
 
 AVSValue __cdecl Interleave::Create(AVSValue args, void*, IScriptEnvironment* env) 

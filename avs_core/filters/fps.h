@@ -35,7 +35,7 @@
 #define __FPS_H__
 
 #include <avisynth.h>
-
+#include "../core/internal.h"
 
 /********************************************************************
 ********************************************************************/
@@ -46,7 +46,7 @@ void FloatToFPS(const char *name, float n, unsigned &num, unsigned &den, IScript
 
 void PresetToFPS(const char *name, const char *p, unsigned &num, unsigned &den, IScriptEnvironment* env);
 
-class AssumeScaledFPS : public GenericVideoFilter 
+class AssumeScaledFPS : public NonCachedGenericVideoFilter 
 /**
   * Class to change the framerate without changing the frame count
  **/
@@ -57,7 +57,7 @@ public:
 };
 
 
-class AssumeFPS : public GenericVideoFilter 
+class AssumeFPS : public NonCachedGenericVideoFilter 
 /**
   * Class to change the framerate without changing the frame count
  **/

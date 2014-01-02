@@ -36,11 +36,12 @@
 #define __Edit_H__
 
 #include <avisynth.h>
+#include "../core/internal.h"
 
 /********************************************************************
 ********************************************************************/
 
-class Trim : public GenericVideoFilter 
+class Trim : public NonCachedGenericVideoFilter 
 /**
   * Class to select a range of frames from a longer clip
  **/
@@ -64,7 +65,7 @@ private:
 
 
 
-class FreezeFrame : public GenericVideoFilter 
+class FreezeFrame : public NonCachedGenericVideoFilter 
 /**
   * Class to display a single frame for the duration of several
  **/
@@ -83,7 +84,7 @@ private:
 
 
 
-class DeleteFrame : public GenericVideoFilter 
+class DeleteFrame : public NonCachedGenericVideoFilter 
 /**
   * Class to delete a frame
  **/
@@ -102,7 +103,7 @@ private:
 
 
 
-class DuplicateFrame : public GenericVideoFilter 
+class DuplicateFrame : public NonCachedGenericVideoFilter 
 /**
   * Class to duplicate a frame
  **/
@@ -183,7 +184,7 @@ public:
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
   void __stdcall GetAudio(void* buf, __int64 start, __int64 count, IScriptEnvironment* env);
   bool __stdcall GetParity(int n);
-  int __stdcall SetCacheHints(int cachehints,int frame_range) { return 0; };
+  int __stdcall SetCacheHints(int cachehints,int frame_range);
 
   static AVSValue __cdecl Create(AVSValue args, void* mode, IScriptEnvironment* env);
 
@@ -195,7 +196,7 @@ private:
 
 
 
-class Reverse : public GenericVideoFilter 
+class Reverse : public NonCachedGenericVideoFilter 
 /**
   * Class to play a clip backwards
  **/
@@ -212,7 +213,7 @@ public:
 
 
 
-class Loop : public GenericVideoFilter {
+class Loop : public NonCachedGenericVideoFilter {
 /**
   * Class to loop over a range of frames
 **/

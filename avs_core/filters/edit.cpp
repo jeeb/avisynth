@@ -81,14 +81,34 @@ extern const AVSFunction Edit_filters[] = {
 
 
 
- 
+/******************************
+ *******   NonCachedGenericVideoFilter Filter   ******
+ ******************************/
+
+NonCachedGenericVideoFilter::NonCachedGenericVideoFilter(PClip _child) :
+  GenericVideoFilter(_child)
+{
+};
+
+
+int __stdcall NonCachedGenericVideoFilter::SetCacheHints(int cachehints, int frame_range)
+{
+  switch(cachehints)
+  {
+    case CACHE_DONT_CACHE_ME:
+      return 1;
+    default:
+      return GenericVideoFilter::SetCacheHints(cachehints, frame_range);
+  }
+}
+
 
 /******************************
  *******   AudioTrim Filter   ******
  ******************************/
 
 Trim::Trim(double starttime, double endtime, PClip _child, int mode, IScriptEnvironment* env)
- : GenericVideoFilter(_child) 
+ : NonCachedGenericVideoFilter(_child) 
 {
   __int64 esampleno = 0;
 
@@ -157,7 +177,7 @@ AVSValue __cdecl Trim::CreateA(AVSValue args, void* mode, IScriptEnvironment* en
  ******************************/
 
 Trim::Trim(int _firstframe, int _lastframe, bool _padaudio, PClip _child, int mode, IScriptEnvironment* env)
- : GenericVideoFilter(_child) 
+ : NonCachedGenericVideoFilter(_child) 
 {
   int lastframe = 0;
 
@@ -263,7 +283,7 @@ AVSValue __cdecl Trim::Create(AVSValue args, void* mode, IScriptEnvironment* env
  *******************************/
 
 FreezeFrame::FreezeFrame(int _first, int _last, int _source, PClip _child)
- : GenericVideoFilter(_child), first(_first), last(_last), source(_source) {}
+ : NonCachedGenericVideoFilter(_child), first(_first), last(_last), source(_source) {}
 
 
 PVideoFrame FreezeFrame::GetFrame(int n, IScriptEnvironment* env) 
@@ -289,7 +309,7 @@ AVSValue __cdecl FreezeFrame::Create(AVSValue args, void*, IScriptEnvironment* e
  ******************************/
 
 DeleteFrame::DeleteFrame(int _frame, PClip _child)
- : GenericVideoFilter(_child), frame(_frame) { --vi.num_frames; }
+ : NonCachedGenericVideoFilter(_child), frame(_frame) { --vi.num_frames; }
 
 
 PVideoFrame DeleteFrame::GetFrame(int n, IScriptEnvironment* env) 
@@ -302,6 +322,7 @@ bool DeleteFrame::GetParity(int n)
 { 
   return child->GetParity(n + (n>=frame)); 
 }
+
 
 AVSValue __cdecl DeleteFrame::Create(AVSValue args, void*, IScriptEnvironment* env) 
 {
@@ -342,7 +363,7 @@ AVSValue __cdecl DeleteFrame::Create(AVSValue args, void*, IScriptEnvironment* e
  *********************************/
 
 DuplicateFrame::DuplicateFrame(int _frame, PClip _child)
- : GenericVideoFilter(_child), frame(_frame) { ++vi.num_frames; }
+ : NonCachedGenericVideoFilter(_child), frame(_frame) { ++vi.num_frames; }
 
 
 PVideoFrame DuplicateFrame::GetFrame(int n, IScriptEnvironment* env) 
@@ -482,9 +503,16 @@ bool Splice::GetParity(int n)
 
 int Splice::SetCacheHints(int cachehints,int frame_range)
 {
-  if (passCache) {
-    child2->SetCacheHints(cachehints, frame_range);
-    return child->SetCacheHints(cachehints, frame_range);
+  switch(cachehints)
+  {
+  case CACHE_DONT_CACHE_ME:
+    return 1;
+  default:
+    if (passCache) {
+      child2->SetCacheHints(cachehints, frame_range);
+      return child->SetCacheHints(cachehints, frame_range);
+    }
+    break;
   }
   return 0;  // We do not pass cache requests upwards.
 }
@@ -795,6 +823,18 @@ void AudioDub::GetAudio(void* buf, __int64 start, __int64 count, IScriptEnvironm
   achild->GetAudio(buf, start, count, env);
 }
 
+int __stdcall AudioDub::SetCacheHints(int cachehints,int frame_range)
+{
+  switch(cachehints)
+  {
+  case CACHE_DONT_CACHE_ME:
+    return 1;
+  default:
+    return 0;
+  }
+}
+
+
 
 AVSValue __cdecl AudioDub::Create(AVSValue args, void* mode, IScriptEnvironment* env) 
 {
@@ -813,7 +853,7 @@ AVSValue __cdecl AudioDub::Create(AVSValue args, void* mode, IScriptEnvironment*
  *******   Reverse Filter  ******
  *******************************/
 
-Reverse::Reverse(PClip _child) : GenericVideoFilter(_child) {}
+Reverse::Reverse(PClip _child) : NonCachedGenericVideoFilter(_child) {}
 
 
 PVideoFrame Reverse::GetFrame(int n, IScriptEnvironment* env) 
@@ -857,7 +897,7 @@ AVSValue __cdecl Reverse::Create(AVSValue args, void*, IScriptEnvironment* env)
  *****************************/
 
 Loop::Loop(PClip _child, int times, int _start, int _end, IScriptEnvironment* env)
- : GenericVideoFilter(_child), start(_start), end(_end)
+ : NonCachedGenericVideoFilter(_child), start(_start), end(_end)
 {
   start = clamp(start,0,vi.num_frames-1);
   end = clamp(end,start,vi.num_frames-1);

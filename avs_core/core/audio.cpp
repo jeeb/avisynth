@@ -151,7 +151,7 @@ void FilterUD_mmx(short *Xp, unsigned Ph, int _inc, int _dhb, short *p_Imp, unsi
  *************************************/
 
 AssumeRate::AssumeRate(PClip _clip, int _rate)
-    : GenericVideoFilter(_clip) {
+    : NonCachedGenericVideoFilter(_clip) {
   if (_rate < 0)
     _rate = 0;
   if (vi.SamplesPerSecond() == 0)  // Don't add audio if none is present.
