@@ -1,0 +1,110 @@
+<!DOCTYPE html
+          PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
+          "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html   xmlns   = "http://www.w3.org/1999/xhtml">
+<head>
+<link rel="STYLESHEET" href="filtersdk.css" type="text/css" />
+<title>DataAlignment - AviSynth</title>
+</head>
+<BODY>
+
+<div id="body">
+
+<h1><a href="http://www.avisynth.org/DataAlignment" style="text-decoration:none">
+    DataAlignment</a>
+	<p>
+	</h1>
+
+<p>(Until something more AviSynth related can be written this is from the <a href="AMDOptimizationGuide.htm">AMDOptimizationGuide</a>)</p>
+
+
+<h4>Memory alignment</h4><p>In general, avoid misaligned data references.
+All data whose size is a power of two is considered aligned if it is naturally aligned.</p>
+
+<p>For example:</p>
+
+<ul ><li> Word accesses are aligned if they access an address divisible by two.</li>
+<li> Doubleword accesses are aligned if they access an address divisible by four.</li>
+<li> Quadword accesses are aligned if they access an address divisible by eight.</li>
+<li> TBYTE accesses are aligned if they access an address divisible by eight.</li>
+</ul>
+
+<p>In AviSynth each frame is most of the time aligned to an address divideable by 16.
+The exception for this rule is when crop() has been used.
+Furthermore each line is also most of the time aligned to an address divideable by 16 (or 8 for planar chroma).</p>
+
+
+<h4>Store to Load Forwarding</h4><p>Whenever some data is written to memory it is put in the cache.
+It is however possible for the processor to access this data quite fast after it has been written.
+This is called Store To Load forwarding.</p>
+
+
+<p>Avoid memory-size mismatches when different instructions operate on the same data.
+When an instruction stores and another instruction reloads the same data,
+keep their operands aligned and keep the loads/stores of each operand the same size. </p>
+
+<p>The following code examples result in a store-to-loadforwarding (STLF) stall:</p>
+
+
+<p><strong>Example (avoid):</strong></p>
+
+<dl><dd><tt>MOV [FOO], EAX</tt>
+</dd>
+<dd><tt>MOV [FOO+4], EDX</tt>
+</dd>
+<dd><tt>...</tt>
+</dd>
+<dd><tt>MOVQ MM0, [FOO]</tt>
+</dd>
+</dl>
+
+<p><strong>Example (preferred):</strong></p>
+
+<dl><dd><tt>MOV [FOO], EAX</tt>
+</dd>
+<dd><tt>MOV [FOO+4], EDX</tt>
+</dd>
+<dd><tt>...</tt>
+</dd>
+<dd><tt>MOVD MM0, [FOO]</tt>
+</dd>
+<dd><tt>PUNPCKLDQ MM0, [FOO+4]</tt>
+</dd>
+</dl>
+
+<p><strong>Example (avoid):</strong></p>
+
+<dl><dd><tt>MOVQ [foo], MM0</tt>
+</dd>
+<dd><tt>...</tt>
+</dd>
+<dd><tt>MOV EAX, [foo]</tt>
+</dd>
+<dd><tt>MOV EDX, [foo+4]</tt>
+</dd>
+</dl>
+
+<p><strong>Example (preferred):</strong></p>
+
+<dl><dd><tt>MOVD [foo], MM0</tt>
+</dd>
+<dd><tt>PSWAPD MM0, MM0</tt>
+</dd>
+<dd><tt>MOVD [foo+4], MM0</tt>
+</dd>
+<dd><tt>PSWAPD MM0, MM0</tt>
+</dd>
+<dd><tt>...</tt>
+</dd>
+<dd><tt>MOV EAX, [foo]</tt>
+</dd>
+<dd><tt>MOV EDX, [foo+4]</tt>
+</dd>
+</dl>
+
+<h4>Back to <a href="AssemblerOptimizing.htm">AssemblerOptimizing</a></h4></div>
+<p><kbd>$Date: 2006/11/24 18:21:26 $<br>
+Original version of this document at <a href="http://www.avisynth.org/DataAlignment">http://www.avisynth.org/DataAlignment</a>
+</kbd></p>
+</BODY>
+</html>

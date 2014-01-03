@@ -1,0 +1,94 @@
+<!DOCTYPE html
+          PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
+          "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html   xmlns   = "http://www.w3.org/1999/xhtml">
+<head>
+<link rel="STYLESHEET" href="filtersdk.css" type="text/css" />
+<title>SDKNecessaries</title>
+</head>
+<BODY>
+
+<h1>SDKNecessaries</h1>
+
+<p><b>What is necessary to create an AviSynth plugin?</b></p>
+
+<h4>You must have some compatible development tool:</h4>
+
+<ul>
+<li>Microsoft Visual C/C++ 6, 7, 7.1, or 8 (2005)</li>
+<li>Microsoft Visual C++ Toolkit 2003 (free, try search vctoolkitsetup.exe) with some IDE (e.g. free <a href="http://www.codeblocks.org">CodeBlocks</a>)</li>
+<li>Microsoft Visual C++ 2005 Express edition</li>
+<li>Microsoft Visual C++ 2010 Express edition (free download <a href="http://www.microsoft.com/express/Downloads/" class="external
+autonumber" title="http://www.microsoft.com/express/Downloads/" rel="nofollow">[1]</a>)</li>
+<li>Intel ICL Compiler v7 (?) or above</li>
+</ul>
+
+<p>Notes: Visual C/C++ 6, 7, 7.1 Standard Edition (and NET 1.1 SDK) lack in optimizing compiler
+(only expensive Professional or Enterprise Edition included it).
+As a partial workaround you can add free Visual C++ Toolkit 2003 optimizing compiler to your Standard Edition IDE
+(by setting directories properly) or use Visual C++ 2005 (any edition).
+</p>
+
+<h4>You also need in Microsoft Platform SDK (if it is not included with compiler).</h4>
+<p>Free download it from <a href=http://www.microsoft.com/downloads/details.aspx?familyid=EBA0128F-A770-45F1-86F3-7AB010B398A3&displaylang=en>Microsoft site</a>.
+The last SDK that will work with VC 6.0 was the February 2003 Edition.
+</p>
+
+<p>For some very special plugins (GPU) you may need in DirectX SDK.</p>
+
+<h4>Finally, you must include small header file 'avisynth.h'.</h4>
+<p>You can get it with this FilterSDK, download with AviSynth source code, or take from some plugin source package.
+There are several versions of this header file from various AviSynth versions.
+<p>Header file avisynth.h from v1.0.x to v2.0.x have <code>AVISYNTH_INTERFACE_VERSION = 1.</code>
+Plugins compliled with them will be not (natively) compatible with AviSynth 2.5.x.</p>
+<p>Header file avisynth.h from v2.5.0 to v2.5.5 have <code>AVISYNTH_INTERFACE_VERSION = 2.</code>
+Plugins compliled with them will (generally) work in AviSynth v2.5.0 to v2.5.7 (and above).
+But avisynth.h files from versions v2.5.0 - v2.5.5 (and betas) are not identical.
+We recommend to use avisynth.h from versions 2.5.5 or later.
+Previous versions of avisynth.h are obsolete and have some bugs.
+<p>Header file avisynth.h from v2.5.6 to v2.5.8 are almost identical and have <code>AVISYNTH_INTERFACE_VERSION = 3.</code>
+Plugins compliled with them will work in v2.5.6 and up. They will also work in v2.5.5 and below,
+if you do not use new interface features and do not call <code>env->CheckVersion</code> function.
+<p>New beeing developed AviSynth version 2.6.x will use new header avisynth.h,
+currently with <code>AVISYNTH_INTERFACE_VERSION = 5.</code>
+Plugins compiled with AviSynth v2.5.x header will work in AviSynth 2.6.x too,
+but plugins compliled with new AviSynth v2.6.x header will probably not work in AviSynth v2.5.x.</p>
+<p>Generally good start is to take some similar plugin source code as a draft for improving or own development.
+Attention: there are many old plugins source code packages with older avisynth.h included.
+(for example, SimpleSample zip file contains avisynth.h file from from AviSynth v2.5.4). Simply replace it by new one.
+<h4>Compiling options</h4>
+
+<p>Plugin CPP source code must be compiled as Win32 DLL (multi-threaded or multi-threaded DLL) without MFC.</p>
+
+<p>Notes. If you use Visual C++ Toolkit 2003 itself (without VC++ 7), you can not build plugin as multi-treaded DLL:
+the toolkit missed some libraries, in particular msvcrt.lib. You can get additional libs with MS .NET 1.1 SDK (free download)
+or simply use multi-treaded option (IMHO it is better - no need in MSVCRT71.DLL).</p>
+
+<p>Of course, use Release build with optimization. Typical compiler switches are /MT /O2 and /dll /nologo for linker </p>
+
+<p>See <a href="CompilingAvisynthPlugins.htm">step by step instructions.</a></p>
+
+<h4>Other compilers
+</h4>
+
+<p>You can NOT use other compiler like GNU C++ to create regular AviSynth
+plugins.</p>
+<p>You may also try to use some tools (GNU C++, Visual Basic, Delphi) to create
+so called AviSynth C plugins with AviSynth C API (but it is not mainsteam).</p>
+<p>Original AviSynth C API by Kevin Atkinson is at <a href="http://kevin.atkinson.dhs.org/avisynth_c/" class="external free" title="http://kevin.atkinson.dhs.org/avisynth_c/" rel="nofollow">http://kevin.atkinson.dhs.org/avisynth_c/</a></p>
+<p>Updated version of AviSynth C API header and library files are distributed
+with AviSynth since v2.5.7.</p>
+<p>There is also <a href="http://forum.doom9.org/showthread.php?t=98327" class="external text" title="http://forum.doom9.org/showthread.php?t=98327" rel="nofollow">Pascal
+conversion of avisynth_c.h</a> by Myrsloik</p>
+<p>Some info about <a href="http://forum.doom9.org/showthread.php?t=125370" class="external text" title="http://forum.doom9.org/showthread.php?t=125370" rel="nofollow">Using
+in Visual Basic</a></p>
+<p><a href="http://forum.doom9.org/showthread.php?t=126530" class="external text" title="http://forum.doom9.org/showthread.php?t=126530" rel="nofollow">PureBasic
+port of the Avisynth C Interface</a> by Inc</p>
+<p>There is also <a href="http://www.codeplex.com/AvsFilterNet" class="external text" title="http://www.codeplex.com/AvsFilterNet" rel="nofollow">AvsFilterNet</a>
+wrapper for Avisynth in .NET (any .NET language) by SAPikachu, see <a href="http://forum.doom9.org/showthread.php?t=144663" class="external text" title="http://forum.doom9.org/showthread.php?t=144663" rel="nofollow">discussion</a></p>
+
+<h3>Back to <a href="FilterSDK.htm">FilterSDK</a></h3>
+
+<p><kbd>$Date: 2010/08/15 13:51:15 $</kbd></p>
+</BODY>
+</html>
