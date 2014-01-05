@@ -673,6 +673,7 @@ FilteredResizeH::FilteredResizeH( PClip _child, double subrange_left, double sub
     const int shift_h = vi.GetPlaneHeightSubsampling(PLANAR_U);
     const int div   = 1 << shift;
 
+
     resampling_program_chroma = func->GetResamplingProgram(
       vi.width       >> shift,
       subrange_left   / div,
@@ -691,7 +692,7 @@ FilteredResizeH::FilteredResizeH( PClip _child, double subrange_left, double sub
     }
   }
 
-  if (resampling_program_luma->filter_size == 1) {
+  if (resampling_program_luma->filter_size == 1 && vi.IsPlanar()) {
     fast_resize = true;
     resampler_h_luma = resize_h_pointresize;
     resampler_h_chroma = resize_h_pointresize;
