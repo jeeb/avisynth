@@ -442,9 +442,8 @@ static void resize_h_c_planar(BYTE* dst, const BYTE* src, int dst_pitch, int src
   }
 }
 
-  int filter_size = AlignNumber(program->filter_size, 8) / 8;
 static void resizer_h_ssse3_generic(BYTE* dst, const BYTE* src, int dst_pitch, int src_pitch, ResamplingProgram* program, int width, int height) {
-
+  int filter_size = AlignNumber(program->filter_size, 8) / 8;
   __m128i zero = _mm_setzero_si128();
 
   for (int y = 0; y < height; y++) {
