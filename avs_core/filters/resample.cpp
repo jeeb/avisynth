@@ -403,7 +403,7 @@ __forceinline static void resize_v_create_pitch_table(int* table, int pitch, int
  ********* Horizontal Resizer** ********
  ***************************************/
 
-void resize_h_prepare_coeff_8(ResamplingProgram* p) {
+static void resize_h_prepare_coeff_8(ResamplingProgram* p) {
   int filter_size = AlignNumber(p->filter_size, 8);
   short* new_coeff = (short*) _aligned_malloc(sizeof(short) * p->target_size * filter_size, 64);
   memset(new_coeff, 0, sizeof(short) * p->target_size * filter_size);
@@ -423,7 +423,7 @@ void resize_h_prepare_coeff_8(ResamplingProgram* p) {
   p->pixel_coefficient = new_coeff;
 }
 
-void resize_h_c_planar(BYTE* dst, const BYTE* src, int dst_pitch, int src_pitch, ResamplingProgram* program, int width, int height) {
+static void resize_h_c_planar(BYTE* dst, const BYTE* src, int dst_pitch, int src_pitch, ResamplingProgram* program, int width, int height) {
   int filter_size = program->filter_size;
   short* current = program->pixel_coefficient;
 
@@ -442,8 +442,8 @@ void resize_h_c_planar(BYTE* dst, const BYTE* src, int dst_pitch, int src_pitch,
   }
 }
 
-void resizer_h_ssse3_generic(BYTE* dst, const BYTE* src, int dst_pitch, int src_pitch, ResamplingProgram* program, int width, int height) {
   int filter_size = AlignNumber(program->filter_size, 8) / 8;
+static void resizer_h_ssse3_generic(BYTE* dst, const BYTE* src, int dst_pitch, int src_pitch, ResamplingProgram* program, int width, int height) {
 
   __m128i zero = _mm_setzero_si128();
 
@@ -521,7 +521,7 @@ void resizer_h_ssse3_generic(BYTE* dst, const BYTE* src, int dst_pitch, int src_
   }
 }
 
-void resizer_h_ssse3_8(BYTE* dst, const BYTE* src, int dst_pitch, int src_pitch, ResamplingProgram* program, int width, int height) {
+static void resizer_h_ssse3_8(BYTE* dst, const BYTE* src, int dst_pitch, int src_pitch, ResamplingProgram* program, int width, int height) {
   int filter_size = AlignNumber(program->filter_size, 8) / 8;
 
   __m128i zero = _mm_setzero_si128();
