@@ -403,6 +403,26 @@ __forceinline static void resize_v_create_pitch_table(int* table, int pitch, int
  ********* Horizontal Resizer** ********
  ***************************************/
 
+static void resize_h_pointresize(BYTE* dst, const BYTE* src, int dst_pitch, int src_pitch, ResamplingProgram* program, int width, int height) {
+  int wMod4 = width/4 * 4;
+
+  for (int y = 0; y < height; y++) {
+    for (int x = 0; x < wMod4; x+=4) {
+#define pixel(a) src[program->pixel_offset[x+a]]
+      unsigned int data = (pixel(3) << 24) + (pixel(2) << 16) + (pixel(1) << 8) + pixel(0);
+#undef pixel
+      *((unsigned int *)(dst+x)) = data;
+    }
+
+    for (int x = wMod4; x < width; x++) {
+      dst[x] = src[program->pixel_offset[x]];
+    }
+
+    dst += dst_pitch;
+    src += src_pitch;
+  }
+}
+
 static void resize_h_prepare_coeff_8(ResamplingProgram* p) {
   int filter_size = AlignNumber(p->filter_size, 8);
   short* new_coeff = (short*) _aligned_malloc(sizeof(short) * p->target_size * filter_size, 64);
@@ -646,6 +666,21 @@ FilteredResizeH::FilteredResizeH( PClip _child, double subrange_left, double sub
       env->ThrowError("Resize: Planar destination height must be a multiple of %d.", mask+1);
   }
 
+  // Main resampling program
+  resampling_program_luma = func->GetResamplingProgram(vi.width, subrange_left, subrange_width, target_width, env);
+  if (vi.IsPlanar() && !vi.IsY8()) {
+    const int shift = vi.GetPlaneWidthSubsampling(PLANAR_U);
+    const int shift_h = vi.GetPlaneHeightSubsampling(PLANAR_U);
+    const int div   = 1 << shift;
+
+    resampling_program_chroma = func->GetResamplingProgram(
+      vi.width       >> shift,
+      subrange_left   / div,
+      subrange_width  / div,
+      target_width   >> shift,
+      env);
+  }
+
   fast_resize = (env->GetCPUFlags() & CPUF_SSSE3) == CPUF_SSSE3 && vi.IsPlanar() && target_width%4 == 0;
   if (fast_resize && vi.IsYUV() && !vi.IsY8()) {
     const int shift = vi.GetPlaneWidthSubsampling(PLANAR_U);
@@ -656,11 +691,18 @@ FilteredResizeH::FilteredResizeH( PClip _child, double subrange_left, double sub
     }
   }
 
-  if (!fast_resize) {
+  if (resampling_program_luma->filter_size == 1) {
+    fast_resize = true;
+    resampler_h_luma = resize_h_pointresize;
+    resampler_h_chroma = resize_h_pointresize;
+  } else if (!fast_resize) {
     // Create resampling program and pitch table
-    resampling_program_luma  = func->GetResamplingProgram(vi.width, subrange_left, subrange_width, target_width, env);
     src_pitch_table_luma     = new int[vi.width];
+
     resampler_luma   = FilteredResizeV::GetResampler(env->GetCPUFlags(), true, filter_storage_luma, resampling_program_luma);
+    if (vi.IsPlanar() && !vi.IsY8()) {
+      resampler_chroma = FilteredResizeV::GetResampler(env->GetCPUFlags(), true, filter_storage_chroma, resampling_program_chroma);
+    }
 
     // Allocate temporary byte buffer (frame is transposed)
     temp_1_pitch = AlignNumber(vi.BytesFromPixels(src_height), 64);
@@ -669,26 +711,6 @@ FilteredResizeH::FilteredResizeH( PClip _child, double subrange_left, double sub
     temp_2 = (BYTE*) _aligned_malloc(temp_2_pitch * dst_width, 64);
 
     resize_v_create_pitch_table(src_pitch_table_luma, temp_1_pitch, src_width);
-
-    if (vi.IsPlanar() && !vi.IsY8()) {
-      const int shift = vi.GetPlaneWidthSubsampling(PLANAR_U);
-      const int shift_h = vi.GetPlaneHeightSubsampling(PLANAR_U);
-      const int div   = 1 << shift;
-
-      const int src_chroma_width = src_width >> shift;
-      const int dst_chroma_width = dst_width >> shift;
-      const int src_chroma_height = src_height >> shift_h;
-      const int dst_chroma_height = dst_height >> shift_h;
-
-      resampling_program_chroma = func->GetResamplingProgram(
-        vi.width       >> shift,
-        subrange_left   / div,
-        subrange_width  / div,
-        target_width   >> shift,
-        env);
-
-      resampler_chroma = FilteredResizeV::GetResampler(env->GetCPUFlags(), true, filter_storage_chroma, resampling_program_chroma);
-    }
 
     // Initialize Turn function
     if (vi.IsRGB24()) {
@@ -712,22 +734,9 @@ FilteredResizeH::FilteredResizeH( PClip _child, double subrange_left, double sub
       }
     }
   } else { // Plannar + SSSE3 = use new horizontal resizer routines
-    resampling_program_luma  = func->GetResamplingProgram(vi.width, subrange_left, subrange_width, target_width, env);
     resampler_h_luma = GetResampler(env->GetCPUFlags(), true, resampling_program_luma);
 
     if (!vi.IsY8()) {
-      const int shift = vi.GetPlaneWidthSubsampling(PLANAR_U);
-      const int div   = 1 << shift;
-
-      const int src_chroma_width = src_width >> shift;
-      const int dst_chroma_width = dst_width >> shift;
-
-      resampling_program_chroma = func->GetResamplingProgram(
-        vi.width       >> shift,
-        subrange_left   / div,
-        subrange_width  / div,
-        target_width   >> shift,
-        env);
       resampler_h_chroma = GetResampler(env->GetCPUFlags(), true, resampling_program_chroma);
     }
   }
