@@ -398,6 +398,203 @@ __forceinline static void resize_v_create_pitch_table(int* table, int pitch, int
 }
 
 
+
+/***************************************
+ ********* Horizontal Resizer** ********
+ ***************************************/
+
+void resize_h_prepare_coeff_8(ResamplingProgram* p) {
+  int filter_size = AlignNumber(p->filter_size, 8);
+  short* new_coeff = (short*) _aligned_malloc(sizeof(short) * p->target_size * filter_size, 64);
+  memset(new_coeff, 0, sizeof(short) * p->target_size * filter_size);
+
+  // Copy coeff
+  short *dst = new_coeff, *src = p->pixel_coefficient;
+  for (int i = 0; i < p->target_size; i++) {
+    for (int j = 0; j < p->filter_size; j++) {
+      dst[j] = src[j];
+    }
+
+    dst += filter_size;
+    src += p->filter_size;
+  }
+
+  _aligned_free(p->pixel_coefficient);
+  p->pixel_coefficient = new_coeff;
+}
+
+void resize_h_c_planar(BYTE* dst, const BYTE* src, int dst_pitch, int src_pitch, ResamplingProgram* program, int width, int height) {
+  int filter_size = program->filter_size;
+  short* current = program->pixel_coefficient;
+
+  for (int x = 0; x < width; x++) {
+    int begin = program->pixel_offset[x];
+    for (int y = 0; y < height; y++) {
+      int result = 0;
+      for (int i = 0; i < filter_size; i++) {
+        result += (src+y*src_pitch)[(begin+i)] * current[i];
+      }
+      result = ((result+8192)/16384);
+      result = result > 255 ? 255 : result < 0 ? 0 : result;
+      (dst+y*dst_pitch)[x] = (BYTE)result;
+    }
+    current += filter_size;
+  }
+}
+
+void resizer_h_ssse3_generic(BYTE* dst, const BYTE* src, int dst_pitch, int src_pitch, ResamplingProgram* program, int width, int height) {
+  int filter_size = AlignNumber(program->filter_size, 8) / 8;
+
+  __m128i zero = _mm_setzero_si128();
+
+  for (int y = 0; y < height; y++) {
+    short* current_coeff = program->pixel_coefficient;
+    for (int x = 0; x < width; x+=4) {
+      __m128i result1 = _mm_setr_epi32(8192, 0, 0, 0);
+      __m128i result2 = _mm_setr_epi32(8192, 0, 0, 0);
+      __m128i result3 = _mm_setr_epi32(8192, 0, 0, 0);
+      __m128i result4 = _mm_setr_epi32(8192, 0, 0, 0);
+
+      int begin1 = program->pixel_offset[x+0];
+      int begin2 = program->pixel_offset[x+1];
+      int begin3 = program->pixel_offset[x+2];
+      int begin4 = program->pixel_offset[x+3];
+
+      for (int i = 0; i < filter_size; i++) {
+        __m128i data, coeff, current_result;
+        data = _mm_loadl_epi64(reinterpret_cast<const __m128i*>(src+begin1+i*8));
+        data = _mm_unpacklo_epi8(data, zero);
+        coeff = _mm_load_si128(reinterpret_cast<const __m128i*>(current_coeff));
+        current_result = _mm_madd_epi16(data, coeff);
+        result1 = _mm_add_epi32(result1, current_result);
+
+        current_coeff += 8;
+      }
+
+      for (int i = 0; i < filter_size; i++) {
+        __m128i data, coeff, current_result;
+        data = _mm_loadl_epi64(reinterpret_cast<const __m128i*>(src+begin2+i*8));
+        data = _mm_unpacklo_epi8(data, zero);
+        coeff = _mm_load_si128(reinterpret_cast<const __m128i*>(current_coeff));
+        current_result = _mm_madd_epi16(data, coeff);
+        result2 = _mm_add_epi32(result2, current_result);
+
+        current_coeff += 8;
+      }
+
+      for (int i = 0; i < filter_size; i++) {
+        __m128i data, coeff, current_result;
+        data = _mm_loadl_epi64(reinterpret_cast<const __m128i*>(src+begin3+i*8));
+        data = _mm_unpacklo_epi8(data, zero);
+        coeff = _mm_load_si128(reinterpret_cast<const __m128i*>(current_coeff));
+        current_result = _mm_madd_epi16(data, coeff);
+        result3 = _mm_add_epi32(result3, current_result);
+
+        current_coeff += 8;
+      }
+
+      for (int i = 0; i < filter_size; i++) {
+        __m128i data, coeff, current_result;
+        data = _mm_loadl_epi64(reinterpret_cast<const __m128i*>(src+begin4+i*8));
+        data = _mm_unpacklo_epi8(data, zero);
+        coeff = _mm_load_si128(reinterpret_cast<const __m128i*>(current_coeff));
+        current_result = _mm_madd_epi16(data, coeff);
+        result4 = _mm_add_epi32(result4, current_result);
+
+        current_coeff += 8;
+      }
+
+      __m128i result12 = _mm_hadd_epi32(result1, result2);
+      __m128i result34 = _mm_hadd_epi32(result3, result4);
+      __m128i result = _mm_hadd_epi32(result12, result34);
+
+      result = _mm_srai_epi32(result, 14);
+
+      result = _mm_packs_epi32(result, zero);
+      result = _mm_packus_epi16(result, zero);
+
+      *((int*)(dst+x)) = _mm_cvtsi128_si32(result);
+    }
+
+    dst += dst_pitch;
+    src += src_pitch;
+  }
+}
+
+void resizer_h_ssse3_8(BYTE* dst, const BYTE* src, int dst_pitch, int src_pitch, ResamplingProgram* program, int width, int height) {
+  int filter_size = AlignNumber(program->filter_size, 8) / 8;
+
+  __m128i zero = _mm_setzero_si128();
+
+  for (int y = 0; y < height; y++) {
+    short* current_coeff = program->pixel_coefficient;
+    for (int x = 0; x < width; x+=4) {
+      __m128i result1 = _mm_setr_epi32(8192, 0, 0, 0);
+      __m128i result2 = _mm_setr_epi32(8192, 0, 0, 0);
+      __m128i result3 = _mm_setr_epi32(8192, 0, 0, 0);
+      __m128i result4 = _mm_setr_epi32(8192, 0, 0, 0);
+
+      int begin1 = program->pixel_offset[x+0];
+      int begin2 = program->pixel_offset[x+1];
+      int begin3 = program->pixel_offset[x+2];
+      int begin4 = program->pixel_offset[x+3];
+
+      __m128i data, coeff, current_result;
+
+      // Unroll 1
+      data = _mm_loadl_epi64(reinterpret_cast<const __m128i*>(src+begin1));
+      data = _mm_unpacklo_epi8(data, zero);
+      coeff = _mm_load_si128(reinterpret_cast<const __m128i*>(current_coeff));
+      current_result = _mm_madd_epi16(data, coeff);
+      result1 = _mm_add_epi32(result1, current_result);
+
+      current_coeff += 8;
+
+      // Unroll 2
+      data = _mm_loadl_epi64(reinterpret_cast<const __m128i*>(src+begin2));
+      data = _mm_unpacklo_epi8(data, zero);
+      coeff = _mm_load_si128(reinterpret_cast<const __m128i*>(current_coeff));
+      current_result = _mm_madd_epi16(data, coeff);
+      result2 = _mm_add_epi32(result2, current_result);
+
+      current_coeff += 8;
+
+      // Unroll 3
+      data = _mm_loadl_epi64(reinterpret_cast<const __m128i*>(src+begin3));
+      data = _mm_unpacklo_epi8(data, zero);
+      coeff = _mm_load_si128(reinterpret_cast<const __m128i*>(current_coeff));
+      current_result = _mm_madd_epi16(data, coeff);
+      result3 = _mm_add_epi32(result3, current_result);
+
+      current_coeff += 8;
+
+      // Unroll 4
+      data = _mm_loadl_epi64(reinterpret_cast<const __m128i*>(src+begin4));
+      data = _mm_unpacklo_epi8(data, zero);
+      coeff = _mm_load_si128(reinterpret_cast<const __m128i*>(current_coeff));
+      current_result = _mm_madd_epi16(data, coeff);
+      result4 = _mm_add_epi32(result4, current_result);
+
+      current_coeff += 8;
+
+      // Combine
+      __m128i result12 = _mm_hadd_epi32(result1, result2);
+      __m128i result34 = _mm_hadd_epi32(result3, result4);
+      __m128i result = _mm_hadd_epi32(result12, result34);
+
+      result = _mm_srai_epi32(result, 14);
+
+      result = _mm_packs_epi32(result, zero);
+      result = _mm_packus_epi16(result, zero);
+
+      *((int*)(dst+x)) = _mm_cvtsi128_si32(result);
+    }
+
+    dst += dst_pitch;
+    src += src_pitch;
+  }
+}
+
 /********************************************************************
 ***** Declare index of new filters for Avisynth's filter engine *****
 ********************************************************************/
@@ -450,58 +647,79 @@ FilteredResizeH::FilteredResizeH( PClip _child, double subrange_left, double sub
       env->ThrowError("Resize: Planar destination height must be a multiple of %d.", mask+1);
   }
 
-  // Create resampling program and pitch table
-  resampling_program_luma  = func->GetResamplingProgram(vi.width, subrange_left, subrange_width, target_width, env);
-  src_pitch_table_luma     = new int[vi.width];
-  resampler_luma   = FilteredResizeV::GetResampler(env->GetCPUFlags(), true, filter_storage_luma, resampling_program_luma);
+  if ((env->GetCPUFlags() & CPUF_SSSE3) != CPUF_SSSE3 || !vi.IsPlanar()) {
+    // Create resampling program and pitch table
+    resampling_program_luma  = func->GetResamplingProgram(vi.width, subrange_left, subrange_width, target_width, env);
+    src_pitch_table_luma     = new int[vi.width];
+    resampler_luma   = FilteredResizeV::GetResampler(env->GetCPUFlags(), true, filter_storage_luma, resampling_program_luma);
 
-  // Allocate temporary byte buffer (frame is transposed)
-  temp_1_pitch = AlignNumber(vi.BytesFromPixels(src_height), 64);
-  temp_1 = (BYTE*) _aligned_malloc(temp_1_pitch * src_width, 64);
-  temp_2_pitch = AlignNumber(vi.BytesFromPixels(dst_height), 64);
-  temp_2 = (BYTE*) _aligned_malloc(temp_2_pitch * dst_width, 64);
+    // Allocate temporary byte buffer (frame is transposed)
+    temp_1_pitch = AlignNumber(vi.BytesFromPixels(src_height), 64);
+    temp_1 = (BYTE*) _aligned_malloc(temp_1_pitch * src_width, 64);
+    temp_2_pitch = AlignNumber(vi.BytesFromPixels(dst_height), 64);
+    temp_2 = (BYTE*) _aligned_malloc(temp_2_pitch * dst_width, 64);
 
-  resize_v_create_pitch_table(src_pitch_table_luma, temp_1_pitch, src_width);
+    resize_v_create_pitch_table(src_pitch_table_luma, temp_1_pitch, src_width);
 
-  if (vi.IsPlanar() && !vi.IsY8()) {
-    const int shift = vi.GetPlaneWidthSubsampling(PLANAR_U);
-    const int shift_h = vi.GetPlaneHeightSubsampling(PLANAR_U);
-    const int div   = 1 << shift;
+    if (vi.IsPlanar() && !vi.IsY8()) {
+      const int shift = vi.GetPlaneWidthSubsampling(PLANAR_U);
+      const int shift_h = vi.GetPlaneHeightSubsampling(PLANAR_U);
+      const int div   = 1 << shift;
 
-    const int src_chroma_width = src_width >> shift;
-    const int dst_chroma_width = dst_width >> shift;
-    const int src_chroma_height = src_height >> shift_h;
-    const int dst_chroma_height = dst_height >> shift_h;
+      const int src_chroma_width = src_width >> shift;
+      const int dst_chroma_width = dst_width >> shift;
+      const int src_chroma_height = src_height >> shift_h;
+      const int dst_chroma_height = dst_height >> shift_h;
 
-    resampling_program_chroma = func->GetResamplingProgram(
-      vi.width       >> shift,
-      subrange_left   / div,
-      subrange_width  / div,
-      target_width   >> shift,
-      env);
+      resampling_program_chroma = func->GetResamplingProgram(
+        vi.width       >> shift,
+        subrange_left   / div,
+        subrange_width  / div,
+        target_width   >> shift,
+        env);
 
-    resampler_chroma = FilteredResizeV::GetResampler(env->GetCPUFlags(), true, filter_storage_chroma, resampling_program_chroma);
-  }
-
-  // Initialize Turn function
-  if (vi.IsRGB24()) {
-    turn_left = turn_left_rgb24;
-    turn_right = turn_right_rgb24;
-  } else if (vi.IsRGB32()) {
-    if (env->GetCPUFlags() & CPUF_SSE2) {
-      turn_left = turn_left_rgb32_sse2;
-      turn_right = turn_right_rgb32_sse2;
-    } else {
-      turn_left = turn_left_rgb32_c;
-      turn_right = turn_right_rgb32_c;
+      resampler_chroma = FilteredResizeV::GetResampler(env->GetCPUFlags(), true, filter_storage_chroma, resampling_program_chroma);
     }
-  } else {
-    if (env->GetCPUFlags() & CPUF_SSE2) {
-      turn_left = turn_left_plane_sse2;
-      turn_right = turn_right_plane_sse2;
+
+    // Initialize Turn function
+    if (vi.IsRGB24()) {
+      turn_left = turn_left_rgb24;
+      turn_right = turn_right_rgb24;
+    } else if (vi.IsRGB32()) {
+      if (env->GetCPUFlags() & CPUF_SSE2) {
+        turn_left = turn_left_rgb32_sse2;
+        turn_right = turn_right_rgb32_sse2;
+      } else {
+        turn_left = turn_left_rgb32_c;
+        turn_right = turn_right_rgb32_c;
+      }
     } else {
-      turn_left = turn_left_plane_c;
-      turn_right = turn_right_plane_c;
+      if (env->GetCPUFlags() & CPUF_SSE2) {
+        turn_left = turn_left_plane_sse2;
+        turn_right = turn_right_plane_sse2;
+      } else {
+        turn_left = turn_left_plane_c;
+        turn_right = turn_right_plane_c;
+      }
+    }
+  } else { // Plannar + SSSE3 = use new horizontal resizer routines
+    resampling_program_luma  = func->GetResamplingProgram(vi.width, subrange_left, subrange_width, target_width, env);
+    resampler_h_luma = GetResampler(env->GetCPUFlags(), true, resampling_program_luma);
+
+    if (!vi.IsY8()) {
+      const int shift = vi.GetPlaneWidthSubsampling(PLANAR_U);
+      const int div   = 1 << shift;
+
+      const int src_chroma_width = src_width >> shift;
+      const int dst_chroma_width = dst_width >> shift;
+
+      resampling_program_chroma = func->GetResamplingProgram(
+        vi.width       >> shift,
+        subrange_left   / div,
+        subrange_width  / div,
+        target_width   >> shift,
+        env);
+      resampler_h_chroma = GetResampler(env->GetCPUFlags(), true, resampling_program_chroma);
     }
   }
 
@@ -514,39 +732,68 @@ PVideoFrame __stdcall FilteredResizeH::GetFrame(int n, IScriptEnvironment* env)
   PVideoFrame src = child->GetFrame(n, env);
   PVideoFrame dst = env->NewVideoFrame(vi);
 
-  if (!vi.IsRGB()) {
-    // Y Plane
-    turn_right(src->GetReadPtr(), temp_1, src_width, src_height, src->GetPitch(), temp_1_pitch);
-    resampler_luma(temp_2, temp_1, temp_2_pitch, temp_1_pitch, resampling_program_luma, src_height, dst_width, src_pitch_table_luma, filter_storage_luma);
-    turn_left(temp_2, dst->GetWritePtr(), dst_height, dst_width, temp_2_pitch, dst->GetPitch());
+  if ((env->GetCPUFlags() & CPUF_SSSE3) != CPUF_SSSE3 || !vi.IsPlanar()) {
+    if (!vi.IsRGB()) {
+      // Y Plane
+      turn_right(src->GetReadPtr(), temp_1, src_width, src_height, src->GetPitch(), temp_1_pitch);
+      resampler_luma(temp_2, temp_1, temp_2_pitch, temp_1_pitch, resampling_program_luma, src_height, dst_width, src_pitch_table_luma, filter_storage_luma);
+      turn_left(temp_2, dst->GetWritePtr(), dst_height, dst_width, temp_2_pitch, dst->GetPitch());
 
-    if (!vi.IsY8()) {
-      const int shift = vi.GetPlaneWidthSubsampling(PLANAR_U);
-      const int shift_h = vi.GetPlaneHeightSubsampling(PLANAR_U);
+      if (!vi.IsY8()) {
+        const int shift = vi.GetPlaneWidthSubsampling(PLANAR_U);
+        const int shift_h = vi.GetPlaneHeightSubsampling(PLANAR_U);
 
-      const int src_chroma_width = src_width >> shift;
-      const int dst_chroma_width = dst_width >> shift;
-      const int src_chroma_height = src_height >> shift_h;
-      const int dst_chroma_height = dst_height >> shift_h;
+        const int src_chroma_width = src_width >> shift;
+        const int dst_chroma_width = dst_width >> shift;
+        const int src_chroma_height = src_height >> shift_h;
+        const int dst_chroma_height = dst_height >> shift_h;
 
-      // U Plane
-      turn_right(src->GetReadPtr(PLANAR_U), temp_1, src_chroma_width, src_chroma_height, src->GetPitch(PLANAR_U), temp_1_pitch);
-      resampler_luma(temp_2, temp_1, temp_2_pitch, temp_1_pitch, resampling_program_chroma, src_chroma_height, dst_chroma_width, src_pitch_table_luma, filter_storage_chroma);
-      turn_left(temp_2, dst->GetWritePtr(PLANAR_U), dst_chroma_height, dst_chroma_width, temp_2_pitch, dst->GetPitch(PLANAR_U));
+        // U Plane
+        turn_right(src->GetReadPtr(PLANAR_U), temp_1, src_chroma_width, src_chroma_height, src->GetPitch(PLANAR_U), temp_1_pitch);
+        resampler_luma(temp_2, temp_1, temp_2_pitch, temp_1_pitch, resampling_program_chroma, src_chroma_height, dst_chroma_width, src_pitch_table_luma, filter_storage_chroma);
+        turn_left(temp_2, dst->GetWritePtr(PLANAR_U), dst_chroma_height, dst_chroma_width, temp_2_pitch, dst->GetPitch(PLANAR_U));
 
-      // V Plane
-      turn_right(src->GetReadPtr(PLANAR_V), temp_1, src_chroma_width, src_chroma_height, src->GetPitch(PLANAR_V), temp_1_pitch);
-      resampler_luma(temp_2, temp_1, temp_2_pitch, temp_1_pitch, resampling_program_chroma, src_chroma_height, dst_chroma_width, src_pitch_table_luma, filter_storage_chroma);
-      turn_left(temp_2, dst->GetWritePtr(PLANAR_V), dst_chroma_height, dst_chroma_width, temp_2_pitch, dst->GetPitch(PLANAR_V));
+        // V Plane
+        turn_right(src->GetReadPtr(PLANAR_V), temp_1, src_chroma_width, src_chroma_height, src->GetPitch(PLANAR_V), temp_1_pitch);
+        resampler_luma(temp_2, temp_1, temp_2_pitch, temp_1_pitch, resampling_program_chroma, src_chroma_height, dst_chroma_width, src_pitch_table_luma, filter_storage_chroma);
+        turn_left(temp_2, dst->GetWritePtr(PLANAR_V), dst_chroma_height, dst_chroma_width, temp_2_pitch, dst->GetPitch(PLANAR_V));
+      }
+    } else {
+      // RGB
+      turn_right(src->GetReadPtr(), temp_1, vi.BytesFromPixels(src_width), src_height, src->GetPitch(), temp_1_pitch);
+      resampler_luma(temp_2, temp_1, temp_2_pitch, temp_1_pitch, resampling_program_luma, vi.BytesFromPixels(src_height), dst_width, src_pitch_table_luma, filter_storage_luma);
+      turn_left(temp_2, dst->GetWritePtr(), vi.BytesFromPixels(dst_height), dst_width, temp_2_pitch, dst->GetPitch());
     }
   } else {
-    // RGB
-    turn_right(src->GetReadPtr(), temp_1, vi.BytesFromPixels(src_width), src_height, src->GetPitch(), temp_1_pitch);
-    resampler_luma(temp_2, temp_1, temp_2_pitch, temp_1_pitch, resampling_program_luma, vi.BytesFromPixels(src_height), dst_width, src_pitch_table_luma, filter_storage_luma);
-    turn_left(temp_2, dst->GetWritePtr(), vi.BytesFromPixels(dst_height), dst_width, temp_2_pitch, dst->GetPitch());
+    // Y Plane
+    resampler_h_luma(dst->GetWritePtr(), src->GetReadPtr(), dst->GetPitch(), src->GetPitch(), resampling_program_luma, dst_width, dst_height);
+
+    if (!vi.IsY8()) {
+      const int dst_chroma_width = dst_width >> vi.GetPlaneWidthSubsampling(PLANAR_U);
+      const int dst_chroma_height = dst_height >> vi.GetPlaneHeightSubsampling(PLANAR_U);
+
+      // U Plane
+      resampler_h_chroma(dst->GetWritePtr(PLANAR_U), src->GetReadPtr(PLANAR_U), dst->GetPitch(PLANAR_U), src->GetPitch(PLANAR_U), resampling_program_chroma, dst_chroma_width, dst_chroma_height);
+
+      // V Plane
+      resampler_h_chroma(dst->GetWritePtr(PLANAR_V), src->GetReadPtr(PLANAR_V), dst->GetPitch(PLANAR_V), src->GetPitch(PLANAR_V), resampling_program_chroma, dst_chroma_width, dst_chroma_height);
+    }
   }
 
   return dst;
+}
+
+ResamplerH FilteredResizeH::GetResampler(int CPU, bool aligned, ResamplingProgram* program)
+{
+  if (CPU & CPUF_SSSE3) {
+    resize_h_prepare_coeff_8(program);
+    if (program->filter_size > 8)
+      return resizer_h_ssse3_generic;
+    else
+      return resizer_h_ssse3_8;
+  } else { // C version
+    return resize_h_c_planar;
+  }
 }
 
 FilteredResizeH::~FilteredResizeH(void)
