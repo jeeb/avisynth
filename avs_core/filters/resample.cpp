@@ -646,7 +646,17 @@ FilteredResizeH::FilteredResizeH( PClip _child, double subrange_left, double sub
       env->ThrowError("Resize: Planar destination height must be a multiple of %d.", mask+1);
   }
 
-  if ((env->GetCPUFlags() & CPUF_SSSE3) != CPUF_SSSE3 || !vi.IsPlanar()) {
+  fast_resize = (env->GetCPUFlags() & CPUF_SSSE3) == CPUF_SSSE3 && vi.IsPlanar() && target_width%4 == 0;
+  if (fast_resize && vi.IsYUV() && !vi.IsY8()) {
+    const int shift = vi.GetPlaneWidthSubsampling(PLANAR_U);
+    const int dst_chroma_width = dst_width >> shift;
+
+    if (dst_chroma_width%4 != 0) {
+      fast_resize = false;
+    }
+  }
+
+  if (!fast_resize) {
     // Create resampling program and pitch table
     resampling_program_luma  = func->GetResamplingProgram(vi.width, subrange_left, subrange_width, target_width, env);
     src_pitch_table_luma     = new int[vi.width];
@@ -731,7 +741,7 @@ PVideoFrame __stdcall FilteredResizeH::GetFrame(int n, IScriptEnvironment* env)
   PVideoFrame src = child->GetFrame(n, env);
   PVideoFrame dst = env->NewVideoFrame(vi);
 
-  if ((env->GetCPUFlags() & CPUF_SSSE3) != CPUF_SSSE3 || !vi.IsPlanar()) {
+  if (!fast_resize) {
     if (!vi.IsRGB()) {
       // Y Plane
       turn_right(src->GetReadPtr(), temp_1, src_width, src_height, src->GetPitch(), temp_1_pitch);

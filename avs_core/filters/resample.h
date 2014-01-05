@@ -78,6 +78,7 @@ private:
 
   ResamplerH resampler_h_luma;
   ResamplerH resampler_h_chroma;
+  bool fast_resize;
 
   ResamplerV resampler_luma;
   ResamplerV resampler_chroma;
