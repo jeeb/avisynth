@@ -292,7 +292,7 @@ public:
     return core->DecrImportDepth();
   }
 
-  virtual bool __stdcall Invoke(AVSValue *result, const char* name, const AVSValue args, const char* const* arg_names=0)
+  virtual bool __stdcall Invoke(AVSValue *result, const char* name, const AVSValue& args, const char* const* arg_names=0)
   {
     return core->Invoke(result, name, args, arg_names=0);
   }

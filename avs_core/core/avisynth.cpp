@@ -292,42 +292,39 @@ VideoFrame* VideoFrame::Subframe(int rel_offset, int new_pitch, int new_row_size
 }
 
 
-VideoFrameBuffer::VideoFrameBuffer() : refcount(1), data(0), data_size(0), sequence_number(0) {}
+VideoFrameBuffer::VideoFrameBuffer() : refcount(1), data(NULL), data_size(0), sequence_number(0) {}
 
 
 VideoFrameBuffer::VideoFrameBuffer(int size) :
   refcount(0),
 #ifdef _DEBUG
-  data((new(std::nothrow) BYTE[size+16])),
+  data(new BYTE[size+16]),
 #else
-  data(new(std::nothrow) BYTE[size]),
+  data(new BYTE[size]),
 #endif
-  data_size(data ? size : 0),
+  data_size(size),
   sequence_number(0) 
 {
   InterlockedIncrement(&sequence_number);
 
 #ifdef _DEBUG
-  if (data != NULL)
-  {
-    int *pInt=(int *)(data+size);
-    pInt[0] = 0xDEADBEEF;
-    pInt[1] = 0xDEADBEEF;
-    pInt[2] = 0xDEADBEEF;
-    pInt[3] = 0xDEADBEEF;
+  int *pInt=(int *)(data+size);
+  pInt[0] = 0xDEADBEEF;
+  pInt[1] = 0xDEADBEEF;
+  pInt[2] = 0xDEADBEEF;
+  pInt[3] = 0xDEADBEEF;
 
-    static const BYTE filler[] = { 0x0A, 0x11, 0x0C, 0xA7, 0xED };
-    BYTE* pByte = data;
-    BYTE* q = pByte + data_size/5*5;
-    for (; pByte<q; pByte+=5)
-    {
-      pByte[0]=filler[0];
-      pByte[1]=filler[1];
-      pByte[2]=filler[2];
-      pByte[3]=filler[3];
-      pByte[4]=filler[4];
-    }
-  } // if data
+  static const BYTE filler[] = { 0x0A, 0x11, 0x0C, 0xA7, 0xED };
+  BYTE* pByte = data;
+  BYTE* q = pByte + data_size/5*5;
+  for (; pByte<q; pByte+=5)
+  {
+    pByte[0]=filler[0];
+    pByte[1]=filler[1];
+    pByte[2]=filler[2];
+    pByte[3]=filler[3];
+    pByte[4]=filler[4];
+  }
 #endif
 }
 
@@ -413,11 +410,11 @@ public:
 };
 
 #include <string>
-#include <boost/unordered_map.hpp>
+#include <unordered_map>
 class MTMapState
 {
 private:
-  typedef boost::unordered_map<std::string, MTMODES> MTModeMapType;
+  typedef std::unordered_map<std::string, MTMODES> MTModeMapType;
 
   static std::string NormalizeFilterName(const std::string& filter)
   {
@@ -537,7 +534,7 @@ public:
   virtual void __stdcall AddFunction(const char* name, const char* params, ApplyFunc apply, void* user_data, const char *exportVar);
   virtual int __stdcall IncrImportDepth();
   virtual int __stdcall DecrImportDepth();
-  virtual bool __stdcall Invoke(AVSValue *result, const char* name, const AVSValue args, const char* const* arg_names=0);
+  virtual bool __stdcall Invoke(AVSValue *result, const char* name, const AVSValue& args, const char* const* arg_names=0);
   virtual void __stdcall SetFilterMTMode(const char* filter, MTMODES mode, bool force);
   virtual MTMODES __stdcall GetFilterMTMode(const char* filter) const;
   virtual void __stdcall ParallelJob(ThreadWorkerFuncPtr jobFunc, void* jobData, IJobCompletion* completion);
@@ -567,7 +564,7 @@ private:
 
   const AVSFunction* Lookup(const char* search_name, const AVSValue* args, size_t num_args,
                       bool &pstrict, size_t args_names_count, const char* const* arg_names);
-  void EnsureMemoryLimit();
+  void EnsureMemoryLimit(size_t request);
   unsigned __int64 memory_max, memory_used;
 
   void ExportBuiltinFilters();
@@ -980,9 +977,17 @@ bool ScriptEnvironment::SetGlobalVar(const char* name, const AVSValue& val) {
 
 VideoFrame* ScriptEnvironment::AllocateFrame(size_t vfb_size)
 {
-  VideoFrameBuffer* vfb = new VideoFrameBuffer(vfb_size);
-  if (!vfb || !vfb->data)
+  EnsureMemoryLimit(vfb_size);
+
+  VideoFrameBuffer* vfb = NULL;
+  try
+  {
+    vfb = new VideoFrameBuffer(vfb_size);
+  }
+  catch(const std::bad_alloc&)
+  {
     return NULL;
+  }
 
   VideoFrame *newFrame = NULL;
   try
@@ -996,7 +1001,6 @@ VideoFrame* ScriptEnvironment::AllocateFrame(size_t vfb_size)
   }
 
   memory_used+=vfb_size;
-  EnsureMemoryLimit();
 
   FrameRegistry.insert(FrameRegistryType::value_type(vfb_size, newFrame));
 
@@ -1085,7 +1089,7 @@ VideoFrame* ScriptEnvironment::GetNewFrame(size_t vfb_size)
   return NULL;
 }
 
-void ScriptEnvironment::EnsureMemoryLimit()
+void ScriptEnvironment::EnsureMemoryLimit(size_t request)
 {
 
   /* -----------------------------------------------------------
@@ -1093,9 +1097,12 @@ void ScriptEnvironment::EnsureMemoryLimit()
    * -----------------------------------------------------------
    */
 
+  // We reserve 15% for unaccounted stuff
+  size_t memory_need = size_t((memory_used + request) / 0.85f);
+
   for (
         CacheRegistryType::iterator cit = CacheRegistry.begin();
-        (memory_used > memory_max) && (cit != CacheRegistry.end());
+        (memory_need > memory_max) && (cit != CacheRegistry.end());
         ++cit
       )
   {
@@ -1323,15 +1330,17 @@ void ScriptEnvironment::PopContextGlobal() {
 
 
 PVideoFrame __stdcall ScriptEnvironment::Subframe(PVideoFrame src, int rel_offset, int new_pitch, int new_row_size, int new_height) {
-  PVideoFrame retval = src->Subframe(rel_offset, new_pitch, new_row_size, new_height);
-  return retval;
+  VideoFrame* subframe = src->Subframe(rel_offset, new_pitch, new_row_size, new_height);
+  FrameRegistry.insert(FrameRegistryType::value_type(src->GetFrameBuffer()->GetDataSize(), subframe));
+  return subframe;
 }
 
 //tsp June 2005 new function compliments the above function
 PVideoFrame __stdcall ScriptEnvironment::SubframePlanar(PVideoFrame src, int rel_offset, int new_pitch, int new_row_size,
                                                         int new_height, int rel_offsetU, int rel_offsetV, int new_pitchUV) {
-  PVideoFrame retval = src->Subframe(rel_offset, new_pitch, new_row_size, new_height, rel_offsetU, rel_offsetV, new_pitchUV);
-  return retval;
+  VideoFrame* subframe = src->Subframe(rel_offset, new_pitch, new_row_size, new_height, rel_offsetU, rel_offsetV, new_pitchUV);
+  FrameRegistry.insert(FrameRegistryType::value_type(src->GetFrameBuffer()->GetDataSize(), subframe));
+  return subframe;
 }
 
 void* ScriptEnvironment::ManageCache(int key, void* data) {
@@ -1361,16 +1370,22 @@ void* ScriptEnvironment::ManageCache(int key, void* data) {
     break;
   }
   // Called by Cache instances when they want to expand their limit
-  case MC_ExpandCache:
+  case MC_NodAndExpandCache:
   {
     std::unique_lock<std::mutex> env_lock(memory_mutex);
+    Cache* cache     = reinterpret_cast<Cache*>(data);
+
+    // Nod
+    if (cache != FrontCache)
+    {
+      CacheRegistry.move_to_back(cache);
+    }
 
     // Given that we are within our memory limits,
     // try to expand the limit of those caches that
     // need it.
     // We try to expand most recently used caches first.
 
-    Cache* cache     = reinterpret_cast<Cache*>(data);
     int cache_cap    = cache->SetCacheHints(CACHE_GET_CAPACITY, 0);
     int cache_reqcap = cache->SetCacheHints(CACHE_GET_REQUESTED_CAP, 0);
     if (cache_reqcap <= cache_cap)
@@ -1509,7 +1524,7 @@ AVSValue ScriptEnvironment::Invoke(const char* name, const AVSValue args, const 
   return result;
 }
 
-bool __stdcall ScriptEnvironment::Invoke(AVSValue *result, const char* name, const AVSValue args, const char* const* arg_names)
+bool __stdcall ScriptEnvironment::Invoke(AVSValue *result, const char* name, const AVSValue& args, const char* const* arg_names)
 {
   bool strict = false;
   const AVSFunction *f;
