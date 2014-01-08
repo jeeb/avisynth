@@ -34,12 +34,12 @@
 
 #include "cache.h"
 #include "internal.h"
+#include "LruCache.h"
 #include <cassert>
 
 #ifdef X86_32
 #include <mmintrin.h>
 #endif
-
 
 
 extern const AVSFunction Cache_filters[] = {
@@ -54,47 +54,74 @@ enum
   IS_CACHE_ANS = 0x6546,
 };
 
+
+struct CachePimpl
+{
+  PClip child; 
+  VideoInfo vi;
+
+  // Video cache
+  std::shared_ptr<LruCache<size_t, PVideoFrame> > VideoCache;
+
+  // Audio cache
+  CachePolicyHint AudioPolicy;
+  char* AudioCache;
+  size_t SampleSize;
+  size_t MaxSampleCount;
+
+  CachePimpl(const PClip& _child) :
+    child(_child),
+    vi(_child->GetVideoInfo()),
+    VideoCache(std::make_shared<LruCache<size_t, PVideoFrame> >(0)),
+    AudioPolicy(CACHE_AUDIO),
+    AudioCache(NULL),
+    SampleSize(0),
+    MaxSampleCount(0)
+  {
+  }
+};
+
+
 Cache::Cache(const PClip& _child, IScriptEnvironment* env) :
   Env(env),
-  child(_child),
-  vi(_child->GetVideoInfo()),
-  VideoCache(std::make_shared<LruCache<size_t, PVideoFrame> >(0)),
-  AudioPolicy(CACHE_AUDIO)
+  _pimpl(NULL)
 {
+  _pimpl = new CachePimpl(_child);
   env->ManageCache(MC_RegisterCache, reinterpret_cast<void*>(this));
 }
 
 Cache::~Cache()
 {
   Env->ManageCache(MC_UnRegisterCache, reinterpret_cast<void*>(this));
+  delete _pimpl;
 }
 
 PVideoFrame __stdcall Cache::GetFrame(int n, IScriptEnvironment* env)
 {
-  env->ManageCache(MC_NodCache, reinterpret_cast<void*>(this));
+  if (_pimpl->VideoCache->requested_capacity() > _pimpl->VideoCache->capacity())
+    env->ManageCache(MC_NodAndExpandCache, reinterpret_cast<void*>(this));
+  else
+    env->ManageCache(MC_NodCache, reinterpret_cast<void*>(this));
 
   bool found;
   LruCache<size_t, PVideoFrame>::handle cache_handle;
-  PVideoFrame* frame = VideoCache->lookup(n, &found, &cache_handle);
+  PVideoFrame* frame = _pimpl->VideoCache->lookup(n, &found, &cache_handle);
 
   if (frame != NULL)
   {
-    if (VideoCache->requested_capacity() > VideoCache->capacity())
-      env->ManageCache(MC_ExpandCache, reinterpret_cast<void*>(this));
-    
     if (!found)
     {
       try
       {
-        *frame = child->GetFrame(n, env);
+        *frame = _pimpl->child->GetFrame(n, env);
   #ifdef X86_32
         _mm_empty();
   #endif
-        VideoCache->commit_value(&cache_handle, frame);
+        _pimpl->VideoCache->commit_value(&cache_handle, frame);
       }
       catch(...)
       {
-        VideoCache->rollback(&cache_handle);
+        _pimpl->VideoCache->rollback(&cache_handle);
         throw;
       }
     }
@@ -103,24 +130,24 @@ PVideoFrame __stdcall Cache::GetFrame(int n, IScriptEnvironment* env)
   }
   else
   {
-    return child->GetFrame(n, env);
+    return _pimpl->child->GetFrame(n, env);
   }
 }
 
 void __stdcall Cache::GetAudio(void* buf, __int64 start, __int64 count, IScriptEnvironment* env)
 {
   // TODO: implement audio cache
-  child->GetAudio(buf, start, count, env);
+  _pimpl->child->GetAudio(buf, start, count, env);
 }
 
 const VideoInfo& __stdcall Cache::GetVideoInfo()
 {
-  return vi;
+  return _pimpl->vi;
 }
 
 bool __stdcall Cache::GetParity(int n)
 {
-  return child->GetParity(n);
+  return _pimpl->child->GetParity(n);
 }
 
 int __stdcall Cache::SetCacheHints(int cachehints, int frame_range)
@@ -183,43 +210,43 @@ int __stdcall Cache::SetCacheHints(int cachehints, int frame_range)
     case CACHE_SET_MIN_CAPACITY:
     { // This is not atomic, but rankly, we don't care
       size_t min, max;
-      VideoCache->limits(&min, &max);
+      _pimpl->VideoCache->limits(&min, &max);
       min = frame_range;
-      VideoCache->set_limits(min, max);
+      _pimpl->VideoCache->set_limits(min, max);
       break;
     }
 
     case CACHE_SET_MAX_CAPACITY:
     { // This is not atomic, but rankly, we don't care
       size_t min, max;
-      VideoCache->limits(&min, &max);
+      _pimpl->VideoCache->limits(&min, &max);
       max = frame_range;
-      VideoCache->set_limits(min, max);
+      _pimpl->VideoCache->set_limits(min, max);
       break;
     }
 
     case CACHE_GET_MIN_CAPACITY:
     {
       size_t min, max;
-      VideoCache->limits(&min, &max);
+      _pimpl->VideoCache->limits(&min, &max);
       return min;
     }
 
     case CACHE_GET_MAX_CAPACITY:
     {
       size_t min, max;
-      VideoCache->limits(&min, &max);
+      _pimpl->VideoCache->limits(&min, &max);
       return max;
     }
 
     case CACHE_GET_SIZE:
-      return VideoCache->size();
+      return _pimpl->VideoCache->size();
       
     case CACHE_GET_REQUESTED_CAP:
-      return VideoCache->requested_capacity();
+      return _pimpl->VideoCache->requested_capacity();
 
     case CACHE_GET_CAPACITY:
-      return VideoCache->capacity();
+      return _pimpl->VideoCache->capacity();
 
     case CACHE_GET_WINDOW: // Get the current window h_span.
     case CACHE_GET_RANGE: // Get the current generic frame range.
@@ -240,46 +267,46 @@ int __stdcall Cache::SetCacheHints(int cachehints, int frame_range)
 
     case CACHE_AUDIO:
     case CACHE_AUDIO_AUTO:
-      if (!vi.HasAudio())
+      if (!_pimpl->vi.HasAudio())
         break;
 
       // Range means for audio.
       // 0 == Create a default buffer (256kb).
       // Positive. Allocate X bytes for cache.
       if (frame_range == 0) {
-        if (AudioPolicy != CACHE_AUDIO_NONE)   // We already have a policy - no need for a default one.
+        if (_pimpl->AudioPolicy != CACHE_AUDIO_NONE)   // We already have a policy - no need for a default one.
           break;
 
         frame_range=256*1024;
       }
 
-      if (frame_range/SampleSize > MaxSampleCount) { // Only make bigger
-        char * NewAudioCache = (char*)realloc(AudioCache, frame_range);
+      if (frame_range/_pimpl->SampleSize > _pimpl->MaxSampleCount) { // Only make bigger
+        char * NewAudioCache = (char*)realloc(_pimpl->AudioCache, frame_range);
         if (NewAudioCache == NULL)
         {
           throw std::bad_alloc();
         }
-        AudioCache = NewAudioCache;
+        _pimpl->AudioCache = NewAudioCache;
 
-        MaxSampleCount = frame_range/SampleSize;
+        _pimpl->MaxSampleCount = frame_range/_pimpl->SampleSize;
       }
 
-      AudioPolicy = (CachePolicyHint)cachehints;
+      _pimpl->AudioPolicy = (CachePolicyHint)cachehints;
       break;
 
     case CACHE_AUDIO_NONE:
     case CACHE_AUDIO_NOTHING:
-      free(AudioCache);
-      AudioCache = NULL;
-      MaxSampleCount = 0;
-      AudioPolicy = (CachePolicyHint)cachehints;
+      free(_pimpl->AudioCache);
+      _pimpl->AudioCache = NULL;
+      _pimpl->MaxSampleCount = 0;
+      _pimpl->AudioPolicy = (CachePolicyHint)cachehints;
       break;
 
     case CACHE_GET_AUDIO_POLICY: // Get the current audio policy.
-      return AudioPolicy;
+      return _pimpl->AudioPolicy;
 
     case CACHE_GET_AUDIO_SIZE: // Get the current audio cache size.
-      return SampleSize * MaxSampleCount;
+      return _pimpl->SampleSize * _pimpl->MaxSampleCount;
 
     case CACHE_PREFETCH_AUDIO_BEGIN:    // Begin queue request to prefetch audio (take critical section).
     case CACHE_PREFETCH_AUDIO_STARTLO:  // Set low 32 bits of start.

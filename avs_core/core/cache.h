@@ -36,24 +36,15 @@
 #define __Cache_H__
 
 #include <avisynth.h>
-#include <boost/circular_buffer.hpp>
-#include "LruCache.h"
+
+struct CachePimpl;
 
 class Cache : public IClip
 {
 private:
+
   IScriptEnvironment* Env;
-  PClip child; 
-  VideoInfo vi;
-
-  // Video cache
-  std::shared_ptr<LruCache<size_t, PVideoFrame> > VideoCache;
-
-  // Audio cache
-  CachePolicyHint AudioPolicy;
-  char* AudioCache;
-  size_t SampleSize;
-  size_t MaxSampleCount;
+  CachePimpl* _pimpl;
 
 public:
   Cache(const PClip& child, IScriptEnvironment* env);
@@ -63,7 +54,6 @@ public:
   const VideoInfo& __stdcall GetVideoInfo();
   bool __stdcall GetParity(int n);
   int __stdcall SetCacheHints(int cachehints,int frame_range);
-  std::mutex& mutex();
 
   static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env);
   static bool __stdcall IsCache(const PClip& c);

@@ -36,7 +36,7 @@
 #include "cache.h"
 #include "internal.h"
 #include <cassert>
-#include <boost/thread.hpp>
+#include <mutex>
 
 #ifdef X86_32
 #include <mmintrin.h>
@@ -55,7 +55,7 @@ MTGuard::MTGuard(size_t nThreads, PClip* threadFilters, MTMODES mtmode) :
 
   if (MTMode == MT_SERIALIZED)
   {
-    FilterMutex = new boost::mutex();
+    FilterMutex = new std::mutex();
   }
 }
 
@@ -86,7 +86,7 @@ PVideoFrame __stdcall MTGuard::GetFrame(int n, IScriptEnvironment* env)
     }
   case MT_SERIALIZED:
     {
-      boost::lock_guard<boost::mutex> lock(*FilterMutex);
+      std::lock_guard<std::mutex> lock(*FilterMutex);
       frame = ChildFilters[0]->GetFrame(n, env);
       break;
     }
@@ -124,7 +124,7 @@ void __stdcall MTGuard::GetAudio(void* buf, __int64 start, __int64 count, IScrip
     }
   case MT_SERIALIZED:
     {
-      boost::lock_guard<boost::mutex> lock(*FilterMutex);
+      std::lock_guard<std::mutex> lock(*FilterMutex);
       ChildFilters[0]->GetAudio(buf, start, count, env);
       break;
     }

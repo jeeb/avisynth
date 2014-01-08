@@ -1,9 +1,51 @@
 #include "Prefetcher.h"
 
+#include <mutex>
+#include <atomic>
 #include <avisynth.h>
+#include "LruCache.h"
 #include "ScriptEnvironmentTLS.h"
-#include "cache.h"  // TODO we only need LruCache from here
-#include <boost/make_shared.hpp>
+
+struct PrefetcherPimpl
+{
+  PClip child;
+  VideoInfo vi;
+
+  // The number of threads to use for prefetching
+  const size_t nThreads;
+
+  // Contains the pattern we are locked on to
+  int LockedPattern;
+
+  // The number of consecutive frames Pattern has repeated itself
+  int PatternLength;
+
+  // The current pattern that we are not locked on to
+  int Pattern;
+
+  // The frame number that GetFrame() has been called with the last time
+  int LastRequestedFrame;
+
+  std::shared_ptr<LruCache<size_t, PVideoFrame> > VideoCache;
+  std::atomic<size_t> running_workers;  
+  std::mutex worker_exception_mutex;
+  std::exception_ptr worker_exception;
+  bool worker_exception_present;
+
+  PrefetcherPimpl(const PClip& _child, size_t _nThreads) :
+    child(_child),
+    vi(_child->GetVideoInfo()),
+    nThreads(_nThreads),
+    LockedPattern(1),
+    PatternLength(0),
+    Pattern(1),
+    LastRequestedFrame(0),
+    VideoCache(NULL),
+    running_workers(0),
+    worker_exception_present(0)
+  {
+  }
+};
 
 
 // The number of intervals a pattern has to repeat itself to become locked
@@ -26,113 +68,107 @@ AVSValue Prefetcher::ThreadWorker(IScriptEnvironment2* env, void* data)
 
   try
   {
-    PVideoFrame frame = prefetcher->child->GetFrame(n, env);
-    prefetcher->VideoCache->commit_value(&cache_handle, &frame);
-    --(prefetcher->running_workers);
+    PVideoFrame frame = prefetcher->_pimpl->child->GetFrame(n, env);
+    prefetcher->_pimpl->VideoCache->commit_value(&cache_handle, &frame);
+    --(prefetcher->_pimpl->running_workers);
   }
   catch(...)
   {
-    --(prefetcher->running_workers);
-    prefetcher->VideoCache->rollback(&cache_handle);
+    --(prefetcher->_pimpl->running_workers);
+    prefetcher->_pimpl->VideoCache->rollback(&cache_handle);
 
-    boost::lock_guard<boost::mutex> lock(prefetcher->worker_exception_mutex);
-    prefetcher->worker_exception = boost::current_exception();
-    prefetcher->worker_exception_present = true;
+    std::lock_guard<std::mutex> lock(prefetcher->_pimpl->worker_exception_mutex);
+    prefetcher->_pimpl->worker_exception = std::current_exception();
+    prefetcher->_pimpl->worker_exception_present = true;
   }
 
   return AVSValue();
 }
 
 Prefetcher::Prefetcher(const PClip& _child, size_t _nThreads, IScriptEnvironment2 *env) :
-  child(_child),
-  vi(_child->GetVideoInfo()),
-  VideoCache(NULL),
-  nThreads(_nThreads),
-  LockedPattern(1),
-  PatternLength(0),
-  Pattern(1),
-  LastRequestedFrame(0),
-  running_workers(0),
-  worker_exception_present(false)
+  _pimpl(NULL)
 {
+  _pimpl = new PrefetcherPimpl(_child, _nThreads);
+  _pimpl->VideoCache = std::make_shared<LruCache<size_t, PVideoFrame> >(_nThreads*6); // TODO
+
   env->SetPrefetcher(this);
-  VideoCache = boost::make_shared<LruCache<size_t, PVideoFrame> >(_nThreads*6); // TODO
 }
 
 Prefetcher::~Prefetcher()
 {
-  while(running_workers > 0);
+  while(_pimpl->running_workers > 0);
+  delete _pimpl;
 }
 
 size_t Prefetcher::NumPrefetchThreads() const
 {
-  return nThreads;
+  return _pimpl->nThreads;
 }
 
 PVideoFrame __stdcall Prefetcher::GetFrame(int n, IScriptEnvironment* env)
 {
   IScriptEnvironment2 *env2 = static_cast<IScriptEnvironment2*>(env);
 
-  int pattern = n - LastRequestedFrame;
+  int pattern = n - _pimpl->LastRequestedFrame;
   if (pattern == 0)
     pattern = 1;
 
-  if (pattern != LockedPattern)
+  if (pattern != _pimpl->LockedPattern)
   {
-    if (pattern != Pattern)
+    if (pattern != _pimpl->Pattern)
     {
-      Pattern = pattern;
-      PatternLength = 1;
+      _pimpl->Pattern = pattern;
+      _pimpl->PatternLength = 1;
     }
     else
     {
-      ++PatternLength;
+      ++_pimpl->PatternLength;
     }
 
-    if (PatternLength == PATTERN_LOCK_LENGTH)
+    if (_pimpl->PatternLength == PATTERN_LOCK_LENGTH)
     {
-      LockedPattern = Pattern;
+      _pimpl->LockedPattern = _pimpl->Pattern;
     }
   }
   else
   {
-    PatternLength = 0;
+    _pimpl->PatternLength = 0;
   }
 
   {
-    boost::lock_guard<boost::mutex> lock(worker_exception_mutex);
-    if (worker_exception_present)
+    std::lock_guard<std::mutex> lock(_pimpl->worker_exception_mutex);
+    if (_pimpl->worker_exception_present)
     {
-      boost::rethrow_exception(worker_exception);
+      std::rethrow_exception(_pimpl->worker_exception);
     }
   }
 
   // Get requested frame
   bool found;
   LruCache<size_t, PVideoFrame>::handle cache_handle;
-  PVideoFrame* frame = VideoCache->lookup(n, &found, &cache_handle);
+  PVideoFrame* frame = _pimpl->VideoCache->lookup(n, &found, &cache_handle);
   if (!found)
   {
     try
     {
-      *frame = child->GetFrame(n, env);
-      VideoCache->commit_value(&cache_handle, frame);
+      *frame = _pimpl->child->GetFrame(n, env);
+      _pimpl->VideoCache->commit_value(&cache_handle, frame);
     }
     catch(...)
     {
-      VideoCache->rollback(&cache_handle);
+      _pimpl->VideoCache->rollback(&cache_handle);
       throw;
     }
   }
 
   // Prefetch
-  for(size_t i = 0; (i < nThreads) && (running_workers < nThreads); /* i incremented in body */ )
+  for(size_t i = 0; (i < _pimpl->nThreads) && (_pimpl->running_workers < _pimpl->nThreads); /* i incremented in body */ )
   {
-    n += LockedPattern;
-    if (n >= vi.num_frames)
+    n += _pimpl->LockedPattern;
+    if (n >= _pimpl->vi.num_frames)
       break;
 
-    PVideoFrame* prefetchedFrame = VideoCache->lookup(n, &found, &cache_handle);
+    PVideoFrame* prefetchedFrame = _pimpl->VideoCache->lookup(n, &found, &cache_handle);
     if (!found)
     {
       PrefetcherJobParams *p = new PrefetcherJobParams(); // TODO avoid heap, possibly fold into Completion object
@@ -140,7 +176,7 @@ PVideoFrame __stdcall Prefetcher::GetFrame(int n, IScriptEnvironment* env)
       p->prefetcher = this;
       p->cache_handle = cache_handle;
       env2->ParallelJob(ThreadWorker, p, NULL);
-      ++running_workers;
+      ++_pimpl->running_workers;
 
       ++i;
     }
@@ -151,20 +187,20 @@ PVideoFrame __stdcall Prefetcher::GetFrame(int n, IScriptEnvironment* env)
 
 bool __stdcall Prefetcher::GetParity(int n)
 {
-  return child->GetParity(n);
+  return _pimpl->child->GetParity(n);
 }
 
 void __stdcall Prefetcher::GetAudio(void* buf, __int64 start, __int64 count, IScriptEnvironment* env)
 {
-  child->GetAudio(buf, start, count, env);
+  _pimpl->child->GetAudio(buf, start, count, env);
 }
 
 int __stdcall Prefetcher::SetCacheHints(int cachehints, int frame_range)
 {
-  return child->SetCacheHints(cachehints, frame_range);
+  return _pimpl->child->SetCacheHints(cachehints, frame_range);
 }
 
 const VideoInfo& __stdcall Prefetcher::GetVideoInfo()
 {
-  return vi;
+  return _pimpl->vi;
 }

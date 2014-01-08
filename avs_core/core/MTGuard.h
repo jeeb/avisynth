@@ -1,15 +1,18 @@
 #ifndef _AVS_MTGUARD_H
 #define _AVS_MTGUARD_H
 
-#include <avisynth.h>
 #include "internal.h"
-#include <boost/thread.hpp>
+
+namespace std
+{
+  class mutex;
+}
 
 class MTGuard : public IClip
 {
 private:
   PClip* ChildFilters; 
-  boost::mutex *FilterMutex;
+  std::mutex *FilterMutex;
   MTMODES MTMode;
   const size_t nThreads;
   VideoInfo vi;

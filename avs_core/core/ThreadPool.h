@@ -2,11 +2,10 @@
 #define _AVS_THREADPOOL_H
 
 #include <avisynth.h>
-#include <boost/thread.hpp>
-#include <vector>
+#include <future>
 
-typedef boost::unique_future<AVSValue> AVSFuture;
-typedef boost::promise<AVSValue> AVSPromise;
+typedef std::future<AVSValue> AVSFuture;
+typedef std::promise<AVSValue> AVSPromise;
 
 class JobCompletion : public IJobCompletion
 {
@@ -45,7 +44,7 @@ public:
     delete [] pairs;
   }
 
-  void __stdcall Wait() // TODO auto-reset 
+  void __stdcall Wait() // TODO auto-reset
   {
     for (size_t i = 0; i < nJobs; ++i)
       pairs[i].second.wait();
@@ -58,13 +57,6 @@ public:
   {
     return max_jobs;
   }
-  bool __stdcall Finished() const
-  {
-    bool ret = true;
-    for (size_t i = 0; i < nJobs; ++i)
-      ret = ret && pairs[i].second.is_ready();
-    return ret;
-  }
   AVSValue __stdcall Get(size_t i)
   {
     return pairs[i].second.get();
@@ -73,8 +65,8 @@ public:
   {
     for (size_t i = 0; i < nJobs; ++i)
     {
-      pairs[i].first = boost::move(AVSPromise());
-      pairs[i].second = boost::move(pairs[i].first.get_future());
+      pairs[i].first = std::move(AVSPromise());
+      pairs[i].second = std::move(pairs[i].first.get_future());
     }
     nJobs = 0;
   }

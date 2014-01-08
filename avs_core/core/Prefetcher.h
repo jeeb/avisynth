@@ -2,39 +2,14 @@
 #define _AVS_FILT_PREFETCHER_H
 
 #include <avisynth.h>
-#include <boost/thread.hpp>
-#include <boost/atomic.hpp>
-#include "LruCache.h"
 
+struct PrefetcherPimpl;
 
 class Prefetcher : public IClip
 {
 private:
 
-  PClip child;
-  VideoInfo vi;
-
-  boost::shared_ptr<LruCache<size_t, PVideoFrame> > VideoCache;
-
-  // The number of threads to use for prefetching
-  const size_t nThreads;
-
-  // Contains the pattern we are locked on to
-  int LockedPattern;
-
-  // The number of consecutive frames Pattern has repeated itself
-  int PatternLength;
-
-  // The current pattern that we are not locked on to
-  int Pattern;
-
-  // The frame number that GetFrame() has been called with the last time
-  int LastRequestedFrame;
-
-  boost::atomic<size_t> running_workers;  
-  boost::mutex worker_exception_mutex;
-  boost::exception_ptr worker_exception;
-  bool worker_exception_present;
+  PrefetcherPimpl * _pimpl;
 
   static AVSValue ThreadWorker(IScriptEnvironment2* env, void* data);
 
@@ -47,7 +22,6 @@ public:
   virtual void __stdcall GetAudio(void* buf, __int64 start, __int64 count, IScriptEnvironment* env);
   virtual int __stdcall SetCacheHints(int cachehints, int frame_range);
   virtual const VideoInfo& __stdcall GetVideoInfo();
-
 };
 
 #endif // _AVS_FILT_PREFETCHER_H

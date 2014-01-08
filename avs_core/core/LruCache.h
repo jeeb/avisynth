@@ -2,8 +2,9 @@
 #define AVS_LRUCACHE_H
 
 #include <mutex>
-#include <memory>
 #include <condition_variable>
+#include <memory>
+#include <cassert>
 #include <boost/pool/object_pool.hpp>
 #include "SimpleLruCache.h"
 

@@ -1014,7 +1014,6 @@ public:
   virtual AVSValue __stdcall Get(size_t i) = 0;
   virtual size_t __stdcall Size() const = 0;
   virtual size_t __stdcall Capacity() const = 0;
-  virtual bool __stdcall Finished() const = 0;
   virtual void __stdcall Reset() = 0;
   virtual void __stdcall Destroy() = 0;
 };

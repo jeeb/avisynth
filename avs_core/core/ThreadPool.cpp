@@ -1,7 +1,7 @@
 #include "ThreadPool.h"
 #include "ScriptEnvironmentTLS.h"
-#include <boost/shared_ptr.hpp>
-
+#include <cassert>
+#include <thread>
 
 struct ThreadPoolGenericItemData
 {
@@ -28,7 +28,7 @@ struct ThreadMessage
   ThreadMessage(ThreadMessagesType type) :
     Type(type)
   {}
-  ThreadMessage(ThreadMessagesType type, ThreadPoolGenericItemData &data) :
+  ThreadMessage(ThreadMessagesType type, const ThreadPoolGenericItemData &data) :
     Type(type), GenericWorkItemData(data)
   {}
 };
@@ -63,17 +63,18 @@ static void ThreadFunc(size_t thread_id, MessageQueue *msgQueue)
           {
             data.Promise->set_value(data.Func(&EnvTLS, data.Params));
           }
-          catch(const AvisynthError& e)
+          catch(const AvisynthError&)
           {
-            data.Promise->set_exception(boost::copy_exception(e));
+            data.Promise->set_exception(std::current_exception());
           }
-          catch(const std::exception& e)
+          catch(const std::exception&)
           {
-            data.Promise->set_exception(boost::copy_exception(e));
+            data.Promise->set_exception(std::current_exception());
           }
           catch(...)
           {
-            data.Promise->set_value(AVSValue("An unknown exception was thrown in the thread pool."));
+            data.Promise->set_exception(std::current_exception());
+            //data.Promise->set_value(AVSValue("An unknown exception was thrown in the thread pool."));
           }
         }
         else
@@ -97,7 +98,7 @@ static void ThreadFunc(size_t thread_id, MessageQueue *msgQueue)
 class ThreadPoolPimpl
 {
 public:
-  std::vector<boost::thread> Threads;  
+  std::vector<std::thread> Threads;
   MessageQueue MsgQueue;
 
   ThreadPoolPimpl(size_t nThreads) :
@@ -106,12 +107,11 @@ public:
   {}
 };
 
-
 ThreadPool::ThreadPool(size_t nThreads) :
   _pimpl(new ThreadPoolPimpl(nThreads))
 {
   for (size_t i = 1; i < nThreads; ++i)
-    _pimpl->Threads.push_back(boost::thread(ThreadFunc, i, &(_pimpl->MsgQueue)));
+    _pimpl->Threads.push_back(std::thread(ThreadFunc, i, &(_pimpl->MsgQueue)));
 }
 
 void ThreadPool::QueueJob(ThreadWorkerFuncPtr clb, void* params, IScriptEnvironment2 *env, JobCompletion *tc)
@@ -131,7 +131,7 @@ void ThreadPool::QueueJob(ThreadWorkerFuncPtr clb, void* params, IScriptEnvironm
 
 size_t ThreadPool::NumThreads() const
 {
-// TODO  return _pimpl->Threads.size();
+  // TODO  return _pimpl->Threads.size();
   return 1;
 }
 
