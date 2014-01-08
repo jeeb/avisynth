@@ -507,28 +507,28 @@ void PVideoFrame::DESTRUCTOR()                           { if (p) p->Release(); 
 // class AVSValue
 
 AVSValue::AVSValue()                                     { CONSTRUCTOR0(); }
-void AVSValue::CONSTRUCTOR0()                            { type = 'v'; }
+void AVSValue::CONSTRUCTOR0()                            { type = 'v'; array_size = 0; clip = NULL; }
                                                         
 AVSValue::AVSValue(IClip* c)                             { CONSTRUCTOR1(c); }
-void AVSValue::CONSTRUCTOR1(IClip* c)                    { type = 'c'; clip = c; if (c) c->AddRef(); }
+void AVSValue::CONSTRUCTOR1(IClip* c)                    { type = 'c'; array_size = 0; clip = c; if (c) c->AddRef(); }
                                                         
 AVSValue::AVSValue(const PClip& c)                       { CONSTRUCTOR2(c); }
-void AVSValue::CONSTRUCTOR2(const PClip& c)              { type = 'c'; clip = c.GetPointerWithAddRef(); }
+void AVSValue::CONSTRUCTOR2(const PClip& c)              { type = 'c'; array_size = 0; clip = c.GetPointerWithAddRef(); }
                                                         
 AVSValue::AVSValue(bool b)                               { CONSTRUCTOR3(b); }
-void AVSValue::CONSTRUCTOR3(bool b)                      { type = 'b'; boolean = b; }
+void AVSValue::CONSTRUCTOR3(bool b)                      { type = 'b'; array_size = 0; clip = NULL; boolean = b; }
                                                         
 AVSValue::AVSValue(int i)                                { CONSTRUCTOR4(i); }
-void AVSValue::CONSTRUCTOR4(int i)                       { type = 'i'; integer = i; }
+void AVSValue::CONSTRUCTOR4(int i)                       { type = 'i'; array_size = 0; clip = NULL; integer = i; }
                                                         
 AVSValue::AVSValue(float f)                              { CONSTRUCTOR5(f); }
-void AVSValue::CONSTRUCTOR5(float f)                     { type = 'f'; floating_pt = f; }
+void AVSValue::CONSTRUCTOR5(float f)                     { type = 'f'; array_size = 0; clip = NULL; floating_pt = f; }
                                                         
 AVSValue::AVSValue(double f)                             { CONSTRUCTOR6(f); }
-void AVSValue::CONSTRUCTOR6(double f)                    { type = 'f'; floating_pt = float(f); }
+void AVSValue::CONSTRUCTOR6(double f)                    { type = 'f'; array_size = 0; clip = NULL; floating_pt = float(f); }
                                                         
 AVSValue::AVSValue(const char* s)                        { CONSTRUCTOR7(s); }
-void AVSValue::CONSTRUCTOR7(const char* s)               { type = 's'; string = s; }
+void AVSValue::CONSTRUCTOR7(const char* s)               { type = 's'; array_size = 0; string = s; }
 
 /* Baked ********************
 AVSValue::AVSValue(const AVSValue* a, int size) { type = 'a'; array = a; array_size = size; }
