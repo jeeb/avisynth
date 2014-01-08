@@ -69,6 +69,7 @@ StackVertical::StackVertical(PClip *_child_array, int _num_args, IScriptEnvironm
   child_array(_child_array), num_args(_num_args)
 {
   vi = child_array[0]->GetVideoInfo();
+  frames = new PVideoFrame[num_args];
 
   for (int i=1; i<num_args; i++) {
     const VideoInfo& vin = child_array[i]->GetVideoInfo();
@@ -89,9 +90,8 @@ StackVertical::StackVertical(PClip *_child_array, int _num_args, IScriptEnvironm
 
 PVideoFrame __stdcall StackVertical::GetFrame(int n, IScriptEnvironment* env) 
 {
-  PVideoFrame *src = new PVideoFrame[num_args];
   for (int i=0; i<num_args; i++)
-    src[i] = child_array[i]->GetFrame(n, env);
+    frames[i] = child_array[i]->GetFrame(n, env);
 
   PVideoFrame dst = env->NewVideoFrame(vi);
 
@@ -102,9 +102,9 @@ PVideoFrame __stdcall StackVertical::GetFrame(int n, IScriptEnvironment* env)
   if (vi.IsRGB()) {
     // reverse the order of the clips in RGB mode because it's upside-down
     for (int i=num_args-1; i>=0; i--) {
-      const BYTE* srcp = src[i]->GetReadPtr();
-      const int src_pitch = src[i]->GetPitch();
-      const int src_height = src[i]->GetHeight();
+      const BYTE* srcp = frames[i]->GetReadPtr();
+      const int src_pitch = frames[i]->GetPitch();
+      const int src_height = frames[i]->GetHeight();
 
       BitBlt(dstp, dst_pitch, srcp, src_pitch, row_size, src_height);
       dstp += dst_pitch * src_height;
@@ -112,9 +112,9 @@ PVideoFrame __stdcall StackVertical::GetFrame(int n, IScriptEnvironment* env)
   }
   else {
     for (int i=0; i<num_args; i++) {
-      const BYTE* srcp = src[i]->GetReadPtr();
-      const int src_pitch = src[i]->GetPitch();
-      const int src_height = src[i]->GetHeight();
+      const BYTE* srcp = frames[i]->GetReadPtr();
+      const int src_pitch = frames[i]->GetPitch();
+      const int src_height = frames[i]->GetHeight();
 
       BitBlt(dstp, dst_pitch, srcp, src_pitch, row_size, src_height);
       dstp += dst_pitch * src_height;
@@ -127,9 +127,9 @@ PVideoFrame __stdcall StackVertical::GetFrame(int n, IScriptEnvironment* env)
 
       BYTE* dstpV = dst->GetWritePtr(PLANAR_V);
       for (int i=0; i<num_args; i++) {
-        const BYTE* srcpV = src[i]->GetReadPtr(PLANAR_V);
-        const int src_pitchV = src[i]->GetPitch(PLANAR_V);
-        const int src_heightV = src[i]->GetHeight(PLANAR_V);
+        const BYTE* srcpV = frames[i]->GetReadPtr(PLANAR_V);
+        const int src_pitchV = frames[i]->GetPitch(PLANAR_V);
+        const int src_heightV = frames[i]->GetHeight(PLANAR_V);
 
         BitBlt(dstpV, dst_pitchUV, srcpV, src_pitchV, row_sizeUV, src_heightV);
         dstpV += dst_pitchUV * src_heightV;
@@ -137,16 +137,18 @@ PVideoFrame __stdcall StackVertical::GetFrame(int n, IScriptEnvironment* env)
 
       BYTE* dstpU = dst->GetWritePtr(PLANAR_U);
       for (int j=0; j<num_args; j++) {
-        const BYTE* srcpU = src[j]->GetReadPtr(PLANAR_U);
-        const int src_pitchU = src[j]->GetPitch(PLANAR_U);
-        const int src_heightU = src[j]->GetHeight(PLANAR_U);
+        const BYTE* srcpU = frames[j]->GetReadPtr(PLANAR_U);
+        const int src_pitchU = frames[j]->GetPitch(PLANAR_U);
+        const int src_heightU = frames[j]->GetHeight(PLANAR_U);
 
         BitBlt(dstpU, dst_pitchUV, srcpU, src_pitchU, row_sizeUV, src_heightU);
         dstpU += dst_pitchUV * src_heightU;
       }
     }
   }
-  delete[] src;
+
+  for (int i=0; i<num_args; i++)
+    frames[i] = 0;
 
   return dst;
 }

@@ -62,11 +62,12 @@ public:
   static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env);
 
   ~StackVertical()
-    { delete[] child_array; }
+    { delete[] child_array; delete[] frames; }
 
 private:
   const int num_args;
   PClip *child_array;
+  PVideoFrame *frames;
   VideoInfo vi;
 
 };
