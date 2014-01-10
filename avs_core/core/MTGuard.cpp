@@ -164,7 +164,15 @@ AVSValue __stdcall MTGuard::Create(const AVSFunction* func, const AVSValue& args
 
   if (func_result.IsClip() && (nThreads > 1) && !Cache::IsCache(func_result.AsClip()))
   {
-    switch (env->GetFilterMTMode(func->name))
+    MTMODES mode = env->GetFilterMTMode(func->name);
+    PClip filter_instance = func_result.AsClip();
+    if ( (filter_instance->GetVersion() >= 5)
+      && (filter_instance->SetCacheHints(CACHE_GET_MTMODE, 0) != 0) )
+    {
+      mode = (MTMODES)filter_instance->SetCacheHints(CACHE_GET_MTMODE, 0);
+    }
+
+    switch (mode)
     {
     case MT_NICE_PLUGIN:
       {

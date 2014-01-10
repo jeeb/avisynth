@@ -647,6 +647,7 @@ enum CachePolicyHint {
   CACHE_GET_SIZE,
   CACHE_GET_REQUESTED_CAP,
   CACHE_GET_CAPACITY,
+  CACHE_GET_MTMODE,
 
   CACHE_USER_CONSTANTS = 1000       // Smaller values are reserved for the core
 
