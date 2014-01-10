@@ -675,9 +675,8 @@ ScriptEnvironment::ScriptEnvironment()
     plugin_manager->AddAutoloadDir("USER_CLASSIC_PLUGINS", false);
     plugin_manager->AddAutoloadDir("MACHINE_CLASSIC_PLUGINS", false);
 
-    //size_t nCpuCores = 2;
-    size_t nCpuCores = GetProperty(AEP_PHYSICAL_CPUS);
-   // TODO thread_pool = new ThreadPool( nCpuCores > 1 ? nCpuCores+1 : 1);
+    size_t nCpuCores = std::thread::hardware_concurrency();
+    thread_pool = new ThreadPool( nCpuCores > 1 ? nCpuCores : 1);
 
     ExportBuiltinFilters();
   }
@@ -1622,8 +1621,7 @@ success:;
   if (f->IsScriptFunction())
     *result = f->apply(funcArgs, f->user_data, this);
   else
-      *result = Cache::Create(f->apply(funcArgs, f->user_data, this), NULL, this);
-//    *result = Cache::Create(MTGuard::Create(f, funcArgs, this), f->user_data, this);  TODO
+    *result = Cache::Create(MTGuard::Create(f, funcArgs, this), f->user_data, this);
   
   return true;
 }
