@@ -105,6 +105,36 @@ size_t Prefetcher::NumPrefetchThreads() const
   return _pimpl->nThreads;
 }
 
+void __stdcall Prefetcher::SchedulePrefetch(int current_n, IScriptEnvironment2* env)
+{
+  bool found;
+  LruCache<size_t, PVideoFrame>::handle cache_handle;
+  PVideoFrame* frame = NULL;
+
+  int n = current_n;
+  while (_pimpl->running_workers < _pimpl->nThreads)
+  {
+    n += _pimpl->LockedPattern;
+    if (n < _pimpl->vi.num_frames)
+    {
+      PVideoFrame* prefetchedFrame = _pimpl->VideoCache->lookup(n, &found, &cache_handle);
+      if (!found && (prefetchedFrame != NULL))
+      {
+        PrefetcherJobParams *p = new PrefetcherJobParams(); // TODO avoid heap, possibly fold into Completion object
+        p->frame = n;
+        p->prefetcher = this;
+        p->cache_handle = cache_handle;
+        env->ParallelJob(ThreadWorker, p, NULL);
+        ++_pimpl->running_workers;
+      }
+    }
+    else
+    {
+      break;
+    }
+  }
+}
+
 PVideoFrame __stdcall Prefetcher::GetFrame(int n, IScriptEnvironment* env)
 {
   IScriptEnvironment2 *env2 = static_cast<IScriptEnvironment2*>(env);
@@ -143,46 +173,24 @@ PVideoFrame __stdcall Prefetcher::GetFrame(int n, IScriptEnvironment* env)
     }
   }
 
-  bool found;
-  LruCache<size_t, PVideoFrame>::handle cache_handle;
-  PVideoFrame* frame = NULL;
-
   // Prefetch
-  int current_frame = n;
-  while (_pimpl->running_workers < _pimpl->nThreads)
-  {
-    n += _pimpl->LockedPattern;
-    if (n < _pimpl->vi.num_frames)
-    {
-      PVideoFrame* prefetchedFrame = _pimpl->VideoCache->lookup(n, &found, &cache_handle);
-      if (!found)
-      {
-        PrefetcherJobParams *p = new PrefetcherJobParams(); // TODO avoid heap, possibly fold into Completion object
-        p->frame = n;
-        p->prefetcher = this;
-        p->cache_handle = cache_handle;
-        env2->ParallelJob(ThreadWorker, p, NULL);
-        ++_pimpl->running_workers;
-      }
-    }
-    else
-    {
-      break;
-    }
-  }
+  SchedulePrefetch(n, env2);
 
   // Get requested frame
-  frame = _pimpl->VideoCache->lookup(current_frame, &found, &cache_handle);
+  bool found;
+  LruCache<size_t, PVideoFrame>::handle cache_handle;
+
+  PVideoFrame* frame = _pimpl->VideoCache->lookup(n, &found, &cache_handle);
   if (frame == NULL)
   {
-      return _pimpl->child->GetFrame(current_frame, env);
+      return _pimpl->child->GetFrame(n, env);
   }
 
   if (!found)
   {
     try
     {
-      *frame = _pimpl->child->GetFrame(current_frame, env);
+      *frame = _pimpl->child->GetFrame(n, env);
       _pimpl->VideoCache->commit_value(&cache_handle, frame);
     }
     catch(...)
