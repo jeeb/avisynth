@@ -74,8 +74,8 @@ AVSValue Prefetcher::ThreadWorker(IScriptEnvironment2* env, void* data)
   }
   catch(...)
   {
-    --(prefetcher->_pimpl->running_workers);
     prefetcher->_pimpl->VideoCache->rollback(&cache_handle);
+    --(prefetcher->_pimpl->running_workers);
 
     std::lock_guard<std::mutex> lock(prefetcher->_pimpl->worker_exception_mutex);
     prefetcher->_pimpl->worker_exception = std::current_exception();
@@ -143,42 +143,52 @@ PVideoFrame __stdcall Prefetcher::GetFrame(int n, IScriptEnvironment* env)
     }
   }
 
-  // Get requested frame
   bool found;
   LruCache<size_t, PVideoFrame>::handle cache_handle;
-  PVideoFrame* frame = _pimpl->VideoCache->lookup(n, &found, &cache_handle);
+  PVideoFrame* frame = NULL;
+
+  // Prefetch
+  int current_frame = n;
+  while (_pimpl->running_workers < _pimpl->nThreads)
+  {
+    n += _pimpl->LockedPattern;
+    if (n < _pimpl->vi.num_frames)
+    {
+      PVideoFrame* prefetchedFrame = _pimpl->VideoCache->lookup(n, &found, &cache_handle);
+      if (!found)
+      {
+        PrefetcherJobParams *p = new PrefetcherJobParams(); // TODO avoid heap, possibly fold into Completion object
+        p->frame = n;
+        p->prefetcher = this;
+        p->cache_handle = cache_handle;
+        env2->ParallelJob(ThreadWorker, p, NULL);
+        ++_pimpl->running_workers;
+      }
+    }
+    else
+    {
+      break;
+    }
+  }
+
+  // Get requested frame
+  frame = _pimpl->VideoCache->lookup(current_frame, &found, &cache_handle);
+  if (frame == NULL)
+  {
+      return _pimpl->child->GetFrame(current_frame, env);
+  }
+
   if (!found)
   {
     try
     {
-      *frame = _pimpl->child->GetFrame(n, env);
+      *frame = _pimpl->child->GetFrame(current_frame, env);
       _pimpl->VideoCache->commit_value(&cache_handle, frame);
     }
     catch(...)
     {
       _pimpl->VideoCache->rollback(&cache_handle);
       throw;
-    }
-  }
-
-  // Prefetch
-  for(size_t i = 0; (i < _pimpl->nThreads) && (_pimpl->running_workers < _pimpl->nThreads); /* i incremented in body */ )
-  {
-    n += _pimpl->LockedPattern;
-    if (n >= _pimpl->vi.num_frames)
-      break;
-
-    PVideoFrame* prefetchedFrame = _pimpl->VideoCache->lookup(n, &found, &cache_handle);
-    if (!found)
-    {
-      PrefetcherJobParams *p = new PrefetcherJobParams(); // TODO avoid heap, possibly fold into Completion object
-      p->frame = n;
-      p->prefetcher = this;
-      p->cache_handle = cache_handle;
-      env2->ParallelJob(ThreadWorker, p, NULL);
-      ++_pimpl->running_workers;
-
-      ++i;
     }
   }
 
