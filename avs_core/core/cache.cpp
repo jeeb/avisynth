@@ -103,35 +103,48 @@ PVideoFrame __stdcall Cache::GetFrame(int n, IScriptEnvironment* env)
   else
     env->ManageCache(MC_NodCache, reinterpret_cast<void*>(this));
 
-  bool found;
+  PVideoFrame result;
   LruCache<size_t, PVideoFrame>::handle cache_handle;
-  PVideoFrame* frame = _pimpl->VideoCache->lookup(n, &found, &cache_handle);
-
-  if (frame != NULL)
+  
+  switch(_pimpl->VideoCache->lookup(n, &cache_handle, true))
   {
-    if (!found)
+  case LRU_LOOKUP_NOT_FOUND:
     {
       try
       {
-        *frame = _pimpl->child->GetFrame(n, env);
+        cache_handle.first->value = _pimpl->child->GetFrame(n, env);
   #ifdef X86_32
         _mm_empty();
   #endif
-        _pimpl->VideoCache->commit_value(&cache_handle, frame);
+        _pimpl->VideoCache->commit_value(&cache_handle);
       }
       catch(...)
       {
         _pimpl->VideoCache->rollback(&cache_handle);
         throw;
       }
+      result = cache_handle.first->value;
+      break;
     }
+  case LRU_LOOKUP_FOUND_AND_READY:
+    {
+      result = cache_handle.first->value;
+      break;
+    }
+  case LRU_LOOKUP_NO_CACHE:
+    {
+      result = _pimpl->child->GetFrame(n, env);
+      break;
+    }
+  case LRU_LOOKUP_FOUND_BUT_NOTAVAIL:    // Fall-through intentional
+  default:
+    {
+      assert(0);
+      break;
+    }
+  }
 
-    return *frame;
-  }
-  else
-  {
-    return _pimpl->child->GetFrame(n, env);
-  }
+  return result;
 }
 
 void __stdcall Cache::GetAudio(void* buf, __int64 start, __int64 count, IScriptEnvironment* env)

@@ -68,8 +68,12 @@ AVSValue Prefetcher::ThreadWorker(IScriptEnvironment2* env, void* data)
 
   try
   {
-    PVideoFrame frame = prefetcher->_pimpl->child->GetFrame(n, env);
-    prefetcher->_pimpl->VideoCache->commit_value(&cache_handle, &frame);
+    cache_handle.first->value = prefetcher->_pimpl->child->GetFrame(n, env);
+    #ifdef X86_32
+          _mm_empty();
+    #endif
+
+    prefetcher->_pimpl->VideoCache->commit_value(&cache_handle);
     --(prefetcher->_pimpl->running_workers);
   }
   catch(...)
@@ -107,18 +111,18 @@ size_t Prefetcher::NumPrefetchThreads() const
 
 void __stdcall Prefetcher::SchedulePrefetch(int current_n, IScriptEnvironment2* env)
 {
-  bool found;
-  LruCache<size_t, PVideoFrame>::handle cache_handle;
-  PVideoFrame* frame = NULL;
-
   int n = current_n;
   while (_pimpl->running_workers < _pimpl->nThreads)
   {
     n += _pimpl->LockedPattern;
-    if (n < _pimpl->vi.num_frames)
+    if (n >= _pimpl->vi.num_frames)
+      break;
+
+    PVideoFrame result;
+    LruCache<size_t, PVideoFrame>::handle cache_handle;
+    switch(_pimpl->VideoCache->lookup(n, &cache_handle, false))
     {
-      PVideoFrame* prefetchedFrame = _pimpl->VideoCache->lookup(n, &found, &cache_handle);
-      if (!found && (prefetchedFrame != NULL))
+    case LRU_LOOKUP_NOT_FOUND:
       {
         PrefetcherJobParams *p = new PrefetcherJobParams(); // TODO avoid heap, possibly fold into Completion object
         p->frame = n;
@@ -126,13 +130,21 @@ void __stdcall Prefetcher::SchedulePrefetch(int current_n, IScriptEnvironment2* 
         p->cache_handle = cache_handle;
         env->ParallelJob(ThreadWorker, p, NULL);
         ++_pimpl->running_workers;
+        break;
+      }
+    case LRU_LOOKUP_FOUND_AND_READY:      // Fall-through intentional
+    case LRU_LOOKUP_NO_CACHE:             // Fall-through intentional
+    case LRU_LOOKUP_FOUND_BUT_NOTAVAIL:
+      {
+        break;
+      }
+    default:
+      {
+        assert(0);
+        break;
       }
     }
-    else
-    {
-      break;
-    }
-  }
+  } // switch
 }
 
 PVideoFrame __stdcall Prefetcher::GetFrame(int n, IScriptEnvironment* env)
@@ -177,30 +189,47 @@ PVideoFrame __stdcall Prefetcher::GetFrame(int n, IScriptEnvironment* env)
   SchedulePrefetch(n, env2);
 
   // Get requested frame
-  bool found;
+  PVideoFrame result;
   LruCache<size_t, PVideoFrame>::handle cache_handle;
-
-  PVideoFrame* frame = _pimpl->VideoCache->lookup(n, &found, &cache_handle);
-  if (frame == NULL)
+  switch(_pimpl->VideoCache->lookup(n, &cache_handle, true))
   {
-      return _pimpl->child->GetFrame(n, env);
+  case LRU_LOOKUP_NOT_FOUND:
+    {
+      try
+      {
+        cache_handle.first->value = _pimpl->child->GetFrame(n, env);
+  #ifdef X86_32
+        _mm_empty();
+  #endif
+        _pimpl->VideoCache->commit_value(&cache_handle);
+      }
+      catch(...)
+      {
+        _pimpl->VideoCache->rollback(&cache_handle);
+        throw;
+      }
+      result = cache_handle.first->value;
+      break;
+    }
+  case LRU_LOOKUP_FOUND_AND_READY:
+    {
+      result = cache_handle.first->value;
+      break;
+    }
+  case LRU_LOOKUP_NO_CACHE:
+    {
+      result = _pimpl->child->GetFrame(n, env);
+      break;
+    }
+  case LRU_LOOKUP_FOUND_BUT_NOTAVAIL:    // Fall-through intentional
+  default:
+    {
+      assert(0);
+      break;
+    }
   }
 
-  if (!found)
-  {
-    try
-    {
-      *frame = _pimpl->child->GetFrame(n, env);
-      _pimpl->VideoCache->commit_value(&cache_handle, frame);
-    }
-    catch(...)
-    {
-      _pimpl->VideoCache->rollback(&cache_handle);
-      throw;
-    }
-  }
-
-  return *frame;
+  return result;
 }
 
 bool __stdcall Prefetcher::GetParity(int n)

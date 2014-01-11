@@ -8,6 +8,14 @@
 #include <boost/pool/object_pool.hpp>
 #include "SimpleLruCache.h"
 
+enum LruLookupResult
+{
+  LRU_LOOKUP_NOT_FOUND,          // Item has not been found, storage is reserved to be used by caller
+  LRU_LOOKUP_FOUND_AND_READY,    // Item has been found and returned
+  LRU_LOOKUP_FOUND_BUT_NOTAVAIL, // Item has been found, but is waiting for completion and is not yet ready
+  LRU_LOOKUP_NO_CACHE            // Item will not be cached, no storage is returned
+};
+
 template<typename K, typename V>
 class LruCache : public std::enable_shared_from_this<LruCache<K, V> >
 {
@@ -139,15 +147,22 @@ public:
     MainCache.set_limits(min, max);
   }
 
-  V* lookup(const K& key, bool *found, handle *hndl)
+  LruLookupResult lookup(const K& key, handle *hndl, bool block_for_completion)
   {
     std::unique_lock<std::mutex> global_lock(mutex);
 
-    entry_ptr* entryp = MainCache.lookup(key, found);
+    bool found;
+    entry_ptr* entryp = MainCache.lookup(key, &found);
 
-    if (*found)
+    if (found)
     {
       entry_ptr entry = *entryp;
+      *hndl = handle(entry, this->shared_from_this());
+
+      if (!block_for_completion && (entry->state != LRU_ENTRY_AVAILABLE))
+      {
+        return LRU_LOOKUP_FOUND_BUT_NOTAVAIL;
+      }
 
       // wait until data becomes available
       ++(entry->locks);
@@ -163,13 +178,13 @@ public:
           break;
         case LRU_ENTRY_ROLLED_BACK:     // whoever we were waiting for decided to step back. we take over his place.
           entry->state = LRU_ENTRY_EMPTY;
-          return false;
+          break;
         default:
           assert(0);
         }
       }
       --(entry->locks);
-      return &(entry->value);
+      return LRU_LOOKUP_FOUND_AND_READY;
     }
     else
     {
@@ -198,23 +213,22 @@ public:
         *hndl = handle(entry, this->shared_from_this());
         entry->locks = 1;
         entry->ghosted = g->ghosted;
-        return &(entry->value);
+        return LRU_LOOKUP_NOT_FOUND;
       }
       else
       {
         g->ghosted++;
-        return NULL;
+        return LRU_LOOKUP_NO_CACHE;
       }
     } // if
   }
 
-  void commit_value(handle *hndl, const V* value)
+  void commit_value(handle *hndl)
   {
     std::unique_lock<std::mutex> global_lock(mutex);
 
     // mark data as ready
     entry_ptr e = hndl->first;
-    e->value = *value;
     e->state = LRU_ENTRY_AVAILABLE;
     --(e->locks);
 
