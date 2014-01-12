@@ -44,7 +44,7 @@ public:
     delete [] pairs;
   }
 
-  void __stdcall Wait() // TODO auto-reset
+  void __stdcall Wait()
   {
     for (size_t i = 0; i < nJobs; ++i)
       pairs[i].second.wait();

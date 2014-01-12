@@ -350,6 +350,13 @@ ConvertFrom444* Overlay::SelectOutputCS(const char* name, IScriptEnvironment* en
       }
       return new Convert444ToRGB();
     }
+    else
+    {
+      /* This branch is to prevent continuing execution for unsupported colorspaces,
+         as we rely on "name" being non-NULL further on.
+      */
+	  env->ThrowError("Overlay: Unsupported colorspace.");
+    }
   }
 
   if (!lstrcmpi(name, "YUY2")) {

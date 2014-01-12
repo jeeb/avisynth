@@ -93,7 +93,7 @@ Prefetcher::Prefetcher(const PClip& _child, size_t _nThreads, IScriptEnvironment
   _pimpl(NULL)
 {
   _pimpl = new PrefetcherPimpl(_child, _nThreads);
-  _pimpl->VideoCache = std::make_shared<LruCache<size_t, PVideoFrame> >(_nThreads*6); // TODO
+  _pimpl->VideoCache = std::make_shared<LruCache<size_t, PVideoFrame> >(_nThreads*4);
 
   env->SetPrefetcher(this);
 }

@@ -153,7 +153,6 @@ bool __stdcall MTGuard::GetParity(int n)
 
 int __stdcall MTGuard::SetCacheHints(int cachehints, int frame_range)
 {
-  // TODO
   return 0;
 }
 

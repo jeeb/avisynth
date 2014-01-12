@@ -151,7 +151,7 @@ static size_t GetNumPhysicalCPUs()
 
   while (!done)
   {
-    DWORD rc = glpi(buffer, &returnLength);
+    BOOL rc = glpi(buffer, &returnLength);
 
     if (FALSE == rc) 
     {
@@ -551,6 +551,9 @@ private:
   // AtExiter has functions which
   // rely on StringDump elements.
   StringDump string_dump;
+  std::mutex string_mutex;
+  char * vsprintf_buf;
+  size_t vsprintf_len;
 
   AtExiter at_exit;
   ThreadPool * thread_pool;
@@ -629,6 +632,8 @@ IJobCompletion* __stdcall ScriptEnvironment::NewCompletion(size_t capacity)
 ScriptEnvironment::ScriptEnvironment()
   : at_exit(),
     plugin_manager(NULL),
+    vsprintf_buf(NULL),
+    vsprintf_len(0),
     hrfromcoinit(E_FAIL), coinitThreadId(0),
     closing(false),
     PlanarChromaAlignmentState(true),   // Change to "true" for 2.5.7
@@ -675,8 +680,7 @@ ScriptEnvironment::ScriptEnvironment()
     plugin_manager->AddAutoloadDir("USER_CLASSIC_PLUGINS", false);
     plugin_manager->AddAutoloadDir("MACHINE_CLASSIC_PLUGINS", false);
 
-    size_t nCpuCores = std::thread::hardware_concurrency();
-    thread_pool = new ThreadPool( nCpuCores > 1 ? nCpuCores : 1);
+    thread_pool = new ThreadPool(std::thread::hardware_concurrency() + 2);
 
     ExportBuiltinFilters();
   }
@@ -722,6 +726,7 @@ ScriptEnvironment::~ScriptEnvironment() {
   }
 
   delete plugin_manager;
+  delete [] vsprintf_buf;
 
   // If we init'd COM and this is the right thread then release it
   // If it's the wrong threadId then tuff, nothing we can do.
@@ -976,6 +981,11 @@ bool ScriptEnvironment::SetGlobalVar(const char* name, const AVSValue& val) {
 
 VideoFrame* ScriptEnvironment::AllocateFrame(size_t vfb_size)
 {
+  if (vfb_size > std::numeric_limits<int>::max())
+  {
+    throw AvisynthError(this->Sprintf("Requested buffer size of %zu is too large", vfb_size));
+  }
+
   EnsureMemoryLimit(vfb_size);
 
   VideoFrameBuffer* vfb = NULL;
@@ -1276,8 +1286,6 @@ PVideoFrame __stdcall ScriptEnvironment::NewVideoFrame(const VideoInfo& vi, int 
 
 bool ScriptEnvironment::MakeWritable(PVideoFrame* pvf) {
   const PVideoFrame& vf = *pvf;
-
-  // TODO: does this method need synchronization?
 
   // If the frame is already writable, do nothing.
   if (vf->IsWritable())
@@ -1650,30 +1658,27 @@ void ScriptEnvironment::BitBlt(BYTE* dstp, int dst_pitch, const BYTE* srcp, int 
 
 
 char* ScriptEnvironment::SaveString(const char* s, int len) {
-  // This function is mostly used to save strings for variables
-  // so it is fairly acceptable that it shares the same critical
-  // section as the vartable
-
-  // TODO: synchronization
-
+  std::lock_guard<std::mutex> lock(string_mutex);
   return string_dump.SaveString(s, len);
 }
 
 
 char* ScriptEnvironment::VSprintf(const char* fmt, void* val) {
-  char *buf = NULL;
-  int size = 0, count = -1;
-  while (count == -1)
+  std::lock_guard<std::mutex> lock(string_mutex);
+
+  char*& buf = vsprintf_buf;
+  size_t& size = vsprintf_len;
+
+  int count = _vsnprintf(buf, size, fmt, (va_list)val);
+  while ((count < 0) || (count >= size))
   {
     delete[] buf;
     size += 4096;
     buf = new(std::nothrow) char[size];
-    if (!buf) return 0;
+    if (!buf) return NULL;
     count = _vsnprintf(buf, size, fmt, (va_list)val);
   }
-  char *i = ScriptEnvironment::SaveString(buf, count); // SaveString will add the NULL in len mode.
-  delete[] buf;
-  return i;
+  return string_dump.SaveString(buf, count); // SaveString will add the NULL in len mode.
 }
 
 char* ScriptEnvironment::Sprintf(const char* fmt, ...) {
