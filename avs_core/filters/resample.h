@@ -40,6 +40,7 @@
 
 // Resizer function pointer
 typedef void (*ResamplerV)(BYTE* dst, const BYTE* src, int dst_pitch, int src_pitch, ResamplingProgram* program, int width, int target_height, const int* pitch_table, const void* storage);
+typedef void (*ResamplerH)(BYTE* dst, const BYTE* src, int dst_pitch, int src_pitch, ResamplingProgram* program, int width, int target_height);
 
 // Turn function pointer -- copied from turn.h
 typedef void (*TurnFuncPtr) (const BYTE *srcp, BYTE *dstp, int width, int height, int src_pitch, int dst_pitch);
@@ -55,6 +56,9 @@ public:
                    ResamplingFunction* func, IScriptEnvironment* env );
   virtual ~FilteredResizeH(void);
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
+
+  static ResamplerH GetResampler(int CPU, bool aligned, ResamplingProgram* program);
+
 private:
   IScriptEnvironment2* Env;
 
@@ -74,6 +78,10 @@ private:
 
   int src_width, src_height, dst_width,  dst_height;
 
+  ResamplerH resampler_h_luma;
+  ResamplerH resampler_h_chroma;
+  bool fast_resize;
+
   ResamplerV resampler_luma;
   ResamplerV resampler_chroma;
 
@@ -92,7 +100,7 @@ public:
   virtual ~FilteredResizeV(void);
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
 
-  static ResamplerV FilteredResizeV::GetResampler(int CPU, bool aligned, void*& storage, ResamplingProgram* program);
+  static ResamplerV GetResampler(int CPU, bool aligned, void*& storage, ResamplingProgram* program);
 
 private:
   IScriptEnvironment2* Env;

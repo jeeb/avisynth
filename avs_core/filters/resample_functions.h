@@ -36,6 +36,7 @@
 #define __Resample_Functions_H__
 
 #include <avisynth.h>
+#include <malloc.h>
 
 // Original value: 65536
 // 2 bits sacrificed because of 16 bit signed MMX multiplication
@@ -63,12 +64,12 @@ struct ResamplingProgram {
       pixel_offset(0), pixel_coefficient(0), Env(env)
   {
     pixel_offset = (int*) Env->Allocate(sizeof(int) * target_size, 64); // 64-byte alignment
-    pixel_coefficient = (short*) Env->Allocate(sizeof(short) * target_size * filter_size, 64);
+    pixel_coefficient = (short*) _aligned_malloc(sizeof(short) * target_size * filter_size, 64);
   };
 
   ~ResamplingProgram() {
     Env->Free(pixel_offset);
-    Env->Free(pixel_coefficient);
+    _aligned_free(pixel_coefficient);
   };
 };
 
