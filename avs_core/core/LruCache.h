@@ -213,6 +213,7 @@ public:
         *hndl = handle(entry, this->shared_from_this());
         entry->locks = 1;
         entry->ghosted = g->ghosted;
+        entry->value = NULL;
         return LRU_LOOKUP_NOT_FOUND;
       }
       else

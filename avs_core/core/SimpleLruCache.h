@@ -141,37 +141,36 @@ public:
 
   void trim()
   {
-    if (Cache.size() < 2)
-      return;
-
-    std::list<Entry>::iterator it = --Cache.end();
-    while(Cache.size() > RealCapacity)
+    if (Cache.size() > RealCapacity)
     {
-      std::list<Entry>::iterator prev;
-      bool end = &(*it) == &Cache.front();
-      if (!end)
+      size_t nItemsToDelete = Cache.size() - RealCapacity;
+      std::list<Entry>::iterator it = --Cache.end();
+      for (size_t i = 0; i < nItemsToDelete; ++i)
       {
-        prev = it;
-        --prev;
-      }
-
-      if (EvictEvent != NULL)
-      {
-        if (EvictEvent(this, *it, EventUserData))
+        std::list<Entry>::iterator prev_it;
+        bool end = (it == Cache.begin());
+        if (!end)
         {
+          prev_it = it;
+          --prev_it;
+        }
+
+        if (EvictEvent != NULL)
+        {
+          if (EvictEvent(this, *it, EventUserData))
+          {
+            Pool.splice(Pool.begin(), Cache, it);
+          }
+        }
+        else
+        {
+          // TODO: Do we want the consumer to always define EvictItem?
           Pool.splice(Pool.begin(), Cache, it);
         }
-      }
-      else
-      {
-        // TODO: Do we want the consumer to always define EvictItem?
-        Pool.splice(Pool.begin(), Cache, it);
-      }
 
-      if (end)
-        break;
-      else
-        it = prev;
+        if (!end)
+          it = prev_it;
+      }
     }
   }
 
