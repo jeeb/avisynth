@@ -18,10 +18,16 @@ struct PrefetcherPimpl
   int LockedPattern;
 
   // The number of consecutive frames Pattern has repeated itself
-  int PatternLength;
+  int PatternHits;
+
+  // The number of consecutive frames LockedPattern was invalid
+  int PatternMisses;
 
   // The current pattern that we are not locked on to
   int Pattern;
+
+  // True if we have found a pattern to lock onto
+  bool IsLocked;
 
   // The frame number that GetFrame() has been called with the last time
   int LastRequestedFrame;
@@ -37,18 +43,20 @@ struct PrefetcherPimpl
     vi(_child->GetVideoInfo()),
     nThreads(_nThreads),
     LockedPattern(1),
-    PatternLength(0),
+    PatternHits(0),
     Pattern(1),
     LastRequestedFrame(0),
     VideoCache(NULL),
     running_workers(0),
-    worker_exception_present(0)
+    worker_exception_present(0),
+    IsLocked(false),
+    PatternMisses(0)
   {
   }
 };
 
 
-// The number of intervals a pattern has to repeat itself to become locked
+// The number of intervals a pattern has to repeat itself to become (un)locked
 #define PATTERN_LOCK_LENGTH 3
 
 struct PrefetcherJobParams
@@ -114,7 +122,7 @@ void __stdcall Prefetcher::SchedulePrefetch(int current_n, IScriptEnvironment2* 
   int n = current_n;
   while (_pimpl->running_workers < _pimpl->nThreads)
   {
-    n += _pimpl->LockedPattern;
+    n += _pimpl->IsLocked ? _pimpl->LockedPattern : 1;
     if (n >= _pimpl->vi.num_frames)
       break;
 
@@ -152,30 +160,61 @@ PVideoFrame __stdcall Prefetcher::GetFrame(int n, IScriptEnvironment* env)
   IScriptEnvironment2 *env2 = static_cast<IScriptEnvironment2*>(env);
 
   int pattern = n - _pimpl->LastRequestedFrame;
+  _pimpl->LastRequestedFrame = n;
   if (pattern == 0)
     pattern = 1;
 
-  if (pattern != _pimpl->LockedPattern)
+  if (_pimpl->IsLocked)
   {
-    if (pattern != _pimpl->Pattern)
+    if (_pimpl->LockedPattern == pattern)
     {
-      _pimpl->Pattern = pattern;
-      _pimpl->PatternLength = 1;
+      _pimpl->PatternHits = 0;    // Tracks Pattern
+      _pimpl->PatternMisses = 0;  // Tracks LockedPattern
+    }
+    else if (_pimpl->Pattern == pattern)
+    {
+      _pimpl->PatternHits++;    // Tracks Pattern
+      _pimpl->PatternMisses++;  // Tracks LockedPattern
     }
     else
     {
-      ++_pimpl->PatternLength;
+      _pimpl->PatternHits = 0;  // Tracks Pattern
+      _pimpl->PatternMisses++;  // Tracks LockedPattern
     }
+    _pimpl->Pattern = pattern;
 
-    if (_pimpl->PatternLength == PATTERN_LOCK_LENGTH)
+    if ((_pimpl->PatternMisses >= PATTERN_LOCK_LENGTH) && (_pimpl->PatternHits >= PATTERN_LOCK_LENGTH))
     {
       _pimpl->LockedPattern = _pimpl->Pattern;
+      _pimpl->PatternHits = 0;    // Tracks Pattern
+      _pimpl->PatternMisses = 0;  // Tracks LockedPattern
+    }
+    else if ((_pimpl->PatternMisses >= PATTERN_LOCK_LENGTH) && (_pimpl->PatternHits < PATTERN_LOCK_LENGTH))
+    {
+      _pimpl->IsLocked = false;
     }
   }
   else
   {
-    _pimpl->PatternLength = 0;
+    if (_pimpl->Pattern == pattern)
+    {
+      _pimpl->PatternHits++;
+      _pimpl->PatternMisses = 0;
+    }
+    else
+    {
+      _pimpl->PatternHits = 0;
+      _pimpl->PatternMisses++;
+    }
+
+    if (_pimpl->PatternHits >= PATTERN_LOCK_LENGTH)
+    {
+      _pimpl->LockedPattern = pattern;
+      _pimpl->PatternMisses = 0;
+      _pimpl->IsLocked = true;
+    }
   }
+
 
   {
     std::lock_guard<std::mutex> lock(_pimpl->worker_exception_mutex);
@@ -184,6 +223,7 @@ PVideoFrame __stdcall Prefetcher::GetFrame(int n, IScriptEnvironment* env)
       std::rethrow_exception(_pimpl->worker_exception);
     }
   }
+
 
   // Prefetch
   SchedulePrefetch(n, env2);
