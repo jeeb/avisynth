@@ -4,8 +4,16 @@
 #include <atomic>
 #include <avisynth.h>
 #include "ThreadPool.h"
+#include "ObjectPool.h"
 #include "LruCache.h"
 #include "ScriptEnvironmentTLS.h"
+
+struct PrefetcherJobParams
+{
+  int frame;
+  Prefetcher* prefetcher;
+  LruCache<size_t, PVideoFrame>::handle cache_handle;
+};
 
 struct PrefetcherPimpl
 {
@@ -16,6 +24,9 @@ struct PrefetcherPimpl
   const size_t nThreads;
 
   ThreadPool ThreadPool;
+
+  ObjectPool<PrefetcherJobParams> JobParamsPool;
+  std::mutex params_pool_mutex;
 
   // Contains the pattern we are locked on to
   int LockedPattern;
@@ -63,20 +74,17 @@ struct PrefetcherPimpl
 // The number of intervals a pattern has to repeat itself to become (un)locked
 #define PATTERN_LOCK_LENGTH 3
 
-struct PrefetcherJobParams
-{
-  int frame;
-  Prefetcher* prefetcher;
-  LruCache<size_t, PVideoFrame>::handle cache_handle;
-};
-
 AVSValue Prefetcher::ThreadWorker(IScriptEnvironment2* env, void* data)
 {
   PrefetcherJobParams *ptr = (PrefetcherJobParams*)data;
   Prefetcher *prefetcher = ptr->prefetcher;
   int n = ptr->frame;
   LruCache<size_t, PVideoFrame>::handle cache_handle = ptr->cache_handle;
-  delete ptr;
+
+  {
+    std::lock_guard<std::mutex> lock(prefetcher->_pimpl->params_pool_mutex);
+    prefetcher->_pimpl->JobParamsPool.Destruct(ptr);
+  }
 
   try
   {
@@ -136,7 +144,11 @@ void __stdcall Prefetcher::SchedulePrefetch(int current_n, IScriptEnvironment2* 
     {
     case LRU_LOOKUP_NOT_FOUND:
       {
-        PrefetcherJobParams *p = new PrefetcherJobParams(); // TODO avoid heap, possibly fold into Completion object
+        PrefetcherJobParams *p = NULL;
+        {
+          std::lock_guard<std::mutex> lock(_pimpl->params_pool_mutex);
+          p = _pimpl->JobParamsPool.Construct();
+        }
         p->frame = n;
         p->prefetcher = this;
         p->cache_handle = cache_handle;

@@ -5,7 +5,7 @@
 #include <condition_variable>
 #include <memory>
 #include <cassert>
-#include <boost/pool/object_pool.hpp>
+#include "ObjectPool.h"
 #include "SimpleLruCache.h"
 
 enum LruLookupResult
@@ -81,7 +81,7 @@ private:
 
   CacheType MainCache;
   GhostCacheType Ghosts;
-  boost::object_pool<entry_type> EntryPool;
+  ObjectPool<entry_type> EntryPool;
   mutable std::mutex mutex;
 
   static bool MainEvictEvent(CacheType* cache, typename const CacheType::Entry& entry, void* userData)
@@ -103,7 +103,7 @@ private:
     }
 
     entry.value->reset(0, NULL);
-    me->EntryPool.destroy(entry.value);
+    me->EntryPool.Destruct(entry.value);
     return true;
   }
 
@@ -208,7 +208,7 @@ public:
 
       if (entryp != NULL)
       {
-        *entryp = EntryPool.construct(key);
+        *entryp = EntryPool.Construct(key);
         entry_ptr entry = *entryp;
         *hndl = handle(entry, this->shared_from_this());
         entry->locks = 1;
