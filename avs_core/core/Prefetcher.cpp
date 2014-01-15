@@ -3,6 +3,7 @@
 #include <mutex>
 #include <atomic>
 #include <avisynth.h>
+#include "ThreadPool.h"
 #include "LruCache.h"
 #include "ScriptEnvironmentTLS.h"
 
@@ -13,6 +14,8 @@ struct PrefetcherPimpl
 
   // The number of threads to use for prefetching
   const size_t nThreads;
+
+  ThreadPool ThreadPool;
 
   // Contains the pattern we are locked on to
   int LockedPattern;
@@ -42,6 +45,7 @@ struct PrefetcherPimpl
     child(_child),
     vi(_child->GetVideoInfo()),
     nThreads(_nThreads),
+    ThreadPool(_nThreads),
     LockedPattern(1),
     PatternHits(0),
     Pattern(1),
@@ -136,8 +140,8 @@ void __stdcall Prefetcher::SchedulePrefetch(int current_n, IScriptEnvironment2* 
         p->frame = n;
         p->prefetcher = this;
         p->cache_handle = cache_handle;
-        env->ParallelJob(ThreadWorker, p, NULL);
         ++_pimpl->running_workers;
+        _pimpl->ThreadPool.QueueJob(ThreadWorker, p, env, NULL);
         break;
       }
     case LRU_LOOKUP_FOUND_AND_READY:      // Fall-through intentional
@@ -198,19 +202,19 @@ PVideoFrame __stdcall Prefetcher::GetFrame(int n, IScriptEnvironment* env)
   {
     if (_pimpl->Pattern == pattern)
     {
-      _pimpl->PatternHits++;
-      _pimpl->PatternMisses = 0;
+      _pimpl->PatternHits++;      // Tracks Pattern
+      _pimpl->PatternMisses = 0;  // Tracks Pattern
     }
     else
     {
-      _pimpl->PatternHits = 0;
-      _pimpl->PatternMisses++;
+      _pimpl->PatternHits = 0;    // Tracks Pattern
+      _pimpl->PatternMisses++;    // Tracks Pattern
     }
 
     if (_pimpl->PatternHits >= PATTERN_LOCK_LENGTH)
     {
       _pimpl->LockedPattern = pattern;
-      _pimpl->PatternMisses = 0;
+      _pimpl->PatternMisses = 0;  // Tracks Pattern
       _pimpl->IsLocked = true;
     }
   }
