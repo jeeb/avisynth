@@ -110,7 +110,7 @@ public:
 ThreadPool::ThreadPool(size_t nThreads) :
   _pimpl(new ThreadPoolPimpl(nThreads))
 {
-  for (size_t i = 1; i < nThreads; ++i)
+  for (size_t i = 0; i < nThreads; ++i)
     _pimpl->Threads.push_back(std::thread(ThreadFunc, i, &(_pimpl->MsgQueue)));
 }
 
