@@ -16,18 +16,6 @@ target_compile_definitions("AvsCore" PRIVATE BUILDING_AVSCORE)
 # Windows DLL dependencies 
 target_link_libraries("AvsCore" "Winmm.lib" "Vfw32.lib" "Msacm32.lib" "Gdi32.lib" "User32.lib" "Advapi32.lib" "Ole32.lib")
 
-# Add Boost
-set(BOOST_INCLUDEDIR ${CMAKE_CURRENT_SOURCE_DIR}/boost/include)
-#set(BOOST_LIBRARYDIR ${CMAKE_CURRENT_SOURCE_DIR}/boost/lib)
-set(Boost_DETAILED_FAILURE_MSG   ON)
-set(Boost_USE_STATIC_LIBS        ON)
-set(Boost_USE_MULTITHREADED      ON)
-set(Boost_USE_STATIC_RUNTIME     OFF)
-FIND_PACKAGE(Boost 1.55)
-add_definitions("/D BOOST_POOL_NO_MT")  # Disable internal synchroniztaion in boost's pool library
-include_directories( ${Boost_INCLUDE_DIR} )
-#target_link_libraries( "AvsCore" ${Boost_LIBRARIES} )
-
 if (MSVC_IDE)    
   # Copy output to a common folder for easy deployment
   add_custom_command(
