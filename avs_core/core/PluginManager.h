@@ -4,19 +4,10 @@
 #include <string>
 #include <map>
 #include <vector>
-#include <avs/win.h>
 #include "internal.h"
 
 class IScriptEnvironment2;
-
-struct PluginFile
-{
-  std::string FilePath; // Fully qualified, canonical file path
-  std::string BaseName; // Only file name, without extension
-  HMODULE Library;      // LoadLibrary handle
-
-  PluginFile(const std::string &filePath);
-};
+struct PluginFile;
 
 struct StdStriComparer
 {
@@ -34,8 +25,9 @@ private:
   IScriptEnvironment2 *Env;
   PluginFile *PluginInLoad;
   std::vector<std::string> AutoloadDirs;
+  std::vector<PluginFile> AutoLoadedImports;
+  std::vector<PluginFile> AutoLoadedPlugins;
   std::vector<PluginFile> LoadedPlugins;
-  std::vector<PluginFile> LoadedImports;
   FunctionMap ExternalFunctions;
   FunctionMap AutoloadedFunctions;
   bool AutoloadExecuted;
@@ -61,7 +53,9 @@ public:
 
   void ClearAutoloadDirs();
   void AddAutoloadDir(const std::string &dir, bool toFront);
+
   bool LoadPlugin(PluginFile &plugin, bool throwOnError, AVSValue *result);
+  bool LoadPlugin(const char* path, bool throwOnError, AVSValue *result);
 
   bool HasAutoloadExecuted() const { return AutoloadExecuted; }
 

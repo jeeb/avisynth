@@ -865,7 +865,7 @@ bool __stdcall ScriptEnvironment::LoadPlugin(const char* filePath, bool throwOnE
   // For that, autoloading must happen before any LoadPlugin(), so we force an 
   // autoload operation before any LoadPlugin().
   this->AutoloadPlugins();
-  return plugin_manager->LoadPlugin(PluginFile(filePath), throwOnError, result);
+  return plugin_manager->LoadPlugin(filePath, throwOnError, result);
 }
 
 void __stdcall ScriptEnvironment::AddAutoloadDir(const char* dirPath, bool toFront)

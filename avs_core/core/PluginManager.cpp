@@ -264,6 +264,16 @@ bool AVSFunction::ArgNameMatch(const char* param_types, size_t args_names_count,
 ---------------------------------------------------------------------------------
 */
 
+#include <avs/win.h>
+struct PluginFile
+{
+  std::string FilePath;             // Fully qualified, canonical file path
+  std::string BaseName;             // Only file name, without extension
+  HMODULE Library;                  // LoadLibrary handle
+
+  PluginFile(const std::string &filePath);
+};
+
 PluginFile::PluginFile(const std::string &filePath) : 
   FilePath(GetFullPathNameWrap(filePath)), BaseName(), Library(NULL)
 {
@@ -398,9 +408,9 @@ void PluginManager::AutoloadPlugins()
         PluginFile p(concat(dir, fileData.cFileName));
 
         // Search for loaded plugins with the same base name.
-        for (size_t i = 0; i < LoadedPlugins.size(); ++i)
+        for (size_t i = 0; i < AutoLoadedPlugins.size(); ++i)
         {
-          if (streqi(LoadedPlugins[i].BaseName.c_str(), p.BaseName.c_str()))
+          if (streqi(AutoLoadedPlugins[i].BaseName.c_str(), p.BaseName.c_str()))
           {
             // Prevent loading a plugin with a basename that is 
             // already loaded (from another autoload folder).
@@ -438,9 +448,9 @@ void PluginManager::AutoloadPlugins()
         PluginFile p(concat(dir, fileData.cFileName));
 
         // Search for loaded imports with the same base name.
-        for (size_t i = 0; i < LoadedImports.size(); ++i)
+        for (size_t i = 0; i < AutoLoadedImports.size(); ++i)
         {
-          if (streqi(LoadedImports[i].BaseName.c_str(), p.BaseName.c_str()))
+          if (streqi(AutoLoadedImports[i].BaseName.c_str(), p.BaseName.c_str()))
           {
             // Prevent loading a plugin with a basename that is 
             // already loaded (from another autoload folder).
@@ -450,7 +460,7 @@ void PluginManager::AutoloadPlugins()
 
         // Try to load script
         Env->Invoke("Import", p.FilePath.c_str());
-        LoadedImports.push_back(p);
+        AutoLoadedImports.push_back(p);
       }
     } // for bContinue
     FindClose(hFind);
@@ -466,6 +476,12 @@ PluginManager::~PluginManager()
     assert(LoadedPlugins[i].Library);
     FreeLibrary(LoadedPlugins[i].Library);
     LoadedPlugins[i].Library = NULL;
+  }
+  for (size_t i = 0; i < AutoLoadedPlugins.size(); ++i)
+  {
+    assert(AutoLoadedPlugins[i].Library);
+    FreeLibrary(AutoLoadedPlugins[i].Library);
+    AutoLoadedPlugins[i].Library = NULL;
   }
   Env = NULL;
   PluginInLoad = NULL;
@@ -493,14 +509,21 @@ void PluginManager::UpdateFunctionExports(const AVSFunction &func, const char *e
   Env->SetGlobalVar( Env->SaveString(param_id.c_str(), param_id.length() + 1), AVSValue(func.param_types) );
 }
 
+bool PluginManager::LoadPlugin(const char* path, bool throwOnError, AVSValue *result)
+{
+  return LoadPlugin(PluginFile(path), throwOnError, result);
+}
+
 bool PluginManager::LoadPlugin(PluginFile &plugin, bool throwOnError, AVSValue *result)
 {
-  for (size_t i = 0; i < LoadedPlugins.size(); ++i)
+  std::vector<PluginFile>& PluginList = Autoloading ? AutoLoadedPlugins : LoadedPlugins;
+
+  for (size_t i = 0; i < PluginList.size(); ++i)
   {
-    if (streqi(LoadedPlugins[i].FilePath.c_str(), plugin.FilePath.c_str()))
+    if (streqi(PluginList[i].FilePath.c_str(), plugin.FilePath.c_str()))
     {
       // Imitate successful loading if the plugin is already loaded
-      plugin = LoadedPlugins[i];
+      plugin = PluginList[i];
       return true;
     }
   }
@@ -538,7 +561,7 @@ bool PluginManager::LoadPlugin(PluginFile &plugin, bool throwOnError, AVSValue *
     }
   }
 
-  LoadedPlugins.push_back(plugin);
+  PluginList.push_back(plugin);
   return true;
 }
 
