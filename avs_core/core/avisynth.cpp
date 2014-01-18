@@ -711,9 +711,10 @@ ScriptEnvironment::~ScriptEnvironment() {
   while (global_var_table)
     PopContextGlobal();
 
+  const FrameRegistryType::iterator end_it = FrameRegistry.end();
   for (
     FrameRegistryType::iterator it = FrameRegistry.begin();
-    it != FrameRegistry.end();
+    it != end_it;
     ++it)
   {
     VideoFrame *frame = it->second;
@@ -981,7 +982,7 @@ bool ScriptEnvironment::SetGlobalVar(const char* name, const AVSValue& val) {
 
 VideoFrame* ScriptEnvironment::AllocateFrame(size_t vfb_size)
 {
-  if (vfb_size > std::numeric_limits<int>::max())
+  if (vfb_size > (size_t)std::numeric_limits<int>::max())
   {
     throw AvisynthError(this->Sprintf("Requested buffer size of %zu is too large", vfb_size));
   }
@@ -1024,9 +1025,10 @@ VideoFrame* ScriptEnvironment::GetNewFrame(size_t vfb_size)
    *   Try to return an unused but already allocated instance
    * -----------------------------------------------------------
    */
+  FrameRegistryType::iterator end_it = FrameRegistry.end();
   for (
     FrameRegistryType::iterator it = FrameRegistry.lower_bound(vfb_size);
-    it != FrameRegistry.end();
+    it != end_it;
   ++it)
   {
     VideoFrame *frame = it->second;
@@ -1055,9 +1057,10 @@ VideoFrame* ScriptEnvironment::GetNewFrame(size_t vfb_size)
    * Couldn't allocate, try to free up unused frames of any size
    * -----------------------------------------------------------
    */
+  end_it = FrameRegistry.end();
   for (
       FrameRegistryType::iterator it = FrameRegistry.begin();
-      it != FrameRegistry.end() && (size_t(it->second->vfb->data_size) < vfb_size);
+      (it != end_it) && (size_t(it->second->vfb->data_size) < vfb_size);
       )
   {
     VideoFrame *frame = it->second;
@@ -1109,9 +1112,10 @@ void ScriptEnvironment::EnsureMemoryLimit(size_t request)
   // We reserve 15% for unaccounted stuff
   size_t memory_need = size_t((memory_used + request) / 0.85f);
 
+  const CacheRegistryType::iterator end_cit = CacheRegistry.end();
   for (
         CacheRegistryType::iterator cit = CacheRegistry.begin();
-        (memory_need > memory_max) && (cit != CacheRegistry.end());
+        (memory_need > memory_max) && (cit != end_cit);
         ++cit
       )
   {
@@ -1130,9 +1134,10 @@ void ScriptEnvironment::EnsureMemoryLimit(size_t request)
        * Try to free up memory that we've just released from a cache
        * -----------------------------------------------------------
        */
+      const FrameRegistryType::iterator end_fit = FrameRegistry.end();
       for (
           FrameRegistryType::iterator fit = FrameRegistry.begin();
-          fit != FrameRegistry.end();
+          fit != end_fit;
           )
       {
         VideoFrame *frame = fit->second;
@@ -1402,9 +1407,10 @@ void* ScriptEnvironment::ManageCache(int key, void* data) {
     {
       // If we don't have enough free reserves, take away a cache slot from
       // a cache instance that hasn't been used since long.
+      const CacheRegistryType::iterator end_cit = CacheRegistry.end();
       for (
             CacheRegistryType::iterator cit = CacheRegistry.begin();
-            cit != CacheRegistry.end();
+            cit != end_cit;
             ++cit
           )
       {
@@ -1670,7 +1676,7 @@ char* ScriptEnvironment::VSprintf(const char* fmt, void* val) {
   size_t& size = vsprintf_len;
 
   int count = _vsnprintf(buf, size, fmt, (va_list)val);
-  while ((count < 0) || (count >= size))
+  while ((count < 0) || (count >= (int)size))
   {
     delete[] buf;
     size += 4096;

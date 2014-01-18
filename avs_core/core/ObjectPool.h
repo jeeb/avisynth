@@ -21,8 +21,9 @@ private:
   {
     if (call_dtor)
     {
+      const ListType::iterator end_it = list->end();
       for (ListType::iterator it = list->begin();
-          it != list->end();
+          it != end_it;
           ++it)
       {
         T* obj = (T*)(*it);
@@ -32,8 +33,9 @@ private:
     }
     else
     {
+      const ListType::iterator end_it = list->end();
       for (ListType::iterator it = list->begin();
-          it != list->end();
+          it != end_it;
           ++it)
       {
         delete [] (*it);

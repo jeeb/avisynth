@@ -80,9 +80,10 @@ public:
   {
     // Look for an existing cache entry,
     // and return it when found
+    const entry_type it_end =  Cache.end();
     for (
       entry_type it = Cache.begin();
-      it != Cache.end();
+      it != it_end;
       ++it
     )
     {
@@ -125,9 +126,10 @@ public:
 
   void remove(const K& key)
   {
+    const entry_type it_end =  Cache.end();
     for (
       entry_type it = Cache.begin();
-      it != Cache.end();
+      it != it_end;
       ++it
     )
     {
