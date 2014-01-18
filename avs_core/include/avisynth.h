@@ -1065,6 +1065,7 @@ public:
   virtual void __stdcall ClearAutoloadDirs() = 0;
   virtual void __stdcall AutoloadPlugins() = 0;
   virtual void __stdcall AddFunction(const char* name, const char* params, ApplyFunc apply, void* user_data, const char *exportVar) = 0;
+  virtual bool __stdcall InternalFunctionExists(const char* name) = 0;
 
   // Threading
   virtual void __stdcall SetFilterMTMode(const char* filter, MTMODES mode, bool force) = 0; // If filter is "", sets the default MT mode

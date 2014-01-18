@@ -125,13 +125,6 @@ public:
       return def;
   }
 
-
-
-  /* ---------------------------------------------------------------------------------
-   *             S T U B S
-   * ---------------------------------------------------------------------------------
-   */
-
   void* __stdcall Allocate(size_t nBytes, size_t alignment, bool pool)
   {
     return BufferPool.Allocate(nBytes, alignment, pool);
@@ -140,6 +133,17 @@ public:
   void __stdcall Free(void* ptr)
   {
     BufferPool.Free(ptr);
+  }
+
+
+  /* ---------------------------------------------------------------------------------
+   *             S T U B S
+   * ---------------------------------------------------------------------------------
+   */
+
+  bool __stdcall InternalFunctionExists(const char* name)
+  {
+    return core->InternalFunctionExists(name);
   }
 
   void __stdcall AdjustMemoryConsumption(size_t amount, bool minus)

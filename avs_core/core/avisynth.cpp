@@ -534,6 +534,7 @@ public:
   virtual void __stdcall ClearAutoloadDirs();
   virtual void __stdcall AutoloadPlugins();
   virtual void __stdcall AddFunction(const char* name, const char* params, ApplyFunc apply, void* user_data, const char *exportVar);
+  virtual bool __stdcall InternalFunctionExists(const char* name);
   virtual int __stdcall IncrImportDepth();
   virtual int __stdcall DecrImportDepth();
   virtual void __stdcall SetPrefetcher(Prefetcher *p);
@@ -1641,9 +1642,26 @@ success:;
 
 bool ScriptEnvironment::FunctionExists(const char* name)
 {
+  // Look among internal functions
+  if (InternalFunctionExists(name))
+    return true;
+
+  // Look among plugin functions
   if (plugin_manager->FunctionExists(name))
     return true;
 
+  // Uhh... maybe if we load the plugins we'll have the function
+  if (!plugin_manager->HasAutoloadExecuted())
+  {
+    plugin_manager->AutoloadPlugins();
+    return this->FunctionExists(name);
+  }
+
+  return false;
+}
+
+bool __stdcall ScriptEnvironment::InternalFunctionExists(const char* name)
+{
   for (int i = 0; i < sizeof(builtin_functions)/sizeof(builtin_functions[0]); ++i)
     for (const AVSFunction* j = builtin_functions[i]; j->name; ++j)
       if (!lstrcmpi(j->name, name))
