@@ -236,6 +236,7 @@ extern const AVSFunction Script_functions[] = {
   { "AddAutoloadDir",  "s[toFront]b", AddAutoloadDir  },
   { "ClearAutoloadDirs",  "", ClearAutoloadDirs  },
   { "AutoloadPlugins",  "", AutoloadPlugins  },
+  { "FunctionExists",  "", FunctionExists  },
 
   { "SetFilterMTMode",  "si[force]b", SetFilterMTMode  },
   { "Prefetch",  "c[threads]i", Create_Prefetcher  },
@@ -1003,6 +1004,11 @@ AVSValue AutoloadPlugins (AVSValue args, void*, IScriptEnvironment* env)
   IScriptEnvironment2 *env2 = static_cast<IScriptEnvironment2*>(env);
   env2->AutoloadPlugins();
   return AVSValue();
+}
+
+AVSValue FunctionExists (AVSValue args, void*, IScriptEnvironment* env)
+{
+  return env->FunctionExists(args[0].AsString());
 }
 
 AVSValue SetFilterMTMode (AVSValue args, void*, IScriptEnvironment* env)
