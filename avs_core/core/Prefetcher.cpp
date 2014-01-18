@@ -23,6 +23,9 @@ struct PrefetcherPimpl
   // The number of threads to use for prefetching
   const size_t nThreads;
 
+  // Maximum number of frames to prefetch
+  const int nPrefetchFrames;
+
   ThreadPool ThreadPool;
 
   ObjectPool<PrefetcherJobParams> JobParamsPool;
@@ -47,7 +50,7 @@ struct PrefetcherPimpl
   int LastRequestedFrame;
 
   std::shared_ptr<LruCache<size_t, PVideoFrame> > VideoCache;
-  std::atomic<size_t> running_workers;  
+  std::atomic<int> running_workers;  
   std::mutex worker_exception_mutex;
   std::exception_ptr worker_exception;
   bool worker_exception_present;
@@ -56,6 +59,7 @@ struct PrefetcherPimpl
     child(_child),
     vi(_child->GetVideoInfo()),
     nThreads(_nThreads),
+    nPrefetchFrames(_nThreads * 3),
     ThreadPool(_nThreads),
     LockedPattern(1),
     PatternHits(0),
@@ -113,7 +117,7 @@ Prefetcher::Prefetcher(const PClip& _child, size_t _nThreads, IScriptEnvironment
   _pimpl(NULL)
 {
   _pimpl = new PrefetcherPimpl(_child, _nThreads);
-  _pimpl->VideoCache = std::make_shared<LruCache<size_t, PVideoFrame> >(_nThreads*4);
+  _pimpl->VideoCache = std::make_shared<LruCache<size_t, PVideoFrame> >(_pimpl->nPrefetchFrames*2);
 
   env->SetPrefetcher(this);
 }
@@ -129,10 +133,10 @@ size_t Prefetcher::NumPrefetchThreads() const
   return _pimpl->nThreads;
 }
 
-void __stdcall Prefetcher::SchedulePrefetch(int current_n, IScriptEnvironment2* env)
+int __stdcall Prefetcher::SchedulePrefetch(int current_n, int prefetch_start, IScriptEnvironment2* env)
 {
-  int n = current_n;
-  while (_pimpl->running_workers < _pimpl->nThreads)
+  int n = prefetch_start;
+  while ((_pimpl->running_workers < _pimpl->nPrefetchFrames) && (std::abs(n - current_n) < _pimpl->nPrefetchFrames) )
   {
     n += _pimpl->IsLocked ? _pimpl->LockedPattern : 1;
     if (n >= _pimpl->vi.num_frames)
@@ -169,6 +173,8 @@ void __stdcall Prefetcher::SchedulePrefetch(int current_n, IScriptEnvironment2* 
       }
     }
   } // switch
+
+  return n;
 }
 
 PVideoFrame __stdcall Prefetcher::GetFrame(int n, IScriptEnvironment* env)
@@ -241,8 +247,9 @@ PVideoFrame __stdcall Prefetcher::GetFrame(int n, IScriptEnvironment* env)
   }
 
 
-  // Prefetch
-  SchedulePrefetch(n, env2);
+  // Prefetch 1
+  size_t scheduled_Frames = 0;
+  int prefetch_pos = SchedulePrefetch(n, n, env2);
 
   // Get requested frame
   PVideoFrame result;
@@ -284,6 +291,9 @@ PVideoFrame __stdcall Prefetcher::GetFrame(int n, IScriptEnvironment* env)
       break;
     }
   }
+
+  // Prefetch 2
+  SchedulePrefetch(n, prefetch_pos, env2);
 
   return result;
 }
