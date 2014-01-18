@@ -1027,9 +1027,10 @@ enum AvsEnvProperty
 {
   AEP_INVALID = 0,
   AEP_PHYSICAL_CPUS = 1,
-  AEP_THREADPOOL_THREADS = 2,
-  AEP_FILTERCHAIN_THREADS = 3,
-  AEP_THREAD_ID = 4
+  AEP_LOGICAL_CPUS = 2,
+  AEP_THREADPOOL_THREADS = 3,
+  AEP_FILTERCHAIN_THREADS = 4,
+  AEP_THREAD_ID = 5
 };
 
 /* -----------------------------------------------------------------------------
@@ -1074,16 +1075,17 @@ public:
   // This version of Invoke will return false instead of throwing NotFound().
   virtual bool __stdcall Invoke(AVSValue *result, const char* name, const AVSValue& args, const char* const* arg_names=0) = 0;
 
-  // Private-to-server functions, i.e. these are here for a technical
-  // reason and neither host applications nor plugins should use
-  // these interfaces. Strictly for Avisynth only.
+  // Support functions
+  virtual void* __stdcall Allocate(size_t nBytes, size_t alignment, bool pool) = 0;
+  virtual void __stdcall Free(void* ptr) = 0;
+
+  // Strictly for Avisynth core only.
+  // Neither host applications nor plugins should use
+  // these interfaces.
   virtual int __stdcall IncrImportDepth() = 0;
   virtual int __stdcall DecrImportDepth() = 0;
+  virtual void __stdcall AdjustMemoryConsumption(size_t amount, bool minus) = 0;
   virtual void __stdcall SetPrefetcher(Prefetcher *p) = 0;
-
-  // Support functions
-  virtual void* __stdcall Allocate(size_t nBytes, size_t align) = 0;
-  virtual void __stdcall Free(void* ptr) = 0;
 
   // These lines are needed so that we can overload the older functions from IScriptEnvironment.
   using IScriptEnvironment::Invoke;

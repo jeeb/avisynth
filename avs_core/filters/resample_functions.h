@@ -63,7 +63,7 @@ struct ResamplingProgram {
     : filter_size(filter_size), source_size(source_size), target_size(target_size), crop_start(crop_start), crop_size(crop_size),
       pixel_offset(0), pixel_coefficient(0), Env(env)
   {
-    pixel_offset = (int*) Env->Allocate(sizeof(int) * target_size, 64); // 64-byte alignment
+    pixel_offset = (int*) Env->Allocate(sizeof(int) * target_size, 64, false); // 64-byte alignment
     pixel_coefficient = (short*) _aligned_malloc(sizeof(short) * target_size * filter_size, 64);
   };
 

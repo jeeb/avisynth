@@ -111,7 +111,7 @@ ThreadPool::ThreadPool(size_t nThreads) :
   _pimpl(new ThreadPoolPimpl(nThreads))
 {
   for (size_t i = 0; i < nThreads; ++i)
-    _pimpl->Threads.push_back(std::thread(ThreadFunc, i, &(_pimpl->MsgQueue)));
+    _pimpl->Threads.emplace_back(ThreadFunc, i, &(_pimpl->MsgQueue));
 }
 
 void ThreadPool::QueueJob(ThreadWorkerFuncPtr clb, void* params, IScriptEnvironment2 *env, JobCompletion *tc)

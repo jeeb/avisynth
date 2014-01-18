@@ -5,6 +5,7 @@
 #include <cstdarg>
 #include "vartable.h"
 #include "ThreadPool.h"
+#include "BufferPool.h"
 
 class ScriptEnvironmentTLS : public IScriptEnvironment2
 {
@@ -13,13 +14,15 @@ private:
   const size_t thread_id;
   VarTable* global_var_table;
   VarTable* var_table;
+  BufferPool BufferPool;
 
 public:
   ScriptEnvironmentTLS(size_t _thread_id) : 
     core(NULL),
     thread_id(_thread_id),
     global_var_table(NULL),
-    var_table(NULL)
+    var_table(NULL),
+    BufferPool(this)
   {
     global_var_table = new VarTable(0, 0);
     var_table = new VarTable(0, global_var_table);
@@ -129,14 +132,19 @@ public:
    * ---------------------------------------------------------------------------------
    */
 
-  void* __stdcall Allocate(size_t nBytes, size_t align)
+  void* __stdcall Allocate(size_t nBytes, size_t alignment, bool pool)
   {
-    return core->Allocate(nBytes, align);
+    return BufferPool.Allocate(nBytes, alignment, pool);
   }
 
   void __stdcall Free(void* ptr)
   {
-    core->Free(ptr);
+    BufferPool.Free(ptr);
+  }
+
+  void __stdcall AdjustMemoryConsumption(size_t amount, bool minus)
+  {
+    core->AdjustMemoryConsumption(amount, minus);
   }
 
   void __stdcall CheckVersion(int version)

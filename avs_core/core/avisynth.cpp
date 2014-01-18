@@ -485,7 +485,9 @@ const char* MTMapState::DEFAULT_MODE = NULL;
 #include "vartable.h"
 #include "ThreadPool.h"
 #include <map>
+#include <atomic>
 #include "Prefetcher.h"
+#include "BufferPool.h"
 class ScriptEnvironment : public IScriptEnvironment2 {
 public:
   ScriptEnvironment();
@@ -534,14 +536,15 @@ public:
   virtual void __stdcall AddFunction(const char* name, const char* params, ApplyFunc apply, void* user_data, const char *exportVar);
   virtual int __stdcall IncrImportDepth();
   virtual int __stdcall DecrImportDepth();
+  virtual void __stdcall SetPrefetcher(Prefetcher *p);
+  virtual void __stdcall AdjustMemoryConsumption(size_t amount, bool minus);
   virtual bool __stdcall Invoke(AVSValue *result, const char* name, const AVSValue& args, const char* const* arg_names=0);
   virtual void __stdcall SetFilterMTMode(const char* filter, MTMODES mode, bool force);
   virtual MTMODES __stdcall GetFilterMTMode(const char* filter) const;
   virtual void __stdcall ParallelJob(ThreadWorkerFuncPtr jobFunc, void* jobData, IJobCompletion* completion);
   virtual IJobCompletion* __stdcall NewCompletion(size_t capacity);
   virtual size_t  __stdcall GetProperty(AvsEnvProperty prop);
-  virtual void __stdcall SetPrefetcher(Prefetcher *p);
-  virtual void* __stdcall Allocate(size_t nBytes, size_t align);
+  virtual void* __stdcall Allocate(size_t nBytes, size_t alignment, bool pool);
   virtual void __stdcall Free(void* ptr);
 
 private:
@@ -568,7 +571,8 @@ private:
   const AVSFunction* Lookup(const char* search_name, const AVSValue* args, size_t num_args,
                       bool &pstrict, size_t args_names_count, const char* const* arg_names);
   void EnsureMemoryLimit(size_t request);
-  unsigned __int64 memory_max, memory_used;
+  unsigned __int64 memory_max;
+  std::atomic<unsigned __int64> memory_used;
 
   void ExportBuiltinFilters();
 
@@ -588,6 +592,8 @@ private:
   VideoFrame* GetNewFrame(size_t vfb_size);
   VideoFrame* AllocateFrame(size_t vfb_size);
   std::mutex memory_mutex;
+
+  BufferPool BufferPool;
 
   MTMapState MTMap;
   Prefetcher *prefetcher;
@@ -640,7 +646,8 @@ ScriptEnvironment::ScriptEnvironment()
     ImportDepth(0),
     thread_pool(NULL),
     prefetcher(NULL),
-    FrontCache(NULL)
+    FrontCache(NULL),
+    BufferPool(this)
 {
   try {
     // Make sure COM is initialised
@@ -742,6 +749,15 @@ void __stdcall ScriptEnvironment::SetPrefetcher(Prefetcher *p)
   prefetcher = p;
 }
 
+void __stdcall ScriptEnvironment::AdjustMemoryConsumption(size_t amount, bool minus)
+{
+  if (minus)
+    memory_used -= amount;
+  else
+    memory_used += amount;
+}
+
+
 void __stdcall ScriptEnvironment::ParallelJob(ThreadWorkerFuncPtr jobFunc, void* jobData, IJobCompletion* completion)
 {
   thread_pool->QueueJob(jobFunc, jobData, this, static_cast<JobCompletion*>(completion));
@@ -763,34 +779,14 @@ MTMODES __stdcall ScriptEnvironment::GetFilterMTMode(const char* filter) const
   return MTMap.GetMode(filter);
 }
 
-void* __stdcall ScriptEnvironment::Allocate(size_t nBytes, size_t align)
+void* __stdcall ScriptEnvironment::Allocate(size_t nBytes, size_t alignment, bool pool)
 {
-  if (!IS_POWER2(align))
-    throw AvisynthError("Allocate error, 'align' must be a power of two.");
-  
-  size_t offset = 2*sizeof(void*) + align - 1;
-  nBytes += offset;
-  
-  void *orig = malloc(nBytes + offset);
-  if (orig == NULL)
-   return NULL;
-   
-  void **aligned = (void**)(((uintptr_t)orig + (uintptr_t)offset) & (~(uintptr_t)(align-1)));
-  aligned[-2] = orig;
-  aligned[-1] = (void*)nBytes;
-  memory_used += nBytes;
-
-  return aligned;
+  return BufferPool.Allocate(nBytes, alignment, pool);
 }
 
 void __stdcall ScriptEnvironment::Free(void* ptr)
 {
-  // Mirroring free()'s semantic requires us to accept NULLs
-  if (ptr == NULL)
-    return;
-    
-  memory_used -= (size_t)(((void**)ptr)[-1]);
-  free(((void**)ptr)[-2]);
+  BufferPool.Free(ptr);
 }
 
 /* This function adds information about builtin functions into global variables.
@@ -837,6 +833,8 @@ size_t  __stdcall ScriptEnvironment::GetProperty(AvsEnvProperty prop)
     return (prefetcher != NULL) ? prefetcher->NumPrefetchThreads() : 1;
   case AEP_PHYSICAL_CPUS:
     return GetNumPhysicalCPUs();
+  case AEP_LOGICAL_CPUS:
+    return std::thread::hardware_concurrency();
   case AEP_THREAD_ID:
     return 0;
   case AEP_THREADPOOL_THREADS:
