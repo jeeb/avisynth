@@ -998,7 +998,7 @@ public:
 }; // end class IScriptEnvironment
 
 
-enum MTMODES
+enum MtMode
 {
   MT_INVALID,
   MT_NICE_PLUGIN = 1,
@@ -1068,8 +1068,8 @@ public:
   virtual bool __stdcall InternalFunctionExists(const char* name) = 0;
 
   // Threading
-  virtual void __stdcall SetFilterMTMode(const char* filter, MTMODES mode, bool force) = 0; // If filter is "", sets the default MT mode
-  virtual MTMODES __stdcall GetFilterMTMode(const char* filter) const = 0;                  // If filter is "", gets the default MT mode
+  virtual void __stdcall SetFilterMTMode(const char* filter, MtMode mode, bool force) = 0; // If filter is "", sets the default MT mode
+  virtual MtMode __stdcall GetFilterMTMode(const char* filter) const = 0;                  // If filter is "", gets the default MT mode
   virtual IJobCompletion* __stdcall NewCompletion(size_t capacity) = 0;
   virtual void __stdcall ParallelJob(ThreadWorkerFuncPtr jobFunc, void* jobData, IJobCompletion* completion) = 0;
 

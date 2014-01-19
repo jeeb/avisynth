@@ -19,14 +19,14 @@ public:
 
   void push_back(const T& elem)
   {
-    iterator it = list.insert(list.begin(), elem);
-    map.insert(std::make_pair(elem, it));
+    iterator it = list.insert(list.end(), elem);
+    map.emplace(elem, it);
   }
 
   void push_front(const T& elem)
   {
     iterator it = list.insert(list.begin(), elem);
-    map.insert(std::make_pair(elem, it));
+    map.emplace(elem, it);
   }
   
   bool empty() const

@@ -13,11 +13,11 @@ class MTGuard : public IClip
 private:
   PClip* ChildFilters; 
   std::mutex *FilterMutex;
-  MTMODES MTMode;
+  MtMode MTMode;
   const size_t nThreads;
   VideoInfo vi;
 
-  MTGuard(size_t nThreads, PClip* threadFilters, MTMODES mtmode);
+  MTGuard(size_t nThreads, PClip* threadFilters, MtMode mtmode);
 
 public:
   ~MTGuard();

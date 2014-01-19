@@ -357,7 +357,7 @@ public:
 
 
   bool __stdcall GetParity(int n) { return false; }
-  int __stdcall SetCacheHints(int cachehints,int frame_range) { return 0; };
+  int __stdcall SetCacheHints(int cachehints,int frame_range);
 
   void __stdcall GetAudio(void* buf, __int64 start, __int64 count, IScriptEnvironment* env);
 

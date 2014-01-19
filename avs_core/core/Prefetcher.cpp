@@ -116,10 +116,10 @@ AVSValue Prefetcher::ThreadWorker(IScriptEnvironment2* env, void* data)
 Prefetcher::Prefetcher(const PClip& _child, size_t _nThreads, IScriptEnvironment2 *env) :
   _pimpl(NULL)
 {
+  env->SetPrefetcher(this);
+
   _pimpl = new PrefetcherPimpl(_child, _nThreads);
   _pimpl->VideoCache = std::make_shared<LruCache<size_t, PVideoFrame> >(_pimpl->nPrefetchFrames*2);
-
-  env->SetPrefetcher(this);
 }
 
 Prefetcher::~Prefetcher()

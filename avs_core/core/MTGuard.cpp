@@ -42,7 +42,7 @@
 #include <mmintrin.h>
 #endif
 
-MTGuard::MTGuard(size_t nThreads, PClip* threadFilters, MTMODES mtmode) :
+MTGuard::MTGuard(size_t nThreads, PClip* threadFilters, MtMode mtmode) :
   ChildFilters(threadFilters),
   FilterMutex(NULL),
   MTMode(nThreads > 1 ? mtmode : MT_NICE_PLUGIN),
@@ -163,12 +163,12 @@ AVSValue __stdcall MTGuard::Create(const AVSFunction* func, const AVSValue& args
 
   if (func_result.IsClip() && (nThreads > 1) && !Cache::IsCache(func_result.AsClip()))
   {
-    MTMODES mode = env->GetFilterMTMode(func->name);
+    MtMode mode = env->GetFilterMTMode(func->name);
     PClip filter_instance = func_result.AsClip();
     if ( (filter_instance->GetVersion() >= 5)
       && (filter_instance->SetCacheHints(CACHE_GET_MTMODE, 0) != 0) )
     {
-      mode = (MTMODES)filter_instance->SetCacheHints(CACHE_GET_MTMODE, 0);
+      mode = (MtMode)filter_instance->SetCacheHints(CACHE_GET_MTMODE, 0);
     }
 
     switch (mode)

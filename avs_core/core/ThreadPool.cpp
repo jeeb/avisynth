@@ -102,14 +102,15 @@ public:
   MessageQueue MsgQueue;
 
   ThreadPoolPimpl(size_t nThreads) :
-    Threads(nThreads),
-    MsgQueue(nThreads * 4)
+    Threads(),
+    MsgQueue(nThreads * 6)
   {}
 };
 
 ThreadPool::ThreadPool(size_t nThreads) :
   _pimpl(new ThreadPoolPimpl(nThreads))
 {
+  _pimpl->Threads.reserve(nThreads);
   for (size_t i = 0; i < nThreads; ++i)
     _pimpl->Threads.emplace_back(ThreadFunc, i, &(_pimpl->MsgQueue));
 }

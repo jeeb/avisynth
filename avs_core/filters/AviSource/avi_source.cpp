@@ -663,3 +663,14 @@ void AVISource::GetAudio(void* buf, __int64 start, __int64 count, IScriptEnviron
 }
 
 bool AVISource::GetParity(int n) { return false; }
+
+int __stdcall AVISource::SetCacheHints(int cachehints,int frame_range)
+{
+  switch(cachehints)
+  {
+  case CACHE_GET_MTMODE:
+    return MT_SERIALIZED;
+  default:
+    return 0;
+  }
+}

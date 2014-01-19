@@ -6,7 +6,7 @@
 
 typedef const char* (__stdcall *AvisynthPluginInit3Func)(IScriptEnvironment* env, const AVS_Linkage* const vectors);
 typedef const char* (__stdcall *AvisynthPluginInit2Func)(IScriptEnvironment* env);
-typedef const char * (AVSC_CC *AvisynthCPluginInitFunc)(AVS_ScriptEnvironment* env);
+typedef const char* (AVSC_CC *AvisynthCPluginInitFunc)(AVS_ScriptEnvironment* env);
 
 const char RegAvisynthKey[] = "Software\\Avisynth";
 const char RegPluginDirClassic[] = "PluginDir2_5";
@@ -388,10 +388,8 @@ void PluginManager::AutoloadPlugins()
   const char *scriptFilter = "*.avsi";
 
   // Load binary plugins
-  for (std::vector<std::string>::const_iterator dir_it = AutoloadDirs.begin(); dir_it != AutoloadDirs.end(); ++dir_it )
+  for (const std::string& dir : AutoloadDirs)
   {
-    const std::string &dir = *dir_it;
-
     // Append file search filter to directory path
     std::string filePattern = concat(dir, binaryFilter);
 
@@ -427,9 +425,8 @@ void PluginManager::AutoloadPlugins()
   }
 
   // Load script imports
-  for (std::vector<std::string>::const_iterator dir_it = AutoloadDirs.begin(); dir_it != AutoloadDirs.end(); ++dir_it )
+  for (const std::string& dir : AutoloadDirs)
   {
-    const std::string &dir = *dir_it;
     CWDChanger cwdchange(dir.c_str());
 
     // Append file search filter to directory path

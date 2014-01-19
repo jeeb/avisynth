@@ -76,7 +76,7 @@ BufferPool::BufferPool(IScriptEnvironment2* env) :
 
 BufferPool::~BufferPool()
 {
-  MapType::iterator end_it = Map.end();
+  const MapType::iterator end_it = Map.end();
   for (
     MapType::iterator it = Map.begin();
     it != end_it;
@@ -93,7 +93,7 @@ void* BufferPool::Allocate(size_t nBytes, size_t alignment, bool pool)
   if (pool)
   {
     // First, check if we can return a buffer from the pool
-    MapType::iterator end_it = Map.end();
+    const MapType::iterator end_it = Map.end();
     for (
       MapType::iterator it = Map.lower_bound(nBytes);
       it != end_it;
@@ -114,7 +114,10 @@ void* BufferPool::Allocate(size_t nBytes, size_t alignment, bool pool)
 
     void* ptr = PrivateAlloc(nBytes, alignment, reinterpret_cast<void*>(desc));
     if (ptr == NULL)
+    {
+      delete desc;
       return NULL;
+    }
 
     desc->alignment = alignment;
     desc->in_use = true;

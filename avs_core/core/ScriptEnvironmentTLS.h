@@ -320,12 +320,12 @@ public:
     }
   }
 
-  virtual void __stdcall SetFilterMTMode(const char* filter, MTMODES mode, bool force)
+  virtual void __stdcall SetFilterMTMode(const char* filter, MtMode mode, bool force)
   {
     core->SetFilterMTMode(filter, mode, force);
   }
 
-  virtual MTMODES __stdcall GetFilterMTMode(const char* filter) const
+  virtual MtMode __stdcall GetFilterMTMode(const char* filter) const
   {
     return core->GetFilterMTMode(filter);
   }

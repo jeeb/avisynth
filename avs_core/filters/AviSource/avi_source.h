@@ -81,7 +81,7 @@ public:
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
   void __stdcall GetAudio(void* buf, __int64 start, __int64 count, IScriptEnvironment* env) ;
   bool __stdcall GetParity(int n);
-  int __stdcall SetCacheHints(int cachehints,int frame_range) { return 0; };
+  int __stdcall SetCacheHints(int cachehints,int frame_range);
 
   static AVSValue __cdecl Create(AVSValue args, void* user_data, IScriptEnvironment* env) {
     const int mode = int(user_data);

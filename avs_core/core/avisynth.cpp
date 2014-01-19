@@ -414,7 +414,7 @@ public:
 class MTMapState
 {
 private:
-  typedef std::unordered_map<std::string, MTMODES> MTModeMapType;
+  typedef std::unordered_map<std::string, MtMode> MTModeMapType;
 
   static std::string NormalizeFilterName(const std::string& filter)
   {
@@ -439,7 +439,7 @@ private:
 public:
   static const char* DEFAULT_MODE;
 
-  MTMODES DefaultMode;
+  MtMode DefaultMode;
   MTModeMapType PerFilterMap;
   MTModeMapType ForcedMap;
 
@@ -447,7 +447,7 @@ public:
     : DefaultMode(MT_SERIALIZED)
   {}
 
-  void SetMode(const char* filter, MTMODES mode, bool force)
+  void SetMode(const char* filter, MtMode mode, bool force)
   {
     if (filter == DEFAULT_MODE)
     {
@@ -462,7 +462,7 @@ public:
       ForcedMap[f] = mode;
   }
 
-  MTMODES GetMode(const char* filter) const
+  MtMode GetMode(const char* filter) const
   {
     if (filter == DEFAULT_MODE)
       return DefaultMode;
@@ -540,8 +540,8 @@ public:
   virtual void __stdcall SetPrefetcher(Prefetcher *p);
   virtual void __stdcall AdjustMemoryConsumption(size_t amount, bool minus);
   virtual bool __stdcall Invoke(AVSValue *result, const char* name, const AVSValue& args, const char* const* arg_names=0);
-  virtual void __stdcall SetFilterMTMode(const char* filter, MTMODES mode, bool force);
-  virtual MTMODES __stdcall GetFilterMTMode(const char* filter) const;
+  virtual void __stdcall SetFilterMTMode(const char* filter, MtMode mode, bool force);
+  virtual MtMode __stdcall GetFilterMTMode(const char* filter) const;
   virtual void __stdcall ParallelJob(ThreadWorkerFuncPtr jobFunc, void* jobData, IJobCompletion* completion);
   virtual IJobCompletion* __stdcall NewCompletion(size_t capacity);
   virtual size_t  __stdcall GetProperty(AvsEnvProperty prop);
@@ -747,7 +747,10 @@ ScriptEnvironment::~ScriptEnvironment() {
 
 void __stdcall ScriptEnvironment::SetPrefetcher(Prefetcher *p)
 {
-  prefetcher = p;
+  if (prefetcher != NULL)
+    throw AvisynthError("Only a single prefetcher is allowed per script.");
+  else
+    prefetcher = p;
 }
 
 void __stdcall ScriptEnvironment::AdjustMemoryConsumption(size_t amount, bool minus)
@@ -764,7 +767,7 @@ void __stdcall ScriptEnvironment::ParallelJob(ThreadWorkerFuncPtr jobFunc, void*
   thread_pool->QueueJob(jobFunc, jobData, this, static_cast<JobCompletion*>(completion));
 }
 
-void __stdcall ScriptEnvironment::SetFilterMTMode(const char* filter, MTMODES mode, bool force)
+void __stdcall ScriptEnvironment::SetFilterMTMode(const char* filter, MtMode mode, bool force)
 {
   if (streqi(filter, ""))
     filter = MTMapState::DEFAULT_MODE;
@@ -772,7 +775,7 @@ void __stdcall ScriptEnvironment::SetFilterMTMode(const char* filter, MTMODES mo
   MTMap.SetMode(filter, mode, force);
 }
 
-MTMODES __stdcall ScriptEnvironment::GetFilterMTMode(const char* filter) const
+MtMode __stdcall ScriptEnvironment::GetFilterMTMode(const char* filter) const
 {
   if (streqi(filter, ""))
     filter = MTMapState::DEFAULT_MODE;
@@ -1024,9 +1027,8 @@ VideoFrame* ScriptEnvironment::GetNewFrame(size_t vfb_size)
    *   Try to return an unused but already allocated instance
    * -----------------------------------------------------------
    */
-  FrameRegistryType::iterator end_it = FrameRegistry.end();
   for (
-    FrameRegistryType::iterator it = FrameRegistry.lower_bound(vfb_size);
+    FrameRegistryType::iterator it = FrameRegistry.lower_bound(vfb_size), end_it = FrameRegistry.end();
     it != end_it;
   ++it)
   {
@@ -1056,9 +1058,8 @@ VideoFrame* ScriptEnvironment::GetNewFrame(size_t vfb_size)
    * Couldn't allocate, try to free up unused frames of any size
    * -----------------------------------------------------------
    */
-  end_it = FrameRegistry.end();
   for (
-      FrameRegistryType::iterator it = FrameRegistry.begin();
+      FrameRegistryType::iterator it = FrameRegistry.begin(), end_it = FrameRegistry.end();
       (it != end_it) && (size_t(it->second->vfb->data_size) < vfb_size);
       )
   {
@@ -1406,14 +1407,8 @@ void* ScriptEnvironment::ManageCache(int key, void* data) {
     {
       // If we don't have enough free reserves, take away a cache slot from
       // a cache instance that hasn't been used since long.
-      const CacheRegistryType::iterator end_cit = CacheRegistry.end();
-      for (
-            CacheRegistryType::iterator cit = CacheRegistry.begin();
-            cit != end_cit;
-            ++cit
-          )
+      for (Cache* old_cache : CacheRegistry)
       {
-        Cache* old_cache = *cit;
         int osize = cache->SetCacheHints(CACHE_GET_SIZE, 0);
         if (osize != 0)
         {

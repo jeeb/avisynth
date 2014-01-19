@@ -55,7 +55,7 @@ static AVSValue Create_Prefetcher (AVSValue args, void*, IScriptEnvironment* env
 {
   IScriptEnvironment2 *env2 = static_cast<IScriptEnvironment2*>(env);
   PClip child = args[0].AsClip();
-  int PrefetchThreads = args[1].AsInt(env2->GetProperty(AEP_PHYSICAL_CPUS)-1);
+  int PrefetchThreads = args[1].AsInt(env2->GetProperty(AEP_PHYSICAL_CPUS)+1);
 
   if (PrefetchThreads > 0)
     return new Prefetcher(child, PrefetchThreads, env2);
@@ -1021,6 +1021,6 @@ AVSValue InternalFunctionExists (AVSValue args, void*, IScriptEnvironment* env)
 AVSValue SetFilterMTMode (AVSValue args, void*, IScriptEnvironment* env)
 {
   IScriptEnvironment2 *env2 = static_cast<IScriptEnvironment2*>(env);
-  env2->SetFilterMTMode(args[0].AsString(), (MTMODES)args[1].AsInt(), args[2].AsBool(false));
+  env2->SetFilterMTMode(args[0].AsString(), (MtMode)args[1].AsInt(), args[2].AsBool(false));
   return AVSValue();
 }

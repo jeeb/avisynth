@@ -2353,6 +2353,17 @@ void DirectShowSource::CheckHresult(IScriptEnvironment* env, HRESULT hr, const c
   env->ThrowError("DirectShowSource: %s%s:\n%s", msg, msg2, buf);
 }
 
+int __stdcall DirectShowSource::SetCacheHints(int cachehints,int frame_range)
+{
+  switch(cachehints)
+  {
+  case CACHE_GET_MTMODE:
+    return MT_SERIALIZED;
+  default:
+    return 0;
+  }
+}
+
 HRESULT DirectShowSource::LoadGraphFile(IGraphBuilder *pGraph, const WCHAR* wszName)
 {
     IStorage *pStorage = 0;
