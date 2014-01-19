@@ -44,24 +44,13 @@
 #include <avs/minmax.h>
 #include <new>
 #include "../internal.h"
+#include "../Prefetcher.h"
 
 
 /********************************************************************
 ***** Declare index of new filters for Avisynth's filter engine *****
 ********************************************************************/
 
-#include "../Prefetcher.h"
-static AVSValue Create_Prefetcher (AVSValue args, void*, IScriptEnvironment* env)
-{
-  IScriptEnvironment2 *env2 = static_cast<IScriptEnvironment2*>(env);
-  PClip child = args[0].AsClip();
-  int PrefetchThreads = args[1].AsInt(env2->GetProperty(AEP_PHYSICAL_CPUS)+1);
-
-  if (PrefetchThreads > 0)
-    return new Prefetcher(child, PrefetchThreads, env2);
-  else
-    return child;
-}
 
 extern const AVSFunction Script_functions[] = {
   { "muldiv", "iii", Muldiv },
@@ -240,7 +229,7 @@ extern const AVSFunction Script_functions[] = {
   { "InternalFunctionExists",  "", InternalFunctionExists  },
 
   { "SetFilterMTMode",  "si[force]b", SetFilterMTMode  },
-  { "Prefetch",  "c[threads]i", Create_Prefetcher  },
+  { "Prefetch",  "c[threads]i", Prefetcher::Create  },
  
   { 0 }
 };

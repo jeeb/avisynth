@@ -42,34 +42,73 @@
 #include <mmintrin.h>
 #endif
 
-MTGuard::MTGuard(size_t nThreads, PClip* threadFilters, MtMode mtmode) :
-  ChildFilters(threadFilters),
+MTGuard::MTGuard(PClip firstChild, MtMode mtmode, const AVSFunction* func, const std::vector<AVSValue>& args, IScriptEnvironment2* env) :
   FilterMutex(NULL),
-  MTMode(nThreads > 1 ? mtmode : MT_NICE_PLUGIN),
-  nThreads(nThreads)
+  MTMode(mtmode),
+  nThreads(1),
+  FilterFunction(func),
+  FilterArgs(args),
+  Env(env)
 {
-  assert(nThreads > 0);
-  assert((nThreads > 1) || (mtmode != MT_MULTI_INSTANCE));
+  assert(mtmode != MT_INVALID);
 
+  ChildFilters.emplace_back(firstChild);
   vi = ChildFilters[0]->GetVideoInfo();
-
-  if (MTMode == MT_SERIALIZED)
-  {
-    FilterMutex = new std::mutex();
-  }
 }
 
 MTGuard::~MTGuard()
 {
   delete FilterMutex;
-  delete [] ChildFilters;
+  Env->ManageCache(MC_UnRegisterMTGuard, this);
+}
+
+void MTGuard::EnableMT(size_t nThreads)
+{
+  assert(nThreads >= 1);
+
+  this->nThreads = nThreads;
+
+  if (nThreads > 1)
+  {
+    switch (MTMode)
+    {
+    case MT_NICE_PLUGIN:
+      {
+        // Nothing to do
+        break;
+      }
+    case MT_MULTI_INSTANCE:
+      {
+        ChildFilters.reserve(nThreads);
+        AVSValue args(FilterArgs.data(), FilterArgs.size());
+        while (ChildFilters.size() < nThreads)
+        {
+          ChildFilters.emplace_back(FilterFunction->apply(args, FilterFunction->user_data, Env).AsClip());
+        }
+        break;
+      }
+    case MT_SERIALIZED:
+      {
+        this->FilterMutex = new std::mutex();
+        break;
+      }
+    default:
+      {
+        assert(0);
+        break;
+      }
+    }
+  }
 }
 
 PVideoFrame __stdcall MTGuard::GetFrame(int n, IScriptEnvironment* env)
 {
   assert(nThreads > 0);
-  IScriptEnvironment2 *env2 = static_cast<IScriptEnvironment2*>(env);
 
+  if (nThreads == 1)
+    return ChildFilters[0]->GetFrame(n, env);
+
+  IScriptEnvironment2 *env2 = static_cast<IScriptEnvironment2*>(env);
   PVideoFrame frame = NULL;
 
   switch (MTMode)
@@ -108,6 +147,13 @@ PVideoFrame __stdcall MTGuard::GetFrame(int n, IScriptEnvironment* env)
 void __stdcall MTGuard::GetAudio(void* buf, __int64 start, __int64 count, IScriptEnvironment* env)
 {
   assert(nThreads > 0);
+
+  if (nThreads == 1)
+  {
+    ChildFilters[0]->GetAudio(buf, start, count, env);
+    return;
+  }
+
   IScriptEnvironment2 *env2 = static_cast<IScriptEnvironment2*>(env);
 
   switch (MTMode)
@@ -154,52 +200,4 @@ bool __stdcall MTGuard::GetParity(int n)
 int __stdcall MTGuard::SetCacheHints(int cachehints, int frame_range)
 {
   return 0;
-}
-
-AVSValue __stdcall MTGuard::Create(const AVSFunction* func, const AVSValue& args, IScriptEnvironment2* env)
-{
-  size_t nThreads = env->GetProperty(AEP_THREADPOOL_THREADS);
-  AVSValue func_result = func->apply(args, func->user_data, env);
-
-  if (func_result.IsClip() && (nThreads > 1) && !Cache::IsCache(func_result.AsClip()))
-  {
-    MtMode mode = env->GetFilterMTMode(func->name);
-    PClip filter_instance = func_result.AsClip();
-    if ( (filter_instance->GetVersion() >= 5)
-      && (filter_instance->SetCacheHints(CACHE_GET_MTMODE, 0) != 0) )
-    {
-      mode = (MtMode)filter_instance->SetCacheHints(CACHE_GET_MTMODE, 0);
-    }
-
-    switch (mode)
-    {
-    case MT_NICE_PLUGIN:
-      {
-        return func_result;
-      }
-    case MT_SERIALIZED:
-      {
-        PClip* children = new PClip[1];
-        children[0] = func_result.AsClip();
-        return new MTGuard(nThreads, children, MT_SERIALIZED);
-      }
-    case MT_MULTI_INSTANCE:
-      {
-        PClip* children = new PClip[nThreads];
-        children[0] = func_result.AsClip();
-        for (size_t i = 1; i < nThreads; ++i)
-        {
-          children[i] = func->apply(args, func->user_data, env).AsClip();
-        }
-        return new MTGuard(nThreads, children, MT_MULTI_INSTANCE);
-      }
-    default:
-      assert(0);
-      return NULL;
-    }
-  }
-  else
-  {
-    return func_result;
-  }
 }

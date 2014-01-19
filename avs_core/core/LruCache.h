@@ -203,7 +203,7 @@ public:
       else
       {
         // This cannot happen
-        assert(0);
+        //assert(0); LOL maybe it can...
       }
 
       if (entryp != NULL)

@@ -597,6 +597,9 @@ private:
   BufferPool BufferPool;
 
   MTMapState MTMap;
+  AVSValue CreateMTGuard(const AVSFunction* func, const std::vector<AVSValue>& args);
+  typedef std::vector<MTGuard*> MTGuardRegistryType;
+  MTGuardRegistryType MTGuardRegistry;
   Prefetcher *prefetcher;
 };
 
@@ -688,7 +691,7 @@ ScriptEnvironment::ScriptEnvironment()
     plugin_manager->AddAutoloadDir("USER_CLASSIC_PLUGINS", false);
     plugin_manager->AddAutoloadDir("MACHINE_CLASSIC_PLUGINS", false);
 
-    thread_pool = new ThreadPool(std::thread::hardware_concurrency() + 2);
+    thread_pool = new ThreadPool(std::thread::hardware_concurrency());
 
     ExportBuiltinFilters();
   }
@@ -749,8 +752,18 @@ void __stdcall ScriptEnvironment::SetPrefetcher(Prefetcher *p)
 {
   if (prefetcher != NULL)
     throw AvisynthError("Only a single prefetcher is allowed per script.");
-  else
-    prefetcher = p;
+
+  // Make this the active prefetcher
+  prefetcher = p;
+
+  // Since this method basically enables MT operation,
+  // upgrade all MTGuards to MT-mode.
+  size_t nTotalThreads = 1 + p->NumPrefetchThreads();
+  for (MTGuard* guard : MTGuardRegistry)
+  {
+    if (guard != NULL)
+      guard->EnableMT(nTotalThreads);
+  }
 }
 
 void __stdcall ScriptEnvironment::AdjustMemoryConsumption(size_t amount, bool minus)
@@ -761,6 +774,44 @@ void __stdcall ScriptEnvironment::AdjustMemoryConsumption(size_t amount, bool mi
     memory_used += amount;
 }
 
+AVSValue ScriptEnvironment::CreateMTGuard(const AVSFunction* func, const std::vector<AVSValue>& args)
+{
+  AVSValue avsargs(args.data(), (int)args.size());
+  AVSValue func_result = func->apply(avsargs, func->user_data, this);
+
+  if (func_result.IsClip() && !Cache::IsCache(func_result.AsClip()))
+  {
+    MtMode mode = this->GetFilterMTMode(func->name);
+    PClip filter_instance = func_result.AsClip();
+    if ( (filter_instance->GetVersion() >= 5)
+      && (filter_instance->SetCacheHints(CACHE_GET_MTMODE, 0) != 0) )
+    {
+      mode = (MtMode)filter_instance->SetCacheHints(CACHE_GET_MTMODE, 0);
+    }
+
+    switch (mode)
+    {
+    case MT_NICE_PLUGIN:
+      {
+        return func_result;
+      }
+    case MT_MULTI_INSTANCE: // Fall-through intentional
+    case MT_SERIALIZED:
+      {
+        MTGuard* guard = new MTGuard(filter_instance, mode, func, args, this);
+        MTGuardRegistry.push_back(guard);
+        return guard;
+      }
+    default:
+      assert(0);
+      return NULL;
+    }
+  }
+  else
+  {
+    return func_result;
+  }
+}
 
 void __stdcall ScriptEnvironment::ParallelJob(ThreadWorkerFuncPtr jobFunc, void* jobData, IJobCompletion* completion)
 {
@@ -834,7 +885,7 @@ size_t  __stdcall ScriptEnvironment::GetProperty(AvsEnvProperty prop)
     this->ThrowError("Invalid property request.");
     break;
   case AEP_FILTERCHAIN_THREADS:
-    return (prefetcher != NULL) ? prefetcher->NumPrefetchThreads() : 1;
+    return (prefetcher != NULL) ? prefetcher->NumPrefetchThreads()+1 : 1;
   case AEP_PHYSICAL_CPUS:
     return GetNumPhysicalCPUs();
   case AEP_LOGICAL_CPUS:
@@ -1433,6 +1484,18 @@ void* ScriptEnvironment::ManageCache(int key, void* data) {
     CacheRegistry.move_to_back(cache);
     break;
   } // case
+  case MC_UnRegisterMTGuard:
+  {
+    MTGuard* guard = reinterpret_cast<MTGuard*>(data);
+    for (auto& item : MTGuardRegistry)
+    {
+      if (item == guard)
+      {
+        item = NULL;
+        break;
+      }
+    }
+  }
   } // switch
   return 0;
 }
@@ -1625,11 +1688,18 @@ success:;
   }
  
   // ... and we're finally ready to make the call
-  AVSValue funcArgs(args3.data(), args3_count);
+  args3.resize(args3_count);
+  std::vector<AVSValue>(args3).swap(args3);
+
   if (f->IsScriptFunction())
+  {
+    AVSValue funcArgs(args3.data(), args3.size());
     *result = f->apply(funcArgs, f->user_data, this);
+  }
   else
-    *result = Cache::Create(MTGuard::Create(f, funcArgs, this), f->user_data, this);
+  {
+    *result = Cache::Create(CreateMTGuard(f, args3), f->user_data, this);
+  }
   
   return true;
 }

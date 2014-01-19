@@ -103,11 +103,11 @@ AVSValue Prefetcher::ThreadWorker(IScriptEnvironment2* env, void* data)
   catch(...)
   {
     prefetcher->_pimpl->VideoCache->rollback(&cache_handle);
-    --(prefetcher->_pimpl->running_workers);
 
     std::lock_guard<std::mutex> lock(prefetcher->_pimpl->worker_exception_mutex);
     prefetcher->_pimpl->worker_exception = std::current_exception();
     prefetcher->_pimpl->worker_exception_present = true;
+    --(prefetcher->_pimpl->running_workers);
   }
 
   return AVSValue();
@@ -116,8 +116,6 @@ AVSValue Prefetcher::ThreadWorker(IScriptEnvironment2* env, void* data)
 Prefetcher::Prefetcher(const PClip& _child, size_t _nThreads, IScriptEnvironment2 *env) :
   _pimpl(NULL)
 {
-  env->SetPrefetcher(this);
-
   _pimpl = new PrefetcherPimpl(_child, _nThreads);
   _pimpl->VideoCache = std::make_shared<LruCache<size_t, PVideoFrame> >(_pimpl->nPrefetchFrames*2);
 }
@@ -316,4 +314,28 @@ int __stdcall Prefetcher::SetCacheHints(int cachehints, int frame_range)
 const VideoInfo& __stdcall Prefetcher::GetVideoInfo()
 {
   return _pimpl->vi;
+}
+
+AVSValue Prefetcher::Create(AVSValue args, void*, IScriptEnvironment* env)
+{
+  IScriptEnvironment2 *env2 = static_cast<IScriptEnvironment2*>(env);
+  PClip child = args[0].AsClip();
+
+  int PrefetchThreads = args[1].AsInt(env2->GetProperty(AEP_PHYSICAL_CPUS)+1);
+  
+  if (PrefetchThreads > 0)
+  {
+    Prefetcher* prefetcher = new Prefetcher(child, PrefetchThreads, env2);
+    try
+    {
+      env2->SetPrefetcher(prefetcher);
+      return prefetcher;
+    }
+    catch(...)
+    {
+      delete prefetcher;
+    }
+  }
+  else
+    return child;
 }
