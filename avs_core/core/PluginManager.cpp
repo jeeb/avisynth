@@ -20,6 +20,21 @@ const char RegPluginDirPlus[] = "PluginDir+";
 ---------------------------------------------------------------------------------
 */
 
+// Translates a Windows error code to a human-readable text message.
+static std::string GetLastErrorText(DWORD nErrorCode)
+{
+  char* msg;
+  // Ask Windows to prepare a standard message for a GetLastError() code:
+  if (0 == FormatMessageA(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, NULL, nErrorCode, 0, (LPSTR)&msg, 0, NULL))
+    return("Unknown error");
+  else
+  {
+    std::string ret(msg);
+    LocalFree(msg);
+    return ret;
+  }
+}
+
 static bool GetRegString(HKEY rootKey, const char path[], const char entry[], std::string *result) {
     HKEY AvisynthKey;
 
@@ -535,7 +550,10 @@ bool PluginManager::LoadPlugin(PluginFile &plugin, bool throwOnError, AVSValue *
   if (plugin.Library == NULL)
   {
     if (throwOnError)
-      Env->ThrowError("Cannot load file '%s'.", plugin.FilePath.c_str());
+    {
+      DWORD errCode = GetLastError();
+      Env->ThrowError("Cannot load file '%s'. Platform returned code %d:\n%s", plugin.FilePath.c_str(), errCode, GetLastErrorText(errCode).c_str());
+    }
     else
       return false;
   }
