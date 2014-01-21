@@ -1000,10 +1000,11 @@ public:
 
 enum MtMode
 {
-  MT_INVALID,
+  MT_INVALID = 0,
   MT_NICE_PLUGIN = 1,
   MT_MULTI_INSTANCE = 2,
-  MT_SERIALIZED = 3
+  MT_SERIALIZED = 3,
+  MT_MODE_COUNT = 4
 };
 
 class IJobCompletion

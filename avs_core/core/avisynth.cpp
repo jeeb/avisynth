@@ -449,6 +449,12 @@ public:
 
   void SetMode(const char* filter, MtMode mode, bool force)
   {
+    if ( ((int)mode <= (int)MT_INVALID)
+      || ((int)mode >= (int)MT_MODE_COUNT) )
+    {
+      throw AvisynthError("Invalid MT mode specified.");
+    }
+
     if (filter == DEFAULT_MODE)
     {
       DefaultMode = mode;
@@ -820,6 +826,7 @@ void __stdcall ScriptEnvironment::ParallelJob(ThreadWorkerFuncPtr jobFunc, void*
 
 void __stdcall ScriptEnvironment::SetFilterMTMode(const char* filter, MtMode mode, bool force)
 {
+
   if (streqi(filter, ""))
     filter = MTMapState::DEFAULT_MODE;
 
