@@ -691,6 +691,10 @@ ScriptEnvironment::ScriptEnvironment()
     global_var_table->Set("$ScriptFile$", AVSValue());
     global_var_table->Set("$ScriptDir$",  AVSValue());
 
+    global_var_table->Set("MT_NICE_PLUGIN",     1);
+    global_var_table->Set("MT_MULTI_INSTANCE",  2);
+    global_var_table->Set("MT_SERIALIZED",      3);
+
     plugin_manager = new PluginManager(this);
     plugin_manager->AddAutoloadDir("USER_PLUS_PLUGINS", false);
     plugin_manager->AddAutoloadDir("MACHINE_PLUS_PLUGINS", false);
