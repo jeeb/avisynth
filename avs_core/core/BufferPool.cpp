@@ -6,6 +6,15 @@
 
 #define BUFFER_GUARD_VALUE  0x55555555
 
+struct BufferPool::BufferDesc
+{
+  void* ptr;
+  size_t size;
+  size_t alignment;
+  bool in_use;
+};
+
+
 static inline void CheckGuards(void* ptr)
 {
   #ifndef NDEBUG

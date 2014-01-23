@@ -9,14 +9,7 @@ class BufferPool
 {
 private:
 
-  struct BufferDesc
-  {
-    void* ptr;
-    size_t size;
-    size_t alignment;
-    bool in_use;
-  };
-
+  struct BufferDesc;
   typedef std::multimap<size_t, BufferDesc*> MapType;
 
   IScriptEnvironment2* Env;
