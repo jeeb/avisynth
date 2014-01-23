@@ -225,8 +225,8 @@ extern const AVSFunction Script_functions[] = {
   { "AddAutoloadDir",  "s[toFront]b", AddAutoloadDir  },
   { "ClearAutoloadDirs",  "", ClearAutoloadDirs  },
   { "AutoloadPlugins",  "", AutoloadPlugins  },
-  { "FunctionExists",  "", FunctionExists  },
-  { "InternalFunctionExists",  "", InternalFunctionExists  },
+  { "FunctionExists",  "s", FunctionExists  },
+  { "InternalFunctionExists",  "s", InternalFunctionExists  },
 
   { "SetFilterMTMode",  "si[force]b", SetFilterMTMode  },
   { "Prefetch",  "c[threads]i", Prefetcher::Create  },
