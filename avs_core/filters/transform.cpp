@@ -58,11 +58,6 @@ extern const AVSFunction Transform_filters[] = {
 
 
 
-
-
-
-
-
 /********************************
  *******   Flip Vertical   ******
  ********************************/
@@ -90,13 +85,6 @@ PVideoFrame FlipVertical::GetFrame(int n, IScriptEnvironment* env) {
   return dst;
 }
 
-/*
-bool FlipVertical::GetParity(int n) 
-{ 
-  return !child->GetParity(n);
-}
-*/
-
 AVSValue __cdecl FlipVertical::Create(AVSValue args, void*, IScriptEnvironment* env) 
 {
   return new FlipVertical(args[0].AsClip());
@@ -108,21 +96,32 @@ AVSValue __cdecl FlipVertical::Create(AVSValue args, void*, IScriptEnvironment* 
  *******   Flip Horizontal   ******
  ********************************/
 
+static void flip_horizontal_plane_c(BYTE* dstp, const BYTE* srcp, int dst_pitch, int src_pitch, int width, int height) {
+  srcp += width-1;
+  for (int y = 0; y < height; y++) { // Loop planar luma.
+    for (int x = 0; x < width; x++) {
+      dstp[x] = srcp[-x];
+    }
+    srcp += src_pitch;
+    dstp += dst_pitch;
+  }
+}
+
 PVideoFrame FlipHorizontal::GetFrame(int n, IScriptEnvironment* env) {
   PVideoFrame src = child->GetFrame(n, env);
   PVideoFrame dst = env->NewVideoFrame(vi);
   const BYTE* srcp = src->GetReadPtr();
   BYTE* dstp = dst->GetWritePtr();
-  int row_size = src->GetRowSize();
+  int width = src->GetRowSize();
   int src_pitch = src->GetPitch();
   int dst_pitch = dst->GetPitch();
-  int h = src->GetHeight();
+  int height = src->GetHeight();
   int bpp = vi.BytesFromPixels(1);
   if (vi.IsYUY2()) { // Avoid flipping UV in YUY2 mode.
-    srcp+=row_size;
-    srcp-=4;
-    for (int y=0; y<h; y++) {
-      for (int x=0; x<row_size; x+=4) {
+    srcp += width;
+    srcp -= 4;
+    for (int y = 0; y<height; y++) {
+      for (int x = 0; x<width; x += 4) {
         dstp[x] = srcp[-x+2];
         dstp[x+1] = srcp[-x+1];
         dstp[x+2] = srcp[-x];
@@ -134,57 +133,41 @@ PVideoFrame FlipHorizontal::GetFrame(int n, IScriptEnvironment* env) {
     return dst;
   }
   if (vi.IsPlanar()) {  //For planar always 1bpp
-    srcp+=row_size-1;
-    {for (int y=0; y<h; y++) { // Loop planar luma.
-      for (int x=0; x<row_size; x++) {
-        dstp[x] = srcp[-x];
-      }
-      srcp += src_pitch;
-      dstp += dst_pitch;
-    }}
+    flip_horizontal_plane_c(dstp, srcp, dst_pitch, src_pitch, width, height);
 
     if (src->GetPitch(PLANAR_U)) {
       srcp = src->GetReadPtr(PLANAR_U);
       dstp = dst->GetWritePtr(PLANAR_U);
-      row_size = src->GetRowSize(PLANAR_U);
+      width = src->GetRowSize(PLANAR_U);
       src_pitch = src->GetPitch(PLANAR_U);
       dst_pitch = dst->GetPitch(PLANAR_U);
-      h = src->GetHeight(PLANAR_U);
-      srcp+=row_size-1;
-      {for (int y=0; y<h; y++) {
-        for (int x=0; x<row_size; x++) {
-          dstp[x] = srcp[-x];
-        }
-        srcp += src_pitch;
-        dstp += dst_pitch;
-      }}
+      height = src->GetHeight(PLANAR_U);
+      flip_horizontal_plane_c(dstp, srcp, dst_pitch, src_pitch, width, height);
+
       srcp = src->GetReadPtr(PLANAR_V);
       dstp = dst->GetWritePtr(PLANAR_V);
-      srcp+=row_size-1;
-      {for (int y=0; y<h; y++) {
-        for (int x=0; x<row_size; x++) {
-          dstp[x] = srcp[-x];
-        }
-        srcp += src_pitch;
-        dstp += dst_pitch;
-      }}
+
+      flip_horizontal_plane_c(dstp, srcp, dst_pitch, src_pitch, width, height);
     }
     return dst;
   }
-  srcp+=row_size-bpp;
+
+  srcp += width-bpp;
   if (vi.IsRGB32()) {
-    for (int y=0; y<h; y++) { // Loop for RGB
-      for (int x=0; x<row_size/4; x++) {
-          ((int*)dstp)[x] = ((int*)srcp)[-x];
+    for (int y = 0; y<height; y++) {
+      for (int x = 0; x<width/4; x++) {
+        *reinterpret_cast<int*>(dstp+x) = *reinterpret_cast<const int*>(srcp-x);
       }
       srcp += src_pitch;
       dstp += dst_pitch;
     }
     return dst;
   }
-  for (int y=0; y<h; y++) { // Loop for RGB
-    for (int x=0; x<row_size; x+=bpp) {
-      for (int i=0; i<bpp; i++) {
+
+  //RGB24
+  for (int y = 0; y<height; y++) { 
+    for (int x = 0; x<width; x += bpp) {
+      for (int i = 0; i<bpp; i++) {
         dstp[x+i] = srcp[-x+i];
       }
     }
@@ -352,7 +335,7 @@ AddBorders::AddBorders(int _left, int _top, int _right, int _bot, int _clr, PCli
 
 
 
-PVideoFrame AddBorders::GetFrame(int n, IScriptEnvironment* env) 
+PVideoFrame AddBorders::GetFrame(int n, IScriptEnvironment* env)
 {
   PVideoFrame src = child->GetFrame(n, env);
   PVideoFrame dst = env->NewVideoFrame(vi);
@@ -367,81 +350,92 @@ PVideoFrame AddBorders::GetFrame(int n, IScriptEnvironment* env)
 
   const int initial_black = top * dst_pitch + vi.BytesFromPixels(left);
   const int middle_black = dst_pitch - src_row_size;
-  const int final_black = bot * dst_pitch + vi.BytesFromPixels(right) 
-                          + (dst_pitch - dst_row_size);
+  const int final_black = bot * dst_pitch + vi.BytesFromPixels(right)
+    + (dst_pitch - dst_row_size);
   if (vi.IsPlanar()) {
     const unsigned int colr = RGB2YUV(clr);
-    const unsigned char YBlack=(colr>>16)&0xff;
-    const unsigned char UBlack=(colr>>8)&0xff;
-    const unsigned char VBlack=(colr)&0xff;
+    const unsigned char YBlack = (colr>>16)&0xff;
+    const unsigned char UBlack = (colr>>8)&0xff;
+    const unsigned char VBlack = (colr)&0xff;
 
     BitBlt(dstp+initial_black, dst_pitch, srcp, src_pitch, src_row_size, src_height);
-    for (int a=0; a<initial_black; a++)
-      *(unsigned char*)(dstp+a) = YBlack;
+    for (int a = 0; a<initial_black; a++) {
+      dstp[a] = YBlack;
+    }
     dstp += initial_black + src_row_size;
-    for (int y=src_height-1; y>0; --y) {
-      for (int b=0; b<middle_black; b++)
-        *(unsigned char*)(dstp+b) = YBlack;
+    for (int y = src_height-1; y>0; --y) {
+      for (int b = 0; b<middle_black; b++) {
+        dstp[b] = YBlack;
+      }
       dstp += dst_pitch;
     }
-    for (int c=0; c<final_black; c++)
+    for (int c = 0; c<final_black; c++)
       *(unsigned char*)(dstp+c) = YBlack;
 
-    if (src->GetPitch(PLANAR_U)) {
-      const int initial_blackUV = (top>>ysub) * dst->GetPitch(PLANAR_U) + (left>>xsub);
-      const int middle_blackUV  = dst->GetPitch(PLANAR_U) - src->GetRowSize(PLANAR_U);
-      const int final_blackUV   = (bot>>ysub) * dst->GetPitch(PLANAR_U) + (right>>xsub)
-                                + (dst->GetPitch(PLANAR_U)- dst->GetRowSize(PLANAR_U));
+    int src_pitch_uv = src->GetPitch(PLANAR_U);
+    if (src_pitch_uv != 0) {
+      int dst_pitch_uv = dst->GetPitch(PLANAR_U);
+      int src_width_uv = src->GetRowSize(PLANAR_U);
+      int src_height_uv = src->GetHeight(PLANAR_U);
 
-      BitBlt(dst->GetWritePtr(PLANAR_U)+initial_blackUV, dst->GetPitch(PLANAR_U),
-             src->GetReadPtr(PLANAR_U), src->GetPitch(PLANAR_U), src->GetRowSize(PLANAR_U), src->GetHeight(PLANAR_U));
+      const int initial_blackUV = (top>>ysub) * dst_pitch_uv + (left>>xsub);
+      const int middle_blackUV = dst_pitch_uv - src_width_uv;
+      const int final_blackUV = (bot>>ysub) * dst_pitch_uv + (right>>xsub) + (dst_pitch_uv- dst->GetRowSize(PLANAR_U));
+
       dstp = dst->GetWritePtr(PLANAR_U);
-      {for (int a=0; a<initial_blackUV; a++)
-        *(unsigned char*)(dstp+a) = UBlack;
+
+      BitBlt(dstp+initial_blackUV, dst_pitch_uv, src->GetReadPtr(PLANAR_U), src_pitch_uv, src_width_uv, src_height_uv);
+      
+      for (int a = 0; a<initial_blackUV; a++) {
+        dstp[a] = UBlack;
       }
-      dstp += initial_blackUV + src->GetRowSize(PLANAR_U);
-      {for (int y=src->GetHeight(PLANAR_U)-1; y>0; --y) {
-        for (int b=0; b<middle_blackUV; b++)
-          *(unsigned char*)(dstp+b) = UBlack;
-        dstp += dst->GetPitch(PLANAR_U);
-      }}
-      {for (int c=0; c<final_blackUV; c ++)
-        *(unsigned char*)(dstp+c) = UBlack;
+      dstp += initial_blackUV + src_width_uv;
+      for (int y = src_height_uv-1; y>0; --y) {
+        for (int b = 0; b<middle_blackUV; b++) {
+          dstp[b] = UBlack;
+        }
+        dstp += dst_pitch_uv;
       }
-      BitBlt(dst->GetWritePtr(PLANAR_V)+initial_blackUV, dst->GetPitch(PLANAR_V),
-             src->GetReadPtr(PLANAR_V), src->GetPitch(PLANAR_V), src->GetRowSize(PLANAR_V), src->GetHeight(PLANAR_V));
+      for (int c = 0; c<final_blackUV; c++) {
+        dstp[c] = UBlack;
+      }
+
       dstp = dst->GetWritePtr(PLANAR_V);
-      {for (int a=0; a<initial_blackUV; a++)
-        *(unsigned char*)(dstp+a) = VBlack;
+      BitBlt(dstp+initial_blackUV, dst_pitch_uv, src->GetReadPtr(PLANAR_V), src_pitch_uv, src_width_uv, src_height_uv);
+      
+      for (int a = 0; a<initial_blackUV; a++) {
+        dstp[a] = VBlack;
       }
-      dstp += initial_blackUV + src->GetRowSize(PLANAR_U);
-      {for (int y=src->GetHeight(PLANAR_U)-1; y>0; --y) {
-        for (int b=0; b<middle_blackUV; b++)
-          *(unsigned char*)(dstp+b) = VBlack;
-        dstp += dst->GetPitch(PLANAR_U);
-      }}
-      {for (int c=0; c<final_blackUV; c++)
-        *(unsigned char*)(dstp+c) = VBlack;
+      dstp += initial_blackUV + src_width_uv;
+      for (int y = src_height_uv-1; y>0; --y) {
+        for (int b = 0; b<middle_blackUV; b++) {
+          dstp[b] = VBlack;
+        }
+        dstp += dst_pitch_uv;
+      }
+      for (int c = 0; c<final_blackUV; c++) {
+        dstp[c] = VBlack;
       }
     }
-  }
-  else if (vi.IsYUY2()) {
+  } else if (vi.IsYUY2()) {
     const unsigned int colr = RGB2YUV(clr);
     const unsigned __int32 black = (colr>>16) * 0x010001 + ((colr>>8)&255) * 0x0100 + (colr&255) * 0x01000000;
 
     BitBlt(dstp+initial_black, dst_pitch, srcp, src_pitch, src_row_size, src_height);
-    for (int a=0; a<initial_black; a += 4)
+    for (int a = 0; a<initial_black; a += 4) {
       *(unsigned __int32*)(dstp+a) = black;
+    }
     dstp += initial_black + src_row_size;
-    for (int y=src_height-1; y>0; --y) {
-      for (int b=0; b<middle_black; b += 4)
+    for (int y = src_height-1; y>0; --y) {
+      for (int b = 0; b<middle_black; b += 4) {
         *(unsigned __int32*)(dstp+b) = black;
+      }
       dstp += dst_pitch;
     }
-    for (int c=0; c<final_black; c += 4)
+    for (int c = 0; c<final_black; c += 4) {
       *(unsigned __int32*)(dstp+c) = black;
-  }
-  else if (vi.IsRGB24()) {
+    }
+  } else if (vi.IsRGB24()) {
     const unsigned char  clr0 = (clr & 0xFF);
     const unsigned __int16 clr1 = (clr >> 8);
     const int leftbytes = vi.BytesFromPixels(left);
@@ -451,44 +445,50 @@ PVideoFrame AddBorders::GetFrame(int n, IScriptEnvironment* env)
 
     BitBlt(dstp+initial_black, dst_pitch, srcp, src_pitch, src_row_size, src_height);
     /* Cannot use *_black optimisation as pitch may not be mod 3 */
-    {for (int y=top; y>0; --y) {
-      for (int i=0; i<dst_row_size; i+=3) {
-        dstp[i] = clr0; *(unsigned __int16*)(dstp+i+1) = clr1;
+    for (int y = top; y>0; --y) {
+      for (int i = 0; i<dst_row_size; i += 3) {
+        dstp[i] = clr0; 
+        *(unsigned __int16*)(dstp+i+1) = clr1;
       }
       dstp += dst_pitch;
-    }} //for y
-    {for (int y=src_height; y>0; --y) {
-      {for (int i=0; i<leftbytes; i+=3) {
-        dstp[i] = clr0; *(unsigned __int16*)(dstp+i+1) = clr1;
-      }} // for i
+    }
+    for (int y = src_height; y>0; --y) {
+      for (int i = 0; i<leftbytes; i += 3) {
+        dstp[i] = clr0; 
+        *(unsigned __int16*)(dstp+i+1) = clr1;
+      }
       dstp += leftrow;
-      {for (int i=0; i<rightbytes; i+=3) {
-        dstp[i] = clr0; *(unsigned __int16*)(dstp+i+1) = clr1;
-      }} // for i
+      for (int i = 0; i<rightbytes; i += 3) {
+        dstp[i] = clr0; 
+        *(unsigned __int16*)(dstp+i+1) = clr1;
+      }
       dstp += rightrow;
-    }} // for y
-    {for (int y=bot; y>0; --y) {
-      for (int i=0; i<dst_row_size; i+=3) {
-        dstp[i] = clr0; *(unsigned __int16*)(dstp+i+1) = clr1;
+    }
+    for (int y = bot; y>0; --y) {
+      for (int i = 0; i<dst_row_size; i += 3) {
+        dstp[i] = clr0;
+        *(unsigned __int16*)(dstp+i+1) = clr1;
       }
       dstp += dst_pitch;
-    }} //for y
-  } // if vi.IsRGB24
+    }
+  }
   else if (vi.IsRGB32()) {
     BitBlt(dstp+initial_black, dst_pitch, srcp, src_pitch, src_row_size, src_height);
-    {for (int i=0; i<initial_black; i+=4)
+    for (int i = 0; i<initial_black; i += 4) {
       *(unsigned __int32*)(dstp+i) = clr;
     }
-	dstp += initial_black + src_row_size;
-    for (int y=src_height-1; y>0; --y) {
-      for (int i=0; i<middle_black; i+=4)
+    dstp += initial_black + src_row_size;
+    for (int y = src_height-1; y>0; --y) {
+      for (int i = 0; i<middle_black; i += 4) {
         *(unsigned __int32*)(dstp+i) = clr;
+      }
       dstp += dst_pitch;
     } // for y
-    {for (int i=0; i<final_black; i+=4)
+    for (int i = 0; i<final_black; i += 4) {
       *(unsigned __int32*)(dstp+i) = clr;
-	}
-  } // end else
+    }
+  }
+
   return dst;
 }
 
