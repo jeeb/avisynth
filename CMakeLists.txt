@@ -16,13 +16,15 @@ endif()
 
 IF( MSVC_IDE )  # Check for Visual Studio
 
+  IF( MSVC_VERSION VERSION_LESS 1700 )  # Check for v11 (VS 2012)
+    MESSAGE(FATAL_ERROR "Visual C++ 2012 or newer required.")
+  ENDIF()
+
   file(MAKE_DIRECTORY "${CMAKE_BINARY_DIR}/Output/plugins")
   file(MAKE_DIRECTORY "${CMAKE_BINARY_DIR}/Output/system")
 
-  IF( NOT MSVC_VERSION VERSION_LESS 1700 )  # Check for v11 (VS 2012)
-    # We want our project to also run on Windows XP
-    set(CMAKE_GENERATOR_TOOLSET "v110_xp" CACHE STRING "The compiler toolset to use for Visual Studio." FORCE)
-  ENDIF()
+  # We want our project to also run on Windows XP
+  set(CMAKE_GENERATOR_TOOLSET "v110_xp" CACHE STRING "The compiler toolset to use for Visual Studio." FORCE)
 
   # Enable C++ with SEH exceptions
   set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} /EHa")
