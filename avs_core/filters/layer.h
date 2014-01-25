@@ -65,7 +65,10 @@ public:
     { return child1->GetParity(n); }
 
   static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env);
-  int __stdcall SetCacheHints(int cachehints,int frame_range) { return 0; };
+  
+  int __stdcall SetCacheHints(int cachehints, int frame_range) override {
+    return cachehints == CACHE_GET_MTMODE ? MT_NICE_PLUGIN : 0;
+  }
 
 private:
   const PClip child1, child2;
@@ -84,6 +87,10 @@ public:
   ColorKeyMask(PClip _child, int _color, int _tolB, int _tolG, int _tolR, IScriptEnvironment *env);
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment *env);
 
+  int __stdcall SetCacheHints(int cachehints, int frame_range) override {
+    return cachehints == CACHE_GET_MTMODE ? MT_NICE_PLUGIN : 0;
+  }
+
   static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env);
 
 private:
@@ -101,6 +108,10 @@ public:
   ResetMask(PClip _child, IScriptEnvironment* env);
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
 
+  int __stdcall SetCacheHints(int cachehints, int frame_range) override {
+    return cachehints == CACHE_GET_MTMODE ? MT_NICE_PLUGIN : 0;
+  }
+
   static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env);
 };
 
@@ -114,6 +125,10 @@ class Invert : public GenericVideoFilter
 public:
   Invert(PClip _child, const char * _channels, IScriptEnvironment* env);
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
+
+  int __stdcall SetCacheHints(int cachehints, int frame_range) override {
+    return cachehints == CACHE_GET_MTMODE ? MT_NICE_PLUGIN : 0;
+  }
 
   static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env);
 private:
@@ -130,6 +145,10 @@ class ShowChannel : public GenericVideoFilter
 public:
   ShowChannel(PClip _child, const char * _pixel_type, int _channel, IScriptEnvironment* env);
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
+
+  int __stdcall SetCacheHints(int cachehints, int frame_range) override {
+    return cachehints == CACHE_GET_MTMODE ? MT_NICE_PLUGIN : 0;
+  }
 
   static AVSValue __cdecl Create(AVSValue args, void* channel, IScriptEnvironment* env);
 private:
@@ -149,6 +168,10 @@ public:
   MergeRGB(PClip _child, PClip _blue, PClip _green, PClip _red, PClip _alpha,
            const char * _pixel_type, IScriptEnvironment* env);
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
+
+  int __stdcall SetCacheHints(int cachehints, int frame_range) override {
+    return cachehints == CACHE_GET_MTMODE ? MT_NICE_PLUGIN : 0;
+  }
 
   static AVSValue __cdecl Create(AVSValue args, void* mode, IScriptEnvironment* env);
 private:
@@ -176,7 +199,10 @@ public:
     { return vi; }
   inline virtual bool __stdcall GetParity(int n) 
     { return child1->GetParity(n); }
-  int __stdcall SetCacheHints(int cachehints,int frame_range) { return 0; };
+  
+  int __stdcall SetCacheHints(int cachehints, int frame_range) override {
+    return cachehints == CACHE_GET_MTMODE ? MT_NICE_PLUGIN : 0;
+  }
 
   static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env);
 
@@ -207,8 +233,11 @@ public:
     { return vi; }
   inline virtual bool __stdcall GetParity(int n) 
     { return child1->GetParity(n); }
-  int __stdcall SetCacheHints(int cachehints,int frame_range) { return 0; };
 
+  int __stdcall SetCacheHints(int cachehints, int frame_range) override {
+    return cachehints == CACHE_GET_MTMODE ? MT_NICE_PLUGIN : 0;
+  }
+  
   static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env);
 
 private:

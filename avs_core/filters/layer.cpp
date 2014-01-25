@@ -375,10 +375,12 @@ PVideoFrame __stdcall ColorKeyMask::GetFrame(int n, IScriptEnvironment *env)
 
 AVSValue __cdecl ColorKeyMask::Create(AVSValue args, void*, IScriptEnvironment* env)
 {
-  return new ColorKeyMask(args[0].AsClip(), args[1].AsInt(0),
-                          args[2].AsInt(10),
-                          args[3].AsInt(args[2].AsInt(10)),
-                          args[4].AsInt(args[2].AsInt(10)), env);
+  enum { CHILD, COLOR, TOLERANCE_B, TOLERANCE_G, TOLERANCE_R};
+  return new ColorKeyMask(args[CHILD].AsClip(),
+    args[COLOR].AsInt(0),
+    args[TOLERANCE_B].AsInt(10),
+    args[TOLERANCE_G].AsInt(args[TOLERANCE_B].AsInt(10)),
+    args[TOLERANCE_R].AsInt(args[TOLERANCE_B].AsInt(10)), env);
 }
 
 
@@ -405,9 +407,10 @@ PVideoFrame ResetMask::GetFrame(int n, IScriptEnvironment* env)
   int rowsize = f->GetRowSize();
   int height = f->GetHeight();
 
-  for (int i=0; i<height; i++) {
-    for (int j=3; j<rowsize; j+=4)
-      pf[j] = 255;
+  for (int y = 0; y<height; y++) {
+    for (int x = 3; x<rowsize; x += 4) {
+      pf[x] = 255;
+    }
     pf += pitch;
   }
 
