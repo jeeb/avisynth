@@ -60,8 +60,6 @@ public:
   static ResamplerH GetResampler(int CPU, bool aligned, ResamplingProgram* program);
 
 private:
-  IScriptEnvironment2* Env;
-
   // Resampling
   ResamplingProgram *resampling_program_luma;
   ResamplingProgram *resampling_program_chroma;
@@ -73,7 +71,7 @@ private:
   void* filter_storage_luma;
   void* filter_storage_chroma;
 
-  int   temp_1_pitch, temp_2_pitch;
+  int temp_1_pitch, temp_2_pitch;
 
   int src_width, src_height, dst_width,  dst_height;
 
@@ -102,8 +100,6 @@ public:
   static ResamplerV GetResampler(int CPU, bool aligned, void*& storage, ResamplingProgram* program);
 
 private:
-  IScriptEnvironment2* Env;
-
   ResamplingProgram *resampling_program_luma;
   ResamplingProgram *resampling_program_chroma;
 
