@@ -56,6 +56,10 @@ public:
   MergeChroma(PClip _child, PClip _clip, float _weight, IScriptEnvironment* env);  
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
 
+  int __stdcall SetCacheHints(int cachehints, int frame_range) override {
+    return cachehints == CACHE_GET_MTMODE ? MT_NICE_PLUGIN : 0;
+  }
+
   static AVSValue __cdecl Create(AVSValue args, void* user_data, IScriptEnvironment* env);
 
 private:
@@ -73,6 +77,10 @@ public:
   MergeLuma(PClip _child, PClip _clip, float _weight, IScriptEnvironment* env);  
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
 
+  int __stdcall SetCacheHints(int cachehints, int frame_range) override {
+    return cachehints == CACHE_GET_MTMODE ? MT_NICE_PLUGIN : 0;
+  }
+
   static AVSValue __cdecl Create(AVSValue args, void* user_data, IScriptEnvironment* env);
 
 private:
@@ -89,6 +97,10 @@ class MergeAll : public GenericVideoFilter
 public:
   MergeAll(PClip _child, PClip _clip, float _weight, IScriptEnvironment* env);  
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
+
+  int __stdcall SetCacheHints(int cachehints, int frame_range) override {
+    return cachehints == CACHE_GET_MTMODE ? MT_NICE_PLUGIN : 0;
+  }
 
   static AVSValue __cdecl Create(AVSValue args, void* user_data, IScriptEnvironment* env);
 
