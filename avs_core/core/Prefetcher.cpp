@@ -334,6 +334,7 @@ AVSValue Prefetcher::Create(AVSValue args, void*, IScriptEnvironment* env)
     catch(...)
     {
       delete prefetcher;
+      throw;
     }
   }
   else

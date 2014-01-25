@@ -449,6 +449,12 @@ public:
 
   void SetMode(const char* filter, MtMode mode, bool force)
   {
+    if ( ((int)mode <= (int)MT_INVALID)
+      || ((int)mode >= (int)MT_MODE_COUNT) )
+    {
+      throw AvisynthError("Invalid MT mode specified.");
+    }
+
     if (filter == DEFAULT_MODE)
     {
       DefaultMode = mode;
@@ -685,6 +691,10 @@ ScriptEnvironment::ScriptEnvironment()
     global_var_table->Set("$ScriptFile$", AVSValue());
     global_var_table->Set("$ScriptDir$",  AVSValue());
 
+    global_var_table->Set("MT_NICE_PLUGIN",     1);
+    global_var_table->Set("MT_MULTI_INSTANCE",  2);
+    global_var_table->Set("MT_SERIALIZED",      3);
+
     plugin_manager = new PluginManager(this);
     plugin_manager->AddAutoloadDir("USER_PLUS_PLUGINS", false);
     plugin_manager->AddAutoloadDir("MACHINE_PLUS_PLUGINS", false);
@@ -820,6 +830,7 @@ void __stdcall ScriptEnvironment::ParallelJob(ThreadWorkerFuncPtr jobFunc, void*
 
 void __stdcall ScriptEnvironment::SetFilterMTMode(const char* filter, MtMode mode, bool force)
 {
+
   if (streqi(filter, ""))
     filter = MTMapState::DEFAULT_MODE;
 
@@ -1394,7 +1405,10 @@ void ScriptEnvironment::PopContextGlobal() {
 
 PVideoFrame __stdcall ScriptEnvironment::Subframe(PVideoFrame src, int rel_offset, int new_pitch, int new_row_size, int new_height) {
   VideoFrame* subframe = src->Subframe(rel_offset, new_pitch, new_row_size, new_height);
-  FrameRegistry.insert(FrameRegistryType::value_type(src->GetFrameBuffer()->GetDataSize(), subframe));
+  
+  // TODO: Figure out why uncommenting this line causes problems
+  //FrameRegistry.insert(FrameRegistryType::value_type(src->GetFrameBuffer()->GetDataSize(), subframe));
+
   return subframe;
 }
 
@@ -1402,7 +1416,10 @@ PVideoFrame __stdcall ScriptEnvironment::Subframe(PVideoFrame src, int rel_offse
 PVideoFrame __stdcall ScriptEnvironment::SubframePlanar(PVideoFrame src, int rel_offset, int new_pitch, int new_row_size,
                                                         int new_height, int rel_offsetU, int rel_offsetV, int new_pitchUV) {
   VideoFrame* subframe = src->Subframe(rel_offset, new_pitch, new_row_size, new_height, rel_offsetU, rel_offsetV, new_pitchUV);
-  FrameRegistry.insert(FrameRegistryType::value_type(src->GetFrameBuffer()->GetDataSize(), subframe));
+
+  // TODO: Figure out why uncommenting this line causes problems
+  //FrameRegistry.insert(FrameRegistryType::value_type(src->GetFrameBuffer()->GetDataSize(), subframe));
+
   return subframe;
 }
 

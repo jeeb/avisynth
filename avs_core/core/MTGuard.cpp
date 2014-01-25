@@ -50,7 +50,7 @@ MTGuard::MTGuard(PClip firstChild, MtMode mtmode, const AVSFunction* func, const
   FilterArgs(args),
   Env(env)
 {
-  assert(mtmode != MT_INVALID);
+  assert( ((int)mtmode > (int)MT_INVALID) && ((int)mtmode < (int)MT_MODE_COUNT) );
 
   ChildFilters.emplace_back(firstChild);
   vi = ChildFilters[0]->GetVideoInfo();
