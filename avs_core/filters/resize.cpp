@@ -312,7 +312,7 @@ HorizontalReduceBy2::HorizontalReduceBy2(PClip _child, IScriptEnvironment* env)
 }
  
 
-PVideoFrame HorizontalReduceBy2::GetFrame(int n, IScriptEnvironment* env) 
+PVideoFrame HorizontalReduceBy2::GetFrame(int n, IScriptEnvironment* env)
 {
   PVideoFrame src = child->GetFrame(n, env);
   PVideoFrame dst = env->NewVideoFrame(vi);
@@ -324,46 +324,46 @@ PVideoFrame HorizontalReduceBy2::GetFrame(int n, IScriptEnvironment* env)
 
   if (vi.IsPlanar()) {
     const BYTE* srcp = src->GetReadPtr(PLANAR_Y);
-    int yloops=dst->GetHeight(PLANAR_Y);
-    int xloops=dst->GetRowSize(PLANAR_Y)-1;
-    {for (int y = 0; y<yloops; y++) {
+    int yloops = dst->GetHeight(PLANAR_Y);
+    int xloops = dst->GetRowSize(PLANAR_Y)-1;
+    for (int y = 0; y<yloops; y++) {
       for (int x = 0; x<xloops; x++) {
-        dstp[0] = (srcp[0] + 2*srcp[1] + srcp[2] + 2) >> 2;
-        dstp ++;
-        srcp +=2;
-      }      
-      dstp[0] = (srcp[0] + srcp[1] +1 ) >> 1;
+        *dstp = (srcp[0] + 2*srcp[1] + srcp[2] + 2) >> 2;
+        dstp++;
+        srcp += 2;
+      }
+      *dstp = (srcp[0] + srcp[1] +1) >> 1;
       dstp += dst_gap+1;
       srcp += src_gap+2;
-    }}
+    }
     srcp = src->GetReadPtr(PLANAR_U);
     dstp = dst->GetWritePtr(PLANAR_U);
     src_gap = src->GetPitch(PLANAR_U) - src->GetRowSize(PLANAR_U);
     dst_gap = dst->GetPitch(PLANAR_U) - dst->GetRowSize(PLANAR_U);
-    yloops=dst->GetHeight(PLANAR_U);
-    xloops=dst->GetRowSize(PLANAR_U)-1;
-    {for (int y = 0; y<yloops; y++) {
+    yloops = dst->GetHeight(PLANAR_U);
+    xloops = dst->GetRowSize(PLANAR_U)-1;
+    for (int y = 0; y<yloops; y++) {
       for (int x = 0; x<xloops; x++) {
         dstp[0] = (srcp[0] + 2*srcp[1] + srcp[2] + 2) >> 2;
-        dstp ++;
-        srcp +=2;
+        dstp++;
+        srcp += 2;
       }
-      dstp[0] = (srcp[0] + srcp[1] +1 ) >> 1;
+      dstp[0] = (srcp[0] + srcp[1] +1) >> 1;
       dstp += dst_gap+1;
       srcp += src_gap+2;
-    }}
+    }
     srcp = src->GetReadPtr(PLANAR_V);
     dstp = dst->GetWritePtr(PLANAR_V);
-    {for (int y = 0; y<yloops; y++) {
+    for (int y = 0; y<yloops; y++) {
       for (int x = 0; x<xloops; x++) {
         dstp[0] = (srcp[0] + 2*srcp[1] + srcp[2] + 2) >> 2;
-        dstp ++;
-        srcp +=2;
+        dstp++;
+        srcp += 2;
       }
-      dstp[0] = (srcp[0] + srcp[1] +1 ) >> 1;
+      dstp[0] = (srcp[0] + srcp[1] +1) >> 1;
       dstp += dst_gap+1;
       srcp += src_gap+2;
-    }}
+    }
   } else if (vi.IsYUY2()  && (!(vi.width&3))) {
 
     const BYTE* srcp = src->GetReadPtr();
