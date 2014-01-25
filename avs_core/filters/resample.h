@@ -57,6 +57,10 @@ public:
   virtual ~FilteredResizeH(void);
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
 
+  int __stdcall SetCacheHints(int cachehints, int frame_range) override {
+    return MT_NICE_PLUGIN;
+  }
+
   static ResamplerH GetResampler(int CPU, bool aligned, ResamplingProgram* program);
 
 private:
@@ -96,6 +100,10 @@ public:
   FilteredResizeV( PClip _child, double subrange_top, double subrange_height, int target_height, ResamplingFunction* func, IScriptEnvironment* env );
   virtual ~FilteredResizeV(void);
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
+
+  int __stdcall SetCacheHints(int cachehints, int frame_range) override {
+    return MT_NICE_PLUGIN;
+  }
 
   static ResamplerV GetResampler(int CPU, bool aligned, void*& storage, ResamplingProgram* program);
 
