@@ -274,10 +274,12 @@ PVideoFrame VerticalReduceBy2::GetFrame(int n, IScriptEnvironment* env) {
 
   if (vi.IsPlanar()) {
     vertical_reduce_core(dstp, srcp, dst_pitch, src_pitch, row_size, dst->GetHeight(PLANAR_Y), env);
-    vertical_reduce_core(dst->GetWritePtr(PLANAR_U), src->GetReadPtr(PLANAR_U), dst->GetPitch(PLANAR_U), 
-      src->GetPitch(PLANAR_U), dst->GetRowSize(PLANAR_U), dst->GetHeight(PLANAR_U), env);
-    vertical_reduce_core(dst->GetWritePtr(PLANAR_V), src->GetReadPtr(PLANAR_V), dst->GetPitch(PLANAR_V), 
-      src->GetPitch(PLANAR_V), dst->GetRowSize(PLANAR_V), dst->GetHeight(PLANAR_V), env);
+    if (!vi.IsY8()) {
+      vertical_reduce_core(dst->GetWritePtr(PLANAR_U), src->GetReadPtr(PLANAR_U), dst->GetPitch(PLANAR_U),
+        src->GetPitch(PLANAR_U), dst->GetRowSize(PLANAR_U), dst->GetHeight(PLANAR_U), env);
+      vertical_reduce_core(dst->GetWritePtr(PLANAR_V), src->GetReadPtr(PLANAR_V), dst->GetPitch(PLANAR_V),
+        src->GetPitch(PLANAR_V), dst->GetRowSize(PLANAR_V), dst->GetHeight(PLANAR_V), env);
+    }
   } else {
     vertical_reduce_core(dstp, srcp, dst_pitch, src_pitch, row_size, vi.height, env);
   }
