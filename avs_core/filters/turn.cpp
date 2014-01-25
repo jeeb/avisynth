@@ -46,9 +46,9 @@
 
 
 extern const AVSFunction Turn_filters[] = {
-  { "TurnLeft","c",Turn::Create_TurnLeft },
-  { "TurnRight","c",Turn::Create_TurnRight },
-  { "Turn180","c",Turn::Create_Turn180 },
+  { "TurnLeft","c",Turn::create_turnleft },
+  { "TurnRight","c",Turn::create_turnright },
+  { "Turn180","c",Turn::create_turn180 },
   { 0 }
 };
 
@@ -668,7 +668,7 @@ static void turn_180_plane_c(const BYTE *srcp, BYTE *dstp, int width, int height
 }
 
 
-Turn::Turn(PClip _child, int _direction, IScriptEnvironment* env) : GenericVideoFilter(_child), Usource(0), Vsource(0)
+Turn::Turn(PClip _child, int _direction, IScriptEnvironment* env) : GenericVideoFilter(_child), u_source(0), v_source(0)
 {
   if (_direction == DIRECTION_LEFT || _direction == DIRECTION_RIGHT) {
     const int src_height = vi.height;
@@ -682,37 +682,37 @@ Turn::Turn(PClip _child, int _direction, IScriptEnvironment* env) : GenericVideo
     if (vi.BitsPerPixel() == 32) { 
       if (env->GetCPUFlags() & CPUF_SSE2) {
         TurnFuncPtr functions[3] = {turn_left_rgb32_sse2, turn_right_rgb32_sse2, turn_180_rgb32_sse2};
-        TurnFunc = functions[direction]; 
+        turn_function = functions[direction]; 
       } else {
         TurnFuncPtr functions[3] = {turn_left_rgb32_c, turn_right_rgb32_c, turn_180_rgb32_c};
-        TurnFunc = functions[direction]; 
+        turn_function = functions[direction]; 
       }
     }
     else if (vi.BitsPerPixel() == 24) {
       TurnFuncPtr functions[3] = {turn_left_rgb24, turn_right_rgb24, turn_180_rgb24};
-      TurnFunc = functions[direction]; 
+      turn_function = functions[direction]; 
     }
     else env->ThrowError("Turn: Unsupported RGB bit depth");
   }
   else if (vi.IsYUY2())
   {
-    if (vi.width%2) {
+    if ((vi.width % 2) != 0) {
       env->ThrowError("Turn: YUY2 data must have MOD2 height");
     }
     TurnFuncPtr functions[3] = {turn_left_yuy2, turn_right_yuy2, turn_180_yuy2};
-    TurnFunc = functions[direction]; 
+    turn_function = functions[direction]; 
   }
   else if (vi.IsPlanar())
   {
     if (env->GetCPUFlags() & CPUF_SSSE3) {
       TurnFuncPtr functions[3] = {turn_left_plane_sse2, turn_right_plane_sse2, turn_180_plane_ssse3};
-      TurnFunc = functions[direction]; 
+      turn_function = functions[direction]; 
     } else if (env->GetCPUFlags() & CPUF_SSE2) {
       TurnFuncPtr functions[3] = {turn_left_plane_sse2, turn_right_plane_sse2, turn_180_plane_sse2};
-      TurnFunc = functions[direction]; 
+      turn_function = functions[direction]; 
     } else {
       TurnFuncPtr functions[3] = {turn_left_plane_c, turn_right_plane_c, turn_180_plane_c};
-      TurnFunc = functions[direction]; 
+      turn_function = functions[direction]; 
     }
     // rectangular formats?
     if ((_direction == DIRECTION_LEFT || _direction == DIRECTION_RIGHT) && !vi.IsY8() && 
@@ -729,16 +729,16 @@ Turn::Turn(PClip _child, int _direction, IScriptEnvironment* env) : GenericVideo
       MitchellNetravaliFilter filter(1./3., 1./3.);
       AVSValue subs[4] = { 0.0, 0.0, 0.0, 0.0 }; 
 
-      Usource = new SwapUVToY(child, SwapUVToY::UToY8, env);  
-      Vsource = new SwapUVToY(child, SwapUVToY::VToY8, env);
+      u_source = new SwapUVToY(child, SwapUVToY::UToY8, env);  
+      v_source = new SwapUVToY(child, SwapUVToY::VToY8, env);
 
-      const VideoInfo vi_u = Usource->GetVideoInfo();
+      const VideoInfo vi_u = u_source->GetVideoInfo();
 
       const int uv_height = (vi_u.height << vi.GetPlaneHeightSubsampling(PLANAR_U)) >> vi.GetPlaneWidthSubsampling(PLANAR_U);
       const int uv_width  = (vi_u.width  << vi.GetPlaneWidthSubsampling(PLANAR_U))  >> vi.GetPlaneHeightSubsampling(PLANAR_U);
 
-      Usource = FilteredResize::CreateResize(Usource, uv_width, uv_height, subs, &filter, env);
-      Vsource = FilteredResize::CreateResize(Vsource, uv_width, uv_height, subs, &filter, env);
+      u_source = FilteredResize::CreateResize(u_source, uv_width, uv_height, subs, &filter, env);
+      v_source = FilteredResize::CreateResize(v_source, uv_width, uv_height, subs, &filter, env);
     }
   }
   else
@@ -747,46 +747,48 @@ Turn::Turn(PClip _child, int _direction, IScriptEnvironment* env) : GenericVideo
   }
 }
 
+int __stdcall Turn::SetCacheHints(int cachehints, int frame_range) {
+  return cachehints == CACHE_GET_MTMODE ? MT_NICE_PLUGIN : 0;
+}
 
 PVideoFrame __stdcall Turn::GetFrame(int n, IScriptEnvironment* env)
 {
-
 	PVideoFrame src = child->GetFrame(n, env);
 
   PVideoFrame dst = env->NewVideoFrame(vi);
 
-	if (Usource && Vsource) 
+	if (u_source && v_source) 
   {
-		PVideoFrame usrc = Usource->GetFrame(n, env);
-		PVideoFrame vsrc = Vsource->GetFrame(n, env);
+		PVideoFrame usrc = u_source->GetFrame(n, env);
+		PVideoFrame vsrc = v_source->GetFrame(n, env);
 
-    TurnFunc(src->GetReadPtr(PLANAR_Y),  dst->GetWritePtr(PLANAR_Y), src->GetRowSize(PLANAR_Y),  src->GetHeight(PLANAR_Y),  src->GetPitch(PLANAR_Y), dst->GetPitch(PLANAR_Y));
-    TurnFunc(usrc->GetReadPtr(PLANAR_Y), dst->GetWritePtr(PLANAR_U), usrc->GetRowSize(PLANAR_Y), usrc->GetHeight(PLANAR_Y), usrc->GetPitch(PLANAR_Y), dst->GetPitch(PLANAR_U));
-    TurnFunc(vsrc->GetReadPtr(PLANAR_Y), dst->GetWritePtr(PLANAR_V), usrc->GetRowSize(PLANAR_Y), usrc->GetHeight(PLANAR_Y), vsrc->GetPitch(PLANAR_Y), dst->GetPitch(PLANAR_V));
+    turn_function(src->GetReadPtr(PLANAR_Y),  dst->GetWritePtr(PLANAR_Y), src->GetRowSize(PLANAR_Y),  src->GetHeight(PLANAR_Y),  src->GetPitch(PLANAR_Y), dst->GetPitch(PLANAR_Y));
+    turn_function(usrc->GetReadPtr(PLANAR_Y), dst->GetWritePtr(PLANAR_U), usrc->GetRowSize(PLANAR_Y), usrc->GetHeight(PLANAR_Y), usrc->GetPitch(PLANAR_Y), dst->GetPitch(PLANAR_U));
+    turn_function(vsrc->GetReadPtr(PLANAR_Y), dst->GetWritePtr(PLANAR_V), usrc->GetRowSize(PLANAR_Y), usrc->GetHeight(PLANAR_Y), vsrc->GetPitch(PLANAR_Y), dst->GetPitch(PLANAR_V));
 	}
   else if (vi.IsPlanar()) 
   {
-    TurnFunc(src->GetReadPtr(PLANAR_Y),  dst->GetWritePtr(PLANAR_Y), src->GetRowSize(PLANAR_Y),  src->GetHeight(PLANAR_Y),  src->GetPitch(PLANAR_Y), dst->GetPitch(PLANAR_Y));
-    TurnFunc(src->GetReadPtr(PLANAR_U),  dst->GetWritePtr(PLANAR_U), src->GetRowSize(PLANAR_U),  src->GetHeight(PLANAR_U),  src->GetPitch(PLANAR_U), dst->GetPitch(PLANAR_U));
-    TurnFunc(src->GetReadPtr(PLANAR_V),  dst->GetWritePtr(PLANAR_V), src->GetRowSize(PLANAR_V),  src->GetHeight(PLANAR_V),  src->GetPitch(PLANAR_V), dst->GetPitch(PLANAR_V));
+    turn_function(src->GetReadPtr(PLANAR_Y),  dst->GetWritePtr(PLANAR_Y), src->GetRowSize(PLANAR_Y),  src->GetHeight(PLANAR_Y),  src->GetPitch(PLANAR_Y), dst->GetPitch(PLANAR_Y));
+    turn_function(src->GetReadPtr(PLANAR_U),  dst->GetWritePtr(PLANAR_U), src->GetRowSize(PLANAR_U),  src->GetHeight(PLANAR_U),  src->GetPitch(PLANAR_U), dst->GetPitch(PLANAR_U));
+    turn_function(src->GetReadPtr(PLANAR_V),  dst->GetWritePtr(PLANAR_V), src->GetRowSize(PLANAR_V),  src->GetHeight(PLANAR_V),  src->GetPitch(PLANAR_V), dst->GetPitch(PLANAR_V));
   } 
   else 
   {
-		TurnFunc(src->GetReadPtr(),dst->GetWritePtr(),src->GetRowSize(), src->GetHeight(),src->GetPitch(),dst->GetPitch());
+		turn_function(src->GetReadPtr(),dst->GetWritePtr(),src->GetRowSize(), src->GetHeight(),src->GetPitch(),dst->GetPitch());
   }
   return dst;
 }
 
 
-AVSValue __cdecl Turn::Create_TurnLeft(AVSValue args, void* user_data, IScriptEnvironment* env) {
+AVSValue __cdecl Turn::create_turnleft(AVSValue args, void* user_data, IScriptEnvironment* env) {
 	return new Turn(args[0].AsClip(), DIRECTION_LEFT, env);
 }
 
-AVSValue __cdecl Turn::Create_TurnRight(AVSValue args, void* user_data, IScriptEnvironment* env) {
+AVSValue __cdecl Turn::create_turnright(AVSValue args, void* user_data, IScriptEnvironment* env) {
 	return new Turn(args[0].AsClip(), DIRECTION_RIGHT, env);
 }
 
-AVSValue __cdecl Turn::Create_Turn180(AVSValue args, void* user_data, IScriptEnvironment* env) {
+AVSValue __cdecl Turn::create_turn180(AVSValue args, void* user_data, IScriptEnvironment* env) {
 	return new Turn(args[0].AsClip(), DIRECTION_180, env);
 }
 
