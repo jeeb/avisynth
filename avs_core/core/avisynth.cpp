@@ -691,9 +691,9 @@ ScriptEnvironment::ScriptEnvironment()
     global_var_table->Set("$ScriptFile$", AVSValue());
     global_var_table->Set("$ScriptDir$",  AVSValue());
 
-    global_var_table->Set("MT_NICE_PLUGIN",     1);
-    global_var_table->Set("MT_MULTI_INSTANCE",  2);
-    global_var_table->Set("MT_SERIALIZED",      3);
+    global_var_table->Set("MT_NICE_PLUGIN",     (int)MT_NICE_PLUGIN);
+    global_var_table->Set("MT_MULTI_INSTANCE",  (int)MT_MULTI_INSTANCE);
+    global_var_table->Set("MT_SERIALIZED",      (int)MT_SERIALIZED);
 
     plugin_manager = new PluginManager(this);
     plugin_manager->AddAutoloadDir("USER_PLUS_PLUGINS", false);
@@ -1715,7 +1715,7 @@ success:;
   }
   else
   {
-    *result = Cache::Create(CreateMTGuard(f, args3), f->user_data, this);
+    *result = Cache::Create(CreateMTGuard(f, args3), NULL, this);
   }
   
   return true;
