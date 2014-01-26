@@ -73,9 +73,9 @@ public:
 
   Image444(int _inw, int _inh, IScriptEnvironment* env) : Env(static_cast<IScriptEnvironment2*>(env)), _w(_inw), _h(_inh) {
     pitch = (_w+15)&(~15);
-    Y_plane = (BYTE*)Env->Allocate(pitch*_h, 64, false); 
-    U_plane = (BYTE*)Env->Allocate(pitch*_h, 64, false); 
-    V_plane = (BYTE*)Env->Allocate(pitch*_h, 64, false); 
+    Y_plane = (BYTE*)Env->Allocate(pitch*_h, 64, true); 
+    U_plane = (BYTE*)Env->Allocate(pitch*_h, 64, true); 
+    V_plane = (BYTE*)Env->Allocate(pitch*_h, 64, true); 
     ResetFake();
   }
 

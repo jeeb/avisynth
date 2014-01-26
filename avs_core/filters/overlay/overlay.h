@@ -54,12 +54,17 @@ public:
   ~Overlay();
   static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env);
 
+  int __stdcall SetCacheHints(int cachehints, int frame_range) override 
+  {
+    return cachehints == CACHE_GET_MTMODE ? MT_NICE_PLUGIN : 0;
+  }
+
 private:
-  OverlayFunction* SelectFunction(const char* name, IScriptEnvironment* env);
+  static OverlayFunction* SelectFunction(const char* name, IScriptEnvironment* env);
   ConvertFrom444* SelectOutputCS(const char* name, IScriptEnvironment* env);
-  ConvertTo444* SelectInputCS(VideoInfo* VidI, IScriptEnvironment* env);  
-  void ClipFrames(Image444* input, Image444* overlay, int x, int y);
-  void FetchConditionals(IScriptEnvironment* env);
+  static ConvertTo444* SelectInputCS(VideoInfo* VidI, IScriptEnvironment* env, bool full_range);
+  static void ClipFrames(Image444* input, Image444* overlay, int x, int y);
+  static void FetchConditionals(IScriptEnvironment* env, int*, int*, int*, bool);
 
   VideoInfo overlayVi;
   VideoInfo maskVi;
@@ -69,21 +74,16 @@ private:
   ConvertTo444* inputConv;
   ConvertTo444* overlayConv;
   ConvertTo444* maskConv;
-  Image444* img;
-  Image444* overlayImg;
-  Image444* maskImg;
   PClip overlay;
   PClip mask;
   int opacity;
-  OverlayFunction* func;
   bool greymask;
   bool ignore_conditional;
   bool full_range;
   int offset_x, offset_y;
-  int op_offset;
-  int con_x_offset;
-  int con_y_offset;
   int inputCS;
+
+  const char* name;
 };
 
 

@@ -89,7 +89,7 @@ GenericVideoFilter(_child) {
 
   overlay = args[ARG_OVERLAY].AsClip();
   overlayVi = overlay->GetVideoInfo();
-  overlayConv = SelectInputCS(&overlayVi, env);
+  overlayConv = SelectInputCS(&overlayVi, env, full_range);
 
   if (!overlayConv) {
     AVSValue new_args[3] = { overlay, false, (full_range) ? "PC.601" : "rec601" };
@@ -98,7 +98,7 @@ GenericVideoFilter(_child) {
     } catch (...)  {}
 
     overlayVi = overlay->GetVideoInfo();
-    overlayConv = SelectInputCS(&overlayVi, env);
+    overlayConv = SelectInputCS(&overlayVi, env, full_range);
 
     if (!overlayConv) {  // ok - now we've tried everything ;)
       env->ThrowError("Overlay: Overlay image colorspace not supported.");
@@ -118,7 +118,7 @@ GenericVideoFilter(_child) {
       env->ThrowError("Overlay: Mask and overlay must have the same image size! (Height is not the same)");
     }
 
-    maskConv = SelectInputCS(&maskVi, env);
+    maskConv = SelectInputCS(&maskVi, env, full_range);
     if (!maskConv) {
       AVSValue new_args[3] = { mask, false, (full_range) ? "PC.601" : "rec601" };
 
@@ -126,24 +126,16 @@ GenericVideoFilter(_child) {
         mask = env->Invoke((greymask) ? "ConvertToY8" : "ConvertToYV24", AVSValue(new_args, 3)).AsClip();
       } catch (...)  {}
       maskVi = mask->GetVideoInfo();
-      maskConv = SelectInputCS(&maskVi, env);
+      maskConv = SelectInputCS(&maskVi, env, full_range);
       if (!maskConv) {
         env->ThrowError("Overlay: Mask image colorspace not supported.");
       }
     }
 
-    maskImg = new Image444(maskVi.width, maskVi.height, env);
-
-    if (greymask) {
-      maskImg->free_chroma();
-      maskImg->SetPtr(maskImg->GetPtr(PLANAR_Y), PLANAR_U);
-      maskImg->SetPtr(maskImg->GetPtr(PLANAR_Y), PLANAR_V);
-    }
-
   }
 
   inputCS = vi.pixel_type;
-  inputConv = SelectInputCS(inputVi, env);
+  inputConv = SelectInputCS(inputVi, env, full_range);
 
   if (!inputConv) {
     AVSValue new_args[3] = { child, false, (full_range) ? "PC.601" : "rec601" };
@@ -153,7 +145,7 @@ GenericVideoFilter(_child) {
 
     vi = child->GetVideoInfo();
     memcpy(inputVi, &vi, sizeof(VideoInfo));
-    inputConv = SelectInputCS(inputVi, env);
+    inputConv = SelectInputCS(inputVi, env, full_range);
     if (!inputConv) {
       env->ThrowError("Overlay: Colorspace not supported.");
     }
@@ -161,60 +153,40 @@ GenericVideoFilter(_child) {
 
   outputConv = SelectOutputCS(args[ARG_OUTPUT].AsString(0),env);
 
-  if (vi.IsYV24() && inputCS == vi.pixel_type)  // Fast path
-    img = NULL;
-  else
-    img = new Image444(vi.width, vi.height, env);
-
-  overlayImg = new Image444(overlayVi.width, overlayVi.height, env);
-
-  func = SelectFunction(args[ARG_MODE].AsString("Blend"), env);
+  name = args[ARG_MODE].AsString("Blend");
 
 }
 
 
 Overlay::~Overlay() {
-  if (mask) {
-    if (!greymask) {
-      maskImg->free_chroma();
-    }
-    maskImg->free_luma();
-    delete maskImg;
-    delete maskConv;
-  }
-  overlayImg->free();
-  delete overlayImg;
-  if (img) {
-    img->free();
-    delete img;
-  }
   free(inputVi);
-  delete func;
   delete outputConv;
   delete inputConv;
   delete overlayConv;
 }
 
-
 PVideoFrame __stdcall Overlay::GetFrame(int n, IScriptEnvironment *env) {
 
-  FetchConditionals(env);
+  int op_offset;
+  int con_x_offset;
+  int con_y_offset;
+  FetchConditionals(env, &op_offset, &con_x_offset, &con_y_offset, ignore_conditional);
 
     // Fetch current frame and convert it.
   PVideoFrame frame = child->GetFrame(n, env);
 
-  if (vi.IsYV24() && inputCS == vi.pixel_type) {  // Fast path
-    env->MakeWritable(&frame);
+  // Image444 initialization
+  Image444* img = new Image444(vi.width, vi.height, env);
+  Image444* overlayImg = new Image444(overlayVi.width, overlayVi.height, env);
+  Image444* maskImg = new Image444(maskVi.width, maskVi.height, env);
 
-    // This will be used to avoid two unneeded blits if input and output are yv24
-    // Note however, that this will break, if for some reason AviSynth in the future
-    // will choose unsuitable alignment on YV24 planes.
-    delete img;
-    img = new Image444(frame->GetWritePtr(PLANAR_Y), frame->GetWritePtr(PLANAR_U), frame->GetWritePtr(PLANAR_V),
-                       frame->GetRowSize(PLANAR_Y), frame->GetHeight(PLANAR_Y), frame->GetPitch(PLANAR_Y), env);
-  } else {
-    inputConv->ConvertImage(frame, img, env);
+  if (greymask) {
+    maskImg->free_chroma();
+    maskImg->SetPtr(maskImg->GetPtr(PLANAR_Y), PLANAR_U);
+    maskImg->SetPtr(maskImg->GetPtr(PLANAR_Y), PLANAR_V);
   }
+
+  inputConv->ConvertImage(frame, img, env);
 
   // Fetch current overlay and convert it
   PVideoFrame Oframe = overlay->GetFrame(n, env);
@@ -229,12 +201,6 @@ PVideoFrame __stdcall Overlay::GetFrame(int n, IScriptEnvironment *env) {
     overlayImg->ReturnOriginal(true);
 
     // Convert output image back
-    if (vi.IsYV24() && inputCS == vi.pixel_type) {  // Fast path
-      delete img;
-      img = NULL;
-      return frame;
-    }
-
     PVideoFrame f = env->NewVideoFrame(vi);
     return outputConv->ConvertImage(img, f, env);
   }
@@ -250,6 +216,8 @@ PVideoFrame __stdcall Overlay::GetFrame(int n, IScriptEnvironment *env) {
     img->ReturnOriginal(true);
     ClipFrames(img, maskImg, offset_x + con_x_offset, offset_y + con_y_offset);
   }
+
+  OverlayFunction* func = SelectFunction(name, env);
 
   // Process the image
   func->setOpacity(opacity + op_offset);
@@ -267,15 +235,26 @@ PVideoFrame __stdcall Overlay::GetFrame(int n, IScriptEnvironment *env) {
   if (mask)
     maskImg->ReturnOriginal(true);
 
-  // Convert output image back
-  if (vi.IsYV24() && inputCS == vi.pixel_type) {  // Fast path
-    delete img;
-    img = NULL;
-    return frame;
-  }
-
   PVideoFrame f = env->NewVideoFrame(vi);
   f = outputConv->ConvertImage(img, f, env);
+
+  // Cleanup
+  if (mask) {
+    if (!greymask) {
+      maskImg->free_chroma();
+    }
+    maskImg->free_luma();
+    delete maskImg;
+    delete maskConv;
+  }
+  overlayImg->free();
+  delete overlayImg;
+  if (img) {
+    img->free();
+    delete img;
+  }
+  delete func;
+
   return f;
 }
 
@@ -411,7 +390,7 @@ ConvertFrom444* Overlay::SelectOutputCS(const char* name, IScriptEnvironment* en
 // for more accurate error reporting
 ///////////////////////////////////
 
-ConvertTo444* Overlay::SelectInputCS(VideoInfo* VidI, IScriptEnvironment* env) {
+ConvertTo444* Overlay::SelectInputCS(VideoInfo* VidI, IScriptEnvironment* env, bool full_range) {
   if (VidI->IsYV12()) {
     ConvertTo444* c = new Convert444FromYV12();
     c->SetVideoInfo(VidI);
@@ -485,23 +464,23 @@ void Overlay::ClipFrames(Image444* input, Image444* overlay, int x, int y) {
 
 }
 
-void Overlay::FetchConditionals(IScriptEnvironment* env) {
-  op_offset = 0;
-  con_x_offset = 0;
-  con_y_offset = 0;
+void Overlay::FetchConditionals(IScriptEnvironment* env, int* op_offset, int* con_x_offset, int* con_y_offset, bool ignore_conditional) {
+  *op_offset = 0;
+  *con_x_offset = 0;
+  *con_y_offset = 0;
 
   if (!ignore_conditional) {
     IScriptEnvironment2 *env2 = static_cast<IScriptEnvironment2*>(env);
     AVSValue cv;
 
     if (env2->GetVar("OL_opacity_offset", &cv) && cv.IsFloat())
-      op_offset = (int)(cv.AsFloat()*256.0);
+      *op_offset = (int)(cv.AsFloat()*256.0);
 
     if (env2->GetVar("OL_x_offset", &cv) && cv.IsFloat())
-      con_x_offset = (int)(cv.AsFloat());
+      *con_x_offset = (int)(cv.AsFloat());
 
     if (env2->GetVar("OL_y_offset", &cv) && cv.IsFloat())
-      con_y_offset = (int)(cv.AsFloat());
+      *con_y_offset = (int)(cv.AsFloat());
   }
 }
 
