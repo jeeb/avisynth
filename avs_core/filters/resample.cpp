@@ -707,9 +707,9 @@ FilteredResizeH::FilteredResizeH( PClip _child, double subrange_left, double sub
 
     // Allocate temporary byte buffer (frame is transposed)
     temp_1_pitch = AlignNumber(vi.BytesFromPixels(src_height), 64);
-    temp_1 = (BYTE*) Env->Allocate(temp_1_pitch * src_width, 64, false);
+    temp_1 = (BYTE*) Env->Allocate(temp_1_pitch * src_width, 64, AVS_NORMAL_ALLOC);
     temp_2_pitch = AlignNumber(vi.BytesFromPixels(dst_height), 64);
-    temp_2 = (BYTE*) Env->Allocate(temp_2_pitch * dst_width, 64, false);
+    temp_2 = (BYTE*) Env->Allocate(temp_2_pitch * dst_width, 64, AVS_NORMAL_ALLOC);
 
     resize_v_create_pitch_table(src_pitch_table_luma, temp_1_pitch, src_width);
 

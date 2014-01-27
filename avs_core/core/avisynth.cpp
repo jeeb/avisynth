@@ -551,7 +551,7 @@ public:
   virtual void __stdcall ParallelJob(ThreadWorkerFuncPtr jobFunc, void* jobData, IJobCompletion* completion);
   virtual IJobCompletion* __stdcall NewCompletion(size_t capacity);
   virtual size_t  __stdcall GetProperty(AvsEnvProperty prop);
-  virtual void* __stdcall Allocate(size_t nBytes, size_t alignment, bool pool);
+  virtual void* __stdcall Allocate(size_t nBytes, size_t alignment, AvsAllocType type);
   virtual void __stdcall Free(void* ptr);
 
 private:
@@ -805,9 +805,11 @@ MtMode __stdcall ScriptEnvironment::GetFilterMTMode(const char* filter) const
   return MTMap.GetMode(filter);
 }
 
-void* __stdcall ScriptEnvironment::Allocate(size_t nBytes, size_t alignment, bool pool)
+void* __stdcall ScriptEnvironment::Allocate(size_t nBytes, size_t alignment, AvsAllocType type)
 {
-  return BufferPool.Allocate(nBytes, alignment, pool);
+  if ((type != AVS_NORMAL_ALLOC) && (type != AVS_POOLED_ALLOC))
+    return NULL;
+  return BufferPool.Allocate(nBytes, alignment, type == AVS_POOLED_ALLOC);
 }
 
 void __stdcall ScriptEnvironment::Free(void* ptr)
