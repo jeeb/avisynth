@@ -62,7 +62,7 @@ public:
     { return vi; }
   inline bool __stdcall GetParity(int n) 
     { return children[0].first->GetParity(n); }
-  int __stdcall SetCacheHints(int cachehints,int frame_range) { return 0; };
+  int __stdcall SetCacheHints(int cachehints,int frame_range);
 
   static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env);
 };
@@ -89,7 +89,7 @@ public:
     { return vi; }
   inline bool __stdcall GetParity(int n) 
   { return children[0].first->GetParity(n); }
-  int __stdcall SetCacheHints(int cachehints,int frame_range) { return 0; };
+  int __stdcall SetCacheHints(int cachehints,int frame_range);
 
   static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env);
 };

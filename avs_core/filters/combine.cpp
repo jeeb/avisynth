@@ -159,6 +159,16 @@ PVideoFrame __stdcall StackVertical::GetFrame(int n, IScriptEnvironment* env)
   return dst;
 }
 
+int __stdcall StackVertical::SetCacheHints(int cachehints,int frame_range)
+{
+  switch (cachehints)
+  {
+  case CACHE_GET_MTMODE:
+    return MT_MULTI_INSTANCE;
+  default:
+    return 0;
+  }
+}
 
 AVSValue __cdecl StackVertical::Create(AVSValue args, void*, IScriptEnvironment* env) 
 {
@@ -186,7 +196,6 @@ AVSValue __cdecl StackVertical::Create(AVSValue args, void*, IScriptEnvironment*
 
   assert(0);
 }
-
 
 
 
@@ -271,6 +280,16 @@ PVideoFrame __stdcall StackHorizontal::GetFrame(int n, IScriptEnvironment* env)
   return dst;
 }
 
+int __stdcall StackHorizontal::SetCacheHints(int cachehints,int frame_range)
+{
+  switch (cachehints)
+  {
+  case CACHE_GET_MTMODE:
+    return MT_MULTI_INSTANCE;
+  default:
+    return 0;
+  }
+}
 
 AVSValue __cdecl StackHorizontal::Create(AVSValue args, void*, IScriptEnvironment* env) 
 {
