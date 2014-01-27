@@ -603,7 +603,7 @@ private:
   BufferPool BufferPool;
 
   MTMapState MTMap;
-  AVSValue CreateMTGuard(const AVSFunction* func, const std::vector<AVSValue>& args);
+  AVSValue CreateMTGuard(const AVSFunction* func, std::vector<AVSValue>* args2, std::vector<AVSValue>* args3);
   typedef std::vector<MTGuard*> MTGuardRegistryType;
   MTGuardRegistryType MTGuardRegistry;
   Prefetcher *prefetcher;
@@ -784,12 +784,12 @@ void __stdcall ScriptEnvironment::AdjustMemoryConsumption(size_t amount, bool mi
     memory_used += amount;
 }
 
-AVSValue ScriptEnvironment::CreateMTGuard(const AVSFunction* func, const std::vector<AVSValue>& args)
+AVSValue ScriptEnvironment::CreateMTGuard(const AVSFunction* func, std::vector<AVSValue>* args2, std::vector<AVSValue>* args3)
 {
-  AVSValue avsargs(args.data(), (int)args.size());
+  AVSValue avsargs(args3->data(), (int)args3->size());
   AVSValue func_result = func->apply(avsargs, func->user_data, this);
 
-  if (func_result.IsClip() && !Cache::IsCache(func_result.AsClip()))
+  if (func_result.IsClip() && !Cache::IsCache(func_result.AsClip()) && !MTGuard::IsMTGuard(func_result.AsClip()))
   {
     MtMode mode = this->GetFilterMTMode(func->name);
     PClip filter_instance = func_result.AsClip();
@@ -808,7 +808,8 @@ AVSValue ScriptEnvironment::CreateMTGuard(const AVSFunction* func, const std::ve
     case MT_MULTI_INSTANCE: // Fall-through intentional
     case MT_SERIALIZED:
       {
-        MTGuard* guard = new MTGuard(filter_instance, mode, func, args, this);
+        MTGuard* guard = new MTGuard(filter_instance, mode, func, args2, args3, this);
+        // args2 and args3 are not valid after this point anymore
         MTGuardRegistry.push_back(guard);
         return guard;
       }
@@ -1715,7 +1716,8 @@ success:;
   }
   else
   {
-    *result = Cache::Create(CreateMTGuard(f, args3), NULL, this);
+    *result = Cache::Create(CreateMTGuard(f, &args2, &args3), NULL, this);
+    // args2 and args3 are not valid after this point anymore
   }
   
   return true;

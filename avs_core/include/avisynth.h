@@ -649,6 +649,11 @@ enum CachePolicyHint {
   CACHE_GET_CAPACITY,
   CACHE_GET_MTMODE,
 
+  CACHE_IS_CACHE_REQ,
+  CACHE_IS_CACHE_ANS,
+  CACHE_IS_MTGUARD_REQ,
+  CACHE_IS_MTGUARD_ANS,
+
   CACHE_USER_CONSTANTS = 1000       // Smaller values are reserved for the core
 
 };

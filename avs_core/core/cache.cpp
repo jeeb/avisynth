@@ -48,12 +48,6 @@ extern const AVSFunction Cache_filters[] = {
   { 0 }
 };
 
-enum 
-{
-  IS_CACHE_REQ = 0x8686,
-  IS_CACHE_ANS = 0x6546,
-};
-
 
 struct CachePimpl
 {
@@ -172,8 +166,8 @@ int __stdcall Cache::SetCacheHints(int cachehints, int frame_range)
     *********************************************/
 
     // By returning IS_CACHE_ANS to IS_CACHE_REQ, we tell the caller we are a cache
-    case IS_CACHE_REQ:
-      return IS_CACHE_ANS;
+    case CACHE_IS_CACHE_REQ:
+      return CACHE_IS_CACHE_ANS;
 
     case CACHE_GET_POLICY: // Get the current policy.
       return CACHE_GENERIC;
@@ -369,7 +363,7 @@ AVSValue __cdecl Cache::Create(AVSValue args, void*, IScriptEnvironment* env)
 
 bool __stdcall Cache::IsCache(const PClip& p)
 {
-  if ((p->GetVersion() >= 5) && (p->SetCacheHints(IS_CACHE_REQ, 0) == IS_CACHE_ANS))
+  if ((p->GetVersion() >= 5) && (p->SetCacheHints(CACHE_IS_CACHE_REQ, 0) == CACHE_IS_CACHE_ANS))
     return true;
   else
     return false;

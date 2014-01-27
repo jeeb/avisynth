@@ -42,12 +42,13 @@
 #include <mmintrin.h>
 #endif
 
-MTGuard::MTGuard(PClip firstChild, MtMode mtmode, const AVSFunction* func, const std::vector<AVSValue>& args, IScriptEnvironment2* env) :
+MTGuard::MTGuard(PClip firstChild, MtMode mtmode, const AVSFunction* func, std::vector<AVSValue>* args2, std::vector<AVSValue>* args3, IScriptEnvironment2* env) :
   FilterMutex(NULL),
   MTMode(mtmode),
   nThreads(1),
   FilterFunction(func),
-  FilterArgs(args),
+  FilterArgsArrStore(std::move(*args2)),
+  FilterArgs(std::move(*args3)),
   Env(env)
 {
   assert( ((int)mtmode > (int)MT_INVALID) && ((int)mtmode < (int)MT_MODE_COUNT) );
@@ -99,6 +100,11 @@ void MTGuard::EnableMT(size_t nThreads)
       }
     }
   }
+
+  // We don't need the stored parameters any more,
+  // free their memory.
+  std::vector<AVSValue>().swap(FilterArgs);
+  std::vector<AVSValue>().swap(FilterArgsArrStore);
 }
 
 PVideoFrame __stdcall MTGuard::GetFrame(int n, IScriptEnvironment* env)
@@ -200,4 +206,12 @@ bool __stdcall MTGuard::GetParity(int n)
 int __stdcall MTGuard::SetCacheHints(int cachehints, int frame_range)
 {
   return 0;
+}
+
+bool __stdcall MTGuard::IsMTGuard(const PClip& p)
+{
+  if ((p->GetVersion() >= 5) && (p->SetCacheHints(CACHE_IS_MTGUARD_REQ, 0) == CACHE_IS_MTGUARD_ANS))
+    return true;
+  else
+    return false;
 }
