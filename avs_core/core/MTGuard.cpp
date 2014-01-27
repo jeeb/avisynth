@@ -55,12 +55,14 @@ MTGuard::MTGuard(PClip firstChild, MtMode mtmode, const AVSFunction* func, std::
 
   ChildFilters.emplace_back(firstChild);
   vi = ChildFilters[0]->GetVideoInfo();
+
+  Env->ManageCache(MC_RegisterMTGuard, reinterpret_cast<void*>(this));
 }
 
 MTGuard::~MTGuard()
 {
+  Env->ManageCache(MC_UnRegisterMTGuard, reinterpret_cast<void*>(this));
   delete FilterMutex;
-  Env->ManageCache(MC_UnRegisterMTGuard, this);
 }
 
 void MTGuard::EnableMT(size_t nThreads)
@@ -214,4 +216,42 @@ bool __stdcall MTGuard::IsMTGuard(const PClip& p)
     return true;
   else
     return false;
+}
+
+AVSValue MTGuard::Create(const AVSFunction* func, std::vector<AVSValue>* args2, std::vector<AVSValue>* args3, IScriptEnvironment2* env)
+{
+  AVSValue avsargs(args3->data(), (int)args3->size());
+  AVSValue func_result = func->apply(avsargs, func->user_data, env);
+
+  if (func_result.IsClip() && !Cache::IsCache(func_result.AsClip()) && !MTGuard::IsMTGuard(func_result.AsClip()))
+  {
+    MtMode mode = env->GetFilterMTMode(func->name);
+    PClip filter_instance = func_result.AsClip();
+    if ( (filter_instance->GetVersion() >= 5)
+      && (filter_instance->SetCacheHints(CACHE_GET_MTMODE, 0) != 0) )
+    {
+      mode = (MtMode)filter_instance->SetCacheHints(CACHE_GET_MTMODE, 0);
+    }
+
+    switch (mode)
+    {
+    case MT_NICE_PLUGIN:
+      {
+        return func_result;
+      }
+    case MT_MULTI_INSTANCE: // Fall-through intentional
+    case MT_SERIALIZED:
+      {
+        return new MTGuard(filter_instance, mode, func, args2, args3, env);
+        // args2 and args3 are not valid after this point anymore
+      }
+    default:
+      assert(0);
+      return NULL;
+    }
+  }
+  else
+  {
+    return func_result;
+  }
 }

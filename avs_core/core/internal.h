@@ -57,6 +57,7 @@ enum MANAGE_CACHE_KEYS
   MC_UnRegisterCache   = 0xFFFF0006,
   MC_NodCache          = 0xFFFF0007,
   MC_NodAndExpandCache = 0xFFFF0008,
+  MC_RegisterMTGuard,
   MC_UnRegisterMTGuard
 };
 

@@ -37,6 +37,7 @@ public:
   int __stdcall SetCacheHints(int cachehints,int frame_range);
 
   static bool __stdcall IsMTGuard(const PClip& p);
+  static AVSValue Create(const AVSFunction* func, std::vector<AVSValue>* args2, std::vector<AVSValue>* args3, IScriptEnvironment2* env);
 };
 
 
