@@ -38,6 +38,7 @@
 #include "../core/internal.h"
 #include "../convert/convert_audio.h"
 #include <avs/win.h>
+#include <memory>
 #include <avs/minmax.h>
 #include <cstdio>
 #include <cmath>
@@ -74,32 +75,39 @@ Histogram::Histogram(PClip _child, Mode _mode, AVSValue _option, IScriptEnvironm
   }
 
   if (mode == ModeLevels) {
-    if (!vi.IsPlanar())
+    if (!vi.IsPlanar()) {
       env->ThrowError("Histogram: Levels mode only available in PLANAR.");
-    if (vi.IsY8())
+    }
+    if (vi.IsY8()) {
       env->ThrowError("Histogram: Levels mode not available in Y8.");
+    }
     optionValid = option.IsFloat();
     const double factor = option.AsDblDef(100.0); // Population limit % factor
-    if (factor < 0.0 || factor > 100.0)
+    if (factor < 0.0 || factor > 100.0) {
       env->ThrowError("Histogram: Levels population clamping must be between 0 and 100%");
+    }
     vi.width += 256;
-    vi.height = max(256,vi.height);
+    vi.height = max(256, vi.height);
   }
 
   if (mode == ModeColor) {
-    if (!vi.IsPlanar())
+    if (!vi.IsPlanar()) {
       env->ThrowError("Histogram: Color mode only available in PLANAR.");
-    if (vi.IsY8())
+    }
+    if (vi.IsY8()) {
       env->ThrowError("Histogram: Color mode not available in Y8.");
+    }
     vi.width += 256;
     vi.height = max(256,vi.height);
   }
 
   if (mode == ModeColor2) {
-    if (!vi.IsPlanar())
+    if (!vi.IsPlanar()) {
       env->ThrowError("Histogram: Color2 mode only available in PLANAR.");
-    if (vi.IsY8())
+    }
+    if (vi.IsY8()) {
       env->ThrowError("Histogram: Color2 mode not available in Y8.");
+    }
 
     vi.width += 256;
     vi.height = max(256,vi.height);
@@ -110,8 +118,7 @@ Histogram::Histogram(PClip _child, Mode _mode, AVSValue _option, IScriptEnvironm
     }
   }
 
-  if (mode == ModeLuma) {
-    if (!vi.IsYUV())
+  if (mode == ModeLuma && !vi.IsYUV()) {
       env->ThrowError("Histogram: Luma mode only available in YUV.");
   }
 
@@ -128,8 +135,9 @@ Histogram::Histogram(PClip _child, Mode _mode, AVSValue _option, IScriptEnvironm
     if (mode == ModeOverlay)  {
       vi.height = max(512, vi.height);
       vi.width = max(512, vi.width);
-      if(!vi.IsPlanar())
+      if (!vi.IsPlanar()) {
         env->ThrowError("Histogram: StereoOverlay requires a Planar video format (YV12, YV24, etc).");
+      }
     } else if (mode == ModeStereoY8) {
       vi.pixel_type = VideoInfo::CS_Y8;
       vi.height = 512;
@@ -139,23 +147,26 @@ Histogram::Histogram(PClip _child, Mode _mode, AVSValue _option, IScriptEnvironm
       vi.height = 512;
       vi.width = 512;
     }
-    if (!vi.HasAudio())
+    if (!vi.HasAudio()) {
       env->ThrowError("Histogram: Stereo mode requires samples!");
-    if (vi.AudioChannels() != 2)
+    }
+    if (vi.AudioChannels() != 2) {
       env->ThrowError("Histogram: Stereo mode only works on two audio channels.");
+    }
 
      aud_clip = ConvertAudio::Create(child,SAMPLE_INT16,SAMPLE_INT16);
   }
 
   if (mode == ModeAudioLevels) {
-    child->SetCacheHints(CACHE_AUDIO,4096*1024);
-    if (!vi.IsPlanar())
+    child->SetCacheHints(CACHE_AUDIO, 4096*1024);
+    if (!vi.IsPlanar()) {
       env->ThrowError("Histogram: Audiolevels mode only available in planar YUV.");
-    if (vi.IsY8())
+    }
+    if (vi.IsY8()) {
       env->ThrowError("Histogram: AudioLevels mode not available in Y8.");
+    }
 
-    aud_clip = ConvertAudio::Create(child,SAMPLE_INT16,SAMPLE_INT16);
-
+    aud_clip = ConvertAudio::Create(child, SAMPLE_INT16, SAMPLE_INT16);
   }
 
   if (!optionValid && option.Defined())
@@ -186,7 +197,7 @@ PVideoFrame __stdcall Histogram::GetFrame(int n, IScriptEnvironment* env)
   return DrawModeClassic(n, env);
 }
 
-__inline void MixLuma(BYTE &src, int value, int alpha) {
+inline void MixLuma(BYTE &src, int value, int alpha) {
   src += ((value - (int)src) * alpha) >> 8;
 }
 
@@ -209,20 +220,20 @@ PVideoFrame Histogram::DrawModeAudioLevels(int n, IScriptEnvironment* env) {
   // Get audio for current frame.
   const __int64 start = vi.AudioSamplesFromFrames(n);
   const int count = (int)(vi.AudioSamplesFromFrames(1));
-  signed short* samples = new signed short[count*channels];
+  signed short* samples = static_cast<signed short*>(alloca(sizeof(signed short)* count * channels));
 
   aud_clip->GetAudio(samples, max(0ll,start), count, env);
 
   // Find maximum volume and rms.
-  int*     channel_max = new int[channels];
-  __int64* channel_rms = new __int64[channels];
+  int*     channel_max = static_cast<int*>(alloca(channels * sizeof(int)));
+  __int64* channel_rms = static_cast<__int64*>(alloca(channels * sizeof(__int64)));;
 
   const int c = count*channels;
-  {for (int ch = 0; ch<channels; ch++) {
-    int max_vol=0;
-    __int64 rms_vol=0;
-    
-    for (int i=ch; i < c; i+=channels) {
+  for (int ch = 0; ch<channels; ch++) {
+    int max_vol = 0;
+    __int64 rms_vol = 0;
+
+    for (int i = ch; i < c; i += channels) {
       int sample = samples[i];
       sample *= sample;
       rms_vol += sample;
@@ -230,7 +241,7 @@ PVideoFrame Histogram::DrawModeAudioLevels(int n, IScriptEnvironment* env) {
     }
     channel_max[ch] = max_vol;
     channel_rms[ch] = rms_vol;
-  }}
+  }
 
   // Draw bars
   BYTE* srcpY = src->GetWritePtr(PLANAR_Y);
@@ -261,14 +272,18 @@ PVideoFrame Histogram::DrawModeAudioLevels(int n, IScriptEnvironment* env) {
     }
   }
 
-  {for (int ch = 0; ch<channels; ch++) {
+  for (int ch = 0; ch<channels; ch++) {
     int max = channel_max[ch];
     double ch_db = 96;
-    if (max > 0) ch_db = -8.685889638/2. * log((double)max/(32768.0*32768.0));
+    if (max > 0) {
+      ch_db = -8.685889638/2.0 * log((double)max/(32768.0*32768.0));
+    }
 
     __int64 rms = channel_rms[ch] / count;
     double ch_rms = 96;
-    if (rms > 0) ch_rms = -8.685889638/2. * log((double)rms/(32768.0*32768.0));
+    if (rms > 0) {
+      ch_rms = -8.685889638/2.0 * log((double)rms/(32768.0*32768.0));
+    }
 
     int x_pos = ((ch*2)+1)*bar_w+8;
     int x_end = x_pos+bar_w-8;
@@ -276,64 +291,64 @@ PVideoFrame Histogram::DrawModeAudioLevels(int n, IScriptEnvironment* env) {
     int y_mid = (int)(((double)bar_h*ch_rms) / 96.0);
     int y_end = src->GetHeight(PLANAR_Y);
     // Luma                          Red   Blue
-    int y_val = (max>=32767*32767) ?  78 :  90;
-    int a_val = (max>=32767*32767) ?  96 : 128;
-    {for (int y = y_pos; y<y_mid; y++) {
+    int y_val = (max>=32767*32767) ? 78 : 90;
+    int a_val = (max>=32767*32767) ? 96 : 128;
+    for (int y = y_pos; y<y_mid; y++) {
       for (int x = x_pos; x < x_end; x++) {
         MixLuma(srcpY[x+y*Ypitch], y_val, a_val);
       }
-    }} //                      Yellow Green
+    } //                      Yellow Green
     y_val = (max>=32767*32767) ? 216 : 137;
     a_val = (max>=32767*32767) ? 160 : 128;
-    {for (int y = y_mid; y<y_end; y++) {
+    for (int y = y_mid; y<y_end; y++) {
       for (int x = x_pos; x < x_end; x++) {
         MixLuma(srcpY[x+y*Ypitch], y_val, a_val);
       }
-    }}
+    }
     // Chroma
     x_pos >>= xSubS;
     x_end >>= xSubS;
     y_pos >>= ySubS;
     y_mid >>= ySubS;
     y_end = src->GetHeight(PLANAR_U);//Red  Blue
-    BYTE u_val = (max>=32767*32767) ?  92 : 212;
+    BYTE u_val = (max>=32767*32767) ? 92 : 212;
     BYTE v_val = (max>=32767*32767) ? 233 : 114;
-    {for (int y = y_pos; y<y_mid; y++) {
+    for (int y = y_pos; y<y_mid; y++) {
       for (int x = x_pos; x < x_end; x++) {
         srcpU[x+y*UVpitch] = u_val;
         srcpV[x+y*UVpitch] = v_val;
       }
-    }} //                      Yellow Green
-    u_val = (max>=32767*32767) ?  44 :  58;
-    v_val = (max>=32767*32767) ? 142 :  40;
-    {for (int y = y_mid; y<y_end; y++) {
+    } //                      Yellow Green
+    u_val = (max>=32767*32767) ? 44 : 58;
+    v_val = (max>=32767*32767) ? 142 : 40;
+    for (int y = y_mid; y<y_end; y++) {
       for (int x = x_pos; x < x_end; x++) {
         srcpU[x+y*UVpitch] = u_val;
         srcpV[x+y*UVpitch] = v_val;
       }
-    }}
+    }
     // Draw text
     _snprintf(text, sizeof(text), "%6.2fdB", (float)-ch_db);
     DrawStringPlanar(src, ((ch*2)+1)*bar_w, vi.height-40, text);
     _snprintf(text, sizeof(text), "%6.2fdB", (float)-ch_rms);
     DrawStringPlanar(src, ((ch*2)+1)*bar_w, vi.height-20, text);
 
-  }}
+  }
 
-  delete[] channel_max;
-  delete[] channel_rms;
-  delete[] samples;
   return src;
 }
 
 PVideoFrame Histogram::DrawModeOverlay(int n, IScriptEnvironment* env) {
+  auto env2 = static_cast<IScriptEnvironment2*>(env);
   PVideoFrame src = child->GetFrame(n, env);
   PVideoFrame dst = env->NewVideoFrame(vi);
 
   __int64 start = vi.AudioSamplesFromFrames(n);
   __int64 end = vi.AudioSamplesFromFrames(n+1);
   __int64 count = end-start;
-  signed short* samples = new signed short[(int)count*vi.AudioChannels()];
+  signed short* samples = static_cast<signed short*>(
+    env2->Allocate((int)count * vi.AudioChannels() * sizeof(unsigned short), 8, true)
+    );
 
   int w = dst->GetRowSize();
   int h = dst->GetHeight();
@@ -387,17 +402,20 @@ PVideoFrame Histogram::DrawModeOverlay(int n, IScriptEnvironment* env) {
   for (int y = 0; y < 512;y+=16)
     dstp[y*p+256] = (dstp[y*p+256]>127) ? 16 : 235 ;
 
-  delete[] samples;
+  env2->Free(samples);
   return dst;
 }
 
 
 PVideoFrame Histogram::DrawModeStereo(int n, IScriptEnvironment* env) {
+  auto env2 = static_cast<IScriptEnvironment2*>(env);
   PVideoFrame src = env->NewVideoFrame(vi);
   __int64 start = vi.AudioSamplesFromFrames(n);
   __int64 end = vi.AudioSamplesFromFrames(n+1);
   __int64 count = end-start;
-  signed short* samples = new signed short[(int)count*vi.AudioChannels()];
+  signed short* samples = static_cast<signed short*>(
+    env2->Allocate((int)count * vi.AudioChannels() * sizeof(unsigned short), 8, true)
+    );
 
   int w = src->GetRowSize();
   int h = src->GetHeight();
@@ -439,7 +457,7 @@ PVideoFrame Histogram::DrawModeStereo(int n, IScriptEnvironment* env) {
     memset(srcp, 128, imgSize);
   }
 
-  delete[] samples;
+  env2->Free(samples);
   return src;
 }
 
@@ -508,9 +526,9 @@ PVideoFrame Histogram::DrawModeColor2(int n, IScriptEnvironment* env) {
     int p2 = dst->GetPitch(PLANAR_U);
 
     // Erase all - luma
-    {for (int y=0; y<dst->GetHeight(PLANAR_Y); y++) {
+    for (int y = 0; y<dst->GetHeight(PLANAR_Y); y++) {
       memset(&pdstb[y*dst->GetPitch(PLANAR_Y)], 16, 256);
-    }}
+    }
 
     // Erase all - chroma
     pdstbU = dst->GetWritePtr(PLANAR_U);
@@ -518,10 +536,10 @@ PVideoFrame Histogram::DrawModeColor2(int n, IScriptEnvironment* env) {
     pdstbV = dst->GetWritePtr(PLANAR_V);
     pdstbV += src->GetRowSize(PLANAR_V);
 
-    {for (int y=0; y<dst->GetHeight(PLANAR_U); y++) {
+    for (int y = 0; y<dst->GetHeight(PLANAR_U); y++) {
       memset(&pdstbU[y*dst->GetPitch(PLANAR_U)], 128, (256>>swidth));
       memset(&pdstbV[y*dst->GetPitch(PLANAR_V)], 128, (256>>swidth));
-    }}
+    }
 
 
     // plot valid grey ccir601 square
@@ -530,10 +548,10 @@ PVideoFrame Histogram::DrawModeColor2(int n, IScriptEnvironment* env) {
 
     memset(&pdstb[(16*p)+16], 128, 225);
     memset(&pdstb[(240*p)+16], 128, 225);
-    {for (int y=17; y<240; y++) {
+    for (int y = 17; y<240; y++) {
       pdstb[16+y*p] = 128;
       pdstb[240+y*p] = 128;
-    }}
+    }
 
     // plot circles
     pdstb = pdst;
@@ -545,11 +563,11 @@ PVideoFrame Histogram::DrawModeColor2(int n, IScriptEnvironment* env) {
 
     // six hues in the color-wheel:
     // LC[3j,3j+1,3j+2], RC[3j,3j+1,3j+2] in YRange[j]+1 and YRange[j+1]
-    int YRange[8] = {-1, 26, 104, 127, 191, 197, 248, 256};
+    int YRange[8] = { -1, 26, 104, 127, 191, 197, 248, 256 };
     // 2x green, 2x yellow, 3x red
-    int LC[21] = {145,54,34, 145,54,34, 210,16,146, 210,16,146, 81,90,240, 81,90,240, 81,90,240};
+    int LC[21] = { 145, 54, 34, 145, 54, 34, 210, 16, 146, 210, 16, 146, 81, 90, 240, 81, 90, 240, 81, 90, 240 };
     // cyan, 4x blue, magenta, red:
-    int RC[21] = {170,166,16, 41,240,110, 41,240,110, 41,240,110, 41,240,110, 106,202,222, 81,90,240};
+    int RC[21] = { 170, 166, 16, 41, 240, 110, 41, 240, 110, 41, 240, 110, 41, 240, 110, 106, 202, 222, 81, 90, 240 };
 
     // example boundary of cyan and blue:
     // red = min(r,g,b), blue if g < 2/3 b, green if b < 2/3 g.
@@ -571,12 +589,12 @@ PVideoFrame Histogram::DrawModeColor2(int n, IScriptEnvironment* env) {
     int xRounder = (1<<swidth) / 2;
     int yRounder = (1<<sheight) / 2;
 
-    {for (int y=-127; y<128; y++) {
+    for (int y = -127; y<128; y++) {
       if (y+127 > YRange[activeY+1]) activeY++;
-      for (int x=-127; x<=0; x++) {
+      for (int x = -127; x<=0; x++) {
         int distSq = x*x+y*y;
         if (distSq <= outerSq && distSq >= innerSq) {
-          int interp = (int)(256.0f - ( 255.9f * (oneOverThicknessF * fabs(sqrt((float)distSq)- centerF))));
+          int interp = (int)(256.0f - (255.9f * (oneOverThicknessF * fabs(sqrt((float)distSq)- centerF))));
           // 255.9 is to account for float inprecision, which could cause underflow.
 
           int xP = 127 + x;
@@ -588,7 +606,7 @@ PVideoFrame Histogram::DrawModeColor2(int n, IScriptEnvironment* env) {
           xP = (xP+xRounder) >> swidth;
           yP = (yP+yRounder) >> sheight;
 
-          interp = min(256,interp);
+          interp = min(256, interp);
           int invInt = (256-interp);
 
           pdstbU[xP+yP*p2] = (pdstbU[xP+yP*p2] * invInt + interp * LC[3*activeY+1])>>8; // left half
@@ -599,15 +617,15 @@ PVideoFrame Histogram::DrawModeColor2(int n, IScriptEnvironment* env) {
           pdstbV[xP+yP*p2] = (pdstbV[xP+yP*p2] * invInt + interp * RC[3*activeY+2])>>8; // right half
         }
       }
-    }}
+    }
 
     // plot white 15 degree marks
     pdstb = pdst;
     pdstb += src->GetRowSize(PLANAR_Y);
 
-    {for (int y=0; y<24; y++) {
+    for (int y = 0; y<24; y++) {
       pdstb[deg15c[y]+deg15s[y]*p] = 235;
-    }}
+    }
 
     // plot vectorscope
     pdstb = pdst;
@@ -627,8 +645,8 @@ PVideoFrame Histogram::DrawModeColor2(int n, IScriptEnvironment* env) {
     int Xadd = 1<<swidth;
     int Yadd = 1<<sheight;
 
-    {for (int y=0; y<src_heightUV; y++) {
-      for (int x=0; x<src_widthUV; x++) {
+    for (int y = 0; y<src_heightUV; y++) {
+      for (int x = 0; x<src_widthUV; x++) {
         int uval = pU[x];
         int vval = pV[x];
         pdstb[uval+vval*p] = pY[x<<swidth];
@@ -638,7 +656,7 @@ PVideoFrame Histogram::DrawModeColor2(int n, IScriptEnvironment* env) {
       pY += (src_pitch<<sheight);
       pU += src_pitchUV;
       pV += src_pitchUV;
-    }}
+    }
 
   }
 
@@ -665,7 +683,8 @@ PVideoFrame Histogram::DrawModeColor(int n, IScriptEnvironment* env) {
   if (vi.IsPlanar()) {
     env->BitBlt(dst->GetWritePtr(PLANAR_U), dst->GetPitch(PLANAR_U), src->GetReadPtr(PLANAR_U), src->GetPitch(PLANAR_U), src->GetRowSize(PLANAR_U), src->GetHeight(PLANAR_U));
     env->BitBlt(dst->GetWritePtr(PLANAR_V), dst->GetPitch(PLANAR_V), src->GetReadPtr(PLANAR_V), src->GetPitch(PLANAR_V), src->GetRowSize(PLANAR_V), src->GetHeight(PLANAR_V));
-    int *histUV = new int[256*256];
+
+    int histUV[256*256];
     memset(histUV, 0, sizeof(int)*256*256);
 
     const BYTE* pU = src->GetReadPtr(PLANAR_U);
@@ -674,13 +693,13 @@ PVideoFrame Histogram::DrawModeColor(int n, IScriptEnvironment* env) {
     int w = src->GetRowSize(PLANAR_U);
     int p = src->GetPitch(PLANAR_U);
 
-    {for (int y = 0; y < src->GetHeight(PLANAR_U); y++) {
+    for (int y = 0; y < src->GetHeight(PLANAR_U); y++) {
       for (int x = 0; x < w; x++) {
         int u = pU[y*p+x];
         int v = pV[y*p+x];
         histUV[v*256+u]++;
       }
-    }}
+    }
 
     // Plot Histogram on Y.
     int maxval = 1;
@@ -691,15 +710,15 @@ PVideoFrame Histogram::DrawModeColor(int n, IScriptEnvironment* env) {
     pdstb += src->GetRowSize(PLANAR_Y);
 
     // Erase all
-    {for (int y=256;y<dst->GetHeight();y++) {
+    for (int y = 256; y<dst->GetHeight(); y++) {
       int p = dst->GetPitch(PLANAR_Y);
-      for (int x=0;x<256;x++) {
+      for (int x = 0; x<256; x++) {
         pdstb[x+y*p] = 16;
       }
-    }}
+    }
 
-    {for (int y=0;y<256;y++) {
-      for (int x=0;x<256;x++) {
+    for (int y = 0; y<256; y++) {
+      for (int x = 0; x<256; x++) {
         int disp_val = histUV[x+y*256]/maxval;
         if (y<16 || y>240 || x<16 || x>240)
           disp_val -= 16;
@@ -708,7 +727,7 @@ PVideoFrame Histogram::DrawModeColor(int n, IScriptEnvironment* env) {
 
       }
       pdstb += dst->GetPitch(PLANAR_Y);
-    }}
+    }
 
     // Draw colors.
     pdstb = dst->GetWritePtr(PLANAR_U);
@@ -718,33 +737,31 @@ PVideoFrame Histogram::DrawModeColor(int n, IScriptEnvironment* env) {
     int sheight = vi.GetPlaneHeightSubsampling(PLANAR_U);
 
     // Erase all
-    {for (int y=(256>>sheight); y<dst->GetHeight(PLANAR_U); y++) {
+    for (int y = (256>>sheight); y<dst->GetHeight(PLANAR_U); y++) {
       memset(&pdstb[y*dst->GetPitch(PLANAR_U)], 128, (256>>swidth)-1);
-    }}
+    }
 
-    {for (int y=0; y<(256>>sheight); y++) {
-      for (int x=0; x<(256>>swidth); x++) {
+    for (int y = 0; y<(256>>sheight); y++) {
+      for (int x = 0; x<(256>>swidth); x++) {
         pdstb[x] = x<<swidth;
       }
       pdstb += dst->GetPitch(PLANAR_U);
-    }}
+    }
 
     pdstb = dst->GetWritePtr(PLANAR_V);
     pdstb += src->GetRowSize(PLANAR_V);
 
     // Erase all
-    {for (int y=(256>>sheight); y<dst->GetHeight(PLANAR_U); y++) {
+    for (int y = (256>>sheight); y<dst->GetHeight(PLANAR_U); y++) {
       memset(&pdstb[y*dst->GetPitch(PLANAR_V)], 128, (256>>swidth)-1);
-    }}
+    }
 
-    {for (int y=0; y<(256>>sheight); y++) {
-      for (int x=0; x<(256>>swidth); x++) {
+    for (int y = 0; y<(256>>sheight); y++) {
+      for (int x = 0; x<(256>>swidth); x++) {
         pdstb[x] = y<<sheight;
       }
       pdstb += dst->GetPitch(PLANAR_V);
-    }}
-
-    delete [] histUV;
+    }
   }
   return dst;
 }
@@ -771,9 +788,9 @@ PVideoFrame Histogram::DrawModeLevels(int n, IScriptEnvironment* env) {
     env->BitBlt(dst->GetWritePtr(PLANAR_U), dst->GetPitch(PLANAR_U), src->GetReadPtr(PLANAR_U), src->GetPitch(PLANAR_U), src->GetRowSize(PLANAR_U), src->GetHeight(PLANAR_U));
     env->BitBlt(dst->GetWritePtr(PLANAR_V), dst->GetPitch(PLANAR_V), src->GetReadPtr(PLANAR_V), src->GetPitch(PLANAR_V), src->GetRowSize(PLANAR_V), src->GetHeight(PLANAR_V));
 
-    int histY[256] = {0};
-    int histU[256] = {0};
-    int histV[256] = {0};
+    int histY[256] = { 0 };
+    int histU[256] = { 0 };
+    int histV[256] = { 0 };
 
     const BYTE* pY = src->GetReadPtr(PLANAR_Y);
     const BYTE* pU = src->GetReadPtr(PLANAR_U);
@@ -787,19 +804,19 @@ PVideoFrame Histogram::DrawModeLevels(int n, IScriptEnvironment* env) {
     const int pitY = src->GetPitch(PLANAR_Y);
 
     // luma
-    {for (int y = 0; y < hy; y++) {
+    for (int y = 0; y < hy; y++) {
       for (int x = 0; x < wy; x++) {
         histY[pY[y*pitY+x]]++;
       }
-    }}
+    }
 
     // chroma
-    {for (int y = 0; y < hu; y++) {
+    for (int y = 0; y < hu; y++) {
       for (int x = 0; x < wu; x++) {
         histU[pU[y*pitU+x]]++;
         histV[pV[y*pitU+x]]++;
       }
-    }}
+    }
 
     unsigned char* pdstb = dst->GetWritePtr(PLANAR_Y);
     pdstb += wy;
@@ -807,127 +824,127 @@ PVideoFrame Histogram::DrawModeLevels(int n, IScriptEnvironment* env) {
     const int dstPitch = dst->GetPitch(PLANAR_Y);
 
     // Clear Y
-    {for (int y=0;y<dst->GetHeight();y++) {
+    for (int y = 0; y<dst->GetHeight(); y++) {
       memset(&pdstb[y*dstPitch], 16, 256);
-    }}
+    }
 
     // Draw Unsafe zone (Y-graph)
-    {for (int y=0; y<=64; y++) {
-      int x=0;
-      for ( ; x<16; x++) {
+    for (int y = 0; y<=64; y++) {
+      int x = 0;
+      for (; x<16; x++) {
         pdstb[dstPitch*y+x] = 32;
       }
       x += 220;
-      for ( ; x<256; x++) {
+      for (; x<256; x++) {
         pdstb[dstPitch*y+x] = 32;
       }
-    }}
+    }
 
     // Draw Unsafe zone (UV-graph)
 
     // x=0-16, R=G=255, B=0; x=128, R=G=B=0; x=240-255, R=G=0, B=255
     // Draw upper gradient
-    {for (int y=64+16; y<=128+16; y++) {
-      int x=0;
-      for ( ; x<15; x++) {
+    for (int y = 64+16; y<=128+16; y++) {
+      int x = 0;
+      for (; x<15; x++) {
         pdstb[dstPitch*y+x] = 210/2;
       }
-      for ( ; x<=128; x++) {
+      for (; x<=128; x++) {
         pdstb[dstPitch*y+x] = ((128-x)*15)>>3; // *1.875
       }
-      for ( ; x<=240; x++) {
+      for (; x<=240; x++) {
         pdstb[dstPitch*y+x] = ((x-128)*24001)>>16; // *0.366
       }
-      for ( ; x<256; x++) {
+      for (; x<256; x++) {
         pdstb[dstPitch*y+x] = 41/2;
       }
-    }}
+    }
 
     // x=0-16, R=0, G=B=255; x=128, R=G=B=0; x=240-255, R=255, G=B=0
     //  Draw lower gradient
-    {for (int y=128+32; y<=128+64+32; y++) {
-      int x=0;
-      for ( ; x<15; x++) {
+    for (int y = 128+32; y<=128+64+32; y++) {
+      int x = 0;
+      for (; x<15; x++) {
         pdstb[dstPitch*y+x] = 170/2;
       }
-      for ( ; x<=128; x++) {
+      for (; x<=128; x++) {
         pdstb[dstPitch*y+x] = ((128-x)*99515)>>16; // *1.518
       }
-      for ( ; x<=240; x++) {
+      for (; x<=240; x++) {
         pdstb[dstPitch*y+x] = ((x-128)*47397)>>16; // *0.723
       }
-      for ( ; x<256; x++) {
+      for (; x<256; x++) {
         pdstb[dstPitch*y+x] = 81/2;
       }
-    }}
+    }
 
     // Draw dotted centerline
-    {for (int y=0; y<=256-32; y++) {
+    for (int y = 0; y<=256-32; y++) {
       if ((y&3)>1)
         pdstb[dstPitch*y+128] = 128;
-    }}
+    }
 
     // Draw Y histograms
     const int clampval = (int)((hy*wy)*option.AsDblDef(100.0)/100.0); // Population limit % factor
     int maxval = 0;
-    {for (int i=0;i<256;i++) {
-      if (histY[i] > clampval) histY[i] = clampval; 
+    for (int i = 0; i<256; i++) {
+      if (histY[i] > clampval) histY[i] = clampval;
       maxval = max(histY[i], maxval);
-    }}
+    }
 
     float scale = float(64.0 / maxval);
 
-    {for (int x=0;x<256;x++) {
+    for (int x = 0; x<256; x++) {
       float scaled_h = (float)histY[x] * scale;
       int h = 64 -  min((int)scaled_h, 64)+1;
       int left = (int)(220.0f*(scaled_h-(float)((int)scaled_h)));
 
-      for (int y=64+1 ; y > h ; y--) {
+      for (int y = 64+1; y > h; y--) {
         pdstb[x+y*dstPitch] = 235;
       }
       pdstb[x+h*dstPitch] = 16+left;
-    }}
+    }
 
     const int clampvalUV = (int)((hu*wu)*option.AsDblDef(100.0)/100.0); // Population limit % factor
 
     // Draw U
     maxval = 0;
-    {for (int i=0; i<256 ;i++) {
-      if (histU[i] > clampvalUV) histU[i] = clampvalUV; 
+    for (int i = 0; i<256; i++) {
+      if (histU[i] > clampvalUV) histU[i] = clampvalUV;
       maxval = max(histU[i], maxval);
-    }}
+    }
 
     scale = float(64.0 / maxval);
 
-    {for (int x=0;x<256;x++) {
+    for (int x = 0; x<256; x++) {
       float scaled_h = (float)histU[x] * scale;
       int h = 128+16 -  min((int)scaled_h, 64)+1;
       int left = (int)(220.0f*(scaled_h-(float)((int)scaled_h)));
 
-      {for (int y=128+16+1 ; y > h ; y--) {
+      {for (int y = 128+16+1; y > h; y--) {
         pdstb[x+y*dstPitch] = 235;
       }}
       pdstb[x+h*dstPitch] = 16+left;
-    }}
+    }
 
     // Draw V
     maxval = 0;
-    {for (int i=0; i<256 ;i++) {
-      if (histV[i] > clampvalUV) histV[i] = clampvalUV; 
+    for (int i = 0; i<256; i++) {
+      if (histV[i] > clampvalUV) histV[i] = clampvalUV;
       maxval = max(histV[i], maxval);
-    }}
+    }
 
     scale = float(64.0 / maxval);
 
-    {for (int x=0;x<256;x++) {
+    for (int x = 0; x<256; x++) {
       float scaled_h = (float)histV[x] * scale;
       int h = 192+32 -  min((int)scaled_h, 64)+1;
       int left = (int)(220.0f*((int)scaled_h-scaled_h));
-      for (int y=192+32+1 ; y > h ; y--) {
+      for (int y = 192+32+1; y > h; y--) {
         pdstb[x+y*dstPitch] = 235;
       }
       pdstb[x+h*dstPitch] = 16+left;
-    }}
+    }
 
     // Draw chroma
     unsigned char* pdstbU = dst->GetWritePtr(PLANAR_U);
@@ -940,53 +957,53 @@ PVideoFrame Histogram::DrawModeLevels(int n, IScriptEnvironment* env) {
     int swidth = vi.GetPlaneWidthSubsampling(PLANAR_U);
     int sheight = vi.GetPlaneHeightSubsampling(PLANAR_U);
 
-    {for (int y=0; y<dst->GetHeight(PLANAR_U); y++) {
+    for (int y = 0; y<dst->GetHeight(PLANAR_U); y++) {
       memset(&pdstbU[y*dstPitchUV], 128, 256>>swidth);
       memset(&pdstbV[y*dstPitchUV], 128, 256>>swidth);
-    }}
+    }
 
     // Draw Unsafe zone (Y-graph)
-    {for (int y=0; y<=(64>>sheight); y++) {
-      {for (int x=0; x<(16>>swidth); x++) {
+    for (int y = 0; y<=(64>>sheight); y++) {
+      for (int x = 0; x<(16>>swidth); x++) {
         pdstbV[dstPitchUV*y+x] = 160;
         pdstbU[dstPitchUV*y+x] = 16;
 
-      }}
-      {for (int x=(236>>swidth); x<(256>>swidth); x++) {
+      }
+      for (int x = (236>>swidth); x<(256>>swidth); x++) {
         pdstbV[dstPitchUV*y+x] = 160;
         pdstbU[dstPitchUV*y+x] = 16;
-      }}
-    }}
+      }
+    }
 
     // x=16, R=G=255, B=0; x=128, R=G=B=0; x=240, R=G=0, B=255
     // Draw upper gradient
-    {for (int y=((64+16)>>sheight); y<=((128+16)>>sheight); y++) {
-      int x=0;
-      for ( ; x<(16>>swidth); x++) {
+    for (int y = ((64+16)>>sheight); y<=((128+16)>>sheight); y++) {
+      int x = 0;
+      for (; x<(16>>swidth); x++) {
         pdstbU[dstPitchUV*y+x] = 16+112/2;
       }
-      for ( ; x<=(240>>swidth); x++) {
+      for (; x<=(240>>swidth); x++) {
         pdstbU[dstPitchUV*y+x] = x<<swidth;
       }
-      for ( ; x<(256>>swidth); x++) {
+      for (; x<(256>>swidth); x++) {
         pdstbU[dstPitchUV*y+x] = 240-112/2;
       }
-    }}
+    }
 
     // x=16, R=0, G=B=255; x=128, R=G=B=0; x=240, R=255, G=B=0
     //  Draw lower gradient
-    {for (int y=((128+32)>>sheight); y<=((128+64+32)>>sheight); y++) {
-      int x=0;
-      for ( ; x<(16>>swidth); x++) {
+    for (int y = ((128+32)>>sheight); y<=((128+64+32)>>sheight); y++) {
+      int x = 0;
+      for (; x<(16>>swidth); x++) {
         pdstbV[dstPitchUV*y+x] = 16+112/2;
       }
-      for ( ; x<=(240>>swidth); x++) {
+      for (; x<=(240>>swidth); x++) {
         pdstbV[dstPitchUV*y+x] = x<<swidth;
       }
-      for ( ; x<(256>>swidth); x++) {
+      for (; x<(256>>swidth); x++) {
         pdstbV[dstPitchUV*y+x] = 240-112/2;
       }
-    }}
+    }
   }
 
   return dst;
@@ -1005,7 +1022,7 @@ PVideoFrame Histogram::DrawModeClassic(int n, IScriptEnvironment* env)
     const double K = log(0.5/219)/255; // approx -1/42
 
     exptab[0] = 16;
-    for (int i=1; i<255; i++) {
+    for (int i = 1; i<255; i++) {
       exptab[i] = BYTE(16.5 + 219 * (1-exp(i*K)));
       if (exptab[i] <= 235-68) E167 = i;
     }
@@ -1023,19 +1040,19 @@ PVideoFrame Histogram::DrawModeClassic(int n, IScriptEnvironment* env)
     env->BitBlt(dst->GetWritePtr(PLANAR_V), dst->GetPitch(PLANAR_V), src->GetReadPtr(PLANAR_V), src->GetPitch(PLANAR_V), src->GetRowSize(PLANAR_V), src->GetHeight(PLANAR_V));
 
     // luma
-    for (int y=0; y<src->GetHeight(PLANAR_Y); ++y) {
-      int hist[256] = {0};
-      {for (int x=0; x<w; ++x) {
+    for (int y = 0; y<src->GetHeight(PLANAR_Y); ++y) {
+      int hist[256] = { 0 };
+      for (int x = 0; x<w; ++x) {
         hist[p[x]]++;
-      }}
+      }
       BYTE* const q = p + w;
-      {for (int x=0; x<256; ++x) {
+      for (int x = 0; x<256; ++x) {
         if (x<16 || x==124 || x>235) {
           q[x] = exptab[min(E167, hist[x])] + 68;
         } else {
           q[x] = exptab[min(255, hist[x])];
         }
-      }}
+      }
       p += dst->GetPitch();
     }
 
@@ -1047,8 +1064,8 @@ PVideoFrame Histogram::DrawModeClassic(int n, IScriptEnvironment* env)
       BYTE* p2 = dst->GetWritePtr(PLANAR_U) + (w >> subs);
       BYTE* p3 = dst->GetWritePtr(PLANAR_V) + (w >> subs);
 
-      for (int y2=0; y2<src->GetHeight(PLANAR_U); ++y2) {
-        for (int x=0; x<256; x+=fact) {
+      for (int y2 = 0; y2<src->GetHeight(PLANAR_U); ++y2) {
+        for (int x = 0; x<256; x += fact) {
           if (x<16 || x>235) {
             p2[x >> subs] = 16;
             p3[x >> subs] = 160;
@@ -1065,13 +1082,13 @@ PVideoFrame Histogram::DrawModeClassic(int n, IScriptEnvironment* env)
       }
     }
   } else {
-    for (int y=0; y<src->GetHeight(); ++y) { // YUY2
-      int hist[256] = {0};
-      {for (int x=0; x<w; ++x) {
+    for (int y = 0; y<src->GetHeight(); ++y) { // YUY2
+      int hist[256] = { 0 };
+      for (int x = 0; x<w; ++x) {
         hist[p[x*2]]++;
-      }}
+      }
       BYTE* const q = p + w*2;
-      {for (int x=0; x<256; x+=2) {
+      for (int x = 0; x<256; x += 2) {
         if (x<16 || x>235) {
           q[x*2+0] = exptab[min(E167, hist[x])] + 68;
           q[x*2+1] = 16;
@@ -1088,7 +1105,7 @@ PVideoFrame Histogram::DrawModeClassic(int n, IScriptEnvironment* env)
           q[x*2+2] = exptab[min(255, hist[x+1])];
           q[x*2+3] = 128;
         }
-      }}
+      }
       p += dst->GetPitch();
     }
   }

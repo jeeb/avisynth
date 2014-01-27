@@ -70,6 +70,10 @@ public:
   PVideoFrame DrawModeOverlay    (int n, IScriptEnvironment* env);
   PVideoFrame DrawModeAudioLevels(int n, IScriptEnvironment* env);
 
+  int __stdcall SetCacheHints(int cachehints, int frame_range) override {
+    return cachehints == CACHE_GET_MTMODE ? MT_NICE_PLUGIN : 0;
+  }
+
   static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env);
 private:
   Mode mode;
