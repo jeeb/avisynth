@@ -422,9 +422,9 @@ static void resize_h_pointresize(BYTE* dst, const BYTE* src, int dst_pitch, int 
   }
 }
 
-static void resize_h_prepare_coeff_8(ResamplingProgram* p) {
+static void resize_h_prepare_coeff_8(ResamplingProgram* p, IScriptEnvironment2* env) {
   int filter_size = AlignNumber(p->filter_size, 8);
-  short* new_coeff = (short*) _aligned_malloc(sizeof(short) * p->target_size * filter_size, 64);
+  short* new_coeff = (short*) env->Allocate(sizeof(short) * p->target_size * filter_size, 64, AVS_NORMAL_ALLOC);
   memset(new_coeff, 0, sizeof(short) * p->target_size * filter_size);
 
   // Copy coeff
@@ -438,7 +438,7 @@ static void resize_h_prepare_coeff_8(ResamplingProgram* p) {
     src += p->filter_size;
   }
 
-  _aligned_free(p->pixel_coefficient);
+  env->Free(p->pixel_coefficient);
   p->pixel_coefficient = new_coeff;
 }
 
@@ -733,10 +733,10 @@ FilteredResizeH::FilteredResizeH( PClip _child, double subrange_left, double sub
       }
     }
   } else { // Plannar + SSSE3 = use new horizontal resizer routines
-    resampler_h_luma = GetResampler(env->GetCPUFlags(), true, resampling_program_luma);
+    resampler_h_luma = GetResampler(env->GetCPUFlags(), true, resampling_program_luma, env2);
 
     if (!vi.IsY8()) {
-      resampler_h_chroma = GetResampler(env->GetCPUFlags(), true, resampling_program_chroma);
+      resampler_h_chroma = GetResampler(env->GetCPUFlags(), true, resampling_program_chroma, env2);
     }
   }
 
@@ -808,10 +808,10 @@ PVideoFrame __stdcall FilteredResizeH::GetFrame(int n, IScriptEnvironment* env)
   return dst;
 }
 
-ResamplerH FilteredResizeH::GetResampler(int CPU, bool aligned, ResamplingProgram* program)
+ResamplerH FilteredResizeH::GetResampler(int CPU, bool aligned, ResamplingProgram* program, IScriptEnvironment2* env)
 {
   if (CPU & CPUF_SSSE3) {
-    resize_h_prepare_coeff_8(program);
+    resize_h_prepare_coeff_8(program, env);
     if (program->filter_size > 8)
       return resizer_h_ssse3_generic;
     else

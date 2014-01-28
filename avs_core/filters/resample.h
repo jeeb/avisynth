@@ -61,7 +61,7 @@ public:
     return cachehints == CACHE_GET_MTMODE ? MT_NICE_PLUGIN : 0;
   }
 
-  static ResamplerH GetResampler(int CPU, bool aligned, ResamplingProgram* program);
+  static ResamplerH GetResampler(int CPU, bool aligned, ResamplingProgram* program, IScriptEnvironment2* env);
 
 private:
   // Resampling
