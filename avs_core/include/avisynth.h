@@ -649,6 +649,11 @@ enum CachePolicyHint {
   CACHE_GET_CAPACITY,
   CACHE_GET_MTMODE,
 
+  CACHE_IS_CACHE_REQ,
+  CACHE_IS_CACHE_ANS,
+  CACHE_IS_MTGUARD_REQ,
+  CACHE_IS_MTGUARD_ANS,
+
   CACHE_USER_CONSTANTS = 1000       // Smaller values are reserved for the core
 
 };
@@ -1034,6 +1039,13 @@ enum AvsEnvProperty
   AEP_THREAD_ID = 5
 };
 
+enum AvsAllocType
+{
+  AVS_INVALID_ALLOC = 0,
+  AVS_NORMAL_ALLOC  = 1,
+  AVS_POOLED_ALLOC  = 2
+};
+
 /* -----------------------------------------------------------------------------
    Note to plugin authors: The interface in IScriptEnvironment2 is 
       preliminary / under construction / only for testing / non-final etc.!
@@ -1078,7 +1090,7 @@ public:
   virtual bool __stdcall Invoke(AVSValue *result, const char* name, const AVSValue& args, const char* const* arg_names=0) = 0;
 
   // Support functions
-  virtual void* __stdcall Allocate(size_t nBytes, size_t alignment, bool pool) = 0;
+  virtual void* __stdcall Allocate(size_t nBytes, size_t alignment, AvsAllocType type) = 0;
   virtual void __stdcall Free(void* ptr) = 0;
 
   // Strictly for Avisynth core only.

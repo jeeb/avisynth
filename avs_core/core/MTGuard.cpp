@@ -42,24 +42,27 @@
 #include <mmintrin.h>
 #endif
 
-MTGuard::MTGuard(PClip firstChild, MtMode mtmode, const AVSFunction* func, const std::vector<AVSValue>& args, IScriptEnvironment2* env) :
+MTGuard::MTGuard(PClip firstChild, MtMode mtmode, const AVSFunction* func, std::vector<AVSValue>* args2, std::vector<AVSValue>* args3, IScriptEnvironment2* env) :
   FilterMutex(NULL),
   MTMode(mtmode),
   nThreads(1),
   FilterFunction(func),
-  FilterArgs(args),
+  FilterArgsArrStore(std::move(*args2)),
+  FilterArgs(std::move(*args3)),
   Env(env)
 {
   assert( ((int)mtmode > (int)MT_INVALID) && ((int)mtmode < (int)MT_MODE_COUNT) );
 
   ChildFilters.emplace_back(firstChild);
   vi = ChildFilters[0]->GetVideoInfo();
+
+  Env->ManageCache(MC_RegisterMTGuard, reinterpret_cast<void*>(this));
 }
 
 MTGuard::~MTGuard()
 {
+  Env->ManageCache(MC_UnRegisterMTGuard, reinterpret_cast<void*>(this));
   delete FilterMutex;
-  Env->ManageCache(MC_UnRegisterMTGuard, this);
 }
 
 void MTGuard::EnableMT(size_t nThreads)
@@ -99,6 +102,11 @@ void MTGuard::EnableMT(size_t nThreads)
       }
     }
   }
+
+  // We don't need the stored parameters any more,
+  // free their memory.
+  std::vector<AVSValue>().swap(FilterArgs);
+  std::vector<AVSValue>().swap(FilterArgsArrStore);
 }
 
 PVideoFrame __stdcall MTGuard::GetFrame(int n, IScriptEnvironment* env)
@@ -200,4 +208,50 @@ bool __stdcall MTGuard::GetParity(int n)
 int __stdcall MTGuard::SetCacheHints(int cachehints, int frame_range)
 {
   return 0;
+}
+
+bool __stdcall MTGuard::IsMTGuard(const PClip& p)
+{
+  if ((p->GetVersion() >= 5) && (p->SetCacheHints(CACHE_IS_MTGUARD_REQ, 0) == CACHE_IS_MTGUARD_ANS))
+    return true;
+  else
+    return false;
+}
+
+AVSValue MTGuard::Create(const AVSFunction* func, std::vector<AVSValue>* args2, std::vector<AVSValue>* args3, IScriptEnvironment2* env)
+{
+  AVSValue avsargs(args3->data(), (int)args3->size());
+  AVSValue func_result = func->apply(avsargs, func->user_data, env);
+
+  if (func_result.IsClip() && !Cache::IsCache(func_result.AsClip()) && !MTGuard::IsMTGuard(func_result.AsClip()))
+  {
+    MtMode mode = env->GetFilterMTMode(func->name);
+    PClip filter_instance = func_result.AsClip();
+    if ( (filter_instance->GetVersion() >= 5)
+      && (filter_instance->SetCacheHints(CACHE_GET_MTMODE, 0) != 0) )
+    {
+      mode = (MtMode)filter_instance->SetCacheHints(CACHE_GET_MTMODE, 0);
+    }
+
+    switch (mode)
+    {
+    case MT_NICE_PLUGIN:
+      {
+        return func_result;
+      }
+    case MT_MULTI_INSTANCE: // Fall-through intentional
+    case MT_SERIALIZED:
+      {
+        return new MTGuard(filter_instance, mode, func, args2, args3, env);
+        // args2 and args3 are not valid after this point anymore
+      }
+    default:
+      assert(0);
+      return NULL;
+    }
+  }
+  else
+  {
+    return func_result;
+  }
 }

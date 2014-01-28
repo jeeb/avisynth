@@ -38,6 +38,7 @@
 #include <avs/win.h>
 #include <avs/minmax.h>
 #include <cmath>
+#include <cassert>
 
 
 
@@ -65,14 +66,13 @@ extern const AVSFunction Combine_filters[] = {
  *******   StackVertical   ******
  ********************************/
 
-StackVertical::StackVertical(PClip *_child_array, int _num_args, IScriptEnvironment* env) :
-  child_array(_child_array), num_args(_num_args)
+StackVertical::StackVertical(const std::vector<ChildType>& child_array, IScriptEnvironment* env) :
+  children(child_array)
 {
-  vi = child_array[0]->GetVideoInfo();
-  frames = new PVideoFrame[num_args];
+  vi = children[0].first->GetVideoInfo();
 
-  for (int i=1; i<num_args; i++) {
-    const VideoInfo& vin = child_array[i]->GetVideoInfo();
+  for (size_t i = 1; i < children.size(); ++i) {
+    const VideoInfo& vin = children[i].first->GetVideoInfo();
 
     if (vi.width != vin.width)
       env->ThrowError("StackVertical: image widths don't match");
@@ -90,8 +90,10 @@ StackVertical::StackVertical(PClip *_child_array, int _num_args, IScriptEnvironm
 
 PVideoFrame __stdcall StackVertical::GetFrame(int n, IScriptEnvironment* env) 
 {
-  for (int i=0; i<num_args; i++)
-    frames[i] = child_array[i]->GetFrame(n, env);
+  const size_t nClips = children.size();
+
+  for (size_t i = 0; i < nClips; ++i)
+    children[i].second = children[i].first->GetFrame(n, env);
 
   PVideoFrame dst = env->NewVideoFrame(vi);
 
@@ -101,20 +103,22 @@ PVideoFrame __stdcall StackVertical::GetFrame(int n, IScriptEnvironment* env)
   BYTE* dstp = dst->GetWritePtr();
   if (vi.IsRGB()) {
     // reverse the order of the clips in RGB mode because it's upside-down
-    for (int i=num_args-1; i>=0; i--) {
-      const BYTE* srcp = frames[i]->GetReadPtr();
-      const int src_pitch = frames[i]->GetPitch();
-      const int src_height = frames[i]->GetHeight();
+    for (size_t i = children.size(); i-- > 0; /* empty */)
+    {
+      const BYTE* srcp = children[i].second->GetReadPtr();
+      const int src_pitch = children[i].second->GetPitch();
+      const int src_height = children[i].second->GetHeight();
 
       BitBlt(dstp, dst_pitch, srcp, src_pitch, row_size, src_height);
       dstp += dst_pitch * src_height;
     }
   }
   else {
-    for (int i=0; i<num_args; i++) {
-      const BYTE* srcp = frames[i]->GetReadPtr();
-      const int src_pitch = frames[i]->GetPitch();
-      const int src_height = frames[i]->GetHeight();
+    for (const ChildType& src : children)
+    {
+      const BYTE* srcp = src.second->GetReadPtr();
+      const int src_pitch = src.second->GetPitch();
+      const int src_height = src.second->GetHeight();
 
       BitBlt(dstp, dst_pitch, srcp, src_pitch, row_size, src_height);
       dstp += dst_pitch * src_height;
@@ -126,20 +130,22 @@ PVideoFrame __stdcall StackVertical::GetFrame(int n, IScriptEnvironment* env)
       const int row_sizeUV = dst->GetRowSize(PLANAR_U);
 
       BYTE* dstpV = dst->GetWritePtr(PLANAR_V);
-      for (int i=0; i<num_args; i++) {
-        const BYTE* srcpV = frames[i]->GetReadPtr(PLANAR_V);
-        const int src_pitchV = frames[i]->GetPitch(PLANAR_V);
-        const int src_heightV = frames[i]->GetHeight(PLANAR_V);
+      for (const ChildType& src : children)
+      {
+        const BYTE* srcpV = src.second->GetReadPtr(PLANAR_V);
+        const int src_pitchV = src.second->GetPitch(PLANAR_V);
+        const int src_heightV = src.second->GetHeight(PLANAR_V);
 
         BitBlt(dstpV, dst_pitchUV, srcpV, src_pitchV, row_sizeUV, src_heightV);
         dstpV += dst_pitchUV * src_heightV;
       }
 
       BYTE* dstpU = dst->GetWritePtr(PLANAR_U);
-      for (int j=0; j<num_args; j++) {
-        const BYTE* srcpU = frames[j]->GetReadPtr(PLANAR_U);
-        const int src_pitchU = frames[j]->GetPitch(PLANAR_U);
-        const int src_heightU = frames[j]->GetHeight(PLANAR_U);
+      for (const ChildType& src : children)
+      {
+        const BYTE* srcpU = src.second->GetReadPtr(PLANAR_U);
+        const int src_pitchU = src.second->GetPitch(PLANAR_U);
+        const int src_heightU = src.second->GetHeight(PLANAR_U);
 
         BitBlt(dstpU, dst_pitchUV, srcpU, src_pitchU, row_sizeUV, src_heightU);
         dstpU += dst_pitchUV * src_heightU;
@@ -147,40 +153,49 @@ PVideoFrame __stdcall StackVertical::GetFrame(int n, IScriptEnvironment* env)
     }
   }
 
-  for (int i=0; i<num_args; i++)
-    frames[i] = 0;
+  for (size_t i = 0; i < nClips; ++i)
+    children[i].second = NULL;
 
   return dst;
 }
 
+int __stdcall StackVertical::SetCacheHints(int cachehints,int frame_range)
+{
+  switch (cachehints)
+  {
+  case CACHE_GET_MTMODE:
+    return MT_MULTI_INSTANCE;
+  default:
+    return 0;
+  }
+}
 
 AVSValue __cdecl StackVertical::Create(AVSValue args, void*, IScriptEnvironment* env) 
 {
-  int num_args = 0;
-  PClip* child_array = 0;
-
   if (args[1].IsArray()) {
-    num_args = 1+args[1].ArraySize();
-    child_array = new PClip[num_args];
+    std::vector<ChildType> children( 1+args[1].ArraySize() );
 
-    child_array[0] = args[0].AsClip();
-    for (int i = 1; i < num_args; ++i) // Copy clips
-      child_array[i] = args[1][i-1].AsClip();
+    children[0].first = args[0].AsClip();
+    for (size_t i = 1; i < children.size(); ++i) // Copy clips
+      children[i].first = args[1][i-1].AsClip();
+
+    return new StackVertical(children, env);
   }
   else if (args[1].IsClip()) { // Make easy to call with trivial 2 clips
-    num_args = 2;
-    child_array = new PClip[2];
+    std::vector<ChildType> children( 2 );
 
-    child_array[0] = args[0].AsClip();
-    child_array[1] = args[1].AsClip();
+    children[0].first = args[0].AsClip();
+    children[1].first = args[1].AsClip();
+
+    return new StackVertical(children, env);
   }
   else {
     env->ThrowError("StackVertical: clip array not recognized!");
+    return NULL;
   }
 
-  return new StackVertical(child_array, num_args, env);
+  assert(0);
 }
-
 
 
 
@@ -188,13 +203,13 @@ AVSValue __cdecl StackVertical::Create(AVSValue args, void*, IScriptEnvironment*
  *******   StackHorizontal   ******
  **********************************/
 
-StackHorizontal::StackHorizontal(PClip *_child_array, int _num_args, IScriptEnvironment* env) :
-  child_array(_child_array), num_args(_num_args)
+StackHorizontal::StackHorizontal(const std::vector<ChildType>& child_array, IScriptEnvironment* env) :
+  children(child_array)
 {
-  vi = child_array[0]->GetVideoInfo();
+  vi = children[0].first->GetVideoInfo();
 
-  for (int i=1; i<num_args; i++) {
-    const VideoInfo& vin = child_array[i]->GetVideoInfo();
+  for (size_t i = 1; i < children.size(); ++i) {
+    const VideoInfo& vin = children[i].first->GetVideoInfo();
 
     if (vi.height != vin.height)
       env->ThrowError("StackHorizontal: image heights don't match");
@@ -211,20 +226,21 @@ StackHorizontal::StackHorizontal(PClip *_child_array, int _num_args, IScriptEnvi
 
 PVideoFrame __stdcall StackHorizontal::GetFrame(int n, IScriptEnvironment* env) 
 {
-  PVideoFrame *src = new PVideoFrame[num_args];
-  for (int j=0; j<num_args; j++)
-    src[j] = child_array[j]->GetFrame(n, env);
+  const size_t nClips = children.size();
+
+  for (size_t i = 0; i < nClips; ++i)
+    children[i].second = children[i].first->GetFrame(n, env);
 
   PVideoFrame dst = env->NewVideoFrame(vi);
-
   const int dst_pitch = dst->GetPitch();
   const int height = dst->GetHeight();
 
   BYTE* dstp = dst->GetWritePtr();
-  for (int i=0; i<num_args; i++) {
-    const BYTE* srcp = src[i]->GetReadPtr();
-    const int src_pitch = src[i]->GetPitch();
-    const int src_rowsize = src[i]->GetRowSize();
+  for (const ChildType& src : children)
+  {
+    const BYTE* srcp = src.second->GetReadPtr();
+    const int src_pitch = src.second->GetPitch();
+    const int src_rowsize = src.second->GetRowSize();
 
     BitBlt(dstp, dst_pitch, srcp, src_pitch, src_rowsize, height);
     dstp += src_rowsize;
@@ -236,56 +252,70 @@ PVideoFrame __stdcall StackHorizontal::GetFrame(int n, IScriptEnvironment* env)
     const int heightUV = dst->GetHeight(PLANAR_U);
 
     BYTE* dstpV = dst->GetWritePtr(PLANAR_V);
-    for (int i=0; i<num_args; i++) {
-      const BYTE* srcpV = src[i]->GetReadPtr(PLANAR_V);
-      const int src_pitchV = src[i]->GetPitch(PLANAR_V);
-      const int src_rowsizeV = src[i]->GetRowSize(PLANAR_V);
+    for (const ChildType& src : children)
+    {
+      const BYTE* srcpV = src.second->GetReadPtr(PLANAR_V);
+      const int src_pitchV = src.second->GetPitch(PLANAR_V);
+      const int src_rowsizeV = src.second->GetRowSize(PLANAR_V);
 
       BitBlt(dstpV, dst_pitchUV, srcpV, src_pitchV, src_rowsizeV, heightUV);
       dstpV += src_rowsizeV;
     }
 
     BYTE* dstpU = dst->GetWritePtr(PLANAR_U);
-    for (int j=0; j<num_args; j++) {
-      const BYTE* srcpU = src[j]->GetReadPtr(PLANAR_U);
-      const int src_pitchU = src[j]->GetPitch(PLANAR_U);
-      const int src_rowsizeU = src[j]->GetRowSize(PLANAR_U);
+    for (const ChildType& src : children)
+    {
+      const BYTE* srcpU = src.second->GetReadPtr(PLANAR_U);
+      const int src_pitchU = src.second->GetPitch(PLANAR_U);
+      const int src_rowsizeU = src.second->GetRowSize(PLANAR_U);
 
       BitBlt(dstpU, dst_pitchUV, srcpU, src_pitchU, src_rowsizeU, heightUV);
       dstpU += src_rowsizeU;
     }
   }
-  delete[] src;
+
+  for (size_t i = 0; i < nClips; ++i)
+    children[i].second = NULL;
 
   return dst;
 }
 
+int __stdcall StackHorizontal::SetCacheHints(int cachehints,int frame_range)
+{
+  switch (cachehints)
+  {
+  case CACHE_GET_MTMODE:
+    return MT_MULTI_INSTANCE;
+  default:
+    return 0;
+  }
+}
 
 AVSValue __cdecl StackHorizontal::Create(AVSValue args, void*, IScriptEnvironment* env) 
 {
-  int num_args = 0;
-  PClip* child_array = 0;
-
   if (args[1].IsArray()) {
-    num_args = 1+args[1].ArraySize();
-    child_array = new PClip[num_args];
+    std::vector<ChildType> children( 1+args[1].ArraySize() );
 
-    child_array[0] = args[0].AsClip();
-    for (int i = 1; i < num_args; ++i) // Copy clips
-      child_array[i] = args[1][i-1].AsClip();
+    children[0].first = args[0].AsClip();
+    for (size_t i = 1; i < children.size(); ++i) // Copy clips
+      children[i].first = args[1][i-1].AsClip();
+
+    return new StackHorizontal(children, env);
   }
   else if (args[1].IsClip()) { // Make easy to call with trivial 2 clips
-    num_args = 2;
-    child_array = new PClip[2];
+    std::vector<ChildType> children( 2 );
 
-    child_array[0] = args[0].AsClip();
-    child_array[1] = args[1].AsClip();
+    children[0].first = args[0].AsClip();
+    children[1].first = args[1].AsClip();
+
+    return new StackHorizontal(children, env);
   }
   else {
     env->ThrowError("StackHorizontal: clip array not recognized!");
+    return NULL;
   }
 
-  return new StackHorizontal(child_array, num_args, env);
+  assert(0);
 }
 
 

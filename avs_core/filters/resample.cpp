@@ -752,8 +752,8 @@ PVideoFrame __stdcall FilteredResizeH::GetFrame(int n, IScriptEnvironment* env)
   auto env2 = static_cast<IScriptEnvironment2*>(env);
 
   if (!fast_resize) {
-    BYTE* temp_1 = static_cast<BYTE*>(env2->Allocate(temp_1_pitch * src_width, 64, true));
-    BYTE* temp_2 = static_cast<BYTE*>(env2->Allocate(temp_2_pitch * dst_width, 64, true));
+    BYTE* temp_1 = static_cast<BYTE*>(env2->Allocate(temp_1_pitch * src_width, 64, AVS_POOLED_ALLOC));
+    BYTE* temp_2 = static_cast<BYTE*>(env2->Allocate(temp_2_pitch * dst_width, 64, AVS_POOLED_ALLOC));
 
     if (!vi.IsRGB()) {
       // Y Plane
@@ -890,16 +890,16 @@ PVideoFrame __stdcall FilteredResizeV::GetFrame(int n, IScriptEnvironment* env)
   auto env2 = static_cast<IScriptEnvironment2*>(env);
 
   // Create pitch table
-  int* src_pitch_table_luma = static_cast<int*>(env2->Allocate(sizeof(int) * src->GetHeight(), 16, true));
+  int* src_pitch_table_luma = static_cast<int*>(env2->Allocate(sizeof(int) * src->GetHeight(), 16, AVS_POOLED_ALLOC));
   resize_v_create_pitch_table(src_pitch_table_luma, src->GetPitch(), src->GetHeight());
 
   int* src_pitch_table_chromaU;
   int* src_pitch_table_chromaV;
   if ((!vi.IsY8() && vi.IsPlanar())) {
-    src_pitch_table_chromaU = static_cast<int*>(env2->Allocate(sizeof(int) * src->GetHeight(PLANAR_U), 16, true));
+    src_pitch_table_chromaU = static_cast<int*>(env2->Allocate(sizeof(int) * src->GetHeight(PLANAR_U), 16, AVS_POOLED_ALLOC));
     resize_v_create_pitch_table(src_pitch_table_chromaU, src->GetPitch(PLANAR_U), src->GetHeight(PLANAR_U));
 
-    src_pitch_table_chromaV = static_cast<int*>(env2->Allocate(sizeof(int) * src->GetHeight(PLANAR_V), 16, true));
+    src_pitch_table_chromaV = static_cast<int*>(env2->Allocate(sizeof(int) * src->GetHeight(PLANAR_V), 16, AVS_POOLED_ALLOC));
     resize_v_create_pitch_table(src_pitch_table_chromaV, src->GetPitch(PLANAR_V), src->GetHeight(PLANAR_V));
   }
 

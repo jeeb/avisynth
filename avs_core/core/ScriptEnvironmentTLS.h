@@ -125,9 +125,11 @@ public:
       return def;
   }
 
-  void* __stdcall Allocate(size_t nBytes, size_t alignment, bool pool)
+  void* __stdcall Allocate(size_t nBytes, size_t alignment, AvsAllocType type)
   {
-    return BufferPool.Allocate(nBytes, alignment, pool);
+    if ((type != AVS_NORMAL_ALLOC) && (type != AVS_POOLED_ALLOC))
+      return NULL;
+    return BufferPool.Allocate(nBytes, alignment, type == AVS_POOLED_ALLOC);
   }
 
   void __stdcall Free(void* ptr)

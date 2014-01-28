@@ -18,8 +18,10 @@ struct BufferPool::BufferDesc
 static inline void CheckGuards(void* ptr)
 {
   #ifndef NDEBUG
-  size_t lower_guard = (size_t)(((void**)ptr)[-1]);
+  size_t lower_guard = (size_t)(((void**)ptr)[-5]);
   assert(lower_guard == BUFFER_GUARD_VALUE);
+  size_t upper_guard = (size_t)(((void**)ptr)[-1]);
+  assert(upper_guard == BUFFER_GUARD_VALUE);
   #endif
 }
 
@@ -42,12 +44,13 @@ void* BufferPool::PrivateAlloc(size_t nBytes, size_t alignment, void* user)
 {
   /* Number of extra data fields to allocate.
     * Current field assignment:
-    *  [-1] = lower guard (size_t)
+    *  [-1] = upper guard (size_t)
     *  [-2] = original buffer pointer (void*)
     *  [-3] = original buffer size (size_t)
     *  [-4] = user data (void*)
+    *  [-5] = lower guard (size_t)
     */
-  const int NUM_EXTRA_FIELDS = 4;
+  const int NUM_EXTRA_FIELDS = 5;
 
   alignment = max(alignment, sizeof(void*));
   if (!IS_POWER2(alignment))
@@ -61,6 +64,7 @@ void* BufferPool::PrivateAlloc(size_t nBytes, size_t alignment, void* user)
     return NULL;
    
   void **aligned = (void**)(((uintptr_t)orig + (uintptr_t)offset) & (~(uintptr_t)(alignment-1)));
+  aligned[-5] = (void*)BUFFER_GUARD_VALUE;
   aligned[-4] = user;
   aligned[-3] = (void*)nBytes;
   aligned[-2] = orig;
