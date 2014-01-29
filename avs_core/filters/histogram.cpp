@@ -347,7 +347,7 @@ PVideoFrame Histogram::DrawModeOverlay(int n, IScriptEnvironment* env) {
   __int64 end = vi.AudioSamplesFromFrames(n+1);
   __int64 count = end-start;
   signed short* samples = static_cast<signed short*>(
-    env2->Allocate((int)count * vi.AudioChannels() * sizeof(unsigned short), 8, true)
+    env2->Allocate((int)count * vi.AudioChannels() * sizeof(unsigned short), 8, AVS_POOLED_ALLOC)
     );
 
   int w = dst->GetRowSize();
@@ -414,7 +414,7 @@ PVideoFrame Histogram::DrawModeStereo(int n, IScriptEnvironment* env) {
   __int64 end = vi.AudioSamplesFromFrames(n+1);
   __int64 count = end-start;
   signed short* samples = static_cast<signed short*>(
-    env2->Allocate((int)count * vi.AudioChannels() * sizeof(unsigned short), 8, true)
+    env2->Allocate((int)count * vi.AudioChannels() * sizeof(unsigned short), 8, AVS_POOLED_ALLOC)
     );
 
   int w = src->GetRowSize();

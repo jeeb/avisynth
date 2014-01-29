@@ -265,7 +265,7 @@ PVideoFrame __stdcall AdjustFocusV::GetFrame(int n, IScriptEnvironment* env)
 	env->MakeWritable(&src);
 	
   auto env2 = static_cast<IScriptEnvironment2*>(env);
-  BYTE* line_buf = reinterpret_cast<BYTE*>(env2->Allocate(src->GetRowSize(), 16, true));
+  BYTE* line_buf = reinterpret_cast<BYTE*>(env2->Allocate(src->GetRowSize(), 16, AVS_POOLED_ALLOC));
 
 	if (vi.IsPlanar()) {
     const int planes[3] = { PLANAR_Y, PLANAR_U, PLANAR_V };
