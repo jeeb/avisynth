@@ -33,6 +33,7 @@
 // import and export plugins, or graphical user interfaces.
 
 
+#include <stdint.h>
 #include <vector>
 
 // Avisynth filter: general convolution
@@ -83,16 +84,6 @@ GeneralConvolution::GeneralConvolution(PClip _child, double _divisor, int _nBias
   if (divisor == 0.0)
     _env->ThrowError("GeneralConvolution: divisor cannot be zero");
   setMatrix(_matrix, _env);
-  initBuffers(_env);
-}
-
-
-GeneralConvolution::~GeneralConvolution(void)
-{
-  delete [] pbyA;
-  delete [] pbyR;
-  delete [] pbyG;
-  delete [] pbyB;
 }
 
 
@@ -147,29 +138,28 @@ void GeneralConvolution::setMatrix(const char * _matrix, IScriptEnvironment* env
   }
 }
 
-
-void GeneralConvolution::initBuffers(IScriptEnvironment* env)
-{
-  int buffSize = vi.width * vi.height;
-  pbyA = new(std::nothrow) BYTE[buffSize];
-  pbyR = new(std::nothrow) BYTE[buffSize];
-  pbyG = new(std::nothrow) BYTE[buffSize];
-  pbyB = new(std::nothrow) BYTE[buffSize];
-
-  if(pbyA && pbyR && pbyG && pbyB == false)
-    env->ThrowError("GeneralConvolution: out of memory");
+template<int mi, int ma>
+__forceinline int static_clip(int value) {
+  if (value < mi) {
+    return mi;
+  }
+  if (value > ma) {
+    return ma;
+  }
+  return value;
 }
-
-
-
-/****** The good stuff ******/
 
 PVideoFrame __stdcall GeneralConvolution::GetFrame(int n, IScriptEnvironment* env)
 {
-  Pixel32 *srcp, *dstp;
-  BYTE *pbyR0, *pbyG0, *pbyB0, *pbyR1, *pbyG1, *pbyB1, *pbyR2, *pbyG2, *pbyB2,
-       *pbyR3, *pbyG3, *pbyB3, *pbyR4, *pbyG4, *pbyB4,
-       *pbyA0;
+  auto env2 = static_cast<IScriptEnvironment2*>(env);
+  auto pbyA = static_cast<uint8_t*>(env2->Allocate(vi.width*vi.height, 8, AVS_POOLED_ALLOC));
+  auto pbyR = static_cast<uint8_t*>(env2->Allocate(vi.width*vi.height, 8, AVS_POOLED_ALLOC));
+  auto pbyG = static_cast<uint8_t*>(env2->Allocate(vi.width*vi.height, 8, AVS_POOLED_ALLOC));
+  auto pbyB = static_cast<uint8_t*>(env2->Allocate(vi.width*vi.height, 8, AVS_POOLED_ALLOC));
+
+  if (pbyA == nullptr || pbyR == nullptr || pbyG == nullptr || pbyB == nullptr) {
+    env->ThrowError("GeneralConvolution: out of memory");
+  }
 
   int h = vi.height;
   int w = vi.width;
@@ -181,41 +171,45 @@ PVideoFrame __stdcall GeneralConvolution::GetFrame(int n, IScriptEnvironment* en
   const int pitch = dst->GetPitch();
   const int modulo = src->GetPitch() - src->GetRowSize();
 
-  srcp = (Pixel32*) src->GetReadPtr();
-  pbyA0 = pbyA;
-  pbyR0 = pbyR;
-  pbyG0 = pbyG;
-  pbyB0 = pbyB;
+  Pixel32* srcp = (Pixel32*)src->GetReadPtr();
+  uint8_t *pbyA0 = pbyA;
+  uint8_t *pbyR0 = pbyR;
+  uint8_t *pbyG0 = pbyG;
+  uint8_t *pbyB0 = pbyB;
 
-  {for(int y = 0; y < h; y++)
+  for(int y = 0; y < h; y++)
   {
     for(int x = 0; x < w; x++)
     {
-      *pbyA0++ = (BYTE)((*srcp &  0xff000000) >> 24);
-      *pbyR0++ = (BYTE)((*srcp &  0x00ff0000) >> 16);
-      *pbyG0++ = (BYTE)((*srcp &  0x0000ff00) >> 8);
-      *pbyB0++ = (BYTE)(*srcp++ & 0x000000ff);
+      *pbyA0++ = (uint8_t)((*srcp &  0xff000000) >> 24);
+      *pbyR0++ = (uint8_t)((*srcp &  0x00ff0000) >> 16);
+      *pbyG0++ = (uint8_t)((*srcp &  0x0000ff00) >> 8);
+      *pbyB0++ = (uint8_t)(*srcp++ & 0x000000ff);
     }
     srcp = (Pixel32 *)((char *)srcp + modulo);
-  }}
+  }
 
   int iA, iR, iG, iB, x0, x1, x2, x3, x4;
 
   int iCountT;
-  if (autoscale)
+  if (autoscale) {
     iCountT = i00 + i01 + i02 + i03 + i04 +
               i10 + i11 + i12 + i13 + i14 +
               i20 + i21 + i22 + i23 + i24 +
               i30 + i31 + i32 + i33 + i34 +
               i40 + i41 + i42 + i43 + i44;
-  else
+  } else {
     iCountT = 0;
+  }
     
   // Truncate instead of round - keep in the spirit of the original code
   int iCountDiv = (int)(0x100000 / (iCountT == 0 ? divisor : iCountT * divisor));
 
-  {for(int y = 0; y < h; y++)
+  for(int y = 0; y < h; y++)
   {
+    uint8_t *pbyR1, *pbyG1, *pbyB1, *pbyR2, *pbyG2, *pbyB2,
+      *pbyR3, *pbyG3, *pbyB3, *pbyR4, *pbyG4, *pbyB4;
+
     pbyA0                                 = pbyA + y * w;
     pbyR0 = pbyR1 = pbyR2 = pbyR3 = pbyR4 = pbyR + y * w;
     pbyG0 = pbyG1 = pbyG2 = pbyG3 = pbyG4 = pbyG + y * w;
@@ -243,7 +237,7 @@ PVideoFrame __stdcall GeneralConvolution::GetFrame(int n, IScriptEnvironment* en
       }
     }
 
-    dstp = (Pixel32 *)(dstStart + y * pitch);
+    Pixel32* dstp = (Pixel32 *)(dstStart + y * pitch);
     for(x2 = 0; x2 < w; x2++)
     {
       x0 = x2 > 2 ? x2 - 2 : 0;
@@ -290,22 +284,18 @@ PVideoFrame __stdcall GeneralConvolution::GetFrame(int n, IScriptEnvironment* en
       iG = ((iG * iCountDiv) >> 20) + nBias;
       iB = ((iB * iCountDiv) >> 20) + nBias;
 
-      if(iR > 255)
-        iR = 255;
-      else if(iR < 0)
-        iR = 0;
-      if(iG > 255)
-        iG = 255;
-      else if(iG < 0)
-        iG = 0;
-      if(iB > 255)
-        iB = 255;
-      else if(iB < 0)
-        iB = 0;
+      iR = static_clip<0, 255>(iR);
+      iG = static_clip<0, 255>(iG);
+      iB = static_clip<0, 255>(iB);
 
       *dstp++ = (iA << 24) + (iR << 16) + (iG << 8) + iB;
     }
-  }}
+  }
+
+  env2->Free(pbyA);
+  env2->Free(pbyR);
+  env2->Free(pbyG);
+  env2->Free(pbyB);
 
   return dst;
 }
