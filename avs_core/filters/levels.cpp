@@ -307,8 +307,9 @@ PVideoFrame __stdcall Levels::GetFrame(int n, IScriptEnvironment* env)
 
 AVSValue __cdecl Levels::Create(AVSValue args, void*, IScriptEnvironment* env)
 {
-  return new Levels( args[0].AsClip(), args[1].AsInt(), args[2].AsFloat(), args[3].AsInt(),
-                     args[4].AsInt(), args[5].AsInt(), args[6].AsBool(true), args[7].AsBool(false), env );
+  enum { CHILD, IN_MIN, GAMMA, IN_MAX, OUT_MIN, OUT_MAX, CORING, DITHER };
+  return new Levels( args[CHILD].AsClip(), args[IN_MIN].AsInt(), args[GAMMA].AsFloat(), args[IN_MAX].AsInt(),
+                     args[OUT_MIN].AsInt(), args[OUT_MAX].AsInt(), args[CORING].AsBool(true), args[DITHER].AsBool(false), env );
 }
 
 

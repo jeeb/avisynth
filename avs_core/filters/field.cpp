@@ -36,7 +36,6 @@
 #include "field.h"
 #include "resample.h"
 #include <avs/minmax.h>
-#include "../core/bitblt.h"
 #include "../core/internal.h"
 
 
@@ -401,7 +400,7 @@ AVSValue __cdecl WeaveColumns::Create(AVSValue args, void*, IScriptEnvironment* 
  *********************************/
 
 SeparateRows::SeparateRows(PClip _child, int _interval, IScriptEnvironment* env)
- : GenericVideoFilter(_child), interval(_interval)
+ : NonCachedGenericVideoFilter(_child), interval(_interval)
 {
   if (_interval <= 0)
     env->ThrowError("SeparateRows: interval must be greater than zero.");
@@ -492,7 +491,7 @@ PVideoFrame WeaveRows::GetFrame(int n, IScriptEnvironment* env)
       dstp -= dstpitch;
       const int j = i < inframes ? i : inframes-1;
       PVideoFrame src = child->GetFrame(j, env);
-      BitBlt( dstp,              dstpitch * period,
+      env->BitBlt( dstp,              dstpitch * period,
               src->GetReadPtr(), src->GetPitch(),
               src->GetRowSize(), src->GetHeight() );
     }
@@ -504,15 +503,15 @@ PVideoFrame WeaveRows::GetFrame(int n, IScriptEnvironment* env)
     for (int i=b; i<e; i++) {
       const int j = i < inframes ? i : inframes-1;
       PVideoFrame src = child->GetFrame(j, env);
-      BitBlt( dstp,              dstpitch * period,
+      env->BitBlt(dstp, dstpitch * period,
               src->GetReadPtr(), src->GetPitch(),
               src->GetRowSize(), src->GetHeight() );
       dstp += dstpitch;
       if (dstpitchUV) {
-        BitBlt( dstpU,                     dstpitchUV * period,
+        env->BitBlt(dstpU, dstpitchUV * period,
                 src->GetReadPtr(PLANAR_U), src->GetPitch(PLANAR_U),
                 src->GetRowSize(PLANAR_U), src->GetHeight(PLANAR_U) );
-        BitBlt( dstpV,                     dstpitchUV * period,
+        env->BitBlt(dstpV, dstpitchUV * period,
                 src->GetReadPtr(PLANAR_V), src->GetPitch(PLANAR_V),
                 src->GetRowSize(PLANAR_V), src->GetHeight(PLANAR_V) );
         dstpU += dstpitchUV;
@@ -543,7 +542,7 @@ AVSValue __cdecl WeaveRows::Create(AVSValue args, void*, IScriptEnvironment* env
  *********************************/
 
 SeparateFields::SeparateFields(PClip _child, IScriptEnvironment* env)
- : GenericVideoFilter(_child)
+ : NonCachedGenericVideoFilter(_child)
 {
   if (vi.height & 1)
     env->ThrowError("SeparateFields: height must be even");
@@ -618,10 +617,12 @@ Interleave::Interleave(int _num_children, const PClip* _child_array, IScriptEnvi
 
 int __stdcall Interleave::SetCacheHints(int cachehints,int frame_range)
 {
-  switch(cachehints)
+  switch (cachehints)
   {
   case CACHE_DONT_CACHE_ME:
     return 1;
+  case CACHE_GET_MTMODE:
+    return MT_NICE_PLUGIN;
   default:
     return 0;
   }
@@ -650,7 +651,7 @@ AVSValue __cdecl Interleave::Create(AVSValue args, void*, IScriptEnvironment* en
 
 
 SelectEvery::SelectEvery(PClip _child, int _every, int _from)
- : GenericVideoFilter(_child), every(_every), from(_from)
+: NonCachedGenericVideoFilter(_child), every(_every), from(_from)
 {
   vi.MulDivFPS(1, every);
   vi.num_frames = (vi.num_frames-1-from) / every + 1;
@@ -689,6 +690,25 @@ DoubleWeaveFields::DoubleWeaveFields(PClip _child)
 }
 
 
+void copy_field(const PVideoFrame& dst, const PVideoFrame& src, bool yuv, bool parity, IScriptEnvironment* env)
+{
+  const int add_pitch = dst->GetPitch() * (parity ^ yuv);
+  const int add_pitchUV = dst->GetPitch(PLANAR_U) * (parity ^ yuv);
+
+  env->BitBlt(dst->GetWritePtr()         + add_pitch, dst->GetPitch()*2,
+    src->GetReadPtr(), src->GetPitch(),
+    src->GetRowSize(), src->GetHeight());
+
+  env->BitBlt(dst->GetWritePtr(PLANAR_U) + add_pitchUV, dst->GetPitch(PLANAR_U)*2,
+    src->GetReadPtr(PLANAR_U), src->GetPitch(PLANAR_U),
+    src->GetRowSize(PLANAR_U), src->GetHeight(PLANAR_U));
+
+  env->BitBlt(dst->GetWritePtr(PLANAR_V) + add_pitchUV, dst->GetPitch(PLANAR_V)*2,
+    src->GetReadPtr(PLANAR_V), src->GetPitch(PLANAR_V),
+    src->GetRowSize(PLANAR_V), src->GetHeight(PLANAR_V));
+}
+
+
 PVideoFrame DoubleWeaveFields::GetFrame(int n, IScriptEnvironment* env) 
 {
   PVideoFrame a = child->GetFrame(n, env);
@@ -698,35 +718,11 @@ PVideoFrame DoubleWeaveFields::GetFrame(int n, IScriptEnvironment* env)
 
   const bool parity = child->GetParity(n);
 
-  CopyField(result, a, parity);
-  CopyField(result, b, !parity);
+  copy_field(result, a, vi.IsYUV(), parity, env);
+  copy_field(result, b, vi.IsYUV(), !parity, env);
 
   return result;
 }
-
-
-void DoubleWeaveFields::CopyField(const PVideoFrame& dst, const PVideoFrame& src, bool parity) 
-{
-  const int add_pitch = dst->GetPitch() * (parity ^ vi.IsYUV());
-  const int add_pitchUV = dst->GetPitch(PLANAR_U) * (parity ^ vi.IsYUV());
-
-  BitBlt( dst->GetWritePtr()         + add_pitch,   dst->GetPitch()*2,
-          src->GetReadPtr(),                        src->GetPitch(),
-          src->GetRowSize(),                        src->GetHeight() );
-
-  BitBlt( dst->GetWritePtr(PLANAR_U) + add_pitchUV, dst->GetPitch(PLANAR_U)*2,
-          src->GetReadPtr(PLANAR_U),                src->GetPitch(PLANAR_U),
-          src->GetRowSize(PLANAR_U),                src->GetHeight(PLANAR_U) );
-
-  BitBlt( dst->GetWritePtr(PLANAR_V) + add_pitchUV, dst->GetPitch(PLANAR_V)*2,
-          src->GetReadPtr(PLANAR_V),                src->GetPitch(PLANAR_V),
-          src->GetRowSize(PLANAR_V),                src->GetHeight(PLANAR_V) );
-}
-
-
-
-
-
 
 
 
@@ -744,6 +740,27 @@ DoubleWeaveFrames::DoubleWeaveFrames(PClip _child)
   vi.MulDivFPS(2, 1);
 }
 
+void copy_alternate_lines(const PVideoFrame& dst, const PVideoFrame& src, bool yuv, bool parity, IScriptEnvironment* env)
+{
+  const int src_add_pitch = src->GetPitch()         * (parity ^ yuv);
+  const int src_add_pitchUV = src->GetPitch(PLANAR_U) * (parity ^ yuv);
+
+  const int dst_add_pitch = dst->GetPitch()         * (parity ^ yuv);
+  const int dst_add_pitchUV = dst->GetPitch(PLANAR_U) * (parity ^ yuv);
+
+  env->BitBlt(dst->GetWritePtr()         + dst_add_pitch, dst->GetPitch()*2,
+    src->GetReadPtr()          + src_add_pitch, src->GetPitch()*2,
+    src->GetRowSize(), src->GetHeight()>>1);
+
+  env->BitBlt(dst->GetWritePtr(PLANAR_U) + dst_add_pitchUV, dst->GetPitch(PLANAR_U)*2,
+    src->GetReadPtr(PLANAR_U)  + src_add_pitchUV, src->GetPitch(PLANAR_U)*2,
+    src->GetRowSize(PLANAR_U), src->GetHeight(PLANAR_U)>>1);
+
+  env->BitBlt(dst->GetWritePtr(PLANAR_V) + dst_add_pitchUV, dst->GetPitch(PLANAR_V)*2,
+    src->GetReadPtr(PLANAR_V)  + src_add_pitchUV, src->GetPitch(PLANAR_V)*2,
+    src->GetRowSize(PLANAR_V), src->GetHeight(PLANAR_V)>>1);
+}
+
 
 PVideoFrame DoubleWeaveFrames::GetFrame(int n, IScriptEnvironment* env) 
 {
@@ -757,45 +774,21 @@ PVideoFrame DoubleWeaveFrames::GetFrame(int n, IScriptEnvironment* env)
     bool parity = this->GetParity(n);
 
     if (a->IsWritable()) {
-      CopyAlternateLines(a, b, !parity);
+      copy_alternate_lines(a, b, vi.IsYUV(), !parity, env);
       return a;
     } 
     else if (b->IsWritable()) {
-      CopyAlternateLines(b, a, parity);
+      copy_alternate_lines(b, a, vi.IsYUV(), parity, env);
       return b;
     } 
     else {
       PVideoFrame result = env->NewVideoFrame(vi);
-      CopyAlternateLines(result, a, parity);
-      CopyAlternateLines(result, b, !parity);
+      copy_alternate_lines(result, a, vi.IsYUV(), parity, env);
+      copy_alternate_lines(result, b, vi.IsYUV(), !parity, env);
       return result;
     }
   }
 }
-
-
-void DoubleWeaveFrames::CopyAlternateLines(const PVideoFrame& dst, const PVideoFrame& src, bool parity) 
-{
-  const int src_add_pitch   = src->GetPitch()         * (parity ^ vi.IsYUV());
-  const int src_add_pitchUV = src->GetPitch(PLANAR_U) * (parity ^ vi.IsYUV());
-
-  const int dst_add_pitch   = dst->GetPitch()         * (parity ^ vi.IsYUV());
-  const int dst_add_pitchUV = dst->GetPitch(PLANAR_U) * (parity ^ vi.IsYUV());
- 
-  BitBlt( dst->GetWritePtr()         + dst_add_pitch,   dst->GetPitch()*2,
-          src->GetReadPtr()          + src_add_pitch,   src->GetPitch()*2,
-          src->GetRowSize(),                            src->GetHeight()>>1 );
-
-  BitBlt( dst->GetWritePtr(PLANAR_U) + dst_add_pitchUV, dst->GetPitch(PLANAR_U)*2,
-          src->GetReadPtr(PLANAR_U)  + src_add_pitchUV, src->GetPitch(PLANAR_U)*2,
-          src->GetRowSize(PLANAR_U),                    src->GetHeight(PLANAR_U)>>1 );
-
-  BitBlt( dst->GetWritePtr(PLANAR_V) + dst_add_pitchUV, dst->GetPitch(PLANAR_V)*2,
-          src->GetReadPtr(PLANAR_V)  + src_add_pitchUV, src->GetPitch(PLANAR_V)*2,
-          src->GetRowSize(PLANAR_V),                    src->GetHeight(PLANAR_V)>>1 );
-}
-
-
 
 
 
@@ -806,7 +799,7 @@ void DoubleWeaveFrames::CopyAlternateLines(const PVideoFrame& dst, const PVideoF
  *******************************/
 
 Fieldwise::Fieldwise(PClip _child1, PClip _child2) 
- : GenericVideoFilter(_child1), child2(_child2)
+: NonCachedGenericVideoFilter(_child1), child2(_child2)
   { vi.SetFieldBased(false); } // Make FrameBased, leave IT_BFF and IT_TFF alone
 
 
@@ -887,7 +880,7 @@ static AVSValue __cdecl Create_Bob(AVSValue args, void*, IScriptEnvironment* env
 
 
 SelectRangeEvery::SelectRangeEvery(PClip _child, int _every, int _length, int _offset, bool _audio, IScriptEnvironment* env)
-    : GenericVideoFilter(_child), audio(_audio), achild(_child)
+: NonCachedGenericVideoFilter(_child), audio(_audio), achild(_child)
 {
   const __int64 num_audio_samples = vi.num_audio_samples;
 
