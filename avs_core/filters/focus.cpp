@@ -34,6 +34,7 @@
 
 #include "focus.h"
 #include <cmath>
+#include <new>
 #include <avs/alignment.h>
 #include <avs/minmax.h>
 #include "../core/internal.h"
@@ -1335,7 +1336,6 @@ static int calculate_sad(const BYTE* cur_ptr, const BYTE* other_ptr, int cur_pit
   return calculate_sad_c(cur_ptr, other_ptr, cur_pitch, other_pitch, width, height);
 }
 
-
 PVideoFrame TemporalSoften::GetFrame(int n, IScriptEnvironment* env)
 {
   int radius = (kernel-1) / 2;
@@ -1354,9 +1354,9 @@ PVideoFrame TemporalSoften::GetFrame(int n, IScriptEnvironment* env)
   }
 
   auto frames = static_cast<PVideoFrame*>(alloca(sizeof(PVideoFrame)* kernel));
-  memset(frames, 0, sizeof(PVideoFrame)* kernel);
-
+  
   for (int p = n-radius; p<=n+radius; p++) {
+    new(frames+p+radius-n) PVideoFrame;
     frames[p+radius-n] = child->GetFrame(clamp(p, 0, vi.num_frames-1), env);
   }
 
@@ -1458,7 +1458,7 @@ PVideoFrame TemporalSoften::GetFrame(int n, IScriptEnvironment* env)
   PVideoFrame result = frames[radius];
   
   for (int i = 0; i < kernel; ++i) {
-    frames[i].~PVideoFrame();
+    frames[i] = nullptr;
   }
   return result;
 }
