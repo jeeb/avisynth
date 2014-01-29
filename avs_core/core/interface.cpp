@@ -354,10 +354,9 @@ BYTE* VideoFrame::GetWritePtr() const {
 
 void VideoFrame::AddRef() { InterlockedIncrement(&refcount); }
 void VideoFrame::Release() {
-  VideoFrameBuffer* _vfb = vfb;
 
   if (!InterlockedDecrement(&refcount))
-    InterlockedDecrement(&_vfb->refcount);
+    InterlockedDecrement(&vfb->refcount);
 }
 
 int VideoFrame::GetPitch(int plane) const { switch (plane) {case PLANAR_U: case PLANAR_V: return pitchUV;} return pitch; }

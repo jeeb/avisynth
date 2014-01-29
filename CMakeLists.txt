@@ -16,13 +16,15 @@ endif()
 
 IF( MSVC_IDE )  # Check for Visual Studio
 
+  IF( MSVC_VERSION VERSION_LESS 1700 )  # Check for v11 (VS 2012)
+    MESSAGE(FATAL_ERROR "Visual C++ 2012 or newer required.")
+  ENDIF()
+
   file(MAKE_DIRECTORY "${CMAKE_BINARY_DIR}/Output/plugins")
   file(MAKE_DIRECTORY "${CMAKE_BINARY_DIR}/Output/system")
 
-  IF( NOT MSVC_VERSION VERSION_LESS 1700 )  # Check for v11 (VS 2012)
-    # We want our project to also run on Windows XP
-    set(CMAKE_GENERATOR_TOOLSET "v110_xp" CACHE STRING "The compiler toolset to use for Visual Studio." FORCE)
-  ENDIF()
+  # We want our project to also run on Windows XP
+  set(CMAKE_GENERATOR_TOOLSET "v110_xp" CACHE STRING "The compiler toolset to use for Visual Studio." FORCE)
 
   # Enable C++ with SEH exceptions
   set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} /EHa")
@@ -30,6 +32,11 @@ IF( MSVC_IDE )  # Check for Visual Studio
 
   # Prevent VC++ from complaining about not using MS-specific functions
   add_definitions("/D _CRT_SECURE_NO_WARNINGS /D _SECURE_SCL=0")
+  
+  if(CMAKE_SIZEOF_VOID_P EQUAL 4)
+    # VC++ enables the SSE2 instruction set by default even on 32-bits. Step back a bit.
+    add_definitions("/arch:SSE")
+  endif() 
   
   # Set additional optimization flags
   set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} /Oy /Ot /GS-")

@@ -111,7 +111,9 @@ ThreadPool::ThreadPool(size_t nThreads) :
   _pimpl(new ThreadPoolPimpl(nThreads))
 {
   _pimpl->Threads.reserve(nThreads);
-  for (size_t i = 0; i < nThreads; ++i)
+
+  // i is used as the thread id. Skip id zero because that is reserved for the main thread.
+  for (size_t i = 1; i <= nThreads; ++i)
     _pimpl->Threads.emplace_back(ThreadFunc, i, &(_pimpl->MsgQueue));
 }
 

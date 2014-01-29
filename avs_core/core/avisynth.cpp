@@ -551,7 +551,7 @@ public:
   virtual void __stdcall ParallelJob(ThreadWorkerFuncPtr jobFunc, void* jobData, IJobCompletion* completion);
   virtual IJobCompletion* __stdcall NewCompletion(size_t capacity);
   virtual size_t  __stdcall GetProperty(AvsEnvProperty prop);
-  virtual void* __stdcall Allocate(size_t nBytes, size_t alignment, bool pool);
+  virtual void* __stdcall Allocate(size_t nBytes, size_t alignment, AvsAllocType type);
   virtual void __stdcall Free(void* ptr);
 
 private:
@@ -603,7 +603,6 @@ private:
   BufferPool BufferPool;
 
   MTMapState MTMap;
-  AVSValue CreateMTGuard(const AVSFunction* func, const std::vector<AVSValue>& args);
   typedef std::vector<MTGuard*> MTGuardRegistryType;
   MTGuardRegistryType MTGuardRegistry;
   Prefetcher *prefetcher;
@@ -691,9 +690,9 @@ ScriptEnvironment::ScriptEnvironment()
     global_var_table->Set("$ScriptFile$", AVSValue());
     global_var_table->Set("$ScriptDir$",  AVSValue());
 
-    global_var_table->Set("MT_NICE_PLUGIN",     1);
-    global_var_table->Set("MT_MULTI_INSTANCE",  2);
-    global_var_table->Set("MT_SERIALIZED",      3);
+    global_var_table->Set("MT_NICE_PLUGIN",     (int)MT_NICE_PLUGIN);
+    global_var_table->Set("MT_MULTI_INSTANCE",  (int)MT_MULTI_INSTANCE);
+    global_var_table->Set("MT_SERIALIZED",      (int)MT_SERIALIZED);
 
     plugin_manager = new PluginManager(this);
     plugin_manager->AddAutoloadDir("USER_PLUS_PLUGINS", false);
@@ -784,45 +783,6 @@ void __stdcall ScriptEnvironment::AdjustMemoryConsumption(size_t amount, bool mi
     memory_used += amount;
 }
 
-AVSValue ScriptEnvironment::CreateMTGuard(const AVSFunction* func, const std::vector<AVSValue>& args)
-{
-  AVSValue avsargs(args.data(), (int)args.size());
-  AVSValue func_result = func->apply(avsargs, func->user_data, this);
-
-  if (func_result.IsClip() && !Cache::IsCache(func_result.AsClip()))
-  {
-    MtMode mode = this->GetFilterMTMode(func->name);
-    PClip filter_instance = func_result.AsClip();
-    if ( (filter_instance->GetVersion() >= 5)
-      && (filter_instance->SetCacheHints(CACHE_GET_MTMODE, 0) != 0) )
-    {
-      mode = (MtMode)filter_instance->SetCacheHints(CACHE_GET_MTMODE, 0);
-    }
-
-    switch (mode)
-    {
-    case MT_NICE_PLUGIN:
-      {
-        return func_result;
-      }
-    case MT_MULTI_INSTANCE: // Fall-through intentional
-    case MT_SERIALIZED:
-      {
-        MTGuard* guard = new MTGuard(filter_instance, mode, func, args, this);
-        MTGuardRegistry.push_back(guard);
-        return guard;
-      }
-    default:
-      assert(0);
-      return NULL;
-    }
-  }
-  else
-  {
-    return func_result;
-  }
-}
-
 void __stdcall ScriptEnvironment::ParallelJob(ThreadWorkerFuncPtr jobFunc, void* jobData, IJobCompletion* completion)
 {
   thread_pool->QueueJob(jobFunc, jobData, this, static_cast<JobCompletion*>(completion));
@@ -845,9 +805,11 @@ MtMode __stdcall ScriptEnvironment::GetFilterMTMode(const char* filter) const
   return MTMap.GetMode(filter);
 }
 
-void* __stdcall ScriptEnvironment::Allocate(size_t nBytes, size_t alignment, bool pool)
+void* __stdcall ScriptEnvironment::Allocate(size_t nBytes, size_t alignment, AvsAllocType type)
 {
-  return BufferPool.Allocate(nBytes, alignment, pool);
+  if ((type != AVS_NORMAL_ALLOC) && (type != AVS_POOLED_ALLOC))
+    return NULL;
+  return BufferPool.Allocate(nBytes, alignment, type == AVS_POOLED_ALLOC);
 }
 
 void __stdcall ScriptEnvironment::Free(void* ptr)
@@ -1501,6 +1463,12 @@ void* ScriptEnvironment::ManageCache(int key, void* data) {
     CacheRegistry.move_to_back(cache);
     break;
   } // case
+  case MC_RegisterMTGuard:
+  {
+    MTGuard* guard = reinterpret_cast<MTGuard*>(data);
+    MTGuardRegistry.push_back(guard);
+    break;
+  }
   case MC_UnRegisterMTGuard:
   {
     MTGuard* guard = reinterpret_cast<MTGuard*>(data);
@@ -1512,6 +1480,7 @@ void* ScriptEnvironment::ManageCache(int key, void* data) {
         break;
       }
     }
+    break;
   }
   } // switch
   return 0;
@@ -1715,7 +1684,8 @@ success:;
   }
   else
   {
-    *result = Cache::Create(CreateMTGuard(f, args3), f->user_data, this);
+    *result = Cache::Create(MTGuard::Create(f, &args2, &args3, this), NULL, this);
+    // args2 and args3 are not valid after this point anymore
   }
   
   return true;
