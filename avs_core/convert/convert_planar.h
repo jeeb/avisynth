@@ -38,6 +38,14 @@
 #define __Convert_PLANAR_H__
 
 #include <avisynth.h>
+#include <stdint.h>
+
+struct ChannelConversionMatrix {
+  int16_t r;
+  int16_t g;
+  int16_t b;
+  int offset_y;
+};
 
 class ConvertToY8 : public GenericVideoFilter
 {
@@ -45,14 +53,12 @@ public:
   ConvertToY8(PClip src, int matrix, IScriptEnvironment* env);
   PVideoFrame __stdcall GetFrame(int n,IScriptEnvironment* env);
   static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env);  
-  ~ConvertToY8();
 private:
   bool blit_luma_only;
   bool yuy2_input;
   bool rgb_input;
   int pixel_step;
-  signed short* matrix;
-  int offset_y;
+  ChannelConversionMatrix matrix;
 };
 
 struct ConversionMatrix {
