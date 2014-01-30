@@ -33,7 +33,6 @@
 // import and export plugins, or graphical user interfaces.
 
 #include "combine.h"
-#include "../core/bitblt.h"
 #include "../core/internal.h"
 #include <avs/win.h>
 #include <avs/minmax.h>
@@ -109,7 +108,7 @@ PVideoFrame __stdcall StackVertical::GetFrame(int n, IScriptEnvironment* env)
       const int src_pitch = children[i].second->GetPitch();
       const int src_height = children[i].second->GetHeight();
 
-      BitBlt(dstp, dst_pitch, srcp, src_pitch, row_size, src_height);
+      env->BitBlt(dstp, dst_pitch, srcp, src_pitch, row_size, src_height);
       dstp += dst_pitch * src_height;
     }
   }
@@ -120,7 +119,7 @@ PVideoFrame __stdcall StackVertical::GetFrame(int n, IScriptEnvironment* env)
       const int src_pitch = src.second->GetPitch();
       const int src_height = src.second->GetHeight();
 
-      BitBlt(dstp, dst_pitch, srcp, src_pitch, row_size, src_height);
+      env->BitBlt(dstp, dst_pitch, srcp, src_pitch, row_size, src_height);
       dstp += dst_pitch * src_height;
     }
 
@@ -136,7 +135,7 @@ PVideoFrame __stdcall StackVertical::GetFrame(int n, IScriptEnvironment* env)
         const int src_pitchV = src.second->GetPitch(PLANAR_V);
         const int src_heightV = src.second->GetHeight(PLANAR_V);
 
-        BitBlt(dstpV, dst_pitchUV, srcpV, src_pitchV, row_sizeUV, src_heightV);
+        env->BitBlt(dstpV, dst_pitchUV, srcpV, src_pitchV, row_sizeUV, src_heightV);
         dstpV += dst_pitchUV * src_heightV;
       }
 
@@ -147,7 +146,7 @@ PVideoFrame __stdcall StackVertical::GetFrame(int n, IScriptEnvironment* env)
         const int src_pitchU = src.second->GetPitch(PLANAR_U);
         const int src_heightU = src.second->GetHeight(PLANAR_U);
 
-        BitBlt(dstpU, dst_pitchUV, srcpU, src_pitchU, row_sizeUV, src_heightU);
+        env->BitBlt(dstpU, dst_pitchUV, srcpU, src_pitchU, row_sizeUV, src_heightU);
         dstpU += dst_pitchUV * src_heightU;
       }
     }
@@ -242,7 +241,7 @@ PVideoFrame __stdcall StackHorizontal::GetFrame(int n, IScriptEnvironment* env)
     const int src_pitch = src.second->GetPitch();
     const int src_rowsize = src.second->GetRowSize();
 
-    BitBlt(dstp, dst_pitch, srcp, src_pitch, src_rowsize, height);
+    env->BitBlt(dstp, dst_pitch, srcp, src_pitch, src_rowsize, height);
     dstp += src_rowsize;
   }
 
@@ -258,7 +257,7 @@ PVideoFrame __stdcall StackHorizontal::GetFrame(int n, IScriptEnvironment* env)
       const int src_pitchV = src.second->GetPitch(PLANAR_V);
       const int src_rowsizeV = src.second->GetRowSize(PLANAR_V);
 
-      BitBlt(dstpV, dst_pitchUV, srcpV, src_pitchV, src_rowsizeV, heightUV);
+      env->BitBlt(dstpV, dst_pitchUV, srcpV, src_pitchV, src_rowsizeV, heightUV);
       dstpV += src_rowsizeV;
     }
 
@@ -269,7 +268,7 @@ PVideoFrame __stdcall StackHorizontal::GetFrame(int n, IScriptEnvironment* env)
       const int src_pitchU = src.second->GetPitch(PLANAR_U);
       const int src_rowsizeU = src.second->GetRowSize(PLANAR_U);
 
-      BitBlt(dstpU, dst_pitchUV, srcpU, src_pitchU, src_rowsizeU, heightUV);
+      env->BitBlt(dstpU, dst_pitchUV, srcpU, src_pitchU, src_rowsizeU, heightUV);
       dstpU += src_rowsizeU;
     }
   }
@@ -400,9 +399,9 @@ PVideoFrame __stdcall ShowFiveVersions::GetFrame(int n, IScriptEnvironment* env)
 		dstp2V += (heightUV * dst_pitchUV) + src_row_sizeUV/2;
 	  }
 
-	  BitBlt(dstp2,  dst_pitch,   srcpY, src_pitchY,  src_row_sizeY,  height);
-	  BitBlt(dstp2U, dst_pitchUV, srcpU, src_pitchUV, src_row_sizeUV, heightUV);
-	  BitBlt(dstp2V, dst_pitchUV, srcpV, src_pitchUV, src_row_sizeUV, heightUV);
+	  env->BitBlt(dstp2,  dst_pitch,   srcpY, src_pitchY,  src_row_sizeY,  height);
+	  env->BitBlt(dstp2U, dst_pitchUV, srcpU, src_pitchUV, src_row_sizeUV, heightUV);
+	  env->BitBlt(dstp2V, dst_pitchUV, srcpV, src_pitchUV, src_row_sizeUV, heightUV);
 	}
 	else {
 	  const BYTE* srcp = src->GetReadPtr();
@@ -416,7 +415,7 @@ PVideoFrame __stdcall ShowFiveVersions::GetFrame(int n, IScriptEnvironment* env)
 	  if (c&1)
 		dstp2 += vi.BytesFromPixels(vi.width/6);
 
-	  BitBlt(dstp2, dst_pitch, srcp, src_pitch, src_row_size, height);
+    env->BitBlt(dstp2, dst_pitch, srcp, src_pitch, src_row_size, height);
 	}
   }
 
