@@ -126,32 +126,24 @@ PVideoFrame __stdcall StackVertical::GetFrame(int n, IScriptEnvironment* env)
       env->BitBlt(dstp, dst_pitch, srcp, src_pitch, row_size, src_height);
       dstp += dst_pitch * src_height;
     }
-
-    if (vi.IsPlanar()) {
+    
+    if (vi.IsPlanar() && !vi.IsY8()) {
       // Copy Planar
       const int dst_pitchUV = dst->GetPitch(PLANAR_U);
       const int row_sizeUV = dst->GetRowSize(PLANAR_U);
+      const static int planes[2] = { PLANAR_U, PLANAR_V };
 
-      BYTE* dstpV = dst->GetWritePtr(PLANAR_V);
-      for (size_t i = 0; i < nClips; ++i)
-      {
-        const BYTE* srcpV = frames[i]->GetReadPtr(PLANAR_V);
-        const int src_pitchV = frames[i]->GetPitch(PLANAR_V);
-        const int src_heightV = frames[i]->GetHeight(PLANAR_V);
+      for (int plane: planes) {
+        BYTE* dstp_uv = dst->GetWritePtr(plane);
+        for (size_t i = 0; i < nClips; ++i)
+        {
+          const BYTE* srcp = frames[i]->GetReadPtr(plane);
+          const int src_pitch = frames[i]->GetPitch(plane);
+          const int src_height = frames[i]->GetHeight(plane);
 
-        env->BitBlt(dstpV, dst_pitchUV, srcpV, src_pitchV, row_sizeUV, src_heightV);
-        dstpV += dst_pitchUV * src_heightV;
-      }
-
-      BYTE* dstpU = dst->GetWritePtr(PLANAR_U);
-      for (size_t i = 0; i < nClips; ++i)
-      {
-        const BYTE* srcpU = frames[i]->GetReadPtr(PLANAR_U);
-        const int src_pitchU = frames[i]->GetPitch(PLANAR_U);
-        const int src_heightU = frames[i]->GetHeight(PLANAR_U);
-
-        env->BitBlt(dstpU, dst_pitchUV, srcpU, src_pitchU, row_sizeUV, src_heightU);
-        dstpU += dst_pitchUV * src_heightU;
+          env->BitBlt(dstp_uv, dst_pitchUV, srcp, src_pitch, row_sizeUV, src_height);
+          dstp_uv += dst_pitchUV * src_height;
+        }
       }
     }
   }
@@ -244,26 +236,18 @@ PVideoFrame __stdcall StackHorizontal::GetFrame(int n, IScriptEnvironment* env)
     const int dst_pitchUV = dst->GetPitch(PLANAR_U);
     const int heightUV = dst->GetHeight(PLANAR_U);
 
-    BYTE* dstpV = dst->GetWritePtr(PLANAR_V);
-    for (size_t i = 0; i < nClips; ++i)
-    {
-      const BYTE* srcpV = frames[i]->GetReadPtr(PLANAR_V);
-      const int src_pitchV = frames[i]->GetPitch(PLANAR_V);
-      const int src_rowsizeV = frames[i]->GetRowSize(PLANAR_V);
+    const static int planes[2] = { PLANAR_U, PLANAR_V };
+    for (int plane: planes) {
+      BYTE* dstp_uv = dst->GetWritePtr(plane);
+      for (size_t i = 0; i < nClips; ++i)
+      {
+        const BYTE* srcp = frames[i]->GetReadPtr(plane);
+        const int src_pitch = frames[i]->GetPitch(plane);
+        const int src_width = frames[i]->GetRowSize(plane);
 
-      env->BitBlt(dstpV, dst_pitchUV, srcpV, src_pitchV, src_rowsizeV, heightUV);
-      dstpV += src_rowsizeV;
-    }
-
-    BYTE* dstpU = dst->GetWritePtr(PLANAR_U);
-    for (size_t i = 0; i < nClips; ++i)
-    {
-      const BYTE* srcpU = frames[i]->GetReadPtr(PLANAR_U);
-      const int src_pitchU = frames[i]->GetPitch(PLANAR_U);
-      const int src_rowsizeU = frames[i]->GetRowSize(PLANAR_U);
-
-      env->BitBlt(dstpU, dst_pitchUV, srcpU, src_pitchU, src_rowsizeU, heightUV);
-      dstpU += src_rowsizeU;
+        env->BitBlt(dstp_uv, dst_pitchUV, srcp, src_pitch, src_width, heightUV);
+        dstp_uv += src_width;
+      }
     }
   }
 
