@@ -45,6 +45,9 @@
 // Avisynth, such as 3rd-party filters, import and export plugins, or
 // graphical user interfaces.
 
+#ifdef AVS_LINUX
+# include <avs/linux.h>
+#endif
 
 
 
