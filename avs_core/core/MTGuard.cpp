@@ -75,7 +75,7 @@ void MTGuard::EnableMT(size_t nThreads)
   {
     switch (MTMode)
     {
-    case MT_NICE_PLUGIN:
+    case MT_NICE_FILTER:
       {
         // Nothing to do
         break;
@@ -121,7 +121,7 @@ PVideoFrame __stdcall MTGuard::GetFrame(int n, IScriptEnvironment* env)
 
   switch (MTMode)
   {
-  case MT_NICE_PLUGIN:
+  case MT_NICE_FILTER:
     {
       frame = ChildFilters[0]->GetFrame(n, env);
       break;
@@ -166,7 +166,7 @@ void __stdcall MTGuard::GetAudio(void* buf, __int64 start, __int64 count, IScrip
 
   switch (MTMode)
   {
-  case MT_NICE_PLUGIN:
+  case MT_NICE_FILTER:
     {
       ChildFilters[0]->GetAudio(buf, start, count, env);
       break;
@@ -235,7 +235,7 @@ AVSValue MTGuard::Create(const AVSFunction* func, std::vector<AVSValue>* args2, 
 
     switch (mode)
     {
-    case MT_NICE_PLUGIN:
+    case MT_NICE_FILTER:
       {
         return func_result;
       }

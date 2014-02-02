@@ -695,7 +695,7 @@ ScriptEnvironment::ScriptEnvironment()
     global_var_table->Set("$ScriptFile$", AVSValue());
     global_var_table->Set("$ScriptDir$",  AVSValue());
 
-    global_var_table->Set("MT_NICE_PLUGIN",     (int)MT_NICE_PLUGIN);
+    global_var_table->Set("MT_NICE_FILTER",     (int)MT_NICE_FILTER);
     global_var_table->Set("MT_MULTI_INSTANCE",  (int)MT_MULTI_INSTANCE);
     global_var_table->Set("MT_SERIALIZED",      (int)MT_SERIALIZED);
 

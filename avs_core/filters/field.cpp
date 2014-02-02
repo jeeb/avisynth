@@ -622,7 +622,7 @@ int __stdcall Interleave::SetCacheHints(int cachehints,int frame_range)
   case CACHE_DONT_CACHE_ME:
     return 1;
   case CACHE_GET_MTMODE:
-    return MT_NICE_PLUGIN;
+    return MT_NICE_FILTER;
   default:
     return 0;
   }

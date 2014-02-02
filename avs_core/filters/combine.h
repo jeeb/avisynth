@@ -68,7 +68,7 @@ public:
   }
 
   int __stdcall SetCacheHints(int cachehints, int frame_range) {
-    return cachehints == CACHE_GET_MTMODE ? MT_NICE_PLUGIN : 0;
+    return cachehints == CACHE_GET_MTMODE ? MT_NICE_FILTER : 0;
   }
 
   static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env);
@@ -102,7 +102,7 @@ public:
   }
 
   int __stdcall SetCacheHints(int cachehints, int frame_range) {
-    return cachehints == CACHE_GET_MTMODE ? MT_NICE_PLUGIN : 0;
+    return cachehints == CACHE_GET_MTMODE ? MT_NICE_FILTER : 0;
   }
 
   static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env);

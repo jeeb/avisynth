@@ -98,7 +98,7 @@ int __stdcall NonCachedGenericVideoFilter::SetCacheHints(int cachehints, int fra
     case CACHE_DONT_CACHE_ME:
       return 1;
     case CACHE_GET_MTMODE:
-      return MT_NICE_PLUGIN;
+      return MT_NICE_FILTER;
     default:
       return GenericVideoFilter::SetCacheHints(cachehints, frame_range);
   }

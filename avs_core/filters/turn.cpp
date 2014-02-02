@@ -748,7 +748,7 @@ Turn::Turn(PClip _child, int _direction, IScriptEnvironment* env) : GenericVideo
 }
 
 int __stdcall Turn::SetCacheHints(int cachehints, int frame_range) {
-  return cachehints == CACHE_GET_MTMODE ? MT_NICE_PLUGIN : 0;
+  return cachehints == CACHE_GET_MTMODE ? MT_NICE_FILTER : 0;
 }
 
 PVideoFrame __stdcall Turn::GetFrame(int n, IScriptEnvironment* env)

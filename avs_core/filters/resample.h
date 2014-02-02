@@ -58,7 +58,7 @@ public:
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
 
   int __stdcall SetCacheHints(int cachehints, int frame_range) override {
-    return cachehints == CACHE_GET_MTMODE ? MT_NICE_PLUGIN : 0;
+    return cachehints == CACHE_GET_MTMODE ? MT_NICE_FILTER : 0;
   }
 
   static ResamplerH GetResampler(int CPU, bool aligned, ResamplingProgram* program, IScriptEnvironment2* env);
@@ -102,7 +102,7 @@ public:
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
 
   int __stdcall SetCacheHints(int cachehints, int frame_range) override {
-    return cachehints == CACHE_GET_MTMODE ? MT_NICE_PLUGIN : 0;
+    return cachehints == CACHE_GET_MTMODE ? MT_NICE_FILTER : 0;
   }
 
   static ResamplerV GetResampler(int CPU, bool aligned, void*& storage, ResamplingProgram* program);
