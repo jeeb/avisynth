@@ -327,9 +327,9 @@ public:
     core->SetFilterMTMode(filter, mode, force);
   }
 
-  virtual MtMode __stdcall GetFilterMTMode(const char* filter) const
+  virtual MtMode __stdcall GetFilterMTMode(const char* filter, bool* is_forced) const
   {
-    return core->GetFilterMTMode(filter);
+    return core->GetFilterMTMode(filter, is_forced);
   }
 
   virtual IJobCompletion* __stdcall NewCompletion(size_t capacity)

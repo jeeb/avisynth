@@ -468,15 +468,20 @@ public:
       ForcedMap[f] = mode;
   }
 
-  MtMode GetMode(const char* filter) const
+  MtMode GetMode(const char* filter, bool* is_forced) const
   {
+    *is_forced = false;
+
     if (filter == DEFAULT_MODE)
       return DefaultMode;
 
     std::string f = NormalizeFilterName(filter);
     MTModeMapType::const_iterator it = ForcedMap.find(f);
     if (it != ForcedMap.end())
+    {
+      *is_forced = true;
       return it->second;
+    }
 
     it = PerFilterMap.find(f);
     if (it != PerFilterMap.end())
@@ -547,7 +552,7 @@ public:
   virtual void __stdcall AdjustMemoryConsumption(size_t amount, bool minus);
   virtual bool __stdcall Invoke(AVSValue *result, const char* name, const AVSValue& args, const char* const* arg_names=0);
   virtual void __stdcall SetFilterMTMode(const char* filter, MtMode mode, bool force);
-  virtual MtMode __stdcall GetFilterMTMode(const char* filter) const;
+  virtual MtMode __stdcall GetFilterMTMode(const char* filter, bool* is_forced) const;
   virtual void __stdcall ParallelJob(ThreadWorkerFuncPtr jobFunc, void* jobData, IJobCompletion* completion);
   virtual IJobCompletion* __stdcall NewCompletion(size_t capacity);
   virtual size_t  __stdcall GetProperty(AvsEnvProperty prop);
@@ -797,12 +802,12 @@ void __stdcall ScriptEnvironment::SetFilterMTMode(const char* filter, MtMode mod
   MTMap.SetMode(filter, mode, force);
 }
 
-MtMode __stdcall ScriptEnvironment::GetFilterMTMode(const char* filter) const
+MtMode __stdcall ScriptEnvironment::GetFilterMTMode(const char* filter, bool* is_forced) const
 {
   if (streqi(filter, ""))
     filter = MTMapState::DEFAULT_MODE;
 
-  return MTMap.GetMode(filter);
+  return MTMap.GetMode(filter, is_forced);
 }
 
 void* __stdcall ScriptEnvironment::Allocate(size_t nBytes, size_t alignment, AvsAllocType type)

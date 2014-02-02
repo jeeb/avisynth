@@ -212,10 +212,7 @@ int __stdcall MTGuard::SetCacheHints(int cachehints, int frame_range)
 
 bool __stdcall MTGuard::IsMTGuard(const PClip& p)
 {
-  if ((p->GetVersion() >= 5) && (p->SetCacheHints(CACHE_IS_MTGUARD_REQ, 0) == CACHE_IS_MTGUARD_ANS))
-    return true;
-  else
-    return false;
+  return ((p->GetVersion() >= 5) && (p->SetCacheHints(CACHE_IS_MTGUARD_REQ, 0) == CACHE_IS_MTGUARD_ANS));
 }
 
 AVSValue MTGuard::Create(const AVSFunction* func, std::vector<AVSValue>* args2, std::vector<AVSValue>* args3, IScriptEnvironment2* env)
@@ -225,9 +222,12 @@ AVSValue MTGuard::Create(const AVSFunction* func, std::vector<AVSValue>* args2, 
 
   if (func_result.IsClip() && !Cache::IsCache(func_result.AsClip()) && !MTGuard::IsMTGuard(func_result.AsClip()))
   {
-    MtMode mode = env->GetFilterMTMode(func->name);
     PClip filter_instance = func_result.AsClip();
-    if ( (filter_instance->GetVersion() >= 5)
+
+    bool mode_forced;
+    MtMode mode = env->GetFilterMTMode(func->name, &mode_forced);
+    if ( !mode_forced
+      && (filter_instance->GetVersion() >= 5)
       && (filter_instance->SetCacheHints(CACHE_GET_MTMODE, 0) != 0) )
     {
       mode = (MtMode)filter_instance->SetCacheHints(CACHE_GET_MTMODE, 0);

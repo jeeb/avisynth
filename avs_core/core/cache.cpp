@@ -363,8 +363,5 @@ AVSValue __cdecl Cache::Create(AVSValue args, void*, IScriptEnvironment* env)
 
 bool __stdcall Cache::IsCache(const PClip& p)
 {
-  if ((p->GetVersion() >= 5) && (p->SetCacheHints(CACHE_IS_CACHE_REQ, 0) == CACHE_IS_CACHE_ANS))
-    return true;
-  else
-    return false;
+  return ((p->GetVersion() >= 5) && (p->SetCacheHints(CACHE_IS_CACHE_REQ, 0) == CACHE_IS_CACHE_ANS));
 }
