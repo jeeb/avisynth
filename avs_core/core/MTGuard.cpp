@@ -246,8 +246,11 @@ AVSValue MTGuard::Create(const AVSFunction* func, std::vector<AVSValue>* args2, 
         // args2 and args3 are not valid after this point anymore
       }
     default:
+      // There are broken plugins out there in the wild that have (GetVersion() >= 5), but still 
+      // return garbage for SetCacheHints(). This default label should also catch those.
       assert(0);
-      return NULL;
+      // TODO: Log warning about probably broken plugin
+      return new MTGuard(filter_instance, MT_SERIALIZED, func, args2, args3, env);
     }
   }
   else
