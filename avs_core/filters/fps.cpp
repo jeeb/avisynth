@@ -41,7 +41,6 @@
 
 
 
-
 /********************************************************************
 ***** Declare index of new filters for Avisynth's filter engine *****
 ********************************************************************/
@@ -94,7 +93,7 @@ extern const AVSFunction Fps_filters[] = {
 static bool float_to_frac(float input, unsigned &num, unsigned &den)
 {
   union { float f; unsigned i; } value;
-  unsigned mantissa;
+  uint32_t mantissa;
   int exponent;
 
   // Bit strip the float
@@ -134,12 +133,14 @@ static bool float_to_frac(float input, unsigned &num, unsigned &den)
 
 static bool reduce_float(float value, unsigned &num, unsigned &den)
 {
-  if (float_to_frac(value, num, den)) return true;
+  if (float_to_frac(value, num, den)) {
+    return true;
+  }
 
-  unsigned n0 = 0, n1 = 1, n2, nx=num;  // numerators
-  unsigned d0 = 1, d1 = 0, d2, dx=den;  // denominators
-  unsigned a2, ax, amin;  // integer parts of quotients
-  unsigned f1 = 0, f2;    // fractional parts of quotients
+  uint32_t n0 = 0, n1 = 1, n2, nx = num;  // numerators
+  uint32_t d0 = 1, d1 = 0, d2, dx = den;  // denominators
+  uint32_t a2, ax, amin;  // integer parts of quotients
+  uint32_t f1 = 0, f2;    // fractional parts of quotients
 
   while (1)  // calculate convergents
   {
@@ -185,18 +186,19 @@ static bool reduce_float(float value, unsigned &num, unsigned &den)
 //   ax                     = (n0 - R2 * d0)/(R2 * d1 - n1)
 
     // bump float to adjacent float value
-    union { float f; unsigned i; } eps; eps.f = value;
-    if (UInt32x32To64(n1, den) > UInt32x32To64(num, d1))
+    union { float f; uint32_t i; } eps; eps.f = value;
+    if (UInt32x32To64(n1, den) > UInt32x32To64(num, d1)) {
       eps.i -= 1;
-    else
+    } else {
       eps.i += 1;
+    }
     double r2 = eps.f;
     r2 += value;
     r2 /= 2;
 
     double yn = n0 - r2*d0;
     double yd = r2*d1 - n1;
-    ax = (unsigned)((yn + yd)/yd); // ceiling value
+    ax = (uint32_t)((yn + yd)/yd); // ceiling value
 
     if (ax < amin) ax = amin;
 
@@ -212,12 +214,12 @@ static bool reduce_float(float value, unsigned &num, unsigned &den)
 // approximation that satisfies (denom <= limit).  The algorithm
 // is from Wikipedia, Continued Fractions.
 //
-static void reduce_frac(unsigned &num, unsigned &den, unsigned limit)
+static void reduce_frac(uint32_t &num, uint32_t &den, uint32_t limit)
 {
-  unsigned n0 = 0, n1 = 1, n2, nx = num;    // numerators
-  unsigned d0 = 1, d1 = 0, d2, dx = den;  // denominators
-  unsigned a2, ax, amin;  // integer parts of quotients
-  unsigned f1 = 0, f2;        // fractional parts of quotients
+  uint32_t n0 = 0, n1 = 1, n2, nx = num;    // numerators
+  uint32_t d0 = 1, d1 = 0, d2, dx = den;  // denominators
+  uint32_t a2, ax, amin;  // integer parts of quotients
+  uint32_t f1 = 0, f2;        // fractional parts of quotients
   int i = 0;  // number of loop iterations
 
   while (1) { // calculate convergents
@@ -263,25 +265,25 @@ static void reduce_frac(unsigned &num, unsigned &den, unsigned limit)
 
 AVSValue __cdecl ContinuedCreate(AVSValue args, void* key, IScriptEnvironment* env)
 {
-  unsigned num, den;
+  uint32_t num, den;
 
   if (args[1].IsInt()) { // num, den[, limit] form
     if (args[0].IsInt()) {
       num = args[0].AsInt();
     } else { // IsFloat
-      num = (unsigned)args[0].AsFloat();
+      num = (uint32_t)args[0].AsFloat();
       if ((float)num != (float)args[0].AsFloat()) {
         env->ThrowError("ContinuedFraction: Numerator must be an integer.\n");
       }
     }
     den = args[1].AsInt();
-    reduce_frac(num, den, (unsigned)args[2].AsInt(1001));
+    reduce_frac(num, den, (uint32_t)args[2].AsInt(1001));
   } else { // float[, limit] form
     if (args[2].IsInt()) {
       if (float_to_frac((float)args[0].AsFloat(), num, den)) {
         env->ThrowError("ContinuedFraction: Float value out of range for rational pair.\n");
       }
-      reduce_frac(num, den, (unsigned)args[2].AsInt());
+      reduce_frac(num, den, (uint32_t)args[2].AsInt());
     } else {
       if (reduce_float((float)args[0].AsFloat(), num, den)) {
         env->ThrowError("ContinuedFraction: Float value out of range for rational pair.\n");
@@ -296,13 +298,13 @@ AVSValue __cdecl ContinuedCreate(AVSValue args, void* key, IScriptEnvironment* e
  *******   Float to FPS utility   ******
  ***************************************/
 
-void FloatToFPS(const char *name, float n, unsigned &num, unsigned &den, IScriptEnvironment* env)
+void FloatToFPS(const char *name, float n, uint32_t &num, uint32_t &den, IScriptEnvironment* env)
 {
   if (n <= 0)
     env->ThrowError("%s: FPS must be greater then 0.\n", name);
 
   float x;
-  unsigned u = (unsigned)(n*1001+0.5);
+  uint32_t u = (uint32_t)(n*1001+0.5);
 
   // Check for the 30000/1001 multiples
   x = (float)((u/30000*30000)/1001.0);
@@ -314,12 +316,12 @@ void FloatToFPS(const char *name, float n, unsigned &num, unsigned &den, IScript
 
   if (n < 14.986) {
     // Check for the 30000/1001 factors
-    u = (unsigned)(30000/n+0.5);
+    u = (uint32_t)(30000/n+0.5);
     x = (float)(30000.0/(u/1001*1001));
     if (x == n) { num = 30000; den= u; return; }
 
     // Check for the 24000/1001 factors
-    u = (unsigned)(24000/n+0.5);
+    u = (uint32_t)(24000/n+0.5);
     x = (float)(24000.0/(u/1001*1001));
     if (x == n) { num = 24000; den= u; return; }
   }
@@ -336,7 +338,7 @@ void FloatToFPS(const char *name, float n, unsigned &num, unsigned &den, IScript
  *******   Preset to FPS utility   ****** -- Tritcal, IanB Jan 2006
  ****************************************/
 
-void PresetToFPS(const char *name, const char *p, unsigned &num, unsigned &den, IScriptEnvironment* env)
+void PresetToFPS(const char *name, const char *p, uint32_t &num, uint32_t &den, IScriptEnvironment* env)
 {
 	if (0) { ; }
 	else if (lstrcmpi(p, "ntsc_film"        ) == 0) { num = 24000; den = 1001; }
@@ -412,7 +414,7 @@ AssumeScaledFPS::AssumeScaledFPS(PClip _child, int multiplier, int divisor, bool
   {
     vi.audio_samples_per_second = MulDiv(vi.audio_samples_per_second, multiplier, divisor);
   }
-  vi.MulDivFPS((unsigned)multiplier, (unsigned)divisor);
+  vi.MulDivFPS((uint32_t)multiplier, (uint32_t)divisor);
 }
 
 
@@ -437,8 +439,8 @@ AssumeFPS::AssumeFPS(PClip _child, unsigned numerator, unsigned denominator, boo
 
   if (sync_audio)
   {
-    __int64 a = __int64(vi.fps_numerator) * denominator;
-    __int64 b = __int64(vi.fps_denominator) * numerator;
+    int64_t a = int64_t(vi.fps_numerator) * denominator;
+    int64_t b = int64_t(vi.fps_denominator) * numerator;
     vi.audio_samples_per_second = int((vi.audio_samples_per_second * b + (a>>1)) / a);
   }
   vi.SetFPS(numerator, denominator);
@@ -454,7 +456,7 @@ AVSValue __cdecl AssumeFPS::Create(AVSValue args, void*, IScriptEnvironment* env
 
 AVSValue __cdecl AssumeFPS::CreateFloat(AVSValue args, void*, IScriptEnvironment* env)
 {
-	unsigned int num, den;
+  uint32_t num, den;
 
 	FloatToFPS("AssumeFPS", (float)args[1].AsFloat(), num, den, env);
 	return new AssumeFPS(args[0].AsClip(), num, den, args[2].AsBool(false), env);
@@ -463,7 +465,7 @@ AVSValue __cdecl AssumeFPS::CreateFloat(AVSValue args, void*, IScriptEnvironment
 // Tritical Jan 2006
 AVSValue __cdecl AssumeFPS::CreatePreset(AVSValue args, void*, IScriptEnvironment* env)
 {
-	unsigned int num, den;
+  uint32_t num, den;
 
 	PresetToFPS("AssumeFPS", args[1].AsString(), num, den, env);
 	return new AssumeFPS(args[0].AsClip(), num, den, args[2].AsBool(false), env);
@@ -496,13 +498,13 @@ ChangeFPS::ChangeFPS(PClip _child, unsigned new_numerator, unsigned new_denomina
   if (new_denominator == 0)
     env->ThrowError("ChangeFPS: Denominator cannot be 0 (zero).");
 
-  a = __int64(vi.fps_numerator) * new_denominator;
-  b = __int64(vi.fps_denominator) * new_numerator;
+  a = int64_t(vi.fps_numerator) * new_denominator;
+  b = int64_t(vi.fps_denominator) * new_numerator;
   if (linear && (a + (b>>1))/b > 10)
     env->ThrowError("ChangeFPS: Ratio must be less than 10 for linear access. Set LINEAR=False.");
 
   vi.SetFPS(new_numerator, new_denominator);
-  const __int64 num_frames = (vi.num_frames * b + (a >> 1)) / a;
+  const int64_t num_frames = (vi.num_frames * b + (a >> 1)) / a;
   if (num_frames > 0x7FFFFFFF)  // MAXINT
     env->ThrowError("ChangeFPS: Maximum number of frames exceeded.");
 
@@ -543,7 +545,7 @@ AVSValue __cdecl ChangeFPS::Create(AVSValue args, void*, IScriptEnvironment* env
 
 AVSValue __cdecl ChangeFPS::CreateFloat(AVSValue args, void*, IScriptEnvironment* env)
 {
-	unsigned int num, den;
+  uint32_t num, den;
 
 	FloatToFPS("ChangeFPS", (float)args[1].AsFloat(), num, den, env);
 	return new ChangeFPS(args[0].AsClip(), num, den, args[2].AsBool(true), env);
@@ -552,7 +554,7 @@ AVSValue __cdecl ChangeFPS::CreateFloat(AVSValue args, void*, IScriptEnvironment
 // Tritical Jan 2006
 AVSValue __cdecl ChangeFPS::CreatePreset(AVSValue args, void*, IScriptEnvironment* env)
 {
-	unsigned int num, den;
+  uint32_t num, den;
 
 	PresetToFPS("ChangeFPS", args[1].AsString(), num, den, env);
 	return new ChangeFPS(args[0].AsClip(), num, den, args[2].AsBool(true), env);
@@ -587,8 +589,8 @@ ConvertFPS::ConvertFPS( PClip _child, unsigned new_numerator, unsigned new_denom
   if (zone >= 0 && !vi.IsYUY2()) // Tritical Jan 2006
    env->ThrowError("ConvertFPS: zone >= 0 requires YUY2 input");
 
-  fa = __int64(vi.fps_numerator) * new_denominator;
-  fb = __int64(vi.fps_denominator) * new_numerator;
+  fa = int64_t(vi.fps_numerator) * new_denominator;
+  fb = int64_t(vi.fps_denominator) * new_numerator;
   if( zone >= 0 )
   {
     if( vbi < 0 ) vbi = 0;
@@ -603,7 +605,7 @@ ConvertFPS::ConvertFPS( PClip _child, unsigned new_numerator, unsigned new_denom
                     "Increase or use 'zone='", dec/30000, (dec/3)%10000);
   }
   vi.SetFPS(new_numerator, new_denominator);
-  const __int64 num_frames = (vi.num_frames * fb + (fa>>1)) / fa;
+  const int64_t num_frames = (vi.num_frames * fb + (fa>>1)) / fa;
   if (num_frames > 0x7FFFFFFF)  // MAXINT
     env->ThrowError("ConvertFPS: Maximum number of frames exceeded.");
 
@@ -755,7 +757,7 @@ AVSValue __cdecl ConvertFPS::Create(AVSValue args, void*, IScriptEnvironment* en
 
 AVSValue __cdecl ConvertFPS::CreateFloat(AVSValue args, void*, IScriptEnvironment* env)
 {
-	unsigned int num, den;
+  uint32_t num, den;
 
 	FloatToFPS("ConvertFPS", (float)args[1].AsFloat(), num, den, env);
 	return new ConvertFPS( args[0].AsClip(), num, den, args[2].AsInt(-1), args[3].AsInt(0), env );
@@ -764,7 +766,7 @@ AVSValue __cdecl ConvertFPS::CreateFloat(AVSValue args, void*, IScriptEnvironmen
 // Tritical Jan 2006
 AVSValue __cdecl ConvertFPS::CreatePreset(AVSValue args, void*, IScriptEnvironment* env)
 {
-	unsigned int num, den;
+  uint32_t num, den;
 
 	PresetToFPS("ConvertFPS", args[1].AsString(), num, den, env);
 	return new ConvertFPS(args[0].AsClip(), num, den, args[2].AsInt(-1), args[3].AsInt(0), env);

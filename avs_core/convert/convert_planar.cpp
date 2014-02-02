@@ -51,7 +51,7 @@ static int getPlacement( const AVSValue& _placement, IScriptEnvironment* env);
 static ResamplingFunction* getResampler( const char* resampler, IScriptEnvironment* env);
 
 
-ConvertToY8::ConvertToY8(PClip src, int in_matrix, IScriptEnvironment* env) : GenericVideoFilter(src), matrix(NULL) {
+ConvertToY8::ConvertToY8(PClip src, int in_matrix, IScriptEnvironment* env) : GenericVideoFilter(src) {
   yuy2_input = blit_luma_only = rgb_input = false;
 
   if (vi.IsPlanar()) {
@@ -70,49 +70,39 @@ ConvertToY8::ConvertToY8(PClip src, int in_matrix, IScriptEnvironment* env) : Ge
     rgb_input = true;
     pixel_step = vi.BytesFromPixels(1);
     vi.pixel_type = VideoInfo::CS_Y8;
-    matrix = (signed short*)_aligned_malloc(sizeof(short)*4, 16);
-    signed short* m = matrix;
     if (in_matrix == Rec601) {
-      *m++ = (signed short)((219.0/255.0)*0.114*32768.0+0.5);  //B
-      *m++ = (signed short)((219.0/255.0)*0.587*32768.0+0.5);  //G
-      *m++ = (signed short)((219.0/255.0)*0.299*32768.0+0.5);  //R
-      offset_y = 16;
+      matrix.b = (int16_t)((219.0/255.0)*0.114*32768.0+0.5);  //B
+      matrix.g = (int16_t)((219.0/255.0)*0.587*32768.0+0.5);  //G
+      matrix.r = (int16_t)((219.0/255.0)*0.299*32768.0+0.5);  //R
+      matrix.offset_y = 16;
     } else if (in_matrix == PC_601) {
-      *m++ = (signed short)(0.114*32768.0+0.5);  //B
-      *m++ = (signed short)(0.587*32768.0+0.5);  //G
-      *m++ = (signed short)(0.299*32768.0+0.5);  //R
-      offset_y = 0;
+      matrix.b = (int16_t)(0.114*32768.0+0.5);  //B
+      matrix.g = (int16_t)(0.587*32768.0+0.5);  //G
+      matrix.r = (int16_t)(0.299*32768.0+0.5);  //R
+      matrix.offset_y = 0;
     } else if (in_matrix == Rec709) {
-      *m++ = (signed short)((219.0/255.0)*0.0722*32768.0+0.5);  //B
-      *m++ = (signed short)((219.0/255.0)*0.7152*32768.0+0.5);  //G
-      *m++ = (signed short)((219.0/255.0)*0.2126*32768.0+0.5);  //R
-      offset_y = 16;
+      matrix.b = (int16_t)((219.0/255.0)*0.0722*32768.0+0.5);  //B
+      matrix.g = (int16_t)((219.0/255.0)*0.7152*32768.0+0.5);  //G
+      matrix.r = (int16_t)((219.0/255.0)*0.2126*32768.0+0.5);  //R
+      matrix.offset_y = 16;
     } else if (in_matrix == PC_709) {
-      *m++ = (signed short)(0.0722*32768.0+0.5);  //B
-      *m++ = (signed short)(0.7152*32768.0+0.5);  //G
-      *m++ = (signed short)(0.2126*32768.0+0.5);  //R
-      offset_y = 0;
+      matrix.b = (int16_t)(0.0722*32768.0+0.5);  //B
+      matrix.g = (int16_t)(0.7152*32768.0+0.5);  //G
+      matrix.r = (int16_t)(0.2126*32768.0+0.5);  //R
+      matrix.offset_y = 0;
     } else if (in_matrix == AVERAGE) {
-      *m++ = (signed short)(32768.0/3 + 0.5);  //B
-      *m++ = (signed short)(32768.0/3 + 0.5);  //G
-      *m++ = (signed short)(32768.0/3 + 0.5);  //R
-      offset_y = 0;
+      matrix.b = (int16_t)(32768.0/3 + 0.5);  //B
+      matrix.g = (int16_t)(32768.0/3 + 0.5);  //G
+      matrix.r = (int16_t)(32768.0/3 + 0.5);  //R
+      matrix.offset_y = 0;
     } else {
-      _aligned_free(matrix);
-      matrix = 0;
       env->ThrowError("ConvertToY8: Unknown matrix.");
     }
-    *m = 0;  // Alpha
 
     return;
   }
 
   env->ThrowError("ConvertToY8: Unknown input format");
-}
-
-ConvertToY8::~ConvertToY8() {
-  _aligned_free(matrix);
-  matrix = NULL;
 }
 
 
@@ -160,7 +150,7 @@ static void convert_yuy2_to_y8_mmx(const BYTE *srcp, BYTE *dstp, size_t src_pitc
     }
 
     if (width != mod8_width) {
-        __m64 src1 = *reinterpret_cast<const __m64*>(srcp+width*2-16);
+      __m64 src1 = *reinterpret_cast<const __m64*>(srcp+width*2-16);
       __m64 src2 = *reinterpret_cast<const __m64*>(srcp+width*2-8);
       src1 = _mm_and_si64(src1, luma_mask);
       src2 = _mm_and_si64(src2, luma_mask);
@@ -206,10 +196,10 @@ static __forceinline __m128i convert_rgb_to_y8_sse2_core(const __m128i &pixel01,
   return result;
 }
 
-static void convert_rgb32_to_y8_sse2(const BYTE *srcp, BYTE *dstp, size_t src_pitch, size_t dst_pitch, size_t width, size_t height, BYTE offset_y, short cyr, short cyg, short cyb ) {
-  __m128i matrix = _mm_set_epi16(0, cyr, cyg, cyb, 0, cyr, cyg, cyb);
+static void convert_rgb32_to_y8_sse2(const BYTE *srcp, BYTE *dstp, size_t src_pitch, size_t dst_pitch, size_t width, size_t height, const ChannelConversionMatrix &matrix) {
+  __m128i matrix_v = _mm_set_epi16(0, matrix.r, matrix.g, matrix.b, 0, matrix.r, matrix.g, matrix.b);
   __m128i zero = _mm_setzero_si128();
-  __m128i offset = _mm_set1_epi16(offset_y);
+  __m128i offset = _mm_set1_epi16(matrix.offset_y);
   __m128i round_mask = _mm_set1_epi32(16384);
 
   size_t loop_limit;
@@ -234,7 +224,7 @@ static void convert_rgb32_to_y8_sse2(const BYTE *srcp, BYTE *dstp, size_t src_pi
       __m128i pixel45 = _mm_unpacklo_epi8(src4567, zero); 
       __m128i pixel67 = _mm_unpackhi_epi8(src4567, zero); 
 
-      _mm_storel_epi64(reinterpret_cast<__m128i*>(dstp+x), convert_rgb_to_y8_sse2_core(pixel01, pixel23, pixel45, pixel67, zero, matrix, round_mask, offset));
+      _mm_storel_epi64(reinterpret_cast<__m128i*>(dstp+x), convert_rgb_to_y8_sse2_core(pixel01, pixel23, pixel45, pixel67, zero, matrix_v, round_mask, offset));
     }
 
     if (not_mod8) {
@@ -246,7 +236,7 @@ static void convert_rgb32_to_y8_sse2(const BYTE *srcp, BYTE *dstp, size_t src_pi
       __m128i pixel45 = _mm_unpacklo_epi8(src4567, zero); 
       __m128i pixel67 = _mm_unpackhi_epi8(src4567, zero); 
 
-      _mm_storel_epi64(reinterpret_cast<__m128i*>(dstp+width-8), convert_rgb_to_y8_sse2_core(pixel01, pixel23, pixel45, pixel67, zero, matrix, round_mask, offset));
+      _mm_storel_epi64(reinterpret_cast<__m128i*>(dstp+width-8), convert_rgb_to_y8_sse2_core(pixel01, pixel23, pixel45, pixel67, zero, matrix_v, round_mask, offset));
     }
 
     srcp -= src_pitch;
@@ -255,10 +245,10 @@ static void convert_rgb32_to_y8_sse2(const BYTE *srcp, BYTE *dstp, size_t src_pi
 }
 
 
-static void convert_rgb24_to_y8_sse2(const BYTE *srcp, BYTE *dstp, size_t src_pitch, size_t dst_pitch, size_t width, size_t height, BYTE offset_y, short cyr, short cyg, short cyb ) {
-  __m128i matrix = _mm_set_epi16(0, cyr, cyg, cyb, 0, cyr, cyg, cyb);
+static void convert_rgb24_to_y8_sse2(const BYTE *srcp, BYTE *dstp, size_t src_pitch, size_t dst_pitch, size_t width, size_t height, const ChannelConversionMatrix &matrix) {
+  __m128i matrix_v = _mm_set_epi16(0, matrix.r, matrix.g, matrix.b, 0, matrix.r, matrix.g, matrix.b);
   __m128i zero = _mm_setzero_si128();
-  __m128i offset = _mm_set1_epi16(offset_y);
+  __m128i offset = _mm_set1_epi16(matrix.offset_y);
   __m128i round_mask = _mm_set1_epi32(16384);
 
   size_t loop_limit;
@@ -287,7 +277,7 @@ static void convert_rgb24_to_y8_sse2(const BYTE *srcp, BYTE *dstp, size_t src_pi
       pixel45 = _mm_shufflehi_epi16(_mm_shuffle_epi32(_mm_unpacklo_epi8(pixel45, zero), _MM_SHUFFLE(2, 1, 1, 0)), _MM_SHUFFLE(0, 3, 2, 1));
       pixel67 = _mm_shufflehi_epi16(_mm_shuffle_epi32(_mm_unpacklo_epi8(pixel67, zero), _MM_SHUFFLE(2, 1, 1, 0)), _MM_SHUFFLE(0, 3, 2, 1));
 
-      _mm_storel_epi64(reinterpret_cast<__m128i*>(dstp+x), convert_rgb_to_y8_sse2_core(pixel01, pixel23, pixel45, pixel67, zero, matrix, round_mask, offset));
+      _mm_storel_epi64(reinterpret_cast<__m128i*>(dstp+x), convert_rgb_to_y8_sse2_core(pixel01, pixel23, pixel45, pixel67, zero, matrix_v, round_mask, offset));
     }
 
     if (not_mod8) {
@@ -301,7 +291,7 @@ static void convert_rgb24_to_y8_sse2(const BYTE *srcp, BYTE *dstp, size_t src_pi
       pixel45 = _mm_shufflehi_epi16(_mm_shuffle_epi32(_mm_unpacklo_epi8(pixel45, zero), _MM_SHUFFLE(2, 1, 1, 0)), _MM_SHUFFLE(0, 3, 2, 1));
       pixel67 = _mm_shufflehi_epi16(_mm_shuffle_epi32(_mm_unpacklo_epi8(pixel67, zero), _MM_SHUFFLE(2, 1, 1, 0)), _MM_SHUFFLE(0, 3, 2, 1));
 
-      _mm_storel_epi64(reinterpret_cast<__m128i*>(dstp+width-8), convert_rgb_to_y8_sse2_core(pixel01, pixel23, pixel45, pixel67, zero, matrix, round_mask, offset));
+      _mm_storel_epi64(reinterpret_cast<__m128i*>(dstp+width-8), convert_rgb_to_y8_sse2_core(pixel01, pixel23, pixel45, pixel67, zero, matrix_v, round_mask, offset));
     }
 
     srcp -= src_pitch;
@@ -346,10 +336,10 @@ static __forceinline int convert_rgb_to_y8_mmx_core(const __m64 &pixel0, const _
 }
 #pragma warning(pop)
 
-static void convert_rgb32_to_y8_mmx(const BYTE *srcp, BYTE *dstp, size_t src_pitch, size_t dst_pitch, size_t width, size_t height, BYTE offset_y, short cyr, short cyg, short cyb ) {
-  __m64 matrix = _mm_set_pi16(0, cyr, cyg, cyb);
+static void convert_rgb32_to_y8_mmx(const BYTE *srcp, BYTE *dstp, size_t src_pitch, size_t dst_pitch, size_t width, size_t height, const ChannelConversionMatrix &matrix) {
+  __m64 matrix_v = _mm_set_pi16(0, matrix.r, matrix.g, matrix.b);
   __m64 zero = _mm_setzero_si64();
-  __m64 offset = _mm_set1_pi16(offset_y);
+  __m64 offset = _mm_set1_pi16(matrix.offset_y);
   __m64 round_mask = _mm_set1_pi32(16384);
 
   size_t loop_limit;
@@ -374,7 +364,7 @@ static void convert_rgb32_to_y8_mmx(const BYTE *srcp, BYTE *dstp, size_t src_pit
       __m64 pixel2 = _mm_unpacklo_pi8(src23, zero); //a2 r2 g2 b2
       __m64 pixel3 = _mm_unpackhi_pi8(src23, zero); //a3 r3 g3 b3
 
-      *reinterpret_cast<int*>(dstp+x) = convert_rgb_to_y8_mmx_core(pixel0, pixel1, pixel2, pixel3, zero, matrix, round_mask, offset);
+      *reinterpret_cast<int*>(dstp+x) = convert_rgb_to_y8_mmx_core(pixel0, pixel1, pixel2, pixel3, zero, matrix_v, round_mask, offset);
     }
 
     if (not_mod4) {
@@ -386,7 +376,7 @@ static void convert_rgb32_to_y8_mmx(const BYTE *srcp, BYTE *dstp, size_t src_pit
       __m64 pixel2 = _mm_unpacklo_pi8(src23, zero); //a2 r2 g2 b2
       __m64 pixel3 = _mm_unpackhi_pi8(src23, zero); //a3 r3 g3 b3
 
-      *reinterpret_cast<int*>(dstp+width-4) = convert_rgb_to_y8_mmx_core(pixel0, pixel1, pixel2, pixel3, zero, matrix, round_mask, offset);
+      *reinterpret_cast<int*>(dstp+width-4) = convert_rgb_to_y8_mmx_core(pixel0, pixel1, pixel2, pixel3, zero, matrix_v, round_mask, offset);
     }
 
     srcp -= src_pitch;
@@ -396,10 +386,10 @@ static void convert_rgb32_to_y8_mmx(const BYTE *srcp, BYTE *dstp, size_t src_pit
 }
 
 
-static void convert_rgb24_to_y8_mmx(const BYTE *srcp, BYTE *dstp, size_t src_pitch, size_t dst_pitch, size_t width, size_t height, BYTE offset_y, short cyr, short cyg, short cyb ) {
-  __m64 matrix = _mm_set_pi16(0, cyr, cyg, cyb);
+static void convert_rgb24_to_y8_mmx(const BYTE *srcp, BYTE *dstp, size_t src_pitch, size_t dst_pitch, size_t width, size_t height, const ChannelConversionMatrix &matrix) {
+  __m64 matrix_v = _mm_set_pi16(0, matrix.r, matrix.g, matrix.b);
   __m64 zero = _mm_setzero_si64();
-  __m64 offset = _mm_set1_pi16(offset_y);
+  __m64 offset = _mm_set1_pi16(matrix.offset_y);
   __m64 round_mask = _mm_set1_pi32(16384);
 
   size_t loop_limit;
@@ -426,7 +416,7 @@ static void convert_rgb24_to_y8_mmx(const BYTE *srcp, BYTE *dstp, size_t src_pit
       pixel2 = _mm_unpacklo_pi8(pixel2, zero);
       pixel3 = _mm_unpacklo_pi8(pixel3, zero);
 
-      *reinterpret_cast<int*>(dstp+x) = convert_rgb_to_y8_mmx_core(pixel0, pixel1, pixel2, pixel3, zero, matrix, round_mask, offset);
+      *reinterpret_cast<int*>(dstp+x) = convert_rgb_to_y8_mmx_core(pixel0, pixel1, pixel2, pixel3, zero, matrix_v, round_mask, offset);
     }
 
     if (not_mod4) {
@@ -440,7 +430,7 @@ static void convert_rgb24_to_y8_mmx(const BYTE *srcp, BYTE *dstp, size_t src_pit
       pixel2 = _mm_unpacklo_pi8(pixel2, zero);
       pixel3 = _mm_unpacklo_pi8(pixel3, zero);
 
-      *reinterpret_cast<int*>(dstp+width-4) = convert_rgb_to_y8_mmx_core(pixel0, pixel1, pixel2, pixel3, zero, matrix, round_mask, offset);
+      *reinterpret_cast<int*>(dstp+width-4) = convert_rgb_to_y8_mmx_core(pixel0, pixel1, pixel2, pixel3, zero, matrix_v, round_mask, offset);
     }
 
     srcp -= src_pitch;
@@ -500,16 +490,12 @@ PVideoFrame __stdcall ConvertToY8::GetFrame(int n, IScriptEnvironment* env) {
     BYTE* dstp = dst->GetWritePtr(PLANAR_Y);
     const int dst_pitch = dst->GetPitch(PLANAR_Y);
 
-    const int m0 = matrix[0];
-    const int m1 = matrix[1];
-    const int m2 = matrix[2];
-
     if ((env->GetCPUFlags() & CPUF_SSE2) && IsPtrAligned(srcp, 16)) {
       if (pixel_step == 4) {
-        convert_rgb32_to_y8_sse2(srcp, dstp, src_pitch, dst_pitch, vi.width, vi.height, offset_y, m2, m1, m0);
+        convert_rgb32_to_y8_sse2(srcp, dstp, src_pitch, dst_pitch, vi.width, vi.height, matrix);
         return dst;
       } else if (pixel_step == 3) {
-        convert_rgb24_to_y8_sse2(srcp, dstp, src_pitch, dst_pitch, vi.width, vi.height, offset_y, m2, m1, m0);
+        convert_rgb24_to_y8_sse2(srcp, dstp, src_pitch, dst_pitch, vi.width, vi.height, matrix);
         return dst;
       }
     }
@@ -517,10 +503,10 @@ PVideoFrame __stdcall ConvertToY8::GetFrame(int n, IScriptEnvironment* env) {
 #ifdef X86_32
     if (env->GetCPUFlags() & CPUF_MMX) {
       if (pixel_step == 4) {
-        convert_rgb32_to_y8_mmx(srcp, dstp, src_pitch, dst_pitch, vi.width, vi.height, offset_y, m2, m1, m0);
+        convert_rgb32_to_y8_mmx(srcp, dstp, src_pitch, dst_pitch, vi.width, vi.height, matrix);
         return dst;
       } else if (pixel_step == 3) {
-        convert_rgb24_to_y8_mmx(srcp, dstp, src_pitch, dst_pitch, vi.width, vi.height, offset_y, m2, m1, m0);
+        convert_rgb24_to_y8_mmx(srcp, dstp, src_pitch, dst_pitch, vi.width, vi.height, matrix);
         return dst;
       } 
     }
@@ -529,7 +515,7 @@ PVideoFrame __stdcall ConvertToY8::GetFrame(int n, IScriptEnvironment* env) {
     const int srcMod = src_pitch + (vi.width * pixel_step);
     for (int y=0; y<vi.height; y++) {
       for (int x=0; x<vi.width; x++) {
-        const int Y = offset_y + ((m0 * srcp[0] + m1 * srcp[1] + m2 * srcp[2] + 16384) >> 15);
+        const int Y = matrix.offset_y + ((matrix.b * srcp[0] + matrix.g * srcp[1] + matrix.r * srcp[2] + 16384) >> 15);
         dstp[x] = PixelClip(Y);  // All the safety we can wish for.
         srcp += pixel_step;
       }
@@ -625,15 +611,15 @@ void ConvertRGBToYV24::BuildMatrix(double Kr, double Kb, int Sy, int Suv, int Oy
   const double Kg = 1.- Kr - Kb;
   const int Srgb = 255;
 
-  matrix.y_b  = (signed short)(Sy  * Kb        * mulfac / Srgb + 0.5); //B
-  matrix.y_g  = (signed short)(Sy  * Kg        * mulfac / Srgb + 0.5); //G
-  matrix.y_r  = (signed short)(Sy  * Kr        * mulfac / Srgb + 0.5); //R
-  matrix.u_b  = (signed short)(Suv             * mulfac / Srgb + 0.5);
-  matrix.u_g  = (signed short)(Suv * Kg/(Kb-1) * mulfac / Srgb + 0.5);
-  matrix.u_r  = (signed short)(Suv * Kr/(Kb-1) * mulfac / Srgb + 0.5);
-  matrix.v_b  = (signed short)(Suv * Kb/(Kr-1) * mulfac / Srgb + 0.5);
-  matrix.v_g  = (signed short)(Suv * Kg/(Kr-1) * mulfac / Srgb + 0.5);
-  matrix.v_r  = (signed short)(Suv             * mulfac / Srgb + 0.5);
+  matrix.y_b  = (int16_t)(Sy  * Kb        * mulfac / Srgb + 0.5); //B
+  matrix.y_g  = (int16_t)(Sy  * Kg        * mulfac / Srgb + 0.5); //G
+  matrix.y_r  = (int16_t)(Sy  * Kr        * mulfac / Srgb + 0.5); //R
+  matrix.u_b  = (int16_t)(Suv             * mulfac / Srgb + 0.5);
+  matrix.u_g  = (int16_t)(Suv * Kg/(Kb-1) * mulfac / Srgb + 0.5);
+  matrix.u_r  = (int16_t)(Suv * Kr/(Kb-1) * mulfac / Srgb + 0.5);
+  matrix.v_b  = (int16_t)(Suv * Kb/(Kr-1) * mulfac / Srgb + 0.5);
+  matrix.v_g  = (int16_t)(Suv * Kg/(Kr-1) * mulfac / Srgb + 0.5);
+  matrix.v_r  = (int16_t)(Suv             * mulfac / Srgb + 0.5);
   matrix.offset_y = Oy;
 }
 
@@ -1025,15 +1011,15 @@ void ConvertYV24ToRGB::BuildMatrix(double Kr, double Kb, int Sy, int Suv, int Oy
   const double Kg = 1.- Kr - Kb;
   const int Srgb = 255;
 
-  matrix.y_b = (signed short)(Srgb * 1.000        * mulfac / Sy  + 0.5); //Y
-  matrix.u_b = (signed short)(Srgb * (1-Kb)       * mulfac / Suv + 0.5); //U
-  matrix.v_b = (signed short)(Srgb * 0.000        * mulfac / Suv + 0.5); //V
-  matrix.y_g = (signed short)(Srgb * 1.000        * mulfac / Sy  + 0.5);
-  matrix.u_g = (signed short)(Srgb * (Kb-1)*Kb/Kg * mulfac / Suv + 0.5);
-  matrix.v_g = (signed short)(Srgb * (Kr-1)*Kr/Kg * mulfac / Suv + 0.5);
-  matrix.y_r = (signed short)(Srgb * 1.000        * mulfac / Sy  + 0.5);
-  matrix.u_r = (signed short)(Srgb * 0.000        * mulfac / Suv + 0.5);
-  matrix.v_r = (signed short)(Srgb * (1-Kr)       * mulfac / Suv + 0.5);
+  matrix.y_b = (int16_t)(Srgb * 1.000        * mulfac / Sy  + 0.5); //Y
+  matrix.u_b = (int16_t)(Srgb * (1-Kb)       * mulfac / Suv + 0.5); //U
+  matrix.v_b = (int16_t)(Srgb * 0.000        * mulfac / Suv + 0.5); //V
+  matrix.y_g = (int16_t)(Srgb * 1.000        * mulfac / Sy  + 0.5);
+  matrix.u_g = (int16_t)(Srgb * (Kb-1)*Kb/Kg * mulfac / Suv + 0.5);
+  matrix.v_g = (int16_t)(Srgb * (Kr-1)*Kr/Kg * mulfac / Suv + 0.5);
+  matrix.y_r = (int16_t)(Srgb * 1.000        * mulfac / Sy  + 0.5);
+  matrix.u_r = (int16_t)(Srgb * 0.000        * mulfac / Suv + 0.5);
+  matrix.v_r = (int16_t)(Srgb * (1-Kr)       * mulfac / Suv + 0.5);
   matrix.offset_y = -Oy;
 }
 

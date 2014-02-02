@@ -42,54 +42,68 @@
 ********************************************************************/
 
 
-class StackVertical : public IClip 
-/**
-  * Class to stack clips vertically
- **/
+class StackVertical : public IClip
+  /**
+    * Class to stack clips vertically
+    **/
 {
 private:
-  typedef std::pair<PClip, PVideoFrame> ChildType;
-  std::vector<ChildType> children;
+  std::vector<PClip> children;
   VideoInfo vi;
 
 public:
-  StackVertical(const std::vector<ChildType>& child_array, IScriptEnvironment* env);
+  StackVertical(const std::vector<PClip>& child_array, IScriptEnvironment* env);
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
-  
-  inline void __stdcall GetAudio(void* buf, __int64 start, __int64 count, IScriptEnvironment* env) 
-    { children[0].first->GetAudio(buf, start, count, env); }
-  inline const VideoInfo& __stdcall GetVideoInfo() 
-    { return vi; }
-  inline bool __stdcall GetParity(int n) 
-    { return children[0].first->GetParity(n); }
-  int __stdcall SetCacheHints(int cachehints,int frame_range);
+
+  inline void __stdcall GetAudio(void* buf, __int64 start, __int64 count, IScriptEnvironment* env) {
+    children[0]->GetAudio(buf, start, count, env);
+  }
+
+  inline const VideoInfo& __stdcall GetVideoInfo() {
+    return vi;
+  }
+
+  inline bool __stdcall GetParity(int n) {
+    return children[0]->GetParity(n);
+  }
+
+  int __stdcall SetCacheHints(int cachehints, int frame_range) {
+    return cachehints == CACHE_GET_MTMODE ? MT_NICE_PLUGIN : 0;
+  }
 
   static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env);
 };
 
 
 
-class StackHorizontal : public IClip 
-/**
-  * Class to stack clips vertically
- **/
-{  
+class StackHorizontal : public IClip
+  /**
+    * Class to stack clips vertically
+    **/
+{
 private:
-  typedef std::pair<PClip, PVideoFrame> ChildType;
-  std::vector<ChildType> children;
+  std::vector<PClip> children;
   VideoInfo vi;
 
 public:
-  StackHorizontal(const std::vector<ChildType>& child_array, IScriptEnvironment* env);
+  StackHorizontal(const std::vector<PClip>& child_array, IScriptEnvironment* env);
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
 
-  inline void __stdcall GetAudio(void* buf, __int64 start, __int64 count, IScriptEnvironment* env) 
-  { children[0].first->GetAudio(buf, start, count, env); }
-  inline const VideoInfo& __stdcall GetVideoInfo() 
-    { return vi; }
-  inline bool __stdcall GetParity(int n) 
-  { return children[0].first->GetParity(n); }
-  int __stdcall SetCacheHints(int cachehints,int frame_range);
+  inline void __stdcall GetAudio(void* buf, __int64 start, __int64 count, IScriptEnvironment* env) {
+    children[0]->GetAudio(buf, start, count, env);
+  }
+
+  inline const VideoInfo& __stdcall GetVideoInfo() {
+    return vi;
+  }
+
+  inline bool __stdcall GetParity(int n) {
+    return children[0]->GetParity(n);
+  }
+
+  int __stdcall SetCacheHints(int cachehints, int frame_range) {
+    return cachehints == CACHE_GET_MTMODE ? MT_NICE_PLUGIN : 0;
+  }
 
   static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env);
 };

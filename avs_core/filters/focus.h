@@ -45,13 +45,14 @@ class AdjustFocusV : public GenericVideoFilter
 {
 public:
   AdjustFocusV(double _amount, PClip _child);
-  virtual ~AdjustFocusV(void);
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
+
+  int __stdcall SetCacheHints(int cachehints, int frame_range) override {
+    return cachehints == CACHE_GET_MTMODE ? MT_NICE_PLUGIN : 0;
+  }
 
 private:
   const int amount;
-  BYTE* line_buf;
-
 };
 
 
@@ -63,6 +64,10 @@ class AdjustFocusH : public GenericVideoFilter
 public:
   AdjustFocusH(double _amount, PClip _child);
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
+
+  int __stdcall SetCacheHints(int cachehints, int frame_range) override {
+    return cachehints == CACHE_GET_MTMODE ? MT_NICE_PLUGIN : 0;
+  }
 
 private:
   const int amount;
@@ -83,19 +88,16 @@ class TemporalSoften : public GenericVideoFilter
 public:
   TemporalSoften( PClip _child, unsigned radius, unsigned luma_thresh, unsigned chroma_thresh,int _scenechange, IScriptEnvironment* env );
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
-  virtual ~TemporalSoften(void);
   static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env);
+
+  int __stdcall SetCacheHints(int cachehints, int frame_range) override {
+    return cachehints == CACHE_GET_MTMODE ? MT_NICE_PLUGIN : 0;
+  }
 
 private:
 // YV12:
     int planes[8];
-    const BYTE* planeP[16];
-    const BYTE* planeP2[16];
-    int planePitch[16];
-    int planePitch2[16];
-    bool planeDisabled[16];
     int scenechange;
-    PVideoFrame *frames;
 
 // YUY2:
   const unsigned luma_threshold, chroma_threshold;
@@ -115,6 +117,10 @@ public:
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
 
   static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env);
+
+  int __stdcall SetCacheHints(int cachehints, int frame_range) override {
+    return cachehints == CACHE_GET_MTMODE ? MT_NICE_PLUGIN : 0;
+  }
 
 private:  
   const unsigned luma_threshold, chroma_threshold;

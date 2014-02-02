@@ -56,13 +56,15 @@ class GeneralConvolution : public GenericVideoFilter
 {
 public:
     GeneralConvolution(PClip _child, double _divisor, int _nBias, const char * _matrix, bool _autoscale, IScriptEnvironment* _env);
-    virtual ~GeneralConvolution(void);
     PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
     static AVSValue __cdecl Create(AVSValue args, void* user_data, IScriptEnvironment* env);
 
+    int __stdcall SetCacheHints(int cachehints, int frame_range) override {
+      return cachehints == CACHE_GET_MTMODE ? MT_NICE_PLUGIN : 0;
+    }
+
 protected:
     void setMatrix(const char * _matrix, IScriptEnvironment* env);
-    void initBuffers(IScriptEnvironment* env);
 
 private:      
     double divisor;
@@ -70,10 +72,6 @@ private:
     int nBias;
     bool autoscale;
 
-    // some buffers
-    BYTE *pbyA, *pbyR, *pbyG, *pbyB;
-    
-           
     // Messy way of storing matrix, but avoids performance penalties of indirection    
     int i00;
     int i10;

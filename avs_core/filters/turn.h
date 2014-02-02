@@ -41,19 +41,21 @@ typedef void (*TurnFuncPtr) (const BYTE *srcp, BYTE *dstp, int width, int height
 
 class Turn : public GenericVideoFilter {
 
-  TurnFuncPtr TurnFunc;
+  TurnFuncPtr turn_function;
 
   int			direction;
-  PClip		Usource;
-  PClip		Vsource;
+  PClip		u_source;
+  PClip		v_source;
 
 public:
   Turn(PClip _child, int _direction, IScriptEnvironment* env);
 
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
-  static AVSValue __cdecl Create_TurnLeft(AVSValue args, void* user_data, IScriptEnvironment* env);
-  static AVSValue __cdecl Create_TurnRight(AVSValue args, void* user_data, IScriptEnvironment* env);
-  static AVSValue __cdecl Create_Turn180(AVSValue args, void* user_data, IScriptEnvironment* env);
+  int __stdcall SetCacheHints(int cachehints, int frame_range) override;
+
+  static AVSValue __cdecl create_turnleft(AVSValue args, void* user_data, IScriptEnvironment* env);
+  static AVSValue __cdecl create_turnright(AVSValue args, void* user_data, IScriptEnvironment* env);
+  static AVSValue __cdecl create_turn180(AVSValue args, void* user_data, IScriptEnvironment* env);
 
 };
 

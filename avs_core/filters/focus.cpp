@@ -34,6 +34,7 @@
 
 #include "focus.h"
 #include <cmath>
+#include <new>
 #include <avs/alignment.h>
 #include <avs/minmax.h>
 #include "../core/internal.h"
@@ -68,12 +69,7 @@ extern const AVSFunction Focus_filters[] = {
  ***************************************/
 
 AdjustFocusV::AdjustFocusV(double _amount, PClip _child)
-: GenericVideoFilter(_child), amount(int(32768*pow(2.0, _amount)+0.5)), line_buf(NULL) {}
-
-AdjustFocusV::~AdjustFocusV(void) 
-{ 
-  _aligned_free(line_buf);
-}
+: GenericVideoFilter(_child), amount(int(32768*pow(2.0, _amount)+0.5)) {}
 
 static void af_vertical_c(BYTE* line_buf, BYTE* dstp, const int height, const int pitch, const int width, const int amount) {
   const int center_weight = amount*2;
@@ -268,8 +264,9 @@ PVideoFrame __stdcall AdjustFocusV::GetFrame(int n, IScriptEnvironment* env)
 	PVideoFrame src = child->GetFrame(n, env);
 
 	env->MakeWritable(&src);
-	if (!line_buf)
-    line_buf = reinterpret_cast<BYTE*>(_aligned_malloc(src->GetRowSize(), 16));
+	
+  auto env2 = static_cast<IScriptEnvironment2*>(env);
+  BYTE* line_buf = reinterpret_cast<BYTE*>(env2->Allocate(src->GetRowSize(), 16, AVS_POOLED_ALLOC));
 
 	if (vi.IsPlanar()) {
     const int planes[3] = { PLANAR_Y, PLANAR_U, PLANAR_V };
@@ -292,6 +289,8 @@ PVideoFrame __stdcall AdjustFocusV::GetFrame(int n, IScriptEnvironment* env)
 
     af_vertical_process(line_buf, dstp, height, pitch, width, amount, env);
 	}
+
+  env2->Free(line_buf);
 	return src;
 }
 
@@ -582,7 +581,6 @@ static void af_horizontal_yuy2_sse2(BYTE* dstp, const BYTE* srcp, size_t dst_pit
     srcp += src_pitch;
   }
 }
-
 
 
 
@@ -1061,12 +1059,6 @@ TemporalSoften::TemporalSoften( PClip _child, unsigned radius, unsigned luma_thr
     planes[c++]=luma_thresh;
   }
   planes[c]=0;
-  frames = new PVideoFrame[kernel];
-}
-
-TemporalSoften::~TemporalSoften(void) 
-{
-  delete[] frames;
 }
 
 //offset is the initial value of x. Used when C routine processes only parts of frames after SSE/MMX paths do their job.
@@ -1344,56 +1336,65 @@ static int calculate_sad(const BYTE* cur_ptr, const BYTE* other_ptr, int cur_pit
   return calculate_sad_c(cur_ptr, other_ptr, cur_pitch, other_pitch, width, height);
 }
 
-
-PVideoFrame TemporalSoften::GetFrame(int n, IScriptEnvironment* env) 
+PVideoFrame TemporalSoften::GetFrame(int n, IScriptEnvironment* env)
 {
   int radius = (kernel-1) / 2;
   int c = 0;
-  
+
   // Just skip if silly settings
 
   if ((!luma_threshold) && (!chroma_threshold) || (!radius))
-    return child->GetFrame(n,env);
-    
+    return child->GetFrame(n, env);
 
-  for (int p=0; p<16; p++) {
-    planeDisabled[p]=false;
+  bool planeDisabled[16];
+//  
+
+  for (int p = 0; p<16; p++) {
+    planeDisabled[p] = false;
   }
+
+  auto frames = static_cast<PVideoFrame*>(alloca(sizeof(PVideoFrame)* kernel));
   
-  for (int p=n-radius; p<=n+radius; p++) {
+  for (int p = n-radius; p<=n+radius; p++) {
+    new(frames+p+radius-n) PVideoFrame;
     frames[p+radius-n] = child->GetFrame(clamp(p, 0, vi.num_frames-1), env);
   }
 
   env->MakeWritable(&frames[radius]);
 
   do {
+    const BYTE* planeP[16];
+    const BYTE* planeP2[16];
+    int planePitch[16];
+    int planePitch2[16];
+
     int c_thresh = planes[c+1];  // Threshold for current plane.
-    int d=0;
+    int d = 0;
     for (int i = 0; i<radius; i++) { // Fetch all planes sequencially
       planePitch[d] = frames[i]->GetPitch(planes[c]);
       planeP[d++] = frames[i]->GetReadPtr(planes[c]);
     }
 
-    BYTE* c_plane= frames[radius]->GetWritePtr(planes[c]);
+    BYTE* c_plane = frames[radius]->GetWritePtr(planes[c]);
 
     for (int i = 1; i<=radius; i++) { // Fetch all planes sequencially
       planePitch[d] = frames[radius+i]->GetPitch(planes[c]);
       planeP[d++] = frames[radius+i]->GetReadPtr(planes[c]);
     }
-    
-    int rowsize=frames[radius]->GetRowSize(planes[c]|PLANAR_ALIGNED);
+
+    int rowsize = frames[radius]->GetRowSize(planes[c]|PLANAR_ALIGNED);
     int h = frames[radius]->GetHeight(planes[c]);
     int pitch = frames[radius]->GetPitch(planes[c]);
 
     if (scenechange>0) {
-      int d2=0;
+      int d2 = 0;
       bool skiprest = false;
       for (int i = radius-1; i>=0; i--) { // Check frames backwards
         if ((!skiprest) && (!planeDisabled[i])) {
-          int sad = calculate_sad(c_plane, planeP[i], pitch,  planePitch[i],  frames[radius]->GetRowSize(planes[c]), h, env);
+          int sad = calculate_sad(c_plane, planeP[i], pitch, planePitch[i], frames[radius]->GetRowSize(planes[c]), h, env);
           if (sad < scenechange) {
-            planePitch2[d2] =  planePitch[i];
-            planeP2[d2++] = planeP[i]; 
+            planePitch2[d2] = planePitch[i];
+            planeP2[d2++] = planeP[i];
           } else {
             skiprest = true;
           }
@@ -1404,10 +1405,10 @@ PVideoFrame TemporalSoften::GetFrame(int n, IScriptEnvironment* env)
       }
       skiprest = false;
       for (int i = radius; i < 2*radius; i++) { // Check forward frames
-        if ((!skiprest)  && (!planeDisabled[i]) ) {   // Disable this frame on next plane (so that Y can affect UV)
-          int sad = calculate_sad(c_plane, planeP[i], pitch,  planePitch[i],  frames[radius]->GetRowSize(planes[c]), h, env);
+        if ((!skiprest)  && (!planeDisabled[i])) {   // Disable this frame on next plane (so that Y can affect UV)
+          int sad = calculate_sad(c_plane, planeP[i], pitch, planePitch[i], frames[radius]->GetRowSize(planes[c]), h, env);
           if (sad < scenechange) {
-            planePitch2[d2] =  planePitch[i];
+            planePitch2[d2] = planePitch[i];
             planeP2[d2++] = planeP[i];
           } else {
             skiprest = true;
@@ -1417,19 +1418,19 @@ PVideoFrame TemporalSoften::GetFrame(int n, IScriptEnvironment* env)
           planeDisabled[i] = true;
         }
       }
-      
+
       //Copy back
-      for (int i=0;i<d2;i++) {
-        planeP[i]=planeP2[i];
-        planePitch[i]=planePitch2[i];
+      for (int i = 0; i<d2; i++) {
+        planeP[i] = planeP2[i];
+        planePitch[i] = planePitch2[i];
       }
       d = d2;
     }
 
-    if (d<1) 
+    if (d<1)
       return frames[radius];
 
-   
+
     int c_div = 32768/(d+1);  // We also have the tetplane included, thus d+1.
     if (c_thresh) {
       bool aligned16 = IsPtrAligned(c_plane, 16);
@@ -1439,22 +1440,27 @@ PVideoFrame TemporalSoften::GetFrame(int n, IScriptEnvironment* env)
         }
       }
 
-      for (int y=0;y<h;y++) { // One line at the time
+      for (int y = 0; y<h; y++) { // One line at the time
         if (vi.IsYUY2()) {
           accumulate_line_yuy2(c_plane, planeP, d, rowsize, luma_threshold, chroma_threshold, c_div, aligned16, env);
         } else {
           accumulate_line(c_plane, planeP, d, rowsize, c_thresh, c_div, aligned16, env);
         }
-        for (int p=0;p<d;p++)
+        for (int p = 0; p<d; p++)
           planeP[p] += planePitch[p];
         c_plane += pitch;
       }
     } else { // Just maintain the plane
     }
-    c+=2;
+    c += 2;
   } while (planes[c]);
 
-  return frames[radius];
+  PVideoFrame result = frames[radius];
+  
+  for (int i = 0; i < kernel; ++i) {
+    frames[i] = nullptr;
+  }
+  return result;
 }
 
 
