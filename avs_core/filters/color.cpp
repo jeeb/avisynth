@@ -522,6 +522,9 @@ PVideoFrame __stdcall ColorYUV::GetFrame(int n, IScriptEnvironment* env)
         }
     }
 
+    // Read conditional variables
+    coloryuv_read_conditional(env, &cY, &cU, &cV);
+
     BYTE *lutY, *lutU, *lutV;
 
     // FIXME: Should I use env2->Allocate?
