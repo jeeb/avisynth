@@ -525,12 +525,7 @@ PVideoFrame __stdcall ColorYUV::GetFrame(int n, IScriptEnvironment* env)
     // Read conditional variables
     coloryuv_read_conditional(env, &cY, &cU, &cV);
 
-    BYTE *lutY, *lutU, *lutV;
-
-    // FIXME: Should I use env2->Allocate?
-    lutY = static_cast<BYTE*>(alloca(256));
-    lutU = static_cast<BYTE*>(alloca(256));
-    lutV = static_cast<BYTE*>(alloca(256));
+    BYTE lutY[256], lutU[256], lutV[256];
 
     coloryuv_create_lut(lutY, &cY);
     if (!vi.IsY8())
