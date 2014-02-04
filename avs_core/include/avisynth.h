@@ -1031,7 +1031,6 @@ typedef AVSValue (*ThreadWorkerFuncPtr)(IScriptEnvironment2* env, void* data);
 
 enum AvsEnvProperty
 {
-  AEP_INVALID = 0,
   AEP_PHYSICAL_CPUS = 1,
   AEP_LOGICAL_CPUS = 2,
   AEP_THREADPOOL_THREADS = 3,
@@ -1041,7 +1040,6 @@ enum AvsEnvProperty
 
 enum AvsAllocType
 {
-  AVS_INVALID_ALLOC = 0,
   AVS_NORMAL_ALLOC  = 1,
   AVS_POOLED_ALLOC  = 2
 };

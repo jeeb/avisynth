@@ -859,9 +859,6 @@ size_t  __stdcall ScriptEnvironment::GetProperty(AvsEnvProperty prop)
 {
   switch(prop)
   {
-  case AEP_INVALID:
-    this->ThrowError("Invalid property request.");
-    break;
   case AEP_FILTERCHAIN_THREADS:
     return (prefetcher != NULL) ? prefetcher->NumPrefetchThreads()+1 : 1;
   case AEP_PHYSICAL_CPUS:
@@ -873,11 +870,11 @@ size_t  __stdcall ScriptEnvironment::GetProperty(AvsEnvProperty prop)
   case AEP_THREADPOOL_THREADS:
     return thread_pool->NumThreads();
   default:
-    break;
+    this->ThrowError("Invalid property request.");
+    return std::numeric_limits<size_t>::max();
   }
 
-  // This is unlikely to be mistaken for an actual value
-  return std::numeric_limits<size_t>::max();
+  assert(0);
 }
 
 int __stdcall ScriptEnvironment::IncrImportDepth()
