@@ -869,6 +869,8 @@ size_t  __stdcall ScriptEnvironment::GetProperty(AvsEnvProperty prop)
     return 0;
   case AEP_THREADPOOL_THREADS:
     return thread_pool->NumThreads();
+  case AEP_VERSION:
+    return AVS_SEQREV;
   default:
     this->ThrowError("Invalid property request.");
     return std::numeric_limits<size_t>::max();

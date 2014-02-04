@@ -1,6 +1,7 @@
 #ifndef _AVS_VERSION_H_
 #define _AVS_VERSION_H_
 
-#cmakedefine AVS_SEQREV "@AVS_SEQREV@"
+#cmakedefine  AVS_SEQREV         @AVS_SEQREV@
+#define       AVS_SEQREV_STR    "@AVS_SEQREV@"
 
 #endif  //  _AVS_VERSION_H_
