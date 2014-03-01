@@ -509,6 +509,8 @@ int Splice::SetCacheHints(int cachehints,int frame_range)
   {
   case CACHE_DONT_CACHE_ME:
     return 1;
+  case CACHE_GET_MTMODE:
+    return MT_NICE_FILTER;
   default:
     if (passCache) {
       child2->SetCacheHints(cachehints, frame_range);
