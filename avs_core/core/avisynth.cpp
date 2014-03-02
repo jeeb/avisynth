@@ -1192,14 +1192,15 @@ void ScriptEnvironment::EnsureMemoryLimit(size_t request)
 
 PVideoFrame ScriptEnvironment::NewPlanarVideoFrame(int row_size, int height, int row_sizeUV, int heightUV, int align, bool U_first)
 {
-  if (align < 0){
-#ifdef _DEBUG
-    _RPT0(_CRT_WARN, "Warning: A negative value for the 'align' parameter is deprecated and will be treated as positive.");
-#endif
+  if (align < 0)
+  {
+    // Forced alignment
     align = -align;
   }
-
-  align = max(align, FRAME_ALIGN);
+  else
+  {
+    align = max(align, FRAME_ALIGN);
+  }
 
   int pitchUV;
   const int pitchY = AlignNumber(row_size, align);
@@ -1243,14 +1244,15 @@ PVideoFrame ScriptEnvironment::NewPlanarVideoFrame(int row_size, int height, int
 
 PVideoFrame ScriptEnvironment::NewVideoFrame(int row_size, int height, int align)
 {
-  if (align < 0){
-#ifdef _DEBUG
-    _RPT0(_CRT_WARN, "Warning: A negative value for the 'align' parameter is deprecated and will be treated as positive.");
-#endif
+  if (align < 0)
+  {
+    // Forced alignment
     align = -align;
   }
-
-  align = max(align, FRAME_ALIGN);
+  else
+  {
+    align = max(align, FRAME_ALIGN);
+  }
 
   const int pitch = AlignNumber(row_size, align);
   int size = pitch * height;

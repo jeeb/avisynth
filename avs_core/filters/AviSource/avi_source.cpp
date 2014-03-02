@@ -42,6 +42,14 @@
 #include "avi_source.h"
 #include <avs/minmax.h>
 
+static PVideoFrame AdjustFrameAlignment(const PVideoFrame& frame, const VideoInfo& vi, IScriptEnvironment* env)
+{
+    PVideoFrame result = env->NewVideoFrame(vi);
+    env->BitBlt(result->GetWritePtr(),         result->GetPitch(),         frame->GetReadPtr(),         frame->GetPitch(),         frame->GetRowSize(),         frame->GetHeight());
+    env->BitBlt(result->GetWritePtr(PLANAR_V), result->GetPitch(PLANAR_V), frame->GetReadPtr(PLANAR_V), frame->GetPitch(PLANAR_V), frame->GetRowSize(PLANAR_V), frame->GetHeight(PLANAR_V));
+    env->BitBlt(result->GetWritePtr(PLANAR_U), result->GetPitch(PLANAR_U), frame->GetReadPtr(PLANAR_U), frame->GetPitch(PLANAR_U), frame->GetRowSize(PLANAR_U), frame->GetHeight(PLANAR_U));
+    return result;
+}
 
 LRESULT AVISource::DecompressBegin(LPBITMAPINFOHEADER lpbiSrc, LPBITMAPINFOHEADER lpbiDst) {
   if (!ex) {
@@ -546,7 +554,7 @@ AVISource::AVISource(const char filename[], bool fAudio, const char pixel_type[]
 
     if (mode != MODE_WAV) {
       int keyframe = pvideo->NearestKeyFrame(0);
-      PVideoFrame frame = env->NewVideoFrame(vi);
+      PVideoFrame frame = env->NewVideoFrame(vi, -4);
       if (!frame)   // shutdown, if init not succesful.
         env->ThrowError("AviSource: Could not allocate frame 0");
 
@@ -563,7 +571,7 @@ AVISource::AVISource(const char filename[], bool fAudio, const char pixel_type[]
           env->ThrowError("AviSource: Could not decompress first keyframe %d", keyframe);
       }
       last_frame_no=0;
-      last_frame=frame;
+      last_frame = AdjustFrameAlignment(frame, vi, env);
     }
   }
   catch (...) {
@@ -608,7 +616,8 @@ PVideoFrame AVISource::GetFrame(int n, IScriptEnvironment* env) {
     if (keyframe < 0) keyframe = 0;
 
     bool frameok = false;
-    PVideoFrame frame = env->NewVideoFrame(vi);
+    PVideoFrame frame = env->NewVideoFrame(vi, -4);
+
     if (!frame)
       env->ThrowError("AviSource: Could not allocate frame %d", n);
 
@@ -633,7 +642,7 @@ PVideoFrame AVISource::GetFrame(int n, IScriptEnvironment* env) {
     } while(not_found_yet);
 
     if (frameok) {
-      last_frame = frame;
+      last_frame = AdjustFrameAlignment(frame, vi, env);
     }
   }
   return last_frame;
