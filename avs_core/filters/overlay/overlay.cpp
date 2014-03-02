@@ -172,6 +172,9 @@ PVideoFrame __stdcall Overlay::GetFrame(int n, IScriptEnvironment *env) {
   int con_y_offset;
   FetchConditionals(env, &op_offset, &con_x_offset, &con_y_offset, ignore_conditional);
 
+  // Output frame
+  PVideoFrame f = env->NewVideoFrame(vi);
+
     // Fetch current frame and convert it.
   PVideoFrame frame = child->GetFrame(n, env);
 
@@ -195,48 +198,49 @@ PVideoFrame __stdcall Overlay::GetFrame(int n, IScriptEnvironment *env) {
   // Clip overlay to original image
   ClipFrames(img, overlayImg, offset_x + con_x_offset, offset_y + con_y_offset);
 
-  if (overlayImg->IsSizeZero()) {
+  if (overlayImg->IsSizeZero()) { // Nothing to overlay
     // Convert output image back
     img->ReturnOriginal(true);
     overlayImg->ReturnOriginal(true);
 
     // Convert output image back
-    PVideoFrame f = env->NewVideoFrame(vi);
-    return outputConv->ConvertImage(img, f, env);
-  }
-
-  // fetch current mask (if given)
-  if (mask) {
-    PVideoFrame Mframe = mask->GetFrame(n, env);
-    if (greymask)
-      maskConv->ConvertImageLumaOnly(Mframe, maskImg, env);
-    else
-      maskConv->ConvertImage(Mframe, maskImg, env);
-
-    img->ReturnOriginal(true);
-    ClipFrames(img, maskImg, offset_x + con_x_offset, offset_y + con_y_offset);
-  }
-
-  OverlayFunction* func = SelectFunction(name, env);
-
-  // Process the image
-  func->setOpacity(opacity + op_offset);
-  func->setEnv(env);
-
-  if (!mask) {
-    func->BlendImage(img, overlayImg);
+    f = outputConv->ConvertImage(img, f, env);
   } else {
-    func->BlendImageMask(img, overlayImg, maskImg);
+    // fetch current mask (if given)
+    if (mask) {
+        PVideoFrame Mframe = mask->GetFrame(n, env);
+        if (greymask)
+            maskConv->ConvertImageLumaOnly(Mframe, maskImg, env);
+        else
+            maskConv->ConvertImage(Mframe, maskImg, env);
+
+        img->ReturnOriginal(true);
+        ClipFrames(img, maskImg, offset_x + con_x_offset, offset_y + con_y_offset);
+    }
+
+    OverlayFunction* func = SelectFunction(name, env);
+
+    // Process the image
+    func->setOpacity(opacity + op_offset);
+    func->setEnv(env);
+
+    if (!mask) {
+        func->BlendImage(img, overlayImg);
+    } else {
+        func->BlendImageMask(img, overlayImg, maskImg);
+    }
+
+    delete func;
+
+    // Reset overlay & image offsets
+    img->ReturnOriginal(true);
+    overlayImg->ReturnOriginal(true);
+    if (mask)
+        maskImg->ReturnOriginal(true);
+
+    f = outputConv->ConvertImage(img, f, env);
+
   }
-
-  // Reset overlay & image offsets
-  img->ReturnOriginal(true);
-  overlayImg->ReturnOriginal(true);
-  if (mask)
-    maskImg->ReturnOriginal(true);
-
-  PVideoFrame f = env->NewVideoFrame(vi);
-  f = outputConv->ConvertImage(img, f, env);
 
   // Cleanup
   if (mask) {
@@ -245,7 +249,6 @@ PVideoFrame __stdcall Overlay::GetFrame(int n, IScriptEnvironment *env) {
     }
     maskImg->free_luma();
     delete maskImg;
-    delete maskConv;
   }
   overlayImg->free();
   delete overlayImg;
@@ -253,7 +256,6 @@ PVideoFrame __stdcall Overlay::GetFrame(int n, IScriptEnvironment *env) {
     img->free();
     delete img;
   }
-  delete func;
 
   return f;
 }
