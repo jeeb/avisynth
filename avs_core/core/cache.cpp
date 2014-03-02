@@ -92,6 +92,9 @@ Cache::~Cache()
 
 PVideoFrame __stdcall Cache::GetFrame(int n, IScriptEnvironment* env)
 {
+  // Protect plugins that cannot handle out-of-bounds frame indices
+  n = clamp(n, 0, GetVideoInfo().num_frames-1);
+
   if (_pimpl->VideoCache->requested_capacity() > _pimpl->VideoCache->capacity())
     env->ManageCache(MC_NodAndExpandCache, reinterpret_cast<void*>(this));
   else
