@@ -1689,7 +1689,7 @@ static void layer_rgb32_mul_sse2(BYTE* dstp, const BYTE* ovrp, int dst_pitch, in
       __m128i src = _mm_loadl_epi64(reinterpret_cast<const __m128i*>(dstp+x*4));
       __m128i ovr = _mm_loadl_epi64(reinterpret_cast<const __m128i*>(ovrp+x*4));
 
-      __m128i alpha = calculate_monochrome_alpha_sse2(src, level_vector, one);
+      __m128i alpha = calculate_monochrome_alpha_sse2(ovr, level_vector, one);
 
       src = _mm_unpacklo_epi8(src, zero);
       ovr = _mm_unpacklo_epi8(ovr, zero);
@@ -1825,7 +1825,7 @@ static void layer_rgb32_add_sse2(BYTE* dstp, const BYTE* ovrp, int dst_pitch, in
       __m128i src = _mm_loadl_epi64(reinterpret_cast<const __m128i*>(dstp+x*4));
       __m128i ovr = _mm_loadl_epi64(reinterpret_cast<const __m128i*>(ovrp+x*4));
 
-      __m128i alpha = calculate_monochrome_alpha_sse2(src, level_vector, one);
+      __m128i alpha = calculate_monochrome_alpha_sse2(ovr, level_vector, one);
 
       src = _mm_unpacklo_epi8(src, zero);
       ovr = _mm_unpacklo_epi8(ovr, zero);
@@ -1973,7 +1973,7 @@ static void layer_rgb32_subtract_sse2(BYTE* dstp, const BYTE* ovrp, int dst_pitc
       __m128i src = _mm_loadl_epi64(reinterpret_cast<const __m128i*>(dstp+x*4));
       __m128i ovr = _mm_loadl_epi64(reinterpret_cast<const __m128i*>(ovrp+x*4));
 
-      __m128i alpha = calculate_monochrome_alpha_sse2(src, level_vector, one);
+      __m128i alpha = calculate_monochrome_alpha_sse2(ovr, level_vector, one);
 
       src = _mm_unpacklo_epi8(src, zero);
       ovr = _mm_unpacklo_epi8(ovr, zero);
@@ -2107,7 +2107,7 @@ static void layer_rgb32_lighten_darken_sse2(BYTE* dstp, const BYTE* ovrp, int ds
       __m128i src = _mm_loadl_epi64(reinterpret_cast<const __m128i*>(dstp+x*4));
       __m128i ovr = _mm_loadl_epi64(reinterpret_cast<const __m128i*>(ovrp+x*4));
 
-      __m128i alpha = calculate_monochrome_alpha_sse2(src, level_vector, one);
+      __m128i alpha = calculate_monochrome_alpha_sse2(ovr, level_vector, one);
 
       src = _mm_unpacklo_epi8(src, zero);
       ovr = _mm_unpacklo_epi8(ovr, zero);
