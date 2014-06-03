@@ -27,3 +27,6 @@ if (MSVC_IDE)
     COMMAND xcopy /Y \"$(TargetPath)\" \"${CMAKE_BINARY_DIR}/Output/plugins\"
   )
 endif()
+
+INSTALL(TARGETS "${ProjectName}"
+        DESTINATION "${CMAKE_INSTALL_PREFIX}/${LIB_INSTALL_DIR}/avisynth")
