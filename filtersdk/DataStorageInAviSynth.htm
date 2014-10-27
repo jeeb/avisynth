@@ -1,18 +1,14 @@
-<!DOCTYPE html
-          PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
-          "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
-<html   xmlns   = "http://www.w3.org/1999/xhtml">
-<head>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml"><head>
 <link rel="STYLESHEET" href="filtersdk.css" type="text/css" />
-<title>DataStorageInAviSynth - AviSynth</title>
-</head>
-<BODY>
+<title>DataStorageInAviSynth - AviSynth</title></head>
+
+<body>
 <div id="body">
 
-<h1><a href="http://avisynth.org/mediawiki/Filter_SDK/Data_storage" style="text-decoration:none">
+<h1><a href="http://avisynth.org/mediawiki/Filter_SDK/Data_storage" style="text-decoration: none;">
     DataStorageInAviSynth</a>
-    	<p>
-	</h1>
+    	</h1>
 
 <h2>Part 1: Actual memory storage</h2>
 <p><em><b>Warning:</b> technical.</em> 
@@ -98,8 +94,8 @@ to take care of problems with memory reading at end of lines.
 <li> Interlaced (fieldbased) video requires double mod on height.
 </li>
 <li> Required modulos in different colorspaces.
-<ul ><li> <b>RGB(A)</b>
-<ul ><li> width  mod-1 (no restriction)
+<ul><li> <b>RGB(A)</b>
+<ul><li> width  mod-1 (no restriction)
 </li>
 <li> height mod-1 (no restriction) <em>if progressive</em>
 </li>
@@ -108,7 +104,7 @@ to take care of problems with memory reading at end of lines.
 </ul>
 </li>
 <li> <b>YUY2</b>
-<ul ><li> width  mod-2 (even values)
+<ul><li> width  mod-2 (even values)
 </li>
 <li> height mod-1 (no restriction) <em>if progressive</em>
 </li>
@@ -117,7 +113,7 @@ to take care of problems with memory reading at end of lines.
 </ul>
 </li>
 <li> <b>Y8</b>
-<ul ><li> width  mod-1 (no restriction)
+<ul><li> width  mod-1 (no restriction)
 </li>
 <li> height mod-1 (no restriction) <em>if progressive</em>
 </li>
@@ -126,7 +122,7 @@ to take care of problems with memory reading at end of lines.
 </ul>
 </li>
 <li> <b>YV411</b>
-<ul ><li> width  mod-4
+<ul><li> width  mod-4
 </li>
 <li> height mod-1 (no restriction) <em>if progressive</em>
 </li>
@@ -135,7 +131,7 @@ to take care of problems with memory reading at end of lines.
 </ul>
 </li>
 <li> <b>YV12</b>
-<ul ><li> width  mod-2 (even values)
+<ul><li> width  mod-2 (even values)
 </li>
 <li> height mod-2 (even values)    <em>if progressive</em>
 </li>
@@ -144,7 +140,7 @@ to take care of problems with memory reading at end of lines.
 </ul>
 </li>
 <li> <b>YV16</b>
-<ul ><li> width  mod-2 (even values)
+<ul><li> width  mod-2 (even values)
 </li>
 <li> height mod-1 (no restriction) <em>if progressive</em>
 </li>
@@ -153,7 +149,7 @@ to take care of problems with memory reading at end of lines.
 </ul>
 </li>
 <li> <b>YV24</b>
-<ul ><li> width  mod-1 (no restriction)
+<ul><li> width  mod-1 (no restriction)
 </li>
 <li> height mod-1 (no restriction) <em>if progressive</em>
 </li>
@@ -164,22 +160,22 @@ to take care of problems with memory reading at end of lines.
 </ul>
 </li>
 <li>Examples of valid <a href="../Docs/English/corefilters/crop.htm">Crops</a> with input 320x240 progressive
-<ul ><li> <b>RGB(A)</b>
-<ul ><li>Crop(1,7,-32,-19)
+<ul><li> <b>RGB(A)</b>
+<ul><li>Crop(1,7,-32,-19)
 </li>
 <li>Crop(2,4,300,196)
 </li>
 </ul>
 </li>
 <li> <b>YUY2</b>
-<ul ><li>Crop(2,7,-32,-19)
+<ul><li>Crop(2,7,-32,-19)
 </li>
 <li>Crop(2,4,300,196)
 </li>
 </ul>
 </li>
 <li> <b>YV12</b>
-<ul ><li>Crop(2,8,-32,-18)
+<ul><li>Crop(2,8,-32,-18)
 </li>
 <li>Crop(2,4,300,196)
 </li>
@@ -199,11 +195,12 @@ want mod-16 on all resolutions etc.
 
 
 <hr />
-<p><tt>This page is a edited summary of <a href="http://forum.doom9.org/showthread.php?s=&threadid=40413&highlight=YV12">[this thread at Doom9's forum]</a></tt></p>
+<p><tt>This page is a edited summary of <a href="http://forum.doom9.org/showthread.php?s=&amp;threadid=40413&amp;highlight=YV12">[this thread at Doom9's forum]</a></tt><a href="http://forum.doom9.org/showthread.php?s=&amp;threadid=40413&amp;highlight=YV12">
+
+</a></p><hr style="width: 100%; height: 2px;" />Back to&nbsp;<a href="FilterSDK.htm">FilterSDK</a>
 
 </div>
-<p><kbd>$Date: 2013/05/07 02:33:47 $<br>
+<p><kbd>$Date: 2014/10/27 22:04:54 $<br />
 Original version of this document <a href="http://avisynth.org/mediawiki/Filter_SDK/Data_storage">http://avisynth.org/mediawiki/Filter_SDK/Data_storage</a>
 </kbd></p>
-</BODY>
-</html>
+</body></html>

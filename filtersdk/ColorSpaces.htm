@@ -1,19 +1,14 @@
-<!DOCTYPE html
-          PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
-          "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
-<html   xmlns   = "http://www.w3.org/1999/xhtml">
-<head>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml"><head>
 <link rel="STYLESHEET" href="filtersdk.css" type="text/css" />
-<title>ColorSpaces - AviSynth</title>
-</head>
-<BODY>
+<title>ColorSpaces - AviSynth</title></head>
+<body>
 
 <div id="body">
 
-<h1><a href="http://www.avisynth.org/ColorSpaces" style="text-decoration:none">
-    ColorSpaces</a>
-    	<p>
-	</h1>
+<h1><span style="text-decoration: none;">
+    ColorSpaces</span>
+    	</h1>
 
 <h2>RGB and YUV colorspaces</h2>
 <p>RGB and YUV are two different ways to represent colors. 
@@ -90,12 +85,12 @@ is the width of your image; the pitch and the actual byte-count of a line remain
 <p>The image is then laid out like this:</p>
 
 <code>
-<p>rrrrrrrrrrrrrrrrpppp</p>
+</code><p>rrrrrrrrrrrrrrrrpppp</p>
 
 <p>rrrrrrrrrrrrrrrrpppp</p>
 
 <p>rrrrrrrrrrrrrrrrpppp</p>
-</code>
+
 
 <p>Where 'r' are the pixels inside the image used, and 'p' is the padding inserted after each line.</p>
 
@@ -104,8 +99,8 @@ but it is still possible to have mod2 width images, because the rowsize is diffe
 Similar the UV-planes always have a pitch that is a multiple of 8.</p>
 
 
-<p>When you request <code>frame->GetRowSize(PLANAR_Y)</code> you will get the rowsize of the pixels _inside_ the image. 
-When you request <code>frame->GetRowSize(PLANAR_Y_ALIGNED)</code> you will ALWAYS get 
+<p>When you request <code>frame-&gt;GetRowSize(PLANAR_Y)</code> you will get the rowsize of the pixels _inside_ the image. 
+When you request <code>frame-&gt;GetRowSize(PLANAR_Y_ALIGNED)</code> you will ALWAYS get 
 a rowsize that is a multiple of 16 (multiple of 8 on UV planes).</p>
 
 
@@ -185,12 +180,12 @@ otherwise AviSynth will not create a new VideoFrame, but will throw an error.</p
 <h3>Links</h3>
 <p>See more about <a href="DataStorageInAviSynth.htm">DataStorageInAviSynth</a>.</p>
 
-<p>See a  general introduction to <a href="WorkingWithImages.htm">WorkingWithImages</a>.</p>
+<p>See a  general introduction to <a href="WorkingWithImages.htm">WorkingWithImages</a>.
+
+</p><hr style="width: 100%; height: 2px;" />Back to&nbsp;<a href="FilterSDK.htm">FilterSDK</a>
 
 
 </div>
-<p><kbd>$Date: 2006/11/24 18:21:25 $<br>
-Original version of this document <a href="http://www.avisynth.org/ColorSpaces">http://www.avisynth.org/ColorSpaces</a>
+<p><kbd>$Date: 2014/10/27 22:04:54 $<br /><a href="http://www.avisynth.org/ColorSpaces"></a>
 </kbd></p>
-</BODY>
-</html>
+</body></html>

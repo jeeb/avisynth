@@ -1,19 +1,14 @@
-<!DOCTYPE html
-          PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
-          "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
-<html   xmlns   = "http://www.w3.org/1999/xhtml">
-<head>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml"><head>
 <link rel="STYLESHEET" href="filtersdk.css" type="text/css" />
-<title>SimpleMmxOptimization - AviSynth</title>
-</head>
-<BODY>
+<title>SimpleMmxOptimization - AviSynth</title></head>
+<body>
 
 <div id="body">
 
-<h1><a href="http://www.avisynth.org/SimpleMmxOptimization" style="text-decoration:none">
-    SimpleMmxOptimization</a>
-    	<p>
-	</h1>
+<h1><span style="text-decoration: none;">
+    SimpleMmxOptimization</span>
+    	</h1>
 
 <p>This will cover some basics in assembler optimization, 
 and the syntax to use in Visual Studio C++ for inline assembler.</p>
@@ -35,7 +30,7 @@ The example is from an actual filter in AviSynth, with only minor changes.</p>
 </dd>
 </dl>
 </dd>
-<dd><tt>      else if(p[x] > cmax)</tt>
+<dd><tt>      else if(p[x] &gt; cmax)</tt>
 <dl><dd><tt>        p[x] = cmax;</tt>
 </dd>
 </dl>
@@ -55,7 +50,7 @@ The example is from an actual filter in AviSynth, with only minor changes.</p>
 
 <p>The parameters of this routine is:</p>
 
-<ul ><li> <em>p</em> - a pointer to the information being processed.</li>
+<ul><li> <em>p</em> - a pointer to the information being processed.</li>
 <li> <em>row_size</em> - the width of a row in bytes.</li>
 <li> <em>height</em> - the height of the image in bytes.</li>
 <li> <em>modulo</em> - the difference between the pitch and the rowsize (pitch - rowsize).</li>
@@ -67,7 +62,7 @@ it is a good thing to look at which commands are available for the task needed.
 In this case we choose to focus on <a href="IntegerSSE.htm">IntegerSSE</a>, 
 because it contains pminub and pmaxub, which selects the minimum and maximum bytes of two packed registers. 
 It is always a good idea to support plain MMX, since there are still many machines out there, 
-that only support these instcrutions.</p>
+that only support these instructions.</p>
 
 
 <p>An important aspect of MMX is parallel processing. That means processing several bytes at once. 
@@ -188,7 +183,7 @@ Remember we duplicated the max and min values in the C-part.</p>
 These commands are <a href="IntegerSSE.htm">IntegerSSE</a> commands. 
 They can shuffle around words in the mmx registers, based on the last number. 
 <p>In this example it results in mm7 containing "0xcmcm|cmcm|cmcm|cmcm".  
-So basicly cmax and cmin are now placed in all 8 bytes in the mm6 and mm7 registers.</p>
+So basically cmax and cmin are now placed in all 8 bytes in the mm6 and mm7 registers.</p>
 
 
 <p><code><tt>yloop:</tt></code></p>
@@ -249,7 +244,7 @@ Here we subtract 8 from edx, and jump to the xloop location if the values in edx
 </dd>
 <dd><code><tt>    dec eax</tt></code>
 </dd>
-<dd><tt>    jnz yloop</tt>
+<dd style="color: rgb(105, 0, 51);"><tt>    jnz yloop</tt>
 </dd>
 </dl>
 This is the code that gets executed whenever the xloop is finished. 
@@ -259,11 +254,12 @@ and jumps to the yloop as long as there are still pixels left to process.
 <dl><dd><code><tt>    emms</tt></code>
 </dd>
 </dl>
-This instruction must be placed after all mmx code. It reenabled float point code, which is disabled by mmx code.
+This instruction must be placed after all mmx code. It reenabled float point code, which is disabled by mmx code.<code></code>
 
-<h3>Back to <a href="AssemblerOptimizing.htm">AssemblerOptimizing</a></h3></div>
-<p><kbd>$Date: 2006/11/24 18:21:26 $<br>
-Original version of this document <a href="http://www.avisynth.org/SimpleMmxOptimization">http://www.avisynth.org/SimpleMmxOptimization</a>
+
+<hr style="width: 100%; height: 2px;" />Back to <a href="AssemblerOptimizing.htm">AssemblerOptimizing</a>
+
+</div>
+<p><kbd>$Date: 2014/10/27 22:04:54 $<br /><a href="http://www.avisynth.org/SimpleMmxOptimization"></a>
 </kbd></p>
-</BODY>
-</html>
+</body></html>
