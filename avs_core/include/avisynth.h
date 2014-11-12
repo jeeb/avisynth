@@ -576,15 +576,8 @@ public:
 }; // end class VideoFrame
 
 enum CachePolicyHint {
-  // Old 2.5 poorly defined cache hints.
-  // Reserve values used by 2.5 API
-  // Do not use in new filters
-  CACHE_25_NOTHING=0, 
-  CACHE_25_RANGE=1,
-  CACHE_25_ALL=2,
-  CACHE_25_AUDIO=3,
-  CACHE_25_AUDIO_NONE=4,
-  CACHE_25_AUDIO_AUTO=5,
+  // Values 0 to 5 are reserved for old 2.5 plugins
+  // do not use them in new plugins
 
   // New 2.6 explicitly defined cache hints.
   CACHE_NOTHING=10, // Do not cache video.
