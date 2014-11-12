@@ -158,15 +158,15 @@ void* VideoFrame::operator new(unsigned) {
 }
 
 
-VideoFrame::VideoFrame(VideoFrameBuffer* _vfb, int _offset, int _pitch, int _row_size, int _height)
+VideoFrame::VideoFrame(VideoFrameBuffer* _vfb, size_t _offset, int _pitch, int _row_size, int _height)
   : refcount(1), vfb(_vfb), offset(_offset), pitch(_pitch), row_size(_row_size), height(_height),
     offsetU(_offset),offsetV(_offset),pitchUV(0), row_sizeUV(0), heightUV(0)  // PitchUV=0 so this doesn't take up additional space
 {
   InterlockedIncrement(&vfb->refcount);
 }
 
-VideoFrame::VideoFrame(VideoFrameBuffer* _vfb, int _offset, int _pitch, int _row_size, int _height,
-                       int _offsetU, int _offsetV, int _pitchUV, int _row_sizeUV, int _heightUV)
+VideoFrame::VideoFrame(VideoFrameBuffer* _vfb, size_t _offset, int _pitch, int _row_size, int _height,
+                       size_t _offsetU, size_t _offsetV, int _pitchUV, int _row_sizeUV, int _heightUV)
   : refcount(1), vfb(_vfb), offset(_offset), pitch(_pitch), row_size(_row_size), height(_height),
     offsetU(_offsetU),offsetV(_offsetV),pitchUV(_pitchUV), row_sizeUV(_row_sizeUV), heightUV(_heightUV)
 {
@@ -188,7 +188,7 @@ VideoFrame* VideoFrame::Subframe(int rel_offset, int new_pitch, int new_row_size
   const int new_heightUV   = !height   ? 0 : MulDiv(new_height,   heightUV,   height);
 
   return new VideoFrame(vfb, offset+rel_offset, new_pitch, new_row_size, new_height,
-                        rel_offsetU+offsetU, rel_offsetV+offsetV, new_pitchUV, new_row_sizeUV, new_heightUV);
+                        offsetU+rel_offsetU, offsetV+rel_offsetV, new_pitchUV, new_row_sizeUV, new_heightUV);
 }
 
 
@@ -196,7 +196,7 @@ VideoFrameBuffer::VideoFrameBuffer() : refcount(1), data(0), data_size(0), seque
 
 
 #ifdef _DEBUG  // Add 16 guard bytes front and back -- cache can check them after every GetFrame() call
-VideoFrameBuffer::VideoFrameBuffer(int size) :
+VideoFrameBuffer::VideoFrameBuffer(size_t size) :
   refcount(1),
   data((new BYTE[size+32])+16),
   data_size(data ? size : 0),
@@ -219,12 +219,12 @@ VideoFrameBuffer::~VideoFrameBuffer() {
   InterlockedIncrement(&sequence_number); // HACK : Notify any children with a pointer, this buffer has changed!!!
   if (data) delete[] (BYTE*)(data-16);
   (BYTE*)data = 0; // and mark it invalid!!
-  (int)data_size = 0;   // and don't forget to set the size to 0 as well!
+  (size_t)data_size = 0;   // and don't forget to set the size to 0 as well!
 }
 
 #else
 
-VideoFrameBuffer::VideoFrameBuffer(int size)
+VideoFrameBuffer::VideoFrameBuffer(size_t size)
  : refcount(1), data(new BYTE[size]), data_size(data ? size : 0), sequence_number(0) { InterlockedIncrement(&sequence_number); }
 
 VideoFrameBuffer::~VideoFrameBuffer() {
@@ -232,7 +232,7 @@ VideoFrameBuffer::~VideoFrameBuffer() {
   InterlockedIncrement(&sequence_number); // HACK : Notify any children with a pointer, this buffer has changed!!!
   if (data) delete[] data;
   (BYTE*)data = 0; // and mark it invalid!!
-  (int)data_size = 0;   // and don't forget to set the size to 0 as well!
+  (size_t)data_size = 0;   // and don't forget to set the size to 0 as well!
 }
 #endif
 
@@ -244,7 +244,7 @@ public:
   bool returned;
   const int signature; // Used by ManageCache to ensure that the VideoFrameBuffer
                        // it casts is really a LinkedVideoFrameBuffer
-  LinkedVideoFrameBuffer(int size) : VideoFrameBuffer(size), returned(true), signature(ident) { next=prev=this; }
+  LinkedVideoFrameBuffer(size_t size) : VideoFrameBuffer(size), returned(true), signature(ident) { next=prev=this; }
   LinkedVideoFrameBuffer() : returned(true), signature(ident) { next=prev=this; }
 };
 
@@ -289,6 +289,16 @@ public:
       return lexical_parent->Get(name);
     else
       throw IScriptEnvironment::NotFound();
+  }
+
+  const AVSValue& GetDef(const char* name, const AVSValue& def) {
+    for (Variable* v = &variables; v; v = v->next)
+      if (!lstrcmpi(name, v->name))
+        return v->val;
+    if (lexical_parent)
+      return lexical_parent->GetDef(name, def);
+    else
+      return def;
   }
 
   bool Set(const char* name, const AVSValue& val) {
@@ -858,6 +868,7 @@ public:
   void __stdcall DeleteScriptEnvironment();
   void _stdcall ApplyMessage(PVideoFrame* frame, const VideoInfo& vi, const char* message, int size, int textcolor, int halocolor, int bgcolor);
   const AVS_Linkage* const __stdcall GetAVSLinkage();
+  AVSValue __stdcall GetVarDef(const char* name, const AVSValue& def);
 
 private:
   // Tritical May 2005
@@ -876,10 +887,10 @@ private:
   LinkedVideoFrameBuffer video_frame_buffers, lost_video_frame_buffers, *unpromotedvfbs;
   __int64 memory_max, memory_used;
 
-  LinkedVideoFrameBuffer* NewFrameBuffer(int size);
+  LinkedVideoFrameBuffer* NewFrameBuffer(size_t size);
 
-  LinkedVideoFrameBuffer* GetFrameBuffer2(int size);
-  VideoFrameBuffer* GetFrameBuffer(int size);
+  LinkedVideoFrameBuffer* GetFrameBuffer2(size_t size);
+  VideoFrameBuffer* GetFrameBuffer(size_t size);
   long CPU_id;
 
   // helper for Invoke
@@ -1087,6 +1098,18 @@ AVSValue ScriptEnvironment::GetVar(const char* name) {
   return retval;
 }
 
+AVSValue ScriptEnvironment::GetVarDef(const char* name, const AVSValue& def) {
+  if (closing) return AVSValue();  // We easily risk  being inside the critical section below, while deleting variables.
+
+  EnterCriticalSection(&cs_var_table);
+
+  AVSValue retval = var_table->GetDef(name, def);
+
+  LeaveCriticalSection(&cs_var_table);
+
+  return retval;
+}
+
 bool ScriptEnvironment::SetVar(const char* name, const AVSValue& val) {
   if (closing) return true;  // We easily risk  being inside the critical section below, while deleting variables.
   EnterCriticalSection(&cs_var_table);
@@ -1248,7 +1271,8 @@ void ScriptEnvironment::ExportFilters()
 
 
 PVideoFrame ScriptEnvironment::NewPlanarVideoFrame(int row_size, int height, int row_sizeUV, int heightUV, int _align, bool U_first) {
-  int align, pitchUV, Uoffset, Voffset;
+  int align, pitchUV;
+  size_t Uoffset, Voffset;
 
   // If align is negative, it will be forced, if not it may be made bigger
   if (_align < 0)
@@ -1271,7 +1295,7 @@ PVideoFrame ScriptEnvironment::NewPlanarVideoFrame(int row_size, int height, int
     pitchUV = (row_sizeUV+align-1) / align * align;
   }
 
-  const int size = pitch * height + 2 * pitchUV * heightUV;
+  const size_t size = pitch * height + 2 * pitchUV * heightUV;
   VideoFrameBuffer* vfb = GetFrameBuffer(size + (align < FRAME_ALIGN ? FRAME_ALIGN*4 : align*4));
   if (!vfb)
     ThrowError("NewPlanarVideoFrame: Returned 0 image pointer!");
@@ -1285,7 +1309,7 @@ PVideoFrame ScriptEnvironment::NewPlanarVideoFrame(int row_size, int height, int
     }
   }
 #endif
-  const int offset = (-int(vfb->GetWritePtr())) & (FRAME_ALIGN-1);  // align first line offset
+  const size_t offset = (-int(vfb->GetWritePtr())) & (FRAME_ALIGN-1);  // align first line offset
 
   if (U_first) {
     Uoffset = offset + pitch * height;
@@ -1306,7 +1330,7 @@ PVideoFrame ScriptEnvironment::NewVideoFrame(int row_size, int height, int align
     align = max(align, FRAME_ALIGN);
 
   const int pitch = (row_size+align-1) / align * align;
-  const int size = pitch * height;
+  const size_t size = pitch * height;
   const int _align = (align < FRAME_ALIGN) ? FRAME_ALIGN : align;
   VideoFrameBuffer* vfb = GetFrameBuffer(size+(_align*4));
   if (!vfb)
@@ -1321,7 +1345,7 @@ PVideoFrame ScriptEnvironment::NewVideoFrame(int row_size, int height, int align
     }
   }
 #endif
-  const int offset = (-int(vfb->GetWritePtr())) & (FRAME_ALIGN-1);  // align first line offset  (alignment is free here!)
+  const size_t offset = (-int(vfb->GetWritePtr())) & (FRAME_ALIGN-1);  // align first line offset  (alignment is free here!)
   return new VideoFrame(vfb, offset, pitch, row_size, height);
 }
 
@@ -1602,14 +1626,14 @@ bool ScriptEnvironment::PlanarChromaAlignment(IScriptEnvironment::PlanarChromaAl
 }
 
 
-LinkedVideoFrameBuffer* ScriptEnvironment::NewFrameBuffer(int size) {
+LinkedVideoFrameBuffer* ScriptEnvironment::NewFrameBuffer(size_t size) {
   memory_used += size;
   _RPT1(0, "Frame buffer memory used: %I64d\n", memory_used);
   return new LinkedVideoFrameBuffer(size);
 }
 
 
-LinkedVideoFrameBuffer* ScriptEnvironment::GetFrameBuffer2(int size) {
+LinkedVideoFrameBuffer* ScriptEnvironment::GetFrameBuffer2(size_t size) {
   LinkedVideoFrameBuffer *i, *j;
 
   // Before we allocate a new framebuffer, check our memory usage, and if we
@@ -1709,7 +1733,7 @@ LinkedVideoFrameBuffer* ScriptEnvironment::GetFrameBuffer2(int size) {
   return NewFrameBuffer(size);
 }
 
-VideoFrameBuffer* ScriptEnvironment::GetFrameBuffer(int size) {
+VideoFrameBuffer* ScriptEnvironment::GetFrameBuffer(size_t size) {
   EnterCriticalSection(&cs_relink_video_frame_buffer);
 
   LinkedVideoFrameBuffer* result = GetFrameBuffer2(size);
@@ -1736,9 +1760,13 @@ VideoFrameBuffer* ScriptEnvironment::GetFrameBuffer(int size) {
 
       LeaveCriticalSection(&cs_relink_video_frame_buffer);
 
+      MEMORYSTATUS memstatus;
+      GlobalMemoryStatus(&memstatus); // Correct call for a 32Bit process. -Ex gives numbers we cannot use!
+
       ThrowError("GetFrameBuffer: Returned a VFB with a 0 data pointer!\n"
-                 "size=%d, max=%I64d, used=%I64d\n"
-                 "I think we have run out of memory folks!", size, memory_max, memory_used);
+                 "size=%d, max=%I64d, used=%I64d, free=%u, phys=%u\n"
+                 "I think we have run out of memory folks!",
+                 size, memory_max, memory_used, memstatus.dwAvailVirtual, memstatus.dwAvailPhys);
     }
   }
 
