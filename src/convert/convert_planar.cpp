@@ -150,8 +150,8 @@ PVideoFrame __stdcall ConvertToY8::GetFrame(int n, IScriptEnvironment* env) {
       dstY+=dstPitch;
     }
   }
+  else if (rgb_input) {
 
-  if (rgb_input) {
     const int srcPitch = src->GetPitch();
     const BYTE* srcp = src->GetReadPtr() + srcPitch * (vi.height-1);  // We start at last line
 
@@ -710,22 +710,22 @@ PVideoFrame __stdcall ConvertYUY2ToYV16::GetFrame(int n, IScriptEnvironment* env
   if (!(awidth&7)) {  // Use MMX
     this->convYUV422to422(srcP, dstY, dstU, dstV, src->GetPitch(), dst->GetPitch(PLANAR_Y),
                           dst->GetPitch(PLANAR_U),  awidth, vi.height);
-    return dst;
   }
+  else {
+    const int w = vi.width/2;
 
-  const int w = vi.width/2;
-
-  for (int y=0; y<vi.height; y++) { // ASM will probably not be faster here.
-    for (int x=0; x<w; x++) {
-      dstY[x*2]   = srcP[x*4+0];
-      dstY[x*2+1] = srcP[x*4+2];
-      dstU[x]     = srcP[x*4+1];
-      dstV[x]     = srcP[x*4+3];
+    for (int y=0; y<vi.height; y++) {
+      for (int x=0; x<w; x++) {
+        dstY[x*2]   = srcP[x*4+0];
+        dstY[x*2+1] = srcP[x*4+2];
+        dstU[x]     = srcP[x*4+1];
+        dstV[x]     = srcP[x*4+3];
+      }
+      srcP += src->GetPitch();
+      dstY += dst->GetPitch(PLANAR_Y);
+      dstU += dst->GetPitch(PLANAR_U);
+      dstV += dst->GetPitch(PLANAR_V);
     }
-    srcP += src->GetPitch();
-    dstY += dst->GetPitch(PLANAR_Y);
-    dstU += dst->GetPitch(PLANAR_U);
-    dstV += dst->GetPitch(PLANAR_V);
   }
   return dst;
 }
@@ -815,23 +815,25 @@ PVideoFrame __stdcall ConvertYV16ToYUY2::GetFrame(int n, IScriptEnvironment* env
   BYTE* dstp = dst->GetWritePtr();
 
   if (!(awidth&7)) {  // Use MMX
-    this->conv422toYUV422(srcY, srcU, srcV, dstp, src->GetPitch(PLANAR_Y), src->GetPitch(PLANAR_U),
+    this->conv422toYUV422(srcY, srcU, srcV, dstp,
+      src->GetPitch(PLANAR_Y), src->GetPitch(PLANAR_U),
       dst->GetPitch(), awidth, vi.height);
   }
+  else {
+    const int w = vi.width/2;
 
-  const int w = vi.width/2;
-
-  for (int y=0; y<vi.height; y++) { // ASM will probably not be faster here.
-    for (int x=0; x<w; x++) {
-      dstp[x*4+0] = srcY[x*2];
-      dstp[x*4+1] = srcU[x];
-      dstp[x*4+2] = srcY[x*2+1];
-      dstp[x*4+3] = srcV[x];
+    for (int y=0; y<vi.height; y++) {
+      for (int x=0; x<w; x++) {
+        dstp[x*4+0] = srcY[x*2];
+        dstp[x*4+1] = srcU[x];
+        dstp[x*4+2] = srcY[x*2+1];
+        dstp[x*4+3] = srcV[x];
+      }
+      srcY += src->GetPitch(PLANAR_Y);
+      srcU += src->GetPitch(PLANAR_U);
+      srcV += src->GetPitch(PLANAR_V);
+      dstp += dst->GetPitch();
     }
-    srcY += src->GetPitch(PLANAR_Y);
-    srcU += src->GetPitch(PLANAR_U);
-    srcV += src->GetPitch(PLANAR_V);
-    dstp += dst->GetPitch();
   }
   return dst;
 }

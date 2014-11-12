@@ -132,7 +132,7 @@ void AFV_C(uc* l, uc* p, const int height, const int pitch, const int row_size, 
 	const int outer_weight = 32768-amount;
 	for (int y = height-1; y>0; --y) {
 		for (int x = 0; x < row_size; ++x) {
-			uc a = ScaledPixelClip(p[x] * center_weight + (l[x] + p[x+pitch]) * outer_weight);
+			const uc a = ScaledPixelClip(p[x] * center_weight + (l[x] + p[x+pitch]) * outer_weight);
 			l[x] = p[x];
 			p[x] = a;
 		}
@@ -288,11 +288,12 @@ PVideoFrame __stdcall AdjustFocusH::GetFrame(int n, IScriptEnvironment* env)
 			const int row_size = frame->GetRowSize(plane);
 			uc* q = frame->GetWritePtr(plane);
 			const int pitch = frame->GetPitch(plane);
-			int height = frame->GetHeight(plane);
+			const int height = frame->GetHeight(plane);
 			if (mmx && (pitch >= ((row_size+7) & -8))) {
-				AFH_YV12_MMX(q,height,pitch,row_size,amount);
-			} else {
-				AFH_YV12_C(q,height,pitch,row_size,amount);
+				AFH_YV12_MMX(q, height, pitch, row_size, amount);
+			}
+            else {
+				AFH_YV12_C(q, height, pitch, row_size, amount);
 			} 
 		}
 	} else {
@@ -300,20 +301,22 @@ PVideoFrame __stdcall AdjustFocusH::GetFrame(int n, IScriptEnvironment* env)
 		const int pitch = frame->GetPitch();
 		if (vi.IsYUY2()) {
 			if (mmx) {
-				AFH_YUY2_MMX(q,vi.height,pitch,vi.width,amount);
-			} else {
-				AFH_YUY2_C(q,vi.height,pitch,vi.width,amount);
+				AFH_YUY2_MMX(q, vi.height, pitch, vi.width, amount);
+			}
+            else {
+				AFH_YUY2_C(q, vi.height, pitch, vi.width, amount);
 			}
 		} 
 		else if (vi.IsRGB32()) {
 			if (mmx) {
-				AFH_RGB32_MMX(q,vi.height,pitch,vi.width,amount);
-			} else {
-				AFH_RGB32_C(q,vi.height,pitch,vi.width,amount);
+				AFH_RGB32_MMX(q, vi.height, pitch, vi.width, amount);
+			}
+            else {
+				AFH_RGB32_C(q, vi.height, pitch, vi.width, amount);
 			}
 		} 
 		else { //rgb24
-			AFH_RGB24_C(q,vi.height,pitch,vi.width,amount);
+			AFH_RGB24_C(q, vi.height, pitch, vi.width, amount);
 		}
 	}
 
@@ -336,14 +339,21 @@ void AFH_RGB32_C(uc* p, int height, const int pitch, const int width, const int 
 		int x;
 		for (x = 0; x < width-1; ++x) 
 		{
-			uc b = ScaledPixelClip(p[x*4+0] * center_weight + (bb + p[x*4+4]) * outer_weight);
-			bb = p[x*4+0]; p[x*4+0] = b;
-			uc g = ScaledPixelClip(p[x*4+1] * center_weight + (gg + p[x*4+5]) * outer_weight);
-			gg = p[x*4+1]; p[x*4+1] = g;
-			uc r = ScaledPixelClip(p[x*4+2] * center_weight + (rr + p[x*4+6]) * outer_weight);
-			rr = p[x*4+2]; p[x*4+2] = r;
-			uc a = ScaledPixelClip(p[x*4+3] * center_weight + (aa + p[x*4+7]) * outer_weight);
-			aa = p[x*4+3]; p[x*4+3] = a;
+			const uc b = ScaledPixelClip(p[x*4+0] * center_weight + (bb + p[x*4+4]) * outer_weight);
+			bb = p[x*4+0];
+			p[x*4+0] = b;
+
+			const uc g = ScaledPixelClip(p[x*4+1] * center_weight + (gg + p[x*4+5]) * outer_weight);
+			gg = p[x*4+1];
+			p[x*4+1] = g;
+
+			const uc r = ScaledPixelClip(p[x*4+2] * center_weight + (rr + p[x*4+6]) * outer_weight);
+			rr = p[x*4+2];
+			p[x*4+2] = r;
+
+			const uc a = ScaledPixelClip(p[x*4+3] * center_weight + (aa + p[x*4+7]) * outer_weight);
+			aa = p[x*4+3];
+			p[x*4+3] = a;
 		}
 		p[x*4+0] = ScaledPixelClip(p[x*4+0] * center_weight + (bb + p[x*4+0]) * outer_weight);
 		p[x*4+1] = ScaledPixelClip(p[x*4+1] * center_weight + (gg + p[x*4+1]) * outer_weight);
@@ -483,20 +493,20 @@ void AFH_YUY2_C(uc* p, int height, const int pitch, const int width, const int a
 		int x;
 		for (x = 0; x < width-2; ++x) 
 		{
-			uc y = ScaledPixelClip(p[x*2+0] * center_weight + (yy + p[x*2+2]) * outer_weight);
-			yy   = p[x*2+0];
+			const uc y = ScaledPixelClip(p[x*2+0] * center_weight + (yy + p[x*2+2]) * outer_weight);
+			yy = p[x*2+0];
 			p[x*2+0] = y;
-			uc w = ScaledPixelClip(p[x*2+1] * center_weight + (uv + p[x*2+5]) * outer_weight);
-			uv   = vu;
-			vu   = p[x*2+1];
+			const uc w = ScaledPixelClip(p[x*2+1] * center_weight + (uv + p[x*2+5]) * outer_weight);
+			uv = vu;
+			vu = p[x*2+1];
 			p[x*2+1] = w;
 		}
-		uc y     = ScaledPixelClip(p[x*2+0] * center_weight + (yy + p[x*2+2]) * outer_weight);
-		yy       = p[x*2+0];
-		p[x*2+0] = y;
-		p[x*2+1] = ScaledPixelClip(p[x*2+1] * center_weight + (uv + p[x*2+1]) * outer_weight);
-		p[x*2+2] = ScaledPixelClip(p[x*2+2] * center_weight + (yy + p[x*2+2]) * outer_weight);
-		p[x*2+3] = ScaledPixelClip(p[x*2+3] * center_weight + (vu + p[x*2+3]) * outer_weight);
+		const uc y = ScaledPixelClip(p[x*2+0] * center_weight + (yy + p[x*2+2]) * outer_weight);
+		yy         = p[x*2+0];
+		p[x*2+0]   = y;
+		p[x*2+1]   = ScaledPixelClip(p[x*2+1] * center_weight + (uv + p[x*2+1]) * outer_weight);
+		p[x*2+2]   = ScaledPixelClip(p[x*2+2] * center_weight + (yy + p[x*2+2]) * outer_weight);
+		p[x*2+3]   = ScaledPixelClip(p[x*2+3] * center_weight + (vu + p[x*2+3]) * outer_weight);
    
 		p += pitch;
 	}
@@ -722,12 +732,17 @@ void AFH_RGB24_C(uc* p, int height, const int pitch, const int width, const int 
       int x;
 	  for (x = 0; x < width-1; ++x) 
       {
-        uc b = ScaledPixelClip(p[x*3+0] * center_weight + (bb + p[x*3+3]) * outer_weight);
-        bb = p[x*3+0]; p[x*3+0] = b;
-        uc g = ScaledPixelClip(p[x*3+1] * center_weight + (gg + p[x*3+4]) * outer_weight);
-        gg = p[x*3+1]; p[x*3+1] = g;
-        uc r = ScaledPixelClip(p[x*3+2] * center_weight + (rr + p[x*3+5]) * outer_weight);
-        rr = p[x*3+2]; p[x*3+2] = r;
+        const uc b = ScaledPixelClip(p[x*3+0] * center_weight + (bb + p[x*3+3]) * outer_weight);
+        bb = p[x*3+0];
+        p[x*3+0] = b;
+
+        const uc g = ScaledPixelClip(p[x*3+1] * center_weight + (gg + p[x*3+4]) * outer_weight);
+        gg = p[x*3+1];
+        p[x*3+1] = g;
+
+        const uc r = ScaledPixelClip(p[x*3+2] * center_weight + (rr + p[x*3+5]) * outer_weight);
+        rr = p[x*3+2];
+        p[x*3+2] = r;
       }
       p[x*3+0] = ScaledPixelClip(p[x*3+0] * center_weight + (bb + p[x*3+0]) * outer_weight);
       p[x*3+1] = ScaledPixelClip(p[x*3+1] * center_weight + (gg + p[x*3+1]) * outer_weight);
@@ -744,13 +759,14 @@ void AFH_YV12_C(uc* p, int height, const int pitch, const int row_size, const in
 {
 	const int center_weight = amount*2;
 	const int outer_weight = 32768-amount;
-	uc pp,l;
+
 	for (int y = height; y>0; --y) {
-		l = p[0];
+		uc l = p[0];
 		int x;
-		for (x = 1; x < row_size-1; ++x) {
-			pp = ScaledPixelClip(p[x] * center_weight + (l + p[x+1]) * outer_weight);
-			l=p[x]; p[x]=pp;
+		for (x = 0; x < row_size-1; ++x) {
+			const uc pp = ScaledPixelClip(p[x] * center_weight + (l + p[x+1]) * outer_weight);
+			l=p[x];
+            p[x]=pp;
 		}
 		p[x] = ScaledPixelClip(p[x] * center_weight + (l + p[x]) * outer_weight);
 		p += pitch;
