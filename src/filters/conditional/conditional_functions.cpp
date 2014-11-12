@@ -144,6 +144,9 @@ AVSValue AveragePlane::AvgPlane(AVSValue clip, void* user_data, int plane, IScri
   int w = src->GetRowSize(plane);
   int pitch = src->GetPitch(plane);
 
+  if (w == 0 || h == 0)
+    env->ThrowError("Average Plane: No chroma planes in Y8!");
+
   unsigned int b = 0;
   if (w & -16) b = isse_average_plane(srcp,           h, (w & -16), pitch);
   if (w &  15) b +=   C_average_plane(srcp+(w & -16), h, (w &  15), pitch);
@@ -306,6 +309,9 @@ AVSValue ComparePlane::CmpPlane(AVSValue clip, AVSValue clip2, void* user_data, 
   const int w2 = src2->GetRowSize(plane);
   const int pitch2 = src2->GetPitch(plane);
 
+  if (w == 0 || h == 0)
+    env->ThrowError("Plane Difference: No chroma planes in Y8!");
+
   if (h != h2 || w != w2)
     env->ThrowError("Plane Difference: Images are not the same size!");
 
@@ -371,6 +377,9 @@ AVSValue ComparePlane::CmpPlaneSame(AVSValue clip, void* user_data, int offset, 
   int w = src->GetRowSize(plane);
   int pitch = src->GetPitch(plane);
   int pitch2 = src2->GetPitch(plane);
+
+  if (w == 0 || h == 0)
+    env->ThrowError("Plane Difference: No chroma planes in Y8!");
 
   unsigned int b = 0;
   if (vi.IsRGB32()) {
@@ -480,6 +489,9 @@ AVSValue MinMaxPlane::MinMax(AVSValue clip, void* user_data, float threshold, in
   int pitch = src->GetPitch(plane);
   int w = src->GetRowSize(plane);
   int h = src->GetHeight(plane);
+
+  if (w == 0 || h == 0)
+    env->ThrowError("MinMax: No chroma planes in Y8!");
 
   // Reset accumulators
   for (int i=0;i<256;i++) {
