@@ -19,7 +19,14 @@ as AVSValue (variant of float, integer, boolean, string).
 Here's a sample from script.cpp, edited for external use (by foxyshadis, 
 see <a href="http://forum.doom9.org/showthread.php?t=132026"> discussion</a>):
 
-<pre> AVSValue Sin(AVSValue args, void* user_data, IScriptEnvironment* env) { return sin(args[0].AsFloat()); }<br /> <br /> extern "C" __declspec(dllexport) const char* __stdcall<br /> AvisynthPluginInit2(IScriptEnvironment* env) {<br />    env-&gt;AddFunction("sin", "f", Sin, 0);<br />    return "sin";<br /> }<br /></pre>
+<pre> AVSValue Sin(AVSValue args, void* user_data, IScriptEnvironment* env) { return sin(args[0].AsFloat()); }
+ 
+ extern "C" __declspec(dllexport) const char* __stdcall
+ AvisynthPluginInit2(IScriptEnvironment* env) {
+    env-&gt;AddFunction("sin", "f", Sin, 0);
+    return "sin";
+ }
+</pre>
 You don't even need a class/constructor, come to think of it. 
 Include avisynth.h and that could be a whole plugin right there. (If not a terribly useful one.)
 
@@ -33,7 +40,108 @@ They can be used inside the scripts  passed to runtime filters
 to return information for a frame.
 
 Here is sample code of plugin with non-clip function:
-<pre> /*<br /> 	NonClipSample plugin for Avisynth -- a non-clip sample function for Conditional Filter<br /> <br /> 	Copyright (C) 2007 Alexander Balakhnin 'Fizick' http://avisynth.org.ru<br /> <br /> 	This program is free software; you can redistribute it and/or modify<br /> 	it under the terms of the GNU General Public License as published by<br /> 	the Free Software Foundation.<br /> <br /> 	This program is distributed in the hope that it will be useful,<br /> 	but WITHOUT ANY WARRANTY; without even the implied warranty of<br /> 	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the<br /> 	GNU General Public License for more details.<br /> <br /> 	You should have received a copy of the GNU General Public License<br /> 	along with this program; if not, write to the Free Software<br /> 	Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.<br /> <br /> 	V1.0. Based on AverageLuma internal filter and SimpleSample<br /> <br /> 	Usage:<br /> 	ScriptClip(" Subtitle(String(NonClipSample())) ")<br /> */<br /> <br /> //following 2 includes needed<br /> #include "windows.h"<br /> #include "avisynth.h"<br /> <br /> // The function is called for every frame in conditional environment. <br /> // Unlike usual clip functions, it returns not frames of clip but single (scalar) value<br /> // as AVSValue (variant of float, integer, boolean, string)  <br /> <br /> AVSValue __cdecl NonClipSample(AVSValue args, void* user_data, IScriptEnvironment* env) <br /> {<br />    // This sample function calculate mean luma value for currect frame plane<br /> 	<br /> 	// Get function paramenters from input args array<br /> <br /> 		if (!args[0].IsClip()) // check validity<br /> 			env-&gt;ThrowError("NonClipSample: No clip supplied!");<br /> <br /> 		PClip child = args[0].AsClip(); // very first parameter is source clip<br /> <br /> 	// Get clip video information<br /> 		VideoInfo vi = child-&gt;GetVideoInfo(); <br /> <br /> 		if (!vi.IsPlanar())<br /> 			env-&gt;ThrowError("NonClipSample: Only planar images (as YV12) supported!");<br /> <br /> 	// get current frame number<br /> <br /> 		AVSValue cn = env-&gt;GetVar("current_frame"); <br /> 		if (!cn.IsInt())<br /> 			env-&gt;ThrowError("NonClipSample: This filter can only be used within Conditional Filter");<br /> <br /> 		int n = cn.AsInt(); // frame number<br /> <br /> 	// Get source frame and its properties<br /> <br /> 		PVideoFrame src = child-&gt;GetFrame(n,env); // source frame (smart pointer)<br /> 		int plane = PLANAR_Y; // set plane to PLANAR_Y <br /> 		const BYTE* srcp = src-&gt;GetReadPtr(plane); // pointer to plane data (framebuffer)<br /> 		int height = src-&gt;GetHeight(plane);<br /> 		int width = src-&gt;GetRowSize(plane);<br /> 		int pitch = src-&gt;GetPitch(plane);<br /> 	<br /> 	// calculate result of our function<br /> 		unsigned int sum = 0; // init sum<br /> <br /> 		for (int h=0; h &lt; height; h++) {      <br /> 			for (int w = 0; w &lt; width; w++) { <br /> 				sum += srcp[w];          // sum each byte from source<br /> 			}<br /> 			srcp = srcp + pitch; // to next line<br /> 		}<br /> 		float average = (float)sum / (float)(height * width); // normalize sum to get average<br />	// return float result as AVSValue<br /> 		return (AVSValue)average;<br /> }<br /> <br /> <br /> // The following function is the function that actually registers the filter in AviSynth<br /> // It is called automatically, when the plugin is loaded to see which functions this filter contains.<br /> <br /> extern "C" __declspec(dllexport) const char* __stdcall AvisynthPluginInit2(IScriptEnvironment* env) {<br />     env-&gt;AddFunction("NonClipSample", "c", NonClipSample, 0);<br />    // The AddFunction has the following paramters:<br />    // AddFunction(Filtername , Arguments, Function to call,0);<br />    <br />    // Arguments is a string that defines the types and optional names of the arguments for you filter.<br />    // c - Video Clip<br />    // i - Integer number<br />    // f - Float number<br />    // s - String<br />    // b - boolean<br /> <br /> 	 // The word inside the [ ] lets you used named parameters in your script<br /> <br />    return "NonClipSample plugin";<br />    // A freeform name of the plugin.<br /> } <br /></pre>
+<pre> /*
+ 	NonClipSample plugin for Avisynth -- a non-clip sample function for Conditional Filter
+ 
+ 	Copyright (C) 2007 Alexander Balakhnin 'Fizick' http://avisynth.org.ru
+ 
+ 	This program is free software; you can redistribute it and/or modify
+ 	it under the terms of the GNU General Public License as published by
+ 	the Free Software Foundation.
+ 
+ 	This program is distributed in the hope that it will be useful,
+ 	but WITHOUT ANY WARRANTY; without even the implied warranty of
+ 	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ 	GNU General Public License for more details.
+ 
+ 	You should have received a copy of the GNU General Public License
+ 	along with this program; if not, write to the Free Software
+ 	Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+ 
+ 	V1.0. Based on AverageLuma internal filter and SimpleSample
+ 
+ 	Usage:
+ 	ScriptClip(" Subtitle(String(NonClipSample())) ")
+ */
+ 
+ //following 2 includes needed
+ #include "windows.h"
+ #include "avisynth.h"
+ 
+ // The function is called for every frame in conditional environment. 
+ // Unlike usual clip functions, it returns not frames of clip but single (scalar) value
+ // as AVSValue (variant of float, integer, boolean, string)  
+ 
+ AVSValue __cdecl NonClipSample(AVSValue args, void* user_data, IScriptEnvironment* env) 
+ {
+    // This sample function calculate mean luma value for currect frame plane
+ 	
+ 	// Get function paramenters from input args array
+ 
+ 		if (!args[0].IsClip()) // check validity
+ 			env-&gt;ThrowError("NonClipSample: No clip supplied!");
+ 
+ 		PClip child = args[0].AsClip(); // very first parameter is source clip
+ 
+ 	// Get clip video information
+ 		VideoInfo vi = child-&gt;GetVideoInfo(); 
+ 
+ 		if (!vi.IsPlanar())
+ 			env-&gt;ThrowError("NonClipSample: Only planar images (as YV12) supported!");
+ 
+ 	// get current frame number
+ 
+ 		AVSValue cn = env-&gt;GetVar("current_frame"); 
+ 		if (!cn.IsInt())
+ 			env-&gt;ThrowError("NonClipSample: This filter can only be used within Conditional Filter");
+ 
+ 		int n = cn.AsInt(); // frame number
+ 
+ 	// Get source frame and its properties
+ 
+ 		PVideoFrame src = child-&gt;GetFrame(n,env); // source frame (smart pointer)
+ 		int plane = PLANAR_Y; // set plane to PLANAR_Y 
+ 		const BYTE* srcp = src-&gt;GetReadPtr(plane); // pointer to plane data (framebuffer)
+ 		int height = src-&gt;GetHeight(plane);
+ 		int width = src-&gt;GetRowSize(plane);
+ 		int pitch = src-&gt;GetPitch(plane);
+ 	
+ 	// calculate result of our function
+ 		unsigned int sum = 0; // init sum
+ 
+ 		for (int h=0; h &lt; height; h++) {      
+ 			for (int w = 0; w &lt; width; w++) { 
+ 				sum += srcp[w];          // sum each byte from source
+ 			}
+ 			srcp = srcp + pitch; // to next line
+ 		}
+ 		float average = (float)sum / (float)(height * width); // normalize sum to get average
+	// return float result as AVSValue
+ 		return (AVSValue)average;
+ }
+ 
+ 
+ // The following function is the function that actually registers the filter in AviSynth
+ // It is called automatically, when the plugin is loaded to see which functions this filter contains.
+ 
+ extern "C" __declspec(dllexport) const char* __stdcall AvisynthPluginInit2(IScriptEnvironment* env) {
+     env-&gt;AddFunction("NonClipSample", "c", NonClipSample, 0);
+    // The AddFunction has the following paramters:
+    // AddFunction(Filtername , Arguments, Function to call,0);
+    
+    // Arguments is a string that defines the types and optional names of the arguments for you filter.
+    // c - Video Clip
+    // i - Integer number
+    // f - Float number
+    // s - String
+    // b - boolean
+ 
+ 	 // The word inside the [ ] lets you used named parameters in your script
+ 
+    return "NonClipSample plugin";
+    // A freeform name of the plugin.
+ } 
+</pre>
 Compile it as DLL like other AviSynth plugins
 
 <h2>Not processing frames plugin with Avisynth AtExit function</h2>
@@ -44,7 +152,20 @@ after avisynth is done running.
 To run code at the end of the script, it registers an <code>env-&gt;AtExit</code> procedure.
 See <a href="http://forum.doom9.org/showthread.php?t=130383">discussion</a>. 
 (MessageBox debug lines were removed.)
-<pre> /* LoadFont for avisynth<br />   <br />   Created by Shin-san of Ishin Digital Anime Fansubbing<br />   Special thanks to stickboy, Leak, and IanB of the doom9.org forums for the help<br />   Special thanks to sh0dan for his simple sample script, which this file is based on<br /> <br />   This code, if made public, is protected by the GPLv3, which can be found at<br />   www.gnu.org. I'm too lazy to copy/paste it in here<br /> <br />   Purpose: to make it so I can load a font into Windows and automatically unload it <br />   after avisynth is done running<br /> */<br /> <br /> #include <windows.h>
+<pre> /* LoadFont for avisynth
+   
+   Created by Shin-san of Ishin Digital Anime Fansubbing
+   Special thanks to stickboy, Leak, and IanB of the doom9.org forums for the help
+   Special thanks to sh0dan for his simple sample script, which this file is based on
+ 
+   This code, if made public, is protected by the GPLv3, which can be found at
+   www.gnu.org. I'm too lazy to copy/paste it in here
+ 
+   Purpose: to make it so I can load a font into Windows and automatically unload it 
+   after avisynth is done running
+ */
+ 
+ #include <windows.h>
  #include "avisynth.h"
  
  void __cdecl UnLoadFont(void* user_data, IScriptEnvironment* env);
@@ -92,6 +213,6 @@ See <a href="http://forum.doom9.org/showthread.php?t=130383">discussion</a>.
 </windows.h></pre> 
 <h3>Back to <a href="FilterSDK.htm">FilterSDK</a></h3>
 
-<p><kbd>$Date: 2014/10/27 22:04:54 $<a href="http://avisynth.org/mediawiki/Filter_SDK/Non-clip_sample"></a>
+<p><kbd>$Date: 2014/11/12 06:57:07 $<a href="http://avisynth.org/mediawiki/Filter_SDK/Non-clip_sample"></a>
 </kbd></p>
 </body></html>
