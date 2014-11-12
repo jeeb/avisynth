@@ -80,7 +80,7 @@ bool VideoInfo::IsColorSpace(int c_space) const {
   return IsPlanar() ? ((pixel_type & CS_PLANAR_MASK) == (c_space & CS_PLANAR_FILTER)) : ((pixel_type & c_space) == c_space);
 }
 
-bool VideoInfo::Is(int property) const { return ((pixel_type & property)==property ); }
+bool VideoInfo::Is(int property) const { return ((image_type & property)==property ); }
 bool VideoInfo::IsPlanar() const { return !!(pixel_type & CS_PLANAR); }
 bool VideoInfo::IsFieldBased() const { return !!(image_type & IT_FIELDBASED); }
 bool VideoInfo::IsParityKnown() const { return ((image_type & IT_FIELDBASED)&&(image_type & (IT_BFF|IT_TFF))); }
@@ -171,7 +171,7 @@ int VideoInfo::BMPSize() const {
   if (!IsY8() && IsPlanar()) {
     // Y plane
     const int Ybytes  = ((RowSize(PLANAR_Y)+3) & ~3) * height;
-    const int UVbytes = ((RowSize(PLANAR_U)+3) & ~3) * height >> GetPlaneHeightSubsampling(PLANAR_U);
+    const int UVbytes = Ybytes >> (GetPlaneWidthSubsampling(PLANAR_U)+GetPlaneHeightSubsampling(PLANAR_U));
     return Ybytes + UVbytes*2;
   }
   return height * ((RowSize()+3) & ~3);
@@ -295,7 +295,7 @@ const BYTE* VideoFrameBuffer::GetReadPtr() const { return data; }
 BYTE* VideoFrameBuffer::GetWritePtr() { ++sequence_number; return data; }
    Baked ********************/
 BYTE* VideoFrameBuffer::GetWritePtr() { InterlockedIncrement(&sequence_number); return data; }
-int VideoFrameBuffer::GetDataSize() const { return data_size; }
+size_t VideoFrameBuffer::GetDataSize() const { return data_size; }
 int VideoFrameBuffer::GetSequenceNumber() const { return sequence_number; }
 int VideoFrameBuffer::GetRefcount() const { return refcount; }
 
@@ -386,7 +386,7 @@ int VideoFrame::GetHeight(int plane) const {  switch (plane) {case PLANAR_U: cas
 
 // Generally you should not be using these two
 VideoFrameBuffer* VideoFrame::GetFrameBuffer() const { return vfb; }
-int VideoFrame::GetOffset(int plane) const { switch (plane) {case PLANAR_U: return offsetU;case PLANAR_V: return offsetV;default: return offset;}; }
+size_t VideoFrame::GetOffset(int plane) const { switch (plane) {case PLANAR_U: return offsetU;case PLANAR_V: return offsetV;default: return offset;}; }
 
 const BYTE* VideoFrame::GetReadPtr(int plane) const { return vfb->GetReadPtr() + GetOffset(plane); }
 
@@ -618,7 +618,7 @@ void AVSValue::Assign(const AVSValue* src, bool init) {
 
 static const AVS_Linkage avs_linkage = {    // struct AVS_Linkage {
 
-  sizeof(AVS_Linkage),                      //   int Size;
+  sizeof(AVS_Linkage),                      //   size_t Size;
 
 /***************************************************************************************************************/
 // struct VideoInfo
@@ -669,7 +669,7 @@ static const AVS_Linkage avs_linkage = {    // struct AVS_Linkage {
 // class VideoFrameBuffer
   &VideoFrameBuffer::GetReadPtr,            //   const BYTE* (VideoFrameBuffer::*VFBGetReadPtr)() const;
   &VideoFrameBuffer::GetWritePtr,           //   BYTE*       (VideoFrameBuffer::*VFBGetWritePtr)();
-  &VideoFrameBuffer::GetDataSize,           //   int         (VideoFrameBuffer::*GetDataSize)() const;
+  &VideoFrameBuffer::GetDataSize,           //   size_t      (VideoFrameBuffer::*GetDataSize)() const;
   &VideoFrameBuffer::GetSequenceNumber,     //   int         (VideoFrameBuffer::*GetSequenceNumber)() const;
   &VideoFrameBuffer::GetRefcount,           //   int         (VideoFrameBuffer::*GetRefcount)() const;
 // end class VideoFrameBuffer
@@ -679,7 +679,7 @@ static const AVS_Linkage avs_linkage = {    // struct AVS_Linkage {
   &VideoFrame::GetRowSize,                  //   int               (VideoFrame::*GetRowSize)(int plane) const;
   &VideoFrame::GetHeight,                   //   int               (VideoFrame::*GetHeight)(int plane) const;
   &VideoFrame::GetFrameBuffer,              //   VideoFrameBuffer* (VideoFrame::*GetFrameBuffer)() const;
-  &VideoFrame::GetOffset,                   //   int               (VideoFrame::*GetOffset)(int plane) const;
+  &VideoFrame::GetOffset,                   //   size_t            (VideoFrame::*GetOffset)(int plane) const;
   &VideoFrame::GetReadPtr,                  //   const BYTE*       (VideoFrame::*VFGetReadPtr)(int plane) const;
   &VideoFrame::IsWritable,                  //   bool              (VideoFrame::*IsWritable)() const;
   &VideoFrame::GetWritePtr,                 //   BYTE*             (VideoFrame::*VFGetWritePtr)(int plane) const;
