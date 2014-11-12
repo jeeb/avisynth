@@ -50,6 +50,7 @@ class AVISource : public IClip {
   bool dropped_frame;
   bool bIsType1;
   bool bInvertFrames;
+  bool bMediaPad;
 
   PVideoFrame last_frame;
   int last_frame_no;

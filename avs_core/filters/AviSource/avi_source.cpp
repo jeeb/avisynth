@@ -104,32 +104,29 @@ LRESULT AVISource::DecompressFrame(int n, bool preroll, PVideoFrame &frame, IScr
                                           0, 0, vi.width, vi.height);
     if (result != ICERR_OK) return result;
   }
-  if (!vi.IsY8() && vi.IsPlanar()) {
-    // Is this frame packed or have rows DWORD aligned?
-    if (((bytes_read+3) & ~3) != ((vi.BMPSize()+3) & ~3)) {
-      // frame is packed
-      const int rowsizeY  = vi.RowSize(PLANAR_Y);
-      const int rowsizeUV = vi.RowSize(PLANAR_U);
+  if (!bMediaPad && !vi.IsY8() && vi.IsPlanar()) {
+    // Planar frames are packed!
+    const int rowsizeY  = vi.RowSize(PLANAR_Y);
+    const int rowsizeUV = vi.RowSize(PLANAR_U);
 
-      const int sizeY  = rowsizeY  * vi.height;
-      const int sizeUV = rowsizeUV * vi.height >> vi.GetPlaneHeightSubsampling(PLANAR_U);
+    const int sizeY  = rowsizeY  * vi.height;
+    const int sizeUV = rowsizeUV * vi.height >> vi.GetPlaneHeightSubsampling(PLANAR_U);
 
-      const int offsetY = frame->GetOffset(PLANAR_Y);
+    const int offsetY = frame->GetOffset(PLANAR_Y);
 
-      int offsetU = frame->GetOffset(PLANAR_U);
-      int offsetV = frame->GetOffset(PLANAR_V);
+    int offsetU = frame->GetOffset(PLANAR_U);
+    int offsetV = frame->GetOffset(PLANAR_V);
 
-      if (offsetU < offsetV) {
-        offsetU = offsetY+sizeY        - offsetU;
-        offsetV = offsetY+sizeY+sizeUV - offsetV;
-      }
-      else {
-        offsetU = offsetY+sizeY+sizeUV - offsetU;
-        offsetV = offsetY+sizeY        - offsetV;
-      }
-
-      // set pitch = rowsize
-      frame = env->SubframePlanar(frame, 0, rowsizeY, rowsizeY, vi.height, offsetU, offsetV, rowsizeUV);
+    if (offsetU < offsetV) {
+      offsetU = offsetY+sizeY        - offsetU;
+      offsetV = offsetY+sizeY+sizeUV - offsetV;
+    }
+    else {
+      offsetU = offsetY+sizeY+sizeUV - offsetU;
+      offsetV = offsetY+sizeY        - offsetV;
+     }
+    // set pitch = rowsize
+    frame = env->SubframePlanar(frame, 0, rowsizeY, rowsizeY, vi.height, offsetU, offsetV, rowsizeUV);
     }
   }
   else if (bInvertFrames) {
@@ -300,6 +297,7 @@ AVISource::AVISource(const char filename[], bool fAudio, const char pixel_type[]
   bIsType1 = false;
   hic = 0;
   bInvertFrames = false;
+  bMediaPad = false;
 
   AVIFileInit();
   try {
@@ -347,16 +345,20 @@ AVISource::AVISource(const char filename[], bool fAudio, const char pixel_type[]
       if (pvideo) {
         LocateVideoCodec(fourCC, env);
         if (hic) {
+          if (pixel_type[0] == '+') {
+            pixel_type += 1;
+            bMediaPad = true;
+          }
           bool forcedType = !(pixel_type[0] == 0);
 
-          bool fY8    = lstrcmpi(pixel_type, "Y8"   ) == 0 || pixel_type[0] == 0;
-          bool fYV12  = lstrcmpi(pixel_type, "YV12" ) == 0 || pixel_type[0] == 0;
-          bool fYV16  = lstrcmpi(pixel_type, "YV16" ) == 0 || pixel_type[0] == 0;
-          bool fYV24  = lstrcmpi(pixel_type, "YV24" ) == 0 || pixel_type[0] == 0;
-          bool fYV411 = lstrcmpi(pixel_type, "YV411") == 0 || pixel_type[0] == 0;
-          bool fYUY2  = lstrcmpi(pixel_type, "YUY2" ) == 0 || pixel_type[0] == 0;
-          bool fRGB32 = lstrcmpi(pixel_type, "RGB32") == 0 || pixel_type[0] == 0;
-          bool fRGB24 = lstrcmpi(pixel_type, "RGB24") == 0 || pixel_type[0] == 0;
+          bool fY8    = pixel_type[0] == 0 || lstrcmpi(pixel_type, "Y8"   ) == 0;
+          bool fYV12  = pixel_type[0] == 0 || lstrcmpi(pixel_type, "YV12" ) == 0;
+          bool fYV16  = pixel_type[0] == 0 || lstrcmpi(pixel_type, "YV16" ) == 0;
+          bool fYV24  = pixel_type[0] == 0 || lstrcmpi(pixel_type, "YV24" ) == 0;
+          bool fYV411 = pixel_type[0] == 0 || lstrcmpi(pixel_type, "YV411") == 0;
+          bool fYUY2  = pixel_type[0] == 0 || lstrcmpi(pixel_type, "YUY2" ) == 0;
+          bool fRGB32 = pixel_type[0] == 0 || lstrcmpi(pixel_type, "RGB32") == 0;
+          bool fRGB24 = pixel_type[0] == 0 || lstrcmpi(pixel_type, "RGB24") == 0;
 
           if (lstrcmpi(pixel_type, "AUTO") == 0) {
             fY8 = fYV12 = fYUY2 = fRGB32 = fRGB24 = true;
