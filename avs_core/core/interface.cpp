@@ -79,7 +79,7 @@ bool VideoInfo::IsColorSpace(int c_space) const {
   return IsPlanar() ? ((pixel_type & CS_PLANAR_MASK) == (c_space & CS_PLANAR_FILTER)) : ((pixel_type & c_space) == c_space);
 }
 
-bool VideoInfo::Is(int property) const { return ((pixel_type & property)==property ); }
+bool VideoInfo::Is(int property) const { return ((image_type & property)==property ); }
 bool VideoInfo::IsPlanar() const { return !!(pixel_type & CS_PLANAR); }
 bool VideoInfo::IsFieldBased() const { return !!(image_type & IT_FIELDBASED); }
 bool VideoInfo::IsParityKnown() const { return ((image_type & IT_FIELDBASED)&&(image_type & (IT_BFF|IT_TFF))); }
@@ -170,7 +170,7 @@ int VideoInfo::BMPSize() const {
   if (!IsY8() && IsPlanar()) {
     // Y plane
     const int Ybytes  = ((RowSize(PLANAR_Y)+3) & ~3) * height;
-    const int UVbytes = ((RowSize(PLANAR_U)+3) & ~3) * height >> GetPlaneHeightSubsampling(PLANAR_U);
+    const int UVbytes = Ybytes >> (GetPlaneWidthSubsampling(PLANAR_U)+GetPlaneHeightSubsampling(PLANAR_U));
     return Ybytes + UVbytes*2;
   }
   return height * ((RowSize()+3) & ~3);
@@ -354,9 +354,10 @@ BYTE* VideoFrame::GetWritePtr() const {
 
 void VideoFrame::AddRef() { InterlockedIncrement(&refcount); }
 void VideoFrame::Release() {
+  VideoFrameBuffer* _vfb = vfb;
 
   if (!InterlockedDecrement(&refcount))
-    InterlockedDecrement(&vfb->refcount);
+    InterlockedDecrement(&_vfb->refcount);
 }
 
 int VideoFrame::GetPitch(int plane) const { switch (plane) {case PLANAR_U: case PLANAR_V: return pitchUV;} return pitch; }
