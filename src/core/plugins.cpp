@@ -45,6 +45,19 @@ const char* loadplugin_prefix = NULL;
 
 enum { max_plugins=50 };
 
+
+void ReportLoadError(const char* plugin, const char* filename, int error, IScriptEnvironment* env) {
+  switch (error) {
+  case ERROR_MOD_NOT_FOUND:
+    env->ThrowError("%s: unable to load \"%s\", Module not found.  Install missing library?", plugin, filename);
+  case ERROR_PROC_NOT_FOUND:
+    env->ThrowError("%s: unable to load \"%s\", Proc not found.  Update library version?", plugin, filename);
+  default:
+    env->ThrowError("%s: unable to load \"%s\", error=0x%x", plugin, filename, error);
+  }
+}
+
+
 void FreeLibraries(void* loaded_plugins, IScriptEnvironment* env) {
   for (int i=0; i<max_plugins; ++i) {
     HMODULE plugin = ((HMODULE*)loaded_plugins)[i];
@@ -83,7 +96,8 @@ static bool MyLoadLibrary(const char* filename, HMODULE* hmod, bool quiet, IScri
     if (quiet)
       return false;
     else
-      env->ThrowError("LoadPlugin: unable to load \"%s\", error=0x%x", filename, GetLastError());
+      ReportLoadError("LoadPlugin", filename, GetLastError(), env);
+  //  env->ThrowError("LoadPlugin: unable to load \"%s\", error=0x%x", filename, GetLastError());
   // see if we've loaded this already, and add it to the list if not
   for (int j=0; j<max_plugins; ++j) {
     if (loaded_plugins[j] == *hmod) {
@@ -1097,7 +1111,8 @@ AVSValue LoadVirtualdubPlugin(AVSValue args, void*, IScriptEnvironment* env) {
 
   HMODULE hmodule = LoadLibrary(szModule);
   if (!hmodule)
-    env->ThrowError("LoadVirtualdubPlugin: Error opening \"%s\", error=0x%x", szModule, GetLastError());
+    ReportLoadError("LoadVirtualdubPlugin", szModule, GetLastError(), env);
+//  env->ThrowError("LoadVirtualdubPlugin: Error opening \"%s\", error=0x%x", szModule, GetLastError());
 
   FilterModuleInitProc initProc   = (FilterModuleInitProc  )GetProcAddress(hmodule, "VirtualdubFilterModuleInit2");
   FilterModuleDeinitProc deinitProc = (FilterModuleDeinitProc)GetProcAddress(hmodule, "VirtualdubFilterModuleDeinit");
