@@ -207,11 +207,13 @@ public:
     mediaY41P   = 1<<8, // 2.6
     mediaYV16   = 1<<9, // 2.6
     mediaYV24   = 1<<10,// 2.6
+    mediaNV12   = 1<<11,// 2.6
     mediaRGB    = mediaARGB | mediaRGB32 | mediaRGB24,
     mediaYUV    = mediaYUV9 | mediaYV12 | mediaYUY2 | mediaAYUV | mediaY411 | mediaY41P,
-    mediaYUVex  = mediaYUV  | mediaYV16 | mediaYV24,
+    mediaYUVex  = mediaYUV  | mediaYV16 | mediaYV24 | mediaNV12,
     mediaAUTO   = mediaRGB | mediaYUV,
-    mediaFULL   = mediaRGB | mediaYUVex
+    mediaFULL   = mediaRGB | mediaYUVex,
+    mediaPAD    = 1<<31,
   };
   
   __int64 segment_start_time, segment_stop_time, sample_start_time, sample_end_time;
