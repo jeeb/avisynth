@@ -22,6 +22,14 @@ struct AVS_Clip
 	AVS_Clip() : env(0), error(0) {}
 };
 
+struct AVS_ScriptEnvironment
+{
+	IScriptEnvironment * env;
+	const char * error;
+	AVS_ScriptEnvironment(IScriptEnvironment * e = 0)
+		: env(e), error(0) {}
+};
+
 class C_VideoFilter : public IClip {
 public: // but don't use
 	AVS_Clip child;
@@ -42,11 +50,124 @@ public:
 //
 //
 
-extern "C" 
-  void AVSC_CC
-  avs_release_video_frame(AVS_VideoFrame * f)
+extern "C"
+int AVSC_CC avs_is_yv24(const AVS_VideoInfo * p)
+  { return (p->pixel_type & AVS_CS_PLANAR_MASK) == (AVS_CS_YV24  & AVS_CS_PLANAR_FILTER); }
+
+extern "C"
+int AVSC_CC avs_is_yv16(const AVS_VideoInfo * p)
+  { return (p->pixel_type & AVS_CS_PLANAR_MASK) == (AVS_CS_YV16  & AVS_CS_PLANAR_FILTER); }
+
+extern "C"
+int AVSC_CC avs_is_yv12(const AVS_VideoInfo * p)
+  { return (p->pixel_type & AVS_CS_PLANAR_MASK) == (AVS_CS_YV12  & AVS_CS_PLANAR_FILTER); }
+
+extern "C"
+int AVSC_CC avs_is_yv411(const AVS_VideoInfo * p)
+  { return (p->pixel_type & AVS_CS_PLANAR_MASK) == (AVS_CS_YV411 & AVS_CS_PLANAR_FILTER); }
+
+extern "C"
+int AVSC_CC avs_is_y8(const AVS_VideoInfo * p)
+  { return (p->pixel_type & AVS_CS_PLANAR_MASK) == (AVS_CS_Y8    & AVS_CS_PLANAR_FILTER); }
+
+extern "C"
+int AVSC_CC avs_is_color_space(const AVS_VideoInfo * p, int c_space)
 {
-	((PVideoFrame *)&f)->~PVideoFrame();
+  return avs_is_planar(p) ?
+    ((p->pixel_type & AVS_CS_PLANAR_MASK) == (c_space & AVS_CS_PLANAR_FILTER))
+  :
+    ((p->pixel_type & c_space) == c_space);
+}
+
+extern "C"
+int AVSC_CC avs_get_plane_width_subsampling(const AVS_VideoInfo * p, int plane)
+{
+  try {
+    return ((VideoInfo *)p)->GetPlaneWidthSubsampling(plane);
+  }
+  catch (const AvisynthError &err) {
+    return -1;
+  }
+}
+
+extern "C"
+int AVSC_CC avs_get_plane_height_subsampling(const AVS_VideoInfo * p, int plane)
+{
+  try {
+    return ((VideoInfo *)p)->GetPlaneHeightSubsampling(plane);
+  }
+  catch (const AvisynthError &err) {
+    return -1;
+  }
+}
+
+extern "C"
+int AVSC_CC avs_bits_per_pixel(const AVS_VideoInfo * p)
+{
+  return ((VideoInfo *)p)->BitsPerPixel();
+}
+
+extern "C"
+int AVSC_CC avs_bytes_from_pixels(const AVS_VideoInfo * p, int pixels)
+{
+  return ((VideoInfo *)p)->BytesFromPixels(pixels);
+}
+
+extern "C"
+int AVSC_CC avs_row_size(const AVS_VideoInfo * p, int plane)
+{
+  return ((VideoInfo *)p)->RowSize(plane);
+}
+
+extern "C"
+int AVSC_CC avs_bmp_size(const AVS_VideoInfo * vi)
+{
+  return ((VideoInfo *)vi)->BMPSize();
+}
+
+
+/////////////////////////////////////////////////////////////////////
+//
+//
+//
+
+extern "C"
+int AVSC_CC avs_get_row_size_p(const AVS_VideoFrame * p, int plane)
+{
+  int r;
+
+  switch (plane) {
+  case AVS_PLANAR_U: case AVS_PLANAR_V:
+    return (p->pitchUV) ? p->row_sizeUV : 0;
+
+  case AVS_PLANAR_U_ALIGNED: case AVS_PLANAR_V_ALIGNED:
+    if (p->pitchUV) {
+      r = (p->row_sizeUV+AVS_FRAME_ALIGN-1)&(~(AVS_FRAME_ALIGN-1)); // Aligned rowsize
+      return (r <= p->pitchUV) ? r : p->row_sizeUV;
+    }
+    else
+      return 0;
+
+  case AVS_PLANAR_Y_ALIGNED:
+           r = (p->row_size+AVS_FRAME_ALIGN-1)&(~(AVS_FRAME_ALIGN-1)); // Aligned rowsize
+           return (r <= p->pitch) ? r : p->row_size;
+  }
+  return p->row_size;
+}
+
+extern "C"
+int AVSC_CC avs_get_height_p(const AVS_VideoFrame * p, int plane) {
+  switch (plane) {
+  case AVS_PLANAR_U: case AVS_PLANAR_V:
+    return (p->pitchUV) ? p->heightUV : 0;
+  }
+  return p->height;
+}
+
+extern "C" 
+void AVSC_CC avs_release_video_frame(AVS_VideoFrame * f)
+{
+  ((PVideoFrame *)&f)->~PVideoFrame();
 }
 
 extern "C"
@@ -601,7 +722,7 @@ void AVSC_CC avs_delete_script_environment(AVS_ScriptEnvironment * e)
 		if (e->env) {
 			try {
 				e->env->DeleteScriptEnvironment();
-			} catch (AvisynthError) { }
+			} catch (const AvisynthError &err) { }
 			e->env = 0;
 		}
 		delete e;
