@@ -115,8 +115,8 @@ long __declspec(naked) CPUCheckForExtensions() {
 
 		mov		ebx,ecx
 		and		ebx,00100000h	//SSE4.2 is bit 20
-		shr		ebx,9
-		or		ebp,ebx			//set bit 11
+		shr		ebx,8
+		or		ebp,ebx			//set bit 12
 
 		//check for vendor feature register (K6/Athlon).
 
