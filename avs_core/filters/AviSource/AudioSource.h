@@ -51,11 +51,12 @@ private:
 	IAVIReadHandler *pAVIFile;
 	IAVIReadStream *pAVIStream;
 	bool bQuiet;
+	int audiotrack;
 
 	BOOL _isKey(LONG lSample);
 
 public:
-	AudioSourceAVI(IAVIReadHandler *pAVIFile, bool bAutomated);
+	AudioSourceAVI(IAVIReadHandler *pAVIFile, bool bAutomated, int atrack);
 	~AudioSourceAVI();
 
 	void Reinit();

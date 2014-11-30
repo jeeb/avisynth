@@ -284,7 +284,7 @@ void AVISource::LocateVideoCodec(const char fourCC[], IScriptEnvironment* env) {
 }
 
 
-AVISource::AVISource(const char filename[], bool fAudio, const char pixel_type[], const char fourCC[], int mode, IScriptEnvironment* env) {
+AVISource::AVISource(const char filename[], bool fAudio, const char pixel_type[], const char fourCC[], int vtrack, int atrack, int mode, IScriptEnvironment* env) {
   srcbuffer = 0; srcbuffer_size = 0;
   memset(&vi, 0, sizeof(vi));
   ex = false;
@@ -335,10 +335,10 @@ AVISource::AVISource(const char filename[], bool fAudio, const char pixel_type[]
     }
 
     if (mode != MODE_WAV) { // check for video stream
-      pvideo = pfile->GetStream(streamtypeVIDEO, 0);
+      pvideo = pfile->GetStream(streamtypeVIDEO, vtrack);
 
       if (!pvideo) { // Attempt DV type 1 video.
-        pvideo = pfile->GetStream('svai', 0);
+        pvideo = pfile->GetStream('svai', vtrack);
         bIsType1 = true;
       }
 
@@ -523,7 +523,7 @@ AVISource::AVISource(const char filename[], bool fAudio, const char pixel_type[]
 
     // check for audio stream
     if (fAudio) /*  && pfile->GetStream(streamtypeAUDIO, 0)) */ {
-      aSrc = new AudioSourceAVI(pfile, true);
+      aSrc = new AudioSourceAVI(pfile, true, atrack);
       if (aSrc->init()) {
           audioStreamSource = new AudioStreamSource(aSrc,
                                                     aSrc->lSampleFirst,
