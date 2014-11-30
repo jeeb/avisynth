@@ -104,10 +104,11 @@ int AudioSourceWAV::_read(LONG lStart, LONG lCount, LPVOID buffer, LONG cbBuffer
 
 ///////////////////////////
 
-AudioSourceAVI::AudioSourceAVI(IAVIReadHandler *pAVI, bool bAutomated) {
+AudioSourceAVI::AudioSourceAVI(IAVIReadHandler *pAVI, bool bAutomated, int atrack) {
 	pAVIFile	= pAVI;
 	pAVIStream	= NULL;
 	bQuiet = bAutomated;	// ugh, this needs to go... V1.5.0.
+	audiotrack = atrack;
 }
 
 AudioSourceAVI::~AudioSourceAVI() {
@@ -118,7 +119,7 @@ AudioSourceAVI::~AudioSourceAVI() {
 BOOL AudioSourceAVI::init() {
 	LONG format_len;
 
-	pAVIStream = pAVIFile->GetStream(streamtypeAUDIO, 0);
+	pAVIStream = pAVIFile->GetStream(streamtypeAUDIO, audiotrack);
 	if (!pAVIStream) return FALSE;
 
 	if (pAVIStream->Info(&streamInfo, sizeof streamInfo))

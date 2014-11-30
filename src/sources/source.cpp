@@ -845,11 +845,15 @@ AVSValue __cdecl Create_SegmentedSource(AVSValue args, void* use_directshow, ISc
   bool bAudio = !use_directshow && args[1].AsBool(true);
   const char* pixel_type = 0;
   const char* fourCC = 0;
+  int vtrack = 0;
+  int atrack = 0;
   const int inv_args_count = args.ArraySize();
   AVSValue inv_args[9];
   if (!use_directshow) {
     pixel_type = args[2].AsString("");
     fourCC = args[3].AsString("");
+	vtrack = args[4].AsInt(0);
+	atrack = args[5].AsInt(0);
   }
   else {
     for (int i=1; i<inv_args_count ;i++)
@@ -876,7 +880,7 @@ AVSValue __cdecl Create_SegmentedSource(AVSValue args, void* use_directshow, ISc
             inv_args[0] = filename;
             clip = env->Invoke("DirectShowSource",AVSValue(inv_args, inv_args_count)).AsClip();
           } else {
-            clip =  (IClip*)(new AVISource(filename, bAudio, pixel_type, fourCC, 0, env));
+            clip =  (IClip*)(new AVISource(filename, bAudio, pixel_type, fourCC, 0, vtrack, atrack, env));
           }
           result = !result ? clip : new_Splice(result, clip, false, env);
         } catch (AvisynthError e) {
@@ -1059,11 +1063,11 @@ AVSValue __cdecl Create_TCPClient(AVSValue args, void*, IScriptEnvironment* env)
 
 
 extern const AVSFunction Source_filters[] = {
-  { "AVISource", "s+[audio]b[pixel_type]s[fourCC]s", AVISource::Create, (void*) AVISource::MODE_NORMAL },
-  { "AVIFileSource", "s+[audio]b[pixel_type]s[fourCC]s", AVISource::Create, (void*) AVISource::MODE_AVIFILE },
+  { "AVISource", "s+[audio]b[pixel_type]s[fourCC]s[vtrack]i[atrack]i", AVISource::Create, (void*) AVISource::MODE_NORMAL },
+  { "AVIFileSource", "s+[audio]b[pixel_type]s[fourCC]s[vtrack]i[atrack]i", AVISource::Create, (void*) AVISource::MODE_AVIFILE },
   { "WAVSource", "s+", AVISource::Create, (void*) AVISource::MODE_WAV },
-  { "OpenDMLSource", "s+[audio]b[pixel_type]s[fourCC]s", AVISource::Create, (void*) AVISource::MODE_OPENDML },
-  { "SegmentedAVISource", "s+[audio]b[pixel_type]s[fourCC]s", Create_SegmentedSource, (void*)0 },
+  { "OpenDMLSource", "s+[audio]b[pixel_type]s[fourCC]s[vtrack]i[atrack]i", AVISource::Create, (void*) AVISource::MODE_OPENDML },
+  { "SegmentedAVISource", "s+[audio]b[pixel_type]s[fourCC]s[vtrack]i[atrack]i", Create_SegmentedSource, (void*)0 },
   { "SegmentedDirectShowSource",
 // args               0      1      2       3       4            5          6         7            8
                      "s+[fps]f[seek]b[audio]b[video]b[convertfps]b[seekzero]b[timeout]i[pixel_type]s",

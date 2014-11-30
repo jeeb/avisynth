@@ -88,7 +88,7 @@ public:
   };
 
   AVISource(const char filename[], bool fAudio, const char pixel_type[],
-            const char fourCC[], int mode, IScriptEnvironment* env);  // mode: 0=detect, 1=avifile, 2=opendml, 3=avifile (audio only)
+            const char fourCC[], int vtrack, int atrack, int mode, IScriptEnvironment* env);  // mode: 0=detect, 1=avifile, 2=opendml, 3=avifile (audio only)
   ~AVISource();
   void CleanUp(); // Tritical - Jan 2006
   const VideoInfo& __stdcall GetVideoInfo();
@@ -102,10 +102,12 @@ public:
     const bool fAudio = (mode == MODE_WAV) || args[1].AsBool(true);
     const char* pixel_type = (mode != MODE_WAV) ? args[2].AsString("") : "";
     const char* fourCC = (mode != MODE_WAV) ? args[3].AsString("") : "";
+	const int vtrack = args[4].AsInt(0);
+	const int atrack = args[5].AsInt(0);
 
-    PClip result = new AVISource(args[0][0].AsString(), fAudio, pixel_type, fourCC, mode, env);
+    PClip result = new AVISource(args[0][0].AsString(), fAudio, pixel_type, fourCC, vtrack, atrack, mode, env);
     for (int i=1; i<args[0].ArraySize(); ++i)
-      result = new_Splice(result, new AVISource(args[0][i].AsString(), fAudio, pixel_type, fourCC, mode, env), false, env);
+      result = new_Splice(result, new AVISource(args[0][i].AsString(), fAudio, pixel_type, fourCC, vtrack, atrack, mode, env), false, env);
     return AlignPlanar::Create(result);
   }
 };
@@ -343,7 +345,7 @@ void AVISource::LocateVideoCodec(const char fourCC[], IScriptEnvironment* env) {
 }
 
 
-AVISource::AVISource(const char filename[], bool fAudio, const char pixel_type[], const char fourCC[], int mode, IScriptEnvironment* env) {
+AVISource::AVISource(const char filename[], bool fAudio, const char pixel_type[], const char fourCC[], int vtrack, int atrack, int mode, IScriptEnvironment* env) {
   srcbuffer = 0; srcbuffer_size = 0;
   memset(&vi, 0, sizeof(vi));
   ex = false;
@@ -394,10 +396,10 @@ AVISource::AVISource(const char filename[], bool fAudio, const char pixel_type[]
     }
 
     if (mode != MODE_WAV) { // check for video stream
-      pvideo = pfile->GetStream(streamtypeVIDEO, 0);
+      pvideo = pfile->GetStream(streamtypeVIDEO, vtrack);
 
       if (!pvideo) { // Attempt DV type 1 video.
-        pvideo = pfile->GetStream('svai', 0);
+        pvideo = pfile->GetStream('svai', vtrack);
         bIsType1 = true;
       }
 
@@ -582,7 +584,7 @@ AVISource::AVISource(const char filename[], bool fAudio, const char pixel_type[]
 
     // check for audio stream
     if (fAudio) /*  && pfile->GetStream(streamtypeAUDIO, 0)) */ {
-      aSrc = new AudioSourceAVI(pfile, true);
+      aSrc = new AudioSourceAVI(pfile, true, atrack);
       if (aSrc->init()) {
           audioStreamSource = new AudioStreamSource(aSrc,
                                                     aSrc->lSampleFirst,
