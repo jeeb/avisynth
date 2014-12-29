@@ -1,25 +1,24 @@
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml"><head>
-<link rel="STYLESHEET" href="filtersdk.css" type="text/css" /><title>FilterSDK - AviSynth</title>
-
-</head>
+<link rel="STYLESHEET" href="filtersdk.css" type="text/css" /><title>FilterSDK - AviSynth</title></head>
 <body>
 <h1><a href="http://www.avisynth.org/FilterSDK" style="text-decoration: none;"> AviSynth FilterSDK</a>
 </h1>
 <p>AviSynth external Filter SDK is a package for developers to
-create your own filters (plugins) for AviSynth.
+create your own filters (plugins and console applications) for AviSynth.
 </p>
 <p>The package consists of:
 </p>
 <ul>
 <li> this documentation text files (in HTML or Wiki format);
 </li>
-<li> the header file 'avisynth.h' (recent version) with all
-declarations to include in plugin source code;
+<li>the header file 'avisynth.h' (recent version) with all declarations to include in plugin source code;
+
 </li>
-<li> SimpleSample plugin source codes;
+<li> several plugin and console application source codes;
+
 </li>
-<li> may be some extra files in 'Extra' folder.</li>
+<li>some extra files in 'Extra' folder.</li>
 </ul>
 <h1>Table of contents</h1>
 <ol id="mozToc">
@@ -198,14 +197,11 @@ miscellaneous constants are described in <a href="Cplusplus_api.htm" title="Cplu
 miscellaneous constants are described in <a href="C_api.htm" title="C API">here</a>.
 </li>
 </ul>
-<p>Although not included in AviSynth itself, several people wrote
-other language interfaces in Delphi, Purebasic, NET and Java. They can
-be found <a rel="nofollow" class="external text" href="http://forum.doom9.org/showthread.php?p=566904#post566904">here</a>.
-</p>
 <p>The built-in filters use the C++ API. This Filter SDK (or
 Source Development Kit) describes how to create plugins using both
-interfaces. </p>
-<p>...
+interfaces.</p><p>Although not included in AviSynth itself, several people wrote
+other language interfaces in Delphi, Purebasic, NET and Java. They can
+be found <a rel="nofollow" class="external text" href="http://forum.doom9.org/showthread.php?p=566904#post566904">here</a>.</p><p>...
 </p>
 <p>There are several different Colorspaces in AviSynth. See more
 information about <a href="ColorSpaces.htm" title="Color spaces">Color spaces</a> and <a href="WorkingWithImages.htm" title="Filter SDK/Working with images">Working with Images</a>.
@@ -216,9 +212,38 @@ in AviSynth.
 <p>...</p>
 <h2><a class="mozTocH2" name="mozTocId450057"></a><span class="editsection"></span><span class="mw-headline" id="What.27s_new_in_the_2.6_api">What's
 new in the 2.6 api </span></h2>
-<p>...
-</p>
-<h2><a class="mozTocH2" name="mozTocId831440"></a><span class="editsection"></span><span class="mw-headline" id="Some_history">Some
+<ul><li> C++ API (AVISYNTH_INTERFACE_VERSION = 6):
+<ul><li> Plugin api v3 and older contained <a href="http://avisynth.nl/index.php/Filter_SDK/AVS_Linkage" title="Filter SDK/AVS Linkage">baked code</a>
+ meaning code that is "baked" into all and every plugin instead being 
+called from avisynth.dll. Starting from 2.6 the version 2.5 plugins are 
+supported directly (with current baked code; meaning that plugins 
+compiled for 2.5 can be loaded when using 2.6) and all the baked code 
+from 2.6+ plugins is removed and the plugins are still source 
+compatible. Note that the baked code is moved to interface.cpp, where 
+also the structure <a href="http://avisynth.nl/index.php/Filter_SDK/AVS_Linkage" title="Filter SDK/AVS Linkage">AVS_Linkage</a> is defined.
+</li><li> The <a href="http://avisynth.nl/index.php/Filter_SDK/Cplusplus_API#IScriptEnvironment" title="Filter SDK/Cplusplus API">IScriptEnvironment</a> interface has several new members:
+<ul><li> <a href="http://avisynth.nl/index.php/Filter_SDK/Cplusplus_API#ApplyMessage.2C_v5" title="Filter SDK/Cplusplus API">ApplyMessage</a> writes text on a frame.
+</li><li> <a href="http://avisynth.nl/index.php/Filter_SDK/Cplusplus_API#DeleteScriptEnvironment" title="Filter SDK/Cplusplus API">DeleteScriptEnvironment</a> provides a method to delete the ScriptEnvironment which is created with CreateScriptEnvironment. 
+</li><li> <a href="http://avisynth.nl/index.php/Filter_SDK/Cplusplus_API#GetAVSLinkage_.2C_v5" title="Filter SDK/Cplusplus API">GetAVSLinkage</a> returns the AVSLinkage.
+</li><li> <a href="http://avisynth.nl/index.php/Filter_SDK/Cplusplus_API#GetVarDef.2C_v6" title="Filter SDK/Cplusplus API">GetVarDef</a> can be used to access AviSynth variables. It will not throw an error if the variable doesn't exist.
+</li></ul>
+</li><li> It uses size_t for things that are memory sizes, ready for 64 bit port.
+</li><li> New colorformats are added: Y8, YV411, YV16 and YV24.
+</li><li> <a href="http://avisynth.nl/index.php/Filter_SDK/Cplusplus_API/VideoInfo" title="Filter SDK/Cplusplus API/VideoInfo">VideoInfo</a>
+ has several new constants and functions (the ones relating to the new 
+colorformats, the chroma placement constants, GetPlaneHeightSubsampling,
+ GetPlaneWidthSubsampling).
+</li><li> Some new cache and cpu constants for GetCPUFlags (the v5/v6 ones).
+</li></ul>
+</li></ul>
+<ul><li> C API (AVISYNTH_INTERFACE_VERSION = 5):
+<ul><li> The following functions are added to the interface: 
+avs_is_yv24, avs_is_yv16, avs_is_yv12, avs_is_yv411, avs_is_y8, 
+avs_is_color_space, avs_get_plane_width_subsampling, 
+avs_get_plane_height_subsampling, avs_bits_per_pixel, 
+avs_bytes_from_pixels, avs_row_size, avs_bmp_size, avs_get_row_size_p, 
+avs_get_height_p and avs_delete_script_environment.</li></ul>
+</li></ul><h2><a class="mozTocH2" name="mozTocId831440"></a><span class="editsection"></span><span class="mw-headline" id="Some_history">Some
 history </span></h2>
 <p><a href="BensAviSynthDocs.htm" title="Filter SDK/Ben docs">Ben's
 AviSynth Docs</a> is
@@ -248,7 +273,7 @@ terms </span></h2>
 <p>Note: Avisynth Filter SDK parts are under specific <a href="SDKLicense.htm" title="Filter SDK/SDK license">SDK
 license terms</a>.
 </p>
-<p><kbd>$Date: 2014/10/27 22:04:54 $<br />
+<p><kbd>$Date: 2014/12/29 17:30:10 $<br />
 Latest online mediaWiki version is at <a href="http://avisynth.nl/Filter_SDK">http://avisynth.nl/Filter_SDK</a>
 </kbd></p>
 </body></html>
