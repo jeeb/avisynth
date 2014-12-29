@@ -1,9 +1,7 @@
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml"><head>
 <meta content="text/html;charset=ISO-8859-1" http-equiv="Content-Type" />
-<link rel="STYLESHEET" href="filtersdk.css" type="text/css" /><title>C++ API - AviSynth</title>
-
-</head>
+<link rel="STYLESHEET" href="filtersdk.css" type="text/css" /><title>C++ API - AviSynth</title></head>
 <body>
 <h1 id="firstHeading" class="firstHeading"><a class="mozTocH1" name="mozTocId395752"></a>Cplusplus
 API</h1>
@@ -13,90 +11,18 @@ a plugin. All external plugins should #include it:
 <br />
 <pre>#include "avisynth.h"<br /></pre>
 <p>Note, sometimes there is a reference to a version number of
-the plugin api (for example v3 or v5). This refers to the value of <a href="http://avisynth.nl/index.php/Filter_SDK/AVISYNTH_INTERFACE_VERSION" title="Filter SDK/AVISYNTH INTERFACE VERSION">AVISYNTH_INTERFACE_VERSION</a>.
+the plugin api (for example v3, v5 or v6). This refers to the value of <a href="AviSynthInterfaceVersion.htm" title="Filter SDK/AVISYNTH INTERFACE VERSION">AVISYNTH_INTERFACE_VERSION</a>.
 The classes and miscellaneous constants are described below.&nbsp;</p>
-<h1>Table of contents</h1>
-<ol id="mozToc">
-<!--mozToc h2 1 h3 2 h4 3 h5 4--><li><a href="#mozTocId385022">CreateScriptEnvironment</a></li>
-<li><a href="#mozTocId115658">Classes</a>
-<ol>
-<li><a href="#mozTocId933538">AvisynthError </a></li>
-<li><a href="#mozTocId445688">VideoFrameBuffer
-</a></li>
-<li><a href="#mozTocId66933">VideoFrame </a>
-<ol>
-<li><a href="#mozTocId512196">GetPitch </a></li>
-<li><a href="#mozTocId122035">GetRowSize </a></li>
-<li><a href="#mozTocId165020">GetHeight </a></li>
-<li><a href="#mozTocId844490">GetReadPtr </a></li>
-<li><a href="#mozTocId835830">GetWritePtr </a></li>
-<li><a href="#mozTocId663968">IsWritable </a></li>
-</ol>
-</li>
-<li><a href="#mozTocId442030">AlignPlanar </a></li>
-<li><a href="#mozTocId609544">FillBorder </a></li>
-<li><a href="#mozTocId304654">ConvertAudio </a></li>
-<li><a href="#mozTocId248459">IScriptEnvironment
-</a>
-<ol>
-<li><a href="#mozTocId856375">ThrowError </a></li>
-<li><a href="#mozTocId463454">GetCPUFlags </a></li>
-<li><a href="#mozTocId102098">SaveString </a></li>
-<li><a href="#mozTocId612994">Sprintf
-and VSprintf </a></li>
-<li><a href="#mozTocId966202">Invoke </a></li>
-<li><a href="#mozTocId821804">BitBlt </a></li>
-<li><a href="#mozTocId876781">AtExit </a></li>
-<li><a href="#mozTocId581024">AddFunction </a></li>
-<li><a href="#mozTocId960954">MakeWritable
-</a></li>
-<li><a href="#mozTocId81037">FunctionExists
-</a></li>
-<li><a href="#mozTocId772315">GetVar </a></li>
-<li><a href="#mozTocId416701">SetVar </a></li>
-<li><a href="#mozTocId460780">SetGlobalVar
-</a></li>
-<li><a href="#mozTocId983652">PushContext </a></li>
-<li><a href="#mozTocId98526">PopContext </a></li>
-<li><a href="#mozTocId592836">PopContextGlobal
-</a></li>
-<li><a href="#mozTocId568658">NewVideoFrame
-</a></li>
-<li><a href="#mozTocId464076">CheckVersion
-</a></li>
-<li><a href="#mozTocId33928">Subframe </a></li>
-<li><a href="#mozTocId791821">SubframePlanar
-</a></li>
-<li><a href="#mozTocId762789">SetMemoryMax
-</a></li>
-<li><a href="#mozTocId809126">SetWorkingDir
-</a></li>
-<li><a href="#mozTocId683781">DeleteScriptEnvironment,
-v5 </a></li>
-<li><a href="#mozTocId589127">ApplyMessage,
-v5 </a></li>
-</ol>
-</li>
-<li><a href="#mozTocId854503">PVideoFrame </a></li>
-<li><a href="#mozTocId424948">IClip </a>
-<ol>
-<li><a href="#mozTocId408956">GetVersion </a></li>
-<li><a href="#mozTocId805125">GetFrame </a></li>
-<li><a href="#mozTocId30883">GetParity </a></li>
-<li><a href="#mozTocId366590">GetAudio </a></li>
-<li><a href="#mozTocId587850">SetCacheHints
-</a></li>
-<li><a href="#mozTocId953363">GetVideoInfo
-</a></li>
-</ol>
-</li>
-<li><a href="#mozTocId951499">PClip </a></li>
-<li><a href="#mozTocId56890">AVSValue </a></li>
-</ol>
-</li>
-<li><a href="#mozTocId876946">Structures </a></li>
-<li><a href="#mozTocId562064">Constants </a></li>
-</ol>
+<h1><a class="mozTocH1" name="mozTocId715677"></a>Table of contents</h1>
+<ol id="mozToc"><!--mozToc h2 1 h3 2 h4 3 h5 4 h5 5 h6 6--><li><a href="#mozTocId385022">CreateScriptEnvironment</a></li><li><a href="#mozTocId115658">Classes</a><ol><li><a href="#mozTocId933538">AvisynthError </a></li><li><a href="#mozTocId445688">VideoFrameBuffer
+</a></li><li><a href="#mozTocId66933">VideoFrame </a><ol><li><a href="#mozTocId512196">GetPitch </a></li><li><a href="#mozTocId122035">GetRowSize </a></li><li><a href="#mozTocId165020">GetHeight </a></li><li><a href="#mozTocId844490">GetReadPtr </a></li><li><a href="#mozTocId835830">GetWritePtr </a></li><li><a href="#mozTocId663968">IsWritable </a></li></ol></li><li><a href="#mozTocId442030">AlignPlanar </a></li><li><a href="#mozTocId609544">FillBorder </a></li><li><a href="#mozTocId304654">ConvertAudio </a></li><li><a href="#mozTocId248459">IScriptEnvironment
+</a><ol><li><a href="#mozTocId856375">ThrowError </a></li><li><a href="#mozTocId463454">GetCPUFlags </a></li><li><a href="#mozTocId102098">SaveString </a></li><li><a href="#mozTocId612994">Sprintf
+and VSprintf </a></li><li><a href="#mozTocId966202">Invoke </a></li><li><a href="#mozTocId821804">BitBlt </a></li><li><a href="#mozTocId876781">AtExit </a></li><li><a href="#mozTocId581024">AddFunction </a></li><li><a href="#mozTocId960954">MakeWritable </a></li><li><a href="#mozTocId81037">FunctionExists
+</a></li><li><a href="#mozTocId772315">GetVar </a></li><li><a href="#mozTocId478991">GetVarDef, v6 </a></li><li><a href="#mozTocId416701">SetVar </a></li><li><a href="#mozTocId460780">SetGlobalVar </a></li><li><a href="#mozTocId983652">PushContext </a></li><li><a href="#mozTocId98526">PopContext </a></li><li><a href="#mozTocId592836">PopContextGlobal
+</a></li><li><a href="#mozTocId568658">NewVideoFrame </a></li><li><a href="#mozTocId464076">CheckVersion </a></li><li><a href="#mozTocId33928">Subframe </a></li><li><a href="#mozTocId791821">SubframePlanar
+</a></li><li><a href="#mozTocId762789">SetMemoryMax </a></li><li><a href="#mozTocId809126">SetWorkingDir </a></li><li><a href="#mozTocId683781">DeleteScriptEnvironment,
+v5 </a></li><li><a href="#mozTocId589127">ApplyMessage,
+v5 </a></li><li><a href="#mozTocId265758">GetAVSLinkage , v5</a></li></ol></li><li><a href="#mozTocId854503">PVideoFrame </a></li><li><a href="#mozTocId424948">IClip </a><ol><li><a href="#mozTocId408956">GetVersion </a></li><li><a href="#mozTocId805125">GetFrame </a></li><li><a href="#mozTocId30883">GetParity </a></li><li><a href="#mozTocId366590">GetAudio </a></li><li><a href="#mozTocId587850">SetCacheHints </a></li><li><a href="#mozTocId953363">GetVideoInfo </a></li></ol></li><li><a href="#mozTocId951499">PClip </a></li><li><a href="#mozTocId56890">AVSValue </a></li></ol></li><li><a href="#mozTocId876946">Structures </a></li><li><a href="#mozTocId562064">Constants </a></li></ol>
 <h2><a class="mozTocH1" name="mozTocId385022"></a><span class="mw-headline" id="CreateScriptEnvironment">CreateScriptEnvironment</span></h2>
 <pre> IScriptEnvironment* __stdcall CreateScriptEnvironment(int version = AVISYNTH_INTERFACE_VERSION);<br /></pre>
 <p>AviSynth exports this. It enables you to use AviSynth as a
@@ -141,22 +67,20 @@ formats).
 </p>
 <h4><a class="mozTocH3" name="mozTocId512196"></a><span class="editsection"></span><span class="mw-headline" id="GetPitch">GetPitch </span></h4>
 <pre> int GetPitch(int plane=0) const;<br /></pre>
-<p>The "pitch" of a frame buffer is the offset (in bytes) from
+<p>The "pitch" (also called stride) of a frame buffer is the offset (in bytes) from
 the beginning of one scan line to the beginning of the next. The source
 and destination buffers won't necessarily have the same pitch. The
 pitch can vary among frames in a clip, and it can differ from the width
 of the clip. [todo add link]
-NOTE that the pitch can change anytime, so in most use cases you must
-request the pitch dynamically.
 </p>
-<p>Meaning:
-</p>
-<p>Image processing is expensive, so SIMD instructions are used
-to speed tasks up.
-SSE uses 128 bit = 16 byte registers, so 8 YUY2 pixels can be processed
-the same time.
-AVX uses 256 bit = 32 byte registers, so 16 YUY2 pixels can be
-processed the same time.
+
+<p>The scan line will be padded to a multiple of 8 (if necessary) due to
+speed reasons, so the pitch will always be a multiple of 8. Image
+processing is expensive, so SIMD instructions are used to speed tasks
+up: <br />
+SSE uses 128 bit = 16 byte registers, so 8 YUY2 pixels can be processed the same time. <br />
+AVX uses 256 bit = 32 byte registers, so 16 YUY2 pixels can be processed the same time.&nbsp;</p><p>NOTE that the pitch can change anytime, so in most use cases you must request the pitch dynamically.
+
 </p>
 <p>Usage:
 </p>
@@ -263,7 +187,7 @@ without going through AVIFile. Its members can be called by:
 <pre>IScriptEnvironment* env<br />env-&gt;Invoke(..)<br /></pre>
 <p>IScriptEnvironment has the following members: ThrowError,
 GetCPUFlags, SaveString, Sprintf, VSprintf, Invoke, BitBlt, AtExit,
-AddFunction, MakeWritable, FunctionExists, GetVar, SetVar,
+AddFunction, MakeWritable, FunctionExists, GetVar, GetVarDef, SetVar,
 SetGlobalVar, PushContext, PopContext, NewVideoFrame, CheckVersion,
 Subframe, SubframePlanar, SetMemoryMax, SetWorkingDir,
 DeleteScriptEnvironment and ApplyMessage. They are described in the
@@ -390,7 +314,7 @@ otherwise returns false: </p>
 <pre>if (env-&gt;FunctionExists("Import")) {<br /> env-&gt;ThrowError("Yes, the IMPORT function exist.");<br />} else {<br /> env-&gt;ThrowError("No, the IMPORT function don't exist.");<br />}<br /></pre>
 <h4><a class="mozTocH3" name="mozTocId772315"></a><span class="editsection"></span><span class="mw-headline" id="GetVar">GetVar </span></h4>
 <pre> virtual AVSValue __stdcall GetVar(const char* name) = 0;<br /></pre>
-<p>GetVar can be used to access AviSynth variables.
+<p>GetVar can be used to access AviSynth variables.&nbsp;It will throw an error if the variable doesn't exist.
 </p>
 <p>Internal and external (plugin) functions are, for example,
 exported as AviSynth variables:
@@ -419,18 +343,20 @@ autoload your plugins (and returns an error if it&#8217;s not set):
 <p>If you are making a conditional filter you can use it to get
 the current framenumber:
 </p>
-<pre>// Get current frame number<br />AVSValue cf = env-&gt;GetVar("current_frame");<br />if (!cf.IsInt())<br /> env-&gt;ThrowError("MinMaxAudio: This filter can only be used within ConditionalFilter");<br />int n = cf.AsInt();<br />PVideoFrame src = child-&gt;GetFrame(n, env);<br /></pre>
-<h4><a class="mozTocH3" name="mozTocId416701"></a><span class="editsection"></span><span class="mw-headline" id="SetVar">SetVar </span></h4>
-<pre> virtual bool __stdcall SetVar(const char* name, const AVSValue&amp; val) = 0;<br /></pre>
-<p>Return values:
-</p>
-<pre>true if the variable was created and filled with the given value<br />false in case the variable was already there and we just updated its value<br /></pre>
+<pre>// Get current frame number<br />AVSValue cf = env-&gt;GetVar("current_frame");<br />if (!cf.IsInt())<br /> env-&gt;ThrowError("MinMaxAudio: This filter can only be used within ConditionalFilter");<br />int n = cf.AsInt();<br />PVideoFrame src = child-&gt;GetFrame(n, env);<br /></pre><h4><a class="mozTocH4" name="mozTocId478991"></a><span class="mw-headline" id="GetVar">GetVarDef, v6 </span></h4>
+<pre>  virtual AVSValue __stdcall GetVarDef(const char* name, const AVSValue&amp; def=AVSValue()) = 0;</pre><p>GetVarDef
+can be used to access AviSynth variables. It will return 'def' if the
+variable doesn't exist (instead of throwing an error):
+</p><pre> int error;<br /> AVSValue error = env-&gt;GetVarDef("VarUnknown", AVSValue(-1)); // returns -1 when 'VarUnknown' doesn't exist<br /> if (error==-1)<br />   env-&gt;ThrowError("Plugin: The variable 'VarUnknown' doesn't exist!");</pre>
+<h4><a class="mozTocH3" name="mozTocId416701"></a><span class="mw-headline" id="SetVar">SetVar </span></h4>
+<pre> virtual bool __stdcall SetVar(const char* name, const AVSValue&amp; val) = 0;<br /></pre>It will return true if the variable was created and filled with the
+given value. It will return false in case the variable was already there
+ and we just updated its value.
 <p>SetVar can be used to set/create AviSynth variables. The
 created variables are only visible in the local scope, e.g. script
 functions have a new scope.
 </p>
-<p><br />
-This example sets the autoloading plugin folder to &#8220;C:\\&#8221;
+<p>This example sets the autoloading plugin folder to &#8220;C:\\&#8221;
 </p>
 <pre>if (env-&gt;SetVar("$PluginDir$", AVSValue("C:\\"))) {<br /> //variable was created<br />} else {<br /> //variable was already existing and updated<br />}<br /></pre>
 <p>This example sets variables in GetFrame which can be accessed
@@ -476,7 +402,7 @@ function. Some may want to be visible globally, others may not.
 <p>?
 </p>
 <h4><a class="mozTocH3" name="mozTocId568658"></a><span class="editsection"></span><span class="mw-headline" id="NewVideoFrame">NewVideoFrame </span></h4>
-<pre> virtual PVideoFrame __stdcall NewVideoFrame(const VideoInfo&amp; vi, int align=FRAME_ALIGN) = 0; // align should be 4 or 8 (default 16)<br /></pre>
+<pre> virtual PVideoFrame __stdcall NewVideoFrame(const VideoInfo&amp; vi, int align=FRAME_ALIGN) = 0; // default align is 16<br /></pre>
 <p>The NewVideoFrame callback allocates space for a video frame
 of the supplied size. (In this case it will hold our filter's output.)
 The frame buffer is uninitialized raw memory (except that in the debug
@@ -498,9 +424,10 @@ creates a new video frame from it:
 throws an error if &#8216;version&#8217; is bigger than the used interface version.
 The following interface versions are in use:
 </p>
-<p>AVISYNTH_INTERFACE_VERSION = 1 (v1.0-v2.0.8), 2
-(v2.5.0-v2.5.5), 3 (v2.5.6-v2.5.8), or 5 (v2.6.0) [version 4 doesn&#8217;t
-exist].
+<p>AVISYNTH_INTERFACE_VERSION = 1 (v1.0-v2.0.8), 2 (v2.5.0-v2.5.5), 3
+(v2.5.6-v2.5.8), 5 (v2.6.0a1-v2.6.0a5), or 6 (v2.6.0) [version 4 doesn&#8217;t
+ exist].
+
 </p>
 <p>This example will throw an error if v2.5x or an older AviSynth
 version is being used:
@@ -567,7 +494,11 @@ v5 </span></h4>
 <pre> virtual void _stdcall ApplyMessage(PVideoFrame* frame, const VideoInfo&amp; vi, const char* message, int size, int textcolor, int halocolor, int bgcolor) = 0;<br /></pre>
 <p>ApplyMessage writes text on a frame. For example:
 </p>
-<pre>char BUF[256];<br />PVideoFrame src = child-&gt;GetFrame(n, env);<br />env-&gt;MakeWritable(&amp;src);<br />sprintf(BUF, "Filter: Frame&nbsp;%d is processed.", n);<br />env-&gt;ApplyMessage(&amp;src, vi, BUF, vi.width/4, 0xf0f080, 0, 0);<br /></pre>
+<pre>char BUF[256];<br />PVideoFrame src = child-&gt;GetFrame(n, env);<br />env-&gt;MakeWritable(&amp;src);<br />sprintf(BUF, "Filter: Frame&nbsp;%d is processed.", n);<br />env-&gt;ApplyMessage(&amp;src, vi, BUF, vi.width/4, 0xf0f080, 0, 0);<br /></pre><h4><a class="mozTocH4" name="mozTocId265758"></a><span class="mw-headline" id="GetAVSLinkage_.2C_v5">GetAVSLinkage , v5</span></h4><pre><span class="mw-headline" id="GetAVSLinkage_.2C_v5"></span>&nbsp;virtual const AVS_Linkage* const __stdcall GetAVSLinkage() = 0;<br /></pre>Returns the <a href="AVSLinkage.html">AVSLinkage</a>.
+
+
+<p>todo: how and when to use that ...
+</p>
 <h3><a class="mozTocH2" name="mozTocId854503"></a><span class="editsection"></span><span class="mw-headline" id="PVideoFrame">PVideoFrame </span></h3>
 <p>PVideoFrame is a smart pointer to VideoFrame.
 </p>
@@ -731,7 +662,7 @@ that case is a PClip.
 <p>The following structure is available: VideoInfo structure. It
 holds global information about a clip (i.e. information that does not
 depend on the framenumber). The GetVideoInfo method in IClip returns
-this structure. A description (for AVISYNTH_INTERFACE_VERSION=5) of it
+this structure. A description (for AVISYNTH_INTERFACE_VERSION=6) of it
 can be found <a href="VideoInfo.htm" title="Filter SDK/Cplusplus API/VideoInfo">here</a>.
 </p>
 <h2><a class="mozTocH1" name="mozTocId562064"></a><span class="editsection"></span><span class="mw-headline" id="Constants">Constants </span></h2>
@@ -741,8 +672,8 @@ can be found <a href="VideoInfo.htm" title="Filter SDK/Cplusplus API/VideoInfo">
 <pre>enum { // sample types<br /> SAMPLE_INT8 = 1&lt;&lt;0,<br /> SAMPLE_INT16 = 1&lt;&lt;1,<br /> SAMPLE_INT24 = 1&lt;&lt;2,<br /> SAMPLE_INT32 = 1&lt;&lt;3,<br /> SAMPLE_FLOAT = 1&lt;&lt;4<br />};<br /></pre>
 <pre>enum { // plane types<br /> PLANAR_Y = 1&lt;&lt;0,<br /> PLANAR_U = 1&lt;&lt;1,<br /> PLANAR_V = 1&lt;&lt;2,<br /> PLANAR_ALIGNED = 1&lt;&lt;3,<br /> PLANAR_Y_ALIGNED = PLANAR_Y | PLANAR_ALIGNED,<br /> PLANAR_U_ALIGNED = PLANAR_U | PLANAR_ALIGNED,<br /> PLANAR_V_ALIGNED = PLANAR_V | PLANAR_ALIGNED,<br /> PLANAR_A = 1&lt;&lt;4, // v5<br /> PLANAR_R = 1&lt;&lt;5, // v5<br /> PLANAR_G = 1&lt;&lt;6, // v5<br /> PLANAR_B = 1&lt;&lt;7, // v5<br /> PLANAR_A_ALIGNED = PLANAR_A | PLANAR_ALIGNED, // v5<br /> PLANAR_R_ALIGNED = PLANAR_R | PLANAR_ALIGNED, // v5<br /> PLANAR_G_ALIGNED = PLANAR_G | PLANAR_ALIGNED, // v5<br /> PLANAR_B_ALIGNED = PLANAR_B | PLANAR_ALIGNED, // v5<br />};<br /></pre>
 <pre>enum { // cache types<br /> // Old 2.5 poorly defined cache hints (v3).<br /> // Reserve values used by 2.5 API<br /> // Do not use in new filters<br /> CACHE_25_NOTHING = 0, // Filter requested no caching.<br /> CACHE_25_RANGE = 1, // An explicit cache of "frame_range" frames around the current frame.<br /> CACHE_25_ALL = 2, // This is default operation, a simple LRU cache.<br /> CACHE_25_AUDIO = 3, // Audio caching.<br /> CACHE_25_AUDIO_NONE = 4, // Filter requested no audio caching.<br /> CACHE_25_AUDIO_AUTO = 5, // Audio caching (difference with CACHE_AUDIO?).<br /><br /> // New 2.6 explicitly defined cache hints (v5).<br /> CACHE_NOTHING = 10, // Do not cache video.<br /> CACHE_WINDOW = 11, // Hard protect upto X frames within a range of X from the current frame N.<br /> CACHE_GENERIC = 12, // LRU cache upto X frames.<br /> CACHE_FORCE_GENERIC = 13, // LRU cache upto X frames, override any previous CACHE_WINDOW.<br /><br /> CACHE_GET_POLICY = 30, // Get the current policy.<br /> CACHE_GET_WINDOW = 31, // Get the current window h_span.<br /> CACHE_GET_RANGE = 32, // Get the current generic frame range.<br /><br /> CACHE_AUDIO = 50, // Explicitly do cache audio, X byte cache.<br /> CACHE_AUDIO_NOTHING = 51, // Explicitly do not cache audio.<br /> CACHE_AUDIO_NONE = 52, // Audio cache off (auto mode), X byte intial cache.<br /> CACHE_AUDIO_AUTO = 53, // Audio cache on (auto mode), X byte intial cache.<br /><br /> CACHE_GET_AUDIO_POLICY = 70, // Get the current audio policy.<br /> CACHE_GET_AUDIO_SIZE = 71, // Get the current audio cache size.<br /><br /> CACHE_PREFETCH_FRAME = 100, // Queue request to prefetch frame N.<br /> CACHE_PREFETCH_GO = 101, // Action video prefetches.<br /><br /> CACHE_PREFETCH_AUDIO_BEGIN = 120, // Begin queue request transaction to prefetch audio (take critical section).<br /> CACHE_PREFETCH_AUDIO_STARTLO = 121, // Set low 32 bits of start.<br /> CACHE_PREFETCH_AUDIO_STARTHI = 122, // Set high 32 bits of start.<br /> CACHE_PREFETCH_AUDIO_COUNT = 123, // Set low 32 bits of length.<br /> CACHE_PREFETCH_AUDIO_COMMIT = 124, // Enqueue request transaction to prefetch audio (release critical section).<br /> CACHE_PREFETCH_AUDIO_GO = 125, // Action audio prefetches.<br /><br /> CACHE_GETCHILD_CACHE_MODE = 200, // Cache ask Child for desired video cache mode.<br /> CACHE_GETCHILD_CACHE_SIZE = 201, // Cache ask Child for desired video cache size.<br /> CACHE_GETCHILD_AUDIO_MODE = 202, // Cache ask Child for desired audio cache mode.<br /> CACHE_GETCHILD_AUDIO_SIZE = 203, // Cache ask Child for desired audio cache size.<br /><br /> CACHE_GETCHILD_COST = 220, // Cache ask Child for estimated processing cost.<br /> CACHE_COST_ZERO = 221, // Child response of zero cost (ptr arithmetic only).<br /> CACHE_COST_UNIT = 222, // Child response of unit cost (less than or equal 1 full frame blit).<br /> CACHE_COST_LOW = 223, // Child response of light cost. (Fast)<br /> CACHE_COST_MED = 224, // Child response of medium cost. (Real time)<br /> CACHE_COST_HI = 225, // Child response of heavy cost. (Slow)<br /><br /> CACHE_GETCHILD_THREAD_MODE = 240, // Cache ask Child for thread safetyness.<br /> CACHE_THREAD_UNSAFE = 241, // Only 1 thread allowed for all instances. 2.5 filters default!<br /> CACHE_THREAD_CLASS = 242, // Only 1 thread allowed for each instance. 2.6 filters default!<br /> CACHE_THREAD_SAFE = 243, // Allow all threads in any instance.<br /> CACHE_THREAD_OWN = 244, // Safe but limit to 1 thread, internally threaded.<br /><br /> CACHE_GETCHILD_ACCESS_COST = 260, // Cache ask Child for preferred access pattern.<br /> CACHE_ACCESS_RAND = 261, // Filter is access order agnostic.<br /> CACHE_ACCESS_SEQ0 = 262, // Filter prefers sequential access (low cost)<br /> CACHE_ACCESS_SEQ1 = 263, // Filter needs sequential access (high cost)<br />};<br /></pre>
-<pre>enum { // For GetCPUFlags. These are backwards-compatible with those in VirtualDub.<br /> /* oldest CPU to support extension */<br /> CPUF_FORCE = 0x01, // N/A<br /> CPUF_FPU = 0x02, // 386/486DX<br /> CPUF_MMX = 0x04, // P55C, K6, PII<br /> CPUF_INTEGER_SSE = 0x08, // PIII, Athlon<br /> CPUF_SSE = 0x10, // PIII, Athlon XP/MP<br /> CPUF_SSE2 = 0x20, // PIV, K8<br /> CPUF_3DNOW = 0x40, // K6-2<br /> CPUF_3DNOW_EXT = 0x80, // Athlon<br /> CPUF_X86_64 = 0xA0, // Hammer (note: equiv. to 3DNow + SSE2, which only Hammer will have anyway)<br /> CPUF_SSE3 = 0x100, // PIV+, K8 Venice<br /><br /> // Additional CPU flags in 2.6 (v5).<br /> CPUF_SSSE3 = 0x200, // Core 2<br /> CPUF_SSE4 = 0x400, // Penryn, Wolfdale, Yorkfield<br /> CPUF_SSE4_1 = 0x400,<br /> CPUF_SSE4_2 = 0x800, // Nehalem<br />};<br /></pre>
+<pre>enum { // For GetCPUFlags. These are backwards-compatible with those in VirtualDub.<br /> /* oldest CPU to support extension */<br /> CPUF_FORCE = 0x01, // N/A<br /> CPUF_FPU = 0x02, // 386/486DX<br /> CPUF_MMX = 0x04, // P55C, K6, PII<br /> CPUF_INTEGER_SSE = 0x08, // PIII, Athlon<br /> CPUF_SSE = 0x10, // PIII, Athlon XP/MP<br /> CPUF_SSE2 = 0x20, // PIV, K8<br /> CPUF_3DNOW = 0x40, // K6-2<br /> CPUF_3DNOW_EXT = 0x80, // Athlon<br /> CPUF_X86_64 = 0xA0, // Hammer (note: equiv. to 3DNow + SSE2, which only Hammer will have anyway)<br /> CPUF_SSE3 = 0x100, // PIV+, K8 Venice<br /><br /> // Additional CPU flags in 2.6 (v5).<br /> CPUF_SSSE3 = 0x200, // Core 2<br /> CPUF_SSE4 = 0x400, // Penryn, Wolfdale, Yorkfield<br /> CPUF_SSE4_1 = 0x400,<br /> CPUF_SSE4_2 = 0x1000,   //  Nehalem (note this was 0x800 in v5)<br />};<br /></pre>
 <hr style="width: 100%; height: 2px;" />Back to&nbsp;<a href="FilterSDK.htm">FilterSDK</a>
-<p><kbd>$Date: 2014/10/27 22:04:54 $<br />
+<p><kbd>$Date: 2014/12/29 17:30:10 $<br />
 </kbd></p>
 </body></html>
