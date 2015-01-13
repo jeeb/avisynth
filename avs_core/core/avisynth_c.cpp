@@ -132,6 +132,14 @@ int AVSC_CC avs_bmp_size(const AVS_VideoInfo * vi)
 //
 
 extern "C"
+int AVSC_CC avs_get_pitch_p(const AVS_VideoFrame * p, int plane)
+{
+  switch (plane) {
+  case AVS_PLANAR_U: case AVS_PLANAR_V: return p->pitchUV;}
+  return p->pitch;
+}
+
+extern "C"
 int AVSC_CC avs_get_row_size_p(const AVS_VideoFrame * p, int plane)
 {
   int r;
@@ -142,21 +150,22 @@ int AVSC_CC avs_get_row_size_p(const AVS_VideoFrame * p, int plane)
 
   case AVS_PLANAR_U_ALIGNED: case AVS_PLANAR_V_ALIGNED:
     if (p->pitchUV) {
-      r = (p->row_sizeUV+AVS_FRAME_ALIGN-1)&(~(AVS_FRAME_ALIGN-1)); // Aligned rowsize
+      r = (p->row_sizeUV+FRAME_ALIGN-1)&(~(FRAME_ALIGN-1)); // Aligned rowsize
       return (r <= p->pitchUV) ? r : p->row_sizeUV;
     }
     else
       return 0;
 
   case AVS_PLANAR_Y_ALIGNED:
-           r = (p->row_size+AVS_FRAME_ALIGN-1)&(~(AVS_FRAME_ALIGN-1)); // Aligned rowsize
-           return (r <= p->pitch) ? r : p->row_size;
+       r = (p->row_size+FRAME_ALIGN-1)&(~(FRAME_ALIGN-1)); // Aligned rowsize
+       return (r <= p->pitch) ? r : p->row_size;
   }
   return p->row_size;
 }
 
 extern "C"
-int AVSC_CC avs_get_height_p(const AVS_VideoFrame * p, int plane) {
+int AVSC_CC avs_get_height_p(const AVS_VideoFrame * p, int plane)
+{
   switch (plane) {
   case AVS_PLANAR_U: case AVS_PLANAR_V:
     return (p->pitchUV) ? p->heightUV : 0;
@@ -165,6 +174,39 @@ int AVSC_CC avs_get_height_p(const AVS_VideoFrame * p, int plane) {
 }
 
 extern "C" 
+const BYTE * AVSC_CC avs_get_read_ptr_p(const AVS_VideoFrame * p, int plane)
+{
+  switch (plane) {
+    case AVS_PLANAR_U: return p->vfb->data + p->offsetU;
+    case AVS_PLANAR_V: return p->vfb->data + p->offsetV;
+    default:           return p->vfb->data + p->offset;}
+}
+
+extern "C"
+int AVSC_CC avs_is_writable(const AVS_VideoFrame * p)
+{
+  if (p->refcount == 1 && p->vfb->refcount == 1) {
+    InterlockedIncrement(&(p->vfb->sequence_number));
+    return 1;
+  }
+  return 0;
+}
+
+extern "C"
+BYTE * AVSC_CC avs_get_write_ptr_p(const AVS_VideoFrame * p, int plane)
+{
+  switch (plane) {
+    case AVS_PLANAR_U: return p->vfb->data + p->offsetU;
+    case AVS_PLANAR_V: return p->vfb->data + p->offsetV;
+    default:           break;
+  }
+  if (avs_is_writable(p)) {
+    return p->vfb->data + p->offset;
+  }
+  return 0;
+}
+
+extern "C"
 void AVSC_CC avs_release_video_frame(AVS_VideoFrame * f)
 {
   ((PVideoFrame *)&f)->~PVideoFrame();
