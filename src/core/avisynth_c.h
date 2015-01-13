@@ -79,7 +79,7 @@ typedef __int64 INT64;
 //
 
 #ifndef __AVISYNTH_6_H__
-enum { AVISYNTH_INTERFACE_VERSION = 5 };
+enum { AVISYNTH_INTERFACE_VERSION = 6 };
 #endif
 
 enum {AVS_SAMPLE_INT8  = 1<<0,
@@ -421,63 +421,32 @@ typedef struct AVS_VideoFrame {
 } AVS_VideoFrame;
 
 // Access functions for AVS_VideoFrame
-AVSC_INLINE int avs_get_pitch(const AVS_VideoFrame * p) {
-        return p->pitch;}
+AVSC_API(int, avs_get_pitch_p)(const AVS_VideoFrame * p, int plane);
 
-AVSC_INLINE int avs_get_pitch_p(const AVS_VideoFrame * p, int plane) { 
-  switch (plane) {
-  case AVS_PLANAR_U: case AVS_PLANAR_V: return p->pitchUV;}
-  return p->pitch;}
+AVSC_INLINE int avs_get_pitch(const AVS_VideoFrame * p) {
+        return avs_get_pitch_p(p, 0);}
+
+AVSC_API(int, avs_get_row_size_p)(const AVS_VideoFrame * p, int plane);
 
 AVSC_INLINE int avs_get_row_size(const AVS_VideoFrame * p) {
         return p->row_size; }
 
-AVSC_API(int, avs_get_row_size_p)(const AVS_VideoFrame * p, int plane);
+AVSC_API(int, avs_get_height_p)(const AVS_VideoFrame * p, int plane);
 
 AVSC_INLINE int avs_get_height(const AVS_VideoFrame * p) {
         return p->height;}
 
-AVSC_API(int, avs_get_height_p)(const AVS_VideoFrame * p, int plane);
+AVSC_API(const BYTE *, avs_get_read_ptr_p)(const AVS_VideoFrame * p, int plane);
 
 AVSC_INLINE const BYTE* avs_get_read_ptr(const AVS_VideoFrame * p) {
-        return p->vfb->data + p->offset;}
+        return avs_get_read_ptr_p(p, 0);}
 
-AVSC_INLINE const BYTE* avs_get_read_ptr_p(const AVS_VideoFrame * p, int plane) 
-{
-        switch (plane) {
-                case AVS_PLANAR_U: return p->vfb->data + p->offsetU;
-                case AVS_PLANAR_V: return p->vfb->data + p->offsetV;
-                default:           return p->vfb->data + p->offset;}
-}
+AVSC_API(int, avs_is_writable)(const AVS_VideoFrame * p);
 
-AVSC_INLINE int avs_is_writable(const AVS_VideoFrame * p) {
-        return (p->refcount == 1 && p->vfb->refcount == 1);}
+AVSC_API(BYTE *, avs_get_write_ptr_p)(const AVS_VideoFrame * p, int plane);
 
-AVSC_INLINE BYTE* avs_get_write_ptr(const AVS_VideoFrame * p) 
-{
-        if (avs_is_writable(p)) {
-                ++p->vfb->sequence_number;
-                return p->vfb->data + p->offset;
-        } else
-                return 0;
-}
-
-AVSC_INLINE BYTE* avs_get_write_ptr_p(const AVS_VideoFrame * p, int plane) 
-{
-        if (plane==AVS_PLANAR_Y && avs_is_writable(p)) {
-                ++p->vfb->sequence_number;
-                return p->vfb->data + p->offset;
-        } else if (plane==AVS_PLANAR_Y) {
-                return 0;
-        } else {
-                switch (plane) {
-                        case AVS_PLANAR_U: return p->vfb->data + p->offsetU;
-                        case AVS_PLANAR_V: return p->vfb->data + p->offsetV;
-                        default:       return p->vfb->data + p->offset;
-                }
-        }
-}
-
+AVSC_INLINE BYTE* avs_get_write_ptr(const AVS_VideoFrame * p) {
+        return avs_get_write_ptr_p(p, 0);}
 
 AVSC_API(void, avs_release_video_frame)(AVS_VideoFrame *);
 // makes a shallow copy of a video frame
@@ -805,6 +774,7 @@ struct AVS_Library {
   AVSC_DECLARE_FUNC(avs_subframe_planar);
   AVSC_DECLARE_FUNC(avs_take_clip);
   AVSC_DECLARE_FUNC(avs_vsprintf);
+
   AVSC_DECLARE_FUNC(avs_get_error);
   AVSC_DECLARE_FUNC(avs_is_yv24);
   AVSC_DECLARE_FUNC(avs_is_yv16);
@@ -812,6 +782,19 @@ struct AVS_Library {
   AVSC_DECLARE_FUNC(avs_is_yv411);
   AVSC_DECLARE_FUNC(avs_is_y8);
   AVSC_DECLARE_FUNC(avs_is_color_space);
+
+  AVSC_DECLARE_FUNC(avs_get_plane_width_subsampling);
+  AVSC_DECLARE_FUNC(avs_get_plane_height_subsampling);
+  AVSC_DECLARE_FUNC(avs_bits_per_pixel);
+  AVSC_DECLARE_FUNC(avs_bytes_from_pixels);
+  AVSC_DECLARE_FUNC(avs_row_size);
+  AVSC_DECLARE_FUNC(avs_bmp_size);
+  AVSC_DECLARE_FUNC(avs_get_pitch_p);
+  AVSC_DECLARE_FUNC(avs_get_row_size_p);
+  AVSC_DECLARE_FUNC(avs_get_height_p);
+  AVSC_DECLARE_FUNC(avs_get_read_ptr_p);
+  AVSC_DECLARE_FUNC(avs_is_writable);
+  AVSC_DECLARE_FUNC(avs_get_write_ptr_p);
 };
 
 #undef AVSC_DECLARE_FUNC
@@ -870,6 +853,7 @@ AVSC_INLINE AVS_Library * avs_load_library() {
   AVSC_LOAD_FUNC(avs_subframe_planar);
   AVSC_LOAD_FUNC(avs_take_clip);
   AVSC_LOAD_FUNC(avs_vsprintf);
+
   AVSC_LOAD_FUNC(avs_get_error);
   AVSC_LOAD_FUNC(avs_is_yv24);
   AVSC_LOAD_FUNC(avs_is_yv16);
@@ -877,6 +861,19 @@ AVSC_INLINE AVS_Library * avs_load_library() {
   AVSC_LOAD_FUNC(avs_is_yv411);
   AVSC_LOAD_FUNC(avs_is_y8);
   AVSC_LOAD_FUNC(avs_is_color_space);
+
+  AVSC_LOAD_FUNC(avs_get_plane_width_subsampling);
+  AVSC_LOAD_FUNC(avs_get_plane_height_subsampling);
+  AVSC_LOAD_FUNC(avs_bits_per_pixel);
+  AVSC_LOAD_FUNC(avs_bytes_from_pixels);
+  AVSC_LOAD_FUNC(avs_row_size);
+  AVSC_LOAD_FUNC(avs_bmp_size);
+  AVSC_LOAD_FUNC(avs_get_pitch_p);
+  AVSC_LOAD_FUNC(avs_get_row_size_p);
+  AVSC_LOAD_FUNC(avs_get_height_p);
+  AVSC_LOAD_FUNC(avs_get_read_ptr_p);
+  AVSC_LOAD_FUNC(avs_is_writable);
+  AVSC_LOAD_FUNC(avs_get_write_ptr_p);
 
 #undef __AVSC_STRINGIFY
 #undef AVSC_STRINGIFY
