@@ -208,10 +208,11 @@ public:
     mediaY41P   = 1<<8, // 2.6
     mediaYV16   = 1<<9, // 2.6
     mediaYV24   = 1<<10,// 2.6
-    mediaNV12   = 1<<11,// 2.6
+    mediaI420   = 1<<11,// 2.6
+    mediaNV12   = 1<<12,// 2.6
     mediaRGB    = mediaARGB | mediaRGB32 | mediaRGB24,
     mediaYUV    = mediaYUV9 | mediaYV12 | mediaYUY2 | mediaAYUV | mediaY411 | mediaY41P,
-    mediaYUVex  = mediaYUV  | mediaYV16 | mediaYV24 | mediaNV12,
+    mediaYUVex  = mediaYUV  | mediaYV16 | mediaYV24 | mediaI420 | mediaNV12,
     mediaAUTO   = mediaRGB | mediaYUV,
     mediaFULL   = mediaRGB | mediaYUVex,
     mediaPAD    = 1<<31,

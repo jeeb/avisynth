@@ -275,8 +275,8 @@ GetSample::GetSample(bool _load_audio, bool _load_video, unsigned _media, LOG* _
 //    In the order we want codecs to bid
       if (media & mediaYV24)   InitMediaType(my_media_types[i++], MEDIATYPE_Video, MEDIASUBTYPE_YV24);
       if (media & mediaYV16)   InitMediaType(my_media_types[i++], MEDIATYPE_Video, MEDIASUBTYPE_YV16);
-      if (media & mediaYV12) { InitMediaType(my_media_types[i++], MEDIATYPE_Video, MEDIASUBTYPE_YV12);
-                               InitMediaType(my_media_types[i++], MEDIATYPE_Video, MEDIASUBTYPE_I420); }
+      if (media & mediaYV12)   InitMediaType(my_media_types[i++], MEDIATYPE_Video, MEDIASUBTYPE_YV12);
+      if (media & mediaI420)   InitMediaType(my_media_types[i++], MEDIATYPE_Video, MEDIASUBTYPE_I420);
       if (media & mediaNV12)   InitMediaType(my_media_types[i++], MEDIATYPE_Video, MEDIASUBTYPE_NV12); //Needs unpacking
       if (media & mediaYUY2)   InitMediaType(my_media_types[i++], MEDIATYPE_Video, MEDIASUBTYPE_YUY2);
       if (media & mediaAYUV)   InitMediaType(my_media_types[i++], MEDIATYPE_Video, MEDIASUBTYPE_AYUV); //Needs unpacking
@@ -1245,7 +1245,7 @@ pbFormat:
         pixel_type = VideoInfo::CS_YV12;
 
       } else if (pmt->subtype == MEDIASUBTYPE_I420) {
-        if (!(media & mediaYV12)) {
+        if (!(media & mediaI420)) {
           dssRPT0(dssNEG,  "*** Video: Subtype denied - I420\n");
           return S_FALSE;
         }
@@ -2567,6 +2567,7 @@ AVSValue __cdecl Create_DirectShowSource(AVSValue args, void*, IScriptEnvironmen
     }
     if      (!lstrcmpi(pixel_type, "YUY2"))  { _media = GetSample::mediaYUY2; }
     else if (!lstrcmpi(pixel_type, "YV12"))  { _media = GetSample::mediaYV12; }
+    else if (!lstrcmpi(pixel_type, "I420"))  { _media = GetSample::mediaI420; }
 //  else if (!lstrcmpi(pixel_type, "YUV9"))  { _media = GetSample::mediaYUV9; }
     else if (!lstrcmpi(pixel_type, "Y41P"))  { _media = GetSample::mediaY41P; }
     else if (!lstrcmpi(pixel_type, "Y411"))  { _media = GetSample::mediaY411; }
