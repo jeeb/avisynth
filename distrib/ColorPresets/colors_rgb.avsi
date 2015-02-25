@@ -108,7 +108,6 @@ global color_orange                 = $FFA500
 global color_orangered              = $FF4500
 global color_orchid                 = $DA70D6
 global color_palegoldenrod          = $EEE8AA
-global color_palegoldenrod          = $EEE8AA
 global color_palegreen              = $98FB98
 global color_paleturquoise          = $AFEEEE
 global color_palevioletred          = $DB7093
