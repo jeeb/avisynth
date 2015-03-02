@@ -202,7 +202,12 @@ enum {
   };
 
 typedef struct AVS_Clip AVS_Clip;
-typedef struct AVS_ScriptEnvironment AVS_ScriptEnvironment;
+typedef struct AVS_ScriptEnvironment {
+	IScriptEnvironment * env;
+	const char * error;
+	AVS_ScriptEnvironment(IScriptEnvironment * e = 0)
+		: env(e), error(0) {}
+} AVS_ScriptEnvironment;
 
 /////////////////////////////////////////////////////////////////////
 //

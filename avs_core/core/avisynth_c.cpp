@@ -22,6 +22,7 @@ struct AVS_Clip
 	AVS_Clip() : env(0), error(0) {}
 };
 
+/* Why doesn't this work correctly unless it's defined in avisynth_c.h?
 struct AVS_ScriptEnvironment
 {
 	IScriptEnvironment * env;
@@ -29,6 +30,7 @@ struct AVS_ScriptEnvironment
 	AVS_ScriptEnvironment(IScriptEnvironment * e = 0)
 		: env(e), error(0) {}
 };
+*/
 
 class C_VideoFilter : public IClip {
 public: // but don't use
@@ -185,11 +187,14 @@ const BYTE * AVSC_CC avs_get_read_ptr_p(const AVS_VideoFrame * p, int plane)
 extern "C"
 int AVSC_CC avs_is_writable(const AVS_VideoFrame * p)
 {
+/*
   if (p->refcount == 1 && p->vfb->refcount == 1) {
     InterlockedIncrement(&(p->vfb->sequence_number));
     return 1;
   }
   return 0;
+*/
+    return (p->refcount == 1 && p->vfb->refcount == 1);
 }
 
 extern "C"
