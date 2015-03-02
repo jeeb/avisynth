@@ -128,7 +128,6 @@ LRESULT AVISource::DecompressFrame(int n, bool preroll, PVideoFrame &frame, IScr
     // set pitch = rowsize
     frame = env->SubframePlanar(frame, 0, rowsizeY, rowsizeY, vi.height, offsetU, offsetV, rowsizeUV);
     }
-  }
   else if (bInvertFrames) {
     const int h2 = frame->GetHeight() >> 1;
     const int w4 = (frame->GetRowSize()+3) >> 2;
