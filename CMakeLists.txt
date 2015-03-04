@@ -24,7 +24,7 @@ IF( MSVC_IDE )  # Check for Visual Studio
   file(MAKE_DIRECTORY "${CMAKE_BINARY_DIR}/Output/system")
 
   # We want our project to also run on Windows XP
-  set(CMAKE_GENERATOR_TOOLSET "v110_xp" CACHE STRING "The compiler toolset to use for Visual Studio." FORCE)
+  set(CMAKE_GENERATOR_TOOLSET "v120_xp" CACHE STRING "The compiler toolset to use for Visual Studio." FORCE)
 
   # Enable C++ with SEH exceptions
   set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} /EHa")
