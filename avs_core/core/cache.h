@@ -57,6 +57,19 @@ public:
 
   static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env);
   static bool __stdcall IsCache(const PClip& c);
+
+private:
+  enum {
+    // Old 2.5 poorly defined cache hints.
+    // Reserve values used by 2.5 API
+    // Do not use in new filters
+    CACHE_25_NOTHING=0,
+    CACHE_25_RANGE=1,
+    CACHE_25_ALL=2,
+    CACHE_25_AUDIO=3,
+    CACHE_25_AUDIO_NONE=4,
+    CACHE_25_AUDIO_AUTO=5,
+  };
 };
 
 #endif  // __Cache_H__

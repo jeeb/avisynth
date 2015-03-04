@@ -39,15 +39,8 @@
 #include <avs/config.h>
 #include "version.h"
 
-#ifdef X86_32
-#define AVS_ARCHSTR "x86"
-#else
-#define AVS_ARCHSTR "x64"
-#endif
-
-#define AVS_VERSION 2.60  // Note: Used by VersionNumber() script function
-#define AVS_VERSTR "AviSynth+ 0.1 (r" AVS_SEQREV_STR ", " AVS_ARCHSTR ")"
-#define AVS_COPYRIGHT "\n\xA9 2000-2013 Ben Rudiak-Gould, et al.\nhttp://avisynth.nl\n\xA9 2013 AviSynth+ Project\nhttp://avs-plus.net"
+#define AVS_CLASSIC_VERSION 2.60  // Note: Used by VersionNumber() script function
+#define AVS_COPYRIGHT "\n\xA9 2000-2015 Ben Rudiak-Gould, et al.\nhttp://avisynth.nl\n\xA9 2013-2015 AviSynth+ Project\nhttp://avs-plus.net"
 
 extern const char _AVS_VERSTR[], _AVS_COPYRIGHT[];
 

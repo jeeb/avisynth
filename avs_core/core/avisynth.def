@@ -1,13 +1,13 @@
 LIBRARY
 EXPORTS
-	DllGetClassObject PRIVATE
-	DllCanUnloadNow PRIVATE
-	CreateScriptEnvironment
-	avs_add_function
-	avs_at_exit
-	avs_bit_blt
-	avs_check_version
-	avs_clip_get_error
+  DllGetClassObject PRIVATE
+  DllCanUnloadNow PRIVATE
+  CreateScriptEnvironment
+  avs_add_function
+  avs_at_exit
+  avs_bit_blt
+  avs_check_version
+  avs_clip_get_error
   avs_copy_clip
   avs_copy_value
   avs_copy_video_frame
@@ -41,3 +41,21 @@ EXPORTS
   avs_delete_script_environment
   avs_subframe_planar
   avs_get_error
+  avs_is_yv24
+  avs_is_yv16
+  avs_is_yv12
+  avs_is_yv411
+  avs_is_y8
+  avs_is_color_space
+  avs_get_plane_width_subsampling
+  avs_get_plane_height_subsampling
+  avs_bits_per_pixel
+  avs_bytes_from_pixels
+  avs_row_size
+  avs_bmp_size
+  avs_get_pitch_p
+  avs_get_row_size_p
+  avs_get_height_p
+  avs_get_read_ptr_p
+  avs_is_writable
+  avs_get_write_ptr_p

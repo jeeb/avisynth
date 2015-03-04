@@ -50,6 +50,7 @@ class AVISource : public IClip {
   bool dropped_frame;
   bool bIsType1;
   bool bInvertFrames;
+  bool bMediaPad;
 
   PVideoFrame last_frame;
   int last_frame_no;
@@ -74,7 +75,7 @@ public:
   };
 
   AVISource(const char filename[], bool fAudio, const char pixel_type[],
-            const char fourCC[], int mode, IScriptEnvironment* env);  // mode: 0=detect, 1=avifile, 2=opendml, 3=avifile (audio only)
+            const char fourCC[], int vtrack, int atrack, int mode, IScriptEnvironment* env);  // mode: 0=detect, 1=avifile, 2=opendml, 3=avifile (audio only)
   ~AVISource();
   void CleanUp(); // Tritical - Jan 2006
   const VideoInfo& __stdcall GetVideoInfo();
@@ -88,10 +89,12 @@ public:
     const bool fAudio = (mode == MODE_WAV) || args[1].AsBool(true);
     const char* pixel_type = (mode != MODE_WAV) ? args[2].AsString("") : "";
     const char* fourCC = (mode != MODE_WAV) ? args[3].AsString("") : "";
+    const int vtrack = args[4].AsInt(0);
+    const int atrack = args[5].AsInt(0);
 
-    PClip result = new AVISource(args[0][0].AsString(), fAudio, pixel_type, fourCC, mode, env);
+    PClip result = new AVISource(args[0][0].AsString(), fAudio, pixel_type, fourCC, vtrack, atrack, mode, env);
     for (int i=1; i<args[0].ArraySize(); ++i)
-      result = new_Splice(result, new AVISource(args[0][i].AsString(), fAudio, pixel_type, fourCC, mode, env), false, env);
+      result = new_Splice(result, new AVISource(args[0][i].AsString(), fAudio, pixel_type, fourCC, vtrack, atrack, mode, env), false, env);
     return AlignPlanar::Create(result);
   }
 };
