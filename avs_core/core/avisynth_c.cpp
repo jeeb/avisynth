@@ -22,16 +22,6 @@ struct AVS_Clip
 	AVS_Clip() : env(0), error(0) {}
 };
 
-/* Why doesn't this work correctly unless it's defined in avisynth_c.h?
-struct AVS_ScriptEnvironment
-{
-	IScriptEnvironment * env;
-	const char * error;
-	AVS_ScriptEnvironment(IScriptEnvironment * e = 0)
-		: env(e), error(0) {}
-};
-*/
-
 class C_VideoFilter : public IClip {
 public: // but don't use
 	AVS_Clip child;
