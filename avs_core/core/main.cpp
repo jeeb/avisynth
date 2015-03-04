@@ -109,8 +109,8 @@ void ReportMe(const char * msg, ...) {
 # endif
 #endif
 
-const char _AVS_VERSTR[]    = AVS_VERSTR;
-const char _AVS_COPYRIGHT[] = AVS_VERSTR AVS_COPYRIGHT;
+const char _AVS_VERSTR[] = AVS_FULLVERSION;
+const char _AVS_COPYRIGHT[] = AVS_PPSTR(AVS_PROJECT) AVS_COPYRIGHT;
 
 static long gRefCnt=0;
 
