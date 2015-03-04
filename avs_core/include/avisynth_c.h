@@ -380,7 +380,7 @@ typedef struct AVS_VideoFrameBuffer {
   int data_size;
   // sequence_number is incremented every time the buffer is changed, so
   // that stale views can tell they're no longer valid.
-  volatile int sequence_number;
+  volatile long sequence_number;
 
   volatile int refcount;
 } AVS_VideoFrameBuffer;
