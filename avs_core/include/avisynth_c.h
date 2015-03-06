@@ -297,7 +297,7 @@ AVSC_API(int, avs_bits_per_pixel)(const AVS_VideoInfo * p);
 
 AVSC_API(int, avs_bytes_from_pixels)(const AVS_VideoInfo * p, int pixels);
 
-AVSC_API(int, avs_row_size)(const AVS_VideoInfo * p, int plane=0);
+AVSC_API(int, avs_row_size)(const AVS_VideoInfo * p, int plane);
 
 AVSC_API(int, avs_bmp_size)(const AVS_VideoInfo * vi);
 
