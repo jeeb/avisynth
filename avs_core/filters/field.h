@@ -306,6 +306,9 @@ public:
   }
 };
 
+inline int congmod(int a, int b) {	// congruent modulus
+  return ((a % b) + b) % b;
+}
 
 class Interleave : public IClip
   /**
@@ -320,7 +323,7 @@ public:
   }
 
   inline PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env) {
-    return child_array[n % num_children]->GetFrame(n / num_children, env);
+	return child_array[congmod(n, num_children)]->GetFrame(n / num_children, env);
   }
 
   inline void __stdcall GetAudio(void* buf, __int64 start, __int64 count, IScriptEnvironment* env) {
