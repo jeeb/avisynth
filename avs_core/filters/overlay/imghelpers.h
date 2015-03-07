@@ -101,7 +101,7 @@ public:
     Env->Free(Y_plane);
   }
 
-  void free() {
+  void free_all() {
     if (!(_w && _h)) {
       _RPT0(1,"Image444: Height or Width is 0");
     }

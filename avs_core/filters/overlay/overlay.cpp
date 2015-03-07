@@ -250,10 +250,10 @@ PVideoFrame __stdcall Overlay::GetFrame(int n, IScriptEnvironment *env) {
     maskImg->free_luma();
     delete maskImg;
   }
-  overlayImg->free();
+  overlayImg->free_all();
   delete overlayImg;
   if (img) {
-    img->free();
+    img->free_all();
     delete img;
   }
 
