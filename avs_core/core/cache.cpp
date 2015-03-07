@@ -144,10 +144,50 @@ PVideoFrame __stdcall Cache::GetFrame(int n, IScriptEnvironment* env)
   return result;
 }
 
+void Cache::FillAudioZeros(void* buf, int start_offset, int count) {
+    const int bps = _pimpl->vi.BytesPerAudioSample();
+    unsigned char* byte_buf = (unsigned char*)buf;
+    memset(byte_buf + start_offset * bps, 0, count * bps);
+}
+
 void __stdcall Cache::GetAudio(void* buf, __int64 start, __int64 count, IScriptEnvironment* env)
 {
-  // TODO: implement audio cache
-  _pimpl->child->GetAudio(buf, start, count, env);
+    if (count <= 0)
+        return;
+
+    // -----------------------------------------------------------
+    //          Enforce audio bounds
+    // -----------------------------------------------------------
+
+    VideoInfo * vi = &(_pimpl->vi);
+
+    if ((!vi->HasAudio()) || (start + count <= 0) || (start >= vi->num_audio_samples)) {
+        // Completely skip.
+        FillAudioZeros(buf, 0, (int)count);
+        count = 0;
+        return;
+    }
+
+    if (start < 0) {  // Partial initial skip
+        FillAudioZeros(buf, 0, (int)-start);  // Fill all samples before 0 with silence.
+        count += start;  // Subtract start bytes from count.
+        buf = ((BYTE*)buf) - (int)(start*vi->BytesPerAudioSample());
+        start = 0;
+    }
+
+    if (start + count > vi->num_audio_samples) {  // Partial ending skip
+        FillAudioZeros(buf, (int)(vi->num_audio_samples - start), (int)(count - (vi->num_audio_samples - start)));  // Fill end samples
+        count = (vi->num_audio_samples - start);
+    }
+
+    // -----------------------------------------------------------
+    //          Caching
+    // -----------------------------------------------------------
+    
+    // TODO: implement audio cache
+
+
+    _pimpl->child->GetAudio(buf, start, count, env);
 }
 
 const VideoInfo& __stdcall Cache::GetVideoInfo()

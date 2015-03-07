@@ -46,6 +46,8 @@ private:
   IScriptEnvironment* Env;
   CachePimpl* _pimpl;
 
+  void FillAudioZeros(void* buf, int start_offset, int count);
+
 public:
   Cache(const PClip& child, IScriptEnvironment* env);
   ~Cache();
