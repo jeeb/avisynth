@@ -33,6 +33,9 @@ IF( MSVC_IDE )  # Check for Visual Studio
   # Prevent VC++ from complaining about not using MS-specific functions
   add_definitions("/D _CRT_SECURE_NO_WARNINGS /D _SECURE_SCL=0")
   
+  # Enable CRT heap debugging - only effective in debug builds
+  add_definitions("/D _CRTDBG_MAP_ALLOC")
+  
   if(CMAKE_SIZEOF_VOID_P EQUAL 4)
     # VC++ enables the SSE2 instruction set by default even on 32-bits. Step back a bit.
     add_definitions("/arch:SSE")
