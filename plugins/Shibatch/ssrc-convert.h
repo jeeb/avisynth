@@ -52,6 +52,7 @@ class SSRC : public GenericVideoFilter
 public:
   SSRC(PClip _child, int _target_rate, bool _fast, IScriptEnvironment* env);
   ~SSRC() {
+     delete res;
      delete[] srcbuffer;
     }
   void __stdcall GetAudio(void* buf, __int64 start, __int64 count, IScriptEnvironment* env);
