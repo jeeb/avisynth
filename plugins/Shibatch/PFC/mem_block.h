@@ -16,10 +16,10 @@ public:
 		if (ptr) set(ptr,0,count);
 		return ptr;
 	}
-	static T* realloc(T* ptr,unsigned count)
+	static T* realloc_block(T* ptr,unsigned count)
 	{return ptr ? reinterpret_cast<T*>(::realloc(reinterpret_cast<void*>(ptr),count * sizeof(T))) : alloc(count);}
 
-	static void free(T* ptr) {::free(reinterpret_cast<void*>(ptr)); }
+	static void free_block(T* ptr) {::free(reinterpret_cast<void*>(ptr)); }
 	inline static T make_null_item()
 	{
 		char item[sizeof(T)];
