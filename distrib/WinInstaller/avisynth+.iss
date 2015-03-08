@@ -129,7 +129,7 @@ Source: "..\docs\*.css"; DestDir: "{app}\docs"; Components: docs; Flags: ignorev
 Source: "..\docs\czech\*"; DestDir: "{app}\docs\Czech"; Components: docs\cs; Flags: ignoreversion recursesubdirs 
 Source: "..\docs\english\*"; DestDir: "{app}\docs\English"; Components: docs\en docs\enall; Flags: ignoreversion recursesubdirs 
 Source: "..\docs\french\*"; DestDir: "{app}\docs\French"; Components: docs\fr; Flags: ignoreversion recursesubdirs 
-Source: "..\docs\french\*"; DestDir: "{app}\docs\German"; Components: docs\de; Flags: ignoreversion recursesubdirs 
+Source: "..\docs\german\*"; DestDir: "{app}\docs\German"; Components: docs\de; Flags: ignoreversion recursesubdirs 
 Source: "..\docs\italian\*"; DestDir: "{app}\docs\Italian"; Components: docs\it; Flags: ignoreversion recursesubdirs 
 Source: "..\docs\japanese\*"; DestDir: "{app}\docs\Japanese"; Components: docs\ja; Flags: ignoreversion recursesubdirs 
 Source: "..\docs\polish\*"; DestDir: "{app}\docs\Polish"; Components: docs\pl; Flags: ignoreversion recursesubdirs 
