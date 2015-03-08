@@ -37,6 +37,7 @@
 
 #include <avisynth.h>
 #include <vector>
+#include <memory>
 
 /********************************************************************
 ********************************************************************/
@@ -146,15 +147,15 @@ class Animate : public IClip
   PClip cache[cache_size];
   int cache_stage[cache_size];
   const int first, last;
-  AVSValue *args_before, *args_after, *args_now;
+  std::unique_ptr<AVSValue[]> args_before;
+  AVSValue *args_after, *args_now;
   int num_args;
   const char* name;
   bool range_limit;
 public:
   Animate( PClip context, int _first, int _last, const char* _name, const AVSValue* _args_before, 
            const AVSValue* _args_after, int _num_args, bool _range_limit, IScriptEnvironment* env );
-  virtual ~Animate() 
-    { delete[] args_before; }
+  virtual ~Animate() { }
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
   void __stdcall GetAudio(void* buf, __int64 start, __int64 count, IScriptEnvironment* env);
 

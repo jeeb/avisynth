@@ -181,12 +181,16 @@ PVideoFrame __stdcall Overlay::GetFrame(int n, IScriptEnvironment *env) {
   // Image444 initialization
   Image444* img = new Image444(vi.width, vi.height, env);
   Image444* overlayImg = new Image444(overlayVi.width, overlayVi.height, env);
-  Image444* maskImg = new Image444(maskVi.width, maskVi.height, env);
+  Image444* maskImg = NULL;
 
-  if (greymask) {
-    maskImg->free_chroma();
-    maskImg->SetPtr(maskImg->GetPtr(PLANAR_Y), PLANAR_U);
-    maskImg->SetPtr(maskImg->GetPtr(PLANAR_Y), PLANAR_V);
+  if (mask)
+  {
+      maskImg = new Image444(maskVi.width, maskVi.height, env);
+      if (greymask) {
+          maskImg->free_chroma();
+          maskImg->SetPtr(maskImg->GetPtr(PLANAR_Y), PLANAR_U);
+          maskImg->SetPtr(maskImg->GetPtr(PLANAR_Y), PLANAR_V);
+      }
   }
 
   inputConv->ConvertImage(frame, img, env);

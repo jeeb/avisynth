@@ -446,8 +446,8 @@ Animate::Animate( PClip context, int _first, int _last, const char* _name, const
   if (context)
     num_args++;
 
-  args_before = new AVSValue[num_args*3];
-  args_after = args_before + num_args;
+  args_before = std::make_unique<AVSValue[]>(num_args*3);
+  args_after = args_before.get() + num_args;
   args_now = args_after + num_args;
 
   if (context) {
@@ -466,7 +466,7 @@ Animate::Animate( PClip context, int _first, int _last, const char* _name, const
 
   memset(cache_stage, -1, sizeof(cache_stage));
 
-  cache[0] = env->Invoke(name, AVSValue(args_before, num_args)).AsClip();
+  cache[0] = env->Invoke(name, AVSValue(args_before.get(), num_args)).AsClip();
   cache_stage[0] = 0;
   VideoInfo vi1 = cache[0]->GetVideoInfo();
 
