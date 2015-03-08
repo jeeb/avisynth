@@ -25,6 +25,11 @@ if (MSVC_IDE)
   )
 endif()
 
+# Determine target architecture
+include("${CMAKE_CURRENT_LIST_DIR}/TargetArch.cmake")
+target_architecture(AVS_ARCH)
+CONFIGURE_FILE(${CMAKE_CURRENT_SOURCE_DIR}/core/arch.h.in ${CMAKE_CURRENT_BINARY_DIR}/arch.h @ONLY)
+
 # Dynamically generate the sequential version info from Git
 # Based on the example here: http://www.cmake.org/pipermail/cmake/2010-July/038015.html
 FIND_PACKAGE(Git)
