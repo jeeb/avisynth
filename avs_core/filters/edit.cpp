@@ -170,7 +170,10 @@ Trim::Trim(double starttime, double endtime, PClip _child, int mode, IScriptEnvi
 
 AVSValue __cdecl Trim::CreateA(AVSValue args, void* mode, IScriptEnvironment* env) 
 {
-  return new Trim(args[1].AsFloat(), args[2].AsFloat(), args[0].AsClip(), (int)mode, env);
+    if ((int)mode == Trim::Invalid)
+        env->ThrowError("Script error: Invalid arguments to function \"AudioTrim\"");
+
+    return new Trim(args[1].AsFloat(), args[2].AsFloat(), args[0].AsClip(), (int)mode, env);
 }
 
 
@@ -270,7 +273,10 @@ bool Trim::GetParity(int n)
 
 AVSValue __cdecl Trim::Create(AVSValue args, void* mode, IScriptEnvironment* env) 
 {
-  return new Trim(args[1].AsInt(), args[2].AsInt(), args[3].AsBool(true), args[0].AsClip(), (int)mode, env);
+    if ((int)mode == Trim::Invalid)
+        env->ThrowError("Script error: Invalid arguments to function \"Trim\"");
+
+    return new Trim(args[1].AsInt(), args[2].AsInt(), args[3].AsBool(true), args[0].AsClip(), (int)mode, env);
 }
 
 
