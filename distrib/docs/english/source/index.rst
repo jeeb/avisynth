@@ -3,8 +3,8 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-Welcome to AviSynth+'s documentation!
-=====================================
+AviSynth+ documentation
+=======================
 
 Contents:
 
@@ -16,6 +16,9 @@ Contents:
    advancedtopics/*
    corefilters/*
    externalfilters/*
+   faq/*
+   script_ref/*
+   syntax/*
 
 
 Indices and tables
