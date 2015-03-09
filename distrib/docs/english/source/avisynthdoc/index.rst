@@ -3,17 +3,20 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-AviSynth+ documentation
-=======================
-
-Contents:
+Invisible Tree
+==============
 
 .. toctree::
-   :maxdepth: 2
+   :hidden:
    :glob:
 
-   avisynthdoc/overview
-   avisynthdoc/index
+   *
+   advancedtopics/*
+   script_ref/*
+   syntax/*
+   corefilters/*
+   externalfilters/*
+   faq/*
 
 
 Indices and tables
