@@ -382,7 +382,7 @@ typedef struct AVS_VideoFrameBuffer {
   // that stale views can tell they're no longer valid.
   volatile long sequence_number;
 
-  volatile int refcount;
+  volatile long refcount;
 } AVS_VideoFrameBuffer;
 
 // VideoFrame holds a "window" into a VideoFrameBuffer.
@@ -390,7 +390,7 @@ typedef struct AVS_VideoFrameBuffer {
 // AVS_VideoFrame is layed out identicly to IVideoFrame
 // DO NOT USE THIS STRUCTURE DIRECTLY
 typedef struct AVS_VideoFrame {
-  volatile int refcount;
+  volatile long refcount;
   AVS_VideoFrameBuffer * vfb;
   int offset, pitch, row_size, height, offsetU, offsetV, pitchUV;  // U&V offsets are from top of picture.
   int row_sizeUV, heightUV;
