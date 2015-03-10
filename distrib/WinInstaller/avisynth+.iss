@@ -5,10 +5,10 @@
 #define AvsWebURL "http://www.avs-plus.net"
 #define AvsVersionFriendly "1.0"
 
-#define BuildDir32 "..\..\..\build-vs2012-x86"
-#define BuildDir64 "..\..\..\build-vs2012-x64"
+#define BuildDir32 "..\..\..\build-vs2013-x86"
+#define BuildDir64 "..\..\..\build-vs2013-x64"
 #define BuildType "git" 
-#define VcVersion "Microsoft Visual C++ Redistributable 2012 Update 4"
+#define VcVersion "Microsoft Visual C++ Redistributable 2013"
 
 #define AvsVersion GetFileVersion(AddBackslash(BuildDir32) + "Output\AviSynth.dll")
 #define BuildDate GetFileDateTimeString(AddBackslash(BuildDir32) + "Output\AviSynth.dll", 'yyyy/mm/dd', '-',);
@@ -76,14 +76,14 @@ Name: "main\avs64"; Description: "{#AvsName} (x64)"; Types: full compact custom;
 Name: "docs"; Description: "{cm:CmpDocs}";
 Name: "docs\enall"; Description: "{cm:CmpDocsEn}"; Types: full; Languages: not en
 Name: "docs\en"; Description: "{cm:CmpDocsEn}"; Types: full compact custom; Languages: en
-Name: "docs\cs"; Description: "{cm:CmpDocsCs}"; Types: full compact custom; Languages: cs
-Name: "docs\de"; Description: "{cm:CmpDocsDe}"; Types: full compact custom; Languages: de
-Name: "docs\fr"; Description: "{cm:CmpDocsFr}"; Types: full compact custom; Languages: fr
-Name: "docs\it"; Description: "{cm:CmpDocsIt}"; Types: full compact custom; Languages: it
-Name: "docs\ja"; Description: "{cm:CmpDocsJa}"; Types: full compact custom; Languages: ja
-Name: "docs\pl"; Description: "{cm:CmpDocsPl}"; Types: full compact custom; Languages: pl
-Name: "docs\pt"; Description: "{cm:CmpDocsPt}"; Types: full compact custom; Languages: pt pt_br
-Name: "docs\ru"; Description: "{cm:CmpDocsRu}"; Types: full compact custom; Languages: ru
+;Name: "docs\cs"; Description: "{cm:CmpDocsCs}"; Types: full compact custom; Languages: cs
+;Name: "docs\de"; Description: "{cm:CmpDocsDe}"; Types: full compact custom; Languages: de
+;Name: "docs\fr"; Description: "{cm:CmpDocsFr}"; Types: full compact custom; Languages: fr
+;Name: "docs\it"; Description: "{cm:CmpDocsIt}"; Types: full compact custom; Languages: it
+;Name: "docs\ja"; Description: "{cm:CmpDocsJa}"; Types: full compact custom; Languages: ja
+;Name: "docs\pl"; Description: "{cm:CmpDocsPl}"; Types: full compact custom; Languages: pl
+;Name: "docs\pt"; Description: "{cm:CmpDocsPt}"; Types: full compact custom; Languages: pt pt_br
+;Name: "docs\ru"; Description: "{cm:CmpDocsRu}"; Types: full compact custom; Languages: ru
 
 Name: "examples"; Description: "{cm:CmpDocsExamples}"; Types: full compact custom
 Name: "sdk"; Description: "{cm:CmpSdk,{#AvsName}}"; Types: full custom
@@ -126,15 +126,15 @@ Source: "..\ColorPresets\*"; DestDir:{code:GetAvsDirsPlus|PlugPlus64}; Component
 Source: "..\Prerequisites\vcredist_x64.exe"; DestDir: {app}; Components: main\avs64; Flags: deleteafterinstall
 
 Source: "..\docs\*.css"; DestDir: "{app}\docs"; Components: docs; Flags: ignoreversion
-Source: "..\docs\czech\*"; DestDir: "{app}\docs\Czech"; Components: docs\cs; Flags: ignoreversion recursesubdirs 
+;Source: "..\docs\czech\*"; DestDir: "{app}\docs\Czech"; Components: docs\cs; Flags: ignoreversion recursesubdirs 
 Source: "..\docs\english\*"; DestDir: "{app}\docs\English"; Components: docs\en docs\enall; Flags: ignoreversion recursesubdirs 
-Source: "..\docs\french\*"; DestDir: "{app}\docs\French"; Components: docs\fr; Flags: ignoreversion recursesubdirs 
-Source: "..\docs\german\*"; DestDir: "{app}\docs\German"; Components: docs\de; Flags: ignoreversion recursesubdirs 
-Source: "..\docs\italian\*"; DestDir: "{app}\docs\Italian"; Components: docs\it; Flags: ignoreversion recursesubdirs 
-Source: "..\docs\japanese\*"; DestDir: "{app}\docs\Japanese"; Components: docs\ja; Flags: ignoreversion recursesubdirs 
-Source: "..\docs\polish\*"; DestDir: "{app}\docs\Polish"; Components: docs\pl; Flags: ignoreversion recursesubdirs 
-Source: "..\docs\portugese\*"; DestDir: "{app}\docs\Portuguese"; Components: docs\pt; Flags: ignoreversion recursesubdirs 
-Source: "..\docs\russian\*"; DestDir: "{app}\docs\Russian"; Components: docs\ru; Flags: ignoreversion recursesubdirs 
+;Source: "..\docs\french\*"; DestDir: "{app}\docs\French"; Components: docs\fr; Flags: ignoreversion recursesubdirs 
+;Source: "..\docs\german\*"; DestDir: "{app}\docs\German"; Components: docs\de; Flags: ignoreversion recursesubdirs 
+;Source: "..\docs\italian\*"; DestDir: "{app}\docs\Italian"; Components: docs\it; Flags: ignoreversion recursesubdirs 
+;Source: "..\docs\japanese\*"; DestDir: "{app}\docs\Japanese"; Components: docs\ja; Flags: ignoreversion recursesubdirs 
+;Source: "..\docs\polish\*"; DestDir: "{app}\docs\Polish"; Components: docs\pl; Flags: ignoreversion recursesubdirs 
+;Source: "..\docs\portugese\*"; DestDir: "{app}\docs\Portuguese"; Components: docs\pt; Flags: ignoreversion recursesubdirs 
+;Source: "..\docs\russian\*"; DestDir: "{app}\docs\Russian"; Components: docs\ru; Flags: ignoreversion recursesubdirs 
 
 Source: "..\FilterSDK\*"; DestDir: "{app}\FilterSDK"; Components: sdk; Flags: ignoreversion recursesubdirs
 Source: "..\Examples\*"; DestDir: "{app}\Examples"; Components: examples; Flags: recursesubdirs 
