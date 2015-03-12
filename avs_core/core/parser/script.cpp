@@ -908,7 +908,7 @@ AVSValue Defined(AVSValue args, void*, IScriptEnvironment* env) { return args[0]
 
 AVSValue Default(AVSValue args, void*, IScriptEnvironment* env) { return args[0].Defined() ? args[0] : args[1]; }
 AVSValue VersionNumber(AVSValue args, void*, IScriptEnvironment* env) { return AVS_CLASSIC_VERSION; }
-AVSValue VersionString(AVSValue args, void*, IScriptEnvironment* env) { return _AVS_VERSTR; }
+AVSValue VersionString(AVSValue args, void*, IScriptEnvironment* env) { return AVS_FULLVERSION; }
 
 AVSValue Int(AVSValue args, void*, IScriptEnvironment* env) { return int(args[0].AsFloat()); }
 AVSValue Frac(AVSValue args, void*, IScriptEnvironment* env) { return args[0].AsFloat() - int(args[0].AsFloat()); }

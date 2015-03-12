@@ -42,8 +42,6 @@
 #define AVS_CLASSIC_VERSION 2.60  // Note: Used by VersionNumber() script function
 #define AVS_COPYRIGHT "\n\xA9 2000-2015 Ben Rudiak-Gould, et al.\nhttp://avisynth.nl\n\xA9 2013-2015 AviSynth+ Project\nhttp://avs-plus.net"
 
-extern const char _AVS_VERSTR[], _AVS_COPYRIGHT[];
-
 enum MANAGE_CACHE_KEYS
 {
   MC_RegisterCache     = 0xFFFF0004,
