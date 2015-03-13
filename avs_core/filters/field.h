@@ -355,7 +355,7 @@ class SelectEvery : public NonCachedGenericVideoFilter
     **/
 {
 public:
-  SelectEvery(PClip _child, int _every, int _from);
+  SelectEvery(PClip _child, int _every, int _from, IScriptEnvironment* env);
 
   inline PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env) {
     return child->GetFrame(n*every+from, env);
@@ -368,11 +368,11 @@ public:
   static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env);
 
   inline static AVSValue __cdecl Create_SelectEven(AVSValue args, void*, IScriptEnvironment* env) {
-    return new SelectEvery(args[0].AsClip(), 2, 0);
+	  return new SelectEvery(args[0].AsClip(), 2, 0, env);
   }
 
   inline static AVSValue __cdecl Create_SelectOdd(AVSValue args, void*, IScriptEnvironment* env) {
-    return new SelectEvery(args[0].AsClip(), 2, 1);
+	  return new SelectEvery(args[0].AsClip(), 2, 1, env);
   }
 
 private:

@@ -650,9 +650,12 @@ AVSValue __cdecl Interleave::Create(AVSValue args, void*, IScriptEnvironment* en
  *********************************/
 
 
-SelectEvery::SelectEvery(PClip _child, int _every, int _from)
+SelectEvery::SelectEvery(PClip _child, int _every, int _from, IScriptEnvironment* env)
 : NonCachedGenericVideoFilter(_child), every(_every), from(_from)
 {
+  if (_every == 0)
+    env->ThrowError("Parameter 'every' of SelectEvery cannot be zero.");
+
   vi.MulDivFPS(1, every);
   vi.num_frames = (vi.num_frames-1-from) / every + 1;
 }
@@ -662,11 +665,11 @@ AVSValue __cdecl SelectEvery::Create(AVSValue args, void*, IScriptEnvironment* e
 {
   const int num_vals = args[2].ArraySize();
   if (num_vals <= 1)
-    return new SelectEvery(args[0].AsClip(), args[1].AsInt(), num_vals>0 ? args[2][0].AsInt() : 0);
+	return new SelectEvery(args[0].AsClip(), args[1].AsInt(), num_vals>0 ? args[2][0].AsInt() : 0, env);
   else {
     PClip* child_array = new PClip[num_vals];
     for (int i=0; i<num_vals; ++i)
-      child_array[i] = new SelectEvery(args[0].AsClip(), args[1].AsInt(), args[2][i].AsInt());
+      child_array[i] = new SelectEvery(args[0].AsClip(), args[1].AsInt(), args[2][i].AsInt(), env);
     return new Interleave(num_vals, child_array, env);
   }
 }
@@ -839,7 +842,7 @@ static AVSValue __cdecl Create_Weave(AVSValue args, void*, IScriptEnvironment* e
   PClip clip = args[0].AsClip();
   if (!clip->GetVideoInfo().IsFieldBased())
     env->ThrowError("Weave: Weave should be applied on field-based material: use AssumeFieldBased() beforehand");
-  return new SelectEvery(Create_DoubleWeave(args, 0, env).AsClip(), 2, 0);
+  return new SelectEvery(Create_DoubleWeave(args, 0, env).AsClip(), 2, 0, env);
 }
 
 
@@ -847,8 +850,8 @@ static AVSValue __cdecl Create_Pulldown(AVSValue args, void*, IScriptEnvironment
 {
   PClip clip = args[0].AsClip();
   PClip* child_array = new PClip[2];
-  child_array[0] = new SelectEvery(clip, 5, args[1].AsInt() % 5);
-  child_array[1] = new SelectEvery(clip, 5, args[2].AsInt() % 5);
+  child_array[0] = new SelectEvery(clip, 5, args[1].AsInt() % 5, env);
+  child_array[1] = new SelectEvery(clip, 5, args[2].AsInt() % 5, env);
   return new AssumeFrameBased(new Interleave(2, child_array, env));
 }
 
@@ -856,7 +859,7 @@ static AVSValue __cdecl Create_Pulldown(AVSValue args, void*, IScriptEnvironment
 static AVSValue __cdecl Create_SwapFields(AVSValue args, void*, IScriptEnvironment* env) 
 {
   return new SelectEvery(new DoubleWeaveFields(new ComplementParity(
-    new SeparateFields(args[0].AsClip(), env))), 2, 0);
+	  new SeparateFields(args[0].AsClip(), env))), 2, 0, env);
 }
 
 
