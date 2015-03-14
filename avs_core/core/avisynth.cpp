@@ -611,6 +611,8 @@ private:
   typedef std::vector<MTGuard*> MTGuardRegistryType;
   MTGuardRegistryType MTGuardRegistry;
   Prefetcher *prefetcher;
+
+  void InitMT();
 };
 
 
@@ -695,16 +697,13 @@ ScriptEnvironment::ScriptEnvironment()
     global_var_table->Set("$ScriptFile$", AVSValue());
     global_var_table->Set("$ScriptDir$",  AVSValue());
 
-    global_var_table->Set("MT_NICE_FILTER",     (int)MT_NICE_FILTER);
-    global_var_table->Set("MT_MULTI_INSTANCE",  (int)MT_MULTI_INSTANCE);
-    global_var_table->Set("MT_SERIALIZED",      (int)MT_SERIALIZED);
-
     plugin_manager = new PluginManager(this);
     plugin_manager->AddAutoloadDir("USER_PLUS_PLUGINS", false);
     plugin_manager->AddAutoloadDir("MACHINE_PLUS_PLUGINS", false);
     plugin_manager->AddAutoloadDir("USER_CLASSIC_PLUGINS", false);
     plugin_manager->AddAutoloadDir("MACHINE_CLASSIC_PLUGINS", false);
 
+    InitMT();
     thread_pool = new ThreadPool(std::thread::hardware_concurrency());
 
     ExportBuiltinFilters();
@@ -718,6 +717,141 @@ ScriptEnvironment::ScriptEnvironment()
     // must leak a little memory.
     throw AvisynthError(_strdup(err.msg));
   }
+}
+
+void ScriptEnvironment::InitMT()
+{
+    global_var_table->Set("MT_NICE_FILTER", (int)MT_NICE_FILTER);
+    global_var_table->Set("MT_MULTI_INSTANCE", (int)MT_MULTI_INSTANCE);
+    global_var_table->Set("MT_SERIALIZED", (int)MT_SERIALIZED);
+
+    this->SetFilterMTMode("AVISource", MtMode::MT_SERIALIZED, false);
+    this->SetFilterMTMode("AVIFileSource", MtMode::MT_SERIALIZED, false);
+    this->SetFilterMTMode("WAVSource", MtMode::MT_SERIALIZED, false);
+    this->SetFilterMTMode("OpenDMLSource", MtMode::MT_SERIALIZED, false);
+    this->SetFilterMTMode("AVISource", MtMode::MT_SERIALIZED, false);
+
+    this->SetFilterMTMode("ChangeFPS", MtMode::MT_SERIALIZED, false);
+    this->SetFilterMTMode("ConvertFPS", MtMode::MT_NICE_FILTER, false);
+    this->SetFilterMTMode("ColorYUV", MtMode::MT_NICE_FILTER, false);
+    this->SetFilterMTMode("StackVertical", MtMode::MT_NICE_FILTER, false);
+    this->SetFilterMTMode("StackHorizontal", MtMode::MT_NICE_FILTER, false);
+    this->SetFilterMTMode("Overlay", MtMode::MT_NICE_FILTER, false);
+
+    this->SetFilterMTMode("ConvertToRGB", MtMode::MT_NICE_FILTER, false);
+    this->SetFilterMTMode("ConvertToRGB24", MtMode::MT_NICE_FILTER, false);
+    this->SetFilterMTMode("ConvertToRGB32", MtMode::MT_NICE_FILTER, false);
+    this->SetFilterMTMode("ConvertToY8", MtMode::MT_NICE_FILTER, false);
+    this->SetFilterMTMode("ConvertToYV12", MtMode::MT_NICE_FILTER, false);
+    this->SetFilterMTMode("ConvertToYV24", MtMode::MT_NICE_FILTER, false);
+    this->SetFilterMTMode("ConvertToYV16", MtMode::MT_NICE_FILTER, false);
+    this->SetFilterMTMode("ConvertToYV411", MtMode::MT_NICE_FILTER, false);
+    this->SetFilterMTMode("ConvertToYUY2", MtMode::MT_NICE_FILTER, false);
+    this->SetFilterMTMode("ConvertBackToYUY2", MtMode::MT_NICE_FILTER, false);
+
+    this->SetFilterMTMode("GeneralConvolution", MtMode::MT_NICE_FILTER, false);
+    this->SetFilterMTMode("UnalignedSplice", MtMode::MT_NICE_FILTER, false);
+    this->SetFilterMTMode("AlignedSplice", MtMode::MT_NICE_FILTER, false);
+    this->SetFilterMTMode("AudioDub", MtMode::MT_NICE_FILTER, false);
+
+    this->SetFilterMTMode("Trim", MtMode::MT_NICE_FILTER, false);
+    this->SetFilterMTMode("AudioTrim", MtMode::MT_NICE_FILTER, false);
+    this->SetFilterMTMode("FreezeFrame", MtMode::MT_NICE_FILTER, false);
+    this->SetFilterMTMode("DeleteFrame", MtMode::MT_NICE_FILTER, false);
+    this->SetFilterMTMode("DuplicateFrame", MtMode::MT_NICE_FILTER, false);
+    this->SetFilterMTMode("Reverse", MtMode::MT_NICE_FILTER, false);
+    this->SetFilterMTMode("Loop", MtMode::MT_NICE_FILTER, false);
+
+    this->SetFilterMTMode("Interleave", MtMode::MT_NICE_FILTER, false);
+    this->SetFilterMTMode("SeparateColumns", MtMode::MT_NICE_FILTER, false);
+    this->SetFilterMTMode("WeaveColumns", MtMode::MT_NICE_FILTER, false);
+    this->SetFilterMTMode("WeaveRows", MtMode::MT_NICE_FILTER, false);
+    this->SetFilterMTMode("DoubleWeave", MtMode::MT_NICE_FILTER, false);
+    this->SetFilterMTMode("SwapFields", MtMode::MT_NICE_FILTER, false);
+    this->SetFilterMTMode("ComplementParity", MtMode::MT_NICE_FILTER, false);
+    this->SetFilterMTMode("AssumeTFF", MtMode::MT_NICE_FILTER, false);
+    this->SetFilterMTMode("AssumeBFF", MtMode::MT_NICE_FILTER, false);
+    this->SetFilterMTMode("AssumeFieldBased", MtMode::MT_NICE_FILTER, false);
+    this->SetFilterMTMode("AssumeFrameBased", MtMode::MT_NICE_FILTER, false);
+    this->SetFilterMTMode("SeparateRows", MtMode::MT_NICE_FILTER, false);
+    this->SetFilterMTMode("Weave", MtMode::MT_NICE_FILTER, false);
+    this->SetFilterMTMode("Pulldown", MtMode::MT_NICE_FILTER, false);
+    this->SetFilterMTMode("SelectEvery", MtMode::MT_NICE_FILTER, false);
+    this->SetFilterMTMode("SelectEven", MtMode::MT_NICE_FILTER, false);
+    this->SetFilterMTMode("SelectOdd", MtMode::MT_NICE_FILTER, false);
+    this->SetFilterMTMode("Bob", MtMode::MT_NICE_FILTER, false);
+    this->SetFilterMTMode("SelectRangeEvery", MtMode::MT_NICE_FILTER, false);
+
+    this->SetFilterMTMode("Blur", MtMode::MT_NICE_FILTER, false);
+    this->SetFilterMTMode("Sharpen", MtMode::MT_NICE_FILTER, false);
+    this->SetFilterMTMode("TemporalSoften", MtMode::MT_NICE_FILTER, false);
+    this->SetFilterMTMode("SpatialSoften", MtMode::MT_NICE_FILTER, false);
+
+    this->SetFilterMTMode("Greyscale", MtMode::MT_NICE_FILTER, false);
+    this->SetFilterMTMode("Grayscale", MtMode::MT_NICE_FILTER, false);
+    this->SetFilterMTMode("Histogram", MtMode::MT_NICE_FILTER, false);
+
+    this->SetFilterMTMode("Mask", MtMode::MT_NICE_FILTER, false);
+    this->SetFilterMTMode("ColorKeyMask", MtMode::MT_NICE_FILTER, false);
+    this->SetFilterMTMode("ResetMask", MtMode::MT_NICE_FILTER, false);
+    this->SetFilterMTMode("Invert", MtMode::MT_NICE_FILTER, false);
+    this->SetFilterMTMode("ShowAlpha", MtMode::MT_NICE_FILTER, false);
+    this->SetFilterMTMode("ShowRed", MtMode::MT_NICE_FILTER, false);
+    this->SetFilterMTMode("ShowGreen", MtMode::MT_NICE_FILTER, false);
+    this->SetFilterMTMode("ShowBlue", MtMode::MT_NICE_FILTER, false);
+    this->SetFilterMTMode("MergeRGB", MtMode::MT_NICE_FILTER, false);
+    this->SetFilterMTMode("MergeARGB", MtMode::MT_NICE_FILTER, false);
+    this->SetFilterMTMode("Layer", MtMode::MT_NICE_FILTER, false);
+    this->SetFilterMTMode("Subtract", MtMode::MT_NICE_FILTER, false);
+
+    this->SetFilterMTMode("Levels", MtMode::MT_NICE_FILTER, false);
+    this->SetFilterMTMode("RGBAdjust", MtMode::MT_NICE_FILTER, false);
+    this->SetFilterMTMode("Tweak", MtMode::MT_NICE_FILTER, false);
+    this->SetFilterMTMode("MaskHS", MtMode::MT_NICE_FILTER, false);
+    this->SetFilterMTMode("Limiter", MtMode::MT_NICE_FILTER, false);
+
+    this->SetFilterMTMode("Merge", MtMode::MT_NICE_FILTER, false);
+    this->SetFilterMTMode("MergeChroma", MtMode::MT_NICE_FILTER, false);
+    this->SetFilterMTMode("MergeLuma", MtMode::MT_NICE_FILTER, false);
+
+    this->SetFilterMTMode("FixLuminance", MtMode::MT_NICE_FILTER, false);
+    this->SetFilterMTMode("FixBrokenChromaUpsampling", MtMode::MT_NICE_FILTER, false);
+    this->SetFilterMTMode("PeculiarBlend", MtMode::MT_NICE_FILTER, false);
+    this->SetFilterMTMode("SkewRows", MtMode::MT_NICE_FILTER, false);
+
+    this->SetFilterMTMode("SwapUV", MtMode::MT_NICE_FILTER, false);
+    this->SetFilterMTMode("UToY", MtMode::MT_NICE_FILTER, false);
+    this->SetFilterMTMode("VToY", MtMode::MT_NICE_FILTER, false);
+    this->SetFilterMTMode("UToY8", MtMode::MT_NICE_FILTER, false);
+    this->SetFilterMTMode("VToY8", MtMode::MT_NICE_FILTER, false);
+    this->SetFilterMTMode("YToUV", MtMode::MT_NICE_FILTER, false);
+
+    this->SetFilterMTMode("PointResize", MtMode::MT_NICE_FILTER, false);
+    this->SetFilterMTMode("BilinearResize", MtMode::MT_NICE_FILTER, false);
+    this->SetFilterMTMode("BicubicResize", MtMode::MT_NICE_FILTER, false);
+    this->SetFilterMTMode("LanczosResize", MtMode::MT_NICE_FILTER, false);
+    this->SetFilterMTMode("Lanczos4Resize", MtMode::MT_NICE_FILTER, false);
+    this->SetFilterMTMode("BlackmanResize", MtMode::MT_NICE_FILTER, false);
+    this->SetFilterMTMode("Spline16Resize", MtMode::MT_NICE_FILTER, false);
+    this->SetFilterMTMode("Spline36Resize", MtMode::MT_NICE_FILTER, false);
+    this->SetFilterMTMode("Spline64Resize", MtMode::MT_NICE_FILTER, false);
+    this->SetFilterMTMode("GaussResize", MtMode::MT_NICE_FILTER, false);
+    this->SetFilterMTMode("SincResize", MtMode::MT_NICE_FILTER, false);
+
+    this->SetFilterMTMode("VerticalReduceBy2", MtMode::MT_NICE_FILTER, false);
+    this->SetFilterMTMode("HorizontalReduceBy2", MtMode::MT_NICE_FILTER, false);
+    this->SetFilterMTMode("ReduceBy2", MtMode::MT_NICE_FILTER, false);
+
+    this->SetFilterMTMode("FlipVertical", MtMode::MT_NICE_FILTER, false);
+    this->SetFilterMTMode("FlipHorizontal", MtMode::MT_NICE_FILTER, false);
+    this->SetFilterMTMode("Crop", MtMode::MT_NICE_FILTER, false);
+    this->SetFilterMTMode("CropBottom", MtMode::MT_NICE_FILTER, false);
+    this->SetFilterMTMode("AddBorders", MtMode::MT_NICE_FILTER, false);
+    this->SetFilterMTMode("Letterbox", MtMode::MT_NICE_FILTER, false);
+
+    this->SetFilterMTMode("TurnLeft", MtMode::MT_NICE_FILTER, false);
+    this->SetFilterMTMode("TurnRight", MtMode::MT_NICE_FILTER, false);
+    this->SetFilterMTMode("Turn180", MtMode::MT_NICE_FILTER, false);
 }
 
 ScriptEnvironment::~ScriptEnvironment() {

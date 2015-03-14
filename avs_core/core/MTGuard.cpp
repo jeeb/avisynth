@@ -226,12 +226,12 @@ AVSValue MTGuard::Create(const AVSFunction* func, std::vector<AVSValue>* args2, 
 
     bool mode_forced;
     MtMode mode = env->GetFilterMTMode(func->name, &mode_forced);
-    if ( !mode_forced
+    /*if ( !mode_forced
       && (filter_instance->GetVersion() >= 5)
       && (filter_instance->SetCacheHints(CACHE_GET_MTMODE, 0) != 0) )
     {
       mode = (MtMode)filter_instance->SetCacheHints(CACHE_GET_MTMODE, 0);
-    }
+    }*/
 
     switch (mode)
     {
