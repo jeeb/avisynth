@@ -534,7 +534,7 @@ public:
 
 class VideoFrame {
   volatile long refcount;
-  VideoFrameBuffer* const vfb;
+  VideoFrameBuffer* vfb;
 
   // Due to technical reasons these members are not const, but should be treated as such.
   // That means do not modify them once the class has been constructed.

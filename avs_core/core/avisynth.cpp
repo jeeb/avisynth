@@ -736,6 +736,11 @@ ScriptEnvironment::~ScriptEnvironment() {
   while (global_var_table)
     PopContextGlobal();
 
+  // We collect a list of allocated VFBs here
+  std::unordered_set<VideoFrameBuffer*> vfb_set;
+  vfb_set.reserve(FrameRegistry.size());
+
+  // Delete all VideoFrame objects
   const FrameRegistryType::iterator end_it = FrameRegistry.end();
   for (
     FrameRegistryType::iterator it = FrameRegistry.begin();
@@ -743,14 +748,24 @@ ScriptEnvironment::~ScriptEnvironment() {
     ++it)
   {
     VideoFrame *frame = it->second;
-    assert(frame->refcount == 0);
 
-    if (frame->vfb->refcount == 0)
-      delete frame->vfb;
+	vfb_set.insert(frame->vfb);
+    frame->vfb = 0;
 
-    delete frame;
+	//assert(0 == frame->refcount);
+    if (0 == frame->refcount)
+    {
+        delete frame;
+    }
   }
 
+  // Delete all VFBs
+  for (const auto& vfb : vfb_set)
+  {
+    //assert(0 == vfb->refcount);
+    delete vfb;
+  }
+	
   delete plugin_manager;
   delete [] vsprintf_buf;
 
