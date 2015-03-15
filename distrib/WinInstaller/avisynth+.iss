@@ -44,6 +44,7 @@ UninstallDisplayIcon=..\Icons\Ico\InstIcon.ico
 WizardImageFile=WizardImageBig.bmp
 WizardSmallImageFile=WizardImageSmall.bmp
 ChangesAssociations=yes
+ChangesEnvironment=yes
 
 Compression=lzma2/ultra
 SolidCompression=yes
@@ -177,6 +178,8 @@ Root: HKLM64; Subkey: "Software\AviSynth"; ValueName:""; ValueType: string; Valu
 Root: HKLM64; Subkey: "Software\AviSynth"; ValueName:"plugindir2_5"; ValueType: string; ValueData: "{code:GetAvsDirsPlus|Plug64}"; Components: main\avs64; Check:IsWin64; Flags: uninsdeletevalue
 Root: HKLM64; Subkey: "Software\AviSynth"; ValueName:"plugindir+"; ValueType: string; ValueData: "{code:GetAvsDirsPlus|PlugPlus64}"; Components: main\avs64; Check:IsWin64; Flags: uninsdeletevalue
 
+;Set SDK Environment Variable
+Root: HKLM; Subkey: "SYSTEM\CurrentControlSet\Control\Session Manager\Environment"; ValueName: "AVISYNTH_SDK_PATH"; ValueType: string; ValueData: "{app}\FilterSDK"; Components: sdk; Flags: uninsdeletevalue
 ;Delete Legacy AVS Install Entry
 Root: HKLM32; Subkey: "Software\Microsoft\Windows\CurrentVersion\Uninstall\AviSynth"; Flags: deletekey; Components: avsmig\backup
 ;Add entry for legacy AviSynth Program Folder
