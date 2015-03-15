@@ -327,7 +327,7 @@ public:
     core->SetFilterMTMode(filter, mode, force);
   }
 
-  virtual MtMode __stdcall GetFilterMTMode(const char* filter, bool* is_forced) const
+  virtual MtMode __stdcall GetFilterMTMode(const AVSFunction* filter, bool* is_forced) const
   {
     return core->GetFilterMTMode(filter, is_forced);
   }

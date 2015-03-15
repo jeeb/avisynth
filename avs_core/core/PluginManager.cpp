@@ -637,8 +637,8 @@ void PluginManager::AddFunction(const char* name, const char* params, IScriptEnv
   }
   else
   {
-      assert(newFunc.IsScriptFunction());
       newFunc = AVSFunction(name, std::string(), params, apply, user_data);
+      assert(newFunc.IsScriptFunction());
   }
   FunctionList& list = functions[newFunc.name];
   list.push_back(newFunc);

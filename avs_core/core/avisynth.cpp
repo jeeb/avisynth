@@ -437,7 +437,7 @@ private:
   }
 
 public:
-  static const char* DEFAULT_MODE;
+  static const std::string DEFAULT_MODE_SPECIFIER;
 
   MtMode DefaultMode;
   MTModeMapType PerFilterMap;
@@ -455,7 +455,7 @@ public:
       throw AvisynthError("Invalid MT mode specified.");
     }
 
-    if (filter == DEFAULT_MODE)
+    if (streqi(filter, DEFAULT_MODE_SPECIFIER.c_str()))
     {
       DefaultMode = mode;
       return;
@@ -468,11 +468,12 @@ public:
       ForcedMap[f] = mode;
   }
 
-  MtMode GetMode(const char* filter, bool* is_forced) const
+  MtMode GetMode(const std::string& filter, bool* is_forced, bool* found) const
   {
     *is_forced = false;
+    *found = true;
 
-    if (filter == DEFAULT_MODE)
+    if (streqi(filter.c_str(), DEFAULT_MODE_SPECIFIER.c_str()))
       return DefaultMode;
 
     std::string f = NormalizeFilterName(filter);
@@ -487,11 +488,12 @@ public:
     if (it != PerFilterMap.end())
       return it->second;
 
+    *found = false;
     return DefaultMode;
   }
 
 };
-const char* MTMapState::DEFAULT_MODE = NULL;
+const std::string MTMapState::DEFAULT_MODE_SPECIFIER = "DEFAULT_MT_MODE";
 
 #include "vartable.h"
 #include "ThreadPool.h"
@@ -552,7 +554,7 @@ public:
   virtual void __stdcall AdjustMemoryConsumption(size_t amount, bool minus);
   virtual bool __stdcall Invoke(AVSValue *result, const char* name, const AVSValue& args, const char* const* arg_names=0);
   virtual void __stdcall SetFilterMTMode(const char* filter, MtMode mode, bool force);
-  virtual MtMode __stdcall GetFilterMTMode(const char* filter, bool* is_forced) const;
+  virtual MtMode __stdcall GetFilterMTMode(const AVSFunction* filter, bool* is_forced) const;
   virtual void __stdcall ParallelJob(ThreadWorkerFuncPtr jobFunc, void* jobData, IJobCompletion* completion);
   virtual IJobCompletion* __stdcall NewCompletion(size_t capacity);
   virtual size_t  __stdcall GetProperty(AvsEnvProperty prop);
@@ -944,19 +946,27 @@ void __stdcall ScriptEnvironment::ParallelJob(ThreadWorkerFuncPtr jobFunc, void*
 
 void __stdcall ScriptEnvironment::SetFilterMTMode(const char* filter, MtMode mode, bool force)
 {
-
-  if (streqi(filter, ""))
-    filter = MTMapState::DEFAULT_MODE;
+  assert(NULL != filter);
+  assert("" != filter);
 
   MTMap.SetMode(filter, mode, force);
 }
 
-MtMode __stdcall ScriptEnvironment::GetFilterMTMode(const char* filter, bool* is_forced) const
+MtMode __stdcall ScriptEnvironment::GetFilterMTMode(const AVSFunction* filter, bool* is_forced) const
 {
-  if (streqi(filter, ""))
-    filter = MTMapState::DEFAULT_MODE;
+  assert(NULL != filter);
+  assert(!filter->name.empty());
+  assert(!filter->canon_name.empty());
 
-  return MTMap.GetMode(filter, is_forced);
+  bool found;
+  MtMode ret;
+
+  ret = MTMap.GetMode(filter->canon_name, is_forced, &found);
+  if (found)
+    return ret;
+
+  ret = MTMap.GetMode(filter->name, is_forced, &found);
+  return ret; 
 }
 
 void* __stdcall ScriptEnvironment::Allocate(size_t nBytes, size_t alignment, AvsAllocType type)
