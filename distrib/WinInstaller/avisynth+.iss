@@ -137,6 +137,8 @@ Source: "..\docs\english\*"; DestDir: "{app}\docs\English"; Components: docs\en 
 ;Source: "..\docs\russian\*"; DestDir: "{app}\docs\Russian"; Components: docs\ru; Flags: ignoreversion recursesubdirs 
 
 Source: "..\FilterSDK\*"; DestDir: "{app}\FilterSDK"; Components: sdk; Flags: ignoreversion recursesubdirs
+Source: "..\..\avs_core\include\*"; DestDir: "{app}\FilterSDK\include"; Components: sdk; Flags: ignoreversion recursesubdirs
+
 Source: "..\Examples\*"; DestDir: "{app}\Examples"; Components: examples; Flags: recursesubdirs 
 
 [Registry]
