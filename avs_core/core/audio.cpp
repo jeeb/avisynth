@@ -81,29 +81,29 @@ static __int64 signed_saturated_add64(__int64 x, __int64 y) {
 ********************************************************************/
 
 extern const AVSFunction Audio_filters[] = {
-                                { "DelayAudio", "cf", DelayAudio::Create },
-                                { "AmplifydB", "cf+", Amplify::Create_dB },
-                                { "Amplify", "cf+", Amplify::Create },
-                                { "AssumeSampleRate", "ci", AssumeRate::Create },
-                                { "Normalize", "c[volume]f[show]b", Normalize::Create },
-                                { "MixAudio", "cc[clip1_factor]f[clip2_factor]f", MixAudio::Create },
-                                { "ResampleAudio", "ci[]i", ResampleAudio::Create },
-                                { "ConvertToMono", "c", ConvertToMono::Create },
-                                { "EnsureVBRMP3Sync", "c", EnsureVBRMP3Sync::Create },
-                                { "MergeChannels", "c+", MergeChannels::Create },
-                                { "MonoToStereo", "cc", MergeChannels::Create },
-                                { "GetLeftChannel", "c", GetChannel::Create_left },
-                                { "GetRightChannel", "c", GetChannel::Create_right },
-                                { "GetChannel", "ci+", GetChannel::Create_n },
-                                { "GetChannels", "ci+", GetChannel::Create_n },     // Alias to ease use!
-                                { "KillVideo", "c", KillVideo::Create },
-                                { "KillAudio", "c", KillAudio::Create },
-                                { "ConvertAudioTo16bit", "c", ConvertAudio::Create_16bit },   // in convertaudio.cpp
-                                { "ConvertAudioTo8bit", "c", ConvertAudio::Create_8bit },
-                                { "ConvertAudioTo24bit", "c", ConvertAudio::Create_24bit },
-                                { "ConvertAudioTo32bit", "c", ConvertAudio::Create_32bit },
-                                { "ConvertAudioToFloat", "c", ConvertAudio::Create_float },
-                                { "ConvertAudio", "cii", ConvertAudio::Create_Any }, // For plugins to Invoke()
+                                { "DelayAudio", BUILTIN_FUNC_PREFIX, "cf", DelayAudio::Create },
+                                { "AmplifydB", BUILTIN_FUNC_PREFIX, "cf+", Amplify::Create_dB },
+                                { "Amplify", BUILTIN_FUNC_PREFIX, "cf+", Amplify::Create },
+                                { "AssumeSampleRate", BUILTIN_FUNC_PREFIX, "ci", AssumeRate::Create },
+                                { "Normalize", BUILTIN_FUNC_PREFIX, "c[volume]f[show]b", Normalize::Create },
+                                { "MixAudio", BUILTIN_FUNC_PREFIX, "cc[clip1_factor]f[clip2_factor]f", MixAudio::Create },
+                                { "ResampleAudio", BUILTIN_FUNC_PREFIX, "ci[]i", ResampleAudio::Create },
+                                { "ConvertToMono", BUILTIN_FUNC_PREFIX, "c", ConvertToMono::Create },
+                                { "EnsureVBRMP3Sync", BUILTIN_FUNC_PREFIX, "c", EnsureVBRMP3Sync::Create },
+                                { "MergeChannels", BUILTIN_FUNC_PREFIX, "c+", MergeChannels::Create },
+                                { "MonoToStereo", BUILTIN_FUNC_PREFIX, "cc", MergeChannels::Create },
+                                { "GetLeftChannel", BUILTIN_FUNC_PREFIX, "c", GetChannel::Create_left },
+                                { "GetRightChannel", BUILTIN_FUNC_PREFIX, "c", GetChannel::Create_right },
+                                { "GetChannel", BUILTIN_FUNC_PREFIX, "ci+", GetChannel::Create_n },
+                                { "GetChannels", BUILTIN_FUNC_PREFIX, "ci+", GetChannel::Create_n },     // Alias to ease use!
+                                { "KillVideo", BUILTIN_FUNC_PREFIX, "c", KillVideo::Create },
+                                { "KillAudio", BUILTIN_FUNC_PREFIX, "c", KillAudio::Create },
+                                { "ConvertAudioTo16bit", BUILTIN_FUNC_PREFIX, "c", ConvertAudio::Create_16bit },   // in convertaudio.cpp
+                                { "ConvertAudioTo8bit", BUILTIN_FUNC_PREFIX, "c", ConvertAudio::Create_8bit },
+                                { "ConvertAudioTo24bit", BUILTIN_FUNC_PREFIX, "c", ConvertAudio::Create_24bit },
+                                { "ConvertAudioTo32bit", BUILTIN_FUNC_PREFIX, "c", ConvertAudio::Create_32bit },
+                                { "ConvertAudioToFloat", BUILTIN_FUNC_PREFIX, "c", ConvertAudio::Create_float },
+                                { "ConvertAudio", BUILTIN_FUNC_PREFIX, "cii", ConvertAudio::Create_Any }, // For plugins to Invoke()
                                 { 0 }
                               };
 

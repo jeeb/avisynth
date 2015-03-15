@@ -52,7 +52,7 @@
 ********************************************************************/
 
 extern const AVSFunction Histogram_filters[] = {
-  { "Histogram", "c[mode]s[].", Histogram::Create },   // src clip
+  { "Histogram", BUILTIN_FUNC_PREFIX, "c[mode]s[].", Histogram::Create },   // src clip
   { 0 }
 };
 

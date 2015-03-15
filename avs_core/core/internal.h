@@ -41,6 +41,7 @@
 
 #define AVS_CLASSIC_VERSION 2.60  // Note: Used by VersionNumber() script function
 #define AVS_COPYRIGHT "\n\xA9 2000-2015 Ben Rudiak-Gould, et al.\nhttp://avisynth.nl\n\xA9 2013-2015 AviSynth+ Project\nhttp://avs-plus.net"
+#define BUILTIN_FUNC_PREFIX "AviSynth"
 
 enum MANAGE_CACHE_KEYS
 {
@@ -53,14 +54,47 @@ enum MANAGE_CACHE_KEYS
 };
 
 #include <avisynth.h>
-#include <cstring>
+#include <string>
 #include "parser/script.h" // TODO we only need ScriptFunction from here
 
-struct AVSFunction {
-  const char* name;
-  const char* param_types;
-  AVSValue (__cdecl *apply)(AVSValue args, void* user_data, IScriptEnvironment* env);
+class AVSFunction {
+
+public:
+
+  typedef AVSValue (__cdecl *apply_func_t)(AVSValue args, void* user_data, IScriptEnvironment* env);
+
+  apply_func_t apply;
+  std::string name;
+  std::string canon_name;   // TODO make this const char* too and remove <string> header
+  std::string param_types;
   void* user_data;
+
+  AVSFunction() : 
+      AVSFunction(std::string(), std::string(), std::string(), NULL, NULL)
+  {}
+
+  AVSFunction(void*) : 
+      AVSFunction(std::string(), std::string(), std::string(), NULL, NULL)
+  {}
+
+  AVSFunction(const std::string& _name, const std::string& _plugin_basename, const std::string& _param_types, apply_func_t _apply) :
+      AVSFunction(_name, _plugin_basename, _param_types, _apply, NULL)
+  {}
+
+  AVSFunction(const std::string& _name, const std::string& _plugin_basename, const std::string& _param_types, apply_func_t _apply, void *_user_data) :
+      apply(_apply), name(_name), canon_name(), param_types(_param_types), user_data(_user_data)
+  {
+      if (!_name.empty() && !_plugin_basename.empty())
+      {
+        canon_name = _plugin_basename;
+        canon_name.append("_").append(_name);
+      }
+  }
+
+  bool empty() const
+  {
+      return name.empty();
+  }
 
   bool IsScriptFunction() const
   {

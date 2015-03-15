@@ -50,13 +50,13 @@
 ********************************************************************/
 
 extern const AVSFunction Swap_filters[] = {
-  {  "SwapUV","c", SwapUV::CreateSwapUV },
-  {  "UToY","c", SwapUVToY::CreateUToY },
-  {  "VToY","c", SwapUVToY::CreateVToY },
-  {  "UToY8","c", SwapUVToY::CreateUToY8 },
-  {  "VToY8","c", SwapUVToY::CreateVToY8 },
-  {  "YToUV","cc", SwapYToUV::CreateYToUV },
-  {  "YToUV","ccc", SwapYToUV::CreateYToYUV },
+  {  "SwapUV", BUILTIN_FUNC_PREFIX, "c", SwapUV::CreateSwapUV },
+  {  "UToY",   BUILTIN_FUNC_PREFIX, "c", SwapUVToY::CreateUToY },
+  {  "VToY",   BUILTIN_FUNC_PREFIX, "c", SwapUVToY::CreateVToY },
+  {  "UToY8",  BUILTIN_FUNC_PREFIX, "c", SwapUVToY::CreateUToY8 },
+  {  "VToY8",  BUILTIN_FUNC_PREFIX, "c", SwapUVToY::CreateVToY8 },
+  {  "YToUV",  BUILTIN_FUNC_PREFIX, "cc", SwapYToUV::CreateYToUV },
+  {  "YToUV",  BUILTIN_FUNC_PREFIX, "ccc", SwapYToUV::CreateYToYUV },
   { 0 }
 };
 

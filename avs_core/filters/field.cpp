@@ -44,27 +44,27 @@
 ********************************************************************/
 
 extern const AVSFunction Field_filters[] = {
-  { "ComplementParity", "c", ComplementParity::Create },
-  { "AssumeTFF", "c", AssumeParity::Create, (void*)true },
-  { "AssumeBFF", "c", AssumeParity::Create, (void*)false },
-  { "AssumeFieldBased", "c", AssumeFieldBased::Create },
-  { "AssumeFrameBased", "c", AssumeFrameBased::Create },
-  { "SeparateColumns", "ci", SeparateColumns::Create },
-  { "WeaveColumns", "ci", WeaveColumns::Create },
-  { "SeparateRows", "ci", SeparateRows::Create },
-  { "WeaveRows", "ci", WeaveRows::Create },
-  { "SeparateFields", "c", SeparateFields::Create },
-  { "Weave", "c", Create_Weave },
-  { "DoubleWeave", "c", Create_DoubleWeave },
-  { "Pulldown", "cii", Create_Pulldown },
-  { "SelectEvery", "cii*", SelectEvery::Create },
-  { "SelectEven", "c", SelectEvery::Create_SelectEven },
-  { "SelectOdd", "c", SelectEvery::Create_SelectOdd },
-  { "Interleave", "c+", Interleave::Create },
-  { "SwapFields", "c", Create_SwapFields },
-  { "Bob", "c[b]f[c]f[height]i", Create_Bob },
-  { "SelectRangeEvery", "c[every]i[length]i[offset]i[audio]b", SelectRangeEvery::Create},
-  { 0 }
+  { "ComplementParity", BUILTIN_FUNC_PREFIX, "c", ComplementParity::Create },
+  { "AssumeTFF",        BUILTIN_FUNC_PREFIX, "c", AssumeParity::Create, (void*)true },
+  { "AssumeBFF",        BUILTIN_FUNC_PREFIX, "c", AssumeParity::Create, (void*)false },
+  { "AssumeFieldBased", BUILTIN_FUNC_PREFIX, "c", AssumeFieldBased::Create },
+  { "AssumeFrameBased", BUILTIN_FUNC_PREFIX, "c", AssumeFrameBased::Create },
+  { "SeparateColumns",  BUILTIN_FUNC_PREFIX, "ci", SeparateColumns::Create },
+  { "WeaveColumns",     BUILTIN_FUNC_PREFIX, "ci", WeaveColumns::Create },
+  { "SeparateRows",     BUILTIN_FUNC_PREFIX, "ci", SeparateRows::Create },
+  { "WeaveRows",        BUILTIN_FUNC_PREFIX, "ci", WeaveRows::Create },
+  { "SeparateFields",   BUILTIN_FUNC_PREFIX, "c", SeparateFields::Create },
+  { "Weave",            BUILTIN_FUNC_PREFIX, "c", Create_Weave },
+  { "DoubleWeave",      BUILTIN_FUNC_PREFIX, "c", Create_DoubleWeave },
+  { "Pulldown",         BUILTIN_FUNC_PREFIX, "cii", Create_Pulldown },
+  { "SelectEvery",      BUILTIN_FUNC_PREFIX, "cii*", SelectEvery::Create },
+  { "SelectEven",       BUILTIN_FUNC_PREFIX, "c", SelectEvery::Create_SelectEven },
+  { "SelectOdd",        BUILTIN_FUNC_PREFIX, "c", SelectEvery::Create_SelectOdd },
+  { "Interleave",       BUILTIN_FUNC_PREFIX, "c+", Interleave::Create },
+  { "SwapFields",       BUILTIN_FUNC_PREFIX, "c", Create_SwapFields },
+  { "Bob",              BUILTIN_FUNC_PREFIX, "c[b]f[c]f[height]i", Create_Bob },
+  { "SelectRangeEvery", BUILTIN_FUNC_PREFIX, "c[every]i[length]i[offset]i[audio]b", SelectRangeEvery::Create},
+  { NULL }
 };
 
 

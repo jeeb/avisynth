@@ -51,22 +51,22 @@
 ********************************************************************/
 
 extern const AVSFunction Layer_filters[] = {
-  { "Mask", "cc", Mask::Create },     // clip, mask
-  { "ColorKeyMask", "ci[]i[]i[]i", ColorKeyMask::Create },    // clip, color, tolerance[B, toleranceG, toleranceR]
-  { "ResetMask", "c", ResetMask::Create },
-  { "Invert", "c[channels]s", Invert::Create },
-  { "ShowAlpha", "c[pixel_type]s", ShowChannel::Create, (void*)3 },
-  { "ShowRed", "c[pixel_type]s", ShowChannel::Create, (void*)2 },
-  { "ShowGreen", "c[pixel_type]s", ShowChannel::Create, (void*)1 },
-  { "ShowBlue", "c[pixel_type]s", ShowChannel::Create, (void*)0 },
-  { "MergeRGB",  "ccc[pixel_type]s", MergeRGB::Create, (void*)0 },
-  { "MergeARGB", "cccc",             MergeRGB::Create, (void*)1 },
-  { "Layer", "cc[op]s[level]i[x]i[y]i[threshold]i[use_chroma]b", Layer::Create },
+  { "Mask",         BUILTIN_FUNC_PREFIX, "cc", Mask::Create },     // clip, mask
+  { "ColorKeyMask", BUILTIN_FUNC_PREFIX, "ci[]i[]i[]i", ColorKeyMask::Create },    // clip, color, tolerance[B, toleranceG, toleranceR]
+  { "ResetMask",    BUILTIN_FUNC_PREFIX, "c", ResetMask::Create },
+  { "Invert",       BUILTIN_FUNC_PREFIX, "c[channels]s", Invert::Create },
+  { "ShowAlpha",    BUILTIN_FUNC_PREFIX, "c[pixel_type]s", ShowChannel::Create, (void*)3 },
+  { "ShowRed",      BUILTIN_FUNC_PREFIX, "c[pixel_type]s", ShowChannel::Create, (void*)2 },
+  { "ShowGreen",    BUILTIN_FUNC_PREFIX, "c[pixel_type]s", ShowChannel::Create, (void*)1 },
+  { "ShowBlue",     BUILTIN_FUNC_PREFIX, "c[pixel_type]s", ShowChannel::Create, (void*)0 },
+  { "MergeRGB",     BUILTIN_FUNC_PREFIX, "ccc[pixel_type]s", MergeRGB::Create, (void*)0 },
+  { "MergeARGB",    BUILTIN_FUNC_PREFIX, "cccc",             MergeRGB::Create, (void*)1 },
+  { "Layer",        BUILTIN_FUNC_PREFIX, "cc[op]s[level]i[x]i[y]i[threshold]i[use_chroma]b", Layer::Create },
   /**
     * Layer(clip, overlayclip, operation, amount, xpos, ypos, [threshold=0], [use_chroma=true])
    **/
-  { "Subtract", "cc", Subtract::Create },
-  { 0,0,0 }
+  { "Subtract", BUILTIN_FUNC_PREFIX, "cc", Subtract::Create },
+  { NULL }
 };
 
 

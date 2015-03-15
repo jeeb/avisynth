@@ -46,9 +46,9 @@
 
 
 extern const AVSFunction Turn_filters[] = {
-  { "TurnLeft","c",Turn::create_turnleft },
-  { "TurnRight","c",Turn::create_turnright },
-  { "Turn180","c",Turn::create_turn180 },
+  { "TurnLeft",  BUILTIN_FUNC_PREFIX, "c",Turn::create_turnleft },
+  { "TurnRight", BUILTIN_FUNC_PREFIX, "c",Turn::create_turnright },
+  { "Turn180",   BUILTIN_FUNC_PREFIX, "c",Turn::create_turn180 },
   { 0 }
 };
 

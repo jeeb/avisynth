@@ -43,8 +43,8 @@
 
 
 extern const AVSFunction Cache_filters[] = {
-  { "Cache", "c", Cache::Create },
-  { "InternalCache", "c", Cache::Create },
+  { "Cache", BUILTIN_FUNC_PREFIX, "c", Cache::Create },
+  { "InternalCache", BUILTIN_FUNC_PREFIX, "c", Cache::Create },
   { 0 }
 };
 

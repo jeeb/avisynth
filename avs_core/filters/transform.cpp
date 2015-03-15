@@ -44,13 +44,13 @@
 ********************************************************************/
 
 extern const AVSFunction Transform_filters[] = {
-  { "FlipVertical", "c", FlipVertical::Create },     
-  { "FlipHorizontal", "c", FlipHorizontal::Create },     
-  { "Crop", "ciiii[align]b", Crop::Create },              // left, top, width, height *OR*
+  { "FlipVertical",   BUILTIN_FUNC_PREFIX, "c", FlipVertical::Create },     
+  { "FlipHorizontal", BUILTIN_FUNC_PREFIX, "c", FlipHorizontal::Create },     
+  { "Crop",           BUILTIN_FUNC_PREFIX, "ciiii[align]b", Crop::Create },              // left, top, width, height *OR*
                                                   //  left, top, -right, -bottom (VDub style)
-  { "CropBottom", "ci", Create_CropBottom },      // bottom amount
-  { "AddBorders", "ciiii[color]i", AddBorders::Create },  // left, top, right, bottom [,color]
-  { "Letterbox", "cii[x1]i[x2]i[color]i", Create_Letterbox },       // top, bottom, [left], [right] [,color]
+  { "CropBottom", BUILTIN_FUNC_PREFIX, "ci", Create_CropBottom },      // bottom amount
+  { "AddBorders", BUILTIN_FUNC_PREFIX, "ciiii[color]i", AddBorders::Create },  // left, top, right, bottom [,color]
+  { "Letterbox",  BUILTIN_FUNC_PREFIX, "cii[x1]i[x2]i[color]i", Create_Letterbox },       // top, bottom, [left], [right] [,color]
   { 0 }
 };
 

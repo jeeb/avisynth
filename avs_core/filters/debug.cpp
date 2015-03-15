@@ -201,11 +201,11 @@ public:
 ********************************************************************/
 
 extern const AVSFunction Debug_filters[] = {
-  { "Null", "c[copy]s", Null::Create },     // clip, copy
-  { "SetPlanarLegacyAlignment", "cb", PlanarLegacyAlignment::Create },     // clip, legacy alignment
-  { "Echo", "cc+", Echo::Create },
-  { "Preroll", "c[video]i[audio]f", Preroll::Create },
-  { 0,0,0 }
+  { "Null", BUILTIN_FUNC_PREFIX, "c[copy]s", Null::Create },     // clip, copy
+  { "SetPlanarLegacyAlignment", BUILTIN_FUNC_PREFIX, "cb", PlanarLegacyAlignment::Create },     // clip, legacy alignment
+  { "Echo", BUILTIN_FUNC_PREFIX, "cc+", Echo::Create },
+  { "Preroll", BUILTIN_FUNC_PREFIX, "c[video]i[audio]f", Preroll::Create },
+  { NULL }
 };
 
 

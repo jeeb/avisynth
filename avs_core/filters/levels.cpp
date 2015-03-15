@@ -49,11 +49,11 @@
 ********************************************************************/
 
 extern const AVSFunction Levels_filters[] = {
-  { "Levels", "cifiii[coring]b[dither]b", Levels::Create },        // src_low, gamma, src_high, dst_low, dst_high
-  { "RGBAdjust", "c[r]f[g]f[b]f[a]f[rb]f[gb]f[bb]f[ab]f[rg]f[gg]f[bg]f[ag]f[analyze]b[dither]b", RGBAdjust::Create },
-  { "Tweak", "c[hue]f[sat]f[bright]f[cont]f[coring]b[sse]b[startHue]f[endHue]f[maxSat]f[minSat]f[interp]f[dither]b", Tweak::Create },
-  { "MaskHS", "c[startHue]f[endHue]f[maxSat]f[minSat]f[coring]b", MaskHS::Create },
-  { "Limiter", "c[min_luma]i[max_luma]i[min_chroma]i[max_chroma]i[show]s", Limiter::Create },
+  { "Levels",    BUILTIN_FUNC_PREFIX, "cifiii[coring]b[dither]b", Levels::Create },        // src_low, gamma, src_high, dst_low, dst_high
+  { "RGBAdjust", BUILTIN_FUNC_PREFIX, "c[r]f[g]f[b]f[a]f[rb]f[gb]f[bb]f[ab]f[rg]f[gg]f[bg]f[ag]f[analyze]b[dither]b", RGBAdjust::Create },
+  { "Tweak",     BUILTIN_FUNC_PREFIX, "c[hue]f[sat]f[bright]f[cont]f[coring]b[sse]b[startHue]f[endHue]f[maxSat]f[minSat]f[interp]f[dither]b", Tweak::Create },
+  { "MaskHS",    BUILTIN_FUNC_PREFIX, "c[startHue]f[endHue]f[maxSat]f[minSat]f[coring]b", MaskHS::Create },
+  { "Limiter",   BUILTIN_FUNC_PREFIX, "c[min_luma]i[max_luma]i[min_chroma]i[max_chroma]i[show]s", Limiter::Create },
   { 0 }
 };
 

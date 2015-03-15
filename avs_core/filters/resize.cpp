@@ -45,9 +45,9 @@
 ********************************************************************/
 
 extern const AVSFunction Resize_filters[] = {
-  { "VerticalReduceBy2", "c", VerticalReduceBy2::Create },        // src clip
-  { "HorizontalReduceBy2", "c", HorizontalReduceBy2::Create },    // src clip
-  { "ReduceBy2", "c", Create_ReduceBy2 },                         // src clip
+  { "VerticalReduceBy2",   BUILTIN_FUNC_PREFIX, "c", VerticalReduceBy2::Create },        // src clip
+  { "HorizontalReduceBy2", BUILTIN_FUNC_PREFIX, "c", HorizontalReduceBy2::Create },    // src clip
+  { "ReduceBy2",           BUILTIN_FUNC_PREFIX, "c", Create_ReduceBy2 },                         // src clip
   { 0 }
 };
 

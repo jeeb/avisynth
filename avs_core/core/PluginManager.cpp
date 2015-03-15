@@ -499,7 +499,7 @@ PluginManager::~PluginManager()
   PluginInLoad = NULL;
 }
 
-void PluginManager::UpdateFunctionExports(const AVSFunction &func, const char *exportVar)
+void PluginManager::UpdateFunctionExports(const std::string &funcName, const std::string &funcParams, const char *exportVar)
 {
   if (exportVar == NULL)
     exportVar = "$PluginFunctions$";
@@ -509,16 +509,16 @@ void PluginManager::UpdateFunctionExports(const AVSFunction &func, const char *e
   std::string FnList(oldFnList);
   if (FnList.size() > 0)    // if the list is not empty...
     FnList.push_back(' ');  // ...add a delimiting whitespace 
-  FnList.append(func.name);
+  FnList.append(funcName);
   Env->SetGlobalVar(exportVar, AVSValue( Env->SaveString(FnList.c_str(), FnList.length() + 1) ));
 
   // Update $Plugin!...!Param$
   std::string param_id;
   param_id.reserve(128);
   param_id.append("$Plugin!");
-  param_id.append(func.name);
+  param_id.append(funcName);
   param_id.append("!Param$");
-  Env->SetGlobalVar( Env->SaveString(param_id.c_str(), param_id.length() + 1), AVSValue(func.param_types) );
+  Env->SetGlobalVar( Env->SaveString(param_id.c_str(), param_id.length() + 1), AVSValue(Env->SaveString(funcParams.c_str(), funcParams.length() + 1)) );
 }
 
 bool PluginManager::LoadPlugin(const char* path, bool throwOnError, AVSValue *result)
@@ -592,8 +592,8 @@ const AVSFunction* PluginManager::Lookup(const FunctionMap& map, const char* sea
           ++func_it)
     {
       const AVSFunction *func = &(*func_it);
-      if (AVSFunction::TypeMatch(func->param_types, args, num_args, strict, Env) &&
-          AVSFunction::ArgNameMatch(func->param_types, args_names_count, arg_names)
+      if (AVSFunction::TypeMatch(func->param_types.c_str(), args, num_args, strict, Env) &&
+          AVSFunction::ArgNameMatch(func->param_types.c_str(), args_names_count, arg_names)
          )
       {
         return func;
@@ -626,34 +626,25 @@ void PluginManager::AddFunction(const char* name, const char* params, IScriptEnv
   if (!IsValidParameterString(params))
     Env->ThrowError("%s has an invalid parameter string (bug in filter)", name);
 
-  const char *cname = Env->SaveString(name);
-  const char *cparams = Env->SaveString(params);
-
   FunctionMap& functions = Autoloading ? AutoloadedFunctions : ExternalFunctions;
 
-  FunctionList& list = functions[name];
   AVSFunction newFunc;
-  newFunc.name = cname;
-  newFunc.param_types = cparams;
-  newFunc.apply = apply;
-  newFunc.user_data = user_data;
-  list.push_back(newFunc);
-  UpdateFunctionExports(newFunc, exportVar);
-
   if (PluginInLoad != NULL)
   {
-    AVSFunction newFuncWithBase;
-    std::string nameWithBase(PluginInLoad->BaseName);
-    nameWithBase.append("_").append(name);
-    FunctionList& baseList = functions[nameWithBase];
-
-    newFuncWithBase.name = nameWithBase.c_str();
-    newFuncWithBase.param_types = cparams;
-    newFuncWithBase.apply = apply;
-    newFuncWithBase.user_data = user_data;
-    baseList.push_back(newFuncWithBase);
-    UpdateFunctionExports(newFuncWithBase, exportVar);
+      newFunc = AVSFunction(name, PluginInLoad->BaseName, params, apply, user_data);
+      FunctionList& baseList = functions[newFunc.canon_name];
+      baseList.push_back(newFunc);
   }
+  else
+  {
+      assert(newFunc.IsScriptFunction());
+      newFunc = AVSFunction(name, std::string(), params, apply, user_data);
+  }
+  FunctionList& list = functions[newFunc.name];
+  list.push_back(newFunc);
+
+  UpdateFunctionExports(newFunc.name, newFunc.param_types, exportVar);
+  UpdateFunctionExports(newFunc.canon_name, newFunc.param_types, exportVar);
 }
 
 bool PluginManager::TryAsAvs26(PluginFile &plugin, AVSValue *result)
@@ -795,8 +786,8 @@ AVSValue LoadPlugin(AVSValue args, void* user_data, IScriptEnvironment* env)
 }
 
 extern const AVSFunction Plugin_functions[] = {
-  {"LoadPlugin", "s+", LoadPlugin},
-  {"LoadCPlugin", "s+", LoadPlugin },          // for compatibility with older scripts
-  {"Load_Stdcall_Plugin", "s+", LoadPlugin },  // for compatibility with older scripts
+  {"LoadPlugin", BUILTIN_FUNC_PREFIX, "s+", LoadPlugin},
+  {"LoadCPlugin", BUILTIN_FUNC_PREFIX, "s+", LoadPlugin },          // for compatibility with older scripts
+  {"Load_Stdcall_Plugin", BUILTIN_FUNC_PREFIX, "s+", LoadPlugin },  // for compatibility with older scripts
   { 0 }
 };

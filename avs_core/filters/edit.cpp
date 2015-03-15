@@ -49,34 +49,34 @@
 ********************************************************************/
 
 extern const AVSFunction Edit_filters[] = {  
-  { "AudioTrim", "cff",          Trim::CreateA, (void*)Trim::Default}, // start time, end time
-  { "AudioTrim", "cf",           Trim::CreateA, (void*)Trim::Invalid}, // Throw Invalid argument to AudioTrim
-  { "AudioTrim", "cf[length]f",  Trim::CreateA, (void*)Trim::Length},  // start time, duration
-  { "AudioTrim", "cf[end]f",     Trim::CreateA, (void*)Trim::End},     // start time, end time
-  { "Trim", "cii[pad]b",         Trim::Create,  (void*)Trim::Default}, // first frame, last frame[, pad audio]
-  { "Trim", "ci[pad]b",          Trim::Create,  (void*)Trim::Invalid}, // Throw Invalid argument to Trim
-  { "Trim", "ci[length]i[pad]b", Trim::Create,  (void*)Trim::Length},  // first frame, frame count[, pad audio]
-  { "Trim", "ci[end]i[pad]b",    Trim::Create,  (void*)Trim::End},     // first frame, last frame[, pad audio]
-  { "FreezeFrame", "ciii", FreezeFrame::Create },           // first frame, last frame, source frame
-  { "DeleteFrame", "ci+", DeleteFrame::Create },            // frame #
-  { "DuplicateFrame", "ci+", DuplicateFrame::Create },      // frame #
-  { "UnalignedSplice", "cc+", Splice::CreateUnaligned },    // clips
-  { "AlignedSplice", "cc+", Splice::CreateAligned },        // clips
-  { "Dissolve", "cc+i[fps]f", Dissolve::Create },           // clips, overlap frames[, fps]
-  { "AudioDub", "cc", AudioDub::Create, (void*)0},          // video src, audio src
-  { "AudioDubEx", "cc", AudioDub::Create, (void*)1},        // video! src, audio! src
-  { "Reverse", "c", Reverse::Create },                      // plays backwards
-  { "FadeOut0", "ci[color]i[fps]f", Create_FadeOut0},       // # frames[, color][, fps]
-  { "FadeOut", "ci[color]i[fps]f", Create_FadeOut},         // # frames[, color][, fps]
-  { "FadeOut2", "ci[color]i[fps]f", Create_FadeOut2},       // # frames[, color][, fps]
-  { "FadeIn0", "ci[color]i[fps]f", Create_FadeIn0},         // # frames[, color][, fps]
-  { "FadeIn", "ci[color]i[fps]f", Create_FadeIn},           // # frames[, color][, fps]
-  { "FadeIn2", "ci[color]i[fps]f", Create_FadeIn2},         // # frames[, color][, fps]
-  { "FadeIO0", "ci[color]i[fps]f", Create_FadeIO0},         // # frames[, color][, fps]
-  { "FadeIO", "ci[color]i[fps]f", Create_FadeIO},           // # frames[, color][, fps]
-  { "FadeIO2", "ci[color]i[fps]f", Create_FadeIO2},         // # frames[, color][, fps]
-  { "Loop", "c[times]i[start]i[end]i", Loop::Create },      // number of loops, first frame, last frames
-  { 0 }
+  { "AudioTrim", BUILTIN_FUNC_PREFIX, "cff",          Trim::CreateA, (void*)Trim::Default}, // start time, end time
+  { "AudioTrim", BUILTIN_FUNC_PREFIX, "cf",           Trim::CreateA, (void*)Trim::Invalid}, // Throw Invalid argument to AudioTrim
+  { "AudioTrim", BUILTIN_FUNC_PREFIX, "cf[length]f",  Trim::CreateA, (void*)Trim::Length},  // start time, duration
+  { "AudioTrim", BUILTIN_FUNC_PREFIX, "cf[end]f",     Trim::CreateA, (void*)Trim::End},     // start time, end time
+  { "Trim", BUILTIN_FUNC_PREFIX, "cii[pad]b",         Trim::Create,  (void*)Trim::Default}, // first frame, last frame[, pad audio]
+  { "Trim", BUILTIN_FUNC_PREFIX, "ci[pad]b",          Trim::Create,  (void*)Trim::Invalid}, // Throw Invalid argument to Trim
+  { "Trim", BUILTIN_FUNC_PREFIX, "ci[length]i[pad]b", Trim::Create,  (void*)Trim::Length},  // first frame, frame count[, pad audio]
+  { "Trim", BUILTIN_FUNC_PREFIX, "ci[end]i[pad]b",    Trim::Create,  (void*)Trim::End},     // first frame, last frame[, pad audio]
+  { "FreezeFrame", BUILTIN_FUNC_PREFIX, "ciii", FreezeFrame::Create },           // first frame, last frame, source frame
+  { "DeleteFrame", BUILTIN_FUNC_PREFIX, "ci+", DeleteFrame::Create },            // frame #
+  { "DuplicateFrame",  BUILTIN_FUNC_PREFIX, "ci+", DuplicateFrame::Create },      // frame #
+  { "UnalignedSplice", BUILTIN_FUNC_PREFIX, "cc+", Splice::CreateUnaligned },    // clips
+  { "AlignedSplice", BUILTIN_FUNC_PREFIX, "cc+", Splice::CreateAligned },        // clips
+  { "Dissolve",   BUILTIN_FUNC_PREFIX, "cc+i[fps]f", Dissolve::Create },           // clips, overlap frames[, fps]
+  { "AudioDub",   BUILTIN_FUNC_PREFIX, "cc", AudioDub::Create, (void*)0},          // video src, audio src
+  { "AudioDubEx", BUILTIN_FUNC_PREFIX, "cc", AudioDub::Create, (void*)1},        // video! src, audio! src
+  { "Reverse",  BUILTIN_FUNC_PREFIX, "c", Reverse::Create },                      // plays backwards
+  { "FadeOut0", BUILTIN_FUNC_PREFIX, "ci[color]i[fps]f", Create_FadeOut0},       // # frames[, color][, fps]
+  { "FadeOut",  BUILTIN_FUNC_PREFIX, "ci[color]i[fps]f", Create_FadeOut},         // # frames[, color][, fps]
+  { "FadeOut2", BUILTIN_FUNC_PREFIX, "ci[color]i[fps]f", Create_FadeOut2},       // # frames[, color][, fps]
+  { "FadeIn0",  BUILTIN_FUNC_PREFIX, "ci[color]i[fps]f", Create_FadeIn0},         // # frames[, color][, fps]
+  { "FadeIn",   BUILTIN_FUNC_PREFIX, "ci[color]i[fps]f", Create_FadeIn},           // # frames[, color][, fps]
+  { "FadeIn2",  BUILTIN_FUNC_PREFIX, "ci[color]i[fps]f", Create_FadeIn2},         // # frames[, color][, fps]
+  { "FadeIO0",  BUILTIN_FUNC_PREFIX, "ci[color]i[fps]f", Create_FadeIO0},         // # frames[, color][, fps]
+  { "FadeIO",   BUILTIN_FUNC_PREFIX, "ci[color]i[fps]f", Create_FadeIO},           // # frames[, color][, fps]
+  { "FadeIO2",  BUILTIN_FUNC_PREFIX, "ci[color]i[fps]f", Create_FadeIO2},         // # frames[, color][, fps]
+  { "Loop",     BUILTIN_FUNC_PREFIX, "c[times]i[start]i[end]i", Loop::Create },      // number of loops, first frame, last frames
+  { NULL }
 };
 
 

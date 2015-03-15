@@ -42,45 +42,45 @@
 
 
 extern const AVSFunction Conditional_funtions_filters[] = {
-  {  "AverageLuma","c", AveragePlane::Create_y },
-  {  "AverageChromaU","c", AveragePlane::Create_u },
-  {  "AverageChromaV","c", AveragePlane::Create_v },
+  {  "AverageLuma",    BUILTIN_FUNC_PREFIX, "c", AveragePlane::Create_y },
+  {  "AverageChromaU", BUILTIN_FUNC_PREFIX, "c", AveragePlane::Create_u },
+  {  "AverageChromaV", BUILTIN_FUNC_PREFIX, "c", AveragePlane::Create_v },
 //{  "AverageSat","c", AverageSat::Create }, Sum(SatLookup[U,V])/N, SatLookup[U,V]=1.4087*sqrt((U-128)**2+(V-128)**2)
 //{  "AverageHue","c", AverageHue::Create }, Sum(HueLookup[U,V])/N, HueLookup[U,V]=40.5845*Atan2(U-128,V-128)
 
-  {  "RGBDifference","cc", ComparePlane::Create_rgb },
-  {  "LumaDifference","cc", ComparePlane::Create_y },
-  {  "ChromaUDifference","cc", ComparePlane::Create_u },
-  {  "ChromaVDifference","cc", ComparePlane::Create_v },
+  {  "RGBDifference",     BUILTIN_FUNC_PREFIX, "cc", ComparePlane::Create_rgb },
+  {  "LumaDifference",    BUILTIN_FUNC_PREFIX, "cc", ComparePlane::Create_y },
+  {  "ChromaUDifference", BUILTIN_FUNC_PREFIX, "cc", ComparePlane::Create_u },
+  {  "ChromaVDifference", BUILTIN_FUNC_PREFIX, "cc", ComparePlane::Create_v },
 //{  "SatDifference","cc", CompareSat::Create }, Sum(Abs(SatLookup[U1,V1]-SatLookup[U2,V2]))/N
 //{  "HueDifference","cc", CompareHue::Create }, Sum(Abs(HueLookup[U1,V1]-HueLookup[U2,V2]))/N
 
-  {  "YDifferenceFromPrevious","c", ComparePlane::Create_prev_y },
-  {  "UDifferenceFromPrevious","c", ComparePlane::Create_prev_u },
-  {  "VDifferenceFromPrevious","c", ComparePlane::Create_prev_v },
-  {  "RGBDifferenceFromPrevious","c", ComparePlane::Create_prev_rgb },
+  {  "YDifferenceFromPrevious",   BUILTIN_FUNC_PREFIX, "c", ComparePlane::Create_prev_y },
+  {  "UDifferenceFromPrevious",   BUILTIN_FUNC_PREFIX, "c", ComparePlane::Create_prev_u },
+  {  "VDifferenceFromPrevious",   BUILTIN_FUNC_PREFIX, "c", ComparePlane::Create_prev_v },
+  {  "RGBDifferenceFromPrevious", BUILTIN_FUNC_PREFIX, "c", ComparePlane::Create_prev_rgb },
 //{  "SatDifferenceFromPrevious","cc", CompareSat::Create_prev },
 //{  "HueDifferenceFromPrevious","cc", CompareHue::Create_prev },
 
-  {  "YDifferenceToNext","c", ComparePlane::Create_next_y },
-  {  "UDifferenceToNext","c", ComparePlane::Create_next_u },
-  {  "VDifferenceToNext","c", ComparePlane::Create_next_v },
-  {  "RGBDifferenceToNext","c", ComparePlane::Create_next_rgb },
+  {  "YDifferenceToNext",   BUILTIN_FUNC_PREFIX, "c", ComparePlane::Create_next_y },
+  {  "UDifferenceToNext",   BUILTIN_FUNC_PREFIX, "c", ComparePlane::Create_next_u },
+  {  "VDifferenceToNext",   BUILTIN_FUNC_PREFIX, "c", ComparePlane::Create_next_v },
+  {  "RGBDifferenceToNext", BUILTIN_FUNC_PREFIX, "c", ComparePlane::Create_next_rgb },
 //{  "SatDifferenceFromNext","cc", CompareSat::Create_next },
 //{  "HueDifferenceFromNext","cc", CompareHue::Create_next },
 
-  {  "YPlaneMax","c[threshold]f", MinMaxPlane::Create_max_y },
-  {  "YPlaneMin","c[threshold]f", MinMaxPlane::Create_min_y },
-  {  "YPlaneMedian","c", MinMaxPlane::Create_median_y },
-  {  "YPlaneMinMaxDifference","c[threshold]f", MinMaxPlane::Create_minmax_y },
-  {  "UPlaneMax","c[threshold]f", MinMaxPlane::Create_max_u },
-  {  "UPlaneMin","c[threshold]f", MinMaxPlane::Create_min_u },
-  {  "UPlaneMedian","c", MinMaxPlane::Create_median_u },
-  {  "UPlaneMinMaxDifference","c[threshold]f", MinMaxPlane::Create_minmax_u },
-  {  "VPlaneMax","c[threshold]f", MinMaxPlane::Create_max_v },
-  {  "VPlaneMin","c[threshold]f", MinMaxPlane::Create_min_v },
-  {  "VPlaneMedian","c", MinMaxPlane::Create_median_v },
-  {  "VPlaneMinMaxDifference","c[threshold]f", MinMaxPlane::Create_minmax_v },
+  {  "YPlaneMax",    BUILTIN_FUNC_PREFIX, "c[threshold]f", MinMaxPlane::Create_max_y },
+  {  "YPlaneMin",    BUILTIN_FUNC_PREFIX, "c[threshold]f", MinMaxPlane::Create_min_y },
+  {  "YPlaneMedian", BUILTIN_FUNC_PREFIX, "c", MinMaxPlane::Create_median_y },
+  {  "UPlaneMax",    BUILTIN_FUNC_PREFIX, "c[threshold]f", MinMaxPlane::Create_max_u },
+  {  "UPlaneMin",    BUILTIN_FUNC_PREFIX, "c[threshold]f", MinMaxPlane::Create_min_u },
+  {  "UPlaneMedian", BUILTIN_FUNC_PREFIX, "c", MinMaxPlane::Create_median_u },
+  {  "VPlaneMax",    BUILTIN_FUNC_PREFIX, "c[threshold]f", MinMaxPlane::Create_max_v },
+  {  "VPlaneMin",    BUILTIN_FUNC_PREFIX, "c[threshold]f", MinMaxPlane::Create_min_v },
+  {  "VPlaneMedian", BUILTIN_FUNC_PREFIX, "c", MinMaxPlane::Create_median_v },
+  {  "YPlaneMinMaxDifference", BUILTIN_FUNC_PREFIX, "c[threshold]f", MinMaxPlane::Create_minmax_y },
+  {  "UPlaneMinMaxDifference", BUILTIN_FUNC_PREFIX, "c[threshold]f", MinMaxPlane::Create_minmax_u },
+  {  "VPlaneMinMaxDifference", BUILTIN_FUNC_PREFIX, "c[threshold]f", MinMaxPlane::Create_minmax_v },
 
 //{  "SatMax","c[threshold]f", MinMaxPlane::Create_maxsat },  ++accum[SatLookup[U,V]]
 //{  "SatMin","c[threshold]f", MinMaxPlane::Create_minsat },

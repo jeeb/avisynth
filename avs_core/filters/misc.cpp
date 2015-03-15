@@ -46,11 +46,11 @@
 ********************************************************************/
 
 extern const AVSFunction Misc_filters[] = {
-  { "FixLuminance", "cif", FixLuminance::Create },    // clip, intercept, slope
-  { "FixBrokenChromaUpsampling", "c", FixBrokenChromaUpsampling::Create },
-  { "PeculiarBlend", "ci", PeculiarBlend::Create },   // clip, cutoff    
-  { "SkewRows", "ci", SkewRows::Create },   // clip, skew    
-  { 0,0,0 }
+  { "FixLuminance",  BUILTIN_FUNC_PREFIX, "cif", FixLuminance::Create },    // clip, intercept, slope
+  { "PeculiarBlend", BUILTIN_FUNC_PREFIX, "ci", PeculiarBlend::Create },   // clip, cutoff    
+  { "SkewRows",      BUILTIN_FUNC_PREFIX, "ci", SkewRows::Create },   // clip, skew    
+  { "FixBrokenChromaUpsampling", BUILTIN_FUNC_PREFIX, "c", FixBrokenChromaUpsampling::Create },
+  { NULL }
 };
 
 

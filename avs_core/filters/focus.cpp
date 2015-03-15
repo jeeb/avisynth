@@ -46,10 +46,10 @@
 ********************************************************************/
 
 extern const AVSFunction Focus_filters[] = {
-  { "Blur", "cf[]f[mmx]b", Create_Blur },                     // amount [-1.0 - 1.5849625] -- log2(3)
-  { "Sharpen", "cf[]f[mmx]b", Create_Sharpen },               // amount [-1.5849625 - 1.0]
-  { "TemporalSoften", "ciii[scenechange]i[mode]i", TemporalSoften::Create }, // radius, luma_threshold, chroma_threshold
-  { "SpatialSoften", "ciii", SpatialSoften::Create },   // radius, luma_threshold, chroma_threshold
+  { "Blur",           BUILTIN_FUNC_PREFIX, "cf[]f[mmx]b", Create_Blur },                     // amount [-1.0 - 1.5849625] -- log2(3)
+  { "Sharpen",        BUILTIN_FUNC_PREFIX, "cf[]f[mmx]b", Create_Sharpen },               // amount [-1.5849625 - 1.0]
+  { "TemporalSoften", BUILTIN_FUNC_PREFIX, "ciii[scenechange]i[mode]i", TemporalSoften::Create }, // radius, luma_threshold, chroma_threshold
+  { "SpatialSoften",  BUILTIN_FUNC_PREFIX, "ciii", SpatialSoften::Create },   // radius, luma_threshold, chroma_threshold
   { 0 }
 };
 

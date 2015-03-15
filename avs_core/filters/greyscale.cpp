@@ -46,8 +46,8 @@
  ************************************/
 
 extern const AVSFunction Greyscale_filters[] = {
-  { "Greyscale", "c[matrix]s", Greyscale::Create },       // matrix can be "rec601", "rec709" or "Average"
-  { "Grayscale", "c[matrix]s", Greyscale::Create },
+  { "Greyscale", BUILTIN_FUNC_PREFIX, "c[matrix]s", Greyscale::Create },       // matrix can be "rec601", "rec709" or "Average"
+  { "Grayscale", BUILTIN_FUNC_PREFIX, "c[matrix]s", Greyscale::Create },
   { 0 }
 };
 

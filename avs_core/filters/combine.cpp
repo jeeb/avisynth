@@ -48,12 +48,12 @@
 ********************************************************************/
 
 extern const AVSFunction Combine_filters[] = {
-  { "StackVertical", "cc+", StackVertical::Create },
-  { "StackHorizontal", "cc+", StackHorizontal::Create },
-  { "ShowFiveVersions", "ccccc", ShowFiveVersions::Create },
-  { "Animate", "iis.*", Animate::Create },  // start frame, end frame, filter, start-args, end-args
-  { "Animate", "ciis.*", Animate::Create }, 
-  { "ApplyRange", "ciis.*", Animate::Create_Range }, 
+  { "StackVertical", BUILTIN_FUNC_PREFIX, "cc+", StackVertical::Create },
+  { "StackHorizontal", BUILTIN_FUNC_PREFIX, "cc+", StackHorizontal::Create },
+  { "ShowFiveVersions", BUILTIN_FUNC_PREFIX, "ccccc", ShowFiveVersions::Create },
+  { "Animate", BUILTIN_FUNC_PREFIX, "iis.*", Animate::Create },  // start frame, end frame, filter, start-args, end-args
+  { "Animate", BUILTIN_FUNC_PREFIX, "ciis.*", Animate::Create }, 
+  { "ApplyRange", BUILTIN_FUNC_PREFIX, "ciis.*", Animate::Create_Range }, 
   { 0 }
 };
 

@@ -586,7 +586,8 @@ AVSValue __cdecl ColorYUV::Create(AVSValue args, void*, IScriptEnvironment* env)
 }
 
 extern const AVSFunction Color_filters[] = {
-    { "ColorYUV", "c[gain_y]f[off_y]f[gamma_y]f[cont_y]f" \
+    { "ColorYUV", BUILTIN_FUNC_PREFIX, 
+                  "c[gain_y]f[off_y]f[gamma_y]f[cont_y]f" \
                   "[gain_u]f[off_u]f[gamma_u]f[cont_u]f" \
                   "[gain_v]f[off_v]f[gamma_v]f[cont_v]f" \
                   "[levels]s[opt]s[matrix]s[showyuv]b" \

@@ -55,26 +55,26 @@ static HFONT LoadFont(const char name[], int size, bool bold, bool italic, int w
 ********************************************************************/
 
 extern const AVSFunction Text_filters[] = {
-  { "ShowFrameNumber",
+  { "ShowFrameNumber",BUILTIN_FUNC_PREFIX, 
 	"c[scroll]b[offset]i[x]f[y]f[font]s[size]f[text_color]i[halo_color]i[font_width]f[font_angle]f",
 	ShowFrameNumber::Create },
 
-  { "ShowSMPTE",
+  { "ShowSMPTE",BUILTIN_FUNC_PREFIX, 
 	"c[fps]f[offset]s[offset_f]i[x]f[y]f[font]s[size]f[text_color]i[halo_color]i[font_width]f[font_angle]f",
 	ShowSMPTE::CreateSMTPE },
 
-  { "ShowTime",
+  { "ShowTime",BUILTIN_FUNC_PREFIX, 
 	"c[offset_f]i[x]f[y]f[font]s[size]f[text_color]i[halo_color]i[font_width]f[font_angle]f",
 	ShowSMPTE::CreateTime },
 
-  { "Info", "c", FilterInfo::Create },  // clip
+  { "Info", BUILTIN_FUNC_PREFIX, "c", FilterInfo::Create },  // clip
 
-  { "Subtitle",
+  { "Subtitle",BUILTIN_FUNC_PREFIX, 
 	"cs[x]f[y]f[first_frame]i[last_frame]i[font]s[size]f[text_color]i[halo_color]i"
 	"[align]i[spc]i[lsp]i[font_width]f[font_angle]f[interlaced]b", 
     Subtitle::Create },       // see docs!
 
-  { "Compare",
+  { "Compare",BUILTIN_FUNC_PREFIX, 
 	"cc[channels]s[logfile]s[show_graph]b",
 	Compare::Create },
 

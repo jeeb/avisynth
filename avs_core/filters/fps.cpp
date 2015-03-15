@@ -46,27 +46,27 @@
 ********************************************************************/
 
 extern const AVSFunction Fps_filters[] = {
-  { "AssumeScaledFPS", "c[multiplier]i[divisor]i[sync_audio]b", AssumeScaledFPS::Create },
+  { "AssumeScaledFPS", BUILTIN_FUNC_PREFIX, "c[multiplier]i[divisor]i[sync_audio]b", AssumeScaledFPS::Create },
 
-  { "AssumeFPS", "ci[]i[sync_audio]b", AssumeFPS::Create },      // dst framerate, sync audio?
-  { "AssumeFPS", "cf[sync_audio]b", AssumeFPS::CreateFloat },    // dst framerate, sync audio?
-  { "AssumeFPS", "cs[sync_audio]b", AssumeFPS::CreatePreset }, // dst framerate, sync audio?
-  { "AssumeFPS", "cc[sync_audio]b", AssumeFPS::CreateFromClip }, // clip with dst framerate, sync audio?
+  { "AssumeFPS", BUILTIN_FUNC_PREFIX, "ci[]i[sync_audio]b", AssumeFPS::Create },      // dst framerate, sync audio?
+  { "AssumeFPS", BUILTIN_FUNC_PREFIX, "cf[sync_audio]b", AssumeFPS::CreateFloat },    // dst framerate, sync audio?
+  { "AssumeFPS", BUILTIN_FUNC_PREFIX, "cs[sync_audio]b", AssumeFPS::CreatePreset }, // dst framerate, sync audio?
+  { "AssumeFPS", BUILTIN_FUNC_PREFIX, "cc[sync_audio]b", AssumeFPS::CreateFromClip }, // clip with dst framerate, sync audio?
 
-  { "ChangeFPS", "ci[]i[linear]b", ChangeFPS::Create },     // dst framerate, fetch all frames
-  { "ChangeFPS", "cf[linear]b", ChangeFPS::CreateFloat },   // dst framerate, fetch all frames
-  { "ChangeFPS", "cs[linear]b", ChangeFPS::CreatePreset }, // dst framerate, fetch all frames
-  { "ChangeFPS", "cc[linear]b", ChangeFPS::CreateFromClip },// clip with dst framerate, fetch all frames
+  { "ChangeFPS", BUILTIN_FUNC_PREFIX, "ci[]i[linear]b", ChangeFPS::Create },     // dst framerate, fetch all frames
+  { "ChangeFPS", BUILTIN_FUNC_PREFIX, "cf[linear]b", ChangeFPS::CreateFloat },   // dst framerate, fetch all frames
+  { "ChangeFPS", BUILTIN_FUNC_PREFIX, "cs[linear]b", ChangeFPS::CreatePreset }, // dst framerate, fetch all frames
+  { "ChangeFPS", BUILTIN_FUNC_PREFIX, "cc[linear]b", ChangeFPS::CreateFromClip },// clip with dst framerate, fetch all frames
 
-  { "ConvertFPS", "ci[]i[zone]i[vbi]i", ConvertFPS::Create },      // dst framerate, zone lines, vbi lines
-  { "ConvertFPS", "cf[zone]i[vbi]i", ConvertFPS::CreateFloat },    // dst framerate, zone lines, vbi lines
-  { "ConvertFPS", "cs[zone]i[vbi]i", ConvertFPS::CreatePreset }, // dst framerate, zone lines, vbi lines
-  { "ConvertFPS", "cc[zone]i[vbi]i", ConvertFPS::CreateFromClip }, // clip with dst framerate, zone lines, vbi lines
+  { "ConvertFPS", BUILTIN_FUNC_PREFIX, "ci[]i[zone]i[vbi]i", ConvertFPS::Create },      // dst framerate, zone lines, vbi lines
+  { "ConvertFPS", BUILTIN_FUNC_PREFIX, "cf[zone]i[vbi]i", ConvertFPS::CreateFloat },    // dst framerate, zone lines, vbi lines
+  { "ConvertFPS", BUILTIN_FUNC_PREFIX, "cs[zone]i[vbi]i", ConvertFPS::CreatePreset }, // dst framerate, zone lines, vbi lines
+  { "ConvertFPS", BUILTIN_FUNC_PREFIX, "cc[zone]i[vbi]i", ConvertFPS::CreateFromClip }, // clip with dst framerate, zone lines, vbi lines
 
-  { "ContinuedDenominator", "f[]i[limit]i", ContinuedCreate, (void*)0 },
-  { "ContinuedNumerator",   "f[]i[limit]i", ContinuedCreate, (void*)1 },
+  { "ContinuedDenominator", BUILTIN_FUNC_PREFIX, "f[]i[limit]i", ContinuedCreate, (void*)0 },
+  { "ContinuedNumerator",   BUILTIN_FUNC_PREFIX, "f[]i[limit]i", ContinuedCreate, (void*)1 },
 
-  { 0 }
+  { NULL }
 };
 
 

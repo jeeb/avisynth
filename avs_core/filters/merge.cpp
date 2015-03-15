@@ -538,11 +538,11 @@ void weighted_merge_planar_c(BYTE *p1, const BYTE *p2, int p1_pitch, int p2_pitc
 ***** Declare index of new filters for Avisynth's filter engine *****
 ********************************************************************/
 extern const AVSFunction Merge_filters[] = {
-  { "Merge", "cc[weight]f", MergeAll::Create },  // src, src2, weight
-  { "MergeChroma", "cc[weight]f", MergeChroma::Create },  // src, chroma src, weight
-  { "MergeChroma", "cc[chromaweight]f", MergeChroma::Create },  // Legacy!
-  { "MergeLuma", "cc[weight]f", MergeLuma::Create },      // src, luma src, weight
-  { "MergeLuma", "cc[lumaweight]f", MergeLuma::Create },      // Legacy!
+  { "Merge",       BUILTIN_FUNC_PREFIX, "cc[weight]f", MergeAll::Create },  // src, src2, weight
+  { "MergeChroma", BUILTIN_FUNC_PREFIX, "cc[weight]f", MergeChroma::Create },  // src, chroma src, weight
+  { "MergeChroma", BUILTIN_FUNC_PREFIX, "cc[chromaweight]f", MergeChroma::Create },  // Legacy!
+  { "MergeLuma",   BUILTIN_FUNC_PREFIX, "cc[weight]f", MergeLuma::Create },      // src, luma src, weight
+  { "MergeLuma",   BUILTIN_FUNC_PREFIX, "cc[lumaweight]f", MergeLuma::Create },      // Legacy!
   { 0 }
 };
 

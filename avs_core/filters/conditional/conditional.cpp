@@ -42,15 +42,15 @@
 #include "../../core/internal.h"
 
 extern const AVSFunction Conditional_filters[] = {
-  {  "ConditionalSelect","csc+[show]b", ConditionalSelect::Create },
-  {  "ConditionalFilter","cccsss[show]b", ConditionalFilter::Create },
-  {  "ScriptClip", "cs[show]b[after_frame]b", ScriptClip::Create },
-  {  "ConditionalReader", "css[show]b", ConditionalReader::Create },
-  {  "FrameEvaluate", "cs[show]b[after_frame]b", ScriptClip::Create_eval },
-  {  "WriteFile",   "c[filename]ss+[append]b[flush]b", Write::Create },
-  {  "WriteFileIf", "c[filename]ss+[append]b[flush]b", Write::Create_If },
-  {  "WriteFileStart", "c[filename]ss+[append]b", Write::Create_Start },
-  {  "WriteFileEnd", "c[filename]ss+[append]b", Write::Create_End },
+  {  "ConditionalSelect", BUILTIN_FUNC_PREFIX, "csc+[show]b", ConditionalSelect::Create },
+  {  "ConditionalFilter", BUILTIN_FUNC_PREFIX, "cccsss[show]b", ConditionalFilter::Create },
+  {  "ScriptClip",        BUILTIN_FUNC_PREFIX, "cs[show]b[after_frame]b", ScriptClip::Create },
+  {  "ConditionalReader", BUILTIN_FUNC_PREFIX, "css[show]b", ConditionalReader::Create },
+  {  "FrameEvaluate",     BUILTIN_FUNC_PREFIX, "cs[show]b[after_frame]b", ScriptClip::Create_eval },
+  {  "WriteFile",         BUILTIN_FUNC_PREFIX, "c[filename]ss+[append]b[flush]b", Write::Create },
+  {  "WriteFileIf",       BUILTIN_FUNC_PREFIX, "c[filename]ss+[append]b[flush]b", Write::Create_If },
+  {  "WriteFileStart",    BUILTIN_FUNC_PREFIX, "c[filename]ss+[append]b", Write::Create_Start },
+  {  "WriteFileEnd",      BUILTIN_FUNC_PREFIX, "c[filename]ss+[append]b", Write::Create_End },
   { 0 }
 };
 
