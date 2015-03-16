@@ -13,6 +13,7 @@ Contents:
    :glob:
 
    avisynthdoc/overview
+   avisynthdoc/FilterSDK/FilterSDK
    avisynthdoc/index
 
 

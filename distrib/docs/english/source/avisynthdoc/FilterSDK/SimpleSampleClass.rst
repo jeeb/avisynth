@@ -3,7 +3,7 @@
 =====================
 
 
-`SimpleSample`_ with an explanation of the used classes and function calls:
+:doc:`SimpleSample <SimpleSample>` with an explanation of the used classes and function calls:
 
 ::
 
@@ -309,9 +309,8 @@
         return dst; //-- return the frame
 
 
-Back to `SimpleSample`_
+Back to :doc:`SimpleSample <SimpleSample>`
 
 $Date: 2010/03/13 14:52:05 $
 
 .. _SimpleSampleClass : http://www.avisynth.org/SimpleSample
-.. _SimpleSample: SimpleSample.rst

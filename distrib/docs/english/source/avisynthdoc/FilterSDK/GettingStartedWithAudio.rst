@@ -72,7 +72,7 @@ GetAudio override
 Implementation of a half volume filter. Very explicit, so it isn't going to
 be the fastest possible, but it should serve the purpose. Furthermore have a
 look `discussion here`_ and look also at `audio.cpp`_ for a bunch of more
-advanced stuff. A lot of technical details are also to be found in `AviSynth Two-Five Audio`_.
+advanced stuff. A lot of technical details are also to be found in :doc:`AviSynth Two-Five Audio <AviSynthTwoFiveAudio>`.
 
 $Date: 2007/07/04 00:12:07 $
 
@@ -81,6 +81,5 @@ $Date: 2007/07/04 00:12:07 $
 .. _audio.cpp: http://avisynth2.cvs.sourceforge.net/avisynth2/avisynth/src/audio/audio.cpp?view=markup
 .. _ConvertAudio.cpp: http://avisynth2.cvs.sourceforge.net/avisynth2/avisynth/src/audio/convertaudio.cpp?view=markup
 .. _discussion here: http://forum.doom9.org/showthread.php?s=&threadid=72760&highlight=ConvertAudiohere
-.. _AviSynth Two-Five Audio: AviSynthTwoFiveAudio.rst
 .. _Getting started with audio:
     http://www.avisynth.org/GettingStartedWithAudio

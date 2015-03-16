@@ -3,8 +3,8 @@
 ====================
 
 Please not that the code below may not actually be faster than the
-`TwoFiveInvert`_ sample, because the compiler doesn't handle 64 bit integers
-very well. However this is not the case when using `MMX`_ or `IntegerSSE`_.
+:doc:`TwoFiveInvert <TwoFiveInvert>` sample, because the compiler doesn't handle 64 bit integers
+very well. However this is not the case when using :doc:`MMX <MMX>` or :doc:`IntegerSSE <IntegerSSE>`.
 ::
 
     #include "avisynth.h"
@@ -83,12 +83,8 @@ very well. However this is not the case when using `MMX`_ or `IntegerSSE`_.
         env->AddFunction("Invert", "c", Create_Invert, 0);  return "`Invert' sample plugin";
     }
 
-Back to `AviSynthTwoFiveSDK`_
+Back to :doc:`AviSynthTwoFiveSDK <AviSynthTwoFiveSDK>`
 
 $Date: 2013/04/22 07:18:44 $
 
 .. _TwoFiveFastInvert: http://www.avisynth.org/TwoFiveFastInvert
-.. _TwoFiveInvert: TwoFiveInvert.rst
-.. _MMX: MMX.rst
-.. _IntegerSSE: IntegerSSE.rst
-.. _AviSynthTwoFiveSDK: AviSynthTwoFiveSDK.rst

@@ -81,7 +81,7 @@ MSVCRT71.DLL).
 Of course, use Release build with optimization. Typical compiler switches are
 /MT /O2 and /dll /nologo for linker
 
-See `step by step instructions.`_
+See :doc:`step by step instructions. <CompilingAvisynthPlugins>`
 
 
 Other compilers
@@ -94,7 +94,7 @@ You may also try to use some tools (GNU C++, Visual Basic, Delphi) to create
 so called AviSynth C plugins with AviSynth C API (but it is not mainsteam).
 
 Original AviSynth C API by Kevin Atkinson is at
-`http://kevin.atkinson.dhs.org/avisynth_c/`_
+http://kevin.atkinson.dhs.org/avisynth_c/
 
 Updated version of AviSynth C API header and library files are distributed
 with AviSynth since v2.5.7.
@@ -109,28 +109,17 @@ There is also `AvsFilterNet`_ wrapper for Avisynth in .NET (any .NET
 language) by SAPikachu, see `discussion`_
 
 
-Back to `FilterSDK`_
+Back to :doc:`FilterSDK <FilterSDK>`
 
 $Date: 2010/08/15 13:51:15 $
 
 .. _CodeBlocks: http://www.codeblocks.org
 .. _[1]: http://www.microsoft.com/express/Downloads/
-    (http://www.microsoft.com/express/Downloads/)
 .. _Microsoft site: http://www.microsoft.com/downloads/details.aspx?familyid=EBA0128F-A770-45F1-86F3-7AB010B398A3&displaylang=en
-.. _step by step instructions.: CompilingAvisynthPlugins.rst
-.. _http://kevin.atkinson.dhs.org/avisynth_c/:
-    http://kevin.atkinson.dhs.org/avisynth_c/
-    (http://kevin.atkinson.dhs.org/avisynth_c/)
 .. _Pascal conversion of avisynth_c.h:
     http://forum.doom9.org/showthread.php?t=98327
-    (http://forum.doom9.org/showthread.php?t=98327)
 .. _Using in Visual Basic: http://forum.doom9.org/showthread.php?t=125370
-    (http://forum.doom9.org/showthread.php?t=125370)
 .. _PureBasic port of the Avisynth C Interface:
     http://forum.doom9.org/showthread.php?t=126530
-    (http://forum.doom9.org/showthread.php?t=126530)
 .. _AvsFilterNet: http://www.codeplex.com/AvsFilterNet
-    (http://www.codeplex.com/AvsFilterNet)
 .. _discussion: http://forum.doom9.org/showthread.php?t=144663
-    (http://forum.doom9.org/showthread.php?t=144663)
-.. _FilterSDK: FilterSDK.rst

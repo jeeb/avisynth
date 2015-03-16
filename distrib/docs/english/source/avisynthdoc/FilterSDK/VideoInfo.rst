@@ -25,8 +25,8 @@ This will return true if there is any video in the given clip.
     bool IsRGB();
 
 This will return true if the colorspace is `RGB`_ (in any way). The first two
-return true if the clip has the specific RGB colorspace (`RGB24`_ and
-`RGB32`_). The third returns true for any RGB colorspace; future formats
+return true if the clip has the specific RGB colorspace (:doc:`RGB24 <ColorSpaces>` and
+:doc:`RGB32 <ColorSpaces>`). The third returns true for any RGB colorspace; future formats
 could also apply.
 
 ::
@@ -35,9 +35,9 @@ could also apply.
     bool IsYV12();
     bool IsYUV();
 
-This will return true if the colorspace is `YUV`_ (in any way). The first two
-return true if the clip has the specific YUV colorspace (`YUY2`_ and
-`YV12`_). The third returns true for any YUV colorspace; future formats could
+This will return true if the colorspace is :doc:`YUV <ColorSpaces>` (in any way). The first two
+return true if the clip has the specific YUV colorspace (:doc:`YUY2 <ColorSpaces>` and
+:doc:`YV12 <ColorSpaces>`). The third returns true for any YUV colorspace; future formats could
 also apply. Note that I420 is also reported as YV12, because planes are
 automatically swapped.
 
@@ -46,7 +46,7 @@ automatically swapped.
     bool IsColorSpace(int c_space);
 
 This function will check if the colorspace (VideoInfo.pixel_type) is the same
-as given c_space (or more general it checks for a `Colorspace property`_ (see
+as given c_space (or more general it checks for a :doc:`Colorspace property <ColorspaceProperties>` (see
 avisynth.h)).
 
 ::
@@ -67,14 +67,14 @@ This function is reserved for future use. Currently works as IsColorSpace.
     bool IsPlanar();
 
 This will return true if the video is planar. For now only YV12 returns true,
-but future formats might also do so. See the `Planar`_ image format.
+but future formats might also do so. See the :doc:`Planar <PlanarImageFormat>` image format.
 
 ::
 
     bool IsFieldBased();
 
-This will return true if the video has been through a `SeparateFields`_, and
-the video has not been `weaved`_ yet. Otherwise it will return false.
+This will return true if the video has been through a :doc:`SeparateFields <../corefilters/separatefields>`, and
+the video has not been :doc:`weaved <../corefilters/weave>` yet. Otherwise it will return false.
 
 ::
 
@@ -227,19 +227,9 @@ There is some other useful information in VideoInfo structure
 'avisynth.h' header file.
 
 
-Back to `InternalFunctions`_
+Back to :doc:`InternalFunctions <InternalFunctions>`
 
 $Date: 2013/04/22 07:18:44 $
 
 .. _RGB: http://avisynth.org/mediawiki/RGB
-.. _RGB24: ColorSpaces.rst
-.. _RGB32: ColorSpaces.rst
-.. _YUV: ColorSpaces.rst
-.. _YUY2: ColorSpaces.rst
-.. _YV12: ColorSpaces.rst
-.. _Colorspace property: ColorspaceProperties.rst
-.. _Planar: PlanarImageFormat.rst
-.. _SeparateFields: ../../Docs/English/corefilters/separatefields.rst
-.. _weaved: ../../Docs/English/corefilters/weave.rst
-.. _InternalFunctions: InternalFunctions.rst
 .. _VideoInfo: http://www.avisynth.org/VideoInfo

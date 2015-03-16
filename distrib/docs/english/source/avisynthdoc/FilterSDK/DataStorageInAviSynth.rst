@@ -10,7 +10,7 @@ Part 1: Actual memory storage
 Part 2.
 
 In AviSynth, we process pixels of video data. These are stored in the memory
-in the form of data arrays. As noted elsewhere (like the `AviSynth FAQ`_)
+in the form of data arrays. As noted elsewhere (like the :doc:`AviSynth FAQ <../faq/faq_sections>`)
 there are two different colorspaces in v1.0x/2.0x, RGB and YUY2, with a third
 YV12 added in v2.5. These colorspaces store their data in different ways.
 
@@ -30,14 +30,14 @@ with, and in general isn't recommended.
 **RGBA** (also known as RGB32): This is an extension of RGB where a fourth
 color channel has been added. This is called the alpha channel, and is a
 definition of transparency in the pixel. For an explanation of how the alpha
-channel is used see `Mask and Layer`_. In general however, you shouldn't rely
+channel is used see :doc:`Mask and Layer <../corefilters/layer>`. In general however, you shouldn't rely
 on filters processing alpha correctly - in some cases filters will even
 produce garbage in this channel.
 
 RGBA also makes this a lot easier as it requires four bytes per pixel, and
 thus each memory access of a word, will correspond to exactly one pixel. In
 fact, RGB will only be used if you have a source that returns RGB or if you
-explicitly use (ConvertToRGB24). `ConvertToRGB`_ will by default create RGBA.
+explicitly use (ConvertToRGB24). :doc:`ConvertToRGB <../corefilters/convert>` will by default create RGBA.
 This is the recommended format for RGB-data.
 
 **YUY2**: In this colorspace each pair of pixels will share the color data,
@@ -52,8 +52,8 @@ have used invalid data when processing valid pixels.
 Planar formats
 ~~~~~~~~~~~~~~
 
-Now the real fun begins as this is a `PlanarImageFormat`_. This means that
-data is not `interleaved`_, but stored separately for each color channel
+Now the real fun begins as this is a :doc:`PlanarImageFormat <PlanarImageFormat>`. This means that
+data is not :doc:`interleaved <InterleavedImageFormat>`, but stored separately for each color channel
 (also called color plane). For filter writers this means that they can write
 one simple function that is called three times, one for each color channel,
 assuming that the operations are channel-independent (which is not always the
@@ -133,7 +133,7 @@ Part 2: How does this affect me as a user?
         -   height mod-1 (no restriction) *if progressive*
         -   height mod-2 (even values) *if interlaced*
 
-4.  Examples of valid `Crops`_ with input 320x240 progressive
+4.  Examples of valid :doc:`Crops <../corefilters/crop>` with input 320x240 progressive
 
     -   **RGB(A)**
 
@@ -157,9 +157,9 @@ Part 2: How does this affect me as a user?
 More information
 ----------------
 
-See more about `ColorSpaces`_.
+See more about :doc:`ColorSpaces <ColorSpaces>`.
 
-See a general introduction to `WorkingWithImages`_.
+See a general introduction to :doc:`WorkingWithImages <WorkingWithImages>`.
 
 --------
 
@@ -169,13 +169,5 @@ $Date: 2013/05/07 02:33:47 $
 
 .. _DataStorageInAviSynth:
     http://avisynth.org/mediawiki/Filter_SDK/Data_storage
-.. _AviSynth FAQ: ../faq.rst
-.. _Mask and Layer: ../Docs/English/corefilters/layer.rst
-.. _ConvertToRGB: ../Docs/English/corefilters/convert.rst
-.. _PlanarImageFormat: PlanarImageFormat.rst
-.. _interleaved: InterleavedImageFormat.rst
-.. _Crops: ../Docs/English/corefilters/crop.rst
-.. _ColorSpaces: ColorSpaces.rst
-.. _WorkingWithImages: WorkingWithImages.rst
 .. _[this thread at Doom9's forum]:
     http://forum.doom9.org/showthread.php?s=&threadid=40413&highlight=YV12

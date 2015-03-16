@@ -13,7 +13,7 @@ is Copyright (c)2003-2006 Avisynth rev.2 Developers Team,
 http://sourceforge.net/projects/avisynth2, http://www.avisynth.org.
 It is released with NO WARRANTY and freely usable/distributable
 under terms of GNU General Public License (GPL) version 2 or later.
-See full text of the license in `gpl.txt`_ file.
+See full text of the license in `gpl.txt <../License/gpl.txt>`_ file.
 It should have been included; if not, you may receive a copy at
 `http://www.gnu.org/copyleft/gpl.html`_ or by writing
 to the Free Software Foundation, Inc., 675 Mass Ave., Cambridge, MA 02139,
@@ -69,7 +69,7 @@ In a case of some copyright or other questions, please contact us
 at sourceforge.net/projects/avisynth2 or at Avisynth Development forum at
 doom9.org.
 
-See `SDK History`_ for some details.
+See :doc:`SDK History <SDKHistory>` for some details.
 
 
 Appeal to plugin authors
@@ -93,12 +93,9 @@ Appeal to plugin authors
           http://sourceforge.net/projects/avisynth2,
           http://www.avisynth.org
 
-Back to `FilterSDK`_
+Back to :doc:`FilterSDK <FilterSDK>`
 
 $Date: 2006/12/20 18:17:54 $
 
-.. _gpl.txt: ../gpl.txt
 .. _http://www.gnu.org/copyleft/gpl.html:
     http://www.gnu.org/copyleft/gpl.html
-.. _SDK History: SDKHistory.rst
-.. _FilterSDK: FilterSDK.rst

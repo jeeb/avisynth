@@ -3,7 +3,7 @@
 =============
 
 Integer SSE is a set of instructions found in most modern processors.
-IntegerSSE is an extension of `MMX`_.
+IntegerSSE is an extension of :doc:`MMX <MMX>`.
 
 SSE: New commands present in P3, P4, newer Celerons, Athlon XP, MP.
 
@@ -72,10 +72,8 @@ Integer SSE instructions:
 ``SFENCE``
 
 
-Back to `AssemblerOptimizing`_
+Back to :doc:`AssemblerOptimizing <AssemblerOptimizing>`
 
 $Date: 2006/11/08 20:40:17 $
 
 .. _IntegerSSE: http://www.avisynth.org/IntegerSSE
-.. _MMX: MMX.rst
-.. _AssemblerOptimizing: AssemblerOptimizing.rst

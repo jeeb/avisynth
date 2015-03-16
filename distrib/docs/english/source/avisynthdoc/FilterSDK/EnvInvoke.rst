@@ -124,9 +124,8 @@ and next frame), so use:
 
         resized->SetCacheHints(CACHE_RANGE,3);
 
-Back to `InternalFunctions`_
+Back to :doc:`InternalFunctions <InternalFunctions>`
 
 $Date: 2006/11/08 20:40:17 $
 
 .. _EnvInvoke: http://www.avisynth.org/EnvInvoke
-.. _InternalFunctions: InternalFunctions.rst

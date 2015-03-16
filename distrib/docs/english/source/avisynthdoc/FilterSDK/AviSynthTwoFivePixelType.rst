@@ -40,14 +40,12 @@ Other possibilities are:
 The last two are automatically converted to YV12, so filter writers should
 not worry about these.
 
-See also `WorkingWithImages`_.
+See also :doc:`WorkingWithImages <WorkingWithImages>`.
 
 
-Back to `AviSynthTwoFiveSDK`_
+Back to :doc:`AviSynthTwoFiveSDK <AviSynthTwoFiveSDK>`
 
 $Date: 2006/11/24 18:21:25 $
 
 .. _AviSynthTwoFivePixelType:
     http://www.avisynth.org/AviSynthTwoFivePixelType
-.. _WorkingWithImages: WorkingWithImages.rst
-.. _AviSynthTwoFiveSDK: AviSynthTwoFiveSDK.rst

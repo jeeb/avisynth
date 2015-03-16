@@ -52,7 +52,7 @@ as 3rd-party filters, import and export plugins, or graphical user
 interfaces.
 
 
-See :doc:`full text of the of GNU General Public license (GPL) version 2 <gpl.txt>`.
+See `full text of the of GNU General Public license (GPL) version 2 <../../../../License/gpl.txt>`_.
 
 See copyright notices of Avisynth developers in supplied source codes for
 details.
@@ -191,7 +191,7 @@ ImageLib (DevIL) image processing library (v1.6.6; used in ImageRead,ImageWrite)
     Distributed under terms of the GNU Lesser Public License (LGPL).
 
 
-See :doc:`full text <lgpl_for_used_libs.txt>` of GNU LGPL for license terms of such libraries.
+See `full text <../../../../License/lgpl_for_used_libs.txt>`_ of GNU LGPL for license terms of such libraries.
 You should have received a copy of the GNU Lesser General Public License
 along with this program; if not, write to the Free Software
 Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA, or visit

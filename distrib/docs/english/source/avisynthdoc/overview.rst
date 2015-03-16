@@ -75,20 +75,6 @@ Overview
 :doc:`External Filters (Plugins) <externalplugins>`
 ---------------------------------------------------
 
--   :ref:`General info`
--   :ref:`Deinterlacing & Pulldown Removal`
--   :ref:`Spatio-Temporal Smoothers`
--   :ref:`Spatial Smoothers`
--   :ref:`Temporal Smoothers`
--   :ref:`Sharpen/Soften Plugins`
--   :ref:`Resizers`
--   :ref:`Subtitle (source) Plugins`
--   :ref:`MPEG Decoder (source) Plugins`
--   :ref:`Audio Decoder (source) Plugins`
--   :ref:`Plugins to compare video quality`
--   :ref:`Broadcast Video Plugins`
--   :ref:`Misc Plugins`
-
 Have a Question?
 ----------------
 

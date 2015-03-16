@@ -34,8 +34,6 @@ Thus CS_YV12 gives for example:
               | 10.0000.0000.0000.0000.0000.0000.0000
               = 1010.0000.0000.0000.0000.0000.0000.1000
 
-Back to `VideoInfo`_
+Back to :doc:`VideoInfo <VideoInfo>`
 
 $Date: 2010/03/13 14:51:46 $
-
-.. _VideoInfo: VideoInfo.rst

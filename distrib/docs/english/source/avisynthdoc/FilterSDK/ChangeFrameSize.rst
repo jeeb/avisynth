@@ -29,9 +29,8 @@ frame.
 
 
 A Similar approach has to be used for changing colorspace, framerate etc.
-There is a bit more information at `WorkingWithImages`_.
+There is a bit more information at :doc:`WorkingWithImages <WorkingWithImages>`.
 
 $Date: 2006/11/24 18:21:25 $
 
 .. _ChangeFrameSize: http://www.avisynth.org/ChangeFrameSize
-.. _WorkingWithImages: WorkingWithImages.rst

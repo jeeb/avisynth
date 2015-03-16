@@ -283,10 +283,9 @@ turned out to be faster than an optimized MMX version. So don't think that
 MMX is always the best way.
 
 
-Back to `AssemblerOptimizing`_
+Back to :doc:`AssemblerOptimizing <AssemblerOptimizing>`
 
 $Date: 2006/11/24 18:21:26 $
 
 .. _IntermediateMmxOptimization:
     http://www.avisynth.org/IntermediateMmxOptimization
-.. _AssemblerOptimizing: AssemblerOptimizing.rst

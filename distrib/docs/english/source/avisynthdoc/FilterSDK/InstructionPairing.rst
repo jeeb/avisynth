@@ -3,7 +3,7 @@
 =====================
 
 Instruction pairing can almost double the performance of you filter. There
-are two execution pipes for `MMX`_ code, which means that two instructions
+are two execution pipes for :doc:`MMX <MMX>` code, which means that two instructions
 can be executed at the same time. Certain instructions can only be issued in
 the U pipeline, and certain instructions can only be issued in the V
 pipeline. Most MMX instructions can be issued in either
@@ -84,7 +84,7 @@ pairable!
 Even though these numbers have changed slighly on Athlon, it still seems like
 a good idea to put in two MMX instructions before depending on the result of
 a multiply. On AMD Athlon a multiply takes 3 cycles, whereas most other
-instructions take 2. See appendix F in the `AMDOptimizationGuide`_.
+instructions take 2. See appendix F in the :doc:`AMDOptimizationGuide <AMDOptimizationGuide>`.
 
 --------
 
@@ -127,7 +127,7 @@ renaming limitation:
 Intel P4 specifics
 ~~~~~~~~~~~~~~~~~~
 
-According to the `IntelOptimizationGuide`_:
+According to the :doc:`IntelOptimizationGuide <IntelOptimizationGuide>`:
 
 **MMX multiply:**
 
@@ -230,13 +230,9 @@ cycles per iteration.
 false dependency on the source register on PIII and Athlon.)
 
 
-Back to `AssemblerOptimizing`_
+Back to :doc:`AssemblerOptimizing <AssemblerOptimizing>`
 
 $Date: 2006/11/24 18:21:26 $
 
 .. _InstructionPairing: http://www.avisynth.org/InstructionPairing
-.. _MMX: MMX.rst
-.. _AMDOptimizationGuide: AMDOptimizationGuide.rst
 .. _[Agner Fog's optimization tome]: http://www.agner.org/assem/
-.. _IntelOptimizationGuide: IntelOptimizationGuide.rst
-.. _AssemblerOptimizing: AssemblerOptimizing.rst

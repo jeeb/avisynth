@@ -633,7 +633,7 @@ The missing chroma samples are interpolated as follows
 References
 ~~~~~~~~~~
 
-| :doc:`ColorSpaces <../../../FilterSDK/colorspaces>`
+| :doc:`ColorSpaces <../FilterSDK/ColorSpaces>`
 | [`4:4:4`_] sampling
 | [`4:2:2`_] sampling
 | [`4:2:0`_] sampling

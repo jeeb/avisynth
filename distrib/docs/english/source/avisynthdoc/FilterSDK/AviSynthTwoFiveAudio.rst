@@ -58,10 +58,9 @@ ch is channel and s sample.
 For more info, refer to the new audio.cpp and avisynth.h
 
 
-Back to `AviSynthTwoFiveSDK`_
+Back to :doc:`AviSynthTwoFiveSDK <AviSynthTwoFiveSDK>`
 
 $Date: 2006/11/24 18:21:25 $
 
 .. _AviSynthTwoFiveAudio:
     http://www.avisynth.org/AviSynthTwoFiveAudio
-.. _AviSynthTwoFiveSDK: AviSynthTwoFiveSDK.rst

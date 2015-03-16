@@ -31,9 +31,8 @@ So in general if you don't want your filter to be allocating more memory on
 each load, try avoiding using non-const strings.
 
 
-Back to `InternalFunctions`_
+Back to :doc:`InternalFunctions <InternalFunctions>`
 
 $Date: 2006/11/24 18:21:26 $
 
 .. _EnvSaveString: http://www.avisynth.org/EnvSaveString
-.. _InternalFunctions: InternalFunctions.rst

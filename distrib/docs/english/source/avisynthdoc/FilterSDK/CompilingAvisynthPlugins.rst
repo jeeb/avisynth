@@ -1,12 +1,12 @@
 
-`CompilingAviSynthPlugins <http://www.avisynth.org/CompilingAvisynth>`_
-=======================================================================
+`CompilingAviSynthPlugins`_
+===========================
 
 
 Compiling AviSynth Plugins step by step instructions (for MS VC++ 6.0)
 ----------------------------------------------------------------------
 
-Be sure to start with the `necessary software`_.
+Be sure to start with the :doc:`necessary software <SDKNecessaries>`.
 
 Open VC++. Select a new project: Go to the File tab -> New. Select a Win32
 Dynamic-Link Library in the Projects tab:
@@ -60,8 +60,7 @@ How to debug AviSynth plugins
 -----------------------------
 
 Two ways are described to debug your plugin. An easy way using DebugView and
-the use of VC++6's debugger. In both case, the sample code `SimpleSample
-v1.6`_ is used.
+the use of VC++6's debugger. In both case, the sample code :doc:`SimpleSample v1.6 <SimpleSample16>` is used.
 
 
 How to debug AviSynth plugins (the short way)
@@ -197,24 +196,23 @@ Setup VC++ 2005 Express Edition environment
 
 -   Install MS VC++ 2005 Express Edition.
 
-`<http://www.microsoft.com/express/2005/>`_ It is web-based install, but you
-need to register (which you can do freely).
+| http://www.microsoft.com/express/2005/
+| It is web-based install, but you need to register (which you can do freely).
 
-I prefer manual installation with full CD image download. It may be used on
-computer without Internet access.
-`<http://go.microsoft.com/fwlink/?linkid=57034>`_
+| I prefer manual installation with full CD image download. It may be used on computer without Internet access.
+| http://go.microsoft.com/fwlink/?linkid=57034
 
 Run it at least once before installing the SDK
 
 -   Install Microsoft Platform SDK
 
-Last version is at `<http://www.microsoft.com/downloads/details.aspx?FamilyId=0BAF2B35-C656-4969-ACE8-E4C0C0716ADB>`_
+Last version is at http://www.microsoft.com/downloads/details.aspx?FamilyId=0BAF2B35-C656-4969-ACE8-E4C0C0716ADB
 
 Previous versions works fine too (and older February 2003).
 
-`<http://www.microsoft.com/msdownload/platformsdk/sdkupdate/>`_
+http://www.microsoft.com/msdownload/platformsdk/sdkupdate/
 
-`<http://www.microsoft.com/msdownload/platformsdk/sdkupdate/psdk-full.htm>`_
+http://www.microsoft.com/msdownload/platformsdk/sdkupdate/psdk-full.htm
 
 It seems, you need install Core component only with Web install, but you may
 prefer full or ISO download for offline computer.
@@ -235,7 +233,7 @@ Server 2003 R2\Include
 Add to Library files: C:\Program Files\Microsoft Platform SDK for Windows
 Server 2003 R2\Lib
 
-See `<http://msdn.microsoft.com/vstudio/express/visualc/usingpsdk/>`_
+See http://msdn.microsoft.com/vstudio/express/visualc/usingpsdk/
 
 -   Update the corewin_express.vsprops file.
 
@@ -278,7 +276,7 @@ version) and do not create new plugin from scratch.
 How to compile existant (old MS VC 6.0) plugin with MS VC++ 2005
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
--   Start VC++ 2005, go to folder with old plugin (e.g. `SimpleSample`_)
+-   Start VC++ 2005, go to folder with old plugin (e.g. :doc:`SimpleSample <SimpleSample>`)
     unpacked zip file with full source codes and project files, and open
     plugin workspace file SimpleSample.dsw.
 
@@ -322,8 +320,8 @@ How to create new plugin from scratch with MS VC++ 2005
 -   Go to menu Build -> Configuration Manager, Set active solution
     configuration to Release (or Debug if you want firsly debug it).
 -   Make some changes (edit) of source codes to implement your algorithm.
-    See `SimpleSample`_ or some other open source plugin source code and
-    Avisynth `Filter SDK`_ for details.
+    See :doc:`SimpleSample <SimpleSample>` or some other open source plugin source code and
+    Avisynth :doc:`FilterSDK <FilterSDK>` for details.
 -   Go to Build -> Build Solution (F7) to compile and create plugin
     SimpleSample.dll
 
@@ -333,8 +331,8 @@ Compiling AviSynth Plugins step by step instructions (for MS VC++ 2008 Professio
 
 -   In this guide, we will compile the Example plugin from CPP for C
     programmers, from
-    `http://forum.doom9.org/showthread.php?p=1538557#post1538557`_ or
-    directly from `http://www.mediafire.com/download.php?tc61m9otustmy29`_
+    http://forum.doom9.org/showthread.php?p=1538557#post1538557 or
+    directly from http://www.mediafire.com/download.php?tc61m9otustmy29
 -   Start Microsoft Visual Studio 2008
 -   Upon first start, you are asked to set up your environment. You may
     choose the typical Visual C++ option
@@ -399,25 +397,13 @@ Compiling AviSynth Plugins step by step instructions (for MS VC++ 2008 Professio
     Avisynth distribution.
 
 
-Back to `FilterSDK`_
+Back to :doc:`FilterSDK <FilterSDK>`
 
 $Date: 2013/03/19 18:21:15 $
 
-.. _necessary software: SDKNecessaries.rst (Filter SDK/SDK necessaries)
-.. _SimpleSample v1.6: SimpleSample16.rst (Filter SDK/Simple sample 1.6)
-.. _DebugView for Windows: http://technet.microsoft.com/en-
-    us/sysinternals/bb896647.aspx (http://technet.microsoft.com/en-
-    us/sysinternals/bb896647.aspx)
-.. _wrote: http://forum.doom9.org/showthread.php?p=1041578#post1041578
-    (http://forum.doom9.org/showthread.php?p=1041578#post1041578)
-.. _SimpleSample: SimpleSample.rst (Filter SDK/Simple sample)
-.. _Filter     SDK: FilterSDK.rst (Filter SDK)
-.. _http://forum.doom9.org/showthread.php?p=1538557#post1538557:
-    http://forum.doom9.org/showthread.php?p=1538557#post1538557
-    (http://forum.doom9.org/showthread.php?p=1538557#post1538557)
-.. _http://www.mediafire.com/download.php?tc61m9otustmy29:
-    http://www.mediafire.com/download.php?tc61m9otustmy29
-    (http://www.mediafire.com/download.php?tc61m9otustmy29)
-.. _FilterSDK: FilterSDK.rst
-.. _http://www.avisynth.org/CompilingAvisynth:
+.. _DebugView for Windows:
+    http://technet.microsoft.com/en-us/sysinternals/bb896647.aspx
+.. _wrote:
+    http://forum.doom9.org/showthread.php?p=1041578#post1041578
+.. _CompilingAviSynthPlugins:
     http://www.avisynth.org/CompilingAvisynth

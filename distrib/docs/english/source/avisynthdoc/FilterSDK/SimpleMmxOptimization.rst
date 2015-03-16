@@ -35,9 +35,9 @@ The parameters of this routine is:
     rowsize).
 -   *cmin, cmax* - the maximum and minimum values of a pixel.
 
-When converting to `MMX`_ and `IntegerSSE`_ it is a good thing to look at
+When converting to :doc:`MMX <MMX>` and :doc:`IntegerSSE <IntegerSSE>` it is a good thing to look at
 which commands are available for the task needed. In this case we choose to
-focus on `IntegerSSE`_, because it contains pminub and pmaxub, which selects
+focus on :doc:`IntegerSSE <IntegerSSE>`, because it contains pminub and pmaxub, which selects
 the minimum and maximum bytes of two packed registers. It is always a good
 idea to support plain MMX, since there are still many machines out there,
 that only support these instcrutions.
@@ -47,7 +47,7 @@ several bytes at once. The MMX instructions all work on 8 bytes at the time,
 but in many cases, you have to unpack these bytes to words (8 to 16 bits) to
 be able to do things like additions, etc.)
 
-The equivalent of the routine above in `IntegerSSE`_ looks like this:
+The equivalent of the routine above in :doc:`IntegerSSE <IntegerSSE>` looks like this:
 ::
 
   void Limiter::isse_limiter_mod8(BYTE* p, int row_size, int height, int modulo, int cmin, int cmax) {
@@ -132,7 +132,7 @@ Remember we duplicated the max and min values in the C-part.
 ``pshufw mm6,mm6,0``
 
 These commands are
-`IntegerSSE`_ commands. They can shuffle around words in the mmx registers,
+:doc:`IntegerSSE <IntegerSSE>` commands. They can shuffle around words in the mmx registers,
 based on the last number.
 
 In this example it results in mm7 containing "0xcmcm|cmcm|cmcm|cmcm". So
@@ -202,12 +202,9 @@ jumps to the yloop as long as there are still pixels left to process.
 This instruction must be placed after all mmx code. It reenabled
 float point code, which is disabled by mmx code.
 
-Back to `AssemblerOptimizing`_
+Back to :doc:`AssemblerOptimizing <AssemblerOptimizing>`
 
 $Date: 2006/11/24 18:21:26 $
 
 .. _SimpleMmxOptimization:
     http://www.avisynth.org/SimpleMmxOptimization
-.. _MMX: MMX.rst
-.. _IntegerSSE: IntegerSSE.rst
-.. _AssemblerOptimizing: AssemblerOptimizing.rst

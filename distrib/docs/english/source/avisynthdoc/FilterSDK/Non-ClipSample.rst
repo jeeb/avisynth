@@ -31,8 +31,8 @@ Here's a sample from script.cpp, edited for external use (by foxyshadis, see `di
 Clip to float function example
 ------------------------------
 
-There are Avisynth `Runtime functions`_ that evaluated at every frame. They
-can be used inside the scripts passed to runtime filters (`ConditionalFilter, ScriptClip, FrameEvaluate`_) to return information for a
+There are Avisynth :ref:`Runtime functions <conditional-runtime-functions>` that evaluated at every frame. They
+can be used inside the scripts passed to runtime filters (:doc:`ConditionalFilter, ScriptClip, FrameEvaluate <../corefilters/conditionalfilter>`) to return information for a
 frame. Here is sample code of plugin with non-clip function:
 ::
 
@@ -223,13 +223,8 @@ end of the script, it registers an ``env->AtExit`` procedure. See
        return;
      }
 
-Back to `FilterSDK`_
+Back to :doc:`FilterSDK <FilterSDK>`
 
 $Date: 2010/03/13 14:52:05 $
 
 .. _Non-clip Sample: http://avisynth.org/mediawiki/Filter_SDK/Non-clip_sample
-.. _Runtime functions:
-    ../Docs/english/corefilters/conditionalfilter.rst#RuntimeFunctions
-.. _ConditionalFilter, ScriptClip, FrameEvaluate:
-    ../Docs/english/corefilters/conditionalfilter.rst
-.. _FilterSDK: FilterSDK.rst

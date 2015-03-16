@@ -42,10 +42,9 @@ off sticking with inline or explicit assembly than using MMX intrinsics with
 MSVC.
 
 
-Back to `AssemblerOptimizing`_
+Back to :doc:`AssemblerOptimizing <AssemblerOptimizing>`
 
 $Date: 2006/11/08 20:40:17 $
 
 .. _GeneralPurposeToMMXRegisters:
     http://www.avisynth.org/GeneralPurposeToMMXRegisters
-.. _AssemblerOptimizing: AssemblerOptimizing.rst

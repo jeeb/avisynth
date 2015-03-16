@@ -76,23 +76,18 @@ source.cpp for examples.
 See:
 ::::
 
-The example of an AviSynyh `TwoFiveInvert`_ filter.
+The example of an AviSynyh :doc:`TwoFiveInvert <TwoFiveInvert>` filter.
 
-Something about the specific `ColorSpaces`_.
+Something about the specific :doc:`ColorSpaces <ColorSpaces>`.
 
-More about `DataStorageInAviSynth`_.
+More about :doc:`DataStorageInAviSynth <DataStorageInAviSynth>`.
 
-A general introduction to `WorkingWithImages`_.
+A general introduction to :doc:`WorkingWithImages <WorkingWithImages>`.
 
 
-Back to `AviSynthTwoFiveSDK`_
+Back to :doc:`AviSynthTwoFiveSDK <AviSynthTwoFiveSDK>`
 
 $Date: 2006/11/08 20:40:17 $
 
 .. _WorkingWithPlanarImages:
     http://www.avisynth.org/WorkingWithPlanarImages
-.. _TwoFiveInvert: TwoFiveInvert.rst
-.. _ColorSpaces: ColorSpaces.rst
-.. _DataStorageInAviSynth: DataStorageInAviSynth.rst
-.. _WorkingWithImages: WorkingWithImages.rst
-.. _AviSynthTwoFiveSDK: AviSynthTwoFiveSDK.rst

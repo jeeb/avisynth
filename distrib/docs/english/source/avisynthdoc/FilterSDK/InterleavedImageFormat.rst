@@ -2,7 +2,7 @@
 `InterleavedImageFormat`_
 =========================
 
-When talking about interleaved and `PlanarImageFormat`_ the main difference
+When talking about interleaved and :doc:`PlanarImageFormat <PlanarImageFormat>` the main difference
 is how they are store in memory.
 
 Interleaved images have all color components needed to represent a pixel
@@ -16,4 +16,3 @@ $Date: 2006/11/24 18:21:26 $
 
 .. _InterleavedImageFormat:
     http://www.avisynth.org/InterleavedImageFormat
-.. _PlanarImageFormat: PlanarImageFormat.rst

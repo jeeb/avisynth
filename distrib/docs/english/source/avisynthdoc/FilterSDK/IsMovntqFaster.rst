@@ -87,9 +87,8 @@ modules are involved, such as in an Avisynth filter graph.
 --------
 
 
-Back to `AssemblerOptimizing`_
+Back to :doc:`AssemblerOptimizing <AssemblerOptimizing>`
 
 $Date: 2006/11/24 18:21:26 $
 
 .. _IsMovntqFaster: http://www.avisynth.org/IsMovntqFaster
-.. _AssemblerOptimizing: AssemblerOptimizing.rst

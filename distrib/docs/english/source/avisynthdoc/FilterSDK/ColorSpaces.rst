@@ -27,7 +27,7 @@ RGB24 and RGB32.
 Both of them contain three components, R,G and B - short for Red, Green and
 Blue.
 
-RGB24 and RGB32 are both an `InterleavedImageFormat`_. The only difference
+RGB24 and RGB32 are both an :doc:`InterleavedImageFormat <InterleavedImageFormat>`. The only difference
 between the two are that RGB32 contains an extra byte for each pixel.
 
 The extra byte RGB32 contains is known as an alpha pixel, but it is actually
@@ -39,9 +39,9 @@ material, because most processors operate on 32bits at the time, and not 24.
 YUV colorspace
 --------------
 
-There are several YUV formats. There are `interleaved formats`_ and `planar
-formats`_ (also called packed formats). The main difference is how they are
-stored in memory.
+There are several YUV formats. There are :doc:`interleaved formats <InterleavedImageFormat>`
+and :doc:`planar formats <PlanarImageFormat>` (also called packed formats). The main
+difference is how they are stored in memory.
 
 Interleaved images have all color components needed to represent a pixel
 placed at the same place in memory. For planar formats the data is not
@@ -59,7 +59,7 @@ modifies one or two of them.
 YUY2 Colorformat
 ~~~~~~~~~~~~~~~~
 
-YUY2 is an `InterleavedImageFormat`_. Bytes are arranged in memory like this:
+YUY2 is an :doc:`Interleaved Image Format<InterleavedImageFormat>`. Bytes are arranged in memory like this:
 
 ``YUYV|YUYV|YUYV|YUYV|YUYV|YUYV|...``
 
@@ -73,7 +73,7 @@ YV12 Colorformat
 ~~~~~~~~~~~~~~~~
 
 The YV12 colorformat is very different from RGB and YUY2 colorformats. The
-main different is that it is a `PlanarImageFormat`_. That means that the
+main different is that it is a :doc:`PlanarImageFormat <PlanarImageFormat>`. That means that the
 different color components are lying separate in memory.
 
 This can in most cases give a significant speedup, since all bytes of each
@@ -183,16 +183,10 @@ throw an error.
 Links
 ~~~~~
 
-See more about `DataStorageInAviSynth`_.
+See more about :doc:`DataStorageInAviSynth <DataStorageInAviSynth>`.
 
-See a general introduction to `WorkingWithImages`_.
+See a general introduction to :doc:`WorkingWithImages <WorkingWithImages>`.
 
 $Date: 2006/11/24 18:21:25 $
 
 .. _ColorSpaces: http://www.avisynth.org/ColorSpaces
-.. _interleaved formats: InterleavedImageFormat.rst
-.. _InterleavedImageFormat: InterleavedImageFormat.rst
-.. _planar formats: PlanarImageFormat.rst
-.. _PlanarImageFormat: PlanarImageFormat.rst
-.. _DataStorageInAviSynth: DataStorageInAviSynth.rst
-.. _WorkingWithImages: WorkingWithImages.rst

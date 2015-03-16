@@ -79,9 +79,8 @@
         return "`Invert' sample plugin";
     }
 
-Back to `AviSynthTwoFiveSDK`_
+Back to :doc:`AviSynthTwoFiveSDK <AviSynthTwoFiveSDK>`
 
 $Date: 2006/11/24 18:21:26 $
 
 .. _TwoFiveInvert: http://www.avisynth.org/TwoFiveInvert
-.. _AviSynthTwoFiveSDK: AviSynthTwoFiveSDK.rst

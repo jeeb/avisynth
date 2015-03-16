@@ -34,7 +34,7 @@ Pitch = distance from start of one line to the next in bytes.
 vi->BytesFromPixels(n) = size of n pixels in bytes - does NOT take pitch into
 consideration, so can only be used within a line.
 
-For the `PlanarImageFormat`_:
+For the :doc:`PlanarImageFormat <PlanarImageFormat>`:
 
 Aligned rowsize = width in bytes, always divisible with 8.
 
@@ -59,13 +59,10 @@ recieve**.
 More Information
 ----------------
 
-See more about `DataStorageInAviSynth`_.
+See more about :doc:`DataStorageInAviSynth <DataStorageInAviSynth>`.
 
-See more about `ColorSpaces`_.
+See more about :doc:`ColorSpaces <ColorSpaces>`.
 
 $Date: 2006/11/08 20:40:17 $
 
 .. _WorkingWithImages: http://www.avisynth.org/WorkingWithImages
-.. _PlanarImageFormat: PlanarImageFormat.rst
-.. _DataStorageInAviSynth: DataStorageInAviSynth.rst
-.. _ColorSpaces: ColorSpaces.rst

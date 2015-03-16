@@ -54,8 +54,6 @@ sometimes :)
 ...
 
 
-Back to `FilterSDK`_
+Back to :doc:`FilterSDK <FilterSDK>`
 
 $Date: 2006/11/24 18:22:55 $
-
-.. _FilterSDK: FilterSDK.rst

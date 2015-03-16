@@ -209,9 +209,8 @@
         // A freeform name of the plugin.
     }
 
-Back to `SimpleSample`_
+Back to :doc:`SimpleSample <SimpleSample>`
 
 $Date: 2006/10/28 20:18:15 $
 
 .. _SimpleSample 1.2: http://www.avisynth.org/SimpleSample+1.2
-.. _SimpleSample: SimpleSample.rst

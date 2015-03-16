@@ -3,7 +3,7 @@
 ================
 
 (Until something more AviSynth related can be written this is from the
-`AMDOptimizationGuide`_)
+:doc:`AMDOptimizationGuide <AMDOptimizationGuide>`)
 
 
 Memory alignment
@@ -60,10 +60,8 @@ The following code examples result in a store-to-loadforwarding (STLF) stall:
 ``MOVD [foo], MM0`` ``PSWAPD MM0, MM0`` ``MOVD [foo+4], MM0`` ``PSWAPD MM0,
 MM0`` ``...`` ``MOV EAX, [foo]`` ``MOV EDX, [foo+4]``
 
-Back to `AssemblerOptimizing`_
+Back to :doc:`AssemblerOptimizing <AssemblerOptimizing>`
 
 $Date: 2006/11/24 18:21:26 $
 
 .. _DataAlignment: http://www.avisynth.org/DataAlignment
-.. _AMDOptimizationGuide: AMDOptimizationGuide.rst
-.. _AssemblerOptimizing: AssemblerOptimizing.rst

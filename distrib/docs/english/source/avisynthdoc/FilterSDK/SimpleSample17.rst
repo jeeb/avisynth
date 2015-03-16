@@ -431,9 +431,8 @@
     }
 
 
-Back to `SimpleSample`_
+Back to :doc:`SimpleSample <SimpleSample>`
 
 $Date: 2006/11/06 18:04:02 $
 
 .. _SimpleSample 1.7: http://www.avisynth.org/SimpleSample+1.6
-.. _SimpleSample: SimpleSample.rst

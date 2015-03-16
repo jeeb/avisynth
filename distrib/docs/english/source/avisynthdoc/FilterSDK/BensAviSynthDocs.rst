@@ -604,17 +604,14 @@ Notes to Ben's docs
 
 Plugin exported function name is replaced from ``AvisynthPluginInit`` for
 AviSynth 1.0-2.0 to ``AvisynthPluginInit2`` for AviSynth 2.5. For other
-changes see `AviSynthTwoFiveSDK.`_
+changes see :doc:`AviSynthTwoFiveSDK. <AviSynthTwoFiveSDK>`
 
-For AviSynth 2.5, the converted `TwoFiveInvert`_ plugin filter source.
+For AviSynth 2.5, the converted :doc:`TwoFiveInvert <TwoFiveInvert>` plugin filter source.
 
 
-Back to `FilterSDK`_
+Back to :doc:`FilterSDK <FilterSDK>`
 
 $Date: 2006/11/08 20:40:16 $
 
 .. _BensAviSynthDocs: http://www.avisynth.org/BensAviSynthDocs
 .. _mirror.: http://www.neuron2.net/www.math.berkeley.edu/benrg/avisynth-extensions.html
-.. _AviSynthTwoFiveSDK.: AviSynthTwoFiveSDK.rst
-.. _TwoFiveInvert: TwoFiveInvert.rst
-.. _FilterSDK: FilterSDK.rst
