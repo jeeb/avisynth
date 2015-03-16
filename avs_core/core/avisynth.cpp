@@ -723,9 +723,9 @@ ScriptEnvironment::ScriptEnvironment()
 
 void ScriptEnvironment::InitMT()
 {
-    global_var_table->Set(BUILTIN_FUNC_PREFIX "_MT_NICE_FILTER", (int)MT_NICE_FILTER);
-    global_var_table->Set(BUILTIN_FUNC_PREFIX "_MT_MULTI_INSTANCE", (int)MT_MULTI_INSTANCE);
-    global_var_table->Set(BUILTIN_FUNC_PREFIX "_MT_SERIALIZED", (int)MT_SERIALIZED);
+    global_var_table->Set("MT_NICE_FILTER", (int)MT_NICE_FILTER);
+    global_var_table->Set("MT_MULTI_INSTANCE", (int)MT_MULTI_INSTANCE);
+    global_var_table->Set("MT_SERIALIZED", (int)MT_SERIALIZED);
 
     this->SetFilterMTMode(BUILTIN_FUNC_PREFIX "_AVISource", MtMode::MT_SERIALIZED, true);
     this->SetFilterMTMode(BUILTIN_FUNC_PREFIX "_AVIFileSource", MtMode::MT_SERIALIZED, true);
