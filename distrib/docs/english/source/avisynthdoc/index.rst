@@ -16,6 +16,7 @@ Invisible Tree
    syntax/*
    corefilters/*
    faq/*
+   FilterSDK/*
 
 
 Indices and tables
