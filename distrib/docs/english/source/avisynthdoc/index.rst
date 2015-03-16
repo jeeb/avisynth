@@ -15,7 +15,6 @@ Invisible Tree
    script_ref/*
    syntax/*
    corefilters/*
-   externalfilters/*
    faq/*
 
 

@@ -23,7 +23,7 @@ the graph which is light-green represents all samples of the frame under
 consideration (which is frame 1 here). The number of samples in a particular
 frame is given by the samplerate divided by the framerate (which is 48000/24
 = 2000 samples in our example). (Note that the bars are made with
-:doc:`Histogram <histogram>` and the graph with the :doc:`AudioGraph <../externalfilters/audiograph>` plugin.)
+:doc:`Histogram <histogram>` and the graph with the `AudioGraph`_ plugin.)
 
 More generally, the waveform above is described by
 
@@ -48,3 +48,5 @@ from 0 to 1999).
 +---------+------------------+
 
 $Date: 2007/07/13 00:53:01 $
+
+.. _AudioGraph: http://forum.doom9.org/showthread.php?t=59412

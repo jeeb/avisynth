@@ -173,8 +173,7 @@ v1.0x/v2.0x plugin in v2.5x/v2.6x, as explained :ref:`next <How do I use a plugi
 How do I use a plugin compiled for v2.0x in v2.5x?
 --------------------------------------------------
 
-In plugin collection :doc:`warpsharp_2003_1103.cab <../externalfilters/warpsharp>` you will find a plugin called
-"LoadPluginEx.dll". (When using an older version of LoadPluginEx.dll, don't
+See http://avisynth.nl/index.php/LoadOldPlugins. (When using an older version of LoadPluginEx.dll, don't
 move this plugin to your plugin dir. But move it to a separate folder,
 otherwise VirtualdubMod and WMP6.4 will crash on exit.) This will enable you
 using v2.0x plugins in v2.5x. An example script (using the v2.0x plugin Dust
