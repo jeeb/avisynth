@@ -15,6 +15,7 @@
 
 import sys
 import os
+import sphinx
 
 # If extensions (or modules to document with autodoc) are in another directory,
 # add these directories to sys.path here. If the directory is relative to the
@@ -101,12 +102,18 @@ pygments_style = 'sphinx'
 
 # The theme to use for HTML and HTML Help pages.  See the documentation for
 # a list of builtin themes.
-html_theme = 'default'
+if sphinx.__version__ >= '1.3':
+    html_theme = 'bizstyle'
+else:
+    html_theme = 'default'
 
 # Theme options are theme-specific and customize the look and feel of a theme
 # further.  For a list of options available for each theme, see the
 # documentation.
-#html_theme_options = {}
+if html_theme == 'classic' or html_theme == 'default':
+    html_theme_options = {
+        "collapsiblesidebar": "true"
+    }
 
 # Add any paths that contain custom themes here, relative to this directory.
 #html_theme_path = []
@@ -120,12 +127,12 @@ html_theme = 'default'
 
 # The name of an image file (relative to this directory) to place at the top
 # of the sidebar.
-#html_logo = None
+html_logo = '../../../Icons/DocIcon-Large.svg'
 
 # The name of an image file (within the static path) to use as favicon of the
 # docs.  This file should be a Windows icon file (.ico) being 16x16 or 32x32
 # pixels large.
-#html_favicon = None
+html_favicon = '../../../Icons/Ico/AvsiDoc.ico'
 
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
@@ -205,7 +212,7 @@ latex_documents = [
 
 # The name of an image file (relative to this directory) to place at the top of
 # the title page.
-#latex_logo = None
+latex_logo = '../../../Icons/DocIcon-Large.svg'
 
 # For "manual" documents, if this is true, then toplevel headings are parts,
 # not chapters.
