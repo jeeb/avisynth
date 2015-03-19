@@ -17,7 +17,7 @@ method in IClip returns this structure. Below is a description of it
 Properties and constants
 ------------------------
 
-// General properties:
+**General properties:**
 ::
 
     int width, height; // width=0 means no video
@@ -29,10 +29,11 @@ Properties and constants
     int nchannels;
 
 
-// Colorspace properties and constants:
+**Colorspace properties and constants:**
 ::
 
     int pixel_type;
+
     enum {
         CS_BGR = 1<<28,
         CS_YUV = 1<<29,
@@ -67,7 +68,7 @@ Properties and constants
     };
 
 
-// Colorformat constants:
+**Colorformat constants:**
 ::
 
     enum {
@@ -93,7 +94,7 @@ Properties and constants
     };
 
 
-// Image_type properties and constants:
+**Image_type properties and constants:**
 ::
 
     int image_type;
@@ -105,7 +106,7 @@ Properties and constants
     };
 
 
-// Chroma placement constants (bits 20 -> 23):
+**Chroma placement constants (bits 20 -> 23):**
 ::
 
     enum { // added in v5
@@ -331,10 +332,10 @@ bytes.
 
 examples:
 
-|   640x480 RGB24: RowSize() = 3*640 = 1920
+| 640x480 RGB24: RowSize() = 3*640 = 1920
 
-|   640x480 YV12: RowSize() = 640
-|   640x480 YV12: RowSize(1) = 320
+| 640x480 YV12: RowSize(PLANAR_Y) = 640
+| 640x480 YV12: RowSize(PLANAR_U) = 320
 
 ::
 
@@ -342,18 +343,19 @@ examples:
 
 For interleaved formats it will return the size of the frame in bytes
 where the width is rounded up to a multiple of 4 bytes. For planar
-formats it will do the same but only for the first plane. So, it's the
-number of bytes of a frame as it was a `BMP frame`_.
+formats it will do the same for the luma plane then add the two chroma
+planes scaled by the subsampling. So, it's the number of bytes of a
+frame as if it was a `BMP frame`_.
 
 examples:
 
-|   640x480 RGB24: BMPSize() = 480 * 3*640 = 921600
-|   643x480 RGB24: BMPSize() = 480 * 3*644 = 927360
+| 640x480 RGB24: BMPSize() = 480 * 3*640 = 921600
+| 643x480 RGB24: BMPSize() = 480 * 3*644 = 927360
 
-|   640x480 YV24: BMPSize() = 480 * 640 = 307200
-|   643x480 YV24: BMPSize() = 480 * 644 = 309120
-
-Since v5 the behavior for planar formats is the same as for interleaved formats.
+| 640x480 YV12: BMPSize() = 480 * 640 * (1+2*0.25) = 460800
+| 640x480 YV16: BMPSize() = 480 * 640 * (1+2*0.5) = 614400
+| 640x480 YV24: BMPSize() = 480 * 640 * (1+2*1) = 921600
+| 643x480 YV24: BMPSize() = 480 * 644 * (1+2*1) = 927360
 
 
 GetPlaneWidthSubsampling / GetPlaneHeightSubsampling
@@ -391,13 +393,13 @@ examples:
 +==============+====================================+=====================================+
 | YV24         | 0                                  | 0                                   |
 +--------------+------------------------------------+-------------------------------------+
-| YV16         | 1                                  | 0                                   |
+| YV16/YUY2    | 1                                  | 0                                   |
 +--------------+------------------------------------+-------------------------------------+
 | YV12         | 1                                  | 1                                   |
 +--------------+------------------------------------+-------------------------------------+
 | YV411        | 2                                  | 1                                   |
 +--------------+------------------------------------+-------------------------------------+
-| Y8           | 0 ?                                | 0 ?                                 |
+| Y8           | Error thrown                       | Error thrown                        |
 +--------------+------------------------------------+-------------------------------------+
 
 
@@ -535,7 +537,7 @@ There is some other useful information in VideoInfo structure
 
 Back to :doc:`FilterSDK`
 
-$Date: 2014/12/29 17:30:10 $
+$Date: 2015/01/13 00:24:50 $
 
 .. _RGB: http://avisynth.org/mediawiki/RGB
 .. _BMP frame: http://en.wikipedia.org/wiki/BMP_file_format

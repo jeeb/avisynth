@@ -21,7 +21,7 @@ example: http://forum.doom9.org/showthread.php?p=1001260#post1001260
 | An example is given here:
 | http://www.kevina.org/avisynth_c/example.html.
 
-In v2.60 (AVISYNTH_INTERFACE_VERSION = 5) the following functions are
+In v2.60 (AVISYNTH_INTERFACE_VERSION = 6) the following functions are
 added to the C interface:
 ::
 
@@ -44,4 +44,4 @@ ____
 
 Back to :doc:`FilterSDK`
 
-$Date: 2014/12/29 17:30:09 $
+$Date: 2015/01/13 00:24:50 $

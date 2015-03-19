@@ -12,7 +12,13 @@ In AviSynth v2.60, the colorspace properties are:
         CS_INTERLEAVED       = 1<<30,
         CS_PLANAR            = 1<<31,
 
-    // where CS_Shift_Sub_Width = 0, CS_Shift_Sub_Height = 8 and CS_Shift_Sample_Bits = 16
+        CS_VPlaneFirst       = 1<<3
+        CS_UPlaneFirst       = 1<<4
+
+        CS_Shift_Sub_Width   =  0
+        CS_Shift_Sub_Height  =  8
+        CS_Shift_Sample_Bits = 16
+
         CS_Sub_Width_1       = 3 << CS_Shift_Sub_Width, // YV24
         CS_Sub_Width_2       = 0 << CS_Shift_Sub_Width, // YV12, I420, YV16
         CS_Sub_Width_4       = 1 << CS_Shift_Sub_Width, // YUV9, YV411
@@ -26,7 +32,7 @@ In AviSynth v2.60, the colorspace properties are:
         CS_Sample_Bits_32    = 2 << CS_Shift_Sample_Bits,
     };
 
-    // Specific colorformats (where CS_VPlaneFirst = 1<<3 and CS_UPlaneFirst = 1<<4)
+    // Specific colorformats
     enum {
         CS_UNKNOWN = 0,
         CS_BGR24 = 1<<0 | CS_BGR | CS_INTERLEAVED,
@@ -54,4 +60,4 @@ Thus CS_YV12 gives for example:
 
 Back to :doc:`FilterSDK` | :doc:`VideoInfo <VideoInfo>`
 
-$Date: 2014/12/29 17:30:10 $
+$Date: 2015/01/13 00:24:50 $

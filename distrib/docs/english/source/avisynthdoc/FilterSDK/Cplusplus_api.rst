@@ -10,7 +10,7 @@ a plugin. All external plugins should #include it:
     #include "avisynth.h"
 
 Note, sometimes there is a reference to a version number of the plugin
-api (for example v3, v5 or v6). This refers to the value of
+api (for example v3 or v6). This refers to the value of
 :doc:`AVISYNTH_INTERFACE_VERSION <AviSynthInterfaceVersion>`. The
 classes and miscellaneous constants are described below.
 
@@ -1466,4 +1466,4 @@ ____
 
 Back to :doc:`FilterSDK`
 
-$Date: 2014/12/29 17:30:10 $
+$Date: 2015/01/13 00:24:50 $

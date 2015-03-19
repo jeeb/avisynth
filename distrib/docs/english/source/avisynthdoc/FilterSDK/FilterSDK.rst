@@ -223,7 +223,7 @@ License terms
 
 Note: Avisynth Filter SDK parts are under specific :doc:`SDK license <SDKLicense>` terms.
 
-$Date: 2014/12/29 17:30:10 $
+$Date: 2015/01/13 00:24:50 $
 
 Latest online mediaWiki version is at http://avisynth.nl/Filter_SDK
 
