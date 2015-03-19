@@ -1,6 +1,6 @@
 
-Cplusplus API
-=============
+C++ API
+=======
 
 The header, avisynth.h, declares all the classes, structures and
 miscellaneous constants of the C++ API that you might need when writing
@@ -10,13 +10,16 @@ a plugin. All external plugins should #include it:
     #include "avisynth.h"
 
 Note, sometimes there is a reference to a version number of the plugin
-api (for example v3 or v5). This refers to the value of
-`AVISYNTH_INTERFACE_VERSION`_. The classes and miscellaneous constants
-are described below.
+api (for example v3, v5 or v6). This refers to the value of
+:doc:`AVISYNTH_INTERFACE_VERSION <AviSynthInterfaceVersion>`. The
+classes and miscellaneous constants are described below.
 
 
 .. toctree::
-    :maxdepth: 3
+    :maxdepth: 4
+
+.. contents::
+    :depth: 4
 
 
 .. _cplusplus_createscriptenvironment:
@@ -116,19 +119,26 @@ GetPitch
     int GetPitch(int plane=0) const;
 
 
-The "pitch" of a frame buffer is the offset (in bytes) from the
-beginning of one scan line to the beginning of the next. The source and
-destination buffers won't necessarily have the same pitch. The pitch
-can vary among frames in a clip, and it can differ from the width of
-the clip. [todo add link] NOTE that the pitch can change anytime, so in
-most use cases you must request the pitch dynamically.
+The "pitch" (also called stride) of a frame buffer is the offset (in
+bytes) from the beginning of one scan line to the beginning of the
+next. The source and destination buffers won't necessarily have the
+same pitch. The pitch can vary among frames in a clip, and it can
+differ from the width of the clip. [todo add link]
 
-Meaning:
+| The scan line will be padded to a multiple of 8 (if necessary) due to
+  speed reasons, so the pitch will always be a multiple of 8. Image
+  processing is expensive, so SIMD instructions are used to speed tasks
+  up:
 
-Image processing is expensive, so SIMD instructions are used to speed
-tasks up. SSE uses 128 bit = 16 byte registers, so 8 YUY2 pixels can be
-processed the same time. AVX uses 256 bit = 32 byte registers, so 16
-YUY2 pixels can be processed the same time.
+| SSE uses 128 bit = 16 byte registers, so 8 YUY2 pixels can be processed
+  the same time.
+
+| AVX uses 256 bit = 32 byte registers, so 16 YUY2 pixels can be
+  processed the same time.
+
+NOTE that the pitch can change anytime, so in most use cases you must
+request the pitch dynamically.
+
 
 Usage:
 
@@ -337,7 +347,7 @@ through AVIFile. Its members can be called by:
 
 IScriptEnvironment has the following members: ThrowError, GetCPUFlags,
 SaveString, Sprintf, VSprintf, Invoke, BitBlt, AtExit, AddFunction,
-MakeWritable, FunctionExists, GetVar, SetVar, SetGlobalVar,
+MakeWritable, FunctionExists, GetVar, GetVarDef, SetVar, SetGlobalVar,
 PushContext, PopContext, NewVideoFrame, CheckVersion, Subframe,
 SubframePlanar, SetMemoryMax, SetWorkingDir, DeleteScriptEnvironment
 and ApplyMessage. They are described in the following subsections.
@@ -641,7 +651,8 @@ GetVar
     virtual AVSValue __stdcall GetVar(const char* name) = 0;
 
 
-GetVar can be used to access AviSynth variables.
+GetVar can be used to access AviSynth variables. It will throw an error
+if the variable doesn't exist.
 
 Internal and external (plugin) functions are, for example, exported as
 AviSynth variables:
@@ -687,6 +698,26 @@ current framenumber:
     PVideoFrame src = child->GetFrame(n, env);
 
 
+.. _cplusplus_getvardef:
+
+GetVarDef, v6
+^^^^^^^^^^^^^
+
+::
+
+    virtual AVSValue __stdcall GetVarDef(const char* name, const AVSValue& def=AVSValue()) = 0;
+
+
+GetVarDef can be used to access AviSynth variables. It will return
+'def' if the variable doesn't exist (instead of throwing an error):
+::
+
+    int error;
+    AVSValue error = env->GetVarDef("VarUnknown", AVSValue(-1)); // returns -1 when 'VarUnknown' doesn't exist
+    if (error==-1)
+        env->ThrowError("Plugin: The variable 'VarUnknown' doesn't exist!");
+
+
 .. _cplusplus_setvar:
 
 SetVar
@@ -697,12 +728,9 @@ SetVar
     virtual bool __stdcall SetVar(const char* name, const AVSValue& val) = 0;
 
 
-Return values:
-::
-
-    true if the variable was created and filled with the given value
-    false in case the variable was already there and we just updated its value
-
+It will return true if the variable was created and filled with the
+given value. It will return false in case the variable was already
+there and we just updated its value.
 
 SetVar can be used to set/create AviSynth variables. The created
 variables are only visible in the local scope, e.g. script functions
@@ -805,7 +833,7 @@ NewVideoFrame
 ::
 
     virtual PVideoFrame __stdcall NewVideoFrame(const VideoInfo& vi, int align=FRAME_ALIGN) = 0;
-    // align should be 4 or 8 (default 16)
+    // default align is 16
 
 
 The NewVideoFrame callback allocates space for a video frame of the
@@ -854,7 +882,7 @@ error if 'version' is bigger than the used interface version. The
 following interface versions are in use:
 
 AVISYNTH_INTERFACE_VERSION = 1 (v1.0-v2.0.8), 2 (v2.5.0-v2.5.5), 3
-(v2.5.6-v2.5.8), or 5 (v2.6.0) [version 4 doesn't exist].
+(v2.5.6-v2.5.8), 5 (v2.6.0a1-v2.6.0a5), or 6 (v2.6.0) [version 4 doesn't exist].
 
 This example will throw an error if v2.5x or an older AviSynth version
 is being used:
@@ -969,7 +997,7 @@ SetWorkingDir
 Sets the default directory for AviSynth.
 
 
-.. _cplusplus_deletescriptenvironmentv5:
+.. _cplusplus_deletescriptenvironment:
 
 DeleteScriptEnvironment, v5
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -983,7 +1011,7 @@ Provides a method to delete the ScriptEnvironment which is created with
 CreateScriptEnvironment.
 
 
-.. _cplusplus_applymessagev5:
+.. _cplusplus_applymessage:
 
 ApplyMessage, v5
 ^^^^^^^^^^^^^^^^
@@ -1001,6 +1029,20 @@ ApplyMessage writes text on a frame. For example:
     env->MakeWritable(&src);
     sprintf(BUF, "Filter: Frame %d is processed.", n);
     env->ApplyMessage(&src, vi, BUF, vi.width/4, 0xf0f080, 0, 0);
+
+
+.. _cplusplus_getavslinkage:
+
+GetAVSLinkage, v5
+^^^^^^^^^^^^^^^^^
+
+::
+
+    virtual const AVS_Linkage* const __stdcall GetAVSLinkage() = 0;
+
+Returns the :doc:`AVSLinkage <AVSLinkage>`.
+
+todo: how and when to use that ...
 
 
 .. _cplusplus_pvideoframe:
@@ -1067,7 +1109,7 @@ GetVersion
 GetVersion returns the interface version of the loaded avisynth.dll:
 
 AVISYNTH_INTERFACE_VERSION = 1 (v1.0-v2.0.8), 2 (v2.5.0-v2.5.5), 3
-(v2.5.6-v2.5.8), or 5 (v2.6.0) [version 4 doesn't exist].
+(v2.5.6-v2.5.8), 5 (v2.6.0a1-v2.6.0a5), or 6 (v2.6.0) [version 4 doesn't exist].
 
 
 .. _cplusplus_getframe:
@@ -1160,10 +1202,10 @@ maximal 21.
 The possible values of cachehints are:
 ::
 
-    CACHE_NOTHING=0 // Filter requested no caching.
-    CACHE_RANGE=1 // An explicit cache of "frame_range" frames around the current frame.
-    CACHE_ALL=2 // This is default operation, a simple LRU cache.
-    CACHE_AUDIO=3 // Audio caching.
+    CACHE_NOTHING=0    // Filter requested no caching.
+    CACHE_RANGE=1      // An explicit cache of "frame_range" frames around the current frame.
+    CACHE_ALL=2        // This is default operation, a simple LRU cache.
+    CACHE_AUDIO=3      // Audio caching.
     CACHE_AUDIO_NONE=4 // Filter requested no audio caching.
     CACHE_AUDIO_AUTO=5 // Audio caching (difference with CACHE_AUDIO?).
 
@@ -1283,7 +1325,7 @@ Structures
 The following structure is available: VideoInfo structure. It holds
 global information about a clip (i.e. information that does not depend
 on the framenumber). The GetVideoInfo method in IClip returns this
-structure. A description (for AVISYNTH_INTERFACE_VERSION=5) of it can
+structure. A description (for AVISYNTH_INTERFACE_VERSION=6) of it can
 be found :doc:`here <VideoInfo>`.
 
 
@@ -1337,53 +1379,63 @@ The following constants are defined in avisynth.h:
         // Old 2.5 poorly defined cache hints (v3).
         // Reserve values used by 2.5 API
         // Do not use in new filters
-        CACHE_25_NOTHING = 0, // Filter requested no caching.
-        CACHE_25_RANGE = 1, // An explicit cache of "frame_range" frames around the current frame.
-        CACHE_25_ALL = 2, // This is default operation, a simple LRU cache.
-        CACHE_25_AUDIO = 3, // Audio caching.
+        CACHE_25_NOTHING = 0,    // Filter requested no caching.
+        CACHE_25_RANGE = 1,      // An explicit cache of "frame_range" frames around the current frame.
+        CACHE_25_ALL = 2,        // This is default operation, a simple LRU cache.
+        CACHE_25_AUDIO = 3,      // Audio caching.
         CACHE_25_AUDIO_NONE = 4, // Filter requested no audio caching.
         CACHE_25_AUDIO_AUTO = 5, // Audio caching (difference with CACHE_AUDIO?).
+
         // New 2.6 explicitly defined cache hints (v5).
-        CACHE_NOTHING = 10, // Do not cache video.
-        CACHE_WINDOW = 11, // Hard protect upto X frames within a range of X from the current frame N.
-        CACHE_GENERIC = 12, // LRU cache upto X frames.
+        CACHE_NOTHING = 10,       // Do not cache video.
+        CACHE_WINDOW = 11,        // Hard protect upto X frames within a range of X from the current frame N.
+        CACHE_GENERIC = 12,       // LRU cache upto X frames.
         CACHE_FORCE_GENERIC = 13, // LRU cache upto X frames, override any previous CACHE_WINDOW.
+
         CACHE_GET_POLICY = 30, // Get the current policy.
         CACHE_GET_WINDOW = 31, // Get the current window h_span.
-        CACHE_GET_RANGE = 32, // Get the current generic frame range.
-        CACHE_AUDIO = 50, // Explicitly do cache audio, X byte cache.
+        CACHE_GET_RANGE = 32,  // Get the current generic frame range.
+
+        CACHE_AUDIO = 50,         // Explicitly do cache audio, X byte cache.
         CACHE_AUDIO_NOTHING = 51, // Explicitly do not cache audio.
-        CACHE_AUDIO_NONE = 52, // Audio cache off (auto mode), X byte intial cache.
-        CACHE_AUDIO_AUTO = 53, // Audio cache on (auto mode), X byte intial cache.
+        CACHE_AUDIO_NONE = 52,    // Audio cache off (auto mode), X byte intial cache.
+        CACHE_AUDIO_AUTO = 53,    // Audio cache on (auto mode), X byte intial cache.
+
         CACHE_GET_AUDIO_POLICY = 70, // Get the current audio policy.
-        CACHE_GET_AUDIO_SIZE = 71, // Get the current audio cache size.
+        CACHE_GET_AUDIO_SIZE = 71,   // Get the current audio cache size.
+
         CACHE_PREFETCH_FRAME = 100, // Queue request to prefetch frame N.
-        CACHE_PREFETCH_GO = 101, // Action video prefetches.
-        CACHE_PREFETCH_AUDIO_BEGIN = 120, // Begin queue request transaction to prefetch audio (take critical section).
+        CACHE_PREFETCH_GO = 101,    // Action video prefetches.
+
+        CACHE_PREFETCH_AUDIO_BEGIN = 120,   // Begin queue request transaction to prefetch audio (take critical section).
         CACHE_PREFETCH_AUDIO_STARTLO = 121, // Set low 32 bits of start.
         CACHE_PREFETCH_AUDIO_STARTHI = 122, // Set high 32 bits of start.
-        CACHE_PREFETCH_AUDIO_COUNT = 123, // Set low 32 bits of length.
-        CACHE_PREFETCH_AUDIO_COMMIT = 124, // Enqueue request transaction to prefetch audio (release critical section).
-        CACHE_PREFETCH_AUDIO_GO = 125, // Action audio prefetches.
+        CACHE_PREFETCH_AUDIO_COUNT = 123,   // Set low 32 bits of length.
+        CACHE_PREFETCH_AUDIO_COMMIT = 124,  // Enqueue request transaction to prefetch audio (release critical section).
+        CACHE_PREFETCH_AUDIO_GO = 125,      // Action audio prefetches.
+
         CACHE_GETCHILD_CACHE_MODE = 200, // Cache ask Child for desired video cache mode.
         CACHE_GETCHILD_CACHE_SIZE = 201, // Cache ask Child for desired video cache size.
         CACHE_GETCHILD_AUDIO_MODE = 202, // Cache ask Child for desired audio cache mode.
         CACHE_GETCHILD_AUDIO_SIZE = 203, // Cache ask Child for desired audio cache size.
+
         CACHE_GETCHILD_COST = 220, // Cache ask Child for estimated processing cost.
-        CACHE_COST_ZERO = 221, // Child response of zero cost (ptr arithmetic only).
-        CACHE_COST_UNIT = 222, // Child response of unit cost (less than or equal 1 full frame blit).
-        CACHE_COST_LOW = 223, // Child response of light cost. (Fast)
-        CACHE_COST_MED = 224, // Child response of medium cost. (Real time)
-        CACHE_COST_HI = 225, // Child response of heavy cost. (Slow)
+        CACHE_COST_ZERO = 221,     // Child response of zero cost (ptr arithmetic only).
+        CACHE_COST_UNIT = 222,     // Child response of unit cost (less than or equal 1 full frame blit).
+        CACHE_COST_LOW = 223,      // Child response of light cost. (Fast)
+        CACHE_COST_MED = 224,      // Child response of medium cost. (Real time)
+        CACHE_COST_HI = 225,       // Child response of heavy cost. (Slow)
+
         CACHE_GETCHILD_THREAD_MODE = 240, // Cache ask Child for thread safetyness.
-        CACHE_THREAD_UNSAFE = 241, // Only 1 thread allowed for all instances. 2.5 filters default!
-        CACHE_THREAD_CLASS = 242, // Only 1 thread allowed for each instance. 2.6 filters default!
-        CACHE_THREAD_SAFE = 243, // Allow all threads in any instance.
-        CACHE_THREAD_OWN = 244, // Safe but limit to 1 thread, internally threaded.
+        CACHE_THREAD_UNSAFE = 241,        // Only 1 thread allowed for all instances. 2.5 filters default!
+        CACHE_THREAD_CLASS = 242,         // Only 1 thread allowed for each instance. 2.6 filters default!
+        CACHE_THREAD_SAFE = 243,          // Allow all threads in any instance.
+        CACHE_THREAD_OWN = 244,           // Safe but limit to 1 thread, internally threaded.
+
         CACHE_GETCHILD_ACCESS_COST = 260, // Cache ask Child for preferred access pattern.
-        CACHE_ACCESS_RAND = 261, // Filter is access order agnostic.
-        CACHE_ACCESS_SEQ0 = 262, // Filter prefers sequential access (low cost)
-        CACHE_ACCESS_SEQ1 = 263, // Filter needs sequential access (high cost)
+        CACHE_ACCESS_RAND = 261,          // Filter is access order agnostic.
+        CACHE_ACCESS_SEQ0 = 262,          // Filter prefers sequential access (low cost)
+        CACHE_ACCESS_SEQ1 = 263,          // Filter needs sequential access (high cost)
     };
 
 
@@ -1391,21 +1443,22 @@ The following constants are defined in avisynth.h:
 
     enum { // For GetCPUFlags. These are backwards-compatible with those in VirtualDub.
         /* oldest CPU to support extension */
-        CPUF_FORCE = 0x01, // N/A
-        CPUF_FPU = 0x02, // 386/486DX
-        CPUF_MMX = 0x04, // P55C, K6, PII
+        CPUF_FORCE = 0x01,       // N/A
+        CPUF_FPU = 0x02,         // 386/486DX
+        CPUF_MMX = 0x04,         // P55C, K6, PII
         CPUF_INTEGER_SSE = 0x08, // PIII, Athlon
-        CPUF_SSE = 0x10, // PIII, Athlon XP/MP
-        CPUF_SSE2 = 0x20, // PIV, K8
-        CPUF_3DNOW = 0x40, // K6-2
-        CPUF_3DNOW_EXT = 0x80, // Athlon
-        CPUF_X86_64 = 0xA0, // Hammer (note: equiv. to 3DNow + SSE2, which only Hammer will have anyway)
-        CPUF_SSE3 = 0x100, // PIV+, K8 Venice
+        CPUF_SSE = 0x10,         // PIII, Athlon XP/MP
+        CPUF_SSE2 = 0x20,        // PIV, K8
+        CPUF_3DNOW = 0x40,       // K6-2
+        CPUF_3DNOW_EXT = 0x80,   // Athlon
+        CPUF_X86_64 = 0xA0,      // Hammer (note: equiv. to 3DNow + SSE2, which only Hammer will have anyway)
+        CPUF_SSE3 = 0x100,       // PIV+, K8 Venice
+
         // Additional CPU flags in 2.6 (v5).
-        CPUF_SSSE3 = 0x200, // Core 2
-        CPUF_SSE4 = 0x400, // Penryn, Wolfdale, Yorkfield
+        CPUF_SSSE3 = 0x200,     // Core 2
+        CPUF_SSE4 = 0x400,      // Penryn, Wolfdale, Yorkfield
         CPUF_SSE4_1 = 0x400,
-        CPUF_SSE4_2 = 0x800, // Nehalem
+        CPUF_SSE4_2 = 0x1000,   //  Nehalem (note this was 0x800 in v5)
     };
 
 
@@ -1413,6 +1466,4 @@ ____
 
 Back to :doc:`FilterSDK`
 
-$Date: 2014/10/27 22:04:54 $
-
-.. _AVISYNTH_INTERFACE_VERSION: http://avisynth.nl/index.php/Filter_SDK/AVISYNTH_INTERFACE_VERSION
+$Date: 2014/12/29 17:30:10 $

@@ -3,15 +3,15 @@ AviSynth FilterSDK
 ==================
 
 AviSynth external Filter SDK is a package for developers to create your own
-filters (plugins) for AviSynth.
+filters (plugins and console applications) for AviSynth.
 
 The package consists of:
 
 -   these documentation text files (in HTML or Wiki format);
 -   the header file 'avisynth.h' (recent version) with all declarations
     to include in plugin source code;
--   SimpleSample plugin source codes;
--   may be some extra files in 'Extra' folder.
+-   several plugin and console application source codes;
+-   some extra files in 'Extra' folder.
 
 .. toctree::
     :maxdepth: 3
@@ -141,12 +141,12 @@ interfaces (or plugin api's):
 * C API (through avisynth_c.h) - The classes and miscellaneous
   constants are described in :doc:`here <C_api>`.
 
+The built-in filters use the C++ API. This Filter SDK (or Source
+Development Kit) describes how to create plugins using both interfaces.
+
 Although not included in AviSynth itself, several people wrote other
 language interfaces in Delphi, Purebasic, NET and Java. They can be
 found `here <http://forum.doom9.org/showthread.php?p=566904#post566904>`__.
-
-The built-in filters use the C++ API. This Filter SDK (or Source
-Development Kit) describes how to create plugins using both interfaces.
 
 ...
 
@@ -156,7 +156,45 @@ about :doc:`Color Spaces <ColorSpaces>` and :doc:`Working With Images <WorkingWi
 What's new in the 2.6 api
 -------------------------
 
-...
+- C++ API (AVISYNTH_INTERFACE_VERSION = 6):
+
+    - Plugin api v3 and older contained :doc:`baked code <AVSLinkage>` meaning code
+      that is "baked" into all and every plugin instead being called
+      from avisynth.dll. Starting from 2.6 the version 2.5 plugins
+      are supported directly (with current baked code; meaning that
+      plugins compiled for 2.5 can be loaded when using 2.6) and all
+      the baked code from 2.6+ plugins is removed and the plugins
+      are still source compatible. Note that the baked code is moved
+      to interface.cpp, where also the structure :doc:`AVS_Linkage <AVSLinkage>` is
+      defined.
+    - The :ref:`IScriptEnvironment <cplusplus_iscriptenvironment>` interface has several new members:
+
+        - :ref:`ApplyMessage <cplusplus_applymessage>` writes text on a frame.
+        - :ref:`DeleteScriptEnvironment <cplusplus_deletescriptenvironment>` provides a method to delete
+          the ScriptEnvironment which is created with
+          CreateScriptEnvironment.
+        - :ref:`GetAVSLinkage <cplusplus_getavslinkage>` returns the AVSLinkage.
+        - :ref:`GetVarDef <cplusplus_getvardef>` can be used to access AviSynth variables.
+          It will not throw an error if the variable doesn't exist.
+
+    - It uses size_t for things that are memory sizes, ready for 64 bit port.
+    - New colorformats are added: Y8, YV411, YV16 and YV24.
+    - :doc:`VideoInfo` has several new constants and functions (the
+      ones relating to the new colorformats, the chroma placement
+      constants, GetPlaneHeightSubsampling,
+      GetPlaneWidthSubsampling).
+    - Some new cache and cpu constants for GetCPUFlags (the v5/v6 ones).
+
+- C API (AVISYNTH_INTERFACE_VERSION = 5):
+    - The following functions are added to the interface:
+      avs_is_yv24, avs_is_yv16, avs_is_yv12, avs_is_yv411,
+      avs_is_y8, avs_is_color_space,
+      avs_get_plane_width_subsampling,
+      avs_get_plane_height_subsampling, avs_bits_per_pixel,
+      avs_bytes_from_pixels, avs_row_size, avs_bmp_size,
+      avs_get_row_size_p, avs_get_height_p and
+      avs_delete_script_environment.
+
 
 Some history
 ------------
@@ -185,7 +223,7 @@ License terms
 
 Note: Avisynth Filter SDK parts are under specific :doc:`SDK license <SDKLicense>` terms.
 
-$Date: 2014/10/27 22:04:54 $
+$Date: 2014/12/29 17:30:10 $
 
 Latest online mediaWiki version is at http://avisynth.nl/Filter_SDK
 
