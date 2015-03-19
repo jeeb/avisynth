@@ -1,6 +1,6 @@
 
-`EnvInvoke`_
-============
+EnvInvoke
+=========
 
 ::
 
@@ -124,8 +124,8 @@ and next frame), so use:
 
         resized->SetCacheHints(CACHE_RANGE,3);
 
-Back to :doc:`InternalFunctions <InternalFunctions>`
+----
 
-$Date: 2006/11/08 20:40:17 $
+Back to :doc:`FilterSDK`
 
-.. _EnvInvoke: http://www.avisynth.org/EnvInvoke
+$Date: 2014/10/27 22:04:54 $

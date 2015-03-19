@@ -1,12 +1,12 @@
 
-`DataStorageInAviSynth`_
-========================
+DataStorageInAviSynth
+=====================
 
 
 Part 1: Actual memory storage
 -----------------------------
 
-***Warning:** technical.* Most users will only need to read (and understand)
+**Warning:** *technical.* Most users will only need to read (and understand)
 Part 2.
 
 In AviSynth, we process pixels of video data. These are stored in the memory
@@ -161,11 +161,15 @@ See more about :doc:`ColorSpaces <ColorSpaces>`.
 
 See a general introduction to :doc:`WorkingWithImages <WorkingWithImages>`.
 
---------
+----
 
-``This page is a edited summary of `[this thread at Doom9's forum]`_``
+This page is a edited summary of `[this thread at Doom9's forum]`_
 
-$Date: 2013/05/07 02:33:47 $
+----
+
+Back to :doc:`FilterSDK`
+
+$Date: 2014/10/27 22:04:54 $
 
 .. _DataStorageInAviSynth:
     http://avisynth.org/mediawiki/Filter_SDK/Data_storage

@@ -1,6 +1,10 @@
 
-`GeneralPurposeToMMXRegisters`_
-===============================
+General Purpose To MMX Registers
+================================
+
+
+Overview
+--------
 
 It might be necessary to move data back and forth between a general purpose
 register (EAX for instance) to an MMX register. This can be done by:
@@ -26,7 +30,7 @@ location, using movd, and move the data back into the registry. For much data
 it is actually often faster to process the data one line at the time, and
 store all data in a temporary space, and process the data in a separate loop.
 
---------
+----
 
 *phaeron writes:*
 
@@ -41,10 +45,8 @@ VC6PP and VC7 compilers, most notably MOVQ hell. As such, you're still better
 off sticking with inline or explicit assembly than using MMX intrinsics with
 MSVC.
 
+----
 
 Back to :doc:`AssemblerOptimizing <AssemblerOptimizing>`
 
 $Date: 2006/11/08 20:40:17 $
-
-.. _GeneralPurposeToMMXRegisters:
-    http://www.avisynth.org/GeneralPurposeToMMXRegisters

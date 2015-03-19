@@ -1,6 +1,6 @@
 
-`Non-clip Sample`_
-==================
+Non-clip Sample
+===============
 
 
 Non-clip functions in plugins
@@ -24,9 +24,11 @@ Here's a sample from script.cpp, edited for external use (by foxyshadis, see `di
         env->AddFunction("sin", "f", Sin, 0);
         return "sin";
      }
-     You don't even need a class/constructor, come to think of it.
-     Include avisynth.h and that could be a whole plugin right there. (If not
-     a terribly useful one.)
+
+
+You don't even need a class/constructor, come to think of it.
+Include avisynth.h and that could be a whole plugin right there. (If not
+a terribly useful one.)
 
 Clip to float function example
 ------------------------------
@@ -37,16 +39,12 @@ frame. Here is sample code of plugin with non-clip function:
 ::
 
      /*
-        NonClipSample plugin for Avisynth -- a non-clip sample function
-     for Conditional Filter
+        NonClipSample plugin for Avisynth -- a non-clip sample function for Conditional Filter
 
-        Copyright (C) 2007 Alexander Balakhnin 'Fizick'
-     http://avisynth.org.ru
+        Copyright (C) 2007 Alexander Balakhnin 'Fizick' http://avisynth.org.ru
 
-        This program is free software; you can redistribute it and/or
-     modify
-        it under the terms of the GNU General Public License as
-     published by
+        This program is free software; you can redistribute it and/or modify
+        it under the terms of the GNU General Public License as published by
         the Free Software Foundation.
 
         This program is distributed in the hope that it will be useful,
@@ -54,8 +52,7 @@ frame. Here is sample code of plugin with non-clip function:
         MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
         GNU General Public License for more details.
 
-        You should have received a copy of the GNU General Public
-     License
+        You should have received a copy of the GNU General Public License
         along with this program; if not, write to the Free Software
         Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
@@ -73,8 +70,7 @@ frame. Here is sample code of plugin with non-clip function:
      // Unlike usual clip functions, it returns not frames of clip but single (scalar) value
      // as AVSValue (variant of float, integer, boolean, string)
 
-     AVSValue __cdecl NonClipSample(AVSValue args, void* user_data,
-     IScriptEnvironment* env)
+     AVSValue __cdecl NonClipSample(AVSValue args, void* user_data, IScriptEnvironment* env)
      {
         // This sample function calculate mean luma value for currect frame plane
 
@@ -126,8 +122,7 @@ frame. Here is sample code of plugin with non-clip function:
      // The following function is the function that actually registers the filter in AviSynth
      // It is called automatically, when the plugin is loaded to see which functions this filter contains.
 
-     extern "C" __declspec(dllexport) const char* __stdcall
-     AvisynthPluginInit2(IScriptEnvironment* env) {
+     extern "C" __declspec(dllexport) const char* __stdcall AvisynthPluginInit2(IScriptEnvironment* env) {
          env->AddFunction("NonClipSample", "c", NonClipSample, 0);
         // The AddFunction has the following paramters:
         // AddFunction(Filtername , Arguments, Function to call,0);
@@ -145,6 +140,7 @@ frame. Here is sample code of plugin with non-clip function:
         // A freeform name of the plugin.
      }
 
+
 Compile it as DLL like other AviSynth plugins
 
 Not processing frames plugin with Avisynth AtExit function
@@ -159,17 +155,13 @@ end of the script, it registers an ``env->AtExit`` procedure. See
      /* LoadFont for avisynth
 
        Created by Shin-san of Ishin Digital Anime Fansubbing
-       Special thanks to stickboy, Leak, and IanB of the doom9.org
-       forums for the help
-       Special thanks to sh0dan for his simple sample script, which
-       this file is based on
+       Special thanks to stickboy, Leak, and IanB of the doom9.org forums for the help
+       Special thanks to sh0dan for his simple sample script, which this file is based on
 
-       This code, if made public, is protected by the GPLv3, which can
-       be found at
+       This code, if made public, is protected by the GPLv3, which can be found at
        www.gnu.org. I'm too lazy to copy/paste it in here
 
-       Purpose: to make it so I can load a font into Windows and
-       automatically unload it
+       Purpose: to make it so I can load a font into Windows and automatically unload it
        after avisynth is done running
      */
 
@@ -178,8 +170,7 @@ end of the script, it registers an ``env->AtExit`` procedure. See
 
      void __cdecl UnLoadFont(void* user_data, IScriptEnvironment* env);
 
-     AVSValue __cdecl Create_LoadFont(AVSValue args, void* user_data,
-     IScriptEnvironment* env) {
+     AVSValue __cdecl Create_LoadFont(AVSValue args, void* user_data, IScriptEnvironment* env) {
 
        char *file = args[1].AsString("");
 
@@ -188,19 +179,16 @@ end of the script, it registers an ``env->AtExit`` procedure. See
        {
           SendMessage(HWND_BROADCAST, WM_FONTCHANGE, 0, 0);
 
-          env->AtExit(UnLoadFont, strdup(file) ); // register the
-          procedure
+          env->AtExit(UnLoadFont, strdup(file) ); // register the procedure
        }
        else
        {
-          env->ThrowError("LoadFont: Font load '%s' failed.",
-          file);
+          env->ThrowError("LoadFont: Font load '%s' failed.", file);
        }
        return args[0];
      }
 
-     extern "C" __declspec(dllexport) const char* __stdcall
-     AvisynthPluginInit2(IScriptEnvironment* env)
+     extern "C" __declspec(dllexport) const char* __stdcall AvisynthPluginInit2(IScriptEnvironment* env)
      {
         env->AddFunction("LoadFont", "c[FONT]s", Create_LoadFont, 0);
 
@@ -223,8 +211,9 @@ end of the script, it registers an ``env->AtExit`` procedure. See
        return;
      }
 
+
+----
+
 Back to :doc:`FilterSDK <FilterSDK>`
 
-$Date: 2010/03/13 14:52:05 $
-
-.. _Non-clip Sample: http://avisynth.org/mediawiki/Filter_SDK/Non-clip_sample
+$Date: 2014/10/27 22:04:54 $

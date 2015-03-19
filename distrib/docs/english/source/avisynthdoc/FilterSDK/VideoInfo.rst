@@ -1,6 +1,6 @@
 
-`VideoInfo`_
-============
+VideoInfo
+=========
 
 VideoInfo provides basic information about the clip your filter receives.
 
@@ -111,12 +111,18 @@ IT_FIELDBASED. See field.h for examples.
 
 This will return the number of bits per pixel. This can be:
 
-  **pixel_type nr of bits:**
++------------------+------------+
+| pixel_type       | nr of bits |
++==================+============+
+| CS_BGR24         | 24         |
++------------------+------------+
+| CS_BGR32         | 32         |
++------------------+------------+
+| CS_YUY2          | 16         |
++------------------+------------+
+| CS_YV12, CS_I420 | 12         |
++------------------+------------+
 
-* ``CS_BGR24 24``
-* ``CS_BGR32 32``
-* ``CS_YUY2 16``
-* ``CS_YV12, CS_I420 12``
 
 ::
 
@@ -157,13 +163,20 @@ This will return the number of audio channels.
 
 This will return the sampletype. This can be:
 
-  **pixel_type nr of bits:**
++--------------+------------+
+| pixel_type   | nr of bits |
++==============+============+
+| SAMPLE_INT8  | 1<<0       |
++--------------+------------+
+| SAMPLE_INT16 | 1<<1       |
++--------------+------------+
+| SAMPLE_INT24 | 1<<2       |
++--------------+------------+
+| SAMPLE_INT32 | 1<<3       |
++--------------+------------+
+| SAMPLE_FLOAT | 1<<4       |
++--------------+------------+
 
-* ``SAMPLE_INT8 1<<0``
-* ``SAMPLE_INT16 1<<1``
-* ``SAMPLE_INT24 1<<2``
-* ``SAMPLE_INT32 1<<3``
-* ``SAMPLE_FLOAT 1<<4``
 
 ::
 
@@ -190,13 +203,20 @@ This will return the number of bytes per sample:
 
 This will return the number of bytes per channel-sample. This can be:
 
-  **sample nr of bytes:**
++--------------+----------------------+
+| sample       | nr of bytes          |
++==============+======================+
+| SAMPLE_INT8  | sizeof(signed char)  |
++--------------+----------------------+
+| SAMPLE_INT16 | sizeof(signed short) |
++--------------+----------------------+
+| SAMPLE_INT24 | 3                    |
++--------------+----------------------+
+| SAMPLE_INT32 | sizeof(signed int)   |
++--------------+----------------------+
+| SAMPLE_FLOAT | sizeof(SFLOAT)       |
++--------------+----------------------+
 
-* ``SAMPLE_INT8 sizeof(signed char)``
-* ``SAMPLE_INT16 sizeof(signed short)``
-* ``SAMPLE_INT24 3``
-* ``SAMPLE_INT32 sizeof(signed int)``
-* ``SAMPLE_FLOAT sizeof(SFLOAT)``
 
 ::
 
@@ -226,10 +246,10 @@ There is some other useful information in VideoInfo structure
 (audio_samples_per_second, sample_type, num_audio_samples and nchannels). See
 'avisynth.h' header file.
 
+----
 
-Back to :doc:`InternalFunctions <InternalFunctions>`
+Back to :doc:`FilterSDK`
 
-$Date: 2013/04/22 07:18:44 $
+$Date: 2014/10/27 22:04:54 $
 
 .. _RGB: http://avisynth.org/mediawiki/RGB
-.. _VideoInfo: http://www.avisynth.org/VideoInfo

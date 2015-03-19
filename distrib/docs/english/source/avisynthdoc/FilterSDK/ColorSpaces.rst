@@ -1,6 +1,6 @@
 
-`ColorSpaces`_
-==============
+ColorSpaces
+===========
 
 
 RGB and YUV colorspaces
@@ -73,7 +73,7 @@ YV12 Colorformat
 ~~~~~~~~~~~~~~~~
 
 The YV12 colorformat is very different from RGB and YUY2 colorformats. The
-main different is that it is a :doc:`PlanarImageFormat <PlanarImageFormat>`. That means that the
+main difference is that it is a :doc:`PlanarImageFormat <PlanarImageFormat>`. That means that the
 different color components are lying separate in memory.
 
 This can in most cases give a significant speedup, since all bytes of each
@@ -187,6 +187,8 @@ See more about :doc:`DataStorageInAviSynth <DataStorageInAviSynth>`.
 
 See a general introduction to :doc:`WorkingWithImages <WorkingWithImages>`.
 
-$Date: 2006/11/24 18:21:25 $
+----
 
-.. _ColorSpaces: http://www.avisynth.org/ColorSpaces
+Back to :doc:`FilterSDK`
+
+$Date: 2014/10/27 22:04:54 $
