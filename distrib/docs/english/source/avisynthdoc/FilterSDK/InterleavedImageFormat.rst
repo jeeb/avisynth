@@ -3,17 +3,27 @@ InterleavedImageFormat
 ======================
 
 When talking about interleaved and :doc:`PlanarImageFormat <PlanarImageFormat>` the main difference
-is how they are store in memory.
+is how they are stored in memory.
 
 Interleaved images have all color components needed to represent a pixel
 placed at the same place in memory.
 
-Some examples of interleaved formats are RGB24, RGB32, YUY2.
+Supported interleaved formats in AviSynth 2.5/2.6: RGB24, RGB32, YUY2.
 
-`<http://msdn.microsoft.com/library/default.asp?url=/library/en-us/dnwmt/html/YUVFormats.asp>`_
+Related links:
+
+- `RGB pixel formats`_
+- `Packed YUV Formats`_
+- `Recommended 8-Bit YUV Formats for Video Rendering`_ | `archived`_
 
 ----
 
 Back to :doc:`FilterSDK`
 
-$Date: 2014/10/27 22:04:54 $
+$Date: 2014/12/30 00:24:54 $
+
+.. _RGB pixel formats: http://www.fourcc.org/rgb.php
+.. _Packed YUV Formats: http://www.fourcc.org/yuv.php#Packed YUV Formats
+.. _Recommended 8-bit YUV Formats for Video Rendering: http://msdn.microsoft.com/en-us/library/windows/desktop/dd206750(v=vs.85).aspx
+.. _archived:
+    http://web.archive.org/web/20131206041437/http://msdn.microsoft.com/en-us/library/windows/desktop/dd206750(v=vs.85).aspx
