@@ -50,13 +50,13 @@
 ********************************************************************/
 
 extern const AVSFunction Swap_filters[] = {
-  {  "SwapUV","c", SwapUV::CreateSwapUV },
-  {  "UToY","c", SwapUVToY::CreateUToY },
-  {  "VToY","c", SwapUVToY::CreateVToY },
-  {  "UToY8","c", SwapUVToY::CreateUToY8 },
-  {  "VToY8","c", SwapUVToY::CreateVToY8 },
-  {  "YToUV","cc", SwapYToUV::CreateYToUV },
-  {  "YToUV","ccc", SwapYToUV::CreateYToYUV },
+  {  "SwapUV", BUILTIN_FUNC_PREFIX, "c", SwapUV::CreateSwapUV },
+  {  "UToY",   BUILTIN_FUNC_PREFIX, "c", SwapUVToY::CreateUToY },
+  {  "VToY",   BUILTIN_FUNC_PREFIX, "c", SwapUVToY::CreateVToY },
+  {  "UToY8",  BUILTIN_FUNC_PREFIX, "c", SwapUVToY::CreateUToY8 },
+  {  "VToY8",  BUILTIN_FUNC_PREFIX, "c", SwapUVToY::CreateVToY8 },
+  {  "YToUV",  BUILTIN_FUNC_PREFIX, "cc", SwapYToUV::CreateYToUV },
+  {  "YToUV",  BUILTIN_FUNC_PREFIX, "ccc", SwapYToUV::CreateYToYUV },
   { 0 }
 };
 
@@ -194,9 +194,11 @@ PVideoFrame __stdcall SwapUV::GetFrame(int n, IScriptEnvironment* env) {
       PVideoFrame dst = env->NewVideoFrame(vi);
       
       if ((env->GetCPUFlags() & CPUF_SSSE3) && IsPtrAligned(srcp, 16) && dst->GetRowSize() >= 16) {
-        ssex_yuy2_swap<ssse3_yuy2_swap_register>(srcp, dst->GetWritePtr(), src->GetPitch(), dst->GetPitch(), dst->GetRowSize(), src->GetHeight());
+        ssex_yuy2_swap<ssse3_yuy2_swap_register>(srcp, dst->GetWritePtr(), src->GetPitch(),
+          dst->GetPitch(), dst->GetRowSize(), src->GetHeight());
       } else if ((env->GetCPUFlags() & CPUF_SSE2) && IsPtrAligned(srcp, 16) && dst->GetRowSize() >= 16) {
-        ssex_yuy2_swap<sse2_yuy2_swap_register>(srcp, dst->GetWritePtr(), src->GetPitch(), dst->GetPitch(), dst->GetRowSize(), src->GetHeight());
+        ssex_yuy2_swap<sse2_yuy2_swap_register>(srcp, dst->GetWritePtr(), src->GetPitch(), 
+          dst->GetPitch(), dst->GetRowSize(), src->GetHeight());
       } else
 #ifdef X86_32
       if ((env->GetCPUFlags() & CPUF_INTEGER_SSE) && dst->GetRowSize() >= 8)   // need pshufw

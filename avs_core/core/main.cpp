@@ -44,7 +44,6 @@
 #include <new>
 #include <intrin.h>
 
-
 #define FP_STATE 0x9001f
 
 
@@ -109,9 +108,6 @@ void ReportMe(const char * msg, ...) {
 #  endif
 # endif
 #endif
-
-const char _AVS_VERSTR[]    = AVS_VERSTR;
-const char _AVS_COPYRIGHT[] = AVS_VERSTR AVS_COPYRIGHT;
 
 static long gRefCnt=0;
 
@@ -650,7 +646,13 @@ bool CAVIFileSynth::DelayInit2() {
 
           filter_graph = env->Invoke("Cache", AVSValue(filter_graph)).AsClip();
 
-          filter_graph->SetCacheHints(CACHE_GENERIC, 999); // Give the top level cache a big head start!!
+          // Tune top-level cache for encoding
+          filter_graph->SetCacheHints(CACHE_SET_MIN_CAPACITY, 0);
+          filter_graph->SetCacheHints(CACHE_SET_MAX_CAPACITY, 0);
+
+          // Alternate sample values for editors:
+          //filter_graph->SetCacheHints(CACHE_SET_MIN_CAPACITY, 10);
+          //filter_graph->SetCacheHints(CACHE_SET_MAX_CAPACITY, 100);
         }
         else if (return_val.IsBool())
           env->ThrowError("The script's return value was not a video clip, (Is a bool, %s).", return_val.AsBool() ? "True" : "False");

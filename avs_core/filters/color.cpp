@@ -32,590 +32,567 @@
 // which is not derived from or based on Avisynth, such as 3rd-party filters,
 // import and export plugins, or graphical user interfaces.
 
+#include "color.h"
 
-#include <cstdio>
-#include <cmath>
-#include <cfloat>
+#include <math.h>
+#include <float.h>
+#include <malloc.h>
+#include <stdio.h>
 #include <avs/win.h>
 #include <avs/minmax.h>
 #include "../core/internal.h"
 
 
-/* Color YUV originally by Kiraru2002(masani)
- * 
- * Adapted for AviSynth and YV12 code added by Klaus Post
-*/
-
-#include "color.h"
-
-#ifdef _DEBUG
-static int DebugMsg(LPSTR sz,...)
+static void coloryuv_showyuv(BYTE* pY, BYTE* pU, BYTE* pV, int y_pitch, int u_pitch, int v_pitch, int frame, bool full_range)
 {
-    char buf[256];
-    wvsprintf (buf, sz, (LPSTR)(&sz+1));
-    OutputDebugString(buf);
-    return FALSE;
-}
+    const int frame_size = full_range ? 256 : 224;
+    const int luma_size = frame_size * 2;
+    const int chroma_offset = full_range ? 0 : 16;
 
-typedef struct _COUNT {
-	int d;
-	int	over;
-	int	under;
-	int max;
-	int min;
-	int ave;
-} COUNT;
-#endif
+    int luma;
 
-extern const AVSFunction Color_filters[] = {
-  { "ColorYUV",
-					 "c[gain_y]f[off_y]f[gamma_y]f[cont_y]f" \
-					 "[gain_u]f[off_u]f[gamma_u]f[cont_u]f" \
-					 "[gain_v]f[off_v]f[gamma_v]f[cont_v]f" \
-					 "[levels]s[opt]s[matrix]s[showyuv]b" \
-					 "[analyze]b[autowhite]b[autogain]b[conditional]b",
-           Color::Create },
-  { 0 }
-};
-  static AVSValue __cdecl Create(AVSValue args, void* user_data, IScriptEnvironment* env);
-
-Color::Color(PClip _child, double _gain_y, double _off_y, double _gamma_y, double _cont_y,
-						double _gain_u, double _off_u, double _gamma_u, double _cont_u,
-						double _gain_v, double _off_v, double _gamma_v, double _cont_v,
-						const char *_levels, const char *_opt, const char *_matrix, 
-						bool _colorbars, bool _analyze, bool _autowhite, bool _autogain, bool _conditional,
-						IScriptEnvironment* env) :
-				GenericVideoFilter(_child),
-				y_gain(_gain_y), y_bright(_off_y), y_gamma(_gamma_y),y_contrast(_cont_y),
-				u_gain(_gain_u), u_bright(_off_u), u_gamma(_gamma_u),u_contrast(_cont_u),
-				v_gain(_gain_v), v_bright(_off_v), v_gamma(_gamma_v),v_contrast(_cont_v), conditional(_conditional)
-{
-	if (!vi.IsYUV())
-		env->ThrowError("ColorYUV: requires YUV input");
-
-	if (!CheckParms(_levels, _matrix, _opt)) {
-		if (levels < 0)		env->ThrowError("ColorYUV: parameter error : levels");
-		if (matrix < 0)		env->ThrowError("ColorYUV: parameter error : matrix");
-		if (opt < 0)		env->ThrowError("ColorYUV: parameter error : opt");
-	}
-	colorbars=_colorbars;
-	analyze=_analyze;
-	autowhite=_autowhite;
-	autogain=_autogain;
-	MakeGammaLUT();
-	if (colorbars) {
-		vi.height=224*2;
-		vi.width=224*2;
-		vi.pixel_type=VideoInfo::CS_YV12;
-	}
-}
-
-
-PVideoFrame __stdcall Color::GetFrame(int frame, IScriptEnvironment* env)
-{
-	PVideoFrame src;
-	unsigned int *srcp;
-	int pitch, w, h;
-	int i,j,wby4;
-	int modulo;
-	PIXELDATA	pixel;
-	bool updateLUT = false;
-
-  if (colorbars) {
-    PVideoFrame dst= env->NewVideoFrame(vi);
-    int* pdst=(int*)dst->GetWritePtr(PLANAR_Y);
-    int Y=16+abs(219-((frame+219)%438));
-    Y|=(Y<<8)|(Y<<16)|(Y<<24);
-    for (int i = 0;i<224*224;i++)
-      pdst[i] = Y;
-    unsigned char* pdstb = dst->GetWritePtr(PLANAR_U);
-    {for (int y=0;y<224;y++) {
-      for (int x=0;x<224;x++) {
-        pdstb[x] = 16+x;
-      }
-      pdstb += dst->GetPitch(PLANAR_U);
-    }}
-
-    pdstb = dst->GetWritePtr(PLANAR_V);
-    {for (int y=0;y<224;y++) {
-      for (int x=0;x<224;x++) {
-        pdstb[x] = 16+y;
-      }
-      pdstb += dst->GetPitch(PLANAR_U);
-    }}
-    return dst;
-  }
-	src = child->GetFrame(frame, env);
-	env->MakeWritable(&src);
-
-	srcp = (unsigned int *) src->GetWritePtr();
-	pitch = src->GetPitch();
-	w = src->GetRowSize();
-	h = src->GetHeight();
-	wby4 = w / 4;
-	modulo = pitch - w;
-  if (analyze||autowhite||autogain) {
-    unsigned int accum_Y[256],accum_U[256],accum_V[256];
-    for (i=0;i<256;i++) {
-      accum_Y[i]=0;
-      accum_U[i]=0;
-      accum_V[i]=0;
-    }
-    int uvdiv=1;  //UV divider (ratio between Y and UV pixels)
-    if (vi.IsPlanar()) {
-      uvdiv=4;
-	    BYTE* srcp2 = (BYTE*) src->GetReadPtr(PLANAR_Y);
-      for (int y=0;y<h;y++) {
-        for (int x=0;x<w;x++) {
-          accum_Y[srcp2[x]]++;
-        }
-        srcp2+=pitch;
-      }
-      pitch = src->GetPitch(PLANAR_U);
-	    srcp2 = (BYTE*) src->GetReadPtr(PLANAR_U);
-      {for (int y=0;y<h/2;y++) {
-        for (int x=0;x<w/2;x++) {
-          accum_U[srcp2[x]]++;
-        }
-        srcp2+=pitch;
-      }}
-	    srcp2 = (BYTE*) src->GetReadPtr(PLANAR_V);
-      {for (int y=0;y<h/2;y++) {
-        for (int x=0;x<w/2;x++) {
-          accum_V[srcp2[x]]++;
-        }
-        srcp2+=pitch;
-      }}
-      pitch = src->GetPitch(PLANAR_Y);
-    } else {  // YUY2
-      uvdiv=2;
-      for (int y=0;y<h;y++) {
-        for (int x=0;x<wby4;x++) {
-          unsigned int p=srcp[x];
-          accum_Y[p&0xff]++;
-          accum_Y[(p>>16)&0xff]++;
-          accum_U[(p>>8)&0xff]++;
-          accum_V[(p>>24)&0xff]++;
-        }
-        srcp+=pitch/4;
-      }
-      srcp=(unsigned int *)src->GetReadPtr();
-    }
-    int pixels = vi.width*vi.height;
-    float avg_u=0, avg_v=0, avg_y=0;
-    int min_u=0, min_v=0, min_y=0;
-    int max_u=0, max_v=0, max_y=0;
-    bool hit_y=false,hit_u=false,hit_v=false;
-    int Amin_u=0, Amin_v=0, Amin_y=0;
-    int Amax_u=0, Amax_v=0, Amax_y=0;
-    bool Ahit_miny=false,Ahit_minu=false,Ahit_minv=false;
-    bool Ahit_maxy=false,Ahit_maxu=false,Ahit_maxv=false;
-    int At_y2=(pixels/256); // When 1/256th of all pixels have been reached, trigger "Loose min/max"
-    int At_uv2=(pixels/1024); 
-   
-    for (i=0;i<256;i++) {
-      avg_y+=(float)accum_Y[i]*(float)i;
-      avg_u+=(float)accum_U[i]*(float)i;
-      avg_v+=(float)accum_V[i]*(float)i;
-      if (accum_Y[i]!=0) {max_y=i;hit_y=true;} else {if (!hit_y) min_y=i+1;} 
-      if (accum_U[i]!=0) {max_u=i;hit_u=true;} else {if (!hit_u) min_u=i+1;} 
-      if (accum_V[i]!=0) {max_v=i;hit_v=true;} else {if (!hit_v) min_v=i+1;} 
-
-      if (!Ahit_miny) {Amin_y+=accum_Y[i]; if (Amin_y>At_y2){Ahit_miny=true; Amin_y=i;} }
-      if (!Ahit_minu) {Amin_u+=accum_U[i]; if (Amin_u>At_uv2){Ahit_minu=true; Amin_u=i;} }
-      if (!Ahit_minv) {Amin_v+=accum_V[i]; if (Amin_v>At_uv2){Ahit_minv=true; Amin_v=i;} }
-
-      if (!Ahit_maxy) {Amax_y+=accum_Y[255-i]; if (Amax_y>At_y2){Ahit_maxy=true; Amax_y=255-i;} }
-      if (!Ahit_maxu) {Amax_u+=accum_U[255-i]; if (Amax_u>At_uv2){Ahit_maxu=true; Amax_u=255-i;} }
-      if (!Ahit_maxv) {Amax_v+=accum_V[255-i]; if (Amax_v>At_uv2){Ahit_maxv=true; Amax_v=255-i;} }
-    }
-
-    float Favg_y=avg_y/(float)pixels;
-    float Favg_u=(avg_u*(float)uvdiv)/(float)pixels;
-    float Favg_v=(avg_v*(float)uvdiv)/(float)pixels;
-    if (analyze) {
-      char text[400];
-      sprintf(text,
-      "        Frame: %-8u ( Luma Y / ChromaU / ChromaV )\n"
-      "      Average:      ( %7.2f / %7.2f / %7.2f )\n"
-      "      Minimum:      (   %3d   /   %3d   /   %3d    )\n"
-      "      Maximum:      (   %3d   /   %3d   /   %3d    )\n"
-      "Loose Minimum:      (   %3d   /   %3d   /   %3d    )\n"
-      "Loose Maximum:      (   %3d   /   %3d   /   %3d    )\n"
-      ,
-      (unsigned int)frame,
-      Favg_y,Favg_u,Favg_v,
-      min_y,min_u,min_v,
-      max_y,max_u,max_v,
-      Amin_y,Amin_u,Amin_v,
-      Amax_y,Amax_u,Amax_v
-      );
-
-      env->ApplyMessage(&src, vi, text, vi.width/4, 0xa0a0a0, 0, 0);
-      if (!(autowhite||autogain)) {
-        return src;
-      }
-    }
-    if (autowhite) {
-      u_bright=127-(int)Favg_u;
-      v_bright=127-(int)Favg_v;
-    }
-    if (autogain) {
-      Amax_y=min(Amax_y,236);
-      Amin_y=max(Amin_y,16);  // Never scale above luma range!
-      if (Amin_y!=Amax_y) {
-        int y_range = Amax_y-Amin_y;
-        double scale = (220.0 / y_range);
-        y_gain = (int) (256.0 * scale)-256;
-        y_bright = -(int)(scale * (double)(Amin_y)-16);
-      }
-    }
-    updateLUT = true;
-  }
-
-  if (conditional) {
-    if ( ReadConditionals(env) ) updateLUT = true;
-  }
-
-  if (updateLUT) {
-    MakeGammaLUT();
-  }
-
-  if (vi.IsYUY2()) {
-	  for (j = 0; j < h; j++)
-	  {
-		  for (i=0; i<wby4; i++)
-		  {
-			  pixel.data = *srcp;
-
-			  pixel.yuv.y0 = LUT_Y[pixel.yuv.y0];
-			  pixel.yuv.u  = LUT_U[pixel.yuv.u ];
-			  pixel.yuv.y1 = LUT_Y[pixel.yuv.y1];
-			  pixel.yuv.v  = LUT_V[pixel.yuv.v ];
-			  *srcp++ = pixel.data;
-		  }
-		  srcp = (unsigned int *)((unsigned char *)srcp + modulo) ;
-	  }
-  } else if (vi.IsPlanar()) {
-	  BYTE* srcp2 = (BYTE*) src->GetWritePtr();
-    for (j = 0; j < h; j++) {
-		  for (i=0; i<w; i++) {
-        srcp2[i]=LUT_Y[srcp2[i]];
-      }
-	    srcp2 +=  pitch;
-    }
-	  srcp2 = (BYTE*) src->GetWritePtr(PLANAR_U);
-    h=src->GetHeight(PLANAR_U);
-    w=src->GetRowSize(PLANAR_U);
-    pitch=src->GetPitch(PLANAR_U);
-    for (j = 0; j < h; j++) {
-		  for (i=0; i<w; i++) {
-        srcp2[i]=LUT_U[srcp2[i]];
-      }
-	    srcp2 +=  pitch;
-    }
-	  srcp2 = (BYTE*) src->GetWritePtr(PLANAR_V);
-    for (j = 0; j < h; j++) {
-		  for (i=0; i<w; i++) {
-        srcp2[i]=LUT_V[srcp2[i]];
-      }
-	    srcp2 +=  pitch;
-    }
-  }
-
-	return src;
-}
-
-void Color::MakeGammaLUT(void)
-{
-	static const int scale = 256, shift = 2^10,
-		coeff_y0 =  76309, coeff_y1 =  65536,
-		coeff_u0 = 132201, coeff_u1 = 116129,
-		coeff_v0 = 104597, coeff_v1 =  91881;
-	int i;
-	int val;
-	double g,b,c,gain;
-	double v;
-
-	y_thresh1 = u_thresh1 = v_thresh1 = -1;
-	y_thresh2 = u_thresh2 = v_thresh2 = 256;
-
-	gain = ((double)y_gain + scale) / scale;
-	c = ((double)y_contrast + scale) / scale;
-	b = ((double)y_bright + scale) / scale;
-	g = ((double)y_gamma + scale) / scale;
-	if (g < 0.01)    g = 0.01;
-	for (i = 0; i < 256; i++)
+    // Calculate luma cycle
+    if (full_range)
     {
-		val = i * shift;
-		switch (levels) {
-			case 1:	// PC->TV
-				val = (int)((val - 16 * shift) * coeff_y0 / coeff_y1 + shift / 2);
-				break;
-			case 2:	// TV->PC
-			case 3:	// TV->PC.Y
-				val = (int)(val * coeff_y1 / coeff_y0 + 16 * shift + shift / 2);
-				break;
-			default:	//none
-				break;
-		}
-		val = val / shift;
-
-		v = ((double)val) / 256;
-		v = (v * gain) + ((v-0.5) * c + 0.5) - v + (b - 1);
-
-		if (y_gamma != 0 && v > 0)
-			v = pow( v, 1 / g);
-		v = v * 256;
-		
-		v += 0.5;
-		val = (int)floor(v);
-
-		if (val > 255)
-			val = 255;
-		else if (val < 0)
-			val = 0;
-
-		if (val > 235) {
-			if(y_thresh2 > 255)		y_thresh2 = i;
-			if(opt)		val = 235;
-		}
-		else if (val < 16) {
-			y_thresh1 = i;
-			if(opt)		val = 16;
-		}
-		LUT_Y[i] = (unsigned char)val;
+        luma = frame % 510;
+        if (luma > 255)
+        {
+            luma = 510 - luma;
+        }
     }
-
-	gain = ((double)u_gain + scale);
-	c = ((double)u_contrast + scale);
-	b = ((double)u_bright);
-	for (i = 0; i < 256; i++)
+    else
     {
-		val = i * shift;
-		switch (levels) {
-			case 1:	// PC->TV Scale
-				val = (int)((val - 128 * shift) * coeff_u0 / coeff_u1 + 128 * shift + shift / 2);
-				break;
-			case 2:	// TV->PC Scale
-				val = (int)((val - 128 * shift) * coeff_u1 / coeff_u0 + 128 * shift + shift / 2);
-				break;
-			default:	//none
-				break;
-		}
-		val = val / shift;
-
-		v = ((double)val);
-		v = (v * gain / scale) + ((v-128) * c / scale + 128) - v + b;
-
-		v += 0.5;
-		val = (int)floor(v);
-		
-		if (val > 255)
-			val = 255;
-		else if (val < 0)
-			val = 0;
-
-		if (val > 240) {
-			if(u_thresh2 > 255)		u_thresh2 = i;
-			if(opt)		val = 240;
-		}
-		else if (val < 16) {
-			u_thresh1 = i;
-			if(opt)		val = 16;
-		}
-		LUT_U[i] = (unsigned char)val;
+        luma = frame % 438;
+        if (luma > 219)
+        {
+            luma = 438 - luma;
+        }
+        luma += 16;
     }
 
-	gain = ((double)v_gain + scale);
-	c = ((double)v_contrast + scale);
-	b = ((double)v_bright);
-	for (i = 0; i < 256; i++)
+    // Set luma value
+    for (int y = 0; y < luma_size; y++)
     {
-		val = i * shift;
-		switch (levels) {
-			case 1:	// PC->TV Scale
-				val = (int)((val - 128 * shift) * coeff_v0 / coeff_v1 + 128 * shift + shift / 2);
-				break;
-			case 2:	// TV->PC Scale
-				val = (int)((val - 128 * shift) * coeff_v1 / coeff_v0 + 128 * shift + shift / 2);
-				break;
-			default:	//none
-				break;
-		}
-		val = val / shift;
-
-		v = ((double)val);
-		v = (v * gain / scale) + ((v-128) * c / scale + 128) - v + b;
-
-		v += 0.5;
-		val = (int)floor(v);
-		
-		if (val > 255)
-			val = 255;
-		else if (val < 0)
-			val = 0;
-		
-		if (val > 240) {
-			if(v_thresh2 > 255)		v_thresh2 = i;
-			if(opt)		val = 240;
-		}
-		else if (val < 16) {
-			v_thresh1 = i;
-			if(opt)		val = 16;
-		}
-		LUT_V[i] = (unsigned char)val;
+        memset(pY, luma, luma_size);
+        pY += y_pitch;
     }
 
-#ifdef _DEBUG
-	DumpLUT();
-#endif
+    // Set chroma
+    for (int y = 0; y < frame_size; y++)
+    {
+        for (int x = 0; x < frame_size; x++) {
+            pU[x] = x + chroma_offset;
+        }
 
+        memset(pV, y + chroma_offset, frame_size);
+
+        pU += u_pitch;
+        pV += v_pitch;
+    }
 }
 
-#define READ_CONDITIONAL(x,y) \
-{\
-  const double t = env2->GetVar("coloryuv_" x, DBL_MIN);\
-  if (t != DBL_MIN) {\
-    if (y != t) {\
-      changed = true;\
-      y = t;\
-    }\
-  }\
+static void coloryuv_create_lut(BYTE* lut, const ColorYUVPlaneConfig* config)
+{
+    const double scale = 256;
+
+    double gain = config->gain / scale + 1.0;
+    double contrast = config->contrast / scale + 1.0;
+    double gamma = config->gamma / scale + 1.0;
+    double offset = config->offset / scale;
+
+    int range = config->range;
+    if (range == COLORYUV_RANGE_PC_TVY)
+    {
+        range = config->plane == PLANAR_Y ? COLORYUV_RANGE_PC_TV : COLORYUV_RANGE_NONE;
+    }
+
+    double range_factor = 1.0;
+
+    if (range != COLORYUV_RANGE_NONE)
+    {
+        if (range == COLORYUV_RANGE_PC_TV)
+        {
+            if (config->plane == PLANAR_Y)
+            {
+                range_factor = 219.0 / 255.0;
+            }
+            else
+            {
+                range_factor = 224.0 / 255.0;
+            }
+        }
+        else
+        {
+            if (config->plane == PLANAR_Y)
+            {
+                range_factor = 255.0 / 219.0;
+            }
+            else
+            {
+                range_factor = 255.0 / 224.0;
+            }
+        }
+    }
+
+    for (int i = 0; i < 256; i++) {
+        double value = double(i) / 256.0;
+
+        // Applying gain
+        value *= gain;
+
+        // Applying contrast
+        value = (value - 0.5) * contrast + 0.5;
+
+        // Applying offset
+        value += offset;
+
+        // Applying gamma
+        if (gamma != 0 && value > 0)
+        {
+            value = pow(value, 1.0 / gamma);
+        }
+
+        value *= 256.0;
+
+        // Range conversion
+        if (range == COLORYUV_RANGE_PC_TV)
+        {
+            value = value*range_factor + 16.0;
+        }
+        else if (range == COLORYUV_RANGE_TV_PC)
+        {
+            value = (value - 16.0) * range_factor;
+        }
+
+        // Convert back to int
+        int iValue = int(value);
+
+        // Clamp
+        iValue = clamp(iValue, 0, 255);
+
+        if (config->clip_tv)
+        {
+            iValue = clamp(iValue, 16, config->plane == PLANAR_Y ? 235 : 240);
+        }
+
+        lut[i] = iValue;
+    }
 }
 
-bool Color::ReadConditionals(IScriptEnvironment* env) {
-	bool changed = false;
+static void coloryuv_analyse_core(const int* freq, const int pixel_num, ColorYUVPlaneData* data)
+{
+    const int pixel_256th = pixel_num / 256; // For loose max/min
 
-  IScriptEnvironment2 *env2 = static_cast<IScriptEnvironment2*>(env);
-  READ_CONDITIONAL("gain_y", y_gain);
-  READ_CONDITIONAL("gain_u", u_gain);
-  READ_CONDITIONAL("gain_v", v_gain);
-  READ_CONDITIONAL("off_y", y_bright);
-  READ_CONDITIONAL("off_u", u_bright);
-  READ_CONDITIONAL("off_v", v_bright);
-  READ_CONDITIONAL("gamma_y", y_gamma);
-//READ_CONDITIONAL("gamma_u", u_gamma);
-//READ_CONDITIONAL("gamma_v", v_gamma);
-  READ_CONDITIONAL("cont_y", y_contrast);
-  READ_CONDITIONAL("cont_u", u_contrast);
-  READ_CONDITIONAL("cont_v", v_contrast);
+    double avg = 0.0;
+    data->real_min = -1;
+    data->real_max = -1;
+    data->loose_max = -1;
+    data->loose_min = -1;
 
-  return changed;
+    int px_min_c = 0, px_max_c = 0;
+
+    for (int i = 0; i < 256; i++)
+    {
+        avg += freq[i] * i;
+
+        if (freq[i] > 0 && data->real_min == -1)
+        {
+            data->real_min = i;
+        }
+
+        if (data->loose_min == -1)
+        {
+            px_min_c += freq[i];
+
+            if (px_min_c > pixel_256th)
+            {
+                data->loose_min = i;
+            }
+        }
+
+        if (freq[255 - i] > 0 && data->real_max == -1)
+        {
+            data->real_max = 255 - i;
+        }
+
+        if (data->loose_max == -1)
+        {
+            px_max_c += freq[255 - i];
+
+            if (px_max_c > pixel_256th)
+            {
+                data->loose_max = 255 - i;
+            }
+        }
+    }
+
+    avg /= pixel_num;
+    data->average = avg;
+}
+
+static void coloryuv_analyse_planar(const BYTE* pSrc, int src_pitch, int width, int height, ColorYUVPlaneData* data)
+{
+    int freq[256];
+    memset(freq, 0, sizeof(freq));
+
+    for (int y = 0; y < height; y++)
+    {
+        for (int x = 0; x < width; x++)
+        {
+            freq[pSrc[x]]++;
+        }
+
+        pSrc += src_pitch;
+    }
+
+    coloryuv_analyse_core(freq, width*height, data);
+}
+
+static void coloryuv_analyse_yuy2(const BYTE* pSrc, int src_pitch, int width, int height, ColorYUVPlaneData* dataY, ColorYUVPlaneData* dataU, ColorYUVPlaneData* dataV)
+{
+    int freqY[256], freqU[256], freqV[256];
+    memset(freqY, 0, sizeof(freqY));
+    memset(freqU, 0, sizeof(freqU));
+    memset(freqV, 0, sizeof(freqV));
+
+    for (int y = 0; y < height; y++)
+    {
+        for (int x = 0; x < width*2; x+=4)
+        {
+            freqY[pSrc[x+0]]++;
+            freqU[pSrc[x+1]]++;
+            freqY[pSrc[x+2]]++;
+            freqV[pSrc[x+3]]++;
+        }
+
+        pSrc += src_pitch;
+    }
+
+    coloryuv_analyse_core(freqY, width*height, dataY);
+    coloryuv_analyse_core(freqU, width*height/2, dataU);
+    coloryuv_analyse_core(freqV, width*height/2, dataV);
+}
+
+static void coloryuv_autogain(const ColorYUVPlaneData* dY, const ColorYUVPlaneData* dU, const ColorYUVPlaneData* dV, ColorYUVPlaneConfig* cY, ColorYUVPlaneConfig* cU, ColorYUVPlaneConfig* cV)
+{
+    int maxY = min(dY->loose_max, 236);
+    int minY = max(dY->loose_min, 16);
+
+    int range = maxY - minY;
+
+    if (range > 0) {
+        double scale = 220.0 / range;
+        cY->offset = 16.0 - scale*minY;
+        cY->gain = 256.0*scale - 256.0;
+    }
+}
+
+static void coloryuv_autowhite(const ColorYUVPlaneData* dY, const ColorYUVPlaneData* dU, const ColorYUVPlaneData* dV, ColorYUVPlaneConfig* cY, ColorYUVPlaneConfig* cU, ColorYUVPlaneConfig* cV)
+{
+    cU->offset = 127 - dU->average;
+    cV->offset = 127 - dV->average;
+}
+
+static void coloryuv_apply_lut_planar(BYTE* pDst, const BYTE* pSrc, int dst_pitch, int src_pitch, int width, int height, const BYTE* lut)
+{
+    for (int y = 0; y < height; y++)
+    {
+        for (int x = 0; x < width; x++)
+        {
+            pDst[x] = lut[pSrc[x]];
+        }
+
+        pSrc += src_pitch;
+        pDst += dst_pitch;
+    }
+}
+
+static void coloryuv_apply_lut_yuy2(BYTE* pDst, const BYTE* pSrc, int dst_pitch, int src_pitch, int width, int height, const BYTE* lutY, const BYTE* lutU, const BYTE* lutV)
+{
+    for (int y = 0; y < height; y++)
+    {
+        for (int x = 0; x < width * 2; x += 4)
+        {
+            pDst[x+0] = lutY[pSrc[x + 0]];
+            pDst[x+1] = lutU[pSrc[x + 1]];
+            pDst[x+2] = lutY[pSrc[x + 2]];
+            pDst[x+3] = lutV[pSrc[x + 3]];
+        }
+
+        pSrc += src_pitch;
+        pDst += dst_pitch;
+    }
+}
+
+#define READ_CONDITIONAL(plane, var_name, internal_name)  \
+    {                                                     \
+        const double t = env2->GetVar("coloryuv_" #var_name "_" #plane, DBL_MIN); \
+        if (t != DBL_MIN) {                               \
+            c_##plane##->internal_name = t;               \
+            c_##plane##->changed = true;                  \
+        }                                                 \
+    }
+
+static void coloryuv_read_conditional(IScriptEnvironment* env, ColorYUVPlaneConfig* c_y, ColorYUVPlaneConfig* c_u, ColorYUVPlaneConfig* c_v)
+{
+    auto env2 = static_cast<IScriptEnvironment2*>(env);
+
+    READ_CONDITIONAL(y, gain, gain);
+    READ_CONDITIONAL(y, off, offset);
+    READ_CONDITIONAL(y, gamma, gamma);
+    READ_CONDITIONAL(y, cont, contrast);
+
+    READ_CONDITIONAL(u, gain, gain);
+    READ_CONDITIONAL(u, off, offset);
+    READ_CONDITIONAL(u, gamma, gamma);
+    READ_CONDITIONAL(u, cont, contrast);
+
+    READ_CONDITIONAL(v, gain, gain);
+    READ_CONDITIONAL(v, off, offset);
+    READ_CONDITIONAL(v, gamma, gamma);
+    READ_CONDITIONAL(v, cont, contrast);
 }
 
 #undef READ_CONDITIONAL
 
-
-
-bool Color::CheckParms(const char *_levels, const char *_matrix, const char *_opt)
+ColorYUV::ColorYUV(PClip child,
+                     double gain_y, double offset_y, double gamma_y, double contrast_y,
+                     double gain_u, double offset_u, double gamma_u, double contrast_u,
+                     double gain_v, double offset_v, double gamma_v, double contrast_v,
+                     const char* level, const char* opt,
+                     bool colorbar, bool analyse, bool autowhite, bool autogain, bool conditional,
+                     IScriptEnvironment* env)
+ : GenericVideoFilter(child),
+   colorbar(colorbar), analyse(analyse), autowhite(autowhite), autogain(autogain), conditional(conditional)
 {
-	int i;
-	static const char * const LevelsTbl[] = { "", "TV->PC", "PC->TV", "PC->TV.Y" };
-	static const char * const MatrixTbl[] = { "", "rec.709" };
-	static const char * const OptTbl[]    = { "", "coring" };
+    if (!vi.IsYUV())
+    {
+        env->ThrowError("ColorYUV: Only work with YUV colorspace.");
+    }
 
-	levels = -1;
-	if (_levels) {
-		for (i=0; i<4 ; i++) {
-			if (!lstrcmpi(_levels, LevelsTbl[i])) 
-			{
-				levels = i;
-				break;
-			}
-		}
-	} else {		
-		levels = 0;
-	}
+    configY.gain = gain_y;
+    configY.offset = offset_y;
+    configY.gamma = gamma_y;
+    configY.contrast = contrast_y;
+    configY.changed = false;
+    configY.clip_tv = false;
+    configY.plane = PLANAR_Y;
 
-	matrix = -1;
-	if (_matrix) {
-		for (i=0; i<2 ; i++) {
-			if (!lstrcmpi(_matrix, MatrixTbl[i])) 
-			{
-				matrix = i;
-				break;
-			}
-		}
-	} else {		
-		matrix = 0;
-	}
+    configU.gain = gain_u;
+    configU.offset = offset_u;
+    configU.gamma = gamma_u;
+    configU.contrast = contrast_u;
+    configU.changed = false;
+    configU.clip_tv = false;
+    configU.plane = PLANAR_U;
 
-	opt = -1;
-	if (_opt) {
-		for (i=0; i<2 ; i++) {
-			if (!lstrcmpi(_opt, OptTbl[i])) 
-			{
-				opt = i;
-				break;
-			}
-		}
-	} else {		
-		opt = 0;
-	}
+    configV.gain = gain_v;
+    configV.offset = offset_v;
+    configV.gamma = gamma_v;
+    configV.contrast = contrast_v;
+    configV.changed = false;
+    configV.clip_tv = false;
+    configV.plane = PLANAR_V;
 
-	if ( levels < 0 || matrix < 0 || opt < 0 )	return FALSE;
-	return TRUE;
+    // Range
+    if (lstrcmpi(level, "TV->PC") == 0)
+    {
+        configV.range = configU.range = configY.range = COLORYUV_RANGE_TV_PC;
+    }
+    else if (lstrcmpi(level, "PC->TV") == 0)
+    {
+        configV.range = configU.range = configY.range = COLORYUV_RANGE_PC_TV;
+    }
+    else if (lstrcmpi(level, "PC->TV.Y") == 0)
+    {
+        configV.range = configU.range = configY.range = COLORYUV_RANGE_PC_TVY;
+    }
+    else if (lstrcmpi(level, "") != 0)
+    {
+        env->ThrowError("ColorYUV: invalid parameter : levels");
+    }
+
+    // Option
+    if (lstrcmpi(opt, "coring") == 0)
+    {
+        configY.clip_tv = true;
+        configU.clip_tv = true;
+        configV.clip_tv = true;
+    }
+    else if (lstrcmpi(opt, "") != 0)
+    {
+        env->ThrowError("ColorYUV: invalid parameter : opt");
+    }
+
+    if (colorbar)
+    {
+        vi.width = 224 * 2;
+        vi.height = 224 * 2;
+        vi.pixel_type = VideoInfo::CS_YV12;
+    }
 }
 
-#ifdef _DEBUG
-void Color::DumpLUT(void)
+PVideoFrame __stdcall ColorYUV::GetFrame(int n, IScriptEnvironment* env)
 {
-/*
-  static const char *TitleTbl[] = {
-		"Color Adjust Look-up Table : Y, luminance\n",
-		"Color Adjust Look-up Table : U, Cb, Color Difference(blue)\n",
-		"Color Adjust Look-up Table : V, Cr, Color Difference(red)\n"
-	};
-	static const BYTE *LUT[] = { (BYTE *)&LUT_Y, (BYTE *)&LUT_U, (BYTE *)&LUT_V };
-	int	index,i,j;
-	char buf[512];
+    if (colorbar)
+    {
+        PVideoFrame dst = env->NewVideoFrame(vi);
+        coloryuv_showyuv(dst->GetWritePtr(), dst->GetWritePtr(PLANAR_U), dst->GetWritePtr(PLANAR_V), dst->GetPitch(), dst->GetPitch(PLANAR_U), dst->GetPitch(PLANAR_V), n, false);
+        return dst;
+    }
 
-	for(index=0; index<3; index++)
-	{
-		OutputDebugString( TitleTbl[index] );
-		for(i=0; i<16;i++)
-		{
-			sprintf(buf,"%03d(%02X) : ", i * 16, i * 16);
-			for(j=0;j<8;j++)
-			{
-				sprintf(&buf[j*4+10], "%03d ",LUT[index][i*16+j]);
-			}
-			sprintf(&buf[8*4+10], " - ");
-			for(j=8;j<16;j++)
-			{
-				sprintf(&buf[j*4+13], "%03d ",LUT[index][i*16+j]);
-			}
-			OutputDebugString(buf);
-		}
-		OutputDebugString("\n");
-	}
-*/
+    PVideoFrame src = child->GetFrame(n, env);
+    PVideoFrame dst = env->NewVideoFrame(vi);
+
+    ColorYUVPlaneConfig // Yes, we copy these struct
+        cY = configY,
+        cU = configU,
+        cV = configV;
+
+    // for analysing data
+    char text[512];
+
+    if (analyse || autowhite || autogain)
+    {
+        ColorYUVPlaneData dY, dU, dV;
+
+        if (vi.IsYUY2())
+        {
+            coloryuv_analyse_yuy2(src->GetReadPtr(), src->GetPitch(), vi.width, vi.height, &dY, &dU, &dV);
+        }
+        else
+        {
+            coloryuv_analyse_planar(src->GetReadPtr(), src->GetPitch(), vi.width, vi.height, &dY);
+            if (!vi.IsY8())
+            {
+                const int width = vi.width >> vi.GetPlaneWidthSubsampling(PLANAR_U);
+                const int height = vi.height >> vi.GetPlaneHeightSubsampling(PLANAR_U);
+
+                coloryuv_analyse_planar(src->GetReadPtr(PLANAR_U), src->GetPitch(PLANAR_U), width, height, &dU);
+                coloryuv_analyse_planar(src->GetReadPtr(PLANAR_V), src->GetPitch(PLANAR_V), width, height, &dV);
+            }
+        }
+
+        if (analyse)
+        {
+            if (!vi.IsY8())
+            {
+                sprintf(text,
+                        "        Frame: %-8u ( Luma Y / ChromaU / ChromaV )\n"
+                        "      Average:      ( %7.2f / %7.2f / %7.2f )\n"
+                        "      Minimum:      (   %3d   /   %3d   /   %3d    )\n"
+                        "      Maximum:      (   %3d   /   %3d   /   %3d    )\n"
+                        "Loose Minimum:      (   %3d   /   %3d   /   %3d    )\n"
+                        "Loose Maximum:      (   %3d   /   %3d   /   %3d    )\n",
+                        n,
+                        dY.average, dU.average, dV.average,
+                        dY.real_min, dU.real_min, dV.real_min,
+                        dY.real_max, dU.real_max, dV.real_max,
+                        dY.loose_min, dU.loose_min, dV.loose_min,
+                        dY.loose_max, dU.loose_max, dV.loose_max
+                        );
+            } 
+            else
+            {
+                sprintf(text,
+                        "        Frame: %-8u\n"
+                        "      Average: %7.2f\n"
+                        "      Minimum: %3d\n"
+                        "      Maximum: %3d\n"
+                        "Loose Minimum: %3d\n"
+                        "Loose Maximum: %3d\n",
+                        n,
+                        dY.average,
+                        dY.real_min,
+                        dY.real_max,
+                        dY.loose_min,
+                        dY.loose_max
+                        );
+            }
+        }
+
+        if (autowhite && !vi.IsY8())
+        {
+            coloryuv_autowhite(&dY, &dU, &dV, &cY, &cU, &cV);
+        }
+
+        if (autogain)
+        {
+            coloryuv_autogain(&dY, &dU, &dV, &cY, &cU, &cV);
+        }
+    }
+
+    // Read conditional variables
+    coloryuv_read_conditional(env, &cY, &cU, &cV);
+
+    BYTE lutY[256], lutU[256], lutV[256];
+
+    coloryuv_create_lut(lutY, &cY);
+    if (!vi.IsY8())
+    {
+        coloryuv_create_lut(lutU, &cU);
+        coloryuv_create_lut(lutV, &cV);
+    }
+
+    if (vi.IsYUY2())
+    {
+        coloryuv_apply_lut_yuy2(dst->GetWritePtr(), src->GetReadPtr(), dst->GetPitch(), src->GetPitch(), vi.width, vi.height, lutY, lutU, lutV);
+    }
+    else
+    {
+        coloryuv_apply_lut_planar(dst->GetWritePtr(), src->GetReadPtr(), dst->GetPitch(), src->GetPitch(), vi.width, vi.height, lutY);
+        if (!vi.IsY8())
+        {
+            const int width = vi.width >> vi.GetPlaneWidthSubsampling(PLANAR_U);
+            const int height = vi.height >> vi.GetPlaneHeightSubsampling(PLANAR_U);
+
+            coloryuv_apply_lut_planar(dst->GetWritePtr(PLANAR_U), src->GetReadPtr(PLANAR_U), dst->GetPitch(PLANAR_U), src->GetPitch(PLANAR_U), width, height, lutU);
+            coloryuv_apply_lut_planar(dst->GetWritePtr(PLANAR_V), src->GetReadPtr(PLANAR_V), dst->GetPitch(PLANAR_V), src->GetPitch(PLANAR_V), width, height, lutV);
+        }
+    }
+
+    if (analyse)
+    {
+        env->ApplyMessage(&dst, vi, text, vi.width / 4, 0xa0a0a0, 0, 0);
+    }
+
+    return dst;
 }
-#endif
 
-AVSValue __cdecl Color::Create(AVSValue args, void* user_data, IScriptEnvironment* env) 
+AVSValue __cdecl ColorYUV::Create(AVSValue args, void*, IScriptEnvironment* env)
 {
-	return new Color(args[0].AsClip(),
-		args[ 1].AsFloat(0.0f),		// gain_y
-		args[ 2].AsFloat(0.0f),		// off_y      bright
-		args[ 3].AsFloat(0.0f),		// gamma_y
-		args[ 4].AsFloat(0.0f),		// cont_y
-		args[ 5].AsFloat(0.0f),		// gain_u
-		args[ 6].AsFloat(0.0f),		// off_u      bright
-		args[ 7].AsFloat(0.0f),		// gamma_u
-		args[ 8].AsFloat(0.0f),		// cont_u
-		args[ 9].AsFloat(0.0f),		// gain_v
-		args[10].AsFloat(0.0f),		// off_v
-		args[11].AsFloat(0.0f),		// gamma_v
-		args[12].AsFloat(0.0f),		// cont_v
-		args[13].AsString(""),		// levels = "", "TV->PC", "PC->TV"
-		args[14].AsString(""),		// opt = "", "coring"
-		args[15].AsString(""),		// matrix = "", "rec.709"
-		args[16].AsBool(false),		// colorbars
-		args[17].AsBool(false),		// analyze
-		args[18].AsBool(false),		// autowhite
-		args[19].AsBool(false),		// autogain
-		args[20].AsBool(false),		// conditional
-		env);
+    return new ColorYUV(args[0].AsClip(),
+                        args[1].AsFloat(0.0f),                // gain_y
+                        args[2].AsFloat(0.0f),                // off_y      bright
+                        args[3].AsFloat(0.0f),                // gamma_y
+                        args[4].AsFloat(0.0f),                // cont_y
+                        args[5].AsFloat(0.0f),                // gain_u
+                        args[6].AsFloat(0.0f),                // off_u      bright
+                        args[7].AsFloat(0.0f),                // gamma_u
+                        args[8].AsFloat(0.0f),                // cont_u
+                        args[9].AsFloat(0.0f),                // gain_v
+                        args[10].AsFloat(0.0f),                // off_v
+                        args[11].AsFloat(0.0f),                // gamma_v
+                        args[12].AsFloat(0.0f),                // cont_v
+                        args[13].AsString(""),                // levels = "", "TV->PC", "PC->TV"
+                        args[14].AsString(""),                // opt = "", "coring"
+//                      args[15].AsString(""),                // matrix = "", "rec.709"
+                        args[16].AsBool(false),                // colorbars
+                        args[17].AsBool(false),                // analyze
+                        args[18].AsBool(false),                // autowhite
+                        args[19].AsBool(false),                // autogain
+                        args[20].AsBool(false),                // conditional
+                        env);
 }
+
+extern const AVSFunction Color_filters[] = {
+    { "ColorYUV", BUILTIN_FUNC_PREFIX, 
+                  "c[gain_y]f[off_y]f[gamma_y]f[cont_y]f" \
+                  "[gain_u]f[off_u]f[gamma_u]f[cont_u]f" \
+                  "[gain_v]f[off_v]f[gamma_v]f[cont_v]f" \
+                  "[levels]s[opt]s[matrix]s[showyuv]b" \
+                  "[analyze]b[autowhite]b[autogain]b[conditional]b",
+                  ColorYUV::Create },
+    { 0 }
+};
+

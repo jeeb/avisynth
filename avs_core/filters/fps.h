@@ -34,8 +34,9 @@
 #ifndef __FPS_H__
 #define __FPS_H__
 
+#include <stdint.h>
 #include <avisynth.h>
-
+#include "../core/internal.h"
 
 /********************************************************************
 ********************************************************************/
@@ -46,7 +47,7 @@ void FloatToFPS(const char *name, float n, unsigned &num, unsigned &den, IScript
 
 void PresetToFPS(const char *name, const char *p, unsigned &num, unsigned &den, IScriptEnvironment* env);
 
-class AssumeScaledFPS : public GenericVideoFilter 
+class AssumeScaledFPS : public NonCachedGenericVideoFilter 
 /**
   * Class to change the framerate without changing the frame count
  **/
@@ -57,7 +58,7 @@ public:
 };
 
 
-class AssumeFPS : public GenericVideoFilter 
+class AssumeFPS : public NonCachedGenericVideoFilter 
 /**
   * Class to change the framerate without changing the frame count
  **/
@@ -81,13 +82,18 @@ public:
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
   bool __stdcall GetParity(int n);
 
+  int __stdcall SetCacheHints(int cachehints, int frame_range) override {
+    //todo: not really sure if it has to be serialized or can do with multiple instances
+    return cachehints == CACHE_GET_MTMODE ? MT_SERIALIZED : 0; 
+  }
+
   static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env);
   static AVSValue __cdecl CreateFloat(AVSValue args, void*, IScriptEnvironment* env);
   static AVSValue __cdecl CreatePreset(AVSValue args, void*, IScriptEnvironment* env);
   static AVSValue __cdecl CreateFromClip(AVSValue args, void*, IScriptEnvironment* env);
 
 private:
-  __int64 a, b;
+  int64_t a, b;
   bool linear;
   int lastframe;
 };
@@ -105,13 +111,17 @@ public:
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
   bool __stdcall GetParity(int n);
 
+  int __stdcall SetCacheHints(int cachehints, int frame_range) override {
+    return cachehints == CACHE_GET_MTMODE ? MT_NICE_FILTER : 0;
+  }
+
   static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env);
   static AVSValue __cdecl CreateFloat(AVSValue args, void*, IScriptEnvironment* env);
   static AVSValue __cdecl CreatePreset(AVSValue args, void*, IScriptEnvironment* env);
   static AVSValue __cdecl CreateFromClip(AVSValue args, void*, IScriptEnvironment* env);
 
 private:
-  __int64 fa, fb;
+  int64_t fa, fb;
   int zone;
 //Variables used in switch mode only
   int vbi;    //Vertical Blanking Interval (lines)

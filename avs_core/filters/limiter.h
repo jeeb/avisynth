@@ -42,6 +42,11 @@ class Limiter : public GenericVideoFilter
 public:
     Limiter(PClip _child, int _min_luma, int _max_luma, int _min_chroma, int _max_chroma, int _show, IScriptEnvironment* env);
     PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
+
+    int __stdcall SetCacheHints(int cachehints, int frame_range) override {
+      return cachehints == CACHE_GET_MTMODE ? MT_NICE_FILTER : 0;
+    }
+
     static AVSValue __cdecl Create(AVSValue args, void* user_data, IScriptEnvironment* env);
 private:
 

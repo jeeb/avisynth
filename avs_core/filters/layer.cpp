@@ -51,22 +51,22 @@
 ********************************************************************/
 
 extern const AVSFunction Layer_filters[] = {
-  { "Mask", "cc", Mask::Create },     // clip, mask
-  { "ColorKeyMask", "ci[]i[]i[]i", ColorKeyMask::Create },    // clip, color, tolerance[B, toleranceG, toleranceR]
-  { "ResetMask", "c", ResetMask::Create },
-  { "Invert", "c[channels]s", Invert::Create },
-  { "ShowAlpha", "c[pixel_type]s", ShowChannel::Create, (void*)3 },
-  { "ShowRed", "c[pixel_type]s", ShowChannel::Create, (void*)2 },
-  { "ShowGreen", "c[pixel_type]s", ShowChannel::Create, (void*)1 },
-  { "ShowBlue", "c[pixel_type]s", ShowChannel::Create, (void*)0 },
-  { "MergeRGB",  "ccc[pixel_type]s", MergeRGB::Create, (void*)0 },
-  { "MergeARGB", "cccc",             MergeRGB::Create, (void*)1 },
-  { "Layer", "cc[op]s[level]i[x]i[y]i[threshold]i[use_chroma]b", Layer::Create },
+  { "Mask",         BUILTIN_FUNC_PREFIX, "cc", Mask::Create },     // clip, mask
+  { "ColorKeyMask", BUILTIN_FUNC_PREFIX, "ci[]i[]i[]i", ColorKeyMask::Create },    // clip, color, tolerance[B, toleranceG, toleranceR]
+  { "ResetMask",    BUILTIN_FUNC_PREFIX, "c", ResetMask::Create },
+  { "Invert",       BUILTIN_FUNC_PREFIX, "c[channels]s", Invert::Create },
+  { "ShowAlpha",    BUILTIN_FUNC_PREFIX, "c[pixel_type]s", ShowChannel::Create, (void*)3 },
+  { "ShowRed",      BUILTIN_FUNC_PREFIX, "c[pixel_type]s", ShowChannel::Create, (void*)2 },
+  { "ShowGreen",    BUILTIN_FUNC_PREFIX, "c[pixel_type]s", ShowChannel::Create, (void*)1 },
+  { "ShowBlue",     BUILTIN_FUNC_PREFIX, "c[pixel_type]s", ShowChannel::Create, (void*)0 },
+  { "MergeRGB",     BUILTIN_FUNC_PREFIX, "ccc[pixel_type]s", MergeRGB::Create, (void*)0 },
+  { "MergeARGB",    BUILTIN_FUNC_PREFIX, "cccc",             MergeRGB::Create, (void*)1 },
+  { "Layer",        BUILTIN_FUNC_PREFIX, "cc[op]s[level]i[x]i[y]i[threshold]i[use_chroma]b", Layer::Create },
   /**
     * Layer(clip, overlayclip, operation, amount, xpos, ypos, [threshold=0], [use_chroma=true])
    **/
-  { "Subtract", "cc", Subtract::Create },
-  { 0,0,0 }
+  { "Subtract", BUILTIN_FUNC_PREFIX, "cc", Subtract::Create },
+  { NULL }
 };
 
 
@@ -375,10 +375,12 @@ PVideoFrame __stdcall ColorKeyMask::GetFrame(int n, IScriptEnvironment *env)
 
 AVSValue __cdecl ColorKeyMask::Create(AVSValue args, void*, IScriptEnvironment* env)
 {
-  return new ColorKeyMask(args[0].AsClip(), args[1].AsInt(0),
-                          args[2].AsInt(10),
-                          args[3].AsInt(args[2].AsInt(10)),
-                          args[4].AsInt(args[2].AsInt(10)), env);
+  enum { CHILD, COLOR, TOLERANCE_B, TOLERANCE_G, TOLERANCE_R};
+  return new ColorKeyMask(args[CHILD].AsClip(),
+    args[COLOR].AsInt(0),
+    args[TOLERANCE_B].AsInt(10),
+    args[TOLERANCE_G].AsInt(args[TOLERANCE_B].AsInt(10)),
+    args[TOLERANCE_R].AsInt(args[TOLERANCE_B].AsInt(10)), env);
 }
 
 
@@ -405,9 +407,10 @@ PVideoFrame ResetMask::GetFrame(int n, IScriptEnvironment* env)
   int rowsize = f->GetRowSize();
   int height = f->GetHeight();
 
-  for (int i=0; i<height; i++) {
-    for (int j=3; j<rowsize; j+=4)
-      pf[j] = 255;
+  for (int y = 0; y<height; y++) {
+    for (int x = 3; x<rowsize; x += 4) {
+      pf[x] = 255;
+    }
     pf += pitch;
   }
 
@@ -1686,7 +1689,7 @@ static void layer_rgb32_mul_sse2(BYTE* dstp, const BYTE* ovrp, int dst_pitch, in
       __m128i src = _mm_loadl_epi64(reinterpret_cast<const __m128i*>(dstp+x*4));
       __m128i ovr = _mm_loadl_epi64(reinterpret_cast<const __m128i*>(ovrp+x*4));
 
-      __m128i alpha = calculate_monochrome_alpha_sse2(src, level_vector, one);
+      __m128i alpha = calculate_monochrome_alpha_sse2(ovr, level_vector, one);
 
       src = _mm_unpacklo_epi8(src, zero);
       ovr = _mm_unpacklo_epi8(ovr, zero);
@@ -1822,7 +1825,7 @@ static void layer_rgb32_add_sse2(BYTE* dstp, const BYTE* ovrp, int dst_pitch, in
       __m128i src = _mm_loadl_epi64(reinterpret_cast<const __m128i*>(dstp+x*4));
       __m128i ovr = _mm_loadl_epi64(reinterpret_cast<const __m128i*>(ovrp+x*4));
 
-      __m128i alpha = calculate_monochrome_alpha_sse2(src, level_vector, one);
+      __m128i alpha = calculate_monochrome_alpha_sse2(ovr, level_vector, one);
 
       src = _mm_unpacklo_epi8(src, zero);
       ovr = _mm_unpacklo_epi8(ovr, zero);
@@ -1970,7 +1973,7 @@ static void layer_rgb32_subtract_sse2(BYTE* dstp, const BYTE* ovrp, int dst_pitc
       __m128i src = _mm_loadl_epi64(reinterpret_cast<const __m128i*>(dstp+x*4));
       __m128i ovr = _mm_loadl_epi64(reinterpret_cast<const __m128i*>(ovrp+x*4));
 
-      __m128i alpha = calculate_monochrome_alpha_sse2(src, level_vector, one);
+      __m128i alpha = calculate_monochrome_alpha_sse2(ovr, level_vector, one);
 
       src = _mm_unpacklo_epi8(src, zero);
       ovr = _mm_unpacklo_epi8(ovr, zero);
@@ -2104,7 +2107,7 @@ static void layer_rgb32_lighten_darken_sse2(BYTE* dstp, const BYTE* ovrp, int ds
       __m128i src = _mm_loadl_epi64(reinterpret_cast<const __m128i*>(dstp+x*4));
       __m128i ovr = _mm_loadl_epi64(reinterpret_cast<const __m128i*>(ovrp+x*4));
 
-      __m128i alpha = calculate_monochrome_alpha_sse2(src, level_vector, one);
+      __m128i alpha = calculate_monochrome_alpha_sse2(ovr, level_vector, one);
 
       src = _mm_unpacklo_epi8(src, zero);
       ovr = _mm_unpacklo_epi8(ovr, zero);

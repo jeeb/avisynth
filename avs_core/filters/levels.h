@@ -36,6 +36,7 @@
 #define __Levels_H__
 
 #include <avisynth.h>
+#include <stdint.h>
 
 
 /********************************************************************
@@ -53,11 +54,17 @@ public:
           IScriptEnvironment* env );
   ~Levels();
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
+
+  int __stdcall SetCacheHints(int cachehints, int frame_range) override {
+    return cachehints == CACHE_GET_MTMODE ? MT_NICE_FILTER : 0;
+  }
+
   static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env);
 
 private:
   BYTE *map, *mapchroma;
-  const bool dither;
+  bool dither;
+  IScriptEnvironment2 *env2_unsafe; //don't use outside of ctor/dtor
 };
 
 
@@ -74,12 +81,18 @@ public:
                           bool _analyze, bool _dither, IScriptEnvironment* env);
   ~RGBAdjust();
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
+
+  int __stdcall SetCacheHints(int cachehints, int frame_range) override {
+    return cachehints == CACHE_GET_MTMODE ? MT_NICE_FILTER : 0;
+  }
+
   static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env);
 
 private:
   bool analyze;
   bool dither;
   BYTE *mapR, *mapG, *mapB, *mapA;
+  IScriptEnvironment2 *env2_unsafe; //don't use outside of ctor/dtor
 };
 
 
@@ -96,6 +109,10 @@ public:
 
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
 
+  int __stdcall SetCacheHints(int cachehints, int frame_range) override {
+    return cachehints == CACHE_GET_MTMODE ? MT_NICE_FILTER : 0;
+  }
+
   static AVSValue __cdecl Create(AVSValue args, void* user_data, IScriptEnvironment* env);
 
 private:
@@ -104,7 +121,8 @@ private:
     bool coring, sse, dither;
 
     BYTE *map;
-    unsigned short *mapUV;
+    uint16_t *mapUV;
+    IScriptEnvironment2 *env2_unsafe; //don't use outside of ctor/dtor
 };
 
 
@@ -114,6 +132,10 @@ public:
   MaskHS( PClip _child, double _startHue, double _endHue, double _maxSat, double _minSat, bool _coring, IScriptEnvironment* env );
 
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
+
+  int __stdcall SetCacheHints(int cachehints, int frame_range) override {
+    return cachehints == CACHE_GET_MTMODE ? MT_NICE_FILTER : 0;
+  }
 
   static AVSValue __cdecl Create(AVSValue args, void* user_data, IScriptEnvironment* env);
 

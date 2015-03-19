@@ -84,7 +84,7 @@ static int makeFilter(SFLOAT fImp[], double  dLpScl, unsigned short Nwing, doubl
 /********************************************************************
 ********************************************************************/
 
-class AssumeRate : public GenericVideoFilter
+class AssumeRate : public NonCachedGenericVideoFilter
 /**
   * Changes the sample rate of a clip
  **/

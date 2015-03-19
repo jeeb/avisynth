@@ -39,36 +39,67 @@
 #include <avs/config.h>
 #include "version.h"
 
-#ifdef X86_32
-#define AVS_ARCHSTR "x86"
-#else
-#define AVS_ARCHSTR "x64"
-#endif
+#define AVS_CLASSIC_VERSION 2.60  // Note: Used by VersionNumber() script function
+#define AVS_COPYRIGHT "\n\xA9 2000-2015 Ben Rudiak-Gould, et al.\nhttp://avisynth.nl\n\xA9 2013-2015 AviSynth+ Project\nhttp://avs-plus.net"
+#define BUILTIN_FUNC_PREFIX "AviSynth"
 
-#define AVS_VERSION 2.60  // Note: Used by VersionNumber() script function
-#define AVS_VERSTR "AviSynth+ 0.1 (r" AVS_SEQREV ", " AVS_ARCHSTR ")"
-#define AVS_COPYRIGHT "\n\xA9 2000-2013 Ben Rudiak-Gould, et al.\nhttp://avisynth.nl\n\xA9 2013 AviSynth+ Project\nhttp://avs-plus.net"
-
-extern const char _AVS_VERSTR[], _AVS_COPYRIGHT[];
-
-// env->ManageCache() Non user keys definition
-// Define user accessible keys in avisynth.h
-//
-enum {MC_ReturnVideoFrameBuffer =0xFFFF0001};
-enum {MC_ManageVideoFrameBuffer =0xFFFF0002};
-enum {MC_PromoteVideoFrameBuffer=0xFFFF0003};
-enum {MC_RegisterCache          =0xFFFF0004};
-enum {MC_IncVFBRefcount         =0xFFFF0005};
+enum MANAGE_CACHE_KEYS
+{
+  MC_RegisterCache     = 0xFFFF0004,
+  MC_UnRegisterCache   = 0xFFFF0006,
+  MC_NodCache          = 0xFFFF0007,
+  MC_NodAndExpandCache = 0xFFFF0008,
+  MC_RegisterMTGuard,
+  MC_UnRegisterMTGuard
+};
 
 #include <avisynth.h>
-#include <cstring>
+#include <string>
+#include "parser/script.h" // TODO we only need ScriptFunction from here
 
+class AVSFunction {
 
-struct AVSFunction {
-  const char* name;
-  const char* param_types;
-  AVSValue (__cdecl *apply)(AVSValue args, void* user_data, IScriptEnvironment* env);
+public:
+
+  typedef AVSValue (__cdecl *apply_func_t)(AVSValue args, void* user_data, IScriptEnvironment* env);
+
+  apply_func_t apply;
+  std::string name;
+  std::string canon_name;   // TODO make this const char* too and remove <string> header
+  std::string param_types;
   void* user_data;
+
+  AVSFunction() : 
+      AVSFunction(std::string(), std::string(), std::string(), NULL, NULL)
+  {}
+
+  AVSFunction(void*) : 
+      AVSFunction(std::string(), std::string(), std::string(), NULL, NULL)
+  {}
+
+  AVSFunction(const std::string& _name, const std::string& _plugin_basename, const std::string& _param_types, apply_func_t _apply) :
+      AVSFunction(_name, _plugin_basename, _param_types, _apply, NULL)
+  {}
+
+  AVSFunction(const std::string& _name, const std::string& _plugin_basename, const std::string& _param_types, apply_func_t _apply, void *_user_data) :
+      apply(_apply), name(_name), canon_name(), param_types(_param_types), user_data(_user_data)
+  {
+      if (!_name.empty() && !_plugin_basename.empty())
+      {
+        canon_name = _plugin_basename;
+        canon_name.append("_").append(_name);
+      }
+  }
+
+  bool empty() const
+  {
+      return name.empty();
+  }
+
+  bool IsScriptFunction() const
+  {
+    return apply == &(ScriptFunction::Execute);
+  }
 
   static bool ArgNameMatch(const char* param_types, size_t args_names_count, const char* const* arg_names);
   static bool TypeMatch(const char* param_types, const AVSValue* args, size_t num_args, bool strict, IScriptEnvironment* env);
@@ -139,6 +170,18 @@ private:
   char *old_directory;
   bool restore;
 };
+
+
+class NonCachedGenericVideoFilter : public GenericVideoFilter 
+/**
+  * Class to select a range of frames from a longer clip
+ **/
+{
+public:
+  NonCachedGenericVideoFilter(PClip _child);
+  int __stdcall SetCacheHints(int cachehints, int frame_range);
+};
+
 
 
 /*** Inline helper methods ***/

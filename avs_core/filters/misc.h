@@ -52,6 +52,10 @@ public:
   FixLuminance(PClip _child, int _vertex, int _slope, IScriptEnvironment* env);
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
 
+  int __stdcall SetCacheHints(int cachehints, int frame_range) override {
+    return cachehints == CACHE_GET_MTMODE ? MT_NICE_FILTER : 0;
+  }
+
   static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env);
 
 private:
@@ -68,6 +72,10 @@ public:
   FixBrokenChromaUpsampling(PClip _clip, IScriptEnvironment* env);
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
 
+  int __stdcall SetCacheHints(int cachehints, int frame_range) override {
+    return cachehints == CACHE_GET_MTMODE ? MT_NICE_FILTER : 0;
+  }
+
   static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env);
 };
 
@@ -80,6 +88,10 @@ class PeculiarBlend : public GenericVideoFilter
 public:
   PeculiarBlend(PClip _child, int _cutoff, IScriptEnvironment* env);
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
+
+  int __stdcall SetCacheHints(int cachehints, int frame_range) override {
+    return cachehints == CACHE_GET_MTMODE ? MT_NICE_FILTER : 0;
+  }
 
   static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env);  
 
@@ -96,6 +108,10 @@ class SkewRows : public GenericVideoFilter
 public:
   SkewRows(PClip _child, int skew, IScriptEnvironment* env);
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
+
+  int __stdcall SetCacheHints(int cachehints, int frame_range) override {
+    return cachehints == CACHE_GET_MTMODE ? MT_NICE_FILTER : 0;
+  }
 
   static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env);
 };

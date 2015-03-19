@@ -135,6 +135,9 @@ const GUID MEDIASUBTYPE_extensible = {0x0000FFFE, 0x0000, 0x0010, {0x80, 0x00, 0
                       (((DWORD)(ch4) &   0xFF0000) >>  8) | \
                       (((DWORD)(ch4) & 0xFF000000) >> 24) )
 
+const GUID MEDIASUBTYPE_I420 = {FourCC('I420'), 0x0000, 0x0010, {0x80, 0x00, 0x00, 0xaa, 0x00, 0x38, 0x9b, 0x71}};
+// Causes redefinition error
+// Already defined by platform headers: const GUID MEDIASUBTYPE_NV12 = {FourCC('NV12'), 0x0000, 0x0010, {0x80, 0x00, 0x00, 0xaa, 0x00, 0x38, 0x9b, 0x71}};
 const GUID MEDIASUBTYPE_YV16 = {FourCC('YV16'), 0x0000, 0x0010, {0x80, 0x00, 0x00, 0xaa, 0x00, 0x38, 0x9b, 0x71}};
 const GUID MEDIASUBTYPE_YV24 = {FourCC('YV24'), 0x0000, 0x0010, {0x80, 0x00, 0x00, 0xaa, 0x00, 0x38, 0x9b, 0x71}};
 
@@ -142,12 +145,13 @@ const GUID MEDIASUBTYPE_YV24 = {FourCC('YV24'), 0x0000, 0x0010, {0x80, 0x00, 0x0
 // Format a GUID for printing
 char* PrintGUID(const GUID *g) {
 
-  static char buf[40];
+  static char buf[41];
 
   if (g) {
     _snprintf(buf, 40, "{%08x-%04hx-%04hx-%02x%02x-%02x%02x%02x%02x%02x%02x}\0",
               g->Data1,    g->Data2,    g->Data3,    g->Data4[0], g->Data4[1],
               g->Data4[2], g->Data4[3], g->Data4[4], g->Data4[5], g->Data4[6], g->Data4[7]);
+    buf[40] = 0;
   }
   else {
     lstrcpy(buf, "<null>");
@@ -164,6 +168,62 @@ char* PrintState(FILTER_STATE state) {
     default: break;
   }
   return "State Unknown";
+}
+
+// Format a FourCC for printing
+static inline char BePrintable(int ch) {
+  ch &= 0xff;
+  return (char)(isprint(ch) ? ch : '.');
+}
+
+char* PrintFourCC(const int fccType) {
+  static char fcc[5];
+
+  fcc[0] = BePrintable(fccType      );
+  fcc[1] = BePrintable(fccType >>  8);
+  fcc[2] = BePrintable(fccType >> 16);
+  fcc[3] = BePrintable(fccType >> 24);
+  fcc[4] = 0;
+
+  return fcc;
+}
+
+char* PrintAudioType(const int type) {
+  switch (type) {
+    case SAMPLE_INT8:  return "Int8";
+    case SAMPLE_INT16: return "Int16";
+    case SAMPLE_INT24: return "Int24";
+    case SAMPLE_INT32: return "Int32";
+    case SAMPLE_FLOAT: return "SFloat";
+    default: break;
+  }
+
+  static char buf[21];
+  _snprintf(buf, 20, "unknown 0x%x", type);
+  buf[20] = 0;
+  return buf;
+}
+
+char* PrintPixelType(int pixel_type) {
+  switch (pixel_type) {
+    case VideoInfo::CS_BGR24:    return "RGB24";
+    case VideoInfo::CS_BGR32:    return "RGB32";
+    case VideoInfo::CS_YUY2:     return "YUY2";
+//  case VideoInfo::CS_RAW32:    return "Raw32";
+    case VideoInfo::CS_YV24:     return "YV24";
+    case VideoInfo::CS_YV16:     return "YV16";
+    case VideoInfo::CS_YV12:     return "YV12";
+    case VideoInfo::CS_I420:     return "I420";
+//  case VideoInfo::CS_YUV9:     return "YUV9";
+    case VideoInfo::CS_YV411:    return "YV411";
+    case VideoInfo::CS_Y8:       return "Y8";
+    default: break;
+  }
+
+  static char buf[12];
+  _snprintf(buf, 11, "0x%08x", pixel_type);
+  buf[11] = 0;
+  return buf;
 }
 
 /************************************
@@ -218,6 +278,8 @@ GetSample::GetSample(bool _load_audio, bool _load_video, unsigned _media, LOG* _
       if (media & mediaYV24)   InitMediaType(my_media_types[i++], MEDIATYPE_Video, MEDIASUBTYPE_YV24);
       if (media & mediaYV16)   InitMediaType(my_media_types[i++], MEDIATYPE_Video, MEDIASUBTYPE_YV16);
       if (media & mediaYV12)   InitMediaType(my_media_types[i++], MEDIATYPE_Video, MEDIASUBTYPE_YV12);
+      if (media & mediaI420)   InitMediaType(my_media_types[i++], MEDIATYPE_Video, MEDIASUBTYPE_I420);
+      if (media & mediaNV12)   InitMediaType(my_media_types[i++], MEDIATYPE_Video, MEDIASUBTYPE_NV12); //Needs unpacking
       if (media & mediaYUY2)   InitMediaType(my_media_types[i++], MEDIATYPE_Video, MEDIASUBTYPE_YUY2);
       if (media & mediaAYUV)   InitMediaType(my_media_types[i++], MEDIATYPE_Video, MEDIASUBTYPE_AYUV); //Needs unpacking
       if (media & mediaY41P)   InitMediaType(my_media_types[i++], MEDIATYPE_Video, MEDIASUBTYPE_Y41P); //Needs unpacking
@@ -227,7 +289,7 @@ GetSample::GetSample(bool _load_audio, bool _load_video, unsigned _media, LOG* _
       if (media & mediaRGB32)  InitMediaType(my_media_types[i++], MEDIATYPE_Video, MEDIASUBTYPE_RGB32);
       if (media & mediaRGB24)  InitMediaType(my_media_types[i++], MEDIATYPE_Video, MEDIASUBTYPE_RGB24);
       no_my_media_types = i;
-      if (media == mediaNONE) media = mediaFULL;
+      if (media == mediaNONE) media = mediaAUTO;
     }
   }
 
@@ -298,7 +360,7 @@ GetSample::GetSample(bool _load_audio, bool _load_video, unsigned _media, LOG* _
 
       PBYTE buf = av_buffer;
 
-      if (!vi.IsPlanar()) { // Packed formats have rows 32bit aligned
+      if (!vi.IsPlanar() || vi.IsY8()) { // All DIB formats have rows 32bit aligned
 
         const int rowsize = pvf->GetRowSize();
         int height  = pvf->GetHeight();
@@ -306,15 +368,16 @@ GetSample::GetSample(bool _load_audio, bool _load_video, unsigned _media, LOG* _
 
         // Check for rows not being 32 bit aligned as expected
         if (((rowsize*height + 3)&~3) == ((av_sample_bytes+3)&~3)) {
-          // Setup for packed layout
+          // Setup for a naughty packed layout
           stride = rowsize;
         } else  {
-          // Setup for expected padded layout
+          // Setup for the expected padded layout
           stride  = (rowsize+3)&~3;
         }
 
         // Check input size is adequate
         if (av_sample_bytes < height*stride) {
+          // Truncate the height to avoid buffer overrun.
           dssRPT2(dssERROR, "GetCurrentFrame() Input buffer to small, %d expecting %d!\n", av_sample_bytes, height*stride);
           height = av_sample_bytes/stride;
         }
@@ -328,12 +391,25 @@ GetSample::GetSample(bool _load_audio, bool _load_video, unsigned _media, LOG* _
         const int UVrowsize = pvf->GetRowSize(PLANAR_V);
         int UVheight        = pvf->GetHeight(PLANAR_V);
 
-        int stride;
-        int UVstride;
+        // Unlike DIB based formats planar data is supposed to be fully packed
+        // but some implemetation incorrectly pad both the Y and UV rows out
+        // to 32 bit while other implementations pad the Y rows out to 32 bit
+        // and pad the UV rows as subsampled Y rows.
+
+        // Start with what is expected, i.e. packed
+        int stride   = rowsize;
+        int UVstride = UVrowsize;
+
+        if (media & mediaPAD) {
+          // Use mod4 Y row with subsampled UV rows
+          stride   = (rowsize+3) & ~3;
+          UVstride = stride >> vi.GetPlaneWidthSubsampling(PLANAR_U);
+        }
 
         BYTE* dstY = pvf->GetWritePtr(PLANAR_Y);
         BYTE* dstU = pvf->GetWritePtr(PLANAR_U);
         BYTE* dstV = pvf->GetWritePtr(PLANAR_V);
+        BYTE* const dstT = dstV;
         BYTE* srcP = buf;
 
         const int pitchY = pvf->GetPitch(PLANAR_Y);
@@ -342,23 +418,20 @@ GetSample::GetSample(bool _load_audio, bool _load_video, unsigned _media, LOG* _
 
         switch (am_media_type->subtype.Data1)
         {
+          // Standard planar formats
+          case FourCC('I420'):
+            // Swap U and V pointers
+            dstV = dstU;
+            dstU = dstT;
           case FourCC('YV12'):
           case FourCC('YV16'):
           case FourCC('YV24'):
-            // Check for rows being 32 bit padded
-            if (((vi.BMPSize() + 3)&~3) == ((av_sample_bytes+3)&~3)) {
-              // Planar formats have Y rows 32bit aligned
-              stride   = (rowsize+3)&~3;
-              UVstride = (UVrowsize+1)&~1;
-            }
-            else {
-              // Setup for expected packed layout
-              stride   = rowsize;
-              UVstride = UVrowsize;
-            }
+            dssRPT3(dssINFO, "GetCurrentFrame() Input buffer size %d, stride %d, UVstride %d\n",
+                             av_sample_bytes, stride, UVstride);
 
             // Check input size is adequate
             if (av_sample_bytes < height*stride) {
+              // Truncate the height to avoid buffer overrun.
               dssRPT2(dssERROR, "GetCurrentFrame() Input buffer to small, %d expecting %d!\n", av_sample_bytes, height*stride);
               height = av_sample_bytes/stride;
             }
@@ -366,6 +439,7 @@ GetSample::GetSample(bool _load_audio, bool _load_video, unsigned _media, LOG* _
 
             // Check input size is adequate
             if (av_sample_bytes < height*stride+2*UVheight*UVstride) {
+              // Truncate the height to avoid buffer overrun.
               dssRPT2(dssERROR, "GetCurrentFrame() Input buffer to small, %d expecting %d!\n",
                                 av_sample_bytes, height*stride+2*UVheight*UVstride);
               UVheight = (av_sample_bytes-height*stride)/(2*UVstride);
@@ -379,6 +453,44 @@ GetSample::GetSample(bool _load_audio, bool _load_video, unsigned _media, LOG* _
             env->BitBlt(dstU, pitchUV, srcP, UVstride, UVrowsize, UVheight);
             break;
 
+          // 4:2:0 which needs packed chroma -> planar conversion.
+          case FourCC('NV12'):
+
+            UVstride *= 2;
+
+            dssRPT3(dssINFO, "GetCurrentFrame() Input buffer size %d, stride %d, UVstride %d\n",
+                             av_sample_bytes, stride, UVstride);
+
+            // Check input size is adequate
+            if (av_sample_bytes < height*stride) {
+              // Truncate the height to avoid buffer overrun.
+              dssRPT2(dssERROR, "GetCurrentFrame() Input buffer to small, %d expecting %d!\n",
+                                av_sample_bytes, height*stride);
+              height = av_sample_bytes/stride;
+            }
+            env->BitBlt(dstY, pitchY, srcP, stride, rowsize, height);
+
+            // Check input size is adequate
+            if (av_sample_bytes < height*stride+UVheight*UVstride) {
+              // Truncate the height to avoid buffer overrun.
+              dssRPT2(dssERROR, "GetCurrentFrame() Input buffer to small, %d expecting %d!\n",
+                                av_sample_bytes, height*stride+UVheight*UVstride);
+              UVheight = (av_sample_bytes-height*stride)/UVstride;
+            }
+            // Packed UV plane after aligned end of Y plane
+            srcP += stride * height;
+
+            {for (int y=0; y<UVheight; y++) {
+              for(int x=0; x<UVrowsize; x++) {
+                dstU[x] = srcP[(x*2)+0];
+                dstV[x] = srcP[(x*2)+1];
+              }
+              dstU += pitchUV;
+              dstV += pitchUV;
+              srcP += UVstride;
+            }}
+            break;
+
           // 4:4:4 which needs packed -> planar conversion.
           case FourCC('AYUV'):
             // V0 U0 Y0 A0
@@ -386,7 +498,8 @@ GetSample::GetSample(bool _load_audio, bool _load_video, unsigned _media, LOG* _
 
             // Check input size is adequate
             if (av_sample_bytes < height*src_pitch) {
-              dssRPT2(dssERROR, "GetCurrentFrame() Input buffer to small, %d expecting %d!\n", av_sample_bytes, height*src_pitch);
+              dssRPT2(dssERROR, "GetCurrentFrame() Input buffer to small, %d expecting %d!\n",
+                                av_sample_bytes, height*src_pitch);
               height = av_sample_bytes/src_pitch;
             }
 
@@ -411,7 +524,8 @@ GetSample::GetSample(bool _load_audio, bool _load_video, unsigned _media, LOG* _
 
             // Check input size is adequate
             if (av_sample_bytes < height*src_pitch) {
-              dssRPT2(dssERROR, "GetCurrentFrame() Input buffer to small, %d expecting %d!\n", av_sample_bytes, height*src_pitch);
+              dssRPT2(dssERROR, "GetCurrentFrame() Input buffer to small, %d expecting %d!\n",
+                                av_sample_bytes, height*src_pitch);
               height = av_sample_bytes/src_pitch;
             }
 
@@ -441,7 +555,8 @@ GetSample::GetSample(bool _load_audio, bool _load_video, unsigned _media, LOG* _
             break;
 
           default:
-            dssRPT1(dssERROR, "GetCurrentFrame() unknown pixel type %s\n", PrintGUID(&am_media_type->subtype));
+            dssRPT2(dssERROR, "GetCurrentFrame() unknown pixel type '%s' %s\n",
+                    PrintFourCC(am_media_type->subtype.Data1), PrintGUID(&am_media_type->subtype));
             break;
         }
       }
@@ -973,14 +1088,25 @@ SeekExit:
 
     if      (pmt->majortype == MEDIATYPE_Video) {
       dssRPT1(dssNEG, "GetSample::QueryAccept(%s) MEDIATYPE_Video\n", streamName);
-      if (!load_video) return S_FALSE;
+      if (!load_video) {
+        dssRPT2(dssNEG,  "*** Video: Subtype - '%s' %s\n", PrintFourCC(pmt->subtype.Data1), PrintGUID(&pmt->subtype));
+        dssRPT1(dssNEG,  "*** Video: Format type - %s\n", PrintGUID(&pmt->formattype));
+        return S_FALSE;
+      }
     }
     else if (pmt->majortype == MEDIATYPE_Audio) {
       dssRPT1(dssNEG, "GetSample::QueryAccept(%s) MEDIATYPE_Audio\n", streamName);
-      if (!load_audio) return S_FALSE;
+      if (!load_audio) {
+        dssRPT1(dssNEG,  "*** Audio: Subtype - %s\n", PrintGUID(&pmt->subtype));
+        dssRPT1(dssNEG,  "*** Audio: Format type - %s\n", PrintGUID(&pmt->formattype));
+        return S_FALSE;
+      }
     }
     else {
-      dssRPT2(dssNEG, "GetSample::QueryAccept(%s) reject major type %s\n", streamName, PrintGUID(&pmt->majortype));
+      dssRPT3(dssNEG, "GetSample::QueryAccept(%s) reject major type '%s' %s\n",
+              streamName, PrintFourCC(pmt->majortype.Data1), PrintGUID(&pmt->majortype));
+      dssRPT1(dssNEG,  "*** Subtype - %s\n", PrintGUID(&pmt->subtype));
+      dssRPT1(dssNEG,  "*** Format type - %s\n", PrintGUID(&pmt->formattype));
       return S_FALSE;
     }
 
@@ -1024,6 +1150,9 @@ pbFormat:
         dssRPT1(dssNEG,  "*** Audio: Subtype rejected - %s\n", PrintGUID(&pmt->subtype));
         return S_FALSE;
       }
+
+      dssRPT1(dssNEG,  "*** Audio: Subtype accepted - %s\n", PrintGUID(&pmt->subtype));
+
       if (pmt->formattype != FORMAT_WaveFormatEx) {
         dssRPT1(dssNEG,  "*** Audio: Not FORMAT_WaveFormatEx - %s\n", PrintGUID(&pmt->formattype));
         return S_FALSE;
@@ -1090,8 +1219,8 @@ pbFormat:
         if ( (vi.audio_samples_per_second != (int)wex->nSamplesPerSec)
           || (vi.nchannels                != wex->nChannels)
           || (vi.sample_type              != sample_type) ) {
-          dssRPT4(dssNEG,  "*** Audio: Reject format change! Channels:%d. Samples/sec:%d. Bits/sample:%d. Type:%x\n",
-                wex->nChannels, wex->nSamplesPerSec, wex->wBitsPerSample, sample_type);
+          dssRPT4(dssNEG,  "*** Audio: Reject format change! Channels:%d. Samples/sec:%d. Bits/sample:%d. Type:%s\n",
+                wex->nChannels, wex->nSamplesPerSec, wex->wBitsPerSample, PrintAudioType(sample_type));
           return S_FALSE;
         }
       }
@@ -1100,8 +1229,8 @@ pbFormat:
       vi.nchannels = wex->nChannels;
       vi.sample_type = sample_type;
 
-      dssRPT4(dssNEG,  "*** Audio: Accepted! Channels:%d. Samples/sec:%d. Bits/sample:%d. Type:%x\n",
-            wex->nChannels, wex->nSamplesPerSec, wex->wBitsPerSample, sample_type);
+      dssRPT4(dssNEG,  "*** Audio: Accepted! Channels:%d. Samples/sec:%d. Bits/sample:%d. Type:%s\n",
+            wex->nChannels, wex->nSamplesPerSec, wex->wBitsPerSample, PrintAudioType(sample_type));
       return S_OK;
     }
 
@@ -1112,6 +1241,20 @@ pbFormat:
       if        (pmt->subtype == MEDIASUBTYPE_YV12) {
         if (!(media & mediaYV12)) {
           dssRPT0(dssNEG,  "*** Video: Subtype denied - YV12\n");
+          return S_FALSE;
+        }
+        pixel_type = VideoInfo::CS_YV12;
+
+      } else if (pmt->subtype == MEDIASUBTYPE_I420) {
+        if (!(media & mediaI420)) {
+          dssRPT0(dssNEG,  "*** Video: Subtype denied - I420\n");
+          return S_FALSE;
+        }
+        pixel_type = VideoInfo::CS_I420;
+
+      } else if (pmt->subtype == MEDIASUBTYPE_NV12) {
+        if (!(media & mediaNV12)) {
+          dssRPT0(dssNEG,  "*** Video: Subtype denied - NV12\n");
           return S_FALSE;
         }
         pixel_type = VideoInfo::CS_YV12;
@@ -1180,9 +1323,12 @@ pbFormat:
         pixel_type = VideoInfo::CS_BGR32;
 
       } else {
-        dssRPT1(dssNEG,  "*** Video: Subtype rejected - %s\n", PrintGUID(&pmt->subtype));
+        dssRPT2(dssNEG,  "*** Video: Subtype rejected - '%s' %s\n", PrintFourCC(pmt->subtype.Data1), PrintGUID(&pmt->subtype));
+        dssRPT1(dssNEG,  "*** Video: Format type - %s\n", PrintGUID(&pmt->formattype));
         return S_FALSE;
       }
+
+      dssRPT2(dssNEG,  "*** Video: Subtype accepted - '%s' %s\n", PrintFourCC(pmt->subtype.Data1), PrintGUID(&pmt->subtype));
 
       BITMAPINFOHEADER* pbi;
       unsigned _avg_time_per_frame;
@@ -1201,16 +1347,18 @@ pbFormat:
 //      }
       }
       else {
-        dssRPT1(dssNEG,  "*** Video: Format rejected - %s\n", PrintGUID(&pmt->formattype));
+        dssRPT1(dssNEG,  "*** Video: Format type rejected - %s\n", PrintGUID(&pmt->formattype));
         return S_FALSE;
       }
+
+      dssRPT1(dssNEG,  "*** Video: Format type accepted - %s\n", PrintGUID(&pmt->formattype));
 
       if (lockvi) {
         if ( (vi.pixel_type != pixel_type)
           || (vi.width      != pbi->biWidth)
           || (vi.height     != ((pbi->biHeight < 0) ? -pbi->biHeight : pbi->biHeight)) ) {
-          dssRPT3(dssNEG,  "*** Video: reject format change: %dx%d, pixel_type %x\n",
-                  pbi->biWidth, pbi->biHeight, pixel_type);
+          dssRPT3(dssNEG,  "*** Video: reject format change: %dx%d, pixel_type %s\n",
+                  pbi->biWidth, pbi->biHeight, PrintPixelType(pixel_type));
           return S_FALSE;
         }
       }
@@ -1226,8 +1374,8 @@ pbFormat:
         vi.fps_denominator = 0;
       }
 
-      dssRPT4(dssNEG,  "*** Video: format accepted: %dx%d, pixel_type %x, avg_time_per_frame %dx100ns\n",
-              vi.width, vi.height, vi.pixel_type, _avg_time_per_frame);
+      dssRPT4(dssNEG,  "*** Video: format accepted: %dx%d, pixel_type %s, avg_time_per_frame %dx100ns\n",
+              vi.width, vi.height, PrintPixelType(vi.pixel_type), _avg_time_per_frame);
       dssRPT3(dssNEG,  "*** Video: bFixedSizeSamples=%d, bTemporalCompression=%d, lSampleSize=%d\n",
             pmt->bFixedSizeSamples, pmt->bTemporalCompression, pmt->lSampleSize);
 
@@ -1822,7 +1970,7 @@ DirectShowSource::DirectShowSource(const char* filename, int _avg_time_per_frame
         if (_enable_video)
           env->ThrowError("DirectShowSource: GRF file does not have a compatible open video pin.\n"
                           "Graph must have 1 output pin that will bid RGB24, RGB32, ARGB, YUY2,\n"
-                          "YV12, YV16, YV24, Y41P, Y411 or AYUV");
+                          "YV12, I420, NV12, YV16, YV24, Y41P, Y411 or AYUV");
         else
           env->ThrowError("DirectShowSource: GRF file does not have a compatible open audio pin.\n"
                           "Graph must have 1 output pin that will bid 8, 16, 24 or 32 bit PCM or IEEE Float.");
@@ -1986,8 +2134,8 @@ DirectShowSource::DirectShowSource(const char* filename, int _avg_time_per_frame
       }
       if (_frames) vi.num_frames = _frames;
 
-      dssRPT4((dssNEG|dssCALL), "New Video: %dx%d, frame_count=%d, pixel type=%x.\n",
-                                vi.width, vi.height, vi.num_frames, vi.pixel_type);
+      dssRPT4((dssNEG|dssCALL), "New Video: %dx%d, frame_count=%d, pixel type=%s.\n",
+                                vi.width, vi.height, vi.num_frames, PrintPixelType(vi.pixel_type));
     }
 
     if (vi.HasAudio()) {
@@ -2353,6 +2501,17 @@ void DirectShowSource::CheckHresult(IScriptEnvironment* env, HRESULT hr, const c
   env->ThrowError("DirectShowSource: %s%s:\n%s", msg, msg2, buf);
 }
 
+int __stdcall DirectShowSource::SetCacheHints(int cachehints,int frame_range)
+{
+  switch(cachehints)
+  {
+  case CACHE_GET_MTMODE:
+    return MT_SERIALIZED;
+  default:
+    return 0;
+  }
+}
+
 HRESULT DirectShowSource::LoadGraphFile(IGraphBuilder *pGraph, const WCHAR* wszName)
 {
     IStorage *pStorage = 0;
@@ -2412,9 +2571,15 @@ AVSValue __cdecl Create_DirectShowSource(AVSValue args, void*, IScriptEnvironmen
 
   unsigned _media = GetSample::mediaNONE;
   if (args[8].Defined()) {
+    bool mediaPad = false;
     const char* pixel_type = args[8].AsString();
+    if (pixel_type[0] == '+') {
+      pixel_type += 1;
+      mediaPad = true;
+    }
     if      (!lstrcmpi(pixel_type, "YUY2"))  { _media = GetSample::mediaYUY2; }
     else if (!lstrcmpi(pixel_type, "YV12"))  { _media = GetSample::mediaYV12; }
+    else if (!lstrcmpi(pixel_type, "I420"))  { _media = GetSample::mediaI420; }
 //  else if (!lstrcmpi(pixel_type, "YUV9"))  { _media = GetSample::mediaYUV9; }
     else if (!lstrcmpi(pixel_type, "Y41P"))  { _media = GetSample::mediaY41P; }
     else if (!lstrcmpi(pixel_type, "Y411"))  { _media = GetSample::mediaY411; }
@@ -2425,6 +2590,7 @@ AVSValue __cdecl Create_DirectShowSource(AVSValue args, void*, IScriptEnvironmen
     else if (!lstrcmpi(pixel_type, "RGB"))   { _media = GetSample::mediaRGB; }
     else if (!lstrcmpi(pixel_type, "YUV"))   { _media = GetSample::mediaYUV; }
     else if (!lstrcmpi(pixel_type, "AUTO"))  { _media = GetSample::mediaAUTO; }
+    else if (!lstrcmpi(pixel_type, "NV12"))  { _media = GetSample::mediaNV12; }
     else if (!lstrcmpi(pixel_type, "YV24"))  { _media = GetSample::mediaYV24; }
     else if (!lstrcmpi(pixel_type, "YV16"))  { _media = GetSample::mediaYV16; }
     else if (!lstrcmpi(pixel_type, "YUVEX")) { _media = GetSample::mediaYUVex; }
@@ -2432,8 +2598,9 @@ AVSValue __cdecl Create_DirectShowSource(AVSValue args, void*, IScriptEnvironmen
     else {
       env->ThrowError("DirectShowSource: pixel_type must be \"RGB24\", \"RGB32\", \"ARGB\", "
                       "\"YUY2\", \"YV12\", \"YV16\", \"YV24\", \"AYUV\", \"Y41P\", \"Y411\", "
-                      "\"RGB\", \"YUV\" , \"YUVex\", \"AUTO\"  or \"FULL\"");
+                      "\"NV12\", \"RGB\", \"YUV\" , \"YUVex\", \"AUTO\"  or \"FULL\"");
     }
+    if (mediaPad) _media |= GetSample::mediaPAD;
   }
   const int _frames = args[9].AsInt(0);
 
@@ -2527,5 +2694,12 @@ extern "C" __declspec(dllexport) const char* __stdcall AvisynthPluginInit3(IScri
 //                 7            8            9        10        11
        "[timeout]i[pixel_type]s[framecount]i[logfile]s[logmask]i",
        Create_DirectShowSource, 0);
+
+  if (env->FunctionExists("SetFilterMTMode"))
+  {
+      IScriptEnvironment2 *env2 = static_cast<IScriptEnvironment2*>(env);
+      env2->SetFilterMTMode("DirectShowSource", MtMode::MT_SERIALIZED, true);
+  }
+
   return "DirectShowSource";
 }

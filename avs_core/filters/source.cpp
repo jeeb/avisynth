@@ -844,11 +844,15 @@ AVSValue __cdecl Create_SegmentedSource(AVSValue args, void* use_directshow, ISc
   bool bAudio = !use_directshow && args[1].AsBool(true);
   const char* pixel_type = 0;
   const char* fourCC = 0;
+  int vtrack = 0;
+  int atrack = 0;
   const int inv_args_count = args.ArraySize();
   AVSValue inv_args[9];
   if (!use_directshow) {
     pixel_type = args[2].AsString("");
     fourCC = args[3].AsString("");
+    vtrack = args[4].AsInt(0);
+    atrack = args[5].AsInt(0);
   }
   else {
     for (int i=1; i<inv_args_count ;i++)
@@ -875,7 +879,7 @@ AVSValue __cdecl Create_SegmentedSource(AVSValue args, void* use_directshow, ISc
             inv_args[0] = filename;
             clip = env->Invoke("DirectShowSource",AVSValue(inv_args, inv_args_count)).AsClip();
           } else {
-            clip =  (IClip*)(new AVISource(filename, bAudio, pixel_type, fourCC, 0, env));
+            clip =  (IClip*)(new AVISource(filename, bAudio, pixel_type, fourCC, 0, vtrack, atrack, env));
           }
           result = !result ? clip : new_Splice(result, clip, false, env);
         } catch (const AvisynthError &e) {
@@ -1026,31 +1030,31 @@ public:
 
 
 AVSValue __cdecl Create_Version(AVSValue args, void*, IScriptEnvironment* env) {
-  return Create_MessageClip(_AVS_COPYRIGHT, -1, -1, VideoInfo::CS_BGR24, false, 0xECF2BF, 0, 0x404040, env);
+  return Create_MessageClip(AVS_FULLVERSION AVS_COPYRIGHT, -1, -1, VideoInfo::CS_BGR24, false, 0xECF2BF, 0, 0x404040, env);
 }
 
 
 extern const AVSFunction Source_filters[] = {
-  { "AVISource", "s+[audio]b[pixel_type]s[fourCC]s", AVISource::Create, (void*) AVISource::MODE_NORMAL },
-  { "AVIFileSource", "s+[audio]b[pixel_type]s[fourCC]s", AVISource::Create, (void*) AVISource::MODE_AVIFILE },
-  { "WAVSource", "s+", AVISource::Create, (void*) AVISource::MODE_WAV },
-  { "OpenDMLSource", "s+[audio]b[pixel_type]s[fourCC]s", AVISource::Create, (void*) AVISource::MODE_OPENDML },
-  { "SegmentedAVISource", "s+[audio]b[pixel_type]s[fourCC]s", Create_SegmentedSource, (void*)0 },
-  { "SegmentedDirectShowSource",
+  { "AVISource",     BUILTIN_FUNC_PREFIX, "s+[audio]b[pixel_type]s[fourCC]s[vtrack]i[atrack]i", AVISource::Create, (void*) AVISource::MODE_NORMAL },
+  { "AVIFileSource", BUILTIN_FUNC_PREFIX, "s+[audio]b[pixel_type]s[fourCC]s[vtrack]i[atrack]i", AVISource::Create, (void*) AVISource::MODE_AVIFILE },
+  { "WAVSource",     BUILTIN_FUNC_PREFIX, "s+", AVISource::Create, (void*) AVISource::MODE_WAV },
+  { "OpenDMLSource", BUILTIN_FUNC_PREFIX, "s+[audio]b[pixel_type]s[fourCC]s[vtrack]i[atrack]i", AVISource::Create, (void*) AVISource::MODE_OPENDML },
+  { "SegmentedAVISource", BUILTIN_FUNC_PREFIX, "s+[audio]b[pixel_type]s[fourCC]s[vtrack]i[atrack]i", Create_SegmentedSource, (void*)0 },
+  { "SegmentedDirectShowSource", BUILTIN_FUNC_PREFIX, 
 // args               0      1      2       3       4            5          6         7            8
                      "s+[fps]f[seek]b[audio]b[video]b[convertfps]b[seekzero]b[timeout]i[pixel_type]s",
                      Create_SegmentedSource, (void*)1 },
 // args             0         1       2        3            4     5                 6            7        8             9       10          11     12
-  { "BlankClip", "[]c*[length]i[width]i[height]i[pixel_type]s[fps]f[fps_denominator]i[audio_rate]i[stereo]b[sixteen_bit]b[color]i[color_yuv]i[clip]c", Create_BlankClip },
-  { "BlankClip", "[]c*[length]i[width]i[height]i[pixel_type]s[fps]f[fps_denominator]i[audio_rate]i[channels]i[sample_type]s[color]i[color_yuv]i[clip]c", Create_BlankClip },
-  { "Blackness", "[]c*[length]i[width]i[height]i[pixel_type]s[fps]f[fps_denominator]i[audio_rate]i[stereo]b[sixteen_bit]b[color]i[color_yuv]i[clip]c", Create_BlankClip },
-  { "Blackness", "[]c*[length]i[width]i[height]i[pixel_type]s[fps]f[fps_denominator]i[audio_rate]i[channels]i[sample_type]s[color]i[color_yuv]i[clip]c", Create_BlankClip },
-  { "MessageClip", "s[width]i[height]i[shrink]b[text_color]i[halo_color]i[bg_color]i", Create_MessageClip },
-  { "ColorBars", "[width]i[height]i[pixel_type]s", ColorBars::Create, (void*)0 },
-  { "ColorBarsHD", "[width]i[height]i[pixel_type]s", ColorBars::Create, (void*)1 },
-  { "Tone", "[length]f[frequency]f[samplerate]i[channels]i[type]s[level]f", Tone::Create },
+  { "BlankClip", BUILTIN_FUNC_PREFIX, "[]c*[length]i[width]i[height]i[pixel_type]s[fps]f[fps_denominator]i[audio_rate]i[stereo]b[sixteen_bit]b[color]i[color_yuv]i[clip]c", Create_BlankClip },
+  { "BlankClip", BUILTIN_FUNC_PREFIX, "[]c*[length]i[width]i[height]i[pixel_type]s[fps]f[fps_denominator]i[audio_rate]i[channels]i[sample_type]s[color]i[color_yuv]i[clip]c", Create_BlankClip },
+  { "Blackness", BUILTIN_FUNC_PREFIX, "[]c*[length]i[width]i[height]i[pixel_type]s[fps]f[fps_denominator]i[audio_rate]i[stereo]b[sixteen_bit]b[color]i[color_yuv]i[clip]c", Create_BlankClip },
+  { "Blackness", BUILTIN_FUNC_PREFIX, "[]c*[length]i[width]i[height]i[pixel_type]s[fps]f[fps_denominator]i[audio_rate]i[channels]i[sample_type]s[color]i[color_yuv]i[clip]c", Create_BlankClip },
+  { "MessageClip", BUILTIN_FUNC_PREFIX, "s[width]i[height]i[shrink]b[text_color]i[halo_color]i[bg_color]i", Create_MessageClip },
+  { "ColorBars", BUILTIN_FUNC_PREFIX, "[width]i[height]i[pixel_type]s", ColorBars::Create, (void*)0 },
+  { "ColorBarsHD", BUILTIN_FUNC_PREFIX, "[width]i[height]i[pixel_type]s", ColorBars::Create, (void*)1 },
+  { "Tone", BUILTIN_FUNC_PREFIX, "[length]f[frequency]f[samplerate]i[channels]i[type]s[level]f", Tone::Create },
 
-  { "Version", "", Create_Version },
+  { "Version", BUILTIN_FUNC_PREFIX, "", Create_Version },
 
-  { 0,0,0 }
+  { NULL }
 };

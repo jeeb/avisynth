@@ -49,6 +49,11 @@ class VerticalReduceBy2 : public GenericVideoFilter
 public:
   VerticalReduceBy2(PClip _child, IScriptEnvironment* env);
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
+
+  int __stdcall SetCacheHints(int cachehints, int frame_range) override {
+    return cachehints == CACHE_GET_MTMODE ? MT_NICE_FILTER : 0;
+  }
+
   static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env)  { 
     return new VerticalReduceBy2(args[0].AsClip(),env); 
   }
@@ -67,6 +72,11 @@ class HorizontalReduceBy2 : public GenericVideoFilter
 public:
   HorizontalReduceBy2(PClip _child, IScriptEnvironment* env);
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
+
+  int __stdcall SetCacheHints(int cachehints, int frame_range) override {
+    return cachehints == CACHE_GET_MTMODE ? MT_NICE_FILTER : 0;
+  }
+
   static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env) {
     return new HorizontalReduceBy2(args[0].AsClip(), env);
   }

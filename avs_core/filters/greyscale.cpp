@@ -46,24 +46,24 @@
  ************************************/
 
 extern const AVSFunction Greyscale_filters[] = {
-  { "Greyscale", "c[matrix]s", Greyscale::Create },       // matrix can be "rec601", "rec709" or "Average"
-  { "Grayscale", "c[matrix]s", Greyscale::Create },
+  { "Greyscale", BUILTIN_FUNC_PREFIX, "c[matrix]s", Greyscale::Create },       // matrix can be "rec601", "rec709" or "Average"
+  { "Grayscale", BUILTIN_FUNC_PREFIX, "c[matrix]s", Greyscale::Create },
   { 0 }
 };
 
 Greyscale::Greyscale(PClip _child, const char* matrix, IScriptEnvironment* env)
  : GenericVideoFilter(_child)
 {
-  theMatrix = Rec601;
+  matrix_ = Rec601;
   if (matrix) {
     if (!vi.IsRGB())
       env->ThrowError("GreyScale: invalid \"matrix\" parameter (RGB data only)");
     if (!lstrcmpi(matrix, "rec709"))
-      theMatrix = Rec709;
+      matrix_ = Rec709;
     else if (!lstrcmpi(matrix, "Average"))
-      theMatrix = Average;
+      matrix_ = Average;
     else if (!lstrcmpi(matrix, "rec601"))
-      theMatrix = Rec601;
+      matrix_ = Rec601;
     else
       env->ThrowError("GreyScale: invalid \"matrix\" parameter (must be matrix=\"Rec601\", \"Rec709\" or \"Average\")");
   }
@@ -229,21 +229,21 @@ PVideoFrame Greyscale::GetFrame(int n, IScriptEnvironment* env)
       greyscale_yuy2_sse2(srcp, width, height, pitch);
     } else
 #ifdef X86_32
-    if ((env->GetCPUFlags() & CPUF_MMX) && width > 2) {
-      greyscale_yuy2_mmx(srcp, width, height, pitch);
-    } else
+      if ((env->GetCPUFlags() & CPUF_MMX) && width > 2) {
+        greyscale_yuy2_mmx(srcp, width, height, pitch);
+      } else
 #endif
-    {
-      for (int y=0; y<height; ++y)
       {
-        for (int x=0; x<width; x++)
-          srcp[x*2+1] = 128;
-        srcp += pitch;
+        for (int y = 0; y<height; ++y)
+        {
+          for (int x = 0; x<width; x++)
+            srcp[x*2+1] = 128;
+          srcp += pitch;
+        }
       }
-    }
 
-    return frame;
-  } 
+      return frame;
+  }
 
   if (vi.IsRGB32()) {
     const int cyav = int(0.33333*32768+0.5);
@@ -257,22 +257,24 @@ PVideoFrame Greyscale::GetFrame(int n, IScriptEnvironment* env)
     const int cyr709 = int(0.2126*32768+0.5);
 
     if ((env->GetCPUFlags() & CPUF_SSE2) && IsPtrAligned(srcp, 16)) {
-      if (theMatrix == Rec709)
+      if (matrix_ == Rec709) {
         greyscale_rgb32_sse2(srcp, width, height, pitch, cyb709, cyg709, cyr709);
-      else if (theMatrix == Average)
+      } else if (matrix_ == Average) {
         greyscale_rgb32_sse2(srcp, width, height, pitch, cyav, cyav, cyav);
-      else
+      } else {
         greyscale_rgb32_sse2(srcp, width, height, pitch, cyb, cyg, cyr);
+      }
       return frame;
-    } 
+    }
 #ifdef X86_32
     else if (env->GetCPUFlags() & CPUF_MMX) {
-      if (theMatrix == Rec709)
+      if (matrix_ == Rec709) {
         greyscale_rgb32_mmx(srcp, width, height, pitch, cyb709, cyg709, cyr709);
-      else if (theMatrix == Average)
+      } else if (matrix_ == Average) {
         greyscale_rgb32_mmx(srcp, width, height, pitch, cyav, cyav, cyav);
-      else
+      } else {
         greyscale_rgb32_mmx(srcp, width, height, pitch, cyb, cyg, cyr);
+      }
       return frame;
     }
 #endif
@@ -283,47 +285,45 @@ PVideoFrame Greyscale::GetFrame(int n, IScriptEnvironment* env)
     BYTE* p_count = srcp;
 
     const int rgb_inc = vi.IsRGB32() ? 4 : 3;
-    if (theMatrix == Rec709) {
+    if (matrix_ == Rec709) {
       //	  const int cyb709 = int(0.0722*65536+0.5); //  4732
       //	  const int cyg709 = int(0.7152*65536+0.5); // 46871
       //	  const int cyr709 = int(0.2126*65536+0.5); // 13933
 
-      for (int y=0; y<vi.height; ++y) {
-        for (int x=0; x<vi.width; x++) {
-          int greyscale=((srcp[0]*4732)+(srcp[1]*46871)+(srcp[2]*13933)+32768)>>16; // This is the correct brigtness calculations (standardized in Rec. 709)
-          srcp[0]=srcp[1]=srcp[2]=greyscale;
+      for (int y = 0; y<vi.height; ++y) {
+        for (int x = 0; x<vi.width; x++) {
+          int greyscale = ((srcp[0]*4732)+(srcp[1]*46871)+(srcp[2]*13933)+32768)>>16; // This is the correct brigtness calculations (standardized in Rec. 709)
+          srcp[0] = srcp[1] = srcp[2] = greyscale;
           srcp += rgb_inc;
         }
-        p_count+=pitch;
-        srcp=p_count;
+        p_count += pitch;
+        srcp = p_count;
       }
-    }
-    else if (theMatrix == Average) {
+    } else if (matrix_ == Average) {
       //	  const int cyav = int(0.333333*65536+0.5); //  21845
 
-      for (int y=0; y<vi.height; ++y) {
-        for (int x=0; x<vi.width; x++) {
-          int greyscale=((srcp[0]+srcp[1]+srcp[2])*21845+32768)>>16; // This is the average of R, G & B
-          srcp[0]=srcp[1]=srcp[2]=greyscale;
+      for (int y = 0; y<vi.height; ++y) {
+        for (int x = 0; x<vi.width; x++) {
+          int greyscale = ((srcp[0]+srcp[1]+srcp[2])*21845+32768)>>16; // This is the average of R, G & B
+          srcp[0] = srcp[1] = srcp[2] = greyscale;
           srcp += rgb_inc;
         }
-        p_count+=pitch;
-        srcp=p_count;
+        p_count += pitch;
+        srcp = p_count;
       }
-    }
-    else {
+    } else {
       //	  const int cyb = int(0.114*65536+0.5); //  7471
       //	  const int cyg = int(0.587*65536+0.5); // 38470
       //	  const int cyr = int(0.299*65536+0.5); // 19595
 
-      for (int y=0; y<vi.height; ++y) {
-        for (int x=0; x<vi.width; x++) {
-          int greyscale=((srcp[0]*7471)+(srcp[1]*38470)+(srcp[2]*19595)+32768)>>16; // This produces similar results as YUY2 (luma calculation)
-          srcp[0]=srcp[1]=srcp[2]=greyscale;
+      for (int y = 0; y<vi.height; ++y) {
+        for (int x = 0; x<vi.width; x++) {
+          int greyscale = ((srcp[0]*7471)+(srcp[1]*38470)+(srcp[2]*19595)+32768)>>16; // This produces similar results as YUY2 (luma calculation)
+          srcp[0] = srcp[1] = srcp[2] = greyscale;
           srcp += rgb_inc;
         }
-        p_count+=pitch;
-        srcp=p_count;
+        p_count += pitch;
+        srcp = p_count;
       }
     }
   }

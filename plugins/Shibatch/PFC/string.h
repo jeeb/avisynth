@@ -281,7 +281,7 @@ class string_convert_base
 protected:
 	T * ptr;
 	inline void alloc(unsigned size) {ptr = mem_ops<T>::alloc(size);}
-	inline ~string_convert_base() {mem_ops<T>::free(ptr);}
+	inline ~string_convert_base() {mem_ops<T>::free_block(ptr);}
 public:
 	inline operator const T * () const {return ptr;}
 	inline const T * get_ptr() const {return ptr;}
@@ -436,7 +436,7 @@ private:
 
 	void do_realloc(unsigned size)
 	{
-		ptr = mem_ops<T>::realloc(ptr,size);
+		ptr = mem_ops<T>::realloc_block(ptr,size);
 	}
 
 	static unsigned t_strlen(const T* src,unsigned max = -1)
@@ -486,13 +486,13 @@ public:
 		}
 		ptr = t_strdup(temp);
 	}
-	inline ~string_simple_t() {if (ptr) mem_ops<T>::free(ptr);}
+	inline ~string_simple_t() {if (ptr) mem_ops<T>::free_block(ptr);}
 	inline const T * operator = (const T * param) {set_string(param);return get_ptr();}
 	inline const T * operator = (const string_simple_t<T> & param) {set_string(param);return get_ptr();}
 	inline const T * operator += (const T * src) {add_string(src);return get_ptr();}
 
 	inline int string_simple(const string_simple_t<T> & param) {ptr = t_strdup(param);}
-	inline void reset() {if (ptr) {mem_ops<T>::free(ptr);ptr=0;}}
+	inline void reset() {if (ptr) {mem_ops<T>::free_block(ptr);ptr=0;}}
 	inline bool is_empty() {return !ptr || !*ptr;}
 	inline unsigned length() {return t_strlen(get_ptr());}
 

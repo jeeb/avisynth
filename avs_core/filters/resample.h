@@ -40,6 +40,7 @@
 
 // Resizer function pointer
 typedef void (*ResamplerV)(BYTE* dst, const BYTE* src, int dst_pitch, int src_pitch, ResamplingProgram* program, int width, int target_height, const int* pitch_table, const void* storage);
+typedef void (*ResamplerH)(BYTE* dst, const BYTE* src, int dst_pitch, int src_pitch, ResamplingProgram* program, int width, int target_height);
 
 // Turn function pointer -- copied from turn.h
 typedef void (*TurnFuncPtr) (const BYTE *srcp, BYTE *dstp, int width, int height, int src_pitch, int dst_pitch);
@@ -55,6 +56,13 @@ public:
                    ResamplingFunction* func, IScriptEnvironment* env );
   virtual ~FilteredResizeH(void);
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
+
+  int __stdcall SetCacheHints(int cachehints, int frame_range) override {
+    return cachehints == CACHE_GET_MTMODE ? MT_NICE_FILTER : 0;
+  }
+
+  static ResamplerH GetResampler(int CPU, bool aligned, ResamplingProgram* program, IScriptEnvironment2* env);
+
 private:
   // Resampling
   ResamplingProgram *resampling_program_luma;
@@ -67,10 +75,13 @@ private:
   void* filter_storage_luma;
   void* filter_storage_chroma;
 
-  BYTE *temp_1, *temp_2;
-  int   temp_1_pitch, temp_2_pitch;
+  int temp_1_pitch, temp_2_pitch;
 
   int src_width, src_height, dst_width,  dst_height;
+
+  ResamplerH resampler_h_luma;
+  ResamplerH resampler_h_chroma;
+  bool fast_resize;
 
   ResamplerV resampler_luma;
   ResamplerV resampler_chroma;
@@ -90,17 +101,15 @@ public:
   virtual ~FilteredResizeV(void);
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
 
-  static ResamplerV FilteredResizeV::GetResampler(int CPU, bool aligned, void*& storage, ResamplingProgram* program);
+  int __stdcall SetCacheHints(int cachehints, int frame_range) override {
+    return cachehints == CACHE_GET_MTMODE ? MT_NICE_FILTER : 0;
+  }
+
+  static ResamplerV GetResampler(int CPU, bool aligned, void*& storage, ResamplingProgram* program);
 
 private:
   ResamplingProgram *resampling_program_luma;
   ResamplingProgram *resampling_program_chroma;
-  int *src_pitch_table_luma;
-  int *src_pitch_table_chromaU;
-  int *src_pitch_table_chromaV;
-  int src_pitch_luma;
-  int src_pitch_chromaU;
-  int src_pitch_chromaV;
 
   // Note: these pointer are currently not used; they are used to pass data into run-time resampler.
   // They are kept because this may be needed later (like when we implemented actual horizontal resizer.)

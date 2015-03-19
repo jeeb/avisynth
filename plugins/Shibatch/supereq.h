@@ -94,14 +94,14 @@ private:
 		newipsize = 2+sqrt((float)(n/2));
 		if (newipsize > rfft_ipsize) {
 			rfft_ipsize = newipsize;
-			rfft_ip = mem_ops<int>::realloc(rfft_ip,rfft_ipsize);
+			rfft_ip = mem_ops<int>::realloc_block(rfft_ip,rfft_ipsize);
 			rfft_ip[0] = 0;
 		}
 
 		newwsize = n/2;
 		if (newwsize > rfft_wsize) {
 			rfft_wsize = newwsize;
-			rfft_w = mem_ops<REAL>::realloc(rfft_w,rfft_wsize);
+			rfft_w = mem_ops<REAL>::realloc_block(rfft_w,rfft_wsize);
 		}
 
 		fft<REAL>::rdft(n,isign,x,rfft_ip,rfft_w);

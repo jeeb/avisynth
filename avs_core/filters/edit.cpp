@@ -49,46 +49,68 @@
 ********************************************************************/
 
 extern const AVSFunction Edit_filters[] = {  
-  { "AudioTrim", "cff",          Trim::CreateA, (void*)Trim::Default}, // start time, end time
-  { "AudioTrim", "cf",           Trim::CreateA, (void*)Trim::Invalid}, // Throw Invalid argument to AudioTrim
-  { "AudioTrim", "cf[length]f",  Trim::CreateA, (void*)Trim::Length},  // start time, duration
-  { "AudioTrim", "cf[end]f",     Trim::CreateA, (void*)Trim::End},     // start time, end time
-  { "Trim", "cii[pad]b",         Trim::Create,  (void*)Trim::Default}, // first frame, last frame[, pad audio]
-  { "Trim", "ci[pad]b",          Trim::Create,  (void*)Trim::Invalid}, // Throw Invalid argument to Trim
-  { "Trim", "ci[length]i[pad]b", Trim::Create,  (void*)Trim::Length},  // first frame, frame count[, pad audio]
-  { "Trim", "ci[end]i[pad]b",    Trim::Create,  (void*)Trim::End},     // first frame, last frame[, pad audio]
-  { "FreezeFrame", "ciii", FreezeFrame::Create },           // first frame, last frame, source frame
-  { "DeleteFrame", "ci+", DeleteFrame::Create },            // frame #
-  { "DuplicateFrame", "ci+", DuplicateFrame::Create },      // frame #
-  { "UnalignedSplice", "cc+", Splice::CreateUnaligned },    // clips
-  { "AlignedSplice", "cc+", Splice::CreateAligned },        // clips
-  { "Dissolve", "cc+i[fps]f", Dissolve::Create },           // clips, overlap frames[, fps]
-  { "AudioDub", "cc", AudioDub::Create, (void*)0},          // video src, audio src
-  { "AudioDubEx", "cc", AudioDub::Create, (void*)1},        // video! src, audio! src
-  { "Reverse", "c", Reverse::Create },                      // plays backwards
-  { "FadeOut0", "ci[color]i[fps]f", Create_FadeOut0},       // # frames[, color][, fps]
-  { "FadeOut", "ci[color]i[fps]f", Create_FadeOut},         // # frames[, color][, fps]
-  { "FadeOut2", "ci[color]i[fps]f", Create_FadeOut2},       // # frames[, color][, fps]
-  { "FadeIn0", "ci[color]i[fps]f", Create_FadeIn0},         // # frames[, color][, fps]
-  { "FadeIn", "ci[color]i[fps]f", Create_FadeIn},           // # frames[, color][, fps]
-  { "FadeIn2", "ci[color]i[fps]f", Create_FadeIn2},         // # frames[, color][, fps]
-  { "FadeIO0", "ci[color]i[fps]f", Create_FadeIO0},         // # frames[, color][, fps]
-  { "FadeIO", "ci[color]i[fps]f", Create_FadeIO},           // # frames[, color][, fps]
-  { "FadeIO2", "ci[color]i[fps]f", Create_FadeIO2},         // # frames[, color][, fps]
-  { "Loop", "c[times]i[start]i[end]i", Loop::Create },      // number of loops, first frame, last frames
-  { 0 }
+  { "AudioTrim", BUILTIN_FUNC_PREFIX, "cff",          Trim::CreateA, (void*)Trim::Default}, // start time, end time
+  { "AudioTrim", BUILTIN_FUNC_PREFIX, "cf",           Trim::CreateA, (void*)Trim::Invalid}, // Throw Invalid argument to AudioTrim
+  { "AudioTrim", BUILTIN_FUNC_PREFIX, "cf[length]f",  Trim::CreateA, (void*)Trim::Length},  // start time, duration
+  { "AudioTrim", BUILTIN_FUNC_PREFIX, "cf[end]f",     Trim::CreateA, (void*)Trim::End},     // start time, end time
+  { "Trim", BUILTIN_FUNC_PREFIX, "cii[pad]b",         Trim::Create,  (void*)Trim::Default}, // first frame, last frame[, pad audio]
+  { "Trim", BUILTIN_FUNC_PREFIX, "ci[pad]b",          Trim::Create,  (void*)Trim::Invalid}, // Throw Invalid argument to Trim
+  { "Trim", BUILTIN_FUNC_PREFIX, "ci[length]i[pad]b", Trim::Create,  (void*)Trim::Length},  // first frame, frame count[, pad audio]
+  { "Trim", BUILTIN_FUNC_PREFIX, "ci[end]i[pad]b",    Trim::Create,  (void*)Trim::End},     // first frame, last frame[, pad audio]
+  { "FreezeFrame", BUILTIN_FUNC_PREFIX, "ciii", FreezeFrame::Create },           // first frame, last frame, source frame
+  { "DeleteFrame", BUILTIN_FUNC_PREFIX, "ci+", DeleteFrame::Create },            // frame #
+  { "DuplicateFrame",  BUILTIN_FUNC_PREFIX, "ci+", DuplicateFrame::Create },      // frame #
+  { "UnalignedSplice", BUILTIN_FUNC_PREFIX, "cc+", Splice::CreateUnaligned },    // clips
+  { "AlignedSplice", BUILTIN_FUNC_PREFIX, "cc+", Splice::CreateAligned },        // clips
+  { "Dissolve",   BUILTIN_FUNC_PREFIX, "cc+i[fps]f", Dissolve::Create },           // clips, overlap frames[, fps]
+  { "AudioDub",   BUILTIN_FUNC_PREFIX, "cc", AudioDub::Create, (void*)0},          // video src, audio src
+  { "AudioDubEx", BUILTIN_FUNC_PREFIX, "cc", AudioDub::Create, (void*)1},        // video! src, audio! src
+  { "Reverse",  BUILTIN_FUNC_PREFIX, "c", Reverse::Create },                      // plays backwards
+  { "FadeOut0", BUILTIN_FUNC_PREFIX, "ci[color]i[fps]f", Create_FadeOut0},       // # frames[, color][, fps]
+  { "FadeOut",  BUILTIN_FUNC_PREFIX, "ci[color]i[fps]f", Create_FadeOut},         // # frames[, color][, fps]
+  { "FadeOut2", BUILTIN_FUNC_PREFIX, "ci[color]i[fps]f", Create_FadeOut2},       // # frames[, color][, fps]
+  { "FadeIn0",  BUILTIN_FUNC_PREFIX, "ci[color]i[fps]f", Create_FadeIn0},         // # frames[, color][, fps]
+  { "FadeIn",   BUILTIN_FUNC_PREFIX, "ci[color]i[fps]f", Create_FadeIn},           // # frames[, color][, fps]
+  { "FadeIn2",  BUILTIN_FUNC_PREFIX, "ci[color]i[fps]f", Create_FadeIn2},         // # frames[, color][, fps]
+  { "FadeIO0",  BUILTIN_FUNC_PREFIX, "ci[color]i[fps]f", Create_FadeIO0},         // # frames[, color][, fps]
+  { "FadeIO",   BUILTIN_FUNC_PREFIX, "ci[color]i[fps]f", Create_FadeIO},           // # frames[, color][, fps]
+  { "FadeIO2",  BUILTIN_FUNC_PREFIX, "ci[color]i[fps]f", Create_FadeIO2},         // # frames[, color][, fps]
+  { "Loop",     BUILTIN_FUNC_PREFIX, "c[times]i[start]i[end]i", Loop::Create },      // number of loops, first frame, last frames
+  { NULL }
 };
 
 
 
- 
+/******************************
+ *******   NonCachedGenericVideoFilter Filter   ******
+ ******************************/
+
+NonCachedGenericVideoFilter::NonCachedGenericVideoFilter(PClip _child) :
+  GenericVideoFilter(_child)
+{
+};
+
+
+int __stdcall NonCachedGenericVideoFilter::SetCacheHints(int cachehints, int frame_range)
+{
+  switch(cachehints)
+  {
+    case CACHE_DONT_CACHE_ME:
+      return 1;
+    case CACHE_GET_MTMODE:
+      return MT_NICE_FILTER;
+    default:
+      return GenericVideoFilter::SetCacheHints(cachehints, frame_range);
+  }
+}
+
 
 /******************************
  *******   AudioTrim Filter   ******
  ******************************/
 
 Trim::Trim(double starttime, double endtime, PClip _child, int mode, IScriptEnvironment* env)
- : GenericVideoFilter(_child) 
+ : NonCachedGenericVideoFilter(_child) 
 {
   __int64 esampleno = 0;
 
@@ -148,7 +170,10 @@ Trim::Trim(double starttime, double endtime, PClip _child, int mode, IScriptEnvi
 
 AVSValue __cdecl Trim::CreateA(AVSValue args, void* mode, IScriptEnvironment* env) 
 {
-  return new Trim(args[1].AsFloat(), args[2].AsFloat(), args[0].AsClip(), (int)mode, env);
+    if ((int)mode == Trim::Invalid)
+        env->ThrowError("Script error: Invalid arguments to function \"AudioTrim\"");
+
+    return new Trim(args[1].AsFloat(), args[2].AsFloat(), args[0].AsClip(), (int)mode, env);
 }
 
 
@@ -157,7 +182,7 @@ AVSValue __cdecl Trim::CreateA(AVSValue args, void* mode, IScriptEnvironment* en
  ******************************/
 
 Trim::Trim(int _firstframe, int _lastframe, bool _padaudio, PClip _child, int mode, IScriptEnvironment* env)
- : GenericVideoFilter(_child) 
+ : NonCachedGenericVideoFilter(_child) 
 {
   int lastframe = 0;
 
@@ -248,7 +273,10 @@ bool Trim::GetParity(int n)
 
 AVSValue __cdecl Trim::Create(AVSValue args, void* mode, IScriptEnvironment* env) 
 {
-  return new Trim(args[1].AsInt(), args[2].AsInt(), args[3].AsBool(true), args[0].AsClip(), (int)mode, env);
+    if ((int)mode == Trim::Invalid)
+        env->ThrowError("Script error: Invalid arguments to function \"Trim\"");
+
+    return new Trim(args[1].AsInt(), args[2].AsInt(), args[3].AsBool(true), args[0].AsClip(), (int)mode, env);
 }
 
 
@@ -263,7 +291,7 @@ AVSValue __cdecl Trim::Create(AVSValue args, void* mode, IScriptEnvironment* env
  *******************************/
 
 FreezeFrame::FreezeFrame(int _first, int _last, int _source, PClip _child)
- : GenericVideoFilter(_child), first(_first), last(_last), source(_source) {}
+ : NonCachedGenericVideoFilter(_child), first(_first), last(_last), source(_source) {}
 
 
 PVideoFrame FreezeFrame::GetFrame(int n, IScriptEnvironment* env) 
@@ -289,7 +317,7 @@ AVSValue __cdecl FreezeFrame::Create(AVSValue args, void*, IScriptEnvironment* e
  ******************************/
 
 DeleteFrame::DeleteFrame(int _frame, PClip _child)
- : GenericVideoFilter(_child), frame(_frame) { --vi.num_frames; }
+ : NonCachedGenericVideoFilter(_child), frame(_frame) { --vi.num_frames; }
 
 
 PVideoFrame DeleteFrame::GetFrame(int n, IScriptEnvironment* env) 
@@ -302,6 +330,7 @@ bool DeleteFrame::GetParity(int n)
 { 
   return child->GetParity(n + (n>=frame)); 
 }
+
 
 AVSValue __cdecl DeleteFrame::Create(AVSValue args, void*, IScriptEnvironment* env) 
 {
@@ -342,7 +371,7 @@ AVSValue __cdecl DeleteFrame::Create(AVSValue args, void*, IScriptEnvironment* e
  *********************************/
 
 DuplicateFrame::DuplicateFrame(int _frame, PClip _child)
- : GenericVideoFilter(_child), frame(_frame) { ++vi.num_frames; }
+ : NonCachedGenericVideoFilter(_child), frame(_frame) { ++vi.num_frames; }
 
 
 PVideoFrame DuplicateFrame::GetFrame(int n, IScriptEnvironment* env) 
@@ -482,9 +511,18 @@ bool Splice::GetParity(int n)
 
 int Splice::SetCacheHints(int cachehints,int frame_range)
 {
-  if (passCache) {
-    child2->SetCacheHints(cachehints, frame_range);
-    return child->SetCacheHints(cachehints, frame_range);
+  switch(cachehints)
+  {
+  case CACHE_DONT_CACHE_ME:
+    return 1;
+  case CACHE_GET_MTMODE:
+    return MT_NICE_FILTER;
+  default:
+    if (passCache) {
+      child2->SetCacheHints(cachehints, frame_range);
+      return child->SetCacheHints(cachehints, frame_range);
+    }
+    break;
   }
   return 0;  // We do not pass cache requests upwards.
 }
@@ -795,6 +833,20 @@ void AudioDub::GetAudio(void* buf, __int64 start, __int64 count, IScriptEnvironm
   achild->GetAudio(buf, start, count, env);
 }
 
+int __stdcall AudioDub::SetCacheHints(int cachehints,int frame_range)
+{
+  switch(cachehints)
+  {
+  case CACHE_DONT_CACHE_ME:
+    return 1;
+  case CACHE_GET_MTMODE:
+    return MT_NICE_FILTER;
+  default:
+    return 0;
+  }
+}
+
+
 
 AVSValue __cdecl AudioDub::Create(AVSValue args, void* mode, IScriptEnvironment* env) 
 {
@@ -813,7 +865,7 @@ AVSValue __cdecl AudioDub::Create(AVSValue args, void* mode, IScriptEnvironment*
  *******   Reverse Filter  ******
  *******************************/
 
-Reverse::Reverse(PClip _child) : GenericVideoFilter(_child) {}
+Reverse::Reverse(PClip _child) : NonCachedGenericVideoFilter(_child) {}
 
 
 PVideoFrame Reverse::GetFrame(int n, IScriptEnvironment* env) 
@@ -857,7 +909,7 @@ AVSValue __cdecl Reverse::Create(AVSValue args, void*, IScriptEnvironment* env)
  *****************************/
 
 Loop::Loop(PClip _child, int times, int _start, int _end, IScriptEnvironment* env)
- : GenericVideoFilter(_child), start(_start), end(_end)
+ : NonCachedGenericVideoFilter(_child), start(_start), end(_end)
 {
   start = clamp(start,0,vi.num_frames-1);
   end = clamp(end,start,vi.num_frames-1);

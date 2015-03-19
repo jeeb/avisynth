@@ -33,7 +33,6 @@
 // import and export plugins, or graphical user interfaces.
 
 #include "resample.h"
-#include <malloc.h>
 #include <avs/config.h>
 #include "../core/internal.h"
 
@@ -398,22 +397,238 @@ __forceinline static void resize_v_create_pitch_table(int* table, int pitch, int
 }
 
 
+
+/***************************************
+ ********* Horizontal Resizer** ********
+ ***************************************/
+
+static void resize_h_pointresize(BYTE* dst, const BYTE* src, int dst_pitch, int src_pitch, ResamplingProgram* program, int width, int height) {
+  int wMod4 = width/4 * 4;
+
+  for (int y = 0; y < height; y++) {
+    for (int x = 0; x < wMod4; x+=4) {
+#define pixel(a) src[program->pixel_offset[x+a]]
+      unsigned int data = (pixel(3) << 24) + (pixel(2) << 16) + (pixel(1) << 8) + pixel(0);
+#undef pixel
+      *((unsigned int *)(dst+x)) = data;
+    }
+
+    for (int x = wMod4; x < width; x++) {
+      dst[x] = src[program->pixel_offset[x]];
+    }
+
+    dst += dst_pitch;
+    src += src_pitch;
+  }
+}
+
+static void resize_h_prepare_coeff_8(ResamplingProgram* p, IScriptEnvironment2* env) {
+  int filter_size = AlignNumber(p->filter_size, 8);
+  short* new_coeff = (short*) env->Allocate(sizeof(short) * p->target_size * filter_size, 64, AVS_NORMAL_ALLOC);
+  memset(new_coeff, 0, sizeof(short) * p->target_size * filter_size);
+
+  // Copy coeff
+  short *dst = new_coeff, *src = p->pixel_coefficient;
+  for (int i = 0; i < p->target_size; i++) {
+    for (int j = 0; j < p->filter_size; j++) {
+      dst[j] = src[j];
+    }
+
+    dst += filter_size;
+    src += p->filter_size;
+  }
+
+  env->Free(p->pixel_coefficient);
+  p->pixel_coefficient = new_coeff;
+}
+
+static void resize_h_c_planar(BYTE* dst, const BYTE* src, int dst_pitch, int src_pitch, ResamplingProgram* program, int width, int height) {
+  int filter_size = program->filter_size;
+  short* current = program->pixel_coefficient;
+
+  for (int x = 0; x < width; x++) {
+    int begin = program->pixel_offset[x];
+    for (int y = 0; y < height; y++) {
+      int result = 0;
+      for (int i = 0; i < filter_size; i++) {
+        result += (src+y*src_pitch)[(begin+i)] * current[i];
+      }
+      result = ((result+8192)/16384);
+      result = result > 255 ? 255 : result < 0 ? 0 : result;
+      (dst+y*dst_pitch)[x] = (BYTE)result;
+    }
+    current += filter_size;
+  }
+}
+
+static void resizer_h_ssse3_generic(BYTE* dst, const BYTE* src, int dst_pitch, int src_pitch, ResamplingProgram* program, int width, int height) {
+  int filter_size = AlignNumber(program->filter_size, 8) / 8;
+  __m128i zero = _mm_setzero_si128();
+
+  for (int y = 0; y < height; y++) {
+    short* current_coeff = program->pixel_coefficient;
+    for (int x = 0; x < width; x+=4) {
+      __m128i result1 = _mm_setr_epi32(8192, 0, 0, 0);
+      __m128i result2 = _mm_setr_epi32(8192, 0, 0, 0);
+      __m128i result3 = _mm_setr_epi32(8192, 0, 0, 0);
+      __m128i result4 = _mm_setr_epi32(8192, 0, 0, 0);
+
+      int begin1 = program->pixel_offset[x+0];
+      int begin2 = program->pixel_offset[x+1];
+      int begin3 = program->pixel_offset[x+2];
+      int begin4 = program->pixel_offset[x+3];
+
+      for (int i = 0; i < filter_size; i++) {
+        __m128i data, coeff, current_result;
+        data = _mm_loadl_epi64(reinterpret_cast<const __m128i*>(src+begin1+i*8));
+        data = _mm_unpacklo_epi8(data, zero);
+        coeff = _mm_load_si128(reinterpret_cast<const __m128i*>(current_coeff));
+        current_result = _mm_madd_epi16(data, coeff);
+        result1 = _mm_add_epi32(result1, current_result);
+
+        current_coeff += 8;
+      }
+
+      for (int i = 0; i < filter_size; i++) {
+        __m128i data, coeff, current_result;
+        data = _mm_loadl_epi64(reinterpret_cast<const __m128i*>(src+begin2+i*8));
+        data = _mm_unpacklo_epi8(data, zero);
+        coeff = _mm_load_si128(reinterpret_cast<const __m128i*>(current_coeff));
+        current_result = _mm_madd_epi16(data, coeff);
+        result2 = _mm_add_epi32(result2, current_result);
+
+        current_coeff += 8;
+      }
+
+      for (int i = 0; i < filter_size; i++) {
+        __m128i data, coeff, current_result;
+        data = _mm_loadl_epi64(reinterpret_cast<const __m128i*>(src+begin3+i*8));
+        data = _mm_unpacklo_epi8(data, zero);
+        coeff = _mm_load_si128(reinterpret_cast<const __m128i*>(current_coeff));
+        current_result = _mm_madd_epi16(data, coeff);
+        result3 = _mm_add_epi32(result3, current_result);
+
+        current_coeff += 8;
+      }
+
+      for (int i = 0; i < filter_size; i++) {
+        __m128i data, coeff, current_result;
+        data = _mm_loadl_epi64(reinterpret_cast<const __m128i*>(src+begin4+i*8));
+        data = _mm_unpacklo_epi8(data, zero);
+        coeff = _mm_load_si128(reinterpret_cast<const __m128i*>(current_coeff));
+        current_result = _mm_madd_epi16(data, coeff);
+        result4 = _mm_add_epi32(result4, current_result);
+
+        current_coeff += 8;
+      }
+
+      __m128i result12 = _mm_hadd_epi32(result1, result2);
+      __m128i result34 = _mm_hadd_epi32(result3, result4);
+      __m128i result = _mm_hadd_epi32(result12, result34);
+
+      result = _mm_srai_epi32(result, 14);
+
+      result = _mm_packs_epi32(result, zero);
+      result = _mm_packus_epi16(result, zero);
+
+      *((int*)(dst+x)) = _mm_cvtsi128_si32(result);
+    }
+
+    dst += dst_pitch;
+    src += src_pitch;
+  }
+}
+
+static void resizer_h_ssse3_8(BYTE* dst, const BYTE* src, int dst_pitch, int src_pitch, ResamplingProgram* program, int width, int height) {
+  int filter_size = AlignNumber(program->filter_size, 8) / 8;
+
+  __m128i zero = _mm_setzero_si128();
+
+  for (int y = 0; y < height; y++) {
+    short* current_coeff = program->pixel_coefficient;
+    for (int x = 0; x < width; x+=4) {
+      __m128i result1 = _mm_setr_epi32(8192, 0, 0, 0);
+      __m128i result2 = _mm_setr_epi32(8192, 0, 0, 0);
+      __m128i result3 = _mm_setr_epi32(8192, 0, 0, 0);
+      __m128i result4 = _mm_setr_epi32(8192, 0, 0, 0);
+
+      int begin1 = program->pixel_offset[x+0];
+      int begin2 = program->pixel_offset[x+1];
+      int begin3 = program->pixel_offset[x+2];
+      int begin4 = program->pixel_offset[x+3];
+
+      __m128i data, coeff, current_result;
+
+      // Unroll 1
+      data = _mm_loadl_epi64(reinterpret_cast<const __m128i*>(src+begin1));
+      data = _mm_unpacklo_epi8(data, zero);
+      coeff = _mm_load_si128(reinterpret_cast<const __m128i*>(current_coeff));
+      current_result = _mm_madd_epi16(data, coeff);
+      result1 = _mm_add_epi32(result1, current_result);
+
+      current_coeff += 8;
+
+      // Unroll 2
+      data = _mm_loadl_epi64(reinterpret_cast<const __m128i*>(src+begin2));
+      data = _mm_unpacklo_epi8(data, zero);
+      coeff = _mm_load_si128(reinterpret_cast<const __m128i*>(current_coeff));
+      current_result = _mm_madd_epi16(data, coeff);
+      result2 = _mm_add_epi32(result2, current_result);
+
+      current_coeff += 8;
+
+      // Unroll 3
+      data = _mm_loadl_epi64(reinterpret_cast<const __m128i*>(src+begin3));
+      data = _mm_unpacklo_epi8(data, zero);
+      coeff = _mm_load_si128(reinterpret_cast<const __m128i*>(current_coeff));
+      current_result = _mm_madd_epi16(data, coeff);
+      result3 = _mm_add_epi32(result3, current_result);
+
+      current_coeff += 8;
+
+      // Unroll 4
+      data = _mm_loadl_epi64(reinterpret_cast<const __m128i*>(src+begin4));
+      data = _mm_unpacklo_epi8(data, zero);
+      coeff = _mm_load_si128(reinterpret_cast<const __m128i*>(current_coeff));
+      current_result = _mm_madd_epi16(data, coeff);
+      result4 = _mm_add_epi32(result4, current_result);
+
+      current_coeff += 8;
+
+      // Combine
+      __m128i result12 = _mm_hadd_epi32(result1, result2);
+      __m128i result34 = _mm_hadd_epi32(result3, result4);
+      __m128i result = _mm_hadd_epi32(result12, result34);
+
+      result = _mm_srai_epi32(result, 14);
+
+      result = _mm_packs_epi32(result, zero);
+      result = _mm_packus_epi16(result, zero);
+
+      *((int*)(dst+x)) = _mm_cvtsi128_si32(result);
+    }
+
+    dst += dst_pitch;
+    src += src_pitch;
+  }
+}
+
 /********************************************************************
 ***** Declare index of new filters for Avisynth's filter engine *****
 ********************************************************************/
 
 extern const AVSFunction Resample_filters[] = {
-  { "PointResize", "cii[src_left]f[src_top]f[src_width]f[src_height]f", FilteredResize::Create_PointResize },
-  { "BilinearResize", "cii[src_left]f[src_top]f[src_width]f[src_height]f", FilteredResize::Create_BilinearResize },
-  { "BicubicResize", "cii[b]f[c]f[src_left]f[src_top]f[src_width]f[src_height]f", FilteredResize::Create_BicubicResize },
-  { "LanczosResize", "cii[src_left]f[src_top]f[src_width]f[src_height]f[taps]i", FilteredResize::Create_LanczosResize},
-  { "Lanczos4Resize", "cii[src_left]f[src_top]f[src_width]f[src_height]f", FilteredResize::Create_Lanczos4Resize},
-  { "BlackmanResize", "cii[src_left]f[src_top]f[src_width]f[src_height]f[taps]i", FilteredResize::Create_BlackmanResize},
-  { "Spline16Resize", "cii[src_left]f[src_top]f[src_width]f[src_height]f", FilteredResize::Create_Spline16Resize},
-  { "Spline36Resize", "cii[src_left]f[src_top]f[src_width]f[src_height]f", FilteredResize::Create_Spline36Resize},
-  { "Spline64Resize", "cii[src_left]f[src_top]f[src_width]f[src_height]f", FilteredResize::Create_Spline64Resize},
-  { "GaussResize", "cii[src_left]f[src_top]f[src_width]f[src_height]f[p]f", FilteredResize::Create_GaussianResize},
-  { "SincResize", "cii[src_left]f[src_top]f[src_width]f[src_height]f[taps]i", FilteredResize::Create_SincResize},
+  { "PointResize",    BUILTIN_FUNC_PREFIX, "cii[src_left]f[src_top]f[src_width]f[src_height]f", FilteredResize::Create_PointResize },
+  { "BilinearResize", BUILTIN_FUNC_PREFIX, "cii[src_left]f[src_top]f[src_width]f[src_height]f", FilteredResize::Create_BilinearResize },
+  { "BicubicResize",  BUILTIN_FUNC_PREFIX, "cii[b]f[c]f[src_left]f[src_top]f[src_width]f[src_height]f", FilteredResize::Create_BicubicResize },
+  { "LanczosResize",  BUILTIN_FUNC_PREFIX, "cii[src_left]f[src_top]f[src_width]f[src_height]f[taps]i", FilteredResize::Create_LanczosResize},
+  { "Lanczos4Resize", BUILTIN_FUNC_PREFIX, "cii[src_left]f[src_top]f[src_width]f[src_height]f", FilteredResize::Create_Lanczos4Resize},
+  { "BlackmanResize", BUILTIN_FUNC_PREFIX, "cii[src_left]f[src_top]f[src_width]f[src_height]f[taps]i", FilteredResize::Create_BlackmanResize},
+  { "Spline16Resize", BUILTIN_FUNC_PREFIX, "cii[src_left]f[src_top]f[src_width]f[src_height]f", FilteredResize::Create_Spline16Resize},
+  { "Spline36Resize", BUILTIN_FUNC_PREFIX, "cii[src_left]f[src_top]f[src_width]f[src_height]f", FilteredResize::Create_Spline36Resize},
+  { "Spline64Resize", BUILTIN_FUNC_PREFIX, "cii[src_left]f[src_top]f[src_width]f[src_height]f", FilteredResize::Create_Spline64Resize},
+  { "GaussResize",    BUILTIN_FUNC_PREFIX, "cii[src_left]f[src_top]f[src_width]f[src_height]f[p]f", FilteredResize::Create_GaussianResize},
+  { "SincResize",     BUILTIN_FUNC_PREFIX, "cii[src_left]f[src_top]f[src_width]f[src_height]f[taps]i", FilteredResize::Create_SincResize},
   /**
     * Resize(PClip clip, dst_width, dst_height [src_left, src_top, src_width, int src_height,] )
     *
@@ -431,8 +646,7 @@ FilteredResizeH::FilteredResizeH( PClip _child, double subrange_left, double sub
   resampling_program_luma(0), resampling_program_chroma(0),
   src_pitch_table_luma(0),
   src_pitch_luma(-1),
-  filter_storage_luma(0), filter_storage_chroma(0),
-  temp_1(0), temp_2(0)
+  filter_storage_luma(0), filter_storage_chroma(0)
 {
   src_width  = vi.width;
   src_height = vi.height;
@@ -450,58 +664,79 @@ FilteredResizeH::FilteredResizeH( PClip _child, double subrange_left, double sub
       env->ThrowError("Resize: Planar destination height must be a multiple of %d.", mask+1);
   }
 
-  // Create resampling program and pitch table
-  resampling_program_luma  = func->GetResamplingProgram(vi.width, subrange_left, subrange_width, target_width, env);
-  src_pitch_table_luma     = new int[vi.width];
-  resampler_luma   = FilteredResizeV::GetResampler(env->GetCPUFlags(), true, filter_storage_luma, resampling_program_luma);
+  auto env2 = static_cast<IScriptEnvironment2*>(env);
 
-  // Allocate temporary byte buffer (frame is transposed)
-  temp_1_pitch = AlignNumber(vi.BytesFromPixels(src_height), 64);
-  temp_1 = (BYTE*) _aligned_malloc(temp_1_pitch * src_width, 64);
-  temp_2_pitch = AlignNumber(vi.BytesFromPixels(dst_height), 64);
-  temp_2 = (BYTE*) _aligned_malloc(temp_2_pitch * dst_width, 64);
-
-  resize_v_create_pitch_table(src_pitch_table_luma, temp_1_pitch, src_width);
-
+  // Main resampling program
+  resampling_program_luma = func->GetResamplingProgram(vi.width, subrange_left, subrange_width, target_width, env2);
   if (vi.IsPlanar() && !vi.IsY8()) {
     const int shift = vi.GetPlaneWidthSubsampling(PLANAR_U);
     const int shift_h = vi.GetPlaneHeightSubsampling(PLANAR_U);
     const int div   = 1 << shift;
 
-    const int src_chroma_width = src_width >> shift;
-    const int dst_chroma_width = dst_width >> shift;
-    const int src_chroma_height = src_height >> shift_h;
-    const int dst_chroma_height = dst_height >> shift_h;
 
     resampling_program_chroma = func->GetResamplingProgram(
       vi.width       >> shift,
       subrange_left   / div,
       subrange_width  / div,
       target_width   >> shift,
-      env);
-
-    resampler_chroma = FilteredResizeV::GetResampler(env->GetCPUFlags(), true, filter_storage_chroma, resampling_program_chroma);
+      env2);
   }
 
-  // Initialize Turn function
-  if (vi.IsRGB24()) {
-    turn_left = turn_left_rgb24;
-    turn_right = turn_right_rgb24;
-  } else if (vi.IsRGB32()) {
-    if (env->GetCPUFlags() & CPUF_SSE2) {
-      turn_left = turn_left_rgb32_sse2;
-      turn_right = turn_right_rgb32_sse2;
-    } else {
-      turn_left = turn_left_rgb32_c;
-      turn_right = turn_right_rgb32_c;
+  fast_resize = (env->GetCPUFlags() & CPUF_SSSE3) == CPUF_SSSE3 && vi.IsPlanar() && target_width%4 == 0;
+  if (fast_resize && vi.IsYUV() && !vi.IsY8()) {
+    const int shift = vi.GetPlaneWidthSubsampling(PLANAR_U);
+    const int dst_chroma_width = dst_width >> shift;
+
+    if (dst_chroma_width%4 != 0) {
+      fast_resize = false;
     }
-  } else {
-    if (env->GetCPUFlags() & CPUF_SSE2) {
-      turn_left = turn_left_plane_sse2;
-      turn_right = turn_right_plane_sse2;
+  }
+
+  if (false && resampling_program_luma->filter_size == 1 && vi.IsPlanar()) {
+    fast_resize = true;
+    resampler_h_luma = resize_h_pointresize;
+    resampler_h_chroma = resize_h_pointresize;
+  } else if (!fast_resize) {
+    // Create resampling program and pitch table
+    src_pitch_table_luma     = new int[vi.width];
+
+    resampler_luma   = FilteredResizeV::GetResampler(env->GetCPUFlags(), true, filter_storage_luma, resampling_program_luma);
+    if (vi.IsPlanar() && !vi.IsY8()) {
+      resampler_chroma = FilteredResizeV::GetResampler(env->GetCPUFlags(), true, filter_storage_chroma, resampling_program_chroma);
+    }
+
+    // Temporary buffer size
+    temp_1_pitch = AlignNumber(vi.BytesFromPixels(src_height), 64);
+    temp_2_pitch = AlignNumber(vi.BytesFromPixels(dst_height), 64);
+
+    resize_v_create_pitch_table(src_pitch_table_luma, temp_1_pitch, src_width);
+
+    // Initialize Turn function
+    if (vi.IsRGB24()) {
+      turn_left = turn_left_rgb24;
+      turn_right = turn_right_rgb24;
+    } else if (vi.IsRGB32()) {
+      if (env->GetCPUFlags() & CPUF_SSE2) {
+        turn_left = turn_left_rgb32_sse2;
+        turn_right = turn_right_rgb32_sse2;
+      } else {
+        turn_left = turn_left_rgb32_c;
+        turn_right = turn_right_rgb32_c;
+      }
     } else {
-      turn_left = turn_left_plane_c;
-      turn_right = turn_right_plane_c;
+      if (env->GetCPUFlags() & CPUF_SSE2) {
+        turn_left = turn_left_plane_sse2;
+        turn_right = turn_right_plane_sse2;
+      } else {
+        turn_left = turn_left_plane_c;
+        turn_right = turn_right_plane_c;
+      }
+    }
+  } else { // Plannar + SSSE3 = use new horizontal resizer routines
+    resampler_h_luma = GetResampler(env->GetCPUFlags(), true, resampling_program_luma, env2);
+
+    if (!vi.IsY8()) {
+      resampler_h_chroma = GetResampler(env->GetCPUFlags(), true, resampling_program_chroma, env2);
     }
   }
 
@@ -514,39 +749,76 @@ PVideoFrame __stdcall FilteredResizeH::GetFrame(int n, IScriptEnvironment* env)
   PVideoFrame src = child->GetFrame(n, env);
   PVideoFrame dst = env->NewVideoFrame(vi);
 
-  if (!vi.IsRGB()) {
+  auto env2 = static_cast<IScriptEnvironment2*>(env);
+
+  if (!fast_resize) {
+    BYTE* temp_1 = static_cast<BYTE*>(env2->Allocate(temp_1_pitch * src_width, 64, AVS_POOLED_ALLOC));
+    BYTE* temp_2 = static_cast<BYTE*>(env2->Allocate(temp_2_pitch * dst_width, 64, AVS_POOLED_ALLOC));
+
+    if (!vi.IsRGB()) {
+      // Y Plane
+      turn_right(src->GetReadPtr(), temp_1, src_width, src_height, src->GetPitch(), temp_1_pitch);
+      resampler_luma(temp_2, temp_1, temp_2_pitch, temp_1_pitch, resampling_program_luma, src_height, dst_width, src_pitch_table_luma, filter_storage_luma);
+      turn_left(temp_2, dst->GetWritePtr(), dst_height, dst_width, temp_2_pitch, dst->GetPitch());
+
+      if (!vi.IsY8()) {
+        const int shift = vi.GetPlaneWidthSubsampling(PLANAR_U);
+        const int shift_h = vi.GetPlaneHeightSubsampling(PLANAR_U);
+
+        const int src_chroma_width = src_width >> shift;
+        const int dst_chroma_width = dst_width >> shift;
+        const int src_chroma_height = src_height >> shift_h;
+        const int dst_chroma_height = dst_height >> shift_h;
+
+        // U Plane
+        turn_right(src->GetReadPtr(PLANAR_U), temp_1, src_chroma_width, src_chroma_height, src->GetPitch(PLANAR_U), temp_1_pitch);
+        resampler_luma(temp_2, temp_1, temp_2_pitch, temp_1_pitch, resampling_program_chroma, src_chroma_height, dst_chroma_width, src_pitch_table_luma, filter_storage_chroma);
+        turn_left(temp_2, dst->GetWritePtr(PLANAR_U), dst_chroma_height, dst_chroma_width, temp_2_pitch, dst->GetPitch(PLANAR_U));
+
+        // V Plane
+        turn_right(src->GetReadPtr(PLANAR_V), temp_1, src_chroma_width, src_chroma_height, src->GetPitch(PLANAR_V), temp_1_pitch);
+        resampler_luma(temp_2, temp_1, temp_2_pitch, temp_1_pitch, resampling_program_chroma, src_chroma_height, dst_chroma_width, src_pitch_table_luma, filter_storage_chroma);
+        turn_left(temp_2, dst->GetWritePtr(PLANAR_V), dst_chroma_height, dst_chroma_width, temp_2_pitch, dst->GetPitch(PLANAR_V));
+      }
+    } else {
+      // RGB
+      turn_right(src->GetReadPtr(), temp_1, vi.BytesFromPixels(src_width), src_height, src->GetPitch(), temp_1_pitch);
+      resampler_luma(temp_2, temp_1, temp_2_pitch, temp_1_pitch, resampling_program_luma, vi.BytesFromPixels(src_height), dst_width, src_pitch_table_luma, filter_storage_luma);
+      turn_left(temp_2, dst->GetWritePtr(), vi.BytesFromPixels(dst_height), dst_width, temp_2_pitch, dst->GetPitch());
+    }
+
+    env2->Free(temp_1);
+    env2->Free(temp_2);
+  } else {
     // Y Plane
-    turn_right(src->GetReadPtr(), temp_1, src_width, src_height, src->GetPitch(), temp_1_pitch);
-    resampler_luma(temp_2, temp_1, temp_2_pitch, temp_1_pitch, resampling_program_luma, src_height, dst_width, src_pitch_table_luma, filter_storage_luma);
-    turn_left(temp_2, dst->GetWritePtr(), dst_height, dst_width, temp_2_pitch, dst->GetPitch());
+    resampler_h_luma(dst->GetWritePtr(), src->GetReadPtr(), dst->GetPitch(), src->GetPitch(), resampling_program_luma, dst_width, dst_height);
 
     if (!vi.IsY8()) {
-      const int shift = vi.GetPlaneWidthSubsampling(PLANAR_U);
-      const int shift_h = vi.GetPlaneHeightSubsampling(PLANAR_U);
-
-      const int src_chroma_width = src_width >> shift;
-      const int dst_chroma_width = dst_width >> shift;
-      const int src_chroma_height = src_height >> shift_h;
-      const int dst_chroma_height = dst_height >> shift_h;
+      const int dst_chroma_width = dst_width >> vi.GetPlaneWidthSubsampling(PLANAR_U);
+      const int dst_chroma_height = dst_height >> vi.GetPlaneHeightSubsampling(PLANAR_U);
 
       // U Plane
-      turn_right(src->GetReadPtr(PLANAR_U), temp_1, src_chroma_width, src_chroma_height, src->GetPitch(PLANAR_U), temp_1_pitch);
-      resampler_luma(temp_2, temp_1, temp_2_pitch, temp_1_pitch, resampling_program_chroma, src_chroma_height, dst_chroma_width, src_pitch_table_luma, filter_storage_chroma);
-      turn_left(temp_2, dst->GetWritePtr(PLANAR_U), dst_chroma_height, dst_chroma_width, temp_2_pitch, dst->GetPitch(PLANAR_U));
+      resampler_h_chroma(dst->GetWritePtr(PLANAR_U), src->GetReadPtr(PLANAR_U), dst->GetPitch(PLANAR_U), src->GetPitch(PLANAR_U), resampling_program_chroma, dst_chroma_width, dst_chroma_height);
 
       // V Plane
-      turn_right(src->GetReadPtr(PLANAR_V), temp_1, src_chroma_width, src_chroma_height, src->GetPitch(PLANAR_V), temp_1_pitch);
-      resampler_luma(temp_2, temp_1, temp_2_pitch, temp_1_pitch, resampling_program_chroma, src_chroma_height, dst_chroma_width, src_pitch_table_luma, filter_storage_chroma);
-      turn_left(temp_2, dst->GetWritePtr(PLANAR_V), dst_chroma_height, dst_chroma_width, temp_2_pitch, dst->GetPitch(PLANAR_V));
+      resampler_h_chroma(dst->GetWritePtr(PLANAR_V), src->GetReadPtr(PLANAR_V), dst->GetPitch(PLANAR_V), src->GetPitch(PLANAR_V), resampling_program_chroma, dst_chroma_width, dst_chroma_height);
     }
-  } else {
-    // RGB
-    turn_right(src->GetReadPtr(), temp_1, vi.BytesFromPixels(src_width), src_height, src->GetPitch(), temp_1_pitch);
-    resampler_luma(temp_2, temp_1, temp_2_pitch, temp_1_pitch, resampling_program_luma, vi.BytesFromPixels(src_height), dst_width, src_pitch_table_luma, filter_storage_luma);
-    turn_left(temp_2, dst->GetWritePtr(), vi.BytesFromPixels(dst_height), dst_width, temp_2_pitch, dst->GetPitch());
   }
 
   return dst;
+}
+
+ResamplerH FilteredResizeH::GetResampler(int CPU, bool aligned, ResamplingProgram* program, IScriptEnvironment2* env)
+{
+  if (CPU & CPUF_SSSE3) {
+    resize_h_prepare_coeff_8(program, env);
+    if (program->filter_size > 8)
+      return resizer_h_ssse3_generic;
+    else
+      return resizer_h_ssse3_8;
+  } else { // C version
+    return resize_h_c_planar;
+  }
 }
 
 FilteredResizeH::~FilteredResizeH(void)
@@ -554,12 +826,6 @@ FilteredResizeH::~FilteredResizeH(void)
   if (resampling_program_luma)   { delete resampling_program_luma; }
   if (resampling_program_chroma) { delete resampling_program_chroma; }
   if (src_pitch_table_luma)    { delete[] src_pitch_table_luma; }
-
-  if (filter_storage_luma) { _aligned_free(filter_storage_luma); }
-  if (filter_storage_chroma) { _aligned_free(filter_storage_chroma); }
-
-  if (temp_1) { _aligned_free(temp_1); }
-  if (temp_2) { _aligned_free(temp_2); }
 }
 
 /***************************************
@@ -570,8 +836,6 @@ FilteredResizeV::FilteredResizeV( PClip _child, double subrange_top, double subr
                                   int target_height, ResamplingFunction* func, IScriptEnvironment* env )
   : GenericVideoFilter(_child),
     resampling_program_luma(0), resampling_program_chroma(0),
-    src_pitch_table_luma(0), src_pitch_table_chromaU(0), src_pitch_table_chromaV(0),
-    src_pitch_luma(-1), src_pitch_chromaU(-1), src_pitch_chromaV(-1),
     filter_storage_luma_aligned(0), filter_storage_luma_unaligned(0),
     filter_storage_chroma_aligned(0), filter_storage_chroma_unaligned(0)
 {
@@ -585,12 +849,13 @@ FilteredResizeV::FilteredResizeV( PClip _child, double subrange_top, double subr
       env->ThrowError("Resize: Planar destination height must be a multiple of %d.", mask+1);
   }
 
+  auto env2 = static_cast<IScriptEnvironment2*>(env);
+
   if (vi.IsRGB())
     subrange_top = vi.height - subrange_top - subrange_height; // why?
 
   // Create resampling program and pitch table
-  resampling_program_luma  = func->GetResamplingProgram(vi.height, subrange_top, subrange_height, target_height, env);
-  src_pitch_table_luma     = new int[vi.height];
+  resampling_program_luma  = func->GetResamplingProgram(vi.height, subrange_top, subrange_height, target_height, env2);
   resampler_luma_aligned   = GetResampler(env->GetCPUFlags(), true , filter_storage_luma_aligned,   resampling_program_luma);
   resampler_luma_unaligned = GetResampler(env->GetCPUFlags(), false, filter_storage_luma_unaligned, resampling_program_luma);
 
@@ -603,9 +868,8 @@ FilteredResizeV::FilteredResizeV( PClip _child, double subrange_top, double subr
                                   subrange_top    / div,
                                   subrange_height / div,
                                   target_height  >> shift,
-                                  env);
-    src_pitch_table_chromaU    = new int[vi.height >> shift];
-    src_pitch_table_chromaV    = new int[vi.height >> shift];
+                                  env2);
+
     resampler_chroma_aligned   = GetResampler(env->GetCPUFlags(), true , filter_storage_chroma_aligned,   resampling_program_chroma);
     resampler_chroma_unaligned = GetResampler(env->GetCPUFlags(), false, filter_storage_chroma_unaligned, resampling_program_chroma);
   }
@@ -623,20 +887,20 @@ PVideoFrame __stdcall FilteredResizeV::GetFrame(int n, IScriptEnvironment* env)
   const BYTE* srcp = src->GetReadPtr();
         BYTE* dstp = dst->GetWritePtr();
 
+  auto env2 = static_cast<IScriptEnvironment2*>(env);
+
   // Create pitch table
-  if (src_pitch_luma != src->GetPitch()) {
-    src_pitch_luma = src->GetPitch();
-    resize_v_create_pitch_table(src_pitch_table_luma, src_pitch_luma, src->GetHeight());
-  }
+  int* src_pitch_table_luma = static_cast<int*>(env2->Allocate(sizeof(int) * src->GetHeight(), 16, AVS_POOLED_ALLOC));
+  resize_v_create_pitch_table(src_pitch_table_luma, src->GetPitch(), src->GetHeight());
 
-  if ((!vi.IsY8() && vi.IsPlanar()) && src_pitch_chromaU != src->GetPitch(PLANAR_U)) {
-    src_pitch_chromaU = src->GetPitch(PLANAR_U);
-    resize_v_create_pitch_table(src_pitch_table_chromaU, src_pitch_chromaU, src->GetHeight(PLANAR_U));
-  }
+  int* src_pitch_table_chromaU;
+  int* src_pitch_table_chromaV;
+  if ((!vi.IsY8() && vi.IsPlanar())) {
+    src_pitch_table_chromaU = static_cast<int*>(env2->Allocate(sizeof(int) * src->GetHeight(PLANAR_U), 16, AVS_POOLED_ALLOC));
+    resize_v_create_pitch_table(src_pitch_table_chromaU, src->GetPitch(PLANAR_U), src->GetHeight(PLANAR_U));
 
-  if ((!vi.IsY8() && vi.IsPlanar()) && src_pitch_chromaV != src->GetPitch(PLANAR_V)) {
-    src_pitch_chromaV = src->GetPitch(PLANAR_V);
-    resize_v_create_pitch_table(src_pitch_table_chromaV, src_pitch_chromaV, src->GetHeight(PLANAR_V));
+    src_pitch_table_chromaV = static_cast<int*>(env2->Allocate(sizeof(int) * src->GetHeight(PLANAR_V), 16, AVS_POOLED_ALLOC));
+    resize_v_create_pitch_table(src_pitch_table_chromaV, src->GetPitch(PLANAR_V), src->GetHeight(PLANAR_V));
   }
 
   // Do resizing
@@ -670,6 +934,13 @@ PVideoFrame __stdcall FilteredResizeV::GetFrame(int n, IScriptEnvironment* env)
       resampler_chroma_aligned(dstp, srcp, dst_pitch, src_pitch, resampling_program_chroma, width, height, src_pitch_table_chromaV, filter_storage_chroma_unaligned);
     else
       resampler_chroma_unaligned(dstp, srcp, dst_pitch, src_pitch, resampling_program_chroma, width, height, src_pitch_table_chromaV, filter_storage_chroma_unaligned);
+  }
+
+  // Free pitch table
+  env2->Free(src_pitch_table_luma);
+  if (!vi.IsY8() && vi.IsPlanar()) {
+    env2->Free(src_pitch_table_chromaU);
+    env2->Free(src_pitch_table_chromaV);
   }
 
   return dst;
@@ -716,14 +987,6 @@ FilteredResizeV::~FilteredResizeV(void)
 {
   if (resampling_program_luma)   { delete resampling_program_luma; }
   if (resampling_program_chroma) { delete resampling_program_chroma; }
-  if (src_pitch_table_luma)    { delete[] src_pitch_table_luma; }
-  if (src_pitch_table_chromaU) { delete[] src_pitch_table_chromaU; }
-  if (src_pitch_table_chromaV) { delete[] src_pitch_table_chromaV; }
-
-  if (filter_storage_luma_aligned) { _aligned_free(filter_storage_luma_aligned); }
-  if (filter_storage_luma_unaligned) { _aligned_free(filter_storage_luma_unaligned); }
-  if (filter_storage_chroma_aligned) { _aligned_free(filter_storage_chroma_aligned); }
-  if (filter_storage_chroma_unaligned) { _aligned_free(filter_storage_chroma_unaligned); }
 }
 
 

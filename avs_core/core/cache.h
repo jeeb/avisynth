@@ -37,123 +37,41 @@
 
 #include <avisynth.h>
 
-/********************************************************************
-********************************************************************/
+struct CachePimpl;
 
-
-
-class Cache : public GenericVideoFilter
-/**
-  * Manages a video frame cache
- **/
+class Cache : public IClip
 {
-  friend class ScriptEnvironment;
+private:
+
+  IScriptEnvironment* Env;
+  CachePimpl* _pimpl;
+
+  void FillAudioZeros(void* buf, int start_offset, int count);
 
 public:
-  Cache(PClip _child, IScriptEnvironment* env);
+  Cache(const PClip& child, IScriptEnvironment* env);
   ~Cache();
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
-  int __stdcall SetCacheHints(int cachehints,int frame_range);
-  static AVSValue __cdecl Create_Cache(AVSValue args, void*, IScriptEnvironment* env);
   void __stdcall GetAudio(void* buf, __int64 start, __int64 count, IScriptEnvironment* env);
+  const VideoInfo& __stdcall GetVideoInfo();
+  bool __stdcall GetParity(int n);
+  int __stdcall SetCacheHints(int cachehints,int frame_range);
 
-protected:
-  Cache *nextCache, **priorCache;
-
-  enum PC_Keys {
-    PC_Nil=0,
-    PC_UnlockOld,
-    PC_UnlockAll,
-    PC_UnProtect,
-    PC_UnProtectAll
-  };
-
-  void PokeCache(int key, int size, IScriptEnvironment* env);
+  static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env);
+  static bool __stdcall IsCache(const PClip& c);
 
 private:
-  enum {GetMyThis = 0x8686 };
-
-  struct CachedVideoFrame;
-  void RegisterVideoFrame(CachedVideoFrame *i, const PVideoFrame& frame);
-  void FillZeros(void* buf, size_t start_offset, size_t count);
-  void ResetCache(IScriptEnvironment* env);
-  void ReturnVideoFrameBuffer(CachedVideoFrame *i, IScriptEnvironment* env);
-  CachedVideoFrame* GetACachedVideoFrame(const PVideoFrame& frame, IScriptEnvironment* env);
-  VideoFrame* BuildVideoFrame(CachedVideoFrame *i, int n);
-  bool LockVFB(CachedVideoFrame *i, IScriptEnvironment* env);
-  bool UnlockVFB(CachedVideoFrame *i);
-  void ProtectVFB(CachedVideoFrame *i, int n, IScriptEnvironment* env);
-  bool UnProtectVFB(CachedVideoFrame *i);
-  PVideoFrame __stdcall childGetFrame(int n, IScriptEnvironment* env);
-
-//  void QueueVideo(int frame_range);
-//  void PrefetchVideo(IScriptEnvironment* env);
-//  void QueueAudio(_int64 start, _int64 count);
-//  void PrefetchAudio(IScriptEnvironment* env);
-
-  struct CachedVideoFrame 
-  {
-    CachedVideoFrame *prev, *next;
-    VideoFrameBuffer* vfb;
-    int sequence_number;
-    int offset, pitch, row_size, height, offsetU, offsetV, pitchUV, row_sizeUV, heightUV; // 2.60
-    int frame_number;
-    long faults;  // the number of times this frame was requested and found to be stale(modified)
-    long vfb_locked;
-    long vfb_protected;
-
-    CachedVideoFrame() :
-      prev(this), next(this),
-      vfb(NULL),
-      frame_number(-1),
-      faults(0),
-      vfb_locked(0),
-      vfb_protected(0)
-    { 
-    }
+  enum {
+    // Old 2.5 poorly defined cache hints.
+    // Reserve values used by 2.5 API
+    // Do not use in new filters
+    CACHE_25_NOTHING=0,
+    CACHE_25_RANGE=1,
+    CACHE_25_ALL=2,
+    CACHE_25_AUDIO=3,
+    CACHE_25_AUDIO_NONE=4,
+    CACHE_25_AUDIO_AUTO=5,
   };
-  CachedVideoFrame video_frames;
-
-  // Video cache
-  int h_policy;
-  int h_span;
-  long protectcount;
-//  CRITICAL_SECTION cs_cache_V;
-
-  // Audio cache:
-//  CRITICAL_SECTION cs_cache_A;
-  int h_audiopolicy;
-  char * cache;
-  int samplesize;
-  int maxsamplecount;
-  __int64 cache_start;
-  __int64 cache_count;
-
-  // For audio cache prediction
-  __int64 ac_expected_next;
-  int ac_too_small_count;
-  long ac_currentscore;
-
-  // Cached range limits
-  int minframe, maxframe;
-  int cache_init;   // The Initial cache size
-  long cache_limit;  // 16 time the current maximum number of CachedVideoFrame entries
-  long fault_rate;   // A decaying average of 100 times the peak fault count, used to control vfb auto-locking
-  long miss_count;   // Count of consecutive cache misses
-
-  unsigned int Tick;
-  // These are global to all Cache instances
-  static long Clock;
-  static long cacheDepth;
-
-  int childcost;       // Child estimated processing cost.
-  int childaccesscost; // Child preferred access pattern.
-  int childthreadmode; // Child thread safetyness.
-
-//  unsigned int prefetch_audio_startlo;
-//  unsigned int prefetch_audio_starthi;
-//  unsigned int prefetch_audio_count;
-
 };
 
 #endif  // __Cache_H__

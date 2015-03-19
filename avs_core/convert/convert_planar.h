@@ -38,33 +38,44 @@
 #define __Convert_PLANAR_H__
 
 #include <avisynth.h>
+#include <stdint.h>
+
+struct ChannelConversionMatrix {
+  int16_t r;
+  int16_t g;
+  int16_t b;
+  int offset_y;
+};
 
 class ConvertToY8 : public GenericVideoFilter
 {
 public:
   ConvertToY8(PClip src, int matrix, IScriptEnvironment* env);
   PVideoFrame __stdcall GetFrame(int n,IScriptEnvironment* env);
+
+  int __stdcall SetCacheHints(int cachehints, int frame_range) override {
+    return cachehints == CACHE_GET_MTMODE ? MT_NICE_FILTER : 0;
+  }
+
   static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env);  
-  ~ConvertToY8();
 private:
   bool blit_luma_only;
   bool yuy2_input;
   bool rgb_input;
   int pixel_step;
-  signed short* matrix;
-  int offset_y;
+  ChannelConversionMatrix matrix;
 };
 
 struct ConversionMatrix {
-  short y_r;
-  short y_g;
-  short y_b;
-  short u_r;
-  short u_g;
-  short u_b;
-  short v_r;
-  short v_g;
-  short v_b;
+  int16_t y_r;
+  int16_t y_g;
+  int16_t y_b;
+  int16_t u_r;
+  int16_t u_g;
+  int16_t u_b;
+  int16_t v_r;
+  int16_t v_g;
+  int16_t v_b;
 
   int offset_y;
 };
@@ -74,6 +85,11 @@ class ConvertRGBToYV24 : public GenericVideoFilter
 public:
   ConvertRGBToYV24(PClip src, int matrix, IScriptEnvironment* env);
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
+
+  int __stdcall SetCacheHints(int cachehints, int frame_range) override {
+    return cachehints == CACHE_GET_MTMODE ? MT_NICE_FILTER : 0;
+  }
+
   static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env);
 private:
   void BuildMatrix(double Kr, double Kb, int Sy, int Suv, int Oy, int shift);
@@ -86,6 +102,11 @@ class ConvertYUY2ToYV16 : public GenericVideoFilter
 public:
   ConvertYUY2ToYV16(PClip src, IScriptEnvironment* env);
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
+
+  int __stdcall SetCacheHints(int cachehints, int frame_range) override {
+    return cachehints == CACHE_GET_MTMODE ? MT_NICE_FILTER : 0;
+  }
+
   static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env);
 };
 
@@ -94,6 +115,11 @@ class ConvertYV24ToRGB : public GenericVideoFilter
 public:
   ConvertYV24ToRGB(PClip src, int matrix, int pixel_step, IScriptEnvironment* env);
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
+
+  int __stdcall SetCacheHints(int cachehints, int frame_range) override {
+    return cachehints == CACHE_GET_MTMODE ? MT_NICE_FILTER : 0;
+  }
+
   static AVSValue __cdecl Create24(AVSValue args, void*, IScriptEnvironment* env);
   static AVSValue __cdecl Create32(AVSValue args, void*, IScriptEnvironment* env);
 private:
@@ -107,6 +133,11 @@ class ConvertYV16ToYUY2 : public GenericVideoFilter
 public:
   ConvertYV16ToYUY2(PClip src, IScriptEnvironment* env);
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
+
+  int __stdcall SetCacheHints(int cachehints, int frame_range) override {
+    return cachehints == CACHE_GET_MTMODE ? MT_NICE_FILTER : 0;
+  }
+
   static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env);
 };
 

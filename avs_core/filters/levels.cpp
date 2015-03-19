@@ -41,9 +41,6 @@
 #include "../core/internal.h"
 #include <xmmintrin.h>
 
-//Wow, this macro really sucks -> TODO: should be turned into a macro function
-#define in64 (__int64)(unsigned short)
-
 #define PI        3.141592653589793
 
 
@@ -52,11 +49,11 @@
 ********************************************************************/
 
 extern const AVSFunction Levels_filters[] = {
-  { "Levels", "cifiii[coring]b[dither]b", Levels::Create },        // src_low, gamma, src_high, dst_low, dst_high
-  { "RGBAdjust", "c[r]f[g]f[b]f[a]f[rb]f[gb]f[bb]f[ab]f[rg]f[gg]f[bg]f[ag]f[analyze]b[dither]b", RGBAdjust::Create },
-  { "Tweak", "c[hue]f[sat]f[bright]f[cont]f[coring]b[sse]b[startHue]f[endHue]f[maxSat]f[minSat]f[interp]f[dither]b", Tweak::Create },
-  { "MaskHS", "c[startHue]f[endHue]f[maxSat]f[minSat]f[coring]b", MaskHS::Create },
-  { "Limiter", "c[min_luma]i[max_luma]i[min_chroma]i[max_chroma]i[show]s", Limiter::Create },
+  { "Levels",    BUILTIN_FUNC_PREFIX, "cifiii[coring]b[dither]b", Levels::Create },        // src_low, gamma, src_high, dst_low, dst_high
+  { "RGBAdjust", BUILTIN_FUNC_PREFIX, "c[r]f[g]f[b]f[a]f[rb]f[gb]f[bb]f[ab]f[rg]f[gg]f[bg]f[ag]f[analyze]b[dither]b", RGBAdjust::Create },
+  { "Tweak",     BUILTIN_FUNC_PREFIX, "c[hue]f[sat]f[bright]f[cont]f[coring]b[sse]b[startHue]f[endHue]f[maxSat]f[minSat]f[interp]f[dither]b", Tweak::Create },
+  { "MaskHS",    BUILTIN_FUNC_PREFIX, "c[startHue]f[endHue]f[maxSat]f[minSat]f[coring]b", MaskHS::Create },
+  { "Limiter",   BUILTIN_FUNC_PREFIX, "c[min_luma]i[max_luma]i[min_chroma]i[max_chroma]i[show]s", Limiter::Create },
   { 0 }
 };
 
@@ -121,9 +118,9 @@ __declspec(align(16)) static const BYTE ditherMap4[16] = {
  *******   Levels Filter   ******
  ********************************/
 
-Levels::Levels( PClip _child, int in_min, double gamma, int in_max, int out_min, int out_max, bool coring, bool _dither,
-                IScriptEnvironment* env )
-  : GenericVideoFilter(_child), map(0), mapchroma(0), dither(_dither)
+Levels::Levels(PClip _child, int in_min, double gamma, int in_max, int out_min, int out_max, bool coring, bool _dither,
+  IScriptEnvironment* env)
+  : GenericVideoFilter(_child), map(nullptr), mapchroma(nullptr), dither(_dither), env2_unsafe(static_cast<IScriptEnvironment2*>(env))
 {
   if (gamma <= 0.0)
     env->ThrowError("Levels: gamma must be positive");
@@ -132,21 +129,22 @@ Levels::Levels( PClip _child, int in_min, double gamma, int in_max, int out_min,
 
   int divisor = in_max - in_min + (in_max == in_min);
   int scale = 1;
-  double bias  = 0.0;
+  double bias = 0.0;
 
   if (dither) {
     scale = 256;
     divisor *= 256;
-    in_min  *= 256;
+    in_min *= 256;
     bias = -127.5;
   }
 
-  map = new BYTE[256*scale];
+  map = static_cast<uint8_t*>(env2_unsafe->Allocate(256*scale, 8, AVS_NORMAL_ALLOC));
 
-  if (vi.IsYUV()) {
-    mapchroma = new BYTE[256*scale];
+  if (vi.IsYUV()) 
+  {
+    mapchroma = static_cast<uint8_t*>(env2_unsafe->Allocate(256*scale, 8, AVS_NORMAL_ALLOC));
 
-    for (int i=0; i<256*scale; ++i) {
+    for (int i = 0; i<256*scale; ++i) {
       double p;
 
       if (coring)
@@ -169,13 +167,14 @@ Levels::Levels( PClip _child, int in_min, double gamma, int in_max, int out_min,
       else
         mapchroma[i] = clamp(q, 0, 255);
     }
-  }
-  else if (vi.IsRGB()) {
-    for (int i=0; i<256*scale; ++i) {
+  } 
+  else if (vi.IsRGB()) 
+  {
+    for (int i = 0; i<256*scale; ++i) {
       double p = (bias + i - in_min) / divisor;
       p = pow(clamp(p, 0.0, 1.0), gamma);
       p = p * (out_max - out_min) + out_min;
-//    map[i] = PixelClip(int(p+0.5));
+      //    map[i] = PixelClip(int(p+0.5));
       map[i] = clamp(int(p+0.5), 0, 255);
     }
   }
@@ -183,8 +182,8 @@ Levels::Levels( PClip _child, int in_min, double gamma, int in_max, int out_min,
 
 
 Levels::~Levels() {
-    delete[] map;
-    delete[] mapchroma;
+  env2_unsafe->Free(map);
+  env2_unsafe->Free(mapchroma);
 }
 
 
@@ -197,105 +196,102 @@ PVideoFrame __stdcall Levels::GetFrame(int n, IScriptEnvironment* env)
   if (dither) {
     if (vi.IsYUY2()) {
       const int UVwidth = vi.width/2;
-      for (int y=0; y<vi.height; ++y) {
+      for (int y = 0; y<vi.height; ++y) {
         const int _y = (y << 4) & 0xf0;
-        for (int x=0; x<vi.width; ++x) {
-          p[x*2]   = map[ p[x*2]<<8 | ditherMap[(x&0x0f)|_y] ];
+        for (int x = 0; x<vi.width; ++x) {
+          p[x*2] = map[p[x*2]<<8 | ditherMap[(x&0x0f)|_y]];
         }
-        for (int z=0; z<UVwidth; ++z) {
+        for (int z = 0; z<UVwidth; ++z) {
           const int _dither = ditherMap[(z&0x0f)|_y];
-          p[z*4+1] = mapchroma[ p[z*4+1]<<8 | _dither ];
-          p[z*4+3] = mapchroma[ p[z*4+3]<<8 | _dither ];
+          p[z*4+1] = mapchroma[p[z*4+1]<<8 | _dither];
+          p[z*4+3] = mapchroma[p[z*4+3]<<8 | _dither];
         }
         p += pitch;
       }
-    }
-    else if (vi.IsPlanar()) {
-      {for (int y=0; y<vi.height; ++y) {
+    } else if (vi.IsPlanar()) {
+      for (int y = 0; y<vi.height; ++y) {
         const int _y = (y << 4) & 0xf0;
-        for (int x=0; x<vi.width; ++x) {
-          p[x] = map[ p[x]<<8 | ditherMap[(x&0x0f)|_y] ];
+        for (int x = 0; x<vi.width; ++x) {
+          p[x] = map[p[x]<<8 | ditherMap[(x&0x0f)|_y]];
         }
         p += pitch;
-      }}
+      }
       const int UVpitch = frame->GetPitch(PLANAR_U);
-      const int w=frame->GetRowSize(PLANAR_U);
-      const int h=frame->GetHeight(PLANAR_U);
+      const int w = frame->GetRowSize(PLANAR_U);
+      const int h = frame->GetHeight(PLANAR_U);
       p = frame->GetWritePtr(PLANAR_U);
       BYTE* q = frame->GetWritePtr(PLANAR_V);
-      {for (int y=0; y<h; ++y) {
+      for (int y = 0; y<h; ++y) {
         const int _y = (y << 4) & 0xf0;
-        for (int x=0; x<w; ++x) {
+        for (int x = 0; x<w; ++x) {
           const int _dither = ditherMap[(x&0x0f)|_y];
-          p[x] = mapchroma[ p[x]<<8 | _dither ];
-          q[x] = mapchroma[ q[x]<<8 | _dither ];
+          p[x] = mapchroma[p[x]<<8 | _dither];
+          q[x] = mapchroma[q[x]<<8 | _dither];
         }
         p += UVpitch;
         q += UVpitch;
-      }}
+      }
     } else if (vi.IsRGB32()) {
-      for (int y=0; y<vi.height; ++y) {
+      for (int y = 0; y<vi.height; ++y) {
         const int _y = (y << 4) & 0xf0;
-        for (int x=0; x<vi.width; ++x) {
+        for (int x = 0; x<vi.width; ++x) {
           const int _dither = ditherMap[(x&0x0f)|_y];
-          p[x*4+0] = map[ p[x*4+0]<<8 | _dither ];
-          p[x*4+1] = map[ p[x*4+1]<<8 | _dither ];
-          p[x*4+2] = map[ p[x*4+2]<<8 | _dither ];
-          p[x*4+3] = map[ p[x*4+3]<<8 | _dither ];
+          p[x*4+0] = map[p[x*4+0]<<8 | _dither];
+          p[x*4+1] = map[p[x*4+1]<<8 | _dither];
+          p[x*4+2] = map[p[x*4+2]<<8 | _dither];
+          p[x*4+3] = map[p[x*4+3]<<8 | _dither];
         }
         p += pitch;
       }
     } else if (vi.IsRGB24()) {
-      for (int y=0; y<vi.height; ++y) {
+      for (int y = 0; y<vi.height; ++y) {
         const int _y = (y << 4) & 0xf0;
-        for (int x=0; x<vi.width; ++x) {
+        for (int x = 0; x<vi.width; ++x) {
           const int _dither = ditherMap[(x&0x0f)|_y];
-          p[x*3+0] = map[ p[x*3+0]<<8 | _dither ];
-          p[x*3+1] = map[ p[x*3+1]<<8 | _dither ];
-          p[x*3+2] = map[ p[x*3+2]<<8 | _dither ];
+          p[x*3+0] = map[p[x*3+0]<<8 | _dither];
+          p[x*3+1] = map[p[x*3+1]<<8 | _dither];
+          p[x*3+2] = map[p[x*3+2]<<8 | _dither];
         }
         p += pitch;
       }
     }
-  }
-  else {
+  } else {
     if (vi.IsYUY2()) {
-      for (int y=0; y<vi.height; ++y) {
-        for (int x=0; x<vi.width; ++x) {
-          p[x*2+0] = map      [p[x*2+0]];
+      for (int y = 0; y<vi.height; ++y) {
+        for (int x = 0; x<vi.width; ++x) {
+          p[x*2+0] = map[p[x*2+0]];
           p[x*2+1] = mapchroma[p[x*2+1]];
         }
         p += pitch;
       }
-    }
-    else if (vi.IsPlanar()) {
-      {for (int y=0; y<vi.height; ++y) {
-        for (int x=0; x<vi.width; ++x) {
+    } else if (vi.IsPlanar()) {
+      for (int y = 0; y<vi.height; ++y) {
+        for (int x = 0; x<vi.width; ++x) {
           p[x] = map[p[x]];
         }
         p += pitch;
-      }}
+      }
       const int UVpitch = frame->GetPitch(PLANAR_U);
       p = frame->GetWritePtr(PLANAR_U);
-      const int w=frame->GetRowSize(PLANAR_U);
-      const int h=frame->GetHeight(PLANAR_U);
-      {for (int y=0; y<h; ++y) {
-        for (int x=0; x<w; ++x) {
+      const int w = frame->GetRowSize(PLANAR_U);
+      const int h = frame->GetHeight(PLANAR_U);
+      for (int y = 0; y<h; ++y) {
+        for (int x = 0; x<w; ++x) {
           p[x] = mapchroma[p[x]];
         }
         p += UVpitch;
-      }}
+      }
       p = frame->GetWritePtr(PLANAR_V);
-      {for (int y=0; y<h; ++y) {
-        for (int x=0; x<w; ++x) {
+      for (int y = 0; y<h; ++y) {
+        for (int x = 0; x<w; ++x) {
           p[x] = mapchroma[p[x]];
         }
         p += UVpitch;
-      }}
+      }
     } else if (vi.IsRGB()) {
       const int row_size = frame->GetRowSize();
-      for (int y=0; y<vi.height; ++y) {
-        for (int x=0; x<row_size; ++x) {
+      for (int y = 0; y<vi.height; ++y) {
+        for (int x = 0; x<row_size; ++x) {
           p[x] = map[p[x]];
         }
         p += pitch;
@@ -307,8 +303,9 @@ PVideoFrame __stdcall Levels::GetFrame(int n, IScriptEnvironment* env)
 
 AVSValue __cdecl Levels::Create(AVSValue args, void*, IScriptEnvironment* env)
 {
-  return new Levels( args[0].AsClip(), args[1].AsInt(), args[2].AsFloat(), args[3].AsInt(),
-                     args[4].AsInt(), args[5].AsInt(), args[6].AsBool(true), args[7].AsBool(false), env );
+  enum { CHILD, IN_MIN, GAMMA, IN_MAX, OUT_MIN, OUT_MAX, CORING, DITHER };
+  return new Levels( args[CHILD].AsClip(), args[IN_MIN].AsInt(), args[GAMMA].AsFloat(), args[IN_MAX].AsInt(),
+                     args[OUT_MIN].AsInt(), args[OUT_MAX].AsInt(), args[CORING].AsBool(true), args[DITHER].AsBool(false), env );
 }
 
 
@@ -326,7 +323,8 @@ RGBAdjust::RGBAdjust(PClip _child, double r,  double g,  double b,  double a,
                                    double rb, double gb, double bb, double ab,
                                    double rg, double gg, double bg, double ag,
                                    bool _analyze, bool _dither, IScriptEnvironment* env)
-  : GenericVideoFilter(_child), analyze(_analyze), dither(_dither), mapR(0), mapG(0), mapB(0), mapA(0)
+  : GenericVideoFilter(_child), analyze(_analyze), dither(_dither), mapR(nullptr), mapG(nullptr), 
+  mapB(nullptr), mapA(nullptr), env2_unsafe(static_cast<IScriptEnvironment2*>(env))
 {
   if (!vi.IsRGB())
     env->ThrowError("RGBAdjust requires RGB input");
@@ -337,10 +335,10 @@ RGBAdjust::RGBAdjust(PClip _child, double r,  double g,  double b,  double a,
   rg=1/rg; gg=1/gg; bg=1/bg; ag=1/ag;
 
   if (dither) {
-    mapR = new BYTE[256*256];
-    mapG = new BYTE[256*256];
-    mapB = new BYTE[256*256];
-    mapA = new BYTE[256*256];
+    mapR = static_cast<uint8_t*>(env2_unsafe->Allocate(256*256, 8, AVS_NORMAL_ALLOC));
+    mapG = static_cast<uint8_t*>(env2_unsafe->Allocate(256*256, 8, AVS_NORMAL_ALLOC));
+    mapB = static_cast<uint8_t*>(env2_unsafe->Allocate(256*256, 8, AVS_NORMAL_ALLOC));
+    mapA = static_cast<uint8_t*>(env2_unsafe->Allocate(256*256, 8, AVS_NORMAL_ALLOC));
 
     for (int i=0; i<256*256; ++i) {
       mapR[i] = int(pow(clamp((rb*256 + i * r -127.5)/(255.0*256), 0.0, 1.0), rg) * 255.0 + 0.5);
@@ -350,10 +348,10 @@ RGBAdjust::RGBAdjust(PClip _child, double r,  double g,  double b,  double a,
     }
   }
   else {
-    mapR = new BYTE[256];
-    mapG = new BYTE[256];
-    mapB = new BYTE[256];
-    mapA = new BYTE[256];
+    mapR = static_cast<uint8_t*>(env2_unsafe->Allocate(256, 8, AVS_NORMAL_ALLOC));
+    mapG = static_cast<uint8_t*>(env2_unsafe->Allocate(256, 8, AVS_NORMAL_ALLOC));
+    mapB = static_cast<uint8_t*>(env2_unsafe->Allocate(256, 8, AVS_NORMAL_ALLOC));
+    mapA = static_cast<uint8_t*>(env2_unsafe->Allocate(256, 8, AVS_NORMAL_ALLOC));
 
     for (int i=0; i<256; ++i) {
       mapR[i] = int(pow(clamp((rb + i * r)/255.0, 0.0, 1.0), rg) * 255.0 + 0.5);
@@ -364,17 +362,17 @@ RGBAdjust::RGBAdjust(PClip _child, double r,  double g,  double b,  double a,
   }
 
   if (vi.IsRGB24()) {
-    delete[] mapA;
-    mapA = 0;
+    env2_unsafe->Free(mapA);
+    mapA = nullptr;
   }
 }
 
 
 RGBAdjust::~RGBAdjust() {
-    delete[] mapR;
-    delete[] mapG;
-    delete[] mapB;
-    delete[] mapA;
+  env2_unsafe->Free(mapR);
+  env2_unsafe->Free(mapG);
+  env2_unsafe->Free(mapB);
+  env2_unsafe->Free(mapA);
 }
 
 
@@ -588,10 +586,11 @@ static bool ProcessPixel(double X, double Y, double startHue, double endHue,
 ******   Tweak    *****
 **********************/
 
-Tweak::Tweak( PClip _child, double _hue, double _sat, double _bright, double _cont, bool _coring, bool _sse,
-                            double startHue, double endHue, double _maxSat, double _minSat, double p,
-                            bool _dither, IScriptEnvironment* env )
-  : GenericVideoFilter(_child), coring(_coring), sse(_sse), dither(_dither), map(0), mapUV(0)
+Tweak::Tweak(PClip _child, double _hue, double _sat, double _bright, double _cont, bool _coring, bool _sse,
+            double startHue, double endHue, double _maxSat, double _minSat, double p,
+            bool _dither, IScriptEnvironment* env)
+  : GenericVideoFilter(_child), coring(_coring), sse(_sse), dither(_dither), map(nullptr),
+  mapUV(nullptr), env2_unsafe(static_cast<IScriptEnvironment2*>(env))
 {
   if (vi.IsRGB())
         env->ThrowError("Tweak: YUV data only (no RGB)");
@@ -641,7 +640,7 @@ Tweak::Tweak( PClip _child, double _hue, double _sat, double _bright, double _co
   Cos = (int) (COS * 4096 + 0.5);
 
   if (dither) {
-    map = new BYTE[256*256];
+    map = static_cast<uint8_t*>(env2_unsafe->Allocate(256*256, 8, AVS_NORMAL_ALLOC));
 
     if (coring) {
       for (int i = 0; i < 256*256; i++) {
@@ -659,7 +658,7 @@ Tweak::Tweak( PClip _child, double _hue, double _sat, double _bright, double _co
     }
   }
   else {
-    map = new BYTE[256];
+    map = static_cast<uint8_t*>(env2_unsafe->Allocate(256, 8, AVS_NORMAL_ALLOC));
 
     if (coring) {
       for (int i = 0; i < 256; i++) {
@@ -688,7 +687,7 @@ Tweak::Tweak( PClip _child, double _hue, double _sat, double _bright, double _co
   const int minUV = coring ? 16 : 0;
 
   if (dither) {
-    mapUV = new unsigned short[256*256*16];
+    mapUV = static_cast<uint16_t*>(env2_unsafe->Allocate(256*256*16*sizeof(uint16_t), 8, AVS_NORMAL_ALLOC));
 
     for (int d = 0; d < 16; d++) {
       for (int u = 0; u < 256; u++) {
@@ -701,16 +700,16 @@ Tweak::Tweak( PClip _child, double _hue, double _sat, double _bright, double _co
             int dv = int ( (destv*COS - destu*SIN) * iSat + 0x100) >> 9;
             du = clamp(du+128,minUV,maxUV);
             dv = clamp(dv+128,minUV,maxUV);
-            mapUV[(u<<12)|(v<<4)|d]  = (unsigned short)(du | (dv<<8));
+            mapUV[(u<<12)|(v<<4)|d]  = (uint16_t)(du | (dv<<8));
           } else {
-            mapUV[(u<<12)|(v<<4)|d]  = (unsigned short)(clamp(u,minUV,maxUV) | (clamp(v,minUV,maxUV)<<8));
+            mapUV[(u<<12)|(v<<4)|d]  = (uint16_t)(clamp(u,minUV,maxUV) | (clamp(v,minUV,maxUV)<<8));
           }
         }
       }
     }
   }
   else {
-    mapUV = new unsigned short[256*256];
+    mapUV = static_cast<uint16_t*>(env2_unsafe->Allocate(256*256*sizeof(uint16_t), 8, AVS_NORMAL_ALLOC));
 
     for (int u = 0; u < 256; u++) {
       const double destu = u-128;
@@ -722,9 +721,9 @@ Tweak::Tweak( PClip _child, double _hue, double _sat, double _bright, double _co
           int dv = int ( (destv*COS - destu*SIN) * iSat ) >> 9;
           du = clamp(du+128,minUV,maxUV);
           dv = clamp(dv+128,minUV,maxUV);
-          mapUV[(u<<8)|v]  = (unsigned short)(du | (dv<<8));
+          mapUV[(u<<8)|v]  = (uint16_t)(du | (dv<<8));
         } else {
-          mapUV[(u<<8)|v]  = (unsigned short)(clamp(u,minUV,maxUV) | (clamp(v,minUV,maxUV)<<8));
+          mapUV[(u<<8)|v]  = (uint16_t)(clamp(u,minUV,maxUV) | (clamp(v,minUV,maxUV)<<8));
         }
       }
     }
@@ -733,8 +732,8 @@ Tweak::Tweak( PClip _child, double _hue, double _sat, double _bright, double _co
 
 
 Tweak::~Tweak() {
-  delete[] map;
-  delete[] mapUV;
+  env2_unsafe->Free(map);
+  env2_unsafe->Free(mapUV);
 }
 
 
@@ -938,12 +937,12 @@ PVideoFrame __stdcall MaskHS::GetFrame(int n, IScriptEnvironment* env)
 	PVideoFrame src = child->GetFrame(n, env);
 	PVideoFrame dst = env->NewVideoFrame(vi);
 
-	unsigned char* dstp = dst->GetWritePtr();
+	uint8_t* dstp = dst->GetWritePtr();
 	int dst_pitch = dst->GetPitch();
 
 	// show mask
 	if (child->GetVideoInfo().IsYUY2()) {
-		const unsigned char* srcp = src->GetReadPtr();
+		const uint8_t* srcp = src->GetReadPtr();
 		const int src_pitch = src->GetPitch();
 		const int height = src->GetHeight();
 
@@ -972,8 +971,8 @@ PVideoFrame __stdcall MaskHS::GetFrame(int n, IScriptEnvironment* env)
 #endif
 	} else if (child->GetVideoInfo().IsPlanar()) {
 		const int srcu_pitch = src->GetPitch(PLANAR_U);
-		const unsigned char* srcpu = src->GetReadPtr(PLANAR_U);
-		const unsigned char* srcpv = src->GetReadPtr(PLANAR_V);
+		const uint8_t* srcpu = src->GetReadPtr(PLANAR_U);
+		const uint8_t* srcpv = src->GetReadPtr(PLANAR_V);
 		const int row_sizeu = src->GetRowSize(PLANAR_U);
 		const int heightu = src->GetHeight(PLANAR_U);
 

@@ -42,6 +42,14 @@
 #include "avi_source.h"
 #include <avs/minmax.h>
 
+static PVideoFrame AdjustFrameAlignment(const PVideoFrame& frame, const VideoInfo& vi, IScriptEnvironment* env)
+{
+    PVideoFrame result = env->NewVideoFrame(vi);
+    env->BitBlt(result->GetWritePtr(),         result->GetPitch(),         frame->GetReadPtr(),         frame->GetPitch(),         frame->GetRowSize(),         frame->GetHeight());
+    env->BitBlt(result->GetWritePtr(PLANAR_V), result->GetPitch(PLANAR_V), frame->GetReadPtr(PLANAR_V), frame->GetPitch(PLANAR_V), frame->GetRowSize(PLANAR_V), frame->GetHeight(PLANAR_V));
+    env->BitBlt(result->GetWritePtr(PLANAR_U), result->GetPitch(PLANAR_U), frame->GetReadPtr(PLANAR_U), frame->GetPitch(PLANAR_U), frame->GetRowSize(PLANAR_U), frame->GetHeight(PLANAR_U));
+    return result;
+}
 
 LRESULT AVISource::DecompressBegin(LPBITMAPINFOHEADER lpbiSrc, LPBITMAPINFOHEADER lpbiDst) {
   if (!ex) {
@@ -96,34 +104,30 @@ LRESULT AVISource::DecompressFrame(int n, bool preroll, PVideoFrame &frame, IScr
                                           0, 0, vi.width, vi.height);
     if (result != ICERR_OK) return result;
   }
-  if (!vi.IsY8() && vi.IsPlanar()) {
-    // Is this frame packed or have rows DWORD aligned?
-    if (((bytes_read+3) & ~3) != ((vi.BMPSize()+3) & ~3)) {
-      // frame is packed
-      const int rowsizeY  = vi.RowSize(PLANAR_Y);
-      const int rowsizeUV = vi.RowSize(PLANAR_U);
+  if (!bMediaPad && !vi.IsY8() && vi.IsPlanar()) {
+    // Planar frames are packed!
+    const int rowsizeY  = vi.RowSize(PLANAR_Y);
+    const int rowsizeUV = vi.RowSize(PLANAR_U);
 
-      const int sizeY  = rowsizeY  * vi.height;
-      const int sizeUV = rowsizeUV * vi.height >> vi.GetPlaneHeightSubsampling(PLANAR_U);
+    const int sizeY  = rowsizeY  * vi.height;
+    const int sizeUV = rowsizeUV * vi.height >> vi.GetPlaneHeightSubsampling(PLANAR_U);
 
-      const int offsetY = frame->GetOffset(PLANAR_Y);
+    const int offsetY = frame->GetOffset(PLANAR_Y);
 
-      int offsetU = frame->GetOffset(PLANAR_U);
-      int offsetV = frame->GetOffset(PLANAR_V);
+    int offsetU = frame->GetOffset(PLANAR_U);
+    int offsetV = frame->GetOffset(PLANAR_V);
 
-      if (offsetU < offsetV) {
-        offsetU = offsetY+sizeY        - offsetU;
-        offsetV = offsetY+sizeY+sizeUV - offsetV;
-      }
-      else {
-        offsetU = offsetY+sizeY+sizeUV - offsetU;
-        offsetV = offsetY+sizeY        - offsetV;
-      }
-
-      // set pitch = rowsize
-      frame = env->SubframePlanar(frame, 0, rowsizeY, rowsizeY, vi.height, offsetU, offsetV, rowsizeUV);
+    if (offsetU < offsetV) {
+      offsetU = offsetY+sizeY        - offsetU;
+      offsetV = offsetY+sizeY+sizeUV - offsetV;
     }
-  }
+    else {
+      offsetU = offsetY+sizeY+sizeUV - offsetU;
+      offsetV = offsetY+sizeY        - offsetV;
+     }
+    // set pitch = rowsize
+    frame = env->SubframePlanar(frame, 0, rowsizeY, rowsizeY, vi.height, offsetU, offsetV, rowsizeUV);
+    }
   else if (bInvertFrames) {
     const int h2 = frame->GetHeight() >> 1;
     const int w4 = (frame->GetRowSize()+3) >> 2;
@@ -279,7 +283,7 @@ void AVISource::LocateVideoCodec(const char fourCC[], IScriptEnvironment* env) {
 }
 
 
-AVISource::AVISource(const char filename[], bool fAudio, const char pixel_type[], const char fourCC[], int mode, IScriptEnvironment* env) {
+AVISource::AVISource(const char filename[], bool fAudio, const char pixel_type[], const char fourCC[], int vtrack, int atrack, int mode, IScriptEnvironment* env) {
   srcbuffer = 0; srcbuffer_size = 0;
   memset(&vi, 0, sizeof(vi));
   ex = false;
@@ -292,6 +296,7 @@ AVISource::AVISource(const char filename[], bool fAudio, const char pixel_type[]
   bIsType1 = false;
   hic = 0;
   bInvertFrames = false;
+  bMediaPad = false;
 
   AVIFileInit();
   try {
@@ -329,26 +334,30 @@ AVISource::AVISource(const char filename[], bool fAudio, const char pixel_type[]
     }
 
     if (mode != MODE_WAV) { // check for video stream
-      pvideo = pfile->GetStream(streamtypeVIDEO, 0);
+      pvideo = pfile->GetStream(streamtypeVIDEO, vtrack);
 
       if (!pvideo) { // Attempt DV type 1 video.
-        pvideo = pfile->GetStream('svai', 0);
+        pvideo = pfile->GetStream('svai', vtrack);
         bIsType1 = true;
       }
 
       if (pvideo) {
         LocateVideoCodec(fourCC, env);
         if (hic) {
+          if (pixel_type[0] == '+') {
+            pixel_type += 1;
+            bMediaPad = true;
+          }
           bool forcedType = !(pixel_type[0] == 0);
 
-          bool fY8    = lstrcmpi(pixel_type, "Y8"   ) == 0 || pixel_type[0] == 0;
-          bool fYV12  = lstrcmpi(pixel_type, "YV12" ) == 0 || pixel_type[0] == 0;
-          bool fYV16  = lstrcmpi(pixel_type, "YV16" ) == 0 || pixel_type[0] == 0;
-          bool fYV24  = lstrcmpi(pixel_type, "YV24" ) == 0 || pixel_type[0] == 0;
-          bool fYV411 = lstrcmpi(pixel_type, "YV411") == 0 || pixel_type[0] == 0;
-          bool fYUY2  = lstrcmpi(pixel_type, "YUY2" ) == 0 || pixel_type[0] == 0;
-          bool fRGB32 = lstrcmpi(pixel_type, "RGB32") == 0 || pixel_type[0] == 0;
-          bool fRGB24 = lstrcmpi(pixel_type, "RGB24") == 0 || pixel_type[0] == 0;
+          bool fY8    = pixel_type[0] == 0 || lstrcmpi(pixel_type, "Y8"   ) == 0;
+          bool fYV12  = pixel_type[0] == 0 || lstrcmpi(pixel_type, "YV12" ) == 0;
+          bool fYV16  = pixel_type[0] == 0 || lstrcmpi(pixel_type, "YV16" ) == 0;
+          bool fYV24  = pixel_type[0] == 0 || lstrcmpi(pixel_type, "YV24" ) == 0;
+          bool fYV411 = pixel_type[0] == 0 || lstrcmpi(pixel_type, "YV411") == 0;
+          bool fYUY2  = pixel_type[0] == 0 || lstrcmpi(pixel_type, "YUY2" ) == 0;
+          bool fRGB32 = pixel_type[0] == 0 || lstrcmpi(pixel_type, "RGB32") == 0;
+          bool fRGB24 = pixel_type[0] == 0 || lstrcmpi(pixel_type, "RGB24") == 0;
 
           if (lstrcmpi(pixel_type, "AUTO") == 0) {
             fY8 = fYV12 = fYUY2 = fRGB32 = fRGB24 = true;
@@ -513,7 +522,7 @@ AVISource::AVISource(const char filename[], bool fAudio, const char pixel_type[]
 
     // check for audio stream
     if (fAudio) /*  && pfile->GetStream(streamtypeAUDIO, 0)) */ {
-      aSrc = new AudioSourceAVI(pfile, true);
+      aSrc = new AudioSourceAVI(pfile, true, atrack);
       if (aSrc->init()) {
           audioStreamSource = new AudioStreamSource(aSrc,
                                                     aSrc->lSampleFirst,
@@ -546,7 +555,7 @@ AVISource::AVISource(const char filename[], bool fAudio, const char pixel_type[]
 
     if (mode != MODE_WAV) {
       int keyframe = pvideo->NearestKeyFrame(0);
-      PVideoFrame frame = env->NewVideoFrame(vi);
+      PVideoFrame frame = env->NewVideoFrame(vi, -4);
       if (!frame)   // shutdown, if init not succesful.
         env->ThrowError("AviSource: Could not allocate frame 0");
 
@@ -563,7 +572,7 @@ AVISource::AVISource(const char filename[], bool fAudio, const char pixel_type[]
           env->ThrowError("AviSource: Could not decompress first keyframe %d", keyframe);
       }
       last_frame_no=0;
-      last_frame=frame;
+      last_frame = AdjustFrameAlignment(frame, vi, env);
     }
   }
   catch (...) {
@@ -608,7 +617,8 @@ PVideoFrame AVISource::GetFrame(int n, IScriptEnvironment* env) {
     if (keyframe < 0) keyframe = 0;
 
     bool frameok = false;
-    PVideoFrame frame = env->NewVideoFrame(vi);
+    PVideoFrame frame = env->NewVideoFrame(vi, -4);
+
     if (!frame)
       env->ThrowError("AviSource: Could not allocate frame %d", n);
 
@@ -633,7 +643,7 @@ PVideoFrame AVISource::GetFrame(int n, IScriptEnvironment* env) {
     } while(not_found_yet);
 
     if (frameok) {
-      last_frame = frame;
+      last_frame = AdjustFrameAlignment(frame, vi, env);
     }
   }
   return last_frame;
@@ -663,3 +673,14 @@ void AVISource::GetAudio(void* buf, __int64 start, __int64 count, IScriptEnviron
 }
 
 bool AVISource::GetParity(int n) { return false; }
+
+int __stdcall AVISource::SetCacheHints(int cachehints,int frame_range)
+{
+  switch(cachehints)
+  {
+  case CACHE_GET_MTMODE:
+    return MT_SERIALIZED;
+  default:
+    return 0;
+  }
+}

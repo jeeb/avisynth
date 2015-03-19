@@ -13,7 +13,8 @@
 //
 // You should have received a copy of the GNU General Public License
 // along with this program; if not, write to the Free Software
-// Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA, or visit
+// Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
+// MA 02110-1301 USA, or visit
 // http://www.gnu.org/copyleft/gpl.html .
 //
 // As a special exception, I give you permission to link to the
@@ -30,6 +31,10 @@
 // on Avisynth C Interface, such as 3rd-party filters, import and
 // export plugins, or graphical user interfaces.
 
+// NOTE: this is a partial update of the Avisynth C interface to recognize
+// new color spaces added in Avisynth 2.60. By no means is this document
+// completely Avisynth 2.60 compliant.
+
 #ifndef __AVISYNTH_C__
 #define __AVISYNTH_C__
 
@@ -43,8 +48,8 @@
 // Constants
 //
 
-#ifndef __AVISYNTH_H__
-enum { AVISYNTH_INTERFACE_VERSION = 3 };
+#ifndef __AVISYNTH_6_H__
+enum { AVISYNTH_INTERFACE_VERSION = 6 };
 #endif
 
 enum {AVS_SAMPLE_INT8  = 1<<0,
@@ -59,13 +64,46 @@ enum {AVS_PLANAR_Y=1<<0,
       AVS_PLANAR_ALIGNED=1<<3,
       AVS_PLANAR_Y_ALIGNED=AVS_PLANAR_Y|AVS_PLANAR_ALIGNED,
       AVS_PLANAR_U_ALIGNED=AVS_PLANAR_U|AVS_PLANAR_ALIGNED,
-      AVS_PLANAR_V_ALIGNED=AVS_PLANAR_V|AVS_PLANAR_ALIGNED};
+      AVS_PLANAR_V_ALIGNED=AVS_PLANAR_V|AVS_PLANAR_ALIGNED,
+      AVS_PLANAR_A=1<<4,
+      AVS_PLANAR_R=1<<5,
+      AVS_PLANAR_G=1<<6,
+      AVS_PLANAR_B=1<<7,
+      AVS_PLANAR_A_ALIGNED=AVS_PLANAR_A|AVS_PLANAR_ALIGNED,
+      AVS_PLANAR_R_ALIGNED=AVS_PLANAR_R|AVS_PLANAR_ALIGNED,
+      AVS_PLANAR_G_ALIGNED=AVS_PLANAR_G|AVS_PLANAR_ALIGNED,
+      AVS_PLANAR_B_ALIGNED=AVS_PLANAR_B|AVS_PLANAR_ALIGNED};
 
   // Colorspace properties.
-enum {AVS_CS_BGR = 1<<28,  
+enum {AVS_CS_BGR = 1<<28,
       AVS_CS_YUV = 1<<29,
       AVS_CS_INTERLEAVED = 1<<30,
-      AVS_CS_PLANAR = 1<<31};
+      AVS_CS_PLANAR = 1<<31,
+
+      AVS_CS_SHIFT_SUB_WIDTH   = 0,
+      AVS_CS_SHIFT_SUB_HEIGHT  = 8,
+      AVS_CS_SHIFT_SAMPLE_BITS = 16,
+
+      AVS_CS_SUB_WIDTH_MASK    = 7 << AVS_CS_SHIFT_SUB_WIDTH,
+      AVS_CS_SUB_WIDTH_1       = 3 << AVS_CS_SHIFT_SUB_WIDTH, // YV24
+      AVS_CS_SUB_WIDTH_2       = 0 << AVS_CS_SHIFT_SUB_WIDTH, // YV12, I420, YV16
+      AVS_CS_SUB_WIDTH_4       = 1 << AVS_CS_SHIFT_SUB_WIDTH, // YUV9, YV411
+
+      AVS_CS_VPLANEFIRST       = 1 << 3, // YV12, YV16, YV24, YV411, YUV9
+      AVS_CS_UPLANEFIRST       = 1 << 4, // I420
+
+      AVS_CS_SUB_HEIGHT_MASK   = 7 << AVS_CS_SHIFT_SUB_HEIGHT,
+      AVS_CS_SUB_HEIGHT_1      = 3 << AVS_CS_SHIFT_SUB_HEIGHT, // YV16, YV24, YV411
+      AVS_CS_SUB_HEIGHT_2      = 0 << AVS_CS_SHIFT_SUB_HEIGHT, // YV12, I420
+      AVS_CS_SUB_HEIGHT_4      = 1 << AVS_CS_SHIFT_SUB_HEIGHT, // YUV9
+
+      AVS_CS_SAMPLE_BITS_MASK  = 7 << AVS_CS_SHIFT_SAMPLE_BITS,
+      AVS_CS_SAMPLE_BITS_8     = 0 << AVS_CS_SHIFT_SAMPLE_BITS,
+      AVS_CS_SAMPLE_BITS_16    = 1 << AVS_CS_SHIFT_SAMPLE_BITS,
+      AVS_CS_SAMPLE_BITS_32    = 2 << AVS_CS_SHIFT_SAMPLE_BITS,
+
+      AVS_CS_PLANAR_MASK       = AVS_CS_PLANAR | AVS_CS_INTERLEAVED | AVS_CS_YUV | AVS_CS_BGR | AVS_CS_SAMPLE_BITS_MASK | AVS_CS_SUB_HEIGHT_MASK | AVS_CS_SUB_WIDTH_MASK,
+      AVS_CS_PLANAR_FILTER     = ~( AVS_CS_VPLANEFIRST | AVS_CS_UPLANEFIRST )};
 
   // Specific colorformats
 enum {
@@ -73,9 +111,18 @@ enum {
   AVS_CS_BGR24 = 1<<0 | AVS_CS_BGR | AVS_CS_INTERLEAVED,
   AVS_CS_BGR32 = 1<<1 | AVS_CS_BGR | AVS_CS_INTERLEAVED,
   AVS_CS_YUY2 = 1<<2 | AVS_CS_YUV | AVS_CS_INTERLEAVED,
-  AVS_CS_YV12 = 1<<3 | AVS_CS_YUV | AVS_CS_PLANAR,  // y-v-u, planar
-  AVS_CS_I420 = 1<<4 | AVS_CS_YUV | AVS_CS_PLANAR,  // y-u-v, planar
-  AVS_CS_IYUV = 1<<4 | AVS_CS_YUV | AVS_CS_PLANAR  // same as above
+  //  AVS_CS_YV12  = 1<<3  Reserved
+  //  AVS_CS_I420  = 1<<4  Reserved
+  AVS_CS_RAW32 = 1<<5 | AVS_CS_INTERLEAVED,
+
+  AVS_CS_YV24  = AVS_CS_PLANAR | AVS_CS_YUV | AVS_CS_SAMPLE_BITS_8 | AVS_CS_VPLANEFIRST | AVS_CS_SUB_HEIGHT_1 | AVS_CS_SUB_WIDTH_1,  // YVU 4:4:4 planar
+  AVS_CS_YV16  = AVS_CS_PLANAR | AVS_CS_YUV | AVS_CS_SAMPLE_BITS_8 | AVS_CS_VPLANEFIRST | AVS_CS_SUB_HEIGHT_1 | AVS_CS_SUB_WIDTH_2,  // YVU 4:2:2 planar
+  AVS_CS_YV12  = AVS_CS_PLANAR | AVS_CS_YUV | AVS_CS_SAMPLE_BITS_8 | AVS_CS_VPLANEFIRST | AVS_CS_SUB_HEIGHT_2 | AVS_CS_SUB_WIDTH_2,  // YVU 4:2:0 planar
+  AVS_CS_I420  = AVS_CS_PLANAR | AVS_CS_YUV | AVS_CS_SAMPLE_BITS_8 | AVS_CS_UPLANEFIRST | AVS_CS_SUB_HEIGHT_2 | AVS_CS_SUB_WIDTH_2,  // YUV 4:2:0 planar
+  AVS_CS_IYUV  = AVS_CS_I420,
+  AVS_CS_YV411 = AVS_CS_PLANAR | AVS_CS_YUV | AVS_CS_SAMPLE_BITS_8 | AVS_CS_VPLANEFIRST | AVS_CS_SUB_HEIGHT_1 | AVS_CS_SUB_WIDTH_4,  // YVU 4:1:1 planar
+  AVS_CS_YUV9  = AVS_CS_PLANAR | AVS_CS_YUV | AVS_CS_SAMPLE_BITS_8 | AVS_CS_VPLANEFIRST | AVS_CS_SUB_HEIGHT_4 | AVS_CS_SUB_WIDTH_4,  // YVU 4:1:0 planar
+  AVS_CS_Y8    = AVS_CS_PLANAR | AVS_CS_INTERLEAVED | AVS_CS_YUV | AVS_CS_SAMPLE_BITS_8                                              // Y   4:0:0 planar
 };
 
 enum {
@@ -102,19 +149,64 @@ enum {  //SUBTYPES
   AVS_FILTER_OUTPUT_TYPE_DIFFERENT=4};
 
 enum {
-  AVS_CACHE_NOTHING=0,
-  AVS_CACHE_RANGE=1,
-  AVS_CACHE_ALL=2,
-  AVS_CACHE_AUDIO=3,
-  AVS_CACHE_AUDIO_NONE=4,
-  AVS_CACHE_AUDIO_AUTO=5
+  // New 2.6 explicitly defined cache hints.
+  AVS_CACHE_NOTHING=10, // Do not cache video.
+  AVS_CACHE_WINDOW=11, // Hard protect upto X frames within a range of X from the current frame N.
+  AVS_CACHE_GENERIC=12, // LRU cache upto X frames.
+  AVS_CACHE_FORCE_GENERIC=13, // LRU cache upto X frames, override any previous CACHE_WINDOW.
+
+  AVS_CACHE_GET_POLICY=30, // Get the current policy.
+  AVS_CACHE_GET_WINDOW=31, // Get the current window h_span.
+  AVS_CACHE_GET_RANGE=32, // Get the current generic frame range.
+
+  AVS_CACHE_AUDIO=50, // Explicitly do cache audio, X byte cache.
+  AVS_CACHE_AUDIO_NOTHING=51, // Explicitly do not cache audio.
+  AVS_CACHE_AUDIO_NONE=52, // Audio cache off (auto mode), X byte intial cache.
+  AVS_CACHE_AUDIO_AUTO=53, // Audio cache on (auto mode), X byte intial cache.
+
+  AVS_CACHE_GET_AUDIO_POLICY=70, // Get the current audio policy.
+  AVS_CACHE_GET_AUDIO_SIZE=71, // Get the current audio cache size.
+
+  AVS_CACHE_PREFETCH_FRAME=100, // Queue request to prefetch frame N.
+  AVS_CACHE_PREFETCH_GO=101, // Action video prefetches.
+
+  AVS_CACHE_PREFETCH_AUDIO_BEGIN=120, // Begin queue request transaction to prefetch audio (take critical section).
+  AVS_CACHE_PREFETCH_AUDIO_STARTLO=121, // Set low 32 bits of start.
+  AVS_CACHE_PREFETCH_AUDIO_STARTHI=122, // Set high 32 bits of start.
+  AVS_CACHE_PREFETCH_AUDIO_COUNT=123, // Set low 32 bits of length.
+  AVS_CACHE_PREFETCH_AUDIO_COMMIT=124, // Enqueue request transaction to prefetch audio (release critical section).
+  AVS_CACHE_PREFETCH_AUDIO_GO=125, // Action audio prefetches.
+
+  AVS_CACHE_GETCHILD_CACHE_MODE=200, // Cache ask Child for desired video cache mode.
+  AVS_CACHE_GETCHILD_CACHE_SIZE=201, // Cache ask Child for desired video cache size.
+  AVS_CACHE_GETCHILD_AUDIO_MODE=202, // Cache ask Child for desired audio cache mode.
+  AVS_CACHE_GETCHILD_AUDIO_SIZE=203, // Cache ask Child for desired audio cache size.
+
+  AVS_CACHE_GETCHILD_COST=220, // Cache ask Child for estimated processing cost.
+    AVS_CACHE_COST_ZERO=221, // Child response of zero cost (ptr arithmetic only).
+    AVS_CACHE_COST_UNIT=222, // Child response of unit cost (less than or equal 1 full frame blit).
+    AVS_CACHE_COST_LOW=223, // Child response of light cost. (Fast)
+    AVS_CACHE_COST_MED=224, // Child response of medium cost. (Real time)
+    AVS_CACHE_COST_HI=225, // Child response of heavy cost. (Slow)
+
+  AVS_CACHE_GETCHILD_THREAD_MODE=240, // Cache ask Child for thread safetyness.
+    AVS_CACHE_THREAD_UNSAFE=241, // Only 1 thread allowed for all instances. 2.5 filters default!
+    AVS_CACHE_THREAD_CLASS=242, // Only 1 thread allowed for each instance. 2.6 filters default!
+    AVS_CACHE_THREAD_SAFE=243, //  Allow all threads in any instance.
+    AVS_CACHE_THREAD_OWN=244, // Safe but limit to 1 thread, internally threaded.
+
+  AVS_CACHE_GETCHILD_ACCESS_COST=260, // Cache ask Child for preferred access pattern.
+    AVS_CACHE_ACCESS_RAND=261, // Filter is access order agnostic.
+    AVS_CACHE_ACCESS_SEQ0=262, // Filter prefers sequential access (low cost)
+    AVS_CACHE_ACCESS_SEQ1=263, // Filter needs sequential access (high cost)
   };
 
 #ifdef BUILDING_AVSCORE
-struct AVS_ScriptEnvironment
-{
+struct AVS_ScriptEnvironment {
 	IScriptEnvironment * env;
 	const char * error;
+	AVS_ScriptEnvironment(IScriptEnvironment * e = 0)
+		: env(e), error(0) {}
 };
 #endif
 
@@ -166,17 +258,23 @@ AVSC_INLINE int avs_is_yuv(const AVS_VideoInfo * p)
 AVSC_INLINE int avs_is_yuy2(const AVS_VideoInfo * p) 
         { return (p->pixel_type & AVS_CS_YUY2) == AVS_CS_YUY2; }  
 
-AVSC_INLINE int avs_is_yv12(const AVS_VideoInfo * p) 
-        { return ((p->pixel_type & AVS_CS_YV12) == AVS_CS_YV12)||((p->pixel_type & AVS_CS_I420) == AVS_CS_I420); }
+AVSC_API(int, avs_is_yv24)(const AVS_VideoInfo * p);
 
-AVSC_INLINE int avs_is_color_space(const AVS_VideoInfo * p, int c_space) 
-        { return ((p->pixel_type & c_space) == c_space); }
+AVSC_API(int, avs_is_yv16)(const AVS_VideoInfo * p);
+
+AVSC_API(int, avs_is_yv12)(const AVS_VideoInfo * p) ;
+
+AVSC_API(int, avs_is_yv411)(const AVS_VideoInfo * p);
+
+AVSC_API(int, avs_is_y8)(const AVS_VideoInfo * p);
 
 AVSC_INLINE int avs_is_property(const AVS_VideoInfo * p, int property) 
-        { return ((p->pixel_type & property)==property ); }
+        { return ((p->image_type & property)==property ); }
 
 AVSC_INLINE int avs_is_planar(const AVS_VideoInfo * p) 
         { return !!(p->pixel_type & AVS_CS_PLANAR); }
+
+AVSC_API(int, avs_is_color_space)(const AVS_VideoInfo * p, int c_space);
         
 AVSC_INLINE int avs_is_field_based(const AVS_VideoInfo * p) 
         { return !!(p->image_type & AVS_IT_FIELDBASED); }
@@ -190,25 +288,18 @@ AVSC_INLINE int avs_is_bff(const AVS_VideoInfo * p)
 AVSC_INLINE int avs_is_tff(const AVS_VideoInfo * p) 
         { return !!(p->image_type & AVS_IT_TFF); }
 
-AVSC_INLINE int avs_bits_per_pixel(const AVS_VideoInfo * p) 
-{ 
-  switch (p->pixel_type) {
-      case AVS_CS_BGR24: return 24;
-      case AVS_CS_BGR32: return 32;
-      case AVS_CS_YUY2:  return 16;
-      case AVS_CS_YV12:
-      case AVS_CS_I420:  return 12;
-      default:           return 0;
-    }
-}
-AVSC_INLINE int avs_bytes_from_pixels(const AVS_VideoInfo * p, int pixels) 
-        { return pixels * (avs_bits_per_pixel(p)>>3); }   // Will work on planar images, but will return only luma planes
+AVSC_API(int, avs_get_plane_width_subsampling)(const AVS_VideoInfo * p, int plane);
 
-AVSC_INLINE int avs_row_size(const AVS_VideoInfo * p) 
-        { return avs_bytes_from_pixels(p,p->width); }  // Also only returns first plane on planar images
+AVSC_API(int, avs_get_plane_height_subsampling)(const AVS_VideoInfo * p, int plane);
 
-AVSC_INLINE int avs_bmp_size(const AVS_VideoInfo * vi)                
-        { if (avs_is_planar(vi)) {int p = vi->height * ((avs_row_size(vi)+3) & ~3); p+=p>>1; return p;  } return vi->height * ((avs_row_size(vi)+3) & ~3); }
+
+AVSC_API(int, avs_bits_per_pixel)(const AVS_VideoInfo * p);
+
+AVSC_API(int, avs_bytes_from_pixels)(const AVS_VideoInfo * p, int pixels);
+
+AVSC_API(int, avs_row_size)(const AVS_VideoInfo * p, int plane);
+
+AVSC_API(int, avs_bmp_size)(const AVS_VideoInfo * vi);
 
 AVSC_INLINE int avs_samples_per_second(const AVS_VideoInfo * p) 
         { return p->audio_samples_per_second; }
@@ -290,9 +381,9 @@ typedef struct AVS_VideoFrameBuffer {
   int data_size;
   // sequence_number is incremented every time the buffer is changed, so
   // that stale views can tell they're no longer valid.
-  volatile int sequence_number;
+  volatile long sequence_number;
 
-  volatile int refcount;
+  volatile long refcount;
 } AVS_VideoFrameBuffer;
 
 // VideoFrame holds a "window" into a VideoFrameBuffer.
@@ -300,96 +391,39 @@ typedef struct AVS_VideoFrameBuffer {
 // AVS_VideoFrame is layed out identicly to IVideoFrame
 // DO NOT USE THIS STRUCTURE DIRECTLY
 typedef struct AVS_VideoFrame {
-  volatile int refcount;
+  volatile long refcount;
   AVS_VideoFrameBuffer * vfb;
   int offset, pitch, row_size, height, offsetU, offsetV, pitchUV;  // U&V offsets are from top of picture.
   int row_sizeUV, heightUV;
 } AVS_VideoFrame;
 
 // Access functions for AVS_VideoFrame
-AVSC_INLINE int avs_get_pitch(const AVS_VideoFrame * p) {
-        return p->pitch;}
+AVSC_API(int, avs_get_pitch_p)(const AVS_VideoFrame * p, int plane);
 
-AVSC_INLINE int avs_get_pitch_p(const AVS_VideoFrame * p, int plane) { 
-  switch (plane) {
-  case AVS_PLANAR_U: case AVS_PLANAR_V: return p->pitchUV;}
-  return p->pitch;}
+AVSC_INLINE int avs_get_pitch(const AVS_VideoFrame * p) {
+        return avs_get_pitch_p(p, 0);}
+
+AVSC_API(int, avs_get_row_size_p)(const AVS_VideoFrame * p, int plane);
 
 AVSC_INLINE int avs_get_row_size(const AVS_VideoFrame * p) {
         return p->row_size; }
 
-AVSC_INLINE int avs_get_row_size_p(const AVS_VideoFrame * p, int plane) { 
-        int r;
-    switch (plane) {
-    case AVS_PLANAR_U: case AVS_PLANAR_V: 
-                if (p->pitchUV) return p->row_sizeUV; 
-                else            return 0;
-    case AVS_PLANAR_U_ALIGNED: case AVS_PLANAR_V_ALIGNED: 
-                if (p->pitchUV) { 
-                        int r = (p->row_sizeUV+FRAME_ALIGN-1)&(~(FRAME_ALIGN-1)); // Aligned rowsize
-                        if (r < p->pitchUV) 
-                                return r; 
-                        return p->row_sizeUV;
-                } else return 0;
-    case AVS_PLANAR_Y_ALIGNED:
-                r = (p->row_size+FRAME_ALIGN-1)&(~(FRAME_ALIGN-1)); // Aligned rowsize
-                if (r <= p->pitch) 
-                        return r; 
-                return p->row_size;
-    }
-    return p->row_size;
-}
+AVSC_API(int, avs_get_height_p)(const AVS_VideoFrame * p, int plane);
 
 AVSC_INLINE int avs_get_height(const AVS_VideoFrame * p) {
         return p->height;}
 
-AVSC_INLINE int avs_get_height_p(const AVS_VideoFrame * p, int plane) {
-        switch (plane) {
-                case AVS_PLANAR_U: case AVS_PLANAR_V: 
-                        if (p->pitchUV) return p->heightUV;
-                        return 0;
-        }
-        return p->height;}
+AVSC_API(const BYTE *, avs_get_read_ptr_p)(const AVS_VideoFrame * p, int plane);
 
 AVSC_INLINE const BYTE* avs_get_read_ptr(const AVS_VideoFrame * p) {
-        return p->vfb->data + p->offset;}
+        return avs_get_read_ptr_p(p, 0);}
 
-AVSC_INLINE const BYTE* avs_get_read_ptr_p(const AVS_VideoFrame * p, int plane) 
-{
-        switch (plane) {
-                case AVS_PLANAR_U: return p->vfb->data + p->offsetU;
-                case AVS_PLANAR_V: return p->vfb->data + p->offsetV;
-                default:           return p->vfb->data + p->offset;}
-}
+AVSC_API(int, avs_is_writable)(const AVS_VideoFrame * p);
 
-AVSC_INLINE int avs_is_writable(const AVS_VideoFrame * p) {
-        return (p->refcount == 1 && p->vfb->refcount == 1);}
+AVSC_API(BYTE *, avs_get_write_ptr_p)(const AVS_VideoFrame * p, int plane);
 
-AVSC_INLINE BYTE* avs_get_write_ptr(const AVS_VideoFrame * p) 
-{
-        if (avs_is_writable(p)) {
-                ++p->vfb->sequence_number;
-                return p->vfb->data + p->offset;
-        } else
-                return 0;
-}
-
-AVSC_INLINE BYTE* avs_get_write_ptr_p(const AVS_VideoFrame * p, int plane) 
-{
-        if (plane==AVS_PLANAR_Y && avs_is_writable(p)) {
-                ++p->vfb->sequence_number;
-                return p->vfb->data + p->offset;
-        } else if (plane==AVS_PLANAR_Y) {
-                return 0;
-        } else {
-                switch (plane) {
-                        case AVS_PLANAR_U: return p->vfb->data + p->offsetU;
-                        case AVS_PLANAR_V: return p->vfb->data + p->offsetV;
-                        default:       return p->vfb->data + p->offset;
-                }
-        }
-}
-
+AVSC_INLINE BYTE* avs_get_write_ptr(const AVS_VideoFrame * p) {
+        return avs_get_write_ptr_p(p, 0);}
 
 AVSC_API(void, avs_release_video_frame)(AVS_VideoFrame *);
 // makes a shallow copy of a video frame
@@ -574,7 +608,10 @@ enum {
   AVS_CPUF_SSSE3      = 0x200,   //  Core 2
   AVS_CPUF_SSE4       = 0x400,   //  Penryn, Wolfdale, Yorkfield
   AVS_CPUF_SSE4_1     = 0x400,
-  AVS_CPUF_SSE4_2     = 0x800,   //  Nehalem
+//AVS_CPUF_AVX        = 0x800,   //  Sandy Bridge, Bulldozer
+  AVS_CPUF_SSE4_2    = 0x1000,   //  Nehalem
+//AVS_CPUF_AVX2      = 0x2000,   //  Haswell
+//AVS_CPUF_AVX512    = 0x4000,   //  Knights Landing
 };
 
 
@@ -714,7 +751,27 @@ struct AVS_Library {
   AVSC_DECLARE_FUNC(avs_subframe_planar);
   AVSC_DECLARE_FUNC(avs_take_clip);
   AVSC_DECLARE_FUNC(avs_vsprintf);
+
   AVSC_DECLARE_FUNC(avs_get_error);
+  AVSC_DECLARE_FUNC(avs_is_yv24);
+  AVSC_DECLARE_FUNC(avs_is_yv16);
+  AVSC_DECLARE_FUNC(avs_is_yv12);
+  AVSC_DECLARE_FUNC(avs_is_yv411);
+  AVSC_DECLARE_FUNC(avs_is_y8);
+  AVSC_DECLARE_FUNC(avs_is_color_space);
+
+  AVSC_DECLARE_FUNC(avs_get_plane_width_subsampling);
+  AVSC_DECLARE_FUNC(avs_get_plane_height_subsampling);
+  AVSC_DECLARE_FUNC(avs_bits_per_pixel);
+  AVSC_DECLARE_FUNC(avs_bytes_from_pixels);
+  AVSC_DECLARE_FUNC(avs_row_size);
+  AVSC_DECLARE_FUNC(avs_bmp_size);
+  AVSC_DECLARE_FUNC(avs_get_pitch_p);
+  AVSC_DECLARE_FUNC(avs_get_row_size_p);
+  AVSC_DECLARE_FUNC(avs_get_height_p);
+  AVSC_DECLARE_FUNC(avs_get_read_ptr_p);
+  AVSC_DECLARE_FUNC(avs_is_writable);
+  AVSC_DECLARE_FUNC(avs_get_write_ptr_p);
 };
 
 #undef AVSC_DECLARE_FUNC
@@ -773,7 +830,27 @@ AVSC_INLINE AVS_Library * avs_load_library() {
   AVSC_LOAD_FUNC(avs_subframe_planar);
   AVSC_LOAD_FUNC(avs_take_clip);
   AVSC_LOAD_FUNC(avs_vsprintf);
+
   AVSC_LOAD_FUNC(avs_get_error);
+  AVSC_LOAD_FUNC(avs_is_yv24);
+  AVSC_LOAD_FUNC(avs_is_yv16);
+  AVSC_LOAD_FUNC(avs_is_yv12);
+  AVSC_LOAD_FUNC(avs_is_yv411);
+  AVSC_LOAD_FUNC(avs_is_y8);
+  AVSC_LOAD_FUNC(avs_is_color_space);
+
+  AVSC_LOAD_FUNC(avs_get_plane_width_subsampling);
+  AVSC_LOAD_FUNC(avs_get_plane_height_subsampling);
+  AVSC_LOAD_FUNC(avs_bits_per_pixel);
+  AVSC_LOAD_FUNC(avs_bytes_from_pixels);
+  AVSC_LOAD_FUNC(avs_row_size);
+  AVSC_LOAD_FUNC(avs_bmp_size);
+  AVSC_LOAD_FUNC(avs_get_pitch_p);
+  AVSC_LOAD_FUNC(avs_get_row_size_p);
+  AVSC_LOAD_FUNC(avs_get_height_p);
+  AVSC_LOAD_FUNC(avs_get_read_ptr_p);
+  AVSC_LOAD_FUNC(avs_is_writable);
+  AVSC_LOAD_FUNC(avs_get_write_ptr_p);
 
 #undef __AVSC_STRINGIFY
 #undef AVSC_STRINGIFY

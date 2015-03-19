@@ -36,7 +36,6 @@
 #define __Resample_Functions_H__
 
 #include <avisynth.h>
-#include <malloc.h>
 
 // Original value: 65536
 // 2 bits sacrificed because of 16 bit signed MMX multiplication
@@ -47,6 +46,7 @@ const int FPScale = 16384; // fixed point scaler
 #define M_PI 3.14159265358979323846
 
 struct ResamplingProgram {
+  IScriptEnvironment2 * Env;
   int source_size, target_size;
   double crop_start, crop_size;
   int filter_size;
@@ -58,17 +58,17 @@ struct ResamplingProgram {
   // {{pixel[0]_coeff}, {pixel[1]_coeff}, ...}
   short* pixel_coefficient;
 
-  ResamplingProgram(int filter_size, int source_size, int target_size, double crop_start, double crop_size)
+  ResamplingProgram(int filter_size, int source_size, int target_size, double crop_start, double crop_size, IScriptEnvironment2* env)
     : filter_size(filter_size), source_size(source_size), target_size(target_size), crop_start(crop_start), crop_size(crop_size),
-      pixel_offset(0), pixel_coefficient(0)
+      pixel_offset(0), pixel_coefficient(0), Env(env)
   {
-    pixel_offset = (int*) _aligned_malloc(sizeof(int) * target_size, 64); // 64-byte alignment
-    pixel_coefficient = (short*) _aligned_malloc(sizeof(short) * target_size * filter_size, 64);
+    pixel_offset = (int*) Env->Allocate(sizeof(int) * target_size, 64, AVS_NORMAL_ALLOC); // 64-byte alignment
+    pixel_coefficient = (short*) Env->Allocate(sizeof(short) * target_size * filter_size, 64, AVS_NORMAL_ALLOC);
   };
 
   ~ResamplingProgram() {
-    _aligned_free(pixel_offset);
-    _aligned_free(pixel_coefficient);
+    Env->Free(pixel_offset);
+    Env->Free(pixel_coefficient);
   };
 };
 
@@ -91,7 +91,7 @@ public:
   virtual double f(double x) = 0;
   virtual double support() = 0;
 
-  virtual ResamplingProgram* GetResamplingProgram(int source_size, double crop_start, double crop_size, int target_size, IScriptEnvironment* env);
+  virtual ResamplingProgram* GetResamplingProgram(int source_size, double crop_start, double crop_size, int target_size, IScriptEnvironment2* env);
 };
 
 class PointFilter : public ResamplingFunction 

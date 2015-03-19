@@ -46,6 +46,10 @@ class RGB24to32 : public GenericVideoFilter
 public:
   RGB24to32(PClip src);
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
+
+  int __stdcall SetCacheHints(int cachehints, int frame_range) override {
+    return cachehints == CACHE_GET_MTMODE ? MT_NICE_FILTER : 0;
+  }
 };
 
 
@@ -57,6 +61,10 @@ class RGB32to24 : public GenericVideoFilter
 public:
   RGB32to24(PClip src);
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
+
+  int __stdcall SetCacheHints(int cachehints, int frame_range) override {
+    return cachehints == CACHE_GET_MTMODE ? MT_NICE_FILTER : 0;
+  }
 };
 
 

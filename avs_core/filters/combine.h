@@ -36,70 +36,77 @@
 #define __Combine_H__
 
 #include <avisynth.h>
-
+#include <vector>
+#include <memory>
 
 /********************************************************************
 ********************************************************************/
 
 
-class StackVertical : public IClip 
-/**
-  * Class to stack clips vertically
- **/
+class StackVertical : public IClip
+  /**
+    * Class to stack clips vertically
+    **/
 {
-public:
-  StackVertical(PClip *_child_array, int _num_args, IScriptEnvironment* env);
-  PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
-  
-  inline void __stdcall GetAudio(void* buf, __int64 start, __int64 count, IScriptEnvironment* env) 
-    { child_array[0]->GetAudio(buf, start, count, env); }
-  inline const VideoInfo& __stdcall GetVideoInfo() 
-    { return vi; }
-  inline bool __stdcall GetParity(int n) 
-    { return child_array[0]->GetParity(n); }
-  int __stdcall SetCacheHints(int cachehints,int frame_range) { return 0; };
-
-  static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env);
-
-  ~StackVertical()
-    { delete[] child_array; }
-
 private:
-  const int num_args;
-  PClip *child_array;
+  std::vector<PClip> children;
   VideoInfo vi;
 
+public:
+  StackVertical(const std::vector<PClip>& child_array, IScriptEnvironment* env);
+  PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
+
+  inline void __stdcall GetAudio(void* buf, __int64 start, __int64 count, IScriptEnvironment* env) {
+    children[0]->GetAudio(buf, start, count, env);
+  }
+
+  inline const VideoInfo& __stdcall GetVideoInfo() {
+    return vi;
+  }
+
+  inline bool __stdcall GetParity(int n) {
+    return children[0]->GetParity(n);
+  }
+
+  int __stdcall SetCacheHints(int cachehints, int frame_range) {
+    return cachehints == CACHE_GET_MTMODE ? MT_NICE_FILTER : 0;
+  }
+
+  static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env);
 };
 
 
 
-class StackHorizontal : public IClip 
-/**
-  * Class to stack clips vertically
- **/
-{  
-public:
-  StackHorizontal(PClip *_child_array, int _num_args, IScriptEnvironment* env);
-  PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
-
-  inline void __stdcall GetAudio(void* buf, __int64 start, __int64 count, IScriptEnvironment* env) 
-    { child_array[0]->GetAudio(buf, start, count, env); }
-  inline const VideoInfo& __stdcall GetVideoInfo() 
-    { return vi; }
-  inline bool __stdcall GetParity(int n) 
-    { return child_array[0]->GetParity(n); }
-  int __stdcall SetCacheHints(int cachehints,int frame_range) { return 0; };
-
-  static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env);
-
-  ~StackHorizontal()
-    { delete[] child_array; }
-
+class StackHorizontal : public IClip
+  /**
+    * Class to stack clips vertically
+    **/
+{
 private:
-  const int num_args;
-  PClip *child_array;
+  std::vector<PClip> children;
   VideoInfo vi;
 
+public:
+  StackHorizontal(const std::vector<PClip>& child_array, IScriptEnvironment* env);
+  PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
+
+  inline void __stdcall GetAudio(void* buf, __int64 start, __int64 count, IScriptEnvironment* env) {
+    children[0]->GetAudio(buf, start, count, env);
+  }
+
+  inline const VideoInfo& __stdcall GetVideoInfo() {
+    return vi;
+  }
+
+  inline bool __stdcall GetParity(int n) {
+    return children[0]->GetParity(n);
+  }
+
+  int __stdcall SetCacheHints(int cachehints, int frame_range) {
+    return cachehints == CACHE_GET_MTMODE ? MT_NICE_FILTER : 0;
+  }
+
+  static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env);
 };
 
 
@@ -127,7 +134,6 @@ public:
 private:
   PClip child[5];
   VideoInfo vi;
-
 };
 
 
@@ -141,15 +147,15 @@ class Animate : public IClip
   PClip cache[cache_size];
   int cache_stage[cache_size];
   const int first, last;
-  AVSValue *args_before, *args_after, *args_now;
+  std::unique_ptr<AVSValue[]> args_before;
+  AVSValue *args_after, *args_now;
   int num_args;
   const char* name;
   bool range_limit;
 public:
   Animate( PClip context, int _first, int _last, const char* _name, const AVSValue* _args_before, 
            const AVSValue* _args_after, int _num_args, bool _range_limit, IScriptEnvironment* env );
-  virtual ~Animate() 
-    { delete[] args_before; }
+  virtual ~Animate() { }
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
   void __stdcall GetAudio(void* buf, __int64 start, __int64 count, IScriptEnvironment* env);
 

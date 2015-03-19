@@ -207,11 +207,14 @@ public:
     mediaY41P   = 1<<8, // 2.6
     mediaYV16   = 1<<9, // 2.6
     mediaYV24   = 1<<10,// 2.6
+    mediaI420   = 1<<11,// 2.6
+    mediaNV12   = 1<<12,// 2.6
     mediaRGB    = mediaARGB | mediaRGB32 | mediaRGB24,
     mediaYUV    = mediaYUV9 | mediaYV12 | mediaYUY2 | mediaAYUV | mediaY411 | mediaY41P,
-    mediaYUVex  = mediaYUV  | mediaYV16 | mediaYV24,
+    mediaYUVex  = mediaYUV  | mediaYV16 | mediaYV24 | mediaI420 | mediaNV12,
     mediaAUTO   = mediaRGB | mediaYUV,
-    mediaFULL   = mediaRGB | mediaYUVex
+    mediaFULL   = mediaRGB | mediaYUVex,
+    mediaPAD    = 1<<31,
   };
   
   __int64 segment_start_time, segment_stop_time, sample_start_time, sample_end_time;
@@ -357,7 +360,7 @@ public:
 
 
   bool __stdcall GetParity(int n) { return false; }
-  int __stdcall SetCacheHints(int cachehints,int frame_range) { return 0; };
+  int __stdcall SetCacheHints(int cachehints,int frame_range);
 
   void __stdcall GetAudio(void* buf, __int64 start, __int64 count, IScriptEnvironment* env);
 
