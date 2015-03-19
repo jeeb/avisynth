@@ -132,12 +132,12 @@ your script, filter or plugin. For example:
 
 ::
 
-    # passing a float (2.0), while :doc:`Loop <../corefilters/loop>` expects an int:
+    # passing a float (2.0), while Loop expects an int:
     Loop(clip, 2.0)
 
 ::
 
-    # passing three clips to :doc:`Overlay <../corefilters/overlay>` instead of two:
+    # passing three clips to Overlay instead of two:
     AviSource("anime_raw.avi")
     karaoke = AviSource("karaoke.avi")
     Trim(0,999) + Trim(1000,1030).Overlay(last, karaoke, mask=sign.ShowAlpha()) + Trim(1031,0)
