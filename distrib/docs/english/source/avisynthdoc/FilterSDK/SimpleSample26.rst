@@ -20,8 +20,7 @@ Here's simplesample.cpp:
        PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
     };
 
-    SimpleSample::SimpleSample(PClip _child, int _SquareSize, IScriptEnvironment* en
-    v) :
+    SimpleSample::SimpleSample(PClip _child, int _SquareSize, IScriptEnvironment* env) :
        GenericVideoFilter(_child), SquareSize(_SquareSize) {
        if (vi.width<SquareSize || vi.height<SquareSize) {
           env->ThrowError("SimpleSample: square doesn't fit into the clip!");
@@ -260,6 +259,7 @@ SquareSize is specified in pixels, the corresponding number of bytes is
                 *(srcp + woffset + w + 1) = 255; // this is the same as srcp[woffset+w+1]=255;
                 *(srcp + woffset + w + 2) = 255; // this is the same as srcp[woffset+w+2]=255;
              }
+
              srcp += src_pitch;
           }
        }
@@ -462,7 +462,7 @@ variables (and clips) here too. See DirectShowSource for some examples.
     }
 
 
-The :ref:`AddFunction <cpluscplus_add_function>` has the following paramters:
+The :ref:`AddFunction <cplusplus_addfunction>` has the following paramters:
 ::
 
     AddFunction(Filtername, Arguments, Function to call, 0);
