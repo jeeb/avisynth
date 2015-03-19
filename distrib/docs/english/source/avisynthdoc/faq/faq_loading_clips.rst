@@ -6,6 +6,9 @@ AviSynth FAQ - Loading clips (video, audio and images) into AviSynth
 .. toctree::
     :maxdepth: 3
 
+.. contents:: Table of contents
+    
+
 
 Which media formats can be loaded into AviSynth?
 ------------------------------------------------

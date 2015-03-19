@@ -24,10 +24,13 @@ when storing the content. (Rec.709 and Rec.601 are short for ITU-R BT.709 and
 ITU-R BT.601.)
 
 
---------
+----
 
 .. toctree::
     :maxdepth: 3
+
+.. contents:: Table of contents
+    
 
 
 What are color conversion standards?

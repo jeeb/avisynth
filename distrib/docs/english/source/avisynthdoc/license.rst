@@ -6,6 +6,8 @@ License
 .. toctree::
     :maxdepth: 3
 
+.. contents:: Table of contents
+
 
 AviSynth License
 ----------------

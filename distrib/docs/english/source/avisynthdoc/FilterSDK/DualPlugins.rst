@@ -9,6 +9,8 @@ are described here below.
 .. toctree::
     :maxdepth: 3
 
+.. contents:: Table of contents
+
 
 The InvertNeg example
 ---------------------

@@ -10,6 +10,10 @@ The sequence is conceptually divided in three major phases:
 .. toctree::
     :maxdepth: 3
 
+.. contents:: Table of contents
+    
+
+
 The initialisation phase
 ------------------------
 

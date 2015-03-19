@@ -6,6 +6,7 @@ Debugging instructions
 .. toctree::
     :maxdepth: 3
 
+.. contents:: Table of contents
 
 How to debug AviSynth
 ---------------------

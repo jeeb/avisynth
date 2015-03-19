@@ -9,6 +9,10 @@ rules for effective code development.
 .. toctree::
     :maxdepth: 3
 
+.. contents:: Table of contents
+    
+
+
 The function declaration (header)
 ---------------------------------
 

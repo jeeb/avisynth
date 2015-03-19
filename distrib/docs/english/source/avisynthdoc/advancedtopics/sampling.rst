@@ -5,6 +5,9 @@ Sampling
 .. toctree::
     :maxdepth: 3
 
+.. contents:: Table of contents
+    
+
 
 Color format conversions and the Chroma Upsampling Error
 --------------------------------------------------------

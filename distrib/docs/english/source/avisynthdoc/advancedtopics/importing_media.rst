@@ -6,6 +6,9 @@ Importing media into AviSynth
 .. toctree::
     :maxdepth: 3
 
+.. contents:: Table of contents
+    
+
 
 Loading clips into AviSynth
 ---------------------------

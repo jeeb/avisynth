@@ -6,6 +6,9 @@ AviSynth Runtime environment
 .. toctree::
     :maxdepth: 3
 
+.. contents:: Table of contents
+    
+
 
 Definition
 ----------

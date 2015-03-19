@@ -6,6 +6,9 @@ AviSynth FAQ - Recognizing and processing different types of content
 .. toctree::
     :maxdepth: 3
 
+.. contents:: Table of contents
+    
+
 
 The video and audio in my final encoding is out of sync, what should I do?
 --------------------------------------------------------------------------

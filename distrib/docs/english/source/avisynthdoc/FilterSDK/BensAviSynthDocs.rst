@@ -1,14 +1,15 @@
 
-`BensAviSynthDocs`_
-===================
+BensAviSynthDocs
+================
 
 This is a text of the original documentation written for AviSynth 1.0 by Ben
 Rudiak-Gould - copied from `<http://math.berkeley.edu/~benrg/avisynth-extensions.html>`_.
 Now (November 2006) it is available online at the `mirror.`_
 
+.. toctree::
+    :maxdepth: 3
 
 .. contents:: Table of contents
-    :depth: 3
 
 Writing Avisynth plugins
 ------------------------
@@ -613,5 +614,4 @@ Back to :doc:`FilterSDK <FilterSDK>`
 
 $Date: 2006/11/08 20:40:16 $
 
-.. _BensAviSynthDocs: http://www.avisynth.org/BensAviSynthDocs
 .. _mirror.: http://www.neuron2.net/www.math.berkeley.edu/benrg/avisynth-extensions.html

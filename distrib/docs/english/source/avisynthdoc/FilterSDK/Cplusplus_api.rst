@@ -18,8 +18,7 @@ classes and miscellaneous constants are described below.
 .. toctree::
     :maxdepth: 4
 
-.. contents::
-    :depth: 4
+.. contents:: Table of contents
 
 
 .. _cplusplus_createscriptenvironment:

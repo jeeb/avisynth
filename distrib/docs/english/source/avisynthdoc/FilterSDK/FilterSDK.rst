@@ -16,8 +16,8 @@ The package consists of:
 .. toctree::
     :maxdepth: 3
 
-.. contents::
-    :depth: 3
+.. contents:: Table of contents
+
 
 Necessary software
 ------------------

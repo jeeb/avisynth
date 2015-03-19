@@ -10,8 +10,7 @@ method in IClip returns this structure. Below is a description of it
 .. toctree::
     :maxdepth: 3
 
-.. contents::
-    :depth: 3
+.. contents:: Table of contents
 
 
 Properties and constants

@@ -6,6 +6,9 @@ AviSynth FAQ - General information
 .. toctree::
     :maxdepth: 3
 
+.. contents:: Table of contents
+    
+
 
 .. _What is AviSynth:
 
