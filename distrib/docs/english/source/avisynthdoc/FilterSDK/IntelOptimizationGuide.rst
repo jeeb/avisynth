@@ -1,17 +1,13 @@
 
-`IntelOptimizationGuide`_
-=========================
+IntelOptimizationGuide
+======================
 
 Intels optimization guide can be downloaded from:
 
-`http://developer.intel.com/design/pentium4/manuals/index_new.htm`_
+http://www.intel.com/content/www/us/en/processors/architectures-software-developer-manuals.html
 
+----
 
 Back to :doc:`AssemblerOptimizing <AssemblerOptimizing>`
 
-$Date: 2006/11/24 18:21:26 $
-
-.. _IntelOptimizationGuide:
-    http://www.avisynth.org/IntelOptimizationGuide
-.. _http://developer.intel.com/design/pentium4/manuals/index_new.htm:
-    http://developer.intel.com/design/pentium4/manuals/index_new.htm
+$Date: 2014/10/27 22:04:54 $

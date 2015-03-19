@@ -1,6 +1,6 @@
 
-`IntegerSSE`_
-=============
+IntegerSSE
+==========
 
 Integer SSE is a set of instructions found in most modern processors.
 IntegerSSE is an extension of :doc:`MMX <MMX>`.
@@ -71,9 +71,8 @@ Integer SSE instructions:
 
 ``SFENCE``
 
+----
 
 Back to :doc:`AssemblerOptimizing <AssemblerOptimizing>`
 
-$Date: 2006/11/08 20:40:17 $
-
-.. _IntegerSSE: http://www.avisynth.org/IntegerSSE
+$Date: 2014/10/27 22:04:54 $

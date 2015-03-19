@@ -1,6 +1,6 @@
 
-`SimpleMmxOptimization`_
-========================
+SimpleMmxOptimization
+=====================
 
 This will cover some basics in assembler optimization, and the syntax to use
 in Visual Studio C++ for inline assembler.
@@ -40,7 +40,7 @@ which commands are available for the task needed. In this case we choose to
 focus on :doc:`IntegerSSE <IntegerSSE>`, because it contains pminub and pmaxub, which selects
 the minimum and maximum bytes of two packed registers. It is always a good
 idea to support plain MMX, since there are still many machines out there,
-that only support these instcrutions.
+that only support these instructions.
 
 An important aspect of MMX is parallel processing. That means processing
 several bytes at once. The MMX instructions all work on 8 bytes at the time,
@@ -136,7 +136,7 @@ These commands are
 based on the last number.
 
 In this example it results in mm7 containing "0xcmcm|cmcm|cmcm|cmcm". So
-basicly cmax and cmin are now placed in all 8 bytes in the mm6 and mm7
+basically cmax and cmin are now placed in all 8 bytes in the mm6 and mm7
 registers.
 
 ``yloop:``
@@ -202,9 +202,8 @@ jumps to the yloop as long as there are still pixels left to process.
 This instruction must be placed after all mmx code. It reenabled
 float point code, which is disabled by mmx code.
 
+----
+
 Back to :doc:`AssemblerOptimizing <AssemblerOptimizing>`
 
-$Date: 2006/11/24 18:21:26 $
-
-.. _SimpleMmxOptimization:
-    http://www.avisynth.org/SimpleMmxOptimization
+$Date: 2014/10/27 22:04:54 $

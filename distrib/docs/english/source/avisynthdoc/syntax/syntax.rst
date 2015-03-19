@@ -6,6 +6,9 @@ Getting started
 .. toctree::
     :maxdepth: 3
 
+.. contents:: Table of contents
+    
+
 
 Basically, AviSynth works like this: First, you create a simple text document
 with special commands, called a script. These commands make references to one

@@ -15,7 +15,7 @@ It is released with NO WARRANTY and freely usable/distributable
 under terms of GNU General Public License (GPL) version 2 or later.
 See full text of the license in `gpl.txt <../License/gpl.txt>`_ file.
 It should have been included; if not, you may receive a copy at
-`http://www.gnu.org/copyleft/gpl.html`_ or by writing
+http://www.gnu.org/copyleft/gpl.html or by writing
 to the Free Software Foundation, Inc., 675 Mass Ave., Cambridge, MA 02139,
 USA.
 
@@ -93,9 +93,8 @@ Appeal to plugin authors
           http://sourceforge.net/projects/avisynth2,
           http://www.avisynth.org
 
+----
+
 Back to :doc:`FilterSDK <FilterSDK>`
 
-$Date: 2006/12/20 18:17:54 $
-
-.. _http://www.gnu.org/copyleft/gpl.html:
-    http://www.gnu.org/copyleft/gpl.html
+$Date: 2014/10/27 22:04:54 $

@@ -9,6 +9,9 @@ elsewhere), the ``try..catch`` statement.
 .. toctree::
     :maxdepth: 2
 
+.. contents:: Table of contents
+    
+
 
 The ``try..catch`` statement
 ----------------------------

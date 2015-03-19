@@ -1,6 +1,6 @@
 
-`ChangeFrameSize`_
-==================
+ChangeFrameSize
+===============
 
 The following example code shows how to double the width of the destination
 frame.
@@ -16,13 +16,11 @@ frame.
             vi.height = vi.height * 2;  // height is also
             multiplied by 2
         }
-        PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment*
-        env);
+        PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
     };
 
-    PVideoFrame __stdcall ShowPixelValues::GetFrame(int n,
-    IScriptEnvironment* env) {
-
+    PVideoFrame __stdcall ShowPixelValues::GetFrame(int n, IScriptEnvironment* env)
+    {
         PVideoFrame src = child->GetFrame(n, env);
         PVideoFrame dst = env->NewVideoFrame(vi); // new frame is double the size of src
     ...
@@ -31,6 +29,8 @@ frame.
 A Similar approach has to be used for changing colorspace, framerate etc.
 There is a bit more information at :doc:`WorkingWithImages <WorkingWithImages>`.
 
-$Date: 2006/11/24 18:21:25 $
+----
 
-.. _ChangeFrameSize: http://www.avisynth.org/ChangeFrameSize
+Back to :doc:`FilterSDK`
+
+Date: 2014/10/27 22:04:54 $

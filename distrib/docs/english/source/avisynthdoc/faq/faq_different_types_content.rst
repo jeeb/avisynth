@@ -6,6 +6,9 @@ AviSynth FAQ - Recognizing and processing different types of content
 .. toctree::
     :maxdepth: 3
 
+.. contents:: Table of contents
+    
+
 
 The video and audio in my final encoding is out of sync, what should I do?
 --------------------------------------------------------------------------
@@ -44,8 +47,7 @@ The most common ones are:
 ::
 
     # a mkv-file is used here as an example:
-    DirectShowSource("D:\movie.mkv", fps=xxx, convertfps=true) # fps =
-    average framerate
+    DirectShowSource("D:\movie.mkv", fps=xxx, convertfps=true) # fps = average framerate
 
 If you are not using DirectShowSource or you don't want to add or remove
 frames, you need to create a timecodes file first and use it later on in your

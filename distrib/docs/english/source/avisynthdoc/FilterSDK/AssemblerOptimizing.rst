@@ -1,6 +1,6 @@
 
-`AssemblerOptimizing`_
-=======================
+AssemblerOptimizing
+===================
 
 This section contains information on various experiences and information on
 assembler writing. This will mostly cover information on :doc:`MMX <MMX>` and
@@ -15,9 +15,10 @@ assembler writing. This will mostly cover information on :doc:`MMX <MMX>` and
 -   A link to the :doc:`AMDOptimizationGuide <AMDOptimizationGuide>`.
 -   A link to the :doc:`IntelOptimizationGuide <IntelOptimizationGuide>`.
 
+----
 
 Back to :doc:`FilterSDK <FilterSDK>`
 
-$Date: 2006/11/08 20:40:16 $
+$Date: 2014/10/27 22:04:54 $
 
 .. _AssemblerOptimizing: http://www.avisynth.org/AssemblerOptimizing

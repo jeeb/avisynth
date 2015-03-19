@@ -6,6 +6,9 @@ Block statements
 .. toctree::
     :maxdepth: 3
 
+.. contents:: Table of contents
+    
+
 
 Background
 ----------

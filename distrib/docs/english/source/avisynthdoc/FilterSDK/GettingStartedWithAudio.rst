@@ -1,6 +1,6 @@
 
-`Getting started with audio`_
-=============================
+Getting started with audio
+==========================
 
 The best filters to take a look at if you are searching for a way to get
 started with an audio filter is the `internal audio filters`_ of AviSynth.
@@ -22,6 +22,7 @@ Filter creation - skip if no audio:
 
       return new HalfVolume(args[0].AsClip());
     }
+
 
 Constructor
 -----------
@@ -72,14 +73,17 @@ GetAudio override
 Implementation of a half volume filter. Very explicit, so it isn't going to
 be the fastest possible, but it should serve the purpose. Furthermore have a
 look `discussion here`_ and look also at `audio.cpp`_ for a bunch of more
-advanced stuff. A lot of technical details are also to be found in :doc:`AviSynth Two-Five Audio <AviSynthTwoFiveAudio>`.
+advanced stuff. A lot of technical details are also to be found in
+:doc:`AviSynth Two-Five Audio <AviSynthTwoFiveAudio>`.
 
-$Date: 2007/07/04 00:12:07 $
+----
+
+Back to :doc:`FilterSDK`
+
+$Date: 2014/10/27 22:04:54 $
 
 .. _internal audio filters:
     http://avisynth2.cvs.sourceforge.net/avisynth2/avisynth/src/audio/
 .. _audio.cpp: http://avisynth2.cvs.sourceforge.net/avisynth2/avisynth/src/audio/audio.cpp?view=markup
 .. _ConvertAudio.cpp: http://avisynth2.cvs.sourceforge.net/avisynth2/avisynth/src/audio/convertaudio.cpp?view=markup
 .. _discussion here: http://forum.doom9.org/showthread.php?s=&threadid=72760&highlight=ConvertAudiohere
-.. _Getting started with audio:
-    http://www.avisynth.org/GettingStartedWithAudio

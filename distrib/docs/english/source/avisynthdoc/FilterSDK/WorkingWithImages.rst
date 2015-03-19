@@ -1,6 +1,6 @@
 
-`WorkingWithImages`_
-====================
+WorkingWithImages
+=================
 
 All images are given a pitch. The pitch is basically what can be described as
 "length of a line". What's funny is that the pitch does not have to be equal
@@ -12,11 +12,11 @@ line remains the same.
 
 The image is then laid out like this:
 
-rrrrrrrrrrrrrrrrpppp
+``rrrrrrrrrrrrrrrrpppp``
 
-rrrrrrrrrrrrrrrrpppp
+``rrrrrrrrrrrrrrrrpppp``
 
-rrrrrrrrrrrrrrrrpppp
+``rrrrrrrrrrrrrrrrpppp``
 
 Where 'r' are the pixels inside the image used, and 'p' is the padding
 inserted after each line.
@@ -25,13 +25,13 @@ inserted after each line.
 Fast Information
 ----------------
 
-Width = width in pixels.
+*Width* = width in pixels.
 
-Rowsize = number of bytes in one line.
+*Rowsize* = number of bytes in one line.
 
-Pitch = distance from start of one line to the next in bytes.
+*Pitch* = distance from start of one line to the next in bytes.
 
-vi->BytesFromPixels(n) = size of n pixels in bytes - does NOT take pitch into
+*vi->BytesFromPixels(n)* = size of n pixels in bytes - does NOT take pitch into
 consideration, so can only be used within a line.
 
 For the :doc:`PlanarImageFormat <PlanarImageFormat>`:
@@ -63,6 +63,8 @@ See more about :doc:`DataStorageInAviSynth <DataStorageInAviSynth>`.
 
 See more about :doc:`ColorSpaces <ColorSpaces>`.
 
-$Date: 2006/11/08 20:40:17 $
+----
 
-.. _WorkingWithImages: http://www.avisynth.org/WorkingWithImages
+Back to :doc:`FilterSDK`
+
+$Date: 2014/10/27 22:04:54 $

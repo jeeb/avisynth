@@ -8,6 +8,9 @@ There are essentially two scope types in the AviSynth script language:
 .. toctree::
     :maxdepth: 3
 
+.. contents:: Table of contents
+    
+
 
 Global scope
 ------------

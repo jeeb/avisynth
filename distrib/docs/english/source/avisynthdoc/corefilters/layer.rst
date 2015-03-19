@@ -6,6 +6,9 @@ Layer
 .. toctree::
     :maxdepth: 3
 
+.. contents:: Table of contents
+    
+
 
 Layer
 -----

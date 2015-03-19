@@ -6,6 +6,8 @@ Advanced Topics
 .. toctree::
     :maxdepth: 3
 
+.. contents:: Table of contents
+
 
 .. _Interlaced and field-based video:
 

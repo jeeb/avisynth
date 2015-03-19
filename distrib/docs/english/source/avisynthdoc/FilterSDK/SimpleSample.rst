@@ -1,6 +1,6 @@
 
-`SimpleSample`_
-===============
+SimpleSample
+============
 
 Here are the sources for the series of examples developed in `[this]`_ thread.
 
@@ -28,10 +28,13 @@ colorspace code altered.
 :doc:`Classes and function calls in AviSynth plugins <SimpleSampleClass>` - about classes and
 function calls in AviSynth plugins.
 
+:doc:`SimpleSample for AviSynth 2.6 <SimpleSample26>` - a rewritten version that supports all of
+2.6's color formats.
+
+----
 
 Back to :doc:`FilterSDK <FilterSDK>`
 
 $Date: 2006/11/24 18:21:26 $
 
-.. _SimpleSample: http://www.avisynth.org/SimpleSample
 .. _[this]: http://forum.doom9.org/showthread.php?s=&threadid=48261

@@ -5,10 +5,11 @@ SDK History
 "Writing Avisynth plugins" article was written by Ben Rudiak-Gould (Avisynth
 creator).
 
-It is taken from AviSynth 1.0 documentation as was (2000) at
-`<http://math.berkeley.edu/~benrg/avisynth-extensions.html>`_.
-The current (November 2006) mirror is at :
-`<http://www.neuron2.net/www.math.berkeley.edu/benrg/avisynth-extensions.html>`_
+| It is taken from AviSynth 1.0 documentation as was (2000) at
+| `<http://math.berkeley.edu/~benrg/avisynth-extensions.html>`_.
+
+| The current (November 2006) mirror is at :
+| `<http://www.neuron2.net/www.math.berkeley.edu/benrg/avisynth-extensions.html>`_
 
 
 Preliminary version of AviSynth 2.0-2.5 FilterSDK documentation has been
@@ -53,7 +54,8 @@ Wilbert Dijkhof 'Wilbert' (at least he promised to edit "CompilingPlugins"
 sometimes :)
 ...
 
+----
 
 Back to :doc:`FilterSDK <FilterSDK>`
 
-$Date: 2006/11/24 18:22:55 $
+$Date: 2014/10/27 22:04:54 $

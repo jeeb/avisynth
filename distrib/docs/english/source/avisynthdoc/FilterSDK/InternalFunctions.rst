@@ -1,6 +1,6 @@
 
-`InternalFunctions`_
-====================
+InternalFunctions
+=================
 
 Read about :doc:`VideoInfo <VideoInfo>`
 
@@ -8,9 +8,8 @@ Read about using internal filters, using ``env->Invoke`` in :doc:`EnvInvoke <Env
 
 Use :doc:`EnvSaveString <EnvSaveString>` to avoid strings leaking.
 
+----
 
 Back to :doc:`FilterSDK <FilterSDK>`
 
 $Date: 2006/11/24 18:21:26 $
-
-.. _InternalFunctions: http://www.avisynth.org/InternalFunctions

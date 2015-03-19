@@ -12,6 +12,9 @@ your wisdom.
 .. toctree::
     :maxdepth: 3
 
+.. contents:: Table of contents
+    
+
 
 What are luminance levels?
 --------------------------

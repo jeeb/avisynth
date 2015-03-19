@@ -3,20 +3,26 @@ Overview
 ========
 
 
+Quick Reference
+---------------
+
 :doc:`Quick Reference <quick_ref>`
-----------------------------------
 
 [ :ref:`A` :ref:`B` :ref:`C` :ref:`D` :ref:`E` :ref:`F` :ref:`G` :ref:`H` :ref:`I`
   [J] :ref:`K` :ref:`L` :ref:`M` :ref:`N` :ref:`O` :ref:`P` [Q] :ref:`R`
   :ref:`S` :ref:`T` [U] :ref:`V` :ref:`W` [X] [Y] [Z] ]
 
 
-:doc:`Getting started <getting_started>`
+Getting started
 ----------------------------------------
 
+:doc:`Getting started <getting_started>`
+
+
+AviSynth Syntax
+---------------
 
 :doc:`AviSynth Syntax <syntax/syntax_sections>`
------------------------------------------------
 
 -   :doc:`Statements <syntax/syntax_ref>`
 -   :doc:`Script variables <syntax/syntax_script_variables>`
@@ -40,8 +46,11 @@ Overview
 -   :doc:`Runtime environment <syntax/syntax_runtime_environment>`
 -   :doc:`Plugins <syntax/syntax_plugins>`
 
+
+Scripting reference
+-------------------
+
 :doc:`Scripting reference <script_ref/script_ref>`
---------------------------------------------------
 
 -   :doc:`The script execution model <script_ref/script_ref_execution_model>`
 
@@ -57,8 +66,11 @@ Overview
 -   :doc:`Arrays <script_ref/script_ref_arrays>`
 -   :doc:`Scripting at runtime <syntax/syntax_runtime_environment>`
 
+
+Core Filters
+------------
+
 :doc:`Core Filters <corefilters>`
----------------------------------
 
 -   :ref:`Media file filters`
 -   :ref:`Color conversion and adjustment filters`
@@ -72,8 +84,12 @@ Overview
 -   :ref:`Conditional filters`
 -   :ref:`Debug filters`
 
-:doc:`External Filters (Plugins) <externalplugins>`
+
+External Filters (Plugins)
 ---------------------------------------------------
+
+:doc:`External Filters (Plugins) <externalplugins>`
+
 
 Have a Question?
 ----------------
@@ -81,14 +97,18 @@ Have a Question?
 -   :doc:`Troubleshooting <faq/troubleshooting>` - read this first when getting problems
 -   :doc:`FAQ <faq/faq_general_info>` - general info about AviSynth
 
+
+Advanced Topics
+---------------
+
 :doc:`Advanced Topics <advancedtopics>`
----------------------------------------
 
 -   :ref:`Interlaced and field-based video`
 -   :ref:`Video Sampling`
 -   :ref:`ColorSpace Conversions`
 -   :ref:`Hybrid Video`
 -   :ref:`Importing Media into AviSynth`
+
 
 Versions History
 ----------------
@@ -100,5 +120,8 @@ Versions History
 -   :doc:`Changelist <changelist>`
 -   :doc:`License Terms <license>`
 
+
+Internet Links
+--------------
+
 :doc:`Internet Links <links>`
------------------------------

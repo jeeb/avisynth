@@ -1,6 +1,6 @@
 
-`MMX`_
-======
+MMX
+===
 
 MMX is short for MultiMedia Extensions and was developed by Intel for Pentium MMX.
 
@@ -10,6 +10,6 @@ many of the internal filters.
 
 Furthermore see :doc:`IntegerSSE <IntegerSSE>`.
 
-$Date: 2006/11/08 20:40:17 $
+Back to :doc:`AssemblerOptimizing`
 
-.. _MMX: http://www.avisynth.org/MMX
+$Date: 2014/10/27 22:04:54 $
