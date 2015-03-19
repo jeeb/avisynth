@@ -885,7 +885,7 @@ ScriptEnvironment::~ScriptEnvironment() {
   {
     VideoFrame *frame = it->second;
 
-	vfb_set.insert(frame->vfb);
+    vfb_set.insert(frame->vfb);
     frame->vfb = 0;
 
 	//assert(0 == frame->refcount);

@@ -59,7 +59,7 @@ struct PrefetcherPimpl
     child(_child),
     vi(_child->GetVideoInfo()),
     nThreads(_nThreads),
-    nPrefetchFrames(_nThreads * 3),
+    nPrefetchFrames(_nThreads * 2),
     ThreadPool(_nThreads),
     LockedPattern(1),
     PatternHits(0),
