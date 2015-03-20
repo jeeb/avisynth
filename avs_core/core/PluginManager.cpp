@@ -206,8 +206,8 @@ AVSFunction & AVSFunction::operator=(const AVSFunction &rhs)
     if(this == &rhs)
        return *this;
 
-	delete[] canon_name;
-	canon_name = NULL;
+    delete[] canon_name;
+    canon_name = NULL;
 
     apply = rhs.apply;
     name = rhs.name;
@@ -226,29 +226,32 @@ AVSFunction & AVSFunction::operator=(const AVSFunction &rhs)
     return *this;
 }
 
-AVSFunction::AVSFunction(AVSFunction &&obj)
+AVSFunction::AVSFunction(AVSFunction &&obj) :
+    canon_name(NULL)
 {
-	*this = std::move(obj);
+    *this = std::move(obj);
 }
 
 AVSFunction & AVSFunction::operator=(AVSFunction &&rhs)
 {
-	if (this == &rhs)
-		return *this;
+    if (this == &rhs)
+        return *this;
 
-	delete[] canon_name;
+    delete[] canon_name;
 
-	apply = rhs.apply;
-	name = rhs.name;
-	canon_name = rhs.canon_name;
-	param_types = rhs.param_types;
-	user_data = rhs.user_data;
+    apply = rhs.apply;
+    name = rhs.name;
+    canon_name = rhs.canon_name;
+    param_types = rhs.param_types;
+    user_data = rhs.user_data;
 
-	rhs.apply = NULL;
-	rhs.name = NULL;
-	rhs.canon_name = NULL;
-	rhs.param_types = NULL;
-	rhs.user_data = NULL;
+    rhs.apply = NULL;
+    rhs.name = NULL;
+    rhs.canon_name = NULL;
+    rhs.param_types = NULL;
+    rhs.user_data = NULL;
+
+    return *this;
 }
 
 bool AVSFunction::empty() const
@@ -746,10 +749,18 @@ void PluginManager::AddFunction(const char* name, const char* params, IScriptEnv
 
   if (NULL != newFunc.canon_name)
   {
-	  FunctionList& baseList = functions[newFunc.canon_name];
-	  baseList.push_back(newFunc);
-	  UpdateFunctionExports(newFunc.canon_name, newFunc.param_types, exportVar);
+      FunctionList& baseList = functions[newFunc.canon_name];
+      baseList.push_back(newFunc);
+      UpdateFunctionExports(newFunc.canon_name, newFunc.param_types, exportVar);
   }
+}
+
+std::string PluginManager::PluginLoading() const
+{
+    if (NULL == PluginInLoad)
+        return std::string();
+    else
+        return PluginInLoad->BaseName;
 }
 
 bool PluginManager::TryAsAvs26(PluginFile &plugin, AVSValue *result)
@@ -802,53 +813,53 @@ bool PluginManager::TryAsAvsC(PluginFile &plugin, AVSValue *result)
   {
     PluginInLoad = &plugin;
     {
-	    AVS_ScriptEnvironment e;
-	    e.env = Env;
-	    AVS_ScriptEnvironment *pe;
-	    pe = &e;
-	    const char *s = NULL;
+        AVS_ScriptEnvironment e;
+        e.env = Env;
+        AVS_ScriptEnvironment *pe;
+        pe = &e;
+        const char *s = NULL;
 #ifdef X86_32
-	    int callok = 1; // (stdcall)
-	    __asm // Tritical - Jan 2006
-	    {
-		    push eax
-		    push edx
+        int callok = 1; // (stdcall)
+        __asm // Tritical - Jan 2006
+        {
+            push eax
+            push edx
 
-		    push 0x12345678		// Stash a known value
+            push 0x12345678		// Stash a known value
 
-		    mov eax, pe			// Env pointer
-		    push eax			// Arg1
-		    call AvisynthCPluginInit			// avisynth_c_plugin_init
+            mov eax, pe			// Env pointer
+            push eax			// Arg1
+            call AvisynthCPluginInit			// avisynth_c_plugin_init
 
-		    lea edx, s			// return value is in eax
-		    mov DWORD PTR[edx], eax
+            lea edx, s			// return value is in eax
+            mov DWORD PTR[edx], eax
 
-		    pop eax				// Get top of stack
-		    cmp eax, 0x12345678	// Was it our known value?
-		    je end				// Yes! Stack was cleaned up, was a stdcall
+            pop eax				// Get top of stack
+            cmp eax, 0x12345678	// Was it our known value?
+            je end				// Yes! Stack was cleaned up, was a stdcall
 
-		    lea edx, callok
-		    mov BYTE PTR[edx], 0 // Set callok to 0 (_cdecl)
+            lea edx, callok
+            mov BYTE PTR[edx], 0 // Set callok to 0 (_cdecl)
 
-		    pop eax				// Get 2nd top of stack
-		    cmp eax, 0x12345678	// Was this our known value?
-		    je end				// Yes! Stack is now correctly cleaned up, was a _cdecl
+            pop eax				// Get 2nd top of stack
+            cmp eax, 0x12345678	// Was this our known value?
+            je end				// Yes! Stack is now correctly cleaned up, was a _cdecl
 
-		    mov BYTE PTR[edx], 2 // Set callok to 2 (bad stack)
+            mov BYTE PTR[edx], 2 // Set callok to 2 (bad stack)
     end:
-		    pop edx
-		    pop eax
-	    }
+            pop edx
+            pop eax
+        }
       switch(callok)
       {
       case 0:   // cdecl
 #ifdef AVSC_USE_STDCALL
-		    Env->ThrowError("Avisynth 2 C Plugin '%s' has wrong calling convention! Must be _stdcall.", plugin.BaseName.c_str());
+            Env->ThrowError("Avisynth 2 C Plugin '%s' has wrong calling convention! Must be _stdcall.", plugin.BaseName.c_str());
 #endif
         break;
       case 1:   // stdcall
 #ifndef AVSC_USE_STDCALL
-		    Env->ThrowError("Avisynth 2 C Plugin '%s' has wrong calling convention! Must be _cdecl.", plugin.BaseName.c_str());
+            Env->ThrowError("Avisynth 2 C Plugin '%s' has wrong calling convention! Must be _cdecl.", plugin.BaseName.c_str());
 #endif
         break;
       case 2:
@@ -858,7 +869,7 @@ bool PluginManager::TryAsAvsC(PluginFile &plugin, AVSValue *result)
       s = AvisynthCPluginInit(pe);
 #endif
 //	    if (s == 0)
-	//	    Env->ThrowError("Avisynth 2 C Plugin '%s' returned a NULL pointer.", plugin.BaseName.c_str());
+    //	    Env->ThrowError("Avisynth 2 C Plugin '%s' returned a NULL pointer.", plugin.BaseName.c_str());
 
       *result = AVSValue(s);
     }

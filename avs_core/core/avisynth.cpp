@@ -447,7 +447,7 @@ public:
     : DefaultMode(MT_SERIALIZED)
   {}
 
-  void SetMode(const char* filter, MtMode mode, bool force)
+  void SetMode(const std::string& filter, MtMode mode, bool force)
   {
     if ( ((int)mode <= (int)MT_INVALID)
       || ((int)mode >= (int)MT_MODE_COUNT) )
@@ -455,7 +455,7 @@ public:
       throw AvisynthError("Invalid MT mode specified.");
     }
 
-    if (streqi(filter, DEFAULT_MODE_SPECIFIER.c_str()))
+    if (streqi(filter.c_str(), DEFAULT_MODE_SPECIFIER.c_str()))
     {
       DefaultMode = mode;
       return;
@@ -888,7 +888,7 @@ ScriptEnvironment::~ScriptEnvironment() {
     vfb_set.insert(frame->vfb);
     frame->vfb = 0;
 
-	//assert(0 == frame->refcount);
+    //assert(0 == frame->refcount);
     if (0 == frame->refcount)
     {
         delete frame;
@@ -901,7 +901,7 @@ ScriptEnvironment::~ScriptEnvironment() {
     //assert(0 == vfb->refcount);
     delete vfb;
   }
-	
+    
   delete plugin_manager;
   delete [] vsprintf_buf;
 
@@ -949,7 +949,14 @@ void __stdcall ScriptEnvironment::SetFilterMTMode(const char* filter, MtMode mod
   assert(NULL != filter);
   assert("" != filter);
 
-  MTMap.SetMode(filter, mode, force);
+  std::string name_to_register;
+  std::string loading = plugin_manager->PluginLoading();
+  if (loading.empty())
+      name_to_register = filter;
+  else
+      name_to_register = loading.append("_").append(filter);
+
+  MTMap.SetMode(name_to_register, mode, force);
 }
 
 MtMode __stdcall ScriptEnvironment::GetFilterMTMode(const AVSFunction* filter, bool* is_forced) const

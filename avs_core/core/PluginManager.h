@@ -60,6 +60,7 @@ public:
   bool HasAutoloadExecuted() const { return AutoloadExecuted; }
 
   bool FunctionExists(const char* name) const;
+  std::string PluginLoading() const;    // Returns the basename of the plugin DLL that is currently being loaded, or NULL if no plugin is being loaded
   void AutoloadPlugins();
   void AddFunction(const char* name, const char* params, IScriptEnvironment::ApplyFunc apply, void* user_data, const char *exportVar);
   const AVSFunction* Lookup(const char* search_name,
