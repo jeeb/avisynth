@@ -41,6 +41,7 @@ public:
 
   virtual __stdcall ~JobCompletion()
   {
+    Wait();
     delete [] pairs;
   }
 
