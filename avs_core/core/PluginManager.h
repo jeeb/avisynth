@@ -17,7 +17,7 @@ struct StdStriComparer
   }
 };
 
-typedef std::vector<AVSFunction> FunctionList;
+typedef std::vector<const AVSFunction*> FunctionList;
 typedef std::map<std::string,FunctionList,StdStriComparer> FunctionMap;
 class PluginManager
 {

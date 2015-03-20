@@ -1,5 +1,6 @@
 #include "PluginManager.h"
 #include <avisynth.h>
+#include <unordered_set>
 #include <avisynth_c.h>
 #include "strings.h"
 #include <cassert>
@@ -159,10 +160,6 @@ static bool IsValidParameterString(const char* p) {
 ---------------------------------------------------------------------------------
 */
 
-AVSFunction::AVSFunction() : 
-    AVSFunction(NULL, NULL, NULL, NULL, NULL)
-{}
-
 AVSFunction::AVSFunction(void*) : 
     AVSFunction(NULL, NULL, NULL, NULL, NULL)
 {}
@@ -205,109 +202,6 @@ AVSFunction::~AVSFunction()
     delete [] canon_name;
     delete [] name;
     delete [] param_types;
-}
-
-AVSFunction::AVSFunction(const AVSFunction &obj) :
-    apply(obj.apply), name(NULL), canon_name(NULL), param_types(NULL), user_data(obj.user_data)
-{
-    if ( NULL != obj.name )
-    {
-        size_t len = strlen(obj.name);
-        name = new char[len+1];
-        memcpy(name, obj.name, len);
-        name[len] = 0;
-    }
-
-    if ( NULL != obj.param_types )
-    {
-        size_t len = strlen(obj.param_types);
-        param_types = new char[len+1];
-        memcpy(param_types, obj.param_types, len);
-        param_types[len] = 0;
-    }
-
-    if (NULL != obj.canon_name)
-    {
-        size_t len = strlen(obj.canon_name);
-        canon_name = new char[len+1];
-        memcpy(canon_name, obj.canon_name, len);
-        canon_name[len] = 0;
-    }
-}
-
-AVSFunction & AVSFunction::operator=(const AVSFunction &rhs)
-{
-    if(this == &rhs)
-       return *this;
-
-    delete[] canon_name;
-    canon_name = NULL;
-    delete[] name;
-    name = NULL;
-    delete[] param_types;
-    param_types = NULL;
-
-    apply = rhs.apply;
-    name = NULL;
-    canon_name = NULL;
-    param_types = NULL;
-    user_data = rhs.user_data;
-
-    if ( NULL != rhs.name )
-    {
-        size_t len = strlen(rhs.name);
-        name = new char[len+1];
-        memcpy(name, rhs.name, len);
-        name[len] = 0;
-    }
-
-    if ( NULL != rhs.param_types )
-    {
-        size_t len = strlen(rhs.param_types);
-        param_types = new char[len+1];
-        memcpy(param_types, rhs.param_types, len);
-        param_types[len] = 0;
-    }
-
-    if (NULL != rhs.canon_name)
-    {
-        size_t len = strlen(rhs.canon_name);
-        canon_name = new char[len+1];
-        memcpy(canon_name, rhs.canon_name, len);
-        canon_name[len] = 0;
-    }
-
-    return *this;
-}
-
-AVSFunction::AVSFunction(AVSFunction &&obj) :
-    name(NULL), canon_name(NULL), param_types(NULL)
-{
-    *this = std::move(obj);
-}
-
-AVSFunction & AVSFunction::operator=(AVSFunction &&rhs)
-{
-    if (this == &rhs)
-        return *this;
-
-    delete[] canon_name;
-    delete[] name;
-    delete[] param_types;
-
-    apply = rhs.apply;
-    name = rhs.name;
-    canon_name = rhs.canon_name;
-    param_types = rhs.param_types;
-    user_data = rhs.user_data;
-
-    rhs.apply = NULL;
-    rhs.name = NULL;
-    rhs.canon_name = NULL;
-    rhs.param_types = NULL;
-    rhs.user_data = NULL;
-
-    return *this;
 }
 
 bool AVSFunction::empty() const
@@ -644,6 +538,27 @@ void PluginManager::AutoloadPlugins()
 
 PluginManager::~PluginManager()
 {
+  // Delete all AVSFunction objects that we created
+  std::unordered_set<const AVSFunction*> function_set;
+  for (const auto& lists : ExternalFunctions)
+  {
+      const FunctionList& funcList = lists.second;
+      for (const auto& func : funcList)
+        function_set.insert(func);
+  }
+  for (const auto& lists : AutoloadedFunctions)
+  {
+      const FunctionList& funcList = lists.second;
+      for (const auto& func : funcList)
+        function_set.insert(func);
+  }
+  for (const auto& func : function_set)
+  {
+      delete func;
+  }
+
+
+  // Unload plugin binaries
   for (size_t i = 0; i < LoadedPlugins.size(); ++i)
   {
     assert(LoadedPlugins[i].Library);
@@ -656,6 +571,7 @@ PluginManager::~PluginManager()
     FreeLibrary(AutoLoadedPlugins[i].Library);
     AutoLoadedPlugins[i].Library = NULL;
   }
+
   Env = NULL;
   PluginInLoad = NULL;
 }
@@ -752,7 +668,7 @@ const AVSFunction* PluginManager::Lookup(const FunctionMap& map, const char* sea
           func_it != list_it->second.rend();
           ++func_it)
     {
-      const AVSFunction *func = &(*func_it);
+      const AVSFunction *func = *func_it;
       if (AVSFunction::TypeMatch(func->param_types, args, num_args, strict, Env) &&
           AVSFunction::ArgNameMatch(func->param_types, args_names_count, arg_names)
          )
@@ -789,25 +705,23 @@ void PluginManager::AddFunction(const char* name, const char* params, IScriptEnv
 
   FunctionMap& functions = Autoloading ? AutoloadedFunctions : ExternalFunctions;
 
-  AVSFunction newFunc;
+  AVSFunction *newFunc = NULL;
   if (PluginInLoad != NULL)
   {
-      newFunc = AVSFunction(name, PluginInLoad->BaseName.c_str(), params, apply, user_data);
+      newFunc = new AVSFunction(name, PluginInLoad->BaseName.c_str(), params, apply, user_data);
   }
   else
   {
-      newFunc = AVSFunction(name, NULL, params, apply, user_data);
-      assert(newFunc.IsScriptFunction());
+      newFunc = new AVSFunction(name, NULL, params, apply, user_data);
+      assert(newFunc->IsScriptFunction());
   }
-  FunctionList& list = functions[newFunc.name];
-  list.push_back(newFunc);
-  UpdateFunctionExports(newFunc.name, newFunc.param_types, exportVar);
+  functions[newFunc->name].push_back(newFunc);
+  UpdateFunctionExports(newFunc->name, newFunc->param_types, exportVar);
 
-  if (NULL != newFunc.canon_name)
+  if (NULL != newFunc->canon_name)
   {
-      FunctionList& baseList = functions[newFunc.canon_name];
-      baseList.push_back(newFunc);
-      UpdateFunctionExports(newFunc.canon_name, newFunc.param_types, exportVar);
+      functions[newFunc->canon_name].push_back(newFunc);
+      UpdateFunctionExports(newFunc->canon_name, newFunc->param_types, exportVar);
   }
 }
 

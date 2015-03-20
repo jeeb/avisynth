@@ -62,22 +62,22 @@ public:
 
   typedef AVSValue (__cdecl *apply_func_t)(AVSValue args, void* user_data, IScriptEnvironment* env);
 
-  apply_func_t apply;
+  const apply_func_t apply;
   char* name;
   char* canon_name;
   char* param_types;
   void* user_data;
 
-  AVSFunction();
-  ~AVSFunction();
   AVSFunction(void*);
   AVSFunction(const char* _name, const char* _plugin_basename, const char* _param_types, apply_func_t _apply);
   AVSFunction(const char* _name, const char* _plugin_basename, const char* _param_types, apply_func_t _apply, void *_user_data);
+  ~AVSFunction();
 
-  AVSFunction(const AVSFunction &obj);
-  AVSFunction & operator=(const AVSFunction &rhs);
-  AVSFunction(AVSFunction &&other);
-  AVSFunction & operator=(AVSFunction &&other);
+  AVSFunction() = delete;
+  AVSFunction(const AVSFunction&) = delete;
+  AVSFunction& operator=(const AVSFunction&) = delete;
+  AVSFunction(AVSFunction&&) = delete;
+  AVSFunction& operator=(AVSFunction&&) = delete;
 
   bool empty() const;
   bool IsScriptFunction() const;
