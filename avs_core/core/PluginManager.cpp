@@ -172,8 +172,24 @@ AVSFunction::AVSFunction(const char* _name, const char* _plugin_basename, const 
 {}
 
 AVSFunction::AVSFunction(const char* _name, const char* _plugin_basename, const char* _param_types, apply_func_t _apply, void *_user_data) :
-    apply(_apply), name(_name), canon_name(NULL), param_types(_param_types), user_data(_user_data)
+    apply(_apply), name(NULL), canon_name(NULL), param_types(NULL), user_data(_user_data)
 {
+    if ( NULL != _name )
+    {
+        size_t len = strlen(_name);
+        name = new char[len+1];
+        memcpy(name, _name, len);
+        name[len] = 0;
+    }
+
+    if ( NULL != _param_types )
+    {
+        size_t len = strlen(_param_types);
+        param_types = new char[len+1];
+        memcpy(param_types, _param_types, len);
+        param_types[len] = 0;
+    }
+
     if ( (NULL != _name) && (NULL != _plugin_basename) )
     {
         std::string cn(_plugin_basename);
@@ -187,11 +203,29 @@ AVSFunction::AVSFunction(const char* _name, const char* _plugin_basename, const 
 AVSFunction::~AVSFunction()
 {
     delete [] canon_name;
+    delete [] name;
+    delete [] param_types;
 }
 
 AVSFunction::AVSFunction(const AVSFunction &obj) :
-    apply(obj.apply), name(obj.name), canon_name(NULL), param_types(obj.param_types), user_data(obj.user_data)
+    apply(obj.apply), name(NULL), canon_name(NULL), param_types(NULL), user_data(obj.user_data)
 {
+    if ( NULL != obj.name )
+    {
+        size_t len = strlen(obj.name);
+        name = new char[len+1];
+        memcpy(name, obj.name, len);
+        name[len] = 0;
+    }
+
+    if ( NULL != obj.param_types )
+    {
+        size_t len = strlen(obj.param_types);
+        param_types = new char[len+1];
+        memcpy(param_types, obj.param_types, len);
+        param_types[len] = 0;
+    }
+
     if (NULL != obj.canon_name)
     {
         size_t len = strlen(obj.canon_name);
@@ -208,12 +242,32 @@ AVSFunction & AVSFunction::operator=(const AVSFunction &rhs)
 
     delete[] canon_name;
     canon_name = NULL;
+    delete[] name;
+    name = NULL;
+    delete[] param_types;
+    param_types = NULL;
 
     apply = rhs.apply;
-    name = rhs.name;
+    name = NULL;
     canon_name = NULL;
-    param_types = rhs.param_types;
+    param_types = NULL;
     user_data = rhs.user_data;
+
+    if ( NULL != rhs.name )
+    {
+        size_t len = strlen(rhs.name);
+        name = new char[len+1];
+        memcpy(name, rhs.name, len);
+        name[len] = 0;
+    }
+
+    if ( NULL != rhs.param_types )
+    {
+        size_t len = strlen(rhs.param_types);
+        param_types = new char[len+1];
+        memcpy(param_types, rhs.param_types, len);
+        param_types[len] = 0;
+    }
 
     if (NULL != rhs.canon_name)
     {
@@ -227,7 +281,7 @@ AVSFunction & AVSFunction::operator=(const AVSFunction &rhs)
 }
 
 AVSFunction::AVSFunction(AVSFunction &&obj) :
-    canon_name(NULL)
+    name(NULL), canon_name(NULL), param_types(NULL)
 {
     *this = std::move(obj);
 }
@@ -238,6 +292,8 @@ AVSFunction & AVSFunction::operator=(AVSFunction &&rhs)
         return *this;
 
     delete[] canon_name;
+    delete[] name;
+    delete[] param_types;
 
     apply = rhs.apply;
     name = rhs.name;

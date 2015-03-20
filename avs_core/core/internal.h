@@ -63,9 +63,9 @@ public:
   typedef AVSValue (__cdecl *apply_func_t)(AVSValue args, void* user_data, IScriptEnvironment* env);
 
   apply_func_t apply;
-  const char* name;
+  char* name;
   char* canon_name;
-  const char* param_types;
+  char* param_types;
   void* user_data;
 
   AVSFunction();
