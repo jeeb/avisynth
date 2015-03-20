@@ -345,43 +345,43 @@ PVideoFrame __stdcall ShowFiveVersions::GetFrame(int n, IScriptEnvironment* env)
   for (int c=0; c<5; ++c) 
   {
     PVideoFrame src = child[c]->GetFrame(n, env);
-	if (vi.IsPlanar()) {
-	  const BYTE* srcpY = src->GetReadPtr(PLANAR_Y);
-	  const BYTE* srcpU = src->GetReadPtr(PLANAR_U);
-	  const BYTE* srcpV = src->GetReadPtr(PLANAR_V);
-	  const int src_pitchY  = src->GetPitch(PLANAR_Y);
-	  const int src_pitchUV = src->GetPitch(PLANAR_U);
-	  const int src_row_sizeY  = src->GetRowSize(PLANAR_Y);
-	  const int src_row_sizeUV = src->GetRowSize(PLANAR_U);
+    if (vi.IsPlanar()) {
+      const BYTE* srcpY = src->GetReadPtr(PLANAR_Y);
+      const BYTE* srcpU = src->GetReadPtr(PLANAR_U);
+      const BYTE* srcpV = src->GetReadPtr(PLANAR_V);
+      const int src_pitchY  = src->GetPitch(PLANAR_Y);
+      const int src_pitchUV = src->GetPitch(PLANAR_U);
+      const int src_row_sizeY  = src->GetRowSize(PLANAR_Y);
+      const int src_row_sizeUV = src->GetRowSize(PLANAR_U);
 
-	  // staggered arrangement
-	  BYTE* dstp2  = dstp  + (c>>1) * src_row_sizeY;
-	  BYTE* dstp2U = dstpU + (c>>1) * src_row_sizeUV;
-	  BYTE* dstp2V = dstpV + (c>>1) * src_row_sizeUV;
-	  if (c&1) {
-		dstp2  += (height   * dst_pitch)   + src_row_sizeY /2;
-		dstp2U += (heightUV * dst_pitchUV) + src_row_sizeUV/2;
-		dstp2V += (heightUV * dst_pitchUV) + src_row_sizeUV/2;
-	  }
+      // staggered arrangement
+      BYTE* dstp2  = dstp  + (c>>1) * src_row_sizeY;
+      BYTE* dstp2U = dstpU + (c>>1) * src_row_sizeUV;
+      BYTE* dstp2V = dstpV + (c>>1) * src_row_sizeUV;
+      if (c&1) {
+        dstp2  += (height   * dst_pitch)   + src_row_sizeY /2;
+        dstp2U += (heightUV * dst_pitchUV) + src_row_sizeUV/2;
+        dstp2V += (heightUV * dst_pitchUV) + src_row_sizeUV/2;
+      }
 
-	  env->BitBlt(dstp2,  dst_pitch,   srcpY, src_pitchY,  src_row_sizeY,  height);
-	  env->BitBlt(dstp2U, dst_pitchUV, srcpU, src_pitchUV, src_row_sizeUV, heightUV);
-	  env->BitBlt(dstp2V, dst_pitchUV, srcpV, src_pitchUV, src_row_sizeUV, heightUV);
-	}
-	else {
-	  const BYTE* srcp = src->GetReadPtr();
-	  const int src_pitch = src->GetPitch();
-	  const int src_row_size = src->GetRowSize();
+      env->BitBlt(dstp2,  dst_pitch,   srcpY, src_pitchY,  src_row_sizeY,  height);
+      env->BitBlt(dstp2U, dst_pitchUV, srcpU, src_pitchUV, src_row_sizeUV, heightUV);
+      env->BitBlt(dstp2V, dst_pitchUV, srcpV, src_pitchUV, src_row_sizeUV, heightUV);
+    }
+    else {
+      const BYTE* srcp = src->GetReadPtr();
+      const int src_pitch = src->GetPitch();
+      const int src_row_size = src->GetRowSize();
 
-	  // staggered arrangement
-	  BYTE* dstp2 = dstp + (c>>1) * src_row_size;
-	  if ((c&1)^vi.IsRGB())
-		dstp2 += (height * dst_pitch);
-	  if (c&1)
-		dstp2 += vi.BytesFromPixels(vi.width/6);
+      // staggered arrangement
+      BYTE* dstp2 = dstp + (c>>1) * src_row_size;
+      if ((c&1)^vi.IsRGB())
+        dstp2 += (height * dst_pitch);
+      if (c&1)
+        dstp2 += vi.BytesFromPixels(vi.width/6);
 
     env->BitBlt(dstp2, dst_pitch, srcp, src_pitch, src_row_size, height);
-	}
+    }
   }
 
   return dst;
@@ -446,8 +446,8 @@ Animate::Animate( PClip context, int _first, int _last, const char* _name, const
   if (context)
     num_args++;
 
-  args_before = std::make_unique<AVSValue[]>(num_args*3);
-  args_after = args_before.get() + num_args;
+  args_before = std::vector<AVSValue>(num_args*3);
+  args_after = args_before.data() + num_args;
   args_now = args_after + num_args;
 
   if (context) {
@@ -466,7 +466,7 @@ Animate::Animate( PClip context, int _first, int _last, const char* _name, const
 
   memset(cache_stage, -1, sizeof(cache_stage));
 
-  cache[0] = env->Invoke(name, AVSValue(args_before.get(), num_args)).AsClip();
+  cache[0] = env->Invoke(name, AVSValue(args_before.data(), num_args)).AsClip();
   cache_stage[0] = 0;
   VideoInfo vi1 = cache[0]->GetVideoInfo();
 
@@ -558,11 +558,11 @@ void __stdcall Animate::GetAudio(void* buf, __int64 start, __int64 count, IScrip
 
       // The bit before
       if (start_switch > start) {
-	const __int64 pre_count = start_switch - start;
+    const __int64 pre_count = start_switch - start;
         args_after[0].AsClip()->GetAudio(buf, start, pre_count, env);  // UnFiltered
-	start += pre_count;
-	count -= pre_count;
-	buf = (void*)( (BYTE*)buf + vi1.BytesFromAudioSamples(pre_count) );
+    start += pre_count;
+    count -= pre_count;
+    buf = (void*)( (BYTE*)buf + vi1.BytesFromAudioSamples(pre_count) );
       }
 
       // The bit in the middle

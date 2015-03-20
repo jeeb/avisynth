@@ -37,7 +37,6 @@
 
 #include <avisynth.h>
 #include <vector>
-#include <memory>
 
 /********************************************************************
 ********************************************************************/
@@ -147,7 +146,7 @@ class Animate : public IClip
   PClip cache[cache_size];
   int cache_stage[cache_size];
   const int first, last;
-  std::unique_ptr<AVSValue[]> args_before;
+  std::vector<AVSValue> args_before;
   AVSValue *args_after, *args_now;
   int num_args;
   const char* name;
