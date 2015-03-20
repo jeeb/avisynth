@@ -3,12 +3,14 @@
 
 #include "internal.h"
 #include <vector>
+#include <memory>
 
 namespace std
 {
   class mutex;
 }
 
+class FilterConstructor;
 class MTGuard : public IClip
 {
 private:
@@ -19,15 +21,13 @@ private:
   size_t nThreads;
   VideoInfo vi;
 
-  const AVSFunction* FilterFunction;
-  std::vector<AVSValue> FilterArgsArrStore;
-  std::vector<AVSValue> FilterArgs;
+  std::unique_ptr<const FilterConstructor> FilterCtor;
   const MtMode MTMode;
 
 
 public:
   ~MTGuard();
-  MTGuard(PClip firstChild, MtMode mtmode, const AVSFunction* func, std::vector<AVSValue>* args2, std::vector<AVSValue>* args3, IScriptEnvironment2* env);
+  MTGuard(PClip firstChild, MtMode mtmode, std::unique_ptr<const FilterConstructor> &&funcCtor, IScriptEnvironment2* env);
   void EnableMT(size_t nThreads);
 
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
@@ -37,7 +37,7 @@ public:
   int __stdcall SetCacheHints(int cachehints,int frame_range);
 
   static bool __stdcall IsMTGuard(const PClip& p);
-  static AVSValue Create(const AVSFunction* func, std::vector<AVSValue>* args2, std::vector<AVSValue>* args3, IScriptEnvironment2* env);
+  static AVSValue Create(std::unique_ptr<const FilterConstructor> funcCtor, IScriptEnvironment2* env);
 };
 
 

@@ -41,6 +41,7 @@
 #include <avs/cpuid.h>
 #include <unordered_set>
 #include "bitblt.h"
+#include "FilterConstructor.h"
 #include "PluginManager.h"
 #include "MappedList.h"
 #include <vector>
@@ -1841,18 +1842,19 @@ success:;
     }
   }
  
-  // ... and we're finally ready to make the call
+  // Trim array size to the actual number of arguments
   args3.resize(args3_count);
   std::vector<AVSValue>(args3).swap(args3);
 
-  if (f->IsScriptFunction())
+  // ... and we're finally ready to make the call
+  std::unique_ptr<const FilterConstructor> funcCtor = std::make_unique<const FilterConstructor>(this, f, &args2, &args3);
+  if (funcCtor->IsScriptFunction())
   {
-    AVSValue funcArgs(args3.data(), args3.size());
-    *result = f->apply(funcArgs, f->user_data, this);
+    *result = funcCtor->InstantiateFilter();
   }
   else
   {
-    *result = Cache::Create(MTGuard::Create(f, &args2, &args3, this), NULL, this);
+    *result = Cache::Create(MTGuard::Create(std::move(funcCtor), this), NULL, this);
     // args2 and args3 are not valid after this point anymore
   }
   

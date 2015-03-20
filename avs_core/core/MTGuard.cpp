@@ -35,6 +35,7 @@
 #include "MTGuard.h"
 #include "cache.h"
 #include "internal.h"
+#include "FilterConstructor.h"
 #include <cassert>
 #include <mutex>
 
@@ -42,13 +43,11 @@
 #include <mmintrin.h>
 #endif
 
-MTGuard::MTGuard(PClip firstChild, MtMode mtmode, const AVSFunction* func, std::vector<AVSValue>* args2, std::vector<AVSValue>* args3, IScriptEnvironment2* env) :
+MTGuard::MTGuard(PClip firstChild, MtMode mtmode, std::unique_ptr<const FilterConstructor> &&funcCtor, IScriptEnvironment2* env) :
   FilterMutex(NULL),
   MTMode(mtmode),
   nThreads(1),
-  FilterFunction(func),
-  FilterArgsArrStore(std::move(*args2)),
-  FilterArgs(std::move(*args3)),
+  FilterCtor(std::move(funcCtor)),
   Env(env)
 {
   assert( ((int)mtmode > (int)MT_INVALID) && ((int)mtmode < (int)MT_MODE_COUNT) );
@@ -83,10 +82,9 @@ void MTGuard::EnableMT(size_t nThreads)
     case MT_MULTI_INSTANCE:
       {
         ChildFilters.reserve(nThreads);
-        AVSValue args(FilterArgs.data(), FilterArgs.size());
         while (ChildFilters.size() < nThreads)
         {
-          ChildFilters.emplace_back(FilterFunction->apply(args, FilterFunction->user_data, Env).AsClip());
+          ChildFilters.emplace_back(FilterCtor->InstantiateFilter().AsClip());
         }
         break;
       }
@@ -105,8 +103,7 @@ void MTGuard::EnableMT(size_t nThreads)
 
   // We don't need the stored parameters any more,
   // free their memory.
-  std::vector<AVSValue>().swap(FilterArgs);
-  std::vector<AVSValue>().swap(FilterArgsArrStore);
+  FilterCtor.reset();
 }
 
 PVideoFrame __stdcall MTGuard::GetFrame(int n, IScriptEnvironment* env)
@@ -215,17 +212,16 @@ bool __stdcall MTGuard::IsMTGuard(const PClip& p)
   return ((p->GetVersion() >= 5) && (p->SetCacheHints(CACHE_IS_MTGUARD_REQ, 0) == CACHE_IS_MTGUARD_ANS));
 }
 
-AVSValue MTGuard::Create(const AVSFunction* func, std::vector<AVSValue>* args2, std::vector<AVSValue>* args3, IScriptEnvironment2* env)
+AVSValue MTGuard::Create(std::unique_ptr<const FilterConstructor> funcCtor, IScriptEnvironment2* env)
 {
-  AVSValue avsargs(args3->data(), (int)args3->size());
-  AVSValue func_result = func->apply(avsargs, func->user_data, env);
+  AVSValue func_result = funcCtor->InstantiateFilter();
 
   if (func_result.IsClip() && !Cache::IsCache(func_result.AsClip()) && !MTGuard::IsMTGuard(func_result.AsClip()))
   {
     PClip filter_instance = func_result.AsClip();
 
     bool mode_forced;
-    MtMode mode = env->GetFilterMTMode(func, &mode_forced);
+    MtMode mode = env->GetFilterMTMode(funcCtor->GetAvsFunction(), &mode_forced);
     /*if ( !mode_forced
       && (filter_instance->GetVersion() >= 5)
       && (filter_instance->SetCacheHints(CACHE_GET_MTMODE, 0) != 0) )
@@ -242,7 +238,7 @@ AVSValue MTGuard::Create(const AVSFunction* func, std::vector<AVSValue>* args2, 
     case MT_MULTI_INSTANCE: // Fall-through intentional
     case MT_SERIALIZED:
       {
-        return new MTGuard(filter_instance, mode, func, args2, args3, env);
+        return new MTGuard(filter_instance, mode, std::move(funcCtor), env);
         // args2 and args3 are not valid after this point anymore
       }
     default:
@@ -250,7 +246,7 @@ AVSValue MTGuard::Create(const AVSFunction* func, std::vector<AVSValue>* args2, 
       // return garbage for SetCacheHints(). This default label should also catch those.
       assert(0);
       // TODO: Log warning about probably broken plugin
-      return new MTGuard(filter_instance, MT_SERIALIZED, func, args2, args3, env);
+      return new MTGuard(filter_instance, MT_SERIALIZED, std::move(funcCtor), env);
     }
   }
   else
