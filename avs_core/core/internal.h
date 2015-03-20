@@ -54,7 +54,6 @@ enum MANAGE_CACHE_KEYS
 };
 
 #include <avisynth.h>
-#include <string>
 #include "parser/script.h" // TODO we only need ScriptFunction from here
 
 class AVSFunction {
@@ -64,42 +63,24 @@ public:
   typedef AVSValue (__cdecl *apply_func_t)(AVSValue args, void* user_data, IScriptEnvironment* env);
 
   apply_func_t apply;
-  std::string name;
-  std::string canon_name;   // TODO make this const char* too and remove <string> header
-  std::string param_types;
+  const char* name;
+  char* canon_name;
+  const char* param_types;
   void* user_data;
 
-  AVSFunction() : 
-      AVSFunction(std::string(), std::string(), std::string(), NULL, NULL)
-  {}
+  AVSFunction();
+  ~AVSFunction();
+  AVSFunction(void*);
+  AVSFunction(const char* _name, const char* _plugin_basename, const char* _param_types, apply_func_t _apply);
+  AVSFunction(const char* _name, const char* _plugin_basename, const char* _param_types, apply_func_t _apply, void *_user_data);
 
-  AVSFunction(void*) : 
-      AVSFunction(std::string(), std::string(), std::string(), NULL, NULL)
-  {}
+  AVSFunction(const AVSFunction &obj);
+  AVSFunction & operator=(const AVSFunction &rhs);
+  AVSFunction(AVSFunction &&other);
+  AVSFunction & operator=(AVSFunction &&other);
 
-  AVSFunction(const std::string& _name, const std::string& _plugin_basename, const std::string& _param_types, apply_func_t _apply) :
-      AVSFunction(_name, _plugin_basename, _param_types, _apply, NULL)
-  {}
-
-  AVSFunction(const std::string& _name, const std::string& _plugin_basename, const std::string& _param_types, apply_func_t _apply, void *_user_data) :
-      apply(_apply), name(_name), canon_name(), param_types(_param_types), user_data(_user_data)
-  {
-      if (!_name.empty() && !_plugin_basename.empty())
-      {
-        canon_name = _plugin_basename;
-        canon_name.append("_").append(_name);
-      }
-  }
-
-  bool empty() const
-  {
-      return name.empty();
-  }
-
-  bool IsScriptFunction() const
-  {
-    return apply == &(ScriptFunction::Execute);
-  }
+  bool empty() const;
+  bool IsScriptFunction() const;
 
   static bool ArgNameMatch(const char* param_types, size_t args_names_count, const char* const* arg_names);
   static bool TypeMatch(const char* param_types, const AVSValue* args, size_t num_args, bool strict, IScriptEnvironment* env);

@@ -955,8 +955,8 @@ void __stdcall ScriptEnvironment::SetFilterMTMode(const char* filter, MtMode mod
 MtMode __stdcall ScriptEnvironment::GetFilterMTMode(const AVSFunction* filter, bool* is_forced) const
 {
   assert(NULL != filter);
-  assert(!filter->name.empty());
-  assert(!filter->canon_name.empty());
+  assert(NULL != filter->name);
+  assert(NULL != filter->canon_name);
 
   bool found;
   MtMode ret;
@@ -1006,12 +1006,12 @@ void ScriptEnvironment::ExportBuiltinFilters()
         param_var_name.append("$Plugin!");
         param_var_name.append(f->name);
         param_var_name.append("!Param$");
-        SetGlobalVar( SaveString(param_var_name.c_str(), param_var_name.length() + 1), AVSValue(SaveString(f->param_types.c_str(), f->param_types.length() + 1) ));
+        SetGlobalVar( SaveString(param_var_name.c_str(), param_var_name.size()), AVSValue(f->param_types));
       }
     }
 
     // Save $InternalFunctions$
-    SetGlobalVar("$InternalFunctions$", AVSValue( SaveString(FunctionList.c_str(), FunctionList.length() + 1) ));
+    SetGlobalVar("$InternalFunctions$", AVSValue( SaveString(FunctionList.c_str(), FunctionList.size()) ));
 }
 
 size_t  __stdcall ScriptEnvironment::GetProperty(AvsEnvProperty prop)
@@ -1708,9 +1708,9 @@ const AVSFunction* ScriptEnvironment::Lookup(const char* search_name, const AVSV
       // then, look for a built-in function
       for (int i = 0; i < sizeof(builtin_functions)/sizeof(builtin_functions[0]); ++i)
         for (const AVSFunction* j = builtin_functions[i]; !j->empty(); ++j)
-          if (streqi(j->name.c_str(), search_name) &&
-              AVSFunction::TypeMatch(j->param_types.c_str(), args, num_args, pstrict, this) &&
-              AVSFunction::ArgNameMatch(j->param_types.c_str(), args_names_count, arg_names))
+          if (streqi(j->name, search_name) &&
+              AVSFunction::TypeMatch(j->param_types, args, num_args, pstrict, this) &&
+              AVSFunction::ArgNameMatch(j->param_types, args_names_count, arg_names))
             return j;
     }
     // Try again without arg name matching
@@ -1764,7 +1764,7 @@ bool __stdcall ScriptEnvironment::Invoke(AVSValue *result, const char* name, con
 
   // combine unnamed args into arrays
   size_t src_index=0, dst_index=0;
-  const char* p = f->param_types.c_str();
+  const char* p = f->param_types;
   const size_t maxarg3 = max(args2_count, strlen(p)); // well it can't be any longer than this.
 
   std::vector<AVSValue> args3(maxarg3, AVSValue());
@@ -1803,7 +1803,7 @@ bool __stdcall ScriptEnvironment::Invoke(AVSValue *result, const char* name, con
   for (int i=0; i<args_names_count; ++i) {
     if (arg_names[i]) {
       size_t named_arg_index = 0;
-      for (const char* p = f->param_types.c_str(); *p; ++p) {
+      for (const char* p = f->param_types; *p; ++p) {
         if (*p == '*' || *p == '+') {
           continue;   // without incrementing named_arg_index
         } else if (*p == '[') {
@@ -1877,7 +1877,7 @@ bool __stdcall ScriptEnvironment::InternalFunctionExists(const char* name)
 {
   for (int i = 0; i < sizeof(builtin_functions)/sizeof(builtin_functions[0]); ++i)
     for (const AVSFunction* j = builtin_functions[i]; !j->empty(); ++j)
-      if (streqi(j->name.c_str(), name))
+      if (streqi(j->name, name))
         return true;
 
   return false;

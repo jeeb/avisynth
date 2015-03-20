@@ -159,6 +159,108 @@ static bool IsValidParameterString(const char* p) {
 ---------------------------------------------------------------------------------
 */
 
+AVSFunction::AVSFunction() : 
+    AVSFunction(NULL, NULL, NULL, NULL, NULL)
+{}
+
+AVSFunction::AVSFunction(void*) : 
+    AVSFunction(NULL, NULL, NULL, NULL, NULL)
+{}
+
+AVSFunction::AVSFunction(const char* _name, const char* _plugin_basename, const char* _param_types, apply_func_t _apply) :
+    AVSFunction(_name, _plugin_basename, _param_types, _apply, NULL)
+{}
+
+AVSFunction::AVSFunction(const char* _name, const char* _plugin_basename, const char* _param_types, apply_func_t _apply, void *_user_data) :
+    apply(_apply), name(_name), canon_name(NULL), param_types(_param_types), user_data(_user_data)
+{
+    if ( (NULL != _name) && (NULL != _plugin_basename) )
+    {
+        std::string cn(_plugin_basename);
+        cn.append("_").append(_name);
+        canon_name = new char[cn.size()+1];
+        memcpy(canon_name, cn.c_str(), cn.size());
+        canon_name[cn.size()] = 0;
+    }
+}
+
+AVSFunction::~AVSFunction()
+{
+    delete [] canon_name;
+}
+
+AVSFunction::AVSFunction(const AVSFunction &obj) :
+    apply(obj.apply), name(obj.name), canon_name(NULL), param_types(obj.param_types), user_data(obj.user_data)
+{
+    if (NULL != obj.canon_name)
+    {
+        size_t len = strlen(obj.canon_name);
+        canon_name = new char[len+1];
+        memcpy(canon_name, obj.canon_name, len);
+        canon_name[len] = 0;
+    }
+}
+
+AVSFunction & AVSFunction::operator=(const AVSFunction &rhs)
+{
+    if(this == &rhs)
+       return *this;
+
+	delete[] canon_name;
+	canon_name = NULL;
+
+    apply = rhs.apply;
+    name = rhs.name;
+    canon_name = NULL;
+    param_types = rhs.param_types;
+    user_data = rhs.user_data;
+
+    if (NULL != rhs.canon_name)
+    {
+        size_t len = strlen(rhs.canon_name);
+        canon_name = new char[len+1];
+        memcpy(canon_name, rhs.canon_name, len);
+        canon_name[len] = 0;
+    }
+
+    return *this;
+}
+
+AVSFunction::AVSFunction(AVSFunction &&obj)
+{
+	*this = std::move(obj);
+}
+
+AVSFunction & AVSFunction::operator=(AVSFunction &&rhs)
+{
+	if (this == &rhs)
+		return *this;
+
+	delete[] canon_name;
+
+	apply = rhs.apply;
+	name = rhs.name;
+	canon_name = rhs.canon_name;
+	param_types = rhs.param_types;
+	user_data = rhs.user_data;
+
+	rhs.apply = NULL;
+	rhs.name = NULL;
+	rhs.canon_name = NULL;
+	rhs.param_types = NULL;
+	rhs.user_data = NULL;
+}
+
+bool AVSFunction::empty() const
+{
+    return NULL == name;
+}
+
+bool AVSFunction::IsScriptFunction() const
+{
+    return apply == &(ScriptFunction::Execute);
+}
+
 bool AVSFunction::SingleTypeMatch(char type, const AVSValue& arg, bool strict) {
   switch (type) {
     case '.': return true;
@@ -499,7 +601,7 @@ PluginManager::~PluginManager()
   PluginInLoad = NULL;
 }
 
-void PluginManager::UpdateFunctionExports(const std::string &funcName, const std::string &funcParams, const char *exportVar)
+void PluginManager::UpdateFunctionExports(const char* funcName, const char* funcParams, const char *exportVar)
 {
   if (exportVar == NULL)
     exportVar = "$PluginFunctions$";
@@ -510,7 +612,7 @@ void PluginManager::UpdateFunctionExports(const std::string &funcName, const std
   if (FnList.size() > 0)    // if the list is not empty...
     FnList.push_back(' ');  // ...add a delimiting whitespace 
   FnList.append(funcName);
-  Env->SetGlobalVar(exportVar, AVSValue( Env->SaveString(FnList.c_str(), FnList.length() + 1) ));
+  Env->SetGlobalVar(exportVar, AVSValue( Env->SaveString(FnList.c_str(), FnList.size()) ));
 
   // Update $Plugin!...!Param$
   std::string param_id;
@@ -518,7 +620,7 @@ void PluginManager::UpdateFunctionExports(const std::string &funcName, const std
   param_id.append("$Plugin!");
   param_id.append(funcName);
   param_id.append("!Param$");
-  Env->SetGlobalVar( Env->SaveString(param_id.c_str(), param_id.length() + 1), AVSValue(Env->SaveString(funcParams.c_str(), funcParams.length() + 1)) );
+  Env->SetGlobalVar(Env->SaveString(param_id.c_str(), param_id.size()), AVSValue(Env->SaveString(funcParams)));
 }
 
 bool PluginManager::LoadPlugin(const char* path, bool throwOnError, AVSValue *result)
@@ -592,8 +694,8 @@ const AVSFunction* PluginManager::Lookup(const FunctionMap& map, const char* sea
           ++func_it)
     {
       const AVSFunction *func = &(*func_it);
-      if (AVSFunction::TypeMatch(func->param_types.c_str(), args, num_args, strict, Env) &&
-          AVSFunction::ArgNameMatch(func->param_types.c_str(), args_names_count, arg_names)
+      if (AVSFunction::TypeMatch(func->param_types, args, num_args, strict, Env) &&
+          AVSFunction::ArgNameMatch(func->param_types, args_names_count, arg_names)
          )
       {
         return func;
@@ -631,20 +733,23 @@ void PluginManager::AddFunction(const char* name, const char* params, IScriptEnv
   AVSFunction newFunc;
   if (PluginInLoad != NULL)
   {
-      newFunc = AVSFunction(name, PluginInLoad->BaseName, params, apply, user_data);
-      FunctionList& baseList = functions[newFunc.canon_name];
-      baseList.push_back(newFunc);
+      newFunc = AVSFunction(name, PluginInLoad->BaseName.c_str(), params, apply, user_data);
   }
   else
   {
-      newFunc = AVSFunction(name, std::string(), params, apply, user_data);
+      newFunc = AVSFunction(name, NULL, params, apply, user_data);
       assert(newFunc.IsScriptFunction());
   }
   FunctionList& list = functions[newFunc.name];
   list.push_back(newFunc);
-
   UpdateFunctionExports(newFunc.name, newFunc.param_types, exportVar);
-  UpdateFunctionExports(newFunc.canon_name, newFunc.param_types, exportVar);
+
+  if (NULL != newFunc.canon_name)
+  {
+	  FunctionList& baseList = functions[newFunc.canon_name];
+	  baseList.push_back(newFunc);
+	  UpdateFunctionExports(newFunc.canon_name, newFunc.param_types, exportVar);
+  }
 }
 
 bool PluginManager::TryAsAvs26(PluginFile &plugin, AVSValue *result)

@@ -36,7 +36,7 @@ private:
   bool TryAsAvs26(PluginFile &plugin, AVSValue *result);
   bool TryAsAvs25(PluginFile &plugin, AVSValue *result);
   bool TryAsAvsC(PluginFile &plugin, AVSValue *result);
-  void UpdateFunctionExports(const std::string &funcName, const std::string &funcParams, const char *exportVar);
+  void UpdateFunctionExports(const char* funcName, const char* funcParams, const char *exportVar);
   
   const AVSFunction* Lookup(const FunctionMap& map,
     const char* search_name,
