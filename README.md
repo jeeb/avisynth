@@ -26,4 +26,4 @@ provided specifically for this purpose.
 
 #### To uninstall:
 
->make uninstall
+>make uninstall PREFIX=/path/to/location
