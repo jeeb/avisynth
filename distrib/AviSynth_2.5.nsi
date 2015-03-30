@@ -211,7 +211,7 @@ CRCCheck ON
 
 ComponentText $(COMPONENT_TEXT)
 
-InstallDir "$PROGRAMFILES\AviSynth 2.5"
+InstallDir "$PROGRAMFILES\AviSynth"
 InstallDirRegKey HKLM SOFTWARE\AviSynth ""
 
 InstType $(AVS_Standard)
@@ -328,15 +328,17 @@ IfErrors 0 creg_ok
 creg_ok:
 ; These bits are for everybody
   SetShellVarContext All
-  CreateDirectory  "$SMPROGRAMS\AviSynth 2.5"
+  IfFileExists "$SMPROGRAMS\AviSynth 2.5" 0 +2
+  Rename "$SMPROGRAMS\AviSynth 2.5" "$SMPROGRAMS\AviSynth"
+  CreateDirectory  "$SMPROGRAMS\AviSynth"
 
-  CreateShortCut "$SMPROGRAMS\AviSynth 2.5\$(Start_License).lnk" "$INSTDIR\${AVS_DefaultLicenceFile}"
+  CreateShortCut "$SMPROGRAMS\AviSynth\$(Start_License).lnk" "$INSTDIR\${AVS_DefaultLicenceFile}"
   StrCmp $(AVS_GPL_Lang_File) ${AVS_DefaultLicenceFile} +2
-    CreateShortCut "$SMPROGRAMS\AviSynth 2.5\$(Start_License_Lang).lnk" "$INSTDIR\License Translations\$(AVS_GPL_Lang_File)"
+    CreateShortCut "$SMPROGRAMS\AviSynth\$(Start_License_Lang).lnk" "$INSTDIR\License Translations\$(AVS_GPL_Lang_File)"
 
-  CreateShortCut "$SMPROGRAMS\AviSynth 2.5\$(Start_Plugin).lnk" "$INSTDIR\Plugins"
-  WriteINIStr    "$SMPROGRAMS\AviSynth 2.5\$(Start_Online).url" "InternetShortcut" "URL" "http://www.avisynth.org"
-  WriteINIStr    "$SMPROGRAMS\AviSynth 2.5\$(Start_Download).url" "InternetShortcut" "URL" "http://www.avisynth.org/warpenterprises/"
+  CreateShortCut "$SMPROGRAMS\AviSynth\$(Start_Plugin).lnk" "$INSTDIR\Plugins"
+  WriteINIStr    "$SMPROGRAMS\AviSynth\$(Start_Online).url" "InternetShortcut" "URL" "http://www.avisynth.org"
+  WriteINIStr    "$SMPROGRAMS\AviSynth\$(Start_Download).url" "InternetShortcut" "URL" "http://www.avisynth.org/warpenterprises/"
 
   SetOutPath $INSTDIR\Examples
 !echo " -- Supressed"
@@ -344,15 +346,15 @@ creg_ok:
 !verbose 2
   ${File} "Examples\*.*"
 !verbose pop
-  CreateShortCut "$SMPROGRAMS\AviSynth 2.5\$(Start_Example).lnk" "$INSTDIR\Examples"
+  CreateShortCut "$SMPROGRAMS\AviSynth\$(Start_Example).lnk" "$INSTDIR\Examples"
 
   Delete $INSTDIR\Uninstall.exe
   WriteUninstaller $INSTDIR\Uninstall.exe
 
 ; These bits are for the administrator only
   SetShellVarContext Current
-  CreateDirectory  "$SMPROGRAMS\AviSynth 2.5"
-  CreateShortCut "$SMPROGRAMS\AviSynth 2.5\$(Start_Uninstall).lnk" "$INSTDIR\Uninstall.exe"
+  CreateDirectory  "$SMPROGRAMS\AviSynth"
+  CreateShortCut "$SMPROGRAMS\AviSynth\$(Start_Uninstall).lnk" "$INSTDIR\Uninstall.exe"
 
 SectionEnd
 
@@ -416,7 +418,7 @@ Section /o  $(English_Text) English
 
   SetShellVarContext All
   StrCmp $AdminInstall "No" +2
-  CreateShortCut "$SMPROGRAMS\AviSynth 2.5\$(Start_Doc_English).lnk" "$INSTDIR\Docs\English\index.htm"
+  CreateShortCut "$SMPROGRAMS\AviSynth\$(Start_Doc_English).lnk" "$INSTDIR\Docs\English\index.htm"
 
 SectionEnd
 
@@ -444,7 +446,7 @@ Section /o  $(Czech_Text) Czech
 
   SetShellVarContext All
   StrCmp $AdminInstall "No" +2
-  CreateShortCut "$SMPROGRAMS\AviSynth 2.5\$(Start_Doc_Czech).lnk" "$INSTDIR\Docs\Czech\index.htm"
+  CreateShortCut "$SMPROGRAMS\AviSynth\$(Start_Doc_Czech).lnk" "$INSTDIR\Docs\Czech\index.htm"
 
 SectionEnd
 
@@ -465,7 +467,7 @@ Section /o  $(German_Text) German
 
   SetShellVarContext All
   StrCmp $AdminInstall "No" +2
-  CreateShortCut "$SMPROGRAMS\AviSynth 2.5\$(Start_Doc_German).lnk" "$INSTDIR\Docs\German\index.htm"
+  CreateShortCut "$SMPROGRAMS\AviSynth\$(Start_Doc_German).lnk" "$INSTDIR\Docs\German\index.htm"
 
 SectionEnd
 
@@ -484,7 +486,7 @@ Section /o  $(French_Text) French
 
   SetShellVarContext All
   StrCmp $AdminInstall "No" +2
-  CreateShortCut "$SMPROGRAMS\AviSynth 2.5\$(Start_Doc_French).lnk" "$INSTDIR\Docs\French\index.htm"
+  CreateShortCut "$SMPROGRAMS\AviSynth\$(Start_Doc_French).lnk" "$INSTDIR\Docs\French\index.htm"
 
 SectionEnd
 
@@ -507,7 +509,7 @@ Section /o  $(Italian_Text) Italian
 
   SetShellVarContext All
   StrCmp $AdminInstall "No" +2
-  CreateShortCut "$SMPROGRAMS\AviSynth 2.5\$(Start_Doc_Italian).lnk" "$INSTDIR\Docs\Italian\index.htm"
+  CreateShortCut "$SMPROGRAMS\AviSynth\$(Start_Doc_Italian).lnk" "$INSTDIR\Docs\Italian\index.htm"
 
 SectionEnd
 
@@ -551,7 +553,7 @@ Section /o  $(Japanese_Text) Japanese
 
   SetShellVarContext All
   StrCmp $AdminInstall "No" +2
-  CreateShortCut "$SMPROGRAMS\AviSynth 2.5\$(Start_Doc_Japanese).lnk" "$INSTDIR\Docs\Japanese\index.htm"
+  CreateShortCut "$SMPROGRAMS\AviSynth\$(Start_Doc_Japanese).lnk" "$INSTDIR\Docs\Japanese\index.htm"
 
 SectionEnd
 
@@ -570,7 +572,7 @@ Section /o  $(Polish_Text) Polish
 
   SetShellVarContext All
   StrCmp $AdminInstall "No" +2
-  CreateShortCut "$SMPROGRAMS\AviSynth 2.5\$(Start_Doc_Polish).lnk" "$INSTDIR\Docs\Polish\index.htm"
+  CreateShortCut "$SMPROGRAMS\AviSynth\$(Start_Doc_Polish).lnk" "$INSTDIR\Docs\Polish\index.htm"
 
 SectionEnd
 
@@ -599,7 +601,7 @@ Section /o  $(Portugese_Text) Portuguese
 
   SetShellVarContext All
   StrCmp $AdminInstall "No" +2
-  CreateShortCut "$SMPROGRAMS\AviSynth 2.5\$(Start_Doc_Portuguese).lnk" "$INSTDIR\Docs\Portuguese\index.htm"
+  CreateShortCut "$SMPROGRAMS\AviSynth\$(Start_Doc_Portuguese).lnk" "$INSTDIR\Docs\Portuguese\index.htm"
 
 SectionEnd
 
@@ -629,7 +631,7 @@ Section /o  $(Russian_Text) Russian
 
   SetShellVarContext All
   StrCmp $AdminInstall "No" +2
-  CreateShortCut "$SMPROGRAMS\AviSynth 2.5\$(Start_Doc_Russian).lnk" "$INSTDIR\Docs\Russian\index.htm"
+  CreateShortCut "$SMPROGRAMS\AviSynth\$(Start_Doc_Russian).lnk" "$INSTDIR\Docs\Russian\index.htm"
 
 SectionEnd
 
@@ -686,7 +688,7 @@ Section /o  $(ExtraFiles3_Text) ExtraFiles3
   ${File} "..\src\core\avisynth_c.h"
   SetShellVarContext All
   StrCmp $AdminInstall "No" +2
-  CreateShortCut "$SMPROGRAMS\AviSynth 2.5\$(Start_FilterSDK).lnk" "$INSTDIR\FilterSDK\FilterSDK.htm"
+  CreateShortCut "$SMPROGRAMS\AviSynth\$(Start_FilterSDK).lnk" "$INSTDIR\FilterSDK\FilterSDK.htm"
 
 SectionEnd
 
@@ -812,12 +814,12 @@ Ignore:
   DeleteRegKey HKCR "avifile\Extensions\AVS"
 
   SetShellVarContext All
-  Delete "$SMPROGRAMS\AviSynth 2.5\*.*"
-  RMDir  "$SMPROGRAMS\AviSynth 2.5"
+  Delete "$SMPROGRAMS\AviSynth\*.*"
+  RMDir  "$SMPROGRAMS\AviSynth"
 
   SetShellVarContext Current
-  Delete "$SMPROGRAMS\AviSynth 2.5\*.*"
-  RMDir  "$SMPROGRAMS\AviSynth 2.5"
+  Delete "$SMPROGRAMS\AviSynth\*.*"
+  RMDir  "$SMPROGRAMS\AviSynth"
 !echo " -- Supressed"
 !verbose push
 !verbose 2
