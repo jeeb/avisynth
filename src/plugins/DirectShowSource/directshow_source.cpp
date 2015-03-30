@@ -2585,8 +2585,8 @@ AVSValue __cdecl Create_DirectShowSource(AVSValue args, void*, IScriptEnvironmen
     else if (!lstrcmpi(pixel_type, "FULL"))  { _media = GetSample::mediaFULL; }
     else {
       env->ThrowError("DirectShowSource: pixel_type must be \"RGB24\", \"RGB32\", \"ARGB\", "
-                      "\"YUY2\", \"YV12\", \"YV16\", \"YV24\", \"AYUV\", \"Y41P\", \"Y411\", "
-                      "\"NV12\", \"RGB\", \"YUV\" , \"YUVex\", \"AUTO\"  or \"FULL\"");
+                      "\"YUY2\", \"YV12\", \"I420\", \"YV16\", \"YV24\", \"AYUV\", \"Y41P\", "
+                      "\"Y411\", \"NV12\", \"RGB\", \"YUV\" , \"YUVex\", \"AUTO\"  or \"FULL\"");
     }
     if (mediaPad) _media |= GetSample::mediaPAD;
   }
