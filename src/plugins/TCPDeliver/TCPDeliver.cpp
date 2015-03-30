@@ -37,9 +37,11 @@
 #include "TCPClient.h"
 #include "TCPServer.h"
 
+const AVS_Linkage *AVS_linkage = 0;
 
-extern "C" __declspec(dllexport) const char* __stdcall AvisynthPluginInit2(IScriptEnvironment* env)
+extern "C" __declspec(dllexport) const char* __stdcall AvisynthPluginInit3(IScriptEnvironment* env, const AVS_Linkage* const vectors)
 {
+	AVS_linkage = vectors;
     env->AddFunction("TCPServer", "c[port]i", Create_TCPServer, 0);
     env->AddFunction("TCPSource", "s[port]i[compression]s", Create_TCPClient, 0);
     return "TCPDeliver for AviSynth";

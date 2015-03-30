@@ -100,7 +100,7 @@ public:
   void __stdcall GetAudio(void* buf, __int64 start, __int64 count, IScriptEnvironment* env);
   const VideoInfo& __stdcall GetVideoInfo();
   bool __stdcall GetParity(int n);
-  void __stdcall SetCacheHints(int cachehints,int frame_range) { } ; 
+  int __stdcall SetCacheHints(int cachehints,int frame_range) { return 0; } ; 
 
   TCPClientThread* client;
 private:
