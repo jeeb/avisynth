@@ -112,7 +112,7 @@ Cache::Cache(PClip _child, IScriptEnvironment* env)
   env->ManageCache(MC_RegisterCache, this);
 
   // For 2.6 filters ask about desired parent cache parameters
-  if (child->GetVersion() < 5) {
+  if (child->GetVersion() <= 5) {
     childthreadmode = CACHE_THREAD_UNSAFE; // 2.5 Default
   }
   else {
@@ -1113,7 +1113,7 @@ AVSValue __cdecl Cache::Create_Cache(AVSValue args, void*, IScriptEnvironment* e
   if (p) {
     int q = 0;
 
-    if (p->GetVersion() >= 5) // AVISYNTH_INTERFACE_VERSION which supports this
+    if (p->GetVersion() > 5) // AVISYNTH_INTERFACE_VERSION which supports this
       q = p->SetCacheHints(GetMyThis, 0); // Check if "p" is a cache instance
 
     // Do not cache another cache!
