@@ -35,7 +35,6 @@
 // TCPDeliver (c) 2004 by Klaus Post
 
 #include "TCPClient.h"
-#include "alignplanar.h"
 
 /**************************  TCP Client *****************************
   The TCPCLient is designed as a multithreaded application.
@@ -264,7 +263,7 @@ TCPClient::~TCPClient() {
 
 AVSValue __cdecl Create_TCPClient(AVSValue args, void* user_data, IScriptEnvironment* env) {
   const char* comp = args[2].Defined() ? args[2].AsString("") : 0;
-  return new AlignPlanar(new TCPClient(args[0].AsString(), args[1].AsInt(22050), comp, env));
+  return new TCPClient(args[0].AsString(), args[1].AsInt(22050), comp, env);
 }
 
 
