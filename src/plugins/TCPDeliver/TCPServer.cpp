@@ -508,16 +508,11 @@ void TCPServerListener::SendFrameInfo(ServerReply* s, const char* request) {
   sfi.row_size = src->GetRowSize();
   sfi.pitch = src->GetPitch();
 
-  int data_size = sfi.height * sfi.pitch;
-  if (child->GetVideoInfo().IsYV12()) {
-    data_size = data_size + data_size / 2;
-  }
-
   BYTE* dstp;
-  sfi.data_size = data_size;
+  sfi.data_size = sfi.height * sfi.pitch;
 
   // Compress the data.
-  if (!child->GetVideoInfo().IsPlanar()) {
+  if (!child->GetVideoInfo().IsPlanar() || child->GetVideoInfo().IsY8()) {
     
     sfi.compression = s->client->compression->compression_type;
     sfi.compressed_bytes = s->client->compression->CompressImage(src->GetWritePtr(), sfi.row_size, sfi.height, sfi.pitch);
@@ -535,6 +530,7 @@ void TCPServerListener::SendFrameInfo(ServerReply* s, const char* request) {
     sfi.row_sizeUV = src->GetRowSize(PLANAR_U_ALIGNED);
     sfi.pitchUV = src->GetPitch(PLANAR_U);
     sfi.heightUV = src->GetHeight(PLANAR_U);
+    sfi.data_size += 2 * sfi.heightUV * sfi.pitchUV;
 
     sfi.comp_Y_bytes = s->client->compression->CompressImage(src->GetWritePtr(PLANAR_Y), sfi.row_size, sfi.height, sfi.pitch);
     dst1 = s->client->compression->dst;

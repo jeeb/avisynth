@@ -147,7 +147,7 @@ PVideoFrame __stdcall TCPClient::GetFrame(int n, IScriptEnvironment* env) {
         env->ThrowError("TCPClient: Unknown compression.");
     }
 
-    if (!vi.IsPlanar()) {
+    if (!vi.IsPlanar() || vi.IsY8()) {
       t->DeCompressImage(srcp, fi->row_size, fi->height, fi->pitch, fi->compressed_bytes);
       env->BitBlt(dstp, frame->GetPitch(), t->dst, incoming_pitch, frame->GetRowSize(), frame->GetHeight());
       if (!t->inplace) {
