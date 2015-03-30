@@ -1,6 +1,6 @@
 !packhdr tempfile.exe "upx --best --q tempfile.exe"
 
-!DEFINE ISSUE 5
+!DEFINE ISSUE 6
 !DEFINE VERSION 2.6.0
 
 !DEFINE /date DATE "%y%m%d"
@@ -36,7 +36,7 @@ VIProductVersion "${VERSION}.${ISSUE}"
 VIAddVersionKey "ProductName"      "Avisynth 2.6"
 VIAddVersionKey "Comments"         "Homepage: http://www.avisynth.org"
 VIAddVersionKey "CompanyName"      "The Public"
-VIAddVersionKey "LegalCopyright"   "© 2000-2014 Ben Rudiak-Gould and others"
+VIAddVersionKey "LegalCopyright"   "© 2000-2015 Ben Rudiak-Gould and others"
 VIAddVersionKey "FileDescription"  "Avisynth installer"
 VIAddVersionKey "FileVersion"      "${VERSION}.${ISSUE}"
 VIAddVersionKey "ProductVersion"   "${VERSION}"
