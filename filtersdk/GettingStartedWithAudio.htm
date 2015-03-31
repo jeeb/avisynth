@@ -18,17 +18,45 @@
 <p>Basically you override GetAudio(...) instead of GetFrame, and fill the
   buffer with data. A simple filter could look like this:</p>
 <h4>Filter creation - skip if no audio:</h4> 
-<pre>AVSValue __cdecl HalfVolume::Create(AVSValue args, void*, IScriptEnvironment* env) {<br />  if (!args[0].AsClip()-&gt;GetVideoInfo().AudioChannels())<br />    return args[0];<br /><br />  return new HalfVolume(args[0].AsClip());<br />}<br /></pre>
+<pre>AVSValue __cdecl HalfVolume::Create(AVSValue args, void*, IScriptEnvironment* env) {
+  if (!args[0].AsClip()-&gt;GetVideoInfo().HasAudio())
+      return args[0];
+
+  // Auto convert audio to a compatible format.
+  AVSValue CA_args[3] = { args[0], SAMPLE_INT16 | SAMPLE_FLOAT, SAMPLE_FLOAT };
+  PClip clip = env-&gt;Invoke("ConvertAudio", AVSValue(CA_args, 3)).AsClip();
+
+  return new HalfVolume(clip);
+}</pre>
+<p>What <code>ConvertAudio()</code> does is, that you tell it that your filter supports
+   SAMPLE_INT16 and SAMPLE_FLOAT, and that it prefers SAMPLE_FLOAT. If the input isn't
+   16 bit or float, it'll be converted to float, otherwise the original PClip is returned.</p>
 <h4>Constructor:</h4>
-<pre>HalfVolume::HalfVolume(PClip _child)<br />    : GenericVideoFilter(ConvertAudio::Create(_child, SAMPLE_INT16 | SAMPLE_FLOAT, SAMPLE_FLOAT)) {   <br />}<br /></pre>
-<p>This is a bit tricky. It'll require you to include
-  <a href="http://avisynth2.cvs.sourceforge.net/avisynth2/avisynth/src/audio/convertaudio.cpp?view=markup"><code>ConvertAudio.cpp</code></a>. 
-  What it does is automatic sample type conversion.  Basically what it does is
-  that you tell that your filter supports SAMPLE_INT16 and SAMPLE_FLOAT, and
-  that it prefers SAMPLE_FLOAT. If the input isn't 16 bit or float, it'll be
-  converted to float.</p>
+<pre>HalfVolume::HalfVolume(PClip _child)
+    : GenericVideoFilter(_child) { // Provide null GetFrame, GetParity, etc
+} </pre>
 <h4>GetAudio override:</h4> 
-<pre>void __stdcall HalfVolume::GetAudio(void* buf, __int64 start, __int64 count, IScriptEnvironment* env) {<br />  child-&gt;GetAudio(buf, start, count, env);<br />  int channels = vi.AudioChannels();<br /><br />  if (vi.SampleType() == SAMPLE_INT16) {<br />    short* samples = (short*)buf;<br />    for (int i=0; i&lt; count; i++) {<br />      for(int j=0;j&lt; channels;j++) {<br />         samples[i*channels+j] /= 2;<br />      }<br />    }<br />  } else if (vi.SampleType() == SAMPLE_FLOAT) {<br />    SFLOAT* samples = (SFLOAT*)buf;<br />    for (int i=0; i&lt; count; i++) {<br />      for(int j=0;j&lt; channels;j++) {<br />         samples[i*channels+j] /= 2.0f;<br />      }<br />    }<br />  }<br />}<br /></pre>
+<pre>void __stdcall HalfVolume::GetAudio(void* buf, __int64 start, __int64 count, IScriptEnvironment* env) {
+  child-&gt;GetAudio(buf, start, count, env);
+  int channels = vi.AudioChannels();
+
+  if (vi.SampleType() == SAMPLE_INT16) {
+    short* samples = (short*)buf;
+    for (int i=0; i&lt; count; i++) {
+      for(int j=0;j&lt; channels;j++) {
+         samples[i*channels+j] += 1; // Round
+         samples[i*channels+j] /= 2; // Halve
+      }
+    }
+  } else if (vi.SampleType() == SAMPLE_FLOAT) {
+    SFLOAT* samples = (SFLOAT*)buf;
+    for (int i=0; i&lt; count; i++) {
+      for(int j=0;j&lt; channels;j++) {
+         samples[i*channels+j] /= 2.0f; // Halve, rounding not needed
+      }
+    }
+  }
+}</pre>
 <p>Implementation of a half volume filter. Very explicit, so it isn't going to
   be the fastest possible, but it should serve the purpose. Furthermore have a look 
   <a href="http://forum.doom9.org/showthread.php?s=&amp;threadid=72760&amp;highlight=ConvertAudiohere">discussion here</a> 
@@ -39,6 +67,8 @@
 
 </p><hr style="width: 100%; height: 2px;" />Back to&nbsp;<a href="FilterSDK.htm">FilterSDK</a>
 </div>
-<p><kbd>$Date: 2014/10/27 22:04:54 $<br /><a href="http://www.avisynth.org/GettingStartedWithAudio"></a>
+<p><kbd>
+    $Date: 2015/03/31 05:00:17 $
+    <a href="http://www.avisynth.org/GettingStartedWithAudio"></a>
   </kbd></p>
 </body></html>
