@@ -1,4 +1,4 @@
-// Avisynth v2.5.  Copyright 2002, 2005 Ben Rudiak-Gould et al.
+// Avisynth v2.5.  Copyright 2002 Ben Rudiak-Gould et al.
 // Avisynth v2.6.  Copyright 2006 Klaus Post.
 // Avisynth v2.6.  Copyright 2009 Ian Brabham.
 // http://www.avisynth.org
@@ -37,10 +37,10 @@ Please NOTE! This version of avisynth.h DOES NOT have any special exemption!
 
 
 
-#ifndef __AVISYNTH_H__
-#define __AVISYNTH_H__
+#ifndef __AVISYNTH_6_H__
+#define __AVISYNTH_6_H__
 
-enum { AVISYNTH_INTERFACE_VERSION = 5 };
+enum { AVISYNTH_INTERFACE_VERSION = 6 };
 
 
 /* Define all types necessary for interfacing with avisynth.dll
@@ -156,7 +156,7 @@ class __single_inheritance AVSValue;
 
 struct AVS_Linkage {
 
-  int Size;
+  size_t Size;
 
 /**********************************************************************/
 
@@ -210,7 +210,7 @@ struct AVS_Linkage {
 // class VideoFrameBuffer
   const BYTE* (VideoFrameBuffer::*VFBGetReadPtr)() const;
   BYTE*       (VideoFrameBuffer::*VFBGetWritePtr)();
-  int         (VideoFrameBuffer::*GetDataSize)() const;
+  size_t      (VideoFrameBuffer::*GetDataSize)() const;
   int         (VideoFrameBuffer::*GetSequenceNumber)() const;
   int         (VideoFrameBuffer::*GetRefcount)() const;
 // end class VideoFrameBuffer
@@ -222,7 +222,7 @@ struct AVS_Linkage {
   int               (VideoFrame::*GetRowSize)(int plane) const;
   int               (VideoFrame::*GetHeight)(int plane) const;
   VideoFrameBuffer* (VideoFrame::*GetFrameBuffer)() const;
-  int               (VideoFrame::*GetOffset)(int plane) const;
+  size_t            (VideoFrame::*GetOffset)(int plane) const;
   const BYTE*       (VideoFrame::*VFGetReadPtr)(int plane) const;
   bool              (VideoFrame::*IsWritable)() const;
   BYTE*             (VideoFrame::*VFGetWritePtr)(int plane) const;
@@ -284,11 +284,11 @@ struct AVS_Linkage {
   bool            (AVSValue::*AsBool1)() const;
   int             (AVSValue::*AsInt1)() const;
   const char*     (AVSValue::*AsString1)() const;
-  float           (AVSValue::*AsFloat1)() const;
+  double          (AVSValue::*AsFloat1)() const;
   bool            (AVSValue::*AsBool2)(bool def) const;
   int             (AVSValue::*AsInt2)(int def) const;
   double          (AVSValue::*AsDblDef)(double def) const;
-  float           (AVSValue::*AsFloat2)(float def) const;
+  double          (AVSValue::*AsFloat2)(float def) const;
   const char*     (AVSValue::*AsString2)(const char* def) const;
   int             (AVSValue::*ArraySize)() const;
 // end class AVSValue
@@ -324,7 +324,8 @@ struct VideoInfo {
   int width, height;    // width=0 means no video
   unsigned fps_numerator, fps_denominator;
   int num_frames;
-  // This is more extensible than previous versions. More properties can be added seeminglesly.
+  // This is more extensible than previous versions.
+  // More properties can be added seeminglesly.
 
   // Colorspace properties.
 /*
@@ -386,7 +387,8 @@ Planar filter mask 1111.1111.1111.1111.1111.1111.1100.1111
     CS_Sample_Bits_16    = 1 << CS_Shift_Sample_Bits,
     CS_Sample_Bits_32    = 2 << CS_Shift_Sample_Bits,
 
-    CS_PLANAR_MASK       = CS_PLANAR | CS_INTERLEAVED | CS_YUV | CS_BGR | CS_Sample_Bits_Mask | CS_Sub_Height_Mask | CS_Sub_Width_Mask,
+    CS_PLANAR_MASK       = CS_PLANAR | CS_INTERLEAVED | CS_YUV | CS_BGR | CS_Sample_Bits_Mask
+	                                                  | CS_Sub_Height_Mask | CS_Sub_Width_Mask,
     CS_PLANAR_FILTER     = ~( CS_VPlaneFirst | CS_UPlaneFirst ),
 
   // Specific colorformats
@@ -401,10 +403,10 @@ Planar filter mask 1111.1111.1111.1111.1111.1111.1100.1111
 //  YV12 must be 0xA000008 2.5 Baked API will see all new planar as YV12
 //  I420 must be 0xA000010
 
-    CS_YV24  = CS_PLANAR | CS_YUV | CS_Sample_Bits_8 | CS_VPlaneFirst | CS_Sub_Height_1 | CS_Sub_Width_1,  // YUV 4:4:4 planar
-    CS_YV16  = CS_PLANAR | CS_YUV | CS_Sample_Bits_8 | CS_VPlaneFirst | CS_Sub_Height_1 | CS_Sub_Width_2,  // YUV 4:2:2 planar
-    CS_YV12  = CS_PLANAR | CS_YUV | CS_Sample_Bits_8 | CS_VPlaneFirst | CS_Sub_Height_2 | CS_Sub_Width_2,  // y-v-u, 4:2:0 planar
-    CS_I420  = CS_PLANAR | CS_YUV | CS_Sample_Bits_8 | CS_UPlaneFirst | CS_Sub_Height_2 | CS_Sub_Width_2,  // y-u-v, 4:2:0 planar
+    CS_YV24  = CS_PLANAR | CS_YUV | CS_Sample_Bits_8 | CS_VPlaneFirst | CS_Sub_Height_1 | CS_Sub_Width_1,  // YVU 4:4:4 planar
+    CS_YV16  = CS_PLANAR | CS_YUV | CS_Sample_Bits_8 | CS_VPlaneFirst | CS_Sub_Height_1 | CS_Sub_Width_2,  // YVU 4:2:2 planar
+    CS_YV12  = CS_PLANAR | CS_YUV | CS_Sample_Bits_8 | CS_VPlaneFirst | CS_Sub_Height_2 | CS_Sub_Width_2,  // YVU 4:2:0 planar
+    CS_I420  = CS_PLANAR | CS_YUV | CS_Sample_Bits_8 | CS_UPlaneFirst | CS_Sub_Height_2 | CS_Sub_Width_2,  // YUV 4:2:0 planar
     CS_IYUV  = CS_I420,
     CS_YUV9  = CS_PLANAR | CS_YUV | CS_Sample_Bits_8 | CS_VPlaneFirst | CS_Sub_Height_4 | CS_Sub_Width_4,  // YUV 4:1:0 planar
     CS_YV411 = CS_PLANAR | CS_YUV | CS_Sample_Bits_8 | CS_VPlaneFirst | CS_Sub_Height_1 | CS_Sub_Width_4,  // YUV 4:1:1 planar
@@ -476,7 +478,8 @@ Planar filter mask 1111.1111.1111.1111.1111.1111.1100.1111
   bool IsTFF() const AVS_BakedCode( return AVS_LinkCall(IsTFF)() )
 
   bool IsVPlaneFirst() const AVS_BakedCode( return AVS_LinkCall(IsVPlaneFirst)() )  // Don't use this
-  int BytesFromPixels(int pixels) const AVS_BakedCode( return AVS_LinkCall(BytesFromPixels)(pixels) )   // Will not work on planar images, but will return only luma planes
+  // Will not work on planar images, but will return only luma planes
+  int BytesFromPixels(int pixels) const AVS_BakedCode( return AVS_LinkCall(BytesFromPixels)(pixels) )
   int RowSize(int plane=0) const AVS_BakedCode( return AVS_LinkCall(RowSize)(plane) )
   int BMPSize() const AVS_BakedCode( return AVS_LinkCall(BMPSize)() )
 
@@ -492,9 +495,9 @@ Planar filter mask 1111.1111.1111.1111.1111.1111.1100.1111
   void SetFieldBased(bool isfieldbased) AVS_BakedCode( AVS_LinkCall(SetFieldBased)(isfieldbased) )
   void Set(int property) AVS_BakedCode( AVS_LinkCall(Set)(property) )
   void Clear(int property) AVS_BakedCode( AVS_LinkCall(Clear)(property) )
-
-  int GetPlaneWidthSubsampling(int plane) const AVS_BakedCode( return AVS_LinkCall(GetPlaneWidthSubsampling)(plane) )   // Subsampling in bitshifts!
-  int GetPlaneHeightSubsampling(int plane) const AVS_BakedCode( return AVS_LinkCall(GetPlaneHeightSubsampling)(plane) )   // Subsampling in bitshifts!
+  // Subsampling in bitshifts!
+  int GetPlaneWidthSubsampling(int plane) const AVS_BakedCode( return AVS_LinkCall(GetPlaneWidthSubsampling)(plane) )
+  int GetPlaneHeightSubsampling(int plane) const AVS_BakedCode( return AVS_LinkCall(GetPlaneHeightSubsampling)(plane) )
   int BitsPerPixel() const AVS_BakedCode( return AVS_LinkCall(BitsPerPixel)() )
 
   int BytesPerChannelSample() const AVS_BakedCode( return AVS_LinkCall(BytesPerChannelSample)() )
@@ -521,7 +524,7 @@ Planar filter mask 1111.1111.1111.1111.1111.1111.1100.1111
 
 class VideoFrameBuffer {
   BYTE* const data;
-  const int data_size;
+  const size_t data_size;
   // sequence_number is incremented every time the buffer is changed, so
   // that stale views can tell they're no longer valid.
   volatile long sequence_number;
@@ -532,14 +535,14 @@ class VideoFrameBuffer {
   volatile long refcount;
 
 protected:
-  VideoFrameBuffer(int size);
+  VideoFrameBuffer(size_t size);
   VideoFrameBuffer();
   ~VideoFrameBuffer();
 
 public:
   const BYTE* GetReadPtr() const AVS_BakedCode( return AVS_LinkCall(VFBGetReadPtr)() )
   BYTE* GetWritePtr() AVS_BakedCode( return AVS_LinkCall(VFBGetWritePtr)() )
-  int GetDataSize() const AVS_BakedCode( return AVS_LinkCall(GetDataSize)() )
+  size_t GetDataSize() const AVS_BakedCode( return AVS_LinkCall(GetDataSize)() )
   int GetSequenceNumber() const AVS_BakedCode( return AVS_LinkCall(GetSequenceNumber)() )
   int GetRefcount() const AVS_BakedCode( return AVS_LinkCall(GetRefcount)() )
 }; // end class VideoFrameBuffer
@@ -551,8 +554,10 @@ public:
 class VideoFrame {
   volatile long refcount;
   VideoFrameBuffer* const vfb;
-  const int offset, pitch, row_size, height, offsetU, offsetV, pitchUV;  // U&V offsets are from top of picture.
-  const int row_sizeUV, heightUV;
+  const size_t offset;
+  const int pitch, row_size, height;
+  const size_t offsetU, offsetV;  // U&V offsets are from top of picture.
+  const int pitchUV, row_sizeUV, heightUV;
 
   friend class PVideoFrame;
   void AddRef();
@@ -561,8 +566,9 @@ class VideoFrame {
   friend class ScriptEnvironment;
   friend class Cache;
 
-  VideoFrame(VideoFrameBuffer* _vfb, int _offset, int _pitch, int _row_size, int _height);
-  VideoFrame(VideoFrameBuffer* _vfb, int _offset, int _pitch, int _row_size, int _height, int _offsetU, int _offsetV, int _pitchUV, int _row_sizeUV, int _heightUV);
+  VideoFrame(VideoFrameBuffer* _vfb, size_t _offset, int _pitch, int _row_size, int _height);
+  VideoFrame(VideoFrameBuffer* _vfb, size_t _offset, int _pitch, int _row_size, int _height,
+             size_t _offsetU, size_t _offsetV, int _pitchUV, int _row_sizeUV, int _heightUV);
 
   void* operator new(unsigned size);
 // TESTME: OFFSET U/V may be switched to what could be expected from AVI standard!
@@ -573,11 +579,12 @@ public:
 
   // generally you shouldn't use these three
   VideoFrameBuffer* GetFrameBuffer() const AVS_BakedCode( return AVS_LinkCall(GetFrameBuffer)() )
-  int GetOffset(int plane=0) const AVS_BakedCode( return AVS_LinkCall(GetOffset)(plane) )
+  size_t GetOffset(int plane=0) const AVS_BakedCode( return AVS_LinkCall(GetOffset)(plane) )
 
   // in plugins use env->SubFrame() -- because implementation code is only available inside avisynth.dll. Doh!
   VideoFrame* Subframe(int rel_offset, int new_pitch, int new_row_size, int new_height) const;
-  VideoFrame* Subframe(int rel_offset, int new_pitch, int new_row_size, int new_height, int rel_offsetU, int rel_offsetV, int pitchUV) const;
+  VideoFrame* Subframe(int rel_offset, int new_pitch, int new_row_size, int new_height,
+                       int rel_offsetU, int rel_offsetV, int pitchUV) const;
 
   const BYTE* GetReadPtr(int plane=0) const AVS_BakedCode( return AVS_LinkCall(VFGetReadPtr)(plane) )
   bool IsWritable() const AVS_BakedCode( return AVS_LinkCall(IsWritable)() )
@@ -591,13 +598,61 @@ public:
 }; // end class VideoFrame
 
 enum {
-  CACHE_NOTHING=0,
-  CACHE_RANGE=1,
-  CACHE_ALL=2,
-  CACHE_AUDIO=3,
-  CACHE_AUDIO_NONE=4,
-  CACHE_AUDIO_AUTO=5
- };
+  // Values 0 to 5 are reserved for old 2.5 plugins
+  // do not use them in new plugins
+
+  // New 2.6 explicitly defined cache hints.
+  CACHE_NOTHING=10, // Do not cache video.
+  CACHE_WINDOW=11, // Hard protect upto X frames within a range of X from the current frame N.
+  CACHE_GENERIC=12, // LRU cache upto X frames.
+  CACHE_FORCE_GENERIC=13, // LRU cache upto X frames, override any previous CACHE_WINDOW.
+
+  CACHE_GET_POLICY=30, // Get the current policy.
+  CACHE_GET_WINDOW=31, // Get the current window h_span.
+  CACHE_GET_RANGE=32, // Get the current generic frame range.
+
+  CACHE_AUDIO=50, // Explicitly cache audio, X byte cache.
+  CACHE_AUDIO_NOTHING=51, // Explicitly do not cache audio.
+  CACHE_AUDIO_NONE=52, // Audio cache off (auto mode), X byte intial cache.
+  CACHE_AUDIO_AUTO=53, // Audio cache on (auto mode), X byte intial cache.
+
+  CACHE_GET_AUDIO_POLICY=70, // Get the current audio policy.
+  CACHE_GET_AUDIO_SIZE=71, // Get the current audio cache size.
+
+  CACHE_PREFETCH_FRAME=100, // Queue request to prefetch frame N.
+  CACHE_PREFETCH_GO=101, // Action video prefetches.
+
+  CACHE_PREFETCH_AUDIO_BEGIN=120, // Begin queue request transaction to prefetch audio (take critical section).
+  CACHE_PREFETCH_AUDIO_STARTLO=121, // Set low 32 bits of start.
+  CACHE_PREFETCH_AUDIO_STARTHI=122, // Set high 32 bits of start.
+  CACHE_PREFETCH_AUDIO_COUNT=123, // Set low 32 bits of length.
+  CACHE_PREFETCH_AUDIO_COMMIT=124, // Enqueue request transaction to prefetch audio (release critical section).
+  CACHE_PREFETCH_AUDIO_GO=125, // Action audio prefetches.
+
+  CACHE_GETCHILD_CACHE_MODE=200, // Cache ask Child for desired video cache mode.
+  CACHE_GETCHILD_CACHE_SIZE=201, // Cache ask Child for desired video cache size.
+  CACHE_GETCHILD_AUDIO_MODE=202, // Cache ask Child for desired audio cache mode.
+  CACHE_GETCHILD_AUDIO_SIZE=203, // Cache ask Child for desired audio cache size.
+
+  CACHE_GETCHILD_COST=220, // Cache ask Child for estimated processing cost.
+    CACHE_COST_ZERO=221, // Child response of zero cost (ptr arithmetic only).
+    CACHE_COST_UNIT=222, // Child response of unit cost (less than or equal 1 full frame blit).
+    CACHE_COST_LOW=223, // Child response of light cost. (Fast)
+    CACHE_COST_MED=224, // Child response of medium cost. (Real time)
+    CACHE_COST_HI=225, // Child response of heavy cost. (Slow)
+
+  CACHE_GETCHILD_THREAD_MODE=240, // Cache ask Child for thread safetyness.
+    CACHE_THREAD_UNSAFE=241, // Only 1 thread allowed for all instances. 2.5 filters default!
+    CACHE_THREAD_CLASS=242, // Only 1 thread allowed for each instance. 2.6 filters default!
+    CACHE_THREAD_SAFE=243, //  Allow all threads in any instance.
+    CACHE_THREAD_OWN=244, // Safe but limit to 1 thread, internally threaded.
+
+  CACHE_GETCHILD_ACCESS_COST=260, // Cache ask Child for preferred access pattern.
+    CACHE_ACCESS_RAND=261, // Filter is access order agnostic.
+    CACHE_ACCESS_SEQ0=262, // Filter prefers sequential access (low cost)
+    CACHE_ACCESS_SEQ1=263, // Filter needs sequential access (high cost)
+
+};
 
 // Base class for all filters.
 class IClip {
@@ -726,13 +781,13 @@ public:
   int AsInt() const AVS_BakedCode( return AVS_LinkCall(AsInt1)() )
 //  int AsLong() const;
   const char* AsString() const AVS_BakedCode( return AVS_LinkCall(AsString1)() )
-  float AsFloat() const AVS_BakedCode( return AVS_LinkCall(AsFloat1)() )
+  double AsFloat() const AVS_BakedCode( return AVS_LinkCall(AsFloat1)() )
 
   bool AsBool(bool def) const AVS_BakedCode( return AVS_LinkCall(AsBool2)(def) )
   int AsInt(int def) const AVS_BakedCode( return AVS_LinkCall(AsInt2)(def) )
   double AsDblDef(double def) const AVS_BakedCode( return AVS_LinkCall(AsDblDef)(def) ) // Value is still a float
 //float AsFloat(double def) const; // def demoted to a float
-  float AsFloat(float def) const AVS_BakedCode( return AVS_LinkCall(AsFloat2)(def) )
+  double AsFloat(float def) const AVS_BakedCode( return AVS_LinkCall(AsFloat2)(def) )
   const char* AsString(const char* def) const AVS_BakedCode( return AVS_LinkCall(AsString2)(def) )
 
   int ArraySize() const AVS_BakedCode( return AVS_LinkCall(ArraySize)() )
@@ -740,9 +795,19 @@ public:
   const AVSValue& operator[](int index) const AVS_BakedCode( return AVS_LinkCallV(AVSValue_OPERATOR_INDEX)(index) )
 
 private:
-
+#ifdef AVISYNTH64
+  union {
+    IClip* clip;
+    bool boolean;
+    __int64 integer;
+    double floating_pt;
+    const char* string;
+    const AVSValue* array;
+  };
+#endif
   short type;  // 'a'rray, 'c'lip, 'b'ool, 'i'nt, 'f'loat, 's'tring, 'v'oid, or 'l'ong
   short array_size;
+#ifndef AVISYNTH64
   union {
     IClip* clip;
     bool boolean;
@@ -752,6 +817,7 @@ private:
     const AVSValue* array;
 //    __int64 longlong;
   };
+#endif
 
   void Assign(const AVSValue* src, bool init);
 #ifdef AVISYNTH_CORE
@@ -773,11 +839,11 @@ public:
   bool            AsBool1() const;
   int             AsInt1() const;
   const char*     AsString1() const;
-  float           AsFloat1() const;
+  double          AsFloat1() const;
 
   bool            AsBool2(bool def) const;
   int             AsInt2(int def) const;
-  float           AsFloat2(float def) const;
+  double          AsFloat2(float def) const;
   const char*     AsString2(const char* def) const;
 #endif
 }; // end class AVSValue
@@ -803,95 +869,28 @@ public:
 
 
 
-#if 0
-/* Helper classes useful to plugin authors */ // But we don't export the entry points, Doh!
-
-class AlignPlanar : public GenericVideoFilter
-{
-public:
-  AlignPlanar(PClip _clip);
-  static PClip Create(PClip clip);
-  PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
-};
-
-
-
-class FillBorder : public GenericVideoFilter
-{
-public:
-  FillBorder(PClip _clip);
-  static PClip Create(PClip clip);
-  PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
-};
-
-
-
-class ConvertAudio : public GenericVideoFilter
-/**
-  * Helper class to convert audio to any format
- **/
-{
-public:
-  ConvertAudio(PClip _clip, int prefered_format);
-  void __stdcall GetAudio(void* buf, __int64 start, __int64 count, IScriptEnvironment* env);
-  int __stdcall SetCacheHints(int cachehints,int frame_range);  // We do pass cache requests upwards, to the cache!
-
-  static PClip Create(PClip clip, int sample_type, int prefered_type);
-  static AVSValue __cdecl Create_float(AVSValue args, void*, IScriptEnvironment*);
-  static AVSValue __cdecl Create_32bit(AVSValue args, void*, IScriptEnvironment*);
-  static AVSValue __cdecl Create_24bit(AVSValue args, void*, IScriptEnvironment*);
-  static AVSValue __cdecl Create_16bit(AVSValue args, void*, IScriptEnvironment*);
-  static AVSValue __cdecl Create_8bit (AVSValue args, void*, IScriptEnvironment*);
-  static AVSValue __cdecl Create_Any  (AVSValue args, void*, IScriptEnvironment*);
-  virtual ~ConvertAudio();
-
-private:
-  void convertToFloat(char* inbuf, float* outbuf, char sample_type, int count);
-  void convertToFloat_3DN(char* inbuf, float* outbuf, char sample_type, int count);
-  void convertToFloat_SSE(char* inbuf, float* outbuf, char sample_type, int count);
-  void convertToFloat_SSE2(char* inbuf, float* outbuf, char sample_type, int count);
-  void convertFromFloat(float* inbuf, void* outbuf, char sample_type, int count);
-  void convertFromFloat_3DN(float* inbuf, void* outbuf, char sample_type, int count);
-  void convertFromFloat_SSE(float* inbuf, void* outbuf, char sample_type, int count);
-  void convertFromFloat_SSE2(float* inbuf, void* outbuf, char sample_type, int count);
-
-  __inline int Saturate_int8(float n);
-  __inline short Saturate_int16(float n);
-  __inline int Saturate_int24(float n);
-  __inline int Saturate_int32(float n);
-
-  char src_format;
-  char dst_format;
-  int src_bps;
-  char *tempbuffer;
-  SFLOAT *floatbuffer;
-  int tempbuffer_size;
-};
-#endif
-
 // For GetCPUFlags.  These are backwards-compatible with those in VirtualDub.
 enum {
                     /* oldest CPU to support extension */
-  CPUF_FORCE        =  0x01,   //  N/A
-  CPUF_FPU          =  0x02,   //  386/486DX
-  CPUF_MMX          =  0x04,   //  P55C, K6, PII
-  CPUF_INTEGER_SSE  =  0x08,   //  PIII, Athlon
-  CPUF_SSE          =  0x10,   //  PIII, Athlon XP/MP
-  CPUF_SSE2         =  0x20,   //  PIV, K8
-  CPUF_3DNOW        =  0x40,   //  K6-2
-  CPUF_3DNOW_EXT    =  0x80,   //  Athlon
-  CPUF_X86_64       =  0xA0,   //  Hammer (note: equiv. to 3DNow + SSE2, which
-                               //          only Hammer will have anyway)
-  CPUF_SSE3         = 0x100,   //  PIV+, K8 Venice
-  CPUF_SSSE3        = 0x200,   //  Core 2
-  CPUF_SSE4         = 0x400,   //  Penryn, Wolfdale, Yorkfield
-  CPUF_SSE4_1       = 0x400,
-  CPUF_SSE4_2       = 0x800,   //  Nehalem
+  CPUF_FORCE        =   0x01,   //  N/A
+  CPUF_FPU          =   0x02,   //  386/486DX
+  CPUF_MMX          =   0x04,   //  P55C, K6, PII
+  CPUF_INTEGER_SSE  =   0x08,   //  PIII, Athlon
+  CPUF_SSE          =   0x10,   //  PIII, Athlon XP/MP
+  CPUF_SSE2         =   0x20,   //  PIV, K8
+  CPUF_3DNOW        =   0x40,   //  K6-2
+  CPUF_3DNOW_EXT    =   0x80,   //  Athlon
+  CPUF_X86_64       =   0xA0,   //  Hammer (note: equiv. to 3DNow + SSE2, which
+                                //          only Hammer will have anyway)
+  CPUF_SSE3         =  0x100,   //  PIV+, K8 Venice
+  CPUF_SSSE3        =  0x200,   //  Core 2
+  CPUF_SSE4         =  0x400,   //  Penryn, Wolfdale, Yorkfield
+  CPUF_SSE4_1       =  0x400,
+//CPUF_AVX          =  0x800,   //  Sandy Bridge, Bulldozer
+  CPUF_SSE4_2       = 0x1000,   //  Nehalem
+//CPUF_AVX2         = 0x2000,   //  Haswell
+//CPUF_AVX512       = 0x4000,   //  Knights Landing
 };
-#if 0
-#define MAX_INT 0x7fffffff
-#define MIN_INT -0x7fffffff  // ::FIXME:: research why this is not 0x80000000
-#endif
 
 
 
@@ -923,12 +922,11 @@ public:
   virtual void __stdcall PushContext(int level=0) = 0;
   virtual void __stdcall PopContext() = 0;
 
-  // align should be 4 or 8
   virtual PVideoFrame __stdcall NewVideoFrame(const VideoInfo& vi, int align=FRAME_ALIGN) = 0;
 
   virtual bool __stdcall MakeWritable(PVideoFrame* pvf) = 0;
 
-  virtual /*static*/ void __stdcall BitBlt(BYTE* dstp, int dst_pitch, const BYTE* srcp, int src_pitch, int row_size, int height) = 0;
+  virtual void __stdcall BitBlt(BYTE* dstp, int dst_pitch, const BYTE* srcp, int src_pitch, int row_size, int height) = 0;
 
   typedef void (__cdecl *ShutdownFunc)(void* user_data, IScriptEnvironment* env);
   virtual void __stdcall AtExit(ShutdownFunc function, void* user_data) = 0;
@@ -950,13 +948,18 @@ public:
 
   virtual bool __stdcall PlanarChromaAlignment(PlanarChromaAlignmentMode key) = 0;
 
-  virtual PVideoFrame __stdcall SubframePlanar(PVideoFrame src, int rel_offset, int new_pitch, int new_row_size, int new_height, int rel_offsetU, int rel_offsetV, int new_pitchUV) = 0;
+  virtual PVideoFrame __stdcall SubframePlanar(PVideoFrame src, int rel_offset, int new_pitch, int new_row_size,
+                                               int new_height, int rel_offsetU, int rel_offsetV, int new_pitchUV) = 0;
 
   virtual void __stdcall DeleteScriptEnvironment() = 0;
 
-  virtual void _stdcall ApplyMessage(PVideoFrame* frame, const VideoInfo& vi, const char* message, int size, int textcolor, int halocolor, int bgcolor) = 0;
+  virtual void _stdcall ApplyMessage(PVideoFrame* frame, const VideoInfo& vi, const char* message, int size,
+                                     int textcolor, int halocolor, int bgcolor) = 0;
 
   virtual const AVS_Linkage* const __stdcall GetAVSLinkage() = 0;
+
+  // noThrow version of GetVar
+  virtual AVSValue __stdcall GetVarDef(const char* name, const AVSValue& def=AVSValue()) = 0;
 
 }; // end class IScriptEnvironment
 
@@ -968,4 +971,4 @@ IScriptEnvironment* __stdcall CreateScriptEnvironment(int version = AVISYNTH_INT
 
 #pragma pack(pop)
 
-#endif //__AVISYNTH_H__
+#endif //__AVISYNTH_6_H__
