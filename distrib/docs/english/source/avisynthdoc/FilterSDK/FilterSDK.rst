@@ -184,8 +184,9 @@ What's new in the 2.6 api
       constants, GetPlaneHeightSubsampling,
       GetPlaneWidthSubsampling).
     - Some new cache and cpu constants for GetCPUFlags (the v5/v6 ones).
+    - SetCacheHints changed from void to int.
 
-- C API (AVISYNTH_INTERFACE_VERSION = 5):
+- C API (AVISYNTH_INTERFACE_VERSION = 6):
     - The following functions are added to the interface:
       avs_is_yv24, avs_is_yv16, avs_is_yv12, avs_is_yv411,
       avs_is_y8, avs_is_color_space,
@@ -223,7 +224,7 @@ License terms
 
 Note: Avisynth Filter SDK parts are under specific :doc:`SDK license <SDKLicense>` terms.
 
-$Date: 2015/01/13 00:24:50 $
+$Date: 2015/01/27 19:37:22 $
 
 Latest online mediaWiki version is at http://avisynth.nl/Filter_SDK
 
