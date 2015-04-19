@@ -269,6 +269,7 @@ plug_ok:
   ClearErrors
   WriteRegStr HKLM "SOFTWARE\AviSynth" "" "$INSTDIR"
   WriteRegStr HKLM "SOFTWARE\AviSynth" "plugindir2_5" "$0"
+  WriteRegStr HKLM "SOFTWARE\AviSynth" "initialplugindir" "$0"
 
   WriteRegStr HKLM "SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\AviSynth" "DisplayName" "AviSynth 2.6"
   WriteRegStr HKLM "SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\AviSynth" "UninstallString" '"$INSTDIR\Uninstall.exe"'
@@ -332,13 +333,18 @@ creg_ok:
   Rename "$SMPROGRAMS\AviSynth 2.5" "$SMPROGRAMS\AviSynth"
   CreateDirectory  "$SMPROGRAMS\AviSynth"
 
+; Cleanup from very old installs
+  Delete "$SMPROGRAMS\AviSynth\Uninstall AviSynth.lnk"
+  Delete "$SMPROGRAMS\AviSynth\$(Start_Uninstall).lnk"
+  ClearErrors
+
   CreateShortCut "$SMPROGRAMS\AviSynth\$(Start_License).lnk" "$INSTDIR\${AVS_DefaultLicenceFile}"
   StrCmp $(AVS_GPL_Lang_File) ${AVS_DefaultLicenceFile} +2
     CreateShortCut "$SMPROGRAMS\AviSynth\$(Start_License_Lang).lnk" "$INSTDIR\License Translations\$(AVS_GPL_Lang_File)"
 
-  CreateShortCut "$SMPROGRAMS\AviSynth\$(Start_Plugin).lnk" "$INSTDIR\Plugins"
+  CreateShortCut "$SMPROGRAMS\AviSynth\$(Start_Plugin).lnk" "$0"
   WriteINIStr    "$SMPROGRAMS\AviSynth\$(Start_Online).url" "InternetShortcut" "URL" "http://www.avisynth.org"
-  WriteINIStr    "$SMPROGRAMS\AviSynth\$(Start_Download).url" "InternetShortcut" "URL" "http://www.avisynth.org/warpenterprises/"
+  WriteINIStr    "$SMPROGRAMS\AviSynth\$(Start_Download).url" "InternetShortcut" "URL" "http://www.avisynth.org/users/warpenterprises/"
 
   SetOutPath $INSTDIR\Examples
 !echo " -- Supressed"
@@ -353,7 +359,14 @@ creg_ok:
 
 ; These bits are for the administrator only
   SetShellVarContext Current
+  IfFileExists "$SMPROGRAMS\AviSynth 2.5" 0 +2
+  Rename "$SMPROGRAMS\AviSynth 2.5" "$SMPROGRAMS\AviSynth"
   CreateDirectory  "$SMPROGRAMS\AviSynth"
+
+; Cleanup from very old installs
+  Delete "$SMPROGRAMS\AviSynth\Uninstall AviSynth.lnk"
+  ClearErrors
+
   CreateShortCut "$SMPROGRAMS\AviSynth\$(Start_Uninstall).lnk" "$INSTDIR\Uninstall.exe"
 
 SectionEnd
@@ -832,10 +845,6 @@ Ignore:
   Delete "$INSTDIR\Examples\*.*"
   RMDir  "$INSTDIR\Examples"
 
-  Delete "$INSTDIR\plugins\DirectShowSource.dll"
-  Delete "$INSTDIR\plugins\TCPDeliver.dll"
-  Delete "$INSTDIR\plugins\colors_rgb.avsi"
-
   Delete "$INSTDIR\Docs\English\advancedtopics\*.*"
   RMDir  "$INSTDIR\Docs\English\advancedtopics"
   Delete "$INSTDIR\Docs\English\corefilters\*.*"
@@ -961,6 +970,12 @@ Ignore:
   Delete "$INSTDIR\FilterSDK\*.*"
   RMDir  "$INSTDIR\FilterSDK"
 !verbose pop
+
+  ReadRegStr $0 HKLM "SOFTWARE\AviSynth" "initialplugindir"
+  Delete "$0\DirectShowSource.dll"
+  Delete "$0\TCPDeliver.dll"
+  Delete "$0\colors_rgb.avsi"
+
   Delete "$INSTDIR\Uninstall.exe"
 
   DeleteRegKey HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\AviSynth"
