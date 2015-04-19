@@ -29,7 +29,7 @@ LANGUAGE LANG_ENGLISH, SUBLANG_ENGLISH_US
 
 VS_VERSION_INFO VERSIONINFO
  FILEVERSION 2,6,0,3
- PRODUCTVERSION 2,6,0,3
+ PRODUCTVERSION 2,6,0,6
  FILEFLAGSMASK 0x3fL
 #ifdef _DEBUG
  FILEFLAGS 0x29L
@@ -49,12 +49,12 @@ BEGIN
             VALUE "FileDescription", "Avisynth DirectShow Reader pluggin\0"
             VALUE "FileVersion", "2, 6, 0, 3\0"
             VALUE "InternalName", "DirectShowSource 2.6.0\0"
-            VALUE "LegalCopyright", "© 2000-2014 Ben Rudiak-Gould and others\0"
+            VALUE "LegalCopyright", "© 2000-2015 Ben Rudiak-Gould and others\0"
 //          VALUE "LegalTrademarks", " \0"
             VALUE "OriginalFilename", "DirectShowSource.dll\0"
 //          VALUE "PrivateBuild", " \0"
             VALUE "ProductName", "Avisynth 2.6\0"
-            VALUE "ProductVersion", "2, 6, 0, 3\0"
+            VALUE "ProductVersion", "2, 6, 0, 6\0"
 //          VALUE "SpecialBuild", " \0"
         END
     END

@@ -107,8 +107,8 @@ END
 //
 
 VS_VERSION_INFO VERSIONINFO
- FILEVERSION 1,0,0,7
- PRODUCTVERSION 1,0,0,7
+ FILEVERSION 2,6,0,7
+ PRODUCTVERSION 2,6,0,6
  FILEFLAGSMASK 0x3fL
 #ifdef _DEBUG
  FILEFLAGS 0x1L
@@ -123,18 +123,18 @@ BEGIN
     BEGIN
         BLOCK "000004b0"
         BEGIN
-            VALUE "Comments", "\0"
+            VALUE "Comments", "Homepage: http://www.avisynth.org\0"
             VALUE "CompanyName", "avisynth.org\0"
-            VALUE "FileDescription", "TCPDeliver\0"
-            VALUE "FileVersion", "1, 0, 0, 7\0"
+            VALUE "FileDescription", "Avisynth TCPDeliver pluggin\0"
+            VALUE "FileVersion", "2, 6, 0, 7\0"
             VALUE "InternalName", "TCPDeliver\0"
-            VALUE "LegalCopyright", "Copyright © 2004-2015, Klaus Post.\0"
+            VALUE "LegalCopyright", "© 2004-2015, Klaus Post.\0"
             VALUE "LegalTrademarks", "Released under GPL.\0"
             VALUE "OriginalFilename", "TCPDeliver.dll\0"
-            VALUE "PrivateBuild", "\0"
-            VALUE "ProductName", "AviSynth TCPDeliver\0"
-            VALUE "ProductVersion", "1, 0, 0, 7\0"
-            VALUE "SpecialBuild", "\0"
+//          VALUE "PrivateBuild", "\0"
+            VALUE "ProductName", "AviSynth 2.6 TCPDeliver\0"
+            VALUE "ProductVersion", "2, 6, 0, 6\0"
+//          VALUE "SpecialBuild", "\0"
         END
     END
     BLOCK "VarFileInfo"
