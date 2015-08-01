@@ -39,11 +39,6 @@
 
 #include "../convert/convert.h"  // for RGB2YUV
 
-#include<string>
-#include<sstream>
-
-using namespace std;
-
 
 
 /********************************************************************
@@ -1180,38 +1175,39 @@ const char* const t_STFF="Top Field (Separated)      ";
 const char* const t_SBFF="Bottom Field (Separated)   ";
 
 
-string GetCpuMsg(IScriptEnvironment * env)
+char* GetCpuMsg(char* buff, IScriptEnvironment * env)
 {
   int flags = env->GetCPUFlags();
-  stringstream ss;  
+
+  buff[0] = 0;
 
   if (flags & CPUF_FPU)
-    ss << "x87  ";
+    strcat(buff, "x87  ");
   if (flags & CPUF_MMX)
-    ss << "MMX  ";
+    strcat(buff, "MMX  ");
   if (flags & CPUF_INTEGER_SSE)
-    ss << "ISSE  ";
+    strcat(buff, "ISSE  ");
 
   if (flags & CPUF_SSE4_2)
-    ss << "SSE4.2 ";
+    strcat(buff, "SSE4.2 ");
   else if (flags & CPUF_SSE4_1)
-    ss << "SSE4.1 ";
+    strcat(buff, "SSE4.1 ");
   else if (flags & CPUF_SSE3)
-    ss << "SSE3 ";
+    strcat(buff, "SSE3 ");
   else if (flags & CPUF_SSE2)
-    ss << "SSE2 ";
+    strcat(buff, "SSE2 ");
   else if (flags & CPUF_SSE)
-    ss << "SSE  ";
+    strcat(buff, "SSE  ");
 
   if (flags & CPUF_SSSE3)
-    ss << "SSSE3 ";
+    strcat(buff, "SSSE3 ");
 
   if (flags & CPUF_3DNOW_EXT)
-    ss << "3DNOW_EXT";
+    strcat(buff, "3DNOW_EXT");
   else if (flags & CPUF_3DNOW)
-    ss << "3DNOW ";
+    strcat(buff, "3DNOW");
 
-  return ss.str();
+  return buff;
 }
 
 
@@ -1319,9 +1315,10 @@ PVideoFrame FilterInfo::GetFrame(int n, IScriptEnvironment* env)
 	  strcpy(text+tlen,"\n");
 	  tlen += 1;
 	}
+	char buff[64];
     tlen += _snprintf(text+tlen, sizeof(text)-tlen,
       "CPU detected: %s\n"                                  //  60=15+45
-      , GetCpuMsg(env).c_str()                              // 442
+      , GetCpuMsg(buff, env)                                // 442
     );
 
     DrawText(hdcAntialias, text, -1, &r, 0);

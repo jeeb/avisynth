@@ -35,17 +35,14 @@
 #ifndef __Image_Sequence_H__
 #define __Image_Sequence_H__
 
-#include "string.h"
-#include<iostream>
-#include<iomanip>
-#include<sstream>
-#include<fstream>
-#include <cassert>
-using namespace std;
+#include <assert.h>
 
 #include "../internal.h"
 
 #include "../../distrib/include/il/il.h"
+
+
+#include "msvcpXX.h"  // Quick replacement for msvcp*.dll
 
 
 class ImageWriter : public GenericVideoFilter 

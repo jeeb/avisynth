@@ -97,7 +97,7 @@ GeneralConvolution::~GeneralConvolution(void)
 
 AVSValue __cdecl GeneralConvolution::Create(AVSValue args, void* user_data, IScriptEnvironment* env)
 {
-  return new GeneralConvolution( args[0].AsClip(), args[3].AsFloat(1.0), args[1].AsInt(0),
+  return new GeneralConvolution( args[0].AsClip(), args[3].AsFloat(1.0f), args[1].AsInt(0),
                                    args[2].AsString("0 0 0 0 1 0 0 0 0" ), args[4].AsBool(true), env);
 }
 
@@ -106,15 +106,16 @@ void GeneralConvolution::setMatrix(const char * _matrix, IScriptEnvironment* env
 {
   char * copymatrix = _strdup (_matrix); // strtok mangles the input string
   char * ch = strtok (copymatrix, " \n\t\r");
-  std::vector<int> matrix;
+  int matrix[26];
+  nSize = 0;
   while (ch)
   {
-    matrix.push_back( atoi(ch) );
+    matrix[nSize++] = atoi(ch);
+	if (nSize > 25) break;
     ch = strtok (NULL, " \n\t\r");
   }
   free(copymatrix);
 
-  nSize = matrix.size();
   if (nSize < 9)
     env->ThrowError("GeneralConvolution sez: matrix too small");
   else if (nSize > 9 && nSize < 25)

@@ -36,9 +36,6 @@
 
 #include <stdarg.h>
 
-#include <string>
-using std::string;
-
 #include "../internal.h"
 #include "./parser/script.h"
 #include "memcpy_amd.h"
@@ -1254,19 +1251,31 @@ void ScriptEnvironment::PrescanPlugins()
 
 void ScriptEnvironment::ExportFilters()
 {
-  string builtin_names;
+  enum { chunk = 4096 };
+
+  char *builtin_names = (char*)malloc(2*chunk);
+  int length = 0;
+  int size = 2*chunk;
 
   for (int i = 0; i < sizeof(builtin_functions)/sizeof(builtin_functions[0]); ++i) {
     for (const AVSFunction* j = builtin_functions[i]; j->name; ++j) {
-      builtin_names += j->name;
-      builtin_names += " ";
+	  if (length > size-128) {
+	    size += chunk;
+		builtin_names = (char*)realloc(builtin_names, size); 
+	  }
 
-      string param_id = string("$Plugin!") + j->name + "!Param$";
-      SetGlobalVar( SaveString(param_id.c_str(), param_id.length() + 1), AVSValue(j->param_types) );
+      const char *p = j->name;
+      while (*p) builtin_names[length++] = *p++;
+      builtin_names[length++] = ' ';
+
+      SetGlobalVar( Sprintf("$Plugin!%s!Param$", j->name), AVSValue(j->param_types) );
     }
   }
 
-  SetGlobalVar("$InternalFunctions$", AVSValue( SaveString(builtin_names.c_str(), builtin_names.length() + 1) ));
+  builtin_names[length-1] = 0;
+  SetGlobalVar("$InternalFunctions$", AVSValue( SaveString(builtin_names, length) ));
+
+  free(builtin_names);
 }
 
 
