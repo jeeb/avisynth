@@ -1507,42 +1507,42 @@ namespace SoftWire
 			movq(qword_ptr [&qword1], mmi);
 			movq(qword_ptr [&qword2], mmj);
 
-			test(byte_ptr [&qword2+0], (char)0x80);
+			test(byte_ptr [&qword2+0], (byte)0x80);
 			mov(t8(0), byte_ptr [edi+0]);
 			cmovnz(t32(0), dword_ptr [&qword1+0]);
 			mov(byte_ptr [edi+0], t8(0));
 
-			test(byte_ptr [&qword2+1], (char)0x80);
+			test(byte_ptr [&qword2+1], (byte)0x80);
 			mov(t8(0), byte_ptr [edi+1]);
 			cmovnz(t32(0), dword_ptr [&qword1+1]);
 			mov(byte_ptr [edi+1], t8(0));
 
-			test(byte_ptr [&qword2+2], (char)0x80);
+			test(byte_ptr [&qword2+2], (byte)0x80);
 			mov(t8(0), byte_ptr [edi+2]);
 			cmovnz(t32(0), dword_ptr [&qword1+2]);
 			mov(byte_ptr [edi+2], t8(0));
 
-			test(byte_ptr [&qword2+3], (char)0x80);
+			test(byte_ptr [&qword2+3], (byte)0x80);
 			mov(t8(0), byte_ptr [edi+3]);
 			cmovnz(t32(0), dword_ptr [&qword1+3]);
 			mov(byte_ptr [edi+3], t8(0));
 
-			test(byte_ptr [&qword2+4], (char)0x80);
+			test(byte_ptr [&qword2+4], (byte)0x80);
 			mov(t8(0), byte_ptr [edi+4]);
 			cmovnz(t32(0), dword_ptr [&qword1+4]);
 			mov(byte_ptr [edi+4], t8(0));
 
-			test(byte_ptr [&qword2+5], (char)0x80);
+			test(byte_ptr [&qword2+5], (byte)0x80);
 			mov(t8(0), byte_ptr [edi+5]);
 			cmovnz(t32(0), dword_ptr [&qword1+5]);
 			mov(byte_ptr [edi+5], t8(0));
 
-			test(byte_ptr [&qword2+6], (char)0x80);
+			test(byte_ptr [&qword2+6], (byte)0x80);
 			mov(t8(0), byte_ptr [edi+6]);
 			cmovnz(t32(0), dword_ptr [&qword1+6]);
 			mov(byte_ptr [edi+6], t8(0));
 
-			test(byte_ptr [&qword2+7], (char)0x80);
+			test(byte_ptr [&qword2+7], (byte)0x80);
 			mov(t8(0), byte_ptr [edi+7]);
 			cmovnz(t32(0), dword_ptr [&qword1+7]);
 			mov(byte_ptr [edi+7], t8(0));

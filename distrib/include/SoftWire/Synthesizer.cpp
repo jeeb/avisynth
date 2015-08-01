@@ -241,17 +241,17 @@ namespace SoftWire
 				{
 					if(Operand::isReg(firstType) && firstType != Operand::OPERAND_ST0)
 					{
-						encoding.O1 += firstReg & 0x7;
+						encoding.O1 = encoding.O1 +(unsigned char)(firstReg & 0x7);
 						encoding.REX.B = (firstReg & 0x8) >> 3;
 					}
 					else if(Operand::isReg(secondType))
 					{
-						encoding.O1 += secondReg & 0x7;
+						encoding.O1 = encoding.O1 + (unsigned char)(secondReg & 0x7);
 						encoding.REX.B = (secondReg & 0x8) >> 3;
 					}
 					else if(Operand::isReg(firstType) && firstType == Operand::OPERAND_ST0)
 					{
-						encoding.O1 += firstReg & 0x7;
+						encoding.O1 = encoding.O1 + (unsigned char)(firstReg & 0x7);
 						encoding.REX.B = (firstReg & 0x8) >> 3;
 					}
 					else
@@ -338,14 +338,14 @@ namespace SoftWire
 				         encoding.O1 == 0xDF || encoding.O1 == 0x66)*/)
 				{
 					encoding.O2 = encoding.O1;
-					encoding.O1 = opcode;
+					encoding.O1 = (unsigned char)opcode;
 
 					encoding.format.O2 = true;
 				}
         else if (encoding.format.O2 && !encoding.format.O3) {
 					encoding.O3 = encoding.O2;
 					encoding.O2 = encoding.O1;
-					encoding.O1 = opcode;
+					encoding.O1 = (unsigned char)opcode;
 
 					encoding.format.O3 = true;
         }
@@ -353,7 +353,7 @@ namespace SoftWire
 					encoding.O4 = encoding.O3;
 					encoding.O3 = encoding.O2;
 					encoding.O2 = encoding.O1;
-					encoding.O1 = opcode; 
+					encoding.O1 = (unsigned char)opcode;
 
 					encoding.format.O4 = true;
         }
@@ -374,7 +374,7 @@ namespace SoftWire
 				{
 					encoding.format.I1 = true;
 
-					encoding.I1 = opcode;
+					encoding.I1 = (unsigned char)opcode;
 				}
 			}
 
@@ -575,7 +575,7 @@ namespace SoftWire
 		encoding.REX.R = (reg & 0x8) >> 3;
 	}
 
-	void Synthesizer::encodeSibByte(const Instruction *instruction)
+	void Synthesizer::encodeSibByte(const Instruction * /*instruction*/)
 	{
 		if(scale == 0 && indexReg == Encoding::REG_UNKNOWN)
 		{

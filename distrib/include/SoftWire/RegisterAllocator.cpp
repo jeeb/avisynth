@@ -195,7 +195,7 @@ namespace SoftWire
 		return allocate32(candidate, ref, copy, partial);
 	}
 
-	OperandR_M32 RegisterAllocator::m32(const OperandREF &ref, int partial)
+	OperandR_M32 RegisterAllocator::m32(const OperandREF &ref, int /*partial*/)
 	{
 		if(ref == 0) throw Error("Cannot dereference 0");
 
@@ -708,7 +708,7 @@ namespace SoftWire
 		return allocate128(candidate, ref, copy, ss);
 	}
 
-	OperandR_M128 RegisterAllocator::m128(const OperandREF &ref, bool ss)
+	OperandR_M128 RegisterAllocator::m128(const OperandREF &ref, bool /*ss*/)
 	{
 		if(ref == 0) throw Error("Cannot dereference 0");
 

@@ -831,7 +831,7 @@ namespace SoftWire
 		return *this;
 	}
 
-	CodeGenerator::Int &CodeGenerator::Int::operator<<=(const Int &i)
+	CodeGenerator::Int &CodeGenerator::Int::operator<<=(const Int &/*i*/)
 	{
 		cg->exclude(ecx);
 		cg->mov(ecx, cg->m32(ebp + ref()));
@@ -839,7 +839,7 @@ namespace SoftWire
 		return *this;
 	}
 
-	CodeGenerator::Int &CodeGenerator::Int::operator>>=(const Int &i)
+	CodeGenerator::Int &CodeGenerator::Int::operator>>=(const Int &/*i*/)
 	{
 		cg->exclude(ecx);
 		cg->mov(ecx, cg->m32(ebp + ref()));
@@ -1730,7 +1730,7 @@ namespace SoftWire
 		stackUpdate = 0;
 	}
 
-	void CodeGenerator::prologue(int functionArguments)
+	void CodeGenerator::prologue(int /*functionArguments*/)
 	{
 		cg = this;
 

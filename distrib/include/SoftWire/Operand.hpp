@@ -4,8 +4,10 @@
 #include "Encoding.hpp"
 #include "Error.hpp"
 
-#pragma warning( push )
-#pragma warning (disable: 4701) // local variable may be used without having been initialized
+#pragma warning (disable: 4512) // assignment operator could not be generated
+
+// #pragma warning( push )
+// #pragma warning (disable: 4701) // local variable may be used without having been initialized
 
 namespace SoftWire
 {
@@ -1439,6 +1441,6 @@ namespace SoftWire
 	}
 }
 
-#pragma warning( pop )
+// #pragma warning( pop )
 
 #endif   // SoftWire_Operand_hpp

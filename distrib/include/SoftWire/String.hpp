@@ -47,7 +47,7 @@ namespace SoftWire
 
 		for(int i = 0; i < n; i++)
 		{
-			string[i] = tolower(string[i]);
+			string[i] = (char)tolower(string[i]);
 		}
 
 		return string;

@@ -3,6 +3,9 @@
 
 #include "Link.hpp"
 
+#pragma warning( push )
+#pragma warning (disable: 4512) // assignment operator could not be generated
+
 namespace SoftWire
 {
 	class Linker;
@@ -45,5 +48,7 @@ namespace SoftWire
 		int codeLength() const;
 	};
 }
+
+#pragma warning( pop )
 
 #endif   // SoftWire_Loader_hpp

@@ -109,7 +109,7 @@ namespace SoftWire
 		return instructions->tail();
 	}
 
-	void Loader::loadCode(const char *entryLabel)
+	void Loader::loadCode(const char * /*entryLabel*/)
 	{
 		int length = codeLength() + 64;   // NOTE: Code length is not accurate due to alignment issues
 
@@ -130,7 +130,7 @@ namespace SoftWire
 			Encoding &encoding = *instruction;
 			encoding.setAddress(currentCode);
 			const char *reference = encoding.getReference();
-			const char *label = encoding.getLabel();
+			encoding.getLabel();
 
 			if(reference)
 			{

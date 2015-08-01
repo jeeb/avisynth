@@ -1,6 +1,8 @@
 #ifndef SoftWire_Encoding_hpp
 #define SoftWire_Encoding_hpp
 
+#pragma warning (disable: 4201) // nonstandard extension used : nameless struct/union
+
 namespace SoftWire
 {
 	class Synthesizer;
