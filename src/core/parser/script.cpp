@@ -615,12 +615,22 @@ AVSValue NOP(AVSValue args, void*, IScriptEnvironment* env) { return NULL;}
 
 AVSValue Undefined(AVSValue args, void*, IScriptEnvironment* env) { return AVSValue();}
 
-AVSValue Exist(AVSValue args, void*, IScriptEnvironment* env)
- { struct _finddata_t c_file;
-   const char *filename = args[0].AsString();
-   bool wildcard;
-   wildcard = ((strchr(filename,'*')!=NULL) || (strchr(filename,'?')!=NULL));
-   return _findfirst(filename,&c_file)==-1L ? false : wildcard ? false : true; 
+AVSValue Exist(AVSValue args, void*, IScriptEnvironment* env) {
+  const char *filename = args[0].AsString();
+
+  if (strchr(filename, '*') || strchr(filename, '?')) // wildcard
+      return false;
+
+  struct _finddata_t c_file;
+
+  intptr_t f = _findfirst(filename, &c_file);
+
+  if (f == -1)
+      return false;
+
+  _findclose(f);
+
+  return true;
 }
 
 
@@ -681,7 +691,7 @@ int splint(float xa[], float ya[], float y2a[], int n, float x, float &y, bool c
 }
 
 // the script functions 
-AVSValue AVSChr(AVSValue args, void* ,IScriptEnvironment* env )
+AVSValue AVSChr(AVSValue args, void*, IScriptEnvironment* env )
 {
     char s[2];
 
@@ -690,12 +700,12 @@ AVSValue AVSChr(AVSValue args, void* ,IScriptEnvironment* env )
     return env->SaveString(s);
 }
 
-AVSValue AVSOrd(AVSValue args, void* ,IScriptEnvironment* env )
+AVSValue AVSOrd(AVSValue args, void*, IScriptEnvironment* env )
 {
     return (int)args[0].AsString()[0] & 0xFF;
 }
 
-AVSValue FillStr(AVSValue args, void* ,IScriptEnvironment* env )
+AVSValue FillStr(AVSValue args, void*, IScriptEnvironment* env )
 {
     const int count = args[0].AsInt();
     if (count <= 0)
