@@ -109,7 +109,7 @@ AVSsupereq(PClip _child, const char* filename, IScriptEnvironment* env)
   dst_samples_filled = 0;
 }
 
-AVSsupereq(PClip _child, float* values, IScriptEnvironment* env)
+AVSsupereq(PClip _child, int* values, IScriptEnvironment* env)
 : GenericVideoFilter(ConvertAudio::Create(_child, SAMPLE_FLOAT, SAMPLE_FLOAT))
 {
   const unsigned last_nch   = (unsigned)vi.AudioChannels();
@@ -237,18 +237,18 @@ AVSValue __cdecl AVSsupereq::Create(AVSValue args, void*, IScriptEnvironment* en
 }
 
 AVSValue __cdecl AVSsupereq::Create_Custom(AVSValue args, void*, IScriptEnvironment* env) {
-  float eq[N_BANDS];
+  int eq[N_BANDS];
   AVSValue args_c = args[1];
   const int num_args = args_c.ArraySize();
   for (int i = 0; i<N_BANDS; i++) {
-    eq[i] = i<num_args ? args_c[i].AsFloat() : 0.0f;
+    eq[i] = i<num_args ? args_c[i].AsInt() : 0;
   }
   return new AVSsupereq(args[0].AsClip(), eq, env);
 }
 
 extern const AVSFunction SuperEq_filters[] = {
   { "SuperEQ", "cs", AVSsupereq::Create },
-  { "SuperEQ", "cf+", AVSsupereq::Create_Custom },
+  { "SuperEQ", "ci+", AVSsupereq::Create_Custom },
   { 0 }
 };
 
