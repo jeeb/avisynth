@@ -1810,6 +1810,29 @@ int ScriptEnvironment::Flatten(const AVSValue& src, AVSValue* dst, int index, in
 }
 
 
+void InvokeHelper2(AVSValue &retval, IScriptEnvironment::ApplyFunc f, const AVSValue &args, void* user_data, IScriptEnvironment* env) {
+
+  retval = f(args, user_data, env);
+}
+
+
+int CopyExceptionRecord(PEXCEPTION_POINTERS ep, PEXCEPTION_RECORD er);
+void ReportException(const char *title, PEXCEPTION_RECORD er, IScriptEnvironment* env);
+
+
+void InvokeHelper(AVSValue &retval, IScriptEnvironment::ApplyFunc f, const AVSValue &args, void* user_data, IScriptEnvironment* env) {
+
+  EXCEPTION_RECORD er = {0};
+
+  __try {
+    InvokeHelper2(retval, f, args, user_data, env);
+  }
+  __except (CopyExceptionRecord(GetExceptionInformation(), &er)) {
+    ReportException("Invoke", &er, env);
+  }
+}
+
+
 AVSValue ScriptEnvironment::Invoke(const char* name, const AVSValue args, const char* const* arg_names) {
 
   int args2_count;
@@ -1908,7 +1931,7 @@ success:;
       }
     }
     // ... and we're finally ready to make the call
-    retval = f->apply(AVSValue(args3, args3_count), f->user_data, this);
+    InvokeHelper(retval, f->apply, AVSValue(args3, args3_count), f->user_data, this);
   }
   catch (...) {
     delete[] args3;
@@ -2242,7 +2265,8 @@ const AVS_Linkage* const __stdcall ScriptEnvironment::GetAVSLinkage() {
 }
 
 
-void _stdcall ScriptEnvironment::ApplyMessage(PVideoFrame* frame, const VideoInfo& vi, const char* message, int size, int textcolor, int halocolor, int bgcolor) {
+void _stdcall ScriptEnvironment::ApplyMessage(PVideoFrame* frame, const VideoInfo& vi,
+              const char* message, int size, int textcolor, int halocolor, int bgcolor) {
   ::ApplyMessage(frame, vi, message, size, textcolor, halocolor, bgcolor, this);
 }
 
@@ -2262,3 +2286,150 @@ IScriptEnvironment* __stdcall CreateScriptEnvironment(int version) {
   else
     return 0;
 }
+
+
+const char* const ExceptionCodeToText(const DWORD code) {
+
+  switch (code) {
+  case STATUS_GUARD_PAGE_VIOLATION:      // 0x80000001
+    return "Guard Page Violation";
+  case STATUS_DATATYPE_MISALIGNMENT:     // 0x80000002
+    return "Datatype Misalignment";
+  case STATUS_BREAKPOINT:                // 0x80000003
+    return "Breakpoint";
+  case STATUS_SINGLE_STEP:               // 0x80000004
+    return "Single Step";
+
+  case STATUS_ACCESS_VIOLATION:          // 0xC0000005
+    return "Access Violation";
+  case STATUS_IN_PAGE_ERROR:             // 0xC0000006
+    return "In Page Error";
+  case STATUS_INVALID_HANDLE:            // 0xC0000008
+    return "Invalid Handle";
+  case STATUS_NO_MEMORY:                 // 0xC0000017
+    return "No Memory";
+  case STATUS_ILLEGAL_INSTRUCTION:       // 0xC000001D
+    return "Illegal Instruction";
+  case STATUS_NONCONTINUABLE_EXCEPTION:  // 0xC0000025
+    return "Noncontinuable Exception";
+  case STATUS_INVALID_DISPOSITION:       // 0xC0000026
+    return "Invalid Disposition";
+  case STATUS_ARRAY_BOUNDS_EXCEEDED:     // 0xC000008C
+    return "Array Bounds Exceeded";
+  case STATUS_FLOAT_DENORMAL_OPERAND:    // 0xC000008D
+    return "Float Denormal Operand";
+  case STATUS_FLOAT_DIVIDE_BY_ZERO:      // 0xC000008E
+    return "Float Divide by Zero";
+  case STATUS_FLOAT_INEXACT_RESULT:      // 0xC000008F
+    return "Float Inexact Result";
+  case STATUS_FLOAT_INVALID_OPERATION:   // 0xC0000090
+    return "Float Invalid Operation";
+  case STATUS_FLOAT_OVERFLOW:            // 0xC0000091
+    return "Float Overflow";
+  case STATUS_FLOAT_STACK_CHECK:         // 0xC0000092
+    return "Float Stack Check";
+  case STATUS_FLOAT_UNDERFLOW:           // 0xC0000093
+    return "Float Underflow";
+  case STATUS_INTEGER_DIVIDE_BY_ZERO:    // 0xC0000094
+    return "Integer Divide by Zero";
+  case STATUS_INTEGER_OVERFLOW:          // 0xC0000095
+    return "Integer Overflow";
+  case STATUS_PRIVILEGED_INSTRUCTION:    // 0xC0000096
+    return "Privileged Instruction";
+  case STATUS_STACK_OVERFLOW:            // 0xC00000FD
+    return "Stack Overflow";
+  case 0xC0000135:                       // 0xC0000135
+    return "DLL Not Found";
+  case 0xC0000142:                       // 0xC0000142
+    return "DLL Initialization Failed";
+
+  case 0xC06d007E:                       // 0xC06D007E
+    return "Delay-load Module Not Found";
+  case 0xC06d007F:                       // 0xC06D007E
+    return "Delay-load Proceedure Not Found";
+
+  default:
+    break;
+  }
+  
+  return 0;
+}
+
+/* Use as :-
+
+  EXCEPTION_RECORD er = {0};
+
+  __try {
+    ...
+  }
+  __except (CopyExceptionRecord(GetExceptionInformation(), &er)) {
+    ReportException("title", &er, env);
+  }
+
+*/
+int CopyExceptionRecord(PEXCEPTION_POINTERS ep, PEXCEPTION_RECORD er) {
+
+  if (ep->ExceptionRecord->ExceptionCode == 0xE06D7363) // C++
+    return EXCEPTION_CONTINUE_SEARCH;
+
+  const DWORD np = ep->ExceptionRecord->NumberParameters;
+
+  size_t nbytes = sizeof(EXCEPTION_RECORD) -
+                  sizeof(ULONG_PTR) * (EXCEPTION_MAXIMUM_PARAMETERS - np);
+  
+  if (nbytes > sizeof(EXCEPTION_RECORD)) nbytes = sizeof(EXCEPTION_RECORD);
+
+  memcpy(er, ep->ExceptionRecord, nbytes);
+
+  return EXCEPTION_EXECUTE_HANDLER;
+}
+
+
+
+void ReportException(const char *title, PEXCEPTION_RECORD er, IScriptEnvironment* env) {
+
+  const DWORD ec = er->ExceptionCode;
+
+  if (ec == 0)
+    env->ThrowError("%s: unidentified exception.", title);
+
+  char name[MAX_PATH], text[64];
+  MEMORY_BASIC_INFORMATION mbi;
+  const DWORD np = er->NumberParameters;
+  const char* extext = ExceptionCodeToText(ec);
+
+  if (!extext) {
+    strcpy(text, "System exception 0x");
+    _ultoa(ec, text+strlen(text), 16);
+    extext = text;
+  }
+
+  // Lookup AllocationBase for ExceptionAddress
+  if (VirtualQuery(er->ExceptionAddress, &mbi, sizeof(mbi)) == sizeof(mbi) &&
+      // Use AllocationBase to find module name
+      GetModuleFileName((HMODULE)mbi.AllocationBase, name, sizeof(name)/sizeof(*name))) {
+
+    // Calculate offset into module of ExceptionAddress
+    const size_t offset = (size_t)er->ExceptionAddress - (size_t)mbi.AllocationBase;
+
+    if (np >= 2) // We have fault address information
+      env->ThrowError("%s: %s at %s+0x%X(0x%08X)\nattempting to %s 0x%08X",
+                      title, extext, name, offset, er->ExceptionAddress,
+                      er->ExceptionInformation[0] == 8 ? "execute" :
+                      er->ExceptionInformation[0] == 1 ? "write to" : "read from",
+                      er->ExceptionInformation[1]);
+    // Vanilla report
+    env->ThrowError("%s: %s at %s+0x%X(0x%08X)", title, extext, name, offset, er->ExceptionAddress);
+  }
+
+  // Cannot find module name
+  if (np >= 2) // We have fault address information
+    env->ThrowError("%s: %s at 0x%08X\nattempting to %s 0x%08X",
+                    title, extext, er->ExceptionAddress,
+                    er->ExceptionInformation[0] == 8 ? "execute" :
+                    er->ExceptionInformation[0] == 1 ? "write to" : "read from",
+                    er->ExceptionInformation[1]);
+  // Vanilla report
+  env->ThrowError("%s: %s at 0x%08X", title, extext, er->ExceptionAddress);
+}
+
