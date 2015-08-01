@@ -203,16 +203,15 @@ GaussianFilter::GaussianFilter(double p = 30.0) {
 }
 
 double GaussianFilter::f(double value) {
-  value = fabs(value);
-	double p = param*0.1;
-	return pow(2.0, - p*value*value);
+  double p = param*0.1;
+  return pow(2.0, - p*value*value);
 }
 
 /***********************
  *** Sinc filter ***
  ***********************/
 SincFilter::SincFilter(int t = 4) {
-   taps = (double)(max( 1,min(20,t)));
+  taps = (double)(max( 1,min(20,t)));
 }
 
 double SincFilter::f(double value) {
