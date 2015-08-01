@@ -78,7 +78,7 @@ public:
 class MinMaxPlane {
 
 public:
-  static AVSValue MinMax(AVSValue clip, void* user_data, float threshold, int offset, int plane, int mode, IScriptEnvironment* env);
+  static AVSValue MinMax(AVSValue clip, void* user_data, double threshold, int offset, int plane, int mode, IScriptEnvironment* env);
   static AVSValue __cdecl Create_max_y(AVSValue args, void* user_data, IScriptEnvironment* env);
   static AVSValue __cdecl Create_min_y(AVSValue args, void* user_data, IScriptEnvironment* env);
   static AVSValue __cdecl Create_median_y(AVSValue args, void* user_data, IScriptEnvironment* env);

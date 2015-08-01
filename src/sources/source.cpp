@@ -105,7 +105,7 @@ static PVideoFrame CreateBlankFrame(const VideoInfo& vi, int color, int mode, IS
       *(unsigned*)(p+i) = d;
   } else if (vi.IsRGB24()) {
     const unsigned char clr0 = (color & 0xFF);
-    const unsigned short clr1 = (color >> 8);
+    const unsigned short clr1 =(color >> 8);
     const int gr = frame->GetRowSize();
     const int gp = frame->GetPitch();
     for (int y=frame->GetHeight();y>0;y--) {
@@ -1019,7 +1019,7 @@ public:
   static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env) {
 	try {	// HIDE DAMN SEH COMPILER BUG!!!
 	    return new Tone(args[0].AsFloat(10.0f), args[1].AsFloat(440.0f), args[2].AsInt(48000),
-		                args[3].AsInt(2), args[4].AsString("Sine"), (float)args[5].AsFloat(1.0f), env);
+		                args[3].AsInt(2), args[4].AsString("Sine"), args[5].AsFloatf(1.0f), env);
 	}
 	catch (...) { throw; }
   }

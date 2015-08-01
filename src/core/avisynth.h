@@ -783,12 +783,13 @@ public:
 //  int AsLong() const;
   const char* AsString() const AVS_BakedCode( return AVS_LinkCall(AsString1)() )
   double AsFloat() const AVS_BakedCode( return AVS_LinkCall(AsFloat1)() )
+  float AsFloatf() const AVS_BakedCode( return float( AVS_LinkCall(AsFloat1)() ) )
 
   bool AsBool(bool def) const AVS_BakedCode( return AVS_LinkCall(AsBool2)(def) )
   int AsInt(int def) const AVS_BakedCode( return AVS_LinkCall(AsInt2)(def) )
   double AsDblDef(double def) const AVS_BakedCode( return AVS_LinkCall(AsDblDef)(def) ) // Value is still a float
-//float AsFloat(double def) const; // def demoted to a float
   double AsFloat(float def) const AVS_BakedCode( return AVS_LinkCall(AsFloat2)(def) )
+  float AsFloatf(float def) const AVS_BakedCode( return float( AVS_LinkCall(AsFloat2)(def) ) )
   const char* AsString(const char* def) const AVS_BakedCode( return AVS_LinkCall(AsString2)(def) )
 
   int ArraySize() const AVS_BakedCode( return AVS_LinkCall(ArraySize)() )

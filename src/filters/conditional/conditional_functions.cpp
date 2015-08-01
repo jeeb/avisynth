@@ -413,58 +413,58 @@ AVSValue ComparePlane::CmpPlaneSame(AVSValue clip, void* user_data, int offset, 
 // Y Planes functions
 
 AVSValue __cdecl MinMaxPlane::Create_max_y(AVSValue args, void* user_data, IScriptEnvironment* env) {
-  return MinMax(args[0], user_data, args[1].AsFloat(0.0f), args[2].AsInt(0), PLANAR_Y, MAX, env);
+  return MinMax(args[0], user_data, args[1].AsDblDef(0.0), args[2].AsInt(0), PLANAR_Y, MAX, env);
 }
 
 AVSValue __cdecl MinMaxPlane::Create_min_y(AVSValue args, void* user_data, IScriptEnvironment* env) {
-  return MinMax(args[0], user_data, args[1].AsFloat(0.0f), args[2].AsInt(0), PLANAR_Y, MIN, env);
+  return MinMax(args[0], user_data, args[1].AsDblDef(0.0), args[2].AsInt(0), PLANAR_Y, MIN, env);
 }
 
 AVSValue __cdecl MinMaxPlane::Create_median_y(AVSValue args, void* user_data, IScriptEnvironment* env) {
-  return MinMax(args[0], user_data, 50.0f, args[1].AsInt(0), PLANAR_Y, MIN, env);
+  return MinMax(args[0], user_data, 50.0, args[1].AsInt(0), PLANAR_Y, MIN, env);
 }
 
 AVSValue __cdecl MinMaxPlane::Create_minmax_y(AVSValue args, void* user_data, IScriptEnvironment* env) {
-  return MinMax(args[0], user_data, args[1].AsFloat(0.0f), args[2].AsInt(0), PLANAR_Y, MINMAX_DIFFERENCE, env);
+  return MinMax(args[0], user_data, args[1].AsDblDef(0.0), args[2].AsInt(0), PLANAR_Y, MINMAX_DIFFERENCE, env);
 }
 
 // U Planes functions
 
 AVSValue __cdecl MinMaxPlane::Create_max_u(AVSValue args, void* user_data, IScriptEnvironment* env) {
-  return MinMax(args[0], user_data, args[1].AsFloat(0.0f), args[2].AsInt(0), PLANAR_U, MAX, env);
+  return MinMax(args[0], user_data, args[1].AsDblDef(0.0), args[2].AsInt(0), PLANAR_U, MAX, env);
 }
 
 AVSValue __cdecl MinMaxPlane::Create_min_u(AVSValue args, void* user_data, IScriptEnvironment* env) {
-  return MinMax(args[0], user_data, args[1].AsFloat(0.0f), args[2].AsInt(0), PLANAR_U, MIN, env);
+  return MinMax(args[0], user_data, args[1].AsDblDef(0.0), args[2].AsInt(0), PLANAR_U, MIN, env);
 }
 
 AVSValue __cdecl MinMaxPlane::Create_median_u(AVSValue args, void* user_data, IScriptEnvironment* env) {
-  return MinMax(args[0], user_data, 50.0f, args[1].AsInt(0), PLANAR_U, MIN, env);
+  return MinMax(args[0], user_data, 50.0, args[1].AsInt(0), PLANAR_U, MIN, env);
 }
 
 AVSValue __cdecl MinMaxPlane::Create_minmax_u(AVSValue args, void* user_data, IScriptEnvironment* env) {
-  return MinMax(args[0], user_data, args[1].AsFloat(0.0f), args[2].AsInt(0), PLANAR_U, MINMAX_DIFFERENCE, env);
+  return MinMax(args[0], user_data, args[1].AsDblDef(0.0), args[2].AsInt(0), PLANAR_U, MINMAX_DIFFERENCE, env);
 }
 // V Planes functions
 
 AVSValue __cdecl MinMaxPlane::Create_max_v(AVSValue args, void* user_data, IScriptEnvironment* env) {
-  return MinMax(args[0], user_data, args[1].AsFloat(0.0f), args[2].AsInt(0), PLANAR_V, MAX, env);
+  return MinMax(args[0], user_data, args[1].AsDblDef(0.0), args[2].AsInt(0), PLANAR_V, MAX, env);
 }
 
 AVSValue __cdecl MinMaxPlane::Create_min_v(AVSValue args, void* user_data, IScriptEnvironment* env) {
-  return MinMax(args[0], user_data, args[1].AsFloat(0.0f), args[2].AsInt(0), PLANAR_V, MIN, env);
+  return MinMax(args[0], user_data, args[1].AsDblDef(0.0), args[2].AsInt(0), PLANAR_V, MIN, env);
 }
 
 AVSValue __cdecl MinMaxPlane::Create_median_v(AVSValue args, void* user_data, IScriptEnvironment* env) {
-  return MinMax(args[0], user_data, 50.0f, args[1].AsInt(0), PLANAR_V, MIN, env);
+  return MinMax(args[0], user_data, 50.0, args[1].AsInt(0), PLANAR_V, MIN, env);
 }
 
 AVSValue __cdecl MinMaxPlane::Create_minmax_v(AVSValue args, void* user_data, IScriptEnvironment* env) {
-  return MinMax(args[0], user_data, args[1].AsFloat(0.0f), args[2].AsInt(0), PLANAR_V, MINMAX_DIFFERENCE, env);
+  return MinMax(args[0], user_data, args[1].AsDblDef(0.0), args[2].AsInt(0), PLANAR_V, MINMAX_DIFFERENCE, env);
 }
 
 
-AVSValue MinMaxPlane::MinMax(AVSValue clip, void* user_data, float threshold, int offset, int plane, int mode, IScriptEnvironment* env) {
+AVSValue MinMaxPlane::MinMax(AVSValue clip, void* user_data, double threshold, int offset, int plane, int mode, IScriptEnvironment* env) {
   unsigned int accum[256];
 
   if (!clip.IsClip())
@@ -509,10 +509,10 @@ AVSValue MinMaxPlane::MinMax(AVSValue clip, void* user_data, float threshold, in
   }
 
   int pixels = w*h;
-  threshold /=100.0f;  // Thresh now 0-1
-  threshold = max(0.0f,min(threshold,1.0f));
+  threshold /=100.0;  // Thresh now 0-1
+  threshold = max(0.0,min(threshold,1.0));
 
-  unsigned int tpixels = (unsigned int)((float)pixels*threshold);
+  unsigned int tpixels = (unsigned int)(pixels*threshold);
 
   // Find the value we need.
   if (mode == MIN) {

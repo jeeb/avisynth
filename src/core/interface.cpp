@@ -575,6 +575,7 @@ double AVSValue::AsFloat() const { _ASSERTE(IsFloat()); return IsInt()?integer:f
 
 double AVSValue::AsFloat1() const { _ASSERTE(IsFloat()); return IsInt()?integer:floating_pt; }
 double AVSValue::AsFloat() const { return AsFloat1(); }
+float AVSValue::AsFloatf() const { return float( AsFloat1() ); }
 
 
 bool AVSValue::AsBool2(bool def) const { _ASSERTE(IsBool()||!Defined()); return IsBool() ? boolean : def; }
@@ -590,6 +591,7 @@ double AVSValue::AsDblDef(double def) const { _ASSERTE(IsFloat()||!Defined()); r
 
 double AVSValue::AsFloat2(float def) const { _ASSERTE(IsFloat()||!Defined()); return IsInt() ? integer : type=='f' ? floating_pt : def; }
 double AVSValue::AsFloat(float def) const { return AsFloat2(def); }
+float AVSValue::AsFloatf(float def) const { return float( AsFloat2(def) ); }
 
 const char* AVSValue::AsString2(const char* def) const { _ASSERTE(IsString()||!Defined()); return IsString() ? string : def; }
 const char* AVSValue::AsString(const char* def) const { return AVSValue::AsString2(def); }

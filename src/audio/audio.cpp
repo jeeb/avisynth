@@ -742,7 +742,7 @@ AVSValue __cdecl Amplify::Create(AVSValue args, void*, IScriptEnvironment* env) 
   float* child_array = new float[ch];
   int* i_child_array = new int[ch];
   for (int i = 0; i < ch; ++i) {
-    child_array[i] = args_c[min(i, num_args - 1)].AsFloat();
+    child_array[i] = args_c[min(i, num_args - 1)].AsFloatf();
     i_child_array[i] = int(child_array[i] * 131072.0f + 0.5f);
   }
   return new Amplify(args[0].AsClip(), child_array, i_child_array);
@@ -760,7 +760,7 @@ AVSValue __cdecl Amplify::Create_dB(AVSValue args, void*, IScriptEnvironment* en
   float* child_array = new float[ch];
   int* i_child_array = new int[ch];
   for (int i = 0; i < ch; ++i) {
-    child_array[i] = dBtoScaleFactorf(args_c[min(i, num_args - 1)].AsFloat());
+    child_array[i] = dBtoScaleFactorf(args_c[min(i, num_args - 1)].AsFloatf());
     i_child_array[i] = int(child_array[i] * 131072.0f + 0.5f);
   }
   return new Amplify(args[0].AsClip(), child_array, i_child_array);
@@ -981,7 +981,7 @@ PVideoFrame __stdcall Normalize::GetFrame(int n, IScriptEnvironment* env) {
 
 AVSValue __cdecl Normalize::Create(AVSValue args, void*, IScriptEnvironment* env) {
 
-  return new Normalize(args[0].AsClip(), args[1].AsFloat(1.0f), args[2].AsBool(false));
+  return new Normalize(args[0].AsClip(), args[1].AsFloatf(1.0f), args[2].AsBool(false));
 }
 
 

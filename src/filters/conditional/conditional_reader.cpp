@@ -292,7 +292,7 @@ ConditionalReader::ConditionalReader(PClip _child, const char* filename, const c
           AVSValue set_stop = ConvertType(stop_value, lines, env);
 
           const int range = stop-start;
-          const double diff = (double)(set_stop.AsFloat() - set_start.AsFloat()) / range;
+          const double diff = (set_stop.AsFloat() - set_start.AsFloat()) / range;
           for (int i = 0; i<=range; i++) {
             const double n = i * diff + set_start.AsFloat();
             SetFrame(i+start, (mode == MODE_FLOAT)
@@ -427,7 +427,7 @@ void ConditionalReader::SetRange(int start_frame, int stop_frame, AVSValue v) {
       }
       break;
     case MODE_FLOAT:
-      q = v.AsFloat();
+      q = v.AsFloatf();
       for (i = start_frame; i <= stop_frame; i++) {
         floatVal[i] = q;
       }
@@ -459,7 +459,7 @@ void ConditionalReader::SetFrame(int framenumber, AVSValue v) {
       intVal[framenumber+offset] = v.AsInt();
       break;
     case MODE_FLOAT:
-      floatVal[framenumber+offset] = v.AsFloat();
+      floatVal[framenumber+offset] = v.AsFloatf();
       break;
     case MODE_BOOL:
       boolVal[framenumber+offset] = v.AsBool();
