@@ -7,7 +7,11 @@
 //
 // Generated from the TEXTINCLUDE 2 resource.
 //
+#ifdef NOMFC
+#include "WinNT.h"
+#else
 #include "afxres.h"
+#endif
 
 /////////////////////////////////////////////////////////////////////////////
 #undef APSTUDIO_READONLY_SYMBOLS
@@ -54,8 +58,8 @@ END
 //
 
 VS_VERSION_INFO VERSIONINFO
- FILEVERSION 2,6,0,6
- PRODUCTVERSION 2,6,0,6
+ FILEVERSION 2,6,1,0
+ PRODUCTVERSION 2,6,1,0
  FILEFLAGSMASK 0x3fL
 #ifdef _DEBUG
  FILEFLAGS 0x1L
@@ -73,14 +77,14 @@ BEGIN
             VALUE "Comments", "Homepage: http://www.avisynth.org\0"
             VALUE "CompanyName", "The Public\0"
             VALUE "FileDescription", "Avisynth video processing scripting language\0"
-            VALUE "FileVersion", "2, 6, 0, 6\0"
-            VALUE "InternalName", "AviSynth 2.6.0\0"
+            VALUE "FileVersion", "2, 6, 1, 0\0"
+            VALUE "InternalName", "AviSynth 2.6.1\0"
             VALUE "LegalCopyright", "© 2000-2015 Ben Rudiak-Gould and others\0"
 //          VALUE "LegalTrademarks", "\0"
             VALUE "OriginalFilename", "avisynth.dll\0"
 //          VALUE "PrivateBuild", "\0"
             VALUE "ProductName", "Avisynth 2.6\0"
-            VALUE "ProductVersion", "2, 6, 0, 6\0"
+            VALUE "ProductVersion", "2, 6, 1, 0\0"
 //          VALUE "SpecialBuild", "\0"
         END
     END
