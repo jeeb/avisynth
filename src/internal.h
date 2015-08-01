@@ -58,7 +58,7 @@ enum {MC_IncVFBRefcount         =0xFFFF0005};
 struct AVSFunction {
   const char* name;
   const char* param_types;
-  AVSValue (__cdecl *apply)(AVSValue args, void* user_data, IScriptEnvironment* env);
+  IScriptEnvironment::ApplyFunc apply;
   void* user_data;
 };
 

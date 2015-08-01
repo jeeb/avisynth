@@ -235,9 +235,9 @@ inline void ConvertToYUY2::inline_rgbtoyuy2(const bool pcrange, const int cyb, c
       const BYTE* const rgb_next = rgb + rgb_inc;
       // y1 and y2 can't overflow
       const int y1         = (cyb*rgb[0] + cyg*rgb[1] + cyr*rgb[2] + bias) >> 16;
-      yuv[0]               = y1;
+      yuv[0]               = (BYTE)y1;
       const int y2         = (cyb*rgb_next[0] + cyg*rgb_next[1] + cyr*rgb_next[2] + bias) >> 16;
-      yuv[2]               = y2;
+      yuv[2]               = (BYTE)y2;
       if (pcrange) { // This is okay, the compiler optimises out the unused path when pcrange is a constant
         const int scaled_y = y0+y1*2+y2;
         const int b_y      = (rgb_prev[0]+rgb[0]*2+rgb_next[0]) - scaled_y;
@@ -482,9 +482,9 @@ PVideoFrame __stdcall ConvertBackToYUY2::GetFrame(int n, IScriptEnvironment* env
         const BYTE* const rgb_next = rgb + rgb_inc;
         // y1 and y2 can't overflow
         const int y1 = (cyb*rgb[0] + cyg*rgb[1] + cyr*rgb[2] + 0x8000) >> 16;
-        yuv[0] = y1;
+        yuv[0] = (BYTE)y1;
         const int y2 = (cyb*rgb_next[0] + cyg*rgb_next[1] + cyr*rgb_next[2] + 0x8000) >> 16;
-        yuv[2] = y2;
+        yuv[2] = (BYTE)y2;
         const int scaled_y = y1;
         const int b_y = rgb[0] - scaled_y;
         yuv[1] = ScaledPixelClip(b_y * ku + 0x800000);  // u
@@ -511,9 +511,9 @@ PVideoFrame __stdcall ConvertBackToYUY2::GetFrame(int n, IScriptEnvironment* env
         const BYTE* const rgb_next = rgb + rgb_inc;
         // y1 and y2 can't overflow
         const int y1 = (cyb*rgb[0] + cyg*rgb[1] + cyr*rgb[2] + 0x8000) >> 16;
-        yuv[0] = y1;
+        yuv[0] = (BYTE)y1;
         const int y2 = (cyb*rgb_next[0] + cyg*rgb_next[1] + cyr*rgb_next[2] + 0x8000) >> 16;
-        yuv[2] = y2;
+        yuv[2] = (BYTE)y2;
         const int scaled_y = y1;
         const int b_y = rgb[0] - scaled_y;
         yuv[1] = ScaledPixelClip(b_y * ku + 0x800000);  // u
@@ -540,9 +540,9 @@ PVideoFrame __stdcall ConvertBackToYUY2::GetFrame(int n, IScriptEnvironment* env
         const BYTE* const rgb_next = rgb + rgb_inc;
         // y1 and y2 can't overflow
         const int y1 = (cyb*rgb[0] + cyg*rgb[1] + cyr*rgb[2] + 0x108000) >> 16;
-        yuv[0] = y1;
+        yuv[0] = (BYTE)y1;
         const int y2 = (cyb*rgb_next[0] + cyg*rgb_next[1] + cyr*rgb_next[2] + 0x108000) >> 16;
-        yuv[2] = y2;
+        yuv[2] = (BYTE)y2;
         const int scaled_y = (y1 - 16) * int(255.0/219.0*65536+0.5);
         const int b_y = ((rgb[0]) << 16) - scaled_y;
         yuv[1] = ScaledPixelClip((b_y >> 15) * ku + 0x800000);  // u
@@ -566,9 +566,9 @@ PVideoFrame __stdcall ConvertBackToYUY2::GetFrame(int n, IScriptEnvironment* env
         const BYTE* const rgb_next = rgb + rgb_inc;
         // y1 and y2 can't overflow
         const int y1 = (cyb*rgb[0] + cyg*rgb[1] + cyr*rgb[2] + 0x108000) >> 16;
-        yuv[0] = y1;
+        yuv[0] = (BYTE)y1;
         const int y2 = (cyb*rgb_next[0] + cyg*rgb_next[1] + cyr*rgb_next[2] + 0x108000) >> 16;
-        yuv[2] = y2;
+        yuv[2] = (BYTE)y2;
         const int scaled_y = (y1 - 16) * int(255.0/219.0*65536+0.5);
         const int b_y = ((rgb[0]) << 16) - scaled_y;
         yuv[1] = ScaledPixelClip((b_y >> 15) * int(1/2.018*32768+0.5) + 0x800000);  // u

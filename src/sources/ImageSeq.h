@@ -79,8 +79,8 @@ class ImageReader : public IClip
 {
 public:
   ImageReader(const char * _base_name, const int _start, const int _end,
-              const float _fps, bool _use_DevIL, bool _info, const char * _pixel,
-			  bool _animation, IScriptEnvironment* env);
+              const double _fps, bool _use_DevIL, bool _info, const char * _pixel,
+              bool _animation, IScriptEnvironment* env);
   ~ImageReader();
 
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);

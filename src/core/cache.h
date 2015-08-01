@@ -68,7 +68,7 @@ protected:
     PC_UnProtectAll
   };
 
-  void PokeCache(int key, int size, IScriptEnvironment* env);
+  void PokeCache(int key, size_t size, IScriptEnvironment* env);
 
 private:
   enum {GetMyThis = 0x8686 };
@@ -96,8 +96,11 @@ private:
     CachedVideoFrame *prev, *next;
     VideoFrameBuffer* vfb;
     int sequence_number;
-    int offset, pitch, row_size, height, offsetU, offsetV, pitchUV, row_sizeUV, heightUV; // 2.60
-    int frame_number;
+    size_t offset;
+    int pitch, row_size, height;
+    size_t offsetU, offsetV;
+    int pitchUV, row_sizeUV, heightUV;
+	int frame_number;
     long faults;  // the number of times this frame was requested and found to be stale(modified)
     long vfb_locked;
     long vfb_protected;
@@ -142,7 +145,7 @@ private:
   long fault_rate;   // A decaying average of 100 times the peak fault count, used to control vfb auto-locking
   long miss_count;   // Count of consecutive cache misses
 
-  unsigned long Tick;
+  long Tick;
   // These are global to all Cache instances
   static long Clock;
   static long cacheDepth;

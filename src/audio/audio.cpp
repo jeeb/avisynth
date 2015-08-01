@@ -1199,7 +1199,7 @@ void __stdcall ResampleAudio::GetAudio(void* buf, __int64 start, __int64 count, 
   const int source_bytes = (int)vi.BytesFromAudioSamples(source_samples);
 
   __int64 pos = (int(src_start & Pmask)) + (Xoff << Np);
-  int ch = vi.AudioChannels();
+  short ch = (short)vi.AudioChannels();
   unsigned dtberror = 0;
 
   if (vi.IsSampleType(SAMPLE_INT16)) {
@@ -1336,8 +1336,8 @@ nofix:
 		  *dst++ = IntToShort(v, NLpScl);   /* strip guard bits, deposit output */
 #endif
 		}
-		if ((dtberror += dtbe) >= (1 << 31)) { // Don't be a creep ;-)
-		  dtberror -= (1 << 31);
+		if ((dtberror += dtbe) >= (1u << 31)) { // Don't be a creep ;-)
+		  dtberror -= (1u << 31);
 		  pos += dtb + 1;   /* Move to next sample by time increment + error adjustment */
 		}
 		else {
@@ -1382,7 +1382,7 @@ nofix:
 		*dst++ = v;     /* deposit output */
 	  }
 	  if ((dtberror += dtbe) >= (1 << 31)) { // Don't be a creep ;-)
-		dtberror -= (1 << 31);
+		dtberror -= (1u << 31);
 		pos += dtb + 1;   /* Move to next sample by time increment + error adjustment */
 	  }
 	  else {

@@ -168,15 +168,15 @@ PVideoFrame __stdcall Limiter::GetFrame(int n, IScriptEnvironment* env) {
       for(int y = 0; y < height; y++) {
         for(int x = 0; x < row_size; x++) {
           if(srcp[x] < min_luma )
-            srcp[x++] = min_luma;
+            srcp[x++] = (unsigned char)min_luma;
           else if(srcp[x] > max_luma)
-            srcp[x++] = max_luma;
+            srcp[x++] = (unsigned char)max_luma;
           else
             x++;
           if(srcp[x] < min_chroma)
-            srcp[x] = min_chroma;
+            srcp[x] = (unsigned char)min_chroma;
           else if(srcp[x] > max_chroma)
-            srcp[x] = max_chroma;
+            srcp[x] = (unsigned char)max_chroma;
         }
         srcp += pitch;
       }
@@ -427,9 +427,9 @@ PVideoFrame __stdcall Limiter::GetFrame(int n, IScriptEnvironment* env) {
     {for(int y = 0; y < height; y++) {
       for(int x = 0; x < row_size; x++) {
         if(srcp[x] < min_luma )
-          srcp[x] = min_luma;
+          srcp[x] = (unsigned char)min_luma;
         else if(srcp[x] > max_luma)
-          srcp[x] = max_luma;
+          srcp[x] = (unsigned char)max_luma;
       }
       srcp += pitch;
     }}
@@ -445,13 +445,13 @@ PVideoFrame __stdcall Limiter::GetFrame(int n, IScriptEnvironment* env) {
     {for(int y = 0; y < height; y++) {
       for(int x = 0; x < row_size; x++) {
         if(srcp[x] < min_chroma)
-          srcp[x] = min_chroma;
+          srcp[x] = (unsigned char)min_chroma;
         else if(srcp[x] > max_chroma)
-          srcp[x] = max_chroma;
+          srcp[x] = (unsigned char)max_chroma;
         if(srcpV[x] < min_chroma)
-          srcpV[x] = min_chroma;
+          srcpV[x] = (unsigned char)min_chroma;
         else if(srcpV[x] > max_chroma)
-          srcpV[x] = max_chroma;
+          srcpV[x] = (unsigned char)max_chroma;
       }
       srcp += pitch;
       srcpV += pitch;

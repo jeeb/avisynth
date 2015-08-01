@@ -56,22 +56,22 @@ public:
   virtual ~ConvertAudio();
 
 private:
-  void convertToFloat(char* inbuf, float* outbuf, char sample_type, int count);
-  void convertToFloat_3DN(char* inbuf, float* outbuf, char sample_type, int count);
-  void convertToFloat_SSE(char* inbuf, float* outbuf, char sample_type, int count);
-  void convertToFloat_SSE2(char* inbuf, float* outbuf, char sample_type, int count);
-  void convertFromFloat(float* inbuf, void* outbuf, char sample_type, int count);
-  void convertFromFloat_3DN(float* inbuf, void* outbuf, char sample_type, int count);
-  void convertFromFloat_SSE(float* inbuf, void* outbuf, char sample_type, int count);
-  void convertFromFloat_SSE2(float* inbuf, void* outbuf, char sample_type, int count);
+  void convertToFloat(char* inbuf, float* outbuf, int sample_type, int count);
+  void convertToFloat_3DN(char* inbuf, float* outbuf, int sample_type, int count);
+  void convertToFloat_SSE(char* inbuf, float* outbuf, int sample_type, int count);
+  void convertToFloat_SSE2(char* inbuf, float* outbuf, int sample_type, int count);
+  void convertFromFloat(float* inbuf, void* outbuf, int sample_type, int count);
+  void convertFromFloat_3DN(float* inbuf, void* outbuf, int sample_type, int count);
+  void convertFromFloat_SSE(float* inbuf, void* outbuf, int sample_type, int count);
+  void convertFromFloat_SSE2(float* inbuf, void* outbuf, int sample_type, int count);
 
   __inline int Saturate_int8(float n);
   __inline short Saturate_int16(float n);
   __inline int Saturate_int24(float n);
   __inline int Saturate_int32(float n);
 
-  char src_format;
-  char dst_format;
+  int src_format;
+  int dst_format;
   int src_bps;
   int tempbuffer_size;
   char *tempbuffer;

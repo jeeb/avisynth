@@ -89,7 +89,7 @@ DynamicAssembledCode::DynamicAssembledCode(Assembler &x86, IScriptEnvironment* e
   ret = (BYTE*)x86.acquire();
 
 #ifdef _DEBUG
-  int bytes=0;
+//  int bytes=0;
 //  while (ret[bytes]!=0xCC) { bytes++; };
 //  _RPT1(0,"Dynamic code compiled into %i bytes.\n",bytes);
   

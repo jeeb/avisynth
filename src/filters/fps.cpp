@@ -140,7 +140,7 @@ static bool reduce_float(float value, unsigned &num, unsigned &den)
   unsigned a2, ax, amin;  // integer parts of quotients
   unsigned f1 = 0, f2;    // fractional parts of quotients
 
-  while (1)  // calculate convergents
+  for (;;)  // calculate convergents
   {
     a2 = nx / dx;
     f2 = nx % dx;
@@ -219,7 +219,7 @@ static void reduce_frac(unsigned &num, unsigned &den, unsigned limit)
   unsigned f1 = 0, f2;        // fractional parts of quotients
   int i = 0;  // number of loop iterations
 
-  while (1) { // calculate convergents
+  for (;;) { // calculate convergents
     a2 = nx / dx;
     f2 = nx % dx;
     n2 = n0 + n1 * a2;
@@ -337,8 +337,7 @@ void FloatToFPS(const char *name, float n, unsigned &num, unsigned &den, IScript
 
 void PresetToFPS(const char *name, const char *p, unsigned &num, unsigned &den, IScriptEnvironment* env)
 {
-	if (0) { ; }
-	else if (lstrcmpi(p, "ntsc_film"        ) == 0) { num = 24000; den = 1001; }
+	     if (lstrcmpi(p, "ntsc_film"        ) == 0) { num = 24000; den = 1001; }
 	else if (lstrcmpi(p, "ntsc_video"       ) == 0) { num = 30000; den = 1001; }
 	else if (lstrcmpi(p, "ntsc_double"      ) == 0) { num = 60000; den = 1001; }
 	else if (lstrcmpi(p, "ntsc_quad"        ) == 0) { num =120000; den = 1001; }
@@ -665,7 +664,7 @@ PVideoFrame __stdcall ConvertFPS::GetFrame(int n, IScriptEnvironment* env)
 
 			for (int y = 0; y < height; y++) {
 				for (int x = 0; x < row_size; x++)
-					a_data[x] = a_data[x] + ((b_data[x] - a_data[x]) * mix_ratio + half) >> resolution;
+					a_data[x] = a_data[x] + BYTE(((b_data[x] - a_data[x]) * mix_ratio + half) >> resolution);
 				a_data += a_pitch;
 				b_data += b_pitch;
 			}
@@ -721,7 +720,7 @@ loop:
 		for( int y = safe_top; y < bottom; y++ ) {
 			int scale = y - top;
 			for( int x = 0; x < row_size; x++ )
-				pd[x] = pa[x] + ((pb[x] - pa[x]) * scale + (zone>>1)) / zone;
+				pd[x] = BYTE(pa[x] + ((pb[x] - pa[x]) * scale + (zone>>1)) / zone);
 			pd += pitch;
 			pa += a_pitch;
 			pb += b_pitch;

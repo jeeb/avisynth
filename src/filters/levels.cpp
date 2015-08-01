@@ -154,11 +154,11 @@ Levels::Levels( PClip _child, int in_min, double gamma, int in_max, int out_min,
       p = p * (out_max - out_min) + out_min;
 
       if (coring)
-        map[i] = min(max(int(p*(219.0/255.0)+16.5),  16), 235);
+        map[i] = min(max(BYTE(p*(219.0/255.0)+16.5),  16), 235);
       else
-        map[i] = min(max(int(p+0.5), 0), 255);
+        map[i] = min(max(BYTE(p+0.5), 0), 255);
 
-      int q = ((bias + i - 128*scale) * (out_max-out_min)) / divisor + 128.5;
+      BYTE q = BYTE(((bias + i - 128*scale) * (out_max-out_min)) / divisor + 128.5);
 
       if (coring)
         mapchroma[i] = min(max(q, 16), 240);
@@ -172,7 +172,7 @@ Levels::Levels( PClip _child, int in_min, double gamma, int in_max, int out_min,
       p = pow(min(max(p, 0.0), 1.0), gamma);
       p = p * (out_max - out_min) + out_min;
 //    map[i] = PixelClip(int(p+0.5));
-      map[i] = min(max(int(p+0.5), 0), 255);
+      map[i] = min(max(BYTE(p+0.5), 0), 255);
     }
   }
 
@@ -343,10 +343,10 @@ RGBAdjust::RGBAdjust(PClip _child, double r,  double g,  double b,  double a,
     mapA = new BYTE[256*256];
 
     for (int i=0; i<256*256; ++i) {
-      mapR[i] = int(pow(min(max((rb*256 + i * r -127.5)/(255.0*256), 0.0), 1.0), rg) * 255.0 + 0.5);
-      mapG[i] = int(pow(min(max((gb*256 + i * g -127.5)/(255.0*256), 0.0), 1.0), gg) * 255.0 + 0.5);
-      mapB[i] = int(pow(min(max((bb*256 + i * b -127.5)/(255.0*256), 0.0), 1.0), bg) * 255.0 + 0.5);
-      mapA[i] = int(pow(min(max((ab*256 + i * a -127.5)/(255.0*256), 0.0), 1.0), ag) * 255.0 + 0.5);
+      mapR[i] = BYTE(pow(min(max((rb*256 + i * r -127.5)/(255.0*256), 0.0), 1.0), rg) * 255.0 + 0.5);
+      mapG[i] = BYTE(pow(min(max((gb*256 + i * g -127.5)/(255.0*256), 0.0), 1.0), gg) * 255.0 + 0.5);
+      mapB[i] = BYTE(pow(min(max((bb*256 + i * b -127.5)/(255.0*256), 0.0), 1.0), bg) * 255.0 + 0.5);
+      mapA[i] = BYTE(pow(min(max((ab*256 + i * a -127.5)/(255.0*256), 0.0), 1.0), ag) * 255.0 + 0.5);
     }
   }
   else {
@@ -356,10 +356,10 @@ RGBAdjust::RGBAdjust(PClip _child, double r,  double g,  double b,  double a,
     mapA = new BYTE[256];
 
     for (int i=0; i<256; ++i) {
-      mapR[i] = int(pow(min(max((rb + i * r)/255.0, 0.0), 1.0), rg) * 255.0 + 0.5);
-      mapG[i] = int(pow(min(max((gb + i * g)/255.0, 0.0), 1.0), gg) * 255.0 + 0.5);
-      mapB[i] = int(pow(min(max((bb + i * b)/255.0, 0.0), 1.0), bg) * 255.0 + 0.5);
-      mapA[i] = int(pow(min(max((ab + i * a)/255.0, 0.0), 1.0), ag) * 255.0 + 0.5);
+      mapR[i] = BYTE(pow(min(max((rb + i * r)/255.0, 0.0), 1.0), rg) * 255.0 + 0.5);
+      mapG[i] = BYTE(pow(min(max((gb + i * g)/255.0, 0.0), 1.0), gg) * 255.0 + 0.5);
+      mapB[i] = BYTE(pow(min(max((bb + i * b)/255.0, 0.0), 1.0), bg) * 255.0 + 0.5);
+      mapA[i] = BYTE(pow(min(max((ab + i * a)/255.0, 0.0), 1.0), ag) * 255.0 + 0.5);
     }
   }
 
@@ -653,14 +653,14 @@ Tweak::Tweak( PClip _child, double _hue, double _sat, double _bright, double _co
       if (coring) {
         for (int i = 0; i < 256*256; i++) {
           /* brightness and contrast */
-          int y = int(((i - 16*256)*_cont + _bright*256 - 127.5)/256 + 16.5);
+          BYTE y = BYTE(((i - 16*256)*_cont + _bright*256 - 127.5)/256 + 16.5);
           map[i] = min(max(y, 16), 235);
         }
       }
       else {
         for (int i = 0; i < 256*256; i++) {
           /* brightness and contrast */
-          int y = int((i*_cont + _bright*256 - 127.5)/256 + 0.5);
+          BYTE y = BYTE((i*_cont + _bright*256 - 127.5)/256 + 0.5);
           map[i] = min(max(y, 0), 255);
         }
       }
@@ -671,14 +671,14 @@ Tweak::Tweak( PClip _child, double _hue, double _sat, double _bright, double _co
       if (coring) {
         for (int i = 0; i < 256; i++) {
           /* brightness and contrast */
-          int y = int((i - 16)*_cont + _bright + 16.5);
+          BYTE y = BYTE((i - 16)*_cont + _bright + 16.5);
           map[i] = min(max(y, 16), 235);
         }
       }
       else {
         for (int i = 0; i < 256; i++) {
           /* brightness and contrast */
-          int y = int(i*_cont + _bright + 0.5);
+          BYTE y = BYTE(i*_cont + _bright + 0.5);
           map[i] = min(max(y, 0), 255);
         }
       }
@@ -984,8 +984,8 @@ MaskHS::MaskHS( PClip _child, double startHue, double endHue, double _maxSat, do
           env->ThrowError("MaskHS: maxSat must be greater than 0 and less than or equal to 150.");
 
 
-    const int maxY = coring ? 235 : 255;
-    const int minY = coring ? 16 : 0;
+    const BYTE maxY = coring ? 235 : 255;
+    const BYTE minY = coring ? 16 : 0;
 
     // 100% equals sat=119 (= maximal saturation of valid RGB (R=255,G=B=0)
     // 150% (=180) - 100% (=119) overshoot

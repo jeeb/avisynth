@@ -322,7 +322,7 @@ rgb2lum_even:
 	  for (int y=0; y<vi.height; ++y) {
 		for (int x=0; x<vi.width; x++) {
 		  int greyscale=((srcp[0]*4732)+(srcp[1]*46871)+(srcp[2]*13933)+32768)>>16; // This is the correct brigtness calculations (standardized in Rec. 709)
-		  srcp[0]=srcp[1]=srcp[2]=greyscale;
+		  srcp[0]=srcp[1]=srcp[2]=(BYTE)greyscale;
 		  srcp += rgb_inc;
 		}
 		p_count+=pitch;
@@ -335,7 +335,7 @@ rgb2lum_even:
 	  for (int y=0; y<vi.height; ++y) {
 		for (int x=0; x<vi.width; x++) {
 		  int greyscale=((srcp[0]+srcp[1]+srcp[2])*21845+32768)>>16; // This is the average of R, G & B
-		  srcp[0]=srcp[1]=srcp[2]=greyscale;
+		  srcp[0]=srcp[1]=srcp[2]=(BYTE)greyscale;
 		  srcp += rgb_inc;
 		}
 		p_count+=pitch;
@@ -350,7 +350,7 @@ rgb2lum_even:
 	  for (int y=0; y<vi.height; ++y) {
 		for (int x=0; x<vi.width; x++) {
 		  int greyscale=((srcp[0]*7471)+(srcp[1]*38470)+(srcp[2]*19595)+32768)>>16; // This produces similar results as YUY2 (luma calculation)
-		  srcp[0]=srcp[1]=srcp[2]=greyscale;
+		  srcp[0]=srcp[1]=srcp[2]=(BYTE)greyscale;
 		  srcp += rgb_inc;
 		}
 		p_count+=pitch;

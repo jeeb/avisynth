@@ -2,6 +2,9 @@
 #ifndef __Stdafx_H__
 #define __Stdafx_H__
 
+#pragma warning (disable: 4100) // unreferenced formal parameter
+#pragma warning (disable: 4512) // assignment operator could not be generated
+
 //C
 #include <stdio.h>
 #include <stdlib.h>

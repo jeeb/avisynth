@@ -3,7 +3,7 @@
 
 #include <math.h>
 
-#pragma warning(disable:4244)
+// #pragma warning(disable:4244) // 'argument' : conversion from 'type1' to 'type2', possible loss of data
 
 #define PI 3.1415926535897932384626433832795
 
@@ -331,7 +331,7 @@ public:
 			a[0] += a[1];
 			a[1] = xi;
 		} else {
-			a[1] = 0.5 * (a[0] - a[1]);
+			a[1] = 0.5f * (a[0] - a[1]);
 			a[0] -= a[1];
 			if (n > 4) {
 				rftbsub(n, a, nc, w + nw);
@@ -618,13 +618,13 @@ public:
 		ip[1] = 1;
 		if (nw > 2) {
 			nwh = nw >> 1;
-			delta = atan(1.0) / nwh;
+			delta = REAL(atan(1.0) / nwh);
 			wn4r = cos(delta * nwh);
 			w[0] = 1;
 			w[1] = wn4r;
 			if (nwh >= 4) {
-				w[2] = 0.5 / cos(delta * 2);
-				w[3] = 0.5 / cos(delta * 6);
+				w[2] = 1 / (2 * cos(delta * 2));
+				w[3] = 1 / (2 * cos(delta * 6));
 			}
 			for (j = 4; j < nwh; j += 4) {
 				w[j] = cos(delta * j);
@@ -641,8 +641,8 @@ public:
 				if (nwh >= 4) {
 					wk1r = w[nw0 + 4];
 					wk3r = w[nw0 + 6];
-					w[nw1 + 2] = 0.5 / wk1r;
-					w[nw1 + 3] = 0.5 / wk3r;
+					w[nw1 + 2] = 1 / (2 * wk1r);
+					w[nw1 + 3] = 1 / (2 * wk3r);
 				}
 				for (j = 4; j < nwh; j += 4) {
 					wk1r = w[nw0 + 2 * j];
@@ -668,12 +668,12 @@ public:
 		ip[1] = nc;
 		if (nc > 1) {
 			nch = nc >> 1;
-			delta = atan(1.0) / nch;
+			delta = REAL(atan(1.0) / nch);
 			c[0] = cos(delta * nch);
-			c[nch] = 0.5 * c[0];
+			c[nch] = 0.5f * c[0];
 			for (j = 1; j < nch; j++) {
-				c[j] = 0.5 * cos(delta * j);
-				c[nc - j] = 0.5 * sin(delta * j);
+				c[j] = 0.5f * cos(delta * j);
+				c[nc - j] = 0.5f * sin(delta * j);
 			}
 		}
 	}
@@ -2485,7 +2485,7 @@ public:
 		for (j = 2; j < m; j += 2) {
 			k = n - j;
 			kk += ks;
-			wkr = 0.5 - c[nc - kk];
+			wkr = 0.5f - c[nc - kk];
 			wki = c[kk];
 			xr = a[j] - a[k];
 			xi = a[j + 1] + a[k + 1];
@@ -2510,7 +2510,7 @@ public:
 		for (j = 2; j < m; j += 2) {
 			k = n - j;
 			kk += ks;
-			wkr = 0.5 - c[nc - kk];
+			wkr = 0.5f - c[nc - kk];
 			wki = c[kk];
 			xr = a[j] - a[k];
 			xi = a[j + 1] + a[k + 1];

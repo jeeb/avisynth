@@ -133,8 +133,8 @@ void Convert444FromYV24::ConvertImageLumaOnly(PVideoFrame src, Image444* dst, IS
 void Convert444FromY8::ConvertImage(PVideoFrame src, Image444* dst, IScriptEnvironment* env) {
   env->BitBlt(dst->GetPtr(PLANAR_Y), dst->pitch,
     src->GetReadPtr(PLANAR_Y),src->GetPitch(PLANAR_Y), src->GetRowSize(PLANAR_Y), src->GetHeight(PLANAR_Y));
-  memset((void *)dst->GetPtr(PLANAR_U), (char)0x80, dst->pitch * dst->h());
-  memset((void *)dst->GetPtr(PLANAR_V), (char)0x80, dst->pitch * dst->h());
+  memset((void *)dst->GetPtr(PLANAR_U), 0x80, dst->pitch * dst->h());
+  memset((void *)dst->GetPtr(PLANAR_V), 0x80, dst->pitch * dst->h());
 }
 
 void Convert444FromY8::ConvertImageLumaOnly(PVideoFrame src, Image444* dst, IScriptEnvironment* env) {
@@ -683,9 +683,9 @@ void Convert444FromRGB::ConvertImage(PVideoFrame src, Image444* dst, IScriptEnvi
       const int b_y = (b << 16) - scaled_y;
       const int r_y = (r << 16) - scaled_y;
 
-      dstY[x] = y;
-      dstU[x] = ((b_y>>11) * ku + 0x8080000)>>20; // 0x8080000 = 128.5 << 20
-      dstV[x] = ((r_y>>11) * kv + 0x8080000)>>20;
+      dstY[x] = BYTE(y);
+      dstU[x] = BYTE(((b_y>>11) * ku + 0x8080000)>>20); // 0x8080000 = 128.5 << 20
+      dstV[x] = BYTE(((r_y>>11) * kv + 0x8080000)>>20);
 
       RGBx += bpp;
     }
@@ -730,9 +730,9 @@ void Convert444NonCCIRFromRGB::ConvertImage(PVideoFrame src, Image444* dst, IScr
 
       const int y = (cyb*b + cyg*g + cyr*r + 0x8000) >> 16; // 0x8000 = 0.5 * 65536
 
-      dstY[x] = y;
-      dstU[x] = ((b - y) * ku + 0x808000)>>16; // 0x808000 = 128.5 * 65536
-      dstV[x] = ((r - y) * kv + 0x808000)>>16;
+      dstY[x] = BYTE(y);
+      dstU[x] = BYTE(((b - y) * ku + 0x808000)>>16); // 0x808000 = 128.5 * 65536
+      dstV[x] = BYTE(((r - y) * kv + 0x808000)>>16);
 
       RGBx+=bpp;
     }

@@ -543,7 +543,7 @@ AVSC_INLINE AVS_Value avs_new_value_clip(AVS_Clip * v0)
         { AVS_Value v; avs_set_to_clip(&v, v0); return v; }
 #endif
 AVSC_INLINE AVS_Value avs_new_value_array(AVS_Value * v0, int size)
-        { AVS_Value v; v.type = 'a'; v.d.array = v0; v.array_size = size; return v; }
+        { AVS_Value v; v.type = 'a'; v.d.array = v0; v.array_size = (short)size; return v; }
 
 /////////////////////////////////////////////////////////////////////
 //

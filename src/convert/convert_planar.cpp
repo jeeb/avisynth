@@ -45,6 +45,27 @@
 #define USE_DYNAMIC_COMPILER true
 
 
+int getMatrix( const char* matrix, IScriptEnvironment* env) {
+  if (matrix) {
+    if (!lstrcmpi(matrix, "rec601"))
+      return Rec601;
+    if (!lstrcmpi(matrix, "rec709"))
+      return Rec709;
+    if (!lstrcmpi(matrix, "PC.601"))
+      return PC_601;
+    if (!lstrcmpi(matrix, "PC.709"))
+      return PC_709;
+    if (!lstrcmpi(matrix, "PC601"))
+      return PC_601;
+    if (!lstrcmpi(matrix, "PC709"))
+      return PC_709;
+    if (!lstrcmpi(matrix, "AVERAGE"))
+      return AVERAGE;
+    env->ThrowError("Convert: Unknown colormatrix");
+  }
+  return Rec601; // Default colorspace conversion for AviSynth
+}
+
 ConvertToY8::ConvertToY8(PClip src, int in_matrix, IScriptEnvironment* env) : GenericVideoFilter(src), matrix(0) {
   yuy2_input = blit_luma_only = rgb_input = false;
 
@@ -343,10 +364,10 @@ void ConvertRGBToYV24::BuildMatrix(double Kr, double Kb, int Sy, int Suv, int Oy
   *m++ = (signed short)(Suv * Kg/(Kr-1) * mulfac / Srgb + 0.5);
   *m++ = (signed short)(Suv             * mulfac / Srgb + 0.5);
   *m++ = (signed short)(           -0.5 * mulfac             );
-  *m++ = (signed short)0x0000;
-  *m++ = (signed short)0xff00;
-  *m++ = (signed short)0x0000;
-  *m++ = (signed short)0xff00;
+  *m++ = (signed short)0x0000u;
+  *m++ = (signed short)0xff00u;
+  *m++ = (signed short)0x0000u;
+  *m++ = (signed short)0xff00u;
   offset_y = Oy;
 }
 
@@ -367,7 +388,8 @@ PVideoFrame __stdcall ConvertRGBToYV24::GetFrame(int n, IScriptEnvironment* env)
 
   const int awidth = dst->GetRowSize(PLANAR_Y_ALIGNED);
 
-  if (USE_DYNAMIC_COMPILER) {
+#ifdef USE_DYNAMIC_COMPILER
+  {
     srcp += (vi.height-1)*Spitch;
 //  BYTE* unpckbuf = (BYTE*)_aligned_malloc(vi.width * 4 + 32, 64);
 
@@ -379,9 +401,9 @@ PVideoFrame __stdcall ConvertRGBToYV24::GetFrame(int n, IScriptEnvironment* env)
 
         for (int x = 0; x < vi.width; x++) {
           const int p = iunpckbuf[x];
-          dstY[x] = p&0xff;
-          dstU[x] = (p>>8)&0xff;
-          dstV[x] = (p>>16)&0xff;
+          dstY[x] = byte(p&0xff);
+          dstU[x] = byte((p>>8)&0xff);
+          dstV[x] = byte((p>>16)&0xff);
         }
 
         srcp -= Spitch;
@@ -408,7 +430,7 @@ PVideoFrame __stdcall ConvertRGBToYV24::GetFrame(int n, IScriptEnvironment* env)
 //  _aligned_free(unpckbuf);
     return dst;
   }
-
+#else
   //Slow C-code.
 
   signed short* m = (signed short*)matrix;
@@ -433,6 +455,7 @@ PVideoFrame __stdcall ConvertRGBToYV24::GetFrame(int n, IScriptEnvironment* env)
     dstV += UVpitch - vi.width;
   }
   return dst;
+#endif
 }
 
 AVSValue __cdecl ConvertRGBToYV24::Create(AVSValue args, void*, IScriptEnvironment* env) {
@@ -561,10 +584,10 @@ void ConvertYV24ToRGB::BuildMatrix(double Kr, double Kb, int Sy, int Suv, int Oy
   *m++ = (signed short)(Srgb * 0.000        * mulfac / Suv + 0.5);
   *m++ = (signed short)(Srgb * (1-Kr)       * mulfac / Suv + 0.5);
   *m++ = (signed short)(                0.5 * mulfac            );
-  *m++ = (signed short)0x0000;
-  *m++ = (signed short)0xff00;
-  *m++ = (signed short)0x0000;
-  *m++ = (signed short)0xff00;
+  *m++ = (signed short)0x0000u;
+  *m++ = (signed short)0xff00u;
+  *m++ = (signed short)0x0000u;
+  *m++ = (signed short)0xff00u;
   offset_y = -Oy;
 }
 
@@ -585,7 +608,8 @@ PVideoFrame __stdcall ConvertYV24ToRGB::GetFrame(int n, IScriptEnvironment* env)
 
   const int Dpitch = dst->GetPitch();
 
-  if (USE_DYNAMIC_COMPILER) {
+#ifdef USE_DYNAMIC_COMPILER
+  {
     dstp += (vi.height-1)*Dpitch;
 //  BYTE* packbuf = (BYTE*)_aligned_malloc(vi.width * 4 + 60, 64);
 
@@ -621,7 +645,7 @@ PVideoFrame __stdcall ConvertYV24ToRGB::GetFrame(int n, IScriptEnvironment* env)
 //  _aligned_free(packbuf);
     return dst;
   }
-
+#else
   //Slow C-code.
 
   signed short* m = (signed short*)matrix;
@@ -667,6 +691,7 @@ PVideoFrame __stdcall ConvertYV24ToRGB::GetFrame(int n, IScriptEnvironment* env)
     }
   }
   return dst;
+#endif
 }
 
 AVSValue __cdecl ConvertYV24ToRGB::Create32(AVSValue args, void*, IScriptEnvironment* env) {

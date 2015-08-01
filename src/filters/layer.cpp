@@ -990,8 +990,6 @@ PVideoFrame __stdcall Layer::GetFrame(int n, IScriptEnvironment* env)
 
 	const int src1_pitch = src1->GetPitch();
 	const int src2_pitch = src2->GetPitch();
-	const int src2_row_size = src2->GetRowSize();
-	const int row_size = src1->GetRowSize();
 	const int mylevel = levelB;
 	const int myy = ycount;
 
@@ -2270,7 +2268,7 @@ Subtract::Subtract(PClip _child1, PClip _child2, IScriptEnvironment* env)
 
   if (!DiffFlag) { // Init the global Diff table
     DiffFlag = true;
-    for (int i=0; i<=512; i++) Diff[i] = max(0,min(255,i-129));
+    for (int i=0; i<=512; i++) Diff[i] = max(0, min(255, BYTE(i-129)));
   }
 }
 

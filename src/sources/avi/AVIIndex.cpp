@@ -24,7 +24,7 @@
 
 #include "AVIIndex.h"
 
-#pragma warning(disable: 4244)    // conversion from __int64, possible loss of data
+// #pragma warning(disable: 4244)    // conversion from __int64, possible loss of data
 
 ///////////////////////////////////////////////////////////////////////////
 
@@ -59,7 +59,7 @@ public:
 		for(i=0; i<num_ents; i++) {
 			avieptr->ckid			= ient[i].ckid;
 			avieptr->dwFlags		= ient[i].size & 0x80000000 ? 0 : AVIIF_KEYFRAME;
-			avieptr->dwChunkOffset	= ient[i].pos;
+			avieptr->dwChunkOffset	= DWORD(ient[i].pos);
 			avieptr->dwChunkLength	= ient[i].size & 0x7FFFFFFF;
 
 			++avieptr;

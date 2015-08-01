@@ -1235,10 +1235,10 @@ STDMETHODIMP CAVIStreamSynth::ReadFormat(LONG lPos, LPVOID lpFormat, LONG *lpcbF
 
 	  memset(&wfxt, 0, sizeof(wfxt));
 	  wfxt.Format.wFormatTag = WAVE_FORMAT_EXTENSIBLE;
-	  wfxt.Format.nChannels = vi->AudioChannels();
+	  wfxt.Format.nChannels = (WORD)vi->AudioChannels();
 	  wfxt.Format.nSamplesPerSec = vi->SamplesPerSecond();
-	  wfxt.Format.wBitsPerSample = vi->BytesPerChannelSample() * 8;
-	  wfxt.Format.nBlockAlign = vi->BytesPerAudioSample();
+	  wfxt.Format.wBitsPerSample = WORD(vi->BytesPerChannelSample() * 8);
+	  wfxt.Format.nBlockAlign = (WORD)vi->BytesPerAudioSample();
 	  wfxt.Format.nAvgBytesPerSec = wfxt.Format.nSamplesPerSec * wfxt.Format.nBlockAlign;
 	  wfxt.Format.cbSize = sizeof(wfxt) - sizeof(wfxt.Format);
 	  wfxt.Samples.wValidBitsPerSample = wfxt.Format.wBitsPerSample;
@@ -1271,10 +1271,10 @@ STDMETHODIMP CAVIStreamSynth::ReadFormat(LONG lPos, LPVOID lpFormat, LONG *lpcbF
 	  WAVEFORMATEX wfx;
 	  memset(&wfx, 0, sizeof(wfx));
 	  wfx.wFormatTag = vi->IsSampleType(SAMPLE_FLOAT) ? WAVE_FORMAT_IEEE_FLOAT : WAVE_FORMAT_PCM;
-	  wfx.nChannels = vi->AudioChannels();
+	  wfx.nChannels = (WORD)vi->AudioChannels();
 	  wfx.nSamplesPerSec = vi->SamplesPerSecond();
-	  wfx.wBitsPerSample = vi->BytesPerChannelSample() * 8;
-	  wfx.nBlockAlign = vi->BytesPerAudioSample();
+	  wfx.wBitsPerSample = WORD(vi->BytesPerChannelSample() * 8);
+	  wfx.nBlockAlign = (WORD)vi->BytesPerAudioSample();
 	  wfx.nAvgBytesPerSec = wfx.nSamplesPerSec * wfx.nBlockAlign;
 	  *lpcbFormat = min(*lpcbFormat, sizeof(wfx));
 	  memcpy(lpFormat, &wfx, size_t(*lpcbFormat));
@@ -1286,7 +1286,7 @@ STDMETHODIMP CAVIStreamSynth::ReadFormat(LONG lPos, LPVOID lpFormat, LONG *lpcbF
     bi.biWidth = vi->width;
     bi.biHeight = vi->height;
     bi.biPlanes = 1;
-    bi.biBitCount = vi->BitsPerPixel();
+    bi.biBitCount = (WORD)vi->BitsPerPixel();
 
     if (vi->IsRGB()) 
       bi.biCompression = BI_RGB;

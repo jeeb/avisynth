@@ -645,7 +645,7 @@ PVideoFrame Dissolve::GetFrame(int n, IScriptEnvironment* env)
 
       for (int y=height; y>0; --y) {
         for (int x=0; x<row_size; ++x)
-          dst[x] = src1[x] + ((src2[x]-src1[x]) * multiplier + (overlap>>1)) / (overlap+1);
+          dst[x] = BYTE(src1[x] + ((src2[x]-src1[x]) * multiplier + (overlap>>1)) / (overlap+1));
         dst += dst_pitch;
         src1 += src1_pitch;
         src2 += src2_pitch;
@@ -659,7 +659,7 @@ PVideoFrame Dissolve::GetFrame(int n, IScriptEnvironment* env)
 
     for (int y=height; y>0; --y) {
       for (int x=0; x<row_size; ++x)
-        dst[x] = src1[x] + ((src2[x]-src1[x]) * multiplier + (overlap>>1)) / (overlap+1);
+        dst[x] = BYTE(src1[x] + ((src2[x]-src1[x]) * multiplier + (overlap>>1)) / (overlap+1));
       dst += dst_pitch;
       src1 += src1_pitch;
       src2 += src2_pitch;
@@ -709,7 +709,7 @@ void Dissolve::GetAudio(void* buf, __int64 start, __int64 count, IScriptEnvironm
       }
       else if (numerator < denominator) {            // In dissolve region
         for (int p=0; p < nch; p++)
-          a[i+p] = b[i+p] + MulDiv(a[i+p]-b[i+p], numerator, denominator);
+          a[i+p] = short(b[i+p] + MulDiv(a[i+p]-b[i+p], numerator, denominator));
       }
    // else                                           // Before begining of dissolve
       numerator--;

@@ -379,7 +379,7 @@ AVISource::AVISource(const char filename[], bool fAudio, const char pixel_type[]
     }
 
     if (mode == MODE_AVIFILE || mode == MODE_WAV) {    // AVIFile mode
-      PAVIFILE paf;
+      PAVIFILE paf = 0;
       try { // The damn .WAV clsid handler has only a 48 byte buffer to parse the filename and GPF's
 		if (FAILED(AVIFileOpen(&paf, filename, OF_READ, 0)))
 		  env->ThrowError("AVIFileSource: couldn't open file '%s'", filename);

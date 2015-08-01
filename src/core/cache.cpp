@@ -199,7 +199,7 @@ Cache::Cache(PClip _child, IScriptEnvironment* env)
 
 
 // Generic interface to poke all cache instances
-void Cache::PokeCache(int key, int data, IScriptEnvironment* env)
+void Cache::PokeCache(int key, size_t data, IScriptEnvironment* env)
 {
   switch (key) {
     case PC_Nil: { // Do Nothing!

@@ -108,16 +108,16 @@ PVideoFrame __stdcall Color::GetFrame(int frame, IScriptEnvironment* env)
     for (int i = 0;i<224*224;i++)
       pdst[i] = Y;
     unsigned char* pdstb = dst->GetWritePtr(PLANAR_U);
-    {for (int y=0;y<224;y++) {
-      for (int x=0;x<224;x++) {
+    {for (unsigned char y=0;y<224;y++) {
+      for (unsigned char x=0;x<224;x++) {
         pdstb[x] = 16+x;
       }
       pdstb += dst->GetPitch(PLANAR_U);
     }}
 
     pdstb = dst->GetWritePtr(PLANAR_V);
-    {for (int y=0;y<224;y++) {
-      for (int x=0;x<224;x++) {
+    {for (unsigned char y=0;y<224;y++) {
+      for (unsigned char x=0;x<224;x++) {
         pdstb[x] = 16+y;
       }
       pdstb += dst->GetPitch(PLANAR_U);

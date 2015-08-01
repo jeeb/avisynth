@@ -373,9 +373,9 @@ PVideoFrame AddBorders::GetFrame(int n, IScriptEnvironment* env)
                           + (dst_pitch - dst_row_size);
   if (vi.IsPlanar()) {
     const unsigned int colr = RGB2YUV(clr);
-    const unsigned char YBlack=(colr>>16)&0xff;
-    const unsigned char UBlack=(colr>>8)&0xff;
-    const unsigned char VBlack=(colr)&0xff;
+    const unsigned char YBlack=(unsigned char)((colr >> 16) & 0xff);
+    const unsigned char UBlack=(unsigned char)((colr >>  8) & 0xff);
+    const unsigned char VBlack=(unsigned char)((colr      ) & 0xff);
 
     BitBlt(dstp+initial_black, dst_pitch, srcp, src_pitch, src_row_size, src_height);
     for (int a=0; a<initial_black; a++)
@@ -444,8 +444,8 @@ PVideoFrame AddBorders::GetFrame(int n, IScriptEnvironment* env)
       *(unsigned __int32*)(dstp+c) = black;
   }
   else if (vi.IsRGB24()) {
-    const unsigned char  clr0 = (clr & 0xFF);
-    const unsigned __int16 clr1 = (clr >> 8);
+    const unsigned char  clr0 = (unsigned char)(clr & 0xFF);
+    const unsigned short clr1 = (unsigned short)(clr >> 8);
     const int leftbytes = vi.BytesFromPixels(left);
     const int leftrow = src_row_size + leftbytes;
     const int rightbytes = vi.BytesFromPixels(right);
@@ -455,23 +455,23 @@ PVideoFrame AddBorders::GetFrame(int n, IScriptEnvironment* env)
     /* Cannot use *_black optimisation as pitch may not be mod 3 */
     {for (int y=top; y>0; --y) {
       for (int i=0; i<dst_row_size; i+=3) {
-        dstp[i] = clr0; *(unsigned __int16*)(dstp+i+1) = clr1;
+        dstp[i] = clr0; *(unsigned short*)(dstp+i+1) = clr1;
       }
       dstp += dst_pitch;
     }} //for y
     {for (int y=src_height; y>0; --y) {
       {for (int i=0; i<leftbytes; i+=3) {
-        dstp[i] = clr0; *(unsigned __int16*)(dstp+i+1) = clr1;
+        dstp[i] = clr0; *(unsigned short*)(dstp+i+1) = clr1;
       }} // for i
       dstp += leftrow;
       {for (int i=0; i<rightbytes; i+=3) {
-        dstp[i] = clr0; *(unsigned __int16*)(dstp+i+1) = clr1;
+        dstp[i] = clr0; *(unsigned short*)(dstp+i+1) = clr1;
       }} // for i
       dstp += rightrow;
     }} // for y
     {for (int y=bot; y>0; --y) {
       for (int i=0; i<dst_row_size; i+=3) {
-        dstp[i] = clr0; *(unsigned __int16*)(dstp+i+1) = clr1;
+        dstp[i] = clr0; *(unsigned short*)(dstp+i+1) = clr1;
       }
       dstp += dst_pitch;
     }} //for y

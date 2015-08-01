@@ -406,8 +406,8 @@ void weigh_luma(unsigned int *src,unsigned int *luma, int pitch, int luma_pitch,
     unsigned char *lum=(unsigned char*)luma;
     unsigned char *dst=(unsigned char*)src;
     for (int x=0;x<lwidth;x++) {
-      dst[x*4]   = (lum[x*4]   * weight + dst[x*4]   * invweight + 16384) >> 15;
-      dst[x*4+2] = (lum[x*4+2] * weight + dst[x*4+2] * invweight + 16384) >> 15;
+      dst[x*4]   = (unsigned char)((lum[x*4]   * weight + dst[x*4]   * invweight + 16384) >> 15);
+      dst[x*4+2] = (unsigned char)((lum[x*4+2] * weight + dst[x*4+2] * invweight + 16384) >> 15);
     }
     src+=pitch;
     luma+=luma_pitch;
@@ -423,8 +423,8 @@ void weigh_chroma(unsigned int *src,unsigned int *chroma, int pitch, int chroma_
     unsigned char *chm=(unsigned char*)chroma;
     unsigned char *dst=(unsigned char*)src;
     for (int x=0;x<lwidth;x++) {
-      dst[x*4+1] = (chm[x*4+1] * weight + dst[x*4+1] * invweight + 16384) >> 15;
-      dst[x*4+3] = (chm[x*4+3] * weight + dst[x*4+3] * invweight + 16384) >> 15;
+      dst[x*4+1] = (unsigned char)((chm[x*4+1] * weight + dst[x*4+1] * invweight + 16384) >> 15);
+      dst[x*4+3] = (unsigned char)((chm[x*4+3] * weight + dst[x*4+3] * invweight + 16384) >> 15);
     }
     src+=pitch;
     chroma+=chroma_pitch;
@@ -436,7 +436,7 @@ void weigh_plane(BYTE *p1, const BYTE *p2, int p1_pitch, int p2_pitch,int rowsiz
 
   for (int y=0;y<height;y++) {
     for (int x=0;x<rowsize;x++) {
-      p1[x] = (p1[x]*invweight + p2[x]*weight + 32768) >> 16;
+      p1[x] = BYTE((p1[x]*invweight + p2[x]*weight + 32768) >> 16);
     }
     p2+=p2_pitch;
     p1+=p1_pitch;

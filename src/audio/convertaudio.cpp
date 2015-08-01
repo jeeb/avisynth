@@ -152,7 +152,7 @@ void convert16To8(char* inbuf, void* outbuf, int count) {
     unsigned char* out = (unsigned char*)outbuf;
 
     for (int i=0;i<count;i++) 
-      out[i] = (in[i] >> 8) + 128;
+      out[i] = (unsigned char)((in[i] >> 8) + 128);
 }
 
 void convert16To8_MMX(char* inbuf, void* outbuf, int count) {
@@ -197,7 +197,7 @@ c16_loop:
       }
     }
     for (int i=c_loop;i<count;i++)
-      out[i] = (in[i] >> 8) + 128;
+      out[i] = (unsigned char)((in[i] >> 8) + 128);
 }
 
 /*******************************************/
@@ -404,7 +404,7 @@ void __stdcall ConvertAudio::GetAudio(void* buf, __int64 start, __int64 count, I
 // convertToFloat
 //================
 
-void ConvertAudio::convertToFloat(char* inbuf, float* outbuf, char sample_type, int count) {
+void ConvertAudio::convertToFloat(char* inbuf, float* outbuf, int sample_type, int count) {
   int i;
   switch (sample_type) {
     case SAMPLE_INT8: {
@@ -452,7 +452,7 @@ void ConvertAudio::convertToFloat(char* inbuf, float* outbuf, char sample_type, 
   }
 }
 
-void ConvertAudio::convertToFloat_SSE(char* inbuf, float* outbuf, char sample_type, int count) {
+void ConvertAudio::convertToFloat_SSE(char* inbuf, float* outbuf, int sample_type, int count) {
   int i;
   switch (sample_type) {
     case SAMPLE_INT8: {
@@ -562,7 +562,7 @@ c32_loop:
 }
 
 
-void ConvertAudio::convertToFloat_SSE2(char* inbuf, float* outbuf, char sample_type, int count) {
+void ConvertAudio::convertToFloat_SSE2(char* inbuf, float* outbuf, int sample_type, int count) {
   int i;
   switch (sample_type) {
     case SAMPLE_INT8: {
@@ -790,7 +790,7 @@ c24_loop:
 }
 
 
-void ConvertAudio::convertToFloat_3DN(char* inbuf, float* outbuf, char sample_type, int count) {
+void ConvertAudio::convertToFloat_3DN(char* inbuf, float* outbuf, int sample_type, int count) {
   int i;
   switch (sample_type) {
     case SAMPLE_INT8: {
@@ -938,7 +938,7 @@ c24_loop:
 // convertFromFloat
 //==================
 
-void ConvertAudio::convertFromFloat_3DN(float* inbuf,void* outbuf, char sample_type, int count) {
+void ConvertAudio::convertFromFloat_3DN(float* inbuf,void* outbuf, int sample_type, int count) {
   int i;
   switch (sample_type) {
     case SAMPLE_INT8: {
@@ -1072,9 +1072,9 @@ c24f_loop:
       }
       for (i=0;i<c_miss;i++) {
         signed int tval = Saturate_int24(inbuf[i+c_loop] * multiplier);
-        samples[(i+c_loop)*3] = tval & 0xff;
-        samples[((i+c_loop)*3)+1] = (tval & 0xff00)>>8;
-        samples[((i+c_loop)*3)+2] = (tval & 0xff0000)>>16;
+        samples[(i+c_loop)*3]     = (unsigned char)(tval & 0xff);
+        samples[((i+c_loop)*3)+1] = (unsigned char)((tval & 0xff00)>>8);
+        samples[((i+c_loop)*3)+2] = (unsigned char)((tval & 0xff0000)>>16);
       }
       break;
     }
@@ -1090,7 +1090,7 @@ c24f_loop:
   }
 }
 
-void ConvertAudio::convertFromFloat(float* inbuf,void* outbuf, char sample_type, int count) {
+void ConvertAudio::convertFromFloat(float* inbuf,void* outbuf, int sample_type, int count) {
   int i;
   switch (sample_type) {
     case SAMPLE_INT8: {
@@ -1117,9 +1117,9 @@ void ConvertAudio::convertFromFloat(float* inbuf,void* outbuf, char sample_type,
       unsigned char* samples = (unsigned char*)outbuf;
       for (i=0;i<count;i++) {
         signed int tval = Saturate_int24(inbuf[i] * (float)(1<<23));
-        samples[i*3] = tval & 0xff;
-        samples[i*3+1] = (tval & 0xff00)>>8;
-        samples[i*3+2] = (tval & 0xff0000)>>16;
+        samples[i*3]   = (unsigned char)(tval & 0xff);
+        samples[i*3+1] = (unsigned char)((tval & 0xff00)>>8);
+        samples[i*3+2] = (unsigned char)((tval & 0xff0000)>>16);
       }
       break;
     }
@@ -1135,7 +1135,7 @@ void ConvertAudio::convertFromFloat(float* inbuf,void* outbuf, char sample_type,
   }
 }
 
-void ConvertAudio::convertFromFloat_SSE(float* inbuf,void* outbuf, char sample_type, int count) {
+void ConvertAudio::convertFromFloat_SSE(float* inbuf,void* outbuf, int sample_type, int count) {
   int i;
 
   switch (sample_type) {
@@ -1234,9 +1234,9 @@ cf32_loop:
       unsigned char* samples = (unsigned char*)outbuf;
       for (i=0;i<count;i++) {
         signed int tval = Saturate_int24(inbuf[i] * (float)(1<<23));
-        samples[i*3] = tval & 0xff;
-        samples[i*3+1] = (tval & 0xff00)>>8;
-        samples[i*3+2] = (tval & 0xff0000)>>16;
+        samples[i*3]   = (unsigned char)(tval & 0xff);
+        samples[i*3+1] = (unsigned char)((tval & 0xff00)>>8);
+        samples[i*3+2] = (unsigned char)((tval & 0xff0000)>>16);
       }
       break;
     }
@@ -1252,7 +1252,7 @@ cf32_loop:
   }
 }
 
-void ConvertAudio::convertFromFloat_SSE2(float* inbuf,void* outbuf, char sample_type, int count) {
+void ConvertAudio::convertFromFloat_SSE2(float* inbuf,void* outbuf, int sample_type, int count) {
   int i;
 
   switch (sample_type) {
@@ -1428,9 +1428,9 @@ cf32_loop:
 
       while (((int)inbuf & 15) && count) { // dqword align inbuf
         const signed int tval = Saturate_int24(*inbuf++ * mult);
-        samples[0] = tval & 0xff;
-        samples[1] = (tval & 0xff00)>>8;
-        samples[2] = (tval & 0xff0000)>>16;
+        samples[0] = (unsigned char)(tval & 0xff);
+        samples[1] = (unsigned char)((tval & 0xff00)>>8);
+        samples[2] = (unsigned char)((tval & 0xff0000)>>16);
         samples += 3;
         count -= 1;
       }
@@ -1488,9 +1488,9 @@ cf24_loop:
       }
       for (i=count;i<count+sleft;i++) {
         const signed int tval = Saturate_int24(inbuf[i] * mult);
-        samples[i*3+0] = tval & 0xff;
-        samples[i*3+1] = (tval & 0xff00)>>8;
-        samples[i*3+2] = (tval & 0xff0000)>>16;
+        samples[i*3+0] = (unsigned char)(tval & 0xff);
+        samples[i*3+1] = (unsigned char)((tval & 0xff00)>>8);
+        samples[i*3+2] = (unsigned char)((tval & 0xff0000)>>16);
       }
       break;
     }

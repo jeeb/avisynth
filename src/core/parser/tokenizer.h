@@ -87,7 +87,7 @@ private:
   const char* token_start;
   const char* pc;
   int line;
-  int type;   // i'd'entifier, 'o'perator, 'i'nt, 'f'loat, 's'tring, 'n'ewline, 0=eof
+  char type;   // i'd'entifier, 'o'perator, 'i'nt, 'f'loat, 's'tring, 'n'ewline, 0=eof
   union 
   {
     const char* identifier;
@@ -102,7 +102,7 @@ private:
 
 /**** Helper functions ****/
 
-static const char* GetTypeName(short type);
+static const char* GetTypeName(char type);
 void ThrowTypeMismatch(char expected, char actual, IScriptEnvironment* env);
 
 

@@ -17,7 +17,7 @@ All rights reserved.
 
 #include "ssrc.h"
 
-#pragma warning(disable:4244)
+// #pragma warning(disable:4244) // 'argument' : conversion from 'type1' to 'type2', possible loss of data
 
 template<class REAL>
 class Resampler_i_base : public Resampler_base
@@ -169,7 +169,7 @@ void Resampler_i_base<REAL>::make_outbuf(int nsmplwrt2, REAL* outbuf, int& delay
 	const int	MaxLoop = nsmplwrt2 * nch;
 
 	for(int i = 0; i < MaxLoop; i++) {
-		REAL	s = outbuf[i] * gain;
+		REAL	s = REAL(outbuf[i] * gain);
 
 		if(s > 1.0) {
 			peak = peak < s ? s : peak;
@@ -269,19 +269,19 @@ public:
 		delta = pow(10.0,-aa/20);
 		if (aa <= 21) d = 0.9222; else d = (aa-7.95)/14.36;
 
-		n1 = fs1/df*d+1;
+		n1 = int(fs1/df*d+1);
 		if (n1 % 2 == 0) n1++;
 
 		alp = alpha(aa);
 		iza = dbesi0(alp);
 		//printf("iza = %g\n",iza);
 
-		n1y = fs1/sfrq;
+		n1y = int(fs1/sfrq);
 		n1x = n1/n1y+1;
 
 		f1order = (int*)_aligned_malloc(sizeof(int)*n1y*osf, 64);
 		for(i=0;i<n1y*osf;i++) {
-		  f1order[i] = fs1/sfrq-(i*(fs1/(dfrq*osf)))%(fs1/sfrq);
+		  f1order[i] = int(fs1/sfrq-(i*(fs1/(dfrq*osf)))%(fs1/sfrq));
 		  if (f1order[i] == fs1/sfrq) f1order[i] = 0;
 		}
 
@@ -301,7 +301,7 @@ public:
 
 		for(i=-(n1/2);i<=n1/2;i++)
 		  {
-		stage1[(i+n1/2)%n1y][(i+n1/2)/n1y] = win(i,n1,alp,iza)*hn_lpf(i,lpf,fs1)*fs1/sfrq;
+		stage1[(i+n1/2)%n1y][(i+n1/2)/n1y] = REAL(win(i,n1,alp,iza)*hn_lpf(i,lpf,double(fs1))*fs1/sfrq);
 		  }
 	  }
 
@@ -338,10 +338,10 @@ public:
 		for(i=0;i<n2b;i++) stage2[i] = 0;
 
 		for(i=-(n2/2);i<=n2/2;i++) {
-		  stage2[i+n2/2] = win(i,n2,alp,iza)*hn_lpf(i,lpf,fs2)/n2b*2;
+		  stage2[i+n2/2] = REAL(win(i,n2,alp,iza)*hn_lpf(i,lpf,fs2)/n2b*2);
 		}
 
-		ipsize    = 2+sqrt((double)n2b);
+		ipsize    = int(2+sqrt((double)n2b));
 		fft_ip    = (int*)_aligned_malloc(sizeof(int)*ipsize, 64);
 		fft_ip[0] = 0;
 		wsize     = n2b/2;
@@ -373,8 +373,8 @@ public:
 		osc = 0;
 
 		init = 1;
-		inbuflen = n1/2/(fs1/sfrq)+1;
-		delay = (double)n2/2/(fs2/dfrq);
+		inbuflen = int(n1/2/(fs1/sfrq)+1);
+		delay = int((double)n2/2/(fs2/dfrq));
 		delay2 = delay * nch;
 
 		sumread = sumwrite = 0;
@@ -391,7 +391,7 @@ public:
 		int ch;
 
 
-		toberead2 = toberead = floor((double)n2b2*sfrq/(dfrq*osf))+1+n1x-inbuflen;
+		toberead2 = toberead = (int)floor((double)n2b2*sfrq/(dfrq*osf))+1+n1x-inbuflen;
 
 		if (!ending)
 		{
@@ -427,7 +427,7 @@ public:
 		for(ch=0;ch<nch;ch++)
 		  {
 			REAL *op = &outbuf[ch];
-			int fdo = fs1/(dfrq*osf),no = n1y*osf;
+			int no = n1y*osf;
 
 			s1p = s1p_backup; ip = ip_backup+ch;
 
@@ -582,13 +582,13 @@ public:
 		}
 
 		{
-		  int ds = (rp-1)/(fs1/sfrq);
+		  int ds = int((rp-1)/(fs1/sfrq));
 
 		  assert(inbuflen >= ds);
 
 		  mem_ops<REAL>::move(inbuf,inbuf+nch*ds,nch*(inbuflen-ds));
 		  inbuflen -= ds;
-		  rp -= ds*(fs1/sfrq);
+		  rp -= int(ds*(fs1/sfrq));
 		}
 
 		return rv;
@@ -711,10 +711,10 @@ public:
     for(i=0;i<n1b;i++) stage1[i] = 0;
 
     for(i=-(n1/2);i<=n1/2;i++) {
-      stage1[i+n1/2] = win(i,n1,alp,iza)*hn_lpf(i,lpf,fs1)*fs1/sfrq/n1b*2;
+      stage1[i+n1/2] = REAL(win(i,n1,alp,iza)*hn_lpf(i,lpf,fs1)*fs1/sfrq/n1b*2);
     }
 
-    ipsize    = 2+sqrt((double)n1b);
+    ipsize    = int(2+sqrt((double)n1b));
     fft_ip    = (int*)_aligned_malloc(sizeof(int)*ipsize, 64);
     fft_ip[0] = 0;
     wsize     = n1b/2;
@@ -749,7 +749,7 @@ public:
     delta = pow(10.0,-aa/20);
     if (aa <= 21) d = 0.9222; else d = (aa-7.95)/14.36;
 
-    n2 = fs2/df*d+1;
+    n2 = int(fs2/df*d+1);
     if (n2 % 2 == 0) n2++;
 
     alp = alpha(aa);
@@ -780,7 +780,7 @@ public:
 
     for(i=-(n2/2);i<=n2/2;i++)
       {
-	stage2[(i+n2/2)%n2y][(i+n2/2)/n2y] = win(i,n2,alp,iza)*hn_lpf(i,lpf,fs2)*fs2/fs1;
+	stage2[(i+n2/2)%n2y][(i+n2/2)/n2y] = REAL(win(i,n2,alp,iza)*hn_lpf(i,lpf,fs2)*fs2/fs1);
       }
   }
 
@@ -813,7 +813,7 @@ public:
 
     //rawoutbuf = (unsigned char*)malloc(dbps*nch*((double)n1b2*sfrq/dfrq+1));
     inbuf = (REAL*)_aligned_malloc(nch*(n1b2/osf+osf+1)*sizeof(REAL), 64);
-    outbuf = (REAL*)_aligned_malloc(sizeof(REAL)*nch*((double)n1b2*sfrq/dfrq+1), 64);
+    outbuf = (REAL*)_aligned_malloc(sizeof(REAL)*nch*int(((double)n1b2*sfrq/dfrq+1)), 64);
 
     op = outbuf;
 
@@ -826,7 +826,7 @@ public:
 
     init = 1;
     ending = 0;
-    delay = (double)n1/2/((double)fs1/dfrq)+(double)n2/2/((double)fs2/dfrq);
+    delay = int((double)n1/2/((double)fs1/dfrq)+(double)n2/2/((double)fs2/dfrq));
     delay2 = delay * nch;
 
     sumread = sumwrite = 0;
@@ -1038,7 +1038,7 @@ Resampler_base::Resampler_base(const CONFIG & c)
 	sfrq=c.sfrq;
 	dfrq=c.dfrq;
 	
-	double noiseamp = 0.18;
+	//double noiseamp = 0.18;
 	//double att=0;
 	gain=1;//pow(10.0,-att/20);
 

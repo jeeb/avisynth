@@ -102,9 +102,6 @@ public:
 	static Resampler_base * Create(CONFIG & c);
 };
 
-#define SSRC_create(sfrq,dfrq,nch,dither,pdf,fast) \
-	Resampler_base::Create(Resampler_base::CONFIG(sfrq,dfrq,nch,dither,pdf,fast))
-
 /*
 USAGE:
 Resampler_base::Create() / SSRC_create with your resampling params (see source for exact info what they do)

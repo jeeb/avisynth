@@ -29,6 +29,10 @@
 
 #include "VD_Audio.h"
 
+
+#pragma warning(disable: 4706)    // assignment within conditional expression
+
+
 AudioFormatConverter AudioPickConverter(WAVEFORMATEX *src, BOOL to_16bit, BOOL to_stereo);
 
 //////////////// no change converters /////////////////////////////////////
@@ -384,7 +388,7 @@ AudioStreamSource::AudioStreamSource(AudioSource *src, long first_samp, long max
 		iFormat->wFormatTag != WAVE_FORMAT_IEEE_FLOAT && allow_decompression) {
 		DWORD dwOutputBufferSize;
 		DWORD dwOutputFormatSize;
-		DWORD dwSuggest;
+		DWORD dwSuggest=0;
 		int i;
 
 		if (!AllocFormat(sizeof(WAVEFORMATEX)))
@@ -585,7 +589,7 @@ long AudioStreamSource::_Read(void *buffer, long max_samples, long *lplBytes) {
 			// hmm... data still in the output buffer?
 
 			if (ashBuffer.cbDstLengthUsed>0) {
-				long tc = min(lBytesLeft, ashBuffer.cbDstLengthUsed);
+				long tc = min(lBytesLeft, long(ashBuffer.cbDstLengthUsed));
 
 				if (lPreskip) {
 					if (tc > lPreskip)
@@ -716,7 +720,7 @@ bool AudioStreamSource::Skip(long samples) {
 
 		// Trigger a reseek.
 
-		long new_pos = ((samples_read + samples) * (__int64)pwfex->nAvgBytesPerSec) / ((__int64)pwfex->nBlockAlign*pwfex->nSamplesPerSec);
+		long new_pos = long(((samples_read + samples) * (__int64)pwfex->nAvgBytesPerSec) / ((__int64)pwfex->nBlockAlign*pwfex->nSamplesPerSec));
 
 		if (new_pos > cur_samp)
 			cur_samp = new_pos;
@@ -725,7 +729,7 @@ bool AudioStreamSource::Skip(long samples) {
 
 		// Skip fractional samples.
 
-		long samp_start = (new_pos * (__int64)pwfex->nSamplesPerSec*pwfex->nBlockAlign) / pwfex->nAvgBytesPerSec;
+		long samp_start = long((new_pos * (__int64)pwfex->nSamplesPerSec*pwfex->nBlockAlign) / pwfex->nAvgBytesPerSec);
 
 		lPreskip = ((samples_read + samples) - samp_start)*GetFormat()->nBlockAlign;
 
@@ -766,7 +770,7 @@ bool AudioStreamSource::Seek(long samples) {
 
 		// Trigger a reseek.
 
-		long new_pos = (samples * (__int64)pwfex->nAvgBytesPerSec) / ((__int64)pwfex->nBlockAlign*pwfex->nSamplesPerSec);
+		long new_pos = long((samples * (__int64)pwfex->nAvgBytesPerSec) / ((__int64)pwfex->nBlockAlign*pwfex->nSamplesPerSec));
 
 		cur_samp = new_pos;
 
@@ -774,7 +778,7 @@ bool AudioStreamSource::Seek(long samples) {
 
 		// Skip fractional samples.
 
-		long samp_start = (new_pos * (__int64)pwfex->nSamplesPerSec*pwfex->nBlockAlign) / pwfex->nAvgBytesPerSec;
+		long samp_start = long((new_pos * (__int64)pwfex->nSamplesPerSec*pwfex->nBlockAlign) / pwfex->nAvgBytesPerSec);
 
 		lPreskip = (samples - samp_start)*GetFormat()->nBlockAlign;
 
@@ -839,7 +843,7 @@ AudioStreamConverter::AudioStreamConverter(AudioStream *src, bool to_16bit, bool
 	SetSource(src);
 
 	oFormat->nAvgBytesPerSec = oFormat->nSamplesPerSec * bytesPerOutputSample;
-	oFormat->nBlockAlign = bytesPerOutputSample;
+	oFormat->nBlockAlign = (WORD)bytesPerOutputSample;
 
 
 	if (!(cbuffer = malloc(bytesPerInputSample * BUFFER_SIZE)))
@@ -956,7 +960,7 @@ static long audio_downsample_mono8(void *dst, void *src, long *filter_bank, int 
 		else if (sum > 0x3fffff)
 			*d++ = 0xff;
 		else
-			*d++ = ((sum + 0x2000)>>14);
+			*d++ = (unsigned char)((sum + 0x2000)>>14);
 
 		accum += samp_frac;
 	} while(--cnt);
@@ -986,7 +990,7 @@ static long audio_downsample_mono16(void *dst, void *src, long *filter_bank, int
 		else if (sum > 0x1fffffff)
 			*d++ = 0x7fff;
 		else
-			*d++ = ((sum + 0x2000)>>14);
+			*d++ = short((sum + 0x2000)>>14);
 
 		accum += samp_frac;
 	} while(--cnt);
@@ -1019,14 +1023,14 @@ static long audio_downsample_stereo8(void *dst, void *src, long *filter_bank, in
 		else if (sum_l > 0x3fffff)
 			*d++ = 0xff;
 		else
-			*d++ = ((sum_l + 0x2000)>>14);
+			*d++ = (unsigned char)((sum_l + 0x2000)>>14);
 
 		if (sum_r < 0)
 			*d++ = 0;
 		else if (sum_r > 0x3fffff)
 			*d++ = 0xff;
 		else
-			*d++ = ((sum_r + 0x2000)>>14);
+			*d++ = (unsigned char)((sum_r + 0x2000)>>14);
 
 		accum += samp_frac;
 	} while(--cnt);
@@ -1059,14 +1063,14 @@ static long audio_downsample_stereo16(void *dst, void *src, long *filter_bank, i
 		else if (sum_l > 0x1fffffff)
 			*d++ = 0x7fff;
 		else
-			*d++ = ((sum_l + 0x2000)>>14);
+			*d++ = short((sum_l + 0x2000)>>14);
 
 		if (sum_r < -0x20000000)
 			*d++ = -0x8000;
 		else if (sum_r > 0x1fffffff)
 			*d++ = 0x7fff;
 		else
-			*d++ = ((sum_r + 0x2000)>>14);
+			*d++ = short((sum_r + 0x2000)>>14);
 
 		accum += samp_frac;
 	} while(--cnt);
@@ -1082,7 +1086,7 @@ static long audio_upsample_mono8(void *dst, void *src, long accum, long samp_fra
 		unsigned char *s_ptr = s + (accum>>19);
 		long frac = (accum>>3) & 0xffff;
 
-		*d++ = ((int)s_ptr[0] * (0x10000 - frac) + (int)s_ptr[1] * frac) >> 16;
+		*d++ = (unsigned char)(((int)s_ptr[0] * (0x10000 - frac) + (int)s_ptr[1] * frac) >> 16);
 		accum += samp_frac;
 	} while(--cnt);
 
@@ -1097,7 +1101,7 @@ static long audio_upsample_mono16(void *dst, void *src, long accum, long samp_fr
 		signed short *s_ptr = s + (accum>>19);
 		long frac = (accum>>3) & 0xffff;
 
-		*d++ = ((int)s_ptr[0] * (0x10000 - frac) + (int)s_ptr[1] * frac) >> 16;
+		*d++ = short(((int)s_ptr[0] * (0x10000 - frac) + (int)s_ptr[1] * frac) >> 16);
 		accum += samp_frac;
 	} while(--cnt);
 
@@ -1112,8 +1116,8 @@ static long audio_upsample_stereo8(void *dst, void *src, long accum, long samp_f
 		unsigned char *s_ptr = s + (accum>>19)*2;
 		long frac = (accum>>3) & 0xffff;
 
-		*d++ = ((int)s_ptr[0] * (0x10000 - frac) + (int)s_ptr[2] * frac) >> 16;
-		*d++ = ((int)s_ptr[1] * (0x10000 - frac) + (int)s_ptr[3] * frac) >> 16;
+		*d++ = (unsigned char)(((int)s_ptr[0] * (0x10000 - frac) + (int)s_ptr[2] * frac) >> 16);
+		*d++ = (unsigned char)(((int)s_ptr[1] * (0x10000 - frac) + (int)s_ptr[3] * frac) >> 16);
 		accum += samp_frac;
 	} while(--cnt);
 
@@ -1128,8 +1132,8 @@ static long audio_upsample_stereo16(void *dst, void *src, long accum, long samp_
 		signed short *s_ptr = s + (accum>>19)*2;
 		long frac = (accum>>3) & 0xffff;
 
-		*d++ = ((int)s_ptr[0] * (0x10000 - frac) + (int)s_ptr[2] * frac) >> 16;
-		*d++ = ((int)s_ptr[1] * (0x10000 - frac) + (int)s_ptr[3] * frac) >> 16;
+		*d++ = short(((int)s_ptr[0] * (0x10000 - frac) + (int)s_ptr[2] * frac) >> 16);
+		*d++ = short(((int)s_ptr[1] * (0x10000 - frac) + (int)s_ptr[3] * frac) >> 16);
 		accum += samp_frac;
 	} while(--cnt);
 
@@ -1215,7 +1219,7 @@ AudioStreamResampler::AudioStreamResampler(AudioStream *src, long new_rate, bool
 	_RPT2(0,"AudioStreamResampler: converting from %ldHz to %ldHz\n", iFormat->nSamplesPerSec, new_rate);
 
 	if (integral_conversion)
-		if (new_rate > iFormat->nSamplesPerSec)
+		if (new_rate > long(iFormat->nSamplesPerSec))
 //			samp_frac = MulDiv(0x10000, new_rate + iFormat->nSamplesPerSec/2, iFormat->nSamplesPerSec);
 			samp_frac = 0x80000 / ((new_rate + iFormat->nSamplesPerSec/2) / iFormat->nSamplesPerSec); 
 		else
@@ -1227,7 +1231,7 @@ AudioStreamResampler::AudioStreamResampler(AudioStream *src, long new_rate, bool
 
 	oFormat->nSamplesPerSec = MulDiv(iFormat->nSamplesPerSec, 0x80000L, samp_frac);
 	oFormat->nAvgBytesPerSec = oFormat->nSamplesPerSec * bytesPerSample;
-	oFormat->nBlockAlign = bytesPerSample;
+	oFormat->nBlockAlign = (WORD)bytesPerSample;
 
 	holdover = 0;
 	filter_bank = NULL;
@@ -1552,7 +1556,7 @@ AudioCompressor::AudioCompressor(AudioStream *src, WAVEFORMATEX *dst_format, lon
 
 	memset(&ashBuffer, 0, sizeof ashBuffer);
 
-	do {
+	for (;;) {
 		// Try opening with ACM_STREAMOPENF_NONREALTIME.
 
 		if (!(err = acmStreamOpen(&hACStream, NULL, iFormat, oFormat, NULL, 0, 0, ACM_STREAMOPENF_NONREALTIME)))
@@ -1579,8 +1583,7 @@ AudioCompressor::AudioCompressor(AudioStream *src, WAVEFORMATEX *dst_format, lon
 			throw MyError("Error initializing audio stream compression:\nThe requested conversion is not possible.");
 		else
 			throw MyError("Error initializing audio stream compression.");
-
-	} while(false);
+	}
 
 	if (acmStreamSize(hACStream, INPUT_BUFFER_SIZE, &dwOutputBufferSize, ACM_STREAMSIZEF_SOURCE))
 		throw MyError("Error querying audio compression.");
@@ -1703,7 +1706,7 @@ void *AudioCompressor::Compress(long lInputSamples, long *lplSrcInputSamples, lo
 			long lSamplesToRead;
 
 			do {
-				lSamplesToRead = min(lInputSamples, (INPUT_BUFFER_SIZE - ashBuffer.cbSrcLength)/bytesPerInputSample);
+				lSamplesToRead = min(lInputSamples, (INPUT_BUFFER_SIZE - long(ashBuffer.cbSrcLength))/bytesPerInputSample);
 
 				ltActualSamples = source->Read((char *)inputBuffer + ashBuffer.cbSrcLength, lSamplesToRead,
 							&ltActualBytes);

@@ -136,9 +136,9 @@ void OL_MultiplyImage::BlendImage(Image444* base, Image444* overlay) {
         int Y = (baseY[x] * ovY[x])>>8;
         int U = (baseU[x] * ovY[x] + 128 * (256-ovY[x]) ) >> 8;
         int V = (baseV[x] * ovY[x] + 128 * (256-ovY[x]) ) >> 8;
-        baseY[x] = Y;
-        baseU[x] = U;
-        baseV[x] = V;
+        baseY[x] = (BYTE)Y;
+        baseU[x] = (BYTE)U;
+        baseV[x] = (BYTE)V;
       }
       baseY += base->pitch;
       baseU += base->pitch;

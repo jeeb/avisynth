@@ -268,7 +268,7 @@ DynamicAssembledCode FilteredResizeH::GenerateResizer(int gen_plane, bool source
       }
       x86.prefetchnta(  dword_ptr [esi+64]);         //Prefetch one cache line ahead for single use
       if (source_aligned) {                          // Load source
-        if (sse4) {
+        if (sse4) { // Should be using  pmovzxbw xmm1, qword_ptr[esi+8]
           x86.movntdqa( xmm0, xmmword_ptr[esi]);     // fetch aligned dq word for single use
           x86.movntdqa( xmm1, xmmword_ptr[esi+16]);
           x86.movntdqa( xmm2, xmmword_ptr[esi+32]);
@@ -492,9 +492,9 @@ DynamicAssembledCode FilteredResizeH::GenerateResizer(int gen_plane, bool source
 
   // Process any remaining pixels
 
-//      vi_dst_width;                              1,2,3,4,5,6,7,8,9,A,B,C,D,E,F,10
-//      vi_dst_width-2                            -1,0,1,2,3,4,5,6,7,8,9,A,B,C,D,E,F
-//      six_loops = (vi_dst_width-2)/6;            0,0,0,0,0,0,0,1,1,1,1,1,1,2,2,2,2
+//    vi_dst_width;                              1,2,3,4,5,6,7,8,9,A,B,C,D,E,F,10
+//    vi_dst_width-2                            -1,0,1,2,3,4,5,6,7,8,9,A,B,C,D,E,F
+//    six_loops = (vi_dst_width-2)/6;            0,0,0,0,0,0,0,1,1,1,1,1,1,2,2,2,2
   int remainx = vi_dst_width-(six_loops*6); //   1,2,3,4,5,6,7,2,3,4,5,6,7,2,3,4,5,6,7
 
   while (remainx>=4) {
@@ -658,7 +658,6 @@ PVideoFrame __stdcall FilteredResizeH::GetFrame(int n, IScriptEnvironment* env)
   int src_pitch = src->GetPitch();
   int dst_pitch = dst->GetPitch();
   if (vi.IsPlanar()) {
-    int plane = 0;
     gen_src_pitch = src_pitch;
     gen_dst_pitch = dst_pitch;
     gen_srcp = (BYTE*)srcp;
@@ -1927,29 +1926,37 @@ PClip FilteredResize::CreateResize(PClip clip, int target_width, int target_heig
 
 AVSValue __cdecl FilteredResize::Create_PointResize(AVSValue args, void*, IScriptEnvironment* env)
 {
+  PointFilter _PointFilter;
+
   return CreateResize( args[0].AsClip(), args[1].AsInt(), args[2].AsInt(), &args[3],
-                       &PointFilter(), env );
+                       &_PointFilter, env );
 }
 
 
 AVSValue __cdecl FilteredResize::Create_BilinearResize(AVSValue args, void*, IScriptEnvironment* env)
 {
+  TriangleFilter _TriangleFilter;
+
   return CreateResize( args[0].AsClip(), args[1].AsInt(), args[2].AsInt(), &args[3],
-                       &TriangleFilter(), env );
+                       &_TriangleFilter, env );
 }
 
 
 AVSValue __cdecl FilteredResize::Create_BicubicResize(AVSValue args, void*, IScriptEnvironment* env)
 {
+  MitchellNetravaliFilter _MitchellNetravaliFilter(args[3].AsDblDef(1./3.), args[4].AsDblDef(1./3.));
+
   return CreateResize( args[0].AsClip(), args[1].AsInt(), args[2].AsInt(), &args[5],
-                       &MitchellNetravaliFilter(args[3].AsDblDef(1./3.), args[4].AsDblDef(1./3.)), env );
+                       &_MitchellNetravaliFilter, env );
 }
 
 AVSValue __cdecl FilteredResize::Create_LanczosResize(AVSValue args, void*, IScriptEnvironment* env)
 {
 	try {	// HIDE DAMN SEH COMPILER BUG!!!
+  LanczosFilter _LanczosFilter(args[7].AsInt(3));
+
   return CreateResize( args[0].AsClip(), args[1].AsInt(), args[2].AsInt(), &args[3],
-                       &LanczosFilter(args[7].AsInt(3)), env );
+                       &_LanczosFilter, env );
 	}
 	catch (...) { throw; }
 }
@@ -1957,8 +1964,10 @@ AVSValue __cdecl FilteredResize::Create_LanczosResize(AVSValue args, void*, IScr
 AVSValue __cdecl FilteredResize::Create_Lanczos4Resize(AVSValue args, void*, IScriptEnvironment* env)
 {
 	try {	// HIDE DAMN SEH COMPILER BUG!!!
+  LanczosFilter _LanczosFilter(4);
+
   return CreateResize( args[0].AsClip(), args[1].AsInt(), args[2].AsInt(), &args[3],
-                       &LanczosFilter(4), env );
+                       &_LanczosFilter, env );
 	}
 	catch (...) { throw; }
 }
@@ -1966,35 +1975,45 @@ AVSValue __cdecl FilteredResize::Create_Lanczos4Resize(AVSValue args, void*, ISc
 AVSValue __cdecl FilteredResize::Create_BlackmanResize(AVSValue args, void*, IScriptEnvironment* env)
 {
 	try {	// HIDE DAMN SEH COMPILER BUG!!!
+  BlackmanFilter _BlackmanFilter(args[7].AsInt(4));
+
   return CreateResize( args[0].AsClip(), args[1].AsInt(), args[2].AsInt(), &args[3],
-                       &BlackmanFilter(args[7].AsInt(4)), env );
+                       &_BlackmanFilter, env );
 	}
 	catch (...) { throw; }
 }
 
 AVSValue __cdecl FilteredResize::Create_Spline16Resize(AVSValue args, void*, IScriptEnvironment* env)
 {
+  Spline16Filter _Spline16Filter;
+
   return CreateResize( args[0].AsClip(), args[1].AsInt(), args[2].AsInt(), &args[3],
-                       &Spline16Filter(), env );
+                       &_Spline16Filter, env );
 }
 
 AVSValue __cdecl FilteredResize::Create_Spline36Resize(AVSValue args, void*, IScriptEnvironment* env)
 {
+  Spline36Filter _Spline36Filter;
+
   return CreateResize( args[0].AsClip(), args[1].AsInt(), args[2].AsInt(), &args[3],
-                       &Spline36Filter(), env );
+                       &_Spline36Filter, env );
 }
 
 AVSValue __cdecl FilteredResize::Create_Spline64Resize(AVSValue args, void*, IScriptEnvironment* env)
 {
+  Spline64Filter _Spline64Filter;
+
   return CreateResize( args[0].AsClip(), args[1].AsInt(), args[2].AsInt(), &args[3],
-                       &Spline64Filter(), env );
+                       &_Spline64Filter, env );
 }
 
 AVSValue __cdecl FilteredResize::Create_GaussianResize(AVSValue args, void*, IScriptEnvironment* env)
 {
 	try {	// HIDE DAMN SEH COMPILER BUG!!!
+  GaussianFilter _GaussianFilter(args[7].AsFloat(30.0f));
+
   return CreateResize( args[0].AsClip(), args[1].AsInt(), args[2].AsInt(), &args[3],
-                       &GaussianFilter(args[7].AsFloat(30.0f)), env );
+                       &_GaussianFilter, env );
 	}
 	catch (...) { throw; }
 }
@@ -2002,8 +2021,10 @@ AVSValue __cdecl FilteredResize::Create_GaussianResize(AVSValue args, void*, ISc
 AVSValue __cdecl FilteredResize::Create_SincResize(AVSValue args, void*, IScriptEnvironment* env)
 {
 	try {	// HIDE DAMN SEH COMPILER BUG!!!
+  SincFilter _SincFilter(args[7].AsInt(4));
+
   return CreateResize( args[0].AsClip(), args[1].AsInt(), args[2].AsInt(), &args[3],
-                       &SincFilter(args[7].AsInt(4)), env );
+                       &_SincFilter, env );
 	}
 	catch (...) { throw; }
 }

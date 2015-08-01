@@ -1189,7 +1189,7 @@ PVideoFrame TemporalSoften::GetFrame(int n, IScriptEnvironment* env)
           BYTE* b_div_line = (BYTE*)div_line;
           for (int i=0;i<w;i++) {
             int div=divtab[b_div_line[i]];
-            c_plane[i]=(div*(int)s_accum_line[i]+16384)>>15; //Todo: Attempt asm/mmx mix - maybe faster
+            c_plane[i]=BYTE((div*(int)s_accum_line[i]+16384)>>15); //Todo: Attempt asm/mmx mix - maybe faster
           }
         } else {
           if ((env->GetCPUFlags() & CPUF_INTEGER_SSE)) {
@@ -1711,10 +1711,10 @@ PVideoFrame SpatialSoften::GetFrame(int n, IScriptEnvironment* env)
           }
         }
       }
-      dstp[y*dst_pitch + x] = (_y + (cnt>>1)) / cnt;
+      dstp[y*dst_pitch + x] = BYTE((_y + (cnt>>1)) / cnt);
       if (!(x&3)) {
-        dstp[y*dst_pitch + x+1] = (_u + (cnt>>1)) / cnt;
-        dstp[y*dst_pitch + x+3] = (_v + (cnt>>1)) / cnt;
+        dstp[y*dst_pitch + x+1] = BYTE((_u + (cnt>>1)) / cnt);
+        dstp[y*dst_pitch + x+3] = BYTE((_v + (cnt>>1)) / cnt);
       }
     }
     for (; x<row_size; ++x)

@@ -38,7 +38,7 @@
 
 #include "../internal.h"
 
-#ifdef _DEBUG
+#if 0 // def _DEBUG
 static int DebugMsg(LPSTR sz,...)
 {
     char buf[256];

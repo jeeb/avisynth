@@ -23,7 +23,7 @@
 
 //extern HWND g_hWnd;		// TODO: Remove in 1.5.0
 
-#pragma warning(disable: 4018)    // signed/unsigned mismatch
+// #pragma warning(disable: 4018)    // signed/unsigned mismatch
 
 
 AudioSourceWAV::AudioSourceWAV(char *szFile, LONG inputBufferSize) {
@@ -50,7 +50,7 @@ BOOL AudioSourceWAV::init() {
 		return FALSE;
 
 	if (!allocFormat(chunkDATA.cksize)) return FALSE;
-	if (chunkDATA.cksize != mmioRead(hmmioFile, (char *)getWaveFormat(), chunkDATA.cksize))
+	if (LONG(chunkDATA.cksize) != mmioRead(hmmioFile, (char *)getWaveFormat(), chunkDATA.cksize))
 		return FALSE;
 
 	if (MMSYSERR_NOERROR != mmioAscend(hmmioFile, &chunkDATA, 0))

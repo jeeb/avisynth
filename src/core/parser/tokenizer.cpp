@@ -365,7 +365,7 @@ void Tokenizer::SetToOperator(int o)
 
 /**** Helper Functions ****/
 
-const char* GetTypeName(short type) 
+const char* GetTypeName(char type) 
 {
   switch (type) 
   {

@@ -110,6 +110,9 @@ void FreeLibraries(void* loaded_plugins, IScriptEnvironment* env);
 
 
 class LinkedVideoFrame {
+private:
+  LinkedVideoFrame() : next(0), vf(0, 0, 0, 0, 0) { }; // Compiler winge. This should never be actually used.
+
 public:
   LinkedVideoFrame* next;
   VideoFrame vf;
@@ -215,8 +218,8 @@ VideoFrameBuffer::~VideoFrameBuffer() {
 //  _ASSERTE(refcount == 0);
   InterlockedIncrement(&sequence_number); // HACK : Notify any children with a pointer, this buffer has changed!!!
   if (data) delete[] (BYTE*)(data-16);
-  (BYTE*)data = 0; // and mark it invalid!!
-  (size_t)data_size = 0;   // and don't forget to set the size to 0 as well!
+  *(BYTE **)&data = 0; // and mark it invalid!!
+  *(size_t *)&data_size = 0;   // and don't forget to set the size to 0 as well!
 }
 
 #else
@@ -228,8 +231,8 @@ VideoFrameBuffer::~VideoFrameBuffer() {
 //  _ASSERTE(refcount == 0);
   InterlockedIncrement(&sequence_number); // HACK : Notify any children with a pointer, this buffer has changed!!!
   if (data) delete[] data;
-  (BYTE*)data = 0; // and mark it invalid!!
-  (size_t)data_size = 0;   // and don't forget to set the size to 0 as well!
+  *(BYTE **)&data = 0; // and mark it invalid!!
+  *(size_t *)&data_size = 0;   // and don't forget to set the size to 0 as well!
 }
 #endif
 
@@ -605,7 +608,7 @@ public:
               _RPT2(0, "Loading plugin %s (lookup for function %s)\n", pp->name, p->name);
               // sets reloading in case the plugin is performing env->FunctionExists() calls
               reloading = true;
-              LoadPlugin(AVSValue(&AVSValue(&AVSValue(pp->name), 1), 1), (void*)false, env);
+              LoadPlugin(AVSValue(AVSValue(AVSValue(pp->name), 1), 1), (void*)false, env);
               reloading = false;
               // just in case the function disappeared from the plugin, avoid infinte recursion
               RemovePlugin(pp);
@@ -784,10 +787,10 @@ StringDump::~StringDump() {
 
 char* StringDump::SaveString(const char* s, int len) {
   if (len == -1)
-    len = lstrlen(s);
+    len = int(strlen(s));
 
   if (block_pos+len+1 > block_size) {
-    char* new_block = new char[block_size = max(block_size, len+1+sizeof(char*))];
+    char* new_block = new char[block_size = max(block_size, len+1+int(sizeof(char*)))];
     _RPT0(0,"StringDump: Allocating new stringblock.\r\n");
     *(char**)new_block = current_block;   // beginning of block holds pointer to previous block
     current_block = new_block;
@@ -796,7 +799,7 @@ char* StringDump::SaveString(const char* s, int len) {
   char* result = current_block+block_pos;
   memcpy(result, s, len);
   result[len] = 0;
-  block_pos += (len+sizeof(char*)) & -sizeof(char*); // Keep 32bit aligned
+  block_pos += (len+sizeof(char*)) & -int(sizeof(char*)); // Keep 32bit aligned
   return result;
 }
 
@@ -1207,7 +1210,7 @@ bool ScriptEnvironment::LoadPluginsMatching(const char* pattern)
     GetFullPathName(FileData.cFileName, MAX_PATH, file, &dummy);
     const char *_file = ScriptEnvironment::SaveString(file);
     function_table.PrescanPluginStart(_file);
-    LoadPlugin(AVSValue(&AVSValue(&AVSValue(_file), 1), 1), (void*)true, this);
+    LoadPlugin(AVSValue(AVSValue(AVSValue(_file), 1), 1), (void*)true, this);
     bContinue = FindNextFile(hFind, &FileData);
     if (!bContinue) {
       FindClose(hFind);
@@ -1241,7 +1244,7 @@ void ScriptEnvironment::PrescanPlugins()
       hFind = FindFirstFile(file, &FileData);
       BOOL bContinue = (hFind != INVALID_HANDLE_VALUE);
       while (bContinue) {
-        Import(AVSValue(&AVSValue(&AVSValue(FileData.cFileName), 1), 1), 0, this);
+        Import(AVSValue(AVSValue(AVSValue(FileData.cFileName), 1), 1), 0, this);
         bContinue = FindNextFile(hFind, &FileData);
         if (!bContinue) FindClose(hFind);
       }
@@ -1876,7 +1879,7 @@ AVSValue ScriptEnvironment::Invoke(const char* name, const AVSValue args, const 
   // combine unnamed args into arrays
   int src_index=0, dst_index=0;
   const char* p = f->param_types;
-  const int maxarg3 = max(args2_count, strlen(p)); // well it can't be any longer than this.
+  const int maxarg3 = max(args2_count, int(strlen(p))); // well it can't be any longer than this.
 
   AVSValue *args3 = new AVSValue[maxarg3];
 

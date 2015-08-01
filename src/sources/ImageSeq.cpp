@@ -127,7 +127,7 @@ ImageWriter::ImageWriter(PClip _child, const char * _base_name, const int _start
     infoHeader.biWidth = vi.width;
     infoHeader.biHeight = vi.height;
     infoHeader.biPlanes = (vi.IsPlanar() && !vi.IsY8()) ? 3 : 1;
-    infoHeader.biBitCount = vi.BitsPerPixel();
+    infoHeader.biBitCount = WORD(vi.BitsPerPixel());
     infoHeader.biCompression = 0;
     infoHeader.biSizeImage = fileHeader.bfSize - fileHeader.bfOffBits;
     infoHeader.biXPelsPerMeter = 0;
@@ -262,7 +262,7 @@ PVideoFrame ImageWriter::GetFrame(int n, IScriptEnvironment* env)
     const ILenum il_format = vi.IsY8() ? IL_LUMINANCE : ( vi.IsRGB32() ? IL_BGRA : IL_BGR );
 
     // Set image parameters
-    if (IL_TRUE == ilTexImage(vi.width, vi.height, 1, vi.BitsPerPixel() / 8, il_format, IL_UNSIGNED_BYTE, NULL)) {
+    if (IL_TRUE == ilTexImage(vi.width, vi.height, 1, ILubyte(vi.BitsPerPixel() / 8), il_format, IL_UNSIGNED_BYTE, NULL)) {
 
       // Program actual image raster
       const BYTE * srcPtr = frame->GetReadPtr();
@@ -343,7 +343,7 @@ AVSValue __cdecl ImageWriter::Create(AVSValue args, void*, IScriptEnvironment* e
  *******   Image Reader ******
  ****************************/
 ImageReader::ImageReader(const char * _base_name, const int _start, const int _end,
-                         const float _fps, bool _use_DevIL, bool _info, const char * _pixel,
+                         const double _fps, bool _use_DevIL, bool _info, const char * _pixel,
                          bool _animation, IScriptEnvironment* env)
  : start(_start), use_DevIL(_use_DevIL), info(_info), animation(_animation), framecopies(0)
 {
@@ -500,7 +500,7 @@ ImageReader::ImageReader(const char * _base_name, const int _start, const int _e
       }
 
       unsigned duration_ms = (unsigned)ilGetInteger(IL_IMAGE_DURATION);
-      if (duration_ms != 0 && _fps == 24.0f) { // overwrite framerate in case of non-zero duration
+      if (duration_ms != 0 && _fps == 24.0) { // overwrite framerate in case of non-zero duration
           vi.SetFPS(1000, duration_ms);
       }
     }
@@ -876,7 +876,7 @@ AVSValue __cdecl ImageReader::Create(AVSValue args, void*, IScriptEnvironment* e
 {
   const char * path = args[0].AsString("c:\\%06d.ebmp");
 
-  ImageReader *IR = new ImageReader(path, args[1].AsInt(0), args[2].AsInt(1000), args[3].AsFloat(24.0f),
+  ImageReader *IR = new ImageReader(path, args[1].AsInt(0), args[2].AsInt(1000), args[3].AsDblDef(24.0),
                                     args[4].AsBool(false), args[5].AsBool(false), args[6].AsString("rgb24"),
                                     /*animation*/ false, env);
   // If we are returning a stream of 2 or more copies of the same image
@@ -896,7 +896,7 @@ AVSValue __cdecl ImageReader::CreateAnimated(AVSValue args, void*, IScriptEnviro
   if (!args[0].IsString())
     env->ThrowError("ImageSourceAnim: You must specify a filename.");
 
-  return new ImageReader(args[0].AsString(), 0, 0, args[1].AsFloat(24.0f), /*use_DevIL*/ true,
+  return new ImageReader(args[0].AsString(), 0, 0, args[1].AsDblDef(24.0), /*use_DevIL*/ true,
                          args[2].AsBool(false), args[3].AsString("rgb32"), /*animation*/ true, env);
 }
 

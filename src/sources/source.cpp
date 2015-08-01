@@ -104,8 +104,8 @@ static PVideoFrame CreateBlankFrame(const VideoInfo& vi, int color, int mode, IS
     for (int i=0; i<size; i+=4)
       *(unsigned*)(p+i) = d;
   } else if (vi.IsRGB24()) {
-    const unsigned char clr0 = (color & 0xFF);
-    const unsigned short clr1 =(color >> 8);
+    const unsigned char clr0 = (unsigned char)(color & 0xFF);
+    const unsigned short clr1 = (unsigned short)(color >> 8);
     const int gr = frame->GetRowSize();
     const int gp = frame->GetPitch();
     for (int y=frame->GetHeight();y>0;y--) {
@@ -257,7 +257,7 @@ static AVSValue __cdecl Create_BlankClip(AVSValue args, void*, IScriptEnvironmen
   // If we got an Audio only default clip make the default duration the same
   if (!defHasVideo && defHasAudio) {
     const __int64 denom = Int32x32To64(vi.fps_denominator, vi_default.audio_samples_per_second);
-    vi_default.num_frames = (vi_default.num_audio_samples * vi.fps_numerator + denom - 1) / denom; // ceiling
+    vi_default.num_frames = int((vi_default.num_audio_samples * vi.fps_numerator + denom - 1) / denom); // ceiling
   }
 
   vi.num_frames = args[1].AsInt(vi_default.num_frames);
@@ -479,7 +479,7 @@ public:
 				pV[x] = pattern23V[2];
 			}
 			for (int j=0; j < c*7; ++j, ++x) { // Y-Ramp
-				pY[x] = 16 + (220*j)/(c*7);
+				pY[x] = BYTE(16 + (220*j)/(c*7));
 				pU[x] = 128;
 				pV[x] = 128;
 			}

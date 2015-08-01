@@ -85,7 +85,7 @@ private:
 			return;
 		}
 
-		newipsize = 2+sqrt((float)(n/2));
+		newipsize = int(2+sqrt((float)(n/2)));
 		if (newipsize > rfft_ipsize) {
 			rfft_ipsize = newipsize;
 			rfft_ip = mem_ops<int>::realloc(rfft_ip,rfft_ipsize);
@@ -157,8 +157,8 @@ private:
 	static REAL alpha(REAL a)
 	{
 		if (a <= 21) return 0;
-		if (a <= 50) return 0.5842*pow((a-21.),0.4)+0.07886*(a-21);
-		return 0.1102*(a-8.7);
+		if (a <= 50) return REAL(0.5842*pow((a-21.),0.4)+0.07886*(a-21));
+		return REAL(0.1102*(a-8.7));
 	}
 
 	static REAL sinc(REAL x) {return x == 0 ? 1 : sin(x)/x;}
@@ -166,11 +166,11 @@ private:
 	static REAL hn_lpf(int n,REAL f,REAL fs)
 	{
 		REAL t = 1/fs;
-		REAL omega = 2*PI*f;
+		REAL omega = REAL(2*PI*f);
 		return 2*f*t*sinc(n*omega*t);
 	}
 
-	static REAL hn_imp(int n) {return n == 0 ? 1.0 : 0.0;}
+	static REAL hn_imp(int n) {return REAL(n == 0 ? 1.0 : 0.0);}
 
 	static REAL hn(int n,class paramlist &param2,REAL fs)
 	{
@@ -211,9 +211,9 @@ static const double bands[NBANDS] = { // Half octave spacing, i.e. *=sqrt(2.0)
 		  for(i=0,pp=&param2.elm;i<=NBANDS;i++,pp = &(*pp)->next)
 		  {
 			(*pp) = new paramlistelm;
-			(*pp)->lower = i == 0        ?  0 : bands[i-1];
-			(*pp)->upper = i == NBANDS ? fs : bands[i  ];
-			(*pp)->gain  = bc[i];
+			(*pp)->lower = float(i == 0      ?  0 : bands[i-1]);
+			(*pp)->upper = float(i == NBANDS ? fs : bands[i  ]);
+			(*pp)->gain  = float(bc[i]);
 		  }
   
 		  for(e = param->elm;e != NULL;e = e->next)
@@ -227,7 +227,7 @@ static const double bands[NBANDS] = { // Half octave spacing, i.e. *=sqrt(2.0)
 			while(p != NULL && p->lower < e->upper)
 			{
 				if (e->lower <= p->lower && p->upper <= e->upper) {
-					p->gain *= pow(10.0,e->gain/20.0);
+					p->gain *= float(pow(10.0,e->gain/20.0));
 					p = p->next;
 					continue;
 				}
@@ -242,7 +242,7 @@ static const double bands[NBANDS] = { // Half octave spacing, i.e. *=sqrt(2.0)
 					e2 = new paramlistelm;
 					e2->lower = e->lower;
 					e2->upper = e->upper;
-					e2->gain  = p->gain * pow(10.,e->gain/20.0);
+					e2->gain  = p->gain * float(pow(10.,e->gain/20.0));
 					e2->next  = p->next;
 					p->next   = e2;
 
@@ -255,7 +255,7 @@ static const double bands[NBANDS] = { // Half octave spacing, i.e. *=sqrt(2.0)
 					e2 = new paramlistelm;
 					e2->lower = e->lower;
 					e2->upper = p->upper;
-					e2->gain  = p->gain * pow(10.0,e->gain/20.0);
+					e2->gain  = p->gain * float(pow(10.0,e->gain/20.0));
 					e2->next  = p->next;
 					p->next   = e2;
 
@@ -272,7 +272,7 @@ static const double bands[NBANDS] = { // Half octave spacing, i.e. *=sqrt(2.0)
 					p->next   = e2;
 
 					p->upper  = e->upper;
-					p->gain   = p->gain * pow(10.0,e->gain/20.0);
+					p->gain   = p->gain * float(pow(10.0,e->gain/20.0));
 					p = p->next->next;
 					continue;
 				}
@@ -323,7 +323,7 @@ public:
 		process_param(bc,param,param2,fs,0);
 
 		for(i=0;i<winlen;i++)
-			irest[i] = hn(i-winlen/2,param2,fs)*win(i-winlen/2,winlen);
+			irest[i] = hn(i-winlen/2,param2,(REAL)fs)*win(REAL(i-winlen/2),winlen);
 
 		for(;i<tabsize;i++)
 			irest[i] = 0;

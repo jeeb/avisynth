@@ -546,8 +546,8 @@ void MatrixGenerator3x3::GenerateAssembly(int width, int frac_bits, bool rgb_out
         x86.phaddd(      xmm0, xmm0);                          // [B+A|b+a|B+A|b+a]
         x86.phaddd(      xmm1, xmm6);                          // [F+E|f+e|D+C|d+c]
 
-        x86.psrad(       xmm0, frac_bits);                     // Shift down - [---X|---x|---X|---x]
-        x86.psrad(       xmm1, frac_bits);                     // Shift down - [---Z|---z|---Y|---y]
+        x86.psrad(       xmm0, (byte)frac_bits);               // Shift down - [---X|---x|---X|---x]
+        x86.psrad(       xmm1, (byte)frac_bits);               // Shift down - [---Z|---z|---Y|---y]
 
         x86.punpckldq(   xmm0, xmm1);                          //  [---Y|---X|---y|---x]
         x86.punpckhdq(   xmm1, xmm1);                          //  [---Z|---Z|---z|---z]
@@ -593,10 +593,10 @@ void MatrixGenerator3x3::GenerateAssembly(int width, int frac_bits, bool rgb_out
         x86.movdqa(      xmm5, xmm1);
         x86.psrlq(       xmm1, 32);                            // [0|F|0|f]
 
-        x86.psrad(       xmm6, frac_bits);                     // Shift down - [????|---X|????|---x]
+        x86.psrad(       xmm6, (byte)frac_bits);               // Shift down - [????|---X|????|---x]
         x86.paddd(       xmm5, xmm1);                          // Third ready in upper - [Z=F+0|E+F][z=f+0|e+f]
-        x86.psrad(       xmm7, frac_bits);                     // Shift down - [????|---Y|????|---y]
-        x86.psrad(       xmm5, frac_bits);                     // Shift down - [????|---Z|????|---z]
+        x86.psrad(       xmm7, (byte)frac_bits);               // Shift down - [????|---Y|????|---y]
+        x86.psrad(       xmm5, (byte)frac_bits);               // Shift down - [????|---Z|????|---z]
 
         x86.movdqa(      xmm0, xmm6);                          // pixel 1
         x86.punpckhdq(   xmm6, xmm7);                          // Move xmm6 upper to lower, with xmm7 upper - [????|????|---Y|---X]
@@ -715,12 +715,12 @@ void MatrixGenerator3x3::GenerateAssembly(int width, int frac_bits, bool rgb_out
       x86.paddd(       mm4, mm0);                           // Third Lo ready in upper - [z=e+f|e+?]
       x86.paddd(       mm5, mm1);                           // Third Hi ready in upper - [Z=E+F|E+?]
 
-      x86.psrad(       mm6, frac_bits);                     // Shift down - [---X|---x]
+      x86.psrad(       mm6, (byte)frac_bits);               // Shift down - [---X|---x]
 
       x86.punpckhdq(   mm4, mm5);                           // Move uppers[mm5, mm4]  to mm4[Z, z]
-      x86.psrad(       mm7, frac_bits);                     // Shift down - [---Y|---y]
+      x86.psrad(       mm7, (byte)frac_bits);               // Shift down - [---Y|---y]
       x86.movq(        mm0, mm6);                           // pixel 1
-      x86.psrad(       mm4, frac_bits);                     // Shift down - [---Z|---z]
+      x86.psrad(       mm4, (byte)frac_bits);               // Shift down - [---Z|---z]
 
       x86.punpckldq(   mm0, mm7);                           // Move mm7 lower to mm0 upper - [---y|---x]
       x86.punpckhdq(   mm6, mm7);                           // Move mm6 upper to lower, with mm7 upper - [---Y|---X]

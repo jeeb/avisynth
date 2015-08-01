@@ -209,16 +209,16 @@ void Antialiaser::ApplyYV12(BYTE* buf, int pitch, int pitchUV, BYTE* bufU, BYTE*
       const int basealphaUV = basealpha00 + basealpha10 + basealpha01 + basealpha11;
 
       if (basealphaUV != 1024) {
-        buf[x+0]       = (buf[x+0]       * basealpha00 + alpha[x4+3]   ) >> 8;
-        buf[x+1]       = (buf[x+1]       * basealpha10 + alpha[x4+7]   ) >> 8;
-        buf[x+0+pitch] = (buf[x+0+pitch] * basealpha01 + alpha[x4+3+w4]) >> 8;
-        buf[x+1+pitch] = (buf[x+1+pitch] * basealpha11 + alpha[x4+7+w4]) >> 8;
+        buf[x+0]       = BYTE((buf[x+0]       * basealpha00 + alpha[x4+3]   ) >> 8);
+        buf[x+1]       = BYTE((buf[x+1]       * basealpha10 + alpha[x4+7]   ) >> 8);
+        buf[x+0+pitch] = BYTE((buf[x+0+pitch] * basealpha01 + alpha[x4+3+w4]) >> 8);
+        buf[x+1+pitch] = BYTE((buf[x+1+pitch] * basealpha11 + alpha[x4+7+w4]) >> 8);
 
         const int au  = alpha[x4+2] + alpha[x4+6] + alpha[x4+2+w4] + alpha[x4+6+w4];
-        bufU[x>>1] = (bufU[x>>1] * basealphaUV + au) >> 10;
+        bufU[x>>1] = BYTE((bufU[x>>1] * basealphaUV + au) >> 10);
 
         const int av  = alpha[x4+1] + alpha[x4+5] + alpha[x4+1+w4] + alpha[x4+5+w4];
-        bufV[x>>1] = (bufV[x>>1] * basealphaUV + av) >> 10;
+        bufV[x>>1] = BYTE((bufV[x>>1] * basealphaUV + av) >> 10);
       }
     }
     buf += pitch<<1;
@@ -249,7 +249,7 @@ void Antialiaser::ApplyPlanar(BYTE* buf, int pitch, int pitchUV, BYTE* bufU, BYT
       const int basealpha = alpha[x4+0];
 
       if (basealpha != 256) {
-        buf[x] = (buf[x] * basealpha + alpha[x4+3]) >> 8;
+        buf[x] = BYTE((buf[x] * basealpha + alpha[x4+3]) >> 8);
       }
     }
     buf += pitch;
@@ -283,8 +283,8 @@ void Antialiaser::ApplyPlanar(BYTE* buf, int pitch, int pitchUV, BYTE* bufU, BYT
         UValpha += w4;
       }
       if (basealphaUV != skipThresh) {
-        bufU[xs] = (bufU[xs] * basealphaUV + au) >> shifter;
-        bufV[xs] = (bufV[xs] * basealphaUV + av) >> shifter;
+        bufU[xs] = BYTE((bufU[xs] * basealphaUV + au) >> shifter);
+        bufV[xs] = BYTE((bufV[xs] * basealphaUV + av) >> shifter);
       }
     }// end for x
     bufU  += pitchUV;
@@ -309,14 +309,14 @@ void Antialiaser::ApplyYUY2(BYTE* buf, int pitch) {
       const int basealphaUV = basealpha0 + basealpha1;
 
       if (basealphaUV != 512) {
-        buf[x*2+0] = (buf[x*2+0] * basealpha0 + alpha[x*4+3]) >> 8;
-        buf[x*2+2] = (buf[x*2+2] * basealpha1 + alpha[x*4+7]) >> 8;
+        buf[x*2+0] = BYTE((buf[x*2+0] * basealpha0 + alpha[x*4+3]) >> 8);
+        buf[x*2+2] = BYTE((buf[x*2+2] * basealpha1 + alpha[x*4+7]) >> 8);
 
         const int au  = alpha[x*4+2] + alpha[x*4+6];
-        buf[x*2+1] = (buf[x*2+1] * basealphaUV + au) >> 9;
+        buf[x*2+1] = BYTE((buf[x*2+1] * basealphaUV + au) >> 9);
 
         const int av  = alpha[x*4+1] + alpha[x*4+5];
-        buf[x*2+3] = (buf[x*2+3] * basealphaUV + av) >> 9;
+        buf[x*2+3] = BYTE((buf[x*2+3] * basealphaUV + av) >> 9);
       }
     }
     buf += pitch;
@@ -334,9 +334,9 @@ void Antialiaser::ApplyRGB24(BYTE* buf, int pitch) {
     for (int x=xl; x<=xr; ++x) {
       const int basealpha = alpha[x*4+0];
       if (basealpha != 256) {
-        buf[x*3+0] = (buf[x*3+0] * basealpha + alpha[x*4+1]) >> 8;
-        buf[x*3+1] = (buf[x*3+1] * basealpha + alpha[x*4+2]) >> 8;
-        buf[x*3+2] = (buf[x*3+2] * basealpha + alpha[x*4+3]) >> 8;
+        buf[x*3+0] = BYTE((buf[x*3+0] * basealpha + alpha[x*4+1]) >> 8);
+        buf[x*3+1] = BYTE((buf[x*3+1] * basealpha + alpha[x*4+2]) >> 8);
+        buf[x*3+2] = BYTE((buf[x*3+2] * basealpha + alpha[x*4+3]) >> 8);
       }
     }
     buf -= pitch;
@@ -354,9 +354,9 @@ void Antialiaser::ApplyRGB32(BYTE* buf, int pitch) {
     for (int x=xl; x<=xr; ++x) {
       const int basealpha = alpha[x*4+0];
       if (basealpha != 256) {
-        buf[x*4+0] = (buf[x*4+0] * basealpha + alpha[x*4+1]) >> 8;
-        buf[x*4+1] = (buf[x*4+1] * basealpha + alpha[x*4+2]) >> 8;
-        buf[x*4+2] = (buf[x*4+2] * basealpha + alpha[x*4+3]) >> 8;
+        buf[x*4+0] = BYTE((buf[x*4+0] * basealpha + alpha[x*4+1]) >> 8);
+        buf[x*4+1] = BYTE((buf[x*4+1] * basealpha + alpha[x*4+2]) >> 8);
+        buf[x*4+2] = BYTE((buf[x*4+2] * basealpha + alpha[x*4+3]) >> 8);
       }
     }
     buf -= pitch;
@@ -639,10 +639,10 @@ do24:
 		alpha1 *= Atext;
         // Pre calulate table for quick use  --  Pc = (Pc * dest[0] + dest[c]) >> 8;
 
-		dest[0] = (64*516*255 - alpha1 -          alpha2)>>15;
-		dest[1] = (    BVtext * alpha1 + BVhalo * alpha2)>>15;
-		dest[2] = (    GUtext * alpha1 + GUhalo * alpha2)>>15;
-		dest[3] = (    RYtext * alpha1 + RYhalo * alpha2)>>15;
+		dest[0] = (unsigned short)((64*516*255 - alpha1 -          alpha2)>>15);
+		dest[1] = (unsigned short)((    BVtext * alpha1 + BVhalo * alpha2)>>15);
+		dest[2] = (unsigned short)((    GUtext * alpha1 + GUhalo * alpha2)>>15);
+		dest[3] = (unsigned short)((    RYtext * alpha1 + RYhalo * alpha2)>>15);
       }
 	  else {
 		dest[0] = 256;
@@ -1325,7 +1325,7 @@ PVideoFrame FilterInfo::GetFrame(int n, IScriptEnvironment* env)
     GdiFlush();
 
 	env->MakeWritable(&frame);
-    BYTE* dstp = frame->GetWritePtr();
+    frame->GetWritePtr(); // Bump sequence_number
     int dst_pitch = frame->GetPitch();
     antialiaser.Apply(vi, &frame, dst_pitch );
   }
@@ -1383,8 +1383,8 @@ Compare::Compare(PClip _child1, PClip _child2, const char* channels, const char 
 
   planar_plane = 0;
   mask = 0;
-  const unsigned length = strlen(channels);
-  for (unsigned i = 0; i < length; i++) {
+  const size_t length = strlen(channels);
+  for (size_t i = 0; i < length; i++) {
     if (vi.IsRGB()) {
       switch (channels[i]) {
       case 'b':
