@@ -42,7 +42,7 @@ public:
   static AVSValue __cdecl Create_y(AVSValue args, void* user_data, IScriptEnvironment* env);
   static AVSValue __cdecl Create_u(AVSValue args, void* user_data, IScriptEnvironment* env);
   static AVSValue __cdecl Create_v(AVSValue args, void* user_data, IScriptEnvironment* env);
-  static AVSValue AvgPlane(AVSValue clip, void* user_data, int plane, IScriptEnvironment* env);
+  static AVSValue AvgPlane(AVSValue clip, void* user_data, int plane, int offset, IScriptEnvironment* env);
   static unsigned int isse_average_plane(const BYTE* c_plane, int height, int width, int c_pitch);
   static unsigned int C_average_plane(const BYTE* c_plane, int height, int width, int c_pitch);
 
@@ -78,7 +78,7 @@ public:
 class MinMaxPlane {
 
 public:
-  static AVSValue MinMax(AVSValue clip, void* user_data, float threshold, int plane, int mode, IScriptEnvironment* env);
+  static AVSValue MinMax(AVSValue clip, void* user_data, float threshold, int offset, int plane, int mode, IScriptEnvironment* env);
   static AVSValue __cdecl Create_max_y(AVSValue args, void* user_data, IScriptEnvironment* env);
   static AVSValue __cdecl Create_min_y(AVSValue args, void* user_data, IScriptEnvironment* env);
   static AVSValue __cdecl Create_median_y(AVSValue args, void* user_data, IScriptEnvironment* env);

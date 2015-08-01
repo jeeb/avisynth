@@ -39,11 +39,11 @@
 
 
 extern const AVSFunction Conditional_funtions_filters[] = {
-  {  "AverageLuma","c", AveragePlane::Create_y },
-  {  "AverageChromaU","c", AveragePlane::Create_u },
-  {  "AverageChromaV","c", AveragePlane::Create_v },
-//{  "AverageSat","c", AverageSat::Create }, Sum(SatLookup[U,V])/N, SatLookup[U,V]=1.4087*sqrt((U-128)**2+(V-128)**2)
-//{  "AverageHue","c", AverageHue::Create }, Sum(HueLookup[U,V])/N, HueLookup[U,V]=40.5845*Atan2(U-128,V-128)
+  {  "AverageLuma","c[offset]i", AveragePlane::Create_y },
+  {  "AverageChromaU","c[offset]i", AveragePlane::Create_u },
+  {  "AverageChromaV","c[offset]i", AveragePlane::Create_v },
+//{  "AverageSat","c[offset]i", AverageSat::Create }, Sum(SatLookup[U,V])/N, SatLookup[U,V]=1.4087*sqrt((U-128)**2+(V-128)**2)
+//{  "AverageHue","c[offset]i", AverageHue::Create }, Sum(HueLookup[U,V])/N, HueLookup[U,V]=40.5845*Atan2(U-128,V-128)
 
   {  "RGBDifference","cc", ComparePlane::Create_rgb },
   {  "LumaDifference","cc", ComparePlane::Create_y },
@@ -56,38 +56,38 @@ extern const AVSFunction Conditional_funtions_filters[] = {
   {  "UDifferenceFromPrevious","c", ComparePlane::Create_prev_u },
   {  "VDifferenceFromPrevious","c", ComparePlane::Create_prev_v },
   {  "RGBDifferenceFromPrevious","c", ComparePlane::Create_prev_rgb },
-//{  "SatDifferenceFromPrevious","cc", CompareSat::Create_prev },
-//{  "HueDifferenceFromPrevious","cc", CompareHue::Create_prev },
+//{  "SatDifferenceFromPrevious","c", CompareSat::Create_prev },
+//{  "HueDifferenceFromPrevious","c", CompareHue::Create_prev },
 
-  {  "YDifferenceToNext","c", ComparePlane::Create_next_y },
-  {  "UDifferenceToNext","c", ComparePlane::Create_next_u },
-  {  "VDifferenceToNext","c", ComparePlane::Create_next_v },
-  {  "RGBDifferenceToNext","c", ComparePlane::Create_next_rgb },
-//{  "SatDifferenceFromNext","cc", CompareSat::Create_next },
-//{  "HueDifferenceFromNext","cc", CompareHue::Create_next },
+  {  "YDifferenceToNext","c[offset]i", ComparePlane::Create_next_y },
+  {  "UDifferenceToNext","c[offset]i", ComparePlane::Create_next_u },
+  {  "VDifferenceToNext","c[offset]i", ComparePlane::Create_next_v },
+  {  "RGBDifferenceToNext","c[offset]i", ComparePlane::Create_next_rgb },
+//{  "SatDifferenceFromNext","c[offset]i", CompareSat::Create_next },
+//{  "HueDifferenceFromNext","c[offset]i", CompareHue::Create_next },
 
-  {  "YPlaneMax","c[threshold]f", MinMaxPlane::Create_max_y },
-  {  "YPlaneMin","c[threshold]f", MinMaxPlane::Create_min_y },
-  {  "YPlaneMedian","c", MinMaxPlane::Create_median_y },
-  {  "YPlaneMinMaxDifference","c[threshold]f", MinMaxPlane::Create_minmax_y },
-  {  "UPlaneMax","c[threshold]f", MinMaxPlane::Create_max_u },
-  {  "UPlaneMin","c[threshold]f", MinMaxPlane::Create_min_u },
-  {  "UPlaneMedian","c", MinMaxPlane::Create_median_u },
-  {  "UPlaneMinMaxDifference","c[threshold]f", MinMaxPlane::Create_minmax_u },
-  {  "VPlaneMax","c[threshold]f", MinMaxPlane::Create_max_v },
-  {  "VPlaneMin","c[threshold]f", MinMaxPlane::Create_min_v },
-  {  "VPlaneMedian","c", MinMaxPlane::Create_median_v },
-  {  "VPlaneMinMaxDifference","c[threshold]f", MinMaxPlane::Create_minmax_v },
+  {  "YPlaneMax","c[threshold]f[offset]i", MinMaxPlane::Create_max_y },
+  {  "YPlaneMin","c[threshold]f[offset]i", MinMaxPlane::Create_min_y },
+  {  "YPlaneMedian","c[offset]i", MinMaxPlane::Create_median_y },
+  {  "YPlaneMinMaxDifference","c[threshold]f[offset]i", MinMaxPlane::Create_minmax_y },
+  {  "UPlaneMax","c[threshold]f[offset]i", MinMaxPlane::Create_max_u },
+  {  "UPlaneMin","c[threshold]f[offset]i", MinMaxPlane::Create_min_u },
+  {  "UPlaneMedian","c[offset]i", MinMaxPlane::Create_median_u },
+  {  "UPlaneMinMaxDifference","c[threshold]f[offset]i", MinMaxPlane::Create_minmax_u },
+  {  "VPlaneMax","c[threshold]f[offset]i", MinMaxPlane::Create_max_v },
+  {  "VPlaneMin","c[threshold]f[offset]i", MinMaxPlane::Create_min_v },
+  {  "VPlaneMedian","c[offset]i", MinMaxPlane::Create_median_v },
+  {  "VPlaneMinMaxDifference","c[threshold]f[offset]i", MinMaxPlane::Create_minmax_v },
 
-//{  "SatMax","c[threshold]f", MinMaxPlane::Create_maxsat },  ++accum[SatLookup[U,V]]
-//{  "SatMin","c[threshold]f", MinMaxPlane::Create_minsat },
-//{  "SatMedian","c", MinMaxPlane::Create_mediansat },
-//{  "SatMinMaxDifference","c[threshold]f", MinMaxPlane::Create_minmaxsat },
+//{  "SatMax","c[threshold]f[offset]i", MinMaxPlane::Create_maxsat },  ++accum[SatLookup[U,V]]
+//{  "SatMin","c[threshold]f[offset]i", MinMaxPlane::Create_minsat },
+//{  "SatMedian","c[offset]i", MinMaxPlane::Create_mediansat },
+//{  "SatMinMaxDifference","c[threshold]f[offset]i", MinMaxPlane::Create_minmaxsat },
 
-//{  "HueMax","c[threshold]f", MinMaxPlane::Create_maxhue },  ++accum[HueLookup[U,V]]
-//{  "HueMin","c[threshold]f", MinMaxPlane::Create_minhue },
-//{  "HueMedian","c", MinMaxPlane::Create_medianhue },
-//{  "HueMinMaxDifference","c[threshold]f", MinMaxPlane::Create_minmaxhue },
+//{  "HueMax","c[threshold]f[offset]i", MinMaxPlane::Create_maxhue },  ++accum[HueLookup[U,V]]
+//{  "HueMin","c[threshold]f[offset]i", MinMaxPlane::Create_minhue },
+//{  "HueMedian","c[offset]i", MinMaxPlane::Create_medianhue },
+//{  "HueMinMaxDifference","c[threshold]f[offset]i", MinMaxPlane::Create_minmaxhue },
 
   { 0 }
 };
@@ -106,20 +106,20 @@ inline AVSValue GetVar(IScriptEnvironment* env, const char* name) {
 
 
 AVSValue __cdecl AveragePlane::Create_y(AVSValue args, void* user_data, IScriptEnvironment* env) {
-  return AvgPlane(args[0],user_data, PLANAR_Y, env);
+  return AvgPlane(args[0], user_data, PLANAR_Y, args[1].AsInt(0), env);
 }
 
 
 AVSValue __cdecl AveragePlane::Create_u(AVSValue args, void* user_data, IScriptEnvironment* env) {
-  return AvgPlane(args[0],user_data, PLANAR_U, env);
+  return AvgPlane(args[0], user_data, PLANAR_U, args[1].AsInt(0), env);
 }
 
 
 AVSValue __cdecl AveragePlane::Create_v(AVSValue args, void* user_data, IScriptEnvironment* env) {
-  return AvgPlane(args[0],user_data, PLANAR_V, env);
+  return AvgPlane(args[0], user_data, PLANAR_V, args[1].AsInt(0), env);
 }
 
-AVSValue AveragePlane::AvgPlane(AVSValue clip, void* user_data, int plane, IScriptEnvironment* env) {
+AVSValue AveragePlane::AvgPlane(AVSValue clip, void* user_data, int plane, int offset, IScriptEnvironment* env) {
   if (!clip.IsClip())
     env->ThrowError("Average Plane: No clip supplied!");
   if (!(env->GetCPUFlags() & CPUF_INTEGER_SSE))
@@ -136,6 +136,7 @@ AVSValue AveragePlane::AvgPlane(AVSValue clip, void* user_data, int plane, IScri
     env->ThrowError("Average Plane: This filter can only be used within run-time filters");
 
   int n = cn.AsInt();
+  n = min(max(n+offset,0), vi.num_frames-1);
 
   PVideoFrame src = child->GetFrame(n,env);
 
@@ -213,55 +214,55 @@ endframe:
 
 
 AVSValue __cdecl ComparePlane::Create_y(AVSValue args, void* user_data, IScriptEnvironment* env) {
-  return CmpPlane(args[0],args[1],user_data, PLANAR_Y, env);
+  return CmpPlane(args[0],args[1], user_data, PLANAR_Y, env);
 }
 
 
 AVSValue __cdecl ComparePlane::Create_u(AVSValue args, void* user_data, IScriptEnvironment* env) {
-  return CmpPlane(args[0],args[1],user_data, PLANAR_U, env);
+  return CmpPlane(args[0],args[1], user_data, PLANAR_U, env);
 }
 
 
 AVSValue __cdecl ComparePlane::Create_v(AVSValue args, void* user_data, IScriptEnvironment* env) {
-  return CmpPlane(args[0],args[1],user_data, PLANAR_V, env);
+  return CmpPlane(args[0],args[1], user_data, PLANAR_V, env);
 }
 
 AVSValue __cdecl ComparePlane::Create_rgb(AVSValue args, void* user_data, IScriptEnvironment* env) {
-  return CmpPlane(args[0],args[1],user_data, -1 , env);
+  return CmpPlane(args[0],args[1], user_data, -1 , env);
 }
 
 
 AVSValue __cdecl ComparePlane::Create_prev_y(AVSValue args, void* user_data, IScriptEnvironment* env) {
-  return CmpPlaneSame(args[0],user_data, -1, PLANAR_Y, env);
+  return CmpPlaneSame(args[0], user_data, -1, PLANAR_Y, env);
 }
 
 AVSValue __cdecl ComparePlane::Create_prev_u(AVSValue args, void* user_data, IScriptEnvironment* env) {
-  return CmpPlaneSame(args[0],user_data, -1, PLANAR_U, env);
+  return CmpPlaneSame(args[0], user_data, -1, PLANAR_U, env);
 }
 
 AVSValue __cdecl ComparePlane::Create_prev_v(AVSValue args, void* user_data, IScriptEnvironment* env) {
-  return CmpPlaneSame(args[0],user_data, -1, PLANAR_V, env);
+  return CmpPlaneSame(args[0], user_data, -1, PLANAR_V, env);
 }
 
 AVSValue __cdecl ComparePlane::Create_prev_rgb(AVSValue args, void* user_data, IScriptEnvironment* env) {
-  return CmpPlaneSame(args[0],user_data, -1, -1, env);
+  return CmpPlaneSame(args[0], user_data, -1, -1, env);
 }
 
 
 AVSValue __cdecl ComparePlane::Create_next_y(AVSValue args, void* user_data, IScriptEnvironment* env) {
-  return CmpPlaneSame(args[0],user_data, 1, PLANAR_Y, env);
+  return CmpPlaneSame(args[0], user_data, args[1].AsInt(1), PLANAR_Y, env);
 }
 
 AVSValue __cdecl ComparePlane::Create_next_u(AVSValue args, void* user_data, IScriptEnvironment* env) {
-  return CmpPlaneSame(args[0],user_data, 1, PLANAR_U, env);
+  return CmpPlaneSame(args[0], user_data, args[1].AsInt(1), PLANAR_U, env);
 }
 
 AVSValue __cdecl ComparePlane::Create_next_v(AVSValue args, void* user_data, IScriptEnvironment* env) {
-  return CmpPlaneSame(args[0],user_data, 1, PLANAR_V, env);
+  return CmpPlaneSame(args[0], user_data, args[1].AsInt(1), PLANAR_V, env);
 }
 
 AVSValue __cdecl ComparePlane::Create_next_rgb(AVSValue args, void* user_data, IScriptEnvironment* env) {
-  return CmpPlaneSame(args[0],user_data, 1, -1, env);
+  return CmpPlaneSame(args[0], user_data, args[1].AsInt(1), -1, env);
 }
 
 
@@ -412,58 +413,58 @@ AVSValue ComparePlane::CmpPlaneSame(AVSValue clip, void* user_data, int offset, 
 // Y Planes functions
 
 AVSValue __cdecl MinMaxPlane::Create_max_y(AVSValue args, void* user_data, IScriptEnvironment* env) {
-  return MinMax(args[0],user_data, args[1].AsFloat(0.0f), PLANAR_Y, MAX, env);
+  return MinMax(args[0], user_data, args[1].AsFloat(0.0f), args[2].AsInt(0), PLANAR_Y, MAX, env);
 }
 
 AVSValue __cdecl MinMaxPlane::Create_min_y(AVSValue args, void* user_data, IScriptEnvironment* env) {
-  return MinMax(args[0],user_data, args[1].AsFloat(0.0f), PLANAR_Y, MIN, env);
+  return MinMax(args[0], user_data, args[1].AsFloat(0.0f), args[2].AsInt(0), PLANAR_Y, MIN, env);
 }
 
 AVSValue __cdecl MinMaxPlane::Create_median_y(AVSValue args, void* user_data, IScriptEnvironment* env) {
-  return MinMax(args[0],user_data, 50.0f, PLANAR_Y, MIN, env);
+  return MinMax(args[0], user_data, 50.0f, args[1].AsInt(0), PLANAR_Y, MIN, env);
 }
 
 AVSValue __cdecl MinMaxPlane::Create_minmax_y(AVSValue args, void* user_data, IScriptEnvironment* env) {
-  return MinMax(args[0],user_data, args[1].AsFloat(0.0f), PLANAR_Y, MINMAX_DIFFERENCE, env);
+  return MinMax(args[0], user_data, args[1].AsFloat(0.0f), args[2].AsInt(0), PLANAR_Y, MINMAX_DIFFERENCE, env);
 }
 
 // U Planes functions
 
 AVSValue __cdecl MinMaxPlane::Create_max_u(AVSValue args, void* user_data, IScriptEnvironment* env) {
-  return MinMax(args[0],user_data, args[1].AsFloat(0.0f), PLANAR_U, MAX, env);
+  return MinMax(args[0], user_data, args[1].AsFloat(0.0f), args[2].AsInt(0), PLANAR_U, MAX, env);
 }
 
 AVSValue __cdecl MinMaxPlane::Create_min_u(AVSValue args, void* user_data, IScriptEnvironment* env) {
-  return MinMax(args[0],user_data, args[1].AsFloat(0.0f), PLANAR_U, MIN, env);
+  return MinMax(args[0], user_data, args[1].AsFloat(0.0f), args[2].AsInt(0), PLANAR_U, MIN, env);
 }
 
 AVSValue __cdecl MinMaxPlane::Create_median_u(AVSValue args, void* user_data, IScriptEnvironment* env) {
-  return MinMax(args[0],user_data, 50.0f, PLANAR_U, MIN, env);
+  return MinMax(args[0], user_data, 50.0f, args[1].AsInt(0), PLANAR_U, MIN, env);
 }
 
 AVSValue __cdecl MinMaxPlane::Create_minmax_u(AVSValue args, void* user_data, IScriptEnvironment* env) {
-  return MinMax(args[0],user_data, args[1].AsFloat(0.0f), PLANAR_U, MINMAX_DIFFERENCE, env);
+  return MinMax(args[0], user_data, args[1].AsFloat(0.0f), args[2].AsInt(0), PLANAR_U, MINMAX_DIFFERENCE, env);
 }
 // V Planes functions
 
 AVSValue __cdecl MinMaxPlane::Create_max_v(AVSValue args, void* user_data, IScriptEnvironment* env) {
-  return MinMax(args[0],user_data, args[1].AsFloat(0.0f), PLANAR_V, MAX, env);
+  return MinMax(args[0], user_data, args[1].AsFloat(0.0f), args[2].AsInt(0), PLANAR_V, MAX, env);
 }
 
 AVSValue __cdecl MinMaxPlane::Create_min_v(AVSValue args, void* user_data, IScriptEnvironment* env) {
-  return MinMax(args[0],user_data, args[1].AsFloat(0.0f), PLANAR_V, MIN, env);
+  return MinMax(args[0], user_data, args[1].AsFloat(0.0f), args[2].AsInt(0), PLANAR_V, MIN, env);
 }
 
 AVSValue __cdecl MinMaxPlane::Create_median_v(AVSValue args, void* user_data, IScriptEnvironment* env) {
-  return MinMax(args[0],user_data, 50.0f, PLANAR_V, MIN, env);
+  return MinMax(args[0], user_data, 50.0f, args[1].AsInt(0), PLANAR_V, MIN, env);
 }
 
 AVSValue __cdecl MinMaxPlane::Create_minmax_v(AVSValue args, void* user_data, IScriptEnvironment* env) {
-  return MinMax(args[0],user_data, args[1].AsFloat(0.0f), PLANAR_V, MINMAX_DIFFERENCE, env);
+  return MinMax(args[0], user_data, args[1].AsFloat(0.0f), args[2].AsInt(0), PLANAR_V, MINMAX_DIFFERENCE, env);
 }
 
 
-AVSValue MinMaxPlane::MinMax(AVSValue clip, void* user_data, float threshold, int plane, int mode, IScriptEnvironment* env) {
+AVSValue MinMaxPlane::MinMax(AVSValue clip, void* user_data, float threshold, int offset, int plane, int mode, IScriptEnvironment* env) {
   unsigned int accum[256];
 
   if (!clip.IsClip())
@@ -481,6 +482,7 @@ AVSValue MinMaxPlane::MinMax(AVSValue clip, void* user_data, float threshold, in
     env->ThrowError("MinMax: This filter can only be used within run-time filters");
 
   int n = cn.AsInt();
+  n = min(max(n+offset,0),vi.num_frames-1);
 
   // Prepare the source
   PVideoFrame src = child->GetFrame(n, env);
