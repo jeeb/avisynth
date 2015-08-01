@@ -634,14 +634,18 @@ public:
 // v5 (1.3d): lots of bugfixes - stretchblt bilinear, and non-zero startproc
 // v6 (1.4): added error handling functions
 
+class FilterDefinitionList;
+
 typedef struct FilterModule {
-  struct FilterModule *next, *prev;
-  HINSTANCE       hInstModule;
-  FilterModuleInitProc  initProc;
-  FilterModuleDeinitProc  deinitProc;
-    IScriptEnvironment*   env;
-    const char*       avisynth_function_name;
-    int preroll;
+  struct FilterModule   *next, *prev;
+  HINSTANCE              hInstModule;
+  FilterModuleInitProc   initProc;
+  FilterModuleDeinitProc deinitProc;
+
+  IScriptEnvironment*    env;
+  const char*            avisynth_function_name;
+  int                    preroll;
+  FilterDefinitionList*  fdl;
 } FilterModule;
 
 typedef struct FilterDefinition {
@@ -653,16 +657,16 @@ typedef struct FilterDefinition {
   char *        desc;
   char *        maker;
   void *        private_data;
-  int         inst_data_size;
+  int           inst_data_size;
 
   FilterInitProc    initProc;
   FilterDeinitProc  deinitProc;
-  FilterRunProc   runProc;
+  FilterRunProc     runProc;
   FilterParamProc   paramProc;
   FilterConfigProc  configProc;
   FilterStringProc  stringProc;
   FilterStartProc   startProc;
-  FilterEndProc   endProc;
+  FilterEndProc     endProc;
 
   CScriptObject *script_obj;
 
@@ -670,6 +674,13 @@ typedef struct FilterDefinition {
 
 } FilterDefinition;
 
+class FilterDefinitionList {
+public:
+  FilterDefinition* fd;
+  FilterDefinitionList* fdl;
+
+  FilterDefinitionList(FilterModule* fm, FilterDefinition* _fd) : fd(_fd), fdl(fm->fdl) { };
+};
 //////////
 
 // FilterStateInfo: contains dynamic info about file being processed
@@ -796,16 +807,16 @@ public:
   virtual void SetButtonCallback(void*, void*) { Die(); }
   virtual void SetSampleCallback(void*, void*) { Die(); }
 
-    virtual bool isPreviewEnabled() { return false; }
-    virtual void Toggle(HWND) {}
-    virtual void Display(HWND, bool) {}
-    virtual void RedoFrame() {}
-    virtual void RedoSystem() {}
-    virtual void UndoSystem() {}
-    virtual void InitButton(HWND) {}
-    virtual void Close() {}
-    virtual bool SampleCurrentFrame() { return false; }
-    virtual long SampleFrames() { return 0; }
+  virtual bool isPreviewEnabled() { return false; }
+  virtual void Toggle(HWND) {}
+  virtual void Display(HWND, bool) {}
+  virtual void RedoFrame() {}
+  virtual void RedoSystem() {}
+  virtual void UndoSystem() {}
+  virtual void InitButton(HWND) {}
+  virtual void Close() {}
+  virtual bool SampleCurrentFrame() { return false; }
+  virtual long SampleFrames() { return 0; }
 };
 
 
@@ -844,7 +855,8 @@ bool isFPUEnabled() { return !!(GetCPUFlags() & CPUF_FPU); }
 bool isMMXEnabled() { return !!(GetCPUFlags() & CPUF_MMX); }
 
 FilterFunctions g_filterFuncs={
-  FilterAdd, FilterRemove, isFPUEnabled, isMMXEnabled, InitVTables, FilterThrowExceptMemory, FilterThrowExcept, GetCPUFlags
+  FilterAdd, FilterRemove, isFPUEnabled, isMMXEnabled, InitVTables,
+  FilterThrowExceptMemory, FilterThrowExcept, GetCPUFlags
 };
 
 
@@ -1057,20 +1069,20 @@ public:
   }
 
   static AVSValue __cdecl Create(AVSValue args, void* user_data, IScriptEnvironment* env) {
-    FilterDefinition* fd = (FilterDefinition*)user_data;
-    return new VirtualdubFilterProxy(args[0].AsClip(), fd, args, env);
+    FilterDefinitionList* fdl = (FilterDefinitionList*)user_data;
+
+    if (!fdl->fd) env->ThrowError("VirtualdubFilterProxy: No FilterDefinition structure!");
+
+    return new VirtualdubFilterProxy(args[0].AsClip(), fdl->fd, args, env);
   }
 };
 
 
-void __cdecl FreeFilterDefinition(void* user_data, IScriptEnvironment* env) {
-  FilterDefinition* fd = (FilterDefinition*)user_data;
-  delete fd;
-}
-
-
 FilterDefinition *FilterAdd(FilterModule *fm, FilterDefinition *pfd, int fd_len) {
   FilterDefinition *fd = new FilterDefinition;
+  FilterDefinitionList _fdl(fm, fd);
+  FilterDefinitionList *fdl = (FilterDefinitionList*)fm->env->SaveString((const char*)&_fdl, sizeof(_fdl));
+  fm->fdl = fdl;
 
   if (fd) {
     memcpy(fd, pfd, min(size_t(fd_len), sizeof(FilterDefinition)));
@@ -1079,13 +1091,11 @@ FilterDefinition *FilterAdd(FilterModule *fm, FilterDefinition *pfd, int fd_len)
     fd->next  = NULL;
   }
 
-  fm->env->AtExit(FreeFilterDefinition, fd);
-
-  fm->env->AddFunction(fm->avisynth_function_name, "c", VirtualdubFilterProxy::Create, fd);
+  fm->env->AddFunction(fm->avisynth_function_name, "c", VirtualdubFilterProxy::Create, fdl);
   if (fd->script_obj && fd->script_obj->func_list) {
     for (ScriptFunctionDef* i = fd->script_obj->func_list; i->arg_list; i++) {
       const char* params = fm->env->Sprintf("c%s%s", i->arg_list+1, strchr(i->arg_list+1, '.') ? "*" : "");
-      fm->env->AddFunction(fm->avisynth_function_name, params, VirtualdubFilterProxy::Create, fd);
+      fm->env->AddFunction(fm->avisynth_function_name, params, VirtualdubFilterProxy::Create, fdl);
     }
   }
 
@@ -1095,6 +1105,12 @@ FilterDefinition *FilterAdd(FilterModule *fm, FilterDefinition *pfd, int fd_len)
 
 void __cdecl FreeFilterModule(void* user_data, IScriptEnvironment* env) {
   FilterModule* fm = (FilterModule*)user_data;
+
+  for (FilterDefinitionList* fdl = fm->fdl; fdl; fdl = fdl->fdl) {
+    delete fdl->fd;
+    fdl->fd = 0;
+  }
+
   fm->deinitProc(fm, &g_filterFuncs);
   FreeLibrary(fm->hInstModule);
   if (fm->prev)
@@ -1140,10 +1156,16 @@ AVSValue LoadVirtualdubPlugin(AVSValue args, void*, IScriptEnvironment* env) {
   fm->preroll = preroll;
   fm->next = loaded_modules;
   fm->prev = 0;
+  fm->fdl  = 0;
 
   int ver_hi = VIRTUALDUB_FILTERDEF_VERSION;
   int ver_lo = VIRTUALDUB_FILTERDEF_COMPATIBLE;
   if (fm->initProc(fm, &g_filterFuncs, ver_hi, ver_lo)) {
+    // Neuter any AVS functions that may have been created
+    for (FilterDefinitionList* fdl = fm->fdl; fdl; fdl = fdl->fdl) {
+      delete fdl->fd;
+      fdl->fd = 0;
+    }
     FreeLibrary(hmodule);
     delete fm;
     env->ThrowError("LoadVirtualdubPlugin: Error initializing module \"%s\"", szModule);
