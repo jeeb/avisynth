@@ -54,17 +54,6 @@ extern const AVSFunction Conditional_filters[] = {
 
 #define W_DIVISOR 5  // Width divisor for onscreen messages
 
-// Helper function - exception protected wrapper
-
-inline AVSValue GetVar(IScriptEnvironment* env, const char* name) {
-  try {
-    return env->GetVar(name);
-  }
-  catch (IScriptEnvironment::NotFound) {}
-
-  return AVSValue();
-}
-
 
 /********************************
  * Conditional Select
@@ -104,8 +93,8 @@ ConditionalSelect::~ConditionalSelect() {
 
 PVideoFrame __stdcall ConditionalSelect::GetFrame(int n, IScriptEnvironment* env) {
 
-  AVSValue prev_last = GetVar(env, "last");  // Store previous last
-  AVSValue prev_current_frame = GetVar(env, "current_frame");  // Store previous current_frame
+  AVSValue prev_last = env->GetVarDef("last");  // Store previous last
+  AVSValue prev_current_frame = env->GetVarDef("current_frame");  // Store previous current_frame
 
   env->SetVar("last", (AVSValue)child);      // Set implicit last
   env->SetVar("current_frame", (AVSValue)n); // Set frame to be tested by the conditional filters.
@@ -251,8 +240,8 @@ PVideoFrame __stdcall ConditionalFilter::GetFrame(int n, IScriptEnvironment* env
   VideoInfo vi1 = source1->GetVideoInfo();
   VideoInfo vi2 = source2->GetVideoInfo();
 
-  AVSValue prev_last = GetVar(env, "last");  // Store previous last
-  AVSValue prev_current_frame = GetVar(env, "current_frame");  // Store previous current_frame
+  AVSValue prev_last = env->GetVarDef("last");  // Store previous last
+  AVSValue prev_current_frame = env->GetVarDef("current_frame");  // Store previous current_frame
 
   env->SetVar("last",(AVSValue)child);       // Set implicit last
   env->SetVar("current_frame",(AVSValue)n);  // Set frame to be tested by the conditional filters.
@@ -419,8 +408,8 @@ ScriptClip::ScriptClip(PClip _child, AVSValue  _script, bool _show, bool _only_e
   }
 
 PVideoFrame __stdcall ScriptClip::GetFrame(int n, IScriptEnvironment* env) {
-  AVSValue prev_last = GetVar(env, "last");  // Store previous last
-  AVSValue prev_current_frame = GetVar(env, "current_frame");  // Store previous current_frame
+  AVSValue prev_last = env->GetVarDef("last");  // Store previous last
+  AVSValue prev_current_frame = env->GetVarDef("current_frame");  // Store previous current_frame
 
   env->SetVar("last",(AVSValue)child);       // Set explicit last
   env->SetVar("current_frame",(AVSValue)n);  // Set frame to be tested by the conditional filters.

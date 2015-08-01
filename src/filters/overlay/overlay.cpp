@@ -73,6 +73,9 @@ enum {
 
 Overlay::Overlay(PClip _child, AVSValue args, IScriptEnvironment *env) :
 GenericVideoFilter(_child) {
+  op_offset = 0;
+  con_x_offset = 0;
+  con_y_offset = 0;
 
   full_range = args[ARG_FULL_RANGE].AsBool(false);  // Maintain CCIR601 range when converting to/from RGB.
 
@@ -478,28 +481,10 @@ void Overlay::ClipFrames(Image444* input, Image444* overlay, int x, int y) {
 }
 
 void Overlay::FetchConditionals(IScriptEnvironment* env) {
-  op_offset = 0;
-  con_x_offset = 0;
-  con_y_offset = 0;
-
   if (!ignore_conditional) {
-    try {
-		  AVSValue cv = env->GetVar("OL_opacity_offset");
-		  if (cv.IsFloat())
-        op_offset = (int)(cv.AsFloat()*256.0);
-    } catch (IScriptEnvironment::NotFound) {}
-
-    try {
-  		AVSValue cv = env->GetVar("OL_x_offset");
-	  	if (cv.IsFloat())
-        con_x_offset = (int)(cv.AsFloat());
-    } catch (IScriptEnvironment::NotFound) {}
-
-    try {
-  		AVSValue cv = env->GetVar("OL_y_offset");
-	  	if (cv.IsFloat())
-        con_y_offset = (int)(cv.AsFloat());
-    } catch (IScriptEnvironment::NotFound) {}
+    op_offset    = (int)(env->GetVarDef("OL_opacity_offset").AsFloat(0.0)*256);
+    con_x_offset = (int)(env->GetVarDef("OL_x_offset"      ).AsFloat(0.0));
+    con_y_offset = (int)(env->GetVarDef("OL_y_offset"      ).AsFloat(0.0));
   }
 }
 

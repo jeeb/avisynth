@@ -49,9 +49,9 @@ enum { max_plugins=50 };
 void ReportLoadError(const char* plugin, const char* filename, int error, IScriptEnvironment* env) {
   switch (error) {
   case ERROR_MOD_NOT_FOUND:
-    env->ThrowError("%s: unable to load \"%s\", Module not found.  Install missing library?", plugin, filename);
+    env->ThrowError("%s: unable to load \"%s\", Module not found.  Install missing library!", plugin, filename);
   case ERROR_PROC_NOT_FOUND:
-    env->ThrowError("%s: unable to load \"%s\", Proc not found.  Update library version?", plugin, filename);
+    env->ThrowError("%s: unable to load \"%s\", Proc not found.  Wrong library version!", plugin, filename);
   default:
     env->ThrowError("%s: unable to load \"%s\", error=0x%x", plugin, filename, error);
   }
@@ -70,20 +70,17 @@ void FreeLibraries(void* loaded_plugins, IScriptEnvironment* env) {
 }
 
 static bool MyLoadLibrary(const char* filename, HMODULE* hmod, bool quiet, IScriptEnvironment* env) {
-  HMODULE* loaded_plugins;
-  try {
-    loaded_plugins = (HMODULE*)env->GetVar("$Plugins$").AsString();
-  }  // Tritical May 2005
-  catch (IScriptEnvironment::NotFound) {
+  HMODULE* loaded_plugins = (HMODULE*)env->GetVarDef("$Plugins$").AsString(0);
+
+  if (!loaded_plugins) {
     HMODULE plugins[max_plugins]; // buffer to clone on stack
 
     memset(plugins, 0, max_plugins*sizeof(HMODULE));
     // Cheat and copy into SaveString buffer
     env->SetGlobalVar("$Plugins$", env->SaveString((const char*)plugins, max_plugins*sizeof(HMODULE)));
-    try {
-        loaded_plugins = (HMODULE*)env->GetVar("$Plugins$").AsString();
-    }
-    catch(IScriptEnvironment::NotFound) {
+
+    loaded_plugins = (HMODULE*)env->GetVarDef("$Plugins$").AsString(0);
+    if (!loaded_plugins) {
       if (!quiet)
         env->ThrowError("LoadPlugin: unable to get plugin list $Plugins$, loading \"%s\"", filename);
       return false;
@@ -91,13 +88,14 @@ static bool MyLoadLibrary(const char* filename, HMODULE* hmod, bool quiet, IScri
     // Register FreeLibraries(loaded_plugins) to be run at script close
     env->AtExit(FreeLibraries, loaded_plugins);
   }
+
   *hmod = LoadLibraryEx(filename, NULL, LOAD_WITH_ALTERED_SEARCH_PATH);
-  if (!*hmod)
-    if (quiet)
-      return false;
-    else
+  if (!*hmod) {
+    if (!quiet)
       ReportLoadError("LoadPlugin", filename, GetLastError(), env);
-  //  env->ThrowError("LoadPlugin: unable to load \"%s\", error=0x%x", filename, GetLastError());
+    return false;
+  }
+
   // see if we've loaded this already, and add it to the list if not
   for (int j=0; j<max_plugins; ++j) {
     if (loaded_plugins[j] == *hmod) {
@@ -147,7 +145,7 @@ AVSValue LoadPlugin(AVSValue args, void* user_data, IScriptEnvironment* env) {
               FreeLibrary(plugin);
               if (quiet) {
                 // remove the last handle from the list
-                HMODULE* loaded_plugins = (HMODULE*)env->GetVar("$Plugins$").AsString();
+                HMODULE* loaded_plugins = (HMODULE*)env->GetVar("$Plugins$").AsString();  // throws IScriptEnvironment::NotFound
                 int j=0;
                 while (loaded_plugins[j+1]) j++;
                 loaded_plugins[j] = 0;
@@ -359,7 +357,7 @@ AVSValue LoadVFAPIPlugin(AVSValue args, void*, IScriptEnvironment* env) {
     VF_GetPluginInfo vfGetPluginInfo = (VF_GetPluginInfo)GetProcAddress(plugin, "vfGetPluginInfo");
     VF_GetPluginFunc vfGetPluginFunc = (VF_GetPluginFunc)GetProcAddress(plugin, "vfGetPluginFunc");
     if (!vfGetPluginInfo || !vfGetPluginFunc)
-      env->ThrowError("LoadPlugin: \"%s\" is not a VFAPI plugin", plugin_name);
+      env->ThrowError("LoadVFAPIPlugin: \"%s\" is not a VFAPI plugin", plugin_name);
     VF_PluginInfo plugin_info = { sizeof(VF_PluginInfo) };
     CheckHresult(env, vfGetPluginInfo(&plugin_info));
 
@@ -449,9 +447,9 @@ public:
     char **s;
   } u;
   void *lpVoid;
-  CScriptValue()            { type = T_VOID; }
-  void operator=(int i)         { type = T_INT;     u.i = i; }
-  void operator=(char **s)        { type = T_STR;     u.s = s; }
+  CScriptValue()           { type = T_VOID; }
+  void operator=(int i)    { type = T_INT;  u.i = i; }
+  void operator=(char **s) { type = T_STR;  u.s = s; }
 };
 
 
@@ -462,7 +460,7 @@ class VBitmap {
 public:
   Pixel *     data;
   Pixel *     palette;
-  int       depth;
+  int         depth;
   PixCoord    w, h;
   PixOffset   pitch;
   PixOffset   modulo;
@@ -518,9 +516,9 @@ public:
 
 
 VBitmap& VBitmap::init(void *lpData, BITMAPINFOHEADER *bmih) throw() {
-  data      = (Pixel *)lpData;
-  palette     = (Pixel *)(bmih+1);
-  depth     = bmih->biBitCount;
+  data    = (Pixel *)lpData;
+  palette = (Pixel *)(bmih+1);
+  depth   = bmih->biBitCount;
   w       = bmih->biWidth;
   h       = bmih->biHeight;
   offset      = 0;
@@ -533,8 +531,8 @@ VBitmap& VBitmap::init(void *data, PixDim w, PixDim h, int depth) throw() {
   this->data    = (Pixel32 *)data;
   this->palette = NULL;
   this->depth   = depth;
-  this->w     = w;
-  this->h     = h;
+  this->w       = w;
+  this->h       = h;
   this->offset  = 0;
   AlignTo8();
 
@@ -542,22 +540,22 @@ VBitmap& VBitmap::init(void *data, PixDim w, PixDim h, int depth) throw() {
 }
 
 void VBitmap::MakeBitmapHeader(BITMAPINFOHEADER *bih) const throw() {
-  bih->biSize       = sizeof(BITMAPINFOHEADER);
-  bih->biBitCount     = (WORD)depth;
-  bih->biPlanes     = 1;
-  bih->biCompression    = BI_RGB;
+  bih->biSize          = sizeof(BITMAPINFOHEADER);
+  bih->biBitCount      = (WORD)depth;
+  bih->biPlanes        = 1;
+  bih->biCompression   = BI_RGB;
 
   if (pitch == ((w*bih->biBitCount + 31)/32) * 4)
-    bih->biWidth    = w;
+    bih->biWidth       = w;
   else
-    bih->biWidth    = pitch*8 / depth;
+    bih->biWidth       = pitch*8 / depth;
 
-  bih->biHeight     = h;
-  bih->biSizeImage    = pitch*h;
-  bih->biClrUsed      = 0;
-  bih->biClrImportant   = 0;
-  bih->biXPelsPerMeter  = 0;
-  bih->biYPelsPerMeter  = 0;
+  bih->biHeight        = h;
+  bih->biSizeImage     = pitch*h;
+  bih->biClrUsed       = 0;
+  bih->biClrImportant  = 0;
+  bih->biXPelsPerMeter = 0;
+  bih->biYPelsPerMeter = 0;
 }
 
 void VBitmap::AlignTo4() throw() {
@@ -629,7 +627,7 @@ public:
 //////////
 
 #define VIRTUALDUB_FILTERDEF_VERSION    (6)
-#define VIRTUALDUB_FILTERDEF_COMPATIBLE   (4)
+#define VIRTUALDUB_FILTERDEF_COMPATIBLE (4)
 
 // v3: added lCurrentSourceFrame to FrameStateInfo
 // v4 (1.2): lots of additions (VirtualDub 1.2)
@@ -678,12 +676,12 @@ typedef struct FilterDefinition {
 
 class FilterStateInfo {
 public:
-  long  lCurrentFrame;        // current output frame
-  long  lMicrosecsPerFrame;     // microseconds per output frame
-  long  lCurrentSourceFrame;    // current source frame
-  long  lMicrosecsPerSrcFrame;    // microseconds per source frame
-  long  lSourceFrameMS;       // source frame timestamp
-  long  lDestFrameMS;       // output frame timestamp
+  long  lCurrentFrame;         // current output frame
+  long  lMicrosecsPerFrame;    // microseconds per output frame
+  long  lCurrentSourceFrame;   // current source frame
+  long  lMicrosecsPerSrcFrame; // microseconds per source frame
+  long  lSourceFrameMS;        // source frame timestamp
+  long  lDestFrameMS;          // output frame timestamp
 };
 
 // VFBitmap: VBitmap extended to hold filter-specific information
@@ -691,7 +689,7 @@ public:
 class VFBitmap : public VBitmap {
 public:
   enum {
-    NEEDS_HDC   = 0x00000001L,
+    NEEDS_HDC = 0x00000001L,
   };
 
   DWORD dwFlags;
@@ -829,6 +827,7 @@ static void FilterThrowExceptMemory() {
 }
 
 // This is really disgusting...
+
 #pragma warning( push )
 #pragma warning (disable: 4238) // nonstandard extension used : class rvalue used as lvalue
 static void InitVTables(struct FilterVTbls *pvtbls) {
@@ -864,7 +863,7 @@ public:
       case 21: env->ThrowError("VirtualdubFilterProxy: OUT_OF_MEMORY");
       case 24: env->ThrowError("VirtualdubFilterProxy: FCALL_OUT_OF_RANGE");
       case 26: env->ThrowError("VirtualdubFilterProxy: FCALL_UNKNOWN_STR");
-      default: env->ThrowError("VirtualdubFilterProxy: unknown error code");
+      default: env->ThrowError("VirtualdubFilterProxy: Unknown error code %d", e);
     }
   }
   char* TranslateScriptError(void* cse) { return ""; }
@@ -1031,10 +1030,10 @@ public:
         const char* p = i->arg_list;
         int j;
         for (j=1; j<args.ArraySize(); j++) {
-          if (p[j] == 'i' && args[j].IsInt()) continue;
-          else if (p[j] == 's' && args[j].IsString()) continue;
-          else if (p[j] == '.' && args[j].IsArray()) continue;
-          else break;
+          if      ( p[j] == 'i' && args[j].IsInt()    ) continue;
+          else if ( p[j] == 's' && args[j].IsString() ) continue;
+          else if ( p[j] == '.' && args[j].IsArray()  ) continue;
+          else                                          break;
         }
         if (j == args.ArraySize() && p[j] == 0) {
           // match
@@ -1114,9 +1113,8 @@ AVSValue LoadVirtualdubPlugin(AVSValue args, void*, IScriptEnvironment* env) {
   HMODULE hmodule = LoadLibraryEx(szModule, NULL, LOAD_WITH_ALTERED_SEARCH_PATH);
   if (!hmodule)
     ReportLoadError("LoadVirtualdubPlugin", szModule, GetLastError(), env);
-//  env->ThrowError("LoadVirtualdubPlugin: Error opening \"%s\", error=0x%x", szModule, GetLastError());
 
-  FilterModuleInitProc initProc   = (FilterModuleInitProc  )GetProcAddress(hmodule, "VirtualdubFilterModuleInit2");
+  FilterModuleInitProc   initProc   = (FilterModuleInitProc  )GetProcAddress(hmodule, "VirtualdubFilterModuleInit2");
   FilterModuleDeinitProc deinitProc = (FilterModuleDeinitProc)GetProcAddress(hmodule, "VirtualdubFilterModuleDeinit");
 
   if (!initProc || !deinitProc) {
@@ -1124,11 +1122,7 @@ AVSValue LoadVirtualdubPlugin(AVSValue args, void*, IScriptEnvironment* env) {
     env->ThrowError("LoadVirtualdubPlugin: Module \"%s\" does not contain VirtualDub filters.", szModule);
   }
 
-  FilterModule* loaded_modules = 0;
-  try {
-    loaded_modules = (FilterModule*)env->GetVar("$LoadVirtualdubPlugin$").AsString();
-  }
-  catch (IScriptEnvironment::NotFound) {}
+  FilterModule* loaded_modules = (FilterModule*)env->GetVarDef("$LoadVirtualdubPlugin$").AsString(0);
 
   for (FilterModule* i = loaded_modules; i; i = i->next) {
     if (i->hInstModule == hmodule) {

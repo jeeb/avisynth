@@ -313,20 +313,9 @@ AVSValue Apply(AVSValue args, void*, IScriptEnvironment* env)
   return env->Invoke(args[0].AsString(), args[1]);
 }
 
-// Helper function - exception protected wrapper
-
-inline AVSValue GetVar(IScriptEnvironment* env, const char* name) {
-  try {
-    return env->GetVar(name);
-  }
-  catch (IScriptEnvironment::NotFound) {}
-
-  return AVSValue();
-}
-
 AVSValue EvalOop(AVSValue args, void*, IScriptEnvironment* env) 
 {
-  AVSValue prev_last = GetVar(env, "last");  // Store previous last
+  AVSValue prev_last = env->GetVarDef("last");  // Store previous last
   env->SetVar("last", args[0]);              // Set implicit last
 
   AVSValue result;
@@ -346,9 +335,9 @@ AVSValue Import(AVSValue args, void*, IScriptEnvironment* env)
   args = args[0];
   AVSValue result;
 
-  AVSValue lastScriptName = GetVar(env, "$ScriptName$");
-  AVSValue lastScriptFile = GetVar(env, "$ScriptFile$");
-  AVSValue lastScriptDir  = GetVar(env, "$ScriptDir$");
+  AVSValue lastScriptName = env->GetVarDef("$ScriptName$");
+  AVSValue lastScriptFile = env->GetVarDef("$ScriptFile$");
+  AVSValue lastScriptDir  = env->GetVarDef("$ScriptDir$");
 
   for (int i=0; i<args.ArraySize(); ++i) {
     const char* script_name = args[i].AsString();
@@ -410,16 +399,16 @@ AVSValue Import(AVSValue args, void*, IScriptEnvironment* env)
 }
 
 
-AVSValue ScriptName(AVSValue args, void*, IScriptEnvironment* env) { return GetVar(env, "$ScriptName$"); }
-AVSValue ScriptFile(AVSValue args, void*, IScriptEnvironment* env) { return GetVar(env, "$ScriptFile$"); }
-AVSValue ScriptDir (AVSValue args, void*, IScriptEnvironment* env) { return GetVar(env, "$ScriptDir$" ); }
+AVSValue ScriptName(AVSValue args, void*, IScriptEnvironment* env) { return env->GetVarDef("$ScriptName$"); }
+AVSValue ScriptFile(AVSValue args, void*, IScriptEnvironment* env) { return env->GetVarDef("$ScriptFile$"); }
+AVSValue ScriptDir (AVSValue args, void*, IScriptEnvironment* env) { return env->GetVarDef("$ScriptDir$" ); }
 
 AVSValue SetMemoryMax(AVSValue args, void*, IScriptEnvironment* env) { return env->SetMemoryMax(args[0].AsInt(0)); }
 AVSValue SetWorkingDir(AVSValue args, void*, IScriptEnvironment* env) { return env->SetWorkingDir(args[0].AsString()); }
 
-AVSValue Muldiv(AVSValue args, void*,IScriptEnvironment* env) { return int(MulDiv(args[0].AsInt(), args[1].AsInt(), args[2].AsInt())); }
+AVSValue Muldiv(AVSValue args, void*, IScriptEnvironment* env) { return int(MulDiv(args[0].AsInt(), args[1].AsInt(), args[2].AsInt())); }
 
-AVSValue Floor(AVSValue args, void*,IScriptEnvironment* env) { return int(floor(args[0].AsFloat())); }
+AVSValue Floor(AVSValue args, void*, IScriptEnvironment* env) { return int(floor(args[0].AsFloat())); }
 AVSValue Ceil(AVSValue args, void*, IScriptEnvironment* env) { return int(ceil(args[0].AsFloat())); }
 AVSValue Round(AVSValue args, void*, IScriptEnvironment* env) { return args[0].AsFloat()<0 ? -int(-args[0].AsFloat()+.5) : int(args[0].AsFloat()+.5); }
 
@@ -893,7 +882,7 @@ AVSValue VersionString(AVSValue args, void*, IScriptEnvironment* env) { return _
 
 AVSValue Int(AVSValue args, void*, IScriptEnvironment* env) { return int(args[0].AsFloat()); }
 AVSValue Frac(AVSValue args, void*, IScriptEnvironment* env) { return args[0].AsFloat() - __int64(args[0].AsFloat()); }
-AVSValue Float(AVSValue args, void*,IScriptEnvironment* env) { return args[0].AsFloat(); }
+AVSValue Float(AVSValue args, void*, IScriptEnvironment* env) { return args[0].AsFloat(); }
 
 AVSValue Value(AVSValue args, void*, IScriptEnvironment* env) { char *stopstring; return strtod(args[0].AsString(),&stopstring); }
 AVSValue HexValue(AVSValue args, void*, IScriptEnvironment* env) { char *stopstring; return (int)strtoul(args[0].AsString(),&stopstring,16); }

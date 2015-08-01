@@ -630,18 +630,10 @@ bool CAVIFileSynth::DelayInit2() {
         AVSValue return_val = env->Invoke("Import", szScriptName);
         // store the script's return value (a video clip)
         if (return_val.IsClip()) {
-
-          // Allow WAVE_FORMAT_IEEE_FLOAT audio output
-          bool AllowFloatAudio = false;
-
-          try {
-            AVSValue v = env->GetVar("OPT_AllowFloatAudio");
-            AllowFloatAudio = v.IsBool() ? v.AsBool() : false;
-          }
-          catch (IScriptEnvironment::NotFound) { }
-
           filter_graph = return_val.AsClip();
 
+          // Allow WAVE_FORMAT_IEEE_FLOAT audio output
+          const bool AllowFloatAudio = env->GetVarDef("OPT_AllowFloatAudio").AsBool(false);
           if (!AllowFloatAudio && filter_graph->GetVideoInfo().IsSampleType(SAMPLE_FLOAT)) // Ensure samples are int     
             filter_graph = env->Invoke("ConvertAudioTo16bit", AVSValue(&return_val, 1)).AsClip();
 
@@ -671,18 +663,10 @@ bool CAVIFileSynth::DelayInit2() {
         vi = &filter_graph->GetVideoInfo();
 
         // Hack YV16 and YV24 chroma plane order for old VDub's
-        try {
-          AVSValue v = env->GetVar("OPT_VDubPlanarHack");
-          VDubPlanarHack = v.IsBool() ? v.AsBool() : false;
-        }
-        catch (IScriptEnvironment::NotFound) { }
+        VDubPlanarHack = env->GetVarDef("OPT_VDubPlanarHack").AsBool(false);
 
         // Option to have scanlines mod4 padded in all pixel formats
-        try {
-          AVSValue v = env->GetVar("OPT_AVIPadScanlines");
-          AVIPadScanlines = v.IsBool() ? v.AsBool() : false;
-        }
-        catch (IScriptEnvironment::NotFound) { }
+        AVIPadScanlines = env->GetVarDef("OPT_AVIPadScanlines").AsBool(false);
 
       }
       catch (AvisynthError error) {
@@ -1205,12 +1189,7 @@ STDMETHODIMP CAVIStreamSynth::ReadFormat(LONG lPos, LPVOID lpFormat, LONG *lpcbF
 
   if (!lpcbFormat) return E_POINTER;
 
-  bool UseWaveExtensible = false;
-  try {
-	AVSValue v = parent->env->GetVar("OPT_UseWaveExtensible");
-	UseWaveExtensible = v.IsBool() ? v.AsBool() : false;
-  }
-  catch (IScriptEnvironment::NotFound) { }
+  const bool UseWaveExtensible = parent->env->GetVarDef("OPT_UseWaveExtensible").AsBool(false);
 
   if (!lpFormat) {
     *lpcbFormat = fAudio ? ( UseWaveExtensible ? sizeof(WAVEFORMATEXTENSIBLE)
@@ -1257,11 +1236,7 @@ STDMETHODIMP CAVIStreamSynth::ReadFormat(LONG lPos, LPVOID lpFormat, LONG *lpcbF
 						 : (unsigned)vi->AudioChannels() <=18 ? DWORD(-1) >> (32-vi->AudioChannels())
 						 : SPEAKER_ALL;
 
-      try {
-        AVSValue v = parent->env->GetVar("OPT_dwChannelMask");
-        if (v.IsInt()) wfxt.dwChannelMask = (unsigned)(v.AsInt());
-      }
-      catch (IScriptEnvironment::NotFound) { }
+      wfxt.dwChannelMask = (unsigned)(parent->env->GetVarDef("OPT_dwChannelMask").AsInt(wfxt.dwChannelMask));
 
 	  wfxt.SubFormat = vi->IsSampleType(SAMPLE_FLOAT) ? KSDATAFORMAT_SUBTYPE_IEEE_FLOAT : KSDATAFORMAT_SUBTYPE_PCM;
 	  *lpcbFormat = min(*lpcbFormat, sizeof(wfxt));

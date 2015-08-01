@@ -453,8 +453,8 @@ void Color::MakeGammaLUT(void)
 }
 
 #define READ_CONDITIONAL(x,y) \
-try {\
-  AVSValue cv = env->GetVar("coloryuv_" x);\
+{\
+  AVSValue cv = env->GetVarDef("coloryuv_" x);\
   if (cv.IsFloat()) {\
     const double t = cv.AsFloat();\
     if (y != t) {\
@@ -462,7 +462,7 @@ try {\
       y = t;\
     }\
   }\
-} catch (IScriptEnvironment::NotFound) {}
+}
 
 bool Color::ReadConditionals(IScriptEnvironment* env) {
 	bool changed = false;
