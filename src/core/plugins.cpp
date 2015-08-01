@@ -91,7 +91,7 @@ static bool MyLoadLibrary(const char* filename, HMODULE* hmod, bool quiet, IScri
     // Register FreeLibraries(loaded_plugins) to be run at script close
     env->AtExit(FreeLibraries, loaded_plugins);
   }
-  *hmod = LoadLibrary(filename);
+  *hmod = LoadLibraryEx(filename, NULL, LOAD_WITH_ALTERED_SEARCH_PATH);
   if (!*hmod)
     if (quiet)
       return false;
@@ -1111,7 +1111,7 @@ AVSValue LoadVirtualdubPlugin(AVSValue args, void*, IScriptEnvironment* env) {
   const char* const avisynth_function_name = args[1].AsString();
   const int preroll = args[2].AsInt(0);
 
-  HMODULE hmodule = LoadLibrary(szModule);
+  HMODULE hmodule = LoadLibraryEx(szModule, NULL, LOAD_WITH_ALTERED_SEARCH_PATH);
   if (!hmodule)
     ReportLoadError("LoadVirtualdubPlugin", szModule, GetLastError(), env);
 //  env->ThrowError("LoadVirtualdubPlugin: Error opening \"%s\", error=0x%x", szModule, GetLastError());

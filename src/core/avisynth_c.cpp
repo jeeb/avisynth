@@ -777,7 +777,7 @@ AVSValue __cdecl load_c_plugin(AVSValue args, void * user_data,
 					           IScriptEnvironment * env)
 {
 	const char * filename = args[0].AsString();
-	HMODULE plugin = LoadLibrary(filename);
+	HMODULE plugin = LoadLibraryEx(filename, NULL, LOAD_WITH_ALTERED_SEARCH_PATH);
 	if (!plugin)
 		env->ThrowError("Unable to load C Plugin: \"%s\", error=0x%x", filename, GetLastError());
     AvisynthCPluginInitFunc func = 0;
