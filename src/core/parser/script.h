@@ -214,8 +214,6 @@ AVSValue __cdecl Float(AVSValue args, void*, IScriptEnvironment* env);
 AVSValue __cdecl Value(AVSValue args, void*, IScriptEnvironment* env);
 AVSValue __cdecl HexValue(AVSValue args, void*, IScriptEnvironment* env);
 
-AVSValue __cdecl Sign(AVSValue args, void*, IScriptEnvironment* env);
-
 AVSValue __cdecl BitAnd(AVSValue args, void*, IScriptEnvironment* env);
 AVSValue __cdecl BitNot(AVSValue args, void*, IScriptEnvironment* env);
 AVSValue __cdecl BitOr(AVSValue args, void*, IScriptEnvironment* env);

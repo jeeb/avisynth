@@ -201,7 +201,6 @@ VideoFrameBuffer::VideoFrameBuffer(size_t size) :
   data((new BYTE[size+32])+16),
   data_size(data ? size : 0),
   sequence_number(0) {
-  InterlockedIncrement(&sequence_number);
   int *p=(int *)data;
   p[-4] = 0xDEADBEAF;
   p[-3] = 0xDEADBEAF;
@@ -225,7 +224,7 @@ VideoFrameBuffer::~VideoFrameBuffer() {
 #else
 
 VideoFrameBuffer::VideoFrameBuffer(size_t size)
- : refcount(1), data(new BYTE[size]), data_size(data ? size : 0), sequence_number(0) { InterlockedIncrement(&sequence_number); }
+ : refcount(1), data(new BYTE[size]), data_size(data ? size : 0), sequence_number(0) {}
 
 VideoFrameBuffer::~VideoFrameBuffer() {
 //  _ASSERTE(refcount == 0);
@@ -1289,7 +1288,7 @@ PVideoFrame ScriptEnvironment::NewPlanarVideoFrame(int row_size, int height, int
 #ifdef _DEBUG
   {
     static const BYTE filler[] = { 0x0A, 0x11, 0x0C, 0xA7, 0xED };
-    BYTE* p = vfb->GetWritePtr();
+    BYTE* p = (BYTE*)vfb->GetReadPtr(); // Cheat! Don't update sequence number
     BYTE* q = p + vfb->GetDataSize()/5*5;
     for (; p<q; p+=5) {
       p[0]=filler[0]; p[1]=filler[1]; p[2]=filler[2]; p[3]=filler[3]; p[4]=filler[4];
