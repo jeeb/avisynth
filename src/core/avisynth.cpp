@@ -104,8 +104,8 @@ _PixelClip PixelClip;
 extern const char* loadplugin_prefix;  // in plugin.cpp
 
 // in plugins.cpp
-AVSValue LoadPlugin(AVSValue args, void* user_data, IScriptEnvironment* env);
-void FreeLibraries(void* loaded_plugins, IScriptEnvironment* env);
+AVSValue __cdecl LoadPlugin(AVSValue args, void* user_data, IScriptEnvironment* env);
+void __cdecl FreeLibraries(void* loaded_plugins, IScriptEnvironment* env);
 
 
 

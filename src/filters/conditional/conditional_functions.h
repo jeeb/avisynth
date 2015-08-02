@@ -58,14 +58,14 @@ public:
   static AVSValue __cdecl Create_u(AVSValue args, void* user_data, IScriptEnvironment* env);
   static AVSValue __cdecl Create_v(AVSValue args, void* user_data, IScriptEnvironment* env);
   static AVSValue __cdecl Create_rgb(AVSValue args, void* user_data, IScriptEnvironment* env);
-  static AVSValue Create_prev_y(AVSValue args, void* user_data, IScriptEnvironment* env);
-  static AVSValue Create_prev_u(AVSValue args, void* user_data, IScriptEnvironment* env);
-  static AVSValue Create_prev_v(AVSValue args, void* user_data, IScriptEnvironment* env);
-  static AVSValue Create_prev_rgb(AVSValue args, void* user_data, IScriptEnvironment* env);
-  static AVSValue Create_next_y(AVSValue args, void* user_data, IScriptEnvironment* env);
-  static AVSValue Create_next_u(AVSValue args, void* user_data, IScriptEnvironment* env);
-  static AVSValue Create_next_v(AVSValue args, void* user_data, IScriptEnvironment* env);
-  static AVSValue Create_next_rgb(AVSValue args, void* user_data, IScriptEnvironment* env);
+  static AVSValue __cdecl Create_prev_y(AVSValue args, void* user_data, IScriptEnvironment* env);
+  static AVSValue __cdecl Create_prev_u(AVSValue args, void* user_data, IScriptEnvironment* env);
+  static AVSValue __cdecl Create_prev_v(AVSValue args, void* user_data, IScriptEnvironment* env);
+  static AVSValue __cdecl Create_prev_rgb(AVSValue args, void* user_data, IScriptEnvironment* env);
+  static AVSValue __cdecl Create_next_y(AVSValue args, void* user_data, IScriptEnvironment* env);
+  static AVSValue __cdecl Create_next_u(AVSValue args, void* user_data, IScriptEnvironment* env);
+  static AVSValue __cdecl Create_next_v(AVSValue args, void* user_data, IScriptEnvironment* env);
+  static AVSValue __cdecl Create_next_rgb(AVSValue args, void* user_data, IScriptEnvironment* env);
 
   static unsigned int isse_scenechange_16(const BYTE* c_plane, const BYTE* tplane, int height, int width, int c_pitch, int t_pitch);
   static unsigned int C_scenechange_16(const BYTE* c_plane, const BYTE* tplane, int height, int width, int c_pitch, int t_pitch);

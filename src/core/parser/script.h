@@ -60,8 +60,8 @@ public:
       delete[] param_names;
     }
 
-  static AVSValue Execute(AVSValue args, void* user_data, IScriptEnvironment* env);
-  static void Delete(void* self, IScriptEnvironment*);
+  static AVSValue __cdecl Execute(AVSValue args, void* user_data, IScriptEnvironment* env);
+  static void __cdecl Delete(void* self, IScriptEnvironment*);
 
 private:
   const PExpression body;
@@ -111,165 +111,165 @@ private:
 
 /****    Helper functions   ****/
 
-AVSValue Assert(AVSValue args, void*, IScriptEnvironment* env);
-AVSValue AssertEval(AVSValue args, void*, IScriptEnvironment* env);
-AVSValue Eval(AVSValue args, void*, IScriptEnvironment* env);
-AVSValue EvalOop(AVSValue args, void*, IScriptEnvironment* env);
-AVSValue Apply(AVSValue args, void*, IScriptEnvironment* env) ;
+AVSValue __cdecl Assert(AVSValue args, void*, IScriptEnvironment* env);
+AVSValue __cdecl AssertEval(AVSValue args, void*, IScriptEnvironment* env);
+AVSValue __cdecl Eval(AVSValue args, void*, IScriptEnvironment* env);
+AVSValue __cdecl EvalOop(AVSValue args, void*, IScriptEnvironment* env);
+AVSValue __cdecl Apply(AVSValue args, void*, IScriptEnvironment* env) ;
 
-AVSValue Import(AVSValue args, void*, IScriptEnvironment* env);
+AVSValue __cdecl Import(AVSValue args, void*, IScriptEnvironment* env);
 
-AVSValue SetMemoryMax(AVSValue args, void*, IScriptEnvironment* env);
+AVSValue __cdecl SetMemoryMax(AVSValue args, void*, IScriptEnvironment* env);
 
-AVSValue SetWorkingDir(AVSValue args, void*, IScriptEnvironment* env);
+AVSValue __cdecl SetWorkingDir(AVSValue args, void*, IScriptEnvironment* env);
 
 /*****   Entry/Factory Methods   ******/
 
-AVSValue Muldiv(AVSValue args, void*, IScriptEnvironment* env);
+AVSValue __cdecl Muldiv(AVSValue args, void*, IScriptEnvironment* env);
 
-AVSValue Floor(AVSValue args, void*, IScriptEnvironment* env);
-AVSValue Ceil(AVSValue args, void*, IScriptEnvironment* env);
-AVSValue Round(AVSValue args, void*, IScriptEnvironment* env);
+AVSValue __cdecl Floor(AVSValue args, void*, IScriptEnvironment* env);
+AVSValue __cdecl Ceil(AVSValue args, void*, IScriptEnvironment* env);
+AVSValue __cdecl Round(AVSValue args, void*, IScriptEnvironment* env);
 
-AVSValue Acos(AVSValue args, void* user_data, IScriptEnvironment* env);
-AVSValue Asin(AVSValue args, void* user_data, IScriptEnvironment* env);
-AVSValue Atan(AVSValue args, void* user_data, IScriptEnvironment* env);
-AVSValue Atan2(AVSValue args, void* user_data, IScriptEnvironment* env);
-AVSValue Cos(AVSValue args, void* user_data, IScriptEnvironment* env);
-AVSValue Cosh(AVSValue args, void* user_data, IScriptEnvironment* env);
-AVSValue Exp(AVSValue args, void* user_data, IScriptEnvironment* env);
-AVSValue Fmod(AVSValue args, void* user_data, IScriptEnvironment* env);
-AVSValue Log(AVSValue args, void* user_data, IScriptEnvironment* env);
-AVSValue Log10(AVSValue args, void* user_data, IScriptEnvironment* env);
-AVSValue Pow(AVSValue args, void* user_data, IScriptEnvironment* env);
-AVSValue Sin(AVSValue args, void* user_data, IScriptEnvironment* env);
-AVSValue Sinh(AVSValue args, void* user_data, IScriptEnvironment* env);
-AVSValue Tan(AVSValue args, void* user_data, IScriptEnvironment* env);
-AVSValue Tanh(AVSValue args, void* user_data, IScriptEnvironment* env);
-AVSValue Sqrt(AVSValue args, void* user_data, IScriptEnvironment* env);
+AVSValue __cdecl Acos(AVSValue args, void* user_data, IScriptEnvironment* env);
+AVSValue __cdecl Asin(AVSValue args, void* user_data, IScriptEnvironment* env);
+AVSValue __cdecl Atan(AVSValue args, void* user_data, IScriptEnvironment* env);
+AVSValue __cdecl Atan2(AVSValue args, void* user_data, IScriptEnvironment* env);
+AVSValue __cdecl Cos(AVSValue args, void* user_data, IScriptEnvironment* env);
+AVSValue __cdecl Cosh(AVSValue args, void* user_data, IScriptEnvironment* env);
+AVSValue __cdecl Exp(AVSValue args, void* user_data, IScriptEnvironment* env);
+AVSValue __cdecl Fmod(AVSValue args, void* user_data, IScriptEnvironment* env);
+AVSValue __cdecl Log(AVSValue args, void* user_data, IScriptEnvironment* env);
+AVSValue __cdecl Log10(AVSValue args, void* user_data, IScriptEnvironment* env);
+AVSValue __cdecl Pow(AVSValue args, void* user_data, IScriptEnvironment* env);
+AVSValue __cdecl Sin(AVSValue args, void* user_data, IScriptEnvironment* env);
+AVSValue __cdecl Sinh(AVSValue args, void* user_data, IScriptEnvironment* env);
+AVSValue __cdecl Tan(AVSValue args, void* user_data, IScriptEnvironment* env);
+AVSValue __cdecl Tanh(AVSValue args, void* user_data, IScriptEnvironment* env);
+AVSValue __cdecl Sqrt(AVSValue args, void* user_data, IScriptEnvironment* env);
 
-AVSValue Abs(AVSValue args, void* user_data, IScriptEnvironment* env);
-AVSValue FAbs(AVSValue args, void* user_data, IScriptEnvironment* env);
-AVSValue Pi(AVSValue args, void* user_data, IScriptEnvironment* env);
+AVSValue __cdecl Abs(AVSValue args, void* user_data, IScriptEnvironment* env);
+AVSValue __cdecl FAbs(AVSValue args, void* user_data, IScriptEnvironment* env);
+AVSValue __cdecl Pi(AVSValue args, void* user_data, IScriptEnvironment* env);
 #ifdef OPT_ScriptFunctionTau
-AVSValue Tau(AVSValue args, void* user_data, IScriptEnvironment* env);
+AVSValue __cdecl Tau(AVSValue args, void* user_data, IScriptEnvironment* env);
 #endif
-AVSValue Sign(AVSValue args, void*, IScriptEnvironment* env);
+AVSValue __cdecl Sign(AVSValue args, void*, IScriptEnvironment* env);
 
 
 static inline const VideoInfo& VI(const AVSValue& arg);
 
-AVSValue PixelType (AVSValue args, void*, IScriptEnvironment* env);
-AVSValue Width(AVSValue args, void*, IScriptEnvironment* env);
-AVSValue Height(AVSValue args, void*, IScriptEnvironment* env);
-AVSValue FrameCount(AVSValue args, void*, IScriptEnvironment* env);
-AVSValue FrameRate(AVSValue args, void*, IScriptEnvironment* env);
-AVSValue FrameRateNumerator(AVSValue args, void*, IScriptEnvironment* env);
-AVSValue FrameRateDenominator(AVSValue args, void*, IScriptEnvironment* env);
-AVSValue AudioRate(AVSValue args, void*, IScriptEnvironment* env);
-AVSValue AudioLength(AVSValue args, void*, IScriptEnvironment* env);
-AVSValue AudioLengthLo(AVSValue args, void*, IScriptEnvironment* env);
-AVSValue AudioLengthHi(AVSValue args, void*, IScriptEnvironment* env);
-AVSValue AudioLengthS(AVSValue args, void*, IScriptEnvironment* env);
-AVSValue AudioLengthF(AVSValue args, void*, IScriptEnvironment* env);
-AVSValue AudioDuration(AVSValue args, void*, IScriptEnvironment* env);
-AVSValue AudioChannels(AVSValue args, void*, IScriptEnvironment* env);
-AVSValue AudioBits(AVSValue args, void*, IScriptEnvironment* env);
-AVSValue IsAudioFloat(AVSValue args, void*, IScriptEnvironment* env);
-AVSValue IsAudioInt(AVSValue args, void*, IScriptEnvironment* env);
+AVSValue __cdecl PixelType (AVSValue args, void*, IScriptEnvironment* env);
+AVSValue __cdecl Width(AVSValue args, void*, IScriptEnvironment* env);
+AVSValue __cdecl Height(AVSValue args, void*, IScriptEnvironment* env);
+AVSValue __cdecl FrameCount(AVSValue args, void*, IScriptEnvironment* env);
+AVSValue __cdecl FrameRate(AVSValue args, void*, IScriptEnvironment* env);
+AVSValue __cdecl FrameRateNumerator(AVSValue args, void*, IScriptEnvironment* env);
+AVSValue __cdecl FrameRateDenominator(AVSValue args, void*, IScriptEnvironment* env);
+AVSValue __cdecl AudioRate(AVSValue args, void*, IScriptEnvironment* env);
+AVSValue __cdecl AudioLength(AVSValue args, void*, IScriptEnvironment* env);
+AVSValue __cdecl AudioLengthLo(AVSValue args, void*, IScriptEnvironment* env);
+AVSValue __cdecl AudioLengthHi(AVSValue args, void*, IScriptEnvironment* env);
+AVSValue __cdecl AudioLengthS(AVSValue args, void*, IScriptEnvironment* env);
+AVSValue __cdecl AudioLengthF(AVSValue args, void*, IScriptEnvironment* env);
+AVSValue __cdecl AudioDuration(AVSValue args, void*, IScriptEnvironment* env);
+AVSValue __cdecl AudioChannels(AVSValue args, void*, IScriptEnvironment* env);
+AVSValue __cdecl AudioBits(AVSValue args, void*, IScriptEnvironment* env);
+AVSValue __cdecl IsAudioFloat(AVSValue args, void*, IScriptEnvironment* env);
+AVSValue __cdecl IsAudioInt(AVSValue args, void*, IScriptEnvironment* env);
 
-AVSValue IsRGB(AVSValue args, void*, IScriptEnvironment* env);
-AVSValue IsY8(AVSValue args, void*, IScriptEnvironment* env);
-AVSValue IsYV12(AVSValue args, void*, IScriptEnvironment* env);
-AVSValue IsYV16(AVSValue args, void*, IScriptEnvironment* env);
-AVSValue IsYV24(AVSValue args, void*, IScriptEnvironment* env);
-AVSValue IsYV411(AVSValue args, void*, IScriptEnvironment* env);
-AVSValue IsYUY2(AVSValue args, void*, IScriptEnvironment* env);
-AVSValue IsYUV(AVSValue args, void*, IScriptEnvironment* env);
-AVSValue IsRGB24(AVSValue args, void*, IScriptEnvironment* env);
-AVSValue IsRGB32(AVSValue args, void*, IScriptEnvironment* env);
-AVSValue IsPlanar(AVSValue args, void*, IScriptEnvironment* env);
-AVSValue IsInterleaved(AVSValue args, void*, IScriptEnvironment* env);
-AVSValue IsFieldBased(AVSValue args, void*, IScriptEnvironment* env);
-AVSValue IsFrameBased(AVSValue args, void*, IScriptEnvironment* env);
-AVSValue GetParity(AVSValue args, void*, IScriptEnvironment* env);
-AVSValue String(AVSValue args, void*, IScriptEnvironment* env);
-AVSValue Hex(AVSValue args, void*, IScriptEnvironment* env);
+AVSValue __cdecl IsRGB(AVSValue args, void*, IScriptEnvironment* env);
+AVSValue __cdecl IsY8(AVSValue args, void*, IScriptEnvironment* env);
+AVSValue __cdecl IsYV12(AVSValue args, void*, IScriptEnvironment* env);
+AVSValue __cdecl IsYV16(AVSValue args, void*, IScriptEnvironment* env);
+AVSValue __cdecl IsYV24(AVSValue args, void*, IScriptEnvironment* env);
+AVSValue __cdecl IsYV411(AVSValue args, void*, IScriptEnvironment* env);
+AVSValue __cdecl IsYUY2(AVSValue args, void*, IScriptEnvironment* env);
+AVSValue __cdecl IsYUV(AVSValue args, void*, IScriptEnvironment* env);
+AVSValue __cdecl IsRGB24(AVSValue args, void*, IScriptEnvironment* env);
+AVSValue __cdecl IsRGB32(AVSValue args, void*, IScriptEnvironment* env);
+AVSValue __cdecl IsPlanar(AVSValue args, void*, IScriptEnvironment* env);
+AVSValue __cdecl IsInterleaved(AVSValue args, void*, IScriptEnvironment* env);
+AVSValue __cdecl IsFieldBased(AVSValue args, void*, IScriptEnvironment* env);
+AVSValue __cdecl IsFrameBased(AVSValue args, void*, IScriptEnvironment* env);
+AVSValue __cdecl GetParity(AVSValue args, void*, IScriptEnvironment* env);
+AVSValue __cdecl String(AVSValue args, void*, IScriptEnvironment* env);
+AVSValue __cdecl Hex(AVSValue args, void*, IScriptEnvironment* env);
 
-AVSValue IsBool(AVSValue args, void*, IScriptEnvironment* env);
-AVSValue IsInt(AVSValue args, void*, IScriptEnvironment* env);
-AVSValue IsFloat(AVSValue args, void*, IScriptEnvironment* env);
-AVSValue IsString(AVSValue args, void*, IScriptEnvironment* env);
-AVSValue IsClip(AVSValue args, void*, IScriptEnvironment* env);
-AVSValue Defined(AVSValue args, void*, IScriptEnvironment* env);
+AVSValue __cdecl IsBool(AVSValue args, void*, IScriptEnvironment* env);
+AVSValue __cdecl IsInt(AVSValue args, void*, IScriptEnvironment* env);
+AVSValue __cdecl IsFloat(AVSValue args, void*, IScriptEnvironment* env);
+AVSValue __cdecl IsString(AVSValue args, void*, IScriptEnvironment* env);
+AVSValue __cdecl IsClip(AVSValue args, void*, IScriptEnvironment* env);
+AVSValue __cdecl Defined(AVSValue args, void*, IScriptEnvironment* env);
 
-AVSValue Default(AVSValue args, void*, IScriptEnvironment* env);
+AVSValue __cdecl Default(AVSValue args, void*, IScriptEnvironment* env);
 
-AVSValue VersionNumber(AVSValue args, void*, IScriptEnvironment* env);
-AVSValue VersionString(AVSValue args, void*, IScriptEnvironment* env); 
+AVSValue __cdecl VersionNumber(AVSValue args, void*, IScriptEnvironment* env);
+AVSValue __cdecl VersionString(AVSValue args, void*, IScriptEnvironment* env); 
 
-AVSValue Int(AVSValue args, void*, IScriptEnvironment* env); 
-AVSValue Frac(AVSValue args, void*, IScriptEnvironment* env); 
-AVSValue Float(AVSValue args, void*,IScriptEnvironment* env); 
-AVSValue Value(AVSValue args, void*, IScriptEnvironment* env);
-AVSValue HexValue(AVSValue args, void*, IScriptEnvironment* env);
+AVSValue __cdecl Int(AVSValue args, void*, IScriptEnvironment* env); 
+AVSValue __cdecl Frac(AVSValue args, void*, IScriptEnvironment* env); 
+AVSValue __cdecl Float(AVSValue args, void*, IScriptEnvironment* env); 
+AVSValue __cdecl Value(AVSValue args, void*, IScriptEnvironment* env);
+AVSValue __cdecl HexValue(AVSValue args, void*, IScriptEnvironment* env);
 
-AVSValue Sign(AVSValue args, void*, IScriptEnvironment* env);
+AVSValue __cdecl Sign(AVSValue args, void*, IScriptEnvironment* env);
 
-AVSValue BitAnd(AVSValue args, void*, IScriptEnvironment* env);
-AVSValue BitNot(AVSValue args, void*, IScriptEnvironment* env);
-AVSValue BitOr(AVSValue args, void*, IScriptEnvironment* env);
-AVSValue BitXor(AVSValue args, void*, IScriptEnvironment* env);
+AVSValue __cdecl BitAnd(AVSValue args, void*, IScriptEnvironment* env);
+AVSValue __cdecl BitNot(AVSValue args, void*, IScriptEnvironment* env);
+AVSValue __cdecl BitOr(AVSValue args, void*, IScriptEnvironment* env);
+AVSValue __cdecl BitXor(AVSValue args, void*, IScriptEnvironment* env);
 
-AVSValue BitLShift(AVSValue args, void*, IScriptEnvironment* env);
-AVSValue BitRShiftL(AVSValue args, void*, IScriptEnvironment* env);
-AVSValue BitRShiftA(AVSValue args, void*, IScriptEnvironment* env);
+AVSValue __cdecl BitLShift(AVSValue args, void*, IScriptEnvironment* env);
+AVSValue __cdecl BitRShiftL(AVSValue args, void*, IScriptEnvironment* env);
+AVSValue __cdecl BitRShiftA(AVSValue args, void*, IScriptEnvironment* env);
 
-AVSValue BitRotateL(AVSValue args, void*, IScriptEnvironment* env);
-AVSValue BitRotateR(AVSValue args, void*, IScriptEnvironment* env);
+AVSValue __cdecl BitRotateL(AVSValue args, void*, IScriptEnvironment* env);
+AVSValue __cdecl BitRotateR(AVSValue args, void*, IScriptEnvironment* env);
 
-AVSValue BitChg(AVSValue args, void*, IScriptEnvironment* env);
-AVSValue BitClr(AVSValue args, void*, IScriptEnvironment* env);
-AVSValue BitSet(AVSValue args, void*, IScriptEnvironment* env);
-AVSValue BitTst(AVSValue args, void*, IScriptEnvironment* env);
+AVSValue __cdecl BitChg(AVSValue args, void*, IScriptEnvironment* env);
+AVSValue __cdecl BitClr(AVSValue args, void*, IScriptEnvironment* env);
+AVSValue __cdecl BitSet(AVSValue args, void*, IScriptEnvironment* env);
+AVSValue __cdecl BitTst(AVSValue args, void*, IScriptEnvironment* env);
 
-AVSValue UCase(AVSValue args, void*, IScriptEnvironment* env);
-AVSValue LCase(AVSValue args, void*, IScriptEnvironment* env);
-AVSValue StrLen(AVSValue args, void*, IScriptEnvironment* env);
-AVSValue RevStr(AVSValue args, void*, IScriptEnvironment* env);
-AVSValue LeftStr(AVSValue args, void*, IScriptEnvironment* env);
-AVSValue MidStr(AVSValue args, void*, IScriptEnvironment* env);
-AVSValue RightStr(AVSValue args, void*, IScriptEnvironment* env);
-AVSValue FindStr(AVSValue args, void*, IScriptEnvironment* env);
-AVSValue FillStr(AVSValue args, void*, IScriptEnvironment* env);
-AVSValue StrCmp(AVSValue args, void*, IScriptEnvironment* env);
-AVSValue StrCmpi(AVSValue args, void*, IScriptEnvironment* env);
+AVSValue __cdecl UCase(AVSValue args, void*, IScriptEnvironment* env);
+AVSValue __cdecl LCase(AVSValue args, void*, IScriptEnvironment* env);
+AVSValue __cdecl StrLen(AVSValue args, void*, IScriptEnvironment* env);
+AVSValue __cdecl RevStr(AVSValue args, void*, IScriptEnvironment* env);
+AVSValue __cdecl LeftStr(AVSValue args, void*, IScriptEnvironment* env);
+AVSValue __cdecl MidStr(AVSValue args, void*, IScriptEnvironment* env);
+AVSValue __cdecl RightStr(AVSValue args, void*, IScriptEnvironment* env);
+AVSValue __cdecl FindStr(AVSValue args, void*, IScriptEnvironment* env);
+AVSValue __cdecl FillStr(AVSValue args, void*, IScriptEnvironment* env);
+AVSValue __cdecl StrCmp(AVSValue args, void*, IScriptEnvironment* env);
+AVSValue __cdecl StrCmpi(AVSValue args, void*, IScriptEnvironment* env);
 
-AVSValue Rand(AVSValue args, void* user_data, IScriptEnvironment* env);
+AVSValue __cdecl Rand(AVSValue args, void* user_data, IScriptEnvironment* env);
 
-AVSValue Select(AVSValue args, void*, IScriptEnvironment* env);
+AVSValue __cdecl Select(AVSValue args, void*, IScriptEnvironment* env);
 
-AVSValue NOP(AVSValue args, void*, IScriptEnvironment* env);
+AVSValue __cdecl NOP(AVSValue args, void*, IScriptEnvironment* env);
 
-AVSValue Undefined(AVSValue args, void*, IScriptEnvironment* env);
+AVSValue __cdecl Undefined(AVSValue args, void*, IScriptEnvironment* env);
 
-AVSValue Exist(AVSValue args, void*, IScriptEnvironment* env);
+AVSValue __cdecl Exist(AVSValue args, void*, IScriptEnvironment* env);
 
 // WE ->
-AVSValue AVSChr(AVSValue args, void*, IScriptEnvironment* env);
-AVSValue AVSOrd(AVSValue args, void*, IScriptEnvironment* env);
-AVSValue AVSTime(AVSValue args, void*, IScriptEnvironment* env);
-AVSValue Spline(AVSValue args, void*, IScriptEnvironment* env);
+AVSValue __cdecl AVSChr(AVSValue args, void*, IScriptEnvironment* env);
+AVSValue __cdecl AVSOrd(AVSValue args, void*, IScriptEnvironment* env);
+AVSValue __cdecl AVSTime(AVSValue args, void*, IScriptEnvironment* env);
+AVSValue __cdecl Spline(AVSValue args, void*, IScriptEnvironment* env);
 // WE <-
 
-AVSValue HasVideo(AVSValue args, void*, IScriptEnvironment* env);
-AVSValue HasAudio(AVSValue args, void*, IScriptEnvironment* env);
+AVSValue __cdecl HasVideo(AVSValue args, void*, IScriptEnvironment* env);
+AVSValue __cdecl HasAudio(AVSValue args, void*, IScriptEnvironment* env);
 
-AVSValue AvsMin(AVSValue args, void*, IScriptEnvironment* env);
-AVSValue AvsMax(AVSValue args, void*, IScriptEnvironment* env);
+AVSValue __cdecl AvsMin(AVSValue args, void*, IScriptEnvironment* env);
+AVSValue __cdecl AvsMax(AVSValue args, void*, IScriptEnvironment* env);
 
-AVSValue ScriptName(AVSValue args, void*, IScriptEnvironment* env);
-AVSValue ScriptFile(AVSValue args, void*, IScriptEnvironment* env);
-AVSValue ScriptDir (AVSValue args, void*, IScriptEnvironment* env);
+AVSValue __cdecl ScriptName(AVSValue args, void*, IScriptEnvironment* env);
+AVSValue __cdecl ScriptFile(AVSValue args, void*, IScriptEnvironment* env);
+AVSValue __cdecl ScriptDir (AVSValue args, void*, IScriptEnvironment* env);
 
 #endif  // __Script_H__

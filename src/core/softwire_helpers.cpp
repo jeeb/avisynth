@@ -77,7 +77,7 @@ DynamicAssembledCode::DynamicAssembledCode(Assembler &x86, IScriptEnvironment* e
   const char* soft_err = "";
 
   try {
-    entry = (void(*)())x86.callable();
+    entry = (void(__cdecl *)())x86.callable();
   } catch (Error _err) { soft_err = _err.getString(); }
 
   if(!entry)

@@ -58,7 +58,7 @@ void ReportLoadError(const char* plugin, const char* filename, int error, IScrip
 }
 
 
-void FreeLibraries(void* loaded_plugins, IScriptEnvironment* env) {
+void __cdecl FreeLibraries(void* loaded_plugins, IScriptEnvironment* env) {
   for (int i=0; i<max_plugins; ++i) {
     HMODULE plugin = ((HMODULE*)loaded_plugins)[i];
     if (plugin)
@@ -123,7 +123,7 @@ static bool MyLoadLibrary(const char* filename, HMODULE* hmod, bool quiet, IScri
 }
 
 
-AVSValue LoadPlugin(AVSValue args, void* user_data, IScriptEnvironment* env) {
+AVSValue __cdecl LoadPlugin(AVSValue args, void* user_data, IScriptEnvironment* env) {
   extern const AVS_Linkage* const AVS_linkage; // In interface.cpp
   bool quiet = (user_data != 0);
   args = args[0];
@@ -256,7 +256,7 @@ void CheckHresult(IScriptEnvironment* env, HRESULT hr) {
   }
 }
 
-void DeleteVFPluginFunc(void* vfpf, IScriptEnvironment*) {
+void __cdecl DeleteVFPluginFunc(void* vfpf, IScriptEnvironment*) {
   delete (VF_PluginFunc*)vfpf;
 }
 
@@ -350,7 +350,7 @@ public:
 };
 
 
-AVSValue LoadVFAPIPlugin(AVSValue args, void*, IScriptEnvironment* env) {
+AVSValue __cdecl LoadVFAPIPlugin(AVSValue args, void*, IScriptEnvironment* env) {
   HMODULE plugin;
   const char* plugin_name = args[0].AsString();
   if (MyLoadLibrary(plugin_name, &plugin, false, env)) {
@@ -1129,7 +1129,7 @@ void __cdecl FreeFilterModule(void* user_data, IScriptEnvironment* env) {
 }
 
 
-AVSValue LoadVirtualdubPlugin(AVSValue args, void*, IScriptEnvironment* env) {
+AVSValue __cdecl LoadVirtualdubPlugin(AVSValue args, void*, IScriptEnvironment* env) {
   const char* const szModule = args[0].AsString();
   const char* const avisynth_function_name = args[1].AsString();
   const int preroll = args[2].AsInt(0);
