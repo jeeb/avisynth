@@ -467,12 +467,12 @@ PVideoFrame Convert444ToYV12::ConvertImage(Image444* src, PVideoFrame dst, IScri
   int w = ((dst->GetRowSize(PLANAR_U)+7)/8)*8;
   int h = dst->GetHeight(PLANAR_U);
 
-  if (GetCPUFlags() & CPUF_INTEGER_SSE) {
+  if (env->GetCPUFlags() & CPUF_INTEGER_SSE) {
 
 	ISSE_Convert444ChromaToYV12(dstU, srcU, dstUVpitch, srcUVpitch, w, h);
 	ISSE_Convert444ChromaToYV12(dstV, srcV, dstUVpitch, srcUVpitch, w, h);
 
-  } else if (GetCPUFlags() & CPUF_MMX) {
+  } else if (env->GetCPUFlags() & CPUF_MMX) {
 
 	MMX_Convert444ChromaToYV12(dstU, srcU, dstUVpitch, srcUVpitch, w, h);
 	MMX_Convert444ChromaToYV12(dstV, srcV, dstUVpitch, srcUVpitch, w, h);

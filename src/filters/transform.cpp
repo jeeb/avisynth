@@ -377,7 +377,7 @@ PVideoFrame AddBorders::GetFrame(int n, IScriptEnvironment* env)
     const unsigned char UBlack=(unsigned char)((colr >>  8) & 0xff);
     const unsigned char VBlack=(unsigned char)((colr      ) & 0xff);
 
-    BitBlt(dstp+initial_black, dst_pitch, srcp, src_pitch, src_row_size, src_height);
+    env->BitBlt(dstp+initial_black, dst_pitch, srcp, src_pitch, src_row_size, src_height);
     for (int a=0; a<initial_black; a++)
       *(unsigned char*)(dstp+a) = YBlack;
     dstp += initial_black + src_row_size;
@@ -395,8 +395,8 @@ PVideoFrame AddBorders::GetFrame(int n, IScriptEnvironment* env)
       const int final_blackUV   = (bot>>ysub) * dst->GetPitch(PLANAR_U) + (right>>xsub)
                                 + (dst->GetPitch(PLANAR_U)- dst->GetRowSize(PLANAR_U));
 
-      BitBlt(dst->GetWritePtr(PLANAR_U)+initial_blackUV, dst->GetPitch(PLANAR_U),
-             src->GetReadPtr(PLANAR_U), src->GetPitch(PLANAR_U), src->GetRowSize(PLANAR_U), src->GetHeight(PLANAR_U));
+      env->BitBlt(dst->GetWritePtr(PLANAR_U)+initial_blackUV, dst->GetPitch(PLANAR_U),
+                  src->GetReadPtr(PLANAR_U), src->GetPitch(PLANAR_U), src->GetRowSize(PLANAR_U), src->GetHeight(PLANAR_U));
       dstp = dst->GetWritePtr(PLANAR_U);
       {for (int a=0; a<initial_blackUV; a++)
         *(unsigned char*)(dstp+a) = UBlack;
@@ -410,8 +410,8 @@ PVideoFrame AddBorders::GetFrame(int n, IScriptEnvironment* env)
       {for (int c=0; c<final_blackUV; c ++)
         *(unsigned char*)(dstp+c) = UBlack;
       }
-      BitBlt(dst->GetWritePtr(PLANAR_V)+initial_blackUV, dst->GetPitch(PLANAR_V),
-             src->GetReadPtr(PLANAR_V), src->GetPitch(PLANAR_V), src->GetRowSize(PLANAR_V), src->GetHeight(PLANAR_V));
+      env->BitBlt(dst->GetWritePtr(PLANAR_V)+initial_blackUV, dst->GetPitch(PLANAR_V),
+                  src->GetReadPtr(PLANAR_V), src->GetPitch(PLANAR_V), src->GetRowSize(PLANAR_V), src->GetHeight(PLANAR_V));
       dstp = dst->GetWritePtr(PLANAR_V);
       {for (int a=0; a<initial_blackUV; a++)
         *(unsigned char*)(dstp+a) = VBlack;
@@ -431,7 +431,7 @@ PVideoFrame AddBorders::GetFrame(int n, IScriptEnvironment* env)
     const unsigned int colr = RGB2YUV(clr);
     const unsigned __int32 black = (colr>>16) * 0x010001 + ((colr>>8)&255) * 0x0100 + (colr&255) * 0x01000000;
 
-    BitBlt(dstp+initial_black, dst_pitch, srcp, src_pitch, src_row_size, src_height);
+    env->BitBlt(dstp+initial_black, dst_pitch, srcp, src_pitch, src_row_size, src_height);
     for (int a=0; a<initial_black; a += 4)
       *(unsigned __int32*)(dstp+a) = black;
     dstp += initial_black + src_row_size;
@@ -451,7 +451,7 @@ PVideoFrame AddBorders::GetFrame(int n, IScriptEnvironment* env)
     const int rightbytes = vi.BytesFromPixels(right);
     const int rightrow = dst_pitch - dst_row_size + rightbytes;
 
-    BitBlt(dstp+initial_black, dst_pitch, srcp, src_pitch, src_row_size, src_height);
+    env->BitBlt(dstp+initial_black, dst_pitch, srcp, src_pitch, src_row_size, src_height);
     /* Cannot use *_black optimisation as pitch may not be mod 3 */
     {for (int y=top; y>0; --y) {
       for (int i=0; i<dst_row_size; i+=3) {
@@ -477,7 +477,7 @@ PVideoFrame AddBorders::GetFrame(int n, IScriptEnvironment* env)
     }} //for y
   } // if vi.IsRGB24
   else if (vi.IsRGB32()) {
-    BitBlt(dstp+initial_black, dst_pitch, srcp, src_pitch, src_row_size, src_height);
+    env->BitBlt(dstp+initial_black, dst_pitch, srcp, src_pitch, src_row_size, src_height);
     {for (int i=0; i<initial_black; i+=4)
       *(unsigned __int32*)(dstp+i) = clr;
     }

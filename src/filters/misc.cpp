@@ -164,7 +164,7 @@ PVideoFrame PeculiarBlend::GetFrame(int n, IScriptEnvironment* env) {
 
   if (cutoff-31 > 0) {
     int copy_top = min(cutoff-31, vi.height);
-    BitBlt(main, main_pitch, other, other_pitch, row_size, copy_top);
+    env->BitBlt(main, main_pitch, other, other_pitch, row_size, copy_top);
     main += main_pitch * copy_top;
     other += other_pitch * copy_top;
   }

@@ -710,7 +710,7 @@ PVideoFrame __stdcall ConvertFPS::GetFrame(int n, IScriptEnvironment* env)
 		BYTE* data   = d->GetWritePtr();
 		const int      pitch  = d->GetPitch();
 		if( top > 0 )
-			BitBlt( data, pitch, a_data, a_pitch, row_size, top );
+			env->BitBlt( data, pitch, a_data, a_pitch, row_size, top );
 loop:
 		bottom = min( switch_line + (zone>>1), height );
 		int safe_top = max(top,0);
@@ -731,7 +731,7 @@ loop:
 		if( bottom < limit ) {
 			pd = data   + bottom * pitch;
 			pb = b_data + bottom * b_pitch;
-			BitBlt( pd, pitch, pb, b_pitch, row_size, limit-bottom );
+			env->BitBlt( pd, pitch, pb, b_pitch, row_size, limit-bottom );
 		}
 		if( top < height ) {
 			nsrc++;

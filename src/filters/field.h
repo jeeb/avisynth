@@ -244,7 +244,7 @@ public:
   // bool GetParity(int n);
 
 private:
-  void CopyField(const PVideoFrame& dst, const PVideoFrame& src, bool parity);
+  void CopyField(const PVideoFrame& dst, const PVideoFrame& src, bool parity, IScriptEnvironment* env);
 };
 
 
@@ -260,7 +260,7 @@ public:
     { return child->GetParity(n>>1) ^ (n&1); }
 
 private:
-  void CopyAlternateLines(const PVideoFrame& dst, const PVideoFrame& src, bool parity);
+  void CopyAlternateLines(const PVideoFrame& dst, const PVideoFrame& src, bool parity, IScriptEnvironment* env);
 };
 
 

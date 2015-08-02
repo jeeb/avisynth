@@ -234,7 +234,7 @@ PVideoFrame __stdcall Null::GetFrame(int n, IScriptEnvironment* env)
   MemDebug md;
   
   md.randomFill(foo, 8, 8, 8);
-  BitBlt(bar, 8, foo, 8, 8, 8);
+  env->BitBlt(bar, 8, foo, 8, 8, 8);
 
   md.reset();
   int i = md.randomCheck(bar, 9, 8, 8);
@@ -268,7 +268,7 @@ PVideoFrame __stdcall Null::GetFrame(int n, IScriptEnvironment* env)
     if (dst->IsWritable() == false)
       env->ThrowError("new frame not writable"); // honestly don't know whether to expect this condition
 
-    BitBlt( dst->GetWritePtr(), src->GetPitch(), src->GetReadPtr(), src->GetPitch(), 
+    env->BitBlt( dst->GetWritePtr(), src->GetPitch(), src->GetReadPtr(), src->GetPitch(), 
             src->GetRowSize(), src->GetHeight() );
     return dst;
   }

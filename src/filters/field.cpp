@@ -493,9 +493,9 @@ PVideoFrame WeaveRows::GetFrame(int n, IScriptEnvironment* env)
       dstp -= dstpitch;
       const int j = i < inframes ? i : inframes-1;
       PVideoFrame src = child->GetFrame(j, env);
-      BitBlt( dstp,              dstpitch * period,
-              src->GetReadPtr(), src->GetPitch(),
-              src->GetRowSize(), src->GetHeight() );
+      env->BitBlt( dstp,              dstpitch * period,
+                   src->GetReadPtr(), src->GetPitch(),
+                   src->GetRowSize(), src->GetHeight() );
     }
   }
   else {
@@ -505,17 +505,17 @@ PVideoFrame WeaveRows::GetFrame(int n, IScriptEnvironment* env)
     for (int i=b; i<e; i++) {
       const int j = i < inframes ? i : inframes-1;
       PVideoFrame src = child->GetFrame(j, env);
-      BitBlt( dstp,              dstpitch * period,
-              src->GetReadPtr(), src->GetPitch(),
-              src->GetRowSize(), src->GetHeight() );
+      env->BitBlt( dstp,              dstpitch * period,
+                   src->GetReadPtr(), src->GetPitch(),
+                   src->GetRowSize(), src->GetHeight() );
       dstp += dstpitch;
       if (dstpitchUV) {
-        BitBlt( dstpU,                     dstpitchUV * period,
-                src->GetReadPtr(PLANAR_U), src->GetPitch(PLANAR_U),
-                src->GetRowSize(PLANAR_U), src->GetHeight(PLANAR_U) );
-        BitBlt( dstpV,                     dstpitchUV * period,
-                src->GetReadPtr(PLANAR_V), src->GetPitch(PLANAR_V),
-                src->GetRowSize(PLANAR_V), src->GetHeight(PLANAR_V) );
+        env->BitBlt( dstpU,                     dstpitchUV * period,
+                     src->GetReadPtr(PLANAR_U), src->GetPitch(PLANAR_U),
+                     src->GetRowSize(PLANAR_U), src->GetHeight(PLANAR_U) );
+        env->BitBlt( dstpV,                     dstpitchUV * period,
+                     src->GetReadPtr(PLANAR_V), src->GetPitch(PLANAR_V),
+                     src->GetRowSize(PLANAR_V), src->GetHeight(PLANAR_V) );
         dstpU += dstpitchUV;
         dstpV += dstpitchUV;
       }
@@ -688,27 +688,27 @@ PVideoFrame DoubleWeaveFields::GetFrame(int n, IScriptEnvironment* env)
 
   const bool parity = child->GetParity(n);
 
-  CopyField(result, a, parity);
-  CopyField(result, b, !parity);
+  CopyField(result, a, parity, env);
+  CopyField(result, b, !parity, env);
 
   return result;
 }
 
 
-void DoubleWeaveFields::CopyField(const PVideoFrame& dst, const PVideoFrame& src, bool parity) 
+void DoubleWeaveFields::CopyField(const PVideoFrame& dst, const PVideoFrame& src, bool parity, IScriptEnvironment* env) 
 {
   const int add_pitch = dst->GetPitch() * (parity ^ vi.IsYUV());
   const int add_pitchUV = dst->GetPitch(PLANAR_U) * (parity ^ vi.IsYUV());
 
-  BitBlt( dst->GetWritePtr()         + add_pitch,   dst->GetPitch()*2,
+  env->BitBlt( dst->GetWritePtr()         + add_pitch,   dst->GetPitch()*2,
           src->GetReadPtr(),                        src->GetPitch(),
           src->GetRowSize(),                        src->GetHeight() );
 
-  BitBlt( dst->GetWritePtr(PLANAR_U) + add_pitchUV, dst->GetPitch(PLANAR_U)*2,
+  env->BitBlt( dst->GetWritePtr(PLANAR_U) + add_pitchUV, dst->GetPitch(PLANAR_U)*2,
           src->GetReadPtr(PLANAR_U),                src->GetPitch(PLANAR_U),
           src->GetRowSize(PLANAR_U),                src->GetHeight(PLANAR_U) );
 
-  BitBlt( dst->GetWritePtr(PLANAR_V) + add_pitchUV, dst->GetPitch(PLANAR_V)*2,
+  env->BitBlt( dst->GetWritePtr(PLANAR_V) + add_pitchUV, dst->GetPitch(PLANAR_V)*2,
           src->GetReadPtr(PLANAR_V),                src->GetPitch(PLANAR_V),
           src->GetRowSize(PLANAR_V),                src->GetHeight(PLANAR_V) );
 }
@@ -747,24 +747,24 @@ PVideoFrame DoubleWeaveFrames::GetFrame(int n, IScriptEnvironment* env)
     bool parity = this->GetParity(n);
 
     if (a->IsWritable()) {
-      CopyAlternateLines(a, b, !parity);
+      CopyAlternateLines(a, b, !parity, env);
       return a;
     } 
     else if (b->IsWritable()) {
-      CopyAlternateLines(b, a, parity);
+      CopyAlternateLines(b, a, parity, env);
       return b;
     } 
     else {
       PVideoFrame result = env->NewVideoFrame(vi);
-      CopyAlternateLines(result, a, parity);
-      CopyAlternateLines(result, b, !parity);
+      CopyAlternateLines(result, a, parity, env);
+      CopyAlternateLines(result, b, !parity, env);
       return result;
     }
   }
 }
 
 
-void DoubleWeaveFrames::CopyAlternateLines(const PVideoFrame& dst, const PVideoFrame& src, bool parity) 
+void DoubleWeaveFrames::CopyAlternateLines(const PVideoFrame& dst, const PVideoFrame& src, bool parity, IScriptEnvironment* env) 
 {
   const int src_add_pitch   = src->GetPitch()         * (parity ^ vi.IsYUV());
   const int src_add_pitchUV = src->GetPitch(PLANAR_U) * (parity ^ vi.IsYUV());
@@ -772,15 +772,15 @@ void DoubleWeaveFrames::CopyAlternateLines(const PVideoFrame& dst, const PVideoF
   const int dst_add_pitch   = dst->GetPitch()         * (parity ^ vi.IsYUV());
   const int dst_add_pitchUV = dst->GetPitch(PLANAR_U) * (parity ^ vi.IsYUV());
  
-  BitBlt( dst->GetWritePtr()         + dst_add_pitch,   dst->GetPitch()*2,
+  env->BitBlt( dst->GetWritePtr()         + dst_add_pitch,   dst->GetPitch()*2,
           src->GetReadPtr()          + src_add_pitch,   src->GetPitch()*2,
           src->GetRowSize(),                            src->GetHeight()>>1 );
 
-  BitBlt( dst->GetWritePtr(PLANAR_U) + dst_add_pitchUV, dst->GetPitch(PLANAR_U)*2,
+  env->BitBlt( dst->GetWritePtr(PLANAR_U) + dst_add_pitchUV, dst->GetPitch(PLANAR_U)*2,
           src->GetReadPtr(PLANAR_U)  + src_add_pitchUV, src->GetPitch(PLANAR_U)*2,
           src->GetRowSize(PLANAR_U),                    src->GetHeight(PLANAR_U)>>1 );
 
-  BitBlt( dst->GetWritePtr(PLANAR_V) + dst_add_pitchUV, dst->GetPitch(PLANAR_V)*2,
+  env->BitBlt( dst->GetWritePtr(PLANAR_V) + dst_add_pitchUV, dst->GetPitch(PLANAR_V)*2,
           src->GetReadPtr(PLANAR_V)  + src_add_pitchUV, src->GetPitch(PLANAR_V)*2,
           src->GetRowSize(PLANAR_V),                    src->GetHeight(PLANAR_V)>>1 );
 }

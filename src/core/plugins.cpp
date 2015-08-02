@@ -851,6 +851,13 @@ FilterDefinition *FilterAdd(FilterModule *fm, FilterDefinition *pfd, int fd_len)
 
 void FilterRemove(FilterDefinition*) {}
 
+long GetCPUFlags() {
+  extern long CPUCheckForExtensions();  // in cpuaccel.cpp
+
+  static long lCPUExtensionsAvailable = CPUCheckForExtensions();
+  return lCPUExtensionsAvailable;
+}
+
 bool isFPUEnabled() { return !!(GetCPUFlags() & CPUF_FPU); }
 bool isMMXEnabled() { return !!(GetCPUFlags() & CPUF_MMX); }
 
@@ -985,13 +992,13 @@ public:
 
   PVideoFrame FilterFrame(int n, IScriptEnvironment* env, bool in_preroll) {
     if (last) {
-      BitBlt(last->GetWritePtr(), last->GetPitch(), src->GetReadPtr(), src->GetPitch(),
-        last->GetRowSize(), last->GetHeight());
+      env->BitBlt(last->GetWritePtr(), last->GetPitch(), src->GetReadPtr(), src->GetPitch(),
+                  last->GetRowSize(), last->GetHeight());
     }
     {
       PVideoFrame _src = child->GetFrame(n, env);
-      BitBlt(src->GetWritePtr(), src->GetPitch(), _src->GetReadPtr(), _src->GetPitch(),
-        src->GetRowSize(), src->GetHeight());
+      env->BitBlt(src->GetWritePtr(), src->GetPitch(), _src->GetReadPtr(), _src->GetPitch(),
+                  src->GetRowSize(), src->GetHeight());
     }
 
     fsi.lCurrentSourceFrame = fsi.lCurrentFrame = n;
@@ -1003,8 +1010,8 @@ public:
       return 0;
     } else {
       PVideoFrame _dst = env->NewVideoFrame(vi);
-      BitBlt(_dst->GetWritePtr(), _dst->GetPitch(), (dst?dst:src)->GetReadPtr(),
-        _dst->GetPitch(), _dst->GetRowSize(), _dst->GetHeight());
+      env->BitBlt(_dst->GetWritePtr(), _dst->GetPitch(), (dst?dst:src)->GetReadPtr(),
+                  _dst->GetPitch(), _dst->GetRowSize(), _dst->GetHeight());
       return _dst;
     }
   }

@@ -1054,11 +1054,6 @@ void ScriptEnvironment::CheckVersion(int version) {
 }
 
 
-long GetCPUFlags() {
-  static long lCPUExtensionsAvailable = CPUCheckForExtensions();
-  return lCPUExtensionsAvailable;
-}
-
 long ScriptEnvironment::GetCPUFlags() { return CPU_id; }
 
 void ScriptEnvironment::AddFunction(const char* name, const char* params, ApplyFunc apply, void* user_data) {
@@ -1941,27 +1936,6 @@ bool ScriptEnvironment::FunctionExists(const char* name) {
   return function_table.Exists(name);
 }
 
-void BitBlt(BYTE* dstp, int dst_pitch, const BYTE* srcp, int src_pitch, int row_size, int height) {
-  if ( (!height)|| (!row_size)) return;
-  if (GetCPUFlags() & CPUF_INTEGER_SSE) {
-    if (height == 1 || (src_pitch == dst_pitch && dst_pitch == row_size)) {
-      memcpy_amd(dstp, srcp, row_size*height);
-    } else {
-      asm_BitBlt_ISSE(dstp,dst_pitch,srcp,src_pitch,row_size,height);
-    }
-    return;
-  }
-  if (height == 1 || (dst_pitch == src_pitch && src_pitch == row_size)) {
-    memcpy(dstp, srcp, row_size*height);
-  } else {
-    for (int y=height; y>0; --y) {
-      memcpy(dstp, srcp, row_size);
-      dstp += dst_pitch;
-      srcp += src_pitch;
-    }
-  }
-}
-
   /*****************************
   * Assembler bitblit by Steady
    *****************************/
@@ -2189,7 +2163,25 @@ void ScriptEnvironment::BitBlt(BYTE* dstp, int dst_pitch, const BYTE* srcp, int 
     ThrowError("Filter Error: Attempting to blit an image with negative height.");
   if (row_size<0)
     ThrowError("Filter Error: Attempting to blit an image with negative row size.");
-  ::BitBlt(dstp, dst_pitch, srcp, src_pitch, row_size, height);
+
+  if ( (!height) || (!row_size)) return;
+  if (GetCPUFlags() & CPUF_INTEGER_SSE) {
+    if (height == 1 || (src_pitch == dst_pitch && dst_pitch == row_size)) {
+      memcpy_amd(dstp, srcp, row_size*height);
+    } else {
+      asm_BitBlt_ISSE(dstp, dst_pitch, srcp, src_pitch, row_size, height);
+    }
+    return;
+  }
+  if (height == 1 || (dst_pitch == src_pitch && src_pitch == row_size)) {
+    memcpy(dstp, srcp, row_size*height);
+  } else {
+    for (int y=height; y>0; --y) {
+      memcpy(dstp, srcp, row_size);
+      dstp += dst_pitch;
+      srcp += src_pitch;
+    }
+  }
 }
 
 

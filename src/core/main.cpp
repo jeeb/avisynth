@@ -1052,14 +1052,14 @@ void CAVIStreamSynth::ReadFrame(void* lpBuffer, int n) {
     plane2 = PLANAR_V;
   }
 
-  BitBlt((BYTE*)lpBuffer, out_pitch, frame->GetReadPtr(), pitch, row_size, height);
+  parent->env->BitBlt((BYTE*)lpBuffer, out_pitch, frame->GetReadPtr(), pitch, row_size, height);
 
-  BitBlt((BYTE*)lpBuffer + (out_pitch*height),
+  parent->env->BitBlt((BYTE*)lpBuffer + (out_pitch*height),
          out_pitchUV,             frame->GetReadPtr(plane1),
 		 frame->GetPitch(plane1), frame->GetRowSize(plane1),
 		 frame->GetHeight(plane1) );
 
-  BitBlt((BYTE*)lpBuffer + (out_pitch*height + frame->GetHeight(plane1)*out_pitchUV),
+  parent->env->BitBlt((BYTE*)lpBuffer + (out_pitch*height + frame->GetHeight(plane1)*out_pitchUV),
          out_pitchUV,             frame->GetReadPtr(plane2),
 		 frame->GetPitch(plane2), frame->GetRowSize(plane2),
 		 frame->GetHeight(plane2) );
