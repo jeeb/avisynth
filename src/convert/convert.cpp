@@ -96,6 +96,9 @@ ConvertToRGB::ConvertToRGB( PClip _child, bool rgb24, const char* matrix,
   if ((theMatrix != Rec601) && ((vi.width & 3) != 0) || !use_mmx)
     env->ThrowError("ConvertToRGB: Rec.709 and PC Levels support require MMX and horizontal width a multiple of 4");
   vi.pixel_type = rgb24 ? VideoInfo::CS_BGR24 : VideoInfo::CS_BGR32;
+
+  Generate(vi.IsRGB32(), theMatrix, env);
+
 }
 
 
@@ -113,8 +116,7 @@ PVideoFrame __stdcall ConvertToRGB::GetFrame(int n, IScriptEnvironment* env)
     PVideoFrame dst = env->NewVideoFrame(vi2,-2); // force pitch == rowsize
     BYTE* dstp = dst->GetWritePtr();
 
-    (vi.IsRGB24() ? mmx_YUY2toRGB24 : mmx_YUY2toRGB32)(srcp, dstp,
-      srcp + vi.height * src_pitch, src_pitch, src_rowsize, theMatrix);
+    assembly.Call(srcp, dstp, srcp + vi.height * src_pitch, src_pitch, src_rowsize);
 
     if (vi.width & 3) {  // Did we extend off the right edge of picture?
       const int dst_pitch = dst->GetPitch();
