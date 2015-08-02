@@ -60,12 +60,12 @@ extern const AVSFunction Audio_filters[], Combine_filters[], Convert_filters[],
                    Transform_filters[], Merge_filters[], Color_filters[],
                    Debug_filters[], Image_filters[], Turn_filters[],
                    Conditional_filters[], Conditional_funtions_filters[],
-                   CPlugin_filters[], Cache_filters[],SSRC_filters[],
+                   CPlugin_filters[], Cache_filters[], SSRC_filters[],
                    Greyscale_filters[], Swap_filters[],
                    SuperEq_filters[], Overlay_filters[], Soundtouch_filters[];
 
 
-const AVSFunction* builtin_functions[] = {
+const AVSFunction* const builtin_functions[] = {
                    Audio_filters, Combine_filters, Convert_filters,
                    Convolution_filters, Edit_filters, Field_filters,
                    Focus_filters, Fps_filters, Histogram_filters,
@@ -160,7 +160,7 @@ void* VideoFrame::operator new(unsigned) {
 
 VideoFrame::VideoFrame(VideoFrameBuffer* _vfb, size_t _offset, int _pitch, int _row_size, int _height)
   : refcount(1), vfb(_vfb), offset(_offset), pitch(_pitch), row_size(_row_size), height(_height),
-    offsetU(_offset),offsetV(_offset),pitchUV(0), row_sizeUV(0), heightUV(0)  // PitchUV=0 so this doesn't take up additional space
+    offsetU(_offset), offsetV(_offset), pitchUV(0), row_sizeUV(0), heightUV(0)  // PitchUV=0 so this doesn't take up additional space
 {
   InterlockedIncrement(&vfb->refcount);
 }
@@ -168,7 +168,7 @@ VideoFrame::VideoFrame(VideoFrameBuffer* _vfb, size_t _offset, int _pitch, int _
 VideoFrame::VideoFrame(VideoFrameBuffer* _vfb, size_t _offset, int _pitch, int _row_size, int _height,
                        size_t _offsetU, size_t _offsetV, int _pitchUV, int _row_sizeUV, int _heightUV)
   : refcount(1), vfb(_vfb), offset(_offset), pitch(_pitch), row_size(_row_size), height(_height),
-    offsetU(_offsetU),offsetV(_offsetV),pitchUV(_pitchUV), row_sizeUV(_row_sizeUV), heightUV(_heightUV)
+    offsetU(_offsetU), offsetV(_offsetV), pitchUV(_pitchUV), row_sizeUV(_row_sizeUV), heightUV(_heightUV)
 {
   InterlockedIncrement(&vfb->refcount);
 }
@@ -331,11 +331,18 @@ class FunctionTable {
 
   IScriptEnvironment* const env;
 
+  char *PluginFunctions;
+  size_t PluginFunctionsLen;
+  size_t PluginFunctionsSize;
+
 public:
 
   FunctionTable(IScriptEnvironment* _env) : env(_env), prescanning(false), reloading(false) {
     local_functions = 0;
     plugins = 0;
+    PluginFunctions = 0;
+    PluginFunctionsLen = 0;
+    PluginFunctionsSize = 0;
   }
 
   ~FunctionTable() {
@@ -346,6 +353,12 @@ public:
     }
     while (plugins) {
       RemovePlugin(plugins);
+    }
+    PluginFunctionsSize = 0;
+    PluginFunctionsLen = 0;
+    if (PluginFunctions) {
+      env->SetGlobalVar("$PluginFunctions$", AVSValue());
+      free(PluginFunctions);
     }
   }
 
@@ -474,7 +487,6 @@ public:
     if      (lstrcmpi(name, "LoadPlugin")  == 0) duse = true;
     else if (lstrcmpi(name, "LoadCPlugin") == 0) duse = true;
 #endif
-    const char* alt_name = 0;
     LocalFunction *f = NULL;
     if (!duse) {
       f = new LocalFunction;
@@ -492,16 +504,13 @@ public:
       }
     }
 
+    const char* alt_name = 0;
     LocalFunction *f2 = NULL;
     if (loadplugin_prefix) {
       _RPT1(0, "  Plugin name %s\n", loadplugin_prefix);
-      char result[512];
-      strcpy(result, loadplugin_prefix);
-      strcat(result, "_");
-      strcat(result, name);
       f2 = new LocalFunction;
-      f2->name = env->SaveString(result);     // needs to copy here since the plugin will be unloaded
-      f2->param_types = params;     // needs to copy here since the plugin will be unloaded
+      f2->name = env->Sprintf("%s_%s", loadplugin_prefix, name);
+      f2->param_types = params;
       alt_name = f2->name;
       if (prescanning) {
         f2->prev = plugins->plugin_functions;
@@ -518,70 +527,40 @@ public:
 // *** Tobias Minich, Mar 2003                                     ***
 // BEGIN *************************************************************
     if (prescanning) {
-      AVSValue fnplugin;
-      char *fnpluginnew=0;
-      try {
-        fnplugin = env->GetVar("$PluginFunctions$");
-        int string_len = strlen(fnplugin.AsString())+1;
+      size_t nameLen = 0;
+      size_t alt_nameLen = 0;
 
-        if (!duse)
-          string_len += strlen(name)+1;
+      if (!duse)
+        nameLen = strlen(name);
 
-        if (alt_name)
-          string_len += strlen(alt_name)+1;
+      if (alt_name)
+        alt_nameLen = strlen(alt_name);
 
-        fnpluginnew = new char[string_len];
-        strcpy(fnpluginnew, fnplugin.AsString());
-        if (!duse) {
-          strcat(fnpluginnew, " ");
-          strcat(fnpluginnew, name);
-        }
-        if (alt_name) {
-          strcat(fnpluginnew, " ");
-          strcat(fnpluginnew, alt_name);
-        }
-        env->SetGlobalVar("$PluginFunctions$", AVSValue(env->SaveString(fnpluginnew, string_len)));
-        delete[] fnpluginnew;
+      if (PluginFunctionsLen+nameLen+alt_nameLen+3 > PluginFunctionsSize) {
+        PluginFunctions = (char*)realloc(PluginFunctions, PluginFunctionsSize += 2048);
 
-      } catch (...) {
-        int string_len = 0;
-        if (!duse && alt_name)
-        {
-          string_len = strlen(name)+strlen(alt_name)+2;
-          fnpluginnew = new char[string_len];
-          strcpy(fnpluginnew, name);
-          strcat(fnpluginnew, " ");
-          strcat(fnpluginnew, alt_name);
-        }
-        else if (!duse)
-        {
-          string_len = strlen(name)+1;
-          fnpluginnew = new char[string_len];
-          strcpy(fnpluginnew, name);
-        }
-        else if (alt_name)
-        {
-          string_len = strlen(alt_name)+1;
-          fnpluginnew = new char[string_len];
-          strcpy(fnpluginnew, alt_name);
-        }
-        if (fnpluginnew) {
-          env->SetGlobalVar("$PluginFunctions$", AVSValue(env->SaveString(fnpluginnew, string_len)));
-          delete[] fnpluginnew;
-        }
+        env->SetGlobalVar("$PluginFunctions$", AVSValue(PluginFunctions));
       }
-      char temp[1024] = "$Plugin!";
-      if (f) {
-        strcat(temp, name);
-        strcat(temp, "!Param$");
-        env->SetGlobalVar(env->SaveString(temp, 8+strlen(name)+7+1), AVSValue(f->param_types)); // Fizick
+
+      if (nameLen) {
+        if (PluginFunctionsLen) PluginFunctions[PluginFunctionsLen++] = ' ';
+        memcpy(PluginFunctions+PluginFunctionsLen, name, nameLen);
+        PluginFunctionsLen += nameLen;
       }
-      if (f2 && alt_name) {
-        strcpy(temp, "$Plugin!");
-        strcat(temp, alt_name);
-        strcat(temp, "!Param$");
-        env->SetGlobalVar(env->SaveString(temp, 8+strlen(alt_name)+7+1), AVSValue(f2->param_types));
+
+      if (alt_nameLen) {
+        if (PluginFunctionsLen) PluginFunctions[PluginFunctionsLen++] = ' ';
+        memcpy(PluginFunctions+PluginFunctionsLen, alt_name, alt_nameLen);
+        PluginFunctionsLen += alt_nameLen;
       }
+      PluginFunctions[PluginFunctionsLen] = '\0';
+
+      if (f)
+        env->SetGlobalVar(env->Sprintf("$Plugin!%s!Param$", name), AVSValue(f->param_types)); // Fizick
+
+      if (f2 && alt_name)
+        env->SetGlobalVar(env->Sprintf("$Plugin!%s!Param$", alt_name), AVSValue(f2->param_types));
+
     }
 // END ***************************************************************
 
@@ -776,7 +755,7 @@ public:
 };
 
 StringDump::~StringDump() {
-  _RPT0(0,"StringDump: DeAllocating all stringblocks.\r\n");
+  _RPT0(0, "StringDump: DeAllocating all stringblocks.\r\n");
   char* p = current_block;
   while (p) {
     char* next = *(char**)p;
@@ -790,8 +769,11 @@ char* StringDump::SaveString(const char* s, int len) {
     len = int(strlen(s));
 
   if (block_pos+len+1 > block_size) {
-    char* new_block = new char[block_size = max(block_size, len+1+int(sizeof(char*)))];
-    _RPT0(0,"StringDump: Allocating new stringblock.\r\n");
+    block_size = max(BLOCK_SIZE, len+1+int(sizeof(char*)));
+	block_size +=  2047;
+	block_size &= ~2047;
+    char* new_block = new char[block_size];
+    _RPT0(0, "StringDump: Allocating new stringblock.\r\n");
     *(char**)new_block = current_block;   // beginning of block holds pointer to previous block
     current_block = new_block;
     block_pos = sizeof(char*);
@@ -868,7 +850,7 @@ public:
   void __stdcall DeleteScriptEnvironment();
   void _stdcall ApplyMessage(PVideoFrame* frame, const VideoInfo& vi, const char* message, int size, int textcolor, int halocolor, int bgcolor);
   const AVS_Linkage* const __stdcall GetAVSLinkage();
-  AVSValue __stdcall GetVarDef(const char* name, const AVSValue& def);
+  AVSValue __stdcall GetVarDef(const char* name, const AVSValue& def = AVSValue());
 
 private:
   // Tritical May 2005
@@ -963,14 +945,14 @@ ScriptEnvironment::ScriptEnvironment()
     // else physical memory/4
     // Maximum 0.5GB
     if (memstatus.dwAvailPhys    > 64*1024*1024)
-      memory_max = (__int64)memstatus.dwAvailPhys >> 2;
+      memory_max = memstatus.dwAvailPhys >> 2;
     else
       memory_max = 16*1024*1024;
 
     if (memory_max <= 0 || memory_max > 512*1024*1024) // More than 0.5GB
       memory_max = 512*1024*1024;
 
-    memory_used = 0i64;
+    memory_used = 0;
     global_var_table = new VarTable(0, 0);
     var_table = new VarTable(0, global_var_table);
     global_var_table->Set("true", true);
@@ -1051,9 +1033,9 @@ int ScriptEnvironment::SetMemoryMax(int mem) {
     if (memory_max < memory_used) memory_max = memory_used; // can't be less than we already have
 
     if (memstatus.dwAvailVirtual < memstatus.dwAvailPhys) // Check for big memory in Vista64
-      mem_limit = (__int64)memstatus.dwAvailVirtual;
+      mem_limit = memstatus.dwAvailVirtual;
     else
-      mem_limit = (__int64)memstatus.dwAvailPhys;
+      mem_limit = memstatus.dwAvailPhys;
 
     mem_limit += memory_used - 5242880i64;
     if (memory_max > mem_limit) memory_max = mem_limit;     // can't be more than 5Mb less than total
@@ -1085,6 +1067,7 @@ void ScriptEnvironment::AddFunction(const char* name, const char* params, ApplyF
 
 AVSValue ScriptEnvironment::GetVar(const char* name) {
   if (closing) return AVSValue();  // We easily risk  being inside the critical section below, while deleting variables.
+
   EnterCriticalSection(&cs_var_table);
   AVSValue retval;
   try  {
@@ -1095,6 +1078,7 @@ AVSValue ScriptEnvironment::GetVar(const char* name) {
     throw;
   }
   LeaveCriticalSection(&cs_var_table);
+
   return retval;
 }
 
@@ -1102,9 +1086,7 @@ AVSValue ScriptEnvironment::GetVarDef(const char* name, const AVSValue& def) {
   if (closing) return AVSValue();  // We easily risk  being inside the critical section below, while deleting variables.
 
   EnterCriticalSection(&cs_var_table);
-
   AVSValue retval = var_table->GetDef(name, def);
-
   LeaveCriticalSection(&cs_var_table);
 
   return retval;
@@ -1112,17 +1094,21 @@ AVSValue ScriptEnvironment::GetVarDef(const char* name, const AVSValue& def) {
 
 bool ScriptEnvironment::SetVar(const char* name, const AVSValue& val) {
   if (closing) return true;  // We easily risk  being inside the critical section below, while deleting variables.
+
   EnterCriticalSection(&cs_var_table);
   bool retval = var_table->Set(name, val);
   LeaveCriticalSection(&cs_var_table);
+
   return retval;
 }
 
 bool ScriptEnvironment::SetGlobalVar(const char* name, const AVSValue& val) {
   if (closing) return true;  // We easily risk  being inside the critical section below, while deleting variables.
+
   EnterCriticalSection(&cs_var_table);
   bool retval = global_var_table->Set(name, val);
   LeaveCriticalSection(&cs_var_table);
+
   return retval;
 }
 
@@ -1151,39 +1137,30 @@ char* GetRegString(HKEY rootKey, const char path[], const char entry[]) {
 
 const char* ScriptEnvironment::GetPluginDirectory()
 {
-  char* plugin_dir;
-  try {
-    plugin_dir = (char*)GetVar("$PluginDir$").AsString();
-  }
-  catch (IScriptEnvironment::NotFound) {
-    // Allow per user override of plugin directory - henktiggelaar, Jan 2011
-    plugin_dir = GetRegString(RegUserKey, RegAvisynthKey, RegPluginDir);
+  const char* plugin_dir = GetVarDef("$PluginDir$").AsString(0);
 
-    if (!plugin_dir)
-      plugin_dir = GetRegString(RegRootKey, RegAvisynthKey, RegPluginDir);
+  if (plugin_dir)
+	return plugin_dir;
 
-    if (!plugin_dir)
-      return 0;
+  // Allow per user override of plugin directory - henktiggelaar, Jan 2011
+  // Try HKEY_CURRENT_USER
+  plugin_dir = GetRegString(RegUserKey, RegAvisynthKey, RegPluginDir); // Returns new'd char[]!
 
-    // remove trailing backslashes
-    int l = strlen(plugin_dir);
-    while (plugin_dir[l-1] == '\\')
-      l--;
-    plugin_dir[l]=0;
-    SetGlobalVar("$PluginDir$", AVSValue(SaveString(plugin_dir)));  // Tritical May 2005
-    delete[] plugin_dir;
-    try {
-      plugin_dir = (char*)GetVar("$PluginDir$").AsString();
-    }
-    catch (...)
-    {
-      return 0;
-    }
-  }
-  catch (...) {
-    return 0;
-  }
-  return plugin_dir;
+  if (!plugin_dir) // Try HKEY_LOCAL_MACHINE
+	plugin_dir = GetRegString(RegRootKey, RegAvisynthKey, RegPluginDir);
+
+  if (!plugin_dir)
+	return 0;
+
+  // remove trailing backslashes
+  int l = strlen(plugin_dir);
+  while (plugin_dir[l-1] == '\\')
+	l--;
+  SetGlobalVar("$PluginDir$", AVSValue(SaveString(plugin_dir, l)));  // Tritical May 2005
+
+  delete[] plugin_dir;
+
+  return GetVarDef("$PluginDir$").AsString(0);
 }
 
 bool ScriptEnvironment::LoadPluginsMatching(const char* pattern)
@@ -1191,19 +1168,17 @@ bool ScriptEnvironment::LoadPluginsMatching(const char* pattern)
   WIN32_FIND_DATA FileData;
   char file[MAX_PATH];
   char* dummy;
-//  const char* plugin_dir = GetPluginDirectory();
-
-//  strcpy(file, plugin_dir);
-//  strcat(file, "\\");
-//  strcat(file, pattern);
   int count = 0;
   HANDLE hFind = FindFirstFile(pattern, &FileData);
-  BOOL bContinue = (hFind != INVALID_HANDLE_VALUE);
-  while (bContinue) {
+
+  if (hFind == INVALID_HANDLE_VALUE)
+    return false;
+
+  do {
     // we have to use full pathnames here
     ++count;
     if (count > 20) {
-      HMODULE* loaded_plugins = (HMODULE*)GetVar("$Plugins$").AsString();
+      HMODULE* loaded_plugins = (HMODULE*)GetVar("$Plugins$").AsString();  // throws IScriptEnvironment::NotFound
       FreeLibraries(loaded_plugins, this);
       count = 0;
     }
@@ -1211,13 +1186,11 @@ bool ScriptEnvironment::LoadPluginsMatching(const char* pattern)
     const char *_file = ScriptEnvironment::SaveString(file);
     function_table.PrescanPluginStart(_file);
     LoadPlugin(AVSValue(AVSValue(AVSValue(_file), 1), 1), (void*)true, this);
-    bContinue = FindNextFile(hFind, &FileData);
-    if (!bContinue) {
-      FindClose(hFind);
-      return true;
-    }
   }
-  return false;
+  while (FindNextFile(hFind, &FileData));
+
+  FindClose(hFind);
+  return true;
 }
 
 void ScriptEnvironment::PrescanPlugins()
@@ -1227,13 +1200,17 @@ void ScriptEnvironment::PrescanPlugins()
   {
     WIN32_FIND_DATA FileData;
     HANDLE hFind = FindFirstFile(plugin_dir, &FileData);
+
     if (hFind != INVALID_HANDLE_VALUE) {
       FindClose(hFind);
       CWDChanger cwdchange(plugin_dir);
+
       function_table.StartPrescanning();
-      if (LoadPluginsMatching("*.dll") | LoadPluginsMatching("*.vdf")) {  // not || because of shortcut boolean eval.
+//      Doh! Cannot autoload VDub plugins, *.vdf, need to manually assign an Avisynth filter name.
+//      if (LoadPluginsMatching("*.dll") | LoadPluginsMatching("*.vdf")) {  // not || because of shortcut boolean eval.
+      if (LoadPluginsMatching("*.dll")) {
         // Unloads all plugins
-        HMODULE* loaded_plugins = (HMODULE*)GetVar("$Plugins$").AsString();
+        HMODULE* loaded_plugins = (HMODULE*)GetVar("$Plugins$").AsString();  // throws IScriptEnvironment::NotFound
         FreeLibraries(loaded_plugins, this);
       }
       function_table.StopPrescanning();
@@ -1241,12 +1218,15 @@ void ScriptEnvironment::PrescanPlugins()
       char file[MAX_PATH];
       strcpy(file, plugin_dir);
       strcat(file, "\\*.avsi");
+
       hFind = FindFirstFile(file, &FileData);
-      BOOL bContinue = (hFind != INVALID_HANDLE_VALUE);
-      while (bContinue) {
-        Import(AVSValue(AVSValue(AVSValue(FileData.cFileName), 1), 1), 0, this);
-        bContinue = FindNextFile(hFind, &FileData);
-        if (!bContinue) FindClose(hFind);
+      if (hFind != INVALID_HANDLE_VALUE) {
+        do {
+          Import(AVSValue(AVSValue(AVSValue(FileData.cFileName), 1), 1), 0, this);
+        }
+        while (FindNextFile(hFind, &FileData));
+
+        FindClose(hFind);
       }
     }
   }
@@ -1675,7 +1655,7 @@ LinkedVideoFrameBuffer* ScriptEnvironment::GetFrameBuffer2(size_t size) {
         else break;
       }
     }
-    _RPT2(0,"Freed %d frames, consisting of %d bytes.\n",freed_count, freed);
+    _RPT2(0, "Freed %d frames, consisting of %d bytes.\n", freed_count, freed);
     memory_used -= freed;
     g_Mem_stats.Losses += freed_count;
   }
@@ -2257,7 +2237,7 @@ void ScriptEnvironment::ThrowError(const char* fmt, ...) {
     _vsnprintf(buf, sizeof(buf)-1, fmt, val);
     if (!this) throw this; // Force inclusion of try catch code!
   } catch (...) {
-    strcpy(buf,"Exception while processing ScriptEnvironment::ThrowError().");
+    strcpy(buf, "Exception while processing ScriptEnvironment::ThrowError().");
   }
   va_end(val);
   buf[sizeof(buf)-1] = '\0';
