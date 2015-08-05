@@ -33,6 +33,9 @@
 // import and export plugins, or graphical user interfaces.
  
 
+// #define POINTER_64 // Will help with old SDK errors
+
+
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
 
@@ -40,8 +43,48 @@
 #include <streams.h>
 #include <stdio.h>
 
-
 /********************************************************************
+# Build Hints for DirectShow SDK
+
+# Patch ($Platform SDK)\Samples\Multimedia\DirectShow\BaseClasses\streams.h
+# remove ATL reference
+
+  #define NO_SHLWAPI_STRFCNS
+  // #include <atlbase.h>    <<---- Line 179
+  #include <strsafe.h>
+
+# Start a Visual Studio Command Prompt
+  Tools>Visual Studio 200x Command Prompt
+
+# Add DirectX SDK to front of INCLUDE path
+Set INCLUDE=C:\Program Files\Microsoft DirectX SDK (August 2009)\Include;%INCLUDE%
+
+Set INCLUDE=C:\Program Files (x86)\Microsoft DirectX SDK (August 2009)\Include;%INCLUDE%
+
+# Cd to the Platform SDK directory.
+cd "C:\Program Files\Microsoft Platform SDK for Windows Server 2003 R2"
+
+# Define SDK environment
+SetEnv /XP32 /RETAIL
+
+# Cd to BaseClasses directory
+cd Samples\Multimedia\DirectShow\BaseClasses
+
+# Make strmbase.lib (Probably won't have write access, so take a copy)
+nmake
+
+# Add DirectShow and DirectX to C++ command line INCLUDE path
+/I "C:\Program Files\Microsoft Platform SDK for Windows Server 2003 R2\Samples\Multimedia\DirectShow\BaseClasses"
+/I "C:\Program Files\Microsoft DirectX SDK (August 2009)\Include"
+
+/I "C:\Program Files (x86)\Microsoft DirectX SDK (August 2009)\Include"
+
+# Add DirectShow and DirectX to link command line LIB path
+/LIBPATH:"C:\Program Files\Microsoft Platform SDK for Windows Server 2003 R2\Samples\Multimedia\DirectShow\BaseClasses\XP32_RETAIL"
+/LIBPATH:"C:\Program\Microsoft DirectX SDK (August 2009)\Lib\x86"
+
+/LIBPATH:"C:\Program Files (x86)\Microsoft DirectX SDK (August 2009)\Lib\x86"
+
 ********************************************************************/
 
 #define SAFE_RELEASE(x) { if (x) x->Release(); x = NULL; }
