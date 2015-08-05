@@ -127,6 +127,10 @@ class AvisynthError /* exception */ {
 public:
   const char* const msg;
   AvisynthError(const char* _msg) : msg(_msg) {}
+
+// Ensure AvisynthError cannot be publicly assigned!
+private:
+  AvisynthError& operator=(const AvisynthError&) {}
 }; // end class AvisynthError
 
 
@@ -546,6 +550,11 @@ public:
   size_t GetDataSize() const AVS_BakedCode( return AVS_LinkCall(GetDataSize)() )
   int GetSequenceNumber() const AVS_BakedCode( return AVS_LinkCall(GetSequenceNumber)() )
   int GetRefcount() const AVS_BakedCode( return AVS_LinkCall(GetRefcount)() )
+
+// Ensure VideoFrameBuffer cannot be publicly assigned
+private:
+  VideoFrameBuffer& operator=(const VideoFrameBuffer&) {}
+
 }; // end class VideoFrameBuffer
 
 
@@ -566,12 +575,13 @@ class VideoFrame {
 
   friend class ScriptEnvironment;
   friend class Cache;
+  friend class LinkedVideoFrame;
 
   VideoFrame(VideoFrameBuffer* _vfb, size_t _offset, int _pitch, int _row_size, int _height);
   VideoFrame(VideoFrameBuffer* _vfb, size_t _offset, int _pitch, int _row_size, int _height,
              size_t _offsetU, size_t _offsetV, int _pitchUV, int _row_sizeUV, int _heightUV);
 
-  void* operator new(unsigned size);
+  void* operator new(size_t size);
 // TESTME: OFFSET U/V may be switched to what could be expected from AVI standard!
 public:
   int GetPitch(int plane=0) const AVS_BakedCode( return AVS_LinkCall(GetPitch)(plane) )
@@ -596,6 +606,11 @@ public:
 public:
   void DESTRUCTOR();  /* Damn compiler won't allow taking the address of reserved constructs, make a dummy interlude */
 #endif
+
+// Ensure VideoFrame cannot be publicly assigned
+private:
+  VideoFrame& operator=(const VideoFrame&) {}
+
 }; // end class VideoFrame
 
 enum {
@@ -760,6 +775,7 @@ public:
   AVSValue(double f) AVS_BakedCode( AVS_LinkCall(AVSValue_CONSTRUCTOR6)(f) )
   AVSValue(const char* s) AVS_BakedCode( AVS_LinkCall(AVSValue_CONSTRUCTOR7)(s) )
   AVSValue(const AVSValue* a, int size) AVS_BakedCode( AVS_LinkCall(AVSValue_CONSTRUCTOR8)(a, size) )
+  AVSValue(const AVSValue& a, int size) AVS_BakedCode( AVS_LinkCall(AVSValue_CONSTRUCTOR8)(&a, size) )
   AVSValue(const AVSValue& v) AVS_BakedCode( AVS_LinkCall(AVSValue_CONSTRUCTOR9)(v) )
 
   ~AVSValue() AVS_BakedCode( AVS_LinkCall(AVSValue_DESTRUCTOR)() )
@@ -783,12 +799,13 @@ public:
 //  int AsLong() const;
   const char* AsString() const AVS_BakedCode( return AVS_LinkCall(AsString1)() )
   double AsFloat() const AVS_BakedCode( return AVS_LinkCall(AsFloat1)() )
+  float AsFloatf() const AVS_BakedCode( return float( AVS_LinkCall(AsFloat1)() ) )
 
   bool AsBool(bool def) const AVS_BakedCode( return AVS_LinkCall(AsBool2)(def) )
   int AsInt(int def) const AVS_BakedCode( return AVS_LinkCall(AsInt2)(def) )
   double AsDblDef(double def) const AVS_BakedCode( return AVS_LinkCall(AsDblDef)(def) ) // Value is still a float
-//float AsFloat(double def) const; // def demoted to a float
   double AsFloat(float def) const AVS_BakedCode( return AVS_LinkCall(AsFloat2)(def) )
+  float AsFloatf(float def) const AVS_BakedCode( return float( AVS_LinkCall(AsFloat2)(def) ) )
   const char* AsString(const char* def) const AVS_BakedCode( return AVS_LinkCall(AsString2)(def) )
 
   int ArraySize() const AVS_BakedCode( return AVS_LinkCall(ArraySize)() )
@@ -806,7 +823,10 @@ private:
     const AVSValue* array;
   };
 #endif
-  short type;  // 'a'rray, 'c'lip, 'b'ool, 'i'nt, 'f'loat, 's'tring, 'v'oid, or 'l'ong
+  union {
+    short type;  // 'a'rray, 'c'lip, 'b'ool, 'i'nt, 'f'loat, 's'tring, 'v'oid, or 'l'ong
+    char  ctype;
+  };
   short array_size;
 #ifndef AVISYNTH64
   union {
@@ -864,7 +884,7 @@ public:
   void __stdcall GetAudio(void* buf, __int64 start, __int64 count, IScriptEnvironment* env) { child->GetAudio(buf, start, count, env); }
   const VideoInfo& __stdcall GetVideoInfo() { return vi; }
   bool __stdcall GetParity(int n) { return child->GetParity(n); }
-  int __stdcall SetCacheHints(int cachehints,int frame_range) { return 0; } ;  // We do not pass cache requests upwards, only to the next filter.
+  int __stdcall SetCacheHints(int /*cachehints*/,int /*frame_range*/) { return 0; } ;  // We do not pass cache requests upwards, only to the next filter.
 };
 
 
