@@ -50,34 +50,32 @@ RGB24to32::RGB24to32(PClip src)
 
 //todo: think how to port to sse2 without tons of shuffles or (un)packs
 static void convert_rgb24_to_rgb32_ssse3(const BYTE *srcp, BYTE *dstp, size_t src_pitch, size_t dst_pitch, size_t width, size_t height) {
-  size_t mod8_width = width & (~size_t(7));
-  __m128i pixels0123_mask = _mm_set_epi8(11, 11, 10, 9, 8, 8, 7, 6, 5, 5, 4, 3, 2, 2, 1, 0);
-  __m128i pixels4567_mask = _mm_set_epi8(7, 7, 6, 5, 4, 4, 3, 2, 1, 1, 0, 15, 14, 14, 13, 12);
+  size_t mod16_width = (width + 3) & (~size_t(15)); //when the modulo is more than 13, a problem does not happen
+  __m128i mask0 = _mm_set_epi8(0x80, 11, 10, 9, 0x80, 8, 7, 6, 0x80, 5, 4, 3, 0x80, 2, 1, 0);
+  __m128i mask1 = _mm_set_epi8(0x80, 15, 14, 13, 0x80, 12, 11, 10, 0x80, 9, 8, 7, 0x80, 6, 5, 4);
   __m128i alpha = _mm_set1_epi32(0xFF000000);
 
   for (size_t y = 0; y < height; ++y) {
-    for (size_t x = 0; x < mod8_width; x+= 8) {
-      __m128i src012345 = _mm_loadu_si128(reinterpret_cast<const __m128i*>(srcp+x*3)); //r5b4 g4r4 b3g3 r3b2 g2r2 b1g1 r1b0 g0r0
-      __m128i src567 = _mm_loadl_epi64(reinterpret_cast<const __m128i*>(srcp+x*3+16)); //0000 0000 0000 0000 b7g7 r7b6 g6r6 b5g5
+    for (size_t x = 0; x < mod16_width; x+= 16) {
+      __m128i src0 = _mm_load_si128(reinterpret_cast<const __m128i*>(srcp+x*3));
+      __m128i dst = _mm_or_si128(alpha, _mm_shuffle_epi8(src0, mask0));
+      _mm_stream_si128(reinterpret_cast<__m128i*>(dstp+4*x), dst);
 
-      //pshufb being the most useful instruction for rgb24<->32 conversions
-      __m128i dst0123 = _mm_shuffle_epi8(src012345, pixels0123_mask); //xxb3 g3r3 xxb2 g2r2 xxb1 g1r1 xxb0 g0r0
-      __m128i tmp4567 = _mm_castps_si128(_mm_shuffle_ps(
-        _mm_castsi128_ps(src567),
-        _mm_castsi128_ps(src012345),
-        _MM_SHUFFLE(3, 2, 1, 0)
-        )); //r5b4 g4r4 b3g3 r3b2 b7g7 r7b6 g6r6 b5g5
+      __m128i src1 = _mm_load_si128(reinterpret_cast<const __m128i*>(srcp+x*3+16));
+      __m128i tmp = _mm_alignr_epi8(src1, src0, 12);
+      dst = _mm_or_si128(alpha, _mm_shuffle_epi8(tmp, mask0));
+      _mm_stream_si128(reinterpret_cast<__m128i*>(dstp+x*4+16), dst);
 
-      __m128i dst4567 = _mm_shuffle_epi8(tmp4567, pixels4567_mask); //xxb7 g7r7 xxb6 g6r6 xxb5 g5r5 xxb4 g4r4
+      __m128i src2 = _mm_load_si128(reinterpret_cast<const __m128i*>(srcp+x*3+32));
+      tmp = _mm_alignr_epi8(src2, src1, 8);
+      dst = _mm_or_si128(alpha, _mm_shuffle_epi8(tmp, mask0));
+      _mm_stream_si128(reinterpret_cast<__m128i*>(dstp+x*4+32), dst);
 
-      dst0123 = _mm_or_si128(dst0123, alpha);
-      dst4567 = _mm_or_si128(dst4567, alpha);
-
-      _mm_store_si128(reinterpret_cast<__m128i*>(dstp+x*4), dst0123); //a3b3 g3r3 a2b2 g2r2 a1b1 g1r1 a0b0 g0r0
-      _mm_store_si128(reinterpret_cast<__m128i*>(dstp+x*4+16), dst4567); //a7b7 g7r7 a6b6 g6r6 a5b5 g5r5 a4b4 g4r4
+      dst = _mm_or_si128(alpha, _mm_shuffle_epi8(src2, mask1));
+      _mm_stream_si128(reinterpret_cast<__m128i*>(dstp+x*4+48), dst);
     }
 
-    for (size_t x = mod8_width; x < width; ++x) {
+    for (size_t x = mod16_width; x < width; ++x) {
       dstp[x*4+0] = srcp[x*3+0];
       dstp[x*4+1] = srcp[x*3+1];
       dstp[x*4+2] = srcp[x*3+2];
