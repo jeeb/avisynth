@@ -449,18 +449,25 @@ variables (and clips) here too. See DirectShowSource for some examples.
 }
 </pre>
 <p>The <a href="Cplusplus_api.htm#AddFunction" title="Filter SDK/Cplusplus API">AddFunction</a>
-has the following paramters:
+has the following parameters:
 </p>
 <pre>AddFunction(Filtername, Arguments, Function to call, 0);
 </pre>
 <p><i>Arguments</i> is a string that defines the types and optional names of
 the arguments for your filter. The possible types are:
 </p>
-<pre>c - clip
-i - integer
-f - float
-s - string
-b - boolean
+<pre># Argument type specifier strings
+ c - clip
+ i - integer
+ f - float
+ s - string
+ b - boolean
+ . - Any type (dot)
+# Array Specifiers (have a look at StackVertical and SelectEvery for example as to how access such arrays)
+ i* - Integer Array, zero or more
+ i+ - Integer Array, one or more
+ .* - Any type Array, zero or more
+ .+ - Any type Array, one or more
 </pre>
 <p>The text inside the [ ] lets you used named parameters in your script. Thus
 </p>
@@ -475,5 +482,5 @@ SimpleSample(clip, 100)
 information.
 </p>
 <hr style="width: 100%; height: 2px;" />Back to&nbsp;<a href="FilterSDK.htm">FilterSDK</a></div>
-<p><kbd>$Date: 2014/11/12 07:04:28 $</kbd></p>
+<p><kbd>$Date: 2015/09/14 20:23:59 $</kbd></p>
 </body></html>

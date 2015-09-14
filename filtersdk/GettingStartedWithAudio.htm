@@ -64,11 +64,23 @@
   <a href="http://avisynth2.cvs.sourceforge.net/avisynth2/avisynth/src/audio/audio.cpp?view=markup"><code>audio.cpp</code></a>
   for a bunch of more advanced stuff. A lot of technical details are also to be
   found in <a href="AviSynthTwoFiveAudio.htm">AviSynth Two-Five Audio</a>.
+</p><hr style="width: 100%; height: 2px;" />
 
-</p><hr style="width: 100%; height: 2px;" />Back to&nbsp;<a href="FilterSDK.htm">FilterSDK</a>
+<p>Since we are invoking ConvertAudio() you might wonder whether it is possible to call it in a script.
+That is indeed possible, but not documented since it is not very practical to do so. You need to know
+that SAMPLE_INT8 = 1b = 1, SAMPLE_INT16 = 10b = 2, SAMPLE_INT24 = 100b = 4, SAMPLE_INT32 = 1000b = 8 and
+SAMPLE_FLOAT = 10000b = 16 (although these values might change some day).</p>
+
+<p>In the example above we call ConvertAudio() with SAMPLE_INT16 | SAMPLE_FLOAT = 10b | 10000b = 10010b = 18,
+so you need to call it as ConvertAudio(clip, 18, 16).</p>
+
+<p>You should realise that float audio will be converted to 16 bit when feeding it to the encoder. At least unless you have set
+<a href="http://avisynth.nl/index.php/Internal_functions#OPT_AllowFloatAudio">global OPT_AllowFloatAudio = True</a> in your script.</p>
+
+<hr style="width: 100%; height: 2px;" />Back to&nbsp;<a href="FilterSDK.htm">FilterSDK</a>
 </div>
 <p><kbd>
-    $Date: 2015/03/31 05:00:17 $
+    $Date: 2015/09/14 20:23:59 $
     <a href="http://www.avisynth.org/GettingStartedWithAudio"></a>
   </kbd></p>
 </body></html>
