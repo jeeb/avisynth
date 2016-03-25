@@ -455,7 +455,7 @@ static void af_horizontal_rgb32_mmx(BYTE* dstp, const BYTE* srcp, size_t dst_pit
 static void af_horizontal_yuy2_c(BYTE* p, int height, int pitch, int width, int amount) {
   const int center_weight = amount*2;
   const int outer_weight = 32768-amount;
-  for (int y = height; y>0; --y) 
+  for (int y0 = height; y0>0; --y0) 
   {
     BYTE yy = p[0];
     BYTE uv = p[1];

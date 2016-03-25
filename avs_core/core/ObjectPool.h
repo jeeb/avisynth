@@ -4,6 +4,7 @@
 #include <list>
 #include <unordered_map>
 #include <new>
+#include <cassert>
 
 template <typename T>
 class ObjectPool
