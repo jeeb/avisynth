@@ -357,7 +357,10 @@ void VideoFrame::Release() {
   VideoFrameBuffer* _vfb = vfb;
 
   if (!InterlockedDecrement(&refcount))
-    InterlockedDecrement(&_vfb->refcount);
+	{
+		InterlockedDecrement(&_vfb->refcount);
+		//_RPT2(0, "VideoFrame::Release(): vfb was released, too! new vfb refcount = %d, vfb=%p\n", _vfb->refcount, _vfb); // P.F.
+	}
 }
 
 int VideoFrame::GetPitch(int plane) const { switch (plane) {case PLANAR_U: case PLANAR_V: return pitchUV;} return pitch; }
