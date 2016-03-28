@@ -1295,7 +1295,9 @@ VideoFrame* ScriptEnvironment::GetNewFrame(size_t vfb_size)
 		// found exact: vfb size
 		// todo: check: allow reusing existing vfb's with size up to size_to_find*1.5
 		// original method: try to reuse all vfb's that are the same or larger size than to requested size
-		for (FrameRegistryType2::iterator it = FrameRegistry2.lower_bound(vfb_size), end_it = FrameRegistry2.upper_bound(vfb_size); // tst: we do now allow to use bigger buffer. No change.
+		for (FrameRegistryType2::iterator it = FrameRegistry2.lower_bound(vfb_size), end_it = FrameRegistry2.upper_bound(vfb_size*2);
+		// tst 16.03.28 : at most occupy requested_vfb_size*2.
+		// tst: we do now allow to use much bigger buffer. No change.
 		//for (FrameRegistryType2::iterator it = FrameRegistry2.lower_bound(vfb_size), end_it = FrameRegistry2.end();
 		it != end_it;
 			++it)
@@ -1337,21 +1339,59 @@ VideoFrame* ScriptEnvironment::GetNewFrame(size_t vfb_size)
 								// 16.03.27 P.F. test: we dont allow vfb's frame count list to grow to many thousand. If the count reaches 100, we cut
 								// In a 40000 original frame QTGMC session, there are more than 600 vfb's occupied. Many of them with 4-5k parent frames!
 								// Let's test what happens if we free them up here. Speed?, marginally less memory?
-								if (videoFrameListSize < 100) // less than 100 entry in list -> return
+								if (videoFrameListSize < 150) // less than 100 entry in list -> return
 								{
 									return frame; // return immediately
 									break;
 								}
-								// more than 100: just register the frame found, and erase all other frames from list plus delete frame objects also
+								_RPT4(0, "ScriptEnvironment::GetNewFrame NEW METHOD EXACT hit! VideoFrameListSize=%7Iu GotSize=%7Iu FrReg.Size=%6Iu Cnt=%6d CntInner=%6d vfb=%p frame=%p SeekTime:%f\n", videoFrameListSize, vfb_size, FrameRegistry2.size(), linearsearchcount, linearsearchcount_list, vfb, frame, elapsed_seconds.count()); // P.F.
+								_RPT4(0, "                               Delete one frame %p RowSize=%d Height=%d Pitch=%d Offset=%d\n", frame, frame->GetRowSize(), frame->GetHeight(), frame->GetPitch(), frame->GetOffset()); // P.F.
+
+								// more than 150: just register the frame found, and erase all other frames from list plus delete frame objects also
 								frame_found = frame;
 								found = true;
 								it3++;
 							}
 							else {
+								// if the first frame to this vfb was already found, then we free it and delete it from the list   
+								_RPT4(0, "ScriptEnvironment::GetNewFrame Delete one frame %p RowSize=%d Height=%d Pitch=%d Offset=%d\n", frame, frame->GetRowSize(), frame->GetHeight(), frame->GetPitch(), frame->GetOffset()); // P.F.
 								delete frame;
 								it3 = it2->second.erase(it3);
+								// Benefit: no 4-5k frame list count (?) per a single vfb.
+								// comparison: after 40000 frames qtgmc: Sizes: 5/676/8760
+								// vfb size: 100031: count= 12
+								// vfb size: 110623: count= 10
+								// vfb size: 423967: count= 1
+								// vfb size: 622083: count= 0
+								// vfb size: 645151: count= 654
+								// Other: 5 size, 671 vfbs, 2842 frames
+								// Before limiting number of frames in list: 5 sizes, 490 vfbs, 85589(!) frames (only after are 30000 qtgmc frames)
+								//            45000 Frames: 5/971/27000!!! Something is leaking frames! Todo: detect condition: which plugin or avs core does not release clip/vfb??
+								//            60000 Frames: 5/973/27436 Total VFB size=613MB
+								// 40525 orig frames 81050 QTGMC:  5/973/27436 Total VFB size=613MB 
+								//  vfb size: 100031: count= 12
+								//  vfb size: 110623: count= 13
+								//  vfb size: 423967: count= 3
+								//  vfb size: 622083: count= 3
+								//  vfb size: 645151: count= 943 Total VFB size=613MB
+								// 49381 orig frames 99600 QTGMC:  5/1178/43370 Total VFB size=745MB 
+								//  vfb size: 100031: count= 12
+								//  vfb size: 110623: count= 13
+								//  vfb size: 423967: count= 3
+								//  vfb size: 622083: count= 3
+								//  vfb size: 645151: count= 943 Total VFB size=613MB
+								// 56725 orig frames 113450 QTGMC:  5/1255/47516 Total VFB size=795/816MB 
+								// 61046 orig frames 122092 QTGMC:  5/1348/51352 Total VFB size=855/876MB 
+								//  vfb size: 100031: count= 12
+								//  vfb size: 110623: count= 13
+								//  vfb size: 423967: count= 3
+								//  vfb size: 622083: count= 3
+								//  vfb size: 645151: count= 1317 
+								// 65084 orig frames 130168 QTGMC:  5/1508/57105 Total VFB size=858/980MB 
+								// 68988 orig frames 137978 QTGMC:  5/1736/67524 Total VFB size=1105/1128MB 
+								// 70427 orig frames *2     QTGMC:  5/1971/70663 Total VFB size=1257/1280MB 
+								//114512 orig frames *2     QTGMC:  5/2121/88870 Total VFB size=1354/1376MB 
 							}
-							// so we are allowed to free the frames here. Benefit: no 4-5k list sizes (?)
 						}
 						else
 						{
@@ -1453,8 +1493,7 @@ VideoFrame* ScriptEnvironment::GetNewFrame(size_t vfb_size)
 	  //                    [frame = 199999 (refcount=0)]  [vfb = 0x111111111 (refcount=19)]  
 	  //                    [frame = 200000 (refcount=0)]  [vfb = 0x111111111 (refcount=19)]  // still not good
 	  //                    [frame = 200001 (refcount=0)]  [vfb = 0x333333333 (refcount= 0)]  // got it! both frame and vfb refcount is 0!
-	  // In the old method it took 200001 steps to find a hole that can be reoccupies. 
-	  throw AvisynthError(this->Sprintf("Kakukk %zu", vfb_size));
+	  // In the old method it took 200001 steps to find a gap/hole that can be reoccupied. 
 
 	  size_t prevfirst = 0;
 	  for (
@@ -1488,6 +1527,7 @@ VideoFrame* ScriptEnvironment::GetNewFrame(size_t vfb_size)
   _RPT1(0, "ScriptEnvironment::GetNewFrame, no free entry in FrameRegistry. Wanted vfb size=%Iu memused=%I64d memmax=%I64d\n", vfb_size, memory_used, memory_max); // P.F.
 #ifdef _DEBUG
 #define FULL_LIST_OF_VFBs
+// #define LIST_ALSO_SOME_FRAMES
 #ifdef FULL_LIST_OF_VFBs
 																																																																// Full  list of all buffers
 	linearsearchcount = 0;
@@ -1515,7 +1555,7 @@ VideoFrame* ScriptEnvironment::GetNewFrame(size_t vfb_size)
 			VideoFrameBuffer *vfb = it2->first;
 			total_vfb_size += vfb->GetDataSize();
 			size_t inner_frame_count_size = it2->second.size();
-			_RPT5(0, ">>>> IterateLevel #3 %5Iu frames in [%3d,%5d] --> vfb=%p vfb_refcount=%3d\n", inner_frame_count_size, size1,size2, vfb, vfb->refcount); // P.F.
+			_RPT5(0, ">>>> IterateLevel #3 %5Iu frames in [%3d,%5d] --> vfb=%p vfb_refcount=%3d seqNum=%d\n", inner_frame_count_size, size1,size2, vfb, vfb->refcount, vfb->GetSequenceNumber()); // P.F.
 			// iterate the frame list of this vfb
 			int inner_frame_count = 0;
 			int inner_frame_count_for_frame_refcount_nonzero = 0;
@@ -1528,7 +1568,7 @@ VideoFrame* ScriptEnvironment::GetNewFrame(size_t vfb_size)
 				VideoFrame *frame = *it3;
 				if (0 != frame->refcount)
 					inner_frame_count_for_frame_refcount_nonzero++;
-				
+#ifdef LIST_ALSO_SOME_FRAMES
 				if (inner_frame_count <= 2) // list only the first 2. There can be even many thousand of frames!
 					_RPT5(0, "  >> Frame#%6d: vfb=%p frame=%p frame_refcount=%3d \n", inner_frame_count, vfb, frame, frame->refcount); // P.F.
 				else if (inner_frame_count == inner_frame_count_size - 1)
@@ -1540,6 +1580,7 @@ VideoFrame* ScriptEnvironment::GetNewFrame(size_t vfb_size)
 				{
 					_RPT5(0, "  ########## VFB=0 FRAME!=0 ####### VFB: %p Frame:%p frame_refcount=%3d \n",  vfb, frame, frame->refcount); // P.F.
 				}
+#endif
 			}
 		}
 	}
