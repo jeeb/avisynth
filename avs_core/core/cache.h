@@ -36,6 +36,9 @@
 #define __Cache_H__
 
 #include <avisynth.h>
+#ifdef _DEBUG
+#include <string>
+#endif
 
 struct CachePimpl;
 
@@ -45,10 +48,12 @@ private:
 
   IScriptEnvironment* Env;
   CachePimpl* _pimpl;
-
   void FillAudioZeros(void* buf, int start_offset, int count);
 
 public:
+#ifdef _DEBUG  
+  std::string FuncName = ""; // P.F. Invoked function's name whose queue owns the cache object
+#endif
   Cache(const PClip& child, IScriptEnvironment* env);
   ~Cache();
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
