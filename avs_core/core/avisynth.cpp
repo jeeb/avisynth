@@ -324,7 +324,6 @@ VideoFrameBuffer::VideoFrameBuffer(int size) :
   InterlockedIncrement(&sequence_number);
 	_RPT2(0, "VideoFrameBuffer::VideoFrameBuffer NEW empty data allocated! Size=%d Data@%p\r\n", size, (void *)data); // P.F.
 
-#ifdef KAKUKK
 #ifdef _DEBUG
   int *pInt=(int *)(data+size);
   pInt[0] = 0xDEADBEEF;
@@ -343,7 +342,6 @@ VideoFrameBuffer::VideoFrameBuffer(int size) :
     pByte[3]=filler[3];
     pByte[4]=filler[4];
   }
-#endif
 #endif
 }
 
