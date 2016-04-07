@@ -48,6 +48,51 @@ RGB24to32::RGB24to32(PClip src)
   vi.pixel_type = VideoInfo::CS_BGR32;
 }
 
+// chikuzen's pull request from 2015.Sept. Put here on 16.04.07
+//todo: think how to port to sse2 without tons of shuffles or (un)packs
+static void convert_rgb24_to_rgb32_ssse3(const BYTE *srcp, BYTE *dstp, size_t src_pitch, size_t dst_pitch, size_t width, size_t height) {
+  size_t mod16_width = (width + 3) & (~size_t(15)); //when the modulo is more than 13, a problem does not happen
+#pragma warning(push)
+#pragma warning(disable:4309)
+  __m128i mask0 = _mm_set_epi8(0x80, 11, 10, 9, 0x80, 8, 7, 6, 0x80, 5, 4, 3, 0x80, 2, 1, 0);
+  __m128i mask1 = _mm_set_epi8(0x80, 15, 14, 13, 0x80, 12, 11, 10, 0x80, 9, 8, 7, 0x80, 6, 5, 4);
+#pragma warning(pop)
+  __m128i alpha = _mm_set1_epi32(0xFF000000);
+
+  for (size_t y = 0; y < height; ++y) {
+    for (size_t x = 0; x < mod16_width; x += 16) {
+      __m128i src0 = _mm_load_si128(reinterpret_cast<const __m128i*>(srcp + x * 3));
+      __m128i dst = _mm_or_si128(alpha, _mm_shuffle_epi8(src0, mask0));
+      _mm_stream_si128(reinterpret_cast<__m128i*>(dstp + 4 * x), dst);
+
+      __m128i src1 = _mm_load_si128(reinterpret_cast<const __m128i*>(srcp + x * 3 + 16));
+      __m128i tmp = _mm_alignr_epi8(src1, src0, 12);
+      dst = _mm_or_si128(alpha, _mm_shuffle_epi8(tmp, mask0));
+      _mm_stream_si128(reinterpret_cast<__m128i*>(dstp + x * 4 + 16), dst);
+
+      __m128i src2 = _mm_load_si128(reinterpret_cast<const __m128i*>(srcp + x * 3 + 32));
+      tmp = _mm_alignr_epi8(src2, src1, 8);
+      dst = _mm_or_si128(alpha, _mm_shuffle_epi8(tmp, mask0));
+      _mm_stream_si128(reinterpret_cast<__m128i*>(dstp + x * 4 + 32), dst);
+
+      dst = _mm_or_si128(alpha, _mm_shuffle_epi8(src2, mask1));
+      _mm_stream_si128(reinterpret_cast<__m128i*>(dstp + x * 4 + 48), dst);
+    }
+
+    for (size_t x = mod16_width; x < width; ++x) {
+      dstp[x * 4 + 0] = srcp[x * 3 + 0];
+      dstp[x * 4 + 1] = srcp[x * 3 + 1];
+      dstp[x * 4 + 2] = srcp[x * 3 + 2];
+      dstp[x * 4 + 3] = 255;
+    }
+
+    srcp += src_pitch;
+    dstp += dst_pitch;
+  }
+}
+
+#if 0
+// pre-chikuzen version
 //todo: think how to port to sse2 without tons of shuffles or (un)packs
 static void convert_rgb24_to_rgb32_ssse3(const BYTE *srcp, BYTE *dstp, size_t src_pitch, size_t dst_pitch, size_t width, size_t height) {
   size_t mod8_width = width & (~size_t(7));
@@ -88,6 +133,7 @@ static void convert_rgb24_to_rgb32_ssse3(const BYTE *srcp, BYTE *dstp, size_t sr
     dstp += dst_pitch;
   }
 }
+#endif
 
 #ifdef X86_32
 
@@ -174,6 +220,48 @@ RGB32to24::RGB32to24(PClip src)
   vi.pixel_type = VideoInfo::CS_BGR24;
 }
 
+// chikuzen's pull request from 2015.Sept. Put here on 16.04.07
+//todo: think how to port to sse2 without tons of shuffles or (un)packs
+static void convert_rgb32_to_rgb24_ssse3(const BYTE *srcp, BYTE *dstp, size_t src_pitch, size_t dst_pitch, size_t width, size_t height) {
+  size_t mod16_width = (width + 3) & (~size_t(15)); //when the modulo is more than 13, a problem does not happen
+  __m128i mask0 = _mm_set_epi8(14, 13, 12, 10, 9, 8, 6, 5, 4, 2, 1, 0, 15, 11, 7, 3);
+  __m128i mask1 = _mm_set_epi8(15, 11, 7, 3, 14, 13, 12, 10, 9, 8, 6, 5, 4, 2, 1, 0);
+
+  for (size_t y = 0; y < height; ++y) {
+    for (size_t x = 0; x < mod16_width; x += 16) {
+      __m128i src0 = _mm_load_si128(reinterpret_cast<const __m128i*>(srcp + x * 4));    //a3b3 g3r3 a2b2 g2r2 a1b1 g1r1 a0b0 g0r0
+      __m128i src1 = _mm_load_si128(reinterpret_cast<const __m128i*>(srcp + x * 4 + 16)); //a7b7 g7r7 a6b6 g6r6 a5b5 g5r5 a4b4 g4r4
+      src0 = _mm_shuffle_epi8(src0, mask0);         //b3g3 r3b2 g2r2 b1g1 r1b0 g0r0 a3a2 a1a0
+      src1 = _mm_shuffle_epi8(src1, mask1);         //a7a6 a5a4 b7g7 r7b6 g6r6 b5g5 r5b4 g4r4
+      __m128i dst = _mm_alignr_epi8(src1, src0, 4); //r5b4 g4r4 b3g3 r3b2 g2r2 b1g1 r1b0 g0r0
+      _mm_stream_si128(reinterpret_cast<__m128i*>(dstp + x * 3), dst);
+
+      src0 = _mm_slli_si128(src1, 4);       //b7g7 r7b6 g6r6 b5g5 r5b4 g4r4 XXXX XXXX
+      src1 = _mm_load_si128(reinterpret_cast<const __m128i*>(srcp + x * 4 + 32)); //aBbB gBrB aAbA gArA a9b9 g9r9 a8b8 g8r8
+      src1 = _mm_shuffle_epi8(src1, mask1); //aBaA a9a8 bBgB rBbA gArA b9g9 r9b8 g8r8
+      dst = _mm_alignr_epi8(src1, src0, 8); //gArA b9g9 r9b8 g8r8 b7g7 r7b6 g6r6 b5g5
+      _mm_stream_si128(reinterpret_cast<__m128i*>(dstp + x * 3 + 16), dst);
+
+      src0 = _mm_slli_si128(src1, 4);        //bBgB rBbA gArA b9g9 r9b8 g8r8 XXXX XXXX
+      src1 = _mm_load_si128(reinterpret_cast<const __m128i*>(srcp + x * 4 + 48)); //aFbF gFrF aEbE gErE aDbD gDrD aCbC gCrC
+      src1 = _mm_shuffle_epi8(src1, mask1);  //aFaE aDaC bFgF rFbE gErE bDgD rDbC gCrC
+      dst = _mm_alignr_epi8(src1, src0, 12); //bFgF rFbE gErE bDgD rDbC gCrC bBgB rBbA
+      _mm_stream_si128(reinterpret_cast<__m128i*>(dstp + x * 3 + 32), dst);
+    }
+
+    for (size_t x = mod16_width; x < width; ++x) {
+      dstp[x * 3 + 0] = srcp[x * 4 + 0];
+      dstp[x * 3 + 1] = srcp[x * 4 + 1];
+      dstp[x * 3 + 2] = srcp[x * 4 + 2];
+    }
+
+    srcp += src_pitch;
+    dstp += dst_pitch;
+  }
+}
+
+#if 0
+// pre-chikuzen version
 //todo: think how to port to sse2 without tons of shuffles or (un)packs
 static void convert_rgb32_to_rgb24_ssse3(const BYTE *srcp, BYTE *dstp, size_t src_pitch, size_t dst_pitch, size_t width, size_t height) {
   size_t mod8_width = width & (~size_t(7));
@@ -210,6 +298,7 @@ static void convert_rgb32_to_rgb24_ssse3(const BYTE *srcp, BYTE *dstp, size_t sr
     dstp += dst_pitch;
   }
 }
+#endif
 
 #ifdef X86_32
 
