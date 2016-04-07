@@ -72,6 +72,13 @@ struct CachePimpl
     SampleSize(0),
     MaxSampleCount(0)
   {
+    SampleSize = vi.BytesPerAudioSample();
+  }
+  ~CachePimpl()
+  {
+    if (AudioCache)
+      free(AudioCache);
+    AudioCache = NULL;
   }
 };
 
