@@ -1703,7 +1703,7 @@ VideoFrame* ScriptEnvironment::GetNewFrame(size_t vfb_size)
       else it2++;
     }
   }
-  _RPT4(0, "End of garbage collection A freed_vfb=%d frame=%d unfreed=%d memused=%I64d\n", freed_vfb_count, freed_frame_count, unfreed_frame_count, memory_used); // P.F.
+  _RPT1(0, "End of garbage collection A memused=%I64d\n", memory_used); // P.F.
 
   /* -----------------------------------------------------------
    *   Try to allocate again
