@@ -139,7 +139,7 @@ PVideoFrame __stdcall Cache::GetFrame(int n, IScriptEnvironment* env)
 #ifdef _DEBUG	
       t_end = std::chrono::high_resolution_clock::now();
       std::chrono::duration<double> elapsed_seconds = t_end - t_start;
-      _RPT5(0, "Cache::GetFrame LRU_LOOKUP_NOT_FOUND: [%s] n=%6d child=%p frame=%p vfb=%p videoCacheSize=%I64d SeekTimeWithGetFrame:%f\n", FuncName.c_str(), n, (void *)_pimpl->child, (void *)cache_handle.first->value, (void *)cache_handle.first->value->GetFrameBuffer(), _pimpl->VideoCache->size(), elapsed_seconds.count()); // P.F.
+      _RPT5(0, "Cache::GetFrame LRU_LOOKUP_NOT_FOUND: [%s] n=%6d child=%p frame=%p vfb=%p videoCacheSize=%zu SeekTimeWithGetFrame:%f\n", FuncName.c_str(), n, (void *)_pimpl->child, (void *)cache_handle.first->value, (void *)cache_handle.first->value->GetFrameBuffer(), _pimpl->VideoCache->size(), elapsed_seconds.count()); // P.F.
 #endif
       result = cache_handle.first->value;
       break;
@@ -150,7 +150,7 @@ PVideoFrame __stdcall Cache::GetFrame(int n, IScriptEnvironment* env)
 #ifdef _DEBUG	
       t_end = std::chrono::high_resolution_clock::now();
       std::chrono::duration<double> elapsed_seconds = t_end - t_start;
-      _RPT5(0, "Cache::GetFrame LRU_LOOKUP_FOUND_AND_READY: [%s] n=%6d child=%p frame=%p vfb=%p videoCacheSize=%I64d SeekTime            :%f\n", FuncName.c_str(), n, (void *)_pimpl->child, (void *)cache_handle.first->value, (void *)cache_handle.first->value->GetFrameBuffer(), _pimpl->VideoCache->size(), elapsed_seconds.count()); // P.F.
+      _RPT5(0, "Cache::GetFrame LRU_LOOKUP_FOUND_AND_READY: [%s] n=%6d child=%p frame=%p vfb=%p videoCacheSize=%zu SeekTime            :%f\n", FuncName.c_str(), n, (void *)_pimpl->child, (void *)cache_handle.first->value, (void *)cache_handle.first->value->GetFrameBuffer(), _pimpl->VideoCache->size(), elapsed_seconds.count()); // P.F.
 #endif
       break;
     }
