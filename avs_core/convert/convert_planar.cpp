@@ -447,11 +447,12 @@ PVideoFrame __stdcall ConvertToY8::GetFrame(int n, IScriptEnvironment* env) {
 
   if (blit_luma_only) {
     // Abuse Subframe to snatch the Y plane
+    // _RPT1(0, "ConvertToY8::GetFrame %d blit_luma_only\n", n); // P.F.
     return env->Subframe(src, 0, src->GetPitch(PLANAR_Y), src->GetRowSize(PLANAR_Y), src->GetHeight(PLANAR_Y));
   }
 
   PVideoFrame dst = env->NewVideoFrame(vi);
-
+  // _RPT2(0, "ConvertToY8::GetFrame %d frame=%p\n", n, (void *)dst); // P.F.
   if (yuy2_input) {
 
     const BYTE* srcP = src->GetReadPtr();
