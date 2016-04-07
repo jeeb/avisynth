@@ -352,7 +352,10 @@ BYTE* VideoFrame::GetWritePtr() const {
 }
    Baked ********************/
 
-void VideoFrame::AddRef() { InterlockedIncrement(&refcount); }
+void VideoFrame::AddRef() { 
+  InterlockedIncrement(&refcount); 
+  //_RPT3(0, "VideoFrame::AddRef: frame=%p new_refcount=%d vfb=%p \n", (void *)this, refcount, (void *)vfb); // P.F.
+}
 void VideoFrame::Release() {
   VideoFrameBuffer* _vfb = vfb;
 
@@ -361,6 +364,7 @@ void VideoFrame::Release() {
 		InterlockedDecrement(&_vfb->refcount);
 		//_RPT2(0, "VideoFrame::Release(): vfb was released, too! new vfb refcount = %d, vfb=%p\n", _vfb->refcount, _vfb); // P.F.
 	}
+  //_RPT3(0, "VideoFrame::Release(): frame=%p new_refcount=%d vfb=%p \n", (void *)this, refcount, (void *)_vfb); // P.F.
 }
 
 int VideoFrame::GetPitch(int plane) const { switch (plane) {case PLANAR_U: case PLANAR_V: return pitchUV;} return pitch; }
