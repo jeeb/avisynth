@@ -45,6 +45,7 @@
 static PVideoFrame AdjustFrameAlignment(const PVideoFrame& frame, const VideoInfo& vi, IScriptEnvironment* env)
 {
     PVideoFrame result = env->NewVideoFrame(vi);
+    //_RPT2(0, "AdjustFrameAlignment origframe=%p vfb=%p newframe=%p\n", (void *)frame, (void *)result->GetFrameBuffer(), (void *)result); // P.F.
     env->BitBlt(result->GetWritePtr(),         result->GetPitch(),         frame->GetReadPtr(),         frame->GetPitch(),         frame->GetRowSize(),         frame->GetHeight());
     env->BitBlt(result->GetWritePtr(PLANAR_V), result->GetPitch(PLANAR_V), frame->GetReadPtr(PLANAR_V), frame->GetPitch(PLANAR_V), frame->GetRowSize(PLANAR_V), frame->GetHeight(PLANAR_V));
     env->BitBlt(result->GetWritePtr(PLANAR_U), result->GetPitch(PLANAR_U), frame->GetReadPtr(PLANAR_U), frame->GetPitch(PLANAR_U), frame->GetRowSize(PLANAR_U), frame->GetHeight(PLANAR_U));
@@ -67,6 +68,7 @@ LRESULT AVISource::DecompressBegin(LPBITMAPINFOHEADER lpbiSrc, LPBITMAPINFOHEADE
 
 LRESULT AVISource::DecompressFrame(int n, bool preroll, PVideoFrame &frame, IScriptEnvironment* env) {
   _RPT2(0,"AVISource: Decompressing frame %d%s\n", n, preroll ? " (preroll)" : "");
+  //_RPT2(0, "AVISource: Decompressing frame %d into %p %s\n", n, (void *)frame, preroll ? " (preroll)" : ""); // P.F.
   BYTE* buf = frame->GetWritePtr();
   long bytes_read;
 
@@ -126,8 +128,10 @@ LRESULT AVISource::DecompressFrame(int n, bool preroll, PVideoFrame &frame, IScr
       offsetV = offsetY+sizeY        - offsetV;
      }
     // set pitch = rowsize
+    // _RPT2(0, "AVISource::GetFrame SubframePlanar oldframe=%p\n", (void *)frame); // P.F.
     frame = env->SubframePlanar(frame, 0, rowsizeY, rowsizeY, vi.height, offsetU, offsetV, rowsizeUV);
-    }
+    // _RPT2(0, "AVISource::GetFrame SubframePlanar newframe=%p\n", (void *)frame); // P.F.
+  }
   else if (bInvertFrames) {
     const int h2 = frame->GetHeight() >> 1;
     const int w4 = (frame->GetRowSize()+3) >> 2;
@@ -607,6 +611,7 @@ const VideoInfo& AVISource::GetVideoInfo() { return vi; }
 PVideoFrame AVISource::GetFrame(int n, IScriptEnvironment* env) {
 
   n = clamp(n, 0, vi.num_frames-1);
+  //_RPT2(0, "AVISource::GetFrame %d\n", n); // P.F.
   dropped_frame=false;
   if (n != last_frame_no) {
     // find the last keyframe
@@ -618,6 +623,7 @@ PVideoFrame AVISource::GetFrame(int n, IScriptEnvironment* env) {
 
     bool frameok = false;
     PVideoFrame frame = env->NewVideoFrame(vi, -4);
+    //_RPT2(0, "AVISource::GetFrame NewVideoFrame requested frame=%p\n", (void *)frame); // P.F.
 
     if (!frame)
       env->ThrowError("AviSource: Could not allocate frame %d", n);
