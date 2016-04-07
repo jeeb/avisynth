@@ -298,7 +298,7 @@ VideoFrame* VideoFrame::Subframe(int rel_offset, int new_pitch, int new_row_size
 
 #ifdef _DEBUG
   VideoFrame *subFrame = new VideoFrame(vfb, offset + rel_offset, new_pitch, new_row_size, new_height,
-    rel_offsetU + offsetU, rel_offsetV + offsetV, new_pitchUV, new_row_sizeUV, new_heightUV);
+                                        rel_offsetU + offsetU, rel_offsetV + offsetV, new_pitchUV, new_row_sizeUV, new_heightUV);
   //_RPT4(0, "VideoFrame::Subframe(B) frame=%p parent=%p rel_offset=%d new_pitch=%d new_row_size=%d new_height=%d vfb=%p\r\n", subFrame, (void *)this, rel_offset, new_pitch, new_row_size, new_height, (void *)vfb); // P.F.
   return subFrame;
 #else
@@ -1267,6 +1267,7 @@ VideoFrame* ScriptEnvironment::AllocateFrame(size_t vfb_size)
   try
   {
     newFrame = new VideoFrame(vfb, 0, 0, 0, 0);
+    assert(newFrame != NULL);
   }
   catch(const std::bad_alloc&)
   {
@@ -1506,6 +1507,7 @@ VideoFrame* ScriptEnvironment::GetNewFrame(size_t vfb_size)
 #ifdef _DEBUG
           linearsearchcount_list++;
           VideoFrame *frame = it3->first; // -> second is frame creation timestamp
+          assert(NULL != frame);
 #else
           VideoFrame *frame = *it3;
 #endif
@@ -1678,7 +1680,6 @@ VideoFrame* ScriptEnvironment::GetNewFrame(size_t vfb_size)
       if (0 == vfb->refcount) // vfb refcount check
       {
         memory_used -= vfb->GetDataSize(); // frame->vfb->GetDataSize();
-        VideoFrameBuffer *_vfb = vfb;
         delete vfb;
         const VideoFrameArrayType::iterator end_it3 = it2->second.end(); // const
         for (VideoFrameArrayType::iterator it3 = it2->second.begin();
@@ -1694,7 +1695,7 @@ VideoFrame* ScriptEnvironment::GetNewFrame(size_t vfb_size)
             delete frame;
           else 
             // there should not be such case: vfb.refcount=0 and frame.refcount!=0
-            _RPT3(0, "  ?????? frame refcount error!!! _vfb=%p frame=%p framerefcount=%d \n", _vfb, frame, frame->refcount); // P.F.
+            _RPT2(0, "  ?????? frame refcount error!!! frame=%p framerefcount=%d \n", frame, frame->refcount); // P.F.
         }
         // delete array belonging to this vfb in one step
         it2->second.clear(); // clear frame list
@@ -1733,7 +1734,7 @@ void ScriptEnvironment::EnsureMemoryLimit(size_t request)
    // We reserve 15% for unaccounted stuff
   size_t memory_need = size_t((memory_used + request) / 0.85f);
 
-  _RPT4(0, "ScriptEnvironment::EnsureMemoryLimit CR_size=%I64d memory_need=%I64d memory_used=%I64d memory_max=%I64d\n", CacheRegistry.size(), memory_need, memory_used, memory_max); // P.F.
+  _RPT4(0, "ScriptEnvironment::EnsureMemoryLimit CR_size=%zu memory_need=%zu memory_used=%I64d memory_max=%I64d\n", CacheRegistry.size(), memory_need, memory_used, memory_max); // P.F.
 #ifdef _DEBUG
 // #define LIST_CACHES    
     // list all cache_entries
@@ -2050,7 +2051,6 @@ void ScriptEnvironment::PopContextGlobal() {
 PVideoFrame __stdcall ScriptEnvironment::Subframe(PVideoFrame src, int rel_offset, int new_pitch, int new_row_size, int new_height) {
 
   VideoFrame* subframe;
-
   subframe = src->Subframe(rel_offset, new_pitch, new_row_size, new_height);
 
   size_t vfb_size = src->GetFrameBuffer()->GetDataSize();
@@ -2058,6 +2058,7 @@ PVideoFrame __stdcall ScriptEnvironment::Subframe(PVideoFrame src, int rel_offse
   //FrameRegistry.insert(FrameRegistryType::value_type(src->GetFrameBuffer()->GetDataSize(), subframe));
 #ifdef _DEBUG
   // insert with timestamp!
+  assert(NULL != subframe);
   FrameRegistry2[vfb_size][src->GetFrameBuffer()].push_back(std::make_pair(subframe, std::chrono::high_resolution_clock::now())); // P.F. automatically inserts if not exists!
 #else  
   FrameRegistry2[vfb_size][src->GetFrameBuffer()].push_back(subframe); // P.F. automatically inserts if not exists!
@@ -2076,6 +2077,7 @@ PVideoFrame __stdcall ScriptEnvironment::SubframePlanar(PVideoFrame src, int rel
 
   //FrameRegistry.insert(FrameRegistryType::value_type(src->GetFrameBuffer()->GetDataSize(), subframe));
 #ifdef _DEBUG
+  assert(subframe != NULL);
   FrameRegistry2[vfb_size][src->GetFrameBuffer()].push_back(std::make_pair(subframe, std::chrono::high_resolution_clock::now())); // P.F. automatically inserts if not exists!
 #else
   FrameRegistry2[vfb_size][src->GetFrameBuffer()].push_back(subframe); // P.F. automatically inserts if not exists!
