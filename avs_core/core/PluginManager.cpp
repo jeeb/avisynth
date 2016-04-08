@@ -187,9 +187,9 @@ AVSFunction::AVSFunction(const char* _name, const char* _plugin_basename, const 
         param_types[len] = 0;
     }
 
-    if ( (NULL != _name) && (NULL != _plugin_basename) )
+    if ( NULL != _name )
     {
-        std::string cn(_plugin_basename);
+		std::string cn(NULL != _plugin_basename ? _plugin_basename : "");
         cn.append("_").append(_name);
         canon_name = new char[cn.size()+1];
         memcpy(canon_name, cn.c_str(), cn.size());
