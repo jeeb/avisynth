@@ -68,7 +68,6 @@ LRESULT AVISource::DecompressBegin(LPBITMAPINFOHEADER lpbiSrc, LPBITMAPINFOHEADE
 
 LRESULT AVISource::DecompressFrame(int n, bool preroll, PVideoFrame &frame, IScriptEnvironment* env) {
   _RPT2(0,"AVISource: Decompressing frame %d%s\n", n, preroll ? " (preroll)" : "");
-  //_RPT2(0, "AVISource: Decompressing frame %d into %p %s\n", n, (void *)frame, preroll ? " (preroll)" : ""); // P.F.
   BYTE* buf = frame->GetWritePtr();
   long bytes_read;
 
@@ -128,9 +127,7 @@ LRESULT AVISource::DecompressFrame(int n, bool preroll, PVideoFrame &frame, IScr
       offsetV = offsetY+sizeY        - offsetV;
      }
     // set pitch = rowsize
-    // _RPT2(0, "AVISource::GetFrame SubframePlanar oldframe=%p\n", (void *)frame); // P.F.
     frame = env->SubframePlanar(frame, 0, rowsizeY, rowsizeY, vi.height, offsetU, offsetV, rowsizeUV);
-    // _RPT2(0, "AVISource::GetFrame SubframePlanar newframe=%p\n", (void *)frame); // P.F.
   }
   else if (bInvertFrames) {
     const int h2 = frame->GetHeight() >> 1;
