@@ -1343,12 +1343,9 @@ PVideoFrame TemporalSoften::GetFrame(int n, IScriptEnvironment* env)
 
   // Just skip if silly settings
 
-  _RPT2(0, "TemporalSoften::GetFrame %d radius=%d kernel=%d", n, radius, kernel);
-
   if ((!luma_threshold) && (!chroma_threshold) || (!radius))
   {
     PVideoFrame ret = child->GetFrame(n, env); // P.F.
-    _RPT1(0, "TemporalSoften::GetFrame returns single frame=%p", (void *)ret);
     return ret;
   }
 
@@ -1358,32 +1355,20 @@ PVideoFrame TemporalSoften::GetFrame(int n, IScriptEnvironment* env)
     planeDisabled[p] = false;
   }
 
-  auto frames = static_cast<PVideoFrame*>(alloca(sizeof(PVideoFrame)* kernel)); // allocate "kernel" count of pointers
+  auto frames = static_cast<PVideoFrame*>(alloca(sizeof(PVideoFrame) * kernel)); // allocate "kernel" count of pointers
   
   for (int p = n-radius; p<=n+radius; p++) {
     new(frames+p+radius-n) PVideoFrame; // n-radius .. n .. n+radius  
     frames[p+radius-n] = child->GetFrame(clamp(p, 0, vi.num_frames-1), env); // radius == 3 -> 0, 1, 2
-    _RPT4(0, "TemporalSoften::create PVideoFrame radius=%d frame[%d]=%p", radius, p + radius - n, (void *)frames[p + radius - n]);
   }
 
-#ifdef _DEBUG
-  for (int i = 0; i < kernel; ++i) {
-    _RPT4(0, "TemporalSoften::BeforeMakeWritable frames[%d] = %p", i,(void *)frames[i]);
-  }
-#endif
-  // P.F. 16.04.06 leak fix after 8 days of bug chasing: 
+  // P.F. 16.04.06 leak fix r1841 after 8 days of bug chasing: 
   // Reason #1 of the random QTGMC memory leaks (stuck frame refcounts) 
   // MakeWritable alters the pointer if it is not yet writeable, thus the original PVideoFrame won't be freed (refcount decremented)
   // To fix this, we leave the frame[] array in its place and copy frame[radius] to CenterFrame and make further write operations on this new frame.
   // env->MakeWritable(&frames[radius]); // old culprit line. if not yet writeable -> gives another pointer
   PVideoFrame CenterFrame = frames[radius];
   env->MakeWritable(&CenterFrame);
-
-#ifdef _DEBUG
-  for (int i = 0; i < kernel; ++i) {
-    _RPT4(0, "TemporalSoften::AfterMakeWritable  frames[%d] = %p", i,(void *)frames[i]);
-  }
-#endif
 
   do {
     const BYTE* planeP[16];
@@ -1453,11 +1438,9 @@ PVideoFrame TemporalSoften::GetFrame(int n, IScriptEnvironment* env)
 
     if (d < 1)
     {
-      // Memory leak reason #2: this wasn't here before return
-      for (int i = 0; i < kernel; ++i) {
-        frames[i] = nullptr; // PVideoFrames are freed if we nullify it
-      }
-      _RPT1(0, "TemporalSoften::returning %p", (void *)CenterFrame);
+      // Memory leak reason #2 r1841: this wasn't here before return
+      for (int i = 0; i < kernel; ++i)
+        frames[i] = nullptr; 
       // return frames[radius];
       return CenterFrame; // return the modified frame
     }
@@ -1487,12 +1470,10 @@ PVideoFrame TemporalSoften::GetFrame(int n, IScriptEnvironment* env)
   } while (planes[c]);
 
 //  PVideoFrame result = frames[radius]; // we are using CenterFrame instead
+  for (int i = 0; i < kernel; ++i) 
+    frames[i] = nullptr; 
 
-  for (int i = 0; i < kernel; ++i) {
-    frames[i] = nullptr; // PVideoFrames are freed if we nullify it
-  }
-  _RPT1(0, "TemporalSoften::end: returning %p", (void *)CenterFrame);
-//  return result;
+  //  return result;
   return CenterFrame;
 }
 
