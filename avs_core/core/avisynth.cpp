@@ -481,9 +481,15 @@ public:
 
     std::string f = NormalizeFilterName(filter);
     if (!force)
+    {
       PerFilterMap[f] = mode;
+      _RPT2(0,"MT SetMode NOT FORCED for %s: %d\n", f.c_str(), (int)mode);
+    }
     else
+    {
       ForcedMap[f] = mode;
+      _RPT2(0, "MT SetMode     FORCED for %s: %d\n", f.c_str(), (int)mode);
+    }
   }
 
   MtMode GetMode(const std::string& filter, bool* is_forced, bool* found) const
@@ -499,14 +505,18 @@ public:
     if (it != ForcedMap.end())
     {
       *is_forced = true;
+      _RPT2(0, "MT GetMode     FORCED for %s: %d\n", f.c_str(), (int)it->second);
       return it->second;
     }
 
     it = PerFilterMap.find(f);
     if (it != PerFilterMap.end())
+    {
+      _RPT2(0, "MT GetMode PER FORCED for %s: %d\n", f.c_str(), (int)it->second);
       return it->second;
-
+    }
     *found = false;
+    _RPT2(0, "MT GetMode  DEFAULT   for %s: %d\n", f.c_str(), DefaultMode);
     return DefaultMode;
   }
 
@@ -809,10 +819,11 @@ void ScriptEnvironment::InitMT()
     this->SetFilterMTMode(BUILTIN_FUNC_PREFIX "_Weave", MtMode::MT_NICE_FILTER, true);
     this->SetFilterMTMode(BUILTIN_FUNC_PREFIX "_Pulldown", MtMode::MT_NICE_FILTER, true);
     this->SetFilterMTMode(BUILTIN_FUNC_PREFIX "_SelectEvery", MtMode::MT_NICE_FILTER, true);
-    this->SetFilterMTMode(BUILTIN_FUNC_PREFIX "_SelectEven", MtMode::MT_NICE_FILTER, true);
+    this->SetFilterMTMode(BUILTIN_FUNC_PREFIX "_SelectEven", MtMode::MT_NICE_FILTER, true); 
     this->SetFilterMTMode(BUILTIN_FUNC_PREFIX "_SelectOdd", MtMode::MT_NICE_FILTER, true);
     this->SetFilterMTMode(BUILTIN_FUNC_PREFIX "_Bob", MtMode::MT_NICE_FILTER, true);
     this->SetFilterMTMode(BUILTIN_FUNC_PREFIX "_SelectRangeEvery", MtMode::MT_NICE_FILTER, true);
+    this->SetFilterMTMode(BUILTIN_FUNC_PREFIX "_SeparateFields", MtMode::MT_NICE_FILTER, true);
 
     this->SetFilterMTMode(BUILTIN_FUNC_PREFIX "_Blur", MtMode::MT_NICE_FILTER, true);
     this->SetFilterMTMode(BUILTIN_FUNC_PREFIX "_Sharpen", MtMode::MT_NICE_FILTER, true);
@@ -1525,19 +1536,23 @@ VideoFrame* ScriptEnvironment::GetNewFrame(size_t vfb_size)
               t_end = std::chrono::high_resolution_clock::now();
               std::chrono::duration<double> elapsed_seconds = t_end - t_start;
               it3->second = std::chrono::high_resolution_clock::now(); // refresh timestamp!
-                                                                       // 16.03.27 P.F. test: we dont allow vfb's frame count list to grow to many thousand. If the count reaches 100, we cut
-                                                                       // In a 40000 original frame QTGMC session, there are more than 600 vfb's occupied. Many of them with 4-5k parent frames!
-                                                                       // Let's test what happens if we free them up here. Speed?, marginally less memory?
               _RPT4(0, "ScriptEnvironment::GetNewFrame NEW METHOD EXACT hit! VideoFrameListSize=%7Iu GotSize=%7Iu FrReg.Size=%6Iu Cnt=%6d CntInner=%6d vfb=%p frame=%p SeekTime:%f\n", videoFrameListSize, vfb_size, FrameRegistry2.size(), linearsearchcount, linearsearchcount_list, vfb, frame, elapsed_seconds.count()); // P.F.
               _RPT4(0, "                                          frame %p RowSize=%d Height=%d Pitch=%d Offset=%d\n", frame, frame->GetRowSize(), frame->GetHeight(), frame->GetPitch(), frame->GetOffset()); // P.F.
 #endif
-              if (videoFrameListSize < 50) // less than 50 entry in list -> return
+              // 16.03.27 P.F. test: we dont allow vfb's frame count list to grow to many thousand. If the count reaches 100, we cut
+              // In a 40000 original frame QTGMC session, there are more than 600 vfb's occupied. Many of them with 4-5k parent frames!
+              // Let's test what happens if we free them up here. Speed?, marginally less memory?
+              // less memory!
+              // only 1 frame in list -> no delete
+              if (videoFrameListSize < 50) // less than X entry in list -> return
               {
+                _RPT1(0, "ScriptEnvironment::GetNewFrame returning frame. VideoFrameListSize was < 50: %7zu \n", videoFrameListSize); // P.F.
                 return frame; // return immediately
                 break;
               }
+              _RPT1(0, "ScriptEnvironment::GetNewFrame not returning frame. VideoFrameListSize was >= 50: %7zu \n", videoFrameListSize); // P.F.
 
-              // more than 150: just registered the frame found, and erase all other frames from list plus delete frame objects also
+              // more than X: just registered the frame found, and erase all other frames from list plus delete frame objects also
               frame_found = frame;
               found = true;
               it3++;
@@ -1557,6 +1572,7 @@ VideoFrame* ScriptEnvironment::GetNewFrame(size_t vfb_size)
         } // for it3
         if (found)
         {
+          _RPT1(0, "ScriptEnvironment::GetNewFrame returning frame_found. it2->second.size(): %7zu \n", it2->second.size()); // P.F.
           return frame_found;
         }
       }
@@ -1579,7 +1595,7 @@ VideoFrame* ScriptEnvironment::GetNewFrame(size_t vfb_size)
 	// list to debugview: only frame with vfb_size size  
 	//for (FrameRegistryType2::iterator it = FrameRegistry2.lower_bound(vfb_size), end_it = FrameRegistry2.upper_bound(vfb_size); csak az adott méretet
 	// list to debugview: all frames up-to vfb_size size  
-  if (vfb_size == 645151) // P.F. 16.04.05 narrow down to the leaking size!
+  if (1 /*vfb_size == 645151*/) // P.F. 16.04.05 narrow down to the leaking size!
   {
     //for (FrameRegistryType2::iterator it = FrameRegistry2.begin(), end_it = FrameRegistry2.upper_bound(vfb_size);
     for (FrameRegistryType2::iterator it = FrameRegistry2.lower_bound(vfb_size), end_it = FrameRegistry2.upper_bound(vfb_size);
