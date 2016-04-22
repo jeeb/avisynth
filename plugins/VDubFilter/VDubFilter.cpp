@@ -38,11 +38,12 @@
 #include <cstdio>
 #include <new>
 
-typedef unsigned int    Pixel;    // this will break on 64-bit machines!
+typedef unsigned int    Pixel;
 typedef unsigned char   Pixel8;
-typedef int             PixCoord;
-typedef int             PixDim;
-typedef int             PixOffset;
+typedef int             PixCoord; // long in vbitmap.h
+typedef int             PixDim;   // long in vbitmap.h
+//typedef int             PixOffset; // P.F. 160421 this really broke on 64 bit machines
+typedef ptrdiff_t       PixOffset; // much better
 
 /********************************************************************
 * VirtualDub plugin support
@@ -69,6 +70,7 @@ int GetCPUFlags();
 
 
 class CScriptValue;
+class CScriptValueStringHelper; // char ** helper
 struct CScriptObject;
 
 
@@ -111,21 +113,36 @@ struct CScriptObject {
 
 class CScriptValue {
 public:
-  enum { T_VOID, T_INT, T_PINT, T_STR, T_ARRAY, T_OBJECT, T_FNAME, T_FUNCTION, T_VARLV } type;
+  enum { T_VOID, T_INT, T_PINT, T_STR, T_ARRAY, T_OBJECT, T_FNAME, T_FUNCTION, T_VARLV, T_LONG, T_DOUBLE} type;
   CScriptObject *thisPtr;
+  // see vdub: vdvideofilt.h
+  /* fails in x64 + vdub + neatvideo
   union {
     int i;
     char **s;
   } u;
-  void *lpVoid;
+  void *lpVoid; // in 64 bit, the union is already 8 bytes, this extra helper pointer/padder makes it too big
+  */
+  union {
+    int i;
+    char **s;
+    __int64 l; // in avs n/a
+    double d;  // new type from 160420
+  } u;
   CScriptValue()            { type = T_VOID; }
-  void operator=(int i)         { type = T_INT;     u.i = i; }
-  void operator=(char **s)        { type = T_STR;     u.s = s; }
+  void operator=(int i)     { type = T_INT;    u.i = i; }
+  void operator=(char **s)  { type = T_STR;    u.s = s; }
+  void operator=(__int64 l) { type = T_LONG;   u.l = l; } // not used, only integer exists in avs
+  void operator=(double d)  { type = T_DOUBLE; u.d = d; }
+};
+
+class CScriptValueStringHelper {
+public:
+  void *lpVoid; // char ** helper, introduced for x64, the CScriptValue union is already 8 bytes
 };
 
 
 //////////////////// from VBitmap.h ////////////////////
-
 
 class VBitmap {
 public:
@@ -676,15 +693,23 @@ public:
     return FilterFrame(n, env, false);
   }
 
-  static int ConvertArgs(const AVSValue* args, CScriptValue* sylia_args, int count) {
+  static int ConvertArgs(const AVSValue* args, CScriptValue* sylia_args, CScriptValueStringHelper* sylia_args_string_helper, int count) {
     for (int i=0; i<count; ++i) {
       if (args[i].IsInt()) {
         sylia_args[i] = args[i].AsInt();
+      } else if (args[i].IsFloat()) { // new from 160420 double support
+        sylia_args[i] = args[i].AsFloat();
       } else if (args[i].IsString()) {
+        // Oops, where can we put the pointer to pointer in x64? no place in CScriptValue struct
+        // helper class/struct needed.
+        sylia_args_string_helper[i].lpVoid = (void*)args[i].AsString();
+        sylia_args[i] = (char**)&sylia_args_string_helper[i].lpVoid;
+        /* original, works only for 32 bit
         sylia_args[i].lpVoid = (void*)args[i].AsString();
         sylia_args[i] = (char**)&sylia_args[i].lpVoid;
+        */
       } else if (args[i].IsArray()) {
-        return i+ConvertArgs(&args[i][0], sylia_args+i, args[i].ArraySize());
+        return i+ConvertArgs(&args[i][0], sylia_args+i, sylia_args_string_helper+i, args[i].ArraySize()); 
       } else {
         return -1000;
       }
@@ -699,6 +724,8 @@ public:
         int j;
         for (j=1; j<args.ArraySize(); j++) {
           if (p[j] == 'i' && args[j].IsInt()) continue;
+          //else if (p[j] == 'l' && args[j].IsInt()) continue;  // n/a only Int in avs
+          else if (p[j] == 'd' && args[j].IsFloat()) continue;  // 160420 type double support
           else if (p[j] == 's' && args[j].IsString()) continue;
           else if (p[j] == '.' && args[j].IsArray()) continue;
           else break;
@@ -707,9 +734,10 @@ public:
           // match
           MyScriptInterpreter si(env);
           CScriptValue sylia_args[30];
-          int sylia_arg_count = ConvertArgs(&args[1], sylia_args, args.ArraySize()-1);
+          CScriptValueStringHelper sylia_args_string_helper[30]; // helper class. x64 char ** helper did not fit into CScriptValue class size 
+          int sylia_arg_count = ConvertArgs(&args[1], sylia_args, sylia_args_string_helper, args.ArraySize()-1);
           if (sylia_arg_count < 0)
-            env->ThrowError("VirtualdubFilterProxy: arguments (after first) must be integers and strings only");
+            env->ThrowError("VirtualdubFilterProxy: arguments (after first) must be integers, double and strings only"); // 160420 double
           i->func_ptr(&si, &fa, sylia_args, sylia_arg_count);
           return;
         }
