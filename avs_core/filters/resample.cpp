@@ -716,7 +716,7 @@ FilteredResizeH::FilteredResizeH( PClip _child, double subrange_left, double sub
       turn_left = turn_left_rgb24;
       turn_right = turn_right_rgb24;
     } else if (vi.IsRGB32()) {
-      if (env->GetCPUFlags() & CPUF_SSE2) {
+      if (env->GetCPUFlags() & CPUF_SSE2) { 
         turn_left = turn_left_rgb32_sse2;
         turn_right = turn_right_rgb32_sse2;
       } else {
@@ -782,9 +782,10 @@ PVideoFrame __stdcall FilteredResizeH::GetFrame(int n, IScriptEnvironment* env)
       }
     } else {
       // RGB
-      turn_right(src->GetReadPtr(), temp_1, vi.BytesFromPixels(src_width), src_height, src->GetPitch(), temp_1_pitch);
+      // PF160510 first left, then right. Right+left shifts RGB24/RGB32 image to the opposite horizontal direction
+      turn_left(src->GetReadPtr(), temp_1, vi.BytesFromPixels(src_width), src_height, src->GetPitch(), temp_1_pitch);
       resampler_luma(temp_2, temp_1, temp_2_pitch, temp_1_pitch, resampling_program_luma, vi.BytesFromPixels(src_height), dst_width, src_pitch_table_luma, filter_storage_luma);
-      turn_left(temp_2, dst->GetWritePtr(), vi.BytesFromPixels(dst_height), dst_width, temp_2_pitch, dst->GetPitch());
+      turn_right(temp_2, dst->GetWritePtr(), vi.BytesFromPixels(dst_height), dst_width, temp_2_pitch, dst->GetPitch());
     }
 
     env2->Free(temp_1);
@@ -1048,7 +1049,7 @@ PClip FilteredResize::CreateResize(PClip clip, int target_width, int target_heig
 {
   const VideoInfo& vi = clip->GetVideoInfo();
   const double subrange_left = args[0].AsFloat(0), subrange_top = args[1].AsFloat(0);
-
+  
   double subrange_width = args[2].AsDblDef(vi.width), subrange_height = args[3].AsDblDef(vi.height);
   // Crop style syntax
   if (subrange_width  <= 0.0) subrange_width  = vi.width  - subrange_left + subrange_width;
