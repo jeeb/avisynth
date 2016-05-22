@@ -39,6 +39,7 @@
 
 // These things don't exist in Linux
 #define __declspec(x)
+#define lstrcmpi strcasecmp
 
 // Calling convension
 #define _stdcall __stdcall
