@@ -1547,6 +1547,14 @@ VideoFrame* ScriptEnvironment::GetNewFrame(size_t vfb_size)
    *   Try to return an unused but already allocated instance
    * -----------------------------------------------------------
    */
+   // prevent fragmentation of vfb buffer list many different small-sized vfb's
+  if (vfb_size < 64) vfb_size = 64;
+  else if (vfb_size < 256) vfb_size = 256;
+  else if (vfb_size < 512) vfb_size = 512;
+  else if (vfb_size < 1024) vfb_size = 1024;
+  else if (vfb_size < 2048) vfb_size = 2048;
+  else if (vfb_size < 4096) vfb_size = 4096;
+
 #ifdef _DEBUG
   std::chrono::time_point<std::chrono::high_resolution_clock> t_start, t_end; // std::chrono::time_point<std::chrono::system_clock> t_start, t_end;
   t_start = std::chrono::high_resolution_clock::now();
