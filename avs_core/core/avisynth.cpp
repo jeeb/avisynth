@@ -610,16 +610,13 @@ private:
 
   bool closing;                 // Used to avoid deadlock, if vartable is being accessed while shutting down (Popcontext)
 
-  // typedef std::multimap<size_t, VideoFrame*> FrameRegistryType;
-  // FrameRegistryType FrameRegistry; we use FrameRegistry2 instead, post r1825
-
 #ifdef _DEBUG
   typedef std::vector<std::pair<VideoFrame*, std::chrono::time_point<std::chrono::high_resolution_clock >>> VideoFrameArrayType;
 #else
   typedef std::vector<VideoFrame*> VideoFrameArrayType;
 #endif
   typedef std::map<VideoFrameBuffer *, VideoFrameArrayType> FrameBufferRegistryType;
-  typedef std::map<size_t, FrameBufferRegistryType> FrameRegistryType2; // P.F.
+  typedef std::map<size_t, FrameBufferRegistryType> FrameRegistryType2; // post r1825 P.F.
   typedef mapped_list<Cache*> CacheRegistryType;
 
  
@@ -899,39 +896,7 @@ ScriptEnvironment::~ScriptEnvironment() {
   while (global_var_table)
     PopContextGlobal();
 
-#if 0
-  // old FrameRegistry logic  
-  // We collect a list of allocated VFBs here
-  std::unordered_set<VideoFrameBuffer*> vfb_set;
-  vfb_set.reserve(FrameRegistry.size()); 
-  // Delete all VideoFrame objects
-  const FrameRegistryType::iterator end_it = FrameRegistry.end();
-  for (
-    FrameRegistryType::iterator it = FrameRegistry.begin();
-    it != end_it;
-    ++it)
-  {
-	  
-    VideoFrame *frame = it->second;
-
-    vfb_set.insert(frame->vfb);
-    frame->vfb = 0;
-
-    //assert(0 == frame->refcount);
-    if (0 == frame->refcount)
-    {
-        delete frame;
-    }
-  }
-  // Delete all VFBs
-  for (const auto& vfb : vfb_set)
-  {
-    //assert(0 == vfb->refcount);
-    delete vfb;
-  }
-#endif
-
-  // and deleting the frame buffer created with the new method as well P.F.
+  // and deleting the frame buffer from FrameRegistry2 as well
   for (FrameRegistryType2::iterator it = FrameRegistry2.begin(), end_it = FrameRegistry2.end();
   it != end_it;
     ++it)
@@ -1271,9 +1236,8 @@ VideoFrame* ScriptEnvironment::AllocateFrame(size_t vfb_size)
 
   memory_used+=vfb_size;
 
-  // old: FrameRegistry.insert(FrameRegistryType::value_type(vfb_size, newFrame)); 
   // automatically inserts keys if they not exist!
-  // no locking here, calling method already locked
+  // no locking here, calling method have done it already
 #ifdef _DEBUG
   // insert with timestamp!
   FrameRegistry2[vfb_size][vfb].push_back(std::make_pair(newFrame, std::chrono::high_resolution_clock::now()));
@@ -1285,165 +1249,6 @@ VideoFrame* ScriptEnvironment::AllocateFrame(size_t vfb_size)
 
   return newFrame;
 }
-
-#if 0
-// P.F. Old GetNewFrame for old FrameRegisty 
-// FrameRegistry: Lookup of reusable frame, until avs+ MT 1825
-// 
-// Problem: huge slowdown that increases with frame count
-//
-// Cause:
-//
-// All frames are inserted into FrameRegistry.
-// The key_value used in FrameRegisty (which is a multimap) is vfb_size, that is frame->vfb->GetDataSize()
-// The second value of the pair is the frame pointer itself. 
-// The count of different keys (allocated sizes of VideoFrameBuffer) is a relatively small value
-// After the iterator finds the key, we take a linear method to lookup if that specific frame has refcount==0. If so, we check if its vfb.refcount==0
-// Note that multiple frames can and do share the same vfb. Until there is reference to this vfb, the lookup fails at vfb.refcount!=0
-// When our test source clip is a static one, like ColorBars, this vfb will never reach refcount==0
-// Specifically in this ColorBars test case, the linear search can go through all the frames, because most of the frames inherit the same vfb.
-// In real life, as the framecount increases, the lookup doesn't find any unuccopied frame, as all frame have nonzero refcount through their vfb
-// Sometimes this cache is hit. See this log sequence with the measured lookup times after having more than 230000 frames in the frame registry:
-// ScriptEnvironment::GetNewFrame hit! FrameRegistry.Size = 238173 LinearLookupCount = 161    SeekTime : 0.000032 sec
-// ScriptEnvironment::GetNewFrame hit! FrameRegistry.Size = 238173 LinearLookupCount = 179    SeekTime : 0.000025 sec
-// ScriptEnvironment::GetNewFrame hit! FrameRegistry.Size = 238173 LinearLookupCount = 238159 SeekTime : 0.027671 sec !!!
-// ScriptEnvironment::GetNewFrame hit! FrameRegistry.Size = 238173 LinearLookupCount = 238164 SeekTime : 0.029031 sec !!!
-// ScriptEnvironment::GetNewFrame hit! FrameRegistry.Size = 238173 LinearLookupCount = 165    SeekTime : 0.000032 sec
-// 
-// entry#1     : frame=0x00000100, frame.refcount=0   vfb=0x11111111, vfb.refcount=19
-// entry#2     : frame=0x00000200, frame.refcount=0   vfb=0x11111111, vfb.refcount=19
-// ...
-// entry#238164: frame=0x12121212, frame.refcount=0   vfb=0x11111111, vfb.refcount=19   
-//
-// The lookup time of the worst cases (which occur frequently) is in 0.03 sec range on my i7-3770@3.4GHz CPU
-// No wonder we experience serious slowdown.
-// 
-// New, inverse approach
-// FrameRegistry2, which is a nested map time, with keys vfb_size and the vfb pointer itself.
-// We find the first key: vfb_size. 
-// Each vfb_size entry have a sub-map with the vfb values.
-// So we take an inverse logic than FrameRegistry. If vfb.refcount is nonzero: we can simply skip all the frames belonging to it.
-// Although vfb's are still searched linearly, their count is limited in real life so the lookup is fast. When we hit a vfb.refcount==0, then the related frames 
-// that own this very same vfb have surely frame.refcount==0, so this frame and its vfb can immediately be reused and the function returns
-// 
-// To visualize the difference:
-// New method FrameRegistry2, nested std::map
-// [vfb_size = 10000][vfb = 0x111111111 (refcount=19)] [frame = 1      (refcount=0)]   we'll never hit this! vfb.framecount=19
-//                                                     [frame = 2      (refcount=0)] 
-//                                                     [frame = 5      (refcount=0)] 
-//                                                     [...                             ] 
-//                                                     [frame = 200000 (refcount=0)] 
-//                   [vfb = 0x222222222 (refcount= 1)] [frame = 3      (refcount=0)]   still not good good, being vfb.refcount==1
-//                                                     [frame = 4      (refcount=1)]
-//                   [vfb = 0x333333333 (refcount= 0)] [frame = 200001 (refcount=0)]   Hit!
-//                                                     [frame = 200033 (refcount=0)]
-// While the old method had typical LinearLookupCount in the 100s or even 100000s magnitude, the new FrameRegistry2 finds the value tipically in 1-10 steps 
-// In the sample above, it took 3 steps to reach a vfb with refcount = 0
-// 
-// Old method: FrameRegistry: std::multimap
-// [vfb_size = 10000] [frame = 1      (refcount=0)]  [vfb = 0x111111111 (refcount=19)]  
-//                    [frame = 2      (refcount=0)]  [vfb = 0x111111111 (refcount=19)]  
-//                    [frame = 3      (refcount=0)]  [vfb = 0x222222222 (refcount= 1)]  
-//                    [frame = 4      (refcount=1)]  [vfb = 0x222222222 (refcount= 1)]  
-// ...
-//                    [frame = 199999 (refcount=0)]  [vfb = 0x111111111 (refcount=19)]  
-//                    [frame = 200000 (refcount=0)]  [vfb = 0x111111111 (refcount=19)]  // still not good
-//                    [frame = 200001 (refcount=0)]  [vfb = 0x333333333 (refcount= 0)]  // got it! both frame and vfb refcount is 0!
-// In the old method it took 200001 steps to find a gap/hole that can be reoccupied. 
-
-VideoFrame* ScriptEnvironment::GetNewFrame(size_t vfb_size)
-{
-  std::unique_lock<std::mutex> env_lock(memory_mutex);
-
-  /* -----------------------------------------------------------
-  *   Try to return an unused but already allocated instance
-  * -----------------------------------------------------------
-  */
-  for (
-    FrameRegistryType::iterator it = FrameRegistry.lower_bound(vfb_size), end_it = FrameRegistry.end();
-    it != end_it;
-    ++it)
-  {
-    VideoFrame *frame = it->second;
-    assert((size_t)frame->vfb->GetDataSize() >= vfb_size);
-    if ((frame->refcount == 0)        // Nobody is using the frame
-      && (frame->vfb->refcount == 0))  // And only this frame is using its vfb
-    {
-      InterlockedIncrement(&(frame->vfb->refcount));
-      return frame;
-      break;
-    }
-  }
-
-  /* -----------------------------------------------------------
-  *   No unused instance was found, try to allocate a new one
-  * -----------------------------------------------------------
-  */
-  VideoFrame* frame = AllocateFrame(vfb_size);
-  if (frame != NULL)
-    return frame;
-
-
-  /* -----------------------------------------------------------
-  * Couldn't allocate, try to free up unused frames of any size
-  * -----------------------------------------------------------
-  */
-  for (
-    FrameRegistryType::iterator it = FrameRegistry.begin(), end_it = FrameRegistry.end();
-    (it != end_it) && (size_t(it->second->vfb->data_size) < vfb_size);
-    )
-  {
-    VideoFrame *frame = it->second;
-    assert((size_t)frame->vfb->GetDataSize() < vfb_size);
-
-    if (frame->refcount == 0)
-    {
-      if (frame->vfb->refcount == 0)
-      {
-        memory_used -= frame->vfb->GetDataSize();
-        delete frame->vfb;
-      }
-
-      delete frame;
-      FrameRegistry.erase(it++);
-    }
-    else
-    {
-      ++it;
-    }
-  }
-  /* -----------------------------------------------------------
-  *   No unused instance was found, try to allocate a new one
-  * -----------------------------------------------------------
-  */
-
-  VideoFrame* frame = AllocateFrame(vfb_size);
-  if (frame != NULL)
-    return frame;
-
-
-  /* -----------------------------------------------------------
-  * Couldn't allocate, try to free up unused frames of any size
-  * -----------------------------------------------------------
-  */
-  [... clean up list ...]
-
-  /* -----------------------------------------------------------
-  *   Try to allocate again
-  * -----------------------------------------------------------
-  */
-  frame = AllocateFrame(vfb_size);
-  if (frame != NULL)
-    return frame;
-
-  /* -----------------------------------------------------------
-  *   Oh boy...
-  * -----------------------------------------------------------
-  */
-  ThrowError("Could not allocate video frame. Out of memory.");
-  return NULL;
-}
-#endif
 
 #ifdef _DEBUG
 void ScriptEnvironment::ListFrameRegistry(size_t min_size, size_t max_size, bool someframes)
@@ -1784,35 +1589,7 @@ void ScriptEnvironment::EnsureMemoryLimit(size_t request)
   * Try to free up memory that we've just released from a cache
   * -----------------------------------------------------------
   */
-#if 0
-  // Old FrameRegistry logic
-  const FrameRegistryType::iterator end_fit = FrameRegistry.end();
-  for (
-    FrameRegistryType::iterator fit = FrameRegistry.begin();
-    fit != end_fit;
-    )
-  {
-    VideoFrame *frame = fit->second;
-
-    if (frame->refcount == 0)
-    {
-      if (frame->vfb->refcount == 0)
-      {
-        _RPT2(0, "ScriptEnvironment::EnsureMemoryLimit req=%Iu freed=%d\n", request, frame->vfb->GetDataSize()); // P.F.
-        memory_used -= frame->vfb->GetDataSize();
-        delete frame->vfb;
-      }
-
-      delete frame;
-      FrameRegistry.erase(fit++);
-    }
-    else
-    {
-      ++fit;
-    }
-  } // for fit
-#endif
-  // and delete in the new frame registry FrameRegistry2
+  // Free up in one pass in FrameRegistry2
   if (shrinkcount)
   {
     _RPT2(0, "EnsureMemoryLimit GC start: memused=%I64d\n", memory_used);
@@ -2056,7 +1833,6 @@ PVideoFrame __stdcall ScriptEnvironment::Subframe(PVideoFrame src, int rel_offse
 
   size_t vfb_size = src->GetFrameBuffer()->GetDataSize();
 
-  //FrameRegistry.insert(FrameRegistryType::value_type(src->GetFrameBuffer()->GetDataSize(), subframe));
   std::unique_lock<std::mutex> env_lock(memory_mutex); // vector needs locking!
   // automatically inserts if not exists!
 #ifdef _DEBUG
@@ -2077,7 +1853,6 @@ PVideoFrame __stdcall ScriptEnvironment::SubframePlanar(PVideoFrame src, int rel
 
   size_t vfb_size = src->GetFrameBuffer()->GetDataSize();
 
-  //FrameRegistry.insert(FrameRegistryType::value_type(src->GetFrameBuffer()->GetDataSize(), subframe));
   std::unique_lock<std::mutex> env_lock(memory_mutex); // vector needs locking!
   // automatically inserts if not exists!
 #ifdef _DEBUG
