@@ -264,7 +264,6 @@ VideoFrame::VideoFrame(VideoFrameBuffer* _vfb, int _offset, int _pitch, int _row
     offsetU(_offset),offsetV(_offset),pitchUV(0), row_sizeUV(0), heightUV(0)  // PitchUV=0 so this doesn't take up additional space
 {
   InterlockedIncrement(&vfb->refcount);
-//  _RPT2(0, "VideoFrame::VideoFrame(A) NEW! vfb.refcount=%d vfb=%p\r\n", vfb->refcount, (void *)vfb); 
 }
 
 VideoFrame::VideoFrame(VideoFrameBuffer* _vfb, int _offset, int _pitch, int _row_size, int _height,
@@ -273,7 +272,6 @@ VideoFrame::VideoFrame(VideoFrameBuffer* _vfb, int _offset, int _pitch, int _row
     offsetU(_offsetU),offsetV(_offsetV),pitchUV(_pitchUV), row_sizeUV(_row_sizeUV), heightUV(_heightUV)
 {
   InterlockedIncrement(&vfb->refcount);
-//  _RPT2(0, "VideoFrame::VideoFrame(B) NEW! vfb.refcount=%d vfb=%p\r\n", vfb->refcount, (void *)vfb); 
 }
 
 // Hack note :- Use of SubFrame will require an "InterlockedDecrement(&retval->refcount);" after
@@ -281,13 +279,7 @@ VideoFrame::VideoFrame(VideoFrameBuffer* _vfb, int _offset, int _pitch, int _row
 // P.F. ?? so far it works automatically
 
 VideoFrame* VideoFrame::Subframe(int rel_offset, int new_pitch, int new_row_size, int new_height) const {
-#ifdef _DEBUG
-  VideoFrame *subFrame = new VideoFrame(vfb, offset + rel_offset, new_pitch, new_row_size, new_height);
-  //_RPT4(0, "VideoFrame::Subframe(A) frame=%p parent=%p rel_offset=%d new_pitch=%d new_row_size=%d new_height=%d vfb=%p\r\n", subFrame, (void *)this, rel_offset, new_pitch, new_row_size, new_height, (void *)vfb); // P.F.
-  return subFrame;
-#else
   return new VideoFrame(vfb, offset+rel_offset, new_pitch, new_row_size, new_height);
-#endif
 }
 
 
@@ -297,15 +289,8 @@ VideoFrame* VideoFrame::Subframe(int rel_offset, int new_pitch, int new_row_size
   const int new_row_sizeUV = !row_size ? 0 : MulDiv(new_row_size, row_sizeUV, row_size);
   const int new_heightUV   = !height   ? 0 : MulDiv(new_height,   heightUV,   height);
 
-#ifdef _DEBUG
-  VideoFrame *subFrame = new VideoFrame(vfb, offset + rel_offset, new_pitch, new_row_size, new_height,
-                                        rel_offsetU + offsetU, rel_offsetV + offsetV, new_pitchUV, new_row_sizeUV, new_heightUV);
-  //_RPT4(0, "VideoFrame::Subframe(B) frame=%p parent=%p rel_offset=%d new_pitch=%d new_row_size=%d new_height=%d vfb=%p\r\n", subFrame, (void *)this, rel_offset, new_pitch, new_row_size, new_height, (void *)vfb); // P.F.
-  return subFrame;
-#else
   return new VideoFrame(vfb, offset+rel_offset, new_pitch, new_row_size, new_height,
                         rel_offsetU+offsetU, rel_offsetV+offsetV, new_pitchUV, new_row_sizeUV, new_heightUV);
-#endif
 }
 
 
@@ -323,7 +308,6 @@ VideoFrameBuffer::VideoFrameBuffer(int size) :
   sequence_number(0) 
 {
   InterlockedIncrement(&sequence_number);
-	_RPT2(0, "VideoFrameBuffer::VideoFrameBuffer NEW empty data allocated! Size=%d Data@%p\r\n", size, (void *)data); // P.F.
 
 #ifdef _DEBUG
   int *pInt=(int *)(data+size);
@@ -349,7 +333,6 @@ VideoFrameBuffer::VideoFrameBuffer(int size) :
 VideoFrameBuffer::~VideoFrameBuffer() {
 //  _ASSERTE(refcount == 0);
   InterlockedIncrement(&sequence_number); // HACK : Notify any children with a pointer, this buffer has changed!!!
-  //_RPT2(0, "VideoFrameBuffer::~VideoFrameBuffer free! New seqNum=%d Data@%p\r\n", sequence_number, (void *) data); 
   if (data) delete[] data;
   (BYTE*)data = 0; // and mark it invalid!!
   (int)data_size = 0;   // and don't forget to set the size to 0 as well!
@@ -648,7 +631,11 @@ private:
   typedef std::map<size_t, FrameBufferRegistryType> FrameRegistryType2; // P.F.
   typedef mapped_list<Cache*> CacheRegistryType;
 
+ 
   FrameRegistryType2 FrameRegistry2; // P.F.
+#ifdef _DEBUG
+  void ListFrameRegistry(size_t min_size, size_t max_size, bool someframes);
+#endif
 
   CacheRegistryType CacheRegistry;
   Cache* FrontCache;
@@ -717,7 +704,6 @@ ScriptEnvironment::ScriptEnvironment()
     BufferPool(this)
 {
   try {
-		_RPT2(0, "******** ScriptEnvironment::ScriptEnvironment ************** FrameRegistry2:%p\r\n", &FrameRegistry2); // P.F.
     // Make sure COM is initialised
     hrfromcoinit = CoInitialize(NULL);
 
@@ -1270,7 +1256,7 @@ VideoFrame* ScriptEnvironment::AllocateFrame(size_t vfb_size)
   }
 
   EnsureMemoryLimit(vfb_size);
-
+  
   VideoFrameBuffer* vfb = NULL;
   try
   {
@@ -1281,7 +1267,7 @@ VideoFrame* ScriptEnvironment::AllocateFrame(size_t vfb_size)
     return NULL;
   }
 
-  VideoFrame *newFrame = NULL;
+    VideoFrame *newFrame = NULL;
   try
   {
     newFrame = new VideoFrame(vfb, 0, 0, 0, 0);
@@ -1295,12 +1281,12 @@ VideoFrame* ScriptEnvironment::AllocateFrame(size_t vfb_size)
 
   memory_used+=vfb_size;
 
-  //FrameRegistry.insert(FrameRegistryType::value_type(vfb_size, newFrame)); 
+  // old: FrameRegistry.insert(FrameRegistryType::value_type(vfb_size, newFrame)); 
   // automatically inserts keys if they not exist!
   // no locking here, calling method already locked
 #ifdef _DEBUG
   // insert with timestamp!
-  FrameRegistry2[vfb_size][vfb].push_back(std::make_pair(newFrame, std::chrono::high_resolution_clock::now())); 
+  FrameRegistry2[vfb_size][vfb].push_back(std::make_pair(newFrame, std::chrono::high_resolution_clock::now()));
 #else
   FrameRegistry2[vfb_size][vfb].push_back(newFrame);
 #endif
@@ -1469,6 +1455,91 @@ VideoFrame* ScriptEnvironment::GetNewFrame(size_t vfb_size)
 }
 #endif
 
+#ifdef _DEBUG
+void ScriptEnvironment::ListFrameRegistry(size_t min_size, size_t max_size, bool someframes)
+{
+  int linearsearchcount;
+  //#define FULL_LIST_OF_VFBs
+  //#define LIST_ALSO_SOME_FRAMES
+  linearsearchcount = 0;
+  int size1 = 0;
+  int size2 = 0;
+  int size3 = 0;
+  int inner_frame_count = 0;
+  int inner_frame_count_for_frame_refcount_nonzero = 0;
+  _RPT3(0, "******** %p <= FrameRegistry2 Address. Buffer list for size between %7Iu and %7Iu\n", &FrameRegistry2, min_size, max_size);
+  _RPT1(0, ">> IterateLevel #1: Different vfb sizes: FrameRegistry2.size=%Iu \n", FrameRegistry2.size());
+  size_t total_vfb_size = 0;
+  // list to debugview: all frames up-to vfb_size size  
+  for (FrameRegistryType2::iterator it = FrameRegistry2.lower_bound(min_size), end_it = FrameRegistry2.upper_bound(max_size);
+    it != end_it;
+    ++it)
+  {
+    size1++;
+    _RPT5(0, ">>>> IterateLevel #2 [%3d]: Vfb count for size %7Iu is %7Iu\n", size1, it->first, it->second.size());
+    for (FrameBufferRegistryType::iterator it2 = it->second.begin(), end_it2 = it->second.end();
+      it2 != end_it2;
+      ++it2)
+    {
+      size2++;
+      VideoFrameBuffer *vfb = it2->first;
+      total_vfb_size += vfb->GetDataSize();
+      size_t inner_frame_count_size = it2->second.size();
+      _RPT5(0, ">>>> IterateLevel #3 %5Iu frames in [%3d,%5d] --> vfb=%p vfb_refcount=%3d seqNum=%d\n", inner_frame_count_size, size1, size2, vfb, vfb->refcount, vfb->GetSequenceNumber()); // P.F.
+                                                                                                   // iterate the frame list of this vfb
+      int inner_frame_count = 0;
+      int inner_frame_count_for_frame_refcount_nonzero = 0;
+      for (VideoFrameArrayType::iterator it3 = it2->second.begin(), end_it3 = it2->second.end();
+        it3 != end_it3;
+        ++it3)
+      {
+        size3++;
+        inner_frame_count++;
+#ifdef _DEBUG
+        VideoFrame *frame = it3->first;
+        std::chrono::time_point<std::chrono::high_resolution_clock> frame_entry_timestamp = it3->second;
+#else
+        VideoFrame *frame = *it3;
+#endif
+        if (0 != frame->refcount)
+          inner_frame_count_for_frame_refcount_nonzero++;
+        if (someframes)
+        {
+          std::chrono::time_point<std::chrono::high_resolution_clock> t_end = std::chrono::high_resolution_clock::now();
+          std::chrono::duration<double> elapsed_seconds = t_end - frame_entry_timestamp;
+          if (inner_frame_count <= 2) // list only the first 2. There can be even many thousand of frames!
+          {
+            // log only if frame creation timestamp is too old! 
+            // e.g. 100 secs, it must be a stuck frame (but can also be a valid static frame from ColorBars)
+            // if (elapsed_seconds.count() > 100.0f && frame->refcount > 0)
+            if (frame->refcount > 0)
+            {
+              _RPT5(0, "  >> Frame#%6d: vfb=%p frame=%p frame_refcount=%3d timestamp=%f ago\n", inner_frame_count, vfb, frame, frame->refcount, elapsed_seconds);
+            }
+          }
+          else if (inner_frame_count == inner_frame_count_size - 1)
+          {
+            // log the last one
+            if (frame->refcount > 0)
+            {
+              _RPT5(0, "  ...Frame#%6d: vfb=%p frame=%p frame_refcount=%3d \n", inner_frame_count, vfb, frame, frame->refcount);
+            }
+            _RPT5(0, "  == TOTAL of %d frames. Number of nonzero refcount=%d \n", inner_frame_count, inner_frame_count_for_frame_refcount_nonzero);
+          }
+          if (0 == vfb->refcount && 0 != frame->refcount)
+          {
+            _RPT5(0, "  ########## VFB=0 FRAME!=0 ####### VFB: %p Frame:%p frame_refcount=%3d \n", vfb, frame, frame->refcount);
+          }
+        }
+      }
+    }
+  }
+  _RPT5(0, ">> >> >> array sizes %d %d %d Total VFB size=%Iu\n", size1, size2, size3, total_vfb_size);
+  _RPT0(0, "  ----------------------------\n");
+}
+#endif
+
+
 VideoFrame* ScriptEnvironment::GetNewFrame(size_t vfb_size)
 {
   std::unique_lock<std::mutex> env_lock(memory_mutex);
@@ -1479,30 +1550,30 @@ VideoFrame* ScriptEnvironment::GetNewFrame(size_t vfb_size)
    */
 #ifdef _DEBUG
   std::chrono::time_point<std::chrono::high_resolution_clock> t_start, t_end; // std::chrono::time_point<std::chrono::system_clock> t_start, t_end;
-  t_start = std::chrono::high_resolution_clock::now(); 
+  t_start = std::chrono::high_resolution_clock::now();
 #endif
-  
+
   // FrameRegistry2 is like: map<key1, map<key2, vector<VideoFrame *>> >
   // typedef std::vector<VideoFrame*> VideoFrameArrayType;
   // typedef std::map<VideoFrameBuffer *, VideoFrameArrayType> FrameBufferRegistryType;
-	// typedef std::map<size_t, FrameBufferRegistryType> FrameRegistryType2; 
-	// [vfb_size = 10000][vfb = 0x111111111] [frame = 0x129837192(,timestamp=xxx)]
-	//                                       [frame = 0x012312122(,timestamp=xxx)] 
-	//                                       [frame = 0x232323232(,timestamp=xxx)] 
-	//                   [vfb = 0x222222222] [frame = 0x333333333(,timestamp=xxx)]
-	//                                       [frame = 0x444444444(,timestamp=xxx)]
-	// Which is better? 
+  // typedef std::map<size_t, FrameBufferRegistryType> FrameRegistryType2; 
+  // [vfb_size = 10000][vfb = 0x111111111] [frame = 0x129837192(,timestamp=xxx)]
+  //                                       [frame = 0x012312122(,timestamp=xxx)] 
+  //                                       [frame = 0x232323232(,timestamp=xxx)] 
+  //                   [vfb = 0x222222222] [frame = 0x333333333(,timestamp=xxx)]
+  //                                       [frame = 0x444444444(,timestamp=xxx)]
+  // Which is better? 
   // - found exact vfb_size or 
-	// - allow reusing existing vfb's with size up to size_to_find*1.5 THIS ONE!
+  // - allow reusing existing vfb's with size up to size_to_find*1.5 THIS ONE!
   // - allow to occupy any buffer that is bigger than the requested size
-  //for (FrameRegistryType2::iterator it = FrameRegistry2.lower_bound(vfb_size), end_it = FrameRegistry2.upper_bound(vfb_size); // exact!
+  //for (FrameRegistryType2::iterator it = FrameRegistry2.lower_bound(vfb_size), end_it = FrameRegistry2.upper_bound(vfb_size); // exact! no-go. special service clips can fragment it
   //for (FrameRegistryType2::iterator it = FrameRegistry2.lower_bound(vfb_size), end_it = FrameRegistry2.end(); // vfb_size or bigger, so a 100K size would claim a 1.5M space.
   for (FrameRegistryType2::iterator it = FrameRegistry2.lower_bound(vfb_size), end_it = FrameRegistry2.upper_bound(vfb_size * 3 / 2); // vfb_size or at most 1.5* bigger
-  it != end_it;
+      it != end_it;
     ++it)
   {
     for (FrameBufferRegistryType::iterator it2 = it->second.begin(), end_it2 = it->second.end();
-    it2 != end_it2;
+      it2 != end_it2;
       ++it2)
     {
       VideoFrameBuffer *vfb = it2->first; // same for all map content, the key is vfb pointer
@@ -1512,7 +1583,7 @@ VideoFrame* ScriptEnvironment::GetNewFrame(size_t vfb_size)
         VideoFrame *frame_found;
         bool found = false;
         for (VideoFrameArrayType::iterator it3 = it2->second.begin(), end_it3 = it2->second.end();
-        it3 != end_it3;
+          it3 != end_it3;
           /*++it3 not here, because of the delete*/)
         {
 #ifdef _DEBUG
@@ -1538,18 +1609,18 @@ VideoFrame* ScriptEnvironment::GetNewFrame(size_t vfb_size)
               if (videoFrameListSize <= 1)
               {
                 _RPT1(0, "ScriptEnvironment::GetNewFrame returning frame. VideoFrameListSize was 1\n", videoFrameListSize); // P.F.
-                #ifdef _DEBUG
+#ifdef _DEBUG
                 it3->second = std::chrono::high_resolution_clock::now(); // refresh timestamp!
-                #endif
+#endif
                 return frame; // return immediately
                 break;
               }
 #else
               // dont allow vfb's frame list to grow to many thousand. 
               // If the count reaches a limit, we cut
-              #ifdef _DEBUG
+#ifdef _DEBUG
               it3->second = std::chrono::high_resolution_clock::now(); // refresh timestamp!
-              #endif
+#endif
               if (videoFrameListSize < 50) // less than X entry in list -> return
               {
                 _RPT1(0, "ScriptEnvironment::GetNewFrame returning frame. VideoFrameListSize was < 50: %7zu \n", videoFrameListSize); // P.F.
@@ -1584,107 +1655,24 @@ VideoFrame* ScriptEnvironment::GetNewFrame(size_t vfb_size)
         {
           _RPT1(0, "ScriptEnvironment::GetNewFrame returning frame_found. clearing frames. List count: it2->second.size(): %7zu \n", it2->second.size());
 #ifdef VIDEOFRAME_ARRAY_VECTOR              
-          it2->second.clear(); 
+          it2->second.clear();
           it2->second.reserve(16); // initial capacity set to 16, avoid reallocation when 1st, 2nd, etc.. elements pushed later (possible speedup)
-          #ifdef _DEBUG
+#ifdef _DEBUG
           it2->second.push_back(std::make_pair(frame_found, std::chrono::high_resolution_clock::now())); // keep only the first
-          #else
+#else
           it2->second.push_back(frame_found); // keep only the first
-          #endif
+#endif
 #endif
           return frame_found;
         }
       }
     } // for it2
   } // for it
-  _RPT1(0, "ScriptEnvironment::GetNewFrame, no free entry in FrameRegistry. Requested vfb size=%Iu memused=%I64d memmax=%I64d\n", vfb_size, memory_used, memory_max); // P.F.
+  _RPT1(0, "ScriptEnvironment::GetNewFrame, no free entry in FrameRegistry. Requested vfb size=%Iu memused=%I64d memmax=%I64d\n", vfb_size, memory_used, memory_max);
 
 #ifdef _DEBUG
-//#define FULL_LIST_OF_VFBs
-//#define LIST_ALSO_SOME_FRAMES
-#ifdef FULL_LIST_OF_VFBs
-																																																																// Full  list of all buffers
-	linearsearchcount = 0;
-	int size1 = 0;
-	int size2 = 0;
-	int size3 = 0;
-	_RPT5(0, "******** %p <= FrameRegistry2 Address. Buffer list for size %7Iu\n", &FrameRegistry2, vfb_size); // P.F.
-	_RPT1(0, ">> IterateLevel #1: Different vfb sizes: FrameRegistry2.size=%Iu \n", FrameRegistry2.size()); // P.F.
-	size_t total_vfb_size = 0;
-#if 1
-	// list to debugview: only frame with vfb_size size  
-	//for (FrameRegistryType2::iterator it = FrameRegistry2.lower_bound(vfb_size), end_it = FrameRegistry2.upper_bound(vfb_size); csak az adott méretet
-	// list to debugview: all frames up-to vfb_size size  
-  if (1 /*vfb_size == 645151*/) // P.F. 16.04.05 narrow down to the leaking size!
-  {
-    //for (FrameRegistryType2::iterator it = FrameRegistry2.begin(), end_it = FrameRegistry2.upper_bound(vfb_size);
-    for (FrameRegistryType2::iterator it = FrameRegistry2.lower_bound(vfb_size), end_it = FrameRegistry2.upper_bound(vfb_size);
-    it != end_it;
-      ++it)
-    {
-      size1++;
-      _RPT5(0, ">>>> IterateLevel #2 [%3d]: Vfb count for size %7Iu is %7Iu\n", size1, it->first, it->second.size()); // P.F.
-      for (FrameBufferRegistryType::iterator it2 = it->second.begin(), end_it2 = it->second.end();
-      it2 != end_it2;
-        ++it2)
-      {
-        size2++;
-        VideoFrameBuffer *vfb = it2->first;
-        total_vfb_size += vfb->GetDataSize();
-        size_t inner_frame_count_size = it2->second.size();
-        _RPT5(0, ">>>> IterateLevel #3 %5Iu frames in [%3d,%5d] --> vfb=%p vfb_refcount=%3d seqNum=%d\n", inner_frame_count_size, size1, size2, vfb, vfb->refcount, vfb->GetSequenceNumber()); // P.F.
-        // iterate the frame list of this vfb
-        int inner_frame_count = 0;
-        int inner_frame_count_for_frame_refcount_nonzero = 0;
-        for (VideoFrameArrayType::iterator it3 = it2->second.begin(), end_it3 = it2->second.end();
-        it3 != end_it3;
-          ++it3)
-        {
-          size3++;
-          inner_frame_count++;
-#ifdef _DEBUG
-          VideoFrame *frame = it3->first;
-          std::chrono::time_point<std::chrono::high_resolution_clock> frame_entry_timestamp = it3->second;
-#else
-          VideoFrame *frame = *it3;
-#endif
-          if (0 != frame->refcount)
-            inner_frame_count_for_frame_refcount_nonzero++;
-#ifdef LIST_ALSO_SOME_FRAMES
-          t_end = std::chrono::high_resolution_clock::now();
-          std::chrono::duration<double> elapsed_seconds = t_end - frame_entry_timestamp;
-          if (inner_frame_count <= 2) // list only the first 2. There can be even many thousand of frames!
-          {
-              // log only if too old! e.g. 100 secs, it musb be a stuck frame (cache????)
-              //          if (elapsed_seconds.count() > 3.0f && frame->refcount > 0)
-            if (frame->refcount > 0)
-            {
-              _RPT5(0, "  >> Frame#%6d: vfb=%p frame=%p frame_refcount=%3d timestamp=%f ago\n", inner_frame_count, vfb, frame, frame->refcount, elapsed_seconds); // P.F.
-            }
-          }
-          else if (inner_frame_count == inner_frame_count_size - 1)
-          {
-            // log only if too old! e.g. 100 secs, it musb be a stuck frame (cache????)
-            //if (elapsed_seconds.count() > 10.0f && frame->refcount > 0)
-            if (frame->refcount > 0)
-            {
-              _RPT5(0, "  ...Frame#%6d: vfb=%p frame=%p frame_refcount=%3d \n", inner_frame_count, vfb, frame, frame->refcount); // P.F.
-            }
-            _RPT5(0, "  == TOTAL of %d frames. Number of nonzero refcount=%d \n", inner_frame_count, inner_frame_count_for_frame_refcount_nonzero); // P.F.
-          }
-          if (0 == vfb->refcount && 0 != frame->refcount)
-          {
-            _RPT5(0, "  ########## VFB=0 FRAME!=0 ####### VFB: %p Frame:%p frame_refcount=%3d \n", vfb, frame, frame->refcount); // P.F.
-          }
-#endif
-        }
-      }
-    }
-  } // specific vfb_size to debug
-	_RPT5(0, ">> >> >> array sizes %d %d %d Total VFB size=%Iu\n", size1, size2, size3, total_vfb_size); // P.F.
-	_RPT0(0, "  ----------------------------\n"); // P.F.
-#endif
-#endif
+  //ListFrameRegistry(vfb_size, vfb_size, true); // for chasing stuck frames
+  //ListFrameRegistry(0, vfb_size, true); // for chasing stuck frames
 #endif
 
   /* -----------------------------------------------------------
@@ -1700,16 +1688,16 @@ VideoFrame* ScriptEnvironment::GetNewFrame(size_t vfb_size)
    * Couldn't allocate, try to free up unused frames of any size
    * -----------------------------------------------------------
    */
-	_RPT2(0, "Allocate failed. GC start memory_used=%I64d\n", memory_used); // P.F.
-	// unfortunately if we reach here, only 0 or 1 vfbs or frames can be freed, from lower vfb sizes
+  _RPT2(0, "Allocate failed. GC start memory_used=%I64d\n", memory_used);
+  // unfortunately if we reach here, only 0 or 1 vfbs or frames can be freed, from lower vfb sizes
   // usually it's not enough
-	// only meaningful to free up smaller vfb sizes here
+  // yet it is true that it's meaningful only to free up smaller vfb sizes here
   for (FrameRegistryType2::iterator it = FrameRegistry2.begin(), end_it = FrameRegistry2.upper_bound(vfb_size);
-  it != end_it;
+    it != end_it;
     ++it)
   {
     for (FrameBufferRegistryType::iterator it2 = (it->second).begin(), end_it2 = (it->second).end();
-    it2 != end_it2;
+      it2 != end_it2;
       /*++it2: not here: may delete iterator position */)
     {
       VideoFrameBuffer *vfb = it2->first;
@@ -1719,7 +1707,7 @@ VideoFrame* ScriptEnvironment::GetNewFrame(size_t vfb_size)
         delete vfb;
         const VideoFrameArrayType::iterator end_it3 = it2->second.end(); // const
         for (VideoFrameArrayType::iterator it3 = it2->second.begin();
-        it3 != end_it3;
+          it3 != end_it3;
           ++it3)
         {
 #ifdef _DEBUG
@@ -1729,7 +1717,7 @@ VideoFrame* ScriptEnvironment::GetNewFrame(size_t vfb_size)
 #endif
           if (0 == frame->refcount) // sanity check. Must always be true
             delete frame;
-          else 
+          else
             // there should not be such case: vfb.refcount=0 and frame.refcount!=0
             _RPT2(0, "  ?????? frame refcount error!!! frame=%p framerefcount=%d \n", frame, frame->refcount); // P.F.
         }
@@ -1755,7 +1743,7 @@ VideoFrame* ScriptEnvironment::GetNewFrame(size_t vfb_size)
    *   Oh boy...
    * -----------------------------------------------------------
    */
-  ThrowError("Could not allocate video frame. Out of memory.");
+  ThrowError("Could not allocate video frame. Out of memory. memory_max = %I64d, memory_used = %I64d Request=%Iu", memory_max, memory_used, vfb_size);
   return NULL;
 }
 
@@ -1770,10 +1758,10 @@ void ScriptEnvironment::EnsureMemoryLimit(size_t request)
    // We reserve 15% for unaccounted stuff
   size_t memory_need = size_t((memory_used + request) / 0.85f);
 
-  _RPT4(0, "ScriptEnvironment::EnsureMemoryLimit CR_size=%zu memory_need=%zu memory_used=%I64d memory_max=%I64d\n", CacheRegistry.size(), memory_need, memory_used, memory_max); // P.F.
+  _RPT4(0, "ScriptEnvironment::EnsureMemoryLimit CR_size=%zu memory_need=%zu memory_used=%I64d memory_max=%I64d\n", CacheRegistry.size(), memory_need, memory_used, memory_max);
 #ifdef _DEBUG
-// #define LIST_CACHES    
-// list all cache_entries
+  // #define LIST_CACHES    
+  // list all cache_entries
 #ifdef LIST_CACHES
   int cache_counter = 0;
   const CacheRegistryType::iterator end_cit_0 = CacheRegistry.end();
@@ -1786,11 +1774,12 @@ void ScriptEnvironment::EnsureMemoryLimit(size_t request)
     cache_counter++;
     Cache* cache = *cit;
     int cache_size = cache->SetCacheHints(CACHE_GET_SIZE, 0);
-    _RPT4(0, "  cache#%d cache_ptr=%p cache_size=%d \n", cache_counter, (void *)cache, cache_size); // let's what's in the cache P.F.
+    _RPT4(0, "  cache#%d cache_ptr=%p cache_size=%d \n", cache_counter, (void *)cache, cache_size); // let's see what's in the cache
   }
 #endif    
 #endif
 
+  int shrinkcount = 0;
 
   const CacheRegistryType::iterator end_cit = CacheRegistry.end();
   for (
@@ -1809,94 +1798,97 @@ void ScriptEnvironment::EnsureMemoryLimit(size_t request)
     int cache_size = cache->SetCacheHints(CACHE_GET_SIZE, 0);
     if (cache_size != 0)
     {
-      _RPT4(0, "ScriptEnvironment::EnsureMemoryLimit shrink cache. cache=%p new size=%d\n", (void *)cache, cache_size - 1); // P.F.
+      _RPT4(0, "ScriptEnvironment::EnsureMemoryLimit shrink cache. cache=%p new size=%d\n", (void *)cache, cache_size - 1);
       cache->SetCacheHints(CACHE_SET_MAX_CAPACITY, cache_size - 1);
-
-      /* -----------------------------------------------------------
-       * Try to free up memory that we've just released from a cache
-       * -----------------------------------------------------------
-       */
-#if 0
-      // Old FrameRegistry logic
-      const FrameRegistryType::iterator end_fit = FrameRegistry.end();
-      for (
-        FrameRegistryType::iterator fit = FrameRegistry.begin();
-        fit != end_fit;
-        )
-      {
-        VideoFrame *frame = fit->second;
-
-        if (frame->refcount == 0)
-        {
-          if (frame->vfb->refcount == 0)
-          {
-            _RPT2(0, "ScriptEnvironment::EnsureMemoryLimit req=%Iu freed=%d\n", request, frame->vfb->GetDataSize()); // P.F.
-            memory_used -= frame->vfb->GetDataSize();
-            delete frame->vfb;
-          }
-
-          delete frame;
-          FrameRegistry.erase(fit++);
-        }
-        else
-        {
-          ++fit;
-        }
-      } // for fit
-#endif
-      // and delete in the new frame registry FrameRegistry2 P.F.
-      _RPT2(0, "EnsureMemoryLimit GC start: memused=%I64d\n", memory_used); // P.F.
-      int freed_vfb_count = 0;
-      int freed_frame_count = 0;
-      int unfreed_frame_count = 0;
-      const FrameRegistryType2::iterator end_it = FrameRegistry2.end(); // const iterator. maybe need simial in the end of NewFrameBuffer
-      for (FrameRegistryType2::iterator it = FrameRegistry2.begin();
-      it != end_it;
-        ++it)
-      {
-        for (FrameBufferRegistryType::iterator it2 = (it->second).begin(), end_it2 = (it->second).end();
-        it2 != end_it2;
-          /*++it2: not here: may delete iterator position */)
-        {
-          VideoFrameBuffer *vfb = it2->first;
-          if (0 == vfb->refcount) // vfb refcount check
-          {
-            _RPT2(0, "ScriptEnvironment::EnsureMemoryLimit v2 req=%Iu freed=%d\n", request, vfb->GetDataSize()); // P.F.
-            memory_used -= vfb->GetDataSize();
-            VideoFrameBuffer *_vfb = vfb;
-            delete vfb;
-            ++freed_vfb_count;
-            const VideoFrameArrayType::iterator end_it3 = it2->second.end();
-            for (VideoFrameArrayType::iterator it3 = it2->second.begin();
-            it3 != end_it3;
-              ++it3)
-            {
-#ifdef _DEBUG
-              VideoFrame *frame = it3->first;
-#else
-              VideoFrame *frame = *it3;
-#endif
-              if (0 == frame->refcount)
-              {
-                delete frame;
-                ++freed_frame_count;
-              }
-              else {
-                // there should not be such case: vfb.refcount=0 and frame.refcount!=0
-                ++unfreed_frame_count;
-                _RPT4(0, "  ?????? frame refcount error!!! _vfb=%p frame=%p framerefcount=%d \n", _vfb, frame, frame->refcount); // P.F.
-              }
-            }
-            // delete array belonging to this vfb in one step
-            it2->second.clear(); // clear frame list
-            it2 = (it->second).erase(it2); // clear vfb entry
-          }
-          else it2++;
-        }
-      }
-      _RPT4(0, "End of garbage collection B: freed_vfb=%d frame=%d unfreed=%d memused=%I64d\n", freed_vfb_count, freed_frame_count, unfreed_frame_count, memory_used); // P.F.
+      shrinkcount++;
     } // if
   } // for cit
+  /* -----------------------------------------------------------
+  * Try to free up memory that we've just released from a cache
+  * -----------------------------------------------------------
+  */
+#if 0
+  // Old FrameRegistry logic
+  const FrameRegistryType::iterator end_fit = FrameRegistry.end();
+  for (
+    FrameRegistryType::iterator fit = FrameRegistry.begin();
+    fit != end_fit;
+    )
+  {
+    VideoFrame *frame = fit->second;
+
+    if (frame->refcount == 0)
+    {
+      if (frame->vfb->refcount == 0)
+      {
+        _RPT2(0, "ScriptEnvironment::EnsureMemoryLimit req=%Iu freed=%d\n", request, frame->vfb->GetDataSize()); // P.F.
+        memory_used -= frame->vfb->GetDataSize();
+        delete frame->vfb;
+      }
+
+      delete frame;
+      FrameRegistry.erase(fit++);
+    }
+    else
+    {
+      ++fit;
+    }
+  } // for fit
+#endif
+  // and delete in the new frame registry FrameRegistry2
+  if (shrinkcount)
+  {
+    _RPT2(0, "EnsureMemoryLimit GC start: memused=%I64d\n", memory_used);
+    int freed_vfb_count = 0;
+    int freed_frame_count = 0;
+    int unfreed_frame_count = 0;
+    const FrameRegistryType2::iterator end_it = FrameRegistry2.end(); // const iterator. maybe need simial in the end of NewFrameBuffer
+    for (FrameRegistryType2::iterator it = FrameRegistry2.begin();
+      it != end_it;
+      ++it)
+    {
+      for (FrameBufferRegistryType::iterator it2 = (it->second).begin(), end_it2 = (it->second).end();
+        it2 != end_it2;
+        /*++it2: not here: may delete iterator position */)
+      {
+        VideoFrameBuffer *vfb = it2->first;
+        if (0 == vfb->refcount) // vfb refcount check
+        {
+          _RPT2(0, "ScriptEnvironment::EnsureMemoryLimit v2 req=%Iu freed=%d\n", request, vfb->GetDataSize()); // P.F.
+          memory_used -= vfb->GetDataSize();
+          VideoFrameBuffer *_vfb = vfb;
+          delete vfb;
+          ++freed_vfb_count;
+          const VideoFrameArrayType::iterator end_it3 = it2->second.end();
+          for (VideoFrameArrayType::iterator it3 = it2->second.begin();
+            it3 != end_it3;
+            ++it3)
+          {
+#ifdef _DEBUG
+            VideoFrame *frame = it3->first;
+#else
+            VideoFrame *frame = *it3;
+#endif
+            if (0 == frame->refcount)
+            {
+              delete frame;
+              ++freed_frame_count;
+            }
+            else {
+              // there should not be such case: vfb.refcount=0 and frame.refcount!=0
+              ++unfreed_frame_count;
+              _RPT4(0, "  ?????? frame refcount error!!! _vfb=%p frame=%p framerefcount=%d \n", _vfb, frame, frame->refcount); // P.F.
+            }
+          }
+          // delete array belonging to this vfb in one step
+          it2->second.clear(); // clear frame list
+          it2 = (it->second).erase(it2); // clear vfb entry
+        }
+        else it2++;
+      }
+    }
+    _RPT4(0, "End of garbage collection B: freed_vfb=%d frame=%d unfreed=%d memused=%I64d\n", freed_vfb_count, freed_frame_count, unfreed_frame_count, memory_used); // P.F.
+  }
 }
 
 PVideoFrame ScriptEnvironment::NewPlanarVideoFrame(int row_size, int height, int row_sizeUV, int heightUV, int align, bool U_first)
