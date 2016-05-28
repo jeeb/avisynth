@@ -613,19 +613,10 @@ private:
   // typedef std::multimap<size_t, VideoFrame*> FrameRegistryType;
   // FrameRegistryType FrameRegistry; we use FrameRegistry2 instead, post r1825
 
-#define VIDEOFRAME_ARRAY_VECTOR // P.F. 16.04.19 vector experiment: sometimes faster than list for frame intensive SD scripts
 #ifdef _DEBUG
-  #ifdef VIDEOFRAME_ARRAY_VECTOR
   typedef std::vector<std::pair<VideoFrame*, std::chrono::time_point<std::chrono::high_resolution_clock >>> VideoFrameArrayType;
-  #else
-  typedef std::list<std::pair<VideoFrame*, std::chrono::time_point<std::chrono::high_resolution_clock >>> VideoFrameArrayType;
-  #endif
 #else
-  #ifdef VIDEOFRAME_ARRAY_VECTOR
   typedef std::vector<VideoFrame*> VideoFrameArrayType;
-  #else
-  typedef std::list<VideoFrame*> VideoFrameArrayType;
-  #endif
 #endif
   typedef std::map<VideoFrameBuffer *, VideoFrameArrayType> FrameBufferRegistryType;
   typedef std::map<size_t, FrameBufferRegistryType> FrameRegistryType2; // P.F.
@@ -1611,7 +1602,6 @@ VideoFrame* ScriptEnvironment::GetNewFrame(size_t vfb_size)
               _RPT4(0, "ScriptEnvironment::GetNewFrame NEW METHOD EXACT hit! VideoFrameListSize=%7Iu GotSize=%7Iu FrReg.Size=%6Iu vfb=%p frame=%p SeekTime:%f\n", videoFrameListSize, vfb_size, FrameRegistry2.size(), vfb, frame, elapsed_seconds.count());
               _RPT4(0, "                                          frame %p RowSize=%d Height=%d Pitch=%d Offset=%d\n", frame, frame->GetRowSize(), frame->GetHeight(), frame->GetPitch(), frame->GetOffset()); // P.F.
 #endif
-#ifdef VIDEOFRAME_ARRAY_VECTOR              
               // only 1 frame in list -> no delete
               if (videoFrameListSize <= 1)
               {
@@ -1622,20 +1612,6 @@ VideoFrame* ScriptEnvironment::GetNewFrame(size_t vfb_size)
                 return frame; // return immediately
                 break;
               }
-#else
-              // dont allow vfb's frame list to grow to many thousand. 
-              // If the count reaches a limit, we cut
-#ifdef _DEBUG
-              it3->second = std::chrono::high_resolution_clock::now(); // refresh timestamp!
-#endif
-              if (videoFrameListSize < 50) // less than X entry in list -> return
-              {
-                _RPT1(0, "ScriptEnvironment::GetNewFrame returning frame. VideoFrameListSize was < 50: %7zu \n", videoFrameListSize); // P.F.
-                return frame; // return immediately
-                break;
-              }
-              _RPT1(0, "ScriptEnvironment::GetNewFrame not returning frame. VideoFrameListSize was >= 50: %7zu \n", videoFrameListSize); // P.F.
-#endif
               // more than X: just registered the frame found, and erase all other frames from list plus delete frame objects also
               frame_found = frame;
               found = true;
@@ -1646,11 +1622,7 @@ VideoFrame* ScriptEnvironment::GetNewFrame(size_t vfb_size)
               // Benefit: no 4-5k frame list count per a single vfb.
               //_RPT4(0, "ScriptEnvironment::GetNewFrame Delete one frame %p RowSize=%d Height=%d Pitch=%d Offset=%d\n", frame, frame->GetRowSize(), frame->GetHeight(), frame->GetPitch(), frame->GetOffset()); // P.F.
               delete frame;
-#ifdef VIDEOFRAME_ARRAY_VECTOR              
               it3++;
-#else
-              it3 = it2->second.erase(it3);
-#endif
             }
           }
           else
@@ -1661,14 +1633,12 @@ VideoFrame* ScriptEnvironment::GetNewFrame(size_t vfb_size)
         if (found)
         {
           _RPT1(0, "ScriptEnvironment::GetNewFrame returning frame_found. clearing frames. List count: it2->second.size(): %7zu \n", it2->second.size());
-#ifdef VIDEOFRAME_ARRAY_VECTOR              
           it2->second.clear();
           it2->second.reserve(16); // initial capacity set to 16, avoid reallocation when 1st, 2nd, etc.. elements pushed later (possible speedup)
 #ifdef _DEBUG
           it2->second.push_back(std::make_pair(frame_found, std::chrono::high_resolution_clock::now())); // keep only the first
 #else
           it2->second.push_back(frame_found); // keep only the first
-#endif
 #endif
           return frame_found;
         }
@@ -2087,9 +2057,7 @@ PVideoFrame __stdcall ScriptEnvironment::Subframe(PVideoFrame src, int rel_offse
   size_t vfb_size = src->GetFrameBuffer()->GetDataSize();
 
   //FrameRegistry.insert(FrameRegistryType::value_type(src->GetFrameBuffer()->GetDataSize(), subframe));
-#ifdef VIDEOFRAME_ARRAY_VECTOR
   std::unique_lock<std::mutex> env_lock(memory_mutex); // vector needs locking!
-#endif
   // automatically inserts if not exists!
 #ifdef _DEBUG
   assert(NULL != subframe);
@@ -2110,9 +2078,7 @@ PVideoFrame __stdcall ScriptEnvironment::SubframePlanar(PVideoFrame src, int rel
   size_t vfb_size = src->GetFrameBuffer()->GetDataSize();
 
   //FrameRegistry.insert(FrameRegistryType::value_type(src->GetFrameBuffer()->GetDataSize(), subframe));
-#ifdef VIDEOFRAME_ARRAY_VECTOR
   std::unique_lock<std::mutex> env_lock(memory_mutex); // vector needs locking!
-#endif
   // automatically inserts if not exists!
 #ifdef _DEBUG
   assert(subframe != NULL);
