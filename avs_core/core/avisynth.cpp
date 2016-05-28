@@ -767,7 +767,6 @@ void ScriptEnvironment::InitMT()
     this->SetFilterMTMode(BUILTIN_FUNC_PREFIX "_AVIFileSource", MtMode::MT_SERIALIZED, true);
     this->SetFilterMTMode(BUILTIN_FUNC_PREFIX "_WAVSource", MtMode::MT_SERIALIZED, true);
     this->SetFilterMTMode(BUILTIN_FUNC_PREFIX "_OpenDMLSource", MtMode::MT_SERIALIZED, true);
-    this->SetFilterMTMode(BUILTIN_FUNC_PREFIX "_AVISource", MtMode::MT_SERIALIZED, true);
 
     this->SetFilterMTMode(BUILTIN_FUNC_PREFIX "_ChangeFPS", MtMode::MT_SERIALIZED, true);
     this->SetFilterMTMode(BUILTIN_FUNC_PREFIX "_ConvertFPS", MtMode::MT_NICE_FILTER, true);
