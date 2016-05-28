@@ -45,7 +45,6 @@
 static PVideoFrame AdjustFrameAlignment(const PVideoFrame& frame, const VideoInfo& vi, IScriptEnvironment* env)
 {
     PVideoFrame result = env->NewVideoFrame(vi);
-    //_RPT2(0, "AdjustFrameAlignment origframe=%p vfb=%p newframe=%p\n", (void *)frame, (void *)result->GetFrameBuffer(), (void *)result); // P.F.
     env->BitBlt(result->GetWritePtr(),         result->GetPitch(),         frame->GetReadPtr(),         frame->GetPitch(),         frame->GetRowSize(),         frame->GetHeight());
     env->BitBlt(result->GetWritePtr(PLANAR_V), result->GetPitch(PLANAR_V), frame->GetReadPtr(PLANAR_V), frame->GetPitch(PLANAR_V), frame->GetRowSize(PLANAR_V), frame->GetHeight(PLANAR_V));
     env->BitBlt(result->GetWritePtr(PLANAR_U), result->GetPitch(PLANAR_U), frame->GetReadPtr(PLANAR_U), frame->GetPitch(PLANAR_U), frame->GetRowSize(PLANAR_U), frame->GetHeight(PLANAR_U));
@@ -608,7 +607,7 @@ const VideoInfo& AVISource::GetVideoInfo() { return vi; }
 PVideoFrame AVISource::GetFrame(int n, IScriptEnvironment* env) {
 
   n = clamp(n, 0, vi.num_frames-1);
-  //_RPT2(0, "AVISource::GetFrame %d\n", n); // P.F.
+  _RPT2(0, "AVISource::GetFrame %d\n", n);
   dropped_frame=false;
   if (n != last_frame_no) {
     // find the last keyframe
@@ -620,7 +619,6 @@ PVideoFrame AVISource::GetFrame(int n, IScriptEnvironment* env) {
 
     bool frameok = false;
     PVideoFrame frame = env->NewVideoFrame(vi, -4);
-    //_RPT2(0, "AVISource::GetFrame NewVideoFrame requested frame=%p\n", (void *)frame); // P.F.
 
     if (!frame)
       env->ThrowError("AviSource: Could not allocate frame %d", n);
