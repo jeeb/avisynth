@@ -1572,7 +1572,7 @@ AudioCompressor::AudioCompressor(AudioStream *src, WAVEFORMATEX *dst_format, lon
 		fad.oFormat = oFormat;
 		fad.success = false;
 
-		if (!acmDriverEnum(ACMStreamOpenCallback, (DWORD)&fad, 0) && fad.success) {
+		if (!acmDriverEnum(ACMStreamOpenCallback, (DWORD_PTR)&fad, 0) && fad.success) {
 			hADriver = fad.hdrv;
 			break;
 		}
