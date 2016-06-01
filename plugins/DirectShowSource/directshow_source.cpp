@@ -311,7 +311,7 @@ GetSample::GetSample(bool _load_audio, bool _load_video, unsigned _media, LOG* _
       delete my_media_types[i];
 
     if (Allocator) {
-      dssRPT1(dssNEW, "Releasing Allocator %p.\n", Allocator);
+      dssRPT1(dssNEW, "Releasing Allocator 0x%08p.\n", Allocator);
       Allocator->Release();
       Allocator = 0;
     }
@@ -1039,7 +1039,7 @@ SeekExit:
     AddRef();
     pInfo->dir = PINDIR_INPUT;
     lstrcpynW(pInfo->achName, L"GetSample", MAX_PIN_NAME);
-    dssRPT1(dssCMD, "GetSample::QueryPinInfo() %p\n", this);
+    dssRPT1(dssCMD, "GetSample::QueryPinInfo() 0x%08p\n", (void *)this);
     return S_OK;
   }
 
@@ -1416,7 +1416,7 @@ pbFormat:
       IMediaEventSink* mes = NULL;
       try {
         if (SUCCEEDED(filter_graph->QueryInterface(&mes))) {
-          mes->Notify(EC_COMPLETE, (long)S_OK, (long)static_cast<IBaseFilter*>(this));
+          mes->Notify(EC_COMPLETE, (LONG_PTR)S_OK, (LONG_PTR)static_cast<IBaseFilter*>(this));
           mes->Release();
         }
       }
@@ -1805,7 +1805,7 @@ void DirectShowSource::SetMicrosoftDVtoFullResolution(IGraphBuilder* gb) {
   while (S_OK == ef->Next(1, &bf, &fetched)) {
     IIPDVDec* pDVDec;
     if (SUCCEEDED(bf->QueryInterface(&pDVDec))) {
-      dssRPT1(dssINFO, "DVtoFullResolution() pDVDec=%p\n", pDVDec);
+      dssRPT1(dssINFO, "DVtoFullResolution() pDVDec=0x%08p\n", (void *)pDVDec);
       pDVDec->put_IPDisplay(DVRESOLUTION_FULL); // DVDECODERRESOLUTION_720x480);   // yes, this includes 720x576
       pDVDec->Release();
     }
@@ -1921,7 +1921,7 @@ void DirectShowSource::SetWMAudioDecoderDMOtoHiResOutput(IFilterGraph *pGraph)
           }
         }
         else {
-          dssRPT2(dssINFO, "WMAudioDecoderDMOtoHiRes() pFilter=%p code=%X\n", pFilter, hr);
+          dssRPT2(dssINFO, "WMAudioDecoderDMOtoHiRes() pFilter=0x%08p code=%X\n", (void *)pFilter, hr);
         }
       }
       // The FILTER_INFO structure holds a pointer to the Filter Graph
@@ -2496,7 +2496,7 @@ void DirectShowSource::CheckHresult(IScriptEnvironment* env, HRESULT hr, const c
   if (SUCCEEDED(hr)) return;
 //  char buf[1024] = {0};
 //  if (!FormatMessage(FORMAT_MESSAGE_FROM_SYSTEM, NULL, hr, 0, buf, 1024, NULL))
-  char buf[MAX_ERROR_TEXT_LEN] = {0};
+  char buf[MAX_ERROR_TEXT_LEN+1] = {0};
   if (!AMGetErrorText(hr, buf, MAX_ERROR_TEXT_LEN))
     wsprintf(buf, "error code 0x%x", hr);
   env->ThrowError("DirectShowSource: %s%s:\n%s", msg, msg2, buf);
@@ -2598,8 +2598,8 @@ AVSValue __cdecl Create_DirectShowSource(AVSValue args, void*, IScriptEnvironmen
     else if (!lstrcmpi(pixel_type, "FULL"))  { _media = GetSample::mediaFULL; }
     else {
       env->ThrowError("DirectShowSource: pixel_type must be \"RGB24\", \"RGB32\", \"ARGB\", "
-                      "\"YUY2\", \"YV12\", \"YV16\", \"YV24\", \"AYUV\", \"Y41P\", \"Y411\", "
-                      "\"NV12\", \"RGB\", \"YUV\" , \"YUVex\", \"AUTO\"  or \"FULL\"");
+                      "\"YUY2\", \"YV12\", \"I420\", \"YV16\", \"YV24\", \"AYUV\", \"Y41P\", "
+                      "\"Y411\", \"NV12\", \"RGB\", \"YUV\" , \"YUVex\", \"AUTO\"  or \"FULL\"");
     }
     if (mediaPad) _media |= GetSample::mediaPAD;
   }
