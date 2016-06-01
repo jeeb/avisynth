@@ -36,7 +36,7 @@
 #include "directshow_source.h"
 #include <avs/minmax.h>
 
-#define DSS_VERSION "2.6.0"
+#define DSS_VERSION "2.6.1"
 
 /************************************
  *          Logging Utility         *
