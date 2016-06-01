@@ -43,6 +43,43 @@
 /********************************************************************
 # Build Hints for DirectShow SDK
 
+# Hints for Avisynth+, Visual Studio 2015
+
+- download and install Microsoft Windows SDK for Windows 7 and .NET Framework 3.5 SP1
+  https://www.microsoft.com/en-us/download/details.aspx?id=3138
+- [Building strmbase.lib]
+  - Open solution in
+    c:\Program Files\Microsoft SDKs\Windows\v7.0\Samples\multimedia\directshow\baseclasses\
+    It will be converted.
+  - Compile for targets Release_MBCS x86 and x64. 
+    Find compiled library strmbase.lib in 
+      c:\Program Files\Microsoft SDKs\Windows\v7.0\Samples\multimedia\directshow\baseclasses\Release_MBCS\;
+    and
+      c:\Program Files\Microsoft SDKs\Windows\v7.0\Samples\multimedia\directshow\baseclasses\x64\Release_MBCS\;
+- [Building DirectShowSource.dll]
+  - Open PluginDirectShowSource project in the AviSynth plus solution
+  - Edit Project Properties|VC++ Directories|Include Paths
+    Add to the beginning
+    c:\Program Files\Microsoft SDKs\Windows\v7.0\Samples\multimedia\directshow\baseclasses\;
+    c:\Program Files\Microsoft SDKs\Windows\v7.0\Include\;
+  - Edit Project Properties|VC++ Directories|Library Directories
+    For x86 target add 
+      c:\Program Files\Microsoft SDKs\Windows\v7.0\Samples\multimedia\directshow\baseclasses\Release_MBCS\;
+    For x64 target add 
+      c:\Program Files\Microsoft SDKs\Windows\v7.0\Samples\multimedia\directshow\baseclasses\x64\Release_MBCS\;
+    For XP target add (to find winmm.lib)
+      c:\Program Files (x86)\Microsoft SDKs\Windows\v7.1A\Lib\;
+  - Edit Project Properties|Linker|Input|Additional Dependencies
+    Add strmbase.lib to the list
+  - For XP compatibility
+    - choose Platform Toolset v140_xp and 
+    - Edit Project Properties|C/C++|Command Line
+      Add
+      /Zc:threadSafeInit-
+  - Build
+
+# Hints from 2.6.1alpha1:
+
 # Patch ($Platform SDK)\Samples\Multimedia\DirectShow\BaseClasses\streams.h
 # remove ATL reference
 
