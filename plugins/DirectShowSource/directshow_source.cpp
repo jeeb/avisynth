@@ -99,6 +99,7 @@ char* Tick() {
   tick %= 99;
 
   _snprintf(buf, 15, "%02u:%02u:%02u.%03u", tick, min, sec, msec);
+  buf[15] = 0;
 
   return buf;
 }
