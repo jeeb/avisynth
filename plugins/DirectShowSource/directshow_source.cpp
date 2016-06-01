@@ -51,15 +51,15 @@
 // We print a timestamp, the objects address, the message
 //
 #define dssRPT0(f, s)                 _RPT0(0, "DSS " s);                \
-      if (log && (f & log->mask)) fprintf(log->file, "%s %03x 0x%08X 0x%08X " s, Tick(), f, this, GetCurrentThreadId())
+      if (log && (f & log->mask)) fprintf(log->file, "%s %03x 0x%08p 0x%08X " s, Tick(), f, (void *)this, GetCurrentThreadId())
 #define dssRPT1(f, s, a1)             _RPT1(0, "DSS " s, a1);            \
-      if (log && (f & log->mask)) fprintf(log->file, "%s %03x 0x%08X 0x%08X " s, Tick(), f, this, GetCurrentThreadId(), a1)
+      if (log && (f & log->mask)) fprintf(log->file, "%s %03x 0x%08p 0x%08X " s, Tick(), f, (void *)this, GetCurrentThreadId(), a1)
 #define dssRPT2(f, s, a1, a2)         _RPT2(0, "DSS " s, a1, a2);        \
-      if (log && (f & log->mask)) fprintf(log->file, "%s %03x 0x%08X 0x%08X " s, Tick(), f, this, GetCurrentThreadId(), a1, a2)
+      if (log && (f & log->mask)) fprintf(log->file, "%s %03x 0x%08p 0x%08X " s, Tick(), f, (void *)this, GetCurrentThreadId(), a1, a2)
 #define dssRPT3(f, s, a1, a2, a3)     _RPT3(0, "DSS " s, a1, a2, a3);    \
-      if (log && (f & log->mask)) fprintf(log->file, "%s %03x 0x%08X 0x%08X " s, Tick(), f, this, GetCurrentThreadId(), a1, a2, a3)
+      if (log && (f & log->mask)) fprintf(log->file, "%s %03x 0x%08p 0x%08X " s, Tick(), f, (void *)this, GetCurrentThreadId(), a1, a2, a3)
 #define dssRPT4(f, s, a1, a2, a3, a4) _RPT4(0, "DSS " s, a1, a2, a3, a4);\
-      if (log && (f & log->mask)) fprintf(log->file, "%s %03x 0x%08X 0x%08X " s, Tick(), f, this, GetCurrentThreadId(), a1, a2, a3, a4)
+      if (log && (f & log->mask)) fprintf(log->file, "%s %03x 0x%08p 0x%08X " s, Tick(), f, (void *)this, GetCurrentThreadId(), a1, a2, a3, a4)
 
 // Reporting masks
 enum {
@@ -857,17 +857,17 @@ SeekExit:
   }
 
   HRESULT __stdcall GetSample::SetSyncSource(IReferenceClock* pClock) {
-    dssRPT2(dssCMD, "GetSample::SetSyncSource(0x%08x), was 0x%08x\n", pClock, pclock);
+    dssRPT2(dssCMD, "GetSample::SetSyncSource(0x%08p), was 0x%08p\n", (void *)pClock, (void *)pclock);
     pclock = pClock;
     return S_OK;
   }
 
   HRESULT __stdcall GetSample::GetSyncSource(IReferenceClock** ppClock) {
     if (!ppClock) {
-      dssRPT1(dssERROR, "GetSample::GetSyncSource() ** E_POINTER **, is 0x%08x\n", pclock);
+      dssRPT1(dssERROR, "GetSample::GetSyncSource() ** E_POINTER **, is 0x%08p\n", (void *)pclock);
       return E_POINTER;
     }
-    dssRPT1(dssCMD, "GetSample::GetSyncSource(), is 0x%08x\n", pclock);
+    dssRPT1(dssCMD, "GetSample::GetSyncSource(), is 0x%08p\n", (void *)pclock);
     *ppClock = pclock;
     if (pclock) pclock->AddRef();
     return S_OK;
@@ -924,7 +924,7 @@ SeekExit:
   }
 
   HRESULT __stdcall GetSample::JoinFilterGraph(IFilterGraph* pGraph, LPCWSTR pName) {
-    dssRPT2(dssCMD, "GetSample::JoinFilterGraph(0x%08x, %ls)\n", pGraph, pName);
+    dssRPT2(dssCMD, "GetSample::JoinFilterGraph(0x%08p, %ls)\n", (void *)pGraph, pName);
     filter_graph = pGraph;
     return S_OK;
   }
@@ -965,7 +965,7 @@ SeekExit:
       return VFW_E_TYPE_NOT_ACCEPTED;
     }
 
-    dssRPT1(dssCMD, "GetSample::ReceiveConnection(0x%08x, pmt)\n", pConnector);
+    dssRPT1(dssCMD, "GetSample::ReceiveConnection(0x%08p, pmt)\n", (void *)pConnector);
     vi = tmp;
     source_pin = pConnector;
     if (am_media_type)
@@ -989,7 +989,7 @@ SeekExit:
     am_media_type = 0;
 
     if (Allocator) {
-      dssRPT1(dssNEW, "Releasing Allocator 0x%08x.\n", Allocator);
+      dssRPT1(dssNEW, "Releasing Allocator 0x%08p.\n", (void *)Allocator);
       Allocator->Release();
       Allocator = 0;
     }
@@ -1009,7 +1009,7 @@ SeekExit:
       return VFW_E_NOT_CONNECTED;
     }
     source_pin->AddRef();
-    dssRPT1(dssCMD, "GetSample::ConnectedTo() is 0x%08x\n", source_pin);
+    dssRPT1(dssCMD, "GetSample::ConnectedTo() is 0x%08p\n", (void *)source_pin);
     return S_OK;
   }
 
@@ -1464,14 +1464,14 @@ pbFormat:
       dssRPT0(dssCMD, "GetSample::GetAllocator() VFW_E_NO_ALLOCATOR\n");
       return VFW_E_NO_ALLOCATOR;
     }
-    dssRPT1(dssCMD, "GetSample::GetAllocator(0x%08x)\n", Allocator);
+    dssRPT1(dssCMD, "GetSample::GetAllocator(0x%08p)\n", (void *)Allocator);
     Allocator->AddRef();
     *ppAllocator = Allocator;
     return S_OK;
   }
 
   HRESULT __stdcall GetSample::NotifyAllocator(IMemAllocator* pAllocator, BOOL bReadOnly) {
-    dssRPT4(dssCMD, "GetSample::NotifyAllocator(0x%08x, %x) was 0x%08x (%s)\n", pAllocator, bReadOnly, Allocator, streamName);
+    dssRPT4(dssCMD, "GetSample::NotifyAllocator(0x%08p, %x) was 0x%08p (%s)\n", (void *)pAllocator, bReadOnly, (void *)Allocator, streamName);
     if (!pAllocator) {
       dssRPT0(dssCMD, "GetSample::NotifyAllocator() E_POINTER\n");
       return E_POINTER;
@@ -1839,7 +1839,7 @@ void DirectShowSource::DisableDeinterlacing(IFilterGraph *pGraph)
 
         hr = pFilter->QueryInterface(IID_IPropertyBag, (void**)&pPropertyBag);
         if(SUCCEEDED(hr)) {
-          dssRPT1(dssINFO, "DisableDeinterlacing() pPropertyBag=0x%08X\n", pPropertyBag);
+          dssRPT1(dssINFO, "DisableDeinterlacing() pPropertyBag=0x%08p\n", (void *)pPropertyBag);
           VARIANT myVar;
 
           VariantInit(&myVar);
@@ -1851,7 +1851,7 @@ void DirectShowSource::DisableDeinterlacing(IFilterGraph *pGraph)
           pPropertyBag->Release();
         }
         else {
-          dssRPT2(dssINFO, "DisableDeinterlacing() pFilter=0x%08X code=%X\n", pFilter, hr);
+          dssRPT2(dssINFO, "DisableDeinterlacing() pFilter=0x%08p code=%X\n", (void *)pFilter, hr);
         }
       }
       // The FILTER_INFO structure holds a pointer to the Filter Graph
@@ -1888,7 +1888,7 @@ void DirectShowSource::SetWMAudioDecoderDMOtoHiResOutput(IFilterGraph *pGraph)
 
         hr = pFilter->QueryInterface(IID_IPropertyBag, (void**)&pPropertyBag);
         if(SUCCEEDED(hr)) {
-          dssRPT1(dssINFO, "WMAudioDecoderDMOtoHiRes() pPropertyBag=0x%08X\n", pPropertyBag);
+          dssRPT1(dssINFO, "WMAudioDecoderDMOtoHiRes() pPropertyBag=0x%08p\n", (void *)pPropertyBag);
           VARIANT myVar;
 
           VariantInit(&myVar);
