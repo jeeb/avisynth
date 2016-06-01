@@ -217,7 +217,7 @@ AVSValue AveragePlane::AvgPlane(AVSValue clip, void* user_data, int plane, int o
   if (width == 0 || height == 0)
     env->ThrowError("Average Plane: No chroma planes in Y8!");
 
-  unsigned int sum = 0;
+  size_t sum = 0;
   
   if ((env->GetCPUFlags() & CPUF_SSE2) && IsPtrAligned(srcp, 16) && width >= 16) {
     sum = get_sum_of_pixels_sse2(srcp, height, width, pitch);
