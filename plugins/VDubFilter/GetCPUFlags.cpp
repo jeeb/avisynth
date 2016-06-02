@@ -21,11 +21,13 @@
 #include <avs/cpuid.h>
 #include <intrin.h>
 
+#define VDcall __cdecl
+
 #define IS_BIT_SET(bitfield, bit) ((bitfield) & (1<<(bit)) ? true : false)
 
-static int CPUCheckForExtensions()
+static long CPUCheckForExtensions()
 {
-  int result = 0;
+  long result = 0;
   int cpuinfo[4];
 
   __cpuid(cpuinfo, 1);
@@ -76,7 +78,7 @@ static int CPUCheckForExtensions()
   return result;
 }
 
-int GetCPUFlags() {
-  static int lCPUExtensionsAvailable = CPUCheckForExtensions();
+long VDcall GetCPUFlags_VD() {
+  static long lCPUExtensionsAvailable = CPUCheckForExtensions();
   return lCPUExtensionsAvailable;
 }
