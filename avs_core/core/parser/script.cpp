@@ -649,11 +649,22 @@ AVSValue NOP(AVSValue args, void*, IScriptEnvironment* env) { return NULL;}
 AVSValue Undefined(AVSValue args, void*, IScriptEnvironment* env) { return AVSValue();}
 
 AVSValue Exist(AVSValue args, void*, IScriptEnvironment* env)
- { struct _finddata_t c_file;
-   const char *filename = args[0].AsString();
-   bool wildcard;
-   wildcard = ((strchr(filename,'*')!=NULL) || (strchr(filename,'?')!=NULL));
-   return _findfirst(filename,&c_file)==-1L ? false : wildcard ? false : true; 
+{
+  const char *filename = args[0].AsString();
+
+  if (strchr(filename, '*') || strchr(filename, '?')) // wildcard
+    return false;
+
+  struct _finddata_t c_file;
+
+  intptr_t f = _findfirst(filename, &c_file);
+
+  if (f == -1)
+    return false;
+
+  _findclose(f);
+
+  return true;
 }
 
 
@@ -750,14 +761,15 @@ AVSValue FillStr(AVSValue args, void* ,IScriptEnvironment* env )
     return ret; 
 }
 
-AVSValue AVSTime(AVSValue args, void*, IScriptEnvironment* env )
+AVSValue AVSTime(AVSValue args, void*, IScriptEnvironment* env)
 {
-	time_t lt_t;
-	struct tm * lt;
-	time(&lt_t);
-	lt = localtime (&lt_t);
+    time_t lt_t;
+    struct tm * lt;
+    time(&lt_t);
+    lt = localtime(&lt_t);
     char s[1024];
-	strftime(s,1024,args[0].AsString(""),lt);
+    strftime(s, 1024, args[0].AsString(""), lt);
+    s[1023] = 0;
     return env->SaveString(s);
 }
 
@@ -911,7 +923,7 @@ AVSValue VersionNumber(AVSValue args, void*, IScriptEnvironment* env) { return A
 AVSValue VersionString(AVSValue args, void*, IScriptEnvironment* env) { return AVS_FULLVERSION; }
 
 AVSValue Int(AVSValue args, void*, IScriptEnvironment* env) { return int(args[0].AsFloat()); }
-AVSValue Frac(AVSValue args, void*, IScriptEnvironment* env) { return args[0].AsFloat() - int(args[0].AsFloat()); }
+AVSValue Frac(AVSValue args, void*, IScriptEnvironment* env) { return args[0].AsFloat() - __int64(args[0].AsFloat()); }
 AVSValue Float(AVSValue args, void*,IScriptEnvironment* env) { return args[0].AsFloat(); }
 
 AVSValue Value(AVSValue args, void*, IScriptEnvironment* env) { char *stopstring; return strtod(args[0].AsString(),&stopstring); }
