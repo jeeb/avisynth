@@ -51,7 +51,7 @@ EXPORTS
   avs_get_plane_height_subsampling
   avs_bits_per_pixel
   avs_bytes_from_pixels
-  avs_row_size
+  avs_row_size_p
   avs_bmp_size
   avs_get_pitch_p
   avs_get_row_size_p

@@ -106,7 +106,7 @@ int AVSC_CC avs_bytes_from_pixels(const AVS_VideoInfo * p, int pixels)
 }
 
 extern "C"
-int AVSC_CC avs_row_size(const AVS_VideoInfo * p, int plane)
+int AVSC_CC avs_row_size_p(const AVS_VideoInfo * p, int plane)
 {
   return ((VideoInfo *)p)->RowSize(plane);
 }
