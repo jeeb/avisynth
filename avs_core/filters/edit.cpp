@@ -571,11 +571,21 @@ PClip new_Splice(PClip _child1, PClip _child2, bool realign_sound, IScriptEnviro
 AVSValue __cdecl Dissolve::Create(AVSValue args, void*, IScriptEnvironment* env) 
 {
   const int overlap = args[2].AsInt();
-  const float fps = (float)args[3].AsFloat(24.0f);
+  const double fps = args[3].AsDblDef(24.0);
   PClip result = args[0].AsClip();
   for (int i=0; i < args[1].ArraySize(); ++i)
     result = new Dissolve(result, args[1][i].AsClip(), overlap, fps, env);
   return result;
+}
+
+
+Dissolve::~Dissolve()
+{
+  if (audbufsize) {
+    delete[] audbuffer;
+    audbuffer = 0;
+    audbufsize = 0;
+  }
 }
 
 
@@ -706,7 +716,7 @@ void Dissolve::GetAudio(void* buf, __int64 start, __int64 count, IScriptEnvironm
     return;
   }
 
-  const int bytes = (int)vi.BytesFromAudioSamples(count);
+  const size_t bytes = (size_t)vi.BytesFromAudioSamples(count);
   if (audbufsize < bytes) {
     delete[] audbuffer;
     audbuffer = new BYTE[bytes];
