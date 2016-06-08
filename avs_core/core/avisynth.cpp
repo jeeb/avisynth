@@ -974,7 +974,7 @@ void __stdcall ScriptEnvironment::ParallelJob(ThreadWorkerFuncPtr jobFunc, void*
 void __stdcall ScriptEnvironment::SetFilterMTMode(const char* filter, MtMode mode, bool force)
 {
   assert(NULL != filter);
-  assert("" != filter);
+  assert(strcmp("", filter) != 0);
 
   std::string name_to_register;
   std::string loading = plugin_manager->PluginLoading();
