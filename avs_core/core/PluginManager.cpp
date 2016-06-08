@@ -773,10 +773,15 @@ bool PluginManager::TryAsAvs25(PluginFile &plugin, AVSValue *result)
 
 bool PluginManager::TryAsAvsC(PluginFile &plugin, AVSValue *result)
 {
+#ifdef _WIN64
+  AvisynthCPluginInitFunc AvisynthCPluginInit = (AvisynthCPluginInitFunc)GetProcAddress(plugin.Library, "avisynth_c_plugin_init");
+  if (!AvisynthCPluginInit)
+    AvisynthCPluginInit = (AvisynthCPluginInitFunc)GetProcAddress(plugin.Library, "_avisynth_c_plugin_init@4");
+#else // _WIN32
   AvisynthCPluginInitFunc AvisynthCPluginInit = (AvisynthCPluginInitFunc)GetProcAddress(plugin.Library, "_avisynth_c_plugin_init@4");
   if (!AvisynthCPluginInit)
     AvisynthCPluginInit = (AvisynthCPluginInitFunc)GetProcAddress(plugin.Library, "avisynth_c_plugin_init@4");
-
+#endif
   if (AvisynthCPluginInit == NULL)
     return false;
   else
