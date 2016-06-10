@@ -878,6 +878,8 @@ void ScriptEnvironment::InitMT()
     this->SetFilterMTMode(BUILTIN_FUNC_PREFIX "_TurnLeft", MtMode::MT_NICE_FILTER, true);
     this->SetFilterMTMode(BUILTIN_FUNC_PREFIX "_TurnRight", MtMode::MT_NICE_FILTER, true);
     this->SetFilterMTMode(BUILTIN_FUNC_PREFIX "_Turn180", MtMode::MT_NICE_FILTER, true);
+
+    this->SetFilterMTMode(BUILTIN_FUNC_PREFIX "_Eval", MtMode::MT_NICE_FILTER, true);
 }
 
 ScriptEnvironment::~ScriptEnvironment() {
@@ -1147,7 +1149,7 @@ AVSValue ScriptEnvironment::GetVar(const char* name) {
 
 bool ScriptEnvironment::GetVar(const char* name, AVSValue *ret) const {
   if (closing) return false;  // We easily risk  being inside the critical section below, while deleting variables.
-  
+
   return var_table->Get(name, ret);
 }
 
@@ -2185,7 +2187,7 @@ success:;
       FrontCache->FuncName = name; // helps debugging. See also in cache.cpp
     }
     else {
-      _RPT1(0, "ScriptEnvironment::Invoke done Cache::Create %s\r\n", name); // P.F.
+        _RPT1(0, "ScriptEnvironment::Invoke done Cache::Create %s\r\n", name); // P.F.
     }
 #endif
   }
