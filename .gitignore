@@ -1,6 +1,6 @@
 CMakeCache.txt
 CMakeFiles/*
-distrib/docs/english/build/*
+distrib/docs/english/build/
 
 avs_core/CMakeCache.txt
 avs_core/CMakeFiles/*
