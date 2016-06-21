@@ -867,7 +867,7 @@ AVSValue LoadPlugin(AVSValue args, void* user_data, IScriptEnvironment* env)
   IScriptEnvironment2 *env2 = static_cast<IScriptEnvironment2*>(env);
 
   bool success = true;
-  for (int i = 0; i < args.ArraySize(); ++i)
+  for (int i = 0; i < args[0].ArraySize(); ++i)
   {
     AVSValue dummy;
     success &= env2->LoadPlugin(args[0][i].AsString(), true, &dummy);
