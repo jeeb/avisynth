@@ -219,10 +219,10 @@ int VideoInfo::BitsPerPixel() const {
         return 16;
       case CS_Y8:
         return 8;
-//    case CS_Y16:
-//      return 16;
-//    case CS_Y32:
-//      return 32;
+      case CS_Y16: // AVS16
+        return 16;
+      case CS_Y32: // AVS16
+        return 32;
     }
     if (IsPlanar()) {
       const int S = IsYUV() ? GetPlaneWidthSubsampling(PLANAR_U) + GetPlaneHeightSubsampling(PLANAR_U) : 0;
