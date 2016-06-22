@@ -774,6 +774,9 @@ void ScriptEnvironment::InitMT()
     this->SetFilterMTMode(BUILTIN_FUNC_PREFIX "_ConvertToYUY2", MtMode::MT_NICE_FILTER, true);
     this->SetFilterMTMode(BUILTIN_FUNC_PREFIX "_ConvertBackToYUY2", MtMode::MT_NICE_FILTER, true);
 
+    this->SetFilterMTMode(BUILTIN_FUNC_PREFIX "_ConvertNativeToStacked", MtMode::MT_NICE_FILTER, true);
+    this->SetFilterMTMode(BUILTIN_FUNC_PREFIX "_ConvertStackedToNative", MtMode::MT_NICE_FILTER, true);
+
     this->SetFilterMTMode(BUILTIN_FUNC_PREFIX "_GeneralConvolution", MtMode::MT_NICE_FILTER, true);
     this->SetFilterMTMode(BUILTIN_FUNC_PREFIX "_UnalignedSplice", MtMode::MT_NICE_FILTER, true);
     this->SetFilterMTMode(BUILTIN_FUNC_PREFIX "_AlignedSplice", MtMode::MT_NICE_FILTER, true);
@@ -1745,6 +1748,15 @@ PVideoFrame __stdcall ScriptEnvironment::NewVideoFrame(const VideoInfo& vi, int 
     case VideoInfo::CS_YV24:
     case VideoInfo::CS_YV411:
     case VideoInfo::CS_I420:
+    // AVS16 do not reject when a filter requests it
+    case VideoInfo::CS_YUV420P16:
+    case VideoInfo::CS_YUV422P16:
+    case VideoInfo::CS_YUV444P16:
+    case VideoInfo::CS_Y16:
+    case VideoInfo::CS_YUV420PS:
+    case VideoInfo::CS_YUV422PS:
+    case VideoInfo::CS_YUV444PS:
+    case VideoInfo::CS_Y32:
       break;
     default:
       ThrowError("Filter Error: Filter attempted to create VideoFrame with invalid pixel_type.");
@@ -1752,7 +1764,8 @@ PVideoFrame __stdcall ScriptEnvironment::NewVideoFrame(const VideoInfo& vi, int 
 
   PVideoFrame retval;
 
-  if (vi.IsPlanar() && !vi.IsY8()) { // Planar requires different math ;)
+  if (vi.IsPlanar() && !vi.IsY8() && !vi.IsColorSpace(VideoInfo::CS_Y16) && !vi.IsColorSpace(VideoInfo::CS_Y32)) { 
+    // Planar requires different math ;)
     const int xmod  = 1 << vi.GetPlaneWidthSubsampling(PLANAR_U);
     const int xmask = xmod - 1;
     if (vi.width & xmask)
