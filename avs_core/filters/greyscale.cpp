@@ -209,7 +209,7 @@ static void greyscale_rgb32_mmx(BYTE *srcp, size_t width, size_t height, size_t 
 PVideoFrame Greyscale::GetFrame(int n, IScriptEnvironment* env)
 {
   PVideoFrame frame = child->GetFrame(n, env);
-  if (vi.IsY8())
+  if (vi.IsY8() || vi.IsColorSpace(VideoInfo::CS_Y16) || vi.IsColorSpace(VideoInfo::CS_Y32))
     return frame;
 
   env->MakeWritable(&frame);
@@ -219,8 +219,19 @@ PVideoFrame Greyscale::GetFrame(int n, IScriptEnvironment* env)
   int width = vi.width;
 
   if (vi.IsPlanar()) {
-    memset(frame->GetWritePtr(PLANAR_U), 0x80808080, frame->GetHeight(PLANAR_U) * frame->GetPitch(PLANAR_U));
-    memset(frame->GetWritePtr(PLANAR_V), 0x80808080, frame->GetHeight(PLANAR_V) * frame->GetPitch(PLANAR_V));
+    union {
+      int i;
+      float f;
+    } filler;
+    
+    switch (vi.BytesFromPixels(1))
+    {
+    case 1: filler.i = 0x80808080; break;
+    case 2: filler.i = 0x00800080; break;
+    case 4: filler.f = 0.5f;
+    }
+    memset(frame->GetWritePtr(PLANAR_U), filler.i, frame->GetHeight(PLANAR_U) * frame->GetPitch(PLANAR_U));
+    memset(frame->GetWritePtr(PLANAR_V), filler.i, frame->GetHeight(PLANAR_V) * frame->GetPitch(PLANAR_V));
     return frame;
   }
 
