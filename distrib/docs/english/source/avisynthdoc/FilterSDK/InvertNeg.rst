@@ -387,7 +387,7 @@ This declares and initializes the server pointers static storage
 This is the only function which gets exported from the DLL. It is
 called by the script function LoadPlugin the first time this plugin in
 loaded in a particular script. If several scripts are open at once and
-more than one of them loads this plugin, AvisynthPluginInit2 may be
+more than one of them loads this plugin, AvisynthPluginInit3 may be
 called more than once with different IScriptEnvironments. Therefore:
 
 * You should not save the env parameter in a global variable.
@@ -413,13 +413,18 @@ existence of our filter. This function takes four arguments: the name
 of the new script function; the parameter-type string; the C++ function
 implementing the script function; and the user_data cookie.
 
-The parameter-type string is similar to the corresponding entity in
-`VirtualDub`_, except that:
+The parameter-type string can be specified as follows:
 
 * No return type is given. Function return values are not
   type-checked; you can return anything you like.
 * There are more types: along with 'i'nt and 's'tring you can specify
   'b'ool, 'f'loat, and 'c'lip.
+* The following types are available:
+    + c - clip
+    + i - integer
+    + f - float
+    + s - string
+    + b - boolean
 * You can follow any type with '*' or '+' to indicate "zero or more"
   or "one or more" respectively. In this case all the matching
   arguments will be gathered into a sub-array.
@@ -443,7 +448,7 @@ The parameter-type string is similar to the corresponding entity in
     return "InvertNeg sample plugin";
 
 
-The return value of AvisynthPluginInit is a string which can contain
+The return value of AvisynthPluginInit3 is a string which can contain
 any message you like, such as a notice identifying the version and
 author of the plugin. This string becomes the return value of
 LoadPlugin, and will almost always be ignored. You can also just return
@@ -535,7 +540,7 @@ ____
 
 Back to :doc:`FilterSDK`
 
-$Date: 2014/10/27 22:04:54 $
+$Date: 2015/09/14 20:23:59 $
 
 .. _tutorial: http://www.cplusplus.com/doc/tutorial/classes
 .. _VirtualDub: http://avisynth.nl/index.php/VirtualDub

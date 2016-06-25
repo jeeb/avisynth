@@ -80,9 +80,39 @@ advanced stuff. A lot of technical details are also to be found in
 
 ----
 
+Since we are invoking ConvertAudio() you might wonder whether it is
+possible to call it in a script. That is indeed possible, but not
+documented since it is not very practical to do so. You need to know
+that:
+
+::
+
+    SAMPLE_INT8  = 1b     = 1,
+    SAMPLE_INT16 = 10b    = 2,
+    SAMPLE_INT24 = 100b   = 4,
+    SAMPLE_INT32 = 1000b  = 8,
+    SAMPLE_FLOAT = 10000b = 16
+
+(although these values might change some day).
+
+In the example above we call ConvertAudio() with
+
+::
+
+    SAMPLE_INT16
+    SAMPLE_FLOAT = 10b
+    10000b = 10010b = 18,
+
+so you need to call it as ConvertAudio(clip, 18, 16).
+
+You should realise that float audio will be converted to 16 bit when
+feeding it to the encoder. At least unless you have set :doc:`global
+OPT_AllowFloatAudio = True <../syntax/syntax_internal_functions_control>` in your script.
+__________________________________________________________________
+
 Back to :doc:`FilterSDK`
 
-$Date: 2015/03/31 05:00:17 $
+$Date: 2015/09/14 20:23:59 $
 
 .. _internal audio filters:
     http://avisynth2.cvs.sourceforge.net/avisynth2/avisynth/src/audio/
