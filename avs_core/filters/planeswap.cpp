@@ -254,13 +254,22 @@ SwapUVToY::SwapUVToY(PClip _child, int _mode, IScriptEnvironment* env)
   if (!vi.IsYUV())
     env->ThrowError("UVtoY: YUV data only!");
 
-  if (vi.IsY8()) 
-    env->ThrowError("UVtoY: There are no chroma channels in Y8!");
+  if (vi.IsY8() || vi.IsColorSpace(VideoInfo::CS_Y16) || vi.IsColorSpace(VideoInfo::CS_Y32))
+    env->ThrowError("UVtoY: There are no chroma channels in Y8/Y16/Y32!");
 
   vi.height >>= vi.GetPlaneHeightSubsampling(PLANAR_U);
   vi.width  >>= vi.GetPlaneWidthSubsampling(PLANAR_U);
 
-  if (mode == UToY8 || mode == VToY8 || mode == YUY2UToY8 || mode == YUY2VToY8)
+  if (mode == UToY8 || mode == VToY8)
+  {
+    switch (vi.BytesFromPixels(1)) // although name is Y8, it means that greyscale stays in the same bitdepth
+    {
+    case 1: vi.pixel_type = VideoInfo::CS_Y8; break;
+    case 2: vi.pixel_type = VideoInfo::CS_Y16; break;
+    case 4: vi.pixel_type = VideoInfo::CS_Y32; break;
+    }
+  }
+  else if (mode == YUY2UToY8 || mode == YUY2VToY8)
     vi.pixel_type = VideoInfo::CS_Y8;
 
 }
@@ -338,25 +347,37 @@ PVideoFrame __stdcall SwapUVToY::GetFrame(int n, IScriptEnvironment* env) {
   }
 
   // Clear chroma
-  const int pitch = dst->GetPitch(PLANAR_U)/4;
+  const int pitch = dst->GetPitch(PLANAR_U)/4; // uint32_t sized copy. bytecount div 4
   const int myx = (dst->GetRowSize(PLANAR_U)+3)/4;
   const int myy = dst->GetHeight(PLANAR_U);
 
   int *srcpUV = (int*)dst->GetWritePtr(PLANAR_U);
-  {for (int y=0; y<myy; y++) {
+  union {
+    int i;
+    float f;
+  } filler;
+
+  switch (vi.BytesFromPixels(1))
+  {
+  case 1: filler.i = 0x80808080; break;
+  case 2: filler.i = 0x80008000; break;
+  case 4: filler.f = 0.5f;
+  }
+
+  for (int y=0; y<myy; y++) {
     for (int x=0; x<myx; x++) {
-      srcpUV[x] = 0x80808080;  // mod 8
+      srcpUV[x] = filler.i;
     }
     srcpUV += pitch;
-  }}
+  }
 
   srcpUV = (int*)dst->GetWritePtr(PLANAR_V);
-  {for (int y=0; y<myy; ++y) {
+  for (int y=0; y<myy; ++y) {
     for (int x=0; x<myx; x++) {
-      srcpUV[x] = 0x80808080;  // mod 8
+      srcpUV[x] = filler.i;
     }
     srcpUV += pitch;
-  }}
+  }
   return dst;
 }
 
@@ -398,7 +419,12 @@ SwapYToUV::SwapYToUV(PClip _child, PClip _clip, PClip _clipY, IScriptEnvironment
         env->ThrowError("YToUV: Y clip does not have the double width of the UV clips!");
     }
     else {  // Autogenerate destination colorformat
-      vi.pixel_type = VideoInfo::CS_YV12; // CS_Sub_Width_2 and CS_Sub_Height_2 are 0
+      switch (vi.BytesFromPixels(1))
+      {
+      case 1: vi.pixel_type = VideoInfo::CS_YV12; break;// CS_Sub_Width_2 and CS_Sub_Height_2 are 0
+      case 2: vi.pixel_type = VideoInfo::CS_YUV420P16; break;
+      case 4: vi.pixel_type = VideoInfo::CS_YUV420PS; break;
+      }
 
       if (vi3.width == vi.width) {
         vi.pixel_type |= VideoInfo::CS_Sub_Width_1;
@@ -434,6 +460,10 @@ SwapYToUV::SwapYToUV(PClip _child, PClip _clip, PClip _clipY, IScriptEnvironment
       vi.width <<= 1;
     else if (vi.IsY8())
       vi.pixel_type = VideoInfo::CS_YV24;
+    else if (vi.IsColorSpace(VideoInfo::CS_Y16))
+      vi.pixel_type = VideoInfo::CS_YUV444P16;
+    else if (vi.IsColorSpace(VideoInfo::CS_Y32))
+      vi.pixel_type = VideoInfo::CS_YUV444PS;
     else {
       vi.height <<= vi.GetPlaneHeightSubsampling(PLANAR_U);
       vi.width  <<= vi.GetPlaneWidthSubsampling(PLANAR_U);
@@ -496,13 +526,26 @@ PVideoFrame __stdcall SwapYToUV::GetFrame(int n, IScriptEnvironment* env) {
   
   if (!clipY) {
     // Luma = 126 (0x7e)
-    const int pitch = dst->GetPitch(PLANAR_Y)/4;
+    const int pitch = dst->GetPitch(PLANAR_Y)/4; // cycle is uint32_t
     int *dstpY = (int*)dst->GetWritePtr(PLANAR_Y);
     const int myx = (dst->GetRowSize(PLANAR_Y)+3)/4;
     const int myy = dst->GetHeight(PLANAR_Y);
+
+    union {
+      int i;
+      float f;
+    } filler;
+
+    switch (vi.BytesFromPixels(1))
+    {
+    case 1: filler.i = 0x7e7e7e7e; break;
+    case 2: filler.i = 0x7e007e00; break;
+    case 4: filler.f = 126.0f/256.0; // float
+    }
+
     for (int y=0; y<myy; y++) {
       for (int x=0; x<myx; x++) {
-        dstpY[x] = 0x7e7e7e7e;  // mod 4
+        dstpY[x] = filler.i;  // mod 4
       }
       dstpY += pitch;
     }
