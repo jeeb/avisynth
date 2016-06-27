@@ -63,6 +63,38 @@ int AVSC_CC avs_is_y8(const AVS_VideoInfo * p)
   { return (p->pixel_type & AVS_CS_PLANAR_MASK) == (AVS_CS_Y8    & AVS_CS_PLANAR_FILTER); }
 
 extern "C"
+int AVSC_CC avs_is_yuv444p16(const AVS_VideoInfo * p)
+  { return (p->pixel_type & AVS_CS_PLANAR_MASK) == (AVS_CS_YUV444P16 & AVS_CS_PLANAR_FILTER); }
+
+extern "C"
+int AVSC_CC avs_is_yuv422p16(const AVS_VideoInfo * p)
+  { return (p->pixel_type & AVS_CS_PLANAR_MASK) == (AVS_CS_YUV422P16 & AVS_CS_PLANAR_FILTER); }
+
+extern "C"
+int AVSC_CC avs_is_yuv420p16(const AVS_VideoInfo * p)
+  { return (p->pixel_type & AVS_CS_PLANAR_MASK) == (AVS_CS_YUV420P16 & AVS_CS_PLANAR_FILTER); }
+
+extern "C"
+int AVSC_CC avs_is_y16(const AVS_VideoInfo * p)
+  { return (p->pixel_type & AVS_CS_PLANAR_MASK) == (AVS_CS_Y16   & AVS_CS_PLANAR_FILTER); }
+
+extern "C"
+int AVSC_CC avs_is_yuv444ps(const AVS_VideoInfo * p)
+  { return (p->pixel_type & AVS_CS_PLANAR_MASK) == (AVS_CS_YUV444PS & AVS_CS_PLANAR_FILTER); }
+
+extern "C"
+int AVSC_CC avs_is_yuv422ps(const AVS_VideoInfo * p)
+  { return (p->pixel_type & AVS_CS_PLANAR_MASK) == (AVS_CS_YUV422PS & AVS_CS_PLANAR_FILTER); }
+
+extern "C"
+int AVSC_CC avs_is_yuv420ps(const AVS_VideoInfo * p)
+  { return (p->pixel_type & AVS_CS_PLANAR_MASK) == (AVS_CS_YUV420PS & AVS_CS_PLANAR_FILTER); }
+
+extern "C"
+int AVSC_CC avs_is_y32(const AVS_VideoInfo * p)
+  { return (p->pixel_type & AVS_CS_PLANAR_MASK) == (AVS_CS_Y32   & AVS_CS_PLANAR_FILTER); }
+
+extern "C"
 int AVSC_CC avs_is_color_space(const AVS_VideoInfo * p, int c_space)
 {
   return avs_is_planar(p) ?
