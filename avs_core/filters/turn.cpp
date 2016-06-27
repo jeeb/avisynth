@@ -43,6 +43,7 @@
 #include "planeswap.h"
 #include "../core/internal.h"
 #include <tmmintrin.h>
+#include <stdint.h>
 
 
 extern const AVSFunction Turn_filters[] = {
@@ -629,41 +630,59 @@ static void turn_180_plane_xsse(const BYTE* pSrc, BYTE* pDst, int srcWidth, int 
 TurnFuncPtr turn_180_plane_sse2 = &turn_180_plane_xsse<CPUF_SSE2>;
 TurnFuncPtr turn_180_plane_ssse3 = &turn_180_plane_xsse<CPUF_SSSE3>;
 
+template<typename pixel_size>
 void turn_right_plane_c(const BYTE *srcp, BYTE *dstp, int width, int height, int src_pitch, int dst_pitch) {
+  const pixel_size *_srcp = reinterpret_cast<const pixel_size *>(srcp);
+  pixel_size *_dstp = reinterpret_cast<pixel_size *>(dstp);
+  src_pitch = src_pitch / sizeof(pixel_size); // AVS16
+  dst_pitch = dst_pitch / sizeof(pixel_size);
+  width = width / sizeof(pixel_size); // width was GetRowSize()
   for(int y=0; y<height; y++)
   {
     int offset = height-1-y;
     for (int x=0; x<width; x++)
     {
-      dstp[offset] = srcp[x];
+      _dstp[offset] = _srcp[x];
       offset += dst_pitch;
     }
-    srcp += src_pitch;
+    _srcp += src_pitch;
   }
 }
 
+template<typename pixel_size>
 void turn_left_plane_c(const BYTE *srcp, BYTE *dstp, int width, int height, int src_pitch, int dst_pitch) {
-  srcp += width-1;
+  const pixel_size *_srcp = reinterpret_cast<const pixel_size *>(srcp);
+  pixel_size *_dstp = reinterpret_cast<pixel_size *>(dstp);
+  src_pitch = src_pitch / sizeof(pixel_size); // AVS16
+  dst_pitch = dst_pitch / sizeof(pixel_size);
+  width = width / sizeof(pixel_size); // width was GetRowSize()
+  _srcp += width-1;
   for(int y=0; y<height; y++)
   {
     int offset = y;
     for (int x=0; x<width; x++)
     {
-      dstp[offset] = srcp[-x];
+      _dstp[offset] = _srcp[-x];
       offset += dst_pitch;
     }
-    srcp += src_pitch;
+    _srcp += src_pitch;
   }
 }
 
+template<typename pixel_size>
 static void turn_180_plane_c(const BYTE *srcp, BYTE *dstp, int width, int height, int src_pitch, int dst_pitch) {
-  dstp += (height-1)*dst_pitch + (width-1);
+  const pixel_size *_srcp = reinterpret_cast<const pixel_size *>(srcp);
+  pixel_size *_dstp = reinterpret_cast<pixel_size *>(dstp);
+  src_pitch = src_pitch / sizeof(pixel_size); // AVS16
+  dst_pitch = dst_pitch / sizeof(pixel_size);
+  width = width / sizeof(pixel_size); // width was GetRowSize()
+  _dstp += (height-1)*dst_pitch + (width-1);
   for (int y = 0; y<height; y++) {
-    for (int x = 0; x<width; x++) {	
-      dstp[-x] = srcp[x];
+    for (int x = 0; x<width; x++) {
+      _dstp[-x] = _srcp[x];
     }
-    dstp -= src_pitch;
-    srcp += dst_pitch;
+    _dstp -= src_pitch;
+    _srcp += dst_pitch;
   }
 }
 
@@ -704,18 +723,37 @@ Turn::Turn(PClip _child, int _direction, IScriptEnvironment* env) : GenericVideo
   }
   else if (vi.IsPlanar())
   {
-    if (env->GetCPUFlags() & CPUF_SSSE3) {
-      TurnFuncPtr functions[3] = {turn_left_plane_sse2, turn_right_plane_sse2, turn_180_plane_ssse3};
-      turn_function = functions[direction]; 
-    } else if (env->GetCPUFlags() & CPUF_SSE2) {
-      TurnFuncPtr functions[3] = {turn_left_plane_sse2, turn_right_plane_sse2, turn_180_plane_sse2};
-      turn_function = functions[direction]; 
-    } else {
-      TurnFuncPtr functions[3] = {turn_left_plane_c, turn_right_plane_c, turn_180_plane_c};
-      turn_function = functions[direction]; 
+    switch (vi.BytesFromPixels(1)) // AVS16
+    {
+    case 1: // 8 bit
+      if (env->GetCPUFlags() & CPUF_SSSE3) {
+        TurnFuncPtr functions[3] = { turn_left_plane_sse2, turn_right_plane_sse2, turn_180_plane_ssse3 };
+        turn_function = functions[direction];
+      }
+      else if (env->GetCPUFlags() & CPUF_SSE2) {
+        TurnFuncPtr functions[3] = { turn_left_plane_sse2, turn_right_plane_sse2, turn_180_plane_sse2 };
+        turn_function = functions[direction];
+      }
+      else {
+        TurnFuncPtr functions[3] = { turn_left_plane_c<uint8_t>, turn_right_plane_c<uint8_t>, turn_180_plane_c<uint8_t> };
+        turn_function = functions[direction];
+      }
+      break;
+    case 2: // 16 bit todo SSE
+    {
+      TurnFuncPtr functions[3] = { turn_left_plane_c<uint16_t>, turn_right_plane_c<uint16_t>, turn_180_plane_c<uint16_t> };
+      turn_function = functions[direction];
+      break;
     }
-    // rectangular formats?
-    if ((_direction == DIRECTION_LEFT || _direction == DIRECTION_RIGHT) && !vi.IsY8() && 
+    default: // 32 bit todo SSE
+    {
+      TurnFuncPtr functions[3] = { turn_left_plane_c<float>, turn_right_plane_c<float>, turn_180_plane_c<float> };
+      turn_function = functions[direction];
+    }
+    }
+      // rectangular formats?
+    if ((_direction == DIRECTION_LEFT || _direction == DIRECTION_RIGHT) && 
+      !vi.IsY8() && !vi.IsColorSpace(VideoInfo::CS_Y16) && !vi.IsColorSpace(VideoInfo::CS_Y32) &&
       (vi.GetPlaneWidthSubsampling(PLANAR_U) != vi.GetPlaneHeightSubsampling(PLANAR_U)))
     {
       if (vi.width % (1<<vi.GetPlaneWidthSubsampling(PLANAR_U))) // YV16 & YV411
@@ -729,7 +767,7 @@ Turn::Turn(PClip _child, int _direction, IScriptEnvironment* env) : GenericVideo
       MitchellNetravaliFilter filter(1./3., 1./3.);
       AVSValue subs[4] = { 0.0, 0.0, 0.0, 0.0 }; 
 
-      u_source = new SwapUVToY(child, SwapUVToY::UToY8, env);  
+      u_source = new SwapUVToY(child, SwapUVToY::UToY8, env); // Y16 and Y32 capable
       v_source = new SwapUVToY(child, SwapUVToY::VToY8, env);
 
       const VideoInfo vi_u = u_source->GetVideoInfo();
