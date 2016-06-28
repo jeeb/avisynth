@@ -365,10 +365,11 @@ typedef struct FilterDefinition {
 
 class FilterDefinitionList {
 public:
+	FilterModule* fm;
   FilterDefinition* fd;
   FilterDefinitionList* fdl;
 
-  FilterDefinitionList(FilterModule* fm, FilterDefinition* _fd) : fd(_fd), fdl(fm->fdl) { };
+  FilterDefinitionList(FilterModule* _fm, FilterDefinition* _fd) : fm(_fm), fd(_fd), fdl(fm->fdl) { };
 };
 
 //////////
@@ -575,6 +576,7 @@ public:
 class VirtualdubFilterProxy : public GenericVideoFilter {
   PVideoFrame src, dst, last;
   VFBitmap vbSrc, vbDst, vbLast;
+  FilterDefinitionList* const fdl;
   FilterDefinition* const fd;
   FilterStateInfo fsi;
   FilterActivation fa;
@@ -602,9 +604,11 @@ class VirtualdubFilterProxy : public GenericVideoFilter {
   }
 
 public:
-  VirtualdubFilterProxy(PClip _child, FilterDefinition* _fd, AVSValue args, IScriptEnvironment* env)
-    : GenericVideoFilter(_child), fd(_fd), fa(vbDst, vbSrc, &vbLast)
+  VirtualdubFilterProxy(PClip _child, FilterDefinitionList* _fdl, AVSValue args, IScriptEnvironment* env)
+    : GenericVideoFilter(_child), fdl(_fdl), fd(_fdl->fd), fa(vbDst, vbSrc, &vbLast)
   {
+	if (!fd)
+		env->ThrowError("VirtualdubFilterProxy: No FilterDefinition structure!");
     if (!vi.IsRGB32())
       throw AvisynthError("VirtualdubFilterProxy: only RGB32 supported for VirtualDub filters");
 
@@ -763,16 +767,29 @@ public:
 
   ~VirtualdubFilterProxy() {
     CallEndProc();
+	FreeFilterModule(fdl->fm);
     if (vbSrc.hdc)
       ReleaseDC(NULL, vbSrc.hdc);
   }
 
+  void __cdecl FreeFilterModule(FilterModule* fm) {
+	  for (FilterDefinitionList* fdl = fm->fdl; fdl; fdl = fdl->fdl) {
+		  delete fdl->fd;
+		  fdl->fd = 0;
+	  }
+
+	  fm->deinitProc(fm, &g_filterFuncs);
+	  FreeLibrary(fm->hInstModule);
+	  if (fm->prev)
+		  fm->prev->next = fm->next;
+	  if (fm->next)
+		  fm->next->prev = fm->prev;
+	  delete fm;
+  }
+
   static AVSValue __cdecl Create(AVSValue args, void* user_data, IScriptEnvironment* env) {
     FilterDefinitionList* fdl = (FilterDefinitionList*)user_data;
-
-    if (!fdl->fd) env->ThrowError("VirtualdubFilterProxy: No FilterDefinition structure!");
-
-    return new VirtualdubFilterProxy(args[0].AsClip(), fdl->fd, args, env);
+    return new VirtualdubFilterProxy(args[0].AsClip(), fdl, args, env);
   }
 };
 
@@ -800,24 +817,6 @@ FilterDefinition *VDcall FilterAdd(FilterModule *fm, FilterDefinition *pfd, int 
   }
 
   return fd;
-}
-
-
-void __cdecl FreeFilterModule(void* user_data, IScriptEnvironment* env) {
-  FilterModule* fm = (FilterModule*)user_data;
-
-  for (FilterDefinitionList* fdl = fm->fdl; fdl; fdl = fdl->fdl) {
-    delete fdl->fd;
-    fdl->fd = 0;
-  }
-
-  fm->deinitProc(fm, &g_filterFuncs);
-  FreeLibrary(fm->hInstModule);
-  if (fm->prev)
-    fm->prev->next = fm->next;
-  if (fm->next)
-    fm->next->prev = fm->prev;
-  delete fm;
 }
 
 
@@ -879,7 +878,6 @@ AVSValue __cdecl LoadVirtualdubPlugin(AVSValue args, void*, IScriptEnvironment* 
     fm->next->prev = fm;
 
   env->SetGlobalVar("$LoadVirtualdubPlugin$", (const char*)fm);
-  env->AtExit(FreeFilterModule, fm);
 
   return AVSValue();
 }
