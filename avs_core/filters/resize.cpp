@@ -243,7 +243,7 @@ void vertical_reduce_core(BYTE* dstp, const BYTE* srcp, int dst_pitch, int src_p
 VerticalReduceBy2::VerticalReduceBy2(PClip _child, IScriptEnvironment* env)
  : GenericVideoFilter(_child)
 {
-  if (vi.IsPlanar() && !vi.IsY8()) {
+  if (vi.IsPlanar() && !vi.IsY8() && !vi.IsColorSpace(VideoInfo::CS_Y16) && !vi.IsColorSpace(VideoInfo::CS_Y32)) {
     const int mod  = 2 << vi.GetPlaneHeightSubsampling(PLANAR_U);
     const int mask = mod - 1;
     if (vi.height & mask)
@@ -274,7 +274,7 @@ PVideoFrame VerticalReduceBy2::GetFrame(int n, IScriptEnvironment* env) {
 
   if (vi.IsPlanar()) {
     vertical_reduce_core(dstp, srcp, dst_pitch, src_pitch, row_size, dst->GetHeight(PLANAR_Y), env);
-    if (!vi.IsY8()) {
+    if (!vi.IsY8() && !vi.IsColorSpace(VideoInfo::CS_Y16) && !vi.IsColorSpace(VideoInfo::CS_Y32)) {
       vertical_reduce_core(dst->GetWritePtr(PLANAR_U), src->GetReadPtr(PLANAR_U), dst->GetPitch(PLANAR_U),
         src->GetPitch(PLANAR_U), dst->GetRowSize(PLANAR_U), dst->GetHeight(PLANAR_U), env);
       vertical_reduce_core(dst->GetWritePtr(PLANAR_V), src->GetReadPtr(PLANAR_V), dst->GetPitch(PLANAR_V),
@@ -294,7 +294,7 @@ PVideoFrame VerticalReduceBy2::GetFrame(int n, IScriptEnvironment* env) {
 HorizontalReduceBy2::HorizontalReduceBy2(PClip _child, IScriptEnvironment* env)
 : GenericVideoFilter(_child), mybuffer(0)
 {
-  if (vi.IsPlanar() && !vi.IsY8()) {
+  if (vi.IsPlanar() && !vi.IsY8() && !vi.IsColorSpace(VideoInfo::CS_Y16) && !vi.IsColorSpace(VideoInfo::CS_Y32)) {
     const int mod  = 2 << vi.GetPlaneWidthSubsampling(PLANAR_U);
     const int mask = mod - 1;
     if (vi.width & mask)
