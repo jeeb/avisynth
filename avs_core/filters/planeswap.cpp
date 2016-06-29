@@ -153,7 +153,7 @@ static void isse_yuy2_swap(const BYTE* srcp, BYTE* dstp, int src_pitch, int dst_
 
 AVSValue __cdecl SwapUV::CreateSwapUV(AVSValue args, void* user_data, IScriptEnvironment* env) {
   PClip p = args[0].AsClip();
-  if (p->GetVideoInfo().IsY8())
+  if (p->GetVideoInfo().IsY8() || p->GetVideoInfo().IsColorSpace(VideoInfo::CS_Y16) || p->GetVideoInfo().IsColorSpace(VideoInfo::CS_Y32))
     return p;
   return new SwapUV(p, env);
 }
