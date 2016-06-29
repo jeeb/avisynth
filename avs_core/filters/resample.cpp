@@ -904,7 +904,7 @@ FilteredResizeV::FilteredResizeV( PClip _child, double subrange_top, double subr
     env->ThrowError("Resize: Height must be greater than 0.");
 
   pixelsize = vi.BytesFromPixels(1); // AVS16
-  grey = vi.IsY8() && vi.IsColorSpace(VideoInfo::CS_Y16) && vi.IsColorSpace(VideoInfo::CS_Y32);
+  grey = vi.IsY8() || vi.IsColorSpace(VideoInfo::CS_Y16) || vi.IsColorSpace(VideoInfo::CS_Y32);
 
   if (vi.IsPlanar() && !grey) {
     const int mask = (1 << vi.GetPlaneHeightSubsampling(PLANAR_U)) - 1;
