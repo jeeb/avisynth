@@ -458,11 +458,11 @@ Invert::Invert(PClip _child, const char * _channels, IScriptEnvironment* env)
       break;
     case 'U':
     case 'u':
-      doU = !vi.IsY8();
+      doU = !vi.IsY8() && !vi.IsColorSpace(VideoInfo::CS_Y16) && !vi.IsColorSpace(VideoInfo::CS_Y32);
       break;
     case 'V':
     case 'v':
-      doV = !vi.IsY8();
+      doV = !vi.IsY8() && !vi.IsColorSpace(VideoInfo::CS_Y16) && !vi.IsColorSpace(VideoInfo::CS_Y32);
       break;
     default:
       break;
