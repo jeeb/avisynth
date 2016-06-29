@@ -169,6 +169,7 @@ private:
   int audio_overlap;
   BYTE* audbuffer;
   int audbufsize;
+  int pixelsize;
   void EnsureBuffer(int minsize);
 };
 

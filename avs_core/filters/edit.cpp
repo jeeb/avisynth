@@ -41,6 +41,7 @@
 #include <avs/win.h>
 #include <avs/minmax.h>
 #include <avs/alignment.h>
+#include <stdint.h>
 
 
 
@@ -625,6 +626,8 @@ Dissolve::Dissolve(PClip _child1, PClip _child2, int _overlap, double fps, IScri
       env->ThrowError("Dissolve: frame sizes don't match");
     if (!(vi.IsSameColorspace(vi2)))
       env->ThrowError("Dissolve: video formats don't match");
+    
+    pixelsize = vi.BytesFromPixels(1); // AVS16
 
 	video_fade_start = vi.num_frames - overlap;
 	video_fade_end = vi.num_frames - 1;
@@ -674,32 +677,51 @@ PVideoFrame Dissolve::GetFrame(int n, IScriptEnvironment* env)
   int invweight = 32767-weight;
 
   env->MakeWritable(&a);
-  if (env->GetCPUFlags() & CPUF_SSE2) {
-    weighted_merge_planar_sse2(a->GetWritePtr(), b->GetReadPtr(), a->GetPitch(), b->GetPitch(), a->GetRowSize(PLANAR_Y), a->GetHeight(), weight, invweight);
-    if (vi.IsPlanar()) {
-      weighted_merge_planar_sse2(a->GetWritePtr(PLANAR_U), b->GetReadPtr(PLANAR_U), a->GetPitch(PLANAR_U), b->GetPitch(PLANAR_U), a->GetRowSize(PLANAR_U), a->GetHeight(PLANAR_U), weight, invweight);
-      weighted_merge_planar_sse2(a->GetWritePtr(PLANAR_V), b->GetReadPtr(PLANAR_V), a->GetPitch(PLANAR_V), b->GetPitch(PLANAR_V), a->GetRowSize(PLANAR_V), a->GetHeight(PLANAR_V), weight, invweight);    
-    }
-  } 
-#ifdef X86_32
-  else if (env->GetCPUFlags() & CPUF_MMX) {
-    weighted_merge_planar_mmx(a->GetWritePtr(), b->GetReadPtr(), a->GetPitch(), b->GetPitch(), a->GetRowSize(PLANAR_Y), a->GetHeight(), weight, invweight);
-    if (vi.IsPlanar()) {
-      weighted_merge_planar_mmx(a->GetWritePtr(PLANAR_U), b->GetReadPtr(PLANAR_U), a->GetPitch(PLANAR_U), b->GetPitch(PLANAR_U), a->GetRowSize(PLANAR_U), a->GetHeight(PLANAR_U), weight, invweight);
-      weighted_merge_planar_mmx(a->GetWritePtr(PLANAR_V), b->GetReadPtr(PLANAR_V), a->GetPitch(PLANAR_V), b->GetPitch(PLANAR_V), a->GetRowSize(PLANAR_V), a->GetHeight(PLANAR_V), weight, invweight);    
-    }
-  }
-#endif
-  else {
-    int weight = (multiplier * 65535) / (overlap+1);
-    int invweight = 65535-weight;
-    weighted_merge_planar_c(a->GetWritePtr(), b->GetReadPtr(), a->GetPitch(), b->GetPitch(), a->GetRowSize(PLANAR_Y), a->GetHeight(), weight, invweight);
-    if (vi.IsPlanar()) {
-      weighted_merge_planar_c(a->GetWritePtr(PLANAR_U), b->GetReadPtr(PLANAR_U), a->GetPitch(PLANAR_U), b->GetPitch(PLANAR_U), a->GetRowSize(PLANAR_U), a->GetHeight(PLANAR_U), weight, invweight);
-      weighted_merge_planar_c(a->GetWritePtr(PLANAR_V), b->GetReadPtr(PLANAR_V), a->GetPitch(PLANAR_V), b->GetPitch(PLANAR_V), a->GetRowSize(PLANAR_V), a->GetHeight(PLANAR_V), weight, invweight);    
-    }
-  }
+  if (pixelsize != 4)
+  {
+    MergeFuncPtr weighted_merge_planar;
 
+    // similar to merge.cpp
+    if ((pixelsize == 2) && (env->GetCPUFlags() & CPUF_SSE4_1)) {
+      // uint16: sse 4.1
+      weighted_merge_planar = &weighted_merge_planar_uint16_sse41;
+    }
+    else if ((pixelsize == 1) && (env->GetCPUFlags() & CPUF_SSE2)) {
+      // uint8: sse2
+      weighted_merge_planar = &weighted_merge_planar_sse2;
+    }
+#ifdef X86_32
+    else if ((pixelsize == 1) && (env->GetCPUFlags() & CPUF_MMX) ) {
+      weighted_merge_planar = &weighted_merge_planar_mmx;
+    }
+#endif
+    else {
+      // C: different scale!
+      int weight = (multiplier * 65535) / (overlap + 1);
+      int invweight = 65535 - weight;
+      if (pixelsize == 1)
+        weighted_merge_planar = &weighted_merge_planar_c<uint8_t>;
+      else // pixelsize == 2
+        weighted_merge_planar = &weighted_merge_planar_c<uint16_t>;
+    }
+
+    weighted_merge_planar(a->GetWritePtr(), b->GetReadPtr(), a->GetPitch(), b->GetPitch(), a->GetRowSize(PLANAR_Y), a->GetHeight(), weight, invweight);
+    if (vi.IsPlanar()) {
+      weighted_merge_planar(a->GetWritePtr(PLANAR_U), b->GetReadPtr(PLANAR_U), a->GetPitch(PLANAR_U), b->GetPitch(PLANAR_U), a->GetRowSize(PLANAR_U), a->GetHeight(PLANAR_U), weight, invweight);
+      weighted_merge_planar(a->GetWritePtr(PLANAR_V), b->GetReadPtr(PLANAR_V), a->GetPitch(PLANAR_V), b->GetPitch(PLANAR_V), a->GetRowSize(PLANAR_V), a->GetHeight(PLANAR_V), weight, invweight);
+    }
+  }
+  else // if (pixelsize==4)
+  {
+    float fweight = (multiplier) / (overlap + 1);
+    float finvweight = 1- fweight;
+    weighted_merge_planar_c_float(a->GetWritePtr(), b->GetReadPtr(), a->GetPitch(), b->GetPitch(), a->GetRowSize(PLANAR_Y), a->GetHeight(), fweight, finvweight);
+    if (vi.IsPlanar()) {
+      weighted_merge_planar_c_float(a->GetWritePtr(PLANAR_U), b->GetReadPtr(PLANAR_U), a->GetPitch(PLANAR_U), b->GetPitch(PLANAR_U), a->GetRowSize(PLANAR_U), a->GetHeight(PLANAR_U), fweight, finvweight);
+      weighted_merge_planar_c_float(a->GetWritePtr(PLANAR_V), b->GetReadPtr(PLANAR_V), a->GetPitch(PLANAR_V), b->GetPitch(PLANAR_V), a->GetRowSize(PLANAR_V), a->GetHeight(PLANAR_V), fweight, finvweight);
+    }
+
+  }
   return a;
 }
 
