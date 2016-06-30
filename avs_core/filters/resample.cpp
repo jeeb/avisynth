@@ -100,7 +100,6 @@ static void resize_v_c_planar(BYTE* dst, const BYTE* src, int dst_pitch, int src
 {
   int filter_size = program->filter_size;
   short* current_coeff = program->pixel_coefficient;
-
   pixel_size* src0 = (pixel_size *)src;
   pixel_size* dst0 = (pixel_size *)dst;
   dst_pitch = dst_pitch / sizeof(pixel_size);
@@ -124,7 +123,7 @@ static void resize_v_c_planar(BYTE* dst, const BYTE* src, int dst_pitch, int src
       }
       result = ((result+8192)/16384);
       result = result > limit ? limit : result < 0 ? 0 : result;
-      dst0[x] = (pixel_size) result;
+      dst0[x] = (pixel_size)result;
     }
 
     dst0 += dst_pitch;
@@ -488,7 +487,7 @@ static void resize_h_c_planar(BYTE* dst, const BYTE* src, int dst_pitch, int src
       }
       result = ((result+8192)/16384); // todo float:no scale
       result = result > limit ? limit : result < 0 ? 0 : result;
-      (dst0+y*dst_pitch)[x] = (pixel_size)result;
+      (dst0 + y*dst_pitch)[x] = (pixel_size)result;
     }
     current += filter_size;
   }
@@ -803,8 +802,10 @@ PVideoFrame __stdcall FilteredResizeH::GetFrame(int n, IScriptEnvironment* env)
   auto env2 = static_cast<IScriptEnvironment2*>(env);
 
   if (!fast_resize) {
-    BYTE* temp_1 = static_cast<BYTE*>(env2->Allocate(temp_1_pitch * src_width * pixelsize, 64, AVS_POOLED_ALLOC));
-    BYTE* temp_2 = static_cast<BYTE*>(env2->Allocate(temp_2_pitch * dst_width * pixelsize, 64, AVS_POOLED_ALLOC));
+    // e.g. not aligned, not mod4
+    // temp_1_pitch and temp_2_pitch is pixelsize-aware
+    BYTE* temp_1 = static_cast<BYTE*>(env2->Allocate(temp_1_pitch * src_width, 64, AVS_POOLED_ALLOC));
+    BYTE* temp_2 = static_cast<BYTE*>(env2->Allocate(temp_2_pitch * dst_width, 64, AVS_POOLED_ALLOC));
 
     if (!vi.IsRGB()) {
       // Y Plane
@@ -821,15 +822,16 @@ PVideoFrame __stdcall FilteredResizeH::GetFrame(int n, IScriptEnvironment* env)
         const int src_chroma_height = src_height >> shift_h;
         const int dst_chroma_height = dst_height >> shift_h;
 
+        // turn_xxx: width * pixelsize: needs GetPlaneWidth-like full size
         // U Plane
-        turn_right(src->GetReadPtr(PLANAR_U), temp_1, src_chroma_width * pixelsize, src_chroma_height, src->GetPitch(PLANAR_U), temp_1_pitch);  // * pixelsize: turn_right needs GetPlaneWidth full size
+        turn_right(src->GetReadPtr(PLANAR_U), temp_1, src_chroma_width * pixelsize, src_chroma_height, src->GetPitch(PLANAR_U), temp_1_pitch);  
         resampler_luma(temp_2, temp_1, temp_2_pitch, temp_1_pitch, resampling_program_chroma, src_chroma_height, dst_chroma_width, src_pitch_table_luma, filter_storage_chroma);
         turn_left(temp_2, dst->GetWritePtr(PLANAR_U), dst_chroma_height * pixelsize, dst_chroma_width, temp_2_pitch, dst->GetPitch(PLANAR_U));
 
         // V Plane
-        turn_right(src->GetReadPtr(PLANAR_V), temp_1, src_chroma_width, src_chroma_height, src->GetPitch(PLANAR_V), temp_1_pitch);
+        turn_right(src->GetReadPtr(PLANAR_V), temp_1, src_chroma_width * pixelsize, src_chroma_height, src->GetPitch(PLANAR_V), temp_1_pitch);
         resampler_luma(temp_2, temp_1, temp_2_pitch, temp_1_pitch, resampling_program_chroma, src_chroma_height, dst_chroma_width, src_pitch_table_luma, filter_storage_chroma);
-        turn_left(temp_2, dst->GetWritePtr(PLANAR_V), dst_chroma_height, dst_chroma_width, temp_2_pitch, dst->GetPitch(PLANAR_V));
+        turn_left(temp_2, dst->GetWritePtr(PLANAR_V), dst_chroma_height * pixelsize, dst_chroma_width, temp_2_pitch, dst->GetPitch(PLANAR_V));
       }
     } else {
       // RGB
@@ -838,7 +840,7 @@ PVideoFrame __stdcall FilteredResizeH::GetFrame(int n, IScriptEnvironment* env)
       resampler_luma(temp_2, temp_1, temp_2_pitch, temp_1_pitch, resampling_program_luma, vi.BytesFromPixels(src_height), dst_width, src_pitch_table_luma, filter_storage_luma);
       turn_right(temp_2, dst->GetWritePtr(), vi.BytesFromPixels(dst_height), dst_width, temp_2_pitch, dst->GetPitch());
     }
-
+    
     env2->Free(temp_1);
     env2->Free(temp_2);
   } else {
@@ -969,10 +971,11 @@ PVideoFrame __stdcall FilteredResizeV::GetFrame(int n, IScriptEnvironment* env)
   }
 
   // Do resizing
+  int work_width = vi.IsPlanar() ? vi.width : vi.BytesFromPixels(vi.width);
   if (IsPtrAligned(srcp, 16) && (src_pitch & 15) == 0)
-    resampler_luma_aligned(dstp, srcp, dst_pitch, src_pitch, resampling_program_luma, vi.BytesFromPixels(vi.width), vi.height, src_pitch_table_luma, filter_storage_luma_aligned);
+    resampler_luma_aligned(dstp, srcp, dst_pitch, src_pitch, resampling_program_luma, work_width, vi.height, src_pitch_table_luma, filter_storage_luma_aligned);
   else
-    resampler_luma_unaligned(dstp, srcp, dst_pitch, src_pitch, resampling_program_luma, vi.BytesFromPixels(vi.width), vi.height, src_pitch_table_luma, filter_storage_luma_unaligned);
+    resampler_luma_unaligned(dstp, srcp, dst_pitch, src_pitch, resampling_program_luma, work_width, vi.height, src_pitch_table_luma, filter_storage_luma_unaligned);
     
   if (!grey && vi.IsPlanar()) {
     int width = vi.width >> vi.GetPlaneWidthSubsampling(PLANAR_U);
