@@ -56,11 +56,17 @@ ConvertToY8::ConvertToY8(PClip src, int in_matrix, IScriptEnvironment* env) : Ge
 
   if (vi.IsPlanar()) {
     blit_luma_only = true;
-    vi.pixel_type = VideoInfo::CS_Y8;
+    switch (vi.BytesFromPixels(1))
+    {
+    case 1: vi.pixel_type = VideoInfo::CS_Y8; break;
+    case 2: vi.pixel_type = VideoInfo::CS_Y16; break;
+    default: // case 4
+      vi.pixel_type = VideoInfo::CS_Y32;
+    }
     return;
   }
 
-  if (vi.IsYUY2()) {
+ if (vi.IsYUY2()) {
     yuy2_input = true;
     vi.pixel_type = VideoInfo::CS_Y8;
     return;
@@ -447,12 +453,10 @@ PVideoFrame __stdcall ConvertToY8::GetFrame(int n, IScriptEnvironment* env) {
 
   if (blit_luma_only) {
     // Abuse Subframe to snatch the Y plane
-    // _RPT1(0, "ConvertToY8::GetFrame %d blit_luma_only\n", n); // P.F.
     return env->Subframe(src, 0, src->GetPitch(PLANAR_Y), src->GetRowSize(PLANAR_Y), src->GetHeight(PLANAR_Y));
   }
 
   PVideoFrame dst = env->NewVideoFrame(vi);
-  // _RPT2(0, "ConvertToY8::GetFrame %d frame=%p\n", n, (void *)dst); // P.F.
   if (yuy2_input) {
 
     const BYTE* srcP = src->GetReadPtr();
