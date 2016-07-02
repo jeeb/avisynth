@@ -306,7 +306,6 @@ VideoFrameBuffer::VideoFrameBuffer(int size) :
   data_size(size),
   sequence_number(0) 
 {
-  InterlockedIncrement(&sequence_number);
 
 #ifdef _DEBUG
   int *pInt=(int *)(data+size);

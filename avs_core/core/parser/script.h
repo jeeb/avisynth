@@ -175,8 +175,6 @@ AVSValue Float(AVSValue args, void*,IScriptEnvironment* env);
 AVSValue Value(AVSValue args, void*, IScriptEnvironment* env);
 AVSValue HexValue(AVSValue args, void*, IScriptEnvironment* env);
 
-AVSValue Sign(AVSValue args, void*, IScriptEnvironment* env);
-
 AVSValue BitAnd(AVSValue args, void*, IScriptEnvironment* env);
 AVSValue BitNot(AVSValue args, void*, IScriptEnvironment* env);
 AVSValue BitOr(AVSValue args, void*, IScriptEnvironment* env);

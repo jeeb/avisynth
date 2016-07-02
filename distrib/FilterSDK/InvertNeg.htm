@@ -256,7 +256,7 @@ storage <a href="AVSLinkage.html" title="Filter SDK/AVS Linkage">AVS_Linkage</a>
 <p>This is the only function which gets exported from the DLL. It
 is called by the script function LoadPlugin the first time this plugin
 in loaded in a particular script. If several scripts are open at once
-and more than one of them loads this plugin, AvisynthPluginInit2 may be
+and more than one of them loads this plugin, AvisynthPluginInit3 may be
 called more than once with different IScriptEnvironments. Therefore:
 </p>
 <ul>
@@ -278,15 +278,20 @@ the existence of our filter. This function takes four arguments: the
 name of the new script function; the parameter-type string; the C++
 function implementing the script function; and the user_data cookie.
 </p>
-<p>The parameter-type string is similar to the corresponding
-entity in <a href="http://avisynth.nl/index.php/VirtualDub" title="VirtualDub">VirtualDub</a>, except that:
+<p>The parameter-type string can be specified as follows:
 </p>
 <ul>
 <li> No return type is given. Function return values are not
 type-checked; you can return anything you like.
 </li>
-<li> There are more types: along with 'i'nt and 's'tring you
-can specify 'b'ool, 'f'loat, and 'c'lip.
+<li> The following types are available:
+ <ul> 
+  <li> c - clip</li>
+  <li> i - integer</li>
+  <li> f - float</li>
+  <li> s - string</li>
+  <li> b - boolean</li>
+ </ul>
 </li>
 <li> You can follow any type with '*' or '+' to indicate "zero
 or more" or "one or more" respectively. In this case all the matching
@@ -294,13 +299,10 @@ arguments will be gathered into a sub-array. </li>
 </ul>
 <dl>
 <dd>
-<dl>
-<dd> For example, if your type string is "is+f", then the
+For example, if your type string is "is+f", then the
 integer argument will be args[0], the string arguments will be
 args[1][0], args[1][1], etc. (and there will be args[1].ArraySize() of
 them), and the float argument will be args[2].
-</dd>
-</dl>
 </dd>
 </dl>
 <ul>
@@ -314,7 +316,7 @@ instead of the type you specify. For convenience, AVSValue offers a set
 of As...() functions which take default values. See avisynth.h. </li>
 </ul>
 <pre> return "InvertNeg sample plugin";<br /></pre>
-<p>The return value of AvisynthPluginInit is a string which can
+<p>The return value of AvisynthPluginInit3 is a string which can
 contain any message you like, such as a notice identifying the version
 and author of the plugin. This string becomes the return value of
 LoadPlugin, and will almost always be ignored. You can also just return
@@ -342,5 +344,5 @@ original form.
 <p>See more about the modifications for AviSynth 2.5 in the <a href="http://avisynth.nl/index.php/Filter_SDK/Two-Five_SDK" title="Filter SDK/Two-Five SDK">AviSynth Two-Five SDK</a>.
 (need to adjust the two-five version using the code above ...)</p>
 <hr style="width: 100%; height: 2px;" />Back to&nbsp;<a href="FilterSDK.htm">FilterSDK</a><br />
-<p><kbd>$Date: 2014/10/27 22:04:54 $</kbd></p>
+<p><kbd>$Date: 2015/09/14 20:23:59 $</kbd></p>
 </body></html>
