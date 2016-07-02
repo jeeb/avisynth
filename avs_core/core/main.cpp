@@ -635,11 +635,10 @@ bool CAVIFileSynth::DelayInit2() {
         AVSValue return_val = env->Invoke("Import", szScriptName);
         // store the script's return value (a video clip)
         if (return_val.IsClip()) {
+          filter_graph = return_val.AsClip();
 
           // Allow WAVE_FORMAT_IEEE_FLOAT audio output
-          bool AllowFloatAudio = env->GetVar(VARNAME_AllowFloatAudio, false);
-
-          filter_graph = return_val.AsClip();
+          const bool AllowFloatAudio = env->GetVar(VARNAME_AllowFloatAudio, false);
 
           if (!AllowFloatAudio && filter_graph->GetVideoInfo().IsSampleType(SAMPLE_FLOAT)) // Ensure samples are int     
             filter_graph = env->Invoke("ConvertAudioTo16bit", AVSValue(&return_val, 1)).AsClip();
@@ -1209,7 +1208,7 @@ STDMETHODIMP CAVIStreamSynth::ReadFormat(LONG lPos, LPVOID lpFormat, LONG *lpcbF
 
   if (!lpcbFormat) return E_POINTER;
 
-  bool UseWaveExtensible = parent->env->GetVar(VARNAME_UseWaveExtensible, false);
+  const bool UseWaveExtensible = parent->env->GetVar(VARNAME_UseWaveExtensible, false);
 
   if (!lpFormat) {
     *lpcbFormat = fAudio ? ( UseWaveExtensible ? sizeof(WAVEFORMATEXTENSIBLE)

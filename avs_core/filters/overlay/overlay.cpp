@@ -477,16 +477,9 @@ void Overlay::FetchConditionals(IScriptEnvironment* env, int* op_offset, int* co
 
   if (!ignore_conditional) {
     IScriptEnvironment2 *env2 = static_cast<IScriptEnvironment2*>(env);
-    AVSValue cv;
-
-    if (env2->GetVar("OL_opacity_offset", &cv) && cv.IsFloat())
-      *op_offset = (int)(cv.AsFloat()*256.0);
-
-    if (env2->GetVar("OL_x_offset", &cv) && cv.IsFloat())
-      *con_x_offset = (int)(cv.AsFloat());
-
-    if (env2->GetVar("OL_y_offset", &cv) && cv.IsFloat())
-      *con_y_offset = (int)(cv.AsFloat());
+    *op_offset    = (int)(env2->GetVar("OL_opacity_offset", 0.0)*256);
+    *con_x_offset = (int)(env2->GetVar("OL_x_offset"      , 0.0));
+    *con_y_offset = (int)(env2->GetVar("OL_y_offset"      , 0.0));
   }
 }
 

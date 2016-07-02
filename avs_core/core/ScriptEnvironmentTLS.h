@@ -89,6 +89,15 @@ public:
     return true;
   }
 
+  AVSValue __stdcall GetVarDef(const char* name, const AVSValue& def)
+  {
+      AVSValue val;
+      if (this->GetVar(name, &val))
+          return val;
+      else
+          return def;
+  }
+
   bool __stdcall GetVar(const char* name, bool def) const
   {
     AVSValue val;

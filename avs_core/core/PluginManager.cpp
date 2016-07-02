@@ -623,7 +623,7 @@ bool PluginManager::LoadPlugin(PluginFile &plugin, bool throwOnError, AVSValue *
   DllDirChanger dllchange(plugin_dir.c_str());
 
   // Load the dll into memory
-  plugin.Library = LoadLibrary(plugin.FilePath.c_str());
+  plugin.Library = LoadLibraryEx(plugin.FilePath.c_str(), 0, LOAD_WITH_ALTERED_SEARCH_PATH);
   if (plugin.Library == NULL)
   {
     if (throwOnError)

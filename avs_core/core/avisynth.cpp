@@ -78,7 +78,7 @@ extern const AVSFunction Audio_filters[], Combine_filters[], Convert_filters[],
                    Swap_filters[], Overlay_filters[];
 
 
-const AVSFunction* builtin_functions[] = {
+const AVSFunction* const builtin_functions[] = {
                    Audio_filters, Combine_filters, Convert_filters,
                    Convolution_filters, Edit_filters, Field_filters,
                    Focus_filters, Fps_filters, Histogram_filters,
@@ -261,7 +261,7 @@ void* VideoFrame::operator new(size_t size) {
 
 VideoFrame::VideoFrame(VideoFrameBuffer* _vfb, int _offset, int _pitch, int _row_size, int _height)
   : refcount(0), vfb(_vfb), offset(_offset), pitch(_pitch), row_size(_row_size), height(_height),
-    offsetU(_offset),offsetV(_offset),pitchUV(0), row_sizeUV(0), heightUV(0)  // PitchUV=0 so this doesn't take up additional space
+    offsetU(_offset), offsetV(_offset), pitchUV(0), row_sizeUV(0), heightUV(0)  // PitchUV=0 so this doesn't take up additional space
 {
   InterlockedIncrement(&vfb->refcount);
 }
@@ -269,7 +269,7 @@ VideoFrame::VideoFrame(VideoFrameBuffer* _vfb, int _offset, int _pitch, int _row
 VideoFrame::VideoFrame(VideoFrameBuffer* _vfb, int _offset, int _pitch, int _row_size, int _height,
                        int _offsetU, int _offsetV, int _pitchUV, int _row_sizeUV, int _heightUV)
   : refcount(0), vfb(_vfb), offset(_offset), pitch(_pitch), row_size(_row_size), height(_height),
-    offsetU(_offsetU),offsetV(_offsetV),pitchUV(_pitchUV), row_sizeUV(_row_sizeUV), heightUV(_heightUV)
+    offsetU(_offsetU), offsetV(_offsetV), pitchUV(_pitchUV), row_sizeUV(_row_sizeUV), heightUV(_heightUV)
 {
   InterlockedIncrement(&vfb->refcount);
 }
@@ -536,6 +536,7 @@ public:
   void __stdcall DeleteScriptEnvironment();
   void _stdcall ApplyMessage(PVideoFrame* frame, const VideoInfo& vi, const char* message, int size, int textcolor, int halocolor, int bgcolor);
   const AVS_Linkage* const __stdcall GetAVSLinkage();
+  AVSValue __stdcall GetVarDef(const char* name, const AVSValue& def = AVSValue());
 
   /* IScriptEnvironment2 */
   virtual bool  __stdcall GetVar(const char* name, AVSValue *val) const;
@@ -1123,6 +1124,16 @@ bool ScriptEnvironment::GetVar(const char* name, AVSValue *ret) const {
   if (closing) return false;  // We easily risk  being inside the critical section below, while deleting variables.
   
   return var_table->Get(name, ret);
+}
+
+AVSValue ScriptEnvironment::GetVarDef(const char* name, const AVSValue& def) {
+    if (closing) return def;  // We easily risk  being inside the critical section below, while deleting variables.
+
+    AVSValue val;
+    if (this->GetVar(name, &val))
+        return val;
+    else
+        return def;
 }
 
 bool ScriptEnvironment::GetVar(const char* name, bool def) const {
@@ -1942,7 +1953,7 @@ void ScriptEnvironment::ThrowError(const char* fmt, ...) {
     _vsnprintf(buf, sizeof(buf)-1, fmt, val);
     if (!this) throw this; // Force inclusion of try catch code!
   } catch (...) {
-    strcpy(buf,"Exception while processing ScriptEnvironment::ThrowError().");
+    strcpy(buf, "Exception while processing ScriptEnvironment::ThrowError().");
   }
   va_end(val);
   buf[sizeof(buf)-1] = '\0';

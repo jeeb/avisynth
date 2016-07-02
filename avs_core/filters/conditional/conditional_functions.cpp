@@ -95,18 +95,6 @@ extern const AVSFunction Conditional_funtions_filters[] = {
 };
 
 
-// Helper function - exception protected wrapper
-
-inline AVSValue GetVar(IScriptEnvironment* env, const char* name) {
-  try {
-    return env->GetVar(name);
-  }
-  catch (const IScriptEnvironment::NotFound&) {}
-
-  return AVSValue();
-}
-
-
 AVSValue __cdecl AveragePlane::Create_y(AVSValue args, void* user_data, IScriptEnvironment* env) {
   return AvgPlane(args[0], user_data, PLANAR_Y, args[1].AsInt(0), env);
 }
@@ -199,7 +187,7 @@ AVSValue AveragePlane::AvgPlane(AVSValue clip, void* user_data, int plane, int o
   if (!vi.IsPlanar())
     env->ThrowError("Average Plane: Only planar images (as YV12) supported!");
 
-  AVSValue cn = GetVar(env, "current_frame");
+  AVSValue cn = env->GetVarDef("current_frame");
   if (!cn.IsInt())
     env->ThrowError("Average Plane: This filter can only be used within run-time filters");
 
@@ -456,7 +444,7 @@ AVSValue ComparePlane::CmpPlane(AVSValue clip, AVSValue clip2, void* user_data, 
   }
 
 
-  AVSValue cn = GetVar(env, "current_frame");
+  AVSValue cn = env->GetVarDef("current_frame");
   if (!cn.IsInt())
     env->ThrowError("Plane Difference: This filter can only be used within run-time filters");
 
@@ -537,7 +525,7 @@ AVSValue ComparePlane::CmpPlaneSame(AVSValue clip, void* user_data, int offset, 
       env->ThrowError("Plane Difference: Only planar images (as YV12) supported!");
   }
 
-  AVSValue cn = GetVar(env, "current_frame");
+  AVSValue cn = env->GetVarDef("current_frame");
   if (!cn.IsInt())
     env->ThrowError("Plane Difference: This filter can only be used within run-time filters");
 
@@ -663,7 +651,7 @@ AVSValue MinMaxPlane::MinMax(AVSValue clip, void* user_data, double threshold, i
     env->ThrowError("MinMax: Image must be planar");
 
   // Get current frame number
-  AVSValue cn = GetVar(env, "current_frame");
+  AVSValue cn = env->GetVarDef("current_frame");
   if (!cn.IsInt())
     env->ThrowError("MinMax: This filter can only be used within run-time filters");
 

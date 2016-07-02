@@ -118,9 +118,9 @@ public:
     char **s;
   } u;
   void *lpVoid;
-  CScriptValue()            { type = T_VOID; }
-  void operator=(int i)         { type = T_INT;     u.i = i; }
-  void operator=(char **s)        { type = T_STR;     u.s = s; }
+  CScriptValue()           { type = T_VOID; }
+  void operator=(int i)    { type = T_INT;  u.i = i; }
+  void operator=(char **s) { type = T_STR;  u.s = s; }
 };
 
 
@@ -131,7 +131,7 @@ class VBitmap {
 public:
   Pixel *     data;
   Pixel *     palette;
-  int       depth;
+  int         depth;
   PixCoord    w, h;
   PixOffset   pitch;
   PixOffset   modulo;
@@ -187,9 +187,9 @@ public:
 
 
 VBitmap& VBitmap::init(void *lpData, BITMAPINFOHEADER *bmih) throw() {
-  data      = (Pixel *)lpData;
-  palette     = (Pixel *)(bmih+1);
-  depth     = bmih->biBitCount;
+  data    = (Pixel *)lpData;
+  palette = (Pixel *)(bmih+1);
+  depth   = bmih->biBitCount;
   w       = bmih->biWidth;
   h       = bmih->biHeight;
   offset      = 0;
@@ -202,8 +202,8 @@ VBitmap& VBitmap::init(void *data, PixDim w, PixDim h, int depth) throw() {
   this->data    = (Pixel32 *)data;
   this->palette = NULL;
   this->depth   = depth;
-  this->w     = w;
-  this->h     = h;
+  this->w       = w;
+  this->h       = h;
   this->offset  = 0;
   AlignTo8();
 
@@ -211,22 +211,22 @@ VBitmap& VBitmap::init(void *data, PixDim w, PixDim h, int depth) throw() {
 }
 
 void VBitmap::MakeBitmapHeader(BITMAPINFOHEADER *bih) const throw() {
-  bih->biSize       = sizeof(BITMAPINFOHEADER);
-  bih->biBitCount     = (WORD)depth;
-  bih->biPlanes     = 1;
-  bih->biCompression    = BI_RGB;
+  bih->biSize          = sizeof(BITMAPINFOHEADER);
+  bih->biBitCount      = (WORD)depth;
+  bih->biPlanes        = 1;
+  bih->biCompression   = BI_RGB;
 
   if (pitch == ((w*bih->biBitCount + 31)/32) * 4)
-    bih->biWidth    = w;
+    bih->biWidth       = w;
   else
-    bih->biWidth    = pitch*8 / depth;
+    bih->biWidth       = pitch*8 / depth;
 
-  bih->biHeight     = h;
-  bih->biSizeImage    = pitch*h;
-  bih->biClrUsed      = 0;
-  bih->biClrImportant   = 0;
-  bih->biXPelsPerMeter  = 0;
-  bih->biYPelsPerMeter  = 0;
+  bih->biHeight        = h;
+  bih->biSizeImage     = pitch*h;
+  bih->biClrUsed       = 0;
+  bih->biClrImportant  = 0;
+  bih->biXPelsPerMeter = 0;
+  bih->biYPelsPerMeter = 0;
 }
 
 void VBitmap::AlignTo4() throw() {
@@ -298,21 +298,25 @@ public:
 //////////
 
 #define VIRTUALDUB_FILTERDEF_VERSION    (6)
-#define VIRTUALDUB_FILTERDEF_COMPATIBLE   (4)
+#define VIRTUALDUB_FILTERDEF_COMPATIBLE (4)
 
 // v3: added lCurrentSourceFrame to FrameStateInfo
 // v4 (1.2): lots of additions (VirtualDub 1.2)
 // v5 (1.3d): lots of bugfixes - stretchblt bilinear, and non-zero startproc
 // v6 (1.4): added error handling functions
 
+class FilterDefinitionList;
+
 typedef struct FilterModule {
-  struct FilterModule *next, *prev;
-  HINSTANCE       hInstModule;
-  FilterModuleInitProc  initProc;
-  FilterModuleDeinitProc  deinitProc;
-    IScriptEnvironment*   env;
-    const char*       avisynth_function_name;
-    int preroll;
+  struct FilterModule   *next, *prev;
+  HINSTANCE              hInstModule;
+  FilterModuleInitProc   initProc;
+  FilterModuleDeinitProc deinitProc;
+
+  IScriptEnvironment*    env;
+  const char*            avisynth_function_name;
+  int                    preroll;
+  FilterDefinitionList*  fdl;
 } FilterModule;
 
 typedef struct FilterDefinition {
@@ -324,16 +328,16 @@ typedef struct FilterDefinition {
   char *        desc;
   char *        maker;
   void *        private_data;
-  int         inst_data_size;
+  int           inst_data_size;
 
   FilterInitProc    initProc;
   FilterDeinitProc  deinitProc;
-  FilterRunProc   runProc;
+  FilterRunProc     runProc;
   FilterParamProc   paramProc;
   FilterConfigProc  configProc;
   FilterStringProc  stringProc;
   FilterStartProc   startProc;
-  FilterEndProc   endProc;
+  FilterEndProc     endProc;
 
   CScriptObject *script_obj;
 
@@ -341,18 +345,25 @@ typedef struct FilterDefinition {
 
 } FilterDefinition;
 
+class FilterDefinitionList {
+public:
+  FilterDefinition* fd;
+  FilterDefinitionList* fdl;
+
+  FilterDefinitionList(FilterModule* fm, FilterDefinition* _fd) : fd(_fd), fdl(fm->fdl) { };
+};
 //////////
 
 // FilterStateInfo: contains dynamic info about file being processed
 
 class FilterStateInfo {
 public:
-  int  lCurrentFrame;        // current output frame
-  int  lMicrosecsPerFrame;     // microseconds per output frame
-  int  lCurrentSourceFrame;    // current source frame
-  int  lMicrosecsPerSrcFrame;    // microseconds per source frame
-  int  lSourceFrameMS;       // source frame timestamp
-  int  lDestFrameMS;       // output frame timestamp
+  long  lCurrentFrame;         // current output frame
+  long  lMicrosecsPerFrame;    // microseconds per output frame
+  long  lCurrentSourceFrame;   // current source frame
+  long  lMicrosecsPerSrcFrame; // microseconds per source frame
+  long  lSourceFrameMS;        // source frame timestamp
+  long  lDestFrameMS;          // output frame timestamp
 };
 
 // VFBitmap: VBitmap extended to hold filter-specific information
@@ -360,7 +371,7 @@ public:
 class VFBitmap : public VBitmap {
 public:
   enum {
-    NEEDS_HDC   = 0x00000001L,
+    NEEDS_HDC = 0x00000001L,
   };
 
   DWORD dwFlags;
@@ -498,6 +509,7 @@ static void FilterThrowExceptMemory() {
 }
 
 // This is really disgusting...
+
 #pragma warning( push )
 #pragma warning (disable: 4238) // nonstandard extension used : class rvalue used as lvalue
 static void InitVTables(struct FilterVTbls *pvtbls) {
@@ -514,7 +526,8 @@ bool isFPUEnabled() { return !!(GetCPUFlags() & CPUF_FPU); }
 bool isMMXEnabled() { return !!(GetCPUFlags() & CPUF_MMX); }
 
 FilterFunctions g_filterFuncs={
-  FilterAdd, FilterRemove, isFPUEnabled, isMMXEnabled, InitVTables, FilterThrowExceptMemory, FilterThrowExcept, GetCPUFlags
+  FilterAdd, FilterRemove, isFPUEnabled, isMMXEnabled, InitVTables,
+  FilterThrowExceptMemory, FilterThrowExcept, GetCPUFlags
 };
 
 
@@ -533,7 +546,7 @@ public:
       case 21: env->ThrowError("VirtualdubFilterProxy: OUT_OF_MEMORY");
       case 24: env->ThrowError("VirtualdubFilterProxy: FCALL_OUT_OF_RANGE");
       case 26: env->ThrowError("VirtualdubFilterProxy: FCALL_UNKNOWN_STR");
-      default: env->ThrowError("VirtualdubFilterProxy: unknown error code");
+      default: env->ThrowError("VirtualdubFilterProxy: Unknown error code %d", e);
     }
   }
   char* TranslateScriptError(void* cse) { return ""; }
@@ -700,10 +713,10 @@ public:
         const char* p = i->arg_list;
         int j;
         for (j=1; j<args.ArraySize(); j++) {
-          if (p[j] == 'i' && args[j].IsInt()) continue;
-          else if (p[j] == 's' && args[j].IsString()) continue;
-          else if (p[j] == '.' && args[j].IsArray()) continue;
-          else break;
+          if      ( p[j] == 'i' && args[j].IsInt()    ) continue;
+          else if ( p[j] == 's' && args[j].IsString() ) continue;
+          else if ( p[j] == '.' && args[j].IsArray()  ) continue;
+          else                                          break;
         }
         if (j == args.ArraySize() && p[j] == 0) {
           // match
@@ -727,20 +740,20 @@ public:
   }
 
   static AVSValue __cdecl Create(AVSValue args, void* user_data, IScriptEnvironment* env) {
-    FilterDefinition* fd = (FilterDefinition*)user_data;
-    return new VirtualdubFilterProxy(args[0].AsClip(), fd, args, env);
+    FilterDefinitionList* fdl = (FilterDefinitionList*)user_data;
+
+    if (!fdl->fd) env->ThrowError("VirtualdubFilterProxy: No FilterDefinition structure!");
+
+    return new VirtualdubFilterProxy(args[0].AsClip(), fdl->fd, args, env);
   }
 };
 
 
-void __cdecl FreeFilterDefinition(void* user_data, IScriptEnvironment* env) {
-  FilterDefinition* fd = (FilterDefinition*)user_data;
-  delete fd;
-}
-
-
 FilterDefinition *FilterAdd(FilterModule *fm, FilterDefinition *pfd, int fd_len) {
   FilterDefinition *fd = new(std::nothrow) FilterDefinition;
+  FilterDefinitionList _fdl(fm, fd);
+  FilterDefinitionList *fdl = (FilterDefinitionList*)fm->env->SaveString((const char*)&_fdl, sizeof(_fdl));
+  fm->fdl = fdl;
 
   if (fd) {
     memcpy(fd, pfd, min(size_t(fd_len), sizeof(FilterDefinition)));
@@ -749,13 +762,11 @@ FilterDefinition *FilterAdd(FilterModule *fm, FilterDefinition *pfd, int fd_len)
     fd->next  = NULL;
   }
 
-  fm->env->AtExit(FreeFilterDefinition, fd);
-
-  fm->env->AddFunction(fm->avisynth_function_name, "c", VirtualdubFilterProxy::Create, fd);
+  fm->env->AddFunction(fm->avisynth_function_name, "c", VirtualdubFilterProxy::Create, fdl);
   if (fd->script_obj && fd->script_obj->func_list) {
     for (ScriptFunctionDef* i = fd->script_obj->func_list; i->arg_list; i++) {
       const char* params = fm->env->Sprintf("c%s%s", i->arg_list+1, strchr(i->arg_list+1, '.') ? "*" : "");
-      fm->env->AddFunction(fm->avisynth_function_name, params, VirtualdubFilterProxy::Create, fd);
+      fm->env->AddFunction(fm->avisynth_function_name, params, VirtualdubFilterProxy::Create, fdl);
     }
   }
 
@@ -765,6 +776,12 @@ FilterDefinition *FilterAdd(FilterModule *fm, FilterDefinition *pfd, int fd_len)
 
 void __cdecl FreeFilterModule(void* user_data, IScriptEnvironment* env) {
   FilterModule* fm = (FilterModule*)user_data;
+
+  for (FilterDefinitionList* fdl = fm->fdl; fdl; fdl = fdl->fdl) {
+    delete fdl->fd;
+    fdl->fd = 0;
+  }
+
   fm->deinitProc(fm, &g_filterFuncs);
   FreeLibrary(fm->hInstModule);
   if (fm->prev)
@@ -780,11 +797,11 @@ AVSValue LoadVirtualdubPlugin(AVSValue args, void*, IScriptEnvironment* env) {
   const char* const avisynth_function_name = args[1].AsString();
   const int preroll = args[2].AsInt(0);
 
-  HMODULE hmodule = LoadLibrary(szModule);
+  HMODULE hmodule = LoadLibraryEx(szModule, NULL, LOAD_WITH_ALTERED_SEARCH_PATH);
   if (!hmodule)
     env->ThrowError("LoadVirtualdubPlugin: Error opening \"%s\", error=0x%x", szModule, GetLastError());
 
-  FilterModuleInitProc initProc   = (FilterModuleInitProc  )GetProcAddress(hmodule, "VirtualdubFilterModuleInit2");
+  FilterModuleInitProc   initProc   = (FilterModuleInitProc  )GetProcAddress(hmodule, "VirtualdubFilterModuleInit2");
   FilterModuleDeinitProc deinitProc = (FilterModuleDeinitProc)GetProcAddress(hmodule, "VirtualdubFilterModuleDeinit");
 
   if (!initProc || !deinitProc) {
@@ -792,11 +809,7 @@ AVSValue LoadVirtualdubPlugin(AVSValue args, void*, IScriptEnvironment* env) {
     env->ThrowError("LoadVirtualdubPlugin: Module \"%s\" does not contain VirtualDub filters.", szModule);
   }
 
-  FilterModule* loaded_modules = 0;
-  try {
-    loaded_modules = (FilterModule*)env->GetVar("$LoadVirtualdubPlugin$").AsString();
-  }
-  catch (IScriptEnvironment::NotFound) {}
+  FilterModule* loaded_modules = (FilterModule*)env->GetVarDef("$LoadVirtualdubPlugin$").AsString(0);
 
   for (FilterModule* i = loaded_modules; i; i = i->next) {
     if (i->hInstModule == hmodule) {
@@ -814,10 +827,16 @@ AVSValue LoadVirtualdubPlugin(AVSValue args, void*, IScriptEnvironment* env) {
   fm->preroll = preroll;
   fm->next = loaded_modules;
   fm->prev = 0;
+  fm->fdl  = 0;
 
   int ver_hi = VIRTUALDUB_FILTERDEF_VERSION;
   int ver_lo = VIRTUALDUB_FILTERDEF_COMPATIBLE;
   if (fm->initProc(fm, &g_filterFuncs, ver_hi, ver_lo)) {
+    // Neuter any AVS functions that may have been created
+    for (FilterDefinitionList* fdl = fm->fdl; fdl; fdl = fdl->fdl) {
+      delete fdl->fd;
+      fdl->fd = 0;
+    }
     FreeLibrary(hmodule);
     delete fm;
     env->ThrowError("LoadVirtualdubPlugin: Error initializing module \"%s\"", szModule);
