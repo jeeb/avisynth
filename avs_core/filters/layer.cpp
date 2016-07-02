@@ -926,7 +926,7 @@ PVideoFrame ShowChannel::GetFrame(int n, IScriptEnvironment* env)
 
 AVSValue ShowChannel::Create(AVSValue args, void* channel, IScriptEnvironment* env)
 {
-  return new ShowChannel(args[0].AsClip(), args[1].AsString("RGB"), (int)channel, env);
+  return new ShowChannel(args[0].AsClip(), args[1].AsString("RGB"), (int)(size_t)channel, env);
 }
 
 

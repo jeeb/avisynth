@@ -1625,7 +1625,7 @@ void DrawStringPlanar(PVideoFrame &dst, int x, int y, const char *s, int len=0)
 	const int pitchY = dst->GetPitch(PLANAR_Y);
 
 	// Default string length
-	if (len == 0) len = strlen(s);
+	if (len == 0) len = (int)strlen(s);
 
 	// Chop text if exceed right margin
 	if (len*10 > pitchY-x) len = (pitchY-x)/10;
@@ -1821,7 +1821,7 @@ void DrawStringYUY2(PVideoFrame &dst, int x, int y, const char *s, int len=0)
 	const int pitch = dst->GetPitch();
 
 	// Default string length
-	if (len == 0) len = strlen(s);
+	if (len == 0) len = (int)strlen(s);
 
 	// Chop text if exceed right margin
 	if (len*20 > pitch-x*2) len = (pitch-x*2)/20;
@@ -1858,7 +1858,7 @@ void DrawStringYUY2(PVideoFrame &dst, int x, int y, const char *s, int len=0)
 		for (int i=si ; i < len; i++) {
 			for (int tx = _xs; tx < 10; tx++, dp+=2, fontline<<=1) {
 				if (fontline & 0x8000) {
-					if (int(dp) & 2) { // Assume dstp is dword aligned
+					if (size_t(dp) & 2) { // Assume dstp is dword aligned
 						dp[0] = 230;
 						dp[-1]= 128;
 						dp[1] = 128;
@@ -1868,7 +1868,7 @@ void DrawStringYUY2(PVideoFrame &dst, int x, int y, const char *s, int len=0)
 						dp[3] = 128;
 					}
 				} else {
-					if (int(dp) & 2) {
+					if (size_t(dp) & 2) {
 						dp[0] = (unsigned char) ((dp[0] * 7) >> 3) + 2;
 						dp[-1]= (unsigned char) ((dp[-1]* 7) >> 3) + 16;
 						dp[1] = (unsigned char) ((dp[1] * 7) >> 3) + 16;
@@ -1930,7 +1930,7 @@ void DrawStringRGB32(PVideoFrame &dst, int x, int y, const char *s, int len=0)
 	const int pitch = dst->GetPitch();
 
 	// Default string length
-	if (len == 0) len = strlen(s);
+	if (len == 0) len = (int)strlen(s);
 
 	// Chop text if exceed right margin
 	if (len*40 > pitch-x*4) len = (pitch-x*4)/40;
@@ -2027,7 +2027,7 @@ void DrawStringRGB24(PVideoFrame &dst, int x, int y, const char *s, int len=0)
 	const int pitch = dst->GetPitch();
 
 	// Default string length
-	if (len == 0) len = strlen(s);
+	if (len == 0) len = (int)strlen(s);
 
 	// Chop text if exceed right margin
 	if (len*30 > pitch-x*3) len = (pitch-x*3)/30;

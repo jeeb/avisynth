@@ -191,8 +191,8 @@ AVSValue __cdecl FlipHorizontal::Create(AVSValue args, void*, IScriptEnvironment
  *******   Crop Filter   ******
  *****************************/
 
-Crop::Crop(int _left, int _top, int _width, int _height, int _align, PClip _child, IScriptEnvironment* env)
- : GenericVideoFilter(_child), align(_align), xsub(0), ysub(0)
+Crop::Crop(int _left, int _top, int _width, int _height, bool _align, PClip _child, IScriptEnvironment* env)
+ : GenericVideoFilter(_child), align(0), xsub(0), ysub(0)
 {
   /* Negative values -> VDub-style syntax
      Namely, Crop(a, b, -c, -d) will crop c pixels from the right and d pixels from the bottom.  
@@ -241,7 +241,7 @@ Crop::Crop(int _left, int _top, int _width, int _height, int _align, PClip _chil
   vi.width = _width;
   vi.height = _height;
 
-  if (align) {
+  if (_align) {
     align = FRAME_ALIGN-1;
   }
 
@@ -256,15 +256,15 @@ PVideoFrame Crop::GetFrame(int n, IScriptEnvironment* env)
   const BYTE* srcpU = frame->GetReadPtr(PLANAR_U) + (top>>ysub) *  frame->GetPitch(PLANAR_U) + (left_bytes>>xsub);
   const BYTE* srcpV = frame->GetReadPtr(PLANAR_V) + (top>>ysub) *  frame->GetPitch(PLANAR_V) + (left_bytes>>xsub);
 
-  int _align;
+  size_t _align;
 
   if (frame->GetPitch(PLANAR_U) && (!vi.IsYV12() || env->PlanarChromaAlignment(IScriptEnvironment::PlanarChromaAlignmentTest)))
-    _align = align & ((int)srcpY|(int)srcpU|(int)srcpV);
+    _align = this->align & ((size_t)srcpY|(size_t)srcpU|(size_t)srcpV);
   else
-    _align = align & (int)srcpY;
+    _align = this->align & (size_t)srcpY;
 
-  if (_align) {
-    PVideoFrame dst = env->NewVideoFrame(vi, align+1);
+  if (0 != _align) {
+    PVideoFrame dst = env->NewVideoFrame(vi, (int)align+1);
 
     env->BitBlt(dst->GetWritePtr(PLANAR_Y), dst->GetPitch(PLANAR_Y), srcpY,
       frame->GetPitch(PLANAR_Y), dst->GetRowSize(PLANAR_Y), dst->GetHeight(PLANAR_Y));
@@ -290,7 +290,7 @@ PVideoFrame Crop::GetFrame(int n, IScriptEnvironment* env)
 
 AVSValue __cdecl Crop::Create(AVSValue args, void*, IScriptEnvironment* env) 
 {
-  return new Crop( args[1].AsInt(), args[2].AsInt(), args[3].AsInt(), args[4].AsInt(), args[5].AsBool(true) ? 1 : 0, 
+  return new Crop( args[1].AsInt(), args[2].AsInt(), args[3].AsInt(), args[4].AsInt(), args[5].AsBool(true), 
                    args[0].AsClip(), env );
 }
 

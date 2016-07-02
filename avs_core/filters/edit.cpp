@@ -109,7 +109,7 @@ int __stdcall NonCachedGenericVideoFilter::SetCacheHints(int cachehints, int fra
  *******   AudioTrim Filter   ******
  ******************************/
 
-Trim::Trim(double starttime, double endtime, PClip _child, int mode, IScriptEnvironment* env)
+Trim::Trim(double starttime, double endtime, PClip _child, trim_mode_e mode, IScriptEnvironment* env)
  : NonCachedGenericVideoFilter(_child) 
 {
   __int64 esampleno = 0;
@@ -168,12 +168,13 @@ Trim::Trim(double starttime, double endtime, PClip _child, int mode, IScriptEnvi
 }
 
 
-AVSValue __cdecl Trim::CreateA(AVSValue args, void* mode, IScriptEnvironment* env) 
+AVSValue __cdecl Trim::CreateA(AVSValue args, void* user_arg, IScriptEnvironment* env)
 {
-    if ((int)mode == Trim::Invalid)
+    trim_mode_e mode = (trim_mode_e)size_t(user_arg);
+    if (mode == Trim::Invalid)
         env->ThrowError("Script error: Invalid arguments to function \"AudioTrim\"");
 
-    return new Trim(args[1].AsFloat(), args[2].AsFloat(), args[0].AsClip(), (int)mode, env);
+    return new Trim(args[1].AsFloat(), args[2].AsFloat(), args[0].AsClip(), mode, env);
 }
 
 
@@ -181,7 +182,7 @@ AVSValue __cdecl Trim::CreateA(AVSValue args, void* mode, IScriptEnvironment* en
  *******   Trim Filter   ******
  ******************************/
 
-Trim::Trim(int _firstframe, int _lastframe, bool _padaudio, PClip _child, int mode, IScriptEnvironment* env)
+Trim::Trim(int _firstframe, int _lastframe, bool _padaudio, PClip _child, trim_mode_e mode, IScriptEnvironment* env)
  : NonCachedGenericVideoFilter(_child) 
 {
   int lastframe = 0;
@@ -271,12 +272,14 @@ bool Trim::GetParity(int n)
 }
 
 
-AVSValue __cdecl Trim::Create(AVSValue args, void* mode, IScriptEnvironment* env) 
+AVSValue __cdecl Trim::Create(AVSValue args, void* user_arg, IScriptEnvironment* env) 
 {
-    if ((int)mode == Trim::Invalid)
+    trim_mode_e mode = (trim_mode_e)size_t(user_arg);
+
+    if (mode == Trim::Invalid)
         env->ThrowError("Script error: Invalid arguments to function \"Trim\"");
 
-    return new Trim(args[1].AsInt(), args[2].AsInt(), args[3].AsBool(true), args[0].AsClip(), (int)mode, env);
+    return new Trim(args[1].AsInt(), args[2].AsInt(), args[3].AsBool(true), args[0].AsClip(), mode, env);
 }
 
 
@@ -850,7 +853,7 @@ int __stdcall AudioDub::SetCacheHints(int cachehints,int frame_range)
 
 AVSValue __cdecl AudioDub::Create(AVSValue args, void* mode, IScriptEnvironment* env) 
 {
-  return new AudioDub(args[0].AsClip(), args[1].AsClip(), int(mode), env);
+  return new AudioDub(args[0].AsClip(), args[1].AsClip(), (int)size_t(mode), env);
 }
 
 

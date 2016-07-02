@@ -160,7 +160,7 @@ AVSValue __cdecl StackVertical::Create(AVSValue args, void*, IScriptEnvironment*
     std::vector<PClip> children(1+args[1].ArraySize());
 
     children[0] = args[0].AsClip();
-    for (size_t i = 1; i < children.size(); ++i) // Copy clips
+    for (int i = 1; i < (int)children.size(); ++i) // Copy clips
       children[i] = args[1][i-1].AsClip();
 
     return new StackVertical(children, env);
@@ -263,7 +263,7 @@ AVSValue __cdecl StackHorizontal::Create(AVSValue args, void*, IScriptEnvironmen
     std::vector<PClip> children(1+args[1].ArraySize());
 
     children[0] = args[0].AsClip();
-    for (size_t i = 1; i < children.size(); ++i) // Copy clips
+    for (int i = 1; i < (int)children.size(); ++i) // Copy clips
       children[i] = args[1][i-1].AsClip();
 
     return new StackHorizontal(children, env);

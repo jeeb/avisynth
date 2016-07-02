@@ -237,7 +237,7 @@ static void af_vertical_mmx(BYTE* line_buf, BYTE* dstp, int height, int pitch, i
 static void af_vertical_process(BYTE* line_buf, BYTE* dstp, size_t height, size_t pitch, size_t width, size_t amount, IScriptEnvironment* env) {
   if ((env->GetCPUFlags() & CPUF_SSE2) && IsPtrAligned(dstp, 16) && width >= 16) {
     //pitch of aligned frames is always >= 16 so we'll just process some garbage if width is not mod16
-    af_vertical_sse2(line_buf, dstp, height, pitch, width, amount);
+    af_vertical_sse2(line_buf, dstp, (int)height, (int)pitch, (int)width, (int)amount);
   } else
 #ifdef X86_32
   if ((env->GetCPUFlags() & CPUF_MMX) && width >= 8)
@@ -251,7 +251,7 @@ static void af_vertical_process(BYTE* line_buf, BYTE* dstp, size_t height, size_
   } else
 #endif
   {
-    af_vertical_c(line_buf, dstp, height, pitch, width, amount);
+    af_vertical_c(line_buf, dstp, (int)height, (int)pitch, (int)width, (int)amount);
   }
 }
 
@@ -327,9 +327,9 @@ static __forceinline void af_horizontal_rgb32_process_line_c(BYTE b_left, BYTE g
 }
 
 static void af_horizontal_rgb32_c(BYTE* dstp, size_t height, size_t pitch, size_t width, size_t amount) {
-  int center_weight = amount*2;
-  int outer_weight = 32768-amount;
-  for (int y = height; y>0; --y) 
+  int center_weight = int(amount*2);
+  int outer_weight = int(32768-amount);
+  for (size_t y = height; y>0; --y) 
   {
     BYTE b_left = dstp[0];
     BYTE g_left = dstp[1];
@@ -345,8 +345,8 @@ static void af_horizontal_rgb32_c(BYTE* dstp, size_t height, size_t pitch, size_
 static void af_horizontal_rgb32_sse2(BYTE* dstp, const BYTE* srcp, size_t dst_pitch, size_t src_pitch, size_t height, size_t width, size_t amount) {
   size_t width_bytes = width * 4;
   size_t loop_limit = width_bytes - 16;
-  int center_weight_c = amount*2;
-  int outer_weight_c = 32768-amount;
+  int center_weight_c = int(amount*2);
+  int outer_weight_c = int(32768-amount);
 
   short t = short((amount + 256) >> 9);
   __m128i center_weight = _mm_set1_epi16(t);
@@ -737,10 +737,10 @@ static __forceinline void af_horizontal_yv12_process_line_c(BYTE left, BYTE *dst
 
 static void af_horizontal_yv12_c(BYTE* dstp, size_t height, size_t pitch, size_t row_size, size_t amount) 
 {
-  int center_weight = amount*2;
-  int outer_weight = 32768-amount;
+  int center_weight = int(amount*2);
+  int outer_weight = int(32768-amount);
   BYTE left;
-  for (int y = height; y>0; --y) {
+  for (size_t y = height; y>0; --y) {
     left = dstp[0];
     af_horizontal_yv12_process_line_c(left, dstp, row_size, center_weight, outer_weight);
     dstp += pitch;
@@ -750,8 +750,8 @@ static void af_horizontal_yv12_c(BYTE* dstp, size_t height, size_t pitch, size_t
 static void af_horizontal_yv12_sse2(BYTE* dstp, size_t height, size_t pitch, size_t width, size_t amount) {
   size_t mod16_width = (width / 16) * 16;
   size_t sse_loop_limit = width == mod16_width ? mod16_width - 16 : mod16_width; 
-  int center_weight_c = amount*2;
-  int outer_weight_c = 32768-amount;
+  int center_weight_c = int(amount*2);
+  int outer_weight_c = int(32768-amount);
 
   short t = short((amount + 256) >> 9);
   __m128i center_weight = _mm_set1_epi16(t);
@@ -1311,7 +1311,7 @@ static int calculate_sad_isse(const BYTE* cur_ptr, const BYTE* other_ptr, int cu
 }
 #endif
 
-static int calculate_sad_c(const BYTE* cur_ptr, const BYTE* other_ptr, int cur_pitch, int other_pitch, size_t width, size_t height)
+static size_t calculate_sad_c(const BYTE* cur_ptr, const BYTE* other_ptr, int cur_pitch, int other_pitch, size_t width, size_t height)
 {
   size_t sum = 0;
   for (size_t y = 0; y < height; ++y) {
@@ -1324,7 +1324,7 @@ static int calculate_sad_c(const BYTE* cur_ptr, const BYTE* other_ptr, int cur_p
   return sum;
 }
 
-static int calculate_sad(const BYTE* cur_ptr, const BYTE* other_ptr, int cur_pitch, int other_pitch, size_t width, size_t height, IScriptEnvironment* env) {
+static size_t calculate_sad(const BYTE* cur_ptr, const BYTE* other_ptr, int cur_pitch, int other_pitch, size_t width, size_t height, IScriptEnvironment* env) {
   if ((env->GetCPUFlags() & CPUF_SSE2) && IsPtrAligned(cur_ptr, 16) && IsPtrAligned(other_ptr, 16) && width >= 16) {
     return calculate_sad_sse2(cur_ptr, other_ptr, cur_pitch, other_pitch, width, height);
   }
@@ -1391,7 +1391,7 @@ PVideoFrame TemporalSoften::GetFrame(int n, IScriptEnvironment* env)
       bool skiprest = false;
       for (int i = radius-1; i>=0; i--) { // Check frames backwards
         if ((!skiprest) && (!planeDisabled[i])) {
-          int sad = calculate_sad(c_plane, planeP[i], pitch, planePitch[i], frames[radius]->GetRowSize(planes[c]), h, env);
+          int sad = (int)calculate_sad(c_plane, planeP[i], pitch, planePitch[i], frames[radius]->GetRowSize(planes[c]), h, env);
           if (sad < scenechange) {
             planePitch2[d2] = planePitch[i];
             planeP2[d2++] = planeP[i];
@@ -1406,7 +1406,7 @@ PVideoFrame TemporalSoften::GetFrame(int n, IScriptEnvironment* env)
       skiprest = false;
       for (int i = radius; i < 2*radius; i++) { // Check forward frames
         if ((!skiprest)  && (!planeDisabled[i])) {   // Disable this frame on next plane (so that Y can affect UV)
-          int sad = calculate_sad(c_plane, planeP[i], pitch, planePitch[i], frames[radius]->GetRowSize(planes[c]), h, env);
+          int sad = (int)calculate_sad(c_plane, planeP[i], pitch, planePitch[i], frames[radius]->GetRowSize(planes[c]), h, env);
           if (sad < scenechange) {
             planePitch2[d2] = planePitch[i];
             planeP2[d2++] = planeP[i];

@@ -47,15 +47,16 @@ class Trim : public NonCachedGenericVideoFilter
  **/
 {
 public:
-  Trim(int _firstframe, int _lastframe, bool _padaudio, PClip _child, int mode, IScriptEnvironment* env);
-  Trim(double starttime, double endtime, PClip _child, int mode, IScriptEnvironment* env);
+  typedef enum { Invalid = 0, Default, Length, End } trim_mode_e;
+    
+  Trim(int _firstframe, int _lastframe, bool _padaudio, PClip _child, trim_mode_e mode, IScriptEnvironment* env);
+  Trim(double starttime, double endtime, PClip _child, trim_mode_e mode, IScriptEnvironment* env);
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
   void __stdcall GetAudio(void* buf, __int64 start, __int64 count, IScriptEnvironment* env);
   bool __stdcall GetParity(int n);
 
   static AVSValue __cdecl Create(AVSValue args, void* mode, IScriptEnvironment* env);  
   static AVSValue __cdecl CreateA(AVSValue args, void* mode, IScriptEnvironment* env);  
-  enum { Invalid = 0, Default, Length, End };
 
 private:
   int firstframe;

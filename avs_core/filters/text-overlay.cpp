@@ -1015,12 +1015,12 @@ void Subtitle::InitAntialiaser(IScriptEnvironment* env)
 	do {
 	  pdest = strstr(psrc, search);
 	  while (pdest != NULL && pdest != psrc && *(pdest-1)=='\\') { // \n escape -- foxyshadis
-		for (int i=pdest-psrc; i>0; i--) psrc[i] = psrc[i-1];
+		for (size_t i=pdest-psrc; i>0; i--) psrc[i] = psrc[i-1];
 		psrc++;
 		--length;
 		pdest = strstr(pdest+1, search);
 	  }
-	  result = pdest == NULL ? length : pdest - psrc;
+	  result = pdest == NULL ? length : (int)size_t(pdest - psrc);
 	  if (!TextOut(hdcAntialias, real_x+16, y_inc, psrc, result)) goto GDIError;
 	  y_inc += size + lsp;
 	  psrc = pdest + 2;
@@ -1852,7 +1852,7 @@ bool GetTextBoundingBox( const char* text, const char* fontname, int size, bool 
   for (;;) {
     const char* nl = strchr(text, '\n');
     if (nl-text) {
-      success &= !!DrawText(hdc, text, nl ? nl-text : (int)lstrlen(text), &r, DT_CALCRECT | DT_NOPREFIX);
+      success &= !!DrawText(hdc, text, nl ? int(nl-text) : (int)lstrlen(text), &r, DT_CALCRECT | DT_NOPREFIX);
       *width = max(*width, int(r.right+8));
     }
     *height += r.bottom;
