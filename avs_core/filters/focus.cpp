@@ -348,7 +348,7 @@ static void af_horizontal_rgb32_sse2(BYTE* dstp, const BYTE* srcp, size_t dst_pi
   int center_weight_c = amount*2;
   int outer_weight_c = 32768-amount;
 
-  short t = (amount + 256) >> 9;
+  short t = short((amount + 256) >> 9);
   __m128i center_weight = _mm_set1_epi16(t);
   __m128i outer_weight = _mm_set1_epi16(64 - t);
   __m128i round_mask = _mm_set1_epi16(0x40);
@@ -401,7 +401,7 @@ static void af_horizontal_rgb32_mmx(BYTE* dstp, const BYTE* srcp, size_t dst_pit
   int center_weight_c = amount*2;
   int outer_weight_c = 32768-amount;
 
-  short t = (amount + 256) >> 9;
+  short t = short((amount + 256) >> 9);
   __m64 center_weight = _mm_set1_pi16(t);
   __m64 outer_weight = _mm_set1_pi16(64 - t);
   __m64 round_mask = _mm_set1_pi16(0x40);
@@ -516,7 +516,7 @@ static void af_horizontal_yuy2_sse2(BYTE* dstp, const BYTE* srcp, size_t dst_pit
   size_t width_bytes = width * 2;
   size_t loop_limit = width_bytes - 16;
 
-  short t = (amount + 256) >> 9;
+  short t = short((amount + 256) >> 9);
   __m128i center_weight = _mm_set1_epi16(t);
   __m128i outer_weight = _mm_set1_epi16(64 - t);
   __m128i round_mask = _mm_set1_epi16(0x40);
@@ -622,7 +622,7 @@ static void af_horizontal_yuy2_mmx(BYTE* dstp, const BYTE* srcp, size_t dst_pitc
   size_t width_bytes = width * 2;
   size_t loop_limit = width_bytes - 8;
 
-  short t = (amount + 256) >> 9;
+  short t = short((amount + 256) >> 9);
   __m64 center_weight = _mm_set1_pi16(t);
   __m64 outer_weight = _mm_set1_pi16(64 - t);
   __m64 round_mask = _mm_set1_pi16(0x40);
@@ -753,7 +753,7 @@ static void af_horizontal_yv12_sse2(BYTE* dstp, size_t height, size_t pitch, siz
   int center_weight_c = amount*2;
   int outer_weight_c = 32768-amount;
 
-  short t = (amount + 256) >> 9;
+  short t = short((amount + 256) >> 9);
   __m128i center_weight = _mm_set1_epi16(t);
   __m128i outer_weight = _mm_set1_epi16(64 - t);
   __m128i round_mask = _mm_set1_epi16(0x40);
@@ -815,7 +815,7 @@ static void af_horizontal_yv12_mmx(BYTE* dstp, size_t height, size_t pitch, size
   int center_weight_c = amount*2;
   int outer_weight_c = 32768-amount;
 
-  short t = (amount + 256) >> 9;
+  short t = short((amount + 256) >> 9);
   __m64 center_weight = _mm_set1_pi16(t);
   __m64 outer_weight = _mm_set1_pi16(64 - t);
   __m64 round_mask = _mm_set1_pi16(0x40);
