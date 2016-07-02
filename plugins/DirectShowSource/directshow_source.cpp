@@ -1158,7 +1158,7 @@ pbFormat:
         return S_FALSE;
       }
       if (pmt->cbFormat < sizeof(WAVEFORMATEX)) {
-        dssRPT2(dssNEG,  "*** Audio: AM_MEDIA_TYPE.cbFormat to small - %d of %d\n",
+        dssRPT2(dssNEG,  "*** Audio: AM_MEDIA_TYPE.cbFormat to small - %d of %zd\n",
                          pmt->cbFormat, sizeof(WAVEFORMATEX));
         return S_FALSE;
       }
@@ -1189,7 +1189,7 @@ pbFormat:
 
         if (wex->wFormatTag == WAVE_FORMAT_EXTENSIBLE) {
           if (pmt->cbFormat < sizeof(WAVEFORMATEXTENSIBLE)) {
-            dssRPT2(dssNEG,  "*** Audio: AM_MEDIA_TYPE.cbFormat to small - %d of %d\n",
+            dssRPT2(dssNEG,  "*** Audio: AM_MEDIA_TYPE.cbFormat to small - %d of %zd\n",
                              pmt->cbFormat, sizeof(WAVEFORMATEXTENSIBLE));
             return S_FALSE;
           }
@@ -1464,7 +1464,7 @@ pbFormat:
       dssRPT0(dssCMD, "GetSample::GetAllocator() VFW_E_NO_ALLOCATOR\n");
       return VFW_E_NO_ALLOCATOR;
     }
-    dssRPT1(dssCMD, "GetSample::GetAllocator(0x%08P)\n", Allocator);
+    dssRPT1(dssCMD, "GetSample::GetAllocator(0x%08p)\n", Allocator);
     Allocator->AddRef();
     *ppAllocator = Allocator;
     return S_OK;
