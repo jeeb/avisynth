@@ -72,8 +72,8 @@ Header file avisynth.h from v2.5.6 to v2.5.8 are almost identical and have
 v2.5.6 and up, and v2.5.5 and below if you do not use new
 interface features and do not call ``env->CheckVersion`` function.
 
-New being developed, AviSynth version 2.6.x will use new header avisynth.h,
-currently with ``AVISYNTH_INTERFACE_VERSION = 5.`` Plugins compiled with
+Now being developed, AviSynth version 2.6.x will use new header avisynth.h,
+currently with ``AVISYNTH_INTERFACE_VERSION = 6.`` Plugins compiled with
 AviSynth v2.5.x header will work in AviSynth 2.6.x too, but plugins compiled
 with new AviSynth v2.6.x header will probably not work in AviSynth v2.5.x.
 
@@ -123,7 +123,7 @@ language) by SAPikachu, see `discussion`_
 
 Back to :doc:`FilterSDK <FilterSDK>`
 
-$Date: 2014/10/27 22:04:54 $
+$Date: 2015/03/30 06:08:10 $
 
 .. _[1]: 
    http://www.google.nl/url?sa=t&rct=j&q=&esrc=s&source=web&cd=1&cad=rja&ved=0CCoQFjAA&url=http://go.microsoft.com/?linkid=7729279&ei=HfWhUuTjL8Og0wW7wYDwBw&usg=AFQjCNEulTGchEeozkLGRH8LZELiTKlC5A&sig2=Mi7Rwn_jNL5Qffi7LiGS3w&bvm=bv.57752919,d.d2k
