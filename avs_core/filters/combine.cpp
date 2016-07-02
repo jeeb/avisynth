@@ -141,8 +141,8 @@ PVideoFrame __stdcall StackVertical::GetFrame(int n, IScriptEnvironment* env)
           const int src_pitch = frames[i]->GetPitch(plane);
           const int src_height = frames[i]->GetHeight(plane);
 
-          env->BitBlt(dstp_uv, dst_pitchUV, srcp, src_pitch, row_sizeUV, src_height);
-          dstp_uv += dst_pitchUV * src_height;
+        env->BitBlt(dstp_uv, dst_pitchUV, srcp, src_pitch, row_sizeUV, src_height);
+        dstp_uv += dst_pitchUV * src_height;
         }
       }
     }
@@ -245,8 +245,8 @@ PVideoFrame __stdcall StackHorizontal::GetFrame(int n, IScriptEnvironment* env)
         const int src_pitch = frames[i]->GetPitch(plane);
         const int src_width = frames[i]->GetRowSize(plane);
 
-        env->BitBlt(dstp_uv, dst_pitchUV, srcp, src_pitch, src_width, heightUV);
-        dstp_uv += src_width;
+      env->BitBlt(dstp_uv, dst_pitchUV, srcp, src_pitch, src_width, heightUV);
+      dstp_uv += src_width;
       }
     }
   }
@@ -380,7 +380,7 @@ PVideoFrame __stdcall ShowFiveVersions::GetFrame(int n, IScriptEnvironment* env)
       if (c&1)
         dstp2 += vi.BytesFromPixels(vi.width/6);
 
-    env->BitBlt(dstp2, dst_pitch, srcp, src_pitch, src_row_size, height);
+      env->BitBlt(dstp2, dst_pitch, srcp, src_pitch, src_row_size, height);
     }
   }
 

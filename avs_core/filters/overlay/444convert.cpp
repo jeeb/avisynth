@@ -407,14 +407,14 @@ PVideoFrame Convert444ToYV12::ConvertImage(Image444* src, PVideoFrame dst, IScri
   int w = dst->GetRowSize(PLANAR_U);
   int h = dst->GetHeight(PLANAR_U);
 
-  if ((GetCPUFlags() & CPUF_SSE2) && IsPtrAligned(srcU, 16) && IsPtrAligned(srcV, 16) && IsPtrAligned(dstU, 16) && IsPtrAligned(dstV, 16)) 
+  if ((env->GetCPUFlags() & CPUF_SSE2) && IsPtrAligned(srcU, 16) && IsPtrAligned(srcV, 16) && IsPtrAligned(dstU, 16) && IsPtrAligned(dstV, 16)) 
   {
     convert_yv24_chroma_to_yv12_sse2(dstU, srcU, dstUVpitch, srcUVpitch, w, h);
     convert_yv24_chroma_to_yv12_sse2(dstV, srcV, dstUVpitch, srcUVpitch, w, h);
   }
   else
 #ifdef X86_32
-  if (GetCPUFlags() & CPUF_INTEGER_SSE) 
+  if (env->GetCPUFlags() & CPUF_INTEGER_SSE)
   {
     convert_yv24_chroma_to_yv12_isse(dstU, srcU, dstUVpitch, srcUVpitch, w, h);
     convert_yv24_chroma_to_yv12_isse(dstV, srcV, dstUVpitch, srcUVpitch, w, h);
