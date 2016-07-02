@@ -48,7 +48,7 @@ master_doc = 'index'
 
 # General information about the project.
 project = 'AviSynth+'
-copyright = '2000-2015, AviSynth and AviSynth+ contributors'
+copyright = '2000-2016, AviSynth and AviSynth+ contributors'
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the
