@@ -39,9 +39,9 @@
 class AveragePlane {
 
 public:
-  static AVSValue __cdecl Create_y(AVSValue args, void* user_data, IScriptEnvironment* env);
-  static AVSValue __cdecl Create_u(AVSValue args, void* user_data, IScriptEnvironment* env);
-  static AVSValue __cdecl Create_v(AVSValue args, void* user_data, IScriptEnvironment* env);
+  static AVSValue Create_y(AVSValue args, void* user_data, IScriptEnvironment* env);
+  static AVSValue Create_u(AVSValue args, void* user_data, IScriptEnvironment* env);
+  static AVSValue Create_v(AVSValue args, void* user_data, IScriptEnvironment* env);
   static AVSValue AvgPlane(AVSValue clip, void* user_data, int plane, int offset, IScriptEnvironment* env);
 };
 
@@ -51,10 +51,10 @@ public:
   static AVSValue CmpPlane(AVSValue clip, AVSValue clip2, void* user_data, int plane, IScriptEnvironment* env);
   static AVSValue CmpPlaneSame(AVSValue clip, void* user_data, int offset, int plane, IScriptEnvironment* env);
 
-  static AVSValue __cdecl Create_y(AVSValue args, void* user_data, IScriptEnvironment* env);
-  static AVSValue __cdecl Create_u(AVSValue args, void* user_data, IScriptEnvironment* env);
-  static AVSValue __cdecl Create_v(AVSValue args, void* user_data, IScriptEnvironment* env);
-  static AVSValue __cdecl Create_rgb(AVSValue args, void* user_data, IScriptEnvironment* env);
+  static AVSValue Create_y(AVSValue args, void* user_data, IScriptEnvironment* env);
+  static AVSValue Create_u(AVSValue args, void* user_data, IScriptEnvironment* env);
+  static AVSValue Create_v(AVSValue args, void* user_data, IScriptEnvironment* env);
+  static AVSValue Create_rgb(AVSValue args, void* user_data, IScriptEnvironment* env);
   static AVSValue Create_prev_y(AVSValue args, void* user_data, IScriptEnvironment* env);
   static AVSValue Create_prev_u(AVSValue args, void* user_data, IScriptEnvironment* env);
   static AVSValue Create_prev_v(AVSValue args, void* user_data, IScriptEnvironment* env);
@@ -70,20 +70,20 @@ class MinMaxPlane {
 
 public:
   static AVSValue MinMax(AVSValue clip, void* user_data, double threshold, int offset, int plane, int mode, IScriptEnvironment* env);
-  static AVSValue __cdecl Create_max_y(AVSValue args, void* user_data, IScriptEnvironment* env);
-  static AVSValue __cdecl Create_min_y(AVSValue args, void* user_data, IScriptEnvironment* env);
-  static AVSValue __cdecl Create_median_y(AVSValue args, void* user_data, IScriptEnvironment* env);
-  static AVSValue __cdecl Create_minmax_y(AVSValue args, void* user_data, IScriptEnvironment* env);
+  static AVSValue Create_max_y(AVSValue args, void* user_data, IScriptEnvironment* env);
+  static AVSValue Create_min_y(AVSValue args, void* user_data, IScriptEnvironment* env);
+  static AVSValue Create_median_y(AVSValue args, void* user_data, IScriptEnvironment* env);
+  static AVSValue Create_minmax_y(AVSValue args, void* user_data, IScriptEnvironment* env);
 
-  static AVSValue __cdecl Create_max_u(AVSValue args, void* user_data, IScriptEnvironment* env);
-  static AVSValue __cdecl Create_min_u(AVSValue args, void* user_data, IScriptEnvironment* env);
-  static AVSValue __cdecl Create_median_u(AVSValue args, void* user_data, IScriptEnvironment* env);
-  static AVSValue __cdecl Create_minmax_u(AVSValue args, void* user_data, IScriptEnvironment* env);
+  static AVSValue Create_max_u(AVSValue args, void* user_data, IScriptEnvironment* env);
+  static AVSValue Create_min_u(AVSValue args, void* user_data, IScriptEnvironment* env);
+  static AVSValue Create_median_u(AVSValue args, void* user_data, IScriptEnvironment* env);
+  static AVSValue Create_minmax_u(AVSValue args, void* user_data, IScriptEnvironment* env);
 
-  static AVSValue __cdecl Create_max_v(AVSValue args, void* user_data, IScriptEnvironment* env);
-  static AVSValue __cdecl Create_min_v(AVSValue args, void* user_data, IScriptEnvironment* env);
-  static AVSValue __cdecl Create_median_v(AVSValue args, void* user_data, IScriptEnvironment* env);
-  static AVSValue __cdecl Create_minmax_v(AVSValue args, void* user_data, IScriptEnvironment* env);
+  static AVSValue Create_max_v(AVSValue args, void* user_data, IScriptEnvironment* env);
+  static AVSValue Create_min_v(AVSValue args, void* user_data, IScriptEnvironment* env);
+  static AVSValue Create_median_v(AVSValue args, void* user_data, IScriptEnvironment* env);
+  static AVSValue Create_minmax_v(AVSValue args, void* user_data, IScriptEnvironment* env);
 
 
 private:
