@@ -97,7 +97,6 @@ AVSValue ExpExceptionTranslator::Evaluate(IScriptEnvironment* env)
 }
 
 
-
 AVSValue ExpTryCatch::Evaluate(IScriptEnvironment* env) 
 {
   AVSValue result;

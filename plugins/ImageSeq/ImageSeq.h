@@ -35,12 +35,10 @@
 #ifndef __Image_Sequence_H__
 #define __Image_Sequence_H__
 
-#include <sstream>
-#include <fstream>
-#include <cassert>
-
 #include "il.h"
 #include <avs/win.h>
+#include <cassert>
+#include <fstream>
 
 
 class ImageWriter : public GenericVideoFilter 

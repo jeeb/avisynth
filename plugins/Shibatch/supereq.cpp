@@ -106,7 +106,7 @@ AVSsupereq(PClip _child, const char* filename, IScriptEnvironment* env)
   dst_samples_filled = 0;
 }
 
-AVSsupereq(PClip _child, float* values, IScriptEnvironment* env)
+AVSsupereq(PClip _child, int* values, IScriptEnvironment* env)
 : GenericVideoFilter(_child)
 {
   const unsigned last_nch   = (unsigned)vi.AudioChannels();
@@ -242,11 +242,11 @@ AVSValue __cdecl Create_SuperEq(AVSValue args, void*, IScriptEnvironment* env) {
 }
 
 AVSValue __cdecl Create_SuperEqCustom(AVSValue args, void*, IScriptEnvironment* env) {
-  float eq[N_BANDS];
+  int eq[N_BANDS];
   AVSValue args_c = args[1];
   const int num_args = args_c.ArraySize();
   for (int i = 0; i<N_BANDS; i++) {
-    eq[i] = i<num_args ? args_c[i].AsFloat() : 0.0f;
+    eq[i] = i<num_args ? args_c[i].AsInt() : 0;
   }
   return new AVSsupereq(args[0].AsClip(), eq, env);
 }

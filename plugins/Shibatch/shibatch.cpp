@@ -32,7 +32,7 @@ extern "C" __declspec(dllexport) const char* __stdcall AvisynthPluginInit3(IScri
   env->AddFunction("SSRC", "ci[fast]b", Create_SSRC, 0);
 
   env->AddFunction("SuperEQ", "cs", Create_SuperEq, 0);
-  env->AddFunction("SuperEQ", "cf+", Create_SuperEqCustom, 0);
+  env->AddFunction("SuperEQ", "ci+", Create_SuperEqCustom, 0);
 
   return "`Shibatch' Audio equalization and high-quality resampling from Naoki Shibata";
 }
