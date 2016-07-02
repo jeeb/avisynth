@@ -272,7 +272,7 @@ AVSValue __cdecl ContinuedCreate(AVSValue args, void* key, IScriptEnvironment* e
       num = args[0].AsInt();
     } else { // IsFloat
       num = (uint32_t)args[0].AsFloat();
-      if ((float)num != (float)args[0].AsFloat()) {
+      if ((float)num != args[0].AsFloatf()) {
         env->ThrowError("ContinuedFraction: Numerator must be an integer.\n");
       }
     }
@@ -280,12 +280,12 @@ AVSValue __cdecl ContinuedCreate(AVSValue args, void* key, IScriptEnvironment* e
     reduce_frac(num, den, (uint32_t)args[2].AsInt(1001));
   } else { // float[, limit] form
     if (args[2].IsInt()) {
-      if (float_to_frac((float)args[0].AsFloat(), num, den)) {
+      if (float_to_frac(args[0].AsFloatf(), num, den)) {
         env->ThrowError("ContinuedFraction: Float value out of range for rational pair.\n");
       }
       reduce_frac(num, den, (uint32_t)args[2].AsInt());
     } else {
-      if (reduce_float((float)args[0].AsFloat(), num, den)) {
+      if (reduce_float(args[0].AsFloatf(), num, den)) {
         env->ThrowError("ContinuedFraction: Float value out of range for rational pair.\n");
       }
     }
@@ -458,7 +458,7 @@ AVSValue __cdecl AssumeFPS::CreateFloat(AVSValue args, void*, IScriptEnvironment
 {
   uint32_t num, den;
 
-	FloatToFPS("AssumeFPS", (float)args[1].AsFloat(), num, den, env);
+	FloatToFPS("AssumeFPS", args[1].AsFloatf(), num, den, env);
 	return new AssumeFPS(args[0].AsClip(), num, den, args[2].AsBool(false), env);
 }
 
@@ -547,7 +547,7 @@ AVSValue __cdecl ChangeFPS::CreateFloat(AVSValue args, void*, IScriptEnvironment
 {
   uint32_t num, den;
 
-	FloatToFPS("ChangeFPS", (float)args[1].AsFloat(), num, den, env);
+	FloatToFPS("ChangeFPS", args[1].AsFloatf(), num, den, env);
 	return new ChangeFPS(args[0].AsClip(), num, den, args[2].AsBool(true), env);
 }
 
@@ -656,7 +656,7 @@ PVideoFrame __stdcall ConvertFPS::GetFrame(int n, IScriptEnvironment* env)
 
 			for (int y = 0; y < height; y++) {
 				for (int x = 0; x < row_size; x++)
-					a_data[x] += ((b_data[x] - a_data[x]) * mix_ratio + half) >> resolution;
+					a_data[x] = a_data[x] + ((b_data[x] - a_data[x]) * mix_ratio + half) >> resolution;
 				a_data += a_pitch;
 				b_data += b_pitch;
 			}

@@ -104,7 +104,7 @@ static PVideoFrame CreateBlankFrame(const VideoInfo& vi, int color, int mode, IS
     for (int i=0; i<size; i+=4)
       *(unsigned*)(p+i) = d;
   } else if (vi.IsRGB24()) {
-    const unsigned char clr0 = (color & 0xFF);
+    const unsigned char clr0  = (color & 0xFF);
     const unsigned short clr1 = (color >> 8);
     const int gr = frame->GetRowSize();
     const int gp = frame->GetPitch();
@@ -625,7 +625,7 @@ public:
 		}
 	}
 	else if (vi.IsYUY2()) {
-		static const int top_two_thirds[] =
+		static const unsigned int top_two_thirds[] =
 //                LtGrey      Yellow        Cyan       Green     Magenta         Red        Blue
 			{ 0x80b480b4, 0x8ea22ca2, 0x2c839c83, 0x3a704870, 0xc654b854, 0xd4416441, 0x7223d423 }; //VYUY
 		w >>= 1;
@@ -638,7 +638,7 @@ public:
 			p += pitch;
 		}
 
-		static const int two_thirds_to_three_quarters[] =
+		static const unsigned  int two_thirds_to_three_quarters[] =
 //                 Blue        Black     Magenta       Black        Cyan       Black      LtGrey
 			{ 0x7223d423, 0x80108010, 0xc654b854, 0x80108010, 0x2c839c83, 0x80108010, 0x80b480b4 }; //VYUY
 		for (; y*4 < h*3; ++y) {
@@ -650,7 +650,7 @@ public:
 			p += pitch;
 		}
 
-		static const int bottom_quarter[] =
+		static const unsigned int bottom_quarter[] =
 //                    -I       white          +Q       Black       -4ire       Black       +4ire       Black
 			{ 0x5f109e10, 0x80eb80eb, 0x9510ae10, 0x80108010, 0x80078007, 0x80108010, 0x80198019, 0x80108010 }; //VYUY
 		for (; y < h; ++y) {
@@ -1018,7 +1018,7 @@ public:
   static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env)
   {
 	  return new Tone(args[0].AsFloat(10.0f), args[1].AsFloat(440.0f), args[2].AsInt(48000),
-		              args[3].AsInt(2), args[4].AsString("Sine"), (float)args[5].AsFloat(1.0f), env);
+          args[3].AsInt(2), args[4].AsString("Sine"), args[5].AsFloatf(1.0f), env);
   }
 
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env) { return NULL; }

@@ -757,7 +757,8 @@ AVSValue AVSTime(AVSValue args, void*, IScriptEnvironment* env )
 	time(&lt_t);
 	lt = localtime (&lt_t);
     char s[1024];
-	strftime(s,1024,args[0].AsString(""),lt);
+    strftime(s,1024,args[0].AsString(""),lt);
+    s[1023] = 0;
     return env->SaveString(s);
 }
 
@@ -770,7 +771,7 @@ AVSValue Spline(AVSValue args, void*, IScriptEnvironment* env )
 
 	AVSValue coordinates;
 
-	x = (float)args[0].AsFloat(0);
+	x = args[0].AsFloatf(0);
 	coordinates = args[1];
 	cubic = args[2].AsBool(true);
 
@@ -786,8 +787,8 @@ AVSValue Spline(AVSValue args, void*, IScriptEnvironment* env )
   float *y2a = &(buf[(n+1) * 2]);
 
 	for (i=1; i<=n; i++) {
-		xa[i] = (float)coordinates[(i-1)*2].AsFloat(0);
-		ya[i] = (float)coordinates[(i-1)*2+1].AsFloat(0);
+		xa[i] = coordinates[(i-1)*2+0].AsFloatf(0);
+		ya[i] = coordinates[(i-1)*2+1].AsFloatf(0);
 	}
 
 	for (i=1; i<n; i++) {
@@ -911,7 +912,7 @@ AVSValue VersionNumber(AVSValue args, void*, IScriptEnvironment* env) { return A
 AVSValue VersionString(AVSValue args, void*, IScriptEnvironment* env) { return AVS_FULLVERSION; }
 
 AVSValue Int(AVSValue args, void*, IScriptEnvironment* env) { return int(args[0].AsFloat()); }
-AVSValue Frac(AVSValue args, void*, IScriptEnvironment* env) { return args[0].AsFloat() - int(args[0].AsFloat()); }
+AVSValue Frac(AVSValue args, void*, IScriptEnvironment* env) { return args[0].AsFloat() - __int64(args[0].AsFloat()); }
 AVSValue Float(AVSValue args, void*,IScriptEnvironment* env) { return args[0].AsFloat(); }
 
 AVSValue Value(AVSValue args, void*, IScriptEnvironment* env) { char *stopstring; return strtod(args[0].AsString(),&stopstring); }
@@ -939,9 +940,9 @@ AVSValue AvsMin(AVSValue args, void*, IScriptEnvironment* env )
     return V;
   }
   else {
-    float V = (float)args[0][0].AsFloat();
+    float V = args[0][0].AsFloatf();
     for (i=1; i < n; i++)
-      V = min(V, (float)args[0][i].AsFloat());
+      V = min(V, args[0][i].AsFloatf());
     return V;
   }
 }
@@ -968,9 +969,9 @@ AVSValue AvsMax(AVSValue args, void*, IScriptEnvironment* env )
     return V;
   }
   else {
-    float V = (float)args[0][0].AsFloat();
+    float V = args[0][0].AsFloatf();
     for (i=1; i < n; i++)
-      V = max(V, (float)args[0][i].AsFloat());
+      V = max(V, args[0][i].AsFloatf());
     return V;
   }
 }

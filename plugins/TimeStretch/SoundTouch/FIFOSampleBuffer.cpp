@@ -171,7 +171,7 @@ void FIFOSampleBuffer::ensureCapacity(uint capacityRequirement)
         // enlarge the buffer in 4kbyte steps (round up to next 4k boundary)
         sizeInBytes = (capacityRequirement * channels * sizeof(SAMPLETYPE) + 4095) & (uint)-4096;
         assert(sizeInBytes % 2 == 0);
-        tempUnaligned = new(std::nothrow) SAMPLETYPE[sizeInBytes / sizeof(SAMPLETYPE) + 16 / sizeof(SAMPLETYPE)];
+        tempUnaligned = new SAMPLETYPE[sizeInBytes / sizeof(SAMPLETYPE) + 16 / sizeof(SAMPLETYPE)];
         if (tempUnaligned == NULL)
         {
             ST_THROW_RT_ERROR("Couldn't allocate memory!\n");
