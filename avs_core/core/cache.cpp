@@ -258,7 +258,7 @@ int __stdcall Cache::SetCacheHints(int cachehints, int frame_range)
     *********************************************/
 
     case CACHE_SET_MIN_CAPACITY:
-    { // This is not atomic, but rankly, we don't care
+    { // This is not atomic, but frankly, we don't care
       size_t min, max;
       _pimpl->VideoCache->limits(&min, &max);
       min = frame_range;
@@ -267,7 +267,7 @@ int __stdcall Cache::SetCacheHints(int cachehints, int frame_range)
     }
 
     case CACHE_SET_MAX_CAPACITY:
-    { // This is not atomic, but rankly, we don't care
+    { // This is not atomic, but frankly, we don't care
       size_t min, max;
       _pimpl->VideoCache->limits(&min, &max);
       max = frame_range;
@@ -279,24 +279,24 @@ int __stdcall Cache::SetCacheHints(int cachehints, int frame_range)
     {
       size_t min, max;
       _pimpl->VideoCache->limits(&min, &max);
-      return min;
+      return (int)min;
     }
 
     case CACHE_GET_MAX_CAPACITY:
     {
       size_t min, max;
       _pimpl->VideoCache->limits(&min, &max);
-      return max;
+      return (int)max;
     }
 
     case CACHE_GET_SIZE:
-      return _pimpl->VideoCache->size();
+      return (int)_pimpl->VideoCache->size();
       
     case CACHE_GET_REQUESTED_CAP:
-      return _pimpl->VideoCache->requested_capacity();
+      return (int)_pimpl->VideoCache->requested_capacity();
 
     case CACHE_GET_CAPACITY:
-      return _pimpl->VideoCache->capacity();
+      return (int)_pimpl->VideoCache->capacity();
 
     case CACHE_GET_WINDOW: // Get the current window h_span.
     case CACHE_GET_RANGE: // Get the current generic frame range.
@@ -356,7 +356,7 @@ int __stdcall Cache::SetCacheHints(int cachehints, int frame_range)
       return _pimpl->AudioPolicy;
 
     case CACHE_GET_AUDIO_SIZE: // Get the current audio cache size.
-      return _pimpl->SampleSize * _pimpl->MaxSampleCount;
+      return (int)(_pimpl->SampleSize * _pimpl->MaxSampleCount);
 
     case CACHE_PREFETCH_AUDIO_BEGIN:    // Begin queue request to prefetch audio (take critical section).
     case CACHE_PREFETCH_AUDIO_STARTLO:  // Set low 32 bits of start.

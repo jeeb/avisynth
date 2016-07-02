@@ -263,7 +263,7 @@ void Tokenizer::NextToken() {
         for (const char *cp = start; cp < end; cp++) {
           if (*cp == '\n') { line++; }
         }        type = 's';
-        string = env->SaveString(start, end-start);
+        string = env->SaveString(start, int(end-start));
       }
       break;
 
@@ -277,7 +277,7 @@ void Tokenizer::NextToken() {
           pc++;
         } while (*pc == '_' || isalnum(*pc));
         type = 'd';
-        identifier = env->SaveString(token_start, pc - token_start);
+        identifier = env->SaveString(token_start, int(pc - token_start));
         if (!lstrcmpi(identifier, "__END__")) {
           type = 0;
         }
@@ -294,7 +294,7 @@ int Tokenizer::GetColumn(const char* start_of_string) const
     const char* x = pc;
     while (x > start_of_string && x[-1] != '\n' && x[-1] != '\r')
       x--;
-    return pc-x;
+    return int(pc-x);
 }
 
 

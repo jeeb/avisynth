@@ -21,7 +21,7 @@ struct PrefetcherPimpl
   VideoInfo vi;
 
   // The number of threads to use for prefetching
-  const size_t nThreads;
+  const int nThreads;
 
   // Maximum number of frames to prefetch
   const int nPrefetchFrames;
@@ -55,7 +55,7 @@ struct PrefetcherPimpl
   std::exception_ptr worker_exception;
   bool worker_exception_present;
 
-  PrefetcherPimpl(const PClip& _child, size_t _nThreads) :
+  PrefetcherPimpl(const PClip& _child, int _nThreads) :
     child(_child),
     vi(_child->GetVideoInfo()),
     nThreads(_nThreads),
@@ -113,7 +113,7 @@ AVSValue Prefetcher::ThreadWorker(IScriptEnvironment2* env, void* data)
   return AVSValue();
 }
 
-Prefetcher::Prefetcher(const PClip& _child, size_t _nThreads, IScriptEnvironment2 *env) :
+Prefetcher::Prefetcher(const PClip& _child, int _nThreads, IScriptEnvironment2 *env) :
   _pimpl(NULL)
 {
   _pimpl = new PrefetcherPimpl(_child, _nThreads);
@@ -321,7 +321,7 @@ AVSValue Prefetcher::Create(AVSValue args, void*, IScriptEnvironment* env)
   IScriptEnvironment2 *env2 = static_cast<IScriptEnvironment2*>(env);
   PClip child = args[0].AsClip();
 
-  int PrefetchThreads = args[1].AsInt(env2->GetProperty(AEP_PHYSICAL_CPUS)+1);
+  int PrefetchThreads = args[1].AsInt((int)env2->GetProperty(AEP_PHYSICAL_CPUS)+1);
   
   if (PrefetchThreads > 0)
   {

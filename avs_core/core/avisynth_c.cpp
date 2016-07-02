@@ -78,6 +78,7 @@ int AVSC_CC avs_get_plane_width_subsampling(const AVS_VideoInfo * p, int plane)
     return ((VideoInfo *)p)->GetPlaneWidthSubsampling(plane);
   }
   catch (const AvisynthError &err) {
+    (void)err;  // silence warning about unused variable; variable is kept for debugging
     return -1;
   }
 }
@@ -89,6 +90,7 @@ int AVSC_CC avs_get_plane_height_subsampling(const AVS_VideoInfo * p, int plane)
     return ((VideoInfo *)p)->GetPlaneHeightSubsampling(plane);
   }
   catch (const AvisynthError &err) {
+    (void)err;  // silence warning about unused variable; variable is kept for debugging
     return -1;
   }
 }
@@ -756,7 +758,9 @@ void AVSC_CC avs_delete_script_environment(AVS_ScriptEnvironment * e)
 		if (e->env) {
 			try {
 				e->env->DeleteScriptEnvironment();
-			} catch (const AvisynthError &err) { }
+			} catch (const AvisynthError &err) {
+                (void)err;  // silence warning about unused variable; variable is kept for debugging
+            }
 			e->env = 0;
 		}
 		delete e;

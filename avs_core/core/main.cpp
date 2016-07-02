@@ -1177,7 +1177,7 @@ HRESULT CAVIStreamSynth::Read2(LONG lStart, LONG lSamples, LPVOID lpBuffer, LONG
     }
     catch (SehException &seh) {
       char buf[256];
-      _snprintf(buf, 255, "CAVIStreamSynth: %s at 0x%x", seh.m_msg, seh.m_addr);
+      _snprintf(buf, 255, "CAVIStreamSynth: %s at 0x%p", seh.m_msg, seh.m_addr);
       parent->MakeErrorStream(parent->env->SaveString(buf));
       throw;
     }

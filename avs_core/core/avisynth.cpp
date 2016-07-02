@@ -1014,12 +1014,12 @@ void ScriptEnvironment::ExportBuiltinFilters()
         param_var_name.append("$Plugin!");
         param_var_name.append(f->name);
         param_var_name.append("!Param$");
-        SetGlobalVar( SaveString(param_var_name.c_str(), param_var_name.size()), AVSValue(f->param_types));
+        SetGlobalVar( SaveString(param_var_name.c_str(), (int)param_var_name.size()), AVSValue(f->param_types));
       }
     }
 
     // Save $InternalFunctions$
-    SetGlobalVar("$InternalFunctions$", AVSValue( SaveString(FunctionList.c_str(), FunctionList.size()) ));
+    SetGlobalVar("$InternalFunctions$", AVSValue( SaveString(FunctionList.c_str(), (int)FunctionList.size()) ));
 }
 
 size_t  __stdcall ScriptEnvironment::GetProperty(AvsEnvProperty prop)
@@ -1199,7 +1199,7 @@ VideoFrame* ScriptEnvironment::AllocateFrame(size_t vfb_size)
   VideoFrameBuffer* vfb = NULL;
   try
   {
-    vfb = new VideoFrameBuffer(vfb_size);
+    vfb = new VideoFrameBuffer((int)vfb_size);
   }
   catch(const std::bad_alloc&)
   {
@@ -1396,7 +1396,7 @@ PVideoFrame ScriptEnvironment::NewPlanarVideoFrame(int row_size, int height, int
   VideoFrame *res = GetNewFrame(size);
 
   int  offsetU, offsetV;
-  const int offsetY = AlignPointer(res->vfb->GetWritePtr(), align) - res->vfb->GetWritePtr(); // first line offset for proper alignment
+  const int offsetY = (int)(AlignPointer(res->vfb->GetWritePtr(), align) - res->vfb->GetWritePtr()); // first line offset for proper alignment
   if (U_first) {
     offsetU = offsetY + pitchY * height;
     offsetV = offsetY + pitchY * height + pitchUV * heightUV;
@@ -1437,7 +1437,7 @@ PVideoFrame ScriptEnvironment::NewVideoFrame(int row_size, int height, int align
 
   VideoFrame *res = GetNewFrame(size);
 
-  const int offset = AlignPointer(res->vfb->GetWritePtr(), align) - res->vfb->GetWritePtr(); // first line offset for proper alignment
+  const int offset = (int)(AlignPointer(res->vfb->GetWritePtr(), align) - res->vfb->GetWritePtr()); // first line offset for proper alignment
 
   res->offset = offset;
   res->pitch = pitch;
@@ -1801,7 +1801,7 @@ bool __stdcall ScriptEnvironment::Invoke(AVSValue *result, const char* name, con
 
       // Even if the AVSValue below is an array of zero size, we can't skip adding it to args3,
       // because filters like BlankClip might still be expecting it.
-      args3[dst_index++] = AVSValue(size > 0 ? args2.data()+start : NULL, size); // can't delete args2 early because of this
+      args3[dst_index++] = AVSValue(size > 0 ? args2.data()+start : NULL, (int)size); // can't delete args2 early because of this
 
       p += 2;
     } else {

@@ -10,6 +10,6 @@ FilterConstructor::FilterConstructor(IScriptEnvironment2 * env, const AVSFunctio
 
 AVSValue FilterConstructor::InstantiateFilter() const
 {
-  AVSValue funcArgs(CtorArgs.data(), CtorArgs.size());
+  AVSValue funcArgs(CtorArgs.data(), (int)CtorArgs.size());
   return Func->apply(funcArgs, Func->user_data, Env);
 }

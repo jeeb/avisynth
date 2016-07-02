@@ -404,12 +404,12 @@ AVSValue Import(AVSValue args, void*, IScriptEnvironment* env)
 
     env->SetGlobalVar("$ScriptName$", env->SaveString(full_path));
     env->SetGlobalVar("$ScriptFile$", env->SaveString(file_part));
-    env->SetGlobalVar("$ScriptDir$", env->SaveString(full_path, dir_part_len));
+    env->SetGlobalVar("$ScriptDir$", env->SaveString(full_path, (int)dir_part_len));
     if (MainScript)
     {
       env->SetGlobalVar("$MainScriptName$", env->SaveString(full_path));
       env->SetGlobalVar("$MainScriptFile$", env->SaveString(file_part));
-      env->SetGlobalVar("$MainScriptDir$", env->SaveString(full_path, dir_part_len));
+      env->SetGlobalVar("$MainScriptDir$", env->SaveString(full_path, (int)dir_part_len));
     }
 
     *file_part = 0;
@@ -603,7 +603,7 @@ AVSValue StrCmpi(AVSValue args, void*, IScriptEnvironment* env)
 AVSValue FindStr(AVSValue args, void*, IScriptEnvironment* env)
 {
   const char *pdest = strstr( args[0].AsString(),args[1].AsString() );
-  int result = pdest - args[0].AsString() + 1;
+  int result = (int)(pdest - args[0].AsString() + 1);
   if (pdest == NULL) result = 0;
   return result; 
 }

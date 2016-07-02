@@ -587,7 +587,7 @@ void PluginManager::UpdateFunctionExports(const char* funcName, const char* func
   if (FnList.size() > 0)    // if the list is not empty...
     FnList.push_back(' ');  // ...add a delimiting whitespace 
   FnList.append(funcName);
-  Env->SetGlobalVar(exportVar, AVSValue( Env->SaveString(FnList.c_str(), FnList.size()) ));
+  Env->SetGlobalVar(exportVar, AVSValue( Env->SaveString(FnList.c_str(), (int)FnList.size()) ));
 
   // Update $Plugin!...!Param$
   std::string param_id;
@@ -595,7 +595,7 @@ void PluginManager::UpdateFunctionExports(const char* funcName, const char* func
   param_id.append("$Plugin!");
   param_id.append(funcName);
   param_id.append("!Param$");
-  Env->SetGlobalVar(Env->SaveString(param_id.c_str(), param_id.size()), AVSValue(Env->SaveString(funcParams)));
+  Env->SetGlobalVar(Env->SaveString(param_id.c_str(), (int)param_id.size()), AVSValue(Env->SaveString(funcParams)));
 }
 
 bool PluginManager::LoadPlugin(const char* path, bool throwOnError, AVSValue *result)

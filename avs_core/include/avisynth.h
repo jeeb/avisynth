@@ -557,7 +557,6 @@ class VideoFrame {
 
   friend class ScriptEnvironment;
   friend class Cache;
-  friend class LinkedVideoFrame;
 
   VideoFrame(VideoFrameBuffer* _vfb, int _offset, int _pitch, int _row_size, int _height);
   VideoFrame(VideoFrameBuffer* _vfb, int _offset, int _pitch, int _row_size, int _height, int _offsetU, int _offsetV, int _pitchUV, int _row_sizeUV, int _heightUV);

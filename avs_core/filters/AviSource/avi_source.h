@@ -67,15 +67,15 @@ class AVISource : public IClip {
 
 public:
 
-  enum {
+  typedef enum {
     MODE_NORMAL = 0,
     MODE_AVIFILE,
     MODE_OPENDML,
     MODE_WAV
-  };
+  } avi_mode_e;
 
   AVISource(const char filename[], bool fAudio, const char pixel_type[],
-            const char fourCC[], int vtrack, int atrack, int mode, IScriptEnvironment* env);  // mode: 0=detect, 1=avifile, 2=opendml, 3=avifile (audio only)
+            const char fourCC[], int vtrack, int atrack, avi_mode_e mode, IScriptEnvironment* env);  // mode: 0=detect, 1=avifile, 2=opendml, 3=avifile (audio only)
   ~AVISource();
   void CleanUp(); // Tritical - Jan 2006
   const VideoInfo& __stdcall GetVideoInfo();
@@ -85,7 +85,7 @@ public:
   int __stdcall SetCacheHints(int cachehints,int frame_range);
 
   static AVSValue __cdecl Create(AVSValue args, void* user_data, IScriptEnvironment* env) {
-    const int mode = int(user_data);
+    const avi_mode_e mode = (avi_mode_e)size_t(user_data);
     const bool fAudio = (mode == MODE_WAV) || args[1].AsBool(true);
     const char* pixel_type = (mode != MODE_WAV) ? args[2].AsString("") : "";
     const char* fourCC = (mode != MODE_WAV) ? args[3].AsString("") : "";
