@@ -802,7 +802,7 @@ public:
   }
 
   static AVSValue __cdecl Create(AVSValue args, void* _type, IScriptEnvironment* env) {
-    const int type = (int)_type;
+    const int type = (int)(size_t)_type;
 
     return new ColorBars(args[0].AsInt(   type ? 1288 : 640),
                          args[1].AsInt(   type ?  720 : 480),
@@ -879,7 +879,7 @@ AVSValue __cdecl Create_SegmentedSource(AVSValue args, void* use_directshow, ISc
             inv_args[0] = filename;
             clip = env->Invoke("DirectShowSource",AVSValue(inv_args, inv_args_count)).AsClip();
           } else {
-            clip =  (IClip*)(new AVISource(filename, bAudio, pixel_type, fourCC, 0, vtrack, atrack, env));
+            clip =  (IClip*)(new AVISource(filename, bAudio, pixel_type, fourCC, vtrack, atrack, AVISource::MODE_NORMAL, env));
           }
           result = !result ? clip : new_Splice(result, clip, false, env);
         } catch (const AvisynthError &e) {
