@@ -523,7 +523,7 @@ void AVSValue::CONSTRUCTOR4(int i)                       { type = 'i'; array_siz
                                                         
 AVSValue::AVSValue(float f)                              { CONSTRUCTOR5(f); }
 void AVSValue::CONSTRUCTOR5(float f)                     { type = 'f'; array_size = 0; clip = NULL; floating_pt = f; }
-                                                        
+
 AVSValue::AVSValue(double f)                             { CONSTRUCTOR6(f); }
 void AVSValue::CONSTRUCTOR6(double f)                    { type = 'f'; array_size = 0; clip = NULL; floating_pt = float(f); }
                                                         
@@ -533,8 +533,9 @@ void AVSValue::CONSTRUCTOR7(const char* s)               { type = 's'; array_siz
 /* Baked ********************
 AVSValue::AVSValue(const AVSValue* a, int size) { type = 'a'; array = a; array_size = size; }
    Baked ********************/
+AVSValue::AVSValue(const AVSValue& a, int size)          { CONSTRUCTOR8(&a, size); }
 AVSValue::AVSValue(const AVSValue* a, int size)          { CONSTRUCTOR8(a, size); }
-void AVSValue::CONSTRUCTOR8(const AVSValue* a, int size) { type = 'a'; array = a; array_size = (short)size; }
+void AVSValue::CONSTRUCTOR8(const AVSValue* a, int size) { type = 'a'; array_size = (short)size; array = a; }
 
 AVSValue::AVSValue(const AVSValue& v)                    { CONSTRUCTOR9(v); }
 void AVSValue::CONSTRUCTOR9(const AVSValue& v)           { Assign(&v, true); }

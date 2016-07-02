@@ -212,7 +212,7 @@ VBitmap& VBitmap::init(void *data, PixDim w, PixDim h, int depth) throw() {
 
 void VBitmap::MakeBitmapHeader(BITMAPINFOHEADER *bih) const throw() {
   bih->biSize       = sizeof(BITMAPINFOHEADER);
-  bih->biBitCount     = depth;
+  bih->biBitCount     = (WORD)depth;
   bih->biPlanes     = 1;
   bih->biCompression    = BI_RGB;
 
@@ -498,10 +498,12 @@ static void FilterThrowExceptMemory() {
 }
 
 // This is really disgusting...
-
+#pragma warning( push )
+#pragma warning (disable: 4238) // nonstandard extension used : class rvalue used as lvalue
 static void InitVTables(struct FilterVTbls *pvtbls) {
   pvtbls->pvtblVBitmap = *(void **)&VBitmap();
 }
+#pragma warning( pop )
 
 
 FilterDefinition *FilterAdd(FilterModule *fm, FilterDefinition *pfd, int fd_len);

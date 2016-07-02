@@ -354,9 +354,9 @@ PVideoFrame AddBorders::GetFrame(int n, IScriptEnvironment* env)
     + (dst_pitch - dst_row_size);
   if (vi.IsPlanar()) {
     const unsigned int colr = RGB2YUV(clr);
-    const unsigned char YBlack = (colr>>16)&0xff;
-    const unsigned char UBlack = (colr>>8)&0xff;
-    const unsigned char VBlack = (colr)&0xff;
+    const unsigned char YBlack=(unsigned char)((colr >> 16) & 0xff);
+    const unsigned char UBlack=(unsigned char)((colr >>  8) & 0xff);
+    const unsigned char VBlack=(unsigned char)((colr      ) & 0xff);
 
     BitBlt(dstp+initial_black, dst_pitch, srcp, src_pitch, src_row_size, src_height);
     for (int a = 0; a<initial_black; a++) {
@@ -436,8 +436,8 @@ PVideoFrame AddBorders::GetFrame(int n, IScriptEnvironment* env)
       *(unsigned __int32*)(dstp+c) = black;
     }
   } else if (vi.IsRGB24()) {
-    const unsigned char  clr0 = (clr & 0xFF);
-    const unsigned __int16 clr1 = (clr >> 8);
+    const unsigned char  clr0 = (unsigned char)(clr & 0xFF);
+    const unsigned short clr1 = (unsigned short)(clr >> 8);
     const int leftbytes = vi.BytesFromPixels(left);
     const int leftrow = src_row_size + leftbytes;
     const int rightbytes = vi.BytesFromPixels(right);

@@ -54,8 +54,8 @@ SSRC::SSRC(PClip _child, int _target_rate, bool _fast, IScriptEnvironment* env)
   skip_conversion = false;
   source_rate = vi.audio_samples_per_second;
 
-	factor = double(target_rate) / vi.audio_samples_per_second;
-  vi.num_audio_samples = MulDiv(vi.num_audio_samples, target_rate, vi.audio_samples_per_second);  // TODO: MulDiv is not adaquate to deal with the number of samples, input type too short
+  factor = double(target_rate) / vi.audio_samples_per_second;
+  vi.num_audio_samples = (vi.num_audio_samples * target_rate + vi.audio_samples_per_second - 1) / vi.audio_samples_per_second; // Ceil
  
   res = SSRC_create(source_rate, target_rate, vi.AudioChannels(), 2,1, fast);
 
@@ -103,7 +103,7 @@ void __stdcall SSRC::GetAudio(void* buf, __int64 start, __int64 count, IScriptEn
     }
 
     if (!skip_restart)  { 
-      inputReadOffset = MulDiv(start, source_rate, target_rate) -  input_samples;  // Reset at new read position minus ONE second.   // TODO: MulDiv is not adaquate to deal with the number of samples, input type too short
+      inputReadOffset = (start * source_rate / target_rate) -  input_samples;  // Floor, Reset at new read position minus ONE second.
       res = SSRC_create(source_rate, target_rate, vi.AudioChannels(), 2, 1, fast);
       _RPT2(0, "SSRC: Resetting position. Next_sample: %d. Start:%d.!\n", (int)next_sample, (int)start);
       next_sample = start - target_rate;
@@ -111,18 +111,17 @@ void __stdcall SSRC::GetAudio(void* buf, __int64 start, __int64 count, IScriptEn
   }
 
 
-  SFLOAT* DestSamples = (SFLOAT*)buf;
-  int ssrc_samples_tbr = count*sizeof(SFLOAT);  // count in bytes
+  int ssrc_samples_tbr = int(count)*sizeof(SFLOAT);  // count in bytes
   bool buffer_full = false;
 
 
   if (next_sample < start) { // Skip
-    int skip_count = (start - next_sample) * vi.AudioChannels();
+    int skip_count = int(start - next_sample) * vi.AudioChannels();
     _RPT1(0,"SSRC: Skipping %u samples", skip_count);
     int skip_nsamples = skip_count*sizeof(SFLOAT);  // count in bytes
     do {
       int ssrc_samples_av;
-      SFLOAT* ssrc_samples = res->GetBuffer(&ssrc_samples_av);
+      res->GetBuffer(&ssrc_samples_av);
 
       if (ssrc_samples_av < skip_nsamples) {  // We don't have enough bytes - feed more.
 
@@ -155,7 +154,7 @@ void __stdcall SSRC::GetAudio(void* buf, __int64 start, __int64 count, IScriptEn
     } else {  // Now we have enough data
 
       env->BitBlt((BYTE*)buf, ssrc_samples_tbr, (BYTE*)ssrc_samples, ssrc_samples_tbr, ssrc_samples_tbr , 1);
-      res->Read(count);
+      res->Read((unsigned int)count);
       buffer_full = true;
     }
 

@@ -81,7 +81,7 @@ FastReadStream::~FastReadStream() {
 
 ///////////////////////////////////////////////////////////////////////////
 
-#pragma function(memcpy)
+// #pragma function(memcpy)
 
 long FastReadStream::Read(int stream, __int64 i64Pos, void *pDest, long lBytes) {
 	long lOffset, lActual = 0, lToCopy;
@@ -92,7 +92,7 @@ long FastReadStream::Read(int stream, __int64 i64Pos, void *pDest, long lBytes) 
 	// First block number and offset...
 
 	i64BlockNo = i64Pos / lBlockSize;
-	lOffset = i64Pos % lBlockSize;
+	lOffset = long(i64Pos % lBlockSize);
 
 //	_RPT3(0,"Read request: %ld bytes, pos %I64x, first block %I64d\n", lBytes, i64Pos, i64BlockNo);
 
@@ -142,7 +142,6 @@ void FastReadStream::Flush() {
 
 int FastReadStream::_PickVictim(int stream) {
 	int i;
-	int iLoneBlock = -1;
 	long fStreamEncounteredBits=0, fStreamNotLoneBits=0;
 	int iOurLowest=-1, iGlobalLowest=-1, iPreferred=-1;
 	long fStreamMask = 1L<<stream;

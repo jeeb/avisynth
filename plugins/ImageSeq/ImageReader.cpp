@@ -45,7 +45,7 @@ using namespace std;
 
 
 ImageReader::ImageReader(const char * _base_name, const int _start, const int _end,
-                         const float _fps, bool _use_DevIL, bool _info, const char * _pixel,
+                         const double _fps, bool _use_DevIL, bool _info, const char * _pixel,
                          bool _animation, IScriptEnvironment* env)
  : start(_start), use_DevIL(_use_DevIL), info(_info), animation(_animation), framecopies(0)
 {
@@ -195,7 +195,7 @@ ImageReader::ImageReader(const char * _base_name, const int _start, const int _e
       }
 
       unsigned duration_ms = (unsigned)ilGetInteger(IL_IMAGE_DURATION);
-      if (duration_ms != 0 && _fps == 24.0f) { // overwrite framerate in case of non-zero duration
+      if (duration_ms != 0 && _fps == 24.0) { // overwrite framerate in case of non-zero duration
           vi.SetFPS(1000, duration_ms);
       }
     }

@@ -74,7 +74,7 @@ ImageWriter::ImageWriter(PClip _child, const char * _base_name, const int _start
     infoHeader.biWidth = vi.width;
     infoHeader.biHeight = vi.height;
     infoHeader.biPlanes = (vi.IsPlanar() && !vi.IsY8()) ? 3 : 1;
-    infoHeader.biBitCount = vi.BitsPerPixel();
+    infoHeader.biBitCount = WORD(vi.BitsPerPixel());
     infoHeader.biCompression = 0;
     infoHeader.biSizeImage = fileHeader.bfSize - fileHeader.bfOffBits;
     infoHeader.biXPelsPerMeter = 0;
@@ -209,7 +209,7 @@ PVideoFrame ImageWriter::GetFrame(int n, IScriptEnvironment* env)
     const ILenum il_format = vi.IsY8() ? IL_LUMINANCE : ( vi.IsRGB32() ? IL_BGRA : IL_BGR );
 
     // Set image parameters
-    if (IL_TRUE == ilTexImage(vi.width, vi.height, 1, vi.BitsPerPixel() / 8, il_format, IL_UNSIGNED_BYTE, NULL)) {
+    if (IL_TRUE == ilTexImage(vi.width, vi.height, 1, ILubyte(vi.BitsPerPixel() / 8), il_format, IL_UNSIGNED_BYTE, NULL)) {
 
       // Program actual image raster
       const BYTE * srcPtr = frame->GetReadPtr();

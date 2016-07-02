@@ -109,6 +109,10 @@ class AvisynthError /* exception */ {
 public:
   const char* const msg;
   AvisynthError(const char* _msg) : msg(_msg) {}
+
+// Ensure AvisynthError cannot be publicly assigned!
+private:
+  AvisynthError& operator=(const AvisynthError&) = delete;
 }; // end class AvisynthError
 
 
@@ -527,6 +531,11 @@ public:
   int GetDataSize() const AVS_BakedCode( return AVS_LinkCall(GetDataSize)() )
   int GetSequenceNumber() const AVS_BakedCode( return AVS_LinkCall(GetSequenceNumber)() )
   int GetRefcount() const AVS_BakedCode( return AVS_LinkCall(GetRefcount)() )
+
+// Ensure VideoFrameBuffer cannot be publicly assigned
+private:
+    VideoFrameBuffer& operator=(const VideoFrameBuffer&) = delete;
+
 }; // end class VideoFrameBuffer
 
 
@@ -548,6 +557,7 @@ class VideoFrame {
 
   friend class ScriptEnvironment;
   friend class Cache;
+  friend class LinkedVideoFrame;
 
   VideoFrame(VideoFrameBuffer* _vfb, int _offset, int _pitch, int _row_size, int _height);
   VideoFrame(VideoFrameBuffer* _vfb, int _offset, int _pitch, int _row_size, int _height, int _offsetU, int _offsetV, int _pitchUV, int _row_sizeUV, int _heightUV);
@@ -576,6 +586,11 @@ public:
 public:
   void DESTRUCTOR();  /* Damn compiler won't allow taking the address of reserved constructs, make a dummy interlude */
 #endif
+
+// Ensure VideoFrame cannot be publicly assigned
+private:
+    VideoFrame& operator=(const VideoFrame&) = delete;
+
 }; // end class VideoFrame
 
 enum CachePolicyHint {
@@ -759,6 +774,7 @@ public:
   AVSValue(double f) AVS_BakedCode( AVS_LinkCall(AVSValue_CONSTRUCTOR6)(f) )
   AVSValue(const char* s) AVS_BakedCode( AVS_LinkCall(AVSValue_CONSTRUCTOR7)(s) )
   AVSValue(const AVSValue* a, int size) AVS_BakedCode( AVS_LinkCall(AVSValue_CONSTRUCTOR8)(a, size) )
+  AVSValue(const AVSValue& a, int size) AVS_BakedCode( AVS_LinkCall(AVSValue_CONSTRUCTOR8)(&a, size) )
   AVSValue(const AVSValue& v) AVS_BakedCode( AVS_LinkCall(AVSValue_CONSTRUCTOR9)(v) )
 
   ~AVSValue() AVS_BakedCode( AVS_LinkCall(AVSValue_DESTRUCTOR)() )

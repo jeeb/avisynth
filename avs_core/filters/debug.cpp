@@ -137,10 +137,10 @@ private:
   __int64 audionext;
 
 public:
-  Preroll( PClip _child, const int _videopr, const float _audiopr, IScriptEnvironment* env )
+  Preroll( PClip _child, const int _videopr, const double _audiopr, IScriptEnvironment* env )
     : GenericVideoFilter(_child),
       videopr(_videopr),
-      audiopr(__int64((double)_audiopr*vi.audio_samples_per_second+0.5)),
+      audiopr(__int64(_audiopr*vi.audio_samples_per_second+0.5)),
       videonext(0),
       audionext(0) {
 
@@ -337,7 +337,7 @@ char MemDebug::nextNum()
     randNum += 0x3039;
   }  
 
-  return (randNum & (mask << (whichByte * 8))) >> (whichByte * 8);
+  return char((randNum & (mask << (whichByte * 8))) >> (whichByte * 8));
 }
 
 

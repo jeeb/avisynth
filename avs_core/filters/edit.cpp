@@ -732,7 +732,7 @@ void Dissolve::GetAudio(void* buf, __int64 start, __int64 count, IScriptEnvironm
       }
       else if (numerator < denominator) {            // In dissolve region
         for (int p=0; p < nch; p++)
-          a[i+p] = b[i+p] + MulDiv(a[i+p]-b[i+p], numerator, denominator);
+          a[i+p] = short(b[i+p] + MulDiv(a[i+p]-b[i+p], numerator, denominator));
       }
    // else                                           // Before begining of dissolve
       numerator--;

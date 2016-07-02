@@ -81,7 +81,7 @@ PVideoFrame FixLuminance::GetFrame(int n, IScriptEnvironment* env)
   {
     const int subtract = (vertex-y)*16/slope;
     for (int x=0; x<vi.width; ++x)
-      p[x*2] = max(0, p[x*2]-subtract);
+      p[x*2] = (BYTE)max(0, p[x*2]-subtract);
     p += pitch;
   }
   return frame;
@@ -170,7 +170,7 @@ PVideoFrame PeculiarBlend::GetFrame(int n, IScriptEnvironment* env) {
   for (int y = max(0, cutoff-31); y < min(cutoff, vi.height-1); ++y) {
     int scale = cutoff - y;
     for (int x = 0; x < row_size; ++x)
-      main[x] += ((other[x] - main[x]) * scale + 16) >> 5;
+      main[x] = main[x] + BYTE(((other[x] - main[x]) * scale + 16) >> 5);
     main += main_pitch;
     other += other_pitch;
   }

@@ -364,7 +364,7 @@ StringDump::~StringDump() {
 
 char* StringDump::SaveString(const char* s, int len) {
   if (len == -1)
-    len = lstrlen(s);
+    len = (int)strlen(s);
 
   if (block_pos+len+1 > block_size) {
     char* new_block = new char[block_size = max(block_size, len+1+sizeof(char*))];
