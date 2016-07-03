@@ -122,7 +122,9 @@ Prefetcher::Prefetcher(const PClip& _child, int _nThreads, IScriptEnvironment2 *
 
 Prefetcher::~Prefetcher()
 {
-  while(_pimpl->running_workers > 0);
+  while (_pimpl->running_workers > 0) {
+    __noop();
+  }
   delete _pimpl;
 }
 

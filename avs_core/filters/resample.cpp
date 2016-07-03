@@ -893,8 +893,8 @@ PVideoFrame __stdcall FilteredResizeV::GetFrame(int n, IScriptEnvironment* env)
   int* src_pitch_table_luma = static_cast<int*>(env2->Allocate(sizeof(int) * src->GetHeight(), 16, AVS_POOLED_ALLOC));
   resize_v_create_pitch_table(src_pitch_table_luma, src->GetPitch(), src->GetHeight());
 
-  int* src_pitch_table_chromaU;
-  int* src_pitch_table_chromaV;
+  int* src_pitch_table_chromaU = NULL;
+  int* src_pitch_table_chromaV = NULL;
   if ((!vi.IsY8() && vi.IsPlanar())) {
     src_pitch_table_chromaU = static_cast<int*>(env2->Allocate(sizeof(int) * src->GetHeight(PLANAR_U), 16, AVS_POOLED_ALLOC));
     resize_v_create_pitch_table(src_pitch_table_chromaU, src->GetPitch(PLANAR_U), src->GetHeight(PLANAR_U));
@@ -938,10 +938,8 @@ PVideoFrame __stdcall FilteredResizeV::GetFrame(int n, IScriptEnvironment* env)
 
   // Free pitch table
   env2->Free(src_pitch_table_luma);
-  if (!vi.IsY8() && vi.IsPlanar()) {
-    env2->Free(src_pitch_table_chromaU);
-    env2->Free(src_pitch_table_chromaV);
-  }
+  env2->Free(src_pitch_table_chromaU);
+  env2->Free(src_pitch_table_chromaV);
 
   return dst;
 }

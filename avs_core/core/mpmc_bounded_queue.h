@@ -43,7 +43,7 @@ public:
       return false;
 
     array[head] = item;
-    head = ++head % max_size;
+    head = (head + 1) % max_size;
     ++size;
 
     return true;
@@ -55,7 +55,7 @@ public:
       return false;
 
     *pItem = std::move(array[tail]);
-    tail = ++tail % max_size;
+    tail = (tail + 1) % max_size;
     --size;
 
     return true;

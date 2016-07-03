@@ -330,7 +330,8 @@ int MemDebug::randomCheck(BYTE* const buf, const int pitch, const int row_size, 
 
 char MemDebug::nextNum()
 {
-  ++whichByte &= 3;
+  ++whichByte;
+  whichByte &= 3;
   if (whichByte == 0)
   {
     randNum *= 0x41c64e6d;
