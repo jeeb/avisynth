@@ -42,7 +42,7 @@
 #include "../convert/convert_planar.h"
 #include "../convert/convert_yuy2.h"
 
-
+#include <type_traits>
 // Intrinsics for SSE4.1, SSSE3, SSE3, SSE2, ISSE and MMX
 #include <smmintrin.h>
 
@@ -76,40 +76,57 @@ __forceinline __m128i simd_load_streaming(const __m128i* adr)
  ***** Vertical Resizer Assembly *******
  ***************************************/
 
+template<typename pixel_size>
 static void resize_v_planar_pointresize(BYTE* dst, const BYTE* src, int dst_pitch, int src_pitch, ResamplingProgram* program, int width, int target_height, const int* pitch_table, const void* storage)
 {
   int filter_size = program->filter_size;
 
+  pixel_size* src0 = (pixel_size *)src;
+  pixel_size* dst0 = (pixel_size *)dst;
+  dst_pitch = dst_pitch / sizeof(pixel_size);
+
   for (int y = 0; y < target_height; y++) {
     int offset = program->pixel_offset[y];
-    const BYTE* src_ptr = src + pitch_table[offset];
+    const pixel_size* src_ptr = src0 + pitch_table[offset]/sizeof(pixel_size);
 
-    memcpy(dst, src_ptr, width);
+    memcpy(dst0, src_ptr, width*sizeof(pixel_size));
 
-    dst += dst_pitch;
+    dst0 += dst_pitch;
   }
 }
 
+template<typename pixel_size>
 static void resize_v_c_planar(BYTE* dst, const BYTE* src, int dst_pitch, int src_pitch, ResamplingProgram* program, int width, int target_height, const int* pitch_table, const void* storage)
 {
   int filter_size = program->filter_size;
   short* current_coeff = program->pixel_coefficient;
+  pixel_size* src0 = (pixel_size *)src;
+  pixel_size* dst0 = (pixel_size *)dst;
+  dst_pitch = dst_pitch / sizeof(pixel_size);
 
   for (int y = 0; y < target_height; y++) {
     int offset = program->pixel_offset[y];
-    const BYTE* src_ptr = src + pitch_table[offset];
+    const pixel_size* src_ptr = src0 + pitch_table[offset] / sizeof(pixel_size);
+
+    pixel_size limit;
+    // todo not nice, may have to split this func by pixeltype or find a valid conditional c++ syntax
+    if (sizeof(pixel_size) == 1) limit = 255;
+    else if (sizeof(pixel_size) == 2) limit = 65535;
+    else if (sizeof(pixel_size) == 4) limit = 65535.0f/65536; // todo check what is float upper limit
 
     for (int x = 0; x < width; x++) {
-      int result = 0;
+      // todo: check whether int result is enough for 16 bit samples (can an int overflow because of 16384 scale or really need __int64?)
+      std::conditional < sizeof(pixel_size) == 1, int, std::conditional < sizeof(pixel_size) == 2, __int64, float>::type >::type result;
+      result = 0;
       for (int i = 0; i < filter_size; i++) {
-        result += (src_ptr+pitch_table[i])[x] * current_coeff[i];
+        result += (src_ptr+pitch_table[i] / sizeof(pixel_size))[x] * current_coeff[i];
       }
       result = ((result+8192)/16384);
-      result = result > 255 ? 255 : result < 0 ? 0 : result;
-      dst[x] = (BYTE) result;
+      result = result > limit ? limit : result < 0 ? 0 : result;
+      dst0[x] = (pixel_size)result;
     }
 
-    dst += dst_pitch;
+    dst0 += dst_pitch;
     current_coeff += filter_size;
   }
 }
@@ -442,20 +459,35 @@ static void resize_h_prepare_coeff_8(ResamplingProgram* p, IScriptEnvironment2* 
   p->pixel_coefficient = new_coeff;
 }
 
+template<typename pixel_size>
 static void resize_h_c_planar(BYTE* dst, const BYTE* src, int dst_pitch, int src_pitch, ResamplingProgram* program, int width, int height) {
   int filter_size = program->filter_size;
   short* current = program->pixel_coefficient;
 
+  pixel_size limit;
+  // todo not nice, may have to split this func by pixeltype or find a valid conditional c++ syntax
+  if (sizeof(pixel_size) == 1) limit = 255;
+  else if (sizeof(pixel_size) == 2) limit = 65535;
+  else if (sizeof(pixel_size) == 4) limit = 65535.0f / 65536; // todo check what is float upper limit
+
+  src_pitch = src_pitch / sizeof(pixel_size);
+  dst_pitch = dst_pitch / sizeof(pixel_size);
+
+  pixel_size* src0 = (pixel_size*)src;
+  pixel_size* dst0 = (pixel_size*)dst;
+
   for (int x = 0; x < width; x++) {
     int begin = program->pixel_offset[x];
     for (int y = 0; y < height; y++) {
-      int result = 0;
+      // todo: check whether int result is enough for 16 bit samples (can an int overflow because of 16384 scale or really need __int64?)
+      std::conditional < sizeof(pixel_size) == 1, int, std::conditional < sizeof(pixel_size) == 2, __int64, float>::type >::type result;
+      result = 0;
       for (int i = 0; i < filter_size; i++) {
-        result += (src+y*src_pitch)[(begin+i)] * current[i];
+        result += (src0+y*src_pitch)[(begin+i)] * current[i];
       }
-      result = ((result+8192)/16384);
-      result = result > 255 ? 255 : result < 0 ? 0 : result;
-      (dst+y*dst_pitch)[x] = (BYTE)result;
+      result = ((result+8192)/16384); // todo float:no scale
+      result = result > limit ? limit : result < 0 ? 0 : result;
+      (dst0 + y*dst_pitch)[x] = (pixel_size)result;
     }
     current += filter_size;
   }
@@ -653,11 +685,14 @@ FilteredResizeH::FilteredResizeH( PClip _child, double subrange_left, double sub
   dst_width  = target_width;
   dst_height = vi.height;
 
+  pixelsize = vi.BytesFromPixels(1); // AVS16
+  grey = vi.IsY8() || vi.IsColorSpace(VideoInfo::CS_Y16) || vi.IsColorSpace(VideoInfo::CS_Y32);
+
   if (target_width <= 0) {
     env->ThrowError("Resize: Width must be greater than 0.");
   }
 
-  if (vi.IsPlanar() && !vi.IsY8()) {
+  if (vi.IsPlanar() && !grey) {
     const int mask = (1 << vi.GetPlaneWidthSubsampling(PLANAR_U)) - 1;
 
     if (target_width & mask)
@@ -668,7 +703,7 @@ FilteredResizeH::FilteredResizeH( PClip _child, double subrange_left, double sub
 
   // Main resampling program
   resampling_program_luma = func->GetResamplingProgram(vi.width, subrange_left, subrange_width, target_width, env2);
-  if (vi.IsPlanar() && !vi.IsY8()) {
+  if (vi.IsPlanar() && !grey) {
     const int shift = vi.GetPlaneWidthSubsampling(PLANAR_U);
     const int shift_h = vi.GetPlaneHeightSubsampling(PLANAR_U);
     const int div   = 1 << shift;
@@ -683,7 +718,7 @@ FilteredResizeH::FilteredResizeH( PClip _child, double subrange_left, double sub
   }
 
   fast_resize = (env->GetCPUFlags() & CPUF_SSSE3) == CPUF_SSSE3 && vi.IsPlanar() && target_width%4 == 0;
-  if (fast_resize && vi.IsYUV() && !vi.IsY8()) {
+  if (fast_resize && vi.IsYUV() && !grey) {
     const int shift = vi.GetPlaneWidthSubsampling(PLANAR_U);
     const int dst_chroma_width = dst_width >> shift;
 
@@ -700,9 +735,9 @@ FilteredResizeH::FilteredResizeH( PClip _child, double subrange_left, double sub
     // Create resampling program and pitch table
     src_pitch_table_luma     = new int[vi.width];
 
-    resampler_luma   = FilteredResizeV::GetResampler(env->GetCPUFlags(), true, filter_storage_luma, resampling_program_luma);
-    if (vi.IsPlanar() && !vi.IsY8()) {
-      resampler_chroma = FilteredResizeV::GetResampler(env->GetCPUFlags(), true, filter_storage_chroma, resampling_program_chroma);
+    resampler_luma   = FilteredResizeV::GetResampler(env->GetCPUFlags(), true, pixelsize, filter_storage_luma, resampling_program_luma);
+    if (vi.IsPlanar() && !grey) {
+      resampler_chroma = FilteredResizeV::GetResampler(env->GetCPUFlags(), true, pixelsize, filter_storage_chroma, resampling_program_chroma);
     }
 
     // Temporary buffer size
@@ -712,6 +747,7 @@ FilteredResizeH::FilteredResizeH( PClip _child, double subrange_left, double sub
     resize_v_create_pitch_table(src_pitch_table_luma, temp_1_pitch, src_width);
 
     // Initialize Turn function
+    // see turn.cpp
     if (vi.IsRGB24()) {
       turn_left = turn_left_rgb24;
       turn_right = turn_right_rgb24;
@@ -724,19 +760,33 @@ FilteredResizeH::FilteredResizeH( PClip _child, double subrange_left, double sub
         turn_right = turn_right_rgb32_c;
       }
     } else {
+      switch (vi.BytesFromPixels(1)) // AVS16
+      {
+      case 1: // 8 bit
       if (env->GetCPUFlags() & CPUF_SSE2) {
         turn_left = turn_left_plane_sse2;
         turn_right = turn_right_plane_sse2;
-      } else {
-        turn_left = turn_left_plane_c;
-        turn_right = turn_right_plane_c;
       }
+        else {
+          turn_left = turn_left_plane_c<uint8_t>;
+          turn_right = turn_right_plane_c<uint8_t>;
     }
+        break;
+      case 2: // 16 bit. todo: c only
+        turn_left = turn_left_plane_c<uint16_t>;
+        turn_right = turn_right_plane_c<uint16_t>;
+        break;
+      case 4: // 32 bit c_only
+        turn_left = turn_left_plane_c<float>;
+        turn_right = turn_right_plane_c<float>;
+        break;
+      }
+      }
   } else { // Plannar + SSSE3 = use new horizontal resizer routines
-    resampler_h_luma = GetResampler(env->GetCPUFlags(), true, resampling_program_luma, env2);
+    resampler_h_luma = GetResampler(env->GetCPUFlags(), true, pixelsize, resampling_program_luma, env2);
 
-    if (!vi.IsY8()) {
-      resampler_h_chroma = GetResampler(env->GetCPUFlags(), true, resampling_program_chroma, env2);
+    if (!grey) {
+      resampler_h_chroma = GetResampler(env->GetCPUFlags(), true, pixelsize, resampling_program_chroma, env2);
     }
   }
 
@@ -752,16 +802,18 @@ PVideoFrame __stdcall FilteredResizeH::GetFrame(int n, IScriptEnvironment* env)
   auto env2 = static_cast<IScriptEnvironment2*>(env);
 
   if (!fast_resize) {
+    // e.g. not aligned, not mod4
+    // temp_1_pitch and temp_2_pitch is pixelsize-aware
     BYTE* temp_1 = static_cast<BYTE*>(env2->Allocate(temp_1_pitch * src_width, 64, AVS_POOLED_ALLOC));
     BYTE* temp_2 = static_cast<BYTE*>(env2->Allocate(temp_2_pitch * dst_width, 64, AVS_POOLED_ALLOC));
 
     if (!vi.IsRGB()) {
       // Y Plane
-      turn_right(src->GetReadPtr(), temp_1, src_width, src_height, src->GetPitch(), temp_1_pitch);
+      turn_right(src->GetReadPtr(), temp_1, src_width * pixelsize, src_height, src->GetPitch(), temp_1_pitch); // * pixelsize: turn_right needs GetPlaneWidth full size
       resampler_luma(temp_2, temp_1, temp_2_pitch, temp_1_pitch, resampling_program_luma, src_height, dst_width, src_pitch_table_luma, filter_storage_luma);
-      turn_left(temp_2, dst->GetWritePtr(), dst_height, dst_width, temp_2_pitch, dst->GetPitch());
+      turn_left(temp_2, dst->GetWritePtr(), dst_height * pixelsize, dst_width, temp_2_pitch, dst->GetPitch());
 
-      if (!vi.IsY8()) {
+      if(!grey) {
         const int shift = vi.GetPlaneWidthSubsampling(PLANAR_U);
         const int shift_h = vi.GetPlaneHeightSubsampling(PLANAR_U);
 
@@ -770,15 +822,16 @@ PVideoFrame __stdcall FilteredResizeH::GetFrame(int n, IScriptEnvironment* env)
         const int src_chroma_height = src_height >> shift_h;
         const int dst_chroma_height = dst_height >> shift_h;
 
+        // turn_xxx: width * pixelsize: needs GetPlaneWidth-like full size
         // U Plane
-        turn_right(src->GetReadPtr(PLANAR_U), temp_1, src_chroma_width, src_chroma_height, src->GetPitch(PLANAR_U), temp_1_pitch);
+        turn_right(src->GetReadPtr(PLANAR_U), temp_1, src_chroma_width * pixelsize, src_chroma_height, src->GetPitch(PLANAR_U), temp_1_pitch);  
         resampler_luma(temp_2, temp_1, temp_2_pitch, temp_1_pitch, resampling_program_chroma, src_chroma_height, dst_chroma_width, src_pitch_table_luma, filter_storage_chroma);
-        turn_left(temp_2, dst->GetWritePtr(PLANAR_U), dst_chroma_height, dst_chroma_width, temp_2_pitch, dst->GetPitch(PLANAR_U));
+        turn_left(temp_2, dst->GetWritePtr(PLANAR_U), dst_chroma_height * pixelsize, dst_chroma_width, temp_2_pitch, dst->GetPitch(PLANAR_U));
 
         // V Plane
-        turn_right(src->GetReadPtr(PLANAR_V), temp_1, src_chroma_width, src_chroma_height, src->GetPitch(PLANAR_V), temp_1_pitch);
+        turn_right(src->GetReadPtr(PLANAR_V), temp_1, src_chroma_width * pixelsize, src_chroma_height, src->GetPitch(PLANAR_V), temp_1_pitch);
         resampler_luma(temp_2, temp_1, temp_2_pitch, temp_1_pitch, resampling_program_chroma, src_chroma_height, dst_chroma_width, src_pitch_table_luma, filter_storage_chroma);
-        turn_left(temp_2, dst->GetWritePtr(PLANAR_V), dst_chroma_height, dst_chroma_width, temp_2_pitch, dst->GetPitch(PLANAR_V));
+        turn_left(temp_2, dst->GetWritePtr(PLANAR_V), dst_chroma_height * pixelsize, dst_chroma_width, temp_2_pitch, dst->GetPitch(PLANAR_V));
       }
     } else {
       // RGB
@@ -794,7 +847,7 @@ PVideoFrame __stdcall FilteredResizeH::GetFrame(int n, IScriptEnvironment* env)
     // Y Plane
     resampler_h_luma(dst->GetWritePtr(), src->GetReadPtr(), dst->GetPitch(), src->GetPitch(), resampling_program_luma, dst_width, dst_height);
 
-    if (!vi.IsY8()) {
+    if (!grey) {
       const int dst_chroma_width = dst_width >> vi.GetPlaneWidthSubsampling(PLANAR_U);
       const int dst_chroma_height = dst_height >> vi.GetPlaneHeightSubsampling(PLANAR_U);
 
@@ -809,16 +862,25 @@ PVideoFrame __stdcall FilteredResizeH::GetFrame(int n, IScriptEnvironment* env)
   return dst;
 }
 
-ResamplerH FilteredResizeH::GetResampler(int CPU, bool aligned, ResamplingProgram* program, IScriptEnvironment2* env)
+ResamplerH FilteredResizeH::GetResampler(int CPU, bool aligned, int pixelsize, ResamplingProgram* program, IScriptEnvironment2* env)
 {
+  if (pixelsize == 1)
+  {
   if (CPU & CPUF_SSSE3) {
     resize_h_prepare_coeff_8(program, env);
     if (program->filter_size > 8)
       return resizer_h_ssse3_generic;
     else
       return resizer_h_ssse3_8;
-  } else { // C version
-    return resize_h_c_planar;
+  }
+    else { // C version
+      return resize_h_c_planar<uint8_t>;
+}
+  }
+  else if (pixelsize == 2) { // todo: non_c
+    return resize_h_c_planar<uint16_t>;
+  } else { //if (pixelsize == 4)
+    return resize_h_c_planar<float>;
   }
 }
 
@@ -843,7 +905,10 @@ FilteredResizeV::FilteredResizeV( PClip _child, double subrange_top, double subr
   if (target_height <= 0)
     env->ThrowError("Resize: Height must be greater than 0.");
 
-  if (vi.IsPlanar() && !vi.IsY8()) {
+  pixelsize = vi.BytesFromPixels(1); // AVS16
+  grey = vi.IsY8() || vi.IsColorSpace(VideoInfo::CS_Y16) || vi.IsColorSpace(VideoInfo::CS_Y32);
+
+  if (vi.IsPlanar() && !grey) {
     const int mask = (1 << vi.GetPlaneHeightSubsampling(PLANAR_U)) - 1;
 
     if (target_height & mask)
@@ -855,12 +920,13 @@ FilteredResizeV::FilteredResizeV( PClip _child, double subrange_top, double subr
   if (vi.IsRGB())
     subrange_top = vi.height - subrange_top - subrange_height; // why?
 
+
   // Create resampling program and pitch table
   resampling_program_luma  = func->GetResamplingProgram(vi.height, subrange_top, subrange_height, target_height, env2);
-  resampler_luma_aligned   = GetResampler(env->GetCPUFlags(), true , filter_storage_luma_aligned,   resampling_program_luma);
-  resampler_luma_unaligned = GetResampler(env->GetCPUFlags(), false, filter_storage_luma_unaligned, resampling_program_luma);
+  resampler_luma_aligned   = GetResampler(env->GetCPUFlags(), true , pixelsize, filter_storage_luma_aligned,   resampling_program_luma);
+  resampler_luma_unaligned = GetResampler(env->GetCPUFlags(), false, pixelsize, filter_storage_luma_unaligned, resampling_program_luma);
 
-  if (vi.IsPlanar() && !vi.IsY8()) {
+  if (vi.IsPlanar() && !grey) {
     const int shift = vi.GetPlaneHeightSubsampling(PLANAR_U);
     const int div   = 1 << shift;
 
@@ -871,8 +937,8 @@ FilteredResizeV::FilteredResizeV( PClip _child, double subrange_top, double subr
                                   target_height  >> shift,
                                   env2);
 
-    resampler_chroma_aligned   = GetResampler(env->GetCPUFlags(), true , filter_storage_chroma_aligned,   resampling_program_chroma);
-    resampler_chroma_unaligned = GetResampler(env->GetCPUFlags(), false, filter_storage_chroma_unaligned, resampling_program_chroma);
+    resampler_chroma_aligned   = GetResampler(env->GetCPUFlags(), true , pixelsize, filter_storage_chroma_aligned,   resampling_program_chroma);
+    resampler_chroma_unaligned = GetResampler(env->GetCPUFlags(), false, pixelsize, filter_storage_chroma_unaligned, resampling_program_chroma);
   }
 
   // Change target video info size
@@ -896,7 +962,7 @@ PVideoFrame __stdcall FilteredResizeV::GetFrame(int n, IScriptEnvironment* env)
 
   int* src_pitch_table_chromaU = NULL;
   int* src_pitch_table_chromaV = NULL;
-  if ((!vi.IsY8() && vi.IsPlanar())) {
+  if ((!grey && vi.IsPlanar())) {
     src_pitch_table_chromaU = static_cast<int*>(env2->Allocate(sizeof(int) * src->GetHeight(PLANAR_U), 16, AVS_POOLED_ALLOC));
     resize_v_create_pitch_table(src_pitch_table_chromaU, src->GetPitch(PLANAR_U), src->GetHeight(PLANAR_U));
 
@@ -905,12 +971,13 @@ PVideoFrame __stdcall FilteredResizeV::GetFrame(int n, IScriptEnvironment* env)
   }
 
   // Do resizing
+  int work_width = vi.IsPlanar() ? vi.width : vi.BytesFromPixels(vi.width);
   if (IsPtrAligned(srcp, 16) && (src_pitch & 15) == 0)
-    resampler_luma_aligned(dstp, srcp, dst_pitch, src_pitch, resampling_program_luma, vi.BytesFromPixels(vi.width), vi.height, src_pitch_table_luma, filter_storage_luma_aligned);
+    resampler_luma_aligned(dstp, srcp, dst_pitch, src_pitch, resampling_program_luma, work_width, vi.height, src_pitch_table_luma, filter_storage_luma_aligned);
   else
-    resampler_luma_unaligned(dstp, srcp, dst_pitch, src_pitch, resampling_program_luma, vi.BytesFromPixels(vi.width), vi.height, src_pitch_table_luma, filter_storage_luma_unaligned);
+    resampler_luma_unaligned(dstp, srcp, dst_pitch, src_pitch, resampling_program_luma, work_width, vi.height, src_pitch_table_luma, filter_storage_luma_unaligned);
     
-  if (!vi.IsY8() && vi.IsPlanar()) {
+  if (!grey && vi.IsPlanar()) {
     int width = vi.width >> vi.GetPlaneWidthSubsampling(PLANAR_U);
     int height = vi.height >> vi.GetPlaneHeightSubsampling(PLANAR_U);
 
@@ -945,39 +1012,64 @@ PVideoFrame __stdcall FilteredResizeV::GetFrame(int n, IScriptEnvironment* env)
   return dst;
 }
 
-ResamplerV FilteredResizeV::GetResampler(int CPU, bool aligned, void*& storage, ResamplingProgram* program)
+ResamplerV FilteredResizeV::GetResampler(int CPU, bool aligned, int pixelsize, void*& storage, ResamplingProgram* program)
 {
   if (program->filter_size == 1) {
     // Fast pointresize
-    return resize_v_planar_pointresize;
-  } else {
+    switch (pixelsize) // AVS16
+    {
+    case 1: return resize_v_planar_pointresize<uint8_t>;
+    case 2: return resize_v_planar_pointresize<uint16_t>;
+    default: // case 4:
+     return resize_v_planar_pointresize<float>;
+    }
+  }
+  else {
     // Other resizers
+    if (pixelsize == 1)
+    {
     if (CPU & CPUF_SSSE3) {
       if (aligned && CPU & CPUF_SSE4_1) {
         return resize_v_ssse3_planar<simd_load_streaming>;
-      } else if (aligned) { // SSSE3 aligned
+        }
+        else if (aligned) { // SSSE3 aligned
         return resize_v_ssse3_planar<simd_load_aligned>;
-      } else if (CPU & CPUF_SSE3) { // SSE3 lddqu
+        }
+        else if (CPU & CPUF_SSE3) { // SSE3 lddqu
         return resize_v_ssse3_planar<simd_load_unaligned_sse3>;
-      } else { // SSSE3 unaligned
+        }
+        else { // SSSE3 unaligned
         return resize_v_ssse3_planar<simd_load_unaligned>;
       }
-    } else if (CPU & CPUF_SSE2) {
+      }
+      else if (CPU & CPUF_SSE2) {
       if (aligned && CPU & CPUF_SSE4_1) { // SSE4.1 movntdqa constantly provide ~2% performance increase in my testing
         return resize_v_sse2_planar<simd_load_streaming>;
-      } else if (aligned) { // SSE2 aligned
+        }
+        else if (aligned) { // SSE2 aligned
         return resize_v_sse2_planar<simd_load_aligned>;
-      } else if (CPU & CPUF_SSE3) { // SSE2 lddqu
+        }
+        else if (CPU & CPUF_SSE3) { // SSE2 lddqu
         return resize_v_sse2_planar<simd_load_unaligned_sse3>;
-      } else { // SSE2 unaligned
+        }
+        else { // SSE2 unaligned
         return resize_v_sse2_planar<simd_load_unaligned>;
       }
 #ifdef X86_32
-    } else if (CPU & CPUF_MMX) {
+      }
+      else if (CPU & CPUF_MMX) {
       return resize_v_mmx_planar;
 #endif
-    } else { // C version
-      return resize_v_c_planar;
+    }
+      else { // C version
+        return resize_v_c_planar<uint8_t>;
+  }
+    } // todo: sse
+    else if (pixelsize == 2) {
+      return resize_v_c_planar<uint16_t>;
+}
+    else { // if (pixelsize== 4) 
+      return resize_v_c_planar<float>;
     }
   }
 }
@@ -1003,7 +1095,7 @@ PClip FilteredResize::CreateResizeH(PClip clip, double subrange_left, double sub
 
   if (subrange_left == int(subrange_left) && subrange_width == target_width
    && subrange_left >= 0 && subrange_left + subrange_width <= vi.width) {
-    const int mask = (vi.IsYUV() && !vi.IsY8()) ? (1 << vi.GetPlaneWidthSubsampling(PLANAR_U)) - 1 : 0;
+    const int mask = (vi.IsYUV() && !vi.IsY8() && !vi.IsColorSpace(VideoInfo::CS_Y16) && !vi.IsColorSpace(VideoInfo::CS_Y32)) ? (1 << vi.GetPlaneWidthSubsampling(PLANAR_U)) - 1 : 0;
 
     if (((int(subrange_left) | int(subrange_width)) & mask) == 0)
       return new Crop(int(subrange_left), 0, int(subrange_width), vi.height, 0, clip, env);
@@ -1033,7 +1125,7 @@ PClip FilteredResize::CreateResizeV(PClip clip, double subrange_top, double subr
 
   if (subrange_top == int(subrange_top) && subrange_height == target_height
    && subrange_top >= 0 && subrange_top + subrange_height <= vi.height) {
-    const int mask = (vi.IsYUV() && !vi.IsY8()) ? (1 << vi.GetPlaneHeightSubsampling(PLANAR_U)) - 1 : 0;
+    const int mask = (vi.IsYUV() && !vi.IsY8() && !vi.IsColorSpace(VideoInfo::CS_Y16) && !vi.IsColorSpace(VideoInfo::CS_Y32)) ? (1 << vi.GetPlaneHeightSubsampling(PLANAR_U)) - 1 : 0;
 
     if (((int(subrange_top) | int(subrange_height)) & mask) == 0)
       return new Crop(0, int(subrange_top), vi.width, int(subrange_height), 0, clip, env);

@@ -774,6 +774,9 @@ void ScriptEnvironment::InitMT()
     this->SetFilterMTMode(BUILTIN_FUNC_PREFIX "_ConvertToYUY2", MtMode::MT_NICE_FILTER, true);
     this->SetFilterMTMode(BUILTIN_FUNC_PREFIX "_ConvertBackToYUY2", MtMode::MT_NICE_FILTER, true);
 
+    this->SetFilterMTMode(BUILTIN_FUNC_PREFIX "_ConvertNativeToStacked", MtMode::MT_NICE_FILTER, true);
+    this->SetFilterMTMode(BUILTIN_FUNC_PREFIX "_ConvertStackedToNative", MtMode::MT_NICE_FILTER, true);
+
     this->SetFilterMTMode(BUILTIN_FUNC_PREFIX "_GeneralConvolution", MtMode::MT_NICE_FILTER, true);
     this->SetFilterMTMode(BUILTIN_FUNC_PREFIX "_UnalignedSplice", MtMode::MT_NICE_FILTER, true);
     this->SetFilterMTMode(BUILTIN_FUNC_PREFIX "_AlignedSplice", MtMode::MT_NICE_FILTER, true);
@@ -1457,7 +1460,7 @@ VideoFrame* ScriptEnvironment::GetNewFrame(size_t vfb_size)
       }
     } // for it2
   } // for it
-  _RPT1(0, "ScriptEnvironment::GetNewFrame, no free entry in FrameRegistry. Requested vfb size=%Iu memused=%I64d memmax=%I64d\n", vfb_size, memory_used, memory_max);
+  _RPT1(0, "ScriptEnvironment::GetNewFrame, no free entry in FrameRegistry. Requested vfb size=%Iu memused=%I64d memmax=%I64d\n", vfb_size, memory_used.load(), memory_max);
 
 #ifdef _DEBUG
   //ListFrameRegistry(vfb_size, vfb_size, true); // for chasing stuck frames
@@ -1477,7 +1480,7 @@ VideoFrame* ScriptEnvironment::GetNewFrame(size_t vfb_size)
    * Couldn't allocate, try to free up unused frames of any size
    * -----------------------------------------------------------
    */
-  _RPT2(0, "Allocate failed. GC start memory_used=%I64d\n", memory_used);
+  _RPT2(0, "Allocate failed. GC start memory_used=%I64d\n", memory_used.load());
   // unfortunately if we reach here, only 0 or 1 vfbs or frames can be freed, from lower vfb sizes
   // usually it's not enough
   // yet it is true that it's meaningful only to free up smaller vfb sizes here
@@ -1514,7 +1517,7 @@ VideoFrame* ScriptEnvironment::GetNewFrame(size_t vfb_size)
       else it2++;
     }
   }
-  _RPT1(0, "End of garbage collection A memused=%I64d\n", memory_used); // P.F.
+  _RPT1(0, "End of garbage collection A memused=%I64d\n", memory_used.load()); // P.F.
 
   /* -----------------------------------------------------------
    *   Try to allocate again
@@ -1529,7 +1532,7 @@ VideoFrame* ScriptEnvironment::GetNewFrame(size_t vfb_size)
    *   Oh boy...
    * -----------------------------------------------------------
    */
-  ThrowError("Could not allocate video frame. Out of memory. memory_max = %I64d, memory_used = %I64d Request=%Iu", memory_max, memory_used, vfb_size);
+  ThrowError("Could not allocate video frame. Out of memory. memory_max = %I64d, memory_used = %I64d Request=%Iu", memory_max, memory_used.load(), vfb_size);
   return NULL;
 }
 
@@ -1544,7 +1547,7 @@ void ScriptEnvironment::EnsureMemoryLimit(size_t request)
    // We reserve 15% for unaccounted stuff
   size_t memory_need = size_t((memory_used + request) / 0.85f);
 
-  _RPT4(0, "ScriptEnvironment::EnsureMemoryLimit CR_size=%zu memory_need=%zu memory_used=%I64d memory_max=%I64d\n", CacheRegistry.size(), memory_need, memory_used, memory_max);
+  _RPT4(0, "ScriptEnvironment::EnsureMemoryLimit CR_size=%zu memory_need=%zu memory_used=%I64d memory_max=%I64d\n", CacheRegistry.size(), memory_need, memory_used.load(), memory_max);
 #ifdef _DEBUG
   // #define LIST_CACHES    
   // list all cache_entries
@@ -1596,7 +1599,7 @@ void ScriptEnvironment::EnsureMemoryLimit(size_t request)
   // Free up in one pass in FrameRegistry2
   if (shrinkcount)
   {
-    _RPT2(0, "EnsureMemoryLimit GC start: memused=%I64d\n", memory_used);
+    _RPT2(0, "EnsureMemoryLimit GC start: memused=%I64d\n", memory_used.load());
     int freed_vfb_count = 0;
     int freed_frame_count = 0;
     int unfreed_frame_count = 0;
@@ -1646,7 +1649,7 @@ void ScriptEnvironment::EnsureMemoryLimit(size_t request)
         else it2++;
       }
     }
-    _RPT4(0, "End of garbage collection B: freed_vfb=%d frame=%d unfreed=%d memused=%I64d\n", freed_vfb_count, freed_frame_count, unfreed_frame_count, memory_used); // P.F.
+    _RPT4(0, "End of garbage collection B: freed_vfb=%d frame=%d unfreed=%d memused=%I64d\n", freed_vfb_count, freed_frame_count, unfreed_frame_count, memory_used.load()); // P.F.
   }
 }
 
@@ -1748,6 +1751,15 @@ PVideoFrame __stdcall ScriptEnvironment::NewVideoFrame(const VideoInfo& vi, int 
     case VideoInfo::CS_YV24:
     case VideoInfo::CS_YV411:
     case VideoInfo::CS_I420:
+    // AVS16 do not reject when a filter requests it
+    case VideoInfo::CS_YUV420P16:
+    case VideoInfo::CS_YUV422P16:
+    case VideoInfo::CS_YUV444P16:
+    case VideoInfo::CS_Y16:
+    case VideoInfo::CS_YUV420PS:
+    case VideoInfo::CS_YUV422PS:
+    case VideoInfo::CS_YUV444PS:
+    case VideoInfo::CS_Y32:
       break;
     default:
       ThrowError("Filter Error: Filter attempted to create VideoFrame with invalid pixel_type.");
@@ -1755,7 +1767,8 @@ PVideoFrame __stdcall ScriptEnvironment::NewVideoFrame(const VideoInfo& vi, int 
 
   PVideoFrame retval;
 
-  if (vi.IsPlanar() && !vi.IsY8()) { // Planar requires different math ;)
+  if (vi.IsPlanar() && (vi.NumChannels() > 1)) {
+    // Planar requires different math ;)
     const int xmod  = 1 << vi.GetPlaneWidthSubsampling(PLANAR_U);
     const int xmask = xmod - 1;
     if (vi.width & xmask)

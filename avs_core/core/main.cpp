@@ -1021,7 +1021,7 @@ STDMETHODIMP_(LONG) CAVIStreamSynth::FindSample(LONG lPos, LONG lFlags) {
 int CAVIFileSynth::ImageSize() {
   int image_size;
 
-  if (vi->IsRGB() || vi->IsYUY2() || vi->IsY8() || AVIPadScanlines) {
+  if (vi->IsRGB() || vi->IsYUY2() || vi->IsY8() || vi->IsColorSpace(VideoInfo::CS_Y16) || vi->IsColorSpace(VideoInfo::CS_Y32) || AVIPadScanlines) {
     image_size = vi->BMPSize();
   }
   else { // Packed size
@@ -1051,7 +1051,7 @@ void CAVIStreamSynth::ReadFrame(void* lpBuffer, int n) {
   int out_pitchUV;
 
   // BMP scanlines are dword-aligned
-  if (vi.IsRGB() || vi.IsYUY2() || vi.IsY8() || parent->AVIPadScanlines) {
+  if (vi.IsRGB() || vi.IsYUY2() || vi.IsY8() || vi.IsColorSpace(VideoInfo::CS_Y16) || vi.IsColorSpace(VideoInfo::CS_Y32) || parent->AVIPadScanlines) {
     out_pitch = (row_size+3) & ~3;
     out_pitchUV = (frame->GetRowSize(PLANAR_U)+3) & ~3;
   }

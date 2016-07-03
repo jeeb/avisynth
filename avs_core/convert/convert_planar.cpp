@@ -56,11 +56,18 @@ ConvertToY8::ConvertToY8(PClip src, int in_matrix, IScriptEnvironment* env) : Ge
 
   if (vi.IsPlanar()) {
     blit_luma_only = true;
-    vi.pixel_type = VideoInfo::CS_Y8;
+    switch (vi.BytesFromPixels(1))
+    {
+    case 1: vi.pixel_type = VideoInfo::CS_Y8; break;
+    case 2: vi.pixel_type = VideoInfo::CS_Y16; break;
+    case 4: vi.pixel_type = VideoInfo::CS_Y32; break;
+    default:
+		env->ThrowError("ConvertToY8 does not support %d-byte formats.", vi.BytesFromPixels(1));
+    }
     return;
   }
 
-  if (vi.IsYUY2()) {
+ if (vi.IsYUY2()) {
     yuy2_input = true;
     vi.pixel_type = VideoInfo::CS_Y8;
     return;

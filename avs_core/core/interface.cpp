@@ -143,11 +143,11 @@ int VideoInfo::BytesPerChannelSample() const {
 }
 
 bool VideoInfo::IsVPlaneFirst() const {
-  return !IsY8() && IsPlanar() && (pixel_type & (CS_VPlaneFirst | CS_UPlaneFirst)) == CS_VPlaneFirst;   // Shouldn't use this
+  return (NumChannels() > 1) && IsPlanar() && (pixel_type & (CS_VPlaneFirst | CS_UPlaneFirst)) == CS_VPlaneFirst;   // Shouldn't use this
 }
 
 int VideoInfo::BytesFromPixels(int pixels) const {
-  return !IsY8() && IsPlanar() ? pixels << ((pixel_type>>CS_Shift_Sample_Bits) & 3) : pixels * (BitsPerPixel()>>3);   // For planar images, will return luma plane
+  return (NumChannels() > 1) && IsPlanar() ? pixels << ((pixel_type>>CS_Shift_Sample_Bits) & 3) : pixels * (BitsPerPixel()>>3);   // For planar images, will return luma plane
 }
 
 int VideoInfo::RowSize(int plane) const {
@@ -155,10 +155,10 @@ int VideoInfo::RowSize(int plane) const {
 
   switch (plane) {
     case PLANAR_U: case PLANAR_V:
-      return (!IsY8() && IsPlanar()) ? rowsize>>GetPlaneWidthSubsampling(plane) : 0;
+      return ((NumChannels() > 1) && IsPlanar()) ? rowsize>>GetPlaneWidthSubsampling(plane) : 0;
 
     case PLANAR_U_ALIGNED: case PLANAR_V_ALIGNED:
-      return (!IsY8() && IsPlanar()) ? ((rowsize>>GetPlaneWidthSubsampling(plane))+FRAME_ALIGN-1)&(~(FRAME_ALIGN-1)) : 0; // Aligned rowsize
+      return ((NumChannels() > 1) && IsPlanar()) ? ((rowsize>>GetPlaneWidthSubsampling(plane))+FRAME_ALIGN-1)&(~(FRAME_ALIGN-1)) : 0; // Aligned rowsize
 
     case PLANAR_Y_ALIGNED:
       return (rowsize+FRAME_ALIGN-1)&(~(FRAME_ALIGN-1)); // Aligned rowsize
@@ -167,7 +167,7 @@ int VideoInfo::RowSize(int plane) const {
 }
 
 int VideoInfo::BMPSize() const {
-  if (!IsY8() && IsPlanar()) {
+  if ((NumChannels() > 1) && IsPlanar()) {
     // Y plane
     const int Ybytes  = ((RowSize(PLANAR_Y)+3) & ~3) * height;
     const int UVbytes = Ybytes >> (GetPlaneWidthSubsampling(PLANAR_U)+GetPlaneHeightSubsampling(PLANAR_U));
@@ -179,8 +179,8 @@ int VideoInfo::BMPSize() const {
 int VideoInfo::GetPlaneWidthSubsampling(int plane) const {  // Subsampling in bitshifts!
   if (plane == PLANAR_Y)  // No subsampling
     return 0;
-  if (IsY8())
-    throw AvisynthError("Filter error: GetPlaneWidthSubsampling not available on Y8 pixel type.");
+  if (NumChannels() == 1)
+    throw AvisynthError("Filter error: GetPlaneWidthSubsampling not available on greyscale pixel type.");
   if (plane == PLANAR_U || plane == PLANAR_V) {
     if (IsYUY2())
       return 1;
@@ -195,8 +195,8 @@ int VideoInfo::GetPlaneWidthSubsampling(int plane) const {  // Subsampling in bi
 int VideoInfo::GetPlaneHeightSubsampling(int plane) const {  // Subsampling in bitshifts!
   if (plane == PLANAR_Y)  // No subsampling
     return 0;
-  if (IsY8())
-    throw AvisynthError("Filter error: GetPlaneHeightSubsampling not available on Y8 pixel type.");
+  if (NumChannels() == 1)
+    throw AvisynthError("Filter error: GetPlaneHeightSubsampling not available on greyscale pixel type.");
   if (plane == PLANAR_U || plane == PLANAR_V) {
     if (IsYUY2())
       return 0;
@@ -219,10 +219,10 @@ int VideoInfo::BitsPerPixel() const {
         return 16;
       case CS_Y8:
         return 8;
-//    case CS_Y16:
-//      return 16;
-//    case CS_Y32:
-//      return 32;
+      case CS_Y16: // AVS16
+        return 16;
+      case CS_Y32: // AVS16
+        return 32;
     }
     if (IsPlanar()) {
       const int S = IsYUV() ? GetPlaneWidthSubsampling(PLANAR_U) + GetPlaneHeightSubsampling(PLANAR_U) : 0;
@@ -281,6 +281,23 @@ bool VideoInfo::IsSameColorspace(const VideoInfo& vi) const {
   if (vi.pixel_type == pixel_type) return TRUE;
   if (IsYV12() && vi.IsYV12()) return TRUE;
   return FALSE;
+}
+
+// Test for same colorspace
+int VideoInfo::NumChannels() const {
+
+  switch (pixel_type) {
+    case CS_UNKNOWN:
+    case CS_RAW32:
+    case CS_Y8:
+    case CS_Y16:
+    case CS_Y32:
+      return 1;
+    case CS_BGR32:
+      return 4;
+    default:
+      return 3;
+  }
 }
 
 // end struct VideoInfo
@@ -667,6 +684,23 @@ static const AVS_Linkage avs_linkage = {    // struct AVS_Linkage {
   &VideoInfo::SetFPS,                       //   void    (VideoInfo::*SetFPS)(unsigned numerator, unsigned denominator)
   &VideoInfo::MulDivFPS,                    //   void    (VideoInfo::*MulDivFPS)(unsigned multiplier, unsigned divisor)
   &VideoInfo::IsSameColorspace,             //   bool    (VideoInfo::*IsSameColorspace)(const VideoInfo& vi) const;
+  NULL,                                     //   reserved for AVS classic
+  NULL,                                     //   reserved for AVS classic
+  NULL,                                     //   reserved for AVS classic
+  NULL,                                     //   reserved for AVS classic
+  NULL,                                     //   reserved for AVS classic
+  NULL,                                     //   reserved for AVS classic
+  NULL,                                     //   reserved for AVS classic
+  NULL,                                     //   reserved for AVS classic
+  NULL,                                     //   reserved for AVS classic
+  NULL,                                     //   reserved for AVS classic
+  NULL,                                     //   reserved for AVS classic
+  NULL,                                     //   reserved for AVS classic
+  NULL,                                     //   reserved for AVS classic
+  NULL,                                     //   reserved for AVS classic
+  NULL,                                     //   reserved for AVS classic
+  NULL,                                     //   reserved for AVS classic
+  &VideoInfo::NumChannels,                  //   int     (VideoInfo::*NumChannels)() const;
 // end struct VideoInfo
 /***************************************************************************************************************/
 // class VideoFrameBuffer

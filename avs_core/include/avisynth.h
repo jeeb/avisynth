@@ -190,6 +190,8 @@ struct AVS_Linkage {
   void    (VideoInfo::*SetFPS)(unsigned numerator, unsigned denominator);
   void    (VideoInfo::*MulDivFPS)(unsigned multiplier, unsigned divisor);
   bool    (VideoInfo::*IsSameColorspace)(const VideoInfo& vi) const;
+  bool    (VideoInfo::*reserved[16])(); // Reserve pointer space so that we can keep compatibility to Avs "classic" even when it adds more members
+  int     (VideoInfo::*NumChannels)() const;
 // end struct VideoInfo
 
 /**********************************************************************/
@@ -398,12 +400,32 @@ Planar filter mask 1111.1111.1111.1111.1111.1111.1100.1111
     CS_YV411 = CS_PLANAR | CS_YUV | CS_Sample_Bits_8 | CS_VPlaneFirst | CS_Sub_Height_1 | CS_Sub_Width_4,  // YUV 4:1:1 planar
 
     CS_Y8    = CS_PLANAR | CS_INTERLEAVED | CS_YUV | CS_Sample_Bits_8,                                     // Y   4:0:0 planar
+
+    //-------------------------
+    // AVS16: new planar constants go live! Experimental PF 160613 
+    CS_YUV444P16 = CS_PLANAR | CS_YUV | CS_Sample_Bits_16 | CS_VPlaneFirst | CS_Sub_Height_1 | CS_Sub_Width_1, // YUV 4:4:4 16bit samples
+    CS_YUV422P16 = CS_PLANAR | CS_YUV | CS_Sample_Bits_16 | CS_VPlaneFirst | CS_Sub_Height_1 | CS_Sub_Width_2, // YUV 4:2:2 16bit samples
+    CS_YUV420P16 = CS_PLANAR | CS_YUV | CS_Sample_Bits_16 | CS_VPlaneFirst | CS_Sub_Height_2 | CS_Sub_Width_2, // YUV 4:2:0 16bit samples
+    // no short naming style. CS_YV24->CS_YV48 = CS_YUV444P16 ok. but YV12->YV24? no-no.
+
+    // grey 16
+    CS_Y16 = CS_PLANAR | CS_INTERLEAVED | CS_YUV | CS_Sample_Bits_16,                                      // Y   4:0:0 16bit samples
+
+    // 32 bit samples (float)
+    CS_YUV444PS = CS_PLANAR | CS_YUV | CS_Sample_Bits_32 | CS_VPlaneFirst | CS_Sub_Height_1 | CS_Sub_Width_1, // YUV 4:4:4 32bit samples
+    CS_YUV422PS = CS_PLANAR | CS_YUV | CS_Sample_Bits_32 | CS_VPlaneFirst | CS_Sub_Height_1 | CS_Sub_Width_2, // YUV 4:2:2 32bit samples
+    CS_YUV420PS = CS_PLANAR | CS_YUV | CS_Sample_Bits_32 | CS_VPlaneFirst | CS_Sub_Height_2 | CS_Sub_Width_2, // YUV 4:2:0 32bit samples
+    // CS_YV96  = CS_YUV444PS, 
+
+    // grey 32
+    CS_Y32 = CS_PLANAR | CS_INTERLEAVED | CS_YUV | CS_Sample_Bits_32,                                      // Y   4:0:0 32bit samples
+
+    // todo: rgb
+
 /*
     CS_YV48  = CS_PLANAR | CS_YUV | CS_Sample_Bits_16 | CS_VPlaneFirst | CS_Sub_Height_1 | CS_Sub_Width_1, // YUV 4:4:4 16bit samples
-    CS_Y16   = CS_PLANAR | CS_INTERLEAVED | CS_YUV | CS_Sample_Bits_16,                                    // Y   4:0:0 16bit samples
 
     CS_YV96  = CS_PLANAR | CS_YUV | CS_Sample_Bits_32 | CS_VPlaneFirst | CS_Sub_Height_1 | CS_Sub_Width_1, // YUV 4:4:4 32bit samples
-    CS_Y32   = CS_PLANAR | CS_INTERLEAVED | CS_YUV | CS_Sample_Bits_32,                                    // Y   4:0:0 32bit samples
 
     CS_PRGB  = CS_PLANAR | CS_RGB | CS_Sample_Bits_8,                                                      // Planar RGB
     CS_RGB48 = CS_PLANAR | CS_RGB | CS_Sample_Bits_16,                                                     // Planar RGB 16bit samples
@@ -495,7 +517,10 @@ Planar filter mask 1111.1111.1111.1111.1111.1111.1100.1111
   void MulDivFPS(unsigned multiplier, unsigned divisor) AVS_BakedCode( AVS_LinkCall(MulDivFPS)(multiplier, divisor) )
 
   // Test for same colorspace
-  bool IsSameColorspace(const VideoInfo& vi) const AVS_BakedCode( return AVS_LinkCall(IsSameColorspace)(vi) )
+  bool IsSameColorspace(const VideoInfo& vi) const AVS_BakedCode(return AVS_LinkCall(IsSameColorspace)(vi))
+
+  // Returns the number of color channels or planes in a frame
+  int NumChannels() const AVS_BakedCode(return AVS_LinkCall(NumChannels)())
 
 }; // end struct VideoInfo
 

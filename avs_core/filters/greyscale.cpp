@@ -39,6 +39,7 @@
 #include <avs/alignment.h>
 #include <avs/minmax.h>
 #include <avs/win.h>
+#include <stdint.h>
 
 
 /*************************************
@@ -209,7 +210,7 @@ static void greyscale_rgb32_mmx(BYTE *srcp, size_t width, size_t height, size_t 
 PVideoFrame Greyscale::GetFrame(int n, IScriptEnvironment* env)
 {
   PVideoFrame frame = child->GetFrame(n, env);
-  if (vi.IsY8())
+  if (vi.NumChannels() == 1)
     return frame;
 
   env->MakeWritable(&frame);
@@ -219,8 +220,45 @@ PVideoFrame Greyscale::GetFrame(int n, IScriptEnvironment* env)
   int width = vi.width;
 
   if (vi.IsPlanar()) {
-    memset(frame->GetWritePtr(PLANAR_U), 0x80808080, frame->GetHeight(PLANAR_U) * frame->GetPitch(PLANAR_U));
-    memset(frame->GetWritePtr(PLANAR_V), 0x80808080, frame->GetHeight(PLANAR_V) * frame->GetPitch(PLANAR_V));
+    switch (vi.BytesFromPixels(1))
+    {
+    case 1:
+      memset(frame->GetWritePtr(PLANAR_U), 0x80808080, frame->GetHeight(PLANAR_U) * frame->GetPitch(PLANAR_U)); // 0x80 byte would be enough
+      memset(frame->GetWritePtr(PLANAR_V), 0x80808080, frame->GetHeight(PLANAR_V) * frame->GetPitch(PLANAR_V));
+      break;
+    case 2:
+    {
+      int planes[2] = { PLANAR_U, PLANAR_V };
+      for (int p = 0; p < 2; p++)
+      {
+        int plane = planes[p];
+        uint16_t* dstp = reinterpret_cast<uint16_t*>(frame->GetWritePtr(plane));
+        for (int y = 0; y < height >> vi.GetPlaneHeightSubsampling(plane); y++)
+        {
+          for (int x = 0; x < width >> vi.GetPlaneWidthSubsampling(plane); x++)
+            dstp[x] = 0x8000;
+          dstp += frame->GetPitch(plane) / sizeof(uint16_t);
+        }
+      }
+      break;
+    }
+    case 4: 
+    {
+      int planes[2] = { PLANAR_U, PLANAR_V };
+      for (int p = 0; p < 2; p++)
+      {
+        int plane = planes[p];
+        float* dstp = reinterpret_cast<float*>(frame->GetWritePtr(plane));
+        for (int y = 0; y < height >> vi.GetPlaneHeightSubsampling(plane); y++)
+        {
+          for (int x = 0; x < width >> vi.GetPlaneWidthSubsampling(plane); x++)
+            dstp[x] = 0.5f;
+          dstp += frame->GetPitch(plane) / sizeof(float);
+        }
+      }
+      break;
+    }
+    }
     return frame;
   }
 
@@ -336,7 +374,7 @@ AVSValue __cdecl Greyscale::Create(AVSValue args, void*, IScriptEnvironment* env
   PClip clip = args[0].AsClip();
   const VideoInfo& vi = clip->GetVideoInfo();
 
-  if (vi.IsY8())
+  if (vi.NumChannels() == 1)
     return clip;
 
   return new Greyscale(clip, args[1].AsString(0), env);

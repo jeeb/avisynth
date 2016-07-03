@@ -36,6 +36,7 @@
 #include "../convert/convert.h"
 #include <avs/minmax.h>
 #include "../core/bitblt.h"
+#include <stdint.h>
 
 
 
@@ -96,11 +97,13 @@ AVSValue __cdecl FlipVertical::Create(AVSValue args, void*, IScriptEnvironment* 
  *******   Flip Horizontal   ******
  ********************************/
 
+template<typename pixel_size>
 static void flip_horizontal_plane_c(BYTE* dstp, const BYTE* srcp, int dst_pitch, int src_pitch, int width, int height) {
-  srcp += width-1;
+  width = width / sizeof(pixel_size); // width is called with GetRowSize value
+  srcp += (width-1) * sizeof(pixel_size);
   for (int y = 0; y < height; y++) { // Loop planar luma.
     for (int x = 0; x < width; x++) {
-      dstp[x] = srcp[-x];
+      (reinterpret_cast<pixel_size *>(dstp))[x] = (reinterpret_cast<const pixel_size *>(srcp))[-x];
     }
     srcp += src_pitch;
     dstp += dst_pitch;
@@ -132,9 +135,17 @@ PVideoFrame FlipHorizontal::GetFrame(int n, IScriptEnvironment* env) {
     }
     return dst;
   }
-  if (vi.IsPlanar()) {  //For planar always 1bpp
-    flip_horizontal_plane_c(dstp, srcp, dst_pitch, src_pitch, width, height);
-
+  if (vi.IsPlanar()) {  //For planar always 1bpp, in AVS16: 1,2,4
+    typedef void(*FlipFuncPtr) (BYTE* dstp, const BYTE* srcp, int dst_pitch, int src_pitch, int width, int height);
+    FlipFuncPtr flip_h_func;
+    switch (bpp) // AVS16
+    {
+    case 1: flip_h_func = flip_horizontal_plane_c<uint8_t>; break;
+    case 2: flip_h_func = flip_horizontal_plane_c<uint16_t>; break;
+    default: // 4
+       flip_h_func = flip_horizontal_plane_c<float>; break;
+    }
+    flip_h_func(dstp, srcp, dst_pitch, src_pitch, width, height);
     if (src->GetPitch(PLANAR_U)) {
       srcp = src->GetReadPtr(PLANAR_U);
       dstp = dst->GetWritePtr(PLANAR_U);
@@ -142,12 +153,12 @@ PVideoFrame FlipHorizontal::GetFrame(int n, IScriptEnvironment* env) {
       src_pitch = src->GetPitch(PLANAR_U);
       dst_pitch = dst->GetPitch(PLANAR_U);
       height = src->GetHeight(PLANAR_U);
-      flip_horizontal_plane_c(dstp, srcp, dst_pitch, src_pitch, width, height);
+      flip_h_func(dstp, srcp, dst_pitch, src_pitch, width, height);
 
       srcp = src->GetReadPtr(PLANAR_V);
       dstp = dst->GetWritePtr(PLANAR_V);
 
-      flip_horizontal_plane_c(dstp, srcp, dst_pitch, src_pitch, width, height);
+      flip_h_func(dstp, srcp, dst_pitch, src_pitch, width, height);
     }
     return dst;
   }
@@ -215,7 +226,7 @@ Crop::Crop(int _left, int _top, int _width, int _height, bool _align, PClip _chi
     env->ThrowError("Crop: you cannot use crop to enlarge or 'shift' a clip");
 
   if (vi.IsYUV()) {
-    if (!vi.IsY8()) {
+    if (vi.NumChannels() > 1) {
       xsub=vi.GetPlaneWidthSubsampling(PLANAR_U);
       ysub=vi.GetPlaneHeightSubsampling(PLANAR_U);
     }
@@ -306,7 +317,7 @@ AddBorders::AddBorders(int _left, int _top, int _right, int _bot, int _clr, PCli
  : GenericVideoFilter(_child), left(max(0,_left)), top(max(0,_top)), right(max(0,_right)), bot(max(0,_bot)), clr(_clr), xsub(0), ysub(0)
 {
   if (vi.IsYUV()) {
-    if (!vi.IsY8()) {
+    if (vi.NumChannels() > 1) {
       xsub=vi.GetPlaneWidthSubsampling(PLANAR_U);
       ysub=vi.GetPlaneHeightSubsampling(PLANAR_U);
     }
@@ -340,6 +351,7 @@ PVideoFrame AddBorders::GetFrame(int n, IScriptEnvironment* env)
   PVideoFrame src = child->GetFrame(n, env);
   PVideoFrame dst = env->NewVideoFrame(vi);
 
+  // todo: AVS16 support word/float
   const BYTE* srcp = src->GetReadPtr();
   BYTE* dstp = dst->GetWritePtr();
   const int src_pitch = src->GetPitch();
@@ -528,6 +540,7 @@ PVideoFrame __stdcall FillBorder::GetFrame(int n, IScriptEnvironment* env) {
   int fillp=src->GetRowSize(PLANAR_Y_ALIGNED) - src->GetRowSize(PLANAR_Y);
   int h=src->GetHeight(PLANAR_Y);
 
+  // todo: AVS16 YData is byte *, we have to duplicate word/float
   Ydata = &Ydata[src->GetRowSize(PLANAR_Y)-1];
   {for (int y=0; y<h; y++) {
     for (int x=1; x<=fillp; x++) {
@@ -591,7 +604,7 @@ AVSValue __cdecl Create_Letterbox(AVSValue args, void*, IScriptEnvironment* env)
     int xsub = 0;
     int ysub = 0;
 
-    if (!vi.IsY8()) {
+    if (vi.NumChannels() > 1) {
       xsub=vi.GetPlaneWidthSubsampling(PLANAR_U);
       ysub=vi.GetPlaneHeightSubsampling(PLANAR_U);
     }

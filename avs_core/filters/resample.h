@@ -61,7 +61,7 @@ public:
     return cachehints == CACHE_GET_MTMODE ? MT_NICE_FILTER : 0;
   }
 
-  static ResamplerH GetResampler(int CPU, bool aligned, ResamplingProgram* program, IScriptEnvironment2* env);
+  static ResamplerH GetResampler(int CPU, bool aligned, int pixelsize, ResamplingProgram* program, IScriptEnvironment2* env);
 
 private:
   // Resampling
@@ -77,7 +77,9 @@ private:
 
   int temp_1_pitch, temp_2_pitch;
 
-  int src_width, src_height, dst_width,  dst_height;
+  int src_width, src_height, dst_width, dst_height;
+  bool grey;
+  int pixelsize; // AVS16
 
   ResamplerH resampler_h_luma;
   ResamplerH resampler_h_chroma;
@@ -105,9 +107,12 @@ public:
     return cachehints == CACHE_GET_MTMODE ? MT_NICE_FILTER : 0;
   }
 
-  static ResamplerV GetResampler(int CPU, bool aligned, void*& storage, ResamplingProgram* program);
+  static ResamplerV GetResampler(int CPU, bool aligned, int pixelsize, void*& storage, ResamplingProgram* program);
 
 private:
+  bool grey;
+  int pixelsize; // AVS16
+
   ResamplingProgram *resampling_program_luma;
   ResamplingProgram *resampling_program_chroma;
 
