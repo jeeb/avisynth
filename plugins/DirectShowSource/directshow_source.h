@@ -41,6 +41,83 @@
 
 
 /********************************************************************
+# Build Hints for DirectShow SDK
+
+# Hints for Avisynth+, Visual Studio 2015
+
+- download and install Microsoft Windows SDK for Windows 7 and .NET Framework 3.5 SP1
+  https://www.microsoft.com/en-us/download/details.aspx?id=3138
+- [Building strmbase.lib]
+  - Open solution in
+    c:\Program Files\Microsoft SDKs\Windows\v7.0\Samples\multimedia\directshow\baseclasses\
+    It will be converted.
+  - Compile for targets Release_MBCS x86 and x64. 
+    Find compiled library strmbase.lib in 
+      c:\Program Files\Microsoft SDKs\Windows\v7.0\Samples\multimedia\directshow\baseclasses\Release_MBCS\;
+    and
+      c:\Program Files\Microsoft SDKs\Windows\v7.0\Samples\multimedia\directshow\baseclasses\x64\Release_MBCS\;
+- [Building DirectShowSource.dll]
+  - Open PluginDirectShowSource project in the AviSynth plus solution
+  - Edit Project Properties|VC++ Directories|Include Paths
+    Add to the beginning
+    c:\Program Files\Microsoft SDKs\Windows\v7.0\Samples\multimedia\directshow\baseclasses\;
+    c:\Program Files\Microsoft SDKs\Windows\v7.0\Include\;
+  - Edit Project Properties|VC++ Directories|Library Directories
+    For x86 target add 
+      c:\Program Files\Microsoft SDKs\Windows\v7.0\Samples\multimedia\directshow\baseclasses\Release_MBCS\;
+    For x64 target add 
+      c:\Program Files\Microsoft SDKs\Windows\v7.0\Samples\multimedia\directshow\baseclasses\x64\Release_MBCS\;
+    For XP target add (to find winmm.lib)
+      c:\Program Files (x86)\Microsoft SDKs\Windows\v7.1A\Lib\;
+  - Edit Project Properties|Linker|Input|Additional Dependencies
+    Add strmbase.lib to the list
+  - For XP compatibility
+    - choose Platform Toolset v140_xp and 
+    - Edit Project Properties|C/C++|Command Line
+      Add
+      /Zc:threadSafeInit-
+  - Build
+
+# Hints from 2.6.1alpha1:
+
+# Patch ($Platform SDK)\Samples\Multimedia\DirectShow\BaseClasses\streams.h
+# remove ATL reference
+
+#define NO_SHLWAPI_STRFCNS
+// #include <atlbase.h>    <<---- Line 179
+#include <strsafe.h>
+
+# Start a Visual Studio Command Prompt
+Tools>Visual Studio 200x Command Prompt
+
+# Add DirectX SDK to front of INCLUDE path
+Set INCLUDE=C:\Program Files\Microsoft DirectX SDK (August 2009)\Include;%INCLUDE%
+
+Set INCLUDE=C:\Program Files (x86)\Microsoft DirectX SDK (August 2009)\Include;%INCLUDE%
+
+# Cd to the Platform SDK directory.
+cd "C:\Program Files\Microsoft Platform SDK for Windows Server 2003 R2"
+
+# Define SDK environment
+SetEnv /XP32 /RETAIL
+
+# Cd to BaseClasses directory
+cd Samples\Multimedia\DirectShow\BaseClasses
+
+# Make strmbase.lib (Probably won't have write access, so take a copy)
+nmake
+
+# Add DirectShow and DirectX to C++ command line INCLUDE path
+/I "C:\Program Files\Microsoft Platform SDK for Windows Server 2003 R2\Samples\Multimedia\DirectShow\BaseClasses"
+/I "C:\Program Files\Microsoft DirectX SDK (August 2009)\Include"
+
+/I "C:\Program Files (x86)\Microsoft DirectX SDK (August 2009)\Include"
+
+# Add DirectShow and DirectX to link command line LIB path
+/LIBPATH:"C:\Program Files\Microsoft Platform SDK for Windows Server 2003 R2\Samples\Multimedia\DirectShow\BaseClasses\XP32_RETAIL"
+/LIBPATH:"C:\Program Files\Microsoft DirectX SDK (August 2009)\Lib\x86"
+
+/LIBPATH:"C:\Program Files (x86)\Microsoft DirectX SDK (August 2009)\Lib\x86" 
 ********************************************************************/
 
 #define SAFE_RELEASE(x) { if (x) x->Release(); x = NULL; }

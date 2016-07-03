@@ -451,7 +451,6 @@ PVideoFrame __stdcall ConvertToY8::GetFrame(int n, IScriptEnvironment* env) {
   }
 
   PVideoFrame dst = env->NewVideoFrame(vi);
-
   if (yuy2_input) {
 
     const BYTE* srcP = src->GetReadPtr();

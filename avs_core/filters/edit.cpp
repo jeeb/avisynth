@@ -582,6 +582,13 @@ AVSValue __cdecl Dissolve::Create(AVSValue args, void*, IScriptEnvironment* env)
 }
 
 
+Dissolve::~Dissolve()
+{
+  delete[] audbuffer;
+  audbuffer = 0;
+  audbufsize = 0;
+}
+
 Dissolve::Dissolve(PClip _child1, PClip _child2, int _overlap, double fps, IScriptEnvironment* env)
  : GenericVideoFilter(ConvertAudio::Create(_child1,SAMPLE_INT16|SAMPLE_FLOAT,SAMPLE_FLOAT)),
    child2(_child2),
@@ -709,7 +716,7 @@ void Dissolve::GetAudio(void* buf, __int64 start, __int64 count, IScriptEnvironm
     return;
   }
 
-  const int bytes = (int)vi.BytesFromAudioSamples(count);
+  const size_t bytes = (size_t)vi.BytesFromAudioSamples(count);
   if (audbufsize < bytes) {
     delete[] audbuffer;
     audbuffer = new BYTE[bytes];

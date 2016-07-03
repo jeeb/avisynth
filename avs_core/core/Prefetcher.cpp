@@ -180,7 +180,7 @@ int __stdcall Prefetcher::SchedulePrefetch(int current_n, int prefetch_start, IS
 PVideoFrame __stdcall Prefetcher::GetFrame(int n, IScriptEnvironment* env)
 {
   IScriptEnvironment2 *env2 = static_cast<IScriptEnvironment2*>(env);
-
+  
   int pattern = n - _pimpl->LastRequestedFrame;
   _pimpl->LastRequestedFrame = n;
   if (pattern == 0)
@@ -260,7 +260,9 @@ PVideoFrame __stdcall Prefetcher::GetFrame(int n, IScriptEnvironment* env)
     {
       try
       {
-        cache_handle.first->value = _pimpl->child->GetFrame(n, env);
+        result = _pimpl->child->GetFrame(n, env); // P.F. fill result before Commit!
+        cache_handle.first->value = result;
+        // cache_handle.first->value = _pimpl->child->GetFrame(n, env); // P.F. before Commit!
   #ifdef X86_32
         _mm_empty();
   #endif
@@ -271,7 +273,6 @@ PVideoFrame __stdcall Prefetcher::GetFrame(int n, IScriptEnvironment* env)
         _pimpl->VideoCache->rollback(&cache_handle);
         throw;
       }
-      result = cache_handle.first->value;
       break;
     }
   case LRU_LOOKUP_FOUND_AND_READY:

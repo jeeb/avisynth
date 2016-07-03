@@ -107,6 +107,9 @@ int AVSC_CC avs_bytes_from_pixels(const AVS_VideoInfo * p, int pixels)
   return ((VideoInfo *)p)->BytesFromPixels(pixels);
 }
 
+// This method should be called avs_row_size_p,
+// but we won't change it anymore to avoid breaking
+// the interface.
 extern "C"
 int AVSC_CC avs_row_size(const AVS_VideoInfo * p, int plane)
 {

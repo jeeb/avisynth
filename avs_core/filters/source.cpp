@@ -42,6 +42,7 @@
 #include <ctime>
 #include <cmath>
 #include <new>
+#include <cassert>
 
 /********************************************************************
 ********************************************************************/
@@ -341,6 +342,7 @@ class ColorBars : public IClip {
   PVideoFrame frame;
   SFLOAT *audio;
   unsigned nsamples;
+  bool staticframes; // P.F. false: a bit better for synthetic tests. Still defaults to true (one static frame is served)
 
   enum { Hz = 440 } ;
 
@@ -350,8 +352,9 @@ public:
     delete audio;
   }
 
-  ColorBars(int w, int h, const char* pixel_type, int type, IScriptEnvironment* env) {
+  ColorBars(int w, int h, const char* pixel_type, bool _staticframes, int type, IScriptEnvironment* env) {
     memset(&vi, 0, sizeof(VideoInfo));
+    staticframes = _staticframes; // P.F. 
     vi.width = w;
     vi.height = h;
     vi.fps_numerator = 30000;
@@ -755,7 +758,27 @@ public:
 	}
   }
 
-  PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env) { return frame; }
+  // By the new "staticframes" parameter: colorbars we generate (copy) real new frames instead of a ready-to-use static one
+  PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env) 
+  { 
+    _RPT2(0, "ColorBars::GetFrame %d\n", n); // P.F.
+    if (staticframes) // P.F. 
+      return frame; // original default method returns precomputed static frame.
+    else {
+      PVideoFrame result = env->NewVideoFrame(vi);
+      _RPT2(0, "ColorBars GetFrame origframe=%p vfb=%p newframe=%p\n", (void *)frame, (void *)result->GetFrameBuffer(), (void *)result); // P.F.
+      env->BitBlt(result->GetWritePtr(), result->GetPitch(), frame->GetReadPtr(), frame->GetPitch(), frame->GetRowSize(), frame->GetHeight());
+      env->BitBlt(result->GetWritePtr(PLANAR_V), result->GetPitch(PLANAR_V), frame->GetReadPtr(PLANAR_V), frame->GetPitch(PLANAR_V), frame->GetRowSize(PLANAR_V), frame->GetHeight(PLANAR_V));
+      env->BitBlt(result->GetWritePtr(PLANAR_U), result->GetPitch(PLANAR_U), frame->GetReadPtr(PLANAR_U), frame->GetPitch(PLANAR_U), frame->GetRowSize(PLANAR_U), frame->GetHeight(PLANAR_U));      env->MakeWritable(&frame);
+      return result;
+/*
+      PVideoFrame newframe = AdjustFrameAlignment(frame, vi, env); // P.F.
+      return newframe; // Forcing to create new frame to avoid the excessive SubFrame referencing. 
+                       // Perhaps a bit more real-life for synthetic tests
+      */
+    }
+    //return frame;
+  }
   bool __stdcall GetParity(int n) { return false; }
   const VideoInfo& __stdcall GetVideoInfo() { return vi; }
   int __stdcall SetCacheHints(int cachehints,int frame_range) { return 0; };
@@ -806,7 +829,9 @@ public:
 
     return new ColorBars(args[0].AsInt(   type ? 1288 : 640),
                          args[1].AsInt(   type ?  720 : 480),
-                         args[2].AsString(type ? "YV24" : "RGB32"), type, env);
+                         args[2].AsString(type ? "YV24" : "RGB32"), 
+                         args[3].AsBool(true), // new staticframes parameter
+                         type, env);
   }
 };
 
@@ -1050,8 +1075,8 @@ extern const AVSFunction Source_filters[] = {
   { "Blackness", BUILTIN_FUNC_PREFIX, "[]c*[length]i[width]i[height]i[pixel_type]s[fps]f[fps_denominator]i[audio_rate]i[stereo]b[sixteen_bit]b[color]i[color_yuv]i[clip]c", Create_BlankClip },
   { "Blackness", BUILTIN_FUNC_PREFIX, "[]c*[length]i[width]i[height]i[pixel_type]s[fps]f[fps_denominator]i[audio_rate]i[channels]i[sample_type]s[color]i[color_yuv]i[clip]c", Create_BlankClip },
   { "MessageClip", BUILTIN_FUNC_PREFIX, "s[width]i[height]i[shrink]b[text_color]i[halo_color]i[bg_color]i", Create_MessageClip },
-  { "ColorBars", BUILTIN_FUNC_PREFIX, "[width]i[height]i[pixel_type]s", ColorBars::Create, (void*)0 },
-  { "ColorBarsHD", BUILTIN_FUNC_PREFIX, "[width]i[height]i[pixel_type]s", ColorBars::Create, (void*)1 },
+  { "ColorBars", BUILTIN_FUNC_PREFIX, "[width]i[height]i[pixel_type]s[staticframes]b", ColorBars::Create, (void*)0 },
+  { "ColorBarsHD", BUILTIN_FUNC_PREFIX, "[width]i[height]i[pixel_type]s[staticframes]b", ColorBars::Create, (void*)1 },
   { "Tone", BUILTIN_FUNC_PREFIX, "[length]f[frequency]f[samplerate]i[channels]i[type]s[level]f", Tone::Create },
 
   { "Version", BUILTIN_FUNC_PREFIX, "", Create_Version },

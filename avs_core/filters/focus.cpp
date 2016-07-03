@@ -1344,23 +1344,31 @@ PVideoFrame TemporalSoften::GetFrame(int n, IScriptEnvironment* env)
   // Just skip if silly settings
 
   if ((!luma_threshold) && (!chroma_threshold) || (!radius))
-    return child->GetFrame(n, env);
+  {
+    PVideoFrame ret = child->GetFrame(n, env); // P.F.
+    return ret;
+  }
 
   bool planeDisabled[16];
-//  
 
   for (int p = 0; p<16; p++) {
     planeDisabled[p] = false;
   }
 
-  auto frames = static_cast<PVideoFrame*>(alloca(sizeof(PVideoFrame)* kernel));
+  auto frames = static_cast<PVideoFrame*>(alloca(sizeof(PVideoFrame) * kernel)); // allocate "kernel" count of pointers
   
   for (int p = n-radius; p<=n+radius; p++) {
-    new(frames+p+radius-n) PVideoFrame;
-    frames[p+radius-n] = child->GetFrame(clamp(p, 0, vi.num_frames-1), env);
+    new(frames+p+radius-n) PVideoFrame; // n-radius .. n .. n+radius  
+    frames[p+radius-n] = child->GetFrame(clamp(p, 0, vi.num_frames-1), env); // radius == 3 -> 0, 1, 2
   }
 
-  env->MakeWritable(&frames[radius]);
+  // P.F. 16.04.06 leak fix r1841 after 8 days of bug chasing: 
+  // Reason #1 of the random QTGMC memory leaks (stuck frame refcounts) 
+  // MakeWritable alters the pointer if it is not yet writeable, thus the original PVideoFrame won't be freed (refcount decremented)
+  // To fix this, we leave the frame[] array in its place and copy frame[radius] to CenterFrame and make further write operations on this new frame.
+  // env->MakeWritable(&frames[radius]); // old culprit line. if not yet writeable -> gives another pointer
+  PVideoFrame CenterFrame = frames[radius];
+  env->MakeWritable(&CenterFrame);
 
   do {
     const BYTE* planeP[16];
@@ -1375,7 +1383,8 @@ PVideoFrame TemporalSoften::GetFrame(int n, IScriptEnvironment* env)
       planeP[d++] = frames[i]->GetReadPtr(planes[c]);
     }
 
-    BYTE* c_plane = frames[radius]->GetWritePtr(planes[c]);
+//    BYTE* c_plane = frames[radius]->GetWritePtr(planes[c]);
+    BYTE* c_plane = CenterFrame->GetWritePtr(planes[c]); // P.F. using CenterFrame for write access
 
     for (int i = 1; i<=radius; i++) { // Fetch all planes sequencially
       planePitch[d] = frames[radius+i]->GetPitch(planes[c]);
@@ -1427,9 +1436,14 @@ PVideoFrame TemporalSoften::GetFrame(int n, IScriptEnvironment* env)
       d = d2;
     }
 
-    if (d<1)
-      return frames[radius];
-
+    if (d < 1)
+    {
+      // Memory leak reason #2 r1841: this wasn't here before return
+      for (int i = 0; i < kernel; ++i)
+        frames[i] = nullptr; 
+      // return frames[radius];
+      return CenterFrame; // return the modified frame
+    }
 
     int c_div = 32768/(d+1);  // We also have the tetplane included, thus d+1.
     if (c_thresh) {
@@ -1455,12 +1469,12 @@ PVideoFrame TemporalSoften::GetFrame(int n, IScriptEnvironment* env)
     c += 2;
   } while (planes[c]);
 
-  PVideoFrame result = frames[radius];
-  
-  for (int i = 0; i < kernel; ++i) {
-    frames[i] = nullptr;
-  }
-  return result;
+//  PVideoFrame result = frames[radius]; // we are using CenterFrame instead
+  for (int i = 0; i < kernel; ++i) 
+    frames[i] = nullptr; 
+
+  //  return result;
+  return CenterFrame;
 }
 
 

@@ -132,7 +132,9 @@ public:
 
   static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env);
 private:
-  const char * channels;
+  int mask;
+  bool doB, doG, doR, doA;
+  bool doY, doU, doV;
 };
 
 

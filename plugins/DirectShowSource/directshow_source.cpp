@@ -36,7 +36,7 @@
 #include "directshow_source.h"
 #include <avs/minmax.h>
 
-#define DSS_VERSION "2.6.0"
+#define DSS_VERSION "2.6.1"
 
 /************************************
  *          Logging Utility         *
@@ -99,6 +99,7 @@ char* Tick() {
   tick %= 99;
 
   _snprintf(buf, 15, "%02u:%02u:%02u.%03u", tick, min, sec, msec);
+  buf[15] = 0;
 
   return buf;
 }
@@ -2495,7 +2496,7 @@ void DirectShowSource::CheckHresult(IScriptEnvironment* env, HRESULT hr, const c
   if (SUCCEEDED(hr)) return;
 //  char buf[1024] = {0};
 //  if (!FormatMessage(FORMAT_MESSAGE_FROM_SYSTEM, NULL, hr, 0, buf, 1024, NULL))
-  char buf[MAX_ERROR_TEXT_LEN] = {0};
+  char buf[MAX_ERROR_TEXT_LEN+1] = {0};
   if (!AMGetErrorText(hr, buf, MAX_ERROR_TEXT_LEN))
     wsprintf(buf, "error code 0x%x", hr);
   env->ThrowError("DirectShowSource: %s%s:\n%s", msg, msg2, buf);

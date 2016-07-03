@@ -430,9 +430,58 @@ AVSValue ResetMask::Create(AVSValue args, void*, IScriptEnvironment* env)
 
 
 Invert::Invert(PClip _child, const char * _channels, IScriptEnvironment* env)
-  : GenericVideoFilter(_child), channels(_channels)
+  : GenericVideoFilter(_child)
 {
+  doB = doG = doR = doA = doY = doU = doV = false;
 
+  for (int k = 0; _channels[k] != '\0'; ++k) {
+    switch (_channels[k]) {
+    case 'B':
+    case 'b':
+      doB = true;
+      break;
+    case 'G':
+    case 'g':
+      doG = true;
+      break;
+    case 'R':
+    case 'r':
+      doR = true;
+      break;
+    case 'A':
+    case 'a':
+      doA = true;
+      break;
+    case 'Y':
+    case 'y':
+      doY = true;
+      break;
+    case 'U':
+    case 'u':
+      doU = !vi.IsY8();
+      break;
+    case 'V':
+    case 'v':
+      doV = !vi.IsY8();
+      break;
+    default:
+      break;
+    }
+  }
+  if (vi.IsYUY2()) {
+    mask = doY ? 0x00ff00ff : 0;
+    mask |= doU ? 0x0000ff00 : 0;
+    mask |= doV ? 0xff000000 : 0;
+  }
+  else if (vi.IsRGB32()) {
+    mask = doB ? 0x000000ff : 0;
+    mask |= doG ? 0x0000ff00 : 0;
+    mask |= doR ? 0x00ff0000 : 0;
+    mask |= doA ? 0xff000000 : 0;
+  }
+  else {
+    mask = 0xffffffff;
+  }
 }
 
 static void invert_frame_sse2(BYTE* frame, int pitch, int width, int height, int mask) {
@@ -572,52 +621,6 @@ PVideoFrame Invert::GetFrame(int n, IScriptEnvironment* env)
   int rowsize = f->GetRowSize();
   int height = f->GetHeight();
 
-
-  bool doB = false;
-  bool doG = false;
-  bool doR = false;
-  bool doA = false;
-
-  bool doY = false;
-  bool doU = false;
-  bool doV = false;
-  char ch = 1;
-
-  for (int k=0; ch!='\0'; ++k) {
-    ch = tolower(channels[k]);
-    if (ch == 'b')
-      doB = true;
-    if (ch == 'g')
-      doG = true;
-    if (ch == 'r')
-      doR = true;
-    if (ch == 'a')
-      doA = true;
-
-    if (ch == 'y')
-      doY = true;
-    if (ch == 'u')
-      doU = !vi.IsY8();
-    if (ch == 'v')
-      doV = !vi.IsY8();
-  }
-
-  if (vi.IsYUY2()) {
-    int mask = doY ? 0x00ff00ff : 0;
-    mask |= doU ? 0x0000ff00 : 0;
-    mask |= doV ? 0xFF000000 : 0;
-
-    invert_frame(pf, pitch, rowsize, height, mask, env);
-  }
-
-  if (vi.IsRGB32()) {
-    int mask = doB ? 0xff : 0;
-    mask |= doG ? 0xff00 : 0;
-    mask |= doR ? 0xff0000 : 0;
-    mask |= doA ? 0xff000000 : 0;
-    invert_frame(pf, pitch, rowsize, height, mask, env);
-  }
-
   if (vi.IsPlanar()) {
     if (doY)
       invert_plane(pf, pitch, f->GetRowSize(PLANAR_Y_ALIGNED), height, env);
@@ -626,15 +629,17 @@ PVideoFrame Invert::GetFrame(int n, IScriptEnvironment* env)
     if (doV)
       invert_plane(f->GetWritePtr(PLANAR_V), f->GetPitch(PLANAR_V), f->GetRowSize(PLANAR_V_ALIGNED), f->GetHeight(PLANAR_V), env);
   }
-
-  if (vi.IsRGB24()) {
+  else if (vi.IsYUY2() || vi.IsRGB32()) {
+    invert_frame(pf, pitch, rowsize, height, mask, env);
+  }
+  else if (vi.IsRGB24()) {
     int rMask= doR ? 0xff : 0;
     int gMask= doG ? 0xff : 0;
     int bMask= doB ? 0xff : 0;
     for (int i=0; i<height; i++) {
 
       for (int j=0; j<rowsize; j+=3) {
-        pf[j] = pf[j] ^ bMask;
+        pf[j+0] = pf[j+0] ^ bMask;
         pf[j+1] = pf[j+1] ^ gMask;
         pf[j+2] = pf[j+2] ^ rMask;
       }

@@ -155,6 +155,7 @@ class Dissolve : public GenericVideoFilter
 {
 public:
   Dissolve(PClip _child1, PClip _child2, int _overlap, double fps, IScriptEnvironment* env);
+  virtual ~Dissolve(); 
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
   void __stdcall GetAudio(void* buf, __int64 start, __int64 count, IScriptEnvironment* env);
   bool __stdcall GetParity(int n);
@@ -168,7 +169,7 @@ private:
   __int64 audio_fade_start, audio_fade_end;
   int audio_overlap;
   BYTE* audbuffer;
-  int audbufsize;
+  size_t audbufsize;
   void EnsureBuffer(int minsize);
 };
 
