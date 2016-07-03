@@ -137,7 +137,7 @@ int VideoInfo::BytesPerChannelSample() const {
   case SAMPLE_FLOAT:
     return sizeof(SFLOAT);
   default:
-    _ASSERTE("Sample type not recognized!");
+    _ASSERTE("Audio sample type not recognized!");
     return 0;
   }
 }
@@ -283,20 +283,35 @@ bool VideoInfo::IsSameColorspace(const VideoInfo& vi) const {
   return FALSE;
 }
 
-// Test for same colorspace
 int VideoInfo::NumChannels() const {
 
   switch (pixel_type) {
-    case CS_UNKNOWN:
-    case CS_RAW32:
-    case CS_Y8:
-    case CS_Y16:
-    case CS_Y32:
-      return 1;
-    case CS_BGR32:
-      return 4;
-    default:
-      return 3;
+  case CS_UNKNOWN:
+	return 0;
+  case CS_RAW32:
+  case CS_Y8:
+  case CS_Y16:
+  case CS_Y32:
+    return 1;
+  case CS_BGR32:
+    return 4;
+  default:
+    return 3;
+  }
+}
+
+int VideoInfo::ComponentSize() const {
+
+  switch (pixel_type) {
+  case CS_UNKNOWN:
+	return 0;
+  case CS_RAW32:
+  case CS_Y32:
+    return 4;
+  case CS_Y16:
+    return 2;
+  default:
+    return 1;
   }
 }
 
@@ -797,6 +812,7 @@ static const AVS_Linkage avs_linkage = {    // struct AVS_Linkage {
 /**********************************************************************/
   // AviSynth+ additions
   &VideoInfo::NumChannels,                  //   int     (VideoInfo::*NumChannels)() const;
+  &VideoInfo::ComponentSize,                //   int     (VideoInfo::*ComponentSize)() const;
 /**********************************************************************/
 };                                          // }
 

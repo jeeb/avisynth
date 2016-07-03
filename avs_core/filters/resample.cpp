@@ -690,7 +690,7 @@ FilteredResizeH::FilteredResizeH( PClip _child, double subrange_left, double sub
   dst_width  = target_width;
   dst_height = vi.height;
 
-  pixelsize = vi.BytesFromPixels(1); // AVS16
+  pixelsize = vi.ComponentSize(); // AVS16
   grey = vi.IsY8() || vi.IsColorSpace(VideoInfo::CS_Y16) || vi.IsColorSpace(VideoInfo::CS_Y32);
 
   if (target_width <= 0) {
@@ -910,7 +910,7 @@ FilteredResizeV::FilteredResizeV( PClip _child, double subrange_top, double subr
   if (target_height <= 0)
     env->ThrowError("Resize: Height must be greater than 0.");
 
-  pixelsize = vi.BytesFromPixels(1); // AVS16
+  pixelsize = vi.ComponentSize(); // AVS16
   grey = vi.IsY8() || vi.IsColorSpace(VideoInfo::CS_Y16) || vi.IsColorSpace(VideoInfo::CS_Y32);
 
   if (vi.IsPlanar() && !grey) {
@@ -1026,53 +1026,53 @@ ResamplerV FilteredResizeV::GetResampler(int CPU, bool aligned, int pixelsize, v
     case 1: return resize_v_planar_pointresize<uint8_t>;
     case 2: return resize_v_planar_pointresize<uint16_t>;
     default: // case 4:
-     return resize_v_planar_pointresize<float>;
+      return resize_v_planar_pointresize<float>;
     }
   }
   else {
     // Other resizers
     if (pixelsize == 1)
     {
-    if (CPU & CPUF_SSSE3) {
-      if (aligned && CPU & CPUF_SSE4_1) {
-        return resize_v_ssse3_planar<simd_load_streaming>;
+      if (CPU & CPUF_SSSE3) {
+        if (aligned && CPU & CPUF_SSE4_1) {
+          return resize_v_ssse3_planar<simd_load_streaming>;
         }
         else if (aligned) { // SSSE3 aligned
-        return resize_v_ssse3_planar<simd_load_aligned>;
+          return resize_v_ssse3_planar<simd_load_aligned>;
         }
         else if (CPU & CPUF_SSE3) { // SSE3 lddqu
-        return resize_v_ssse3_planar<simd_load_unaligned_sse3>;
+          return resize_v_ssse3_planar<simd_load_unaligned_sse3>;
         }
         else { // SSSE3 unaligned
-        return resize_v_ssse3_planar<simd_load_unaligned>;
-      }
+          return resize_v_ssse3_planar<simd_load_unaligned>;
+        }
       }
       else if (CPU & CPUF_SSE2) {
-      if (aligned && CPU & CPUF_SSE4_1) { // SSE4.1 movntdqa constantly provide ~2% performance increase in my testing
-        return resize_v_sse2_planar<simd_load_streaming>;
+        if (aligned && CPU & CPUF_SSE4_1) { // SSE4.1 movntdqa constantly provide ~2% performance increase in my testing
+          return resize_v_sse2_planar<simd_load_streaming>;
         }
         else if (aligned) { // SSE2 aligned
-        return resize_v_sse2_planar<simd_load_aligned>;
+          return resize_v_sse2_planar<simd_load_aligned>;
         }
         else if (CPU & CPUF_SSE3) { // SSE2 lddqu
-        return resize_v_sse2_planar<simd_load_unaligned_sse3>;
+          return resize_v_sse2_planar<simd_load_unaligned_sse3>;
         }
         else { // SSE2 unaligned
-        return resize_v_sse2_planar<simd_load_unaligned>;
-      }
+          return resize_v_sse2_planar<simd_load_unaligned>;
+        }
 #ifdef X86_32
       }
       else if (CPU & CPUF_MMX) {
-      return resize_v_mmx_planar;
+        return resize_v_mmx_planar;
 #endif
-    }
+      }
       else { // C version
         return resize_v_c_planar<uint8_t>;
-  }
+      }
     } // todo: sse
     else if (pixelsize == 2) {
       return resize_v_c_planar<uint16_t>;
-}
+    }
     else { // if (pixelsize== 4) 
       return resize_v_c_planar<float>;
     }
