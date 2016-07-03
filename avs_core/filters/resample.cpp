@@ -39,6 +39,7 @@
 #include "transform.h"
 #include "turn.h"
 #include <avs/alignment.h>
+#include <avs/minmax.h>
 #include "../convert/convert_planar.h"
 #include "../convert/convert_yuy2.h"
 
@@ -108,11 +109,11 @@ static void resize_v_c_planar(BYTE* dst, const BYTE* src, int dst_pitch, int src
     int offset = program->pixel_offset[y];
     const pixel_size* src_ptr = src0 + pitch_table[offset] / sizeof(pixel_size);
 
-    pixel_size limit;
-    // todo not nice, may have to split this func by pixeltype or find a valid conditional c++ syntax
-    if (sizeof(pixel_size) == 1) limit = 255;
-    else if (sizeof(pixel_size) == 2) limit = 65535;
-    else if (sizeof(pixel_size) == 4) limit = 65535.0f/65536; // todo check what is float upper limit
+    pixel_size limit = 0;
+    if (!std::is_floating_point<pixel_size>::value) {  // floats are unscaled and uncapped 
+      if (sizeof(pixel_size) == 1) limit = 255;
+      else if (sizeof(pixel_size) == 2) limit = pixel_size(65535);
+    }
 
     for (int x = 0; x < width; x++) {
       // todo: check whether int result is enough for 16 bit samples (can an int overflow because of 16384 scale or really need __int64?)
@@ -121,8 +122,10 @@ static void resize_v_c_planar(BYTE* dst, const BYTE* src, int dst_pitch, int src
       for (int i = 0; i < filter_size; i++) {
         result += (src_ptr+pitch_table[i] / sizeof(pixel_size))[x] * current_coeff[i];
       }
-      result = ((result+8192)/16384);
-      result = result > limit ? limit : result < 0 ? 0 : result;
+      if (!std::is_floating_point<pixel_size>::value) {  // floats are unscaled and uncapped 
+        result = ((result + 8192) / 16384);
+        result = clamp(result, decltype(result)(0), decltype(result)(limit));
+      }
       dst0[x] = (pixel_size)result;
     }
 
@@ -464,11 +467,11 @@ static void resize_h_c_planar(BYTE* dst, const BYTE* src, int dst_pitch, int src
   int filter_size = program->filter_size;
   short* current = program->pixel_coefficient;
 
-  pixel_size limit;
-  // todo not nice, may have to split this func by pixeltype or find a valid conditional c++ syntax
-  if (sizeof(pixel_size) == 1) limit = 255;
-  else if (sizeof(pixel_size) == 2) limit = 65535;
-  else if (sizeof(pixel_size) == 4) limit = 65535.0f / 65536; // todo check what is float upper limit
+  pixel_size limit = 0;
+  if (!std::is_floating_point<pixel_size>::value) {  // floats are unscaled and uncapped 
+    if (sizeof(pixel_size) == 1) limit = 255;
+    else if (sizeof(pixel_size) == 2) limit = pixel_size(65535);
+  }
 
   src_pitch = src_pitch / sizeof(pixel_size);
   dst_pitch = dst_pitch / sizeof(pixel_size);
@@ -485,8 +488,10 @@ static void resize_h_c_planar(BYTE* dst, const BYTE* src, int dst_pitch, int src
       for (int i = 0; i < filter_size; i++) {
         result += (src0+y*src_pitch)[(begin+i)] * current[i];
       }
-      result = ((result+8192)/16384); // todo float:no scale
-      result = result > limit ? limit : result < 0 ? 0 : result;
+      if (!std::is_floating_point<pixel_size>::value) {  // floats are unscaled and uncapped 
+        result = ((result + 8192) / 16384);
+        result = clamp(result, decltype(result)(0), decltype(result)(limit));
+      }
       (dst0 + y*dst_pitch)[x] = (pixel_size)result;
     }
     current += filter_size;

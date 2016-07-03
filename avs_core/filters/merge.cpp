@@ -374,7 +374,7 @@ static void average_plane_sse2(BYTE *p1, const BYTE *p2, int p1_pitch, int p2_pi
     }
 
     if (mod16_width != width) {
-      for (int x = mod16_width / sizeof(pixel_size); x < width/sizeof(pixel_size); ++x) {
+      for (size_t x = mod16_width / sizeof(pixel_size); x < width/sizeof(pixel_size); ++x) {
         reinterpret_cast<pixel_size *>(p1)[x] = (int(reinterpret_cast<pixel_size *>(p1)[x]) + reinterpret_cast<const pixel_size *>(p2)[x] + 1) >> 1;
       }
     }
@@ -402,7 +402,7 @@ static void average_plane_isse(BYTE *p1, const BYTE *p2, int p1_pitch, int p2_pi
     }
 
     if (mod8_width != width) {
-      for (int x = mod8_width / sizeof(pixel_size); x < width / sizeof(pixel_size); ++x) {
+      for (size_t x = mod8_width / sizeof(pixel_size); x < width / sizeof(pixel_size); ++x) {
         reinterpret_cast<pixel_size *>(p1)[x] = (int(reinterpret_cast<pixel_size *>(p1)[x]) + reinterpret_cast<const pixel_size *>(p2)[x] + 1) >> 1;
       }
     }
@@ -417,7 +417,7 @@ static void average_plane_isse(BYTE *p1, const BYTE *p2, int p1_pitch, int p2_pi
 template<typename pixel_size>
 static void average_plane_c(BYTE *p1, const BYTE *p2, int p1_pitch, int p2_pitch, int rowsize, int height) {
   for (int y = 0; y < height; ++y) {
-    for (int x = 0; x < rowsize / sizeof(pixel_size); ++x) {
+    for (size_t x = 0; x < rowsize / sizeof(pixel_size); ++x) {
       reinterpret_cast<pixel_size *>(p1)[x] = (int(reinterpret_cast<pixel_size *>(p1)[x]) + reinterpret_cast<const pixel_size *>(p2)[x] + 1) >> 1;
     }
     p1 += p1_pitch;
@@ -426,10 +426,14 @@ static void average_plane_c(BYTE *p1, const BYTE *p2, int p1_pitch, int p2_pitch
 }
 // for float
 static void average_plane_c_float(BYTE *p1, const BYTE *p2, int p1_pitch, int p2_pitch, int rowsize, int height) {
+
+  float *fp1 = reinterpret_cast<float *>(p1);
+  const float *fp2 = reinterpret_cast<const float *>(p2);
+  size_t rs = rowsize / sizeof(float);
+
   for (int y = 0; y < height; ++y) {
-    for (int x = 0; x < rowsize / sizeof(float); ++x) {
-      float pixel = ((reinterpret_cast<float *>(p1))[x] + (reinterpret_cast<const float *>(p2))[x]) / 2.0f;
-      (reinterpret_cast<float *>(p1))[x] = pixel > 1.0f ? 1.0f : pixel;
+    for (size_t x = 0; x < rs; ++x) {
+      fp1[x] = (fp1[x] + fp2[x]) / 2.0f;
     }
     p1 += p1_pitch;
     p2 += p2_pitch;
@@ -477,7 +481,7 @@ void weighted_merge_planar_uint16_sse41(BYTE *p1, const BYTE *p2, int p1_pitch, 
       _mm_stream_si128(reinterpret_cast<__m128i*>(p1 + x), result);
     }
 
-    for (int x = wMod16 / sizeof(uint16_t); x < width / sizeof(uint16_t); x++) {
+    for (size_t x = wMod16 / sizeof(uint16_t); x < width / sizeof(uint16_t); x++) {
       reinterpret_cast<uint16_t *>(p1)[x] = (reinterpret_cast<uint16_t *>(p1)[x] * invweight + reinterpret_cast<const uint16_t *>(p2)[x] * weight + 16384) >> 15;
     }
 
@@ -530,7 +534,7 @@ void weighted_merge_planar_sse2(BYTE *p1, const BYTE *p2, int p1_pitch, int p2_p
       _mm_store_si128(reinterpret_cast<__m128i*>(p1 + x), result);
     }
 
-    for (int x = wMod16 / sizeof(uint8_t); x < width / sizeof(uint8_t); x++) {
+    for (size_t x = wMod16 / sizeof(uint8_t); x < width / sizeof(uint8_t); x++) {
       reinterpret_cast<uint8_t *>(p1)[x] = (reinterpret_cast<uint8_t *>(p1)[x] * invweight + reinterpret_cast<const uint8_t *>(p2)[x] * weight + 16384) >> 15;
     }
 
@@ -598,7 +602,7 @@ void weighted_merge_planar_mmx(BYTE *p1, const BYTE *p2, int p1_pitch, int p2_pi
 template<typename pixel_size>
 void weighted_merge_planar_c(BYTE *p1, const BYTE *p2, int p1_pitch, int p2_pitch,int rowsize, int height, int weight, int invweight) {
   for (int y=0;y<height;y++) {
-    for (int x=0;x<rowsize / sizeof(pixel_size);x++) {
+    for (size_t x=0;x<rowsize / sizeof(pixel_size);x++) {
       (reinterpret_cast<pixel_size *>(p1))[x] = ((reinterpret_cast<pixel_size *>(p1))[x]*invweight + (reinterpret_cast<const pixel_size *>(p2))[x]*weight + 32768) >> 16;
     }
     p2+=p2_pitch;
@@ -607,13 +611,17 @@ void weighted_merge_planar_c(BYTE *p1, const BYTE *p2, int p1_pitch, int p2_pitc
 }
 
 void weighted_merge_planar_c_float(BYTE *p1, const BYTE *p2, int p1_pitch, int p2_pitch, int rowsize, int height, float weight, float invweight) {
-  for (int y = 0; y<height; y++) {
-    for (int x = 0; x<rowsize / sizeof(float); x++) {
-      float pixel = ((reinterpret_cast<float *>(p1))[x] * invweight + (reinterpret_cast<const float *>(p2))[x] * weight) / 2;
-      (reinterpret_cast<float *>(p1))[x] = pixel > 1.0f ? 1.0f : pixel;
+
+  float *fp1 = reinterpret_cast<float *>(p1);
+  const float *fp2 = reinterpret_cast<const float *>(p2);
+  size_t rs = rowsize / sizeof(float);
+
+  for (int y = 0; y < height; ++y) {
+    for (size_t x = 0; x < rs; ++x) {
+      fp1[x] = (fp1[x] * invweight + fp2[x] * weight) / 2.0f;
     }
-    p2 += p2_pitch;
     p1 += p1_pitch;
+    p2 += p2_pitch;
   }
 }
 
