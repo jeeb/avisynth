@@ -196,7 +196,7 @@ AVSValue __cdecl PeculiarBlend::Create(AVSValue args, void*, IScriptEnvironment*
 SkewRows::SkewRows(PClip _child, int skew, IScriptEnvironment* env)
  : GenericVideoFilter(_child)
 {
-  if ((vi.NumChannels() > 1) && vi.IsPlanar())
+  if ((vi.NumComponents() > 1) && vi.IsPlanar())
     env->ThrowError("SkewRows: requires non-planar or greyscale input");
 
   if (vi.IsYUY2() && skew&1)

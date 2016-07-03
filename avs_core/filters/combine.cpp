@@ -127,7 +127,7 @@ PVideoFrame __stdcall StackVertical::GetFrame(int n, IScriptEnvironment* env)
       dstp += dst_pitch * src_height;
     }
     
-    if (vi.IsPlanar() && (vi.NumChannels() > 1)) {
+    if (vi.IsPlanar() && (vi.NumComponents() > 1)) {
       // Copy Planar
       const int dst_pitchUV = dst->GetPitch(PLANAR_U);
       const int row_sizeUV = dst->GetRowSize(PLANAR_U);
@@ -231,7 +231,7 @@ PVideoFrame __stdcall StackHorizontal::GetFrame(int n, IScriptEnvironment* env)
     dstp += src_rowsize;
   }
 
-  if (vi.IsPlanar() && (vi.NumChannels() > 1)) {
+  if (vi.IsPlanar() && (vi.NumComponents() > 1)) {
     // Copy Planar
     const int dst_pitchUV = dst->GetPitch(PLANAR_U);
     const int heightUV = dst->GetHeight(PLANAR_U);

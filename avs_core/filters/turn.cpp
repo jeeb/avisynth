@@ -753,7 +753,7 @@ Turn::Turn(PClip _child, int _direction, IScriptEnvironment* env) : GenericVideo
     }
       // rectangular formats?
     if ((_direction == DIRECTION_LEFT || _direction == DIRECTION_RIGHT) && 
-      (vi.NumChannels() > 1) &&
+      (vi.NumComponents() > 1) &&
       (vi.GetPlaneWidthSubsampling(PLANAR_U) != vi.GetPlaneHeightSubsampling(PLANAR_U)))
     {
       if (vi.width % (1<<vi.GetPlaneWidthSubsampling(PLANAR_U))) // YV16 & YV411

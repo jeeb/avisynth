@@ -1408,11 +1408,11 @@ VideoFrame* ScriptEnvironment::GetNewFrame(size_t vfb_size)
 #else
           VideoFrame *frame = *it3;
 #endif
-          // Because the refcount of the vfb was zero, we know that nobody should be
-          // referencing its frames.
-          assert(0 == frame->refcount);
+
           // sanity check if its refcount is zero
           // because when a vfb is free (refcount==0) then all its parent frames should also be free
+          assert(0 == frame->refcount);
+
           if (!found)
           {
             InterlockedIncrement(&(frame->vfb->refcount)); // same as &(vfb->refcount)
@@ -1767,7 +1767,7 @@ PVideoFrame __stdcall ScriptEnvironment::NewVideoFrame(const VideoInfo& vi, int 
 
   PVideoFrame retval;
 
-  if (vi.IsPlanar() && (vi.NumChannels() > 1)) {
+  if (vi.IsPlanar() && (vi.NumComponents() > 1)) {
     // Planar requires different math ;)
     const int xmod  = 1 << vi.GetPlaneWidthSubsampling(PLANAR_U);
     const int xmask = xmod - 1;

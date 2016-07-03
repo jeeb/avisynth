@@ -226,7 +226,7 @@ Crop::Crop(int _left, int _top, int _width, int _height, bool _align, PClip _chi
     env->ThrowError("Crop: you cannot use crop to enlarge or 'shift' a clip");
 
   if (vi.IsYUV()) {
-    if (vi.NumChannels() > 1) {
+    if (vi.NumComponents() > 1) {
       xsub=vi.GetPlaneWidthSubsampling(PLANAR_U);
       ysub=vi.GetPlaneHeightSubsampling(PLANAR_U);
     }
@@ -317,7 +317,7 @@ AddBorders::AddBorders(int _left, int _top, int _right, int _bot, int _clr, PCli
  : GenericVideoFilter(_child), left(max(0,_left)), top(max(0,_top)), right(max(0,_right)), bot(max(0,_bot)), clr(_clr), xsub(0), ysub(0)
 {
   if (vi.IsYUV()) {
-    if (vi.NumChannels() > 1) {
+    if (vi.NumComponents() > 1) {
       xsub=vi.GetPlaneWidthSubsampling(PLANAR_U);
       ysub=vi.GetPlaneHeightSubsampling(PLANAR_U);
     }
@@ -604,7 +604,7 @@ AVSValue __cdecl Create_Letterbox(AVSValue args, void*, IScriptEnvironment* env)
     int xsub = 0;
     int ysub = 0;
 
-    if (vi.NumChannels() > 1) {
+    if (vi.NumComponents() > 1) {
       xsub=vi.GetPlaneWidthSubsampling(PLANAR_U);
       ysub=vi.GetPlaneHeightSubsampling(PLANAR_U);
     }

@@ -458,11 +458,11 @@ Invert::Invert(PClip _child, const char * _channels, IScriptEnvironment* env)
       break;
     case 'U':
     case 'u':
-      doU = (vi.NumChannels() > 1);
+      doU = (vi.NumComponents() > 1);
       break;
     case 'V':
     case 'v':
-      doV = (vi.NumChannels() > 1);
+      doV = (vi.NumComponents() > 1);
       break;
     default:
       break;

@@ -153,7 +153,7 @@ static void isse_yuy2_swap(const BYTE* srcp, BYTE* dstp, int src_pitch, int dst_
 
 AVSValue __cdecl SwapUV::CreateSwapUV(AVSValue args, void* user_data, IScriptEnvironment* env) {
   PClip p = args[0].AsClip();
-  if (p->GetVideoInfo().NumChannels() == 1)
+  if (p->GetVideoInfo().NumComponents() == 1)
     return p;
   return new SwapUV(p, env);
 }
@@ -254,7 +254,7 @@ SwapUVToY::SwapUVToY(PClip _child, int _mode, IScriptEnvironment* env)
   if (!vi.IsYUV())
     env->ThrowError("UVtoY: YUV data only!");
 
-  if (vi.NumChannels() == 1)
+  if (vi.NumComponents() == 1)
     env->ThrowError("UVtoY: There are no chroma channels in Y8/Y16/Y32!");
 
   vi.height >>= vi.GetPlaneHeightSubsampling(PLANAR_U);

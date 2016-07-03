@@ -285,7 +285,7 @@ struct AVS_Linkage {
   void    (VideoInfo::*reserved[32])();
 /**********************************************************************/
   // AviSynth+ additions
-  int     (VideoInfo::*NumChannels)() const;
+  int     (VideoInfo::*NumComponents)() const;
   int     (VideoInfo::*ComponentSize)() const;
   /**********************************************************************/
 };
@@ -525,7 +525,7 @@ Planar filter mask 1111.1111.1111.1111.1111.1111.1100.1111
   bool IsSameColorspace(const VideoInfo& vi) const AVS_BakedCode(return AVS_LinkCall(IsSameColorspace)(vi))
 
   // Returns the number of color channels or planes in a frame
-  int NumChannels() const AVS_BakedCode(return AVS_LinkCall(NumChannels)())
+  int NumComponents() const AVS_BakedCode(return AVS_LinkCall(NumComponents)())
 
   // Returns the size in bytes of a single component of a pixel
   int ComponentSize() const AVS_BakedCode(return AVS_LinkCall(ComponentSize)())

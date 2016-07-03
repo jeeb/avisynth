@@ -604,7 +604,7 @@ Tweak::Tweak(PClip _child, double _hue, double _sat, double _bright, double _con
   if (sse && !(env->GetCPUFlags() & CPUF_INTEGER_SSE))
       env->ThrowError("Tweak: SSE option needs an iSSE capable processor");
 
-  if (vi.NumChannels() == 1) {
+  if (vi.NumComponents() == 1) {
       if (!(_hue == 0.0 && _sat == 1.0 && allPixels))
       env->ThrowError("Tweak: bright and cont are the only options available for greyscale.");
   }
@@ -882,7 +882,7 @@ MaskHS::MaskHS( PClip _child, double startHue, double endHue, double _maxSat, do
   if (vi.IsRGB())
         env->ThrowError("MaskHS: YUV data only (no RGB)");
 
-  if (vi.NumChannels() == 1) {
+  if (vi.NumComponents() == 1) {
       env->ThrowError("MaskHS: clip must contain chroma.");
   }
 

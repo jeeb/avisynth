@@ -210,7 +210,7 @@ static void greyscale_rgb32_mmx(BYTE *srcp, size_t width, size_t height, size_t 
 PVideoFrame Greyscale::GetFrame(int n, IScriptEnvironment* env)
 {
   PVideoFrame frame = child->GetFrame(n, env);
-  if (vi.NumChannels() == 1)
+  if (vi.NumComponents() == 1)
     return frame;
 
   env->MakeWritable(&frame);
@@ -374,7 +374,7 @@ AVSValue __cdecl Greyscale::Create(AVSValue args, void*, IScriptEnvironment* env
   PClip clip = args[0].AsClip();
   const VideoInfo& vi = clip->GetVideoInfo();
 
-  if (vi.NumChannels() == 1)
+  if (vi.NumComponents() == 1)
     return clip;
 
   return new Greyscale(clip, args[1].AsString(0), env);
