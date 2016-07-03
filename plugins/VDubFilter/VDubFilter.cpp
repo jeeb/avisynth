@@ -237,10 +237,10 @@ void VBitmap::MakeBitmapHeader(BITMAPINFOHEADER *bih) const throw() {
   if (pitch == ((w*bih->biBitCount + 31)/32) * 4)
     bih->biWidth    = w;
   else
-    bih->biWidth    = pitch*8 / depth;
+    bih->biWidth    = LONG(pitch*8 / depth);
 
   bih->biHeight     = h;
-  bih->biSizeImage    = pitch*h;
+  bih->biSizeImage    = DWORD(pitch*h);
   bih->biClrUsed      = 0;
   bih->biClrImportant   = 0;
   bih->biXPelsPerMeter  = 0;
@@ -656,7 +656,7 @@ public:
     }
 
     if (two_buffers) {
-      vi.width = vbDst.pitch >> 2;
+      vi.width = int(vbDst.pitch >> 2);
       vi.height = vbDst.h;
       dst = env->NewVideoFrame(vi);
       SetVFBitmap(dst, &vbDst);

@@ -713,7 +713,7 @@ PVideoFrame Dissolve::GetFrame(int n, IScriptEnvironment* env)
   }
   else // if (pixelsize==4)
   {
-    float fweight = (multiplier) / (overlap + 1);
+    float fweight = (multiplier) / (overlap + 1.0f);
     float finvweight = 1- fweight;
     weighted_merge_planar_c_float(a->GetWritePtr(), b->GetReadPtr(), a->GetPitch(), b->GetPitch(), a->GetRowSize(PLANAR_Y), a->GetHeight(), fweight, finvweight);
     if (vi.IsPlanar()) {
