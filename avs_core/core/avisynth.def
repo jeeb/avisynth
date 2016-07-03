@@ -59,3 +59,11 @@ EXPORTS
   avs_get_read_ptr_p
   avs_is_writable
   avs_get_write_ptr_p
+  avs_is_yuv444p16
+  avs_is_yuv422p16
+  avs_is_yuv420p16
+  avs_is_y16
+  avs_is_yuv444ps
+  avs_is_yuv422ps
+  avs_is_yuv420ps
+  avs_is_y32
