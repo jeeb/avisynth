@@ -190,8 +190,6 @@ struct AVS_Linkage {
   void    (VideoInfo::*SetFPS)(unsigned numerator, unsigned denominator);
   void    (VideoInfo::*MulDivFPS)(unsigned multiplier, unsigned divisor);
   bool    (VideoInfo::*IsSameColorspace)(const VideoInfo& vi) const;
-  bool    (VideoInfo::*reserved[16])(); // Reserve pointer space so that we can keep compatibility to Avs "classic" even when it adds more members
-  int     (VideoInfo::*NumChannels)() const;
 // end struct VideoInfo
 
 /**********************************************************************/
@@ -282,6 +280,12 @@ struct AVS_Linkage {
   int             (AVSValue::*ArraySize)() const;
 // end class AVSValue
 
+/**********************************************************************/
+  // Reserve pointer space so that we can keep compatibility with Avs "classic" even if it adds functions on its own
+  void    (VideoInfo::*reserved[32])();
+/**********************************************************************/
+  // AviSynth+ additions
+  int     (VideoInfo::*NumChannels)() const;
 /**********************************************************************/
 };
 

@@ -684,23 +684,6 @@ static const AVS_Linkage avs_linkage = {    // struct AVS_Linkage {
   &VideoInfo::SetFPS,                       //   void    (VideoInfo::*SetFPS)(unsigned numerator, unsigned denominator)
   &VideoInfo::MulDivFPS,                    //   void    (VideoInfo::*MulDivFPS)(unsigned multiplier, unsigned divisor)
   &VideoInfo::IsSameColorspace,             //   bool    (VideoInfo::*IsSameColorspace)(const VideoInfo& vi) const;
-  NULL,                                     //   reserved for AVS classic
-  NULL,                                     //   reserved for AVS classic
-  NULL,                                     //   reserved for AVS classic
-  NULL,                                     //   reserved for AVS classic
-  NULL,                                     //   reserved for AVS classic
-  NULL,                                     //   reserved for AVS classic
-  NULL,                                     //   reserved for AVS classic
-  NULL,                                     //   reserved for AVS classic
-  NULL,                                     //   reserved for AVS classic
-  NULL,                                     //   reserved for AVS classic
-  NULL,                                     //   reserved for AVS classic
-  NULL,                                     //   reserved for AVS classic
-  NULL,                                     //   reserved for AVS classic
-  NULL,                                     //   reserved for AVS classic
-  NULL,                                     //   reserved for AVS classic
-  NULL,                                     //   reserved for AVS classic
-  &VideoInfo::NumChannels,                  //   int     (VideoInfo::*NumChannels)() const;
 // end struct VideoInfo
 /***************************************************************************************************************/
 // class VideoFrameBuffer
@@ -778,6 +761,43 @@ static const AVS_Linkage avs_linkage = {    // struct AVS_Linkage {
   &AVSValue::AsString2,                     //   const char*     (AVSValue::*AsString2)(const char* def) const;
   &AVSValue::ArraySize,                     //   int             (AVSValue::*ArraySize)() const;
 // end class AVSValue
+/**********************************************************************/
+  NULL,                                     //   reserved for AVS classic
+  NULL,                                     //   reserved for AVS classic
+  NULL,                                     //   reserved for AVS classic
+  NULL,                                     //   reserved for AVS classic
+  NULL,                                     //   reserved for AVS classic
+  NULL,                                     //   reserved for AVS classic
+  NULL,                                     //   reserved for AVS classic
+  NULL,                                     //   reserved for AVS classic
+  NULL,                                     //   reserved for AVS classic
+  NULL,                                     //   reserved for AVS classic
+  NULL,                                     //   reserved for AVS classic
+  NULL,                                     //   reserved for AVS classic
+  NULL,                                     //   reserved for AVS classic
+  NULL,                                     //   reserved for AVS classic
+  NULL,                                     //   reserved for AVS classic
+  NULL,                                     //   reserved for AVS classic
+  NULL,                                     //   reserved for AVS classic
+  NULL,                                     //   reserved for AVS classic
+  NULL,                                     //   reserved for AVS classic
+  NULL,                                     //   reserved for AVS classic
+  NULL,                                     //   reserved for AVS classic
+  NULL,                                     //   reserved for AVS classic
+  NULL,                                     //   reserved for AVS classic
+  NULL,                                     //   reserved for AVS classic
+  NULL,                                     //   reserved for AVS classic
+  NULL,                                     //   reserved for AVS classic
+  NULL,                                     //   reserved for AVS classic
+  NULL,                                     //   reserved for AVS classic
+  NULL,                                     //   reserved for AVS classic
+  NULL,                                     //   reserved for AVS classic
+  NULL,                                     //   reserved for AVS classic
+  NULL,                                     //   reserved for AVS classic
+/**********************************************************************/
+  // AviSynth+ additions
+  &VideoInfo::NumChannels,                  //   int     (VideoInfo::*NumChannels)() const;
+/**********************************************************************/
 };                                          // }
 
 extern __declspec(dllexport) const AVS_Linkage* const AVS_linkage = &avs_linkage;
