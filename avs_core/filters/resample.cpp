@@ -96,37 +96,37 @@ static void resize_v_planar_pointresize(BYTE* dst, const BYTE* src, int dst_pitc
   }
 }
 
-template<typename pixel_size>
+template<typename pixel_t>
 static void resize_v_c_planar(BYTE* dst, const BYTE* src, int dst_pitch, int src_pitch, ResamplingProgram* program, int width, int target_height, const int* pitch_table, const void* storage)
 {
   int filter_size = program->filter_size;
   short* current_coeff = program->pixel_coefficient;
-  pixel_size* src0 = (pixel_size *)src;
-  pixel_size* dst0 = (pixel_size *)dst;
-  dst_pitch = dst_pitch / sizeof(pixel_size);
+  pixel_t* src0 = (pixel_t *)src;
+  pixel_t* dst0 = (pixel_t *)dst;
+  dst_pitch = dst_pitch / sizeof(pixel_t);
+
+  pixel_t limit = 0;
+  if (!std::is_floating_point<pixel_t>::value) {  // floats are unscaled and uncapped 
+    if (sizeof(pixel_t) == 1) limit = 255;
+    else if (sizeof(pixel_t) == 2) limit = pixel_t(65535);
+  }
 
   for (int y = 0; y < target_height; y++) {
     int offset = program->pixel_offset[y];
-    const pixel_size* src_ptr = src0 + pitch_table[offset] / sizeof(pixel_size);
-
-    pixel_size limit = 0;
-    if (!std::is_floating_point<pixel_size>::value) {  // floats are unscaled and uncapped 
-      if (sizeof(pixel_size) == 1) limit = 255;
-      else if (sizeof(pixel_size) == 2) limit = pixel_size(65535);
-    }
+    const pixel_t* src_ptr = src0 + pitch_table[offset] / sizeof(pixel_t);
 
     for (int x = 0; x < width; x++) {
       // todo: check whether int result is enough for 16 bit samples (can an int overflow because of 16384 scale or really need __int64?)
-      std::conditional < sizeof(pixel_size) == 1, int, std::conditional < sizeof(pixel_size) == 2, __int64, float>::type >::type result;
+      std::conditional < sizeof(pixel_t) == 1, int, std::conditional < sizeof(pixel_t) == 2, __int64, float>::type >::type result;
       result = 0;
       for (int i = 0; i < filter_size; i++) {
-        result += (src_ptr+pitch_table[i] / sizeof(pixel_size))[x] * current_coeff[i];
+        result += (src_ptr+pitch_table[i] / sizeof(pixel_t))[x] * current_coeff[i];
       }
-      if (!std::is_floating_point<pixel_size>::value) {  // floats are unscaled and uncapped 
+      if (!std::is_floating_point<pixel_t>::value) {  // floats are unscaled and uncapped 
         result = ((result + 8192) / 16384);
         result = clamp(result, decltype(result)(0), decltype(result)(limit));
       }
-      dst0[x] = (pixel_size)result;
+      dst0[x] = (pixel_t)result;
     }
 
     dst0 += dst_pitch;
@@ -462,37 +462,37 @@ static void resize_h_prepare_coeff_8(ResamplingProgram* p, IScriptEnvironment2* 
   p->pixel_coefficient = new_coeff;
 }
 
-template<typename pixel_size>
+template<typename pixel_t>
 static void resize_h_c_planar(BYTE* dst, const BYTE* src, int dst_pitch, int src_pitch, ResamplingProgram* program, int width, int height) {
   int filter_size = program->filter_size;
   short* current = program->pixel_coefficient;
 
-  pixel_size limit = 0;
-  if (!std::is_floating_point<pixel_size>::value) {  // floats are unscaled and uncapped 
-    if (sizeof(pixel_size) == 1) limit = 255;
-    else if (sizeof(pixel_size) == 2) limit = pixel_size(65535);
+  pixel_t limit = 0;
+  if (!std::is_floating_point<pixel_t>::value) {  // floats are unscaled and uncapped 
+    if (sizeof(pixel_t) == 1) limit = 255;
+    else if (sizeof(pixel_t) == 2) limit = pixel_t(65535);
   }
 
-  src_pitch = src_pitch / sizeof(pixel_size);
-  dst_pitch = dst_pitch / sizeof(pixel_size);
+  src_pitch = src_pitch / sizeof(pixel_t);
+  dst_pitch = dst_pitch / sizeof(pixel_t);
 
-  pixel_size* src0 = (pixel_size*)src;
-  pixel_size* dst0 = (pixel_size*)dst;
+  pixel_t* src0 = (pixel_t*)src;
+  pixel_t* dst0 = (pixel_t*)dst;
 
   for (int x = 0; x < width; x++) {
     int begin = program->pixel_offset[x];
     for (int y = 0; y < height; y++) {
       // todo: check whether int result is enough for 16 bit samples (can an int overflow because of 16384 scale or really need __int64?)
-      std::conditional < sizeof(pixel_size) == 1, int, std::conditional < sizeof(pixel_size) == 2, __int64, float>::type >::type result;
+      std::conditional < sizeof(pixel_t) == 1, int, std::conditional < sizeof(pixel_t) == 2, __int64, float>::type >::type result;
       result = 0;
       for (int i = 0; i < filter_size; i++) {
         result += (src0+y*src_pitch)[(begin+i)] * current[i];
       }
-      if (!std::is_floating_point<pixel_size>::value) {  // floats are unscaled and uncapped 
+      if (!std::is_floating_point<pixel_t>::value) {  // floats are unscaled and uncapped 
         result = ((result + 8192) / 16384);
         result = clamp(result, decltype(result)(0), decltype(result)(limit));
       }
-      (dst0 + y*dst_pitch)[x] = (pixel_size)result;
+      (dst0 + y*dst_pitch)[x] = (pixel_t)result;
     }
     current += filter_size;
   }
