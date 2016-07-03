@@ -41,7 +41,7 @@
 #include <emmintrin.h>
 #include <cassert>
 
-ConvertNativeToStacked::ConvertNativeToStacked(PClip src, IScriptEnvironment* env) : GenericVideoFilter(src) {
+ConvertHbdToStacked::ConvertHbdToStacked(PClip src, IScriptEnvironment* env) : GenericVideoFilter(src) {
 
   if (vi.IsColorSpace(VideoInfo::CS_YUV420P16)) vi.pixel_type = VideoInfo::CS_YV12;
   else if (vi.IsColorSpace(VideoInfo::CS_YUV422P16)) vi.pixel_type = VideoInfo::CS_YV16;
@@ -55,7 +55,7 @@ ConvertNativeToStacked::ConvertNativeToStacked(PClip src, IScriptEnvironment* en
   return;
 }
 
-PVideoFrame __stdcall ConvertNativeToStacked::GetFrame(int n, IScriptEnvironment* env) {
+PVideoFrame __stdcall ConvertHbdToStacked::GetFrame(int n, IScriptEnvironment* env) {
   PVideoFrame src = child->GetFrame(n, env);
 
   PVideoFrame dst = env->NewVideoFrame(vi);
@@ -118,15 +118,15 @@ PVideoFrame __stdcall ConvertNativeToStacked::GetFrame(int n, IScriptEnvironment
   return dst;
 }
 
-AVSValue __cdecl ConvertNativeToStacked::Create(AVSValue args, void*, IScriptEnvironment* env) {
+AVSValue __cdecl ConvertHbdToStacked::Create(AVSValue args, void*, IScriptEnvironment* env) {
   PClip clip = args[0].AsClip();
   /*if (clip->GetVideoInfo().IsY8())
     return clip;*/
-  return new ConvertNativeToStacked(clip, env);
+  return new ConvertHbdToStacked(clip, env);
 }
 
 
-ConvertStackedToNative::ConvertStackedToNative(PClip src, IScriptEnvironment* env) : GenericVideoFilter(src) {
+ConvertHbdFromStacked::ConvertHbdFromStacked(PClip src, IScriptEnvironment* env) : GenericVideoFilter(src) {
 
   if (vi.IsYV12()) vi.pixel_type = VideoInfo::CS_YUV420P16;
   else if (vi.IsYV16()) vi.pixel_type = VideoInfo::CS_YUV422P16;
@@ -139,7 +139,7 @@ ConvertStackedToNative::ConvertStackedToNative(PClip src, IScriptEnvironment* en
   return;
 }
 
-PVideoFrame __stdcall ConvertStackedToNative::GetFrame(int n, IScriptEnvironment* env) {
+PVideoFrame __stdcall ConvertHbdFromStacked::GetFrame(int n, IScriptEnvironment* env) {
   PVideoFrame src = child->GetFrame(n, env);
 
   PVideoFrame dst = env->NewVideoFrame(vi);
@@ -197,7 +197,7 @@ PVideoFrame __stdcall ConvertStackedToNative::GetFrame(int n, IScriptEnvironment
   return dst;
 }
 
-AVSValue __cdecl ConvertStackedToNative::Create(AVSValue args, void*, IScriptEnvironment* env) {
+AVSValue __cdecl ConvertHbdFromStacked::Create(AVSValue args, void*, IScriptEnvironment* env) {
   PClip clip = args[0].AsClip();
-  return new ConvertStackedToNative(clip, env);
+  return new ConvertHbdFromStacked(clip, env);
 }

@@ -40,10 +40,10 @@
 #include <avisynth.h>
 #include <stdint.h>
 
-class ConvertNativeToStacked : public GenericVideoFilter
+class ConvertHbdToStacked : public GenericVideoFilter
 {
 public:
-  ConvertNativeToStacked(PClip src, IScriptEnvironment* env);
+  ConvertHbdToStacked(PClip src, IScriptEnvironment* env);
   PVideoFrame __stdcall GetFrame(int n,IScriptEnvironment* env);
 
   int __stdcall SetCacheHints(int cachehints, int frame_range) override {
@@ -54,10 +54,10 @@ public:
 private:
 };
 
-class ConvertStackedToNative : public GenericVideoFilter
+class ConvertHbdFromStacked : public GenericVideoFilter
 {
 public:
-  ConvertStackedToNative(PClip src, IScriptEnvironment* env);
+  ConvertHbdFromStacked(PClip src, IScriptEnvironment* env);
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
 
   int __stdcall SetCacheHints(int cachehints, int frame_range) override {

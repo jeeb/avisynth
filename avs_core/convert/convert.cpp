@@ -60,8 +60,8 @@ extern const AVSFunction Convert_filters[] = {       // matrix can be "rec601", 
   { "ConvertToYV411", BUILTIN_FUNC_PREFIX, "c[interlaced]b[matrix]s[ChromaInPlacement]s[chromaresample]s", ConvertToPlanarGeneric::CreateYV411},
   { "ConvertToYUY2",  BUILTIN_FUNC_PREFIX, "c[interlaced]b[matrix]s[ChromaInPlacement]s[chromaresample]s", ConvertToYUY2::Create },
   { "ConvertBackToYUY2", BUILTIN_FUNC_PREFIX, "c[matrix]s", ConvertBackToYUY2::Create },
-  { "ConvertStackedToNative", BUILTIN_FUNC_PREFIX, "c", ConvertStackedToNative::Create },
-  { "ConvertNativeToStacked", BUILTIN_FUNC_PREFIX, "c", ConvertNativeToStacked::Create },
+  { "ConvertHbdFromStacked", BUILTIN_FUNC_PREFIX, "c", ConvertHbdFromStacked::Create },
+  { "ConvertHbdToStacked", BUILTIN_FUNC_PREFIX, "c", ConvertHbdToStacked::Create },
   { 0 }
 };
 
