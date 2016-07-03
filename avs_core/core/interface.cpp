@@ -306,9 +306,15 @@ int VideoInfo::ComponentSize() const {
   case CS_UNKNOWN:
 	return 0;
   case CS_RAW32:
+  case CS_YUV444PS:
+  case CS_YUV422PS:
+  case CS_YUV420PS:
   case CS_Y32:
     return 4;
   case CS_Y16:
+  case CS_YUV444P16:
+  case CS_YUV422P16:
+  case CS_YUV420P16:
     return 2;
   default:
     return 1;
