@@ -462,7 +462,7 @@ variables (and clips) here too. See DirectShowSource for some examples.
     }
 
 
-The :ref:`AddFunction <cplusplus_addfunction>` has the following paramters:
+The :ref:`AddFunction <cplusplus_addfunction>` has the following parameters:
 ::
 
     AddFunction(Filtername, Arguments, Function to call, 0);
@@ -470,14 +470,36 @@ The :ref:`AddFunction <cplusplus_addfunction>` has the following paramters:
 
 *Arguments* is a string that defines the types and optional names of the
 arguments for your filter. The possible types are:
-::
 
-    c - clip
-    i - integer
-    f - float
-    s - string
-    b - boolean
++---------------------------------+
+| Argument type specifier strings |
++=================================+
++ c - clip                        +
++---------------------------------+
++ i - integer                     +
++---------------------------------+
++ f - float                       +
++---------------------------------+
++ s - string                      +
++---------------------------------+
++ b - boolean                     +
++---------------------------------+
++ . - Any type (dot)              +
++---------------------------------+
 
++-----------------------------------+
++ Array Specifiers                  +
++===================================+
++ i* - Integer Array, zero or more  +
++-----------------------------------+
++ i+ - Integer Array, one or more   +
++-----------------------------------+
++ .* - Any type Array, zero or more +
++-----------------------------------+
++ .+ - Any type Array, one or more  +
++-----------------------------------+
+
+(have a look at StackVertical and SelectEvery for example as to how access such arrays)
 
 The text inside the [ ] lets you used named parameters in your script. Thus
 ::
@@ -499,4 +521,4 @@ ____
 
 Back to :doc:`FilterSDK`
 
-$Date: 2014/11/12 07:04:28 $
+$Date: 2015/09/14 20:23:59 $
