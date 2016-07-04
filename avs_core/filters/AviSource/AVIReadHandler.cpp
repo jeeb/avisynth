@@ -1,4 +1,4 @@
-//	VirtualDub - Video processing and capture application
+ï»¿//	VirtualDub - Video processing and capture application
 //	Copyright (C) 1998-2001 Avery Lee
 //
 //	This program is free software; you can redistribute it and/or modify
@@ -130,26 +130,26 @@ typedef __int64 QUADWORD;
 #pragma warning (disable: 4200) // nonstandard extension used : zero-sized array in struct/union
 
 	typedef struct _avisuperindex_chunk {
-	FOURCC fcc;					// ’ix##’
+	FOURCC fcc;					// â€™ix##â€™
 	DWORD cb;					// size of this structure
 	WORD wLongsPerEntry;		// must be 4 (size of each entry in aIndex array)
 	BYTE bIndexSubType;			// must be 0 or AVI_INDEX_2FIELD
 	BYTE bIndexType;			// must be AVI_INDEX_OF_INDEXES
 	DWORD nEntriesInUse;		// number of entries in aIndex array that
 								// are used
-	DWORD dwChunkId;			// ’##dc’ or ’##db’ or ’##wb’, etc
+	DWORD dwChunkId;			// â€™##dcâ€™ or â€™##dbâ€™ or â€™##wbâ€™, etc
 	DWORD dwReserved[3];		// must be 0
 	struct _avisuperindex_entry aIndex[];
 } AVISUPERINDEX, * PAVISUPERINDEX;
 
 typedef struct _avistdindex_chunk {
-	FOURCC fcc;					// ’ix##’
+	FOURCC fcc;					// â€™ix##â€™
 	DWORD cb;
 	WORD wLongsPerEntry;		// must be sizeof(aIndex[0])/sizeof(DWORD)
 	BYTE bIndexSubType;			// must be 0
 	BYTE bIndexType;			// must be AVI_INDEX_OF_CHUNKS
 	DWORD nEntriesInUse;		//
-	DWORD dwChunkId;			// ’##dc’ or ’##db’ or ’##wb’ etc..
+	DWORD dwChunkId;			// â€™##dcâ€™ or â€™##dbâ€™ or â€™##wbâ€™ etc..
 	QUADWORD qwBaseOffset;		// all dwOffsets in aIndex array are
 								// relative to this
 	DWORD dwReserved3;			// must be 0

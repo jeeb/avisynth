@@ -1,4 +1,4 @@
-/*
+﻿/*
   ConditionalReader  (c) 2004 by Klaus Post
 
   This program is free software; you can redistribute it and/or modify
@@ -69,7 +69,7 @@ public:
 
 /* ------------------------------------------------------------------------------
 ** Write function to evaluate expressions per frame and write the results to file
-** Ernst Pech�, 2004
+** Ernst Peché, 2004
 */
 
 class Write : public GenericVideoFilter
