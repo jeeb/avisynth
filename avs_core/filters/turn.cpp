@@ -47,10 +47,10 @@
 
 
 extern const AVSFunction Turn_filters[] = {
-  { "TurnLeft",  BUILTIN_FUNC_PREFIX, "c",Turn::create_turnleft },
-  { "TurnRight", BUILTIN_FUNC_PREFIX, "c",Turn::create_turnright },
-  { "Turn180",   BUILTIN_FUNC_PREFIX, "c",Turn::create_turn180 },
-  { 0 }
+    { "TurnLeft",  BUILTIN_FUNC_PREFIX, "c", Turn::create_turnleft },
+    { "TurnRight", BUILTIN_FUNC_PREFIX, "c", Turn::create_turnright },
+    { "Turn180",   BUILTIN_FUNC_PREFIX, "c", Turn::create_turn180 },
+    { 0 }
 };
 
 enum TurnDirection
@@ -60,774 +60,619 @@ enum TurnDirection
   DIRECTION_180 = 2
 };
 
-static __forceinline void left_transpose_4_doublewords_sse2(__m128i &src1, __m128i &src2, __m128i& src3, __m128i &src4) {
-  __m128i b0a0b1a1 = _mm_unpacklo_epi32(src2, src1);
-  __m128i b2a2b3a3 = _mm_unpackhi_epi32(src2, src1);
-  __m128i d0c0d1c1 = _mm_unpacklo_epi32(src4, src3);
-  __m128i d2c2d3c3 = _mm_unpackhi_epi32(src4, src3);
 
-  src1 = _mm_unpacklo_epi64(d0c0d1c1, b0a0b1a1); //d0c0b0a0
-  src2 = _mm_unpackhi_epi64(d0c0d1c1, b0a0b1a1); //d1c1b1a1
-  src3 = _mm_unpacklo_epi64(d2c2d3c3, b2a2b3a3); //d2c2b2a2
-  src4 = _mm_unpackhi_epi64(d2c2d3c3, b2a2b3a3); //d3c3b3a3
-}
+// TurnLeft() is FlipVertical().TurnRight().FlipVertical().
+// Therefore, we don't have to implement both TurnRight() and TurnLeft().
 
-static __forceinline void right_transpose_4_doublewords_sse2(__m128i &src1, __m128i &src2, __m128i& src3, __m128i &src4) {
-  __m128i a0b0a1b1 = _mm_unpacklo_epi32(src1, src2);
-  __m128i a2b2a3b3 = _mm_unpackhi_epi32(src1, src2);
-  __m128i c0d0c1d1 = _mm_unpacklo_epi32(src3, src4);
-  __m128i c2d2c3d3 = _mm_unpackhi_epi32(src3, src4);
-
-  src1 = _mm_unpacklo_epi64(a0b0a1b1, c0d0c1d1); //a0b0c0d0
-  src2 = _mm_unpackhi_epi64(a0b0a1b1, c0d0c1d1); //a1b1c1d1
-  src3 = _mm_unpacklo_epi64(a2b2a3b3, c2d2c3d3); //a2b2c2d2
-  src4 = _mm_unpackhi_epi64(a2b2a3b3, c2d2c3d3); //a3b3c3d3
-}
-
-void turn_left_rgb24(const BYTE *srcp, BYTE *dstp, int width, int height, int src_pitch, int dst_pitch) {
-  int dstp_offset;
-  for (int y = 0; y<height; y++) {
-    dstp_offset = (height-1-y)*3;
-    for (int x=0; x<width; x+=3) {	
-      dstp[dstp_offset+0] = srcp[x+0];
-      dstp[dstp_offset+1] = srcp[x+1];
-      dstp[dstp_offset+2] = srcp[x+2];
-      dstp_offset += dst_pitch;
-    }
-    srcp += src_pitch;
-  }
-}
-
-void turn_right_rgb24(const BYTE *srcp, BYTE *dstp, int width, int height, int src_pitch, int dst_pitch) {
-  int dstp_offset;
-  int dstp_base = (width/3-1) * dst_pitch;
-  for (int y=0; y<height; y++) {
-    dstp_offset = dstp_base + y*3;
-    for (int x = 0; x<width; x+=3) {	
-      dstp[dstp_offset+0] = srcp[x+0];
-      dstp[dstp_offset+1] = srcp[x+1];
-      dstp[dstp_offset+2] = srcp[x+2];
-      dstp_offset -= dst_pitch;
-    }
-    srcp += src_pitch;
-  }
-}
-
-static void turn_180_rgb24(const BYTE *srcp, BYTE *dstp, int width, int height, int src_pitch, int dst_pitch) {
-  dstp += (height-1)*dst_pitch + (width-3);
-  for (int y = 0; y<height; y++) {
-    for (int x = 0; x<width; x+=3) {	
-      dstp[-x+0] = srcp[x+0];
-      dstp[-x+1] = srcp[x+1];
-      dstp[-x+2] = srcp[x+2];
-    }
-    dstp -= dst_pitch;
-    srcp += src_pitch;
-  }
-}
-
-void turn_left_rgb32_c(const BYTE *srcp, BYTE *dstp, int width, int height, int src_pitch, int dst_pitch)
+template <typename T>
+static inline void turn_right_plane_c(const BYTE* srcp, BYTE* dstp, int src_rowsize, int height, int src_pitch, int dst_pitch)
 {
-  const unsigned int *l_srcp = reinterpret_cast<const unsigned int *>(srcp);
-  unsigned int *l_dstp = reinterpret_cast<unsigned int *>(dstp);
-  int l_rowsize = width/4;
-  int l_src_pitch = src_pitch/4;
-  int l_dst_pitch = dst_pitch/4;
+    const BYTE* s0 = srcp + src_pitch * (height - 1);
+    BYTE* d0 = dstp;
 
-  int dstp_offset;
-  for (int y=0; y<height; y++) {
-    dstp_offset = (height-1-y);
-    for (int x=0; x<l_rowsize; x++) {	
-      l_dstp[dstp_offset] = l_srcp[x];
-      dstp_offset += l_dst_pitch;
+    for (int y = 0; y < height; ++y)
+    {
+        BYTE* d0 = dstp;
+        for (int x = 0; x < src_rowsize; x += sizeof(T))
+        {
+            *reinterpret_cast<T*>(d0) = *reinterpret_cast<const T*>(s0 + x);
+            d0 += dst_pitch;
+        }
+        s0 -= src_pitch;
+        dstp += sizeof(T);
     }
-    l_srcp += l_src_pitch;
-  }
 }
 
-void turn_left_rgb32_sse2(const BYTE *srcp, BYTE *dstp, int src_width_bytes, int src_height, int src_pitch, int dst_pitch)
+
+void turn_right_plane_8_c(const BYTE* srcp, BYTE* dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch)
 {
-  const BYTE* srcp2 = srcp;
-
-  int src_width_mod16 = (src_width_bytes / 16) * 16;
-  int src_height_mod4 = (src_height / 4) * 4;
-
-  for(int y=0; y<src_height_mod4; y+=4)
-  {
-    int offset = (src_height*4)-16-(y*4);
-    for (int x=0; x<src_width_mod16; x+=16)
-    {
-      __m128i src1 = _mm_loadu_si128(reinterpret_cast<const __m128i*>(srcp+x+src_pitch*0));
-      __m128i src2 = _mm_loadu_si128(reinterpret_cast<const __m128i*>(srcp+x+src_pitch*1));
-      __m128i src3 = _mm_loadu_si128(reinterpret_cast<const __m128i*>(srcp+x+src_pitch*2));
-      __m128i src4 = _mm_loadu_si128(reinterpret_cast<const __m128i*>(srcp+x+src_pitch*3));
-
-      left_transpose_4_doublewords_sse2(src1, src2, src3, src4);
-
-      _mm_storeu_si128(reinterpret_cast<__m128i*>(dstp+offset+dst_pitch*0), src1);
-      _mm_storeu_si128(reinterpret_cast<__m128i*>(dstp+offset+dst_pitch*1), src2);
-      _mm_storeu_si128(reinterpret_cast<__m128i*>(dstp+offset+dst_pitch*2), src3);
-      _mm_storeu_si128(reinterpret_cast<__m128i*>(dstp+offset+dst_pitch*3), src4);
-
-      offset += dst_pitch*4;
-    }
-
-    if (src_width_mod16 != src_width_bytes) {
-      offset = src_height*4 - 16 - (y*4) + ((src_width_bytes/4)-4)*dst_pitch;
-
-      __m128i src1 = _mm_loadu_si128(reinterpret_cast<const __m128i*>(srcp+src_width_bytes-16+src_pitch*0));
-      __m128i src2 = _mm_loadu_si128(reinterpret_cast<const __m128i*>(srcp+src_width_bytes-16+src_pitch*1));
-      __m128i src3 = _mm_loadu_si128(reinterpret_cast<const __m128i*>(srcp+src_width_bytes-16+src_pitch*2));
-      __m128i src4 = _mm_loadu_si128(reinterpret_cast<const __m128i*>(srcp+src_width_bytes-16+src_pitch*3));
-
-      left_transpose_4_doublewords_sse2(src1, src2, src3, src4);
-
-      _mm_storeu_si128(reinterpret_cast<__m128i*>(dstp + offset + dst_pitch * 0), src1);
-      _mm_storeu_si128(reinterpret_cast<__m128i*>(dstp + offset + dst_pitch * 1), src2);
-      _mm_storeu_si128(reinterpret_cast<__m128i*>(dstp + offset + dst_pitch * 2), src3);
-      _mm_storeu_si128(reinterpret_cast<__m128i*>(dstp + offset + dst_pitch * 3), src4);
-    }
-
-    srcp += src_pitch * 4;
-  }
-
-  if (src_height_mod4 != src_height) {
-    turn_left_rgb32_c(srcp2 + src_height_mod4 * src_pitch, dstp, src_width_bytes, src_height - src_height_mod4, src_pitch, dst_pitch);
-  }
+    turn_right_plane_c<BYTE>(srcp, dstp, src_rowsize, src_height, src_pitch, dst_pitch);
 }
 
-void turn_right_rgb32_c(const BYTE *srcp, BYTE *dstp, int width, int height, int src_pitch, int dst_pitch)
+
+void turn_left_plane_8_c(const BYTE* srcp, BYTE* dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch)
 {
-  const unsigned int *l_srcp = reinterpret_cast<const unsigned int *>(srcp);
-  unsigned int *l_dstp = reinterpret_cast<unsigned int *>(dstp);
-  int l_rowsize = width/4;
-  int l_src_pitch = src_pitch/4;
-  int l_dst_pitch = dst_pitch/4;
-
-  int dstp_offset;
-  int dstp_base = (l_rowsize-1) * l_dst_pitch;
-  for (int y = 0; y<height; y++) {
-    dstp_offset = dstp_base + y;
-    for (int x = 0; x<l_rowsize; x++) {	
-      l_dstp[dstp_offset] = l_srcp[x];
-      dstp_offset -= l_dst_pitch;
-    }
-    l_srcp += l_src_pitch;
-  }
+    turn_right_plane_c<BYTE>(srcp + src_pitch * (src_height - 1), dstp + dst_pitch * (src_rowsize - 1), src_rowsize, src_height, -src_pitch, -dst_pitch);
 }
 
-void turn_right_rgb32_sse2(const BYTE *srcp, BYTE *dstp, int src_width_bytes, int src_height, int src_pitch, int dst_pitch)
+
+static __forceinline __m128i movehl(const __m128i& x)
 {
-  const BYTE* srcp2 = srcp;
-
-  int src_width_mod16 = (src_width_bytes / 16) * 16;
-  int src_height_mod4 = (src_height / 4) * 4;
-
-  for(int y=0; y<src_height_mod4; y+=4)
-  {
-    int offset = (src_width_bytes / 4 - 4) * dst_pitch + (y*4);
-    for (int x=0; x<src_width_mod16; x+=16)
-    {
-      __m128i src1 = _mm_loadu_si128(reinterpret_cast<const __m128i*>(srcp+x+src_pitch*0));
-      __m128i src2 = _mm_loadu_si128(reinterpret_cast<const __m128i*>(srcp+x+src_pitch*1));
-      __m128i src3 = _mm_loadu_si128(reinterpret_cast<const __m128i*>(srcp+x+src_pitch*2));
-      __m128i src4 = _mm_loadu_si128(reinterpret_cast<const __m128i*>(srcp+x+src_pitch*3));
-
-      right_transpose_4_doublewords_sse2(src1, src2, src3, src4);
-
-      _mm_storeu_si128(reinterpret_cast<__m128i*>(dstp+offset+dst_pitch*0), src4);
-      _mm_storeu_si128(reinterpret_cast<__m128i*>(dstp+offset+dst_pitch*1), src3);
-      _mm_storeu_si128(reinterpret_cast<__m128i*>(dstp+offset+dst_pitch*2), src2);
-      _mm_storeu_si128(reinterpret_cast<__m128i*>(dstp+offset+dst_pitch*3), src1);
-
-      offset -= dst_pitch*4;
-    }
-
-    if (src_width_mod16 != src_width_bytes) {
-      __m128i src1 = _mm_loadu_si128(reinterpret_cast<const __m128i*>(srcp+src_width_bytes-16+src_pitch*0));
-      __m128i src2 = _mm_loadu_si128(reinterpret_cast<const __m128i*>(srcp+src_width_bytes-16+src_pitch*1));
-      __m128i src3 = _mm_loadu_si128(reinterpret_cast<const __m128i*>(srcp+src_width_bytes-16+src_pitch*2));
-      __m128i src4 = _mm_loadu_si128(reinterpret_cast<const __m128i*>(srcp+src_width_bytes-16+src_pitch*3));
-
-      right_transpose_4_doublewords_sse2(src1, src2, src3, src4);
-
-      _mm_storeu_si128(reinterpret_cast<__m128i*>(dstp + y*4 + dst_pitch * 0), src4);
-      _mm_storeu_si128(reinterpret_cast<__m128i*>(dstp + y*4 + dst_pitch * 1), src3);
-      _mm_storeu_si128(reinterpret_cast<__m128i*>(dstp + y*4 + dst_pitch * 2), src2);
-      _mm_storeu_si128(reinterpret_cast<__m128i*>(dstp + y*4 + dst_pitch * 3), src1);
-    }
-
-    srcp += src_pitch * 4;
-  }
-
-  if (src_height_mod4 != src_height) {
-    turn_right_rgb32_c(srcp2 + src_height_mod4 * src_pitch, dstp + src_height_mod4*4, src_width_bytes, src_height - src_height_mod4, src_pitch, dst_pitch);
-  }
+    __m128 ps = _mm_castsi128_ps(x);
+    return _mm_castps_si128(_mm_movehl_ps(ps, ps));
 }
 
-static void turn_180_rgb32_c(const BYTE *srcp, BYTE *dstp, int width, int height, int src_pitch, int dst_pitch)
+
+// This pattern seems faster than the others.
+static __forceinline void transpose_8x8x8_sse2(const BYTE* srcp, BYTE* dstp, int src_pitch, int dst_pitch)
 {
-  const unsigned int *l_srcp = reinterpret_cast<const unsigned int *>(srcp);
-  unsigned int *l_dstp = reinterpret_cast<unsigned int *>(dstp);
-  int l_rowsize = width/4;
-  int l_src_pitch = src_pitch/4;
-  int l_dst_pitch = dst_pitch/4;
+    __m128i a07 = _mm_loadl_epi64(reinterpret_cast<const __m128i*>(srcp + src_pitch * 0)); //a0 a1 a2 a3 a4 a5 a6 a7
+    __m128i b07 = _mm_loadl_epi64(reinterpret_cast<const __m128i*>(srcp + src_pitch * 1)); //b0 b1 b2 b3 b4 b5 b6 b7
+    __m128i c07 = _mm_loadl_epi64(reinterpret_cast<const __m128i*>(srcp + src_pitch * 2)); //c0 c1 c2 c3 c4 c5 c6 c7
+    __m128i d07 = _mm_loadl_epi64(reinterpret_cast<const __m128i*>(srcp + src_pitch * 3)); //d0 d1 d2 d3 d4 d5 d6 d7
+    __m128i e07 = _mm_loadl_epi64(reinterpret_cast<const __m128i*>(srcp + src_pitch * 4)); //e0 e1 e2 e3 e4 e5 e6 e7
+    __m128i f07 = _mm_loadl_epi64(reinterpret_cast<const __m128i*>(srcp + src_pitch * 5)); //f0 f1 f2 f3 f4 f5 f6 f7
+    __m128i g07 = _mm_loadl_epi64(reinterpret_cast<const __m128i*>(srcp + src_pitch * 6)); //g0 g1 g2 g3 g4 g5 g6 g7
+    __m128i h07 = _mm_loadl_epi64(reinterpret_cast<const __m128i*>(srcp + src_pitch * 7)); //h0 h1 h2 h3 h4 h5 h6 h7
 
-  l_dstp += (height-1)*l_dst_pitch + (l_rowsize-1);
-  for (int y = 0; y<height; y++) {
-    for (int x = 0; x<l_rowsize; x++) {	
-      l_dstp[-x] = l_srcp[x];
-    }
-    l_dstp -= l_dst_pitch;
-    l_srcp += l_src_pitch;
-  }
+    __m128i ea07 = _mm_unpacklo_epi8(e07, a07); //e0 a0 e1 a1 e2 a2 e3 a3 e4 a4 e5 a5 e6 a6 e7 a7
+    __m128i fb07 = _mm_unpacklo_epi8(f07, b07); //f0 b0 f1 b1 f2 b2 f3 b3 f4 b4 f5 b5 f6 b6 f7 b7
+    __m128i gc07 = _mm_unpacklo_epi8(g07, c07); //g0 c0 g1 c1 g2 c2 g3 c3 g4 c4 g5 c5 g6 c6 g7 c7
+    __m128i hd07 = _mm_unpacklo_epi8(h07, d07); //h0 d0 h1 d1 h2 d2 h3 d3 h4 d4 h5 d5 h6 d6 h7 d7
+
+    __m128i geca03 = _mm_unpacklo_epi8(gc07, ea07); //g0 e0 c0 a0 g1 e1 c1 a1 g2 e2 c2 a2 g3 e3 c3 a3
+    __m128i geca47 = _mm_unpackhi_epi8(gc07, ea07); //g4 e4 c4 a4 g5 e5 c5 a5 g6 e6 c6 a6 g7 e7 c7 a7
+    __m128i hfdb03 = _mm_unpacklo_epi8(hd07, fb07); //h0 f0 d0 b0 h1 f1 d1 b1 h2 f2 d2 b2 h3 f3 d3 b3
+    __m128i hfdb47 = _mm_unpackhi_epi8(hd07, fb07); //h4 f4 d4 b4 h5 f5 d5 b5 h6 f6 d6 b6 h7 f7 d7 b7
+
+    __m128i hgfedcba01 = _mm_unpacklo_epi8(hfdb03, geca03); //h0 g0 f0 e0 d0 c0 b0 a0 h1 g1 f1 e1 d1 c1 b1 a1
+    __m128i hgfedcba23 = _mm_unpackhi_epi8(hfdb03, geca03); //h2 g2 f2 e2 d2 c2 b2 a2 h3 g3 f3 e3 d3 c3 b3 a3
+    __m128i hgfedcba45 = _mm_unpacklo_epi8(hfdb47, geca47); //h4 g4 f4 e4 d4 c4 b4 a4 h5 g5 f5 e5 d5 c5 b5 a5
+    __m128i hgfedcba67 = _mm_unpackhi_epi8(hfdb47, geca47); //h6 g6 f6 e6 d6 c6 b6 a6 h7 g7 f7 e7 d7 c7 b7 a7
+
+    _mm_storel_epi64(reinterpret_cast<__m128i*>(dstp + dst_pitch * 0), hgfedcba01);
+    _mm_storel_epi64(reinterpret_cast<__m128i*>(dstp + dst_pitch * 1), movehl(hgfedcba01));
+    _mm_storel_epi64(reinterpret_cast<__m128i*>(dstp + dst_pitch * 2), hgfedcba23);
+    _mm_storel_epi64(reinterpret_cast<__m128i*>(dstp + dst_pitch * 3), movehl(hgfedcba23));
+    _mm_storel_epi64(reinterpret_cast<__m128i*>(dstp + dst_pitch * 4), hgfedcba45);
+    _mm_storel_epi64(reinterpret_cast<__m128i*>(dstp + dst_pitch * 5), movehl(hgfedcba45));
+    _mm_storel_epi64(reinterpret_cast<__m128i*>(dstp + dst_pitch * 6), hgfedcba67);
+    _mm_storel_epi64(reinterpret_cast<__m128i*>(dstp + dst_pitch * 7), movehl(hgfedcba67));
 }
 
-static void turn_180_rgb32_sse2(const BYTE *srcp, BYTE *dstp, int src_width, int src_height, int src_pitch, int dst_pitch)
+
+void turn_right_plane_8_sse2(const BYTE* srcp, BYTE* dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch)
 {
-  BYTE* dstp2 = dstp;
-  const BYTE* srcp2 = srcp;
-  int src_width_mod16 = (src_width / 16) * 16;
+    const BYTE* s0 = srcp;
+    int w = src_rowsize & ~7;
+    int h = src_height & ~7;
 
-  __m128i zero = _mm_setzero_si128();
-
-  dstp += dst_pitch * (src_height-1) + src_width - 16;
-  for(int y = 0; y < src_height; ++y)
-  {
-    for (int x = 0; x < src_width_mod16; x+=16)
+    for (int y = 0; y < h; y += 8)
     {
-      __m128i src = _mm_loadu_si128(reinterpret_cast<const __m128i*>(srcp+x));
-      src = _mm_shuffle_epi32(src, _MM_SHUFFLE(0, 1, 2, 3));
-      _mm_storeu_si128(reinterpret_cast<__m128i*>(dstp-x), src);
+        BYTE* d0 = dstp + src_height - 8  - y;
+        for (int x = 0; x < w; x += 8)
+        {
+            transpose_8x8x8_sse2(s0 + x, d0, src_pitch, dst_pitch);
+            d0 += dst_pitch * 8;
+        }
+        s0 += src_pitch * 8;
     }
 
-    if (src_width_mod16 != src_width) {
-      __m128i src = _mm_loadu_si128(reinterpret_cast<const __m128i*>(srcp + src_width-16));
-      src = _mm_shuffle_epi32(src, _MM_SHUFFLE(0, 1, 2, 3));
-      _mm_storeu_si128(reinterpret_cast<__m128i*>(dstp-src_width+16), src);
+    if (src_rowsize != w)
+    {
+        turn_right_plane_8_c(srcp + w, dstp + w * dst_pitch, src_rowsize - w, src_height, src_pitch, dst_pitch);
     }
 
-    srcp += src_pitch;
-    dstp -= dst_pitch;
-  }
+    if (src_height != h)
+    {
+        turn_right_plane_8_c(srcp + h * src_pitch, dstp, src_rowsize, src_height - h, src_pitch, dst_pitch);
+    }
 }
 
-static void turn_right_yuy2(const BYTE *srcp, BYTE *dstp, int width, int height, int src_pitch, int dst_pitch)
+
+void turn_left_plane_8_sse2(const BYTE* srcp, BYTE* dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch)
 {
-  BYTE u,v;
-  int dstp_offset;
-
-  for (int y=0; y<height; y+=2)
-  {
-    dstp_offset = ((height-2-y)<<1);
-    for (int x=0; x<width; x+=4)
-    {
-      u = (srcp[x+1] + srcp[x+1+src_pitch] + 1) >> 1;
-      v = (srcp[x+3] + srcp[x+3+src_pitch] + 1) >> 1;
-      dstp[dstp_offset+0] = srcp[x+src_pitch];
-      dstp[dstp_offset+1] = u;
-      dstp[dstp_offset+2] = srcp[x];
-      dstp[dstp_offset+3] = v;
-      dstp_offset += dst_pitch;
-      dstp[dstp_offset+0] = srcp[x+src_pitch+2];
-      dstp[dstp_offset+1] = u;
-      dstp[dstp_offset+2] = srcp[x+2];
-      dstp[dstp_offset+3] = v;
-      dstp_offset += dst_pitch;
-    }
-    srcp += src_pitch<<1;
-  }
+    turn_right_plane_8_sse2(srcp + (src_height - 1) * src_pitch, dstp + (src_rowsize - 1) * dst_pitch, src_rowsize, src_height, -src_pitch, -dst_pitch);
 }
 
-static void turn_left_yuy2(const BYTE *srcp, BYTE *dstp, int width, int height, int src_pitch, int dst_pitch)
+
+void turn_right_plane_16_c(const BYTE* srcp, BYTE* dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch)
 {
-  BYTE u,v;
-  int dstp_offset;
- 
-  srcp += width-4;
-  for (int y=0; y<height; y+=2)
-  {
-    dstp_offset = (y<<1);
-    for (int x=0; x<width; x+=4)
-    {
-      u = (srcp[-x+1] + srcp[-x+1+src_pitch] + 1) >> 1;
-      v = (srcp[-x+3] + srcp[-x+3+src_pitch] + 1) >> 1;
-      dstp[dstp_offset+0] = srcp[-x+2];
-      dstp[dstp_offset+1] = u;
-      dstp[dstp_offset+2] = srcp[-x+2+src_pitch];
-      dstp[dstp_offset+3] = v;
-      dstp_offset += dst_pitch;
-      dstp[dstp_offset+0] = srcp[-x];
-      dstp[dstp_offset+1] = u;
-      dstp[dstp_offset+2] = srcp[-x+src_pitch];
-      dstp[dstp_offset+3] = v;
-      dstp_offset += dst_pitch;
-    }
-    srcp += src_pitch<<1;
-  }
+    turn_right_plane_c<uint16_t>(srcp, dstp, src_rowsize, src_height, src_pitch, dst_pitch);
 }
 
-static void turn_180_yuy2(const BYTE *srcp, BYTE *dstp, int width, int height, int src_pitch, int dst_pitch)
+
+void turn_left_plane_16_c(const BYTE* srcp, BYTE* dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch)
 {
-  dstp += (height-1)*dst_pitch + (width-4);
-  for (int y = 0; y<height; y++) {
-    for (int x = 0; x<width; x+=4) {	
-      dstp[-x+2] = srcp[x+0];
-      dstp[-x+1] = srcp[x+1];
-      dstp[-x+0] = srcp[x+2];
-      dstp[-x+3] = srcp[x+3];
-    }
-    dstp -= dst_pitch;
-    srcp += src_pitch;
-  }
+    turn_right_plane_c<uint16_t>(srcp + src_pitch * (src_height - 1), dstp + dst_pitch * (src_rowsize / 2 - 1), src_rowsize, src_height, -src_pitch, -dst_pitch);
 }
 
 
-static __forceinline __m128i mm_movehl_si128(const __m128i &a, const __m128i &b) {
-  return _mm_castps_si128(_mm_movehl_ps(_mm_castsi128_ps(a), _mm_castsi128_ps(b)));
-}
-
-static __forceinline void left_transpose_8_bytes_sse2(__m128i &src1, __m128i &src2, __m128i& src3, __m128i &src4, 
-                              __m128i &src5, __m128i& src6, __m128i &src7, __m128i &src8, const __m128i &zero) {
-
-  __m128i a07b07 = _mm_unpacklo_epi8(src1, src2); 
-  __m128i c07d07 = _mm_unpacklo_epi8(src3, src4); 
-  __m128i e07f07 = _mm_unpacklo_epi8(src5, src6); 
-  __m128i g07h07 = _mm_unpacklo_epi8(src7, src8);  
-
-  __m128i a03b03c03d03 = _mm_unpacklo_epi16(a07b07, c07d07);
-  __m128i e03f03g03h03 = _mm_unpacklo_epi16(e07f07, g07h07);
-  __m128i a47b47c47d47 = _mm_unpackhi_epi16(a07b07, c07d07);
-  __m128i e47f47g47h47 = _mm_unpackhi_epi16(e07f07, g07h07);
-
-  __m128i a01b01c01d01e01f01g01h01 = _mm_unpacklo_epi32(a03b03c03d03, e03f03g03h03); 
-  __m128i a23b23c23d23e23f23g23h23 = _mm_unpackhi_epi32(a03b03c03d03, e03f03g03h03); 
-  __m128i a45b45c45d45e45f45g45h45 = _mm_unpacklo_epi32(a47b47c47d47, e47f47g47h47); 
-  __m128i a67b67c67d67e67f67g67h67 = _mm_unpackhi_epi32(a47b47c47d47, e47f47g47h47); 
-
-  src1 = a01b01c01d01e01f01g01h01;
-  src2 = mm_movehl_si128(zero, a01b01c01d01e01f01g01h01);
-  src3 = a23b23c23d23e23f23g23h23;
-  src4 = mm_movehl_si128(zero, a23b23c23d23e23f23g23h23);
-  src5 = a45b45c45d45e45f45g45h45;
-  src6 = mm_movehl_si128(zero, a45b45c45d45e45f45g45h45);
-  src7 = a67b67c67d67e67f67g67h67;
-  src8 = mm_movehl_si128(zero, a67b67c67d67e67f67g67h67);
-}
-
-static __forceinline void right_transpose_8_bytes_sse2(__m128i &src1, __m128i &src2, __m128i& src3, __m128i &src4,                                                __m128i &src5, __m128i& src6, __m128i &src7, __m128i &src8, const __m128i &zero) {
-
-  __m128i b07a07 = _mm_unpacklo_epi8(src2, src1); 
-  __m128i d07c07 = _mm_unpacklo_epi8(src4, src3); 
-  __m128i f07e07 = _mm_unpacklo_epi8(src6, src5); 
-  __m128i h07g07 = _mm_unpacklo_epi8(src8, src7);  
-
-  __m128i d03c03b03a03 = _mm_unpacklo_epi16(d07c07, b07a07);
-  __m128i h03g03f03e03 = _mm_unpacklo_epi16(h07g07, f07e07);
-  __m128i d47c47b47a47 = _mm_unpackhi_epi16(d07c07, b07a07);
-  __m128i h47g47f47e47 = _mm_unpackhi_epi16(h07g07, f07e07);
-
-    __m128i h01g01f01e01d01c01b01a01 = _mm_unpacklo_epi32(h03g03f03e03, d03c03b03a03); 
-    __m128i h23g23f23e23d23c23b23a23 = _mm_unpackhi_epi32(h03g03f03e03, d03c03b03a03); 
-    __m128i h45g45f45e45d45c45b45a45 = _mm_unpacklo_epi32(h47g47f47e47, d47c47b47a47); 
-    __m128i h67g67f67e67d67c67b67a67 = _mm_unpackhi_epi32(h47g47f47e47, d47c47b47a47); 
-
-    src1 = h01g01f01e01d01c01b01a01;
-    src2 = mm_movehl_si128(zero, h01g01f01e01d01c01b01a01);
-    src3 = h23g23f23e23d23c23b23a23;
-    src4 = mm_movehl_si128(zero, h23g23f23e23d23c23b23a23);
-    src5 = h45g45f45e45d45c45b45a45;
-    src6 = mm_movehl_si128(zero, h45g45f45e45d45c45b45a45);
-    src7 = h67g67f67e67d67c67b67a67;
-    src8 = mm_movehl_si128(zero, h67g67f67e67d67c67b67a67);
-}
-
-void turn_right_plane_sse2(const BYTE* pSrc, BYTE* pDst, int srcWidth, int srcHeight, int srcPitch, int dstPitch) {
-  const BYTE* pSrc2 = pSrc;
-
-  __m128i zero = _mm_setzero_si128();
-
-  int srcWidthMod8 = (srcWidth / 8) * 8;
-  int srcHeightMod8 = (srcHeight / 8) * 8;
-  for(int y=0; y<srcHeightMod8; y+=8)
-  {
-    int offset = srcHeight-8-y;
-    for (int x=0; x<srcWidthMod8; x+=8)
-    {
-      __m128i src1 = _mm_loadl_epi64(reinterpret_cast<const __m128i*>(pSrc+x+srcPitch*0));
-      __m128i src2 = _mm_loadl_epi64(reinterpret_cast<const __m128i*>(pSrc+x+srcPitch*1));
-      __m128i src3 = _mm_loadl_epi64(reinterpret_cast<const __m128i*>(pSrc+x+srcPitch*2));
-      __m128i src4 = _mm_loadl_epi64(reinterpret_cast<const __m128i*>(pSrc+x+srcPitch*3));
-      __m128i src5 = _mm_loadl_epi64(reinterpret_cast<const __m128i*>(pSrc+x+srcPitch*4));
-      __m128i src6 = _mm_loadl_epi64(reinterpret_cast<const __m128i*>(pSrc+x+srcPitch*5));
-      __m128i src7 = _mm_loadl_epi64(reinterpret_cast<const __m128i*>(pSrc+x+srcPitch*6));
-      __m128i src8 = _mm_loadl_epi64(reinterpret_cast<const __m128i*>(pSrc+x+srcPitch*7));
-
-      right_transpose_8_bytes_sse2(src1, src2, src3, src4, src5, src6, src7, src8, zero);
-
-      _mm_storel_epi64(reinterpret_cast<__m128i*>(pDst+offset+dstPitch*0), src1);
-      _mm_storel_epi64(reinterpret_cast<__m128i*>(pDst+offset+dstPitch*1), src2);
-      _mm_storel_epi64(reinterpret_cast<__m128i*>(pDst+offset+dstPitch*2), src3);
-      _mm_storel_epi64(reinterpret_cast<__m128i*>(pDst+offset+dstPitch*3), src4);
-      _mm_storel_epi64(reinterpret_cast<__m128i*>(pDst+offset+dstPitch*4), src5);
-      _mm_storel_epi64(reinterpret_cast<__m128i*>(pDst+offset+dstPitch*5), src6);
-      _mm_storel_epi64(reinterpret_cast<__m128i*>(pDst+offset+dstPitch*6), src7);
-      _mm_storel_epi64(reinterpret_cast<__m128i*>(pDst+offset+dstPitch*7), src8);
-
-      offset += dstPitch*8;
-    }
-    pSrc += srcPitch * 8;
-  }
-
-  if (srcHeightMod8 != srcHeight) {
-    pSrc = pSrc2 + srcPitch*srcHeightMod8;
-    for(int y=srcHeightMod8; y<srcHeight; ++y)
-    {
-      int offset = srcHeight-1-y;
-      for (int x=0; x<srcWidth; ++x)
-      {
-        pDst[offset] = pSrc[x];
-        offset += dstPitch;
-      }
-      pSrc += srcPitch;
-    }
-  }
-
-  if (srcWidthMod8 != srcWidth) {
-    pSrc = pSrc2;
-    for(int y=0; y<srcHeight; ++y)
-    {
-      int offset = (srcWidthMod8)*dstPitch + srcHeight - 1 - y;
-      for (int x=srcWidthMod8; x<srcWidth; ++x)
-      {
-        pDst[offset] = pSrc[x];
-        offset += dstPitch;
-      }
-      pSrc += srcPitch;
-    }
-  }
-}
-
-void turn_left_plane_sse2(const BYTE* pSrc, BYTE* pDst, int srcWidth, int srcHeight, int srcPitch, int dstPitch) {
-  const BYTE* pSrc2 = pSrc;
-  int srcWidthMod8 = (srcWidth / 8) * 8;
-  int srcHeightMod8 = (srcHeight / 8) * 8;
-
-  pSrc += srcWidth-8;
-
-  __m128i zero = _mm_setzero_si128();
-
-  for(int y=0; y<srcHeightMod8; y+=8)
-  {
-    int offset = y;
-    for (int x=0; x<srcWidthMod8; x+=8)
-    {
-      __m128i src1 = _mm_loadl_epi64(reinterpret_cast<const __m128i*>(pSrc-x+srcPitch*0));
-      __m128i src2 = _mm_loadl_epi64(reinterpret_cast<const __m128i*>(pSrc-x+srcPitch*1));
-      __m128i src3 = _mm_loadl_epi64(reinterpret_cast<const __m128i*>(pSrc-x+srcPitch*2));
-      __m128i src4 = _mm_loadl_epi64(reinterpret_cast<const __m128i*>(pSrc-x+srcPitch*3));
-      __m128i src5 = _mm_loadl_epi64(reinterpret_cast<const __m128i*>(pSrc-x+srcPitch*4));
-      __m128i src6 = _mm_loadl_epi64(reinterpret_cast<const __m128i*>(pSrc-x+srcPitch*5));
-      __m128i src7 = _mm_loadl_epi64(reinterpret_cast<const __m128i*>(pSrc-x+srcPitch*6));
-      __m128i src8 = _mm_loadl_epi64(reinterpret_cast<const __m128i*>(pSrc-x+srcPitch*7));
-
-      left_transpose_8_bytes_sse2(src1, src2, src3, src4, src5, src6, src7, src8, zero);
-
-      _mm_storel_epi64(reinterpret_cast<__m128i*>(pDst+offset+dstPitch*0), src8);
-      _mm_storel_epi64(reinterpret_cast<__m128i*>(pDst+offset+dstPitch*1), src7);
-      _mm_storel_epi64(reinterpret_cast<__m128i*>(pDst+offset+dstPitch*2), src6);
-      _mm_storel_epi64(reinterpret_cast<__m128i*>(pDst+offset+dstPitch*3), src5);
-      _mm_storel_epi64(reinterpret_cast<__m128i*>(pDst+offset+dstPitch*4), src4);
-      _mm_storel_epi64(reinterpret_cast<__m128i*>(pDst+offset+dstPitch*5), src3);
-      _mm_storel_epi64(reinterpret_cast<__m128i*>(pDst+offset+dstPitch*6), src2);
-      _mm_storel_epi64(reinterpret_cast<__m128i*>(pDst+offset+dstPitch*7), src1);
-
-      offset += dstPitch*8;
-    }
-    pSrc += srcPitch * 8;
-  }
-
-  if (srcHeightMod8 != srcHeight) {
-    pSrc = pSrc2;
-
-    pSrc += srcWidth-1 + srcPitch*srcHeightMod8;
-    for(int y=srcHeightMod8; y<srcHeight; ++y)
-    {
-      int offset = y;
-      for (int x=0; x<srcWidth; ++x)
-      {
-        pDst[offset] = pSrc[-x];
-        offset += dstPitch;
-      }
-      pSrc += srcPitch;
-    }
-  }
-
-  if (srcWidthMod8 != srcWidth) {
-    pSrc = pSrc2;
-
-    pSrc += srcWidth-1;
-    for(int y=0; y<srcHeight; ++y)
-    {
-      int offset = y+dstPitch*srcWidthMod8;
-      for (int x=srcWidthMod8; x<srcWidth; ++x)
-      {
-        pDst[offset] = pSrc[-x];
-        offset += dstPitch;
-      }
-      pSrc += srcPitch;
-    }
-  }
-}
-
-template<int instruction_set>
-static void turn_180_plane_xsse(const BYTE* pSrc, BYTE* pDst, int srcWidth, int srcHeight, int srcPitch, int dstPitch) {
-  BYTE* pDst2 = pDst;
-  const BYTE* pSrc2 = pSrc;
-  int srcWidthMod16 = (srcWidth / 16) * 16;
-
-  __m128i zero = _mm_setzero_si128();
-  __m128i pshufbMask = _mm_set_epi8(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15);
-
-  pDst += dstPitch * (srcHeight-1) + srcWidth - 16;
-  for(int y = 0; y < srcHeight; ++y)
-  {
-    for (int x = 0; x < srcWidthMod16; x+=16)
-    {
-      __m128i src = _mm_loadu_si128(reinterpret_cast<const __m128i*>(pSrc+x));
-
-      if (instruction_set == CPUF_SSE2) {
-        //15 14 13 12 11 10 9 8 7 6 5 4 3 2 1 0
-        src = _mm_shuffle_epi32(src, _MM_SHUFFLE(0, 1, 2, 3)); //3 2 1 0 7 6 5 4 11 10 9 8 15 14 13 12 
-        src = _mm_shufflelo_epi16(src, _MM_SHUFFLE(2, 3, 0, 1));
-        src = _mm_shufflehi_epi16(src, _MM_SHUFFLE(2, 3, 0, 1)); //1 0 3 2 5 4 7 6 9 8 11 10 13 12 15 14
-        __m128i t1 = _mm_slli_epi16(src, 8); 
-        __m128i t2 = _mm_srli_epi16(src, 8); 
-        src = _mm_or_si128(t1, t2);
-      } else { 
-        src = _mm_shuffle_epi8(src, pshufbMask);
-      }
-
-      _mm_storeu_si128(reinterpret_cast<__m128i*>(pDst-x), src);
-    }
-    pSrc += srcPitch;
-    pDst -= dstPitch;
-  }
-  if (srcWidthMod16 != srcWidth) {
-    pSrc = pSrc2;
-    pDst = pDst2 + dstPitch * (srcHeight-1) + srcWidth - 1;
-
-    for (int y = 0; y < srcHeight; ++y) {
-      for (int x = srcWidthMod16; x < srcWidth; ++x) {
-        pDst[-x] = pSrc[x];
-      }
-      pSrc += srcPitch;
-      pDst -= dstPitch;
-    }
-  }
-}
-
-TurnFuncPtr turn_180_plane_sse2 = &turn_180_plane_xsse<CPUF_SSE2>;
-TurnFuncPtr turn_180_plane_ssse3 = &turn_180_plane_xsse<CPUF_SSSE3>;
-
-template<typename pixel_size>
-void turn_right_plane_c(const BYTE *srcp, BYTE *dstp, int width, int height, int src_pitch, int dst_pitch) {
-  const pixel_size *_srcp = reinterpret_cast<const pixel_size *>(srcp);
-  pixel_size *_dstp = reinterpret_cast<pixel_size *>(dstp);
-  src_pitch = src_pitch / sizeof(pixel_size); // AVS16
-  dst_pitch = dst_pitch / sizeof(pixel_size);
-  width = width / sizeof(pixel_size); // width was GetRowSize()
-  for(int y=0; y<height; y++)
-  {
-    int offset = height-1-y;
-    for (int x=0; x<width; x++)
-    {
-      _dstp[offset] = _srcp[x];
-      offset += dst_pitch;
-    }
-    _srcp += src_pitch;
-  }
-}
-
-template<typename pixel_size>
-void turn_left_plane_c(const BYTE *srcp, BYTE *dstp, int width, int height, int src_pitch, int dst_pitch) {
-  const pixel_size *_srcp = reinterpret_cast<const pixel_size *>(srcp);
-  pixel_size *_dstp = reinterpret_cast<pixel_size *>(dstp);
-  src_pitch = src_pitch / sizeof(pixel_size); // AVS16
-  dst_pitch = dst_pitch / sizeof(pixel_size);
-  width = width / sizeof(pixel_size); // width was GetRowSize()
-  _srcp += width-1;
-  for(int y=0; y<height; y++)
-  {
-    int offset = y;
-    for (int x=0; x<width; x++)
-    {
-      _dstp[offset] = _srcp[-x];
-      offset += dst_pitch;
-    }
-    _srcp += src_pitch;
-  }
-}
-
-template<typename pixel_size>
-static void turn_180_plane_c(const BYTE *srcp, BYTE *dstp, int width, int height, int src_pitch, int dst_pitch) {
-  const pixel_size *_srcp = reinterpret_cast<const pixel_size *>(srcp);
-  pixel_size *_dstp = reinterpret_cast<pixel_size *>(dstp);
-  src_pitch = src_pitch / sizeof(pixel_size); // AVS16
-  dst_pitch = dst_pitch / sizeof(pixel_size);
-  width = width / sizeof(pixel_size); // width was GetRowSize()
-  _dstp += (height-1)*dst_pitch + (width-1);
-  for (int y = 0; y<height; y++) {
-    for (int x = 0; x<width; x++) {
-      _dstp[-x] = _srcp[x];
-    }
-    _dstp -= src_pitch;
-    _srcp += dst_pitch;
-  }
-}
-
-
-Turn::Turn(PClip _child, int _direction, IScriptEnvironment* env) : GenericVideoFilter(_child), u_source(0), v_source(0)
+static __forceinline void transpose_16x4x8_sse2(const BYTE* srcp, BYTE* dstp, const int src_pitch, const int dst_pitch)
 {
-  if (_direction == DIRECTION_LEFT || _direction == DIRECTION_RIGHT) {
-    const int src_height = vi.height;
-    vi.height = vi.width;
-    vi.width = src_height;
-  }
-  direction = _direction;
+    __m128i a03 = _mm_loadl_epi64(reinterpret_cast<const __m128i*>(srcp + src_pitch * 0)); //a0 a1 a2 a3
+    __m128i b03 = _mm_loadl_epi64(reinterpret_cast<const __m128i*>(srcp + src_pitch * 1)); //b0 b1 b2 b3
+    __m128i c03 = _mm_loadl_epi64(reinterpret_cast<const __m128i*>(srcp + src_pitch * 2)); //c0 c1 c2 c3
+    __m128i d03 = _mm_loadl_epi64(reinterpret_cast<const __m128i*>(srcp + src_pitch * 3)); //d0 d1 d2 d3
+    __m128i e03 = _mm_loadl_epi64(reinterpret_cast<const __m128i*>(srcp + src_pitch * 4)); //e0 e1 e2 e3
+    __m128i f03 = _mm_loadl_epi64(reinterpret_cast<const __m128i*>(srcp + src_pitch * 5)); //f0 f1 f2 f3
+    __m128i g03 = _mm_loadl_epi64(reinterpret_cast<const __m128i*>(srcp + src_pitch * 6)); //g0 g1 g2 g3
+    __m128i h03 = _mm_loadl_epi64(reinterpret_cast<const __m128i*>(srcp + src_pitch * 7)); //h0 h1 h2 h3
 
-  if (vi.IsRGB())
-  {
-    if (vi.BitsPerPixel() == 32) { 
-      if (env->GetCPUFlags() & CPUF_SSE2) {
-        TurnFuncPtr functions[3] = {turn_left_rgb32_sse2, turn_right_rgb32_sse2, turn_180_rgb32_sse2};
-        turn_function = functions[direction]; 
-      } else {
-        TurnFuncPtr functions[3] = {turn_left_rgb32_c, turn_right_rgb32_c, turn_180_rgb32_c};
-        turn_function = functions[direction]; 
-      }
-    }
-    else if (vi.BitsPerPixel() == 24) {
-      TurnFuncPtr functions[3] = {turn_left_rgb24, turn_right_rgb24, turn_180_rgb24};
-      turn_function = functions[direction]; 
-    }
-    else env->ThrowError("Turn: Unsupported RGB bit depth");
-  }
-  else if (vi.IsYUY2())
-  {
-    if ((vi.width % 2) != 0) {
-      env->ThrowError("Turn: YUY2 data must have MOD2 height");
-    }
-    TurnFuncPtr functions[3] = {turn_left_yuy2, turn_right_yuy2, turn_180_yuy2};
-    turn_function = functions[direction]; 
-  }
-  else if (vi.IsPlanar())
-  {
-    switch (vi.BytesFromPixels(1)) // AVS16
-    {
-    case 1: // 8 bit
-      if (env->GetCPUFlags() & CPUF_SSSE3) {
-        TurnFuncPtr functions[3] = { turn_left_plane_sse2, turn_right_plane_sse2, turn_180_plane_ssse3 };
-        turn_function = functions[direction];
-      }
-      else if (env->GetCPUFlags() & CPUF_SSE2) {
-        TurnFuncPtr functions[3] = { turn_left_plane_sse2, turn_right_plane_sse2, turn_180_plane_sse2 };
-        turn_function = functions[direction];
-      }
-      else {
-        TurnFuncPtr functions[3] = { turn_left_plane_c<uint8_t>, turn_right_plane_c<uint8_t>, turn_180_plane_c<uint8_t> };
-        turn_function = functions[direction];
-      }
-      break;
-    case 2: // 16 bit todo SSE
-    {
-      TurnFuncPtr functions[3] = { turn_left_plane_c<uint16_t>, turn_right_plane_c<uint16_t>, turn_180_plane_c<uint16_t> };
-      turn_function = functions[direction];
-      break;
-    }
-    default: // 32 bit todo SSE
-    {
-      TurnFuncPtr functions[3] = { turn_left_plane_c<float>, turn_right_plane_c<float>, turn_180_plane_c<float> };
-      turn_function = functions[direction];
-    }
-    }
-      // rectangular formats?
-    if ((_direction == DIRECTION_LEFT || _direction == DIRECTION_RIGHT) && 
-      (vi.NumComponents() > 1) &&
-      (vi.GetPlaneWidthSubsampling(PLANAR_U) != vi.GetPlaneHeightSubsampling(PLANAR_U)))
-    {
-      if (vi.width % (1<<vi.GetPlaneWidthSubsampling(PLANAR_U))) // YV16 & YV411
-        env->ThrowError("Turn: Planar data must have MOD %d height",
-        1<<vi.GetPlaneWidthSubsampling(PLANAR_U));
+    __m128i ae03 = _mm_unpacklo_epi16(a03, e03); //a0 e0 a1 e1 a2 e2 a3 e3
+    __m128i bf03 = _mm_unpacklo_epi16(b03, f03); //b0 f0 b1 f1 b2 f2 b3 f3
+    __m128i cg03 = _mm_unpacklo_epi16(c03, g03); //c0 g0 c1 g1 c2 g2 c3 g3
+    __m128i dh03 = _mm_unpacklo_epi16(d03, h03); //d0 h0 d1 h1 d2 h2 d3 h3
 
-      if (vi.height % (1<<vi.GetPlaneHeightSubsampling(PLANAR_U))) // No current formats
-        env->ThrowError("Turn: Planar data must have MOD %d width",
-        1<<vi.GetPlaneHeightSubsampling(PLANAR_U));
+    __m128i aceg01 = _mm_unpacklo_epi16(ae03, cg03); //a0 c0 e0 g0 a1 c1 e1 g1
+    __m128i aceg23 = _mm_unpackhi_epi16(ae03, cg03); //a2 c2 e2 g2 a3 c3 e3 g3
+    __m128i bdfh01 = _mm_unpacklo_epi16(bf03, dh03); //b0 d0 f0 h0 b1 d1 f1 h1
+    __m128i bdfh23 = _mm_unpackhi_epi16(bf03, dh03); //b2 d2 f2 h2 b3 d3 f3 h3
 
-      MitchellNetravaliFilter filter(1./3., 1./3.);
-      AVSValue subs[4] = { 0.0, 0.0, 0.0, 0.0 }; 
+    __m128i abcdefgh0 = _mm_unpacklo_epi16(aceg01, bdfh01); //a0 b0 c0 d0 e0 f0 g0 h0
+    __m128i abcdefgh1 = _mm_unpackhi_epi16(aceg01, bdfh01); //a1 b1 c1 d1 e1 f1 g1 h1
+    __m128i abcdefgh2 = _mm_unpacklo_epi16(aceg23, bdfh23); //a2 b2 c2 d2 e2 f2 g2 h2
+    __m128i abcdefgh3 = _mm_unpackhi_epi16(aceg23, bdfh23); //a3 b3 c3 d3 e3 f3 g3 h3
 
-      u_source = new SwapUVToY(child, SwapUVToY::UToY8, env); // Y16 and Y32 capable
-      v_source = new SwapUVToY(child, SwapUVToY::VToY8, env);
-
-      const VideoInfo vi_u = u_source->GetVideoInfo();
-
-      const int uv_height = (vi_u.height << vi.GetPlaneHeightSubsampling(PLANAR_U)) >> vi.GetPlaneWidthSubsampling(PLANAR_U);
-      const int uv_width  = (vi_u.width  << vi.GetPlaneWidthSubsampling(PLANAR_U))  >> vi.GetPlaneHeightSubsampling(PLANAR_U);
-
-      u_source = FilteredResize::CreateResize(u_source, uv_width, uv_height, subs, &filter, env);
-      v_source = FilteredResize::CreateResize(v_source, uv_width, uv_height, subs, &filter, env);
-    }
-  }
-  else
-  {
-    env->ThrowError("Turn: Image format not supported!");
-  }
+    _mm_store_si128(reinterpret_cast<__m128i*>(dstp + dst_pitch * 0), abcdefgh0);
+    _mm_store_si128(reinterpret_cast<__m128i*>(dstp + dst_pitch * 1), abcdefgh1);
+    _mm_store_si128(reinterpret_cast<__m128i*>(dstp + dst_pitch * 2), abcdefgh2);
+    _mm_store_si128(reinterpret_cast<__m128i*>(dstp + dst_pitch * 3), abcdefgh3);
 }
 
-int __stdcall Turn::SetCacheHints(int cachehints, int frame_range) {
-  return cachehints == CACHE_GET_MTMODE ? MT_NICE_FILTER : 0;
+
+void turn_right_plane_16_sse2(const BYTE* srcp, BYTE* dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch)
+{
+    const BYTE* s0 = srcp + src_pitch * (src_height - 1);
+    int w = src_rowsize & ~7;
+    int h = src_height & ~7;
+
+    for (int y = 0; y < h; y += 8)
+    {
+        BYTE* d0 = dstp + y * 2;
+        for (int x = 0; x < w; x += 8)
+        {
+            transpose_16x4x8_sse2(s0 + x, d0, -src_pitch, dst_pitch);
+            d0 += 4 * dst_pitch;
+        }
+        s0 -= 8 * src_pitch;
+    }
+    if (src_rowsize != w)
+    {
+        turn_right_plane_16_c(srcp + w, dstp + dst_pitch * w / 2, src_rowsize - w, src_height, src_pitch, dst_pitch);
+    }
+
+    if (src_height != h)
+    {
+        turn_right_plane_16_c(srcp, dstp + h * 2, src_rowsize, src_height - h, src_pitch, dst_pitch);
+    }
 }
+
+
+void turn_left_plane_16_sse2(const BYTE* srcp, BYTE* dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch)
+{
+    turn_right_plane_16_sse2(srcp + src_pitch * (src_height - 1), dstp + dst_pitch * (src_rowsize / 2 - 1), src_rowsize, src_height, -src_pitch, -dst_pitch);
+}
+
+
+void turn_right_plane_32_c(const BYTE* srcp, BYTE* dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch)
+{
+    turn_right_plane_c<uint32_t>(srcp, dstp, src_rowsize, src_height, src_pitch, dst_pitch);
+}
+
+
+void turn_left_plane_32_c(const BYTE* srcp, BYTE* dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch)
+{
+    turn_right_plane_c<uint32_t>(srcp + src_pitch * (src_height - 1), dstp + dst_pitch * (src_rowsize / 4 - 1), src_rowsize, src_height, -src_pitch, -dst_pitch);
+}
+
+
+static __forceinline void transpose_32x4x4_sse2(const BYTE* srcp, BYTE* dstp, const int src_pitch, const int dst_pitch)
+{
+    __m128i a03 = _mm_loadu_si128(reinterpret_cast<const __m128i*>(srcp + src_pitch * 0)); //a0 a1 a2 a3
+    __m128i b03 = _mm_loadu_si128(reinterpret_cast<const __m128i*>(srcp + src_pitch * 1)); //b0 b1 b2 b3
+    __m128i c03 = _mm_loadu_si128(reinterpret_cast<const __m128i*>(srcp + src_pitch * 2)); //c0 c1 c2 c3
+    __m128i d03 = _mm_loadu_si128(reinterpret_cast<const __m128i*>(srcp + src_pitch * 3)); //d0 d1 d2 d3
+
+    __m128i ac01 = _mm_unpacklo_epi32(a03, c03); //a0 c0 a1 c1
+    __m128i ac23 = _mm_unpackhi_epi32(a03, c03); //a2 c2 a3 c3
+    __m128i bd01 = _mm_unpacklo_epi32(b03, d03); //b0 d0 b1 d1
+    __m128i bd23 = _mm_unpackhi_epi32(b03, d03); //b2 d2 b3 d3
+
+    __m128i abcd0 = _mm_unpacklo_epi32(ac01, bd01); //a0 b0 c0 d0
+    __m128i abcd1 = _mm_unpackhi_epi32(ac01, bd01); //a1 b1 c1 d1
+    __m128i abcd2 = _mm_unpacklo_epi32(ac23, bd23); //a2 b2 c2 d2
+    __m128i abcd3 = _mm_unpackhi_epi32(ac23, bd23); //a3 b3 c3 d3
+
+    _mm_storeu_si128(reinterpret_cast<__m128i*>(dstp + dst_pitch * 0), abcd0);
+    _mm_storeu_si128(reinterpret_cast<__m128i*>(dstp + dst_pitch * 1), abcd1);
+    _mm_storeu_si128(reinterpret_cast<__m128i*>(dstp + dst_pitch * 2), abcd2);
+    _mm_storeu_si128(reinterpret_cast<__m128i*>(dstp + dst_pitch * 3), abcd3);
+}
+
+
+void turn_right_plane_32_sse2(const BYTE* srcp, BYTE* dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch)
+{
+    const BYTE* s0 = srcp + src_pitch * (src_height - 1);
+    int w = src_rowsize & ~15;
+    int h = src_height & ~3;
+
+    for (int y = 0; y < h; y += 4)
+    {
+        BYTE* d0 = dstp + y * 4;
+        for (int x = 0; x < w; x += 16)
+        {
+            transpose_32x4x4_sse2(s0 + x, d0, -src_pitch, dst_pitch);
+            d0 += 4 * dst_pitch;
+        }
+        s0 -= 4 * src_pitch;
+    }
+
+    if (src_rowsize != w)
+    {
+        turn_right_plane_32_c(srcp + w, dstp + w / 4 * dst_pitch, src_rowsize - w, src_height, src_pitch, dst_pitch);
+    }
+
+    if (src_height != h)
+    {
+        turn_right_plane_32_c(srcp, dstp + h * 4, src_rowsize, src_height - h, src_pitch, dst_pitch);
+    }
+}
+
+void turn_left_plane_32_sse2(const BYTE* srcp, BYTE* dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch)
+{
+    turn_right_plane_32_sse2(srcp + src_pitch * (src_height - 1), dstp + dst_pitch * (src_rowsize / 4 - 1), src_rowsize, src_height, -src_pitch, -dst_pitch);
+}
+
+
+// on RGB, TurnLeft and TurnRight are reversed.
+void turn_left_rgb32_c(const BYTE* srcp, BYTE* dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch)
+{
+    turn_right_plane_32_c(srcp, dstp, src_rowsize, src_height, src_pitch, dst_pitch);
+}
+
+
+void turn_right_rgb32_c(const BYTE* srcp, BYTE* dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch)
+{
+    turn_left_plane_32_c(srcp, dstp, src_rowsize, src_height, src_pitch, dst_pitch);
+}
+
+
+void turn_left_rgb32_sse2(const BYTE* srcp, BYTE* dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch)
+{
+    turn_right_plane_32_sse2(srcp, dstp, src_rowsize, src_height, src_pitch, dst_pitch);
+}
+
+
+void turn_right_rgb32_sse2(const BYTE* srcp, BYTE* dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch)
+{
+    turn_left_plane_32_sse2(srcp, dstp, src_rowsize, src_height, src_pitch, dst_pitch);
+}
+
+
+struct Rgb24 {
+    BYTE b, g, r;
+};
+
+
+void turn_left_rgb24(const BYTE* srcp, BYTE* dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch)
+{
+    turn_right_plane_c<Rgb24>(srcp, dstp, src_rowsize, src_height, src_pitch, dst_pitch);
+}
+
+
+void turn_right_rgb24(const BYTE* srcp, BYTE* dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch)
+{
+    turn_right_plane_c<Rgb24>(srcp + src_pitch * (src_height - 1), dstp + dst_pitch * (src_rowsize / 3 - 1), src_rowsize, src_height, -src_pitch, -dst_pitch);
+}
+
+
+static void turn_right_yuy2(const BYTE* srcp, BYTE* dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch)
+{
+    dstp += (src_height - 2) * 2;
+
+    for (int y = 0; y < src_height; y += 2)
+    {
+        BYTE* d0 = dstp - y * 2;
+        for (int x = 0; x < src_rowsize; x += 4)
+        {
+            int u = (srcp[x + 1] + srcp[x + 1 + src_pitch] + 1) / 2;
+            int v = (srcp[x + 3] + srcp[x + 3 + src_pitch] + 1) / 2;
+
+            d0[0] = srcp[x + src_pitch];
+            d0[1] = u;
+            d0[2] = srcp[x];
+            d0[3] = v;
+            d0 += dst_pitch;
+
+            d0[0] = srcp[x + src_pitch + 2];
+            d0[1] = u;
+            d0[2] = srcp[x + 2];
+            d0[3] = v;
+            d0 += dst_pitch;
+        }
+        srcp += src_pitch * 2;
+    }
+}
+
+
+static void turn_left_yuy2(const BYTE* srcp, BYTE* dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch)
+{
+    turn_right_yuy2(srcp + src_pitch * (src_height - 1), dstp + dst_pitch * (src_rowsize / 2 - 1), src_rowsize, src_height, -src_pitch, -dst_pitch);
+}
+
+
+template <typename T>
+static void turn_180_plane_c(const BYTE* srcp, BYTE* dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch)
+{
+    dstp += dst_pitch * (src_height - 1) + src_rowsize - sizeof(T);
+    src_rowsize /= sizeof(T);
+
+    for (int y = 0; y < src_height; ++y)
+    {
+        const T* s0 = reinterpret_cast<const T*>(srcp);
+        T* d0 = reinterpret_cast<T*>(dstp);
+
+        for (int x = 0; x < src_rowsize; ++x)
+        {
+            d0[-x] = s0[x];
+        }
+        srcp += src_pitch;
+        dstp -= dst_pitch;
+    }
+}
+
+
+template <typename T, int INSTRUCTION_SET=CPUF_SSE2>
+static void turn_180_plane_xsse(const BYTE* srcp, BYTE* dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch)
+{
+    const BYTE* s0 = srcp;
+    BYTE* d0 = dstp + dst_pitch * (src_height - 1) + src_rowsize - 16;
+    const int w = src_rowsize & ~15;
+
+    __m128i pshufb_mask;
+    if (sizeof(T) == 1)
+    {
+        pshufb_mask = _mm_set_epi8(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15);
+    }
+    else if (sizeof(T) == 2)
+    {
+        pshufb_mask = _mm_set_epi8(1, 0, 3, 2, 5, 4, 7, 6, 9, 8, 11, 10, 13, 12, 15, 14);
+    }
+
+    constexpr int pattern0 = sizeof(T) == 1 ? _MM_SHUFFLE(0, 1, 2, 3) : _MM_SHUFFLE(1, 0, 3, 2);
+    constexpr int pattern1 = sizeof(T) == 1 ? _MM_SHUFFLE(2, 3, 0, 1) : _MM_SHUFFLE(0, 1, 2, 3);
+
+    for (int y = 0; y < src_height; ++y)
+    {
+        for (int x = 0; x < w; x += 16)
+        {
+            __m128i src = _mm_loadu_si128(reinterpret_cast<const __m128i*>(s0 + x));
+            if (sizeof(T) == 4)
+            {
+                src = _mm_shuffle_epi32(src, _MM_SHUFFLE(0, 1, 2, 3));
+            }
+            else if (INSTRUCTION_SET == CPUF_SSE2)
+            {
+                src = _mm_shuffle_epi32(src, pattern0);
+                src = _mm_shufflelo_epi16(src, pattern1);
+                src = _mm_shufflehi_epi16(src, pattern1);
+
+                if (sizeof(T) == 1)
+                {
+                    src = _mm_or_si128(_mm_srli_epi16(src, 8), _mm_slli_epi16(src, 8));
+                }
+            }
+            else // SSSE3
+            {
+                src = _mm_shuffle_epi8(src, pshufb_mask);
+            }
+            _mm_storeu_si128(reinterpret_cast<__m128i*>(d0 - x), src);
+        }
+        s0 += src_pitch;
+        d0 -= dst_pitch;
+    }
+
+    if (src_rowsize != w)
+    {
+        turn_180_plane_c<T>(srcp + w, dstp, src_rowsize - w, src_height, src_pitch, dst_pitch);
+    }
+}
+
+
+static void turn_180_yuy2(const BYTE* srcp, BYTE* dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch)
+{
+    dstp += dst_pitch * (src_height - 1) + src_rowsize - 4;
+
+    for (int y = 0; y < src_height; ++y)
+    {
+        for (int x = 0; x < src_rowsize; x += 4)
+        {
+            dstp[-x + 2] = srcp[x + 0];
+            dstp[-x + 1] = srcp[x + 1];
+            dstp[-x + 0] = srcp[x + 2];
+            dstp[-x + 3] = srcp[x + 3];
+        }
+        srcp += src_pitch;
+        dstp -= dst_pitch;
+    }
+}
+
+
+Turn::Turn(PClip c, int direction, IScriptEnvironment* env) : GenericVideoFilter(c), u_source(nullptr), v_source(nullptr)
+{
+    num_planes = (vi.pixel_type & VideoInfo::CS_INTERLEAVED) ? 1 : 3;
+
+    splanes[0] = 0;
+    splanes[1] = PLANAR_U;
+    splanes[2] = PLANAR_V;
+
+    if (direction != DIRECTION_180)
+    {
+        if (vi.IsYUY2() && (vi.height & 1))
+        {
+            env->ThrowError("Turn: YUY2 data must have mod2 height.");
+        }
+        if (num_planes > 1) {
+            int mod_h = 1 << vi.GetPlaneWidthSubsampling(PLANAR_U);
+            int mod_v = 1 << vi.GetPlaneHeightSubsampling(PLANAR_U);
+            if (mod_h != mod_v)
+            {
+                if (vi.width % mod_h)
+                {
+                    env->ThrowError("Turn: Planar data must have MOD %d height.", mod_h);
+                }
+                if (vi.height % mod_v)
+                {
+                    env->ThrowError("Turn: Planar data must have MOD %d width.", mod_v);
+                }
+                SetUVSource(mod_h, mod_v, env);
+            }
+        }
+        int t = vi.width;
+        vi.width = vi.height;
+        vi.height = t;
+    }
+
+    SetTurnFunction(direction, env);
+}
+
+
+void Turn::SetUVSource(int mod_h, int mod_v, IScriptEnvironment* env)
+{
+    MitchellNetravaliFilter filter(1.0 / 3, 1.0 / 3);
+    AVSValue subs[4] = { 0.0, 0.0, 0.0, 0.0 }; 
+
+    u_source = new SwapUVToY(child, SwapUVToY::UToY8, env); // Y16 and Y32 capable
+    v_source = new SwapUVToY(child, SwapUVToY::VToY8, env);
+
+    const VideoInfo& vi_u = u_source->GetVideoInfo();
+
+    const int uv_height = vi_u.height * mod_v / mod_h;
+    const int uv_width  = vi_u.width  * mod_h / mod_v;
+
+    u_source = FilteredResize::CreateResize(u_source, uv_width, uv_height, subs, &filter, env);
+    v_source = FilteredResize::CreateResize(v_source, uv_width, uv_height, subs, &filter, env);
+
+    splanes[1] = 0;
+    splanes[2] = 0;
+}
+
+
+void Turn::SetTurnFunction(int direction, IScriptEnvironment* env)
+{
+    int cpu = env->GetCPUFlags();
+
+    TurnFuncPtr funcs[3];
+    auto set_funcs = [&funcs](TurnFuncPtr tleft, TurnFuncPtr tright, TurnFuncPtr t180) {
+        funcs[0] = tleft;
+        funcs[1] = tright;
+        funcs[2] = t180;
+    };
+
+    if (vi.IsRGB32())
+    {
+        if (cpu & CPUF_SSE2)
+        {
+            set_funcs(turn_left_rgb32_sse2, turn_right_rgb32_sse2, turn_180_plane_xsse<uint32_t, CPUF_SSE2>);
+        }
+        else
+        {
+            set_funcs(turn_left_rgb32_c, turn_right_rgb32_c, turn_180_plane_c<uint32_t>);
+        }
+    }
+    else if (vi.IsRGB24())
+    {
+        set_funcs(turn_left_rgb24, turn_right_rgb24, turn_180_plane_c<Rgb24>);
+    }
+    else if (vi.IsYUY2())
+    {
+        set_funcs(turn_left_yuy2, turn_right_yuy2, turn_180_yuy2);
+    }
+    else if (vi.ComponentSize() == 1) // 8 bit
+    {
+        if (cpu & CPUF_SSE2)
+        {
+            set_funcs(turn_left_plane_8_sse2, turn_right_plane_8_sse2,
+                cpu & CPUF_SSSE3 ? turn_180_plane_xsse<BYTE, CPUF_SSSE3> : turn_180_plane_xsse<BYTE>);
+        }
+        else
+        {
+            set_funcs(turn_left_plane_8_c, turn_right_plane_8_c, turn_180_plane_c<BYTE>);
+        }
+    }
+    else if (vi.ComponentSize() == 2) // 16 bit
+    {
+        if (cpu & CPUF_SSE2)
+        {
+            set_funcs(turn_left_plane_16_sse2, turn_right_plane_16_sse2,
+                cpu & CPUF_SSSE3 ? turn_180_plane_xsse<uint16_t, CPUF_SSSE3> : turn_180_plane_xsse<uint16_t>);
+        }
+        else
+        {
+            set_funcs(turn_left_plane_16_c, turn_right_plane_16_c, turn_180_plane_c<uint16_t>);
+        }
+    }
+    else if (vi.ComponentSize() == 4) // 32 bit
+    {
+        if (cpu & CPUF_SSE2) {
+            set_funcs(turn_left_plane_32_sse2, turn_right_plane_32_sse2, turn_180_plane_xsse<uint32_t>);
+        } else {
+            set_funcs(turn_left_plane_32_c, turn_right_plane_32_c, turn_180_plane_c<uint32_t>);
+        }
+    }
+    else env->ThrowError("Turn: Image format not supported!");
+
+    turn_function = funcs[direction];
+}
+
+
+int __stdcall Turn::SetCacheHints(int cachehints, int frame_range)
+{
+    return cachehints == CACHE_GET_MTMODE ? MT_NICE_FILTER : 0;
+}
+
 
 PVideoFrame __stdcall Turn::GetFrame(int n, IScriptEnvironment* env)
 {
-	PVideoFrame src = child->GetFrame(n, env);
+    static const int dplanes[] = { 0, PLANAR_U, PLANAR_V };
 
-  PVideoFrame dst = env->NewVideoFrame(vi);
+    auto src = child->GetFrame(n, env);
+    auto dst = env->NewVideoFrame(vi);
 
-	if (u_source && v_source) 
-  {
-		PVideoFrame usrc = u_source->GetFrame(n, env);
-		PVideoFrame vsrc = v_source->GetFrame(n, env);
+    PVideoFrame srcs[3] = {
+        src,
+        u_source ? u_source->GetFrame(n, env) : src,
+        v_source ? v_source->GetFrame(n, env) : src,
+    };
 
-    turn_function(src->GetReadPtr(PLANAR_Y),  dst->GetWritePtr(PLANAR_Y), src->GetRowSize(PLANAR_Y),  src->GetHeight(PLANAR_Y),  src->GetPitch(PLANAR_Y), dst->GetPitch(PLANAR_Y));
-    turn_function(usrc->GetReadPtr(PLANAR_Y), dst->GetWritePtr(PLANAR_U), usrc->GetRowSize(PLANAR_Y), usrc->GetHeight(PLANAR_Y), usrc->GetPitch(PLANAR_Y), dst->GetPitch(PLANAR_U));
-    turn_function(vsrc->GetReadPtr(PLANAR_Y), dst->GetWritePtr(PLANAR_V), usrc->GetRowSize(PLANAR_Y), usrc->GetHeight(PLANAR_Y), vsrc->GetPitch(PLANAR_Y), dst->GetPitch(PLANAR_V));
-	}
-  else if (vi.IsPlanar()) 
-  {
-    turn_function(src->GetReadPtr(PLANAR_Y),  dst->GetWritePtr(PLANAR_Y), src->GetRowSize(PLANAR_Y),  src->GetHeight(PLANAR_Y),  src->GetPitch(PLANAR_Y), dst->GetPitch(PLANAR_Y));
-    turn_function(src->GetReadPtr(PLANAR_U),  dst->GetWritePtr(PLANAR_U), src->GetRowSize(PLANAR_U),  src->GetHeight(PLANAR_U),  src->GetPitch(PLANAR_U), dst->GetPitch(PLANAR_U));
-    turn_function(src->GetReadPtr(PLANAR_V),  dst->GetWritePtr(PLANAR_V), src->GetRowSize(PLANAR_V),  src->GetHeight(PLANAR_V),  src->GetPitch(PLANAR_V), dst->GetPitch(PLANAR_V));
-  } 
-  else 
-  {
-		turn_function(src->GetReadPtr(),dst->GetWritePtr(),src->GetRowSize(), src->GetHeight(),src->GetPitch(),dst->GetPitch());
-  }
-  return dst;
+    for (int p = 0; p < num_planes; ++p) {
+        const int splane = splanes[p];
+        const int dplane = dplanes[p];
+        turn_function(srcs[p]->GetReadPtr(splane), dst->GetWritePtr(dplane),
+                      srcs[p]->GetRowSize(splane), srcs[p]->GetHeight(splane),
+                      srcs[p]->GetPitch(splane), dst->GetPitch(dplane));
+    }
+
+    return dst;
 }
 
 
-AVSValue __cdecl Turn::create_turnleft(AVSValue args, void* user_data, IScriptEnvironment* env) {
-	return new Turn(args[0].AsClip(), DIRECTION_LEFT, env);
+AVSValue __cdecl Turn::create_turnleft(AVSValue args, void* user_data, IScriptEnvironment* env)
+{
+    return new Turn(args[0].AsClip(), DIRECTION_LEFT, env);
 }
 
-AVSValue __cdecl Turn::create_turnright(AVSValue args, void* user_data, IScriptEnvironment* env) {
-	return new Turn(args[0].AsClip(), DIRECTION_RIGHT, env);
+
+AVSValue __cdecl Turn::create_turnright(AVSValue args, void* user_data, IScriptEnvironment* env)
+{
+    return new Turn(args[0].AsClip(), DIRECTION_RIGHT, env);
 }
 
-AVSValue __cdecl Turn::create_turn180(AVSValue args, void* user_data, IScriptEnvironment* env) {
-	return new Turn(args[0].AsClip(), DIRECTION_180, env);
+
+AVSValue __cdecl Turn::create_turn180(AVSValue args, void* user_data, IScriptEnvironment* env)
+{
+    return new Turn(args[0].AsClip(), DIRECTION_180, env);
 }
 
 
