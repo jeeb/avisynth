@@ -753,11 +753,12 @@ FilteredResizeH::FilteredResizeH( PClip _child, double subrange_left, double sub
 
     // Initialize Turn function
     // see turn.cpp
+    bool has_sse2 = (env->GetCPUFlags() & CPUF_SSE2) != 0;
     if (vi.IsRGB24()) {
       turn_left = turn_left_rgb24;
       turn_right = turn_right_rgb24;
     } else if (vi.IsRGB32()) {
-      if (env->GetCPUFlags() & CPUF_SSE2) { 
+      if (has_sse2) { 
         turn_left = turn_left_rgb32_sse2;
         turn_right = turn_right_rgb32_sse2;
       } else {
@@ -765,28 +766,35 @@ FilteredResizeH::FilteredResizeH( PClip _child, double subrange_left, double sub
         turn_right = turn_right_rgb32_c;
       }
     } else {
-      switch (vi.BytesFromPixels(1)) // AVS16
-      {
+      switch (vi.ComponentSize()) {// AVS16
       case 1: // 8 bit
-      if (env->GetCPUFlags() & CPUF_SSE2) {
-        turn_left = turn_left_plane_sse2;
-        turn_right = turn_right_plane_sse2;
+        if (has_sse2) {
+          turn_left = turn_left_plane_8_sse2;
+          turn_right = turn_right_plane_8_sse2;
+        } else {
+          turn_left = turn_left_plane_8_c;
+          turn_right = turn_right_plane_8_c;
+        }
+        break;
+      case 2: // 16 bit
+        if (has_sse2) {
+          turn_left = turn_left_plane_16_sse2;
+          turn_right = turn_right_plane_16_sse2;
+        } else {
+          turn_left = turn_left_plane_16_c;
+          turn_right = turn_right_plane_16_c;
+        }
+        break;
+      default: // 32 bit
+        if (has_sse2) {
+          turn_left = turn_left_plane_32_sse2;
+          turn_right = turn_right_plane_32_sse2;
+        } else {
+          turn_left = turn_left_plane_32_c;
+          turn_right = turn_right_plane_32_c;
+        }
       }
-        else {
-          turn_left = turn_left_plane_c<uint8_t>;
-          turn_right = turn_right_plane_c<uint8_t>;
     }
-        break;
-      case 2: // 16 bit. todo: c only
-        turn_left = turn_left_plane_c<uint16_t>;
-        turn_right = turn_right_plane_c<uint16_t>;
-        break;
-      case 4: // 32 bit c_only
-        turn_left = turn_left_plane_c<float>;
-        turn_right = turn_right_plane_c<float>;
-        break;
-      }
-      }
   } else { // Plannar + SSSE3 = use new horizontal resizer routines
     resampler_h_luma = GetResampler(env->GetCPUFlags(), true, pixelsize, resampling_program_luma, env2);
 
