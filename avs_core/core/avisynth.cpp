@@ -775,6 +775,11 @@ void ScriptEnvironment::InitMT()
     this->SetFilterMTMode(BUILTIN_FUNC_PREFIX "_ConvertToYUY2", MtMode::MT_NICE_FILTER, true);
     this->SetFilterMTMode(BUILTIN_FUNC_PREFIX "_ConvertBackToYUY2", MtMode::MT_NICE_FILTER, true);
 
+    this->SetFilterMTMode(BUILTIN_FUNC_PREFIX "_ConvertToY", MtMode::MT_NICE_FILTER, true);
+    this->SetFilterMTMode(BUILTIN_FUNC_PREFIX "_ConvertToYUV420", MtMode::MT_NICE_FILTER, true);
+    this->SetFilterMTMode(BUILTIN_FUNC_PREFIX "_ConvertToYUV422", MtMode::MT_NICE_FILTER, true);
+    this->SetFilterMTMode(BUILTIN_FUNC_PREFIX "_ConvertToYUV444", MtMode::MT_NICE_FILTER, true);
+
     this->SetFilterMTMode(BUILTIN_FUNC_PREFIX "_ConvertNativeToStacked", MtMode::MT_NICE_FILTER, true);
     this->SetFilterMTMode(BUILTIN_FUNC_PREFIX "_ConvertStackedToNative", MtMode::MT_NICE_FILTER, true);
 
