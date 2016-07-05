@@ -46,6 +46,7 @@
 #include <clocale>
 #include "../internal.h"
 #include "../Prefetcher.h"
+#include "../IScriptEnvironmentInternal.h"
 
 
 /********************************************************************
@@ -376,8 +377,8 @@ AVSValue Import(AVSValue args, void*, IScriptEnvironment* env)
   args = args[0];
   AVSValue result;
 
-  IScriptEnvironment2 *env2 = static_cast<IScriptEnvironment2*>(env);
-  const bool MainScript = (env2->IncrImportDepth() == 1);
+  IScriptEnvironmentInternal *envi = static_cast<IScriptEnvironmentInternal*>(env);
+  const bool MainScript = (envi->IncrImportDepth() == 1);
 
   AVSValue lastScriptName = env->GetVarDef("$ScriptName$");
   AVSValue lastScriptFile = env->GetVarDef("$ScriptFile$");
@@ -444,7 +445,7 @@ AVSValue Import(AVSValue args, void*, IScriptEnvironment* env)
   env->SetGlobalVar("$ScriptName$", lastScriptName);
   env->SetGlobalVar("$ScriptFile$", lastScriptFile);
   env->SetGlobalVar("$ScriptDir$",  lastScriptDir);
-  env2->DecrImportDepth();
+  envi->DecrImportDepth();
 
   return result;
 }

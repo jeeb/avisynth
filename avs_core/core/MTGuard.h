@@ -5,6 +5,8 @@
 #include <vector>
 #include <memory>
 
+class IScriptEnvironmentInternal;
+
 namespace std
 {
   class mutex;
@@ -27,7 +29,7 @@ private:
 
 public:
   ~MTGuard();
-  MTGuard(PClip firstChild, MtMode mtmode, std::unique_ptr<const FilterConstructor> &&funcCtor, IScriptEnvironment2* env);
+  MTGuard(PClip firstChild, MtMode mtmode, std::unique_ptr<const FilterConstructor> &&funcCtor, IScriptEnvironmentInternal* env);
   void EnableMT(size_t nThreads);
 
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
@@ -37,7 +39,7 @@ public:
   int __stdcall SetCacheHints(int cachehints,int frame_range);
 
   static bool __stdcall IsMTGuard(const PClip& p);
-  static AVSValue Create(std::unique_ptr<const FilterConstructor> funcCtor, IScriptEnvironment2* env);
+  static AVSValue Create(std::unique_ptr<const FilterConstructor> funcCtor, IScriptEnvironmentInternal* env);
 };
 
 

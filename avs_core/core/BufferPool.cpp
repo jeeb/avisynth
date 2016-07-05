@@ -3,6 +3,7 @@
 #include <avisynth.h>
 #include <avs/alignment.h>
 #include <avs/minmax.h>
+#include "IScriptEnvironmentInternal.h"
 
 #define BUFFER_GUARD_VALUE  0x55555555
 
@@ -82,7 +83,7 @@ void BufferPool::PrivateFree(void* buffer)
 }
 
 
-BufferPool::BufferPool(IScriptEnvironment2* env) :
+BufferPool::BufferPool(IScriptEnvironmentInternal* env) :
   Env(env)
 {
 }

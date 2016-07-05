@@ -1071,15 +1071,6 @@ public:
   virtual void* __stdcall Allocate(size_t nBytes, size_t alignment, AvsAllocType type) = 0;
   virtual void __stdcall Free(void* ptr) = 0;
 
-  // Strictly for Avisynth core only.
-  // Neither host applications nor plugins should use
-  // these interfaces.
-  virtual int __stdcall IncrImportDepth() = 0;
-  virtual int __stdcall DecrImportDepth() = 0;
-  virtual void __stdcall AdjustMemoryConsumption(size_t amount, bool minus) = 0;
-  virtual MtMode __stdcall GetFilterMTMode(const AVSFunction* filter, bool* is_forced) const = 0; // If filter is "", gets the default MT mode
-  virtual void __stdcall SetPrefetcher(Prefetcher *p) = 0;
-
   // These lines are needed so that we can overload the older functions from IScriptEnvironment.
   using IScriptEnvironment::Invoke;
   using IScriptEnvironment::AddFunction;
