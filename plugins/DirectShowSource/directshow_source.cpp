@@ -2552,10 +2552,7 @@ HRESULT DirectShowSource::LoadGraphFile(IGraphBuilder *pGraph, const WCHAR* wszN
 
 AVSValue __cdecl Create_DirectShowSource(AVSValue args, void*, IScriptEnvironment* env) {
 
-  if (args[0].ArraySize() != 1)
-    env->ThrowError("DirectShowSource: Only 1 filename currently supported!");
-
-  const char* filename = args[0][0].AsString();
+  const char* filename = args[0].AsString();
   const int _avg_time_per_frame = args[1].Defined() ? int(10000000 / args[1].AsFloat() + 0.5) : 0;
 
   const bool audio    = args[3].AsBool(true);
@@ -2691,7 +2688,7 @@ extern "C" __declspec(dllexport) const char* __stdcall AvisynthPluginInit3(IScri
 
   env->AddFunction("DirectShowSource",
 // args   0      1      2       3       4            5          6
-       "s+[fps]f[seek]b[audio]b[video]b[convertfps]b[seekzero]b"
+       "s[fps]f[seek]b[audio]b[video]b[convertfps]b[seekzero]b"
 //                 7            8            9        10        11
        "[timeout]i[pixel_type]s[framecount]i[logfile]s[logmask]i",
        Create_DirectShowSource, 0);
