@@ -43,6 +43,7 @@
 #include <avs/win.h>
 #include <avs/minmax.h>
 #include <new>
+#include <clocale>
 #include "../internal.h"
 #include "../Prefetcher.h"
 
@@ -889,7 +890,9 @@ AVSValue String(AVSValue args, void*, IScriptEnvironment* env)
 	  }
 	  if (args[0].IsFloat()) {
 		char s[30];
-		sprintf(s,"%lf",args[0].AsFloat());
+    _locale_t locale = _create_locale(LC_NUMERIC, "C"); // decimal point: dot
+    _sprintf_l(s,"%lf", locale, args[0].AsFloat());
+    _free_locale(locale);
 		return env->SaveString(s);
 	  }
   }
