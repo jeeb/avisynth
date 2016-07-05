@@ -54,6 +54,7 @@
 #include <cassert>
 #include "MTGuard.h"
 #include "cache.h"
+#include <clocale>
 
 #ifdef _MSC_VER
   #define strnicmp(a,b,c) _strnicmp(a,b,c)
@@ -2270,7 +2271,9 @@ char* ScriptEnvironment::VSprintf(const char* fmt, void* val) {
     size += 4096;
     buf = new(std::nothrow) char[size];
     if (!buf) return NULL;
-    count = _vsnprintf(buf, size, fmt, (va_list)val);
+    _locale_t locale = _create_locale(LC_NUMERIC, "C"); // decimal point: dot
+    count = _vsnprintf_l(buf, size, fmt, locale, (va_list)val);
+    _free_locale(locale);
   }
   return string_dump.SaveString(buf, count); // SaveString will add the NULL in len mode.
 }

@@ -43,6 +43,7 @@
 #include <avs/win.h>
 #include <avs/minmax.h>
 #include <new>
+#include <clocale>
 #include "../internal.h"
 #include "../Prefetcher.h"
 
@@ -826,7 +827,23 @@ AVSValue PixelType (AVSValue args, void*, IScriptEnvironment* env) {
 	  return "YV411";
     case VideoInfo::CS_Y8    :
 	  return "Y8";
-	default:
+    case VideoInfo::CS_YUV420P16 :
+    return "YUV420P16";
+    case VideoInfo::CS_YUV422P16 :
+    return "YUV422P16";
+    case VideoInfo::CS_YUV444P16 :
+    return "YUV444P16";
+    case VideoInfo::CS_Y16       :
+    return "Y16";
+    case VideoInfo::CS_YUV420PS  :
+    return "YUV420PS";
+    case VideoInfo::CS_YUV422PS  :
+    return "YUV422PS";
+    case VideoInfo::CS_YUV444PS  :
+    return "YUV444PS";
+    case VideoInfo::CS_Y32       :
+    return "Y32";
+    default:
 	  break;
   }
   return "";
@@ -889,7 +906,9 @@ AVSValue String(AVSValue args, void*, IScriptEnvironment* env)
 	  }
 	  if (args[0].IsFloat()) {
 		char s[30];
-		sprintf(s,"%lf",args[0].AsFloat());
+    _locale_t locale = _create_locale(LC_NUMERIC, "C"); // decimal point: dot
+    _sprintf_l(s,"%lf", locale, args[0].AsFloat());
+    _free_locale(locale);
 		return env->SaveString(s);
 	  }
   }
