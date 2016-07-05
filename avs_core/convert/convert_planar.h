@@ -153,8 +153,12 @@ public:
   static AVSValue __cdecl CreateYV16(AVSValue args, void*, IScriptEnvironment* env);   
   static AVSValue __cdecl CreateYV24(AVSValue args, void*, IScriptEnvironment* env);   
   static AVSValue __cdecl CreateYV411(AVSValue args, void*, IScriptEnvironment* env);   
+  static AVSValue __cdecl CreateYUV420(AVSValue args, void*, IScriptEnvironment* env);   
+  static AVSValue __cdecl CreateYUV422(AVSValue args, void*, IScriptEnvironment* env);   
+  static AVSValue __cdecl CreateYUV444(AVSValue args, void*, IScriptEnvironment* env);   
 private:
-  bool Y8input;
+  bool Yinput;
+  int pixelsize;
   PClip Usource;
   PClip Vsource;
 };
