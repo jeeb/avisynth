@@ -77,6 +77,12 @@ public:
     Y_plane = (BYTE*)Env->Allocate(pitch*_h, 64, AVS_POOLED_ALLOC); 
     U_plane = (BYTE*) Env->Allocate(pitch*_h, 64, AVS_POOLED_ALLOC);
     V_plane = (BYTE*) Env->Allocate(pitch*_h, 64, AVS_POOLED_ALLOC);
+	  if (!Y_plane || !U_plane || !V_plane) {
+	  	Env->Free(Y_plane);
+	  	Env->Free(U_plane);
+	  	Env->Free(V_plane);
+	  	Env->ThrowError("Image444: Could not reserve memory.");
+	  }
 
     ResetFake();
   }

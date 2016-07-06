@@ -347,7 +347,10 @@ PVideoFrame Histogram::DrawModeOverlay(int n, IScriptEnvironment* env) {
   __int64 count = end-start;
   signed short* samples = static_cast<signed short*>(
     env2->Allocate((int)count * vi.AudioChannels() * sizeof(unsigned short), 8, AVS_POOLED_ALLOC)
-    );
+  );
+  if (!samples) {
+	  env2->ThrowError("Histogram: Could not reserve memory.");
+  }
 
   int h = dst->GetHeight();
   int imgSize = h*dst->GetPitch();
@@ -413,7 +416,10 @@ PVideoFrame Histogram::DrawModeStereo(int n, IScriptEnvironment* env) {
   __int64 count = end-start;
   signed short* samples = static_cast<signed short*>(
     env2->Allocate((int)count * vi.AudioChannels() * sizeof(unsigned short), 8, AVS_POOLED_ALLOC)
-    );
+  );
+  if (!samples) {
+	  env2->ThrowError("Histogram: Could not reserve memory.");
+  }
 
   int h = src->GetHeight();
   int imgSize = h*src->GetPitch();

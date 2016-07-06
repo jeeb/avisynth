@@ -64,6 +64,12 @@ struct ResamplingProgram {
   {
     pixel_offset = (int*) Env->Allocate(sizeof(int) * target_size, 64, AVS_NORMAL_ALLOC); // 64-byte alignment
     pixel_coefficient = (short*) Env->Allocate(sizeof(short) * target_size * filter_size, 64, AVS_NORMAL_ALLOC);
+  	if (!pixel_offset || !pixel_coefficient) {
+  		Env->Free(pixel_offset);
+  		Env->Free(pixel_coefficient);
+  		Env->ThrowError("ResamplingProgram: Could not reserve memory.");
+  	}
+
   };
 
   ~ResamplingProgram() {

@@ -139,10 +139,16 @@ Levels::Levels(PClip _child, int in_min, double gamma, int in_max, int out_min, 
   }
 
   map = static_cast<uint8_t*>(env2_unsafe->Allocate(256*scale, 8, AVS_NORMAL_ALLOC));
+  if (!map) {
+	  env->ThrowError("Levels: Could not reserve memory.");
+  }
 
   if (vi.IsYUV()) 
   {
     mapchroma = static_cast<uint8_t*>(env2_unsafe->Allocate(256*scale, 8, AVS_NORMAL_ALLOC));
+    if (!mapchroma) {
+      env->ThrowError("Levels: Could not reserve memory.");
+    }
 
     for (int i = 0; i<256*scale; ++i) {
       double p;
@@ -338,6 +344,14 @@ RGBAdjust::RGBAdjust(PClip _child, double r,  double g,  double b,  double a,
     mapG = static_cast<uint8_t*>(env2_unsafe->Allocate(256*256, 8, AVS_NORMAL_ALLOC));
     mapB = static_cast<uint8_t*>(env2_unsafe->Allocate(256*256, 8, AVS_NORMAL_ALLOC));
     mapA = static_cast<uint8_t*>(env2_unsafe->Allocate(256*256, 8, AVS_NORMAL_ALLOC));
+	  if (!mapR || !mapG || !mapB || !mapA)
+	  {
+	  	env2_unsafe->Free(mapR);
+	  	env2_unsafe->Free(mapG);
+	  	env2_unsafe->Free(mapB);
+	  	env2_unsafe->Free(mapA);
+	  	env->ThrowError("RGBAdjust: Could not reserve memory.");
+	  }
 
     for (int i=0; i<256*256; ++i) {
       mapR[i] = BYTE(pow(clamp((rb*256 + i * r -127.5)/(255.0*256), 0.0, 1.0), rg) * 255.0 + 0.5);
@@ -351,6 +365,14 @@ RGBAdjust::RGBAdjust(PClip _child, double r,  double g,  double b,  double a,
     mapG = static_cast<uint8_t*>(env2_unsafe->Allocate(256, 8, AVS_NORMAL_ALLOC));
     mapB = static_cast<uint8_t*>(env2_unsafe->Allocate(256, 8, AVS_NORMAL_ALLOC));
     mapA = static_cast<uint8_t*>(env2_unsafe->Allocate(256, 8, AVS_NORMAL_ALLOC));
+  	if (!mapR || !mapG || !mapB || !mapA)
+  	{
+  		env2_unsafe->Free(mapR);
+  		env2_unsafe->Free(mapG);
+  		env2_unsafe->Free(mapB);
+  		env2_unsafe->Free(mapA);
+  		env->ThrowError("RGBAdjust: Could not reserve memory.");
+  	}
 
     for (int i=0; i<256; ++i) {
       mapR[i] = BYTE(pow(clamp((rb + i * r)/255.0, 0.0, 1.0), rg) * 255.0 + 0.5);
@@ -640,6 +662,9 @@ Tweak::Tweak(PClip _child, double _hue, double _sat, double _bright, double _con
 
   if (dither) {
     map = static_cast<uint8_t*>(env2_unsafe->Allocate(256*256, 8, AVS_NORMAL_ALLOC));
+    if (!map) {
+      env->ThrowError("Tweak: Could not reserve memory.");
+    }
 
     if (coring) {
       for (int i = 0; i < 256*256; i++) {
@@ -659,6 +684,9 @@ Tweak::Tweak(PClip _child, double _hue, double _sat, double _bright, double _con
   }
   else {
     map = static_cast<uint8_t*>(env2_unsafe->Allocate(256, 8, AVS_NORMAL_ALLOC));
+    if (!map) {
+      env->ThrowError("Tweak: Could not reserve memory.");
+    }
 
     if (coring) {
       for (int i = 0; i < 256; i++) {
@@ -689,6 +717,9 @@ Tweak::Tweak(PClip _child, double _hue, double _sat, double _bright, double _con
 
   if (dither) {
     mapUV = static_cast<uint16_t*>(env2_unsafe->Allocate(256*256*16*sizeof(uint16_t), 8, AVS_NORMAL_ALLOC));
+    if (!mapUV) {
+      env->ThrowError("Tweak: Could not reserve memory.");
+    }
 
     for (int d = 0; d < 16; d++) {
       for (int u = 0; u < 256; u++) {
@@ -711,6 +742,9 @@ Tweak::Tweak(PClip _child, double _hue, double _sat, double _bright, double _con
   }
   else {
     mapUV = static_cast<uint16_t*>(env2_unsafe->Allocate(256*256*sizeof(uint16_t), 8, AVS_NORMAL_ALLOC));
+    if (!mapUV) {
+      env->ThrowError("Tweak: Could not reserve memory.");
+    }
 
     for (int u = 0; u < 256; u++) {
       const double destu = u-128;
