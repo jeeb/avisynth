@@ -38,7 +38,6 @@
 #include "convert_rgb.h"
 #include "convert_yv12.h"
 #include "convert_yuy2.h"
-#include "convert_stacked.h"
 #include <avs/alignment.h>
 #include <avs/win.h>
 #include <emmintrin.h>
@@ -60,8 +59,6 @@ extern const AVSFunction Convert_filters[] = {       // matrix can be "rec601", 
   { "ConvertToYV411", BUILTIN_FUNC_PREFIX, "c[interlaced]b[matrix]s[ChromaInPlacement]s[chromaresample]s", ConvertToPlanarGeneric::CreateYV411},
   { "ConvertToYUY2",  BUILTIN_FUNC_PREFIX, "c[interlaced]b[matrix]s[ChromaInPlacement]s[chromaresample]s", ConvertToYUY2::Create },
   { "ConvertBackToYUY2", BUILTIN_FUNC_PREFIX, "c[matrix]s", ConvertBackToYUY2::Create },
-  { "ConvertHbdFromStacked", BUILTIN_FUNC_PREFIX, "c", ConvertHbdFromStacked::Create },
-  { "ConvertHbdToStacked", BUILTIN_FUNC_PREFIX, "c", ConvertHbdToStacked::Create },
   { "ConvertToY",       BUILTIN_FUNC_PREFIX, "c[matrix]s", ConvertToY8::Create },
   { "ConvertToYUV420",  BUILTIN_FUNC_PREFIX, "c[interlaced]b[matrix]s[ChromaInPlacement]s[chromaresample]s[ChromaOutPlacement]s", ConvertToPlanarGeneric::CreateYUV420},
   { "ConvertToYUV422",  BUILTIN_FUNC_PREFIX, "c[interlaced]b[matrix]s[ChromaInPlacement]s[chromaresample]s", ConvertToPlanarGeneric::CreateYUV422},

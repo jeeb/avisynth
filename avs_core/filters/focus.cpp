@@ -267,6 +267,9 @@ PVideoFrame __stdcall AdjustFocusV::GetFrame(int n, IScriptEnvironment* env)
 	
   auto env2 = static_cast<IScriptEnvironment2*>(env);
   BYTE* line_buf = reinterpret_cast<BYTE*>(env2->Allocate(src->GetRowSize(), 16, AVS_POOLED_ALLOC));
+  if (!line_buf) {
+	  env2->ThrowError("AdjustFocusV: Could not reserve memory.");
+  }
 
 	if (vi.IsPlanar()) {
     const int planes[3] = { PLANAR_Y, PLANAR_U, PLANAR_V };

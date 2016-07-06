@@ -158,7 +158,11 @@ PVideoFrame __stdcall GeneralConvolution::GetFrame(int n, IScriptEnvironment* en
   auto pbyG = static_cast<uint8_t*>(env2->Allocate(vi.width*vi.height, 8, AVS_POOLED_ALLOC));
   auto pbyB = static_cast<uint8_t*>(env2->Allocate(vi.width*vi.height, 8, AVS_POOLED_ALLOC));
 
-  if (pbyA == nullptr || pbyR == nullptr || pbyG == nullptr || pbyB == nullptr) {
+  if ((pbyA == nullptr) || (pbyR == nullptr) || (pbyG == nullptr) || (pbyB == nullptr)) {
+    env2->Free(pbyA);
+    env2->Free(pbyR);
+    env2->Free(pbyG);
+    env2->Free(pbyB);
     env->ThrowError("GeneralConvolution: out of memory");
   }
 

@@ -971,7 +971,7 @@ public:
 
   virtual void __stdcall DeleteScriptEnvironment() = 0;
 
-  virtual void _stdcall ApplyMessage(PVideoFrame* frame, const VideoInfo& vi, const char* message, int size,
+  virtual void __stdcall ApplyMessage(PVideoFrame* frame, const VideoInfo& vi, const char* message, int size,
                                      int textcolor, int halocolor, int bgcolor) = 0;
 
   virtual const AVS_Linkage* const __stdcall GetAVSLinkage() = 0;

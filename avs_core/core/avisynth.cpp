@@ -781,9 +781,6 @@ void ScriptEnvironment::InitMT()
     this->SetFilterMTMode(BUILTIN_FUNC_PREFIX "_ConvertToYUV422", MtMode::MT_NICE_FILTER, true);
     this->SetFilterMTMode(BUILTIN_FUNC_PREFIX "_ConvertToYUV444", MtMode::MT_NICE_FILTER, true);
 
-    this->SetFilterMTMode(BUILTIN_FUNC_PREFIX "_ConvertNativeToStacked", MtMode::MT_NICE_FILTER, true);
-    this->SetFilterMTMode(BUILTIN_FUNC_PREFIX "_ConvertStackedToNative", MtMode::MT_NICE_FILTER, true);
-
     this->SetFilterMTMode(BUILTIN_FUNC_PREFIX "_GeneralConvolution", MtMode::MT_NICE_FILTER, true);
     this->SetFilterMTMode(BUILTIN_FUNC_PREFIX "_UnalignedSplice", MtMode::MT_NICE_FILTER, true);
     this->SetFilterMTMode(BUILTIN_FUNC_PREFIX "_AlignedSplice", MtMode::MT_NICE_FILTER, true);

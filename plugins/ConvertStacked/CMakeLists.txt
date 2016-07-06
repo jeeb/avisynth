@@ -2,20 +2,19 @@
 # "Target Usage Requirements" and "Generator Toolset selection"
 CMAKE_MINIMUM_REQUIRED( VERSION 2.8.11 )
 
-set(PluginName "VDubFilter")
+set(PluginName "ConvertStacked")
 set(ProjectName "Plugin${PluginName}")
 
 # Create library
 project(${ProjectName})
 list (APPEND SourceFiles
-    "VDubFilter.cpp"
-    "GetCPUFlags.cpp"
+    "ConvertStacked.cpp"
 )
 add_library(${ProjectName} SHARED ${SourceFiles})
 set_target_properties(${ProjectName} PROPERTIES "OUTPUT_NAME" ${PluginName})
 
 # Library dependencies 
-target_link_libraries(${ProjectName} "User32.lib")
+target_link_libraries(${ProjectName})
 
 # Include directories
 target_include_directories(${ProjectName} PRIVATE ${AvsCore_SOURCE_DIR})

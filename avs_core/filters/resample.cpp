@@ -445,6 +445,10 @@ static void resize_h_pointresize(BYTE* dst, const BYTE* src, int dst_pitch, int 
 static void resize_h_prepare_coeff_8(ResamplingProgram* p, IScriptEnvironment2* env) {
   int filter_size = AlignNumber(p->filter_size, 8);
   short* new_coeff = (short*) env->Allocate(sizeof(short) * p->target_size * filter_size, 64, AVS_NORMAL_ALLOC);
+  if (!new_coeff) {
+    env->ThrowError("Could not reserve memory in a resampler.");
+  }
+
   memset(new_coeff, 0, sizeof(short) * p->target_size * filter_size);
 
   // Copy coeff
@@ -819,6 +823,11 @@ PVideoFrame __stdcall FilteredResizeH::GetFrame(int n, IScriptEnvironment* env)
     // temp_1_pitch and temp_2_pitch is pixelsize-aware
     BYTE* temp_1 = static_cast<BYTE*>(env2->Allocate(temp_1_pitch * src_width, 64, AVS_POOLED_ALLOC));
     BYTE* temp_2 = static_cast<BYTE*>(env2->Allocate(temp_2_pitch * dst_width, 64, AVS_POOLED_ALLOC));
+    if (!temp_1 || !temp_2) {
+      env2->Free(temp_1);
+      env2->Free(temp_2);
+      env->ThrowError("Could not reserve memory in a resampler.");
+    }
 
     if (!vi.IsRGB()) {
       // Y Plane
@@ -971,15 +980,24 @@ PVideoFrame __stdcall FilteredResizeV::GetFrame(int n, IScriptEnvironment* env)
 
   // Create pitch table
   int* src_pitch_table_luma = static_cast<int*>(env2->Allocate(sizeof(int) * src->GetHeight(), 16, AVS_POOLED_ALLOC));
+  if (!src_pitch_table_luma) {
+    env->ThrowError("Could not reserve memory in a resampler.");
+  }
+
   resize_v_create_pitch_table(src_pitch_table_luma, src->GetPitch(), src->GetHeight());
 
   int* src_pitch_table_chromaU = NULL;
   int* src_pitch_table_chromaV = NULL;
   if ((!grey && vi.IsPlanar())) {
     src_pitch_table_chromaU = static_cast<int*>(env2->Allocate(sizeof(int) * src->GetHeight(PLANAR_U), 16, AVS_POOLED_ALLOC));
-    resize_v_create_pitch_table(src_pitch_table_chromaU, src->GetPitch(PLANAR_U), src->GetHeight(PLANAR_U));
-
     src_pitch_table_chromaV = static_cast<int*>(env2->Allocate(sizeof(int) * src->GetHeight(PLANAR_V), 16, AVS_POOLED_ALLOC));
+    if (!src_pitch_table_chromaU || !src_pitch_table_chromaV) {
+      env2->Free(src_pitch_table_chromaU);
+      env2->Free(src_pitch_table_chromaV);
+      env->ThrowError("Could not reserve memory in a resampler.");
+    }
+
+    resize_v_create_pitch_table(src_pitch_table_chromaU, src->GetPitch(PLANAR_U), src->GetHeight(PLANAR_U));
     resize_v_create_pitch_table(src_pitch_table_chromaV, src->GetPitch(PLANAR_V), src->GetHeight(PLANAR_V));
   }
 
