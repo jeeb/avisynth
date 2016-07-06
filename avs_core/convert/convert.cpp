@@ -41,6 +41,7 @@
 #include "convert_stacked.h"
 #include <avs/alignment.h>
 #include <avs/win.h>
+#include <avs/minmax.h>
 #include <emmintrin.h>
 
 
@@ -66,6 +67,9 @@ extern const AVSFunction Convert_filters[] = {       // matrix can be "rec601", 
   { "ConvertToYUV420",  BUILTIN_FUNC_PREFIX, "c[interlaced]b[matrix]s[ChromaInPlacement]s[chromaresample]s[ChromaOutPlacement]s", ConvertToPlanarGeneric::CreateYUV420},
   { "ConvertToYUV422",  BUILTIN_FUNC_PREFIX, "c[interlaced]b[matrix]s[ChromaInPlacement]s[chromaresample]s", ConvertToPlanarGeneric::CreateYUV422},
   { "ConvertToYUV444",  BUILTIN_FUNC_PREFIX, "c[interlaced]b[matrix]s[ChromaInPlacement]s[chromaresample]s", ConvertToPlanarGeneric::CreateYUV444},
+  { "ConvertTo8bit",  BUILTIN_FUNC_PREFIX, "c[scale]f", ConvertTo8bit::Create},
+  { "ConvertTo16bit", BUILTIN_FUNC_PREFIX, "c[scale]f", ConvertTo16bit::Create},
+  { "ConvertToFloat", BUILTIN_FUNC_PREFIX, "c[scale]f", ConvertToFloat::Create},
   { 0 }
 };
 
@@ -736,6 +740,325 @@ AVSValue __cdecl ConvertToYV12::Create(AVSValue args, void*, IScriptEnvironment*
     return new ConvertToYV12(clip,args[1].AsBool(false),env);
 
   return ConvertToPlanarGeneric::CreateYV12(args,0,env);
+}
+
+/**********************************
+******  Bitdepth conversions  *****
+**********************************/
+
+// BitDepthConvFuncPtr
+static void convert_16_to_8_c(const BYTE *srcp, BYTE *dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch, float float_range)
+{
+  const uint16_t *srcp0 = reinterpret_cast<const uint16_t *>(srcp);
+  src_pitch = src_pitch / sizeof(uint16_t);
+  int src_width = src_rowsize / sizeof(uint16_t);
+  for(int y=0; y<src_height; y++)
+  { 
+    for (int x = 0; x < src_width; x++)
+    {
+      dstp[x] = srcp0[x] >> 8; // no dithering, no range conversion, simply use msb
+    }
+    dstp += dst_pitch;
+    srcp0 += src_pitch;
+  }
+}
+
+// float to 8 bit, float to 16 bit
+template<typename pixel_t>
+static void convert_32_to_uintN_c(const BYTE *srcp, BYTE *dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch, float float_range)
+{
+  const float *srcp0 = reinterpret_cast<const float *>(srcp);
+  pixel_t *dstp0 = reinterpret_cast<pixel_t *>(dstp);
+
+  src_pitch = src_pitch / sizeof(float);
+  dst_pitch = dst_pitch / sizeof(pixel_t);
+
+  int src_width = src_rowsize / sizeof(float);
+  
+  float max_dst_pixelvalue;
+  if(sizeof(pixel_t)==1)
+    max_dst_pixelvalue = 255.0f;
+  if(sizeof(pixel_t)==2)
+    max_dst_pixelvalue = 65535.0f;
+
+  float factor = 1.0f / float_range * max_dst_pixelvalue;
+
+  for(int y=0; y<src_height; y++)
+  { 
+    for (int x = 0; x < src_width; x++)
+    {
+      float pixel = (srcp0[x] * factor);
+      dstp0[x] = pixel_t(clamp(pixel, 0.0f, max_dst_pixelvalue)); // we clamp here!
+    }
+    dstp0 += dst_pitch;
+    srcp0 += src_pitch;
+  }
+}
+
+static void convert_8_to_16_c(const BYTE *srcp, BYTE *dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch, float float_range)
+{
+  const uint8_t *srcp0 = reinterpret_cast<const uint8_t *>(srcp);
+  uint16_t *dstp0 = reinterpret_cast<uint16_t *>(dstp);
+
+  src_pitch = src_pitch / sizeof(uint8_t);
+  dst_pitch = dst_pitch / sizeof(uint16_t);
+  
+  int src_width = src_rowsize / sizeof(uint8_t);
+  
+  for(int y=0; y<src_height; y++)
+  { 
+    for (int x = 0; x < src_width; x++)
+    {
+      dstp0[x] = srcp0[x] * 65535 / 255; // 0.255 -> 0..65535 or lookup
+    }
+    dstp0 += dst_pitch;
+    srcp0 += src_pitch;
+  }
+}
+
+// 8 bit to float, 16 bit to float
+template<typename pixel_t>
+static void convert_uintN_to_float_c(const BYTE *srcp, BYTE *dstp, int src_rowsize, int src_height, int src_pitch, int dst_pitch, float float_range)
+{
+  const pixel_t *srcp0 = reinterpret_cast<const pixel_t *>(srcp);
+  float *dstp0 = reinterpret_cast<float *>(dstp);
+  
+  src_pitch = src_pitch / sizeof(pixel_t);
+  dst_pitch = dst_pitch / sizeof(float);
+  
+  int src_width = src_rowsize / sizeof(pixel_t);
+
+  float max_src_pixelvalue;
+  if (sizeof(pixel_t) == 1)
+    max_src_pixelvalue = 255.0;
+  if (sizeof(pixel_t) == 2)
+    max_src_pixelvalue = 65535.0;
+
+  // 0..255,65535 -> 0..float_range
+
+  for(int y=0; y<src_height; y++)
+  { 
+    for (int x = 0; x < src_width; x++)
+    {
+      dstp0[x] = (srcp0[x] / max_src_pixelvalue) * float_range; //  or lookup
+    }
+    dstp0 += dst_pitch;
+    srcp0 += src_pitch;
+  }
+}
+
+ConvertTo8bit::ConvertTo8bit(PClip _child, const float _float_range, const int _dither_mode, IScriptEnvironment* env) :
+    GenericVideoFilter(_child), float_range(_float_range), dither_mode(_dither_mode)
+{
+
+  if (vi.ComponentSize() == 2) // 16->8 bit
+  {
+    conv_function = convert_16_to_8_c;
+  } else if (vi.ComponentSize() == 4) // 32->8 bit
+  {
+    conv_function = convert_32_to_uintN_c<uint8_t>;
+  } else
+    env->ThrowError("ConvertTo8bit: unsupported bit depth");
+
+  if (vi.NumComponents() == 1)
+    vi.pixel_type = VideoInfo::CS_Y8;
+  else if (vi.IsColorSpace(VideoInfo::CS_YUV420P16) || vi.IsColorSpace(VideoInfo::CS_YUV420PS))
+    vi.pixel_type = VideoInfo::CS_YV12;
+  else if (vi.IsColorSpace(VideoInfo::CS_YUV422P16) || vi.IsColorSpace(VideoInfo::CS_YUV422PS))
+    vi.pixel_type = VideoInfo::CS_YV16;
+  else if (vi.IsColorSpace(VideoInfo::CS_YUV444P16) || vi.IsColorSpace(VideoInfo::CS_YUV444PS))
+    vi.pixel_type = VideoInfo::CS_YV24;
+  else
+    env->ThrowError("ConvertTo8bit: unsupported color space");
+}
+
+
+AVSValue __cdecl ConvertTo8bit::Create(AVSValue args, void*, IScriptEnvironment* env) {
+  PClip clip = args[0].AsClip();
+  
+  const VideoInfo &vi = clip->GetVideoInfo();
+
+  if (!vi.IsPlanar())
+    env->ThrowError("ConvertTo8bit: Can only convert from Planar YUV.");
+
+  if (vi.ComponentSize() == 1)
+    return clip; // 8 bit -> 8 bit: no conversion
+
+  if (vi.ComponentSize() != 4 && args[1].Defined())
+    env->ThrowError("ConvertTo8bit: Float range parameter for non float source");
+
+  // float range parameter
+  float float_range = (float)args[1].AsFloat(1.0f);
+
+  if (vi.ComponentSize() == 4) {
+    if(float_range<=0.0)
+      env->ThrowError("ConvertTo8bit: Float range parameter cannot be <= 0");
+    // other checkings
+  }
+  
+  // dither parameter rfu
+  int dither_type = args[2].AsInt(-1);
+
+  // clip = env->Invoke("Cache", AVSValue(clip)).AsClip();
+  return new ConvertTo8bit(clip, float_range, dither_type, env);
+}
+
+PVideoFrame __stdcall ConvertTo8bit::GetFrame(int n, IScriptEnvironment* env) {
+  PVideoFrame src = child->GetFrame(n, env);
+  PVideoFrame dst = env->NewVideoFrame(vi);
+
+  static const int planes[] = { PLANAR_Y, PLANAR_U, PLANAR_V };
+  for (int p = 0; p < vi.NumComponents(); ++p) {
+    const int plane = planes[p];
+    conv_function(src->GetReadPtr(plane), dst->GetWritePtr(plane),
+      src->GetRowSize(plane), src->GetHeight(plane),
+      src->GetPitch(plane), dst->GetPitch(plane), float_range /*, dither_mode */);
+  }
+
+  return dst;
+}
+
+// 16 bit
+ConvertTo16bit::ConvertTo16bit(PClip _child, const float _float_range, const int _dither_mode, IScriptEnvironment* env) :
+  GenericVideoFilter(_child), float_range(_float_range), dither_mode(_dither_mode)
+{
+
+  if (vi.ComponentSize() == 1) // 8->16 bit
+  {
+    conv_function = convert_8_to_16_c;
+  } else if (vi.ComponentSize() == 4) // 32->16 bit
+  {
+    conv_function = convert_32_to_uintN_c<uint16_t>;
+  } else
+    env->ThrowError("ConvertTo16bit: unsupported bit depth");
+
+  if (vi.NumComponents() == 1)
+    vi.pixel_type = VideoInfo::CS_Y16;
+  else if (vi.IsColorSpace(VideoInfo::CS_YV12) || vi.IsColorSpace(VideoInfo::CS_YUV420PS))
+    vi.pixel_type = VideoInfo::CS_YUV420P16;
+  else if (vi.IsColorSpace(VideoInfo::CS_YV16) || vi.IsColorSpace(VideoInfo::CS_YUV422PS))
+    vi.pixel_type = VideoInfo::CS_YUV422P16;
+  else if (vi.IsColorSpace(VideoInfo::CS_YV24) || vi.IsColorSpace(VideoInfo::CS_YUV444PS))
+    vi.pixel_type = VideoInfo::CS_YUV444P16;
+  else
+    env->ThrowError("ConvertTo16bit: unsupported color space");
+}
+
+
+AVSValue __cdecl ConvertTo16bit::Create(AVSValue args, void*, IScriptEnvironment* env) {
+  PClip clip = args[0].AsClip();
+
+  const VideoInfo &vi = clip->GetVideoInfo();
+
+  if (!vi.IsPlanar())
+    env->ThrowError("ConvertTo16bit: Can only convert from Planar YUV.");
+
+  if (vi.ComponentSize() == 2)
+    return clip; // 16 bit -> 16 bit: no conversion
+
+  if (vi.ComponentSize() != 4 && args[1].Defined())
+    env->ThrowError("ConvertTo16bit: Float range parameter for non float source");
+
+  // float range parameter
+  float float_range = (float)args[1].AsFloat(1.0f);
+
+  if (vi.ComponentSize() == 4) {
+    if(float_range<=0.0)
+      env->ThrowError("ConvertTo16bit: Float range parameter cannot be <= 0");
+    // other checkings
+  }
+
+  // dither parameter, rfu
+  int dither_type = args[2].AsInt(-1);
+
+  // clip = env->Invoke("Cache", AVSValue(clip)).AsClip();
+  return new ConvertTo16bit(clip, float_range, dither_type, env);
+}
+
+PVideoFrame __stdcall ConvertTo16bit::GetFrame(int n, IScriptEnvironment* env) {
+  PVideoFrame src = child->GetFrame(n, env);
+  PVideoFrame dst = env->NewVideoFrame(vi);
+
+  static const int planes[] = { PLANAR_Y, PLANAR_U, PLANAR_V };
+  for (int p = 0; p < vi.NumComponents(); ++p) {
+    const int plane = planes[p];
+    conv_function(src->GetReadPtr(plane), dst->GetWritePtr(plane),
+      src->GetRowSize(plane), src->GetHeight(plane),
+      src->GetPitch(plane), dst->GetPitch(plane), float_range /*, dither_mode */);
+  }
+
+  return dst;
+}
+
+
+
+// float 32 bit
+ConvertToFloat::ConvertToFloat(PClip _child, const float _float_range, const int _dither_mode, IScriptEnvironment* env) :
+  GenericVideoFilter(_child), float_range(_float_range), dither_mode(_dither_mode)
+{
+
+  if (vi.ComponentSize() == 1) // 8->32 bit
+  {
+    conv_function = convert_uintN_to_float_c<uint8_t>;
+  } else if (vi.ComponentSize() == 2) // 16->32 bit
+  {
+    conv_function = convert_uintN_to_float_c<uint16_t>;
+  } else
+    env->ThrowError("ConvertToFloat: unsupported bit depth");
+
+  if (vi.NumComponents() == 1)
+    vi.pixel_type = VideoInfo::CS_Y32;
+  else if (vi.IsColorSpace(VideoInfo::CS_YV12) || vi.IsColorSpace(VideoInfo::CS_YUV420P16))
+    vi.pixel_type = VideoInfo::CS_YUV420PS;
+  else if (vi.IsColorSpace(VideoInfo::CS_YV16) || vi.IsColorSpace(VideoInfo::CS_YUV422P16))
+    vi.pixel_type = VideoInfo::CS_YUV422PS;
+  else if (vi.IsColorSpace(VideoInfo::CS_YV24) || vi.IsColorSpace(VideoInfo::CS_YUV444P16))
+    vi.pixel_type = VideoInfo::CS_YUV444PS;
+  else
+    env->ThrowError("ConvertToFloat: unsupported color space");
+}
+
+
+AVSValue __cdecl ConvertToFloat::Create(AVSValue args, void*, IScriptEnvironment* env) {
+  PClip clip = args[0].AsClip();
+
+  const VideoInfo &vi = clip->GetVideoInfo();
+
+  if (!vi.IsPlanar())
+    env->ThrowError("ConvertToFloat: Can only convert from Planar YUV.");
+
+  if (vi.ComponentSize() == 4)
+    return clip; // 32 bit -> 32 bit: no conversion
+
+  // float range parameter
+  float float_range = (float)args[1].AsFloat(1.0f);
+
+  if (vi.ComponentSize() == 4) {
+    if(float_range<=0.0)
+      env->ThrowError("ConvertToFloat: Float range parameter cannot be <= 0");
+    // other checkings
+  }
+
+  // dither parameter
+  int dither_type = args[2].AsInt(-1);
+
+  // clip = env->Invoke("Cache", AVSValue(clip)).AsClip();
+  return new ConvertToFloat(clip, float_range, dither_type, env);
+}
+
+PVideoFrame __stdcall ConvertToFloat::GetFrame(int n, IScriptEnvironment* env) {
+  PVideoFrame src = child->GetFrame(n, env);
+  PVideoFrame dst = env->NewVideoFrame(vi);
+
+  static const int planes[] = { PLANAR_Y, PLANAR_U, PLANAR_V };
+  for (int p = 0; p < vi.NumComponents(); ++p) {
+    const int plane = planes[p];
+    conv_function(src->GetReadPtr(plane), dst->GetWritePtr(plane),
+      src->GetRowSize(plane), src->GetHeight(plane),
+      src->GetPitch(plane), dst->GetPitch(plane), float_range /*, dither_mode */);
+  }
+
+  return dst;
 }
 
 
