@@ -780,6 +780,10 @@ void ScriptEnvironment::InitMT()
     this->SetFilterMTMode(BUILTIN_FUNC_PREFIX "_ConvertToYUV422", MtMode::MT_NICE_FILTER, true);
     this->SetFilterMTMode(BUILTIN_FUNC_PREFIX "_ConvertToYUV444", MtMode::MT_NICE_FILTER, true);
 
+    this->SetFilterMTMode(BUILTIN_FUNC_PREFIX "_ConvertTo8bit", MtMode::MT_NICE_FILTER, true);
+    this->SetFilterMTMode(BUILTIN_FUNC_PREFIX "_ConvertTo16bit", MtMode::MT_NICE_FILTER, true);
+    this->SetFilterMTMode(BUILTIN_FUNC_PREFIX "_ConvertToFloat", MtMode::MT_NICE_FILTER, true);
+
     this->SetFilterMTMode(BUILTIN_FUNC_PREFIX "_GeneralConvolution", MtMode::MT_NICE_FILTER, true);
     this->SetFilterMTMode(BUILTIN_FUNC_PREFIX "_UnalignedSplice", MtMode::MT_NICE_FILTER, true);
     this->SetFilterMTMode(BUILTIN_FUNC_PREFIX "_AlignedSplice", MtMode::MT_NICE_FILTER, true);
