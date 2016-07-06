@@ -5,7 +5,7 @@
 #include <vector>
 #include <memory>
 
-class IScriptEnvironmentInternal;
+class InternalEnvironment;
 
 namespace std
 {
@@ -29,7 +29,7 @@ private:
 
 public:
   ~MTGuard();
-  MTGuard(PClip firstChild, MtMode mtmode, std::unique_ptr<const FilterConstructor> &&funcCtor, IScriptEnvironmentInternal* env);
+  MTGuard(PClip firstChild, MtMode mtmode, std::unique_ptr<const FilterConstructor> &&funcCtor, InternalEnvironment* env);
   void EnableMT(size_t nThreads);
 
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
@@ -39,7 +39,7 @@ public:
   int __stdcall SetCacheHints(int cachehints,int frame_range);
 
   static bool __stdcall IsMTGuard(const PClip& p);
-  static AVSValue Create(std::unique_ptr<const FilterConstructor> funcCtor, IScriptEnvironmentInternal* env);
+  static AVSValue Create(std::unique_ptr<const FilterConstructor> funcCtor, InternalEnvironment* env);
 };
 
 

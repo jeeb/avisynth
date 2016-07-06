@@ -3,7 +3,7 @@
 
 #include <map>
 
-class IScriptEnvironmentInternal;
+class InternalEnvironment;
 
 class BufferPool
 {
@@ -12,7 +12,7 @@ private:
   struct BufferDesc;
   typedef std::multimap<size_t, BufferDesc*> MapType;
 
-  IScriptEnvironmentInternal* Env;
+  InternalEnvironment* Env;
   MapType Map;
 
   void* PrivateAlloc(size_t nBytes, size_t alignment, void* user);
@@ -20,7 +20,7 @@ private:
 
 public:
 
-  BufferPool(IScriptEnvironmentInternal* env);
+  BufferPool(InternalEnvironment* env);
   ~BufferPool();
 
   void* Allocate(size_t nBytes, size_t alignment, bool pool);

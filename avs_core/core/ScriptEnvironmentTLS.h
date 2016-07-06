@@ -6,12 +6,12 @@
 #include "vartable.h"
 #include "ThreadPool.h"
 #include "BufferPool.h"
-#include "IScriptEnvironmentInternal.h"
+#include "InternalEnvironment.h"
 
-class ScriptEnvironmentTLS : public IScriptEnvironmentInternal
+class ScriptEnvironmentTLS : public InternalEnvironment
 {
 private:
-  IScriptEnvironmentInternal *core;
+  InternalEnvironment *core;
   const size_t thread_id;
   VarTable* global_var_table;
   VarTable* var_table;
@@ -38,7 +38,7 @@ public:
       PopContextGlobal();
   }
 
-  void Specialize(IScriptEnvironmentInternal* _core)
+  void Specialize(InternalEnvironment* _core)
   {
     core = _core;
   }

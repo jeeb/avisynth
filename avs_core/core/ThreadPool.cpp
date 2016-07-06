@@ -7,7 +7,7 @@ struct ThreadPoolGenericItemData
 {
   ThreadWorkerFuncPtr Func;
   void* Params;
-  IScriptEnvironmentInternal* Environment;
+  InternalEnvironment* Environment;
   AVSPromise* Promise;
 };
 
@@ -117,7 +117,7 @@ ThreadPool::ThreadPool(size_t nThreads) :
     _pimpl->Threads.emplace_back(ThreadFunc, i, &(_pimpl->MsgQueue));
 }
 
-void ThreadPool::QueueJob(ThreadWorkerFuncPtr clb, void* params, IScriptEnvironmentInternal *env, JobCompletion *tc)
+void ThreadPool::QueueJob(ThreadWorkerFuncPtr clb, void* params, InternalEnvironment *env, JobCompletion *tc)
 {
   ThreadPoolGenericItemData itemData;
   itemData.Func = clb;

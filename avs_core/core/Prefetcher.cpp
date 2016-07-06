@@ -7,7 +7,7 @@
 #include "ObjectPool.h"
 #include "LruCache.h"
 #include "ScriptEnvironmentTLS.h"
-#include "IScriptEnvironmentInternal.h"
+#include "InternalEnvironment.h"
 
 struct PrefetcherJobParams
 {
@@ -134,7 +134,7 @@ size_t Prefetcher::NumPrefetchThreads() const
   return _pimpl->nThreads;
 }
 
-int __stdcall Prefetcher::SchedulePrefetch(int current_n, int prefetch_start, IScriptEnvironmentInternal* env)
+int __stdcall Prefetcher::SchedulePrefetch(int current_n, int prefetch_start, InternalEnvironment* env)
 {
   int n = prefetch_start;
   while ((_pimpl->running_workers < _pimpl->nPrefetchFrames) && (std::abs(n - current_n) < _pimpl->nPrefetchFrames) )
@@ -180,7 +180,7 @@ int __stdcall Prefetcher::SchedulePrefetch(int current_n, int prefetch_start, IS
 
 PVideoFrame __stdcall Prefetcher::GetFrame(int n, IScriptEnvironment* env)
 {
-  IScriptEnvironmentInternal *envi = static_cast<IScriptEnvironmentInternal*>(env);
+  InternalEnvironment *envi = static_cast<InternalEnvironment*>(env);
   
   int pattern = n - _pimpl->LastRequestedFrame;
   _pimpl->LastRequestedFrame = n;
@@ -322,7 +322,7 @@ const VideoInfo& __stdcall Prefetcher::GetVideoInfo()
 
 AVSValue Prefetcher::Create(AVSValue args, void*, IScriptEnvironment* env)
 {
-  IScriptEnvironmentInternal *envi = static_cast<IScriptEnvironmentInternal*>(env);
+  InternalEnvironment *envi = static_cast<InternalEnvironment*>(env);
   PClip child = args[0].AsClip();
 
   int PrefetchThreads = args[1].AsInt((int)envi->GetProperty(AEP_PHYSICAL_CPUS)+1);

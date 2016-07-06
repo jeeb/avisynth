@@ -36,7 +36,7 @@
 #include "cache.h"
 #include "internal.h"
 #include "FilterConstructor.h"
-#include "IScriptEnvironmentInternal.h"
+#include "InternalEnvironment.h"
 #include <cassert>
 #include <mutex>
 
@@ -44,7 +44,7 @@
 #include <mmintrin.h>
 #endif
 
-MTGuard::MTGuard(PClip firstChild, MtMode mtmode, std::unique_ptr<const FilterConstructor> &&funcCtor, IScriptEnvironmentInternal* env) :
+MTGuard::MTGuard(PClip firstChild, MtMode mtmode, std::unique_ptr<const FilterConstructor> &&funcCtor, InternalEnvironment* env) :
   FilterMutex(NULL),
   MTMode(mtmode),
   nThreads(1),
@@ -213,7 +213,7 @@ bool __stdcall MTGuard::IsMTGuard(const PClip& p)
   return ((p->GetVersion() >= 5) && (p->SetCacheHints(CACHE_IS_MTGUARD_REQ, 0) == CACHE_IS_MTGUARD_ANS));
 }
 
-AVSValue MTGuard::Create(std::unique_ptr<const FilterConstructor> funcCtor, IScriptEnvironmentInternal* env)
+AVSValue MTGuard::Create(std::unique_ptr<const FilterConstructor> funcCtor, InternalEnvironment* env)
 {
   AVSValue func_result = funcCtor->InstantiateFilter();
 

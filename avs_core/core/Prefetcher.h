@@ -4,7 +4,7 @@
 #include <avisynth.h>
 
 struct PrefetcherPimpl;
-class IScriptEnvironmentInternal;
+class InternalEnvironment;
 
 class Prefetcher : public IClip
 {
@@ -13,7 +13,7 @@ private:
   PrefetcherPimpl * _pimpl;
 
   static AVSValue ThreadWorker(IScriptEnvironment2* env, void* data);
-  int __stdcall SchedulePrefetch(int current_n, int prefetch_start, IScriptEnvironmentInternal* env);
+  int __stdcall SchedulePrefetch(int current_n, int prefetch_start, InternalEnvironment* env);
   Prefetcher(const PClip& _child, int _nThreads);
 
 public:

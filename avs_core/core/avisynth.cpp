@@ -34,7 +34,7 @@
 
 #include <avisynth.h>
 #include "../core/internal.h"
-#include "IScriptEnvironmentInternal.h"
+#include "InternalEnvironment.h"
 #include "./parser/script.h"
 #include <avs/minmax.h>
 #include <avs/alignment.h>
@@ -514,7 +514,7 @@ const std::string MTMapState::DEFAULT_MODE_SPECIFIER = "DEFAULT_MT_MODE";
 #include <atomic>
 #include "Prefetcher.h"
 #include "BufferPool.h"
-class ScriptEnvironment : public IScriptEnvironmentInternal {
+class ScriptEnvironment : public InternalEnvironment {
 public:
   ScriptEnvironment();
   void __stdcall CheckVersion(int version);
