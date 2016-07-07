@@ -806,7 +806,7 @@ static void convert_8_to_16_c(const BYTE *srcp, BYTE *dstp, int src_rowsize, int
   { 
     for (int x = 0; x < src_width; x++)
     {
-      dstp0[x] = srcp0[x] * 65535 / 255; // 0.255 -> 0..65535 or lookup
+      dstp0[x] = srcp0[x] << 8;
     }
     dstp0 += dst_pitch;
     srcp0 += src_pitch;
