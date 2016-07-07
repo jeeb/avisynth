@@ -98,6 +98,7 @@ private:
 // YV12:
     int planes[8];
     int scenechange;
+    int pixelsize;
 
 // YUY2:
   const unsigned luma_threshold, chroma_threshold;
