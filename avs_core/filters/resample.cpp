@@ -101,8 +101,13 @@ static void resize_v_c_planar(BYTE* dst, const BYTE* src, int dst_pitch, int src
 {
   int filter_size = program->filter_size;
 
-  short *current_coeff = program->pixel_coefficient;
-  float *current_coeff_float = program->pixel_coefficient_float;
+  typedef std::conditional < std::is_floating_point<pixel_t>::value, float, short>::type coeff_t;
+  coeff_t *current_coeff;
+
+  if (!std::is_floating_point<pixel_t>::value)
+    current_coeff = (coeff_t *)program->pixel_coefficient;
+  else
+    current_coeff = (coeff_t *)program->pixel_coefficient_float;
 
   pixel_t* src0 = (pixel_t *)src;
   pixel_t* dst0 = (pixel_t *)dst;
@@ -123,10 +128,7 @@ static void resize_v_c_planar(BYTE* dst, const BYTE* src, int dst_pitch, int src
       std::conditional < sizeof(pixel_t) == 1, int, std::conditional < sizeof(pixel_t) == 2, __int64, float>::type >::type result;
       result = 0;
       for (int i = 0; i < filter_size; i++) {
-        if (std::is_floating_point<pixel_t>::value)
-          result += (src_ptr+pitch_table[i] / sizeof(pixel_t))[x] * current_coeff_float[i];
-        else
-          result += (src_ptr+pitch_table[i] / sizeof(pixel_t))[x] * current_coeff[i];
+        result += (src_ptr+pitch_table[i] / sizeof(pixel_t))[x] * current_coeff[i];
       }
       if (!std::is_floating_point<pixel_t>::value) {  // floats are unscaled and uncapped 
         result = ((result + 8192) / 16384);
@@ -136,10 +138,7 @@ static void resize_v_c_planar(BYTE* dst, const BYTE* src, int dst_pitch, int src
     }
 
     dst0 += dst_pitch;
-    if (std::is_floating_point<pixel_t>::value)
-      current_coeff_float += filter_size;
-    else
-      current_coeff += filter_size;
+    current_coeff += filter_size;
   }
 }
 
@@ -487,8 +486,13 @@ template<typename pixel_t>
 static void resize_h_c_planar(BYTE* dst, const BYTE* src, int dst_pitch, int src_pitch, ResamplingProgram* program, int width, int height) {
   int filter_size = program->filter_size;
 
-  short *current_coeff = program->pixel_coefficient;
-  float *current_coeff_float = program->pixel_coefficient_float;
+  typedef std::conditional < std::is_floating_point<pixel_t>::value, float, short>::type coeff_t;
+  coeff_t *current_coeff;
+
+  if (!std::is_floating_point<pixel_t>::value)
+    current_coeff = (coeff_t *)program->pixel_coefficient;
+  else
+    current_coeff = (coeff_t *)program->pixel_coefficient_float;
 
   pixel_t limit = 0;
   if (!std::is_floating_point<pixel_t>::value) {  // floats are unscaled and uncapped 
@@ -509,10 +513,7 @@ static void resize_h_c_planar(BYTE* dst, const BYTE* src, int dst_pitch, int src
       std::conditional < sizeof(pixel_t) == 1, int, std::conditional < sizeof(pixel_t) == 2, __int64, float>::type >::type result;
       result = 0;
       for (int i = 0; i < filter_size; i++) {
-        if (std::is_floating_point<pixel_t>::value)
-          result += (src0+y*src_pitch)[(begin+i)] * current_coeff_float[i];
-        else
-          result += (src0+y*src_pitch)[(begin+i)] * current_coeff[i];
+        result += (src0+y*src_pitch)[(begin+i)] * current_coeff[i];
       }
       if (!std::is_floating_point<pixel_t>::value) {  // floats are unscaled and uncapped 
         result = ((result + 8192) / 16384);
@@ -520,10 +521,7 @@ static void resize_h_c_planar(BYTE* dst, const BYTE* src, int dst_pitch, int src
       }
       (dst0 + y*dst_pitch)[x] = (pixel_t)result;
     }
-    if (std::is_floating_point<pixel_t>::value)
-      current_coeff_float += filter_size;
-    else
-      current_coeff += filter_size;
+    current_coeff += filter_size;
   }
 }
 
