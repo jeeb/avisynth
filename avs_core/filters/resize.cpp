@@ -202,13 +202,26 @@ static void vertical_reduce_mmx(BYTE* dstp, const BYTE* srcp, int dst_pitch, int
 }
 #endif
 
-static void vertical_reduce_c(BYTE* dstp, const BYTE* srcp, int dst_pitch, int src_pitch, size_t width, size_t height) {
-  const BYTE* srcp_next = srcp + src_pitch;
-  const BYTE* srcp_next2 = srcp + src_pitch*2;
+template<typename pixel_t>
+static void vertical_reduce_c(BYTE* _dstp, const BYTE* _srcp, int _dst_pitch, int _src_pitch, size_t row_size, size_t height) {
+  size_t width = row_size / sizeof(pixel_t);
+  int dst_pitch = _dst_pitch / sizeof(pixel_t);
+  int src_pitch = _src_pitch / sizeof(pixel_t);
+  const pixel_t *srcp = reinterpret_cast<const pixel_t *>(_srcp);
+  pixel_t *dstp = reinterpret_cast<pixel_t *>(_dstp);
+
+  const pixel_t* srcp_next = srcp + src_pitch;
+  const pixel_t* srcp_next2 = srcp + src_pitch*2;
+
+  pixel_t rounding;
+  if (!std::is_floating_point<pixel_t>::value)
+    rounding = 2;
+  else
+    rounding = 0; // float: no rounding
 
   for (size_t y = 0; y < height-1; ++y) {
     for (size_t x = 0; x < width; ++x) {
-      dstp[x] = (srcp[x] + 2*srcp_next[x] + srcp_next2[x] + 2) >> 2;
+      dstp[x] = (srcp[x] + 2 * srcp_next[x] + srcp_next2[x] + rounding) / 4; // >> 2; /4 float friendly
     }
     dstp += dst_pitch;
     srcp += src_pitch*2;
@@ -216,23 +229,29 @@ static void vertical_reduce_c(BYTE* dstp, const BYTE* srcp, int dst_pitch, int s
     srcp_next2 += src_pitch*2;
   }
   for(size_t x = 0; x < width; ++x) {
-    dstp[x] = (srcp[x] + 3*srcp_next[x] + 2) >> 2;
+    dstp[x] = (srcp[x] + 3 * srcp_next[x] + rounding) / 4; // >> 2; /4 float friendly
   }
 }
 
-void vertical_reduce_core(BYTE* dstp, const BYTE* srcp, int dst_pitch, int src_pitch, int width, int height, IScriptEnvironment* env) {
+void vertical_reduce_core(BYTE* dstp, const BYTE* srcp, int dst_pitch, int src_pitch, int row_size, int height, int pixelsize, IScriptEnvironment* env) {
   if (!srcp) {
     return;
   }
-  if ((env->GetCPUFlags() & CPUF_SSE2) && IsPtrAligned(srcp, 16) && width >= 16) {
-    vertical_reduce_sse2(dstp, srcp, dst_pitch, src_pitch, width, height);
+  if (pixelsize==1 && (env->GetCPUFlags() & CPUF_SSE2) && IsPtrAligned(srcp, 16) && row_size >= 16) {
+    vertical_reduce_sse2(dstp, srcp, dst_pitch, src_pitch, row_size, height);
   } else
 #ifdef X86_32
-    if ((env->GetCPUFlags() & CPUF_MMX) && width >= 8) {
-      vertical_reduce_mmx(dstp, srcp, dst_pitch, src_pitch, width, height);
+    if (pixelsize==1 && (env->GetCPUFlags() & CPUF_MMX) && row_size >= 8) {
+      vertical_reduce_mmx(dstp, srcp, dst_pitch, src_pitch, row_size, height);
     } else
 #endif
-    vertical_reduce_c(dstp, srcp, dst_pitch, src_pitch, width, height);
+      switch (pixelsize) {
+      case 1: vertical_reduce_c<uint8_t>(dstp, srcp, dst_pitch, src_pitch, row_size, height); break;
+      case 2: vertical_reduce_c<uint16_t>(dstp, srcp, dst_pitch, src_pitch, row_size, height); break;
+      default: //case 4: 
+        vertical_reduce_c<float>(dstp, srcp, dst_pitch, src_pitch, row_size, height); break;
+      }
+    
 }
 
 
@@ -269,20 +288,21 @@ PVideoFrame VerticalReduceBy2::GetFrame(int n, IScriptEnvironment* env) {
   int src_pitch = src->GetPitch();
   int dst_pitch = dst->GetPitch();
   int row_size = src->GetRowSize();
-  int a_row_size = (row_size+3) & ~3;
   BYTE* dstp = dst->GetWritePtr();
   const BYTE* srcp = src->GetReadPtr();
 
+  int pixelsize = vi.ComponentSize();
+
   if (vi.IsPlanar()) {
-    vertical_reduce_core(dstp, srcp, dst_pitch, src_pitch, row_size, dst->GetHeight(PLANAR_Y), env);
+    vertical_reduce_core(dstp, srcp, dst_pitch, src_pitch, row_size, dst->GetHeight(PLANAR_Y), pixelsize, env);
     if (vi.NumComponents() > 1) {
       vertical_reduce_core(dst->GetWritePtr(PLANAR_U), src->GetReadPtr(PLANAR_U), dst->GetPitch(PLANAR_U),
-        src->GetPitch(PLANAR_U), dst->GetRowSize(PLANAR_U), dst->GetHeight(PLANAR_U), env);
+        src->GetPitch(PLANAR_U), dst->GetRowSize(PLANAR_U), dst->GetHeight(PLANAR_U), pixelsize, env);
       vertical_reduce_core(dst->GetWritePtr(PLANAR_V), src->GetReadPtr(PLANAR_V), dst->GetPitch(PLANAR_V),
-        src->GetPitch(PLANAR_V), dst->GetRowSize(PLANAR_V), dst->GetHeight(PLANAR_V), env);
+        src->GetPitch(PLANAR_V), dst->GetRowSize(PLANAR_V), dst->GetHeight(PLANAR_V), pixelsize, env);
     }
   } else {
-    vertical_reduce_core(dstp, srcp, dst_pitch, src_pitch, row_size, vi.height, env);
+    vertical_reduce_core(dstp, srcp, dst_pitch, src_pitch, row_size, vi.height, pixelsize, env);
   }
   return dst;
 }
