@@ -343,15 +343,79 @@ AddBorders::AddBorders(int _left, int _top, int _right, int _bot, int _clr, PCli
   vi.height += top+bot;
 }
 
+template<typename pixel_t>
+static inline pixel_t GetHbdColorFromByte(uint8_t color)
+{
+  if (sizeof(pixel_t) == 1) return color;
+  else if (sizeof(pixel_t) == 2) return (pixel_t)color * 256;
+  else return (pixel_t)color / 256; // float, scale to [0..1) 128=0.5f
+}
 
+template<typename pixel_t>
+static void addborders_planar(PVideoFrame &dst, PVideoFrame &src, VideoInfo &vi, int top, int bot, int left, int right, int rgbcolor)
+{
+  const unsigned int colr = RGB2YUV(rgbcolor);
+  const unsigned char YBlack=(unsigned char)((colr >> 16) & 0xff);
+  const unsigned char UBlack=(unsigned char)((colr >>  8) & 0xff);
+  const unsigned char VBlack=(unsigned char)((colr      ) & 0xff);
 
+  int planes[3] = { PLANAR_Y, PLANAR_U, PLANAR_V };
+  uint8_t colors[3] = { YBlack, UBlack, VBlack };
+  for (int p = 0; p < vi.NumComponents(); p++)
+  {
+    int plane = planes[p];
+    int src_pitch = src->GetPitch(plane);
+    int src_rowsize = src->GetRowSize(plane);
+    int src_height = src->GetHeight(plane);
+
+    int dst_pitch = dst->GetPitch(plane);
+
+    int xsub=vi.GetPlaneWidthSubsampling(plane);
+    int ysub=vi.GetPlaneHeightSubsampling(plane);
+
+    const int initial_black = (top >> ysub) * dst_pitch + vi.BytesFromPixels(left >> xsub);
+    const int middle_black = dst_pitch - src_rowsize;
+    const int final_black = (bot >> ysub) * dst_pitch + vi.BytesFromPixels(right >> xsub) +
+                             (dst_pitch - dst->GetRowSize(plane));
+
+    pixel_t current_color = GetHbdColorFromByte<pixel_t>(colors[p]);
+
+    BYTE *dstp = dst->GetWritePtr(plane);
+    // copy original
+    BitBlt(dstp+initial_black, dst_pitch, src->GetReadPtr(plane), src_pitch, src_rowsize, src_height);
+    // add top
+    for (size_t a = 0; a<initial_black / sizeof(pixel_t); a++) {
+      reinterpret_cast<pixel_t *>(dstp)[a] = current_color;
+    }
+    // middle right + left (fill overflows from right to left)
+    dstp += initial_black + src_rowsize;
+    for (int y = src_height-1; y>0; --y) {
+      for (size_t b = 0; b<middle_black / sizeof(pixel_t); b++) {
+        reinterpret_cast<pixel_t *>(dstp)[b] = current_color;
+      }
+      dstp += dst_pitch;
+    }
+    // bottom
+    for (size_t c = 0; c<final_black / sizeof(pixel_t); c++)
+      reinterpret_cast<pixel_t *>(dstp)[c] = current_color;
+  }
+}
 
 PVideoFrame AddBorders::GetFrame(int n, IScriptEnvironment* env)
 {
   PVideoFrame src = child->GetFrame(n, env);
   PVideoFrame dst = env->NewVideoFrame(vi);
 
-  // todo: AVS16 support word/float
+  if (vi.IsPlanar()) {
+    switch(vi.ComponentSize()) {
+    case 1: addborders_planar<uint8_t>(dst, src, vi, top, bot, left, right, clr); break;
+    case 2: addborders_planar<uint16_t>(dst, src, vi, top, bot, left, right,  clr); break;
+    default: //case 4: 
+      addborders_planar<float>(dst, src, vi, top, bot, left, right, clr); break;
+    }
+    return dst;
+  } 
+
   const BYTE* srcp = src->GetReadPtr();
   BYTE* dstp = dst->GetWritePtr();
   const int src_pitch = src->GetPitch();
@@ -364,72 +428,8 @@ PVideoFrame AddBorders::GetFrame(int n, IScriptEnvironment* env)
   const int middle_black = dst_pitch - src_row_size;
   const int final_black = bot * dst_pitch + vi.BytesFromPixels(right)
     + (dst_pitch - dst_row_size);
-  if (vi.IsPlanar()) {
-    const unsigned int colr = RGB2YUV(clr);
-    const unsigned char YBlack=(unsigned char)((colr >> 16) & 0xff);
-    const unsigned char UBlack=(unsigned char)((colr >>  8) & 0xff);
-    const unsigned char VBlack=(unsigned char)((colr      ) & 0xff);
 
-    BitBlt(dstp+initial_black, dst_pitch, srcp, src_pitch, src_row_size, src_height);
-    for (int a = 0; a<initial_black; a++) {
-      dstp[a] = YBlack;
-    }
-    dstp += initial_black + src_row_size;
-    for (int y = src_height-1; y>0; --y) {
-      for (int b = 0; b<middle_black; b++) {
-        dstp[b] = YBlack;
-      }
-      dstp += dst_pitch;
-    }
-    for (int c = 0; c<final_black; c++)
-      *(unsigned char*)(dstp+c) = YBlack;
-
-    int src_pitch_uv = src->GetPitch(PLANAR_U);
-    if (src_pitch_uv != 0) {
-      int dst_pitch_uv = dst->GetPitch(PLANAR_U);
-      int src_width_uv = src->GetRowSize(PLANAR_U);
-      int src_height_uv = src->GetHeight(PLANAR_U);
-
-      const int initial_blackUV = (top>>ysub) * dst_pitch_uv + (left>>xsub);
-      const int middle_blackUV = dst_pitch_uv - src_width_uv;
-      const int final_blackUV = (bot>>ysub) * dst_pitch_uv + (right>>xsub) + (dst_pitch_uv- dst->GetRowSize(PLANAR_U));
-
-      dstp = dst->GetWritePtr(PLANAR_U);
-
-      BitBlt(dstp+initial_blackUV, dst_pitch_uv, src->GetReadPtr(PLANAR_U), src_pitch_uv, src_width_uv, src_height_uv);
-      
-      for (int a = 0; a<initial_blackUV; a++) {
-        dstp[a] = UBlack;
-      }
-      dstp += initial_blackUV + src_width_uv;
-      for (int y = src_height_uv-1; y>0; --y) {
-        for (int b = 0; b<middle_blackUV; b++) {
-          dstp[b] = UBlack;
-        }
-        dstp += dst_pitch_uv;
-      }
-      for (int c = 0; c<final_blackUV; c++) {
-        dstp[c] = UBlack;
-      }
-
-      dstp = dst->GetWritePtr(PLANAR_V);
-      BitBlt(dstp+initial_blackUV, dst_pitch_uv, src->GetReadPtr(PLANAR_V), src_pitch_uv, src_width_uv, src_height_uv);
-      
-      for (int a = 0; a<initial_blackUV; a++) {
-        dstp[a] = VBlack;
-      }
-      dstp += initial_blackUV + src_width_uv;
-      for (int y = src_height_uv-1; y>0; --y) {
-        for (int b = 0; b<middle_blackUV; b++) {
-          dstp[b] = VBlack;
-        }
-        dstp += dst_pitch_uv;
-      }
-      for (int c = 0; c<final_blackUV; c++) {
-        dstp[c] = VBlack;
-      }
-    }
-  } else if (vi.IsYUY2()) {
+  if (vi.IsYUY2()) {
     const unsigned int colr = RGB2YUV(clr);
     const unsigned __int32 black = (colr>>16) * 0x010001 + ((colr>>8)&255) * 0x0100 + (colr&255) * 0x01000000;
 
@@ -525,6 +525,7 @@ AVSValue __cdecl AddBorders::Create(AVSValue args, void*, IScriptEnvironment* en
   *   TODO: Implement fast ISSE routines
   */
 
+// PF dead function?
 FillBorder::FillBorder(PClip _clip) : GenericVideoFilter(_clip) {
 }
 
@@ -540,7 +541,6 @@ PVideoFrame __stdcall FillBorder::GetFrame(int n, IScriptEnvironment* env) {
   int fillp=src->GetRowSize(PLANAR_Y_ALIGNED) - src->GetRowSize(PLANAR_Y);
   int h=src->GetHeight(PLANAR_Y);
 
-  // todo: AVS16 YData is byte *, we have to duplicate word/float
   Ydata = &Ydata[src->GetRowSize(PLANAR_Y)-1];
   {for (int y=0; y<h; y++) {
     for (int x=1; x<=fillp; x++) {
