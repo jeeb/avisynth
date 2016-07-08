@@ -37,7 +37,8 @@
 #include "../core/internal.h"
 #include <emmintrin.h>
 #include <avs/alignment.h>
-
+#include <stdint.h>
+#include <type_traits>
 
 
 /********************************************************************
@@ -311,60 +312,63 @@ HorizontalReduceBy2::HorizontalReduceBy2(PClip _child, IScriptEnvironment* env)
   vi.width >>= 1;
 }
  
+template<typename pixel_t>
+static void horizontal_reduce_core(PVideoFrame& dst, PVideoFrame& src, int plane) {
+
+  pixel_t rounding;
+  if (!std::is_floating_point<pixel_t>::value)
+    rounding = 1;
+  else
+    rounding = 0; // float: no rounding
+
+  const pixel_t* srcp = reinterpret_cast<const pixel_t *>(src->GetReadPtr(plane));
+  pixel_t* dstp = reinterpret_cast<pixel_t *>(dst->GetWritePtr(plane));
+  int src_gap = (src->GetPitch(plane) - src->GetRowSize(plane)) / sizeof(pixel_t);  //aka 'modulo' in VDub filter terminology
+  int dst_gap = (dst->GetPitch(plane) - dst->GetRowSize(plane)) / sizeof(pixel_t);
+  int yloops = dst->GetHeight(plane);
+  int xloops = dst->GetRowSize(plane) / sizeof(pixel_t) - 1;
+  for (int y = 0; y < yloops; y++) {
+    for (int x = 0; x < xloops; x++) {
+      *dstp = (srcp[0] + 2 * srcp[1] + srcp[2] + rounding * 2) / 4; // >> 2; float-friendly
+      dstp++;
+      srcp += 2;
+    }
+    *dstp = (srcp[0] + srcp[1] + rounding) / 2; // >> 1; float-friendly
+    dstp += dst_gap + 1;
+    srcp += src_gap + 2;
+  }
+}
 
 PVideoFrame HorizontalReduceBy2::GetFrame(int n, IScriptEnvironment* env)
 {
   PVideoFrame src = child->GetFrame(n, env);
   PVideoFrame dst = env->NewVideoFrame(vi);
+
+  if (vi.IsPlanar()) {
+
+    int pixelsize = vi.ComponentSize();
+    int planes[3] = { PLANAR_Y, PLANAR_U, PLANAR_V };
+
+    for (int p = 0; p < vi.NumComponents(); p++)
+    {
+      int plane = planes[p];
+      switch (pixelsize) {
+        case 1: horizontal_reduce_core<uint8_t>(dst, src, plane); break;
+        case 2: horizontal_reduce_core<uint16_t>(dst, src, plane); break;
+        default: // case 4: 
+          horizontal_reduce_core<float>(dst, src, plane); break;
+      }
+    }
+    return dst;
+  } 
+
   int src_gap = src->GetPitch() - src->GetRowSize();  //aka 'modulo' in VDub filter terminology
   int dst_gap = dst->GetPitch() - dst->GetRowSize();
   const int dst_pitch = dst->GetPitch();
 
   BYTE* dstp = dst->GetWritePtr();
 
-  if (vi.IsPlanar()) {
-    const BYTE* srcp = src->GetReadPtr(PLANAR_Y);
-    int yloops = dst->GetHeight(PLANAR_Y);
-    int xloops = dst->GetRowSize(PLANAR_Y)-1;
-    for (int y = 0; y<yloops; y++) {
-      for (int x = 0; x<xloops; x++) {
-        *dstp = (srcp[0] + 2*srcp[1] + srcp[2] + 2) >> 2;
-        dstp++;
-        srcp += 2;
-      }
-      *dstp = (srcp[0] + srcp[1] +1) >> 1;
-      dstp += dst_gap+1;
-      srcp += src_gap+2;
-    }
-    srcp = src->GetReadPtr(PLANAR_U);
-    dstp = dst->GetWritePtr(PLANAR_U);
-    src_gap = src->GetPitch(PLANAR_U) - src->GetRowSize(PLANAR_U);
-    dst_gap = dst->GetPitch(PLANAR_U) - dst->GetRowSize(PLANAR_U);
-    yloops = dst->GetHeight(PLANAR_U);
-    xloops = dst->GetRowSize(PLANAR_U)-1;
-    for (int y = 0; y<yloops; y++) {
-      for (int x = 0; x<xloops; x++) {
-        dstp[0] = (srcp[0] + 2*srcp[1] + srcp[2] + 2) >> 2;
-        dstp++;
-        srcp += 2;
-      }
-      dstp[0] = (srcp[0] + srcp[1] +1) >> 1;
-      dstp += dst_gap+1;
-      srcp += src_gap+2;
-    }
-    srcp = src->GetReadPtr(PLANAR_V);
-    dstp = dst->GetWritePtr(PLANAR_V);
-    for (int y = 0; y<yloops; y++) {
-      for (int x = 0; x<xloops; x++) {
-        dstp[0] = (srcp[0] + 2*srcp[1] + srcp[2] + 2) >> 2;
-        dstp++;
-        srcp += 2;
-      }
-      dstp[0] = (srcp[0] + srcp[1] +1) >> 1;
-      dstp += dst_gap+1;
-      srcp += src_gap+2;
-    }
-  } else if (vi.IsYUY2()  && (!(vi.width&3))) {
+  if (vi.IsYUY2()  && (!(vi.width&3))) {
 
     const BYTE* srcp = src->GetReadPtr();
     for (int y = vi.height; y>0; --y) {
