@@ -43,6 +43,7 @@
 #include <cmath>
 #include <new>
 #include <cassert>
+#include <stdint.h>
 
 /********************************************************************
 ********************************************************************/
@@ -75,31 +76,46 @@ static PVideoFrame CreateBlankFrame(const VideoInfo& vi, int color, int mode, IS
   if (!vi.HasVideo()) return 0;
 
   PVideoFrame frame = env->NewVideoFrame(vi);
+
+  if (vi.IsPlanar()) {
+
+    int pixelsize = vi.ComponentSize();
+
+    int color_yuv =(mode == COLOR_MODE_YUV) ? color : RGB2YUV(color);
+
+    union {
+      uint32_t i;
+      float f;
+    } Cval;
+
+    int planes[] = { PLANAR_Y, PLANAR_U, PLANAR_V };
+    for (int p = 0; p < vi.NumComponents(); p++)
+    {
+      Cval.i = (color_yuv >> 16) & 0xff;
+      color_yuv <<= 8;
+
+      int plane = planes[p];
+
+      BYTE *dstp = frame->GetWritePtr(plane);
+      int size = frame->GetPitch(plane) * frame->GetHeight(plane);
+      
+      switch(pixelsize) {
+      case 1: Cval.i |= (Cval.i << 8) | (Cval.i << 16) | (Cval.i << 24); break; // 4 pixels at a time
+      case 2: Cval.i = (Cval.i << 8) | (Cval.i << 24); break; // 2 pixels at a time
+      default: // case 4: 
+        Cval.f = float(Cval.i) / 256.0f; // 32 bit float 128=0.5
+      }
+
+      for (int i = 0; i < size; i += 4)
+        *(uint32_t*)(dstp + i) = Cval.i;
+    }
+    return frame;
+  } 
+
   BYTE* p = frame->GetWritePtr();
   int size = frame->GetPitch() * frame->GetHeight();
 
-  if (vi.IsPlanar()) {
-    int color_yuv =(mode == COLOR_MODE_YUV) ? color : RGB2YUV(color);
-    int Cval = (color_yuv>>16)&0xff;
-    Cval |= (Cval<<8)|(Cval<<16)|(Cval<<24);
-    {for (int i=0; i<size; i+=4)
-      *(unsigned*)(p+i) = Cval;
-    }
-    p = frame->GetWritePtr(PLANAR_U);
-    size = frame->GetPitch(PLANAR_U) * frame->GetHeight(PLANAR_U);
-    Cval = (color_yuv>>8)&0xff;
-    Cval |= (Cval<<8)|(Cval<<16)|(Cval<<24);
-    {for (int i=0; i<size; i+=4)
-      *(unsigned*)(p+i) = Cval;
-    }
-    size = frame->GetPitch(PLANAR_V) * frame->GetHeight(PLANAR_V);
-    p = frame->GetWritePtr(PLANAR_V);
-    Cval = (color_yuv)&0xff;
-    Cval |= (Cval<<8)|(Cval<<16)|(Cval<<24);
-    {for (int i=0; i<size; i+=4)
-      *(unsigned*)(p+i) = Cval;
-    }
-  } else if (vi.IsYUY2()) {
+  if (vi.IsYUY2()) {
     int color_yuv =(mode == COLOR_MODE_YUV) ? color : RGB2YUV(color);
     unsigned d = ((color_yuv>>16)&255) * 0x010001 + ((color_yuv>>8)&255) * 0x0100 + (color_yuv&255) * 0x01000000;
     for (int i=0; i<size; i+=4)
@@ -202,8 +218,26 @@ static AVSValue __cdecl Create_BlankClip(AVSValue args, void*, IScriptEnvironmen
       vi.pixel_type = VideoInfo::CS_BGR24;
     } else if (!lstrcmpi(pixel_type_string, "RGB32")) {
       vi.pixel_type = VideoInfo::CS_BGR32;
+    } else if (!lstrcmpi(pixel_type_string, "YUV420P16")) {
+      vi.pixel_type = VideoInfo::CS_YUV420P16;
+    } else if (!lstrcmpi(pixel_type_string, "YUV422P16")) {
+      vi.pixel_type = VideoInfo::CS_YUV422P16;
+    } else if (!lstrcmpi(pixel_type_string, "YUV444P16")) {
+      vi.pixel_type = VideoInfo::CS_YUV444P16;
+    } else if (!lstrcmpi(pixel_type_string, "Y16")) {
+      vi.pixel_type = VideoInfo::CS_Y16;
+    } else if (!lstrcmpi(pixel_type_string, "YUV420PS")) {
+      vi.pixel_type = VideoInfo::CS_YUV420PS;
+    } else if (!lstrcmpi(pixel_type_string, "YUV422PS")) {
+      vi.pixel_type = VideoInfo::CS_YUV422PS;
+    } else if (!lstrcmpi(pixel_type_string, "YUV444PS")) {
+      vi.pixel_type = VideoInfo::CS_YUV444PS;
+    } else if (!lstrcmpi(pixel_type_string, "Y32")) {
+      vi.pixel_type = VideoInfo::CS_Y32;
     } else {
-      env->ThrowError("BlankClip: pixel_type must be \"RGB32\", \"RGB24\", \"YV12\", \"YV24\", \"YV16\", \"Y8\", \"YV411\" or \"YUY2\"");
+      env->ThrowError("BlankClip: pixel_type must be \"RGB32\", \"RGB24\", \"YV12\", \"YV24\", \"YV16\", \"Y8\", \n"\
+      "\"YUV420P16\",\"YUV422P16\",\"YUV444P16\",\"Y16\",\"YUV420PS\",\"YUV422PS\",\"YUV444PS\",\"Y32\",\n"\
+      "\"YV411\" or \"YUY2\"");
     }
   }
   else {
