@@ -227,12 +227,84 @@ public:
 };
 
 
+class ConvertFromDoubleWidth : public GenericVideoFilter
+{
+public:
+
+    ConvertFromDoubleWidth(PClip src, IScriptEnvironment* env) : GenericVideoFilter(src)
+    {
+        if (vi.RowSize(PLANAR_U) % 2)
+            env->ThrowError("ConvertFromDoubleWidth: Input clip's chroma width must be even.");
+
+        if (vi.IsYV12()) vi.pixel_type = VideoInfo::CS_YUV420P16;
+        else if (vi.IsYV16()) vi.pixel_type = VideoInfo::CS_YUV422P16;
+        else if (vi.IsYV24()) vi.pixel_type = VideoInfo::CS_YUV444P16;
+        else if (vi.IsY8()) vi.pixel_type = VideoInfo::CS_Y16;
+        else env->ThrowError("ConvertFromDoubleWidth: Input double width clip must be YV12, YV16, YV24 or Y8");
+
+        vi.width /= 2;
+    }
+
+    PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env)
+    {
+        return child->GetFrame(n, env);
+    }
+
+    int __stdcall SetCacheHints(int cachehints, int frame_range) override
+    {
+        return cachehints == CACHE_GET_MTMODE ? MT_NICE_FILTER : 0;
+    }
+
+
+    static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env)
+    {
+        PClip clip = args[0].AsClip();
+        return new ConvertFromDoubleWidth(clip, env);
+    }
+};
+
+
+class ConvertToDoubleWidth : public GenericVideoFilter
+{
+public:
+
+    ConvertToDoubleWidth(PClip src, IScriptEnvironment* env) : GenericVideoFilter(src)
+    {
+        if (vi.IsColorSpace(VideoInfo::CS_YUV420P16)) vi.pixel_type = VideoInfo::CS_YV12;
+        else if (vi.IsColorSpace(VideoInfo::CS_YUV422P16)) vi.pixel_type = VideoInfo::CS_YV16;
+        else if (vi.IsColorSpace(VideoInfo::CS_YUV444P16)) vi.pixel_type = VideoInfo::CS_YV24;
+        else if (vi.IsColorSpace(VideoInfo::CS_Y16)) vi.pixel_type = VideoInfo::CS_Y8;
+        else env->ThrowError("ConvertToDoubleWidth: Input clip must be 16bit format");
+
+        vi.width *= 2;
+    }
+
+    PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env)
+    {
+        return child->GetFrame(n, env);
+    }
+
+    int __stdcall SetCacheHints(int cachehints, int frame_range) override
+    {
+        return cachehints == CACHE_GET_MTMODE ? MT_NICE_FILTER : 0;
+    }
+
+    static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env)
+    {
+        PClip clip = args[0].AsClip();
+        return new ConvertToDoubleWidth(clip, env);
+    }
+};
+
+
 static const AVS_Linkage * AVS_linkage = 0;
 extern "C" __declspec(dllexport) const char* __stdcall AvisynthPluginInit3(IScriptEnvironment* env, const AVS_Linkage* const vectors) {
     AVS_linkage = vectors;
 
     env->AddFunction("ConvertFromStacked", "c", ConvertFromStacked::Create, 0);
     env->AddFunction("ConvertToStacked", "c", ConvertToStacked::Create, 0);
+    env->AddFunction("ConvertFromDoubleWidth", "c", ConvertFromDoubleWidth::Create, 0);
+    env->AddFunction("ConvertToDoubleWidth", "c", ConvertToDoubleWidth::Create, 0);
 
     return "`ConvertStacked' Stacked format conversion for 16-bit formats.";
 }
