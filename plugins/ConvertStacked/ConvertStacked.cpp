@@ -50,7 +50,7 @@ public:
         else if (vi.IsColorSpace(VideoInfo::CS_YUV422P16)) vi.pixel_type = VideoInfo::CS_YV16;
         else if (vi.IsColorSpace(VideoInfo::CS_YUV444P16)) vi.pixel_type = VideoInfo::CS_YV24;
         else if (vi.IsColorSpace(VideoInfo::CS_Y16)) vi.pixel_type = VideoInfo::CS_Y8;
-        else env->ThrowError("ConvertNativeToStacked: Input clip must be native 16 bit: YUV420P16, YUV422P16, YUV444P16, Y16");
+        else env->ThrowError("ConvertToStacked: Input clip must be native 16 bit: YUV420P16, YUV422P16, YUV444P16, Y16");
 
         vi.height = vi.height << 1; // * 2 stacked
                                     // back from native 16 bit to stacked 8 bit
@@ -140,7 +140,7 @@ public:
         else if (vi.IsYV16()) vi.pixel_type = VideoInfo::CS_YUV422P16;
         else if (vi.IsYV24()) vi.pixel_type = VideoInfo::CS_YUV444P16;
         else if (vi.IsY8()) vi.pixel_type = VideoInfo::CS_Y16;
-        else env->ThrowError("ConvertStackedToNative: Input stacked clip must be YV12, YV16, YV24 or Y8");
+        else env->ThrowError("ConvertFromStacked: Input stacked clip must be YV12, YV16, YV24 or Y8");
 
         vi.height = vi.height >> 1; // div 2 non stacked
 
