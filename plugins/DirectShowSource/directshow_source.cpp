@@ -2693,11 +2693,5 @@ extern "C" __declspec(dllexport) const char* __stdcall AvisynthPluginInit3(IScri
        "[timeout]i[pixel_type]s[framecount]i[logfile]s[logmask]i",
        Create_DirectShowSource, 0);
 
-  if (env->FunctionExists("SetFilterMTMode"))
-  {
-      IScriptEnvironment2 *env2 = static_cast<IScriptEnvironment2*>(env);
-      env2->SetFilterMTMode("DirectShowSource", MtMode::MT_SERIALIZED, true);
-  }
-
   return "DirectShowSource";
 }

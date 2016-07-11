@@ -508,10 +508,29 @@ public:
 };
 const std::string MTMapState::DEFAULT_MODE_SPECIFIER = "DEFAULT_MT_MODE";
 
+
+class ClipDataStore
+{
+private:
+    ClipDataStore(const ClipDataStore&) = delete;
+    ClipDataStore& operator=(const ClipDataStore&) = delete;
+
+public:
+
+    // The clip instance that we hold data for.
+    IClip *Clip = nullptr;
+
+    // Clip inside MTGuard and Cache as necessary.
+    IClip *WrappedClip = nullptr;
+
+    ClipDataStore(IClip *clip) : Clip(clip) {};
+};
+
 #include "vartable.h"
 #include "ThreadPool.h"
 #include <map>
 #include <atomic>
+#include <queue>
 #include "Prefetcher.h"
 #include "BufferPool.h"
 class ScriptEnvironment : public InternalEnvironment {
@@ -574,6 +593,7 @@ public:
   virtual size_t  __stdcall GetProperty(AvsEnvProperty prop);
   virtual void* __stdcall Allocate(size_t nBytes, size_t alignment, AvsAllocType type);
   virtual void __stdcall Free(void* ptr);
+  virtual ClipDataStore* __stdcall ClipData(IClip *clip);
 
 private:
 
@@ -601,6 +621,7 @@ private:
   void EnsureMemoryLimit(size_t request);
   unsigned __int64 memory_max;
   std::atomic<unsigned __int64> memory_used;
+  std::unordered_map<IClip*, ClipDataStore> clip_data;
 
   void ExportBuiltinFilters();
 
@@ -639,6 +660,10 @@ private:
   typedef std::vector<MTGuard*> MTGuardRegistryType;
   MTGuardRegistryType MTGuardRegistry;
   Prefetcher *prefetcher;
+
+  // Members used to reconstruct Association between Invoke() calls and filter instances
+  uint_fast32_t invoke_id;
+  std::queue<const AVSFunction*> invoke_stack;
 
   void InitMT();
 };
@@ -735,6 +760,8 @@ ScriptEnvironment::ScriptEnvironment()
     thread_pool = new ThreadPool(std::thread::hardware_concurrency());
 
     ExportBuiltinFilters();
+
+    clip_data.max_load_factor(0.8f);
   }
   catch (const AvisynthError &err) {
     if(SUCCEEDED(hrfromcoinit)) {
@@ -951,6 +978,15 @@ ScriptEnvironment::~ScriptEnvironment() {
     hrfromcoinit=E_FAIL;
     CoUninitialize();
   }
+}
+
+ClipDataStore* __stdcall ScriptEnvironment::ClipData(IClip *clip)
+{
+#if ( defined(_MSC_VER) && (_MSC_VER < 1900) )
+    return &(clip_data.emplace(clip, clip).first->second);
+#else
+    return &(clip_data.try_emplace(clip, clip).first->second);
+#endif
 }
 
 void __stdcall ScriptEnvironment::SetPrefetcher(Prefetcher *p)
@@ -2094,6 +2130,8 @@ bool __stdcall ScriptEnvironment::Invoke(AVSValue *result, const char* name, con
   bool strict = false;
   const AVSFunction *f;
 
+  ++invoke_id;
+
   const int args_names_count = (arg_names && args.IsArray()) ? args.ArraySize() : 0;
 
   // get how many args we will need to store
@@ -2104,6 +2142,46 @@ bool __stdcall ScriptEnvironment::Invoke(AVSValue *result, const char* name, con
   // flatten unnamed args
   std::vector<AVSValue> args2(args2_count, AVSValue());
   Flatten(args, args2.data(), 0, arg_names);
+
+  bool foundClipArgument = false;
+  for (auto &argx : args2)
+  {
+      if (argx.IsClip())
+      {
+          foundClipArgument = true;
+          PClip clip = argx.AsClip();
+          IClip *clip_raw = (IClip*)((void*)clip);
+          ClipDataStore *data = this->ClipData(clip_raw);
+
+          if (nullptr == data->WrappedClip)
+          {
+              MtMode mt_mode = MTGuard::CalculateMtMode(clip, invoke_stack.back(), this);
+              if (MT_MULTI_INSTANCE != mt_mode)
+              {
+                  argx = Cache::Create(MTGuard::Create(mt_mode, clip, NULL, this), NULL, this);
+                  data->WrappedClip = (IClip*)((void*)(argx.AsClip()));
+              } 
+              else
+              {
+                // We cannot create an MT_MULTI_INSTANCE filter here,
+                // because this clip might not have been constructed using Invoke() at all.
+                // In that case the MT mode set for the clip in Invoke() must still be valid for this clip too,
+                // but since it might be a different filter, the creation function and arguments are also possibly for another
+                // filter, hence totally invalid.
+                // TODO: Warning to user
+              }
+          }
+          else if (argx.IsArray())
+          {
+              assert(!argx[0].IsClip());
+          }
+          else
+          {
+              argx = data->WrappedClip;
+          }
+      }
+  }
+  bool isSourceFilter = !foundClipArgument;
 
   // find matching function
   f = this->Lookup(name, args2.data(), args2_count, strict, args_names_count, arg_names);
@@ -2202,7 +2280,41 @@ success:;
 #ifdef _DEBUG
     Cache *PrevFrontCache = FrontCache;
 #endif
-    *result = Cache::Create(MTGuard::Create(std::move(funcCtor), this), NULL, this);
+
+	AVSValue fret;
+
+	auto iid_before = invoke_id;
+	invoke_stack.push(f);
+	try
+	{
+		fret = funcCtor->InstantiateFilter();
+		invoke_stack.pop();
+	}catch(...)
+	{
+		invoke_stack.pop();
+		throw;
+	}
+	auto iid_after = invoke_id;
+
+	if (fret.IsClip())
+	{
+		PClip clip = fret.AsClip();
+		IClip *clip_raw = (IClip*)((void*)clip);
+		ClipDataStore *data = this->ClipData(clip_raw);
+
+		MtMode mt_mode = MTGuard::CalculateMtMode(clip, f, this);
+		*result = Cache::Create(MTGuard::Create(mt_mode, clip, std::move(funcCtor), this), NULL, this);
+        data->WrappedClip = (IClip*)((void*)(result->AsClip()));
+	}
+    else if (fret.IsArray())
+    {
+        assert(!fret[0].IsClip());
+    }
+    else
+	{
+		*result = fret;
+	}
+
     // args2 and args3 are not valid after this point anymore
 #ifdef _DEBUG
     if (PrevFrontCache != FrontCache && FrontCache != NULL) // cache registering swaps frontcache to the current

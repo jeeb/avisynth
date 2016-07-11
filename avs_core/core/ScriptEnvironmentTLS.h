@@ -357,6 +357,11 @@ public:
     core->SetPrefetcher(p);
   }
 
+  virtual ClipDataStore* __stdcall ClipData(IClip *clip)
+  {
+      return core->ClipData(clip);
+  }
+
 
 };
 

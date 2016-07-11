@@ -205,6 +205,10 @@ bool __stdcall MTGuard::GetParity(int n)
 
 int __stdcall MTGuard::SetCacheHints(int cachehints, int frame_range)
 {
+  if (CACHE_GET_MTMODE == cachehints) {
+    return MT_NICE_FILTER;
+  }
+
   return 0;
 }
 
@@ -213,45 +217,48 @@ bool __stdcall MTGuard::IsMTGuard(const PClip& p)
   return ((p->GetVersion() >= 5) && (p->SetCacheHints(CACHE_IS_MTGUARD_REQ, 0) == CACHE_IS_MTGUARD_ANS));
 }
 
-AVSValue MTGuard::Create(std::unique_ptr<const FilterConstructor> funcCtor, InternalEnvironment* env)
+MtMode MTGuard::CalculateMtMode(PClip clip, const AVSFunction *invokeCall, InternalEnvironment* env)
 {
-  AVSValue func_result = funcCtor->InstantiateFilter();
+	if (Cache::IsCache(clip) || MTGuard::IsMTGuard(clip)) {
+		return MT_NICE_FILTER;
+	}
 
-  if (func_result.IsClip() && !Cache::IsCache(func_result.AsClip()) && !MTGuard::IsMTGuard(func_result.AsClip()))
-  {
-    PClip filter_instance = func_result.AsClip();
+	bool mode_forced;
+	MtMode mode = env->GetFilterMTMode(invokeCall, &mode_forced);
+	if (!mode_forced
+		&& (clip->GetVersion() >= 5)
+		&& (clip->SetCacheHints(CACHE_GET_MTMODE, 0) != 0))
+	{
+		mode = (MtMode)clip->SetCacheHints(CACHE_GET_MTMODE, 0);
+	}
 
-    bool mode_forced;
-    MtMode mode = env->GetFilterMTMode(funcCtor->GetAvsFunction(), &mode_forced);
-    if ( !mode_forced
-      && (filter_instance->GetVersion() >= 5)
-      && (filter_instance->SetCacheHints(CACHE_GET_MTMODE, 0) != 0) )
+	return mode;
+}
+
+PClip MTGuard::Create(MtMode mode, PClip filterInstance, std::unique_ptr<const FilterConstructor> funcCtor, InternalEnvironment* env)
+{
+	switch (mode)
+	{
+	case MT_NICE_FILTER:
+	{
+        // No need to wrap and protect this filter
+		return filterInstance;
+	}
+	case MT_MULTI_INSTANCE: // Fall-through intentional
     {
-      mode = (MtMode)filter_instance->SetCacheHints(CACHE_GET_MTMODE, 0);
-    }
-
-    switch (mode)
-    {
-    case MT_NICE_FILTER:
-      {
-        return func_result;
-      }
-    case MT_MULTI_INSTANCE: // Fall-through intentional
-    case MT_SERIALIZED:
-      {
-        return new MTGuard(filter_instance, mode, std::move(funcCtor), env);
+        return new MTGuard(filterInstance, mode, std::move(funcCtor), env);
         // args2 and args3 are not valid after this point anymore
-      }
-    default:
-      // There are broken plugins out there in the wild that have (GetVersion() >= 5), but still 
-      // return garbage for SetCacheHints(). This default label should also catch those.
-      assert(0);
-      // TODO: Log warning about probably broken plugin
-      return new MTGuard(filter_instance, MT_SERIALIZED, std::move(funcCtor), env);
     }
-  }
-  else
-  {
-    return func_result;
-  }
+    case MT_SERIALIZED:
+	{
+		return new MTGuard(filterInstance, mode, NULL, env);
+		// args2 and args3 are not valid after this point anymore
+	}
+	default:
+		// There are broken plugins out there in the wild that have (GetVersion() >= 5), but still 
+		// return garbage for SetCacheHints(). This default label should also catch those.
+		assert(0);
+		// TODO: Log warning about probably broken plugin
+		return new MTGuard(filterInstance, MT_SERIALIZED, NULL, env);
+	}
 }
