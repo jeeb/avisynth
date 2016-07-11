@@ -50,7 +50,7 @@ public:
         else if (vi.IsColorSpace(VideoInfo::CS_YUV422P16)) vi.pixel_type = VideoInfo::CS_YV16;
         else if (vi.IsColorSpace(VideoInfo::CS_YUV444P16)) vi.pixel_type = VideoInfo::CS_YV24;
         else if (vi.IsColorSpace(VideoInfo::CS_Y16)) vi.pixel_type = VideoInfo::CS_Y8;
-        else env->ThrowError("ConvertNativeToStacked: Input clip must be native 16 bit: YUV420P16, YUV422P16, YUV444P16, Y16");
+        else env->ThrowError("ConvertToStacked: Input clip must be native 16 bit: YUV420P16, YUV422P16, YUV444P16, Y16");
 
         vi.height = vi.height << 1; // * 2 stacked
                                     // back from native 16 bit to stacked 8 bit
@@ -68,22 +68,22 @@ public:
         const int plane_count = vi.IsY8() ? 1 : 3; // checking the stacked 8 bit format constants
         for (int p = 0; p < plane_count; ++p) {
             const int plane = planes[p];
-            uint16_t* srcp = (uint16_t*)src->GetReadPtr(plane);
+            const uint16_t* srcp = reinterpret_cast<const uint16_t*>(src->GetReadPtr(plane));
             uint8_t* msb = dst->GetWritePtr(plane);
-            const int src_pitch = src->GetPitch(plane); // in bytes
+            const int src_pitch = src->GetPitch(plane) / sizeof(uint16_t);
             const int dst_pitch = dst->GetPitch(plane);
-            const int height = (vi.height >> vi.GetPlaneHeightSubsampling(plane)) / 2; // non-stacked real height
-            const int width = vi.width >> vi.GetPlaneWidthSubsampling(plane);
+            const int height = src->GetHeight(plane); // non-stacked real height
+            const int width = dst->GetRowSize(plane);
             uint8_t* lsb = msb + dst_pitch*height;
 
-            bool use_sse2 = (env->GetCPUFlags() & CPUF_SSE2) && IsPtrAligned(msb, 16) && IsPtrAligned(lsb, 16) && IsPtrAligned(srcp, 16);
+            bool use_sse2 = (env->GetCPUFlags() & CPUF_SSE2) && IsPtrAligned(msb, 16) && IsPtrAligned(srcp, 16);
 
             if (use_sse2)
             {
-                int wMod16 = (width / 16) * 16;
-
+                // read 32bytes from src, write 16bytes to msb and lsb.
+                // pitch is aligned at least 32 bytes. Thus, an access violation does not happen.
                 for (int y = 0; y < height; ++y) {
-                    for (int x = 0; x < wMod16; x += 16) {
+                    for (int x = 0; x < width; x += 16) {
                         __m128i data16_1, data16_2;
                         __m128i masklo = _mm_set1_epi16(0x00FF);
                         // no gain when sse4.1 _mm_stream_load_si128 is used
@@ -92,14 +92,7 @@ public:
                         _mm_stream_si128(reinterpret_cast<__m128i*>(msb + x), _mm_packus_epi16(_mm_srli_epi16(data16_1, 8), _mm_srli_epi16(data16_2, 8))); // ABCDEFGH Hi
                         _mm_stream_si128(reinterpret_cast<__m128i*>(lsb + x), _mm_packus_epi16(_mm_and_si128(data16_1, masklo), _mm_and_si128(data16_2, masklo))); // ABCDEFGH Lo
                     }
-                    // the rest
-                    for (int x = wMod16; x < width; ++x) {
-                        const uint16_t out = srcp[x];
-                        msb[x] = out >> 8;
-                        lsb[x] = (uint8_t)out;
-                    }
-
-                    srcp += src_pitch / sizeof(uint16_t);
+                    srcp += src_pitch;
                     msb += dst_pitch;
                     lsb += dst_pitch;
                 } // y
@@ -113,7 +106,7 @@ public:
                         lsb[x] = (uint8_t)out;
                     }
 
-                    srcp += src_pitch / sizeof(uint16_t);
+                    srcp += src_pitch;
                     msb += dst_pitch;
                     lsb += dst_pitch;
                 }
@@ -147,7 +140,7 @@ public:
         else if (vi.IsYV16()) vi.pixel_type = VideoInfo::CS_YUV422P16;
         else if (vi.IsYV24()) vi.pixel_type = VideoInfo::CS_YUV444P16;
         else if (vi.IsY8()) vi.pixel_type = VideoInfo::CS_Y16;
-        else env->ThrowError("ConvertStackedToNative: Input stacked clip must be YV12, YV16, YV24 or Y8");
+        else env->ThrowError("ConvertFromStacked: Input stacked clip must be YV12, YV16, YV24 or Y8");
 
         vi.height = vi.height >> 1; // div 2 non stacked
 
@@ -164,24 +157,23 @@ public:
         const int plane_count = vi.IsColorSpace(VideoInfo::CS_Y16) ? 1 : 3;
         for (int p = 0; p < plane_count; ++p) {
             const int plane = planes[p];
-            uint8_t* msb = const_cast<uint8_t *>(src->GetReadPtr(plane));
-            uint16_t* dstp = (uint16_t*)dst->GetWritePtr(plane);
+            const uint8_t* msb = src->GetReadPtr(plane);
+            uint16_t* dstp = reinterpret_cast<uint16_t*>(dst->GetWritePtr(plane));
             const int src_pitch = src->GetPitch(plane);
-            const int dst_pitch = dst->GetPitch(plane);
-            const int height = (vi.height >> vi.GetPlaneHeightSubsampling(plane)); // real non-stacked height
-            const int width = vi.width >> vi.GetPlaneWidthSubsampling(plane);
-            uint8_t* lsb = msb + src_pitch*height;
+            const int dst_pitch = dst->GetPitch(plane) / sizeof(uint16_t);
+            const int height = dst->GetHeight(plane); // real non-stacked height
+            const int width = src->GetRowSize(plane);
+            const uint8_t* lsb = msb + src_pitch*height;
 
-            bool use_sse2 = (env->GetCPUFlags() & CPUF_SSE2) && IsPtrAligned(msb, 16) && IsPtrAligned(lsb, 16) && IsPtrAligned(dstp, 16);
+            bool use_sse2 = (env->GetCPUFlags() & CPUF_SSE2) && IsPtrAligned(msb, 16) && IsPtrAligned(dstp, 16);
 
             if (use_sse2)
             {
-                // sse2
-                int wMod16 = (width / 16) * 16;
-
                 // pf my very first intrinsic, hey
                 for (int y = 0; y < height; ++y) {
-                    for (int x = 0; x < wMod16; x += 16) {
+                    // Read 16 bytes from msb and lsb, write 32bytes to dst.
+                    // pitch is aligned at least 32bytes. Thus, we don't have to care about buffer over run.
+                    for (int x = 0; x < width; x += 16) {
                         __m128i data_hi, data_lo;
                         data_hi = _mm_load_si128(reinterpret_cast<const __m128i*>(msb + x)); // 16 bytes
                         data_lo = _mm_load_si128(reinterpret_cast<const __m128i*>(lsb + x));
@@ -190,13 +182,9 @@ public:
                         // Interleaves the higher 8 signed or unsigned 8-bit integers in a with the lower 8 signed or unsigned 8-bit integers in b.
                         _mm_stream_si128(reinterpret_cast<__m128i*>(dstp + x + 8), _mm_unpackhi_epi8(data_lo, data_hi));
                     }
-                    // remaining, 
-                    for (int x = wMod16; x < width; ++x) {
-                        dstp[x] = msb[x] << 8 | lsb[x];
-                    } // x
                     msb += src_pitch;
                     lsb += src_pitch;
-                    dstp += dst_pitch / sizeof(uint16_t); // uint16_t *
+                    dstp += dst_pitch;
                 }
             }
             else {
@@ -206,7 +194,7 @@ public:
                     }
                     msb += src_pitch;
                     lsb += src_pitch;
-                    dstp += dst_pitch / sizeof(uint16_t); // uint16_t *
+                    dstp += dst_pitch;
                 }
             }
         }
@@ -227,12 +215,84 @@ public:
 };
 
 
+class ConvertFromDoubleWidth : public GenericVideoFilter
+{
+public:
+
+    ConvertFromDoubleWidth(PClip src, IScriptEnvironment* env) : GenericVideoFilter(src)
+    {
+        if (vi.RowSize(PLANAR_U) % 2)
+            env->ThrowError("ConvertFromDoubleWidth: Input clip's chroma width must be even.");
+
+        if (vi.IsYV12()) vi.pixel_type = VideoInfo::CS_YUV420P16;
+        else if (vi.IsYV16()) vi.pixel_type = VideoInfo::CS_YUV422P16;
+        else if (vi.IsYV24()) vi.pixel_type = VideoInfo::CS_YUV444P16;
+        else if (vi.IsY8()) vi.pixel_type = VideoInfo::CS_Y16;
+        else env->ThrowError("ConvertFromDoubleWidth: Input double width clip must be YV12, YV16, YV24 or Y8");
+
+        vi.width /= 2;
+    }
+
+    PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env)
+    {
+        return child->GetFrame(n, env);
+    }
+
+    int __stdcall SetCacheHints(int cachehints, int frame_range) override
+    {
+        return cachehints == CACHE_GET_MTMODE ? MT_NICE_FILTER : 0;
+    }
+
+
+    static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env)
+    {
+        PClip clip = args[0].AsClip();
+        return new ConvertFromDoubleWidth(clip, env);
+    }
+};
+
+
+class ConvertToDoubleWidth : public GenericVideoFilter
+{
+public:
+
+    ConvertToDoubleWidth(PClip src, IScriptEnvironment* env) : GenericVideoFilter(src)
+    {
+        if (vi.IsColorSpace(VideoInfo::CS_YUV420P16)) vi.pixel_type = VideoInfo::CS_YV12;
+        else if (vi.IsColorSpace(VideoInfo::CS_YUV422P16)) vi.pixel_type = VideoInfo::CS_YV16;
+        else if (vi.IsColorSpace(VideoInfo::CS_YUV444P16)) vi.pixel_type = VideoInfo::CS_YV24;
+        else if (vi.IsColorSpace(VideoInfo::CS_Y16)) vi.pixel_type = VideoInfo::CS_Y8;
+        else env->ThrowError("ConvertToDoubleWidth: Input clip must be 16bit format");
+
+        vi.width *= 2;
+    }
+
+    PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env)
+    {
+        return child->GetFrame(n, env);
+    }
+
+    int __stdcall SetCacheHints(int cachehints, int frame_range) override
+    {
+        return cachehints == CACHE_GET_MTMODE ? MT_NICE_FILTER : 0;
+    }
+
+    static AVSValue __cdecl Create(AVSValue args, void*, IScriptEnvironment* env)
+    {
+        PClip clip = args[0].AsClip();
+        return new ConvertToDoubleWidth(clip, env);
+    }
+};
+
+
 static const AVS_Linkage * AVS_linkage = 0;
 extern "C" __declspec(dllexport) const char* __stdcall AvisynthPluginInit3(IScriptEnvironment* env, const AVS_Linkage* const vectors) {
     AVS_linkage = vectors;
 
     env->AddFunction("ConvertFromStacked", "c", ConvertFromStacked::Create, 0);
     env->AddFunction("ConvertToStacked", "c", ConvertToStacked::Create, 0);
+    env->AddFunction("ConvertFromDoubleWidth", "c", ConvertFromDoubleWidth::Create, 0);
+    env->AddFunction("ConvertToDoubleWidth", "c", ConvertToDoubleWidth::Create, 0);
 
     return "`ConvertStacked' Stacked format conversion for 16-bit formats.";
 }
