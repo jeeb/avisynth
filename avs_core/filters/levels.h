@@ -101,9 +101,9 @@ private:
 class Tweak : public GenericVideoFilter
 {
 public:
-  Tweak( PClip _child, double _hue, double _sat, double _bright, double _cont, bool _coring, bool _sse,
-                       double _startHue, double _endHue, double _maxSat, double _minSat, double _interp,
-                       bool _dither, IScriptEnvironment* env );
+  Tweak(PClip _child, double _hue, double _sat, double _bright, double _cont, bool _coring, bool _sse,
+    double _startHue, double _endHue, double _maxSat, double _minSat, double _interp,
+    bool _dither, bool _realcalc, IScriptEnvironment* env);
 
   ~Tweak();
 
@@ -119,6 +119,9 @@ private:
     int Sin, Cos;
     int Sat, Bright, Cont;
     bool coring, sse, dither;
+    
+    bool realcalc; // PF
+    double dhue, dsat, dbright, dcont, dstartHue, dendHue, dmaxSat, dminSat, dinterp;
 
     BYTE *map;
     uint16_t *mapUV;
@@ -148,6 +151,8 @@ private:
 bool ProcessPixel(int X, int Y, double startHue, double endHue,
                   double maxSat, double minSat, double p, int &iSat);
 
+bool ProcessPixelUnscaled(int X, int Y, double startHue, double endHue,
+  double maxSat, double minSat, double p, double &iSat);
 
 #endif  // __Levels_H__
 

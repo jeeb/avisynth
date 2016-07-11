@@ -51,7 +51,7 @@
 extern const AVSFunction Levels_filters[] = {
   { "Levels",    BUILTIN_FUNC_PREFIX, "cifiii[coring]b[dither]b", Levels::Create },        // src_low, gamma, src_high, dst_low, dst_high
   { "RGBAdjust", BUILTIN_FUNC_PREFIX, "c[r]f[g]f[b]f[a]f[rb]f[gb]f[bb]f[ab]f[rg]f[gg]f[bg]f[ag]f[analyze]b[dither]b", RGBAdjust::Create },
-  { "Tweak",     BUILTIN_FUNC_PREFIX, "c[hue]f[sat]f[bright]f[cont]f[coring]b[sse]b[startHue]f[endHue]f[maxSat]f[minSat]f[interp]f[dither]b", Tweak::Create },
+  { "Tweak",     BUILTIN_FUNC_PREFIX, "c[hue]f[sat]f[bright]f[cont]f[coring]b[sse]b[startHue]f[endHue]f[maxSat]f[minSat]f[interp]f[dither]b[realcalc]b", Tweak::Create },
   { "MaskHS",    BUILTIN_FUNC_PREFIX, "c[startHue]f[endHue]f[maxSat]f[minSat]f[coring]b", MaskHS::Create },
   { "Limiter",   BUILTIN_FUNC_PREFIX, "c[min_luma]i[max_luma]i[min_chroma]i[max_chroma]i[show]s", Limiter::Create },
   { 0 }
@@ -602,6 +602,49 @@ static bool ProcessPixel(double X, double Y, double startHue, double endHue,
 	return true;
 }
 
+//PF
+static bool ProcessPixelUnscaled(double X, double Y, double startHue, double endHue,
+  double maxSat, double minSat, double p, double &dSat)
+{
+  // a hue analog
+  double T = atan2(X, Y) * 180.0 / PI;
+  if ( T < 0.0) T += 360.0;
+
+  // startHue <= hue <= endHue
+  if (startHue < endHue) {
+    if (T>endHue || T<startHue) return false;
+  } else {
+    if (T<startHue && T>endHue) return false;
+  }
+
+  const double W = X*X + Y*Y;
+
+  // In Range, full adjust but no need to interpolate
+  if (minSat*minSat <= W && W <= maxSat*maxSat) return true;
+
+  // p == 0 (no interpolation) needed for MaskHS
+  if (p == 0.0) return false;
+
+  // Interpolation range is +/-p for p>0
+  const double max = min(maxSat+p, 180.0);
+  const double min = ::max(minSat-p,   0.0);
+
+  // Outside of [min-p, max+p] no adjustment
+  // minSat-p <= (U^2 + V^2) <= maxSat+p
+  if (W <= min*min || max*max <= W) return false; // don't adjust
+
+                                                  // Interpolate saturation value
+  const double holdSat = W < 180.0*180.0 ? sqrt(W) : 180.0;
+
+  if (holdSat < minSat) { // within p of lower range
+    dSat += ((1 - dSat) * (minSat - holdSat) / p);
+  } else { // within p of upper range
+    dSat += ((1 - dSat) * (holdSat - maxSat) / p);
+  }
+
+  return true;
+}
+
 
 /**********************
 ******   Tweak    *****
@@ -609,8 +652,11 @@ static bool ProcessPixel(double X, double Y, double startHue, double endHue,
 
 Tweak::Tweak(PClip _child, double _hue, double _sat, double _bright, double _cont, bool _coring, bool _sse,
             double startHue, double endHue, double _maxSat, double _minSat, double p,
-            bool _dither, IScriptEnvironment* env)
-  : GenericVideoFilter(_child), coring(_coring), sse(_sse), dither(_dither), map(nullptr),
+            bool _dither, bool _realcalc, IScriptEnvironment* env)
+  : GenericVideoFilter(_child), coring(_coring), sse(_sse), dither(_dither), realcalc(_realcalc), 
+  dhue(_hue), dsat(_sat), dbright(_bright), dcont(_cont), dstartHue(startHue), dendHue(endHue), 
+  dmaxSat(_maxSat), dminSat(_minSat), dinterp(p),
+  map(nullptr),
   mapUV(nullptr), env2_unsafe(static_cast<IScriptEnvironment2*>(env))
 {
   if (vi.IsRGB())
@@ -660,51 +706,56 @@ Tweak::Tweak(PClip _child, double _hue, double _sat, double _bright, double _con
   Sin = (int) (SIN * 4096 + 0.5);
   Cos = (int) (COS * 4096 + 0.5);
 
-  if (dither) {
-    map = static_cast<uint8_t*>(env2_unsafe->Allocate(256*256, 8, AVS_NORMAL_ALLOC));
-    if (!map) {
-      env->ThrowError("Tweak: Could not reserve memory.");
-    }
+  if (vi.ComponentSize() > 1)
+    realcalc = true; // 16/32 bit: no lookup tables.
 
-    if (coring) {
-      for (int i = 0; i < 256*256; i++) {
-        /* brightness and contrast */
-        int y = int(((i - 16*256)*_cont + _bright*256 - 127.5)/256 + 16.5);
-        map[i] = (BYTE)clamp(y, 16, 235);
+  if(!(realcalc && vi.IsPlanar()))
+  { // no need for lookup
+    if (dither) {
+      map = static_cast<uint8_t*>(env2_unsafe->Allocate(256 * 256, 8, AVS_NORMAL_ALLOC));
+      if (!map) {
+        env->ThrowError("Tweak: Could not reserve memory.");
+      }
 
+      if (coring) {
+        for (int i = 0; i < 256 * 256; i++) {
+          /* brightness and contrast */
+          int y = int(((i - 16 * 256)*_cont + _bright * 256 - 127.5) / 256 + 16.5);
+          map[i] = (BYTE)clamp(y, 16, 235);
+
+        }
+      }
+      else {
+        for (int i = 0; i < 256 * 256; i++) {
+          /* brightness and contrast */
+          int y = int((i*_cont + _bright * 256 - 127.5) / 256 + 0.5);
+          map[i] = (BYTE)clamp(y, 0, 255);
+        }
       }
     }
     else {
-      for (int i = 0; i < 256*256; i++) {
-        /* brightness and contrast */
-        int y = int((i*_cont + _bright*256 - 127.5)/256 + 0.5);
-        map[i] = (BYTE)clamp(y, 0, 255);
+      map = static_cast<uint8_t*>(env2_unsafe->Allocate(256, 8, AVS_NORMAL_ALLOC));
+      if (!map) {
+        env->ThrowError("Tweak: Could not reserve memory.");
+      }
+
+      if (coring) {
+        for (int i = 0; i < 256; i++) {
+          /* brightness and contrast */
+          int y = int((i - 16)*_cont + _bright + 16.5);
+          map[i] = (BYTE)clamp(y, 16, 235);
+
+        }
+      }
+      else {
+        for (int i = 0; i < 256; i++) {
+          /* brightness and contrast */
+          int y = int(i*_cont + _bright + 0.5);
+          map[i] = (BYTE)clamp(y, 0, 255);
+        }
       }
     }
   }
-  else {
-    map = static_cast<uint8_t*>(env2_unsafe->Allocate(256, 8, AVS_NORMAL_ALLOC));
-    if (!map) {
-      env->ThrowError("Tweak: Could not reserve memory.");
-    }
-
-    if (coring) {
-      for (int i = 0; i < 256; i++) {
-        /* brightness and contrast */
-        int y = int((i - 16)*_cont + _bright + 16.5);
-        map[i] = (BYTE)clamp(y, 16, 235);
-
-      }
-    }
-    else {
-      for (int i = 0; i < 256; i++) {
-        /* brightness and contrast */
-        int y = int(i*_cont + _bright + 0.5);
-        map[i] = (BYTE)clamp(y, 0, 255);
-      }
-    }
-  }
-
   // 100% equals sat=119 (= maximal saturation of valid RGB (R=255,G=B=0)
   // 150% (=180) - 100% (=119) overshoot
   const double minSat = 1.19 * _minSat;
@@ -714,51 +765,55 @@ Tweak::Tweak(PClip _child, double _hue, double _sat, double _bright, double _con
 
   const int maxUV = coring ? 240 : 255;
   const int minUV = coring ? 16 : 0;
+  if (!(realcalc && vi.IsPlanar()))
+  { // no need for lookup
+    if (dither) {
+      mapUV = static_cast<uint16_t*>(env2_unsafe->Allocate(256 * 256 * 16 * sizeof(uint16_t), 8, AVS_NORMAL_ALLOC));
+      if (!mapUV) {
+        env->ThrowError("Tweak: Could not reserve memory.");
+      }
 
-  if (dither) {
-    mapUV = static_cast<uint16_t*>(env2_unsafe->Allocate(256*256*16*sizeof(uint16_t), 8, AVS_NORMAL_ALLOC));
-    if (!mapUV) {
-      env->ThrowError("Tweak: Could not reserve memory.");
-    }
-
-    for (int d = 0; d < 16; d++) {
-      for (int u = 0; u < 256; u++) {
-        const double destu = ((u<<4|d) - 7.5)/16.0-128.0;
-        for (int v = 0; v < 256; v++) {
-          const double destv = ((v<<4|d) - 7.5)/16.0-128.0;
-          int iSat = Sat;
-          if (allPixels || ProcessPixel(destv, destu, startHue, endHue, maxSat, minSat, p, iSat)) {
-            int du = int ( (destu*COS + destv*SIN) * iSat + 0x100) >> 9;
-            int dv = int ( (destv*COS - destu*SIN) * iSat + 0x100) >> 9;
-            du = clamp(du+128,minUV,maxUV);
-            dv = clamp(dv+128,minUV,maxUV);
-            mapUV[(u<<12)|(v<<4)|d]  = (uint16_t)(du | (dv<<8));
-          } else {
-            mapUV[(u<<12)|(v<<4)|d]  = (uint16_t)(clamp(u,minUV,maxUV) | (clamp(v,minUV,maxUV)<<8));
+      for (int d = 0; d < 16; d++) {
+        for (int u = 0; u < 256; u++) {
+          const double destu = ((u << 4 | d) - 7.5) / 16.0 - 128.0;
+          for (int v = 0; v < 256; v++) {
+            const double destv = ((v << 4 | d) - 7.5) / 16.0 - 128.0;
+            int iSat = Sat;
+            if (allPixels || ProcessPixel(destv, destu, startHue, endHue, maxSat, minSat, p, iSat)) {
+              int du = int((destu*COS + destv*SIN) * iSat + 0x100) >> 9;
+              int dv = int((destv*COS - destu*SIN) * iSat + 0x100) >> 9;
+              du = clamp(du + 128, minUV, maxUV);
+              dv = clamp(dv + 128, minUV, maxUV);
+              mapUV[(u << 12) | (v << 4) | d] = (uint16_t)(du | (dv << 8));
+            }
+            else {
+              mapUV[(u << 12) | (v << 4) | d] = (uint16_t)(clamp(u, minUV, maxUV) | (clamp(v, minUV, maxUV) << 8));
+            }
           }
         }
       }
     }
-  }
-  else {
-    mapUV = static_cast<uint16_t*>(env2_unsafe->Allocate(256*256*sizeof(uint16_t), 8, AVS_NORMAL_ALLOC));
-    if (!mapUV) {
-      env->ThrowError("Tweak: Could not reserve memory.");
-    }
+    else {
+      mapUV = static_cast<uint16_t*>(env2_unsafe->Allocate(256 * 256 * sizeof(uint16_t), 8, AVS_NORMAL_ALLOC));
+      if (!mapUV) {
+        env->ThrowError("Tweak: Could not reserve memory.");
+      }
 
-    for (int u = 0; u < 256; u++) {
-      const double destu = u-128;
-      for (int v = 0; v < 256; v++) {
-        const double destv = v-128;
-        int iSat = Sat;
-        if (allPixels || ProcessPixel(destv, destu, startHue, endHue, maxSat, minSat, p, iSat)) {
-          int du = int ( (destu*COS + destv*SIN) * iSat ) >> 9;
-          int dv = int ( (destv*COS - destu*SIN) * iSat ) >> 9;
-          du = clamp(du+128,minUV,maxUV);
-          dv = clamp(dv+128,minUV,maxUV);
-          mapUV[(u<<8)|v]  = (uint16_t)(du | (dv<<8));
-        } else {
-          mapUV[(u<<8)|v]  = (uint16_t)(clamp(u,minUV,maxUV) | (clamp(v,minUV,maxUV)<<8));
+      for (int u = 0; u < 256; u++) {
+        const double destu = u - 128;
+        for (int v = 0; v < 256; v++) {
+          const double destv = v - 128;
+          int iSat = Sat;
+          if (allPixels || ProcessPixel(destv, destu, startHue, endHue, maxSat, minSat, p, iSat)) {
+            int du = int((destu*COS + destv*SIN) * iSat) >> 9;
+            int dv = int((destv*COS - destu*SIN) * iSat) >> 9;
+            du = clamp(du + 128, minUV, maxUV);
+            dv = clamp(dv + 128, minUV, maxUV);
+            mapUV[(u << 8) | v] = (uint16_t)(du | (dv << 8));
+          }
+          else {
+            mapUV[(u << 8) | v] = (uint16_t)(clamp(u, minUV, maxUV) | (clamp(v, minUV, maxUV) << 8));
+          }
         }
       }
     }
@@ -826,6 +881,54 @@ PVideoFrame __stdcall Tweak::GetFrame(int n, IScriptEnvironment* env)
 			}
 		}
 	} else if (vi.IsPlanar()) {
+    if (realcalc) // no lookup! PF todo: clean up this slow mess. But I'm glad, it's working 16/float
+    {
+      int pixelsize = vi.ComponentSize();
+      double factor;
+      double maxY;
+      double minY;
+      switch(pixelsize)
+      {
+      case 1: 
+        factor = 256.0; 
+        maxY = coring ? 235 : 255;
+        minY = coring ? 16 : 0;
+        break;
+      case 2: 
+        factor = 65536.0; 
+        maxY = coring ? 235*256 : 255*256;
+        minY = coring ? 16*256 : 0;
+        break;
+      default: // case 4:
+        maxY = coring ? 235.0/256 : 255.0/256;
+        minY = coring ? 16.0/256 : 0;
+        factor = 1.0;
+      }
+      double y0;
+      for (int y=0; y<height; ++y) {
+        const int _y = (y << 4) & 0xf0;
+        for (int x=0; x<row_size / pixelsize; ++x) {
+          /* brightness and contrast */
+          double ditherval = dither ? ditherval = (ditherMap[(x & 0x0f) | _y] / 256.0 - 0.5) / 256.0 : 0.0; 
+          // +/- 1/256, always relative to 0..1
+          switch(pixelsize) {
+          case 1: y0 = (srcp[x] - minY) / factor; break; // 8 bit
+          case 2: y0 = (reinterpret_cast<uint16_t *>(srcp)[x] - minY) / factor; break;// 16 bit
+          default: // case 4:
+                  y0 = (reinterpret_cast<float *>(srcp)[x] - minY) / factor; // float
+          }
+          y0 = (y0 + ditherval)*dcont + dbright / 256.0; // dbright parameter always 0..255
+          y0 = y0*factor + minY;
+          switch(pixelsize) {
+          case 1: srcp[x] = (BYTE)clamp(y0, minY, maxY); break;
+          case 2: reinterpret_cast<uint16_t *>(srcp)[x] = (uint16_t)clamp(y0, minY, maxY); break;
+          default: // case 4:
+            reinterpret_cast<float *>(srcp)[x] = (float)clamp(y0, minY, maxY); break;
+          }
+        }
+        srcp += src_pitch;
+      }
+    } else {
 		if (dither) {
 			for (int y=0; y<height; ++y) {
 				const int _y = (y << 4) & 0xf0;
@@ -845,6 +948,7 @@ PVideoFrame __stdcall Tweak::GetFrame(int n, IScriptEnvironment* env)
 				srcp += src_pitch;
 			}
 		}
+    }
 
 		src_pitch = src->GetPitch(PLANAR_U);
 		BYTE * srcpu = src->GetWritePtr(PLANAR_U);
@@ -852,6 +956,96 @@ PVideoFrame __stdcall Tweak::GetFrame(int n, IScriptEnvironment* env)
 		row_size = src->GetRowSize(PLANAR_U);
 		height = src->GetHeight(PLANAR_U);
 
+    if(realcalc) {
+      // no lookup! PF todo: clean up this slow and junk. But let's glad, it's working
+      // todo: float is a little greenish!
+      // u,v: 0..1 normalized
+      // destu = (u + dither_minus_8/16_7/16) - 0.5
+      // destv = (v + dither_minus_8/16_7/16) - 0.5
+      // double dSat = _sat
+      // ProcessPixelUnscaled(destv, destu, startHue, endHue, maxSat, minSat, p, dSat)
+      // du = (destu*cos(Hue) + destv*sin(Hue)) * dSat + 0.5 // unnormalize
+      // dv = (destv*cos(Hue) - destu*sin(Hue)) * dSat + 0.5 // unnormalize
+      // du=clamp(du,0.0,1.0)
+      // dv=clamp(du,0.0,1.0)
+      const double Hue = (dhue * PI) / 180.0;
+      double maxUV;
+      double minUV;
+      // 100% equals sat=119 (= maximal saturation of valid RGB (R=255,G=B=0)
+      // 150% (=180) - 100% (=119) overshoot
+      const double minSat = 1.19 * dminSat;
+      const double maxSat = 1.19 * dmaxSat;
+
+      double p = dinterp * 1.19; // Same units as minSat/maxSat
+
+      int pixelsize = vi.ComponentSize();
+      double factor;
+      switch(pixelsize)
+      {
+      case 1: 
+        factor = 256.0; 
+        maxUV = coring ? 240 : 255;
+        minUV = coring ? 16 : 0;
+        break;
+      case 2: 
+        factor = 65536.0; 
+        maxUV = coring ? 240*256 : 255*256;
+        minUV = coring ? 16*256 : 0;
+        break;
+      default: // case 4:
+        maxUV = coring ? 240.0/256 : 255.0/256;
+        minUV = coring ? 16.0/256 : 0;
+        factor = 1.0;
+      }
+      double u, v;
+      for (int y = 0; y < height; ++y) {
+        const int _y = (y << 2) & 0xC;
+        for (int x = 0; x < row_size / pixelsize; ++x) {
+          double _ditherval = 0.0;
+          if (dither)
+            _ditherval = ((double(ditherMap4[(x & 0x3) | _y]) - 7.5) / 16) / 16; // base: 1.0: -7.5/16/16..+8/16/16
+          /* hue and saturation */
+          switch(pixelsize) {
+          case 1: 
+            u = srcpu[x] / factor;
+            v = srcpv[x] / factor; 
+            break; // 8 bit
+          case 2: 
+            u = reinterpret_cast<uint16_t *>(srcpu)[x] / factor;
+            v = reinterpret_cast<uint16_t *>(srcpv)[x] / factor;
+            break; // 16 bit
+          default: // case 4:
+            u = reinterpret_cast<float *>(srcpu)[x] / factor;
+            v = reinterpret_cast<float *>(srcpv)[x] / factor;
+          }
+
+          u = u + _ditherval - 0.5;
+          v = v + _ditherval - 0.5;
+          double dWorkSat = dsat; // original param
+          ProcessPixelUnscaled(v, u, dstartHue, dendHue, dmaxSat, dminSat, p, dWorkSat);
+          double du = (u*cos(Hue) + v*sin(Hue)) * dWorkSat + 0.5; // unnormalize
+          double dv = (v*cos(Hue) - u*sin(Hue)) * dWorkSat + 0.5; // unnormalize
+          du = clamp(du, 0.0, 1.0) * factor;
+          dv = clamp(dv, 0.0, 1.0) * factor;
+          switch(pixelsize) {
+          case 1: 
+            srcpu[x] = (BYTE)clamp(du, minUV, maxUV); 
+            srcpv[x] = (BYTE)clamp(dv, minUV, maxUV); 
+            break;
+          case 2: 
+            reinterpret_cast<uint16_t *>(srcpu)[x] = (uint16_t)clamp(du, minUV, maxUV); 
+            reinterpret_cast<uint16_t *>(srcpv)[x] = (uint16_t)clamp(dv, minUV, maxUV); 
+            break;
+          default: // case 4:
+            reinterpret_cast<float *>(srcpu)[x] = (float)clamp(du, minUV, maxUV); 
+            reinterpret_cast<float *>(srcpv)[x] = (float)clamp(dv, minUV, maxUV); 
+            break;
+          }
+        }
+        srcpu += src_pitch;
+        srcpv += src_pitch;
+      }
+    } else {
 		if (dither) {
 			for (int y=0; y<height; ++y) {
 				const int _y = (y << 2) & 0xC;
@@ -882,6 +1076,7 @@ PVideoFrame __stdcall Tweak::GetFrame(int n, IScriptEnvironment* env)
 				srcpv += src_pitch;
 			}
 		}
+    }
 	}
 
 	return src;
@@ -902,7 +1097,8 @@ AVSValue __cdecl Tweak::Create(AVSValue args, void* user_data, IScriptEnvironmen
 					args[10].AsDblDef(0.0),    // minSat
 					args[11].AsDblDef(16.0/1.19),// interp
 					args[12].AsBool(false),    // dither
-					env);
+          args[13].AsBool(false),    // realcalc PF force no-lookup (pure double calc/pixel) for 8 bit
+          env);
 }
 
 /**********************

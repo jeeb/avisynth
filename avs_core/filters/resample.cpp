@@ -100,7 +100,15 @@ template<typename pixel_t>
 static void resize_v_c_planar(BYTE* dst, const BYTE* src, int dst_pitch, int src_pitch, ResamplingProgram* program, int width, int target_height, const int* pitch_table, const void* storage)
 {
   int filter_size = program->filter_size;
-  short* current_coeff = program->pixel_coefficient;
+
+  typedef std::conditional < std::is_floating_point<pixel_t>::value, float, short>::type coeff_t;
+  coeff_t *current_coeff;
+
+  if (!std::is_floating_point<pixel_t>::value)
+    current_coeff = (coeff_t *)program->pixel_coefficient;
+  else
+    current_coeff = (coeff_t *)program->pixel_coefficient_float;
+
   pixel_t* src0 = (pixel_t *)src;
   pixel_t* dst0 = (pixel_t *)dst;
   dst_pitch = dst_pitch / sizeof(pixel_t);
@@ -445,17 +453,23 @@ static void resize_h_pointresize(BYTE* dst, const BYTE* src, int dst_pitch, int 
 static void resize_h_prepare_coeff_8(ResamplingProgram* p, IScriptEnvironment2* env) {
   int filter_size = AlignNumber(p->filter_size, 8);
   short* new_coeff = (short*) env->Allocate(sizeof(short) * p->target_size * filter_size, 64, AVS_NORMAL_ALLOC);
-  if (!new_coeff) {
+  float* new_coeff_float = (float*) env->Allocate(sizeof(float) * p->target_size * filter_size, 64, AVS_NORMAL_ALLOC);
+  if (!new_coeff || !new_coeff_float) {
+    env->Free(new_coeff);
+    env->Free(new_coeff_float);
     env->ThrowError("Could not reserve memory in a resampler.");
   }
 
   memset(new_coeff, 0, sizeof(short) * p->target_size * filter_size);
-
+  memset(new_coeff_float, 0, sizeof(float) * p->target_size * filter_size);
+  
   // Copy coeff
   short *dst = new_coeff, *src = p->pixel_coefficient;
+  float *dst_f = new_coeff_float, *src_f = p->pixel_coefficient_float;
   for (int i = 0; i < p->target_size; i++) {
     for (int j = 0; j < p->filter_size; j++) {
       dst[j] = src[j];
+      dst_f[j] = src_f[j];
     }
 
     dst += filter_size;
@@ -463,13 +477,22 @@ static void resize_h_prepare_coeff_8(ResamplingProgram* p, IScriptEnvironment2* 
   }
 
   env->Free(p->pixel_coefficient);
+  env->Free(p->pixel_coefficient_float);
   p->pixel_coefficient = new_coeff;
+  p->pixel_coefficient_float = new_coeff_float;
 }
 
 template<typename pixel_t>
 static void resize_h_c_planar(BYTE* dst, const BYTE* src, int dst_pitch, int src_pitch, ResamplingProgram* program, int width, int height) {
   int filter_size = program->filter_size;
-  short* current = program->pixel_coefficient;
+
+  typedef std::conditional < std::is_floating_point<pixel_t>::value, float, short>::type coeff_t;
+  coeff_t *current_coeff;
+
+  if (!std::is_floating_point<pixel_t>::value)
+    current_coeff = (coeff_t *)program->pixel_coefficient;
+  else
+    current_coeff = (coeff_t *)program->pixel_coefficient_float;
 
   pixel_t limit = 0;
   if (!std::is_floating_point<pixel_t>::value) {  // floats are unscaled and uncapped 
@@ -490,7 +513,7 @@ static void resize_h_c_planar(BYTE* dst, const BYTE* src, int dst_pitch, int src
       std::conditional < sizeof(pixel_t) == 1, int, std::conditional < sizeof(pixel_t) == 2, __int64, float>::type >::type result;
       result = 0;
       for (int i = 0; i < filter_size; i++) {
-        result += (src0+y*src_pitch)[(begin+i)] * current[i];
+        result += (src0+y*src_pitch)[(begin+i)] * current_coeff[i];
       }
       if (!std::is_floating_point<pixel_t>::value) {  // floats are unscaled and uncapped 
         result = ((result + 8192) / 16384);
@@ -498,7 +521,7 @@ static void resize_h_c_planar(BYTE* dst, const BYTE* src, int dst_pitch, int src
       }
       (dst0 + y*dst_pitch)[x] = (pixel_t)result;
     }
-    current += filter_size;
+    current_coeff += filter_size;
   }
 }
 

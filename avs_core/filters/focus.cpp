@@ -39,6 +39,7 @@
 #include <avs/minmax.h>
 #include "../core/internal.h"
 #include <emmintrin.h>
+#include <stdint.h>
 
  
 /********************************************************************
@@ -1048,7 +1049,15 @@ TemporalSoften::TemporalSoften( PClip _child, unsigned radius, unsigned luma_thr
       env->ThrowError("TemporalSoften: Scenechange not available on RGB32");
   }
 
-  scenechange *= ((vi.width/32)*32)*vi.height*vi.BytesFromPixels(1);
+  // original scenechange parameter always 0-255
+  int factor;
+  if (vi.IsPlanar()) // Y/YUV
+    factor = 1; // bitdepth independent. sad normalizes
+  else
+    factor = vi.BytesFromPixels(1);
+  scenechange *= ((vi.width/32)*32)*vi.height*factor; // why /*32?
+
+  pixelsize = vi.ComponentSize();
 
   int c = 0;
   if (vi.IsPlanar()) {
@@ -1065,14 +1074,28 @@ TemporalSoften::TemporalSoften( PClip _child, unsigned radius, unsigned luma_thr
 }
 
 //offset is the initial value of x. Used when C routine processes only parts of frames after SSE/MMX paths do their job.
-static void accumulate_line_c(BYTE* c_plane, const BYTE** planeP, int planes, int offset, size_t width, BYTE threshold, int div) {
+template<typename pixel_t>
+static void accumulate_line_c(BYTE* _c_plane, const BYTE** planeP, int planes, int offset, size_t rowsize, BYTE _threshold, int div) {
+  pixel_t *c_plane = reinterpret_cast<pixel_t *>(_c_plane);
+
+  typedef std::conditional < sizeof(pixel_t) == 1, unsigned int, std::conditional < sizeof(pixel_t) == 2, unsigned __int64, float>::type >::type sum_t;
+  typedef std::conditional < std::is_floating_point<pixel_t>::value, float, size_t>::type threshold_t;
+
+  size_t width = rowsize / sizeof(pixel_t);
+
+  threshold_t threshold = _threshold; // parameter 0..255
+  if (std::is_floating_point<pixel_t>::value)
+    threshold = threshold / 256; // float
+  else if (sizeof(pixel_t) == 2)
+    threshold = threshold * 256; // uint16_t
+
   for (size_t x = offset; x < width; ++x) {
-    BYTE current = c_plane[x];
-    size_t sum = current;
+    pixel_t current = c_plane[x];
+    sum_t sum = current; 
 
     for (int plane = planes - 1; plane >= 0; plane--) {
-      BYTE p = planeP[plane][x];
-      size_t absdiff = std::abs(current - p);
+      pixel_t p = reinterpret_cast<const pixel_t *>(planeP[plane])[x];
+      sum_t absdiff = std::abs(current - p);
 
       if (absdiff <= threshold) {
         sum += p;
@@ -1080,8 +1103,11 @@ static void accumulate_line_c(BYTE* c_plane, const BYTE** planeP, int planes, in
         sum += current;
       }
     }
-
-    c_plane[x] = (BYTE)((sum * div + 16384) >> 15);
+    
+    if (std::is_floating_point<pixel_t>::value)
+      c_plane[x] = (pixel_t)(sum / (planes + 1)); // float: simple average
+    else
+      c_plane[x] = (pixel_t)((size_t)(sum * div + 16384) >> 15); // div = 32768/(planes+1) for integer arithmetic
   }
 }
 
@@ -1242,21 +1268,26 @@ static void accumulate_line_yuy2(BYTE* c_plane, const BYTE** planeP, int planes,
     accumulate_line_yuy2_c(c_plane, planeP, planes, width, threshold_luma, threshold_chroma, div);
 }
 
-static void accumulate_line(BYTE* c_plane, const BYTE** planeP, int planes, size_t width, BYTE threshold, int div, bool aligned16, IScriptEnvironment* env) {
-  if ((env->GetCPUFlags() & CPUF_SSE2) && aligned16 && width >= 16) {
-    accumulate_line_sse2(c_plane, planeP, planes, width, threshold | (threshold << 8), div);
+static void accumulate_line(BYTE* c_plane, const BYTE** planeP, int planes, size_t rowsize, BYTE threshold, int div, bool aligned16, int pixelsize, IScriptEnvironment* env) {
+  // todo: sse for 16bit/float
+  if ((pixelsize == 1) && (env->GetCPUFlags() & CPUF_SSE2) && aligned16 && rowsize >= 16) {
+    accumulate_line_sse2(c_plane, planeP, planes, rowsize, threshold | (threshold << 8), div);
   } else
 #ifdef X86_32
-  if ((env->GetCPUFlags() & CPUF_MMX) && width >= 8) {
-    size_t mod8_width = width / 8 * 8;
-    accumulate_line_mmx(c_plane, planeP, planes, width, threshold | (threshold << 8), div);
+  if ((pixelsize == 1) && (env->GetCPUFlags() & CPUF_MMX) && rowsize >= 8) {
+    size_t mod8_width = rowsize / 8 * 8;
+    accumulate_line_mmx(c_plane, planeP, planes, rowsize, threshold | (threshold << 8), div);
 
-    if (mod8_width != width) {
-      accumulate_line_c(c_plane, planeP, planes, mod8_width, width - mod8_width, threshold, div);
+    if (mod8_width != rowsize) {
+      accumulate_line_c<uint8_t>(c_plane, planeP, planes, mod8_width, rowsize - mod8_width, threshold, div);
     }
   } else 
 #endif
-    accumulate_line_c(c_plane, planeP, planes, 0, width, threshold, div);
+    switch(pixelsize) {
+    case 1: accumulate_line_c<uint8_t>(c_plane, planeP, planes, 0, rowsize, threshold, div); break;
+    case 2: accumulate_line_c<uint16_t>(c_plane, planeP, planes, 0, rowsize, threshold, div); break;
+    case 4: accumulate_line_c<float>(c_plane, planeP, planes, 0, rowsize, threshold, div); break;
+    }
 }
 
 
@@ -1314,29 +1345,48 @@ static int calculate_sad_isse(const BYTE* cur_ptr, const BYTE* other_ptr, int cu
 }
 #endif
 
-static size_t calculate_sad_c(const BYTE* cur_ptr, const BYTE* other_ptr, int cur_pitch, int other_pitch, size_t width, size_t height)
+template<typename pixel_t>
+static size_t calculate_sad_c(const BYTE* cur_ptr, const BYTE* other_ptr, int cur_pitch, int other_pitch, size_t rowsize, size_t height)
 {
-  size_t sum = 0;
+  const pixel_t *ptr1 = reinterpret_cast<const pixel_t *>(cur_ptr);
+  const pixel_t *ptr2 = reinterpret_cast<const pixel_t *>(other_ptr);
+  size_t width = rowsize / sizeof(pixel_t);
+
+  typedef std::conditional < std::is_floating_point<pixel_t>::value, float, size_t>::type sum_t;
+  sum_t sum = 0; 
+
   for (size_t y = 0; y < height; ++y) {
     for (size_t x = 0; x < width; ++x) {
-      sum += std::abs(cur_ptr[x] - other_ptr[x]);
+      sum += std::abs(ptr1[x] - ptr2[x]);
     }
-    cur_ptr += cur_pitch;
-    other_ptr += other_pitch;
+    ptr1 += cur_pitch / sizeof(pixel_t);
+    ptr2 += other_pitch / sizeof(pixel_t);
   }
-  return sum;
+  if (std::is_floating_point<pixel_t>::value)
+    return (size_t)(sum * 256); // float defaulting to 0..1 range
+  else
+    return (size_t)sum;
 }
 
-static size_t calculate_sad(const BYTE* cur_ptr, const BYTE* other_ptr, int cur_pitch, int other_pitch, size_t width, size_t height, IScriptEnvironment* env) {
-  if ((env->GetCPUFlags() & CPUF_SSE2) && IsPtrAligned(cur_ptr, 16) && IsPtrAligned(other_ptr, 16) && width >= 16) {
-    return calculate_sad_sse2(cur_ptr, other_ptr, cur_pitch, other_pitch, width, height);
+// sum of byte-diffs. 
+static size_t calculate_sad(const BYTE* cur_ptr, const BYTE* other_ptr, int cur_pitch, int other_pitch, size_t rowsize, size_t height, int pixelsize, IScriptEnvironment* env) {
+  // todo: sse for 16bit/float
+  if ((pixelsize == 1) && (env->GetCPUFlags() & CPUF_SSE2) && IsPtrAligned(cur_ptr, 16) && IsPtrAligned(other_ptr, 16) && rowsize >= 16) {
+    return calculate_sad_sse2(cur_ptr, other_ptr, cur_pitch, other_pitch, rowsize, height);
   }
 #ifdef X86_32
-  if ((env->GetCPUFlags() & CPUF_INTEGER_SSE) && width >= 8) {
-    return calculate_sad_isse(cur_ptr, other_ptr, cur_pitch, other_pitch, width, height);
+  if ((pixelsize ==1 ) && (env->GetCPUFlags() & CPUF_INTEGER_SSE) && rowsize >= 8) {
+    return calculate_sad_isse(cur_ptr, other_ptr, cur_pitch, other_pitch, rowsize, height);
   }
 #endif
-  return calculate_sad_c(cur_ptr, other_ptr, cur_pitch, other_pitch, width, height);
+  switch(pixelsize) {
+  case 1: return calculate_sad_c<uint8_t>(cur_ptr, other_ptr, cur_pitch, other_pitch, rowsize, height);
+  case 2: return calculate_sad_c<uint16_t>(cur_ptr, other_ptr, cur_pitch, other_pitch, rowsize, height) / 256;
+  default: // case 4
+    return calculate_sad_c<float>(cur_ptr, other_ptr, cur_pitch, other_pitch, rowsize, height);
+  }
+
+  
 }
 
 PVideoFrame TemporalSoften::GetFrame(int n, IScriptEnvironment* env)
@@ -1403,7 +1453,7 @@ PVideoFrame TemporalSoften::GetFrame(int n, IScriptEnvironment* env)
       bool skiprest = false;
       for (int i = radius-1; i>=0; i--) { // Check frames backwards
         if ((!skiprest) && (!planeDisabled[i])) {
-          int sad = (int)calculate_sad(c_plane, planeP[i], pitch, planePitch[i], frames[radius]->GetRowSize(planes[c]), h, env);
+          int sad = (int)calculate_sad(c_plane, planeP[i], pitch, planePitch[i], frames[radius]->GetRowSize(planes[c]), h, pixelsize, env);
           if (sad < scenechange) {
             planePitch2[d2] = planePitch[i];
             planeP2[d2++] = planeP[i];
@@ -1418,7 +1468,7 @@ PVideoFrame TemporalSoften::GetFrame(int n, IScriptEnvironment* env)
       skiprest = false;
       for (int i = radius; i < 2*radius; i++) { // Check forward frames
         if ((!skiprest)  && (!planeDisabled[i])) {   // Disable this frame on next plane (so that Y can affect UV)
-          int sad = (int)calculate_sad(c_plane, planeP[i], pitch, planePitch[i], frames[radius]->GetRowSize(planes[c]), h, env);
+          int sad = (int)calculate_sad(c_plane, planeP[i], pitch, planePitch[i], frames[radius]->GetRowSize(planes[c]), h, pixelsize, env);
           if (sad < scenechange) {
             planePitch2[d2] = planePitch[i];
             planeP2[d2++] = planeP[i];
@@ -1461,7 +1511,7 @@ PVideoFrame TemporalSoften::GetFrame(int n, IScriptEnvironment* env)
         if (vi.IsYUY2()) {
           accumulate_line_yuy2(c_plane, planeP, d, rowsize, luma_threshold, chroma_threshold, c_div, aligned16, env);
         } else {
-          accumulate_line(c_plane, planeP, d, rowsize, c_thresh, c_div, aligned16, env);
+          accumulate_line(c_plane, planeP, d, rowsize, c_thresh, c_div, aligned16, pixelsize, env);
         }
         for (int p = 0; p<d; p++)
           planeP[p] += planePitch[p];

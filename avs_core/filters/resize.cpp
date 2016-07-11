@@ -37,7 +37,8 @@
 #include "../core/internal.h"
 #include <emmintrin.h>
 #include <avs/alignment.h>
-
+#include <stdint.h>
+#include <type_traits>
 
 
 /********************************************************************
@@ -201,13 +202,26 @@ static void vertical_reduce_mmx(BYTE* dstp, const BYTE* srcp, int dst_pitch, int
 }
 #endif
 
-static void vertical_reduce_c(BYTE* dstp, const BYTE* srcp, int dst_pitch, int src_pitch, size_t width, size_t height) {
-  const BYTE* srcp_next = srcp + src_pitch;
-  const BYTE* srcp_next2 = srcp + src_pitch*2;
+template<typename pixel_t>
+static void vertical_reduce_c(BYTE* _dstp, const BYTE* _srcp, int _dst_pitch, int _src_pitch, size_t row_size, size_t height) {
+  size_t width = row_size / sizeof(pixel_t);
+  int dst_pitch = _dst_pitch / sizeof(pixel_t);
+  int src_pitch = _src_pitch / sizeof(pixel_t);
+  const pixel_t *srcp = reinterpret_cast<const pixel_t *>(_srcp);
+  pixel_t *dstp = reinterpret_cast<pixel_t *>(_dstp);
+
+  const pixel_t* srcp_next = srcp + src_pitch;
+  const pixel_t* srcp_next2 = srcp + src_pitch*2;
+
+  pixel_t rounding;
+  if (!std::is_floating_point<pixel_t>::value)
+    rounding = 2;
+  else
+    rounding = 0; // float: no rounding
 
   for (size_t y = 0; y < height-1; ++y) {
     for (size_t x = 0; x < width; ++x) {
-      dstp[x] = (srcp[x] + 2*srcp_next[x] + srcp_next2[x] + 2) >> 2;
+      dstp[x] = (srcp[x] + 2 * srcp_next[x] + srcp_next2[x] + rounding) / 4; // >> 2; /4 float friendly
     }
     dstp += dst_pitch;
     srcp += src_pitch*2;
@@ -215,23 +229,29 @@ static void vertical_reduce_c(BYTE* dstp, const BYTE* srcp, int dst_pitch, int s
     srcp_next2 += src_pitch*2;
   }
   for(size_t x = 0; x < width; ++x) {
-    dstp[x] = (srcp[x] + 3*srcp_next[x] + 2) >> 2;
+    dstp[x] = (srcp[x] + 3 * srcp_next[x] + rounding) / 4; // >> 2; /4 float friendly
   }
 }
 
-void vertical_reduce_core(BYTE* dstp, const BYTE* srcp, int dst_pitch, int src_pitch, int width, int height, IScriptEnvironment* env) {
+void vertical_reduce_core(BYTE* dstp, const BYTE* srcp, int dst_pitch, int src_pitch, int row_size, int height, int pixelsize, IScriptEnvironment* env) {
   if (!srcp) {
     return;
   }
-  if ((env->GetCPUFlags() & CPUF_SSE2) && IsPtrAligned(srcp, 16) && width >= 16) {
-    vertical_reduce_sse2(dstp, srcp, dst_pitch, src_pitch, width, height);
+  if (pixelsize==1 && (env->GetCPUFlags() & CPUF_SSE2) && IsPtrAligned(srcp, 16) && row_size >= 16) {
+    vertical_reduce_sse2(dstp, srcp, dst_pitch, src_pitch, row_size, height);
   } else
 #ifdef X86_32
-    if ((env->GetCPUFlags() & CPUF_MMX) && width >= 8) {
-      vertical_reduce_mmx(dstp, srcp, dst_pitch, src_pitch, width, height);
+    if (pixelsize==1 && (env->GetCPUFlags() & CPUF_MMX) && row_size >= 8) {
+      vertical_reduce_mmx(dstp, srcp, dst_pitch, src_pitch, row_size, height);
     } else
 #endif
-    vertical_reduce_c(dstp, srcp, dst_pitch, src_pitch, width, height);
+      switch (pixelsize) {
+      case 1: vertical_reduce_c<uint8_t>(dstp, srcp, dst_pitch, src_pitch, row_size, height); break;
+      case 2: vertical_reduce_c<uint16_t>(dstp, srcp, dst_pitch, src_pitch, row_size, height); break;
+      default: //case 4: 
+        vertical_reduce_c<float>(dstp, srcp, dst_pitch, src_pitch, row_size, height); break;
+      }
+    
 }
 
 
@@ -268,20 +288,21 @@ PVideoFrame VerticalReduceBy2::GetFrame(int n, IScriptEnvironment* env) {
   int src_pitch = src->GetPitch();
   int dst_pitch = dst->GetPitch();
   int row_size = src->GetRowSize();
-  int a_row_size = (row_size+3) & ~3;
   BYTE* dstp = dst->GetWritePtr();
   const BYTE* srcp = src->GetReadPtr();
 
+  int pixelsize = vi.ComponentSize();
+
   if (vi.IsPlanar()) {
-    vertical_reduce_core(dstp, srcp, dst_pitch, src_pitch, row_size, dst->GetHeight(PLANAR_Y), env);
+    vertical_reduce_core(dstp, srcp, dst_pitch, src_pitch, row_size, dst->GetHeight(PLANAR_Y), pixelsize, env);
     if (vi.NumComponents() > 1) {
       vertical_reduce_core(dst->GetWritePtr(PLANAR_U), src->GetReadPtr(PLANAR_U), dst->GetPitch(PLANAR_U),
-        src->GetPitch(PLANAR_U), dst->GetRowSize(PLANAR_U), dst->GetHeight(PLANAR_U), env);
+        src->GetPitch(PLANAR_U), dst->GetRowSize(PLANAR_U), dst->GetHeight(PLANAR_U), pixelsize, env);
       vertical_reduce_core(dst->GetWritePtr(PLANAR_V), src->GetReadPtr(PLANAR_V), dst->GetPitch(PLANAR_V),
-        src->GetPitch(PLANAR_V), dst->GetRowSize(PLANAR_V), dst->GetHeight(PLANAR_V), env);
+        src->GetPitch(PLANAR_V), dst->GetRowSize(PLANAR_V), dst->GetHeight(PLANAR_V), pixelsize, env);
     }
   } else {
-    vertical_reduce_core(dstp, srcp, dst_pitch, src_pitch, row_size, vi.height, env);
+    vertical_reduce_core(dstp, srcp, dst_pitch, src_pitch, row_size, vi.height, pixelsize, env);
   }
   return dst;
 }
@@ -311,60 +332,63 @@ HorizontalReduceBy2::HorizontalReduceBy2(PClip _child, IScriptEnvironment* env)
   vi.width >>= 1;
 }
  
+template<typename pixel_t>
+static void horizontal_reduce_core(PVideoFrame& dst, PVideoFrame& src, int plane) {
+
+  pixel_t rounding;
+  if (!std::is_floating_point<pixel_t>::value)
+    rounding = 1;
+  else
+    rounding = 0; // float: no rounding
+
+  const pixel_t* srcp = reinterpret_cast<const pixel_t *>(src->GetReadPtr(plane));
+  pixel_t* dstp = reinterpret_cast<pixel_t *>(dst->GetWritePtr(plane));
+  int src_gap = (src->GetPitch(plane) - src->GetRowSize(plane)) / sizeof(pixel_t);  //aka 'modulo' in VDub filter terminology
+  int dst_gap = (dst->GetPitch(plane) - dst->GetRowSize(plane)) / sizeof(pixel_t);
+  int yloops = dst->GetHeight(plane);
+  int xloops = dst->GetRowSize(plane) / sizeof(pixel_t) - 1;
+  for (int y = 0; y < yloops; y++) {
+    for (int x = 0; x < xloops; x++) {
+      *dstp = (srcp[0] + 2 * srcp[1] + srcp[2] + rounding * 2) / 4; // >> 2; float-friendly
+      dstp++;
+      srcp += 2;
+    }
+    *dstp = (srcp[0] + srcp[1] + rounding) / 2; // >> 1; float-friendly
+    dstp += dst_gap + 1;
+    srcp += src_gap + 2;
+  }
+}
 
 PVideoFrame HorizontalReduceBy2::GetFrame(int n, IScriptEnvironment* env)
 {
   PVideoFrame src = child->GetFrame(n, env);
   PVideoFrame dst = env->NewVideoFrame(vi);
+
+  if (vi.IsPlanar()) {
+
+    int pixelsize = vi.ComponentSize();
+    int planes[3] = { PLANAR_Y, PLANAR_U, PLANAR_V };
+
+    for (int p = 0; p < vi.NumComponents(); p++)
+    {
+      int plane = planes[p];
+      switch (pixelsize) {
+        case 1: horizontal_reduce_core<uint8_t>(dst, src, plane); break;
+        case 2: horizontal_reduce_core<uint16_t>(dst, src, plane); break;
+        default: // case 4: 
+          horizontal_reduce_core<float>(dst, src, plane); break;
+      }
+    }
+    return dst;
+  } 
+
   int src_gap = src->GetPitch() - src->GetRowSize();  //aka 'modulo' in VDub filter terminology
   int dst_gap = dst->GetPitch() - dst->GetRowSize();
   const int dst_pitch = dst->GetPitch();
 
   BYTE* dstp = dst->GetWritePtr();
 
-  if (vi.IsPlanar()) {
-    const BYTE* srcp = src->GetReadPtr(PLANAR_Y);
-    int yloops = dst->GetHeight(PLANAR_Y);
-    int xloops = dst->GetRowSize(PLANAR_Y)-1;
-    for (int y = 0; y<yloops; y++) {
-      for (int x = 0; x<xloops; x++) {
-        *dstp = (srcp[0] + 2*srcp[1] + srcp[2] + 2) >> 2;
-        dstp++;
-        srcp += 2;
-      }
-      *dstp = (srcp[0] + srcp[1] +1) >> 1;
-      dstp += dst_gap+1;
-      srcp += src_gap+2;
-    }
-    srcp = src->GetReadPtr(PLANAR_U);
-    dstp = dst->GetWritePtr(PLANAR_U);
-    src_gap = src->GetPitch(PLANAR_U) - src->GetRowSize(PLANAR_U);
-    dst_gap = dst->GetPitch(PLANAR_U) - dst->GetRowSize(PLANAR_U);
-    yloops = dst->GetHeight(PLANAR_U);
-    xloops = dst->GetRowSize(PLANAR_U)-1;
-    for (int y = 0; y<yloops; y++) {
-      for (int x = 0; x<xloops; x++) {
-        dstp[0] = (srcp[0] + 2*srcp[1] + srcp[2] + 2) >> 2;
-        dstp++;
-        srcp += 2;
-      }
-      dstp[0] = (srcp[0] + srcp[1] +1) >> 1;
-      dstp += dst_gap+1;
-      srcp += src_gap+2;
-    }
-    srcp = src->GetReadPtr(PLANAR_V);
-    dstp = dst->GetWritePtr(PLANAR_V);
-    for (int y = 0; y<yloops; y++) {
-      for (int x = 0; x<xloops; x++) {
-        dstp[0] = (srcp[0] + 2*srcp[1] + srcp[2] + 2) >> 2;
-        dstp++;
-        srcp += 2;
-      }
-      dstp[0] = (srcp[0] + srcp[1] +1) >> 1;
-      dstp += dst_gap+1;
-      srcp += src_gap+2;
-    }
-  } else if (vi.IsYUY2()  && (!(vi.width&3))) {
+  if (vi.IsYUY2()  && (!(vi.width&3))) {
 
     const BYTE* srcp = src->GetReadPtr();
     for (int y = vi.height; y>0; --y) {

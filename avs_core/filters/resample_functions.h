@@ -57,24 +57,28 @@ struct ResamplingProgram {
   // Array of array of coefficient for each pixel
   // {{pixel[0]_coeff}, {pixel[1]_coeff}, ...}
   short* pixel_coefficient;
+  float* pixel_coefficient_float;
 
   ResamplingProgram(int filter_size, int source_size, int target_size, double crop_start, double crop_size, IScriptEnvironment2* env)
     : filter_size(filter_size), source_size(source_size), target_size(target_size), crop_start(crop_start), crop_size(crop_size),
-      pixel_offset(0), pixel_coefficient(0), Env(env)
+      pixel_offset(0), pixel_coefficient(0), pixel_coefficient_float(0), Env(env)
   {
     pixel_offset = (int*) Env->Allocate(sizeof(int) * target_size, 64, AVS_NORMAL_ALLOC); // 64-byte alignment
     pixel_coefficient = (short*) Env->Allocate(sizeof(short) * target_size * filter_size, 64, AVS_NORMAL_ALLOC);
-  	if (!pixel_offset || !pixel_coefficient) {
-  		Env->Free(pixel_offset);
-  		Env->Free(pixel_coefficient);
-  		Env->ThrowError("ResamplingProgram: Could not reserve memory.");
-  	}
+    pixel_coefficient_float = (float*) Env->Allocate(sizeof(float) * target_size * filter_size, 64, AVS_NORMAL_ALLOC);
+    if (!pixel_offset || !pixel_coefficient || !pixel_coefficient_float) {
+      Env->Free(pixel_offset);
+      Env->Free(pixel_coefficient);
+      Env->Free(pixel_coefficient_float);
+      Env->ThrowError("ResamplingProgram: Could not reserve memory.");
+    }
 
   };
 
   ~ResamplingProgram() {
     Env->Free(pixel_offset);
     Env->Free(pixel_coefficient);
+    Env->Free(pixel_coefficient_float);
   };
 };
 
