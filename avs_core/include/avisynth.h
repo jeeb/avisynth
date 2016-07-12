@@ -112,7 +112,7 @@ public:
 
 // Ensure AvisynthError cannot be publicly assigned!
 private:
-  AvisynthError& operator=(const AvisynthError&) = delete;
+  AvisynthError& operator=(const AvisynthError&);
 }; // end class AvisynthError
 
 
@@ -567,7 +567,7 @@ public:
 
 // Ensure VideoFrameBuffer cannot be publicly assigned
 private:
-    VideoFrameBuffer& operator=(const VideoFrameBuffer&) = delete;
+    VideoFrameBuffer& operator=(const VideoFrameBuffer&);
 
 }; // end class VideoFrameBuffer
 
@@ -621,7 +621,7 @@ public:
 
 // Ensure VideoFrame cannot be publicly assigned
 private:
-    VideoFrame& operator=(const VideoFrame&) = delete;
+    VideoFrame& operator=(const VideoFrame&);
 
 }; // end class VideoFrame
 
