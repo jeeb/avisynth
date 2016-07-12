@@ -412,102 +412,26 @@ public:
   }
 };
 
-#include <string>
-#include <unordered_map>
-class MTMapState
-{
-private:
-  typedef std::unordered_map<std::string, MtMode> MTModeMapType;
 
-  static std::string NormalizeFilterName(const std::string& filter)
-  {
+static std::string NormalizeString(const std::string& str)
+{
     // lowercase
-    std::string ret = filter;
+    std::string ret = str;
     for (size_t i = 0; i < ret.size(); ++i)
-      ret[i] = tolower(ret[i]);
+        ret[i] = tolower(ret[i]);
 
     // trim trailing spaces
     size_t endpos = ret.find_last_not_of(" \t");
-    if( std::string::npos != endpos )
-        ret = ret.substr( 0, endpos+1 );
+    if (std::string::npos != endpos)
+        ret = ret.substr(0, endpos + 1);
 
     // trim leading spaces
     size_t startpos = ret.find_first_not_of(" \t");
-    if( std::string::npos != startpos )
-        ret = ret.substr( startpos );
+    if (std::string::npos != startpos)
+        ret = ret.substr(startpos);
 
     return ret;
-  }
-
-public:
-  static const std::string DEFAULT_MODE_SPECIFIER;
-
-  MtMode DefaultMode;
-  MTModeMapType PerFilterMap;
-  MTModeMapType ForcedMap;
-
-  MTMapState() 
-    : DefaultMode(MT_SERIALIZED)
-  {}
-
-  void SetMode(const std::string& filter, MtMode mode, bool force)
-  {
-    if ( ((int)mode <= (int)MT_INVALID)
-      || ((int)mode >= (int)MT_MODE_COUNT) )
-    {
-      throw AvisynthError("Invalid MT mode specified.");
-    }
-
-    if (streqi(filter.c_str(), DEFAULT_MODE_SPECIFIER.c_str()))
-    {
-      DefaultMode = mode;
-      return;
-    }
-
-    std::string f = NormalizeFilterName(filter);
-    if (!force)
-    {
-      PerFilterMap[f] = mode;
-      _RPT2(0,"MT SetMode NOT FORCED for %s: %d\n", f.c_str(), (int)mode);
-    }
-    else
-    {
-      ForcedMap[f] = mode;
-      _RPT2(0, "MT SetMode     FORCED for %s: %d\n", f.c_str(), (int)mode);
-    }
-  }
-
-  MtMode GetMode(const std::string& filter, bool* is_forced, bool* found) const
-  {
-    *is_forced = false;
-    *found = true;
-
-    if (streqi(filter.c_str(), DEFAULT_MODE_SPECIFIER.c_str()))
-      return DefaultMode;
-
-    std::string f = NormalizeFilterName(filter);
-    MTModeMapType::const_iterator it = ForcedMap.find(f);
-    if (it != ForcedMap.end())
-    {
-      *is_forced = true;
-      _RPT2(0, "MT GetMode     FORCED for %s: %d\n", f.c_str(), (int)it->second);
-      return it->second;
-    }
-
-    it = PerFilterMap.find(f);
-    if (it != PerFilterMap.end())
-    {
-      _RPT2(0, "MT GetMode PER FORCED for %s: %d\n", f.c_str(), (int)it->second);
-      return it->second;
-    }
-    *found = false;
-    _RPT2(0, "MT GetMode  DEFAULT   for %s: %d\n", f.c_str(), DefaultMode);
-    return DefaultMode;
-  }
-
-};
-const std::string MTMapState::DEFAULT_MODE_SPECIFIER = "DEFAULT_MT_MODE";
-
+}
 
 class ClipDataStore
 {
@@ -525,6 +449,16 @@ public:
 
     ClipDataStore(IClip *clip) : Clip(clip) {};
 };
+
+typedef enum class _MtWeight
+{
+    MT_WEIGHT_0_DEFAULT,
+    MT_WEIGHT_1_USERSPEC,
+    MT_WEIGHT_2_FILTERSPEC,
+    MT_WEIGHT_3_FILTEROVERRIDE,
+    MT_WEIGHT_4_USERFORCE,
+    MT_WEIGHT_MAX
+} MtWeight;
 
 #include "vartable.h"
 #include "ThreadPool.h"
@@ -587,6 +521,7 @@ public:
   virtual void __stdcall AdjustMemoryConsumption(size_t amount, bool minus);
   virtual bool __stdcall Invoke(AVSValue *result, const char* name, const AVSValue& args, const char* const* arg_names=0);
   virtual void __stdcall SetFilterMTMode(const char* filter, MtMode mode, bool force);
+  virtual void __stdcall SetFilterMTMode(const char* filter, MtMode mode, MtWeight weight);
   virtual MtMode __stdcall GetFilterMTMode(const AVSFunction* filter, bool* is_forced) const;
   virtual void __stdcall ParallelJob(ThreadWorkerFuncPtr jobFunc, void* jobData, IJobCompletion* completion);
   virtual IJobCompletion* __stdcall NewCompletion(size_t capacity);
@@ -656,7 +591,6 @@ private:
 
   BufferPool BufferPool;
 
-  MTMapState MTMap;
   typedef std::vector<MTGuard*> MTGuardRegistryType;
   MTGuardRegistryType MTGuardRegistry;
   Prefetcher *prefetcher;
@@ -665,8 +599,14 @@ private:
   uint_fast32_t invoke_id;
   std::queue<const AVSFunction*> invoke_stack;
 
+  // MT mode specifications
+  std::unordered_map<std::string, std::pair<MtMode, MtWeight>> MtMap;
+  MtMode DefaultMtMode = MtMode::MT_MULTI_INSTANCE;
+  static const std::string DEFAULT_MODE_SPECIFIER;
+
   void InitMT();
 };
+const std::string ScriptEnvironment::DEFAULT_MODE_SPECIFIER = "DEFAULT_MT_MODE";
 
 
 static unsigned __int64 ConstrainMemoryRequest(unsigned __int64 requested)
@@ -1022,8 +962,26 @@ void __stdcall ScriptEnvironment::ParallelJob(ThreadWorkerFuncPtr jobFunc, void*
 
 void __stdcall ScriptEnvironment::SetFilterMTMode(const char* filter, MtMode mode, bool force)
 {
+    this->SetFilterMTMode(filter, mode, force ? MtWeight::MT_WEIGHT_4_USERFORCE : MtWeight::MT_WEIGHT_1_USERSPEC);
+}
+    
+void __stdcall ScriptEnvironment::SetFilterMTMode(const char* filter, MtMode mode, MtWeight weight)
+{
   assert(NULL != filter);
   assert(strcmp("", filter) != 0);
+
+  if (((int)mode <= (int)MT_INVALID)
+      || ((int)mode >= (int)MT_MODE_COUNT))
+  {
+      throw AvisynthError("Invalid MT mode specified.");
+  }
+
+  if (streqi(filter, DEFAULT_MODE_SPECIFIER.c_str()))
+  {
+      assert(weight == MtWeight::MT_WEIGHT_0_DEFAULT);
+      DefaultMtMode = mode;
+      return;
+  }
 
   std::string name_to_register;
   std::string loading = plugin_manager->PluginLoading();
@@ -1032,7 +990,21 @@ void __stdcall ScriptEnvironment::SetFilterMTMode(const char* filter, MtMode mod
   else
       name_to_register = loading.append("_").append(filter);
 
-  MTMap.SetMode(name_to_register, mode, force);
+  name_to_register = NormalizeString(name_to_register);
+
+  auto it = MtMap.find(name_to_register);
+  if (it != MtMap.end())
+  {
+      if ((int)weight >= (int)(it->second.second))
+      {
+          it->second.first = mode;
+          it->second.second = weight;
+      }
+  }
+  else
+  {
+      MtMap.emplace(name_to_register, std::make_pair(mode, weight));
+  }
 }
 
 MtMode __stdcall ScriptEnvironment::GetFilterMTMode(const AVSFunction* filter, bool* is_forced) const
@@ -1041,15 +1013,21 @@ MtMode __stdcall ScriptEnvironment::GetFilterMTMode(const AVSFunction* filter, b
   assert(NULL != filter->name);
   assert(NULL != filter->canon_name);
 
-  bool found;
-  MtMode ret;
+  auto it = MtMap.find(NormalizeString(filter->canon_name));
+  if (it != MtMap.end())
+  {
+      *is_forced = it->second.second == MtWeight::MT_WEIGHT_4_USERFORCE;
+      return it->second.first;
+  }
 
-  ret = MTMap.GetMode(filter->canon_name, is_forced, &found);
-  if (found)
-    return ret;
+  it = MtMap.find(NormalizeString(filter->name));
+  if (it != MtMap.end())
+  {
+      *is_forced = it->second.second == MtWeight::MT_WEIGHT_4_USERFORCE;
+      return it->second.first;
+  }
 
-  ret = MTMap.GetMode(filter->name, is_forced, &found);
-  return ret; 
+  return DefaultMtMode;
 }
 
 void* __stdcall ScriptEnvironment::Allocate(size_t nBytes, size_t alignment, AvsAllocType type)
@@ -1479,14 +1457,14 @@ VideoFrame* ScriptEnvironment::GetNewFrame(size_t vfb_size)
             // more than X: just registered the frame found, and erase all other frames from list plus delete frame objects also
             frame_found = frame;
             found = true;
-            it3++;
+            ++it3;
           }
           else {
             // if the first frame to this vfb was already found, then we free all others and delete it from the list   
             // Benefit: no 4-5k frame list count per a single vfb.
             //_RPT4(0, "ScriptEnvironment::GetNewFrame Delete one frame %p RowSize=%d Height=%d Pitch=%d Offset=%d\n", frame, frame->GetRowSize(), frame->GetHeight(), frame->GetPitch(), frame->GetOffset()); // P.F.
             delete frame;
-            it3++;
+            ++it3;
           }
         } // for it3
         if (found)
@@ -1558,7 +1536,7 @@ VideoFrame* ScriptEnvironment::GetNewFrame(size_t vfb_size)
         it2->second.clear(); // clear frame list
         it2 = (it->second).erase(it2); // clear current vfb
       }
-      else it2++;
+      else ++it2;
     }
   }
   _RPT1(0, "End of garbage collection A memused=%I64d\n", memory_used.load()); // P.F.
@@ -1690,7 +1668,7 @@ void ScriptEnvironment::EnsureMemoryLimit(size_t request)
           it2->second.clear(); // clear frame list
           it2 = (it->second).erase(it2); // clear vfb entry
         }
-        else it2++;
+        else ++it2;
       }
     }
     _RPT4(0, "End of garbage collection B: freed_vfb=%d frame=%d unfreed=%d memused=%I64d\n", freed_vfb_count, freed_frame_count, unfreed_frame_count, memory_used.load()); // P.F.

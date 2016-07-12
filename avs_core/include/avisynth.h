@@ -1060,7 +1060,7 @@ public:
   virtual bool __stdcall InternalFunctionExists(const char* name) = 0;
 
   // Threading
-  virtual void __stdcall SetFilterMTMode(const char* filter, MtMode mode, bool force) = 0; // If filter is "", sets the default MT mode
+  virtual void __stdcall SetFilterMTMode(const char* filter, MtMode mode, bool force) = 0; // If filter is "DEFAULT_MT_MODE", sets the default MT mode
   virtual IJobCompletion* __stdcall NewCompletion(size_t capacity) = 0;
   virtual void __stdcall ParallelJob(ThreadWorkerFuncPtr jobFunc, void* jobData, IJobCompletion* completion) = 0;
 
