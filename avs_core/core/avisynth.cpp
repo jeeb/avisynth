@@ -1683,7 +1683,7 @@ PVideoFrame ScriptEnvironment::NewPlanarVideoFrame(int row_size, int height, int
     pitchUV = AlignNumber(row_sizeUV, align);
   }
 
-  int size = pitchY * height + 2 * pitchUV * heightUV;
+  size_t size = pitchY * height + 2 * pitchUV * heightUV;
   size = size + align -1;
 
   VideoFrame *res = GetNewFrame(size);
@@ -1725,7 +1725,7 @@ PVideoFrame ScriptEnvironment::NewVideoFrame(int row_size, int height, int align
   }
 
   const int pitch = AlignNumber(row_size, align);
-  int size = pitch * height;
+  size_t size = pitch * height;
   size = size + align - 1;
 
   VideoFrame *res = GetNewFrame(size);
