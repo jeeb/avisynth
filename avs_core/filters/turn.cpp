@@ -440,9 +440,6 @@ static void turn_180_plane_xsse(const BYTE* srcp, BYTE* dstp, int src_rowsize, i
         pshufb_mask = _mm_set_epi8(1, 0, 3, 2, 5, 4, 7, 6, 9, 8, 11, 10, 13, 12, 15, 14);
     }
 
-    constexpr int pattern0 = sizeof(T) == 1 ? _MM_SHUFFLE(0, 1, 2, 3) : _MM_SHUFFLE(1, 0, 3, 2);
-    constexpr int pattern1 = sizeof(T) == 1 ? _MM_SHUFFLE(2, 3, 0, 1) : _MM_SHUFFLE(0, 1, 2, 3);
-
     for (int y = 0; y < src_height; ++y)
     {
         for (int x = 0; x < w; x += 16)
@@ -454,9 +451,9 @@ static void turn_180_plane_xsse(const BYTE* srcp, BYTE* dstp, int src_rowsize, i
             }
             else if (INSTRUCTION_SET == CPUF_SSE2)
             {
-                src = _mm_shuffle_epi32(src, pattern0);
-                src = _mm_shufflelo_epi16(src, pattern1);
-                src = _mm_shufflehi_epi16(src, pattern1);
+                src = _mm_shuffle_epi32(src, sizeof(T) == 1 ? _MM_SHUFFLE(0, 1, 2, 3) : _MM_SHUFFLE(1, 0, 3, 2));
+                src = _mm_shufflelo_epi16(src, sizeof(T) == 1 ? _MM_SHUFFLE(2, 3, 0, 1) : _MM_SHUFFLE(0, 1, 2, 3));
+                src = _mm_shufflehi_epi16(src, sizeof(T) == 1 ? _MM_SHUFFLE(2, 3, 0, 1) : _MM_SHUFFLE(0, 1, 2, 3));
 
                 if (sizeof(T) == 1)
                 {
