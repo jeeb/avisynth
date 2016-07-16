@@ -34,6 +34,7 @@
 
 #include <avisynth.h>
 #include "../core/internal.h"
+#include "InternalEnvironment.h"
 #include "./parser/script.h"
 #include <avs/minmax.h>
 #include <avs/alignment.h>
@@ -411,109 +412,146 @@ public:
   }
 };
 
-#include <string>
-#include <unordered_map>
-class MTMapState
-{
-private:
-  typedef std::unordered_map<std::string, MtMode> MTModeMapType;
 
-  static std::string NormalizeFilterName(const std::string& filter)
-  {
+static std::string NormalizeString(const std::string& str)
+{
     // lowercase
-    std::string ret = filter;
+    std::string ret = str;
     for (size_t i = 0; i < ret.size(); ++i)
-      ret[i] = tolower(ret[i]);
+        ret[i] = tolower(ret[i]);
 
     // trim trailing spaces
     size_t endpos = ret.find_last_not_of(" \t");
-    if( std::string::npos != endpos )
-        ret = ret.substr( 0, endpos+1 );
+    if (std::string::npos != endpos)
+        ret = ret.substr(0, endpos + 1);
 
     // trim leading spaces
     size_t startpos = ret.find_first_not_of(" \t");
-    if( std::string::npos != startpos )
-        ret = ret.substr( startpos );
+    if (std::string::npos != startpos)
+        ret = ret.substr(startpos);
 
     return ret;
-  }
+}
+
+typedef enum class _MtWeight
+{
+    MT_WEIGHT_0_DEFAULT,
+    MT_WEIGHT_1_USERSPEC,
+    MT_WEIGHT_2_USERFORCE,
+    MT_WEIGHT_MAX
+} MtWeight;
+
+class ClipDataStore
+{
+private:
+    ClipDataStore(const ClipDataStore&) = delete;
+    ClipDataStore& operator=(const ClipDataStore&) = delete;
 
 public:
-  static const std::string DEFAULT_MODE_SPECIFIER;
 
-  MtMode DefaultMode;
-  MTModeMapType PerFilterMap;
-  MTModeMapType ForcedMap;
+    // The clip instance that we hold data for.
+    IClip *Clip = nullptr;
 
-  MTMapState() 
-    : DefaultMode(MT_SERIALIZED)
-  {}
+    // Clip was created directly by an Invoke() call
+    bool CreatedByInvoke = false;
 
-  void SetMode(const std::string& filter, MtMode mode, bool force)
-  {
-    if ( ((int)mode <= (int)MT_INVALID)
-      || ((int)mode >= (int)MT_MODE_COUNT) )
-    {
-      throw AvisynthError("Invalid MT mode specified.");
-    }
-
-    if (streqi(filter.c_str(), DEFAULT_MODE_SPECIFIER.c_str()))
-    {
-      DefaultMode = mode;
-      return;
-    }
-
-    std::string f = NormalizeFilterName(filter);
-    if (!force)
-    {
-      PerFilterMap[f] = mode;
-      _RPT2(0,"MT SetMode NOT FORCED for %s: %d\n", f.c_str(), (int)mode);
-    }
-    else
-    {
-      ForcedMap[f] = mode;
-      _RPT2(0, "MT SetMode     FORCED for %s: %d\n", f.c_str(), (int)mode);
-    }
-  }
-
-  MtMode GetMode(const std::string& filter, bool* is_forced, bool* found) const
-  {
-    *is_forced = false;
-    *found = true;
-
-    if (streqi(filter.c_str(), DEFAULT_MODE_SPECIFIER.c_str()))
-      return DefaultMode;
-
-    std::string f = NormalizeFilterName(filter);
-    MTModeMapType::const_iterator it = ForcedMap.find(f);
-    if (it != ForcedMap.end())
-    {
-      *is_forced = true;
-      _RPT2(0, "MT GetMode     FORCED for %s: %d\n", f.c_str(), (int)it->second);
-      return it->second;
-    }
-
-    it = PerFilterMap.find(f);
-    if (it != PerFilterMap.end())
-    {
-      _RPT2(0, "MT GetMode PER FORCED for %s: %d\n", f.c_str(), (int)it->second);
-      return it->second;
-    }
-    *found = false;
-    _RPT2(0, "MT GetMode  DEFAULT   for %s: %d\n", f.c_str(), DefaultMode);
-    return DefaultMode;
-  }
-
+    ClipDataStore(IClip *clip) : Clip(clip) {};
 };
-const std::string MTMapState::DEFAULT_MODE_SPECIFIER = "DEFAULT_MT_MODE";
+
+class MtModeEvaluator
+{
+public:
+    int NumChainedNice = 0;
+    int NumChainedMulti = 0;
+    int NumChainedSerial = 0;
+
+    MtMode GetFinalMode(MtMode topInvokeMode)
+    {
+        if (NumChainedSerial > 0)
+        {
+            return MT_SERIALIZED;
+        }
+        else if (NumChainedMulti > 0)
+        {
+            if (MT_SERIALIZED == topInvokeMode)
+            {
+                return MT_SERIALIZED;
+            }
+            else
+            {
+                return MT_MULTI_INSTANCE;
+            }
+        }
+        else
+        {
+            return topInvokeMode;
+        }
+    }
+
+    void Accumulate(const MtModeEvaluator &other)
+    {
+        NumChainedNice += other.NumChainedNice;
+        NumChainedMulti += other.NumChainedMulti;
+        NumChainedSerial += other.NumChainedSerial;
+    }
+
+    void Accumulate(MtMode mode)
+    {
+        switch (mode)
+        {
+        case MT_NICE_FILTER:
+            ++NumChainedNice;
+            break;
+        case MT_MULTI_INSTANCE:
+            ++NumChainedMulti;
+            break;
+        case MT_SERIALIZED:
+            ++NumChainedSerial;
+            break;
+        default:
+            assert(0);
+            break;
+        }
+    }
+
+    static MtMode GetInstanceMode(const PClip &clip, MtMode defaultMode)
+    {
+        MtMode mode = defaultMode;
+
+        if ((clip->GetVersion() >= 5)
+            && (clip->SetCacheHints(CACHE_GET_MTMODE, 0) != 0))
+        {
+            mode = (MtMode)clip->SetCacheHints(CACHE_GET_MTMODE, 0);
+        }
+
+        return mode;
+    }
+
+    static MtMode GetMtMode(const PClip &clip, const AVSFunction *invokeCall, const InternalEnvironment* env)
+    {
+        bool invokeModeForced;
+
+        MtMode instanceMode = GetInstanceMode(clip, env->GetDefaultMtMode());
+        MtMode invokeMode = env->GetFilterMTMode(invokeCall, &invokeModeForced);
+
+        return invokeModeForced ? invokeMode : instanceMode;
+    }
+
+    void AddChainedFilter(const PClip &clip, MtMode defaultMode)
+    {
+        MtMode mode = GetInstanceMode(clip, defaultMode);
+        Accumulate(mode);
+    }
+};
 
 #include "vartable.h"
 #include "ThreadPool.h"
 #include <map>
 #include <atomic>
+#include <stack>
 #include "Prefetcher.h"
 #include "BufferPool.h"
-class ScriptEnvironment : public IScriptEnvironment2 {
+class ScriptEnvironment : public InternalEnvironment {
 public:
   ScriptEnvironment();
   void __stdcall CheckVersion(int version);
@@ -567,12 +605,15 @@ public:
   virtual void __stdcall AdjustMemoryConsumption(size_t amount, bool minus);
   virtual bool __stdcall Invoke(AVSValue *result, const char* name, const AVSValue& args, const char* const* arg_names=0);
   virtual void __stdcall SetFilterMTMode(const char* filter, MtMode mode, bool force);
+  virtual void __stdcall SetFilterMTMode(const char* filter, MtMode mode, MtWeight weight);
   virtual MtMode __stdcall GetFilterMTMode(const AVSFunction* filter, bool* is_forced) const;
   virtual void __stdcall ParallelJob(ThreadWorkerFuncPtr jobFunc, void* jobData, IJobCompletion* completion);
   virtual IJobCompletion* __stdcall NewCompletion(size_t capacity);
   virtual size_t  __stdcall GetProperty(AvsEnvProperty prop);
   virtual void* __stdcall Allocate(size_t nBytes, size_t alignment, AvsAllocType type);
   virtual void __stdcall Free(void* ptr);
+  virtual ClipDataStore* __stdcall ClipData(IClip *clip);
+  virtual MtMode __stdcall GetDefaultMtMode() const;
 
 private:
 
@@ -600,6 +641,7 @@ private:
   void EnsureMemoryLimit(size_t request);
   unsigned __int64 memory_max;
   std::atomic<unsigned __int64> memory_used;
+  std::unordered_map<IClip*, ClipDataStore> clip_data;
 
   void ExportBuiltinFilters();
 
@@ -634,13 +676,21 @@ private:
 
   BufferPool BufferPool;
 
-  MTMapState MTMap;
   typedef std::vector<MTGuard*> MTGuardRegistryType;
   MTGuardRegistryType MTGuardRegistry;
   Prefetcher *prefetcher;
 
+  // Members used to reconstruct Association between Invoke() calls and filter instances
+  std::stack<MtModeEvaluator*> invoke_stack;
+
+  // MT mode specifications
+  std::unordered_map<std::string, std::pair<MtMode, MtWeight>> MtMap;
+  MtMode DefaultMtMode = MtMode::MT_MULTI_INSTANCE;
+  static const std::string DEFAULT_MODE_SPECIFIER;
+
   void InitMT();
 };
+const std::string ScriptEnvironment::DEFAULT_MODE_SPECIFIER = "DEFAULT_MT_MODE";
 
 
 static unsigned __int64 ConstrainMemoryRequest(unsigned __int64 requested)
@@ -734,6 +784,8 @@ ScriptEnvironment::ScriptEnvironment()
     thread_pool = new ThreadPool(std::thread::hardware_concurrency());
 
     ExportBuiltinFilters();
+
+    clip_data.max_load_factor(0.8f);
   }
   catch (const AvisynthError &err) {
     if(SUCCEEDED(hrfromcoinit)) {
@@ -746,150 +798,16 @@ ScriptEnvironment::ScriptEnvironment()
   }
 }
 
+MtMode __stdcall ScriptEnvironment::GetDefaultMtMode() const
+{
+    return DefaultMtMode;
+}
+
 void ScriptEnvironment::InitMT()
 {
     global_var_table->Set("MT_NICE_FILTER", (int)MT_NICE_FILTER);
     global_var_table->Set("MT_MULTI_INSTANCE", (int)MT_MULTI_INSTANCE);
     global_var_table->Set("MT_SERIALIZED", (int)MT_SERIALIZED);
-
-    this->SetFilterMTMode(BUILTIN_FUNC_PREFIX "_AVISource", MtMode::MT_SERIALIZED, true);
-    this->SetFilterMTMode(BUILTIN_FUNC_PREFIX "_AVIFileSource", MtMode::MT_SERIALIZED, true);
-    this->SetFilterMTMode(BUILTIN_FUNC_PREFIX "_WAVSource", MtMode::MT_SERIALIZED, true);
-    this->SetFilterMTMode(BUILTIN_FUNC_PREFIX "_OpenDMLSource", MtMode::MT_SERIALIZED, true);
-
-    this->SetFilterMTMode(BUILTIN_FUNC_PREFIX "_ChangeFPS", MtMode::MT_SERIALIZED, true);
-    this->SetFilterMTMode(BUILTIN_FUNC_PREFIX "_ConvertFPS", MtMode::MT_NICE_FILTER, true);
-    this->SetFilterMTMode(BUILTIN_FUNC_PREFIX "_ColorYUV", MtMode::MT_NICE_FILTER, true);
-    this->SetFilterMTMode(BUILTIN_FUNC_PREFIX "_StackVertical", MtMode::MT_NICE_FILTER, true);
-    this->SetFilterMTMode(BUILTIN_FUNC_PREFIX "_StackHorizontal", MtMode::MT_NICE_FILTER, true);
-    this->SetFilterMTMode(BUILTIN_FUNC_PREFIX "_Overlay", MtMode::MT_NICE_FILTER, true);
-
-    this->SetFilterMTMode(BUILTIN_FUNC_PREFIX "_ConvertToRGB", MtMode::MT_NICE_FILTER, true);
-    this->SetFilterMTMode(BUILTIN_FUNC_PREFIX "_ConvertToRGB24", MtMode::MT_NICE_FILTER, true);
-    this->SetFilterMTMode(BUILTIN_FUNC_PREFIX "_ConvertToRGB32", MtMode::MT_NICE_FILTER, true);
-    this->SetFilterMTMode(BUILTIN_FUNC_PREFIX "_ConvertToY8", MtMode::MT_NICE_FILTER, true);
-    this->SetFilterMTMode(BUILTIN_FUNC_PREFIX "_ConvertToYV12", MtMode::MT_NICE_FILTER, true);
-    this->SetFilterMTMode(BUILTIN_FUNC_PREFIX "_ConvertToYV24", MtMode::MT_NICE_FILTER, true);
-    this->SetFilterMTMode(BUILTIN_FUNC_PREFIX "_ConvertToYV16", MtMode::MT_NICE_FILTER, true);
-    this->SetFilterMTMode(BUILTIN_FUNC_PREFIX "_ConvertToYV411", MtMode::MT_NICE_FILTER, true);
-    this->SetFilterMTMode(BUILTIN_FUNC_PREFIX "_ConvertToYUY2", MtMode::MT_NICE_FILTER, true);
-    this->SetFilterMTMode(BUILTIN_FUNC_PREFIX "_ConvertBackToYUY2", MtMode::MT_NICE_FILTER, true);
-
-    this->SetFilterMTMode(BUILTIN_FUNC_PREFIX "_ConvertToY", MtMode::MT_NICE_FILTER, true);
-    this->SetFilterMTMode(BUILTIN_FUNC_PREFIX "_ConvertToYUV420", MtMode::MT_NICE_FILTER, true);
-    this->SetFilterMTMode(BUILTIN_FUNC_PREFIX "_ConvertToYUV422", MtMode::MT_NICE_FILTER, true);
-    this->SetFilterMTMode(BUILTIN_FUNC_PREFIX "_ConvertToYUV444", MtMode::MT_NICE_FILTER, true);
-
-    this->SetFilterMTMode(BUILTIN_FUNC_PREFIX "_ConvertTo8bit", MtMode::MT_NICE_FILTER, true);
-    this->SetFilterMTMode(BUILTIN_FUNC_PREFIX "_ConvertTo16bit", MtMode::MT_NICE_FILTER, true);
-    this->SetFilterMTMode(BUILTIN_FUNC_PREFIX "_ConvertToFloat", MtMode::MT_NICE_FILTER, true);
-
-    this->SetFilterMTMode(BUILTIN_FUNC_PREFIX "_GeneralConvolution", MtMode::MT_NICE_FILTER, true);
-    this->SetFilterMTMode(BUILTIN_FUNC_PREFIX "_UnalignedSplice", MtMode::MT_NICE_FILTER, true);
-    this->SetFilterMTMode(BUILTIN_FUNC_PREFIX "_AlignedSplice", MtMode::MT_NICE_FILTER, true);
-    this->SetFilterMTMode(BUILTIN_FUNC_PREFIX "_AudioDub", MtMode::MT_NICE_FILTER, true);
-
-    this->SetFilterMTMode(BUILTIN_FUNC_PREFIX "_Trim", MtMode::MT_NICE_FILTER, true);
-    this->SetFilterMTMode(BUILTIN_FUNC_PREFIX "_AudioTrim", MtMode::MT_NICE_FILTER, true);
-    this->SetFilterMTMode(BUILTIN_FUNC_PREFIX "_FreezeFrame", MtMode::MT_NICE_FILTER, true);
-    this->SetFilterMTMode(BUILTIN_FUNC_PREFIX "_DeleteFrame", MtMode::MT_NICE_FILTER, true);
-    this->SetFilterMTMode(BUILTIN_FUNC_PREFIX "_DuplicateFrame", MtMode::MT_NICE_FILTER, true);
-    this->SetFilterMTMode(BUILTIN_FUNC_PREFIX "_Reverse", MtMode::MT_NICE_FILTER, true);
-    this->SetFilterMTMode(BUILTIN_FUNC_PREFIX "_Loop", MtMode::MT_NICE_FILTER, true);
-
-    this->SetFilterMTMode(BUILTIN_FUNC_PREFIX "_Interleave", MtMode::MT_NICE_FILTER, true);
-    this->SetFilterMTMode(BUILTIN_FUNC_PREFIX "_SeparateColumns", MtMode::MT_NICE_FILTER, true);
-    this->SetFilterMTMode(BUILTIN_FUNC_PREFIX "_WeaveColumns", MtMode::MT_NICE_FILTER, true);
-    this->SetFilterMTMode(BUILTIN_FUNC_PREFIX "_WeaveRows", MtMode::MT_NICE_FILTER, true);
-    this->SetFilterMTMode(BUILTIN_FUNC_PREFIX "_DoubleWeave", MtMode::MT_NICE_FILTER, true);
-    this->SetFilterMTMode(BUILTIN_FUNC_PREFIX "_SwapFields", MtMode::MT_NICE_FILTER, true);
-    this->SetFilterMTMode(BUILTIN_FUNC_PREFIX "_ComplementParity", MtMode::MT_NICE_FILTER, true);
-    this->SetFilterMTMode(BUILTIN_FUNC_PREFIX "_AssumeTFF", MtMode::MT_NICE_FILTER, true);
-    this->SetFilterMTMode(BUILTIN_FUNC_PREFIX "_AssumeBFF", MtMode::MT_NICE_FILTER, true);
-    this->SetFilterMTMode(BUILTIN_FUNC_PREFIX "_AssumeFieldBased", MtMode::MT_NICE_FILTER, true);
-    this->SetFilterMTMode(BUILTIN_FUNC_PREFIX "_AssumeFrameBased", MtMode::MT_NICE_FILTER, true);
-    this->SetFilterMTMode(BUILTIN_FUNC_PREFIX "_SeparateRows", MtMode::MT_NICE_FILTER, true);
-    this->SetFilterMTMode(BUILTIN_FUNC_PREFIX "_Weave", MtMode::MT_NICE_FILTER, true);
-    this->SetFilterMTMode(BUILTIN_FUNC_PREFIX "_Pulldown", MtMode::MT_NICE_FILTER, true);
-    this->SetFilterMTMode(BUILTIN_FUNC_PREFIX "_SelectEvery", MtMode::MT_NICE_FILTER, true);
-    this->SetFilterMTMode(BUILTIN_FUNC_PREFIX "_SelectEven", MtMode::MT_NICE_FILTER, true); 
-    this->SetFilterMTMode(BUILTIN_FUNC_PREFIX "_SelectOdd", MtMode::MT_NICE_FILTER, true);
-    this->SetFilterMTMode(BUILTIN_FUNC_PREFIX "_Bob", MtMode::MT_NICE_FILTER, true);
-    this->SetFilterMTMode(BUILTIN_FUNC_PREFIX "_SelectRangeEvery", MtMode::MT_NICE_FILTER, true);
-    this->SetFilterMTMode(BUILTIN_FUNC_PREFIX "_SeparateFields", MtMode::MT_NICE_FILTER, true);
-
-    this->SetFilterMTMode(BUILTIN_FUNC_PREFIX "_Blur", MtMode::MT_NICE_FILTER, true);
-    this->SetFilterMTMode(BUILTIN_FUNC_PREFIX "_Sharpen", MtMode::MT_NICE_FILTER, true);
-    this->SetFilterMTMode(BUILTIN_FUNC_PREFIX "_TemporalSoften", MtMode::MT_NICE_FILTER, true);
-    this->SetFilterMTMode(BUILTIN_FUNC_PREFIX "_SpatialSoften", MtMode::MT_NICE_FILTER, true);
-
-    this->SetFilterMTMode(BUILTIN_FUNC_PREFIX "_Greyscale", MtMode::MT_NICE_FILTER, true);
-    this->SetFilterMTMode(BUILTIN_FUNC_PREFIX "_Grayscale", MtMode::MT_NICE_FILTER, true);
-    this->SetFilterMTMode(BUILTIN_FUNC_PREFIX "_Histogram", MtMode::MT_NICE_FILTER, true);
-
-    this->SetFilterMTMode(BUILTIN_FUNC_PREFIX "_Mask", MtMode::MT_NICE_FILTER, true);
-    this->SetFilterMTMode(BUILTIN_FUNC_PREFIX "_ColorKeyMask", MtMode::MT_NICE_FILTER, true);
-    this->SetFilterMTMode(BUILTIN_FUNC_PREFIX "_ResetMask", MtMode::MT_NICE_FILTER, true);
-    this->SetFilterMTMode(BUILTIN_FUNC_PREFIX "_Invert", MtMode::MT_NICE_FILTER, true);
-    this->SetFilterMTMode(BUILTIN_FUNC_PREFIX "_ShowAlpha", MtMode::MT_NICE_FILTER, true);
-    this->SetFilterMTMode(BUILTIN_FUNC_PREFIX "_ShowRed", MtMode::MT_NICE_FILTER, true);
-    this->SetFilterMTMode(BUILTIN_FUNC_PREFIX "_ShowGreen", MtMode::MT_NICE_FILTER, true);
-    this->SetFilterMTMode(BUILTIN_FUNC_PREFIX "_ShowBlue", MtMode::MT_NICE_FILTER, true);
-    this->SetFilterMTMode(BUILTIN_FUNC_PREFIX "_MergeRGB", MtMode::MT_NICE_FILTER, true);
-    this->SetFilterMTMode(BUILTIN_FUNC_PREFIX "_MergeARGB", MtMode::MT_NICE_FILTER, true);
-    this->SetFilterMTMode(BUILTIN_FUNC_PREFIX "_Layer", MtMode::MT_NICE_FILTER, true);
-    this->SetFilterMTMode(BUILTIN_FUNC_PREFIX "_Subtract", MtMode::MT_NICE_FILTER, true);
-
-    this->SetFilterMTMode(BUILTIN_FUNC_PREFIX "_Levels", MtMode::MT_NICE_FILTER, true);
-    this->SetFilterMTMode(BUILTIN_FUNC_PREFIX "_RGBAdjust", MtMode::MT_NICE_FILTER, true);
-    this->SetFilterMTMode(BUILTIN_FUNC_PREFIX "_Tweak", MtMode::MT_NICE_FILTER, true);
-    this->SetFilterMTMode(BUILTIN_FUNC_PREFIX "_MaskHS", MtMode::MT_NICE_FILTER, true);
-    this->SetFilterMTMode(BUILTIN_FUNC_PREFIX "_Limiter", MtMode::MT_NICE_FILTER, true);
-
-    this->SetFilterMTMode(BUILTIN_FUNC_PREFIX "_Merge", MtMode::MT_NICE_FILTER, true);
-    this->SetFilterMTMode(BUILTIN_FUNC_PREFIX "_MergeChroma", MtMode::MT_NICE_FILTER, true);
-    this->SetFilterMTMode(BUILTIN_FUNC_PREFIX "_MergeLuma", MtMode::MT_NICE_FILTER, true);
-
-    this->SetFilterMTMode(BUILTIN_FUNC_PREFIX "_FixLuminance", MtMode::MT_NICE_FILTER, true);
-    this->SetFilterMTMode(BUILTIN_FUNC_PREFIX "_FixBrokenChromaUpsampling", MtMode::MT_NICE_FILTER, true);
-    this->SetFilterMTMode(BUILTIN_FUNC_PREFIX "_PeculiarBlend", MtMode::MT_NICE_FILTER, true);
-    this->SetFilterMTMode(BUILTIN_FUNC_PREFIX "_SkewRows", MtMode::MT_NICE_FILTER, true);
-
-    this->SetFilterMTMode(BUILTIN_FUNC_PREFIX "_SwapUV", MtMode::MT_NICE_FILTER, true);
-    this->SetFilterMTMode(BUILTIN_FUNC_PREFIX "_UToY", MtMode::MT_NICE_FILTER, true);
-    this->SetFilterMTMode(BUILTIN_FUNC_PREFIX "_VToY", MtMode::MT_NICE_FILTER, true);
-    this->SetFilterMTMode(BUILTIN_FUNC_PREFIX "_UToY8", MtMode::MT_NICE_FILTER, true);
-    this->SetFilterMTMode(BUILTIN_FUNC_PREFIX "_VToY8", MtMode::MT_NICE_FILTER, true);
-    this->SetFilterMTMode(BUILTIN_FUNC_PREFIX "_YToUV", MtMode::MT_NICE_FILTER, true);
-
-    this->SetFilterMTMode(BUILTIN_FUNC_PREFIX "_PointResize", MtMode::MT_NICE_FILTER, true);
-    this->SetFilterMTMode(BUILTIN_FUNC_PREFIX "_BilinearResize", MtMode::MT_NICE_FILTER, true);
-    this->SetFilterMTMode(BUILTIN_FUNC_PREFIX "_BicubicResize", MtMode::MT_NICE_FILTER, true);
-    this->SetFilterMTMode(BUILTIN_FUNC_PREFIX "_LanczosResize", MtMode::MT_NICE_FILTER, true);
-    this->SetFilterMTMode(BUILTIN_FUNC_PREFIX "_Lanczos4Resize", MtMode::MT_NICE_FILTER, true);
-    this->SetFilterMTMode(BUILTIN_FUNC_PREFIX "_BlackmanResize", MtMode::MT_NICE_FILTER, true);
-    this->SetFilterMTMode(BUILTIN_FUNC_PREFIX "_Spline16Resize", MtMode::MT_NICE_FILTER, true);
-    this->SetFilterMTMode(BUILTIN_FUNC_PREFIX "_Spline36Resize", MtMode::MT_NICE_FILTER, true);
-    this->SetFilterMTMode(BUILTIN_FUNC_PREFIX "_Spline64Resize", MtMode::MT_NICE_FILTER, true);
-    this->SetFilterMTMode(BUILTIN_FUNC_PREFIX "_GaussResize", MtMode::MT_NICE_FILTER, true);
-    this->SetFilterMTMode(BUILTIN_FUNC_PREFIX "_SincResize", MtMode::MT_NICE_FILTER, true);
-
-    this->SetFilterMTMode(BUILTIN_FUNC_PREFIX "_VerticalReduceBy2", MtMode::MT_NICE_FILTER, true);
-    this->SetFilterMTMode(BUILTIN_FUNC_PREFIX "_HorizontalReduceBy2", MtMode::MT_NICE_FILTER, true);
-    this->SetFilterMTMode(BUILTIN_FUNC_PREFIX "_ReduceBy2", MtMode::MT_NICE_FILTER, true);
-
-    this->SetFilterMTMode(BUILTIN_FUNC_PREFIX "_FlipVertical", MtMode::MT_NICE_FILTER, true);
-    this->SetFilterMTMode(BUILTIN_FUNC_PREFIX "_FlipHorizontal", MtMode::MT_NICE_FILTER, true);
-    this->SetFilterMTMode(BUILTIN_FUNC_PREFIX "_Crop", MtMode::MT_NICE_FILTER, true);
-    this->SetFilterMTMode(BUILTIN_FUNC_PREFIX "_CropBottom", MtMode::MT_NICE_FILTER, true);
-    this->SetFilterMTMode(BUILTIN_FUNC_PREFIX "_AddBorders", MtMode::MT_NICE_FILTER, true);
-    this->SetFilterMTMode(BUILTIN_FUNC_PREFIX "_Letterbox", MtMode::MT_NICE_FILTER, true);
-
-    this->SetFilterMTMode(BUILTIN_FUNC_PREFIX "_TurnLeft", MtMode::MT_NICE_FILTER, true);
-    this->SetFilterMTMode(BUILTIN_FUNC_PREFIX "_TurnRight", MtMode::MT_NICE_FILTER, true);
-    this->SetFilterMTMode(BUILTIN_FUNC_PREFIX "_Turn180", MtMode::MT_NICE_FILTER, true);
-
-    this->SetFilterMTMode(BUILTIN_FUNC_PREFIX "_Eval", MtMode::MT_NICE_FILTER, true);
 }
 
 ScriptEnvironment::~ScriptEnvironment() {
@@ -952,6 +870,15 @@ ScriptEnvironment::~ScriptEnvironment() {
   }
 }
 
+ClipDataStore* __stdcall ScriptEnvironment::ClipData(IClip *clip)
+{
+#if ( defined(_MSC_VER) && (_MSC_VER < 1900) )
+    return &(clip_data.emplace(clip, clip).first->second);
+#else
+    return &(clip_data.try_emplace(clip, clip).first->second);
+#endif
+}
+
 void __stdcall ScriptEnvironment::SetPrefetcher(Prefetcher *p)
 {
   if (prefetcher != NULL)
@@ -985,8 +912,25 @@ void __stdcall ScriptEnvironment::ParallelJob(ThreadWorkerFuncPtr jobFunc, void*
 
 void __stdcall ScriptEnvironment::SetFilterMTMode(const char* filter, MtMode mode, bool force)
 {
+    this->SetFilterMTMode(filter, mode, force ? MtWeight::MT_WEIGHT_2_USERFORCE : MtWeight::MT_WEIGHT_1_USERSPEC);
+}
+    
+void __stdcall ScriptEnvironment::SetFilterMTMode(const char* filter, MtMode mode, MtWeight weight)
+{
   assert(NULL != filter);
   assert(strcmp("", filter) != 0);
+
+  if (((int)mode <= (int)MT_INVALID)
+      || ((int)mode >= (int)MT_MODE_COUNT))
+  {
+      throw AvisynthError("Invalid MT mode specified.");
+  }
+
+  if (streqi(filter, DEFAULT_MODE_SPECIFIER.c_str()))
+  {
+      DefaultMtMode = mode;
+      return;
+  }
 
   std::string name_to_register;
   std::string loading = plugin_manager->PluginLoading();
@@ -995,7 +939,21 @@ void __stdcall ScriptEnvironment::SetFilterMTMode(const char* filter, MtMode mod
   else
       name_to_register = loading.append("_").append(filter);
 
-  MTMap.SetMode(name_to_register, mode, force);
+  name_to_register = NormalizeString(name_to_register);
+
+  auto it = MtMap.find(name_to_register);
+  if (it != MtMap.end())
+  {
+      if ((int)weight >= (int)(it->second.second))
+      {
+          it->second.first = mode;
+          it->second.second = weight;
+      }
+  }
+  else
+  {
+      MtMap.emplace(name_to_register, std::make_pair(mode, weight));
+  }
 }
 
 MtMode __stdcall ScriptEnvironment::GetFilterMTMode(const AVSFunction* filter, bool* is_forced) const
@@ -1004,15 +962,22 @@ MtMode __stdcall ScriptEnvironment::GetFilterMTMode(const AVSFunction* filter, b
   assert(NULL != filter->name);
   assert(NULL != filter->canon_name);
 
-  bool found;
-  MtMode ret;
+  auto it = MtMap.find(NormalizeString(filter->canon_name));
+  if (it != MtMap.end())
+  {
+      *is_forced = it->second.second == MtWeight::MT_WEIGHT_2_USERFORCE;
+      return it->second.first;
+  }
 
-  ret = MTMap.GetMode(filter->canon_name, is_forced, &found);
-  if (found)
-    return ret;
+  it = MtMap.find(NormalizeString(filter->name));
+  if (it != MtMap.end())
+  {
+      *is_forced = it->second.second == MtWeight::MT_WEIGHT_2_USERFORCE;
+      return it->second.first;
+  }
 
-  ret = MTMap.GetMode(filter->name, is_forced, &found);
-  return ret; 
+  *is_forced = false;
+  return DefaultMtMode;
 }
 
 void* __stdcall ScriptEnvironment::Allocate(size_t nBytes, size_t alignment, AvsAllocType type)
@@ -1442,14 +1407,14 @@ VideoFrame* ScriptEnvironment::GetNewFrame(size_t vfb_size)
             // more than X: just registered the frame found, and erase all other frames from list plus delete frame objects also
             frame_found = frame;
             found = true;
-            it3++;
+            ++it3;
           }
           else {
             // if the first frame to this vfb was already found, then we free all others and delete it from the list   
             // Benefit: no 4-5k frame list count per a single vfb.
             //_RPT4(0, "ScriptEnvironment::GetNewFrame Delete one frame %p RowSize=%d Height=%d Pitch=%d Offset=%d\n", frame, frame->GetRowSize(), frame->GetHeight(), frame->GetPitch(), frame->GetOffset()); // P.F.
             delete frame;
-            it3++;
+            ++it3;
           }
         } // for it3
         if (found)
@@ -1521,7 +1486,7 @@ VideoFrame* ScriptEnvironment::GetNewFrame(size_t vfb_size)
         it2->second.clear(); // clear frame list
         it2 = (it->second).erase(it2); // clear current vfb
       }
-      else it2++;
+      else ++it2;
     }
   }
   _RPT1(0, "End of garbage collection A memused=%I64d\n", memory_used.load()); // P.F.
@@ -1653,7 +1618,7 @@ void ScriptEnvironment::EnsureMemoryLimit(size_t request)
           it2->second.clear(); // clear frame list
           it2 = (it->second).erase(it2); // clear vfb entry
         }
-        else it2++;
+        else ++it2;
       }
     }
     _RPT4(0, "End of garbage collection B: freed_vfb=%d frame=%d unfreed=%d memused=%I64d\n", freed_vfb_count, freed_frame_count, unfreed_frame_count, memory_used.load()); // P.F.
@@ -2093,6 +2058,14 @@ bool __stdcall ScriptEnvironment::Invoke(AVSValue *result, const char* name, con
   bool strict = false;
   const AVSFunction *f;
 
+  // chainedCtor is true if we are being constructed inside/by the
+  // constructor of another filter. In that case we want MT protections
+  // applied not here, but by the Invoke() call of that filter.
+  const bool chainedCtor = invoke_stack.size() > 0;
+
+  MtModeEvaluator mthelper;
+  std::vector<MTGuardExit*> GuardExits;
+
   const int args_names_count = (arg_names && args.IsArray()) ? args.ArraySize() : 0;
 
   // get how many args we will need to store
@@ -2103,6 +2076,33 @@ bool __stdcall ScriptEnvironment::Invoke(AVSValue *result, const char* name, con
   // flatten unnamed args
   std::vector<AVSValue> args2(args2_count, AVSValue());
   Flatten(args, args2.data(), 0, arg_names);
+
+  bool foundClipArgument = false;
+  for (auto &argx : args2)
+  {
+      assert(!argx.IsArray());
+
+      if (argx.IsClip())
+      {
+          foundClipArgument = true;
+
+          const PClip &clip = argx.AsClip();
+          IClip *clip_raw = (IClip*)((void*)clip); 
+          ClipDataStore *data = this->ClipData(clip_raw);
+
+          if (!data->CreatedByInvoke)
+          {
+              mthelper.AddChainedFilter(clip, this->DefaultMtMode);
+          }
+
+          // Wrap this input parameter into a guard exit, which is used when
+          // the new clip created later below is MT_SERIALIZED.
+          MTGuardExit *ge = new MTGuardExit(argx.AsClip());
+          GuardExits.push_back(ge);
+          argx = ge;
+      }
+  }
+  bool isSourceFilter = !foundClipArgument;
 
   // find matching function
   f = this->Lookup(name, args2.data(), args2_count, strict, args_names_count, arg_names);
@@ -2201,7 +2201,70 @@ success:;
 #ifdef _DEBUG
     Cache *PrevFrontCache = FrontCache;
 #endif
-    *result = Cache::Create(MTGuard::Create(std::move(funcCtor), this), NULL, this);
+
+    AVSValue fret;
+    invoke_stack.push(&mthelper);
+    try
+    {
+        fret = funcCtor->InstantiateFilter();
+        invoke_stack.pop();
+    }
+    catch(...)
+    {
+        invoke_stack.pop();
+        throw;
+    }
+    
+    MtMode mtmode = DefaultMtMode;
+
+    // Determine MT-mode, as if this instance had not called Invoke()
+    // in its constructor. Note that this is not necessary the final
+    // MT-mode.
+    if (fret.IsClip())
+    {
+        const PClip &clip = fret.AsClip();
+        mtmode = MtModeEvaluator::GetMtMode(clip, f, this);
+    }
+
+    if (chainedCtor)
+    {
+        // Propagate information about our children's MT-safety
+        // to our parent.
+        invoke_stack.top()->Accumulate(mthelper);
+
+        // Add our own MT-mode's information to the parent.
+        invoke_stack.top()->Accumulate(mtmode);
+
+        *result = fret;
+    }
+    else if (fret.IsClip())
+    {
+        mtmode = mthelper.GetFinalMode(mtmode);
+
+        const PClip &clip = fret.AsClip();
+        PClip guard = MTGuard::Create(mtmode, clip, std::move(funcCtor), this);
+        *result = Cache::Create(guard, NULL, this);
+
+        // Activate the guard exists. This allows us to exit the critical
+        // section encompassing the filter when execution leaves its routines
+        // to call other filters.
+        if (MT_SERIALIZED == mtmode)
+        {
+            for (auto &ge : GuardExits)
+            {
+                ge->Activate(guard);
+            }
+        }
+
+        IClip *clip_raw = (IClip*)((void*)clip);
+        ClipDataStore *data = this->ClipData(clip_raw);
+        data->CreatedByInvoke = true;
+    }
+    else
+    {
+        *result = fret;
+    }
+
     // args2 and args3 are not valid after this point anymore
 #ifdef _DEBUG
     if (PrevFrontCache != FrontCache && FrontCache != NULL) // cache registering swaps frontcache to the current

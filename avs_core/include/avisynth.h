@@ -112,7 +112,7 @@ public:
 
 // Ensure AvisynthError cannot be publicly assigned!
 private:
-  AvisynthError& operator=(const AvisynthError&) = delete;
+  AvisynthError& operator=(const AvisynthError&);
 }; // end class AvisynthError
 
 
@@ -567,7 +567,7 @@ public:
 
 // Ensure VideoFrameBuffer cannot be publicly assigned
 private:
-    VideoFrameBuffer& operator=(const VideoFrameBuffer&) = delete;
+    VideoFrameBuffer& operator=(const VideoFrameBuffer&);
 
 }; // end class VideoFrameBuffer
 
@@ -621,7 +621,7 @@ public:
 
 // Ensure VideoFrame cannot be publicly assigned
 private:
-    VideoFrame& operator=(const VideoFrame&) = delete;
+    VideoFrame& operator=(const VideoFrame&);
 
 }; // end class VideoFrame
 
@@ -1060,7 +1060,7 @@ public:
   virtual bool __stdcall InternalFunctionExists(const char* name) = 0;
 
   // Threading
-  virtual void __stdcall SetFilterMTMode(const char* filter, MtMode mode, bool force) = 0; // If filter is "", sets the default MT mode
+  virtual void __stdcall SetFilterMTMode(const char* filter, MtMode mode, bool force) = 0; // If filter is "DEFAULT_MT_MODE", sets the default MT mode
   virtual IJobCompletion* __stdcall NewCompletion(size_t capacity) = 0;
   virtual void __stdcall ParallelJob(ThreadWorkerFuncPtr jobFunc, void* jobData, IJobCompletion* completion) = 0;
 
@@ -1070,15 +1070,6 @@ public:
   // Support functions
   virtual void* __stdcall Allocate(size_t nBytes, size_t alignment, AvsAllocType type) = 0;
   virtual void __stdcall Free(void* ptr) = 0;
-
-  // Strictly for Avisynth core only.
-  // Neither host applications nor plugins should use
-  // these interfaces.
-  virtual int __stdcall IncrImportDepth() = 0;
-  virtual int __stdcall DecrImportDepth() = 0;
-  virtual void __stdcall AdjustMemoryConsumption(size_t amount, bool minus) = 0;
-  virtual MtMode __stdcall GetFilterMTMode(const AVSFunction* filter, bool* is_forced) const = 0; // If filter is "", gets the default MT mode
-  virtual void __stdcall SetPrefetcher(Prefetcher *p) = 0;
 
   // These lines are needed so that we can overload the older functions from IScriptEnvironment.
   using IScriptEnvironment::Invoke;

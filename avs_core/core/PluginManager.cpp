@@ -211,7 +211,10 @@ bool AVSFunction::empty() const
 
 bool AVSFunction::IsScriptFunction() const
 {
-    return apply == &(ScriptFunction::Execute);
+    return ( (apply == &(ScriptFunction::Execute))
+		  || (apply == &Eval)
+		  || (apply == &EvalOop)
+	);
 }
 
 bool AVSFunction::SingleTypeMatch(char type, const AVSValue& arg, bool strict) {

@@ -6,11 +6,12 @@
 #include "vartable.h"
 #include "ThreadPool.h"
 #include "BufferPool.h"
+#include "InternalEnvironment.h"
 
-class ScriptEnvironmentTLS : public IScriptEnvironment2
+class ScriptEnvironmentTLS : public InternalEnvironment
 {
 private:
-  IScriptEnvironment2 *core;
+  InternalEnvironment *core;
   const size_t thread_id;
   VarTable* global_var_table;
   VarTable* var_table;
@@ -37,7 +38,7 @@ public:
       PopContextGlobal();
   }
 
-  void Specialize(IScriptEnvironment2* _core)
+  void Specialize(InternalEnvironment* _core)
   {
     core = _core;
   }
@@ -356,6 +357,15 @@ public:
     core->SetPrefetcher(p);
   }
 
+  virtual ClipDataStore* __stdcall ClipData(IClip *clip)
+  {
+    return core->ClipData(clip);
+  }
+
+  virtual MtMode __stdcall GetDefaultMtMode() const
+  {
+    return core->GetDefaultMtMode();
+  }
 
 };
 

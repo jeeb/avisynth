@@ -7,6 +7,8 @@
 typedef std::future<AVSValue> AVSFuture;
 typedef std::promise<AVSValue> AVSPromise;
 
+class InternalEnvironment;
+
 class JobCompletion : public IJobCompletion
 {
 private:
@@ -87,7 +89,7 @@ public:
   ThreadPool(size_t nThreads);
   ~ThreadPool();
 
-  void QueueJob(ThreadWorkerFuncPtr clb, void* params, IScriptEnvironment2 *env, JobCompletion *tc);
+  void QueueJob(ThreadWorkerFuncPtr clb, void* params, InternalEnvironment *env, JobCompletion *tc);
   size_t NumThreads() const;
 };
 

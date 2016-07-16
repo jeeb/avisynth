@@ -896,7 +896,6 @@ AVSValue __cdecl ConvertTo8bit::Create(AVSValue args, void*, IScriptEnvironment*
   // dither parameter rfu
   int dither_type = args[2].AsInt(-1);
 
-  // clip = env->Invoke("Cache", AVSValue(clip)).AsClip();
   return new ConvertTo8bit(clip, float_range, dither_type, env);
 }
 
@@ -968,7 +967,6 @@ AVSValue __cdecl ConvertTo16bit::Create(AVSValue args, void*, IScriptEnvironment
   // dither parameter, rfu
   int dither_type = args[2].AsInt(-1);
 
-  // clip = env->Invoke("Cache", AVSValue(clip)).AsClip();
   return new ConvertTo16bit(clip, float_range, dither_type, env);
 }
 
@@ -1039,7 +1037,6 @@ AVSValue __cdecl ConvertToFloat::Create(AVSValue args, void*, IScriptEnvironment
   // dither parameter
   int dither_type = args[2].AsInt(-1);
 
-  // clip = env->Invoke("Cache", AVSValue(clip)).AsClip();
   return new ConvertToFloat(clip, float_range, dither_type, env);
 }
 

@@ -62,8 +62,7 @@ AVSValue __cdecl Create_ImageReader(AVSValue args, void*, IScriptEnvironment* en
   // If we are returning a stream of 2 or more copies of the same image
   // then use FreezeFrame and the Cache to minimise any reloading.
   if (IR->framecopies > 1) {
-    AVSValue cache = env->Invoke("Cache", AVSValue(IR));
-    AVSValue ff_args[4] = { cache, 0, IR->framecopies-1, 0 };
+    AVSValue ff_args[4] = { IR, 0, IR->framecopies-1, 0 };
     return env->Invoke("FreezeFrame", AVSValue(ff_args, 4)).AsClip();
   }
 

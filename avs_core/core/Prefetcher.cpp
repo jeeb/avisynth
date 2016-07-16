@@ -7,6 +7,7 @@
 #include "ObjectPool.h"
 #include "LruCache.h"
 #include "ScriptEnvironmentTLS.h"
+#include "InternalEnvironment.h"
 
 struct PrefetcherJobParams
 {
@@ -113,7 +114,7 @@ AVSValue Prefetcher::ThreadWorker(IScriptEnvironment2* env, void* data)
   return AVSValue();
 }
 
-Prefetcher::Prefetcher(const PClip& _child, int _nThreads, IScriptEnvironment2 *env) :
+Prefetcher::Prefetcher(const PClip& _child, int _nThreads) :
   _pimpl(NULL)
 {
   _pimpl = new PrefetcherPimpl(_child, _nThreads);
@@ -133,7 +134,7 @@ size_t Prefetcher::NumPrefetchThreads() const
   return _pimpl->nThreads;
 }
 
-int __stdcall Prefetcher::SchedulePrefetch(int current_n, int prefetch_start, IScriptEnvironment2* env)
+int __stdcall Prefetcher::SchedulePrefetch(int current_n, int prefetch_start, InternalEnvironment* env)
 {
   int n = prefetch_start;
   while ((_pimpl->running_workers < _pimpl->nPrefetchFrames) && (std::abs(n - current_n) < _pimpl->nPrefetchFrames) )
@@ -179,7 +180,7 @@ int __stdcall Prefetcher::SchedulePrefetch(int current_n, int prefetch_start, IS
 
 PVideoFrame __stdcall Prefetcher::GetFrame(int n, IScriptEnvironment* env)
 {
-  IScriptEnvironment2 *env2 = static_cast<IScriptEnvironment2*>(env);
+  InternalEnvironment *envi = static_cast<InternalEnvironment*>(env);
   
   int pattern = n - _pimpl->LastRequestedFrame;
   _pimpl->LastRequestedFrame = n;
@@ -249,7 +250,7 @@ PVideoFrame __stdcall Prefetcher::GetFrame(int n, IScriptEnvironment* env)
 
   // Prefetch 1
   size_t scheduled_Frames = 0;
-  int prefetch_pos = SchedulePrefetch(n, n, env2);
+  int prefetch_pos = SchedulePrefetch(n, n, envi);
 
   // Get requested frame
   PVideoFrame result;
@@ -294,7 +295,7 @@ PVideoFrame __stdcall Prefetcher::GetFrame(int n, IScriptEnvironment* env)
   }
 
   // Prefetch 2
-  SchedulePrefetch(n, prefetch_pos, env2);
+  SchedulePrefetch(n, prefetch_pos, envi);
 
   return result;
 }
@@ -311,7 +312,10 @@ void __stdcall Prefetcher::GetAudio(void* buf, __int64 start, __int64 count, ISc
 
 int __stdcall Prefetcher::SetCacheHints(int cachehints, int frame_range)
 {
-  return _pimpl->child->SetCacheHints(cachehints, frame_range);
+  if (CACHE_GET_MTMODE == cachehints)
+    return MT_NICE_FILTER;
+
+  return 0;
 }
 
 const VideoInfo& __stdcall Prefetcher::GetVideoInfo()
@@ -321,17 +325,17 @@ const VideoInfo& __stdcall Prefetcher::GetVideoInfo()
 
 AVSValue Prefetcher::Create(AVSValue args, void*, IScriptEnvironment* env)
 {
-  IScriptEnvironment2 *env2 = static_cast<IScriptEnvironment2*>(env);
+  InternalEnvironment *envi = static_cast<InternalEnvironment*>(env);
   PClip child = args[0].AsClip();
 
-  int PrefetchThreads = args[1].AsInt((int)env2->GetProperty(AEP_PHYSICAL_CPUS)+1);
+  int PrefetchThreads = args[1].AsInt((int)envi->GetProperty(AEP_PHYSICAL_CPUS)+1);
   
   if (PrefetchThreads > 0)
   {
-    Prefetcher* prefetcher = new Prefetcher(child, PrefetchThreads, env2);
+    Prefetcher* prefetcher = new Prefetcher(child, PrefetchThreads);
     try
     {
-      env2->SetPrefetcher(prefetcher);
+      envi->SetPrefetcher(prefetcher);
       return prefetcher;
     }
     catch(...)

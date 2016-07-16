@@ -101,7 +101,6 @@ private:
 
 /**** Helper functions ****/
 
-static const char* GetTypeName(char type);
 void ThrowTypeMismatch(char expected, char actual, IScriptEnvironment* env);
 
 

@@ -370,7 +370,7 @@ void Tokenizer::SetToOperator(int o)
 
 /**** Helper Functions ****/
 
-const char* GetTypeName(char type) 
+static const char* GetTypeName(char type) 
 {
   switch (type) 
   {
