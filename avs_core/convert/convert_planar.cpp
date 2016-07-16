@@ -1940,8 +1940,6 @@ AVSValue __cdecl ConvertToPlanarGeneric::CreateYUV420(AVSValue args, void*, IScr
     env->ThrowError("ConvertToYUV420: unsupported bit depth");
   }
 
-  // ConvertToPlanarGeneric will invoke 3 chains upon clip, cache it!
-  clip = env->Invoke("Cache", AVSValue(clip)).AsClip();
   return new ConvertToPlanarGeneric(clip, pixel_type, args[1].AsBool(false), args[3], args[4], args[5], env);
 }
 
@@ -1971,8 +1969,6 @@ AVSValue __cdecl ConvertToPlanarGeneric::CreateYUV422(AVSValue args, void*, IScr
     env->ThrowError("ConvertToYUV422: unsupported bit depth");
   }
 
-  // ConvertToPlanarGeneric will invoke 3 chains upon clip, cache it!
-  clip = env->Invoke("Cache", AVSValue(clip)).AsClip();
   return new ConvertToPlanarGeneric(clip, pixel_type, args[1].AsBool(false), args[3], args[4], AVSValue(), env);
 }
 
@@ -2003,8 +1999,6 @@ AVSValue __cdecl ConvertToPlanarGeneric::CreateYUV444(AVSValue args, void*, IScr
     env->ThrowError("ConvertToYUV444: unsupported bit depth");
   }
 
-  // ConvertToPlanarGeneric will invoke 3 chains upon clip, cache it!
-  clip = env->Invoke("Cache", AVSValue(clip)).AsClip();
   return new ConvertToPlanarGeneric(clip, pixel_type, args[1].AsBool(false), args[3], args[4], AVSValue(), env);
 
 }
@@ -2024,8 +2018,6 @@ AVSValue __cdecl ConvertToPlanarGeneric::CreateYV12(AVSValue args, void*, IScrip
   if (!clip->GetVideoInfo().IsPlanar())
     env->ThrowError("ConvertToYV12: Can only convert from Planar YUV.");
 
-  // ConvertToPlanarGeneric will invoke 3 chains upon clip, cache it!
-  clip = env->Invoke("Cache", AVSValue(clip)).AsClip();
   return new ConvertToPlanarGeneric(clip, VideoInfo::CS_YV12, args[1].AsBool(false), args[3], args[4], args[5], env);
 }
 
@@ -2044,8 +2036,6 @@ AVSValue __cdecl ConvertToPlanarGeneric::CreateYV16(AVSValue args, void*, IScrip
   if (!clip->GetVideoInfo().IsPlanar())
     env->ThrowError("ConvertToYV16: Can only convert from Planar YUV.");
 
-  // ConvertToPlanarGeneric will invoke 3 chains upon clip, cache it!
-  clip = env->Invoke("Cache", AVSValue(clip)).AsClip();
   return new ConvertToPlanarGeneric(clip, VideoInfo::CS_YV16, args[1].AsBool(false), args[3], args[4], AVSValue(), env);
 }
 
@@ -2064,8 +2054,6 @@ AVSValue __cdecl ConvertToPlanarGeneric::CreateYV24(AVSValue args, void*, IScrip
   if (!clip->GetVideoInfo().IsPlanar())
     env->ThrowError("ConvertToYV24: Can only convert from Planar YUV.");
 
-  // ConvertToPlanarGeneric will invoke 3 chains upon clip, cache it!
-  clip = env->Invoke("Cache", AVSValue(clip)).AsClip();
   return new ConvertToPlanarGeneric(clip, VideoInfo::CS_YV24, args[1].AsBool(false), args[3], args[4], AVSValue(), env);
 }
 
@@ -2083,8 +2071,6 @@ AVSValue __cdecl ConvertToPlanarGeneric::CreateYV411(AVSValue args, void*, IScri
   if (!clip->GetVideoInfo().IsPlanar())
     env->ThrowError("ConvertToYV411: Can only convert from Planar YUV.");
 
-  // ConvertToPlanarGeneric will invoke 3 chains upon clip, cache it!
-  clip = env->Invoke("Cache", AVSValue(clip)).AsClip();
   return new ConvertToPlanarGeneric(clip, VideoInfo::CS_YV411, args[1].AsBool(false), args[3], args[4], AVSValue(), env);
 }
 
