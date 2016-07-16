@@ -65,6 +65,11 @@ MTGuard::~MTGuard()
   delete FilterMutex;
 }
 
+std::mutex* MTGuard::GetMutex() const
+{
+  return FilterMutex;
+}
+
 void MTGuard::EnableMT(size_t nThreads)
 {
   assert(nThreads >= 1);
@@ -208,6 +213,9 @@ int __stdcall MTGuard::SetCacheHints(int cachehints, int frame_range)
   if (CACHE_GET_MTMODE == cachehints) {
     return MT_NICE_FILTER;
   }
+  if (CACHE_IS_MTGUARD_REQ == cachehints) {
+    return CACHE_IS_MTGUARD_ANS;
+  }
 
   return 0;
 }
@@ -243,4 +251,51 @@ PClip MTGuard::Create(MtMode mode, PClip filterInstance, std::unique_ptr<const F
         // TODO: Log warning about probably broken plugin
         return new MTGuard(filterInstance, MT_SERIALIZED, NULL, env);
     }
+}
+
+
+// ---------------------------------------------------------------------
+//                      MTGuardExit
+// ---------------------------------------------------------------------
+
+template <class T>
+class reverse_lock {
+public:
+    reverse_lock(T *mutex) : mutex_(mutex) {
+        if (mutex_) mutex_->unlock();
+    }
+
+    ~reverse_lock() {
+        if (mutex_) mutex_->lock();
+    }
+
+    reverse_lock(const reverse_lock&) = delete;
+    reverse_lock& operator=(const reverse_lock&) = delete;
+
+private:
+    T *mutex_;
+}; 
+
+MTGuardExit::MTGuardExit(PClip &clip) :
+    NonCachedGenericVideoFilter(clip)
+{}
+
+void MTGuardExit::Activate(PClip &with_guard)
+{
+    assert(MTGuard::IsMTGuard(with_guard));
+    this->guard = (MTGuard*)((void*)with_guard);
+}
+
+PVideoFrame __stdcall MTGuardExit::GetFrame(int n, IScriptEnvironment* env)
+{
+    std::mutex *m = (nullptr == guard) ? nullptr : guard->GetMutex();
+    reverse_lock<std::mutex> unlock_guard(m);
+    return child->GetFrame(n, env);
+}
+
+void __stdcall MTGuardExit::GetAudio(void* buf, __int64 start, __int64 count, IScriptEnvironment* env)
+{
+    std::mutex *m = (nullptr == guard) ? nullptr : guard->GetMutex();
+    reverse_lock<std::mutex> unlock_guard(m);
+    return child->GetAudio(buf, start, count, env);
 }

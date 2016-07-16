@@ -2201,6 +2201,7 @@ bool __stdcall ScriptEnvironment::Invoke(AVSValue *result, const char* name, con
   const bool chainedCtor = invoke_stack.size() > 0;
 
   MtModeEvaluator mthelper;
+  std::vector<MTGuardExit*> GuardExits;
 
   const int args_names_count = (arg_names && args.IsArray()) ? args.ArraySize() : 0;
 
@@ -2230,6 +2231,12 @@ bool __stdcall ScriptEnvironment::Invoke(AVSValue *result, const char* name, con
           {
               mthelper.AddChainedFilter(clip, this->DefaultMtMode);
           }
+
+          // Wrap this input parameter into a guard exit, which is used when
+          // the new clip created later below is MT_SERIALIZED.
+          MTGuardExit *ge = new MTGuardExit(argx.AsClip());
+          GuardExits.push_back(ge);
+          argx = ge;
       }
   }
   bool isSourceFilter = !foundClipArgument;
@@ -2345,11 +2352,6 @@ success:;
         throw;
     }
     
-    if (fret.IsArray())
-    {
-        assert(!fret[0].IsClip());
-    }
-
     MtMode mtmode = DefaultMtMode;
 
     // Determine MT-mode, as if this instance had not called Invoke()
@@ -2377,7 +2379,19 @@ success:;
         mtmode = mthelper.GetFinalMode(mtmode);
 
         const PClip &clip = fret.AsClip();
-        *result = Cache::Create(MTGuard::Create(mtmode, clip, std::move(funcCtor), this), NULL, this);
+        PClip guard = MTGuard::Create(mtmode, clip, std::move(funcCtor), this);
+        *result = Cache::Create(guard, NULL, this);
+
+        // Activate the guard exists. This allows us to exit the critical
+        // section encompassing the filter when execution leaves its routines
+        // to call other filters.
+        if (MT_SERIALIZED == mtmode)
+        {
+            for (auto &ge : GuardExits)
+            {
+                ge->Activate(guard);
+            }
+        }
 
         IClip *clip_raw = (IClip*)((void*)clip);
         ClipDataStore *data = this->ClipData(clip_raw);

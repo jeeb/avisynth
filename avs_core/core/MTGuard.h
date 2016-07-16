@@ -31,6 +31,7 @@ public:
   ~MTGuard();
   MTGuard(PClip firstChild, MtMode mtmode, std::unique_ptr<const FilterConstructor> &&funcCtor, InternalEnvironment* env);
   void EnableMT(size_t nThreads);
+  std::mutex* GetMutex() const;
 
   PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
   void __stdcall GetAudio(void* buf, __int64 start, __int64 count, IScriptEnvironment* env);
@@ -38,9 +39,22 @@ public:
   bool __stdcall GetParity(int n);
   int __stdcall SetCacheHints(int cachehints,int frame_range);
 
+
   static bool __stdcall IsMTGuard(const PClip& p);
   static PClip Create(MtMode mode, PClip filterInstance, std::unique_ptr<const FilterConstructor> funcCtor, InternalEnvironment* env);
 };
 
+class MTGuardExit : public NonCachedGenericVideoFilter
+{
+private:
+    MTGuard *guard = nullptr;
+
+public:
+    MTGuardExit(PClip &clip);
+    void Activate(PClip &with_guard);
+
+    PVideoFrame __stdcall GetFrame(int n, IScriptEnvironment* env);
+    void __stdcall GetAudio(void* buf, __int64 start, __int64 count, IScriptEnvironment* env);
+};
 
 #endif _AVS_MTGUARD_H
