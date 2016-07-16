@@ -433,6 +433,14 @@ static std::string NormalizeString(const std::string& str)
     return ret;
 }
 
+typedef enum class _MtWeight
+{
+    MT_WEIGHT_0_DEFAULT,
+    MT_WEIGHT_1_USERSPEC,
+    MT_WEIGHT_2_USERFORCE,
+    MT_WEIGHT_MAX
+} MtWeight;
+
 class ClipDataStore
 {
 private:
@@ -444,27 +452,103 @@ public:
     // The clip instance that we hold data for.
     IClip *Clip = nullptr;
 
-    // Clip inside MTGuard and Cache as necessary.
-    IClip *WrappedClip = nullptr;
+    // Clip was created directly by an Invoke() call
+    bool CreatedByInvoke = false;
 
     ClipDataStore(IClip *clip) : Clip(clip) {};
 };
 
-typedef enum class _MtWeight
+class MtModeEvaluator
 {
-    MT_WEIGHT_0_DEFAULT,
-    MT_WEIGHT_1_USERSPEC,
-    MT_WEIGHT_2_FILTERSPEC,
-    MT_WEIGHT_3_FILTEROVERRIDE,
-    MT_WEIGHT_4_USERFORCE,
-    MT_WEIGHT_MAX
-} MtWeight;
+public:
+    int NumChainedNice = 0;
+    int NumChainedMulti = 0;
+    int NumChainedSerial = 0;
+
+    MtMode GetFinalMode(MtMode topInvokeMode)
+    {
+        if (NumChainedSerial > 0)
+        {
+            return MT_SERIALIZED;
+        }
+        else if (NumChainedMulti > 0)
+        {
+            if (MT_SERIALIZED == topInvokeMode)
+            {
+                return MT_SERIALIZED;
+            }
+            else
+            {
+                return MT_MULTI_INSTANCE;
+            }
+        }
+        else
+        {
+            return topInvokeMode;
+        }
+    }
+
+    void Accumulate(const MtModeEvaluator &other)
+    {
+        NumChainedNice += other.NumChainedNice;
+        NumChainedMulti += other.NumChainedMulti;
+        NumChainedSerial += other.NumChainedSerial;
+    }
+
+    void Accumulate(MtMode mode)
+    {
+        switch (mode)
+        {
+        case MT_NICE_FILTER:
+            ++NumChainedNice;
+            break;
+        case MT_MULTI_INSTANCE:
+            ++NumChainedMulti;
+            break;
+        case MT_SERIALIZED:
+            ++NumChainedSerial;
+            break;
+        default:
+            assert(0);
+            break;
+        }
+    }
+
+    static MtMode GetInstanceMode(const PClip &clip, MtMode defaultMode)
+    {
+        MtMode mode = defaultMode;
+
+        if ((clip->GetVersion() >= 5)
+            && (clip->SetCacheHints(CACHE_GET_MTMODE, 0) != 0))
+        {
+            mode = (MtMode)clip->SetCacheHints(CACHE_GET_MTMODE, 0);
+        }
+
+        return mode;
+    }
+
+    static MtMode GetMtMode(const PClip &clip, const AVSFunction *invokeCall, const InternalEnvironment* env)
+    {
+        bool invokeModeForced;
+
+        MtMode instanceMode = GetInstanceMode(clip, env->GetDefaultMtMode());
+        MtMode invokeMode = env->GetFilterMTMode(invokeCall, &invokeModeForced);
+
+        return invokeModeForced ? invokeMode : instanceMode;
+    }
+
+    void AddChainedFilter(const PClip &clip, MtMode defaultMode)
+    {
+        MtMode mode = GetInstanceMode(clip, defaultMode);
+        Accumulate(mode);
+    }
+};
 
 #include "vartable.h"
 #include "ThreadPool.h"
 #include <map>
 #include <atomic>
-#include <queue>
+#include <stack>
 #include "Prefetcher.h"
 #include "BufferPool.h"
 class ScriptEnvironment : public InternalEnvironment {
@@ -529,6 +613,7 @@ public:
   virtual void* __stdcall Allocate(size_t nBytes, size_t alignment, AvsAllocType type);
   virtual void __stdcall Free(void* ptr);
   virtual ClipDataStore* __stdcall ClipData(IClip *clip);
+  virtual MtMode __stdcall GetDefaultMtMode() const;
 
 private:
 
@@ -596,8 +681,7 @@ private:
   Prefetcher *prefetcher;
 
   // Members used to reconstruct Association between Invoke() calls and filter instances
-  uint_fast32_t invoke_id;
-  std::queue<const AVSFunction*> invoke_stack;
+  std::stack<MtModeEvaluator*> invoke_stack;
 
   // MT mode specifications
   std::unordered_map<std::string, std::pair<MtMode, MtWeight>> MtMap;
@@ -712,6 +796,11 @@ ScriptEnvironment::ScriptEnvironment()
     // must leak a little memory.
     throw AvisynthError(_strdup(err.msg));
   }
+}
+
+MtMode __stdcall ScriptEnvironment::GetDefaultMtMode() const
+{
+    return DefaultMtMode;
 }
 
 void ScriptEnvironment::InitMT()
@@ -962,7 +1051,7 @@ void __stdcall ScriptEnvironment::ParallelJob(ThreadWorkerFuncPtr jobFunc, void*
 
 void __stdcall ScriptEnvironment::SetFilterMTMode(const char* filter, MtMode mode, bool force)
 {
-    this->SetFilterMTMode(filter, mode, force ? MtWeight::MT_WEIGHT_4_USERFORCE : MtWeight::MT_WEIGHT_1_USERSPEC);
+    this->SetFilterMTMode(filter, mode, force ? MtWeight::MT_WEIGHT_2_USERFORCE : MtWeight::MT_WEIGHT_1_USERSPEC);
 }
     
 void __stdcall ScriptEnvironment::SetFilterMTMode(const char* filter, MtMode mode, MtWeight weight)
@@ -978,7 +1067,6 @@ void __stdcall ScriptEnvironment::SetFilterMTMode(const char* filter, MtMode mod
 
   if (streqi(filter, DEFAULT_MODE_SPECIFIER.c_str()))
   {
-      assert(weight == MtWeight::MT_WEIGHT_0_DEFAULT);
       DefaultMtMode = mode;
       return;
   }
@@ -1016,17 +1104,18 @@ MtMode __stdcall ScriptEnvironment::GetFilterMTMode(const AVSFunction* filter, b
   auto it = MtMap.find(NormalizeString(filter->canon_name));
   if (it != MtMap.end())
   {
-      *is_forced = it->second.second == MtWeight::MT_WEIGHT_4_USERFORCE;
+      *is_forced = it->second.second == MtWeight::MT_WEIGHT_2_USERFORCE;
       return it->second.first;
   }
 
   it = MtMap.find(NormalizeString(filter->name));
   if (it != MtMap.end())
   {
-      *is_forced = it->second.second == MtWeight::MT_WEIGHT_4_USERFORCE;
+      *is_forced = it->second.second == MtWeight::MT_WEIGHT_2_USERFORCE;
       return it->second.first;
   }
 
+  *is_forced = false;
   return DefaultMtMode;
 }
 
@@ -2108,7 +2197,12 @@ bool __stdcall ScriptEnvironment::Invoke(AVSValue *result, const char* name, con
   bool strict = false;
   const AVSFunction *f;
 
-  ++invoke_id;
+  // chainedCtor is true if we are being constructed inside/by the
+  // constructor of another filter. In that case we want MT protections
+  // applied not here, but by the Invoke() call of that filter.
+  const bool chainedCtor = invoke_stack.size() > 0;
+
+  MtModeEvaluator mthelper;
 
   const int args_names_count = (arg_names && args.IsArray()) ? args.ArraySize() : 0;
 
@@ -2124,38 +2218,19 @@ bool __stdcall ScriptEnvironment::Invoke(AVSValue *result, const char* name, con
   bool foundClipArgument = false;
   for (auto &argx : args2)
   {
+      assert(!argx.IsArray());
+
       if (argx.IsClip())
       {
           foundClipArgument = true;
-          PClip clip = argx.AsClip();
-          IClip *clip_raw = (IClip*)((void*)clip);
+
+          const PClip &clip = argx.AsClip();
+          IClip *clip_raw = (IClip*)((void*)clip); 
           ClipDataStore *data = this->ClipData(clip_raw);
 
-          if (nullptr == data->WrappedClip)
+          if (!data->CreatedByInvoke)
           {
-              MtMode mt_mode = MTGuard::CalculateMtMode(clip, invoke_stack.back(), this);
-              if (MT_MULTI_INSTANCE != mt_mode)
-              {
-                  argx = Cache::Create(MTGuard::Create(mt_mode, clip, NULL, this), NULL, this);
-                  data->WrappedClip = (IClip*)((void*)(argx.AsClip()));
-              } 
-              else
-              {
-                // We cannot create an MT_MULTI_INSTANCE filter here,
-                // because this clip might not have been constructed using Invoke() at all.
-                // In that case the MT mode set for the clip in Invoke() must still be valid for this clip too,
-                // but since it might be a different filter, the creation function and arguments are also possibly for another
-                // filter, hence totally invalid.
-                // TODO: Warning to user
-              }
-          }
-          else if (argx.IsArray())
-          {
-              assert(!argx[0].IsClip());
-          }
-          else
-          {
-              argx = data->WrappedClip;
+              mthelper.AddChainedFilter(clip, this->DefaultMtMode);
           }
       }
   }
@@ -2259,39 +2334,61 @@ success:;
     Cache *PrevFrontCache = FrontCache;
 #endif
 
-	AVSValue fret;
-
-	auto iid_before = invoke_id;
-	invoke_stack.push(f);
-	try
-	{
-		fret = funcCtor->InstantiateFilter();
-		invoke_stack.pop();
-	}catch(...)
-	{
-		invoke_stack.pop();
-		throw;
-	}
-	auto iid_after = invoke_id;
-
-	if (fret.IsClip())
-	{
-		PClip clip = fret.AsClip();
-		IClip *clip_raw = (IClip*)((void*)clip);
-		ClipDataStore *data = this->ClipData(clip_raw);
-
-		MtMode mt_mode = MTGuard::CalculateMtMode(clip, f, this);
-		*result = Cache::Create(MTGuard::Create(mt_mode, clip, std::move(funcCtor), this), NULL, this);
-        data->WrappedClip = (IClip*)((void*)(result->AsClip()));
-	}
-    else if (fret.IsArray())
+    AVSValue fret;
+    invoke_stack.push(&mthelper);
+    try
+    {
+        fret = funcCtor->InstantiateFilter();
+        invoke_stack.pop();
+    }
+    catch(...)
+    {
+        invoke_stack.pop();
+        throw;
+    }
+    
+    if (fret.IsArray())
     {
         assert(!fret[0].IsClip());
     }
+
+    MtMode mtmode = DefaultMtMode;
+
+    // Determine MT-mode, as if this instance had not called Invoke()
+    // in its constructor. Note that this is not necessary the final
+    // MT-mode.
+    if (fret.IsClip())
+    {
+        const PClip &clip = fret.AsClip();
+        mtmode = MtModeEvaluator::GetMtMode(clip, f, this);
+    }
+
+    if (chainedCtor)
+    {
+        // Propagate information about our children's MT-safety
+        // to our parent.
+        invoke_stack.top()->Accumulate(mthelper);
+
+        // Add our own MT-mode's information to the parent.
+        invoke_stack.top()->Accumulate(mtmode);
+
+        *result = fret;
+    }
+    else if (fret.IsClip())
+    {
+        mtmode = mthelper.GetFinalMode(mtmode);
+
+        const PClip &clip = fret.AsClip();
+        *result = Cache::Create(MTGuard::Create(mtmode, clip, std::move(funcCtor), this), NULL, this);
+
+        IClip *clip_raw = (IClip*)((void*)clip);
+        ClipDataStore *data = this->ClipData(clip_raw);
+        data->CreatedByInvoke = true;
+    }
     else
-	{
-		*result = fret;
-	}
+    {
+        *result = fret;
+    }
 
     // args2 and args3 are not valid after this point anymore
 #ifdef _DEBUG

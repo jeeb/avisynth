@@ -359,9 +359,13 @@ public:
 
   virtual ClipDataStore* __stdcall ClipData(IClip *clip)
   {
-      return core->ClipData(clip);
+    return core->ClipData(clip);
   }
 
+  virtual MtMode __stdcall GetDefaultMtMode() const
+  {
+    return core->GetDefaultMtMode();
+  }
 
 };
 

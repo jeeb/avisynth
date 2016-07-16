@@ -217,48 +217,30 @@ bool __stdcall MTGuard::IsMTGuard(const PClip& p)
   return ((p->GetVersion() >= 5) && (p->SetCacheHints(CACHE_IS_MTGUARD_REQ, 0) == CACHE_IS_MTGUARD_ANS));
 }
 
-MtMode MTGuard::CalculateMtMode(PClip clip, const AVSFunction *invokeCall, InternalEnvironment* env)
-{
-	if (Cache::IsCache(clip) || MTGuard::IsMTGuard(clip)) {
-		return MT_NICE_FILTER;
-	}
-
-	bool mode_forced;
-	MtMode mode = env->GetFilterMTMode(invokeCall, &mode_forced);
-	if (!mode_forced
-		&& (clip->GetVersion() >= 5)
-		&& (clip->SetCacheHints(CACHE_GET_MTMODE, 0) != 0))
-	{
-		mode = (MtMode)clip->SetCacheHints(CACHE_GET_MTMODE, 0);
-	}
-
-	return mode;
-}
-
 PClip MTGuard::Create(MtMode mode, PClip filterInstance, std::unique_ptr<const FilterConstructor> funcCtor, InternalEnvironment* env)
 {
-	switch (mode)
-	{
-	case MT_NICE_FILTER:
-	{
+    switch (mode)
+    {
+    case MT_NICE_FILTER:
+    {
         // No need to wrap and protect this filter
-		return filterInstance;
-	}
-	case MT_MULTI_INSTANCE: // Fall-through intentional
+        return filterInstance;
+    }
+    case MT_MULTI_INSTANCE: // Fall-through intentional
     {
         return new MTGuard(filterInstance, mode, std::move(funcCtor), env);
         // args2 and args3 are not valid after this point anymore
     }
     case MT_SERIALIZED:
-	{
-		return new MTGuard(filterInstance, mode, NULL, env);
-		// args2 and args3 are not valid after this point anymore
-	}
-	default:
-		// There are broken plugins out there in the wild that have (GetVersion() >= 5), but still 
-		// return garbage for SetCacheHints(). This default label should also catch those.
-		assert(0);
-		// TODO: Log warning about probably broken plugin
-		return new MTGuard(filterInstance, MT_SERIALIZED, NULL, env);
-	}
+    {
+        return new MTGuard(filterInstance, mode, NULL, env);
+        // args2 and args3 are not valid after this point anymore
+    }
+    default:
+        // There are broken plugins out there in the wild that have (GetVersion() >= 5), but still 
+        // return garbage for SetCacheHints(). This default label should also catch those.
+        assert(0);
+        // TODO: Log warning about probably broken plugin
+        return new MTGuard(filterInstance, MT_SERIALIZED, NULL, env);
+    }
 }

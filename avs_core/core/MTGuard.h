@@ -39,7 +39,6 @@ public:
   int __stdcall SetCacheHints(int cachehints,int frame_range);
 
   static bool __stdcall IsMTGuard(const PClip& p);
-  static MtMode CalculateMtMode(PClip clip, const AVSFunction *invokeCall, InternalEnvironment* env);
   static PClip Create(MtMode mode, PClip filterInstance, std::unique_ptr<const FilterConstructor> funcCtor, InternalEnvironment* env);
 };
 

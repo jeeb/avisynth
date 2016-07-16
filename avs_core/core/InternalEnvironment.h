@@ -18,7 +18,7 @@ public:
     virtual MtMode __stdcall GetFilterMTMode(const AVSFunction* filter, bool* is_forced) const = 0; // If filter is "", gets the default MT mode
     virtual void __stdcall SetPrefetcher(Prefetcher *p) = 0;
 	virtual ClipDataStore* __stdcall ClipData(IClip *clip) = 0;
-
+    virtual MtMode __stdcall GetDefaultMtMode() const = 0;
 };
 
 #endif // _AVS_SCRIPTENVIRONMENT_H_INCLUDED
