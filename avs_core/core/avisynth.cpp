@@ -945,8 +945,6 @@ void ScriptEnvironment::InitMT()
     this->SetFilterMTMode(BUILTIN_FUNC_PREFIX "_TurnLeft", MtMode::MT_NICE_FILTER, true);
     this->SetFilterMTMode(BUILTIN_FUNC_PREFIX "_TurnRight", MtMode::MT_NICE_FILTER, true);
     this->SetFilterMTMode(BUILTIN_FUNC_PREFIX "_Turn180", MtMode::MT_NICE_FILTER, true);
-
-    this->SetFilterMTMode(BUILTIN_FUNC_PREFIX "_Eval", MtMode::MT_NICE_FILTER, true);
 }
 
 ScriptEnvironment::~ScriptEnvironment() {
