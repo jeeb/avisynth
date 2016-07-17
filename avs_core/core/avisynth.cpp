@@ -46,6 +46,8 @@
 #include "PluginManager.h"
 #include "MappedList.h"
 #include <vector>
+#include <iostream>
+#include <fstream>
 
 #include <avs/win.h>
 #include <objbase.h>
@@ -614,6 +616,8 @@ public:
   virtual void __stdcall Free(void* ptr);
   virtual ClipDataStore* __stdcall ClipData(IClip *clip);
   virtual MtMode __stdcall GetDefaultMtMode() const;
+  virtual void __stdcall SetLogParams(const char *target, int level);
+  virtual void __stdcall LogMsg(const char *msg, int level);
 
 private:
 
@@ -687,6 +691,11 @@ private:
   std::unordered_map<std::string, std::pair<MtMode, MtWeight>> MtMap;
   MtMode DefaultMtMode = MtMode::MT_MULTI_INSTANCE;
   static const std::string DEFAULT_MODE_SPECIFIER;
+
+  // Logging-related members
+  int LogLevel;
+  std::string LogTarget;
+  std::ofstream LogFileStream;
 
   void InitMT();
 };
@@ -780,6 +789,11 @@ ScriptEnvironment::ScriptEnvironment()
     plugin_manager->AddAutoloadDir("USER_CLASSIC_PLUGINS", false);
     plugin_manager->AddAutoloadDir("MACHINE_CLASSIC_PLUGINS", false);
 
+    global_var_table->Set("LOG_ERROR",   1);
+    global_var_table->Set("LOG_WARNING", 2);
+    global_var_table->Set("LOG_INFO",    3);
+    global_var_table->Set("LOG_DEBUG",   4);
+
     InitMT();
     thread_pool = new ThreadPool(std::thread::hardware_concurrency());
 
@@ -868,6 +882,105 @@ ScriptEnvironment::~ScriptEnvironment() {
     hrfromcoinit=E_FAIL;
     CoUninitialize();
   }
+}
+
+void __stdcall ScriptEnvironment::SetLogParams(const char *target, int level)
+{
+    if (nullptr == target) {
+        target = "stderr";
+    }
+
+    if (-1 == level) {
+        level = LOGLEVEL_INFO;
+    }
+
+    if (LogFileStream.is_open()) {
+        LogFileStream.close();
+    }
+
+    LogLevel = LOGLEVEL_NONE;
+
+    if (!streqi(target, "stderr") && !streqi(target, "stdout")) {
+        LogFileStream.open(target, std::ofstream::out | std::ofstream::app);
+        if (LogFileStream.fail()) {
+            this->ThrowError("SetLogParams: Could not open file \"%s\" for writing.", target);
+            return;
+        }
+    }
+
+    LogLevel = level;
+    LogTarget = target;
+}
+
+void __stdcall ScriptEnvironment::LogMsg(const char *msg, int level)
+{
+    // Don't out message if our logging level is not high enough
+    if (level > LogLevel) {
+        return;
+    }
+
+    // Setup string prefixes for output messages
+    const char *levelStr = nullptr;
+    WORD levelAttr;
+    switch (level)
+    {
+    case LOGLEVEL_ERROR:
+        levelStr = "ERROR: ";
+        levelAttr = FOREGROUND_INTENSITY | FOREGROUND_RED;
+        break;
+    case LOGLEVEL_WARNING:
+        levelStr = "WARNING: ";
+        levelAttr = FOREGROUND_INTENSITY | FOREGROUND_GREEN | FOREGROUND_RED;
+        break;
+    case LOGLEVEL_INFO:
+        levelStr = "INFO: ";
+        levelAttr = FOREGROUND_INTENSITY | FOREGROUND_GREEN | FOREGROUND_BLUE;
+        break;
+    case LOGLEVEL_DEBUG:
+        levelStr = "DEBUG: ";
+        levelAttr = FOREGROUND_INTENSITY | FOREGROUND_BLUE | FOREGROUND_RED;
+        break;
+    default:
+        this->ThrowError("LogMsg: level argument must be between 1 and 4.");
+        break;
+    }
+
+    // Prepare message output target
+    std::ostream *targetStream = nullptr;
+    HANDLE hConsole = GetStdHandle(STD_ERROR_HANDLE);
+
+    if (streqi("stderr", LogTarget.c_str()))
+    {
+        hConsole = GetStdHandle(STD_ERROR_HANDLE);
+        targetStream = &std::cerr;
+    }
+    else if (streqi("stdout", LogTarget.c_str()))
+    {
+        hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
+        targetStream = &std::cout;
+    }
+    else if (LogFileStream.is_open())
+    {
+        targetStream = &LogFileStream;
+    }
+    else
+    {
+        // Logging not yet set up (SetLogParams() not yet called).
+        // Do nothing.
+        return;
+    }
+
+    // Save current console attributes so that we can restore them later
+    CONSOLE_SCREEN_BUFFER_INFO Info;
+    GetConsoleScreenBufferInfo(hConsole, &Info);
+
+    // Do the output
+    *targetStream << "---------------------------------------------------------------------" << std::endl;
+    SetConsoleTextAttribute(hConsole, levelAttr);
+    *targetStream << levelStr;
+    SetConsoleTextAttribute(hConsole, Info.wAttributes);
+    *targetStream << msg << std::endl;
+    targetStream->flush();
 }
 
 ClipDataStore* __stdcall ScriptEnvironment::ClipData(IClip *clip)
@@ -2368,6 +2481,11 @@ void ScriptEnvironment::ThrowError(const char* fmt, ...) {
   }
   va_end(val);
   buf[sizeof(buf)-1] = '\0';
+
+  // Also log the error before throwing
+  this->LogMsg(buf, LOGLEVEL_ERROR);
+
+  // Throw...
   throw AvisynthError(ScriptEnvironment::SaveString(buf));
 }
 

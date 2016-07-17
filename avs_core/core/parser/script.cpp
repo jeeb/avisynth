@@ -231,8 +231,10 @@ extern const AVSFunction Script_functions[] = {
   { "InternalFunctionExists", BUILTIN_FUNC_PREFIX, "s", InternalFunctionExists  },
 
   { "SetFilterMTMode",  BUILTIN_FUNC_PREFIX, "si[force]b", SetFilterMTMode  },
-  { "Prefetch",         BUILTIN_FUNC_PREFIX, "c[threads]i", Prefetcher::Create  },
- 
+  { "Prefetch",         BUILTIN_FUNC_PREFIX, "c[threads]i", Prefetcher::Create },
+  { "SetLogParams",     BUILTIN_FUNC_PREFIX, "[target]s[level]i", SetLogParams },
+  { "LogMsg",              BUILTIN_FUNC_PREFIX, "si", LogMsg },
+
   { 0 }
 };
 
@@ -1031,4 +1033,56 @@ AVSValue SetFilterMTMode (AVSValue args, void*, IScriptEnvironment* env)
   IScriptEnvironment2 *env2 = static_cast<IScriptEnvironment2*>(env);
   env2->SetFilterMTMode(args[0].AsString(), (MtMode)args[1].AsInt(), args[2].AsBool(false));
   return AVSValue();
+}
+
+AVSValue SetLogParams(AVSValue args, void*, IScriptEnvironment* env)
+{
+    const char *target = NULL;
+    int level = -1;
+
+    if (1 <= args.ArraySize())
+    {
+        if (args[0].IsString()) {
+            target = args[0].AsString();
+        }
+        else {
+            env->ThrowError("1st argument to SetLogParams() must be a string.");
+            return AVSValue();
+        }
+    }
+
+    if (2 <= args.ArraySize())
+    {
+        if (args[1].IsInt()) {
+            level = args[1].AsInt();
+        }
+        else {
+            env->ThrowError("2nd argument to SetLogParams() must be an integer.");
+            return AVSValue();
+        }
+    }
+
+    if (3 <= args.ArraySize())
+    {
+        env->ThrowError("Too many arguments to SetLogParams().");
+        return AVSValue();
+    }
+
+    InternalEnvironment *envi = static_cast<InternalEnvironment*>(env);
+    envi->SetLogParams(target, level);
+    return AVSValue();
+}
+
+AVSValue LogMsg(AVSValue args, void*, IScriptEnvironment* env)
+{
+    if ((args.ArraySize() != 2) || !args[0].IsString() || !args[1].IsInt())
+    {
+        env->ThrowError("Invalid parameters to Log() function.");
+    }
+    else
+    {
+        InternalEnvironment *envi = static_cast<InternalEnvironment*>(env);
+        envi->LogMsg(args[0].AsString(), args[1].AsInt());
+    }
+    return AVSValue();
 }

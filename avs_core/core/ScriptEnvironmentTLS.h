@@ -367,6 +367,16 @@ public:
     return core->GetDefaultMtMode();
   }
 
+  virtual void __stdcall SetLogParams(const char *target, int level)
+  {
+    core->SetLogParams(target, level);
+  }
+
+  virtual void __stdcall LogMsg(const char *msg, int level)
+  {
+    core->LogMsg(msg, level);
+  }
+
 };
 
 

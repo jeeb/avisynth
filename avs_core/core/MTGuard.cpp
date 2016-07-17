@@ -262,11 +262,15 @@ template <class T>
 class reverse_lock {
 public:
     reverse_lock(T *mutex) : mutex_(mutex) {
-        if (mutex_) mutex_->unlock();
+        if (mutex_) {
+            mutex_->unlock();
+        }
     }
 
     ~reverse_lock() {
-        if (mutex_) mutex_->lock();
+        if (mutex_) {
+            mutex_->lock();
+        }
     }
 
     reverse_lock(const reverse_lock&) = delete;

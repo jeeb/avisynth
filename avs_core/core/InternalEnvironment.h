@@ -5,6 +5,16 @@
 
 class ClipDataStore;
 
+typedef enum _ELogLevel
+{
+    LOGLEVEL_NONE = 0,
+    LOGLEVEL_ERROR = 1,
+    LOGLEVEL_WARNING = 2,
+    LOGLEVEL_INFO = 3,
+    LOGLEVEL_DEBUG = 4,
+    LOGLEVEL_MAX = 5
+} ELogLevel;
+
 // Strictly for Avisynth core only.
 // Neither host applications nor plugins should use
 // these interfaces.
@@ -19,6 +29,8 @@ public:
     virtual void __stdcall SetPrefetcher(Prefetcher *p) = 0;
 	virtual ClipDataStore* __stdcall ClipData(IClip *clip) = 0;
     virtual MtMode __stdcall GetDefaultMtMode() const = 0;
+    virtual void __stdcall SetLogParams(const char *target, int level) = 0;
+    virtual void __stdcall LogMsg(const char *msg, int level) = 0;
 };
 
 #endif // _AVS_SCRIPTENVIRONMENT_H_INCLUDED
