@@ -213,8 +213,9 @@ bool AVSFunction::IsScriptFunction() const
 {
     return ( (apply == &(ScriptFunction::Execute))
 		  || (apply == &Eval)
-		  || (apply == &EvalOop)
-	);
+          || (apply == &EvalOop)
+          || (apply == &Import)
+        );
 }
 
 bool AVSFunction::SingleTypeMatch(char type, const AVSValue& arg, bool strict) {
