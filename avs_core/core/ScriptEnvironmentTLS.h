@@ -342,6 +342,11 @@ public:
     return core->GetFilterMTMode(filter, is_forced);
   }
 
+  bool __stdcall FilterHasMtMode(const AVSFunction* filter) const
+  {
+    return core->FilterHasMtMode(filter);
+  }
+      
   virtual IJobCompletion* __stdcall NewCompletion(size_t capacity)
   {
     return core->NewCompletion(capacity);
@@ -372,9 +377,29 @@ public:
     core->SetLogParams(target, level);
   }
 
-  virtual void __stdcall LogMsg(const char *msg, int level)
+  virtual void __stdcall LogMsg(int level, const char* fmt, ...)
   {
-    core->LogMsg(msg, level);
+    va_list val;
+    va_start(val, fmt);
+    core->LogMsg_valist(level, fmt, val);
+    va_end(val);
+  }
+  virtual void __stdcall LogMsg_valist(int level, const char* fmt, va_list va)
+  {
+    core->LogMsg_valist(level, fmt, va);
+  }
+
+  virtual void __stdcall LogMsgOnce(const OneTimeLogTicket &ticket, int level, const char* fmt, ...)
+  {
+    va_list val;
+    va_start(val, fmt);
+    core->LogMsgOnce_valist(ticket, level, fmt, val);
+    va_end(val);
+  }
+
+  virtual void __stdcall LogMsgOnce_valist(const OneTimeLogTicket &ticket, int level, const char* fmt, va_list va)
+  {
+    core->LogMsgOnce_valist(ticket, level, fmt, va);
   }
 
 };

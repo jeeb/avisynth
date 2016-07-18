@@ -255,8 +255,21 @@ static size_t GetNumPhysicalCPUs()
   return processorCoreCount;
 }
 
+static std::string FormatString(const char *fmt, va_list args)
+{
+  va_list args2;
+  va_copy(args2, args);
+  _locale_t locale = _create_locale(LC_NUMERIC, "C"); // decimal point: dot
 
+  int count = _vsnprintf_l(NULL, 0, fmt, locale, args);
+  std::vector<char> buf(count + 1);
+  _vsnprintf_l(buf.data(), buf.size(), fmt, locale, args2);
 
+  _free_locale(locale);
+  va_end(args2);
+
+  return std::string(buf.data());
+}
 
 void* VideoFrame::operator new(size_t size) {
   return ::operator new(size);
@@ -516,17 +529,14 @@ public:
         }
     }
 
+    static bool ClipSpecifiesMtMode(const PClip &clip)
+    {
+        return (clip->GetVersion() >= 5) && (clip->SetCacheHints(CACHE_GET_MTMODE, 0) != 0);
+    }
+
     static MtMode GetInstanceMode(const PClip &clip, MtMode defaultMode)
     {
-        MtMode mode = defaultMode;
-
-        if ((clip->GetVersion() >= 5)
-            && (clip->SetCacheHints(CACHE_GET_MTMODE, 0) != 0))
-        {
-            mode = (MtMode)clip->SetCacheHints(CACHE_GET_MTMODE, 0);
-        }
-
-        return mode;
+        return ClipSpecifiesMtMode(clip) ? (MtMode)clip->SetCacheHints(CACHE_GET_MTMODE, 0) : defaultMode;
     }
 
     static MtMode GetMtMode(const PClip &clip, const AVSFunction *invokeCall, const InternalEnvironment* env)
@@ -539,6 +549,12 @@ public:
         return invokeModeForced ? invokeMode : instanceMode;
     }
 
+
+    static bool UsesDefaultMtMode(const PClip &clip, const AVSFunction *invokeCall, const InternalEnvironment* env)
+    {
+        return !ClipSpecifiesMtMode(clip) && !env->FilterHasMtMode(invokeCall);
+    }
+
     void AddChainedFilter(const PClip &clip, MtMode defaultMode)
     {
         MtMode mode = GetInstanceMode(clip, defaultMode);
@@ -546,9 +562,38 @@ public:
     }
 };
 
+
+OneTimeLogTicket::OneTimeLogTicket(ELogTicketType type)
+    : _type(type)
+{}
+
+OneTimeLogTicket::OneTimeLogTicket(ELogTicketType type, const AVSFunction *func)
+    : _type(type), _function(func)
+{}
+
+bool OneTimeLogTicket::operator==(const OneTimeLogTicket &other) const
+{
+    return (_type == other._type)
+        && (_function == other._function);
+}
+
+namespace std
+{
+    template <>
+    struct hash<OneTimeLogTicket>
+    {
+        std::size_t operator()(const OneTimeLogTicket& k) const
+        {
+            return hash<int>()(k._type)
+                 ^ hash<void*>()((void*)k._function);
+        }
+    };
+}
+
 #include "vartable.h"
 #include "ThreadPool.h"
 #include <map>
+#include <unordered_set>
 #include <atomic>
 #include <stack>
 #include "Prefetcher.h"
@@ -616,8 +661,12 @@ public:
   virtual void __stdcall Free(void* ptr);
   virtual ClipDataStore* __stdcall ClipData(IClip *clip);
   virtual MtMode __stdcall GetDefaultMtMode() const;
+  virtual bool __stdcall FilterHasMtMode(const AVSFunction* filter) const;
   virtual void __stdcall SetLogParams(const char *target, int level);
-  virtual void __stdcall LogMsg(const char *msg, int level);
+  virtual void __stdcall LogMsg(int level, const char* fmt, ...);
+  virtual void __stdcall LogMsg_valist(int level, const char* fmt, va_list va);
+  virtual void __stdcall LogMsgOnce(const OneTimeLogTicket &ticket, int level, const char* fmt, ...);
+  virtual void __stdcall LogMsgOnce_valist(const OneTimeLogTicket &ticket, int level, const char* fmt, va_list va);
 
 private:
 
@@ -696,6 +745,7 @@ private:
   int LogLevel;
   std::string LogTarget;
   std::ofstream LogFileStream;
+  std::unordered_set<OneTimeLogTicket> LogTickets;
 
   void InitMT();
 };
@@ -789,10 +839,10 @@ ScriptEnvironment::ScriptEnvironment()
     plugin_manager->AddAutoloadDir("USER_CLASSIC_PLUGINS", false);
     plugin_manager->AddAutoloadDir("MACHINE_CLASSIC_PLUGINS", false);
 
-    global_var_table->Set("LOG_ERROR",   1);
-    global_var_table->Set("LOG_WARNING", 2);
-    global_var_table->Set("LOG_INFO",    3);
-    global_var_table->Set("LOG_DEBUG",   4);
+    global_var_table->Set("LOG_ERROR",   (int)LOGLEVEL_ERROR);
+    global_var_table->Set("LOG_WARNING", (int)LOGLEVEL_WARNING);
+    global_var_table->Set("LOG_INFO",    (int)LOGLEVEL_INFO);
+    global_var_table->Set("LOG_DEBUG",   (int)LOGLEVEL_DEBUG);
 
     InitMT();
     thread_pool = new ThreadPool(std::thread::hardware_concurrency());
@@ -800,6 +850,7 @@ ScriptEnvironment::ScriptEnvironment()
     ExportBuiltinFilters();
 
     clip_data.max_load_factor(0.8f);
+    LogTickets.max_load_factor(0.8f);
   }
   catch (const AvisynthError &err) {
     if(SUCCEEDED(hrfromcoinit)) {
@@ -841,6 +892,7 @@ ScriptEnvironment::~ScriptEnvironment() {
     PopContextGlobal();
 
   // and deleting the frame buffer from FrameRegistry2 as well
+  bool somethingLeaks = false;
   for (FrameRegistryType2::iterator it = FrameRegistry2.begin(), end_it = FrameRegistry2.end();
   it != end_it;
     ++it)
@@ -869,8 +921,16 @@ ScriptEnvironment::~ScriptEnvironment() {
         {
           delete frame;
         }
-      }
-    }
+        else
+        {
+          somethingLeaks = true;
+        }
+      } // it3
+    } // it2
+  } // it
+
+  if (somethingLeaks) {
+      LogMsg(LOGLEVEL_WARNING, "A plugin or the host application might be causing memory leaks.");
   }
 
   delete plugin_manager;
@@ -912,7 +972,15 @@ void __stdcall ScriptEnvironment::SetLogParams(const char *target, int level)
     LogTarget = target;
 }
 
-void __stdcall ScriptEnvironment::LogMsg(const char *msg, int level)
+void __stdcall ScriptEnvironment::LogMsg(int level, const char *fmt, ...)
+{
+    va_list val;
+    va_start(val, fmt);
+    LogMsg_valist(level, fmt, val);
+    va_end(val);
+}
+
+void __stdcall ScriptEnvironment::LogMsg_valist(int level, const char *fmt, va_list va)
 {
     // Don't out message if our logging level is not high enough
     if (level > LogLevel) {
@@ -970,6 +1038,9 @@ void __stdcall ScriptEnvironment::LogMsg(const char *msg, int level)
         return;
     }
 
+    // Format our message string
+    std::string msg = FormatString(fmt, va);
+
     // Save current console attributes so that we can restore them later
     CONSOLE_SCREEN_BUFFER_INFO Info;
     GetConsoleScreenBufferInfo(hConsole, &Info);
@@ -981,6 +1052,23 @@ void __stdcall ScriptEnvironment::LogMsg(const char *msg, int level)
     SetConsoleTextAttribute(hConsole, Info.wAttributes);
     *targetStream << msg << std::endl;
     targetStream->flush();
+}
+
+void __stdcall ScriptEnvironment::LogMsgOnce(const OneTimeLogTicket &ticket, int level, const char *fmt, ...)
+{
+    va_list val;
+    va_start(val, fmt);
+    LogMsgOnce_valist(ticket, level, fmt, val);
+    va_end(val);
+}
+
+void __stdcall ScriptEnvironment::LogMsgOnce_valist(const OneTimeLogTicket &ticket, int level, const char *fmt, va_list va)
+{
+    if (LogTickets.end() == LogTickets.find(ticket))
+    {
+        LogMsg_valist(level, fmt, va);
+        LogTickets.insert(ticket);
+    }
 }
 
 ClipDataStore* __stdcall ScriptEnvironment::ClipData(IClip *clip)
@@ -1033,40 +1121,47 @@ void __stdcall ScriptEnvironment::SetFilterMTMode(const char* filter, MtMode mod
   assert(NULL != filter);
   assert(strcmp("", filter) != 0);
 
-  if (((int)mode <= (int)MT_INVALID)
-      || ((int)mode >= (int)MT_MODE_COUNT))
+  if ( ((int)mode <= (int)MT_INVALID)
+    || ((int)mode >= (int)MT_MODE_COUNT))
   {
-      throw AvisynthError("Invalid MT mode specified.");
+    throw AvisynthError("Invalid MT mode specified.");
   }
 
   if (streqi(filter, DEFAULT_MODE_SPECIFIER.c_str()))
   {
-      DefaultMtMode = mode;
-      return;
+    DefaultMtMode = mode;
+    return;
   }
 
   std::string name_to_register;
   std::string loading = plugin_manager->PluginLoading();
   if (loading.empty())
-      name_to_register = filter;
+    name_to_register = filter;
   else
-      name_to_register = loading.append("_").append(filter);
+    name_to_register = loading.append("_").append(filter);
 
   name_to_register = NormalizeString(name_to_register);
 
   auto it = MtMap.find(name_to_register);
   if (it != MtMap.end())
   {
-      if ((int)weight >= (int)(it->second.second))
-      {
-          it->second.first = mode;
-          it->second.second = weight;
-      }
+    if ((int)weight >= (int)(it->second.second))
+    {
+      it->second.first = mode;
+      it->second.second = weight;
+    }
   }
   else
   {
-      MtMap.emplace(name_to_register, std::make_pair(mode, weight));
+    MtMap.emplace(name_to_register, std::make_pair(mode, weight));
   }
+}
+
+bool __stdcall ScriptEnvironment::FilterHasMtMode(const AVSFunction* filter) const
+{
+  const auto &end = MtMap.end();
+  return (end != MtMap.find(filter->canon_name))
+      || (end != MtMap.find(filter->name));
 }
 
 MtMode __stdcall ScriptEnvironment::GetFilterMTMode(const AVSFunction* filter, bool* is_forced) const
@@ -2352,9 +2447,21 @@ success:;
     }
     else if (fret.IsClip())
     {
+        const PClip &clip = fret.AsClip();
+
         mtmode = mthelper.GetFinalMode(mtmode);
 
-        const PClip &clip = fret.AsClip();
+        // Special handling for source filters
+        if (isSourceFilter
+            && MtModeEvaluator::UsesDefaultMtMode(clip, f, this)
+            && (MT_SERIALIZED != mtmode))
+        {
+            mtmode = MT_SERIALIZED;
+            OneTimeLogTicket ticket(LOGTICKET_W1001, f);
+            LogMsgOnce(ticket, LOGLEVEL_INFO, "%s() does not have any MT-mode specification. Because it is a source filter, it will use MT_SERIALIZED instead of the default MT mode.", f->canon_name);
+        }
+
+
         PClip guard = MTGuard::Create(mtmode, clip, std::move(funcCtor), this);
         *result = Cache::Create(guard, NULL, this);
 
@@ -2441,23 +2548,13 @@ char* ScriptEnvironment::SaveString(const char* s, int len) {
 
 
 char* ScriptEnvironment::VSprintf(const char* fmt, void* val) {
-  std::lock_guard<std::mutex> lock(string_mutex);
-
-  char*& buf = vsprintf_buf;
-  size_t& size = vsprintf_len;
-
-  int count = _vsnprintf(buf, size, fmt, (va_list)val);
-  while ((count < 0) || (count >= (int)size))
-  {
-    delete[] buf;
-    size += 4096;
-    buf = new(std::nothrow) char[size];
-    if (!buf) return NULL;
-    _locale_t locale = _create_locale(LC_NUMERIC, "C"); // decimal point: dot
-    count = _vsnprintf_l(buf, size, fmt, locale, (va_list)val);
-    _free_locale(locale);
+  try {
+    std::string str = FormatString(fmt, (va_list)val);
+    std::lock_guard<std::mutex> lock(string_mutex);
+    return string_dump.SaveString(str.c_str(), str.size()); // SaveString will add the NULL in len mode.
+  } catch (...) {
+    return NULL;
   }
-  return string_dump.SaveString(buf, count); // SaveString will add the NULL in len mode.
 }
 
 char* ScriptEnvironment::Sprintf(const char* fmt, ...) {
@@ -2468,25 +2565,23 @@ char* ScriptEnvironment::Sprintf(const char* fmt, ...) {
   return result;
 }
 
-
-void ScriptEnvironment::ThrowError(const char* fmt, ...) {
-  char buf[8192];
-  va_list val;
-  va_start(val, fmt);
+void ScriptEnvironment::ThrowError(const char* fmt, ...)
+{
+  std::string msg;
   try {
-    _vsnprintf(buf, sizeof(buf)-1, fmt, val);
-    if (!this) throw this; // Force inclusion of try catch code!
+    va_list val;
+    va_start(val, fmt);
+    msg = FormatString(fmt, val);
+    va_end(val);
   } catch (...) {
-    strcpy(buf, "Exception while processing ScriptEnvironment::ThrowError().");
+    msg = "Exception while processing ScriptEnvironment::ThrowError().";
   }
-  va_end(val);
-  buf[sizeof(buf)-1] = '\0';
 
   // Also log the error before throwing
-  this->LogMsg(buf, LOGLEVEL_ERROR);
+  this->LogMsg(LOGLEVEL_ERROR, msg.c_str());
 
   // Throw...
-  throw AvisynthError(ScriptEnvironment::SaveString(buf));
+  throw AvisynthError(ScriptEnvironment::SaveString(msg.c_str()));
 }
 
 

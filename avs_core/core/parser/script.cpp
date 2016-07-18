@@ -1082,7 +1082,7 @@ AVSValue LogMsg(AVSValue args, void*, IScriptEnvironment* env)
     else
     {
         InternalEnvironment *envi = static_cast<InternalEnvironment*>(env);
-        envi->LogMsg(args[0].AsString(), args[1].AsInt());
+        envi->LogMsg(args[1].AsInt(), args[0].AsString());
     }
     return AVSValue();
 }
