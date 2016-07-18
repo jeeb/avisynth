@@ -176,21 +176,21 @@ void Antialiaser::Apply( const VideoInfo& vi, PVideoFrame* frame, int pitch)
     ApplyRGB24((*frame)->GetWritePtr(), pitch);
   else if (vi.IsYUY2())
     ApplyYUY2((*frame)->GetWritePtr(), pitch);
-  else if (vi.IsYV12())
+  else if (vi.IsYV12()) // YUV420 16/32 bit goes to generic path
     ApplyYV12((*frame)->GetWritePtr(), pitch,
               (*frame)->GetPitch(PLANAR_U),
-			  (*frame)->GetWritePtr(PLANAR_U),
-			  (*frame)->GetWritePtr(PLANAR_V) );
-  else if (vi.IsY8())
-    ApplyPlanar((*frame)->GetWritePtr(), pitch, 0, 0, 0, 0, 0);
+              (*frame)->GetWritePtr(PLANAR_U),
+              (*frame)->GetWritePtr(PLANAR_V) );
+  else if (vi.NumComponents() == 1) // Y8, Y16, Y32
+    ApplyPlanar((*frame)->GetWritePtr(), pitch, 0, 0, 0, 0, 0, vi.ComponentSize());
   else if (vi.IsPlanar())
     ApplyPlanar((*frame)->GetWritePtr(), pitch,
-              (*frame)->GetPitch(PLANAR_U),
-			  (*frame)->GetWritePtr(PLANAR_U),
-			  (*frame)->GetWritePtr(PLANAR_V),
-			  vi.GetPlaneWidthSubsampling(PLANAR_U),
-			  vi.GetPlaneHeightSubsampling(PLANAR_U));
-
+                (*frame)->GetPitch(PLANAR_U),
+                (*frame)->GetWritePtr(PLANAR_U),
+                (*frame)->GetWritePtr(PLANAR_V),
+                vi.GetPlaneWidthSubsampling(PLANAR_U),
+                vi.GetPlaneHeightSubsampling(PLANAR_U),
+                vi.ComponentSize() );
 }
 
 
@@ -236,7 +236,7 @@ void Antialiaser::ApplyYV12(BYTE* buf, int pitch, int pitchUV, BYTE* bufU, BYTE*
 }
 
 
-void Antialiaser::ApplyPlanar(BYTE* buf, int pitch, int pitchUV, BYTE* bufU, BYTE* bufV, int shiftX, int shiftY) {
+void Antialiaser::ApplyPlanar(BYTE* buf, int pitch, int pitchUV, BYTE* bufU, BYTE* bufV, int shiftX, int shiftY, int pixelsize) {
   const int stepX = 1<<shiftX;
   const int stepY = 1<<shiftY;
 
@@ -250,18 +250,46 @@ void Antialiaser::ApplyPlanar(BYTE* buf, int pitch, int pitchUV, BYTE* bufU, BYT
   buf += pitch*yb;
 
   // Apply Y
-  {for (int y=yb; y<=yt; y+=1) {
-    for (int x=xl; x<=xr; x+=1) {
-      const int x4 = x<<2;
-      const int basealpha = alpha[x4+0];
-
-      if (basealpha != 256) {
-        buf[x] = BYTE((buf[x] * basealpha + alpha[x4+3]) >> 8);
+  // different paths for different bitdepth
+  if(pixelsize == 1) {
+      for (int y=yb; y<=yt; y+=1) {
+          for (int x=xl; x<=xr; x+=1) {
+              const int x4 = x<<2;
+              const int basealpha = alpha[x4+0];
+              if (basealpha != 256) {
+                  buf[x] = BYTE((buf[x] * basealpha + alpha[x4 + 3]) >> 8); 
+              }
+          }
+          buf += pitch;
+          alpha += w4;
       }
-    }
-    buf += pitch;
-    alpha += w4;
-  }}
+  }
+  else if (pixelsize == 2) { // uint16_t
+      for (int y=yb; y<=yt; y+=1) {
+          for (int x=xl; x<=xr; x+=1) {
+              const int x4 = x<<2;
+              const int basealpha = alpha[x4+0];
+              if (basealpha != 256) {
+                  reinterpret_cast<uint16_t *>(buf)[x] = (uint16_t)((reinterpret_cast<uint16_t *>(buf)[x] * basealpha + ((int)alpha[x4 + 3] << 8)) >> 8); 
+              }
+          }
+          buf += pitch;
+          alpha += w4;
+      }
+  }
+  else { // float assume 0..1.0 scale
+      for (int y=yb; y<=yt; y+=1) {
+          for (int x=xl; x<=xr; x+=1) {
+              const int x4 = x<<2;
+              const int basealpha = alpha[x4+0];
+              if (basealpha != 256) {
+                  reinterpret_cast<float *>(buf)[x] = reinterpret_cast<float *>(buf)[x] * basealpha / 256.0f + alpha[x4 + 3] / 65536.0f; 
+              }
+          }
+          buf += pitch;
+          alpha += w4;
+      }
+  }
 
   if (!bufU) return;
 
@@ -275,29 +303,85 @@ void Antialiaser::ApplyPlanar(BYTE* buf, int pitch, int pitchUV, BYTE* bufU, BYT
   bufU += (pitchUV*yb)>>shiftY;
   bufV += (pitchUV*yb)>>shiftY;
 
-  {for (int y=yb; y<=yt; y+=stepY) {
-    for (int x=xl, xs=xlshiftX; x<=xr; x+=stepX, xs+=1) {
-      unsigned short* UValpha = alpha + x*4;
-      int basealphaUV = 0;
-      int au = 0;
-      int av = 0;
-      for (int i = 0; i<stepY; i++) {
-        for (int j = 0; j<stepX; j++) {
-          basealphaUV += UValpha[0 + j*4];
-          av          += UValpha[1 + j*4];
-          au          += UValpha[2 + j*4];
-        }
-        UValpha += w4;
-      }
-      if (basealphaUV != skipThresh) {
-        bufU[xs] = BYTE((bufU[xs] * basealphaUV + au) >> shifter);
-        bufV[xs] = BYTE((bufV[xs] * basealphaUV + av) >> shifter);
-      }
-    }// end for x
-    bufU  += pitchUV;
-    bufV  += pitchUV;
-    alpha += UVw4;
-  }}//end for y
+  // different paths for different bitdepth
+  if(pixelsize == 1) {
+      for (int y=yb; y<=yt; y+=stepY) {
+          for (int x=xl, xs=xlshiftX; x<=xr; x+=stepX, xs+=1) {
+              unsigned short* UValpha = alpha + x*4;
+              int basealphaUV = 0;
+              int au = 0;
+              int av = 0;
+              for (int i = 0; i<stepY; i++) {
+                  for (int j = 0; j<stepX; j++) {
+                      basealphaUV += UValpha[0 + j*4];
+                      av          += UValpha[1 + j*4];
+                      au          += UValpha[2 + j*4];
+                  }
+                  UValpha += w4;
+              }
+              if (basealphaUV != skipThresh) {
+                  bufU[xs] = BYTE((bufU[xs] * basealphaUV + au) >> shifter);
+                  bufV[xs] = BYTE((bufV[xs] * basealphaUV + av) >> shifter);
+              }
+          }// end for x
+          bufU  += pitchUV;
+          bufV  += pitchUV;
+          alpha += UVw4;
+      }//end for y
+  }
+  else if (pixelsize == 2) { // uint16_t
+      for (int y=yb; y<=yt; y+=stepY) {
+          for (int x=xl, xs=xlshiftX; x<=xr; x+=stepX, xs+=1) {
+              unsigned short* UValpha = alpha + x*4;
+              int basealphaUV = 0;
+              int au = 0;
+              int av = 0;
+              for (int i = 0; i<stepY; i++) {
+                  for (int j = 0; j<stepX; j++) {
+                      basealphaUV += UValpha[0 + j*4];
+                      av          += UValpha[1 + j*4];
+                      au          += UValpha[2 + j*4];
+                  }
+                  UValpha += w4;
+              }
+              if (basealphaUV != skipThresh) {
+                  reinterpret_cast<uint16_t *>(bufU)[xs] = (uint16_t)((reinterpret_cast<uint16_t *>(bufU)[xs] * basealphaUV + (au << 8)) >> shifter);
+                  reinterpret_cast<uint16_t *>(bufV)[xs] = (uint16_t)((reinterpret_cast<uint16_t *>(bufV)[xs] * basealphaUV + (av << 8)) >> shifter);
+              }
+          }// end for x
+          bufU  += pitchUV;
+          bufV  += pitchUV;
+          alpha += UVw4;
+      }//end for y
+  }
+  else { // float. assume 0..1.0 scale
+      const float shifter_inv_f = 1.0f / (1 << shifter);
+      const float a_factor = shifter_inv_f / 256.0f;
+      for (int y=yb; y<=yt; y+=stepY) {
+          for (int x=xl, xs=xlshiftX; x<=xr; x+=stepX, xs+=1) {
+              unsigned short* UValpha = alpha + x*4;
+              int basealphaUV = 0;
+              int au = 0;
+              int av = 0;
+              for (int i = 0; i<stepY; i++) {
+                  for (int j = 0; j<stepX; j++) {
+                      basealphaUV += UValpha[0 + j*4];
+                      av          += UValpha[1 + j*4];
+                      au          += UValpha[2 + j*4];
+                  }
+                  UValpha += w4;
+              }
+              if (basealphaUV != skipThresh) {
+                  const float basealphaUV_f = (float)basealphaUV * shifter_inv_f;
+                  reinterpret_cast<float *>(bufU)[xs] = reinterpret_cast<float *>(bufU)[xs] * basealphaUV_f + au * a_factor;
+                  reinterpret_cast<float *>(bufV)[xs] = reinterpret_cast<float *>(bufV)[xs] * basealphaUV_f + av * a_factor;
+              }
+          }// end for x
+          bufU  += pitchUV;
+          bufV  += pitchUV;
+          alpha += UVw4;
+      }//end for y
+  }
 }
 
 
@@ -1095,6 +1179,16 @@ const char* const t_YV24="YV24";
 const char* const t_Y8="Y8";
 const char* const t_YV16="YV16";
 const char* const t_Y41P="YUV 411 Planar";
+
+const char* const t_YUV420P16="YUV420P16";
+const char* const t_YUV422P16="YUV422P16";
+const char* const t_YUV444P16="YUV444P16";
+const char* const t_Y16="Y16";
+const char* const t_YUV420PS="YUV420PS";
+const char* const t_YUV422PS="YUV422PS";
+const char* const t_YUV444PS="YUV444PS";
+const char* const t_Y32="Y32";
+
 const char* const t_INT8="Integer 8 bit";
 const char* const t_INT16="Integer 16 bit";
 const char* const t_INT24="Integer 24 bit";
@@ -1137,6 +1231,9 @@ std::string GetCpuMsg(IScriptEnvironment * env)
   if (flags & CPUF_SSSE3)
     ss << "SSSE3 ";
 
+  if (flags & CPUF_AVX)
+      ss << "AVX ";
+
   if (flags & CPUF_3DNOW_EXT)
     ss << "3DNOW_EXT";
   else if (flags & CPUF_3DNOW)
@@ -1178,6 +1275,14 @@ PVideoFrame FilterInfo::GetFrame(int n, IScriptEnvironment* env)
       else if (vii.IsY8())    c_space=t_Y8;
       else if (vii.IsYV16())  c_space=t_YV16;
       else if (vii.IsYV411()) c_space=t_Y41P;
+      else if (vii.IsColorSpace(VideoInfo::CS_YUV420P16)) c_space=t_YUV420P16;
+      else if (vii.IsColorSpace(VideoInfo::CS_YUV422P16)) c_space=t_YUV422P16;
+      else if (vii.IsColorSpace(VideoInfo::CS_YUV444P16)) c_space=t_YUV444P16;
+      else if (vii.IsColorSpace(VideoInfo::CS_Y16)) c_space=t_Y16;
+      else if (vii.IsColorSpace(VideoInfo::CS_YUV420PS)) c_space=t_YUV420PS;
+      else if (vii.IsColorSpace(VideoInfo::CS_YUV422PS)) c_space=t_YUV422PS;
+      else if (vii.IsColorSpace(VideoInfo::CS_YUV444PS)) c_space=t_YUV444PS;
+      else if (vii.IsColorSpace(VideoInfo::CS_Y32)) c_space=t_Y32;
 
       if (vii.IsFieldBased()) {
         if (child->GetParity(n)) {
