@@ -324,68 +324,68 @@ AVSValue __cdecl Levels::Create(AVSValue args, void*, IScriptEnvironment* env)
  *******    RGBA Filter    ******
  ********************************/
 
-RGBAdjust::RGBAdjust(PClip _child, double r,  double g,  double b,  double a,
-                                   double rb, double gb, double bb, double ab,
-                                   double rg, double gg, double bg, double ag,
-                                   bool _analyze, bool _dither, IScriptEnvironment* env)
-  : GenericVideoFilter(_child), analyze(_analyze), dither(_dither), mapR(nullptr), mapG(nullptr), 
-  mapB(nullptr), mapA(nullptr), env2_unsafe(static_cast<IScriptEnvironment2*>(env))
+RGBAdjust::RGBAdjust(PClip _child, double r, double g, double b, double a,
+    double rb, double gb, double bb, double ab,
+    double rg, double gg, double bg, double ag,
+    bool _analyze, bool _dither, IScriptEnvironment* env)
+    : GenericVideoFilter(_child), analyze(_analyze), dither(_dither), mapR(nullptr), mapG(nullptr),
+    mapB(nullptr), mapA(nullptr), env2_unsafe(static_cast<IScriptEnvironment2*>(env))
 {
-  if (!vi.IsRGB())
-    env->ThrowError("RGBAdjust requires RGB input");
+    if (!vi.IsRGB())
+        env->ThrowError("RGBAdjust requires RGB input");
 
-  if ((rg <= 0.0) || (gg <= 0.0) || (bg <= 0.0) || (ag <= 0.0))
-    env->ThrowError("RGBAdjust: gammas must be positive");
+    if ((rg <= 0.0) || (gg <= 0.0) || (bg <= 0.0) || (ag <= 0.0))
+        env->ThrowError("RGBAdjust: gammas must be positive");
 
-  rg=1/rg; gg=1/gg; bg=1/bg; ag=1/ag;
+    rg = 1 / rg; gg = 1 / gg; bg = 1 / bg; ag = 1 / ag;
 
-  if (dither) {
-    mapR = static_cast<uint8_t*>(env2_unsafe->Allocate(256*256, 8, AVS_NORMAL_ALLOC));
-    mapG = static_cast<uint8_t*>(env2_unsafe->Allocate(256*256, 8, AVS_NORMAL_ALLOC));
-    mapB = static_cast<uint8_t*>(env2_unsafe->Allocate(256*256, 8, AVS_NORMAL_ALLOC));
-    mapA = static_cast<uint8_t*>(env2_unsafe->Allocate(256*256, 8, AVS_NORMAL_ALLOC));
-	  if (!mapR || !mapG || !mapB || !mapA)
-	  {
-	  	env2_unsafe->Free(mapR);
-	  	env2_unsafe->Free(mapG);
-	  	env2_unsafe->Free(mapB);
-	  	env2_unsafe->Free(mapA);
-	  	env->ThrowError("RGBAdjust: Could not reserve memory.");
-	  }
+    if (dither) {
+        mapR = static_cast<uint8_t*>(env2_unsafe->Allocate(256 * 256, 8, AVS_NORMAL_ALLOC));
+        mapG = static_cast<uint8_t*>(env2_unsafe->Allocate(256 * 256, 8, AVS_NORMAL_ALLOC));
+        mapB = static_cast<uint8_t*>(env2_unsafe->Allocate(256 * 256, 8, AVS_NORMAL_ALLOC));
+        mapA = static_cast<uint8_t*>(env2_unsafe->Allocate(256 * 256, 8, AVS_NORMAL_ALLOC));
+        if (!mapR || !mapG || !mapB || !mapA)
+        {
+            env2_unsafe->Free(mapR);
+            env2_unsafe->Free(mapG);
+            env2_unsafe->Free(mapB);
+            env2_unsafe->Free(mapA);
+            env->ThrowError("RGBAdjust: Could not reserve memory.");
+        }
 
-    for (int i=0; i<256*256; ++i) {
-      mapR[i] = BYTE(pow(clamp((rb*256 + i * r -127.5)/(255.0*256), 0.0, 1.0), rg) * 255.0 + 0.5);
-      mapG[i] = BYTE(pow(clamp((gb*256 + i * g -127.5)/(255.0*256), 0.0, 1.0), gg) * 255.0 + 0.5);
-      mapB[i] = BYTE(pow(clamp((bb*256 + i * b -127.5)/(255.0*256), 0.0, 1.0), bg) * 255.0 + 0.5);
-      mapA[i] = BYTE(pow(clamp((ab*256 + i * a -127.5)/(255.0*256), 0.0, 1.0), ag) * 255.0 + 0.5);
+        for (int i = 0; i < 256 * 256; ++i) {
+            mapR[i] = BYTE(pow(clamp((rb * 256 + i * r - 127.5) / (255.0 * 256), 0.0, 1.0), rg) * 255.0 + 0.5);
+            mapG[i] = BYTE(pow(clamp((gb * 256 + i * g - 127.5) / (255.0 * 256), 0.0, 1.0), gg) * 255.0 + 0.5);
+            mapB[i] = BYTE(pow(clamp((bb * 256 + i * b - 127.5) / (255.0 * 256), 0.0, 1.0), bg) * 255.0 + 0.5);
+            mapA[i] = BYTE(pow(clamp((ab * 256 + i * a - 127.5) / (255.0 * 256), 0.0, 1.0), ag) * 255.0 + 0.5);
+        }
     }
-  }
-  else {
-    mapR = static_cast<uint8_t*>(env2_unsafe->Allocate(256, 8, AVS_NORMAL_ALLOC));
-    mapG = static_cast<uint8_t*>(env2_unsafe->Allocate(256, 8, AVS_NORMAL_ALLOC));
-    mapB = static_cast<uint8_t*>(env2_unsafe->Allocate(256, 8, AVS_NORMAL_ALLOC));
-    mapA = static_cast<uint8_t*>(env2_unsafe->Allocate(256, 8, AVS_NORMAL_ALLOC));
-  	if (!mapR || !mapG || !mapB || !mapA)
-  	{
-  		env2_unsafe->Free(mapR);
-  		env2_unsafe->Free(mapG);
-  		env2_unsafe->Free(mapB);
-  		env2_unsafe->Free(mapA);
-  		env->ThrowError("RGBAdjust: Could not reserve memory.");
-  	}
+    else {
+        mapR = static_cast<uint8_t*>(env2_unsafe->Allocate(256, 8, AVS_NORMAL_ALLOC));
+        mapG = static_cast<uint8_t*>(env2_unsafe->Allocate(256, 8, AVS_NORMAL_ALLOC));
+        mapB = static_cast<uint8_t*>(env2_unsafe->Allocate(256, 8, AVS_NORMAL_ALLOC));
+        mapA = static_cast<uint8_t*>(env2_unsafe->Allocate(256, 8, AVS_NORMAL_ALLOC));
+        if (!mapR || !mapG || !mapB || !mapA)
+        {
+            env2_unsafe->Free(mapR);
+            env2_unsafe->Free(mapG);
+            env2_unsafe->Free(mapB);
+            env2_unsafe->Free(mapA);
+            env->ThrowError("RGBAdjust: Could not reserve memory.");
+        }
 
-    for (int i=0; i<256; ++i) {
-      mapR[i] = BYTE(pow(clamp((rb + i * r)/255.0, 0.0, 1.0), rg) * 255.0 + 0.5);
-      mapG[i] = BYTE(pow(clamp((gb + i * g)/255.0, 0.0, 1.0), gg) * 255.0 + 0.5);
-      mapB[i] = BYTE(pow(clamp((bb + i * b)/255.0, 0.0, 1.0), bg) * 255.0 + 0.5);
-      mapA[i] = BYTE(pow(clamp((ab + i * a)/255.0, 0.0, 1.0), ag) * 255.0 + 0.5);
+        for (int i = 0; i < 256; ++i) {
+            mapR[i] = BYTE(pow(clamp((rb + i * r) / 255.0, 0.0, 1.0), rg) * 255.0 + 0.5);
+            mapG[i] = BYTE(pow(clamp((gb + i * g) / 255.0, 0.0, 1.0), gg) * 255.0 + 0.5);
+            mapB[i] = BYTE(pow(clamp((bb + i * b) / 255.0, 0.0, 1.0), bg) * 255.0 + 0.5);
+            mapA[i] = BYTE(pow(clamp((ab + i * a) / 255.0, 0.0, 1.0), ag) * 255.0 + 0.5);
+        }
     }
-  }
 
-  if (vi.IsRGB24()) {
-    env2_unsafe->Free(mapA);
-    mapA = nullptr;
-  }
+    if (vi.IsRGB24()) {
+        env2_unsafe->Free(mapA);
+        mapA = nullptr;
+    }
 }
 
 
@@ -399,152 +399,155 @@ RGBAdjust::~RGBAdjust() {
 
 PVideoFrame __stdcall RGBAdjust::GetFrame(int n, IScriptEnvironment* env)
 {
-  PVideoFrame frame = child->GetFrame(n, env);
-  env->MakeWritable(&frame);
-  BYTE* p = frame->GetWritePtr();
-  const int pitch = frame->GetPitch();
+    PVideoFrame frame = child->GetFrame(n, env);
+    env->MakeWritable(&frame);
+    BYTE* p = frame->GetWritePtr();
+    const int pitch = frame->GetPitch();
 
-  if (dither) {
-    if (vi.IsRGB32()) {
-      for (int y=0; y<vi.height; ++y) {
-        const int _y = (y << 4) & 0xf0;
-        for (int x=0; x < vi.width; ++x) {
-          const int _dither = ditherMap[(x&0x0f)|_y];
-          p[x*4+0] = mapB[ p[x*4+0]<<8 | _dither ];
-          p[x*4+1] = mapG[ p[x*4+1]<<8 | _dither ];
-          p[x*4+2] = mapR[ p[x*4+2]<<8 | _dither ];
-          p[x*4+3] = mapA[ p[x*4+3]<<8 | _dither ];
+    if (dither) {
+        if (vi.IsRGB32()) {
+            for (int y = 0; y < vi.height; ++y) {
+                const int _y = (y << 4) & 0xf0;
+                for (int x = 0; x < vi.width; ++x) {
+                    const int _dither = ditherMap[(x & 0x0f) | _y];
+                    p[x * 4 + 0] = mapB[p[x * 4 + 0] << 8 | _dither];
+                    p[x * 4 + 1] = mapG[p[x * 4 + 1] << 8 | _dither];
+                    p[x * 4 + 2] = mapR[p[x * 4 + 2] << 8 | _dither];
+                    p[x * 4 + 3] = mapA[p[x * 4 + 3] << 8 | _dither];
+                }
+                p += pitch;
+            }
         }
-        p += pitch;
-      }
-    }
-    else if (vi.IsRGB24()) {
-      for (int y=0; y<vi.height; ++y) {
-        const int _y = (y << 4) & 0xf0;
-        for (int x=0; x < vi.width; ++x) {
-          const int _dither = ditherMap[(x&0x0f)|_y];
-          p[x*3+0] = mapB[ p[x*3+0]<<8 | _dither ];
-          p[x*3+1] = mapG[ p[x*3+1]<<8 | _dither ];
-          p[x*3+2] = mapR[ p[x*3+2]<<8 | _dither ];
+        else if (vi.IsRGB24()) {
+            for (int y = 0; y < vi.height; ++y) {
+                const int _y = (y << 4) & 0xf0;
+                for (int x = 0; x < vi.width; ++x) {
+                    const int _dither = ditherMap[(x & 0x0f) | _y];
+                    p[x * 3 + 0] = mapB[p[x * 3 + 0] << 8 | _dither];
+                    p[x * 3 + 1] = mapG[p[x * 3 + 1] << 8 | _dither];
+                    p[x * 3 + 2] = mapR[p[x * 3 + 2] << 8 | _dither];
+                }
+                p += pitch;
+            }
         }
-        p += pitch;
-      }
     }
-  }
-  else {
-    if (vi.IsRGB32()) {
-      for (int y=0; y<vi.height; ++y) {
-        for (int x=0; x < vi.width; ++x) {
-          p[x*4]   = mapB[p[x*4]];
-          p[x*4+1] = mapG[p[x*4+1]];
-          p[x*4+2] = mapR[p[x*4+2]];
-          p[x*4+3] = mapA[p[x*4+3]];
+    else {
+        if (vi.IsRGB32()) {
+            for (int y = 0; y < vi.height; ++y) {
+                for (int x = 0; x < vi.width; ++x) {
+                    p[x * 4] = mapB[p[x * 4]];
+                    p[x * 4 + 1] = mapG[p[x * 4 + 1]];
+                    p[x * 4 + 2] = mapR[p[x * 4 + 2]];
+                    p[x * 4 + 3] = mapA[p[x * 4 + 3]];
+                }
+                p += pitch;
+            }
         }
-        p += pitch;
-      }
-    }
-    else if (vi.IsRGB24()) {
-      const int row_size = frame->GetRowSize();
-      for (int y=0; y<vi.height; ++y) {
-        for (int x=0; x<row_size; x+=3) {
-           p[x]   = mapB[p[x]];
-           p[x+1] = mapG[p[x+1]];
-           p[x+2] = mapR[p[x+2]];
+        else if (vi.IsRGB24()) {
+            const int row_size = frame->GetRowSize();
+            for (int y = 0; y < vi.height; ++y) {
+                for (int x = 0; x < row_size; x += 3) {
+                    p[x] = mapB[p[x]];
+                    p[x + 1] = mapG[p[x + 1]];
+                    p[x + 2] = mapR[p[x + 2]];
+                }
+                p += pitch;
+            }
         }
-        p += pitch;
-      }
     }
-  }
 
-	if (analyze) {
-		const int w = frame->GetRowSize();
-		const int h = frame->GetHeight();
-		const int t= vi.IsRGB24() ? 3 : 4;
-		unsigned int accum_r[256], accum_g[256], accum_b[256];
-		
-		p = frame->GetWritePtr();
+    if (analyze) {
+        const int w = frame->GetRowSize();
+        const int h = frame->GetHeight();
+        const int t = vi.IsRGB24() ? 3 : 4;
+        unsigned int accum_r[256], accum_g[256], accum_b[256];
 
-		{for (int i=0;i<256;i++) {
-			accum_r[i]=0;
-			accum_g[i]=0;
-			accum_b[i]=0;
-		}}
+        p = frame->GetWritePtr();
 
-		for (int y=0;y<h;y++) {
-			for (int x=0;x<w;x+=t) {
-				accum_r[p[x+2]]++;
-				accum_g[p[x+1]]++;
-				accum_b[p[x]]++;
-			}
-			p += pitch;
-		}
-	
-		int pixels = vi.width*vi.height;
-		float avg_r=0, avg_g=0, avg_b=0;
-		float st_r=0, st_g=0, st_b=0;
-		int min_r=0, min_g=0, min_b=0;
-		int max_r=0, max_g=0, max_b=0;
-		bool hit_r=false, hit_g=false, hit_b=false;
-		int Amin_r=0, Amin_g=0, Amin_b=0;
-		int Amax_r=0, Amax_g=0, Amax_b=0;
-		bool Ahit_minr=false,Ahit_ming=false,Ahit_minb=false;
-		bool Ahit_maxr=false,Ahit_maxg=false,Ahit_maxb=false;
-		int At_256=(pixels+128)/256; // When 1/256th of all pixels have been reached, trigger "Loose min/max"
+        {for (int i = 0; i < 256; i++) {
+            accum_r[i] = 0;
+            accum_g[i] = 0;
+            accum_b[i] = 0;
+        }}
 
-		
-		{for (int i=0;i<256;i++) {
-			avg_r+=(float)accum_r[i]*(float)i;
-			avg_g+=(float)accum_g[i]*(float)i;
-			avg_b+=(float)accum_b[i]*(float)i;
+        for (int y = 0; y < h; y++) {
+            for (int x = 0; x < w; x += t) {
+                accum_r[p[x + 2]]++;
+                accum_g[p[x + 1]]++;
+                accum_b[p[x]]++;
+            }
+            p += pitch;
+        }
 
-			if (accum_r[i]!=0) {max_r=i;hit_r=true;} else {if (!hit_r) min_r=i+1;}
-			if (accum_g[i]!=0) {max_g=i;hit_g=true;} else {if (!hit_g) min_g=i+1;}
-			if (accum_b[i]!=0) {max_b=i;hit_b=true;} else {if (!hit_b) min_b=i+1;}
+        int pixels = vi.width*vi.height;
+        float avg_r = 0, avg_g = 0, avg_b = 0;
+        float st_r = 0, st_g = 0, st_b = 0;
+        int min_r = 0, min_g = 0, min_b = 0;
+        int max_r = 0, max_g = 0, max_b = 0;
+        bool hit_r = false, hit_g = false, hit_b = false;
+        int Amin_r = 0, Amin_g = 0, Amin_b = 0;
+        int Amax_r = 0, Amax_g = 0, Amax_b = 0;
+        bool Ahit_minr = false, Ahit_ming = false, Ahit_minb = false;
+        bool Ahit_maxr = false, Ahit_maxg = false, Ahit_maxb = false;
+        int At_256 = (pixels + 128) / 256; // When 1/256th of all pixels have been reached, trigger "Loose min/max"
 
-			if (!Ahit_minr) {Amin_r+=accum_r[i]; if (Amin_r>At_256){Ahit_minr=true; Amin_r=i;} }
-			if (!Ahit_ming) {Amin_g+=accum_g[i]; if (Amin_g>At_256){Ahit_ming=true; Amin_g=i;} }
-			if (!Ahit_minb) {Amin_b+=accum_b[i]; if (Amin_b>At_256){Ahit_minb=true; Amin_b=i;} }
 
-			if (!Ahit_maxr) {Amax_r+=accum_r[255-i]; if (Amax_r>At_256){Ahit_maxr=true; Amax_r=255-i;} }
-			if (!Ahit_maxg) {Amax_g+=accum_g[255-i]; if (Amax_g>At_256){Ahit_maxg=true; Amax_g=255-i;} }
-			if (!Ahit_maxb) {Amax_b+=accum_b[255-i]; if (Amax_b>At_256){Ahit_maxb=true; Amax_b=255-i;} }
-		}}
-		
-		float Favg_r=avg_r/pixels;
-		float Favg_g=avg_g/pixels;
-		float Favg_b=avg_b/pixels;
+        {for (int i = 0; i < 256; i++) {
+            avg_r += (float)accum_r[i] * (float)i;
+            avg_g += (float)accum_g[i] * (float)i;
+            avg_b += (float)accum_b[i] * (float)i;
 
-		{for (int i=0;i<256;i++) {
-			st_r+=(float)accum_r[i]*(float (i-Favg_r)*(i-Favg_r));
-			st_g+=(float)accum_g[i]*(float (i-Favg_g)*(i-Favg_g));
-			st_b+=(float)accum_b[i]*(float (i-Favg_b)*(i-Favg_b));
-		}}
-		
-		float Fst_r=sqrt(st_r/pixels);
-		float Fst_g=sqrt(st_g/pixels);
-		float Fst_b=sqrt(st_b/pixels);
+            if (accum_r[i] != 0) { max_r = i; hit_r = true; }
+            else { if (!hit_r) min_r = i + 1; }
+            if (accum_g[i] != 0) { max_g = i; hit_g = true; }
+            else { if (!hit_g) min_g = i + 1; }
+            if (accum_b[i] != 0) { max_b = i; hit_b = true; }
+            else { if (!hit_b) min_b = i + 1; }
 
-		char text[512];
-		sprintf(text,
-			"             Frame: %-8u (  Red  / Green / Blue  )\n"
-			"           Average:      ( %7.2f / %7.2f / %7.2f )\n"
-			"Standard Deviation:      ( %7.2f / %7.2f / %7.2f )\n"
-			"           Minimum:      ( %3d    / %3d    / %3d    )\n"
-			"           Maximum:      ( %3d    / %3d    / %3d    )\n"
-			"     Loose Minimum:      ( %3d    / %3d    / %3d    )\n"
-			"     Loose Maximum:      ( %3d    / %3d    / %3d    )\n"
-			,
-			(unsigned int)n,
-			Favg_r,Favg_g,Favg_b,
-			Fst_r,Fst_g,Fst_b,
-			min_r,min_g,min_b,
-			max_r,max_g,max_b,
-			Amin_r,Amin_g,Amin_b,
-			Amax_r,Amax_g,Amax_b
-			);
-		env->ApplyMessage(&frame, vi, text, vi.width/4, 0xa0a0a0, 0, 0);
-	}
-  return frame;
+            if (!Ahit_minr) { Amin_r += accum_r[i]; if (Amin_r > At_256) { Ahit_minr = true; Amin_r = i; } }
+            if (!Ahit_ming) { Amin_g += accum_g[i]; if (Amin_g > At_256) { Ahit_ming = true; Amin_g = i; } }
+            if (!Ahit_minb) { Amin_b += accum_b[i]; if (Amin_b > At_256) { Ahit_minb = true; Amin_b = i; } }
+
+            if (!Ahit_maxr) { Amax_r += accum_r[255 - i]; if (Amax_r > At_256) { Ahit_maxr = true; Amax_r = 255 - i; } }
+            if (!Ahit_maxg) { Amax_g += accum_g[255 - i]; if (Amax_g > At_256) { Ahit_maxg = true; Amax_g = 255 - i; } }
+            if (!Ahit_maxb) { Amax_b += accum_b[255 - i]; if (Amax_b > At_256) { Ahit_maxb = true; Amax_b = 255 - i; } }
+        }}
+
+        float Favg_r = avg_r / pixels;
+        float Favg_g = avg_g / pixels;
+        float Favg_b = avg_b / pixels;
+
+        {for (int i = 0; i < 256; i++) {
+            st_r += (float)accum_r[i] * (float(i - Favg_r)*(i - Favg_r));
+            st_g += (float)accum_g[i] * (float(i - Favg_g)*(i - Favg_g));
+            st_b += (float)accum_b[i] * (float(i - Favg_b)*(i - Favg_b));
+        }}
+
+        float Fst_r = sqrt(st_r / pixels);
+        float Fst_g = sqrt(st_g / pixels);
+        float Fst_b = sqrt(st_b / pixels);
+
+        char text[512];
+        sprintf(text,
+            "             Frame: %-8u (  Red  / Green / Blue  )\n"
+            "           Average:      ( %7.2f / %7.2f / %7.2f )\n"
+            "Standard Deviation:      ( %7.2f / %7.2f / %7.2f )\n"
+            "           Minimum:      ( %3d    / %3d    / %3d    )\n"
+            "           Maximum:      ( %3d    / %3d    / %3d    )\n"
+            "     Loose Minimum:      ( %3d    / %3d    / %3d    )\n"
+            "     Loose Maximum:      ( %3d    / %3d    / %3d    )\n"
+            ,
+            (unsigned int)n,
+            Favg_r, Favg_g, Favg_b,
+            Fst_r, Fst_g, Fst_b,
+            min_r, min_g, min_b,
+            max_r, max_g, max_b,
+            Amin_r, Amin_g, Amin_b,
+            Amax_r, Amax_g, Amax_b
+        );
+        env->ApplyMessage(&frame, vi, text, vi.width / 4, 0xa0a0a0, 0, 0);
+    }
+    return frame;
 }
 
 
@@ -561,88 +564,92 @@ AVSValue __cdecl RGBAdjust::Create(AVSValue args, void*, IScriptEnvironment* env
 
 /* helper function for Tweak and MaskHS filters */
 static bool ProcessPixel(double X, double Y, double startHue, double endHue,
-                  double maxSat, double minSat, double p, int &iSat)
+    double maxSat, double minSat, double p, int &iSat)
 {
-	// a hue analog
-	double T = atan2(X, Y) * 180.0 / PI;
-	if ( T < 0.0) T += 360.0;
+    // a hue analog
+    double T = atan2(X, Y) * 180.0 / PI;
+    if (T < 0.0) T += 360.0;
 
-	// startHue <= hue <= endHue
-	if (startHue < endHue) {
-		if (T>endHue || T<startHue) return false;
-	} else {
-		if (T<startHue && T>endHue) return false;
-	}
+    // startHue <= hue <= endHue
+    if (startHue < endHue) {
+        if (T > endHue || T < startHue) return false;
+    }
+    else {
+        if (T<startHue && T>endHue) return false;
+    }
 
-	const double W = X*X + Y*Y;
+    const double W = X*X + Y*Y;
 
-	// In Range, full adjust but no need to interpolate
-	if (minSat*minSat <= W && W <= maxSat*maxSat) return true;
+    // In Range, full adjust but no need to interpolate
+    if (minSat*minSat <= W && W <= maxSat*maxSat) return true;
 
-	// p == 0 (no interpolation) needed for MaskHS
-	if (p == 0.0) return false;
+    // p == 0 (no interpolation) needed for MaskHS
+    if (p == 0.0) return false;
 
-	// Interpolation range is +/-p for p>0
-	const double max = min(maxSat+p, 180.0);
-	const double min = ::max(minSat-p,   0.0);
+    // Interpolation range is +/-p for p>0
+    const double max = min(maxSat + p, 180.0);
+    const double min = ::max(minSat - p, 0.0);
 
-	// Outside of [min-p, max+p] no adjustment
-	// minSat-p <= (U^2 + V^2) <= maxSat+p
-	if (W <= min*min || max*max <= W) return false; // don't adjust
+    // Outside of [min-p, max+p] no adjustment
+    // minSat-p <= (U^2 + V^2) <= maxSat+p
+    if (W <= min*min || max*max <= W) return false; // don't adjust
 
-	// Interpolate saturation value
-	const double holdSat = W < 180.0*180.0 ? sqrt(W) : 180.0;
+    // Interpolate saturation value
+    const double holdSat = W < 180.0*180.0 ? sqrt(W) : 180.0;
 
-	if (holdSat < minSat) { // within p of lower range
-		iSat += (int)((512 - iSat) * (minSat - holdSat) / p);
-	} else { // within p of upper range
-		iSat += (int)((512 - iSat) * (holdSat - maxSat) / p);
-	}
-	
-	return true;
+    if (holdSat < minSat) { // within p of lower range
+        iSat += (int)((512 - iSat) * (minSat - holdSat) / p);
+    }
+    else { // within p of upper range
+        iSat += (int)((512 - iSat) * (holdSat - maxSat) / p);
+    }
+
+    return true;
 }
 
 // for float
 static bool ProcessPixelUnscaled(double X, double Y, double startHue, double endHue,
-  double maxSat, double minSat, double p, double &dSat)
+    double maxSat, double minSat, double p, double &dSat)
 {
-  // a hue analog
-  double T = atan2(X, Y) * 180.0 / PI;
-  if ( T < 0.0) T += 360.0;
+    // a hue analog
+    double T = atan2(X, Y) * 180.0 / PI;
+    if (T < 0.0) T += 360.0;
 
-  // startHue <= hue <= endHue
-  if (startHue < endHue) {
-    if (T>endHue || T<startHue) return false;
-  } else {
-    if (T<startHue && T>endHue) return false;
-  }
+    // startHue <= hue <= endHue
+    if (startHue < endHue) {
+        if (T > endHue || T < startHue) return false;
+    }
+    else {
+        if (T<startHue && T>endHue) return false;
+    }
 
-  const double W = X*X + Y*Y;
+    const double W = X*X + Y*Y;
 
-  // In Range, full adjust but no need to interpolate
-  if (minSat*minSat <= W && W <= maxSat*maxSat) return true;
+    // In Range, full adjust but no need to interpolate
+    if (minSat*minSat <= W && W <= maxSat*maxSat) return true;
 
-  // p == 0 (no interpolation) needed for MaskHS
-  if (p == 0.0) return false;
+    // p == 0 (no interpolation) needed for MaskHS
+    if (p == 0.0) return false;
 
-  // Interpolation range is +/-p for p>0
-  const double max = min(maxSat+p, 180.0);
-  const double min = ::max(minSat-p,   0.0);
+    // Interpolation range is +/-p for p>0
+    const double max = min(maxSat + p, 180.0);
+    const double min = ::max(minSat - p, 0.0);
 
-  // Outside of [min-p, max+p] no adjustment
-  // minSat-p <= (U^2 + V^2) <= maxSat+p
-  if (W <= min*min || max*max <= W) return false; // don't adjust
+    // Outside of [min-p, max+p] no adjustment
+    // minSat-p <= (U^2 + V^2) <= maxSat+p
+    if (W <= min*min || max*max <= W) return false; // don't adjust
 
-  // Interpolate saturation value
-  const double holdSat = W < 180.0*180.0 ? sqrt(W) : 180.0;
+    // Interpolate saturation value
+    const double holdSat = W < 180.0*180.0 ? sqrt(W) : 180.0;
 
-  if (holdSat < minSat) { // within p of lower range
-    dSat += ((1 - dSat) * (minSat - holdSat) / p);
-  } else { // within p of upper range
-    dSat += ((1 - dSat) * (holdSat - maxSat) / p);
-  }
+    if (holdSat < minSat) { // within p of lower range
+        dSat += ((1 - dSat) * (minSat - holdSat) / p);
+    }
+    else { // within p of upper range
+        dSat += ((1 - dSat) * (holdSat - maxSat) / p);
+    }
 
-  return true;
+    return true;
 }
 
 
@@ -830,432 +837,437 @@ Tweak::~Tweak() {
 
 PVideoFrame __stdcall Tweak::GetFrame(int n, IScriptEnvironment* env)
 {
-	PVideoFrame src = child->GetFrame(n, env);
-	env->MakeWritable(&src);
+    PVideoFrame src = child->GetFrame(n, env);
+    env->MakeWritable(&src);
 
-	BYTE* srcp = src->GetWritePtr();
+    BYTE* srcp = src->GetWritePtr();
 
-	int src_pitch = src->GetPitch();
-	int height = src->GetHeight();
-	int row_size = src->GetRowSize();
+    int src_pitch = src->GetPitch();
+    int height = src->GetHeight();
+    int row_size = src->GetRowSize();
 
-	if (vi.IsYUY2()) {
+    if (vi.IsYUY2()) {
 
-		if (dither) {
-			const int UVwidth = vi.width/2;
-			for (int y = 0; y < height; y++) {
-				{const int _y = (y << 4) & 0xf0;
-				for (int x = 0; x < vi.width; ++x) {
-					/* brightness and contrast */
-					srcp[x*2] = map[ srcp[x*2]<<8 | ditherMap[(x&0x0f)|_y] ];
-				}}
-				{const int _y = (y << 2) & 0xC;
-				for (int x = 0; x < UVwidth; ++x) {
-					const int _dither = ditherMap4[(x&0x3)|_y];
-					/* hue and saturation */
-					const int u = srcp[x*4+1];
-					const int v = srcp[x*4+3];
-					const int mapped = mapUV[(u<<12) | (v<<4) | _dither];
-					srcp[x*4+1] = (BYTE)(mapped&0xff);
-					srcp[x*4+3] = (BYTE)(mapped>>8);
-				}}
-				srcp += src_pitch;
-			}
-		}
-		else {
-			for (int y = 0; y < height; y++)
-			{
-				for (int x = 0; x < row_size; x+=4)
-				{
-					/* brightness and contrast */
-					srcp[x] = map[srcp[x]];
-					srcp[x+2] = map[srcp[x+2]];
-
-					/* hue and saturation */
-					const int u = srcp[x+1];
-					const int v = srcp[x+3];
-					const int mapped = mapUV[(u<<8) | v];
-					srcp[x+1] = (BYTE)(mapped&0xff);
-					srcp[x+3] = (BYTE)(mapped>>8);
-				}
-				srcp += src_pitch;
-			}
-		}
-	} else if (vi.IsPlanar()) {
-    if (realcalc) // no lookup! PF todo: clean up this slow mess. But I'm glad, it's working 16/float
-    {
-      int pixelsize = vi.ComponentSize();
-      double factor;
-      double maxY;
-      double minY;
-      switch(pixelsize)
-      {
-      case 1: 
-        factor = 256.0; 
-        maxY = coring ? 235 : 255;
-        minY = coring ? 16 : 0;
-        break;
-      case 2: 
-        factor = 65536.0; 
-        maxY = coring ? 235*256 : 255*256;
-        minY = coring ? 16*256 : 0;
-        break;
-      default: // case 4:
-        maxY = coring ? 235.0/256 : 255.0/256;
-        minY = coring ? 16.0/256 : 0;
-        factor = 1.0;
-      }
-      double y0;
-      for (int y=0; y<height; ++y) {
-        const int _y = (y << 4) & 0xf0;
-        for (int x=0; x<row_size / pixelsize; ++x) {
-          /* brightness and contrast */
-          double ditherval = dither ? ditherval = (ditherMap[(x & 0x0f) | _y] / 256.0 - 0.5) / 256.0 : 0.0; 
-          // +/- 1/256, always relative to 0..1
-          switch(pixelsize) {
-          case 1: y0 = (srcp[x] - minY) / factor; break; // 8 bit
-          case 2: y0 = (reinterpret_cast<uint16_t *>(srcp)[x] - minY) / factor; break;// 16 bit
-          default: // case 4:
-                  y0 = (reinterpret_cast<float *>(srcp)[x] - minY) / factor; // float
-          }
-          y0 = (y0 + ditherval)*dcont + dbright / 256.0; // dbright parameter always 0..255
-          y0 = y0*factor + minY;
-          switch(pixelsize) {
-          case 1: srcp[x] = (BYTE)clamp(y0, minY, maxY); break;
-          case 2: reinterpret_cast<uint16_t *>(srcp)[x] = (uint16_t)clamp(y0, minY, maxY); break;
-          default: // case 4:
-            reinterpret_cast<float *>(srcp)[x] = (float)clamp(y0, minY, maxY); break;
-          }
+        if (dither) {
+            const int UVwidth = vi.width / 2;
+            for (int y = 0; y < height; y++) {
+                {const int _y = (y << 4) & 0xf0;
+                for (int x = 0; x < vi.width; ++x) {
+                    /* brightness and contrast */
+                    srcp[x * 2] = map[srcp[x * 2] << 8 | ditherMap[(x & 0x0f) | _y]];
+                }}
+                {const int _y = (y << 2) & 0xC;
+                for (int x = 0; x < UVwidth; ++x) {
+                    const int _dither = ditherMap4[(x & 0x3) | _y];
+                    /* hue and saturation */
+                    const int u = srcp[x * 4 + 1];
+                    const int v = srcp[x * 4 + 3];
+                    const int mapped = mapUV[(u << 12) | (v << 4) | _dither];
+                    srcp[x * 4 + 1] = (BYTE)(mapped & 0xff);
+                    srcp[x * 4 + 3] = (BYTE)(mapped >> 8);
+                }}
+                srcp += src_pitch;
+            }
         }
-        srcp += src_pitch;
-      }
-    } else {
-		if (dither) {
-			for (int y=0; y<height; ++y) {
-				const int _y = (y << 4) & 0xf0;
-				for (int x=0; x<row_size; ++x) {
-					/* brightness and contrast */
-					srcp[x] = map[ srcp[x]<<8 | ditherMap[(x&0x0f)|_y] ];
-				}
-				srcp += src_pitch;
-			}
-		}
-		else {
-			for (int y=0; y<height; ++y) {
-				for (int x=0; x<row_size; ++x) {
-					/* brightness and contrast */
-					srcp[x] = map[srcp[x]];
-				}
-				srcp += src_pitch;
-			}
-		}
+        else {
+            for (int y = 0; y < height; y++)
+            {
+                for (int x = 0; x < row_size; x += 4)
+                {
+                    /* brightness and contrast */
+                    srcp[x] = map[srcp[x]];
+                    srcp[x + 2] = map[srcp[x + 2]];
+
+                    /* hue and saturation */
+                    const int u = srcp[x + 1];
+                    const int v = srcp[x + 3];
+                    const int mapped = mapUV[(u << 8) | v];
+                    srcp[x + 1] = (BYTE)(mapped & 0xff);
+                    srcp[x + 3] = (BYTE)(mapped >> 8);
+                }
+                srcp += src_pitch;
+            }
+        }
+    }
+    else if (vi.IsPlanar()) {
+        if (realcalc) // no lookup! PF todo: clean up this slow mess. But I'm glad, it's working 16/float
+        {
+            int pixelsize = vi.ComponentSize();
+            double factor;
+            double maxY;
+            double minY;
+            switch (pixelsize)
+            {
+            case 1:
+                factor = 256.0;
+                maxY = coring ? 235 : 255;
+                minY = coring ? 16 : 0;
+                break;
+            case 2:
+                factor = 65536.0;
+                maxY = coring ? 235 * 256 : 255 * 256;
+                minY = coring ? 16 * 256 : 0;
+                break;
+            default: // case 4:
+                maxY = coring ? 235.0 / 256 : 255.0 / 256;
+                minY = coring ? 16.0 / 256 : 0;
+                factor = 1.0;
+            }
+            double y0;
+            for (int y = 0; y < height; ++y) {
+                const int _y = (y << 4) & 0xf0;
+                for (int x = 0; x < row_size / pixelsize; ++x) {
+                    /* brightness and contrast */
+                    double ditherval = dither ? ditherval = (ditherMap[(x & 0x0f) | _y] / 256.0 - 0.5) / 256.0 : 0.0;
+                    // +/- 1/256, always relative to 0..1
+                    switch (pixelsize) {
+                    case 1: y0 = (srcp[x] - minY) / factor; break; // 8 bit
+                    case 2: y0 = (reinterpret_cast<uint16_t *>(srcp)[x] - minY) / factor; break;// 16 bit
+                    default: // case 4:
+                        y0 = (reinterpret_cast<float *>(srcp)[x] - minY) / factor; // float
+                    }
+                    y0 = (y0 + ditherval)*dcont + dbright / 256.0; // dbright parameter always 0..255
+                    y0 = y0*factor + minY;
+                    switch (pixelsize) {
+                    case 1: srcp[x] = (BYTE)clamp(y0, minY, maxY); break;
+                    case 2: reinterpret_cast<uint16_t *>(srcp)[x] = (uint16_t)clamp(y0, minY, maxY); break;
+                    default: // case 4:
+                        reinterpret_cast<float *>(srcp)[x] = (float)clamp(y0, minY, maxY); break;
+                    }
+                }
+                srcp += src_pitch;
+            }
+        }
+        else {
+            if (dither) {
+                for (int y = 0; y < height; ++y) {
+                    const int _y = (y << 4) & 0xf0;
+                    for (int x = 0; x < row_size; ++x) {
+                        /* brightness and contrast */
+                        srcp[x] = map[srcp[x] << 8 | ditherMap[(x & 0x0f) | _y]];
+                    }
+                    srcp += src_pitch;
+                }
+            }
+            else {
+                for (int y = 0; y < height; ++y) {
+                    for (int x = 0; x < row_size; ++x) {
+                        /* brightness and contrast */
+                        srcp[x] = map[srcp[x]];
+                    }
+                    srcp += src_pitch;
+                }
+            }
+        }
+
+        src_pitch = src->GetPitch(PLANAR_U);
+        BYTE * srcpu = src->GetWritePtr(PLANAR_U);
+        BYTE * srcpv = src->GetWritePtr(PLANAR_V);
+        row_size = src->GetRowSize(PLANAR_U);
+        height = src->GetHeight(PLANAR_U);
+
+        if (realcalc) {
+            // no lookup! PF todo: clean up this slow and junk. But let's glad, it's working
+            // todo: float is a little greenish!
+            // u,v: 0..1 normalized
+            // destu = (u + dither_minus_8/16_7/16) - 0.5
+            // destv = (v + dither_minus_8/16_7/16) - 0.5
+            // double dSat = _sat
+            // ProcessPixelUnscaled(destv, destu, startHue, endHue, maxSat, minSat, p, dSat)
+            // du = (destu*cos(Hue) + destv*sin(Hue)) * dSat + 0.5 // unnormalize
+            // dv = (destv*cos(Hue) - destu*sin(Hue)) * dSat + 0.5 // unnormalize
+            // du=clamp(du,0.0,1.0)
+            // dv=clamp(du,0.0,1.0)
+            const double Hue = (dhue * PI) / 180.0;
+            double maxUV;
+            double minUV;
+            // 100% equals sat=119 (= maximal saturation of valid RGB (R=255,G=B=0)
+            // 150% (=180) - 100% (=119) overshoot
+            const double minSat = 1.19 * dminSat;
+            const double maxSat = 1.19 * dmaxSat;
+
+            double p = dinterp * 1.19; // Same units as minSat/maxSat
+
+            int pixelsize = vi.ComponentSize();
+            double factor;
+            switch (pixelsize)
+            {
+            case 1:
+                factor = 256.0;
+                maxUV = coring ? 240 : 255;
+                minUV = coring ? 16 : 0;
+                break;
+            case 2:
+                factor = 65536.0;
+                maxUV = coring ? 240 * 256 : 255 * 256;
+                minUV = coring ? 16 * 256 : 0;
+                break;
+            default: // case 4:
+                maxUV = coring ? 240.0 / 256 : 255.0 / 256;
+                minUV = coring ? 16.0 / 256 : 0;
+                factor = 1.0;
+            }
+            double u, v;
+            for (int y = 0; y < height; ++y) {
+                const int _y = (y << 2) & 0xC;
+                for (int x = 0; x < row_size / pixelsize; ++x) {
+                    double _ditherval = 0.0;
+                    if (dither)
+                        _ditherval = ((double(ditherMap4[(x & 0x3) | _y]) - 7.5) / 16) / 16; // base: 1.0: -7.5/16/16..+8/16/16
+                      /* hue and saturation */
+                    switch (pixelsize) {
+                    case 1:
+                        u = srcpu[x] / factor;
+                        v = srcpv[x] / factor;
+                        break; // 8 bit
+                    case 2:
+                        u = reinterpret_cast<uint16_t *>(srcpu)[x] / factor;
+                        v = reinterpret_cast<uint16_t *>(srcpv)[x] / factor;
+                        break; // 16 bit
+                    default: // case 4:
+                        u = reinterpret_cast<float *>(srcpu)[x] / factor;
+                        v = reinterpret_cast<float *>(srcpv)[x] / factor;
+                    }
+
+                    u = u + _ditherval - 0.5;
+                    v = v + _ditherval - 0.5;
+                    double dWorkSat = dsat; // original param
+                    ProcessPixelUnscaled(v, u, dstartHue, dendHue, dmaxSat, dminSat, p, dWorkSat);
+                    double du = (u*cos(Hue) + v*sin(Hue)) * dWorkSat + 0.5; // unnormalize
+                    double dv = (v*cos(Hue) - u*sin(Hue)) * dWorkSat + 0.5; // unnormalize
+                    du = clamp(du, 0.0, 1.0) * factor;
+                    dv = clamp(dv, 0.0, 1.0) * factor;
+                    switch (pixelsize) {
+                    case 1:
+                        srcpu[x] = (BYTE)clamp(du, minUV, maxUV);
+                        srcpv[x] = (BYTE)clamp(dv, minUV, maxUV);
+                        break;
+                    case 2:
+                        reinterpret_cast<uint16_t *>(srcpu)[x] = (uint16_t)clamp(du, minUV, maxUV);
+                        reinterpret_cast<uint16_t *>(srcpv)[x] = (uint16_t)clamp(dv, minUV, maxUV);
+                        break;
+                    default: // case 4:
+                        reinterpret_cast<float *>(srcpu)[x] = (float)clamp(du, minUV, maxUV);
+                        reinterpret_cast<float *>(srcpv)[x] = (float)clamp(dv, minUV, maxUV);
+                        break;
+                    }
+                }
+                srcpu += src_pitch;
+                srcpv += src_pitch;
+            }
+        }
+        else {
+            if (dither) {
+                for (int y = 0; y < height; ++y) {
+                    const int _y = (y << 2) & 0xC;
+                    for (int x = 0; x < row_size; ++x) {
+                        const int _dither = ditherMap4[(x & 0x3) | _y];
+                        /* hue and saturation */
+                        const int u = srcpu[x];
+                        const int v = srcpv[x];
+                        const int mapped = mapUV[(u << 12) | (v << 4) | _dither];
+                        srcpu[x] = (BYTE)(mapped & 0xff);
+                        srcpv[x] = (BYTE)(mapped >> 8);
+                    }
+                    srcpu += src_pitch;
+                    srcpv += src_pitch;
+                }
+            }
+            else {
+                for (int y = 0; y < height; ++y) {
+                    for (int x = 0; x < row_size; ++x) {
+                        /* hue and saturation */
+                        const int u = srcpu[x];
+                        const int v = srcpv[x];
+                        const int mapped = mapUV[(u << 8) | v];
+                        srcpu[x] = (BYTE)(mapped & 0xff);
+                        srcpv[x] = (BYTE)(mapped >> 8);
+                    }
+                    srcpu += src_pitch;
+                    srcpv += src_pitch;
+                }
+            }
+        }
     }
 
-		src_pitch = src->GetPitch(PLANAR_U);
-		BYTE * srcpu = src->GetWritePtr(PLANAR_U);
-		BYTE * srcpv = src->GetWritePtr(PLANAR_V);
-		row_size = src->GetRowSize(PLANAR_U);
-		height = src->GetHeight(PLANAR_U);
-
-    if(realcalc) {
-      // no lookup! PF todo: clean up this slow and junk. But let's glad, it's working
-      // todo: float is a little greenish!
-      // u,v: 0..1 normalized
-      // destu = (u + dither_minus_8/16_7/16) - 0.5
-      // destv = (v + dither_minus_8/16_7/16) - 0.5
-      // double dSat = _sat
-      // ProcessPixelUnscaled(destv, destu, startHue, endHue, maxSat, minSat, p, dSat)
-      // du = (destu*cos(Hue) + destv*sin(Hue)) * dSat + 0.5 // unnormalize
-      // dv = (destv*cos(Hue) - destu*sin(Hue)) * dSat + 0.5 // unnormalize
-      // du=clamp(du,0.0,1.0)
-      // dv=clamp(du,0.0,1.0)
-      const double Hue = (dhue * PI) / 180.0;
-      double maxUV;
-      double minUV;
-      // 100% equals sat=119 (= maximal saturation of valid RGB (R=255,G=B=0)
-      // 150% (=180) - 100% (=119) overshoot
-      const double minSat = 1.19 * dminSat;
-      const double maxSat = 1.19 * dmaxSat;
-
-      double p = dinterp * 1.19; // Same units as minSat/maxSat
-
-      int pixelsize = vi.ComponentSize();
-      double factor;
-      switch(pixelsize)
-      {
-      case 1: 
-        factor = 256.0; 
-        maxUV = coring ? 240 : 255;
-        minUV = coring ? 16 : 0;
-        break;
-      case 2: 
-        factor = 65536.0; 
-        maxUV = coring ? 240*256 : 255*256;
-        minUV = coring ? 16*256 : 0;
-        break;
-      default: // case 4:
-        maxUV = coring ? 240.0/256 : 255.0/256;
-        minUV = coring ? 16.0/256 : 0;
-        factor = 1.0;
-      }
-      double u, v;
-      for (int y = 0; y < height; ++y) {
-        const int _y = (y << 2) & 0xC;
-        for (int x = 0; x < row_size / pixelsize; ++x) {
-          double _ditherval = 0.0;
-          if (dither)
-            _ditherval = ((double(ditherMap4[(x & 0x3) | _y]) - 7.5) / 16) / 16; // base: 1.0: -7.5/16/16..+8/16/16
-          /* hue and saturation */
-          switch(pixelsize) {
-          case 1: 
-            u = srcpu[x] / factor;
-            v = srcpv[x] / factor; 
-            break; // 8 bit
-          case 2: 
-            u = reinterpret_cast<uint16_t *>(srcpu)[x] / factor;
-            v = reinterpret_cast<uint16_t *>(srcpv)[x] / factor;
-            break; // 16 bit
-          default: // case 4:
-            u = reinterpret_cast<float *>(srcpu)[x] / factor;
-            v = reinterpret_cast<float *>(srcpv)[x] / factor;
-          }
-
-          u = u + _ditherval - 0.5;
-          v = v + _ditherval - 0.5;
-          double dWorkSat = dsat; // original param
-          ProcessPixelUnscaled(v, u, dstartHue, dendHue, dmaxSat, dminSat, p, dWorkSat);
-          double du = (u*cos(Hue) + v*sin(Hue)) * dWorkSat + 0.5; // unnormalize
-          double dv = (v*cos(Hue) - u*sin(Hue)) * dWorkSat + 0.5; // unnormalize
-          du = clamp(du, 0.0, 1.0) * factor;
-          dv = clamp(dv, 0.0, 1.0) * factor;
-          switch(pixelsize) {
-          case 1: 
-            srcpu[x] = (BYTE)clamp(du, minUV, maxUV); 
-            srcpv[x] = (BYTE)clamp(dv, minUV, maxUV); 
-            break;
-          case 2: 
-            reinterpret_cast<uint16_t *>(srcpu)[x] = (uint16_t)clamp(du, minUV, maxUV); 
-            reinterpret_cast<uint16_t *>(srcpv)[x] = (uint16_t)clamp(dv, minUV, maxUV); 
-            break;
-          default: // case 4:
-            reinterpret_cast<float *>(srcpu)[x] = (float)clamp(du, minUV, maxUV); 
-            reinterpret_cast<float *>(srcpv)[x] = (float)clamp(dv, minUV, maxUV); 
-            break;
-          }
-        }
-        srcpu += src_pitch;
-        srcpv += src_pitch;
-      }
-    } else {
-		if (dither) {
-			for (int y=0; y<height; ++y) {
-				const int _y = (y << 2) & 0xC;
-				for (int x=0; x<row_size; ++x) {
-					const int _dither = ditherMap4[(x&0x3)|_y];
-					/* hue and saturation */
-					const int u = srcpu[x];
-					const int v = srcpv[x];
-					const int mapped = mapUV[(u<<12) | (v<<4) | _dither];
-					srcpu[x] = (BYTE)(mapped&0xff);
-					srcpv[x] = (BYTE)(mapped>>8);
-				}
-				srcpu += src_pitch;
-				srcpv += src_pitch;
-			}
-		}
-		else {
-			for (int y=0; y<height; ++y) {
-				for (int x=0; x<row_size; ++x) {
-					/* hue and saturation */
-					const int u = srcpu[x];
-					const int v = srcpv[x];
-					const int mapped = mapUV[(u<<8) | v];
-					srcpu[x] = (BYTE)(mapped&0xff);
-					srcpv[x] = (BYTE)(mapped>>8);
-				}
-				srcpu += src_pitch;
-				srcpv += src_pitch;
-			}
-		}
-    }
-	}
-
-	return src;
+    return src;
 }
 
 AVSValue __cdecl Tweak::Create(AVSValue args, void* user_data, IScriptEnvironment* env)
 {
-  return new Tweak(args[0].AsClip(),
-					args[1].AsDblDef(0.0),		// hue
-					args[2].AsDblDef(1.0),		// sat
-					args[3].AsDblDef(0.0),		// bright
-					args[4].AsDblDef(1.0),		// cont
-					args[5].AsBool(true),      // coring
-					args[6].AsBool(false),     // sse
-					args[7].AsDblDef(0.0),     // startHue
-					args[8].AsDblDef(360.0),   // endHue
-					args[9].AsDblDef(150.0),   // maxSat
-					args[10].AsDblDef(0.0),    // minSat
-					args[11].AsDblDef(16.0/1.19),// interp
-					args[12].AsBool(false),    // dither
-          args[13].AsBool(false),    // realcalc PF force no-lookup (pure double calc/pixel) for 8 bit
-          env);
+    return new Tweak(args[0].AsClip(),
+        args[1].AsDblDef(0.0),     // hue
+        args[2].AsDblDef(1.0),     // sat
+        args[3].AsDblDef(0.0),     // bright
+        args[4].AsDblDef(1.0),     // cont
+        args[5].AsBool(true),      // coring
+        args[6].AsBool(false),     // sse
+        args[7].AsDblDef(0.0),     // startHue
+        args[8].AsDblDef(360.0),   // endHue
+        args[9].AsDblDef(150.0),   // maxSat
+        args[10].AsDblDef(0.0),    // minSat
+        args[11].AsDblDef(16.0 / 1.19),// interp
+        args[12].AsBool(false),    // dither
+        args[13].AsBool(false),    // realcalc: force no-lookup (pure double calc/pixel) for 8 bit
+        env);
 }
 
 /**********************
 ******   MaskHS   *****
 **********************/
 
-MaskHS::MaskHS( PClip _child, double startHue, double endHue, double _maxSat, double _minSat, bool coring,
-                IScriptEnvironment* env )
-  : GenericVideoFilter(_child)
+MaskHS::MaskHS(PClip _child, double startHue, double endHue, double _maxSat, double _minSat, bool coring,
+    IScriptEnvironment* env)
+    : GenericVideoFilter(_child)
 {
-  if (vi.IsRGB())
+    if (vi.IsRGB())
         env->ThrowError("MaskHS: YUV data only (no RGB)");
 
-  if (vi.NumComponents() == 1) {
-      env->ThrowError("MaskHS: clip must contain chroma.");
-  }
+    if (vi.NumComponents() == 1) {
+        env->ThrowError("MaskHS: clip must contain chroma.");
+    }
 
-  if (startHue < 0.0 || startHue >= 360.0)
+    if (startHue < 0.0 || startHue >= 360.0)
         env->ThrowError("MaskHS: startHue must be greater than or equal to 0.0 and less than 360.0");
 
-  if (endHue <= 0.0 || endHue > 360.0)
+    if (endHue <= 0.0 || endHue > 360.0)
         env->ThrowError("MaskHS: endHue must be greater than 0.0 and less than or equal to 360.0");
 
-  if (_minSat >= _maxSat)
+    if (_minSat >= _maxSat)
         env->ThrowError("MaskHS: MinSat must be less than MaxSat");
 
-  if (_minSat < 0.0 || _minSat >= 150.0)
+    if (_minSat < 0.0 || _minSat >= 150.0)
         env->ThrowError("MaskHS: minSat must be greater than or equal to 0 and less than 150.");
 
-  if (_maxSat <= 0.0 || _maxSat > 150.0)
+    if (_maxSat <= 0.0 || _maxSat > 150.0)
         env->ThrowError("MaskHS: maxSat must be greater than 0 and less than or equal to 150.");
 
 
-  const BYTE maxY = coring ? 235 : 255;
-  const BYTE minY = coring ? 16 : 0;
+    const BYTE maxY = coring ? 235 : 255;
+    const BYTE minY = coring ? 16 : 0;
 
-  // 100% equals sat=119 (= maximal saturation of valid RGB (R=255,G=B=0)
-  // 150% (=180) - 100% (=119) overshoot
-  const double minSat = 1.19 * _minSat;
-  const double maxSat = 1.19 * _maxSat;
+    // 100% equals sat=119 (= maximal saturation of valid RGB (R=255,G=B=0)
+    // 150% (=180) - 100% (=119) overshoot
+    const double minSat = 1.19 * _minSat;
+    const double maxSat = 1.19 * _maxSat;
 
-  // apply mask
-  for (int u = 0; u < 256; u++) {
-    const double destu = u-128;
-    for (int v = 0; v < 256; v++) {
-      const double destv = v-128;
-      int iSat = 0; // won't be used in MaskHS; interpolation is skipped since p==0:
-      if (ProcessPixel(destv, destu, startHue, endHue, maxSat, minSat, 0.0, iSat)) {
-        mapY[(u<<8)|v] = maxY;
-      } else {
-        mapY[(u<<8)|v] = minY;
-      }
+    // apply mask
+    for (int u = 0; u < 256; u++) {
+        const double destu = u - 128;
+        for (int v = 0; v < 256; v++) {
+            const double destv = v - 128;
+            int iSat = 0; // won't be used in MaskHS; interpolation is skipped since p==0:
+            if (ProcessPixel(destv, destu, startHue, endHue, maxSat, minSat, 0.0, iSat)) {
+                mapY[(u << 8) | v] = maxY;
+            }
+            else {
+                mapY[(u << 8) | v] = minY;
+            }
+        }
     }
-  }
-// #define MaskPointResizing
+    // #define MaskPointResizing
 #ifndef MaskPointResizing
-  vi.width  >>= vi.GetPlaneWidthSubsampling(PLANAR_U);
-  vi.height >>= vi.GetPlaneHeightSubsampling(PLANAR_U);
+    vi.width >>= vi.GetPlaneWidthSubsampling(PLANAR_U);
+    vi.height >>= vi.GetPlaneHeightSubsampling(PLANAR_U);
 #endif
-  vi.pixel_type = VideoInfo::CS_Y8;
+    vi.pixel_type = VideoInfo::CS_Y8;
 }
 
 
 
 PVideoFrame __stdcall MaskHS::GetFrame(int n, IScriptEnvironment* env)
 {
-	PVideoFrame src = child->GetFrame(n, env);
-	PVideoFrame dst = env->NewVideoFrame(vi);
+    PVideoFrame src = child->GetFrame(n, env);
+    PVideoFrame dst = env->NewVideoFrame(vi);
 
-	uint8_t* dstp = dst->GetWritePtr();
-	int dst_pitch = dst->GetPitch();
+    uint8_t* dstp = dst->GetWritePtr();
+    int dst_pitch = dst->GetPitch();
 
-	// show mask
-	if (child->GetVideoInfo().IsYUY2()) {
-		const uint8_t* srcp = src->GetReadPtr();
-		const int src_pitch = src->GetPitch();
-		const int height = src->GetHeight();
-
-#ifndef MaskPointResizing
-		const int row_size = src->GetRowSize() >> 2;
-
-		for (int y = 0; y < height; y++) {
-			for (int x=0; x < row_size; x++) {
-				dstp[x] = mapY[( (srcp[x*4+1])<<8 ) | srcp[x*4+3]];
-			}
-			srcp += src_pitch;
-			dstp += dst_pitch;
-		}
-#else
-		const int row_size = src->GetRowSize();
-
-		for (int y = 0; y < height; y++) {
-			for (int xs=0, xd=0; xs < row_size; xs+=4, xd+=2) {
-				const BYTE mapped = mapY[( (srcp[xs+1])<<8 ) | srcp[xs+3]];
-				dstp[xd]   = mapped;
-				dstp[xd+1] = mapped;
-			}
-			srcp += src_pitch;
-			dstp += dst_pitch;
-		}
-#endif
-	} else if (child->GetVideoInfo().IsPlanar()) {
-		const int srcu_pitch = src->GetPitch(PLANAR_U);
-		const uint8_t* srcpu = src->GetReadPtr(PLANAR_U);
-		const uint8_t* srcpv = src->GetReadPtr(PLANAR_V);
-		const int row_sizeu = src->GetRowSize(PLANAR_U);
-		const int heightu = src->GetHeight(PLANAR_U);
+    // show mask
+    if (child->GetVideoInfo().IsYUY2()) {
+        const uint8_t* srcp = src->GetReadPtr();
+        const int src_pitch = src->GetPitch();
+        const int height = src->GetHeight();
 
 #ifndef MaskPointResizing
-		for (int y=0; y<heightu; ++y) {
-			for (int x=0; x<row_sizeu; ++x) {
-				dstp[x] = mapY[( (srcpu[x])<<8 ) | srcpv[x]];
-			}
-			dstp  += dst_pitch;
-			srcpu += srcu_pitch;
-			srcpv += srcu_pitch;
-		}
+        const int row_size = src->GetRowSize() >> 2;
+
+        for (int y = 0; y < height; y++) {
+            for (int x = 0; x < row_size; x++) {
+                dstp[x] = mapY[((srcp[x * 4 + 1]) << 8) | srcp[x * 4 + 3]];
+            }
+            srcp += src_pitch;
+            dstp += dst_pitch;
+        }
 #else
-		const int swidth = child->GetVideoInfo().GetPlaneWidthSubsampling(PLANAR_U);
-		const int sheight = child->GetVideoInfo().GetPlaneHeightSubsampling(PLANAR_U);
-		const int sw = 1<<swidth;
-		const int sh = 1<<sheight;
+        const int row_size = src->GetRowSize();
 
-		const int dpitch = dst_pitch << sheight;
-		for (int y=0; y<heightu; ++y) {
-			for (int x=0; x<row_sizeu; ++x) {
-				const BYTE mapped = mapY[( (srcpu[x])<<8 ) | srcpv[x]];
-				const int sx = x<<swidth;
-
-				for (int lumv=0; lumv<sh; ++lumv) {
-					const int sy = lumv*dst_pitch+sx;
-
-					for (int lumh=0; lumh<sw; ++lumh) {
-						dstp[sy+lumh] = mapped;
-					}
-				}
-			}
-			dstp  += dpitch;
-			srcpu += srcu_pitch;
-			srcpv += srcu_pitch;
-		}
+        for (int y = 0; y < height; y++) {
+            for (int xs = 0, xd = 0; xs < row_size; xs += 4, xd += 2) {
+                const BYTE mapped = mapY[((srcp[xs + 1]) << 8) | srcp[xs + 3]];
+                dstp[xd] = mapped;
+                dstp[xd + 1] = mapped;
+            }
+            srcp += src_pitch;
+            dstp += dst_pitch;
+        }
 #endif
-	}
-	return dst;
+    }
+    else if (child->GetVideoInfo().IsPlanar()) {
+        const int srcu_pitch = src->GetPitch(PLANAR_U);
+        const uint8_t* srcpu = src->GetReadPtr(PLANAR_U);
+        const uint8_t* srcpv = src->GetReadPtr(PLANAR_V);
+        const int row_sizeu = src->GetRowSize(PLANAR_U);
+        const int heightu = src->GetHeight(PLANAR_U);
+
+#ifndef MaskPointResizing
+        for (int y = 0; y < heightu; ++y) {
+            for (int x = 0; x < row_sizeu; ++x) {
+                dstp[x] = mapY[((srcpu[x]) << 8) | srcpv[x]];
+            }
+            dstp += dst_pitch;
+            srcpu += srcu_pitch;
+            srcpv += srcu_pitch;
+        }
+#else
+        const int swidth = child->GetVideoInfo().GetPlaneWidthSubsampling(PLANAR_U);
+        const int sheight = child->GetVideoInfo().GetPlaneHeightSubsampling(PLANAR_U);
+        const int sw = 1 << swidth;
+        const int sh = 1 << sheight;
+
+        const int dpitch = dst_pitch << sheight;
+        for (int y = 0; y < heightu; ++y) {
+            for (int x = 0; x < row_sizeu; ++x) {
+                const BYTE mapped = mapY[((srcpu[x]) << 8) | srcpv[x]];
+                const int sx = x << swidth;
+
+                for (int lumv = 0; lumv < sh; ++lumv) {
+                    const int sy = lumv*dst_pitch + sx;
+
+                    for (int lumh = 0; lumh < sw; ++lumh) {
+                        dstp[sy + lumh] = mapped;
+                    }
+                }
+            }
+            dstp += dpitch;
+            srcpu += srcu_pitch;
+            srcpv += srcu_pitch;
+        }
+#endif
+    }
+    return dst;
 }
 
 
 
 AVSValue __cdecl MaskHS::Create(AVSValue args, void* user_data, IScriptEnvironment* env)
 {
-	return new MaskHS(args[0].AsClip(),
-					  args[1].AsDblDef(  0.0),    // startHue
-					  args[2].AsDblDef(360.0),    // endHue
-					  args[3].AsDblDef(150.0),    // maxSat
-					  args[4].AsDblDef(  0.0),    // minSat
-					  args[5].AsBool(false),      // coring
-					  env);
+    return new MaskHS(args[0].AsClip(),
+        args[1].AsDblDef(0.0),    // startHue
+        args[2].AsDblDef(360.0),    // endHue
+        args[3].AsDblDef(150.0),    // maxSat
+        args[4].AsDblDef(0.0),    // minSat
+        args[5].AsBool(false),      // coring
+        env);
 }
 
