@@ -602,7 +602,7 @@ static bool ProcessPixel(double X, double Y, double startHue, double endHue,
 	return true;
 }
 
-//PF
+// for float
 static bool ProcessPixelUnscaled(double X, double Y, double startHue, double endHue,
   double maxSat, double minSat, double p, double &dSat)
 {
@@ -633,7 +633,7 @@ static bool ProcessPixelUnscaled(double X, double Y, double startHue, double end
   // minSat-p <= (U^2 + V^2) <= maxSat+p
   if (W <= min*min || max*max <= W) return false; // don't adjust
 
-                                                  // Interpolate saturation value
+  // Interpolate saturation value
   const double holdSat = W < 180.0*180.0 ? sqrt(W) : 180.0;
 
   if (holdSat < minSat) { // within p of lower range
@@ -651,10 +651,10 @@ static bool ProcessPixelUnscaled(double X, double Y, double startHue, double end
 **********************/
 
 Tweak::Tweak(PClip _child, double _hue, double _sat, double _bright, double _cont, bool _coring, bool _sse,
-            double startHue, double endHue, double _maxSat, double _minSat, double p,
+            double _startHue, double _endHue, double _maxSat, double _minSat, double p,
             bool _dither, bool _realcalc, IScriptEnvironment* env)
   : GenericVideoFilter(_child), coring(_coring), sse(_sse), dither(_dither), realcalc(_realcalc), 
-  dhue(_hue), dsat(_sat), dbright(_bright), dcont(_cont), dstartHue(startHue), dendHue(endHue), 
+  dhue(_hue), dsat(_sat), dbright(_bright), dcont(_cont), dstartHue(_startHue), dendHue(_endHue), 
   dmaxSat(_maxSat), dminSat(_minSat), dinterp(p),
   map(nullptr),
   mapUV(nullptr), env2_unsafe(static_cast<IScriptEnvironment2*>(env))
@@ -664,7 +664,7 @@ Tweak::Tweak(PClip _child, double _hue, double _sat, double _bright, double _con
 
   // Flag to skip special processing if doing all pixels
   // If defaults, don't check for ranges, just do all
-  const bool allPixels = (startHue == 0.0 && endHue == 360.0 && _maxSat == 150.0 && _minSat == 0.0);
+  const bool allPixels = (_startHue == 0.0 && _endHue == 360.0 && _maxSat == 150.0 && _minSat == 0.0);
 
 // The new "mapping" C code is faster than the iSSE code on my 3GHz P4HT - Make it optional
   if (sse && (!allPixels || coring || dither || !vi.IsYUY2()))
@@ -677,10 +677,10 @@ Tweak::Tweak(PClip _child, double _hue, double _sat, double _bright, double _con
       env->ThrowError("Tweak: bright and cont are the only options available for greyscale.");
   }
 
-  if (startHue < 0.0 || startHue >= 360.0)
+  if (_startHue < 0.0 || _startHue >= 360.0)
         env->ThrowError("Tweak: startHue must be greater than or equal to 0.0 and less than 360.0");
 
-  if (endHue <= 0.0 || endHue > 360.0)
+  if (_endHue <= 0.0 || _endHue > 360.0)
         env->ThrowError("Tweak: endHue must be greater than 0.0 and less than or equal to 360.0");
 
   if (_minSat >= _maxSat)
@@ -695,7 +695,7 @@ Tweak::Tweak(PClip _child, double _hue, double _sat, double _bright, double _con
   if (p>=150.0 || p<0.0)
         env->ThrowError("Tweak: Interp must be greater than or equal to 0 and less than 150.");
 
-  Sat = (int) (_sat * 512);
+  Sat = (int) (_sat * 512);    // 9 bits extra precision
   Cont = (int) (_cont * 512);
   Bright = (int) _bright;
 
@@ -710,7 +710,7 @@ Tweak::Tweak(PClip _child, double _hue, double _sat, double _bright, double _con
     realcalc = true; // 16/32 bit: no lookup tables.
 
   if(!(realcalc && vi.IsPlanar()))
-  { // no need for lookup
+  { // fill brightness/constrast lookup tables
     if (dither) {
       map = static_cast<uint8_t*>(env2_unsafe->Allocate(256 * 256, 8, AVS_NORMAL_ALLOC));
       if (!map) {
@@ -765,8 +765,9 @@ Tweak::Tweak(PClip _child, double _hue, double _sat, double _bright, double _con
 
   const int maxUV = coring ? 240 : 255;
   const int minUV = coring ? 16 : 0;
+
   if (!(realcalc && vi.IsPlanar()))
-  { // no need for lookup
+  { // fill lookup tables for UV
     if (dither) {
       mapUV = static_cast<uint16_t*>(env2_unsafe->Allocate(256 * 256 * 16 * sizeof(uint16_t), 8, AVS_NORMAL_ALLOC));
       if (!mapUV) {
@@ -779,8 +780,8 @@ Tweak::Tweak(PClip _child, double _hue, double _sat, double _bright, double _con
           for (int v = 0; v < 256; v++) {
             const double destv = ((v << 4 | d) - 7.5) / 16.0 - 128.0;
             int iSat = Sat;
-            if (allPixels || ProcessPixel(destv, destu, startHue, endHue, maxSat, minSat, p, iSat)) {
-              int du = int((destu*COS + destv*SIN) * iSat + 0x100) >> 9;
+            if (allPixels || ProcessPixel(destv, destu, _startHue, _endHue, maxSat, minSat, p, iSat)) {
+              int du = int((destu*COS + destv*SIN) * iSat + 0x100) >> 9; // back from the extra 9 bits Sat precision
               int dv = int((destv*COS - destu*SIN) * iSat + 0x100) >> 9;
               du = clamp(du + 128, minUV, maxUV);
               dv = clamp(dv + 128, minUV, maxUV);
@@ -804,8 +805,8 @@ Tweak::Tweak(PClip _child, double _hue, double _sat, double _bright, double _con
         for (int v = 0; v < 256; v++) {
           const double destv = v - 128;
           int iSat = Sat;
-          if (allPixels || ProcessPixel(destv, destu, startHue, endHue, maxSat, minSat, p, iSat)) {
-            int du = int((destu*COS + destv*SIN) * iSat) >> 9;
+          if (allPixels || ProcessPixel(destv, destu, _startHue, _endHue, maxSat, minSat, p, iSat)) {
+            int du = int((destu*COS + destv*SIN) * iSat) >> 9; // back from the extra 9 bits Sat precision
             int dv = int((destv*COS - destu*SIN) * iSat) >> 9;
             du = clamp(du + 128, minUV, maxUV);
             dv = clamp(dv + 128, minUV, maxUV);

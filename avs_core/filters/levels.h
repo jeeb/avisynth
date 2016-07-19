@@ -120,7 +120,7 @@ private:
     int Sat, Bright, Cont;
     bool coring, sse, dither;
     
-    bool realcalc; // PF
+    bool realcalc; // no lookup, realtime calculation, always for 16/32 bits
     double dhue, dsat, dbright, dcont, dstartHue, dendHue, dmaxSat, dminSat, dinterp;
 
     BYTE *map;
@@ -145,14 +145,6 @@ public:
 private:
     BYTE mapY[256*256];
 };
-
-
-/* Helper function for Tweak and MaskHS filters */
-bool ProcessPixel(int X, int Y, double startHue, double endHue,
-                  double maxSat, double minSat, double p, int &iSat);
-
-bool ProcessPixelUnscaled(int X, int Y, double startHue, double endHue,
-  double maxSat, double minSat, double p, double &iSat);
 
 #endif  // __Levels_H__
 
