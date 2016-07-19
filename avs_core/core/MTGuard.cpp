@@ -246,9 +246,9 @@ PClip MTGuard::Create(MtMode mode, PClip filterInstance, std::unique_ptr<const F
     }
     default:
         // There are broken plugins out there in the wild that have (GetVersion() >= 5), but still 
-        // return garbage for SetCacheHints(). This default label should also catch those.
+        // return garbage for SetCacheHints(). However, this case should be recognized and
+        // handled earlier, so we can never get to this default-branch. If we do, assume the worst.
         assert(0);
-        // TODO: Log warning about probably broken plugin
         return new MTGuard(filterInstance, MT_SERIALIZED, NULL, env);
     }
 }

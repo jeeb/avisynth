@@ -3,6 +3,7 @@
 
 #include <avisynth.h>
 #include <algorithm>
+#include <string>
 
 class ClipDataStore;
 
@@ -17,8 +18,15 @@ typedef enum _ELogLevel
 
 typedef enum _ELogTicketType
 {
-    LOGTICKET_W1000 = 1000,
-    LOGTICKET_W1001 = 1001,
+    LOGTICKET_W1000 = 1000, // leaks during shutdown
+    LOGTICKET_W1001 = 1001, // source plugin with no mt-mode
+    LOGTICKET_W1002 = 1002, // buggy SetCacheHints()
+    LOGTICKET_W1003 = 1003, // too stringent memory limit
+    LOGTICKET_W1004 = 1004, // filter completely without mt-mode
+    LOGTICKET_W1005 = 1005, // filter with inconsequent MT-modes
+    LOGTICKET_W1006 = 1006, // filter with redundant MT-modes
+    LOGTICKET_W1007 = 1007, // user should try 64-bit AVS for more memory
+    LOGTICKET_W1008 = 1008, // multiple plugins define the same function
 } ELogTicketType;
 
 class OneTimeLogTicket
@@ -26,9 +34,11 @@ class OneTimeLogTicket
 public:
     ELogTicketType _type;
     const AVSFunction *_function = nullptr;
+    const std::string _string;
 
     OneTimeLogTicket(ELogTicketType type);
     OneTimeLogTicket(ELogTicketType type, const AVSFunction *func);
+    OneTimeLogTicket(ELogTicketType type, const std::string &str);
     bool operator==(const OneTimeLogTicket &other) const;
 };
 

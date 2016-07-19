@@ -6,7 +6,7 @@
 #include <vector>
 #include "internal.h"
 
-class IScriptEnvironment2;
+class InternalEnvironment;
 struct PluginFile;
 
 struct StdStriComparer
@@ -22,7 +22,7 @@ typedef std::map<std::string,FunctionList,StdStriComparer> FunctionMap;
 class PluginManager
 {
 private:
-  IScriptEnvironment2 *Env;
+  InternalEnvironment *Env;
   PluginFile *PluginInLoad;
   std::vector<std::string> AutoloadDirs;
   std::vector<PluginFile> AutoLoadedImports;
@@ -48,7 +48,7 @@ private:
 
 
 public:
-  PluginManager(IScriptEnvironment2* env);
+  PluginManager(InternalEnvironment* env);
   ~PluginManager();
 
   void ClearAutoloadDirs();

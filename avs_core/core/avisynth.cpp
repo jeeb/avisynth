@@ -531,7 +531,8 @@ public:
 
     static bool ClipSpecifiesMtMode(const PClip &clip)
     {
-        return (clip->GetVersion() >= 5) && (clip->SetCacheHints(CACHE_GET_MTMODE, 0) != 0);
+        int val = clip->SetCacheHints(CACHE_GET_MTMODE, 0);
+        return (clip->GetVersion() >= 5) && (val > MT_INVALID) && (val < MT_MODE_COUNT);
     }
 
     static MtMode GetInstanceMode(const PClip &clip, MtMode defaultMode)
@@ -548,7 +549,6 @@ public:
 
         return invokeModeForced ? invokeMode : instanceMode;
     }
-
 
     static bool UsesDefaultMtMode(const PClip &clip, const AVSFunction *invokeCall, const InternalEnvironment* env)
     {
@@ -571,10 +571,15 @@ OneTimeLogTicket::OneTimeLogTicket(ELogTicketType type, const AVSFunction *func)
     : _type(type), _function(func)
 {}
 
+OneTimeLogTicket::OneTimeLogTicket(ELogTicketType type, const std::string &str)
+    : _type(type), _string(str)
+{}
+
 bool OneTimeLogTicket::operator==(const OneTimeLogTicket &other) const
 {
     return (_type == other._type)
-        && (_function == other._function);
+        && (_function == other._function)
+        && (_string.compare(other._string) == 0);
 }
 
 namespace std
@@ -584,8 +589,11 @@ namespace std
     {
         std::size_t operator()(const OneTimeLogTicket& k) const
         {
+            // TODO: This is a pretty poor combination function for hashes.
+            // Find something better than a simple XOR.
             return hash<int>()(k._type)
-                 ^ hash<void*>()((void*)k._function);
+                 ^ hash<void*>()((void*)k._function)
+                 ^ hash<std::string>()((std::string)k._string);
         }
     };
 }
@@ -982,7 +990,7 @@ void __stdcall ScriptEnvironment::LogMsg(int level, const char *fmt, ...)
 
 void __stdcall ScriptEnvironment::LogMsg_valist(int level, const char *fmt, va_list va)
 {
-    // Don't out message if our logging level is not high enough
+    // Don't output message if our logging level is not high enough
     if (level > LogLevel) {
         return;
     }
@@ -1712,6 +1720,24 @@ VideoFrame* ScriptEnvironment::GetNewFrame(size_t vfb_size)
    *   Oh boy...
    * -----------------------------------------------------------
    */
+
+  // See if we could benefit from 64-bit Avisynth
+  if (sizeof(void*) == 4)
+  {
+      // Get system memory information
+      MEMORYSTATUSEX memstatus;
+      memstatus.dwLength = sizeof(memstatus);
+      GlobalMemoryStatusEx(&memstatus);
+
+      BOOL using_wow64;
+      if ( IsWow64Process(GetCurrentProcess(), &using_wow64)     // if running 32-bits on a 64-bit OS
+       &&  (memstatus.ullAvailPhys > 1024ull * 1024 * 1024) )    // if at least 1GB of system memory is still free
+      {
+          OneTimeLogTicket ticket(LOGTICKET_W1007);
+          LogMsgOnce(ticket, LOGLEVEL_INFO, "We have run out of memory, but your system still has some free RAM left. You might benefit from a 64-bit build of Avisynth+.");
+      }
+  }
+
   ThrowError("Could not allocate video frame. Out of memory. memory_max = %I64d, memory_used = %I64d Request=%Iu", memory_max, memory_used.load(), vfb_size);
   return NULL;
 }
@@ -1757,7 +1783,6 @@ void ScriptEnvironment::EnsureMemoryLimit(size_t request)
     ++cit
     )
   {
-
     // Oh darn. We'd need more memory than we are allowed to use.
     // Let's reduce the amount of caching.
 
@@ -1772,6 +1797,12 @@ void ScriptEnvironment::EnsureMemoryLimit(size_t request)
       shrinkcount++;
     } // if
   } // for cit
+
+  if (shrinkcount != 0)
+  {
+      LogMsg(LOGLEVEL_WARNING, "Caches have been shrunk due to low memory limit. This will probably degrade performance. You can try increasing the limit using SetMemoryMax().");
+  }
+
   /* -----------------------------------------------------------
   * Try to free up memory that we've just released from a cache
   * -----------------------------------------------------------
@@ -1858,7 +1889,7 @@ PVideoFrame ScriptEnvironment::NewPlanarVideoFrame(int row_size, int height, int
 
   size_t size = pitchY * height + 2 * pitchUV * heightUV;
   size = size + align -1;
-
+  
   VideoFrame *res = GetNewFrame(size);
 
   int  offsetU, offsetV;
@@ -2423,63 +2454,99 @@ success:;
         throw;
     }
     
-    MtMode mtmode = DefaultMtMode;
-
     // Determine MT-mode, as if this instance had not called Invoke()
     // in its constructor. Note that this is not necessary the final
     // MT-mode.
     if (fret.IsClip())
     {
         const PClip &clip = fret.AsClip();
-        mtmode = MtModeEvaluator::GetMtMode(clip, f, this);
-    }
 
-    if (chainedCtor)
-    {
-        // Propagate information about our children's MT-safety
-        // to our parent.
-        invoke_stack.top()->Accumulate(mthelper);
+        bool is_mtmode_forced;
+        this->GetFilterMTMode(f, &is_mtmode_forced);
+        MtMode mtmode = MtModeEvaluator::GetMtMode(clip, f, this);
 
-        // Add our own MT-mode's information to the parent.
-        invoke_stack.top()->Accumulate(mtmode);
-
-        *result = fret;
-    }
-    else if (fret.IsClip())
-    {
-        const PClip &clip = fret.AsClip();
-
-        mtmode = mthelper.GetFinalMode(mtmode);
-
-        // Special handling for source filters
-        if (isSourceFilter
-            && MtModeEvaluator::UsesDefaultMtMode(clip, f, this)
-            && (MT_SERIALIZED != mtmode))
+        if (chainedCtor)
         {
-            mtmode = MT_SERIALIZED;
-            OneTimeLogTicket ticket(LOGTICKET_W1001, f);
-            LogMsgOnce(ticket, LOGLEVEL_INFO, "%s() does not have any MT-mode specification. Because it is a source filter, it will use MT_SERIALIZED instead of the default MT mode.", f->canon_name);
+            // Propagate information about our children's MT-safety
+            // to our parent.
+            invoke_stack.top()->Accumulate(mthelper);
+
+            // Add our own MT-mode's information to the parent.
+            invoke_stack.top()->Accumulate(mtmode);
+
+            *result = fret;
         }
-
-
-        PClip guard = MTGuard::Create(mtmode, clip, std::move(funcCtor), this);
-        *result = Cache::Create(guard, NULL, this);
-
-        // Activate the guard exists. This allows us to exit the critical
-        // section encompassing the filter when execution leaves its routines
-        // to call other filters.
-        if (MT_SERIALIZED == mtmode)
+        else
         {
-            for (auto &ge : GuardExits)
-            {
-                ge->Activate(guard);
+            if (!is_mtmode_forced) {
+                mtmode = mthelper.GetFinalMode(mtmode);
             }
+
+            // Special handling for source filters
+            if (isSourceFilter
+                && MtModeEvaluator::UsesDefaultMtMode(clip, f, this)
+                && (MT_SERIALIZED != mtmode))
+            {
+                mtmode = MT_SERIALIZED;
+                OneTimeLogTicket ticket(LOGTICKET_W1001, f);
+                LogMsgOnce(ticket, LOGLEVEL_INFO, "%s() does not have any MT-mode specification. Because it is a source filter, it will use MT_SERIALIZED instead of the default MT mode.", f->canon_name);
+            }
+
+
+            PClip guard = MTGuard::Create(mtmode, clip, std::move(funcCtor), this);
+            *result = Cache::Create(guard, NULL, this);
+
+            // Activate the guard exists. This allows us to exit the critical
+            // section encompassing the filter when execution leaves its routines
+            // to call other filters.
+            if (MT_SERIALIZED == mtmode)
+            {
+                for (auto &ge : GuardExits)
+                {
+                    ge->Activate(guard);
+                }
+            }
+
+            IClip *clip_raw = (IClip*)((void*)clip);
+            ClipDataStore *data = this->ClipData(clip_raw);
+            data->CreatedByInvoke = true;
+        } // if (chainedCtor)
+
+
+        // Check that the filter returns zero for unknown queries in SetCacheHints().
+        // This is actually something we rely upon.
+        if ( (clip->GetVersion() >= 5) && (0 != clip->SetCacheHints(CACHE_USER_CONSTANTS, 0)) )
+        {
+            OneTimeLogTicket ticket(LOGTICKET_W1002, f);
+            LogMsgOnce(ticket, LOGLEVEL_WARNING, "%s() violates semantic contracts and may cause undefined behavior. Please inform the author of the plugin.", f->canon_name);
         }
 
-        IClip *clip_raw = (IClip*)((void*)clip);
-        ClipDataStore *data = this->ClipData(clip_raw);
-        data->CreatedByInvoke = true;
-    }
+        // Warn user if the MT-mode of this filter is unknown
+        if (MtModeEvaluator::UsesDefaultMtMode(clip, f, this) && !isSourceFilter)
+        {
+            OneTimeLogTicket ticket(LOGTICKET_W1004, f);
+            LogMsgOnce(ticket, LOGLEVEL_WARNING, "%s() has no MT-mode set and will use the default MT-mode. This might be dangerous.", f->canon_name);
+        }
+
+        // Warn user if he forced an MT-mode that differs from the one specified by the filter itself
+        if (is_mtmode_forced
+            && MtModeEvaluator::ClipSpecifiesMtMode(clip)
+            && MtModeEvaluator::GetInstanceMode(clip, this->GetDefaultMtMode()) != mtmode)
+        {
+            OneTimeLogTicket ticket(LOGTICKET_W1005, f);
+            LogMsgOnce(ticket, LOGLEVEL_WARNING, "%s() specifies an MT-mode for itself, but a script forced a different one. Either the plugin or the script is erronous.", f->canon_name);
+        }
+
+        // Inform user if a script unnecessarily specifies an MT-mode for this filter
+        if (!is_mtmode_forced
+            && this->FilterHasMtMode(f)
+            && MtModeEvaluator::ClipSpecifiesMtMode(clip))
+        {
+            OneTimeLogTicket ticket(LOGTICKET_W1006, f);
+            LogMsgOnce(ticket, LOGLEVEL_INFO, "Ignoring unnecessary MT-mode specification for %s() by script.", f->canon_name);
+        }
+
+    } // if (fret.IsClip())
     else
     {
         *result = fret;

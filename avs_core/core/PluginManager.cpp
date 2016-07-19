@@ -3,6 +3,7 @@
 #include <unordered_set>
 #include <avisynth_c.h>
 #include "strings.h"
+#include "InternalEnvironment.h"
 #include <cassert>
 
 typedef const char* (__stdcall *AvisynthPluginInit3Func)(IScriptEnvironment* env, const AVS_Linkage* const vectors);
@@ -390,7 +391,7 @@ PluginFile::PluginFile(const std::string &filePath) :
 ---------------------------------------------------------------------------------
 */
 
-PluginManager::PluginManager(IScriptEnvironment2* env) :
+PluginManager::PluginManager(InternalEnvironment* env) :
   Env(env), PluginInLoad(NULL), AutoloadExecuted(false), Autoloading(false)
 {
   env->SetGlobalVar("$PluginFunctions$", AVSValue(""));
@@ -719,11 +720,26 @@ void PluginManager::AddFunction(const char* name, const char* params, IScriptEnv
       newFunc = new AVSFunction(name, NULL, params, apply, user_data);
       assert(newFunc->IsScriptFunction());
   }
+
+  // Warn user if filter names can become ambiguous
+  if (functions.end() != functions.find(newFunc->name))
+  {
+      OneTimeLogTicket ticket(LOGTICKET_W1008, newFunc->name);
+      Env->LogMsgOnce(ticket, LOGLEVEL_WARNING, "%s() is defined by multiple plugins. Calls to this filter might be ambiguous and could result in the wrong function being called.", newFunc->name);
+  }
+
   functions[newFunc->name].push_back(newFunc);
   UpdateFunctionExports(newFunc->name, newFunc->param_types, exportVar);
 
   if (NULL != newFunc->canon_name)
   {
+      // Warn user if filter names can become ambiguous
+      if (functions.end() != functions.find(newFunc->canon_name))
+      {
+          OneTimeLogTicket ticket(LOGTICKET_W1008, newFunc->canon_name);
+          Env->LogMsgOnce(ticket, LOGLEVEL_WARNING, "%s() is defined by multiple plugins. Calls to this filter might be ambiguous and could result in the wrong function being called.", newFunc->canon_name);
+      }
+
       functions[newFunc->canon_name].push_back(newFunc);
       UpdateFunctionExports(newFunc->canon_name, newFunc->param_types, exportVar);
   }
