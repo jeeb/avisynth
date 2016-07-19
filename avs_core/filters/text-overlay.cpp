@@ -37,6 +37,7 @@
 #include "../convert/convert.h"  // for RGB2YUV
 #include <avs/win.h>
 #include <sstream>
+#include <cstdint>
 #include <avs/config.h>
 #include <avs/minmax.h>
 #include <emmintrin.h>
