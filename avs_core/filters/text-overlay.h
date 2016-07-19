@@ -61,7 +61,7 @@ public:
 
 private:
   void ApplyYV12(BYTE* buf, int pitch, int UVpitch,BYTE* bufV,BYTE* bufU);
-  void ApplyPlanar(BYTE* buf, int pitch, int UVpitch,BYTE* bufV,BYTE* bufU, int shiftX, int shiftY);
+  void ApplyPlanar(BYTE* buf, int pitch, int UVpitch,BYTE* bufV,BYTE* bufU, int shiftX, int shiftY, int pixelsize);
   void ApplyYUY2(BYTE* buf, int pitch);
   void ApplyRGB24(BYTE* buf, int pitch);
   void ApplyRGB32(BYTE* buf, int pitch);  
