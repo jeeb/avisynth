@@ -67,7 +67,18 @@ public:
   }
   const VideoInfo& __stdcall GetVideoInfo() { return vi; }
   bool __stdcall GetParity(int n) { return (vi.IsFieldBased() ? (n&1) : false) ^ parity; }
-  int __stdcall SetCacheHints(int cachehints,int frame_range) { return 0; };
+  int __stdcall SetCacheHints(int cachehints,int frame_range)
+  {
+    switch (cachehints)
+    {
+    case CACHE_DONT_CACHE_ME:
+      return 1;
+    case CACHE_GET_MTMODE:
+      return MT_NICE_FILTER;
+    default:
+      return 0;
+    }
+  };
 };
 
 
@@ -815,7 +826,18 @@ public:
   }
   bool __stdcall GetParity(int n) { return false; }
   const VideoInfo& __stdcall GetVideoInfo() { return vi; }
-  int __stdcall SetCacheHints(int cachehints,int frame_range) { return 0; };
+  int __stdcall SetCacheHints(int cachehints,int frame_range)
+  { 
+      switch (cachehints)
+      {
+      case CACHE_GET_MTMODE:
+          return MT_NICE_FILTER;
+      case CACHE_DONT_CACHE_ME:
+          return 1;
+      default:
+          return 0;
+      }
+  };
 
   void __stdcall GetAudio(void* buf, __int64 start, __int64 count, IScriptEnvironment* env) {
 #if 1

@@ -197,7 +197,7 @@ public:
 };
 
 
-class KillAudio : public GenericVideoFilter
+class KillAudio : public NonCachedGenericVideoFilter
 /**
   * Removes audio from clip
  **/

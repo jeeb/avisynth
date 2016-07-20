@@ -617,7 +617,7 @@ AVSValue __cdecl KillVideo::Create(AVSValue args, void*, IScriptEnvironment*) {
  ******************************/
 
 KillAudio::KillAudio(PClip _clip)
-    : GenericVideoFilter(_clip) {
+    : NonCachedGenericVideoFilter(_clip) {
   vi.audio_samples_per_second = 0;
   vi.sample_type = 0;
   vi.num_audio_samples = 0;
