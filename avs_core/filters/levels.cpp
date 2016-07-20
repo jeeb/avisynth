@@ -41,7 +41,7 @@
 #include "../core/internal.h"
 #include <xmmintrin.h>
 
-#define PI        3.141592653589793
+#define PI 3.141592653589793
 
 
 /********************************************************************
@@ -713,7 +713,7 @@ Tweak::Tweak(PClip _child, double _hue, double _sat, double _bright, double _con
   Sin = (int) (SIN * 4096 + 0.5);
   Cos = (int) (COS * 4096 + 0.5);
 
-  if (vi.ComponentSize() > 1)
+  if (vi.IsPlanar() && (vi.ComponentSize() > 1))
     realcalc = true; // 16/32 bit: no lookup tables.
 
   if(!(realcalc && vi.IsPlanar()))
@@ -890,55 +890,60 @@ PVideoFrame __stdcall Tweak::GetFrame(int n, IScriptEnvironment* env)
         }
     }
     else if (vi.IsPlanar()) {
-        if (realcalc) // no lookup! PF todo: clean up this slow mess. But I'm glad, it's working 16/float
+        // brightness and contrast
+        if (realcalc) // no lookup! alway true for 16/32 bit, optional for 8 bit
         {
             int pixelsize = vi.ComponentSize();
-            double factor;
-            double maxY;
-            double minY;
-            switch (pixelsize)
-            {
-            case 1:
-                factor = 256.0;
-                maxY = coring ? 235 : 255;
-                minY = coring ? 16 : 0;
-                break;
-            case 2:
-                factor = 65536.0;
-                maxY = coring ? 235 * 256 : 255 * 256;
-                minY = coring ? 16 * 256 : 0;
-                break;
-            default: // case 4:
-                maxY = coring ? 235.0 / 256 : 255.0 / 256;
-                minY = coring ? 16.0 / 256 : 0;
-                factor = 1.0;
-            }
-            double y0;
-            for (int y = 0; y < height; ++y) {
-                const int _y = (y << 4) & 0xf0;
-                for (int x = 0; x < row_size / pixelsize; ++x) {
-                    /* brightness and contrast */
-                    double ditherval = dither ? ditherval = (ditherMap[(x & 0x0f) | _y] / 256.0 - 0.5) / 256.0 : 0.0;
-                    // +/- 1/256, always relative to 0..1
-                    switch (pixelsize) {
-                    case 1: y0 = (srcp[x] - minY) / factor; break; // 8 bit
-                    case 2: y0 = (reinterpret_cast<uint16_t *>(srcp)[x] - minY) / factor; break;// 16 bit
-                    default: // case 4:
-                        y0 = (reinterpret_cast<float *>(srcp)[x] - minY) / factor; // float
+            int width = row_size / pixelsize;
+            float maxY;
+            float minY;
+            float ditherval = 0.0f;
+            // unique for each bit-depth, difference in the innermost loop (speed)
+            if (pixelsize == 1) { // uint8_t
+                maxY = coring ? 235.0f : 255.0f;
+                minY = coring ? 16.0f : 0;
+                for (int y = 0; y < height; ++y) {
+                    const int _y = (y << 4) & 0xf0;
+                    for (int x = 0; x < width; ++x) {
+                        if (dither) 
+                            ditherval = (ditherMap[(x & 0x0f) | _y] - 127.5f) / 256.0f; // 0x00..0xFF -> -0.5 .. + 0.5 (+/- maxrange/512)
+                        float y0 = minY + ((srcp[x] - minY) + ditherval)*(float)dcont + (float)dbright; // dbright parameter always 0..255
+                        srcp[x] = (BYTE)clamp(y0, minY, maxY);
                     }
-                    y0 = (y0 + ditherval)*dcont + dbright / 256.0; // dbright parameter always 0..255
-                    y0 = y0*factor + minY;
-                    switch (pixelsize) {
-                    case 1: srcp[x] = (BYTE)clamp(y0, minY, maxY); break;
-                    case 2: reinterpret_cast<uint16_t *>(srcp)[x] = (uint16_t)clamp(y0, minY, maxY); break;
-                    default: // case 4:
-                        reinterpret_cast<float *>(srcp)[x] = (float)clamp(y0, minY, maxY); break;
-                    }
+                    srcp += src_pitch;
                 }
-                srcp += src_pitch;
+
+            } else if (pixelsize == 2) { // uint16_t
+                maxY = coring ? 235.0f * 256 : 65535.0f;
+                minY = coring ? 16.0f * 256 : 0;
+                for (int y = 0; y < height; ++y) {
+                    const int _y = (y << 4) & 0xf0;
+                    for (int x = 0; x < width; ++x) {
+                        if (dither) ditherval = (ditherMap[(x & 0x0f) | _y] - 127.5f); // 0x00..0xFF -> -0.7F .. + 0.7F (+/- maxrange/512)
+                        float y0 = (reinterpret_cast<uint16_t *>(srcp)[x] - minY);
+                        y0 = minY + ( (y0 + ditherval)*(float)dcont + 256.0f*(float)dbright); // dbright parameter always 0..255
+                        reinterpret_cast<uint16_t *>(srcp)[x] = (uint16_t)clamp(y0, minY, maxY);
+                    }
+                    srcp += src_pitch;
+                }
+            } else { // pixelsize 4: float
+                maxY = coring ? 235.0f / 256 : 1.0f; // scale into 0..1 range
+                minY = coring ? 16.0f / 256 : 0;
+                for (int y = 0; y < height; ++y) {
+                    const int _y = (y << 4) & 0xf0;
+                    for (int x = 0; x < width; ++x) {
+                        if (dither) ditherval = (ditherMap[(x & 0x0f) | _y] - 127.5f) / 65536.0f; // 0x00..0xFF -> -0.5 .. + 0.5 (+/- maxrange/512)
+                        float y0 = (reinterpret_cast<float *>(srcp)[x] - minY);
+                        y0 = minY + (y0 + ditherval)*(float)dcont + (float)dbright / 256.0f; // dbright parameter always 0..255, scale it to 0..1
+                        reinterpret_cast<float *>(srcp)[x] = (float)clamp(y0, minY, maxY);
+                    }
+                    srcp += src_pitch;
+                }
             }
+
         }
         else {
+            // use lookup for 8 bit
             if (dither) {
                 for (int y = 0; y < height; ++y) {
                     const int _y = (y << 4) & 0xf0;
@@ -959,7 +964,9 @@ PVideoFrame __stdcall Tweak::GetFrame(int n, IScriptEnvironment* env)
                 }
             }
         }
+        // Y: brightness and contrast done
 
+        // UV: hue and saturation start
         src_pitch = src->GetPitch(PLANAR_U);
         BYTE * srcpu = src->GetWritePtr(PLANAR_U);
         BYTE * srcpv = src->GetWritePtr(PLANAR_V);
@@ -967,20 +974,8 @@ PVideoFrame __stdcall Tweak::GetFrame(int n, IScriptEnvironment* env)
         height = src->GetHeight(PLANAR_U);
 
         if (realcalc) {
-            // no lookup! PF todo: clean up this slow and junk. But let's glad, it's working
-            // todo: float is a little greenish!
-            // u,v: 0..1 normalized
-            // destu = (u + dither_minus_8/16_7/16) - 0.5
-            // destv = (v + dither_minus_8/16_7/16) - 0.5
-            // double dSat = _sat
-            // ProcessPixelUnscaled(destv, destu, startHue, endHue, maxSat, minSat, p, dSat)
-            // du = (destu*cos(Hue) + destv*sin(Hue)) * dSat + 0.5 // unnormalize
-            // dv = (destv*cos(Hue) - destu*sin(Hue)) * dSat + 0.5 // unnormalize
-            // du=clamp(du,0.0,1.0)
-            // dv=clamp(du,0.0,1.0)
+            // no lookup, alway true for 16/32 bit, optional for 8 bit
             const double Hue = (dhue * PI) / 180.0;
-            double maxUV;
-            double minUV;
             // 100% equals sat=119 (= maximal saturation of valid RGB (R=255,G=B=0)
             // 150% (=180) - 100% (=119) overshoot
             const double minSat = 1.19 * dminSat;
@@ -989,71 +984,84 @@ PVideoFrame __stdcall Tweak::GetFrame(int n, IScriptEnvironment* env)
             double p = dinterp * 1.19; // Same units as minSat/maxSat
 
             int pixelsize = vi.ComponentSize();
-            double factor;
-            switch (pixelsize)
-            {
-            case 1:
-                factor = 256.0;
-                maxUV = coring ? 240 : 255;
-                minUV = coring ? 16 : 0;
-                break;
-            case 2:
-                factor = 65536.0;
-                maxUV = coring ? 240 * 256 : 255 * 256;
-                minUV = coring ? 16 * 256 : 0;
-                break;
-            default: // case 4:
-                maxUV = coring ? 240.0 / 256 : 255.0 / 256;
-                minUV = coring ? 16.0 / 256 : 0;
-                factor = 1.0;
-            }
+            int width = row_size / pixelsize;
+            double maxUV = coring ? 240.0f : 255.0f;
+            double minUV = coring ? 16.0f : 0;
+            double ditherval = 0.0;
             double u, v;
-            for (int y = 0; y < height; ++y) {
-                const int _y = (y << 2) & 0xC;
-                for (int x = 0; x < row_size / pixelsize; ++x) {
-                    double _ditherval = 0.0;
-                    if (dither)
-                        _ditherval = ((double(ditherMap4[(x & 0x3) | _y]) - 7.5) / 16) / 16; // base: 1.0: -7.5/16/16..+8/16/16
-                      /* hue and saturation */
-                    switch (pixelsize) {
-                    case 1:
-                        u = srcpu[x] / factor;
-                        v = srcpv[x] / factor;
-                        break; // 8 bit
-                    case 2:
-                        u = reinterpret_cast<uint16_t *>(srcpu)[x] / factor;
-                        v = reinterpret_cast<uint16_t *>(srcpv)[x] / factor;
-                        break; // 16 bit
-                    default: // case 4:
-                        u = reinterpret_cast<float *>(srcpu)[x] / factor;
-                        v = reinterpret_cast<float *>(srcpv)[x] / factor;
-                    }
+            double cosHue = cos(Hue);
+            double sinHue = sin(Hue);
 
-                    u = u + _ditherval - 0.5;
-                    v = v + _ditherval - 0.5;
-                    double dWorkSat = dsat; // original param
-                    ProcessPixelUnscaled(v, u, dstartHue, dendHue, dmaxSat, dminSat, p, dWorkSat);
-                    double du = (u*cos(Hue) + v*sin(Hue)) * dWorkSat + 0.5; // unnormalize
-                    double dv = (v*cos(Hue) - u*sin(Hue)) * dWorkSat + 0.5; // unnormalize
-                    du = clamp(du, 0.0, 1.0) * factor;
-                    dv = clamp(dv, 0.0, 1.0) * factor;
-                    switch (pixelsize) {
-                    case 1:
-                        srcpu[x] = (BYTE)clamp(du, minUV, maxUV);
-                        srcpv[x] = (BYTE)clamp(dv, minUV, maxUV);
-                        break;
-                    case 2:
-                        reinterpret_cast<uint16_t *>(srcpu)[x] = (uint16_t)clamp(du, minUV, maxUV);
-                        reinterpret_cast<uint16_t *>(srcpv)[x] = (uint16_t)clamp(dv, minUV, maxUV);
-                        break;
-                    default: // case 4:
-                        reinterpret_cast<float *>(srcpu)[x] = (float)clamp(du, minUV, maxUV);
-                        reinterpret_cast<float *>(srcpv)[x] = (float)clamp(dv, minUV, maxUV);
-                        break;
+            // unique for each bit-depth, difference in the innermost loop (speed)
+            if (pixelsize==1)
+            {
+                for (int y = 0; y < height; ++y) {
+                    const int _y = (y << 2) & 0xC;
+                    for (int x = 0; x < width; ++x) {
+                        if (dither)
+                            ditherval = ((double(ditherMap4[(x & 0x3) | _y]) - 7.5) / 16) / 256;
+                        u = srcpu[x] / 256.0;
+                        v = srcpv[x] / 256.0;
+
+                        u = u + ditherval - 0.5; // going from 0..1 to +/-0.5
+                        v = v + ditherval - 0.5;
+                        double dWorkSat = dsat; // init from original param
+                        ProcessPixelUnscaled(v, u, dstartHue, dendHue, dmaxSat, dminSat, p, dWorkSat);
+                        double du = (u*cosHue + v*sinHue) * dWorkSat + 0.5f; // back to 0..1 
+                        double dv = (v*cosHue - u*sinHue) * dWorkSat + 0.5f; 
+                        srcpu[x] = (BYTE)clamp(du * 256.0, minUV, maxUV);
+                        srcpv[x] = (BYTE)clamp(dv * 256.0, minUV, maxUV);
                     }
+                    srcpu += src_pitch;
+                    srcpv += src_pitch;
                 }
-                srcpu += src_pitch;
-                srcpv += src_pitch;
+            } else if (pixelsize==2) {
+                maxUV *= 256;
+                minUV *= 256;
+                for (int y = 0; y < height; ++y) {
+                    const int _y = (y << 2) & 0xC;
+                    for (int x = 0; x < width; ++x) {
+                        
+                        if (dither)
+                            ditherval = ((double(ditherMap4[(x & 0x3) | _y]) - 7.5) / 16) / 256;
+                        u = reinterpret_cast<uint16_t *>(srcpu)[x] / 65536.0f;
+                        v = reinterpret_cast<uint16_t *>(srcpv)[x] / 65536.0f;
+
+                        u = u + ditherval - 0.5; // going from 0..1 to +/-0.5
+                        v = v + ditherval - 0.5;
+                        double dWorkSat = dsat; // init from original param
+                        ProcessPixelUnscaled(v, u, dstartHue, dendHue, dmaxSat, dminSat, p, dWorkSat);
+                        double du = ((u*cosHue + v*sinHue) * dWorkSat) + 0.5; // back to 0..1 
+                        double dv = ((v*cosHue - u*sinHue) * dWorkSat) + 0.5; 
+                        reinterpret_cast<uint16_t *>(srcpu)[x] = (uint16_t)clamp(du * 65536.0, minUV, maxUV);
+                        reinterpret_cast<uint16_t *>(srcpv)[x] = (uint16_t)clamp(dv * 65536.0, minUV, maxUV);
+                    }
+                    srcpu += src_pitch;
+                    srcpv += src_pitch;
+                }
+            } else { // pixelsize==4 float
+                maxUV /= 256;
+                minUV /= 256;
+                for (int y = 0; y < height; ++y) {
+                    const int _y = (y << 2) & 0xC;
+                    for (int x = 0; x < width; ++x) {
+                        if (dither)
+                            ditherval = ((double(ditherMap4[(x & 0x3) | _y]) - 7.5) / 16) / 256;
+                        u = reinterpret_cast<float *>(srcpu)[x];
+                        v = reinterpret_cast<float *>(srcpv)[x];
+
+                        u = u + ditherval - 0.5; // going from 0..1 to +/-0.5
+                        v = v + ditherval - 0.5;
+                        double dWorkSat = dsat; // init from original param
+                        ProcessPixelUnscaled(v, u, dstartHue, dendHue, dmaxSat, dminSat, p, dWorkSat);
+                        double du = ((u*cosHue + v*sinHue) * dWorkSat) + 0.5; // back to 0..1 
+                        double dv = ((v*cosHue - u*sinHue) * dWorkSat) + 0.5; 
+                        reinterpret_cast<float *>(srcpu)[x] = (float)clamp(du/* * factor*/, minUV, maxUV);
+                        reinterpret_cast<float *>(srcpv)[x] = (float)clamp(dv/* * factor*/, minUV, maxUV);
+                    }
+                    srcpu += src_pitch;
+                    srcpv += src_pitch;
+                }
             }
         }
         else {
