@@ -162,20 +162,32 @@ static bool IsValidParameterString(const char* p) {
 */
 
 AVSFunction::AVSFunction(void*) : 
-    AVSFunction(NULL, NULL, NULL, NULL, NULL)
+    AVSFunction(NULL, NULL, NULL, NULL, NULL, NULL)
 {}
 
 AVSFunction::AVSFunction(const char* _name, const char* _plugin_basename, const char* _param_types, apply_func_t _apply) :
-    AVSFunction(_name, _plugin_basename, _param_types, _apply, NULL)
+    AVSFunction(_name, _plugin_basename, _param_types, _apply, NULL, NULL)
 {}
 
 AVSFunction::AVSFunction(const char* _name, const char* _plugin_basename, const char* _param_types, apply_func_t _apply, void *_user_data) :
-    apply(_apply), name(NULL), canon_name(NULL), param_types(NULL), user_data(_user_data)
+    AVSFunction(_name, _plugin_basename, _param_types, _apply, _user_data, NULL)
+{}
+
+AVSFunction::AVSFunction(const char* _name, const char* _plugin_basename, const char* _param_types, apply_func_t _apply, void *_user_data, const char* _dll_path) :
+    apply(_apply), name(NULL), canon_name(NULL), param_types(NULL), user_data(_user_data), dll_path(NULL)
 {
-    if ( NULL != _name )
+    if (NULL != _dll_path)
+    {
+        size_t len = strlen(_dll_path);
+        dll_path = new char[len + 1];
+        memcpy(dll_path, _dll_path, len);
+        dll_path[len] = 0;
+    }
+
+    if (NULL != _name)
     {
         size_t len = strlen(_name);
-        name = new char[len+1];
+        name = new char[len + 1];
         memcpy(name, _name, len);
         name[len] = 0;
     }
@@ -203,6 +215,7 @@ AVSFunction::~AVSFunction()
     delete [] canon_name;
     delete [] name;
     delete [] param_types;
+    delete [] dll_path;
 }
 
 bool AVSFunction::empty() const
@@ -703,6 +716,17 @@ bool PluginManager::FunctionExists(const char* name) const
     return autoloaded || (ExternalFunctions.find(name) != ExternalFunctions.end());
 }
 
+// A minor helper function
+static bool FunctionListHasDll(const FunctionList &list, const char *dll_path)
+{
+    for (const auto &f : list) {
+        if (streqi(f->dll_path, dll_path)) {
+            return true;
+        }
+    }
+    return false;
+}
+
 void PluginManager::AddFunction(const char* name, const char* params, IScriptEnvironment::ApplyFunc apply, void* user_data, const char *exportVar)
 {
   if (!IsValidParameterString(params))
@@ -713,19 +737,22 @@ void PluginManager::AddFunction(const char* name, const char* params, IScriptEnv
   AVSFunction *newFunc = NULL;
   if (PluginInLoad != NULL)
   {
-      newFunc = new AVSFunction(name, PluginInLoad->BaseName.c_str(), params, apply, user_data);
+      newFunc = new AVSFunction(name, PluginInLoad->BaseName.c_str(), params, apply, user_data, PluginInLoad->FilePath.c_str());
   }
   else
   {
-      newFunc = new AVSFunction(name, NULL, params, apply, user_data);
+      newFunc = new AVSFunction(name, NULL, params, apply, user_data, NULL);
       assert(newFunc->IsScriptFunction());
   }
 
-  // Warn user if filter names can become ambiguous
-  if (functions.end() != functions.find(newFunc->name))
+  // Warn user if a function with the same name is already registered by another plugin
   {
-      OneTimeLogTicket ticket(LOGTICKET_W1008, newFunc->name);
-      Env->LogMsgOnce(ticket, LOGLEVEL_WARNING, "%s() is defined by multiple plugins. Calls to this filter might be ambiguous and could result in the wrong function being called.", newFunc->name);
+      const auto &it = functions.find(newFunc->name);
+      if ( (functions.end() != it) && !FunctionListHasDll(it->second, newFunc->dll_path) )
+      {
+          OneTimeLogTicket ticket(LOGTICKET_W1008, newFunc->name);
+          Env->LogMsgOnce(ticket, LOGLEVEL_WARNING, "%s() is defined by multiple plugins. Calls to this filter might be ambiguous and could result in the wrong function being called.", newFunc->name);
+      }
   }
 
   functions[newFunc->name].push_back(newFunc);
@@ -733,11 +760,14 @@ void PluginManager::AddFunction(const char* name, const char* params, IScriptEnv
 
   if (NULL != newFunc->canon_name)
   {
-      // Warn user if filter names can become ambiguous
-      if (functions.end() != functions.find(newFunc->canon_name))
+      // Warn user if a function with the same name is already registered by another plugin
       {
-          OneTimeLogTicket ticket(LOGTICKET_W1008, newFunc->canon_name);
-          Env->LogMsgOnce(ticket, LOGLEVEL_WARNING, "%s() is defined by multiple plugins. Calls to this filter might be ambiguous and could result in the wrong function being called.", newFunc->canon_name);
+          const auto &it = functions.find(newFunc->canon_name);
+          if ((functions.end() != it) && !FunctionListHasDll(it->second, newFunc->dll_path))
+          {
+              OneTimeLogTicket ticket(LOGTICKET_W1008, newFunc->canon_name);
+              Env->LogMsgOnce(ticket, LOGLEVEL_WARNING, "%s() is defined by multiple plugins. Calls to this filter might be ambiguous and could result in the wrong function being called.", newFunc->name);
+          }
       }
 
       functions[newFunc->canon_name].push_back(newFunc);

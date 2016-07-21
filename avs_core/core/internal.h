@@ -67,10 +67,12 @@ public:
   char* canon_name;
   char* param_types;
   void* user_data;
+  char* dll_path;
 
   AVSFunction(void*);
   AVSFunction(const char* _name, const char* _plugin_basename, const char* _param_types, apply_func_t _apply);
   AVSFunction(const char* _name, const char* _plugin_basename, const char* _param_types, apply_func_t _apply, void *_user_data);
+  AVSFunction(const char* _name, const char* _plugin_basename, const char* _param_types, apply_func_t _apply, void *_user_data, const char* _dll_path);
   ~AVSFunction();
 
   AVSFunction() = delete;
