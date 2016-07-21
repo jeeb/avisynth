@@ -1168,8 +1168,8 @@ void __stdcall ScriptEnvironment::SetFilterMTMode(const char* filter, MtMode mod
 bool __stdcall ScriptEnvironment::FilterHasMtMode(const AVSFunction* filter) const
 {
   const auto &end = MtMap.end();
-  return (end != MtMap.find(filter->canon_name))
-      || (end != MtMap.find(filter->name));
+  return (end != MtMap.find(NormalizeString(filter->canon_name)))
+      || (end != MtMap.find(NormalizeString(filter->name)));
 }
 
 MtMode __stdcall ScriptEnvironment::GetFilterMTMode(const AVSFunction* filter, bool* is_forced) const
