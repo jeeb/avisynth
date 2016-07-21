@@ -779,12 +779,12 @@ static void convert_32_to_uintN_c(const BYTE *srcp, BYTE *dstp, int src_rowsize,
     max_dst_pixelvalue = 65535.0f;
 
   float factor = 1.0f / float_range * max_dst_pixelvalue;
-
+  
   for(int y=0; y<src_height; y++)
   { 
     for (int x = 0; x < src_width; x++)
     {
-      float pixel = (srcp0[x] * factor);
+      float pixel = srcp0[x] * factor + 0.5f; // 0.5f: keep the neutral grey level of float 0.5
       dstp0[x] = pixel_t(clamp(pixel, 0.0f, max_dst_pixelvalue)); // we clamp here!
     }
     dstp0 += dst_pitch;
@@ -837,7 +837,7 @@ static void convert_uintN_to_float_c(const BYTE *srcp, BYTE *dstp, int src_rowsi
   { 
     for (int x = 0; x < src_width; x++)
     {
-      dstp0[x] = (srcp0[x] / max_src_pixelvalue) * float_range; //  or lookup
+      dstp0[x] = srcp0[x] / max_src_pixelvalue * float_range; //  or lookup
     }
     dstp0 += dst_pitch;
     srcp0 += src_pitch;
