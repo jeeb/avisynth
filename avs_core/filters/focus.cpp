@@ -70,22 +70,55 @@ extern const AVSFunction Focus_filters[] = {
  ***************************************/
 
 AdjustFocusV::AdjustFocusV(double _amount, PClip _child)
-: GenericVideoFilter(_child), amount(int(32768*pow(2.0, _amount)+0.5)) {}
+: GenericVideoFilter(_child), amountd(pow(2.0, _amount)) {
+    half_amount = int(32768 * amountd + 0.5);
+}
 
-static void af_vertical_c(BYTE* line_buf, BYTE* dstp, const int height, const int pitch, const int width, const int amount) {
-  const int center_weight = amount*2;
-  const int outer_weight = 32768-amount;
+template<typename pixel_t>
+static void af_vertical_c(BYTE* line_buf8, BYTE* dstp8, const int height, const int pitch8, const int width, const int half_amount) {
+  typedef std::conditional < sizeof(pixel_t) == 1, int, __int64>::type weight_t;
+  // kernel:[(1-1/2^_amount)/2, 1/2^_amount, (1-1/2^_amount)/2]
+  weight_t center_weight = half_amount*2;    // *2: 16 bit scaled arithmetic, but the converted amount parameter scaled is only 15 bits
+  weight_t outer_weight = 32768-half_amount; // (1-1/2^_amount)/2  32768 = 0.5
+  
+  pixel_t * dstp = reinterpret_cast<pixel_t *>(dstp8);
+  pixel_t * line_buf = reinterpret_cast<pixel_t *>(line_buf8);
+  int pitch = pitch8 / sizeof(pixel_t);
+
   for (int y = height-1; y>0; --y) {
     for (int x = 0; x < width; ++x) {
-      BYTE a = ScaledPixelClip(dstp[x] * center_weight + (line_buf[x] + dstp[x+pitch]) * outer_weight);
+      pixel_t a;
+      // Note: ScaledPixelClip is overloaded. With __int64 parameter and uint16_t result works for 16 bit
+      a = ScaledPixelClip((weight_t)(dstp[x] * center_weight + (line_buf[x] + dstp[x+pitch]) * outer_weight));
       line_buf[x] = dstp[x];
       dstp[x] = a;
     }
     dstp += pitch;
   }
   for (int x = 0; x < width; ++x) { // Last row - map centre as lower
-    dstp[x] = ScaledPixelClip(dstp[x] * center_weight + (line_buf[x] + dstp[x]) * outer_weight);
+      dstp[x] = ScaledPixelClip((weight_t)(dstp[x] * center_weight + (line_buf[x] + dstp[x]) * outer_weight));
   }
+}
+
+static void af_vertical_c_float(BYTE* line_buf8, BYTE* dstp8, const int height, const int pitch8, const int width, const float amount) {
+    float *dstp = reinterpret_cast<float *>(dstp8);
+    float *line_buf = reinterpret_cast<float *>(line_buf8);
+    int pitch = pitch8 / sizeof(float);
+    
+    const float center_weight = amount;
+    const float outer_weight = (1.0f - amount) / 2.0f;
+
+    for (int y = height-1; y>0; --y) {
+        for (int x = 0; x < width; ++x) {
+            float a = dstp[x] * center_weight + (line_buf[x] + dstp[x+pitch]) * outer_weight;
+            line_buf[x] = dstp[x];
+            dstp[x] = a;
+        }
+        dstp += pitch;
+    }
+    for (int x = 0; x < width; ++x) { // Last row - map centre as lower
+        dstp[x] = dstp[x] * center_weight + (line_buf[x] + dstp[x]) * outer_weight;
+    }
 }
 
 static __forceinline __m128i af_blend_sse2(__m128i &upper, __m128i &center, __m128i &lower, __m128i &center_weight, __m128i &outer_weight, __m128i &round_mask) {
@@ -235,72 +268,96 @@ static void af_vertical_mmx(BYTE* line_buf, BYTE* dstp, int height, int pitch, i
 
 #endif
 
-static void af_vertical_process(BYTE* line_buf, BYTE* dstp, size_t height, size_t pitch, size_t width, size_t amount, IScriptEnvironment* env) {
-  if ((env->GetCPUFlags() & CPUF_SSE2) && IsPtrAligned(dstp, 16) && width >= 16) {
+template<typename pixel_t>
+static void af_vertical_process(BYTE* line_buf, BYTE* dstp, size_t height, size_t pitch, size_t row_size, int half_amount, IScriptEnvironment* env) {
+  size_t width = row_size / sizeof(pixel_t);
+  // only for 8/16 bit, float separated
+  // todo: sse2 for 16
+  if (sizeof(pixel_t) == 1 && (env->GetCPUFlags() & CPUF_SSE2) && IsPtrAligned(dstp, 16) && width >= 16) {
     //pitch of aligned frames is always >= 16 so we'll just process some garbage if width is not mod16
-    af_vertical_sse2(line_buf, dstp, (int)height, (int)pitch, (int)width, (int)amount);
+    af_vertical_sse2(line_buf, dstp, (int)height, (int)pitch, (int)width, half_amount);
   } else
 #ifdef X86_32
-  if ((env->GetCPUFlags() & CPUF_MMX) && width >= 8)
+  if (sizeof(pixel_t) == 1 && (env->GetCPUFlags() & CPUF_MMX) && width >= 8)
   {
     size_t mod8_width = width / 8 * 8;
-    af_vertical_mmx(line_buf, dstp, height, pitch, mod8_width, amount);
+    af_vertical_mmx(line_buf, dstp, height, pitch, mod8_width, half_amount);
     if (mod8_width != width) {
       //yes, this is bad for caching. MMX shouldn't be used these days anyway
-      af_vertical_c(line_buf, dstp + mod8_width, height, pitch, width - mod8_width, amount);
+      af_vertical_c<uint8_t>(line_buf, dstp + mod8_width, height, pitch, width - mod8_width, half_amount);
     }
   } else
 #endif
   {
-    af_vertical_c(line_buf, dstp, (int)height, (int)pitch, (int)width, (int)amount);
+      af_vertical_c<pixel_t>(line_buf, dstp, (int)height, (int)pitch, (int)width, half_amount);
   }
+}
+
+static void af_vertical_process_float(BYTE* line_buf, BYTE* dstp, size_t height, size_t pitch, size_t row_size, double amountd, IScriptEnvironment* env) {
+    size_t width = row_size / sizeof(float);
+    // todo sse2 float
+    if (false && (env->GetCPUFlags() & CPUF_SSE2) && IsPtrAligned(dstp, 16) && width >= 16) {
+        //pitch of aligned frames is always >= 16 so we'll just process some garbage if width is not mod16
+        //af_vertical_sse2_float(line_buf, dstp, (int)height, (int)pitch, (int)width, (float amountd));
+    } else {
+        af_vertical_c_float(line_buf, dstp, (int)height, (int)pitch, (int)width, (float)amountd);
+    }
 }
 
 // --------------------------------
 // Vertical Blur/Sharpen
 // --------------------------------
 
-PVideoFrame __stdcall AdjustFocusV::GetFrame(int n, IScriptEnvironment* env) 
+PVideoFrame __stdcall AdjustFocusV::GetFrame(int n, IScriptEnvironment* env)
 {
-	PVideoFrame src = child->GetFrame(n, env);
+    PVideoFrame src = child->GetFrame(n, env);
 
-	env->MakeWritable(&src);
-	
-  auto env2 = static_cast<IScriptEnvironment2*>(env);
-  BYTE* line_buf = reinterpret_cast<BYTE*>(env2->Allocate(src->GetRowSize(), 16, AVS_POOLED_ALLOC));
-  if (!line_buf) {
-	  env2->ThrowError("AdjustFocusV: Could not reserve memory.");
-  }
+    env->MakeWritable(&src);
 
-	if (vi.IsPlanar()) {
-    const int planes[3] = { PLANAR_Y, PLANAR_U, PLANAR_V };
-		for(int cplane=0;cplane<3;cplane++) {
-			int plane = planes[cplane];
-			BYTE* dstp = src->GetWritePtr(plane);
-			int pitch = src->GetPitch(plane);
-			int width = src->GetRowSize(plane);
-			int height = src->GetHeight(plane);
-			memcpy(line_buf, dstp, width); // First row - map centre as upper
+    auto env2 = static_cast<IScriptEnvironment2*>(env);
+    BYTE* line_buf = reinterpret_cast<BYTE*>(env2->Allocate(src->GetRowSize(), 16, AVS_POOLED_ALLOC));
+    if (!line_buf) {
+        env2->ThrowError("AdjustFocusV: Could not reserve memory.");
+    }
 
-      af_vertical_process(line_buf, dstp, height, pitch, width, amount, env);
-		}
-	} else {
-		BYTE* dstp = src->GetWritePtr();
-		int pitch = src->GetPitch();
-		int width = vi.RowSize();
-		int height = vi.height;
-		memcpy(line_buf, dstp, width); // First row - map centre as upper
+    if (vi.IsPlanar()) {
+        int pixelsize = vi.ComponentSize();
+        const int planes[3] = { PLANAR_Y, PLANAR_U, PLANAR_V };
+        for (int cplane = 0; cplane < 3; cplane++) {
+            int plane = planes[cplane];
+            BYTE* dstp = src->GetWritePtr(plane);
+            int pitch = src->GetPitch(plane);
+            int row_size = src->GetRowSize(plane);
+            int height = src->GetHeight(plane);
+            memcpy(line_buf, dstp, row_size); // First row - map centre as upper
 
-    af_vertical_process(line_buf, dstp, height, pitch, width, amount, env);
-	}
+            switch (pixelsize) {
+            case 1: af_vertical_process<uint8_t>(line_buf, dstp, height, pitch, row_size, half_amount, env); break;
+            case 2: af_vertical_process<uint16_t>(line_buf, dstp, height, pitch, row_size, half_amount, env); break;
+            default: // 4: float 
+                af_vertical_process_float(line_buf, dstp, height, pitch, row_size, amountd, env); break;
+            }
+        }
+    }
+    else {
+        BYTE* dstp = src->GetWritePtr();
+        int pitch = src->GetPitch();
+        int row_size = vi.RowSize();
+        int height = vi.height;
+        memcpy(line_buf, dstp, row_size); // First row - map centre as upper
+        
+        af_vertical_process<uint8_t>(line_buf, dstp, height, pitch, row_size, half_amount, env);
+    }
 
-  env2->Free(line_buf);
-	return src;
+    env2->Free(line_buf);
+    return src;
 }
 
 
 AdjustFocusH::AdjustFocusH(double _amount, PClip _child)
-: GenericVideoFilter(_child), amount(int(32768*pow(2.0, _amount)+0.5)) {}
+: GenericVideoFilter(_child), amountd(pow(2.0, _amount)) {
+    half_amount = int(32768 * amountd + 0.5);
+}
 
 
 // --------------------------------------
@@ -729,26 +786,59 @@ static void af_horizontal_rgb24_c(BYTE* p, int height, int pitch, int width, int
 // Blur/Sharpen Horizontal YV12 C++ Code
 // -------------------------------------
 
-static __forceinline void af_horizontal_yv12_process_line_c(BYTE left, BYTE *dstp, size_t width, int center_weight, int outer_weight) {
+template<typename pixel_t>
+static __forceinline void af_horizontal_yv12_process_line_c(pixel_t left, BYTE *dstp8, size_t row_size, int center_weight, int outer_weight) {
   size_t x;
+  pixel_t* dstp = reinterpret_cast<pixel_t *>(dstp8);
+  typedef std::conditional < sizeof(pixel_t) == 1, int, __int64>::type weight_t; // for calling the right ScaledPixelClip()
+  size_t width = row_size / sizeof(pixel_t);
   for (x = 0; x < width-1; ++x) {
-    BYTE temp = ScaledPixelClip(dstp[x] * center_weight + (left + dstp[x+1]) * outer_weight);
+    pixel_t temp = ScaledPixelClip((weight_t)(dstp[x] * (weight_t)center_weight + (left + dstp[x+1]) * (weight_t)outer_weight));
     left = dstp[x]; 
     dstp[x] = temp;
   }
-  dstp[x] = ScaledPixelClip(dstp[x] * center_weight + (left + dstp[x]) * outer_weight);
+  // ScaledPixelClip has 2 overloads: BYTE/uint16_t (int/int64 i)
+  dstp[x] = ScaledPixelClip((weight_t)(dstp[x] * (weight_t)center_weight + (left + dstp[x]) * (weight_t)outer_weight));
 }
 
-static void af_horizontal_yv12_c(BYTE* dstp, size_t height, size_t pitch, size_t row_size, size_t amount) 
+template<typename pixel_t>
+static void af_horizontal_yv12_c(BYTE* dstp8, size_t height, size_t pitch8, size_t row_size, size_t half_amount) 
 {
-  int center_weight = int(amount*2);
-  int outer_weight = int(32768-amount);
-  BYTE left;
-  for (size_t y = height; y>0; --y) {
-    left = dstp[0];
-    af_horizontal_yv12_process_line_c(left, dstp, row_size, center_weight, outer_weight);
-    dstp += pitch;
-  }
+    pixel_t* dstp = reinterpret_cast<pixel_t *>(dstp8);
+    size_t pitch = pitch8 / sizeof(pixel_t);
+    int center_weight = int(half_amount*2);
+    int outer_weight = int(32768-half_amount);
+    pixel_t left;
+    for (size_t y = height; y>0; --y) {
+        left = dstp[0];
+        af_horizontal_yv12_process_line_c<pixel_t>(left, (BYTE *)dstp, row_size, center_weight, outer_weight);
+        dstp += pitch;
+    }
+}
+
+static __forceinline void af_horizontal_yv12_process_line_float_c(float left, float *dstp, size_t row_size, float center_weight, float outer_weight) {
+    size_t x;
+    size_t width = row_size / sizeof(float);
+    for (x = 0; x < width-1; ++x) {
+        float temp = dstp[x] * center_weight + (left + dstp[x+1]) * outer_weight;
+        left = dstp[x]; 
+        dstp[x] = temp;
+    }
+    dstp[x] = dstp[x] * center_weight + (left + dstp[x]) * outer_weight;
+}
+
+static void af_horizontal_yv12_float_c(BYTE* dstp8, size_t height, size_t pitch8, size_t row_size, float amount) 
+{
+    float* dstp = reinterpret_cast<float *>(dstp8);
+    size_t pitch = pitch8 / sizeof(float);
+    float center_weight = amount;
+    float outer_weight = (1.0f - amount) / 2.0f;
+    float left;
+    for (size_t y = height; y>0; --y) {
+        left = dstp[0];
+        af_horizontal_yv12_process_line_float_c(left, dstp, row_size, center_weight, outer_weight);
+        dstp += pitch;
+    }
 }
 
 static void af_horizontal_yv12_sse2(BYTE* dstp, size_t height, size_t pitch, size_t width, size_t amount) {
@@ -802,7 +892,7 @@ static void af_horizontal_yv12_sse2(BYTE* dstp, size_t height, size_t pitch, siz
       _mm_store_si128(reinterpret_cast<__m128i*>(dstp+mod16_width-16), result);
     } else { //some stuff left
       BYTE l = _mm_cvtsi128_si32(left) & 0xFF;
-      af_horizontal_yv12_process_line_c(l, dstp+mod16_width, width-mod16_width, center_weight_c, outer_weight_c);
+      af_horizontal_yv12_process_line_c<uint8_t>(l, dstp+mod16_width, width-mod16_width, center_weight_c, outer_weight_c);
       
     }
 
@@ -863,7 +953,7 @@ static void af_horizontal_yv12_mmx(BYTE* dstp, size_t height, size_t pitch, size
       *reinterpret_cast<__m64*>(dstp+mod8_width-8) = result;
     } else { //some stuff left
       BYTE l = _mm_cvtsi64_si32(left) & 0xFF;
-      af_horizontal_yv12_process_line_c(l, dstp+mod8_width, width-mod8_width, center_weight_c, outer_weight_c);
+      af_horizontal_yv12_process_line_c<uint8_t>(l, dstp+mod8_width, width-mod8_width, center_weight_c, outer_weight_c);
     }
 
     dstp += pitch;
@@ -897,22 +987,29 @@ PVideoFrame __stdcall AdjustFocusH::GetFrame(int n, IScriptEnvironment* env)
   if (vi.IsPlanar()) {
     const int planes[3] = { PLANAR_Y, PLANAR_U, PLANAR_V };
     copy_frame(src, dst, env); //planar processing is always in-place
+    int pixelsize = vi.ComponentSize();
     for(int cplane=0;cplane<3;cplane++) {
       int plane = planes[cplane];
-      int width = dst->GetRowSize(plane);
+      int row_size = dst->GetRowSize(plane);
       BYTE* q = dst->GetWritePtr(plane);
       int pitch = dst->GetPitch(plane);
       int height = dst->GetHeight(plane);
-      if ((env->GetCPUFlags() & CPUF_SSE2) && IsPtrAligned(q, 16) && width >= 16) {
-        af_horizontal_yv12_sse2(q, height, pitch, width, amount);
+      if (pixelsize==1 && (env->GetCPUFlags() & CPUF_SSE2) && IsPtrAligned(q, 16) && row_size >= 16) {
+        af_horizontal_yv12_sse2(q, height, pitch, row_size, half_amount);
       } else
 #ifdef X86_32
-        if (env->GetCPUFlags() & CPUF_MMX && width >= 8) {
-          af_horizontal_yv12_mmx(q,height,pitch,width,amount);
+        if (pixelsize == 1 && (env->GetCPUFlags() & CPUF_MMX) && row_size >= 8) {
+          af_horizontal_yv12_mmx(q,height,pitch,row_size,half_amount);
         } else
 #endif
         {
-          af_horizontal_yv12_c(q,height,pitch,width,amount);
+            switch (pixelsize) {
+            case 1: af_horizontal_yv12_c<uint8_t>(q, height, pitch, row_size, half_amount); break;
+            case 2: af_horizontal_yv12_c<uint16_t>(q, height, pitch, row_size, half_amount); break;
+            default: // 4: float
+                    af_horizontal_yv12_float_c(q, height, pitch, row_size, (float)amountd); break;
+            }
+          
         } 
     }
   } else {
@@ -920,36 +1017,36 @@ PVideoFrame __stdcall AdjustFocusH::GetFrame(int n, IScriptEnvironment* env)
       BYTE* q = dst->GetWritePtr();
       const int pitch = dst->GetPitch();
       if ((env->GetCPUFlags() & CPUF_SSE2) && IsPtrAligned(src->GetReadPtr(), 16)) {
-        af_horizontal_yuy2_sse2(dst->GetWritePtr(), src->GetReadPtr(), dst->GetPitch(), src->GetPitch(), vi.height, vi.width, amount);
+        af_horizontal_yuy2_sse2(dst->GetWritePtr(), src->GetReadPtr(), dst->GetPitch(), src->GetPitch(), vi.height, vi.width, half_amount);
       } else
 #ifdef X86_32
       if (env->GetCPUFlags() & CPUF_MMX) {
-        af_horizontal_yuy2_mmx(dst->GetWritePtr(), src->GetReadPtr(), dst->GetPitch(), src->GetPitch(), vi.height, vi.width, amount);
+        af_horizontal_yuy2_mmx(dst->GetWritePtr(), src->GetReadPtr(), dst->GetPitch(), src->GetPitch(), vi.height, vi.width, half_amount);
       } else
 #endif
       {
         copy_frame(src, dst, env); //in-place
-        af_horizontal_yuy2_c(q,vi.height,pitch,vi.width,amount);
+        af_horizontal_yuy2_c(q,vi.height,pitch,vi.width,half_amount);
       }
     } 
     else if (vi.IsRGB32()) {
       if ((env->GetCPUFlags() & CPUF_SSE2) && IsPtrAligned(src->GetReadPtr(), 16)) {
         //this one is NOT in-place
-        af_horizontal_rgb32_sse2(dst->GetWritePtr(), src->GetReadPtr(), dst->GetPitch(), src->GetPitch(), vi.height, vi.width, amount);
+        af_horizontal_rgb32_sse2(dst->GetWritePtr(), src->GetReadPtr(), dst->GetPitch(), src->GetPitch(), vi.height, vi.width, half_amount);
       } else
 #ifdef X86_32
       if (env->GetCPUFlags() & CPUF_MMX)
       { //so as this one
-        af_horizontal_rgb32_mmx(dst->GetWritePtr(), src->GetReadPtr(), dst->GetPitch(), src->GetPitch(), vi.height, vi.width, amount);
+        af_horizontal_rgb32_mmx(dst->GetWritePtr(), src->GetReadPtr(), dst->GetPitch(), src->GetPitch(), vi.height, vi.width, half_amount);
       } else
 #endif
       {
         copy_frame(src, dst, env);
-        af_horizontal_rgb32_c(dst->GetWritePtr(), vi.height, dst->GetPitch(), vi.width, amount);
+        af_horizontal_rgb32_c(dst->GetWritePtr(), vi.height, dst->GetPitch(), vi.width, half_amount);
       }
     } else { //rgb24
       copy_frame(src, dst, env);
-      af_horizontal_rgb24_c(dst->GetWritePtr(), vi.height, dst->GetPitch(), vi.width, amount);
+      af_horizontal_rgb24_c(dst->GetWritePtr(), vi.height, dst->GetPitch(), vi.width, half_amount);
     }
   }
 
